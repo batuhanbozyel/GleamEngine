@@ -21,7 +21,7 @@ function GetVulkanSDKIncludePath()
 	end
 end
 
-workspace "Gleam"
+workspace "GleamEngine"
 	architecture "x86_64"
 	startproject "Gleam-Editor"
 
