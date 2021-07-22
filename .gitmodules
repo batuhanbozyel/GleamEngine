@@ -1,27 +1,30 @@
-[submodule "Gleam/vendor/glm"]
-	path = Gleam/vendor/glm
+[submodule "Gleam-Core/vendor/glm"]
+	path = Gleam-Core/vendor/glm
 	url = https://github.com/g-truc/glm
-[submodule "Gleam/vendor/entt"]
-	path = Gleam/vendor/entt
+[submodule "Gleam-Core/vendor/entt"]
+	path = Gleam-Core/vendor/entt
 	url = https://github.com/skypjack/entt
-[submodule "Gleam/vendor/SDL"]
-	path = Gleam/vendor/SDL
+[submodule "Gleam-Core/vendor/SDL"]
+	path = Gleam-Core/vendor/SDL
 	url = https://github.com/libsdl-org/SDL
-[submodule "Gleam/vendor/tinygltf"]
-	path = Gleam/vendor/tinygltf
+[submodule "Gleam-Core/vendor/tinygltf"]
+	path = Gleam-Core/vendor/tinygltf
 	url = https://github.com/syoyo/tinygltf
-[submodule "Gleam/vendor/spdlog"]
-	path = Gleam/vendor/spdlog
+[submodule "Gleam-Core/vendor/spdlog"]
+	path = Gleam-Core/vendor/spdlog
 	url = https://github.com/gabime/spdlog
-[submodule "Gleam/vendor/tinyobjloader"]
-	path = Gleam/vendor/tinyobjloader
+[submodule "Gleam-Core/vendor/tinyobjloader"]
+	path = Gleam-Core/vendor/tinyobjloader
 	url = https://github.com/tinyobjloader/tinyobjloader
-[submodule "Gleam/vendor/stb"]
-	path = Gleam/vendor/stb
+[submodule "Gleam-Core/vendor/stb"]
+	path = Gleam-Core/vendor/stb
 	url = https://github.com/nothings/stb
-[submodule "Gleam/vendor/OpenFBX"]
-	path = Gleam/vendor/OpenFBX
+[submodule "Gleam-Core/vendor/OpenFBX"]
+	path = Gleam-Core/vendor/OpenFBX
 	url = https://github.com/nem0/OpenFBX
-[submodule "Gleam/vendor/imgui"]
-	path = Gleam/vendor/imgui
+[submodule "Gleam-Core/vendor/imgui"]
+	path = Gleam-Core/vendor/imgui
 	url = https://github.com/ocornut/imgui
+[submodule "Gleam-Core/vendor/ImGuizmo"]
+	path = Gleam-Core/vendor/ImGuizmo
+	url = https://github.com/CedricGuillemet/ImGuizmo
