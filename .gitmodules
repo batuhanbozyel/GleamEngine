@@ -4,8 +4,8 @@
 [submodule "Gleam-Core/vendor/entt"]
 	path = Gleam-Core/vendor/entt
 	url = https://github.com/skypjack/entt
-[submodule "Gleam-Core/vendor/SDL"]
-	path = Gleam-Core/vendor/SDL
+[submodule "Gleam-Core/vendor/SDL2"]
+	path = Gleam-Core/vendor/SDL2
 	url = https://github.com/libsdl-org/SDL
 [submodule "Gleam-Core/vendor/tinygltf"]
 	path = Gleam-Core/vendor/tinygltf

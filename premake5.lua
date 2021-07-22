@@ -40,7 +40,7 @@ workspace "Gleam"
 outputdir = "%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"
 
 IncludeDir = {}
-IncludeDir["SDL"] = "%{wks.location}/Gleam-Core/vendor/SDL/include"
+IncludeDir["SDL2"] = "%{wks.location}/Gleam-Core/vendor/SDL2/include"
 IncludeDir["spdlog"] = "%{wks.location}/Gleam-Core/vendor/spdlog/include"
 IncludeDir["glm"] = "%{wks.location}/Gleam-Core/vendor/glm"
 IncludeDir["stb_image"] = "%{wks.location}/Gleam-Core/vendor/stb"

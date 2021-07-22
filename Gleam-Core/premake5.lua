@@ -32,7 +32,7 @@ project "Gleam-Core"
 	includedirs
 	{
 		"src",
-		"%{IncludeDir.SDL}",
+		"%{IncludeDir.SDL2}",
 		"%{IncludeDir.spdlog}",
 		"%{IncludeDir.glm}",
 		"%{IncludeDir.ImGui}",
