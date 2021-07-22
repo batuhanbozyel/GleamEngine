@@ -38,6 +38,10 @@
 **.vcxproj.filters
 **.vcxproj.user
 
+# XCode files and folder
+**.xcworkspace
+**.xcodeproj
+
 # Binaries
 **/bin/
 bin-int/

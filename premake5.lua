@@ -4,7 +4,8 @@ function GetVulkanSDKLinkPath()
 		return vulkan_sdk .. "/Lib/vulkan-1.lib"
 	else
 		vulkan_sdk = vulkan_sdk .. "/lib"
-		for filename in popen('dir "'.. vulkan_sdk ..'" /b'):lines() do
+		print(vulkan_sdk)
+		for filename in io.popen('dir "' .. vulkan_sdk ..'" /b'):lines() do
 			if filename.match("libvulkan.1.") then return vulkan_sdk .. filename end
 		end
 		return nil
