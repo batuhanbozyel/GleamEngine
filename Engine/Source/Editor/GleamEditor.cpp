@@ -1,4 +1,4 @@
-#include "Gleam/Gleam.h"
+#include "Gleam.h"
 
 namespace GEditor {
 

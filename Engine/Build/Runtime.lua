@@ -9,12 +9,12 @@ project "Gleam"
 	objdir ("%{wks.location}/bin-int/" .. outputdir .. "/%{prj.name}")
 
 	pchheader "gpch.h"
-	pchsource "%{wks.location}/Engine/Source/Runtime/Gleam/gpch.cpp"
+	pchsource "%{wks.location}/Engine/Source/Runtime/gpch.cpp"
 
 	files
 	{
-		"%{wks.location}/Engine/Source/Runtime/Gleam/**.h",
-		"%{wks.location}/Engine/Source/Runtime/Gleam/**.cpp"
+		"%{wks.location}/Engine/Source/Runtime/**.h",
+		"%{wks.location}/Engine/Source/Runtime/**.cpp"
 	}
 
 	defines
@@ -26,7 +26,7 @@ project "Gleam"
 
 	includedirs
 	{
-		"%{wks.location}/Engine/Source/Runtime/Gleam",
+		"%{wks.location}/Engine/Source/Runtime",
 		"%{IncludeDir.SDL2}",
 		"%{IncludeDir.spdlog}",
 		"%{IncludeDir.glm}",
@@ -39,9 +39,14 @@ project "Gleam"
 		GetVulkanSDKIncludePath()
 	}
 
-	links
+	libdirs
 	{
 		GetVulkanSDKLinkPath()
+	}
+	
+	links
+	{
+		GetVulkanDynamicLibFile()
 	}
 
 	filter "configurations:Debug"

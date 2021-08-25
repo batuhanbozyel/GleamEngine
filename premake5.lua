@@ -1,17 +1,24 @@
-function GetVulkanSDKLinkPath()
-	if os.is("windows") then
+function GetVulkanDynamicLibFile()
+	if os.istarget("windows") then
 		return "vulkan-1.dll"
 	else
 		return os.getenv("VULKAN_SDK") .. "/lib/libvulkan.1.dylib"
 	end
 end
 
-function GetVulkanSDKIncludePath()
-	local vulkan_sdk = os.getenv("VULKAN_SDK")
-	if os.is("windows") then
-		return vulkan_sdk .. "/Include"
+function GetVulkanSDKLinkPath()
+	if os.istarget("windows") then
+		return nil
 	else
-		return vulkan_sdk .. "/include"
+		return os.getenv("VULKAN_SDK") .. "/lib"
+	end
+end
+
+function GetVulkanSDKIncludePath()
+	if os.istarget("windows") then
+		return os.getenv("VULKAN_SDK") .. "/Include"
+	else
+		return os.getenv("VULKAN_SDK") .. "/include"
 	end
 end
 
