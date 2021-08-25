@@ -1,37 +1,32 @@
-project "Gleam-Core"
+project "Gleam"
 	kind "SharedLib"
 	language "C++"
 	cppdialect "C++17"
 	staticruntime "off"
+	location "%{wks.location}/Engine/Source/Runtime"
 
 	targetdir ("%{wks.location}/bin/" .. outputdir .. "/%{prj.name}")
-	objdir ("%{wks.location}/bin-int/" ..outputdir .. "/%{prj.name}")
+	objdir ("%{wks.location}/bin-int/" .. outputdir .. "/%{prj.name}")
 
-	pchheader "pch.h"
-	pchsource "src/pch.cpp"
+	pchheader "gpch.h"
+	pchsource "%{wks.location}/Engine/Source/Runtime/Gleam/gpch.cpp"
 
 	files
 	{
-		"src/**.h",
-		"src/**.cpp",
-		
-		"vendor/glm/glm/**.hpp",
-		"vendor/glm/glm/**.inl",
-
-		"vendor/stb/stb_image.h",
-
-		"vendor/ImGuizmo/ImGuizmo.h",
-		"vendor/ImGuizmo/ImGuizmo.cpp"
+		"%{wks.location}/Engine/Source/Runtime/Gleam/**.h",
+		"%{wks.location}/Engine/Source/Runtime/Gleam/**.cpp"
 	}
 
 	defines
 	{
-		"_CRT_SECURE_NO_WARNINGS"
+		"_CRT_SECURE_NO_WARNINGS",
+		"GLEAM_DYNAMIC",
+		"GLEAM_EXPORT"
 	}
 
 	includedirs
 	{
-		"src",
+		"%{wks.location}/Engine/Source/Runtime/Gleam",
 		"%{IncludeDir.SDL2}",
 		"%{IncludeDir.spdlog}",
 		"%{IncludeDir.glm}",
@@ -46,7 +41,6 @@ project "Gleam-Core"
 
 	links
 	{
-		"ImGui",
 		GetVulkanSDKLinkPath()
 	}
 
