@@ -50,5 +50,5 @@ bin-int/
 *.log
 
 # Exclude files and folders
-!vendor/premake/bin/
-!vendor/premake/bin/premake5.exe
+!Tools/premake/bin/
+!Tools/premake/bin/premake5.exe

@@ -1,30 +1,30 @@
-[submodule "Gleam-Core/vendor/glm"]
-	path = Gleam-Core/vendor/glm
+[submodule "Engine/ThirdParty/glm"]
+	path = Engine/ThirdParty/glm
 	url = https://github.com/g-truc/glm
-[submodule "Gleam-Core/vendor/entt"]
-	path = Gleam-Core/vendor/entt
+[submodule "Engine/ThirdParty/entt"]
+	path = Engine/ThirdParty/entt
 	url = https://github.com/skypjack/entt
-[submodule "Gleam-Core/vendor/SDL2"]
-	path = Gleam-Core/vendor/SDL2
+[submodule "Engine/ThirdParty/SDL2"]
+	path = Engine/ThirdParty/SDL2
 	url = https://github.com/libsdl-org/SDL
-[submodule "Gleam-Core/vendor/tinygltf"]
-	path = Gleam-Core/vendor/tinygltf
+[submodule "Engine/ThirdParty/tinygltf"]
+	path = Engine/ThirdParty/tinygltf
 	url = https://github.com/syoyo/tinygltf
-[submodule "Gleam-Core/vendor/spdlog"]
-	path = Gleam-Core/vendor/spdlog
+[submodule "Engine/ThirdParty/spdlog"]
+	path = Engine/ThirdParty/spdlog
 	url = https://github.com/gabime/spdlog
-[submodule "Gleam-Core/vendor/tinyobjloader"]
-	path = Gleam-Core/vendor/tinyobjloader
+[submodule "Engine/ThirdParty/tinyobjloader"]
+	path = Engine/ThirdParty/tinyobjloader
 	url = https://github.com/tinyobjloader/tinyobjloader
-[submodule "Gleam-Core/vendor/stb"]
-	path = Gleam-Core/vendor/stb
+[submodule "Engine/ThirdParty/stb"]
+	path = Engine/ThirdParty/stb
 	url = https://github.com/nothings/stb
-[submodule "Gleam-Core/vendor/OpenFBX"]
-	path = Gleam-Core/vendor/OpenFBX
+[submodule "Engine/ThirdParty/OpenFBX"]
+	path = Engine/ThirdParty/OpenFBX
 	url = https://github.com/nem0/OpenFBX
-[submodule "Gleam-Core/vendor/imgui"]
-	path = Gleam-Core/vendor/imgui
+[submodule "Engine/ThirdParty/imgui"]
+	path = Engine/ThirdParty/imgui
 	url = https://github.com/ocornut/imgui
-[submodule "Gleam-Core/vendor/ImGuizmo"]
-	path = Gleam-Core/vendor/ImGuizmo
+[submodule "Engine/ThirdParty/ImGuizmo"]
+	path = Engine/ThirdParty/ImGuizmo
 	url = https://github.com/CedricGuillemet/ImGuizmo

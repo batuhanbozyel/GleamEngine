@@ -1,4 +1,4 @@
 #!/bin/sh
-chmod u+x ./vendor/premake/bin/premake5
-./vendor/premake/bin/premake5 xcode4
+chmod u+x ./Tools/premake/bin/premake5
+./Tools/premake/bin/premake5 xcode4
 sleep
