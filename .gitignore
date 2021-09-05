@@ -46,6 +46,9 @@
 **/bin/
 bin-int/
 
+# CMake
+/build
+
 # Engine generated files
 *.log
 

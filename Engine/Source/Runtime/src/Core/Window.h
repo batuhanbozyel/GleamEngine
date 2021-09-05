@@ -1,0 +1,50 @@
+#pragma once
+#include "Container/String.h"
+
+#include <SDL.h>
+
+namespace Gleam {
+
+enum class WindowFlag : uint32_t
+{
+#if defined(PLATFORM_WINDOWS) || defined(PLATFORM_MACOS) || defined(PLATFORM_LINUX)
+	BorderlessFullscreen = SDL_WINDOW_BORDERLESS | SDL_WINDOW_FULLSCREEN_DESKTOP | SDL_WINDOW_RESIZABLE,
+	ExclusiveFullscreen = SDL_WINDOW_FULLSCREEN_DESKTOP | SDL_WINDOW_RESIZABLE,
+#else
+	BorderlessFullscreen = SDL_WINDOW_BORDERLESS | SDL_WINDOW_FULLSCREEN,
+	ExclusiveFullscreen = SDL_WINDOW_FULLSCREEN,
+#endif
+	MaximizedWindow = SDL_WINDOW_MAXIMIZED | SDL_WINDOW_RESIZABLE,
+	CustomWindow = SDL_WINDOW_RESIZABLE
+};
+
+struct WindowProperties
+{
+	String Title = "Gleam Application";
+	uint32_t Width = 1280, Height = 720;
+};
+
+class Window
+{
+public:
+
+	explicit Window(const WindowProperties& props, WindowFlag flag);
+
+	~Window();
+
+	void OnUpdate();
+
+	const WindowProperties& GetProps() const
+	{
+		return m_Props;
+	}
+
+private:
+
+	WindowProperties m_Props;
+	SDL_Window* m_Window;
+	SDL_Event m_Event;
+
+};
+
+}

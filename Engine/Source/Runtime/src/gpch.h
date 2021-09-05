@@ -1,6 +1,7 @@
 #pragma once
 
 #include <iostream>
+#include <cstdlib>
 #include <memory>
 #include <utility>
 #include <algorithm>
@@ -15,6 +16,7 @@
 #include "Core/PlatformTargetDefines.h"
 
 #include "Container/Pointer.h"
+#include "Container/String.h"
 
 #ifdef PLATFORM_WINDOWS
 #include <windows.h>
