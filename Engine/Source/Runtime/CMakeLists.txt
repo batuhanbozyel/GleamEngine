@@ -17,9 +17,9 @@ set(INCLUDE_DIRS_RUNTIME
 
 set(LIB_LINKS_RUNTIME
     ${Vulkan_LIBRARIES}
-    ${CMAKE_SOURCE_DIR}/bin/$<CONFIGURATION>/SDL2maind.lib
-    ${CMAKE_SOURCE_DIR}/bin/$<CONFIGURATION>/SDL2d.lib
-    ${CMAKE_SOURCE_DIR}/bin/$<CONFIGURATION>/imgui.lib
+    ${CMAKE_SOURCE_DIR}/bin/$<CONFIG>/SDL2main.lib
+    ${CMAKE_SOURCE_DIR}/bin/$<CONFIG>/SDL2.lib
+    ${CMAKE_SOURCE_DIR}/bin/$<CONFIG>/imgui.lib
 )
 
 file(GLOB_RECURSE SOURCE_FILES
@@ -28,14 +28,10 @@ file(GLOB_RECURSE SOURCE_FILES
 )
 
 add_library(Runtime STATIC ${SOURCE_FILES})
-add_dependencies(Runtime imgui SDL2main SDL2)
+add_dependencies(Runtime SDL2main SDL2 imgui)
 target_include_directories(Runtime PUBLIC ${INCLUDE_DIRS_RUNTIME})
 
 set_property(TARGET Runtime PROPERTY STATIC_LIBRARY_OPTIONS ${LIB_LINKS_RUNTIME})
-
-foreach(element ${STATIC_LIBRARY_FLAGS})
-    message("linker: ${element}")
-endforeach()
 
 target_precompile_headers(Runtime PUBLIC "src/gpch.h")
 
