@@ -20,7 +20,7 @@ enum class WindowFlag : uint32_t
 
 struct WindowProperties
 {
-	String Title = "Gleam Application";
+	TString Title = "Gleam Application";
 	uint32_t Width = 1280, Height = 720;
 };
 
@@ -28,7 +28,7 @@ class Window
 {
 public:
 
-	explicit Window(const WindowProperties& props, WindowFlag flag);
+	Window(const WindowProperties& props, WindowFlag flag);
 
 	~Window();
 

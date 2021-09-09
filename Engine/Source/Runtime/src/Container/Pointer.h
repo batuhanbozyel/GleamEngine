@@ -3,77 +3,25 @@
 
 namespace Gleam {
 
-template<class T>
-class UniquePtr
+template<typename T>
+using UniquePtr = std::unique_ptr<T>;
+
+template<typename T>
+using SharedPtr = std::shared_ptr<T>;
+
+template<typename T>
+using WeakPtr = std::weak_ptr<T>;
+
+template<typename T, typename ... Args>
+[[nodiscard]] inline constexpr UniquePtr<T> CreateUnique(Args&& ... args)
 {
-public:
+	return std::make_unique<T>(std::forward<Args>(args)...);
+}
 
-	template<class T, class ... Args>
-	static constexpr UniquePtr<T> Create(Args&& ... args)
-	{
-		return std::make_unique<T>(std::forward<Args>(args)...);
-	}
-
-	T* Raw() const noexcept
-	{
-		return m_Ptr.get();
-	}
-
-	operator std::unique_ptr<T>() const noexcept
-	{
-		return m_Ptr;
-	}
-
-private:
-
-	std::unique_ptr<T> m_Ptr;
-};
-
-
-template<class T>
-class SharedPtr
+template<typename T, typename ... Args>
+[[nodiscard]] inline constexpr  SharedPtr<T> CreateShared(Args&& ... args)
 {
-public:
-
-	template<class T, class ... Args>
-	static constexpr SharedPtr<T> Create(Args&& ... args)
-	{
-		return std::make_shared<T>(std::forward<Args>(args)...);
-	}
-
-	T* Raw() const noexcept
-	{
-		return m_Ptr.get();
-	}
-
-	operator std::shared_ptr<T>() const noexcept
-	{
-		return m_Ptr;
-	}
-
-private:
-
-	std::shared_ptr<T> m_Ptr;
-};
-
-template<class T>
-class WeakPtr
-{
-public:
-
-	T* Raw() const noexcept
-	{
-		return m_Ptr.get();
-	}
-
-	operator std::weak_ptr<T>() const noexcept
-	{
-		return m_Ptr;
-	}
-
-private:
-
-	std::weak_ptr<T> m_Ptr;
-};
+	return std::make_shared<T>(std::forward<Args>(args)...);
+}
 
 }

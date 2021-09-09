@@ -19,7 +19,7 @@ public:
 private:
 
 	bool m_Running = true;
-	Window m_Window;
+	UniquePtr<Window> m_Window = nullptr;
 
 };
 
