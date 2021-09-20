@@ -1,3 +1,7 @@
 @echo off
-call Tools\premake\bin\premake5.exe vs2019
+rm -rf build
+rm -rf bin
+mkdir build
+cd build
+cmake -G "Visual Studio 16 2019" ..
 PAUSE

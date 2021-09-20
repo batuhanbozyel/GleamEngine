@@ -5,7 +5,7 @@ extern "C"
 #endif
 
 #if defined(PLATFORM_WINDOWS) || defined(PLATFORM_MACOS)
-extern Gleam::Application * Gleam::CreateApplication();
+Gleam::Application * Gleam::CreateApplication();
 
 int main(int argc, char* argv[])
 {

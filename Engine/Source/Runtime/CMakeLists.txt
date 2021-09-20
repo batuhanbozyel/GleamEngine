@@ -15,12 +15,22 @@ set(INCLUDE_DIRS_RUNTIME
     ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/tinygltf
 )
 
-set(LIB_LINKS_RUNTIME
-    ${Vulkan_LIBRARIES}
-    ${CMAKE_SOURCE_DIR}/bin/$<CONFIG>/SDL2main.lib
-    ${CMAKE_SOURCE_DIR}/bin/$<CONFIG>/SDL2.lib
-    ${CMAKE_SOURCE_DIR}/bin/$<CONFIG>/imgui.lib
-)
+if (WIN32)
+    set(LIB_LINKS_RUNTIME
+        ${Vulkan_LIBRARIES}
+        ${CMAKE_SOURCE_DIR}/bin/$<CONFIG>/SDL2main.lib
+        ${CMAKE_SOURCE_DIR}/bin/$<CONFIG>/SDL2.lib
+        ${CMAKE_SOURCE_DIR}/bin/$<CONFIG>/imgui.lib
+    )
+else ()
+    set(LIB_LINKS_RUNTIME
+        $ENV{VULKAN_SDK}/../MoltenVK/MoltenVK.xcframework/macos-arm64_x86_64/libMoltenVK.a
+        ${CMAKE_SOURCE_DIR}/bin/$<CONFIG>/libSDL2main.a
+        ${CMAKE_SOURCE_DIR}/bin/$<CONFIG>/libSDL2.a
+        ${CMAKE_SOURCE_DIR}/bin/$<CONFIG>/libimgui.a
+        "Wl,manyframeworks"
+    )
+endif()
 
 file(GLOB_RECURSE SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp 
@@ -28,7 +38,7 @@ file(GLOB_RECURSE SOURCE_FILES
 )
 
 add_library(Runtime STATIC ${SOURCE_FILES})
-add_dependencies(Runtime SDL2main SDL2 imgui)
+add_dependencies(Runtime SDL2main SDL2-static imgui)
 target_include_directories(Runtime PUBLIC ${INCLUDE_DIRS_RUNTIME})
 
 set_property(TARGET Runtime PROPERTY STATIC_LIBRARY_OPTIONS ${LIB_LINKS_RUNTIME})
