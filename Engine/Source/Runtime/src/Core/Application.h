@@ -1,6 +1,8 @@
 #pragma once
 #include "Window.h"
 
+#include "Events/Event.h"
+
 #ifdef __cplusplus
 extern "C"
 #endif
@@ -12,7 +14,6 @@ class Application
 public:
 
 	explicit Application(const WindowProperties& props, WindowFlag flag);
-
 
 	void Run();
 

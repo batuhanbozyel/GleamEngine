@@ -26,5 +26,10 @@ Window::~Window()
 
 void Window::OnUpdate()
 {
-	SDL_PollEvent(&m_Event);
+	while(SDL_PollEvent(&m_Event));
+}
+
+void Window::OnResize(uint32_t width, uint32_t height)
+{
+
 }

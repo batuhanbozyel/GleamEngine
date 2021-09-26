@@ -1,7 +1,9 @@
 #pragma once
-#include "Container/String.h"
+#include "Events/Event.h"
 
+#pragma warning(push, 0)
 #include <SDL.h>
+#pragma warning(pop)
 
 namespace Gleam {
 
@@ -34,6 +36,13 @@ public:
 
 	void OnUpdate();
 
+	void OnResize(uint32_t width, uint32_t height);
+
+	void SetEventCallback(EventCallbackFn&& callback)
+	{
+		m_EventCallback = std::move(callback);
+	}
+
 	const WindowProperties& GetProps() const
 	{
 		return m_Props;
@@ -42,6 +51,8 @@ public:
 private:
 
 	WindowProperties m_Props;
+	EventCallbackFn m_EventCallback;
+
 	SDL_Window* m_Window;
 	SDL_Event m_Event;
 
