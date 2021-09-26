@@ -12,14 +12,25 @@ file(GLOB_RECURSE SOURCE_FILES
 )
 
 add_executable(Editor WIN32 MACOSX_BUNDLE ${SOURCE_FILES})
-add_dependencies(Editor Runtime)
+add_dependencies(Editor SDL2main SDL2-static Runtime)
 target_include_directories(Editor PRIVATE ${INCLUDE_DIRS_EDITOR})
 
 target_link_directories(Editor PRIVATE ${CMAKE_SOURCE_DIR}/bin/$<CONFIG>)
 if (WIN32)
-    target_link_libraries(Editor PRIVATE Runtime.lib)
+    target_link_libraries(Editor PRIVATE Runtime.lib SDL2.lib SDL2main.lib)
 else()
-    target_link_libraries(Editor PRIVATE libRuntime.a)
+    target_link_libraries(Editor PRIVATE 
+        libRuntime.a
+        SDL2.a
+        SDL2main.a
+        iconv
+        "-framework Carbon"
+        "-framework IOKit"
+        "-framework ForceFeedback"
+        "-framework CoreVideo"
+        "-framework AudioToolbox"
+        "-framework CoreAudio"
+        "-framework Cocoa")
 endif()
 
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${SOURCE_FILES})
