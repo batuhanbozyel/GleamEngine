@@ -7,8 +7,10 @@
 #include <utility>
 #include <algorithm>
 #include <functional>
+#include <typeindex>
 #include <string>
 #include <sstream>
+#include <list>
 #include <array>
 #include <vector>
 #include <unordered_map>

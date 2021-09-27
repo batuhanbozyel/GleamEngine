@@ -8,7 +8,6 @@ class KeyEvent : public Event
 public:
 	inline int GetKeyCode() const { return m_KeyCode; }
 
-	EVENT_CLASS_CATEGORY(EventCategoryKeyboard | EventCategoryInput)
 protected:
 	KeyEvent(int keyCode)
 		: m_KeyCode(keyCode)
@@ -35,7 +34,6 @@ public:
 		return ss.str();
 	}
 
-	EVENT_CLASS_TYPE(KeyPressed)
 private:
 	int m_RepeatCount;
 };
@@ -54,8 +52,6 @@ public:
 		ss << "KeyReleasedEvent: " << m_KeyCode;
 		return ss.str();
 	}
-
-	EVENT_CLASS_TYPE(KeyReleased)
 };
 
 class KeyTypedEvent : public KeyEvent
@@ -72,8 +68,6 @@ public:
 		ss << "KeyTypedEvent: " << m_KeyCode;
 		return ss.str();
 	}
-
-	EVENT_CLASS_TYPE(KeyTyped)
 };
 
 }

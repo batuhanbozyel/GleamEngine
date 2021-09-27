@@ -31,5 +31,7 @@ void Window::OnUpdate()
 
 void Window::OnResize(uint32_t width, uint32_t height)
 {
-
+	m_Props.Width = width;
+	m_Props.Height = height;
+	SDL_SetWindowSize(m_Window, width, height);
 }

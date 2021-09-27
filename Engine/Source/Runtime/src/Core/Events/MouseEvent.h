@@ -8,7 +8,6 @@ class MouseButtonEvent : public Event
 public:
 	inline int GetMouseButton() const { return m_MouseCode; }
 
-	EVENT_CLASS_CATEGORY(EventCategoryMouseButton | EventCategoryInput);
 protected:
 	MouseButtonEvent(int mouseCode)
 		: m_MouseCode(mouseCode) {}
@@ -28,8 +27,6 @@ public:
 		ss << "MouseButtonPressedEvent: " << m_MouseCode;
 		return ss.str();
 	}
-
-	EVENT_CLASS_TYPE(MouseButtonPressed)
 };
 
 class MouseButtonReleasedEvent : public MouseButtonEvent
@@ -44,8 +41,6 @@ public:
 		ss << "MouseButtonReleasedEvent: " << m_MouseCode;
 		return ss.str();
 	}
-
-	EVENT_CLASS_TYPE(MouseButtonReleased)
 };
 
 class MouseMovedEvent : public Event
@@ -64,8 +59,6 @@ public:
 		return ss.str();
 	}
 
-	EVENT_CLASS_TYPE(MouseMoved)
-		EVENT_CLASS_CATEGORY(EventCategoryMouse | EventCategoryInput);
 private:
 	std::pair<float, float> m_MousePos;
 };
@@ -85,8 +78,6 @@ public:
 		return ss.str();
 	}
 
-	EVENT_CLASS_TYPE(MouseScrolled)
-		EVENT_CLASS_CATEGORY(EventCategoryMouse | EventCategoryInput);
 private:
 	std::pair<float, float> m_MouseScrollOffset;
 };

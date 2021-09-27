@@ -38,11 +38,6 @@ public:
 
 	void OnResize(uint32_t width, uint32_t height);
 
-	void SetEventCallback(EventCallbackFn&& callback)
-	{
-		m_EventCallback = std::move(callback);
-	}
-
 	const WindowProperties& GetProps() const
 	{
 		return m_Props;
@@ -51,8 +46,6 @@ public:
 private:
 
 	WindowProperties m_Props;
-	EventCallbackFn m_EventCallback;
-
 	SDL_Window* m_Window;
 	SDL_Event m_Event;
 

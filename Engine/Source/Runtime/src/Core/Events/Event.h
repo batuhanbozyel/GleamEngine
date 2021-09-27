@@ -1,82 +1,102 @@
 #pragma once
-#include "Core/EngineDefines.h"
-#include <functional>
-
-#define BIND_EVENT_FN(fn) [this](auto&&... args) -> decltype(auto) { return this->fn(std::forward<decltype(args)>(args)...); }
+#include <list>
+#include <typeindex>
+#include <unordered_map>
 
 namespace Gleam {
 
-enum class EventType
-{
-	None = 0,
-	WindowClose, WindowResize, WindowFocus, WindowLostFocus, WindowMoved,
-	AppTick, AppUpdate, AppRender,
-	KeyPressed, KeyReleased, KeyTyped,
-	MouseButtonPressed, MouseButtonReleased, MouseMoved, MouseScrolled
-};
-
-enum EventCategory
-{
-	None = 0,
-	EventCategoryApplication = BIT(0),
-	EventCategoryWindow = BIT(1),
-	EventCategoryInput = BIT(2),
-	EventCategoryKeyboard = BIT(3),
-	EventCategoryMouse = BIT(4),
-	EventCategoryMouseButton = BIT(5)
-};
-
-#define EVENT_CLASS_TYPE(type) static EventType GetStaticType() { return EventType::type; }\
-							virtual EventType GetEventType() const override { return GetStaticType(); }\
-							virtual const char* GetName() const override { return #type; }
-
-#define EVENT_CLASS_CATEGORY(category) virtual int GetCategoryFlags() const override { return category; }
+template<class T, class EventType>
+using EventCallback = void(T::*)(EventType*);
 
 class Event
 {
 public:
 	virtual ~Event() = default;
 
-	bool Handled = false;
-
-	virtual EventType GetEventType() const = 0;
-	virtual const char* GetName() const = 0;
-	virtual int GetCategoryFlags() const = 0;
-	virtual TString ToString() const { return GetName(); }
-
-	bool IsInCategory(EventCategory category)
-	{
-		return GetCategoryFlags() & category;
-	}
+	virtual TString ToString() const = 0;
 };
 
-class EventDispatcher
+class EventHandlerBase
 {
 public:
-	EventDispatcher(Event& e)
-		: m_Event(e)
+
+	virtual ~EventHandlerBase() = default;
+
+	void Execute(Event* e)
 	{
+		Call(e);
 	}
 
-	template<typename T, typename F>
-	bool Dispatch(const F& func)
-	{
-		if (m_Event.GetEventType() == T::GetStaticType())
-		{
-			m_Event.Handled = func(static_cast<T&>(m_Event));
-			return true;
-		}
-		return false;
-	}
 private:
-	Event& m_Event;
+
+	virtual void Call(Event*) = 0;
 };
 
-inline std::ostream& operator<<(std::ostream& os, const Event& e)
+template<class T, class EventType>
+class EventHandler : EventHandlerBase
 {
-	return os << e.ToString();
-}
+public:
 
-using EventCallbackFn = std::function<void(Event)>;
+	EventHandler(T* instance, EventCallback<T, EventType> fn)
+		: m_Instance(instance), m_Function(fn)
+	{
+
+	}
+
+	void Call(Event* e) override
+	{
+		m_Instance->(*m_Function)(static_cast<EventType*>(e));
+	}
+
+private:
+
+	T* m_Instance;
+	EventCallback<T, EventType> m_Function;
+
+};
+
+class EventBus
+{
+public:
+
+	using HandlerList = std::list<EventHandlerBase*>;
+
+	template<typename EventType>
+	void Publish(EventType* e)
+	{
+		HandlerList* handlers = m_Subscribers[typeid(EventType)];
+
+		if (handlers == nullptr)
+		{
+			return;
+		}
+
+		for (auto& handler : *handlers)
+		{
+			if (handler)
+			{
+				handler->Execute(e);
+			}
+		}
+	}
+
+	template<class T, class EventType>
+	void Subscribe(T* instance, EventCallback<T, EventType> fn)
+	{
+		HandlerList* handlers = m_Subscribers[typeid(EventType)];
+
+		if (handlers == nullptr)
+		{
+			handlers = new HandlerList();
+			m_Subscribers[typeid(EventType)] = handlers;
+		}
+
+		handlers->push_back(new EventHandler<T, EventType>(instance, fn));
+	}
+
+private:
+
+	std::unordered_map<std::type_index, HandlerList*> m_Subscribers;
+};
 
 }
