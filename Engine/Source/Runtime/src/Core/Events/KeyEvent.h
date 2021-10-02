@@ -6,13 +6,12 @@ namespace Gleam {
 class KeyEvent : public Event
 {
 public:
-	inline int GetKeyCode() const { return m_KeyCode; }
+
+	int GetKeyCode() const { return m_KeyCode; }
 
 protected:
 	KeyEvent(int keyCode)
-		: m_KeyCode(keyCode)
-	{
-	}
+		: m_KeyCode(keyCode) {}
 
 	int m_KeyCode;
 };
@@ -20,12 +19,11 @@ protected:
 class KeyPressedEvent : public KeyEvent
 {
 public:
-	KeyPressedEvent(int keyCode, int repeatCount)
-		: KeyEvent(keyCode), m_RepeatCount(repeatCount)
-	{
-	}
 
-	inline int GetRepeatCount() const { return m_RepeatCount; }
+	KeyPressedEvent(int keyCode, int repeatCount)
+		: KeyEvent(keyCode), m_RepeatCount(repeatCount) {}
+
+	int GetRepeatCount() const { return m_RepeatCount; }
 
 	TString ToString() const override
 	{
@@ -35,16 +33,16 @@ public:
 	}
 
 private:
+
 	int m_RepeatCount;
 };
 
 class KeyReleasedEvent : public KeyEvent
 {
 public:
+
 	KeyReleasedEvent(int keyCode)
-		: KeyEvent(keyCode)
-	{
-	}
+		: KeyEvent(keyCode) {}
 
 	TString ToString() const override
 	{
@@ -57,10 +55,9 @@ public:
 class KeyTypedEvent : public KeyEvent
 {
 public:
+
 	KeyTypedEvent(int keyCode)
-		: KeyEvent(keyCode)
-	{
-	}
+		: KeyEvent(keyCode) {}
 
 	TString ToString() const override
 	{

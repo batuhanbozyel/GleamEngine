@@ -6,9 +6,11 @@ namespace Gleam {
 class MouseButtonEvent : public Event
 {
 public:
-	inline int GetMouseButton() const { return m_MouseCode; }
+
+	int GetMouseButton() const { return m_MouseCode; }
 
 protected:
+
 	MouseButtonEvent(int mouseCode)
 		: m_MouseCode(mouseCode) {}
 
@@ -18,6 +20,7 @@ protected:
 class MouseButtonPressedEvent : public MouseButtonEvent
 {
 public:
+
 	MouseButtonPressedEvent(int mouseCode)
 		: MouseButtonEvent(mouseCode) {}
 
@@ -32,6 +35,7 @@ public:
 class MouseButtonReleasedEvent : public MouseButtonEvent
 {
 public:
+
 	MouseButtonReleasedEvent(int mouseCode)
 		: MouseButtonEvent(mouseCode) {}
 
@@ -46,11 +50,12 @@ public:
 class MouseMovedEvent : public Event
 {
 public:
+
 	MouseMovedEvent(float xpos, float ypos)
 		: m_MousePos(xpos, ypos) {}
 
 
-	inline const std::pair<float, float>& GetPos() const { return m_MousePos; }
+	const std::pair<float, float>& GetPos() const { return m_MousePos; }
 
 	TString ToString() const override
 	{
@@ -60,12 +65,14 @@ public:
 	}
 
 private:
+
 	std::pair<float, float> m_MousePos;
 };
 
 class MouseScrolledEvent : public Event
 {
 public:
+
 	MouseScrolledEvent(float xoffset, float yoffset)
 		: m_MouseScrollOffset(xoffset, yoffset) {}
 
@@ -79,6 +86,7 @@ public:
 	}
 
 private:
+
 	std::pair<float, float> m_MouseScrollOffset;
 };
 

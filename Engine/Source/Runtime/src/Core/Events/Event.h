@@ -1,102 +1,73 @@
 #pragma once
 #include <list>
 #include <typeindex>
+#include <functional>
 #include <unordered_map>
 
 namespace Gleam {
-
-template<class T, class EventType>
-using EventCallback = void(T::*)(EventType*);
 
 class Event
 {
 public:
 	virtual ~Event() = default;
 
-	virtual TString ToString() const = 0;
-};
-
-class EventHandlerBase
-{
-public:
-
-	virtual ~EventHandlerBase() = default;
-
-	void Execute(Event* e)
+	virtual TString ToString() const
 	{
-		Call(e);
+		TStringStream ss;
+		ss << "Event";
+		return ss.str();
 	}
 
-private:
-
-	virtual void Call(Event*) = 0;
-};
-
-template<class T, class EventType>
-class EventHandler : EventHandlerBase
-{
-public:
-
-	EventHandler(T* instance, EventCallback<T, EventType> fn)
-		: m_Instance(instance), m_Function(fn)
+	bool IsHandled() const
 	{
-
+		return m_Handled;
 	}
 
-	void Call(Event* e) override
-	{
-		m_Instance->(*m_Function)(static_cast<EventType*>(e));
-	}
+protected:
 
-private:
-
-	T* m_Instance;
-	EventCallback<T, EventType> m_Function;
-
+	bool m_Handled = false;
 };
 
-class EventBus
+
+template<class EventType>
+using EventHandler = std::function<void(Event)>;
+
+class EventDispatcher
 {
 public:
-
-	using HandlerList = std::list<EventHandlerBase*>;
 
 	template<typename EventType>
-	void Publish(EventType* e)
+	void Publish(Event e)
 	{
-		HandlerList* handlers = m_Subscribers[typeid(EventType)];
+		const auto& handlerIt = m_Subscribers.find(typeid(EventType));
 
-		if (handlers == nullptr)
+		if (handlerIt == m_Subscribers.end())
 		{
 			return;
 		}
 
-		for (auto& handler : *handlers)
+		const auto& ev = static_cast<EventType>(e);
+		for (auto& handler : handlerIt->second)
 		{
-			if (handler)
+			if (!ev.IsHandled())
 			{
-				handler->Execute(e);
+				handler(ev);
 			}
 		}
 	}
 
-	template<class T, class EventType>
-	void Subscribe(T* instance, EventCallback<T, EventType> fn)
+	template<class EventType>
+	void Subscribe(EventHandler<EventType>&& fn)
 	{
-		HandlerList* handlers = m_Subscribers[typeid(EventType)];
-
-		if (handlers == nullptr)
-		{
-			handlers = new HandlerList();
-			m_Subscribers[typeid(EventType)] = handlers;
-		}
-
-		handlers->push_back(new EventHandler<T, EventType>(instance, fn));
+		m_Subscribers[typeid(EventType)].emplace_back(fn);
 	}
 
 private:
 
-	std::unordered_map<std::type_index, HandlerList*> m_Subscribers;
+	template<class EventType>
+	using EventHandlerList = std::vector<EventHandler<EventType>>;
+
+	std::unordered_map<std::type_index, EventHandlerList<Event>> m_Subscribers;
 };
 
 }
