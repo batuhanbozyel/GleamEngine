@@ -7,6 +7,13 @@ class WindowCloseEvent : public Event
 {
 public:
 	WindowCloseEvent() = default;
+
+	TString ToString() const override
+	{
+		TStringStream ss;
+		ss << "WindowCloseEvent";
+		return ss.str();
+	}
 };
 
 class WindowResizeEvent : public Event

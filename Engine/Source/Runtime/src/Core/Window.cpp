@@ -1,9 +1,11 @@
 #include "gpch.h"
 #include "Window.h"
 
+#include "Events/WindowEvent.h"
+
 using namespace Gleam;
 
-Window::Window(const WindowProperties& props, WindowFlag flag)
+Window::Window(const WindowProperties& props)
 	: m_Props(props)
 {
 	int initSucess = SDL_Init(SDL_INIT_VIDEO);
@@ -13,7 +15,7 @@ Window::Window(const WindowProperties& props, WindowFlag flag)
 		SDL_WINDOWPOS_CENTERED,
 		SDL_WINDOWPOS_CENTERED,
 		props.Width, props.Height,
-		static_cast<uint32_t>(flag));
+		static_cast<uint32_t>(props.Flag));
 
 	ASSERT(m_Window, "Window creation failed!");
 }
@@ -26,7 +28,13 @@ Window::~Window()
 
 void Window::OnUpdate()
 {
-	while(SDL_PollEvent(&m_Event));
+	while (SDL_PollEvent(&m_Event))
+	{
+		if (m_Event.type == SDL_QUIT)
+		{
+			EventDispatcher::Publish<WindowCloseEvent>(CreateShared<WindowCloseEvent>());
+		}
+	}
 }
 
 void Window::OnResize(uint32_t width, uint32_t height)

@@ -28,16 +28,15 @@ protected:
 	bool m_Handled = false;
 };
 
-
 template<class EventType>
-using EventHandler = std::function<void(Event)>;
+using EventHandler = std::function<void(const SharedPtr<EventType>&)>;
 
 class EventDispatcher
 {
 public:
 
 	template<typename EventType>
-	void Publish(Event e)
+	static void Publish(const SharedPtr<Event>& e)
 	{
 		const auto& handlerIt = m_Subscribers.find(typeid(EventType));
 
@@ -46,10 +45,10 @@ public:
 			return;
 		}
 
-		const auto& ev = static_cast<EventType>(e);
+		auto ev = std::static_pointer_cast<EventType>(e);
 		for (auto& handler : handlerIt->second)
 		{
-			if (!ev.IsHandled())
+			if (!ev->IsHandled())
 			{
 				handler(ev);
 			}
@@ -57,17 +56,22 @@ public:
 	}
 
 	template<class EventType>
-	void Subscribe(EventHandler<EventType>&& fn)
+	static void Subscribe(EventHandler<EventType>&& fn)
 	{
-		m_Subscribers[typeid(EventType)].emplace_back(fn);
+		m_Subscribers[typeid(EventType)].emplace_back([fn = std::move(fn)](const SharedPtr<Event>& e)
+		{
+			fn(std::static_pointer_cast<EventType>(e));
+		});
 	}
 
 private:
 
-	template<class EventType>
-	using EventHandlerList = std::vector<EventHandler<EventType>>;
-
-	std::unordered_map<std::type_index, EventHandlerList<Event>> m_Subscribers;
+	static inline std::unordered_map<std::type_index, std::vector<EventHandler<Event>>> m_Subscribers;
 };
+
+inline std::ostream& operator<<(std::ostream& os, const Event& e)
+{
+	return os << e.ToString();
+}
 
 }

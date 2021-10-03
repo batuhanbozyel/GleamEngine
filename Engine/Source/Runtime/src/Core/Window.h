@@ -24,13 +24,14 @@ struct WindowProperties
 {
 	TString Title = "Gleam Application";
 	uint32_t Width = 1280, Height = 720;
+	WindowFlag Flag = WindowFlag::CustomWindow;
 };
 
 class Window
 {
 public:
 
-	Window(const WindowProperties& props, WindowFlag flag);
+	Window(const WindowProperties& props);
 
 	~Window();
 

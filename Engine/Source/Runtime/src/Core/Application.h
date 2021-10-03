@@ -13,7 +13,7 @@ class Application
 {
 public:
 
-	explicit Application(const WindowProperties& props, WindowFlag flag);
+	explicit Application(const WindowProperties& props);
 
 	void Run();
 
