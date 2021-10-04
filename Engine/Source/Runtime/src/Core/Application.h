@@ -1,8 +1,6 @@
 #pragma once
 #include "Window.h"
 
-#include "Events/Event.h"
-
 #ifdef __cplusplus
 extern "C"
 #endif

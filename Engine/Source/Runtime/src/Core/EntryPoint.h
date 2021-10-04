@@ -1,3 +1,4 @@
+#pragma once
 #include "PlatformTargetDefines.h"
 
 #ifdef __cplusplus

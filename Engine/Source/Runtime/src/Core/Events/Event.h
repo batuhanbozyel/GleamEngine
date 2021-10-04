@@ -1,14 +1,17 @@
 #pragma once
-#include <list>
-#include <typeindex>
-#include <functional>
-#include <unordered_map>
 
 namespace Gleam {
 
+class EventDispatcher;
+
+/**
+ * Event class
+ * interface 
+ */
 class Event
 {
 public:
+
 	virtual ~Event() = default;
 
 	virtual TString ToString() const
@@ -23,20 +26,71 @@ public:
 		return m_Handled;
 	}
 
-protected:
+private:
 
 	bool m_Handled = false;
+
+	friend class EventDispatcher;
 };
 
-template<class EventType>
-using EventHandler = std::function<void(const SharedPtr<EventType>&)>;
+/**
+ * EventPool class
+ * caches heap allocations to minimize further heap allocation requests
+ */
+class EventPool
+{
+public:
 
+	template<class EventType>
+	static EventType* Allocate(const EventType& e)
+	{
+		const auto& poolIt = m_EventPool.find(typeid(EventType));
+
+		EventType* newEvent;
+		if (poolIt == m_EventPool.end())
+		{
+			newEvent = new EventType;
+			memcpy(newEvent, &e, sizeof(EventType));
+			m_EventPool[typeid(EventType)].push_back(newEvent);
+			return newEvent;
+		}
+		else
+		{
+			for (const auto& ev : poolIt->second)
+			{
+				if (poolIt->second.back()->IsHandled())
+				{
+					newEvent = static_cast<EventType*>(poolIt->second.back());
+					memcpy(newEvent, &e, sizeof(EventType));
+					return newEvent;
+				}
+			}
+
+			newEvent = new EventType;
+			memcpy(newEvent, &e, sizeof(EventType));
+			poolIt->second.push_back(newEvent);
+			return newEvent;
+		}
+	}
+
+private:
+
+	static inline std::unordered_map<std::type_index, std::vector<Event*>> m_EventPool;
+};
+
+/**
+ * EventDispatcher class
+ * responsible from handling events
+ */
 class EventDispatcher
 {
 public:
 
+	template<class EventType>
+	using EventHandler = std::function<bool(EventType*)>;
+
 	template<typename EventType>
-	static void Publish(const SharedPtr<Event>& e)
+	static void Publish(const EventType& e)
 	{
 		const auto& handlerIt = m_Subscribers.find(typeid(EventType));
 
@@ -45,22 +99,25 @@ public:
 			return;
 		}
 
-		auto ev = std::static_pointer_cast<EventType>(e);
+		auto ev = EventPool::Allocate<EventType>(e);
+
 		for (auto& handler : handlerIt->second)
 		{
 			if (!ev->IsHandled())
 			{
-				handler(ev);
+				ev->m_Handled = handler(ev);
 			}
 		}
+
+		ev->m_Handled = true;
 	}
 
 	template<class EventType>
 	static void Subscribe(EventHandler<EventType>&& fn)
 	{
-		m_Subscribers[typeid(EventType)].emplace_back([fn = std::move(fn)](const SharedPtr<Event>& e)
+		m_Subscribers[typeid(EventType)].emplace_back([fn = std::move(fn)](Event* e)
 		{
-			fn(std::static_pointer_cast<EventType>(e));
+			return fn(static_cast<EventType*>(e));
 		});
 	}
 
