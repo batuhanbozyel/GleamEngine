@@ -56,11 +56,11 @@ public:
 		}
 		else
 		{
-			for (const auto& ev : poolIt->second)
+			for (Event* ev : poolIt->second)
 			{
-				if (poolIt->second.back()->IsHandled())
+				if (ev->IsHandled())
 				{
-					newEvent = static_cast<EventType*>(poolIt->second.back());
+					newEvent = static_cast<EventType*>(ev);
 					memcpy(newEvent, &e, sizeof(EventType));
 					return newEvent;
 				}
