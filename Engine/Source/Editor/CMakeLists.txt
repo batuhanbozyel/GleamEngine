@@ -24,6 +24,7 @@ else()
         SDL2.a
         SDL2main.a
         iconv
+        "-framework Metal"
         "-framework Carbon"
         "-framework IOKit"
         "-framework ForceFeedback"

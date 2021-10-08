@@ -1,28 +1,41 @@
 include (${CMAKE_SOURCE_DIR}/CMake/CMakeUtils.cmake)
 
-set(INCLUDE_DIRS_RUNTIME
-    src
-    ${Vulkan_INCLUDE_DIRS}
-    ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/SDL2/include
-    ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/spdlog/include
-    ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/glm
-    ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/stb
-    ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui
-    ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/ImGuizmo
-    ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/entt/include
-    ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/tinyobjloader
-    ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/OpenFBX/src
-    ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/tinygltf
-)
-
 if (WIN32)
+    set(INCLUDE_DIRS_RUNTIME
+        src
+        ${Vulkan_INCLUDE_DIRS}
+        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/SDL2/include
+        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/spdlog/include
+        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/glm
+        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/stb
+        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui
+        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/ImGuizmo
+        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/entt/include
+        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/tinyobjloader
+        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/OpenFBX/src
+        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/cgltf
+    )
+
     set(LIB_LINKS_RUNTIME
         ${Vulkan_LIBRARIES}
         ${CMAKE_SOURCE_DIR}/bin/$<CONFIG>/imgui.lib
     )
 else ()
+    set(INCLUDE_DIRS_RUNTIME
+        src
+        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/SDL2/include
+        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/spdlog/include
+        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/glm
+        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/stb
+        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui
+        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/ImGuizmo
+        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/entt/include
+        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/tinyobjloader
+        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/OpenFBX/src
+        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/cgltf
+    )
+
     set(LIB_LINKS_RUNTIME
-        $ENV{VULKAN_SDK}/../MoltenVK/MoltenVK.xcframework/macos-arm64_x86_64/libMoltenVK.a
         ${CMAKE_SOURCE_DIR}/bin/$<CONFIG>/libimgui.a
     )
 endif()
