@@ -32,7 +32,7 @@ void Window::OnUpdate()
 	{
 		if (m_Event.type == SDL_QUIT)
 		{
-			EventDispatcher::Publish<WindowCloseEvent>(WindowCloseEvent());
+			EventDispatcher<WindowCloseEvent>::Publish(WindowCloseEvent());
 		}
 	}
 }

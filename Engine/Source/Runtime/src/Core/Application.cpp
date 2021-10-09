@@ -11,7 +11,7 @@ Application::Application(const WindowProperties& props)
 
 	m_Window = CreateUnique<Window>(props);
 
-	EventDispatcher::Subscribe<WindowCloseEvent>([this](WindowCloseEvent*)
+	EventDispatcher<WindowCloseEvent>::Subscribe([this](WindowCloseEvent e)
 	{
 		m_Running = false;
 		return true;
