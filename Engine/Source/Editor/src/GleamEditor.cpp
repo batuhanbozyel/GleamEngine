@@ -7,6 +7,7 @@ class GleamEditor : public Gleam::Application
 public:
 
 	GleamEditor()
+		: Gleam::Application({"Gleam Editor", Gleam::WindowFlag::MaximizedWindow})
 	{
 
 	}
@@ -22,4 +23,7 @@ private:
 
 }
 
-GLEAM_MAIN(new GEditor::GleamEditor)
+Gleam::Application* Gleam::CreateApplication()
+{
+	return new GEditor::GleamEditor;
+}

@@ -7,9 +7,6 @@
 [submodule "Engine/ThirdParty/SDL2"]
 	path = Engine/ThirdParty/SDL2
 	url = https://github.com/libsdl-org/SDL
-[submodule "Engine/ThirdParty/tinygltf"]
-	path = Engine/ThirdParty/tinygltf
-	url = https://github.com/syoyo/tinygltf
 [submodule "Engine/ThirdParty/spdlog"]
 	path = Engine/ThirdParty/spdlog
 	url = https://github.com/gabime/spdlog
@@ -28,3 +25,6 @@
 [submodule "Engine/ThirdParty/ImGuizmo"]
 	path = Engine/ThirdParty/ImGuizmo
 	url = https://github.com/CedricGuillemet/ImGuizmo
+[submodule "Engine/ThirdParty/cgltf"]
+	path = Engine/ThirdParty/cgltf
+	url = https://github.com/jkuhlmann/cgltf
