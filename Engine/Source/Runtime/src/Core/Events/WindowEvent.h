@@ -3,10 +3,28 @@
 
 namespace Gleam {
 
-class WindowCloseEvent : public Event
+class WindowEvent : public Event
 {
 public:
-	WindowCloseEvent() = default;
+
+	WindowEvent(uint32_t windowID)
+		: m_Window(windowID) {}
+
+	uint32_t GetWindowID() const
+	{
+		return m_Window;
+	}
+
+private:
+
+	uint32_t m_Window;
+};
+
+class WindowCloseEvent : public WindowEvent
+{
+public:
+	WindowCloseEvent(uint32_t windowID)
+		: WindowEvent(windowID) {}
 
 	TString ToString() const override
 	{
@@ -16,12 +34,12 @@ public:
 	}
 };
 
-class WindowResizeEvent : public Event
+class WindowResizeEvent : public WindowEvent
 {
 public:
 
-	WindowResizeEvent(uint32_t width, uint32_t height)
-		: m_Width(width), m_Height(height) {}
+	WindowResizeEvent(uint32_t windowID, uint32_t width, uint32_t height)
+		: WindowEvent(windowID), m_Width(width), m_Height(height) {}
 
 	uint32_t GetWidth() const { return m_Width; }
 	uint32_t GetHeight() const { return m_Height; }
@@ -38,30 +56,85 @@ private:
 	uint32_t m_Width, m_Height;
 };
 
-class WindowFocusEvent : public Event
+class WindowMaximizeEvent : public WindowEvent
 {
 public:
 
-	WindowFocusEvent() = default;
+	WindowMaximizeEvent(uint32_t windowID)
+		: WindowEvent(windowID) {}
+
 };
 
-class WindowLostFocusEvent : public Event
+class WindowMinimizeEvent : public WindowEvent
 {
 public:
 
-	WindowLostFocusEvent() = default;
+	WindowMinimizeEvent(uint32_t windowID)
+		: WindowEvent(windowID) {}
+
 };
 
-class WindowMovedEvent : public Event
+class WindowRestoreEvent : public WindowEvent
 {
 public:
 
-	WindowMovedEvent(int xPos, int yPos)
-		: m_xPos(xPos), m_yPos(yPos) {}
+	WindowRestoreEvent(uint32_t windowID)
+		: WindowEvent(windowID)
+	{
+	}
+
+};
+
+class WindowFocusEvent : public WindowEvent
+{
+public:
+
+	WindowFocusEvent(uint32_t windowID)
+		: WindowEvent(windowID) {}
+
+};
+
+class WindowLostFocusEvent : public WindowEvent
+{
+public:
+
+	WindowLostFocusEvent(uint32_t windowID)
+		: WindowEvent(windowID) {}
+
+};
+
+class WindowMovedEvent : public WindowEvent
+{
+public:
+
+	WindowMovedEvent(uint32_t windowID, int xPos, int yPos)
+		: WindowEvent(windowID), m_xPos(xPos), m_yPos(yPos) {}
 
 private:
 
 	int m_xPos, m_yPos;
+};
+
+class WindowMouseLeaveEvent : public WindowEvent
+{
+public:
+
+	WindowMouseLeaveEvent(uint32_t windowID)
+		: WindowEvent(windowID)
+	{
+	}
+
+};
+
+class WindowMouseEnterEvent : public WindowEvent
+{
+public:
+
+	WindowMouseEnterEvent(uint32_t windowID)
+		: WindowEvent(windowID)
+	{
+	}
+
 };
 
 }
