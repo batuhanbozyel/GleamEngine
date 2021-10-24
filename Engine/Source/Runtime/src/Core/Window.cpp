@@ -18,16 +18,6 @@ static int SDLCALL SDL2_EventCallback(void* data, SDL_Event* e)
 		{
 			switch (e->window.event)
 			{
-				case SDL_WINDOWEVENT_SHOWN:
-				{
-					// TODO:
-					break;
-				}
-				case SDL_WINDOWEVENT_HIDDEN:
-				{
-					// TODO:
-					break;
-				}
 				case SDL_WINDOWEVENT_MOVED:
 				{
 					EventDispatcher<WindowMovedEvent>::Publish(WindowMovedEvent(e->window.windowID, e->window.data1, e->window.data2));
@@ -78,19 +68,6 @@ static int SDLCALL SDL2_EventCallback(void* data, SDL_Event* e)
 					EventDispatcher<WindowCloseEvent>::Publish(WindowCloseEvent(e->window.windowID));
 					break;
 				}
-			#if SDL_VERSION_ATLEAST(2, 0, 5)
-				case SDL_WINDOWEVENT_TAKE_FOCUS:
-				{
-					// TODO:
-					break;
-				}
-					
-				case SDL_WINDOWEVENT_HIT_TEST:
-				{
-					// TODO:
-					break;
-				}
-			#endif
 			}
 			break;
 		}

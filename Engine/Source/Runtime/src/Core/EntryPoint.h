@@ -12,7 +12,7 @@ int main(int argc, char* argv[])
 {
 	Gleam::Application* app = Gleam::CreateApplication();
 
-    app->Run();
+	app->Run();
 
 	delete app;
 

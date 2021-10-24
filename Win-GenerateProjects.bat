@@ -1,6 +1,6 @@
 @echo off
-rm -rf build
-rm -rf bin
+IF EXIST build rmdir /s /q build
+IF EXIST rmdir /s /q bin
 mkdir build
 cd build
 cmake -G "Visual Studio 16 2019" ..

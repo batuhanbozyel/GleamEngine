@@ -18,12 +18,6 @@ enum class WindowFlag : uint32_t
 	CustomWindow = SDL_WINDOW_RESIZABLE
 };
 
-enum class DisplayMonitor : uint32_t
-{
-	Primary = 0,
-	Secondary = 1,
-};
-
 struct DisplayMode
 {
 	uint32_t Width = 0, Height = 0;
