@@ -5,6 +5,19 @@
 
 using namespace Gleam;
 
+int SDLCALL SDL2_EventCallback(void* data, SDL_Event* e)
+{
+	switch (e->type)
+	{
+		case SDL_QUIT:
+		{
+			EventDispatcher<WindowCloseEvent>::Publish(WindowCloseEvent());
+			break;
+		}
+	}
+	return 0;
+}
+
 Window::Window(const WindowProperties& props)
 	: m_Props(props)
 {
@@ -18,6 +31,8 @@ Window::Window(const WindowProperties& props)
 		static_cast<uint32_t>(props.Flag));
 
 	ASSERT(m_Window, "Window creation failed!");
+
+	SDL_SetEventFilter(SDL2_EventCallback, nullptr);
 }
 
 Window::~Window()
@@ -28,13 +43,7 @@ Window::~Window()
 
 void Window::OnUpdate()
 {
-	while (SDL_PollEvent(&m_Event))
-	{
-		if (m_Event.type == SDL_QUIT)
-		{
-			EventDispatcher<WindowCloseEvent>::Publish(WindowCloseEvent());
-		}
-	}
+	while (SDL_PollEvent(&m_Event));
 }
 
 void Window::OnResize(uint32_t width, uint32_t height)

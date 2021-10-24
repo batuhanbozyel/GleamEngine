@@ -17,12 +17,13 @@ target_include_directories(Editor PRIVATE ${INCLUDE_DIRS_EDITOR})
 
 target_link_directories(Editor PRIVATE ${CMAKE_SOURCE_DIR}/bin/$<CONFIG>)
 if (WIN32)
-    target_link_libraries(Editor PRIVATE Runtime.lib SDL2.lib SDL2main.lib)
+    target_link_libraries(Editor PRIVATE Runtime.lib SDL2main.lib SDL2-static.lib
+        winmm
+        version
+        Imm32
+        Setupapi)
 else()
-    target_link_libraries(Editor PRIVATE 
-        libRuntime.a
-        SDL2.a
-        SDL2main.a
+    target_link_libraries(Editor PRIVATE libRuntime.a SDL2main.a SDL2.a
         iconv
         "-framework Metal"
         "-framework Carbon"
