@@ -104,9 +104,9 @@ public:
 
 	static std::vector<DisplayMode> GetAvailableDisplayModes(uint32_t monitor)
 	{
-		uint32_t numDisplays = GetNumDisplayModes(monitor);
-		TArray<DisplayMode> availableDisplayModes(numDisplays);
-		for (uint32_t i = 0; i < numDisplays; i++)
+		uint32_t numDisplayModes = GetNumDisplayModes(monitor);
+		TArray<DisplayMode> availableDisplayModes(numDisplayModes);
+		for (uint32_t i = 0; i < numDisplayModes; i++)
 		{
 			availableDisplayModes[i] = GetDisplayModeWithIndex(monitor, i);
 		}

@@ -61,7 +61,7 @@ public:
 
 private:
 
-	static inline std::vector<EventHandler> m_Subscribers;
+	static inline TArray<EventHandler> m_Subscribers;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Event& e)
