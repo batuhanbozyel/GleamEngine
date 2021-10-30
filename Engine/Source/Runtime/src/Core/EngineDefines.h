@@ -21,6 +21,9 @@
 #define STRINGIFY(x) #x
 #define BIT(x) (1 << x)
 
+#define UNSAFE_CONST_CAST(type, x) *(reinterpret_cast<const type*>(&x))
+#define UNSAFE_CAST(type, x) *(reinterpret_cast<type*>(&x))
+
 
 #ifdef ENABLE_ASSERTS
 	#define INTERNAL_ASSERT_IMPL(type, check, msg, ...) { if(!(check)) { GLEAM##type##ERROR(msg, __VA_ARGS__); DEBUGBREAK(); } }

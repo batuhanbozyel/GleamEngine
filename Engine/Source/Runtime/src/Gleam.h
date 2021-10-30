@@ -4,6 +4,10 @@
 #include "Container/String.h"
 #include "Container/Array.h"
 
+#include "Math/Types.h"
+#include "Math/Common.h"
+#include "Math/Transform.h"
+
 #include "Core/PlatformTargetDefines.h"
 #include "Core/EngineDefines.h"
 #include "Core/Application.h"
