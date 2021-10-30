@@ -8,8 +8,14 @@ struct Vector2
 {
 	union
 	{
-		float x, y;
-		float r, g;
+		struct
+		{
+			float x, y;
+		};
+		struct
+		{
+			float r, g;
+		};
 	};
 	
 };
@@ -18,8 +24,14 @@ struct Vector3
 {
 	union
 	{
-		float x, y, z;
-		float r, g, b;
+		struct
+		{
+			float x, y, z;
+		};
+		struct
+		{
+			float r, g, b;
+		};
 	};
 
 };
@@ -28,8 +40,14 @@ struct Vector4
 {
 	union
 	{
-		float x, y, z, w;
-		float r, g, b, a;
+		struct
+		{
+			float x, y, z, w;
+		};
+		struct
+		{
+			float r, g, b, a;
+		};
 	};
 	
 };
