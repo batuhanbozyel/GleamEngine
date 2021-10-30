@@ -15,8 +15,8 @@ project(GleamEngine)
             message(FATAL_ERROR "In-source builds not allowed. Please make a new directory (called a build directory) and run CMake from there. You may need to remove CMakeCache.txt.")
     endif()
 
-    #enable c++ 17
-    set(CMAKE_CXX_STANDARD 17)
+    #enable c++20
+    set(CMAKE_CXX_STANDARD 20)
     set(CMAKE_CXX_STANDARD_REQUIRED True)
     set(CMAKE_CXX_EXTENSIONS OFF)
 
@@ -32,7 +32,7 @@ project(GleamEngine)
     # using Intel C++
     elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
     # using Visual Studio C++
-    set(COMMON_CXX_FLAGS "${COMMON_CXX_FLAGS}  /std:c++17 /W4 /arch:AVX2 /fp:fast /MP /DNOMINMAX")
+    set(COMMON_CXX_FLAGS "${COMMON_CXX_FLAGS}  /std:c++20 /W4 /arch:AVX2 /fp:fast /MP /DNOMINMAX")
     endif()
 
     if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
