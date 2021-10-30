@@ -1,70 +1,70 @@
 #include "gpch.h"
 #include "Common.h"
 
-using namespace Gleam::Math;
+using namespace Gleam;
 
 template<typename T>
-[[nodiscard]] T Acos(T x)
+[[nodiscard]] T Math::Acos(T x)
 {
 	return std::acos(x);
 }
 
 template<typename T>
-[[nodiscard]] T Asin(T x)
+[[nodiscard]] T Math::Asin(T x)
 {
 	return std::asin(x);
 }
 
 template<typename T>
-[[nodiscard]] T Atan(T x)
+[[nodiscard]] T Math::Atan(T x)
 {
 	return std::atan(x);
 }
 
 template<typename T>
-[[nodiscard]] T Atan2(T y, T x)
+[[nodiscard]] T Math::Atan2(T y, T x)
 {
 	return std::atan2(y, x);
 }
 
 template<typename T>
-[[nodiscard]] constexpr T PI()
+[[nodiscard]] constexpr T Math::PI()
 {
 	return glm::pi<T>();
 }
 
 template<typename T>
-[[nodiscard]] constexpr T Epsilon()
+[[nodiscard]] constexpr T Math::Epsilon()
 {
 	return std::numeric_limits<T>::epsilon();
 }
 
 template<typename T>
-[[nodiscard]] constexpr T Infinity()
+[[nodiscard]] constexpr T Math::Infinity()
 {
 	return std::numeric_limits<T>::infinity();
 }
 
 template<typename T>
-[[nodiscard]] constexpr T NegativeInfinity()
+[[nodiscard]] constexpr T Math::NegativeInfinity()
 {
 	return -std::numeric_limits<T>::infinity();
 }
 
 template<typename T>
-[[nodiscard]] constexpr T Abs(T x)
+[[nodiscard]] constexpr T Math::Abs(T x)
 {
 	return std::abs(x);
 }
 
 template<typename T>
-[[nodiscard]] constexpr T Deg2Rad(T degree)
+[[nodiscard]] constexpr T Math::Deg2Rad(T degree)
 {
 	return glm::radians(degree);
 }
 
 template<typename T>
-[[nodiscard]] constexpr T Rad2Deg(T radian)
+[[nodiscard]] constexpr T Math::Rad2Deg(T radian)
 {
 	return glm::degrees(radian);
 }

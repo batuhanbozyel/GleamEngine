@@ -2,8 +2,6 @@
 
 namespace Gleam {
 
-namespace Math {
-
 struct Vector2
 {
 	union
@@ -79,5 +77,4 @@ struct Matrix4
 	};
 };
 
-}
 }

@@ -12,5 +12,4 @@ namespace Math {
 
 [[nodiscard]] constexpr Matrix4 UniformScale(const Matrix4& mat, float scale);
 
-}
-}
+}}

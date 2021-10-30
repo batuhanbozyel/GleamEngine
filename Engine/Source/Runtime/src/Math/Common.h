@@ -37,5 +37,4 @@ template<typename T>
 template<typename T>
 [[nodiscard]] constexpr T Rad2Deg(T radian);
 
-}
-}
+}}
