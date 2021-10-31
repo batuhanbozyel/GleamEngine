@@ -1,14 +1,15 @@
 #pragma once
 #define MATH_INLINE [[nodiscard]] inline
-#define PI 3.141592653589793238
-#define PI_F 3.141592653f
-#define EPSILON 1e-5f
-#define BIG_EPSILON 1e-2f
-#define SMALL_EPSILON 1e-7
 
 namespace Gleam {
 
 namespace Math {
+
+constexpr double PI = 3.141592653589793238;
+constexpr float PI_F = 3.141592653f;
+constexpr float EPSILON = 1e-5f;
+constexpr float BIG_EPSILON = 1e-2f;
+constexpr double SMALL_EPSILON = 1e-7;
 
 template<typename T>
 MATH_INLINE constexpr T Cos(T x)
