@@ -2,123 +2,6 @@
 
 namespace Gleam {
 
-struct Vector2
-{
-	union
-	{
-		struct
-		{
-			float x, y;
-		};
-		struct
-		{
-			float r, g;
-		};
-		TArray<float, 2> value;
-	};
-
-	Vector2() = default;
-	constexpr Vector2(float v)
-		: x(v), y(v)
-	{
-
-	}
-	constexpr Vector2(float x, float y)
-		: x(x), y(y)
-	{
-
-	}
-	constexpr Vector2(const TArray<float, 2>& list)
-		: x(list[0]), y(list[1])
-	{
-
-	}
-
-	[[nodiscard]] constexpr inline float operator[](size_t i) const
-	{
-		return value[i];
-	}
-	
-};
-
-struct Vector3
-{
-	union
-	{
-		struct
-		{
-			float x, y, z;
-		};
-		struct
-		{
-			float r, g, b;
-		};
-		TArray<float, 3> value;
-	};
-
-	Vector3() = default;
-	constexpr Vector3(float v)
-		: x(v), y(v), z(v)
-	{
-
-	}
-	constexpr Vector3(float x, float y, float z)
-		: x(x), y(y), z(z)
-	{
-
-	}
-	constexpr Vector3(const TArray<float, 3>& list)
-		: x(list[0]), y(list[1]), z(list[2])
-	{
-
-	}
-
-	[[nodiscard]] constexpr inline float operator[](size_t i) const
-	{
-		return value[i];
-	}
-
-};
-
-struct Vector4
-{
-	union
-	{
-		struct
-		{
-			float x, y, z, w;
-		};
-		struct
-		{
-			float r, g, b, a;
-		};
-		TArray<float, 4> value;
-	};
-
-	Vector4() = default;
-	constexpr Vector4(float v)
-		: x(v), y(v), z(v), w(v)
-	{
-
-	}
-	constexpr Vector4(float x, float y, float z, float w)
-		: x(x), y(y), z(z), w(w)
-	{
-
-	}
-	constexpr Vector4(const TArray<float, 4>& list)
-		: x(list[0]), y(list[1]), z(list[2]), w(list[3])
-	{
-
-	}
-
-	[[nodiscard]] constexpr inline float operator[](size_t i) const
-	{
-		return value[i];
-	}
-
-};
-
 struct Quaternion
 {
 	union
@@ -152,7 +35,7 @@ struct Quaternion
 		z = c.x * c.y * s.z - s.x * s.y * c.z;
 	}
 
-	[[nodiscard]] constexpr inline float operator[](size_t i) const
+	MATH_INLINE constexpr float operator[](size_t i) const
 	{
 		return value[i];
 	}
@@ -189,7 +72,7 @@ struct Matrix2
 
 	}
 
-	[[nodiscard]] constexpr inline const Vector2& operator[](size_t i) const
+	MATH_INLINE constexpr const Vector2& operator[](size_t i) const
 	{
 		return row[i];
 	}
@@ -226,7 +109,7 @@ struct Matrix3
 
 	}
 
-	[[nodiscard]] constexpr inline const Vector3& operator[](size_t i) const
+	MATH_INLINE constexpr const Vector3& operator[](size_t i) const
 	{
 		return row[i];
 	}
@@ -263,12 +146,12 @@ struct Matrix4
 
 	}
 
-	[[nodiscard]] constexpr inline const Vector4& operator[](size_t i) const
+	MATH_INLINE constexpr const Vector4& operator[](size_t i) const
 	{
 		return row[i];
 	}
 
-	[[nodiscard]] static inline constexpr Matrix4 Identity()
+	MATH_INLINE static constexpr Matrix4 Identity()
 	{
 		return Matrix4
 		{
@@ -279,7 +162,7 @@ struct Matrix4
 		};
 	}
 
-	[[nodiscard]] static inline constexpr Matrix4 Translate(const Vector3& translation)
+	MATH_INLINE static constexpr Matrix4 Translate(const Vector3& translation)
 	{
 		return Matrix4
 		{
@@ -290,7 +173,7 @@ struct Matrix4
 		};
 	}
 
-	[[nodiscard]] static inline constexpr Matrix4 Rotate(const Quaternion& quat)
+	MATH_INLINE static constexpr Matrix4 Rotate(const Quaternion& quat)
 	{
 		float qxx = quat.x * quat.x;
 		float qxy = quat.x * quat.y;
@@ -311,7 +194,7 @@ struct Matrix4
 		};
 	}
 
-	[[nodiscard]] static inline constexpr Matrix4 Scale(const Vector3& scale)
+	MATH_INLINE static constexpr Matrix4 Scale(const Vector3& scale)
 	{
 		return Matrix4
 		{
@@ -322,7 +205,7 @@ struct Matrix4
 		};
 	}
 
-	[[nodiscard]] static inline constexpr Matrix4 TRS(const Vector3& translation, const Quaternion& quat, const Vector3& scale)
+	MATH_INLINE static constexpr Matrix4 TRS(const Vector3& translation, const Quaternion& quat, const Vector3& scale)
 	{
 		float qxx = quat.x * quat.x;
 		float qxy = quat.x * quat.y;

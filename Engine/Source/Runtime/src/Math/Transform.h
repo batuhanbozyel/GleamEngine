@@ -8,27 +8,27 @@ class Transform
 {
 public:
 
-	constexpr inline void Translate(const Vector3& translation)
+	inline constexpr void Translate(const Vector3& translation)
 	{
 		m_Position = translation;
 	}
 
-	constexpr inline void Rotate(const Quaternion& quat)
+	inline constexpr void Rotate(const Quaternion& quat)
 	{
 		
 	}
 
-	constexpr inline void Rotate(const Vector3& axis, float angle)
+	inline constexpr void Rotate(const Vector3& axis, float angle)
 	{
 
 	}
 
-	constexpr inline void Scale(const Vector3& scale)
+	inline constexpr void Scale(const Vector3& scale)
 	{
 		m_Scale = scale;
 	}
 
-	constexpr inline void UniformScale(float scale)
+	inline constexpr void UniformScale(float scale)
 	{
 		m_Scale = Vector3(scale);
 	}

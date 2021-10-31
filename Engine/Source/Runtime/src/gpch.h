@@ -16,12 +16,6 @@
 #include <unordered_map>
 #include <unordered_set>
 
-#include <glm/glm.hpp>
-#include <glm/gtc/type_ptr.hpp>
-#include <glm/gtx/quaternion.hpp>
-#include <glm/gtx/euler_angles.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-
 #include "Core/PlatformTargetDefines.h"
 #include "Core/EngineDefines.h"
 
@@ -30,7 +24,8 @@
 #include "Container/Array.h"
 
 #include "Math/Common.h"
-#include "Math/Types.h"
+#include "Math/VectorTypes.h"
+#include "Math/MatrixTypes.h"
 #include "Math/Transform.h"
 
 #include "Core/Events/ApplicationEvent.h"

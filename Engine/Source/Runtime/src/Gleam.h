@@ -5,7 +5,8 @@
 #include "Container/Array.h"
 
 #include "Math/Common.h"
-#include "Math/Types.h"
+#include "Math/VectorTypes.h"
+#include "Math/MatrixTypes.h"
 #include "Math/Transform.h"
 
 #include "Core/PlatformTargetDefines.h"
