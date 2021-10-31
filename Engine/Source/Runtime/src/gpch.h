@@ -18,6 +18,7 @@
 
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include <glm/gtx/quaternion.hpp>
 #include <glm/gtx/euler_angles.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
@@ -28,8 +29,8 @@
 #include "Container/String.h"
 #include "Container/Array.h"
 
-#include "Math/Types.h"
 #include "Math/Common.h"
+#include "Math/Types.h"
 #include "Math/Transform.h"
 
 #include "Core/Events/ApplicationEvent.h"

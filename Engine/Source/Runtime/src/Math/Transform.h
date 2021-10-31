@@ -4,12 +4,40 @@ namespace Gleam {
 
 namespace Math {
 
-[[nodiscard]] constexpr Matrix4 Translate(const Matrix4& mat, const Vector3& vec);
+class Transform
+{
+public:
 
-[[nodiscard]] constexpr Matrix4 Rotate(const Matrix4& mat, float angle, const Vector3& axis);
+	constexpr inline void Translate(const Vector3& translation)
+	{
+		m_Position = translation;
+	}
 
-[[nodiscard]] constexpr Matrix4 Scale(const Matrix4& mat, const Vector3& scale);
+	constexpr inline void Rotate(const Quaternion& quat)
+	{
+		
+	}
 
-[[nodiscard]] constexpr Matrix4 UniformScale(const Matrix4& mat, float scale);
+	constexpr inline void Rotate(const Vector3& axis, float angle)
+	{
+
+	}
+
+	constexpr inline void Scale(const Vector3& scale)
+	{
+		m_Scale = scale;
+	}
+
+	constexpr inline void UniformScale(float scale)
+	{
+		m_Scale = Vector3(scale);
+	}
+
+private:
+
+	Vector3 m_Position{ 0.0f };
+	Vector3 m_Rotation{ 0.0f };
+	Vector3 m_Scale{ 1.0f };
+};
 
 }}

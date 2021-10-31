@@ -84,7 +84,7 @@ Window::Window(const WindowProperties& props)
 	: m_Props(props)
 {
 	int initSucess = SDL_Init(SDL_INIT_VIDEO);
-	ASSERT(initSucess == 0, "Window subsystem initialization failed!");
+	DEBUG_ASSERT(initSucess == 0, "Window subsystem initialization failed!");
 
 	// query display info to create window if not provided by the user
 	if (props.Display.Width == 0 || props.Display.Height == 0)
@@ -98,13 +98,13 @@ Window::Window(const WindowProperties& props)
 		SDL_WINDOWPOS_CENTERED_DISPLAY(props.Display.Monitor),
 		props.Display.Width, props.Display.Height,
 		static_cast<uint32_t>(props.Flag));
-	ASSERT(m_Window, "Window creation failed!");
+	DEBUG_ASSERT(m_Window, "Window creation failed!");
 
 	SDL_SetEventFilter(SDL2_EventCallback, nullptr);
 
 	// update window props with the created window info
 	int monitor = SDL_GetWindowDisplayIndex(m_Window);
-	ASSERT(monitor >= 0, "Window display index is invalid!");
+	DEBUG_ASSERT(monitor >= 0, "Window display index is invalid!");
 
 	m_Props.Display = WindowConfig::GetCurrentDisplayMode(monitor);
 

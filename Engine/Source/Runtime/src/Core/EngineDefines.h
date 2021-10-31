@@ -21,10 +21,6 @@
 #define STRINGIFY(x) #x
 #define BIT(x) (1 << x)
 
-#define UNSAFE_CONST_CAST(type, x) *(reinterpret_cast<const type*>(&x))
-#define UNSAFE_CAST(type, x) *(reinterpret_cast<type*>(&x))
-
-
 #ifdef ENABLE_ASSERTS
 	#define INTERNAL_ASSERT_IMPL(type, check, msg, ...) { if(!(check)) { GLEAM##type##ERROR(msg, __VA_ARGS__); DEBUGBREAK(); } }
 	#define INTERNAL_ASSERT_WITH_MSG(type, check, ...) INTERNAL_ASSERT_IMPL(type, check, "Assertion failed: {0}", __VA_ARGS__)
@@ -33,9 +29,11 @@
 	#define INTERNAL_ASSERT_GET_MACRO_NAME(arg1, arg2, macro, ...) macro
 	#define INTERNAL_ASSERT_GET_MACRO(...) EXPAND( INTERNAL_ASSERT_GET_MACRO_NAME(__VA_ARGS__, INTERNAL_ASSERT_WITH_MSG, INTERNAL_ASSERT_NO_MSG) )
 
-	#define ASSERT(...) EXPAND( INTERNAL_ASSERT_GET_MACRO(__VA_ARGS__)(_, __VA_ARGS__) )
-	#define CORE_ASSERT(...) EXPAND( INTERNAL_ASSERT_GET_MACRO(__VA_ARGS__)(_CORE_, __VA_ARGS__) )
+	#define STATIC_ASSERT(check, msg) static_assert(check, msg)
+	#define DEBUG_ASSERT(...) EXPAND( INTERNAL_ASSERT_GET_MACRO(__VA_ARGS__)(_, __VA_ARGS__) )
+	#define CORE_DEBUG_ASSERT(...) EXPAND( INTERNAL_ASSERT_GET_MACRO(__VA_ARGS__)(_CORE_, __VA_ARGS__) )
 #else
-	#define ASSERT(...)
-	#define CORE_ASSERT(...)
+	#define STATIC_ASSERT(check, msg)
+	#define DEBUG_ASSERT(...)
+	#define CORE_DEBUG_ASSERT(...)
 #endif
