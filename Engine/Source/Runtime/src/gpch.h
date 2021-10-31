@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <functional>
 #include <typeindex>
+#include <type_traits>
 #include <string>
 #include <sstream>
 #include <list>

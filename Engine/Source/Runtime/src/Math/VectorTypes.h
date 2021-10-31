@@ -433,8 +433,7 @@ struct Vector4
 
 namespace Math {
 
-template<>
-MATH_INLINE constexpr Vector2 Cos<Vector2>(Vector2 vec)
+MATH_INLINE constexpr Vector2 Cos(const Vector2& vec)
 {
 	return Vector2
 	{
@@ -443,8 +442,7 @@ MATH_INLINE constexpr Vector2 Cos<Vector2>(Vector2 vec)
 	};
 }
 
-template<>
-MATH_INLINE constexpr Vector3 Cos<Vector3>(Vector3 vec)
+MATH_INLINE constexpr Vector3 Cos(const Vector3& vec)
 {
 	return Vector3
 	{
@@ -454,8 +452,7 @@ MATH_INLINE constexpr Vector3 Cos<Vector3>(Vector3 vec)
 	};
 }
 
-template<>
-MATH_INLINE constexpr Vector4 Cos<Vector4>(Vector4 vec)
+MATH_INLINE constexpr Vector4 Cos(const Vector4& vec)
 {
 	return Vector4
 	{
@@ -466,8 +463,7 @@ MATH_INLINE constexpr Vector4 Cos<Vector4>(Vector4 vec)
 	};
 }
 
-template<>
-MATH_INLINE constexpr Vector2 Sin<Vector2>(Vector2 vec)
+MATH_INLINE constexpr Vector2 Sin(const Vector2& vec)
 {
 	return Vector2
 	{
@@ -476,8 +472,7 @@ MATH_INLINE constexpr Vector2 Sin<Vector2>(Vector2 vec)
 	};
 }
 
-template<>
-MATH_INLINE constexpr Vector3 Sin<Vector3>(Vector3 vec)
+MATH_INLINE constexpr Vector3 Sin(const Vector3& vec)
 {
 	return Vector3
 	{
@@ -487,8 +482,7 @@ MATH_INLINE constexpr Vector3 Sin<Vector3>(Vector3 vec)
 	};
 }
 
-template<>
-MATH_INLINE constexpr Vector4 Sin<Vector4>(Vector4 vec)
+MATH_INLINE constexpr Vector4 Sin(const Vector4& vec)
 {
 	return Vector4
 	{
@@ -499,8 +493,7 @@ MATH_INLINE constexpr Vector4 Sin<Vector4>(Vector4 vec)
 	};
 }
 
-template<>
-MATH_INLINE constexpr Vector2 Abs<Vector2>(Vector2 vec)
+MATH_INLINE constexpr Vector2 Abs(const Vector2& vec)
 {
 	return Vector2
 	{
@@ -509,8 +502,7 @@ MATH_INLINE constexpr Vector2 Abs<Vector2>(Vector2 vec)
 	};
 }
 
-template<>
-MATH_INLINE constexpr Vector3 Abs<Vector3>(Vector3 vec)
+MATH_INLINE constexpr Vector3 Abs(const Vector3& vec)
 {
 	return Vector3
 	{
@@ -520,8 +512,7 @@ MATH_INLINE constexpr Vector3 Abs<Vector3>(Vector3 vec)
 	};
 }
 
-template<>
-MATH_INLINE constexpr Vector4 Abs<Vector4>(Vector4 vec)
+MATH_INLINE constexpr Vector4 Abs(const Vector4& vec)
 {
 	return Vector4
 	{
@@ -529,6 +520,126 @@ MATH_INLINE constexpr Vector4 Abs<Vector4>(Vector4 vec)
 		std::abs(vec.y),
 		std::abs(vec.z),
 		std::abs(vec.w)
+	};
+}
+
+MATH_INLINE constexpr Vector2 Deg2Rad(const Vector2& degrees)
+{
+	return Vector2
+	{
+		Deg2Rad(degrees.x),
+		Deg2Rad(degrees.y)
+	};
+}
+
+MATH_INLINE constexpr Vector3 Deg2Rad(const Vector3& degrees)
+{
+	return Vector3
+	{
+		Deg2Rad(degrees.x),
+		Deg2Rad(degrees.y),
+		Deg2Rad(degrees.z)
+	};
+}
+
+MATH_INLINE constexpr Vector4 Deg2Rad(const Vector4& degrees)
+{
+	return Vector4
+	{
+		Deg2Rad(degrees.x),
+		Deg2Rad(degrees.y),
+		Deg2Rad(degrees.z),
+		Deg2Rad(degrees.w)
+	};
+}
+
+MATH_INLINE constexpr Vector2 Rad2Deg(const Vector2& radians)
+{
+	return Vector2
+	{
+		Rad2Deg(radians.x),
+		Rad2Deg(radians.y)
+	};
+}
+
+MATH_INLINE constexpr Vector3 Rad2Deg(const Vector3& radians)
+{
+	return Vector3
+	{
+		Rad2Deg(radians.x),
+		Rad2Deg(radians.y),
+		Rad2Deg(radians.z)
+	};
+}
+
+MATH_INLINE constexpr Vector4 Rad2Deg(const Vector4& radians)
+{
+	return Vector4
+	{
+		Rad2Deg(radians.x),
+		Rad2Deg(radians.y),
+		Rad2Deg(radians.z),
+		Rad2Deg(radians.w)
+	};
+}
+
+MATH_INLINE constexpr Vector2 Min(const Vector2& v0, const Vector2& v1)
+{
+	return Vector2
+	{
+		Min(v0.x, v1.x),
+		Min(v0.y, v1.y)
+	};
+}
+
+MATH_INLINE constexpr Vector3 Min(const Vector3& v0, const Vector3& v1)
+{
+	return Vector3
+	{
+		Min(v0.x, v1.x),
+		Min(v0.y, v1.y),
+		Min(v0.z, v1.z)
+	};
+}
+
+MATH_INLINE constexpr Vector4 Min(const Vector4& v0, const Vector4& v1)
+{
+	return Vector4
+	{
+		Min(v0.x, v1.x),
+		Min(v0.y, v1.y),
+		Min(v0.z, v1.z),
+		Min(v0.w, v1.w),
+	};
+}
+
+MATH_INLINE constexpr Vector2 Max(const Vector2& v0, const Vector2& v1)
+{
+	return Vector2
+	{
+		Max(v0.x, v1.x),
+		Max(v0.y, v1.y)
+	};
+}
+
+MATH_INLINE constexpr Vector3 Max(const Vector3& v0, const Vector3& v1)
+{
+	return Vector3
+	{
+		Max(v0.x, v1.x),
+		Max(v0.y, v1.y),
+		Max(v0.z, v1.z)
+	};
+}
+
+MATH_INLINE constexpr Vector4 Max(const Vector4& v0, const Vector4& v1)
+{
+	return Vector4
+	{
+		Max(v0.x, v1.x),
+		Max(v0.y, v1.y),
+		Max(v0.z, v1.z),
+		Max(v0.w, v1.w),
 	};
 }
 

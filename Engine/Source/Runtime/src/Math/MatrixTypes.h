@@ -9,8 +9,8 @@ struct Quaternion
 		struct
 		{
 			float w, x, y, z;
-			TArray<float, 4> value;
 		};
+		TArray<float, 4> value;
 	};
 
 	Quaternion() = default;
