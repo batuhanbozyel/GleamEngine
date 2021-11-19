@@ -15,12 +15,12 @@ void Log::Init()
 	logSinks[0]->set_pattern("%^[%T] %n: %v%$");
 	logSinks[1]->set_pattern("[%T] [%l] %n: %v");
 
-	s_CoreLogger = CreateShared<spdlog::logger>("GLEAM", begin(logSinks), end(logSinks));
+	s_CoreLogger = CreateRef<spdlog::logger>("GLEAM", begin(logSinks), end(logSinks));
 	spdlog::register_logger(s_CoreLogger);
 	s_CoreLogger->set_level(spdlog::level::trace);
 	s_CoreLogger->flush_on(spdlog::level::trace);
 
-	s_ClientLogger = CreateShared<spdlog::logger>("APP", begin(logSinks), end(logSinks));
+	s_ClientLogger = CreateRef<spdlog::logger>("APP", begin(logSinks), end(logSinks));
 	spdlog::register_logger(s_ClientLogger);
 	s_ClientLogger->set_level(spdlog::level::trace);
 	s_ClientLogger->flush_on(spdlog::level::trace);

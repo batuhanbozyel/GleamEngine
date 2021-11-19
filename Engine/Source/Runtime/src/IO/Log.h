@@ -8,13 +8,13 @@ class Log
 public:
 	static void Init();
 
-	static SharedPtr<spdlog::logger>& GetCoreLogger() { return s_CoreLogger;  }
-	static SharedPtr<spdlog::logger>& GetClientLogger() { return s_ClientLogger; }
+	static Ref<spdlog::logger>& GetCoreLogger() { return s_CoreLogger;  }
+	static Ref<spdlog::logger>& GetClientLogger() { return s_ClientLogger; }
 
 private:
 
-	static inline SharedPtr<spdlog::logger> s_CoreLogger = nullptr;
-	static inline SharedPtr<spdlog::logger> s_ClientLogger = nullptr;
+	static inline Ref<spdlog::logger> s_CoreLogger = nullptr;
+	static inline Ref<spdlog::logger> s_ClientLogger = nullptr;
 
 };
 
