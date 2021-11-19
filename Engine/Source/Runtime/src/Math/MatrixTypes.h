@@ -13,14 +13,34 @@ struct Quaternion
 		TArray<float, 4> value;
 	};
 
+	MATH_INLINE Vector3 EularAngles() const
+	{
+		return Vector3
+		{
+			Math::Atan2(2.0f * (w * x + y * z), 1.0f - 2.0f * (x * x + y * y)),
+			Math::Asin(Math::Clamp(2.0f * (w * y - z * x), -1.0f, 1.0f)),
+			Math::Atan2(2.0f * (w * z + x * y), 1.0f - 2.0f * (y * y + z * z))
+		};
+	}
+
+	MATH_INLINE static constexpr Quaternion Identity()
+	{
+		return Quaternion(0.0f, 0.0f, 0.0f, 1.0f);
+	}
+
 	Quaternion() = default;
+	constexpr Quaternion(Quaternion&&) = default;
+	constexpr Quaternion(const Quaternion&) = default;
+	MATH_INLINE constexpr Quaternion& operator=(Quaternion&&) = default;
+	MATH_INLINE constexpr Quaternion& operator=(const Quaternion&) = default;
+
 	constexpr Quaternion(float w, float x, float y, float z)
 		: w(w), x(x), y(y), z(z)
 	{
 
 	}
-	constexpr Quaternion(const TArray<float, 4>& list)
-		: w(list[0]), x(list[1]), y(list[2]), z(list[3])
+	constexpr Quaternion(const TArray<float, 4>& quat)
+		: w(quat[0]), x(quat[1]), y(quat[2]), z(quat[3])
 	{
 
 	}
@@ -50,9 +70,25 @@ struct Matrix2
 		TArray<Vector2, 2> row;
 	};
 
+	MATH_INLINE static constexpr Matrix2 Identity()
+	{
+		return Matrix2
+		{
+			1.0f, 0.0f,
+			0.0f, 1.0f
+		};
+	}
+
 	Matrix2() = default;
-	constexpr Matrix2(float m00, float m01, float m10, float m11)
-		: value{m00, m01, m10, m11}
+	constexpr Matrix2(Matrix2&&) = default;
+	constexpr Matrix2(const Matrix2&) = default;
+	MATH_INLINE constexpr Matrix2& operator=(Matrix2&&) = default;
+	MATH_INLINE constexpr Matrix2& operator=(const Matrix2&) = default;
+
+	constexpr Matrix2(float m00, float m01,
+					  float m10, float m11)
+		: value{m00, m01,
+				m10, m11}
 	{
 
 	}
@@ -87,9 +123,28 @@ struct Matrix3
 		TArray<Vector3, 3> row;
 	};
 
+	MATH_INLINE static constexpr Matrix3 Identity()
+	{
+		return Matrix3
+		{
+			1.0f, 0.0f,0.0f,
+			0.0f, 1.0f, 0.0f,
+			0.0f, 0.0f, 1.0f
+		};
+	}
+
 	Matrix3() = default;
-	constexpr Matrix3(float m00, float m01, float m02, float m10, float m11, float m12, float m20, float m21, float m22)
-		: value{ m00, m01, m02, m10, m11, m12, m20, m21, m22 }
+	constexpr Matrix3(Matrix3&&) = default;
+	constexpr Matrix3(const Matrix3&) = default;
+	MATH_INLINE constexpr Matrix3& operator=(Matrix3&&) = default;
+	MATH_INLINE constexpr Matrix3& operator=(const Matrix3&) = default;
+
+	constexpr Matrix3(float m00, float m01, float m02,
+					  float m10, float m11, float m12,
+					  float m20, float m21, float m22)
+		: value{m00, m01, m02,
+				m10, m11, m12,
+				m20, m21, m22}
 	{
 
 	}
@@ -124,9 +179,31 @@ struct Matrix4
 		TArray<Vector4, 4> row;
 	};
 
+	MATH_INLINE static constexpr Matrix4 Identity()
+	{
+		return Matrix4
+		{
+			1.0f, 0.0f, 0.0f, 0.0f,
+			0.0f, 1.0f, 0.0f, 0.0f,
+			0.0f, 0.0f, 1.0f, 0.0f,
+			0.0f, 0.0f, 0.0f, 1.0f
+		};
+	}
+
 	Matrix4() = default;
-	constexpr Matrix4(float m00, float m01, float m02, float m03, float m10, float m11, float m12, float m13, float m20, float m21, float m22, float m23, float m30, float m31, float m32, float m33)
-		: value{ m00, m01, m02, m03, m10, m11, m12, m13, m20, m21, m22, m23, m30, m31, m32, m33 }
+	constexpr Matrix4(Matrix4&&) = default;
+	constexpr Matrix4(const Matrix4&) = default;
+	MATH_INLINE constexpr Matrix4& operator=(Matrix4&&) = default;
+	MATH_INLINE constexpr Matrix4& operator=(const Matrix4&) = default;
+
+	constexpr Matrix4(float m00, float m01, float m02, float m03,
+					  float m10, float m11, float m12, float m13,
+					  float m20, float m21, float m22, float m23,
+					  float m30, float m31, float m32, float m33)
+		: value{m00, m01, m02, m03,
+				m10, m11, m12, m13,
+				m20, m21, m22, m23,
+				m30, m31, m32, m33}
 	{
 
 	}
@@ -149,17 +226,6 @@ struct Matrix4
 	MATH_INLINE constexpr const Vector4& operator[](size_t i) const
 	{
 		return row[i];
-	}
-
-	MATH_INLINE static constexpr Matrix4 Identity()
-	{
-		return Matrix4
-		{
-			1.0f, 0.0f, 0.0f, 0.0f,
-			0.0f, 1.0f, 0.0f, 0.0f,
-			0.0f, 0.0f, 1.0f, 0.0f,
-			0.0f, 0.0f, 0.0f, 1.0f
-		};
 	}
 
 	MATH_INLINE static constexpr Matrix4 Translate(const Vector3& translation)

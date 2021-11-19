@@ -23,11 +23,13 @@
 #include "Container/Pointer.h"
 #include "Container/String.h"
 #include "Container/Array.h"
+#include "Container/Hash.h"
 
 #include "Math/Common.h"
 #include "Math/VectorTypes.h"
 #include "Math/MatrixTypes.h"
 #include "Math/Transform.h"
+#include "Math/Color.h"
 
 #include "Core/Events/ApplicationEvent.h"
 #include "Core/Events/WindowEvent.h"

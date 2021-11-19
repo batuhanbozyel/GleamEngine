@@ -18,6 +18,11 @@ struct Vector2
 	};
 
 	Vector2() = default;
+	constexpr Vector2(Vector2&&) = default;
+	constexpr Vector2(const Vector2&) = default;
+	MATH_INLINE constexpr Vector2& operator=(Vector2&&) = default;
+	MATH_INLINE constexpr Vector2& operator=(const Vector2&) = default;
+
 	constexpr Vector2(float v)
 		: x(v), y(v)
 	{
@@ -28,8 +33,8 @@ struct Vector2
 	{
 
 	}
-	constexpr Vector2(const TArray<float, 2>& list)
-		: x(list[0]), y(list[1])
+	constexpr Vector2(const TArray<float, 2>& vec)
+		: x(vec[0]), y(vec[1])
 	{
 
 	}
@@ -153,6 +158,11 @@ struct Vector3
 	};
 
 	Vector3() = default;
+	constexpr Vector3(Vector3&&) = default;
+	constexpr Vector3(const Vector3&) = default;
+	MATH_INLINE constexpr Vector3& operator=(Vector3&&) = default;
+	MATH_INLINE constexpr Vector3& operator=(const Vector3&) = default;
+
 	constexpr Vector3(float v)
 		: x(v), y(v), z(v)
 	{
@@ -163,8 +173,8 @@ struct Vector3
 	{
 
 	}
-	constexpr Vector3(const TArray<float, 3>& list)
-		: x(list[0]), y(list[1]), z(list[2])
+	constexpr Vector3(const TArray<float, 3>& vec)
+		: x(vec[0]), y(vec[1]), z(vec[2])
 	{
 
 	}
@@ -296,6 +306,11 @@ struct Vector4
 	};
 
 	Vector4() = default;
+	constexpr Vector4(Vector4&&) = default;
+	constexpr Vector4(const Vector4&) = default;
+	MATH_INLINE constexpr Vector4& operator=(Vector4&&) = default;
+	MATH_INLINE constexpr Vector4& operator=(const Vector4&) = default;
+
 	constexpr Vector4(float v)
 		: x(v), y(v), z(v), w(v)
 	{
@@ -306,8 +321,8 @@ struct Vector4
 	{
 
 	}
-	constexpr Vector4(const TArray<float, 4>& list)
-		: x(list[0]), y(list[1]), z(list[2]), w(list[3])
+	constexpr Vector4(const TArray<float, 4>& vec)
+		: x(vec[0]), y(vec[1]), z(vec[2]), w(vec[3])
 	{
 
 	}
@@ -523,6 +538,36 @@ MATH_INLINE constexpr Vector4 Abs(const Vector4& vec)
 	};
 }
 
+MATH_INLINE constexpr Vector2 Fract(const Vector2& vec)
+{
+	return Vector2
+	{
+		vec.x - static_cast<long>(vec.x),
+		vec.y - static_cast<long>(vec.y)
+	};
+}
+
+MATH_INLINE constexpr Vector3 Fract(const Vector3& vec)
+{
+	return Vector3
+	{
+		vec.x - static_cast<long>(vec.x),
+		vec.y - static_cast<long>(vec.y),
+		vec.z - static_cast<long>(vec.z)
+	};
+}
+
+MATH_INLINE constexpr Vector4 Fract(const Vector4& vec)
+{
+	return Vector4
+	{
+		vec.x - static_cast<long>(vec.x),
+		vec.y - static_cast<long>(vec.y),
+		vec.z - static_cast<long>(vec.z),
+		vec.w - static_cast<long>(vec.w)
+	};
+}
+
 MATH_INLINE constexpr Vector2 Deg2Rad(const Vector2& degrees)
 {
 	return Vector2
@@ -641,6 +686,36 @@ MATH_INLINE constexpr Vector4 Max(const Vector4& v0, const Vector4& v1)
 		Max(v0.z, v1.z),
 		Max(v0.w, v1.w),
 	};
+}
+
+MATH_INLINE constexpr Vector2 Mix(const Vector2& v0, const Vector2& v1, float a)
+{
+	return v0 * (1.0f - a) + v1 * a;
+}
+
+MATH_INLINE constexpr Vector3 Mix(const Vector3& v0, const Vector3& v1, float a)
+{
+	return v0 * (1.0f - a) + v1 * a;
+}
+
+MATH_INLINE constexpr Vector4 Mix(const Vector4& v0, const Vector4& v1, float a)
+{
+	return v0 * (1.0f - a) + v1 * a;
+}
+
+MATH_INLINE constexpr Vector2 Clamp(const Vector2& value, const Vector2& min, const Vector2& max)
+{
+	return Min(Max(value, min), max);
+}
+
+MATH_INLINE constexpr Vector3 Clamp(const Vector3& value, const Vector3& min, const Vector3& max)
+{
+	return Min(Max(value, min), max);
+}
+
+MATH_INLINE constexpr Vector4 Clamp(const Vector4& value, const Vector4& min, const Vector4& max)
+{
+	return Min(Max(value, min), max);
 }
 
 }

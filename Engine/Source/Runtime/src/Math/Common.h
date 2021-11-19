@@ -4,11 +4,26 @@ namespace Gleam {
 
 namespace Math {
 
-constexpr double PI = 3.141592653589793238;
-constexpr float PI_F = 3.141592653f;
-constexpr float EPSILON = FLT_EPSILON;
-constexpr float BIG_EPSILON = 1e-2f;
-constexpr double SMALL_EPSILON = DBL_EPSILON;
+constexpr float PI = 3.14159265358979323846f;
+constexpr float PI_2 = 1.57079632679489661923f;
+constexpr float PI_4 = 0.785398163397448309616f;
+constexpr float Epsilon = FLT_EPSILON;
+constexpr float BigEpsilon = 1e-2f;
+constexpr double SmallEpsilon = DBL_EPSILON;
+constexpr float Infinity = std::numeric_limits<float>::max();
+constexpr float NegativeInfinity = std::numeric_limits<float>::lowest();
+
+template <typename T, PASS_BY_VALUE>
+MATH_INLINE constexpr T Sign(T val)
+{
+	return (T(0) <= val) - (val < T(0));
+}
+
+template <typename T, PASS_BY_REFERENCE>
+MATH_INLINE constexpr T Sign(const T& val)
+{
+	return (T(0) <= val) - (val < T(0));
+}
 
 template<typename T, PASS_BY_VALUE>
 MATH_INLINE constexpr T Cos(T x)
@@ -94,16 +109,52 @@ MATH_INLINE T Atan2(const T& y, const T& x)
 	return std::atan2(y, x);
 }
 
-template<typename T>
-MATH_INLINE constexpr T Epsilon()
+template<typename T, PASS_BY_VALUE>
+MATH_INLINE constexpr T Exp(T x)
 {
-	return std::numeric_limits<T>::epsilon();
+	return std::exp(x);
 }
 
-template<typename T>
-MATH_INLINE constexpr T Infinity()
+template<typename T, PASS_BY_REFERENCE>
+MATH_INLINE constexpr T Exp(const T& x)
 {
-	return std::numeric_limits<T>::infinity();
+	return std::exp(x);
+}
+
+template<typename T, PASS_BY_VALUE>
+MATH_INLINE constexpr T Floor(T x)
+{
+	return std::floor(x);
+}
+
+template<typename T, PASS_BY_REFERENCE>
+MATH_INLINE constexpr T Floor(const T& x)
+{
+	return std::floor(x);
+}
+
+template<typename T, PASS_BY_VALUE>
+MATH_INLINE constexpr T Round(T x)
+{
+	return std::round(x);
+}
+
+template<typename T, PASS_BY_REFERENCE>
+MATH_INLINE constexpr T Round(const T& x)
+{
+	return std::round(x);
+}
+
+template<typename T, PASS_BY_VALUE>
+MATH_INLINE constexpr T Fract(T x)
+{
+	return x - static_cast<long>(x);
+}
+
+template<typename T, PASS_BY_REFERENCE>
+MATH_INLINE constexpr T Fract(const T& x)
+{
+	return x - static_cast<long>(x);
 }
 
 template<typename T, PASS_BY_VALUE>
@@ -216,4 +267,6 @@ MATH_INLINE constexpr T Mix(const T& x, const T& y, const T& a)
 	return x * (T(1) - a) + y * a;
 }
 
-}}
+}
+
+}
