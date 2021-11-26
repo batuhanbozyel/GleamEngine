@@ -41,6 +41,3 @@
 #define MATH_INLINE [[nodiscard]] inline
 #define PASS_BY_VALUE typename = std::enable_if_t<(sizeof(T) <= sizeof(int))>
 #define PASS_BY_REFERENCE typename = std::enable_if_t<(sizeof(T) > sizeof(int))>
-
-template<typename T>
-using ParamType = std::conditional<std::is_trivially_copyable<T>::value && sizeof(T) <= sizeof(int), T, const T&>::type;

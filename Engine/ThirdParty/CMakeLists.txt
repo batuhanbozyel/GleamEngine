@@ -1,6 +1,7 @@
 include (${CMAKE_SOURCE_DIR}/CMake/CMakeUtils.cmake)
 
 add_subdirectory(SDL2)
+add_subdirectory(googletest)
 
 add_library(imgui STATIC
     "imgui/imconfig.h"
@@ -20,5 +21,9 @@ set_target_properties (
     SDL2
     SDL2main
     SDL2-static
+    gmock
+    gmock_main
+    gtest
+    gtest_main
     imgui
     PROPERTIES FOLDER Dependencies)

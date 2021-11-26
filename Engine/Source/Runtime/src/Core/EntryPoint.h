@@ -1,5 +1,6 @@
 #pragma once
-#include "PlatformTargetDefines.h"
+#include "Gleam.h"
+#include "Application.h"
 
 #ifdef __cplusplus
 extern "C"
@@ -16,7 +17,7 @@ int main(int argc, char* argv[])
 
 	delete app;
 
-	return 0;
+	return EXIT_SUCCESS;
 }
 #else
 #error Target platform is not currently supported

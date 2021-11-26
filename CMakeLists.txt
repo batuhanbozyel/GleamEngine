@@ -36,7 +36,7 @@ project(GleamEngine)
     endif()
 
     if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-        add_compile_options(/wd4251 /wd4275 /wd4099 /wd4204 )
+        add_compile_options(/wd4251 /wd4275 /wd4099 /wd4204)
     endif()
 
     set_property(GLOBAL PROPERTY USE_FOLDERS ON)
@@ -53,3 +53,4 @@ project(GleamEngine)
     add_subdirectory(Engine/ThirdParty)
     add_subdirectory(Engine/Source/Runtime)
     add_subdirectory(Engine/Source/Editor)
+	add_subdirectory(Engine/Source/UnitTest)

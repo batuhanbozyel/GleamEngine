@@ -1,4 +1,5 @@
-#include "Gleam.h"
+// EntryPoint
+#include "Core/EntryPoint.h"
 
 namespace GEditor {
 
