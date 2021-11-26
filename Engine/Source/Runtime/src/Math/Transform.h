@@ -4,9 +4,9 @@ namespace Gleam {
 
 struct Transform
 {
-	Vector3 Position{ 0.0f };
-	Vector3 Rotation{ 0.0f };
-	Vector3 Scale{ 1.0f };
+	Vector3 position{ 0.0f };
+	Vector3 rotation{ 0.0f };
+	Vector3 scale{ 1.0f };
 
 	MATH_INLINE constexpr void Translate(const Vector3& translation)
 	{

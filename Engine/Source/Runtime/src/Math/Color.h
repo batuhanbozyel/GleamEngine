@@ -2,6 +2,8 @@
 
 namespace Gleam {
 
+struct Color32;
+
 struct Color : public Vector4
 {
 	static const Color Clear;
@@ -108,7 +110,7 @@ struct Color : public Vector4
 
 	MATH_INLINE constexpr Color& operator=(const Vector4& color)
 	{
-		value = std::move(color.value);
+		value = color.value;
 		return *this;
 	}
 	MATH_INLINE constexpr Color& operator=(Vector4&& color)
@@ -117,19 +119,68 @@ struct Color : public Vector4
 		return *this;
 	}
 
+	MATH_INLINE constexpr operator Color32() const;
+	MATH_INLINE constexpr Color& operator=(const Color32&);
+
 };
 
 struct Color32
 {
-	std::byte r, g, b, a;
+	uint8_t r, g, b, a;
 
 	Color32() = default;
-	constexpr Color32(std::byte r, std::byte g, std::byte b, std::byte a)
+	constexpr Color32(uint8_t r, uint8_t g, uint8_t b, uint8_t a)
 		: r(r), g(g), b(b), a(a)
 	{
 
 	}
 
+	MATH_INLINE constexpr operator Color() const;
+	MATH_INLINE constexpr Color32& operator=(const Color&);
+
 };
+
+MATH_INLINE constexpr Color::operator Color32() const
+{
+	return Color32
+	{
+		static_cast<uint8_t>(Math::Round(r * 255.0f)),
+		static_cast<uint8_t>(Math::Round(g * 255.0f)),
+		static_cast<uint8_t>(Math::Round(b * 255.0f)),
+		static_cast<uint8_t>(Math::Round(a * 255.0f))
+	};
+}
+
+MATH_INLINE constexpr Color32::operator Color() const
+{
+	return Color
+	{
+		static_cast<float>(r) / 255.0f,
+		static_cast<float>(g) / 255.0f,
+		static_cast<float>(b) / 255.0f,
+		static_cast<float>(a) / 255.0f
+	};
+}
+
+MATH_INLINE constexpr Color& Color::operator=(const Color32& color)
+{
+	return *this = static_cast<Color>(color);
+}
+
+MATH_INLINE constexpr Color32& Color32::operator=(const Color& color)
+{
+	return *this = static_cast<Color32>(color);
+}
+
+MATH_INLINE constexpr Color32 Mix(Color32 c0, Color32 c1, float a)
+{
+	return Color32
+	{
+		static_cast<uint8_t>(static_cast<float>(c0.r) * (1.0f - a) + static_cast<float>(c1.r) * a),
+		static_cast<uint8_t>(static_cast<float>(c0.g) * (1.0f - a) + static_cast<float>(c1.g) * a),
+		static_cast<uint8_t>(static_cast<float>(c0.b) * (1.0f - a) + static_cast<float>(c1.b) * a),
+		static_cast<uint8_t>(static_cast<float>(c0.a) * (1.0f - a) + static_cast<float>(c1.a) * a)
+	};
+}
 
 }

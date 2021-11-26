@@ -232,13 +232,13 @@ MATH_INLINE constexpr T Clamp(const T& value, const T& min, const T& max)
 template<typename T, PASS_BY_VALUE>
 MATH_INLINE constexpr T Step(T edge, T x)
 {
-	return x >= edge;
+	return static_cast<T>(x >= edge);
 }
 
 template<typename T, PASS_BY_REFERENCE>
 MATH_INLINE constexpr T Step(const T& edge, const T& x)
 {
-	return x >= edge;
+	return static_cast<T>(x >= edge);
 }
 
 template<typename T, PASS_BY_VALUE>

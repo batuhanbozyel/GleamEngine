@@ -46,42 +46,74 @@ struct Vector2
 
 	MATH_INLINE constexpr Vector2 operator*(float val) const
 	{
-		return Vector2{ x * val, y * val };
+		return Vector2
+		{
+			x * val,
+			y * val
+		};
 	}
 
 	MATH_INLINE constexpr Vector2 operator/(float val) const
 	{
-		return Vector2{ x / val, y / val };
+		return Vector2
+		{
+			x / val,
+			y / val
+		};
 	}
 
 	MATH_INLINE constexpr Vector2 operator+(float val) const
 	{
-		return Vector2{ x + val, y + val };
+		return Vector2
+		{
+			x + val,
+			y + val
+		};
 	}
 
 	MATH_INLINE constexpr Vector2 operator-(float val) const
 	{
-		return Vector2{ x - val, y - val };
+		return Vector2
+		{
+			x - val,
+			y - val
+		};
 	}
 
 	MATH_INLINE constexpr Vector2 operator*(const Vector2& vec) const
 	{
-		return Vector2{ x * vec.x, y * vec.y };
+		return Vector2
+		{
+			x * vec.x,
+			y * vec.y
+		};
 	}
 
 	MATH_INLINE constexpr Vector2 operator/(const Vector2& vec) const
 	{
-		return Vector2{ x / vec.x, y / vec.y };
+		return Vector2
+		{
+			x / vec.x,
+			y / vec.y
+		};
 	}
 
 	MATH_INLINE constexpr Vector2 operator+(const Vector2& vec) const
 	{
-		return Vector2{ x + vec.x, y + vec.y };
+		return Vector2
+		{
+			x + vec.x,
+			y + vec.y
+		};
 	}
 
 	MATH_INLINE constexpr Vector2 operator-(const Vector2& vec) const
 	{
-		return Vector2{ x - vec.x, y - vec.x };
+		return Vector2
+		{
+			x - vec.x,
+			y - vec.x
+		};
 	}
 
 	MATH_INLINE constexpr Vector2& operator*=(float val)
@@ -186,42 +218,82 @@ struct Vector3
 
 	MATH_INLINE constexpr Vector3 operator*(float val) const
 	{
-		return Vector3{ x * val, y * val, z * val };
+		return Vector3
+		{
+			x * val,
+			y * val,
+			z * val
+		};
 	}
 
 	MATH_INLINE constexpr Vector3 operator/(float val) const
 	{
-		return Vector3{ x / val, y / val, z / val };
+		return Vector3
+		{
+			x / val,
+			y / val,
+			z / val
+		};
 	}
 
 	MATH_INLINE constexpr Vector3 operator+(float val) const
 	{
-		return Vector3{ x + val, y + val, z + val };
+		return Vector3
+		{
+			x + val,
+			y + val,
+			z + val
+		};
 	}
 
 	MATH_INLINE constexpr Vector3 operator-(float val) const
 	{
-		return Vector3{ x - val, y - val, z - val };
+		return Vector3
+		{
+			x - val,
+			y - val,
+			z - val
+		};
 	}
 
 	MATH_INLINE constexpr Vector3 operator*(const Vector3& vec) const
 	{
-		return Vector3{ x * vec.x, y * vec.y, z * vec.z };
+		return Vector3
+		{
+			x * vec.x,
+			y * vec.y,
+			z * vec.z
+		};
 	}
 
 	MATH_INLINE constexpr Vector3 operator/(const Vector3& vec) const
 	{
-		return Vector3{ x / vec.x, y / vec.y, z / vec.z };
+		return Vector3
+		{
+			x / vec.x,
+			y / vec.y,
+			z / vec.z
+		};
 	}
 
 	MATH_INLINE constexpr Vector3 operator+(const Vector3& vec) const
 	{
-		return Vector3{ x + vec.x, y + vec.y, z + vec.z };
+		return Vector3
+		{
+			x + vec.x,
+			y + vec.y,
+			z + vec.z
+		};
 	}
 
 	MATH_INLINE constexpr Vector3 operator-(const Vector3& vec) const
 	{
-		return Vector3{ x - vec.x, y - vec.x, z - vec.z };
+		return Vector3
+		{
+			x - vec.x,
+			y - vec.x,
+			z - vec.z
+		};
 	}
 
 	MATH_INLINE constexpr Vector3& operator*=(float val)
@@ -334,42 +406,90 @@ struct Vector4
 
 	MATH_INLINE constexpr Vector4 operator*(float val) const
 	{
-		return Vector4{ x * val, y * val, z * val, w * val };
+		return Vector4
+		{
+			x * val,
+			y * val,
+			z * val,
+			w * val
+		};
 	}
 
 	MATH_INLINE constexpr Vector4 operator/(float val) const
 	{
-		return Vector4{ x / val, y / val, z / val, w / val };
+		return Vector4
+		{
+			x / val,
+			y / val,
+			z / val,
+			w / val
+		};
 	}
 
 	MATH_INLINE constexpr Vector4 operator+(float val) const
 	{
-		return Vector4{ x + val, y + val, z + val, w + val };
+		return Vector4
+		{
+			x + val,
+			y + val,
+			z + val,
+			w + val
+		};
 	}
 
 	MATH_INLINE constexpr Vector4 operator-(float val) const
 	{
-		return Vector4{ x - val, y - val, z - val, w - val };
+		return Vector4
+		{
+			x - val,
+			y - val,
+			z - val,
+			w - val
+		};
 	}
 
 	MATH_INLINE constexpr Vector4 operator*(const Vector4& vec) const
 	{
-		return Vector4{ x * vec.x, y * vec.y, z * vec.z, w * vec.w };
+		return Vector4
+		{
+			x * vec.x,
+			y * vec.y,
+			z * vec.z,
+			w * vec.w
+		};
 	}
 
 	MATH_INLINE constexpr Vector4 operator/(const Vector4& vec) const
 	{
-		return Vector4{ x / vec.x, y / vec.y, z / vec.z, w / vec.w };
+		return Vector4
+		{
+			x / vec.x,
+			y / vec.y,
+			z / vec.z,
+			w / vec.w
+		};
 	}
 
 	MATH_INLINE constexpr Vector4 operator+(const Vector4& vec) const
 	{
-		return Vector4{ x + vec.x, y + vec.y, z + vec.z, w + vec.w };
+		return Vector4
+		{
+			x + vec.x,
+			y + vec.y,
+			z + vec.z,
+			w + vec.w
+		};
 	}
 
 	MATH_INLINE constexpr Vector4 operator-(const Vector4& vec) const
 	{
-		return Vector4{ x - vec.x, y - vec.x, z - vec.z, w - vec.w };
+		return Vector4
+		{
+			x - vec.x,
+			y - vec.x,
+			z - vec.z,
+			w - vec.w
+		};
 	}
 
 	MATH_INLINE constexpr Vector4& operator*=(float val)
