@@ -26,10 +26,11 @@
 #include "Container/Hash.h"
 
 #include "Math/Common.h"
-#include "Math/VectorTypes.h"
-#include "Math/MatrixTypes.h"
-#include "Math/Transform.h"
+#include "Math/Vector.h"
+#include "Math/Matrix.h"
 #include "Math/Color.h"
+#include "Math/Transform.h"
+
 
 #include "Core/Events/ApplicationEvent.h"
 #include "Core/Events/WindowEvent.h"
