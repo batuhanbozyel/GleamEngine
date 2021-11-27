@@ -15,6 +15,8 @@ add_library(googletest STATIC ${SOURCE_FILES_googletest})
 target_include_directories(googletest PRIVATE ${INCLUDE_DIRS_googletest})
 SET_WORKING_DIRECTORY(googletest ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/googletest/googletest)
 
+set_target_properties (googletest PROPERTIES FOLDER Dependencies)
+
 # UnitText executable target
 set(INCLUDE_DIRS_UNIT_TEST
     src
