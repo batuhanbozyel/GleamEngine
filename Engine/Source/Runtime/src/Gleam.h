@@ -8,4 +8,7 @@
 #include "Core/EngineDefines.h"
 #include "Core/PlatformTargetDefines.h"
 
-#include "Math/Math.h"
+#include "Math/Common.h"
+#include "Math/Vector.h"
+#include "Math/Matrix.h"
+#include "Math/Color.h"

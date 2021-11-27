@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include "Gleam.h"
 #include "MathTests.h"
 
 int main(int argc, char* argv[])
