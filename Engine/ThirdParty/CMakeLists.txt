@@ -26,4 +26,5 @@ set_target_properties (
     gtest
     gtest_main
     imgui
-    PROPERTIES FOLDER Dependencies)
+    PROPERTIES FOLDER Dependencies
+)
