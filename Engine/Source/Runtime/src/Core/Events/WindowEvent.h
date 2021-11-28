@@ -1,4 +1,5 @@
 #pragma once
+#include <SDL.h>
 #include "Event.h"
 
 namespace Gleam {
@@ -7,24 +8,24 @@ class WindowEvent : public Event
 {
 public:
 
-	WindowEvent(uint32_t windowID)
-		: m_Window(windowID) {}
+	WindowEvent(SDL_Window* window)
+		: m_Window(window) {}
 
-	uint32_t GetWindowID() const
+	SDL_Window* GetWindow() const
 	{
 		return m_Window;
 	}
 
 private:
 
-	uint32_t m_Window;
+	SDL_Window* m_Window;
 };
 
 class WindowCloseEvent : public WindowEvent
 {
 public:
-	WindowCloseEvent(uint32_t windowID)
-		: WindowEvent(windowID) {}
+	WindowCloseEvent(SDL_Window* window)
+		: WindowEvent(window) {}
 
 	TString ToString() const override
 	{
@@ -38,8 +39,8 @@ class WindowResizeEvent : public WindowEvent
 {
 public:
 
-	WindowResizeEvent(uint32_t windowID, uint32_t width, uint32_t height)
-		: WindowEvent(windowID), m_Width(width), m_Height(height) {}
+	WindowResizeEvent(SDL_Window* window, uint32_t width, uint32_t height)
+		: WindowEvent(window), m_Width(width), m_Height(height) {}
 
 	uint32_t GetWidth() const { return m_Width; }
 	uint32_t GetHeight() const { return m_Height; }
@@ -60,8 +61,8 @@ class WindowMaximizeEvent : public WindowEvent
 {
 public:
 
-	WindowMaximizeEvent(uint32_t windowID)
-		: WindowEvent(windowID) {}
+	WindowMaximizeEvent(SDL_Window* window)
+		: WindowEvent(window) {}
 
 };
 
@@ -69,8 +70,8 @@ class WindowMinimizeEvent : public WindowEvent
 {
 public:
 
-	WindowMinimizeEvent(uint32_t windowID)
-		: WindowEvent(windowID) {}
+	WindowMinimizeEvent(SDL_Window* window)
+		: WindowEvent(window) {}
 
 };
 
@@ -78,8 +79,8 @@ class WindowRestoreEvent : public WindowEvent
 {
 public:
 
-	WindowRestoreEvent(uint32_t windowID)
-		: WindowEvent(windowID)
+	WindowRestoreEvent(SDL_Window* window)
+		: WindowEvent(window)
 	{
 	}
 
@@ -89,8 +90,8 @@ class WindowFocusEvent : public WindowEvent
 {
 public:
 
-	WindowFocusEvent(uint32_t windowID)
-		: WindowEvent(windowID) {}
+	WindowFocusEvent(SDL_Window* window)
+		: WindowEvent(window) {}
 
 };
 
@@ -98,8 +99,8 @@ class WindowLostFocusEvent : public WindowEvent
 {
 public:
 
-	WindowLostFocusEvent(uint32_t windowID)
-		: WindowEvent(windowID) {}
+	WindowLostFocusEvent(SDL_Window* window)
+		: WindowEvent(window) {}
 
 };
 
@@ -107,8 +108,8 @@ class WindowMovedEvent : public WindowEvent
 {
 public:
 
-	WindowMovedEvent(uint32_t windowID, int xPos, int yPos)
-		: WindowEvent(windowID), m_xPos(xPos), m_yPos(yPos) {}
+	WindowMovedEvent(SDL_Window* window, int xPos, int yPos)
+		: WindowEvent(window), m_xPos(xPos), m_yPos(yPos) {}
 
 private:
 
@@ -119,8 +120,8 @@ class WindowMouseLeaveEvent : public WindowEvent
 {
 public:
 
-	WindowMouseLeaveEvent(uint32_t windowID)
-		: WindowEvent(windowID)
+	WindowMouseLeaveEvent(SDL_Window* window)
+		: WindowEvent(window)
 	{
 	}
 
@@ -130,8 +131,8 @@ class WindowMouseEnterEvent : public WindowEvent
 {
 public:
 
-	WindowMouseEnterEvent(uint32_t windowID)
-		: WindowEvent(windowID)
+	WindowMouseEnterEvent(SDL_Window* window)
+		: WindowEvent(window)
 	{
 	}
 

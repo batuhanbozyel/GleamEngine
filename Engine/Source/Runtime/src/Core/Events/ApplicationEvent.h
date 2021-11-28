@@ -3,6 +3,13 @@
 
 namespace Gleam {
 
+class AppCloseEvent : public Event
+{
+public:
+	AppCloseEvent() = default;
+
+};
+
 class AppTickEvent : public Event
 {
 public:

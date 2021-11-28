@@ -3,11 +3,12 @@
 #include "Container/Pointer.h"
 #include "Container/String.h"
 #include "Container/Array.h"
+#include "Container/Hash.h"
 
-#include "Core/PlatformTargetDefines.h"
 #include "Core/EngineDefines.h"
-#include "Core/Application.h"
-#include "Core/Window.h"
+#include "Core/PlatformTargetDefines.h"
 
-// EntryPoint
-#include "Core/EntryPoint.h"
+#include "Math/Common.h"
+#include "Math/Vector.h"
+#include "Math/Matrix.h"
+#include "Math/Color.h"

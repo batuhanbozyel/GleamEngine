@@ -11,14 +11,17 @@ class Application
 {
 public:
 
-	explicit Application(const WindowProperties& props);
+	Application(const WindowProperties& props);
+	~Application();
 
 	void Run();
 
 private:
 
 	bool m_Running = true;
-	UniquePtr<Window> m_Window = nullptr;
+
+	SDL_Event m_Event;
+	HashMap<SDL_Window*, Scope<Window>> m_Windows;
 
 };
 

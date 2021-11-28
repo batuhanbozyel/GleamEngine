@@ -28,3 +28,6 @@
 [submodule "Engine/ThirdParty/cgltf"]
 	path = Engine/ThirdParty/cgltf
 	url = https://github.com/jkuhlmann/cgltf
+[submodule "Engine/ThirdParty/googletest"]
+	path = Engine/ThirdParty/googletest
+	url = https://github.com/google/googletest
