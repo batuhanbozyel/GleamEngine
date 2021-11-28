@@ -86,7 +86,7 @@ Application::Application(const WindowProperties& props)
 
 	int initSucess = SDL_Init(SDL_INIT_VIDEO);
 	SDL_SetEventFilter(SDL2_EventCallback, nullptr);
-	DEBUG_ASSERT(initSucess == 0, "Window subsystem initialization failed!");
+	GLEAM_ASSERT(initSucess == 0, "Window subsystem initialization failed!");
 
 	Scope<Window> mainWindow = CreateScope<Window>(props);
 	m_Windows.emplace(mainWindow->GetSDLWindow(), std::move(mainWindow));

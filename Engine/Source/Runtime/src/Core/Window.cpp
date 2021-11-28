@@ -20,11 +20,11 @@ Window::Window(const WindowProperties& props)
 		SDL_WINDOWPOS_CENTERED_DISPLAY(props.Display.Monitor),
 		props.Display.Width, props.Display.Height,
 		static_cast<uint32_t>(props.Flag));
-	DEBUG_ASSERT(m_Window, "Window creation failed!");
+	GLEAM_ASSERT(m_Window, "Window creation failed!");
 
 	// update window props with the created window info
 	int monitor = SDL_GetWindowDisplayIndex(m_Window);
-	DEBUG_ASSERT(monitor >= 0, "Window display index is invalid!");
+	GLEAM_ASSERT(monitor >= 0, "Window display index is invalid!");
 
 	m_Props.Display = WindowConfig::GetCurrentDisplayMode(monitor);
 }

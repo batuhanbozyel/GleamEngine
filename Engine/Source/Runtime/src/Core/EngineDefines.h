@@ -29,13 +29,9 @@
 	#define INTERNAL_ASSERT_GET_MACRO_NAME(arg1, arg2, macro, ...) macro
 	#define INTERNAL_ASSERT_GET_MACRO(...) EXPAND( INTERNAL_ASSERT_GET_MACRO_NAME(__VA_ARGS__, INTERNAL_ASSERT_WITH_MSG, INTERNAL_ASSERT_NO_MSG) )
 
-	#define STATIC_ASSERT(check, msg) static_assert(check, msg)
-	#define DEBUG_ASSERT(...) EXPAND( INTERNAL_ASSERT_GET_MACRO(__VA_ARGS__)(_, __VA_ARGS__) )
-	#define CORE_DEBUG_ASSERT(...) EXPAND( INTERNAL_ASSERT_GET_MACRO(__VA_ARGS__)(_CORE_, __VA_ARGS__) )
+	#define GLEAM_ASSERT(...) EXPAND( INTERNAL_ASSERT_GET_MACRO(__VA_ARGS__)(_, __VA_ARGS__) )
 #else
-	#define STATIC_ASSERT(check, msg)
-	#define DEBUG_ASSERT(...)
-	#define CORE_DEBUG_ASSERT(...)
+	#define GLEAM_ASSERT(...)
 #endif
 
 #define MATH_INLINE [[nodiscard]] inline
