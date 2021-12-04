@@ -31,8 +31,8 @@ struct Quaternion
 	Quaternion() = default;
 	constexpr Quaternion(Quaternion&&) = default;
 	constexpr Quaternion(const Quaternion&) = default;
-	MATH_INLINE constexpr Quaternion& operator=(Quaternion&&) = default;
-	MATH_INLINE constexpr Quaternion& operator=(const Quaternion&) = default;
+	inline constexpr Quaternion& operator=(Quaternion&&) = default;
+	inline constexpr Quaternion& operator=(const Quaternion&) = default;
 
 	constexpr Quaternion(float w, float x, float y, float z)
 		: w(w), x(x), y(y), z(z)
@@ -82,8 +82,8 @@ struct Matrix2
 	Matrix2() = default;
 	constexpr Matrix2(Matrix2&&) = default;
 	constexpr Matrix2(const Matrix2&) = default;
-	MATH_INLINE constexpr Matrix2& operator=(Matrix2&&) = default;
-	MATH_INLINE constexpr Matrix2& operator=(const Matrix2&) = default;
+	inline constexpr Matrix2& operator=(Matrix2&&) = default;
+	inline constexpr Matrix2& operator=(const Matrix2&) = default;
 
 	constexpr Matrix2(float m00, float m01,
 					  float m10, float m11)
@@ -136,8 +136,8 @@ struct Matrix3
 	Matrix3() = default;
 	constexpr Matrix3(Matrix3&&) = default;
 	constexpr Matrix3(const Matrix3&) = default;
-	MATH_INLINE constexpr Matrix3& operator=(Matrix3&&) = default;
-	MATH_INLINE constexpr Matrix3& operator=(const Matrix3&) = default;
+	inline constexpr Matrix3& operator=(Matrix3&&) = default;
+	inline constexpr Matrix3& operator=(const Matrix3&) = default;
 
 	constexpr Matrix3(float m00, float m01, float m02,
 					  float m10, float m11, float m12,
@@ -193,8 +193,8 @@ struct Matrix4
 	Matrix4() = default;
 	constexpr Matrix4(Matrix4&&) = default;
 	constexpr Matrix4(const Matrix4&) = default;
-	MATH_INLINE constexpr Matrix4& operator=(Matrix4&&) = default;
-	MATH_INLINE constexpr Matrix4& operator=(const Matrix4&) = default;
+	inline constexpr Matrix4& operator=(Matrix4&&) = default;
+	inline constexpr Matrix4& operator=(const Matrix4&) = default;
 
 	constexpr Matrix4(float m00, float m01, float m02, float m03,
 					  float m10, float m11, float m12, float m13,
@@ -271,17 +271,17 @@ struct Matrix4
 		};
 	}
 
-	MATH_INLINE static constexpr Matrix4 TRS(const Vector3& translation, const Quaternion& quat, const Vector3& scale)
+	MATH_INLINE static constexpr Matrix4 TRS(const Vector3& translation, const Quaternion& rotation, const Vector3& scale)
 	{
-		float qxx = quat.x * quat.x;
-		float qxy = quat.x * quat.y;
-		float qxz = quat.x * quat.z;
-		float qyy = quat.y * quat.y;
-		float qyz = quat.y * quat.z;
-		float qzz = quat.z * quat.z;
-		float qwx = quat.w * quat.x;
-		float qwy = quat.w * quat.y;
-		float qwz = quat.w * quat.z;
+		float qxx = rotation.x * rotation.x;
+		float qxy = rotation.x * rotation.y;
+		float qxz = rotation.x * rotation.z;
+		float qyy = rotation.y * rotation.y;
+		float qyz = rotation.y * rotation.z;
+		float qzz = rotation.z * rotation.z;
+		float qwx = rotation.w * rotation.x;
+		float qwy = rotation.w * rotation.y;
+		float qwz = rotation.w * rotation.z;
 
 		return Matrix4
 		{

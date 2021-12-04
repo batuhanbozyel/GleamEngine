@@ -105,22 +105,22 @@ struct Color : public Vector4
 	}
 
 	// Operator overloads
-	MATH_INLINE constexpr Color& operator=(Color&&) = default;
-	MATH_INLINE constexpr Color& operator=(const Color&) = default;
+	inline constexpr Color& operator=(Color&&) = default;
+	inline constexpr Color& operator=(const Color&) = default;
 
-	MATH_INLINE constexpr Color& operator=(const Vector4& color)
+	inline constexpr Color& operator=(const Vector4& color)
 	{
 		value = color.value;
 		return *this;
 	}
-	MATH_INLINE constexpr Color& operator=(Vector4&& color)
+	inline constexpr Color& operator=(Vector4&& color)
 	{
 		value = std::move(color.value);
 		return *this;
 	}
 
 	MATH_INLINE constexpr operator Color32() const;
-	MATH_INLINE constexpr Color& operator=(const Color32&);
+	inline constexpr Color& operator=(const Color32&);
 
 };
 
@@ -136,7 +136,7 @@ struct Color32
 	}
 
 	MATH_INLINE constexpr operator Color() const;
-	MATH_INLINE constexpr Color32& operator=(const Color&);
+	inline constexpr Color32& operator=(const Color&);
 
 };
 
@@ -162,12 +162,12 @@ MATH_INLINE constexpr Color32::operator Color() const
 	};
 }
 
-MATH_INLINE constexpr Color& Color::operator=(const Color32& color)
+inline constexpr Color& Color::operator=(const Color32& color)
 {
 	return *this = static_cast<Color>(color);
 }
 
-MATH_INLINE constexpr Color32& Color32::operator=(const Color& color)
+inline constexpr Color32& Color32::operator=(const Color& color)
 {
 	return *this = static_cast<Color32>(color);
 }
