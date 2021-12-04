@@ -20,8 +20,8 @@ struct Vector2
 	Vector2() = default;
 	constexpr Vector2(Vector2&&) = default;
 	constexpr Vector2(const Vector2&) = default;
-	MATH_INLINE constexpr Vector2& operator=(Vector2&&) = default;
-	MATH_INLINE constexpr Vector2& operator=(const Vector2&) = default;
+	inline constexpr Vector2& operator=(Vector2&&) = default;
+	inline constexpr Vector2& operator=(const Vector2&) = default;
 
 	constexpr Vector2(float v)
 		: x(v), y(v)
@@ -192,8 +192,8 @@ struct Vector3
 	Vector3() = default;
 	constexpr Vector3(Vector3&&) = default;
 	constexpr Vector3(const Vector3&) = default;
-	MATH_INLINE constexpr Vector3& operator=(Vector3&&) = default;
-	MATH_INLINE constexpr Vector3& operator=(const Vector3&) = default;
+	inline constexpr Vector3& operator=(Vector3&&) = default;
+	inline constexpr Vector3& operator=(const Vector3&) = default;
 
 	constexpr Vector3(float v)
 		: x(v), y(v), z(v)
@@ -380,8 +380,8 @@ struct Vector4
 	Vector4() = default;
 	constexpr Vector4(Vector4&&) = default;
 	constexpr Vector4(const Vector4&) = default;
-	MATH_INLINE constexpr Vector4& operator=(Vector4&&) = default;
-	MATH_INLINE constexpr Vector4& operator=(const Vector4&) = default;
+	inline constexpr Vector4& operator=(Vector4&&) = default;
+	inline constexpr Vector4& operator=(const Vector4&) = default;
 
 	constexpr Vector4(float v)
 		: x(v), y(v), z(v), w(v)
@@ -572,8 +572,8 @@ MATH_INLINE constexpr Vector2 Cos(const Vector2& vec)
 {
 	return Vector2
 	{
-		std::cos(vec.x),
-		std::cos(vec.y)
+		Cos(vec.x),
+		Cos(vec.y)
 	};
 }
 
@@ -581,9 +581,9 @@ MATH_INLINE constexpr Vector3 Cos(const Vector3& vec)
 {
 	return Vector3
 	{
-		std::cos(vec.x),
-		std::cos(vec.y),
-		std::cos(vec.z)
+		Cos(vec.x),
+		Cos(vec.y),
+		Cos(vec.z)
 	};
 }
 
@@ -591,10 +591,10 @@ MATH_INLINE constexpr Vector4 Cos(const Vector4& vec)
 {
 	return Vector4
 	{
-		std::cos(vec.x),
-		std::cos(vec.y),
-		std::cos(vec.z),
-		std::cos(vec.w)
+		Cos(vec.x),
+		Cos(vec.y),
+		Cos(vec.z),
+		Cos(vec.w)
 	};
 }
 
@@ -602,8 +602,8 @@ MATH_INLINE constexpr Vector2 Sin(const Vector2& vec)
 {
 	return Vector2
 	{
-		std::sin(vec.x),
-		std::sin(vec.y)
+		Sin(vec.x),
+		Sin(vec.y)
 	};
 }
 
@@ -611,9 +611,9 @@ MATH_INLINE constexpr Vector3 Sin(const Vector3& vec)
 {
 	return Vector3
 	{
-		std::sin(vec.x),
-		std::sin(vec.y),
-		std::sin(vec.z)
+		Sin(vec.x),
+		Sin(vec.y),
+		Sin(vec.z)
 	};
 }
 
@@ -621,10 +621,10 @@ MATH_INLINE constexpr Vector4 Sin(const Vector4& vec)
 {
 	return Vector4
 	{
-		std::sin(vec.x),
-		std::sin(vec.y),
-		std::sin(vec.z),
-		std::sin(vec.w)
+		Sin(vec.x),
+		Sin(vec.y),
+		Sin(vec.z),
+		Sin(vec.w)
 	};
 }
 
@@ -632,8 +632,8 @@ MATH_INLINE constexpr Vector2 Abs(const Vector2& vec)
 {
 	return Vector2
 	{
-		std::abs(vec.x),
-		std::abs(vec.y)
+		Abs(vec.x),
+		Abs(vec.y)
 	};
 }
 
@@ -641,9 +641,9 @@ MATH_INLINE constexpr Vector3 Abs(const Vector3& vec)
 {
 	return Vector3
 	{
-		std::abs(vec.x),
-		std::abs(vec.y),
-		std::abs(vec.z)
+		Abs(vec.x),
+		Abs(vec.y),
+		Abs(vec.z)
 	};
 }
 
@@ -651,10 +651,10 @@ MATH_INLINE constexpr Vector4 Abs(const Vector4& vec)
 {
 	return Vector4
 	{
-		std::abs(vec.x),
-		std::abs(vec.y),
-		std::abs(vec.z),
-		std::abs(vec.w)
+		Abs(vec.x),
+		Abs(vec.y),
+		Abs(vec.z),
+		Abs(vec.w)
 	};
 }
 

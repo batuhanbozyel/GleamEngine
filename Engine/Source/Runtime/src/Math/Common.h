@@ -4,12 +4,13 @@ namespace Gleam {
 
 namespace Math {
 
-constexpr float PI = 3.14159265358979323846f;
-constexpr float PI_2 = 1.57079632679489661923f;
-constexpr float PI_4 = 0.785398163397448309616f;
-constexpr float Epsilon = FLT_EPSILON;
+constexpr float PI = 3.14159265359f;
+constexpr float PI_2 = 1.57079632679f;
+constexpr float PI_4 = 0.78539816339f;
+constexpr float TWO_PI = 6.28318530718f;
+constexpr float Epsilon = 1e-5f;
 constexpr float BigEpsilon = 1e-2f;
-constexpr double SmallEpsilon = DBL_EPSILON;
+constexpr double SmallEpsilon = 1e-9f;
 constexpr float Infinity = std::numeric_limits<float>::max();
 constexpr float NegativeInfinity = std::numeric_limits<float>::lowest();
 
