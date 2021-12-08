@@ -1,5 +1,6 @@
 #pragma once
 #include "Window.h"
+#include "Renderer/GraphicsContext.h"
 
 #ifdef __cplusplus
 extern "C"
@@ -21,6 +22,7 @@ private:
 	bool m_Running = true;
 
 	SDL_Event m_Event;
+	Scope<GraphicsContext> m_GraphicsContext;
 	HashMap<SDL_Window*, Scope<Window>> m_Windows;
 
 };

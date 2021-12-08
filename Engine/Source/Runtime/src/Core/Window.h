@@ -1,5 +1,6 @@
 #pragma once
 #include <SDL.h>
+
 #include "WindowConfig.h"
 
 namespace Gleam {

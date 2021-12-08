@@ -91,6 +91,8 @@ Application::Application(const WindowProperties& props)
 	Scope<Window> mainWindow = CreateScope<Window>(props);
 	m_Windows.emplace(mainWindow->GetSDLWindow(), std::move(mainWindow));
 
+	m_GraphicsContext = CreateScope<GraphicsContext>(props.Title);
+
 	EventDispatcher<AppCloseEvent>::Subscribe([this](AppCloseEvent e)
 	{
 		m_Running = false;
@@ -114,6 +116,7 @@ void Application::Run()
 
 Application::~Application()
 {
+	m_GraphicsContext.reset();
 	m_Windows.clear();
 	SDL_Quit();
 }

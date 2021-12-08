@@ -2,17 +2,23 @@
 
 namespace Gleam {
 
+#ifdef USE_VULKAN_RENDERER
+#define GLEAM_WINDOW_RENDERER_API SDL_WINDOW_VULKAN
+#else
+#define GLEAM_WINDOW_RENDERER_API SDL_WINDOW_METAL
+#endif 
+
 enum class WindowFlag : uint32_t
 {
 #if defined(PLATFORM_WINDOWS) || defined(PLATFORM_MACOS) || defined(PLATFORM_LINUX)
-	BorderlessFullscreen = SDL_WINDOW_BORDERLESS | SDL_WINDOW_FULLSCREEN_DESKTOP | SDL_WINDOW_RESIZABLE,
-	ExclusiveFullscreen = SDL_WINDOW_FULLSCREEN_DESKTOP | SDL_WINDOW_RESIZABLE,
+	BorderlessFullscreen = SDL_WINDOW_BORDERLESS | SDL_WINDOW_FULLSCREEN_DESKTOP | SDL_WINDOW_RESIZABLE | GLEAM_WINDOW_RENDERER_API,
+	ExclusiveFullscreen = SDL_WINDOW_FULLSCREEN_DESKTOP | SDL_WINDOW_RESIZABLE | GLEAM_WINDOW_RENDERER_API,
 #else
-	BorderlessFullscreen = SDL_WINDOW_BORDERLESS | SDL_WINDOW_FULLSCREEN,
-	ExclusiveFullscreen = SDL_WINDOW_FULLSCREEN,
+	BorderlessFullscreen = SDL_WINDOW_BORDERLESS | SDL_WINDOW_FULLSCREEN | GLEAM_WINDOW_RENDERER_API,
+	ExclusiveFullscreen = SDL_WINDOW_FULLSCREEN | GLEAM_WINDOW_RENDERER_API,
 #endif
-	MaximizedWindow = SDL_WINDOW_MAXIMIZED | SDL_WINDOW_RESIZABLE,
-	CustomWindow = SDL_WINDOW_RESIZABLE
+	MaximizedWindow = SDL_WINDOW_MAXIMIZED | SDL_WINDOW_RESIZABLE | GLEAM_WINDOW_RENDERER_API,
+	CustomWindow = SDL_WINDOW_RESIZABLE | GLEAM_WINDOW_RENDERER_API
 };
 
 struct DisplayMode
@@ -71,6 +77,12 @@ struct WindowProperties
 	}
 };
 
+struct RendererInstanceWindowExtensions
+{
+	uint32_t Count;
+	TArray<const char*> Names;
+};
+
 class WindowConfig
 {
 public:
@@ -99,7 +111,7 @@ public:
 		);
 	}
 
-	static std::vector<DisplayMode> GetAvailableDisplayModes(uint32_t monitor)
+	static TArray<DisplayMode> GetAvailableDisplayModes(uint32_t monitor)
 	{
 		uint32_t numDisplayModes = GetNumDisplayModes(monitor);
 		TArray<DisplayMode> availableDisplayModes(numDisplayModes);

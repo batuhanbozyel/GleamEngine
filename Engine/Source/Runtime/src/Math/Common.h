@@ -268,6 +268,6 @@ MATH_INLINE constexpr T Mix(const T& x, const T& y, const T& a)
 	return x * (T(1) - a) + y * a;
 }
 
-}
+} // namespace Math
 
-}
+} // namespace Gleam
