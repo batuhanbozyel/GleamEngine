@@ -1,6 +1,7 @@
 include (${CMAKE_SOURCE_DIR}/CMake/CMakeUtils.cmake)
 
 add_subdirectory(SDL2)
+add_subdirectory(volk)
 add_subdirectory(googletest)
 
 add_library(imgui STATIC
@@ -26,5 +27,6 @@ set_target_properties (
     gtest
     gtest_main
     imgui
+    volk
     PROPERTIES FOLDER Dependencies
 )

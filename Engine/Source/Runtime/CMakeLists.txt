@@ -14,10 +14,11 @@ if (WIN32)
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/tinyobjloader
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/OpenFBX/src
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/cgltf
+        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/volk
     )
 
     set(LIB_LINKS_RUNTIME
-        ${Vulkan_LIBRARIES}
+        ${CMAKE_SOURCE_DIR}/bin/$<CONFIG>/volk.lib
         ${CMAKE_SOURCE_DIR}/bin/$<CONFIG>/imgui.lib
     )
 else ()
@@ -46,7 +47,7 @@ file(GLOB_RECURSE SOURCE_FILES
 )
 
 add_library(Runtime STATIC ${SOURCE_FILES})
-add_dependencies(Runtime imgui)
+add_dependencies(Runtime imgui volk)
 target_include_directories(Runtime PUBLIC ${INCLUDE_DIRS_RUNTIME})
 
 set_property(TARGET Runtime PROPERTY STATIC_LIBRARY_OPTIONS ${LIB_LINKS_RUNTIME})

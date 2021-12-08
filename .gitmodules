@@ -31,3 +31,6 @@
 [submodule "Engine/ThirdParty/googletest"]
 	path = Engine/ThirdParty/googletest
 	url = https://github.com/google/googletest
+[submodule "Engine/ThirdParty/volk"]
+	path = Engine/ThirdParty/volk
+	url = https://github.com/zeux/volk
