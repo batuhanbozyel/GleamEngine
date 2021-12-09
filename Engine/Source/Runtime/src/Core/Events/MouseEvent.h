@@ -7,14 +7,14 @@ class MouseButtonEvent : public Event
 {
 public:
 
-	int GetMouseButton() const { return m_MouseCode; }
+	int GetMouseButton() const { return mMouseCode; }
 
 protected:
 
 	MouseButtonEvent(int mouseCode)
-		: m_MouseCode(mouseCode) {}
+		: mMouseCode(mouseCode) {}
 
-	int m_MouseCode;
+	int mMouseCode;
 };
 
 class MouseButtonPressedEvent : public MouseButtonEvent
@@ -27,7 +27,7 @@ public:
 	TString ToString() const override
 	{
 		TStringStream ss;
-		ss << "MouseButtonPressedEvent: " << m_MouseCode;
+		ss << "MouseButtonPressedEvent: " << mMouseCode;
 		return ss.str();
 	}
 };
@@ -42,7 +42,7 @@ public:
 	TString ToString() const override
 	{
 		TStringStream ss;
-		ss << "MouseButtonReleasedEvent: " << m_MouseCode;
+		ss << "MouseButtonReleasedEvent: " << mMouseCode;
 		return ss.str();
 	}
 };
@@ -52,21 +52,21 @@ class MouseMovedEvent : public Event
 public:
 
 	MouseMovedEvent(float xpos, float ypos)
-		: m_MousePos(xpos, ypos) {}
+		: mMousePos(xpos, ypos) {}
 
 
-	const std::pair<float, float>& GetPos() const { return m_MousePos; }
+	const Vector2& GetPos() const { return mMousePos; }
 
 	TString ToString() const override
 	{
 		TStringStream ss;
-		ss << "MouseMovedEvent: " << m_MousePos.first << ", " << m_MousePos.second;
+		ss << "MouseMovedEvent: " << mMousePos.x << ", " << mMousePos.y;
 		return ss.str();
 	}
 
 private:
 
-	std::pair<float, float> m_MousePos;
+	Vector2 mMousePos;
 };
 
 class MouseScrolledEvent : public Event
@@ -74,20 +74,20 @@ class MouseScrolledEvent : public Event
 public:
 
 	MouseScrolledEvent(float xoffset, float yoffset)
-		: m_MouseScrollOffset(xoffset, yoffset) {}
+		: mMouseScrollOffset(xoffset, yoffset) {}
 
-	const std::pair<float, float>& GetOffset() const { return m_MouseScrollOffset; }
+	const Vector2& GetOffset() const { return mMouseScrollOffset; }
 
 	TString ToString() const override
 	{
 		TStringStream ss;
-		ss << "MouseScrolledEvent: " << m_MouseScrollOffset.first << ", " << m_MouseScrollOffset.second;
+		ss << "MouseScrolledEvent: " << mMouseScrollOffset.x << ", " << mMouseScrollOffset.y;
 		return ss.str();
 	}
 
 private:
 
-	std::pair<float, float> m_MouseScrollOffset;
+	Vector2 mMouseScrollOffset;
 };
 
-}
+} // namespace Gleam

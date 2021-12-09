@@ -19,13 +19,14 @@ public:
 
 private:
 
-	bool m_Running = true;
+	bool mRunning = true;
 
-	SDL_Event m_Event;
-	Scope<GraphicsContext> m_GraphicsContext;
-	HashMap<SDL_Window*, Scope<Window>> m_Windows;
+	SDL_Event mEvent;
+	Scope<GraphicsContext> mGraphicsContext;
+	HashMap<SDL_Window*, Scope<Window>> mWindows;
 
 };
 
 Application* CreateApplication();
-}
+
+} // namespace Gleam

@@ -7,8 +7,8 @@ class GleamEditor : public Gleam::Application
 {
 public:
 
-	GleamEditor()
-		: Gleam::Application({"Gleam Editor", Gleam::WindowFlag::MaximizedWindow})
+	GleamEditor(const Gleam::WindowProperties& props)
+		: Gleam::Application(props)
 	{
 
 	}
@@ -26,5 +26,8 @@ private:
 
 Gleam::Application* Gleam::CreateApplication()
 {
-	return new GEditor::GleamEditor;
+	Gleam::WindowProperties props;
+	props.title = "Gleam Editor";
+	props.windowFlag = Gleam::WindowFlag::MaximizedWindow;
+	return new GEditor::GleamEditor(props);
 }

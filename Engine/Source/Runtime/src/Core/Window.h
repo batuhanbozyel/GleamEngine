@@ -14,12 +14,12 @@ public:
 
 	const WindowProperties& GetProps() const
 	{
-		return m_Props;
+		return mProps;
 	}
 
 	SDL_Window* GetSDLWindow() const
 	{
-		return m_Window;
+		return mWindow;
 	}
 
 	void Resize(uint32_t width, uint32_t height);
@@ -29,9 +29,9 @@ public:
 
 private:
 
-	SDL_Window* m_Window;
-	WindowProperties m_Props;
+	SDL_Window* mWindow;
+	WindowProperties mProps;
 
 };
 
-}
+} // namespace Gleam

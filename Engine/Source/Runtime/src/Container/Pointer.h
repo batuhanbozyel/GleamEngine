@@ -24,4 +24,4 @@ template<typename T, typename ... Args>
 	return std::make_shared<T>(std::forward<Args>(args)...);
 }
 
-}
+} // namespace Gleam

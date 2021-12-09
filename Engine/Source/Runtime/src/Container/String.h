@@ -8,4 +8,4 @@ using TString = std::string;
 
 using TStringStream = std::stringstream;
 
-}
+} // namespace Gleam

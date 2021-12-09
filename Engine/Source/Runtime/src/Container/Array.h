@@ -19,4 +19,4 @@ struct ArrayHelper<T, 0>
 template<typename T, size_t size = 0>
 using TArray = typename ArrayHelper<T, size>::Type;
 
-}
+} // namespace Gleam

@@ -8,17 +8,17 @@ class Log
 public:
 	static void Init();
 
-	static Ref<spdlog::logger>& GetCoreLogger() { return s_CoreLogger;  }
-	static Ref<spdlog::logger>& GetClientLogger() { return s_ClientLogger; }
+	static Ref<spdlog::logger>& GetCoreLogger() { return sCoreLogger;  }
+	static Ref<spdlog::logger>& GetClientLogger() { return sClientLogger; }
 
 private:
 
-	static inline Ref<spdlog::logger> s_CoreLogger = nullptr;
-	static inline Ref<spdlog::logger> s_ClientLogger = nullptr;
+	static inline Ref<spdlog::logger> sCoreLogger = nullptr;
+	static inline Ref<spdlog::logger> sClientLogger = nullptr;
 
 };
 
-}
+} // namespace Gleam
 
 // Core log macros
 #define GLEAM_CORE_TRACE(...)    ::Gleam::Log::GetCoreLogger()->trace(__VA_ARGS__)

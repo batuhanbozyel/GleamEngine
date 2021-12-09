@@ -23,64 +23,60 @@ enum class WindowFlag : uint32_t
 
 struct DisplayMode
 {
-	uint32_t Width = 0, Height = 0;
-	uint32_t RefreshRate = 0;
-	uint32_t Monitor = 0;
+	uint32_t width = 0, height = 0;
+	uint32_t refreshRate = 0;
+	uint32_t monitor = 0;
 
 	DisplayMode() = default;
 
 	DisplayMode(uint32_t monitor)
-		: Monitor(monitor)
+		: monitor(monitor)
 	{
 	}
 
 	DisplayMode(uint32_t width, uint32_t height)
-		: Width(width), Height(height)
+		: width(width), height(height)
 	{
 	}
 
 	DisplayMode(uint32_t width, uint32_t height, uint32_t monitor)
-		: Width(width), Height(height), Monitor(monitor)
+		: width(width), height(height), monitor(monitor)
 	{
 	}
 
 	DisplayMode(uint32_t width, uint32_t height, uint32_t refreshRate, uint32_t monitor)
-		: Width(width), Height(height), RefreshRate(refreshRate), Monitor(monitor)
+		: width(width), height(height), refreshRate(refreshRate), monitor(monitor)
 	{
 	}
 };
 
 struct WindowProperties
 {
-	TString Title = "Gleam Application";
-	DisplayMode Display;
-	WindowFlag Flag = WindowFlag::CustomWindow;
+	TString title = "Gleam Application";
+	WindowFlag windowFlag = WindowFlag::CustomWindow;
+	DisplayMode display;
+
+	WindowProperties() = default;
 
 	WindowProperties(const TString& title, WindowFlag flag)
-		: Title(title), Flag(flag)
+		: title(title), windowFlag(flag)
 	{
 	}
 
 	WindowProperties(const TString& title, WindowFlag flag, uint32_t monitor)
-		: Title(title), Flag(flag), Display(monitor)
+		: title(title), windowFlag(flag), display(monitor)
 	{
 	}
 
 	WindowProperties(const TString& title, uint32_t width, uint32_t height, WindowFlag flag)
-		: Title(title), Flag(flag), Display(width, height)
+		: title(title), windowFlag(flag), display(width, height)
 	{
 	}
 
 	WindowProperties(const TString& title, uint32_t width, uint32_t height, uint32_t monitor, WindowFlag flag)
-		: Title(title), Display(width, height, monitor), Flag(flag)
+		: title(title), display(width, height, monitor), windowFlag(flag)
 	{
 	}
-};
-
-struct RendererInstanceWindowExtensions
-{
-	uint32_t Count;
-	TArray<const char*> Names;
 };
 
 class WindowConfig
@@ -134,4 +130,4 @@ public:
 
 };
 
-}
+} // namespace Gleam

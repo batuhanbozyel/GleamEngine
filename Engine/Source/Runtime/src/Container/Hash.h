@@ -10,7 +10,7 @@ using HashMap = std::unordered_map<K, V>;
 template<typename K>
 using HashSet = std::unordered_set<K>;
 
-}
+} // namespace Gleam
 
 /**
  * Hash functions
@@ -19,4 +19,4 @@ using HashSet = std::unordered_set<K>;
 namespace std {
 
 
-}
+} // namespace std
