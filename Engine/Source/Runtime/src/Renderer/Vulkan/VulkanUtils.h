@@ -1,20 +1,9 @@
-#include "gpch.h"
+#pragma once
 
-#ifdef USE_VULKAN_RENDERER
-#include <volk.h>
-#include <SDL_vulkan.h>
+namespace Gleam {
 
-#include "Renderer/GraphicsContext.h"
-#include "Core/WindowConfig.h"
-
-using namespace Gleam;
-
-struct VulkanContext
-{
-	VkInstance Instance;
-	VkSurfaceKHR Surface;
-	TArray<VkExtensionProperties> Extensions;
-} static sContext;
+#define VK_CHECK(x) VkResult result = x;\
+					GLEAM_ASSERT(result == VK_SUCCESS, VkResultToString(x))
 
 static constexpr const char* VkResultToString(VkResult result)
 {
@@ -62,59 +51,4 @@ static constexpr const char* VkResultToString(VkResult result)
 	}
 }
 
-GraphicsContext::GraphicsContext(const TString& appName)
-{
-	VkResult loadVKResult = volkInitialize();
-	GLEAM_ASSERT(loadVKResult == VK_SUCCESS, "Vulkan meta-loader failed to load entry points!");
-
-	// Get window subsystem extensions
-	uint32_t extensionCount;
-	SDL_Vulkan_GetInstanceExtensions(nullptr, &extensionCount, nullptr);
-	TArray<const char*> extensions(extensionCount);
-	SDL_Vulkan_GetInstanceExtensions(nullptr, &extensionCount, extensions.data());
-
-	VkApplicationInfo appInfo{ VK_STRUCTURE_TYPE_APPLICATION_INFO };
-	appInfo.pApplicationName = appName.c_str();
-	appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
-	appInfo.pEngineName = "Gleam Engine";
-	appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
-	appInfo.apiVersion = VK_API_VERSION_1_0;
-
-	VkInstanceCreateInfo createInfo{ VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO };
-	createInfo.pApplicationInfo = &appInfo;
-#ifdef GDEBUG
-	extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-
-	// Get validation layers
-	TArray<const char*, 1> validationLayers{ "VK_LAYER_KHRONOS_validation" };
-	createInfo.enabledLayerCount = 1;
-	createInfo.ppEnabledLayerNames = validationLayers.data();
-#else
-	createInfo.enabledLayerCount = 0;
-	createInfo.ppEnabledLayerNames = nullptr;
-#endif
-	createInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
-	createInfo.ppEnabledExtensionNames = extensions.data();
-
-	VkResult instanceCreateResult = vkCreateInstance(&createInfo, nullptr, &sContext.Instance);
-	GLEAM_ASSERT(instanceCreateResult == VK_SUCCESS, VkResultToString(instanceCreateResult));
-
-	volkLoadInstance(sContext.Instance);
-
-	// Get available extensions
-	vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
-	sContext.Extensions.resize(extensionCount);
-	vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, sContext.Extensions.data());
-
-	GLEAM_CORE_INFO("Vulkan graphics context created.");
-}
-
-GraphicsContext::~GraphicsContext()
-{
-	vkDestroySurfaceKHR(sContext.Instance, sContext.Surface, nullptr);
-	vkDestroyInstance(sContext.Instance, nullptr);
-
-	GLEAM_CORE_INFO("Vulkan graphics context destroyed.");
-}
-
-#endif
+} // namespace Gleam

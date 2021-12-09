@@ -88,35 +88,34 @@ Application::Application(const WindowProperties& props)
 	SDL_SetEventFilter(SDL2_EventCallback, nullptr);
 	GLEAM_ASSERT(initSucess == 0, "Window subsystem initialization failed!");
 
-	Scope<Window> mainWindow = CreateScope<Window>(props);
-	m_Windows.emplace(mainWindow->GetSDLWindow(), std::move(mainWindow));
-
-	m_GraphicsContext = CreateScope<GraphicsContext>(props.Title);
+	Window* mainWindow = new Window(props);
+	mWindows.emplace(mainWindow->GetSDLWindow(), Scope<Window>(mainWindow));
+	mGraphicsContext = CreateScope<GraphicsContext>(props.title, *mainWindow);
 
 	EventDispatcher<AppCloseEvent>::Subscribe([this](AppCloseEvent e)
 	{
-		m_Running = false;
+		mRunning = false;
 		return true;
 	});
 
 	EventDispatcher<WindowCloseEvent>::Subscribe([this](WindowCloseEvent e)
 	{
-		m_Windows.erase(e.GetWindow());
+		mWindows.erase(e.GetWindow());
 		return true;
 	});
 }
 
 void Application::Run()
 {
-	while (m_Running)
+	while (mRunning)
 	{
-		while (SDL_PollEvent(&m_Event));
+		while (SDL_PollEvent(&mEvent));
 	}
 }
 
 Application::~Application()
 {
-	m_GraphicsContext.reset();
-	m_Windows.clear();
+	mGraphicsContext.reset();
+	mWindows.clear();
 	SDL_Quit();
 }
