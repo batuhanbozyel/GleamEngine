@@ -37,3 +37,12 @@
 #define MATH_INLINE [[nodiscard]] inline
 #define PASS_BY_VALUE typename = std::enable_if_t<(sizeof(T) <= sizeof(int))>
 #define PASS_BY_REFERENCE typename = std::enable_if_t<(sizeof(T) > sizeof(int))>
+
+#define GLEAM_ENGINE_MAJOR_VERSION 1
+#define GLEAM_ENGINE_MINOR_VERSION 0
+#define GLEAM_ENGINE_PATCH_VERSION 0
+#define GLEAM_ENGINE_VERSION Gleam::Version(GLEAM_ENGINE_MAJOR_VERSION, GLEAM_ENGINE_MINOR_VERSION, GLEAM_ENGINE_PATCH_VERSION)
+
+#ifdef USE_VULKAN_RENDERER
+#define VULKAN_API_VERSION VK_API_VERSION_1_0
+#endif

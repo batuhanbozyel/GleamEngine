@@ -5,20 +5,22 @@
 #include <SDL_vulkan.h>
 #include "VulkanUtils.h"
 
+#include "Core/Window.h"
+#include "Core/Application.h"
 #include "Renderer/GraphicsContext.h"
 
 using namespace Gleam;
 
 struct VulkanContext
 {
-	VkDevice Device;
 	VkInstance Instance;
-	VkSurfaceKHR Surface;
-	VkPhysicalDevice PhysicalDevice;
-	TArray<VkExtensionProperties> Extensions;
 #ifdef GDEBUG
 	VkDebugUtilsMessengerEXT DebugMessenger;
 #endif
+	VkSurfaceKHR Surface;
+	TArray<VkExtensionProperties> Extensions;
+	VkDevice Device;
+	VkPhysicalDevice PhysicalDevice;
 } static sContext;
 
 
@@ -48,7 +50,7 @@ VKAPI_ATTR VkBool32 VKAPI_CALL VulkanDebugCallback(
 	return VK_FALSE;
 }
 
-static void CreateInstance(const TString& appName)
+static void CreateInstance(const TString& appName, const Version& appVersion)
 {
 	// Get window subsystem extensions
 	uint32_t extensionCount;
@@ -58,10 +60,10 @@ static void CreateInstance(const TString& appName)
 
 	VkApplicationInfo appInfo{ VK_STRUCTURE_TYPE_APPLICATION_INFO };
 	appInfo.pApplicationName = appName.c_str();
-	appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
+	appInfo.applicationVersion = VK_MAKE_VERSION(appVersion.major, appVersion.minor, appVersion.patch);
 	appInfo.pEngineName = "Gleam Engine";
-	appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
-	appInfo.apiVersion = VK_API_VERSION_1_0;
+	appInfo.engineVersion = VK_MAKE_VERSION(GLEAM_ENGINE_MAJOR_VERSION, GLEAM_ENGINE_MINOR_VERSION, GLEAM_ENGINE_PATCH_VERSION);
+	appInfo.apiVersion = VULKAN_API_VERSION;
 
 	VkInstanceCreateInfo createInfo{ VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO };
 	createInfo.pApplicationInfo = &appInfo;
@@ -118,12 +120,12 @@ static void CreateDevice()
 	VK_CHECK(vkCreateDevice(sContext.PhysicalDevice, &deviceCreateInfo, nullptr, &sContext.Device));
 }
 
-GraphicsContext::GraphicsContext(const TString& appName, const Window& window)
+GraphicsContext::GraphicsContext(const Window& window, const TString& appName, const Version& appVersion)
 {
 	VkResult loadVKResult = volkInitialize();
 	GLEAM_ASSERT(loadVKResult == VK_SUCCESS, "Vulkan meta-loader failed to load entry points!");
 
-	CreateInstance(appName);
+	CreateInstance(appName, appVersion);
 	volkLoadInstance(sContext.Instance);
 
 	// Get available extensions

@@ -2,6 +2,7 @@
 #include "Application.h"
 
 #include "Events/WindowEvent.h"
+#include "Renderer/GraphicsContext.h"
 
 using namespace Gleam;
 
@@ -80,7 +81,8 @@ static int SDLCALL SDL2_EventCallback(void* data, SDL_Event* e)
 	return 0;
 }
 
-Application::Application(const WindowProperties& props)
+Application::Application(const ApplicationProperties& props)
+	: mVersion(props.appVersion)
 {
 	Log::Init();
 
@@ -88,9 +90,9 @@ Application::Application(const WindowProperties& props)
 	SDL_SetEventFilter(SDL2_EventCallback, nullptr);
 	GLEAM_ASSERT(initSucess == 0, "Window subsystem initialization failed!");
 
-	Window* mainWindow = new Window(props);
+	Window* mainWindow = new Window(props.windowProps);
 	mWindows.emplace(mainWindow->GetSDLWindow(), Scope<Window>(mainWindow));
-	mGraphicsContext = CreateScope<GraphicsContext>(props.title, *mainWindow);
+	mGraphicsContext = CreateScope<GraphicsContext>(*mainWindow, props.windowProps.title, props.appVersion);
 
 	EventDispatcher<AppCloseEvent>::Subscribe([this](AppCloseEvent e)
 	{

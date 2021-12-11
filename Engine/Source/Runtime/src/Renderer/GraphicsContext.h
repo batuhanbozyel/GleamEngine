@@ -1,13 +1,15 @@
 #pragma once
-#include "Core/Window.h"
 
 namespace Gleam {
+
+class Window;
+struct Version;
 
 class GraphicsContext
 {
 public:
 
-	GraphicsContext(const TString& appName, const Window& window);
+	GraphicsContext(const Window& window, const TString& appName, const Version& appVersion);
 	~GraphicsContext();
 
 };
