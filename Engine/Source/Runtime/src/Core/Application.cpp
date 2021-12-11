@@ -1,6 +1,7 @@
 #include "gpch.h"
 #include "Application.h"
 
+#include "Window.h"
 #include "Events/WindowEvent.h"
 #include "Renderer/GraphicsContext.h"
 
@@ -86,13 +87,13 @@ Application::Application(const ApplicationProperties& props)
 {
 	Log::Init();
 
-	int initSucess = SDL_Init(SDL_INIT_VIDEO);
+	int initSucess = SDL_Init(SDL_INIT_EVERYTHING);
 	SDL_SetEventFilter(SDL2_EventCallback, nullptr);
 	GLEAM_ASSERT(initSucess == 0, "Window subsystem initialization failed!");
 
 	Window* mainWindow = new Window(props.windowProps);
 	mWindows.emplace(mainWindow->GetSDLWindow(), Scope<Window>(mainWindow));
-	mGraphicsContext = CreateScope<GraphicsContext>(*mainWindow, props.windowProps.title, props.appVersion);
+	mGraphicsContext = CreateScope<GraphicsContext>(mainWindow->GetSDLWindow(), props.windowProps.title, props.appVersion);
 
 	EventDispatcher<AppCloseEvent>::Subscribe([this](AppCloseEvent e)
 	{

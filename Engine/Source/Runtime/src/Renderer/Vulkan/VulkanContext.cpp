@@ -3,10 +3,9 @@
 #ifdef USE_VULKAN_RENDERER
 #include <volk.h>
 #include <SDL_vulkan.h>
-#include "VulkanUtils.h"
 
-#include "Core/Window.h"
-#include "Core/Application.h"
+#include "VulkanUtils.h"
+#include "Core/ApplicationConfig.h"
 #include "Renderer/GraphicsContext.h"
 
 using namespace Gleam;
@@ -120,7 +119,7 @@ static void CreateDevice()
 	VK_CHECK(vkCreateDevice(sContext.PhysicalDevice, &deviceCreateInfo, nullptr, &sContext.Device));
 }
 
-GraphicsContext::GraphicsContext(const Window& window, const TString& appName, const Version& appVersion)
+GraphicsContext::GraphicsContext(SDL_Window* window, const TString& appName, const Version& appVersion)
 {
 	VkResult loadVKResult = volkInitialize();
 	GLEAM_ASSERT(loadVKResult == VK_SUCCESS, "Vulkan meta-loader failed to load entry points!");
@@ -139,7 +138,7 @@ GraphicsContext::GraphicsContext(const Window& window, const TString& appName, c
 #endif
 
 	// Create surface
-	bool surfaceCreateResult = SDL_Vulkan_CreateSurface(window.GetSDLWindow(), sContext.Instance, &sContext.Surface);
+	bool surfaceCreateResult = SDL_Vulkan_CreateSurface(window, sContext.Instance, &sContext.Surface);
 	GLEAM_ASSERT(surfaceCreateResult, "Vulkan surface create failed!");
 
 	//VK_CHECK(CreateDevice());

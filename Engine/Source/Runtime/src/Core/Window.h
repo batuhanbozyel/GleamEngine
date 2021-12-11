@@ -1,6 +1,4 @@
 #pragma once
-#include <SDL.h>
-
 #include "WindowConfig.h"
 
 namespace Gleam {
@@ -21,8 +19,6 @@ public:
 	{
 		return mWindow;
 	}
-
-	void Resize(uint32_t width, uint32_t height);
 
 	Window(const Window&) = delete;
 	Window& operator=(const Window&) = delete;

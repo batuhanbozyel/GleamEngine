@@ -1,13 +1,16 @@
 #pragma once
-#include "Window.h"
 #include "ApplicationConfig.h"
 
 #ifdef __cplusplus
 extern "C"
 #endif
 
+union SDL_Event;
+struct SDL_Window;
+
 namespace Gleam {
 
+class Window;
 class GraphicsContext;
 
 class Application

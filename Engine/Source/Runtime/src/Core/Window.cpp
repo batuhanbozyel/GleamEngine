@@ -27,15 +27,16 @@ Window::Window(const WindowProperties& props)
 	GLEAM_ASSERT(monitor >= 0, "Window display index is invalid!");
 
 	mProps.display = WindowConfig::GetCurrentDisplayMode(monitor);
+
+	EventDispatcher<WindowResizeEvent>::Subscribe([this](const WindowResizeEvent& e)
+	{
+		mProps.display.width = e.GetWidth();
+		mProps.display.height = e.GetHeight();
+		return false;
+	});
 }
 
 Window::~Window()
 {
 	SDL_DestroyWindow(mWindow);
-}
-
-void Window::Resize(uint32_t width, uint32_t height)
-{
-	mProps.display.width = width;
-	mProps.display.height = height;
 }
