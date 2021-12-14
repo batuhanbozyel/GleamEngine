@@ -93,7 +93,7 @@ Application::Application(const ApplicationProperties& props)
 
 	Window* mainWindow = new Window(props.windowProps);
 	mWindows.emplace(mainWindow->GetSDLWindow(), Scope<Window>(mainWindow));
-	mGraphicsContext = CreateScope<GraphicsContext>(mainWindow->GetSDLWindow(), props.windowProps.title, props.appVersion);
+	GraphicsContext::Create(mainWindow->GetSDLWindow(), props.windowProps.title, props.appVersion);
 
 	EventDispatcher<AppCloseEvent>::Subscribe([this](AppCloseEvent e)
 	{
@@ -118,7 +118,7 @@ void Application::Run()
 
 Application::~Application()
 {
-	mGraphicsContext.reset();
+	GraphicsContext::Destroy();
 	mWindows.clear();
 	SDL_Quit();
 }

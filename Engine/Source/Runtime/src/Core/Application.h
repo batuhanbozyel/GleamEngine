@@ -11,7 +11,6 @@ struct SDL_Window;
 namespace Gleam {
 
 class Window;
-class GraphicsContext;
 
 class Application
 {
@@ -33,7 +32,6 @@ private:
 
 	Version mVersion;
 	SDL_Event mEvent;
-	Scope<GraphicsContext> mGraphicsContext;
 	HashMap<SDL_Window*, Scope<Window>> mWindows;
 
 };

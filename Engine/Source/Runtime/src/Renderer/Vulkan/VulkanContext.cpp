@@ -1,7 +1,6 @@
 #include "gpch.h"
 
 #ifdef USE_VULKAN_RENDERER
-#include <volk.h>
 #include <SDL_vulkan.h>
 
 #include "VulkanUtils.h"
@@ -20,6 +19,8 @@ struct VulkanContext
 	TArray<VkExtensionProperties> Extensions;
 	VkDevice Device;
 	VkPhysicalDevice PhysicalDevice;
+	VkQueue Queue;
+	TArray<VkExtensionProperties> DeviceExtensions;
 } static sContext;
 
 
@@ -82,6 +83,7 @@ static void CreateInstance(const TString& appName, const Version& appVersion)
 
 	// Create instance
 	VK_CHECK(vkCreateInstance(&createInfo, nullptr, &sContext.Instance));
+	volkLoadInstance(sContext.Instance);
 }
 
 static void CreateDebugMessenger()
@@ -105,33 +107,75 @@ static void CreateDebugMessenger()
 
 static void CreateDevice()
 {
-	/*
-		TODO: 
-	*/
+	uint32_t physicalDeviceCount;
+	VK_CHECK(vkEnumeratePhysicalDevices(sContext.Instance, &physicalDeviceCount, nullptr));
+
+	TArray<VkPhysicalDevice> physicalDevices(physicalDeviceCount);
+	VK_CHECK(vkEnumeratePhysicalDevices(sContext.Instance, &physicalDeviceCount, physicalDevices.data()));
+
+	uint32_t queueFamilyIndex = -1;
+	for (VkPhysicalDevice physicalDevice : physicalDevices)
+	{
+		uint32_t queueFamilyCount;
+		vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, nullptr);
+
+		TArray<VkQueueFamilyProperties> queueFamilyProperties(queueFamilyCount);
+		vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, queueFamilyProperties.data());
+
+		for (uint32_t i = 0; i < queueFamilyCount; i++)
+		{
+			VkBool32 supportsPresent;
+			vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevice, i, sContext.Surface, &supportsPresent);
+
+			if ((queueFamilyProperties[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) && supportsPresent)
+			{
+				sContext.PhysicalDevice = physicalDevice;
+				queueFamilyIndex = i;
+				goto PHYSICAL_DEVICE_FOUND;
+			}
+		}
+	}
+
+PHYSICAL_DEVICE_FOUND:
+
+	GLEAM_ASSERT(queueFamilyIndex >= 0, "Vulkan physical device could not found!");
+
+	uint32_t deviceExtensionCount;
+	VK_CHECK(vkEnumerateDeviceExtensionProperties(sContext.PhysicalDevice, nullptr, &deviceExtensionCount, nullptr));
+	sContext.DeviceExtensions.resize(deviceExtensionCount);
+	VK_CHECK(vkEnumerateDeviceExtensionProperties(sContext.PhysicalDevice, nullptr, &deviceExtensionCount, sContext.DeviceExtensions.data()));
+
+	float queuePriority = 1.0f;
+	VkDeviceQueueCreateInfo deviceQueueCreateInfo{ VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO };
+	deviceQueueCreateInfo.queueFamilyIndex = queueFamilyIndex;
+	deviceQueueCreateInfo.queueCount = 1;
+	deviceQueueCreateInfo.pQueuePriorities = &queuePriority;
+
+	TArray<const char*> requiredDeviceExtension{"VK_KHR_swapchain"};
 	VkDeviceCreateInfo deviceCreateInfo{ VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO };
-	deviceCreateInfo.queueCreateInfoCount = 0;
-	deviceCreateInfo.pQueueCreateInfos = nullptr;
-	deviceCreateInfo.enabledExtensionCount = 0;
-	deviceCreateInfo.ppEnabledExtensionNames = nullptr;
-	deviceCreateInfo.pEnabledFeatures = nullptr;
-	deviceCreateInfo.pNext = nullptr;
+	deviceCreateInfo.queueCreateInfoCount = 1;
+	deviceCreateInfo.pQueueCreateInfos = &deviceQueueCreateInfo;
+	deviceCreateInfo.enabledExtensionCount = static_cast<uint32_t>(requiredDeviceExtension.size());
+	deviceCreateInfo.ppEnabledExtensionNames = requiredDeviceExtension.data();
 
 	VK_CHECK(vkCreateDevice(sContext.PhysicalDevice, &deviceCreateInfo, nullptr, &sContext.Device));
+	volkLoadDevice(sContext.Device);
+
+	vkGetDeviceQueue(sContext.Device, queueFamilyIndex, 0, &sContext.Queue);
 }
 
-GraphicsContext::GraphicsContext(SDL_Window* window, const TString& appName, const Version& appVersion)
+void GraphicsContext::Create(SDL_Window* window, const TString& appName, const Version& appVersion)
 {
 	VkResult loadVKResult = volkInitialize();
 	GLEAM_ASSERT(loadVKResult == VK_SUCCESS, "Vulkan meta-loader failed to load entry points!");
 
 	CreateInstance(appName, appVersion);
-	volkLoadInstance(sContext.Instance);
 
 	// Get available extensions
 	uint32_t extensionCount;
-	vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
+	VK_CHECK(vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr));
 	sContext.Extensions.resize(extensionCount);
-	vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, sContext.Extensions.data());
+	VK_CHECK(vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, sContext.Extensions.data()));
 	
 #ifdef GDEBUG
 	CreateDebugMessenger();
@@ -141,13 +185,12 @@ GraphicsContext::GraphicsContext(SDL_Window* window, const TString& appName, con
 	bool surfaceCreateResult = SDL_Vulkan_CreateSurface(window, sContext.Instance, &sContext.Surface);
 	GLEAM_ASSERT(surfaceCreateResult, "Vulkan surface create failed!");
 
-	//VK_CHECK(CreateDevice());
-	//volkLoadDevice(sContext.Device);
+	CreateDevice();
 
 	GLEAM_CORE_INFO("Vulkan graphics context created.");
 }
 
-GraphicsContext::~GraphicsContext()
+void GraphicsContext::Destroy()
 {
 	vkDestroySurfaceKHR(sContext.Instance, sContext.Surface, nullptr);
 	vkDestroyDevice(sContext.Device, nullptr);
@@ -157,6 +200,11 @@ GraphicsContext::~GraphicsContext()
 	vkDestroyInstance(sContext.Instance, nullptr);
 
 	GLEAM_CORE_INFO("Vulkan graphics context destroyed.");
+}
+
+GraphicsDevice GraphicsContext::GetDevice()
+{
+	return sContext.Device;
 }
 
 #endif
