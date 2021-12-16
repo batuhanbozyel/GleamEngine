@@ -26,13 +26,21 @@ else()
     target_link_libraries(Editor PRIVATE libRuntime.a SDL2main.a SDL2.a
         iconv
         "-framework Metal"
+        "-framework MetalKit"
+        "-framework Foundation"
+        "-framework AVFoundation"
+        "-framework QuartzCore"
         "-framework Carbon"
         "-framework IOKit"
+        "-framework ModelIO"
         "-framework ForceFeedback"
         "-framework CoreVideo"
         "-framework AudioToolbox"
         "-framework CoreAudio"
-        "-framework Cocoa")
+        "-framework Cocoa"
+        "-framework GameController"
+        "-framework CoreHaptics"
+        "-framework CoreGraphics")
 endif()
 
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${SOURCE_FILES})
