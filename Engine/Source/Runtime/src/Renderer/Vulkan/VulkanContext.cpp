@@ -1,6 +1,7 @@
 #include "gpch.h"
 
 #ifdef USE_VULKAN_RENDERER
+#define VOLK_IMPLEMENTATION
 #include <SDL_vulkan.h>
 
 #include "VulkanUtils.h"

@@ -4,7 +4,7 @@ set(CMAKE_CONFIGURATION_TYPES Debug Release RelWithDebInfo CACHE TYPE INTERNAL F
 
 project(GleamEngine)
 
-    if (!APPLE)
+    if (NOT APPLE)
         find_package(Vulkan REQUIRED)
     endif()
 
