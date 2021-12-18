@@ -6,7 +6,7 @@
 	url = https://github.com/skypjack/entt
 [submodule "Engine/ThirdParty/SDL2"]
 	path = Engine/ThirdParty/SDL2
-	url = https://github.com/libsdl-org/SDL
+url=https://github.com/batuhanbozyel/SDL
 [submodule "Engine/ThirdParty/spdlog"]
 	path = Engine/ThirdParty/spdlog
 	url = https://github.com/gabime/spdlog
