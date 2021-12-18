@@ -4,10 +4,15 @@ set(CMAKE_CONFIGURATION_TYPES Debug Release RelWithDebInfo CACHE TYPE INTERNAL F
 
 project(GleamEngine)
 
-    find_package(Vulkan REQUIRED)
+    if (NOT APPLE)
+        find_package(Vulkan REQUIRED)
+    endif()
 
     if (WIN32)
         set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT Editor)
+    elseif (APPLE)
+        set(CMAKE_XCODE_GENERATE_SCHEME true)
+        set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY XCODE_SCHEME_EXECUTABLE Editor)
     endif()
 
     #preventing in source build

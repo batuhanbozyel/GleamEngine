@@ -8,6 +8,13 @@ struct Version
 	uint32_t major = 1;
 	uint32_t minor = 0;
 	uint32_t patch = 0;
+    
+    constexpr Version() = default;
+    constexpr Version(uint32_t major, uint32_t minor, uint32_t patch)
+        : major(major), minor(minor), patch(patch)
+    {
+        
+    }
 };
 
 struct ApplicationProperties

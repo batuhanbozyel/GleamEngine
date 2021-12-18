@@ -4,7 +4,7 @@
 #include <volk.h>
 #define GraphicsDevice VkDevice
 #else
-#include <Metal/Metal.hpp>
+#include <Metal.hpp>
 #define GraphicsDevice MTL::Device*
 #endif
 
