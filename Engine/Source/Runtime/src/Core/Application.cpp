@@ -3,7 +3,7 @@
 
 #include "Window.h"
 #include "Events/WindowEvent.h"
-#include "Renderer/GraphicsContext.h"
+#include "Renderer/RendererContext.h"
 
 using namespace Gleam;
 
@@ -93,7 +93,7 @@ Application::Application(const ApplicationProperties& props)
 
 	Window* mainWindow = new Window(props.windowProps);
 	mWindows.emplace(mainWindow->GetSDLWindow(), Scope<Window>(mainWindow));
-	GraphicsContext::Create(mainWindow->GetSDLWindow(), props.windowProps.title, props.appVersion);
+	RendererContext::Create(*mainWindow, props.windowProps.title, props.appVersion, props.rendererProps);
 
 	EventDispatcher<AppCloseEvent>::Subscribe([this](AppCloseEvent e)
 	{
@@ -118,7 +118,7 @@ void Application::Run()
 
 Application::~Application()
 {
-	GraphicsContext::Destroy();
+	RendererContext::Destroy();
 	mWindows.clear();
 	SDL_Quit();
 }

@@ -1,5 +1,6 @@
 #pragma once
 #include "WindowConfig.h"
+#include "Renderer/RendererConfig.h"
 
 namespace Gleam {
 
@@ -21,6 +22,7 @@ struct ApplicationProperties
 {
 	Version appVersion;
 	WindowProperties windowProps;
+	RendererProperties rendererProps;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Version& version)
