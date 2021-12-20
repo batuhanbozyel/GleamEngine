@@ -10,9 +10,9 @@ public:
 	Window(const WindowProperties& props);
 	~Window();
 
-	const WindowProperties& GetProps() const
+	const WindowProperties& GetProperties() const
 	{
-		return mProps;
+		return mProperties;
 	}
 
 	SDL_Window* GetSDLWindow() const
@@ -26,7 +26,7 @@ public:
 private:
 
 	SDL_Window* mWindow;
-	WindowProperties mProps;
+	WindowProperties mProperties;
 
 };
 

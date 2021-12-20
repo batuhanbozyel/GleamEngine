@@ -221,13 +221,13 @@ MATH_INLINE constexpr T Max(const T& v0, const T& v1)
 template<typename T, PASS_BY_VALUE>
 MATH_INLINE constexpr T Clamp(T value, T min, T max)
 {
-	return std::min(std::max(value, min), max);
+	return Min(Max(value, min), max);
 }
 
 template<typename T, PASS_BY_REFERENCE>
 MATH_INLINE constexpr T Clamp(const T& value, const T& min, const T& max)
 {
-	return std::min(std::max(value, min), max);
+	return Min(Max(value, min), max);
 }
 
 template<typename T, PASS_BY_VALUE>

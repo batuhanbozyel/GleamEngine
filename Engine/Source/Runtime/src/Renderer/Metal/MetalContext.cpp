@@ -6,24 +6,19 @@
 #define NS_PRIVATE_IMPLEMENTATION
 #define CA_PRIVATE_IMPLEMENTATION
 #define MTL_PRIVATE_IMPLEMENTATION
-#include <Metal.hpp>
 
+#include "Core/Window.h"
 #include "Core/ApplicationConfig.h"
-#include "Renderer/GraphicsContext.h"
+#include "Renderer/RendererContext.h"
 
 using namespace Gleam;
 
-struct MetalContext
-{
-
-} sContext;
-
-void GraphicsContext::Create(SDL_Window* window, const TString& appName, const Version& appVersion)
+RendererContext::RendererContext(const Window& window, const TString& appName, const Version& appVersion, const RendererProperties& props)
 {
 
 }
 
-void GraphicsContext::Destroy()
+RendererContext::~RendererContext()
 {
 
 }

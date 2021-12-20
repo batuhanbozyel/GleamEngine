@@ -24,31 +24,10 @@ enum class WindowFlag : uint32_t
 
 struct DisplayMode
 {
+	SDL_PixelFormatEnum format = SDL_PIXELFORMAT_UNKNOWN;
 	uint32_t width = 0, height = 0;
 	uint32_t refreshRate = 0;
 	uint32_t monitor = 0;
-
-	DisplayMode() = default;
-
-	DisplayMode(uint32_t monitor)
-		: monitor(monitor)
-	{
-	}
-
-	DisplayMode(uint32_t width, uint32_t height)
-		: width(width), height(height)
-	{
-	}
-
-	DisplayMode(uint32_t width, uint32_t height, uint32_t monitor)
-		: width(width), height(height), monitor(monitor)
-	{
-	}
-
-	DisplayMode(uint32_t width, uint32_t height, uint32_t refreshRate, uint32_t monitor)
-		: width(width), height(height), refreshRate(refreshRate), monitor(monitor)
-	{
-	}
 };
 
 struct WindowProperties
@@ -56,28 +35,6 @@ struct WindowProperties
 	TString title = "Gleam Application";
 	WindowFlag windowFlag = WindowFlag::CustomWindow;
 	DisplayMode display;
-
-	WindowProperties() = default;
-
-	WindowProperties(const TString& title, WindowFlag flag)
-		: title(title), windowFlag(flag)
-	{
-	}
-
-	WindowProperties(const TString& title, WindowFlag flag, uint32_t monitor)
-		: title(title), windowFlag(flag), display(monitor)
-	{
-	}
-
-	WindowProperties(const TString& title, uint32_t width, uint32_t height, WindowFlag flag)
-		: title(title), windowFlag(flag), display(width, height)
-	{
-	}
-
-	WindowProperties(const TString& title, uint32_t width, uint32_t height, uint32_t monitor, WindowFlag flag)
-		: title(title), display(width, height, monitor), windowFlag(flag)
-	{
-	}
 };
 
 class WindowConfig
@@ -89,6 +46,7 @@ public:
 		SDL_DisplayMode currDisplay;
 		SDL_GetCurrentDisplayMode(monitor, &currDisplay);
 		return DisplayMode (
+			static_cast<SDL_PixelFormatEnum>(currDisplay.format),
 			currDisplay.w,
 			currDisplay.h,
 			currDisplay.refresh_rate,
@@ -101,6 +59,7 @@ public:
 		SDL_DisplayMode currDisplay;
 		SDL_GetDisplayMode(monitor, modeIndex, &currDisplay);
 		return DisplayMode(
+			static_cast<SDL_PixelFormatEnum>(currDisplay.format),
 			currDisplay.w,
 			currDisplay.h,
 			currDisplay.refresh_rate,
