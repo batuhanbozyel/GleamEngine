@@ -91,9 +91,9 @@ Application::Application(const ApplicationProperties& props)
 	SDL_SetEventFilter(SDL2_EventCallback, nullptr);
 	GLEAM_ASSERT(initSucess == 0, "Window subsystem initialization failed!");
 
-	Window* mainWindow = new Window(props.windowProps);
-	mWindows.emplace(mainWindow->GetSDLWindow(), Scope<Window>(mainWindow));
-	RendererContext::Create(*mainWindow, props.windowProps.title, props.appVersion, props.rendererProps);
+	mActiveWindow = new Window(props.windowProps);
+	mWindows.emplace(mActiveWindow->GetSDLWindow(), Scope<Window>(mActiveWindow));
+	RendererContext::Create(*mActiveWindow, props.windowProps.title, props.appVersion, props.rendererProps);
 
 	EventDispatcher<AppCloseEvent>::Subscribe([this](AppCloseEvent e)
 	{
@@ -103,6 +103,12 @@ Application::Application(const ApplicationProperties& props)
 
 	EventDispatcher<WindowCloseEvent>::Subscribe([this](WindowCloseEvent e)
 	{
+		// if there is only 1 window, application should terminate with the proper deallocation order
+		if (mWindows.size() == 1)
+		{
+			return false;
+		}
+
 		mWindows.erase(e.GetWindow());
 		return true;
 	});
@@ -113,6 +119,8 @@ void Application::Run()
 	while (mRunning)
 	{
 		while (SDL_PollEvent(&mEvent));
+
+		RendererContext::SwapBuffers(mActiveWindow->GetSDLWindow());
 	}
 }
 

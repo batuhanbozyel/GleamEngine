@@ -28,6 +28,7 @@ private:
 
 	Version mVersion;
 	SDL_Event mEvent;
+	Window* mActiveWindow;
 	HashMap<SDL_Window*, Scope<Window>> mWindows;
 
 };

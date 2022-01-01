@@ -39,6 +39,16 @@ public:
 		return mInstance->mContext.Device;
 	}
 
+	static void ClearColor(const Color& color)
+	{
+		mInstance->ClearColorImpl(color);
+	}
+
+	static void SwapBuffers(SDL_Window* window)
+	{
+		mInstance->SwapBuffersImpl(window);
+	}
+
 	static const RendererProperties& GetProperties()
 	{
 		return mProperties;
@@ -48,30 +58,62 @@ private:
 
 	RendererContext(const Window& window, const TString& appName, const Version& appVersion, const RendererProperties& props);
 
+	void SwapBuffersImpl(SDL_Window* window);
+	void ClearColorImpl(const Color& color);
+
 #ifdef USE_VULKAN_RENDERER
 
 	void CreateInstance(const TString& appName, const Version& appVersion);
 	void CreateDebugMessenger();
 	void CreateDevice();
-	void CreateSwapchain(const Window& window, const RendererProperties& props);
+	void CreateSwapchain(SDL_Window* window);
+	void CreateSyncObjects();
+	void CreateFrameObjects();
 	void DestroySwapchain();
 
 	struct
 	{
 		VkInstance Instance{ VK_NULL_HANDLE };
+
+		// Debug/Validation layer
 	#ifdef GDEBUG
 		VkDebugUtilsMessengerEXT DebugMessenger{ VK_NULL_HANDLE };
 	#endif
+
+		// Surface
 		VkSurfaceKHR Surface{ VK_NULL_HANDLE };
 		TArray<VkExtensionProperties> Extensions;
+
+		// Device
 		VkDevice Device{ VK_NULL_HANDLE };
 		VkPhysicalDevice PhysicalDevice{ VK_NULL_HANDLE };
-		VkQueue Queue{ VK_NULL_HANDLE };
+		VkQueue GraphicsQueue{ VK_NULL_HANDLE };
+		uint32_t GraphicsQueueFamilyIndex{ 0 };
+		VkQueue ComputeQueue{ VK_NULL_HANDLE };
+		uint32_t ComputeQueueFamilyIndex{ 0 };
+		VkQueue TransferQueue{ VK_NULL_HANDLE };
+		uint32_t TransferQueueFamilyIndex{ 0 };
 		TArray<VkExtensionProperties> DeviceExtensions;
+
+		// Swapchain
 		VkSwapchainKHR Swapchain{ VK_NULL_HANDLE };
 		VkFormat SwapchainImageFormat;
 		TArray<VkImage> SwapchainImages;
 		TArray<VkImageView> SwapchainImageViews;
+		VkRenderPass SwapchainRenderPass;
+		TArray<VkFramebuffer> SwapchainFramebuffers;
+		uint32_t CurrentImageIndex;
+
+		// Synchronization
+		VkSemaphore ImageAcquireSemaphore;
+		VkSemaphore ImageReleaseSemaphore;
+
+		// Frame
+		TArray<VkCommandPool> FrameCommandPools;
+		TArray<VkFence> FrameImageAcquireFences;
+		TArray<VkCommandBuffer> FrameCommandBuffers;
+		uint32_t FrameBufferingCount{ 0 };
+		uint32_t CurrentFrameIndex{ 0 };
 	} mContext;
 #else
 	struct
