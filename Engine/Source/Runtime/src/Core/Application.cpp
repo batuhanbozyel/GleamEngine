@@ -3,7 +3,7 @@
 
 #include "Window.h"
 #include "Events/WindowEvent.h"
-#include "Renderer/RendererContext.h"
+#include "Renderer/Renderer.h"
 
 using namespace Gleam;
 
@@ -85,6 +85,12 @@ static int SDLCALL SDL2_EventCallback(void* data, SDL_Event* e)
 Application::Application(const ApplicationProperties& props)
 	: mVersion(props.appVersion)
 {
+	if (sInstance)
+	{
+		delete sInstance;
+	}
+	sInstance = this;
+
 	Log::Init();
 
 	int initSucess = SDL_Init(SDL_INIT_EVERYTHING);
@@ -93,7 +99,7 @@ Application::Application(const ApplicationProperties& props)
 
 	mActiveWindow = new Window(props.windowProps);
 	mWindows.emplace(mActiveWindow->GetSDLWindow(), Scope<Window>(mActiveWindow));
-	RendererContext::Create(*mActiveWindow, props.windowProps.title, props.appVersion, props.rendererProps);
+	Renderer::Init(props.windowProps.title, props.appVersion, props.rendererProps);
 
 	EventDispatcher<AppCloseEvent>::Subscribe([this](AppCloseEvent e)
 	{
@@ -120,13 +126,14 @@ void Application::Run()
 	{
 		while (SDL_PollEvent(&mEvent));
 
-		RendererContext::SwapBuffers(mActiveWindow->GetSDLWindow());
+		Renderer::RenderFrame();
 	}
 }
 
 Application::~Application()
 {
-	RendererContext::Destroy();
+	Renderer::Destroy();
 	mWindows.clear();
 	SDL_Quit();
+	sInstance = nullptr;
 }

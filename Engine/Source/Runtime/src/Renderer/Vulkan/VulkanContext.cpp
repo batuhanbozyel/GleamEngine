@@ -1,15 +1,58 @@
 #include "gpch.h"
 
 #ifdef USE_VULKAN_RENDERER
-#define VOLK_IMPLEMENTATION
+#include "Renderer/Context.h"
+
+#include "Core/Window.h"
+#include "Core/Application.h"
+
 #include <SDL_vulkan.h>
 
-#include "VulkanUtils.h"
-#include "Core/Window.h"
-#include "Core/ApplicationConfig.h"
-#include "Renderer/RendererContext.h"
-
 using namespace Gleam;
+
+struct
+{
+	VkInstance Instance{ VK_NULL_HANDLE };
+
+	// Debug/Validation layer
+#ifdef GDEBUG
+	VkDebugUtilsMessengerEXT DebugMessenger{ VK_NULL_HANDLE };
+#endif
+
+	// Surface
+	VkSurfaceKHR Surface{ VK_NULL_HANDLE };
+	TArray<VkExtensionProperties> Extensions;
+
+	// Device
+	VkDevice Device{ VK_NULL_HANDLE };
+	VkPhysicalDevice PhysicalDevice{ VK_NULL_HANDLE };
+	VkQueue GraphicsQueue{ VK_NULL_HANDLE };
+	uint32_t GraphicsQueueFamilyIndex{ 0 };
+	VkQueue ComputeQueue{ VK_NULL_HANDLE };
+	uint32_t ComputeQueueFamilyIndex{ 0 };
+	VkQueue TransferQueue{ VK_NULL_HANDLE };
+	uint32_t TransferQueueFamilyIndex{ 0 };
+	TArray<VkExtensionProperties> DeviceExtensions;
+
+	// Swapchain
+	VkSwapchainKHR Swapchain{ VK_NULL_HANDLE };
+	VkFormat SwapchainImageFormat;
+	TArray<VkImage> SwapchainImages;
+	TArray<VkImageView> SwapchainImageViews;
+	VkRenderPass SwapchainRenderPass;
+	TArray<VkFramebuffer> SwapchainFramebuffers;
+	uint32_t CurrentImageIndex;
+
+	// Synchronization
+	VkSemaphore ImageAcquireSemaphore;
+	VkSemaphore ImageReleaseSemaphore;
+
+	// Frame
+	TArray<VkCommandPool> CommandPools;
+	TArray<VkFence> ImageAcquireFences;
+	TArray<VkCommandBuffer> CommandBuffers;
+	uint32_t CurrentFrameIndex{ 0 };
+} mContext;
 
 VKAPI_ATTR VkBool32 VKAPI_CALL VulkanDebugCallback(
 	VkDebugUtilsMessageSeverityFlagBitsEXT severity,
@@ -38,12 +81,11 @@ VKAPI_ATTR VkBool32 VKAPI_CALL VulkanDebugCallback(
 }
 
 /************************************************************************/
-/*	RendererContext                                                     */
+/*	Context                                                     */
 /************************************************************************/
-RendererContext::RendererContext(const Window& window, const TString& appName, const Version& appVersion, const RendererProperties& props)
+Context::Context(const TString& appName, const Version& appVersion, const RendererProperties& props)
+	: mProperties(props)
 {
-	mProperties = props;
-
 	VkResult loadVKResult = volkInitialize();
 	GLEAM_ASSERT(loadVKResult == VK_SUCCESS, "Vulkan: Meta-loader failed to load entry points!");
 
@@ -60,29 +102,29 @@ RendererContext::RendererContext(const Window& window, const TString& appName, c
 #endif
 
 	// Create surface
-	bool surfaceCreateResult = SDL_Vulkan_CreateSurface(window.GetSDLWindow(), mContext.Instance, &mContext.Surface);
+	bool surfaceCreateResult = SDL_Vulkan_CreateSurface(Application::GetActiveWindow().GetSDLWindow(), mContext.Instance, &mContext.Surface);
 	GLEAM_ASSERT(surfaceCreateResult, "Vulkan: Surface creation failed!");
 
 	CreateDevice();
-	CreateSwapchain(window.GetSDLWindow());
+	CreateSwapchain();
 	CreateSyncObjects();
 	CreateFrameObjects();
 
 	GLEAM_CORE_INFO("Vulkan: Graphics context created.");
 }
 /************************************************************************/
-/*	~RendererContext                                                    */
+/*	~Context                                                            */
 /************************************************************************/
-RendererContext::~RendererContext()
+Context::~Context()
 {
 	vkDeviceWaitIdle(mContext.Device);
-	for (uint32_t i = 0; i < mContext.FrameBufferingCount; i++)
+	for (uint32_t i = 0; i < mContext.CommandPools.size(); i++)
 	{
-		vkDestroyFence(mContext.Device, mContext.FrameImageAcquireFences[i], nullptr);
-		vkDestroyCommandPool(mContext.Device, mContext.FrameCommandPools[i], nullptr);
+		vkDestroyFence(mContext.Device, mContext.ImageAcquireFences[i], nullptr);
+		vkDestroyCommandPool(mContext.Device, mContext.CommandPools[i], nullptr);
 	}
-	mContext.FrameImageAcquireFences.clear();
-	mContext.FrameCommandPools.clear();
+	mContext.ImageAcquireFences.clear();
+	mContext.CommandPools.clear();
 	DestroySwapchain();
 	vkDestroySurfaceKHR(mContext.Instance, mContext.Surface, nullptr);
 	vkDestroySemaphore(mContext.Device, mContext.ImageAcquireSemaphore, nullptr);
@@ -96,9 +138,29 @@ RendererContext::~RendererContext()
 	GLEAM_CORE_INFO("Vulkan: Graphics context destroyed.");
 }
 /************************************************************************/
+/*	GetDevice                                                           */
+/************************************************************************/
+GraphicsDevice Context::GetDevice() const
+{
+	return mContext.Device;
+}
+/************************************************************************/
+/*	GetCurrentFrameObject                                               */
+/************************************************************************/
+FrameObject Context::GetCurrentFrameObject() const
+{
+	return VulkanFrameObject
+	{
+		mContext.CommandPools[mContext.CurrentFrameIndex],
+		mContext.ImageAcquireFences[mContext.CurrentFrameIndex],
+		mContext.CommandBuffers[mContext.CurrentFrameIndex],
+		mContext.SwapchainImages[mContext.CurrentImageIndex]
+	};
+}
+/************************************************************************/
 /*	CreateInstance                                                      */
 /************************************************************************/
-void RendererContext::CreateInstance(const TString& appName, const Version& appVersion)
+void Context::CreateInstance(const TString& appName, const Version& appVersion)
 {
 	// Get window subsystem extensions
 	uint32_t extensionCount;
@@ -136,7 +198,7 @@ void RendererContext::CreateInstance(const TString& appName, const Version& appV
 /************************************************************************/
 /*	CreateDebugMessenger                                                */
 /************************************************************************/
-void RendererContext::CreateDebugMessenger()
+void Context::CreateDebugMessenger()
 {
 	// Create debug messenger
 	VkDebugUtilsMessengerCreateInfoEXT debugInfo{ VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT };
@@ -157,7 +219,7 @@ void RendererContext::CreateDebugMessenger()
 /************************************************************************/
 /*	CreateDevice                                                        */
 /************************************************************************/
-void RendererContext::CreateDevice()
+void Context::CreateDevice()
 {
 	uint32_t physicalDeviceCount;
 	VK_CHECK(vkEnumeratePhysicalDevices(mContext.Instance, &physicalDeviceCount, nullptr));
@@ -219,18 +281,18 @@ void RendererContext::CreateDevice()
 			GLEAM_ASSERT(mainQueueSupportsPresent, "Vulkan: Main queue does not support presentation!");
 		}
 		else if (queueFamiySupportsCompute &&
-				 queueFamilySupportsTransfer &&
-				 !queueFamilySupportsGraphics &&
-				 !computeQueueFound)
+			queueFamilySupportsTransfer &&
+			!queueFamilySupportsGraphics &&
+			!computeQueueFound)
 		{
 			computeQueueFound = true;
 			mContext.ComputeQueueFamilyIndex = i;
 			deviceQueueCreateInfos.push_back(deviceQueueCreateInfo);
 		}
 		else if (queueFamilySupportsTransfer &&
-				 !queueFamiySupportsCompute &&
-				 !queueFamilySupportsGraphics &&
-				 !transferQueueFound)
+			!queueFamiySupportsCompute &&
+			!queueFamilySupportsGraphics &&
+			!transferQueueFound)
 		{
 			transferQueueFound = true;
 			mContext.TransferQueueFamilyIndex = i;
@@ -274,8 +336,10 @@ void RendererContext::CreateDevice()
 /************************************************************************/
 /*	CreateSwapchain                                                     */
 /************************************************************************/
-void RendererContext::CreateSwapchain(SDL_Window* window)
+void Context::CreateSwapchain()
 {
+	SDL_Window* window = Application::GetActiveWindow().GetSDLWindow();
+
 	vkDeviceWaitIdle(mContext.Device);
 
 	// Get surface information
@@ -322,13 +386,17 @@ void RendererContext::CreateSwapchain(SDL_Window* window)
 	swapchainCreateInfo.surface = mContext.Surface;
 	if (surfaceCapabilities.minImageCount <= 3 && surfaceCapabilities.maxImageCount >= 3 && mProperties.tripleBufferingEnabled)
 	{
-		mContext.FrameBufferingCount = 3;
+		mContext.CommandPools.resize(3);
+		mContext.ImageAcquireFences.resize(3);
+		mContext.CommandBuffers.resize(3);
 		swapchainCreateInfo.minImageCount = 3;
 		GLEAM_CORE_TRACE("Vulkan: Triple buffering enabled.");
 	}
 	else if (surfaceCapabilities.minImageCount <= 2 && surfaceCapabilities.maxImageCount >= 2)
 	{
-		mContext.FrameBufferingCount = 2;
+		mContext.CommandPools.resize(2);
+		mContext.ImageAcquireFences.resize(2);
+		mContext.CommandBuffers.resize(2);
 		swapchainCreateInfo.minImageCount = 2;
 		if (mProperties.tripleBufferingEnabled)
 		{
@@ -465,7 +533,7 @@ void RendererContext::CreateSwapchain(SDL_Window* window)
 /************************************************************************/
 /*	CreateSyncObjects                                                    */
 /************************************************************************/
-void RendererContext::CreateSyncObjects()
+void Context::CreateSyncObjects()
 {
 	VkSemaphoreCreateInfo semaphoreCreateInfo{ VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO };
 	VK_CHECK(vkCreateSemaphore(mContext.Device, &semaphoreCreateInfo, nullptr, &mContext.ImageAcquireSemaphore));
@@ -474,33 +542,30 @@ void RendererContext::CreateSyncObjects()
 /************************************************************************/
 /*	CreateFrameObjects                                                    */
 /************************************************************************/
-void RendererContext::CreateFrameObjects()
+void Context::CreateFrameObjects()
 {
-	mContext.FrameImageAcquireFences.resize(mContext.FrameBufferingCount);
-	mContext.FrameCommandBuffers.resize(mContext.FrameBufferingCount);
-	mContext.FrameCommandPools.resize(mContext.FrameBufferingCount);
-	for (uint32_t i = 0; i < mContext.FrameBufferingCount; i++)
+	for (uint32_t i = 0; i < mContext.CommandPools.size(); i++)
 	{
 		VkCommandPoolCreateInfo commandPoolCreateInfo{ VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO };
 		commandPoolCreateInfo.queueFamilyIndex = mContext.GraphicsQueueFamilyIndex;
 		commandPoolCreateInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-		VK_CHECK(vkCreateCommandPool(mContext.Device, &commandPoolCreateInfo, nullptr, &mContext.FrameCommandPools[i]));
+		VK_CHECK(vkCreateCommandPool(mContext.Device, &commandPoolCreateInfo, nullptr, &mContext.CommandPools[i]));
 
 		VkCommandBufferAllocateInfo commandBufferAllocateInfo{ VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO };
 		commandBufferAllocateInfo.commandBufferCount = 1;
-		commandBufferAllocateInfo.commandPool = mContext.FrameCommandPools[i];
+		commandBufferAllocateInfo.commandPool = mContext.CommandPools[i];
 		commandBufferAllocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-		VK_CHECK(vkAllocateCommandBuffers(mContext.Device, &commandBufferAllocateInfo, &mContext.FrameCommandBuffers[i]));
+		VK_CHECK(vkAllocateCommandBuffers(mContext.Device, &commandBufferAllocateInfo, &mContext.CommandBuffers[i]));
 
 		VkFenceCreateInfo fenceCreateInfo{ VK_STRUCTURE_TYPE_FENCE_CREATE_INFO };
 		fenceCreateInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-		VK_CHECK(vkCreateFence(mContext.Device, &fenceCreateInfo, nullptr, &mContext.FrameImageAcquireFences[i]));
+		VK_CHECK(vkCreateFence(mContext.Device, &fenceCreateInfo, nullptr, &mContext.ImageAcquireFences[i]));
 	}
 }
 /************************************************************************/
 /*	DestroySwapchain                                                    */
 /************************************************************************/
-void RendererContext::DestroySwapchain()
+void Context::DestroySwapchain()
 {
 	for (uint32_t i = 0; i < mContext.SwapchainFramebuffers.size(); i++)
 	{
@@ -513,26 +578,81 @@ void RendererContext::DestroySwapchain()
 	vkDestroySwapchainKHR(mContext.Device, mContext.Swapchain, nullptr);
 }
 /************************************************************************/
-/*	SwapBuffersImpl                                                     */
+/*	BeginFrame                                                          */
 /************************************************************************/
-void RendererContext::SwapBuffersImpl(SDL_Window* window)
+void Context::BeginFrame()
 {
-	VK_CHECK(vkWaitForFences(mContext.Device, 1, &mContext.FrameImageAcquireFences[mContext.CurrentFrameIndex], VK_TRUE, UINT64_MAX));
+	const auto& frame = GetCurrentFrameObject();
+
+	VK_CHECK(vkWaitForFences(mContext.Device, 1, &frame.imageAcquireFence, VK_TRUE, UINT64_MAX));
 
 	VkResult result = vkAcquireNextImageKHR(mContext.Device, mContext.Swapchain, UINT64_MAX, mContext.ImageAcquireSemaphore, VK_NULL_HANDLE, &mContext.CurrentImageIndex);
 	if (result == VK_ERROR_OUT_OF_DATE_KHR)
 	{
-		CreateSwapchain(window);
+		CreateSwapchain();
 	}
 	else
 	{
 		GLEAM_ASSERT(result == VK_SUCCESS || result == VK_SUBOPTIMAL_KHR, "Vulkan: Swapbuffers failed to acquire next image!");
 	}
 
+	VK_CHECK(vkResetCommandPool(mContext.Device, frame.commandPool, 0));
+
 	VkCommandBufferBeginInfo commandBufferBeginInfo{ VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
 	commandBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+	VK_CHECK(vkBeginCommandBuffer(frame.commandBuffer, &commandBufferBeginInfo));
 
-	VkClearColorValue clearColor{ 1.0f, 0.8f, 0.4f, 1.0f };
+	// Temporary
+	ClearScreen({ 1.0f, 0.8f, 0.4f, 1.0f });
+}
+/************************************************************************/
+/*	EndFrame                                                            */
+/************************************************************************/
+void Context::EndFrame()
+{
+	const auto& frame = GetCurrentFrameObject();
+
+	VK_CHECK(vkEndCommandBuffer(frame.commandBuffer));
+
+	VkPipelineStageFlags waitDstStageMask = VK_PIPELINE_STAGE_TRANSFER_BIT;
+	VkSubmitInfo submitInfo{ VK_STRUCTURE_TYPE_SUBMIT_INFO };
+	submitInfo.waitSemaphoreCount = 1;
+	submitInfo.pWaitSemaphores = &mContext.ImageAcquireSemaphore;
+	submitInfo.pWaitDstStageMask = &waitDstStageMask;
+	submitInfo.commandBufferCount = 1;
+	submitInfo.pCommandBuffers = &frame.commandBuffer;
+	submitInfo.signalSemaphoreCount = 1;
+	submitInfo.pSignalSemaphores = &mContext.ImageReleaseSemaphore;
+
+	VK_CHECK(vkResetFences(mContext.Device, 1, &frame.imageAcquireFence));
+	VK_CHECK(vkQueueSubmit(mContext.GraphicsQueue, 1, &submitInfo, frame.imageAcquireFence));
+
+	VkPresentInfoKHR presentInfo{ VK_STRUCTURE_TYPE_PRESENT_INFO_KHR };
+	presentInfo.waitSemaphoreCount = 1;
+	presentInfo.pWaitSemaphores = &mContext.ImageReleaseSemaphore;
+	presentInfo.swapchainCount = 1;
+	presentInfo.pSwapchains = &mContext.Swapchain;
+	presentInfo.pImageIndices = &mContext.CurrentImageIndex;
+	VkResult result = vkQueuePresentKHR(mContext.GraphicsQueue, &presentInfo);
+	if (result == VK_ERROR_OUT_OF_DATE_KHR)
+	{
+		CreateSwapchain();
+	}
+	else
+	{
+		GLEAM_ASSERT(result == VK_SUCCESS || result == VK_SUBOPTIMAL_KHR, "Vulkan: Image presentation failed!");
+	}
+
+	mContext.CurrentFrameIndex = (mContext.CurrentFrameIndex + 1) % mContext.CommandPools.size();
+}
+/************************************************************************/
+/*	ClearScreen                                                         */
+/************************************************************************/
+void Context::ClearScreen(const Color& color) const
+{
+	const auto& frame = GetCurrentFrameObject();
+
+	VkClearColorValue clearColor = std::bit_cast<VkClearColorValue>(color);
 
 	VkImageSubresourceRange imageSubresourceRange;
 	imageSubresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
@@ -548,13 +668,12 @@ void RendererContext::SwapBuffersImpl(SDL_Window* window)
 	imageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
 	imageMemoryBarrier.srcQueueFamilyIndex = mContext.GraphicsQueueFamilyIndex;
 	imageMemoryBarrier.dstQueueFamilyIndex = mContext.GraphicsQueueFamilyIndex;
-	imageMemoryBarrier.image = mContext.SwapchainImages[mContext.CurrentImageIndex];
+	imageMemoryBarrier.image = frame.swapchainImage;
 	imageMemoryBarrier.subresourceRange = imageSubresourceRange;
 
-	VK_CHECK(vkBeginCommandBuffer(mContext.FrameCommandBuffers[mContext.CurrentFrameIndex], &commandBufferBeginInfo));
-	vkCmdPipelineBarrier(mContext.FrameCommandBuffers[mContext.CurrentFrameIndex], VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &imageMemoryBarrier);
+	vkCmdPipelineBarrier(frame.commandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &imageMemoryBarrier);
 
-	vkCmdClearColorImage(mContext.FrameCommandBuffers[mContext.CurrentFrameIndex], mContext.SwapchainImages[mContext.CurrentImageIndex], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clearColor, 1, &imageSubresourceRange);
+	vkCmdClearColorImage(frame.commandBuffer, frame.swapchainImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clearColor, 1, &imageSubresourceRange);
 
 	imageMemoryBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 	imageMemoryBarrier.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
@@ -562,48 +681,9 @@ void RendererContext::SwapBuffersImpl(SDL_Window* window)
 	imageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 	imageMemoryBarrier.srcQueueFamilyIndex = mContext.GraphicsQueueFamilyIndex;
 	imageMemoryBarrier.dstQueueFamilyIndex = mContext.GraphicsQueueFamilyIndex;
-	imageMemoryBarrier.image = mContext.SwapchainImages[mContext.CurrentImageIndex];
+	imageMemoryBarrier.image = frame.swapchainImage;
 	imageMemoryBarrier.subresourceRange = imageSubresourceRange;
 
-	vkCmdPipelineBarrier(mContext.FrameCommandBuffers[mContext.CurrentFrameIndex], VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0, nullptr, 0, nullptr, 1, &imageMemoryBarrier);
-	VK_CHECK(vkEndCommandBuffer(mContext.FrameCommandBuffers[mContext.CurrentFrameIndex]));
-
-	VkPipelineStageFlags waitDstStageMask = VK_PIPELINE_STAGE_TRANSFER_BIT;
-	VkSubmitInfo submitInfo{ VK_STRUCTURE_TYPE_SUBMIT_INFO };
-	submitInfo.waitSemaphoreCount = 1;
-	submitInfo.pWaitSemaphores = &mContext.ImageAcquireSemaphore;
-	submitInfo.pWaitDstStageMask = &waitDstStageMask;
-	submitInfo.commandBufferCount = 1;
-	submitInfo.pCommandBuffers = &mContext.FrameCommandBuffers[mContext.CurrentFrameIndex];
-	submitInfo.signalSemaphoreCount = 1;
-	submitInfo.pSignalSemaphores = &mContext.ImageReleaseSemaphore;
-
-	VK_CHECK(vkResetFences(mContext.Device, 1, &mContext.FrameImageAcquireFences[mContext.CurrentFrameIndex]));
-	VK_CHECK(vkQueueSubmit(mContext.GraphicsQueue, 1, &submitInfo, mContext.FrameImageAcquireFences[mContext.CurrentFrameIndex]));
-
-	VkPresentInfoKHR presentInfo{ VK_STRUCTURE_TYPE_PRESENT_INFO_KHR };
-	presentInfo.waitSemaphoreCount = 1;
-	presentInfo.pWaitSemaphores = &mContext.ImageReleaseSemaphore;
-	presentInfo.swapchainCount = 1;
-	presentInfo.pSwapchains = &mContext.Swapchain;
-	presentInfo.pImageIndices = &mContext.CurrentImageIndex;
-	result = vkQueuePresentKHR(mContext.GraphicsQueue, &presentInfo);
-	if (result == VK_ERROR_OUT_OF_DATE_KHR)
-	{
-		CreateSwapchain(window);
-	}
-	else
-	{
-		GLEAM_ASSERT(result == VK_SUCCESS || result == VK_SUBOPTIMAL_KHR, "Vulkan: Image presentation failed!");
-	}
-	
-	mContext.CurrentFrameIndex = (mContext.CurrentFrameIndex + 1) % mContext.FrameBufferingCount;
-}
-/************************************************************************/
-/*	ClearColorImpl                                                      */
-/************************************************************************/
-void RendererContext::ClearColorImpl(const Color& color)
-{
-	
+	vkCmdPipelineBarrier(frame.commandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0, nullptr, 0, nullptr, 1, &imageMemoryBarrier);
 }
 #endif

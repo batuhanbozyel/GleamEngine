@@ -13,14 +13,30 @@
 
 using namespace Gleam;
 
-RendererContext::RendererContext(const Window& window, const TString& appName, const Version& appVersion, const RendererProperties& props)
+struct
+{
+	MTL::Device* Device;
+} mContext;
+
+/************************************************************************/
+/*	Context                                                            */
+/************************************************************************/
+Context::Context(const Window& window, const TString& appName, const Version& appVersion, const RendererProperties& props)
 {
 
 }
-
-RendererContext::~RendererContext()
+/************************************************************************/
+/*	~Context                                                            */
+/************************************************************************/
+Context::~Context()
 {
 
 }
-
+/************************************************************************/
+/*	GetDevice                                                           */
+/************************************************************************/
+auto Context::GetDevice() const
+{
+	return mContext.Device;
+}
 #endif
