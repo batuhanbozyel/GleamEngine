@@ -1,27 +1,54 @@
 #include "gpch.h"
 #include "Log.h"
 
-#include <spdlog/sinks/stdout_color_sinks.h>
-#include <spdlog/sinks/basic_file_sink.h>
+#include <fmt/core.h>
 
 using namespace Gleam;
 
-void Log::Init()
+static constexpr TStringView LogLevelToString(Logger::Level lvl)
 {
-	std::vector<spdlog::sink_ptr> logSinks;
-	logSinks.emplace_back(std::make_shared<spdlog::sinks::stdout_color_sink_mt>());
-	logSinks.emplace_back(std::make_shared<spdlog::sinks::basic_file_sink_mt>("Gleam.log", true));
+    switch (lvl)
+    {
+        case Logger::Level::Trace: return "[Trace]";
+        case Logger::Level::Info: return "[Info]";
+        case Logger::Level::Warn: return "[Warn]";
+        case Logger::Level::Error: return "[Error]";
+        case Logger::Level::Critical: return "[Critical]";
+    }
+};
 
-	logSinks[0]->set_pattern("%^[%T] %n: %v%$");
-	logSinks[1]->set_pattern("[%T] [%l] %n: %v");
+Logger::Logger(const TStringView name)
+    : mName(name)
+{
+    static std::once_flag flag;
+    std::call_once(flag, [this]()
+    {
+        mFileStream = CreateScope<std::ofstream>("Gleam.log", std::ofstream::out);
+    });
+    mInstanceCount++;
+}
 
-	sCoreLogger = CreateRef<spdlog::logger>("GLEAM", begin(logSinks), end(logSinks));
-	spdlog::register_logger(sCoreLogger);
-	sCoreLogger->set_level(spdlog::level::trace);
-	sCoreLogger->flush_on(spdlog::level::trace);
+Logger::~Logger()
+{
+    mInstanceCount--;
+    if (mInstanceCount == 0)
+    {
+        mFileStream.reset();
+    }
+}
 
-	sClientLogger = CreateRef<spdlog::logger>("APP", begin(logSinks), end(logSinks));
-	spdlog::register_logger(sClientLogger);
-	sClientLogger->set_level(spdlog::level::trace);
-	sClientLogger->flush_on(spdlog::level::trace);
+TString Logger::Log(Level lvl, const TStringView frmt, ...) const
+{
+    va_list args;
+    va_start(args, frmt);
+    
+    std::ostringstream ss;
+    ss << mName << LogLevelToString(lvl) << ' ' << fmt::format(frmt, va_arg(args, const char*)) << '\n';
+    
+    va_end(args);
+    
+    TString outString = ss.str();
+    *mFileStream << outString;
+    std::flush(*mFileStream);
+    return outString;
 }

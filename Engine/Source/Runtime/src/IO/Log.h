@@ -1,35 +1,60 @@
 #pragma once
-#include <spdlog/spdlog.h>
 
 namespace Gleam {
 
-class Log
+
+class Logger
 {
 public:
-	static void Init();
-
-	static Ref<spdlog::logger>& GetCoreLogger() { return sCoreLogger;  }
-	static Ref<spdlog::logger>& GetClientLogger() { return sClientLogger; }
-
+    
+    enum class Level
+    {
+        Trace,
+        Info,
+        Warn,
+        Error,
+        Critical
+    };
+    
+    ~Logger();
+    
+    static const Logger& GetCoreLogger()
+    {
+        static Logger sLogger("[GLEAM]");
+        return sLogger;
+    }
+    
+    static const Logger& GetClientLogger()
+    {
+        static Logger sLogger("[APP]");
+        return sLogger;
+    }
+    
+    TString Log(Level lvl, const TStringView frmt, ...) const;
+    
 private:
-
-	static inline Ref<spdlog::logger> sCoreLogger = nullptr;
-	static inline Ref<spdlog::logger> sClientLogger = nullptr;
-
+    
+    Logger(const TStringView name);
+    
+    TString mName;
+    
+    static inline Scope<std::ofstream> mFileStream = nullptr;
+    static inline uint32_t mInstanceCount = 0;
+    
 };
 
 } // namespace Gleam
 
 // Core log macros
-#define GLEAM_CORE_TRACE(...)    ::Gleam::Log::GetCoreLogger()->trace(__VA_ARGS__)
-#define GLEAM_CORE_INFO(...)     ::Gleam::Log::GetCoreLogger()->info(__VA_ARGS__)
-#define GLEAM_CORE_WARN(...)     ::Gleam::Log::GetCoreLogger()->warn(__VA_ARGS__)
-#define GLEAM_CORE_ERROR(...)    ::Gleam::Log::GetCoreLogger()->error(__VA_ARGS__)
-#define GLEAM_CORE_CRITICAL(...) ::Gleam::Log::GetCoreLogger()->critical(__VA_ARGS__)
+#define GLEAM_CORE_TRACE(...) ::Gleam::Logger::GetCoreLogger().Log(::Gleam::Logger::Level::Trace, __VA_ARGS__)
+#define GLEAM_CORE_INFO(...) ::Gleam::Logger::GetCoreLogger().Log(::Gleam::Logger::Level::Info, __VA_ARGS__)
+#define GLEAM_CORE_WARN(...) ::Gleam::Logger::GetCoreLogger().Log(::Gleam::Logger::Level::Warn, __VA_ARGS__)
+#define GLEAM_CORE_ERROR(...) ::Gleam::Logger::GetCoreLogger().Log(::Gleam::Logger::Level::Error, __VA_ARGS__)
+#define GLEAM_CORE_CRITICAL(...) ::Gleam::Logger::GetCoreLogger().Log(::Gleam::Logger::Level::Critical, __VA_ARGS__)
 
 // Client log macros
-#define GLEAM_TRACE(...)         ::Gleam::Log::GetClientLogger()->trace(__VA_ARGS__)
-#define GLEAM_INFO(...)          ::Gleam::Log::GetClientLogger()->info(__VA_ARGS__)
-#define GLEAM_WARN(...)          ::Gleam::Log::GetClientLogger()->warn(__VA_ARGS__)
-#define GLEAM_ERROR(...)         ::Gleam::Log::GetClientLogger()->error(__VA_ARGS__)
-#define GLEAM_CRITICAL(...)      ::Gleam::Log::GetClientLogger()->critical(__VA_ARGS__)
+#define GLEAM_TRACE(...) ::Gleam::Logger::GetClientLogger().Log(::Gleam::Logger::Level::Trace, __VA_ARGS__)
+#define GLEAM_INFO(...) ::Gleam::Logger::GetClientLogger().Log(::Gleam::Logger::Level::Info, __VA_ARGS__)
+#define GLEAM_WARN(...) ::Gleam::Logger::GetClientLogger().Log(::Gleam::Logger::Level::Warn, __VA_ARGS__)
+#define GLEAM_ERROR(...) ::Gleam::Logger::GetClientLogger().Log(::Gleam::Logger::Level::Error, __VA_ARGS__)
+#define GLEAM_CRITICAL(...) ::Gleam::Logger::GetClientLogger().Log(::Gleam::Logger::Level::Critical, __VA_ARGS__)

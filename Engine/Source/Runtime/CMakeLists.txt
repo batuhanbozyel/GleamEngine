@@ -5,7 +5,7 @@ if (WIN32)
         src
         ${Vulkan_INCLUDE_DIRS}
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/SDL2/include
-        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/spdlog/include
+        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/fmt/include
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/glm
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/stb
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui
@@ -18,6 +18,7 @@ if (WIN32)
     )
 
     set(LIB_LINKS_RUNTIME
+        ${CMAKE_SOURCE_DIR}/bin/$<CONFIG>/fmt.lib
         ${CMAKE_SOURCE_DIR}/bin/$<CONFIG>/volk.lib
         ${CMAKE_SOURCE_DIR}/bin/$<CONFIG>/imgui.lib
     )
@@ -25,7 +26,7 @@ else ()
     set(INCLUDE_DIRS_RUNTIME
         src
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/SDL2/include
-        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/spdlog/include
+        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/fmt/include
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/glm
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/stb
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui
@@ -38,6 +39,7 @@ else ()
     )
 
     set(LIB_LINKS_RUNTIME
+        ${CMAKE_SOURCE_DIR}/bin/$<CONFIG>/libfmt.a
         ${CMAKE_SOURCE_DIR}/bin/$<CONFIG>/libimgui.a
     )
 endif()
@@ -48,7 +50,7 @@ file(GLOB_RECURSE SOURCE_FILES
 )
 
 add_library(Runtime STATIC ${SOURCE_FILES})
-add_dependencies(Runtime imgui volk)
+add_dependencies(Runtime fmt imgui volk)
 target_include_directories(Runtime PUBLIC ${INCLUDE_DIRS_RUNTIME})
 
 set_property(TARGET Runtime PROPERTY STATIC_LIBRARY_OPTIONS ${LIB_LINKS_RUNTIME})
