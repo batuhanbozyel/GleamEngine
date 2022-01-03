@@ -1,5 +1,6 @@
 #pragma once
 
+#include <fstream>
 #include <iostream>
 #include <filesystem>
 #include <cstdlib>
@@ -14,6 +15,7 @@
 #include <list>
 #include <array>
 #include <vector>
+#include <cstdarg>
 #include <unordered_map>
 #include <unordered_set>
 

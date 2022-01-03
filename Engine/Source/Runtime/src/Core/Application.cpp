@@ -91,8 +91,6 @@ Application::Application(const ApplicationProperties& props)
 	}
 	sInstance = this;
 
-	Log::Init();
-
 	int initSucess = SDL_Init(SDL_INIT_EVERYTHING);
 	SDL_SetEventFilter(SDL2_EventCallback, nullptr);
 	GLEAM_ASSERT(initSucess == 0, "Window subsystem initialization failed!");
