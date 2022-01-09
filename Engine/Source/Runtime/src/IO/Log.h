@@ -64,6 +64,7 @@ private:
 			case Logger::Level::Info: return "[info] ";
 			case Logger::Level::Warn: return "[warning] ";
 			case Logger::Level::Error: return "[error] ";
+			default: return "[undefined] ";
 		}
 	};
     
