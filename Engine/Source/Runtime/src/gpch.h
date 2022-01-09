@@ -5,6 +5,7 @@
 #include <filesystem>
 #include <cstdlib>
 #include <memory>
+#include <mutex>
 #include <utility>
 #include <algorithm>
 #include <functional>
