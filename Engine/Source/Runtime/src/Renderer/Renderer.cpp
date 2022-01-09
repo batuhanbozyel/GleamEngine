@@ -1,14 +1,14 @@
 #include "gpch.h"
 #include "Renderer.h"
-#include "Context.h"
+#include "RendererContext.h"
 
 using namespace Gleam;
 
-Scope<Context> Renderer::mContext = nullptr;
+static Scope<RendererContext> mContext = nullptr;
 
 void Renderer::Init(const TString& appName, const Version& appVersion, const RendererProperties& props)
 {
-	mContext = CreateScope<Context>(appName, appVersion, props);
+	mContext = CreateScope<RendererContext>(appName, appVersion, props);
 }
 
 void Renderer::Destroy()

@@ -1,7 +1,7 @@
 #include "gpch.h"
 
 #ifdef USE_VULKAN_RENDERER
-#include "Renderer/Context.h"
+#include "Renderer/RendererContext.h"
 
 #include "Core/Window.h"
 #include "Core/Application.h"
@@ -81,9 +81,9 @@ VKAPI_ATTR VkBool32 VKAPI_CALL VulkanDebugCallback(
 }
 
 /************************************************************************/
-/*	Context                                                     */
+/*	RendererContext                                                     */
 /************************************************************************/
-Context::Context(const TString& appName, const Version& appVersion, const RendererProperties& props)
+RendererContext::RendererContext(const TString& appName, const Version& appVersion, const RendererProperties& props)
 	: mProperties(props)
 {
 	VkResult loadVKResult = volkInitialize();
@@ -115,7 +115,7 @@ Context::Context(const TString& appName, const Version& appVersion, const Render
 /************************************************************************/
 /*	~Context                                                            */
 /************************************************************************/
-Context::~Context()
+RendererContext::~RendererContext()
 {
 	vkDeviceWaitIdle(mContext.Device);
 	for (uint32_t i = 0; i < mContext.CommandPools.size(); i++)
@@ -140,14 +140,14 @@ Context::~Context()
 /************************************************************************/
 /*	GetDevice                                                           */
 /************************************************************************/
-GraphicsDevice Context::GetDevice() const
+GraphicsDevice RendererContext::GetDevice() const
 {
 	return mContext.Device;
 }
 /************************************************************************/
 /*	GetCurrentFrameObject                                               */
 /************************************************************************/
-FrameObject Context::GetCurrentFrameObject() const
+FrameObject RendererContext::GetCurrentFrameObject() const
 {
 	return VulkanFrameObject
 	{
@@ -160,7 +160,7 @@ FrameObject Context::GetCurrentFrameObject() const
 /************************************************************************/
 /*	CreateInstance                                                      */
 /************************************************************************/
-void Context::CreateInstance(const TString& appName, const Version& appVersion)
+void RendererContext::CreateInstance(const TString& appName, const Version& appVersion)
 {
 	// Get window subsystem extensions
 	uint32_t extensionCount;
@@ -198,7 +198,8 @@ void Context::CreateInstance(const TString& appName, const Version& appVersion)
 /************************************************************************/
 /*	CreateDebugMessenger                                                */
 /************************************************************************/
-void Context::CreateDebugMessenger()
+#ifdef GDEBUG
+void RendererContext::CreateDebugMessenger()
 {
 	// Create debug messenger
 	VkDebugUtilsMessengerCreateInfoEXT debugInfo{ VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT };
@@ -216,10 +217,11 @@ void Context::CreateDebugMessenger()
 
 	VK_CHECK(vkCreateDebugUtilsMessengerEXT(mContext.Instance, &debugInfo, nullptr, &mContext.DebugMessenger));
 }
+#endif
 /************************************************************************/
 /*	CreateDevice                                                        */
 /************************************************************************/
-void Context::CreateDevice()
+void RendererContext::CreateDevice()
 {
 	uint32_t physicalDeviceCount;
 	VK_CHECK(vkEnumeratePhysicalDevices(mContext.Instance, &physicalDeviceCount, nullptr));
@@ -336,7 +338,7 @@ void Context::CreateDevice()
 /************************************************************************/
 /*	CreateSwapchain                                                     */
 /************************************************************************/
-void Context::CreateSwapchain()
+void RendererContext::CreateSwapchain()
 {
 	SDL_Window* window = Application::GetActiveWindow().GetSDLWindow();
 
@@ -533,7 +535,7 @@ void Context::CreateSwapchain()
 /************************************************************************/
 /*	CreateSyncObjects                                                    */
 /************************************************************************/
-void Context::CreateSyncObjects()
+void RendererContext::CreateSyncObjects()
 {
 	VkSemaphoreCreateInfo semaphoreCreateInfo{ VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO };
 	VK_CHECK(vkCreateSemaphore(mContext.Device, &semaphoreCreateInfo, nullptr, &mContext.ImageAcquireSemaphore));
@@ -542,7 +544,7 @@ void Context::CreateSyncObjects()
 /************************************************************************/
 /*	CreateFrameObjects                                                    */
 /************************************************************************/
-void Context::CreateFrameObjects()
+void RendererContext::CreateFrameObjects()
 {
 	for (uint32_t i = 0; i < mContext.CommandPools.size(); i++)
 	{
@@ -565,7 +567,7 @@ void Context::CreateFrameObjects()
 /************************************************************************/
 /*	DestroySwapchain                                                    */
 /************************************************************************/
-void Context::DestroySwapchain()
+void RendererContext::DestroySwapchain()
 {
 	for (uint32_t i = 0; i < mContext.SwapchainFramebuffers.size(); i++)
 	{
@@ -580,7 +582,7 @@ void Context::DestroySwapchain()
 /************************************************************************/
 /*	BeginFrame                                                          */
 /************************************************************************/
-void Context::BeginFrame()
+void RendererContext::BeginFrame()
 {
 	const auto& frame = GetCurrentFrameObject();
 
@@ -601,14 +603,11 @@ void Context::BeginFrame()
 	VkCommandBufferBeginInfo commandBufferBeginInfo{ VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
 	commandBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 	VK_CHECK(vkBeginCommandBuffer(frame.commandBuffer, &commandBufferBeginInfo));
-
-	// Temporary
-	ClearScreen({ 1.0f, 0.8f, 0.4f, 1.0f });
 }
 /************************************************************************/
 /*	EndFrame                                                            */
 /************************************************************************/
-void Context::EndFrame()
+void RendererContext::EndFrame()
 {
 	const auto& frame = GetCurrentFrameObject();
 
@@ -648,7 +647,7 @@ void Context::EndFrame()
 /************************************************************************/
 /*	ClearScreen                                                         */
 /************************************************************************/
-void Context::ClearScreen(const Color& color) const
+void RendererContext::ClearScreen(const Color& color) const
 {
 	const auto& frame = GetCurrentFrameObject();
 

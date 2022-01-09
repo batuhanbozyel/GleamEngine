@@ -16,12 +16,12 @@ namespace Gleam {
 
 struct Version;
 
-class Context
+class RendererContext
 {
 public:
 
-	Context(const TString& appName, const Version& appVersion, const RendererProperties& props);
-	~Context();
+	RendererContext(const TString& appName, const Version& appVersion, const RendererProperties& props);
+	~RendererContext();
 
 	void BeginFrame();
 	void ClearScreen(const Color& color) const;
@@ -39,7 +39,9 @@ private:
 
 #ifdef USE_VULKAN_RENDERER
 	void CreateInstance(const TString& appName, const Version& appVersion);
+#ifdef GDEBUG
 	void CreateDebugMessenger();
+#endif
 	void CreateDevice();
 	void CreateSwapchain();
 	void CreateSyncObjects();

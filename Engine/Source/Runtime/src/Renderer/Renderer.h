@@ -2,7 +2,6 @@
 
 namespace Gleam {
 
-class Context;
 struct Version;
 struct RendererProperties;
 
@@ -16,10 +15,6 @@ public:
 
 	// Temporary
 	static void RenderFrame();
-
-private:
-
-	static Scope<Context> mContext;
 
 };
 

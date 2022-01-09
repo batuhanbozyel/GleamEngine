@@ -19,23 +19,23 @@ struct
 } mContext;
 
 /************************************************************************/
-/*	Context                                                            */
+/*	RendererContext                                                     */
 /************************************************************************/
-Context::Context(const Window& window, const TString& appName, const Version& appVersion, const RendererProperties& props)
+RendererContext::RendererContext(const TString& appName, const Version& appVersion, const RendererProperties& props)
 {
 
 }
 /************************************************************************/
-/*	~Context                                                            */
+/*	~RendererContext                                                    */
 /************************************************************************/
-Context::~Context()
+RendererContext::~RendererContext()
 {
 
 }
 /************************************************************************/
 /*	GetDevice                                                           */
 /************************************************************************/
-auto Context::GetDevice() const
+GraphicsDevice RendererContext::GetDevice() const
 {
 	return mContext.Device;
 }
