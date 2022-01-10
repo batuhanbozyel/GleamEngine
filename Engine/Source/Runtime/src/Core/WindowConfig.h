@@ -45,26 +45,28 @@ public:
 	{
 		SDL_DisplayMode currDisplay;
 		SDL_GetCurrentDisplayMode(monitor, &currDisplay);
-		return DisplayMode (
+        return DisplayMode
+        {
 			static_cast<SDL_PixelFormatEnum>(currDisplay.format),
-			currDisplay.w,
-			currDisplay.h,
-			currDisplay.refresh_rate,
+			static_cast<uint32_t>(currDisplay.w),
+            static_cast<uint32_t>(currDisplay.h),
+            static_cast<uint32_t>(currDisplay.refresh_rate),
 			monitor
-		);
+        };
 	}
 
 	static DisplayMode GetDisplayModeWithIndex(uint32_t monitor, uint32_t modeIndex)
 	{
 		SDL_DisplayMode currDisplay;
 		SDL_GetDisplayMode(monitor, modeIndex, &currDisplay);
-		return DisplayMode(
+		return DisplayMode
+        {
 			static_cast<SDL_PixelFormatEnum>(currDisplay.format),
-			currDisplay.w,
-			currDisplay.h,
-			currDisplay.refresh_rate,
+            static_cast<uint32_t>(currDisplay.w),
+            static_cast<uint32_t>(currDisplay.h),
+            static_cast<uint32_t>(currDisplay.refresh_rate),
 			monitor
-		);
+        };
 	}
 
 	static TArray<DisplayMode> GetAvailableDisplayModes(uint32_t monitor)

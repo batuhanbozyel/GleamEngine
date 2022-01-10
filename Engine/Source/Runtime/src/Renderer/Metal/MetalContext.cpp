@@ -19,24 +19,46 @@ struct
 } mContext;
 
 /************************************************************************/
-/*	RendererContext                                                     */
+/*	RendererContext                           */
 /************************************************************************/
 RendererContext::RendererContext(const TString& appName, const Version& appVersion, const RendererProperties& props)
+    : mProperties(props)
 {
 
 }
 /************************************************************************/
-/*	~RendererContext                                                    */
+/*	~RendererContext                          */
 /************************************************************************/
 RendererContext::~RendererContext()
 {
 
 }
 /************************************************************************/
-/*	GetDevice                                                           */
+/*	GetDevice                                 */
 /************************************************************************/
 GraphicsDevice RendererContext::GetDevice() const
 {
 	return mContext.Device;
+}
+/************************************************************************/
+/*    BeginFrame                              */
+/************************************************************************/
+void RendererContext::BeginFrame()
+{
+    
+}
+/************************************************************************/
+/*    EndFrame                                */
+/************************************************************************/
+void RendererContext::EndFrame()
+{
+    
+}
+/************************************************************************/
+/*    ClearScreen                             */
+/************************************************************************/
+void RendererContext::ClearScreen(const Color &color) const
+{
+    
 }
 #endif
