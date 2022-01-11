@@ -53,13 +53,5 @@ static constexpr const char* VkResultToString(VkResult result)
 	}
 }
 
-struct VulkanFrameObject
-{
-	VkCommandPool commandPool;
-	VkFence imageAcquireFence;
-	VkCommandBuffer commandBuffer;
-	VkImage swapchainImage;
-};
-
 } // namespace Gleam
 #endif

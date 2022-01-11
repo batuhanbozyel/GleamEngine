@@ -1,17 +1,6 @@
 #pragma once
 #include "RendererConfig.h"
 
-#ifdef USE_VULKAN_RENDERER
-#include "Vulkan/VulkanUtils.h"
-#define GraphicsDevice VkDevice
-#define FrameObject VulkanFrameObject
-#else
-#include "Metal/MetalUtils.h"
-#define GraphicsDevice MTL::Device*
-#define SwapchainImage MTL::Texture*
-#define FrameObject MetalFrameObject
-#endif
-
 namespace Gleam {
 
 struct Version;
@@ -27,8 +16,7 @@ public:
 	void ClearScreen(const Color& color) const;
 	void EndFrame();
 
-	GraphicsDevice GetDevice() const;
-	FrameObject GetCurrentFrameObject() const;
+    void* GetDevice() const;
 
 	const RendererProperties& GetProperties() const
 	{
@@ -36,22 +24,11 @@ public:
 	}
 
 private:
-
-#ifdef USE_VULKAN_RENDERER
-	void CreateInstance(const TString& appName, const Version& appVersion);
-#ifdef GDEBUG
-	void CreateDebugMessenger();
-#endif
-	void CreateDevice();
-	void CreateSwapchain();
-	void CreateSyncObjects();
-	void CreateFrameObjects();
-	void DestroySwapchain();
-#else
-	
-#endif
-
+    
+    void InvalidateSwapchain();
+    
 	RendererProperties mProperties;
+    uint32_t mCurrentFrameIndex = 0;
 };
 
 } // namespace Gleam

@@ -51,7 +51,7 @@ struct
 	TArray<VkCommandPool> CommandPools;
 	TArray<VkFence> ImageAcquireFences;
 	TArray<VkCommandBuffer> CommandBuffers;
-	uint32_t CurrentFrameIndex{ 0 };
+    VulkanFrameObject CurrentFrame;
 } mContext;
 
 VKAPI_ATTR VkBool32 VKAPI_CALL VulkanDebugCallback(
@@ -140,22 +140,9 @@ RendererContext::~RendererContext()
 /************************************************************************/
 /*	GetDevice                                                           */
 /************************************************************************/
-GraphicsDevice RendererContext::GetDevice() const
+void* RendererContext::GetDevice() const
 {
-	return mContext.Device;
-}
-/************************************************************************/
-/*	GetCurrentFrameObject                                               */
-/************************************************************************/
-FrameObject RendererContext::GetCurrentFrameObject() const
-{
-	return VulkanFrameObject
-	{
-		mContext.CommandPools[mContext.CurrentFrameIndex],
-		mContext.ImageAcquireFences[mContext.CurrentFrameIndex],
-		mContext.CommandBuffers[mContext.CurrentFrameIndex],
-		mContext.SwapchainImages[mContext.CurrentImageIndex]
-	};
+	return &mContext.Device;
 }
 /************************************************************************/
 /*	CreateInstance                                                      */
@@ -388,6 +375,7 @@ void RendererContext::CreateSwapchain()
 	swapchainCreateInfo.surface = mContext.Surface;
 	if (surfaceCapabilities.minImageCount <= 3 && surfaceCapabilities.maxImageCount >= 3 && mProperties.tripleBufferingEnabled)
 	{
+        mProperties.maxFramesInFlight = 3;
 		mContext.CommandPools.resize(3);
 		mContext.ImageAcquireFences.resize(3);
 		mContext.CommandBuffers.resize(3);
@@ -396,6 +384,7 @@ void RendererContext::CreateSwapchain()
 	}
 	else if (surfaceCapabilities.minImageCount <= 2 && surfaceCapabilities.maxImageCount >= 2)
 	{
+        mProperties.maxFramesInFlight = 2;
 		mContext.CommandPools.resize(2);
 		mContext.ImageAcquireFences.resize(2);
 		mContext.CommandBuffers.resize(2);
@@ -408,6 +397,7 @@ void RendererContext::CreateSwapchain()
 	}
 	else
 	{
+        mProperties.maxFramesInFlight = 1;
 		GLEAM_ASSERT(false, "Vulkan: Neither triple nor double buffering is available!");
 	}
 	swapchainCreateInfo.imageColorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
@@ -584,9 +574,7 @@ void RendererContext::DestroySwapchain()
 /************************************************************************/
 void RendererContext::BeginFrame()
 {
-	const auto& frame = GetCurrentFrameObject();
-
-	VK_CHECK(vkWaitForFences(mContext.Device, 1, &frame.imageAcquireFence, VK_TRUE, UINT64_MAX));
+	VK_CHECK(vkWaitForFences(mContext.Device, 1, &mContext.CurrentFrame.imageAcquireFence, VK_TRUE, UINT64_MAX));
 
 	VkResult result = vkAcquireNextImageKHR(mContext.Device, mContext.Swapchain, UINT64_MAX, mContext.ImageAcquireSemaphore, VK_NULL_HANDLE, &mContext.CurrentImageIndex);
 	if (result == VK_ERROR_OUT_OF_DATE_KHR)
@@ -598,20 +586,18 @@ void RendererContext::BeginFrame()
 		GLEAM_ASSERT(result == VK_SUCCESS || result == VK_SUBOPTIMAL_KHR, "Vulkan: Swapbuffers failed to acquire next image!");
 	}
 
-	VK_CHECK(vkResetCommandPool(mContext.Device, frame.commandPool, 0));
+	VK_CHECK(vkResetCommandPool(mContext.Device, mContext.CurrentFrame.commandPool, 0));
 
 	VkCommandBufferBeginInfo commandBufferBeginInfo{ VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
 	commandBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-	VK_CHECK(vkBeginCommandBuffer(frame.commandBuffer, &commandBufferBeginInfo));
+	VK_CHECK(vkBeginCommandBuffer(mContext.CurrentFrame.commandBuffer, &commandBufferBeginInfo));
 }
 /************************************************************************/
 /*	EndFrame                                                            */
 /************************************************************************/
 void RendererContext::EndFrame()
 {
-	const auto& frame = GetCurrentFrameObject();
-
-	VK_CHECK(vkEndCommandBuffer(frame.commandBuffer));
+	VK_CHECK(vkEndCommandBuffer(mContext.CurrentFrame.commandBuffer));
 
 	VkPipelineStageFlags waitDstStageMask = VK_PIPELINE_STAGE_TRANSFER_BIT;
 	VkSubmitInfo submitInfo{ VK_STRUCTURE_TYPE_SUBMIT_INFO };
@@ -619,12 +605,12 @@ void RendererContext::EndFrame()
 	submitInfo.pWaitSemaphores = &mContext.ImageAcquireSemaphore;
 	submitInfo.pWaitDstStageMask = &waitDstStageMask;
 	submitInfo.commandBufferCount = 1;
-	submitInfo.pCommandBuffers = &frame.commandBuffer;
+	submitInfo.pCommandBuffers = &mContext.CurrentFrame.commandBuffer;
 	submitInfo.signalSemaphoreCount = 1;
 	submitInfo.pSignalSemaphores = &mContext.ImageReleaseSemaphore;
 
-	VK_CHECK(vkResetFences(mContext.Device, 1, &frame.imageAcquireFence));
-	VK_CHECK(vkQueueSubmit(mContext.GraphicsQueue, 1, &submitInfo, frame.imageAcquireFence));
+	VK_CHECK(vkResetFences(mContext.Device, 1, &mContext.CurrentFrame.imageAcquireFence));
+	VK_CHECK(vkQueueSubmit(mContext.GraphicsQueue, 1, &submitInfo, mContext.CurrentFrame.imageAcquireFence));
 
 	VkPresentInfoKHR presentInfo{ VK_STRUCTURE_TYPE_PRESENT_INFO_KHR };
 	presentInfo.waitSemaphoreCount = 1;
@@ -649,8 +635,6 @@ void RendererContext::EndFrame()
 /************************************************************************/
 void RendererContext::ClearScreen(const Color& color) const
 {
-	const auto& frame = GetCurrentFrameObject();
-
 	VkClearColorValue clearColor = std::bit_cast<VkClearColorValue>(color);
 
 	VkImageSubresourceRange imageSubresourceRange;
@@ -667,12 +651,12 @@ void RendererContext::ClearScreen(const Color& color) const
 	imageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
 	imageMemoryBarrier.srcQueueFamilyIndex = mContext.GraphicsQueueFamilyIndex;
 	imageMemoryBarrier.dstQueueFamilyIndex = mContext.GraphicsQueueFamilyIndex;
-	imageMemoryBarrier.image = frame.swapchainImage;
+	imageMemoryBarrier.image = mContext.CurrentFrame.swapchainImage;
 	imageMemoryBarrier.subresourceRange = imageSubresourceRange;
 
-	vkCmdPipelineBarrier(frame.commandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &imageMemoryBarrier);
+	vkCmdPipelineBarrier(mContext.CurrentFrame.commandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &imageMemoryBarrier);
 
-	vkCmdClearColorImage(frame.commandBuffer, frame.swapchainImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clearColor, 1, &imageSubresourceRange);
+	vkCmdClearColorImage(mContext.CurrentFrame.commandBuffer, mContext.CurrentFrame.swapchainImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clearColor, 1, &imageSubresourceRange);
 
 	imageMemoryBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 	imageMemoryBarrier.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
@@ -680,9 +664,9 @@ void RendererContext::ClearScreen(const Color& color) const
 	imageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 	imageMemoryBarrier.srcQueueFamilyIndex = mContext.GraphicsQueueFamilyIndex;
 	imageMemoryBarrier.dstQueueFamilyIndex = mContext.GraphicsQueueFamilyIndex;
-	imageMemoryBarrier.image = frame.swapchainImage;
+	imageMemoryBarrier.image = mContext.CurrentFrame.swapchainImage;
 	imageMemoryBarrier.subresourceRange = imageSubresourceRange;
 
-	vkCmdPipelineBarrier(frame.commandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0, nullptr, 0, nullptr, 1, &imageMemoryBarrier);
+	vkCmdPipelineBarrier(mContext.CurrentFrame.commandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0, nullptr, 0, nullptr, 1, &imageMemoryBarrier);
 }
 #endif
