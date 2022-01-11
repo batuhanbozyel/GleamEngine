@@ -1,10 +1,11 @@
 #pragma once
+#ifdef USE_VULKAN_RENDERER
 #include <volk.h>
 
 namespace Gleam {
 
 #define VK_CHECK(x) {VkResult result = x;\
-					GLEAM_ASSERT(result == VK_SUCCESS, VkResultToString(x))}
+					GLEAM_ASSERT(result == VK_SUCCESS, VkResultToString(x));}
 
 static constexpr const char* VkResultToString(VkResult result)
 {
@@ -52,4 +53,14 @@ static constexpr const char* VkResultToString(VkResult result)
 	}
 }
 
+struct VulkanFrameObject
+{
+	VkCommandPool commandPool;
+	VkCommandBuffer commandBuffer;
+	VkFence imageAcquireFence;
+	VkImage swapchainImage;
+	uint32_t imageIndex;
+};
+
 } // namespace Gleam
+#endif

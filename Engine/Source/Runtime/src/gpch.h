@@ -5,6 +5,7 @@
 #include <filesystem>
 #include <cstdlib>
 #include <memory>
+#include <mutex>
 #include <utility>
 #include <algorithm>
 #include <functional>
@@ -31,7 +32,6 @@
 #include "Math/Vector.h"
 #include "Math/Matrix.h"
 #include "Math/Color.h"
-
 
 #include "Core/Events/ApplicationEvent.h"
 #include "Core/Events/WindowEvent.h"

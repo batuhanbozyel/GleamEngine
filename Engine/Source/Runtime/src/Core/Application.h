@@ -17,9 +17,14 @@ public:
 
 	void Run();
 
-	const Version& GetVersion() const
+	static const Window& GetActiveWindow()
 	{
-		return mVersion;
+		return *sInstance->mActiveWindow;
+	}
+
+	static const Version& GetVersion()
+	{
+		return sInstance->mVersion;
 	}
 
 private:
@@ -28,7 +33,10 @@ private:
 
 	Version mVersion;
 	SDL_Event mEvent;
+	Window* mActiveWindow;
 	HashMap<SDL_Window*, Scope<Window>> mWindows;
+
+	static inline Application* sInstance = nullptr;
 
 };
 

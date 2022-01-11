@@ -3,7 +3,7 @@
 
 #include "Window.h"
 #include "Events/WindowEvent.h"
-#include "Renderer/GraphicsContext.h"
+#include "Renderer/Renderer.h"
 
 using namespace Gleam;
 
@@ -85,13 +85,19 @@ static int SDLCALL SDL2_EventCallback(void* data, SDL_Event* e)
 Application::Application(const ApplicationProperties& props)
 	: mVersion(props.appVersion)
 {
+	if (sInstance)
+	{
+		delete sInstance;
+	}
+	sInstance = this;
+
 	int initSucess = SDL_Init(SDL_INIT_EVERYTHING);
 	SDL_SetEventFilter(SDL2_EventCallback, nullptr);
 	GLEAM_ASSERT(initSucess == 0, "Window subsystem initialization failed!");
 
-	Window* mainWindow = new Window(props.windowProps);
-	mWindows.emplace(mainWindow->GetSDLWindow(), Scope<Window>(mainWindow));
-	GraphicsContext::Create(mainWindow->GetSDLWindow(), props.windowProps.title, props.appVersion);
+	mActiveWindow = new Window(props.windowProps);
+	mWindows.emplace(mActiveWindow->GetSDLWindow(), Scope<Window>(mActiveWindow));
+	Renderer::Init(props.windowProps.title, props.appVersion, props.rendererProps);
 
 	EventDispatcher<AppCloseEvent>::Subscribe([this](AppCloseEvent e)
 	{
@@ -101,6 +107,12 @@ Application::Application(const ApplicationProperties& props)
 
 	EventDispatcher<WindowCloseEvent>::Subscribe([this](WindowCloseEvent e)
 	{
+		// if there is only 1 window, application should terminate with the proper deallocation order
+		if (mWindows.size() == 1)
+		{
+			return false;
+		}
+
 		mWindows.erase(e.GetWindow());
 		return true;
 	});
@@ -111,12 +123,15 @@ void Application::Run()
 	while (mRunning)
 	{
 		while (SDL_PollEvent(&mEvent));
+
+		Renderer::RenderFrame();
 	}
 }
 
 Application::~Application()
 {
-	GraphicsContext::Destroy();
+	Renderer::Destroy();
 	mWindows.clear();
 	SDL_Quit();
+	sInstance = nullptr;
 }
