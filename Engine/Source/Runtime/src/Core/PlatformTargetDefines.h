@@ -28,7 +28,7 @@
 #error Unknown platform!
 #endif
 
-#ifdef PLATFORM_MACOS
+#if defined(PLATFORM_MACOS) || defined(PLATFORM_IOS)
 #define USE_METAL_RENDERER
 #else
 #define USE_VULKAN_RENDERER
