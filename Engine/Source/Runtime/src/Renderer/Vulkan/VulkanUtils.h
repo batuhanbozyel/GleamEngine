@@ -57,7 +57,10 @@ struct VulkanFrameObject
 {
 	VkCommandPool commandPool;
 	VkCommandBuffer commandBuffer;
+	VkFramebuffer framebuffer;
 	VkFence imageAcquireFence;
+	VkSemaphore imageAcquireSemaphore;
+	VkSemaphore imageReleaseSemaphore;
 	VkImage swapchainImage;
 	uint32_t imageIndex;
 };
