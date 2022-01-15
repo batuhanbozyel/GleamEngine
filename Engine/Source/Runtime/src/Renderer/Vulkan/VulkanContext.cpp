@@ -56,22 +56,24 @@ struct
     VulkanFrameObject CurrentFrame;
 } mContext;
 
+#define CurrentFrame mContext.CurrentFrame
+
 VKAPI_ATTR VkBool32 VKAPI_CALL VulkanDebugCallback(
 	VkDebugUtilsMessageSeverityFlagBitsEXT severity,
 	VkDebugUtilsMessageTypeFlagsEXT type,
 	const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
 	void* pUserData)
 {
-	if (severity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
+	if (severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
 	{
 		GLEAM_CORE_ERROR("Vulkan: {0}", pCallbackData->pMessage);
 		GLEAM_ASSERT(false);
 	}
-	else if (severity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
+	else if (severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
 	{
 		GLEAM_CORE_WARN("Vulkan: {0}", pCallbackData->pMessage);
 	}
-	else if (severity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT)
+	else if (severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT)
 	{
 		GLEAM_CORE_INFO("Vulkan: {0}", pCallbackData->pMessage);
 	}
@@ -472,6 +474,8 @@ void RendererContext::InvalidateSwapchain()
 				return presentMode;
 			}
 		}
+	#else
+		mProperties.vsync = true;
 	#endif
 		return VK_PRESENT_MODE_FIFO_KHR;
 	}();
@@ -588,15 +592,15 @@ void RendererContext::InvalidateSwapchain()
 /************************************************************************/
 void RendererContext::BeginFrame()
 {
-	mContext.CurrentFrame.commandPool = mContext.CommandPools[mCurrentFrameIndex];
-	mContext.CurrentFrame.commandBuffer = mContext.CommandBuffers[mCurrentFrameIndex];
-	mContext.CurrentFrame.imageAcquireFence = mContext.ImageAcquireFences[mCurrentFrameIndex];
-	mContext.CurrentFrame.imageAcquireSemaphore = mContext.ImageAcquireSemaphores[mCurrentFrameIndex];
-	mContext.CurrentFrame.imageReleaseSemaphore = mContext.ImageReleaseSemaphores[mCurrentFrameIndex];
+	CurrentFrame.commandPool = mContext.CommandPools[mCurrentFrameIndex];
+	CurrentFrame.commandBuffer = mContext.CommandBuffers[mCurrentFrameIndex];
+	CurrentFrame.imageAcquireFence = mContext.ImageAcquireFences[mCurrentFrameIndex];
+	CurrentFrame.imageAcquireSemaphore = mContext.ImageAcquireSemaphores[mCurrentFrameIndex];
+	CurrentFrame.imageReleaseSemaphore = mContext.ImageReleaseSemaphores[mCurrentFrameIndex];
 
-	VK_CHECK(vkWaitForFences(mContext.Device, 1, &mContext.CurrentFrame.imageAcquireFence, VK_TRUE, UINT64_MAX));
+	VK_CHECK(vkWaitForFences(mContext.Device, 1, &CurrentFrame.imageAcquireFence, VK_TRUE, UINT64_MAX));
 	
-	VkResult result = vkAcquireNextImageKHR(mContext.Device, mContext.Swapchain, UINT64_MAX, mContext.CurrentFrame.imageAcquireSemaphore, VK_NULL_HANDLE, &mContext.CurrentFrame.imageIndex);
+	VkResult result = vkAcquireNextImageKHR(mContext.Device, mContext.Swapchain, UINT64_MAX, CurrentFrame.imageAcquireSemaphore, VK_NULL_HANDLE, &CurrentFrame.imageIndex);
 	if (result == VK_ERROR_OUT_OF_DATE_KHR)
 	{
 		InvalidateSwapchain();
@@ -605,41 +609,41 @@ void RendererContext::BeginFrame()
 	{
 		GLEAM_ASSERT(result == VK_SUCCESS || result == VK_SUBOPTIMAL_KHR, "Vulkan: Swapbuffers failed to acquire next image!");
 	}
-	mContext.CurrentFrame.swapchainImage = mContext.SwapchainImages[mContext.CurrentFrame.imageIndex];
-	mContext.CurrentFrame.framebuffer = mContext.SwapchainFramebuffers[mContext.CurrentFrame.imageIndex];
+	CurrentFrame.swapchainImage = mContext.SwapchainImages[CurrentFrame.imageIndex];
+	CurrentFrame.framebuffer = mContext.SwapchainFramebuffers[CurrentFrame.imageIndex];
 
-	VK_CHECK(vkResetCommandPool(mContext.Device, mContext.CurrentFrame.commandPool, 0));
+	VK_CHECK(vkResetCommandPool(mContext.Device, CurrentFrame.commandPool, 0));
 
 	VkCommandBufferBeginInfo commandBufferBeginInfo{ VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
 	commandBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-	VK_CHECK(vkBeginCommandBuffer(mContext.CurrentFrame.commandBuffer, &commandBufferBeginInfo));
+	VK_CHECK(vkBeginCommandBuffer(CurrentFrame.commandBuffer, &commandBufferBeginInfo));
 }
 /************************************************************************/
 /*	EndFrame                                                            */
 /************************************************************************/
 void RendererContext::EndFrame()
 {
-	VK_CHECK(vkEndCommandBuffer(mContext.CurrentFrame.commandBuffer));
+	VK_CHECK(vkEndCommandBuffer(CurrentFrame.commandBuffer));
 
 	VkPipelineStageFlags waitDstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 	VkSubmitInfo submitInfo{ VK_STRUCTURE_TYPE_SUBMIT_INFO };
 	submitInfo.waitSemaphoreCount = 1;
-	submitInfo.pWaitSemaphores = &mContext.CurrentFrame.imageAcquireSemaphore;
+	submitInfo.pWaitSemaphores = &CurrentFrame.imageAcquireSemaphore;
 	submitInfo.pWaitDstStageMask = &waitDstStageMask;
 	submitInfo.commandBufferCount = 1;
-	submitInfo.pCommandBuffers = &mContext.CurrentFrame.commandBuffer;
+	submitInfo.pCommandBuffers = &CurrentFrame.commandBuffer;
 	submitInfo.signalSemaphoreCount = 1;
-	submitInfo.pSignalSemaphores = &mContext.CurrentFrame.imageReleaseSemaphore;
+	submitInfo.pSignalSemaphores = &CurrentFrame.imageReleaseSemaphore;
 
-	VK_CHECK(vkResetFences(mContext.Device, 1, &mContext.CurrentFrame.imageAcquireFence));
-	VK_CHECK(vkQueueSubmit(mContext.GraphicsQueue, 1, &submitInfo, mContext.CurrentFrame.imageAcquireFence));
+	VK_CHECK(vkResetFences(mContext.Device, 1, &CurrentFrame.imageAcquireFence));
+	VK_CHECK(vkQueueSubmit(mContext.GraphicsQueue, 1, &submitInfo, CurrentFrame.imageAcquireFence));
 
 	VkPresentInfoKHR presentInfo{ VK_STRUCTURE_TYPE_PRESENT_INFO_KHR };
 	presentInfo.waitSemaphoreCount = 1;
-	presentInfo.pWaitSemaphores = &mContext.CurrentFrame.imageReleaseSemaphore;
+	presentInfo.pWaitSemaphores = &CurrentFrame.imageReleaseSemaphore;
 	presentInfo.swapchainCount = 1;
 	presentInfo.pSwapchains = &mContext.Swapchain;
-	presentInfo.pImageIndices = &mContext.CurrentFrame.imageIndex;
+	presentInfo.pImageIndices = &CurrentFrame.imageIndex;
 	VkResult result = vkQueuePresentKHR(mContext.GraphicsQueue, &presentInfo);
 	if (result == VK_ERROR_OUT_OF_DATE_KHR)
 	{
@@ -661,13 +665,13 @@ void RendererContext::ClearScreen(const Color& color) const
 
 	VkRenderPassBeginInfo renderPassBeginInfo{ VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO };
 	renderPassBeginInfo.renderPass = mContext.SwapchainRenderPass;
-	renderPassBeginInfo.framebuffer = mContext.CurrentFrame.framebuffer;
+	renderPassBeginInfo.framebuffer = CurrentFrame.framebuffer;
 	renderPassBeginInfo.clearValueCount = 1;
 	renderPassBeginInfo.pClearValues = &clearColor;
 	renderPassBeginInfo.renderArea.extent.width = mProperties.width;
 	renderPassBeginInfo.renderArea.extent.height = mProperties.height;
-	vkCmdBeginRenderPass(mContext.CurrentFrame.commandBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+	vkCmdBeginRenderPass(CurrentFrame.commandBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-	vkCmdEndRenderPass(mContext.CurrentFrame.commandBuffer);
+	vkCmdEndRenderPass(CurrentFrame.commandBuffer);
 }
 #endif
