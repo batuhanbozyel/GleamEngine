@@ -283,18 +283,7 @@ RendererContext::RendererContext(const TString& appName, const Version& appVersi
 
 	// Create device
 	CreateDevice();
-
-	// Get surface information
-	uint32_t surfaceFormatCount;
-	VK_CHECK(vkGetPhysicalDeviceSurfaceFormatsKHR(mContext.PhysicalDevice, mContext.Surface, &surfaceFormatCount, nullptr));
-	mContext.SurfaceFormats.resize(surfaceFormatCount);
-	VK_CHECK(vkGetPhysicalDeviceSurfaceFormatsKHR(mContext.PhysicalDevice, mContext.Surface, &surfaceFormatCount, mContext.SurfaceFormats.data()));
-
-	uint32_t presentModeCount;
-	VK_CHECK(vkGetPhysicalDeviceSurfacePresentModesKHR(mContext.PhysicalDevice, mContext.Surface, &presentModeCount, nullptr));
-	mContext.PresentModes.resize(presentModeCount);
-	VK_CHECK(vkGetPhysicalDeviceSurfacePresentModesKHR(mContext.PhysicalDevice, mContext.Surface, &presentModeCount, mContext.PresentModes.data()));
-
+	
 	// Create swapchain
 	InvalidateSwapchain();
 
@@ -392,18 +381,18 @@ void RendererContext::InvalidateSwapchain()
 
 	vkDeviceWaitIdle(mContext.Device);
 
-	VkSurfaceCapabilitiesKHR surfaceCapabilities;
-	VK_CHECK(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(mContext.PhysicalDevice, mContext.Surface, &surfaceCapabilities));
+	// Get surface information
+	uint32_t presentModeCount;
+	VK_CHECK(vkGetPhysicalDeviceSurfacePresentModesKHR(mContext.PhysicalDevice, mContext.Surface, &presentModeCount, nullptr));
+	mContext.PresentModes.resize(presentModeCount);
+	VK_CHECK(vkGetPhysicalDeviceSurfacePresentModesKHR(mContext.PhysicalDevice, mContext.Surface, &presentModeCount, mContext.PresentModes.data()));
 
-	int width, height;
-	SDL_Vulkan_GetDrawableSize(window, &width, &height);
-	VkExtent2D imageExtent{ static_cast<uint32_t>(width), static_cast<uint32_t>(height) };
-	imageExtent.width = Math::Clamp(imageExtent.width, surfaceCapabilities.minImageExtent.width, surfaceCapabilities.maxImageExtent.width);
-	imageExtent.height = Math::Clamp(imageExtent.height, surfaceCapabilities.minImageExtent.height, surfaceCapabilities.maxImageExtent.height);
-	mProperties.width = imageExtent.width;
-	mProperties.height = imageExtent.height;
+	uint32_t surfaceFormatCount;
+	VK_CHECK(vkGetPhysicalDeviceSurfaceFormatsKHR(mContext.PhysicalDevice, mContext.Surface, &surfaceFormatCount, nullptr));
+	mContext.SurfaceFormats.resize(surfaceFormatCount);
+	VK_CHECK(vkGetPhysicalDeviceSurfaceFormatsKHR(mContext.PhysicalDevice, mContext.Surface, &surfaceFormatCount, mContext.SurfaceFormats.data()));
 
-	VkFormat imageFormat = []()
+	mContext.SwapchainImageFormat = []()
 	{
 		for (const auto& surfaceFormat : mContext.SurfaceFormats)
 		{
@@ -420,19 +409,17 @@ void RendererContext::InvalidateSwapchain()
 		return VK_FORMAT_UNDEFINED;
 	}();
 
-	// Create swapchain
-	VkSwapchainCreateInfoKHR swapchainCreateInfo{ VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR };
-	swapchainCreateInfo.surface = mContext.Surface;
+	VkSurfaceCapabilitiesKHR surfaceCapabilities;
+	VK_CHECK(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(mContext.PhysicalDevice, mContext.Surface, &surfaceCapabilities));
+
 	if (surfaceCapabilities.minImageCount <= 3 && surfaceCapabilities.maxImageCount >= 3 && mProperties.tripleBufferingEnabled)
 	{
-        mProperties.maxFramesInFlight = 3;
-		swapchainCreateInfo.minImageCount = 3;
+		mProperties.maxFramesInFlight = 3;
 		GLEAM_CORE_TRACE("Vulkan: Triple buffering enabled.");
 	}
 	else if (surfaceCapabilities.minImageCount <= 2 && surfaceCapabilities.maxImageCount >= 2)
 	{
-        mProperties.maxFramesInFlight = 2;
-		swapchainCreateInfo.minImageCount = 2;
+		mProperties.maxFramesInFlight = 2;
 		if (mProperties.tripleBufferingEnabled)
 		{
 			mProperties.tripleBufferingEnabled = false;
@@ -441,9 +428,22 @@ void RendererContext::InvalidateSwapchain()
 	}
 	else
 	{
-        mProperties.maxFramesInFlight = 1;
+		mProperties.maxFramesInFlight = 1;
 		GLEAM_ASSERT(false, "Vulkan: Neither triple nor double buffering is available!");
 	}
+
+	int width, height;
+	SDL_Vulkan_GetDrawableSize(window, &width, &height);
+	VkExtent2D imageExtent{ static_cast<uint32_t>(width), static_cast<uint32_t>(height) };
+	imageExtent.width = Math::Clamp(imageExtent.width, surfaceCapabilities.minImageExtent.width, surfaceCapabilities.maxImageExtent.width);
+	imageExtent.height = Math::Clamp(imageExtent.height, surfaceCapabilities.minImageExtent.height, surfaceCapabilities.maxImageExtent.height);
+	mProperties.width = imageExtent.width;
+	mProperties.height = imageExtent.height;
+
+	// Create swapchain
+	VkSwapchainCreateInfoKHR swapchainCreateInfo{ VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR };
+	swapchainCreateInfo.surface = mContext.Surface;
+	swapchainCreateInfo.minImageCount = mProperties.maxFramesInFlight;
 	swapchainCreateInfo.imageColorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
 	swapchainCreateInfo.imageExtent = imageExtent;
 	swapchainCreateInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
@@ -481,7 +481,7 @@ void RendererContext::InvalidateSwapchain()
 	}();
 	swapchainCreateInfo.clipped = VK_TRUE;
 	swapchainCreateInfo.imageArrayLayers = 1;
-	swapchainCreateInfo.imageFormat = imageFormat;
+	swapchainCreateInfo.imageFormat = mContext.SwapchainImageFormat;
 	swapchainCreateInfo.oldSwapchain = mContext.Swapchain;
 	VkSwapchainKHR newSwapchain;
 	VK_CHECK(vkCreateSwapchainKHR(mContext.Device, &swapchainCreateInfo, nullptr, &newSwapchain));
@@ -514,7 +514,7 @@ void RendererContext::InvalidateSwapchain()
 
 	VkImageViewCreateInfo imageViewCreateInfo{ VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
 	imageViewCreateInfo.pNext = &imageViewUsageCreateInfo;
-	imageViewCreateInfo.format = imageFormat;
+	imageViewCreateInfo.format = mContext.SwapchainImageFormat;
 	imageViewCreateInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 	imageViewCreateInfo.subresourceRange.layerCount = 1;
 	imageViewCreateInfo.subresourceRange.baseArrayLayer = 0;
@@ -553,7 +553,7 @@ void RendererContext::InvalidateSwapchain()
 	subpassDependency.dependencyFlags = 0;
 
 	VkAttachmentDescription attachmentDesc{};
-	attachmentDesc.format = imageFormat;
+	attachmentDesc.format = mContext.SwapchainImageFormat;
 	attachmentDesc.samples = mProperties.multisampleEnabled ? static_cast<VkSampleCountFlagBits>(BIT(mProperties.msaa - 1)) : VK_SAMPLE_COUNT_1_BIT;
 	attachmentDesc.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 	attachmentDesc.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
