@@ -35,7 +35,6 @@ else ()
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/tinyobjloader
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/OpenFBX/src
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/cgltf
-        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/metal-cpp
     )
 
     set(LIB_LINKS_RUNTIME
