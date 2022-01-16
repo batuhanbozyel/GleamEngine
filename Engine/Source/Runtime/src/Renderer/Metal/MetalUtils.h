@@ -5,6 +5,8 @@
 
 namespace Gleam {
 
+#define MetalDevice id<MTLDevice>(Renderer::GetDevice())
+
 struct MetalFrameObject
 {
     id<CAMetalDrawable> drawable;

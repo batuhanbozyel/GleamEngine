@@ -16,6 +16,8 @@ public:
 	// Temporary
 	static void RenderFrame();
 
+	static void* GetDevice();
+
 };
 
 } // namespace Gleam

@@ -1,11 +1,14 @@
 #pragma once
 #ifdef USE_VULKAN_RENDERER
 #include <volk.h>
+#include "Renderer/Renderer.h"
 
 namespace Gleam {
 
 #define VK_CHECK(x) {VkResult result = x;\
 					GLEAM_ASSERT(result == VK_SUCCESS, VkResultToString(x));}
+
+#define VulkanDevice reinterpret_cast<VkDevice>(Renderer::GetDevice())
 
 static constexpr const char* VkResultToString(VkResult result)
 {
@@ -55,14 +58,14 @@ static constexpr const char* VkResultToString(VkResult result)
 
 struct VulkanFrameObject
 {
-	VkCommandPool commandPool;
-	VkCommandBuffer commandBuffer;
-	VkFramebuffer framebuffer;
-	VkFence imageAcquireFence;
-	VkSemaphore imageAcquireSemaphore;
-	VkSemaphore imageReleaseSemaphore;
-	VkImage swapchainImage;
-	uint32_t imageIndex;
+	VkCommandPool commandPool{ VK_NULL_HANDLE };
+	VkCommandBuffer commandBuffer{ VK_NULL_HANDLE };
+	VkFramebuffer framebuffer{ VK_NULL_HANDLE };
+	VkFence imageAcquireFence{ VK_NULL_HANDLE };
+	VkSemaphore imageAcquireSemaphore{ VK_NULL_HANDLE };
+	VkSemaphore imageReleaseSemaphore{ VK_NULL_HANDLE };
+	VkImage swapchainImage{ VK_NULL_HANDLE };
+	uint32_t imageIndex{ 0 };
 };
 
 } // namespace Gleam
