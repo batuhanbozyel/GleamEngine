@@ -5,16 +5,17 @@ namespace Gleam {
 
 namespace FileUtils {
 
-static TArray<char> ReadBinaryFile(const TStringView fileName)
+static TArray<uint8_t> ReadBinaryFile(const TStringView filename)
 {
-	std::ifstream file(fileName.data(), std::ios::ate | std::ios::binary);
+	auto filepath = std::filesystem::current_path().append(filename);
+	std::ifstream file(filepath.c_str(), std::ios::ate | std::ios::binary);
 	GLEAM_ASSERT(file.is_open());
 
 	size_t size = file.tellg();
-	TArray<char> buffer(size);
+	TArray<uint8_t> buffer(size);
 
 	file.seekg(0);
-	file.read(buffer.data(), size);
+	file.read(As<char*>(buffer.data()), size);
 
 	return buffer;
 }

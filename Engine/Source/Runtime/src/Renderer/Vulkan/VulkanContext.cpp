@@ -39,7 +39,6 @@ struct
 
 	// Swapchain
 	VkSwapchainKHR Swapchain{ VK_NULL_HANDLE };
-	VkFormat SwapchainImageFormat;
 	TArray<VkImage> SwapchainImages;
 	TArray<VkImageView> SwapchainImageViews;
 	VkRenderPass SwapchainRenderPass;
@@ -393,7 +392,7 @@ void RendererContext::InvalidateSwapchain()
 	mContext.SurfaceFormats.resize(surfaceFormatCount);
 	VK_CHECK(vkGetPhysicalDeviceSurfaceFormatsKHR(mContext.PhysicalDevice, mContext.Surface, &surfaceFormatCount, mContext.SurfaceFormats.data()));
 
-	mContext.SwapchainImageFormat = []()
+	VkFormat imageFormat = []()
 	{
 		for (const auto& surfaceFormat : mContext.SurfaceFormats)
 		{
@@ -482,7 +481,7 @@ void RendererContext::InvalidateSwapchain()
 	}();
 	swapchainCreateInfo.clipped = VK_TRUE;
 	swapchainCreateInfo.imageArrayLayers = 1;
-	swapchainCreateInfo.imageFormat = mContext.SwapchainImageFormat;
+	swapchainCreateInfo.imageFormat = imageFormat;
 	swapchainCreateInfo.oldSwapchain = mContext.Swapchain;
 	VkSwapchainKHR newSwapchain;
 	VK_CHECK(vkCreateSwapchainKHR(mContext.Device, &swapchainCreateInfo, nullptr, &newSwapchain));
@@ -515,7 +514,7 @@ void RendererContext::InvalidateSwapchain()
 
 	VkImageViewCreateInfo imageViewCreateInfo{ VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
 	imageViewCreateInfo.pNext = &imageViewUsageCreateInfo;
-	imageViewCreateInfo.format = mContext.SwapchainImageFormat;
+	imageViewCreateInfo.format = imageFormat;
 	imageViewCreateInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 	imageViewCreateInfo.subresourceRange.layerCount = 1;
 	imageViewCreateInfo.subresourceRange.baseArrayLayer = 0;
@@ -554,7 +553,7 @@ void RendererContext::InvalidateSwapchain()
 	subpassDependency.dependencyFlags = 0;
 
 	VkAttachmentDescription attachmentDesc{};
-	attachmentDesc.format = mContext.SwapchainImageFormat;
+	attachmentDesc.format = imageFormat;
 	attachmentDesc.samples = mProperties.multisampleEnabled ? static_cast<VkSampleCountFlagBits>(BIT(mProperties.msaa - 1)) : VK_SAMPLE_COUNT_1_BIT;
 	attachmentDesc.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 	attachmentDesc.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
