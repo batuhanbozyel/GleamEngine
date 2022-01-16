@@ -347,6 +347,7 @@ RendererContext::~RendererContext()
 	for (uint32_t i = 0; i < mProperties.maxFramesInFlight; i++)
 	{
 		vkDestroyFence(mContext.Device, mContext.ImageAcquireFences[i], nullptr);
+		vkFreeCommandBuffers(mContext.Device, mContext.CommandPools[i], 1, &mContext.CommandBuffers[i]);
 		vkDestroyCommandPool(mContext.Device, mContext.CommandPools[i], nullptr);
 		vkDestroySemaphore(mContext.Device, mContext.ImageAcquireSemaphores[i], nullptr);
 		vkDestroySemaphore(mContext.Device, mContext.ImageReleaseSemaphores[i], nullptr);
@@ -370,7 +371,7 @@ RendererContext::~RendererContext()
 /************************************************************************/
 void* RendererContext::GetDevice() const
 {
-	return &mContext.Device;
+	return mContext.Device;
 }
 /************************************************************************/
 /*	CreateSwapchain                                                     */
