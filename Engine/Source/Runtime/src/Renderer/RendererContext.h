@@ -16,7 +16,7 @@ public:
 	void ClearScreen(const Color& color) const;
 	void EndFrame();
 
-    void* GetDevice() const;
+    handle_t GetDevice() const;
 
 	const RendererProperties& GetProperties() const
 	{

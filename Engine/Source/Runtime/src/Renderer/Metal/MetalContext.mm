@@ -5,9 +5,11 @@
 #include "MetalUtils.h"
 
 #include <SDL_metal.h>
+#import <AppKit/NSView.h>
 
 #include "Core/Window.h"
 #include "Core/Application.h"
+#include "Core/Events/WindowEvent.h"
 
 using namespace Gleam;
 
@@ -39,19 +41,20 @@ RendererContext::RendererContext(const TString& appName, const Version& appVersi
     mContext.Surface = SDL_Metal_CreateView(Application::GetActiveWindow().GetSDLWindow());
     mContext.Device = MTLCreateSystemDefaultDevice();
     
-    int width, height;
-    SDL_Metal_GetDrawableSize(Application::GetActiveWindow().GetSDLWindow(), &width, &height);
-    mProperties.width = width;
-    mProperties.height = height;
-    
-    CGSize size;
-    size.width = mProperties.width;
-    size.height = mProperties.height;
     mContext.Swapchain = (__bridge CAMetalLayer*)(SDL_Metal_GetLayer(mContext.Surface));
     mContext.Swapchain.device = mContext.Device;
     mContext.Swapchain.pixelFormat = MTLPixelFormatBGRA8Unorm;
     mContext.Swapchain.framebufferOnly = YES;
     mContext.Swapchain.opaque = YES;
+    
+    int width, height;
+    SDL_Metal_GetDrawableSize(Application::GetActiveWindow().GetSDLWindow(), &width, &height);
+    mProperties.width = width / mContext.Swapchain.contentsScale;
+    mProperties.height = height / mContext.Swapchain.contentsScale;
+    
+    CGSize size;
+    size.width = mProperties.width;
+    size.height = mProperties.height;
     mContext.Swapchain.drawableSize = size;
     
     if (mContext.Swapchain.maximumDrawableCount >= 3 && mProperties.tripleBufferingEnabled)
@@ -90,9 +93,9 @@ RendererContext::~RendererContext()
 /************************************************************************/
 /*    GetDevice                               */
 /************************************************************************/
-void* RendererContext::GetDevice() const
+handle_t RendererContext::GetDevice() const
 {
-    return (__bridge void*) mContext.Device;
+    return (__bridge handle_t)mContext.Device;
 }
 /************************************************************************/
 /*    InvalidateSwapchain                     */
@@ -101,13 +104,8 @@ void RendererContext::InvalidateSwapchain()
 {
     int width, height;
     SDL_Metal_GetDrawableSize(Application::GetActiveWindow().GetSDLWindow(), &width, &height);
-    mProperties.width = width;
-    mProperties.height = height;
-    
-    CGSize size;
-    size.width = mProperties.width;
-    size.height = mProperties.height;
-    mContext.Swapchain.drawableSize = size;
+    mProperties.width = width / mContext.Swapchain.contentsScale;
+    mProperties.height = height / mContext.Swapchain.contentsScale;
 }
 /************************************************************************/
 /*    BeginFrame                              */
@@ -131,6 +129,8 @@ void RendererContext::EndFrame()
     
     [mContext.CurrentFrame.commandBuffer presentDrawable:mContext.CurrentFrame.drawable];
     [mContext.CurrentFrame.commandBuffer commit];
+    
+    InvalidateSwapchain();
     
     mCurrentFrameIndex = (mCurrentFrameIndex + 1) % mProperties.maxFramesInFlight;
 }

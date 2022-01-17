@@ -10,15 +10,17 @@ static Scope<RendererContext> mContext = nullptr;
 void Renderer::Init(const TString& appName, const Version& appVersion, const RendererProperties& props)
 {
     mContext = CreateScope<RendererContext>(appName, appVersion, props);
+    
+    ShaderLibrary::Init();
 }
 
 void Renderer::Destroy()
 {
-	ShaderLibrary::ClearCache();
+	ShaderLibrary::Destroy();
     mContext.reset();
 }
 
-void* Renderer::GetDevice()
+handle_t Renderer::GetDevice()
 {
 	return mContext->GetDevice();
 }
@@ -26,9 +28,14 @@ void* Renderer::GetDevice()
 // Temporary
 void Renderer::RenderFrame()
 {
-    mContext->BeginFrame();
+#ifdef USE_METAL_RENDERER
+    @autoreleasepool
+#endif
+    {
+        mContext->BeginFrame();
 
-	mContext->ClearScreen({ 1.0f, 0.8f, 0.4f, 1.0f });
+        mContext->ClearScreen({ 1.0f, 0.8f, 0.4f, 1.0f });
 
-    mContext->EndFrame();
+        mContext->EndFrame();
+    }
 }

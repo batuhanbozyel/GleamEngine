@@ -1,5 +1,15 @@
 include (${CMAKE_SOURCE_DIR}/CMake/CMakeUtils.cmake)
 
+file(GLOB_RECURSE MSL_FILES ${CMAKE_CURRENT_SOURCE_DIR}/src/*.metal)
+file(GLOB_RECURSE HLSL_FILES ${CMAKE_CURRENT_SOURCE_DIR}/src/*.hlsl)
+set(SHADER_FILES ${MSL_FILES} ${HLSL_FILES})
+
+file(GLOB_RECURSE SOURCE_FILES
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/*.mm
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/*.h
+)
+
 if (WIN32)
     set(INCLUDE_DIRS_RUNTIME
         src
@@ -22,6 +32,9 @@ if (WIN32)
         ${CMAKE_SOURCE_DIR}/bin/$<CONFIG>/volk.lib
         ${CMAKE_SOURCE_DIR}/bin/$<CONFIG>/imgui.lib
     )
+
+    set_source_files_properties(${SHADER_FILES} PROPERTIES VS_TOOL_OVERRIDE "None")
+
 else ()
     set(INCLUDE_DIRS_RUNTIME
         src
@@ -41,17 +54,18 @@ else ()
         ${CMAKE_SOURCE_DIR}/bin/$<CONFIG>/libfmt.a
         ${CMAKE_SOURCE_DIR}/bin/$<CONFIG>/libimgui.a
     )
+    
 endif()
 
-file(GLOB_RECURSE SOURCE_FILES
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/*.mm
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/*.h
-)
-
+list(APPEND SOURCE_FILES ${SHADER_FILES})
 add_library(Runtime STATIC ${SOURCE_FILES})
 add_dependencies(Runtime fmt imgui volk)
 target_include_directories(Runtime PUBLIC ${INCLUDE_DIRS_RUNTIME})
+
+if (APPLE)
+    set_source_files_properties(${SOURCE_FILES} PROPERTIES COMPILE_FLAGS "-x objective-c++")
+    set_target_properties(Runtime PROPERTIES MACOSX_BUNDLE YES XCODE_ATTRIBUTE_CLANG_ENABLE_OBJC_ARC YES)
+endif()
 
 set_property(TARGET Runtime PROPERTY STATIC_LIBRARY_OPTIONS ${LIB_LINKS_RUNTIME})
 target_link_directories(Runtime PUBLIC ${CMAKE_SOURCE_DIR}/bin/$<CONFIG>)

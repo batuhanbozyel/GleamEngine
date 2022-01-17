@@ -16,7 +16,7 @@ public:
 	// Temporary
 	static void RenderFrame();
 
-	static void* GetDevice();
+	static handle_t GetDevice();
 
 };
 

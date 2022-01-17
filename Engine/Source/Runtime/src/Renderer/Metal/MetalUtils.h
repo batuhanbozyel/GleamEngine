@@ -2,10 +2,11 @@
 #ifdef USE_METAL_RENDERER
 #import <Metal/Metal.h>
 #import <QuartzCore/CAMetalLayer.h>
+#include "Renderer/Renderer.h"
 
 namespace Gleam {
 
-#define MetalDevice id<MTLDevice>(Renderer::GetDevice())
+#define MetalDevice (__bridge id<MTLDevice>)Renderer::GetDevice()
 
 struct MetalFrameObject
 {

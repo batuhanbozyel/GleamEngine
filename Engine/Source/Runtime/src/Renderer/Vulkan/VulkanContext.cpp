@@ -368,7 +368,7 @@ RendererContext::~RendererContext()
 /************************************************************************/
 /*	GetDevice                                                           */
 /************************************************************************/
-void* RendererContext::GetDevice() const
+handle_t RendererContext::GetDevice() const
 {
 	return mContext.Device;
 }
