@@ -18,7 +18,7 @@ void ShaderLibrary::Init()
     // TODO: Check if metallib needs to be regenerated
     // TODO: Make metallib generation as part of development so that distributed code won't even check this
     {
-        auto GetShaderFilePath = [](const TStringView shaderFile)
+        auto GetShaderFileByName = [](const TStringView shaderFile)
         {
             TStringStream shaderFilePath;
             shaderFilePath << "Engine/Source/Runtime/src/Renderer/Metal/Shaders/" << shaderFile << ".metal ";
@@ -27,7 +27,7 @@ void ShaderLibrary::Init()
         
         TStringStream genMetalLibCommand;
         genMetalLibCommand << "xcrun -sdk macosx metal -frecord-sources=flat ";
-        genMetalLibCommand << GetShaderFilePath("FullscreenTriangle");
+        genMetalLibCommand << GetShaderFileByName("FullscreenTriangle");
         genMetalLibCommand << "-o Assets/PrecompiledShaders.metallib";
         
         int commandSuccess = system(genMetalLibCommand.str().c_str());

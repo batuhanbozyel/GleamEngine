@@ -2,6 +2,13 @@
 
 namespace Gleam {
 
+enum class ShaderType
+{
+    Vertex,
+    Fragment,
+    Compute
+};
+    
 struct Shader
 {
 	handle_t handle;
