@@ -24,9 +24,9 @@ static TString GetShaderTargetByType(ShaderType type)
 {
     switch(type)
     {
-        case ShaderType::Vertex: return "vs_6_0";
-        case ShaderType::Fragment: return "ps_6_0";
-        case ShaderType::Compute: return "cs_6_0";
+        case ShaderType::Vertex: return "-fvk-invert-y -T vs_6_0";
+        case ShaderType::Fragment: return "-T ps_6_0";
+        case ShaderType::Compute: return "-T cs_6_0";
         default: GLEAM_ASSERT(false); return "Unknown target";
     }
 }
@@ -41,13 +41,13 @@ static void GenerateSPIRVForTarget(const TString& filename, const TString& entry
     // TODO: Check if SPIR-V needs to be generated
     // TODO: Make SPIR-V generation as part of development so that distributed code won't even check this
     TStringStream genSpirvCommand;
-    genSpirvCommand << "dxc.exe -spirv -fvk-invert-y -T " << GetShaderTargetByType(type) << " -E " << entryPoint << " " << filename << ".hlsl -Fo " << GetSPIRVOutputFile(entryPoint);
-    int spirvSuccess = system(genSpirvCommand.str().c_str());
-    GLEAM_ASSERT(spirvSuccess == 0);
+    genSpirvCommand << "dxc.exe -spirv " << GetShaderTargetByType(type) << " -E " << entryPoint << " " << filename << ".hlsl -Fo " << GetSPIRVOutputFile(entryPoint);
+	int spirvSuccess = system(genSpirvCommand.str().c_str());
+	GLEAM_ASSERT(spirvSuccess == 0);
 }
 
 /************************************************************************/
-/*    Init                                    */
+/*    Init                                                              */
 /************************************************************************/
 void ShaderLibrary::Init()
 {
@@ -60,14 +60,14 @@ void ShaderLibrary::Init()
     GenerateSPIRVForTarget(GetShaderFileByName("FullscreenTriangle"), "fullscreenTriangleFragmentShader", ShaderType::Fragment);
 }
 /************************************************************************/
-/*    Destroy                                 */
+/*    Destroy                                                           */
 /************************************************************************/
 void ShaderLibrary::Destroy()
 {
     ClearCache();
 }
 /************************************************************************/
-/*    CreateOrGetCachedShaderFromLibrary      */
+/*    CreateOrGetCachedShaderFromLibrary                                */
 /************************************************************************/
 static Shader CreateOrGetCachedShader(const TString& entryPoint)
 {
@@ -81,7 +81,7 @@ static Shader CreateOrGetCachedShader(const TString& entryPoint)
         return shader;
     }
     
-    TArray<uint8_t> shaderCode = FileUtils::ReadBinaryFile(GetSPIRVOutputFile(entryPoint));
+    TArray<uint8_t> shaderCode = IOUtils::ReadBinaryFile(GetSPIRVOutputFile(entryPoint));
     VkShaderModule handle = CreateShader(shaderCode);
     mShaderCache.insert(mShaderCache.end(), { entryPoint, handle });
     
@@ -89,7 +89,7 @@ static Shader CreateOrGetCachedShader(const TString& entryPoint)
     return shader;
 }
 /************************************************************************/
-/*    CreatePrecompiledShaderProgram          */
+/*    CreatePrecompiledShaderProgram                                    */
 /************************************************************************/
 ShaderProgram ShaderLibrary::CreatePrecompiledShaderProgram(const TString& vertexEntryPoint, const TString& fragmentEntryPoint)
 {
@@ -99,14 +99,14 @@ ShaderProgram ShaderLibrary::CreatePrecompiledShaderProgram(const TString& verte
     return program;
 }
 /************************************************************************/
-/*    CreatePrecompiledComputeShader          */
+/*    CreatePrecompiledComputeShader                                    */
 /************************************************************************/
 Shader ShaderLibrary::CreatePrecompiledComputeShader(const TString& entryPoint)
 {
     return CreateOrGetCachedShader(entryPoint);
 }
 /************************************************************************/
-/*    CreateShaderProgram                     */
+/*    CreateShaderProgram                                               */
 /************************************************************************/
 ShaderProgram ShaderLibrary::CreateShaderProgram(const TString& filename, const TString& vertexEntryPoint, const TString& fragmentEntryPoint)
 {
@@ -116,7 +116,7 @@ ShaderProgram ShaderLibrary::CreateShaderProgram(const TString& filename, const 
     return CreatePrecompiledShaderProgram(vertexEntryPoint, fragmentEntryPoint);
 }
 /************************************************************************/
-/*    CreateComputeShader                     */
+/*    CreateComputeShader                                               */
 /************************************************************************/
 Shader ShaderLibrary::CreateComputeShader(const TString& filename, const TString& entryPoint)
 {
@@ -125,7 +125,7 @@ Shader ShaderLibrary::CreateComputeShader(const TString& filename, const TString
     return CreatePrecompiledComputeShader(entryPoint);
 }
 /************************************************************************/
-/*    ClearCache                              */
+/*    ClearCache                                                        */
 /************************************************************************/
 void ShaderLibrary::ClearCache()
 {

@@ -3,7 +3,7 @@
 
 namespace Gleam {
 
-namespace FileUtils {
+namespace IOUtils {
 
 static TArray<uint8_t> ReadBinaryFile(const TStringView filename)
 {

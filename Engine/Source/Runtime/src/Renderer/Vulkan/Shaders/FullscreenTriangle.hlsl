@@ -5,10 +5,10 @@ struct VertexOut
 
 VertexOut fullscreenTriangleVertexShader(uint vertex_id: SV_VertexID)
 {
-    VertexOut out;
-    float2 uv = float2((id << 1) & 2, id & 2);
-    out.position = float4(uv * float2(2, -2) + float2(-1, 1), 0, 1);
-    return out;
+    VertexOut vOut;
+    float2 uv = float2((vertex_id << 1) & 2, vertex_id & 2);
+    vOut.position = float4(uv * float2(2, -2) + float2(-1, 1), 0, 1);
+    return vOut;
 }
 
 float4 fullscreenTriangleFragmentShader(VertexOut input) : SV_TARGET
