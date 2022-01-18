@@ -42,8 +42,7 @@ static void GenerateSPIRVForTarget(const TString& filename, const TString& entry
     // TODO: Make SPIR-V generation as part of development so that distributed code won't even check this
     TStringStream genSpirvCommand;
     genSpirvCommand << "dxc.exe -spirv " << GetShaderTargetByType(type) << " -E " << entryPoint << " " << filename << ".hlsl -Fo " << GetSPIRVOutputFile(entryPoint);
-	int spirvSuccess = system(genSpirvCommand.str().c_str());
-	GLEAM_ASSERT(spirvSuccess == 0);
+	IOUtils::ExecuteCommand(genSpirvCommand.str());
 }
 
 /************************************************************************/

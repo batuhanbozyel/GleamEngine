@@ -30,8 +30,7 @@ void ShaderLibrary::Init()
         genMetalLibCommand << GetShaderFileByName("FullscreenTriangle");
         genMetalLibCommand << "-o Assets/PrecompiledShaders.metallib";
         
-        int commandSuccess = system(genMetalLibCommand.str().c_str());
-        GLEAM_ASSERT(commandSuccess == 0);
+        IOUtils::ExecuteCommand(genMetalLibCommand.str());
     }
     
     NSError* error = nil;

@@ -52,6 +52,7 @@ bin-int/
 
 # Engine generated files
 *.log
+*.err
 
 # Exclude files and folders
 !Tools/premake/bin/
