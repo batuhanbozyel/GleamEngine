@@ -3,11 +3,11 @@
 
 namespace Gleam {
 
-struct MetalFrameObject;
-struct VulkanFrameObject;
 #ifdef USE_METAL_RENDERER
+struct MetalFrameObject;
 using FrameObject = MetalFrameObject;
 #else
+struct VulkanFrameObject;
 using FrameObject = VulkanFrameObject;
 #endif
 struct Version;

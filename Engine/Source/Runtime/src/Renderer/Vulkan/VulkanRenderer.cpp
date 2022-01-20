@@ -18,7 +18,7 @@ void Renderer::BeginFrame()
     renderPassBeginInfo.pClearValues = &clearColor;
     renderPassBeginInfo.renderArea.extent.width = mContext->GetProperties().width;
     renderPassBeginInfo.renderArea.extent.height = mContext->GetProperties().height;
-    vkCmdBeginRenderPass(CurrentFrame.commandBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+    vkCmdBeginRenderPass(frame.commandBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
     vkCmdEndRenderPass(frame.commandBuffer);
 }

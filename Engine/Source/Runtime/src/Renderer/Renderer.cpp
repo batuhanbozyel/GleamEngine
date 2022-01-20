@@ -1,6 +1,5 @@
 #include "gpch.h"
 #include "Renderer.h"
-#include "RendererContext.h"
 #include "ShaderLibrary.h"
 
 using namespace Gleam;
