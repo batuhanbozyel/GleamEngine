@@ -80,7 +80,7 @@ void ShaderLibrary::Destroy()
     ClearCache();
 }
 /************************************************************************/
-/*    CreateOrGetCachedShaderFromLibrary                                */
+/*    CreateOrGetCachedShader                                           */
 /************************************************************************/
 static Shader CreateOrGetCachedShader(const TString& entryPoint)
 {

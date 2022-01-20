@@ -589,7 +589,7 @@ void RendererContext::InvalidateSwapchain()
 	}
 }
 /************************************************************************/
-/*	AcquireNextFrame                                                          */
+/*	AcquireNextFrame                                                    */
 /************************************************************************/
 const VulkanFrameObject& RendererContext::AcquireNextFrame()
 {
@@ -622,7 +622,7 @@ const VulkanFrameObject& RendererContext::AcquireNextFrame()
     return CurrentFrame;
 }
 /************************************************************************/
-/*	Present                                                            */
+/*	Present                                                             */
 /************************************************************************/
 void RendererContext::Present()
 {
@@ -660,7 +660,7 @@ void RendererContext::Present()
 	mCurrentFrameIndex = (mCurrentFrameIndex + 1) % mProperties.maxFramesInFlight;
 }
 /************************************************************************/
-/*	GetCurrentFrame                                                      */
+/*	GetCurrentFrame                                                     */
 /************************************************************************/
 const VulkanFrameObject& RendererContext::GetCurrentFrame() const
 {
