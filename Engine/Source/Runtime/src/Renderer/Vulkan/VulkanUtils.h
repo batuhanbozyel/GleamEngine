@@ -58,6 +58,7 @@ static constexpr const char* VkResultToString(VkResult result)
 
 struct VulkanFrameObject
 {
+    VkRenderPass swapchainRenderPass{ VK_NULL_HANDLE };
 	VkCommandPool commandPool{ VK_NULL_HANDLE };
 	VkCommandBuffer commandBuffer{ VK_NULL_HANDLE };
 	VkFramebuffer framebuffer{ VK_NULL_HANDLE };

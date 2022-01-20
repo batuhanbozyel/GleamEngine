@@ -123,8 +123,15 @@ void Application::Run()
 	while (mRunning)
 	{
 		while (SDL_PollEvent(&mEvent));
-
-		Renderer::RenderFrame();
+        
+#ifdef USE_METAL_RENDERER
+    @autoreleasepool
+#endif
+        {
+            Renderer::BeginFrame();
+            
+            Renderer::EndFrame();
+        }
 	}
 }
 

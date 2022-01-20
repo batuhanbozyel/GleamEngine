@@ -3,6 +3,13 @@
 
 namespace Gleam {
 
+struct MetalFrameObject;
+struct VulkanFrameObject;
+#ifdef USE_METAL_RENDERER
+using FrameObject = MetalFrameObject;
+#else
+using FrameObject = VulkanFrameObject;
+#endif
 struct Version;
 
 class RendererContext
@@ -11,10 +18,10 @@ public:
 
 	RendererContext(const TString& appName, const Version& appVersion, const RendererProperties& props);
 	~RendererContext();
-
-	void BeginFrame();
-	void ClearScreen(const Color& color) const;
-	void EndFrame();
+    
+    const FrameObject& AcquireNextFrame();
+    const FrameObject& GetCurrentFrame() const;
+	void Present();
 
     handle_t GetDevice() const;
 

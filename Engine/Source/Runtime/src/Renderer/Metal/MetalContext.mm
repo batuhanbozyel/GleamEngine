@@ -108,19 +108,21 @@ void RendererContext::InvalidateSwapchain()
     mProperties.height = height / mContext.Swapchain.contentsScale;
 }
 /************************************************************************/
-/*    BeginFrame                              */
+/*    AcquireNextFrame                        */
 /************************************************************************/
-void RendererContext::BeginFrame()
+const MetalFrameObject& RendererContext::AcquireNextFrame()
 {
     dispatch_semaphore_wait(mContext.ImageAcquireSemaphore, DISPATCH_TIME_FOREVER);
     
     mContext.CurrentFrame.drawable = [mContext.Swapchain nextDrawable];
     mContext.CurrentFrame.commandBuffer = [mContext.CommandPool commandBuffer];
+    
+    return mContext.CurrentFrame;
 }
 /************************************************************************/
-/*    EndFrame                                */
+/*    Present                                 */
 /************************************************************************/
-void RendererContext::EndFrame()
+void RendererContext::Present()
 {
     [mContext.CurrentFrame.commandBuffer addCompletedHandler:^(id<MTLCommandBuffer> commandBuffer)
     {
@@ -131,22 +133,13 @@ void RendererContext::EndFrame()
     [mContext.CurrentFrame.commandBuffer commit];
     
     InvalidateSwapchain();
-    
     mCurrentFrameIndex = (mCurrentFrameIndex + 1) % mProperties.maxFramesInFlight;
 }
 /************************************************************************/
-/*    ClearScreen                             */
+/*    GetCurrentFrame                         */
 /************************************************************************/
-void RendererContext::ClearScreen(const Color& color) const
+const MetalFrameObject& RendererContext::GetCurrentFrame() const
 {
-    MTLRenderPassDescriptor* renderPassDesc = [MTLRenderPassDescriptor renderPassDescriptor];
-    MTLRenderPassColorAttachmentDescriptor* colorAttachmentDesc = renderPassDesc.colorAttachments[0];
-    colorAttachmentDesc.clearColor = MTLClearColorMake(color.r, color.g, color.b, color.a);
-    colorAttachmentDesc.loadAction = MTLLoadActionClear;
-    colorAttachmentDesc.storeAction = MTLStoreActionStore;
-    colorAttachmentDesc.texture = mContext.CurrentFrame.drawable.texture;
-    
-    id<MTLRenderCommandEncoder> renderCommandEncoder = [mContext.CurrentFrame.commandBuffer renderCommandEncoderWithDescriptor:renderPassDesc];
-    [renderCommandEncoder endEncoding];
+    return mContext.CurrentFrame;
 }
 #endif

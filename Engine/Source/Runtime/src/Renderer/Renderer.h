@@ -1,9 +1,7 @@
 #pragma once
+#include "RendererContext.h"
 
 namespace Gleam {
-
-struct Version;
-struct RendererProperties;
 
 class Renderer
 {
@@ -13,10 +11,15 @@ public:
 
 	static void Destroy();
 
-	// Temporary
-	static void RenderFrame();
+    static void BeginFrame();
+    
+    static void EndFrame();
 
 	static handle_t GetDevice();
+    
+private:
+    
+    static inline Scope<RendererContext> mContext = nullptr;
 
 };
 

@@ -571,7 +571,8 @@ void RendererContext::InvalidateSwapchain()
 	renderPassCreateInfo.pDependencies = &subpassDependency;
 
 	VK_CHECK(vkCreateRenderPass(mContext.Device, &renderPassCreateInfo, nullptr, &mContext.SwapchainRenderPass));
-
+    CurrentFrame.swapchainRenderPass = mContext.SwapchainRenderPass;
+    
 	// Create framebuffer
 	mContext.SwapchainFramebuffers.resize(swapchainImageCount);
 
@@ -588,9 +589,9 @@ void RendererContext::InvalidateSwapchain()
 	}
 }
 /************************************************************************/
-/*	BeginFrame                                                          */
+/*	AcquireNextFrame                                                          */
 /************************************************************************/
-void RendererContext::BeginFrame()
+const VulkanFrameObject& RendererContext::AcquireNextFrame()
 {
 	CurrentFrame.commandPool = mContext.CommandPools[mCurrentFrameIndex];
 	CurrentFrame.commandBuffer = mContext.CommandBuffers[mCurrentFrameIndex];
@@ -617,11 +618,13 @@ void RendererContext::BeginFrame()
 	VkCommandBufferBeginInfo commandBufferBeginInfo{ VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
 	commandBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 	VK_CHECK(vkBeginCommandBuffer(CurrentFrame.commandBuffer, &commandBufferBeginInfo));
+    
+    return CurrentFrame;
 }
 /************************************************************************/
-/*	EndFrame                                                            */
+/*	Present                                                            */
 /************************************************************************/
-void RendererContext::EndFrame()
+void RendererContext::Present()
 {
 	VK_CHECK(vkEndCommandBuffer(CurrentFrame.commandBuffer));
 
@@ -657,21 +660,10 @@ void RendererContext::EndFrame()
 	mCurrentFrameIndex = (mCurrentFrameIndex + 1) % mProperties.maxFramesInFlight;
 }
 /************************************************************************/
-/*	ClearScreen                                                         */
+/*	GetCurrentFrame                                                      */
 /************************************************************************/
-void RendererContext::ClearScreen(const Color& color) const
+const VulkanFrameObject& RendererContext::GetCurrentFrame() const
 {
-	VkClearValue clearColor = std::bit_cast<VkClearValue>(color);
-
-	VkRenderPassBeginInfo renderPassBeginInfo{ VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO };
-	renderPassBeginInfo.renderPass = mContext.SwapchainRenderPass;
-	renderPassBeginInfo.framebuffer = CurrentFrame.framebuffer;
-	renderPassBeginInfo.clearValueCount = 1;
-	renderPassBeginInfo.pClearValues = &clearColor;
-	renderPassBeginInfo.renderArea.extent.width = mProperties.width;
-	renderPassBeginInfo.renderArea.extent.height = mProperties.height;
-	vkCmdBeginRenderPass(CurrentFrame.commandBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
-
-	vkCmdEndRenderPass(CurrentFrame.commandBuffer);
+    return CurrentFrame;
 }
 #endif
