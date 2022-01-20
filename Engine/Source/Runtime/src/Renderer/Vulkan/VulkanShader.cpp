@@ -54,7 +54,7 @@ static void GenerateSPIRVForTarget(const TString& filename, const TString& entry
     if (ShouldGenerateSPIRVForShader(filename, entryPoint))
     {
         TStringStream genSpirvCommand;
-        genSpirvCommand << "dxc.exe -spirv " << GetShaderTargetByType(type) << " -E " << entryPoint << " " << filename << " - Fo " << GetSPIRVOutputFile(entryPoint);
+        genSpirvCommand << "dxc.exe -spirv " << GetShaderTargetByType(type) << " -E " << entryPoint << " " << filename << " -Fo " << GetSPIRVOutputFile(entryPoint);
         IOUtils::ExecuteCommand(genSpirvCommand.str());
     }
 }

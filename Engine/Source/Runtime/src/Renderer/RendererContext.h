@@ -19,11 +19,11 @@ public:
 	RendererContext(const TString& appName, const Version& appVersion, const RendererProperties& props);
 	~RendererContext();
     
-    const FrameObject& AcquireNextFrame();
-    const FrameObject& GetCurrentFrame() const;
+	const FrameObject& AcquireNextFrame();
+	const FrameObject& GetCurrentFrame() const;
 	void Present();
 
-    handle_t GetDevice() const;
+	handle_t GetDevice() const;
 
 	const RendererProperties& GetProperties() const
 	{
@@ -35,7 +35,8 @@ private:
     void InvalidateSwapchain();
     
 	RendererProperties mProperties;
-    uint32_t mCurrentFrameIndex = 0;
+	uint32_t mCurrentFrameIndex = 0;
+
 };
 
 } // namespace Gleam

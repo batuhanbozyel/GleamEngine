@@ -11,9 +11,9 @@ public:
 
 	static void Destroy();
 
-    static void BeginFrame();
+	static void BeginFrame();
     
-    static void EndFrame();
+	static void EndFrame();
 
 	static handle_t GetDevice();
     

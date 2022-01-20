@@ -25,13 +25,13 @@ class ShaderLibrary
 {
 public:
     
-    static void Init();
+	static void Init();
     
-    static void Destroy();
+	static void Destroy();
     
-    static ShaderProgram CreatePrecompiledShaderProgram(const TString& vertexEntryPoint, const TString& fragmentEntryPoint);
+	static ShaderProgram CreatePrecompiledShaderProgram(const TString& vertexEntryPoint, const TString& fragmentEntryPoint);
 
-    static Shader CreatePrecompiledComputeShader(const TString& entryPoint);
+	static Shader CreatePrecompiledComputeShader(const TString& entryPoint);
     
 	static ShaderProgram CreateShaderProgram(const TString& filename, const TString& vertexEntryPoint, const TString& fragmentEntryPoint);
 
