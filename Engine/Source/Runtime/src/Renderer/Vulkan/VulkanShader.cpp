@@ -36,13 +36,27 @@ static TString GetSPIRVOutputFile(const TString& filename)
     return "Assets/" + filename + ".spv";
 }
 
+static bool ShouldGenerateSPIRVForShader(const TString& filename, const TString& entryPoint)
+{
+    const auto& spirvFilename = GetSPIRVOutputFile(entryPoint);
+    if (std::filesystem::exists(spirvFilename))
+    {
+        const auto& binaryChangeTime = std::filesystem::last_write_time(spirvFilename);
+        const auto& sourceChangeTime = std::filesystem::last_write_time(filename);
+        return sourceChangeTime > binaryChangeTime;
+    }
+    return true;
+}
+
 static void GenerateSPIRVForTarget(const TString& filename, const TString& entryPoint, ShaderType type)
 {
-    // TODO: Check if SPIR-V needs to be generated
     // TODO: Make SPIR-V generation as part of development so that distributed code won't even check this
-    TStringStream genSpirvCommand;
-    genSpirvCommand << "dxc.exe -spirv " << GetShaderTargetByType(type) << " -E " << entryPoint << " " << filename << ".hlsl -Fo " << GetSPIRVOutputFile(entryPoint);
-	IOUtils::ExecuteCommand(genSpirvCommand.str());
+    if (ShouldGenerateSPIRVForShader(filename, entryPoint))
+    {
+        TStringStream genSpirvCommand;
+        genSpirvCommand << "dxc.exe -spirv " << GetShaderTargetByType(type) << " -E " << entryPoint << " " << filename << ".hlsl -Fo " << GetSPIRVOutputFile(entryPoint);
+        IOUtils::ExecuteCommand(genSpirvCommand.str());
+    }
 }
 
 /************************************************************************/

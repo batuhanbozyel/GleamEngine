@@ -10,24 +10,45 @@ static HashMap<TString, id<MTLFunction>> mShaderCache;
 static id<MTLLibrary> mMetalLibrary;
 static id<MTLLibrary> mPrecompiledMetalLibrary;
 
+static bool ShouldCompileShaderSources()
+{
+    if (std::filesystem::exists("Assets/PrecompiledShaders.metallib"))
+    {
+        const auto& binaryChangeTime = std::filesystem::last_write_time("Assets/PrecompiledShaders.metallib");
+        for (const auto& file : std::filesystem::directory_iterator("Engine/Source/Runtime/src/Renderer/Metal/Shaders"))
+        {
+            if (file.path().extension() == ".metal")
+            {
+                const auto& sourceChangeTime = std::filesystem::last_write_time(file.path());
+                if (sourceChangeTime > binaryChangeTime)
+                {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+    return true;
+}
+
 /************************************************************************/
 /*    Init                                    */
 /************************************************************************/
 void ShaderLibrary::Init()
 {
-    // TODO: Check if metallib needs to be regenerated
     // TODO: Make metallib generation as part of development so that distributed code won't even check this
+    if (ShouldCompileShaderSources())
     {
-        auto GetShaderFileByName = [](const TStringView shaderFile)
-        {
-            TStringStream shaderFilePath;
-            shaderFilePath << "Engine/Source/Runtime/src/Renderer/Metal/Shaders/" << shaderFile << ".metal ";
-            return shaderFilePath.str();
-        };
-        
         TStringStream genMetalLibCommand;
         genMetalLibCommand << "xcrun -sdk macosx metal -frecord-sources=flat ";
-        genMetalLibCommand << GetShaderFileByName("FullscreenTriangle");
+        for (const auto& file : std::filesystem::directory_iterator("Engine/Source/Runtime/src/Renderer/Metal/Shaders"))
+        {
+            if (file.path().extension() == ".metal")
+            {
+                const auto& sourceChangeTime = std::filesystem::last_write_time(file.path());
+                genMetalLibCommand << file.path().string() << ' ';
+            }
+        }
         genMetalLibCommand << "-o Assets/PrecompiledShaders.metallib";
         
         IOUtils::ExecuteCommand(genMetalLibCommand.str());

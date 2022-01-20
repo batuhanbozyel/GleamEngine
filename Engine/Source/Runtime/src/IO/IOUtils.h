@@ -19,7 +19,7 @@ static TArray<uint8_t> ReadBinaryFile(const TStringView filename)
 
 	return buffer;
 }
-
+    
 static void ExecuteCommand(const TString& cmd)
 {
 	int success = system((cmd + " > command.err 2>&1").c_str());
