@@ -19,7 +19,7 @@ public:
     
 private:
     
-    static inline Scope<RendererContext> mContext = nullptr;
+	static inline Scope<RendererContext> mContext = nullptr;
 
 };
 

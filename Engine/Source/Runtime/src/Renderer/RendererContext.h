@@ -32,7 +32,7 @@ public:
 
 private:
     
-    void InvalidateSwapchain();
+	void InvalidateSwapchain();
     
 	RendererProperties mProperties;
 	uint32_t mCurrentFrameIndex = 0;
