@@ -39,6 +39,7 @@
 #include "Core/Events/KeyEvent.h"
 
 #include "IO/Log.h"
+#include "IO/IOUtils.h"
 
 #ifdef PLATFORM_WINDOWS
 #include <windows.h>

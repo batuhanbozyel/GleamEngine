@@ -2,7 +2,7 @@
 #include "Gleam.h"
 #include "Application.h"
 
-#if defined(PLATFORM_WINDOWS) || defined(PLATFORM_MACOS)
+#if defined(PLATFORM_WINDOWS) || defined(PLATFORM_MACOS) || defined(PLATFORM_IOS)
 Gleam::Application* Gleam::CreateApplication();
 
 #ifdef __cplusplus
