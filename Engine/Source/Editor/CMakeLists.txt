@@ -23,16 +23,24 @@ if (WIN32)
         Imm32
         Setupapi)
 else()
+    add_framework(Editor Metal)
+    add_framework(Editor MetalKit)
+    add_framework(Editor Foundation)
+    add_framework(Editor AVFoundation)
+    add_framework(Editor QuartzCore)
+    add_framework(Editor Carbon)
+    add_framework(Editor IOKit)
+    add_framework(Editor ModelIO)
+    add_framework(Editor ForceFeedback)
+    add_framework(Editor CoreVideo)
+    add_framework(Editor AudioToolbox)
+    add_framework(Editor CoreAudio)
+    add_framework(Editor Cocoa)
+    add_framework(Editor GameController)
+    add_framework(Editor CoreHaptics)
+    add_framework(Editor CoreGraphics)
     target_link_libraries(Editor PRIVATE libRuntime.a SDL2main.a SDL2.a
-        iconv
-        "-framework Metal"
-        "-framework Carbon"
-        "-framework IOKit"
-        "-framework ForceFeedback"
-        "-framework CoreVideo"
-        "-framework AudioToolbox"
-        "-framework CoreAudio"
-        "-framework Cocoa")
+        iconv)
 endif()
 
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${SOURCE_FILES})

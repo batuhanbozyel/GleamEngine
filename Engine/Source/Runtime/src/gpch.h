@@ -1,9 +1,11 @@
 #pragma once
 
+#include <fstream>
 #include <iostream>
 #include <filesystem>
 #include <cstdlib>
 #include <memory>
+#include <mutex>
 #include <utility>
 #include <algorithm>
 #include <functional>
@@ -14,6 +16,7 @@
 #include <list>
 #include <array>
 #include <vector>
+#include <cstdarg>
 #include <unordered_map>
 #include <unordered_set>
 
@@ -30,13 +33,13 @@
 #include "Math/Matrix.h"
 #include "Math/Color.h"
 
-
 #include "Core/Events/ApplicationEvent.h"
 #include "Core/Events/WindowEvent.h"
 #include "Core/Events/MouseEvent.h"
 #include "Core/Events/KeyEvent.h"
 
 #include "IO/Log.h"
+#include "IO/IOUtils.h"
 
 #ifdef PLATFORM_WINDOWS
 #include <windows.h>

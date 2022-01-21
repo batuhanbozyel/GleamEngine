@@ -17,7 +17,7 @@ SET_WORKING_DIRECTORY(googletest ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/googletes
 
 set_target_properties (googletest PROPERTIES FOLDER Dependencies)
 
-# UnitText executable target
+# UnitTest executable target
 set(INCLUDE_DIRS_UNIT_TEST
     src
     ${CMAKE_SOURCE_DIR}/Engine/Source/Runtime/src

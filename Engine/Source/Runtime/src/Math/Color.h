@@ -26,14 +26,14 @@ struct Color : public Vector4
 	{
 		constexpr Vector4 K = Vector4(1.0f, 2.0f / 3.0f, 1.0f / 3.0f, 3.0f);
 
-		return Math::Mix(K.x, Math::Clamp(Math::Abs(Math::Fract(Vector3(K.x + h, K.y + h, K.z + h)) * 6.0f - K.w) - K.x, 0.0f, 1.0f), s) * v;
+		return Math::Mix(Vector3(K.x), Math::Clamp(Math::Abs(Math::Fract(Vector3(K.x + h, K.y + h, K.z + h)) * 6.0f - K.w) - K.x, 0.0f, 1.0f), s) * v;
 	}
 
 	MATH_INLINE static constexpr Color HSVToRGB(const Color& hsv)
 	{
 		constexpr Vector4 K = Vector4(1.0f, 2.0f / 3.0f, 1.0f / 3.0f, 3.0f);
 
-		return Math::Mix(K.x, Math::Clamp(Math::Abs(Math::Fract(Vector3(K.x + hsv.x, K.y + hsv.x, K.z + hsv.x)) * 6.0f - K.w) - K.x, 0.0f, 1.0f), hsv.y) * hsv.z;
+		return Math::Mix(Vector3(K.x), Math::Clamp(Math::Abs(Math::Fract(Vector3(K.x + hsv.x, K.y + hsv.x, K.z + hsv.x)) * 6.0f - K.w) - K.x, 0.0f, 1.0f), hsv.y) * hsv.z;
 	}
 
 	MATH_INLINE static constexpr Color RGBToHSV(float r, float g, float b)
@@ -183,4 +183,4 @@ MATH_INLINE constexpr Color32 Mix(Color32 c0, Color32 c1, float a)
 	};
 }
 
-}
+} // namespace Gleam

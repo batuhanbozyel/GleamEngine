@@ -6,10 +6,7 @@
 	url = https://github.com/skypjack/entt
 [submodule "Engine/ThirdParty/SDL2"]
 	path = Engine/ThirdParty/SDL2
-	url = https://github.com/libsdl-org/SDL
-[submodule "Engine/ThirdParty/spdlog"]
-	path = Engine/ThirdParty/spdlog
-	url = https://github.com/gabime/spdlog
+url=https://github.com/batuhanbozyel/SDL
 [submodule "Engine/ThirdParty/tinyobjloader"]
 	path = Engine/ThirdParty/tinyobjloader
 	url = https://github.com/tinyobjloader/tinyobjloader
@@ -31,3 +28,9 @@
 [submodule "Engine/ThirdParty/googletest"]
 	path = Engine/ThirdParty/googletest
 	url = https://github.com/google/googletest
+[submodule "Engine/ThirdParty/volk"]
+	path = Engine/ThirdParty/volk
+	url = https://github.com/zeux/volk
+[submodule "Engine/ThirdParty/fmt"]
+	path = Engine/ThirdParty/fmt
+	url = https://github.com/fmtlib/fmt

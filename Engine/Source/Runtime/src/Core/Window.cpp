@@ -6,36 +6,37 @@
 using namespace Gleam;
 
 Window::Window(const WindowProperties& props)
-	: m_Props(props)
+	: mProperties(props)
 {
 	// query display info to create window if not provided by the user
-	if (props.Display.Width == 0 || props.Display.Height == 0)
+	if (props.display.width == 0 || props.display.height == 0)
 	{
-		m_Props.Display = WindowConfig::GetCurrentDisplayMode(props.Display.Monitor);
+		mProperties.windowFlag = WindowFlag::MaximizedWindow;
 	}
 
 	// create window
-	m_Window = SDL_CreateWindow(props.Title.c_str(),
-		SDL_WINDOWPOS_CENTERED_DISPLAY(props.Display.Monitor),
-		SDL_WINDOWPOS_CENTERED_DISPLAY(props.Display.Monitor),
-		props.Display.Width, props.Display.Height,
-		static_cast<uint32_t>(props.Flag));
-	GLEAM_ASSERT(m_Window, "Window creation failed!");
+	mWindow = SDL_CreateWindow(mProperties.title.c_str(),
+		SDL_WINDOWPOS_CENTERED_DISPLAY(mProperties.display.monitor),
+		SDL_WINDOWPOS_CENTERED_DISPLAY(mProperties.display.monitor),
+		mProperties.display.width, mProperties.display.height,
+		static_cast<uint32_t>(mProperties.windowFlag));
+	GLEAM_ASSERT(mWindow, "Window creation failed!");
 
 	// update window props with the created window info
-	int monitor = SDL_GetWindowDisplayIndex(m_Window);
+	int monitor = SDL_GetWindowDisplayIndex(mWindow);
 	GLEAM_ASSERT(monitor >= 0, "Window display index is invalid!");
 
-	m_Props.Display = WindowConfig::GetCurrentDisplayMode(monitor);
+	mProperties.display = WindowConfig::GetCurrentDisplayMode(monitor);
+
+	EventDispatcher<WindowResizeEvent>::Subscribe([this](const WindowResizeEvent& e)
+	{
+		mProperties.display.width = e.GetWidth();
+		mProperties.display.height = e.GetHeight();
+		return false;
+	});
 }
 
 Window::~Window()
 {
-	SDL_DestroyWindow(m_Window);
-}
-
-void Window::Resize(uint32_t width, uint32_t height)
-{
-	m_Props.Display.Width = width;
-	m_Props.Display.Height = height;
+	SDL_DestroyWindow(mWindow);
 }

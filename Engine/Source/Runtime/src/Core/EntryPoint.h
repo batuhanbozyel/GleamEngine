@@ -2,12 +2,12 @@
 #include "Gleam.h"
 #include "Application.h"
 
+#if defined(PLATFORM_WINDOWS) || defined(PLATFORM_MACOS) || defined(PLATFORM_IOS)
+Gleam::Application* Gleam::CreateApplication();
+
 #ifdef __cplusplus
 extern "C"
 #endif
-
-#if defined(PLATFORM_WINDOWS) || defined(PLATFORM_MACOS)
-Gleam::Application * Gleam::CreateApplication();
 
 int main(int argc, char* argv[])
 {

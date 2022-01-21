@@ -1,5 +1,4 @@
 #pragma once
-#include <SDL.h>
 #include "WindowConfig.h"
 
 namespace Gleam {
@@ -11,26 +10,24 @@ public:
 	Window(const WindowProperties& props);
 	~Window();
 
-	const WindowProperties& GetProps() const
+	const WindowProperties& GetProperties() const
 	{
-		return m_Props;
+		return mProperties;
 	}
 
 	SDL_Window* GetSDLWindow() const
 	{
-		return m_Window;
+		return mWindow;
 	}
-
-	void Resize(uint32_t width, uint32_t height);
 
 	Window(const Window&) = delete;
 	Window& operator=(const Window&) = delete;
 
 private:
 
-	SDL_Window* m_Window;
-	WindowProperties m_Props;
+	SDL_Window* mWindow;
+	WindowProperties mProperties;
 
 };
 
-}
+} // namespace Gleam

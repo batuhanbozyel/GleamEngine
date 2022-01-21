@@ -293,4 +293,4 @@ struct Matrix4
 	}
 };
 
-}
+} // namespace Gleam

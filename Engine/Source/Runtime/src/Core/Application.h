@@ -1,29 +1,45 @@
 #pragma once
-#include "Window.h"
+#include "ApplicationConfig.h"
 
-#ifdef __cplusplus
-extern "C"
-#endif
+union SDL_Event;
+struct SDL_Window;
 
 namespace Gleam {
+
+class Window;
 
 class Application
 {
 public:
 
-	Application(const WindowProperties& props);
+	Application(const ApplicationProperties& props);
 	~Application();
 
 	void Run();
 
+	static const Window& GetActiveWindow()
+	{
+		return *sInstance->mActiveWindow;
+	}
+
+	static const Version& GetVersion()
+	{
+		return sInstance->mVersion;
+	}
+
 private:
 
-	bool m_Running = true;
+	bool mRunning = true;
 
-	SDL_Event m_Event;
-	HashMap<SDL_Window*, Scope<Window>> m_Windows;
+	Version mVersion;
+	SDL_Event mEvent;
+	Window* mActiveWindow;
+	HashMap<SDL_Window*, Scope<Window>> mWindows;
+
+	static inline Application* sInstance = nullptr;
 
 };
 
 Application* CreateApplication();
-}
+
+} // namespace Gleam

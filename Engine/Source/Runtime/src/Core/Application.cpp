@@ -1,7 +1,9 @@
 #include "gpch.h"
 #include "Application.h"
 
+#include "Window.h"
 #include "Events/WindowEvent.h"
+#include "Renderer/Renderer.h"
 
 using namespace Gleam;
 
@@ -80,40 +82,63 @@ static int SDLCALL SDL2_EventCallback(void* data, SDL_Event* e)
 	return 0;
 }
 
-Application::Application(const WindowProperties& props)
+Application::Application(const ApplicationProperties& props)
+	: mVersion(props.appVersion)
 {
-	Log::Init();
+	if (sInstance)
+	{
+		delete sInstance;
+	}
+	sInstance = this;
 
-	int initSucess = SDL_Init(SDL_INIT_VIDEO);
+	int initSucess = SDL_Init(SDL_INIT_EVERYTHING);
 	SDL_SetEventFilter(SDL2_EventCallback, nullptr);
 	GLEAM_ASSERT(initSucess == 0, "Window subsystem initialization failed!");
 
-	Scope<Window> mainWindow = CreateScope<Window>(props);
-	m_Windows.emplace(mainWindow->GetSDLWindow(), std::move(mainWindow));
+	mActiveWindow = new Window(props.windowProps);
+	mWindows.emplace(mActiveWindow->GetSDLWindow(), Scope<Window>(mActiveWindow));
+	Renderer::Init(props.windowProps.title, props.appVersion, props.rendererProps);
 
 	EventDispatcher<AppCloseEvent>::Subscribe([this](AppCloseEvent e)
 	{
-		m_Running = false;
+		mRunning = false;
 		return true;
 	});
 
 	EventDispatcher<WindowCloseEvent>::Subscribe([this](WindowCloseEvent e)
 	{
-		m_Windows.erase(e.GetWindow());
+		// if there is only 1 window, application should terminate with the proper deallocation order
+		if (mWindows.size() == 1)
+		{
+			return false;
+		}
+
+		mWindows.erase(e.GetWindow());
 		return true;
 	});
 }
 
 void Application::Run()
 {
-	while (m_Running)
+	while (mRunning)
 	{
-		while (SDL_PollEvent(&m_Event));
+		while (SDL_PollEvent(&mEvent));
+        
+#ifdef USE_METAL_RENDERER
+    @autoreleasepool
+#endif
+        {
+            Renderer::BeginFrame();
+            
+            Renderer::EndFrame();
+        }
 	}
 }
 
 Application::~Application()
 {
-	m_Windows.clear();
+	Renderer::Destroy();
+	mWindows.clear();
 	SDL_Quit();
+	sInstance = nullptr;
 }

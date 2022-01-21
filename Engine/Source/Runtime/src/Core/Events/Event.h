@@ -24,7 +24,7 @@ public:
 
 private:
 
-	bool m_Handled = false;
+	bool mHandled = false;
 
 	template<class EventType>
 	friend class EventDispatcher;
@@ -43,25 +43,25 @@ public:
 
 	static void Publish(EventType e)
 	{
-		for (auto& handler : m_Subscribers)
+		for (auto& handler : mSubscribers)
 		{
-			if (!e.m_Handled)
+			if (!e.mHandled)
 			{
-				e.m_Handled = handler(e);
+				e.mHandled = handler(e);
 			}
 		}
 
-		e.m_Handled = true;
+		e.mHandled = true;
 	}
 
 	static void Subscribe(EventHandler&& fn)
 	{
-		m_Subscribers.emplace_back(fn);
+		mSubscribers.emplace_back(fn);
 	}
 
 private:
 
-	static inline TArray<EventHandler> m_Subscribers;
+	static inline TArray<EventHandler> mSubscribers;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Event& e)
@@ -69,4 +69,4 @@ inline std::ostream& operator<<(std::ostream& os, const Event& e)
 	return os << e.ToString();
 }
 
-}
+} // namespace Gleam

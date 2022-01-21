@@ -4,10 +4,16 @@ set(CMAKE_CONFIGURATION_TYPES Debug Release RelWithDebInfo CACHE TYPE INTERNAL F
 
 project(GleamEngine)
 
-    find_package(Vulkan REQUIRED)
+    if (NOT APPLE)
+        find_package(Vulkan REQUIRED)
+    endif()
 
     if (WIN32)
         set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT Editor)
+    elseif (APPLE)
+        set(CMAKE_OSX_ARCHITECTURES "arm64;x86_64")
+        set(CMAKE_XCODE_GENERATE_SCHEME true)
+        set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY XCODE_SCHEME_EXECUTABLE Editor)
     endif()
 
     #preventing in source build
@@ -46,6 +52,8 @@ project(GleamEngine)
     set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin/$<CONFIGURATION>)
 
     # Set defaults preventing destination file conflicts
+    set(FMT_DEBUG_POSTFIX ""
+    CACHE STRING "Name suffix for debug builds" FORCE)
     set(SDL_CMAKE_DEBUG_POSTFIX ""
     CACHE STRING "Name suffix for debug builds" FORCE)
 
