@@ -35,7 +35,7 @@ constexpr inline T As(P p)
 	return reinterpret_cast<T>(p);
 }
 
-using handle_t = void*;
+using NativeGraphicsHandle = void*;
 
 #define GLEAM_ENGINE_MAJOR_VERSION 1
 #define GLEAM_ENGINE_MINOR_VERSION 0

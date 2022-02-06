@@ -1,41 +1,54 @@
 #pragma once
-#include "RendererConfig.h"
+#include "Swapchain.h"
 
 namespace Gleam {
 
-#ifdef USE_METAL_RENDERER
-struct MetalFrameObject;
-using FrameObject = MetalFrameObject;
-#else
-struct VulkanFrameObject;
-using FrameObject = VulkanFrameObject;
-#endif
 struct Version;
 
 class RendererContext
 {
 public:
 
-	RendererContext(const TString& appName, const Version& appVersion, const RendererProperties& props);
-	~RendererContext();
-    
-	const FrameObject& AcquireNextFrame();
-	const FrameObject& GetCurrentFrame() const;
-	void Present();
+	static void Init(const TString& appName, const Version& appVersion, const RendererProperties& props);
 
-	handle_t GetDevice() const;
+	static void Destroy();
 
-	const RendererProperties& GetProperties() const
+	static NativeGraphicsHandle GetEntryPoint();
+
+	static NativeGraphicsHandle GetDevice();
+
+	static NativeGraphicsHandle GetPhysicalDevice();
+
+	static NativeGraphicsHandle GetGraphicsQueue();
+
+	static NativeGraphicsHandle GetComputeQueue();
+
+	static NativeGraphicsHandle GetTransferQueue();
+
+	static uint32_t GetGraphicsQueueIndex();
+
+	static uint32_t GetComputeQueueIndex();
+
+	static uint32_t GetTransferQueueIndex();
+
+	static const Scope<Swapchain>& GetSwapchain()
 	{
-		return mProperties;
+		return mSwapchain;
+	}
+
+	static const RendererProperties& GetProperties()
+	{
+		return mSwapchain->GetProperties();
+	}
+
+	static bool IsMultisampleEnabled()
+	{
+		return mSwapchain->GetProperties().msaa > 1;
 	}
 
 private:
     
-	void InvalidateSwapchain();
-    
-	RendererProperties mProperties;
-	uint32_t mCurrentFrameIndex = 0;
+	static inline Scope<Swapchain> mSwapchain = nullptr;
 
 };
 

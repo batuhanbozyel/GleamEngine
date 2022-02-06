@@ -1,24 +1,17 @@
 #pragma once
+#include "Shader.h"
 
 namespace Gleam {
 
-enum class ShaderType
+enum BuiltinGraphicsShader
 {
-    Vertex,
-    Fragment,
-    Compute
-};
-    
-struct Shader
-{
-	handle_t handle;
-	TString entryPoint;
+	FullscreenTriangleShader,
+	BuiltinGrahpicsShaderCOUNT //
 };
 
-struct ShaderProgram
+enum BuiltinComputeShader
 {
-	Shader vertexShader;
-	Shader fragmentShader;
+	BuiltinComputeShaderCOUNT //
 };
 
 class ShaderLibrary
@@ -28,16 +21,21 @@ public:
 	static void Init();
     
 	static void Destroy();
-    
-	static ShaderProgram CreatePrecompiledShaderProgram(const TString& vertexEntryPoint, const TString& fragmentEntryPoint);
 
-	static Shader CreatePrecompiledComputeShader(const TString& entryPoint);
-    
-	static ShaderProgram CreateShaderProgram(const TString& filename, const TString& vertexEntryPoint, const TString& fragmentEntryPoint);
+	static const Ref<GraphicsShader>& GetBuiltinGraphicsShader(BuiltinGraphicsShader id);
 
-	static Shader CreateComputeShader(const TString& filename, const TString& entryPoint);
+	static const Ref<ComputeShader>& GetBuiltinComputeShader(BuiltinComputeShader id);
+    
+	static Ref<GraphicsShader> CreateGraphicsShader(const TString& filename, const TString& vertexEntryPoint, const TString& fragmentEntryPoint);
+
+	static Ref<ComputeShader> CreateComputeShader(const TString& filename, const TString& entryPoint);
     
 	static void ClearCache();
+
+private:
+
+	static inline HashMap<TString, Ref<GraphicsShader>> mGraphicsShaderCache;
+	static inline HashMap<TString, Ref<ComputeShader>> mComputeShaderCache;
 
 };
 

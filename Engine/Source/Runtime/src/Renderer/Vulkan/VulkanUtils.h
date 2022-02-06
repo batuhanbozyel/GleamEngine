@@ -1,14 +1,19 @@
 #pragma once
 #ifdef USE_VULKAN_RENDERER
 #include <volk.h>
-#include "Renderer/Renderer.h"
+#include "Renderer/RendererContext.h"
+#include "Renderer/TextureFormat.h"
+#include "Renderer/RenderPassDescriptor.h"
+#include "Renderer/VertexLayoutDescriptor.h"
 
 namespace Gleam {
 
 #define VK_CHECK(x) {VkResult result = x;\
 					GLEAM_ASSERT(result == VK_SUCCESS, VkResultToString(x));}
 
-#define VulkanDevice reinterpret_cast<VkDevice>(Renderer::GetDevice())
+#define VulkanDevice As<VkDevice>(RendererContext::GetDevice())
+
+#define VulkanContextSampleCount RendererContext::IsMultisampleEnabled() ? static_cast<VkSampleCountFlagBits>(BIT(RendererContext::GetProperties().msaa - 1)) : VK_SAMPLE_COUNT_1_BIT;
 
 static constexpr const char* VkResultToString(VkResult result)
 {
@@ -53,6 +58,71 @@ static constexpr const char* VkResultToString(VkResult result)
 		case VK_OPERATION_NOT_DEFERRED_KHR:                         return "VK_OPERATION_NOT_DEFERRED_KHR";
 		case VK_PIPELINE_COMPILE_REQUIRED_EXT:                      return "VK_PIPELINE_COMPILE_REQUIRED_EXT";
 		default:                                                    return "UNKNOWN VULKAN ERROR";
+	}
+}
+
+static constexpr VkSampleCountFlagBits GetVkSampleCount(uint32_t sampleCount)
+{
+	return sampleCount > 1 ? static_cast<VkSampleCountFlagBits>(BIT(sampleCount - 1)) : VK_SAMPLE_COUNT_1_BIT;
+}
+
+static constexpr TextureFormat VkFormatToTextureFormat(VkFormat format)
+{
+	switch (format)
+	{
+		// TODO:
+		default: return TextureFormat::None;
+	}
+}
+
+static constexpr VkFormat TextureFormatToVkFormat(TextureFormat format)
+{
+	switch (format)
+	{
+		// TODO:
+		default: return VK_FORMAT_UNDEFINED;
+	}
+}
+
+static constexpr VkAttachmentLoadOp AttachmentLoadActionToVkAttachmentLoadOp(AttachmentLoadAction loadAction)
+{
+	switch (loadAction)
+	{
+		case AttachmentLoadAction::Load: return VK_ATTACHMENT_LOAD_OP_LOAD;
+		case AttachmentLoadAction::Clear: return VK_ATTACHMENT_LOAD_OP_CLEAR;
+		case AttachmentLoadAction::DontCare: return VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+		default: return VK_ATTACHMENT_LOAD_OP_MAX_ENUM;
+	}
+}
+
+static constexpr VkAttachmentStoreOp AttachmentStoreActionToVkAttachmentStoreOp(AttachmentStoreAction storeAction)
+{
+	switch (storeAction)
+	{
+		case AttachmentStoreAction::Store: return VK_ATTACHMENT_STORE_OP_STORE;
+		case AttachmentStoreAction::DontCare: return VK_ATTACHMENT_STORE_OP_DONT_CARE;
+		default: return VK_ATTACHMENT_STORE_OP_MAX_ENUM;
+	}
+}
+
+static constexpr VkPrimitiveTopology PrimitiveToplogyToVkPrimitiveTopology(PrimitiveTopology topology)
+{
+	switch (topology)
+	{
+		case PrimitiveTopology::Points: return VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
+		case PrimitiveTopology::Lines: return VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+		case PrimitiveTopology::LineStrip: return VK_PRIMITIVE_TOPOLOGY_LINE_STRIP;
+		case PrimitiveTopology::Triangles: return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+		default: return VK_PRIMITIVE_TOPOLOGY_MAX_ENUM;
+	}
+}
+
+static constexpr VkFormat VertexAttributeFormatToVkFormat(VertexAttributeFormat format)
+{
+	switch (format)
+	{
+		// TODO:
+		default: return VK_FORMAT_UNDEFINED;
 	}
 }
 
