@@ -28,11 +28,12 @@ public:
 
 	NativeGraphicsHandle GetGraphicsCommandPool() const;
 	NativeGraphicsHandle GetSurface() const;
+	NativeGraphicsHandle GetRenderPass() const;
 	const FrameObject& GetCurrentFrame() const;
 
 	bool MultisampleEnabled() const
 	{
-		return mProperties.msaa > 1;
+		return mProperties.sampleCount > 1;
 	}
 
 	const RendererProperties& GetProperties() const
@@ -47,6 +48,5 @@ private:
 	RendererProperties mProperties;
 
 };
-
 
 } // namespace Gleam

@@ -48,7 +48,7 @@ Swapchain::Swapchain(const RendererProperties& props)
 	VK_CHECK(vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, mContext.extensions.data()));
 
 	// Create surface
-	bool surfaceCreateResult = SDL_Vulkan_CreateSurface(Application::GetActiveWindow().GetSDLWindow(), As<VkInstance>(RendererContext::GetEntryPoint()), &mContext.surface);
+	bool surfaceCreateResult = SDL_Vulkan_CreateSurface(ApplicationInstance.GetActiveWindow().GetSDLWindow(), As<VkInstance>(RendererContext::GetEntryPoint()), &mContext.surface);
 	GLEAM_ASSERT(surfaceCreateResult, "Vulkan: Surface creation failed!");
 }
 
@@ -165,6 +165,11 @@ NativeGraphicsHandle Swapchain::GetSurface() const
 	return mContext.surface;
 }
 
+NativeGraphicsHandle Swapchain::GetRenderPass() const
+{
+	return mContext.renderPass;
+}
+
 const FrameObject& Swapchain::GetCurrentFrame() const
 {
 	return mContext.currentFrame;
@@ -172,7 +177,7 @@ const FrameObject& Swapchain::GetCurrentFrame() const
 
 void Swapchain::Invalidate()
 {
-	SDL_Window* window = Application::GetActiveWindow().GetSDLWindow();
+	SDL_Window* window = ApplicationInstance.GetActiveWindow().GetSDLWindow();
 
 	vkDeviceWaitIdle(VulkanDevice);
 
@@ -349,7 +354,7 @@ void Swapchain::Invalidate()
 
 	VkAttachmentDescription attachmentDesc{};
 	attachmentDesc.format = mContext.imageFormat;
-	attachmentDesc.samples = GetVkSampleCount(mProperties.msaa);
+	attachmentDesc.samples = GetVkSampleCount(mProperties.sampleCount);
 	attachmentDesc.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 	attachmentDesc.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 	attachmentDesc.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;

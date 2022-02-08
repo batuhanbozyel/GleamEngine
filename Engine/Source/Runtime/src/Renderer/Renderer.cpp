@@ -19,3 +19,13 @@ void Renderer::Destroy()
 	PipelineCache::Destroy();
     RendererContext::Destroy();
 }
+
+void Renderer::BeginFrame()
+{
+	RendererContext::GetSwapchain()->AcquireNextFrame();
+}
+
+void Renderer::EndFrame()
+{
+	RendererContext::GetSwapchain()->Present();
+}

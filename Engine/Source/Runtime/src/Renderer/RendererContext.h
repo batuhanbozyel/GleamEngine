@@ -43,7 +43,7 @@ public:
 
 	static bool IsMultisampleEnabled()
 	{
-		return mSwapchain->GetProperties().msaa > 1;
+		return mSwapchain->GetProperties().sampleCount > 1;
 	}
 
 private:

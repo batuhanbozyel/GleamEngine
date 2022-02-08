@@ -37,6 +37,8 @@ constexpr inline T As(P p)
 
 using NativeGraphicsHandle = void*;
 
+#define ApplicationInstance Application::GetInstance()
+
 #define GLEAM_ENGINE_MAJOR_VERSION 1
 #define GLEAM_ENGINE_MINOR_VERSION 0
 #define GLEAM_ENGINE_PATCH_VERSION 0

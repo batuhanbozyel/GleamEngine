@@ -27,6 +27,15 @@ void ShaderLibrary::ClearCache()
 {
 	mGraphicsShaderCache.clear();
 	mComputeShaderCache.clear();
+
+	for (uint32_t i = 0; i < BuiltinGrahpicsShaderCOUNT; i++)
+	{
+		sBuiltinGraphicsShaders[i].reset();
+	}
+	for (uint32_t i = 0; i < BuiltinComputeShaderCOUNT; i++)
+	{
+		sBuiltinComputeShaders[i].reset();
+	}
 }
 /************************************************************************/
 /*    GetBuiltinGraphicsShader                                          */

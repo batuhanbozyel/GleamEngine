@@ -1,9 +1,11 @@
 #include "gpch.h"
 #include "Application.h"
 
+#include "Layer.h"
 #include "Window.h"
 #include "Events/WindowEvent.h"
 #include "Renderer/Renderer.h"
+#include "Renderer/DebugRenderer.h"
 
 using namespace Gleam;
 
@@ -85,10 +87,6 @@ static int SDLCALL SDL2_EventCallback(void* data, SDL_Event* e)
 Application::Application(const ApplicationProperties& props)
 	: mVersion(props.appVersion)
 {
-	if (sInstance)
-	{
-		delete sInstance;
-	}
 	sInstance = this;
 
 	int initSucess = SDL_Init(SDL_INIT_EVERYTHING);
@@ -125,11 +123,28 @@ void Application::Run()
 		while (SDL_PollEvent(&mEvent));
         
 #ifdef USE_METAL_RENDERER
-    @autoreleasepool
+		@autoreleasepool
 #endif
         {
             Renderer::BeginFrame();
-            
+
+			if (mLayerStack.empty())
+			{
+				Renderer::ClearScreen({ 0.1f, 0.1f, 0.1f, 1.0f });
+			}
+			else
+			{
+				for (const auto& layer : mLayerStack)
+				{
+					layer->OnRenderSuper();
+				}
+
+				for (const auto& overlay : mOverlays)
+				{
+					overlay->OnRenderSuper();
+				}
+			}
+
             Renderer::EndFrame();
         }
 	}
@@ -137,8 +152,38 @@ void Application::Run()
 
 Application::~Application()
 {
+	// Destroy overlays
+	for (const auto& overlay : mOverlays)
+	{
+		overlay->OnDetachSuper();
+	}
+	mOverlays.clear();
+
+	// Destroy layers
+	for (const auto& layer : mLayerStack)
+	{
+		layer->OnDetachSuper();
+	}
+	mLayerStack.clear();
+
+	// Destroy renderer
 	Renderer::Destroy();
+
+	// Destroy windows and window subsystem
 	mWindows.clear();
 	SDL_Quit();
+
 	sInstance = nullptr;
+}
+
+void Application::PushLayer(Layer* layer)
+{
+	layer->OnAttachSuper();
+	mLayerStack.push_back(Scope<Layer>(layer));
+}
+
+void Application::PushOverlay(Layer* overlay)
+{
+	overlay->OnAttachSuper();
+	mOverlays.push_back(Scope<Layer>(overlay));
 }

@@ -6,6 +6,7 @@ struct SDL_Window;
 
 namespace Gleam {
 
+class Layer;
 class Window;
 
 class Application
@@ -17,24 +18,36 @@ public:
 
 	void Run();
 
-	static const Window& GetActiveWindow()
+	void PushLayer(Layer* layer);
+
+	void PushOverlay(Layer* overlay);
+
+	const Window& GetActiveWindow() const
 	{
-		return *sInstance->mActiveWindow;
+		return *mActiveWindow;
 	}
 
-	static const Version& GetVersion()
+	const Version& GetVersion() const
 	{
-		return sInstance->mVersion;
+		return mVersion;
+	}
+
+	static Application& GetInstance()
+	{
+		return *sInstance;
 	}
 
 private:
 
-	bool mRunning = true;
+	TArray<Scope<Layer>> mLayerStack;
+	TArray<Scope<Layer>> mOverlays;
 
-	Version mVersion;
 	SDL_Event mEvent;
 	Window* mActiveWindow;
 	HashMap<SDL_Window*, Scope<Window>> mWindows;
+
+	bool mRunning = true;
+	Version mVersion;
 
 	static inline Application* sInstance = nullptr;
 

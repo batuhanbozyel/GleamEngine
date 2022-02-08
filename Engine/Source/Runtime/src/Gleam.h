@@ -16,3 +16,4 @@
 #include "Renderer/Renderer.h"
 #include "Renderer/CommandBuffer.h"
 #include "Renderer/ShaderLibrary.h"
+#include "Renderer/SceneRenderer.h"
