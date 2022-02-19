@@ -1,10 +1,11 @@
 #pragma once
 #ifdef USE_VULKAN_RENDERER
 #include <volk.h>
+#include "Renderer/Buffer.h"
 #include "Renderer/RendererContext.h"
 #include "Renderer/TextureFormat.h"
 #include "Renderer/RenderPassDescriptor.h"
-#include "Renderer/VertexLayoutDescriptor.h"
+#include "Renderer/PipelineStateDescriptor.h"
 
 namespace Gleam {
 
@@ -117,12 +118,26 @@ static constexpr VkPrimitiveTopology PrimitiveToplogyToVkPrimitiveTopology(Primi
 	}
 }
 
-static constexpr VkFormat VertexAttributeFormatToVkFormat(VertexAttributeFormat format)
+static constexpr VkCullModeFlags CullModeToVkCullMode(CullMode cullMode)
 {
-	switch (format)
+	switch (cullMode)
 	{
-		// TODO:
-		default: return VK_FORMAT_UNDEFINED;
+		case CullMode::Off: return VK_CULL_MODE_NONE;
+		case CullMode::Front: return VK_CULL_MODE_FRONT_BIT;
+		case CullMode::Back: return VK_CULL_MODE_BACK_BIT;
+		default: return VK_CULL_MODE_FLAG_BITS_MAX_ENUM;
+	}
+}
+
+static constexpr VkBufferUsageFlags BufferUsageVkBufferUsage(BufferUsage usage)
+{
+	switch (usage)
+	{
+		case BufferUsage::VertexBuffer: return VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+		case BufferUsage::IndexBuffer: return VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+		case BufferUsage::StorageBuffer: return VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+		case BufferUsage::UniformBuffer: return VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+		default: return VK_BUFFER_USAGE_FLAG_BITS_MAX_ENUM;
 	}
 }
 

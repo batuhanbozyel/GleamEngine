@@ -6,6 +6,7 @@ namespace Gleam {
 enum BuiltinGraphicsShader
 {
 	FullscreenTriangleShader,
+	ForwardPassShader,
 	BuiltinGrahpicsShaderCOUNT //
 };
 

@@ -1,11 +1,7 @@
 #pragma once
-#include "PipelineStateDescriptor.h"
+#include "Pipeline.h"
 
 namespace Gleam {
-
-class GraphicsShader;
-struct VertexLayoutDescriptor;
-enum class PrimitiveTopology;
 
 class PipelineCache
 {
@@ -15,7 +11,7 @@ public:
 
 	static void Destroy();
 
-	static NativeGraphicsHandle CreateGraphicsPipeline(const PipelineStateDescriptor& pipelineStateDescriptor, const TArray<VertexLayoutDescriptor>& vertexDescriptors, const Ref<GraphicsShader>& shader, PrimitiveTopology topology);
+	static Ref<GraphicsPipeline> CreateGraphicsPipeline(const PipelineStateDescriptor& pipelineStateDescriptor, const Ref<GraphicsShader>& shader);
 
 	static void Flush();
 

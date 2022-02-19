@@ -121,6 +121,16 @@ void Application::Run()
 	while (mRunning)
 	{
 		while (SDL_PollEvent(&mEvent));
+
+		for (const auto& layer : mLayerStack)
+		{
+			layer->OnUpdate();
+	}
+
+		for (const auto& overlay : mOverlays)
+		{
+			overlay->OnUpdate();
+		}
         
 #ifdef USE_METAL_RENDERER
 		@autoreleasepool
@@ -136,12 +146,12 @@ void Application::Run()
 			{
 				for (const auto& layer : mLayerStack)
 				{
-					layer->OnRenderSuper();
+					layer->OnRender();
 				}
 
 				for (const auto& overlay : mOverlays)
 				{
-					overlay->OnRenderSuper();
+					overlay->OnRender();
 				}
 			}
 
@@ -155,14 +165,14 @@ Application::~Application()
 	// Destroy overlays
 	for (const auto& overlay : mOverlays)
 	{
-		overlay->OnDetachSuper();
+		overlay->OnDetach();
 	}
 	mOverlays.clear();
 
 	// Destroy layers
 	for (const auto& layer : mLayerStack)
 	{
-		layer->OnDetachSuper();
+		layer->OnDetach();
 	}
 	mLayerStack.clear();
 
@@ -176,14 +186,48 @@ Application::~Application()
 	sInstance = nullptr;
 }
 
-void Application::PushLayer(Layer* layer)
+void Application::PushLayer(const Ref<Layer>& layer)
 {
-	layer->OnAttachSuper();
-	mLayerStack.push_back(Scope<Layer>(layer));
+	layer->OnAttach();
+	mLayerStack.push_back(layer);
 }
 
-void Application::PushOverlay(Layer* overlay)
+void Application::PushOverlay(const Ref<Layer>& overlay)
 {
-	overlay->OnAttachSuper();
-	mOverlays.push_back(Scope<Layer>(overlay));
+	overlay->OnAttach();
+	mOverlays.push_back(overlay);
+}
+
+void Application::RemoveLayer(uint32_t index)
+{
+	GLEAM_ASSERT(index < mLayerStack.size());
+	mLayerStack[index]->OnDetach();
+	mLayerStack.erase(mLayerStack.begin() + index);
+}
+
+void Application::RemoveOverlay(uint32_t index)
+{
+	GLEAM_ASSERT(index < mOverlays.size());
+	mOverlays[index]->OnDetach();
+	mOverlays.erase(mOverlays.begin() + index);
+}
+
+void Application::RemoveLayer(const Ref<Layer>& layer)
+{
+	auto layerIt = std::find(mLayerStack.begin(), mLayerStack.end(), layer);
+	if (layerIt != mLayerStack.end())
+	{
+		layer->OnDetach();
+		mLayerStack.erase(layerIt);
+	}
+}
+
+void Application::RemoveOverlay(const Ref<Layer>& overlay)
+{
+	auto overlayIt = std::find(mOverlays.begin(), mOverlays.end(), overlay);
+	if (overlayIt != mOverlays.end())
+	{
+		overlay->OnDetach();
+		mOverlays.erase(overlayIt);
+	}
 }

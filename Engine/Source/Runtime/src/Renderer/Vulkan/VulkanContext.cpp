@@ -199,7 +199,11 @@ void RendererContext::Init(const TString& appName, const Version& appVersion, co
 		}
 	}
 
-	TArray<const char*> requiredDeviceExtension{ VK_KHR_SWAPCHAIN_EXTENSION_NAME };
+	TArray<const char*> requiredDeviceExtension
+	{
+		VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+		VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME
+	};
 	VkDeviceCreateInfo deviceCreateInfo{ VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO };
 	deviceCreateInfo.queueCreateInfoCount = queueFamilyCount;
 	deviceCreateInfo.pQueueCreateInfos = deviceQueueCreateInfos.data();

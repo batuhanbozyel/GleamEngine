@@ -18,9 +18,17 @@ public:
 
 	void Run();
 
-	void PushLayer(Layer* layer);
+	void PushLayer(const Ref<Layer>& layer);
 
-	void PushOverlay(Layer* overlay);
+	void PushOverlay(const Ref<Layer>& overlay);
+
+	void RemoveLayer(uint32_t index);
+
+	void RemoveOverlay(uint32_t index);
+
+	void RemoveLayer(const Ref<Layer>& layer);
+
+	void RemoveOverlay(const Ref<Layer>& overlay);
 
 	const Window& GetActiveWindow() const
 	{
@@ -39,8 +47,8 @@ public:
 
 private:
 
-	TArray<Scope<Layer>> mLayerStack;
-	TArray<Scope<Layer>> mOverlays;
+	TArray<Ref<Layer>> mLayerStack;
+	TArray<Ref<Layer>> mOverlays;
 
 	SDL_Event mEvent;
 	Window* mActiveWindow;

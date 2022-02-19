@@ -37,7 +37,7 @@ constexpr inline T As(P p)
 
 using NativeGraphicsHandle = void*;
 
-#define ApplicationInstance Application::GetInstance()
+#define ApplicationInstance Gleam::Application::GetInstance()
 
 #define GLEAM_ENGINE_MAJOR_VERSION 1
 #define GLEAM_ENGINE_MINOR_VERSION 0
@@ -45,5 +45,5 @@ using NativeGraphicsHandle = void*;
 #define GLEAM_ENGINE_VERSION constexpr Gleam::Version(GLEAM_ENGINE_MAJOR_VERSION, GLEAM_ENGINE_MINOR_VERSION, GLEAM_ENGINE_PATCH_VERSION)
 
 #ifdef USE_VULKAN_RENDERER
-#define VULKAN_API_VERSION VK_API_VERSION_1_0
+#define VULKAN_API_VERSION VK_API_VERSION_1_1
 #endif

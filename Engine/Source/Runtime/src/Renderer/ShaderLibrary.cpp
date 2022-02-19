@@ -54,6 +54,11 @@ const Ref<GraphicsShader>& ShaderLibrary::GetBuiltinGraphicsShader(BuiltinGraphi
 			sBuiltinGraphicsShaders[id] = CreateRef<GraphicsShader>("fullscreenTriangleVertexShader", "fullscreenTriangleFragmentShader");
 			return sBuiltinGraphicsShaders[id];
 		}
+		case ForwardPassShader:
+		{
+			sBuiltinGraphicsShaders[id] = CreateRef<GraphicsShader>("forwardPassVertexShader", "forwardPassFragmentShader");
+			return sBuiltinGraphicsShaders[id];
+		}
 		default:
 		{
 			GLEAM_ASSERT(false, "Invalid built-in Graphics Shader!");

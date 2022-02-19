@@ -7,9 +7,9 @@ class DebugRenderer : public Renderer
 {
 public:
 
-	virtual void Initialize() override;
+	DebugRenderer();
 
-	virtual void Shutdown() override;
+	~DebugRenderer();
 
 	virtual void Render() override;
 

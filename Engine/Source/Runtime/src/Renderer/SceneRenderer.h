@@ -1,17 +1,26 @@
 #pragma once
 #include "Renderer.h"
+#include "Buffer.h"
 
 namespace Gleam {
+
+class Buffer;
+class GraphicsShader;
 
 class SceneRenderer : public Renderer
 {
 public:
 
-	virtual void Initialize() override;
+	SceneRenderer();
 
-	virtual void Shutdown() override;
+	~SceneRenderer();
 
 	virtual void Render() override;
+
+private:
+
+	Buffer mVertexBuffer;
+	Buffer mIndexBuffer;
 
 };
 

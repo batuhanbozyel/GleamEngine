@@ -14,7 +14,7 @@ struct
 	VkPipelineLayout piplineLayout;
 } mContext;
 
-void DebugRenderer::Initialize()
+DebugRenderer::DebugRenderer()
 {
 	VkGraphicsPipelineCreateInfo pipelineCreateInfo{ VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO };
 
@@ -43,26 +43,22 @@ void DebugRenderer::Initialize()
 	inputAssemblyState.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 	pipelineCreateInfo.pInputAssemblyState = &inputAssemblyState;
 
-	VkViewport viewport{};
-	viewport.width = RendererContext::GetProperties().width;
-	viewport.height = RendererContext::GetProperties().height;
-	viewport.maxDepth = 1.0f;
-
-	VkRect2D scissor{};
-	scissor.extent.width = RendererContext::GetProperties().width;
-	scissor.extent.height = RendererContext::GetProperties().height;
-
 	VkPipelineViewportStateCreateInfo viewportState{ VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO };
 	viewportState.viewportCount = 1;
-	viewportState.pViewports = &viewport;
 	viewportState.scissorCount = 1;
-	viewportState.pScissors = &scissor;
 	pipelineCreateInfo.pViewportState = &viewportState;
 
 	// Pipeline layout
 	VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo{ VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
 	VK_CHECK(vkCreatePipelineLayout(VulkanDevice, &pipelineLayoutCreateInfo, nullptr, &mContext.piplineLayout));
 	pipelineCreateInfo.layout = mContext.piplineLayout;
+
+	// Dynamic state
+	TArray<VkDynamicState, 2> dynamicStates = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
+	VkPipelineDynamicStateCreateInfo dynamicState{ VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO };
+	dynamicState.dynamicStateCount = 2;
+	dynamicState.pDynamicStates = dynamicStates.data();
+	pipelineCreateInfo.pDynamicState = &dynamicState;
 
 	VkPipelineRasterizationStateCreateInfo rasterizationState{ VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO };
 	rasterizationState.lineWidth = 1.0f;
@@ -86,10 +82,9 @@ void DebugRenderer::Initialize()
 	VK_CHECK(vkCreateGraphicsPipelines(VulkanDevice, nullptr, 1, &pipelineCreateInfo, nullptr, &mContext.pipeline));
 }
 
-void DebugRenderer::Shutdown()
+DebugRenderer::~DebugRenderer()
 {
 	vkDeviceWaitIdle(VulkanDevice);
-
 	vkDestroyPipeline(VulkanDevice, mContext.pipeline, nullptr);
 	vkDestroyPipelineLayout(VulkanDevice, mContext.piplineLayout, nullptr);
 }
@@ -109,6 +104,17 @@ void DebugRenderer::Render()
 	vkCmdBeginRenderPass(frame.commandBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
 	vkCmdBindPipeline(frame.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mContext.pipeline);
+
+	VkViewport viewport{};
+	viewport.width = RendererContext::GetProperties().width;
+	viewport.height = RendererContext::GetProperties().height;
+	viewport.maxDepth = 1.0f;
+	vkCmdSetViewport(frame.commandBuffer, 0, 1, &viewport);
+
+	VkRect2D scissor{};
+	scissor.extent.width = RendererContext::GetProperties().width;
+	scissor.extent.height = RendererContext::GetProperties().height;
+	vkCmdSetScissor(frame.commandBuffer, 0, 1, &scissor);
 
 	vkCmdDraw(frame.commandBuffer, 3, 1, 0, 0);
 

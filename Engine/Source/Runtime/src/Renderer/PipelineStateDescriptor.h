@@ -102,12 +102,21 @@ enum class CullMode
     Back
 };
 
+enum class PrimitiveTopology
+{
+	Points,
+	Lines,
+	LineStrip,
+	Triangles
+};
+
 struct PipelineStateDescriptor
 {
     TArray<BlendState, 8> blendStates;
     DepthState depthState;
     StencilState stencilState;
-    CullMode cullingMode = CullMode::Back;
+    CullMode cullingMode = CullMode::Off;
+	PrimitiveTopology topology = PrimitiveTopology::Triangles;
     bool alphaToCoverage = false;
 
 	bool operator==(const PipelineStateDescriptor&) const = default;
