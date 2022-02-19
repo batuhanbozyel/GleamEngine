@@ -3,9 +3,6 @@
 
 using namespace Gleam;
 
-static TArray<Ref<GraphicsShader>, BuiltinGrahpicsShaderCOUNT> sBuiltinGraphicsShaders;
-static TArray<Ref<ComputeShader>, BuiltinComputeShaderCOUNT> sBuiltinComputeShaders;
-
 /************************************************************************/
 /*    Init                                                              */
 /************************************************************************/
@@ -25,63 +22,37 @@ void ShaderLibrary::Destroy()
 /************************************************************************/
 void ShaderLibrary::ClearCache()
 {
-	mGraphicsShaderCache.clear();
-	mComputeShaderCache.clear();
-
-	for (uint32_t i = 0; i < BuiltinGrahpicsShaderCOUNT; i++)
-	{
-		sBuiltinGraphicsShaders[i].reset();
-	}
-	for (uint32_t i = 0; i < BuiltinComputeShaderCOUNT; i++)
-	{
-		sBuiltinComputeShaders[i].reset();
-	}
+	mShaderCache.clear();
 }
 /************************************************************************/
-/*    GetBuiltinGraphicsShader                                          */
+/*    CreateGraphicsShader                                              */
 /************************************************************************/
-const Ref<GraphicsShader>& ShaderLibrary::GetBuiltinGraphicsShader(BuiltinGraphicsShader id)
+GraphicsShader ShaderLibrary::CreateGraphicsShader(const TString& vertexEntryPoint, const TString& fragmentEntryPoint)
 {
-	if (sBuiltinGraphicsShaders[id])
-	{
-		return sBuiltinGraphicsShaders[id];
-	}
-
-	switch (id)
-	{
-		case FullscreenTriangleShader:
-		{
-			sBuiltinGraphicsShaders[id] = CreateRef<GraphicsShader>("fullscreenTriangleVertexShader", "fullscreenTriangleFragmentShader");
-			return sBuiltinGraphicsShaders[id];
-		}
-		case ForwardPassShader:
-		{
-			sBuiltinGraphicsShaders[id] = CreateRef<GraphicsShader>("forwardPassVertexShader", "forwardPassFragmentShader");
-			return sBuiltinGraphicsShaders[id];
-		}
-		default:
-		{
-			GLEAM_ASSERT(false, "Invalid built-in Graphics Shader!");
-			return nullptr;
-		}
-	}
+	GraphicsShader shader;
+	shader.vertexShader = CreateOrGetCachedShader(vertexEntryPoint);
+	shader.fragmentShader = CreateOrGetCachedShader(fragmentEntryPoint);
+	return shader;
 }
 /************************************************************************/
-/*    GetBuiltinComputeShader                                           */
+/*    CreateComputeShader                                               */
 /************************************************************************/
-const Ref<ComputeShader>& ShaderLibrary::GetBuiltinComputeShader(BuiltinComputeShader id)
+ComputeShader ShaderLibrary::CreateComputeShader(const TString& entryPoint)
 {
-	if (sBuiltinComputeShaders[id])
+	return CreateOrGetCachedShader(entryPoint);
+}
+/************************************************************************/
+/*    CreateOrGetCachedShader                                           */
+/************************************************************************/
+Ref<Shader> ShaderLibrary::CreateOrGetCachedShader(const TString& entryPoint)
+{
+	const auto& shaderCacheIt = mShaderCache.find(entryPoint);
+	if (shaderCacheIt != mShaderCache.end())
 	{
-		return sBuiltinComputeShaders[id];
+		return shaderCacheIt->second;
 	}
-
-	switch (id)
+	else
 	{
-		default:
-		{
-			GLEAM_ASSERT(false, "Invalid built-in Compute Shader!");
-			return nullptr;
-		}
+		return CreateRef<Shader>(entryPoint);
 	}
 }

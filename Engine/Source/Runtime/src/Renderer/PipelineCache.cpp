@@ -20,7 +20,7 @@ void PipelineCache::Destroy()
 /************************************************************************/
 /*    CreateGraphicsPipeline                                            */
 /************************************************************************/
-Ref<GraphicsPipeline> PipelineCache::CreateGraphicsPipeline(const PipelineStateDescriptor& pipelineStateDescriptor, const Ref<GraphicsShader>& shader)
+Ref<GraphicsPipeline> PipelineCache::CreateGraphicsPipeline(const PipelineStateDescriptor& pipelineStateDescriptor, const GraphicsShader& shader)
 {
 	// 	auto cacheIt = mGraphicsPipelineCache.find(pipelineStateDescriptor);
 	// 	if (cacheIt != mGraphicsPipelineCache.end())

@@ -9,53 +9,37 @@ enum class ShaderType
 	Compute
 };
 
-struct Shader
-{
-	TString entryPoint;
-	NativeGraphicsHandle function;
-};
-
-class GraphicsShader
+class Shader
 {
 public:
 
-	GraphicsShader(const TString& vertexEntryPoint, const TString& fragmentEntryPoint);
-	~GraphicsShader();
+	Shader(const TString& entryPoint);
+	~Shader();
 
-	const Shader& GetVertexShader() const
+	const TString& GetEntryPoint() const
 	{
-		return mVertexShader;
+		return mEntryPoint;
 	}
 
-	const Shader& GetFragmentShader() const
+	NativeGraphicsHandle GetFunction() const
 	{
-		return mFragmentShader;
+		return mFunction;
 	}
 
 private:
 
-	Shader mVertexShader;
-	Shader mFragmentShader;
+	TString mEntryPoint;
+	NativeGraphicsHandle mFunction;
 
 };
 
-class ComputeShader
+struct GraphicsShader
 {
-public:
-
-	ComputeShader(const TString& entryPoint);
-	~ComputeShader();
-
-	const Shader& GetShader() const
-	{
-		return mShader;
-	}
-
-private:
-
-	Shader mShader;
-
+	Ref<Shader> vertexShader;
+	Ref<Shader> fragmentShader;
 };
+
+using ComputeShader = Ref<Shader>;
 
 
 } // namespace Gleam

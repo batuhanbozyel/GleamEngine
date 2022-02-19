@@ -9,7 +9,7 @@ class GraphicsPipeline
 {
 public:
 
-	GraphicsPipeline(const PipelineStateDescriptor& pipelineStateDescriptor, const Ref<GraphicsShader>& shader);
+	GraphicsPipeline(const PipelineStateDescriptor& pipelineStateDescriptor, const GraphicsShader& shader);
 	~GraphicsPipeline();
 
 private:

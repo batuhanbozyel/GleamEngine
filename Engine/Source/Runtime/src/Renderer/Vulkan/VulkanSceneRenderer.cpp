@@ -52,18 +52,18 @@ SceneRenderer::SceneRenderer()
 	VkGraphicsPipelineCreateInfo pipelineCreateInfo{ VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO };
 
 	// Shader stages
-	const auto& shader = ShaderLibrary::GetBuiltinGraphicsShader(ForwardPassShader);
+	const auto& program = ShaderLibrary::CreateGraphicsShader("forwardPassVertexShader", "forwardPassFragmentShader");
 
 	TArray<VkPipelineShaderStageCreateInfo, 2> shaderStages{};
 	shaderStages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 	shaderStages[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
-	shaderStages[0].module = As<VkShaderModule>(shader->GetVertexShader().function);
-	shaderStages[0].pName = shader->GetVertexShader().entryPoint.c_str();
+	shaderStages[0].module = As<VkShaderModule>(program.vertexShader->GetFunction());
+	shaderStages[0].pName = program.vertexShader->GetEntryPoint().c_str();
 
 	shaderStages[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 	shaderStages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-	shaderStages[1].module = As<VkShaderModule>(shader->GetFragmentShader().function);
-	shaderStages[1].pName = shader->GetFragmentShader().entryPoint.c_str();
+	shaderStages[1].module = As<VkShaderModule>(program.fragmentShader->GetFunction());
+	shaderStages[1].pName = program.fragmentShader->GetEntryPoint().c_str();
 
 	pipelineCreateInfo.stageCount = 2;
 	pipelineCreateInfo.pStages = shaderStages.data();
