@@ -11,7 +11,7 @@ public:
 
 	static void Destroy();
 
-	static Ref<GraphicsPipeline> CreateGraphicsPipeline(const PipelineStateDescriptor& pipelineStateDescriptor, const GraphicsShader& shader);
+	static Ref<GraphicsPipeline> CreateGraphicsPipeline(const RenderPass& renderPass, const PipelineStateDescriptor& pipelineStateDescriptor, const GraphicsShader& shader);
 
 	static void Flush();
 

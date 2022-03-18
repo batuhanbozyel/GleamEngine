@@ -84,11 +84,11 @@ GraphicsPipeline::GraphicsPipeline(const RenderPass& renderPass, const PipelineS
 	pipelineCreateInfo.pRasterizationState = &rasterizationState;
 
 	// TODO:
-	const VkPipelineMultisampleStateCreateInfo* pMultisampleState;
-	const VkPipelineDepthStencilStateCreateInfo* pDepthStencilState;
-	const VkPipelineColorBlendStateCreateInfo* pColorBlendState;
-	VkRenderPass                                     renderPass;
-	uint32_t                                         subpass;
+// 	const VkPipelineMultisampleStateCreateInfo* pMultisampleState;
+// 	const VkPipelineDepthStencilStateCreateInfo* pDepthStencilState;
+// 	const VkPipelineColorBlendStateCreateInfo* pColorBlendState;
+// 	VkRenderPass                                     renderPass;
+// 	uint32_t                                         subpass;
 
 
 	// TODO: Remove this when render passes are implemented

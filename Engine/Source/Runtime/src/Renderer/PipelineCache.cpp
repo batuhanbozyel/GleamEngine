@@ -20,7 +20,7 @@ void PipelineCache::Destroy()
 /************************************************************************/
 /*    CreateGraphicsPipeline                                            */
 /************************************************************************/
-Ref<GraphicsPipeline> PipelineCache::CreateGraphicsPipeline(const PipelineStateDescriptor& pipelineStateDescriptor, const GraphicsShader& shader)
+Ref<GraphicsPipeline> PipelineCache::CreateGraphicsPipeline(const RenderPass& renderPass, const PipelineStateDescriptor& pipelineStateDescriptor, const GraphicsShader& shader)
 {
 	// 	auto cacheIt = mGraphicsPipelineCache.find(pipelineStateDescriptor);
 	// 	if (cacheIt != mGraphicsPipelineCache.end())
@@ -28,7 +28,7 @@ Ref<GraphicsPipeline> PipelineCache::CreateGraphicsPipeline(const PipelineStateD
 	// 		return cacheIt->second;
 	// 	}
 
-	return CreateRef<GraphicsPipeline>(pipelineStateDescriptor, shader);
+	return CreateRef<GraphicsPipeline>(renderPass, pipelineStateDescriptor, shader);
 }
 /************************************************************************/
 /*    Flush                                                             */
