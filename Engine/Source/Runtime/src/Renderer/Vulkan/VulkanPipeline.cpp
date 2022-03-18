@@ -4,26 +4,24 @@
 #include "Renderer/Pipeline.h"
 #include "VulkanUtils.h"
 
+#include "Renderer/RenderPass.h"
 #include "Renderer/ShaderLibrary.h"
 
 using namespace Gleam;
 
 struct
 {
-	VkPipelineCache vulkanPipelineCache;
+	VkPipelineCache pipelineCache;
 	uint32_t pipelineCount = 0;
 } mContext;
 
-/************************************************************************/
-/*    CreateGraphicsPipeline                                            */
-/************************************************************************/
-GraphicsPipeline::GraphicsPipeline(const PipelineStateDescriptor& pipelineStateDescriptor, const GraphicsShader& program)
+GraphicsPipeline::GraphicsPipeline(const RenderPass& renderPass, const PipelineStateDescriptor& pipelineStateDescriptor, const GraphicsShader& program)
 {
 	static std::once_flag flag;
 	std::call_once(flag, []()
 	{
 		VkPipelineCacheCreateInfo pipelineCacheCreateInfo{ VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO };
-		VK_CHECK(vkCreatePipelineCache(VulkanDevice, &pipelineCacheCreateInfo, nullptr, &mContext.vulkanPipelineCache));
+		VK_CHECK(vkCreatePipelineCache(VulkanDevice, &pipelineCacheCreateInfo, nullptr, &mContext.pipelineCache));
 	});
 
 	VkGraphicsPipelineCreateInfo pipelineCreateInfo{ VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO };
@@ -94,15 +92,13 @@ GraphicsPipeline::GraphicsPipeline(const PipelineStateDescriptor& pipelineStateD
 
 
 	// TODO: Remove this when render passes are implemented
-	pipelineCreateInfo.renderPass = As<VkRenderPass>(RendererContext::GetSwapchain()->GetRenderPass());
+	pipelineCreateInfo.renderPass = As<VkRenderPass>(renderPass.GetRenderPass());
 
 	VK_CHECK(vkCreateGraphicsPipelines(VulkanDevice, nullptr, 1, &pipelineCreateInfo, nullptr, As<VkPipeline*>(&mPipeline)));
 
 	mContext.pipelineCount++;
 }
-/************************************************************************/
-/*    Flush                                                             */
-/************************************************************************/
+
 GraphicsPipeline::~GraphicsPipeline()
 {
 	vkDestroyPipeline(VulkanDevice, As<VkPipeline>(mPipeline), nullptr);
@@ -111,7 +107,7 @@ GraphicsPipeline::~GraphicsPipeline()
 	mContext.pipelineCount--;
 	if (mContext.pipelineCount == 0)
 	{
-		vkDestroyPipelineCache(VulkanDevice, mContext.vulkanPipelineCache, nullptr);
+		vkDestroyPipelineCache(VulkanDevice, mContext.pipelineCache, nullptr);
 	}
 }
 

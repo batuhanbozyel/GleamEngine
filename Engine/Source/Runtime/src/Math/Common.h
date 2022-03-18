@@ -268,6 +268,18 @@ MATH_INLINE constexpr T Mix(const T& x, const T& y, const T& a)
 	return x * (T(1) - a) + y * a;
 }
 
+template<typename T, PASS_BY_VALUE>
+MATH_INLINE constexpr T Log2(T x)
+{
+	return std::log2(x);
+}
+
+template<typename T, PASS_BY_REFERENCE>
+MATH_INLINE constexpr T Log2(const T& x)
+{
+	return std::log2(x);
+}
+
 } // namespace Math
 
 } // namespace Gleam

@@ -150,9 +150,9 @@ void Swapchain::Present()
 	mCurrentFrameIndex = (mCurrentFrameIndex + 1) % mProperties.maxFramesInFlight;
 }
 
-NativeGraphicsHandle Swapchain::GetGraphicsCommandPool() const
+NativeGraphicsHandle Swapchain::GetGraphicsCommandPool(uint32_t index) const
 {
-	return mContext.currentFrame.commandPool;
+	return mContext.commandPools[index];
 }
 
 TextureFormat Swapchain::GetFormat() const

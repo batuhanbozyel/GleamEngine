@@ -1,11 +1,6 @@
-struct Vertex
-{
-    float px, py, pz;
-    float nx, ny, nz;
-    float u, v;
-};
+#include "../../GraphicsTypes.h"
 
-StructuredBuffer<Vertex> VertexBuffer : register(t0);
+StructuredBuffer<Gleam::Vertex> VertexBuffer : register(t0);
 
 struct VertexOut
 {
@@ -16,12 +11,12 @@ struct VertexOut
 
 VertexOut forwardPassVertexShader(uint vertex_id: SV_VertexID)
 {
-    Vertex vertex = VertexBuffer[vertex_id];
+    Gleam::Vertex vertex = VertexBuffer[vertex_id];
 
     VertexOut OUT;
-    OUT.position = float4(vertex.px, vertex.py, vertex.pz, 1.0);
-    OUT.normal = float3(vertex.nx, vertex.ny, vertex.nz);
-    OUT.texCoord = float2(vertex.u, vertex.v);
+    OUT.position = float4(vertex.position, 1.0);
+    OUT.normal = vertex.normal;
+    OUT.texCoord = vertex.texCoord;
     return OUT;
 }
 

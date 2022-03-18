@@ -1,21 +1,12 @@
 #include "gpch.h"
 
 #ifdef USE_VULKAN_RENDERER
-#include "Renderer/SceneRenderer.h"
+#include "Renderer/TileForwardRenderer.h"
 #include "VulkanUtils.h"
 
 #include "Renderer/ShaderLibrary.h"
 
 using namespace Gleam;
-
-#pragma pack(push, 1)
-struct Vertex
-{
-	Vector3 position;
-	Vector3 normal;
-	Vector2 texCoord;
-};
-#pragma pack(pop)
 
 struct
 {
@@ -24,8 +15,8 @@ struct
 	VkDescriptorSetLayout setLayout;
 } mContext;
 
-SceneRenderer::SceneRenderer()
-	: mVertexBuffer(sizeof(Vertex) * 4, BufferUsage::StorageBuffer), mIndexBuffer(sizeof(uint32_t) * 6, BufferUsage::IndexBuffer)
+TileForwardRenderer::TileForwardRenderer()
+	: mVertexBuffer(4), mIndexBuffer(6, IndexType::UINT32)
 {
 	TArray<Vertex, 4> vertices;
 	// top left
@@ -129,7 +120,7 @@ SceneRenderer::SceneRenderer()
 	VK_CHECK(vkCreateGraphicsPipelines(VulkanDevice, nullptr, 1, &pipelineCreateInfo, nullptr, &mContext.pipeline));
 }
 
-SceneRenderer::~SceneRenderer()
+TileForwardRenderer::~TileForwardRenderer()
 {
 	vkDeviceWaitIdle(VulkanDevice);
 	vkDestroyPipeline(VulkanDevice, mContext.pipeline, nullptr);
@@ -137,7 +128,7 @@ SceneRenderer::~SceneRenderer()
 	vkDestroyDescriptorSetLayout(VulkanDevice, mContext.setLayout, nullptr);
 }
 
-void SceneRenderer::Render()
+void TileForwardRenderer::Render()
 {
 	const auto& frame = RendererContext::GetSwapchain()->GetCurrentFrame();
 
@@ -165,7 +156,7 @@ void SceneRenderer::Render()
 	vkCmdSetScissor(frame.commandBuffer, 0, 1, &scissor);
 
 	VkDescriptorBufferInfo bufferInfo{};
-	bufferInfo.buffer = As<VkBuffer>(mVertexBuffer.GetNativeHandle());
+	bufferInfo.buffer = As<VkBuffer>(mVertexBuffer.GetBuffer());
 	bufferInfo.range = mVertexBuffer.GetSize();
 
 	VkWriteDescriptorSet descriptor{ VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
@@ -174,9 +165,9 @@ void SceneRenderer::Render()
 	descriptor.pBufferInfo = &bufferInfo;
 
 	vkCmdPushDescriptorSetKHR(frame.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mContext.piplineLayout, 0, 1, &descriptor);
-	vkCmdBindIndexBuffer(frame.commandBuffer, As<VkBuffer>(mIndexBuffer.GetNativeHandle()), 0, VK_INDEX_TYPE_UINT32);
+	vkCmdBindIndexBuffer(frame.commandBuffer, As<VkBuffer>(mIndexBuffer.GetBuffer()), 0, static_cast<VkIndexType>(mIndexBuffer.GetIndexType()));
 
-	vkCmdDrawIndexed(frame.commandBuffer, mIndexBuffer.GetSize() / sizeof(uint32_t), 1, 0, 0, 0);
+	vkCmdDrawIndexed(frame.commandBuffer, mIndexBuffer.GetCount(), 1, 0, 0, 0);
 
 	vkCmdEndRenderPass(frame.commandBuffer);
 }

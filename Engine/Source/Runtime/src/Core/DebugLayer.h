@@ -1,10 +1,10 @@
 #pragma once
 #include "Layer.h"
-#include "Renderer/TileForwardRenderer.h"
+#include "Renderer/DebugRenderer.h"
 
 namespace Gleam {
 
-class SceneLayer : public Layer
+class DebugLayer : public Layer
 {
 public:
 
@@ -18,7 +18,7 @@ public:
 
 private:
 
-	Scope<TileForwardRenderer> mRenderer;
+	Scope<DebugRenderer> mRenderer;
 
 };
 

@@ -29,8 +29,8 @@ macro(ADD_GRAPHICS_SHADER target file vertexEntry fragmentEntry)
     add_custom_command(
         TARGET ${target}
         PRE_BUILD
-        COMMAND $ENV{VULKAN_SDK}/bin/dxc -spirv -fvk-invert-y -T vs_6_0 -E ${vertexEntry} ${file} -Fo ${CMAKE_SOURCE_DIR}/Assets/${vertexEntry}.spv
-        COMMAND $ENV{VULKAN_SDK}/bin/dxc -spirv -T ps_6_0 -E ${fragmentEntry} ${file} -Fo ${CMAKE_SOURCE_DIR}/Assets/${fragmentEntry}.spv
+        COMMAND $ENV{VULKAN_SDK}/bin/dxc -spirv -fvk-use-scalar-layout -fvk-invert-y -T vs_6_0 -E ${vertexEntry} ${file} -Fo ${CMAKE_SOURCE_DIR}/Assets/${vertexEntry}.spv
+        COMMAND $ENV{VULKAN_SDK}/bin/dxc -spirv -fvk-use-scalar-layout -T ps_6_0 -E ${fragmentEntry} ${file} -Fo ${CMAKE_SOURCE_DIR}/Assets/${fragmentEntry}.spv
     )
 endmacro(ADD_GRAPHICS_SHADER)
 
@@ -38,6 +38,6 @@ macro(ADD_COMPUTE_SHADER target file entry)
     add_custom_command(
         TARGET ${target}
         PRE_BUILD
-        COMMAND $ENV{VULKAN_SDK}/bin/dxc -spirv -T cs_6_0 -E ${entry} ${file} -Fo ${CMAKE_SOURCE_DIR}/Assets/${entry}.spv
+        COMMAND $ENV{VULKAN_SDK}/bin/dxc -spirv -fvk-use-scalar-layout -T cs_6_0 -E ${entry} ${file} -Fo ${CMAKE_SOURCE_DIR}/Assets/${entry}.spv
     )
 endmacro(ADD_COMPUTE_SHADER)

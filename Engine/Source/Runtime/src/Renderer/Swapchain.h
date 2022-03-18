@@ -26,10 +26,15 @@ public:
 
 	TextureFormat GetFormat() const;
 
-	NativeGraphicsHandle GetGraphicsCommandPool() const;
+	NativeGraphicsHandle GetGraphicsCommandPool(uint32_t index) const;
 	NativeGraphicsHandle GetSurface() const;
 	NativeGraphicsHandle GetRenderPass() const;
 	const FrameObject& GetCurrentFrame() const;
+
+	uint32_t GetCurrentFrameIndex() const
+	{
+		return mCurrentFrameIndex;
+	}
 
 	bool MultisampleEnabled() const
 	{

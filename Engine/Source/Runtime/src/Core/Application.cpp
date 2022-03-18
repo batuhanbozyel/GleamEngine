@@ -125,7 +125,7 @@ void Application::Run()
 		for (const auto& layer : mLayerStack)
 		{
 			layer->OnUpdate();
-	}
+		}
 
 		for (const auto& overlay : mOverlays)
 		{

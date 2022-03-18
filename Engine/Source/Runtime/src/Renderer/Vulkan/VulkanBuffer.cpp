@@ -6,23 +6,9 @@
 
 using namespace Gleam;
 
-struct
-{
-	VkPhysicalDeviceMemoryProperties memoryProperties;
-} mContext;
-
-/************************************************************************/
-/* Buffer                                                               */
-/************************************************************************/
 Buffer::Buffer(uint32_t size, BufferUsage usage)
 	: mSize(size)
 {
-	static std::once_flag flag;
-	std::call_once(flag, []()
-	{
-		vkGetPhysicalDeviceMemoryProperties(As<VkPhysicalDevice>(RendererContext::GetPhysicalDevice()), &mContext.memoryProperties);
-	});
-
 	VkBufferCreateInfo createInfo{ VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
 	createInfo.size = size;
 	createInfo.usage = BufferUsageVkBufferUsage(usage);
@@ -34,19 +20,7 @@ Buffer::Buffer(uint32_t size, BufferUsage usage)
 
 	VkMemoryAllocateInfo allocateInfo{ VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
 	allocateInfo.allocationSize = memoryRequirements.size;
-	allocateInfo.memoryTypeIndex = [&](uint32_t properties)
-	{
-		for (uint32_t i = 0; i < mContext.memoryProperties.memoryTypeCount; i++)
-		{
-			if ((memoryRequirements.memoryTypeBits & BIT(i)) && (mContext.memoryProperties.memoryTypes[i].propertyFlags & properties) == properties)
-			{
-				return i;
-			}
-		}
-		GLEAM_ASSERT(false, "Vulkan: Vertex Buffer suitable memory type could not found!");
-		return 0u;
-	}(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-
+	allocateInfo.memoryTypeIndex = RendererContext::GetMemoryTypeForProperties(memoryRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 	VK_CHECK(vkAllocateMemory(VulkanDevice, &allocateInfo, nullptr, As<VkDeviceMemory*>(&mMemory)));
 	VK_CHECK(vkBindBufferMemory(VulkanDevice, As<VkBuffer>(mBuffer), As<VkDeviceMemory>(mMemory), 0));
 
@@ -55,8 +29,8 @@ Buffer::Buffer(uint32_t size, BufferUsage usage)
 
 Buffer::~Buffer()
 {
-	vkFreeMemory(VulkanDevice, As<VkDeviceMemory>(mMemory), nullptr);
 	vkDestroyBuffer(VulkanDevice, As<VkBuffer>(mBuffer), nullptr);
+	vkFreeMemory(VulkanDevice, As<VkDeviceMemory>(mMemory), nullptr);
 }
 
 void Buffer::SetData(const void* data, uint32_t offset, uint32_t size) const

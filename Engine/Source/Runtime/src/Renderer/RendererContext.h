@@ -31,6 +31,8 @@ public:
 
 	static uint32_t GetTransferQueueIndex();
 
+	static uint32_t GetMemoryTypeForProperties(uint32_t memoryTypeBits, uint32_t properties);
+
 	static const Scope<Swapchain>& GetSwapchain()
 	{
 		return mSwapchain;

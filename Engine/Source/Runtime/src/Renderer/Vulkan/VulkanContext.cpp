@@ -29,6 +29,7 @@ struct
 	VkQueue TransferQueue{ VK_NULL_HANDLE };
 	uint32_t TransferQueueFamilyIndex{ 0 };
 	TArray<VkExtensionProperties> DeviceExtensions;
+	VkPhysicalDeviceMemoryProperties MemoryProperties;
 
 } mContext;
 
@@ -149,6 +150,8 @@ void RendererContext::Init(const TString& appName, const Version& appVersion, co
 	mContext.DeviceExtensions.resize(deviceExtensionCount);
 	VK_CHECK(vkEnumerateDeviceExtensionProperties(mContext.PhysicalDevice, nullptr, &deviceExtensionCount, mContext.DeviceExtensions.data()));
 
+	vkGetPhysicalDeviceMemoryProperties(mContext.PhysicalDevice, &mContext.MemoryProperties);
+
 	// Get physical device queues
 	bool mainQueueFound = false;
 	bool computeQueueFound = false;
@@ -202,9 +205,15 @@ void RendererContext::Init(const TString& appName, const Version& appVersion, co
 	TArray<const char*> requiredDeviceExtension
 	{
 		VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-		VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME
+		VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME,
+		VK_EXT_SCALAR_BLOCK_LAYOUT_EXTENSION_NAME
 	};
+
+	VkPhysicalDeviceScalarBlockLayoutFeatures scalarBlockLayoutExt{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SCALAR_BLOCK_LAYOUT_FEATURES };
+	scalarBlockLayoutExt.scalarBlockLayout = true;
+
 	VkDeviceCreateInfo deviceCreateInfo{ VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO };
+	deviceCreateInfo.pNext = &scalarBlockLayoutExt;
 	deviceCreateInfo.queueCreateInfoCount = queueFamilyCount;
 	deviceCreateInfo.pQueueCreateInfos = deviceQueueCreateInfos.data();
 	deviceCreateInfo.enabledExtensionCount = static_cast<uint32_t>(requiredDeviceExtension.size());
@@ -322,5 +331,20 @@ uint32_t RendererContext::GetComputeQueueIndex()
 uint32_t RendererContext::GetTransferQueueIndex()
 {
 	return mContext.ComputeQueueFamilyIndex;
+}
+/************************************************************************/
+/*	GetMemoryTypeForProperties                                           */
+/************************************************************************/
+uint32_t RendererContext::GetMemoryTypeForProperties(uint32_t memoryTypeBits, uint32_t properties)
+{
+	for (uint32_t i = 0; i < mContext.MemoryProperties.memoryTypeCount; i++)
+	{
+		if ((memoryTypeBits & BIT(i)) && (mContext.MemoryProperties.memoryTypes[i].propertyFlags & properties) == properties)
+		{
+			return i;
+		}
+	}
+	GLEAM_ASSERT(false, "Vulkan: Vertex Buffer suitable memory type could not found!");
+	return 0u;
 }
 #endif

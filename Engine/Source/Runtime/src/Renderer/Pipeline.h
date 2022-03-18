@@ -3,14 +3,25 @@
 
 namespace Gleam {
 
+class RenderPass;
 class GraphicsShader;
 
 class GraphicsPipeline
 {
 public:
 
-	GraphicsPipeline(const PipelineStateDescriptor& pipelineStateDescriptor, const GraphicsShader& shader);
+	GraphicsPipeline(const RenderPass& renderPass, const PipelineStateDescriptor& pipelineStateDescriptor, const GraphicsShader& shader);
 	~GraphicsPipeline();
+
+	NativeGraphicsHandle GetPipeline() const
+	{
+		return mPipeline;
+	}
+
+	NativeGraphicsHandle GetLayout() const
+	{
+		return mLayout;
+	}
 
 private:
 

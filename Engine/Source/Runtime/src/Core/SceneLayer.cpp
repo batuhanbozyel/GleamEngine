@@ -5,7 +5,7 @@ using namespace Gleam;
 
 void SceneLayer::OnAttach()
 {
-	mRenderer = CreateScope<SceneRenderer>();
+	mRenderer = CreateScope<TileForwardRenderer>();
 }
 
 void SceneLayer::OnUpdate()

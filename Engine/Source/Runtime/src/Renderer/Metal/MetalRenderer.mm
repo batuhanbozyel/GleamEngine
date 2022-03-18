@@ -21,9 +21,4 @@ void Renderer::BeginFrame()
     [renderCommandEncoder endEncoding];
 }
 
-void Renderer::EndFrame()
-{
-    mContext->Present();
-}
-
 #endif
