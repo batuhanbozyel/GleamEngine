@@ -2,7 +2,7 @@
 
 namespace Gleam {
 
-class RenderTarget
+class RenderTarget : public GraphicsObject
 {
 public:
     

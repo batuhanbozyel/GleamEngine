@@ -22,21 +22,15 @@ private:
 
 };
 
-class RenderPass
+class RenderPass : public GraphicsObject
 {
 public:
 
 	RenderPass(const TArray<Subpass>& subpasses, const TArray<RenderTexture>& attachments, int depthAttachmentIndex = -1);
 	~RenderPass();
 
-	NativeGraphicsHandle GetRenderPass() const
-	{
-		return mRenderPass;
-	}
-
 private:
 
-	NativeGraphicsHandle mRenderPass;
 
 };
 

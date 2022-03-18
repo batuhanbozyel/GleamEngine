@@ -24,12 +24,12 @@ DebugRenderer::DebugRenderer()
 	TArray<VkPipelineShaderStageCreateInfo, 2> shaderStages{};
 	shaderStages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 	shaderStages[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
-	shaderStages[0].module = As<VkShaderModule>(program.vertexShader->GetFunction());
+	shaderStages[0].module = As<VkShaderModule>(program.vertexShader->GetHandle());
 	shaderStages[0].pName = program.vertexShader->GetEntryPoint().c_str();
 
 	shaderStages[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 	shaderStages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-	shaderStages[1].module = As<VkShaderModule>(program.fragmentShader->GetFunction());
+	shaderStages[1].module = As<VkShaderModule>(program.fragmentShader->GetHandle());
 	shaderStages[1].pName = program.fragmentShader->GetEntryPoint().c_str();
 
 	pipelineCreateInfo.stageCount = 2;

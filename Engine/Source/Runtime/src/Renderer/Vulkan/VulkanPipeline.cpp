@@ -30,12 +30,12 @@ GraphicsPipeline::GraphicsPipeline(const RenderPass& renderPass, const PipelineS
 	TArray<VkPipelineShaderStageCreateInfo, 2> shaderStages{};
 	shaderStages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 	shaderStages[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
-	shaderStages[0].module = As<VkShaderModule>(program.vertexShader->GetFunction());
+	shaderStages[0].module = As<VkShaderModule>(program.vertexShader->GetHandle());
 	shaderStages[0].pName = program.vertexShader->GetEntryPoint().c_str();
 
 	shaderStages[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 	shaderStages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-	shaderStages[1].module = As<VkShaderModule>(program.fragmentShader->GetFunction());
+	shaderStages[1].module = As<VkShaderModule>(program.fragmentShader->GetHandle());
 	shaderStages[1].pName = program.fragmentShader->GetEntryPoint().c_str();
 
 	pipelineCreateInfo.stageCount = 2;
@@ -92,16 +92,16 @@ GraphicsPipeline::GraphicsPipeline(const RenderPass& renderPass, const PipelineS
 
 
 	// TODO: Remove this when render passes are implemented
-	pipelineCreateInfo.renderPass = As<VkRenderPass>(renderPass.GetRenderPass());
+	pipelineCreateInfo.renderPass = As<VkRenderPass>(renderPass.GetHandle());
 
-	VK_CHECK(vkCreateGraphicsPipelines(VulkanDevice, nullptr, 1, &pipelineCreateInfo, nullptr, As<VkPipeline*>(&mPipeline)));
+	VK_CHECK(vkCreateGraphicsPipelines(VulkanDevice, nullptr, 1, &pipelineCreateInfo, nullptr, As<VkPipeline*>(&mHandle)));
 
 	mContext.pipelineCount++;
 }
 
 GraphicsPipeline::~GraphicsPipeline()
 {
-	vkDestroyPipeline(VulkanDevice, As<VkPipeline>(mPipeline), nullptr);
+	vkDestroyPipeline(VulkanDevice, As<VkPipeline>(mHandle), nullptr);
 	vkDestroyPipelineLayout(VulkanDevice, As<VkPipelineLayout>(mLayout), nullptr);
 
 	mContext.pipelineCount--;

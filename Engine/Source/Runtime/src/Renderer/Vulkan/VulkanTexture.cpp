@@ -22,19 +22,20 @@ Texture2D::Texture2D(uint32_t width, uint32_t height, TextureFormat format, bool
 	createInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 	createInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 	createInfo.mipLevels = mMipMapCount;
-	VK_CHECK(vkCreateImage(VulkanDevice, &createInfo, nullptr, As<VkImage*>(&mImage)));
+	VK_CHECK(vkCreateImage(VulkanDevice, &createInfo, nullptr, As<VkImage*>(&mHandle)));
 
 	VkMemoryRequirements memoryRequirements;
-	vkGetImageMemoryRequirements(VulkanDevice, As<VkImage>(mImage), &memoryRequirements);
+	vkGetImageMemoryRequirements(VulkanDevice, As<VkImage>(mHandle), &memoryRequirements);
+	mSize = memoryRequirements.size;
 
 	VkMemoryAllocateInfo allocateInfo{ VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
 	allocateInfo.allocationSize = memoryRequirements.size;
 	allocateInfo.memoryTypeIndex = RendererContext::GetMemoryTypeForProperties(memoryRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 	VK_CHECK(vkAllocateMemory(VulkanDevice, &allocateInfo, nullptr, As<VkDeviceMemory*>(&mMemory)));
-	VK_CHECK(vkBindImageMemory(VulkanDevice, As<VkImage>(mImage), As<VkDeviceMemory>(mMemory), 0));
+	VK_CHECK(vkBindImageMemory(VulkanDevice, As<VkImage>(mHandle), As<VkDeviceMemory>(mMemory), 0));
 
 	VkImageViewCreateInfo viewCreateInfo{ VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
-	viewCreateInfo.image = As<VkImage>(mImage);
+	viewCreateInfo.image = As<VkImage>(mHandle);
 	viewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
 	viewCreateInfo.format = TextureFormatToVkFormat(mFormat);
 	viewCreateInfo.components = {
@@ -54,15 +55,17 @@ Texture2D::Texture2D(uint32_t width, uint32_t height, TextureFormat format, bool
 Texture2D::~Texture2D()
 {
 	vkDestroyImageView(VulkanDevice, As<VkImageView>(mImageView), nullptr);
-	vkDestroyImage(VulkanDevice, As<VkImage>(mImage), nullptr);
+	vkDestroyImage(VulkanDevice, As<VkImage>(mHandle), nullptr);
 	vkFreeMemory(VulkanDevice, As<VkDeviceMemory>(mMemory), nullptr);
 }
 
 void Texture2D::SetPixels(const TArray<uint8_t>& pixels) const
 {
+	uint32_t size = Math::Min(static_cast<uint32_t>(pixels.size()), mSize);
+
 	void* memoryPtr;
 	VK_CHECK(vkMapMemory(VulkanDevice, As<VkDeviceMemory>(mMemory), 0, pixels.size(), 0, &memoryPtr));
-	memcpy(As<uint8_t*>(memoryPtr), pixels.data(), pixels.size());
+	memcpy(As<uint8_t*>(memoryPtr), pixels.data(), size);
 	vkUnmapMemory(VulkanDevice, As<VkDeviceMemory>(mMemory));
 
 	// TODO: generate mipmaps

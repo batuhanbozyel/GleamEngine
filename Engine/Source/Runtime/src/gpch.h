@@ -41,6 +41,8 @@
 #include "IO/Log.h"
 #include "IO/IOUtils.h"
 
+#include "Renderer/GraphicsObject.h"
+
 #ifdef PLATFORM_WINDOWS
 #include <windows.h>
 #endif

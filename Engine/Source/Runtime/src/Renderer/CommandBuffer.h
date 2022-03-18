@@ -26,6 +26,8 @@ public:
 
 private:
 
+	NativeGraphicsHandle GetCurrentCommandBuffer() const;
+
 	TArray<NativeGraphicsHandle> mCommandBuffers;
     
 };

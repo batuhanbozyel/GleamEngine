@@ -3,7 +3,7 @@
 
 namespace Gleam {
 
-class Texture2D
+class Texture2D : public GraphicsObject
 {
 public:
 
@@ -25,13 +25,13 @@ private:
 	uint32_t mWidth = 0, mHeight = 0;
 	uint32_t mMipMapCount = 0;
 
-	NativeGraphicsHandle mImage;
+	uint32_t mSize = 0;
 	NativeGraphicsHandle mMemory;
 	NativeGraphicsHandle mImageView;
 	
 };
 
-class RenderTexture
+class RenderTexture : public GraphicsObject
 {
 public:
 

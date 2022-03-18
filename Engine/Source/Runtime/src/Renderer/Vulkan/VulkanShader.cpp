@@ -15,11 +15,11 @@ Shader::Shader(const TString& entryPoint)
 	createInfo.codeSize = shaderCode.size();
 	createInfo.pCode = As<uint32_t*>(shaderCode.data());
 
-	VK_CHECK(vkCreateShaderModule(VulkanDevice, &createInfo, nullptr, As<VkShaderModule*>(&mFunction)));
+	VK_CHECK(vkCreateShaderModule(VulkanDevice, &createInfo, nullptr, As<VkShaderModule*>(&mHandle)));
 }
 
 Shader::~Shader()
 {
-	vkDestroyShaderModule(VulkanDevice, As<VkShaderModule>(mFunction), nullptr);
+	vkDestroyShaderModule(VulkanDevice, As<VkShaderModule>(mHandle), nullptr);
 }
 #endif

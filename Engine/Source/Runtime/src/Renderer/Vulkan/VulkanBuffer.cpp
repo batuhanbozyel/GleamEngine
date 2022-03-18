@@ -13,23 +13,23 @@ Buffer::Buffer(uint32_t size, BufferUsage usage)
 	createInfo.size = size;
 	createInfo.usage = BufferUsageVkBufferUsage(usage);
 	createInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-	VK_CHECK(vkCreateBuffer(VulkanDevice, &createInfo, nullptr, As<VkBuffer*>(&mBuffer)));
+	VK_CHECK(vkCreateBuffer(VulkanDevice, &createInfo, nullptr, As<VkBuffer*>(&mHandle)));
 
 	VkMemoryRequirements memoryRequirements;
-	vkGetBufferMemoryRequirements(VulkanDevice, As<VkBuffer>(mBuffer), &memoryRequirements);
+	vkGetBufferMemoryRequirements(VulkanDevice, As<VkBuffer>(mHandle), &memoryRequirements);
 
 	VkMemoryAllocateInfo allocateInfo{ VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
 	allocateInfo.allocationSize = memoryRequirements.size;
 	allocateInfo.memoryTypeIndex = RendererContext::GetMemoryTypeForProperties(memoryRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 	VK_CHECK(vkAllocateMemory(VulkanDevice, &allocateInfo, nullptr, As<VkDeviceMemory*>(&mMemory)));
-	VK_CHECK(vkBindBufferMemory(VulkanDevice, As<VkBuffer>(mBuffer), As<VkDeviceMemory>(mMemory), 0));
+	VK_CHECK(vkBindBufferMemory(VulkanDevice, As<VkBuffer>(mHandle), As<VkDeviceMemory>(mMemory), 0));
 
 	vkMapMemory(VulkanDevice, As<VkDeviceMemory>(mMemory), 0, size, 0, &mContents);
 }
 
 Buffer::~Buffer()
 {
-	vkDestroyBuffer(VulkanDevice, As<VkBuffer>(mBuffer), nullptr);
+	vkDestroyBuffer(VulkanDevice, As<VkBuffer>(mHandle), nullptr);
 	vkFreeMemory(VulkanDevice, As<VkDeviceMemory>(mMemory), nullptr);
 }
 

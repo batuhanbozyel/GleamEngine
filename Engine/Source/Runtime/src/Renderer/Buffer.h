@@ -19,7 +19,7 @@ enum class IndexType
 /************************************************************************/
 /* Buffer                                                               */
 /************************************************************************/
-class Buffer
+class Buffer : public GraphicsObject
 {
 public:
 
@@ -27,11 +27,6 @@ public:
 	~Buffer();
 
 	void SetData(const void* data, uint32_t offset, uint32_t size) const;
-
-	NativeGraphicsHandle GetBuffer() const
-	{
-		return mBuffer;
-	}
 
 	uint32_t GetSize() const
 	{

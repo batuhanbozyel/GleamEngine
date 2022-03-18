@@ -48,12 +48,12 @@ RenderPass::RenderPass(const TArray<Subpass>& subpasses, const TArray<RenderText
 	uint32_t                          dependencyCount;
 	const VkSubpassDependency* pDependencies;
 
-	VK_CHECK(vkCreateRenderPass(VulkanDevice, &createInfo, nullptr, As<VkRenderPass*>(&mRenderPass)));
+	VK_CHECK(vkCreateRenderPass(VulkanDevice, &createInfo, nullptr, As<VkRenderPass*>(&mHandle)));
 }
 
 RenderPass::~RenderPass()
 {
-	vkDestroyRenderPass(VulkanDevice, As<VkRenderPass>(mRenderPass), nullptr);
+	vkDestroyRenderPass(VulkanDevice, As<VkRenderPass>(mHandle), nullptr);
 }
 
 #endif

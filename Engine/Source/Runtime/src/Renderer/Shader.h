@@ -9,7 +9,7 @@ enum class ShaderType
 	Compute
 };
 
-class Shader
+class Shader : public GraphicsObject
 {
 public:
 
@@ -21,15 +21,9 @@ public:
 		return mEntryPoint;
 	}
 
-	NativeGraphicsHandle GetFunction() const
-	{
-		return mFunction;
-	}
-
 private:
 
 	TString mEntryPoint;
-	NativeGraphicsHandle mFunction;
 
 };
 

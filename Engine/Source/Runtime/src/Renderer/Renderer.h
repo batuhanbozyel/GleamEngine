@@ -22,6 +22,7 @@ public:
 	/**
 	* Renderer specific implementations
 	*/
+
 	virtual ~Renderer() = default;
 
 	virtual void Render() = 0;

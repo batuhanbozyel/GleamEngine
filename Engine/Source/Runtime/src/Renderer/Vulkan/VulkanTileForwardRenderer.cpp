@@ -48,12 +48,12 @@ TileForwardRenderer::TileForwardRenderer()
 	TArray<VkPipelineShaderStageCreateInfo, 2> shaderStages{};
 	shaderStages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 	shaderStages[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
-	shaderStages[0].module = As<VkShaderModule>(program.vertexShader->GetFunction());
+	shaderStages[0].module = As<VkShaderModule>(program.vertexShader->GetHandle());
 	shaderStages[0].pName = program.vertexShader->GetEntryPoint().c_str();
 
 	shaderStages[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 	shaderStages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-	shaderStages[1].module = As<VkShaderModule>(program.fragmentShader->GetFunction());
+	shaderStages[1].module = As<VkShaderModule>(program.fragmentShader->GetHandle());
 	shaderStages[1].pName = program.fragmentShader->GetEntryPoint().c_str();
 
 	pipelineCreateInfo.stageCount = 2;
@@ -156,7 +156,7 @@ void TileForwardRenderer::Render()
 	vkCmdSetScissor(frame.commandBuffer, 0, 1, &scissor);
 
 	VkDescriptorBufferInfo bufferInfo{};
-	bufferInfo.buffer = As<VkBuffer>(mVertexBuffer.GetBuffer());
+	bufferInfo.buffer = As<VkBuffer>(mVertexBuffer.GetHandle());
 	bufferInfo.range = mVertexBuffer.GetSize();
 
 	VkWriteDescriptorSet descriptor{ VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
@@ -165,7 +165,7 @@ void TileForwardRenderer::Render()
 	descriptor.pBufferInfo = &bufferInfo;
 
 	vkCmdPushDescriptorSetKHR(frame.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mContext.piplineLayout, 0, 1, &descriptor);
-	vkCmdBindIndexBuffer(frame.commandBuffer, As<VkBuffer>(mIndexBuffer.GetBuffer()), 0, static_cast<VkIndexType>(mIndexBuffer.GetIndexType()));
+	vkCmdBindIndexBuffer(frame.commandBuffer, As<VkBuffer>(mIndexBuffer.GetHandle()), 0, static_cast<VkIndexType>(mIndexBuffer.GetIndexType()));
 
 	vkCmdDrawIndexed(frame.commandBuffer, mIndexBuffer.GetCount(), 1, 0, 0, 0);
 
