@@ -129,15 +129,26 @@ static constexpr VkCullModeFlags CullModeToVkCullMode(CullMode cullMode)
 	}
 }
 
-static constexpr VkBufferUsageFlags BufferUsageVkBufferUsage(BufferUsage usage)
+static constexpr VkBufferUsageFlags BufferUsageToVkBufferUsage(BufferUsage usage)
 {
 	switch (usage)
 	{
-		case BufferUsage::VertexBuffer: return VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+		case BufferUsage::VertexBuffer: return VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
 		case BufferUsage::IndexBuffer: return VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
 		case BufferUsage::StorageBuffer: return VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
 		case BufferUsage::UniformBuffer: return VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
 		default: return VK_BUFFER_USAGE_FLAG_BITS_MAX_ENUM;
+	}
+}
+
+static constexpr VkDescriptorType BufferUsageToVkDescriptorType(BufferUsage usage)
+{
+	switch (usage)
+	{
+		case BufferUsage::VertexBuffer: return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+		case BufferUsage::StorageBuffer: return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+		case BufferUsage::UniformBuffer: return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		default: return VK_DESCRIPTOR_TYPE_MAX_ENUM;
 	}
 }
 

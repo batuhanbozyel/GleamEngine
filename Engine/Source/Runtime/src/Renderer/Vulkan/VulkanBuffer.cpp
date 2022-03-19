@@ -7,11 +7,11 @@
 using namespace Gleam;
 
 Buffer::Buffer(uint32_t size, BufferUsage usage)
-	: mSize(size)
+	: mSize(size), mUsage(usage)
 {
 	VkBufferCreateInfo createInfo{ VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
 	createInfo.size = size;
-	createInfo.usage = BufferUsageVkBufferUsage(usage);
+	createInfo.usage = BufferUsageToVkBufferUsage(usage);
 	createInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 	VK_CHECK(vkCreateBuffer(VulkanDevice, &createInfo, nullptr, As<VkBuffer*>(&mHandle)));
 
