@@ -37,7 +37,6 @@ protected:
 
 	void* mContents;
 	NativeGraphicsHandle mMemory;
-	NativeGraphicsHandle mBuffer;
 
 	const uint32_t mSize = 0;
 

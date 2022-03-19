@@ -19,7 +19,7 @@ public:
 	Swapchain(const RendererProperties& props);
 	~Swapchain();
 
-	void Invalidate();
+	void InvalidateAndCreate();
 
 	const FrameObject& AcquireNextFrame();
 	void Present();

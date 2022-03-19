@@ -12,24 +12,27 @@ using namespace Gleam;
 
 struct
 {
-	VkInstance Instance{ VK_NULL_HANDLE };
+	VkInstance instance{ VK_NULL_HANDLE };
 
 	// Debug/Validation layer
 #ifdef GDEBUG
-	VkDebugUtilsMessengerEXT DebugMessenger{ VK_NULL_HANDLE };
+	VkDebugUtilsMessengerEXT debugMessenger{ VK_NULL_HANDLE };
 #endif
 
 	// Device
-	VkDevice Device{ VK_NULL_HANDLE };
-	VkPhysicalDevice PhysicalDevice{ VK_NULL_HANDLE };
-	VkQueue GraphicsQueue{ VK_NULL_HANDLE };
-	uint32_t GraphicsQueueFamilyIndex{ 0 };
-	VkQueue ComputeQueue{ VK_NULL_HANDLE };
-	uint32_t ComputeQueueFamilyIndex{ 0 };
-	VkQueue TransferQueue{ VK_NULL_HANDLE };
-	uint32_t TransferQueueFamilyIndex{ 0 };
-	TArray<VkExtensionProperties> DeviceExtensions;
-	VkPhysicalDeviceMemoryProperties MemoryProperties;
+	VkDevice device{ VK_NULL_HANDLE };
+	VkPhysicalDevice physicalDevice{ VK_NULL_HANDLE };
+	VkQueue graphicsQueue{ VK_NULL_HANDLE };
+	uint32_t graphicsQueueFamilyIndex{ 0 };
+	VkQueue computeQueue{ VK_NULL_HANDLE };
+	uint32_t computeQueueFamilyIndex{ 0 };
+	VkQueue transferQueue{ VK_NULL_HANDLE };
+	uint32_t transferQueueFamilyIndex{ 0 };
+	TArray<VkExtensionProperties> deviceExtensions;
+	VkPhysicalDeviceMemoryProperties memoryProperties;
+
+	// Pipeline cache
+	VkPipelineCache pipelineCache;
 
 } mContext;
 
@@ -97,8 +100,8 @@ void RendererContext::Init(const TString& appName, const Version& appVersion, co
 	createInfo.ppEnabledExtensionNames = extensions.data();
 
 	// Create instance
-	VK_CHECK(vkCreateInstance(&createInfo, nullptr, &mContext.Instance));
-	volkLoadInstanceOnly(mContext.Instance);
+	VK_CHECK(vkCreateInstance(&createInfo, nullptr, &mContext.instance));
+	volkLoadInstanceOnly(mContext.instance);
 
 	mSwapchain.reset(new Swapchain(props));
 
@@ -117,40 +120,40 @@ void RendererContext::Init(const TString& appName, const Version& appVersion, co
 	debugInfo.pfnUserCallback = VulkanDebugCallback;
 	debugInfo.pUserData = nullptr;
 
-	VK_CHECK(vkCreateDebugUtilsMessengerEXT(mContext.Instance, &debugInfo, nullptr, &mContext.DebugMessenger));
+	VK_CHECK(vkCreateDebugUtilsMessengerEXT(mContext.instance, &debugInfo, nullptr, &mContext.debugMessenger));
 #endif
 
 	// Create device
 	uint32_t physicalDeviceCount;
-	VK_CHECK(vkEnumeratePhysicalDevices(mContext.Instance, &physicalDeviceCount, nullptr));
+	VK_CHECK(vkEnumeratePhysicalDevices(mContext.instance, &physicalDeviceCount, nullptr));
 
 	TArray<VkPhysicalDevice> physicalDevices(physicalDeviceCount);
-	VK_CHECK(vkEnumeratePhysicalDevices(mContext.Instance, &physicalDeviceCount, physicalDevices.data()));
+	VK_CHECK(vkEnumeratePhysicalDevices(mContext.instance, &physicalDeviceCount, physicalDevices.data()));
 
-	mContext.PhysicalDevice = physicalDevices[0];
+	mContext.physicalDevice = physicalDevices[0];
 	for (VkPhysicalDevice physicalDevice : physicalDevices)
 	{
 		VkPhysicalDeviceProperties physicalDeviceProperties;
 		vkGetPhysicalDeviceProperties(physicalDevice, &physicalDeviceProperties);
 		if (physicalDeviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)
 		{
-			mContext.PhysicalDevice = physicalDevice;
+			mContext.physicalDevice = physicalDevice;
 			break;
 		}
 	}
 
 	uint32_t queueFamilyCount;
-	vkGetPhysicalDeviceQueueFamilyProperties(mContext.PhysicalDevice, &queueFamilyCount, nullptr);
+	vkGetPhysicalDeviceQueueFamilyProperties(mContext.physicalDevice, &queueFamilyCount, nullptr);
 
 	TArray<VkQueueFamilyProperties> queueFamilyProperties(queueFamilyCount);
-	vkGetPhysicalDeviceQueueFamilyProperties(mContext.PhysicalDevice, &queueFamilyCount, queueFamilyProperties.data());
+	vkGetPhysicalDeviceQueueFamilyProperties(mContext.physicalDevice, &queueFamilyCount, queueFamilyProperties.data());
 
 	uint32_t deviceExtensionCount;
-	VK_CHECK(vkEnumerateDeviceExtensionProperties(mContext.PhysicalDevice, nullptr, &deviceExtensionCount, nullptr));
-	mContext.DeviceExtensions.resize(deviceExtensionCount);
-	VK_CHECK(vkEnumerateDeviceExtensionProperties(mContext.PhysicalDevice, nullptr, &deviceExtensionCount, mContext.DeviceExtensions.data()));
+	VK_CHECK(vkEnumerateDeviceExtensionProperties(mContext.physicalDevice, nullptr, &deviceExtensionCount, nullptr));
+	mContext.deviceExtensions.resize(deviceExtensionCount);
+	VK_CHECK(vkEnumerateDeviceExtensionProperties(mContext.physicalDevice, nullptr, &deviceExtensionCount, mContext.deviceExtensions.data()));
 
-	vkGetPhysicalDeviceMemoryProperties(mContext.PhysicalDevice, &mContext.MemoryProperties);
+	vkGetPhysicalDeviceMemoryProperties(mContext.physicalDevice, &mContext.memoryProperties);
 
 	// Get physical device queues
 	bool mainQueueFound = false;
@@ -175,11 +178,11 @@ void RendererContext::Init(const TString& appName, const Version& appVersion, co
 			!mainQueueFound)
 		{
 			mainQueueFound = true;
-			mContext.GraphicsQueueFamilyIndex = i;
+			mContext.graphicsQueueFamilyIndex = i;
 			deviceQueueCreateInfos.push_back(deviceQueueCreateInfo);
 
 			VkBool32 mainQueueSupportsPresent = false;
-			vkGetPhysicalDeviceSurfaceSupportKHR(mContext.PhysicalDevice, i, As<VkSurfaceKHR>(mSwapchain->GetSurface()), &mainQueueSupportsPresent);
+			vkGetPhysicalDeviceSurfaceSupportKHR(mContext.physicalDevice, i, As<VkSurfaceKHR>(mSwapchain->GetSurface()), &mainQueueSupportsPresent);
 			GLEAM_ASSERT(mainQueueSupportsPresent, "Vulkan: Main queue does not support presentation!");
 		}
 		else if (queueFamiySupportsCompute &&
@@ -188,7 +191,7 @@ void RendererContext::Init(const TString& appName, const Version& appVersion, co
 			!computeQueueFound)
 		{
 			computeQueueFound = true;
-			mContext.ComputeQueueFamilyIndex = i;
+			mContext.computeQueueFamilyIndex = i;
 			deviceQueueCreateInfos.push_back(deviceQueueCreateInfo);
 		}
 		else if (queueFamilySupportsTransfer &&
@@ -197,7 +200,7 @@ void RendererContext::Init(const TString& appName, const Version& appVersion, co
 			!transferQueueFound)
 		{
 			transferQueueFound = true;
-			mContext.TransferQueueFamilyIndex = i;
+			mContext.transferQueueFamilyIndex = i;
 			deviceQueueCreateInfos.push_back(deviceQueueCreateInfo);
 		}
 	}
@@ -219,34 +222,38 @@ void RendererContext::Init(const TString& appName, const Version& appVersion, co
 	deviceCreateInfo.enabledExtensionCount = static_cast<uint32_t>(requiredDeviceExtension.size());
 	deviceCreateInfo.ppEnabledExtensionNames = requiredDeviceExtension.data();
 
-	VK_CHECK(vkCreateDevice(mContext.PhysicalDevice, &deviceCreateInfo, nullptr, &mContext.Device));
-	volkLoadDevice(mContext.Device);
+	VK_CHECK(vkCreateDevice(mContext.physicalDevice, &deviceCreateInfo, nullptr, &mContext.device));
+	volkLoadDevice(mContext.device);
 
 	GLEAM_ASSERT(mainQueueFound, "Vulkan: Main queue could not found!");
-	vkGetDeviceQueue(mContext.Device, mContext.GraphicsQueueFamilyIndex, 0, &mContext.GraphicsQueue);
+	vkGetDeviceQueue(mContext.device, mContext.graphicsQueueFamilyIndex, 0, &mContext.graphicsQueue);
 	if (computeQueueFound)
 	{
-		vkGetDeviceQueue(mContext.Device, mContext.ComputeQueueFamilyIndex, 0, &mContext.ComputeQueue);
+		vkGetDeviceQueue(mContext.device, mContext.computeQueueFamilyIndex, 0, &mContext.computeQueue);
 	}
 	else
 	{
-		mContext.ComputeQueue = mContext.GraphicsQueue;
-		mContext.ComputeQueueFamilyIndex = mContext.GraphicsQueueFamilyIndex;
+		mContext.computeQueue = mContext.graphicsQueue;
+		mContext.computeQueueFamilyIndex = mContext.graphicsQueueFamilyIndex;
 		GLEAM_CORE_WARN("Vulkan: Async compute queue family could not found, mapping to main queue.");
 	}
 	if (transferQueueFound)
 	{
-		vkGetDeviceQueue(mContext.Device, mContext.TransferQueueFamilyIndex, 0, &mContext.TransferQueue);
+		vkGetDeviceQueue(mContext.device, mContext.transferQueueFamilyIndex, 0, &mContext.transferQueue);
 	}
 	else
 	{
-		mContext.TransferQueue = mContext.GraphicsQueue;
-		mContext.TransferQueueFamilyIndex = mContext.GraphicsQueueFamilyIndex;
+		mContext.transferQueue = mContext.graphicsQueue;
+		mContext.transferQueueFamilyIndex = mContext.graphicsQueueFamilyIndex;
 		GLEAM_CORE_WARN("Vulkan: Transfer queue family could not found, mapping to main queue.");
 	}
 
 	// Create swapchain
-	mSwapchain->Invalidate();
+	mSwapchain->InvalidateAndCreate();
+
+	// Create pipeline cache
+	VkPipelineCacheCreateInfo pipelineCacheCreateInfo{ VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO };
+	VK_CHECK(vkCreatePipelineCache(VulkanDevice, &pipelineCacheCreateInfo, nullptr, &mContext.pipelineCache));
 
 	GLEAM_CORE_INFO("Vulkan: Graphics context created.");
 }
@@ -255,17 +262,20 @@ void RendererContext::Init(const TString& appName, const Version& appVersion, co
 /************************************************************************/
 void RendererContext::Destroy()
 {
-	vkDeviceWaitIdle(mContext.Device);
+	vkDeviceWaitIdle(mContext.device);
+
+	// Destroy pipeline cache
+	vkDestroyPipelineCache(VulkanDevice, mContext.pipelineCache, nullptr);
 
 	// Destroy swapchain
 	mSwapchain.reset();
 
 	// Destroy device
-	vkDestroyDevice(mContext.Device, nullptr);
+	vkDestroyDevice(mContext.device, nullptr);
 #ifdef GDEBUG
-	vkDestroyDebugUtilsMessengerEXT(mContext.Instance, mContext.DebugMessenger, nullptr);
+	vkDestroyDebugUtilsMessengerEXT(mContext.instance, mContext.debugMessenger, nullptr);
 #endif
-	vkDestroyInstance(mContext.Instance, nullptr);
+	vkDestroyInstance(mContext.instance, nullptr);
 
 	GLEAM_CORE_INFO("Vulkan: Graphics context destroyed.");
 }
@@ -274,72 +284,72 @@ void RendererContext::Destroy()
 /************************************************************************/
 NativeGraphicsHandle RendererContext::GetEntryPoint()
 {
-	return mContext.Instance;
+	return mContext.instance;
 }
 /************************************************************************/
 /*	GetDevice                                                           */
 /************************************************************************/
 NativeGraphicsHandle RendererContext::GetDevice()
 {
-	return mContext.Device;
+	return mContext.device;
 }
 /************************************************************************/
 /*	GetPhysicalDevice                                                   */
 /************************************************************************/
 NativeGraphicsHandle RendererContext::GetPhysicalDevice()
 {
-	return mContext.PhysicalDevice;
+	return mContext.physicalDevice;
 }
 /************************************************************************/
 /*	GetGraphicsQueue                                                    */
 /************************************************************************/
 NativeGraphicsHandle RendererContext::GetGraphicsQueue()
 {
-	return mContext.GraphicsQueue;
+	return mContext.graphicsQueue;
 }
 /************************************************************************/
 /*	GetComputeQueue                                                     */
 /************************************************************************/
 NativeGraphicsHandle RendererContext::GetComputeQueue()
 {
-	return mContext.ComputeQueue;
+	return mContext.computeQueue;
 }
 /************************************************************************/
 /*	GetTransferQueue                                                    */
 /************************************************************************/
 NativeGraphicsHandle RendererContext::GetTransferQueue()
 {
-	return mContext.TransferQueue;
+	return mContext.transferQueue;
 }
 /************************************************************************/
 /*	GetGraphicsQueueIndex                                               */
 /************************************************************************/
 uint32_t RendererContext::GetGraphicsQueueIndex()
 {
-	return mContext.GraphicsQueueFamilyIndex;
+	return mContext.graphicsQueueFamilyIndex;
 }
 /************************************************************************/
 /*	GetComputeQueueIndex                                                */
 /************************************************************************/
 uint32_t RendererContext::GetComputeQueueIndex()
 {
-	return mContext.ComputeQueueFamilyIndex;
+	return mContext.computeQueueFamilyIndex;
 }
 /************************************************************************/
 /*	GetTransferQueueIndex                                               */
 /************************************************************************/
 uint32_t RendererContext::GetTransferQueueIndex()
 {
-	return mContext.ComputeQueueFamilyIndex;
+	return mContext.computeQueueFamilyIndex;
 }
 /************************************************************************/
 /*	GetMemoryTypeForProperties                                           */
 /************************************************************************/
 uint32_t RendererContext::GetMemoryTypeForProperties(uint32_t memoryTypeBits, uint32_t properties)
 {
-	for (uint32_t i = 0; i < mContext.MemoryProperties.memoryTypeCount; i++)
+	for (uint32_t i = 0; i < mContext.memoryProperties.memoryTypeCount; i++)
 	{
-		if ((memoryTypeBits & BIT(i)) && (mContext.MemoryProperties.memoryTypes[i].propertyFlags & properties) == properties)
+		if ((memoryTypeBits & BIT(i)) && (mContext.memoryProperties.memoryTypes[i].propertyFlags & properties) == properties)
 		{
 			return i;
 		}

@@ -96,7 +96,7 @@ const FrameObject& Swapchain::AcquireNextFrame()
 	VkResult result = vkAcquireNextImageKHR(VulkanDevice, mContext.handle, UINT64_MAX, mContext.currentFrame.imageAcquireSemaphore, VK_NULL_HANDLE, &mContext.currentFrame.imageIndex);
 	if (result == VK_ERROR_OUT_OF_DATE_KHR)
 	{
-		Invalidate();
+		InvalidateAndCreate();
 	}
 	else
 	{
@@ -140,7 +140,7 @@ void Swapchain::Present()
 	VkResult result = vkQueuePresentKHR(As<VkQueue>(RendererContext::GetGraphicsQueue()), &presentInfo);
 	if (result == VK_ERROR_OUT_OF_DATE_KHR)
 	{
-		Invalidate();
+		InvalidateAndCreate();
 	}
 	else
 	{
@@ -175,7 +175,7 @@ const FrameObject& Swapchain::GetCurrentFrame() const
 	return mContext.currentFrame;
 }
 
-void Swapchain::Invalidate()
+void Swapchain::InvalidateAndCreate()
 {
 	SDL_Window* window = ApplicationInstance.GetActiveWindow().GetSDLWindow();
 

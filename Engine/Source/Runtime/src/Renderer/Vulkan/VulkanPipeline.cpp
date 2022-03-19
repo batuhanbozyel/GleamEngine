@@ -9,21 +9,8 @@
 
 using namespace Gleam;
 
-struct
-{
-	VkPipelineCache pipelineCache;
-	uint32_t pipelineCount = 0;
-} mContext;
-
 GraphicsPipeline::GraphicsPipeline(const RenderPass& renderPass, const PipelineStateDescriptor& pipelineStateDescriptor, const GraphicsShader& program)
 {
-	static std::once_flag flag;
-	std::call_once(flag, []()
-	{
-		VkPipelineCacheCreateInfo pipelineCacheCreateInfo{ VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO };
-		VK_CHECK(vkCreatePipelineCache(VulkanDevice, &pipelineCacheCreateInfo, nullptr, &mContext.pipelineCache));
-	});
-
 	VkGraphicsPipelineCreateInfo pipelineCreateInfo{ VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO };
 
 	// Shader stages
@@ -95,20 +82,12 @@ GraphicsPipeline::GraphicsPipeline(const RenderPass& renderPass, const PipelineS
 	pipelineCreateInfo.renderPass = As<VkRenderPass>(renderPass.GetHandle());
 
 	VK_CHECK(vkCreateGraphicsPipelines(VulkanDevice, nullptr, 1, &pipelineCreateInfo, nullptr, As<VkPipeline*>(&mHandle)));
-
-	mContext.pipelineCount++;
 }
 
 GraphicsPipeline::~GraphicsPipeline()
 {
 	vkDestroyPipeline(VulkanDevice, As<VkPipeline>(mHandle), nullptr);
 	vkDestroyPipelineLayout(VulkanDevice, As<VkPipelineLayout>(mLayout), nullptr);
-
-	mContext.pipelineCount--;
-	if (mContext.pipelineCount == 0)
-	{
-		vkDestroyPipelineCache(VulkanDevice, mContext.pipelineCache, nullptr);
-	}
 }
 
 #endif
