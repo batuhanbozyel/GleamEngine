@@ -1,26 +1,26 @@
 #pragma once
 #include "Renderer.h"
 #include "Buffer.h"
-#include "CommandBuffer.h"
+#include "Shader.h"
 #include "GraphicsTypes.h"
 
 namespace Gleam {
 
 class GraphicsShader;
 
-class TileForwardRenderer : public Renderer
+class ForwardRenderer : public Renderer
 {
 public:
 
-	TileForwardRenderer();
+	ForwardRenderer();
 
-	~TileForwardRenderer();
+	~ForwardRenderer();
 
 	virtual void Render() override;
 
 private:
-
-	CommandBuffer mCommandBuffer;
+    
+    GraphicsShader mForwardPassProgram;
 	VertexBuffer<Vertex> mVertexBuffer;
 	IndexBuffer mIndexBuffer;
 

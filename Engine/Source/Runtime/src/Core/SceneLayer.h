@@ -1,6 +1,6 @@
 #pragma once
 #include "Layer.h"
-#include "Renderer/TileForwardRenderer.h"
+#include "Renderer/ForwardRenderer.h"
 
 namespace Gleam {
 
@@ -11,6 +11,8 @@ public:
 	virtual void OnAttach() override;
 
 	virtual void OnUpdate() override;
+    
+    virtual void OnFixedUpdate() override;
 
 	virtual void OnRender() override;
 
@@ -18,7 +20,7 @@ public:
 
 private:
 
-	Scope<TileForwardRenderer> mRenderer;
+	Scope<ForwardRenderer> mRenderer;
 
 };
 
