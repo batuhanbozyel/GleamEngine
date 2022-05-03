@@ -59,13 +59,16 @@ endif()
 
 list(APPEND SOURCE_FILES ${SHADER_FILES})
 add_library(Runtime STATIC ${SOURCE_FILES})
-add_dependencies(Runtime fmt imgui volk)
-target_include_directories(Runtime PUBLIC ${INCLUDE_DIRS_RUNTIME})
 
-if (APPLE)
+if (NOT APPLE)
+    add_dependencies(Runtime fmt imgui volk)
+else()
+    add_dependencies(Runtime fmt imgui)
     set_source_files_properties(${SOURCE_FILES} PROPERTIES COMPILE_FLAGS "-x objective-c++")
     set_target_properties(Runtime PROPERTIES MACOSX_BUNDLE YES XCODE_ATTRIBUTE_CLANG_ENABLE_OBJC_ARC YES)
 endif()
+
+target_include_directories(Runtime PUBLIC ${INCLUDE_DIRS_RUNTIME})
 
 set_property(TARGET Runtime PROPERTY STATIC_LIBRARY_OPTIONS ${LIB_LINKS_RUNTIME})
 target_link_directories(Runtime PUBLIC ${CMAKE_SOURCE_DIR}/bin/$<CONFIG>)
@@ -97,4 +100,10 @@ if (NOT APPLE)
     set(HLSL_FILE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/src/Renderer/Vulkan/Shaders)
     ADD_GRAPHICS_SHADER(Runtime ${HLSL_FILE_PATH}/FullscreenTriangle.hlsl fullscreenTriangleVertexShader fullscreenTriangleFragmentShader)
     ADD_GRAPHICS_SHADER(Runtime ${HLSL_FILE_PATH}/ForwardPass.hlsl forwardPassVertexShader forwardPassFragmentShader)
+else()
+    add_custom_command(
+        TARGET Runtime
+        PRE_BUILD
+        COMMAND xcrun -sdk macosx metal -frecord-sources=flat ${MSL_FILES} -o ${CMAKE_SOURCE_DIR}/Assets/PrecompiledShaders.metallib
+    )
 endif()
