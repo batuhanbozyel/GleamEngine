@@ -118,43 +118,52 @@ Application::Application(const ApplicationProperties& props)
 
 void Application::Run()
 {
+    Time::Reset();
 	while (mRunning)
 	{
 		while (SDL_PollEvent(&mEvent));
-
-		for (const auto& layer : mLayerStack)
-		{
-			layer->OnUpdate();
-		}
-
-		for (const auto& overlay : mOverlays)
-		{
-			overlay->OnUpdate();
-		}
         
+        Time::Step();
+        if (Time::fixedTime <= (Time::time - Time::fixedDeltaTime))
+        {
+            Time::FixedStep();
+            for (const auto& layer : mLayerStack)
+            {
+                layer->OnFixedUpdate();
+            }
+
+            for (const auto& overlay : mOverlays)
+            {
+                overlay->OnFixedUpdate();
+            }
+        }
+        
+        for (const auto& layer : mLayerStack)
+        {
+            layer->OnUpdate();
+        }
+
+        for (const auto& overlay : mOverlays)
+        {
+            overlay->OnUpdate();
+        }
+		
 #ifdef USE_METAL_RENDERER
-		@autoreleasepool
+        @autoreleasepool
 #endif
         {
             Renderer::BeginFrame();
+            
+            for (const auto& layer : mLayerStack)
+            {
+                layer->OnRender();
+            }
 
-			if (mLayerStack.empty())
-			{
-				Renderer::ClearScreen({ 0.1f, 0.1f, 0.1f, 1.0f });
-			}
-			else
-			{
-				for (const auto& layer : mLayerStack)
-				{
-					layer->OnRender();
-				}
-
-				for (const auto& overlay : mOverlays)
-				{
-					overlay->OnRender();
-				}
-			}
-
+            for (const auto& overlay : mOverlays)
+            {
+                overlay->OnRender();
+            }
+            
             Renderer::EndFrame();
         }
 	}
