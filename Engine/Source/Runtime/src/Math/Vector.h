@@ -39,6 +39,11 @@ struct Vector2Base
 	{
 
 	}
+    
+    MATH_INLINE constexpr bool operator==(const Vector2Base& vec) const
+    {
+        return x == vec.x && y == vec.y;
+    }
 
 	MATH_INLINE constexpr T operator[](size_t i) const
 	{
@@ -212,6 +217,11 @@ struct Vector3Base
 	{
 
 	}
+    
+    MATH_INLINE constexpr bool operator==(const Vector3Base& vec) const
+    {
+        return x == vec.x && y == vec.y && z == vec.z;
+    }
 
 	MATH_INLINE constexpr T operator[](size_t i) const
 	{
@@ -401,6 +411,11 @@ struct Vector4Base
 	{
 
 	}
+    
+    MATH_INLINE constexpr bool operator==(const Vector4Base& vec) const
+    {
+        return x == vec.x && y == vec.y && z == vec.z && w == vec.w;
+    }
 
 	MATH_INLINE constexpr float operator[](size_t i) const
 	{
