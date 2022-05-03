@@ -2,15 +2,19 @@
 
 namespace Gleam {
 
-class Renderer;
-
+class Application;
+    
 class Layer
 {
-public:
+    friend class Application;
+    
+protected:
 
 	virtual void OnAttach() {};
 
 	virtual void OnUpdate() {};
+    
+    virtual void OnFixedUpdate() {};
 
 	virtual void OnRender() {};
 
