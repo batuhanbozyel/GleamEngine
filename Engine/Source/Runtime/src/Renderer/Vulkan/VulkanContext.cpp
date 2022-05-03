@@ -4,23 +4,11 @@
 #include "Renderer/RendererContext.h"
 #include "VulkanUtils.h"
 
-#include "Core/ApplicationConfig.h"
-
-#include <SDL_vulkan.h>
-
 using namespace Gleam;
 
 struct
 {
-	VkInstance instance{ VK_NULL_HANDLE };
-
-	// Debug/Validation layer
-#ifdef GDEBUG
-	VkDebugUtilsMessengerEXT debugMessenger{ VK_NULL_HANDLE };
-#endif
-
 	// Device
-	VkDevice device{ VK_NULL_HANDLE };
 	VkPhysicalDevice physicalDevice{ VK_NULL_HANDLE };
 	VkQueue graphicsQueue{ VK_NULL_HANDLE };
 	uint32_t graphicsQueueFamilyIndex{ 0 };
@@ -69,66 +57,14 @@ void RendererContext::Init(const TString& appName, const Version& appVersion, co
 	VkResult loadVKResult = volkInitialize();
 	GLEAM_ASSERT(loadVKResult == VK_SUCCESS, "Vulkan: Meta-loader failed to load entry points!");
 
-	// Create instance
-	// Get window subsystem extensions
-	uint32_t extensionCount;
-	SDL_Vulkan_GetInstanceExtensions(nullptr, &extensionCount, nullptr);
-	TArray<const char*> extensions(extensionCount);
-	SDL_Vulkan_GetInstanceExtensions(nullptr, &extensionCount, extensions.data());
-
-	VkApplicationInfo appInfo{ VK_STRUCTURE_TYPE_APPLICATION_INFO };
-	appInfo.pApplicationName = appName.c_str();
-	appInfo.applicationVersion = VK_MAKE_VERSION(appVersion.major, appVersion.minor, appVersion.patch);
-	appInfo.pEngineName = "Gleam Engine";
-	appInfo.engineVersion = VK_MAKE_VERSION(GLEAM_ENGINE_MAJOR_VERSION, GLEAM_ENGINE_MINOR_VERSION, GLEAM_ENGINE_PATCH_VERSION);
-	appInfo.apiVersion = VULKAN_API_VERSION;
-
-	VkInstanceCreateInfo createInfo{ VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO };
-	createInfo.pApplicationInfo = &appInfo;
-
-	// Get validation layers
-#ifdef GDEBUG
-	extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-	TArray<const char*, 1> validationLayers{ "VK_LAYER_KHRONOS_validation" };
-	createInfo.enabledLayerCount = 1;
-	createInfo.ppEnabledLayerNames = validationLayers.data();
-#else
-	createInfo.enabledLayerCount = 0;
-	createInfo.ppEnabledLayerNames = nullptr;
-#endif
-	createInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
-	createInfo.ppEnabledExtensionNames = extensions.data();
-
-	// Create instance
-	VK_CHECK(vkCreateInstance(&createInfo, nullptr, &mContext.instance));
-	volkLoadInstanceOnly(mContext.instance);
-
-	mSwapchain.reset(new Swapchain(props));
-
-#ifdef GDEBUG
-	// Create debug messenger
-	VkDebugUtilsMessengerCreateInfoEXT debugInfo{ VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT };
-	debugInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT
-		| VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT
-		| VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT
-		| VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT;
-
-	debugInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT
-		| VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT
-		| VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT;
-
-	debugInfo.pfnUserCallback = VulkanDebugCallback;
-	debugInfo.pUserData = nullptr;
-
-	VK_CHECK(vkCreateDebugUtilsMessengerEXT(mContext.instance, &debugInfo, nullptr, &mContext.debugMessenger));
-#endif
+    mSwapchain.reset(new Swapchain(appName, appVersion, props));
 
 	// Create device
 	uint32_t physicalDeviceCount;
-	VK_CHECK(vkEnumeratePhysicalDevices(mContext.instance, &physicalDeviceCount, nullptr));
+	VK_CHECK(vkEnumeratePhysicalDevices(As<VkInstance>(mSwapchain->GetLayer()), &physicalDeviceCount, nullptr));
 
 	TArray<VkPhysicalDevice> physicalDevices(physicalDeviceCount);
-	VK_CHECK(vkEnumeratePhysicalDevices(mContext.instance, &physicalDeviceCount, physicalDevices.data()));
+	VK_CHECK(vkEnumeratePhysicalDevices(As<VkInstance>(mSwapchain->GetLayer()), &physicalDeviceCount, physicalDevices.data()));
 
 	mContext.physicalDevice = physicalDevices[0];
 	for (VkPhysicalDevice physicalDevice : physicalDevices)
@@ -222,14 +158,14 @@ void RendererContext::Init(const TString& appName, const Version& appVersion, co
 	deviceCreateInfo.enabledExtensionCount = static_cast<uint32_t>(requiredDeviceExtension.size());
 	deviceCreateInfo.ppEnabledExtensionNames = requiredDeviceExtension.data();
 
-	VK_CHECK(vkCreateDevice(mContext.physicalDevice, &deviceCreateInfo, nullptr, &mContext.device));
-	volkLoadDevice(mContext.device);
+	VK_CHECK(vkCreateDevice(mContext.physicalDevice, &deviceCreateInfo, nullptr, As<VkDevice*>(&mDevice)));
+	volkLoadDevice(As<VkDevice>(mDevice));
 
 	GLEAM_ASSERT(mainQueueFound, "Vulkan: Main queue could not found!");
-	vkGetDeviceQueue(mContext.device, mContext.graphicsQueueFamilyIndex, 0, &mContext.graphicsQueue);
+	vkGetDeviceQueue(As<VkDevice>(mDevice), mContext.graphicsQueueFamilyIndex, 0, &mContext.graphicsQueue);
 	if (computeQueueFound)
 	{
-		vkGetDeviceQueue(mContext.device, mContext.computeQueueFamilyIndex, 0, &mContext.computeQueue);
+		vkGetDeviceQueue(As<VkDevice>(mDevice), mContext.computeQueueFamilyIndex, 0, &mContext.computeQueue);
 	}
 	else
 	{
@@ -239,7 +175,7 @@ void RendererContext::Init(const TString& appName, const Version& appVersion, co
 	}
 	if (transferQueueFound)
 	{
-		vkGetDeviceQueue(mContext.device, mContext.transferQueueFamilyIndex, 0, &mContext.transferQueue);
+		vkGetDeviceQueue(As<VkDevice>(mDevice), mContext.transferQueueFamilyIndex, 0, &mContext.transferQueue);
 	}
 	else
 	{
@@ -262,7 +198,7 @@ void RendererContext::Init(const TString& appName, const Version& appVersion, co
 /************************************************************************/
 void RendererContext::Destroy()
 {
-	vkDeviceWaitIdle(mContext.device);
+	vkDeviceWaitIdle(As<VkDevice>(mDevice));
 
 	// Destroy pipeline cache
 	vkDestroyPipelineCache(VulkanDevice, mContext.pipelineCache, nullptr);
@@ -271,27 +207,9 @@ void RendererContext::Destroy()
 	mSwapchain.reset();
 
 	// Destroy device
-	vkDestroyDevice(mContext.device, nullptr);
-#ifdef GDEBUG
-	vkDestroyDebugUtilsMessengerEXT(mContext.instance, mContext.debugMessenger, nullptr);
-#endif
-	vkDestroyInstance(mContext.instance, nullptr);
+	vkDestroyDevice(As<VkDevice>(mDevice), nullptr);
 
 	GLEAM_CORE_INFO("Vulkan: Graphics context destroyed.");
-}
-/************************************************************************/
-/*	GetEntryPoint                                                       */
-/************************************************************************/
-NativeGraphicsHandle RendererContext::GetEntryPoint()
-{
-	return mContext.instance;
-}
-/************************************************************************/
-/*	GetDevice                                                           */
-/************************************************************************/
-NativeGraphicsHandle RendererContext::GetDevice()
-{
-	return mContext.device;
 }
 /************************************************************************/
 /*	GetPhysicalDevice                                                   */

@@ -13,17 +13,22 @@ using namespace Gleam;
 
 struct
 {
+    // Instance
+    VkInstance instance{ VK_NULL_HANDLE };
+
+    // Debug/Validation layer
+#ifdef GDEBUG
+    VkDebugUtilsMessengerEXT debugMessenger{ VK_NULL_HANDLE };
+#endif
+    
 	// Surface
-	VkSurfaceKHR surface{ VK_NULL_HANDLE };
 	TArray<VkExtensionProperties> extensions;
 	TArray<VkSurfaceFormatKHR> surfaceFormats;
 	TArray<VkPresentModeKHR> presentModes;
 
 	// Swapchain
-	VkSwapchainKHR handle{ VK_NULL_HANDLE };
 	TArray<VkImage> images;
 	TArray<VkImageView> imageViews;
-	VkRenderPass renderPass;
 	TArray<VkFramebuffer> framebuffers;
 	VkFormat imageFormat;
 
@@ -38,17 +43,67 @@ struct
 	VulkanFrameObject currentFrame;
 } mContext;
 
-Swapchain::Swapchain(const RendererProperties& props)
+Swapchain::Swapchain(const TString& appName, const Version& appVersion, const RendererProperties& props)
 	: mProperties(props)
 {
+    // Get window subsystem extensions
+    uint32_t extensionCount;
+    SDL_Vulkan_GetInstanceExtensions(nullptr, &extensionCount, nullptr);
+    TArray<const char*> extensions(extensionCount);
+    SDL_Vulkan_GetInstanceExtensions(nullptr, &extensionCount, extensions.data());
+
+    VkApplicationInfo appInfo{ VK_STRUCTURE_TYPE_APPLICATION_INFO };
+    appInfo.pApplicationName = appName.c_str();
+    appInfo.applicationVersion = VK_MAKE_VERSION(appVersion.major, appVersion.minor, appVersion.patch);
+    appInfo.pEngineName = "Gleam Engine";
+    appInfo.engineVersion = VK_MAKE_VERSION(GLEAM_ENGINE_MAJOR_VERSION, GLEAM_ENGINE_MINOR_VERSION, GLEAM_ENGINE_PATCH_VERSION);
+    appInfo.apiVersion = VULKAN_API_VERSION;
+
+    VkInstanceCreateInfo createInfo{ VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO };
+    createInfo.pApplicationInfo = &appInfo;
+
+    // Get validation layers
+#ifdef GDEBUG
+    extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+    TArray<const char*, 1> validationLayers{ "VK_LAYER_KHRONOS_validation" };
+    createInfo.enabledLayerCount = 1;
+    createInfo.ppEnabledLayerNames = validationLayers.data();
+#else
+    createInfo.enabledLayerCount = 0;
+    createInfo.ppEnabledLayerNames = nullptr;
+#endif
+    createInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
+    createInfo.ppEnabledExtensionNames = extensions.data();
+
+    // Create instance
+    VK_CHECK(vkCreateInstance(&createInfo, nullptr, &mContext.instance));
+    volkLoadInstanceOnly(mContext.instance);
+
+#ifdef GDEBUG
+    // Create debug messenger
+    VkDebugUtilsMessengerCreateInfoEXT debugInfo{ VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT };
+    debugInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT
+        | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT
+        | VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT
+        | VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT;
+
+    debugInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT
+        | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT
+        | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT;
+
+    debugInfo.pfnUserCallback = VulkanDebugCallback;
+    debugInfo.pUserData = nullptr;
+
+    VK_CHECK(vkCreateDebugUtilsMessengerEXT(mContext.instance, &debugInfo, nullptr, &mContext.debugMessenger));
+#endif
+    
 	// Get available extensions
-	uint32_t extensionCount;
 	VK_CHECK(vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr));
 	mContext.extensions.resize(extensionCount);
 	VK_CHECK(vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, mContext.extensions.data()));
 
 	// Create surface
-	bool surfaceCreateResult = SDL_Vulkan_CreateSurface(ApplicationInstance.GetActiveWindow().GetSDLWindow(), As<VkInstance>(RendererContext::GetEntryPoint()), &mContext.surface);
+	bool surfaceCreateResult = SDL_Vulkan_CreateSurface(ApplicationInstance.GetActiveWindow().GetSDLWindow(), As<VkInstance>(RendererContext::GetEntryPoint()), As<VkSurface*>(&mSurface));
 	GLEAM_ASSERT(surfaceCreateResult, "Vulkan: Surface creation failed!");
 }
 
@@ -62,8 +117,8 @@ Swapchain::~Swapchain()
 	}
 	mContext.framebuffers.clear();
 	mContext.imageViews.clear();
-	vkDestroyRenderPass(VulkanDevice, mContext.renderPass, nullptr);
-	vkDestroySwapchainKHR(VulkanDevice, mContext.handle, nullptr);
+	vkDestroyRenderPass(VulkanDevice, As<VkRenderPass>(mRenderPass), nullptr);
+	vkDestroySwapchainKHR(VulkanDevice, As<VkSwapchainKHR>(mHandle), nullptr);
 
 	// Destroy sync objects
 	for (uint32_t i = 0; i < mProperties.maxFramesInFlight; i++)
@@ -80,7 +135,13 @@ Swapchain::~Swapchain()
 	mContext.commandPools.clear();
 
 	// Destroy surface
-	vkDestroySurfaceKHR(As<VkInstance>(RendererContext::GetEntryPoint()), mContext.surface, nullptr);
+	vkDestroySurfaceKHR(As<VkInstance>(RendererContext::GetEntryPoint()), As<VkSurface>(mSurface), nullptr);
+    
+    // Destroy instance
+#ifdef GDEBUG
+    vkDestroyDebugUtilsMessengerEXT(mContext.instance, mContext.debugMessenger, nullptr);
+#endif
+    vkDestroyInstance(mContext.instance, nullptr);
 }
 
 const FrameObject& Swapchain::AcquireNextFrame()
@@ -93,7 +154,7 @@ const FrameObject& Swapchain::AcquireNextFrame()
 
 	VK_CHECK(vkWaitForFences(VulkanDevice, 1, &mContext.currentFrame.imageAcquireFence, VK_TRUE, UINT64_MAX));
 
-	VkResult result = vkAcquireNextImageKHR(VulkanDevice, mContext.handle, UINT64_MAX, mContext.currentFrame.imageAcquireSemaphore, VK_NULL_HANDLE, &mContext.currentFrame.imageIndex);
+	VkResult result = vkAcquireNextImageKHR(VulkanDevice, As<VkSwapchainKHR>(mHandle), UINT64_MAX, mContext.currentFrame.imageAcquireSemaphore, VK_NULL_HANDLE, &mContext.currentFrame.imageIndex);
 	if (result == VK_ERROR_OUT_OF_DATE_KHR)
 	{
 		InvalidateAndCreate();
@@ -135,7 +196,7 @@ void Swapchain::Present()
 	presentInfo.waitSemaphoreCount = 1;
 	presentInfo.pWaitSemaphores = &mContext.currentFrame.imageReleaseSemaphore;
 	presentInfo.swapchainCount = 1;
-	presentInfo.pSwapchains = &mContext.handle;
+	presentInfo.pSwapchains = As<VkSwapchainKHR*>(&mHandle);
 	presentInfo.pImageIndices = &mContext.currentFrame.imageIndex;
 	VkResult result = vkQueuePresentKHR(As<VkQueue>(RendererContext::GetGraphicsQueue()), &presentInfo);
 	if (result == VK_ERROR_OUT_OF_DATE_KHR)
@@ -160,14 +221,9 @@ TextureFormat Swapchain::GetFormat() const
 	return VkFormatToTextureFormat(mContext.imageFormat);
 }
 
-NativeGraphicsHandle Swapchain::GetSurface() const
+NativeGraphicsHandle GetLayer() const
 {
-	return mContext.surface;
-}
-
-NativeGraphicsHandle Swapchain::GetRenderPass() const
-{
-	return mContext.renderPass;
+    return mContext.instance;
 }
 
 const FrameObject& Swapchain::GetCurrentFrame() const
@@ -183,14 +239,14 @@ void Swapchain::InvalidateAndCreate()
 
 	// Get surface information
 	uint32_t presentModeCount;
-	VK_CHECK(vkGetPhysicalDeviceSurfacePresentModesKHR(As<VkPhysicalDevice>(RendererContext::GetPhysicalDevice()), mContext.surface, &presentModeCount, nullptr));
+	VK_CHECK(vkGetPhysicalDeviceSurfacePresentModesKHR(As<VkPhysicalDevice>(RendererContext::GetPhysicalDevice()), As<VkSurface>(mSurface), &presentModeCount, nullptr));
 	mContext.presentModes.resize(presentModeCount);
-	VK_CHECK(vkGetPhysicalDeviceSurfacePresentModesKHR(As<VkPhysicalDevice>(RendererContext::GetPhysicalDevice()), mContext.surface, &presentModeCount, mContext.presentModes.data()));
+	VK_CHECK(vkGetPhysicalDeviceSurfacePresentModesKHR(As<VkPhysicalDevice>(RendererContext::GetPhysicalDevice()), As<VkSurface>(mSurface), &presentModeCount, mContext.presentModes.data()));
 
 	uint32_t surfaceFormatCount;
-	VK_CHECK(vkGetPhysicalDeviceSurfaceFormatsKHR(As<VkPhysicalDevice>(RendererContext::GetPhysicalDevice()), mContext.surface, &surfaceFormatCount, nullptr));
+	VK_CHECK(vkGetPhysicalDeviceSurfaceFormatsKHR(As<VkPhysicalDevice>(RendererContext::GetPhysicalDevice()), As<VkSurface>(mSurface), &surfaceFormatCount, nullptr));
 	mContext.surfaceFormats.resize(surfaceFormatCount);
-	VK_CHECK(vkGetPhysicalDeviceSurfaceFormatsKHR(As<VkPhysicalDevice>(RendererContext::GetPhysicalDevice()), mContext.surface, &surfaceFormatCount, mContext.surfaceFormats.data()));
+	VK_CHECK(vkGetPhysicalDeviceSurfaceFormatsKHR(As<VkPhysicalDevice>(RendererContext::GetPhysicalDevice()), As<VkSurface>(mSurface), &surfaceFormatCount, mContext.surfaceFormats.data()));
 
 	mContext.imageFormat = []()
 	{
@@ -210,7 +266,7 @@ void Swapchain::InvalidateAndCreate()
 	}();
 
 	VkSurfaceCapabilitiesKHR surfaceCapabilities;
-	VK_CHECK(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(As<VkPhysicalDevice>(RendererContext::GetPhysicalDevice()), mContext.surface, &surfaceCapabilities));
+	VK_CHECK(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(As<VkPhysicalDevice>(RendererContext::GetPhysicalDevice()), As<VkSurface>(mSurface), &surfaceCapabilities));
 
 	if (surfaceCapabilities.minImageCount <= 3 && (surfaceCapabilities.maxImageCount >= 3 || surfaceCapabilities.maxImageCount == 0) && mProperties.tripleBufferingEnabled)
 	{
@@ -242,7 +298,7 @@ void Swapchain::InvalidateAndCreate()
 
 	// Create swapchain
 	VkSwapchainCreateInfoKHR swapchainCreateInfo{ VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR };
-	swapchainCreateInfo.surface = mContext.surface;
+	swapchainCreateInfo.surface = As<VkSurface>(mSurface);
 	swapchainCreateInfo.minImageCount = mProperties.maxFramesInFlight;
 	swapchainCreateInfo.imageColorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
 	swapchainCreateInfo.imageExtent = imageExtent;
@@ -282,12 +338,12 @@ void Swapchain::InvalidateAndCreate()
 	swapchainCreateInfo.clipped = VK_TRUE;
 	swapchainCreateInfo.imageArrayLayers = 1;
 	swapchainCreateInfo.imageFormat = mContext.imageFormat;
-	swapchainCreateInfo.oldSwapchain = mContext.handle;
+	swapchainCreateInfo.oldSwapchain = As<VkSwapchainKHR>(mHandle);
 	VkSwapchainKHR newSwapchain;
 	VK_CHECK(vkCreateSwapchainKHR(VulkanDevice, &swapchainCreateInfo, nullptr, &newSwapchain));
 
 	// Destroy swapchain
-	if (mContext.handle != VK_NULL_HANDLE)
+	if (As<VkSwapchainKHR>(mHandle) != VK_NULL_HANDLE)
 	{
 		for (uint32_t i = 0; i < mContext.framebuffers.size(); i++)
 		{
@@ -296,16 +352,16 @@ void Swapchain::InvalidateAndCreate()
 		}
 		mContext.framebuffers.clear();
 		mContext.imageViews.clear();
-		vkDestroyRenderPass(VulkanDevice, mContext.renderPass, nullptr);
-		vkDestroySwapchainKHR(VulkanDevice, mContext.handle, nullptr);
+		vkDestroyRenderPass(VulkanDevice, As<VkRenderPass>(mRenderPass), nullptr);
+		vkDestroySwapchainKHR(VulkanDevice, As<VkSwapchainKHR>(mHandle), nullptr);
 	}
-	mContext.handle = newSwapchain;
+	mHandle = newSwapchain;
 
 	uint32_t swapchainImageCount;
-	VK_CHECK(vkGetSwapchainImagesKHR(VulkanDevice, mContext.handle, &swapchainImageCount, nullptr));
+	VK_CHECK(vkGetSwapchainImagesKHR(VulkanDevice, As<VkSwapchainKHR>(mHandle), &swapchainImageCount, nullptr));
 
 	mContext.images.resize(swapchainImageCount);
-	VK_CHECK(vkGetSwapchainImagesKHR(VulkanDevice, mContext.handle, &swapchainImageCount, mContext.images.data()));
+	VK_CHECK(vkGetSwapchainImagesKHR(VulkanDevice, As<VkSwapchainKHR>(mHandle), &swapchainImageCount, mContext.images.data()));
 
 	// Create image views
 	mContext.imageViews.resize(swapchainImageCount);
@@ -370,8 +426,8 @@ void Swapchain::InvalidateAndCreate()
 	renderPassCreateInfo.dependencyCount = 1;
 	renderPassCreateInfo.pDependencies = &subpassDependency;
 
-	VK_CHECK(vkCreateRenderPass(VulkanDevice, &renderPassCreateInfo, nullptr, &mContext.renderPass));
-	mContext.currentFrame.swapchainRenderPass = mContext.renderPass;
+	VK_CHECK(vkCreateRenderPass(VulkanDevice, &renderPassCreateInfo, nullptr, As<VkRenderPass*>(&mRenderPass)));
+	mContext.currentFrame.swapchainRenderPass = As<VkRenderPass>(mRenderPass);
 
 	// Create framebuffer
 	mContext.framebuffers.resize(swapchainImageCount);
@@ -379,7 +435,7 @@ void Swapchain::InvalidateAndCreate()
 	VkFramebufferCreateInfo framebufferCreateInfo{ VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO };
 	framebufferCreateInfo.width = mProperties.width;
 	framebufferCreateInfo.height = mProperties.height;
-	framebufferCreateInfo.renderPass = mContext.renderPass;
+	framebufferCreateInfo.renderPass = As<VkRenderPass>(mRenderPass);
 	framebufferCreateInfo.attachmentCount = 1;
 	framebufferCreateInfo.layers = 1;
 	for (uint32_t i = 0; i < swapchainImageCount; i++)

@@ -9,7 +9,7 @@
 
 namespace Gleam {
 
-#define VK_CHECK(x) {VkResult result = x;\
+#define VK_CHECK(x) {VkResult result = (x);\
 					GLEAM_ASSERT(result == VK_SUCCESS, VkResultToString(x));}
 
 #define VulkanDevice As<VkDevice>(RendererContext::GetDevice())
