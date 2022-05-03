@@ -24,6 +24,7 @@ class Buffer : public GraphicsObject
 public:
 
 	Buffer(uint32_t size, BufferUsage usage);
+    Buffer(const void* data, uint32_t size, BufferUsage usage);
 	~Buffer();
 
 	void SetData(const void* data, uint32_t offset, uint32_t size) const;
@@ -55,6 +56,12 @@ public:
 	{
 
 	}
+    
+    VertexBuffer(const TArray<T>& contents)
+        : mCount(contents.size()), Buffer(contents.data(), contents.size() * sizeof(T), BufferUsage::StorageBuffer)
+    {
+
+    }
 
 	~VertexBuffer() = default;
 

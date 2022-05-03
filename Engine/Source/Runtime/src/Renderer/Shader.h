@@ -2,7 +2,7 @@
 
 namespace Gleam {
 
-enum class ShaderType
+enum class ShaderStage
 {
 	Vertex,
 	Fragment,
@@ -31,6 +31,8 @@ struct GraphicsShader
 {
 	Ref<Shader> vertexShader;
 	Ref<Shader> fragmentShader;
+    
+    bool operator==(const GraphicsShader&) const = default;
 };
 
 using ComputeShader = Ref<Shader>;

@@ -1,5 +1,12 @@
 #pragma once
 
+#if defined(__METAL_VERSION__)
+#include <metal_stdlib>
+#include <simd/simd.h>
+#include <metal_math>
+using namespace metal;
+#endif
+
 namespace Gleam {
 
 #if defined(__HLSL_VERSION)
@@ -19,6 +26,12 @@ struct Vertex
 	Vector3 normal;
 	Vector2 texCoord;
 };
+
+struct ForwardPassFragmentUniforms
+{
+    Vector4 color;
+};
+    
 #pragma pack(pop)
 
 } // namespace Gleam

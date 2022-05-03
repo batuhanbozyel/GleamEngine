@@ -2,6 +2,12 @@
 
 namespace Gleam {
 
+enum class PipelineBindPoint
+{
+    Graphics,
+    Compute
+};
+    
 enum class BlendOp
 {
     Add,
@@ -117,6 +123,7 @@ struct PipelineStateDescriptor
     StencilState stencilState;
     CullMode cullingMode = CullMode::Off;
 	PrimitiveTopology topology = PrimitiveTopology::Triangles;
+    PipelineBindPoint bindPoint = PipelineBindPoint::Graphics;
     bool alphaToCoverage = false;
 
 	bool operator==(const PipelineStateDescriptor&) const = default;

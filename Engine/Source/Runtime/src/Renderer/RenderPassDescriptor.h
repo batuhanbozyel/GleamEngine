@@ -26,12 +26,17 @@ struct AttachmentDescriptor
 	TextureFormat format = TextureFormat::None;
 	AttachmentLoadAction loadAction = AttachmentLoadAction::Load;
 	AttachmentStoreAction storeAction = AttachmentStoreAction::Store;
+    bool swapchainTarget = false;
+    
+    bool operator==(const AttachmentDescriptor&) const = default;
 };
 
 struct SubpassDescriptor
 {
 	TArray<uint32_t> colorAttachments;
 	TArray<uint32_t> inputAttachments;
+    
+    bool operator==(const SubpassDescriptor&) const = default;
 };
 
 struct RenderPassDescriptor
@@ -42,6 +47,8 @@ struct RenderPassDescriptor
 	int depthAttachmentIndex = -1;
 	uint32_t samples = 1;
 	uint32_t mipLevels = 0;
+    
+    bool operator==(const RenderPassDescriptor&) const = default;
 };
 
 } // namespace Gleam

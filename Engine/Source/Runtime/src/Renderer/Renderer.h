@@ -16,9 +16,12 @@ public:
 	static void BeginFrame();
 
 	static void EndFrame();
-
-	static void ClearScreen(const Color& color);
-
+    
+    static void SetClearColor(const Color& color)
+    {
+        mClearColor = color;
+    }
+    
 	/**
 	* Renderer specific implementations
 	*/
@@ -26,6 +29,10 @@ public:
 	virtual ~Renderer() = default;
 
 	virtual void Render() = 0;
+    
+protected:
+    
+    static inline Color mClearColor{0.1f, 0.1f, 0.1f, 1.0f};
 
 };
 

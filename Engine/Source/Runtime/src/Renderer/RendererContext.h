@@ -13,10 +13,6 @@ public:
 
 	static void Destroy();
 
-	static NativeGraphicsHandle GetEntryPoint();
-
-	static NativeGraphicsHandle GetDevice();
-
 	static NativeGraphicsHandle GetPhysicalDevice();
 
 	static NativeGraphicsHandle GetGraphicsQueue();
@@ -33,6 +29,11 @@ public:
 
 	static uint32_t GetMemoryTypeForProperties(uint32_t memoryTypeBits, uint32_t properties);
 
+    static NativeGraphicsHandle GetDevice()
+    {
+        return mDevice;
+    }
+    
 	static const Scope<Swapchain>& GetSwapchain()
 	{
 		return mSwapchain;
@@ -49,6 +50,8 @@ public:
 	}
 
 private:
+    
+    static inline NativeGraphicsHandle mDevice = nullptr;
     
 	static inline Scope<Swapchain> mSwapchain = nullptr;
 

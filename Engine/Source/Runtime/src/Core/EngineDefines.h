@@ -35,7 +35,12 @@ constexpr inline T As(P p)
 	return reinterpret_cast<T>(p);
 }
 
+#ifdef USE_VULKAN_RENDERER
 using NativeGraphicsHandle = void*;
+#else
+#include <objc/objc-runtime.h>
+using NativeGraphicsHandle = id;
+#endif
 
 #define ApplicationInstance Gleam::Application::GetInstance()
 
@@ -46,4 +51,10 @@ using NativeGraphicsHandle = void*;
 
 #ifdef USE_VULKAN_RENDERER
 #define VULKAN_API_VERSION VK_API_VERSION_1_1
+#endif
+
+#ifdef __OBJC__
+#define OBJC_CLASS(name) @class name
+#else
+#define OBJC_CLASS(name) typedef struct objc_object name
 #endif

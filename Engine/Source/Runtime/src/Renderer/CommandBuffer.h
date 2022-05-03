@@ -2,8 +2,15 @@
 
 namespace Gleam {
 
+class Buffer;
+class RenderPass;
 class IndexBuffer;
-class GraphicsPipeline;
+    
+struct GraphicsShader;
+struct RenderPassDescriptor;
+struct PipelineStateDescriptor;
+    
+enum class ShaderStage;
 
 class CommandBuffer
 {
@@ -12,23 +19,40 @@ public:
 	CommandBuffer();
 	~CommandBuffer();
 
-	void Begin() const;
+	void BeginRenderPass(const RenderPassDescriptor& renderPassDesc, const PipelineStateDescriptor& pipelineDesc, const GraphicsShader& program) const;
 
-	void End() const;
+	void EndRenderPass() const;
 
 	void SetViewport(uint32_t width, uint32_t height) const;
-
-	void BindPipeline(const GraphicsPipeline& pipeline) const;
+    
+    void SetVertexBuffer(const Buffer& buffer, uint32_t index = 0, uint32_t offset = 0) const;
+    
+    void SetFragmentBuffer(const Buffer& buffer, uint32_t index = 0, uint32_t offset = 0) const;
+    
+    template<typename T>
+    void SetPushConstant(const T& t, ShaderStage stage, uint32_t index = 0) const
+    {
+        SetPushConstant(&t, sizeof(T), stage, index);
+    }
+    
+    void SetPushConstant(const void* data, uint32_t size, ShaderStage stage, uint32_t index) const;
 
 	void Draw(uint32_t vertexCount, uint32_t instanceCount = 1, uint32_t baseVertex = 0, uint32_t baseInstance = 0) const;
 
 	void DrawIndexed(const IndexBuffer& indexBuffer, uint32_t instanceCount = 1, uint32_t firstIndex = 0, uint32_t baseVertex = 0, uint32_t baseInstance = 0) const;
+    
+    void Begin() const;
+    
+    void Commit() const;
+    
+    void Present() const;
 
 private:
-
-	NativeGraphicsHandle GetCurrentCommandBuffer() const;
-
-	TArray<NativeGraphicsHandle> mCommandBuffers;
+    
+    void ApplyRenderPipeline(const RenderPassDescriptor& renderPassDesc, const PipelineStateDescriptor& pipelineDesc, const GraphicsShader& program) const;
+    
+    class Impl;
+    Scope<Impl> mHandle;
     
 };
 

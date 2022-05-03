@@ -1,8 +1,11 @@
 #pragma once
 #include "RendererConfig.h"
 #include "TextureFormat.h"
+#include "CommandBuffer.h"
 
 namespace Gleam {
+
+struct Version;
 
 #ifdef USE_METAL_RENDERER
 struct MetalFrameObject;
@@ -12,11 +15,11 @@ struct VulkanFrameObject;
 using FrameObject = VulkanFrameObject;
 #endif
 
-class Swapchain
+class Swapchain : public GraphicsObject
 {
 public:
 
-	Swapchain(const RendererProperties& props);
+	Swapchain(const TString& appName, const Version& appVersion, const RendererProperties& props);
 	~Swapchain();
 
 	void InvalidateAndCreate();
@@ -24,21 +27,19 @@ public:
 	const FrameObject& AcquireNextFrame();
 	void Present();
 
-	TextureFormat GetFormat() const;
-
 	NativeGraphicsHandle GetGraphicsCommandPool(uint32_t index) const;
-	NativeGraphicsHandle GetSurface() const;
-	NativeGraphicsHandle GetRenderPass() const;
-	const FrameObject& GetCurrentFrame() const;
+    NativeGraphicsHandle GetLayer() const;
+    TextureFormat GetFormat() const;
+    const FrameObject& GetCurrentFrame() const;
+    
+	const CommandBuffer& GetCommandBuffer() const
+    {
+        return *mCommandBuffer;
+    }
 
 	uint32_t GetCurrentFrameIndex() const
 	{
 		return mCurrentFrameIndex;
-	}
-
-	bool MultisampleEnabled() const
-	{
-		return mProperties.sampleCount > 1;
 	}
 
 	const RendererProperties& GetProperties() const
@@ -51,6 +52,9 @@ private:
 	uint32_t mCurrentFrameIndex = 0;
 
 	RendererProperties mProperties;
+    
+    void* mSurface = nullptr;
+    Scope<CommandBuffer> mCommandBuffer = nullptr;
 
 };
 

@@ -12,7 +12,7 @@ public:
 	~DebugRenderer();
 
 	virtual void Render() override;
-
+    
 };
 
 } // namespace Gleam
