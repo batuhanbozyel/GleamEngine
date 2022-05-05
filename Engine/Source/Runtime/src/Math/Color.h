@@ -6,16 +6,16 @@ struct Color32;
 
 struct Color : public Vector4
 {
-	static const Color Clear;
-	static const Color Black;
-	static const Color White;
-	static const Color Gray;
-	static const Color Red;
-	static const Color Green;
-	static const Color Blue;
-	static const Color Cyan;
-	static const Color Magenta;
-	static const Color Yellow;
+	static const Color clear;
+	static const Color black;
+	static const Color white;
+	static const Color gray;
+	static const Color red;
+	static const Color green;
+	static const Color blue;
+	static const Color cyan;
+	static const Color magenta;
+	static const Color yellow;
 
 	constexpr float MaxComponent() const
 	{
@@ -24,17 +24,27 @@ struct Color : public Vector4
 
 	MATH_INLINE static constexpr Color HSVToRGB(float h, float s, float v)
 	{
-		constexpr Vector4 K = Vector4(1.0f, 2.0f / 3.0f, 1.0f / 3.0f, 3.0f);
-
-		return Math::Mix(Vector3(K.x), Math::Clamp(Math::Abs(Math::Fract(Vector3(K.x + h, K.y + h, K.z + h)) * 6.0f - K.w) - K.x, 0.0f, 1.0f), s) * v;
+		return Math::Mix(Vector3(1.0f), Math::Clamp(Math::Abs(Math::Fract(Vector3(h + 1.0f, h + 2.0f / 3.0f, h + 1.0f / 3.0f)) * 6.0f - 3.0f) - 1.0f, 0.0f, 1.0f), s) * v;
 	}
 
 	MATH_INLINE static constexpr Color HSVToRGB(const Color& hsv)
 	{
-		constexpr Vector4 K = Vector4(1.0f, 2.0f / 3.0f, 1.0f / 3.0f, 3.0f);
-
-		return Math::Mix(Vector3(K.x), Math::Clamp(Math::Abs(Math::Fract(Vector3(K.x + hsv.x, K.y + hsv.x, K.z + hsv.x)) * 6.0f - K.w) - K.x, 0.0f, 1.0f), hsv.y) * hsv.z;
+		return Math::Mix(Vector3(1.0f), Math::Clamp(Math::Abs(Math::Fract(Vector3(hsv.x + 1.0f, hsv.x + 2.0f / 3.0f, hsv.x + 1.0f / 3.0f)) * 6.0f - 3.0f) - 1.0f, 0.0f, 1.0f), hsv.y) * hsv.z;
 	}
+    
+    MATH_INLINE static constexpr Color HSVToRGBSmooth(float h, float s, float v)
+    {
+        Vector3 rgb = Math::Clamp(Math::Abs(Math::Fract(Vector3(h + 1.0f, h + 2.0f / 3.0f, h + 1.0f / 3.0f)) * 6.0f - 3.0f) - 1.0f, 0.0f, 1.0f);
+        rgb = rgb * rgb * (Vector3(3.0f) - rgb * 2.0f);
+        return Math::Mix(Vector3(1.0f), rgb, s) * v;
+    }
+    
+    MATH_INLINE static constexpr Color HSVToRGBSmooth(const Color& hsv)
+    {
+        Vector3 rgb = Math::Clamp(Math::Abs(Math::Fract(Vector3(hsv.x + 1.0f, hsv.x + 2.0f / 3.0f, hsv.x + 1.0f / 3.0f)) * 6.0f - 3.0f) - 1.0f, 0.0f, 1.0f);
+        rgb = rgb * rgb * (Vector3(3.0f) - rgb * 2.0f);
+        return Math::Mix(Vector3(1.0f), rgb, hsv.y) * hsv.z;
+    }
 
 	MATH_INLINE static constexpr Color RGBToHSV(float r, float g, float b)
 	{

@@ -13,6 +13,8 @@ struct Quaternion
 		TArray<float, 4> value;
 	};
 
+    static const Quaternion identity;
+    
 	MATH_INLINE Vector3 EularAngles() const
 	{
 		return Vector3
@@ -21,11 +23,6 @@ struct Quaternion
 			Math::Asin(Math::Clamp(2.0f * (w * y - z * x), -1.0f, 1.0f)),
 			Math::Atan2(2.0f * (w * z + x * y), 1.0f - 2.0f * (y * y + z * z))
 		};
-	}
-
-	MATH_INLINE static constexpr Quaternion Identity()
-	{
-		return Quaternion(0.0f, 0.0f, 0.0f, 1.0f);
 	}
 
 	Quaternion() = default;
@@ -70,14 +67,8 @@ struct Matrix2
 		TArray<Vector2, 2> row;
 	};
 
-	MATH_INLINE static constexpr Matrix2 Identity()
-	{
-		return Matrix2
-		{
-			1.0f, 0.0f,
-			0.0f, 1.0f
-		};
-	}
+    static const Matrix2 zero;
+    static const Matrix2 identity;
 
 	Matrix2() = default;
 	constexpr Matrix2(Matrix2&&) = default;
@@ -122,16 +113,9 @@ struct Matrix3
 		TArray<float, 9> value;
 		TArray<Vector3, 3> row;
 	};
-
-	MATH_INLINE static constexpr Matrix3 Identity()
-	{
-		return Matrix3
-		{
-			1.0f, 0.0f,0.0f,
-			0.0f, 1.0f, 0.0f,
-			0.0f, 0.0f, 1.0f
-		};
-	}
+    
+    static const Matrix3 zero;
+    static const Matrix3 identity;
 
 	Matrix3() = default;
 	constexpr Matrix3(Matrix3&&) = default;
@@ -179,16 +163,8 @@ struct Matrix4
 		TArray<Vector4, 4> row;
 	};
 
-	MATH_INLINE static constexpr Matrix4 Identity()
-	{
-		return Matrix4
-		{
-			1.0f, 0.0f, 0.0f, 0.0f,
-			0.0f, 1.0f, 0.0f, 0.0f,
-			0.0f, 0.0f, 1.0f, 0.0f,
-			0.0f, 0.0f, 0.0f, 1.0f
-		};
-	}
+    static const Matrix4 zero;
+    static const Matrix4 identity;
 
 	Matrix4() = default;
 	constexpr Matrix4(Matrix4&&) = default;
@@ -291,6 +267,55 @@ struct Matrix4
 			0.0f,										0.0f,										0.0f,									1.0f
 		};
 	}
+    
+    MATH_INLINE static constexpr Matrix4 Frustum(float left, float right, float bottom, float top, float zNear, float zFar)
+    {
+        return Matrix4
+        {
+            2.0f * zNear / (right - left),  0.0f,                           (right + left) / (right - left),    0.0f,
+            0.0f,                           2.0f * zNear / (top - bottom),  (top + bottom) / (top - bottom),    0.0f,
+            0.0f,                           0.0f,                           (zFar + zNear) / (zNear - zFar),    (2.0f * zFar * zNear) / (zNear - zFar),
+            0.0f,                           0.0f,                           -1.0f,                              0.0f
+        };
+    }
+    
+    MATH_INLINE static constexpr Matrix4 LookAt(const Vector3& from, const Vector3& to, const Vector3& up)
+    {
+        Vector3 n = Math::Normalize(to - from);
+        Vector3 u = Math::Normalize(Math::Cross(n, up));
+        Vector3 v = Math::Cross(u, n);
+        
+        return Matrix4
+        {
+            u.x,    u.y,    u.z,    Math::Dot(-to, u),
+            v.x,    v.y,    v.z,    Math::Dot(-to, v),
+            n.x,    n.y,    n.z,    Math::Dot(-to, n),
+            0.0f,   0.0f,   0.0f,   1.0f
+        };
+    }
+    
+    MATH_INLINE static constexpr Matrix4 Ortho(float left, float right, float bottom, float top, float zNear, float zFar)
+    {
+        return Matrix4
+        {
+            2.0f / (right - left),  0.0f,                   0.0f,                   -(right + left) / (right - left),
+            0.0f,                   2.0f / (top - bottom),  0.0f,                   -(top + bottom) / (top - bottom),
+            0.0f,                   0.0f,                   -2.0f / (zFar - zNear), -(zFar + zNear) / (zFar - zNear),
+            0.0f,                   0.0f,                   0.0f,                   1.0f
+        };
+    }
+    
+    MATH_INLINE static constexpr Matrix4 Perspective(float fov, float aspect, float zNear, float zFar)
+    {
+        float focalLength = Math::Tan(Math::Deg2Rad(fov / 2.0f));
+        return Matrix4
+        {
+            1.0f / (focalLength * aspect),  0.0f,                   0.0f,                               0.0f,
+            0.0f,                           1.0f / focalLength,     0.0f,                               0.0f,
+            0.0f,                           0.0f,                   (zFar + zNear) / (zNear - zFar),   (2.0f * zFar * zNear) / (zNear - zFar),
+            0.0f,                           0.0f,                   -1.0f,                              0.0f
+        };
+    }
 };
 
 } // namespace Gleam

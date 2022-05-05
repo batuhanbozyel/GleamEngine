@@ -49,6 +49,15 @@ struct Vector2Base
 	{
 		return value[i];
 	}
+    
+    MATH_INLINE constexpr Vector2Base operator-() const
+    {
+        return Vector2Base
+        {
+            -x,
+            -y
+        };
+    }
 
 	MATH_INLINE constexpr Vector2Base operator*(T val) const
 	{
@@ -228,6 +237,16 @@ struct Vector3Base
 		return value[i];
 	}
 
+    MATH_INLINE constexpr Vector3Base operator-() const
+    {
+        return Vector3Base
+        {
+            -x,
+            -y,
+            -z
+        };
+    }
+    
 	MATH_INLINE constexpr Vector3Base operator*(T val) const
 	{
 		return Vector3Base
@@ -422,6 +441,17 @@ struct Vector4Base
 		return value[i];
 	}
 
+    MATH_INLINE constexpr Vector4Base operator-() const
+    {
+        return Vector4Base
+        {
+            -x,
+            -y,
+            -z,
+            -w
+        };
+    }
+    
 	MATH_INLINE constexpr Vector4Base operator*(T val) const
 	{
 		return Vector4Base
@@ -899,6 +929,71 @@ MATH_INLINE constexpr Vector4Base<T> Clamp(const  Vector4Base<T>& value, T min, 
 		Min(Max(value.z, min), max),
 		Min(Max(value.w, min), max)
 	};
+}
+
+template<typename T>
+MATH_INLINE constexpr T Dot(const Vector2Base<T>& vec1, const Vector2Base<T>& vec2)
+{
+    return vec1.x * vec2.x + vec1.y * vec2.y;
+}
+    
+template<typename T>
+MATH_INLINE constexpr T Dot(const Vector3Base<T>& vec1, const Vector3Base<T>& vec2)
+{
+    return vec1.x * vec2.x + vec1.y * vec2.y + vec1.z * vec2.z;
+}
+
+template<typename T>
+MATH_INLINE constexpr T Dot(const Vector4Base<T>& vec1, const Vector4Base<T>& vec2)
+{
+    return vec1.x * vec2.x + vec1.y * vec2.y + vec1.z * vec2.z + vec1.w * vec2.w;
+}
+    
+template<typename T>
+MATH_INLINE constexpr T Length(const Vector2Base<T>& vec)
+{
+    return Dot(vec, vec);
+}
+    
+template<typename T>
+MATH_INLINE constexpr T Length(const Vector3Base<T>& vec)
+{
+    return Dot(vec, vec);
+}
+
+template<typename T>
+MATH_INLINE constexpr T Length(const Vector4Base<T>& vec)
+{
+    return Dot(vec, vec);
+}
+
+template<typename T>
+MATH_INLINE constexpr Vector2Base<T> Normalize(const Vector2Base<T>& vec)
+{
+    return vec / Length(vec);
+}
+    
+template<typename T>
+MATH_INLINE constexpr Vector3Base<T> Normalize(const Vector3Base<T>& vec)
+{
+    return vec / Length(vec);
+}
+
+template<typename T>
+MATH_INLINE constexpr Vector4Base<T> Normalize(const Vector4Base<T>& vec)
+{
+    return vec / Length(vec);
+}
+
+template<typename T>
+MATH_INLINE constexpr Vector3Base<T> Cross(const Vector3Base<T>& vec1, const Vector3Base<T>& vec2)
+{
+    return Vector3Base
+    {
+        (vec1.y * vec2.z - vec2.y * vec1.z),
+        (vec1.z * vec2.x - vec2.z * vec1.x),
+        (vec1.x * vec2.y - vec2.x * vec1.y)
+    };
 }
 
 } // namespace Math
