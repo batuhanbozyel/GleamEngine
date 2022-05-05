@@ -64,6 +64,11 @@ public:
     }
 
 	~VertexBuffer() = default;
+    
+    void SetData(const T* data, uint32_t offset, uint32_t count) const
+    {
+        Buffer::SetData(data, offset, sizeof(T) * count);
+    }
 
 	uint32_t GetCount() const
 	{
@@ -84,12 +89,23 @@ class IndexBuffer : public Buffer
 public:
 
 	IndexBuffer(uint32_t count, IndexType indexType = IndexType::UINT32)
-		: mCount(count), mIndexType(indexType), Buffer(count* SizeOfIndexType(indexType), BufferUsage::IndexBuffer)
+		: mCount(count), mIndexType(indexType), Buffer(count * SizeOfIndexType(indexType), BufferUsage::IndexBuffer)
 	{
-
+        
 	}
+    
+    IndexBuffer(const void* data, uint32_t count, IndexType indexType = IndexType::UINT32)
+        : mCount(count), mIndexType(indexType), Buffer(data, count * SizeOfIndexType(indexType), BufferUsage::IndexBuffer)
+    {
+        
+    }
 
 	~IndexBuffer() = default;
+    
+    void SetData(const void* data, uint32_t offset, uint32_t count) const
+    {
+        Buffer::SetData(data, offset, SizeOfIndexType(mIndexType) * count);
+    }
 
 	uint32_t GetCount() const
 	{

@@ -20,7 +20,7 @@ enum class AttachmentStoreAction
 
 struct AttachmentDescriptor
 {
-	Color clearColor = Color::Clear;
+	Color clearColor = Color::clear;
 	float clearDepth = 1.0f;
 	uint32_t clearStencil = 0;
 	TextureFormat format = TextureFormat::None;
