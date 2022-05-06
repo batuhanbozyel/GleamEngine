@@ -10,7 +10,7 @@ constexpr float PI_4 = 0.78539816339f;
 constexpr float TWO_PI = 6.28318530718f;
 constexpr float Epsilon = 1e-5f;
 constexpr float BigEpsilon = 1e-2f;
-constexpr double SmallEpsilon = 1e-9f;
+constexpr double SmallEpsilon = 1e-9;
 constexpr float Infinity = std::numeric_limits<float>::max();
 constexpr float NegativeInfinity = std::numeric_limits<float>::lowest();
 
