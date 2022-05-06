@@ -3,11 +3,11 @@
 
 #ifdef GDEBUG
 	#if defined(PLATFORM_WINDOWS)
-		#define DEBUGBREAK() __debugbreak()
+		#define DEBUGBREAK() (__nop(), __debugbreak())
 
 	#elif defined(PLATFORM_LINUX) || defined(PLATFORM_MACOS)
 		#include <signal.h>
-		#define DEBUGBREAK() raise(SIGTRAP)
+		#define DEBUGBREAK() (raise(SIGTRAP))
 
 	#else
 		#error "Platform doesn't support debugbreak yet!"
@@ -25,7 +25,25 @@
 	#define GLEAM_ASSERT(...)
 #endif
 
-#define MATH_INLINE [[nodiscard]] inline
+#ifdef USE_VULKAN_RENDERER
+#define VULKAN_API_VERSION VK_API_VERSION_1_1
+using NativeGraphicsHandle = void*;
+#else
+#include <objc/objc-runtime.h>
+using NativeGraphicsHandle = id;
+#endif
+
+#ifdef GDEBUG
+#define FORCEINLINE inline
+#else
+    #ifdef PLATFORM_WINDOWS
+    #define FORCEINLINE __forceinline
+    #else
+    #define FORCEINLINE inline __attribute__ ((always_inline))
+    #endif
+#endif
+
+#define MATH_INLINE [[nodiscard]] FORCEINLINE
 #define PASS_BY_VALUE typename = std::enable_if_t<(sizeof(T) <= sizeof(int))>
 #define PASS_BY_REFERENCE typename = std::enable_if_t<(sizeof(T) > sizeof(int))>
 
@@ -35,13 +53,6 @@ constexpr inline T As(P p)
 	return reinterpret_cast<T>(p);
 }
 
-#ifdef USE_VULKAN_RENDERER
-using NativeGraphicsHandle = void*;
-#else
-#include <objc/objc-runtime.h>
-using NativeGraphicsHandle = id;
-#endif
-
 #define ApplicationInstance Gleam::Application::GetInstance()
 
 #define GLEAM_ENGINE_MAJOR_VERSION 1
@@ -49,12 +60,14 @@ using NativeGraphicsHandle = id;
 #define GLEAM_ENGINE_PATCH_VERSION 0
 #define GLEAM_ENGINE_VERSION constexpr Gleam::Version(GLEAM_ENGINE_MAJOR_VERSION, GLEAM_ENGINE_MINOR_VERSION, GLEAM_ENGINE_PATCH_VERSION)
 
-#ifdef USE_VULKAN_RENDERER
-#define VULKAN_API_VERSION VK_API_VERSION_1_1
-#endif
-
 #ifdef __OBJC__
 #define OBJC_CLASS(name) @class name
 #else
 #define OBJC_CLASS(name) typedef struct objc_object name
 #endif
+
+#define GLEAM_NONCOPYABLE(TypeName) \
+    TypeName(TypeName&&) = delete; \
+    TypeName(const TypeName&) = delete; \
+    TypeName& operator=(const TypeName&) = delete; \
+    TypeName& operator=(TypeName&&) = delete
