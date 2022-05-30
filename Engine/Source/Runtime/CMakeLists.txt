@@ -19,7 +19,7 @@ if (WIN32)
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/stb
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/ImGuizmo
-        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/entt/include
+        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/entt/single_include
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/tinyobjloader
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/OpenFBX/src
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/cgltf
@@ -41,7 +41,7 @@ else ()
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/stb
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/ImGuizmo
-        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/entt/include
+        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/entt/single_include
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/tinyobjloader
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/OpenFBX/src
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/cgltf

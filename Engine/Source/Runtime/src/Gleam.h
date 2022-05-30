@@ -17,9 +17,18 @@
 #include "Math/Matrix4.h"
 #include "Math/Color.h"
 
+#include "Renderer/Camera.h"
 #include "Renderer/GraphicsObject.h"
 #include "Renderer/Renderer.h"
 #include "Renderer/CommandBuffer.h"
 #include "Renderer/ShaderLibrary.h"
 
+#include "Core/Events/ApplicationEvent.h"
+#include "Core/Events/WindowEvent.h"
+#include "Core/Events/MouseEvent.h"
+#include "Core/Events/KeyEvent.h"
 #include "Core/Time.h"
+#include "IO/Log.h"
+
+#include "Scene/GameObject.h"
+#include "Scene/Component.h"

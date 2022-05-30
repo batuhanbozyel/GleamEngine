@@ -70,3 +70,5 @@ constexpr inline T As(P p)
     TypeName(const TypeName&) = delete; \
     TypeName& operator=(const TypeName&) = delete; \
     TypeName& operator=(TypeName&&) = delete
+
+#define COMPONENT_BODY() using Component::Component
