@@ -28,7 +28,6 @@ if (WIN32)
     )
 
     set(LIB_LINKS_RUNTIME
-        ${CMAKE_SOURCE_DIR}/bin/$<CONFIG>/fmt.lib
         ${CMAKE_SOURCE_DIR}/bin/$<CONFIG>/volk.lib
         ${CMAKE_SOURCE_DIR}/bin/$<CONFIG>/imgui.lib
     )
@@ -51,7 +50,6 @@ else ()
     )
 
     set(LIB_LINKS_RUNTIME
-        ${CMAKE_SOURCE_DIR}/bin/$<CONFIG>/libfmt.a
         ${CMAKE_SOURCE_DIR}/bin/$<CONFIG>/libimgui.a
     )
     
@@ -61,9 +59,9 @@ list(APPEND SOURCE_FILES ${SHADER_FILES})
 add_library(Runtime STATIC ${SOURCE_FILES})
 
 if (NOT APPLE)
-    add_dependencies(Runtime fmt imgui volk)
+    add_dependencies(Runtime imgui volk)
 else()
-    add_dependencies(Runtime fmt imgui)
+    add_dependencies(Runtime imgui)
     set_source_files_properties(${SOURCE_FILES} PROPERTIES COMPILE_FLAGS "-x objective-c++")
     set_target_properties(Runtime PROPERTIES MACOSX_BUNDLE YES XCODE_ATTRIBUTE_CLANG_ENABLE_OBJC_ARC YES)
 endif()

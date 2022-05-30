@@ -52,8 +52,6 @@ project(GleamEngine)
     set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin/$<CONFIGURATION>)
 
     # Set defaults preventing destination file conflicts
-    set(FMT_DEBUG_POSTFIX ""
-    CACHE STRING "Name suffix for debug builds" FORCE)
     set(SDL_CMAKE_DEBUG_POSTFIX ""
     CACHE STRING "Name suffix for debug builds" FORCE)
 
