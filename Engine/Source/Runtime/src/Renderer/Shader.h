@@ -29,13 +29,13 @@ private:
 
 struct GraphicsShader
 {
-	Ref<Shader> vertexShader;
-	Ref<Shader> fragmentShader;
+	RefCounted<Shader> vertexShader;
+	RefCounted<Shader> fragmentShader;
     
     bool operator==(const GraphicsShader&) const = default;
 };
 
-using ComputeShader = Ref<Shader>;
+using ComputeShader = RefCounted<Shader>;
 
 
 } // namespace Gleam

@@ -18,17 +18,17 @@ public:
 
 	void Run();
 
-	void PushLayer(const Ref<Layer>& layer);
+	void PushLayer(const RefCounted<Layer>& layer);
 
-	void PushOverlay(const Ref<Layer>& overlay);
+	void PushOverlay(const RefCounted<Layer>& overlay);
 
 	void RemoveLayer(uint32_t index);
 
 	void RemoveOverlay(uint32_t index);
 
-	void RemoveLayer(const Ref<Layer>& layer);
+	void RemoveLayer(const RefCounted<Layer>& layer);
 
-	void RemoveOverlay(const Ref<Layer>& overlay);
+	void RemoveOverlay(const RefCounted<Layer>& overlay);
 
 	const Window& GetActiveWindow() const
 	{
@@ -47,8 +47,8 @@ public:
 
 private:
 
-	TArray<Ref<Layer>> mLayerStack;
-	TArray<Ref<Layer>> mOverlays;
+	TArray<RefCounted<Layer>> mLayerStack;
+	TArray<RefCounted<Layer>> mOverlays;
 
 	SDL_Event mEvent;
 	Window* mActiveWindow;

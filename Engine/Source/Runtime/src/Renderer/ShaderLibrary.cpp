@@ -44,7 +44,7 @@ ComputeShader ShaderLibrary::CreateComputeShader(const TString& entryPoint)
 /************************************************************************/
 /*    CreateOrGetCachedShader                                           */
 /************************************************************************/
-Ref<Shader> ShaderLibrary::CreateOrGetCachedShader(const TString& entryPoint)
+RefCounted<Shader> ShaderLibrary::CreateOrGetCachedShader(const TString& entryPoint)
 {
 	const auto& shaderCacheIt = mShaderCache.find(entryPoint);
 	if (shaderCacheIt != mShaderCache.end())

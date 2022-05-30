@@ -194,13 +194,13 @@ Application::~Application()
 	sInstance = nullptr;
 }
 
-void Application::PushLayer(const Ref<Layer>& layer)
+void Application::PushLayer(const RefCounted<Layer>& layer)
 {
 	layer->OnAttach();
 	mLayerStack.push_back(layer);
 }
 
-void Application::PushOverlay(const Ref<Layer>& overlay)
+void Application::PushOverlay(const RefCounted<Layer>& overlay)
 {
 	overlay->OnAttach();
 	mOverlays.push_back(overlay);
@@ -220,7 +220,7 @@ void Application::RemoveOverlay(uint32_t index)
 	mOverlays.erase(mOverlays.begin() + index);
 }
 
-void Application::RemoveLayer(const Ref<Layer>& layer)
+void Application::RemoveLayer(const RefCounted<Layer>& layer)
 {
 	auto layerIt = std::find(mLayerStack.begin(), mLayerStack.end(), layer);
 	if (layerIt != mLayerStack.end())
@@ -230,7 +230,7 @@ void Application::RemoveLayer(const Ref<Layer>& layer)
 	}
 }
 
-void Application::RemoveOverlay(const Ref<Layer>& overlay)
+void Application::RemoveOverlay(const RefCounted<Layer>& overlay)
 {
 	auto overlayIt = std::find(mOverlays.begin(), mOverlays.end(), overlay);
 	if (overlayIt != mOverlays.end())

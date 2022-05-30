@@ -19,9 +19,9 @@ public:
 
 private:
 
-	static Ref<Shader> CreateOrGetCachedShader(const TString& entryPoint);
+	static RefCounted<Shader> CreateOrGetCachedShader(const TString& entryPoint);
 
-	static inline HashMap<TString, Ref<Shader>> mShaderCache;
+	static inline HashMap<TString, RefCounted<Shader>> mShaderCache;
 
 };
 

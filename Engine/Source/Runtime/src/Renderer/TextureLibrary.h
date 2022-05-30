@@ -11,13 +11,13 @@ public:
 
 	static void Destroy();
 
-	static Ref<Texture2D> CreateTexture2D(const TextureFormat& format, bool multisample = false);
+	static RefCounted<Texture2D> CreateTexture2D(const TextureFormat& format, bool multisample = false);
 
 	static void ClearCache();
 
 private:
 
-	static Ref<Texture2D> mTexture2DCache;
+	static RefCounted<Texture2D> mTexture2DCache;
 
 };
 
