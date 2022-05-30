@@ -5,7 +5,6 @@
 #include "Window.h"
 #include "Events/WindowEvent.h"
 #include "Renderer/Renderer.h"
-#include "Renderer/DebugRenderer.h"
 
 using namespace Gleam;
 
