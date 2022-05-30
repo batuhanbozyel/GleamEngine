@@ -45,6 +45,8 @@ public:
         
         mDeltaTime = Math::Min(mFrameTime.count(), maxDeltaTime);
         mElapsedTime = std::chrono::duration_cast<Duration>(mLastFrameTime - mInitialTime).count() * timeScale;
+        
+        EventDispatcher<AppTickEvent>::Publish(AppTickEvent());
     }
     
     static void FixedStep()

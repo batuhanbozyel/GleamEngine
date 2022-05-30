@@ -40,6 +40,8 @@
 #include "Math/Matrix4.h"
 #include "Math/Color.h"
 
+#include "Renderer/GraphicsObject.h"
+
 #include "Core/Events/ApplicationEvent.h"
 #include "Core/Events/WindowEvent.h"
 #include "Core/Events/MouseEvent.h"
@@ -48,8 +50,6 @@
 
 #include "IO/Log.h"
 #include "IO/IOUtils.h"
-
-#include "Renderer/GraphicsObject.h"
 
 #ifdef PLATFORM_WINDOWS
 #include <windows.h>

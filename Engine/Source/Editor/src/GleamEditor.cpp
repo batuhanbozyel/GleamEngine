@@ -8,19 +8,19 @@ class GleamEditor : public Gleam::Application
 public:
 
 	GleamEditor(const Gleam::ApplicationProperties& props)
-		: Gleam::Application(props), mLayer(Gleam::CreateRef<Gleam::SceneLayer>())
+		: Gleam::Application(props)
 	{
-		PushLayer(mLayer);
+		
 	}
 
 	~GleamEditor()
 	{
-		RemoveLayer(mLayer);
+		
 	}
 
 private:
-
-	Gleam::Ref<Gleam::Layer> mLayer;
+    
+    
 
 };
 

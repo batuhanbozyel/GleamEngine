@@ -16,7 +16,6 @@ if (WIN32)
         ${Vulkan_INCLUDE_DIRS}
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/SDL2/include
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/fmt/include
-        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/glm
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/stb
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/ImGuizmo
@@ -39,7 +38,6 @@ else ()
         src
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/SDL2/include
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/fmt/include
-        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/glm
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/stb
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/ImGuizmo

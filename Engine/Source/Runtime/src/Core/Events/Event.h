@@ -1,4 +1,5 @@
 #pragma once
+#define EventHandlerFn(fn) [](auto&&... args) -> bool { return fn(); }
 
 namespace Gleam {
 
@@ -11,6 +12,9 @@ class EventDispatcher;
  */
 class Event
 {
+    template<class EventType>
+    friend class EventDispatcher;
+    
 public:
 
 	virtual ~Event() = default;
@@ -25,9 +29,7 @@ public:
 private:
 
 	bool mHandled = false;
-
-	template<class EventType>
-	friend class EventDispatcher;
+    
 };
 
 /**
@@ -38,7 +40,7 @@ template <class EventType>
 class EventDispatcher
 {
 public:
-
+    
 	using EventHandler = std::function<bool(EventType)>;
 
 	static void Publish(EventType e)
