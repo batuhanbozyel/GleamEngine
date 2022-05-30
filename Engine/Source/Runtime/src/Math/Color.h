@@ -22,31 +22,31 @@ struct Color : public Vector4
 		return Math::Max(r, Math::Max(g, Math::Max(b, a)));
 	}
 
-	MATH_INLINE static constexpr Color HSVToRGB(float h, float s, float v)
+	NO_DISCARD FORCE_INLINE static constexpr Color HSVToRGB(float h, float s, float v)
 	{
 		return Math::Mix(Vector3(1.0f), Math::Clamp(Math::Abs(Math::Fract(Vector3(h + 1.0f, h + 2.0f / 3.0f, h + 1.0f / 3.0f)) * 6.0f - 3.0f) - 1.0f, 0.0f, 1.0f), s) * v;
 	}
 
-	MATH_INLINE static constexpr Color HSVToRGB(const Color& hsv)
+	NO_DISCARD FORCE_INLINE static constexpr Color HSVToRGB(const Color& hsv)
 	{
 		return Math::Mix(Vector3(1.0f), Math::Clamp(Math::Abs(Math::Fract(Vector3(hsv.x + 1.0f, hsv.x + 2.0f / 3.0f, hsv.x + 1.0f / 3.0f)) * 6.0f - 3.0f) - 1.0f, 0.0f, 1.0f), hsv.y) * hsv.z;
 	}
     
-    MATH_INLINE static constexpr Color HSVToRGBSmooth(float h, float s, float v)
+    NO_DISCARD FORCE_INLINE static constexpr Color HSVToRGBSmooth(float h, float s, float v)
     {
         Vector3 rgb = Math::Clamp(Math::Abs(Math::Fract(Vector3(h + 1.0f, h + 2.0f / 3.0f, h + 1.0f / 3.0f)) * 6.0f - 3.0f) - 1.0f, 0.0f, 1.0f);
         rgb = rgb * rgb * (Vector3(3.0f) - rgb * 2.0f);
         return Math::Mix(Vector3(1.0f), rgb, s) * v;
     }
     
-    MATH_INLINE static constexpr Color HSVToRGBSmooth(const Color& hsv)
+    NO_DISCARD FORCE_INLINE static constexpr Color HSVToRGBSmooth(const Color& hsv)
     {
         Vector3 rgb = Math::Clamp(Math::Abs(Math::Fract(Vector3(hsv.x + 1.0f, hsv.x + 2.0f / 3.0f, hsv.x + 1.0f / 3.0f)) * 6.0f - 3.0f) - 1.0f, 0.0f, 1.0f);
         rgb = rgb * rgb * (Vector3(3.0f) - rgb * 2.0f);
         return Math::Mix(Vector3(1.0f), rgb, hsv.y) * hsv.z;
     }
 
-	MATH_INLINE static constexpr Color RGBToHSV(float r, float g, float b)
+	NO_DISCARD FORCE_INLINE static constexpr Color RGBToHSV(float r, float g, float b)
 	{
 		constexpr Vector4 K = Vector4(0.0f, -1.0f / 3.0f, 2.0f / 3.0f, -1.0f);
 
@@ -57,7 +57,7 @@ struct Color : public Vector4
 		return Color(Math::Abs(q.z + (q.w - q.y) / (6.0f * d + Math::Epsilon)), d / (q.x + Math::Epsilon), q.x);
 	}
 
-	MATH_INLINE static constexpr Color RGBToHSV(const Color& color)
+	NO_DISCARD FORCE_INLINE static constexpr Color RGBToHSV(const Color& color)
 	{
 		constexpr Vector4 K = Vector4(0.0f, -1.0f / 3.0f, 2.0f / 3.0f, -1.0f);
 
@@ -115,22 +115,22 @@ struct Color : public Vector4
 	}
 
 	// Operator overloads
-	inline constexpr Color& operator=(Color&&) = default;
-	inline constexpr Color& operator=(const Color&) = default;
+    FORCE_INLINE constexpr Color& operator=(Color&&) = default;
+    FORCE_INLINE constexpr Color& operator=(const Color&) = default;
 
-	inline constexpr Color& operator=(const Vector4& color)
+    FORCE_INLINE constexpr Color& operator=(const Vector4& color)
 	{
 		value = color.value;
 		return *this;
 	}
-	inline constexpr Color& operator=(Vector4&& color)
+    FORCE_INLINE constexpr Color& operator=(Vector4&& color)
 	{
 		value = std::move(color.value);
 		return *this;
 	}
 
-	MATH_INLINE constexpr operator Color32() const;
-	inline constexpr Color& operator=(const Color32&);
+	NO_DISCARD FORCE_INLINE constexpr operator Color32() const;
+	FORCE_INLINE constexpr Color& operator=(const Color32&);
 
 };
 
@@ -145,12 +145,12 @@ struct Color32
 
 	}
 
-	MATH_INLINE constexpr operator Color() const;
-	inline constexpr Color32& operator=(const Color&);
+	NO_DISCARD FORCE_INLINE constexpr operator Color() const;
+	FORCE_INLINE constexpr Color32& operator=(const Color&);
 
 };
 
-MATH_INLINE constexpr Color::operator Color32() const
+NO_DISCARD FORCE_INLINE constexpr Color::operator Color32() const
 {
 	return Color32
 	{
@@ -161,7 +161,7 @@ MATH_INLINE constexpr Color::operator Color32() const
 	};
 }
 
-MATH_INLINE constexpr Color32::operator Color() const
+NO_DISCARD FORCE_INLINE constexpr Color32::operator Color() const
 {
 	return Color
 	{
@@ -172,17 +172,17 @@ MATH_INLINE constexpr Color32::operator Color() const
 	};
 }
 
-inline constexpr Color& Color::operator=(const Color32& color)
+FORCE_INLINE constexpr Color& Color::operator=(const Color32& color)
 {
 	return *this = static_cast<Color>(color);
 }
 
-inline constexpr Color32& Color32::operator=(const Color& color)
+FORCE_INLINE constexpr Color32& Color32::operator=(const Color& color)
 {
 	return *this = static_cast<Color32>(color);
 }
 
-MATH_INLINE constexpr Color32 Mix(Color32 c0, Color32 c1, float a)
+NO_DISCARD FORCE_INLINE constexpr Color32 Mix(Color32 c0, Color32 c1, float a)
 {
 	return Color32
 	{

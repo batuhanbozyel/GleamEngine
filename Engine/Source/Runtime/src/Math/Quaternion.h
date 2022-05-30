@@ -15,7 +15,7 @@ struct Quaternion
 
     static const Quaternion identity;
     
-	MATH_INLINE Vector3 EularAngles() const
+	NO_DISCARD FORCE_INLINE Vector3 EularAngles() const
 	{
 		return Vector3
 		{
@@ -28,8 +28,8 @@ struct Quaternion
 	Quaternion() = default;
 	constexpr Quaternion(Quaternion&&) = default;
 	constexpr Quaternion(const Quaternion&) = default;
-	inline constexpr Quaternion& operator=(Quaternion&&) = default;
-	inline constexpr Quaternion& operator=(const Quaternion&) = default;
+    FORCE_INLINE constexpr Quaternion& operator=(Quaternion&&) = default;
+    FORCE_INLINE constexpr Quaternion& operator=(const Quaternion&) = default;
 
 	constexpr Quaternion(float w, float x, float y, float z)
 		: w(w), x(x), y(y), z(z)
@@ -51,11 +51,42 @@ struct Quaternion
 		y = c.x * s.y * c.z + s.x * c.y * s.z;
 		z = c.x * c.y * s.z - s.x * s.y * c.z;
 	}
-
-	MATH_INLINE constexpr float operator[](size_t i) const
+    
+    NO_DISCARD FORCE_INLINE constexpr float& operator[](size_t i)
+    {
+        return value[i];
+    }
+    
+    NO_DISCARD FORCE_INLINE constexpr const float& operator[](size_t i) const
 	{
 		return value[i];
 	}
+    
+    NO_DISCARD FORCE_INLINE constexpr Quaternion operator*(const Quaternion& rhs) const
+    {
+        return Quaternion
+        {
+            w * rhs.w - x * rhs.x - y * rhs.y - z * rhs.z,
+            x * rhs.w + w * rhs.x + y * rhs.z - z * rhs.y,
+            w * rhs.y - x * rhs.z + y * rhs.w + z * rhs.x,
+            w * rhs.z + x * rhs.y - y * rhs.x + z * rhs.w
+        };
+    }
+    
+    FORCE_INLINE constexpr Quaternion& operator*=(const Quaternion& rhs)
+    {
+        return *this = *this * rhs;
+    }
+    
+    Vector3 operator*(const Vector3& rhs) const
+    {
+        Vector3 qVec(x, y, z);
+        Vector3 cross1(Math::Cross(qVec, rhs));
+        Vector3 cross2(Math::Cross(qVec, cross1));
+
+        return rhs + 2.0f * (cross1 * w + cross2);
+    }
+    
 };
 
 } // namespace Gleam

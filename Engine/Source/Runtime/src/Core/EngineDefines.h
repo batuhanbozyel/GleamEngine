@@ -34,16 +34,16 @@ using NativeGraphicsHandle = id;
 #endif
 
 #ifdef GDEBUG
-#define FORCEINLINE inline
+#define FORCE_INLINE inline
 #else
     #ifdef PLATFORM_WINDOWS
-    #define FORCEINLINE __forceinline
+    #define FORCE_INLINE __forceinline
     #else
-    #define FORCEINLINE inline __attribute__ ((always_inline))
+    #define FORCE_INLINE inline __attribute__ ((always_inline))
     #endif
 #endif
 
-#define MATH_INLINE [[nodiscard]] FORCEINLINE
+#define NO_DISCARD [[nodiscard]]
 #define PASS_BY_VALUE typename = std::enable_if_t<(sizeof(T) <= sizeof(int))>
 #define PASS_BY_REFERENCE typename = std::enable_if_t<(sizeof(T) > sizeof(int))>
 
@@ -67,7 +67,6 @@ constexpr inline T As(P p)
 #endif
 
 #define GLEAM_NONCOPYABLE(TypeName) \
-    TypeName(TypeName&&) = delete; \
     TypeName(const TypeName&) = delete; \
     TypeName& operator=(const TypeName&) = delete; \
     TypeName& operator=(TypeName&&) = delete
