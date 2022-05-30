@@ -5,6 +5,7 @@ set(INCLUDE_DIRS_EDITOR
     ${CMAKE_SOURCE_DIR}/Engine/Source/Runtime/src
     ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/SDL2/include
     ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/fmt/include
+    ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/entt/single_include
 )
 
 file(GLOB_RECURSE SOURCE_FILES 
