@@ -83,7 +83,13 @@ const FrameObject& Swapchain::AcquireNextFrame()
 
 void Swapchain::Present()
 {
-    mCommandBuffer->Present();
+    [mCommandBuffer->GetHandle() addCompletedHandler:^(id<MTLCommandBuffer> commandBuffer)
+    {
+        dispatch_semaphore_signal(mContext.currentFrame.imageAcquireSemaphore);
+    }];
+    
+    [mCommandBuffer->GetHandle() presentDrawable:mContext.currentFrame.drawable];
+    
     mCommandBuffer->Commit();
 
     InvalidateAndCreate();

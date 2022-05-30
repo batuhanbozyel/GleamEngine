@@ -37,6 +37,11 @@ CommandBuffer::~CommandBuffer()
     mHandle->commandBuffer = nil;
 }
 
+NativeGraphicsHandle CommandBuffer::GetHandle() const
+{
+    return mHandle->commandBuffer;
+}
+
 void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, const PipelineStateDescriptor& pipelineDesc, const GraphicsShader& program) const
 {
     MTLRenderPassDescriptor* renderPass = [MTLRenderPassDescriptor renderPassDescriptor];
@@ -51,6 +56,10 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, 
             colorAttachmentDesc.loadAction = MTLLoadActionClear;
             colorAttachmentDesc.storeAction = MTLStoreActionStore;
             colorAttachmentDesc.texture = frame.drawable.texture;
+        }
+        else
+        {
+            // TODO: 
         }
     }
     mHandle->commandEncoder = [mHandle->commandBuffer renderCommandEncoderWithDescriptor:renderPass];
@@ -124,17 +133,6 @@ void CommandBuffer::Begin() const
 void CommandBuffer::Commit() const
 {
     [mHandle->commandBuffer commit];
-}
-
-void CommandBuffer::Present() const
-{
-    const auto& frame = RendererContext::GetSwapchain()->GetCurrentFrame();
-    [mHandle->commandBuffer addCompletedHandler:^(id<MTLCommandBuffer> commandBuffer)
-    {
-        dispatch_semaphore_signal(frame.imageAcquireSemaphore);
-    }];
-    
-    [mHandle->commandBuffer presentDrawable:frame.drawable];
 }
 
 void CommandBuffer::ApplyRenderPipeline(const RenderPassDescriptor& renderPassDesc, const PipelineStateDescriptor& pipelineDesc, const GraphicsShader& program) const

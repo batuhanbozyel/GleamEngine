@@ -35,7 +35,7 @@ public:
         SetPushConstant(&t, sizeof(T), stage, index);
     }
     
-    void SetPushConstant(const void* data, uint32_t size, ShaderStage stage, uint32_t index) const;
+    void SetPushConstant(const void* data, uint32_t size, ShaderStage stage, uint32_t index = 0) const;
 
 	void Draw(uint32_t vertexCount, uint32_t instanceCount = 1, uint32_t baseVertex = 0, uint32_t baseInstance = 0) const;
 
@@ -45,7 +45,7 @@ public:
     
     void Commit() const;
     
-    void Present() const;
+    NativeGraphicsHandle GetHandle() const;
 
 private:
     
