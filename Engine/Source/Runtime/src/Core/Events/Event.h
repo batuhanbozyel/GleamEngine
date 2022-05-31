@@ -1,4 +1,5 @@
 #pragma once
+#include <functional>
 #define EventHandlerFn(fn) [](auto&&... args) -> bool { return fn(); }
 
 namespace Gleam {

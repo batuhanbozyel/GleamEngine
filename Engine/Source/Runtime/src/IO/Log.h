@@ -2,6 +2,7 @@
 #define FMT_HEADER_ONLY
 #include <fmt/core.h>
 #include <fstream>
+#include <chrono>
 
 namespace Gleam {
 
@@ -18,7 +19,8 @@ public:
         Warn,
         Error
     };
-    
+
+	Logger(const TStringView name);
     ~Logger();
     
     static const Logger& GetCoreLogger()
@@ -42,15 +44,13 @@ public:
 
 		std::ostringstream ss;
 		ss << '[' << formattedCurrentTime << "] ";
-		ss << LogLevelToString(lvl) << mName << fmt::format(frmt, std::forward<Args>(args)...) << '\n';
+		ss << LogLevelToString(lvl) << mName << fmt::format(fmt::runtime(frmt), std::forward<Args>(args)...) << '\n';
 
 		*mFileStream << ss.str();
 		std::flush(*mFileStream);
 	}
     
 private:
-    
-    Logger(const TStringView name);
 
 	static constexpr TStringView LogLevelToString(Logger::Level lvl)
 	{
