@@ -14,8 +14,6 @@ namespace Gleam {
 
 #define VulkanDevice As<VkDevice>(RendererContext::GetDevice())
 
-#define VulkanContextSampleCount RendererContext::IsMultisampleEnabled() ? static_cast<VkSampleCountFlagBits>(BIT(RendererContext::GetProperties().msaa - 1)) : VK_SAMPLE_COUNT_1_BIT;
-
 static constexpr const char* VkResultToString(VkResult result)
 {
 	switch (result)
@@ -71,6 +69,8 @@ static constexpr TextureFormat VkFormatToTextureFormat(VkFormat format)
 {
 	switch (format)
 	{
+		case VK_FORMAT_B8G8R8A8_UNORM: return TextureFormat::B8G8R8A8_UNorm;
+		case VK_FORMAT_R8G8B8A8_UNORM: return TextureFormat::R8G8B8A8_UNorm;
 		// TODO:
 		default: return TextureFormat::None;
 	}
@@ -80,6 +80,8 @@ static constexpr VkFormat TextureFormatToVkFormat(TextureFormat format)
 {
 	switch (format)
 	{
+		case TextureFormat::B8G8R8A8_UNorm: return VK_FORMAT_B8G8R8A8_UNORM;
+		case TextureFormat::R8G8B8A8_UNorm: return VK_FORMAT_R8G8B8A8_UNORM;
 		// TODO:
 		default: return VK_FORMAT_UNDEFINED;
 	}
@@ -151,19 +153,6 @@ static constexpr VkDescriptorType BufferUsageToVkDescriptorType(BufferUsage usag
 		default: return VK_DESCRIPTOR_TYPE_MAX_ENUM;
 	}
 }
-
-struct VulkanFrameObject
-{
-	VkRenderPass swapchainRenderPass{ VK_NULL_HANDLE };
-	VkCommandPool commandPool{ VK_NULL_HANDLE };
-	VkCommandBuffer commandBuffer{ VK_NULL_HANDLE };
-	VkFramebuffer framebuffer{ VK_NULL_HANDLE };
-	VkFence imageAcquireFence{ VK_NULL_HANDLE };
-	VkSemaphore imageAcquireSemaphore{ VK_NULL_HANDLE };
-	VkSemaphore imageReleaseSemaphore{ VK_NULL_HANDLE };
-	VkImage swapchainImage{ VK_NULL_HANDLE };
-	uint32_t imageIndex{ 0 };
-};
 
 } // namespace Gleam
 #endif

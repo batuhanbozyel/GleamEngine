@@ -9,12 +9,6 @@ namespace Gleam {
     
 #define MetalDevice id<MTLDevice>(RendererContext::GetDevice())
 
-struct MetalFrameObject
-{
-    id<CAMetalDrawable> drawable{ nil };
-    dispatch_semaphore_t imageAcquireSemaphore;
-};
-
 static constexpr TextureFormat MTLPixelFormatToTextureFormat(MTLPixelFormat format)
 {
     switch (format)

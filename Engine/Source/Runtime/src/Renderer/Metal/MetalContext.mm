@@ -6,6 +6,12 @@
 
 using namespace Gleam;
 
+struct
+{
+    // Command Pool
+    id<MTLCommandQueue> commandPool;
+} mContext;
+
 /************************************************************************/
 /*	Init                                      */
 /************************************************************************/
@@ -40,52 +46,10 @@ NativeGraphicsHandle RendererContext::GetPhysicalDevice()
     return mDevice;
 }
 /************************************************************************/
-/*    GetGraphicsQueue                                                    */
+/*	GetGraphicsCommandPool                                              */
 /************************************************************************/
-NativeGraphicsHandle RendererContext::GetGraphicsQueue()
+NativeGraphicsHandle RendererContext::GetGraphicsCommandPool(uint32_t index)
 {
-    return nullptr;
-}
-/************************************************************************/
-/*    GetComputeQueue                                                     */
-/************************************************************************/
-NativeGraphicsHandle RendererContext::GetComputeQueue()
-{
-    return nullptr;
-}
-/************************************************************************/
-/*    GetTransferQueue                                                    */
-/************************************************************************/
-NativeGraphicsHandle RendererContext::GetTransferQueue()
-{
-    return nullptr;
-}
-/************************************************************************/
-/*    GetGraphicsQueueIndex                                               */
-/************************************************************************/
-uint32_t RendererContext::GetGraphicsQueueIndex()
-{
-    return 0;
-}
-/************************************************************************/
-/*    GetComputeQueueIndex                                                */
-/************************************************************************/
-uint32_t RendererContext::GetComputeQueueIndex()
-{
-    return 0;
-}
-/************************************************************************/
-/*    GetTransferQueueIndex                                               */
-/************************************************************************/
-uint32_t RendererContext::GetTransferQueueIndex()
-{
-    return 0;
-}
-/************************************************************************/
-/*    GetMemoryTypeForProperties                                           */
-/************************************************************************/
-uint32_t RendererContext::GetMemoryTypeForProperties(uint32_t memoryTypeBits, uint32_t properties)
-{
-    return 0;
+	return mContext.commandPool;
 }
 #endif

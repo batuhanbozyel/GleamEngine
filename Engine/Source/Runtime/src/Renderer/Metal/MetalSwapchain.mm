@@ -18,8 +18,7 @@ struct
     dispatch_semaphore_t imageAcquireSemaphore;
     
     // Frame
-    id<MTLCommandQueue> commandPool;
-    MetalFrameObject currentFrame;
+    id<CAMetalDrawable> drawable{ nil };
 } mContext;
 
 Swapchain::Swapchain(const TString& appName, const Version& appVersion, const RendererProperties& props)
@@ -65,41 +64,32 @@ Swapchain::Swapchain(const TString& appName, const Version& appVersion, const Re
 
 Swapchain::~Swapchain()
 {
-    mContext.currentFrame.drawable = nil;
+    mContext.drawable = nil;
     mContext.commandPool = nil;
     mHandle = nil;
 }
 
-const FrameObject& Swapchain::AcquireNextFrame()
+NativeGraphicsHandle Swapchain::AcquireNextDrawable()
 {
     dispatch_semaphore_wait(mContext.imageAcquireSemaphore, DISPATCH_TIME_FOREVER);
-    
-    mContext.currentFrame.imageAcquireSemaphore = mContext.imageAcquireSemaphore;
-    mContext.currentFrame.drawable = [(CAMetalLayer*)mHandle nextDrawable];
-    mCommandBuffer->Begin();
-    
-    return mContext.currentFrame;
+    mContext.drawable = [(CAMetalLayer*)mHandle nextDrawable];
+    return mContext.drawable;
 }
 
-void Swapchain::Present()
+void Swapchain::Present(NativeGraphicsHandle commandBuffer)
 {
-    [mCommandBuffer->GetHandle() addCompletedHandler:^(id<MTLCommandBuffer> commandBuffer)
+    [commandBuffer addCompletedHandler:^(id<MTLCommandBuffer> commandBuffer)
     {
-        dispatch_semaphore_signal(mContext.currentFrame.imageAcquireSemaphore);
+        dispatch_semaphore_signal(mContext.imageAcquireSemaphore);
     }];
     
-    [mCommandBuffer->GetHandle() presentDrawable:mContext.currentFrame.drawable];
+    [commandBuffer presentDrawable:mContext.drawable];
     
-    mCommandBuffer->Commit();
+    [commandBuffer commit];
 
     InvalidateAndCreate();
-    
-    mCurrentFrameIndex = (mCurrentFrameIndex + 1) % mProperties.maxFramesInFlight;
-}
 
-NativeGraphicsHandle Swapchain::GetGraphicsCommandPool(uint32_t index) const
-{
-    return mContext.commandPool;
+    mCurrentFrameIndex = (mCurrentFrameIndex + 1) % mProperties.maxFramesInFlight;
 }
 
 NativeGraphicsHandle Swapchain::GetLayer() const

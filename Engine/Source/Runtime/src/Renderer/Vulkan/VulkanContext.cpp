@@ -4,31 +4,16 @@
 #include "Renderer/RendererContext.h"
 #include "VulkanUtils.h"
 
+#include "Core/ApplicationConfig.h"
+
+#include <SDL_vulkan.h>
+
 using namespace Gleam;
 
-struct
-{
-	// Device
-	VkPhysicalDevice physicalDevice{ VK_NULL_HANDLE };
-	VkQueue graphicsQueue{ VK_NULL_HANDLE };
-	uint32_t graphicsQueueFamilyIndex{ 0 };
-	VkQueue computeQueue{ VK_NULL_HANDLE };
-	uint32_t computeQueueFamilyIndex{ 0 };
-	VkQueue transferQueue{ VK_NULL_HANDLE };
-	uint32_t transferQueueFamilyIndex{ 0 };
-	TArray<VkExtensionProperties> deviceExtensions;
-	VkPhysicalDeviceMemoryProperties memoryProperties;
-
-	// Pipeline cache
-	VkPipelineCache pipelineCache;
-
-} mContext;
-
-VKAPI_ATTR VkBool32 VKAPI_CALL VulkanDebugCallback(
-	VkDebugUtilsMessageSeverityFlagBitsEXT severity,
-	VkDebugUtilsMessageTypeFlagsEXT type,
-	const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
-	void* pUserData)
+VKAPI_ATTR VkBool32 VKAPI_CALL VulkanDebugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT severity,
+												   VkDebugUtilsMessageTypeFlagsEXT type,
+												   const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
+												   void* pUserData)
 {
 	if (severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
 	{
@@ -49,6 +34,36 @@ VKAPI_ATTR VkBool32 VKAPI_CALL VulkanDebugCallback(
 	}
 	return VK_FALSE;
 }
+
+struct
+{
+	// Instance
+	VkInstance instance{ VK_NULL_HANDLE };
+	TArray<VkExtensionProperties> extensions;
+
+	// Debug/Validation layer
+#ifdef GDEBUG
+	VkDebugUtilsMessengerEXT debugMessenger{ VK_NULL_HANDLE };
+#endif
+
+	// Device
+	VkPhysicalDevice physicalDevice{ VK_NULL_HANDLE };
+	VkQueue graphicsQueue{ VK_NULL_HANDLE };
+	uint32_t graphicsQueueFamilyIndex{ 0 };
+	VkQueue computeQueue{ VK_NULL_HANDLE };
+	uint32_t computeQueueFamilyIndex{ 0 };
+	VkQueue transferQueue{ VK_NULL_HANDLE };
+	uint32_t transferQueueFamilyIndex{ 0 };
+	TArray<VkExtensionProperties> deviceExtensions;
+	VkPhysicalDeviceMemoryProperties memoryProperties;
+
+	// Pipeline cache
+	VkPipelineCache pipelineCache;
+
+	// Command Pool
+	TArray<VkCommandPool> commandPools;
+} mContext;
+
 /************************************************************************/
 /*	Init                                                                */
 /************************************************************************/
@@ -57,14 +72,68 @@ void RendererContext::Init(const TString& appName, const Version& appVersion, co
 	VkResult loadVKResult = volkInitialize();
 	GLEAM_ASSERT(loadVKResult == VK_SUCCESS, "Vulkan: Meta-loader failed to load entry points!");
 
-    mSwapchain.reset(new Swapchain(appName, appVersion, props));
+	// Get window subsystem extensions
+	uint32_t extensionCount;
+	SDL_Vulkan_GetInstanceExtensions(nullptr, &extensionCount, nullptr);
+	TArray<const char*> extensions(extensionCount);
+	SDL_Vulkan_GetInstanceExtensions(nullptr, &extensionCount, extensions.data());
+
+	VkApplicationInfo appInfo{ VK_STRUCTURE_TYPE_APPLICATION_INFO };
+	appInfo.pApplicationName = appName.c_str();
+	appInfo.applicationVersion = VK_MAKE_VERSION(appVersion.major, appVersion.minor, appVersion.patch);
+	appInfo.pEngineName = "Gleam Engine";
+	appInfo.engineVersion = VK_MAKE_VERSION(GLEAM_ENGINE_MAJOR_VERSION, GLEAM_ENGINE_MINOR_VERSION, GLEAM_ENGINE_PATCH_VERSION);
+	appInfo.apiVersion = VULKAN_API_VERSION;
+
+	VkInstanceCreateInfo createInfo{ VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO };
+	createInfo.pApplicationInfo = &appInfo;
+
+	// Get validation layers
+#ifdef GDEBUG
+	extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+	TArray<const char*, 1> validationLayers{ "VK_LAYER_KHRONOS_validation" };
+	createInfo.enabledLayerCount = 1;
+	createInfo.ppEnabledLayerNames = validationLayers.data();
+#else
+	createInfo.enabledLayerCount = 0;
+	createInfo.ppEnabledLayerNames = nullptr;
+#endif
+	createInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
+	createInfo.ppEnabledExtensionNames = extensions.data();
+
+	// Create instance
+	VK_CHECK(vkCreateInstance(&createInfo, nullptr, &mContext.instance));
+	volkLoadInstanceOnly(mContext.instance);
+
+#ifdef GDEBUG
+	// Create debug messenger
+	VkDebugUtilsMessengerCreateInfoEXT debugInfo{ VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT };
+	debugInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT
+		| VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT
+		| VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT
+		| VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT;
+
+	debugInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT
+		| VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT
+		| VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT;
+
+	debugInfo.pfnUserCallback = VulkanDebugCallback;
+	debugInfo.pUserData = nullptr;
+
+	VK_CHECK(vkCreateDebugUtilsMessengerEXT(mContext.instance, &debugInfo, nullptr, &mContext.debugMessenger));
+#endif
+
+	// Get available extensions
+	VK_CHECK(vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr));
+	mContext.extensions.resize(extensionCount);
+	VK_CHECK(vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, mContext.extensions.data()));
 
 	// Create device
 	uint32_t physicalDeviceCount;
-	VK_CHECK(vkEnumeratePhysicalDevices(As<VkInstance>(mSwapchain->GetLayer()), &physicalDeviceCount, nullptr));
+	VK_CHECK(vkEnumeratePhysicalDevices(mContext.instance, &physicalDeviceCount, nullptr));
 
 	TArray<VkPhysicalDevice> physicalDevices(physicalDeviceCount);
-	VK_CHECK(vkEnumeratePhysicalDevices(As<VkInstance>(mSwapchain->GetLayer()), &physicalDeviceCount, physicalDevices.data()));
+	VK_CHECK(vkEnumeratePhysicalDevices(mContext.instance, &physicalDeviceCount, physicalDevices.data()));
 
 	mContext.physicalDevice = physicalDevices[0];
 	for (VkPhysicalDevice physicalDevice : physicalDevices)
@@ -90,6 +159,9 @@ void RendererContext::Init(const TString& appName, const Version& appVersion, co
 	VK_CHECK(vkEnumerateDeviceExtensionProperties(mContext.physicalDevice, nullptr, &deviceExtensionCount, mContext.deviceExtensions.data()));
 
 	vkGetPhysicalDeviceMemoryProperties(mContext.physicalDevice, &mContext.memoryProperties);
+
+	// Create swapchain
+	mSwapchain.reset(new Swapchain(props, mContext.instance));
 
 	// Get physical device queues
 	bool mainQueueFound = false;
@@ -191,6 +263,17 @@ void RendererContext::Init(const TString& appName, const Version& appVersion, co
 	VkPipelineCacheCreateInfo pipelineCacheCreateInfo{ VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO };
 	VK_CHECK(vkCreatePipelineCache(VulkanDevice, &pipelineCacheCreateInfo, nullptr, &mContext.pipelineCache));
 
+	// Create command pools
+	VkCommandPoolCreateInfo commandPoolCreateInfo{ VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO };
+	commandPoolCreateInfo.queueFamilyIndex = mContext.graphicsQueueFamilyIndex;
+	commandPoolCreateInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+
+	mContext.commandPools.resize(GetProperties().maxFramesInFlight);
+	for (uint32_t i = 0; i < GetProperties().maxFramesInFlight; i++)
+	{
+		VK_CHECK(vkCreateCommandPool(VulkanDevice, &commandPoolCreateInfo, nullptr, &mContext.commandPools[i]));
+	}
+
 	GLEAM_CORE_INFO("Vulkan: Graphics context created.");
 }
 /************************************************************************/
@@ -198,18 +281,42 @@ void RendererContext::Init(const TString& appName, const Version& appVersion, co
 /************************************************************************/
 void RendererContext::Destroy()
 {
-	vkDeviceWaitIdle(As<VkDevice>(mDevice));
+	VK_CHECK(vkDeviceWaitIdle(VulkanDevice));
 
 	// Destroy pipeline cache
 	vkDestroyPipelineCache(VulkanDevice, mContext.pipelineCache, nullptr);
 
+	// Destroy command pools
+	for (uint32_t i = 0; i < mContext.commandPools.size(); i++)
+	{
+		vkDestroyCommandPool(VulkanDevice, mContext.commandPools[i], nullptr);
+	}
+	mContext.commandPools.clear();
+
 	// Destroy swapchain
+	VkSurfaceKHR surface = As<VkSurfaceKHR>(mSwapchain->GetSurface());
 	mSwapchain.reset();
 
+	// Destroy surface
+	vkDestroySurfaceKHR(mContext.instance, surface, nullptr);
+
 	// Destroy device
-	vkDestroyDevice(As<VkDevice>(mDevice), nullptr);
+	vkDestroyDevice(VulkanDevice, nullptr);
+
+	// Destroy instance
+#ifdef GDEBUG
+	vkDestroyDebugUtilsMessengerEXT(mContext.instance, mContext.debugMessenger, nullptr);
+#endif
+	vkDestroyInstance(mContext.instance, nullptr);
 
 	GLEAM_CORE_INFO("Vulkan: Graphics context destroyed.");
+}
+/************************************************************************/
+/*	WaitIdle                                                            */
+/************************************************************************/
+void RendererContext::WaitIdle()
+{
+	VK_CHECK(vkDeviceWaitIdle(VulkanDevice));
 }
 /************************************************************************/
 /*	GetPhysicalDevice                                                   */
@@ -240,25 +347,11 @@ NativeGraphicsHandle RendererContext::GetTransferQueue()
 	return mContext.transferQueue;
 }
 /************************************************************************/
-/*	GetGraphicsQueueIndex                                               */
+/*	GetGraphicsCommandPool                                              */
 /************************************************************************/
-uint32_t RendererContext::GetGraphicsQueueIndex()
+NativeGraphicsHandle RendererContext::GetGraphicsCommandPool(uint32_t index)
 {
-	return mContext.graphicsQueueFamilyIndex;
-}
-/************************************************************************/
-/*	GetComputeQueueIndex                                                */
-/************************************************************************/
-uint32_t RendererContext::GetComputeQueueIndex()
-{
-	return mContext.computeQueueFamilyIndex;
-}
-/************************************************************************/
-/*	GetTransferQueueIndex                                               */
-/************************************************************************/
-uint32_t RendererContext::GetTransferQueueIndex()
-{
-	return mContext.computeQueueFamilyIndex;
+	return mContext.commandPools[index];
 }
 /************************************************************************/
 /*	GetMemoryTypeForProperties                                           */

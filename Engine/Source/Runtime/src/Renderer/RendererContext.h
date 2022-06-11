@@ -13,6 +13,8 @@ public:
 
 	static void Destroy();
 
+	static void WaitIdle();
+
 	static NativeGraphicsHandle GetPhysicalDevice();
 
 	static NativeGraphicsHandle GetGraphicsQueue();
@@ -21,11 +23,7 @@ public:
 
 	static NativeGraphicsHandle GetTransferQueue();
 
-	static uint32_t GetGraphicsQueueIndex();
-
-	static uint32_t GetComputeQueueIndex();
-
-	static uint32_t GetTransferQueueIndex();
+	static NativeGraphicsHandle GetGraphicsCommandPool(uint32_t index);
 
 	static uint32_t GetMemoryTypeForProperties(uint32_t memoryTypeBits, uint32_t properties);
 
@@ -42,11 +40,6 @@ public:
 	static const RendererProperties& GetProperties()
 	{
 		return mSwapchain->GetProperties();
-	}
-
-	static bool IsMultisampleEnabled()
-	{
-		return mSwapchain->GetProperties().sampleCount > 1;
 	}
 
 private:

@@ -7,35 +7,21 @@ namespace Gleam {
 
 struct Version;
 
-#ifdef USE_METAL_RENDERER
-struct MetalFrameObject;
-using FrameObject = MetalFrameObject;
-#else
-struct VulkanFrameObject;
-using FrameObject = VulkanFrameObject;
-#endif
-
 class Swapchain : public GraphicsObject
 {
 public:
 
-	Swapchain(const TString& appName, const Version& appVersion, const RendererProperties& props);
+	Swapchain(const RendererProperties& props, NativeGraphicsHandle instance);
 	~Swapchain();
 
 	void InvalidateAndCreate();
 
-	const FrameObject& AcquireNextFrame();
-	void Present();
+	NativeGraphicsHandle AcquireNextDrawable();
+	void Present(NativeGraphicsHandle commandBuffer);
 
-	NativeGraphicsHandle GetGraphicsCommandPool(uint32_t index) const;
-    NativeGraphicsHandle GetLayer() const;
     TextureFormat GetFormat() const;
-    const FrameObject& GetCurrentFrame() const;
-    
-	const CommandBuffer& GetCommandBuffer() const
-    {
-        return *mCommandBuffer;
-    }
+
+	NativeGraphicsHandle GetCurrentDrawable() const;
 
 	uint32_t GetCurrentFrameIndex() const
 	{
@@ -47,6 +33,11 @@ public:
 		return mProperties;
 	}
 
+	void* GetSurface() const
+	{
+		return mSurface;
+	}
+
 private:
 
 	uint32_t mCurrentFrameIndex = 0;
@@ -54,7 +45,6 @@ private:
 	RendererProperties mProperties;
     
     void* mSurface = nullptr;
-    Scope<CommandBuffer> mCommandBuffer = nullptr;
 
 };
 
