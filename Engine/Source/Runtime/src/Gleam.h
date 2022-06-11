@@ -27,6 +27,7 @@
 #include "Core/Events/WindowEvent.h"
 #include "Core/Events/MouseEvent.h"
 #include "Core/Events/KeyEvent.h"
+#include "Core/Layer.h"
 #include "Core/Time.h"
 #include "IO/Log.h"
 

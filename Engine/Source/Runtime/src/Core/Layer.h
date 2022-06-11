@@ -22,4 +22,4 @@ protected:
 
 };
 
-}
+} // namespace Gleam

@@ -123,29 +123,34 @@ void Application::Run()
 		while (SDL_PollEvent(&mEvent));
         
         Time::Step();
-        if (Time::fixedTime <= (Time::time - Time::fixedDeltaTime))
+
+		for (const auto& layer : mLayerStack)
+		{
+			layer->OnUpdate();
+		}
+
+		bool fixedUpdate = Time::fixedTime <= (Time::time - Time::fixedDeltaTime);
+        if (fixedUpdate)
         {
             Time::FixedStep();
             for (const auto& layer : mLayerStack)
             {
                 layer->OnFixedUpdate();
             }
-
-            for (const auto& overlay : mOverlays)
-            {
-                overlay->OnFixedUpdate();
-            }
-        }
-        
-        for (const auto& layer : mLayerStack)
-        {
-            layer->OnUpdate();
         }
 
         for (const auto& overlay : mOverlays)
         {
             overlay->OnUpdate();
         }
+
+		if (fixedUpdate)
+		{
+			for (const auto& overlay : mOverlays)
+			{
+				overlay->OnFixedUpdate();
+			}
+		}
 		
 #ifdef USE_METAL_RENDERER
         @autoreleasepool

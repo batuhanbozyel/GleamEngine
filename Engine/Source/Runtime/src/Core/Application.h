@@ -14,7 +14,7 @@ class Application
 public:
 
 	Application(const ApplicationProperties& props);
-	~Application();
+	virtual ~Application();
 
 	void Run();
 
