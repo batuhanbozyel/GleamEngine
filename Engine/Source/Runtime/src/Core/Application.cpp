@@ -156,8 +156,6 @@ void Application::Run()
         @autoreleasepool
 #endif
         {
-            Renderer::BeginFrame();
-            
             for (const auto& layer : mLayerStack)
             {
                 layer->OnRender();
@@ -167,8 +165,6 @@ void Application::Run()
             {
                 overlay->OnRender();
             }
-            
-            Renderer::EndFrame();
         }
 	}
 }

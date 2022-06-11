@@ -37,28 +37,29 @@ ForwardRenderer::ForwardRenderer()
 
 ForwardRenderer::~ForwardRenderer()
 {
-    
+	RendererContext::WaitIdle();
 }
 
 void ForwardRenderer::Render()
 {
-    AttachmentDescriptor attachmentDesc;
-    attachmentDesc.swapchainTarget = true;
-    attachmentDesc.clearColor = mClearColor;
-    
     RenderPassDescriptor renderPassDesc;
-    renderPassDesc.attachments.push_back(attachmentDesc);
+	renderPassDesc.swapchainTarget = true;
+	renderPassDesc.width = RendererContext::GetProperties().width;
+	renderPassDesc.height = RendererContext::GetProperties().height;
     
-    const auto& commandBuffer = RendererContext::GetSwapchain()->GetCommandBuffer();
-    commandBuffer.BeginRenderPass(renderPassDesc, PipelineStateDescriptor(), mForwardPassProgram);
+	mCommandBuffer.Begin();
+	mCommandBuffer.BeginRenderPass(renderPassDesc, PipelineStateDescriptor(), mForwardPassProgram);
     
-    commandBuffer.SetViewport(RendererContext::GetProperties().width, RendererContext::GetProperties().height);
-    commandBuffer.SetVertexBuffer(mVertexBuffer);
+	mCommandBuffer.SetViewport(RendererContext::GetProperties().width, RendererContext::GetProperties().height);
+	mCommandBuffer.SetVertexBuffer(mVertexBuffer);
     
     ForwardPassFragmentUniforms uniforms;
     uniforms.color = Color(Color::HSVToRGBSmooth(Time::time, 1.0f, 1.0f));
-    commandBuffer.SetPushConstant(uniforms, ShaderStage::Fragment);
+	mCommandBuffer.SetPushConstant(uniforms, ShaderStage::Fragment);
     
-    commandBuffer.DrawIndexed(mIndexBuffer);
-    commandBuffer.EndRenderPass();
+	mCommandBuffer.DrawIndexed(mIndexBuffer);
+	mCommandBuffer.EndRenderPass();
+	mCommandBuffer.End();
+
+	mCommandBuffer.Commit();
 }

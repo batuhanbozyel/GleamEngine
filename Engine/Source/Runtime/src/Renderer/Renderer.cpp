@@ -16,15 +16,3 @@ void Renderer::Destroy()
 	ShaderLibrary::Destroy();
     RendererContext::Destroy();
 }
-
-void Renderer::BeginFrame()
-{
-    const auto& swapchain = RendererContext::GetSwapchain();
-    swapchain->AcquireNextFrame();
-}
-
-void Renderer::EndFrame()
-{
-    const auto& swapchain = RendererContext::GetSwapchain();
-    swapchain->Present();
-}
