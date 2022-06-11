@@ -58,14 +58,11 @@ Swapchain::Swapchain(const TString& appName, const Version& appVersion, const Re
     
     mContext.commandPool = [MetalDevice newCommandQueue];
     mContext.imageAcquireSemaphore = dispatch_semaphore_create(mProperties.maxFramesInFlight);
-    
-    mCommandBuffer = CreateScope<CommandBuffer>();
 }
 
 Swapchain::~Swapchain()
 {
     mContext.drawable = nil;
-    mContext.commandPool = nil;
     mHandle = nil;
 }
 
@@ -102,9 +99,19 @@ TextureFormat Swapchain::GetFormat() const
     return MTLPixelFormatToTextureFormat(((CAMetalLayer*)mHandle).pixelFormat);
 }
 
-const FrameObject& Swapchain::GetCurrentFrame() const
+const FrameObject& Swapchain::GetDrawable() const
 {
-    return mContext.currentFrame;
+    return mContext.drawable;
+}
+
+DispatchSemaphore Swapchain::GetImageAcquireSemaphore() const
+{
+    return mContext.imageAcquireSemaphore;
+}
+
+DispatchSemaphore Swapchain::GetImageReleaseSemaphore() const
+{
+    return mContext.imageAcquireSemaphore;
 }
 
 void Swapchain::InvalidateAndCreate()

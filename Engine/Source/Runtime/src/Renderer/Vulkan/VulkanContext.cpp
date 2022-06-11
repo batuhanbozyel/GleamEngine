@@ -3,6 +3,7 @@
 #ifdef USE_VULKAN_RENDERER
 #include "Renderer/RendererContext.h"
 #include "VulkanUtils.h"
+#include "VulkanPipelineStateManager.h"
 
 #include "Core/ApplicationConfig.h"
 
@@ -282,6 +283,8 @@ void RendererContext::Init(const TString& appName, const Version& appVersion, co
 void RendererContext::Destroy()
 {
 	VK_CHECK(vkDeviceWaitIdle(VulkanDevice));
+
+	VulkanPipelineStateManager::Clear();
 
 	// Destroy pipeline cache
 	vkDestroyPipelineCache(VulkanDevice, mContext.pipelineCache, nullptr);

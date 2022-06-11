@@ -1,7 +1,6 @@
 #pragma once
 #include "RendererConfig.h"
 #include "TextureFormat.h"
-#include "CommandBuffer.h"
 
 namespace Gleam {
 
@@ -21,9 +20,13 @@ public:
 
     TextureFormat GetFormat() const;
 
-	NativeGraphicsHandle GetCurrentDrawable() const;
+	NativeGraphicsHandle GetDrawable() const;
 
-	uint32_t GetCurrentFrameIndex() const
+	DispatchSemaphore GetImageAcquireSemaphore() const;
+
+	DispatchSemaphore GetImageReleaseSemaphore() const;
+
+	uint32_t GetFrameIndex() const
 	{
 		return mCurrentFrameIndex;
 	}

@@ -26,7 +26,6 @@ struct
 	// Synchronization
 	TArray<VkSemaphore> imageAcquireSemaphores;
 	TArray<VkSemaphore> imageReleaseSemaphores;
-	TArray<VkFence> imageAcquireFences;
 } mContext;
 
 Swapchain::Swapchain(const RendererProperties& props, NativeGraphicsHandle instance)
@@ -51,13 +50,11 @@ Swapchain::~Swapchain()
 	// Destroy sync objects
 	for (uint32_t i = 0; i < mProperties.maxFramesInFlight; i++)
 	{
-		vkDestroyFence(VulkanDevice, mContext.imageAcquireFences[i], nullptr);
 		vkDestroySemaphore(VulkanDevice, mContext.imageAcquireSemaphores[i], nullptr);
 		vkDestroySemaphore(VulkanDevice, mContext.imageReleaseSemaphores[i], nullptr);
 	}
 	mContext.imageAcquireSemaphores.clear();
 	mContext.imageReleaseSemaphores.clear();
-	mContext.imageAcquireFences.clear();
 }
 
 NativeGraphicsHandle Swapchain::AcquireNextDrawable()
@@ -77,17 +74,6 @@ NativeGraphicsHandle Swapchain::AcquireNextDrawable()
 
 void Swapchain::Present(NativeGraphicsHandle commandBuffer)
 {
-	VkPipelineStageFlags waitDstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-	VkSubmitInfo submitInfo{ VK_STRUCTURE_TYPE_SUBMIT_INFO };
-	submitInfo.waitSemaphoreCount = 1;
-	submitInfo.pWaitSemaphores = &mContext.imageAcquireSemaphores[mCurrentFrameIndex];
-	submitInfo.pWaitDstStageMask = &waitDstStageMask;
-	submitInfo.commandBufferCount = 1;
-	submitInfo.pCommandBuffers = As<VkCommandBuffer*>(&commandBuffer);
-	submitInfo.signalSemaphoreCount = 1;
-	submitInfo.pSignalSemaphores = &mContext.imageReleaseSemaphores[mCurrentFrameIndex];
-	VK_CHECK(vkQueueSubmit(As<VkQueue>(RendererContext::GetGraphicsQueue()), 1, &submitInfo, mContext.imageAcquireFences[mCurrentFrameIndex]));
-
 	VkPresentInfoKHR presentInfo{ VK_STRUCTURE_TYPE_PRESENT_INFO_KHR };
 	presentInfo.waitSemaphoreCount = 1;
 	presentInfo.pWaitSemaphores = &mContext.imageReleaseSemaphores[mCurrentFrameIndex];
@@ -105,10 +91,6 @@ void Swapchain::Present(NativeGraphicsHandle commandBuffer)
 	}
 
 	mCurrentFrameIndex = (mCurrentFrameIndex + 1) % mProperties.maxFramesInFlight;
-
-	VK_CHECK(vkWaitForFences(VulkanDevice, 1, &mContext.imageAcquireFences[mCurrentFrameIndex], VK_TRUE, UINT64_MAX));
-	VK_CHECK(vkResetFences(VulkanDevice, 1, &mContext.imageAcquireFences[mCurrentFrameIndex]));
-	VK_CHECK(vkResetCommandPool(VulkanDevice, As<VkCommandPool>(RendererContext::GetGraphicsCommandPool(mCurrentFrameIndex)), 0));
 }
 
 TextureFormat Swapchain::GetFormat() const
@@ -116,9 +98,19 @@ TextureFormat Swapchain::GetFormat() const
 	return VkFormatToTextureFormat(mContext.imageFormat);
 }
 
-NativeGraphicsHandle Swapchain::GetCurrentDrawable() const
+NativeGraphicsHandle Swapchain::GetDrawable() const
 {
 	return mContext.imageViews[mContext.imageIndex];
+}
+
+DispatchSemaphore Swapchain::GetImageAcquireSemaphore() const
+{
+	return mContext.imageAcquireSemaphores[mCurrentFrameIndex];
+}
+
+DispatchSemaphore Swapchain::GetImageReleaseSemaphore() const
+{
+	return mContext.imageReleaseSemaphores[mCurrentFrameIndex];
 }
 
 void Swapchain::InvalidateAndCreate()
@@ -278,19 +270,13 @@ void Swapchain::InvalidateAndCreate()
 	{
 		mContext.imageAcquireSemaphores.resize(mProperties.maxFramesInFlight);
 		mContext.imageReleaseSemaphores.resize(mProperties.maxFramesInFlight);
-		mContext.imageAcquireFences.resize(mProperties.maxFramesInFlight);
 		
 		VkSemaphoreCreateInfo semaphoreCreateInfo{ VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO };
-		VkFenceCreateInfo fenceCreateInfo{ VK_STRUCTURE_TYPE_FENCE_CREATE_INFO };
-		fenceCreateInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-
 		for (uint32_t i = 0; i < mProperties.maxFramesInFlight; i++)
 		{
 			VK_CHECK(vkCreateSemaphore(VulkanDevice, &semaphoreCreateInfo, nullptr, &mContext.imageAcquireSemaphores[i]));
 			VK_CHECK(vkCreateSemaphore(VulkanDevice, &semaphoreCreateInfo, nullptr, &mContext.imageReleaseSemaphores[i]));
-			VK_CHECK(vkCreateFence(VulkanDevice, &fenceCreateInfo, nullptr, &mContext.imageAcquireFences[i]));
 		}
-		VK_CHECK(vkResetFences(VulkanDevice, 1, &mContext.imageAcquireFences[mCurrentFrameIndex]));
 	});
 }
 

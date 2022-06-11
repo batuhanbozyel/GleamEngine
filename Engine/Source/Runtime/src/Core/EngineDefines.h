@@ -28,9 +28,11 @@
 #ifdef USE_VULKAN_RENDERER
 #define VULKAN_API_VERSION VK_API_VERSION_1_1
 using NativeGraphicsHandle = void*;
+using DispatchSemaphore = void*;
 #else
 #include <objc/objc-runtime.h>
 using NativeGraphicsHandle = id;
+using DispatchSemaphore = dispatch_semaphore_t;
 #endif
 
 #ifdef GDEBUG

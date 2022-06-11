@@ -49,8 +49,6 @@ public:
 
 private:
     
-    void ApplyRenderPipeline(const RenderPassDescriptor& renderPassDesc, const PipelineStateDescriptor& pipelineDesc, const GraphicsShader& program) const;
-    
     class Impl;
     Scope<Impl> mHandle;
     
