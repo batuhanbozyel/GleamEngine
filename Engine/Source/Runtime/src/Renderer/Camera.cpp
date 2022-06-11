@@ -1,8 +1,5 @@
 #include "gpch.h"
 #include "Camera.h"
-
-#include "../Core/Application.h"
-#include "../Core/Window.h"
 #include "../Scene/GameObject.h"
 
 using namespace Gleam;
