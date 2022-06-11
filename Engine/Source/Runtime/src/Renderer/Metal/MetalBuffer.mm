@@ -7,7 +7,7 @@
 using namespace Gleam;
 
 Buffer::Buffer(uint32_t size, BufferUsage usage)
-    : mSize(size)
+    : mSize(size), mUsage(usage)
 {
     mHandle = [MetalDevice newBufferWithLength:size options:MTLResourceStorageModeShared];
     mContents = [id<MTLBuffer>(mHandle) contents];

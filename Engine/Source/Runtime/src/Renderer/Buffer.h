@@ -25,7 +25,7 @@ public:
 
 	Buffer(uint32_t size, BufferUsage usage);
     Buffer(const void* data, uint32_t size, BufferUsage usage);
-	~Buffer();
+	virtual ~Buffer();
 
 	void SetData(const void* data, uint32_t offset, uint32_t size) const;
 
@@ -34,7 +34,14 @@ public:
 		return mSize;
 	}
 
+	BufferUsage GetUsage() const
+	{
+		return mUsage;
+	}
+
 protected:
+
+	BufferUsage mUsage;
 
 	void* mContents;
 	NativeGraphicsHandle mMemory;

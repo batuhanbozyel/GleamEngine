@@ -27,6 +27,12 @@ Buffer::Buffer(uint32_t size, BufferUsage usage)
 	vkMapMemory(VulkanDevice, As<VkDeviceMemory>(mMemory), 0, size, 0, &mContents);
 }
 
+Buffer::Buffer(const void* data, uint32_t size, BufferUsage usage)
+	: Buffer(size, usage)
+{
+	memcpy(As<uint8_t*>(mContents), data, size);
+}
+
 Buffer::~Buffer()
 {
 	vkDestroyBuffer(VulkanDevice, As<VkBuffer>(mHandle), nullptr);
