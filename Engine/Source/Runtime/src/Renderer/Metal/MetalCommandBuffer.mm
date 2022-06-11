@@ -37,30 +37,22 @@ CommandBuffer::~CommandBuffer()
     mHandle->commandBuffer = nil;
 }
 
-NativeGraphicsHandle CommandBuffer::GetHandle() const
-{
-    return mHandle->commandBuffer;
-}
-
 void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, const PipelineStateDescriptor& pipelineDesc, const GraphicsShader& program) const
 {
     MTLRenderPassDescriptor* renderPass = [MTLRenderPassDescriptor renderPassDescriptor];
-    for (uint32_t i = 0; i < renderPassDesc.attachments.size(); i++)
+    if (renderPassDesc.swapchainTarget && renderPassDesc.attachments.size() > 0)
     {
-        const auto& attachmentDesc = renderPassDesc.attachments[i];
-        MTLRenderPassColorAttachmentDescriptor* colorAttachmentDesc = renderPass.colorAttachments[i];
+        const auto& frame = RendererContext::GetSwapchain()->AcquireNextFrame();
+        const auto& attachmentDesc = renderPassDesc.attachments[0];
+        MTLRenderPassColorAttachmentDescriptor* colorAttachmentDesc = renderPass.colorAttachments[0];
         colorAttachmentDesc.clearColor = MTLClearColorMake(attachmentDesc.clearColor.r, attachmentDesc.clearColor.g, attachmentDesc.clearColor.b, attachmentDesc.clearColor.a);
-        if (attachmentDesc.swapchainTarget)
-        {
-            const auto& frame = RendererContext::GetSwapchain()->GetCurrentFrame();
-            colorAttachmentDesc.loadAction = MTLLoadActionClear;
-            colorAttachmentDesc.storeAction = MTLStoreActionStore;
-            colorAttachmentDesc.texture = frame.drawable.texture;
-        }
-        else
-        {
-            // TODO: 
-        }
+        colorAttachmentDesc.loadAction = MTLLoadActionClear;
+        colorAttachmentDesc.storeAction = MTLStoreActionStore;
+        colorAttachmentDesc.texture = frame.drawable.texture;
+    }
+    else
+    {
+        // TODO:
     }
     mHandle->commandEncoder = [mHandle->commandBuffer renderCommandEncoderWithDescriptor:renderPass];
     
@@ -130,9 +122,21 @@ void CommandBuffer::Begin() const
     mHandle->commandBuffer = [id<MTLCommandQueue>(RendererContext::GetSwapchain()->GetGraphicsCommandPool(0)) commandBuffer];
 }
 
+void CommandBuffer::End() const
+{
+    [mHandle->commandBuffer enqueue];
+}
+
 void CommandBuffer::Commit() const
 {
-    [mHandle->commandBuffer commit];
+    if (ActivePipeline.renderPassDescriptor.swapchainTarget)
+	{
+		RendererContext::GetSwapchain()->Present();
+	}
+    else
+	{
+		// TODO:
+	}
 }
 
 void CommandBuffer::ApplyRenderPipeline(const RenderPassDescriptor& renderPassDesc, const PipelineStateDescriptor& pipelineDesc, const GraphicsShader& program) const
