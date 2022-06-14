@@ -2,7 +2,6 @@
 
 #ifdef USE_VULKAN_RENDERER
 #include "Renderer/CommandBuffer.h"
-#include "VulkanUtils.h"
 #include "VulkanPipelineStateManager.h"
 
 #include "Renderer/Renderer.h"

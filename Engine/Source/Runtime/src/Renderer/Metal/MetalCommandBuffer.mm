@@ -2,12 +2,9 @@
 
 #ifdef USE_METAL_RENDERER
 #include "Renderer/CommandBuffer.h"
-#include "MetalUtils.h"
+#include "MetalPipelineStateManager.h"
 
 #include "Renderer/Buffer.h"
-#include "Renderer/Shader.h"
-#include "Renderer/RenderPassDescriptor.h"
-#include "Renderer/PipelineStateDescriptor.h"
 
 using namespace Gleam;
 
@@ -23,7 +20,7 @@ struct CommandBuffer::Impl
 {
     id<MTLCommandBuffer> commandBuffer = nil;
     id<MTLRenderCommandEncoder> commandEncoder = nil;
-    TArray<GraphicsPipelineCacheElement> graphicsPipelineCache;
+    MetalPipelineState pipelineState;
 };
 
 CommandBuffer::CommandBuffer()
@@ -39,24 +36,32 @@ CommandBuffer::~CommandBuffer()
 
 void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, const PipelineStateDescriptor& pipelineDesc, const GraphicsShader& program) const
 {
-    MTLRenderPassDescriptor* renderPass = [MTLRenderPassDescriptor renderPassDescriptor];
-    if (renderPassDesc.swapchainTarget && renderPassDesc.attachments.size() > 0)
+    mHandle->pipelineState = MetalPipelineStateManager::GetGraphicsPipelineState(renderPassDesc, pipelineDesc, program);
+    
+    if (renderPassDesc.swapchainTarget)
     {
-        const auto& frame = RendererContext::GetSwapchain()->AcquireNextFrame();
-        const auto& attachmentDesc = renderPassDesc.attachments[0];
-        MTLRenderPassColorAttachmentDescriptor* colorAttachmentDesc = renderPass.colorAttachments[0];
-        colorAttachmentDesc.clearColor = MTLClearColorMake(attachmentDesc.clearColor.r, attachmentDesc.clearColor.g, attachmentDesc.clearColor.b, attachmentDesc.clearColor.a);
+        MTLClearColor clearValue;
+        if (renderPassDesc.attachments.size() > 0)
+        {
+            const auto& clearColor = renderPassDesc.attachments[0].clearColor;
+            clearValue = { clearColor.r, clearColor.g, clearColor.b, clearColor.a };
+        }
+        else
+        {
+            const auto& clearColor = Renderer::clearColor;
+            clearValue = { clearColor.r, clearColor.g, clearColor.b, clearColor.a };
+        }
+        
+        id<CAMetalDrawable> drawable = RendererContext::GetSwapchain()->AcquireNextDrawable();
+        MTLRenderPassColorAttachmentDescriptor* colorAttachmentDesc = mHandle->pipelineState.renderPass.colorAttachments[0];
+        colorAttachmentDesc.clearColor = clearValue;
         colorAttachmentDesc.loadAction = MTLLoadActionClear;
         colorAttachmentDesc.storeAction = MTLStoreActionStore;
-        colorAttachmentDesc.texture = frame.drawable.texture;
+        colorAttachmentDesc.texture = drawable.texture;
     }
-    else
-    {
-        // TODO:
-    }
-    mHandle->commandEncoder = [mHandle->commandBuffer renderCommandEncoderWithDescriptor:renderPass];
+    mHandle->commandEncoder = [mHandle->commandBuffer renderCommandEncoderWithDescriptor:mHandle->pipelineState.renderPass];
     
-    ApplyRenderPipeline(renderPassDesc, pipelineDesc, program);
+    [mHandle->commandEncoder setRenderPipelineState:mHandle->pipelineState.pipeline];
 }
 
 void CommandBuffer::EndRenderPass() const
@@ -119,7 +124,7 @@ void CommandBuffer::DrawIndexed(const IndexBuffer& indexBuffer, uint32_t instanc
 
 void CommandBuffer::Begin() const
 {
-    mHandle->commandBuffer = [id<MTLCommandQueue>(RendererContext::GetSwapchain()->GetGraphicsCommandPool(0)) commandBuffer];
+    mHandle->commandBuffer = [id<MTLCommandQueue>(RendererContext::GetGraphicsCommandPool(0)) commandBuffer];
 }
 
 void CommandBuffer::End() const
@@ -129,48 +134,14 @@ void CommandBuffer::End() const
 
 void CommandBuffer::Commit() const
 {
-    if (ActivePipeline.renderPassDescriptor.swapchainTarget)
+    if (mHandle->pipelineState.swapchainTarget)
 	{
-		RendererContext::GetSwapchain()->Present();
+		RendererContext::GetSwapchain()->Present(mHandle->commandBuffer);
 	}
     else
 	{
 		// TODO:
 	}
-}
-
-void CommandBuffer::ApplyRenderPipeline(const RenderPassDescriptor& renderPassDesc, const PipelineStateDescriptor& pipelineDesc, const GraphicsShader& program) const
-{
-    for (const auto& element : mHandle->graphicsPipelineCache)
-    {
-        if (element.renderPassDescriptor == renderPassDesc
-            && element.pipelineStateDescriptor == pipelineDesc
-            && element.program == program)
-        {
-            [mHandle->commandEncoder setRenderPipelineState:element.pipeline];
-            return;
-        }
-    }
-    
-    MTLRenderPipelineDescriptor* pipelineDescriptor = [MTLRenderPipelineDescriptor new];
-    pipelineDescriptor.vertexFunction = program.vertexShader->GetHandle();
-    pipelineDescriptor.fragmentFunction = program.fragmentShader->GetHandle();
-    pipelineDescriptor.colorAttachments[0].pixelFormat = MTLPixelFormatBGRA8Unorm;
-    
-    /**
-            TODO:
-     */
-    
-    NSError* error;
-    id<MTLRenderPipelineState> pipeline = [MetalDevice newRenderPipelineStateWithDescriptor:pipelineDescriptor error:&error];
-    
-    GraphicsPipelineCacheElement element;
-    element.pipelineStateDescriptor = pipelineDesc;
-    element.renderPassDescriptor = renderPassDesc;
-    element.program = program;
-    element.pipeline = pipeline;
-    mHandle->graphicsPipelineCache.push_back(element);
-    [mHandle->commandEncoder setRenderPipelineState:element.pipeline];
 }
 
 #endif

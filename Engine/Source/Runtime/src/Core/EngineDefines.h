@@ -31,6 +31,7 @@ using NativeGraphicsHandle = void*;
 using DispatchSemaphore = void*;
 #else
 #include <objc/objc-runtime.h>
+#include <dispatch/dispatch.h>
 using NativeGraphicsHandle = id;
 using DispatchSemaphore = dispatch_semaphore_t;
 #endif

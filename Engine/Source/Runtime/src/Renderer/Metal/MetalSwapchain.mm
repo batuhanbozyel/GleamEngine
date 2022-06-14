@@ -21,7 +21,7 @@ struct
     id<CAMetalDrawable> drawable{ nil };
 } mContext;
 
-Swapchain::Swapchain(const TString& appName, const Version& appVersion, const RendererProperties& props)
+Swapchain::Swapchain(const RendererProperties& props, NativeGraphicsHandle instance)
     : mProperties(props)
 {
     // Create surface
@@ -33,7 +33,6 @@ Swapchain::Swapchain(const TString& appName, const Version& appVersion, const Re
     swapchain.framebufferOnly = YES;
     swapchain.opaque = YES;
     swapchain.pixelFormat = MTLPixelFormatBGRA8Unorm;
-    swapchain.name = [NSString stringWithCString:appName.c_str() encoding:NSASCIIStringEncoding];
     mHandle = swapchain;
     
     if (swapchain.maximumDrawableCount >= 3 && mProperties.tripleBufferingEnabled)
@@ -56,7 +55,6 @@ Swapchain::Swapchain(const TString& appName, const Version& appVersion, const Re
         GLEAM_ASSERT(false, "Metal: Neither triple nor double buffering is available!");
     }
     
-    mContext.commandPool = [MetalDevice newCommandQueue];
     mContext.imageAcquireSemaphore = dispatch_semaphore_create(mProperties.maxFramesInFlight);
 }
 
@@ -89,17 +87,12 @@ void Swapchain::Present(NativeGraphicsHandle commandBuffer)
     mCurrentFrameIndex = (mCurrentFrameIndex + 1) % mProperties.maxFramesInFlight;
 }
 
-NativeGraphicsHandle Swapchain::GetLayer() const
-{
-    return mHandle;
-}
-
 TextureFormat Swapchain::GetFormat() const
 {
     return MTLPixelFormatToTextureFormat(((CAMetalLayer*)mHandle).pixelFormat);
 }
 
-const FrameObject& Swapchain::GetDrawable() const
+NativeGraphicsHandle Swapchain::GetDrawable() const
 {
     return mContext.drawable;
 }

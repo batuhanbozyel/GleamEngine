@@ -1,4 +1,6 @@
 #include "gpch.h"
+
+#ifdef USE_VULKAN_RENDERER
 #include "VulkanPipelineStateManager.h"
 
 #include "Renderer/Renderer.h"
@@ -185,3 +187,4 @@ VulkanPipeline VulkanPipelineStateManager::CreateGraphicsPipeline(const Pipeline
 		setLayout
 	};
 }
+#endif

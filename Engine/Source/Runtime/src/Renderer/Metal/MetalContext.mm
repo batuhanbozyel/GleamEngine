@@ -2,7 +2,7 @@
 
 #ifdef USE_METAL_RENDERER
 #include "Renderer/RendererContext.h"
-#include "MetalUtils.h"
+#include "MetalPipelineStateManager.h"
 
 using namespace Gleam;
 
@@ -20,16 +20,22 @@ void RendererContext::Init(const TString& appName, const Version& appVersion, co
     mDevice = MTLCreateSystemDefaultDevice();
     GLEAM_ASSERT(mDevice);
     
-    mSwapchain.reset(new Swapchain(appName, appVersion, props));
+    mSwapchain.reset(new Swapchain(props, nil));
+    CAMetalLayer* swapchain = mSwapchain->GetHandle();
+    swapchain.name = [NSString stringWithCString:appName.c_str() encoding:NSASCIIStringEncoding];
     mSwapchain->InvalidateAndCreate();
+    
+    mContext.commandPool = [MetalDevice newCommandQueue];
     
     GLEAM_CORE_INFO("Metal: Graphics context created.");
 }
 /************************************************************************/
-/*	Destroy                                   */
+/*	Destroy                                                             */
 /************************************************************************/
 void RendererContext::Destroy()
 {
+    MetalPipelineStateManager::Clear();
+    
     // Destroy swapchain
     mSwapchain.reset();
     
@@ -39,7 +45,14 @@ void RendererContext::Destroy()
     GLEAM_CORE_INFO("Metal: Graphics context destroyed.");
 }
 /************************************************************************/
-/*    GetPhysicalDevice                                                   */
+/*    WaitIdle                                                          */
+/************************************************************************/
+void RendererContext::WaitIdle()
+{
+    
+}
+/************************************************************************/
+/*    GetPhysicalDevice                                                 */
 /************************************************************************/
 NativeGraphicsHandle RendererContext::GetPhysicalDevice()
 {

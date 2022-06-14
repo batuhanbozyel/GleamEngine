@@ -2,7 +2,6 @@
 
 #ifdef USE_VULKAN_RENDERER
 #include "Renderer/RendererContext.h"
-#include "VulkanUtils.h"
 #include "VulkanPipelineStateManager.h"
 
 #include "Core/ApplicationConfig.h"
