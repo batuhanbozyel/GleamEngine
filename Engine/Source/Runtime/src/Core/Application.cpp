@@ -195,16 +195,20 @@ Application::~Application()
 	sInstance = nullptr;
 }
 
-void Application::PushLayer(const RefCounted<Layer>& layer)
+uint32_t Application::PushLayer(const RefCounted<Layer>& layer)
 {
+    uint32_t index = mLayerStack.size();
 	layer->OnAttach();
 	mLayerStack.push_back(layer);
+    return index;
 }
 
-void Application::PushOverlay(const RefCounted<Layer>& overlay)
+uint32_t Application::PushOverlay(const RefCounted<Layer>& overlay)
 {
+    uint32_t index = mOverlays.size();
 	overlay->OnAttach();
 	mOverlays.push_back(overlay);
+    return index;
 }
 
 void Application::RemoveLayer(uint32_t index)

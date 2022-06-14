@@ -18,9 +18,9 @@ public:
 
 	void Run();
 
-	void PushLayer(const RefCounted<Layer>& layer);
+	uint32_t PushLayer(const RefCounted<Layer>& layer);
 
-	void PushOverlay(const RefCounted<Layer>& overlay);
+	uint32_t PushOverlay(const RefCounted<Layer>& overlay);
 
 	void RemoveLayer(uint32_t index);
 
