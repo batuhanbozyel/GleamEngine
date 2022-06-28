@@ -11,13 +11,11 @@ class GameObject
 public:
     
     TString name;
-    Ref<Transform> transform;
-    Ref<Scene> scene = SceneManager::GetActiveScene();
-    
-    GLEAM_NONCOPYABLE(GameObject);
+	Ref<Scene> scene = SceneManager::GetActiveScene();
+    Ref<Transform> transform = AddComponent<Transform>(*this);
     
     GameObject(const TString& name = "GameObject")
-        : mHandle(SceneManager::GetActiveScene().mRegistry.create()), transform(AddComponent<Transform>(*this)), name(name)
+        : mHandle(SceneManager::GetActiveScene().mRegistry.create()), name(name)
     {
         
     }
@@ -45,7 +43,7 @@ public:
     T& GetComponent() const
     {
         static_assert(std::is_base_of<Component, T>());
-        GLEAM_CORE_ASSERT(HasComponent<T>(), "{0} does not have component!", name);
+        GLEAM_ASSERT(HasComponent<T>(), "{0} does not have component!", name);
         return scene.get().mRegistry.get<T>(mHandle);
     }
 
@@ -60,7 +58,7 @@ public:
     void RemoveComponent() const
     {
         static_assert(std::is_base_of<Component, T>());
-        GLEAM_CORE_ASSERT(HasComponent<T>(), "{0} does not have component!", name);
+		GLEAM_ASSERT(HasComponent<T>(), "{0} does not have component!", name);
         scene.get().mRegistry.remove<T>(mHandle);
     }
     

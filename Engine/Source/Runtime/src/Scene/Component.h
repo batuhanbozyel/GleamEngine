@@ -7,18 +7,14 @@ class GameObject;
 class Component
 {
 public:
-    
+
+	GLEAM_NONCOPYABLE(Component);
+
     Component(GameObject& gameObject)
         : gameObject(gameObject)
     {
         
     }
-    
-    Component(Component&) = delete;
-    Component& operator=(Component&) = delete;
-    
-    Component(Component&&) = default;
-    Component& operator=(Component&&) = default;
     
     Ref<GameObject> gameObject;
     

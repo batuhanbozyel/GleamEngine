@@ -7,6 +7,8 @@ namespace IOUtils {
 
 static TArray<uint8_t> ReadBinaryFile(const TStringView filename)
 {
+	static_assert(sizeof(char) == sizeof(uint8_t));
+
 	auto filepath = std::filesystem::current_path().append(filename);
 	std::ifstream file(filepath.c_str(), std::ios::ate | std::ios::binary);
 	GLEAM_ASSERT(file.is_open());

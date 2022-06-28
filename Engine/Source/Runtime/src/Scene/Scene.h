@@ -12,12 +12,11 @@ class Scene
     friend class SceneManager;
     
 public:
-    
-    GLEAM_NONCOPYABLE(Scene);
-    
-    Scene() = default;
-    Scene(Scene&&) = default;
-    ~Scene() = default;
+
+	GLEAM_NONCOPYABLE(Scene);
+
+	Scene() = default;
+	~Scene() = default;
     
 private:
     
