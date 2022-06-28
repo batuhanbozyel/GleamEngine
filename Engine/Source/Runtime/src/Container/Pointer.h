@@ -5,9 +5,12 @@ namespace Gleam {
 
 template<typename T>
 using Scope = std::unique_ptr<T>;
+    
+template<typename T>
+using Ref = std::reference_wrapper<T>;
 
 template<typename T>
-using Ref = std::shared_ptr<T>;
+using RefCounted = std::shared_ptr<T>;
 
 template<typename T>
 using Weak = std::weak_ptr<T>;
@@ -19,7 +22,7 @@ template<typename T, typename ... Args>
 }
 
 template<typename T, typename ... Args>
-[[nodiscard]] inline constexpr  Ref<T> CreateRef(Args&& ... args)
+[[nodiscard]] inline constexpr  RefCounted<T> CreateRef(Args&& ... args)
 {
 	return std::make_shared<T>(std::forward<Args>(args)...);
 }

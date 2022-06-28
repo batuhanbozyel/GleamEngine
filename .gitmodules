@@ -1,6 +1,3 @@
-[submodule "Engine/ThirdParty/glm"]
-	path = Engine/ThirdParty/glm
-	url = https://github.com/g-truc/glm
 [submodule "Engine/ThirdParty/entt"]
 	path = Engine/ThirdParty/entt
 	url = https://github.com/skypjack/entt
@@ -34,3 +31,6 @@ url=https://github.com/batuhanbozyel/SDL
 [submodule "Engine/ThirdParty/fmt"]
 	path = Engine/ThirdParty/fmt
 	url = https://github.com/fmtlib/fmt
+[submodule "Engine/ThirdParty/SPIRV-Reflect"]
+	path = Engine/ThirdParty/SPIRV-Reflect
+	url = https://github.com/KhronosGroup/SPIRV-Reflect

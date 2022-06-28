@@ -1,9 +1,11 @@
 include (${CMAKE_SOURCE_DIR}/CMake/CMakeUtils.cmake)
 
 add_subdirectory(fmt)
+add_subdirectory(entt)
 add_subdirectory(SDL2)
 add_subdirectory(volk)
 add_subdirectory(googletest)
+add_subdirectory(SPIRV-Reflect)
 
 add_library(imgui STATIC
     "imgui/imconfig.h"
@@ -30,5 +32,7 @@ set_target_properties (
     imgui
     volk
     fmt
+    EnTT
+    spirv-reflect-static
     PROPERTIES FOLDER Dependencies
 )

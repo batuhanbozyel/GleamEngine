@@ -52,10 +52,12 @@ project(GleamEngine)
     set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin/$<CONFIGURATION>)
 
     # Set defaults preventing destination file conflicts
-    set(FMT_DEBUG_POSTFIX ""
-    CACHE STRING "Name suffix for debug builds" FORCE)
     set(SDL_CMAKE_DEBUG_POSTFIX ""
     CACHE STRING "Name suffix for debug builds" FORCE)
+
+    set(SPIRV_REFLECT_STATIC_LIB ON CACHE BOOL "" FORCE)
+    set(SPIRV_REFLECT_EXECUTABLE OFF CACHE BOOL "" FORCE)
+    set(SPIRV_REFLECT_EXAMPLES OFF CACHE BOOL "" FORCE)
 
     #subfolders
     add_subdirectory(Engine/ThirdParty)

@@ -2,6 +2,12 @@
 
 namespace Gleam {
 
+enum class PipelineBindPoint
+{
+    Graphics,
+    Compute
+};
+    
 enum class BlendOp
 {
     Add,
@@ -44,6 +50,8 @@ struct BlendState
     BlendMode sourceAlphaBlendMode = BlendMode::Zero;
     BlendMode sourceColorBlendMode = BlendMode::Zero;
     ColorWriteMask writeMask = ColorWriteMask::All;
+
+	bool operator==(const BlendState&) const = default;
 };
 
 enum class CompareFunction
@@ -63,6 +71,8 @@ struct DepthState
 {
     CompareFunction compareFunction = CompareFunction::Less;
     bool writeEnabled = false;
+
+	bool operator==(const DepthState&) const = default;
 };
 
 enum class StencilOp
@@ -87,6 +97,8 @@ struct StencilState
     StencilOp failOperation = StencilOp::Keep;
     StencilOp passOperation = StencilOp::Keep;
     StencilOp depthFailOperation = StencilOp::Keep;
+
+	bool operator==(const StencilState&) const = default;
 };
 
 enum class CullMode
@@ -96,13 +108,25 @@ enum class CullMode
     Back
 };
 
-struct PipelineState
+enum class PrimitiveTopology
 {
-    bool alphaToCoverage = false;
+	Points,
+	Lines,
+	LineStrip,
+	Triangles
+};
+
+struct PipelineStateDescriptor
+{
     TArray<BlendState, 8> blendStates;
     DepthState depthState;
     StencilState stencilState;
-    CullMode cullingMode;
+    CullMode cullingMode = CullMode::Off;
+	PrimitiveTopology topology = PrimitiveTopology::Triangles;
+    PipelineBindPoint bindPoint = PipelineBindPoint::Graphics;
+    bool alphaToCoverage = false;
+
+	bool operator==(const PipelineStateDescriptor&) const = default;
 };
 
 } // namespace Gleam

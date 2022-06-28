@@ -10,19 +10,21 @@ public:
 	GleamEditor(const Gleam::ApplicationProperties& props)
 		: Gleam::Application(props)
 	{
-
+		
 	}
 
 	~GleamEditor()
 	{
-
+		
 	}
 
 private:
+    
+    
 
 };
 
-}
+} // namespace GEditor
 
 Gleam::Application* Gleam::CreateApplication()
 {

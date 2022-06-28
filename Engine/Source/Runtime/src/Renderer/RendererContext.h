@@ -1,41 +1,52 @@
 #pragma once
-#include "RendererConfig.h"
+#include "Swapchain.h"
 
 namespace Gleam {
 
-#ifdef USE_METAL_RENDERER
-struct MetalFrameObject;
-using FrameObject = MetalFrameObject;
-#else
-struct VulkanFrameObject;
-using FrameObject = VulkanFrameObject;
-#endif
 struct Version;
 
 class RendererContext
 {
 public:
 
-	RendererContext(const TString& appName, const Version& appVersion, const RendererProperties& props);
-	~RendererContext();
+	static void Init(const TString& appName, const Version& appVersion, const RendererProperties& props);
+
+	static void Destroy();
+
+	static void WaitIdle();
+
+	static NativeGraphicsHandle GetPhysicalDevice();
+
+	static NativeGraphicsHandle GetGraphicsQueue();
+
+	static NativeGraphicsHandle GetComputeQueue();
+
+	static NativeGraphicsHandle GetTransferQueue();
+
+	static NativeGraphicsHandle GetGraphicsCommandPool(uint32_t index);
+
+	static uint32_t GetMemoryTypeForProperties(uint32_t memoryTypeBits, uint32_t properties);
+
+    static NativeGraphicsHandle GetDevice()
+    {
+        return mDevice;
+    }
     
-	const FrameObject& AcquireNextFrame();
-	const FrameObject& GetCurrentFrame() const;
-	void Present();
-
-	handle_t GetDevice() const;
-
-	const RendererProperties& GetProperties() const
+	static const Scope<Swapchain>& GetSwapchain()
 	{
-		return mProperties;
+		return mSwapchain;
+	}
+
+	static const RendererProperties& GetProperties()
+	{
+		return mSwapchain->GetProperties();
 	}
 
 private:
     
-	void InvalidateSwapchain();
+    static inline NativeGraphicsHandle mDevice = nullptr;
     
-	RendererProperties mProperties;
-	uint32_t mCurrentFrameIndex = 0;
+	static inline Scope<Swapchain> mSwapchain = nullptr;
 
 };
 

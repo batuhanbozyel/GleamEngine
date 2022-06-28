@@ -1,14 +1,18 @@
 #pragma once
 #ifdef USE_VULKAN_RENDERER
 #include <volk.h>
-#include "Renderer/Renderer.h"
+#include "Renderer/Buffer.h"
+#include "Renderer/TextureFormat.h"
+#include "Renderer/RendererContext.h"
+#include "Renderer/RenderPassDescriptor.h"
+#include "Renderer/PipelineStateDescriptor.h"
 
 namespace Gleam {
 
-#define VK_CHECK(x) {VkResult result = x;\
+#define VK_CHECK(x) {VkResult result = (x);\
 					GLEAM_ASSERT(result == VK_SUCCESS, VkResultToString(x));}
 
-#define VulkanDevice reinterpret_cast<VkDevice>(Renderer::GetDevice())
+#define VulkanDevice As<VkDevice>(RendererContext::GetDevice())
 
 static constexpr const char* VkResultToString(VkResult result)
 {
@@ -56,18 +60,99 @@ static constexpr const char* VkResultToString(VkResult result)
 	}
 }
 
-struct VulkanFrameObject
+static constexpr VkSampleCountFlagBits GetVkSampleCount(uint32_t sampleCount)
 {
-	VkRenderPass swapchainRenderPass{ VK_NULL_HANDLE };
-	VkCommandPool commandPool{ VK_NULL_HANDLE };
-	VkCommandBuffer commandBuffer{ VK_NULL_HANDLE };
-	VkFramebuffer framebuffer{ VK_NULL_HANDLE };
-	VkFence imageAcquireFence{ VK_NULL_HANDLE };
-	VkSemaphore imageAcquireSemaphore{ VK_NULL_HANDLE };
-	VkSemaphore imageReleaseSemaphore{ VK_NULL_HANDLE };
-	VkImage swapchainImage{ VK_NULL_HANDLE };
-	uint32_t imageIndex{ 0 };
-};
+	return static_cast<VkSampleCountFlagBits>(BIT(sampleCount - 1));
+}
+
+static constexpr TextureFormat VkFormatToTextureFormat(VkFormat format)
+{
+	switch (format)
+	{
+		case VK_FORMAT_B8G8R8A8_UNORM: return TextureFormat::B8G8R8A8_UNorm;
+		case VK_FORMAT_R8G8B8A8_UNORM: return TextureFormat::R8G8B8A8_UNorm;
+		// TODO:
+		default: return TextureFormat::None;
+	}
+}
+
+static constexpr VkFormat TextureFormatToVkFormat(TextureFormat format)
+{
+	switch (format)
+	{
+		case TextureFormat::B8G8R8A8_UNorm: return VK_FORMAT_B8G8R8A8_UNORM;
+		case TextureFormat::R8G8B8A8_UNorm: return VK_FORMAT_R8G8B8A8_UNORM;
+		// TODO:
+		default: return VK_FORMAT_UNDEFINED;
+	}
+}
+
+static constexpr VkAttachmentLoadOp AttachmentLoadActionToVkAttachmentLoadOp(AttachmentLoadAction loadAction)
+{
+	switch (loadAction)
+	{
+		case AttachmentLoadAction::Load: return VK_ATTACHMENT_LOAD_OP_LOAD;
+		case AttachmentLoadAction::Clear: return VK_ATTACHMENT_LOAD_OP_CLEAR;
+		case AttachmentLoadAction::DontCare: return VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+		default: return VK_ATTACHMENT_LOAD_OP_MAX_ENUM;
+	}
+}
+
+static constexpr VkAttachmentStoreOp AttachmentStoreActionToVkAttachmentStoreOp(AttachmentStoreAction storeAction)
+{
+	switch (storeAction)
+	{
+		case AttachmentStoreAction::Store: return VK_ATTACHMENT_STORE_OP_STORE;
+		case AttachmentStoreAction::DontCare: return VK_ATTACHMENT_STORE_OP_DONT_CARE;
+		default: return VK_ATTACHMENT_STORE_OP_MAX_ENUM;
+	}
+}
+
+static constexpr VkPrimitiveTopology PrimitiveToplogyToVkPrimitiveTopology(PrimitiveTopology topology)
+{
+	switch (topology)
+	{
+		case PrimitiveTopology::Points: return VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
+		case PrimitiveTopology::Lines: return VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+		case PrimitiveTopology::LineStrip: return VK_PRIMITIVE_TOPOLOGY_LINE_STRIP;
+		case PrimitiveTopology::Triangles: return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+		default: return VK_PRIMITIVE_TOPOLOGY_MAX_ENUM;
+	}
+}
+
+static constexpr VkCullModeFlags CullModeToVkCullMode(CullMode cullMode)
+{
+	switch (cullMode)
+	{
+		case CullMode::Off: return VK_CULL_MODE_NONE;
+		case CullMode::Front: return VK_CULL_MODE_FRONT_BIT;
+		case CullMode::Back: return VK_CULL_MODE_BACK_BIT;
+		default: return VK_CULL_MODE_FLAG_BITS_MAX_ENUM;
+	}
+}
+
+static constexpr VkBufferUsageFlags BufferUsageToVkBufferUsage(BufferUsage usage)
+{
+	switch (usage)
+	{
+		case BufferUsage::VertexBuffer: return VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+		case BufferUsage::IndexBuffer: return VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+		case BufferUsage::StorageBuffer: return VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+		case BufferUsage::UniformBuffer: return VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+		default: return VK_BUFFER_USAGE_FLAG_BITS_MAX_ENUM;
+	}
+}
+
+static constexpr VkDescriptorType BufferUsageToVkDescriptorType(BufferUsage usage)
+{
+	switch (usage)
+	{
+		case BufferUsage::VertexBuffer: return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+		case BufferUsage::StorageBuffer: return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+		case BufferUsage::UniformBuffer: return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		default: return VK_DESCRIPTOR_TYPE_MAX_ENUM;
+	}
+}
 
 } // namespace Gleam
 #endif

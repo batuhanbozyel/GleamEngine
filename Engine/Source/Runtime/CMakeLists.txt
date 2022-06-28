@@ -16,21 +16,21 @@ if (WIN32)
         ${Vulkan_INCLUDE_DIRS}
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/SDL2/include
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/fmt/include
-        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/glm
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/stb
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/ImGuizmo
-        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/entt/include
+        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/entt/single_include
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/tinyobjloader
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/OpenFBX/src
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/cgltf
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/volk
+        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/SPIRV-Reflect
     )
 
     set(LIB_LINKS_RUNTIME
-        ${CMAKE_SOURCE_DIR}/bin/$<CONFIG>/fmt.lib
         ${CMAKE_SOURCE_DIR}/bin/$<CONFIG>/volk.lib
         ${CMAKE_SOURCE_DIR}/bin/$<CONFIG>/imgui.lib
+        ${CMAKE_SOURCE_DIR}/bin/$<CONFIG>/spirv-reflect-static.lib
     )
 
     set_source_files_properties(${SHADER_FILES} PROPERTIES VS_TOOL_OVERRIDE "None")
@@ -40,18 +40,16 @@ else ()
         src
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/SDL2/include
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/fmt/include
-        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/glm
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/stb
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/ImGuizmo
-        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/entt/include
+        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/entt/single_include
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/tinyobjloader
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/OpenFBX/src
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/cgltf
     )
 
     set(LIB_LINKS_RUNTIME
-        ${CMAKE_SOURCE_DIR}/bin/$<CONFIG>/libfmt.a
         ${CMAKE_SOURCE_DIR}/bin/$<CONFIG>/libimgui.a
     )
     
@@ -59,13 +57,16 @@ endif()
 
 list(APPEND SOURCE_FILES ${SHADER_FILES})
 add_library(Runtime STATIC ${SOURCE_FILES})
-add_dependencies(Runtime fmt imgui volk)
-target_include_directories(Runtime PUBLIC ${INCLUDE_DIRS_RUNTIME})
 
-if (APPLE)
+if (NOT APPLE)
+    add_dependencies(Runtime imgui volk spirv-reflect-static)
+else()
+    add_dependencies(Runtime imgui)
     set_source_files_properties(${SOURCE_FILES} PROPERTIES COMPILE_FLAGS "-x objective-c++")
     set_target_properties(Runtime PROPERTIES MACOSX_BUNDLE YES XCODE_ATTRIBUTE_CLANG_ENABLE_OBJC_ARC YES)
 endif()
+
+target_include_directories(Runtime PUBLIC ${INCLUDE_DIRS_RUNTIME})
 
 set_property(TARGET Runtime PROPERTY STATIC_LIBRARY_OPTIONS ${LIB_LINKS_RUNTIME})
 target_link_directories(Runtime PUBLIC ${CMAKE_SOURCE_DIR}/bin/$<CONFIG>)
@@ -92,3 +93,15 @@ target_compile_definitions(
     $<$<CONFIG:RelWithDebugInfo>:GDEBUG>
     $<$<CONFIG:Release>:GRELEASE>
 )
+
+if (NOT APPLE)
+    set(HLSL_FILE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/src/Renderer/Vulkan/Shaders)
+    ADD_GRAPHICS_SHADER(Runtime ${HLSL_FILE_PATH}/FullscreenTriangle.hlsl fullscreenTriangleVertexShader fullscreenTriangleFragmentShader)
+    ADD_GRAPHICS_SHADER(Runtime ${HLSL_FILE_PATH}/ForwardPass.hlsl forwardPassVertexShader forwardPassFragmentShader)
+else()
+    add_custom_command(
+        TARGET Runtime
+        PRE_BUILD
+        COMMAND xcrun -sdk macosx metal -frecord-sources=flat ${MSL_FILES} -o ${CMAKE_SOURCE_DIR}/Assets/PrecompiledShaders.metallib
+    )
+endif()

@@ -1,11 +1,16 @@
 #pragma once
+#define FMT_HEADER_ONLY
 #include <fmt/core.h>
+#include <fstream>
+#include <chrono>
 
 namespace Gleam {
 
 class Logger
 {
 public:
+    
+    GLEAM_NONCOPYABLE(Logger);
     
     enum class Level
     {
@@ -14,7 +19,8 @@ public:
         Warn,
         Error
     };
-    
+
+	Logger(const TStringView name);
     ~Logger();
     
     static const Logger& GetCoreLogger()
@@ -38,23 +44,13 @@ public:
 
 		std::ostringstream ss;
 		ss << '[' << formattedCurrentTime << "] ";
-		ss << LogLevelToString(lvl) << mName << fmt::format(frmt, args...) << '\n';
+		ss << LogLevelToString(lvl) << mName << fmt::format(fmt::runtime(frmt), std::forward<Args>(args)...) << '\n';
 
 		*mFileStream << ss.str();
 		std::flush(*mFileStream);
 	}
-
-	Logger(const Logger&) = delete;
-	Logger& operator=(const Logger&) = delete;
     
 private:
-    
-    Logger(const TStringView name);
-    
-    TString mName;
-    
-    static inline Scope<std::ofstream> mFileStream = nullptr;
-    static inline uint32_t mInstanceCount = 0;
 
 	static constexpr TStringView LogLevelToString(Logger::Level lvl)
 	{
@@ -67,6 +63,11 @@ private:
 			default: return "[undefined] ";
 		}
 	};
+    
+    TString mName;
+    
+    static inline Scope<std::ofstream> mFileStream = nullptr;
+    static inline uint32_t mInstanceCount = 0;
     
 };
 

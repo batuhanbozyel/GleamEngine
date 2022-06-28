@@ -1,6 +1,7 @@
 #include "gpch.h"
 #include "Application.h"
 
+#include "Layer.h"
 #include "Window.h"
 #include "Events/WindowEvent.h"
 #include "Renderer/Renderer.h"
@@ -85,10 +86,6 @@ static int SDLCALL SDL2_EventCallback(void* data, SDL_Event* e)
 Application::Application(const ApplicationProperties& props)
 	: mVersion(props.appVersion)
 {
-	if (sInstance)
-	{
-		delete sInstance;
-	}
 	sInstance = this;
 
 	int initSucess = SDL_Init(SDL_INIT_EVERYTHING);
@@ -120,25 +117,130 @@ Application::Application(const ApplicationProperties& props)
 
 void Application::Run()
 {
+    Time::Reset();
 	while (mRunning)
 	{
 		while (SDL_PollEvent(&mEvent));
         
+        Time::Step();
+
+		for (const auto& layer : mLayerStack)
+		{
+			layer->OnUpdate();
+		}
+
+		bool fixedUpdate = Time::fixedTime <= (Time::time - Time::fixedDeltaTime);
+        if (fixedUpdate)
+        {
+            Time::FixedStep();
+            for (const auto& layer : mLayerStack)
+            {
+                layer->OnFixedUpdate();
+            }
+        }
+
+        for (const auto& overlay : mOverlays)
+        {
+            overlay->OnUpdate();
+        }
+
+		if (fixedUpdate)
+		{
+			for (const auto& overlay : mOverlays)
+			{
+				overlay->OnFixedUpdate();
+			}
+		}
+		
 #ifdef USE_METAL_RENDERER
-    @autoreleasepool
+        @autoreleasepool
 #endif
         {
-            Renderer::BeginFrame();
-            
-            Renderer::EndFrame();
+            for (const auto& layer : mLayerStack)
+            {
+                layer->OnRender();
+            }
+
+            for (const auto& overlay : mOverlays)
+            {
+                overlay->OnRender();
+            }
         }
 	}
 }
 
 Application::~Application()
 {
+	// Destroy overlays
+	for (const auto& overlay : mOverlays)
+	{
+		overlay->OnDetach();
+	}
+	mOverlays.clear();
+
+	// Destroy layers
+	for (const auto& layer : mLayerStack)
+	{
+		layer->OnDetach();
+	}
+	mLayerStack.clear();
+
+	// Destroy renderer
 	Renderer::Destroy();
+
+	// Destroy windows and window subsystem
 	mWindows.clear();
 	SDL_Quit();
+
 	sInstance = nullptr;
+}
+
+uint32_t Application::PushLayer(const RefCounted<Layer>& layer)
+{
+    uint32_t index = mLayerStack.size();
+	layer->OnAttach();
+	mLayerStack.push_back(layer);
+    return index;
+}
+
+uint32_t Application::PushOverlay(const RefCounted<Layer>& overlay)
+{
+    uint32_t index = mOverlays.size();
+	overlay->OnAttach();
+	mOverlays.push_back(overlay);
+    return index;
+}
+
+void Application::RemoveLayer(uint32_t index)
+{
+	GLEAM_ASSERT(index < mLayerStack.size());
+	mLayerStack[index]->OnDetach();
+	mLayerStack.erase(mLayerStack.begin() + index);
+}
+
+void Application::RemoveOverlay(uint32_t index)
+{
+	GLEAM_ASSERT(index < mOverlays.size());
+	mOverlays[index]->OnDetach();
+	mOverlays.erase(mOverlays.begin() + index);
+}
+
+void Application::RemoveLayer(const RefCounted<Layer>& layer)
+{
+	auto layerIt = std::find(mLayerStack.begin(), mLayerStack.end(), layer);
+	if (layerIt != mLayerStack.end())
+	{
+		layer->OnDetach();
+		mLayerStack.erase(layerIt);
+	}
+}
+
+void Application::RemoveOverlay(const RefCounted<Layer>& overlay)
+{
+	auto overlayIt = std::find(mOverlays.begin(), mOverlays.end(), overlay);
+	if (overlayIt != mOverlays.end())
+	{
+		overlay->OnDetach();
+		mOverlays.erase(overlayIt);
+	}
 }

@@ -6,7 +6,9 @@ namespace Gleam {
 class Window
 {
 public:
-
+    
+    GLEAM_NONCOPYABLE(Window);
+    
 	Window(const WindowProperties& props);
 	~Window();
 
@@ -19,9 +21,6 @@ public:
 	{
 		return mWindow;
 	}
-
-	Window(const Window&) = delete;
-	Window& operator=(const Window&) = delete;
 
 private:
 
