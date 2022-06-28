@@ -32,7 +32,8 @@ ForwardRenderer::ForwardRenderer()
     };
     mIndexBuffer.SetData(indices.data(), 0, indices.size());
     
-    mForwardPassProgram = ShaderLibrary::CreateGraphicsShader("forwardPassVertexShader", "forwardPassFragmentShader");
+    mForwardPassProgram.vertexShader = ShaderLibrary::CreateShader("forwardPassVertexShader", ShaderStage::Vertex);
+	mForwardPassProgram.fragmentShader = ShaderLibrary::CreateShader("forwardPassFragmentShader", ShaderStage::Fragment);
 }
 
 ForwardRenderer::~ForwardRenderer()

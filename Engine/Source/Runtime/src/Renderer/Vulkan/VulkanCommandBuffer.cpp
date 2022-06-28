@@ -11,8 +11,6 @@
 
 using namespace Gleam;
 
-
-
 struct CommandBuffer::Impl
 {
 	TArray<VkCommandBuffer> commandBuffers;

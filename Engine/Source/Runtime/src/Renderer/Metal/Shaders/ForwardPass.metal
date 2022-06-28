@@ -24,4 +24,3 @@ fragment float4 forwardPassFragmentShader(VertexOut in [[stage_in]],
 {
     return uniforms.color;
 }
-

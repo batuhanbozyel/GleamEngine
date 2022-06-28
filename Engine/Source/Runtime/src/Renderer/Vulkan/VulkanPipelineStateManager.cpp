@@ -2,6 +2,7 @@
 
 #ifdef USE_VULKAN_RENDERER
 #include "VulkanPipelineStateManager.h"
+#include "VulkanShaderReflect.h"
 
 #include "Renderer/Renderer.h"
 
@@ -36,7 +37,6 @@ void VulkanPipelineStateManager::Clear()
 	for (const auto& element : mGraphicsPipelineCache)
 	{
 		vkDestroyRenderPass(VulkanDevice, element.pipelineState.renderPass, nullptr);
-		vkDestroyDescriptorSetLayout(VulkanDevice, element.pipelineState.pipeline.setLayout, nullptr);
 		vkDestroyPipelineLayout(VulkanDevice, element.pipelineState.pipeline.layout, nullptr);
 		vkDestroyPipeline(VulkanDevice, element.pipelineState.pipeline.handle, nullptr);
 	}
@@ -132,23 +132,27 @@ VulkanPipeline VulkanPipelineStateManager::CreateGraphicsPipeline(const Pipeline
 	pipelineCreateInfo.pViewportState = &viewportState;
 
 	// Pipeline layout
-	VkDescriptorSetLayout setLayout;
-	VkDescriptorSetLayoutBinding setBinding{};
-	setBinding.binding = 0;
-	setBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-	setBinding.descriptorCount = 1;
-	setBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+	const auto& vertexShaderReflection = program.vertexShader->reflection;
+	const auto& fragmentShaderReflection = program.fragmentShader->reflection;
 
-	VkDescriptorSetLayoutCreateInfo setCreateInfo{ VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
-	setCreateInfo.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR;
-	setCreateInfo.bindingCount = 1;
-	setCreateInfo.pBindings = &setBinding;
-	VK_CHECK(vkCreateDescriptorSetLayout(VulkanDevice, &setCreateInfo, nullptr, &setLayout));
+	// Descriptor set layouts
+	TArray<VkDescriptorSetLayout> setLayouts;
+	setLayouts.reserve(vertexShaderReflection->setLayouts.size() + fragmentShaderReflection->setLayouts.size());
+	setLayouts.insert(setLayouts.end(), vertexShaderReflection->setLayouts.begin(), vertexShaderReflection->setLayouts.end());
+	setLayouts.insert(setLayouts.end(), fragmentShaderReflection->setLayouts.begin(), fragmentShaderReflection->setLayouts.end());
+
+	// Push constant ranges
+	TArray<VkPushConstantRange> pushConstantRanges;
+	pushConstantRanges.reserve(vertexShaderReflection->pushConstantRanges.size() + fragmentShaderReflection->pushConstantRanges.size());
+	pushConstantRanges.insert(pushConstantRanges.end(), vertexShaderReflection->pushConstantRanges.begin(), vertexShaderReflection->pushConstantRanges.end());
+	pushConstantRanges.insert(pushConstantRanges.end(), fragmentShaderReflection->pushConstantRanges.begin(), fragmentShaderReflection->pushConstantRanges.end());
 
 	VkPipelineLayout pipelineLayout;
 	VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo{ VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
-	pipelineLayoutCreateInfo.setLayoutCount = 1;
-	pipelineLayoutCreateInfo.pSetLayouts = &setLayout;
+	pipelineLayoutCreateInfo.setLayoutCount = setLayouts.size();
+	pipelineLayoutCreateInfo.pSetLayouts = setLayouts.data();
+	pipelineLayoutCreateInfo.pushConstantRangeCount = pushConstantRanges.size();
+	pipelineLayoutCreateInfo.pPushConstantRanges = pushConstantRanges.data();
 	VK_CHECK(vkCreatePipelineLayout(VulkanDevice, &pipelineLayoutCreateInfo, nullptr, &pipelineLayout));
 	pipelineCreateInfo.layout = pipelineLayout;
 
@@ -183,8 +187,7 @@ VulkanPipeline VulkanPipelineStateManager::CreateGraphicsPipeline(const Pipeline
 	return VulkanPipeline
 	{
 		pipeline,
-		pipelineLayout,
-		setLayout
+		pipelineLayout
 	};
 }
 #endif

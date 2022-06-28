@@ -24,11 +24,13 @@ if (WIN32)
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/OpenFBX/src
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/cgltf
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/volk
+        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/SPIRV-Reflect
     )
 
     set(LIB_LINKS_RUNTIME
         ${CMAKE_SOURCE_DIR}/bin/$<CONFIG>/volk.lib
         ${CMAKE_SOURCE_DIR}/bin/$<CONFIG>/imgui.lib
+        ${CMAKE_SOURCE_DIR}/bin/$<CONFIG>/spirv-reflect-static.lib
     )
 
     set_source_files_properties(${SHADER_FILES} PROPERTIES VS_TOOL_OVERRIDE "None")
@@ -57,7 +59,7 @@ list(APPEND SOURCE_FILES ${SHADER_FILES})
 add_library(Runtime STATIC ${SOURCE_FILES})
 
 if (NOT APPLE)
-    add_dependencies(Runtime imgui volk)
+    add_dependencies(Runtime imgui volk spirv-reflect-static)
 else()
     add_dependencies(Runtime imgui)
     set_source_files_properties(${SOURCE_FILES} PROPERTIES COMPILE_FLAGS "-x objective-c++")

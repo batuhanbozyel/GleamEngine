@@ -13,16 +13,25 @@ class Shader : public GraphicsObject
 {
 public:
 
-	Shader(const TString& entryPoint);
+	Shader(const TString& entryPoint, ShaderStage stage);
 	~Shader();
+
+	ShaderStage GetStage() const
+	{
+		return mStage;
+	}
 
 	const TString& GetEntryPoint() const
 	{
 		return mEntryPoint;
 	}
 
+	struct Reflection;
+	Scope<Reflection> reflection;
+
 private:
 
+	ShaderStage mStage;
 	TString mEntryPoint;
 
 };

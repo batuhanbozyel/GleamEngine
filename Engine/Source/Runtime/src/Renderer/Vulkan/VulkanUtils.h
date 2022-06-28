@@ -62,7 +62,7 @@ static constexpr const char* VkResultToString(VkResult result)
 
 static constexpr VkSampleCountFlagBits GetVkSampleCount(uint32_t sampleCount)
 {
-	return sampleCount > 1 ? static_cast<VkSampleCountFlagBits>(BIT(sampleCount - 1)) : VK_SAMPLE_COUNT_1_BIT;
+	return static_cast<VkSampleCountFlagBits>(BIT(sampleCount - 1));
 }
 
 static constexpr TextureFormat VkFormatToTextureFormat(VkFormat format)

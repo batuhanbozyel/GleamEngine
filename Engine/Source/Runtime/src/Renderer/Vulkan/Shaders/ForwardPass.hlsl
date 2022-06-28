@@ -20,7 +20,10 @@ VertexOut forwardPassVertexShader(uint vertex_id: SV_VertexID)
     return OUT;
 }
 
+[[vk::push_constant]]
+Gleam::ForwardPassFragmentUniforms uniforms;
+
 float4 forwardPassFragmentShader(VertexOut IN) : SV_TARGET
 {
-    return float4(IN.texCoord, 0.0, 1.0);
+    return uniforms.color;
 }

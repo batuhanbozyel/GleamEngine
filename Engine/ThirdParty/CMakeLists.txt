@@ -5,6 +5,7 @@ add_subdirectory(entt)
 add_subdirectory(SDL2)
 add_subdirectory(volk)
 add_subdirectory(googletest)
+add_subdirectory(SPIRV-Reflect)
 
 add_library(imgui STATIC
     "imgui/imconfig.h"
@@ -32,5 +33,6 @@ set_target_properties (
     volk
     fmt
     EnTT
+    spirv-reflect-static
     PROPERTIES FOLDER Dependencies
 )

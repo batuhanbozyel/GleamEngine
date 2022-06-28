@@ -10,16 +10,12 @@ public:
 	static void Init();
     
 	static void Destroy();
-    
-	static GraphicsShader CreateGraphicsShader(const TString& vertexEntryPoint, const TString& fragmentEntryPoint);
 
-	static ComputeShader CreateComputeShader(const TString& entryPoint);
+	static RefCounted<Shader> CreateShader(const TString& entryPoint, ShaderStage stage);
     
 	static void ClearCache();
 
 private:
-
-	static RefCounted<Shader> CreateOrGetCachedShader(const TString& entryPoint);
 
 	static inline HashMap<TString, RefCounted<Shader>> mShaderCache;
 

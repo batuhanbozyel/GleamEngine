@@ -3,9 +3,8 @@
 namespace Gleam {
 
 class Buffer;
-class RenderPass;
 class IndexBuffer;
-    
+
 struct GraphicsShader;
 struct RenderPassDescriptor;
 struct PipelineStateDescriptor;
