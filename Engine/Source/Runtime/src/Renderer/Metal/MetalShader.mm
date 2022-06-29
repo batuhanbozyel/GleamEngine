@@ -2,6 +2,7 @@
 
 #ifdef USE_METAL_RENDERER
 #include "Renderer/ShaderLibrary.h"
+#include "MetalShaderReflect.h"
 #include "MetalUtils.h"
 
 using namespace Gleam;
