@@ -3,9 +3,9 @@
 
 namespace Gleam {
 
-struct Shader::Reflect
+struct Shader::Reflection
 {
-
+    
 };
 
 
