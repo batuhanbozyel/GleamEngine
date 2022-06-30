@@ -9,7 +9,7 @@ namespace Gleam {
 
 class GraphicsShader;
 
-class ForwardRenderer : public Renderer
+class ForwardRenderer final : public Renderer
 {
 public:
 

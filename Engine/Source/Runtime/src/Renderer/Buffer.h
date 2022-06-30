@@ -54,7 +54,7 @@ protected:
 /* VertexBuffer                                                         */
 /************************************************************************/
 template<typename T>
-class VertexBuffer : public Buffer
+class VertexBuffer final : public Buffer
 {
 public:
 
@@ -91,7 +91,7 @@ private:
 /************************************************************************/
 /* IndexBuffer                                                          */
 /************************************************************************/
-class IndexBuffer : public Buffer
+class IndexBuffer final : public Buffer
 {
 public:
 

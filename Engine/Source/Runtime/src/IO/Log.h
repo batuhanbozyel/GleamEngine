@@ -6,7 +6,7 @@
 
 namespace Gleam {
 
-class Logger
+class Logger final
 {
 public:
     

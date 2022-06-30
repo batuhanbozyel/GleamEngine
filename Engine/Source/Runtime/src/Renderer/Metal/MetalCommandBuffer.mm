@@ -21,6 +21,7 @@ struct CommandBuffer::Impl
     id<MTLCommandBuffer> commandBuffer = nil;
     id<MTLRenderCommandEncoder> commandEncoder = nil;
     MetalPipelineState pipelineState;
+    bool swapchainTarget = false;
 };
 
 CommandBuffer::CommandBuffer()
@@ -36,8 +37,10 @@ CommandBuffer::~CommandBuffer()
 
 void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, const PipelineStateDescriptor& pipelineDesc, const GraphicsShader& program) const
 {
-    mHandle->pipelineState = MetalPipelineStateManager::GetGraphicsPipelineState(renderPassDesc, pipelineDesc, program);
+    mHandle->pipelineState = MetalPipelineStateManager::GetGraphicsPipelineState(pipelineDesc, program);
+    mHandle->swapchainTarget = renderPassDesc.swapchainTarget;
     
+    MTLRenderPassDescriptor* renderPass = [MTLRenderPassDescriptor renderPassDescriptor];
     if (renderPassDesc.swapchainTarget)
     {
         MTLClearColor clearValue;
@@ -53,13 +56,17 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, 
         }
         
         id<CAMetalDrawable> drawable = RendererContext::GetSwapchain()->AcquireNextDrawable();
-        MTLRenderPassColorAttachmentDescriptor* colorAttachmentDesc = mHandle->pipelineState.renderPass.colorAttachments[0];
+        MTLRenderPassColorAttachmentDescriptor* colorAttachmentDesc = renderPass.colorAttachments[0];
         colorAttachmentDesc.clearColor = clearValue;
         colorAttachmentDesc.loadAction = MTLLoadActionClear;
         colorAttachmentDesc.storeAction = MTLStoreActionStore;
         colorAttachmentDesc.texture = drawable.texture;
     }
-    mHandle->commandEncoder = [mHandle->commandBuffer renderCommandEncoderWithDescriptor:mHandle->pipelineState.renderPass];
+    else
+    {
+        // TODO:
+    }
+    mHandle->commandEncoder = [mHandle->commandBuffer renderCommandEncoderWithDescriptor:renderPass];
     
     [mHandle->commandEncoder setRenderPipelineState:mHandle->pipelineState.pipeline];
 }
@@ -134,7 +141,7 @@ void CommandBuffer::End() const
 
 void CommandBuffer::Commit() const
 {
-    if (mHandle->pipelineState.swapchainTarget)
+    if (mHandle->swapchainTarget)
 	{
 		RendererContext::GetSwapchain()->Present(mHandle->commandBuffer);
 	}

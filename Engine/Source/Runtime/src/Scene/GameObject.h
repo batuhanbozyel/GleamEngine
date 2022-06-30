@@ -4,7 +4,7 @@
 
 namespace Gleam {
 
-class GameObject
+class GameObject final
 {
     entt::entity mHandle;
     

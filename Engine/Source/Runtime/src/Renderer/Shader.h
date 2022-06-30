@@ -9,7 +9,7 @@ enum class ShaderStage
 	Compute
 };
 
-class Shader : public GraphicsObject
+class Shader final : public GraphicsObject
 {
 public:
 

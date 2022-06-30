@@ -6,7 +6,7 @@ namespace Gleam {
 class GameObject;
 class SceneManager;
 
-class Scene
+class Scene final
 {
     friend class GameObject;
     friend class SceneManager;

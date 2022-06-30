@@ -3,7 +3,7 @@
 
 namespace Gleam {
 
-class DebugRenderer : public Renderer
+class DebugRenderer final : public Renderer
 {
 public:
 
