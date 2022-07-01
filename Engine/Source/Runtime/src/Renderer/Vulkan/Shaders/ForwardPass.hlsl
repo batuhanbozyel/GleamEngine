@@ -1,4 +1,4 @@
-#include "../../GraphicsTypes.h"
+#include "../../ShaderTypes.h"
 
 StructuredBuffer<Gleam::Vertex> VertexBuffer : register(t0);
 

@@ -1,5 +1,6 @@
 #pragma once
 #include "TextureFormat.h"
+#include "GraphicsObject.h"
 
 namespace Gleam {
 

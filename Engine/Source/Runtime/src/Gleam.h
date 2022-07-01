@@ -19,7 +19,6 @@
 #include "Math/Transform.h"
 
 #include "Renderer/Camera.h"
-#include "Renderer/GraphicsObject.h"
 #include "Renderer/Renderer.h"
 #include "Renderer/CommandBuffer.h"
 #include "Renderer/ShaderLibrary.h"

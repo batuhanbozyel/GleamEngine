@@ -1,9 +1,9 @@
 #pragma once
-#include "Renderer.h"
 #include "Buffer.h"
 #include "Shader.h"
+#include "Renderer.h"
+#include "ShaderTypes.h"
 #include "CommandBuffer.h"
-#include "GraphicsTypes.h"
 
 namespace Gleam {
 
