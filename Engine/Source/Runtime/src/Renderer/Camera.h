@@ -1,5 +1,4 @@
 #pragma once
-#include "../Scene/Component.h"
 
 namespace Gleam {
 
@@ -9,11 +8,9 @@ enum class ProjectionType
 	Perspective
 };
 
-class Camera : public Component
+class Camera : public Transform
 {
 public:
-    
-    COMPONENT_BODY();
     
     void SetViewport(float width, float height);
     

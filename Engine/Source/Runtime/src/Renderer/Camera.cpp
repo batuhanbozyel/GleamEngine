@@ -1,6 +1,5 @@
 #include "gpch.h"
 #include "Camera.h"
-#include "../Scene/GameObject.h"
 
 using namespace Gleam;
 
@@ -37,8 +36,7 @@ const Matrix4& Camera::GetProjectionMatrix() const
 
 void Camera::RecalculateViewMatrix()
 {
-    const Transform& transform = gameObject.get().transform;
-    mViewMatrix = Matrix4::LookAt(transform.GetWorldPosition(), transform.GetWorldPosition() + transform.ForwardVector(), transform.UpVector());
+    mViewMatrix = Matrix4::LookAt(GetWorldPosition(), GetWorldPosition() + ForwardVector(), UpVector());
 }
 
 void Camera::RecalculateProjectionMatrix()

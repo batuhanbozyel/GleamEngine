@@ -1,5 +1,5 @@
 #include "gpch.h"
-#include "Scene.h"
+#include "World.h"
 
 using namespace Gleam;
 

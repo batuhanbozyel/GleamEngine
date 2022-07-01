@@ -12,10 +12,11 @@
 #include "Math/Vector3.h"
 #include "Math/Vector4.h"
 #include "Math/Quaternion.h"
+#include "Math/Color.h"
 #include "Math/Matrix2.h"
 #include "Math/Matrix3.h"
 #include "Math/Matrix4.h"
-#include "Math/Color.h"
+#include "Math/Transform.h"
 
 #include "Renderer/Camera.h"
 #include "Renderer/GraphicsObject.h"
@@ -31,5 +32,4 @@
 #include "Core/Time.h"
 #include "IO/Log.h"
 
-#include "Scene/GameObject.h"
-#include "Scene/Component.h"
+#include "World/World.h"

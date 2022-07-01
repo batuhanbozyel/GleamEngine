@@ -1,14 +1,11 @@
 #pragma once
-#include "../Scene/Component.h"
 
 namespace Gleam {
 
-class Transform : public Component
+class Transform
 {
 public:
-    
-    COMPONENT_BODY();
-    
+
     NO_DISCARD FORCE_INLINE const Matrix4& GetTransform()
     {
         if (mIsTransformDirty)
