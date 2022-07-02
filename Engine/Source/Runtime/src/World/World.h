@@ -7,13 +7,13 @@ class World final
 {    
 public:
 
-	World(const TString& name)
+	World(const TString& name = "World")
 		: mName(name)
 	{
 
 	}
 
-	const EntityManager& GetEntityManager() const
+	EntityManager& GetEntityManager()
 	{
 		return mEntityManager;
 	}

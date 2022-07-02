@@ -9,8 +9,7 @@ public:
 
 	Entity CreateEntity()
 	{
-		Entity entity = mRegistry.create();
-		return entity;
+		return mRegistry.create();
 	}
 
 	template<typename ... Types>
@@ -32,16 +31,17 @@ public:
 	}
 
 	template<typename T, typename ... Args>
-	T& AddComponent(Entity entity, Args&&... args) const
+	T& AddComponent(Entity entity, Args&&... args)
 	{
+		GLEAM_ASSERT(!HasComponent<T>(entity), "Entity already has component!");
 		return mRegistry.emplace<T>(entity, std::forward<Args>(args)...);
 	}
 
 	template<typename T>
-	T& GetComponent(Entity entity) const
+	void RemoveComponent(Entity entity)
 	{
-		GLEAM_ASSERT(HasComponent<T>(entity), "{0} does not have component!", name);
-		return mRegistry.get<T>(entity);
+		GLEAM_ASSERT(HasComponent<T>(entity), "Entity does not have component!");
+		mRegistry.remove<T>(entity);
 	}
 
 	template<typename T>
@@ -51,10 +51,10 @@ public:
 	}
 
 	template<typename T>
-	void RemoveComponent(Entity entity) const
+	T& GetComponent(Entity entity) const
 	{
-		GLEAM_ASSERT(HasComponent<T>(entity), "{0} does not have component!", name);
-		mRegistry.remove<T>(entity);
+		GLEAM_ASSERT(HasComponent<T>(entity), "Entity does not have component!");
+		return mRegistry.get<T>(entity);
 	}
 
 private:
