@@ -88,7 +88,6 @@ target_compile_definitions(
     "_CRT_SECURE_NO_WARNINGS"
 
     PUBLIC
-    "GLM_FORCE_DEPTH_ZERO_TO_ONE"
     $<$<CONFIG:Debug>:GDEBUG>
     $<$<CONFIG:RelWithDebugInfo>:GDEBUG>
     $<$<CONFIG:Release>:GRELEASE>
