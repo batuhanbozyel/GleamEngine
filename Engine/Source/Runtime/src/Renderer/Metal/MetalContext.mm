@@ -45,13 +45,6 @@ void RendererContext::Destroy()
     GLEAM_CORE_INFO("Metal: Graphics context destroyed.");
 }
 /************************************************************************/
-/*    WaitIdle                                                          */
-/************************************************************************/
-void RendererContext::WaitIdle()
-{
-    
-}
-/************************************************************************/
 /*    GetPhysicalDevice                                                 */
 /************************************************************************/
 NativeGraphicsHandle RendererContext::GetPhysicalDevice()

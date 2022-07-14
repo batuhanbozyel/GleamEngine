@@ -8,9 +8,9 @@ struct VertexOut
 };
 
 vertex VertexOut forwardPassVertexShader(uint vertexID [[vertex_id]],
-                                         constant Gleam::Vertex* VertexBuffer [[buffer(0)]])
+                                         constant Gleam::MeshVertex* VertexBuffer [[buffer(0)]])
 {
-    Gleam::Vertex vert = VertexBuffer[vertexID];
+    Gleam::MeshVertex vert = VertexBuffer[vertexID];
 
     VertexOut out;
     out.position = float4(vert.position, 1.0);
