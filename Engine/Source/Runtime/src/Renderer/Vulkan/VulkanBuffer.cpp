@@ -6,23 +6,6 @@
 
 using namespace Gleam;
 
-Buffer::Buffer(uint32_t size, BufferUsage usage, MemoryType memoryType)
-	: mSize(size), mUsage(usage), mMemoryType(memoryType)
-{
-	Allocate(*this);
-}
-
-Buffer::Buffer(const void* data, uint32_t size, BufferUsage usage, MemoryType memoryType)
-	: Buffer(size, usage, memoryType)
-{
-	SetData(data, 0, size);
-}
-
-Buffer::~Buffer()
-{
-	Free(*this);
-}
-
 void Buffer::Allocate(Buffer& buffer)
 {
 	VkBufferCreateInfo createInfo{ VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
@@ -76,7 +59,7 @@ void Buffer::Allocate(Buffer& buffer)
 	}
 }
 
-void Buffer::Free(const Buffer& buffer)
+void Buffer::Free(Buffer& buffer)
 {
 	vkDestroyBuffer(VulkanDevice, As<VkBuffer>(buffer.mHandle), nullptr);
 	vkFreeMemory(VulkanDevice, As<VkDeviceMemory>(buffer.mMemory), nullptr);
@@ -118,50 +101,4 @@ void Buffer::Copy(const Buffer& src, const Buffer& dst)
 	vkFreeCommandBuffers(VulkanDevice, As<VkCommandPool>(RendererContext::GetTransferCommandPool(frameIdx)), 1, &commandBuffer);
 }
 
-void Buffer::Resize(uint32_t size, bool keepContent)
-{
-	if (keepContent)
-	{
-		if (mMemoryType == MemoryType::Static)
-		{
-			Buffer stagingBuffer(mSize, BufferUsage::StagingBuffer, MemoryType::Static);
-			Copy(*this, stagingBuffer);
-			Free(*this);
-
-			mSize = size;
-			Allocate(*this);
-
-			Copy(stagingBuffer, *this);
-		}
-		else
-		{
-			TArray<uint8_t> stagingBuffer(mSize);
-			memcpy(stagingBuffer.data(), mContents, mSize);
-			Free(*this);
-
-			mSize = size;
-			Allocate(*this);
-
-			memcpy(mContents, stagingBuffer.data(), stagingBuffer.size());
-		}
-	}
-	else
-	{
-		Free(*this);
-		Allocate(*this);
-	}
-}
-
-void Buffer::SetData(const void* data, uint32_t offset, uint32_t size) const
-{
-	if (mMemoryType == MemoryType::Static)
-	{
-		Buffer stagingBuffer(data, mSize, BufferUsage::StagingBuffer, MemoryType::Stream);
-		Copy(stagingBuffer, *this);
-	}
-	else
-	{
-		memcpy(As<uint8_t*>(mContents) + offset, data, size);
-	}
-}
 #endif

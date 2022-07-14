@@ -6,27 +6,53 @@
 
 using namespace Gleam;
 
-Buffer::Buffer(uint32_t size, BufferUsage usage)
-    : mSize(size), mUsage(usage)
+void Buffer::Allocate(Buffer& buffer)
 {
-    mHandle = [MetalDevice newBufferWithLength:size options:MTLResourceStorageModeShared];
-    mContents = [id<MTLBuffer>(mHandle) contents];
+    switch (buffer.mMemoryType)
+    {
+        case MemoryType::Static:
+        {
+            buffer.mHandle = [MetalDevice newBufferWithLength:buffer.mSize options:MTLResourceStorageModePrivate];
+            break;
+        }
+        case MemoryType::Dynamic:
+        {
+            buffer.mHandle = [MetalDevice newBufferWithLength:buffer.mSize options:MTLResourceStorageModeManaged];
+            break;
+        }
+        case MemoryType::Stream:
+        {
+            buffer.mHandle = [MetalDevice newBufferWithLength:buffer.mSize options:MTLResourceStorageModeShared];
+            break;
+        }
+        default:
+        {
+            GLEAM_ASSERT(false, "Vulkan: Unknown memory type given!");
+            break;
+        }
+    }
+    
+    if (buffer.mMemoryType != MemoryType::Static)
+    {
+        buffer.mContents = [id<MTLBuffer>(buffer.mHandle) contents];
+    }
 }
 
-Buffer::Buffer(const void* data, uint32_t size, BufferUsage usage)
-    : mSize(size)
+void Buffer::Free(Buffer& buffer)
 {
-    mHandle = [MetalDevice newBufferWithBytes:data length:size options:MTLResourceStorageModeShared];
-    mContents = [id<MTLBuffer>(mHandle) contents];
+    buffer.mHandle = nil;
 }
 
-Buffer::~Buffer()
+void Buffer::Copy(const Buffer& src, const Buffer& dst)
 {
-    mHandle = nil;
-}
-
-void Buffer::SetData(const void* data, uint32_t offset, uint32_t size) const
-{
-    memcpy(As<uint8_t*>(mContents) + offset, data, size);
+    GLEAM_ASSERT(src.GetSize() <= dst.GetSize(), "Metal: Source buffer size can not be larger than destination buffer size!");
+    
+    id<MTLCommandBuffer> commandBuffer = [RendererContext::GetGraphicsCommandPool(0) commandBuffer];
+    id<MTLBlitCommandEncoder> commandEncoder = [commandBuffer blitCommandEncoder];
+    
+    [commandEncoder copyFromBuffer:src.mHandle sourceOffset:0 toBuffer:dst.mHandle destinationOffset:0 size:src.mSize];
+    [commandEncoder endEncoding];
+    
+    [commandBuffer commit];
 }
 #endif

@@ -31,21 +31,79 @@ class Buffer : public GraphicsObject
 {
 public:
 
-	Buffer(uint32_t size, BufferUsage usage, MemoryType memoryType = MemoryType::Static);
+	Buffer(uint32_t size, BufferUsage usage, MemoryType memoryType = MemoryType::Static)
+        : mSize(size), mUsage(usage), mMemoryType(memoryType)
+    {
+        Allocate(*this);
+    }
 
-    Buffer(const void* data, uint32_t size, BufferUsage usage, MemoryType memoryType = MemoryType::Static);
+    Buffer(const void* data, uint32_t size, BufferUsage usage, MemoryType memoryType = MemoryType::Static)
+        : Buffer(size, usage, memoryType)
+    {
+        SetData(data, 0, size);
+    }
 
-	virtual ~Buffer();
+	virtual ~Buffer()
+    {
+        Free(*this);
+    }
 
 	static void Allocate(Buffer& buffer);
 
-	static void Free(const Buffer& buffer);
+	static void Free(Buffer& buffer);
 
 	static void Copy(const Buffer& src, const Buffer& dst);
 
-	void Resize(uint32_t size, bool keepContent = false);
+	void Resize(uint32_t size, bool keepContent = false)
+    {
+        GLEAM_ASSERT(!((size < mSize) && keepContent), "Cannot resize a buffer to a smaller size whilst keeping contents!");
+        
+        if (keepContent)
+        {
+            if (mMemoryType == MemoryType::Static)
+            {
+                Buffer stagingBuffer(mSize, BufferUsage::StagingBuffer, MemoryType::Static);
+                Copy(*this, stagingBuffer);
+                Free(*this);
 
-	void SetData(const void* data, uint32_t offset, uint32_t size) const;
+                mSize = size;
+                Allocate(*this);
+
+                Copy(stagingBuffer, *this);
+            }
+            else
+            {
+                TArray<uint8_t> stagingBuffer(mSize);
+                memcpy(stagingBuffer.data(), mContents, mSize);
+                Free(*this);
+
+                mSize = size;
+                Allocate(*this);
+
+                memcpy(mContents, stagingBuffer.data(), stagingBuffer.size());
+            }
+        }
+        else
+        {
+            Free(*this);
+            Allocate(*this);
+        }
+    }
+
+	void SetData(const void* data, uint32_t offset, uint32_t size) const
+    {
+        GLEAM_ASSERT(size <= mSize, "Cannot send data to the buffer if size is larger than the buffer size!");
+        
+        if (mMemoryType == MemoryType::Static)
+        {
+            Buffer stagingBuffer(data, mSize, BufferUsage::StagingBuffer, MemoryType::Stream);
+            Copy(stagingBuffer, *this);
+        }
+        else
+        {
+            memcpy(As<uint8_t*>(mContents) + offset, data, size);
+        }
+    }
 
 	uint32_t GetSize() const
 	{
