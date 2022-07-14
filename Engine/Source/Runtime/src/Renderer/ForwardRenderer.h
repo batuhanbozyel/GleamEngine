@@ -23,7 +23,7 @@ private:
 
 	CommandBuffer mCommandBuffer;
     GraphicsShader mForwardPassProgram;
-	VertexBuffer<Vertex> mVertexBuffer;
+	VertexBuffer<MeshVertex> mVertexBuffer;
 	IndexBuffer mIndexBuffer;
 
 };

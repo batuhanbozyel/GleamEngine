@@ -20,18 +20,23 @@ typedef packed_float4 Vector4;
 #endif
 
 #pragma pack(push, 1)
-struct Vertex
+struct MeshVertex
 {
 	Vector3 position;
 	Vector3 normal;
 	Vector2 texCoord;
 };
 
+struct DebugVertex
+{
+	Vector3 position;
+	Vector3 color;
+};
+
 struct ForwardPassFragmentUniforms
 {
     Vector4 color;
 };
-    
 #pragma pack(pop)
 
 } // namespace Gleam

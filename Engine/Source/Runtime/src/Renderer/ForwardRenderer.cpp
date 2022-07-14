@@ -10,7 +10,7 @@ using namespace Gleam;
 ForwardRenderer::ForwardRenderer()
     : mVertexBuffer(4), mIndexBuffer(6, IndexType::UINT16)
 {
-    TArray<Vertex, 4> vertices;
+    TArray<MeshVertex, 4> vertices;
     // top left
     vertices[0].position = { -0.5f, 0.5f, 0.0f };
     vertices[0].texCoord = { 0.0f, 0.0f };
