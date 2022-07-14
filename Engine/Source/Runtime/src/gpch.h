@@ -11,6 +11,7 @@
 #include <functional>
 #include <typeindex>
 #include <type_traits>
+#include <numeric>
 #include <chrono>
 #include <string>
 #include <sstream>
