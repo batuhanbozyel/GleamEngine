@@ -314,13 +314,6 @@ void RendererContext::Destroy()
 	GLEAM_CORE_INFO("Vulkan: Graphics context destroyed.");
 }
 /************************************************************************/
-/*	WaitIdle                                                            */
-/************************************************************************/
-void RendererContext::WaitIdle()
-{
-	VK_CHECK(vkDeviceWaitIdle(VulkanDevice));
-}
-/************************************************************************/
 /*	GetPhysicalDevice                                                   */
 /************************************************************************/
 NativeGraphicsHandle RendererContext::GetPhysicalDevice()

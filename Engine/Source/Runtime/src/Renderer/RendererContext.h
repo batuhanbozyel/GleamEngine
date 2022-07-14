@@ -13,8 +13,6 @@ public:
 
 	static void Destroy();
 
-	static void WaitIdle();
-
 	static NativeGraphicsHandle GetPhysicalDevice();
 
 	static NativeGraphicsHandle GetGraphicsQueue();

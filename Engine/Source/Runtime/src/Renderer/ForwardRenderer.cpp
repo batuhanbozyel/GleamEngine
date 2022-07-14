@@ -38,7 +38,7 @@ ForwardRenderer::ForwardRenderer()
 
 ForwardRenderer::~ForwardRenderer()
 {
-	RendererContext::WaitIdle();
+
 }
 
 void ForwardRenderer::Render()

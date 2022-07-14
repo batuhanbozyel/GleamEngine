@@ -45,6 +45,7 @@ CommandBuffer::~CommandBuffer()
 {
 	for (uint32_t i = 0; i < RendererContext::GetProperties().maxFramesInFlight; i++)
 	{
+		VK_CHECK(vkWaitForFences(VulkanDevice, 1, &mHandle->fences[i], VK_TRUE, UINT64_MAX));
 		vkFreeCommandBuffers(VulkanDevice, As<VkCommandPool>(RendererContext::GetGraphicsCommandPool(i)), 1,&mHandle->commandBuffers[i]);
 		vkDestroyFence(VulkanDevice, mHandle->fences[i], nullptr);
 	}
@@ -194,6 +195,8 @@ void CommandBuffer::End() const
 void CommandBuffer::Commit() const
 {
 	auto frameIdx = RendererContext::GetSwapchain()->GetFrameIndex();
+	VK_CHECK(vkResetFences(VulkanDevice, 1, &mHandle->fences[frameIdx]));
+
 	if (mHandle->pipelineState.swapchainTarget)
 	{
 		VkSemaphore waitSemaphore = As<VkSemaphore>(RendererContext::GetSwapchain()->GetImageAcquireSemaphore());
@@ -218,7 +221,6 @@ void CommandBuffer::Commit() const
 	}
 
 	VK_CHECK(vkWaitForFences(VulkanDevice, 1, &mHandle->fences[frameIdx], VK_TRUE, UINT64_MAX));
-	VK_CHECK(vkResetFences(VulkanDevice, 1, &mHandle->fences[frameIdx]));
 
 	if (mHandle->pipelineState.swapchainTarget)
 	{
