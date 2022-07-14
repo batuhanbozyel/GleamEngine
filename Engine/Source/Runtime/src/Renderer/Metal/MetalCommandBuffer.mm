@@ -32,6 +32,7 @@ CommandBuffer::CommandBuffer()
 
 CommandBuffer::~CommandBuffer()
 {
+    [mHandle->commandBuffer waitUntilCompleted];
     mHandle->commandBuffer = nil;
 }
 

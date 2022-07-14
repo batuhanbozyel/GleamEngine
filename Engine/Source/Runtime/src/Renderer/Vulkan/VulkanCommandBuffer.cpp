@@ -180,6 +180,18 @@ void CommandBuffer::DrawIndexed(const IndexBuffer& indexBuffer, uint32_t instanc
 	vkCmdDrawIndexed(CurrentCommandBuffer, indexBuffer.GetCount(), instanceCount, firstIndex, baseVertex, baseInstance);
 }
 
+void CommandBuffer::CopyBuffer(const Buffer& src, const Buffer& dst, uint32_t size, uint32_t srcOffset, uint32_t dstOffset) const
+{
+	GLEAM_ASSERT(size <= src.GetSize(), "Vulkan: Copy size can not be larger than source buffer size!");
+	GLEAM_ASSERT(size <= dst.GetSize(), "Vulkan: Copy size can not be larger than destination buffer size!");
+
+	VkBufferCopy bufferCopy;
+	bufferCopy.srcOffset = srcOffset;
+	bufferCopy.dstOffset = dstOffset;
+	bufferCopy.size = size;
+	vkCmdCopyBuffer(CurrentCommandBuffer, As<VkBuffer>(src.GetHandle()), As<VkBuffer>(dst.GetHandle()), 1, &bufferCopy);
+}
+
 void CommandBuffer::Begin() const
 {
 	VkCommandBufferBeginInfo beginInfo{ VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };

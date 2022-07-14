@@ -23,14 +23,14 @@ ForwardRenderer::ForwardRenderer()
     // bottom left
     vertices[3].position = { -0.5f, -0.5f, 0.0f };
     vertices[3].texCoord = { 0.0f, 1.0f };
-    mVertexBuffer.SetData(vertices.data(), 0, vertices.size());
+    mVertexBuffer.SetData<4>(vertices);
 
     TArray<uint16_t, 6> indices
     {
         0, 1, 2,
         2, 3, 0
     };
-    mIndexBuffer.SetData(indices.data(), 0, indices.size());
+    mIndexBuffer.SetData<6>(indices);
     
     mForwardPassProgram.vertexShader = ShaderLibrary::CreateShader("forwardPassVertexShader", ShaderStage::Vertex);
 	mForwardPassProgram.fragmentShader = ShaderLibrary::CreateShader("forwardPassFragmentShader", ShaderStage::Fragment);
