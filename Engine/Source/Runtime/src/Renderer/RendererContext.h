@@ -23,6 +23,8 @@ public:
 
 	static NativeGraphicsHandle GetGraphicsCommandPool(uint32_t index);
 
+	static NativeGraphicsHandle GetTransferCommandPool(uint32_t index);
+
 	static uint32_t GetMemoryTypeForProperties(uint32_t memoryTypeBits, uint32_t properties);
 
     static NativeGraphicsHandle GetDevice()
