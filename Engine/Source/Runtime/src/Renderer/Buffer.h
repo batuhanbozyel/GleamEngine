@@ -85,6 +85,7 @@ public:
         }
         else
         {
+            mSize = size;
             Free(*this);
             Allocate(*this);
         }
@@ -150,6 +151,11 @@ public:
 
 	~VertexBuffer() = default;
 
+    void Resize(uint32_t count, bool keepContent = false)
+    {
+        Buffer::Resize(sizeof(T) * count, keepContent);
+    }
+    
 	template<size_t size = 0>
     void SetData(const TArray<T, size>& vertices, uint32_t offset = 0)
     {
@@ -190,6 +196,11 @@ public:
 
 	~IndexBuffer() = default;
 
+    void Resize(uint32_t count, bool keepContent = false)
+    {
+        Buffer::Resize(SizeOfIndexType(mIndexType) * count, keepContent);
+    }
+    
 	template<size_t size = 0>
     void SetData(const TArray<uint16_t, size>& indices, uint32_t offset = 0)
     {
