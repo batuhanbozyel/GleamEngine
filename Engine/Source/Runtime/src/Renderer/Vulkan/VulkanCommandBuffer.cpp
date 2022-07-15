@@ -123,6 +123,7 @@ void CommandBuffer::SetVertexBuffer(const Buffer& buffer, uint32_t index, uint32
 {
 	VkDescriptorBufferInfo bufferInfo{};
 	bufferInfo.buffer = As<VkBuffer>(buffer.GetHandle());
+	bufferInfo.offset = offset;
 	bufferInfo.range = buffer.GetSize();
 
 	VkWriteDescriptorSet descriptorSet{ VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
