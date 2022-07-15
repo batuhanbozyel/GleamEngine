@@ -25,5 +25,5 @@ Gleam::ForwardPassFragmentUniforms uniforms;
 
 float4 forwardPassFragmentShader(VertexOut IN) : SV_TARGET
 {
-    return unpack_unorm4x8_to_float(uniforms.color);
+    return Gleam::unpack_unorm4x8_to_float(uniforms.color);
 }

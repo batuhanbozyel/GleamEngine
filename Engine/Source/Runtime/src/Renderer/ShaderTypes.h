@@ -18,12 +18,12 @@ typedef uint Color32;
 float4 unpack_unorm4x8_to_float(uint packedVal)
 {
     return float4
-    {
+    (
         float(packedVal & 0x000000ff) / 255.0f,
         float((packedVal >> 8) & 0x000000ff) / 255.0f,
         float((packedVal >> 16) & 0x000000ff) / 255.0f,
         float(packedVal >> 24) / 255.0f
-    };
+    );
 }
 
 #elif defined(__METAL_VERSION__)
