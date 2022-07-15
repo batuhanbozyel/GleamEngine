@@ -22,5 +22,5 @@ vertex VertexOut forwardPassVertexShader(uint vertexID [[vertex_id]],
 fragment float4 forwardPassFragmentShader(VertexOut in [[stage_in]],
                                           constant Gleam::ForwardPassFragmentUniforms& uniforms [[buffer(0)]])
 {
-    return uniforms.color;
+    return unpack_unorm4x8_to_float(uniforms.color);
 }
