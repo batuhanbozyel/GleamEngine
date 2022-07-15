@@ -7,19 +7,19 @@
 
 namespace Gleam {
 
+enum class PrimitiveTopology;
+
 struct DebugLine
 {
-	Vector3 start;
-	Vector3 end;
-	Color32 color;
+    DebugVertex start;
+    DebugVertex end;
 };
 
 struct DebugTriangle
 {
-	Vector3 vertex1;
-	Vector3 vertex2;
-	Vector3 vertex3;
-	Color32 color;
+    DebugVertex vertex1;
+    DebugVertex vertex2;
+    DebugVertex vertex3;
 };
 
 class DebugRenderer final : public Renderer
@@ -39,7 +39,9 @@ public:
 	void DrawQuad(const Vector3& center, float width, float height, Color32 color, bool depthTest = true);
 
 private:
-
+    
+    void RenderPrimitive(uint32_t primitiveCount, uint32_t bufferOffset, PrimitiveTopology topology, bool depthTest) const;
+    
 	TArray<DebugLine> mLines;
 	TArray<DebugLine> mDepthLines;
 
@@ -48,6 +50,8 @@ private:
 
 	CommandBuffer mCommandBuffer;
 	GraphicsShader mDebugProgram;
+    
+    TArray<DebugVertex> mStagingBuffer;
 	VertexBuffer<DebugVertex> mVertexBuffer;
 
 };

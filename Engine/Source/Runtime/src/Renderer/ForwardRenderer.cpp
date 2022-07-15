@@ -55,7 +55,7 @@ void ForwardRenderer::Render()
 	mCommandBuffer.SetVertexBuffer(mVertexBuffer);
     
     ForwardPassFragmentUniforms uniforms;
-    uniforms.color = Color(Color::HSVToRGBSmooth(Time::time, 1.0f, 1.0f));
+    uniforms.color = Color::HSVToRGB(Time::time, 1.0f, 1.0f);
 	mCommandBuffer.SetPushConstant(uniforms, ShaderStage::Fragment);
     
 	mCommandBuffer.DrawIndexed(mIndexBuffer);

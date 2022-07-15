@@ -95,8 +95,9 @@ target_compile_definitions(
 
 if (NOT APPLE)
     set(HLSL_FILE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/src/Renderer/Vulkan/Shaders)
-    ADD_GRAPHICS_SHADER(Runtime ${HLSL_FILE_PATH}/FullscreenTriangle.hlsl fullscreenTriangleVertexShader fullscreenTriangleFragmentShader)
-    ADD_GRAPHICS_SHADER(Runtime ${HLSL_FILE_PATH}/ForwardPass.hlsl forwardPassVertexShader forwardPassFragmentShader)
+    ADD_GRAPHICS_SHADER(Runtime ${HLSL_FILE_PATH}/FullscreenTriangleShader.hlsl fullscreenTriangleVertexShader fullscreenTriangleFragmentShader)
+    ADD_GRAPHICS_SHADER(Runtime ${HLSL_FILE_PATH}/ForwardPassShader.hlsl forwardPassVertexShader forwardPassFragmentShader)
+    ADD_GRAPHICS_SHADER(Runtime ${HLSL_FILE_PATH}/DebugPassShader.hlsl debugVertexShader debugFragmentShader)
 else()
     add_custom_command(
         TARGET Runtime

@@ -52,10 +52,38 @@ NativeGraphicsHandle RendererContext::GetPhysicalDevice()
     return mDevice;
 }
 /************************************************************************/
+/*    GetGraphicsQueue                                                    */
+/************************************************************************/
+NativeGraphicsHandle RendererContext::GetGraphicsQueue()
+{
+    return mContext.commandPool;
+}
+/************************************************************************/
+/*    GetComputeQueue                                                     */
+/************************************************************************/
+NativeGraphicsHandle RendererContext::GetComputeQueue()
+{
+    return mContext.commandPool;
+}
+/************************************************************************/
+/*    GetTransferQueue                                                    */
+/************************************************************************/
+NativeGraphicsHandle RendererContext::GetTransferQueue()
+{
+    return mContext.commandPool;
+}
+/************************************************************************/
 /*	GetGraphicsCommandPool                                              */
 /************************************************************************/
 NativeGraphicsHandle RendererContext::GetGraphicsCommandPool(uint32_t index)
 {
 	return mContext.commandPool;
+}
+/************************************************************************/
+/*    GetTransferCommandPool                                              */
+/************************************************************************/
+NativeGraphicsHandle RendererContext::GetTransferCommandPool(uint32_t index)
+{
+    return mContext.commandPool;
 }
 #endif
