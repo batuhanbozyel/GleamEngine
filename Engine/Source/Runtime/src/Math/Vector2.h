@@ -21,7 +21,7 @@ struct Vector2Base
     static const Vector2Base zero;
     static const Vector2Base one;
 
-	Vector2Base() = default;
+	constexpr Vector2Base() = default;
 	constexpr Vector2Base(Vector2Base&&) = default;
 	constexpr Vector2Base(const Vector2Base&) = default;
 	FORCE_INLINE constexpr Vector2Base& operator=(Vector2Base&&) = default;

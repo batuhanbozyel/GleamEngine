@@ -13,7 +13,7 @@ struct Matrix2
     static const Matrix2 zero;
     static const Matrix2 identity;
 
-	Matrix2() = default;
+	constexpr Matrix2() = default;
 	constexpr Matrix2(Matrix2&&) = default;
 	constexpr Matrix2(const Matrix2&) = default;
 	FORCE_INLINE constexpr Matrix2& operator=(Matrix2&&) = default;
