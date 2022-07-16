@@ -18,9 +18,11 @@ public:
 	CommandBuffer();
 	~CommandBuffer();
 
-	void BeginRenderPass(const RenderPassDescriptor& renderPassDesc, const PipelineStateDescriptor& pipelineDesc, const GraphicsShader& program) const;
+	void BeginRenderPass(const RenderPassDescriptor& renderPassDesc) const;
 
 	void EndRenderPass() const;
+    
+    void BindPipeline(const PipelineStateDescriptor& pipelineDesc, const GraphicsShader& program) const;
 
 	void SetViewport(uint32_t width, uint32_t height) const;
     

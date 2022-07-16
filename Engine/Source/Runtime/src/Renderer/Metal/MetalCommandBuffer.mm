@@ -3,7 +3,7 @@
 #ifdef USE_METAL_RENDERER
 #include "Renderer/CommandBuffer.h"
 #include "MetalPipelineStateManager.h"
-
+#include "Renderer/Renderer.h"
 #include "Renderer/Buffer.h"
 
 using namespace Gleam;
@@ -21,6 +21,7 @@ struct CommandBuffer::Impl
     id<MTLCommandBuffer> commandBuffer = nil;
     id<MTLRenderCommandEncoder> renderCommandEncoder = nil;
     id<MTLBlitCommandEncoder> blitCommandEncoder = nil;
+    id<CAMetalDrawable> drawable = nil;
     MetalPipelineState pipelineState;
     bool swapchainTarget = false;
 };
@@ -37,11 +38,9 @@ CommandBuffer::~CommandBuffer()
     mHandle->commandBuffer = nil;
 }
 
-void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, const PipelineStateDescriptor& pipelineDesc, const GraphicsShader& program) const
+void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc) const
 {
-    mHandle->pipelineState = MetalPipelineStateManager::GetGraphicsPipelineState(pipelineDesc, program);
     mHandle->swapchainTarget = renderPassDesc.swapchainTarget;
-    
     MTLRenderPassDescriptor* renderPass = [MTLRenderPassDescriptor renderPassDescriptor];
     if (renderPassDesc.swapchainTarget)
     {
@@ -69,14 +68,18 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, 
         // TODO:
     }
     mHandle->renderCommandEncoder = [mHandle->commandBuffer renderCommandEncoderWithDescriptor:renderPass];
-    
-    [mHandle->renderCommandEncoder setRenderPipelineState:mHandle->pipelineState.pipeline];
 }
 
 void CommandBuffer::EndRenderPass() const
 {
     [mHandle->renderCommandEncoder endEncoding];
     mHandle->renderCommandEncoder = nil;
+}
+
+void CommandBuffer::BindPipeline(const PipelineStateDescriptor& pipelineDesc, const GraphicsShader& program) const
+{
+    mHandle->pipelineState = MetalPipelineStateManager::GetGraphicsPipelineState(pipelineDesc, program);
+    [mHandle->renderCommandEncoder setRenderPipelineState:mHandle->pipelineState.pipeline];
 }
 
 void CommandBuffer::SetViewport(uint32_t width, uint32_t height) const
@@ -117,18 +120,17 @@ void CommandBuffer::SetPushConstant(const void* data, uint32_t size, ShaderStage
             break;
         }
     }
-    
 }
 
 void CommandBuffer::Draw(uint32_t vertexCount, uint32_t instanceCount, uint32_t baseVertex, uint32_t baseInstance) const
 {
-    [mHandle->renderCommandEncoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:baseVertex vertexCount:vertexCount instanceCount:instanceCount baseInstance:baseInstance];
+    [mHandle->renderCommandEncoder drawPrimitives:PrimitiveToplogyToMTLPrimitiveType(mHandle->pipelineState.descriptor.topology) vertexStart:baseVertex vertexCount:vertexCount instanceCount:instanceCount baseInstance:baseInstance];
 }
 
 void CommandBuffer::DrawIndexed(const IndexBuffer& indexBuffer, uint32_t instanceCount, uint32_t firstIndex, uint32_t baseVertex, uint32_t baseInstance) const
 {
     MTLIndexType indexType = static_cast<MTLIndexType>(indexBuffer.GetIndexType());
-    [mHandle->renderCommandEncoder drawIndexedPrimitives:MTLPrimitiveTypeTriangle indexCount:indexBuffer.GetCount() indexType:indexType indexBuffer:indexBuffer.GetHandle() indexBufferOffset:firstIndex instanceCount:instanceCount baseVertex:baseVertex baseInstance:baseInstance];
+    [mHandle->renderCommandEncoder drawIndexedPrimitives:PrimitiveToplogyToMTLPrimitiveType(mHandle->pipelineState.descriptor.topology) indexCount:indexBuffer.GetCount() indexType:indexType indexBuffer:indexBuffer.GetHandle() indexBufferOffset:firstIndex instanceCount:instanceCount baseVertex:baseVertex baseInstance:baseInstance];
 }
 
 void CommandBuffer::CopyBuffer(const Buffer& src, const Buffer& dst, uint32_t size, uint32_t srcOffset, uint32_t dstOffset) const

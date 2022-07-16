@@ -8,6 +8,7 @@ namespace Gleam {
 
 struct MetalPipelineState
 {
+    PipelineStateDescriptor descriptor;
 	id<MTLRenderPipelineState> pipeline = nil;
 	bool swapchainTarget = false;
 };
@@ -24,7 +25,6 @@ private:
 
 	struct GraphicsPipelineCacheElement
 	{
-		PipelineStateDescriptor pipelineStateDescriptor;
 		GraphicsShader program;
 		MetalPipelineState pipelineState;
 	};

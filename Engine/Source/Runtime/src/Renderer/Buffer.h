@@ -52,7 +52,7 @@ public:
 
 	static void Free(Buffer& buffer);
 
-	static void Copy(const Buffer& src, const Buffer& dst);
+	static void Copy(const Buffer& src, const Buffer& dst, uint32_t srcOffset = 0, uint32_t dstOffset = 0);
 
 	void Resize(uint32_t size, bool keepContent = false)
     {
@@ -97,8 +97,8 @@ public:
         
         if (mMemoryType == MemoryType::Static)
         {
-            Buffer stagingBuffer(data, mSize, BufferUsage::StagingBuffer, MemoryType::Stream);
-            Copy(stagingBuffer, *this);
+            Buffer stagingBuffer(data, size, BufferUsage::StagingBuffer, MemoryType::Stream);
+            Copy(stagingBuffer, *this, 0, offset);
         }
         else
         {

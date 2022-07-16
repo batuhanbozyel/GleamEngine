@@ -47,14 +47,14 @@ void Buffer::Free(Buffer& buffer)
     buffer.mHandle = nil;
 }
 
-void Buffer::Copy(const Buffer& src, const Buffer& dst)
+void Buffer::Copy(const Buffer& src, const Buffer& dst, uint32_t srcOffset, uint32_t dstOffset)
 {
     GLEAM_ASSERT(src.GetSize() <= dst.GetSize(), "Metal: Source buffer size can not be larger than destination buffer size!");
     
     id<MTLCommandBuffer> commandBuffer = [RendererContext::GetTransferCommandPool(0) commandBuffer];
     id<MTLBlitCommandEncoder> commandEncoder = [commandBuffer blitCommandEncoder];
     
-    [commandEncoder copyFromBuffer:src.mHandle sourceOffset:0 toBuffer:dst.mHandle destinationOffset:0 size:src.mSize];
+    [commandEncoder copyFromBuffer:src.mHandle sourceOffset:srcOffset toBuffer:dst.mHandle destinationOffset:dstOffset size:src.mSize];
     [commandEncoder endEncoding];
     
     [commandBuffer commit];

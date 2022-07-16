@@ -3,7 +3,8 @@
 #import <Metal/Metal.h>
 #import <QuartzCore/CAMetalLayer.h>
 #include "Renderer/RendererContext.h"
-#include "Renderer/Renderer.h"
+#include "Renderer/RenderPassDescriptor.h"
+#include "Renderer/PipelineStateDescriptor.h"
 
 namespace Gleam {
     
@@ -26,7 +27,18 @@ static constexpr MTLPixelFormat TextureFormatToVkFormat(TextureFormat format)
         default: return MTLPixelFormatInvalid;
     }
 }
-    
+
+static constexpr MTLPrimitiveType PrimitiveToplogyToMTLPrimitiveType(PrimitiveTopology topology)
+{
+    switch (topology)
+    {
+        case PrimitiveTopology::Points: return MTLPrimitiveTypePoint;
+        case PrimitiveTopology::Lines: return MTLPrimitiveTypeLine;
+        case PrimitiveTopology::LineStrip: return MTLPrimitiveTypeLineStrip;
+        case PrimitiveTopology::Triangles: return MTLPrimitiveTypeTriangle;
+        default: GLEAM_ASSERT(false, "Metal: Unknown primitive topology specified!"); return MTLPrimitiveType(~0);
+    }
+}
     
 } // namespace Gleam
 #endif

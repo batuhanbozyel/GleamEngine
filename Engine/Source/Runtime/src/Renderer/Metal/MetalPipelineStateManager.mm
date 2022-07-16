@@ -12,15 +12,15 @@ const MetalPipelineState& MetalPipelineStateManager::GetGraphicsPipelineState(co
 	for (uint32_t i = 0; i < mGraphicsPipelineCache.size(); i++)
 	{
 		const auto& element = mGraphicsPipelineCache[i];
-		if (element.pipelineStateDescriptor == pipelineDesc && element.program == program)
+		if (element.pipelineState.descriptor == pipelineDesc && element.program == program)
 		{
 			return element.pipelineState;
 		}
 	}
 
 	GraphicsPipelineCacheElement element;
-	element.pipelineStateDescriptor = pipelineDesc;
 	element.program = program;
+    element.pipelineState.descriptor = pipelineDesc;
 	element.pipelineState.pipeline = CreateGraphicsPipeline(pipelineDesc, program);
 	const auto& cachedElement = mGraphicsPipelineCache.emplace_back(element);
 	return cachedElement.pipelineState;

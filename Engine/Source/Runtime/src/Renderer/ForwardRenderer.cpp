@@ -49,7 +49,8 @@ void ForwardRenderer::Render()
 	renderPassDesc.height = RendererContext::GetProperties().height;
     
 	mCommandBuffer.Begin();
-	mCommandBuffer.BeginRenderPass(renderPassDesc, PipelineStateDescriptor(), mForwardPassProgram);
+	mCommandBuffer.BeginRenderPass(renderPassDesc);
+    mCommandBuffer.BindPipeline(PipelineStateDescriptor(), mForwardPassProgram);
     
 	mCommandBuffer.SetViewport(RendererContext::GetProperties().width, RendererContext::GetProperties().height);
 	mCommandBuffer.SetVertexBuffer(mVertexBuffer);
