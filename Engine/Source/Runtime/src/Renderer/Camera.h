@@ -2,6 +2,8 @@
 
 namespace Gleam {
 
+class Transform;
+
 enum class ProjectionType
 {
 	Ortho,
@@ -12,15 +14,17 @@ class Camera : public Transform
 {
 public:
     
+    Camera(float width, float height, ProjectionType type = ProjectionType::Perspective);
+    
     void SetViewport(float width, float height);
     
     void SetProjection(ProjectionType type);
     
-    void Update();
+    void Translate(const Vector3& translation);
     
-    const Matrix4& GetProjectionMatrix() const;
+    const Matrix4& GetProjectionMatrix();
     
-    const Matrix4& GetViewMatrix() const;
+    const Matrix4& GetViewMatrix();
     
 private:
     
@@ -43,6 +47,7 @@ private:
 	ProjectionType mProjectionType;
     
     // Update flags
+    bool mViewMatrixDirty = true;
     bool mProjectionMatrixDirty = true;
 };
 

@@ -3,6 +3,12 @@
 
 using namespace Gleam;
 
+Camera::Camera(float width, float height, ProjectionType type)
+    : mProjectionType(type)
+{
+    SetViewport(width, height);
+}
+
 void Camera::SetViewport(float width, float height)
 {
     mAspectRatio = width / height;
@@ -15,27 +21,35 @@ void Camera::SetProjection(ProjectionType type)
     mProjectionMatrixDirty = true;
 }
 
-void Camera::Update()
+void Camera::Translate(const Vector3& translation)
+{
+    mViewMatrixDirty = true;
+    Transform::Translate(translation);
+}
+
+const Matrix4& Camera::GetViewMatrix()
+{
+    if (mViewMatrixDirty)
+    {
+        RecalculateViewMatrix();
+    }
+    
+    return mViewMatrix;
+}
+
+const Matrix4& Camera::GetProjectionMatrix()
 {
     if (mProjectionMatrixDirty)
     {
         RecalculateProjectionMatrix();
     }
-    RecalculateViewMatrix();
-}
-
-const Matrix4& Camera::GetViewMatrix() const
-{
-    return mViewMatrix;
-}
-
-const Matrix4& Camera::GetProjectionMatrix() const
-{
+    
     return mProjectionMatrix;
 }
 
 void Camera::RecalculateViewMatrix()
 {
+    mViewMatrixDirty = false;
     mViewMatrix = Matrix4::LookAt(GetWorldPosition(), GetWorldPosition() + ForwardVector(), UpVector());
 }
 
