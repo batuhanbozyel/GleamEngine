@@ -135,7 +135,7 @@ struct Vector2Base
 		return Vector2Base
 		{
 			x - vec.x,
-			y - vec.x
+			y - vec.y
 		};
 	}
 

@@ -43,9 +43,10 @@ public:
     
     void Translate(const Vector3& translation)
     {
-        mCachedTransform[0][3] += translation.x;
-        mCachedTransform[1][3] += translation.y;
-        mCachedTransform[2][3] += translation.z;
+        mPosition += translation;
+        mCachedTransform[0][3] += mPosition.x;
+        mCachedTransform[1][3] += mPosition.y;
+        mCachedTransform[2][3] += mPosition.z;
     }
     
     void Rotate(const Quaternion& quat)

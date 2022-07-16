@@ -151,7 +151,7 @@ struct Vector4Base
 		return Vector4Base
 		{
 			x - vec.x,
-			y - vec.x,
+			y - vec.y,
 			z - vec.z,
 			w - vec.w
 		};

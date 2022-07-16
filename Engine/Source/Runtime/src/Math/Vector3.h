@@ -149,7 +149,7 @@ struct Vector3Base
 		return Vector3Base
 		{
 			x - vec.x,
-			y - vec.x,
+			y - vec.y,
 			z - vec.z
 		};
 	}

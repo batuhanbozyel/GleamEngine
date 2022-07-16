@@ -165,16 +165,17 @@ struct Matrix4
     NO_DISCARD FORCE_INLINE static constexpr Matrix4 LookAt(const Vector3& from, const Vector3& to, const Vector3& up)
     {
         Vector3 front = Math::Normalize(to - from);
-        Vector3 side = Math::Normalize(Math::Cross(front, up));
-        Vector3 upV = Math::Cross(side, front);
+        Vector3 side = Math::Normalize(Math::Cross(up, front));
+        Vector3 upV = Math::Cross(front, side);
         
         return Matrix4
         {
-            side.x,     side.y,     side.z,     Math::Dot(-from, side),
-            upV.x,      upV.y,      upV.z,      Math::Dot(-from, upV),
-            front.x,    front.y,    front.z,    Math::Dot(-from, front),
-            0.0f,   0.0f,   0.0f,   1.0f
+            side.x,                     upV.x,                  front.x,                    0.0f,
+            side.y,                     upV.y,                  front.y,                    0.0f,
+            side.z,                     upV.z,                  front.z,                    0.0f,
+            -Math::Dot(side, from),     Math::Dot(upV, from),   -Math::Dot(front, from),    1.0f
         };
+        
     }
     
     NO_DISCARD FORCE_INLINE static constexpr Matrix4 Ortho(float left, float right, float bottom, float top, float zNear, float zFar)
@@ -190,13 +191,14 @@ struct Matrix4
     
     NO_DISCARD FORCE_INLINE static constexpr Matrix4 Perspective(float fov, float aspect, float zNear, float zFar)
     {
-        float focalLength = Math::Tan(Math::Deg2Rad(fov / 2.0f));
+        float focalLength = Math::Tan(Math::Deg2Rad(fov) / 2.0f);
+        zFar *= 2.0f;
         return Matrix4
         {
             1.0f / (focalLength * aspect),  0.0f,                   0.0f,                               0.0f,
             0.0f,                           1.0f / focalLength,     0.0f,                               0.0f,
-            0.0f,                           0.0f,                   (zFar + zNear) / (zNear - zFar),   (2.0f * zFar * zNear) / (zNear - zFar),
-            0.0f,                           0.0f,                   -1.0f,                              0.0f
+            0.0f,                           0.0f,                   zFar / (zFar - zNear),              1.0f,
+            0.0f,                           0.0f,                   -zNear * zFar / (zFar - zNear),     0.0f
         };
     }
 };
