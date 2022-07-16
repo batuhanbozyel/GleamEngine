@@ -1,4 +1,5 @@
 #pragma once
+#include "Camera.h"
 #include "Buffer.h"
 #include "Shader.h"
 #include "Renderer.h"
@@ -37,10 +38,19 @@ public:
 	void DrawTriangle(const Vector3& v1, const Vector3& v2, const Vector3& v3, Color32 color, bool depthTest = true);
 
 	void DrawQuad(const Vector3& center, float width, float height, Color32 color, bool depthTest = true);
+    
+    void UpdateView(Camera& camera)
+    {
+        mViewMatrix = camera.GetViewMatrix();
+        mProjectionMatrix = camera.GetProjectionMatrix();
+    }
 
 private:
     
     void RenderPrimitive(uint32_t primitiveCount, uint32_t bufferOffset, PrimitiveTopology topology, bool depthTest) const;
+    
+    Matrix4 mViewMatrix;
+    Matrix4 mProjectionMatrix;
     
 	TArray<DebugLine> mLines;
 	TArray<DebugLine> mDepthLines;

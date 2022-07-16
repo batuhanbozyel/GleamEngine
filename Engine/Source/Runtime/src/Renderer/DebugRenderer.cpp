@@ -24,6 +24,10 @@ DebugRenderer::DebugRenderer()
 {
 	mDebugProgram.vertexShader = ShaderLibrary::CreateShader("debugVertexShader", ShaderStage::Vertex);
 	mDebugProgram.fragmentShader = ShaderLibrary::CreateShader("debugFragmentShader", ShaderStage::Fragment);
+    
+    Camera defaultCamera(RendererContext::GetProperties().width, RendererContext::GetProperties().height);
+    mViewMatrix = defaultCamera.GetViewMatrix();
+    mProjectionMatrix = defaultCamera.GetProjectionMatrix();
 }
 
 DebugRenderer::~DebugRenderer()
@@ -48,7 +52,7 @@ void DebugRenderer::Render()
         mStagingBuffer.push_back(line.end);
     }
     
-    uint32_t triangleBufferOffset = mStagingBuffer.size();
+    uint32_t triangleBufferOffset = mStagingBuffer.size() * sizeof(DebugVertex);
     for (const auto& triangle : mTrianlges)
     {
         mStagingBuffer.push_back(triangle.vertex1);
@@ -56,14 +60,14 @@ void DebugRenderer::Render()
         mStagingBuffer.push_back(triangle.vertex3);
     }
     
-    uint32_t depthLineBufferOffset = mStagingBuffer.size();
+    uint32_t depthLineBufferOffset = mStagingBuffer.size() * sizeof(DebugVertex);
     for (const auto& line : mDepthLines)
     {
         mStagingBuffer.push_back(line.start);
         mStagingBuffer.push_back(line.end);
     }
     
-    uint32_t depthTriangleBufferOffset = mStagingBuffer.size();
+    uint32_t depthTriangleBufferOffset = mStagingBuffer.size() * sizeof(DebugVertex);
     for (const auto& triangle : mDepthTrianlges)
     {
         mStagingBuffer.push_back(triangle.vertex1);
@@ -79,7 +83,15 @@ void DebugRenderer::Render()
     mVertexBuffer.SetData(mStagingBuffer);
     
     // Start rendering
+    RenderPassDescriptor renderPassDesc;
+    renderPassDesc.swapchainTarget = true;
+    renderPassDesc.width = RendererContext::GetProperties().width;
+    renderPassDesc.height = RendererContext::GetProperties().height;
+    
     mCommandBuffer.Begin();
+    mCommandBuffer.BeginRenderPass(renderPassDesc);
+    mCommandBuffer.SetViewport(RendererContext::GetProperties().width, RendererContext::GetProperties().height);
+    
     if (!mLines.empty())
     {
         RenderPrimitive(mLines.size(), 0, PrimitiveTopology::Lines, false);
@@ -99,6 +111,7 @@ void DebugRenderer::Render()
     {
         RenderPrimitive(mDepthTrianlges.size(), depthTriangleBufferOffset, PrimitiveTopology::Triangles, true);
     }
+    mCommandBuffer.EndRenderPass();
     mCommandBuffer.End();
     mCommandBuffer.Commit();
     
@@ -112,21 +125,18 @@ void DebugRenderer::Render()
 
 void DebugRenderer::RenderPrimitive(uint32_t primitiveCount, uint32_t bufferOffset, PrimitiveTopology topology, bool depthTest) const
 {
-    RenderPassDescriptor renderPassDesc;
-    renderPassDesc.swapchainTarget = true;
-    renderPassDesc.width = RendererContext::GetProperties().width;
-    renderPassDesc.height = RendererContext::GetProperties().height;
-    
     PipelineStateDescriptor pipelineDesc;
     pipelineDesc.topology = topology;
     
-    mCommandBuffer.BeginRenderPass(renderPassDesc, pipelineDesc, mDebugProgram);
-    
-    mCommandBuffer.SetViewport(RendererContext::GetProperties().width, RendererContext::GetProperties().height);
+    mCommandBuffer.BindPipeline(pipelineDesc, mDebugProgram);
     mCommandBuffer.SetVertexBuffer(mVertexBuffer, 0, bufferOffset);
     
+    DebugVertexUniforms uniforms;
+    uniforms.viewMatrix = mViewMatrix;
+    uniforms.projectionMatrix = mProjectionMatrix;
+    uniforms.viewProjectionMatrix = mProjectionMatrix * mViewMatrix;
+    mCommandBuffer.SetPushConstant(uniforms, ShaderStage::Vertex, 1);
     mCommandBuffer.Draw(primitiveCount * PrimitiveTopologyVertexCount(topology));
-    mCommandBuffer.EndRenderPass();
 }
 
 void DebugRenderer::DrawLine(const Vector3& start, const Vector3& end, Color32 color, bool depthTest)

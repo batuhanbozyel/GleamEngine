@@ -7,12 +7,13 @@ struct VertexOut
 };
 
 vertex VertexOut debugVertexShader(uint vertexID [[vertex_id]],
-                                   constant Gleam::DebugVertex* VertexBuffer [[buffer(0)]])
+                                   constant Gleam::DebugVertex* VertexBuffer [[buffer(0)]],
+                                   constant Gleam::DebugVertexUniforms& uniforms [[buffer(1)]])
 {
     Gleam::DebugVertex vert = VertexBuffer[vertexID];
 
     VertexOut out;
-    out.position = float4(vert.position, 1.0);
+    out.position = uniforms.viewProjectionMatrix * float4(vert.position, 1.0);
     out.color = vert.color;
     return out;
 }
