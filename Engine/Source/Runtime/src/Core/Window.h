@@ -22,6 +22,8 @@ public:
 		return mWindow;
 	}
 
+	static void EventHandler(SDL_WindowEvent windowEvent);
+
 private:
 
 	SDL_Window* mWindow;
