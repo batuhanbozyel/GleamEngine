@@ -25,7 +25,7 @@ struct Quaternion
 		};
 	}
 
-	Quaternion() = default;
+	constexpr Quaternion() = default;
 	constexpr Quaternion(Quaternion&&) = default;
 	constexpr Quaternion(const Quaternion&) = default;
     FORCE_INLINE constexpr Quaternion& operator=(Quaternion&&) = default;

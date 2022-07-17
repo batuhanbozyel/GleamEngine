@@ -13,7 +13,7 @@ struct Matrix3
     static const Matrix3 zero;
     static const Matrix3 identity;
 
-	Matrix3() = default;
+	constexpr Matrix3() = default;
 	constexpr Matrix3(Matrix3&&) = default;
 	constexpr Matrix3(const Matrix3&) = default;
     FORCE_INLINE constexpr Matrix3& operator=(Matrix3&&) = default;

@@ -1,9 +1,10 @@
 #pragma once
 #include "TextureFormat.h"
+#include "GraphicsObject.h"
 
 namespace Gleam {
 
-class Texture2D : public GraphicsObject
+class Texture2D final : public GraphicsObject
 {
 public:
 
@@ -31,7 +32,7 @@ private:
 	
 };
 
-class RenderTexture : public GraphicsObject
+class RenderTexture final : public GraphicsObject
 {
 public:
 

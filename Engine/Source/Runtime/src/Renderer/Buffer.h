@@ -7,7 +7,15 @@ enum class BufferUsage
 	VertexBuffer,
 	IndexBuffer,
 	StorageBuffer,
-	UniformBuffer
+	UniformBuffer,
+	StagingBuffer
+};
+
+enum class MemoryType
+{
+	Static,
+	Dynamic,
+	Stream
 };
 
 enum class IndexType
@@ -23,11 +31,80 @@ class Buffer : public GraphicsObject
 {
 public:
 
-	Buffer(uint32_t size, BufferUsage usage);
-    Buffer(const void* data, uint32_t size, BufferUsage usage);
-	virtual ~Buffer();
+	Buffer(uint32_t size, BufferUsage usage, MemoryType memoryType = MemoryType::Static)
+        : mSize(size), mUsage(usage), mMemoryType(memoryType)
+    {
+        Allocate(*this);
+    }
 
-	void SetData(const void* data, uint32_t offset, uint32_t size) const;
+    Buffer(const void* data, uint32_t size, BufferUsage usage, MemoryType memoryType = MemoryType::Static)
+        : Buffer(size, usage, memoryType)
+    {
+        SetData(data, 0, size);
+    }
+
+	virtual ~Buffer()
+    {
+        Free(*this);
+    }
+
+	static void Allocate(Buffer& buffer);
+
+	static void Free(Buffer& buffer);
+
+	static void Copy(const Buffer& src, const Buffer& dst, uint32_t srcOffset = 0, uint32_t dstOffset = 0);
+
+	void Resize(uint32_t size, bool keepContent = false)
+    {
+        GLEAM_ASSERT(!((size < mSize) && keepContent), "Cannot resize a buffer to a smaller size whilst keeping contents!");
+        
+        if (keepContent)
+        {
+            if (mMemoryType == MemoryType::Static)
+            {
+                Buffer stagingBuffer(mSize, BufferUsage::StagingBuffer, MemoryType::Static);
+                Copy(*this, stagingBuffer);
+                Free(*this);
+
+                mSize = size;
+                Allocate(*this);
+
+                Copy(stagingBuffer, *this);
+            }
+            else
+            {
+                TArray<uint8_t> stagingBuffer(mSize);
+                memcpy(stagingBuffer.data(), mContents, mSize);
+                Free(*this);
+
+                mSize = size;
+                Allocate(*this);
+
+                memcpy(mContents, stagingBuffer.data(), stagingBuffer.size());
+            }
+        }
+        else
+        {
+            mSize = size;
+            Free(*this);
+            Allocate(*this);
+        }
+    }
+
+	void SetData(const void* data, uint32_t offset, uint32_t size) const
+    {
+        GLEAM_ASSERT(size <= mSize, "Cannot send data to the buffer if size is larger than the buffer size!");
+        
+        if (mMemoryType == MemoryType::Static)
+        {
+            Buffer stagingBuffer(data, size, BufferUsage::StagingBuffer, MemoryType::Stream);
+            Copy(stagingBuffer, *this, 0, offset);
+        }
+        else
+        {
+            memcpy(As<uint8_t*>(mContents) + offset, data, size);
+        }
+    }
 
 	uint32_t GetSize() const
 	{
@@ -42,11 +119,12 @@ public:
 protected:
 
 	BufferUsage mUsage;
+	MemoryType mMemoryType;
 
 	void* mContents;
 	NativeGraphicsHandle mMemory;
 
-	const uint32_t mSize = 0;
+	uint32_t mSize = 0;
 
 };
 
@@ -54,69 +132,92 @@ protected:
 /* VertexBuffer                                                         */
 /************************************************************************/
 template<typename T>
-class VertexBuffer : public Buffer
+class VertexBuffer final : public Buffer
 {
 public:
 
 	VertexBuffer(uint32_t count)
-		: mCount(count), Buffer(count * sizeof(T), BufferUsage::StorageBuffer)
+		: Buffer(count * sizeof(T), BufferUsage::StorageBuffer)
 	{
 
 	}
-    
-    VertexBuffer(const TArray<T>& contents)
-        : mCount(contents.size()), Buffer(contents.data(), contents.size() * sizeof(T), BufferUsage::StorageBuffer)
+
+	template<size_t size = 0>
+    VertexBuffer(const TArray<T, size>& vertices)
+        : Buffer(vertices.data(), vertices.size() * sizeof(T), BufferUsage::StorageBuffer)
     {
 
     }
 
 	~VertexBuffer() = default;
-    
-    void SetData(const T* data, uint32_t offset, uint32_t count) const
+
+    void Resize(uint32_t count, bool keepContent = false)
     {
-        Buffer::SetData(data, offset, sizeof(T) * count);
+        Buffer::Resize(sizeof(T) * count, keepContent);
+    }
+    
+	template<size_t size = 0>
+    void SetData(const TArray<T, size>& vertices, uint32_t offset = 0)
+    {
+        Buffer::SetData(vertices.data(), offset, sizeof(T) * vertices.size());
     }
 
 	uint32_t GetCount() const
 	{
-		return mCount;
+		return mSize / sizeof(T);
 	}
-
-private:
-
-	uint32_t mCount;
 
 };
 
 /************************************************************************/
 /* IndexBuffer                                                          */
 /************************************************************************/
-class IndexBuffer : public Buffer
+class IndexBuffer final : public Buffer
 {
 public:
 
 	IndexBuffer(uint32_t count, IndexType indexType = IndexType::UINT32)
-		: mCount(count), mIndexType(indexType), Buffer(count * SizeOfIndexType(indexType), BufferUsage::IndexBuffer)
+		: mIndexType(indexType), Buffer(count * SizeOfIndexType(indexType), BufferUsage::IndexBuffer)
 	{
         
 	}
-    
-    IndexBuffer(const void* data, uint32_t count, IndexType indexType = IndexType::UINT32)
-        : mCount(count), mIndexType(indexType), Buffer(data, count * SizeOfIndexType(indexType), BufferUsage::IndexBuffer)
+
+	IndexBuffer(const TArray<uint16_t>& indices)
+		: mIndexType(IndexType::UINT16), Buffer(indices.data(), indices.size() * sizeof(uint16_t), BufferUsage::IndexBuffer)
+	{
+
+	}
+
+    IndexBuffer(const TArray<uint32_t>& indices)
+        : mIndexType(IndexType::UINT32), Buffer(indices.data(), indices.size() * sizeof(uint32_t), BufferUsage::IndexBuffer)
     {
         
     }
 
 	~IndexBuffer() = default;
-    
-    void SetData(const void* data, uint32_t offset, uint32_t count) const
+
+    void Resize(uint32_t count, bool keepContent = false)
     {
-        Buffer::SetData(data, offset, SizeOfIndexType(mIndexType) * count);
+        Buffer::Resize(SizeOfIndexType(mIndexType) * count, keepContent);
     }
+    
+	template<size_t size = 0>
+    void SetData(const TArray<uint16_t, size>& indices, uint32_t offset = 0)
+    {
+		GLEAM_ASSERT(sizeof(uint16_t) == SizeOfIndexType(mIndexType));
+        Buffer::SetData(indices.data(), offset, indices.size() * sizeof(uint16_t));
+    }
+
+	template<size_t size = 0>
+	void SetData(const TArray<uint32_t, size>& indices, uint32_t offset = 0)
+	{
+		GLEAM_ASSERT(sizeof(uint32_t) == SizeOfIndexType(mIndexType));
+		Buffer::SetData(indices.data(), offset, indices.size() * sizeof(uint32_t));
+	}
 
 	uint32_t GetCount() const
 	{
-		return mCount;
+		return mSize / SizeOfIndexType(mIndexType);
 	}
 
 	IndexType GetIndexType() const
@@ -136,8 +237,7 @@ private:
 		}
 	}
 
-	uint32_t mCount;
-	IndexType mIndexType;
+	const IndexType mIndexType;
 
 };
 

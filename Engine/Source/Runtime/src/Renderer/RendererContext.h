@@ -13,8 +13,6 @@ public:
 
 	static void Destroy();
 
-	static void WaitIdle();
-
 	static NativeGraphicsHandle GetPhysicalDevice();
 
 	static NativeGraphicsHandle GetGraphicsQueue();
@@ -24,6 +22,8 @@ public:
 	static NativeGraphicsHandle GetTransferQueue();
 
 	static NativeGraphicsHandle GetGraphicsCommandPool(uint32_t index);
+
+	static NativeGraphicsHandle GetTransferCommandPool(uint32_t index);
 
 	static uint32_t GetMemoryTypeForProperties(uint32_t memoryTypeBits, uint32_t properties);
 

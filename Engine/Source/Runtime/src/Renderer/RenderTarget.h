@@ -1,8 +1,9 @@
 #pragma once
+#include "GraphicsObject.h"
 
 namespace Gleam {
 
-class RenderTarget : public GraphicsObject
+class RenderTarget final : public GraphicsObject
 {
 public:
     

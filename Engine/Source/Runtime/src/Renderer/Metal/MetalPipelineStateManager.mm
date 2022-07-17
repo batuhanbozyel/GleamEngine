@@ -7,26 +7,21 @@
 
 using namespace Gleam;
 
-const MetalPipelineState& MetalPipelineStateManager::GetGraphicsPipelineState(const RenderPassDescriptor& renderPassDesc, const PipelineStateDescriptor& pipelineDesc, const GraphicsShader& program)
+const MetalPipelineState& MetalPipelineStateManager::GetGraphicsPipelineState(const PipelineStateDescriptor& pipelineDesc, const GraphicsShader& program)
 {
 	for (uint32_t i = 0; i < mGraphicsPipelineCache.size(); i++)
 	{
 		const auto& element = mGraphicsPipelineCache[i];
-		if (element.renderPassDescriptor == renderPassDesc
-			&& element.pipelineStateDescriptor == pipelineDesc
-			&& element.program == program)
+		if (element.pipelineState.descriptor == pipelineDesc && element.program == program)
 		{
 			return element.pipelineState;
 		}
 	}
 
 	GraphicsPipelineCacheElement element;
-	element.renderPassDescriptor = renderPassDesc;
-	element.pipelineStateDescriptor = pipelineDesc;
 	element.program = program;
-	element.pipelineState.renderPass = CreateRenderPass(renderPassDesc);
+    element.pipelineState.descriptor = pipelineDesc;
 	element.pipelineState.pipeline = CreateGraphicsPipeline(pipelineDesc, program);
-	element.pipelineState.swapchainTarget = renderPassDesc.swapchainTarget;
 	const auto& cachedElement = mGraphicsPipelineCache.emplace_back(element);
 	return cachedElement.pipelineState;
 }
@@ -34,17 +29,6 @@ const MetalPipelineState& MetalPipelineStateManager::GetGraphicsPipelineState(co
 void MetalPipelineStateManager::Clear()
 {
 	mGraphicsPipelineCache.clear();
-}
-
-MTLRenderPassDescriptor* MetalPipelineStateManager::CreateRenderPass(const RenderPassDescriptor& renderPassDesc)
-{
-    MTLRenderPassDescriptor* renderPass = [MTLRenderPassDescriptor renderPassDescriptor];
-    
-    /**
-            TODO:
-     */
-    
-    return renderPass;
 }
 
 id<MTLRenderPipelineState> MetalPipelineStateManager::CreateGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc, const GraphicsShader& program)

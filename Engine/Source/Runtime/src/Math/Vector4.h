@@ -21,7 +21,7 @@ struct Vector4Base
     static const Vector4Base zero;
     static const Vector4Base one;
     
-	Vector4Base() = default;
+	constexpr Vector4Base() = default;
 	constexpr Vector4Base(Vector4Base&&) = default;
 	constexpr Vector4Base(const Vector4Base&) = default;
 	FORCE_INLINE constexpr Vector4Base& operator=(Vector4Base&&) = default;
@@ -151,7 +151,7 @@ struct Vector4Base
 		return Vector4Base
 		{
 			x - vec.x,
-			y - vec.x,
+			y - vec.y,
 			z - vec.z,
 			w - vec.w
 		};

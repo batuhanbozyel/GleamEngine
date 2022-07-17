@@ -27,7 +27,7 @@ struct Vector3Base
     static const Vector3Base forward;
     static const Vector3Base back;
 
-	Vector3Base() = default;
+	constexpr Vector3Base() = default;
 	constexpr Vector3Base(Vector3Base&&) = default;
 	constexpr Vector3Base(const Vector3Base&) = default;
 	FORCE_INLINE constexpr Vector3Base& operator=(Vector3Base&&) = default;
@@ -149,7 +149,7 @@ struct Vector3Base
 		return Vector3Base
 		{
 			x - vec.x,
-			y - vec.x,
+			y - vec.y,
 			z - vec.z
 		};
 	}

@@ -3,7 +3,7 @@
 
 namespace Gleam {
 
-class Window
+class Window final
 {
 public:
     

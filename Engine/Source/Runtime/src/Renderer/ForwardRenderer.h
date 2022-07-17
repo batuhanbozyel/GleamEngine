@@ -1,15 +1,15 @@
 #pragma once
-#include "Renderer.h"
 #include "Buffer.h"
 #include "Shader.h"
+#include "Renderer.h"
+#include "ShaderTypes.h"
 #include "CommandBuffer.h"
-#include "GraphicsTypes.h"
 
 namespace Gleam {
 
 class GraphicsShader;
 
-class ForwardRenderer : public Renderer
+class ForwardRenderer final : public Renderer
 {
 public:
 
@@ -23,7 +23,7 @@ private:
 
 	CommandBuffer mCommandBuffer;
     GraphicsShader mForwardPassProgram;
-	VertexBuffer<Vertex> mVertexBuffer;
+	VertexBuffer<MeshVertex> mVertexBuffer;
 	IndexBuffer mIndexBuffer;
 
 };

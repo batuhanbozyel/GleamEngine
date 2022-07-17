@@ -31,20 +31,6 @@ struct Color : public Vector4
 	{
 		return Math::Mix(Vector3(1.0f), Math::Clamp(Math::Abs(Math::Fract(Vector3(hsv.x + 1.0f, hsv.x + 2.0f / 3.0f, hsv.x + 1.0f / 3.0f)) * 6.0f - 3.0f) - 1.0f, 0.0f, 1.0f), hsv.y) * hsv.z;
 	}
-    
-    NO_DISCARD FORCE_INLINE static constexpr Color HSVToRGBSmooth(float h, float s, float v)
-    {
-        Vector3 rgb = Math::Clamp(Math::Abs(Math::Fract(Vector3(h + 1.0f, h + 2.0f / 3.0f, h + 1.0f / 3.0f)) * 6.0f - 3.0f) - 1.0f, 0.0f, 1.0f);
-        rgb = rgb * rgb * (Vector3(3.0f) - rgb * 2.0f);
-        return Math::Mix(Vector3(1.0f), rgb, s) * v;
-    }
-    
-    NO_DISCARD FORCE_INLINE static constexpr Color HSVToRGBSmooth(const Color& hsv)
-    {
-        Vector3 rgb = Math::Clamp(Math::Abs(Math::Fract(Vector3(hsv.x + 1.0f, hsv.x + 2.0f / 3.0f, hsv.x + 1.0f / 3.0f)) * 6.0f - 3.0f) - 1.0f, 0.0f, 1.0f);
-        rgb = rgb * rgb * (Vector3(3.0f) - rgb * 2.0f);
-        return Math::Mix(Vector3(1.0f), rgb, hsv.y) * hsv.z;
-    }
 
 	NO_DISCARD FORCE_INLINE static constexpr Color RGBToHSV(float r, float g, float b)
 	{
@@ -69,7 +55,7 @@ struct Color : public Vector4
 	}
 
 	// Constructors
-	Color() = default;
+	constexpr Color() = default;
 	constexpr Color(Color&&) = default;
 	constexpr Color(const Color&) = default;
 
@@ -138,7 +124,7 @@ struct Color32
 {
 	uint8_t r, g, b, a;
 
-	Color32() = default;
+	constexpr Color32() = default;
 	constexpr Color32(uint8_t r, uint8_t g, uint8_t b, uint8_t a)
 		: r(r), g(g), b(b), a(a)
 	{

@@ -10,7 +10,7 @@ using namespace Gleam;
 ForwardRenderer::ForwardRenderer()
     : mVertexBuffer(4), mIndexBuffer(6, IndexType::UINT16)
 {
-    TArray<Vertex, 4> vertices;
+    TArray<MeshVertex, 4> vertices;
     // top left
     vertices[0].position = { -0.5f, 0.5f, 0.0f };
     vertices[0].texCoord = { 0.0f, 0.0f };
@@ -23,14 +23,14 @@ ForwardRenderer::ForwardRenderer()
     // bottom left
     vertices[3].position = { -0.5f, -0.5f, 0.0f };
     vertices[3].texCoord = { 0.0f, 1.0f };
-    mVertexBuffer.SetData(vertices.data(), 0, vertices.size());
+    mVertexBuffer.SetData<4>(vertices);
 
     TArray<uint16_t, 6> indices
     {
         0, 1, 2,
         2, 3, 0
     };
-    mIndexBuffer.SetData(indices.data(), 0, indices.size());
+    mIndexBuffer.SetData<6>(indices);
     
     mForwardPassProgram.vertexShader = ShaderLibrary::CreateShader("forwardPassVertexShader", ShaderStage::Vertex);
 	mForwardPassProgram.fragmentShader = ShaderLibrary::CreateShader("forwardPassFragmentShader", ShaderStage::Fragment);
@@ -38,7 +38,7 @@ ForwardRenderer::ForwardRenderer()
 
 ForwardRenderer::~ForwardRenderer()
 {
-	RendererContext::WaitIdle();
+	mCommandBuffer.WaitUntilCompleted();
 }
 
 void ForwardRenderer::Render()
@@ -49,13 +49,14 @@ void ForwardRenderer::Render()
 	renderPassDesc.height = RendererContext::GetProperties().height;
     
 	mCommandBuffer.Begin();
-	mCommandBuffer.BeginRenderPass(renderPassDesc, PipelineStateDescriptor(), mForwardPassProgram);
+	mCommandBuffer.BeginRenderPass(renderPassDesc);
+    mCommandBuffer.BindPipeline(PipelineStateDescriptor(), mForwardPassProgram);
     
 	mCommandBuffer.SetViewport(RendererContext::GetProperties().width, RendererContext::GetProperties().height);
 	mCommandBuffer.SetVertexBuffer(mVertexBuffer);
     
     ForwardPassFragmentUniforms uniforms;
-    uniforms.color = Color(Color::HSVToRGBSmooth(Time::time, 1.0f, 1.0f));
+    uniforms.color = Color::HSVToRGB(Time::time, 1.0f, 1.0f);
 	mCommandBuffer.SetPushConstant(uniforms, ShaderStage::Fragment);
     
 	mCommandBuffer.DrawIndexed(mIndexBuffer);

@@ -1,4 +1,5 @@
 #pragma once
+#include "GraphicsObject.h"
 
 namespace Gleam {
 
@@ -9,7 +10,7 @@ enum class ShaderStage
 	Compute
 };
 
-class Shader : public GraphicsObject
+class Shader final : public GraphicsObject
 {
 public:
 

@@ -1,4 +1,4 @@
-#include "../../GraphicsTypes.h"
+#include "../../ShaderTypes.h"
 
 struct VertexOut
 {
@@ -8,9 +8,9 @@ struct VertexOut
 };
 
 vertex VertexOut forwardPassVertexShader(uint vertexID [[vertex_id]],
-                                         constant Gleam::Vertex* VertexBuffer [[buffer(0)]])
+                                         constant Gleam::MeshVertex* VertexBuffer [[buffer(0)]])
 {
-    Gleam::Vertex vert = VertexBuffer[vertexID];
+    Gleam::MeshVertex vert = VertexBuffer[vertexID];
 
     VertexOut out;
     out.position = float4(vert.position, 1.0);
@@ -22,5 +22,5 @@ vertex VertexOut forwardPassVertexShader(uint vertexID [[vertex_id]],
 fragment float4 forwardPassFragmentShader(VertexOut in [[stage_in]],
                                           constant Gleam::ForwardPassFragmentUniforms& uniforms [[buffer(0)]])
 {
-    return uniforms.color;
+    return unpack_unorm4x8_to_float(uniforms.color);
 }

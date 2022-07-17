@@ -1,14 +1,11 @@
 #pragma once
-#include "../Scene/Component.h"
 
 namespace Gleam {
 
-class Transform : public Component
+class Transform
 {
 public:
-    
-    COMPONENT_BODY();
-    
+
     NO_DISCARD FORCE_INLINE const Matrix4& GetTransform()
     {
         if (mIsTransformDirty)
@@ -46,9 +43,10 @@ public:
     
     void Translate(const Vector3& translation)
     {
-        mCachedTransform[0][3] += translation.x;
-        mCachedTransform[1][3] += translation.y;
-        mCachedTransform[2][3] += translation.z;
+        mPosition += translation;
+        mCachedTransform[0][3] += mPosition.x;
+        mCachedTransform[1][3] += mPosition.y;
+        mCachedTransform[2][3] += mPosition.z;
     }
     
     void Rotate(const Quaternion& quat)

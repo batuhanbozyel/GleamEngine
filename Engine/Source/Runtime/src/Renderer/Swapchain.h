@@ -6,7 +6,7 @@ namespace Gleam {
 
 struct Version;
 
-class Swapchain : public GraphicsObject
+class Swapchain final : public GraphicsObject
 {
 public:
 

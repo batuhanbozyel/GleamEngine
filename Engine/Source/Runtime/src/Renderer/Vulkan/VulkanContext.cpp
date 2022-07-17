@@ -61,7 +61,8 @@ struct
 	VkPipelineCache pipelineCache;
 
 	// Command Pool
-	TArray<VkCommandPool> commandPools;
+	TArray<VkCommandPool> graphicsCommandPools;
+	TArray<VkCommandPool> transferCommandPools;
 } mContext;
 
 /************************************************************************/
@@ -265,13 +266,17 @@ void RendererContext::Init(const TString& appName, const Version& appVersion, co
 
 	// Create command pools
 	VkCommandPoolCreateInfo commandPoolCreateInfo{ VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO };
-	commandPoolCreateInfo.queueFamilyIndex = mContext.graphicsQueueFamilyIndex;
 	commandPoolCreateInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 
-	mContext.commandPools.resize(GetProperties().maxFramesInFlight);
+	mContext.graphicsCommandPools.resize(GetProperties().maxFramesInFlight);
+	mContext.transferCommandPools.resize(GetProperties().maxFramesInFlight);
 	for (uint32_t i = 0; i < GetProperties().maxFramesInFlight; i++)
 	{
-		VK_CHECK(vkCreateCommandPool(VulkanDevice, &commandPoolCreateInfo, nullptr, &mContext.commandPools[i]));
+		commandPoolCreateInfo.queueFamilyIndex = mContext.graphicsQueueFamilyIndex;
+		VK_CHECK(vkCreateCommandPool(VulkanDevice, &commandPoolCreateInfo, nullptr, &mContext.graphicsCommandPools[i]));
+
+		commandPoolCreateInfo.queueFamilyIndex = mContext.transferQueueFamilyIndex;
+		VK_CHECK(vkCreateCommandPool(VulkanDevice, &commandPoolCreateInfo, nullptr, &mContext.transferCommandPools[i]));
 	}
 
 	GLEAM_CORE_INFO("Vulkan: Graphics context created.");
@@ -289,11 +294,12 @@ void RendererContext::Destroy()
 	vkDestroyPipelineCache(VulkanDevice, mContext.pipelineCache, nullptr);
 
 	// Destroy command pools
-	for (uint32_t i = 0; i < mContext.commandPools.size(); i++)
+	for (uint32_t i = 0; i < GetProperties().maxFramesInFlight; i++)
 	{
-		vkDestroyCommandPool(VulkanDevice, mContext.commandPools[i], nullptr);
+		vkDestroyCommandPool(VulkanDevice, mContext.graphicsCommandPools[i], nullptr);
+		vkDestroyCommandPool(VulkanDevice, mContext.transferCommandPools[i], nullptr);
 	}
-	mContext.commandPools.clear();
+	mContext.graphicsCommandPools.clear();
 
 	// Destroy swapchain
 	VkSurfaceKHR surface = As<VkSurfaceKHR>(mSwapchain->GetSurface());
@@ -312,13 +318,6 @@ void RendererContext::Destroy()
 	vkDestroyInstance(mContext.instance, nullptr);
 
 	GLEAM_CORE_INFO("Vulkan: Graphics context destroyed.");
-}
-/************************************************************************/
-/*	WaitIdle                                                            */
-/************************************************************************/
-void RendererContext::WaitIdle()
-{
-	VK_CHECK(vkDeviceWaitIdle(VulkanDevice));
 }
 /************************************************************************/
 /*	GetPhysicalDevice                                                   */
@@ -353,7 +352,14 @@ NativeGraphicsHandle RendererContext::GetTransferQueue()
 /************************************************************************/
 NativeGraphicsHandle RendererContext::GetGraphicsCommandPool(uint32_t index)
 {
-	return mContext.commandPools[index];
+	return mContext.graphicsCommandPools[index];
+}
+/************************************************************************/
+/*	GetTransferCommandPool                                              */
+/************************************************************************/
+NativeGraphicsHandle RendererContext::GetTransferCommandPool(uint32_t index)
+{
+	return mContext.transferCommandPools[index];
 }
 /************************************************************************/
 /*	GetMemoryTypeForProperties                                           */

@@ -139,6 +139,7 @@ static constexpr VkBufferUsageFlags BufferUsageToVkBufferUsage(BufferUsage usage
 		case BufferUsage::IndexBuffer: return VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
 		case BufferUsage::StorageBuffer: return VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
 		case BufferUsage::UniformBuffer: return VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+		case BufferUsage::StagingBuffer: return VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
 		default: return VK_BUFFER_USAGE_FLAG_BITS_MAX_ENUM;
 	}
 }
