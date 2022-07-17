@@ -225,11 +225,19 @@ void Swapchain::InvalidateAndCreate()
 	VK_CHECK(vkCreateSwapchainKHR(VulkanDevice, &swapchainCreateInfo, nullptr, &newSwapchain));
 
 	// Destroy swapchain
+
 	if (As<VkSwapchainKHR>(mHandle) != VK_NULL_HANDLE)
 	{
 		vkDestroySwapchainKHR(VulkanDevice, As<VkSwapchainKHR>(mHandle), nullptr);
 	}
 	mHandle = newSwapchain;
+
+	// Destroy drawable
+	for (uint32_t i = 0; i < mContext.imageViews.size(); i++)
+	{
+		vkDestroyImageView(VulkanDevice, mContext.imageViews[i], nullptr);
+	}
+	mContext.imageViews.clear();
 
 	uint32_t swapchainImageCount;
 	VK_CHECK(vkGetSwapchainImagesKHR(VulkanDevice, As<VkSwapchainKHR>(mHandle), &swapchainImageCount, nullptr));
