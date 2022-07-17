@@ -17,8 +17,6 @@ class SceneLayer : public Gleam::Layer
     
     virtual void OnUpdate() override
     {
-        //mRenderer.DrawTriangle({-0.5f, -0.5f, 0.0f}, {0.5f, -0.5f, 0.0f}, {0.0f, 0.5f, 0.0f}, Gleam::Color::HSVToRGB(Gleam::Time::time, 1.0f, 1.0f));
-        
         constexpr int gridWidth = 32;
         constexpr int gridHeight = 32;
         for (int i = 0; i < gridWidth; i++)
