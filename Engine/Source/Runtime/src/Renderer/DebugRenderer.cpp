@@ -32,7 +32,7 @@ DebugRenderer::DebugRenderer()
 
 DebugRenderer::~DebugRenderer()
 {
-    
+	mCommandBuffer.WaitUntilCompleted();
 }
 
 void DebugRenderer::Render()

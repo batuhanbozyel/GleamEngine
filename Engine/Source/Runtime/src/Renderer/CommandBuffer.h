@@ -48,6 +48,8 @@ public:
     
     void Commit() const;
 
+	void WaitUntilCompleted() const;
+
 private:
     
     void SetPushConstant(const void* data, uint32_t size, ShaderStage stage, uint32_t index = 0) const;

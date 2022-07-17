@@ -8,37 +8,57 @@
 
 using namespace Gleam;
 
-const VulkanPipelineState& VulkanPipelineStateManager::GetGraphicsPipelineState(const RenderPassDescriptor& renderPassDesc, const PipelineStateDescriptor& pipelineDesc, const GraphicsShader& program)
+const VulkanRenderPass& VulkanPipelineStateManager::GetRenderPass(const RenderPassDescriptor& renderPassDesc)
+{
+	for (uint32_t i = 0; i < mRenderPassCache.size(); i++)
+	{
+		const auto& element = mRenderPassCache[i];
+		if (element.renderPassDescriptor == renderPassDesc)
+		{
+			return element.renderPass;
+		}
+	}
+
+	RenderPassCacheElement element;
+	element.renderPassDescriptor = renderPassDesc;
+	element.renderPass.handle = CreateRenderPass(renderPassDesc);
+	element.renderPass.swapchainTarget = renderPassDesc.swapchainTarget;
+	const auto& cachedElement = mRenderPassCache.emplace_back(element);
+	return cachedElement.renderPass;
+}
+
+const VulkanPipeline& VulkanPipelineStateManager::GetGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc, const GraphicsShader& program, VkRenderPass renderPass)
 {
 	for (uint32_t i = 0; i < mGraphicsPipelineCache.size(); i++)
 	{
 		const auto& element = mGraphicsPipelineCache[i];
-		if (element.renderPassDescriptor == renderPassDesc
-			&& element.pipelineStateDescriptor == pipelineDesc
-			&& element.program == program)
+		if (element.pipelineStateDescriptor == pipelineDesc && element.program == program && element.renderPass == renderPass)
 		{
-			return element.pipelineState;
+			return element.pipeline;
 		}
 	}
 
 	GraphicsPipelineCacheElement element;
-	element.renderPassDescriptor = renderPassDesc;
 	element.pipelineStateDescriptor = pipelineDesc;
 	element.program = program;
-	element.pipelineState.renderPass = CreateRenderPass(renderPassDesc);
-	element.pipelineState.pipeline = CreateGraphicsPipeline(pipelineDesc, program, element.pipelineState.renderPass);
-	element.pipelineState.swapchainTarget = renderPassDesc.swapchainTarget;
+	element.renderPass = renderPass;
+	element.pipeline = CreateGraphicsPipeline(pipelineDesc, program, renderPass);
 	const auto& cachedElement = mGraphicsPipelineCache.emplace_back(element);
-	return cachedElement.pipelineState;
+	return cachedElement.pipeline;
 }
 
 void VulkanPipelineStateManager::Clear()
 {
+	for (const auto& element : mRenderPassCache)
+	{
+		vkDestroyRenderPass(VulkanDevice, element.renderPass.handle, nullptr);
+	}
+	mRenderPassCache.clear();
+
 	for (const auto& element : mGraphicsPipelineCache)
 	{
-		vkDestroyRenderPass(VulkanDevice, element.pipelineState.renderPass, nullptr);
-		vkDestroyPipelineLayout(VulkanDevice, element.pipelineState.pipeline.layout, nullptr);
-		vkDestroyPipeline(VulkanDevice, element.pipelineState.pipeline.handle, nullptr);
+		vkDestroyPipelineLayout(VulkanDevice, element.pipeline.layout, nullptr);
+		vkDestroyPipeline(VulkanDevice, element.pipeline.handle, nullptr);
 	}
 	mGraphicsPipelineCache.clear();
 }

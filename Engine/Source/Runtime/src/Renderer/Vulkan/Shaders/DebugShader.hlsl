@@ -5,20 +5,23 @@ StructuredBuffer<Gleam::DebugVertex> VertexBuffer : register(t0);
 struct VertexOut
 {
     float4 position : SV_POSITION;
-    uint color;
+    float4 color : COLOR;
 };
 
-VertexOut forwardPassVertexShader(uint vertex_id: SV_VertexID)
+[[vk::push_constant]]
+Gleam::DebugVertexUniforms uniforms;
+
+VertexOut debugVertexShader(uint vertex_id: SV_VertexID)
 {
     Gleam::DebugVertex vertex = VertexBuffer[vertex_id];
 
     VertexOut OUT;
-    OUT.position = float4(vertex.position, 1.0);
-    OUT.color = vertex.color;
+    OUT.position = mul(uniforms.viewProjectionMatrix, float4(vertex.position, 1.0f));
+    OUT.color = Gleam::unpack_unorm4x8_to_float(vertex.color);
     return OUT;
 }
 
-float4 forwardPassFragmentShader(VertexOut IN) : SV_TARGET
+float4 debugFragmentShader(VertexOut IN) : SV_TARGET
 {
-    return unpack_unorm4x8_to_float(IN.color);
+    return IN.color;
 }

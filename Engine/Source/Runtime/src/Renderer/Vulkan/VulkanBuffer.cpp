@@ -65,13 +65,13 @@ void Buffer::Free(Buffer& buffer)
 	vkFreeMemory(VulkanDevice, As<VkDeviceMemory>(buffer.mMemory), nullptr);
 }
 
-void Buffer::Copy(const Buffer& src, const Buffer& dst)
+void Buffer::Copy(const Buffer& src, const Buffer& dst, uint32_t srcOffset, uint32_t dstOffset)
 {
 	GLEAM_ASSERT(src.GetSize() <= dst.GetSize(), "Vulkan: Source buffer size can not be larger than destination buffer size!");
 
 	VkBufferCopy bufferCopy;
-	bufferCopy.srcOffset = 0;
-	bufferCopy.dstOffset = 0;
+	bufferCopy.srcOffset = srcOffset;
+	bufferCopy.dstOffset = dstOffset;
 	bufferCopy.size = src.GetSize();
 
 	auto frameIdx = RendererContext::GetSwapchain()->GetFrameIndex();

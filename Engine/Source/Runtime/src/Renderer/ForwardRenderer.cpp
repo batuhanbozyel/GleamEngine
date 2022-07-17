@@ -38,7 +38,7 @@ ForwardRenderer::ForwardRenderer()
 
 ForwardRenderer::~ForwardRenderer()
 {
-
+	mCommandBuffer.WaitUntilCompleted();
 }
 
 void ForwardRenderer::Render()

@@ -11,10 +11,9 @@ struct VulkanPipeline
 	VkDescriptorSetLayout setLayout{ VK_NULL_HANDLE };
 };
 
-struct VulkanPipelineState
+struct VulkanRenderPass
 {
-	VkRenderPass renderPass{ VK_NULL_HANDLE };
-	VulkanPipeline pipeline;
+	VkRenderPass handle{ VK_NULL_HANDLE };
 	bool swapchainTarget = false;
 };
 
@@ -22,24 +21,33 @@ class VulkanPipelineStateManager
 {
 public:
 
-	static const VulkanPipelineState& GetGraphicsPipelineState(const RenderPassDescriptor& renderPassDesc, const PipelineStateDescriptor& pipelineDesc, const GraphicsShader& program);
+	static const VulkanRenderPass& GetRenderPass(const RenderPassDescriptor& renderPassDesc);
+
+	static const VulkanPipeline& GetGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc, const GraphicsShader& program, VkRenderPass renderPass);
 
 	static void Clear();
 
 private:
 
-	struct GraphicsPipelineCacheElement
+	struct RenderPassCacheElement
 	{
 		RenderPassDescriptor renderPassDescriptor;
-		PipelineStateDescriptor pipelineStateDescriptor;
-		GraphicsShader program;
-		VulkanPipelineState pipelineState;
+		VulkanRenderPass renderPass;
 	};
 
+	struct GraphicsPipelineCacheElement
+	{
+		PipelineStateDescriptor pipelineStateDescriptor;
+		GraphicsShader program;
+		VulkanPipeline pipeline;
+		VkRenderPass renderPass;
+	};
 
 	static VkRenderPass CreateRenderPass(const RenderPassDescriptor& renderPassDesc);
 
 	static VulkanPipeline CreateGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc, const GraphicsShader& program, VkRenderPass renderPass);
+
+	static inline TArray<RenderPassCacheElement> mRenderPassCache;
 
 	static inline TArray<GraphicsPipelineCacheElement> mGraphicsPipelineCache;
 
