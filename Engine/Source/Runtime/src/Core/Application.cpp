@@ -3,7 +3,7 @@
 
 #include "Layer.h"
 #include "Window.h"
-#include "Events/WindowEvent.h"
+#include "Input/Input.h"
 #include "Renderer/Renderer.h"
 
 using namespace Gleam;
@@ -22,9 +22,39 @@ static int SDLCALL SDL2_EventCallback(void* data, SDL_Event* e)
 			Window::EventHandler(e->window);
 			break;
 		}
+		case SDL_KEYDOWN:
+		case SDL_KEYUP:
+		case SDL_TEXTEDITING:
+		case SDL_TEXTINPUT:
+		case SDL_KEYMAPCHANGED:
+		{
+			Input::KeyboardEventHandler(e->key);
+			break;
+		}
+		case SDL_MOUSEMOTION:
+		{
+			Input::MouseMotionEventHandler(e->motion);
+			break;
+		}
+		case SDL_MOUSEWHEEL:
+		{
+			Input::MouseWheelEventHandler(e->wheel);
+			break;
+		}
+		case SDL_MOUSEBUTTONDOWN:
+		case SDL_MOUSEBUTTONUP:
+		{
+			Input::MouseButtonEventHandler(e->button);
+			break;
+		}
+		// This case is here just to ignore this type of event to emit warning log messages
+		case SDL_POLLSENTINEL:
+		{
+			break;
+		}
 		default:
 		{
-			GLEAM_CORE_WARN("Unhandled event type!");
+			GLEAM_CORE_WARN("Unhandled event type: {0}", e->type);
 			break;
 		}
 	}
