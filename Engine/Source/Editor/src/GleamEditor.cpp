@@ -7,16 +7,13 @@ namespace GEditor {
 
 class SceneLayer : public Gleam::Layer
 {
-    virtual void OnAttach() override
+    virtual void OnUpdate() override
     {
         Gleam::Camera camera(ApplicationInstance.GetActiveWindow().GetProperties().display.width,
                              ApplicationInstance.GetActiveWindow().GetProperties().display.height);
         camera.Translate({0.0f, -0.5f, -1.0f});
         mRenderer.UpdateView(camera);
-    }
-    
-    virtual void OnUpdate() override
-    {
+        
         constexpr int gridWidth = 32;
         constexpr int gridHeight = 32;
         for (int i = 0; i < gridWidth; i++)
