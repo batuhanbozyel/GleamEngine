@@ -1,11 +1,16 @@
 #pragma once
-#include <SDL.h>
+#include "KeyCode.h"
+#include "MouseButton.h"
+#include "JoystickButton.h"
+#include <SDL_events.h>
 
 namespace Gleam {
 
 class Input
 {
 public:
+
+	static bool IsKeyPressed(const KeyCode keycode);
 
 	static void KeyboardEventHandler(SDL_KeyboardEvent keyboardEvent);
 
@@ -16,7 +21,6 @@ public:
 	static void MouseButtonEventHandler(SDL_MouseButtonEvent buttonEvent);
 
 private:
-
 
 
 };

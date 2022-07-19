@@ -51,6 +51,7 @@
 #include "Core/Events/KeyEvent.h"
 #include "Core/Time.h"
 
+#include "Input/Input.h"
 #include "IO/Log.h"
 #include "IO/IOUtils.h"
 

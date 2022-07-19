@@ -31,6 +31,8 @@
 #include "Core/Window.h"
 #include "Core/Layer.h"
 #include "Core/Time.h"
+
+#include "Input/Input.h"
 #include "IO/Log.h"
 
 #include "World/World.h"

@@ -9,33 +9,28 @@ class SceneLayer : public Gleam::Layer
 {
     virtual void OnAttach() override
     {
-        float cameraSpeed = 5.0f;
-        mCamera.Translate({0.0f, -0.5f, -1.0f});
-        Gleam::EventDispatcher<Gleam::KeyPressedEvent>::Subscribe([&](Gleam::KeyPressedEvent e) -> bool
-        {
-            if (e.GetKeyCode() == Gleam::KeyCode::A)
-            {
-                mCamera.Translate(Gleam::Vector3(-cameraSpeed * Gleam::Time::deltaTime, 0.0f, 0.0f));
-            }
-            if (e.GetKeyCode() == Gleam::KeyCode::D)
-            {
-                mCamera.Translate(Gleam::Vector3(cameraSpeed * Gleam::Time::deltaTime, 0.0f, 0.0f));
-            }
-            if (e.GetKeyCode() == Gleam::KeyCode::W)
-            {
-                mCamera.Translate(Gleam::Vector3(0.0f, 0.0f, cameraSpeed * Gleam::Time::deltaTime));
-            }
-            if (e.GetKeyCode() == Gleam::KeyCode::S)
-            {
-                mCamera.Translate(Gleam::Vector3(0.0f, 0.0f, -cameraSpeed * Gleam::Time::deltaTime));
-            }
-            return false;
-        });
-        
+        mCamera.Translate({0.0f, -0.5f, 0.0f});
     }
     
     virtual void OnUpdate() override
     {
+		constexpr float cameraSpeed = 5.0f;
+		if (Gleam::Input::IsKeyPressed(Gleam::KeyCode::A))
+		{
+			mCamera.Translate(Gleam::Vector3(-cameraSpeed * Gleam::Time::deltaTime, 0.0f, 0.0f));
+		}
+		if (Gleam::Input::IsKeyPressed(Gleam::KeyCode::D))
+		{
+			mCamera.Translate(Gleam::Vector3(cameraSpeed * Gleam::Time::deltaTime, 0.0f, 0.0f));
+		}
+		if (Gleam::Input::IsKeyPressed(Gleam::KeyCode::W))
+		{
+			mCamera.Translate(Gleam::Vector3(0.0f, 0.0f, cameraSpeed * Gleam::Time::deltaTime));
+		}
+		if (Gleam::Input::IsKeyPressed(Gleam::KeyCode::S))
+		{
+			mCamera.Translate(Gleam::Vector3(0.0f, 0.0f, -cameraSpeed * Gleam::Time::deltaTime));
+		}
         mRenderer.UpdateView(mCamera);
         
         constexpr int gridWidth = 32;
