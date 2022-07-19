@@ -31,6 +31,7 @@ class SceneLayer : public Gleam::Layer
 		{
 			mCamera.Translate(Gleam::Vector3(0.0f, 0.0f, -cameraSpeed * Gleam::Time::deltaTime));
 		}
+		mCamera.SetViewport(Gleam::Renderer::GetDrawableSize());
         mRenderer.UpdateView(mCamera);
         
         constexpr int gridWidth = 32;

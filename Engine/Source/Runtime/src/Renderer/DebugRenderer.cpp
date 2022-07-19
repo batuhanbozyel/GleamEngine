@@ -1,7 +1,6 @@
 #include "gpch.h"
 #include "DebugRenderer.h"
 #include "ShaderLibrary.h"
-#include "RendererContext.h"
 #include "RenderPassDescriptor.h"
 #include "PipelineStateDescriptor.h"
 
@@ -25,7 +24,7 @@ DebugRenderer::DebugRenderer()
 	mDebugProgram.vertexShader = ShaderLibrary::CreateShader("debugVertexShader", ShaderStage::Vertex);
 	mDebugProgram.fragmentShader = ShaderLibrary::CreateShader("debugFragmentShader", ShaderStage::Fragment);
     
-    Camera defaultCamera(RendererContext::GetProperties().width, RendererContext::GetProperties().height);
+    Camera defaultCamera(Renderer::GetDrawableSize());
     mViewMatrix = defaultCamera.GetViewMatrix();
     mProjectionMatrix = defaultCamera.GetProjectionMatrix();
 }
@@ -83,14 +82,15 @@ void DebugRenderer::Render()
     mVertexBuffer.SetData(mStagingBuffer);
     
     // Start rendering
+	const auto& drawableSize = GetDrawableSize();
     RenderPassDescriptor renderPassDesc;
     renderPassDesc.swapchainTarget = true;
-    renderPassDesc.width = RendererContext::GetProperties().width;
-    renderPassDesc.height = RendererContext::GetProperties().height;
+    renderPassDesc.width = drawableSize.x;
+    renderPassDesc.height = drawableSize.y;
     
     mCommandBuffer.Begin();
     mCommandBuffer.BeginRenderPass(renderPassDesc);
-    mCommandBuffer.SetViewport(RendererContext::GetProperties().width, RendererContext::GetProperties().height);
+    mCommandBuffer.SetViewport(drawableSize.x, drawableSize.y);
     
     if (!mLines.empty())
     {

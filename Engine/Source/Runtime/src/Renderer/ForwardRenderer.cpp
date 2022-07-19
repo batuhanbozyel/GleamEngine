@@ -43,16 +43,17 @@ ForwardRenderer::~ForwardRenderer()
 
 void ForwardRenderer::Render()
 {
+	const auto& drawableSize = GetDrawableSize();
     RenderPassDescriptor renderPassDesc;
 	renderPassDesc.swapchainTarget = true;
-	renderPassDesc.width = RendererContext::GetProperties().width;
-	renderPassDesc.height = RendererContext::GetProperties().height;
+	renderPassDesc.width = drawableSize.x;
+	renderPassDesc.height = drawableSize.y;
     
 	mCommandBuffer.Begin();
 	mCommandBuffer.BeginRenderPass(renderPassDesc);
     mCommandBuffer.BindPipeline(PipelineStateDescriptor(), mForwardPassProgram);
     
-	mCommandBuffer.SetViewport(RendererContext::GetProperties().width, RendererContext::GetProperties().height);
+	mCommandBuffer.SetViewport(drawableSize.x, drawableSize.y);
 	mCommandBuffer.SetVertexBuffer(mVertexBuffer);
     
     ForwardPassFragmentUniforms uniforms;
