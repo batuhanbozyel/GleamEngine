@@ -7,12 +7,36 @@ namespace GEditor {
 
 class SceneLayer : public Gleam::Layer
 {
+    virtual void OnAttach() override
+    {
+        float cameraSpeed = 5.0f;
+        mCamera.Translate({0.0f, -0.5f, -1.0f});
+        Gleam::EventDispatcher<Gleam::KeyPressedEvent>::Subscribe([&](Gleam::KeyPressedEvent e) -> bool
+        {
+            if (e.GetKeyCode() == Gleam::KeyCode::A)
+            {
+                mCamera.Translate(Gleam::Vector3(-cameraSpeed * Gleam::Time::deltaTime, 0.0f, 0.0f));
+            }
+            if (e.GetKeyCode() == Gleam::KeyCode::D)
+            {
+                mCamera.Translate(Gleam::Vector3(cameraSpeed * Gleam::Time::deltaTime, 0.0f, 0.0f));
+            }
+            if (e.GetKeyCode() == Gleam::KeyCode::W)
+            {
+                mCamera.Translate(Gleam::Vector3(0.0f, 0.0f, cameraSpeed * Gleam::Time::deltaTime));
+            }
+            if (e.GetKeyCode() == Gleam::KeyCode::S)
+            {
+                mCamera.Translate(Gleam::Vector3(0.0f, 0.0f, -cameraSpeed * Gleam::Time::deltaTime));
+            }
+            return false;
+        });
+        
+    }
+    
     virtual void OnUpdate() override
     {
-        Gleam::Camera camera(ApplicationInstance.GetActiveWindow().GetProperties().display.width,
-                             ApplicationInstance.GetActiveWindow().GetProperties().display.height);
-        camera.Translate({0.0f, -0.5f, -1.0f});
-        mRenderer.UpdateView(camera);
+        mRenderer.UpdateView(mCamera);
         
         constexpr int gridWidth = 32;
         constexpr int gridHeight = 32;
@@ -33,6 +57,7 @@ class SceneLayer : public Gleam::Layer
 private:
     
     Gleam::World mWorld;
+    Gleam::Camera mCamera;
     Gleam::DebugRenderer mRenderer;
 };
     

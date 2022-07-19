@@ -1,12 +1,29 @@
 #include "gpch.h"
 #include "Camera.h"
+#include "RendererContext.h"
+#include "Core/Events/WindowEvent.h"
 
 using namespace Gleam;
+
+Camera::Camera()
+    : Camera(RendererContext::GetProperties().width,
+             RendererContext::GetProperties().height)
+{
+    
+}
 
 Camera::Camera(float width, float height, ProjectionType type)
     : mProjectionType(type)
 {
     SetViewport(width, height);
+    
+    EventDispatcher<WindowResizeEvent>::Subscribe([&](const WindowResizeEvent& e) -> bool
+    {
+        SetViewport(e.GetWidth(),
+                    e.GetHeight());
+        
+        return false;
+    });
 }
 
 void Camera::SetViewport(float width, float height)

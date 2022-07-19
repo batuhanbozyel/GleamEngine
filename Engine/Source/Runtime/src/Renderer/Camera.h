@@ -14,6 +14,8 @@ class Camera : public Transform
 {
 public:
     
+    Camera();
+    
     Camera(float width, float height, ProjectionType type = ProjectionType::Perspective);
     
     void SetViewport(float width, float height);

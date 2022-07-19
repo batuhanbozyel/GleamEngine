@@ -24,9 +24,6 @@ static int SDLCALL SDL2_EventCallback(void* data, SDL_Event* e)
 		}
 		case SDL_KEYDOWN:
 		case SDL_KEYUP:
-		case SDL_TEXTEDITING:
-		case SDL_TEXTINPUT:
-		case SDL_KEYMAPCHANGED:
 		{
 			Input::KeyboardEventHandler(e->key);
 			break;
