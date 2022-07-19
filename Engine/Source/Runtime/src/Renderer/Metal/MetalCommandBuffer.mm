@@ -162,5 +162,10 @@ void CommandBuffer::Commit() const
 	}
 }
 
+void CommandBuffer::WaitUntilCompleted() const
+{
+    [mHandle->commandBuffer waitUntilCompleted];
+}
+
 #endif
 

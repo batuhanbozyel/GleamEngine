@@ -33,7 +33,11 @@ Swapchain::Swapchain(const RendererProperties& props, NativeGraphicsHandle insta
     swapchain.framebufferOnly = YES;
     swapchain.opaque = YES;
     swapchain.pixelFormat = MTLPixelFormatBGRA8Unorm;
+    swapchain.drawableSize = swapchain.frame.size;
     mHandle = swapchain;
+    
+    mProperties.width = swapchain.frame.size.width;
+    mProperties.height = swapchain.frame.size.height;
     
     if (swapchain.maximumDrawableCount >= 3 && mProperties.tripleBufferingEnabled)
     {
@@ -110,11 +114,12 @@ DispatchSemaphore Swapchain::GetImageReleaseSemaphore() const
 void Swapchain::InvalidateAndCreate()
 {
     CAMetalLayer* swapchain = (CAMetalLayer*)mHandle;
-    
-    int width, height;
-    SDL_Metal_GetDrawableSize(Application::GetInstance().GetActiveWindow().GetSDLWindow(), &width, &height);
-    mProperties.width = width;
-    mProperties.height = height;
+    if (mProperties.width != swapchain.frame.size.width || mProperties.height != swapchain.frame.size.height)
+    {
+        mProperties.width = swapchain.frame.size.width;
+        mProperties.height = swapchain.frame.size.height;
+        swapchain.drawableSize = swapchain.frame.size;
+    }
 }
 
 #endif
