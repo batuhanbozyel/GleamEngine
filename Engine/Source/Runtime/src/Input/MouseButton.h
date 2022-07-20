@@ -3,7 +3,7 @@
 
 namespace Gleam {
 
-enum class MouseButton
+enum class MouseButton : uint8_t
 {
 	M1 = SDL_BUTTON_LEFT,
 	M2 = SDL_BUTTON_RIGHT,
@@ -17,5 +17,18 @@ enum class MouseButton
 	Backward = M4,
 	Forward = M5
 };
+    
+static TStringView ToString(const MouseButton button)
+{
+    switch (button)
+    {
+        case MouseButton::M1: return "M1";
+        case MouseButton::M2: return "M2";
+        case MouseButton::M3: return "M3";
+        case MouseButton::M4: return "M4";
+        case MouseButton::M5: return "M5";
+        default: return "";
+    }
+}
 
 } // namespace

@@ -1,14 +1,24 @@
 #include "gpch.h"
 #include "Input.h"
 #include "Core/Events/KeyEvent.h"
+#include <SDL.h>
 
 using namespace Gleam;
 
 bool Input::IsKeyPressed(const KeyCode keycode)
 {
 	auto scancode = SDL_GetScancodeFromKey(static_cast<SDL_Keycode>(keycode));
-	auto keyboardState = SDL_GetKeyboardState(nullptr);
-	return keyboardState[scancode] == SDL_PRESSED;
+	return mKeyboardState[scancode] == SDL_PRESSED;
+}
+
+bool Input::IsMouseButtonPressed(const MouseButton button)
+{
+    return mMouseState & static_cast<uint8_t>(button);
+}
+
+Vector2 Input::GetMousePosition()
+{
+    return mMousePosition;
 }
 
 void Input::KeyboardEventHandler(SDL_KeyboardEvent keyboardEvent)
@@ -24,18 +34,35 @@ void Input::KeyboardEventHandler(SDL_KeyboardEvent keyboardEvent)
     }
 }
 
-void Input::MouseMotionEventHandler(SDL_MouseMotionEvent motionEvent)
+void Input::Update()
 {
-    
+    int x, y;
+    mMouseState = SDL_GetMouseState(&x, &y);
+    mMousePosition.x = static_cast<float>(x);
+    mMousePosition.y = static_cast<float>(y);
+    mKeyboardState = SDL_GetKeyboardState(nullptr);
 }
 
-void Input::MouseWheelEventHandler(SDL_MouseWheelEvent wheelEvent)
+void Input::MouseMoveEventHandler(SDL_MouseMotionEvent motionEvent)
 {
-    
+    EventDispatcher<MouseMovedEvent>::Publish(MouseMovedEvent(motionEvent.x, motionEvent.y));
+}
+
+void Input::MouseScrollEventHandler(SDL_MouseWheelEvent wheelEvent)
+{
+    EventDispatcher<MouseScrolledEvent>::Publish(MouseScrolledEvent(wheelEvent.preciseX, wheelEvent.preciseY));
 }
 
 void Input::MouseButtonEventHandler(SDL_MouseButtonEvent buttonEvent)
 {
-    
+    MouseButton button = static_cast<MouseButton>(buttonEvent.button);
+    if (buttonEvent.state == SDL_PRESSED)
+    {
+        EventDispatcher<MouseButtonPressedEvent>::Publish(MouseButtonPressedEvent(button));
+    }
+    else
+    {
+        EventDispatcher<MouseButtonReleasedEvent>::Publish(MouseButtonReleasedEvent(button));
+    }
 }
 

@@ -8,7 +8,7 @@
 
 using namespace Gleam;
 
-static int SDLCALL SDL2_EventCallback(void* data, SDL_Event* e)
+int SDLCALL Application::SDL2_EventCallback(void* data, SDL_Event* e)
 {
 	switch (e->type)
 	{
@@ -30,12 +30,12 @@ static int SDLCALL SDL2_EventCallback(void* data, SDL_Event* e)
 		}
 		case SDL_MOUSEMOTION:
 		{
-			Input::MouseMotionEventHandler(e->motion);
+			Input::MouseMoveEventHandler(e->motion);
 			break;
 		}
 		case SDL_MOUSEWHEEL:
 		{
-			Input::MouseWheelEventHandler(e->wheel);
+			Input::MouseScrollEventHandler(e->wheel);
 			break;
 		}
 		case SDL_MOUSEBUTTONDOWN:
@@ -98,6 +98,7 @@ void Application::Run()
 		while (SDL_PollEvent(&mEvent));
         
         Time::Step();
+        Input::Update();
 
 		for (const auto& layer : mLayerStack)
 		{
