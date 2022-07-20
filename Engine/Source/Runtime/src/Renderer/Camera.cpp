@@ -7,19 +7,23 @@ using namespace Gleam;
 Camera::Camera()
     : Camera(Renderer::GetDrawableSize())
 {
-    
+	EventDispatcher<RendererDrawableResizeEvent>::Subscribe([&](const RendererDrawableResizeEvent& e) -> bool
+	{
+		SetViewport(e.GetWidth(), e.GetHeight());
+		return false;
+	});
+}
+
+Camera::Camera(float width, float height, ProjectionType type)
+	: Camera({width, height}, type)
+{
+
 }
 
 Camera::Camera(const Vector2& size, ProjectionType type)
 	: mProjectionType(type)
 {
 	SetViewport(size);
-}
-
-Camera::Camera(float width, float height, ProjectionType type)
-    : mProjectionType(type)
-{
-    SetViewport(width, height);
 }
 
 void Camera::SetViewport(const Vector2& size)

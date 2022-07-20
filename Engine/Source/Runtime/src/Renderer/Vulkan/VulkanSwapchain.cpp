@@ -6,6 +6,7 @@
 
 #include "Core/Window.h"
 #include "Core/Application.h"
+#include "Core/Events/RendererEvent.h"
 
 #include <SDL_vulkan.h>
 
@@ -286,6 +287,8 @@ void Swapchain::InvalidateAndCreate()
 			VK_CHECK(vkCreateSemaphore(VulkanDevice, &semaphoreCreateInfo, nullptr, &mContext.imageReleaseSemaphores[i]));
 		}
 	});
+
+	EventDispatcher<RendererDrawableResizeEvent>::Publish(RendererDrawableResizeEvent(mProperties.width, mProperties.height));
 }
 
 #endif
