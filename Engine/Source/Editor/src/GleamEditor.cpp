@@ -17,20 +17,28 @@ class SceneLayer : public Gleam::Layer
 		constexpr float cameraSpeed = 5.0f;
 		if (Gleam::Input::IsKeyPressed(Gleam::KeyCode::A))
 		{
-			mCamera.Translate(Gleam::Vector3(-cameraSpeed * Gleam::Time::deltaTime, 0.0f, 0.0f));
+			mCamera.Translate(-mCamera.RightVector() * cameraSpeed * Gleam::Time::deltaTime);
 		}
 		if (Gleam::Input::IsKeyPressed(Gleam::KeyCode::D))
 		{
-			mCamera.Translate(Gleam::Vector3(cameraSpeed * Gleam::Time::deltaTime, 0.0f, 0.0f));
+			mCamera.Translate(mCamera.RightVector() * cameraSpeed * Gleam::Time::deltaTime);
 		}
 		if (Gleam::Input::IsKeyPressed(Gleam::KeyCode::W))
 		{
-			mCamera.Translate(Gleam::Vector3(0.0f, 0.0f, cameraSpeed * Gleam::Time::deltaTime));
+			mCamera.Translate(mCamera.ForwardVector() * cameraSpeed * Gleam::Time::deltaTime);
 		}
 		if (Gleam::Input::IsKeyPressed(Gleam::KeyCode::S))
 		{
-			mCamera.Translate(Gleam::Vector3(0.0f, 0.0f, -cameraSpeed * Gleam::Time::deltaTime));
+			mCamera.Translate(-mCamera.ForwardVector() * cameraSpeed * Gleam::Time::deltaTime);
 		}
+        if (Gleam::Input::IsKeyPressed(Gleam::KeyCode::Q))
+        {
+            mCamera.Rotate(Gleam::Vector3(0.0f, -cameraSpeed * Gleam::Time::deltaTime, 0.0f));
+        }
+        if (Gleam::Input::IsKeyPressed(Gleam::KeyCode::E))
+        {
+            mCamera.Rotate(Gleam::Vector3(0.0f, cameraSpeed * Gleam::Time::deltaTime, 0.0f));
+        }
         mRenderer.UpdateView(mCamera);
         
         constexpr int gridWidth = 32;
