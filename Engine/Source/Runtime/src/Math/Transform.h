@@ -36,6 +36,11 @@ public:
         return mRotation * Vector3::up;
     }
     
+    NO_DISCARD FORCE_INLINE Vector3 RightVector() const
+    {
+        return mRotation * Vector3::right;
+    }
+    
     NO_DISCARD FORCE_INLINE Vector3 EularAngles() const
     {
         return mRotation.EularAngles();

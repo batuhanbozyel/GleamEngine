@@ -53,6 +53,22 @@ void Camera::Translate(const Vector3& translation)
     Transform::Translate(translation);
 }
 
+void Camera::Rotate(const Quaternion& quat)
+{
+    mViewMatrixDirty = true;
+    Transform::Rotate(quat);
+}
+
+void Camera::Rotate(const Vector3& eulers)
+{
+    Rotate(Quaternion(eulers));
+}
+
+void Camera::Rotate(float xAngle, float yAngle, float zAngle)
+{
+    Rotate({xAngle, yAngle, zAngle});
+}
+
 const Matrix4& Camera::GetViewMatrix()
 {
     if (mViewMatrixDirty)

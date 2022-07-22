@@ -28,6 +28,12 @@ public:
     
     void Translate(const Vector3& translation);
     
+    void Rotate(const Quaternion& quat);
+    
+    void Rotate(const Vector3& eulers);
+    
+    void Rotate(float xAngle, float yAngle, float zAngle);
+    
     const Matrix4& GetProjectionMatrix();
     
     const Matrix4& GetViewMatrix();
