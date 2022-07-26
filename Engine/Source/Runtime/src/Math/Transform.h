@@ -41,17 +41,17 @@ public:
         return mRotation * Vector3::right;
     }
     
-    NO_DISCARD FORCE_INLINE Vector3 EularAngles() const
+    NO_DISCARD FORCE_INLINE Vector3 EulerAngles() const
     {
-        return mRotation.EularAngles();
+        return mRotation.EulerAngles();
     }
     
     void Translate(const Vector3& translation)
     {
         mPosition += translation;
-        mCachedTransform[0][3] += mPosition.x;
-        mCachedTransform[1][3] += mPosition.y;
-        mCachedTransform[2][3] += mPosition.z;
+        mCachedTransform.m[12] += mPosition.x;
+        mCachedTransform.m[13] += mPosition.y;
+        mCachedTransform.m[14] += mPosition.z;
     }
     
     void Rotate(const Quaternion& quat)
@@ -62,13 +62,12 @@ public:
     
     void Rotate(const Vector3& eulers)
     {
-        mIsTransformDirty = true;
-        mRotation *= Quaternion(eulers);
+        Rotate(Quaternion(eulers));
     }
     
     void Rotate(float xAngle, float yAngle, float zAngle)
     {
-        Rotate({xAngle, yAngle, zAngle});
+        Rotate(Vector3{xAngle, yAngle, zAngle});
     }
     
 private:

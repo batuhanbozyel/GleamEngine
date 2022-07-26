@@ -36,6 +36,7 @@ void Camera::SetViewport(float width, float height)
 	float aspectRatio = width / height;
 	if (Math::Abs(aspectRatio - mAspectRatio) > Math::Epsilon)
 	{
+        mSize = height;
 		mAspectRatio = aspectRatio;
 		mProjectionMatrixDirty = true;
 	}
@@ -66,7 +67,7 @@ void Camera::Rotate(const Vector3& eulers)
 
 void Camera::Rotate(float xAngle, float yAngle, float zAngle)
 {
-    Rotate({xAngle, yAngle, zAngle});
+    Rotate(Vector3{xAngle, yAngle, zAngle});
 }
 
 const Matrix4& Camera::GetViewMatrix()
@@ -92,7 +93,7 @@ const Matrix4& Camera::GetProjectionMatrix()
 void Camera::RecalculateViewMatrix()
 {
     mViewMatrixDirty = false;
-    mViewMatrix = Matrix4::LookAt(GetWorldPosition(), GetWorldPosition() + ForwardVector(), UpVector());
+    mViewMatrix = Matrix4::LookTo(GetWorldPosition(), ForwardVector(), UpVector());
 }
 
 void Camera::RecalculateProjectionMatrix()
@@ -104,10 +105,8 @@ void Camera::RecalculateProjectionMatrix()
     }
     else
     {
-        float right = mSize * mAspectRatio;
-        float left = -right;
-        float top = mSize;
-        float bottom = -top;
-        mProjectionMatrix = Matrix4::Ortho(left, right, bottom, top, mNearPlane, mFarPlane);
+        float width = mSize * mAspectRatio;
+        float height = mSize;
+        mProjectionMatrix = Matrix4::Ortho(width, height, mNearPlane, mFarPlane);
     }
 }

@@ -15,7 +15,7 @@ struct Quaternion
 
     static const Quaternion identity;
     
-	NO_DISCARD FORCE_INLINE Vector3 EularAngles() const
+	NO_DISCARD FORCE_INLINE constexpr Vector3 EulerAngles() const
 	{
 		return Vector3
 		{
@@ -24,6 +24,11 @@ struct Quaternion
 			Math::Atan2(2.0f * (w * z + x * y), 1.0f - 2.0f * (y * y + z * z))
 		};
 	}
+    
+    NO_DISCARD FORCE_INLINE constexpr Quaternion Conjugate() const
+    {
+        return Quaternion{w, -x, -y, -z};
+    }
 
 	constexpr Quaternion() = default;
 	constexpr Quaternion(Quaternion&&) = default;
@@ -45,12 +50,17 @@ struct Quaternion
 	{
 		Vector3 c = Math::Cos(eularAngles * 0.5f);
 		Vector3 s = Math::Sin(eularAngles * 0.5f);
-
+        
 		w = c.x * c.y * c.z + s.x * s.y * s.z;
-		x = s.x * c.y * c.z - c.x * s.y * s.z;
-		y = c.x * s.y * c.z + s.x * c.y * s.z;
+		x = s.x * c.y * c.z + c.x * s.y * s.z;
+		y = c.x * s.y * c.z - s.x * c.y * s.z;
 		z = c.x * c.y * s.z - s.x * s.y * c.z;
 	}
+    constexpr Quaternion(float pitch, float yaw, float roll)
+        : Quaternion(Vector3{pitch, yaw, roll})
+    {
+        
+    }
     
     NO_DISCARD FORCE_INLINE constexpr float& operator[](size_t i)
     {
@@ -66,10 +76,10 @@ struct Quaternion
     {
         return Quaternion
         {
-            w * rhs.w - x * rhs.x - y * rhs.y - z * rhs.z,
-            x * rhs.w + w * rhs.x + y * rhs.z - z * rhs.y,
-            w * rhs.y - x * rhs.z + y * rhs.w + z * rhs.x,
-            w * rhs.z + x * rhs.y - y * rhs.x + z * rhs.w
+            rhs.w * w - rhs.x * x - rhs.y * y - rhs.z * z,
+            rhs.w * x + rhs.x * w + rhs.y * z - rhs.z * y,
+            rhs.w * y - rhs.x * z + rhs.y * w + rhs.z * x,
+            rhs.w * z + rhs.x * y - rhs.y * x + rhs.z * w
         };
     }
     
@@ -78,15 +88,41 @@ struct Quaternion
         return *this = *this * rhs;
     }
     
-    Vector3 operator*(const Vector3& rhs) const
+    NO_DISCARD FORCE_INLINE constexpr Quaternion operator/(float s) const
     {
-        Vector3 qVec(x, y, z);
-        Vector3 cross1(Math::Cross(qVec, rhs));
-        Vector3 cross2(Math::Cross(qVec, cross1));
-
-        return rhs + 2.0f * (cross1 * w + cross2);
+        return Quaternion{ w / s, x / s, y / s, z / s };
+    }
+    
+    FORCE_INLINE constexpr Quaternion& operator/=(float s)
+    {
+        w /= s;
+        x /= s;
+        y /= s;
+        z /= s;
+        return *this;
     }
     
 };
+
+NO_DISCARD FORCE_INLINE constexpr Vector3 operator*(const Quaternion& quat, const Vector3& vec)
+{
+    Quaternion v{0.0f, vec.x, vec.y, vec.z};
+    auto result = quat.Conjugate() * v * quat;
+    return Vector3{result.x, result.y, result.z};
+}
+
+namespace Math {
+    
+NO_DISCARD FORCE_INLINE constexpr float Dot(const Quaternion& q1, const Quaternion& q2)
+{
+    return q1.w * q2.w + q1.x * q2.x + q1.y * q2.y + q1.z * q2.z;
+}
+    
+NO_DISCARD FORCE_INLINE constexpr Quaternion Inverse(const Quaternion& q)
+{
+    return q.Conjugate() / Math::Max(Dot(q, q), Math::Epsilon);
+}
+    
+} // namespace Math
 
 } // namespace Gleam

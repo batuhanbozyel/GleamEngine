@@ -30,8 +30,8 @@ struct Matrix4
 	{
 
 	}
-	constexpr Matrix4(const Vector4& row0, const Vector4& row1)
-		: row{ row0, row1 }
+	constexpr Matrix4(const Vector4& row0, const Vector4& row1, const Vector4& row2, const Vector4& row3)
+		: row{ row0, row1, row2, row3 }
 	{
 
 	}
@@ -91,10 +91,10 @@ struct Matrix4
 	{
 		return Matrix4
 		{
-			1.0f, 0.0f, 0.0f, translation.x,
-			0.0f, 1.0f, 0.0f, translation.y,
-			0.0f, 0.0f, 1.0f, translation.z,
-			0.0f, 0.0f, 0.0f, 1.0f
+			1.0f,           0.0f,           0.0f,           0.0f,
+			0.0f,           1.0f,           0.0f,           0.0f,
+			0.0f,           0.0f,           1.0f,           0.0f,
+			translation.x,  translation.y,  translation.z,  1.0f
 		};
 	}
 
@@ -151,20 +151,9 @@ struct Matrix4
 		};
 	}
     
-    NO_DISCARD FORCE_INLINE static constexpr Matrix4 Frustum(float left, float right, float bottom, float top, float zNear, float zFar)
+    NO_DISCARD FORCE_INLINE static constexpr Matrix4 LookTo(const Vector3& eye, const Vector3& to, const Vector3& up)
     {
-        return Matrix4
-        {
-            2.0f * zNear / (right - left),  0.0f,                           (right + left) / (right - left),    0.0f,
-            0.0f,                           2.0f * zNear / (top - bottom),  (top + bottom) / (top - bottom),    0.0f,
-            0.0f,                           0.0f,                           (zFar + zNear) / (zNear - zFar),    (2.0f * zFar * zNear) / (zNear - zFar),
-            0.0f,                           0.0f,                           -1.0f,                              0.0f
-        };
-    }
-    
-    NO_DISCARD FORCE_INLINE static constexpr Matrix4 LookAt(const Vector3& from, const Vector3& to, const Vector3& up)
-    {
-        Vector3 front = Math::Normalize(to - from);
+        Vector3 front = Math::Normalize(to);
         Vector3 side = Math::Normalize(Math::Cross(up, front));
         Vector3 upV = Math::Cross(front, side);
         
@@ -173,32 +162,52 @@ struct Matrix4
             side.x,                     upV.x,                  front.x,                    0.0f,
             side.y,                     upV.y,                  front.y,                    0.0f,
             side.z,                     upV.z,                  front.z,                    0.0f,
-            -Math::Dot(side, from),     Math::Dot(upV, from),   -Math::Dot(front, from),    1.0f
+            -Math::Dot(side, eye),     -Math::Dot(upV, eye),    -Math::Dot(front, eye),     1.0f
         };
-        
+    }
+    
+    NO_DISCARD FORCE_INLINE static constexpr Matrix4 LookAt(const Vector3& eye, const Vector3& at, const Vector3& up)
+    {
+        return LookTo(eye, at - eye, up);
+    }
+    
+    NO_DISCARD FORCE_INLINE static constexpr Matrix4 Ortho(float width, float height, float zNear, float zFar)
+    {
+        float fRange = 1.0f / (zFar - zNear);
+        return Matrix4
+        {
+            2.0f / width,   0.0f,           0.0f,               0.0f,
+            0.0f,           2.0f / height,  0.0f,               0.0f,
+            0.0f,           0.0f,           fRange,             0.0f,
+            0.0f,           0.0f,           -zNear * fRange,    1.0f
+        };
     }
     
     NO_DISCARD FORCE_INLINE static constexpr Matrix4 Ortho(float left, float right, float bottom, float top, float zNear, float zFar)
     {
+        float width = 1.0f / (right - left);
+        float height = 1.0f / (top - bottom);
+        float fRange = 1.0f / (zFar - zNear);
         return Matrix4
         {
-            2.0f / (right - left),  0.0f,                   0.0f,                   (right + left) / (left - right),
-            0.0f,                   2.0f / (top - bottom),  0.0f,                   (top + bottom) / (bottom - top),
-            0.0f,                   0.0f,                   -2.0f / (zFar - zNear), (zFar + zNear) / (zNear- zFar),
-            0.0f,                   0.0f,                   0.0f,                   1.0f
+            width + width,              0.0f,                      0.0f,            0.0f,
+            0.0f,                       height + height,           0.0f,            0.0f,
+            0.0f,                       0.0f,                      fRange,          0.0f,
+            -(left + right) * width,    -(top + bottom) * height,  -zNear * fRange, 1.0f
         };
     }
     
     NO_DISCARD FORCE_INLINE static constexpr Matrix4 Perspective(float fov, float aspect, float zNear, float zFar)
     {
-        float focalLength = Math::Tan(Math::Deg2Rad(fov) / 2.0f);
-        zFar *= 2.0f;
+        float fRange = zFar / (zFar - zNear);
+        float height = 1.0f / Math::Tan(Math::Deg2Rad(fov) / 2.0f);
+        float width = height / aspect;
         return Matrix4
         {
-            1.0f / (focalLength * aspect),  0.0f,                   0.0f,                               0.0f,
-            0.0f,                           1.0f / focalLength,     0.0f,                               0.0f,
-            0.0f,                           0.0f,                   zFar / (zFar - zNear),              1.0f,
-            0.0f,                           0.0f,                   -zNear * zFar / (zFar - zNear),     0.0f
+            width,  0.0f,   0.0f,            0.0f,
+            0.0f,   height, 0.0f,            0.0f,
+            0.0f,   0.0f,   fRange,          1.0f,
+            0.0f,   0.0f,   -zNear * fRange, 0.0f
         };
     }
 };
