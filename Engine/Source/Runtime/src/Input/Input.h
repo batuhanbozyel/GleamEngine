@@ -22,7 +22,7 @@ public:
     
     static bool IsMouseButtonPressed(const MouseButton button);
     
-    static Vector2 GetMousePosition();
+    static const Vector2& GetMousePosition();
 
 private:
     

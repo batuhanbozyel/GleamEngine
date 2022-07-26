@@ -16,7 +16,7 @@ bool Input::IsMouseButtonPressed(const MouseButton button)
     return mMouseState & static_cast<uint8_t>(button);
 }
 
-Vector2 Input::GetMousePosition()
+const Vector2& Input::GetMousePosition()
 {
     return mMousePosition;
 }
