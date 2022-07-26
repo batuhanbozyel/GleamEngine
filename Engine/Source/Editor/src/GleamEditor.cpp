@@ -9,7 +9,7 @@ class SceneLayer : public Gleam::Layer
 {
     virtual void OnAttach() override
     {
-        mCamera.Translate({0.0f, -0.5f, 0.0f});
+        mCamera.Translate({0.0f, 0.5f, 0.0f});
     }
     
     virtual void OnUpdate() override
@@ -31,6 +31,14 @@ class SceneLayer : public Gleam::Layer
 		{
 			mCamera.Translate(-mCamera.ForwardVector() * cameraSpeed * Gleam::Time::deltaTime);
 		}
+        if (Gleam::Input::IsKeyPressed(Gleam::KeyCode::Space))
+        {
+            mCamera.Translate(mCamera.UpVector() * cameraSpeed * Gleam::Time::deltaTime);
+        }
+        if (Gleam::Input::IsKeyPressed(Gleam::KeyCode::LeftControl))
+        {
+            mCamera.Translate(-mCamera.UpVector() * cameraSpeed * Gleam::Time::deltaTime);
+        }
         if (Gleam::Input::IsKeyPressed(Gleam::KeyCode::Q))
         {
             mCamera.Rotate(Gleam::Vector3(0.0f, -cameraSpeed * Gleam::Time::deltaTime, 0.0f));
