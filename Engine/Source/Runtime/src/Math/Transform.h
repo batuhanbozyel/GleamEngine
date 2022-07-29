@@ -5,7 +5,45 @@ namespace Gleam {
 class Transform
 {
 public:
-
+    
+    void Translate(const Vector3& translation)
+    {
+        mPosition += translation;
+        mCachedTransform.m[12] += mPosition.x;
+        mCachedTransform.m[13] += mPosition.y;
+        mCachedTransform.m[14] += mPosition.z;
+    }
+    
+    void Rotate(const Quaternion& rotation)
+    {
+        mIsTransformDirty = true;
+        mRotation *= rotation;
+    }
+    
+    void Rotate(const Vector3& eulers)
+    {
+        Rotate(Quaternion(eulers));
+    }
+    
+    void Rotate(float xAngle, float yAngle, float zAngle)
+    {
+        Rotate(Vector3{xAngle, yAngle, zAngle});
+    }
+    
+    void SetTranslation(const Vector3& translation)
+    {
+        mPosition = translation;
+        mCachedTransform.m[12] = mPosition.x;
+        mCachedTransform.m[13] = mPosition.y;
+        mCachedTransform.m[14] = mPosition.z;
+    }
+    
+    void SetRotation(const Quaternion& rotation)
+    {
+        mIsTransformDirty = true;
+        mRotation = rotation;
+    }
+    
     NO_DISCARD FORCE_INLINE const Matrix4& GetTransform()
     {
         if (mIsTransformDirty)
@@ -44,30 +82,6 @@ public:
     NO_DISCARD FORCE_INLINE Vector3 EulerAngles() const
     {
         return mRotation.EulerAngles();
-    }
-    
-    void Translate(const Vector3& translation)
-    {
-        mPosition += translation;
-        mCachedTransform.m[12] += mPosition.x;
-        mCachedTransform.m[13] += mPosition.y;
-        mCachedTransform.m[14] += mPosition.z;
-    }
-    
-    void Rotate(const Quaternion& quat)
-    {
-        mIsTransformDirty = true;
-        mRotation *= quat;
-    }
-    
-    void Rotate(const Vector3& eulers)
-    {
-        Rotate(Quaternion(eulers));
-    }
-    
-    void Rotate(float xAngle, float yAngle, float zAngle)
-    {
-        Rotate(Vector3{xAngle, yAngle, zAngle});
     }
     
 private:

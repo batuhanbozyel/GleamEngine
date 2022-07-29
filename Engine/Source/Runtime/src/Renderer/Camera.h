@@ -19,20 +19,32 @@ public:
 	Camera(const Vector2& size, ProjectionType type = ProjectionType::Perspective);
 
     Camera(float width, float height, ProjectionType type = ProjectionType::Perspective);
-
-	void SetViewport(const Vector2& size);
+    
+    void Translate(const Vector3& translation);
+    
+    void Rotate(const Quaternion& rotation);
+    
+    void Rotate(const Vector3& eulers);
+    
+    void Rotate(float xAngle, float yAngle, float zAngle);
+    
+    void SetTranslation(const Vector3& translation);
+    
+    void SetRotation(const Quaternion& rotation);
+    
+    void SetViewport(const Vector2& size);
 
     void SetViewport(float width, float height);
     
     void SetProjection(ProjectionType type);
     
-    void Translate(const Vector3& translation);
+    void SetNearPlane(float nearPlane);
     
-    void Rotate(const Quaternion& quat);
+    void SetFarPlane(float farPlane);
     
-    void Rotate(const Vector3& eulers);
+    void SetFieldOfView(float fov);
     
-    void Rotate(float xAngle, float yAngle, float zAngle);
+    void SetSize(float size);
     
     const Matrix4& GetProjectionMatrix();
     
@@ -47,7 +59,7 @@ private:
     float mFOV = 60.0f;
     
     // Orthographic projection properties
-    float mSize = 1.0f;
+    float mSize = 5.0f;
     
     // Common properties
     float mAspectRatio = 1.0f;

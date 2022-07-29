@@ -26,6 +26,40 @@ Camera::Camera(const Vector2& size, ProjectionType type)
 	SetViewport(size);
 }
 
+void Camera::Translate(const Vector3& translation)
+{
+    mViewMatrixDirty = true;
+    Transform::Translate(translation);
+}
+
+void Camera::Rotate(const Quaternion& rotation)
+{
+    mViewMatrixDirty = true;
+    Transform::Rotate(rotation);
+}
+
+void Camera::Rotate(const Vector3& eulers)
+{
+    Rotate(Quaternion(eulers));
+}
+
+void Camera::Rotate(float xAngle, float yAngle, float zAngle)
+{
+    Rotate(Vector3{xAngle, yAngle, zAngle});
+}
+
+void Camera::SetTranslation(const Vector3& translation)
+{
+    mViewMatrixDirty = true;
+    Transform::SetTranslation(translation);
+}
+
+void Camera::SetRotation(const Quaternion& rotation)
+{
+    mViewMatrixDirty = true;
+    Transform::SetRotation(rotation);
+}
+
 void Camera::SetViewport(const Vector2& size)
 {
 	SetViewport(size.x, size.y);
@@ -36,7 +70,6 @@ void Camera::SetViewport(float width, float height)
 	float aspectRatio = width / height;
 	if (Math::Abs(aspectRatio - mAspectRatio) > Math::Epsilon)
 	{
-        mSize = height;
 		mAspectRatio = aspectRatio;
 		mProjectionMatrixDirty = true;
 	}
@@ -48,26 +81,28 @@ void Camera::SetProjection(ProjectionType type)
     mProjectionMatrixDirty = true;
 }
 
-void Camera::Translate(const Vector3& translation)
+void Camera::SetNearPlane(float nearPlane)
 {
-    mViewMatrixDirty = true;
-    Transform::Translate(translation);
+    mNearPlane = nearPlane;
+    mProjectionMatrixDirty = true;
 }
 
-void Camera::Rotate(const Quaternion& quat)
+void Camera::SetFarPlane(float farPlane)
 {
-    mViewMatrixDirty = true;
-    Transform::Rotate(quat);
+    mFarPlane = farPlane;
+    mProjectionMatrixDirty = true;
 }
 
-void Camera::Rotate(const Vector3& eulers)
+void Camera::SetFieldOfView(float fov)
 {
-    Rotate(Quaternion(eulers));
+    mFOV = fov;
+    mProjectionMatrixDirty = true;
 }
 
-void Camera::Rotate(float xAngle, float yAngle, float zAngle)
+void Camera::SetSize(float size)
 {
-    Rotate(Vector3{xAngle, yAngle, zAngle});
+    mSize = size;
+    mProjectionMatrixDirty = true;
 }
 
 const Matrix4& Camera::GetViewMatrix()
