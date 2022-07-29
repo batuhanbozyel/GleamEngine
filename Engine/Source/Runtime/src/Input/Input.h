@@ -18,11 +18,23 @@ class Input final
     
 public:
 
-	static bool IsKeyPressed(const KeyCode keycode);
+    static void ShowCursor(bool visible);
     
-    static bool IsMouseButtonPressed(const MouseButton button);
+	static bool GetButtonDown(const KeyCode keycode);
+    
+    static bool GetButtonDown(const MouseButton button);
     
     static const Vector2& GetMousePosition();
+    
+    static const Vector2& GetAxis();
+    
+    static float GetMouseX();
+    
+    static float GetMouseY();
+    
+    static float GetAxisX();
+    
+    static float GetAxisY();
 
 private:
     
@@ -38,7 +50,11 @@ private:
     
     static inline Vector2 mMousePosition = Vector2::zero;
     
+    static inline Vector2 mAxis = Vector2::zero;
+    
     static inline uint32_t mMouseState = 0;
+    
+    static inline uint32_t mRelativeMouseState = 0;
     
     static inline const uint8_t* mKeyboardState = nullptr;
     
