@@ -380,7 +380,7 @@ NO_DISCARD FORCE_INLINE constexpr T Dot(const Vector4Base<T>& vec1, const Vector
 template<typename T>
 NO_DISCARD FORCE_INLINE constexpr T Length(const Vector4Base<T>& vec)
 {
-    return Dot(vec, vec);
+	return Sqrt(Dot(vec, vec));
 }
 
 template<typename T>

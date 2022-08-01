@@ -147,6 +147,12 @@ NO_DISCARD FORCE_INLINE constexpr T Log2(const T& x)
 	return std::log2(x);
 }
 
+template<typename T>
+NO_DISCARD FORCE_INLINE T constexpr Sqrt(const T& v)
+{
+	return std::sqrt(v);
+}
+
 } // namespace Math
 
 } // namespace Gleam

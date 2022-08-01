@@ -6,7 +6,7 @@ struct Matrix4
 {
 	union
 	{
-		TArray<float, 16> m;
+		TArray<float, 16> m{};
 		TArray<Vector4, 4> row;
 	};
 
