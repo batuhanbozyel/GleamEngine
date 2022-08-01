@@ -89,7 +89,6 @@ target_compile_definitions(
 
     PUBLIC
     $<$<CONFIG:Debug>:GDEBUG>
-    $<$<CONFIG:RelWithDebugInfo>:GDEBUG>
     $<$<CONFIG:Release>:GRELEASE>
 )
 
