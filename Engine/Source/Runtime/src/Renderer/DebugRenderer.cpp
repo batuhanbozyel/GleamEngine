@@ -19,7 +19,7 @@ static constexpr uint32_t PrimitiveTopologyVertexCount(PrimitiveTopology topolog
 }
 
 DebugRenderer::DebugRenderer()
-	: mVertexBuffer(100)
+	: mVertexBuffer(100, MemoryType::Dynamic)
 {
 	mDebugProgram.vertexShader = ShaderLibrary::CreateShader("debugVertexShader", ShaderStage::Vertex);
 	mDebugProgram.fragmentShader = ShaderLibrary::CreateShader("debugFragmentShader", ShaderStage::Fragment);
