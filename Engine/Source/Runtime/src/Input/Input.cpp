@@ -12,6 +12,11 @@ void Input::ShowCursor(bool visible)
     SDL_ShowCursor(static_cast<int>(visible));
 }
 
+bool Input::GetCursorVisible()
+{
+	return SDL_ShowCursor(SDL_QUERY);
+}
+
 bool Input::GetButtonDown(const KeyCode keycode)
 {
 	auto scancode = SDL_GetScancodeFromKey(static_cast<SDL_Keycode>(keycode));

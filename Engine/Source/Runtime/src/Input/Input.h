@@ -19,6 +19,8 @@ class Input final
 public:
 
     static void ShowCursor(bool visible);
+
+	static bool GetCursorVisible();
     
 	static bool GetButtonDown(const KeyCode keycode);
     
