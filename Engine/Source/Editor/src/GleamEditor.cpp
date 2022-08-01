@@ -18,17 +18,21 @@ class SceneLayer : public Gleam::Layer
                 mCursorVisible = !mCursorVisible;
                 Gleam::Input::ShowCursor(mCursorVisible);
             }
+			return false;
         });
     }
     
     virtual void OnUpdate() override
     {
-        constexpr float mouseSensitivity = 0.1f;
-        mYaw += Gleam::Input::GetAxisX() * mouseSensitivity;
-        mPitch += Gleam::Input::GetAxisY() * mouseSensitivity;
-        mPitch = Gleam::Math::Clamp(mPitch, -80.0f, 80.0f);
-        mCamera.SetRotation(Gleam::Quaternion(Gleam::Math::Deg2Rad(Gleam::Vector3{mPitch, mYaw, 0.0f})));
-        
+		if (!Gleam::Input::GetCursorVisible())
+		{
+			constexpr float mouseSensitivity = 0.1f;
+			mYaw += Gleam::Input::GetAxisX() * mouseSensitivity;
+			mPitch += Gleam::Input::GetAxisY() * mouseSensitivity;
+			mPitch = Gleam::Math::Clamp(mPitch, -80.0f, 80.0f);
+			mCamera.SetRotation(Gleam::Quaternion(Gleam::Math::Deg2Rad(Gleam::Vector3{ mPitch, mYaw, 0.0f })));
+		}
+
         constexpr float cameraSpeed = 5.0f;
 		if (Gleam::Input::GetButtonDown(Gleam::KeyCode::A))
 		{
