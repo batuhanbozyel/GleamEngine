@@ -48,6 +48,16 @@ struct Matrix3
 	{
 		return row[i];
 	}
+
+	NO_DISCARD FORCE_INLINE constexpr Vector3 operator*(const Vector3& vec) const
+	{
+		return Vector3
+		{
+			vec.x * m[0] + vec.y * m[3] + vec.z * m[6],
+			vec.x * m[1] + vec.y * m[4] + vec.z * m[7],
+			vec.x * m[2] + vec.y * m[5] + vec.z * m[8]
+		};
+	}
     
     NO_DISCARD FORCE_INLINE constexpr Matrix3 operator*(const Matrix3& rhs) const
     {

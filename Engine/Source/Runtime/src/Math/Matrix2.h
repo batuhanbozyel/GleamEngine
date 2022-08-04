@@ -46,7 +46,16 @@ struct Matrix2
 	{
 		return row[i];
 	}
-    
+
+	NO_DISCARD FORCE_INLINE constexpr Vector2 operator*(const Vector2& vec) const
+	{
+		return Vector2
+		{
+			vec.x * m[0] + vec.y * m[2],
+			vec.x * m[1] + vec.y * m[3]
+		};
+	}
+
     NO_DISCARD FORCE_INLINE constexpr Matrix2 operator*(const Matrix2& rhs) const
     {
         return Matrix2

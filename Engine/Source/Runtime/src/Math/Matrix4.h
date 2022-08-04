@@ -55,6 +55,17 @@ struct Matrix4
 	{
 		return row[i];
 	}
+
+	NO_DISCARD FORCE_INLINE constexpr Vector4 operator*(const Vector4& vec) const
+	{
+		return Vector4
+		{
+			vec.x * m[0] + vec.y * m[4] + vec.z * m[8] + vec.w * m[12],
+			vec.x * m[1] + vec.y * m[5] + vec.z * m[9] + vec.w * m[13],
+			vec.x * m[2] + vec.y * m[6] + vec.z * m[10] + vec.w * m[14],
+			vec.x * m[3] + vec.y * m[7] + vec.z * m[11] + vec.w * m[15]
+		};
+	}
     
     NO_DISCARD FORCE_INLINE constexpr Matrix4 operator*(const Matrix4& rhs) const
     {
