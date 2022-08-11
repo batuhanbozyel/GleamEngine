@@ -10,6 +10,7 @@ using namespace Gleam;
 void Input::ShowCursor(bool visible)
 {
     SDL_ShowCursor(static_cast<int>(visible));
+    SDL_SetRelativeMouseMode(static_cast<SDL_bool>(!visible));
 }
 
 bool Input::GetCursorVisible()
