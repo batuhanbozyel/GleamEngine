@@ -11,11 +11,11 @@ public:
 
 };
 
-class RendererDrawableResizeEvent : public Event
+class RendererResizeEvent : public Event
 {
 public:
 
-	RendererDrawableResizeEvent(uint32_t width, uint32_t height)
+	RendererResizeEvent(uint32_t width, uint32_t height)
 		: mWidth(width), mHeight(height) {}
 
 	uint32_t GetWidth() const { return mWidth; }

@@ -15,7 +15,7 @@ struct Vector2Base
 		{
 			T r, g;
 		};
-		TArray<T, 2> value;
+		TArray<T, 2> value{};
 	};
     
     static const Vector2Base zero;

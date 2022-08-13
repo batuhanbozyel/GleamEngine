@@ -288,7 +288,7 @@ void Swapchain::InvalidateAndCreate()
 		}
 	});
 
-	EventDispatcher<RendererDrawableResizeEvent>::Publish(RendererDrawableResizeEvent(mProperties.width, mProperties.height));
+	EventDispatcher<RendererResizeEvent>::Publish(RendererResizeEvent(mProperties.width, mProperties.height));
 }
 
 #endif

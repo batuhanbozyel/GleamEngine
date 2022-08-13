@@ -10,7 +10,7 @@ struct Quaternion
 		{
 			float w, x, y, z;
 		};
-		TArray<float, 4> value;
+		TArray<float, 4> value{};
 	};
 
     static const Quaternion identity;

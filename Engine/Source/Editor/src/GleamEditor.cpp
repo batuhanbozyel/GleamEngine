@@ -20,6 +20,12 @@ class SceneLayer : public Gleam::Layer
             }
 			return false;
         });
+
+		Gleam::EventDispatcher<Gleam::RendererResizeEvent>::Subscribe([&](const Gleam::RendererResizeEvent& e) -> bool
+		{
+			mCamera.SetViewport(e.GetWidth(), e.GetHeight());
+			return false;
+		});
     }
     
     virtual void OnUpdate() override

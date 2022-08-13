@@ -6,8 +6,8 @@ struct Matrix3
 {
 	union
 	{
-		TArray<float, 9> m{};
-		TArray<Vector3, 3> row;
+		TArray<float, 9> m;
+		TArray<Vector3, 3> row{};
 	};
     
     static const Matrix3 zero;

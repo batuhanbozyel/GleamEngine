@@ -15,7 +15,7 @@ struct Vector3Base
 		{
 			T r, g, b;
 		};
-		TArray<T, 3> value;
+		TArray<T, 3> value{};
 	};
     
     static const Vector3Base zero;

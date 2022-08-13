@@ -15,6 +15,11 @@ struct VulkanRenderPass
 {
 	VkRenderPass handle{ VK_NULL_HANDLE };
 	bool swapchainTarget = false;
+
+	bool operator==(const VulkanRenderPass& other) const
+	{
+		return handle == other.handle;
+	}
 };
 
 class VulkanPipelineStateManager
@@ -23,7 +28,7 @@ public:
 
 	static const VulkanRenderPass& GetRenderPass(const RenderPassDescriptor& renderPassDesc);
 
-	static const VulkanPipeline& GetGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc, const GraphicsShader& program, VkRenderPass renderPass);
+	static const VulkanPipeline& GetGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc, const GraphicsShader& program, const VulkanRenderPass& renderPass);
 
 	static void Clear();
 
@@ -40,7 +45,7 @@ private:
 		PipelineStateDescriptor pipelineStateDescriptor;
 		GraphicsShader program;
 		VulkanPipeline pipeline;
-		VkRenderPass renderPass;
+		VulkanRenderPass renderPass;
 	};
 
 	static VkRenderPass CreateRenderPass(const RenderPassDescriptor& renderPassDesc);

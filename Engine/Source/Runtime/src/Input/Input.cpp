@@ -1,7 +1,5 @@
 #include "gpch.h"
 #include "Input.h"
-#include "Core/Window.h"
-#include "Core/Application.h"
 #include "Core/Events/KeyEvent.h"
 #include <SDL.h>
 
@@ -87,7 +85,7 @@ void Input::Update()
 
 void Input::MouseMoveEventHandler(SDL_MouseMotionEvent motionEvent)
 {
-    EventDispatcher<MouseMovedEvent>::Publish(MouseMovedEvent(motionEvent.x, motionEvent.y));
+    EventDispatcher<MouseMovedEvent>::Publish(MouseMovedEvent(static_cast<float>(motionEvent.x), static_cast<float>(motionEvent.y)));
 }
 
 void Input::MouseScrollEventHandler(SDL_MouseWheelEvent wheelEvent)

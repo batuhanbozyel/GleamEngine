@@ -86,17 +86,17 @@ struct Shader::Reflection
 
 			VkDescriptorSetLayoutCreateInfo setCreateInfo{ VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
 			setCreateInfo.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR;
-			setCreateInfo.bindingCount = setBindings.size();
+			setCreateInfo.bindingCount = static_cast<uint32_t>(setBindings.size());
 			setCreateInfo.pBindings = setBindings.data();
 			VK_CHECK(vkCreateDescriptorSetLayout(VulkanDevice, &setCreateInfo, nullptr, &setLayouts[i]));
 		}
 
 		// Get push constant
 		uint32_t pushConstantCount = 0;
-		spvReflectEnumeratePushConstants(&shaderReflection, &pushConstantCount, nullptr);
+		spvReflectEnumeratePushConstantBlocks(&shaderReflection, &pushConstantCount, nullptr);
 
 		TArray<SpvReflectBlockVariable*> pushConstants(pushConstantCount);
-		spvReflectEnumeratePushConstants(&shaderReflection, &pushConstantCount, pushConstants.data());
+		spvReflectEnumeratePushConstantBlocks(&shaderReflection, &pushConstantCount, pushConstants.data());
 
 		pushConstantRanges.resize(pushConstantCount);
 		for (uint32_t i = 0; i < pushConstantCount; i++)

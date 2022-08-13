@@ -6,16 +6,16 @@
 
 namespace Gleam {
 
-template<typename K, typename V>
-using Map = std::map<K, V>;
+template<class Key, class Value, class Hasher = std::hash<Key>, class Comparator = std::equal_to<Key>>
+using Map = std::map<Key, Value, Hasher, Comparator>;
     
-template<typename K>
-using Set = std::set<K>;
+template<class Key, class Hasher = std::hash<Key>, class Comparator = std::equal_to<Key>>
+using Set = std::set<Key, Hasher, Comparator>;
 
-template<typename K, typename V>
-using HashMap = std::unordered_map<K, V>;
+template<class Key, class Value, class Hasher = std::hash<Key>, class Comparator = std::equal_to<Key>>
+using HashMap = std::unordered_map<Key, Value, Hasher, Comparator>;
 
-template<typename K>
-using HashSet = std::unordered_set<K>;
+template<class Key, class Hasher = std::hash<Key>, class Comparator = std::equal_to<Key>>
+using HashSet = std::unordered_set<Key, Hasher, Comparator>;
 
 } // namespace Gleam

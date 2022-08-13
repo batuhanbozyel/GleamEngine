@@ -59,7 +59,7 @@ int SDLCALL Application::SDL2_EventCallback(void* data, SDL_Event* e)
 }
 
 Application::Application(const ApplicationProperties& props)
-	: mVersion(props.appVersion)
+	: mVersion(props.appVersion), mEvent()
 {
 	sInstance = this;
 
@@ -173,7 +173,7 @@ Application::~Application()
 
 uint32_t Application::PushLayer(const RefCounted<Layer>& layer)
 {
-    uint32_t index = mLayerStack.size();
+    uint32_t index = static_cast<uint32_t>(mLayerStack.size());
 	layer->OnAttach();
 	mLayerStack.push_back(layer);
     return index;
@@ -181,7 +181,7 @@ uint32_t Application::PushLayer(const RefCounted<Layer>& layer)
 
 uint32_t Application::PushOverlay(const RefCounted<Layer>& overlay)
 {
-    uint32_t index = mOverlays.size();
+    uint32_t index = static_cast<uint32_t>(mOverlays.size());
 	overlay->OnAttach();
 	mOverlays.push_back(overlay);
     return index;
