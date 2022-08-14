@@ -95,7 +95,7 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc) 
 	VkFramebuffer framebuffer;
 	VkFramebufferCreateInfo framebufferCreateInfo{ VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO };
 	framebufferCreateInfo.renderPass = mHandle->renderPassState.handle;
-	framebufferCreateInfo.attachmentCount = imageViews.size();
+	framebufferCreateInfo.attachmentCount = static_cast<uint32_t>(imageViews.size());
 	framebufferCreateInfo.pAttachments = imageViews.data();
 	framebufferCreateInfo.width = renderPassDesc.width;
 	framebufferCreateInfo.height = renderPassDesc.height;
@@ -106,7 +106,7 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc) 
 	VkRenderPassBeginInfo renderPassBeginInfo{ VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO };
 	renderPassBeginInfo.renderPass = mHandle->renderPassState.handle;
 	renderPassBeginInfo.framebuffer = framebuffer;
-	renderPassBeginInfo.clearValueCount = clearValues.size();
+	renderPassBeginInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
 	renderPassBeginInfo.pClearValues = clearValues.data();
 	renderPassBeginInfo.renderArea.extent.width = renderPassDesc.width;
 	renderPassBeginInfo.renderArea.extent.height = renderPassDesc.height;
@@ -120,15 +120,15 @@ void CommandBuffer::EndRenderPass() const
 
 void CommandBuffer::BindPipeline(const PipelineStateDescriptor& pipelineDesc, const GraphicsShader& program) const
 {
-	mHandle->pipelineState = VulkanPipelineStateManager::GetGraphicsPipeline(pipelineDesc, program, mHandle->renderPassState.handle);
+	mHandle->pipelineState = VulkanPipelineStateManager::GetGraphicsPipeline(pipelineDesc, program, mHandle->renderPassState);
 	vkCmdBindPipeline(CurrentCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mHandle->pipelineState.handle);
 }
 
 void CommandBuffer::SetViewport(uint32_t width, uint32_t height) const
 {
 	VkViewport viewport{};
-	viewport.width = width;
-	viewport.height = height;
+	viewport.width = static_cast<float>(width);
+	viewport.height = static_cast<float>(height);
 	viewport.maxDepth = 1.0f;
 	vkCmdSetViewport(CurrentCommandBuffer, 0, 1, &viewport);
 
@@ -205,7 +205,7 @@ void CommandBuffer::CopyBuffer(const Buffer& src, const Buffer& dst, uint32_t si
 	GLEAM_ASSERT(size <= src.GetSize(), "Vulkan: Copy size can not be larger than source buffer size!");
 	GLEAM_ASSERT(size <= dst.GetSize(), "Vulkan: Copy size can not be larger than destination buffer size!");
 
-	VkBufferCopy bufferCopy;
+	VkBufferCopy bufferCopy{};
 	bufferCopy.srcOffset = srcOffset;
 	bufferCopy.dstOffset = dstOffset;
 	bufferCopy.size = size;

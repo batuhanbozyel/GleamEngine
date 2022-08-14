@@ -16,3 +16,12 @@ void Renderer::Destroy()
 	ShaderLibrary::Destroy();
     RendererContext::Destroy();
 }
+
+Vector2 Renderer::GetDrawableSize()
+{
+	return
+	{
+		static_cast<float>(RendererContext::GetProperties().width),
+		static_cast<float>(RendererContext::GetProperties().height)
+	};
+}

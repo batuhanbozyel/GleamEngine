@@ -1,7 +1,6 @@
 #include "gpch.h"
 #include "DebugRenderer.h"
 #include "ShaderLibrary.h"
-#include "RendererContext.h"
 #include "RenderPassDescriptor.h"
 #include "PipelineStateDescriptor.h"
 
@@ -20,12 +19,12 @@ static constexpr uint32_t PrimitiveTopologyVertexCount(PrimitiveTopology topolog
 }
 
 DebugRenderer::DebugRenderer()
-	: mVertexBuffer(100)
+	: mVertexBuffer(100, MemoryType::Dynamic)
 {
 	mDebugProgram.vertexShader = ShaderLibrary::CreateShader("debugVertexShader", ShaderStage::Vertex);
 	mDebugProgram.fragmentShader = ShaderLibrary::CreateShader("debugFragmentShader", ShaderStage::Fragment);
     
-    Camera defaultCamera(RendererContext::GetProperties().width, RendererContext::GetProperties().height);
+    Camera defaultCamera(Renderer::GetDrawableSize());
     mViewMatrix = defaultCamera.GetViewMatrix();
     mProjectionMatrix = defaultCamera.GetProjectionMatrix();
 }
@@ -52,7 +51,7 @@ void DebugRenderer::Render()
         mStagingBuffer.push_back(line.end);
     }
     
-    uint32_t triangleBufferOffset = mStagingBuffer.size() * sizeof(DebugVertex);
+    uint32_t triangleBufferOffset = static_cast<uint32_t>(mStagingBuffer.size() * sizeof(DebugVertex));
     for (const auto& triangle : mTrianlges)
     {
         mStagingBuffer.push_back(triangle.vertex1);
@@ -60,14 +59,14 @@ void DebugRenderer::Render()
         mStagingBuffer.push_back(triangle.vertex3);
     }
     
-    uint32_t depthLineBufferOffset = mStagingBuffer.size() * sizeof(DebugVertex);
+    uint32_t depthLineBufferOffset = static_cast<uint32_t>(mStagingBuffer.size() * sizeof(DebugVertex));
     for (const auto& line : mDepthLines)
     {
         mStagingBuffer.push_back(line.start);
         mStagingBuffer.push_back(line.end);
     }
     
-    uint32_t depthTriangleBufferOffset = mStagingBuffer.size() * sizeof(DebugVertex);
+    uint32_t depthTriangleBufferOffset = static_cast<uint32_t>(mStagingBuffer.size() * sizeof(DebugVertex));
     for (const auto& triangle : mDepthTrianlges)
     {
         mStagingBuffer.push_back(triangle.vertex1);
@@ -78,38 +77,39 @@ void DebugRenderer::Render()
     // Update buffer
     if (mVertexBuffer.GetCount() < mStagingBuffer.size())
     {
-        mVertexBuffer.Resize(mStagingBuffer.size());
+        mVertexBuffer.Resize(static_cast<uint32_t>(mStagingBuffer.size()));
     }
     mVertexBuffer.SetData(mStagingBuffer);
     
     // Start rendering
+	const auto& drawableSize = GetDrawableSize();
     RenderPassDescriptor renderPassDesc;
     renderPassDesc.swapchainTarget = true;
-    renderPassDesc.width = RendererContext::GetProperties().width;
-    renderPassDesc.height = RendererContext::GetProperties().height;
+    renderPassDesc.width = static_cast<uint32_t>(drawableSize.x);
+    renderPassDesc.height = static_cast<uint32_t>(drawableSize.y);
     
     mCommandBuffer.Begin();
     mCommandBuffer.BeginRenderPass(renderPassDesc);
-    mCommandBuffer.SetViewport(RendererContext::GetProperties().width, RendererContext::GetProperties().height);
+    mCommandBuffer.SetViewport(renderPassDesc.width, renderPassDesc.height);
     
     if (!mLines.empty())
     {
-        RenderPrimitive(mLines.size(), 0, PrimitiveTopology::Lines, false);
+        RenderPrimitive(static_cast<uint32_t>(mLines.size()), 0, PrimitiveTopology::Lines, false);
     }
     
     if (!mTrianlges.empty())
     {
-        RenderPrimitive(mTrianlges.size(), triangleBufferOffset, PrimitiveTopology::Triangles, false);
+        RenderPrimitive(static_cast<uint32_t>(mTrianlges.size()), triangleBufferOffset, PrimitiveTopology::Triangles, false);
     }
     
     if (!mDepthLines.empty())
     {
-        RenderPrimitive(mDepthLines.size(), depthLineBufferOffset, PrimitiveTopology::Lines, true);
+        RenderPrimitive(static_cast<uint32_t>(mDepthLines.size()), depthLineBufferOffset, PrimitiveTopology::Lines, true);
     }
     
     if (!mDepthTrianlges.empty())
     {
-        RenderPrimitive(mDepthTrianlges.size(), depthTriangleBufferOffset, PrimitiveTopology::Triangles, true);
+        RenderPrimitive(static_cast<uint32_t>(mDepthTrianlges.size()), depthTriangleBufferOffset, PrimitiveTopology::Triangles, true);
     }
     mCommandBuffer.EndRenderPass();
     mCommandBuffer.End();

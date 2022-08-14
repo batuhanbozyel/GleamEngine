@@ -46,7 +46,7 @@ public:
 	}
 
 private:
-
+    
 	TArray<RefCounted<Layer>> mLayerStack;
 	TArray<RefCounted<Layer>> mOverlays;
 
@@ -58,6 +58,7 @@ private:
 	Version mVersion;
 
 	static inline Application* sInstance = nullptr;
+    static int SDLCALL SDL2_EventCallback(void* data, SDL_Event* e);
 
 };
 

@@ -122,7 +122,7 @@ struct Color : public Vector4
 
 struct Color32
 {
-	uint8_t r, g, b, a;
+	uint8_t r = 0, g = 0, b = 0, a = 0;
 
 	constexpr Color32() = default;
 	constexpr Color32(uint8_t r, uint8_t g, uint8_t b, uint8_t a)

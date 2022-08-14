@@ -6,6 +6,7 @@
 
 #include "Core/Window.h"
 #include "Core/Application.h"
+#include "Core/Events/RendererEvent.h"
 
 #import <SDL_metal.h>
 #import <QuartzCore/CAMetalLayer.h>
@@ -119,6 +120,7 @@ void Swapchain::InvalidateAndCreate()
         mProperties.width = swapchain.frame.size.width;
         mProperties.height = swapchain.frame.size.height;
         swapchain.drawableSize = swapchain.frame.size;
+        EventDispatcher<RendererDrawableResizeEvent>::Publish(RendererDrawableResizeEvent(mProperties.width, mProperties.height));
     }
 }
 

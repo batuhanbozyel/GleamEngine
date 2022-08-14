@@ -136,15 +136,15 @@ class VertexBuffer final : public Buffer
 {
 public:
 
-	VertexBuffer(uint32_t count)
-		: Buffer(count * sizeof(T), BufferUsage::StorageBuffer)
+	VertexBuffer(uint32_t count, MemoryType memoryType = MemoryType::Static)
+		: Buffer(count * sizeof(T), BufferUsage::StorageBuffer, memoryType)
 	{
 
 	}
 
 	template<size_t size = 0>
-    VertexBuffer(const TArray<T, size>& vertices)
-        : Buffer(vertices.data(), vertices.size() * sizeof(T), BufferUsage::StorageBuffer)
+    VertexBuffer(const TArray<T, size>& vertices, MemoryType memoryType = MemoryType::Static)
+        : Buffer(vertices.data(), static_cast<uint32_t>(vertices.size() * sizeof(T)), BufferUsage::StorageBuffer, memoryType)
     {
 
     }
@@ -159,7 +159,7 @@ public:
 	template<size_t size = 0>
     void SetData(const TArray<T, size>& vertices, uint32_t offset = 0)
     {
-        Buffer::SetData(vertices.data(), offset, sizeof(T) * vertices.size());
+        Buffer::SetData(vertices.data(), offset, static_cast<uint32_t>(sizeof(T) * vertices.size()));
     }
 
 	uint32_t GetCount() const
@@ -176,20 +176,20 @@ class IndexBuffer final : public Buffer
 {
 public:
 
-	IndexBuffer(uint32_t count, IndexType indexType = IndexType::UINT32)
-		: mIndexType(indexType), Buffer(count * SizeOfIndexType(indexType), BufferUsage::IndexBuffer)
+	IndexBuffer(uint32_t count, IndexType indexType = IndexType::UINT32, MemoryType memoryType = MemoryType::Static)
+		: mIndexType(indexType), Buffer(count * SizeOfIndexType(indexType), BufferUsage::IndexBuffer, memoryType)
 	{
         
 	}
 
-	IndexBuffer(const TArray<uint16_t>& indices)
-		: mIndexType(IndexType::UINT16), Buffer(indices.data(), indices.size() * sizeof(uint16_t), BufferUsage::IndexBuffer)
+	IndexBuffer(const TArray<uint16_t>& indices, MemoryType memoryType = MemoryType::Static)
+		: mIndexType(IndexType::UINT16), Buffer(indices.data(), static_cast<uint32_t>(indices.size() * sizeof(uint16_t)), BufferUsage::IndexBuffer, memoryType)
 	{
 
 	}
 
-    IndexBuffer(const TArray<uint32_t>& indices)
-        : mIndexType(IndexType::UINT32), Buffer(indices.data(), indices.size() * sizeof(uint32_t), BufferUsage::IndexBuffer)
+    IndexBuffer(const TArray<uint32_t>& indices, MemoryType memoryType = MemoryType::Static)
+        : mIndexType(IndexType::UINT32), Buffer(indices.data(), static_cast<uint32_t>(indices.size() * sizeof(uint32_t)), BufferUsage::IndexBuffer, memoryType)
     {
         
     }
@@ -205,14 +205,14 @@ public:
     void SetData(const TArray<uint16_t, size>& indices, uint32_t offset = 0)
     {
 		GLEAM_ASSERT(sizeof(uint16_t) == SizeOfIndexType(mIndexType));
-        Buffer::SetData(indices.data(), offset, indices.size() * sizeof(uint16_t));
+        Buffer::SetData(indices.data(), offset, static_cast<uint32_t>(indices.size() * sizeof(uint16_t)));
     }
 
 	template<size_t size = 0>
 	void SetData(const TArray<uint32_t, size>& indices, uint32_t offset = 0)
 	{
 		GLEAM_ASSERT(sizeof(uint32_t) == SizeOfIndexType(mIndexType));
-		Buffer::SetData(indices.data(), offset, indices.size() * sizeof(uint32_t));
+		Buffer::SetData(indices.data(), offset, static_cast<uint32_t>(indices.size() * sizeof(uint32_t)));
 	}
 
 	uint32_t GetCount() const

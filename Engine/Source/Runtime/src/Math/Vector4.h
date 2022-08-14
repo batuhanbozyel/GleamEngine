@@ -15,7 +15,7 @@ struct Vector4Base
 		{
 			T r, g, b, a;
 		};
-		TArray<T, 4> value;
+		TArray<T, 4> value{};
 	};
 
     static const Vector4Base zero;
@@ -380,7 +380,7 @@ NO_DISCARD FORCE_INLINE constexpr T Dot(const Vector4Base<T>& vec1, const Vector
 template<typename T>
 NO_DISCARD FORCE_INLINE constexpr T Length(const Vector4Base<T>& vec)
 {
-    return Dot(vec, vec);
+	return Sqrt(Dot(vec, vec));
 }
 
 template<typename T>

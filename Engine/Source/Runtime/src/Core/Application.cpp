@@ -3,12 +3,12 @@
 
 #include "Layer.h"
 #include "Window.h"
-#include "Events/WindowEvent.h"
+#include "Input/Input.h"
 #include "Renderer/Renderer.h"
 
 using namespace Gleam;
 
-static int SDLCALL SDL2_EventCallback(void* data, SDL_Event* e)
+int SDLCALL Application::SDL2_EventCallback(void* data, SDL_Event* e)
 {
 	switch (e->type)
 	{
@@ -19,64 +19,39 @@ static int SDLCALL SDL2_EventCallback(void* data, SDL_Event* e)
 		}
 		case SDL_WINDOWEVENT:
 		{
-			switch (e->window.event)
-			{
-				case SDL_WINDOWEVENT_MOVED:
-				{
-					EventDispatcher<WindowMovedEvent>::Publish(WindowMovedEvent(SDL_GetWindowFromID(e->window.windowID), e->window.data1, e->window.data2));
-					break;
-				}
-				case SDL_WINDOWEVENT_RESIZED:
-				{
-					EventDispatcher<WindowResizeEvent>::Publish(WindowResizeEvent(SDL_GetWindowFromID(e->window.windowID), e->window.data1, e->window.data2));
-					break;
-				}
-				case SDL_WINDOWEVENT_MINIMIZED:
-				{
-					EventDispatcher<WindowMinimizeEvent>::Publish(WindowMinimizeEvent(SDL_GetWindowFromID(e->window.windowID)));
-					break;
-				}
-				case SDL_WINDOWEVENT_MAXIMIZED:
-				{
-					EventDispatcher<WindowMaximizeEvent>::Publish(WindowMaximizeEvent(SDL_GetWindowFromID(e->window.windowID)));
-					break;
-				}
-				case SDL_WINDOWEVENT_RESTORED:
-				{
-					EventDispatcher<WindowRestoreEvent>::Publish(WindowRestoreEvent(SDL_GetWindowFromID(e->window.windowID)));
-					break;
-				}
-				case SDL_WINDOWEVENT_ENTER:
-				{
-					EventDispatcher<WindowMouseEnterEvent>::Publish(WindowMouseEnterEvent(SDL_GetWindowFromID(e->window.windowID)));
-					break;
-				}
-				case SDL_WINDOWEVENT_LEAVE:
-				{
-					EventDispatcher<WindowMouseLeaveEvent>::Publish(WindowMouseLeaveEvent(SDL_GetWindowFromID(e->window.windowID)));
-					break;
-				}
-				case SDL_WINDOWEVENT_FOCUS_GAINED:
-				{
-					EventDispatcher<WindowFocusEvent>::Publish(WindowFocusEvent(SDL_GetWindowFromID(e->window.windowID)));
-					break;
-				}
-				case SDL_WINDOWEVENT_FOCUS_LOST:
-				{
-					EventDispatcher<WindowLostFocusEvent>::Publish(WindowLostFocusEvent(SDL_GetWindowFromID(e->window.windowID)));
-					break;
-				}
-				case SDL_WINDOWEVENT_CLOSE:
-				{
-					EventDispatcher<WindowCloseEvent>::Publish(WindowCloseEvent(SDL_GetWindowFromID(e->window.windowID)));
-					break;
-				}
-			}
+			Window::EventHandler(e->window);
+			break;
+		}
+		case SDL_KEYDOWN:
+		case SDL_KEYUP:
+		{
+			Input::KeyboardEventHandler(e->key);
+			break;
+		}
+		case SDL_MOUSEMOTION:
+		{
+			Input::MouseMoveEventHandler(e->motion);
+			break;
+		}
+		case SDL_MOUSEWHEEL:
+		{
+			Input::MouseScrollEventHandler(e->wheel);
+			break;
+		}
+		case SDL_MOUSEBUTTONDOWN:
+		case SDL_MOUSEBUTTONUP:
+		{
+			Input::MouseButtonEventHandler(e->button);
+			break;
+		}
+		// This case is here just to ignore this type of event to emit warning log messages
+		case SDL_POLLSENTINEL:
+		{
 			break;
 		}
 		default:
 		{
-			GLEAM_CORE_WARN("Unhandled event type!");
+			GLEAM_CORE_WARN("Unhandled event type: {0}", e->type);
 			break;
 		}
 	}
@@ -84,7 +59,7 @@ static int SDLCALL SDL2_EventCallback(void* data, SDL_Event* e)
 }
 
 Application::Application(const ApplicationProperties& props)
-	: mVersion(props.appVersion)
+	: mVersion(props.appVersion), mEvent()
 {
 	sInstance = this;
 
@@ -123,6 +98,7 @@ void Application::Run()
 		while (SDL_PollEvent(&mEvent));
         
         Time::Step();
+        Input::Update();
 
 		for (const auto& layer : mLayerStack)
 		{
@@ -197,7 +173,7 @@ Application::~Application()
 
 uint32_t Application::PushLayer(const RefCounted<Layer>& layer)
 {
-    uint32_t index = mLayerStack.size();
+    uint32_t index = static_cast<uint32_t>(mLayerStack.size());
 	layer->OnAttach();
 	mLayerStack.push_back(layer);
     return index;
@@ -205,7 +181,7 @@ uint32_t Application::PushLayer(const RefCounted<Layer>& layer)
 
 uint32_t Application::PushOverlay(const RefCounted<Layer>& overlay)
 {
-    uint32_t index = mOverlays.size();
+    uint32_t index = static_cast<uint32_t>(mOverlays.size());
 	overlay->OnAttach();
 	mOverlays.push_back(overlay);
     return index;

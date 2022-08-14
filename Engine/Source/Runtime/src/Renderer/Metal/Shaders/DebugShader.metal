@@ -3,7 +3,7 @@
 struct VertexOut
 {
     float4 position [[position]];
-    uint color;
+    float4 color;
 };
 
 vertex VertexOut debugVertexShader(uint vertexID [[vertex_id]],
@@ -14,11 +14,11 @@ vertex VertexOut debugVertexShader(uint vertexID [[vertex_id]],
 
     VertexOut out;
     out.position = uniforms.viewProjectionMatrix * float4(vert.position, 1.0);
-    out.color = vert.color;
+    out.color = unpack_unorm4x8_to_float(vert.color);
     return out;
 }
 
 fragment float4 debugFragmentShader(VertexOut in [[stage_in]])
 {
-    return unpack_unorm4x8_to_float(in.color);
+    return in.color;
 }

@@ -24,6 +24,7 @@
 #include "Renderer/ShaderLibrary.h"
 
 #include "Core/Events/ApplicationEvent.h"
+#include "Core/Events/RendererEvent.h"
 #include "Core/Events/WindowEvent.h"
 #include "Core/Events/MouseEvent.h"
 #include "Core/Events/KeyEvent.h"
@@ -31,6 +32,8 @@
 #include "Core/Window.h"
 #include "Core/Layer.h"
 #include "Core/Time.h"
+
+#include "Input/Input.h"
 #include "IO/Log.h"
 
 #include "World/World.h"

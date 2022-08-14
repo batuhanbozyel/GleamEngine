@@ -6,6 +6,7 @@ namespace Gleam {
 class AppCloseEvent : public Event
 {
 public:
+
 	AppCloseEvent() = default;
 
 };
@@ -13,6 +14,7 @@ public:
 class AppTickEvent : public Event
 {
 public:
+
 	AppTickEvent() = default;
 
 };
@@ -20,6 +22,7 @@ public:
 class AppUpdateEvent : public Event
 {
 public:
+
 	AppUpdateEvent() = default;
 
 };
@@ -27,6 +30,7 @@ public:
 class AppRenderEvent : public Event
 {
 public:
+
 	AppRenderEvent() = default;
 
 };

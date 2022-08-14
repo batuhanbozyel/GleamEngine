@@ -12,6 +12,8 @@ public:
 	static void Init(const TString& appName, const Version& appVersion, const RendererProperties& props);
 
 	static void Destroy();
+
+	static Vector2 GetDrawableSize();
     
 	/**
 	* Renderer specific implementations

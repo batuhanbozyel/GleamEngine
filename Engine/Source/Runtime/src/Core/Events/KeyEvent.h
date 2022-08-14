@@ -1,5 +1,6 @@
 #pragma once
 #include "Event.h"
+#include "Input/KeyCode.h"
 
 namespace Gleam {
 
@@ -7,47 +8,47 @@ class KeyEvent : public Event
 {
 public:
 
-	int GetKeyCode() const { return mKeyCode; }
+	KeyCode GetKeyCode() const { return mKeyCode; }
 
 protected:
-	KeyEvent(int keyCode)
+	KeyEvent(KeyCode keyCode)
 		: mKeyCode(keyCode) {}
 
-	int mKeyCode;
+    KeyCode mKeyCode;
 };
 
 class KeyPressedEvent : public KeyEvent
 {
 public:
 
-	KeyPressedEvent(int keyCode, int repeatCount)
+	KeyPressedEvent(KeyCode keyCode, uint8_t repeatCount)
 		: KeyEvent(keyCode), m_RepeatCount(repeatCount) {}
 
-	int GetRepeatCount() const { return m_RepeatCount; }
+    uint8_t GetRepeatCount() const { return m_RepeatCount; }
 
 	TString ToString() const override
 	{
 		TStringStream ss;
-		ss << "KeyPressedEvent: " << mKeyCode;
+		ss << "KeyPressedEvent: " << char(mKeyCode);
 		return ss.str();
 	}
 
 private:
 
-	int m_RepeatCount;
+    uint8_t m_RepeatCount;
 };
 
 class KeyReleasedEvent : public KeyEvent
 {
 public:
 
-	KeyReleasedEvent(int keyCode)
+	KeyReleasedEvent(KeyCode keyCode)
 		: KeyEvent(keyCode) {}
 
 	TString ToString() const override
 	{
 		TStringStream ss;
-		ss << "KeyReleasedEvent: " << mKeyCode;
+		ss << "KeyReleasedEvent: " << char(mKeyCode);
 		return ss.str();
 	}
 };
@@ -56,13 +57,13 @@ class KeyTypedEvent : public KeyEvent
 {
 public:
 
-	KeyTypedEvent(int keyCode)
+	KeyTypedEvent(KeyCode keyCode)
 		: KeyEvent(keyCode) {}
 
 	TString ToString() const override
 	{
 		TStringStream ss;
-		ss << "KeyTypedEvent: " << mKeyCode;
+		ss << "KeyTypedEvent: " << char(mKeyCode);
 		return ss.str();
 	}
 };

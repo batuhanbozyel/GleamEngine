@@ -43,20 +43,21 @@ ForwardRenderer::~ForwardRenderer()
 
 void ForwardRenderer::Render()
 {
+	const auto& drawableSize = GetDrawableSize();
     RenderPassDescriptor renderPassDesc;
 	renderPassDesc.swapchainTarget = true;
-	renderPassDesc.width = RendererContext::GetProperties().width;
-	renderPassDesc.height = RendererContext::GetProperties().height;
+	renderPassDesc.width = static_cast<uint32_t>(drawableSize.x);
+	renderPassDesc.height = static_cast<uint32_t>(drawableSize.y);
     
 	mCommandBuffer.Begin();
 	mCommandBuffer.BeginRenderPass(renderPassDesc);
     mCommandBuffer.BindPipeline(PipelineStateDescriptor(), mForwardPassProgram);
     
-	mCommandBuffer.SetViewport(RendererContext::GetProperties().width, RendererContext::GetProperties().height);
+	mCommandBuffer.SetViewport(renderPassDesc.width, renderPassDesc.height);
 	mCommandBuffer.SetVertexBuffer(mVertexBuffer);
     
     ForwardPassFragmentUniforms uniforms;
-    uniforms.color = Color::HSVToRGB(Time::time, 1.0f, 1.0f);
+    uniforms.color = Color::HSVToRGB(static_cast<float>(Time::time), 1.0f, 1.0f);
 	mCommandBuffer.SetPushConstant(uniforms, ShaderStage::Fragment);
     
 	mCommandBuffer.DrawIndexed(mIndexBuffer);
