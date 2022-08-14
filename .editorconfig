@@ -3,7 +3,7 @@ root=true
 [*.{c++,cc,cpp,cxx,h,h++,hh,hpp,hxx,inl,ipp,tlh,tli}]
 trim_trailing_whitespace = true
 indent_style = tab
-indent_size = 4
+tab_width = 4
 
 cpp_indent_braces = false
 cpp_indent_case_labels = true

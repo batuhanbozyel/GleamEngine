@@ -15,8 +15,8 @@ class Camera : public Transform
 public:
     
     Camera();
-
-	Camera(const Vector2& size, ProjectionType type = ProjectionType::Perspective);
+    
+    Camera(const Vector2& size, ProjectionType type = ProjectionType::Perspective);
 
     Camera(float width, float height, ProjectionType type = ProjectionType::Perspective);
     

@@ -17,14 +17,14 @@ class Input final
     friend class Application;
     
 public:
-
-	static void ShowCursor(bool visible);
-
-	static bool GetCursorVisible();
-
-	static bool GetButtonDown(const KeyCode keycode);
     
-	static bool GetButtonDown(const MouseButton button);
+    static void ShowCursor(bool visible);
+    
+    static bool GetCursorVisible();
+    
+    static bool GetButtonDown(const KeyCode keycode);
+    
+    static bool GetButtonDown(const MouseButton button);
     
     static const Vector2& GetMousePosition();
     
