@@ -4,6 +4,7 @@
 #include "Renderer/ShaderLibrary.h"
 #include "MetalShaderReflect.h"
 #include "MetalUtils.h"
+#include "Assets/AssetLibrary.h"
 
 using namespace Gleam;
 
@@ -14,7 +15,7 @@ struct
 
 void ShaderLibrary::Init()
 {
-	auto binaryData = IOUtils::ReadBinaryFile("Assets/PrecompiledShaders.metallib");
+	auto binaryData = IOUtils::ReadBinaryFile(AssetLibrary::GetDefaultAssetPath().append("Assets/PrecompiledShaders.metallib").c_str());
     NSError* error;
         
     mContext.library = [MetalDevice newLibraryWithData:dispatch_data_create(binaryData.data(), binaryData.size(), nil, DISPATCH_DATA_DESTRUCTOR_DEFAULT) error:&error];

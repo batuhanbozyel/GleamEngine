@@ -37,3 +37,4 @@
 #include "IO/Log.h"
 
 #include "World/World.h"
+#include "Assets/AssetLibrary.h"
