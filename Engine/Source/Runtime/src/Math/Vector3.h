@@ -38,16 +38,36 @@ struct Vector3Base
 	{
 
 	}
+    
+    constexpr Vector3Base(T x, T y)
+        : x(x), y(y), z(0.0f)
+    {
+
+    }
+    
 	constexpr Vector3Base(T x, T y, T z)
 		: x(x), y(y), z(z)
 	{
 
 	}
+    
 	constexpr Vector3Base(const TArray<T, 3>& vec)
 		: x(vec[0]), y(vec[1]), z(vec[2])
 	{
 
 	}
+    
+    constexpr Vector3Base(const Vector2& vec)
+        : x(vec.x), y(vec.y), z(0.0f)
+    {
+
+    }
+    
+    constexpr Vector3Base(const Vector2& vec, float z)
+        : x(vec.x), y(vec.y), z(z)
+    {
+
+    }
     
     NO_DISCARD FORCE_INLINE constexpr bool operator==(const Vector3Base& vec) const
     {
@@ -221,25 +241,25 @@ struct Vector3Base
 };
     
 template<typename T>
-Vector3Base<T> operator+(T val, const Vector3Base<T>& vec)
+NO_DISCARD FORCE_INLINE Vector3Base<T> operator+(T val, const Vector3Base<T>& vec)
 {
     return vec + val;
 }
 
 template<typename T>
-Vector3Base<T> operator-(T val, const Vector3Base<T>& vec)
+NO_DISCARD FORCE_INLINE Vector3Base<T> operator-(T val, const Vector3Base<T>& vec)
 {
     return vec - val;
 }
     
 template<typename T>
-Vector3Base<T> operator*(T val, const Vector3Base<T>& vec)
+NO_DISCARD FORCE_INLINE Vector3Base<T> operator*(T val, const Vector3Base<T>& vec)
 {
     return vec * val;
 }
     
 template<typename T>
-Vector3Base<T> operator/(T val, const Vector3Base<T>& vec)
+NO_DISCARD FORCE_INLINE Vector3Base<T> operator/(T val, const Vector3Base<T>& vec)
 {
     return vec / val;
 }

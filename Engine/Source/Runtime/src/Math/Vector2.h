@@ -198,25 +198,25 @@ struct Vector2Base
 };
 
 template<typename T>
-Vector2Base<T> operator+(T val, const Vector2Base<T>& vec)
+NO_DISCARD FORCE_INLINE Vector2Base<T> operator+(T val, const Vector2Base<T>& vec)
 {
     return vec + val;
 }
 
 template<typename T>
-Vector2Base<T> operator-(T val, const Vector2Base<T>& vec)
+NO_DISCARD FORCE_INLINE Vector2Base<T> operator-(T val, const Vector2Base<T>& vec)
 {
     return vec - val;
 }
     
 template<typename T>
-Vector2Base<T> operator*(T val, const Vector2Base<T>& vec)
+NO_DISCARD FORCE_INLINE Vector2Base<T> operator*(T val, const Vector2Base<T>& vec)
 {
     return vec * val;
 }
     
 template<typename T>
-Vector2Base<T> operator/(T val, const Vector2Base<T>& vec)
+NO_DISCARD FORCE_INLINE Vector2Base<T> operator/(T val, const Vector2Base<T>& vec)
 {
     return vec / val;
 }

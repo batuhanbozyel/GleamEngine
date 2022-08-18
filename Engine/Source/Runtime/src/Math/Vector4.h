@@ -43,6 +43,12 @@ struct Vector4Base
 
 	}
     
+    constexpr Vector4Base(const Vector3& vec, float w)
+        : x(vec.x), y(vec.y), z(vec.z), w(w)
+    {
+
+    }
+    
     NO_DISCARD FORCE_INLINE constexpr bool operator==(const Vector4Base& vec) const
     {
         return x == vec.x && y == vec.y && z == vec.z && w == vec.w;
@@ -232,25 +238,25 @@ struct Vector4Base
 };
 
 template<typename T>
-Vector4Base<T> operator+(T val, const Vector4Base<T>& vec)
+NO_DISCARD FORCE_INLINE Vector4Base<T> operator+(T val, const Vector4Base<T>& vec)
 {
     return vec + val;
 }
 
 template<typename T>
-Vector4Base<T> operator-(T val, const Vector4Base<T>& vec)
+NO_DISCARD FORCE_INLINE Vector4Base<T> operator-(T val, const Vector4Base<T>& vec)
 {
     return vec - val;
 }
     
 template<typename T>
-Vector4Base<T> operator*(T val, const Vector4Base<T>& vec)
+NO_DISCARD FORCE_INLINE Vector4Base<T> operator*(T val, const Vector4Base<T>& vec)
 {
     return vec * val;
 }
     
 template<typename T>
-Vector4Base<T> operator/(T val, const Vector4Base<T>& vec)
+NO_DISCARD FORCE_INLINE Vector4Base<T> operator/(T val, const Vector4Base<T>& vec)
 {
     return vec / val;
 }

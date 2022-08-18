@@ -55,7 +55,18 @@ struct Matrix4
 	{
 		return row[i];
 	}
-
+    
+    NO_DISCARD FORCE_INLINE constexpr Vector3 operator*(const Vector3& vec) const
+    {
+        float invW = 1.0f / (vec.x * m[3] + vec.y * m[7] + vec.z * m[11] + m[15]);
+        return Vector3
+        {
+            (vec.x * m[0] + vec.y * m[4] + vec.z * m[8] + m[12]) * invW,
+            (vec.x * m[1] + vec.y * m[5] + vec.z * m[9] + m[13]) * invW,
+            (vec.x * m[2] + vec.y * m[6] + vec.z * m[10] + m[14]) * invW
+        };
+    }
+    
 	NO_DISCARD FORCE_INLINE constexpr Vector4 operator*(const Vector4& vec) const
 	{
 		return Vector4

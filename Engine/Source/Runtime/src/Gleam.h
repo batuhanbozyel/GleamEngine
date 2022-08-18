@@ -17,6 +17,8 @@
 #include "Math/Matrix3.h"
 #include "Math/Matrix4.h"
 #include "Math/Transform.h"
+#include "Math/Rect.h"
+#include "Math/BoundingBox.h"
 
 #include "Renderer/Camera.h"
 #include "Renderer/Renderer.h"
