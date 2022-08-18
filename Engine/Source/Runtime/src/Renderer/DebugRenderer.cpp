@@ -187,3 +187,57 @@ void DebugRenderer::DrawQuad(const Vector3& center, float width, float height, C
 	DrawLine(v2, v3, color, depthTest);
 	DrawLine(v3, v0, color, depthTest);
 }
+
+void DebugRenderer::DrawBoundingBox(const BoundingBox& boundingBox, Color32 color, bool depthTest)
+{
+    const Vector3& min = boundingBox.min;
+    const Vector3& max = boundingBox.max;
+
+    Vector3 v1(max.x, min.y, min.z);
+    Vector3 v2(max.x, max.y, min.z);
+    Vector3 v3(min.x, max.y, min.z);
+    Vector3 v4(min.x, min.y, max.z);
+    Vector3 v5(max.x, min.y, max.z);
+    Vector3 v6(min.x, max.y, max.z);
+    
+    DrawLine(min, v1, color, depthTest);
+    DrawLine(v1, v2, color, depthTest);
+    DrawLine(v2, v3, color, depthTest);
+    DrawLine(v3, min, color, depthTest);
+    DrawLine(v4, v5, color, depthTest);
+    DrawLine(v5, max, color, depthTest);
+    DrawLine(max, v6, color, depthTest);
+    DrawLine(v6, v4, color, depthTest);
+    DrawLine(min, v4, color, depthTest);
+    DrawLine(v1, v5, color, depthTest);
+    DrawLine(v2, max, color, depthTest);
+    DrawLine(v3, v6, color, depthTest);
+}
+
+void DebugRenderer::DrawBoundingBox(const BoundingBox& boundingBox, const Matrix4& transform, Color32 color, bool depthTest)
+{
+    const Vector3& min = boundingBox.min;
+    const Vector3& max = boundingBox.max;
+
+    Vector3 v0(transform * min);
+    Vector3 v1(transform * Vector3(max.x, min.y, min.z));
+    Vector3 v2(transform * Vector3(max.x, max.y, min.z));
+    Vector3 v3(transform * Vector3(min.x, max.y, min.z));
+    Vector3 v4(transform * Vector3(min.x, min.y, max.z));
+    Vector3 v5(transform * Vector3(max.x, min.y, max.z));
+    Vector3 v6(transform * Vector3(min.x, max.y, max.z));
+    Vector3 v7(transform * max);
+    
+    DrawLine(v0, v1, color, depthTest);
+    DrawLine(v1, v2, color, depthTest);
+    DrawLine(v2, v3, color, depthTest);
+    DrawLine(v3, v0, color, depthTest);
+    DrawLine(v4, v5, color, depthTest);
+    DrawLine(v5, v7, color, depthTest);
+    DrawLine(v7, v6, color, depthTest);
+    DrawLine(v6, v4, color, depthTest);
+    DrawLine(v0, v4, color, depthTest);
+    DrawLine(v1, v5, color, depthTest);
+    DrawLine(v2, v7, color, depthTest);
+    DrawLine(v3, v6, color, depthTest);
+}

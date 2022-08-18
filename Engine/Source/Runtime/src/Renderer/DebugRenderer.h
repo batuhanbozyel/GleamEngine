@@ -39,6 +39,10 @@ public:
 
 	void DrawQuad(const Vector3& center, float width, float height, Color32 color, bool depthTest = true);
     
+    void DrawBoundingBox(const BoundingBox& boundingBox, Color32 color, bool depthTest = true);
+    
+    void DrawBoundingBox(const BoundingBox& boundingBox, const Matrix4& transform, Color32 color, bool depthTest = true);
+    
     void UpdateView(Camera& camera)
     {
         mViewMatrix = camera.GetViewMatrix();
