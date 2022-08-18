@@ -37,7 +37,7 @@ StaticMesh::StaticMesh(const MeshData& batchedMesh)
     : Mesh(batchedMesh)
 {
     mSubmeshDescriptor.bounds = CalculateBoundingBox(batchedMesh.positions);
-    mSubmeshDescriptor.indexCount = batchedMesh.indices.size();
+    mSubmeshDescriptor.indexCount = static_cast<uint32_t>(batchedMesh.indices.size());
 }
 
 const SubmeshDescriptor& StaticMesh::GetSubmeshDescriptor() const
@@ -55,11 +55,11 @@ SkeletalMesh::SkeletalMesh(const Model& model)
     {
         mSubmeshDescriptors[i].baseVertex = baseVertex;
         mSubmeshDescriptors[i].firstIndex = firstIndex;
-        mSubmeshDescriptors[i].indexCount = meshes[i].indices.size();
+        mSubmeshDescriptors[i].indexCount = static_cast<uint32_t>(meshes[i].indices.size());
         mSubmeshDescriptors[i].bounds = CalculateBoundingBox(meshes[i].positions);
         
-        baseVertex += meshes[i].positions.size();
-        firstIndex += meshes[i].indices.size();
+        baseVertex += static_cast<uint32_t>(meshes[i].positions.size());
+        firstIndex += static_cast<uint32_t>(meshes[i].indices.size());
     }
 }
 

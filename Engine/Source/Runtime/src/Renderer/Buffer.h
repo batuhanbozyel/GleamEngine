@@ -44,6 +44,13 @@ public:
         SetData(data, 0, size);
     }
 
+	template<typename Container>
+	Buffer(const Container& container, BufferUsage usage, MemoryType memoryType = MemoryType::Static)
+		: Buffer(container.data(), sizeof(typename Container::value_type)* container.size(), usage, memoryType)
+	{
+
+	}
+
 	virtual ~Buffer()
     {
         Free(*this);
@@ -108,9 +115,9 @@ public:
     }
     
     template<typename Container>
-    void SetData(const Container& data, size_t offset = 0) const
+    void SetData(const Container& container, size_t offset = 0) const
     {
-        SetData(data.data(), offset, sizeof(typename Container::value_type) * data.size());
+        SetData(container.data(), offset, sizeof(typename Container::value_type) * container.size());
     }
 
     size_t GetSize() const
@@ -143,7 +150,7 @@ class VertexBuffer final : public Buffer
 {
 public:
 
-    VertexBuffer(uint32_t count, MemoryType memoryType = MemoryType::Static)
+    VertexBuffer(size_t count, MemoryType memoryType = MemoryType::Static)
 		: Buffer(count * sizeof(T), BufferUsage::StorageBuffer, memoryType)
 	{
 
@@ -151,19 +158,19 @@ public:
     
     template<size_t size = 0>
     VertexBuffer(const TArray<T, size>& vertices, MemoryType memoryType = MemoryType::Static)
-        : Buffer(vertices.data(), vertices.size() * sizeof(T), BufferUsage::StorageBuffer, memoryType)
+        : Buffer(vertices, BufferUsage::StorageBuffer, memoryType)
     {
 
     }
 
 	~VertexBuffer() = default;
 
-    void Resize(uint32_t count, bool keepContent = false)
+    void Resize(size_t count, bool keepContent = false)
     {
         Buffer::Resize(sizeof(T) * count, keepContent);
     }
 
-	uint32_t GetCount() const
+	size_t GetCount() const
 	{
 		return mSize / sizeof(T);
 	}
@@ -177,32 +184,32 @@ class IndexBuffer final : public Buffer
 {
 public:
 
-    IndexBuffer(uint32_t count, IndexType indexType = IndexType::UINT32, MemoryType memoryType = MemoryType::Static)
+    IndexBuffer(size_t count, IndexType indexType = IndexType::UINT32, MemoryType memoryType = MemoryType::Static)
 		: mIndexType(indexType), Buffer(count * SizeOfIndexType(indexType), BufferUsage::IndexBuffer, memoryType)
 	{
         
 	}
 
 	IndexBuffer(const TArray<uint16_t>& indices, MemoryType memoryType = MemoryType::Static)
-		: mIndexType(IndexType::UINT16), Buffer(indices.data(), static_cast<uint32_t>(indices.size() * sizeof(uint16_t)), BufferUsage::IndexBuffer, memoryType)
+		: mIndexType(IndexType::UINT16), Buffer(indices, BufferUsage::IndexBuffer, memoryType)
 	{
 
 	}
 
     IndexBuffer(const TArray<uint32_t>& indices, MemoryType memoryType = MemoryType::Static)
-        : mIndexType(IndexType::UINT32), Buffer(indices.data(), static_cast<uint32_t>(indices.size() * sizeof(uint32_t)), BufferUsage::IndexBuffer, memoryType)
+        : mIndexType(IndexType::UINT32), Buffer(indices, BufferUsage::IndexBuffer, memoryType)
     {
         
     }
 
 	~IndexBuffer() = default;
 
-    void Resize(uint32_t count, bool keepContent = false)
+    void Resize(size_t count, bool keepContent = false)
     {
         Buffer::Resize(SizeOfIndexType(mIndexType) * count, keepContent);
     }
 
-	uint32_t GetCount() const
+	size_t GetCount() const
 	{
 		return mSize / SizeOfIndexType(mIndexType);
 	}
@@ -214,7 +221,7 @@ public:
 
 private:
 
-	static constexpr uint32_t SizeOfIndexType(IndexType indexType)
+	static constexpr size_t SizeOfIndexType(IndexType indexType)
 	{
 		switch (indexType)
 		{
