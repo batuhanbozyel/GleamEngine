@@ -42,6 +42,8 @@ static void ExecuteCommand(const TString& cmd)
 	GLEAM_ASSERT(success == 0);
 }
 
+TArray<Filesystem::path> OpenFileDialog();
+
 } // namespace FileUtils
 
 } // namespace Gleam
