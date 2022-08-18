@@ -32,6 +32,10 @@
 #include "Container/Array.h"
 #include "Container/Hash.h"
 
+#include "IO/Filesystem.h"
+#include "IO/Log.h"
+#include "IO/IOUtils.h"
+
 #include "Math/Common.h"
 #include "Math/Vector2.h"
 #include "Math/Vector3.h"
@@ -55,8 +59,6 @@
 #include "Core/Time.h"
 
 #include "Input/Input.h"
-#include "IO/Log.h"
-#include "IO/IOUtils.h"
 
 #ifdef PLATFORM_WINDOWS
 #include <windows.h>

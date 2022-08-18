@@ -20,8 +20,8 @@
 #define BIT(x) (1 << (x))
 
 #ifdef ENABLE_ASSERTS
-#include <filesystem>
-	#define GLEAM_ASSERT(x, ...) if (!(x)) { GLEAM_CORE_ERROR("Assertion failed at {0}:{1}", std::filesystem::path(__FILE__).filename().string(), __LINE__); DEBUGBREAK(); }
+#include "IO/Filesystem.h"
+	#define GLEAM_ASSERT(x, ...) if (!(x)) { GLEAM_CORE_ERROR("Assertion failed at {0}:{1}", Filesystem::path(__FILE__).filename().string(), __LINE__); DEBUGBREAK(); }
 #else
 	#define GLEAM_ASSERT(...)
 #endif

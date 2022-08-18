@@ -1,14 +1,13 @@
 #pragma once
 #include <fstream>
+#include "FileType.h"
 
 namespace Gleam {
 
 namespace IOUtils {
 
-static TArray<uint8_t> ReadBinaryFile(const char* filepath)
+static TArray<uint8_t> ReadBinaryFile(const Filesystem::path& filepath)
 {
-	static_assert(sizeof(char) == sizeof(uint8_t));
-
 	std::ifstream file(filepath, std::ios::ate | std::ios::binary);
 	GLEAM_ASSERT(file.is_open());
 
@@ -22,50 +21,14 @@ static TArray<uint8_t> ReadBinaryFile(const char* filepath)
 	return buffer;
 }
 
-static TString ReadFile(const char* filepath)
+static TString ReadFile(const Filesystem::path& filepath)
 {
-	TString buffer;
-
 	std::ifstream file(filepath);
 	GLEAM_ASSERT(file.is_open());
 
 	file.seekg(0, std::ios::end);
 	size_t size = file.tellg();
-	buffer.resize(size);
-
-	file.seekg(0);
-	file.read(buffer.data(), size);
-
-	return buffer;
-}
-
-static TArray<uint8_t> ReadBinaryFile(const wchar_t* filepath)
-{
-	static_assert(sizeof(char) == sizeof(uint8_t));
-
-	std::ifstream file(filepath, std::ios::ate | std::ios::binary);
-	GLEAM_ASSERT(file.is_open());
-
-	file.seekg(0, std::ios::end);
-	size_t size = file.tellg();
-	TArray<uint8_t> buffer(size);
-
-	file.seekg(0);
-	file.read(As<char*>(buffer.data()), size);
-
-	return buffer;
-}
-
-static TString ReadFile(const wchar_t* filepath)
-{
-	TString buffer;
-
-	std::ifstream file(filepath);
-	GLEAM_ASSERT(file.is_open());
-
-	file.seekg(0, std::ios::end);
-	size_t size = file.tellg();
-	buffer.resize(size);
+    TString buffer(size, 0);
 
 	file.seekg(0);
 	file.read(buffer.data(), size);
