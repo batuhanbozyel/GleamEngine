@@ -7,11 +7,11 @@ class ModelImporter final
 {
 public:
 
-	static Model Import(const std::filesystem::path& path);
+	static Model Import(const Filesystem::path& path);
 
 private:
 
-	static Model ImportObj(const std::filesystem::path& path);
+	static Model ImportObj(const Filesystem::path& path);
 
 };
 

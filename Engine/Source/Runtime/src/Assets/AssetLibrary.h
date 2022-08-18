@@ -8,13 +8,13 @@ class AssetLibrary final
 {
 public:
 
-	static std::filesystem::path GetDefaultAssetPath();
+	static Filesystem::path GetDefaultAssetPath();
 
-	static const Model& ImportModel(const std::filesystem::path& path);
+	static const Model& ImportModel(const Filesystem::path& path);
 
 private:
 
-	static inline HashMap<std::filesystem::path, Model> sModelCache;
+	static inline HashMap<Filesystem::path, Model> sModelCache;
 
 };
 

@@ -84,9 +84,10 @@ void CommandBuffer::BindPipeline(const PipelineStateDescriptor& pipelineDesc, co
 
 void CommandBuffer::SetViewport(uint32_t width, uint32_t height) const
 {
-    MTLViewport viewport;
+    MTLViewport viewport{};
     viewport.width = width;
     viewport.height = height;
+    viewport.zfar = 1.0f;
     [mHandle->renderCommandEncoder setViewport:viewport];
 }
 

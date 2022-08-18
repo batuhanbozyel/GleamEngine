@@ -18,7 +18,7 @@ bool operator==(const index_t& lhs, const index_t& rhs)
 
 using namespace Gleam;
 
-Model ModelImporter::Import(const std::filesystem::path& path)
+Model ModelImporter::Import(const Filesystem::path& path)
 {
 	const auto& ext = path.extension();
 	if (ext == ".obj")
@@ -32,12 +32,12 @@ Model ModelImporter::Import(const std::filesystem::path& path)
 	}
 }
 
-Model ModelImporter::ImportObj(const std::filesystem::path& path)
+Model ModelImporter::ImportObj(const Filesystem::path& path)
 {
-	TString objFile = IOUtils::ReadFile(path.c_str());
+	TString objFile = IOUtils::ReadFile(path);
 
-	TString mtlPath;
-	TString mtlFile;
+	TString mtlDirectory("");
+	TString mtlFile("");
 	auto mtllibIdx = objFile.find("mtllib");
 	if (mtllibIdx != std::string::npos)
 	{
@@ -47,8 +47,9 @@ Model ModelImporter::ImportObj(const std::filesystem::path& path)
 		{
 			auto mtlfileNameLength = mtlfileEndIdx - mtlfileBeginIdx + 4;
 			auto pathStr = path.string();
-			mtlPath = pathStr.substr(0, pathStr.find_last_of("/\\") + 1) + objFile.substr(mtlfileBeginIdx, mtlfileNameLength);
-			mtlFile = IOUtils::ReadFile(mtlPath.c_str());
+			auto mtlPath = pathStr.substr(0, pathStr.find_last_of("/\\") + 1) + objFile.substr(mtlfileBeginIdx, mtlfileNameLength);
+			mtlFile = IOUtils::ReadFile(mtlPath);
+            mtlDirectory = mtlPath.substr(0, mtlPath.find_last_of("/\\") + 1);
 		}
 	}
 
@@ -117,8 +118,7 @@ Model ModelImporter::ImportObj(const std::filesystem::path& path)
 		auto materialId = shape.mesh.material_ids[0]; // per face materials are not supported
 		if (materials.size() > 0 && materialId >= 0)
 		{
-			auto directory = mtlPath.substr(0, mtlPath.find_last_of("/\\") + 1);
-			mesh.material.baseTexture = directory + materials[materialId].diffuse_texname;
+			mesh.material.baseTexture = mtlDirectory + materials[materialId].diffuse_texname;
 		}
 
 		for (uint32_t face = 0; face < shape.mesh.num_face_vertices.size(); face++)

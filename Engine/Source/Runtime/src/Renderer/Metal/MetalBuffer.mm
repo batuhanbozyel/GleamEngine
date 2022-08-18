@@ -31,7 +31,7 @@ void Buffer::Allocate(Buffer& buffer)
         }
         default:
         {
-            GLEAM_ASSERT(false, "Vulkan: Unknown memory type given!");
+            GLEAM_ASSERT(false, "Metal: Unknown memory type given!");
             break;
         }
     }
@@ -47,7 +47,7 @@ void Buffer::Free(Buffer& buffer)
     buffer.mHandle = nil;
 }
 
-void Buffer::Copy(const Buffer& src, const Buffer& dst, uint32_t srcOffset, uint32_t dstOffset)
+void Buffer::Copy(const Buffer& src, const Buffer& dst, size_t srcOffset, size_t dstOffset)
 {
     GLEAM_ASSERT(src.GetSize() <= dst.GetSize(), "Metal: Source buffer size can not be larger than destination buffer size!");
     
