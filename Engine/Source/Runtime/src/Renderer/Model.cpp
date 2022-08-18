@@ -52,5 +52,9 @@ void Model::CalculateNormals()
 			}
 		}
 	}
-	
+}
+
+const TArray<MeshData>& Model::GetMeshes() const
+{
+    return mMeshes;
 }

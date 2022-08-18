@@ -23,12 +23,13 @@ public:
 
 	Model() = default;
 	Model(const TArray<MeshData>& meshes);
-
+    
+    const TArray<MeshData>& GetMeshes() const;
 
 private:
 
 	void CalculateNormals();
-
+    
 	TArray<MeshData> mMeshes;
 };
 

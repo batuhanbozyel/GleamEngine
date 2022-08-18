@@ -24,6 +24,7 @@
 #include "Math/Rect.h"
 #include "Math/BoundingBox.h"
 
+#include "Renderer/Mesh.h"
 #include "Renderer/Camera.h"
 #include "Renderer/Renderer.h"
 #include "Renderer/CommandBuffer.h"

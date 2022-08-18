@@ -19,7 +19,7 @@ void Renderer::Destroy()
 
 Vector2 Renderer::GetDrawableSize()
 {
-	return
+	return Vector2
 	{
 		static_cast<float>(RendererContext::GetProperties().width),
 		static_cast<float>(RendererContext::GetProperties().height)
