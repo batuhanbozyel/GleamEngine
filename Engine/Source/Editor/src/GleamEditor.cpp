@@ -30,6 +30,18 @@ class SceneLayer : public Gleam::Layer
     
     virtual void OnUpdate() override
     {
+        if ((Gleam::Input::GetButtonDown(Gleam::KeyCode::LeftCommand) || Gleam::Input::GetButtonDown(Gleam::KeyCode::RightCommand)) && (Gleam::Input::GetButtonDown(Gleam::KeyCode::LeftShift) || Gleam::Input::GetButtonDown(Gleam::KeyCode::RightShift)) && Gleam::Input::GetButtonDown(Gleam::KeyCode::O))
+        {
+            for (const auto& file : Gleam::IOUtils::OpenFileDialog(Gleam::FileType::Model))
+            {
+                Gleam::SkeletalMesh mesh = Gleam::AssetLibrary::ImportModel(file);
+                for (const auto submesh : mesh.GetSubmeshDescriptors())
+                {
+                    mBounds.push_back(submesh.bounds);
+                }
+            }
+        }
+        
 		if (!Gleam::Input::GetCursorVisible())
 		{
 			constexpr float mouseSensitivity = 0.1f;
@@ -75,6 +87,11 @@ class SceneLayer : public Gleam::Layer
                 mRenderer.DrawQuad({float(i - gridWidth / 2), 0.0f, float(j - gridHeight / 2)}, 1.0f, 1.0f, Gleam::Color::HSVToRGB(Gleam::Time::time, 1.0f, 1.0f));
             }
         }
+        
+        for (const auto& bound : mBounds)
+        {
+            mRenderer.DrawBoundingBox(bound, Gleam::Color32(0, 255, 0, 255));
+        }
     }
     
     virtual void OnRender() override
@@ -92,6 +109,7 @@ private:
     Gleam::World mWorld;
     Gleam::Camera mCamera;
     Gleam::DebugRenderer mRenderer;
+    Gleam::TArray<Gleam::BoundingBox> mBounds;
 };
     
 class GleamEditor : public Gleam::Application, public Gleam::Layer
