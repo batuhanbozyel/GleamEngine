@@ -40,11 +40,10 @@ typedef uint Color32;
 #endif
 
 #pragma pack(push, 1)
-struct MeshVertex
+struct InterleavedMeshVertex
 {
-	Vector3 position;
-	Vector3 normal;
-	Vector2 texCoord;
+    Vector3 normal;
+    Vector2 texCoord;
 };
 
 struct DebugVertex

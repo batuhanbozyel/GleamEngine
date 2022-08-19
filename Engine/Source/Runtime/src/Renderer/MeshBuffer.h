@@ -10,20 +10,17 @@ public:
     
     MeshBuffer(const MeshData& mesh);
     
-    const VertexBuffer<MeshVertex>& GetVertexBuffer() const
-    {
-        return mVertexBuffer;
-    }
+    const VertexBuffer<Vector3>& GetPositionBuffer() const;
     
-    const IndexBuffer& GetIndexBuffer() const
-    {
-        return mIndexBuffer;
-    }
+    const VertexBuffer<InterleavedMeshVertex>& GetInterleavedBuffer() const;
+    
+    const IndexBuffer& GetIndexBuffer() const;
     
 private:
     
     IndexBuffer mIndexBuffer;
-    VertexBuffer<MeshVertex> mVertexBuffer;
+    VertexBuffer<Vector3> mPositionBuffer;
+    VertexBuffer<InterleavedMeshVertex> mInterleavedBuffer;
     
 };
     

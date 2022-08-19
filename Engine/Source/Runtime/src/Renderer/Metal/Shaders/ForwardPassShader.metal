@@ -8,14 +8,15 @@ struct VertexOut
 };
 
 vertex VertexOut forwardPassVertexShader(uint vertexID [[vertex_id]],
-                                         constant Gleam::MeshVertex* VertexBuffer [[buffer(0)]])
+                                         constant Gleam::Vector3* PositionBuffer [[buffer(0)]],
+                                         constant Gleam::InterleavedMeshVertex* InterleavedBuffer [[buffer(1)]])
 {
-    Gleam::MeshVertex vert = VertexBuffer[vertexID];
+    Gleam::InterleavedMeshVertex interleavedVert = InterleavedBuffer[vertexID];
 
     VertexOut out;
-    out.position = float4(vert.position, 1.0);
-    out.normal = vert.normal;
-    out.texCoord = vert.texCoord;
+    out.position = float4(PositionBuffer[vertexID], 1.0);
+    out.normal = interleavedVert.normal;
+    out.texCoord = interleavedVert.texCoord;
     return out;
 }
 

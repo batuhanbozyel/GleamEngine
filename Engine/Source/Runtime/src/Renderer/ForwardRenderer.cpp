@@ -8,22 +8,24 @@
 using namespace Gleam;
 
 ForwardRenderer::ForwardRenderer()
-    : mVertexBuffer(4), mIndexBuffer(6, IndexType::UINT16)
+    : mPositionBuffer(4), mInterleavedBuffer(4), mIndexBuffer(6, IndexType::UINT16)
 {
-    TArray<MeshVertex, 4> vertices;
+    TArray<Vector3, 4> positions;
+    TArray<InterleavedMeshVertex, 4> interleavedVertices;
     // top left
-    vertices[0].position = { -0.5f, 0.5f, 0.0f };
-    vertices[0].texCoord = { 0.0f, 0.0f };
+    positions[0] = { -0.5f, 0.5f, 0.0f };
+    interleavedVertices[0].texCoord = { 0.0f, 0.0f };
     // top right
-    vertices[1].position = { 0.5f, 0.5f, 0.0f };
-    vertices[1].texCoord = { 1.0f, 0.0f };
+    positions[1] = { 0.5f, 0.5f, 0.0f };
+    interleavedVertices[1].texCoord = { 1.0f, 0.0f };
     // bottom right
-    vertices[2].position = { 0.5f, -0.5f, 0.0f };
-    vertices[2].texCoord = { 1.0f, 1.0f };
+    positions[2] = { 0.5f, -0.5f, 0.0f };
+    interleavedVertices[2].texCoord = { 1.0f, 1.0f };
     // bottom left
-    vertices[3].position = { -0.5f, -0.5f, 0.0f };
-    vertices[3].texCoord = { 0.0f, 1.0f };
-    mVertexBuffer.SetData(vertices);
+    positions[3] = { -0.5f, -0.5f, 0.0f };
+    interleavedVertices[3].texCoord = { 0.0f, 1.0f };
+    mPositionBuffer.SetData(positions);
+    mInterleavedBuffer.SetData(interleavedVertices);
 
     TArray<uint16_t, 6> indices
     {
@@ -54,7 +56,8 @@ void ForwardRenderer::Render()
     mCommandBuffer.BindPipeline(PipelineStateDescriptor(), mForwardPassProgram);
     
 	mCommandBuffer.SetViewport(renderPassDesc.width, renderPassDesc.height);
-	mCommandBuffer.SetVertexBuffer(mVertexBuffer);
+	mCommandBuffer.SetVertexBuffer(mPositionBuffer, 0);
+    mCommandBuffer.SetVertexBuffer(mInterleavedBuffer, 1);
     
     ForwardPassFragmentUniforms uniforms;
     uniforms.color = Color::HSVToRGB(static_cast<float>(Time::time), 1.0f, 1.0f);

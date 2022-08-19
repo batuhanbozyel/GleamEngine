@@ -1,6 +1,7 @@
 #include "../../ShaderTypes.h"
 
-StructuredBuffer<Gleam::MeshVertex> VertexBuffer : register(t0);
+StructuredBuffer<Gleam::Vector3> PositionBuffer : register(t0);
+StructuredBuffer<Gleam::InterleavedMeshVertex> InterleavedBuffer : register(t0);
 
 struct VertexOut
 {
@@ -11,12 +12,12 @@ struct VertexOut
 
 VertexOut forwardPassVertexShader(uint vertex_id: SV_VertexID)
 {
-    Gleam::MeshVertex vertex = VertexBuffer[vertex_id];
+    Gleam::InterleavedMeshVertex interleavedVert = InterleavedBuffer[vertex_id];
 
     VertexOut OUT;
-    OUT.position = float4(vertex.position, 1.0);
-    OUT.normal = vertex.normal;
-    OUT.texCoord = vertex.texCoord;
+    OUT.position = float4(PositionBuffer[vertex_id], 1.0);
+    OUT.normal = interleavedVert.normal;
+    OUT.texCoord = interleavedVert.texCoord;
     return OUT;
 }
 
