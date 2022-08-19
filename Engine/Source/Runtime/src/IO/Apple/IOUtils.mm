@@ -7,7 +7,7 @@
 
 using namespace Gleam;
 
-TArray<Filesystem::path> IOUtils::OpenFileDialog()
+TArray<Filesystem::path> IOUtils::OpenFileDialog(const TArray<FileType>& filterTypes)
 {
     TArray<Filesystem::path> selectedFiles;
     
@@ -15,7 +15,20 @@ TArray<Filesystem::path> IOUtils::OpenFileDialog()
     [fileDialog setCanChooseFiles:YES];
     [fileDialog setAllowsMultipleSelection:YES];
     [fileDialog setCanChooseDirectories:NO];
-    [fileDialog setAllowedContentTypes:[UTType typesWithTag:@"" tagClass:UTTagClassFilenameExtension conformingToType:nil]];
+    
+    NSMutableArray<UTType*>* contentTypes = [NSMutableArray<UTType*> array];
+    for (auto filterType : filterTypes)
+    {
+        auto fileExtensions = FileTypeSupportedExtensions(filterType);
+        for (const auto& extension : fileExtensions)
+        {
+            if (!extension.empty())
+            {
+                [contentTypes addObject:[UTType typeWithFilenameExtension:[NSString stringWithUTF8String:extension.data()]]];
+            }
+        }
+    }
+    [fileDialog setAllowedContentTypes:contentTypes];
     
     if ([fileDialog runModal] == NSModalResponseOK)
     {
