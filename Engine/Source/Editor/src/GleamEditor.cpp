@@ -23,19 +23,25 @@ class SceneLayer : public Gleam::Layer
 
 		Gleam::EventDispatcher<Gleam::RendererResizeEvent>::Subscribe([&](const Gleam::RendererResizeEvent& e) -> bool
 		{
-			mCamera.SetViewport(e.GetWidth(), e.GetHeight());
+			mCamera.SetViewport(static_cast<float>(e.GetWidth()), static_cast<float>(e.GetHeight()));
 			return false;
 		});
     }
     
     virtual void OnUpdate() override
     {
-        if ((Gleam::Input::GetButtonDown(Gleam::KeyCode::LeftCommand) || Gleam::Input::GetButtonDown(Gleam::KeyCode::RightCommand)) && (Gleam::Input::GetButtonDown(Gleam::KeyCode::LeftShift) || Gleam::Input::GetButtonDown(Gleam::KeyCode::RightShift)) && Gleam::Input::GetButtonDown(Gleam::KeyCode::O))
-        {
+	#if defined(PLATFORM_WINDOWS)
+        if ((Gleam::Input::GetButtonDown(Gleam::KeyCode::LeftAlt) || Gleam::Input::GetButtonDown(Gleam::KeyCode::RightAlt)) && (Gleam::Input::GetButtonDown(Gleam::KeyCode::LeftShift) || Gleam::Input::GetButtonDown(Gleam::KeyCode::RightShift)) && Gleam::Input::GetButtonDown(Gleam::KeyCode::O))
+	#elif defined(PLATFORM_MACOS)
+		if ((Gleam::Input::GetButtonDown(Gleam::KeyCode::LeftCommand) || Gleam::Input::GetButtonDown(Gleam::KeyCode::RightCommand)) && (Gleam::Input::GetButtonDown(Gleam::KeyCode::LeftShift) || Gleam::Input::GetButtonDown(Gleam::KeyCode::RightShift)) && Gleam::Input::GetButtonDown(Gleam::KeyCode::O))
+	#else
+		if (false)
+	#endif
+		{
             for (const auto& file : Gleam::IOUtils::OpenFileDialog(Gleam::FileType::Model))
             {
                 Gleam::SkeletalMesh mesh = Gleam::AssetLibrary::ImportModel(file);
-                for (const auto submesh : mesh.GetSubmeshDescriptors())
+                for (const auto& submesh : mesh.GetSubmeshDescriptors())
                 {
                     mBounds.push_back(submesh.bounds);
                 }
@@ -52,29 +58,30 @@ class SceneLayer : public Gleam::Layer
 		}
 
         constexpr float cameraSpeed = 5.0f;
+		float deltaTime = static_cast<float>(Gleam::Time::deltaTime);
 		if (Gleam::Input::GetButtonDown(Gleam::KeyCode::A))
 		{
-			mCamera.Translate(-mCamera.RightVector() * cameraSpeed * Gleam::Time::deltaTime);
+			mCamera.Translate(-mCamera.RightVector() * cameraSpeed * deltaTime);
 		}
 		if (Gleam::Input::GetButtonDown(Gleam::KeyCode::D))
 		{
-			mCamera.Translate(mCamera.RightVector() * cameraSpeed * Gleam::Time::deltaTime);
+			mCamera.Translate(mCamera.RightVector() * cameraSpeed * deltaTime);
 		}
 		if (Gleam::Input::GetButtonDown(Gleam::KeyCode::W))
 		{
-			mCamera.Translate(mCamera.ForwardVector() * cameraSpeed * Gleam::Time::deltaTime);
+			mCamera.Translate(mCamera.ForwardVector() * cameraSpeed * deltaTime);
 		}
 		if (Gleam::Input::GetButtonDown(Gleam::KeyCode::S))
 		{
-			mCamera.Translate(-mCamera.ForwardVector() * cameraSpeed * Gleam::Time::deltaTime);
+			mCamera.Translate(-mCamera.ForwardVector() * cameraSpeed * deltaTime);
 		}
         if (Gleam::Input::GetButtonDown(Gleam::KeyCode::Space))
         {
-            mCamera.Translate(Gleam::Vector3::up * cameraSpeed * Gleam::Time::deltaTime);
+            mCamera.Translate(Gleam::Vector3::up * cameraSpeed * deltaTime);
         }
         if (Gleam::Input::GetButtonDown(Gleam::KeyCode::LeftControl))
         {
-            mCamera.Translate(Gleam::Vector3::down * cameraSpeed * Gleam::Time::deltaTime);
+            mCamera.Translate(Gleam::Vector3::down * cameraSpeed * deltaTime);
         }
         mRenderer.UpdateView(mCamera);
         
@@ -84,7 +91,7 @@ class SceneLayer : public Gleam::Layer
         {
             for (int j = 0; j < gridHeight; j++)
             {
-                mRenderer.DrawQuad({float(i - gridWidth / 2), 0.0f, float(j - gridHeight / 2)}, 1.0f, 1.0f, Gleam::Color::HSVToRGB(Gleam::Time::time, 1.0f, 1.0f));
+                mRenderer.DrawQuad({float(i - gridWidth / 2), 0.0f, float(j - gridHeight / 2)}, 1.0f, 1.0f, Gleam::Color::HSVToRGB(static_cast<float>(Gleam::Time::time), 1.0f, 1.0f));
             }
         }
         
