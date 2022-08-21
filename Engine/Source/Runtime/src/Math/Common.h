@@ -71,13 +71,13 @@ NO_DISCARD FORCE_INLINE constexpr T Exp(const T& x)
 template<typename T>
 NO_DISCARD FORCE_INLINE constexpr T Floor(const T& x)
 {
-	return std::floor(x);
+	return static_cast<T>(std::floor(x));
 }
 
 template<typename T>
 NO_DISCARD FORCE_INLINE constexpr T Round(const T& x)
 {
-	return std::round(x);
+	return static_cast<T>(std::round(x));
 }
 
 template<typename T>
@@ -144,13 +144,13 @@ NO_DISCARD FORCE_INLINE constexpr T Mix(const T& x, const T& y, const T& a)
 template<typename T>
 NO_DISCARD FORCE_INLINE constexpr T Log2(const T& x)
 {
-	return std::log2(x);
+	return static_cast<T>(std::log2(x));
 }
 
 template<typename T>
 NO_DISCARD FORCE_INLINE T constexpr Sqrt(const T& v)
 {
-	return std::sqrt(v);
+	return static_cast<T>(std::sqrt(v));
 }
 
 } // namespace Math

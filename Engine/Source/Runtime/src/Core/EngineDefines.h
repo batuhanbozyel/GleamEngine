@@ -51,11 +51,16 @@ using DispatchSemaphore = dispatch_semaphore_t;
 #define PASS_BY_VALUE typename = std::enable_if_t<(sizeof(T) <= sizeof(int))>
 #define PASS_BY_REFERENCE typename = std::enable_if_t<(sizeof(T) > sizeof(int))>
 
+namespace Gleam {
+
 template<typename T, typename P>
 constexpr inline T As(P p)
 {
 	return reinterpret_cast<T>(p);
 }
+
+} // namespace Gleam
+
 
 #define ApplicationInstance Gleam::Application::GetInstance()
 
