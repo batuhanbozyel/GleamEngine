@@ -211,26 +211,31 @@ public:
 
 	size_t GetCount() const
 	{
-		return mSize / SizeOfIndexType(mIndexType);
+		return mSize / GetIndexSize();
 	}
+    
+    size_t GetIndexSize() const
+    {
+        return SizeOfIndexType(mIndexType);
+    }
 
 	IndexType GetIndexType() const
 	{
 		return mIndexType;
 	}
-
+    
 private:
 
-	static constexpr size_t SizeOfIndexType(IndexType indexType)
-	{
-		switch (indexType)
-		{
-			case IndexType::UINT16: return sizeof(uint16_t);
-			case IndexType::UINT32: return sizeof(uint32_t);
-			default: return 0;
-		}
-	}
-
+    static constexpr size_t SizeOfIndexType(IndexType indexType)
+    {
+        switch (indexType)
+        {
+            case IndexType::UINT16: return sizeof(uint16_t);
+            case IndexType::UINT32: return sizeof(uint32_t);
+            default: return 0;
+        }
+    }
+    
 	const IndexType mIndexType = IndexType::UINT32;
 
 };

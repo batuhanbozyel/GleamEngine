@@ -63,7 +63,7 @@ void ForwardRenderer::Render()
     uniforms.color = Color::HSVToRGB(static_cast<float>(Time::time), 1.0f, 1.0f);
 	mCommandBuffer.SetPushConstant(uniforms, ShaderStage::Fragment);
     
-	mCommandBuffer.DrawIndexed(mIndexBuffer);
+	mCommandBuffer.DrawIndexed(mIndexBuffer, mIndexBuffer.GetCount());
 	mCommandBuffer.EndRenderPass();
 	mCommandBuffer.End();
 
