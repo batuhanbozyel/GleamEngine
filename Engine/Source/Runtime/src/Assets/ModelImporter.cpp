@@ -112,9 +112,10 @@ Model ModelImporter::ImportObj(const Filesystem::path& path)
 
 	TArray<MeshData> meshes(shapes.size());
 	HashMap<tinyobj::index_t, uint32_t, decltype(HashIndices)> uniqueVertices(10, HashIndices);
-	for (const auto& shape : shapes)
+    for (uint32_t i = 0; i < shapes.size(); i++)
 	{
-		MeshData mesh;
+        const auto& shape = shapes[i];
+        auto& mesh = meshes[i];
 		auto materialId = shape.mesh.material_ids[0]; // per face materials are not supported
 		if (materials.size() > 0 && materialId >= 0)
 		{
@@ -161,7 +162,6 @@ Model ModelImporter::ImportObj(const Filesystem::path& path)
 				mesh.indices.push_back(it->second);
 			}
 		}
- 		meshes.emplace_back(mesh);
 	}
 
 	return Model(meshes);
