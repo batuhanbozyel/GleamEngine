@@ -1,6 +1,7 @@
 #pragma once
 #include "Model.h"
 #include "Buffer.h"
+#include "ShaderTypes.h"
 
 namespace Gleam {
     

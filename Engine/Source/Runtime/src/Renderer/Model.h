@@ -1,5 +1,4 @@
 #pragma once
-#include "ShaderTypes.h"
 
 namespace Gleam {
 

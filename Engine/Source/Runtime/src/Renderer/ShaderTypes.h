@@ -57,6 +57,7 @@ struct DebugVertexUniforms
     Matrix4 viewMatrix;
     Matrix4 projectionMatrix;
     Matrix4 viewProjectionMatrix;
+    Color32 color;
 };
     
 struct ForwardPassFragmentUniforms

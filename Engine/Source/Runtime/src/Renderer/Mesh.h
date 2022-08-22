@@ -7,6 +7,8 @@ class Mesh
 {
 public:
     
+    GLEAM_NONCOPYABLE(Mesh);
+    
     Mesh(const MeshData& mesh)
         : mBuffer(mesh)
     {

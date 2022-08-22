@@ -18,6 +18,16 @@ vertex VertexOut debugVertexShader(uint vertexID [[vertex_id]],
     return out;
 }
 
+vertex VertexOut debugMeshVertexShader(uint vertexID [[vertex_id]],
+                                       constant Gleam::Vector3* PositionBuffer [[buffer(0)]],
+                                       constant Gleam::DebugVertexUniforms& uniforms [[buffer(1)]])
+{
+    VertexOut out;
+    out.position = uniforms.viewProjectionMatrix * float4(PositionBuffer[vertexID], 1.0);
+    out.color = unpack_unorm4x8_to_float(uniforms.color);
+    return out;
+}
+
 fragment float4 debugFragmentShader(VertexOut in [[stage_in]])
 {
     return in.color;

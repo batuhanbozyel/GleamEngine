@@ -1,6 +1,6 @@
 #pragma once
+#include "Mesh.h"
 #include "Camera.h"
-#include "Buffer.h"
 #include "Shader.h"
 #include "Renderer.h"
 #include "ShaderTypes.h"
@@ -39,6 +39,10 @@ public:
 
 	void DrawQuad(const Vector3& center, float width, float height, Color32 color, bool depthTest = true);
     
+    void DrawMesh(const Mesh* mesh, Color32 color, bool depthTest = true);
+    
+    void DrawSkeletalMesh(const SkeletalMesh* mesh, Color32 color, bool depthTest = true);
+    
     void DrawBoundingBox(const BoundingBox& boundingBox, Color32 color, bool depthTest = true);
     
     void DrawBoundingBox(const BoundingBox& boundingBox, const Matrix4& transform, Color32 color, bool depthTest = true);
@@ -53,6 +57,10 @@ private:
     
     void RenderPrimitive(uint32_t primitiveCount, uint32_t bufferOffset, PrimitiveTopology topology, bool depthTest) const;
     
+    void RenderMesh(const MeshBuffer& meshBuffer, Color32 color, bool depthTest) const;
+    
+    void RenderSkeletalMesh(const MeshBuffer& meshBuffer, const TArray<SubmeshDescriptor>& submeshDescriptors, Color32 color, bool depthTest) const;
+    
     Matrix4 mViewMatrix;
     Matrix4 mProjectionMatrix;
     
@@ -61,9 +69,16 @@ private:
 
 	TArray<DebugTriangle> mTrianlges;
 	TArray<DebugTriangle> mDepthTrianlges;
+    
+    TArray<std::pair<const Mesh*, Color32>> mMeshes;
+    TArray<std::pair<const Mesh*, Color32>> mDepthMeshes;
+    
+    TArray<std::pair<const SkeletalMesh*, Color32>> mSkeletalMeshes;
+    TArray<std::pair<const SkeletalMesh*, Color32>> mDepthSkeletalMeshes;
 
 	CommandBuffer mCommandBuffer;
 	GraphicsShader mDebugProgram;
+    GraphicsShader mDebugMeshProgram;
     
     TArray<DebugVertex> mStagingBuffer;
 	VertexBuffer<DebugVertex> mVertexBuffer;

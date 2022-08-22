@@ -24,6 +24,9 @@ DebugRenderer::DebugRenderer()
 	mDebugProgram.vertexShader = ShaderLibrary::CreateShader("debugVertexShader", ShaderStage::Vertex);
 	mDebugProgram.fragmentShader = ShaderLibrary::CreateShader("debugFragmentShader", ShaderStage::Fragment);
     
+    mDebugMeshProgram.vertexShader = ShaderLibrary::CreateShader("debugMeshVertexShader", ShaderStage::Vertex);
+    mDebugMeshProgram.fragmentShader = ShaderLibrary::CreateShader("debugFragmentShader", ShaderStage::Fragment);
+    
     Camera defaultCamera(Renderer::GetDrawableSize());
     mViewMatrix = defaultCamera.GetViewMatrix();
     mProjectionMatrix = defaultCamera.GetProjectionMatrix();
@@ -111,6 +114,27 @@ void DebugRenderer::Render()
     {
         RenderPrimitive(static_cast<uint32_t>(mDepthTrianlges.size()), depthTriangleBufferOffset, PrimitiveTopology::Triangles, true);
     }
+    
+    for (const auto& [mesh, color] : mMeshes)
+    {
+        RenderMesh(mesh->GetBuffer(), color, false);
+    }
+    
+    for (const auto& [mesh, color] : mDepthMeshes)
+    {
+        RenderMesh(mesh->GetBuffer(), color, true);
+    }
+    
+    for (const auto& [mesh, color] : mSkeletalMeshes)
+    {
+        RenderSkeletalMesh(mesh->GetBuffer(), mesh->GetSubmeshDescriptors(), color, false);
+    }
+    
+    for (const auto& [mesh, color] : mDepthSkeletalMeshes)
+    {
+        RenderSkeletalMesh(mesh->GetBuffer(), mesh->GetSubmeshDescriptors(), color, true);
+    }
+    
     mCommandBuffer.EndRenderPass();
     mCommandBuffer.End();
     mCommandBuffer.Commit();
@@ -121,6 +145,8 @@ void DebugRenderer::Render()
 	mTrianlges.clear();
 	mDepthTrianlges.clear();
     mStagingBuffer.clear();
+    mMeshes.clear();
+    mDepthMeshes.clear();
 }
 
 void DebugRenderer::RenderPrimitive(uint32_t primitiveCount, uint32_t bufferOffset, PrimitiveTopology topology, bool depthTest) const
@@ -137,6 +163,40 @@ void DebugRenderer::RenderPrimitive(uint32_t primitiveCount, uint32_t bufferOffs
     uniforms.viewProjectionMatrix = mProjectionMatrix * mViewMatrix;
     mCommandBuffer.SetPushConstant(uniforms, ShaderStage::Vertex, 1);
     mCommandBuffer.Draw(primitiveCount * PrimitiveTopologyVertexCount(topology));
+}
+
+void DebugRenderer::RenderMesh(const MeshBuffer& meshBuffer, Color32 color, bool depthTest) const
+{
+    PipelineStateDescriptor pipelineDesc;
+    mCommandBuffer.BindPipeline(pipelineDesc, mDebugMeshProgram);
+    mCommandBuffer.SetVertexBuffer(meshBuffer.GetPositionBuffer());
+    
+    DebugVertexUniforms uniforms;
+    uniforms.viewMatrix = mViewMatrix;
+    uniforms.projectionMatrix = mProjectionMatrix;
+    uniforms.viewProjectionMatrix = mProjectionMatrix * mViewMatrix;
+    uniforms.color = color;
+    mCommandBuffer.SetPushConstant(uniforms, ShaderStage::Vertex, 1);
+    mCommandBuffer.DrawIndexed(meshBuffer.GetIndexBuffer(), meshBuffer.GetIndexBuffer().GetCount());
+}
+
+void DebugRenderer::RenderSkeletalMesh(const MeshBuffer& meshBuffer, const TArray<SubmeshDescriptor>& submeshDescriptors, Color32 color, bool depthTest) const
+{
+    PipelineStateDescriptor pipelineDesc;
+    mCommandBuffer.BindPipeline(pipelineDesc, mDebugMeshProgram);
+    mCommandBuffer.SetVertexBuffer(meshBuffer.GetPositionBuffer());
+    
+    DebugVertexUniforms uniforms;
+    uniforms.viewMatrix = mViewMatrix;
+    uniforms.projectionMatrix = mProjectionMatrix;
+    uniforms.viewProjectionMatrix = mProjectionMatrix * mViewMatrix;
+    uniforms.color = color;
+    mCommandBuffer.SetPushConstant(uniforms, ShaderStage::Vertex, 1);
+    
+    for (const auto& submesh : submeshDescriptors)
+    {
+        mCommandBuffer.DrawIndexed(meshBuffer.GetIndexBuffer(), submesh.indexCount, 1, submesh.firstIndex, submesh.baseVertex);
+    }
 }
 
 void DebugRenderer::DrawLine(const Vector3& start, const Vector3& end, Color32 color, bool depthTest)
@@ -186,6 +246,30 @@ void DebugRenderer::DrawQuad(const Vector3& center, float width, float height, C
 	DrawLine(v1, v2, color, depthTest);
 	DrawLine(v2, v3, color, depthTest);
 	DrawLine(v3, v0, color, depthTest);
+}
+
+void DebugRenderer::DrawMesh(const Mesh* mesh, Color32 color, bool depthTest)
+{
+    if (depthTest)
+    {
+        mDepthMeshes.push_back({mesh, color});
+    }
+    else
+    {
+        mMeshes.push_back({mesh, color});
+    }
+}
+
+void DebugRenderer::DrawSkeletalMesh(const SkeletalMesh* mesh, Color32 color, bool depthTest)
+{
+    if (depthTest)
+    {
+        mDepthSkeletalMeshes.push_back({mesh, color});
+    }
+    else
+    {
+        mSkeletalMeshes.push_back({mesh, color});
+    }
 }
 
 void DebugRenderer::DrawBoundingBox(const BoundingBox& boundingBox, Color32 color, bool depthTest)
