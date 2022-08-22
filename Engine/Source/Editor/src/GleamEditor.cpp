@@ -40,11 +40,8 @@ class SceneLayer : public Gleam::Layer
 		{
             for (const auto& file : Gleam::IOUtils::OpenFileDialog(Gleam::FileType::Model))
             {
-                Gleam::SkeletalMesh mesh = Gleam::AssetLibrary::ImportModel(file);
-                for (const auto& submesh : mesh.GetSubmeshDescriptors())
-                {
-                    mBounds.push_back(submesh.bounds);
-                }
+                Gleam::Scope<Gleam::SkeletalMesh> mesh = Gleam::CreateScope<Gleam::SkeletalMesh>(Gleam::AssetLibrary::ImportModel(file));
+                mMeshes.emplace_back(std::move(mesh));
             }
         }
         
@@ -95,9 +92,13 @@ class SceneLayer : public Gleam::Layer
             }
         }
         
-        for (const auto& bound : mBounds)
+        for (const auto& mesh : mMeshes)
         {
-            mRenderer.DrawBoundingBox(bound, Gleam::Color32(0, 255, 0, 255));
+            for (const auto& submesh : mesh->GetSubmeshDescriptors())
+            {
+                mRenderer.DrawBoundingBox(submesh.bounds, Gleam::Color32(0, 255, 0, 255));
+            }
+            mRenderer.DrawSkeletalMesh(mesh.get(), Gleam::Color32(192, 96, 0, 255));
         }
     }
     
@@ -117,6 +118,7 @@ private:
     Gleam::Camera mCamera;
     Gleam::DebugRenderer mRenderer;
     Gleam::TArray<Gleam::BoundingBox> mBounds;
+    Gleam::TArray<Gleam::Scope<Gleam::SkeletalMesh>> mMeshes;
 };
     
 class GleamEditor : public Gleam::Application, public Gleam::Layer
