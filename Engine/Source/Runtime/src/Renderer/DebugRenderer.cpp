@@ -1,5 +1,6 @@
 #include "gpch.h"
 #include "DebugRenderer.h"
+#include "RendererContext.h"
 #include "ShaderLibrary.h"
 #include "RenderPassDescriptor.h"
 #include "PipelineStateDescriptor.h"
@@ -19,8 +20,13 @@ static constexpr uint32_t PrimitiveTopologyVertexCount(PrimitiveTopology topolog
 }
 
 DebugRenderer::DebugRenderer()
-	: mVertexBuffer(100, MemoryType::Dynamic)
+	: mVertexBuffers(RendererContext::GetSwapchain()->GetProperties().maxFramesInFlight)
 {
+	for (auto& vertexBuffer : mVertexBuffers)
+	{
+		vertexBuffer = std::move(CreateScope<VertexBuffer<DebugVertex>>(100, MemoryType::Dynamic));
+	}
+
 	mDebugProgram.vertexShader = ShaderLibrary::CreateShader("debugVertexShader", ShaderStage::Vertex);
 	mDebugProgram.fragmentShader = ShaderLibrary::CreateShader("debugFragmentShader", ShaderStage::Fragment);
     
@@ -78,11 +84,12 @@ void DebugRenderer::Render()
     }
     
     // Update buffer
-    if (mVertexBuffer.GetCount() < mStagingBuffer.size())
+	auto& vertexBuffer = mVertexBuffers[RendererContext::GetSwapchain()->GetFrameIndex()];
+    if (vertexBuffer->GetCount() < mStagingBuffer.size())
     {
-        mVertexBuffer.Resize(static_cast<uint32_t>(mStagingBuffer.size()));
+		vertexBuffer->Resize(static_cast<uint32_t>(mStagingBuffer.size()));
     }
-    mVertexBuffer.SetData(mStagingBuffer);
+	vertexBuffer->SetData(mStagingBuffer);
     
     // Start rendering
 	const auto& drawableSize = GetDrawableSize();
@@ -147,15 +154,19 @@ void DebugRenderer::Render()
     mStagingBuffer.clear();
     mMeshes.clear();
     mDepthMeshes.clear();
+	mSkeletalMeshes.clear();
+	mDepthSkeletalMeshes.clear();
 }
 
 void DebugRenderer::RenderPrimitive(uint32_t primitiveCount, uint32_t bufferOffset, PrimitiveTopology topology, bool depthTest) const
 {
+	const auto& vertexBuffer = mVertexBuffers[RendererContext::GetSwapchain()->GetFrameIndex()];
+
     PipelineStateDescriptor pipelineDesc;
     pipelineDesc.topology = topology;
     
     mCommandBuffer.BindPipeline(pipelineDesc, mDebugProgram);
-    mCommandBuffer.SetVertexBuffer(mVertexBuffer, 0, bufferOffset);
+    mCommandBuffer.SetVertexBuffer(*vertexBuffer, 0, bufferOffset);
     
     DebugVertexUniforms uniforms;
     uniforms.viewMatrix = mViewMatrix;
@@ -177,7 +188,7 @@ void DebugRenderer::RenderMesh(const MeshBuffer& meshBuffer, Color32 color, bool
     uniforms.viewProjectionMatrix = mProjectionMatrix * mViewMatrix;
     uniforms.color = color;
     mCommandBuffer.SetPushConstant(uniforms, ShaderStage::Vertex, 1);
-    mCommandBuffer.DrawIndexed(meshBuffer.GetIndexBuffer(), meshBuffer.GetIndexBuffer().GetCount());
+    mCommandBuffer.DrawIndexed(meshBuffer.GetIndexBuffer(), static_cast<uint32_t>(meshBuffer.GetIndexBuffer().GetCount()));
 }
 
 void DebugRenderer::RenderSkeletalMesh(const MeshBuffer& meshBuffer, const TArray<SubmeshDescriptor>& submeshDescriptors, Color32 color, bool depthTest) const
