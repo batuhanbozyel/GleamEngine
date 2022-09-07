@@ -74,7 +74,7 @@ private:
     GraphicsShader mDebugMeshProgram;
     
     TArray<DebugVertex> mStagingBuffer;
-	VertexBuffer<DebugVertex> mVertexBuffer;
+	TArray<Scope<VertexBuffer<DebugVertex>>> mVertexBuffers;
 
 };
 
