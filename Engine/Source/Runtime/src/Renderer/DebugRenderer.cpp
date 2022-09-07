@@ -144,8 +144,6 @@ void DebugRenderer::Render()
     mStagingBuffer.clear();
     mMeshes.clear();
     mDepthMeshes.clear();
-	mSkeletalMeshes.clear();
-	mDepthSkeletalMeshes.clear();
 }
 
 void DebugRenderer::RenderPrimitive(uint32_t primitiveCount, uint32_t bufferOffset, PrimitiveTopology topology, bool depthTest) const
@@ -166,6 +164,11 @@ void DebugRenderer::RenderPrimitive(uint32_t primitiveCount, uint32_t bufferOffs
     cameraUniforms.modelViewProjectionMatrix = mProjectionMatrix * mViewMatrix;
     cameraUniforms.normalMatrix = Matrix3::identity; // TODO:
     mCommandBuffer.SetPushConstant(cameraUniforms, ShaderStage::Vertex, 1);
+    
+    DebugFragmentUniforms fragmentUniforms;
+    fragmentUniforms.color = Color::white;
+    mCommandBuffer.SetPushConstant(fragmentUniforms, ShaderStage::Fragment);
+    
     mCommandBuffer.Draw(primitiveCount * PrimitiveTopologyVertexCount(topology));
 }
 

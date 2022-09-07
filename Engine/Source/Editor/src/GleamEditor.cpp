@@ -40,7 +40,7 @@ class SceneLayer : public Gleam::Layer
 		{
             for (const auto& file : Gleam::IOUtils::OpenFileDialog(Gleam::FileType::Model))
             {
-                Gleam::Scope<Gleam::SkeletalMesh> mesh = Gleam::CreateScope<Gleam::SkeletalMesh>(Gleam::AssetLibrary::ImportModel(file));
+                auto mesh = Gleam::CreateScope<Gleam::StaticMesh>(Gleam::AssetLibrary::ImportModel(file));
                 mMeshes.emplace_back(std::move(mesh));
             }
         }
@@ -98,7 +98,7 @@ class SceneLayer : public Gleam::Layer
             {
                 mRenderer.DrawBoundingBox(submesh.bounds, Gleam::Color32(0, 255, 0, 255));
             }
-            mRenderer.DrawSkeletalMesh(mesh.get(), Gleam::Color32(192, 96, 0, 255));
+            mRenderer.DrawMesh(mesh.get(), Gleam::Matrix4::identity, Gleam::Color32(192, 96, 0, 255));
         }
     }
     
@@ -118,7 +118,7 @@ private:
     Gleam::Camera mCamera;
     Gleam::DebugRenderer mRenderer;
     Gleam::TArray<Gleam::BoundingBox> mBounds;
-    Gleam::TArray<Gleam::Scope<Gleam::SkeletalMesh>> mMeshes;
+    Gleam::TArray<Gleam::Scope<Gleam::Mesh>> mMeshes;
 };
     
 class GleamEditor : public Gleam::Application, public Gleam::Layer
