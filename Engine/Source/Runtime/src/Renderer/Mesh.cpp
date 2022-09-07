@@ -3,6 +3,48 @@
 
 using namespace Gleam;
 
+const MeshBuffer& Mesh::GetBuffer() const
+{
+    return mBuffer;
+}
+
+const TArray<SubmeshDescriptor>& Mesh::GetSubmeshDescriptors() const
+{
+    return mSubmeshDescriptors;
+}
+
+Mesh::Mesh(const TArray<MeshData>& meshes, bool isBatched)
+    : Mesh(BatchMeshes(meshes, isBatched), isBatched)
+{
+    if (!isBatched)
+    {
+        uint32_t baseVertex = 0;
+        uint32_t firstIndex = 0;
+        mSubmeshDescriptors.resize(meshes.size());
+        for (uint32_t i = 0; i < meshes.size(); i++)
+        {
+            mSubmeshDescriptors[i].baseVertex = baseVertex;
+            mSubmeshDescriptors[i].firstIndex = firstIndex;
+            mSubmeshDescriptors[i].indexCount = static_cast<uint32_t>(meshes[i].indices.size());
+            mSubmeshDescriptors[i].bounds = CalculateBoundingBox(meshes[i].positions);
+            
+            baseVertex += static_cast<uint32_t>(meshes[i].positions.size());
+            firstIndex += static_cast<uint32_t>(meshes[i].indices.size());
+        }
+    }
+}
+
+Mesh::Mesh(const MeshData& mesh, bool isBatched)
+    : mBuffer(mesh)
+{
+    if (isBatched)
+    {
+        mSubmeshDescriptors.resize(1);
+        mSubmeshDescriptors[0].bounds = CalculateBoundingBox(mesh.positions);
+        mSubmeshDescriptors[0].indexCount = static_cast<uint32_t>(mesh.indices.size());
+    }
+}
+
 BoundingBox Mesh::CalculateBoundingBox(const TArray<Vector3>& positions)
 {
     BoundingBox bounds(Math::Infinity, Math::NegativeInfinity);
@@ -14,56 +56,34 @@ BoundingBox Mesh::CalculateBoundingBox(const TArray<Vector3>& positions)
     return bounds;
 }
 
-MeshData Mesh::BatchMeshes(const TArray<MeshData>& meshes)
+MeshData Mesh::BatchMeshes(const TArray<MeshData>& meshes, bool isBatchRendered)
 {
     MeshData batchedMesh;
     for (const auto& mesh : meshes)
     {
+        auto endIdx = batchedMesh.indices.size();
+        batchedMesh.indices.insert(batchedMesh.indices.end(), mesh.indices.begin(), mesh.indices.end());
+        
+        for (auto i = endIdx; i < batchedMesh.indices.size() && isBatchRendered; i++)
+        {
+            batchedMesh.indices[i] += static_cast<uint32_t>(batchedMesh.positions.size());
+        }
+        
         batchedMesh.positions.insert(batchedMesh.positions.end(), mesh.positions.begin(), mesh.positions.end());
         batchedMesh.normals.insert(batchedMesh.normals.end(), mesh.normals.begin(), mesh.normals.end());
         batchedMesh.texCoords.insert(batchedMesh.texCoords.end(), mesh.texCoords.begin(), mesh.texCoords.end());
-        batchedMesh.indices.insert(batchedMesh.indices.end(), mesh.indices.begin(), mesh.indices.end());
     }
     return batchedMesh;
 }
 
 StaticMesh::StaticMesh(const Model& model)
-    : StaticMesh(BatchMeshes(model.GetMeshes()))
+    : Mesh(model.GetMeshes(), true)
 {
     
 }
 
-StaticMesh::StaticMesh(const MeshData& batchedMesh)
-    : Mesh(batchedMesh)
-{
-    mSubmeshDescriptor.bounds = CalculateBoundingBox(batchedMesh.positions);
-    mSubmeshDescriptor.indexCount = static_cast<uint32_t>(batchedMesh.indices.size());
-}
-
-const SubmeshDescriptor& StaticMesh::GetSubmeshDescriptor() const
-{
-    return mSubmeshDescriptor;
-}
-
 SkeletalMesh::SkeletalMesh(const Model& model)
-    : mSubmeshDescriptors(model.GetMeshes().size()), Mesh(BatchMeshes(model.GetMeshes()))
+    : Mesh(model.GetMeshes(), false)
 {
-    uint32_t baseVertex = 0;
-    uint32_t firstIndex = 0;
-    const auto& meshes = model.GetMeshes();
-    for (uint32_t i = 0; i < meshes.size(); i++)
-    {
-        mSubmeshDescriptors[i].baseVertex = baseVertex;
-        mSubmeshDescriptors[i].firstIndex = firstIndex;
-        mSubmeshDescriptors[i].indexCount = static_cast<uint32_t>(meshes[i].indices.size());
-        mSubmeshDescriptors[i].bounds = CalculateBoundingBox(meshes[i].positions);
-        
-        baseVertex += static_cast<uint32_t>(meshes[i].positions.size());
-        firstIndex += static_cast<uint32_t>(meshes[i].indices.size());
-    }
-}
-
-const TArray<SubmeshDescriptor>& SkeletalMesh::GetSubmeshDescriptors() const
-{
-    return mSubmeshDescriptors;
+    
 }

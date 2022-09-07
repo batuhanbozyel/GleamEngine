@@ -41,8 +41,8 @@ void DebugRenderer::Render()
 {
     if (mLines.empty() &&
         mDepthLines.empty() &&
-        mTrianlges.empty() &&
-        mDepthTrianlges.empty())
+        mTriangles.empty() &&
+        mDepthTriangles.empty())
     {
         return;
     }
@@ -55,7 +55,7 @@ void DebugRenderer::Render()
     }
     
     uint32_t triangleBufferOffset = static_cast<uint32_t>(mStagingBuffer.size() * sizeof(DebugVertex));
-    for (const auto& triangle : mTrianlges)
+    for (const auto& triangle : mTriangles)
     {
         mStagingBuffer.push_back(triangle.vertex1);
         mStagingBuffer.push_back(triangle.vertex2);
@@ -70,7 +70,7 @@ void DebugRenderer::Render()
     }
     
     uint32_t depthTriangleBufferOffset = static_cast<uint32_t>(mStagingBuffer.size() * sizeof(DebugVertex));
-    for (const auto& triangle : mDepthTrianlges)
+    for (const auto& triangle : mDepthTriangles)
     {
         mStagingBuffer.push_back(triangle.vertex1);
         mStagingBuffer.push_back(triangle.vertex2);
@@ -100,9 +100,9 @@ void DebugRenderer::Render()
         RenderPrimitive(static_cast<uint32_t>(mLines.size()), 0, PrimitiveTopology::Lines, false);
     }
     
-    if (!mTrianlges.empty())
+    if (!mTriangles.empty())
     {
-        RenderPrimitive(static_cast<uint32_t>(mTrianlges.size()), triangleBufferOffset, PrimitiveTopology::Triangles, false);
+        RenderPrimitive(static_cast<uint32_t>(mTriangles.size()), triangleBufferOffset, PrimitiveTopology::Triangles, false);
     }
     
     if (!mDepthLines.empty())
@@ -110,29 +110,19 @@ void DebugRenderer::Render()
         RenderPrimitive(static_cast<uint32_t>(mDepthLines.size()), depthLineBufferOffset, PrimitiveTopology::Lines, true);
     }
     
-    if (!mDepthTrianlges.empty())
+    if (!mDepthTriangles.empty())
     {
-        RenderPrimitive(static_cast<uint32_t>(mDepthTrianlges.size()), depthTriangleBufferOffset, PrimitiveTopology::Triangles, true);
+        RenderPrimitive(static_cast<uint32_t>(mDepthTriangles.size()), depthTriangleBufferOffset, PrimitiveTopology::Triangles, true);
     }
     
-    for (const auto& [mesh, color] : mMeshes)
+    for (const auto& [mesh, transform, color] : mMeshes)
     {
-        RenderMesh(mesh->GetBuffer(), color, false);
+        RenderMesh(mesh->GetBuffer(), mesh->GetSubmeshDescriptors(), transform, color, false);
     }
     
-    for (const auto& [mesh, color] : mDepthMeshes)
+    for (const auto& [mesh, transform, color] : mDepthMeshes)
     {
-        RenderMesh(mesh->GetBuffer(), color, true);
-    }
-    
-    for (const auto& [mesh, color] : mSkeletalMeshes)
-    {
-        RenderSkeletalMesh(mesh->GetBuffer(), mesh->GetSubmeshDescriptors(), color, false);
-    }
-    
-    for (const auto& [mesh, color] : mDepthSkeletalMeshes)
-    {
-        RenderSkeletalMesh(mesh->GetBuffer(), mesh->GetSubmeshDescriptors(), color, true);
+        RenderMesh(mesh->GetBuffer(), mesh->GetSubmeshDescriptors(), transform, color, true);
     }
     
     mCommandBuffer.EndRenderPass();
@@ -142,8 +132,8 @@ void DebugRenderer::Render()
 	// reset render queue
 	mLines.clear();
 	mDepthLines.clear();
-	mTrianlges.clear();
-	mDepthTrianlges.clear();
+	mTriangles.clear();
+	mDepthTriangles.clear();
     mStagingBuffer.clear();
     mMeshes.clear();
     mDepthMeshes.clear();
@@ -157,41 +147,35 @@ void DebugRenderer::RenderPrimitive(uint32_t primitiveCount, uint32_t bufferOffs
     mCommandBuffer.BindPipeline(pipelineDesc, mDebugProgram);
     mCommandBuffer.SetVertexBuffer(mVertexBuffer, 0, bufferOffset);
     
-    DebugVertexUniforms uniforms;
-    uniforms.viewMatrix = mViewMatrix;
-    uniforms.projectionMatrix = mProjectionMatrix;
-    uniforms.viewProjectionMatrix = mProjectionMatrix * mViewMatrix;
-    mCommandBuffer.SetPushConstant(uniforms, ShaderStage::Vertex, 1);
+    CameraUniforms cameraUniforms;
+    cameraUniforms.modelMatrix = Matrix4::identity;
+    cameraUniforms.viewMatrix = mViewMatrix;
+    cameraUniforms.projectionMatrix = mProjectionMatrix;
+    cameraUniforms.viewProjectionMatrix = mProjectionMatrix * mViewMatrix;
+    cameraUniforms.modelViewProjectionMatrix = mProjectionMatrix * mViewMatrix;
+    cameraUniforms.normalMatrix = Matrix3::identity; // TODO:
+    mCommandBuffer.SetPushConstant(cameraUniforms, ShaderStage::Vertex, 1);
     mCommandBuffer.Draw(primitiveCount * PrimitiveTopologyVertexCount(topology));
 }
 
-void DebugRenderer::RenderMesh(const MeshBuffer& meshBuffer, Color32 color, bool depthTest) const
+void DebugRenderer::RenderMesh(const MeshBuffer& meshBuffer, const TArray<SubmeshDescriptor>& submeshDescriptors, const Matrix4& transform, Color32 color, bool depthTest) const
 {
     PipelineStateDescriptor pipelineDesc;
     mCommandBuffer.BindPipeline(pipelineDesc, mDebugMeshProgram);
     mCommandBuffer.SetVertexBuffer(meshBuffer.GetPositionBuffer());
     
-    DebugVertexUniforms uniforms;
-    uniforms.viewMatrix = mViewMatrix;
-    uniforms.projectionMatrix = mProjectionMatrix;
-    uniforms.viewProjectionMatrix = mProjectionMatrix * mViewMatrix;
-    uniforms.color = color;
-    mCommandBuffer.SetPushConstant(uniforms, ShaderStage::Vertex, 1);
-    mCommandBuffer.DrawIndexed(meshBuffer.GetIndexBuffer(), meshBuffer.GetIndexBuffer().GetCount());
-}
-
-void DebugRenderer::RenderSkeletalMesh(const MeshBuffer& meshBuffer, const TArray<SubmeshDescriptor>& submeshDescriptors, Color32 color, bool depthTest) const
-{
-    PipelineStateDescriptor pipelineDesc;
-    mCommandBuffer.BindPipeline(pipelineDesc, mDebugMeshProgram);
-    mCommandBuffer.SetVertexBuffer(meshBuffer.GetPositionBuffer());
+    CameraUniforms cameraUniforms;
+    cameraUniforms.modelMatrix = transform;
+    cameraUniforms.viewMatrix = mViewMatrix;
+    cameraUniforms.projectionMatrix = mProjectionMatrix;
+    cameraUniforms.viewProjectionMatrix = mProjectionMatrix * mViewMatrix;
+    cameraUniforms.modelViewProjectionMatrix = mProjectionMatrix * mViewMatrix * transform;
+    cameraUniforms.normalMatrix = Matrix3::identity; // TODO:
+    mCommandBuffer.SetPushConstant(cameraUniforms, ShaderStage::Vertex, 1);
     
-    DebugVertexUniforms uniforms;
-    uniforms.viewMatrix = mViewMatrix;
-    uniforms.projectionMatrix = mProjectionMatrix;
-    uniforms.viewProjectionMatrix = mProjectionMatrix * mViewMatrix;
-    uniforms.color = color;
-    mCommandBuffer.SetPushConstant(uniforms, ShaderStage::Vertex, 1);
+    DebugFragmentUniforms fragmentUniforms;
+    fragmentUniforms.color = color;
+    mCommandBuffer.SetPushConstant(fragmentUniforms, ShaderStage::Fragment);
     
     for (const auto& submesh : submeshDescriptors)
     {
@@ -224,11 +208,11 @@ void DebugRenderer::DrawTriangle(const Vector3& v1, const Vector3& v2, const Vec
 
 	if (depthTest)
 	{
-		mDepthTrianlges.emplace_back(std::move(triangle));
+		mDepthTriangles.emplace_back(std::move(triangle));
 	}
 	else
 	{
-		mTrianlges.emplace_back(std::move(triangle));
+		mTriangles.emplace_back(std::move(triangle));
 	}
 }
 
@@ -248,27 +232,15 @@ void DebugRenderer::DrawQuad(const Vector3& center, float width, float height, C
 	DrawLine(v3, v0, color, depthTest);
 }
 
-void DebugRenderer::DrawMesh(const Mesh* mesh, Color32 color, bool depthTest)
+void DebugRenderer::DrawMesh(const Mesh* mesh, const Matrix4& transform, Color32 color, bool depthTest)
 {
     if (depthTest)
     {
-        mDepthMeshes.push_back({mesh, color});
+        mDepthMeshes.push_back({mesh, transform, color});
     }
     else
     {
-        mMeshes.push_back({mesh, color});
-    }
-}
-
-void DebugRenderer::DrawSkeletalMesh(const SkeletalMesh* mesh, Color32 color, bool depthTest)
-{
-    if (depthTest)
-    {
-        mDepthSkeletalMeshes.push_back({mesh, color});
-    }
-    else
-    {
-        mSkeletalMeshes.push_back({mesh, color});
+        mMeshes.push_back({mesh, transform, color});
     }
 }
 

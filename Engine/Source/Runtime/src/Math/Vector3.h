@@ -3,7 +3,7 @@
 namespace Gleam {
 	
 template<typename T>
-struct Vector3Base
+struct alignas(16) Vector3Base
 {
 	union
 	{

@@ -1,5 +1,6 @@
 #pragma once
-#include "Buffer.h"
+#include "Mesh.h"
+#include "Camera.h"
 #include "Shader.h"
 #include "Renderer.h"
 #include "ShaderTypes.h"
@@ -18,14 +19,24 @@ public:
 	~ForwardRenderer();
 
 	virtual void Render() override;
+    
+    void DrawMesh(const Mesh* mesh, const Matrix4& transform);
 
+    void UpdateView(Camera& camera)
+    {
+        mViewMatrix = camera.GetViewMatrix();
+        mProjectionMatrix = camera.GetProjectionMatrix();
+    }
+    
 private:
 
+    Matrix4 mViewMatrix;
+    Matrix4 mProjectionMatrix;
+    
 	CommandBuffer mCommandBuffer;
     GraphicsShader mForwardPassProgram;
-	VertexBuffer<Vector3> mPositionBuffer;
-    VertexBuffer<InterleavedMeshVertex> mInterleavedBuffer;
-	IndexBuffer mIndexBuffer;
+    
+    TArray<std::pair<const Mesh*, Matrix4>> mMeshes;
 
 };
 

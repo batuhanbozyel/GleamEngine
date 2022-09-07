@@ -10,14 +10,14 @@ struct VertexOut
 };
 
 [[vk::push_constant]]
-Gleam::DebugVertexUniforms uniforms;
+Gleam::CameraUniforms cameraUniforms;
 
 VertexOut debugVertexShader(uint vertex_id: SV_VertexID)
 {
     Gleam::DebugVertex vertex = VertexBuffer[vertex_id];
     
     VertexOut OUT;
-    OUT.position = mul(uniforms.viewProjectionMatrix, float4(vertex.position, 1.0f));
+    OUT.position = mul(cameraUniforms.viewProjectionMatrix, float4(vertex.position, 1.0f));
     OUT.color = Gleam::unpack_unorm4x8_to_float(vertex.color);
     return OUT;
 }
@@ -25,12 +25,15 @@ VertexOut debugVertexShader(uint vertex_id: SV_VertexID)
 VertexOut debugMeshVertexShader(uint vertex_id: SV_VertexID)
 {
     VertexOut OUT;
-    OUT.position = mul(uniforms.viewProjectionMatrix, float4(PositionBuffer[vertex_id], 1.0f));
-    OUT.color = Gleam::unpack_unorm4x8_to_float(uniforms.color);
+    OUT.position = mul(cameraUniforms.modelViewProjectionMatrix, float4(PositionBuffer[vertex_id], 1.0f));
+    OUT.color = float4(1.0);
     return OUT;
 }
 
+[[vk::push_constant]]
+Gleam::DebugFragmentUniforms fragmentUniforms;
+
 float4 debugFragmentShader(VertexOut IN) : SV_TARGET
 {
-    return IN.color;
+    return IN.color * Gleam::unpack_unorm4x8_to_float(fragmentUniforms.color);
 }

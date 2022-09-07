@@ -9,7 +9,7 @@ using namespace metal;
 
 namespace Gleam {
 
-#if defined(__HLSL_VERSION)
+#if defined(__HLSL_VERSION) || defined(__METAL_VERSION__)
 typedef float2x2 Matrix2;
 typedef float3x3 Matrix3;
 typedef float4x4 Matrix4;
@@ -17,7 +17,9 @@ typedef float2 Vector2;
 typedef float3 Vector3;
 typedef float4 Vector4;
 typedef uint Color32;
+#endif
 
+#if defined(__HLSL_VERSION)
 float4 unpack_unorm4x8_to_float(uint packedVal)
 {
     return float4
@@ -28,18 +30,8 @@ float4 unpack_unorm4x8_to_float(uint packedVal)
         float(packedVal >> 24) / 255.0f
     );
 }
-
-#elif defined(__METAL_VERSION__)
-typedef float2x2 Matrix2;
-typedef float3x3 Matrix3;
-typedef float4x4 Matrix4;
-typedef packed_float2 Vector2;
-typedef packed_float3 Vector3;
-typedef packed_float4 Vector4;
-typedef uint Color32;
 #endif
 
-#pragma pack(push, 1)
 struct InterleavedMeshVertex
 {
     Vector3 normal;
@@ -52,18 +44,24 @@ struct DebugVertex
 	Color32 color;
 };
 
-struct DebugVertexUniforms
+struct CameraUniforms
 {
+    Matrix4 modelMatrix;
     Matrix4 viewMatrix;
     Matrix4 projectionMatrix;
     Matrix4 viewProjectionMatrix;
+    Matrix4 modelViewProjectionMatrix;
+    Matrix3 normalMatrix;
+};
+
+struct DebugFragmentUniforms
+{
     Color32 color;
 };
-    
+
 struct ForwardPassFragmentUniforms
 {
     Color32 color;
 };
-#pragma pack(pop)
 
 } // namespace Gleam

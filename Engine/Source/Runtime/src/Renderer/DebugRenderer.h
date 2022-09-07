@@ -39,9 +39,7 @@ public:
 
 	void DrawQuad(const Vector3& center, float width, float height, Color32 color, bool depthTest = true);
     
-    void DrawMesh(const Mesh* mesh, Color32 color, bool depthTest = true);
-    
-    void DrawSkeletalMesh(const SkeletalMesh* mesh, Color32 color, bool depthTest = true);
+    void DrawMesh(const Mesh* mesh, const Matrix4& transform, Color32 color, bool depthTest = true);
     
     void DrawBoundingBox(const BoundingBox& boundingBox, Color32 color, bool depthTest = true);
     
@@ -57,9 +55,7 @@ private:
     
     void RenderPrimitive(uint32_t primitiveCount, uint32_t bufferOffset, PrimitiveTopology topology, bool depthTest) const;
     
-    void RenderMesh(const MeshBuffer& meshBuffer, Color32 color, bool depthTest) const;
-    
-    void RenderSkeletalMesh(const MeshBuffer& meshBuffer, const TArray<SubmeshDescriptor>& submeshDescriptors, Color32 color, bool depthTest) const;
+    void RenderMesh(const MeshBuffer& meshBuffer, const TArray<SubmeshDescriptor>& submeshDescriptors, const Matrix4& transform, Color32 color, bool depthTest) const;
     
     Matrix4 mViewMatrix;
     Matrix4 mProjectionMatrix;
@@ -67,14 +63,11 @@ private:
 	TArray<DebugLine> mLines;
 	TArray<DebugLine> mDepthLines;
 
-	TArray<DebugTriangle> mTrianlges;
-	TArray<DebugTriangle> mDepthTrianlges;
+	TArray<DebugTriangle> mTriangles;
+	TArray<DebugTriangle> mDepthTriangles;
     
-    TArray<std::pair<const Mesh*, Color32>> mMeshes;
-    TArray<std::pair<const Mesh*, Color32>> mDepthMeshes;
-    
-    TArray<std::pair<const SkeletalMesh*, Color32>> mSkeletalMeshes;
-    TArray<std::pair<const SkeletalMesh*, Color32>> mDepthSkeletalMeshes;
+    TArray<std::tuple<const Mesh*, Matrix4, Color32>> mMeshes;
+    TArray<std::tuple<const Mesh*, Matrix4, Color32>> mDepthMeshes;
 
 	CommandBuffer mCommandBuffer;
 	GraphicsShader mDebugProgram;
