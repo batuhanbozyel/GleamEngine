@@ -25,7 +25,7 @@ const VertexBuffer<InterleavedMeshVertex>& MeshBuffer::GetInterleavedBuffer() co
     return mInterleavedBuffer;
 }
 
-const IndexBuffer& MeshBuffer::GetIndexBuffer() const
+const IndexBuffer<IndexType::UINT32>& MeshBuffer::GetIndexBuffer() const
 {
     return mIndexBuffer;
 }

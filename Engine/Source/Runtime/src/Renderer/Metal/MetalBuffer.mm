@@ -6,7 +6,7 @@
 
 using namespace Gleam;
 
-void Buffer::Allocate(Buffer& buffer)
+void IBuffer::Allocate(IBuffer& buffer)
 {
     switch (buffer.mMemoryType)
     {
@@ -42,12 +42,12 @@ void Buffer::Allocate(Buffer& buffer)
     }
 }
 
-void Buffer::Free(Buffer& buffer)
+void IBuffer::Free(IBuffer& buffer)
 {
     buffer.mHandle = nil;
 }
 
-void Buffer::Copy(const Buffer& src, const Buffer& dst, size_t srcOffset, size_t dstOffset)
+void IBuffer::Copy(const IBuffer& src, const IBuffer& dst, size_t srcOffset, size_t dstOffset)
 {
     GLEAM_ASSERT(src.GetSize() <= dst.GetSize(), "Metal: Source buffer size can not be larger than destination buffer size!");
     

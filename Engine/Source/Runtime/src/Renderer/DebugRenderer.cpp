@@ -122,16 +122,6 @@ void DebugRenderer::Render()
         RenderPrimitive(static_cast<uint32_t>(mDepthTriangles.size()), depthTriangleBufferOffset, PrimitiveTopology::Triangles, true);
     }
     
-    for (const auto& [mesh, transform, color] : mMeshes)
-    {
-        RenderMesh(mesh->GetBuffer(), mesh->GetSubmeshDescriptors(), transform, color, false);
-    }
-    
-    for (const auto& [mesh, transform, color] : mDepthMeshes)
-    {
-        RenderMesh(mesh->GetBuffer(), mesh->GetSubmeshDescriptors(), transform, color, true);
-    }
-    
     mCommandBuffer.EndRenderPass();
     mCommandBuffer.End();
     mCommandBuffer.Commit();
@@ -142,8 +132,6 @@ void DebugRenderer::Render()
 	mTriangles.clear();
 	mDepthTriangles.clear();
     mStagingBuffer.clear();
-    mMeshes.clear();
-    mDepthMeshes.clear();
 }
 
 void DebugRenderer::RenderPrimitive(uint32_t primitiveCount, uint32_t bufferOffset, PrimitiveTopology topology, bool depthTest) const
@@ -170,31 +158,6 @@ void DebugRenderer::RenderPrimitive(uint32_t primitiveCount, uint32_t bufferOffs
     mCommandBuffer.SetPushConstant(fragmentUniforms, ShaderStage::Fragment);
     
     mCommandBuffer.Draw(primitiveCount * PrimitiveTopologyVertexCount(topology));
-}
-
-void DebugRenderer::RenderMesh(const MeshBuffer& meshBuffer, const TArray<SubmeshDescriptor>& submeshDescriptors, const Matrix4& transform, Color32 color, bool depthTest) const
-{
-    PipelineStateDescriptor pipelineDesc;
-    mCommandBuffer.BindPipeline(pipelineDesc, mDebugMeshProgram);
-    mCommandBuffer.SetVertexBuffer(meshBuffer.GetPositionBuffer());
-    
-    CameraUniforms cameraUniforms;
-    cameraUniforms.modelMatrix = transform;
-    cameraUniforms.viewMatrix = mViewMatrix;
-    cameraUniforms.projectionMatrix = mProjectionMatrix;
-    cameraUniforms.viewProjectionMatrix = mProjectionMatrix * mViewMatrix;
-    cameraUniforms.modelViewProjectionMatrix = mProjectionMatrix * mViewMatrix * transform;
-    cameraUniforms.normalMatrix = Matrix3::identity; // TODO:
-    mCommandBuffer.SetPushConstant(cameraUniforms, ShaderStage::Vertex, 1);
-    
-    DebugFragmentUniforms fragmentUniforms;
-    fragmentUniforms.color = color;
-    mCommandBuffer.SetPushConstant(fragmentUniforms, ShaderStage::Fragment);
-    
-    for (const auto& submesh : submeshDescriptors)
-    {
-        mCommandBuffer.DrawIndexed(meshBuffer.GetIndexBuffer(), submesh.indexCount, 1, submesh.firstIndex, submesh.baseVertex);
-    }
 }
 
 void DebugRenderer::DrawLine(const Vector3& start, const Vector3& end, Color32 color, bool depthTest)
@@ -248,13 +211,28 @@ void DebugRenderer::DrawQuad(const Vector3& center, float width, float height, C
 
 void DebugRenderer::DrawMesh(const Mesh* mesh, const Matrix4& transform, Color32 color, bool depthTest)
 {
-    if (depthTest)
+    const auto& meshBuffer = mesh->GetBuffer();
+    
+    PipelineStateDescriptor pipelineDesc;
+    mCommandBuffer.BindPipeline(pipelineDesc, mDebugMeshProgram);
+    mCommandBuffer.SetVertexBuffer(meshBuffer.GetPositionBuffer());
+    
+    CameraUniforms cameraUniforms;
+    cameraUniforms.modelMatrix = transform;
+    cameraUniforms.viewMatrix = mViewMatrix;
+    cameraUniforms.projectionMatrix = mProjectionMatrix;
+    cameraUniforms.viewProjectionMatrix = mProjectionMatrix * mViewMatrix;
+    cameraUniforms.modelViewProjectionMatrix = mProjectionMatrix * mViewMatrix * transform;
+    cameraUniforms.normalMatrix = Matrix3::identity; // TODO:
+    mCommandBuffer.SetPushConstant(cameraUniforms, ShaderStage::Vertex, 1);
+    
+    DebugFragmentUniforms fragmentUniforms;
+    fragmentUniforms.color = color;
+    mCommandBuffer.SetPushConstant(fragmentUniforms, ShaderStage::Fragment);
+    
+    for (const auto& submesh : mesh->GetSubmeshDescriptors())
     {
-        mDepthMeshes.push_back({mesh, transform, color});
-    }
-    else
-    {
-        mMeshes.push_back({mesh, transform, color});
+        mCommandBuffer.DrawIndexed(meshBuffer.GetIndexBuffer(), submesh.indexCount, 1, submesh.firstIndex, submesh.baseVertex);
     }
 }
 

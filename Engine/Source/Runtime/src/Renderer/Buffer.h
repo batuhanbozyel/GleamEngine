@@ -1,5 +1,6 @@
 #pragma once
 #include "GraphicsObject.h"
+#include "IndexType.h"
 
 namespace Gleam {
 
@@ -19,157 +20,81 @@ enum class MemoryType
 	Stream
 };
 
-enum class IndexType
-{
-	UINT16,
-	UINT32
-};
-
 /************************************************************************/
 /* Buffer                                                               */
 /************************************************************************/
-class Buffer : public GraphicsObject
+class IBuffer : public GraphicsObject
 {
 public:
 
-    Buffer(size_t size, BufferUsage usage, MemoryType memoryType = MemoryType::Static)
-        : mSize(size), mUsage(usage), mMemoryType(memoryType)
-    {
-        Allocate(*this);
-    }
+    IBuffer(size_t size, BufferUsage usage, MemoryType memoryType = MemoryType::Static);
 
-    Buffer(const void* data, size_t size, BufferUsage usage, MemoryType memoryType = MemoryType::Static)
-        : Buffer(size, usage, memoryType)
-    {
-        SetData(data, 0, size);
-    }
+    IBuffer(const void* data, size_t size, BufferUsage usage, MemoryType memoryType = MemoryType::Static);
 
-	template<typename Container>
-	Buffer(const Container& container, BufferUsage usage, MemoryType memoryType = MemoryType::Static)
-		: Buffer(container.data(), sizeof(typename Container::value_type)* container.size(), usage, memoryType)
-	{
+    virtual ~IBuffer();
 
-	}
+	static void Allocate(IBuffer& buffer);
 
-	virtual ~Buffer()
-    {
-        Free(*this);
-    }
+	static void Free(IBuffer& buffer);
 
-	static void Allocate(Buffer& buffer);
+	static void Copy(const IBuffer& src, const IBuffer& dst, size_t srcOffset = 0, size_t dstOffset = 0);
 
-	static void Free(Buffer& buffer);
+    void Resize(size_t size, bool keepContent = false);
 
-	static void Copy(const Buffer& src, const Buffer& dst, size_t srcOffset = 0, size_t dstOffset = 0);
+    void SetData(const void* data, size_t offset, size_t size) const;
 
-	void Resize(size_t size, bool keepContent = false)
-    {
-        GLEAM_ASSERT(!((size < mSize) && keepContent), "Cannot resize a buffer to a smaller size whilst keeping contents!");
-        
-        if (keepContent)
-        {
-            if (mMemoryType == MemoryType::Static)
-            {
-                Buffer stagingBuffer(mSize, BufferUsage::StagingBuffer, MemoryType::Static);
-                Copy(*this, stagingBuffer);
-                Free(*this);
+    size_t GetSize() const;
 
-                mSize = size;
-                Allocate(*this);
-
-                Copy(stagingBuffer, *this);
-            }
-            else
-            {
-                TArray<uint8_t> stagingBuffer(mSize);
-                memcpy(stagingBuffer.data(), mContents, mSize);
-                Free(*this);
-
-                mSize = size;
-                Allocate(*this);
-
-                memcpy(mContents, stagingBuffer.data(), stagingBuffer.size());
-            }
-        }
-        else
-        {
-            mSize = size;
-            Free(*this);
-            Allocate(*this);
-        }
-    }
-
-	void SetData(const void* data, size_t offset, size_t size) const
-    {
-        GLEAM_ASSERT(size <= mSize, "Cannot send data to the buffer if size is larger than the buffer size!");
-        
-        if (mMemoryType == MemoryType::Static)
-        {
-            Buffer stagingBuffer(data, size, BufferUsage::StagingBuffer, MemoryType::Stream);
-            Copy(stagingBuffer, *this, 0, offset);
-        }
-        else
-        {
-            memcpy(As<uint8_t*>(mContents) + offset, data, size);
-        }
-    }
-    
-    template<typename Container>
-    void SetData(const Container& container, size_t offset = 0) const
-    {
-        SetData(container.data(), offset, sizeof(typename Container::value_type) * container.size());
-    }
-
-    size_t GetSize() const
-	{
-		return mSize;
-	}
-
-	BufferUsage GetUsage() const
-	{
-		return mUsage;
-	}
+    BufferUsage GetUsage() const;
 
 protected:
 
-	BufferUsage mUsage = BufferUsage::StorageBuffer;
-	MemoryType mMemoryType = MemoryType::Static;
+	const BufferUsage mUsage = BufferUsage::StorageBuffer;
+	const MemoryType mMemoryType = MemoryType::Static;
 
+    size_t mSize = 0;
+    
 	void* mContents = nullptr;
 	NativeGraphicsHandle mMemory = nullptr;
 
-    size_t mSize = 0;
-
 };
 
-/************************************************************************/
-/* VertexBuffer                                                         */
-/************************************************************************/
-template<typename T>
-class VertexBuffer final : public Buffer
+template<typename T, BufferUsage usage>
+class Buffer : public IBuffer
 {
 public:
 
-    VertexBuffer(size_t count, MemoryType memoryType = MemoryType::Static)
-		: Buffer(count * sizeof(T), BufferUsage::StorageBuffer, memoryType)
+    Buffer(size_t count, MemoryType memoryType = MemoryType::Static)
+		: IBuffer(count * sizeof(T), usage, memoryType)
 	{
 
 	}
     
     template<size_t size = 0>
-    VertexBuffer(const TArray<T, size>& vertices, MemoryType memoryType = MemoryType::Static)
-        : Buffer(vertices, BufferUsage::StorageBuffer, memoryType)
+    Buffer(const TArray<T, size>& container, MemoryType memoryType = MemoryType::Static)
+        : IBuffer(container.data(), sizeof(T) * container.size(), usage, memoryType)
     {
-
+        
     }
 
-	~VertexBuffer() = default;
+	virtual ~Buffer() = default;
 
     void Resize(size_t count, bool keepContent = false)
     {
-        Buffer::Resize(sizeof(T) * count, keepContent);
+        IBuffer::Resize(sizeof(T) * count, keepContent);
     }
-
+    
+    template<size_t size>
+    void SetData(const std::array<T, size>& container, size_t offset = 0) const
+    {
+        IBuffer::SetData(container.data(), offset, sizeof(T) * container.size());
+    }
+    
+    void SetData(const std::vector<T>& container, size_t offset = 0) const
+    {
+        IBuffer::SetData(container.data(), offset, sizeof(T) * container.size());
+    }
+    
 	size_t GetCount() const
 	{
 		return mSize / sizeof(T);
@@ -177,67 +102,16 @@ public:
 
 };
 
-/************************************************************************/
-/* IndexBuffer                                                          */
-/************************************************************************/
-class IndexBuffer final : public Buffer
-{
-public:
+template<IndexType indexType, typename T = typename std::conditional<indexType == IndexType::UINT32, uint32_t, uint16_t>::type>
+using IndexBuffer = Buffer<T, BufferUsage::IndexBuffer>;
 
-    IndexBuffer(size_t count, IndexType indexType = IndexType::UINT32, MemoryType memoryType = MemoryType::Static)
-		: mIndexType(indexType), Buffer(count * SizeOfIndexType(indexType), BufferUsage::IndexBuffer, memoryType)
-	{
-        
-	}
-
-	IndexBuffer(const TArray<uint16_t>& indices, MemoryType memoryType = MemoryType::Static)
-		: mIndexType(IndexType::UINT16), Buffer(indices, BufferUsage::IndexBuffer, memoryType)
-	{
-
-	}
-
-    IndexBuffer(const TArray<uint32_t>& indices, MemoryType memoryType = MemoryType::Static)
-        : mIndexType(IndexType::UINT32), Buffer(indices, BufferUsage::IndexBuffer, memoryType)
-    {
-        
-    }
-
-	~IndexBuffer() = default;
-
-    void Resize(size_t count, bool keepContent = false)
-    {
-        Buffer::Resize(SizeOfIndexType(mIndexType) * count, keepContent);
-    }
-
-	size_t GetCount() const
-	{
-		return mSize / GetIndexSize();
-	}
+template<typename T>
+using StorageBuffer = Buffer<T, BufferUsage::StorageBuffer>;
     
-    size_t GetIndexSize() const
-    {
-        return SizeOfIndexType(mIndexType);
-    }
+template<typename T>
+using UniformBuffer = Buffer<T, BufferUsage::UniformBuffer>;
 
-	IndexType GetIndexType() const
-	{
-		return mIndexType;
-	}
-    
-private:
-
-    static constexpr size_t SizeOfIndexType(IndexType indexType)
-    {
-        switch (indexType)
-        {
-            case IndexType::UINT16: return sizeof(uint16_t);
-            case IndexType::UINT32: return sizeof(uint32_t);
-            default: return 0;
-        }
-    }
-    
-	const IndexType mIndexType = IndexType::UINT32;
-
-};
+template<typename T>
+using VertexBuffer = StorageBuffer<T>;
 
 } // namespace Gleam

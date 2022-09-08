@@ -55,8 +55,6 @@ private:
     
     void RenderPrimitive(uint32_t primitiveCount, uint32_t bufferOffset, PrimitiveTopology topology, bool depthTest) const;
     
-    void RenderMesh(const MeshBuffer& meshBuffer, const TArray<SubmeshDescriptor>& submeshDescriptors, const Matrix4& transform, Color32 color, bool depthTest) const;
-    
     Matrix4 mViewMatrix;
     Matrix4 mProjectionMatrix;
     
@@ -65,9 +63,6 @@ private:
 
 	TArray<DebugTriangle> mTriangles;
 	TArray<DebugTriangle> mDepthTriangles;
-    
-    TArray<std::tuple<const Mesh*, Matrix4, Color32>> mMeshes;
-    TArray<std::tuple<const Mesh*, Matrix4, Color32>> mDepthMeshes;
 
 	CommandBuffer mCommandBuffer;
 	GraphicsShader mDebugProgram;

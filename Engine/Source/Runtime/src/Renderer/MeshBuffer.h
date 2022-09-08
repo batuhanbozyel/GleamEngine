@@ -15,11 +15,11 @@ public:
     
     const VertexBuffer<InterleavedMeshVertex>& GetInterleavedBuffer() const;
     
-    const IndexBuffer& GetIndexBuffer() const;
+    const IndexBuffer<IndexType::UINT32>& GetIndexBuffer() const;
     
 private:
     
-    IndexBuffer mIndexBuffer;
+    IndexBuffer<IndexType::UINT32> mIndexBuffer;
     VertexBuffer<Vector3> mPositionBuffer;
     VertexBuffer<InterleavedMeshVertex> mInterleavedBuffer;
     

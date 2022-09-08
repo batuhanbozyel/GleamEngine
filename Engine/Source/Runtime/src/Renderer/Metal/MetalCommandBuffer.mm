@@ -2,9 +2,9 @@
 
 #ifdef USE_METAL_RENDERER
 #include "Renderer/CommandBuffer.h"
-#include "MetalPipelineStateManager.h"
 #include "Renderer/Renderer.h"
-#include "Renderer/Buffer.h"
+
+#include "MetalPipelineStateManager.h"
 
 using namespace Gleam;
 
@@ -91,14 +91,14 @@ void CommandBuffer::SetViewport(uint32_t width, uint32_t height) const
     [mHandle->renderCommandEncoder setViewport:viewport];
 }
 
-void CommandBuffer::SetVertexBuffer(const Buffer& buffer, uint32_t index, uint32_t offset) const
+void CommandBuffer::SetVertexBuffer(const NativeGraphicsHandle buffer, uint32_t index, uint32_t offset) const
 {
-    [mHandle->renderCommandEncoder setVertexBuffer:buffer.GetHandle() offset:offset atIndex:index];
+    [mHandle->renderCommandEncoder setVertexBuffer:buffer offset:offset atIndex:index];
 }
 
-void CommandBuffer::SetFragmentBuffer(const Buffer& buffer, uint32_t index, uint32_t offset) const
+void CommandBuffer::SetFragmentBuffer(const NativeGraphicsHandle buffer, uint32_t index, uint32_t offset) const
 {
-    [mHandle->renderCommandEncoder setFragmentBuffer:buffer.GetHandle() offset:offset atIndex:index];
+    [mHandle->renderCommandEncoder setFragmentBuffer:buffer offset:offset atIndex:index];
 }
 
 void CommandBuffer::SetPushConstant(const void* data, uint32_t size, ShaderStage stage, uint32_t index) const
@@ -128,17 +128,15 @@ void CommandBuffer::Draw(uint32_t vertexCount, uint32_t instanceCount, uint32_t 
     [mHandle->renderCommandEncoder drawPrimitives:PrimitiveToplogyToMTLPrimitiveType(mHandle->pipelineState.descriptor.topology) vertexStart:baseVertex vertexCount:vertexCount instanceCount:instanceCount baseInstance:baseInstance];
 }
 
-void CommandBuffer::DrawIndexed(const IndexBuffer& indexBuffer, uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, uint32_t baseVertex, uint32_t baseInstance) const
+void CommandBuffer::DrawIndexed(const NativeGraphicsHandle indexBuffer, IndexType type, uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, uint32_t baseVertex, uint32_t baseInstance) const
 {
-    MTLIndexType indexType = static_cast<MTLIndexType>(indexBuffer.GetIndexType());
-    [mHandle->renderCommandEncoder drawIndexedPrimitives:PrimitiveToplogyToMTLPrimitiveType(mHandle->pipelineState.descriptor.topology) indexCount:indexCount indexType:indexType indexBuffer:indexBuffer.GetHandle() indexBufferOffset:firstIndex * indexBuffer.GetIndexSize() instanceCount:instanceCount baseVertex:baseVertex baseInstance:baseInstance];
+    MTLIndexType indexType = static_cast<MTLIndexType>(type);
+    [mHandle->renderCommandEncoder drawIndexedPrimitives:PrimitiveToplogyToMTLPrimitiveType(mHandle->pipelineState.descriptor.topology) indexCount:indexCount indexType:indexType indexBuffer:indexBuffer indexBufferOffset:firstIndex * SizeOfIndexType(type) instanceCount:instanceCount baseVertex:baseVertex baseInstance:baseInstance];
 }
 
-void CommandBuffer::CopyBuffer(const Buffer& src, const Buffer& dst, uint32_t size, uint32_t srcOffset, uint32_t dstOffset) const
+void CommandBuffer::CopyBuffer(const NativeGraphicsHandle src, const NativeGraphicsHandle dst, uint32_t size, uint32_t srcOffset, uint32_t dstOffset) const
 {
-    GLEAM_ASSERT(size <= src.GetSize(), "Metal: Copy size can not be larger than source buffer size!");
-    GLEAM_ASSERT(size <= dst.GetSize(), "Metal: Copy size can not be larger than destination buffer size!");
-    [mHandle->blitCommandEncoder copyFromBuffer:src.GetHandle() sourceOffset:srcOffset toBuffer:dst.GetHandle() destinationOffset:dstOffset size:size];
+    [mHandle->blitCommandEncoder copyFromBuffer:src sourceOffset:srcOffset toBuffer:dst destinationOffset:dstOffset size:size];
 }
 
 void CommandBuffer::Begin() const
