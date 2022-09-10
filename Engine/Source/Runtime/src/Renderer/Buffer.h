@@ -6,18 +6,18 @@ namespace Gleam {
 
 enum class BufferUsage
 {
-	VertexBuffer,
-	IndexBuffer,
-	StorageBuffer,
-	UniformBuffer,
-	StagingBuffer
+    VertexBuffer,
+    IndexBuffer,
+    StorageBuffer,
+    UniformBuffer,
+    StagingBuffer
 };
 
 enum class MemoryType
 {
-	Static,
-	Dynamic,
-	Stream
+    Static,
+    Dynamic,
+    Stream
 };
 
 /************************************************************************/
@@ -33,11 +33,11 @@ public:
 
     virtual ~IBuffer();
 
-	static void Allocate(IBuffer& buffer);
+    static void Allocate(IBuffer& buffer);
 
-	static void Free(IBuffer& buffer);
+    static void Free(IBuffer& buffer);
 
-	static void Copy(const IBuffer& src, const IBuffer& dst, size_t srcOffset = 0, size_t dstOffset = 0);
+    static void Copy(const IBuffer& src, const IBuffer& dst, size_t srcOffset = 0, size_t dstOffset = 0);
 
     void Resize(size_t size, bool keepContent = false);
 
@@ -49,13 +49,13 @@ public:
 
 protected:
 
-	const BufferUsage mUsage = BufferUsage::StorageBuffer;
-	const MemoryType mMemoryType = MemoryType::Static;
+    const BufferUsage mUsage = BufferUsage::StorageBuffer;
+    const MemoryType mMemoryType = MemoryType::Static;
 
     size_t mSize = 0;
-    
-	void* mContents = nullptr;
-	NativeGraphicsHandle mMemory = nullptr;
+
+    void* mContents = nullptr;
+    NativeGraphicsHandle mMemory = nullptr;
 
 };
 
@@ -65,17 +65,17 @@ class Buffer : public IBuffer
 public:
 
     Buffer(size_t count)
-		: IBuffer(count * sizeof(T), usage, memoryType)
-	{
+        : IBuffer(count * sizeof(T), usage, memoryType)
+    {
 
-	}
-    
+    }
+
     Buffer(const std::vector<T>& container)
         : IBuffer(container.data(), sizeof(T) * container.size(), usage, memoryType)
     {
         
     }
-    
+
     template<size_t size>
     Buffer(const std::array<T, size>& container)
         : IBuffer(container.data(), sizeof(T) * container.size(), usage, memoryType)
@@ -83,33 +83,33 @@ public:
         
     }
 
-	virtual ~Buffer() = default;
+    virtual ~Buffer() = default;
 
     void Resize(size_t count, bool keepContent = false)
     {
         IBuffer::Resize(sizeof(T) * count, keepContent);
     }
-    
+
     void SetData(const T& t, size_t offset = 0) const
     {
         IBuffer::SetData(&t, offset, sizeof(T));
     }
-    
+
     template<size_t size>
     void SetData(const std::array<T, size>& container, size_t offset = 0) const
     {
         IBuffer::SetData(container.data(), offset, sizeof(T) * container.size());
     }
-    
+
     void SetData(const std::vector<T>& container, size_t offset = 0) const
     {
         IBuffer::SetData(container.data(), offset, sizeof(T) * container.size());
     }
-    
-	size_t GetCount() const
-	{
-		return mSize / sizeof(T);
-	}
+
+    size_t GetCount() const
+    {
+        return mSize / sizeof(T);
+    }
 
 };
 

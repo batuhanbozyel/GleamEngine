@@ -40,8 +40,8 @@ struct InterleavedMeshVertex
 
 struct DebugVertex
 {
-	Vector3 position;
-	Color32 color;
+    Vector3 position;
+    Color32 color;
 };
 
 struct CameraUniforms

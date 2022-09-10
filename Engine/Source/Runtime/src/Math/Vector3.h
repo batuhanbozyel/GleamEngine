@@ -5,19 +5,19 @@ namespace Gleam {
 template<typename T>
 struct alignas(16) Vector3Base
 {
-	union
-	{
-		struct
-		{
-			T x, y, z;
-		};
-		struct
-		{
-			T r, g, b;
-		};
-		TArray<T, 3> value{};
-	};
-    
+    union
+    {
+        struct
+        {
+            T x, y, z;
+        };
+        struct
+        {
+            T r, g, b;
+        };
+        TArray<T, 3> value{};
+    };
+
     static const Vector3Base zero;
     static const Vector3Base one;
     static const Vector3Base left;
@@ -27,58 +27,58 @@ struct alignas(16) Vector3Base
     static const Vector3Base forward;
     static const Vector3Base back;
 
-	constexpr Vector3Base() = default;
-	constexpr Vector3Base(Vector3Base&&) = default;
-	constexpr Vector3Base(const Vector3Base&) = default;
-	FORCE_INLINE constexpr Vector3Base& operator=(Vector3Base&&) = default;
-	FORCE_INLINE constexpr Vector3Base& operator=(const Vector3Base&) = default;
+    constexpr Vector3Base() = default;
+    constexpr Vector3Base(Vector3Base&&) = default;
+    constexpr Vector3Base(const Vector3Base&) = default;
+    FORCE_INLINE constexpr Vector3Base& operator=(Vector3Base&&) = default;
+    FORCE_INLINE constexpr Vector3Base& operator=(const Vector3Base&) = default;
 
-	constexpr Vector3Base(T v)
-		: x(v), y(v), z(v)
-	{
+    constexpr Vector3Base(T v)
+        : x(v), y(v), z(v)
+    {
 
-	}
-    
+    }
+
     constexpr Vector3Base(T x, T y)
         : x(x), y(y), z(0.0f)
     {
 
     }
-    
-	constexpr Vector3Base(T x, T y, T z)
-		: x(x), y(y), z(z)
-	{
 
-	}
-    
-	constexpr Vector3Base(const TArray<T, 3>& vec)
-		: x(vec[0]), y(vec[1]), z(vec[2])
-	{
+    constexpr Vector3Base(T x, T y, T z)
+        : x(x), y(y), z(z)
+    {
 
-	}
-    
+    }
+
+    constexpr Vector3Base(const TArray<T, 3>& vec)
+        : x(vec[0]), y(vec[1]), z(vec[2])
+    {
+
+    }
+
     constexpr Vector3Base(const Vector2& vec)
         : x(vec.x), y(vec.y), z(0.0f)
     {
 
     }
-    
+
     constexpr Vector3Base(const Vector2& vec, float z)
         : x(vec.x), y(vec.y), z(z)
     {
 
     }
-    
+
     NO_DISCARD FORCE_INLINE constexpr bool operator==(const Vector3Base& vec) const
     {
         return x == vec.x && y == vec.y && z == vec.z;
     }
 
-	NO_DISCARD FORCE_INLINE constexpr T& operator[](size_t i)
-	{
-		return value[i];
-	}
-    
+    NO_DISCARD FORCE_INLINE constexpr T& operator[](size_t i)
+    {
+        return value[i];
+    }
+
     NO_DISCARD FORCE_INLINE constexpr const T& operator[](size_t i) const
     {
         return value[i];
@@ -93,150 +93,150 @@ struct alignas(16) Vector3Base
             -z
         };
     }
-    
-	NO_DISCARD FORCE_INLINE constexpr Vector3Base operator*(T val) const
-	{
-		return Vector3Base
-		{
-			x * val,
-			y * val,
-			z * val
-		};
-	}
 
-	NO_DISCARD FORCE_INLINE constexpr Vector3Base operator/(T val) const
-	{
-		return Vector3Base
-		{
-			x / val,
-			y / val,
-			z / val
-		};
-	}
+    NO_DISCARD FORCE_INLINE constexpr Vector3Base operator*(T val) const
+    {
+        return Vector3Base
+        {
+            x * val,
+            y * val,
+            z * val
+        };
+    }
 
-	NO_DISCARD FORCE_INLINE constexpr Vector3Base operator+(T val) const
-	{
-		return Vector3Base
-		{
-			x + val,
-			y + val,
-			z + val
-		};
-	}
+    NO_DISCARD FORCE_INLINE constexpr Vector3Base operator/(T val) const
+    {
+        return Vector3Base
+        {
+            x / val,
+            y / val,
+            z / val
+        };
+    }
 
-	NO_DISCARD FORCE_INLINE constexpr Vector3Base operator-(T val) const
-	{
-		return Vector3Base
-		{
-			x - val,
-			y - val,
-			z - val
-		};
-	}
+    NO_DISCARD FORCE_INLINE constexpr Vector3Base operator+(T val) const
+    {
+        return Vector3Base
+        {
+            x + val,
+            y + val,
+            z + val
+        };
+    }
 
-	NO_DISCARD FORCE_INLINE constexpr Vector3Base operator*(const Vector3Base& vec) const
-	{
-		return Vector3Base
-		{
-			x * vec.x,
-			y * vec.y,
-			z * vec.z
-		};
-	}
+    NO_DISCARD FORCE_INLINE constexpr Vector3Base operator-(T val) const
+    {
+        return Vector3Base
+        {
+            x - val,
+            y - val,
+            z - val
+        };
+    }
 
-	NO_DISCARD FORCE_INLINE constexpr Vector3Base operator/(const Vector3Base& vec) const
-	{
-		return Vector3Base
-		{
-			x / vec.x,
-			y / vec.y,
-			z / vec.z
-		};
-	}
+    NO_DISCARD FORCE_INLINE constexpr Vector3Base operator*(const Vector3Base& vec) const
+    {
+        return Vector3Base
+        {
+            x * vec.x,
+            y * vec.y,
+            z * vec.z
+        };
+    }
 
-	NO_DISCARD FORCE_INLINE constexpr Vector3Base operator+(const Vector3Base& vec) const
-	{
-		return Vector3Base
-		{
-			x + vec.x,
-			y + vec.y,
-			z + vec.z
-		};
-	}
+    NO_DISCARD FORCE_INLINE constexpr Vector3Base operator/(const Vector3Base& vec) const
+    {
+        return Vector3Base
+        {
+            x / vec.x,
+            y / vec.y,
+            z / vec.z
+        };
+    }
 
-	NO_DISCARD FORCE_INLINE constexpr Vector3Base operator-(const Vector3Base& vec) const
-	{
-		return Vector3Base
-		{
-			x - vec.x,
-			y - vec.y,
-			z - vec.z
-		};
-	}
+    NO_DISCARD FORCE_INLINE constexpr Vector3Base operator+(const Vector3Base& vec) const
+    {
+        return Vector3Base
+        {
+            x + vec.x,
+            y + vec.y,
+            z + vec.z
+        };
+    }
 
-	FORCE_INLINE constexpr Vector3Base& operator*=(T val)
-	{
-		x *= val;
-		y *= val;
-		z *= val;
-		return *this;
-	}
+    NO_DISCARD FORCE_INLINE constexpr Vector3Base operator-(const Vector3Base& vec) const
+    {
+        return Vector3Base
+        {
+            x - vec.x,
+            y - vec.y,
+            z - vec.z
+        };
+    }
 
-	FORCE_INLINE constexpr Vector3Base& operator/=(T val)
-	{
-		x /= val;
-		y /= val;
-		z /= val;
-		return *this;
-	}
+    FORCE_INLINE constexpr Vector3Base& operator*=(T val)
+    {
+        x *= val;
+        y *= val;
+        z *= val;
+        return *this;
+    }
 
-	FORCE_INLINE constexpr Vector3Base& operator+=(T val)
-	{
-		x += val;
-		y += val;
-		z += val;
-		return *this;
-	}
+    FORCE_INLINE constexpr Vector3Base& operator/=(T val)
+    {
+        x /= val;
+        y /= val;
+        z /= val;
+        return *this;
+    }
 
-	FORCE_INLINE constexpr Vector3Base& operator-=(T val)
-	{
-		x -= val;
-		y -= val;
-		z -= val;
-		return *this;
-	}
+    FORCE_INLINE constexpr Vector3Base& operator+=(T val)
+    {
+        x += val;
+        y += val;
+        z += val;
+        return *this;
+    }
 
-	FORCE_INLINE constexpr Vector3Base& operator*=(const Vector3Base& vec)
-	{
-		x *= vec.x;
-		y *= vec.y;
-		z *= vec.z;
-		return *this;
-	}
+    FORCE_INLINE constexpr Vector3Base& operator-=(T val)
+    {
+        x -= val;
+        y -= val;
+        z -= val;
+        return *this;
+    }
 
-	FORCE_INLINE constexpr Vector3Base& operator/=(const Vector3Base& vec)
-	{
-		x /= vec.x;
-		y /= vec.y;
-		z /= vec.z;
-		return *this;
-	}
+    FORCE_INLINE constexpr Vector3Base& operator*=(const Vector3Base& vec)
+    {
+        x *= vec.x;
+        y *= vec.y;
+        z *= vec.z;
+        return *this;
+    }
 
-	FORCE_INLINE constexpr Vector3Base& operator+=(const Vector3Base& vec)
-	{
-		x += vec.x;
-		y += vec.y;
-		z += vec.z;
-		return *this;
-	}
+    FORCE_INLINE constexpr Vector3Base& operator/=(const Vector3Base& vec)
+    {
+        x /= vec.x;
+        y /= vec.y;
+        z /= vec.z;
+        return *this;
+    }
 
-	FORCE_INLINE constexpr Vector3Base& operator-=(const Vector3Base& vec)
-	{
-		x -= vec.x;
-		y -= vec.y;
-		z -= vec.z;
-		return *this;
-	}
+    FORCE_INLINE constexpr Vector3Base& operator+=(const Vector3Base& vec)
+    {
+        x += vec.x;
+        y += vec.y;
+        z += vec.z;
+        return *this;
+    }
+
+    FORCE_INLINE constexpr Vector3Base& operator-=(const Vector3Base& vec)
+    {
+        x -= vec.x;
+        y -= vec.y;
+        z -= vec.z;
+        return *this;
+    }
 
 };
     

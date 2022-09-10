@@ -16,7 +16,7 @@ struct
 void ShaderLibrary::Init()
 {
     NSError* error;
-	auto binaryData = IOUtils::ReadBinaryFile(AssetLibrary::GetDefaultAssetPath().append("PrecompiledShaders.metallib"));
+    auto binaryData = IOUtils::ReadBinaryFile(AssetLibrary::GetDefaultAssetPath().append("PrecompiledShaders.metallib"));
     mContext.library = [MetalDevice newLibraryWithData:dispatch_data_create(binaryData.data(), binaryData.size(), nil, DISPATCH_DATA_DESTRUCTOR_DEFAULT) error:&error];
     GLEAM_ASSERT(mContext.library);
 }

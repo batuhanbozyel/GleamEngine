@@ -5,9 +5,9 @@ namespace Gleam {
 
 enum class ShaderStage
 {
-	Vertex,
-	Fragment,
-	Compute
+    Vertex,
+    Fragment,
+    Compute
 };
 
 enum ShaderStageFlag
@@ -22,19 +22,19 @@ class Shader final : public GraphicsObject
 {
 public:
 
-	Shader(const TString& entryPoint, ShaderStage stage);
-	~Shader();
+    Shader(const TString& entryPoint, ShaderStage stage);
+    ~Shader();
 
-	ShaderStage GetStage() const
-	{
-		return mStage;
-	}
+    ShaderStage GetStage() const
+    {
+        return mStage;
+    }
 
-	const TString& GetEntryPoint() const
-	{
-		return mEntryPoint;
-	}
-    
+    const TString& GetEntryPoint() const
+    {
+        return mEntryPoint;
+    }
+
     struct Reflection;
     const Scope<Reflection>& GetReflection() const
     {
@@ -44,9 +44,9 @@ public:
 private:
     
     Scope<Reflection> mReflection;
-    
-	ShaderStage mStage;
-	TString mEntryPoint;
+
+    ShaderStage mStage;
+    TString mEntryPoint;
 
 };
 

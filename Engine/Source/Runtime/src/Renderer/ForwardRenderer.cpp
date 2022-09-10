@@ -11,27 +11,27 @@ using namespace Gleam;
 ForwardRenderer::ForwardRenderer()
 {
     mForwardPassProgram.vertexShader = ShaderLibrary::CreateShader("forwardPassVertexShader", ShaderStage::Vertex);
-	mForwardPassProgram.fragmentShader = ShaderLibrary::CreateShader("forwardPassFragmentShader", ShaderStage::Fragment);
+    mForwardPassProgram.fragmentShader = ShaderLibrary::CreateShader("forwardPassFragmentShader", ShaderStage::Fragment);
 }
 
 ForwardRenderer::~ForwardRenderer()
 {
-	mCommandBuffer.WaitUntilCompleted();
+    mCommandBuffer.WaitUntilCompleted();
 }
 
 void ForwardRenderer::Render()
 {
-	const auto& drawableSize = GetDrawableSize();
+    const auto& drawableSize = GetDrawableSize();
     RenderPassDescriptor renderPassDesc;
-	renderPassDesc.swapchainTarget = true;
-	renderPassDesc.width = static_cast<uint32_t>(drawableSize.x);
-	renderPassDesc.height = static_cast<uint32_t>(drawableSize.y);
-    
-	mCommandBuffer.Begin();
-	mCommandBuffer.BeginRenderPass(renderPassDesc);
+    renderPassDesc.swapchainTarget = true;
+    renderPassDesc.width = static_cast<uint32_t>(drawableSize.x);
+    renderPassDesc.height = static_cast<uint32_t>(drawableSize.y);
+
+    mCommandBuffer.Begin();
+    mCommandBuffer.BeginRenderPass(renderPassDesc);
     mCommandBuffer.BindPipeline(PipelineStateDescriptor(), mForwardPassProgram);
-	mCommandBuffer.SetViewport(renderPassDesc.width, renderPassDesc.height);
-    
+    mCommandBuffer.SetViewport(renderPassDesc.width, renderPassDesc.height);
+
     for (const auto& [mesh, transform] : mMeshes)
     {
         const auto& meshBuffer = mesh->GetBuffer();
@@ -48,11 +48,11 @@ void ForwardRenderer::Render()
             mCommandBuffer.DrawIndexed(meshBuffer.GetIndexBuffer(), submesh.indexCount, 1, submesh.firstIndex, submesh.baseVertex);
         }
     }
-    
-	mCommandBuffer.EndRenderPass();
-	mCommandBuffer.End();
-	mCommandBuffer.Commit();
-    
+
+    mCommandBuffer.EndRenderPass();
+    mCommandBuffer.End();
+    mCommandBuffer.Commit();
+
     // reset render queue
     mMeshes.clear();
 }

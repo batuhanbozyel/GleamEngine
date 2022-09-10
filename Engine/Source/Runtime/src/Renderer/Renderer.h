@@ -12,27 +12,27 @@ class Renderer
 {
 public:
 
-	static void Init(const TString& appName, const Version& appVersion, const RendererProperties& props);
+    static void Init(const TString& appName, const Version& appVersion, const RendererProperties& props);
 
-	static void Destroy();
+    static void Destroy();
 
-	static Vector2 GetDrawableSize();
-    
-	/**
-	* Renderer specific implementations
-	*/
-    
+    static Vector2 GetDrawableSize();
+
+    /**
+    * Renderer specific implementations
+    */
+
     Renderer();
-    
-	virtual ~Renderer() = default;
 
-	virtual void Render() = 0;
-    
+    virtual ~Renderer() = default;
+
+    virtual void Render() = 0;
+
     void UpdateView(Camera& camera);
-    
+
     const UniformBuffer<CameraUniforms, MemoryType::Dynamic>& GetCameraBuffer() const;
-    
-	static inline Color clearColor{ 0.1f, 0.1f, 0.1f, 1.0f };
+
+    static inline Color clearColor{ 0.1f, 0.1f, 0.1f, 1.0f };
     
 private:
     

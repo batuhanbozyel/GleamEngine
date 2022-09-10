@@ -9,8 +9,8 @@ namespace tinyobj {
 bool operator==(const index_t& lhs, const index_t& rhs)
 {
 	return	lhs.vertex_index == rhs.vertex_index &&
-			lhs.normal_index == rhs.normal_index &&
-			lhs.texcoord_index == rhs.texcoord_index;
+            lhs.normal_index == rhs.normal_index &&
+            lhs.texcoord_index == rhs.texcoord_index;
 }
 
 } // namespace tinyobj

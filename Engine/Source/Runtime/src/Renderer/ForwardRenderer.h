@@ -6,25 +6,23 @@
 
 namespace Gleam {
 
-class GraphicsShader;
-
 class ForwardRenderer final : public Renderer
 {
 public:
 
-	ForwardRenderer();
+    ForwardRenderer();
 
-	~ForwardRenderer();
+    ~ForwardRenderer();
 
-	virtual void Render() override;
-    
+    virtual void Render() override;
+
     void DrawMesh(const Mesh* mesh, const Matrix4& transform);
     
 private:
     
-	CommandBuffer mCommandBuffer;
+    CommandBuffer mCommandBuffer;
     GraphicsShader mForwardPassProgram;
-    
+
     TArray<std::pair<const Mesh*, Matrix4>> mMeshes;
 
 };
