@@ -94,11 +94,12 @@ class SceneLayer : public Gleam::Layer
         
         for (const auto& mesh : mMeshes)
         {
+            auto transform = Gleam::Matrix4::identity;
             for (const auto& submesh : mesh->GetSubmeshDescriptors())
             {
-                mRenderer.DrawBoundingBox(submesh.bounds, Gleam::Color32(0, 255, 0, 255));
+                mRenderer.DrawBoundingBox(submesh.bounds, transform, Gleam::Color32(0, 255, 0, 255));
             }
-            mRenderer.DrawMesh(mesh.get(), Gleam::Matrix4::identity, Gleam::Color32(192, 96, 0, 255));
+            mRenderer.DrawMesh(mesh.get(), transform, Gleam::Color32(192, 96, 0, 255));
         }
     }
     
