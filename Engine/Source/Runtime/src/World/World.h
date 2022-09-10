@@ -1,11 +1,12 @@
 #pragma once
 #include "EntityManager.h"
 #include "ComponentSystem.h"
-#include <iostream>
-
 
 namespace Gleam {
 
+template<typename T>
+concept ComponentSystemType = std::same_as<T, ComponentSystem>;
+    
 class World final
 {
     template<typename T>
@@ -22,35 +23,31 @@ public:
         
 	}
     
-    template<typename T>
+    template<ComponentSystemType T>
     T& AddSystem()
     {
-        static_assert(std::is_base_of<ComponentSystem, T>(), "System must be derived from ComponentSystem base class!");
         GLEAM_ASSERT(!HasSystem<T>(), "World already has the system!");
         return *static_cast<T*>(mSystems.emplace_back(CreateScope<T>()).get());
     }
     
-    template<typename T>
+    template<ComponentSystemType T>
     void RemoveSystem()
     {
-        static_assert(std::is_base_of<ComponentSystem, T>(), "System must be derived from ComponentSystem base class!");
         GLEAM_ASSERT(HasSystem<T>(), "World does not have the system!");
         std::erase_if(mSystems, is_same_system<T>);
     }
     
-    template<typename T>
+    template<ComponentSystemType T>
     T& GetSystem()
     {
-        static_assert(std::is_base_of<ComponentSystem, T>(), "System must be derived from ComponentSystem base class!");
         GLEAM_ASSERT(HasSystem<T>(), "World does not have the system!");
         auto system = std::find_if(mSystems.begin(), mSystems.end(), is_same_system<T>);
         return *static_cast<T*>(system->get());
     }
     
-    template<typename T>
+    template<ComponentSystemType T>
     bool HasSystem() const
     {
-        static_assert(std::is_base_of<ComponentSystem, T>(), "System must be derived from ComponentSystem base class!");
         return std::find_if(mSystems.begin(), mSystems.end(), is_same_system<T>) != mSystems.end();
     }
     

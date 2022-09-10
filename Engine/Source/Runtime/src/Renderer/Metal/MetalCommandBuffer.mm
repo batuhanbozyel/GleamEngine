@@ -45,21 +45,16 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc) 
     MTLRenderPassDescriptor* renderPass = [MTLRenderPassDescriptor renderPassDescriptor];
     if (renderPassDesc.swapchainTarget)
     {
-        MTLClearColor clearValue;
+        MTLClearColor clearColor = { Renderer::clearColor.r, Renderer::clearColor.g, Renderer::clearColor.b, Renderer::clearColor.a };
         if (renderPassDesc.attachments.size() > 0)
         {
-            const auto& clearColor = renderPassDesc.attachments[0].clearColor;
-            clearValue = { clearColor.r, clearColor.g, clearColor.b, clearColor.a };
-        }
-        else
-        {
-            const auto& clearColor = Renderer::clearColor;
-            clearValue = { clearColor.r, clearColor.g, clearColor.b, clearColor.a };
+            const auto& clearColorValue = renderPassDesc.attachments[0].clearColor;
+            clearColor = { clearColorValue.r, clearColorValue.g, clearColorValue.b, clearColorValue.a };
         }
         
         id<CAMetalDrawable> drawable = RendererContext::GetSwapchain()->AcquireNextDrawable();
         MTLRenderPassColorAttachmentDescriptor* colorAttachmentDesc = renderPass.colorAttachments[0];
-        colorAttachmentDesc.clearColor = clearValue;
+        colorAttachmentDesc.clearColor = clearColor;
         colorAttachmentDesc.loadAction = MTLLoadActionClear;
         colorAttachmentDesc.storeAction = MTLStoreActionStore;
         colorAttachmentDesc.texture = drawable.texture;

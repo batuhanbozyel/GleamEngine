@@ -9,6 +9,7 @@
 #include <utility>
 #include <algorithm>
 #include <functional>
+#include <concepts>
 #include <typeindex>
 #include <type_traits>
 #include <numeric>
@@ -50,6 +51,7 @@
 #include "Math/BoundingBox.h"
 
 #include "Renderer/GraphicsObject.h"
+#include "Renderer/IndexType.h"
 
 #include "Core/Events/ApplicationEvent.h"
 #include "Core/Events/RendererEvent.h"
