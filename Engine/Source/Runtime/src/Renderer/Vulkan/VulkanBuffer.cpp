@@ -6,7 +6,7 @@
 
 using namespace Gleam;
 
-void Buffer::Allocate(Buffer& buffer)
+void IBuffer::Allocate(IBuffer& buffer)
 {
 	VkBufferCreateInfo createInfo{ VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
 	createInfo.size = buffer.GetSize();
@@ -59,13 +59,13 @@ void Buffer::Allocate(Buffer& buffer)
 	}
 }
 
-void Buffer::Free(Buffer& buffer)
+void IBuffer::Free(IBuffer& buffer)
 {
 	vkDestroyBuffer(VulkanDevice, As<VkBuffer>(buffer.mHandle), nullptr);
 	vkFreeMemory(VulkanDevice, As<VkDeviceMemory>(buffer.mMemory), nullptr);
 }
 
-void Buffer::Copy(const Buffer& src, const Buffer& dst, uint32_t srcOffset, uint32_t dstOffset)
+void IBuffer::Copy(const IBuffer& src, const IBuffer& dst, size_t srcOffset, size_t dstOffset)
 {
 	GLEAM_ASSERT(src.GetSize() <= dst.GetSize(), "Vulkan: Source buffer size can not be larger than destination buffer size!");
 

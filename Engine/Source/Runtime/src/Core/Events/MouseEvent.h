@@ -1,5 +1,6 @@
 #pragma once
 #include "Event.h"
+#include "Input/MouseButton.h"
 
 namespace Gleam {
 
@@ -7,27 +8,27 @@ class MouseButtonEvent : public Event
 {
 public:
 
-	int GetMouseButton() const { return mMouseCode; }
+    MouseButton GetMouseButton() const { return mButton; }
 
 protected:
 
-	MouseButtonEvent(int mouseCode)
-		: mMouseCode(mouseCode) {}
+	MouseButtonEvent(MouseButton button)
+		: mButton(button) {}
 
-	int mMouseCode;
+    MouseButton mButton;
 };
 
 class MouseButtonPressedEvent : public MouseButtonEvent
 {
 public:
 
-	MouseButtonPressedEvent(int mouseCode)
-		: MouseButtonEvent(mouseCode) {}
+	MouseButtonPressedEvent(MouseButton button)
+		: MouseButtonEvent(button) {}
 
 	TString ToString() const override
 	{
 		TStringStream ss;
-		ss << "MouseButtonPressedEvent: " << mMouseCode;
+		ss << "MouseButtonPressedEvent: " << Gleam::ToString(mButton);
 		return ss.str();
 	}
 };
@@ -36,13 +37,13 @@ class MouseButtonReleasedEvent : public MouseButtonEvent
 {
 public:
 
-	MouseButtonReleasedEvent(int mouseCode)
-		: MouseButtonEvent(mouseCode) {}
+	MouseButtonReleasedEvent(MouseButton button)
+		: MouseButtonEvent(button) {}
 
 	TString ToString() const override
 	{
 		TStringStream ss;
-		ss << "MouseButtonReleasedEvent: " << mMouseCode;
+		ss << "MouseButtonReleasedEvent: " << Gleam::ToString(mButton);
 		return ss.str();
 	}
 };
@@ -52,21 +53,21 @@ class MouseMovedEvent : public Event
 public:
 
 	MouseMovedEvent(float xpos, float ypos)
-		: mMousePos(xpos, ypos) {}
+		: mPosition(xpos, ypos) {}
 
 
-	const Vector2& GetPos() const { return mMousePos; }
+	const Vector2& GetPosition() const { return mPosition; }
 
 	TString ToString() const override
 	{
 		TStringStream ss;
-		ss << "MouseMovedEvent: " << mMousePos.x << ", " << mMousePos.y;
+		ss << "MouseMovedEvent: " << mPosition.x << ", " << mPosition.y;
 		return ss.str();
 	}
 
 private:
 
-	Vector2 mMousePos;
+	Vector2 mPosition;
 };
 
 class MouseScrolledEvent : public Event
@@ -74,20 +75,20 @@ class MouseScrolledEvent : public Event
 public:
 
 	MouseScrolledEvent(float xoffset, float yoffset)
-		: mMouseScrollOffset(xoffset, yoffset) {}
+		: mScrollOffset(xoffset, yoffset) {}
 
-	const Vector2& GetOffset() const { return mMouseScrollOffset; }
+	const Vector2& GetOffset() const { return mScrollOffset; }
 
 	TString ToString() const override
 	{
 		TStringStream ss;
-		ss << "MouseScrolledEvent: " << mMouseScrollOffset.x << ", " << mMouseScrollOffset.y;
+		ss << "MouseScrolledEvent: " << mScrollOffset.x << ", " << mScrollOffset.y;
 		return ss.str();
 	}
 
 private:
 
-	Vector2 mMouseScrollOffset;
+	Vector2 mScrollOffset;
 };
 
 } // namespace Gleam

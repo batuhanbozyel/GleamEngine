@@ -217,15 +217,10 @@ void RendererContext::Init(const TString& appName, const Version& appVersion, co
 	TArray<const char*> requiredDeviceExtension
 	{
 		VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-		VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME,
-		VK_EXT_SCALAR_BLOCK_LAYOUT_EXTENSION_NAME
+		VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME
 	};
-
-	VkPhysicalDeviceScalarBlockLayoutFeatures scalarBlockLayoutExt{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SCALAR_BLOCK_LAYOUT_FEATURES };
-	scalarBlockLayoutExt.scalarBlockLayout = true;
-
+    
 	VkDeviceCreateInfo deviceCreateInfo{ VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO };
-	deviceCreateInfo.pNext = &scalarBlockLayoutExt;
 	deviceCreateInfo.queueCreateInfoCount = queueFamilyCount;
 	deviceCreateInfo.pQueueCreateInfos = deviceQueueCreateInfos.data();
 	deviceCreateInfo.enabledExtensionCount = static_cast<uint32_t>(requiredDeviceExtension.size());

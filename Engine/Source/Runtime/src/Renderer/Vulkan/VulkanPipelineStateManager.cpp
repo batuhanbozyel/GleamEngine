@@ -27,7 +27,7 @@ const VulkanRenderPass& VulkanPipelineStateManager::GetRenderPass(const RenderPa
 	return cachedElement.renderPass;
 }
 
-const VulkanPipeline& VulkanPipelineStateManager::GetGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc, const GraphicsShader& program, VkRenderPass renderPass)
+const VulkanPipeline& VulkanPipelineStateManager::GetGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc, const GraphicsShader& program, const VulkanRenderPass& renderPass)
 {
 	for (uint32_t i = 0; i < mGraphicsPipelineCache.size(); i++)
 	{
@@ -42,7 +42,7 @@ const VulkanPipeline& VulkanPipelineStateManager::GetGraphicsPipeline(const Pipe
 	element.pipelineStateDescriptor = pipelineDesc;
 	element.program = program;
 	element.renderPass = renderPass;
-	element.pipeline = CreateGraphicsPipeline(pipelineDesc, program, renderPass);
+	element.pipeline = CreateGraphicsPipeline(pipelineDesc, program, renderPass.handle);
 	const auto& cachedElement = mGraphicsPipelineCache.emplace_back(element);
 	return cachedElement.pipeline;
 }
@@ -107,11 +107,11 @@ VkRenderPass VulkanPipelineStateManager::CreateRenderPass(const RenderPassDescri
 
 	VkRenderPass renderPass;
 	VkRenderPassCreateInfo renderPassCreateInfo{ VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO };
-	renderPassCreateInfo.attachmentCount = attachmentDescriptors.size();
+	renderPassCreateInfo.attachmentCount = static_cast<uint32_t>(attachmentDescriptors.size());
 	renderPassCreateInfo.pAttachments = attachmentDescriptors.data();
-	renderPassCreateInfo.subpassCount = subpassDescriptors.size();
+	renderPassCreateInfo.subpassCount = static_cast<uint32_t>(subpassDescriptors.size());
 	renderPassCreateInfo.pSubpasses = subpassDescriptors.data();
-	renderPassCreateInfo.dependencyCount = subpassDependencies.size();
+	renderPassCreateInfo.dependencyCount = static_cast<uint32_t>(subpassDependencies.size());
 	renderPassCreateInfo.pDependencies = subpassDependencies.data();
 	VK_CHECK(vkCreateRenderPass(VulkanDevice, &renderPassCreateInfo, nullptr, &renderPass));
 
@@ -152,8 +152,8 @@ VulkanPipeline VulkanPipelineStateManager::CreateGraphicsPipeline(const Pipeline
 	pipelineCreateInfo.pViewportState = &viewportState;
 
 	// Pipeline layout
-	const auto& vertexShaderReflection = program.vertexShader->reflection;
-	const auto& fragmentShaderReflection = program.fragmentShader->reflection;
+	const auto& vertexShaderReflection = program.vertexShader->GetReflection();
+	const auto& fragmentShaderReflection = program.fragmentShader->GetReflection();
 
 	// Descriptor set layouts
 	TArray<VkDescriptorSetLayout> setLayouts;
@@ -169,9 +169,9 @@ VulkanPipeline VulkanPipelineStateManager::CreateGraphicsPipeline(const Pipeline
 
 	VkPipelineLayout pipelineLayout;
 	VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo{ VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
-	pipelineLayoutCreateInfo.setLayoutCount = setLayouts.size();
+	pipelineLayoutCreateInfo.setLayoutCount = static_cast<uint32_t>(setLayouts.size());
 	pipelineLayoutCreateInfo.pSetLayouts = setLayouts.data();
-	pipelineLayoutCreateInfo.pushConstantRangeCount = pushConstantRanges.size();
+	pipelineLayoutCreateInfo.pushConstantRangeCount = static_cast<uint32_t>(pushConstantRanges.size());
 	pipelineLayoutCreateInfo.pPushConstantRanges = pushConstantRanges.data();
 	VK_CHECK(vkCreatePipelineLayout(VulkanDevice, &pipelineLayoutCreateInfo, nullptr, &pipelineLayout));
 	pipelineCreateInfo.layout = pipelineLayout;

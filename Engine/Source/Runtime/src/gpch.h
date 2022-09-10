@@ -9,6 +9,7 @@
 #include <utility>
 #include <algorithm>
 #include <functional>
+#include <concepts>
 #include <typeindex>
 #include <type_traits>
 #include <numeric>
@@ -32,6 +33,10 @@
 #include "Container/Array.h"
 #include "Container/Hash.h"
 
+#include "IO/Filesystem.h"
+#include "IO/Log.h"
+#include "IO/IOUtils.h"
+
 #include "Math/Common.h"
 #include "Math/Vector2.h"
 #include "Math/Vector3.h"
@@ -42,17 +47,20 @@
 #include "Math/Matrix3.h"
 #include "Math/Matrix4.h"
 #include "Math/Transform.h"
+#include "Math/Rect.h"
+#include "Math/BoundingBox.h"
 
 #include "Renderer/GraphicsObject.h"
+#include "Renderer/IndexType.h"
 
 #include "Core/Events/ApplicationEvent.h"
+#include "Core/Events/RendererEvent.h"
 #include "Core/Events/WindowEvent.h"
 #include "Core/Events/MouseEvent.h"
 #include "Core/Events/KeyEvent.h"
 #include "Core/Time.h"
 
-#include "IO/Log.h"
-#include "IO/IOUtils.h"
+#include "Input/Input.h"
 
 #ifdef PLATFORM_WINDOWS
 #include <windows.h>

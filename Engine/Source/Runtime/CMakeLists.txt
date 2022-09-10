@@ -89,7 +89,6 @@ target_compile_definitions(
 
     PUBLIC
     $<$<CONFIG:Debug>:GDEBUG>
-    $<$<CONFIG:RelWithDebugInfo>:GDEBUG>
     $<$<CONFIG:Release>:GRELEASE>
 )
 
@@ -98,6 +97,7 @@ if (NOT APPLE)
     ADD_GRAPHICS_SHADER(Runtime ${HLSL_FILE_PATH}/FullscreenTriangleShader.hlsl fullscreenTriangleVertexShader fullscreenTriangleFragmentShader)
     ADD_GRAPHICS_SHADER(Runtime ${HLSL_FILE_PATH}/ForwardPassShader.hlsl forwardPassVertexShader forwardPassFragmentShader)
     ADD_GRAPHICS_SHADER(Runtime ${HLSL_FILE_PATH}/DebugShader.hlsl debugVertexShader debugFragmentShader)
+    ADD_GRAPHICS_SHADER(Runtime ${HLSL_FILE_PATH}/DebugShader.hlsl debugMeshVertexShader debugFragmentShader)
 else()
     add_custom_command(
         TARGET Runtime

@@ -2,9 +2,10 @@
 
 #ifdef USE_METAL_RENDERER
 #include "Renderer/CommandBuffer.h"
-#include "MetalPipelineStateManager.h"
 #include "Renderer/Renderer.h"
-#include "Renderer/Buffer.h"
+#include "Renderer/RendererBindingTable.h"
+
+#include "MetalPipelineStateManager.h"
 
 using namespace Gleam;
 
@@ -44,21 +45,16 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc) 
     MTLRenderPassDescriptor* renderPass = [MTLRenderPassDescriptor renderPassDescriptor];
     if (renderPassDesc.swapchainTarget)
     {
-        MTLClearColor clearValue;
+        MTLClearColor clearColor = { Renderer::clearColor.r, Renderer::clearColor.g, Renderer::clearColor.b, Renderer::clearColor.a };
         if (renderPassDesc.attachments.size() > 0)
         {
-            const auto& clearColor = renderPassDesc.attachments[0].clearColor;
-            clearValue = { clearColor.r, clearColor.g, clearColor.b, clearColor.a };
-        }
-        else
-        {
-            const auto& clearColor = Renderer::clearColor;
-            clearValue = { clearColor.r, clearColor.g, clearColor.b, clearColor.a };
+            const auto& clearColorValue = renderPassDesc.attachments[0].clearColor;
+            clearColor = { clearColorValue.r, clearColorValue.g, clearColorValue.b, clearColorValue.a };
         }
         
         id<CAMetalDrawable> drawable = RendererContext::GetSwapchain()->AcquireNextDrawable();
         MTLRenderPassColorAttachmentDescriptor* colorAttachmentDesc = renderPass.colorAttachments[0];
-        colorAttachmentDesc.clearColor = clearValue;
+        colorAttachmentDesc.clearColor = clearColor;
         colorAttachmentDesc.loadAction = MTLLoadActionClear;
         colorAttachmentDesc.storeAction = MTLStoreActionStore;
         colorAttachmentDesc.texture = drawable.texture;
@@ -84,42 +80,33 @@ void CommandBuffer::BindPipeline(const PipelineStateDescriptor& pipelineDesc, co
 
 void CommandBuffer::SetViewport(uint32_t width, uint32_t height) const
 {
-    MTLViewport viewport;
+    MTLViewport viewport{};
     viewport.width = width;
     viewport.height = height;
+    viewport.zfar = 1.0f;
     [mHandle->renderCommandEncoder setViewport:viewport];
 }
 
-void CommandBuffer::SetVertexBuffer(const Buffer& buffer, uint32_t index, uint32_t offset) const
+void CommandBuffer::SetVertexBuffer(const NativeGraphicsHandle buffer, uint32_t index, uint32_t offset) const
 {
-    [mHandle->renderCommandEncoder setVertexBuffer:buffer.GetHandle() offset:offset atIndex:index];
+    [mHandle->renderCommandEncoder setVertexBuffer:buffer offset:offset atIndex:index];
 }
 
-void CommandBuffer::SetFragmentBuffer(const Buffer& buffer, uint32_t index, uint32_t offset) const
+void CommandBuffer::SetFragmentBuffer(const NativeGraphicsHandle buffer, uint32_t index, uint32_t offset) const
 {
-    [mHandle->renderCommandEncoder setFragmentBuffer:buffer.GetHandle() offset:offset atIndex:index];
+    [mHandle->renderCommandEncoder setFragmentBuffer:buffer offset:offset atIndex:index];
 }
 
-void CommandBuffer::SetPushConstant(const void* data, uint32_t size, ShaderStage stage, uint32_t index) const
+void CommandBuffer::SetPushConstant(const void* data, uint32_t size, ShaderStageFlagBits stage) const
 {
-    switch (stage)
-    {
-        case ShaderStage::Vertex:
-        {
-            [mHandle->renderCommandEncoder setVertexBytes:data length:size atIndex:index];
-            break;
-        }
-        case ShaderStage::Fragment:
-        {
-            [mHandle->renderCommandEncoder setFragmentBytes:data length:size atIndex:index];
-            break;
-        }
-        case ShaderStage::Compute:
-        {
-            [mHandle->renderCommandEncoder setTileBytes:data length:size atIndex:index];
-            break;
-        }
-    }
+    if (stage & ShaderStage_Vertex)
+        [mHandle->renderCommandEncoder setVertexBytes:data length:size atIndex:RendererBindingTable::PushConstantBlock];
+    
+    if (stage & ShaderStage_Fragment)
+        [mHandle->renderCommandEncoder setFragmentBytes:data length:size atIndex:RendererBindingTable::PushConstantBlock];
+    
+    if (stage & ShaderStage_Compute)
+        [mHandle->renderCommandEncoder setTileBytes:data length:size atIndex:RendererBindingTable::PushConstantBlock];
 }
 
 void CommandBuffer::Draw(uint32_t vertexCount, uint32_t instanceCount, uint32_t baseVertex, uint32_t baseInstance) const
@@ -127,17 +114,15 @@ void CommandBuffer::Draw(uint32_t vertexCount, uint32_t instanceCount, uint32_t 
     [mHandle->renderCommandEncoder drawPrimitives:PrimitiveToplogyToMTLPrimitiveType(mHandle->pipelineState.descriptor.topology) vertexStart:baseVertex vertexCount:vertexCount instanceCount:instanceCount baseInstance:baseInstance];
 }
 
-void CommandBuffer::DrawIndexed(const IndexBuffer& indexBuffer, uint32_t instanceCount, uint32_t firstIndex, uint32_t baseVertex, uint32_t baseInstance) const
+void CommandBuffer::DrawIndexed(const NativeGraphicsHandle indexBuffer, IndexType type, uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, uint32_t baseVertex, uint32_t baseInstance) const
 {
-    MTLIndexType indexType = static_cast<MTLIndexType>(indexBuffer.GetIndexType());
-    [mHandle->renderCommandEncoder drawIndexedPrimitives:PrimitiveToplogyToMTLPrimitiveType(mHandle->pipelineState.descriptor.topology) indexCount:indexBuffer.GetCount() indexType:indexType indexBuffer:indexBuffer.GetHandle() indexBufferOffset:firstIndex instanceCount:instanceCount baseVertex:baseVertex baseInstance:baseInstance];
+    MTLIndexType indexType = static_cast<MTLIndexType>(type);
+    [mHandle->renderCommandEncoder drawIndexedPrimitives:PrimitiveToplogyToMTLPrimitiveType(mHandle->pipelineState.descriptor.topology) indexCount:indexCount indexType:indexType indexBuffer:indexBuffer indexBufferOffset:firstIndex * SizeOfIndexType(type) instanceCount:instanceCount baseVertex:baseVertex baseInstance:baseInstance];
 }
 
-void CommandBuffer::CopyBuffer(const Buffer& src, const Buffer& dst, uint32_t size, uint32_t srcOffset, uint32_t dstOffset) const
+void CommandBuffer::CopyBuffer(const NativeGraphicsHandle src, const NativeGraphicsHandle dst, uint32_t size, uint32_t srcOffset, uint32_t dstOffset) const
 {
-    GLEAM_ASSERT(size <= src.GetSize(), "Metal: Copy size can not be larger than source buffer size!");
-    GLEAM_ASSERT(size <= dst.GetSize(), "Metal: Copy size can not be larger than destination buffer size!");
-    [mHandle->blitCommandEncoder copyFromBuffer:src.GetHandle() sourceOffset:srcOffset toBuffer:dst.GetHandle() destinationOffset:dstOffset size:size];
+    [mHandle->blitCommandEncoder copyFromBuffer:src sourceOffset:srcOffset toBuffer:dst destinationOffset:dstOffset size:size];
 }
 
 void CommandBuffer::Begin() const
@@ -160,6 +145,11 @@ void CommandBuffer::Commit() const
 	{
 		// TODO:
 	}
+}
+
+void CommandBuffer::WaitUntilCompleted() const
+{
+    [mHandle->commandBuffer waitUntilCompleted];
 }
 
 #endif

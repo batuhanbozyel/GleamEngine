@@ -26,7 +26,7 @@ Texture2D::Texture2D(uint32_t width, uint32_t height, TextureFormat format, bool
 
 	VkMemoryRequirements memoryRequirements;
 	vkGetImageMemoryRequirements(VulkanDevice, As<VkImage>(mHandle), &memoryRequirements);
-	mSize = memoryRequirements.size;
+	mSize = static_cast<uint32_t>(memoryRequirements.size);
 
 	VkMemoryAllocateInfo allocateInfo{ VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
 	allocateInfo.allocationSize = memoryRequirements.size;

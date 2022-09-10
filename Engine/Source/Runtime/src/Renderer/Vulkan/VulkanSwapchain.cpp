@@ -6,6 +6,7 @@
 
 #include "Core/Window.h"
 #include "Core/Application.h"
+#include "Core/Events/RendererEvent.h"
 
 #include <SDL_vulkan.h>
 
@@ -225,11 +226,19 @@ void Swapchain::InvalidateAndCreate()
 	VK_CHECK(vkCreateSwapchainKHR(VulkanDevice, &swapchainCreateInfo, nullptr, &newSwapchain));
 
 	// Destroy swapchain
+
 	if (As<VkSwapchainKHR>(mHandle) != VK_NULL_HANDLE)
 	{
 		vkDestroySwapchainKHR(VulkanDevice, As<VkSwapchainKHR>(mHandle), nullptr);
 	}
 	mHandle = newSwapchain;
+
+	// Destroy drawable
+	for (uint32_t i = 0; i < mContext.imageViews.size(); i++)
+	{
+		vkDestroyImageView(VulkanDevice, mContext.imageViews[i], nullptr);
+	}
+	mContext.imageViews.clear();
 
 	uint32_t swapchainImageCount;
 	VK_CHECK(vkGetSwapchainImagesKHR(VulkanDevice, As<VkSwapchainKHR>(mHandle), &swapchainImageCount, nullptr));
@@ -278,6 +287,8 @@ void Swapchain::InvalidateAndCreate()
 			VK_CHECK(vkCreateSemaphore(VulkanDevice, &semaphoreCreateInfo, nullptr, &mContext.imageReleaseSemaphores[i]));
 		}
 	});
+
+	EventDispatcher<RendererResizeEvent>::Publish(RendererResizeEvent(mProperties.width, mProperties.height));
 }
 
 #endif

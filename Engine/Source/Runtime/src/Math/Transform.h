@@ -5,6 +5,44 @@ namespace Gleam {
 class Transform
 {
 public:
+    
+    void Translate(const Vector3& translation)
+    {
+        mPosition += translation;
+        mCachedTransform.m[12] += mPosition.x;
+        mCachedTransform.m[13] += mPosition.y;
+        mCachedTransform.m[14] += mPosition.z;
+    }
+
+    void Rotate(const Quaternion& rotation)
+    {
+        mIsTransformDirty = true;
+        mRotation *= rotation;
+    }
+
+    void Rotate(const Vector3& eulers)
+    {
+        Rotate(Quaternion(eulers));
+    }
+
+    void Rotate(float xAngle, float yAngle, float zAngle)
+    {
+        Rotate(Vector3{xAngle, yAngle, zAngle});
+    }
+
+    void SetTranslation(const Vector3& translation)
+    {
+        mPosition = translation;
+        mCachedTransform.m[12] = mPosition.x;
+        mCachedTransform.m[13] = mPosition.y;
+        mCachedTransform.m[14] = mPosition.z;
+    }
+
+    void SetRotation(const Quaternion& rotation)
+    {
+        mIsTransformDirty = true;
+        mRotation = rotation;
+    }
 
     NO_DISCARD FORCE_INLINE const Matrix4& GetTransform()
     {
@@ -15,55 +53,35 @@ public:
         }
         return mCachedTransform;
     }
-    
+
     NO_DISCARD FORCE_INLINE const Vector3& GetWorldPosition() const
     {
         return mPosition;
     }
-    
+
     NO_DISCARD FORCE_INLINE const Quaternion& GetWorldRotation() const
     {
         return mRotation;
     }
-    
+
     NO_DISCARD FORCE_INLINE Vector3 ForwardVector() const
     {
         return mRotation * Vector3::forward;
     }
-    
+
     NO_DISCARD FORCE_INLINE Vector3 UpVector() const
     {
         return mRotation * Vector3::up;
     }
-    
-    NO_DISCARD FORCE_INLINE Vector3 EularAngles() const
+
+    NO_DISCARD FORCE_INLINE Vector3 RightVector() const
     {
-        return mRotation.EularAngles();
+        return mRotation * Vector3::right;
     }
-    
-    void Translate(const Vector3& translation)
+
+    NO_DISCARD FORCE_INLINE Vector3 EulerAngles() const
     {
-        mPosition += translation;
-        mCachedTransform[0][3] += mPosition.x;
-        mCachedTransform[1][3] += mPosition.y;
-        mCachedTransform[2][3] += mPosition.z;
-    }
-    
-    void Rotate(const Quaternion& quat)
-    {
-        mIsTransformDirty = true;
-        mRotation *= quat;
-    }
-    
-    void Rotate(const Vector3& eulers)
-    {
-        mIsTransformDirty = true;
-        mRotation *= Quaternion(eulers);
-    }
-    
-    void Rotate(float xAngle, float yAngle, float zAngle)
-    {
-        Rotate({xAngle, yAngle, zAngle});
+        return mRotation.EulerAngles();
     }
     
 private:
@@ -71,7 +89,7 @@ private:
     Vector3 mPosition = Vector3(0.0f, 0.0f, 0.0f);
     Quaternion mRotation = Quaternion::identity;
     Vector3 mScale = Vector3(1.0f, 1.0f, 1.0f);
-    
+
     Matrix4 mCachedTransform;
     bool mIsTransformDirty = true;
     

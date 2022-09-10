@@ -41,6 +41,7 @@ else()
     add_framework(Editor GameController)
     add_framework(Editor CoreHaptics)
     add_framework(Editor CoreGraphics)
+    add_framework(Editor UniformTypeIdentifiers)
     target_link_libraries(Editor PRIVATE libRuntime.a SDL2main.a SDL2.a
         iconv)
 endif()

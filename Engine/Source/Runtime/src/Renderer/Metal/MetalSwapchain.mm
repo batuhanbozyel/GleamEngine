@@ -6,6 +6,7 @@
 
 #include "Core/Window.h"
 #include "Core/Application.h"
+#include "Core/Events/RendererEvent.h"
 
 #import <SDL_metal.h>
 #import <QuartzCore/CAMetalLayer.h>
@@ -33,7 +34,11 @@ Swapchain::Swapchain(const RendererProperties& props, NativeGraphicsHandle insta
     swapchain.framebufferOnly = YES;
     swapchain.opaque = YES;
     swapchain.pixelFormat = MTLPixelFormatBGRA8Unorm;
+    swapchain.drawableSize = swapchain.frame.size;
     mHandle = swapchain;
+    
+    mProperties.width = swapchain.frame.size.width;
+    mProperties.height = swapchain.frame.size.height;
     
     if (swapchain.maximumDrawableCount >= 3 && mProperties.tripleBufferingEnabled)
     {
@@ -110,11 +115,13 @@ DispatchSemaphore Swapchain::GetImageReleaseSemaphore() const
 void Swapchain::InvalidateAndCreate()
 {
     CAMetalLayer* swapchain = (CAMetalLayer*)mHandle;
-    
-    int width, height;
-    SDL_Metal_GetDrawableSize(Application::GetInstance().GetActiveWindow().GetSDLWindow(), &width, &height);
-    mProperties.width = width;
-    mProperties.height = height;
+    if (mProperties.width != swapchain.frame.size.width || mProperties.height != swapchain.frame.size.height)
+    {
+        mProperties.width = swapchain.frame.size.width;
+        mProperties.height = swapchain.frame.size.height;
+        swapchain.drawableSize = swapchain.frame.size;
+        EventDispatcher<RendererResizeEvent>::Publish(RendererResizeEvent(mProperties.width, mProperties.height));
+    }
 }
 
 #endif
