@@ -2,10 +2,9 @@
 
 #ifdef USE_VULKAN_RENDERER
 #include "Renderer/CommandBuffer.h"
-#include "VulkanPipelineStateManager.h"
-
 #include "Renderer/Renderer.h"
-#include "Renderer/ShaderLibrary.h"
+
+#include "VulkanPipelineStateManager.h"
 
 #define CurrentCommandBuffer (mHandle->commandBuffers[RendererContext::GetSwapchain()->GetFrameIndex()])
 
@@ -138,55 +137,49 @@ void CommandBuffer::SetViewport(uint32_t width, uint32_t height) const
 	vkCmdSetScissor(CurrentCommandBuffer, 0, 1, &scissor);
 }
 
-void CommandBuffer::SetVertexBuffer(const Buffer& buffer, uint32_t index, uint32_t offset) const
+void CommandBuffer::SetVertexBuffer(const NativeGraphicsHandle buffer, BufferUsage usage, uint32_t index, uint32_t offset) const
 {
 	VkDescriptorBufferInfo bufferInfo{};
-	bufferInfo.buffer = As<VkBuffer>(buffer.GetHandle());
+	bufferInfo.buffer = As<VkBuffer>(buffer);
 	bufferInfo.offset = offset;
 	bufferInfo.range = buffer.GetSize();
 
 	VkWriteDescriptorSet descriptorSet{ VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
 	descriptorSet.dstBinding = index;
 	descriptorSet.descriptorCount = 1;
-	descriptorSet.descriptorType = BufferUsageToVkDescriptorType(buffer.GetUsage());
+	descriptorSet.descriptorType = BufferUsageToVkDescriptorType(usage);
 	descriptorSet.pBufferInfo = &bufferInfo;
 	vkCmdPushDescriptorSetKHR(CurrentCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mHandle->pipelineState.layout, 0, 1, &descriptorSet);
 }
 
-void CommandBuffer::SetFragmentBuffer(const Buffer& buffer, uint32_t index, uint32_t offset) const
+void CommandBuffer::SetFragmentBuffer(const NativeGraphicsHandle buffer, BufferUsage usage, uint32_t index, uint32_t offset) const
 {
 	VkDescriptorBufferInfo bufferInfo{};
-	bufferInfo.buffer = As<VkBuffer>(buffer.GetHandle());
+	bufferInfo.buffer = As<VkBuffer>(buffer);
 	bufferInfo.range = buffer.GetSize();
 
 	VkWriteDescriptorSet descriptorSet{ VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
 	descriptorSet.dstBinding = index;
 	descriptorSet.descriptorCount = 1;
-	descriptorSet.descriptorType = BufferUsageToVkDescriptorType(buffer.GetUsage());
+	descriptorSet.descriptorType = BufferUsageToVkDescriptorType(usage);
 	descriptorSet.pBufferInfo = &bufferInfo;
 	vkCmdPushDescriptorSetKHR(CurrentCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mHandle->pipelineState.layout, 1, 1, &descriptorSet);
 }
 
-void CommandBuffer::SetPushConstant(const void* data, uint32_t size, ShaderStage stage, uint32_t index) const
+void CommandBuffer::SetPushConstant(const void* data, uint32_t size, ShaderStageFlagBits stage) const
 {
-	switch (stage)
-	{
-		case ShaderStage::Vertex:
-		{
-			vkCmdPushConstants(CurrentCommandBuffer, mHandle->pipelineState.layout, VK_SHADER_STAGE_VERTEX_BIT, 0, size, data);
-			break;
-		}
-		case ShaderStage::Fragment:
-		{
-			vkCmdPushConstants(CurrentCommandBuffer, mHandle->pipelineState.layout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, size, data);
-			break;
-		}
-		case ShaderStage::Compute:
-		{
-			vkCmdPushConstants(CurrentCommandBuffer, mHandle->pipelineState.layout, VK_SHADER_STAGE_COMPUTE_BIT, 0, size, data);
-			break;
-		}
-	}
+    VkShaderStageFlagBits flagBits;
+    
+    if (stage & ShaderStage_Vertex)
+        flagBits |= VK_SHADER_STAGE_VERTEX_BIT;
+    
+    if (stage & ShaderStage_Fragment)
+        flagBits |= VK_SHADER_STAGE_FRAGMENT_BIT;
+    
+    if (stage & ShaderStage_Compute)
+        flagBits |= VK_SHADER_STAGE_COMPUTE_BIT;
+    
+    vkCmdPushConstants(CurrentCommandBuffer, mHandle->pipelineState.layout, flagBits, 0, size, data);
 }
 
 void CommandBuffer::Draw(uint32_t vertexCount, uint32_t instanceCount, uint32_t baseVertex, uint32_t baseInstance) const
@@ -194,22 +187,19 @@ void CommandBuffer::Draw(uint32_t vertexCount, uint32_t instanceCount, uint32_t 
 	vkCmdDraw(CurrentCommandBuffer, vertexCount, instanceCount, baseVertex, baseInstance);
 }
 
-void CommandBuffer::DrawIndexed(const IndexBuffer& indexBuffer, uint32_t instanceCount, uint32_t firstIndex, uint32_t baseVertex, uint32_t baseInstance) const
+void CommandBuffer::DrawIndexed(const NativeGraphicsHandle indexBuffer, IndexType type, uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, uint32_t baseVertex, uint32_t baseInstance) const
 {
-	vkCmdBindIndexBuffer(CurrentCommandBuffer, As<VkBuffer>(indexBuffer.GetHandle()), 0, static_cast<VkIndexType>(indexBuffer.GetIndexType()));
-	vkCmdDrawIndexed(CurrentCommandBuffer, indexBuffer.GetCount(), instanceCount, firstIndex, baseVertex, baseInstance);
+	vkCmdBindIndexBuffer(CurrentCommandBuffer, As<VkBuffer>(indexBuffer), 0, static_cast<VkIndexType>(type));
+	vkCmdDrawIndexed(CurrentCommandBuffer, indexCount, instanceCount, firstIndex, baseVertex, baseInstance);
 }
 
-void CommandBuffer::CopyBuffer(const Buffer& src, const Buffer& dst, uint32_t size, uint32_t srcOffset, uint32_t dstOffset) const
+void CommandBuffer::CopyBuffer(const NativeGraphicsHandle src, const NativeGraphicsHandle dst, uint32_t size, uint32_t srcOffset, uint32_t dstOffset) const
 {
-	GLEAM_ASSERT(size <= src.GetSize(), "Vulkan: Copy size can not be larger than source buffer size!");
-	GLEAM_ASSERT(size <= dst.GetSize(), "Vulkan: Copy size can not be larger than destination buffer size!");
-
 	VkBufferCopy bufferCopy{};
 	bufferCopy.srcOffset = srcOffset;
 	bufferCopy.dstOffset = dstOffset;
 	bufferCopy.size = size;
-	vkCmdCopyBuffer(CurrentCommandBuffer, As<VkBuffer>(src.GetHandle()), As<VkBuffer>(dst.GetHandle()), 1, &bufferCopy);
+	vkCmdCopyBuffer(CurrentCommandBuffer, As<VkBuffer>(src), As<VkBuffer>(dst), 1, &bufferCopy);
 }
 
 void CommandBuffer::Begin() const

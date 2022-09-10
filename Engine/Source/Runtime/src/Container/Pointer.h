@@ -16,13 +16,13 @@ template<typename T>
 using Weak = std::weak_ptr<T>;
 
 template<typename T, typename ... Args>
-[[nodiscard]] inline constexpr Scope<T> CreateScope(Args&& ... args)
+NO_DISCARD FORCE_INLINE constexpr Scope<T> CreateScope(Args&& ... args)
 {
 	return std::make_unique<T>(std::forward<Args>(args)...);
 }
 
 template<typename T, typename ... Args>
-[[nodiscard]] inline constexpr  RefCounted<T> CreateRef(Args&& ... args)
+NO_DISCARD FORCE_INLINE constexpr  RefCounted<T> CreateRef(Args&& ... args)
 {
 	return std::make_shared<T>(std::forward<Args>(args)...);
 }

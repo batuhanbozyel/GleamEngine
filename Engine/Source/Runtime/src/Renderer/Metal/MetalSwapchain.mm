@@ -120,7 +120,7 @@ void Swapchain::InvalidateAndCreate()
         mProperties.width = swapchain.frame.size.width;
         mProperties.height = swapchain.frame.size.height;
         swapchain.drawableSize = swapchain.frame.size;
-        EventDispatcher<RendererDrawableResizeEvent>::Publish(RendererDrawableResizeEvent(mProperties.width, mProperties.height));
+        EventDispatcher<RendererResizeEvent>::Publish(RendererResizeEvent(mProperties.width, mProperties.height));
     }
 }
 

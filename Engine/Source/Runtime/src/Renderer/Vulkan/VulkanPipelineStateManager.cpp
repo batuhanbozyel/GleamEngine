@@ -152,8 +152,8 @@ VulkanPipeline VulkanPipelineStateManager::CreateGraphicsPipeline(const Pipeline
 	pipelineCreateInfo.pViewportState = &viewportState;
 
 	// Pipeline layout
-	const auto& vertexShaderReflection = program.vertexShader->reflection;
-	const auto& fragmentShaderReflection = program.fragmentShader->reflection;
+	const auto& vertexShaderReflection = program.vertexShader->GetReflection();
+	const auto& fragmentShaderReflection = program.fragmentShader->GetReflection();
 
 	// Descriptor set layouts
 	TArray<VkDescriptorSetLayout> setLayouts;

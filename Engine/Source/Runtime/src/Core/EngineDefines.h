@@ -20,8 +20,8 @@
 #define BIT(x) (1 << (x))
 
 #ifdef ENABLE_ASSERTS
-#include <filesystem>
-	#define GLEAM_ASSERT(x, ...) if (!(x)) { GLEAM_CORE_ERROR("Assertion failed at {0}:{1}", std::filesystem::path(__FILE__).filename().string(), __LINE__); DEBUGBREAK(); }
+#include "IO/Filesystem.h"
+	#define GLEAM_ASSERT(x, ...) if (!(x)) { GLEAM_CORE_ERROR("Assertion failed at {0}:{1}", Filesystem::path(__FILE__).filename().string(), __LINE__); DEBUGBREAK(); }
 #else
 	#define GLEAM_ASSERT(...)
 #endif
@@ -51,11 +51,16 @@ using DispatchSemaphore = dispatch_semaphore_t;
 #define PASS_BY_VALUE typename = std::enable_if_t<(sizeof(T) <= sizeof(int))>
 #define PASS_BY_REFERENCE typename = std::enable_if_t<(sizeof(T) > sizeof(int))>
 
+namespace Gleam {
+
 template<typename T, typename P>
 constexpr inline T As(P p)
 {
 	return reinterpret_cast<T>(p);
 }
+
+} // namespace Gleam
+
 
 #define ApplicationInstance Gleam::Application::GetInstance()
 

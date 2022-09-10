@@ -1,4 +1,5 @@
 #include "../../ShaderTypes.h"
+#include "../../RendererBindingTable.h"
 
 struct VertexOut
 {
@@ -7,18 +8,30 @@ struct VertexOut
 };
 
 vertex VertexOut debugVertexShader(uint vertexID [[vertex_id]],
-                                   constant Gleam::DebugVertex* VertexBuffer [[buffer(0)]],
-                                   constant Gleam::DebugVertexUniforms& uniforms [[buffer(1)]])
+                                   constant Gleam::DebugVertex* VertexBuffer [[buffer(Gleam::RendererBindingTable::Buffer0)]],
+                                   constant Gleam::CameraUniforms& CameraBuffer [[buffer(Gleam::RendererBindingTable::CameraBuffer)]])
 {
     Gleam::DebugVertex vert = VertexBuffer[vertexID];
 
     VertexOut out;
-    out.position = uniforms.viewProjectionMatrix * float4(vert.position, 1.0);
+    out.position = CameraBuffer.viewProjectionMatrix * float4(vert.position, 1.0);
     out.color = unpack_unorm4x8_to_float(vert.color);
     return out;
 }
 
-fragment float4 debugFragmentShader(VertexOut in [[stage_in]])
+vertex VertexOut debugMeshVertexShader(uint vertexID [[vertex_id]],
+                                       constant Gleam::Vector3* PositionBuffer [[buffer(Gleam::RendererBindingTable::Buffer0)]],
+                                       constant Gleam::CameraUniforms& CameraBuffer [[buffer(Gleam::RendererBindingTable::CameraBuffer)]],
+                                       constant Gleam::DebugShaderUniforms& uniforms [[buffer(Gleam::RendererBindingTable::PushConstantBlock)]])
 {
-    return in.color;
+    VertexOut out;
+    out.position = CameraBuffer.viewProjectionMatrix * uniforms.modelMatrix * float4(PositionBuffer[vertexID], 1.0);
+    out.color = float4(1.0);
+    return out;
+}
+
+fragment float4 debugFragmentShader(VertexOut in [[stage_in]],
+                                    constant Gleam::DebugShaderUniforms& uniforms [[buffer(Gleam::RendererBindingTable::PushConstantBlock)]])
+{
+    return in.color * unpack_unorm4x8_to_float(uniforms.color);
 }

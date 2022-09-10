@@ -1,30 +1,29 @@
 #pragma once
-#include "Buffer.h"
+#include "Mesh.h"
 #include "Shader.h"
 #include "Renderer.h"
-#include "ShaderTypes.h"
 #include "CommandBuffer.h"
 
 namespace Gleam {
-
-class GraphicsShader;
 
 class ForwardRenderer final : public Renderer
 {
 public:
 
-	ForwardRenderer();
+    ForwardRenderer();
 
-	~ForwardRenderer();
+    ~ForwardRenderer();
 
-	virtual void Render() override;
+    virtual void Render() override;
 
+    void DrawMesh(const Mesh* mesh, const Matrix4& transform);
+    
 private:
-
-	CommandBuffer mCommandBuffer;
+    
+    CommandBuffer mCommandBuffer;
     GraphicsShader mForwardPassProgram;
-	VertexBuffer<MeshVertex> mVertexBuffer;
-	IndexBuffer mIndexBuffer;
+
+    TArray<std::pair<const Mesh*, Matrix4>> mMeshes;
 
 };
 
