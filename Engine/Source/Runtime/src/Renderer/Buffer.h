@@ -59,19 +59,25 @@ protected:
 
 };
 
-template<typename T, BufferUsage usage>
+template<typename T, BufferUsage usage, MemoryType memoryType = MemoryType::Static>
 class Buffer : public IBuffer
 {
 public:
 
-    Buffer(size_t count, MemoryType memoryType = MemoryType::Static)
+    Buffer(size_t count)
 		: IBuffer(count * sizeof(T), usage, memoryType)
 	{
 
 	}
     
-    template<size_t size = 0>
-    Buffer(const TArray<T, size>& container, MemoryType memoryType = MemoryType::Static)
+    Buffer(const std::vector<T>& container)
+        : IBuffer(container.data(), sizeof(T) * container.size(), usage, memoryType)
+    {
+        
+    }
+    
+    template<size_t size>
+    Buffer(const std::array<T, size>& container)
         : IBuffer(container.data(), sizeof(T) * container.size(), usage, memoryType)
     {
         
@@ -82,6 +88,11 @@ public:
     void Resize(size_t count, bool keepContent = false)
     {
         IBuffer::Resize(sizeof(T) * count, keepContent);
+    }
+    
+    void SetData(const T& t, size_t offset = 0) const
+    {
+        IBuffer::SetData(&t, offset, sizeof(T));
     }
     
     template<size_t size>
@@ -102,16 +113,16 @@ public:
 
 };
 
-template<IndexType indexType, typename T = typename std::conditional<indexType == IndexType::UINT32, uint32_t, uint16_t>::type>
-using IndexBuffer = Buffer<T, BufferUsage::IndexBuffer>;
+template<IndexType indexType, MemoryType memoryType = MemoryType::Static, typename T = typename std::conditional<indexType == IndexType::UINT32, uint32_t, uint16_t>::type>
+using IndexBuffer = Buffer<T, BufferUsage::IndexBuffer, memoryType>;
 
-template<typename T>
-using StorageBuffer = Buffer<T, BufferUsage::StorageBuffer>;
+template<typename T, MemoryType memoryType = MemoryType::Static>
+using StorageBuffer = Buffer<T, BufferUsage::StorageBuffer, memoryType>;
     
-template<typename T>
-using UniformBuffer = Buffer<T, BufferUsage::UniformBuffer>;
+template<typename T, MemoryType memoryType = MemoryType::Static>
+using UniformBuffer = Buffer<T, BufferUsage::UniformBuffer, memoryType>;
 
-template<typename T>
-using VertexBuffer = StorageBuffer<T>;
+template<typename T, MemoryType memoryType = MemoryType::Static>
+using VertexBuffer = StorageBuffer<T, memoryType>;
 
 } // namespace Gleam

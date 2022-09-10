@@ -166,26 +166,20 @@ void CommandBuffer::SetFragmentBuffer(const NativeGraphicsHandle buffer, BufferU
 	vkCmdPushDescriptorSetKHR(CurrentCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mHandle->pipelineState.layout, 1, 1, &descriptorSet);
 }
 
-void CommandBuffer::SetPushConstant(const void* data, uint32_t size, ShaderStage stage, uint32_t index) const
+void CommandBuffer::SetPushConstant(const void* data, uint32_t size, ShaderStageFlagBits stage) const
 {
-	switch (stage)
-	{
-		case ShaderStage::Vertex:
-		{
-			vkCmdPushConstants(CurrentCommandBuffer, mHandle->pipelineState.layout, VK_SHADER_STAGE_VERTEX_BIT, 0, size, data);
-			break;
-		}
-		case ShaderStage::Fragment:
-		{
-			vkCmdPushConstants(CurrentCommandBuffer, mHandle->pipelineState.layout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, size, data);
-			break;
-		}
-		case ShaderStage::Compute:
-		{
-			vkCmdPushConstants(CurrentCommandBuffer, mHandle->pipelineState.layout, VK_SHADER_STAGE_COMPUTE_BIT, 0, size, data);
-			break;
-		}
-	}
+    VkShaderStageFlagBits flagBits;
+    
+    if (stage & ShaderStage_Vertex)
+        flagBits |= VK_SHADER_STAGE_VERTEX_BIT;
+    
+    if (stage & ShaderStage_Fragment)
+        flagBits |= VK_SHADER_STAGE_FRAGMENT_BIT;
+    
+    if (stage & ShaderStage_Compute)
+        flagBits |= VK_SHADER_STAGE_COMPUTE_BIT;
+    
+    vkCmdPushConstants(CurrentCommandBuffer, mHandle->pipelineState.layout, flagBits, 0, size, data);
 }
 
 void CommandBuffer::Draw(uint32_t vertexCount, uint32_t instanceCount, uint32_t baseVertex, uint32_t baseInstance) const

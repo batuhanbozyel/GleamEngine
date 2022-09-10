@@ -46,22 +46,21 @@ struct DebugVertex
 
 struct CameraUniforms
 {
-    Matrix4 modelMatrix;
     Matrix4 viewMatrix;
     Matrix4 projectionMatrix;
     Matrix4 viewProjectionMatrix;
-    Matrix4 modelViewProjectionMatrix;
-    Matrix3 normalMatrix;
 };
 
-struct DebugFragmentUniforms
+struct DebugShaderUniforms
 {
-    Color32 color;
+    Matrix4 modelMatrix;
+    alignas(16) Color32 color;
 };
 
-struct ForwardPassFragmentUniforms
+struct ForwardPassUniforms
 {
-    Color32 color;
+    Matrix4 modelMatrix;
+    alignas(16) Color32 color;
 };
 
 } // namespace Gleam

@@ -1,7 +1,13 @@
 #include "../../ShaderTypes.h"
 
-StructuredBuffer<Gleam::Vector3> PositionBuffer : register(t0);
-StructuredBuffer<Gleam::InterleavedMeshVertex> InterleavedBuffer : register(t0);
+[[vk::binding(Gleam::RendererBindingTable::Buffer0)]]
+StructuredBuffer<Gleam::Vector3> PositionBuffer;
+
+[[vk::binding(Gleam::RendererBindingTable::Buffer1)]]
+StructuredBuffer<Gleam::InterleavedMeshVertex> InterleavedBuffer;
+
+[[vk::binding(Gleam::RendererBindingTable::CameraBuffer)]]
+cbuffer<Gleam::CameraUniforms> CameraBuffer;
 
 struct VertexOut
 {
@@ -11,23 +17,20 @@ struct VertexOut
 };
 
 [[vk::push_constant]]
-Gleam::CameraUniforms cameraUniforms;
+Gleam::ForwardPassUniforms uniforms;
 
 VertexOut forwardPassVertexShader(uint vertex_id: SV_VertexID)
 {
     Gleam::InterleavedMeshVertex interleavedVert = InterleavedBuffer[vertex_id];
 
     VertexOut OUT;
-    OUT.position = mul(cameraUniforms.modelViewProjectionMatrix, float4(PositionBuffer[vertex_id], 1.0));
-    OUT.normal = mul(cameraUniforms.normalMatrix, interleavedVert.normal);
+    OUT.position = mul(CameraBuffer.viewProjectionMatrix, mul(uniforms.modelMatrix, float4(PositionBuffer[vertex_id], 1.0f)));
+    OUT.normal = interleavedVert.normal;
     OUT.texCoord = interleavedVert.texCoord;
     return OUT;
 }
 
-[[vk::push_constant]]
-Gleam::ForwardPassFragmentUniforms fragmentUniforms;
-
 float4 forwardPassFragmentShader(VertexOut IN) : SV_TARGET
 {
-    return Gleam::unpack_unorm4x8_to_float(fragmentUniforms.color);
+    return Gleam::unpack_unorm4x8_to_float(uniforms.color);
 }

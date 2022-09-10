@@ -24,7 +24,7 @@ Shader::Shader(const TString& entryPoint, ShaderStage stage)
 
 	VK_CHECK(vkCreateShaderModule(VulkanDevice, &createInfo, nullptr, As<VkShaderModule*>(&mHandle)));
 
-	reflection = CreateScope<Reflection>(shaderCode);
+	mReflection = CreateScope<Reflection>(shaderCode);
 }
 
 Shader::~Shader()

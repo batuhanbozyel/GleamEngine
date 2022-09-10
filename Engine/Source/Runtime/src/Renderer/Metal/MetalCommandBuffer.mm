@@ -3,6 +3,7 @@
 #ifdef USE_METAL_RENDERER
 #include "Renderer/CommandBuffer.h"
 #include "Renderer/Renderer.h"
+#include "Renderer/RendererBindingTable.h"
 
 #include "MetalPipelineStateManager.h"
 
@@ -101,26 +102,16 @@ void CommandBuffer::SetFragmentBuffer(const NativeGraphicsHandle buffer, uint32_
     [mHandle->renderCommandEncoder setFragmentBuffer:buffer offset:offset atIndex:index];
 }
 
-void CommandBuffer::SetPushConstant(const void* data, uint32_t size, ShaderStage stage, uint32_t index) const
+void CommandBuffer::SetPushConstant(const void* data, uint32_t size, ShaderStageFlagBits stage) const
 {
-    switch (stage)
-    {
-        case ShaderStage::Vertex:
-        {
-            [mHandle->renderCommandEncoder setVertexBytes:data length:size atIndex:index];
-            break;
-        }
-        case ShaderStage::Fragment:
-        {
-            [mHandle->renderCommandEncoder setFragmentBytes:data length:size atIndex:index];
-            break;
-        }
-        case ShaderStage::Compute:
-        {
-            [mHandle->renderCommandEncoder setTileBytes:data length:size atIndex:index];
-            break;
-        }
-    }
+    if (stage & ShaderStage_Vertex)
+        [mHandle->renderCommandEncoder setVertexBytes:data length:size atIndex:RendererBindingTable::PushConstantBlock];
+    
+    if (stage & ShaderStage_Fragment)
+        [mHandle->renderCommandEncoder setFragmentBytes:data length:size atIndex:RendererBindingTable::PushConstantBlock];
+    
+    if (stage & ShaderStage_Compute)
+        [mHandle->renderCommandEncoder setTileBytes:data length:size atIndex:RendererBindingTable::PushConstantBlock];
 }
 
 void CommandBuffer::Draw(uint32_t vertexCount, uint32_t instanceCount, uint32_t baseVertex, uint32_t baseInstance) const

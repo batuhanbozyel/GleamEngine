@@ -1,9 +1,7 @@
 #pragma once
 #include "Mesh.h"
-#include "Camera.h"
 #include "Shader.h"
 #include "Renderer.h"
-#include "ShaderTypes.h"
 #include "CommandBuffer.h"
 
 namespace Gleam {
@@ -44,32 +42,26 @@ public:
     void DrawBoundingBox(const BoundingBox& boundingBox, Color32 color, bool depthTest = true);
     
     void DrawBoundingBox(const BoundingBox& boundingBox, const Matrix4& transform, Color32 color, bool depthTest = true);
-    
-    void UpdateView(Camera& camera)
-    {
-        mViewMatrix = camera.GetViewMatrix();
-        mProjectionMatrix = camera.GetProjectionMatrix();
-    }
 
 private:
     
     void RenderPrimitive(uint32_t primitiveCount, uint32_t bufferOffset, PrimitiveTopology topology, bool depthTest) const;
     
-    Matrix4 mViewMatrix;
-    Matrix4 mProjectionMatrix;
-    
 	TArray<DebugLine> mLines;
 	TArray<DebugLine> mDepthLines;
-
+    
 	TArray<DebugTriangle> mTriangles;
 	TArray<DebugTriangle> mDepthTriangles;
-
+    
+    TArray<std::function<void()>> mMeshDrawCommands;
+    TArray<std::function<void()>> mDepthMeshDrawCommands;
+    
 	CommandBuffer mCommandBuffer;
 	GraphicsShader mDebugProgram;
     GraphicsShader mDebugMeshProgram;
     
     TArray<DebugVertex> mStagingBuffer;
-	TArray<Scope<VertexBuffer<DebugVertex>>> mVertexBuffers;
+	TArray<Scope<VertexBuffer<DebugVertex, MemoryType::Dynamic>>> mVertexBuffers;
 
 };
 

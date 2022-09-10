@@ -4,6 +4,7 @@
 #include "ShaderLibrary.h"
 #include "RenderPassDescriptor.h"
 #include "PipelineStateDescriptor.h"
+#include "RendererBindingTable.h"
 
 using namespace Gleam;
 
@@ -34,21 +35,13 @@ void ForwardRenderer::Render()
     for (const auto& [mesh, transform] : mMeshes)
     {
         const auto& meshBuffer = mesh->GetBuffer();
-        mCommandBuffer.SetVertexBuffer(meshBuffer.GetPositionBuffer());
-        mCommandBuffer.SetVertexBuffer(meshBuffer.GetInterleavedBuffer(), 1);
+        mCommandBuffer.SetVertexBuffer(meshBuffer.GetPositionBuffer(), RendererBindingTable::Buffer0);
+        mCommandBuffer.SetVertexBuffer(meshBuffer.GetInterleavedBuffer(), RendererBindingTable::Buffer1);
+        mCommandBuffer.SetVertexBuffer(GetCameraBuffer(), ShaderStage_Vertex);
         
-        CameraUniforms cameraUniforms;
-        cameraUniforms.modelMatrix = transform;
-        cameraUniforms.viewMatrix = mViewMatrix;
-        cameraUniforms.projectionMatrix = mProjectionMatrix;
-        cameraUniforms.viewProjectionMatrix = mProjectionMatrix * mViewMatrix;
-        cameraUniforms.modelViewProjectionMatrix = mProjectionMatrix * mViewMatrix * transform;
-        cameraUniforms.normalMatrix = Matrix3::identity; // TODO:
-        mCommandBuffer.SetPushConstant(cameraUniforms, ShaderStage::Vertex, 2);
-        
-        ForwardPassFragmentUniforms fragmentUniforms;
-        fragmentUniforms.color = Color::HSVToRGB(static_cast<float>(Time::time), 1.0f, 1.0f);
-        mCommandBuffer.SetPushConstant(fragmentUniforms, ShaderStage::Fragment);
+        ForwardPassUniforms uniforms;
+        uniforms.color = Color::HSVToRGB(static_cast<float>(Time::time), 1.0f, 1.0f);
+        mCommandBuffer.SetPushConstant(uniforms, ShaderStage_Vertex | ShaderStage_Fragment);
         
         for (const auto& submesh : mesh->GetSubmeshDescriptors())
         {
