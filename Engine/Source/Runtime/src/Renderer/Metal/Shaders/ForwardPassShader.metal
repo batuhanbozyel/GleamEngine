@@ -17,8 +17,8 @@ vertex VertexOut forwardPassVertexShader(uint vertexID [[vertex_id]],
     Gleam::InterleavedMeshVertex interleavedVert = InterleavedBuffer[vertexID];
 
     VertexOut out;
-    out.position = cameraUniforms.viewProjectionMatrix * uniforms.modelMatrix * float4(PositionBuffer[vertexID], 1.0);
-    out.normal = interleavedVert.normal;
+    out.position = cameraUniforms.viewProjectionMatrix * uniforms.modelMatrix * float4(PositionBuffer[vertexID].xyz, 1.0);
+    out.normal = interleavedVert.normal.xyz;
     out.texCoord = interleavedVert.texCoord;
     return out;
 }

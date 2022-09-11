@@ -14,7 +14,7 @@ vertex VertexOut debugVertexShader(uint vertexID [[vertex_id]],
     Gleam::DebugVertex vert = VertexBuffer[vertexID];
 
     VertexOut out;
-    out.position = CameraBuffer.viewProjectionMatrix * float4(vert.position, 1.0);
+    out.position = CameraBuffer.viewProjectionMatrix * float4(vert.position.xyz, 1.0);
     out.color = unpack_unorm4x8_to_float(vert.color);
     return out;
 }
@@ -25,7 +25,7 @@ vertex VertexOut debugMeshVertexShader(uint vertexID [[vertex_id]],
                                        constant Gleam::DebugShaderUniforms& uniforms [[buffer(Gleam::RendererBindingTable::PushConstantBlock)]])
 {
     VertexOut out;
-    out.position = CameraBuffer.viewProjectionMatrix * uniforms.modelMatrix * float4(PositionBuffer[vertexID], 1.0);
+    out.position = CameraBuffer.viewProjectionMatrix * uniforms.modelMatrix * float4(PositionBuffer[vertexID].xyz, 1.0);
     out.color = float4(1.0);
     return out;
 }
