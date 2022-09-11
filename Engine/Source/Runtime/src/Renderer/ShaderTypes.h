@@ -54,13 +54,13 @@ struct CameraUniforms
 struct DebugShaderUniforms
 {
     Matrix4 modelMatrix;
-    alignas(16) Color32 color;
+    Color32 color;
 };
 
 struct ForwardPassUniforms
 {
     Matrix4 modelMatrix;
-    alignas(16) Color32 color;
+    Color32 color;
 };
 
 } // namespace Gleam
