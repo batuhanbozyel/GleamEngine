@@ -137,12 +137,12 @@ void CommandBuffer::SetViewport(uint32_t width, uint32_t height) const
 	vkCmdSetScissor(CurrentCommandBuffer, 0, 1, &scissor);
 }
 
-void CommandBuffer::SetVertexBuffer(const NativeGraphicsHandle buffer, BufferUsage usage, uint32_t index, uint32_t offset) const
+void CommandBuffer::SetVertexBuffer(const NativeGraphicsHandle buffer, BufferUsage usage, uint32_t size, uint32_t index, uint32_t offset) const
 {
 	VkDescriptorBufferInfo bufferInfo{};
 	bufferInfo.buffer = As<VkBuffer>(buffer);
 	bufferInfo.offset = offset;
-	bufferInfo.range = buffer.GetSize();
+	bufferInfo.range = size;
 
 	VkWriteDescriptorSet descriptorSet{ VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
 	descriptorSet.dstBinding = index;
@@ -152,11 +152,11 @@ void CommandBuffer::SetVertexBuffer(const NativeGraphicsHandle buffer, BufferUsa
 	vkCmdPushDescriptorSetKHR(CurrentCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mHandle->pipelineState.layout, 0, 1, &descriptorSet);
 }
 
-void CommandBuffer::SetFragmentBuffer(const NativeGraphicsHandle buffer, BufferUsage usage, uint32_t index, uint32_t offset) const
+void CommandBuffer::SetFragmentBuffer(const NativeGraphicsHandle buffer, BufferUsage usage, uint32_t size, uint32_t index, uint32_t offset) const
 {
 	VkDescriptorBufferInfo bufferInfo{};
 	bufferInfo.buffer = As<VkBuffer>(buffer);
-	bufferInfo.range = buffer.GetSize();
+	bufferInfo.range = size;
 
 	VkWriteDescriptorSet descriptorSet{ VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
 	descriptorSet.dstBinding = index;
@@ -168,7 +168,7 @@ void CommandBuffer::SetFragmentBuffer(const NativeGraphicsHandle buffer, BufferU
 
 void CommandBuffer::SetPushConstant(const void* data, uint32_t size, ShaderStageFlagBits stage) const
 {
-    VkShaderStageFlagBits flagBits;
+    VkShaderStageFlags flagBits{};
     
     if (stage & ShaderStage_Vertex)
         flagBits |= VK_SHADER_STAGE_VERTEX_BIT;

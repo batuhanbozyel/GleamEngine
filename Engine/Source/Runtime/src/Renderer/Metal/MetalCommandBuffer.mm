@@ -87,12 +87,12 @@ void CommandBuffer::SetViewport(uint32_t width, uint32_t height) const
     [mHandle->renderCommandEncoder setViewport:viewport];
 }
 
-void CommandBuffer::SetVertexBuffer(const NativeGraphicsHandle buffer, uint32_t index, uint32_t offset) const
+void CommandBuffer::SetVertexBuffer(const NativeGraphicsHandle buffer, BufferUsage usage, uint32_t size, uint32_t index, uint32_t offset) const
 {
     [mHandle->renderCommandEncoder setVertexBuffer:buffer offset:offset atIndex:index];
 }
 
-void CommandBuffer::SetFragmentBuffer(const NativeGraphicsHandle buffer, uint32_t index, uint32_t offset) const
+void CommandBuffer::SetFragmentBuffer(const NativeGraphicsHandle buffer, BufferUsage usage, uint32_t size, uint32_t index, uint32_t offset) const
 {
     [mHandle->renderCommandEncoder setFragmentBuffer:buffer offset:offset atIndex:index];
 }

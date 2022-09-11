@@ -26,13 +26,13 @@ public:
     template<typename T, BufferUsage usage, MemoryType memoryType>
     void SetVertexBuffer(const Buffer<T, usage, memoryType>& buffer, uint32_t index, uint32_t offset = 0) const
     {
-        SetVertexBuffer(buffer.GetHandle(), index, offset);
+        SetVertexBuffer(buffer.GetHandle(), usage, buffer.GetSize(), index, offset);
     }
 
     template<typename T, BufferUsage usage, MemoryType memoryType>
     void SetFragmentBuffer(const Buffer<T, usage, memoryType>& buffer, uint32_t index, uint32_t offset = 0) const
     {
-        SetFragmentBuffer(buffer.GetHandle(), index, offset);
+		SetFragmentBuffer(buffer.GetHandle(), usage, buffer.GetSize(), index, offset);
     }
 
     template<typename T>
@@ -69,9 +69,9 @@ private:
     
     void CopyBuffer(const NativeGraphicsHandle src, const NativeGraphicsHandle dst, uint32_t size, uint32_t srcOffset, uint32_t dstOffset) const;
 
-    void SetVertexBuffer(const NativeGraphicsHandle buffer, uint32_t index, uint32_t offset) const;
+    void SetVertexBuffer(const NativeGraphicsHandle buffer, BufferUsage usage, uint32_t size, uint32_t index, uint32_t offset) const;
 
-    void SetFragmentBuffer(const NativeGraphicsHandle buffer, uint32_t index, uint32_t offset) const;
+    void SetFragmentBuffer(const NativeGraphicsHandle buffer, BufferUsage usage, uint32_t size, uint32_t index, uint32_t offset) const;
 
     void DrawIndexed(const NativeGraphicsHandle indexBuffer, IndexType type, uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, uint32_t baseVertex, uint32_t baseInstance) const;
 

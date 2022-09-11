@@ -14,7 +14,7 @@ typedef float2x2 Matrix2;
 typedef float3x3 Matrix3;
 typedef float4x4 Matrix4;
 typedef float2 Vector2;
-typedef float3 Vector3;
+typedef float4 Vector3;
 typedef float4 Vector4;
 typedef uint Color32;
 #endif
