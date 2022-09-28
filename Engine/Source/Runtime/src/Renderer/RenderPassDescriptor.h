@@ -32,21 +32,20 @@ struct AttachmentDescriptor
 
 struct SubpassDescriptor
 {
-	TArray<uint32_t> colorAttachments = { 0 };
-	TArray<uint32_t> inputAttachments = { 0 };
+	TArray<uint32_t> colorAttachments;
+	TArray<uint32_t> inputAttachments;
     
     bool operator==(const SubpassDescriptor&) const = default;
 };
 
 struct RenderPassDescriptor
 {
-	TArray<AttachmentDescriptor> attachments = {};
-	TArray<SubpassDescriptor> subpasses = {};
-	uint32_t width = 0, height = 0;
+	TArray<AttachmentDescriptor> attachments;
+	TArray<SubpassDescriptor> subpasses;
+    Size size = Size::zero;
 	int depthAttachmentIndex = -1;
 	uint32_t samples = 1;
-	uint32_t mipLevels = 0;
-	bool swapchainTarget = false;
+	bool useMipMap = false;
     
     bool operator==(const RenderPassDescriptor&) const = default;
 };

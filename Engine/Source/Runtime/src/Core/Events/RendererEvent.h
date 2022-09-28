@@ -15,22 +15,21 @@ class RendererResizeEvent : public Event
 {
 public:
 
-	RendererResizeEvent(uint32_t width, uint32_t height)
-		: mWidth(width), mHeight(height) {}
+	RendererResizeEvent(const Size& size)
+		: mSize(size) {}
 
-	uint32_t GetWidth() const { return mWidth; }
-	uint32_t GetHeight() const { return mHeight; }
+    const Size& GetSize() const { return mSize; }
 
 	TString ToString() const override
 	{
 		TStringStream ss;
-		ss << "RendererDrawableResizeEvent: " << mWidth << ", " << mHeight;
+		ss << "RendererDrawableResizeEvent: " << mSize.width << ", " << mSize.height;
 		return ss.str();
 	}
 
 private:
 
-	uint32_t mWidth, mHeight;
+    Size mSize;
 
 };
 

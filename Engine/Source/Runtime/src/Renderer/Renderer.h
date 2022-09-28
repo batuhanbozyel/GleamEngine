@@ -16,7 +16,7 @@ public:
 
     static void Destroy();
 
-    static Vector2 GetDrawableSize();
+    static const Size& GetDrawableSize();
 
     /**
     * Renderer specific implementations

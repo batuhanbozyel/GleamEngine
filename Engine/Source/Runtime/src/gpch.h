@@ -5,7 +5,9 @@
 #include <filesystem>
 #include <cstdlib>
 #include <memory>
+#include <optional>
 #include <mutex>
+#include <atomic>
 #include <utility>
 #include <algorithm>
 #include <functional>
@@ -47,6 +49,7 @@
 #include "Math/Matrix3.h"
 #include "Math/Matrix4.h"
 #include "Math/Transform.h"
+#include "Math/Size.h"
 #include "Math/Rect.h"
 #include "Math/BoundingBox.h"
 

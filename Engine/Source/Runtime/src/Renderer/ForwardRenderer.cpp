@@ -23,14 +23,12 @@ void ForwardRenderer::Render()
 {
     const auto& drawableSize = GetDrawableSize();
     RenderPassDescriptor renderPassDesc;
-    renderPassDesc.swapchainTarget = true;
-    renderPassDesc.width = static_cast<uint32_t>(drawableSize.x);
-    renderPassDesc.height = static_cast<uint32_t>(drawableSize.y);
+    renderPassDesc.size = drawableSize;
 
     mCommandBuffer.Begin();
     mCommandBuffer.BeginRenderPass(renderPassDesc);
     mCommandBuffer.BindPipeline(PipelineStateDescriptor(), mForwardPassProgram);
-    mCommandBuffer.SetViewport(renderPassDesc.width, renderPassDesc.height);
+    mCommandBuffer.SetViewport(renderPassDesc.size);
 
     for (const auto& [mesh, transform] : mMeshes)
     {

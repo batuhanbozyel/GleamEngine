@@ -176,8 +176,8 @@ void Swapchain::InvalidateAndCreate()
 	VkExtent2D imageExtent{ static_cast<uint32_t>(width), static_cast<uint32_t>(height) };
 	imageExtent.width = Math::Clamp(imageExtent.width, surfaceCapabilities.minImageExtent.width, surfaceCapabilities.maxImageExtent.width);
 	imageExtent.height = Math::Clamp(imageExtent.height, surfaceCapabilities.minImageExtent.height, surfaceCapabilities.maxImageExtent.height);
-	mProperties.width = imageExtent.width;
-	mProperties.height = imageExtent.height;
+	mProperties.size.width = imageExtent.width;
+	mProperties.size.height = imageExtent.height;
 
 	// Create swapchain
 	VkSwapchainCreateInfoKHR swapchainCreateInfo{ VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR };
@@ -288,7 +288,7 @@ void Swapchain::InvalidateAndCreate()
 		}
 	});
 
-	EventDispatcher<RendererResizeEvent>::Publish(RendererResizeEvent(mProperties.width, mProperties.height));
+	EventDispatcher<RendererResizeEvent>::Publish(RendererResizeEvent(mProperties.size));
 }
 
 #endif

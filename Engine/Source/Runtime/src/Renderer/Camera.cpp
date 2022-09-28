@@ -16,7 +16,7 @@ Camera::Camera(float width, float height, ProjectionType type)
 
 }
 
-Camera::Camera(const Vector2& size, ProjectionType type)
+Camera::Camera(const Size& size, ProjectionType type)
 	: mProjectionType(type)
 {
 	SetViewport(size);
@@ -56,9 +56,9 @@ void Camera::SetRotation(const Quaternion& rotation)
     Transform::SetRotation(rotation);
 }
 
-void Camera::SetViewport(const Vector2& size)
+void Camera::SetViewport(const Size& size)
 {
-	SetViewport(size.x, size.y);
+	SetViewport(size.width, size.height);
 }
 
 void Camera::SetViewport(float width, float height)

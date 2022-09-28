@@ -17,13 +17,9 @@ void Renderer::Destroy()
     RendererContext::Destroy();
 }
 
-Vector2 Renderer::GetDrawableSize()
+const Size& Renderer::GetDrawableSize()
 {
-	return Vector2
-	{
-		static_cast<float>(RendererContext::GetProperties().width),
-		static_cast<float>(RendererContext::GetProperties().height)
-	};
+    return RendererContext::GetProperties().size;
 }
 
 Renderer::Renderer()

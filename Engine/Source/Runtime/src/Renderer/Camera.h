@@ -16,7 +16,7 @@ public:
     
     Camera();
     
-    Camera(const Vector2& size, ProjectionType type = ProjectionType::Perspective);
+    Camera(const Size& size, ProjectionType type = ProjectionType::Perspective);
 
     Camera(float width, float height, ProjectionType type = ProjectionType::Perspective);
     
@@ -32,7 +32,7 @@ public:
     
     void SetRotation(const Quaternion& rotation);
     
-    void SetViewport(const Vector2& size);
+    void SetViewport(const Size& size);
 
     void SetViewport(float width, float height);
     

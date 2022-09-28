@@ -18,7 +18,7 @@ void SceneView::OnAttach()
 
     Gleam::EventDispatcher<Gleam::RendererResizeEvent>::Subscribe([&](const Gleam::RendererResizeEvent& e) -> bool
     {
-        mCamera.SetViewport(static_cast<float>(e.GetWidth()), static_cast<float>(e.GetHeight()));
+        mCamera.SetViewport(e.GetSize());
         return false;
     });
 }
