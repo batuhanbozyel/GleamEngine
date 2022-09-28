@@ -36,7 +36,7 @@ id<MTLRenderPipelineState> MetalPipelineStateManager::CreateGraphicsPipeline(con
     MTLRenderPipelineDescriptor* pipelineDescriptor = [MTLRenderPipelineDescriptor new];
     pipelineDescriptor.vertexFunction = program.vertexShader->GetHandle();
     pipelineDescriptor.fragmentFunction = program.fragmentShader->GetHandle();
-    pipelineDescriptor.colorAttachments[0].pixelFormat = MTLPixelFormatBGRA8Unorm;
+    pipelineDescriptor.colorAttachments[0].pixelFormat = TextureFormatToMTLPixelFormat(RendererContext::GetSwapchain()->GetFormat());
     
     /**
             TODO:

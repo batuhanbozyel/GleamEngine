@@ -33,6 +33,8 @@ DebugRenderer::DebugRenderer()
 
     mDebugMeshProgram.vertexShader = ShaderLibrary::CreateShader("debugMeshVertexShader", ShaderStage::Vertex);
     mDebugMeshProgram.fragmentShader = ShaderLibrary::CreateShader("debugFragmentShader", ShaderStage::Fragment);
+    
+    mRenderTarget = CreateRef<RenderTarget>(TArray<TextureFormat>{TextureFormat::B8G8R8A8_UNorm}, GetDrawableSize());
 }
 
 DebugRenderer::~DebugRenderer()
@@ -90,14 +92,19 @@ void DebugRenderer::Render()
 
     // Start rendering
     const auto& drawableSize = GetDrawableSize();
+    AttachmentDescriptor attachmentDesc;
+    attachmentDesc.loadAction = AttachmentLoadAction::Clear;
+    attachmentDesc.format = TextureFormat::B8G8R8A8_UNorm;
+    attachmentDesc.clearColor = clearColor;
+    
     RenderPassDescriptor renderPassDesc;
-    renderPassDesc.swapchainTarget = true;
-    renderPassDesc.width = static_cast<uint32_t>(drawableSize.x);
-    renderPassDesc.height = static_cast<uint32_t>(drawableSize.y);
-
+    renderPassDesc.attachments = { attachmentDesc };
+    renderPassDesc.size = drawableSize;
+    
     mCommandBuffer.Begin();
+    mCommandBuffer.SetRenderTarget(mRenderTarget);
     mCommandBuffer.BeginRenderPass(renderPassDesc);
-    mCommandBuffer.SetViewport(renderPassDesc.width, renderPassDesc.height);
+    mCommandBuffer.SetViewport(renderPassDesc.size);
 
     if (!mDepthLines.empty())
     {
@@ -130,6 +137,10 @@ void DebugRenderer::Render()
     }
 
     mCommandBuffer.EndRenderPass();
+    
+    mCommandBuffer.SetRenderTarget(nullptr);
+    mCommandBuffer.Blit(*mRenderTarget->GetColorBuffers()[0], Null);
+    
     mCommandBuffer.End();
     mCommandBuffer.Commit();
 

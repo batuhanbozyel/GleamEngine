@@ -1,6 +1,5 @@
 #pragma once
 #include "Mesh.h"
-#include "Shader.h"
 #include "Renderer.h"
 #include "CommandBuffer.h"
 
@@ -59,6 +58,8 @@ private:
     CommandBuffer mCommandBuffer;
     GraphicsShader mDebugProgram;
     GraphicsShader mDebugMeshProgram;
+    
+    RefCounted<RenderTarget> mRenderTarget;
 
     TArray<DebugVertex> mStagingBuffer;
     TArray<Scope<VertexBuffer<DebugVertex, MemoryType::Dynamic>>> mVertexBuffers;

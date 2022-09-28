@@ -13,10 +13,7 @@ struct CommandBuffer::Impl
 {
     id<MTLCommandBuffer> commandBuffer = nil;
     id<MTLRenderCommandEncoder> renderCommandEncoder = nil;
-    id<MTLBlitCommandEncoder> blitCommandEncoder = nil;
-    id<CAMetalDrawable> drawable = nil;
     MetalPipelineState pipelineState;
-    bool swapchainTarget = false;
 };
 
 CommandBuffer::CommandBuffer()
@@ -33,9 +30,8 @@ CommandBuffer::~CommandBuffer()
 
 void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc) const
 {
-    mHandle->swapchainTarget = renderPassDesc.swapchainTarget;
     MTLRenderPassDescriptor* renderPass = [MTLRenderPassDescriptor renderPassDescriptor];
-    if (renderPassDesc.swapchainTarget)
+    if (mActiveRenderTarget == nullptr)
     {
         MTLClearColor clearColor = { Renderer::clearColor.r, Renderer::clearColor.g, Renderer::clearColor.b, Renderer::clearColor.a };
         if (renderPassDesc.attachments.size() > 0)
@@ -53,7 +49,38 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc) 
     }
     else
     {
-        // TODO:
+        if (mActiveRenderTarget->HasDepthBuffer())
+        {
+            const auto& depthBuffer = mActiveRenderTarget->GetDepthBuffer();
+            const auto& depthAttachment = renderPassDesc.attachments[renderPassDesc.depthAttachmentIndex];
+            
+            MTLRenderPassDepthAttachmentDescriptor* depthAttachmentDesc = renderPass.depthAttachment;
+            depthAttachmentDesc.clearDepth = depthAttachment.clearDepth;
+            depthAttachmentDesc.loadAction = AttachmentLoadActionToMTLLoadAction(depthAttachment.loadAction);
+            depthAttachmentDesc.storeAction = AttachmentStoreActionToMTLStoreAction(depthAttachment.storeAction);
+            depthAttachmentDesc.texture = depthBuffer->GetHandle();
+        }
+        
+        for (uint32_t i = 0; i <  mActiveRenderTarget->GetColorBuffers().size(); i++)
+        {
+            uint32_t attachmentIndexOffset = static_cast<int>(mActiveRenderTarget->HasDepthBuffer() && (renderPassDesc.depthAttachmentIndex <= i));
+            uint32_t colorAttachmentIndex = i + attachmentIndexOffset;
+            
+            const auto& colorBuffer = mActiveRenderTarget->GetColorBuffers()[i];
+            const auto& colorAttachment = renderPassDesc.attachments[colorAttachmentIndex];
+            
+            MTLRenderPassColorAttachmentDescriptor* colorAttachmentDesc = renderPass.colorAttachments[i];
+            colorAttachmentDesc.clearColor =
+            {
+                colorAttachment.clearColor.r,
+                colorAttachment.clearColor.g,
+                colorAttachment.clearColor.b,
+                colorAttachment.clearColor.a
+            };
+            colorAttachmentDesc.loadAction = AttachmentLoadActionToMTLLoadAction(colorAttachment.loadAction);
+            colorAttachmentDesc.storeAction = AttachmentStoreActionToMTLStoreAction(colorAttachment.storeAction);
+            colorAttachmentDesc.texture = colorBuffer->GetHandle();
+        }
     }
     mHandle->renderCommandEncoder = [mHandle->commandBuffer renderCommandEncoderWithDescriptor:renderPass];
 }
@@ -139,13 +166,13 @@ void CommandBuffer::End() const
 
 void CommandBuffer::Commit() const
 {
-    if (mHandle->swapchainTarget)
+    if (mActiveRenderTarget == nullptr)
 	{
 		RendererContext::GetSwapchain()->Present(mHandle->commandBuffer);
 	}
     else
 	{
-		// TODO:
+        [mHandle->commandBuffer commit];
 	}
 }
 

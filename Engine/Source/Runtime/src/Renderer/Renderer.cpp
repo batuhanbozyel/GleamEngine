@@ -2,6 +2,7 @@
 #include "Renderer.h"
 #include "RendererContext.h"
 #include "ShaderLibrary.h"
+#include "TextureLibrary.h"
 
 using namespace Gleam;
 
@@ -9,10 +10,12 @@ void Renderer::Init(const TString& appName, const Version& appVersion, const Ren
 {
     RendererContext::Init(appName, appVersion, props);
     ShaderLibrary::Init();
+    TextureLibrary::Init();
 }
 
 void Renderer::Destroy()
 {
+    TextureLibrary::Destroy();
 	ShaderLibrary::Destroy();
     RendererContext::Destroy();
 }

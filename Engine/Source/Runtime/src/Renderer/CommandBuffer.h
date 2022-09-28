@@ -1,6 +1,7 @@
 #pragma once
 #include "Buffer.h"
 #include "Shader.h"
+#include "RenderTarget.h"
 
 namespace Gleam {
 
@@ -23,6 +24,11 @@ public:
 
     void SetViewport(const Size& size) const;
     
+    // Set to null for swapchain target
+    void SetRenderTarget(const RefCounted<RenderTarget>& renderTarget)
+    {
+        mActiveRenderTarget = renderTarget;
+    }
 
     template<typename T, BufferUsage usage, MemoryType memoryType>
     void SetVertexBuffer(const Buffer<T, usage, memoryType>& buffer, uint32_t index, uint32_t offset = 0) const
@@ -75,6 +81,8 @@ private:
 
     class Impl;
     Scope<Impl> mHandle;
+    
+    RefCounted<RenderTarget> mActiveRenderTarget = nullptr;
     
 };
 

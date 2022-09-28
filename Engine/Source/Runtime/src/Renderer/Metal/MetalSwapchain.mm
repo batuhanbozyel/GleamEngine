@@ -31,7 +31,7 @@ Swapchain::Swapchain(const RendererProperties& props, NativeGraphicsHandle insta
     
     CAMetalLayer* swapchain = (__bridge CAMetalLayer*)SDL_Metal_GetLayer(mSurface);
     swapchain.device = MetalDevice;
-    swapchain.framebufferOnly = YES;
+    swapchain.framebufferOnly = NO;
     swapchain.opaque = YES;
     swapchain.pixelFormat = MTLPixelFormatBGRA8Unorm;
     swapchain.drawableSize = swapchain.frame.size;

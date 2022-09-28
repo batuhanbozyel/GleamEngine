@@ -26,7 +26,7 @@ Texture2D::Texture2D(uint32_t width, uint32_t height, TextureFormat format, bool
 
 	VkMemoryRequirements memoryRequirements;
 	vkGetImageMemoryRequirements(VulkanDevice, As<VkImage>(mHandle), &memoryRequirements);
-	mSize = static_cast<uint32_t>(memoryRequirements.size);
+	mBufferSize = static_cast<uint32_t>(memoryRequirements.size);
 
 	VkMemoryAllocateInfo allocateInfo{ VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
 	allocateInfo.allocationSize = memoryRequirements.size;
@@ -61,7 +61,7 @@ Texture2D::~Texture2D()
 
 void Texture2D::SetPixels(const TArray<uint8_t>& pixels) const
 {
-	uint32_t size = Math::Min(static_cast<uint32_t>(pixels.size()), mSize);
+	uint32_t size = Math::Min(static_cast<uint32_t>(pixels.size()), mBufferSize);
 
 	void* memoryPtr;
 	VK_CHECK(vkMapMemory(VulkanDevice, As<VkDeviceMemory>(mMemory), 0, pixels.size(), 0, &memoryPtr));
