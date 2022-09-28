@@ -41,7 +41,7 @@ public:
 
     void Resize(size_t size, bool keepContent = false);
 
-    void SetData(const void* data, size_t offset, size_t size) const;
+    void SetData(const void* data, size_t size, size_t offset = 0) const;
 
     size_t GetSize() const;
 
@@ -92,18 +92,18 @@ public:
 
     void SetData(const T& t, size_t offset = 0) const
     {
-        IBuffer::SetData(&t, offset, sizeof(T));
+        IBuffer::SetData(&t, sizeof(T), offset);
     }
 
     template<size_t size>
     void SetData(const std::array<T, size>& container, size_t offset = 0) const
     {
-        IBuffer::SetData(container.data(), offset, sizeof(T) * container.size());
+        IBuffer::SetData(container.data(), sizeof(T) * container.size(), offset);
     }
 
     void SetData(const std::vector<T>& container, size_t offset = 0) const
     {
-        IBuffer::SetData(container.data(), offset, sizeof(T) * container.size());
+        IBuffer::SetData(container.data(), sizeof(T) * container.size(), offset);
     }
 
     size_t GetCount() const
@@ -113,7 +113,7 @@ public:
 
 };
 
-template<IndexType indexType, MemoryType memoryType = MemoryType::Static, typename T = typename std::conditional<indexType == IndexType::UINT32, uint32_t, uint16_t>::type>
+template<IndexType indexType = IndexType::UINT32, MemoryType memoryType = MemoryType::Static, typename T = typename std::conditional<indexType == IndexType::UINT32, uint32_t, uint16_t>::type>
 using IndexBuffer = Buffer<T, BufferUsage::IndexBuffer, memoryType>;
 
 template<typename T, MemoryType memoryType = MemoryType::Static>

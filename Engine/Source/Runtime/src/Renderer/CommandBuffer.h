@@ -21,7 +21,8 @@ public:
 
     void BindPipeline(const PipelineStateDescriptor& pipelineDesc, const GraphicsShader& program) const;
 
-    void SetViewport(uint32_t width, uint32_t height) const;
+    void SetViewport(const Size& size) const;
+    
 
     template<typename T, BufferUsage usage, MemoryType memoryType>
     void SetVertexBuffer(const Buffer<T, usage, memoryType>& buffer, uint32_t index, uint32_t offset = 0) const
@@ -48,14 +49,11 @@ public:
     {
         DrawIndexed(indexBuffer.GetHandle(), IndexTraits<T>::indexType, indexCount, instanceCount, firstIndex, baseVertex, baseInstance);
     }
-
-    template<typename T1, BufferUsage usage1, typename T2, BufferUsage usage2>
-    void CopyBuffer(const Buffer<T1, usage1, MemoryType::Static>& src, const Buffer<T2, usage2, MemoryType::Static>& dst, uint32_t size, uint32_t srcOffset = 0, uint32_t dstOffset = 0) const
-    {
-        GLEAM_ASSERT(size <= src.GetSize(), "Command Buffer: Copy size can not be larger than source buffer size!");
-        GLEAM_ASSERT(size <= dst.GetSize(), "Command Buffer: Copy size can not be larger than destination buffer size!");
-        CopyBuffer(src.GetHandle(), dst.GetHandle(), size, srcOffset, dstOffset);
-    }
+    
+    void CopyBuffer(const IBuffer& src, const IBuffer& dst, uint32_t size, uint32_t srcOffset = 0, uint32_t dstOffset = 0) const;
+    
+    // Set to Null for swapchain target
+    void Blit(const Texture& texture, const Optional<RenderTexture>& renderTarget) const;
 
     void Begin() const;
 
@@ -66,8 +64,6 @@ public:
     void WaitUntilCompleted() const;
 
 private:
-    
-    void CopyBuffer(const NativeGraphicsHandle src, const NativeGraphicsHandle dst, uint32_t size, uint32_t srcOffset, uint32_t dstOffset) const;
 
     void SetVertexBuffer(const NativeGraphicsHandle buffer, BufferUsage usage, uint32_t size, uint32_t index, uint32_t offset) const;
 

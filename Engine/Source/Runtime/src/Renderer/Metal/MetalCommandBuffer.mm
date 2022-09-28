@@ -9,14 +9,6 @@
 
 using namespace Gleam;
 
-struct GraphicsPipelineCacheElement
-{
-    RenderPassDescriptor renderPassDescriptor;
-    PipelineStateDescriptor pipelineStateDescriptor;
-    GraphicsShader program;
-    id<MTLRenderPipelineState> pipeline = nil;
-};
-
 struct CommandBuffer::Impl
 {
     id<MTLCommandBuffer> commandBuffer = nil;
@@ -78,11 +70,11 @@ void CommandBuffer::BindPipeline(const PipelineStateDescriptor& pipelineDesc, co
     [mHandle->renderCommandEncoder setRenderPipelineState:mHandle->pipelineState.pipeline];
 }
 
-void CommandBuffer::SetViewport(uint32_t width, uint32_t height) const
+void CommandBuffer::SetViewport(const Size& size) const
 {
     MTLViewport viewport{};
-    viewport.width = width;
-    viewport.height = height;
+    viewport.width = size.width;
+    viewport.height = size.height;
     viewport.zfar = 1.0f;
     [mHandle->renderCommandEncoder setViewport:viewport];
 }
@@ -120,9 +112,19 @@ void CommandBuffer::DrawIndexed(const NativeGraphicsHandle indexBuffer, IndexTyp
     [mHandle->renderCommandEncoder drawIndexedPrimitives:PrimitiveToplogyToMTLPrimitiveType(mHandle->pipelineState.descriptor.topology) indexCount:indexCount indexType:indexType indexBuffer:indexBuffer indexBufferOffset:firstIndex * SizeOfIndexType(type) instanceCount:instanceCount baseVertex:baseVertex baseInstance:baseInstance];
 }
 
-void CommandBuffer::CopyBuffer(const NativeGraphicsHandle src, const NativeGraphicsHandle dst, uint32_t size, uint32_t srcOffset, uint32_t dstOffset) const
+void CommandBuffer::CopyBuffer(const IBuffer& src, const IBuffer& dst, uint32_t size, uint32_t srcOffset, uint32_t dstOffset) const
 {
-    [mHandle->blitCommandEncoder copyFromBuffer:src sourceOffset:srcOffset toBuffer:dst destinationOffset:dstOffset size:size];
+    id<MTLBlitCommandEncoder> blitCommandEncoder = [mHandle->commandBuffer blitCommandEncoder];
+    [blitCommandEncoder copyFromBuffer:src.GetHandle() sourceOffset:srcOffset toBuffer:dst.GetHandle() destinationOffset:dstOffset size:size];
+    [blitCommandEncoder endEncoding];
+}
+
+void CommandBuffer::Blit(const Texture& texture, const Optional<RenderTexture>& renderTarget) const
+{
+    id<MTLBlitCommandEncoder> blitCommandEncoder = [mHandle->commandBuffer blitCommandEncoder];
+    id targetTexture = renderTarget.has_value() ? renderTarget.value().GetHandle() : id<CAMetalDrawable>(RendererContext::GetSwapchain()->AcquireNextDrawable()).texture;
+    [blitCommandEncoder copyFromTexture:texture.GetHandle() toTexture:targetTexture];
+    [blitCommandEncoder endEncoding];
 }
 
 void CommandBuffer::Begin() const
@@ -153,4 +155,3 @@ void CommandBuffer::WaitUntilCompleted() const
 }
 
 #endif
-

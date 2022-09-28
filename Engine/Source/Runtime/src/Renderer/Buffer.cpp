@@ -1,5 +1,6 @@
 #include "gpch.h"
 #include "Buffer.h"
+#include "CommandBuffer.h"
 
 using namespace Gleam;
 
@@ -12,7 +13,7 @@ IBuffer::IBuffer(size_t size, BufferUsage usage, MemoryType memoryType)
 IBuffer::IBuffer(const void* data, size_t size, BufferUsage usage, MemoryType memoryType)
     : IBuffer(size, usage, memoryType)
 {
-    SetData(data, 0, size);
+    SetData(data, size);
 }
 
 IBuffer::~IBuffer()
@@ -29,13 +30,18 @@ void IBuffer::Resize(size_t size, bool keepContent)
         if (mMemoryType == MemoryType::Static)
         {
             IBuffer stagingBuffer(mSize, BufferUsage::StagingBuffer, MemoryType::Static);
-            Copy(*this, stagingBuffer);
+            
+            CommandBuffer commandBuffer;
+            commandBuffer.Begin();
+            commandBuffer.CopyBuffer(*this, stagingBuffer, mSize);
+            
             Free(*this);
-
             mSize = size;
             Allocate(*this);
-
-            Copy(stagingBuffer, *this);
+            
+            commandBuffer.CopyBuffer(stagingBuffer, *this, mSize);
+            commandBuffer.End();
+            commandBuffer.Commit();
         }
         else
         {
@@ -57,14 +63,19 @@ void IBuffer::Resize(size_t size, bool keepContent)
     }
 }
 
-void IBuffer::SetData(const void* data, size_t offset, size_t size) const
+void IBuffer::SetData(const void* data, size_t size, size_t offset) const
 {
     GLEAM_ASSERT(size <= mSize, "Cannot send data to the buffer if size is larger than the buffer size!");
     
     if (mMemoryType == MemoryType::Static)
     {
         IBuffer stagingBuffer(data, size, BufferUsage::StagingBuffer, MemoryType::Stream);
-        Copy(stagingBuffer, *this, 0, offset);
+        
+        CommandBuffer commandBuffer;
+        commandBuffer.Begin();
+        commandBuffer.CopyBuffer(stagingBuffer, *this, size, 0, offset);
+        commandBuffer.End();
+        commandBuffer.Commit();
     }
     else
     {
