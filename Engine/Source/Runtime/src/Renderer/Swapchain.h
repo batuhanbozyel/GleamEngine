@@ -35,6 +35,11 @@ public:
 	{
 		return mProperties;
 	}
+    
+    const Size& GetSize() const
+    {
+        return mSize;
+    }
 
 	void* GetSurface() const
 	{
@@ -45,6 +50,8 @@ private:
 
 	uint32_t mCurrentFrameIndex = 0;
 
+    Size mSize = Size::zero;
+    
 	RendererProperties mProperties;
     
     void* mSurface = nullptr;
