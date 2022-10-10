@@ -19,7 +19,7 @@ namespace Gleam {
 struct VulkanSwapchainImage
 {
 	VkImage drawable{ VK_NULL_HANDLE };
-	VkImageView view;
+	VkImageView view{ VK_NULL_HANDLE };
 };
 
 struct VulkanQueue

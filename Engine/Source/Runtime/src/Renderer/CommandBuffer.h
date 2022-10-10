@@ -71,9 +71,9 @@ public:
 
 private:
 
-    void SetVertexBuffer(const NativeGraphicsHandle buffer, BufferUsage usage, uint32_t size, uint32_t index, uint32_t offset) const;
+    void SetVertexBuffer(const NativeGraphicsHandle buffer, BufferUsage usage, size_t size, uint32_t index, uint32_t offset) const;
 
-    void SetFragmentBuffer(const NativeGraphicsHandle buffer, BufferUsage usage, uint32_t size, uint32_t index, uint32_t offset) const;
+    void SetFragmentBuffer(const NativeGraphicsHandle buffer, BufferUsage usage, size_t size, uint32_t index, uint32_t offset) const;
 
     void DrawIndexed(const NativeGraphicsHandle indexBuffer, IndexType type, uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, uint32_t baseVertex, uint32_t baseInstance) const;
 

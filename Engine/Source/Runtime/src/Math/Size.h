@@ -4,8 +4,8 @@ namespace Gleam {
     
 struct Size
 {
-    float width;
-    float height;
+    float width = 0.0f;
+    float height = 0.0f;
     
     static const Size zero;
     static const Size one;
