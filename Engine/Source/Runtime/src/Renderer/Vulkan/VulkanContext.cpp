@@ -48,12 +48,11 @@ struct
 
 	// Device
 	VkPhysicalDevice physicalDevice{ VK_NULL_HANDLE };
-	VkQueue graphicsQueue{ VK_NULL_HANDLE };
-	uint32_t graphicsQueueFamilyIndex{ 0 };
-	VkQueue computeQueue{ VK_NULL_HANDLE };
-	uint32_t computeQueueFamilyIndex{ 0 };
-	VkQueue transferQueue{ VK_NULL_HANDLE };
-	uint32_t transferQueueFamilyIndex{ 0 };
+
+	VulkanQueue graphicsQueue;
+	VulkanQueue computeQueue;
+	VulkanQueue transferQueue;
+
 	TArray<VkExtensionProperties> deviceExtensions;
 	VkPhysicalDeviceMemoryProperties memoryProperties;
 
@@ -187,7 +186,7 @@ void RendererContext::Init(const TString& appName, const Version& appVersion, co
 			!mainQueueFound)
 		{
 			mainQueueFound = true;
-			mContext.graphicsQueueFamilyIndex = i;
+			mContext.graphicsQueue.index = i;
 			deviceQueueCreateInfos.push_back(deviceQueueCreateInfo);
 
 			VkBool32 mainQueueSupportsPresent = false;
@@ -200,7 +199,7 @@ void RendererContext::Init(const TString& appName, const Version& appVersion, co
 			!computeQueueFound)
 		{
 			computeQueueFound = true;
-			mContext.computeQueueFamilyIndex = i;
+			mContext.computeQueue.index = i;
 			deviceQueueCreateInfos.push_back(deviceQueueCreateInfo);
 		}
 		else if (queueFamilySupportsTransfer &&
@@ -209,7 +208,7 @@ void RendererContext::Init(const TString& appName, const Version& appVersion, co
 			!transferQueueFound)
 		{
 			transferQueueFound = true;
-			mContext.transferQueueFamilyIndex = i;
+			mContext.transferQueue.index = i;
 			deviceQueueCreateInfos.push_back(deviceQueueCreateInfo);
 		}
 	}
@@ -230,25 +229,23 @@ void RendererContext::Init(const TString& appName, const Version& appVersion, co
 	volkLoadDevice(As<VkDevice>(mDevice));
 
 	GLEAM_ASSERT(mainQueueFound, "Vulkan: Main queue could not found!");
-	vkGetDeviceQueue(As<VkDevice>(mDevice), mContext.graphicsQueueFamilyIndex, 0, &mContext.graphicsQueue);
+	vkGetDeviceQueue(As<VkDevice>(mDevice), mContext.graphicsQueue.index, 0, &mContext.graphicsQueue.handle);
 	if (computeQueueFound)
 	{
-		vkGetDeviceQueue(As<VkDevice>(mDevice), mContext.computeQueueFamilyIndex, 0, &mContext.computeQueue);
+		vkGetDeviceQueue(As<VkDevice>(mDevice), mContext.computeQueue.index, 0, &mContext.computeQueue.handle);
 	}
 	else
 	{
 		mContext.computeQueue = mContext.graphicsQueue;
-		mContext.computeQueueFamilyIndex = mContext.graphicsQueueFamilyIndex;
 		GLEAM_CORE_WARN("Vulkan: Async compute queue family could not found, mapping to main queue.");
 	}
 	if (transferQueueFound)
 	{
-		vkGetDeviceQueue(As<VkDevice>(mDevice), mContext.transferQueueFamilyIndex, 0, &mContext.transferQueue);
+		vkGetDeviceQueue(As<VkDevice>(mDevice), mContext.transferQueue.index, 0, &mContext.transferQueue.handle);
 	}
 	else
 	{
 		mContext.transferQueue = mContext.graphicsQueue;
-		mContext.transferQueueFamilyIndex = mContext.graphicsQueueFamilyIndex;
 		GLEAM_CORE_WARN("Vulkan: Transfer queue family could not found, mapping to main queue.");
 	}
 
@@ -267,10 +264,10 @@ void RendererContext::Init(const TString& appName, const Version& appVersion, co
 	mContext.transferCommandPools.resize(GetProperties().maxFramesInFlight);
 	for (uint32_t i = 0; i < GetProperties().maxFramesInFlight; i++)
 	{
-		commandPoolCreateInfo.queueFamilyIndex = mContext.graphicsQueueFamilyIndex;
+		commandPoolCreateInfo.queueFamilyIndex = mContext.graphicsQueue.index;
 		VK_CHECK(vkCreateCommandPool(VulkanDevice, &commandPoolCreateInfo, nullptr, &mContext.graphicsCommandPools[i]));
 
-		commandPoolCreateInfo.queueFamilyIndex = mContext.transferQueueFamilyIndex;
+		commandPoolCreateInfo.queueFamilyIndex = mContext.transferQueue.index;
 		VK_CHECK(vkCreateCommandPool(VulkanDevice, &commandPoolCreateInfo, nullptr, &mContext.transferCommandPools[i]));
 	}
 
@@ -326,21 +323,21 @@ NativeGraphicsHandle RendererContext::GetPhysicalDevice()
 /************************************************************************/
 NativeGraphicsHandle RendererContext::GetGraphicsQueue()
 {
-	return mContext.graphicsQueue;
+	return &mContext.graphicsQueue;
 }
 /************************************************************************/
 /*	GetComputeQueue                                                     */
 /************************************************************************/
 NativeGraphicsHandle RendererContext::GetComputeQueue()
 {
-	return mContext.computeQueue;
+	return &mContext.computeQueue;
 }
 /************************************************************************/
 /*	GetTransferQueue                                                    */
 /************************************************************************/
 NativeGraphicsHandle RendererContext::GetTransferQueue()
 {
-	return mContext.transferQueue;
+	return &mContext.transferQueue;
 }
 /************************************************************************/
 /*	GetGraphicsCommandPool                                              */

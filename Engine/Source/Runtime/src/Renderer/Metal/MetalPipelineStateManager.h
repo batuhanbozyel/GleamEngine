@@ -1,4 +1,5 @@
 #pragma once
+#ifdef USE_METAL_RENDERER
 #include "MetalUtils.h"
 #include "Renderer/Shader.h"
 #include "Renderer/RenderPassDescriptor.h"
@@ -36,3 +37,4 @@ private:
 };
 
 } // namespace Gleam
+#endif

@@ -15,14 +15,37 @@ struct CommandBuffer::Impl
 	TArray<VkCommandBuffer> commandBuffers;
 	TArray<VkFence> fences;
 
-	VulkanRenderPass renderPassState;
+	VkRenderPass renderPassState{ VK_NULL_HANDLE };
 	VulkanPipeline pipelineState;
 
 	struct DeletionQueue
 	{
+		TArray<VkRenderPass> renderPasses;
 		TArray<VkFramebuffer> framebuffers;
+
+		void Flush()
+		{
+			for (auto renderPass : renderPasses)
+			{
+				vkDestroyRenderPass(VulkanDevice, renderPass, nullptr);
+			}
+			renderPasses.clear();
+
+			for (auto framebuffer : framebuffers)
+			{
+				vkDestroyFramebuffer(VulkanDevice, framebuffer, nullptr);
+			}
+			framebuffers.clear();
+		}
 	};
 	TArray<DeletionQueue> deletionQueue;
+
+	void EndFrame()
+	{
+		auto frameIdx = RendererContext::GetSwapchain()->GetFrameIndex();
+		VK_CHECK(vkWaitForFences(VulkanDevice, 1, &fences[frameIdx], VK_TRUE, UINT64_MAX));
+		VK_CHECK(vkResetFences(VulkanDevice, 1, &fences[frameIdx]));
+	}
 };
 
 CommandBuffer::CommandBuffer()
@@ -53,6 +76,12 @@ CommandBuffer::~CommandBuffer()
 		vkFreeCommandBuffers(VulkanDevice, As<VkCommandPool>(RendererContext::GetGraphicsCommandPool(i)), 1,&mHandle->commandBuffers[i]);
 		vkDestroyFence(VulkanDevice, mHandle->fences[i], nullptr);
 
+		for (auto renderPass : mHandle->deletionQueue[i].renderPasses)
+		{
+			vkDestroyRenderPass(VulkanDevice, renderPass, nullptr);
+		}
+		mHandle->deletionQueue[i].renderPasses.clear();
+
 		for (auto framebuffer : mHandle->deletionQueue[i].framebuffers)
 		{
 			vkDestroyFramebuffer(VulkanDevice, framebuffer, nullptr);
@@ -63,58 +92,162 @@ CommandBuffer::~CommandBuffer()
 
 void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc) const
 {
-	mHandle->renderPassState = VulkanPipelineStateManager::GetRenderPass(renderPassDesc);
-
+	VkAttachmentReference depthStencilAttachment{};
+	TArray<VkAttachmentReference> colorAttachments(mActiveRenderTarget->GetColorBuffers().size());
+	TArray<VkSubpassDescription> subpassDescriptors(renderPassDesc.subpasses.size());
+	TArray<VkSubpassDependency> subpassDependencies(renderPassDesc.subpasses.size());
+	TArray<VkAttachmentDescription> attachmentDescriptors(renderPassDesc.attachments.size());
 	TArray<VkImageView> imageViews(renderPassDesc.attachments.size());
 	TArray<VkClearValue> clearValues(renderPassDesc.attachments.size());
-	if (renderPassDesc.swapchainTarget)
+
+	// Render to swapchain
+	if (mActiveRenderTarget == nullptr)
 	{
+		subpassDescriptors.resize(1);
+		subpassDependencies.resize(1);
+		attachmentDescriptors.resize(1);
+		imageViews.resize(1);
+		clearValues.resize(1);
+
+		auto& clearColor = Renderer::clearColor;
 		if (renderPassDesc.attachments.size() > 0)
-		{
-			const auto& clearColor = renderPassDesc.attachments[0].clearColor;
-			clearValues[0] = { clearColor.r, clearColor.g, clearColor.b, clearColor.a };
-		}
-		else
-		{
-			const auto& clearColor = Renderer::clearColor;
-			clearValues.emplace_back(VkClearValue{ clearColor.r, clearColor.g, clearColor.b, clearColor.a });
-		}
+			clearColor = renderPassDesc.attachments[0].clearColor;
 
-		auto frameIdx = RendererContext::GetSwapchain()->GetFrameIndex();
-		VK_CHECK(vkWaitForFences(VulkanDevice, 1, &mHandle->fences[frameIdx], VK_TRUE, UINT64_MAX));
-		VK_CHECK(vkResetFences(VulkanDevice, 1, &mHandle->fences[frameIdx]));
+		clearValues[0] = { clearColor.r, clearColor.g, clearColor.b, clearColor.a };
+		imageViews[0] = As<VulkanSwapchainImage*>(RendererContext::GetSwapchain()->AcquireNextDrawable())->view;
 
-		imageViews.push_back(As<VkImageView>(RendererContext::GetSwapchain()->AcquireNextDrawable()));
+		VkAttachmentReference attachmentRef{};
+		attachmentRef.attachment = 0;
+		attachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+		attachmentDescriptors[0] = {};
+		attachmentDescriptors[0].format = TextureFormatToVkFormat(RendererContext::GetSwapchain()->GetFormat());
+		attachmentDescriptors[0].samples = GetVkSampleCount(RendererContext::GetProperties().sampleCount);
+		attachmentDescriptors[0].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+		attachmentDescriptors[0].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+		attachmentDescriptors[0].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+		attachmentDescriptors[0].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+		attachmentDescriptors[0].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		attachmentDescriptors[0].finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+		subpassDescriptors[0] = {};
+		subpassDescriptors[0].pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+		subpassDescriptors[0].colorAttachmentCount = 1;
+		subpassDescriptors[0].pColorAttachments = &attachmentRef;
+
+		subpassDependencies[0] = {};
+		subpassDependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
+		subpassDependencies[0].dstSubpass = 0;
+		subpassDependencies[0].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+		subpassDependencies[0].dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+		subpassDependencies[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+		subpassDependencies[0].dependencyFlags = 0;
 	}
 	else
 	{
-		// TODO:
+		// TODO: Check if we can abstract Vulkan subpasses with Metal tiling API
+		// Currently there is no subpass support
+		subpassDescriptors.resize(1);
+		subpassDependencies.resize(1);
+
+		if (mActiveRenderTarget->HasDepthBuffer())
+		{
+			depthStencilAttachment.attachment = renderPassDesc.depthAttachmentIndex;
+			depthStencilAttachment.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+			const auto& depthBuffer = mActiveRenderTarget->GetDepthBuffer();
+			const auto& depthAttachment = renderPassDesc.attachments[renderPassDesc.depthAttachmentIndex];
+
+			auto& depthAttachmentDesc = attachmentDescriptors[renderPassDesc.depthAttachmentIndex];
+			depthAttachmentDesc.format = TextureFormatToVkFormat(depthBuffer->GetFormat());
+			depthAttachmentDesc.samples = GetVkSampleCount(depthBuffer->GetSampleCount());
+			depthAttachmentDesc.loadOp = AttachmentLoadActionToVkAttachmentLoadOp(depthAttachment.loadAction);
+			depthAttachmentDesc.stencilLoadOp = depthAttachmentDesc.loadOp;
+			depthAttachmentDesc.storeOp = AttachmentStoreActionToVkAttachmentStoreOp(depthAttachment.storeAction);
+			depthAttachmentDesc.stencilStoreOp = depthAttachmentDesc.storeOp;
+			depthAttachmentDesc.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+			depthAttachmentDesc.finalLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+
+			VkClearValue clearValue{};
+			clearValue.depthStencil = { depthAttachment.clearDepth, depthAttachment.clearStencil };
+			clearValues[renderPassDesc.depthAttachmentIndex] = clearValue;
+
+			imageViews[renderPassDesc.depthAttachmentIndex] = As<VkImageView>(depthBuffer->GetImageView());
+			subpassDescriptors[0].pDepthStencilAttachment = &depthStencilAttachment;
+		}
+
+		for (uint32_t i = 0; i < mActiveRenderTarget->GetColorBuffers().size(); i++)
+		{
+			uint32_t attachmentIndexOffset = static_cast<uint32_t>(mActiveRenderTarget->HasDepthBuffer() && (renderPassDesc.depthAttachmentIndex <= static_cast<int>(i)));
+			uint32_t colorAttachmentIndex = i + attachmentIndexOffset;
+
+			colorAttachments[i].attachment = colorAttachmentIndex;
+			colorAttachments[i].layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+			const auto& colorBuffer = mActiveRenderTarget->GetColorBuffers()[i];
+			const auto& colorAttachment = renderPassDesc.attachments[colorAttachmentIndex];
+
+			auto& colorAttachmentDesc = attachmentDescriptors[colorAttachmentIndex];
+			colorAttachmentDesc.format = TextureFormatToVkFormat(colorBuffer->GetFormat());
+			colorAttachmentDesc.samples = GetVkSampleCount(colorBuffer->GetSampleCount());
+			colorAttachmentDesc.loadOp = AttachmentLoadActionToVkAttachmentLoadOp(colorAttachment.loadAction);
+			colorAttachmentDesc.storeOp = AttachmentStoreActionToVkAttachmentStoreOp(colorAttachment.storeAction);
+			colorAttachmentDesc.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+			colorAttachmentDesc.finalLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+
+			clearValues[colorAttachmentIndex] = { colorAttachment.clearColor.r, colorAttachment.clearColor.g, colorAttachment.clearColor.b, colorAttachment.clearColor.a };
+			imageViews[colorAttachmentIndex] = As<VkImageView>(colorBuffer->GetImageView());
+		}
+
+		subpassDescriptors[0] = {};
+		subpassDescriptors[0].pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+		subpassDescriptors[0].colorAttachmentCount = static_cast<uint32_t>(colorAttachments.size());
+		subpassDescriptors[0].pColorAttachments = colorAttachments.data();
+
+		subpassDependencies[0] = {};
+		subpassDependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
+		subpassDependencies[0].dstSubpass = 0;
+		subpassDependencies[0].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+		subpassDependencies[0].dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+		subpassDependencies[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+		subpassDependencies[0].dependencyFlags = 0;
 	}
+
+	VkRenderPassCreateInfo renderPassCreateInfo{ VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO };
+	renderPassCreateInfo.attachmentCount = static_cast<uint32_t>(attachmentDescriptors.size());
+	renderPassCreateInfo.pAttachments = attachmentDescriptors.data();
+	renderPassCreateInfo.subpassCount = static_cast<uint32_t>(subpassDescriptors.size());
+	renderPassCreateInfo.pSubpasses = subpassDescriptors.data();
+	renderPassCreateInfo.dependencyCount = static_cast<uint32_t>(subpassDependencies.size());
+	renderPassCreateInfo.pDependencies = subpassDependencies.data();
+	VK_CHECK(vkCreateRenderPass(VulkanDevice, &renderPassCreateInfo, nullptr, &mHandle->renderPassState));
+	mHandle->deletionQueue[RendererContext::GetSwapchain()->GetFrameIndex()].renderPasses.push_back(mHandle->renderPassState);
 
 	VkFramebuffer framebuffer;
 	VkFramebufferCreateInfo framebufferCreateInfo{ VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO };
-	framebufferCreateInfo.renderPass = mHandle->renderPassState.handle;
+	framebufferCreateInfo.renderPass = mHandle->renderPassState;
 	framebufferCreateInfo.attachmentCount = static_cast<uint32_t>(imageViews.size());
 	framebufferCreateInfo.pAttachments = imageViews.data();
-	framebufferCreateInfo.width = renderPassDesc.width;
-	framebufferCreateInfo.height = renderPassDesc.height;
+	framebufferCreateInfo.width = static_cast<uint32_t>(renderPassDesc.size.width);
+	framebufferCreateInfo.height = static_cast<uint32_t>(renderPassDesc.size.height);
 	framebufferCreateInfo.layers = 1;
 	VK_CHECK(vkCreateFramebuffer(VulkanDevice, &framebufferCreateInfo, nullptr, &framebuffer));
 	mHandle->deletionQueue[RendererContext::GetSwapchain()->GetFrameIndex()].framebuffers.push_back(framebuffer);
 
 	VkRenderPassBeginInfo renderPassBeginInfo{ VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO };
-	renderPassBeginInfo.renderPass = mHandle->renderPassState.handle;
+	renderPassBeginInfo.renderPass = mHandle->renderPassState;
 	renderPassBeginInfo.framebuffer = framebuffer;
 	renderPassBeginInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
 	renderPassBeginInfo.pClearValues = clearValues.data();
-	renderPassBeginInfo.renderArea.extent.width = renderPassDesc.width;
-	renderPassBeginInfo.renderArea.extent.height = renderPassDesc.height;
+	renderPassBeginInfo.renderArea.extent.width = static_cast<uint32_t>(renderPassDesc.size.width);
+	renderPassBeginInfo.renderArea.extent.height = static_cast<uint32_t>(renderPassDesc.size.height);
 	vkCmdBeginRenderPass(CurrentCommandBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 }
 
 void CommandBuffer::EndRenderPass() const
 {
 	vkCmdEndRenderPass(CurrentCommandBuffer);
+	mHandle->renderPassState = VK_NULL_HANDLE;
 }
 
 void CommandBuffer::BindPipeline(const PipelineStateDescriptor& pipelineDesc, const GraphicsShader& program) const
@@ -123,17 +256,17 @@ void CommandBuffer::BindPipeline(const PipelineStateDescriptor& pipelineDesc, co
 	vkCmdBindPipeline(CurrentCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mHandle->pipelineState.handle);
 }
 
-void CommandBuffer::SetViewport(uint32_t width, uint32_t height) const
+void CommandBuffer::SetViewport(const Size& size) const
 {
 	VkViewport viewport{};
-	viewport.width = static_cast<float>(width);
-	viewport.height = static_cast<float>(height);
+	viewport.width = size.width;
+	viewport.height = size.height;
 	viewport.maxDepth = 1.0f;
 	vkCmdSetViewport(CurrentCommandBuffer, 0, 1, &viewport);
 
 	VkRect2D scissor{};
-	scissor.extent.width = width;
-	scissor.extent.height = height;
+	scissor.extent.width = static_cast<uint32_t>(size.width);
+	scissor.extent.height = static_cast<uint32_t>(size.height);
 	vkCmdSetScissor(CurrentCommandBuffer, 0, 1, &scissor);
 }
 
@@ -193,13 +326,75 @@ void CommandBuffer::DrawIndexed(const NativeGraphicsHandle indexBuffer, IndexTyp
 	vkCmdDrawIndexed(CurrentCommandBuffer, indexCount, instanceCount, firstIndex, baseVertex, baseInstance);
 }
 
-void CommandBuffer::CopyBuffer(const NativeGraphicsHandle src, const NativeGraphicsHandle dst, uint32_t size, uint32_t srcOffset, uint32_t dstOffset) const
+void CommandBuffer::CopyBuffer(const IBuffer& src, const IBuffer& dst, size_t size, uint32_t srcOffset, uint32_t dstOffset) const
 {
 	VkBufferCopy bufferCopy{};
 	bufferCopy.srcOffset = srcOffset;
 	bufferCopy.dstOffset = dstOffset;
 	bufferCopy.size = size;
-	vkCmdCopyBuffer(CurrentCommandBuffer, As<VkBuffer>(src), As<VkBuffer>(dst), 1, &bufferCopy);
+	vkCmdCopyBuffer(CurrentCommandBuffer, As<VkBuffer>(src.GetHandle()), As<VkBuffer>(dst.GetHandle()), 1, &bufferCopy);
+}
+
+void CommandBuffer::Blit(const Texture& texture, const Optional<Texture>& target) const
+{
+	bool swapchainTarget = !target.has_value();
+	VkImage targetTexture = swapchainTarget ? As<VulkanSwapchainImage*>(RendererContext::GetSwapchain()->AcquireNextDrawable())->drawable : As<VkImage>(target.value().GetHandle());
+
+	if (swapchainTarget)
+	{
+		VkImageMemoryBarrier imageBarrier{ VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
+		imageBarrier.srcAccessMask = VK_FLAGS_NONE;
+		imageBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+		imageBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		imageBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+		imageBarrier.image = targetTexture;
+		imageBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		imageBarrier.subresourceRange.layerCount = 1;
+		imageBarrier.subresourceRange.baseArrayLayer = 0;
+		imageBarrier.subresourceRange.levelCount = 1;
+		imageBarrier.subresourceRange.baseMipLevel = 0;
+
+		vkCmdPipelineBarrier(CurrentCommandBuffer,
+			VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+			VK_PIPELINE_STAGE_TRANSFER_BIT,
+			VK_FLAGS_NONE,
+			0, nullptr,
+			0, nullptr,
+			1, &imageBarrier);
+	}
+
+	VkImageCopy region{};
+	region.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	region.srcSubresource.layerCount = 1;
+	region.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	region.dstSubresource.layerCount = 1;
+	region.extent.width = static_cast<uint32_t>(texture.GetSize().width);
+	region.extent.height = static_cast<uint32_t>(texture.GetSize().height);
+	region.extent.depth = 1;
+	vkCmdCopyImage(CurrentCommandBuffer, As<VkImage>(texture.GetHandle()), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, targetTexture, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+
+	if (swapchainTarget)
+	{
+		VkImageMemoryBarrier imageBarrier{ VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
+		imageBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+		imageBarrier.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+		imageBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+		imageBarrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+		imageBarrier.image = targetTexture;
+		imageBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		imageBarrier.subresourceRange.layerCount = 1;
+		imageBarrier.subresourceRange.baseArrayLayer = 0;
+		imageBarrier.subresourceRange.levelCount = 1;
+		imageBarrier.subresourceRange.baseMipLevel = 0;
+
+		vkCmdPipelineBarrier(CurrentCommandBuffer,
+			VK_PIPELINE_STAGE_TRANSFER_BIT,
+			VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+			VK_FLAGS_NONE,
+			0, nullptr,
+			0, nullptr,
+			1, &imageBarrier);
+	}
 }
 
 void CommandBuffer::Begin() const
@@ -216,8 +411,9 @@ void CommandBuffer::End() const
 
 void CommandBuffer::Commit() const
 {
+	mHandle->EndFrame();
 	auto frameIdx = RendererContext::GetSwapchain()->GetFrameIndex();
-	if (mHandle->renderPassState.swapchainTarget)
+	if (mActiveRenderTarget == nullptr)
 	{
 		VkSemaphore waitSemaphore = As<VkSemaphore>(RendererContext::GetSwapchain()->GetImageAcquireSemaphore());
 		VkSemaphore signalSemaphore = As<VkSemaphore>(RendererContext::GetSwapchain()->GetImageReleaseSemaphore());
@@ -231,24 +427,20 @@ void CommandBuffer::Commit() const
 		submitInfo.pCommandBuffers = &CurrentCommandBuffer;
 		submitInfo.signalSemaphoreCount = 1;
 		submitInfo.pSignalSemaphores = &signalSemaphore;
-		VK_CHECK(vkQueueSubmit(As<VkQueue>(RendererContext::GetGraphicsQueue()), 1, &submitInfo, mHandle->fences[frameIdx]));
+		VK_CHECK(vkQueueSubmit(As<VulkanQueue*>(RendererContext::GetGraphicsQueue())->handle, 1, &submitInfo, mHandle->fences[frameIdx]));
 
 		RendererContext::GetSwapchain()->Present(CurrentCommandBuffer);
-
-		frameIdx = RendererContext::GetSwapchain()->GetFrameIndex();
 		VK_CHECK(vkWaitForFences(VulkanDevice, 1, &mHandle->fences[frameIdx], VK_TRUE, UINT64_MAX));
 		VK_CHECK(vkResetCommandPool(VulkanDevice, As<VkCommandPool>(RendererContext::GetGraphicsCommandPool(frameIdx)), 0));
-
-		for (auto framebuffer : mHandle->deletionQueue[frameIdx].framebuffers)
-		{
-			vkDestroyFramebuffer(VulkanDevice, framebuffer, nullptr);
-		}
-		mHandle->deletionQueue[frameIdx].framebuffers.clear();
 	}
 	else
 	{
-		// TODO:
+		VkSubmitInfo submitInfo{ VK_STRUCTURE_TYPE_SUBMIT_INFO };
+		submitInfo.commandBufferCount = 1;
+		submitInfo.pCommandBuffers = &CurrentCommandBuffer;
+		VK_CHECK(vkQueueSubmit(As<VulkanQueue*>(RendererContext::GetGraphicsQueue())->handle, 1, &submitInfo, mHandle->fences[frameIdx]));
 	}
+	mHandle->deletionQueue[frameIdx].Flush();
 }
 
 void CommandBuffer::WaitUntilCompleted() const

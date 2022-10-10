@@ -50,6 +50,10 @@ static constexpr TextureFormat MTLPixelFormatToTextureFormat(MTLPixelFormat form
         case MTLPixelFormatRG16Sint: return TextureFormat::R16G16_SInt;
         case MTLPixelFormatRGBA16Sint: return TextureFormat::R16G16B16A16_SInt;
 
+		case MTLPixelFormatR16Float: return TextureFormat::R16_SFloat;
+		case MTLPixelFormatRG16Float: return TextureFormat::R16G16_SFloat;
+		case MTLPixelFormatRGBA16Float: return TextureFormat::R16G16B16A16_SFloat;
+
         case MTLPixelFormatR32Uint: return TextureFormat::R32_UInt;
         case MTLPixelFormatRG32Uint: return TextureFormat::R32G32_UInt;
         case MTLPixelFormatRGBA32Uint: return TextureFormat::R32G32B32A32_UInt;
@@ -57,10 +61,6 @@ static constexpr TextureFormat MTLPixelFormatToTextureFormat(MTLPixelFormat form
         case MTLPixelFormatR32Sint: return TextureFormat::R32_SInt;
         case MTLPixelFormatRG32Sint: return TextureFormat::R32G32_SInt;
         case MTLPixelFormatRGBA32Sint: return TextureFormat::R32G32B32A32_SInt;
-
-        case MTLPixelFormatR16Float: return TextureFormat::R16_SFloat;
-        case MTLPixelFormatRG16Float: return TextureFormat::R16G16_SFloat;
-        case MTLPixelFormatRGBA16Float: return TextureFormat::R16G16B16A16_SFloat;
 
         case MTLPixelFormatR32Float: return TextureFormat::R32_SFloat;
         case MTLPixelFormatRG32Float: return TextureFormat::R32G32_SFloat;
@@ -119,6 +119,10 @@ static constexpr MTLPixelFormat TextureFormatToMTLPixelFormat(TextureFormat form
         case TextureFormat::R16G16_SInt: return MTLPixelFormatRG16Sint;
         case TextureFormat::R16G16B16A16_SInt: return MTLPixelFormatRGBA16Sint;
 
+		case TextureFormat::R16_SFloat: return MTLPixelFormatR16Float;
+		case TextureFormat::R16G16_SFloat: return MTLPixelFormatRG16Float;
+		case TextureFormat::R16G16B16A16_SFloat: return MTLPixelFormatRGBA16Float;
+
         case TextureFormat::R32_UInt: return MTLPixelFormatR32Uint;
         case TextureFormat::R32G32_UInt: return MTLPixelFormatRG32Uint;
         case TextureFormat::R32G32B32A32_UInt: return MTLPixelFormatRGBA32Uint;
@@ -126,10 +130,6 @@ static constexpr MTLPixelFormat TextureFormatToMTLPixelFormat(TextureFormat form
         case TextureFormat::R32_SInt: return MTLPixelFormatR32Sint;
         case TextureFormat::R32G32_SInt: return MTLPixelFormatRG32Sint;
         case TextureFormat::R32G32B32A32_SInt: return MTLPixelFormatRGBA32Sint;
-
-        case TextureFormat::R16_SFloat: return MTLPixelFormatR16Float;
-        case TextureFormat::R16G16_SFloat: return MTLPixelFormatRG16Float;
-        case TextureFormat::R16G16B16A16_SFloat: return MTLPixelFormatRGBA16Float;
 
         case TextureFormat::R32_SFloat: return MTLPixelFormatR32Float;
         case TextureFormat::R32G32_SFloat: return MTLPixelFormatRG32Float;

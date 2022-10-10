@@ -57,6 +57,10 @@ enum class TextureFormat
 	R16G16_SInt,
 	R16G16B16A16_SInt,
 
+	R16_SFloat,
+	R16G16_SFloat,
+	R16G16B16A16_SFloat,
+
 	R32_UInt,
 	R32G32_UInt,
 	R32G32B32A32_UInt,
@@ -64,10 +68,6 @@ enum class TextureFormat
 	R32_SInt,
 	R32G32_SInt,
 	R32G32B32A32_SInt,
-
-	R16_SFloat,
-	R16G16_SFloat,
-	R16G16B16A16_SFloat,
 
 	R32_SFloat,
 	R32G32_SFloat,
@@ -123,6 +123,10 @@ static constexpr size_t GetTextureFormatSize(TextureFormat format)
         case TextureFormat::R16G16_SInt: return 32;
         case TextureFormat::R16G16B16A16_SInt: return 64;
 
+		case TextureFormat::R16_SFloat: return 16;
+		case TextureFormat::R16G16_SFloat: return 32;
+		case TextureFormat::R16G16B16A16_SFloat: return 64;
+
         case TextureFormat::R32_UInt: return 32;
         case TextureFormat::R32G32_UInt: return 64;
         case TextureFormat::R32G32B32A32_UInt: return 128;
@@ -130,10 +134,6 @@ static constexpr size_t GetTextureFormatSize(TextureFormat format)
         case TextureFormat::R32_SInt: return 32;
         case TextureFormat::R32G32_SInt: return 64;
         case TextureFormat::R32G32B32A32_SInt: return 128;
-
-        case TextureFormat::R16_SFloat: return 16;
-        case TextureFormat::R16G16_SFloat: return 32;
-        case TextureFormat::R16G16B16A16_SFloat: return 64;
 
         case TextureFormat::R32_SFloat: return 32;
         case TextureFormat::R32G32_SFloat: return 64;

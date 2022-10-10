@@ -95,8 +95,8 @@ void IBuffer::Copy(const IBuffer& src, const IBuffer& dst, size_t srcOffset, siz
 	submitInfo.commandBufferCount = 1;
 	submitInfo.pCommandBuffers = &commandBuffer;
 
-	VK_CHECK(vkQueueSubmit(As<VkQueue>(RendererContext::GetTransferQueue()), 1, &submitInfo, VK_NULL_HANDLE));
-	VK_CHECK(vkQueueWaitIdle(As<VkQueue>(RendererContext::GetTransferQueue())));
+	VK_CHECK(vkQueueSubmit(As<VulkanQueue*>(RendererContext::GetTransferQueue())->handle, 1, &submitInfo, VK_NULL_HANDLE));
+	VK_CHECK(vkQueueWaitIdle(As<VulkanQueue*>(RendererContext::GetTransferQueue())->handle));
 
 	vkFreeCommandBuffers(VulkanDevice, As<VkCommandPool>(RendererContext::GetTransferCommandPool(frameIdx)), 1, &commandBuffer);
 }

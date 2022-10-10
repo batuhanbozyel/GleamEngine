@@ -8,31 +8,12 @@
 
 using namespace Gleam;
 
-const VulkanRenderPass& VulkanPipelineStateManager::GetRenderPass(const RenderPassDescriptor& renderPassDesc)
-{
-	for (uint32_t i = 0; i < mRenderPassCache.size(); i++)
-	{
-		const auto& element = mRenderPassCache[i];
-		if (element.renderPassDescriptor == renderPassDesc)
-		{
-			return element.renderPass;
-		}
-	}
-
-	RenderPassCacheElement element;
-	element.renderPassDescriptor = renderPassDesc;
-	element.renderPass.handle = CreateRenderPass(renderPassDesc);
-	element.renderPass.swapchainTarget = renderPassDesc.swapchainTarget;
-	const auto& cachedElement = mRenderPassCache.emplace_back(element);
-	return cachedElement.renderPass;
-}
-
-const VulkanPipeline& VulkanPipelineStateManager::GetGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc, const GraphicsShader& program, const VulkanRenderPass& renderPass)
+const VulkanPipeline& VulkanPipelineStateManager::GetGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc, const GraphicsShader& program, VkRenderPass renderPass)
 {
 	for (uint32_t i = 0; i < mGraphicsPipelineCache.size(); i++)
 	{
 		const auto& element = mGraphicsPipelineCache[i];
-		if (element.pipelineStateDescriptor == pipelineDesc && element.program == program && element.renderPass == renderPass)
+		if (element.pipelineStateDescriptor == pipelineDesc && element.program == program)
 		{
 			return element.pipeline;
 		}
@@ -41,81 +22,19 @@ const VulkanPipeline& VulkanPipelineStateManager::GetGraphicsPipeline(const Pipe
 	GraphicsPipelineCacheElement element;
 	element.pipelineStateDescriptor = pipelineDesc;
 	element.program = program;
-	element.renderPass = renderPass;
-	element.pipeline = CreateGraphicsPipeline(pipelineDesc, program, renderPass.handle);
+	element.pipeline = CreateGraphicsPipeline(pipelineDesc, program, renderPass);
 	const auto& cachedElement = mGraphicsPipelineCache.emplace_back(element);
 	return cachedElement.pipeline;
 }
 
 void VulkanPipelineStateManager::Clear()
 {
-	for (const auto& element : mRenderPassCache)
-	{
-		vkDestroyRenderPass(VulkanDevice, element.renderPass.handle, nullptr);
-	}
-	mRenderPassCache.clear();
-
 	for (const auto& element : mGraphicsPipelineCache)
 	{
 		vkDestroyPipelineLayout(VulkanDevice, element.pipeline.layout, nullptr);
 		vkDestroyPipeline(VulkanDevice, element.pipeline.handle, nullptr);
 	}
 	mGraphicsPipelineCache.clear();
-}
-
-VkRenderPass VulkanPipelineStateManager::CreateRenderPass(const RenderPassDescriptor& renderPassDesc)
-{
-	TArray<VkSubpassDescription> subpassDescriptors(renderPassDesc.subpasses.size());
-	TArray<VkSubpassDependency> subpassDependencies(renderPassDesc.subpasses.size());
-	TArray<VkAttachmentDescription> attachmentDescriptors(renderPassDesc.attachments.size());
-	if (renderPassDesc.swapchainTarget)
-	{
-		VkAttachmentReference attachmentRef{};
-		attachmentRef.attachment = 0;
-		attachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-		VkSubpassDescription subpassDesc{};
-		subpassDesc.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-		subpassDesc.colorAttachmentCount = 1;
-		subpassDesc.pColorAttachments = &attachmentRef;
-		subpassDescriptors.emplace_back(subpassDesc);
-
-		VkSubpassDependency subpassDependency{};
-		subpassDependency.srcSubpass = VK_SUBPASS_EXTERNAL;
-		subpassDependency.dstSubpass = 0;
-		subpassDependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-		subpassDependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-		subpassDependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-		subpassDependency.dependencyFlags = 0;
-		subpassDependencies.emplace_back(subpassDependency);
-
-		VkAttachmentDescription attachmentDesc{};
-		attachmentDesc.format = TextureFormatToVkFormat(RendererContext::GetSwapchain()->GetFormat());
-		attachmentDesc.samples = GetVkSampleCount(RendererContext::GetProperties().sampleCount);
-		attachmentDesc.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-		attachmentDesc.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-		attachmentDesc.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-		attachmentDesc.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-		attachmentDesc.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-		attachmentDesc.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-		attachmentDescriptors.emplace_back(attachmentDesc);
-	}
-	else
-	{
-		// TODO:
-	}
-
-	VkRenderPass renderPass;
-	VkRenderPassCreateInfo renderPassCreateInfo{ VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO };
-	renderPassCreateInfo.attachmentCount = static_cast<uint32_t>(attachmentDescriptors.size());
-	renderPassCreateInfo.pAttachments = attachmentDescriptors.data();
-	renderPassCreateInfo.subpassCount = static_cast<uint32_t>(subpassDescriptors.size());
-	renderPassCreateInfo.pSubpasses = subpassDescriptors.data();
-	renderPassCreateInfo.dependencyCount = static_cast<uint32_t>(subpassDependencies.size());
-	renderPassCreateInfo.pDependencies = subpassDependencies.data();
-	VK_CHECK(vkCreateRenderPass(VulkanDevice, &renderPassCreateInfo, nullptr, &renderPass));
-
-	return renderPass;
 }
 
 VulkanPipeline VulkanPipelineStateManager::CreateGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc, const GraphicsShader& program, VkRenderPass renderPass)

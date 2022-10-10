@@ -17,7 +17,12 @@ public:
     virtual ~Texture();
 
     void SetPixels(const TArray<uint8_t>& pixels) const;
-    
+
+	NativeGraphicsHandle GetImageView() const
+	{
+		return mImageView;
+	}
+
     TextureFormat GetFormat() const
     {
         return mFormat;
@@ -37,7 +42,7 @@ protected:
 
     static constexpr uint32_t CalculateMipLevels(const Size& size)
     {
-        return Math::Floor(Math::Log2(Math::Max(size.width, size.height))) + 1;
+        return static_cast<uint32_t>(Math::Floor(Math::Log2(Math::Max(size.width, size.height)))) + 1;
     }
 
     TextureFormat mFormat = TextureFormat::R8G8B8A8_SRGB;
@@ -47,8 +52,8 @@ protected:
     uint32_t mMipMapCount = 0;
 
     uint32_t mBufferSize = 0;
-    NativeGraphicsHandle mMemory;
-    NativeGraphicsHandle mImageView;
+    NativeGraphicsHandle mMemory = nullptr;
+    NativeGraphicsHandle mImageView = nullptr;
     
 };
     

@@ -73,7 +73,7 @@ void IBuffer::SetData(const void* data, size_t size, size_t offset) const
         
         CommandBuffer commandBuffer;
         commandBuffer.Begin();
-        commandBuffer.CopyBuffer(stagingBuffer, *this, size, 0, offset);
+        commandBuffer.CopyBuffer(stagingBuffer, *this, size, 0, static_cast<uint32_t>(offset));
         commandBuffer.End();
         commandBuffer.Commit();
     }

@@ -19,8 +19,7 @@ struct
 	TArray<VkPresentModeKHR> presentModes;
 
 	// Drawable
-	TArray<VkImage> images;
-	TArray<VkImageView> imageViews;
+	TArray<VulkanSwapchainImage> images;
 	VkFormat imageFormat;
 	uint32_t imageIndex;
 
@@ -43,9 +42,9 @@ Swapchain::~Swapchain()
 	vkDestroySwapchainKHR(VulkanDevice, As<VkSwapchainKHR>(mHandle), nullptr);
 
 	// Destroy drawable
-	for (uint32_t i = 0; i < mContext.imageViews.size(); i++)
+	for (uint32_t i = 0; i < mContext.images.size(); i++)
 	{
-		vkDestroyImageView(VulkanDevice, mContext.imageViews[i], nullptr);
+		vkDestroyImageView(VulkanDevice, mContext.images[i].view, nullptr);
 	}
 
 	// Destroy sync objects
@@ -70,7 +69,7 @@ NativeGraphicsHandle Swapchain::AcquireNextDrawable()
 		GLEAM_ASSERT(result == VK_SUCCESS || result == VK_SUBOPTIMAL_KHR, "Vulkan: Swapbuffers failed to acquire next image!");
 	}
 
-	return mContext.imageViews[mContext.imageIndex];
+	return &mContext.images[mContext.imageIndex];
 }
 
 void Swapchain::Present(NativeGraphicsHandle commandBuffer)
@@ -81,7 +80,7 @@ void Swapchain::Present(NativeGraphicsHandle commandBuffer)
 	presentInfo.swapchainCount = 1;
 	presentInfo.pSwapchains = As<VkSwapchainKHR*>(&mHandle);
 	presentInfo.pImageIndices = &mContext.imageIndex;
-	VkResult result = vkQueuePresentKHR(As<VkQueue>(RendererContext::GetGraphicsQueue()), &presentInfo);
+	VkResult result = vkQueuePresentKHR(As<VulkanQueue*>(RendererContext::GetGraphicsQueue())->handle, &presentInfo);
 	if (result == VK_ERROR_OUT_OF_DATE_KHR)
 	{
 		InvalidateAndCreate();
@@ -101,7 +100,7 @@ TextureFormat Swapchain::GetFormat() const
 
 NativeGraphicsHandle Swapchain::GetDrawable() const
 {
-	return mContext.imageViews[mContext.imageIndex];
+	return &mContext.images[mContext.imageIndex];
 }
 
 DispatchSemaphore Swapchain::GetImageAcquireSemaphore() const
@@ -234,20 +233,19 @@ void Swapchain::InvalidateAndCreate()
 	mHandle = newSwapchain;
 
 	// Destroy drawable
-	for (uint32_t i = 0; i < mContext.imageViews.size(); i++)
+	for (uint32_t i = 0; i < mContext.images.size(); i++)
 	{
-		vkDestroyImageView(VulkanDevice, mContext.imageViews[i], nullptr);
+		vkDestroyImageView(VulkanDevice, mContext.images[i].view, nullptr);
 	}
-	mContext.imageViews.clear();
+	mContext.images.clear();
 
 	uint32_t swapchainImageCount;
 	VK_CHECK(vkGetSwapchainImagesKHR(VulkanDevice, As<VkSwapchainKHR>(mHandle), &swapchainImageCount, nullptr));
 
-	mContext.images.resize(swapchainImageCount);
-	VK_CHECK(vkGetSwapchainImagesKHR(VulkanDevice, As<VkSwapchainKHR>(mHandle), &swapchainImageCount, mContext.images.data()));
+	TArray<VkImage> drawables(swapchainImageCount);
+	VK_CHECK(vkGetSwapchainImagesKHR(VulkanDevice, As<VkSwapchainKHR>(mHandle), &swapchainImageCount, drawables.data()));
 
 	// Create image views
-	mContext.imageViews.resize(swapchainImageCount);
 	VkImageViewUsageCreateInfo imageViewUsageCreateInfo{ VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO };
 	imageViewUsageCreateInfo.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
@@ -267,10 +265,12 @@ void Swapchain::InvalidateAndCreate()
 			VK_COMPONENT_SWIZZLE_IDENTITY
 	};
 
+	mContext.images.resize(swapchainImageCount);
 	for (uint32_t i = 0; i < swapchainImageCount; i++)
 	{
-		imageViewCreateInfo.image = mContext.images[i];
-		VK_CHECK(vkCreateImageView(VulkanDevice, &imageViewCreateInfo, nullptr, &mContext.imageViews[i]));
+		mContext.images[i].drawable = drawables[i];
+		imageViewCreateInfo.image = drawables[i];
+		VK_CHECK(vkCreateImageView(VulkanDevice, &imageViewCreateInfo, nullptr, &mContext.images[i].view));
 	}
 
 	// Create sync objects

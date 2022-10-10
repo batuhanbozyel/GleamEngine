@@ -27,7 +27,7 @@ struct AttachmentDescriptor
 	AttachmentLoadAction loadAction = AttachmentLoadAction::Load;
 	AttachmentStoreAction storeAction = AttachmentStoreAction::Store;
     
-    bool operator==(const AttachmentDescriptor&) const = default;
+    constexpr bool operator==(const AttachmentDescriptor&) const = default;
 };
 
 struct SubpassDescriptor
@@ -35,7 +35,7 @@ struct SubpassDescriptor
 	TArray<uint32_t> colorAttachments;
 	TArray<uint32_t> inputAttachments;
     
-    bool operator==(const SubpassDescriptor&) const = default;
+    constexpr bool operator==(const SubpassDescriptor&) const = default;
 };
 
 struct RenderPassDescriptor
@@ -47,7 +47,7 @@ struct RenderPassDescriptor
 	uint32_t samples = 1;
 	bool useMipMap = false;
     
-    bool operator==(const RenderPassDescriptor&) const = default;
+    constexpr bool operator==(const RenderPassDescriptor&) const = default;
 };
 
 } // namespace Gleam

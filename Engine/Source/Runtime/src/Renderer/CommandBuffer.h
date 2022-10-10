@@ -56,10 +56,10 @@ public:
         DrawIndexed(indexBuffer.GetHandle(), IndexTraits<T>::indexType, indexCount, instanceCount, firstIndex, baseVertex, baseInstance);
     }
     
-    void CopyBuffer(const IBuffer& src, const IBuffer& dst, uint32_t size, uint32_t srcOffset = 0, uint32_t dstOffset = 0) const;
+    void CopyBuffer(const IBuffer& src, const IBuffer& dst, size_t size, uint32_t srcOffset = 0, uint32_t dstOffset = 0) const;
     
     // Set to Null for swapchain target
-    void Blit(const Texture& texture, const Optional<RenderTexture>& renderTarget) const;
+    void Blit(const Texture& texture, const Optional<Texture>& renderTarget) const;
 
     void Begin() const;
 

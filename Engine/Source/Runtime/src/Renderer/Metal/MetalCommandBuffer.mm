@@ -139,17 +139,17 @@ void CommandBuffer::DrawIndexed(const NativeGraphicsHandle indexBuffer, IndexTyp
     [mHandle->renderCommandEncoder drawIndexedPrimitives:PrimitiveToplogyToMTLPrimitiveType(mHandle->pipelineState.descriptor.topology) indexCount:indexCount indexType:indexType indexBuffer:indexBuffer indexBufferOffset:firstIndex * SizeOfIndexType(type) instanceCount:instanceCount baseVertex:baseVertex baseInstance:baseInstance];
 }
 
-void CommandBuffer::CopyBuffer(const IBuffer& src, const IBuffer& dst, uint32_t size, uint32_t srcOffset, uint32_t dstOffset) const
+void CommandBuffer::CopyBuffer(const IBuffer& src, const IBuffer& dst, size_t size, uint32_t srcOffset, uint32_t dstOffset) const
 {
     id<MTLBlitCommandEncoder> blitCommandEncoder = [mHandle->commandBuffer blitCommandEncoder];
     [blitCommandEncoder copyFromBuffer:src.GetHandle() sourceOffset:srcOffset toBuffer:dst.GetHandle() destinationOffset:dstOffset size:size];
     [blitCommandEncoder endEncoding];
 }
 
-void CommandBuffer::Blit(const Texture& texture, const Optional<RenderTexture>& renderTarget) const
+void CommandBuffer::Blit(const Texture& texture, const Optional<Texture>& target) const
 {
     id<MTLBlitCommandEncoder> blitCommandEncoder = [mHandle->commandBuffer blitCommandEncoder];
-    id targetTexture = renderTarget.has_value() ? renderTarget.value().GetHandle() : id<CAMetalDrawable>(RendererContext::GetSwapchain()->AcquireNextDrawable()).texture;
+    id targetTexture = target.has_value() ? target.value().GetHandle() : id<CAMetalDrawable>(RendererContext::GetSwapchain()->AcquireNextDrawable()).texture;
     [blitCommandEncoder copyFromTexture:texture.GetHandle() toTexture:targetTexture];
     [blitCommandEncoder endEncoding];
 }
