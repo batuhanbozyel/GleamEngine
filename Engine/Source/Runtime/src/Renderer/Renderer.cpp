@@ -22,7 +22,7 @@ void Renderer::Destroy()
 
 const Size& Renderer::GetDrawableSize()
 {
-    return RendererContext::GetProperties().size;
+    return RendererContext::GetSwapchain()->GetSize();
 }
 
 Renderer::Renderer()

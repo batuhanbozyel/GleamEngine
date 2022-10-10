@@ -37,8 +37,8 @@ Swapchain::Swapchain(const RendererProperties& props, NativeGraphicsHandle insta
     swapchain.drawableSize = swapchain.frame.size;
     mHandle = swapchain;
     
-    mProperties.size.width = swapchain.frame.size.width;
-    mProperties.size.height = swapchain.frame.size.height;
+    mSize.width = swapchain.frame.size.width;
+    mSize.height = swapchain.frame.size.height;
     
     if (swapchain.maximumDrawableCount >= 3 && mProperties.tripleBufferingEnabled)
     {
@@ -115,12 +115,12 @@ DispatchSemaphore Swapchain::GetImageReleaseSemaphore() const
 void Swapchain::InvalidateAndCreate()
 {
     CAMetalLayer* swapchain = (CAMetalLayer*)mHandle;
-    if (mProperties.size.width != swapchain.frame.size.width || mProperties.size.height != swapchain.frame.size.height)
+    if (mSize.width != swapchain.frame.size.width || mSize.height != swapchain.frame.size.height)
     {
-        mProperties.size.width = swapchain.frame.size.width;
-        mProperties.size.height = swapchain.frame.size.height;
+        mSize.width = swapchain.frame.size.width;
+        mSize.height = swapchain.frame.size.height;
         swapchain.drawableSize = swapchain.frame.size;
-        EventDispatcher<RendererResizeEvent>::Publish(RendererResizeEvent(mProperties.size));
+        EventDispatcher<RendererResizeEvent>::Publish(RendererResizeEvent(mSize));
     }
 }
 
