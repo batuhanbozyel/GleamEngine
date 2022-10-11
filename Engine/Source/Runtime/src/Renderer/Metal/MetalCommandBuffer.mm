@@ -14,6 +14,7 @@ struct CommandBuffer::Impl
     id<MTLCommandBuffer> commandBuffer = nil;
     id<MTLRenderCommandEncoder> renderCommandEncoder = nil;
     MetalPipelineState pipelineState;
+    bool swapchainTarget = false;
 };
 
 CommandBuffer::CommandBuffer()
@@ -30,8 +31,9 @@ CommandBuffer::~CommandBuffer()
 
 void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc) const
 {
+    mHandle->swapchainTarget = (mActiveRenderTarget == nullptr);
     MTLRenderPassDescriptor* renderPass = [MTLRenderPassDescriptor renderPassDescriptor];
-    if (mActiveRenderTarget == nullptr)
+    if (mHandle->swapchainTarget)
     {
         MTLClearColor clearColor = { Renderer::clearColor.r, Renderer::clearColor.g, Renderer::clearColor.b, Renderer::clearColor.a };
         if (renderPassDesc.attachments.size() > 0)
@@ -148,8 +150,9 @@ void CommandBuffer::CopyBuffer(const IBuffer& src, const IBuffer& dst, size_t si
 
 void CommandBuffer::Blit(const Texture& texture, const Optional<Texture>& target) const
 {
+    mHandle->swapchainTarget = !target.has_value();
     id<MTLBlitCommandEncoder> blitCommandEncoder = [mHandle->commandBuffer blitCommandEncoder];
-    id targetTexture = target.has_value() ? target.value().GetHandle() : id<CAMetalDrawable>(RendererContext::GetSwapchain()->AcquireNextDrawable()).texture;
+    id targetTexture = mHandle->swapchainTarget ? id<CAMetalDrawable>(RendererContext::GetSwapchain()->AcquireNextDrawable()).texture : target.value().GetHandle();
     [blitCommandEncoder copyFromTexture:texture.GetHandle() toTexture:targetTexture];
     [blitCommandEncoder endEncoding];
 }
@@ -166,7 +169,7 @@ void CommandBuffer::End() const
 
 void CommandBuffer::Commit() const
 {
-    if (mActiveRenderTarget == nullptr)
+    if (mHandle->swapchainTarget)
 	{
 		RendererContext::GetSwapchain()->Present(mHandle->commandBuffer);
 	}
@@ -174,6 +177,7 @@ void CommandBuffer::Commit() const
 	{
         [mHandle->commandBuffer commit];
 	}
+    mHandle->swapchainTarget = false;
 }
 
 void CommandBuffer::WaitUntilCompleted() const

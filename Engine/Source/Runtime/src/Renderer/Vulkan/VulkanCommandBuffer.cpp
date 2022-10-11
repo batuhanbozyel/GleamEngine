@@ -17,6 +17,7 @@ struct CommandBuffer::Impl
 
 	VkRenderPass renderPassState{ VK_NULL_HANDLE };
 	VulkanPipeline pipelineState;
+    bool swapchainTarget = false;
 
 	struct DeletionQueue
 	{
@@ -92,6 +93,8 @@ CommandBuffer::~CommandBuffer()
 
 void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc) const
 {
+    mHandle->swapchainTarget = (mActiveRenderTarget == nullptr);
+    
 	VkAttachmentReference depthStencilAttachment{};
 	TArray<VkAttachmentReference> colorAttachments(mActiveRenderTarget->GetColorBuffers().size());
 	TArray<VkSubpassDescription> subpassDescriptors(renderPassDesc.subpasses.size());
@@ -99,9 +102,8 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc) 
 	TArray<VkAttachmentDescription> attachmentDescriptors(renderPassDesc.attachments.size());
 	TArray<VkImageView> imageViews(renderPassDesc.attachments.size());
 	TArray<VkClearValue> clearValues(renderPassDesc.attachments.size());
-
-	// Render to swapchain
-	if (mActiveRenderTarget == nullptr)
+    
+	if (mHandle->swapchainTarget)
 	{
 		subpassDescriptors.resize(1);
 		subpassDependencies.resize(1);
@@ -337,10 +339,10 @@ void CommandBuffer::CopyBuffer(const IBuffer& src, const IBuffer& dst, size_t si
 
 void CommandBuffer::Blit(const Texture& texture, const Optional<Texture>& target) const
 {
-	bool swapchainTarget = !target.has_value();
-	VkImage targetTexture = swapchainTarget ? As<VulkanSwapchainImage*>(RendererContext::GetSwapchain()->AcquireNextDrawable())->drawable : As<VkImage>(target.value().GetHandle());
+    mHandle->swapchainTarget = !target.has_value();
+	VkImage targetTexture = mHandle->swapchainTarget ? As<VulkanSwapchainImage*>(RendererContext::GetSwapchain()->AcquireNextDrawable())->drawable : As<VkImage>(target.value().GetHandle());
 
-	if (swapchainTarget)
+	if (mHandle->swapchainTarget)
 	{
 		VkImageMemoryBarrier imageBarrier{ VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
 		imageBarrier.srcAccessMask = VK_FLAGS_NONE;
@@ -373,7 +375,7 @@ void CommandBuffer::Blit(const Texture& texture, const Optional<Texture>& target
 	region.extent.depth = 1;
 	vkCmdCopyImage(CurrentCommandBuffer, As<VkImage>(texture.GetHandle()), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, targetTexture, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
 
-	if (swapchainTarget)
+	if (mHandle->swapchainTarget)
 	{
 		VkImageMemoryBarrier imageBarrier{ VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
 		imageBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
@@ -413,7 +415,7 @@ void CommandBuffer::Commit() const
 {
 	mHandle->EndFrame();
 	auto frameIdx = RendererContext::GetSwapchain()->GetFrameIndex();
-	if (mActiveRenderTarget == nullptr)
+	if (mHandle->swapchainTarget)
 	{
 		VkSemaphore waitSemaphore = As<VkSemaphore>(RendererContext::GetSwapchain()->GetImageAcquireSemaphore());
 		VkSemaphore signalSemaphore = As<VkSemaphore>(RendererContext::GetSwapchain()->GetImageReleaseSemaphore());
@@ -441,6 +443,7 @@ void CommandBuffer::Commit() const
 		VK_CHECK(vkQueueSubmit(As<VulkanQueue*>(RendererContext::GetGraphicsQueue())->handle, 1, &submitInfo, mHandle->fences[frameIdx]));
 	}
 	mHandle->deletionQueue[frameIdx].Flush();
+    mHandle->swapchainTarget = false;
 }
 
 void CommandBuffer::WaitUntilCompleted() const
