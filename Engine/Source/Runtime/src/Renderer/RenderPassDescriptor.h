@@ -35,7 +35,7 @@ struct SubpassDescriptor
 	TArray<uint32_t> colorAttachments;
 	TArray<uint32_t> inputAttachments;
     
-    constexpr bool operator==(const SubpassDescriptor&) const = default;
+    bool operator==(const SubpassDescriptor&) const = default;
 };
 
 struct RenderPassDescriptor
@@ -47,7 +47,7 @@ struct RenderPassDescriptor
 	uint32_t samples = 1;
 	bool useMipMap = false;
     
-    constexpr bool operator==(const RenderPassDescriptor&) const = default;
+    bool operator==(const RenderPassDescriptor&) const = default;
 };
 
 } // namespace Gleam
