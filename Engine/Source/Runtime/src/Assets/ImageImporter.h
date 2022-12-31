@@ -2,7 +2,7 @@
 
 namespace Gleam {
 
-class TextureImporter final
+class ImageImporter final
 {
 public:
 

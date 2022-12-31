@@ -18,20 +18,6 @@ bool operator==(const index_t& lhs, const index_t& rhs)
 
 using namespace Gleam;
 
-Model ModelImporter::Import(const Filesystem::path& path)
-{
-    const auto& ext = path.extension();
-    if (ext == ".obj")
-    {
-        return ImportObj(path);
-    }
-    else
-    {
-        GLEAM_ASSERT(false, "Model file type is not supported!");
-        return Model();
-    }
-}
-
 Model ModelImporter::ImportObj(const Filesystem::path& path)
 {
     TString objFile = IOUtils::ReadFile(path);
