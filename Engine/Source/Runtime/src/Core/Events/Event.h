@@ -18,8 +18,6 @@ class Event
     
 public:
 
-	virtual ~Event() = default;
-
 	virtual TString ToString() const
 	{
 		TStringStream ss;
@@ -57,10 +55,17 @@ public:
 		e.mHandled = true;
 	}
 
-	static void Subscribe(EventHandler&& fn)
+	static void Subscribe(const EventHandler& fn)
 	{
-		mSubscribers.emplace_back(fn);
+		mSubscribers.push_back(fn);
 	}
+    
+    static void Unsubscribe(const EventHandler& fn)
+    {
+        auto it = std::find(mSubscribers.begin(), mSubscribers.end(), fn);
+        if (it != mSubscribers.end())
+            mSubscribers.erase(it);
+    }
 
 private:
 
