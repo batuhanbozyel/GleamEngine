@@ -14,8 +14,6 @@ class Camera : public Transform
 {
 public:
     
-    Camera();
-    
     Camera(const Size& size, ProjectionType type = ProjectionType::Perspective);
 
     Camera(float width, float height, ProjectionType type = ProjectionType::Perspective);
@@ -63,7 +61,7 @@ private:
     
     // Common properties
     float mAspectRatio = 1.0f;
-    float mNearPlane = 0.3f;
+    float mNearPlane = 0.1f;
     float mFarPlane = 1000.0f;
     
     Matrix4 mViewMatrix;

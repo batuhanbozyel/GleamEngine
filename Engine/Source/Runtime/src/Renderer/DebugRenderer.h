@@ -1,10 +1,8 @@
 #pragma once
-#include "Mesh.h"
-#include "Renderer.h"
-#include "CommandBuffer.h"
 
 namespace Gleam {
 
+class Mesh;
 enum class PrimitiveTopology;
 
 struct DebugLine
@@ -20,15 +18,24 @@ struct DebugTriangle
     DebugVertex vertex3;
 };
 
+struct DebugMesh
+{
+	const Mesh* mesh;
+	Matrix4 transform;
+	Color32 color;
+};
+
 class DebugRenderer final : public Renderer
 {
 public:
 
-    DebugRenderer();
+	DebugRenderer(RendererContext& context);
 
-    ~DebugRenderer();
-
-    virtual void Render() override;
+	virtual void Configure() override;
+    
+    virtual void Execute() override;
+    
+    virtual void Finish() override;
 
     void DrawLine(const Vector3& start, const Vector3& end, Color32 color, bool depthTest = true);
 
@@ -36,15 +43,25 @@ public:
 
     void DrawQuad(const Vector3& center, float width, float height, Color32 color, bool depthTest = true);
 
-    void DrawMesh(const Mesh* mesh, const Matrix4& transform, Color32 color, bool depthTest = true);
-
     void DrawBoundingBox(const BoundingBox& boundingBox, Color32 color, bool depthTest = true);
 
     void DrawBoundingBox(const BoundingBox& boundingBox, const Matrix4& transform, Color32 color, bool depthTest = true);
 
+	void DrawMesh(const Mesh* mesh, const Matrix4& transform, Color32 color, bool depthTest = true);
+
 private:
-    
-    void RenderPrimitive(uint32_t primitiveCount, uint32_t bufferOffset, PrimitiveTopology topology, bool depthTest) const;
+
+    void RenderPrimitive(const CommandBuffer& cmd, uint32_t primitiveCount, PrimitiveTopology topology, bool depthTest) const;
+
+	void RenderMeshes(const CommandBuffer& cmd, const TArray<DebugMesh>& debugMeshes, bool depthTest) const;
+
+	uint32_t mLineBufferOffset = 0;
+	uint32_t mTriangleBufferOffset = 0;
+	uint32_t mDepthLineBufferOffset = 0;
+	uint32_t mDepthTriangleBufferOffset = 0;
+
+	GraphicsShader mDebugPrimitiveProgram;
+	GraphicsShader mDebugMeshProgram;
 
     TArray<DebugLine> mLines;
     TArray<DebugLine> mDepthLines;
@@ -52,17 +69,13 @@ private:
     TArray<DebugTriangle> mTriangles;
     TArray<DebugTriangle> mDepthTriangles;
 
-    TArray<std::function<void()>> mMeshDrawCommands;
-    TArray<std::function<void()>> mDepthMeshDrawCommands;
-
-    CommandBuffer mCommandBuffer;
-    GraphicsShader mDebugProgram;
-    GraphicsShader mDebugMeshProgram;
-    
-    RefCounted<RenderTarget> mRenderTarget;
+	TArray<DebugMesh> mDebugMeshes;
+    TArray<DebugMesh> mDepthDebugMeshes;
 
     TArray<DebugVertex> mStagingBuffer;
-    TArray<Scope<VertexBuffer<DebugVertex, MemoryType::Dynamic>>> mVertexBuffers;
+    VertexBuffer<DebugVertex, MemoryType::Dynamic> mVertexBuffer;
+
+	CommandBuffer mCommandBuffer;
 
 };
 

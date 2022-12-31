@@ -1,14 +1,7 @@
 #include "gpch.h"
 #include "Camera.h"
-#include "Renderer.h"
 
 using namespace Gleam;
-
-Camera::Camera()
-    : Camera(Renderer::GetDrawableSize())
-{
-	
-}
 
 Camera::Camera(float width, float height, ProjectionType type)
 	: Camera({width, height}, type)

@@ -1,9 +1,9 @@
 #pragma once
 #ifdef USE_VULKAN_RENDERER
 #include <volk.h>
-#include "Renderer/Buffer.h"
+#include "VulkanDevice.h"
+#include "Renderer/BufferInfo.h"
 #include "Renderer/TextureFormat.h"
-#include "Renderer/RendererContext.h"
 #include "Renderer/RenderPassDescriptor.h"
 #include "Renderer/PipelineStateDescriptor.h"
 
@@ -12,13 +12,11 @@ namespace Gleam {
 #define VK_CHECK(x) {VkResult result = (x);\
 					GLEAM_ASSERT(result == VK_SUCCESS, VkResultToString(x));}
 
-#define VulkanDevice As<VkDevice>(RendererContext::GetDevice())
-
 #define VK_FLAGS_NONE 0
 
-struct VulkanSwapchainImage
+struct VulkanDrawable
 {
-	VkImage drawable{ VK_NULL_HANDLE };
+	VkImage image{ VK_NULL_HANDLE };
 	VkImageView view{ VK_NULL_HANDLE };
 };
 

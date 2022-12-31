@@ -1,31 +1,17 @@
 #include "gpch.h"
 
 #ifdef USE_METAL_RENDERER
-#include "Renderer/ShaderLibrary.h"
+#include "Renderer/Shader.h"
 #include "MetalShaderReflect.h"
 #include "MetalUtils.h"
-#include "Assets/AssetLibrary.h"
 
 using namespace Gleam;
-
-struct
-{
-    id<MTLLibrary> library{ nil };
-} mContext;
-
-void ShaderLibrary::Init()
-{
-    NSError* error;
-    auto binaryData = IOUtils::ReadBinaryFile(AssetLibrary::GetDefaultAssetPath().append("PrecompiledShaders.metallib"));
-    mContext.library = [MetalDevice newLibraryWithData:dispatch_data_create(binaryData.data(), binaryData.size(), nil, DISPATCH_DATA_DESTRUCTOR_DEFAULT) error:&error];
-    GLEAM_ASSERT(mContext.library);
-}
 
 Shader::Shader(const TString& entryPoint, ShaderStage stage)
     : mEntryPoint(entryPoint), mStage(stage)
 {    
     NSString* functionName = [NSString stringWithCString:entryPoint.c_str() encoding:NSASCIIStringEncoding];
-    mHandle = [mContext.library newFunctionWithName:functionName];
+    mHandle = [MetalDevice::GetShaderLibrary() newFunctionWithName:functionName];
 }
 
 Shader::~Shader()

@@ -4,16 +4,16 @@
 #include "VulkanPipelineStateManager.h"
 #include "VulkanShaderReflect.h"
 
-#include "Renderer/Renderer.h"
-
 using namespace Gleam;
 
-const VulkanPipeline& VulkanPipelineStateManager::GetGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc, const GraphicsShader& program, VkRenderPass renderPass)
+const VulkanPipeline& VulkanPipelineStateManager::GetGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc, const GraphicsShader& program, const VulkanRenderPass& renderPass)
 {
 	for (uint32_t i = 0; i < mGraphicsPipelineCache.size(); i++)
 	{
 		const auto& element = mGraphicsPipelineCache[i];
-		if (element.pipelineStateDescriptor == pipelineDesc && element.program == program)
+		if (element.pipelineStateDescriptor == pipelineDesc &&
+			element.program == program &&
+			element.sampleCount == renderPass.sampleCount)
 		{
 			return element.pipeline;
 		}
@@ -22,6 +22,7 @@ const VulkanPipeline& VulkanPipelineStateManager::GetGraphicsPipeline(const Pipe
 	GraphicsPipelineCacheElement element;
 	element.pipelineStateDescriptor = pipelineDesc;
 	element.program = program;
+	element.sampleCount = renderPass.sampleCount;
 	element.pipeline = CreateGraphicsPipeline(pipelineDesc, program, renderPass);
 	const auto& cachedElement = mGraphicsPipelineCache.emplace_back(element);
 	return cachedElement.pipeline;
@@ -31,13 +32,13 @@ void VulkanPipelineStateManager::Clear()
 {
 	for (const auto& element : mGraphicsPipelineCache)
 	{
-		vkDestroyPipelineLayout(VulkanDevice, element.pipeline.layout, nullptr);
-		vkDestroyPipeline(VulkanDevice, element.pipeline.handle, nullptr);
+		vkDestroyPipelineLayout(VulkanDevice::GetHandle(), element.pipeline.layout, nullptr);
+		vkDestroyPipeline(VulkanDevice::GetHandle(), element.pipeline.handle, nullptr);
 	}
 	mGraphicsPipelineCache.clear();
 }
 
-VulkanPipeline VulkanPipelineStateManager::CreateGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc, const GraphicsShader& program, VkRenderPass renderPass)
+VulkanPipeline VulkanPipelineStateManager::CreateGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc, const GraphicsShader& program, const VulkanRenderPass& renderPass)
 {
 	VkPipeline pipeline;
 	VkGraphicsPipelineCreateInfo pipelineCreateInfo{ VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO };
@@ -92,7 +93,7 @@ VulkanPipeline VulkanPipelineStateManager::CreateGraphicsPipeline(const Pipeline
 	pipelineLayoutCreateInfo.pSetLayouts = setLayouts.data();
 	pipelineLayoutCreateInfo.pushConstantRangeCount = static_cast<uint32_t>(pushConstantRanges.size());
 	pipelineLayoutCreateInfo.pPushConstantRanges = pushConstantRanges.data();
-	VK_CHECK(vkCreatePipelineLayout(VulkanDevice, &pipelineLayoutCreateInfo, nullptr, &pipelineLayout));
+	VK_CHECK(vkCreatePipelineLayout(VulkanDevice::GetHandle(), &pipelineLayoutCreateInfo, nullptr, &pipelineLayout));
 	pipelineCreateInfo.layout = pipelineLayout;
 
 	// Dynamic state
@@ -107,7 +108,7 @@ VulkanPipeline VulkanPipelineStateManager::CreateGraphicsPipeline(const Pipeline
 	pipelineCreateInfo.pRasterizationState = &rasterizationState;
 
 	VkPipelineMultisampleStateCreateInfo multisampleState{ VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO };
-	multisampleState.rasterizationSamples = GetVkSampleCount(RendererContext::GetProperties().sampleCount);
+	multisampleState.rasterizationSamples = GetVkSampleCount(renderPass.sampleCount);
 	pipelineCreateInfo.pMultisampleState = &multisampleState;
 
 	VkPipelineDepthStencilStateCreateInfo depthStencilState{ VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO };
@@ -120,8 +121,8 @@ VulkanPipeline VulkanPipelineStateManager::CreateGraphicsPipeline(const Pipeline
 	colorBlendState.pAttachments = &attachmentBlendState;
 	pipelineCreateInfo.pColorBlendState = &colorBlendState;
 
-	pipelineCreateInfo.renderPass = renderPass;
-	VK_CHECK(vkCreateGraphicsPipelines(VulkanDevice, nullptr, 1, &pipelineCreateInfo, nullptr, &pipeline));
+	pipelineCreateInfo.renderPass = renderPass.handle;
+	VK_CHECK(vkCreateGraphicsPipelines(VulkanDevice::GetHandle(), nullptr, 1, &pipelineCreateInfo, nullptr, &pipeline));
 
 	return VulkanPipeline
 	{

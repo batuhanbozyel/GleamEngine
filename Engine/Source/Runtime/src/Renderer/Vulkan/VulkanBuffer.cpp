@@ -18,10 +18,10 @@ void IBuffer::Allocate(IBuffer& buffer)
 	}
 
 	createInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-	VK_CHECK(vkCreateBuffer(VulkanDevice, &createInfo, nullptr, As<VkBuffer*>(&buffer.mHandle)));
+	VK_CHECK(vkCreateBuffer(VulkanDevice::GetHandle(), &createInfo, nullptr, As<VkBuffer*>(&buffer.mHandle)));
 
 	VkMemoryRequirements memoryRequirements;
-	vkGetBufferMemoryRequirements(VulkanDevice, As<VkBuffer>(buffer.mHandle), &memoryRequirements);
+	vkGetBufferMemoryRequirements(VulkanDevice::GetHandle(), As<VkBuffer>(buffer.mHandle), &memoryRequirements);
 
 	VkMemoryAllocateInfo allocateInfo{ VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
 	allocateInfo.allocationSize = memoryRequirements.size;
@@ -30,17 +30,17 @@ void IBuffer::Allocate(IBuffer& buffer)
 	{
 		case MemoryType::Static:
 		{
-			allocateInfo.memoryTypeIndex = RendererContext::GetMemoryTypeForProperties(memoryRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+			allocateInfo.memoryTypeIndex = VulkanDevice::GetMemoryTypeForProperties(memoryRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 			break;
 		}
 		case MemoryType::Dynamic:
 		{
-			allocateInfo.memoryTypeIndex = RendererContext::GetMemoryTypeForProperties(memoryRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+			allocateInfo.memoryTypeIndex = VulkanDevice::GetMemoryTypeForProperties(memoryRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 			break;
 		}
 		case MemoryType::Stream:
 		{
-			allocateInfo.memoryTypeIndex = RendererContext::GetMemoryTypeForProperties(memoryRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+			allocateInfo.memoryTypeIndex = VulkanDevice::GetMemoryTypeForProperties(memoryRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 			break;
 		}
 		default:
@@ -50,19 +50,19 @@ void IBuffer::Allocate(IBuffer& buffer)
 		}
 	}
 
-	VK_CHECK(vkAllocateMemory(VulkanDevice, &allocateInfo, nullptr, As<VkDeviceMemory*>(&buffer.mMemory)));
-	VK_CHECK(vkBindBufferMemory(VulkanDevice, As<VkBuffer>(buffer.mHandle), As<VkDeviceMemory>(buffer.mMemory), 0));
+	VK_CHECK(vkAllocateMemory(VulkanDevice::GetHandle(), &allocateInfo, nullptr, As<VkDeviceMemory*>(&buffer.mMemory)));
+	VK_CHECK(vkBindBufferMemory(VulkanDevice::GetHandle(), As<VkBuffer>(buffer.mHandle), As<VkDeviceMemory>(buffer.mMemory), 0));
 
 	if (buffer.mMemoryType != MemoryType::Static)
 	{
-		VK_CHECK(vkMapMemory(VulkanDevice, As<VkDeviceMemory>(buffer.mMemory), 0, buffer.mSize, 0, &buffer.mContents));
+		VK_CHECK(vkMapMemory(VulkanDevice::GetHandle(), As<VkDeviceMemory>(buffer.mMemory), 0, buffer.mSize, 0, &buffer.mContents));
 	}
 }
 
 void IBuffer::Free(IBuffer& buffer)
 {
-	vkDestroyBuffer(VulkanDevice, As<VkBuffer>(buffer.mHandle), nullptr);
-	vkFreeMemory(VulkanDevice, As<VkDeviceMemory>(buffer.mMemory), nullptr);
+	vkDestroyBuffer(VulkanDevice::GetHandle(), As<VkBuffer>(buffer.mHandle), nullptr);
+	vkFreeMemory(VulkanDevice::GetHandle(), As<VkDeviceMemory>(buffer.mMemory), nullptr);
 }
 
 void IBuffer::Copy(const IBuffer& src, const IBuffer& dst, size_t srcOffset, size_t dstOffset)
@@ -74,14 +74,14 @@ void IBuffer::Copy(const IBuffer& src, const IBuffer& dst, size_t srcOffset, siz
 	bufferCopy.dstOffset = dstOffset;
 	bufferCopy.size = src.GetSize();
 
-	auto frameIdx = RendererContext::GetSwapchain()->GetFrameIndex();
+	auto frameIdx = VulkanDevice::GetSwapchain().GetFrameIndex();
 	VkCommandBufferAllocateInfo allocateInfo{ VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO };
 	allocateInfo.commandBufferCount = 1;
 	allocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-	allocateInfo.commandPool = As<VkCommandPool>(RendererContext::GetTransferCommandPool(frameIdx));
+	allocateInfo.commandPool = VulkanDevice::GetTransferCommandPool(frameIdx);
 
 	VkCommandBuffer commandBuffer;
-	VK_CHECK(vkAllocateCommandBuffers(VulkanDevice, &allocateInfo, &commandBuffer));
+	VK_CHECK(vkAllocateCommandBuffers(VulkanDevice::GetHandle(), &allocateInfo, &commandBuffer));
 
 	VkCommandBufferBeginInfo beginInfo{ VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
 	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
@@ -95,10 +95,10 @@ void IBuffer::Copy(const IBuffer& src, const IBuffer& dst, size_t srcOffset, siz
 	submitInfo.commandBufferCount = 1;
 	submitInfo.pCommandBuffers = &commandBuffer;
 
-	VK_CHECK(vkQueueSubmit(As<VulkanQueue*>(RendererContext::GetTransferQueue())->handle, 1, &submitInfo, VK_NULL_HANDLE));
-	VK_CHECK(vkQueueWaitIdle(As<VulkanQueue*>(RendererContext::GetTransferQueue())->handle));
+	VK_CHECK(vkQueueSubmit(VulkanDevice::GetTransferQueue().handle, 1, &submitInfo, VK_NULL_HANDLE));
+	VK_CHECK(vkQueueWaitIdle(VulkanDevice::GetTransferQueue().handle));
 
-	vkFreeCommandBuffers(VulkanDevice, As<VkCommandPool>(RendererContext::GetTransferCommandPool(frameIdx)), 1, &commandBuffer);
+	vkFreeCommandBuffers(VulkanDevice::GetHandle(), VulkanDevice::GetTransferCommandPool(frameIdx), 1, &commandBuffer);
 }
 
 #endif

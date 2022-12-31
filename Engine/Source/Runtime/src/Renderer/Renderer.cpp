@@ -1,63 +1,42 @@
+//
+//  Renderer.cpp
+//  Runtime
+//
+//  Created by Batuhan Bozyel on 31.10.2022.
+//
+
 #include "gpch.h"
 #include "Renderer.h"
-#include "RendererContext.h"
-#include "ShaderLibrary.h"
-#include "TextureLibrary.h"
+#include "CommandBuffer.h"
 
 using namespace Gleam;
 
-void Renderer::Init(const TString& appName, const Version& appVersion, const RendererProperties& props)
+Renderer::Renderer(RendererContext& context)
+    : mContext(context)
 {
-    RendererContext::Init(appName, appVersion, props);
-    ShaderLibrary::Init();
-    TextureLibrary::Init();
-}
-
-void Renderer::Destroy()
-{
-    TextureLibrary::Destroy();
-	ShaderLibrary::Destroy();
-    RendererContext::Destroy();
-}
-
-const Size& Renderer::GetDrawableSize()
-{
-    return RendererContext::GetSwapchain()->GetSize();
-}
-
-Renderer::Renderer()
-    : mCameraBuffers(RendererContext::GetSwapchain()->GetProperties().maxFramesInFlight)
-{
-    Camera defaultCamera(Renderer::GetDrawableSize());
-    const auto& viewMatrix = defaultCamera.GetViewMatrix();
-    const auto& projectionMatrix = defaultCamera.GetProjectionMatrix();
     
-    CameraUniforms uniforms;
-    uniforms.viewMatrix = viewMatrix;
-    uniforms.projectionMatrix = projectionMatrix;
-    uniforms.viewProjectionMatrix = projectionMatrix * viewMatrix;
-    TArray<CameraUniforms, 1> cameraContainer = { uniforms };
-    
-    for (uint32_t i = 0; i < RendererContext::GetSwapchain()->GetProperties().maxFramesInFlight; i++)
-    {
-        mCameraBuffers[i] = std::move(CreateScope<UniformBuffer<CameraUniforms, MemoryType::Dynamic>>(cameraContainer));
-    }
 }
 
-void Renderer::UpdateView(Camera& camera)
+void Renderer::Execute()
 {
-    const auto& viewMatrix = camera.GetViewMatrix();
-    const auto& projectionMatrix = camera.GetProjectionMatrix();
-    
-    CameraUniforms uniforms;
-    uniforms.viewMatrix = viewMatrix;
-    uniforms.projectionMatrix = projectionMatrix;
-    uniforms.viewProjectionMatrix = projectionMatrix * viewMatrix;
-    GetCameraBuffer().SetData(uniforms);
-}
+	RenderingData renderingData;
+	renderingData.cameraBuffer = *mCameraBuffers[frameIndex];
+	renderingData.frameIndex = frameIndex;
 
-const UniformBuffer<CameraUniforms, MemoryType::Dynamic>& Renderer::GetCameraBuffer() const
-{
-    auto frameIdx = RendererContext::GetSwapchain()->GetFrameIndex();
-    return *mCameraBuffers[frameIdx];
+	CommandBuffer cmd();
+	cmd.Begin();
+
+	for (const auto& renderPass : mRenderPasses)
+	{
+		const auto& passData = renderPass->Configure(mContext);
+		cmd.BeginRenderPass(passData.renderPassDesc);
+		cmd.SetViewport(passData.renderPassDesc.size);
+		
+		renderPass->Execute(cmd);
+		
+		cmd.EndRenderPass();
+	}
+
+	cmd.End();
+	cmd.Commit();
 }

@@ -1,127 +1,129 @@
 #include "gpch.h"
 
 #ifdef USE_METAL_RENDERER
-#include "Renderer/Swapchain.h"
+#include "MetalSwapchain.h"
 #include "MetalUtils.h"
 
 #include "Core/Window.h"
 #include "Core/Application.h"
 #include "Core/Events/RendererEvent.h"
+#include "Renderer/RendererConfig.h"
 
 #import <SDL_metal.h>
 #import <QuartzCore/CAMetalLayer.h>
 
 using namespace Gleam;
 
-struct
-{
-    // Synchronization
-    dispatch_semaphore_t imageAcquireSemaphore;
-    
-    // Frame
-    id<CAMetalDrawable> drawable{ nil };
-} mContext;
-
-Swapchain::Swapchain(const RendererProperties& props, NativeGraphicsHandle instance)
-    : mProperties(props)
+void MetalSwapchain::Initialize(const TString& appName, const RendererConfig& config)
 {
     // Create surface
     mSurface = SDL_Metal_CreateView(ApplicationInstance.GetActiveWindow().GetSDLWindow());
     GLEAM_ASSERT(mSurface, "Metal: Surface creation failed!");
     
-    CAMetalLayer* swapchain = (__bridge CAMetalLayer*)SDL_Metal_GetLayer(mSurface);
-    swapchain.device = MetalDevice;
-    swapchain.framebufferOnly = NO;
-    swapchain.opaque = YES;
-    swapchain.pixelFormat = MTLPixelFormatBGRA8Unorm;
-    swapchain.drawableSize = swapchain.frame.size;
-    mHandle = swapchain;
+    mHandle = (__bridge CAMetalLayer*)SDL_Metal_GetLayer(mSurface);
+    mHandle.name = [NSString stringWithCString:appName.c_str() encoding:NSASCIIStringEncoding];
+    mHandle.device = MetalDevice::GetHandle();
+    mHandle.framebufferOnly = NO;
+    mHandle.opaque = YES;
+#ifdef PLATFORM_MACOS
+    mHandle.displaySyncEnabled = props.vsync ? YES : NO;
+#endif
     
-    mSize.width = swapchain.frame.size.width;
-    mSize.height = swapchain.frame.size.height;
-    
-    if (swapchain.maximumDrawableCount >= 3 && mProperties.tripleBufferingEnabled)
+    if (mHandle.maximumDrawableCount >= 3 && config.tripleBufferingEnabled)
     {
-        mProperties.maxFramesInFlight = 3;
+        mMaxFramesInFlight = 3;
         GLEAM_CORE_TRACE("Metal: Triple buffering enabled.");
     }
-    else if (swapchain.maximumDrawableCount >= 2)
+    else if (mHandle.maximumDrawableCount >= 2)
     {
-        mProperties.maxFramesInFlight = 2;
-        if (mProperties.tripleBufferingEnabled)
-        {
-            mProperties.tripleBufferingEnabled = false;
-        }
+        mMaxFramesInFlight = 2;
         GLEAM_CORE_TRACE("Metal: Double buffering enabled.");
     }
     else
     {
-        mProperties.maxFramesInFlight = 1;
+        mMaxFramesInFlight = 1;
         GLEAM_ASSERT(false, "Metal: Neither triple nor double buffering is available!");
     }
     
-    mContext.imageAcquireSemaphore = dispatch_semaphore_create(mProperties.maxFramesInFlight);
+    mImageAcquireSemaphore = dispatch_semaphore_create(mMaxFramesInFlight);
+    UpdateSize();
 }
 
-Swapchain::~Swapchain()
+void MetalSwapchain::Destroy()
 {
-    mContext.drawable = nil;
+    mDrawable = nil;
     mHandle = nil;
 }
 
-NativeGraphicsHandle Swapchain::AcquireNextDrawable()
+id<CAMetalDrawable> MetalSwapchain::AcquireNextDrawable()
 {
-    dispatch_semaphore_wait(mContext.imageAcquireSemaphore, DISPATCH_TIME_FOREVER);
-    mContext.drawable = [(CAMetalLayer*)mHandle nextDrawable];
-    return mContext.drawable;
+    dispatch_semaphore_wait(mImageAcquireSemaphore, DISPATCH_TIME_FOREVER);
+    mDrawable = [mHandle nextDrawable];
+    return mDrawable;
 }
 
-void Swapchain::Present(NativeGraphicsHandle commandBuffer)
+void MetalSwapchain::Present(id<MTLCommandBuffer> commandBuffer)
 {
     [commandBuffer addCompletedHandler:^(id<MTLCommandBuffer> commandBuffer)
     {
-        dispatch_semaphore_signal(mContext.imageAcquireSemaphore);
+        dispatch_semaphore_signal(mImageAcquireSemaphore);
     }];
     
-    [commandBuffer presentDrawable:mContext.drawable];
-    
-    [commandBuffer commit];
+    [commandBuffer presentDrawable:mDrawable];
 
-    InvalidateAndCreate();
+    UpdateSize();
 
-    mCurrentFrameIndex = (mCurrentFrameIndex + 1) % mProperties.maxFramesInFlight;
+    mCurrentFrameIndex = (mCurrentFrameIndex + 1) % mMaxFramesInFlight;
 }
 
-TextureFormat Swapchain::GetFormat() const
+void MetalSwapchain::UpdateSize()
 {
-    return MTLPixelFormatToTextureFormat(((CAMetalLayer*)mHandle).pixelFormat);
-}
-
-NativeGraphicsHandle Swapchain::GetDrawable() const
-{
-    return mContext.drawable;
-}
-
-DispatchSemaphore Swapchain::GetImageAcquireSemaphore() const
-{
-    return mContext.imageAcquireSemaphore;
-}
-
-DispatchSemaphore Swapchain::GetImageReleaseSemaphore() const
-{
-    return mContext.imageAcquireSemaphore;
-}
-
-void Swapchain::InvalidateAndCreate()
-{
-    CAMetalLayer* swapchain = (CAMetalLayer*)mHandle;
-    if (mSize.width != swapchain.frame.size.width || mSize.height != swapchain.frame.size.height)
+    if (mSize.width != mHandle.drawableSize.width || mSize.height != mHandle.drawableSize.height)
     {
-        mSize.width = swapchain.frame.size.width;
-        mSize.height = swapchain.frame.size.height;
-        swapchain.drawableSize = swapchain.frame.size;
+        mSize.width = mHandle.drawableSize.width;
+        mSize.height = mHandle.drawableSize.height;
         EventDispatcher<RendererResizeEvent>::Publish(RendererResizeEvent(mSize));
     }
+}
+
+TextureFormat MetalSwapchain::GetFormat() const
+{
+    return MTLPixelFormatToTextureFormat(mHandle.pixelFormat);
+}
+
+CAMetalLayer* MetalSwapchain::GetHandle() const
+{
+    return mHandle;
+}
+
+id<CAMetalDrawable> MetalSwapchain::GetDrawable() const
+{
+    return mDrawable;
+}
+
+dispatch_semaphore_t MetalSwapchain::GetImageAcquireSemaphore() const
+{
+    return mImageAcquireSemaphore;
+}
+
+dispatch_semaphore_t MetalSwapchain::GetImageReleaseSemaphore() const
+{
+    return mImageAcquireSemaphore;
+}
+
+const Size& MetalSwapchain::GetSize() const
+{
+    return mSize;
+}
+
+uint32_t MetalSwapchain::GetFrameIndex() const
+{
+    return mCurrentFrameIndex;
+}
+
+uint32_t MetalSwapchain::GetMaxFramesInFlight() const
+{
+    return mMaxFramesInFlight;
 }
 
 #endif

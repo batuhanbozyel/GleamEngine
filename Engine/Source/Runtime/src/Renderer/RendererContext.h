@@ -1,52 +1,56 @@
 #pragma once
-#include "Swapchain.h"
+#include "Shader.h"
+#include "RenderTarget.h"
+#include "RendererConfig.h"
 
 namespace Gleam {
-
+    
 struct Version;
 
-class RendererContext
+class RendererContext final
 {
 public:
-
-	static void Init(const TString& appName, const Version& appVersion, const RendererProperties& props);
-
-	static void Destroy();
-
-	static NativeGraphicsHandle GetPhysicalDevice();
-
-	static NativeGraphicsHandle GetGraphicsQueue();
-
-	static NativeGraphicsHandle GetComputeQueue();
-
-	static NativeGraphicsHandle GetTransferQueue();
-
-	static NativeGraphicsHandle GetGraphicsCommandPool(uint32_t index);
-
-	static NativeGraphicsHandle GetTransferCommandPool(uint32_t index);
-
-	static uint32_t GetMemoryTypeForProperties(uint32_t memoryTypeBits, uint32_t properties);
-
-    static NativeGraphicsHandle GetDevice()
-    {
-        return mDevice;
-    }
     
-	static const Scope<Swapchain>& GetSwapchain()
-	{
-		return mSwapchain;
-	}
+	void ConfigureBackend(const TString& appName, const Version& appVersion, const RendererConfig& config);
 
-	static const RendererProperties& GetProperties()
-	{
-		return mSwapchain->GetProperties();
-	}
+	void DestroyBackend();
 
+	RefCounted<Shader> CreateShader(const TString& entryPoint, ShaderStage stage);
+
+	// Color RT
+	RenderTargetIdentifier CreateRenderTarget(TextureFormat format, bool useMipMap = false)
+	
+	RenderTargetIdentifier CreateRenderTarget(TextureFormat format, const Size& size, bool useMipMap = false)
+
+	RenderTargetIdentifier CreateRenderTarget(TextureFormat format, const Size& size, uint32_t samples, bool useMipMap = false);
+
+	// Color - Depth RT
+	RenderTargetIdentifier CreateRenderTarget(TextureFormat colorFormat, TextureFormat depthFormat, bool useMipMap = false);
+
+	RenderTargetIdentifier CreateRenderTarget(TextureFormat colorFormat, TextureFormat depthFormat, const Size& size, bool useMipMap = false);
+
+	RenderTargetIdentifier CreateRenderTarget(TextureFormat colorFormat, TextureFormat depthFormat, const Size& size, uint32_t samples, bool useMipMap = false);
+
+	// Multi RT
+	RenderTargetIdentifier CreateRenderTarget(const TArray<TextureFormat>& formats, bool useMipMap = false);
+
+	RenderTargetIdentifier CreateRenderTarget(const TArray<TextureFormat>& formats, const Size& size, bool useMipMap = false);
+	
+	RenderTargetIdentifier CreateRenderTarget(const TArray<TextureFormat>& formats, const Size& size, uint32_t samples, bool useMipMap = false);
+
+	RenderPassDescriptor CreateRenderPassDescriptor();
+
+	const RendererConfig& GetConfiguration() const;
+    
 private:
-    
-    static inline NativeGraphicsHandle mDevice = nullptr;
-    
-	static inline Scope<Swapchain> mSwapchain = nullptr;
+
+	RenderTextureIdentifier CreateRenderTexture(TextureFormat format, const Size& size, uint32_t sampleCount, bool useMipMap);
+
+	RendererConfig mConfiguration;
+
+	TArray<RefCounted<RenderTexture>> mRenderTextures;
+
+	HashMap<TString, RefCounted<Shader>> mShaderCache;
 
 };
 

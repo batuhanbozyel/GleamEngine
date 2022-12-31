@@ -30,18 +30,9 @@ struct AttachmentDescriptor
     constexpr bool operator==(const AttachmentDescriptor&) const = default;
 };
 
-struct SubpassDescriptor
-{
-	TArray<uint32_t> colorAttachments;
-	TArray<uint32_t> inputAttachments;
-    
-    bool operator==(const SubpassDescriptor&) const = default;
-};
-
 struct RenderPassDescriptor
 {
 	TArray<AttachmentDescriptor> attachments;
-	TArray<SubpassDescriptor> subpasses;
     Size size = Size::zero;
 	int depthAttachmentIndex = -1;
 	uint32_t samples = 1;

@@ -12,11 +12,17 @@ struct VulkanPipeline
 	VkDescriptorSetLayout setLayout{ VK_NULL_HANDLE };
 };
 
+struct VulkanRenderPass
+{
+	VkRenderPass handle{ VK_NULL_HANDLE };
+	uint32_t sampleCount = 1;
+}
+
 class VulkanPipelineStateManager
 {
 public:
 
-	static const VulkanPipeline& GetGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc, const GraphicsShader& program, VkRenderPass renderPass);
+	static const VulkanPipeline& GetGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc, const GraphicsShader& program, const VulkanRenderPass& renderPass);
 
 	static void Clear();
 
@@ -27,9 +33,10 @@ private:
 		PipelineStateDescriptor pipelineStateDescriptor;
 		GraphicsShader program;
 		VulkanPipeline pipeline;
+		uint32_t sampleCount = 1;
 	};
 
-	static VulkanPipeline CreateGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc, const GraphicsShader& program, VkRenderPass renderPass);
+	static VulkanPipeline CreateGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc, const GraphicsShader& program, const VulkanRenderPass& renderPass);
 
 	static inline TArray<GraphicsPipelineCacheElement> mGraphicsPipelineCache;
 

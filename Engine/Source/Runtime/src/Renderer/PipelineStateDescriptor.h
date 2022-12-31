@@ -56,7 +56,6 @@ struct BlendState
 
 enum class CompareFunction
 {
-    Disabled,
     Never,
     Less,
     Equal,
@@ -128,5 +127,17 @@ struct PipelineStateDescriptor
 
 	bool operator==(const PipelineStateDescriptor&) const = default;
 };
+
+static constexpr uint32_t PrimitiveTopologyVertexCount(PrimitiveTopology topology)
+{
+    switch (topology)
+    {
+        case PrimitiveTopology::Points: return 1;
+        case PrimitiveTopology::Lines: return 2;
+        case PrimitiveTopology::LineStrip: return 2;
+        case PrimitiveTopology::Triangles: return 3;
+        default: return 0;
+    }
+}
 
 } // namespace Gleam

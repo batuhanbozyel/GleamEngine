@@ -1,28 +1,10 @@
 #pragma once
 #include "GraphicsObject.h"
 #include "IndexType.h"
+#include "BufferInfo.h"
 
 namespace Gleam {
 
-enum class BufferUsage
-{
-    VertexBuffer,
-    IndexBuffer,
-    StorageBuffer,
-    UniformBuffer,
-    StagingBuffer
-};
-
-enum class MemoryType
-{
-    Static,
-    Dynamic,
-    Stream
-};
-
-/************************************************************************/
-/* Buffer                                                               */
-/************************************************************************/
 class IBuffer : public GraphicsObject
 {
 public:
@@ -70,14 +52,20 @@ public:
 
     }
 
-    Buffer(const std::vector<T>& container)
-        : IBuffer(container.data(), sizeof(T) * container.size(), usage, memoryType)
+	Buffer(const T& container)
+        : IBuffer(&container, sizeof(T), usage, memoryType)
     {
         
     }
 
     template<size_t size>
-    Buffer(const std::array<T, size>& container)
+    Buffer(const TArray<T, size>& container)
+        : IBuffer(container.data(), sizeof(T) * container.size(), usage, memoryType)
+    {
+        
+    }
+    
+    Buffer(const TArray<T>& container)
         : IBuffer(container.data(), sizeof(T) * container.size(), usage, memoryType)
     {
         
@@ -96,12 +84,12 @@ public:
     }
 
     template<size_t size>
-    void SetData(const std::array<T, size>& container, size_t offset = 0) const
+    void SetData(const TArray<T, size>& container, size_t offset = 0) const
     {
         IBuffer::SetData(container.data(), sizeof(T) * container.size(), offset);
     }
-
-    void SetData(const std::vector<T>& container, size_t offset = 0) const
+    
+    void SetData(const TArray<T>& container, size_t offset = 0) const
     {
         IBuffer::SetData(container.data(), sizeof(T) * container.size(), offset);
     }
@@ -113,7 +101,7 @@ public:
 
 };
 
-template<IndexType indexType = IndexType::UINT32, MemoryType memoryType = MemoryType::Static, typename T = typename std::conditional<indexType == IndexType::UINT32, uint32_t, uint16_t>::type>
+template<IndexType indexType, MemoryType memoryType = MemoryType::Static, typename T = typename std::conditional<indexType == IndexType::UINT32, uint32_t, uint16_t>::type>
 using IndexBuffer = Buffer<T, BufferUsage::IndexBuffer, memoryType>;
 
 template<typename T, MemoryType memoryType = MemoryType::Static>

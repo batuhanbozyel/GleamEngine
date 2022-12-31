@@ -2,11 +2,9 @@
 
 #ifdef USE_VULKAN_RENDERER
 #include "Renderer/CommandBuffer.h"
-#include "Renderer/Renderer.h"
-
 #include "VulkanPipelineStateManager.h"
 
-#define CurrentCommandBuffer (mHandle->commandBuffers[RendererContext::GetSwapchain()->GetFrameIndex()])
+#define CurrentCommandBuffer (mHandle->commandBuffers[VulkanDevice::GetSwapchain().GetFrameIndex()])
 
 using namespace Gleam;
 
@@ -15,7 +13,7 @@ struct CommandBuffer::Impl
 	TArray<VkCommandBuffer> commandBuffers;
 	TArray<VkFence> fences;
 
-	VkRenderPass renderPassState{ VK_NULL_HANDLE };
+	VulkanRenderPass renderPassState;
 	VulkanPipeline pipelineState;
     bool swapchainTarget = false;
 
@@ -28,64 +26,69 @@ struct CommandBuffer::Impl
 		{
 			for (auto renderPass : renderPasses)
 			{
-				vkDestroyRenderPass(VulkanDevice, renderPass, nullptr);
+				vkDestroyRenderPass(VulkanDevice::GetHandle(), renderPass, nullptr);
 			}
 			renderPasses.clear();
 
 			for (auto framebuffer : framebuffers)
 			{
-				vkDestroyFramebuffer(VulkanDevice, framebuffer, nullptr);
+				vkDestroyFramebuffer(VulkanDevice::GetHandle(), framebuffer, nullptr);
 			}
 			framebuffers.clear();
 		}
 	};
 	TArray<DeletionQueue> deletionQueue;
 
-	void EndFrame()
+	void SubmitCommands(VkSubmitInfo submitInfo)
 	{
-		auto frameIdx = RendererContext::GetSwapchain()->GetFrameIndex();
-		VK_CHECK(vkWaitForFences(VulkanDevice, 1, &fences[frameIdx], VK_TRUE, UINT64_MAX));
-		VK_CHECK(vkResetFences(VulkanDevice, 1, &fences[frameIdx]));
+		auto frameIdx = VulkanDevice::GetSwapchain().GetFrameIndex();
+		VK_CHECK(vkWaitForFences(VulkanDevice::GetHandle(), 1, &fences[frameIdx], VK_TRUE, UINT64_MAX));
+		VK_CHECK(vkResetFences(VulkanDevice::GetHandle(), 1, &fences[frameIdx]));
+		VK_CHECK(vkQueueSubmit(VulkanDevice::GetSwapchain().GetGraphicsQueue().handle, 1, &submitInfo, mHandle->fences[frameIdx]));
+
+		mHandle->deletionQueue[frameIdx].Flush();
+    	mHandle->swapchainTarget = false;
 	}
 };
 
 CommandBuffer::CommandBuffer()
 	: mHandle(CreateScope<Impl>())
 {
-	mHandle->commandBuffers.resize(RendererContext::GetProperties().maxFramesInFlight, VK_NULL_HANDLE);
-	mHandle->fences.resize(RendererContext::GetProperties().maxFramesInFlight, VK_NULL_HANDLE);
-	for (uint32_t i = 0; i < RendererContext::GetProperties().maxFramesInFlight; i++)
+	uint32_t frames = VulkanDevice::GetSwapchain().GetProperties().maxFramesInFlight;
+	mHandle->commandBuffers.resize(frames, VK_NULL_HANDLE);
+	mHandle->fences.resize(frames, VK_NULL_HANDLE);
+	for (uint32_t i = 0; i < frames; i++)
 	{
 		VkCommandBufferAllocateInfo allocateInfo{ VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO };
 		allocateInfo.commandBufferCount = 1;
 		allocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-		allocateInfo.commandPool = As<VkCommandPool>(RendererContext::GetGraphicsCommandPool(i));
-		VK_CHECK(vkAllocateCommandBuffers(VulkanDevice, &allocateInfo, &mHandle->commandBuffers[i]));
+		allocateInfo.commandPool = VulkanDevice::GetGraphicsCommandPool(i);
+		VK_CHECK(vkAllocateCommandBuffers(VulkanDevice::GetHandle(), &allocateInfo, &mHandle->commandBuffers[i]));
 
 		VkFenceCreateInfo fenceCreateInfo{ VK_STRUCTURE_TYPE_FENCE_CREATE_INFO };
 		fenceCreateInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-		VK_CHECK(vkCreateFence(VulkanDevice, &fenceCreateInfo, nullptr, &mHandle->fences[i]));
+		VK_CHECK(vkCreateFence(VulkanDevice::GetHandle(), &fenceCreateInfo, nullptr, &mHandle->fences[i]));
 	}
-	mHandle->deletionQueue.resize(RendererContext::GetProperties().maxFramesInFlight);
+	mHandle->deletionQueue.resize(frames);
 }
 
 CommandBuffer::~CommandBuffer()
 {
-	for (uint32_t i = 0; i < RendererContext::GetProperties().maxFramesInFlight; i++)
+	for (uint32_t i = 0; i < VulkanDevice::GetSwapchain().GetProperties().maxFramesInFlight; i++)
 	{
-		VK_CHECK(vkWaitForFences(VulkanDevice, 1, &mHandle->fences[i], VK_TRUE, UINT64_MAX));
-		vkFreeCommandBuffers(VulkanDevice, As<VkCommandPool>(RendererContext::GetGraphicsCommandPool(i)), 1,&mHandle->commandBuffers[i]);
-		vkDestroyFence(VulkanDevice, mHandle->fences[i], nullptr);
+		VK_CHECK(vkWaitForFences(VulkanDevice::GetHandle(), 1, &mHandle->fences[i], VK_TRUE, UINT64_MAX));
+		vkFreeCommandBuffers(VulkanDevice::GetHandle(), VulkanDevice::GetGraphicsCommandPool(i), 1, &mHandle->commandBuffers[i]);
+		vkDestroyFence(VulkanDevice::GetHandle(), mHandle->fences[i], nullptr);
 
 		for (auto renderPass : mHandle->deletionQueue[i].renderPasses)
 		{
-			vkDestroyRenderPass(VulkanDevice, renderPass, nullptr);
+			vkDestroyRenderPass(VulkanDevice::GetHandle(), renderPass, nullptr);
 		}
 		mHandle->deletionQueue[i].renderPasses.clear();
 
 		for (auto framebuffer : mHandle->deletionQueue[i].framebuffers)
 		{
-			vkDestroyFramebuffer(VulkanDevice, framebuffer, nullptr);
+			vkDestroyFramebuffer(VulkanDevice::GetHandle(), framebuffer, nullptr);
 		}
 		mHandle->deletionQueue[i].framebuffers.clear();
 	}
@@ -95,36 +98,36 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc) 
 {
     mHandle->swapchainTarget = (mActiveRenderTarget == nullptr);
     
-	VkAttachmentReference depthStencilAttachment{};
-	TArray<VkAttachmentReference> colorAttachments(mActiveRenderTarget->GetColorBuffers().size());
-	TArray<VkSubpassDescription> subpassDescriptors(renderPassDesc.subpasses.size());
-	TArray<VkSubpassDependency> subpassDependencies(renderPassDesc.subpasses.size());
 	TArray<VkAttachmentDescription> attachmentDescriptors(renderPassDesc.attachments.size());
 	TArray<VkImageView> imageViews(renderPassDesc.attachments.size());
 	TArray<VkClearValue> clearValues(renderPassDesc.attachments.size());
     
+    // TODO: Check if we can abstract Vulkan subpasses with Metal tiling API
+    // Currently there is no subpass support
+    TArray<VkSubpassDescription> subpassDescriptors(1);
+    TArray<VkSubpassDependency> subpassDependencies(1);
 	if (mHandle->swapchainTarget)
 	{
-		subpassDescriptors.resize(1);
-		subpassDependencies.resize(1);
+		mHandle->renderPassState.sampleCount = VulkanDevice::GetSwapchain().GetSampleCount();
+		
 		attachmentDescriptors.resize(1);
 		imageViews.resize(1);
 		clearValues.resize(1);
 
-		auto& clearColor = Renderer::clearColor;
+		auto clearColor = ApplicationInstance.backgroundColor;
 		if (renderPassDesc.attachments.size() > 0)
 			clearColor = renderPassDesc.attachments[0].clearColor;
 
 		clearValues[0] = { clearColor.r, clearColor.g, clearColor.b, clearColor.a };
-		imageViews[0] = As<VulkanSwapchainImage*>(RendererContext::GetSwapchain()->AcquireNextDrawable())->view;
+		imageViews[0] = VulkanDevice::GetSwapchain().AcquireNextDrawable().view;
 
 		VkAttachmentReference attachmentRef{};
 		attachmentRef.attachment = 0;
 		attachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
 		attachmentDescriptors[0] = {};
-		attachmentDescriptors[0].format = TextureFormatToVkFormat(RendererContext::GetSwapchain()->GetFormat());
-		attachmentDescriptors[0].samples = GetVkSampleCount(RendererContext::GetProperties().sampleCount);
+		attachmentDescriptors[0].format = TextureFormatToVkFormat(VulkanDevice::GetSwapchain().GetFormat());
+		attachmentDescriptors[0].samples = GetVkSampleCount(VulkanDevice::GetSwapchain().GetSampleCount());
 		attachmentDescriptors[0].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 		attachmentDescriptors[0].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 		attachmentDescriptors[0].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
@@ -147,13 +150,11 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc) 
 	}
 	else
 	{
-		// TODO: Check if we can abstract Vulkan subpasses with Metal tiling API
-		// Currently there is no subpass support
-		subpassDescriptors.resize(1);
-		subpassDependencies.resize(1);
-
-		if (mActiveRenderTarget->HasDepthBuffer())
+		mHandle->renderPassState.sampleCount = renderPassDesc.samples;
+		
+        if (mActiveRenderTarget->HasDepthBuffer())
 		{
+            VkAttachmentReference depthStencilAttachment{};
 			depthStencilAttachment.attachment = renderPassDesc.depthAttachmentIndex;
 			depthStencilAttachment.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
@@ -161,8 +162,8 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc) 
 			const auto& depthAttachment = renderPassDesc.attachments[renderPassDesc.depthAttachmentIndex];
 
 			auto& depthAttachmentDesc = attachmentDescriptors[renderPassDesc.depthAttachmentIndex];
-			depthAttachmentDesc.format = TextureFormatToVkFormat(depthBuffer->GetFormat());
-			depthAttachmentDesc.samples = GetVkSampleCount(depthBuffer->GetSampleCount());
+			depthAttachmentDesc.format = TextureFormatToVkFormat(depthAttachment.format);
+			depthAttachmentDesc.samples = GetVkSampleCount(renderPassDesc.samples);
 			depthAttachmentDesc.loadOp = AttachmentLoadActionToVkAttachmentLoadOp(depthAttachment.loadAction);
 			depthAttachmentDesc.stencilLoadOp = depthAttachmentDesc.loadOp;
 			depthAttachmentDesc.storeOp = AttachmentStoreActionToVkAttachmentStoreOp(depthAttachment.storeAction);
@@ -177,7 +178,8 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc) 
 			imageViews[renderPassDesc.depthAttachmentIndex] = As<VkImageView>(depthBuffer->GetImageView());
 			subpassDescriptors[0].pDepthStencilAttachment = &depthStencilAttachment;
 		}
-
+        
+        TArray<VkAttachmentReference> colorAttachments(mActiveRenderTarget->GetColorBuffers().size());
 		for (uint32_t i = 0; i < mActiveRenderTarget->GetColorBuffers().size(); i++)
 		{
 			uint32_t attachmentIndexOffset = static_cast<uint32_t>(mActiveRenderTarget->HasDepthBuffer() && (renderPassDesc.depthAttachmentIndex <= static_cast<int>(i)));
@@ -190,8 +192,8 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc) 
 			const auto& colorAttachment = renderPassDesc.attachments[colorAttachmentIndex];
 
 			auto& colorAttachmentDesc = attachmentDescriptors[colorAttachmentIndex];
-			colorAttachmentDesc.format = TextureFormatToVkFormat(colorBuffer->GetFormat());
-			colorAttachmentDesc.samples = GetVkSampleCount(colorBuffer->GetSampleCount());
+			colorAttachmentDesc.format = TextureFormatToVkFormat(colorAttachment.format);
+			colorAttachmentDesc.samples = GetVkSampleCount(renderPassDesc.samples);
 			colorAttachmentDesc.loadOp = AttachmentLoadActionToVkAttachmentLoadOp(colorAttachment.loadAction);
 			colorAttachmentDesc.storeOp = AttachmentStoreActionToVkAttachmentStoreOp(colorAttachment.storeAction);
 			colorAttachmentDesc.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
@@ -222,22 +224,22 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc) 
 	renderPassCreateInfo.pSubpasses = subpassDescriptors.data();
 	renderPassCreateInfo.dependencyCount = static_cast<uint32_t>(subpassDependencies.size());
 	renderPassCreateInfo.pDependencies = subpassDependencies.data();
-	VK_CHECK(vkCreateRenderPass(VulkanDevice, &renderPassCreateInfo, nullptr, &mHandle->renderPassState));
-	mHandle->deletionQueue[RendererContext::GetSwapchain()->GetFrameIndex()].renderPasses.push_back(mHandle->renderPassState);
+	VK_CHECK(vkCreateRenderPass(VulkanDevice::GetHandle(), &renderPassCreateInfo, nullptr, &mHandle->renderPassState.handle));
+	mHandle->deletionQueue[VulkanDevice::GetSwapchain().GetFrameIndex()].renderPasses.push_back(mHandle->renderPassState.handle);
 
 	VkFramebuffer framebuffer;
 	VkFramebufferCreateInfo framebufferCreateInfo{ VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO };
-	framebufferCreateInfo.renderPass = mHandle->renderPassState;
+	framebufferCreateInfo.renderPass = mHandle->renderPassState.handle;
 	framebufferCreateInfo.attachmentCount = static_cast<uint32_t>(imageViews.size());
 	framebufferCreateInfo.pAttachments = imageViews.data();
 	framebufferCreateInfo.width = static_cast<uint32_t>(renderPassDesc.size.width);
 	framebufferCreateInfo.height = static_cast<uint32_t>(renderPassDesc.size.height);
 	framebufferCreateInfo.layers = 1;
-	VK_CHECK(vkCreateFramebuffer(VulkanDevice, &framebufferCreateInfo, nullptr, &framebuffer));
-	mHandle->deletionQueue[RendererContext::GetSwapchain()->GetFrameIndex()].framebuffers.push_back(framebuffer);
+	VK_CHECK(vkCreateFramebuffer(VulkanDevice::GetHandle(), &framebufferCreateInfo, nullptr, &framebuffer));
+	mHandle->deletionQueue[VulkanDevice::GetSwapchain().GetFrameIndex()].framebuffers.push_back(framebuffer);
 
 	VkRenderPassBeginInfo renderPassBeginInfo{ VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO };
-	renderPassBeginInfo.renderPass = mHandle->renderPassState;
+	renderPassBeginInfo.renderPass = mHandle->renderPassState.handle;
 	renderPassBeginInfo.framebuffer = framebuffer;
 	renderPassBeginInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
 	renderPassBeginInfo.pClearValues = clearValues.data();
@@ -248,8 +250,9 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc) 
 
 void CommandBuffer::EndRenderPass() const
 {
-	vkCmdEndRenderPass(CurrentCommandBuffer);
-	mHandle->renderPassState = VK_NULL_HANDLE;
+    vkCmdEndRenderPass(CurrentCommandBuffer);
+    mHandle->renderPassState.handle = VK_NULL_HANDLE;
+    mHandle->renderPassState.sampleCount = 1;
 }
 
 void CommandBuffer::BindPipeline(const PipelineStateDescriptor& pipelineDesc, const GraphicsShader& program) const
@@ -337,10 +340,10 @@ void CommandBuffer::CopyBuffer(const IBuffer& src, const IBuffer& dst, size_t si
 	vkCmdCopyBuffer(CurrentCommandBuffer, As<VkBuffer>(src.GetHandle()), As<VkBuffer>(dst.GetHandle()), 1, &bufferCopy);
 }
 
-void CommandBuffer::Blit(const Texture& texture, const Optional<Texture>& target) const
+void CommandBuffer::Blit(const RenderTexture& texture, const Optional<RenderTexture>& target) const
 {
     mHandle->swapchainTarget = !target.has_value();
-	VkImage targetTexture = mHandle->swapchainTarget ? As<VulkanSwapchainImage*>(RendererContext::GetSwapchain()->AcquireNextDrawable())->drawable : As<VkImage>(target.value().GetHandle());
+	VkImage targetTexture = mHandle->swapchainTarget ? VulkanDevice::GetSwapchain().AcquireNextDrawable().image : As<VkImage>(target.value().GetHandle());
 
 	if (mHandle->swapchainTarget)
 	{
@@ -413,45 +416,39 @@ void CommandBuffer::End() const
 
 void CommandBuffer::Commit() const
 {
-	mHandle->EndFrame();
-	auto frameIdx = RendererContext::GetSwapchain()->GetFrameIndex();
-	if (mHandle->swapchainTarget)
-	{
-		VkSemaphore waitSemaphore = As<VkSemaphore>(RendererContext::GetSwapchain()->GetImageAcquireSemaphore());
-		VkSemaphore signalSemaphore = As<VkSemaphore>(RendererContext::GetSwapchain()->GetImageReleaseSemaphore());
+	VkSubmitInfo submitInfo{ VK_STRUCTURE_TYPE_SUBMIT_INFO };
+	submitInfo.commandBufferCount = 1;
+	submitInfo.pCommandBuffers = &CurrentCommandBuffer;
+	mHandle->SubmitCommands(submitInfo);
+}
 
-		VkPipelineStageFlags waitDstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-		VkSubmitInfo submitInfo{ VK_STRUCTURE_TYPE_SUBMIT_INFO };
-		submitInfo.waitSemaphoreCount = 1;
-		submitInfo.pWaitSemaphores = &waitSemaphore;
-		submitInfo.pWaitDstStageMask = &waitDstStageMask;
-		submitInfo.commandBufferCount = 1;
-		submitInfo.pCommandBuffers = &CurrentCommandBuffer;
-		submitInfo.signalSemaphoreCount = 1;
-		submitInfo.pSignalSemaphores = &signalSemaphore;
-		VK_CHECK(vkQueueSubmit(As<VulkanQueue*>(RendererContext::GetGraphicsQueue())->handle, 1, &submitInfo, mHandle->fences[frameIdx]));
+void CommandBuffer::Present() const
+{
+	VkSemaphore waitSemaphore = VulkanDevice::GetSwapchain().GetImageAcquireSemaphore();
+	VkSemaphore signalSemaphore = VulkanDevice::GetSwapchain().GetImageReleaseSemaphore();
 
-		RendererContext::GetSwapchain()->Present(CurrentCommandBuffer);
-		VK_CHECK(vkWaitForFences(VulkanDevice, 1, &mHandle->fences[frameIdx], VK_TRUE, UINT64_MAX));
-		VK_CHECK(vkResetCommandPool(VulkanDevice, As<VkCommandPool>(RendererContext::GetGraphicsCommandPool(frameIdx)), 0));
-	}
-	else
-	{
-		VkSubmitInfo submitInfo{ VK_STRUCTURE_TYPE_SUBMIT_INFO };
-		submitInfo.commandBufferCount = 1;
-		submitInfo.pCommandBuffers = &CurrentCommandBuffer;
-		VK_CHECK(vkQueueSubmit(As<VulkanQueue*>(RendererContext::GetGraphicsQueue())->handle, 1, &submitInfo, mHandle->fences[frameIdx]));
-	}
-	mHandle->deletionQueue[frameIdx].Flush();
-    mHandle->swapchainTarget = false;
+	VkPipelineStageFlags waitDstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	VkSubmitInfo submitInfo{ VK_STRUCTURE_TYPE_SUBMIT_INFO };
+	submitInfo.waitSemaphoreCount = 1;
+	submitInfo.pWaitSemaphores = &waitSemaphore;
+	submitInfo.pWaitDstStageMask = &waitDstStageMask;
+	submitInfo.commandBufferCount = 1;
+	submitInfo.pCommandBuffers = &CurrentCommandBuffer;
+	submitInfo.signalSemaphoreCount = 1;
+	submitInfo.pSignalSemaphores = &signalSemaphore;
+
+	mHandle->SubmitCommands(submitInfo);
+	VulkanDevice::GetSwapchain().Present();
+
+	uint32_t frameIdx = VulkanDevice::GetSwapchain().GetFrameIndex();
+	VK_CHECK(vkWaitForFences(VulkanDevice::GetHandle(), 1, &mHandle->fences[frameIdx], VK_TRUE, UINT64_MAX));
+	VK_CHECK(vkResetCommandPool(VulkanDevice::GetHandle(), VulkanDevice::GetGraphicsCommandPool(frameIdx)), 0);
 }
 
 void CommandBuffer::WaitUntilCompleted() const
 {
 	for (auto fence : mHandle->fences)
-	{
-		VK_CHECK(vkWaitForFences(VulkanDevice, 1, &fence, VK_TRUE, UINT64_MAX));
-	}
+		VK_CHECK(vkWaitForFences(VulkanDevice::GetHandle(), 1, &fence, VK_TRUE, UINT64_MAX));
 }
 
 #endif

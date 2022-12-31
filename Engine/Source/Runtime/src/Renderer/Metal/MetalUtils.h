@@ -1,14 +1,14 @@
 #pragma once
 #ifdef USE_METAL_RENDERER
-#import <Metal/Metal.h>
-#import <QuartzCore/CAMetalLayer.h>
-#include "Renderer/RendererContext.h"
+#include "MetalDevice.h"
+#include "Renderer/TextureFormat.h"
 #include "Renderer/RenderPassDescriptor.h"
 #include "Renderer/PipelineStateDescriptor.h"
 
-namespace Gleam {
+#import <Metal/Metal.h>
+#import <QuartzCore/CAMetalLayer.h>
 
-#define MetalDevice id<MTLDevice>(RendererContext::GetDevice())
+namespace Gleam {
 
 static constexpr TextureFormat MTLPixelFormatToTextureFormat(MTLPixelFormat format)
 {
@@ -159,7 +159,7 @@ static constexpr MTLPrimitiveType PrimitiveToplogyToMTLPrimitiveType(PrimitiveTo
         default: GLEAM_ASSERT(false, "Metal: Unknown primitive topology specified!"); return MTLPrimitiveType(~0);
     }
 }
-    
+
 static constexpr MTLLoadAction AttachmentLoadActionToMTLLoadAction(AttachmentLoadAction loadAction)
 {
     switch (loadAction)
@@ -170,7 +170,7 @@ static constexpr MTLLoadAction AttachmentLoadActionToMTLLoadAction(AttachmentLoa
         default: GLEAM_ASSERT(false, "Metal: Unknown attachment load action specified!"); return MTLLoadAction(~0);
     }
 }
-    
+
 static constexpr MTLStoreAction AttachmentStoreActionToMTLStoreAction(AttachmentStoreAction storeAction)
 {
     switch (storeAction)
@@ -180,6 +180,23 @@ static constexpr MTLStoreAction AttachmentStoreActionToMTLStoreAction(Attachment
         case AttachmentStoreAction::StoreAndResolve: return MTLStoreActionStoreAndMultisampleResolve;
         case AttachmentStoreAction::DontCare: return MTLStoreActionDontCare;
         default: GLEAM_ASSERT(false, "Metal: Unknown attachment store action specified!"); return MTLStoreActionUnknown;
+    }
+}
+
+static constexpr MTLCompareFunction CompareFunctionToMTLCompareFunction(CompareFunction compareFunction)
+{
+    switch (compareFunction)
+    {
+        case CompareFunction::Never: return MTLCompareFunctionNever;
+        case CompareFunction::Less: return MTLCompareFunctionLess;
+        case CompareFunction::Equal: return MTLCompareFunctionEqual;
+        case CompareFunction::LessEqual: return MTLCompareFunctionLessEqual;
+        case CompareFunction::Never: return MTLCompareFunctionNever;
+        case CompareFunction::Greater: return MTLCompareFunctionGreater;
+        case CompareFunction::NotEqual: return MTLCompareFunctionNotEqual;
+        case CompareFunction::GreaterEqual: return MTLCompareFunctionGreaterEqual;
+        case CompareFunction::Always: return MTLCompareFunctionAlways;
+        default: GLEAM_ASSERT(false, "Metal: Unknown compare function specified!"); return MTLCompareFunction(~0);
     }
 }
 

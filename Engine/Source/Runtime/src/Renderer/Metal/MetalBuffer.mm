@@ -12,21 +12,21 @@ void IBuffer::Allocate(IBuffer& buffer)
     {
         case MemoryType::Static:
         {
-            buffer.mHandle = [MetalDevice newBufferWithLength:buffer.mSize options:MTLResourceStorageModePrivate];
+            buffer.mHandle = [MetalDevice::GetHandle() newBufferWithLength:buffer.mSize options:MTLResourceStorageModePrivate];
             break;
         }
         case MemoryType::Dynamic:
         {
 #if defined(PLATFORM_MACOS)
-            buffer.mHandle = [MetalDevice newBufferWithLength:buffer.mSize options:MTLResourceStorageModeManaged];
+            buffer.mHandle = [MetalDevice::GetHandle() newBufferWithLength:buffer.mSize options:MTLResourceStorageModeManaged];
 #elif defined(PLATFORM_IOS)
-            buffer.mHandle = [MetalDevice newBufferWithLength:buffer.mSize options:MTLResourceStorageModeShared];
+            buffer.mHandle = [MetalDevice::GetHandle() newBufferWithLength:buffer.mSize options:MTLResourceStorageModeShared];
 #endif
             break;
         }
         case MemoryType::Stream:
         {
-            buffer.mHandle = [MetalDevice newBufferWithLength:buffer.mSize options:MTLResourceStorageModeShared];
+            buffer.mHandle = [MetalDevice::GetHandle() newBufferWithLength:buffer.mSize options:MTLResourceStorageModeShared];
             break;
         }
         default:
@@ -51,7 +51,7 @@ void IBuffer::Copy(const IBuffer& src, const IBuffer& dst, size_t srcOffset, siz
 {
     GLEAM_ASSERT(src.GetSize() <= dst.GetSize(), "Metal: Source buffer size can not be larger than destination buffer size!");
     
-    id<MTLCommandBuffer> commandBuffer = [RendererContext::GetTransferCommandPool(0) commandBuffer];
+    id<MTLCommandBuffer> commandBuffer = [MetalDevice::GetCommandPool() commandBuffer];
     id<MTLBlitCommandEncoder> commandEncoder = [commandBuffer blitCommandEncoder];
     
     [commandEncoder copyFromBuffer:src.mHandle sourceOffset:srcOffset toBuffer:dst.mHandle destinationOffset:dstOffset size:src.mSize];

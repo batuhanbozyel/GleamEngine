@@ -14,7 +14,8 @@ enum
     Buffer1,
     Buffer2,
     Buffer3,
-    Buffer4
+    Buffer4,
+	Buffer5
 };
 } // namespace RendererBindingTable
     

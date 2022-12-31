@@ -1,42 +1,39 @@
+//
+//  Renderer.h
+//  Runtime
+//
+//  Created by Batuhan Bozyel on 31.10.2022.
+//
+
 #pragma once
-#include "Camera.h"
-#include "Buffer.h"
-#include "ShaderTypes.h"
+#include "RendererContext.h"
+#include "RenderPass.h"
+
+#include "Components/MeshRenderer.h"
 
 namespace Gleam {
 
-struct Version;
-struct RendererProperties;
+struct MeshQueueElemet
+{
+	MeshRenderer meshRenderer;
+	Matrix4 transform;
+};
 
-class Renderer
+class Renderer : public ISystem
 {
 public:
 
-    static void Init(const TString& appName, const Version& appVersion, const RendererProperties& props);
+	Renderer(RendererContext& context);
 
-    static void Destroy();
+	virtual void Prepare() override = 0;	
 
-    static const Size& GetDrawableSize();
+	virtual void Execute() override = 0;
 
-    /**
-    * Renderer specific implementations
-    */
+	virtual void Finish() override = 0;
 
-    Renderer();
-
-    virtual ~Renderer() = default;
-
-    virtual void Render() = 0;
-
-    void UpdateView(Camera& camera);
-
-    const UniformBuffer<CameraUniforms, MemoryType::Dynamic>& GetCameraBuffer() const;
-
-    static inline Color clearColor{ 0.1f, 0.1f, 0.1f, 1.0f };
-    
 private:
-    
-    TArray<Scope<UniformBuffer<CameraUniforms, MemoryType::Dynamic>>> mCameraBuffers;
+
+	RendererContext& mContext;
 
 };
 

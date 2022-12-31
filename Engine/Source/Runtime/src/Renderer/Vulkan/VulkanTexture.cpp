@@ -6,13 +6,6 @@
 
 using namespace Gleam;
 
-Texture::~Texture()
-{
-	vkDestroyImageView(VulkanDevice, As<VkImageView>(mImageView), nullptr);
-	vkDestroyImage(VulkanDevice, As<VkImage>(mHandle), nullptr);
-	vkFreeMemory(VulkanDevice, As<VkDeviceMemory>(mMemory), nullptr);
-}
-
 Texture2D::Texture2D(const Size& size, TextureFormat format, bool useMipMap)
 	: Texture(size, format, useMipMap)
 {
@@ -29,17 +22,16 @@ Texture2D::Texture2D(const Size& size, TextureFormat format, bool useMipMap)
 	createInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 	createInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 	createInfo.mipLevels = mMipMapCount;
-	VK_CHECK(vkCreateImage(VulkanDevice, &createInfo, nullptr, As<VkImage*>(&mHandle)));
+	VK_CHECK(vkCreateImage(VulkanDevice::GetHandle(), &createInfo, nullptr, As<VkImage*>(&mHandle)));
 
 	VkMemoryRequirements memoryRequirements;
-	vkGetImageMemoryRequirements(VulkanDevice, As<VkImage>(mHandle), &memoryRequirements);
-	mBufferSize = static_cast<uint32_t>(memoryRequirements.size);
+	vkGetImageMemoryRequirements(VulkanDevice::GetHandle(), As<VkImage>(mHandle), &memoryRequirements);
 
 	VkMemoryAllocateInfo allocateInfo{ VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
 	allocateInfo.allocationSize = memoryRequirements.size;
-	allocateInfo.memoryTypeIndex = RendererContext::GetMemoryTypeForProperties(memoryRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-	VK_CHECK(vkAllocateMemory(VulkanDevice, &allocateInfo, nullptr, As<VkDeviceMemory*>(&mMemory)));
-	VK_CHECK(vkBindImageMemory(VulkanDevice, As<VkImage>(mHandle), As<VkDeviceMemory>(mMemory), 0));
+	allocateInfo.memoryTypeIndex = VulkanDevice::GetMemoryTypeForProperties(memoryRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+	VK_CHECK(vkAllocateMemory(VulkanDevice::GetHandle(), &allocateInfo, nullptr, As<VkDeviceMemory*>(&mMemory)));
+	VK_CHECK(vkBindImageMemory(VulkanDevice::GetHandle(), As<VkImage>(mHandle), As<VkDeviceMemory>(mMemory), 0));
 
 	VkImageViewCreateInfo viewCreateInfo{ VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
 	viewCreateInfo.image = As<VkImage>(mHandle);
@@ -56,12 +48,19 @@ Texture2D::Texture2D(const Size& size, TextureFormat format, bool useMipMap)
 	viewCreateInfo.subresourceRange.baseArrayLayer = 0;
 	viewCreateInfo.subresourceRange.levelCount = 1;
 	viewCreateInfo.subresourceRange.baseMipLevel = 0;
-	VK_CHECK(vkCreateImageView(VulkanDevice, &viewCreateInfo, nullptr, As<VkImageView*>(&mImageView)));
+	VK_CHECK(vkCreateImageView(VulkanDevice::GetHandle(), &viewCreateInfo, nullptr, As<VkImageView*>(&mImageView)));
 }
 
-void Texture::SetPixels(const TArray<uint8_t>& pixels) const
+Texture2D::~Texture2D()
 {
-	// TODO: use staging buffer
+	vkDestroyImageView(VulkanDevice::GetHandle(), As<VkImageView>(mImageView), nullptr);
+	vkDestroyImage(VulkanDevice::GetHandle(), As<VkImage>(mHandle), nullptr);
+	vkFreeMemory(VulkanDevice::GetHandle(), As<VkDeviceMemory>(mMemory), nullptr);
+}
+
+void Texture2D::SetPixels(const TArray<uint8_t>& pixels) const
+{
+    // TODO: use staging buffer
 }
 
 RenderTexture::RenderTexture(const Size& size, TextureFormat format, uint32_t sampleCount, bool useMipMap)
@@ -81,17 +80,16 @@ RenderTexture::RenderTexture(const Size& size, TextureFormat format, uint32_t sa
 	createInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 	createInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 	createInfo.mipLevels = mMipMapCount;
-	VK_CHECK(vkCreateImage(VulkanDevice, &createInfo, nullptr, As<VkImage*>(&mHandle)));
+	VK_CHECK(vkCreateImage(VulkanDevice::GetHandle(), &createInfo, nullptr, As<VkImage*>(&mHandle)));
 
 	VkMemoryRequirements memoryRequirements;
-	vkGetImageMemoryRequirements(VulkanDevice, As<VkImage>(mHandle), &memoryRequirements);
-	mBufferSize = static_cast<uint32_t>(memoryRequirements.size);
+	vkGetImageMemoryRequirements(VulkanDevice::GetHandle(), As<VkImage>(mHandle), &memoryRequirements);
 
 	VkMemoryAllocateInfo allocateInfo{ VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
 	allocateInfo.allocationSize = memoryRequirements.size;
-	allocateInfo.memoryTypeIndex = RendererContext::GetMemoryTypeForProperties(memoryRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-	VK_CHECK(vkAllocateMemory(VulkanDevice, &allocateInfo, nullptr, As<VkDeviceMemory*>(&mMemory)));
-	VK_CHECK(vkBindImageMemory(VulkanDevice, As<VkImage>(mHandle), As<VkDeviceMemory>(mMemory), 0));
+	allocateInfo.memoryTypeIndex = VulkanDevice::GetMemoryTypeForProperties(memoryRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+	VK_CHECK(vkAllocateMemory(VulkanDevice::GetHandle(), &allocateInfo, nullptr, As<VkDeviceMemory*>(&mMemory)));
+	VK_CHECK(vkBindImageMemory(VulkanDevice::GetHandle(), As<VkImage>(mHandle), As<VkDeviceMemory>(mMemory), 0));
 
 	VkImageViewCreateInfo viewCreateInfo{ VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
 	viewCreateInfo.image = As<VkImage>(mHandle);
@@ -108,7 +106,12 @@ RenderTexture::RenderTexture(const Size& size, TextureFormat format, uint32_t sa
 	viewCreateInfo.subresourceRange.baseArrayLayer = 0;
 	viewCreateInfo.subresourceRange.levelCount = 1;
 	viewCreateInfo.subresourceRange.baseMipLevel = 0;
-	VK_CHECK(vkCreateImageView(VulkanDevice, &viewCreateInfo, nullptr, As<VkImageView*>(&mImageView)));
+	VK_CHECK(vkCreateImageView(VulkanDevice::GetHandle(), &viewCreateInfo, nullptr, As<VkImageView*>(&mImageView)));
+}
+
+RenderTexture::~RenderTexture()
+{
+    // TODO: dealloc multisample texture
 }
 
 #endif

@@ -1,10 +1,11 @@
 #pragma once
 #include "Buffer.h"
 #include "Shader.h"
-#include "RenderTarget.h"
 
 namespace Gleam {
 
+class RenderTexture;
+class RenderTarget;
 struct RenderPassDescriptor;
 struct PipelineStateDescriptor;
 
@@ -59,13 +60,15 @@ public:
     void CopyBuffer(const IBuffer& src, const IBuffer& dst, size_t size, uint32_t srcOffset = 0, uint32_t dstOffset = 0) const;
     
     // Set to Null for swapchain target
-    void Blit(const Texture& texture, const Optional<Texture>& renderTarget) const;
+    void Blit(const RenderTexture& texture, const Optional<RenderTexture>& renderTarget) const;
 
     void Begin() const;
 
     void End() const;
 
     void Commit() const;
+
+	void Present() const;
 
     void WaitUntilCompleted() const;
 
@@ -81,7 +84,7 @@ private:
 
     class Impl;
     Scope<Impl> mHandle;
-    
+
     RefCounted<RenderTarget> mActiveRenderTarget = nullptr;
     
 };

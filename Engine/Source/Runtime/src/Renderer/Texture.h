@@ -4,7 +4,7 @@
 
 namespace Gleam {
 
-class Texture : public GraphicsObject
+class Texture
 {
 public:
     
@@ -13,15 +13,6 @@ public:
     {
         
     }
-    
-    virtual ~Texture();
-
-    void SetPixels(const TArray<uint8_t>& pixels) const;
-
-	NativeGraphicsHandle GetImageView() const
-	{
-		return mImageView;
-	}
 
     TextureFormat GetFormat() const
     {
@@ -50,26 +41,33 @@ protected:
     WrapMode mWrapMode = WrapMode::Clamp;
     Size mSize = Size::zero;
     uint32_t mMipMapCount = 0;
-
-    uint32_t mBufferSize = 0;
-    NativeGraphicsHandle mMemory = nullptr;
-    NativeGraphicsHandle mImageView = nullptr;
     
 };
     
-class Texture2D final : public Texture
+class Texture2D final : public Texture, public GraphicsObject
 {
 public:
 
 	Texture2D(const Size& size, TextureFormat format, bool useMipMap = false);
+
+	~Texture2D();
+
+	void SetPixels(const TArray<uint8_t>& pixels) const;
+
+private:
+
+    NativeGraphicsHandle mMemory = nullptr;
+    NativeGraphicsHandle mImageView = nullptr;
 	
 };
 
-class RenderTexture final : public Texture
+class RenderTexture final : public Texture, public MutableGraphicsObject
 {
 public:
     
     RenderTexture(const Size& size, TextureFormat format, uint32_t sampleCount = 1, bool useMipMap = false);
+    
+    ~RenderTexture();
     
     // RenderTexture can only be used in a single RenderTarget
     // to avoid accessing the same RenderTexture, we are locking the resource
@@ -92,12 +90,21 @@ public:
     {
         return mSampleCount;
     }
+
+	NativeGraphicsHandle GetImageView() const;
     
 private:
     
     uint32_t mSampleCount = 1;
     
     std::atomic<bool> mLocked = false;
+    
+    TArray<NativeGraphicsHandle> mImageViews;
+
+	// multisample
+	NativeGraphicsHandle mMultisampleMemory;
+	NativeGraphicsHandle mMultisampleImageView;
+	NativeGraphicsHandle mMultisampleTexture;
 
 };
 

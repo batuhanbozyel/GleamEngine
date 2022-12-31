@@ -14,9 +14,33 @@ public:
 		return mHandle;
 	}
 
+	bool IsValid() const
+	{
+		return mHandle;
+	}
+
 protected:
 
 	NativeGraphicsHandle mHandle = nullptr;
+    NativeGraphicsHandle mMemory = nullptr;
+
+};
+
+class MutableGraphicsObject
+{
+public:
+
+    GLEAM_NONCOPYABLE(MutableGraphicsObject);
+    MutableGraphicsObject() = default;
+    
+    NativeGraphicsHandle GetHandle() const;
+
+    bool IsValid() const;
+
+protected:
+
+	TArray<NativeGraphicsHandle> mHandles;
+    TArray<NativeGraphicsHandle> mMemories;
 
 };
 

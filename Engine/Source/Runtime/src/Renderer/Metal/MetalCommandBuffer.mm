@@ -2,10 +2,11 @@
 
 #ifdef USE_METAL_RENDERER
 #include "Renderer/CommandBuffer.h"
-#include "Renderer/Renderer.h"
-#include "Renderer/RendererBindingTable.h"
-
 #include "MetalPipelineStateManager.h"
+
+#include "Core/Application.h"
+#include "Renderer/RendererBindingTable.h"
+#include "Renderer/RenderTarget.h"
 
 using namespace Gleam;
 
@@ -13,6 +14,7 @@ struct CommandBuffer::Impl
 {
     id<MTLCommandBuffer> commandBuffer = nil;
     id<MTLRenderCommandEncoder> renderCommandEncoder = nil;
+    RenderPassDescriptor renderPassDescriptor;
     MetalPipelineState pipelineState;
     bool swapchainTarget = false;
 };
@@ -31,20 +33,18 @@ CommandBuffer::~CommandBuffer()
 
 void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc) const
 {
+    mHandle->renderPassDescriptor = renderPassDesc;
     mHandle->swapchainTarget = (mActiveRenderTarget == nullptr);
     MTLRenderPassDescriptor* renderPass = [MTLRenderPassDescriptor renderPassDescriptor];
     if (mHandle->swapchainTarget)
     {
-        MTLClearColor clearColor = { Renderer::clearColor.r, Renderer::clearColor.g, Renderer::clearColor.b, Renderer::clearColor.a };
-        if (renderPassDesc.attachments.size() > 0)
-        {
-            const auto& clearColorValue = renderPassDesc.attachments[0].clearColor;
-            clearColor = { clearColorValue.r, clearColorValue.g, clearColorValue.b, clearColorValue.a };
-        }
-        
-        id<CAMetalDrawable> drawable = RendererContext::GetSwapchain()->AcquireNextDrawable();
+        auto clearColor = ApplicationInstance.backgroundColor;
+		if (renderPassDesc.attachments.size() > 0)
+			clearColor = renderPassDesc.attachments[0].clearColor;
+
+        id<CAMetalDrawable> drawable = MetalDevice::GetSwapchain().AcquireNextDrawable();
         MTLRenderPassColorAttachmentDescriptor* colorAttachmentDesc = renderPass.colorAttachments[0];
-        colorAttachmentDesc.clearColor = clearColor;
+        colorAttachmentDesc.clearColor = { clearColor.r, clearColor.g, clearColor.b, clearColor.a };
         colorAttachmentDesc.loadAction = MTLLoadActionClear;
         colorAttachmentDesc.storeAction = MTLStoreActionStore;
         colorAttachmentDesc.texture = drawable.texture;
@@ -55,12 +55,13 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc) 
         {
             const auto& depthBuffer = mActiveRenderTarget->GetDepthBuffer();
             const auto& depthAttachment = renderPassDesc.attachments[renderPassDesc.depthAttachmentIndex];
-            
+
             MTLRenderPassDepthAttachmentDescriptor* depthAttachmentDesc = renderPass.depthAttachment;
             depthAttachmentDesc.clearDepth = depthAttachment.clearDepth;
             depthAttachmentDesc.loadAction = AttachmentLoadActionToMTLLoadAction(depthAttachment.loadAction);
             depthAttachmentDesc.storeAction = AttachmentStoreActionToMTLStoreAction(depthAttachment.storeAction);
-            depthAttachmentDesc.texture = depthBuffer->GetHandle();
+            depthAttachmentDesc.texture = depthBuffer->GetImageView();
+            depthAttachmentDesc.resolveTexture = depthmap->GetHandle();
         }
         
         for (uint32_t i = 0; i <  mActiveRenderTarget->GetColorBuffers().size(); i++)
@@ -81,7 +82,8 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc) 
             };
             colorAttachmentDesc.loadAction = AttachmentLoadActionToMTLLoadAction(colorAttachment.loadAction);
             colorAttachmentDesc.storeAction = AttachmentStoreActionToMTLStoreAction(colorAttachment.storeAction);
-            colorAttachmentDesc.texture = colorBuffer->GetHandle();
+            colorAttachmentDesc.texture = colorBuffer->GetImageView();
+            colorAttachmentDesc.resolveTexture = colorBuffer->GetHandle();
         }
     }
     mHandle->renderCommandEncoder = [mHandle->commandBuffer renderCommandEncoderWithDescriptor:renderPass];
@@ -95,8 +97,9 @@ void CommandBuffer::EndRenderPass() const
 
 void CommandBuffer::BindPipeline(const PipelineStateDescriptor& pipelineDesc, const GraphicsShader& program) const
 {
-    mHandle->pipelineState = MetalPipelineStateManager::GetGraphicsPipelineState(pipelineDesc, program);
+    mHandle->pipelineState = MetalPipelineStateManager::GetGraphicsPipelineState(pipelineDesc, mHandle->renderPassDescriptor, program);
     [mHandle->renderCommandEncoder setRenderPipelineState:mHandle->pipelineState.pipeline];
+    [mHandle->renderCommandEncoder setDepthStencilState:mHandle->pipelineState.depthStencil];
 }
 
 void CommandBuffer::SetViewport(const Size& size) const
@@ -148,18 +151,18 @@ void CommandBuffer::CopyBuffer(const IBuffer& src, const IBuffer& dst, size_t si
     [blitCommandEncoder endEncoding];
 }
 
-void CommandBuffer::Blit(const Texture& texture, const Optional<Texture>& target) const
+void CommandBuffer::Blit(const RenderTexture& texture, const Optional<RenderTexture>& target) const
 {
     mHandle->swapchainTarget = !target.has_value();
     id<MTLBlitCommandEncoder> blitCommandEncoder = [mHandle->commandBuffer blitCommandEncoder];
-    id targetTexture = mHandle->swapchainTarget ? id<CAMetalDrawable>(RendererContext::GetSwapchain()->AcquireNextDrawable()).texture : target.value().GetHandle();
+    id targetTexture = mHandle->swapchainTarget ? MetalDevice::GetSwapchain().AcquireNextDrawable().texture : target.value().GetHandle();
     [blitCommandEncoder copyFromTexture:texture.GetHandle() toTexture:targetTexture];
     [blitCommandEncoder endEncoding];
 }
 
 void CommandBuffer::Begin() const
 {
-    mHandle->commandBuffer = [id<MTLCommandQueue>(RendererContext::GetGraphicsCommandPool(0)) commandBuffer];
+    mHandle->commandBuffer = [MetalDevice::GetCommandPool() commandBuffer];
 }
 
 void CommandBuffer::End() const
@@ -169,15 +172,14 @@ void CommandBuffer::End() const
 
 void CommandBuffer::Commit() const
 {
-    if (mHandle->swapchainTarget)
-	{
-		RendererContext::GetSwapchain()->Present(mHandle->commandBuffer);
-	}
-    else
-	{
-        [mHandle->commandBuffer commit];
-	}
+    [mHandle->commandBuffer commit];
     mHandle->swapchainTarget = false;
+}
+
+void CommandBuffer::Present() const
+{
+    MetalDevice::GetSwapchain().Present(mHandle->commandBuffer);
+    [mHandle->commandBuffer commit];
 }
 
 void CommandBuffer::WaitUntilCompleted() const

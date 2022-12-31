@@ -1,42 +1,55 @@
 #pragma once
-#include "TextureLibrary.h"
-#include "RenderPassDescriptor.h"
+#include "Texture.h"
 
 namespace Gleam {
+
 
 class RenderTarget final
 {
 public:
     
+	RenderTarget(TextureFormat format, const Size& size, uint32_t samples = 1, bool useMipMap = false)
+    {
+        auto renderBuffer = TextureLibrary::CreateRenderTexture(size, format, samples, useMipMap);
+		renderBuffer->Lock();
+
+		if (IsDepthStencilFormat(format))
+			mDepthBuffer = renderBuffer;
+		else
+			mColorBuffers.push_back(renderBuffer);
+    }
+
+	RenderTarget(TextureFormat colorFormat, TextureFormat depthFormat, const Size& size, uint32_t samples = 1, bool useMipMap = false)
+    {
+        auto renderBuffer = TextureLibrary::CreateRenderTexture(size, colorFormat, samples, useMipMap);
+		renderBuffer->Lock();
+		mColorBuffers.push_back(renderBuffer);
+
+		mDepthBuffer = TextureLibrary::CreateRenderTexture(size, depthFormat, samples, useMipMap);
+		mDepthBuffer->Lock();
+    }
+
     RenderTarget(const TArray<TextureFormat>& formats, const Size& size, uint32_t samples = 1, bool useMipMap = false)
     {
-        for (uint32_t i = 0; i < formats.size(); i++)
+        for (auto format : formats)
         {
-            auto renderBuffer = TextureLibrary::CreateRenderTexture(size, formats[i], samples, useMipMap);
+            auto renderBuffer = TextureLibrary::CreateRenderTexture(size, format, samples, useMipMap);
             renderBuffer->Lock();
             
-            if (IsDepthStencilFormat(formats[i]))
-            {
+            if (IsDepthStencilFormat(format))
                 mDepthBuffer = renderBuffer;
-            }
             else
-            {
                 mColorBuffers.push_back(renderBuffer);
-            }
         }
     }
-    
+
     ~RenderTarget()
     {
         if (HasDepthBuffer())
-        {
             mDepthBuffer->Release();
-        }
         
         for (auto& colorAttachment : mColorBuffers)
-        {
             colorAttachment->Release();
-        }
     }
     
     const RefCounted<RenderTexture>& GetDepthBuffer() const

@@ -2,6 +2,8 @@
 #include "MeshBuffer.h"
 
 namespace Gleam {
+    
+class Model;
 
 struct SubmeshDescriptor
 {
@@ -15,7 +17,9 @@ class Mesh
 {
 public:
     
-    Mesh(const TArray<MeshData>& meshes, bool isBatched = false);
+	Mesh(const MeshData& mesh);
+
+    Mesh(const TArray<MeshData>& meshes);
     
     const MeshBuffer& GetBuffer() const;
     

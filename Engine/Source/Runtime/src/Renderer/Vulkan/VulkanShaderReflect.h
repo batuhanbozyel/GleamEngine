@@ -87,7 +87,7 @@ struct Shader::Reflection
 			setCreateInfo.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR;
 			setCreateInfo.bindingCount = static_cast<uint32_t>(setBindings.size());
 			setCreateInfo.pBindings = setBindings.data();
-			VK_CHECK(vkCreateDescriptorSetLayout(VulkanDevice, &setCreateInfo, nullptr, &setLayouts[i]));
+			VK_CHECK(vkCreateDescriptorSetLayout(VulkanDevice::GetHandle(), &setCreateInfo, nullptr, &setLayouts[i]));
 		}
 
 		// Get push constant
@@ -111,7 +111,7 @@ struct Shader::Reflection
 	{
 		for (auto setLayout : setLayouts)
 		{
-			vkDestroyDescriptorSetLayout(VulkanDevice, setLayout, nullptr);
+			vkDestroyDescriptorSetLayout(VulkanDevice::GetHandle(), setLayout, nullptr);
 		}
 	}
 };
