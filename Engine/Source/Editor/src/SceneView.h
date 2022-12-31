@@ -1,14 +1,13 @@
 #pragma once
 #include "Gleam.h"
-#include "Renderer/DebugRenderer.h"
 
 namespace GEditor {
-    
-class SceneView : public Gleam::Layer
+
+class SceneView : public Gleam::View
 {
 public:
     
-    virtual void OnAttach() override;
+    virtual void OnCreate() override;
     
     virtual void OnUpdate() override;
     
@@ -23,7 +22,6 @@ private:
     
     Gleam::World mWorld;
     Gleam::Camera mCamera;
-    Gleam::DebugRenderer mRenderer;
     Gleam::TArray<Gleam::BoundingBox> mBounds;
     Gleam::TArray<Gleam::Scope<Gleam::Mesh>> mMeshes;
 };

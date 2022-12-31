@@ -10,19 +10,17 @@ class GleamEditor : public Gleam::Application
 public:
 
 	GleamEditor(const Gleam::ApplicationProperties& props)
-		: Gleam::Application(props), mSceneView(Gleam::CreateRef<SceneView>())
+		: Gleam::Application(props)
 	{
-        PushLayer(mSceneView);
+        PushView<SceneView>();
 	}
 
 	~GleamEditor()
 	{
-        RemoveLayer(mSceneView);
+        RemoveView<SceneView>();
 	}
 
 private:
-    
-    Gleam::RefCounted<SceneView> mSceneView;
 
 };
 

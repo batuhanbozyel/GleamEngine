@@ -2,7 +2,7 @@
 
 using namespace GEditor;
 
-void SceneView::OnAttach()
+void SceneView::OnCreate()
 {
     mCamera.Translate({0.0f, 0.5f, 0.0f});
     
@@ -21,6 +21,58 @@ void SceneView::OnAttach()
         mCamera.SetViewport(e.GetSize());
         return false;
     });
+
+	auto& renderer = mWorld.GetSystem<Gleam::WorldRenderer>();
+	auto& gpass = renderer.AddPass<GPassData>("Geometry Pass",
+	[](Gleam::RendererContext& context)
+	{
+		Gleam::RenderPassDescriptor renderPassDesc = context.CreateRenderPassDescriptor();
+
+		Gleam::AttachmentDescriptor albedo;
+		renderPassDesc.attachments.push_back(albedo);
+
+		Gleam::AttachmentDescriptor normal;
+		renderPassDesc.attachments.push_back(normal);
+
+		Gleam::AttachmentDescriptor specular;
+		renderPassDesc.attachments.push_back(specular);
+	},
+	[](const Gleam::CommandBuffer& cmd)
+	{
+		cmd.SetVertexBuffer(data.cameraBuffer, RendererBindingTable::CameraBuffer);
+		for (const auto& element : mMeshQueue)
+		{
+			const auto& meshBuffer = element.mesh->GetBuffer();
+			cmd.BindPipeline(PipelineStateDescriptor(), element.program);
+			cmd.SetVertexBuffer(meshBuffer.GetPositionBuffer(), RendererBindingTable::Buffer0);
+			cmd.SetVertexBuffer(meshBuffer.GetInterleavedBuffer(), RendererBindingTable::Buffer1);
+			
+			ForwardPassUniforms uniforms;
+			uniforms.color = Color::HSVToRGB(static_cast<float>(Time::time), 1.0f, 1.0f);
+			cmd.SetPushConstant(uniforms, ShaderStage_Vertex | ShaderStage_Fragment);
+			
+			for (const auto& submesh : element.mesh->GetSubmeshDescriptors())
+			{
+				cmd.DrawIndexed(meshBuffer.GetIndexBuffer(), submesh.indexCount, 1, submesh.firstIndex, submesh.baseVertex);
+			}
+		}
+	}
+	);
+
+	auto& lightingpass = renderer.AddPass<GPassData>("Lighting Pass",
+	[](Gleam::RendererContext& context)
+	{
+		Gleam::RenderPassDescriptor renderPassDesc = context.CreateRenderPassDescriptor();
+
+		Gleam::AttachmentDescriptor output;
+		renderPassDesc.attachments.push_back(output);
+
+		return renderPassDesc;
+	},
+	[](const Gleam::CommandBuffer& cmd, const GBufferData& passData)
+	{
+
+	});
 }
 
 void SceneView::OnUpdate()
@@ -35,7 +87,7 @@ void SceneView::OnUpdate()
     {
         for (const auto& file : Gleam::IOUtils::OpenFileDialog(Gleam::FileType::Model))
         {
-            auto mesh = Gleam::CreateScope<Gleam::StaticMesh>(Gleam::AssetLibrary::ImportModel(file));
+            auto mesh = Gleam::CreateScope<Gleam::StaticMesh>(Gleam::AssetLibrary<Gleam::Model>::Import(file));
             mMeshes.emplace_back(std::move(mesh));
         }
     }
