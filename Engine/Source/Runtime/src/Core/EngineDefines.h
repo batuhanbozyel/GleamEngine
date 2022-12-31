@@ -29,7 +29,7 @@
 #ifdef USE_VULKAN_RENDERER
 #define VULKAN_API_VERSION VK_API_VERSION_1_1
 using NativeGraphicsHandle = void*;
-using DispatchSemaphore = void*;
+using DispatchSemaphore = NativeGraphicsHandle;
 #else
 #include <objc/objc-runtime.h>
 #include <dispatch/dispatch.h>
@@ -80,6 +80,3 @@ constexpr inline T As(P p)
     TypeName& operator=(const TypeName&) = delete; \
 	TypeName(TypeName&&) = default; \
     TypeName& operator=(TypeName&&) = default
-
-
-#define COMPONENT_BODY() using Component::Component

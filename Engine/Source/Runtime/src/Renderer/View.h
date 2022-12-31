@@ -1,24 +1,25 @@
 #pragma once
+#include "PipelineStateDescriptor.h"
 
 namespace Gleam {
 
 class Application;
-    
-class Layer
+
+class View
 {
     friend class Application;
-    
+
 protected:
 
-	virtual void OnAttach() {};
+	virtual void OnCreate() {};
 
 	virtual void OnUpdate() {};
     
     virtual void OnFixedUpdate() {};
 
-	virtual void OnRender() {};
+	virtual void OnDestroy() {};
 
-	virtual void OnDetach() {};
+	BlendState mBlendState;
 
 };
 

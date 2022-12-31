@@ -1,34 +1,64 @@
 #pragma once
 #include "ApplicationConfig.h"
+#include "Renderer/RendererContext.h"
 
 union SDL_Event;
 struct SDL_Window;
 
 namespace Gleam {
 
-class Layer;
+class View;
 class Window;
+
+template <typename T>
+concept ViewType = std::is_base_of<View, T>::value;
 
 class Application
 {
 public:
+
+	GLEAM_NONCOPYABLE(Application);
 
 	Application(const ApplicationProperties& props);
 	virtual ~Application();
 
 	void Run();
 
-	uint32_t PushLayer(const RefCounted<Layer>& layer);
+	template<ViewType T>
+	T& PushView()
+	{
+		GLEAM_ASSERT(!HasView<T>(), "Application already has the view!");
+		T& view = mViews.emplace<T>();
+		view.OnCreate();
+		return view;
+	}
 
-	uint32_t PushOverlay(const RefCounted<Layer>& overlay);
+	template<ViewType T>
+	T& PushOverlay()
+	{
+		GLEAM_ASSERT(!HasView<T>(), "Application already has the overlay!");
+		T& overlay = mOverlays.emplace<T>();
+		overlay.OnCreate();
+		return overlay;
+	}
 
-	void RemoveLayer(uint32_t index);
+	template<ViewType T>
+	void RemoveView()
+	{
+		GLEAM_ASSERT(HasView<T>(), "Application does not have the view!");
+		T& view = mViews.get<T>();
+		view.OnDestroy();
+        mViews.erase<T>();
+	}
 
-	void RemoveOverlay(uint32_t index);
-
-	void RemoveLayer(const RefCounted<Layer>& layer);
-
-	void RemoveOverlay(const RefCounted<Layer>& overlay);
+	template<ViewType T>
+	void RemoveOverlay()
+	{
+		GLEAM_ASSERT(HasOverlay<T>(), "Application does not have the overlay!");
+		T& overlay = mOverlays.get<T>();
+		overlay.OnDestroy();
+        mOverlays.erase<T>();
+	}
 
 	const Window& GetActiveWindow() const
 	{
@@ -39,25 +69,46 @@ public:
 	{
 		return mVersion;
 	}
+    
+    Filesystem::path GetDefaultAssetPath()
+    {
+        return Filesystem::current_path().append("Assets/");
+    }
 
 	static Application& GetInstance()
 	{
-		return *sInstance;
+		return *mInstance;
 	}
 
+	Color backgroundColor = Color{0.1f, 0.1f, 0.1f, 1.0f};
+
 private:
+
+	template<ViewType T>
+    bool HasView() const
+    {
+		return mViews.contains<T>();
+    }
+
+	template<ViewType T>
+    bool HasOverlay() const
+    {
+		return mOverlays.contains<T>();
+    }
     
-	TArray<RefCounted<Layer>> mLayerStack;
-	TArray<RefCounted<Layer>> mOverlays;
+	AnyArray mViews;
+	AnyArray mOverlays;
 
 	SDL_Event mEvent;
 	Window* mActiveWindow;
 	HashMap<SDL_Window*, Scope<Window>> mWindows;
 
+	RendererContext mRendererContext;
+
 	bool mRunning = true;
 	Version mVersion;
 
-	static inline Application* sInstance = nullptr;
+	static inline Application* mInstance = nullptr;
     static int SDLCALL SDL2_EventCallback(void* data, SDL_Event* e);
 
 };

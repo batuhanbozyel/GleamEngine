@@ -34,6 +34,7 @@
 #include "Container/String.h"
 #include "Container/Array.h"
 #include "Container/Hash.h"
+#include "Container/AnyArray.h"
 
 #include "IO/Filesystem.h"
 #include "IO/Log.h"
@@ -48,10 +49,12 @@
 #include "Math/Matrix2.h"
 #include "Math/Matrix3.h"
 #include "Math/Matrix4.h"
-#include "Math/Transform.h"
 #include "Math/Size.h"
 #include "Math/Rect.h"
 #include "Math/BoundingBox.h"
+
+#include "Components/Camera.h"
+#include "Components/Transform.h"
 
 #include "Renderer/GraphicsObject.h"
 #include "Renderer/IndexType.h"

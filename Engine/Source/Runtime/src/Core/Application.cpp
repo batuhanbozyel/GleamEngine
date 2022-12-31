@@ -1,10 +1,9 @@
 #include "gpch.h"
 #include "Application.h"
 
-#include "Layer.h"
 #include "Window.h"
 #include "Input/Input.h"
-#include "Renderer/Renderer.h"
+#include "Renderer/View.h"
 
 using namespace Gleam;
 
@@ -61,33 +60,39 @@ int SDLCALL Application::SDL2_EventCallback(void* data, SDL_Event* e)
 Application::Application(const ApplicationProperties& props)
 	: mVersion(props.appVersion), mEvent()
 {
-	sInstance = this;
-
-	int initSucess = SDL_Init(SDL_INIT_EVERYTHING);
-	SDL_SetEventFilter(SDL2_EventCallback, nullptr);
-	GLEAM_ASSERT(initSucess == 0, "Window subsystem initialization failed!");
-
-	mActiveWindow = new Window(props.windowProps);
-	mWindows.emplace(mActiveWindow->GetSDLWindow(), Scope<Window>(mActiveWindow));
-	Renderer::Init(props.windowProps.title, props.appVersion, props.rendererProps);
-
-	EventDispatcher<AppCloseEvent>::Subscribe([this](AppCloseEvent e)
+	if (mInstance == nullptr)
 	{
-		mRunning = false;
-		return true;
-	});
+		mInstance = this;
 
-	EventDispatcher<WindowCloseEvent>::Subscribe([this](WindowCloseEvent e)
-	{
-		// if there is only 1 window, application should terminate with the proper deallocation order
-		if (mWindows.size() == 1)
+		int initSucess = SDL_Init(SDL_INIT_EVERYTHING);
+		SDL_SetEventFilter(SDL2_EventCallback, nullptr);
+		GLEAM_ASSERT(initSucess == 0, "Window subsystem initialization failed!");
+
+		// init main window
+		mActiveWindow = new Window(props.windowProps);
+		mWindows.emplace(mActiveWindow->GetSDLWindow(), Scope<Window>(mActiveWindow));
+		
+		// init renderer backend
+		mRendererContext.ConfigureBackend(props.windowProps.title, props.appVersion, props.rendererConfig);
+
+		EventDispatcher<AppCloseEvent>::Subscribe([this](AppCloseEvent e)
 		{
-			return false;
-		}
+			mRunning = false;
+			return true;
+		});
 
-		mWindows.erase(e.GetWindow());
-		return true;
-	});
+		EventDispatcher<WindowCloseEvent>::Subscribe([this](WindowCloseEvent e)
+		{
+			// if there is only 1 window, application should terminate with the proper deallocation order
+			if (mWindows.size() == 1)
+			{
+				return false;
+			}
+
+			mWindows.erase(e.GetWindow());
+			return true;
+		});
+	}
 }
 
 void Application::Run()
@@ -100,31 +105,31 @@ void Application::Run()
         Time::Step();
         Input::Update();
 
-		for (const auto& layer : mLayerStack)
+		for (auto& view : mViews)
 		{
-			layer->OnUpdate();
+			view.OnUpdate();
 		}
 
 		bool fixedUpdate = Time::fixedTime <= (Time::time - Time::fixedDeltaTime);
         if (fixedUpdate)
         {
             Time::FixedStep();
-            for (const auto& layer : mLayerStack)
+            for (auto& view : mViews)
             {
-                layer->OnFixedUpdate();
+                view.OnFixedUpdate();
             }
         }
 
-        for (const auto& overlay : mOverlays)
+        for (auto& overlay : mOverlays)
         {
-            overlay->OnUpdate();
+            overlay.OnUpdate();
         }
 
 		if (fixedUpdate)
 		{
-			for (const auto& overlay : mOverlays)
+			for (auto& overlay : mOverlays)
 			{
-				overlay->OnFixedUpdate();
+				overlay.OnFixedUpdate();
 			}
 		}
 		
@@ -132,14 +137,14 @@ void Application::Run()
         @autoreleasepool
 #endif
         {
-            for (const auto& layer : mLayerStack)
+            for (auto& view : mViews)
             {
-                layer->OnRender();
+                view.OnRender(mRendererContext);
             }
 
-            for (const auto& overlay : mOverlays)
+            for (auto& overlay : mOverlays)
             {
-                overlay->OnRender();
+                overlay.OnRender(mRendererContext);
             }
         }
 	}
@@ -148,75 +153,25 @@ void Application::Run()
 Application::~Application()
 {
 	// Destroy overlays
-	for (const auto& overlay : mOverlays)
+	for (auto& overlay : mOverlays)
 	{
-		overlay->OnDetach();
+		overlay.OnDestroy();
 	}
 	mOverlays.clear();
 
-	// Destroy layers
-	for (const auto& layer : mLayerStack)
+	// Destroy views
+	for (auto& view : mViews)
 	{
-		layer->OnDetach();
+		view.OnDestroy();
 	}
-	mLayerStack.clear();
+	mViews.clear();
 
 	// Destroy renderer
-	Renderer::Destroy();
+	mRendererContext.DestroyBackend();
 
 	// Destroy windows and window subsystem
 	mWindows.clear();
 	SDL_Quit();
 
-	sInstance = nullptr;
-}
-
-uint32_t Application::PushLayer(const RefCounted<Layer>& layer)
-{
-    uint32_t index = static_cast<uint32_t>(mLayerStack.size());
-	layer->OnAttach();
-	mLayerStack.push_back(layer);
-    return index;
-}
-
-uint32_t Application::PushOverlay(const RefCounted<Layer>& overlay)
-{
-    uint32_t index = static_cast<uint32_t>(mOverlays.size());
-	overlay->OnAttach();
-	mOverlays.push_back(overlay);
-    return index;
-}
-
-void Application::RemoveLayer(uint32_t index)
-{
-	GLEAM_ASSERT(index < mLayerStack.size());
-	mLayerStack[index]->OnDetach();
-	mLayerStack.erase(mLayerStack.begin() + index);
-}
-
-void Application::RemoveOverlay(uint32_t index)
-{
-	GLEAM_ASSERT(index < mOverlays.size());
-	mOverlays[index]->OnDetach();
-	mOverlays.erase(mOverlays.begin() + index);
-}
-
-void Application::RemoveLayer(const RefCounted<Layer>& layer)
-{
-	auto layerIt = std::find(mLayerStack.begin(), mLayerStack.end(), layer);
-	if (layerIt != mLayerStack.end())
-	{
-		layer->OnDetach();
-		mLayerStack.erase(layerIt);
-	}
-}
-
-void Application::RemoveOverlay(const RefCounted<Layer>& overlay)
-{
-	auto overlayIt = std::find(mOverlays.begin(), mOverlays.end(), overlay);
-	if (overlayIt != mOverlays.end())
-	{
-		overlay->OnDetach();
-		mOverlays.erase(overlayIt);
-	}
+	mInstance = nullptr;
 }

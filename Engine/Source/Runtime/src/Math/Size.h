@@ -24,12 +24,12 @@ struct Size
     
     NO_DISCARD FORCE_INLINE constexpr bool operator==(const Size& other) const
     {
-        return width == other.width && height == other.height;
+        return (Math::Abs(width - other.width) < Math::Epsilon) && (Math::Abs(height - other.height) < Math::Epsilon);
     }
     
     NO_DISCARD FORCE_INLINE constexpr bool operator!=(const Size& other) const
     {
-        return width != other.width || height != other.height;
+        return (Math::Abs(width - other.width) >= Math::Epsilon) || (Math::Abs(height - other.height) >= Math::Epsilon);
     }
     
     NO_DISCARD constexpr operator Vector2() const

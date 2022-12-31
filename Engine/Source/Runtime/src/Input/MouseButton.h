@@ -17,7 +17,7 @@ enum class MouseButton : uint8_t
 	Backward = M4,
 	Forward = M5
 };
-    
+
 static TStringView ToString(const MouseButton button)
 {
     switch (button)
