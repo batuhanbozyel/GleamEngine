@@ -9,36 +9,36 @@ struct VulkanPipeline
 {
 	VkPipeline handle{ VK_NULL_HANDLE };
 	VkPipelineLayout layout{ VK_NULL_HANDLE };
-	VkDescriptorSetLayout setLayout{ VK_NULL_HANDLE };
+	VkPipelineBindPoint bindPoint{};
 };
 
 struct VulkanRenderPass
 {
 	VkRenderPass handle{ VK_NULL_HANDLE };
 	uint32_t sampleCount = 1;
-}
+};
 
 class VulkanPipelineStateManager
 {
 public:
 
-	static const VulkanPipeline& GetGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc, const GraphicsShader& program, const VulkanRenderPass& renderPass);
+	static const VulkanPipeline& GetPipeline(const PipelineStateDescriptor& pipelineDesc, const TArray<RefCounted<Shader>>& program, const VulkanRenderPass& renderPass);
 
 	static void Clear();
 
 private:
 
-	struct GraphicsPipelineCacheElement
+	struct PipelineCacheElement
 	{
 		PipelineStateDescriptor pipelineStateDescriptor;
-		GraphicsShader program;
+		TArray<RefCounted<Shader>> program;
 		VulkanPipeline pipeline;
 		uint32_t sampleCount = 1;
 	};
 
-	static VulkanPipeline CreateGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc, const GraphicsShader& program, const VulkanRenderPass& renderPass);
+	static VulkanPipeline CreateGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc, const RefCounted<Shader>& vertexShader, const RefCounted<Shader>& fragmentShader, const VulkanRenderPass& renderPass);
 
-	static inline TArray<GraphicsPipelineCacheElement> mGraphicsPipelineCache;
+	static inline TArray<PipelineCacheElement> mGraphicsPipelineCache;
 
 };
 

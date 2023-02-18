@@ -91,6 +91,8 @@ public:
         return mSampleCount;
     }
 
+	void Resize(const Size& size);
+
 	NativeGraphicsHandle GetImageView() const;
     
 private:

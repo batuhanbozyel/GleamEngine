@@ -107,7 +107,8 @@ void Application::Run()
 
 		for (auto& view : mViews)
 		{
-			view.OnUpdate();
+			auto& v = std::any_cast<View&>(view);
+			v.OnUpdate();
 		}
 
 		bool fixedUpdate = Time::fixedTime <= (Time::time - Time::fixedDeltaTime);
@@ -116,36 +117,49 @@ void Application::Run()
             Time::FixedStep();
             for (auto& view : mViews)
             {
-                view.OnFixedUpdate();
+				auto& v = std::any_cast<View&>(view);
+                v.OnFixedUpdate();
             }
         }
 
         for (auto& overlay : mOverlays)
         {
-            overlay.OnUpdate();
+			auto& o = std::any_cast<View&>(overlay);
+            o.OnUpdate();
         }
 
 		if (fixedUpdate)
 		{
 			for (auto& overlay : mOverlays)
 			{
-				overlay.OnFixedUpdate();
+				auto& o = std::any_cast<View&>(overlay);
+				o.OnFixedUpdate();
 			}
 		}
 		
 #ifdef USE_METAL_RENDERER
-        @autoreleasepool
+		@autoreleasepool
 #endif
-        {
-            for (auto& view : mViews)
+		{
+			// TODO: Render Views to appropriate render targets and then compose them
+			auto rootRT = mRendererContext.CreateRenderTarget();
+            for (auto& v : mViews)
             {
-                view.OnRender(mRendererContext);
+				auto& view = std::any_cast<View&>(v);
+				auto& transform = view.GetTransform();
+				auto rt = mRendererContext.CreateRenderTarget(transform.GetScale() * ApplicationInstance.GetActiveWindow().GetResolution());
+				view.OnRender(mRendererContext, rt);
             }
 
-            for (auto& overlay : mOverlays)
+            for (auto& o : mOverlays)
             {
-                overlay.OnRender(mRendererContext);
+				auto& overlay = std::any_cast<View&>(o);
+				auto& transform = overlay.GetTransform();
+				auto rt = mRendererContext.CreateRenderTarget(transform.GetScale() * ApplicationInstance.GetActiveWindow().GetResolution());
+				overlay.OnRender(mRendererContext, rt);
             }
+
+			mRendererContext.Execute();
         }
 	}
 }
@@ -155,14 +169,16 @@ Application::~Application()
 	// Destroy overlays
 	for (auto& overlay : mOverlays)
 	{
-		overlay.OnDestroy();
+		auto& o = std::any_cast<View&>(overlay);
+		o.OnDestroy();
 	}
 	mOverlays.clear();
 
 	// Destroy views
 	for (auto& view : mViews)
 	{
-		view.OnDestroy();
+		auto& v = std::any_cast<View&>(view);
+		v.OnDestroy();
 	}
 	mViews.clear();
 

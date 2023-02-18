@@ -5,6 +5,7 @@
 #include "VulkanPipelineStateManager.h"
 
 #include "Renderer/RendererContext.h"
+#include "Core/ApplicationConfig.h"
 
 #include <SDL_vulkan.h>
 
@@ -12,8 +13,9 @@ using namespace Gleam;
 
 void RendererContext::ConfigureBackend(const TString& appName, const Version& appVersion, const RendererConfig& config)
 {
-    mConfiguration = config;
     VulkanDevice::Init(appName, appVersion, config);
+	mConfiguration = config;
+	mConfiguration.format = VulkanDevice::GetSwapchain().GetFormat();
 }
 
 void RendererContext::DestroyBackend()
@@ -199,7 +201,7 @@ void VulkanDevice::Init(const TString& appName, const Version& appVersion, const
 	};
     
 	VkDeviceCreateInfo deviceCreateInfo{ VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO };
-	deviceCreateInfo.queueCreateInfoCount = queueFamilyCount;
+	deviceCreateInfo.queueCreateInfoCount = static_cast<uint32_t>(deviceQueueCreateInfos.size());;
 	deviceCreateInfo.pQueueCreateInfos = deviceQueueCreateInfos.data();
 	deviceCreateInfo.enabledExtensionCount = static_cast<uint32_t>(requiredDeviceExtension.size());
 	deviceCreateInfo.ppEnabledExtensionNames = requiredDeviceExtension.data();
@@ -239,9 +241,9 @@ void VulkanDevice::Init(const TString& appName, const Version& appVersion, const
 	VkCommandPoolCreateInfo commandPoolCreateInfo{ VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO };
 	commandPoolCreateInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 
-	mGraphicsCommandPools.resize(GetProperties().maxFramesInFlight);
-	mTransferCommandPools.resize(GetProperties().maxFramesInFlight);
-	for (uint32_t i = 0; i < GetProperties().maxFramesInFlight; i++)
+	mGraphicsCommandPools.resize(mSwapchain.GetMaxFramesInFlight());
+	mTransferCommandPools.resize(mSwapchain.GetMaxFramesInFlight());
+	for (uint32_t i = 0; i < mSwapchain.GetMaxFramesInFlight(); i++)
 	{
 		commandPoolCreateInfo.queueFamilyIndex = mGraphicsQueue.index;
 		VK_CHECK(vkCreateCommandPool(mHandle, &commandPoolCreateInfo, nullptr, &mGraphicsCommandPools[i]));
@@ -263,7 +265,7 @@ void VulkanDevice::Destroy()
 	vkDestroyPipelineCache(mHandle, mPipelineCache, nullptr);
 
 	// Destroy command pools
-	for (uint32_t i = 0; i < GetProperties().maxFramesInFlight; i++)
+	for (uint32_t i = 0; i < mSwapchain.GetMaxFramesInFlight(); i++)
 	{
 		vkDestroyCommandPool(mHandle, mGraphicsCommandPools[i], nullptr);
 		vkDestroyCommandPool(mHandle, mTransferCommandPools[i], nullptr);

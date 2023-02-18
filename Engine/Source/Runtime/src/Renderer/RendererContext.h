@@ -2,51 +2,61 @@
 #include "Shader.h"
 #include "RenderTarget.h"
 #include "RendererConfig.h"
+#include "PipelineStateDescriptor.h"
 
 namespace Gleam {
-    
+
 struct Version;
+class Application;
 
 class RendererContext final
 {
-public:
-    
-	void ConfigureBackend(const TString& appName, const Version& appVersion, const RendererConfig& config);
+	friend class Application;
 
-	void DestroyBackend();
+public:
 
 	RefCounted<Shader> CreateShader(const TString& entryPoint, ShaderStage stage);
 
-	// Color RT
-	RenderTargetIdentifier CreateRenderTarget(TextureFormat format, bool useMipMap = false)
-	
-	RenderTargetIdentifier CreateRenderTarget(TextureFormat format, const Size& size, bool useMipMap = false)
+	RefCounted<RenderTexture> CreateRenderTexture(const Size& size, TextureFormat format, uint32_t sampleCount, bool useMipMap);
 
-	RenderTargetIdentifier CreateRenderTarget(TextureFormat format, const Size& size, uint32_t samples, bool useMipMap = false);
+	// Color RT
+	RenderTargetIdentifier CreateRenderTarget(bool useMipMap = false);
+
+	RenderTargetIdentifier CreateRenderTarget(const Size& size, bool useMipMap = false);
+
+	RenderTargetIdentifier CreateRenderTarget(TextureFormat format, bool useMipMap = false);
+	
+	RenderTargetIdentifier CreateRenderTarget(const Size& size, TextureFormat format, bool useMipMap = false);
+
+	RenderTargetIdentifier CreateRenderTarget(const Size& size, TextureFormat format, uint32_t samples, bool useMipMap = false);
 
 	// Color - Depth RT
 	RenderTargetIdentifier CreateRenderTarget(TextureFormat colorFormat, TextureFormat depthFormat, bool useMipMap = false);
 
-	RenderTargetIdentifier CreateRenderTarget(TextureFormat colorFormat, TextureFormat depthFormat, const Size& size, bool useMipMap = false);
+	RenderTargetIdentifier CreateRenderTarget(const Size& size, TextureFormat colorFormat, TextureFormat depthFormat, bool useMipMap = false);
 
-	RenderTargetIdentifier CreateRenderTarget(TextureFormat colorFormat, TextureFormat depthFormat, const Size& size, uint32_t samples, bool useMipMap = false);
+	RenderTargetIdentifier CreateRenderTarget(const Size& size, TextureFormat colorFormat, TextureFormat depthFormat, uint32_t samples, bool useMipMap = false);
 
 	// Multi RT
 	RenderTargetIdentifier CreateRenderTarget(const TArray<TextureFormat>& formats, bool useMipMap = false);
 
-	RenderTargetIdentifier CreateRenderTarget(const TArray<TextureFormat>& formats, const Size& size, bool useMipMap = false);
+	RenderTargetIdentifier CreateRenderTarget(const Size& size, const TArray<TextureFormat>& formats, bool useMipMap = false);
 	
-	RenderTargetIdentifier CreateRenderTarget(const TArray<TextureFormat>& formats, const Size& size, uint32_t samples, bool useMipMap = false);
-
-	RenderPassDescriptor CreateRenderPassDescriptor();
+	RenderTargetIdentifier CreateRenderTarget(const Size& size, const TArray<TextureFormat>& formats, uint32_t samples, bool useMipMap = false);
 
 	const RendererConfig& GetConfiguration() const;
-    
+
 private:
 
-	RenderTextureIdentifier CreateRenderTexture(TextureFormat format, const Size& size, uint32_t sampleCount, bool useMipMap);
+	void ConfigureBackend(const TString& appName, const Version& appVersion, const RendererConfig& config);
+
+	void DestroyBackend();
+
+	void Execute();
 
 	RendererConfig mConfiguration;
+
+	TArray<RenderTarget> mTemporaryRenderTargets;
 
 	TArray<RefCounted<RenderTexture>> mRenderTextures;
 

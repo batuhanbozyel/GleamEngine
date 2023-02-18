@@ -1,14 +1,14 @@
 #pragma once
+#include "Window.h"
 #include "ApplicationConfig.h"
+
+#include "Renderer/View.h"
 #include "Renderer/RendererContext.h"
 
 union SDL_Event;
 struct SDL_Window;
 
 namespace Gleam {
-
-class View;
-class Window;
 
 template <typename T>
 concept ViewType = std::is_base_of<View, T>::value;
@@ -70,7 +70,7 @@ public:
 		return mVersion;
 	}
     
-    Filesystem::path GetDefaultAssetPath()
+    Filesystem::path GetDefaultAssetPath() const
     {
         return Filesystem::current_path().append("Assets/");
     }
@@ -95,7 +95,7 @@ private:
     {
 		return mOverlays.contains<T>();
     }
-    
+
 	AnyArray mViews;
 	AnyArray mOverlays;
 

@@ -50,15 +50,5 @@ private:
 
 };
 
-struct GraphicsShader
-{
-	RefCounted<Shader> vertexShader;
-	RefCounted<Shader> fragmentShader;
-    
-    bool operator==(const GraphicsShader&) const = default;
-};
-
-using ComputeShader = RefCounted<Shader>;
-
 
 } // namespace Gleam

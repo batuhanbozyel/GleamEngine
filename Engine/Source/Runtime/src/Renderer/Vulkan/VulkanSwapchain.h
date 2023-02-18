@@ -1,5 +1,6 @@
 #pragma once
 #ifdef USE_VULKAN_RENDERER
+#include "VulkanUtils.h"
 
 namespace Gleam {
 
@@ -62,7 +63,7 @@ private:
 	uint32_t mMaxFramesInFlight = 3;
 	uint32_t mCurrentFrameIndex = 0;
 
-	VkSurfaceKHR mHandle{ VK_NULL_HANDLE };
+	VkSwapchainKHR mHandle{ VK_NULL_HANDLE };
 
 };
 

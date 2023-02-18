@@ -1,5 +1,5 @@
 #pragma once
-#include "Renderer/Model.h"
+#include "Model.h"
 
 namespace Gleam {
 

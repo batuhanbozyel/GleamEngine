@@ -15,7 +15,7 @@ const TArray<SubmeshDescriptor>& Mesh::GetSubmeshDescriptors() const
 }
 
 Mesh::Mesh(const MeshData& mesh)
-    : mBuffer(mesh))
+    : mBuffer(mesh)
 {
 	mSubmeshDescriptors.resize(1);
 	mSubmeshDescriptors[0].baseVertex = 0;

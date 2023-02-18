@@ -29,11 +29,11 @@ public:
 
 	static VkPhysicalDevice GetPhysicalDevice();
 
-	VkCommandPool GetGraphicsCommandPool(uint32_t index)
+	static VkCommandPool GetGraphicsCommandPool(uint32_t index);
 
-	VkCommandPool GetTransferCommandPool(uint32_t index)
+	static VkCommandPool GetTransferCommandPool(uint32_t index);
 
-	uint32_t GetMemoryTypeForProperties(uint32_t memoryTypeBits, uint32_t properties);
+	static uint32_t GetMemoryTypeForProperties(uint32_t memoryTypeBits, uint32_t properties);
 
 private:
 

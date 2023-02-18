@@ -24,11 +24,11 @@ struct Quaternion
 			Math::Atan2(2.0f * (w * z + x * y), 1.0f - 2.0f * (y * y + z * z))
 		};
 	}
-    
-    NO_DISCARD FORCE_INLINE constexpr Quaternion Conjugate() const
-    {
-        return Quaternion{w, -x, -y, -z};
-    }
+
+	NO_DISCARD FORCE_INLINE constexpr Quaternion Conjugate() const
+	{
+		return Quaternion{ w, -x, -y, -z };
+	}
 
 	constexpr Quaternion() = default;
 	constexpr Quaternion(Quaternion&&) = default;
@@ -45,6 +45,21 @@ struct Quaternion
 		: w(quat[0]), x(quat[1]), y(quat[2]), z(quat[3])
 	{
 
+	}
+	constexpr Quaternion(float eularAngle)
+	{
+		float c = Math::Cos(eularAngle * 0.5f);
+		float s = Math::Sin(eularAngle * 0.5f);
+
+		float cc = c * c;
+		float ss = s * s;
+		float ssc = ss * c;
+		float ccs = cc * s;
+
+		w = cc * c + ss * s;
+		x = ccs + ssc;
+		y = ccs - ssc;
+		z = y;
 	}
 	constexpr Quaternion(const Vector3& eularAngles)
 	{

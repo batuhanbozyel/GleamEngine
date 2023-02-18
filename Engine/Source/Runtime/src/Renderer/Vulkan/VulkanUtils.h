@@ -1,7 +1,6 @@
 #pragma once
 #ifdef USE_VULKAN_RENDERER
 #include <volk.h>
-#include "VulkanDevice.h"
 #include "Renderer/BufferInfo.h"
 #include "Renderer/TextureFormat.h"
 #include "Renderer/RenderPassDescriptor.h"
@@ -282,6 +281,17 @@ static constexpr VkDescriptorType BufferUsageToVkDescriptorType(BufferUsage usag
 		default: return VK_DESCRIPTOR_TYPE_MAX_ENUM;
 	}
 }
+
+static constexpr VkPipelineBindPoint PipelineBindPointToVkPipelineBindPoint(PipelineBindPoint pipeline)
+{
+	switch (pipeline)
+	{
+		case PipelineBindPoint::Graphics: return VK_PIPELINE_BIND_POINT_GRAPHICS;
+		case PipelineBindPoint::Compute: return VK_PIPELINE_BIND_POINT_COMPUTE;
+		case PipelineBindPoint::RayTracing: return VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR;
+		default: return VK_PIPELINE_BIND_POINT_MAX_ENUM;
+	}
+} 
 
 } // namespace Gleam
 #endif

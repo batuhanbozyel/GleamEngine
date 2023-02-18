@@ -2,7 +2,11 @@
 
 #ifdef USE_VULKAN_RENDERER
 #include "Renderer/CommandBuffer.h"
+
 #include "VulkanPipelineStateManager.h"
+#include "VulkanDevice.h"
+
+#include "Core/Application.h"
 
 #define CurrentCommandBuffer (mHandle->commandBuffers[VulkanDevice::GetSwapchain().GetFrameIndex()])
 
@@ -44,17 +48,17 @@ struct CommandBuffer::Impl
 		auto frameIdx = VulkanDevice::GetSwapchain().GetFrameIndex();
 		VK_CHECK(vkWaitForFences(VulkanDevice::GetHandle(), 1, &fences[frameIdx], VK_TRUE, UINT64_MAX));
 		VK_CHECK(vkResetFences(VulkanDevice::GetHandle(), 1, &fences[frameIdx]));
-		VK_CHECK(vkQueueSubmit(VulkanDevice::GetSwapchain().GetGraphicsQueue().handle, 1, &submitInfo, mHandle->fences[frameIdx]));
+		VK_CHECK(vkQueueSubmit(VulkanDevice::GetGraphicsQueue().handle, 1, &submitInfo, fences[frameIdx]));
 
-		mHandle->deletionQueue[frameIdx].Flush();
-    	mHandle->swapchainTarget = false;
+		deletionQueue[frameIdx].Flush();
+		swapchainTarget = false;
 	}
 };
 
 CommandBuffer::CommandBuffer()
 	: mHandle(CreateScope<Impl>())
 {
-	uint32_t frames = VulkanDevice::GetSwapchain().GetProperties().maxFramesInFlight;
+	uint32_t frames = VulkanDevice::GetSwapchain().GetMaxFramesInFlight();
 	mHandle->commandBuffers.resize(frames, VK_NULL_HANDLE);
 	mHandle->fences.resize(frames, VK_NULL_HANDLE);
 	for (uint32_t i = 0; i < frames; i++)
@@ -74,7 +78,7 @@ CommandBuffer::CommandBuffer()
 
 CommandBuffer::~CommandBuffer()
 {
-	for (uint32_t i = 0; i < VulkanDevice::GetSwapchain().GetProperties().maxFramesInFlight; i++)
+	for (uint32_t i = 0; i < VulkanDevice::GetSwapchain().GetMaxFramesInFlight(); i++)
 	{
 		VK_CHECK(vkWaitForFences(VulkanDevice::GetHandle(), 1, &mHandle->fences[i], VK_TRUE, UINT64_MAX));
 		vkFreeCommandBuffers(VulkanDevice::GetHandle(), VulkanDevice::GetGraphicsCommandPool(i), 1, &mHandle->commandBuffers[i]);
@@ -255,10 +259,10 @@ void CommandBuffer::EndRenderPass() const
     mHandle->renderPassState.sampleCount = 1;
 }
 
-void CommandBuffer::BindPipeline(const PipelineStateDescriptor& pipelineDesc, const GraphicsShader& program) const
+void CommandBuffer::BindPipeline(const PipelineStateDescriptor& pipelineDesc, const TArray<RefCounted<Shader>>& program) const
 {
-	mHandle->pipelineState = VulkanPipelineStateManager::GetGraphicsPipeline(pipelineDesc, program, mHandle->renderPassState);
-	vkCmdBindPipeline(CurrentCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mHandle->pipelineState.handle);
+	mHandle->pipelineState = VulkanPipelineStateManager::GetPipeline(pipelineDesc, program, mHandle->renderPassState);
+	vkCmdBindPipeline(CurrentCommandBuffer, mHandle->pipelineState.bindPoint, mHandle->pipelineState.handle);
 }
 
 void CommandBuffer::SetViewport(const Size& size) const
@@ -287,7 +291,7 @@ void CommandBuffer::SetVertexBuffer(const NativeGraphicsHandle buffer, BufferUsa
 	descriptorSet.descriptorCount = 1;
 	descriptorSet.descriptorType = BufferUsageToVkDescriptorType(usage);
 	descriptorSet.pBufferInfo = &bufferInfo;
-	vkCmdPushDescriptorSetKHR(CurrentCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mHandle->pipelineState.layout, 0, 1, &descriptorSet);
+	vkCmdPushDescriptorSetKHR(CurrentCommandBuffer, mHandle->pipelineState.bindPoint, mHandle->pipelineState.layout, 0, 1, &descriptorSet);
 }
 
 void CommandBuffer::SetFragmentBuffer(const NativeGraphicsHandle buffer, BufferUsage usage, size_t size, uint32_t index, uint32_t offset) const
@@ -301,7 +305,7 @@ void CommandBuffer::SetFragmentBuffer(const NativeGraphicsHandle buffer, BufferU
 	descriptorSet.descriptorCount = 1;
 	descriptorSet.descriptorType = BufferUsageToVkDescriptorType(usage);
 	descriptorSet.pBufferInfo = &bufferInfo;
-	vkCmdPushDescriptorSetKHR(CurrentCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mHandle->pipelineState.layout, 1, 1, &descriptorSet);
+	vkCmdPushDescriptorSetKHR(CurrentCommandBuffer, mHandle->pipelineState.bindPoint, mHandle->pipelineState.layout, 1, 1, &descriptorSet);
 }
 
 void CommandBuffer::SetPushConstant(const void* data, uint32_t size, ShaderStageFlagBits stage) const
@@ -442,7 +446,7 @@ void CommandBuffer::Present() const
 
 	uint32_t frameIdx = VulkanDevice::GetSwapchain().GetFrameIndex();
 	VK_CHECK(vkWaitForFences(VulkanDevice::GetHandle(), 1, &mHandle->fences[frameIdx], VK_TRUE, UINT64_MAX));
-	VK_CHECK(vkResetCommandPool(VulkanDevice::GetHandle(), VulkanDevice::GetGraphicsCommandPool(frameIdx)), 0);
+	VK_CHECK(vkResetCommandPool(VulkanDevice::GetHandle(), VulkanDevice::GetGraphicsCommandPool(frameIdx), 0));
 }
 
 void CommandBuffer::WaitUntilCompleted() const

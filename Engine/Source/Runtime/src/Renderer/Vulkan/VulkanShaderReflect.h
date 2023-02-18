@@ -1,6 +1,6 @@
 #pragma once
 #include "Renderer/Shader.h"
-#include "VulkanUtils.h"
+#include "VulkanDevice.h"
 
 #include <spirv_reflect.h>
 

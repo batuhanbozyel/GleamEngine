@@ -1,13 +1,13 @@
 #pragma once
-#include <filesystem>
+#include "Filesystem.h"
 
 namespace Gleam {
 
 template <typename T>
 concept AssetType = requires(T, const Filesystem::path& path)
 {
-	{ T::Import(path) } -> T;
-}
+	{ T::Import(path) -> T };
+};
 
 template<AssetType T>
 class AssetLibrary final

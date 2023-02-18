@@ -3,20 +3,21 @@
 namespace Gleam {
 
 class World;
+class EntityManager;
 
 class ISystem
 {
-friend class World;
+	friend class World;
 
 protected:
 
-	virtual void OnCreate() {};
+	virtual void OnCreate(EntityManager& entityManager) {};
 
-	virtual void OnUpdate() {};
+	virtual void OnUpdate(EntityManager& entityManager) {};
 
-	virtual void OnFixedUpdate() {};
+	virtual void OnFixedUpdate(EntityManager& entityManager) {};
 
-	virtual void OnDestroy() {};
+	virtual void OnDestroy(EntityManager& entityManager) {};
 
 };
 

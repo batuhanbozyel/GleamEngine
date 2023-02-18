@@ -1,15 +1,26 @@
 #pragma once
+#include "Shader.h"
+#include "PipelineStateDescriptor.h"
 
 namespace Gleam {
-    
+
 class Material
 {
 public:
 
+	const TArray<RefCounted<Shader>> GetProgram() const
+	{
+		return mProgram;
+	}
+
+	const PipelineStateDescriptor& GetPipelineState() const
+	{
+		return mPipelineState;
+	}
 
 private:
 
-	GraphicsShader mProgram{};
+	TArray<RefCounted<Shader>> mProgram{};
 	PipelineStateDescriptor mPipelineState{};
 
 };

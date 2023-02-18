@@ -1,21 +1,28 @@
 #include "gpch.h"
-#include "DebugPass.h"
-#include "Mesh.h"
+#include "DebugRenderer.h"
+
+#include "Renderer/Mesh.h"
+#include "Renderer/CommandBuffer.h"
+#include "Renderer/RendererContext.h"
+
+#include "Core/Application.h"
 
 using namespace Gleam;
 
-DebugRenderer::DebugRenderer(RendererContext& context)
-	: mVertexBuffer(100)
+RenderPassDescriptor DebugRenderer::Configure(RendererContext& context)
 {
-	mDebugPrimitiveProgram.vertexShader = context.CreateShader("debugVertexShader", ShaderStage::Vertex);
-	mDebugPrimitiveProgram.fragmentShader = context.CreateShader("debugFragmentShader", ShaderStage::Fragment);
+	if (!mDebugPrimitiveProgram.IsValid())
+	{
+		mDebugPrimitiveProgram.vertexShader = context.CreateShader("debugVertexShader", ShaderStage::Vertex);
+		mDebugPrimitiveProgram.fragmentShader = context.CreateShader("debugFragmentShader", ShaderStage::Fragment);
+	}
+		
+	if (!mDebugMeshProgram.IsValid())
+	{
+		mDebugMeshProgram.vertexShader = context.CreateShader("debugMeshVertexShader", ShaderStage::Vertex);
+		mDebugMeshProgram.fragmentShader = context.CreateShader("debugFragmentShader", ShaderStage::Fragment);
+	}
 
-	mDebugMeshProgram.vertexShader = context.CreateShader("debugMeshVertexShader", ShaderStage::Vertex);
-	mDebugMeshProgram.fragmentShader = context.CreateShader("debugFragmentShader", ShaderStage::Fragment);
-}
-
-void DebugRenderer::Configure(RendererContext& context)
-{
 	for (const auto& line : mLines)
     {
         mStagingBuffer.push_back(line.start);
@@ -49,12 +56,13 @@ void DebugRenderer::Configure(RendererContext& context)
     attachmentDesc.loadAction = AttachmentLoadAction::Clear;
     attachmentDesc.format = TextureFormat::B8G8R8A8_UNorm;
     attachmentDesc.clearColor = ApplicationInstance.backgroundColor;
-	
-	RenderPassDescriptor* renderPassDesc = context.CreateRenderPassDescriptor("Debug Pass");
-	renderPassDesc->attachments = { attachmentDesc };
+
+	RenderPassDescriptor renderPassDesc;
+	renderPassDesc.attachments.push_back(attachmentDesc);
+	return renderPassDesc;
 }
 
-void DebugRenderer::Execute(CommandBuffer& cmd, const RenderingData& data)
+void DebugRenderer::Execute(const CommandBuffer& cmd)
 {
     if (mLines.empty() &&
         mDepthLines.empty() &&
@@ -103,10 +111,7 @@ void DebugRenderer::Execute(CommandBuffer& cmd, const RenderingData& data)
 
     if (!mDebugMeshes.empty())
         RenderMeshes(cmd, mDebugMeshes, false);
-}
 
-void DebugRenderer::Finish()
-{
 	mLines.clear();
     mDepthLines.clear();
     mTriangles.clear();
@@ -129,7 +134,7 @@ void DebugRenderer::RenderPrimitive(const CommandBuffer& cmd, uint32_t primitive
     uniforms.color = Color::white;
     cmd.SetPushConstant(uniforms, ShaderStage_Fragment);
 
-    cmd.Draw(primitiveCount * PrimitiveTopologyVertexCount(topology));
+    cmd.Draw(primitiveCount * Utils::PrimitiveTopologyVertexCount(topology));
 }
 
 void DebugRenderer::RenderMeshes(const CommandBuffer& cmd, const TArray<DebugMesh>& debugMeshes, bool depthTest) const

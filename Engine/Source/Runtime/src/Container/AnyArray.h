@@ -20,7 +20,7 @@ public:
 		iterator& operator++()
 		{
 			++it;
-			return *it;
+			return *this;
 		}
 
 		iterator operator++(int)
@@ -33,7 +33,7 @@ public:
 		iterator& operator--()
 		{
 			--it;
-			return *it;
+			return *this;
 		}
 
 		iterator operator--(int)
@@ -114,7 +114,7 @@ public:
 		} 
 		else 
 		{
-			data[typeid(T)] = T{ std::forward<Args>(args)... };
+			it->second = T{ std::forward<Args>(args)... };
 		}
 		return std::any_cast<T&>(it->second);
 	}
@@ -129,7 +129,7 @@ public:
 		} 
 		else 
 		{
-			data[typeid(T)] = T{ std::forward<Args>(args)... };
+			it->second = T{ std::forward<Args>(args)... };
 		}
 		return std::any_cast<const T&>(it->second);
 	}
@@ -179,6 +179,11 @@ public:
 	bool contains() const
 	{
 		data.contains(typeid(T));
+	}
+
+	size_t size() const
+	{
+		return data.size();
 	}
 
 private:

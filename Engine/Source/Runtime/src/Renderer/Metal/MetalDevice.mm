@@ -11,8 +11,9 @@ using namespace Gleam;
 
 void RendererContext::ConfigureBackend(const TString& appName, const Version& appVersion, const RendererConfig& config)
 {
-    mConfiguration = config;
     MetalDevice::Init(appName, config);
+    mConfiguration = config;
+    mConfiguration.format = MetalDevice::GetSwapchain().GetFormat();
 }
 
 void RendererContext::DestroyBackend()

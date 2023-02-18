@@ -53,8 +53,9 @@
 #include "Math/Rect.h"
 #include "Math/BoundingBox.h"
 
-#include "Components/Camera.h"
-#include "Components/Transform.h"
+#include "World/Components/Transform.h"
+#include "World/Components/Transform2D.h"
+#include "World/Components/Camera.h"
 
 #include "Renderer/GraphicsObject.h"
 #include "Renderer/IndexType.h"

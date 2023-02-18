@@ -6,7 +6,7 @@
 
 using namespace Gleam;
 
-const VulkanPipeline& VulkanPipelineStateManager::GetGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc, const GraphicsShader& program, const VulkanRenderPass& renderPass)
+const VulkanPipeline& VulkanPipelineStateManager::GetPipeline(const PipelineStateDescriptor& pipelineDesc, const TArray<RefCounted<Shader>>& program, const VulkanRenderPass& renderPass)
 {
 	for (uint32_t i = 0; i < mGraphicsPipelineCache.size(); i++)
 	{
@@ -19,11 +19,21 @@ const VulkanPipeline& VulkanPipelineStateManager::GetGraphicsPipeline(const Pipe
 		}
 	}
 
-	GraphicsPipelineCacheElement element;
+	PipelineCacheElement element;
 	element.pipelineStateDescriptor = pipelineDesc;
 	element.program = program;
 	element.sampleCount = renderPass.sampleCount;
-	element.pipeline = CreateGraphicsPipeline(pipelineDesc, program, renderPass);
+
+	switch (pipelineDesc.bindPoint)
+	{
+		case PipelineBindPoint::Graphics:
+		{
+			element.pipeline = CreateGraphicsPipeline(pipelineDesc, program[0], program[1], renderPass);
+			break;
+		}
+		// TODO: implement other types
+	}
+	
 	const auto& cachedElement = mGraphicsPipelineCache.emplace_back(element);
 	return cachedElement.pipeline;
 }
@@ -38,7 +48,7 @@ void VulkanPipelineStateManager::Clear()
 	mGraphicsPipelineCache.clear();
 }
 
-VulkanPipeline VulkanPipelineStateManager::CreateGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc, const GraphicsShader& program, const VulkanRenderPass& renderPass)
+VulkanPipeline VulkanPipelineStateManager::CreateGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc, const RefCounted<Shader>& vertexShader, const RefCounted<Shader>& fragmentShader, const VulkanRenderPass& renderPass)
 {
 	VkPipeline pipeline;
 	VkGraphicsPipelineCreateInfo pipelineCreateInfo{ VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO };
@@ -47,13 +57,13 @@ VulkanPipeline VulkanPipelineStateManager::CreateGraphicsPipeline(const Pipeline
 	TArray<VkPipelineShaderStageCreateInfo, 2> shaderStages{};
 	shaderStages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 	shaderStages[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
-	shaderStages[0].module = As<VkShaderModule>(program.vertexShader->GetHandle());
-	shaderStages[0].pName = program.vertexShader->GetEntryPoint().c_str();
+	shaderStages[0].module = As<VkShaderModule>(vertexShader->GetHandle());
+	shaderStages[0].pName = vertexShader->GetEntryPoint().c_str();
 
 	shaderStages[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 	shaderStages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-	shaderStages[1].module = As<VkShaderModule>(program.fragmentShader->GetHandle());
-	shaderStages[1].pName = program.fragmentShader->GetEntryPoint().c_str();
+	shaderStages[1].module = As<VkShaderModule>(fragmentShader->GetHandle());
+	shaderStages[1].pName = fragmentShader->GetEntryPoint().c_str();
 
 	pipelineCreateInfo.stageCount = 2;
 	pipelineCreateInfo.pStages = shaderStages.data();
@@ -72,8 +82,8 @@ VulkanPipeline VulkanPipelineStateManager::CreateGraphicsPipeline(const Pipeline
 	pipelineCreateInfo.pViewportState = &viewportState;
 
 	// Pipeline layout
-	const auto& vertexShaderReflection = program.vertexShader->GetReflection();
-	const auto& fragmentShaderReflection = program.fragmentShader->GetReflection();
+	const auto& vertexShaderReflection = vertexShader->GetReflection();
+	const auto& fragmentShaderReflection = fragmentShader->GetReflection();
 
 	// Descriptor set layouts
 	TArray<VkDescriptorSetLayout> setLayouts;
@@ -127,7 +137,8 @@ VulkanPipeline VulkanPipelineStateManager::CreateGraphicsPipeline(const Pipeline
 	return VulkanPipeline
 	{
 		pipeline,
-		pipelineLayout
+		pipelineLayout,
+		VK_PIPELINE_BIND_POINT_GRAPHICS
 	};
 }
 #endif

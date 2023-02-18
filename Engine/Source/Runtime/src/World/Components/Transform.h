@@ -5,7 +5,7 @@ namespace Gleam {
 class Transform
 {
 public:
-    
+
     void Translate(const Vector3& translation)
     {
         mPosition += translation;
@@ -30,6 +30,17 @@ public:
         Rotate(Vector3{xAngle, yAngle, zAngle});
     }
 
+	void Scale(const Vector3& scale)
+	{
+		mIsTransformDirty = true;
+        mScale *= scale;
+	}
+
+	void Scale(float scale)
+	{
+		Scale(Vector3(scale));
+	}
+
     void SetTranslation(const Vector3& translation)
     {
         mPosition = translation;
@@ -43,6 +54,12 @@ public:
         mIsTransformDirty = true;
         mRotation = rotation;
     }
+
+	void SetScale(const Vector3& scale)
+	{
+		mIsTransformDirty = true;
+        mScale = scale;
+	}
 
     NO_DISCARD FORCE_INLINE const Matrix4& GetTransform()
     {
@@ -62,6 +79,11 @@ public:
     NO_DISCARD FORCE_INLINE const Quaternion& GetWorldRotation() const
     {
         return mRotation;
+    }
+
+	NO_DISCARD FORCE_INLINE const Vector3& GetWorldScale() const
+    {
+        return mScale;
     }
 
     NO_DISCARD FORCE_INLINE Vector3 ForwardVector() const
@@ -90,7 +112,7 @@ private:
     Quaternion mRotation = Quaternion::identity;
     Vector3 mScale = Vector3(1.0f, 1.0f, 1.0f);
 
-    Matrix4 mCachedTransform;
+    Matrix4 mCachedTransform = Matrix4();
     bool mIsTransformDirty = true;
     
 };

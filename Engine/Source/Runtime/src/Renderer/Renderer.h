@@ -6,34 +6,22 @@
 //
 
 #pragma once
+#include "World/System.h"
 #include "RendererContext.h"
-#include "RenderPass.h"
-
-#include "Components/MeshRenderer.h"
+#include "RenderTarget.h"
 
 namespace Gleam {
 
-struct MeshQueueElemet
+struct RenderingData
 {
-	MeshRenderer meshRenderer;
-	Matrix4 transform;
+	RenderTargetIdentifier renderTarget = SwapchainTarget;
 };
 
 class Renderer : public ISystem
 {
-public:
+protected:
 
-	Renderer(RendererContext& context);
-
-	virtual void Prepare() override = 0;	
-
-	virtual void Execute() override = 0;
-
-	virtual void Finish() override = 0;
-
-private:
-
-	RendererContext& mContext;
+	virtual void Render(RendererContext& context, const RenderingData& renderData) = 0;
 
 };
 

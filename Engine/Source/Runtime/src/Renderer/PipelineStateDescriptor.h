@@ -5,7 +5,8 @@ namespace Gleam {
 enum class PipelineBindPoint
 {
     Graphics,
-    Compute
+    Compute,
+	RayTracing
 };
     
 enum class BlendOp
@@ -128,6 +129,8 @@ struct PipelineStateDescriptor
 	bool operator==(const PipelineStateDescriptor&) const = default;
 };
 
+namespace Utils {
+
 static constexpr uint32_t PrimitiveTopologyVertexCount(PrimitiveTopology topology)
 {
     switch (topology)
@@ -139,5 +142,7 @@ static constexpr uint32_t PrimitiveTopologyVertexCount(PrimitiveTopology topolog
         default: return 0;
     }
 }
+
+} // namespace Utils
 
 } // namespace Gleam

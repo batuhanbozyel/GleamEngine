@@ -2,7 +2,7 @@
 
 #ifdef USE_VULKAN_RENDERER
 #include "Renderer/Buffer.h"
-#include "VulkanUtils.h"
+#include "VulkanDevice.h"
 
 using namespace Gleam;
 

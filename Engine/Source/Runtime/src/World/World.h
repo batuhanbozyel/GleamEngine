@@ -14,17 +14,15 @@ public:
 	World(const TString& name = "World")
 		: mName(name)
 	{
-		AddSystem<WorldRenderer>();
+		
 	}
 
 	void Update()
 	{
 		for (auto& system : mSystemManager)
         {
-            if (auto& sys = std::any_cast<ISystem>(&system))
-            {
-                sys.OnUpdate();
-            }
+			auto& sys = std::any_cast<ISystem&>(system);
+            sys.OnUpdate(mEntityManager);
         }
 	}
 
@@ -32,10 +30,8 @@ public:
 	{
 		for (auto& system : mSystemManager)
         {
-            if (auto& sys = std::any_cast<ISystem>(&system))
-            {
-                sys.FixedUpdate();
-            }
+			auto& sys = std::any_cast<ISystem&>(system);
+            sys.OnFixedUpdate(mEntityManager);
         }
 	}
     

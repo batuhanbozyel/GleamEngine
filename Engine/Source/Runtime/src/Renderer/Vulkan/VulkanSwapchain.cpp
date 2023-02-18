@@ -125,7 +125,7 @@ const VulkanDrawable& VulkanSwapchain::AcquireNextDrawable()
 		GLEAM_ASSERT(result == VK_SUCCESS || result == VK_SUBOPTIMAL_KHR, "Vulkan: Swapbuffers failed to acquire next image!");
 	}
 
-	return &mImages[mImageIndex];
+	return mImages[mImageIndex];
 }
 
 void VulkanSwapchain::Present()
@@ -189,7 +189,6 @@ void VulkanSwapchain::InvalidateAndCreate()
 	VK_CHECK(vkCreateSwapchainKHR(VulkanDevice::GetHandle(), &swapchainCreateInfo, nullptr, &newSwapchain));
 
 	// Destroy swapchain
-
 	if (mHandle != VK_NULL_HANDLE)
 	{
 		vkDestroySwapchainKHR(VulkanDevice::GetHandle(), mHandle, nullptr);
@@ -232,7 +231,7 @@ void VulkanSwapchain::InvalidateAndCreate()
 	mImages.resize(swapchainImageCount);
 	for (uint32_t i = 0; i < swapchainImageCount; i++)
 	{
-		mImages[i].drawable = drawables[i];
+		mImages[i].image = drawables[i];
 		imageViewCreateInfo.image = drawables[i];
 		VK_CHECK(vkCreateImageView(VulkanDevice::GetHandle(), &imageViewCreateInfo, nullptr, &mImages[i].view));
 	}
@@ -272,7 +271,7 @@ VkSwapchainKHR VulkanSwapchain::GetHandle() const
 
 VkSurfaceKHR VulkanSwapchain::GetSurface() const
 {
-	return mSurface
+	return mSurface;
 }
 
 VkSemaphore VulkanSwapchain::GetImageAcquireSemaphore() const

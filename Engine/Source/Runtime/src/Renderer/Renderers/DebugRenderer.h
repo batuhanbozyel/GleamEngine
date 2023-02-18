@@ -1,4 +1,5 @@
 #pragma once
+#include "Renderer/Renderer.h"
 
 namespace Gleam {
 
@@ -29,14 +30,6 @@ class DebugRenderer final : public Renderer
 {
 public:
 
-	DebugRenderer(RendererContext& context);
-
-	virtual void Configure() override;
-    
-    virtual void Execute() override;
-    
-    virtual void Finish() override;
-
     void DrawLine(const Vector3& start, const Vector3& end, Color32 color, bool depthTest = true);
 
     void DrawTriangle(const Vector3& v1, const Vector3& v2, const Vector3& v3, Color32 color, bool depthTest = true);
@@ -51,6 +44,10 @@ public:
 
 private:
 
+	virtual RenderPassDescriptor Configure(RendererContext& context) override;
+    
+    virtual void Render(const CommandBuffer& cmd) override;
+
     void RenderPrimitive(const CommandBuffer& cmd, uint32_t primitiveCount, PrimitiveTopology topology, bool depthTest) const;
 
 	void RenderMeshes(const CommandBuffer& cmd, const TArray<DebugMesh>& debugMeshes, bool depthTest) const;
@@ -59,9 +56,6 @@ private:
 	uint32_t mTriangleBufferOffset = 0;
 	uint32_t mDepthLineBufferOffset = 0;
 	uint32_t mDepthTriangleBufferOffset = 0;
-
-	GraphicsShader mDebugPrimitiveProgram;
-	GraphicsShader mDebugMeshProgram;
 
     TArray<DebugLine> mLines;
     TArray<DebugLine> mDepthLines;
@@ -73,9 +67,6 @@ private:
     TArray<DebugMesh> mDepthDebugMeshes;
 
     TArray<DebugVertex> mStagingBuffer;
-    VertexBuffer<DebugVertex, MemoryType::Dynamic> mVertexBuffer;
-
-	CommandBuffer mCommandBuffer;
 
 };
 

@@ -3,44 +3,21 @@
 
 namespace Gleam {
 
+using RenderTargetIdentifier = uint32_t;
+static constexpr RenderTargetIdentifier SwapchainTarget = -1;
 
 class RenderTarget final
 {
 public:
     
-	RenderTarget(TextureFormat format, const Size& size, uint32_t samples = 1, bool useMipMap = false)
-    {
-        auto renderBuffer = TextureLibrary::CreateRenderTexture(size, format, samples, useMipMap);
-		renderBuffer->Lock();
+	RenderTarget(const TArray<RefCounted<RenderTexture>>& colorBuffers, const RefCounted<RenderTexture>& depthBuffer = nullptr)
+		: mColorBuffers(colorBuffers), mDepthBuffer(depthBuffer)
+	{
+		if (HasDepthBuffer())
+			mDepthBuffer->Lock();
 
-		if (IsDepthStencilFormat(format))
-			mDepthBuffer = renderBuffer;
-		else
-			mColorBuffers.push_back(renderBuffer);
-    }
-
-	RenderTarget(TextureFormat colorFormat, TextureFormat depthFormat, const Size& size, uint32_t samples = 1, bool useMipMap = false)
-    {
-        auto renderBuffer = TextureLibrary::CreateRenderTexture(size, colorFormat, samples, useMipMap);
-		renderBuffer->Lock();
-		mColorBuffers.push_back(renderBuffer);
-
-		mDepthBuffer = TextureLibrary::CreateRenderTexture(size, depthFormat, samples, useMipMap);
-		mDepthBuffer->Lock();
-    }
-
-    RenderTarget(const TArray<TextureFormat>& formats, const Size& size, uint32_t samples = 1, bool useMipMap = false)
-    {
-        for (auto format : formats)
-        {
-            auto renderBuffer = TextureLibrary::CreateRenderTexture(size, format, samples, useMipMap);
-            renderBuffer->Lock();
-            
-            if (IsDepthStencilFormat(format))
-                mDepthBuffer = renderBuffer;
-            else
-                mColorBuffers.push_back(renderBuffer);
-        }
+		for (auto& colorAttachment : mColorBuffers)
+			colorAttachment->Lock();
     }
 
     ~RenderTarget()

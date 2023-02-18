@@ -31,7 +31,7 @@ class MutableGraphicsObject
 public:
 
     GLEAM_NONCOPYABLE(MutableGraphicsObject);
-    MutableGraphicsObject() = default;
+	MutableGraphicsObject();
     
     NativeGraphicsHandle GetHandle() const;
 

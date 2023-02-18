@@ -21,6 +21,12 @@ struct Size
     {
         
     }
+
+	constexpr Size(const Vector2& size)
+		: width(size.x), height(size.y)
+	{
+
+	}
     
     NO_DISCARD FORCE_INLINE constexpr bool operator==(const Size& other) const
     {
@@ -32,7 +38,7 @@ struct Size
         return (Math::Abs(width - other.width) >= Math::Epsilon) || (Math::Abs(height - other.height) >= Math::Epsilon);
     }
     
-    NO_DISCARD constexpr operator Vector2() const
+    NO_DISCARD FORCE_INLINE constexpr operator Vector2() const
     {
         return Vector2{width, height};
     }

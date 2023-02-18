@@ -14,9 +14,7 @@ class WorldRenderer : public Renderer
 {
 public:
 
-	WorldRenderer(RendererContext& context);
-
-	virtual void Execute() override;
+	virtual void Render(const CommandBuffer& cmd) override;
 
 	void Update(Camera& camera);
 

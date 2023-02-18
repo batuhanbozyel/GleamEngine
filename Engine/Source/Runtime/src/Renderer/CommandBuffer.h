@@ -21,7 +21,7 @@ public:
 
     void EndRenderPass() const;
 
-    void BindPipeline(const PipelineStateDescriptor& pipelineDesc, const GraphicsShader& program) const;
+	void BindPipeline(const PipelineStateDescriptor& pipelineDesc, const TArray<RefCounted<Shader>>& program) const;
 
     void SetViewport(const Size& size) const;
     
