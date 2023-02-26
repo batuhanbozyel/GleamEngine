@@ -6,27 +6,27 @@
 
 using namespace Gleam;
 
-void IBuffer::Allocate(IBuffer& buffer)
+void Buffer::Allocate()
 {
-    switch (buffer.mMemoryType)
+    switch (mMemoryType)
     {
         case MemoryType::Static:
         {
-            buffer.mHandle = [MetalDevice::GetHandle() newBufferWithLength:buffer.mSize options:MTLResourceStorageModePrivate];
+            mHandle = [MetalDevice::GetHandle() newBufferWithLength:buffer.mSize options:MTLResourceStorageModePrivate];
             break;
         }
         case MemoryType::Dynamic:
         {
 #if defined(PLATFORM_MACOS)
-            buffer.mHandle = [MetalDevice::GetHandle() newBufferWithLength:buffer.mSize options:MTLResourceStorageModeManaged];
+            mHandle = [MetalDevice::GetHandle() newBufferWithLength:mSize options:MTLResourceStorageModeManaged];
 #elif defined(PLATFORM_IOS)
-            buffer.mHandle = [MetalDevice::GetHandle() newBufferWithLength:buffer.mSize options:MTLResourceStorageModeShared];
+            mHandle = [MetalDevice::GetHandle() newBufferWithLength:mSize options:MTLResourceStorageModeShared];
 #endif
             break;
         }
         case MemoryType::Stream:
         {
-            buffer.mHandle = [MetalDevice::GetHandle() newBufferWithLength:buffer.mSize options:MTLResourceStorageModeShared];
+            mHandle = [MetalDevice::GetHandle() newBufferWithLength:mSize options:MTLResourceStorageModeShared];
             break;
         }
         default:
@@ -36,27 +36,14 @@ void IBuffer::Allocate(IBuffer& buffer)
         }
     }
     
-    if (buffer.mMemoryType != MemoryType::Static)
+    if (mMemoryType != MemoryType::Static)
     {
-        buffer.mContents = [id<MTLBuffer>(buffer.mHandle) contents];
+        mContents = [id<MTLBuffer>(mHandle) contents];
     }
 }
 
-void IBuffer::Free(IBuffer& buffer)
+void Buffer::Free()
 {
-    buffer.mHandle = nil;
-}
-
-void IBuffer::Copy(const IBuffer& src, const IBuffer& dst, size_t srcOffset, size_t dstOffset)
-{
-    GLEAM_ASSERT(src.GetSize() <= dst.GetSize(), "Metal: Source buffer size can not be larger than destination buffer size!");
-    
-    id<MTLCommandBuffer> commandBuffer = [MetalDevice::GetCommandPool() commandBuffer];
-    id<MTLBlitCommandEncoder> commandEncoder = [commandBuffer blitCommandEncoder];
-    
-    [commandEncoder copyFromBuffer:src.mHandle sourceOffset:srcOffset toBuffer:dst.mHandle destinationOffset:dstOffset size:src.mSize];
-    [commandEncoder endEncoding];
-    
-    [commandBuffer commit];
+    mHandle = nil;
 }
 #endif

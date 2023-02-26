@@ -6,27 +6,27 @@
 
 using namespace Gleam;
 
-void IBuffer::Allocate(IBuffer& buffer)
+void Buffer::Allocate()
 {
 	VkBufferCreateInfo createInfo{ VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
-	createInfo.size = buffer.GetSize();
-	createInfo.usage = BufferUsageToVkBufferUsage(buffer.GetUsage());
+	createInfo.size = mSize;
+	createInfo.usage = BufferUsageToVkBufferUsage(mUsage);
 
-	if (buffer.mMemoryType == MemoryType::Static)
+	if (mMemoryType == MemoryType::Static)
 	{
 		createInfo.usage |= VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
 	}
 
 	createInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-	VK_CHECK(vkCreateBuffer(VulkanDevice::GetHandle(), &createInfo, nullptr, As<VkBuffer*>(&buffer.mHandle)));
+	VK_CHECK(vkCreateBuffer(VulkanDevice::GetHandle(), &createInfo, nullptr, As<VkBuffer*>(&mHandle)));
 
 	VkMemoryRequirements memoryRequirements;
-	vkGetBufferMemoryRequirements(VulkanDevice::GetHandle(), As<VkBuffer>(buffer.mHandle), &memoryRequirements);
+	vkGetBufferMemoryRequirements(VulkanDevice::GetHandle(), As<VkBuffer>(mHandle), &memoryRequirements);
 
 	VkMemoryAllocateInfo allocateInfo{ VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
 	allocateInfo.allocationSize = memoryRequirements.size;
 
-	switch (buffer.mMemoryType)
+	switch (mMemoryType)
 	{
 		case MemoryType::Static:
 		{
@@ -50,55 +50,19 @@ void IBuffer::Allocate(IBuffer& buffer)
 		}
 	}
 
-	VK_CHECK(vkAllocateMemory(VulkanDevice::GetHandle(), &allocateInfo, nullptr, As<VkDeviceMemory*>(&buffer.mMemory)));
-	VK_CHECK(vkBindBufferMemory(VulkanDevice::GetHandle(), As<VkBuffer>(buffer.mHandle), As<VkDeviceMemory>(buffer.mMemory), 0));
+	VK_CHECK(vkAllocateMemory(VulkanDevice::GetHandle(), &allocateInfo, nullptr, As<VkDeviceMemory*>(&mMemory)));
+	VK_CHECK(vkBindBufferMemory(VulkanDevice::GetHandle(), As<VkBuffer>(mHandle), As<VkDeviceMemory>(mMemory), 0));
 
-	if (buffer.mMemoryType != MemoryType::Static)
+	if (mMemoryType != MemoryType::Static)
 	{
-		VK_CHECK(vkMapMemory(VulkanDevice::GetHandle(), As<VkDeviceMemory>(buffer.mMemory), 0, buffer.mSize, 0, &buffer.mContents));
+		VK_CHECK(vkMapMemory(VulkanDevice::GetHandle(), As<VkDeviceMemory>(mMemory), 0, mSize, 0, &mContents));
 	}
 }
 
-void IBuffer::Free(IBuffer& buffer)
+void Buffer::Free()
 {
-	vkDestroyBuffer(VulkanDevice::GetHandle(), As<VkBuffer>(buffer.mHandle), nullptr);
-	vkFreeMemory(VulkanDevice::GetHandle(), As<VkDeviceMemory>(buffer.mMemory), nullptr);
-}
-
-void IBuffer::Copy(const IBuffer& src, const IBuffer& dst, size_t srcOffset, size_t dstOffset)
-{
-	GLEAM_ASSERT(src.GetSize() <= dst.GetSize(), "Vulkan: Source buffer size can not be larger than destination buffer size!");
-
-	VkBufferCopy bufferCopy;
-	bufferCopy.srcOffset = srcOffset;
-	bufferCopy.dstOffset = dstOffset;
-	bufferCopy.size = src.GetSize();
-
-	auto frameIdx = VulkanDevice::GetSwapchain().GetFrameIndex();
-	VkCommandBufferAllocateInfo allocateInfo{ VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO };
-	allocateInfo.commandBufferCount = 1;
-	allocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-	allocateInfo.commandPool = VulkanDevice::GetTransferCommandPool(frameIdx);
-
-	VkCommandBuffer commandBuffer;
-	VK_CHECK(vkAllocateCommandBuffers(VulkanDevice::GetHandle(), &allocateInfo, &commandBuffer));
-
-	VkCommandBufferBeginInfo beginInfo{ VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
-	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-	VK_CHECK(vkBeginCommandBuffer(commandBuffer, &beginInfo));
-
-	vkCmdCopyBuffer(commandBuffer, As<VkBuffer>(src.GetHandle()), As<VkBuffer>(dst.GetHandle()), 1, &bufferCopy);
-
-	VK_CHECK(vkEndCommandBuffer(commandBuffer));
-
-	VkSubmitInfo submitInfo{ VK_STRUCTURE_TYPE_SUBMIT_INFO };
-	submitInfo.commandBufferCount = 1;
-	submitInfo.pCommandBuffers = &commandBuffer;
-
-	VK_CHECK(vkQueueSubmit(VulkanDevice::GetTransferQueue().handle, 1, &submitInfo, VK_NULL_HANDLE));
-	VK_CHECK(vkQueueWaitIdle(VulkanDevice::GetTransferQueue().handle));
-
-	vkFreeCommandBuffers(VulkanDevice::GetHandle(), VulkanDevice::GetTransferCommandPool(frameIdx), 1, &commandBuffer);
+	vkDestroyBuffer(VulkanDevice::GetHandle(), As<VkBuffer>(mHandle), nullptr);
+	vkFreeMemory(VulkanDevice::GetHandle(), As<VkDeviceMemory>(mMemory), nullptr);
 }
 
 #endif
