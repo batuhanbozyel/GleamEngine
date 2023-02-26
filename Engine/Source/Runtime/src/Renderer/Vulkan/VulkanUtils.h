@@ -1,7 +1,7 @@
 #pragma once
 #ifdef USE_VULKAN_RENDERER
 #include <volk.h>
-#include "Renderer/BufferInfo.h"
+#include "Renderer/BufferDescriptor.h"
 #include "Renderer/TextureFormat.h"
 #include "Renderer/RenderPassDescriptor.h"
 #include "Renderer/PipelineStateDescriptor.h"

@@ -18,10 +18,11 @@ enum class MemoryType
     Stream
 };
 
-struct BufferInfo
+struct BufferDescriptor
 {
 	BufferUsage usage = BufferUsage::StorageBuffer;
 	MemoryType memoryType = MemoryType::Static;
+	size_t size = 0;
 };
 
 } // namespace Gleam
