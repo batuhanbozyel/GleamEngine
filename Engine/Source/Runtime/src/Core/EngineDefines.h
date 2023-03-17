@@ -78,5 +78,5 @@ constexpr inline T As(P p)
 #define GLEAM_NONCOPYABLE(TypeName) \
     TypeName(const TypeName&) = delete; \
     TypeName& operator=(const TypeName&) = delete; \
-	TypeName(TypeName&&) = default; \
-    TypeName& operator=(TypeName&&) = default
+	TypeName(TypeName&&) = delete; \
+    TypeName& operator=(TypeName&&) = delete
