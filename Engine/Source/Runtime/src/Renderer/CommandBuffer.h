@@ -1,46 +1,70 @@
 #pragma once
 #include "Buffer.h"
 #include "Shader.h"
+#include "Texture.h"
 
 namespace Gleam {
 
 class RenderTexture;
-class RenderTarget;
 struct RenderPassDescriptor;
 struct PipelineStateDescriptor;
+
+enum class IndexType
+{
+    UINT16,
+    UINT32
+};
+
+static constexpr size_t SizeOfIndexType(IndexType indexType)
+{
+    switch (indexType)
+    {
+        case IndexType::UINT16: return sizeof(uint16_t);
+        case IndexType::UINT32: return sizeof(uint32_t);
+        default: return 0;
+    }
+}
 
 class CommandBuffer final
 {
 public:
     
+    static constexpr uint32_t maxRenderTargets = 8;
+    
     CommandBuffer();
 
     ~CommandBuffer();
-
+    
     void BeginRenderPass(const RenderPassDescriptor& renderPassDesc) const;
 
     void EndRenderPass() const;
 
-	void BindPipeline(const PipelineStateDescriptor& pipelineDesc, const TArray<RefCounted<Shader>>& program) const;
+	void BindGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc, const RefCounted<Shader>& vertexShader, const RefCounted<Shader>& fragmentShader) const;
 
     void SetViewport(const Size& size) const;
     
-    // Set to null for swapchain target
-    void SetRenderTarget(const RefCounted<RenderTarget>& renderTarget)
+    void SetColorAttachment(const RefCounted<RenderTexture>& colorTexture, uint32_t index)
     {
-        mActiveRenderTarget = renderTarget;
+        mColorAttachments[index] = colorTexture;
     }
-
-    template<typename T, BufferUsage usage, MemoryType memoryType>
-    void SetVertexBuffer(const Buffer<T, usage, memoryType>& buffer, uint32_t index, uint32_t offset = 0) const
+    
+    void SetDepthAttachment(const RefCounted<RenderTexture>& depthTexture)
     {
-        SetVertexBuffer(buffer.GetHandle(), usage, buffer.GetSize(), index, offset);
+        mDepthAttachment = depthTexture;
     }
-
-    template<typename T, BufferUsage usage, MemoryType memoryType>
-    void SetFragmentBuffer(const Buffer<T, usage, memoryType>& buffer, uint32_t index, uint32_t offset = 0) const
+    
+    void SetVertexBuffer(const NativeGraphicsHandle buffer, BufferUsage usage, size_t size, size_t offset, uint32_t index) const;
+    
+    void SetVertexBuffer(const Buffer& buffer, size_t offset, uint32_t index) const
     {
-		SetFragmentBuffer(buffer.GetHandle(), usage, buffer.GetSize(), index, offset);
+        SetVertexBuffer(buffer.GetHandle(), buffer.GetUsage(), buffer.GetSize(), offset, index);
+    }
+    
+    void SetFragmentBuffer(const NativeGraphicsHandle buffer, BufferUsage usage, size_t size, size_t offset, uint32_t index) const;
+    
+    void SetFragmentBuffer(const Buffer& buffer, size_t offset, uint32_t index) const
+    {
+        SetFragmentBuffer(buffer.GetHandle(), buffer.GetUsage(), buffer.GetSize(), offset, index);
     }
 
     template<typename T>
@@ -51,14 +75,10 @@ public:
 
     void Draw(uint32_t vertexCount, uint32_t instanceCount = 1, uint32_t baseVertex = 0, uint32_t baseInstance = 0) const;
 
-    template<IndexBufferTypes T, MemoryType memoryType>
-    void DrawIndexed(const Buffer<T, BufferUsage::IndexBuffer, memoryType>& indexBuffer, uint32_t indexCount, uint32_t instanceCount = 1, uint32_t firstIndex = 0, uint32_t baseVertex = 0, uint32_t baseInstance = 0) const
-    {
-        DrawIndexed(indexBuffer.GetHandle(), IndexTraits<T>::indexType, indexCount, instanceCount, firstIndex, baseVertex, baseInstance);
-    }
+	void DrawIndexed(const NativeGraphicsHandle indexBuffer, IndexType type, uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, uint32_t baseVertex, uint32_t baseInstance) const;
     
-    void CopyBuffer(const IBuffer& src, const IBuffer& dst, size_t size, uint32_t srcOffset = 0, uint32_t dstOffset = 0) const;
-    
+    void CopyBuffer(const NativeGraphicsHandle src, const NativeGraphicsHandle dst, size_t size, uint32_t srcOffset = 0, uint32_t dstOffset = 0) const;
+
     // Set to Null for swapchain target
     void Blit(const RenderTexture& texture, const Optional<RenderTexture>& renderTarget) const;
 
@@ -74,18 +94,13 @@ public:
 
 private:
 
-    void SetVertexBuffer(const NativeGraphicsHandle buffer, BufferUsage usage, size_t size, uint32_t index, uint32_t offset) const;
-
-    void SetFragmentBuffer(const NativeGraphicsHandle buffer, BufferUsage usage, size_t size, uint32_t index, uint32_t offset) const;
-
-    void DrawIndexed(const NativeGraphicsHandle indexBuffer, IndexType type, uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, uint32_t baseVertex, uint32_t baseInstance) const;
-
     void SetPushConstant(const void* data, uint32_t size, ShaderStageFlagBits stage) const;
 
     class Impl;
     Scope<Impl> mHandle;
 
-    RefCounted<RenderTarget> mActiveRenderTarget = nullptr;
+    RefCounted<RenderTexture> mDepthAttachment;
+    TArray<RefCounted<RenderTexture>, maxRenderTargets> mColorAttachments;
     
 };
 

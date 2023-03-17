@@ -12,7 +12,7 @@ void Buffer::Allocate()
     {
         case MemoryType::Static:
         {
-            mHandle = [MetalDevice::GetHandle() newBufferWithLength:buffer.mSize options:MTLResourceStorageModePrivate];
+            mHandle = [MetalDevice::GetHandle() newBufferWithLength:mSize options:MTLResourceStorageModePrivate];
             break;
         }
         case MemoryType::Dynamic:

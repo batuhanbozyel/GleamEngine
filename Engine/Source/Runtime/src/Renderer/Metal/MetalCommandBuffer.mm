@@ -6,7 +6,6 @@
 
 #include "Core/Application.h"
 #include "Renderer/RendererBindingTable.h"
-#include "Renderer/RenderTarget.h"
 
 using namespace Gleam;
 
@@ -16,7 +15,6 @@ struct CommandBuffer::Impl
     id<MTLRenderCommandEncoder> renderCommandEncoder = nil;
     RenderPassDescriptor renderPassDescriptor;
     MetalPipelineState pipelineState;
-    bool swapchainTarget = false;
 };
 
 CommandBuffer::CommandBuffer()
@@ -34,58 +32,43 @@ CommandBuffer::~CommandBuffer()
 void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc) const
 {
     mHandle->renderPassDescriptor = renderPassDesc;
-    mHandle->swapchainTarget = (mActiveRenderTarget == nullptr);
     MTLRenderPassDescriptor* renderPass = [MTLRenderPassDescriptor renderPassDescriptor];
-    if (mHandle->swapchainTarget)
+    
+    bool hasDepthBuffer = mDepthAttachment != nullptr;
+    if (hasDepthBuffer)
     {
-        auto clearColor = ApplicationInstance.backgroundColor;
-		if (renderPassDesc.attachments.size() > 0)
-			clearColor = renderPassDesc.attachments[0].clearColor;
+        const auto& depthAttachment = renderPassDesc.attachments[renderPassDesc.depthAttachmentIndex];
 
-        id<CAMetalDrawable> drawable = MetalDevice::GetSwapchain().AcquireNextDrawable();
-        MTLRenderPassColorAttachmentDescriptor* colorAttachmentDesc = renderPass.colorAttachments[0];
-        colorAttachmentDesc.clearColor = { clearColor.r, clearColor.g, clearColor.b, clearColor.a };
-        colorAttachmentDesc.loadAction = MTLLoadActionClear;
-        colorAttachmentDesc.storeAction = MTLStoreActionStore;
-        colorAttachmentDesc.texture = drawable.texture;
+        MTLRenderPassDepthAttachmentDescriptor* depthAttachmentDesc = renderPass.depthAttachment;
+        depthAttachmentDesc.clearDepth = depthAttachment.clearDepth;
+        depthAttachmentDesc.loadAction = AttachmentLoadActionToMTLLoadAction(depthAttachment.loadAction);
+        depthAttachmentDesc.storeAction = AttachmentStoreActionToMTLStoreAction(depthAttachment.storeAction);
+        depthAttachmentDesc.texture = mDepthAttachment->GetImageView();
+        depthAttachmentDesc.resolveTexture = mDepthAttachment->GetHandle();
     }
-    else
+    
+    for (uint32_t i = 0; i < mColorAttachments.size(); i++)
     {
-        if (mActiveRenderTarget->HasDepthBuffer())
-        {
-            const auto& depthBuffer = mActiveRenderTarget->GetDepthBuffer();
-            const auto& depthAttachment = renderPassDesc.attachments[renderPassDesc.depthAttachmentIndex];
-
-            MTLRenderPassDepthAttachmentDescriptor* depthAttachmentDesc = renderPass.depthAttachment;
-            depthAttachmentDesc.clearDepth = depthAttachment.clearDepth;
-            depthAttachmentDesc.loadAction = AttachmentLoadActionToMTLLoadAction(depthAttachment.loadAction);
-            depthAttachmentDesc.storeAction = AttachmentStoreActionToMTLStoreAction(depthAttachment.storeAction);
-            depthAttachmentDesc.texture = depthBuffer->GetImageView();
-            depthAttachmentDesc.resolveTexture = depthmap->GetHandle();
-        }
+        uint32_t attachmentIndexOffset = static_cast<int>(hasDepthBuffer && (renderPassDesc.depthAttachmentIndex <= i));
+        uint32_t colorAttachmentIndex = i + attachmentIndexOffset;
         
-        for (uint32_t i = 0; i <  mActiveRenderTarget->GetColorBuffers().size(); i++)
+        const auto& colorBuffer = mColorAttachments[i];
+        const auto& colorAttachment = renderPassDesc.attachments[colorAttachmentIndex];
+        
+        MTLRenderPassColorAttachmentDescriptor* colorAttachmentDesc = renderPass.colorAttachments[i];
+        colorAttachmentDesc.clearColor =
         {
-            uint32_t attachmentIndexOffset = static_cast<int>(mActiveRenderTarget->HasDepthBuffer() && (renderPassDesc.depthAttachmentIndex <= i));
-            uint32_t colorAttachmentIndex = i + attachmentIndexOffset;
-            
-            const auto& colorBuffer = mActiveRenderTarget->GetColorBuffers()[i];
-            const auto& colorAttachment = renderPassDesc.attachments[colorAttachmentIndex];
-            
-            MTLRenderPassColorAttachmentDescriptor* colorAttachmentDesc = renderPass.colorAttachments[i];
-            colorAttachmentDesc.clearColor =
-            {
-                colorAttachment.clearColor.r,
-                colorAttachment.clearColor.g,
-                colorAttachment.clearColor.b,
-                colorAttachment.clearColor.a
-            };
-            colorAttachmentDesc.loadAction = AttachmentLoadActionToMTLLoadAction(colorAttachment.loadAction);
-            colorAttachmentDesc.storeAction = AttachmentStoreActionToMTLStoreAction(colorAttachment.storeAction);
-            colorAttachmentDesc.texture = colorBuffer->GetImageView();
-            colorAttachmentDesc.resolveTexture = colorBuffer->GetHandle();
-        }
+            colorAttachment.clearColor.r,
+            colorAttachment.clearColor.g,
+            colorAttachment.clearColor.b,
+            colorAttachment.clearColor.a
+        };
+        colorAttachmentDesc.loadAction = AttachmentLoadActionToMTLLoadAction(colorAttachment.loadAction);
+        colorAttachmentDesc.storeAction = AttachmentStoreActionToMTLStoreAction(colorAttachment.storeAction);
+        colorAttachmentDesc.texture = colorBuffer->GetImageView();
+        colorAttachmentDesc.resolveTexture = colorBuffer->GetHandle();
     }
+    
     mHandle->renderCommandEncoder = [mHandle->commandBuffer renderCommandEncoderWithDescriptor:renderPass];
 }
 
@@ -95,9 +78,9 @@ void CommandBuffer::EndRenderPass() const
     mHandle->renderCommandEncoder = nil;
 }
 
-void CommandBuffer::BindPipeline(const PipelineStateDescriptor& pipelineDesc, const GraphicsShader& program) const
+void CommandBuffer::BindGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc, const RefCounted<Shader>& vertexShader, const RefCounted<Shader>& fragmentShader) const
 {
-    mHandle->pipelineState = MetalPipelineStateManager::GetGraphicsPipelineState(pipelineDesc, mHandle->renderPassDescriptor, program);
+    mHandle->pipelineState = MetalPipelineStateManager::GetGraphicsPipelineState(pipelineDesc, mHandle->renderPassDescriptor, vertexShader, fragmentShader);
     [mHandle->renderCommandEncoder setRenderPipelineState:mHandle->pipelineState.pipeline];
     [mHandle->renderCommandEncoder setDepthStencilState:mHandle->pipelineState.depthStencil];
 }
@@ -111,12 +94,12 @@ void CommandBuffer::SetViewport(const Size& size) const
     [mHandle->renderCommandEncoder setViewport:viewport];
 }
 
-void CommandBuffer::SetVertexBuffer(const NativeGraphicsHandle buffer, BufferUsage usage, size_t size, uint32_t index, uint32_t offset) const
+void CommandBuffer::SetVertexBuffer(const NativeGraphicsHandle buffer, BufferUsage usage, size_t size, size_t offset, uint32_t index) const
 {
     [mHandle->renderCommandEncoder setVertexBuffer:buffer offset:offset atIndex:index];
 }
 
-void CommandBuffer::SetFragmentBuffer(const NativeGraphicsHandle buffer, BufferUsage usage, size_t size, uint32_t index, uint32_t offset) const
+void CommandBuffer::SetFragmentBuffer(const NativeGraphicsHandle buffer, BufferUsage usage, size_t size, size_t offset, uint32_t index) const
 {
     [mHandle->renderCommandEncoder setFragmentBuffer:buffer offset:offset atIndex:index];
 }
@@ -144,18 +127,18 @@ void CommandBuffer::DrawIndexed(const NativeGraphicsHandle indexBuffer, IndexTyp
     [mHandle->renderCommandEncoder drawIndexedPrimitives:PrimitiveToplogyToMTLPrimitiveType(mHandle->pipelineState.descriptor.topology) indexCount:indexCount indexType:indexType indexBuffer:indexBuffer indexBufferOffset:firstIndex * SizeOfIndexType(type) instanceCount:instanceCount baseVertex:baseVertex baseInstance:baseInstance];
 }
 
-void CommandBuffer::CopyBuffer(const IBuffer& src, const IBuffer& dst, size_t size, uint32_t srcOffset, uint32_t dstOffset) const
+void CommandBuffer::CopyBuffer(const NativeGraphicsHandle src, const NativeGraphicsHandle dst, size_t size, uint32_t srcOffset, uint32_t dstOffset) const
 {
     id<MTLBlitCommandEncoder> blitCommandEncoder = [mHandle->commandBuffer blitCommandEncoder];
-    [blitCommandEncoder copyFromBuffer:src.GetHandle() sourceOffset:srcOffset toBuffer:dst.GetHandle() destinationOffset:dstOffset size:size];
+    [blitCommandEncoder copyFromBuffer:src sourceOffset:srcOffset toBuffer:dst destinationOffset:dstOffset size:size];
     [blitCommandEncoder endEncoding];
 }
 
 void CommandBuffer::Blit(const RenderTexture& texture, const Optional<RenderTexture>& target) const
 {
-    mHandle->swapchainTarget = !target.has_value();
+    bool swapchainTarget = !target.has_value();
     id<MTLBlitCommandEncoder> blitCommandEncoder = [mHandle->commandBuffer blitCommandEncoder];
-    id targetTexture = mHandle->swapchainTarget ? MetalDevice::GetSwapchain().AcquireNextDrawable().texture : target.value().GetHandle();
+    id targetTexture = swapchainTarget ? MetalDevice::GetSwapchain().AcquireNextDrawable().texture : target.value().GetHandle();
     [blitCommandEncoder copyFromTexture:texture.GetHandle() toTexture:targetTexture];
     [blitCommandEncoder endEncoding];
 }
@@ -173,13 +156,12 @@ void CommandBuffer::End() const
 void CommandBuffer::Commit() const
 {
     [mHandle->commandBuffer commit];
-    mHandle->swapchainTarget = false;
 }
 
 void CommandBuffer::Present() const
 {
     MetalDevice::GetSwapchain().Present(mHandle->commandBuffer);
-    [mHandle->commandBuffer commit];
+    Commit();
 }
 
 void CommandBuffer::WaitUntilCompleted() const

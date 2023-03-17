@@ -1,4 +1,5 @@
 #include "gpch.h"
+#ifdef USE_VULKAN_RENDERER
 #include "Renderer/GraphicsObject.h"
 #include "VulkanDevice.h"
 
@@ -20,3 +21,4 @@ bool MutableGraphicsObject::IsValid() const
 {
 	return mHandles[VulkanDevice::GetSwapchain().GetFrameIndex()];
 }
+#endif

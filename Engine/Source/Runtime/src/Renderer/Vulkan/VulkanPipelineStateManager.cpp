@@ -6,13 +6,14 @@
 
 using namespace Gleam;
 
-const VulkanPipeline& VulkanPipelineStateManager::GetPipeline(const PipelineStateDescriptor& pipelineDesc, const TArray<RefCounted<Shader>>& program, const VulkanRenderPass& renderPass)
+const VulkanPipeline& VulkanPipelineStateManager::GetGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc, const RefCounted<Shader>& vertexShader, const RefCounted<Shader>& fragmentShader, const VulkanRenderPass& renderPass)
 {
 	for (uint32_t i = 0; i < mGraphicsPipelineCache.size(); i++)
 	{
 		const auto& element = mGraphicsPipelineCache[i];
 		if (element.pipelineStateDescriptor == pipelineDesc &&
-			element.program == program &&
+			element.vertexShader == vertexShader &&
+			element.fragmentShader == fragmentShader &&
 			element.sampleCount == renderPass.sampleCount)
 		{
 			return element.pipeline;
@@ -21,18 +22,10 @@ const VulkanPipeline& VulkanPipelineStateManager::GetPipeline(const PipelineStat
 
 	PipelineCacheElement element;
 	element.pipelineStateDescriptor = pipelineDesc;
-	element.program = program;
+	element.vertexShader = vertexShader;
+	element.fragmentShader = fragmentShader;
 	element.sampleCount = renderPass.sampleCount;
-
-	switch (pipelineDesc.bindPoint)
-	{
-		case PipelineBindPoint::Graphics:
-		{
-			element.pipeline = CreateGraphicsPipeline(pipelineDesc, program[0], program[1], renderPass);
-			break;
-		}
-		// TODO: implement other types
-	}
+	element.pipeline = CreateGraphicsPipeline(pipelineDesc, vertexShader, fragmentShader, renderPass);
 	
 	const auto& cachedElement = mGraphicsPipelineCache.emplace_back(element);
 	return cachedElement.pipeline;

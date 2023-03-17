@@ -4,19 +4,28 @@
 
 namespace Gleam {
 
+class Mesh;
+
 class SceneView : public View
 {
 public:
+    
+    GLEAM_VIEW_CLASS(SceneView);
 
-	virtual void OnUpdate() override;
-
-	virtual void OnFixedUpdate() override;
-
-	virtual void OnRender(RendererContext& ctx, RenderTargetIdentifier target) override;
-
+    virtual void OnCreate() override;
+    
+    virtual void OnUpdate() override;
+    
+    virtual void OnRender() override;
+    
 private:
-
-	World mWorld;
+    
+    bool mCursorVisible = true;
+    
+    float mYaw = 0.0f;
+    float mPitch = 0.0f;
+    
+    RefCounted<World> mWorld;
 
 };
 

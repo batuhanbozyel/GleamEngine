@@ -6,22 +6,33 @@
 //
 
 #pragma once
-#include "World/System.h"
-#include "RendererContext.h"
-#include "RenderTarget.h"
+#include "ShaderTypes.h"
+#include "RenderGraph/RenderGraph.h"
 
 namespace Gleam {
 
+class View;
+class RendererContext;
+
 struct RenderingData
 {
-	RenderTargetIdentifier renderTarget = SwapchainTarget;
+    RenderTextureHandle colorTarget = { RenderGraphResource::invalidHandle };
+    RenderTextureHandle depthTarget = { RenderGraphResource::invalidHandle };
+    BufferHandle cameraBuffer;
 };
 
-class Renderer : public ISystem
+class IRenderer
 {
+public:
+    
+    friend class View;
+    friend class RendererContext;
+
 protected:
 
-	virtual void Render(RendererContext& context, const RenderingData& renderData) = 0;
+	virtual void OnCreate(RendererContext* context) {}
+
+	virtual void AddRenderPasses(RenderGraph& graph, const RenderingData& renderData) = 0;
 
 };
 

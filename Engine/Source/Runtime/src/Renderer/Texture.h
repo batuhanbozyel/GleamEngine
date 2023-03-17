@@ -1,6 +1,6 @@
 #pragma once
-#include "TextureFormat.h"
 #include "GraphicsObject.h"
+#include "TextureDescriptor.h"
 
 namespace Gleam {
 
@@ -8,25 +8,20 @@ class Texture
 {
 public:
     
-    Texture(const Size& size, TextureFormat format, bool useMipMap)
-        : mSize(size), mFormat(format), mMipMapCount(CalculateMipLevels(size))
+    Texture(const TextureDescriptor& descriptor)
+        : mDescriptor(descriptor), mMipMapLevels(descriptor.useMipMap ? CalculateMipLevels(descriptor.size) : 1)
     {
         
     }
-
-    TextureFormat GetFormat() const
+    
+    const Size& GetDescriptor() const
     {
-        return mFormat;
+        return mDescriptor.size;
     }
     
-    const Size& GetSize() const
+    uint32_t GetMipMapLevels() const
     {
-        return mSize;
-    }
-    
-    bool MipMapped() const
-    {
-        return mMipMapCount > 0;
+        return mMipMapLevels;
     }
     
 protected:
@@ -36,19 +31,16 @@ protected:
         return static_cast<uint32_t>(Math::Floor(Math::Log2(Math::Max(size.width, size.height)))) + 1;
     }
 
-    TextureFormat mFormat = TextureFormat::R8G8B8A8_SRGB;
-    FilterMode mFilterMode = FilterMode::Point;
-    WrapMode mWrapMode = WrapMode::Clamp;
-    Size mSize = Size::zero;
-    uint32_t mMipMapCount = 0;
+    uint32_t mMipMapLevels;
+    TextureDescriptor mDescriptor;
     
 };
-    
+
 class Texture2D final : public Texture, public GraphicsObject
 {
 public:
 
-	Texture2D(const Size& size, TextureFormat format, bool useMipMap = false);
+	Texture2D(const TextureDescriptor& descriptor);
 
 	~Texture2D();
 
@@ -65,41 +57,20 @@ class RenderTexture final : public Texture, public MutableGraphicsObject
 {
 public:
     
-    RenderTexture(const Size& size, TextureFormat format, uint32_t sampleCount = 1, bool useMipMap = false);
+    RenderTexture(const RenderTextureDescriptor& descriptor);
     
     ~RenderTexture();
-    
-    // RenderTexture can only be used in a single RenderTarget
-    // to avoid accessing the same RenderTexture, we are locking the resource
-    void Lock()
-    {
-        mLocked = true;
-    }
-    
-    void Release()
-    {
-        mLocked = false;
-    }
-    
-    bool Available() const
-    {
-        return !mLocked;
-    }
     
     uint32_t GetSampleCount() const
     {
         return mSampleCount;
     }
 
-	void Resize(const Size& size);
-
 	NativeGraphicsHandle GetImageView() const;
     
 private:
     
     uint32_t mSampleCount = 1;
-    
-    std::atomic<bool> mLocked = false;
     
     TArray<NativeGraphicsHandle> mImageViews;
 

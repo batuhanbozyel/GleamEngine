@@ -1,10 +1,10 @@
 #pragma once
 #include "Buffer.h"
-#include "ShaderTypes.h"
 
 namespace Gleam {
 
 struct MeshData;
+struct InterleavedMeshVertex;
 
 class MeshBuffer
 {
@@ -14,23 +14,19 @@ public:
 
 	MeshBuffer(const TArray<MeshData>& meshes);
     
-    const VertexBuffer<Vector3>& GetPositionBuffer() const;
+    const Buffer* GetPositionBuffer() const;
     
-    const VertexBuffer<InterleavedMeshVertex>& GetInterleavedBuffer() const;
+    const Buffer* GetInterleavedBuffer() const;
     
-    const IndexBuffer<IndexType::UINT32>& GetIndexBuffer() const;
+    const Buffer* GetIndexBuffer() const;
     
 private:
-
-	static TArray<Vector3> PreparePositionData(const TArray<MeshData>& meshes);
-
-	static TArray<InterleavedMeshVertex> PrepareInterleavedData(const TArray<MeshData>& meshes);
-
-	static TArray<uint32_t> PrepareIndexData(const TArray<MeshData>& meshes);
     
-    IndexBuffer<IndexType::UINT32> mIndexBuffer;
-    VertexBuffer<Vector3> mPositionBuffer;
-    VertexBuffer<InterleavedMeshVertex> mInterleavedBuffer;
+    MeshBuffer(const TArray<Vector3>& positions, const TArray<InterleavedMeshVertex>& interleavedVertices, const TArray<uint32_t>& indices);
+    
+    Scope<Buffer> mIndexBuffer;
+    Scope<Buffer> mPositionBuffer;
+    Scope<Buffer> mInterleavedBuffer;
     
 };
 

@@ -6,11 +6,11 @@
 
 using namespace Gleam;
 
-Texture2D::Texture2D(const Size& size, TextureFormat format, bool useMipMap)
-    : Texture(size, format, useMipMap)
+Texture2D::Texture2D(const TextureDescriptor& descriptor)
+    : Texture(descriptor)
 {
-    MTLTextureDescriptor* textureDesc = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:TextureFormatToMTLPixelFormat(format) width:mSize.width height:mSize.height mipmapped:useMipMap];
-    textureDesc.mipmapLevelCount = mMipMapCount;
+    MTLTextureDescriptor* textureDesc = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:TextureFormatToMTLPixelFormat(descriptor.format) width:descriptor.size.width height:descriptor.size.height mipmapped:descriptor.useMipMap];
+    textureDesc.mipmapLevelCount = mMipMapLevels;
     mHandle = [MetalDevice::GetHandle() newTextureWithDescriptor:textureDesc];
     mImageView = mHandle;
 }
@@ -23,8 +23,8 @@ Texture2D::~Texture2D()
 
 void Texture2D::SetPixels(const TArray<uint8_t>& pixels) const
 {
-    MTLRegion region = MTLRegionMake2D(0, 0, mSize.width, mSize.height);
-    [id<MTLTexture>(mHandle) replaceRegion:region mipmapLevel:0 withBytes:pixels.data() bytesPerRow:mSize.width * GetTextureFormatSize(mFormat)];
+    MTLRegion region = MTLRegionMake2D(0, 0, mDescriptor.size.width, mDescriptor.size.height);
+    [id<MTLTexture>(mHandle) replaceRegion:region mipmapLevel:0 withBytes:pixels.data() bytesPerRow:mDescriptor.size.width * Utils::GetTextureFormatSize(mDescriptor.format)];
     
     id<MTLCommandBuffer> commandBuffer = [MetalDevice::GetCommandPool() commandBuffer];
     id<MTLBlitCommandEncoder> commandEncoder = [commandBuffer blitCommandEncoder];
@@ -35,13 +35,13 @@ void Texture2D::SetPixels(const TArray<uint8_t>& pixels) const
     [commandBuffer commit];
 }
 
-RenderTexture::RenderTexture(const Size& size, TextureFormat format, uint32_t sampleCount, bool useMipMap)
-    : Texture(size, format, useMipMap), mSampleCount(sampleCount)
+RenderTexture::RenderTexture(const RenderTextureDescriptor& descriptor)
+    : Texture(descriptor), mSampleCount(descriptor.sampleCount)
 {
     for (uint32_t i = 0; i < MetalDevice::GetSwapchain().GetMaxFramesInFlight(); i++)
     {
-        MTLTextureDescriptor* textureDesc = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:TextureFormatToMTLPixelFormat(format) width:mSize.width height:mSize.height mipmapped:useMipMap];
-        textureDesc.mipmapLevelCount = mMipMapCount;
+        MTLTextureDescriptor* textureDesc = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:TextureFormatToMTLPixelFormat(descriptor.format) width:descriptor.size.width height:descriptor.size.height mipmapped:descriptor.useMipMap];
+        textureDesc.mipmapLevelCount = mMipMapLevels;
         textureDesc.sampleCount = 1;
         textureDesc.usage = MTLTextureUsageShaderRead | MTLTextureUsageRenderTarget;
         textureDesc.storageMode = MTLStorageModePrivate;
@@ -51,9 +51,9 @@ RenderTexture::RenderTexture(const Size& size, TextureFormat format, uint32_t sa
 
     if (mSampleCount > 1)
     {
-        MTLTextureDescriptor* textureDesc = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:TextureFormatToMTLPixelFormat(format) width:mSize.width height:mSize.height mipmapped:false];
+        MTLTextureDescriptor* textureDesc = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:TextureFormatToMTLPixelFormat(descriptor.format) width:descriptor.size.width height:descriptor.size.height mipmapped:false];
         textureDesc.textureType = MTLTextureType2DMultisample;
-        textureDesc.mipmapLevelCount = mMipMapCount;
+        textureDesc.mipmapLevelCount = 1;
         textureDesc.sampleCount = mSampleCount;
         textureDesc.usage = MTLTextureUsageRenderTarget;
         textureDesc.storageMode = MTLStorageModeMemoryless;

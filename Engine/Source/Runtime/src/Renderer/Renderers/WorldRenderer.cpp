@@ -7,33 +7,34 @@
 
 #include "gpch.h"
 #include "WorldRenderer.h"
+#include "CommandBuffer.h"
 
 using namespace Gleam;
 
-WorldRenderer::WorldRenderer(RendererContext& context)
-    : Renderer(context)
+void WorldRenderer::AddRenderPasses(RenderGraph& graph, const RenderingData& renderData)
 {
-    Camera defaultCamera(context.GetDrawableSize());
-    const auto& viewMatrix = defaultCamera.GetViewMatrix();
-    const auto& projectionMatrix = defaultCamera.GetProjectionMatrix();
+    struct BufferUpdatesPass
+    {
+        
+    };
     
-    CameraUniforms uniforms;
-    uniforms.viewMatrix = viewMatrix;
-    uniforms.projectionMatrix = projectionMatrix;
-    uniforms.viewProjectionMatrix = projectionMatrix * viewMatrix;
-	mCameraBuffer = CreateScope<UniformBuffer<CameraUniforms, MemoryType::Dynamic>>(uniforms);
+    graph.AddRenderPass<BufferUpdatesPass>("WorldRenderer::BufferUpdatesPass", [&](RenderGraphBuilder& builder, BufferUpdatesPass& passData)
+    {
+        
+    }, [this, &renderData](const RenderGraphContext& context, const BufferUpdatesPass& passData)
+    {
+        CameraUniforms uniforms;
+        uniforms.viewMatrix = mViewMatrix;
+        uniforms.projectionMatrix = mProjectionMatrix;
+        uniforms.viewProjectionMatrix = mViewProjectionMatrix;
+        context.cmd->SetPushConstant(uniforms, ShaderStage_Vertex | ShaderStage_Fragment);
+    });
+    
 }
 
-void WorldRenderer::Execute()
+void WorldRenderer::UpdateCamera(Camera& camera)
 {
-	
-}
-
-void WorldRenderer::Update(Camera& camera)
-{
-    CameraUniforms uniforms;
-    uniforms.viewMatrix = camera.GetViewMatrix();
-    uniforms.projectionMatrix = camera.GetProjectionMatrix();
-    uniforms.viewProjectionMatrix = projectionMatrix * viewMatrix;
-    mCameraBuffer->SetData(uniforms);
+    mViewMatrix = camera.GetViewMatrix();
+    mProjectionMatrix = camera.GetProjectionMatrix();
+    mViewProjectionMatrix = mProjectionMatrix * mViewMatrix;
 }

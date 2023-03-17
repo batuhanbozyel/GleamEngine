@@ -191,7 +191,6 @@ static constexpr MTLCompareFunction CompareFunctionToMTLCompareFunction(CompareF
         case CompareFunction::Less: return MTLCompareFunctionLess;
         case CompareFunction::Equal: return MTLCompareFunctionEqual;
         case CompareFunction::LessEqual: return MTLCompareFunctionLessEqual;
-        case CompareFunction::Never: return MTLCompareFunctionNever;
         case CompareFunction::Greater: return MTLCompareFunctionGreater;
         case CompareFunction::NotEqual: return MTLCompareFunctionNotEqual;
         case CompareFunction::GreaterEqual: return MTLCompareFunctionGreaterEqual;

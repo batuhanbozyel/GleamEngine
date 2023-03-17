@@ -259,9 +259,9 @@ void CommandBuffer::EndRenderPass() const
     mHandle->renderPassState.sampleCount = 1;
 }
 
-void CommandBuffer::BindPipeline(const PipelineStateDescriptor& pipelineDesc, const TArray<RefCounted<Shader>>& program) const
+void CommandBuffer::BindGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc, const RefCounted<Shader>& vertexShader, const RefCounted<Shader>& fragmentShader) const
 {
-	mHandle->pipelineState = VulkanPipelineStateManager::GetPipeline(pipelineDesc, program, mHandle->renderPassState);
+	mHandle->pipelineState = VulkanPipelineStateManager::GetGraphicsPipeline(pipelineDesc, program, mHandle->renderPassState);
 	vkCmdBindPipeline(CurrentCommandBuffer, mHandle->pipelineState.bindPoint, mHandle->pipelineState.handle);
 }
 
@@ -279,7 +279,7 @@ void CommandBuffer::SetViewport(const Size& size) const
 	vkCmdSetScissor(CurrentCommandBuffer, 0, 1, &scissor);
 }
 
-void CommandBuffer::SetVertexBuffer(const NativeGraphicsHandle buffer, BufferUsage usage, size_t size, uint32_t index, uint32_t offset) const
+void CommandBuffer::SetVertexBuffer(const NativeGraphicsHandle buffer, BufferUsage usage, size_t size, size_t offset, uint32_t index) const
 {
 	VkDescriptorBufferInfo bufferInfo{};
 	bufferInfo.buffer = As<VkBuffer>(buffer);
@@ -294,7 +294,7 @@ void CommandBuffer::SetVertexBuffer(const NativeGraphicsHandle buffer, BufferUsa
 	vkCmdPushDescriptorSetKHR(CurrentCommandBuffer, mHandle->pipelineState.bindPoint, mHandle->pipelineState.layout, 0, 1, &descriptorSet);
 }
 
-void CommandBuffer::SetFragmentBuffer(const NativeGraphicsHandle buffer, BufferUsage usage, size_t size, uint32_t index, uint32_t offset) const
+void CommandBuffer::SetFragmentBuffer(const NativeGraphicsHandle buffer, BufferUsage usage, size_t size, size_t offset, uint32_t index) const
 {
 	VkDescriptorBufferInfo bufferInfo{};
 	bufferInfo.buffer = As<VkBuffer>(buffer);
@@ -335,13 +335,13 @@ void CommandBuffer::DrawIndexed(const NativeGraphicsHandle indexBuffer, IndexTyp
 	vkCmdDrawIndexed(CurrentCommandBuffer, indexCount, instanceCount, firstIndex, baseVertex, baseInstance);
 }
 
-void CommandBuffer::CopyBuffer(const IBuffer& src, const IBuffer& dst, size_t size, uint32_t srcOffset, uint32_t dstOffset) const
+void CommandBuffer::CopyBuffer(const NativeGraphicsHandle src, const NativeGraphicsHandle dst, size_t size, uint32_t srcOffset, uint32_t dstOffset) const
 {
 	VkBufferCopy bufferCopy{};
 	bufferCopy.srcOffset = srcOffset;
 	bufferCopy.dstOffset = dstOffset;
 	bufferCopy.size = size;
-	vkCmdCopyBuffer(CurrentCommandBuffer, As<VkBuffer>(src.GetHandle()), As<VkBuffer>(dst.GetHandle()), 1, &bufferCopy);
+	vkCmdCopyBuffer(CurrentCommandBuffer, As<VkBuffer>(src), As<VkBuffer>(dst), 1, &bufferCopy);
 }
 
 void CommandBuffer::Blit(const RenderTexture& texture, const Optional<RenderTexture>& target) const

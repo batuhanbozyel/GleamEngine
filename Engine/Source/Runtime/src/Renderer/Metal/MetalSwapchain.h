@@ -1,9 +1,10 @@
 #pragma once
 #ifdef USE_METAL_RENDERER
+#import <Metal/Metal.h>
+#import <QuartzCore/CAMetalLayer.h>
 
 namespace Gleam {
 
-struct Version;
 struct RendererConfig;
 enum class TextureFormat;
 

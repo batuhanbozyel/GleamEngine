@@ -10,7 +10,7 @@
 
 namespace Gleam {
 
-class UIRenderer : public Renderer
+class UIRenderer : public IRenderer
 {
 public:
 

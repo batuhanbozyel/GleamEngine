@@ -26,7 +26,7 @@ void MetalSwapchain::Initialize(const TString& appName, const RendererConfig& co
     mHandle.framebufferOnly = NO;
     mHandle.opaque = YES;
 #ifdef PLATFORM_MACOS
-    mHandle.displaySyncEnabled = props.vsync ? YES : NO;
+    mHandle.displaySyncEnabled = config.vsync ? YES : NO;
 #endif
     
     if (mHandle.maximumDrawableCount >= 3 && config.tripleBufferingEnabled)
@@ -111,7 +111,7 @@ dispatch_semaphore_t MetalSwapchain::GetImageReleaseSemaphore() const
     return mImageAcquireSemaphore;
 }
 
-const Size& MetalSwapchain::GetSize() const
+const Gleam::Size& MetalSwapchain::GetSize() const
 {
     return mSize;
 }

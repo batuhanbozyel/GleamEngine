@@ -5,24 +5,26 @@
 
 using namespace Gleam;
 
-const MetalPipelineState& MetalPipelineStateManager::GetGraphicsPipelineState(const PipelineStateDescriptor& pipelineDesc, const RenderPassDescriptor& renderPassDesc, const GraphicsShader& program)
+const MetalPipelineState& MetalPipelineStateManager::GetGraphicsPipelineState(const PipelineStateDescriptor& pipelineDesc, const RenderPassDescriptor& renderPassDesc, const RefCounted<Shader>& vertexShader, const RefCounted<Shader>& fragmentShader)
 {
 	for (uint32_t i = 0; i < mGraphicsPipelineCache.size(); i++)
 	{
 		const auto& element = mGraphicsPipelineCache[i];
 		if (element.pipelineState.descriptor == pipelineDesc &&
-			element.renderPassDesc = renderPassDesc &&
-			element.program == program)
+			element.renderPassDesc == renderPassDesc &&
+			element.vertexShader == vertexShader &&
+            element.fragmentShader == fragmentShader)
 		{
 			return element.pipelineState;
 		}
 	}
 
 	GraphicsPipelineCacheElement element;
-	element.program = program;
+	element.vertexShader = vertexShader;
+    element.fragmentShader = fragmentShader;
 	element.renderPassDesc = renderPassDesc;
     element.pipelineState.descriptor = pipelineDesc;
-	element.pipelineState.pipeline = CreateGraphicsPipeline(pipelineDesc, renderPassDesc, program);
+	element.pipelineState.pipeline = CreateGraphicsPipeline(pipelineDesc, renderPassDesc, vertexShader, fragmentShader);
     element.pipelineState.depthStencil = CreateDepthStencil(pipelineDesc);
 	const auto& cachedElement = mGraphicsPipelineCache.emplace_back(element);
 	return cachedElement.pipelineState;
@@ -33,11 +35,11 @@ void MetalPipelineStateManager::Clear()
 	mGraphicsPipelineCache.clear();
 }
 
-id<MTLRenderPipelineState> MetalPipelineStateManager::CreateGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc, const RenderPassDescriptor& renderPassDesc, const GraphicsShader& program)
+id<MTLRenderPipelineState> MetalPipelineStateManager::CreateGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc, const RenderPassDescriptor& renderPassDesc, const RefCounted<Shader>& vertexShader, const RefCounted<Shader>& fragmentShader)
 {
     MTLRenderPipelineDescriptor* pipelineDescriptor = [MTLRenderPipelineDescriptor new];
-    pipelineDescriptor.vertexFunction = program.vertexShader->GetHandle();
-    pipelineDescriptor.fragmentFunction = program.fragmentShader->GetHandle();
+    pipelineDescriptor.vertexFunction = vertexShader->GetHandle();
+    pipelineDescriptor.fragmentFunction = fragmentShader->GetHandle();
     
     if (renderPassDesc.depthAttachmentIndex >= 0)
     {

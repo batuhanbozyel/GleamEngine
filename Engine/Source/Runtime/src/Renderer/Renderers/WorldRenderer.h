@@ -10,17 +10,19 @@
 
 namespace Gleam {
 
-class WorldRenderer : public Renderer
+class WorldRenderer : public IRenderer
 {
 public:
 
-	virtual void Render(const CommandBuffer& cmd) override;
+    virtual void AddRenderPasses(RenderGraph& graph, const RenderingData& renderData) override;
 
-	void Update(Camera& camera);
+	void UpdateCamera(Camera& camera);
 
 private:
 
-	Scope<UniformBuffer<CameraUniforms, MemoryType::Dynamic>>> mCameraBuffer;
+    Matrix4 mViewMatrix;
+    Matrix4 mProjectionMatrix;
+    Matrix4 mViewProjectionMatrix;
 
 };
 

@@ -1,53 +1,98 @@
+//
+//  View.h
+//  Runtime
+//
+//  Created by Batuhan Bozyel on 31.10.2022.
+//
+
 #pragma once
-#include "RenderTarget.h"
-#include "PipelineStateDescriptor.h"
+#include "Renderer.h"
+#include "BlendState.h"
 
 namespace Gleam {
 
 class Application;
-class RendererContext;
+
+template <typename T>
+concept RendererType = std::is_base_of<IRenderer, T>::value;
+
+#define GLEAM_VIEW_CLASS(view) view(RendererContext* rendererContext) : View(rendererContext) {}\
+    view(const view&) = default;\
+    view& operator=(const view&) = default;
 
 class View
 {
     friend class Application;
 
 public:
+    
+    View(RendererContext* rendererContext)
+        : mRendererContext(rendererContext)
+    {
+        
+    }
+    
+    View(const View&) = default;
+    View& operator=(const View&) = default;
 
-	Transform2D& GetTransform()
+	template<RendererType T>
+	void AddRenderer()
 	{
-		return mTransform;
+		GLEAM_ASSERT(!HasRenderer<T>(), "View already has the renderer!");
+        T& renderer = mRenderPipeline.emplace<T>();
+        renderer.OnCreate(mRendererContext);
 	}
 
-	const Transform2D& GetTransform() const
-	{
-		return mTransform;
-	}
+	template<RendererType T>
+    void RemoveRenderer()
+    {
+        GLEAM_ASSERT(HasRenderer<T>(), "View does not have the renderer!");
+        mRenderPipeline.erase<T>();
+    }
 
-	BlendState& GetBlendState()
-	{
-		return mBlendState;
-	}
-
-	const BlendState& GetBlendState() const
-	{
-		return mBlendState;
-	}
+	template<RendererType T>
+    T& GetRenderer()
+    {
+        GLEAM_ASSERT(HasRenderer<T>(), "View does not have the renderer!");
+        return mRenderPipeline.get_unsafe<T>();
+    }
+    
+    template<RendererType T>
+    bool HasRenderer() const
+    {
+		return mRenderPipeline.contains<T>();
+    }
+    
+    TArray<IRenderer*> GetRenderPipeline()
+    {
+        TArray<IRenderer*> renderPipeline;
+        
+        for (auto& feature : mRenderPipeline)
+        {
+            IRenderer* renderer = &(std::any_cast<IRenderer&>(feature));
+            renderPipeline.push_back(renderer);
+        }
+        
+        return renderPipeline;
+    }
 
 protected:
 
 	virtual void OnCreate() {}
-
+    
 	virtual void OnUpdate() {}
     
     virtual void OnFixedUpdate() {}
-
-	virtual void OnRender(RendererContext& ctx, RenderTargetIdentifier target) {}
-
+    
 	virtual void OnDestroy() {}
 
-	BlendState mBlendState;
+	virtual void OnRender() {}
 
-	Transform2D mTransform;
+private:
+
+	AnyArray mRenderPipeline;
+    
+    RendererContext* mRendererContext = nullptr;
 
 };
 

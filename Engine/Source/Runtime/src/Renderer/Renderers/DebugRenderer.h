@@ -4,6 +4,7 @@
 namespace Gleam {
 
 class Mesh;
+class Shader;
 enum class PrimitiveTopology;
 
 struct DebugLine
@@ -26,7 +27,7 @@ struct DebugMesh
 	Color32 color;
 };
 
-class DebugRenderer final : public Renderer
+class DebugRenderer final : public IRenderer
 {
 public:
 
@@ -41,16 +42,18 @@ public:
     void DrawBoundingBox(const BoundingBox& boundingBox, const Matrix4& transform, Color32 color, bool depthTest = true);
 
 	void DrawMesh(const Mesh* mesh, const Matrix4& transform, Color32 color, bool depthTest = true);
+    
+    void UpdateCamera(Camera& camera);
+    
+    virtual void OnCreate(RendererContext* context) override;
+    
+    virtual void AddRenderPasses(RenderGraph& graph, const RenderingData& renderData) override;
 
 private:
 
-	virtual RenderPassDescriptor Configure(RendererContext& context) override;
-    
-    virtual void Render(const CommandBuffer& cmd) override;
+    void RenderPrimitive(const CommandBuffer* cmd, uint32_t primitiveCount, PrimitiveTopology topology, bool depthTest) const;
 
-    void RenderPrimitive(const CommandBuffer& cmd, uint32_t primitiveCount, PrimitiveTopology topology, bool depthTest) const;
-
-	void RenderMeshes(const CommandBuffer& cmd, const TArray<DebugMesh>& debugMeshes, bool depthTest) const;
+	void RenderMeshes(const CommandBuffer* cmd, const TArray<DebugMesh>& debugMeshes, bool depthTest) const;
 
 	uint32_t mLineBufferOffset = 0;
 	uint32_t mTriangleBufferOffset = 0;
@@ -66,7 +69,15 @@ private:
 	TArray<DebugMesh> mDebugMeshes;
     TArray<DebugMesh> mDepthDebugMeshes;
 
-    TArray<DebugVertex> mStagingBuffer;
+    TArray<DebugVertex> mDebugVertices;
+
+	RefCounted<Shader> mPrimitiveVertexShader;
+	RefCounted<Shader> mMeshVertexShader;
+	RefCounted<Shader> mFragmentShader;
+    
+    Matrix4 mViewMatrix;
+    Matrix4 mProjectionMatrix;
+    Matrix4 mViewProjectionMatrix;
 
 };
 

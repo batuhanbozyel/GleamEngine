@@ -4,159 +4,186 @@
 #include "Renderer/Mesh.h"
 #include "Renderer/CommandBuffer.h"
 #include "Renderer/RendererContext.h"
+#include "Renderer/RendererBindingTable.h"
+#include "Renderer/PipelineStateDescriptor.h"
 
 #include "Core/Application.h"
 
 using namespace Gleam;
 
-RenderPassDescriptor DebugRenderer::Configure(RendererContext& context)
+void DebugRenderer::OnCreate(RendererContext* context)
 {
-	if (!mDebugPrimitiveProgram.IsValid())
-	{
-		mDebugPrimitiveProgram.vertexShader = context.CreateShader("debugVertexShader", ShaderStage::Vertex);
-		mDebugPrimitiveProgram.fragmentShader = context.CreateShader("debugFragmentShader", ShaderStage::Fragment);
-	}
-		
-	if (!mDebugMeshProgram.IsValid())
-	{
-		mDebugMeshProgram.vertexShader = context.CreateShader("debugMeshVertexShader", ShaderStage::Vertex);
-		mDebugMeshProgram.fragmentShader = context.CreateShader("debugFragmentShader", ShaderStage::Fragment);
-	}
+	mPrimitiveVertexShader = context->CreateShader("debugVertexShader", ShaderStage::Vertex);
+	mMeshVertexShader = context->CreateShader("debugMeshVertexShader", ShaderStage::Vertex);
+	mFragmentShader = context->CreateShader("debugFragmentShader", ShaderStage::Fragment);
+}
 
+void DebugRenderer::AddRenderPasses(RenderGraph& graph, const RenderingData& renderData)
+{
 	for (const auto& line : mLines)
-    {
-        mStagingBuffer.push_back(line.start);
-        mStagingBuffer.push_back(line.end);
-    }
+	{
+		mDebugVertices.push_back(line.start);
+		mDebugVertices.push_back(line.end);
+	}
 
-    mTriangleBufferOffset = static_cast<uint32_t>(mStagingBuffer.size() * sizeof(DebugVertex));
-    for (const auto& triangle : mTriangles)
-    {
-        mStagingBuffer.push_back(triangle.vertex1);
-        mStagingBuffer.push_back(triangle.vertex2);
-        mStagingBuffer.push_back(triangle.vertex3);
-    }
+	mTriangleBufferOffset = static_cast<uint32_t>(mDebugVertices.size() * sizeof(DebugVertex));
+	for (const auto& triangle : mTriangles)
+	{
+		mDebugVertices.push_back(triangle.vertex1);
+		mDebugVertices.push_back(triangle.vertex2);
+		mDebugVertices.push_back(triangle.vertex3);
+	}
 
-    mDepthLineBufferOffset = static_cast<uint32_t>(mStagingBuffer.size() * sizeof(DebugVertex));
-    for (const auto& line : mDepthLines)
-    {
-        mStagingBuffer.push_back(line.start);
-        mStagingBuffer.push_back(line.end);
-    }
+	mDepthLineBufferOffset = static_cast<uint32_t>(mDebugVertices.size() * sizeof(DebugVertex));
+	for (const auto& line : mDepthLines)
+	{
+		mDebugVertices.push_back(line.start);
+		mDebugVertices.push_back(line.end);
+	}
 
-    mDepthTriangleBufferOffset = static_cast<uint32_t>(mStagingBuffer.size() * sizeof(DebugVertex));
-    for (const auto& triangle : mDepthTriangles)
-    {
-        mStagingBuffer.push_back(triangle.vertex1);
-        mStagingBuffer.push_back(triangle.vertex2);
-        mStagingBuffer.push_back(triangle.vertex3);
-    }
+	mDepthTriangleBufferOffset = static_cast<uint32_t>(mDebugVertices.size() * sizeof(DebugVertex));
+	for (const auto& triangle : mDepthTriangles)
+	{
+		mDebugVertices.push_back(triangle.vertex1);
+		mDebugVertices.push_back(triangle.vertex2);
+		mDebugVertices.push_back(triangle.vertex3);
+	}
 
-	AttachmentDescriptor attachmentDesc;
-    attachmentDesc.loadAction = AttachmentLoadAction::Clear;
-    attachmentDesc.format = TextureFormat::B8G8R8A8_UNorm;
-    attachmentDesc.clearColor = ApplicationInstance.backgroundColor;
+	// nothing to render
+	if (mDebugVertices.empty())
+		return;
 
-	RenderPassDescriptor renderPassDesc;
-	renderPassDesc.attachments.push_back(attachmentDesc);
-	return renderPassDesc;
+	struct CopyPassData
+	{
+		BufferHandle vertexBuffer;
+        BufferHandle stagingBuffer;
+	};
+
+	const auto& copyPass = graph.AddRenderPass<CopyPassData>("DebugRenderer::CopyPass", [&](RenderGraphBuilder& builder, CopyPassData& passData)
+	{
+		BufferDescriptor descriptor;
+		descriptor.size = mDebugVertices.size() * sizeof(DebugVertex);
+		descriptor.usage = BufferUsage::VertexBuffer;
+		descriptor.memoryType = MemoryType::Static;
+		passData.vertexBuffer = builder.Create(descriptor);
+		passData.vertexBuffer = builder.Write(passData.vertexBuffer);
+        
+		descriptor.usage = BufferUsage::StagingBuffer;
+		descriptor.memoryType = MemoryType::Stream;
+		passData.stagingBuffer = builder.Create(descriptor);
+        passData.stagingBuffer = builder.Write(passData.stagingBuffer);
+	},
+	[this](const RenderGraphContext& renderGraphContext, const CopyPassData& passData)
+	{
+		// Update buffer
+        auto vertexBuffer = renderGraphContext.registry->GetBuffer(passData.vertexBuffer);
+        auto stagingBuffer = renderGraphContext.registry->GetBuffer(passData.stagingBuffer);
+        stagingBuffer->SetData(mDebugVertices.data(), mDebugVertices.size() * sizeof(DebugVertex));
+		renderGraphContext.cmd->CopyBuffer(stagingBuffer->GetHandle(), vertexBuffer->GetHandle(), stagingBuffer->GetSize());
+	});
+
+	struct DrawPassData
+	{
+		RenderTextureHandle renderTarget;
+		BufferHandle vertexBuffer;
+	};
+
+	graph.AddRenderPass<DrawPassData>("DebugRenderer::DrawPass", [&](RenderGraphBuilder& builder, DrawPassData& passData)
+	{
+		passData.vertexBuffer = copyPass.vertexBuffer;
+		builder.Read(passData.vertexBuffer);
+
+		passData.renderTarget = renderData.colorTarget;
+        passData.renderTarget = builder.Write(passData.renderTarget);
+	},
+	[this, &renderData](const RenderGraphContext& renderGraphContext, const DrawPassData& passData)
+	{
+		// Start rendering
+        auto vertexBuffer = renderGraphContext.registry->GetBuffer(passData.vertexBuffer);
+        auto cameraBuffer = renderGraphContext.registry->GetBuffer(renderData.cameraBuffer);
+		renderGraphContext.cmd->SetVertexBuffer(*cameraBuffer, 0, RendererBindingTable::CameraBuffer);
+        
+        CameraUniforms uniforms;
+        uniforms.viewMatrix = mViewMatrix;
+        uniforms.projectionMatrix = mProjectionMatrix;
+        uniforms.viewProjectionMatrix = mViewProjectionMatrix;
+        renderGraphContext.cmd->SetPushConstant(uniforms, ShaderStage_Vertex | ShaderStage_Fragment);
+		
+		if (!mDepthLines.empty())
+		{
+            renderGraphContext.cmd->SetVertexBuffer(*vertexBuffer, mDepthLineBufferOffset, RendererBindingTable::Buffer0);
+			RenderPrimitive(renderGraphContext.cmd, static_cast<uint32_t>(mDepthLines.size()), PrimitiveTopology::Lines, true);
+		}
+
+		if (!mDepthTriangles.empty())
+		{
+            renderGraphContext.cmd->SetVertexBuffer(*vertexBuffer, mDepthTriangleBufferOffset, RendererBindingTable::Buffer0);
+			RenderPrimitive(renderGraphContext.cmd, static_cast<uint32_t>(mDepthTriangles.size()), PrimitiveTopology::Triangles, true);
+		}
+		
+		if (!mDepthDebugMeshes.empty())
+			RenderMeshes(renderGraphContext.cmd, mDepthDebugMeshes, true);
+
+		if (!mLines.empty())
+		{
+            renderGraphContext.cmd->SetVertexBuffer(*vertexBuffer, mLineBufferOffset, RendererBindingTable::Buffer0);
+			RenderPrimitive(renderGraphContext.cmd, static_cast<uint32_t>(mLines.size()), PrimitiveTopology::Lines, false);
+		}
+
+		if (!mTriangles.empty())
+		{
+            renderGraphContext.cmd->SetVertexBuffer(*vertexBuffer, mTriangleBufferOffset, RendererBindingTable::Buffer0);
+			RenderPrimitive(renderGraphContext.cmd, static_cast<uint32_t>(mTriangles.size()), PrimitiveTopology::Triangles, false);
+		}
+
+		if (!mDebugMeshes.empty())
+			RenderMeshes(renderGraphContext.cmd, mDebugMeshes, false);
+
+		// clear after rendering
+		mLines.clear();
+		mDepthLines.clear();
+		mTriangles.clear();
+		mDepthTriangles.clear();
+		mDebugVertices.clear();
+        mDebugMeshes.clear();
+		mDepthDebugMeshes.clear();
+	});
 }
 
-void DebugRenderer::Execute(const CommandBuffer& cmd)
+void DebugRenderer::RenderPrimitive(const CommandBuffer* cmd, uint32_t primitiveCount, PrimitiveTopology topology, bool depthTest) const
 {
-    if (mLines.empty() &&
-        mDepthLines.empty() &&
-        mTriangles.empty() &&
-        mDepthTriangles.empty())
-    {
-        return;
-    }
-
-    // Update buffer
-    if (mVertexBuffer.GetCount() < mStagingBuffer.size())
-    {
-        mVertexBuffer.Resize(static_cast<uint32_t>(mStagingBuffer.size()));
-    }
-    mVertexBuffer.SetData(mStagingBuffer);
-
-    // Start rendering
-	cmd.SetVertexBuffer(*data.cameraBuffer, RendererBindingTable::CameraBuffer);
-	
-    if (!mDepthLines.empty())
-	{
-		cmd.SetVertexBuffer(mVertexBuffer, RendererBindingTable::Buffer0, mDepthLineBufferOffset);
-		RenderPrimitive(cmd, static_cast<uint32_t>(mDepthLines.size()), PrimitiveTopology::Lines, true);
-	}
-
-    if (!mDepthTriangles.empty())
-	{
-		cmd.SetVertexBuffer(mVertexBuffer, RendererBindingTable::Buffer0, mDepthTriangleBufferOffset);
-		RenderPrimitive(cmd, static_cast<uint32_t>(mDepthTriangles.size()), PrimitiveTopology::Triangles, true);
-	}
-	
-    if (!mDepthDebugMeshes.empty())
-        RenderMeshes(cmd, mDepthDebugMeshes, true);
-
-    if (!mLines.empty())
-	{
-		cmd.SetVertexBuffer(mVertexBuffer, RendererBindingTable::Buffer0, mLineBufferOffset);
-		RenderPrimitive(cmd, static_cast<uint32_t>(mLines.size()), PrimitiveTopology::Lines, false);
-	}
-
-    if (!mTriangles.empty())
-	{
-		cmd.SetVertexBuffer(mVertexBuffer, RendererBindingTable::Buffer0, mTriangleBufferOffset);
-		RenderPrimitive(cmd, static_cast<uint32_t>(mTriangles.size()), PrimitiveTopology::Triangles, false);
-	}
-
-    if (!mDebugMeshes.empty())
-        RenderMeshes(cmd, mDebugMeshes, false);
-
-	mLines.clear();
-    mDepthLines.clear();
-    mTriangles.clear();
-    mDepthTriangles.clear();
-    mStagingBuffer.clear();
-	mMeshes.clear();
-    mDepthMeshes.clear();
-}
-
-void DebugRenderer::RenderPrimitive(const CommandBuffer& cmd, uint32_t primitiveCount, PrimitiveTopology topology, bool depthTest) const
-{
-	Material material;
-	material.pipelineState.topology = topology;
-	material.pipelineState.depthState.writeEnabled = depthTest;
-	material.program = mDebugPrimitiveProgram;
-	cmd.BindPipeline(material.pipelineState, material.program);
+	PipelineStateDescriptor pipelineState;
+	pipelineState.topology = topology;
+	pipelineState.depthState.writeEnabled = depthTest;
+	cmd->BindGraphicsPipeline(pipelineState, mPrimitiveVertexShader, mFragmentShader);
 
     DebugShaderUniforms uniforms;
     uniforms.modelMatrix = Matrix4::identity;
     uniforms.color = Color::white;
-    cmd.SetPushConstant(uniforms, ShaderStage_Fragment);
+    cmd->SetPushConstant(uniforms, ShaderStage_Fragment);
 
-    cmd.Draw(primitiveCount * Utils::PrimitiveTopologyVertexCount(topology));
+    cmd->Draw(primitiveCount * Utils::PrimitiveTopologyVertexCount(topology));
 }
 
-void DebugRenderer::RenderMeshes(const CommandBuffer& cmd, const TArray<DebugMesh>& debugMeshes, bool depthTest) const
+void DebugRenderer::RenderMeshes(const CommandBuffer* cmd, const TArray<DebugMesh>& debugMeshes, bool depthTest) const
 {
-	Material material;
-	material.pipelineState.topology = PrimitiveTopology::Triangles;
-	material.pipelineState.depthState.writeEnabled = depthTest;
-	material.program = mDebugMeshProgram;
-	cmd.BindPipeline(material.pipelineState, material.program);
+	PipelineStateDescriptor pipelineState;
+	pipelineState.topology = PrimitiveTopology::Triangles;
+	pipelineState.depthState.writeEnabled = depthTest;
+	cmd->BindGraphicsPipeline(pipelineState, mMeshVertexShader, mFragmentShader);
 
 	for (const auto& debugMesh : debugMeshes)
 	{
 		const auto& meshBuffer = debugMesh.mesh->GetBuffer();
-		cmd.SetVertexBuffer(meshBuffer.GetPositionBuffer(), RendererBindingTable::Buffer0);
+		cmd->SetVertexBuffer(*meshBuffer.GetPositionBuffer(), 0, RendererBindingTable::Buffer0);
 
 		DebugShaderUniforms uniforms;
-		uniforms.modelMatrix = transform;
-		uniforms.color = color;
-		cmd.SetPushConstant(uniforms, ShaderStage_Vertex | ShaderStage_Fragment);
+		uniforms.modelMatrix = debugMesh.transform;
+		uniforms.color = debugMesh.color;
+		cmd->SetPushConstant(uniforms, ShaderStage_Vertex | ShaderStage_Fragment);
 	
 		for (const auto& submesh : debugMesh.mesh->GetSubmeshDescriptors())
-			cmd.DrawIndexed(meshBuffer.GetIndexBuffer(), submesh.indexCount, 1, submesh.firstIndex, submesh.baseVertex);
+			cmd->DrawIndexed(meshBuffer.GetIndexBuffer()->GetHandle(), IndexType::UINT32, submesh.indexCount, 1, submesh.firstIndex, submesh.baseVertex, 0);
 	}	
 }
 
@@ -266,4 +293,11 @@ void DebugRenderer::DrawMesh(const Mesh* mesh, const Matrix4& transform, Color32
         mDepthDebugMeshes.push_back(debugMesh);
     else
         mDebugMeshes.push_back(debugMesh);
+}
+
+void DebugRenderer::UpdateCamera(Camera& camera)
+{
+    mViewMatrix = camera.GetViewMatrix();
+    mProjectionMatrix = camera.GetProjectionMatrix();
+    mViewProjectionMatrix = mProjectionMatrix * mViewMatrix;
 }

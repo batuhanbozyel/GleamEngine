@@ -29,16 +29,12 @@ protected:
     
     Mesh(const MeshData& mesh, bool isBatched);
     
-    static BoundingBox CalculateBoundingBox(const TArray<Vector3>& positions);
-    
-    static MeshData BatchMeshes(const TArray<MeshData>& meshes, bool isBatchRendered);
-    
     MeshBuffer mBuffer;
     
     TArray<SubmeshDescriptor> mSubmeshDescriptors;
     
 };
-    
+
 class StaticMesh : public Mesh
 {
 public:

@@ -22,23 +22,24 @@ class VulkanPipelineStateManager
 {
 public:
 
-	static const VulkanPipeline& GetPipeline(const PipelineStateDescriptor& pipelineDesc, const TArray<RefCounted<Shader>>& program, const VulkanRenderPass& renderPass);
+	static const VulkanPipeline& GetGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc, const RefCounted<Shader>& vertexShader, const RefCounted<Shader>& fragmentShader, const VulkanRenderPass& renderPass);
 
 	static void Clear();
 
 private:
 
-	struct PipelineCacheElement
+	struct GraphicsPipelineCacheElement
 	{
 		PipelineStateDescriptor pipelineStateDescriptor;
-		TArray<RefCounted<Shader>> program;
+		RefCounted<Shader> vertexShader;
+		RefCounted<Shader> fragmentShader;
 		VulkanPipeline pipeline;
 		uint32_t sampleCount = 1;
 	};
 
 	static VulkanPipeline CreateGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc, const RefCounted<Shader>& vertexShader, const RefCounted<Shader>& fragmentShader, const VulkanRenderPass& renderPass);
 
-	static inline TArray<PipelineCacheElement> mGraphicsPipelineCache;
+	static inline TArray<GraphicsPipelineCacheElement> mGraphicsPipelineCache;
 
 };
 

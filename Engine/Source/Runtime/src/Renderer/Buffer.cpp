@@ -21,15 +21,19 @@ Buffer::~Buffer()
     Free();
 }
 
-void Buffer::SetData(const void* data, size_t size, size_t offset = 0) const
+void Buffer::SetData(const void* data, size_t size, size_t offset) const
 {
 	if (mMemoryType == MemoryType::Static)
     {
-        Buffer stagingBuffer(data, size, BufferUsage::StagingBuffer, MemoryType::Stream);
+        BufferDescriptor descriptor;
+        descriptor.size = size;
+        descriptor.usage = BufferUsage::StagingBuffer;
+        descriptor.memoryType = MemoryType::Stream;
+        Buffer stagingBuffer(data, descriptor);
         
         CommandBuffer commandBuffer;
         commandBuffer.Begin();
-        commandBuffer.CopyBuffer(stagingBuffer, *this, size, 0, static_cast<uint32_t>(offset));
+        commandBuffer.CopyBuffer(stagingBuffer.GetHandle(), GetHandle(), size, 0, static_cast<uint32_t>(offset));
         commandBuffer.End();
         commandBuffer.Commit();
     }

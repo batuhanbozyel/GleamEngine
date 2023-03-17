@@ -21,7 +21,7 @@ public:
 
 	static id<MTLLibrary> GetShaderLibrary();
 
-	static id<MTLDevice> GetHandle() const;
+	static id<MTLDevice> GetHandle();
 
 private:
 

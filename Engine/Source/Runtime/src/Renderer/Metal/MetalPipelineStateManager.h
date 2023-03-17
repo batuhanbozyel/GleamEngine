@@ -16,7 +16,7 @@ class MetalPipelineStateManager
 {
 public:
 
-	static const MetalPipelineState& GetGraphicsPipelineState(const PipelineStateDescriptor& pipelineDesc, const RenderPassDescriptor& renderPassDesc, const GraphicsShader& program);
+	static const MetalPipelineState& GetGraphicsPipelineState(const PipelineStateDescriptor& pipelineDesc, const RenderPassDescriptor& renderPassDesc, const RefCounted<Shader>& vertexShader, const RefCounted<Shader>& fragmentShader);
 
 	static void Clear();
 
@@ -24,13 +24,14 @@ private:
 
 	struct GraphicsPipelineCacheElement
 	{
-		GraphicsShader program;
+		RefCounted<Shader> vertexShader;
+		RefCounted<Shader> fragmentShader;
 		MetalPipelineState pipelineState;
 		RenderPassDescriptor renderPassDesc;
 		TArray<TextureFormat> attachmentFormats;
 	};
     
-	static id<MTLRenderPipelineState> CreateGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc, const RenderPassDescriptor& renderPassDesc, const GraphicsShader& program);
+	static id<MTLRenderPipelineState> CreateGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc, const RenderPassDescriptor& renderPassDesc, const RefCounted<Shader>& vertexShader, const RefCounted<Shader>& fragmentShader);
     
     static id<MTLDepthStencilState> CreateDepthStencil(const PipelineStateDescriptor& pipelineDesc);
 
