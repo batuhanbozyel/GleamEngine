@@ -12,12 +12,12 @@ public:
 	GleamEditor(const Gleam::ApplicationProperties& props)
 		: Gleam::Application(props)
 	{
-        PushView<SceneView>();
+        PushView<Gleam::SceneView>();
 	}
 
 	~GleamEditor()
 	{
-        RemoveView<SceneView>();
+        RemoveView<Gleam::SceneView>();
 	}
 
 private:
