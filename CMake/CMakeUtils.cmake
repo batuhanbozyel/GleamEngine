@@ -11,20 +11,6 @@ MACRO(SET_WORKING_DIRECTORY TARGET_NAME GIVEN_PATH)
 	endif()
 ENDMACRO(SET_WORKING_DIRECTORY)
 
-macro(ADD_FRAMEWORK target framework)
-    find_library(FRAMEWORK_${framework}
-    NAMES ${framework}
-    PATHS ${CMAKE_OSX_SYSROOT}/System/Library
-    PATH_SUFFIXES Frameworks
-    NO_DEFAULT_PATH)
-    if( ${FRAMEWORK_${framework}} STREQUAL FRAMEWORK_${framework}-NOTFOUND)
-        MESSAGE(ERROR ": Framework ${framework} not found")
-    else()
-        TARGET_LINK_LIBRARIES(${target} PRIVATE "${FRAMEWORK_${framework}}/${framework}")
-        MESSAGE(STATUS "Framework ${framework} found at ${FRAMEWORK_${framework}}")
-    endif()
-endmacro(ADD_FRAMEWORK)
-
 macro(ADD_GRAPHICS_SHADER target file vertexEntry fragmentEntry)
     add_custom_command(
         TARGET ${target}
