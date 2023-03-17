@@ -33,7 +33,7 @@ private:
 
 /**
  * EventDispatcher class
- * responsible from handling events
+ * responsible for handling events
  */
 template <class EventType>
 class EventDispatcher
@@ -46,10 +46,9 @@ public:
 	{
 		for (auto& handler : mSubscribers)
 		{
-			if (!e.mHandled)
-			{
-				e.mHandled = handler(e);
-			}
+            e.mHandled = handler(e);
+            
+            if (e.mHandled) break;
 		}
 
 		e.mHandled = true;
