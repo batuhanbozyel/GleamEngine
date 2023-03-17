@@ -19,7 +19,7 @@ using WeakPtr = std::weak_ptr<T>;
 template<typename T>
 using Optional = std::optional<T>;
 
-static auto Null = std::nullopt;
+static constexpr auto Null = std::nullopt;
 
 template<typename T, typename ... Args>
 NO_DISCARD FORCE_INLINE constexpr Scope<T> CreateScope(Args&& ... args)
