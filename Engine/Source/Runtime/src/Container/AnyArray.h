@@ -30,19 +30,6 @@ public:
 			return copy;
 		}
 
-		iterator& operator--()
-		{
-			--it;
-			return *this;
-		}
-
-		iterator operator--(int)
-		{
-			iterator copy = *this;
-			--it;
-			return copy;
-		}
-
 		bool operator==(const iterator& other) const
 		{
 			return it == other.it;
@@ -50,7 +37,7 @@ public:
 
     	bool operator!=(const iterator& other) const
 		{
-			return !(*this == other);
+			return it != other.it;
 		}
 
 		std::any& operator*() const
@@ -73,65 +60,12 @@ public:
 	{
 		return iterator(data.end());
 	}
-
-	template<class T, class...Args>
-	T* emplace(Args&&... args)
-	{
-		auto it = data.find(typeid(T));
-		if (it == data.end())
-		{
-			it = data.emplace(std::make_pair(typeid(T), T{std::forward<Args>(args)...}));
-		} 
-		else 
-		{
-			data[typeid(T)] = T{ std::forward<Args>(args)... };
-		}
-		return std::any_cast<T>(&(it->second));
-	}
-
-	template<class T, class...Args>
-	const T* emplace(Args&&... args)
-	{
-		auto it = data.find(typeid(T));
-		if (it == data.end())
-		{
-			it = data.emplace(std::make_pair(typeid(T), T{std::forward<Args>(args)...}));
-		} 
-		else 
-		{
-			data[typeid(T)] = T{ std::forward<Args>(args)... };
-		}
-		return std::any_cast<T>(&(it->second));
-	}
-
+    
 	template<class T, class...Args>
 	T& emplace(Args&&... args)
 	{
-		auto it = data.find(typeid(T));
-		if (it == data.end())
-		{
-			it = data.emplace(std::make_pair(typeid(T), T{std::forward<Args>(args)...}));
-		} 
-		else 
-		{
-			it->second = T{ std::forward<Args>(args)... };
-		}
-		return std::any_cast<T&>(it->second);
-	}
-
-	template<class T, class...Args>
-	const T& emplace(Args&&... args)
-	{
-		auto it = data.find(typeid(T));
-		if (it == data.end())
-		{
-			it = data.emplace(std::make_pair(typeid(T), T{std::forward<Args>(args)...}));
-		} 
-		else 
-		{
-			it->second = T{ std::forward<Args>(args)... };
-		}
-		return std::any_cast<const T&>(it->second);
+        auto& obj = data[typeid(T)] = std::make_any<T>(std::forward<Args>(args)...);
+        return std::any_cast<T&>(obj);
 	}
 
 	void clear()
@@ -146,33 +80,18 @@ public:
 	}
 
 	template<class T>
-	T* get() const
+	T* get()
 	{
 		auto it = data.find(typeid(T));
 		if (it == data.end()) return nullptr;
-		return std::any_cast<T>(&(it->second));
+		return &(std::any_cast<T&>(it->second));
 	}
 
 	template<class T>
-	const T* get() const
-	{
-		auto it = data.find(typeid(T));
-		if (it == data.end()) return nullptr;
-		return std::any_cast<T>(&(it->second));
-	}
-
-	template<class T>
-	T& get() const
+	T& get_unsafe()
 	{
 		auto it = data.find(typeid(T));
 		return std::any_cast<T&>(it->second);
-	}
-
-	template<class T>
-	const T& get() const
-	{
-		auto it = data.find(typeid(T));
-		return std::any_cast<const T&>(it->second);
 	}
 	
 	template<class T>
