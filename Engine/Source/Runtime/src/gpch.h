@@ -58,7 +58,10 @@
 #include "World/Components/Camera.h"
 
 #include "Renderer/GraphicsObject.h"
-#include "Renderer/IndexType.h"
+#include "Renderer/ShaderTypes.h"
+#include "Renderer/Renderer.h"
+
+#include "Renderer/RenderGraph/RenderGraphResource.h"
 
 #include "Core/Events/ApplicationEvent.h"
 #include "Core/Events/RendererEvent.h"

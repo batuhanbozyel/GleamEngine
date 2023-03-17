@@ -141,25 +141,19 @@ void Application::Run()
 		@autoreleasepool
 #endif
 		{
-			// TODO: Render Views to appropriate render targets and then compose them
-			auto rootRT = mRendererContext.CreateRenderTarget();
             for (auto& v : mViews)
             {
 				auto& view = std::any_cast<View&>(v);
-				auto& transform = view.GetTransform();
-				auto rt = mRendererContext.CreateRenderTarget(transform.GetScale() * ApplicationInstance.GetActiveWindow().GetResolution());
-				view.OnRender(mRendererContext, rt);
+                view.OnRender();
+                mRendererContext.Exectute(view.GetRenderPipeline());
             }
 
             for (auto& o : mOverlays)
             {
 				auto& overlay = std::any_cast<View&>(o);
-				auto& transform = overlay.GetTransform();
-				auto rt = mRendererContext.CreateRenderTarget(transform.GetScale() * ApplicationInstance.GetActiveWindow().GetResolution());
-				overlay.OnRender(mRendererContext, rt);
+                overlay.OnRender();
+                mRendererContext.Exectute(overlay.GetRenderPipeline());
             }
-
-			mRendererContext.Execute();
         }
 	}
 }

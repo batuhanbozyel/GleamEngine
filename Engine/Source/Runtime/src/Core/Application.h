@@ -28,7 +28,7 @@ public:
 	T& PushView()
 	{
 		GLEAM_ASSERT(!HasView<T>(), "Application already has the view!");
-		T& view = mViews.emplace<T>();
+		T& view = mViews.emplace<T>(&mRendererContext);
 		view.OnCreate();
 		return view;
 	}
@@ -37,7 +37,7 @@ public:
 	T& PushOverlay()
 	{
 		GLEAM_ASSERT(!HasView<T>(), "Application already has the overlay!");
-		T& overlay = mOverlays.emplace<T>();
+		T& overlay = mOverlays.emplace<T>(&mRendererContext);
 		overlay.OnCreate();
 		return overlay;
 	}
@@ -46,7 +46,7 @@ public:
 	void RemoveView()
 	{
 		GLEAM_ASSERT(HasView<T>(), "Application does not have the view!");
-		T& view = mViews.get<T>();
+		T& view = mViews.get_unsafe<T>();
 		view.OnDestroy();
         mViews.erase<T>();
 	}
