@@ -8,6 +8,10 @@ class EntityManager;
 class ISystem
 {
 	friend class World;
+    
+public:
+    
+    virtual ~ISystem() = default;
 
 protected:
 

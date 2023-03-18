@@ -32,15 +32,18 @@ public:
         
     }
     
+    virtual ~View() = default;
+    
     View(const View&) = default;
     View& operator=(const View&) = default;
 
 	template<RendererType T>
-	void AddRenderer()
+	T* AddRenderer()
 	{
 		GLEAM_ASSERT(!HasRenderer<T>(), "View already has the renderer!");
-        T& renderer = mRenderPipeline.emplace<T>();
-        renderer.OnCreate(mRendererContext);
+        T* renderer = mRenderPipeline.emplace<T>();
+        renderer->OnCreate(mRendererContext);
+        return renderer;
 	}
 
 	template<RendererType T>
@@ -51,10 +54,10 @@ public:
     }
 
 	template<RendererType T>
-    T& GetRenderer()
+    T* GetRenderer()
     {
         GLEAM_ASSERT(HasRenderer<T>(), "View does not have the renderer!");
-        return mRenderPipeline.get_unsafe<T>();
+        return mRenderPipeline.get<T>();
     }
     
     template<RendererType T>
@@ -63,17 +66,9 @@ public:
 		return mRenderPipeline.contains<T>();
     }
     
-    TArray<IRenderer*> GetRenderPipeline()
+    const PolyArray<IRenderer> GetRenderPipeline() const
     {
-        TArray<IRenderer*> renderPipeline;
-        
-        for (auto& feature : mRenderPipeline)
-        {
-            IRenderer* renderer = &(std::any_cast<IRenderer&>(feature));
-            renderPipeline.push_back(renderer);
-        }
-        
-        return renderPipeline;
+        return mRenderPipeline;
     }
 
 protected:
@@ -90,7 +85,7 @@ protected:
 
 private:
 
-	AnyArray mRenderPipeline;
+	PolyArray<IRenderer> mRenderPipeline;
     
     RendererContext* mRendererContext = nullptr;
 

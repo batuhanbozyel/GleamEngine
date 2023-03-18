@@ -19,28 +19,26 @@ public:
 
 	void Update()
 	{
-		for (auto& system : mSystemManager)
+		for (auto system : mSystemManager)
         {
-			auto& sys = std::any_cast<ISystem&>(system);
-            sys.OnUpdate(mEntityManager);
+            system->OnUpdate(mEntityManager);
         }
 	}
 
 	void FixedUpdate()
 	{
-		for (auto& system : mSystemManager)
+        for (auto system : mSystemManager)
         {
-			auto& sys = std::any_cast<ISystem&>(system);
-            sys.OnFixedUpdate(mEntityManager);
+            system->OnFixedUpdate(mEntityManager);
         }
 	}
     
     template<ComponentSystemType T>
-    T& AddSystem()
+    T* AddSystem()
     {
         GLEAM_ASSERT(!HasSystem<T>(), "World already has the system!");
-        T& system = mSystemManager.emplace<T>();
-		system.OnCreate();
+        T* system = mSystemManager.emplace<T>();
+		system->OnCreate();
 		return system;
     }
     
@@ -48,16 +46,16 @@ public:
     void RemoveSystem()
     {
         GLEAM_ASSERT(HasSystem<T>(), "World does not have the system!");
-		T& system = mSystemManager.get<T>();
-		system.OnDestroy();
+		T* system = GetSystem<T>();
+		system->OnDestroy();
         mSystemManager.erase<T>();
     }
     
     template<ComponentSystemType T>
-    T& GetSystem()
+    T* GetSystem()
     {
         GLEAM_ASSERT(HasSystem<T>(), "World does not have the system!");
-        return mSystemManager.get<T>();
+        mSystemManager.get<T>();
     }
     
     template<ComponentSystemType T>
@@ -74,7 +72,7 @@ public:
 private:
 
 	TString mName;
-	AnyArray mSystemManager;
+    PolyArray<ISystem> mSystemManager;
 	EntityManager mEntityManager;
 
 };

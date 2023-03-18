@@ -46,7 +46,7 @@ void SceneView::OnUpdate()
 
 void SceneView::OnRender()
 {
-    auto& renderer = GetRenderer<DebugRenderer>();
+    auto renderer = GetRenderer<DebugRenderer>();
     
     constexpr int gridWidth = 32;
     constexpr int gridHeight = 32;
@@ -54,7 +54,7 @@ void SceneView::OnRender()
     {
         for (int j = 0; j < gridHeight; j++)
         {
-            renderer.DrawQuad({float(i - gridWidth / 2), 0.0f, float(j - gridHeight / 2)}, 1.0f, 1.0f, Gleam::Color::HSVToRGB(static_cast<float>(Gleam::Time::time), 1.0f, 1.0f));
+            renderer->DrawQuad({float(i - gridWidth / 2), 0.0f, float(j - gridHeight / 2)}, 1.0f, 1.0f, Gleam::Color::HSVToRGB(static_cast<float>(Gleam::Time::time), 1.0f, 1.0f));
         }
     }
 }

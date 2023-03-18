@@ -5,14 +5,14 @@
 
 using namespace Gleam;
 
-void RendererContext::Exectute(const TArray<IRenderer*>& renderPipeline) const
+void RendererContext::Exectute(const PolyArray<IRenderer>& renderPipeline) const
 {
     RenderGraph graph;
     
     RenderingData renderingData;
-    renderingData.colorTarget = graph.Import(GetSwapchainTarget());
+    //renderingData.colorTarget = graph.Import(GetSwapchainTarget());
     
-    for (auto& renderer : renderPipeline)
+    for (auto renderer : renderPipeline)
     {
         renderer->AddRenderPasses(graph, renderingData);
     }

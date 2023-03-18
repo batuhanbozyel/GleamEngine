@@ -25,11 +25,11 @@ public:
 	void Run();
 
 	template<ViewType T>
-	T& PushView()
+	T* PushView()
 	{
 		GLEAM_ASSERT(!HasView<T>(), "Application already has the view!");
-		T& view = mViews.emplace<T>(&mRendererContext);
-		view.OnCreate();
+		T* view = mViews.emplace<T>(&mRendererContext);
+		view->OnCreate();
 		return view;
 	}
 
@@ -37,8 +37,8 @@ public:
 	T& PushOverlay()
 	{
 		GLEAM_ASSERT(!HasView<T>(), "Application already has the overlay!");
-		T& overlay = mOverlays.emplace<T>(&mRendererContext);
-		overlay.OnCreate();
+		T* overlay = mOverlays.emplace<T>(&mRendererContext);
+		overlay->OnCreate();
 		return overlay;
 	}
 
@@ -46,8 +46,8 @@ public:
 	void RemoveView()
 	{
 		GLEAM_ASSERT(HasView<T>(), "Application does not have the view!");
-		T& view = mViews.get_unsafe<T>();
-		view.OnDestroy();
+		T* view = mViews.get<T>();
+		view->OnDestroy();
         mViews.erase<T>();
 	}
 
@@ -55,8 +55,8 @@ public:
 	void RemoveOverlay()
 	{
 		GLEAM_ASSERT(HasOverlay<T>(), "Application does not have the overlay!");
-		T& overlay = mOverlays.get<T>();
-		overlay.OnDestroy();
+		T* overlay = mOverlays.get<T>();
+		overlay->OnDestroy();
         mOverlays.erase<T>();
 	}
 
@@ -96,8 +96,8 @@ private:
 		return mOverlays.contains<T>();
     }
 
-	AnyArray mViews;
-	AnyArray mOverlays;
+	PolyArray<View> mViews;
+	PolyArray<View> mOverlays;
 
 	SDL_Event mEvent;
 	Window* mActiveWindow;

@@ -27,6 +27,8 @@ public:
     
     friend class View;
     friend class RendererContext;
+    
+    virtual ~IRenderer() = default;
 
 protected:
 
