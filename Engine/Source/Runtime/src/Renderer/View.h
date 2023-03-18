@@ -54,7 +54,7 @@ public:
     }
 
 	template<RendererType T>
-    T* GetRenderer()
+    T* GetRenderer() const
     {
         GLEAM_ASSERT(HasRenderer<T>(), "View does not have the renderer!");
         return mRenderPipeline.get<T>();
@@ -64,11 +64,6 @@ public:
     bool HasRenderer() const
     {
 		return mRenderPipeline.contains<T>();
-    }
-    
-    const PolyArray<IRenderer> GetRenderPipeline() const
-    {
-        return mRenderPipeline;
     }
 
 protected:

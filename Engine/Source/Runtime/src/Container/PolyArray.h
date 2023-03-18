@@ -88,7 +88,7 @@ public:
             return it != other.it;
         }
         
-        Base* operator*() const
+        const Base* operator*() const
         {
             return it->second;
         }
@@ -147,7 +147,7 @@ public:
     }
     
     template<class T>
-    T* get()
+    T* get() const
     {
         auto it = data.find(typeid(T));
         if (it == data.end()) return nullptr;

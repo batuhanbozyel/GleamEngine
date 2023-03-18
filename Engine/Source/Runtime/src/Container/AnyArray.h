@@ -50,6 +50,47 @@ public:
 		Container::iterator it;
 
 	};
+    
+    class const_iterator
+    {
+    public:
+        
+        const_iterator(typename Container::const_iterator it)
+        : it(it) {}
+        
+        const_iterator& operator++()
+        {
+            ++it;
+            return *this;
+        }
+        
+        const_iterator operator++(int)
+        {
+            const_iterator copy = *this;
+            ++it;
+            return copy;
+        }
+        
+        bool operator==(const const_iterator& other) const
+        {
+            return it == other.it;
+        }
+        
+        bool operator!=(const const_iterator& other) const
+        {
+            return it != other.it;
+        }
+        
+        const std::any& operator*() const
+        {
+            return it->second;
+        }
+        
+    private:
+        
+        typename Container::const_iterator it;
+        
+    };
 
 	iterator begin()
 	{
@@ -60,6 +101,16 @@ public:
 	{
 		return iterator(data.end());
 	}
+    
+    const_iterator begin() const
+    {
+        return const_iterator(data.begin());
+    }
+    
+    const_iterator end() const
+    {
+        return const_iterator(data.end());
+    }
     
 	template<class T, class...Args>
 	T& emplace(Args&&... args)
@@ -80,7 +131,7 @@ public:
 	}
 
 	template<class T>
-	T* get()
+	T* get() const
 	{
 		auto it = data.find(typeid(T));
 		if (it == data.end()) return nullptr;
@@ -88,7 +139,7 @@ public:
 	}
 
 	template<class T>
-	T& get_unsafe()
+	T& get_unsafe() const
 	{
 		auto it = data.find(typeid(T));
 		return std::any_cast<T&>(it->second);

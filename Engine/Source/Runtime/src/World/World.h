@@ -52,7 +52,7 @@ public:
     }
     
     template<ComponentSystemType T>
-    T* GetSystem()
+    T* GetSystem() const
     {
         GLEAM_ASSERT(HasSystem<T>(), "World does not have the system!");
         mSystemManager.get<T>();

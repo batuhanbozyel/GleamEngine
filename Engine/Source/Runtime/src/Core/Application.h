@@ -34,7 +34,7 @@ public:
 	}
 
 	template<ViewType T>
-	T& PushOverlay()
+	T* PushOverlay()
 	{
 		GLEAM_ASSERT(!HasView<T>(), "Application already has the overlay!");
 		T* overlay = mOverlays.emplace<T>(&mRendererContext);

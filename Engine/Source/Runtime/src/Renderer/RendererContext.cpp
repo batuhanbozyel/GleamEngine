@@ -5,7 +5,7 @@
 
 using namespace Gleam;
 
-void RendererContext::Exectute(const PolyArray<IRenderer>& renderPipeline) const
+void RendererContext::Exectute(PolyArray<IRenderer>& renderPipeline) const
 {
     RenderGraph graph;
     

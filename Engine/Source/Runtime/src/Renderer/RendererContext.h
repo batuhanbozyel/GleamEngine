@@ -16,7 +16,7 @@ class RendererContext final
 
 public:
     
-    void Exectute(const PolyArray<IRenderer>& renderPipeline) const;
+    void Exectute(PolyArray<IRenderer>& renderPipeline) const;
     
 	const RefCounted<Shader>& CreateShader(const TString& entryPoint, ShaderStage stage);
     

@@ -140,13 +140,13 @@ void Application::Run()
             for (auto view : mViews)
             {
                 view->OnRender();
-                mRendererContext.Exectute(view->GetRenderPipeline());
+                mRendererContext.Exectute(view->mRenderPipeline);
             }
 
             for (auto overlay : mOverlays)
             {
                 overlay->OnRender();
-                mRendererContext.Exectute(overlay->GetRenderPipeline());
+                mRendererContext.Exectute(overlay->mRenderPipeline);
             }
         }
 	}
