@@ -97,7 +97,7 @@ public:
 	template<class T>
 	bool contains() const
 	{
-		data.contains(typeid(T));
+		return data.contains(typeid(T));
 	}
 
 	size_t size() const

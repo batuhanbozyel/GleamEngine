@@ -35,6 +35,7 @@
 #include "Container/Array.h"
 #include "Container/Hash.h"
 #include "Container/AnyArray.h"
+#include "Container/PolyArray.h"
 
 #include "IO/Filesystem.h"
 #include "IO/Log.h"
