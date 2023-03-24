@@ -34,27 +34,21 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc) 
     mHandle->renderPassDescriptor = renderPassDesc;
     MTLRenderPassDescriptor* renderPass = [MTLRenderPassDescriptor renderPassDescriptor];
     
-    bool hasDepthBuffer = mDepthAttachment != nullptr;
-    if (hasDepthBuffer)
+    if (renderPassDesc.depthAttachment.texture)
     {
-        const auto& depthAttachment = renderPassDesc.attachments[renderPassDesc.depthAttachmentIndex];
-
         MTLRenderPassDepthAttachmentDescriptor* depthAttachmentDesc = renderPass.depthAttachment;
-        depthAttachmentDesc.clearDepth = depthAttachment.clearDepth;
-        depthAttachmentDesc.loadAction = AttachmentLoadActionToMTLLoadAction(depthAttachment.loadAction);
-        depthAttachmentDesc.storeAction = AttachmentStoreActionToMTLStoreAction(depthAttachment.storeAction);
-        depthAttachmentDesc.texture = mDepthAttachment->GetImageView();
-        depthAttachmentDesc.resolveTexture = mDepthAttachment->GetHandle();
+        depthAttachmentDesc.clearDepth = renderPassDesc.depthAttachment.clearDepth;
+        depthAttachmentDesc.loadAction = AttachmentLoadActionToMTLLoadAction(renderPassDesc.depthAttachment.loadAction);
+        depthAttachmentDesc.storeAction = AttachmentStoreActionToMTLStoreAction(renderPassDesc.depthAttachment.storeAction);
+        depthAttachmentDesc.texture = renderPassDesc.depthAttachment.texture->GetRenderSurface();
+        
+        if (renderPassDesc.samples > 1)
+            depthAttachmentDesc.resolveTexture = renderPassDesc.depthAttachment.texture->GetHandle();
     }
     
-    for (uint32_t i = 0; i < mColorAttachments.size(); i++)
+    for (uint32_t i = 0; i < renderPassDesc.colorAttachments.size(); i++)
     {
-        uint32_t attachmentIndexOffset = static_cast<int>(hasDepthBuffer && (renderPassDesc.depthAttachmentIndex <= i));
-        uint32_t colorAttachmentIndex = i + attachmentIndexOffset;
-        
-        const auto& colorBuffer = mColorAttachments[i];
-        const auto& colorAttachment = renderPassDesc.attachments[colorAttachmentIndex];
-        
+        const auto& colorAttachment = renderPassDesc.colorAttachments[i];
         MTLRenderPassColorAttachmentDescriptor* colorAttachmentDesc = renderPass.colorAttachments[i];
         colorAttachmentDesc.clearColor =
         {
@@ -65,8 +59,10 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc) 
         };
         colorAttachmentDesc.loadAction = AttachmentLoadActionToMTLLoadAction(colorAttachment.loadAction);
         colorAttachmentDesc.storeAction = AttachmentStoreActionToMTLStoreAction(colorAttachment.storeAction);
-        colorAttachmentDesc.texture = colorBuffer->GetImageView();
-        colorAttachmentDesc.resolveTexture = colorBuffer->GetHandle();
+        colorAttachmentDesc.texture = colorAttachment.texture->GetRenderSurface();
+        
+        if (renderPassDesc.samples > 1)
+            colorAttachmentDesc.resolveTexture = colorAttachment.texture->GetHandle();
     }
     
     mHandle->renderCommandEncoder = [mHandle->commandBuffer renderCommandEncoderWithDescriptor:renderPass];

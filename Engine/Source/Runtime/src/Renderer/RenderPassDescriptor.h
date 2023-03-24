@@ -3,6 +3,8 @@
 
 namespace Gleam {
 
+class RenderTexture;
+
 enum class AttachmentLoadAction
 {
 	Load,
@@ -23,18 +25,18 @@ struct AttachmentDescriptor
 	Color clearColor = Color::clear;
 	float clearDepth = 1.0f;
 	uint32_t clearStencil = 0;
-	TextureFormat format = TextureFormat::None;
+    RefCounted<RenderTexture> texture = nullptr;
 	AttachmentLoadAction loadAction = AttachmentLoadAction::Load;
 	AttachmentStoreAction storeAction = AttachmentStoreAction::Store;
     
-    constexpr bool operator==(const AttachmentDescriptor&) const = default;
+    bool operator==(const AttachmentDescriptor&) const = default;
 };
 
 struct RenderPassDescriptor
 {
-	TArray<AttachmentDescriptor> attachments;
+	TArray<AttachmentDescriptor> colorAttachments;
+    AttachmentDescriptor depthAttachment;
     Size size = Size::zero;
-	int depthAttachmentIndex = -1;
 	uint32_t samples = 1;
 	bool useMipMap = false;
     

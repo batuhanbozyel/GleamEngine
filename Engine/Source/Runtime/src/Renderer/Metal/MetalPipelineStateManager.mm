@@ -41,20 +41,17 @@ id<MTLRenderPipelineState> MetalPipelineStateManager::CreateGraphicsPipeline(con
     pipelineDescriptor.vertexFunction = vertexShader->GetHandle();
     pipelineDescriptor.fragmentFunction = fragmentShader->GetHandle();
     
-    if (renderPassDesc.depthAttachmentIndex >= 0)
+    if (renderPassDesc.depthAttachment.texture)
     {
-        MTLPixelFormat format = TextureFormatToMTLPixelFormat(renderPassDesc.attachments[renderPassDesc.depthAttachmentIndex].format);
+        MTLPixelFormat format = TextureFormatToMTLPixelFormat(renderPassDesc.depthAttachment.texture->GetDescriptor().format);
         pipelineDescriptor.depthAttachmentPixelFormat = format;
         pipelineDescriptor.stencilAttachmentPixelFormat = format;
     }
     
-    for (uint32_t i = 0; i < renderPassDesc.attachments.size(); i++)
+    for (uint32_t i = 0; i < renderPassDesc.colorAttachments.size(); i++)
 	{
-        uint32_t attachmentIndexOffset = static_cast<int>(renderPassDesc.depthAttachmentIndex <= i);
-        uint32_t colorAttachmentIndex = i + attachmentIndexOffset;
-        
-        const auto& attachmentDesc = renderPassDesc.attachments[colorAttachmentIndex];
-		pipelineDescriptor.colorAttachments[i].pixelFormat = TextureFormatToMTLPixelFormat(attachmentDesc.format);
+        const auto& attachmentDesc = renderPassDesc.colorAttachments[i];
+		pipelineDescriptor.colorAttachments[i].pixelFormat = TextureFormatToMTLPixelFormat(attachmentDesc.texture->GetDescriptor().format);
         /**
                 TODO:
          */

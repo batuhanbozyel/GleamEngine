@@ -100,127 +100,84 @@ CommandBuffer::~CommandBuffer()
 
 void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc) const
 {
-    mHandle->swapchainTarget = (mActiveRenderTarget == nullptr);
+    mHandle->renderPassState.sampleCount = renderPassDesc.samples;
     
-	TArray<VkAttachmentDescription> attachmentDescriptors(renderPassDesc.attachments.size());
-	TArray<VkImageView> imageViews(renderPassDesc.attachments.size());
-	TArray<VkClearValue> clearValues(renderPassDesc.attachments.size());
+    uint32_t attachmentCount = static_cast<uint32_t>(renderPassDesc.colorAttachments.size()) + static_cast<uint32_t>(renderPassDesc.depthAttachment.texture != nullptr);
+	TArray<VkAttachmentDescription> attachmentDescriptors(attachmentCount);
+	TArray<VkImageView> imageViews(attachmentCount);
+	TArray<VkClearValue> clearValues(attachmentCount);
     
     // TODO: Check if we can abstract Vulkan subpasses with Metal tiling API
     // Currently there is no subpass support
     TArray<VkSubpassDescription> subpassDescriptors(1);
     TArray<VkSubpassDependency> subpassDependencies(1);
-	if (mHandle->swapchainTarget)
-	{
-		mHandle->renderPassState.sampleCount = VulkanDevice::GetSwapchain().GetSampleCount();
-		
-		attachmentDescriptors.resize(1);
-		imageViews.resize(1);
-		clearValues.resize(1);
-
-		auto clearColor = ApplicationInstance.backgroundColor;
-		if (renderPassDesc.attachments.size() > 0)
-			clearColor = renderPassDesc.attachments[0].clearColor;
-
-		clearValues[0] = { clearColor.r, clearColor.g, clearColor.b, clearColor.a };
-		imageViews[0] = VulkanDevice::GetSwapchain().AcquireNextDrawable().view;
-
-		VkAttachmentReference attachmentRef{};
-		attachmentRef.attachment = 0;
-		attachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-		attachmentDescriptors[0] = {};
-		attachmentDescriptors[0].format = TextureFormatToVkFormat(VulkanDevice::GetSwapchain().GetFormat());
-		attachmentDescriptors[0].samples = GetVkSampleCount(VulkanDevice::GetSwapchain().GetSampleCount());
-		attachmentDescriptors[0].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-		attachmentDescriptors[0].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-		attachmentDescriptors[0].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-		attachmentDescriptors[0].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-		attachmentDescriptors[0].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-		attachmentDescriptors[0].finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-
-		subpassDescriptors[0] = {};
-		subpassDescriptors[0].pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-		subpassDescriptors[0].colorAttachmentCount = 1;
-		subpassDescriptors[0].pColorAttachments = &attachmentRef;
-
-		subpassDependencies[0] = {};
-		subpassDependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
-		subpassDependencies[0].dstSubpass = 0;
-		subpassDependencies[0].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-		subpassDependencies[0].dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-		subpassDependencies[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-		subpassDependencies[0].dependencyFlags = 0;
-	}
-	else
-	{
-		mHandle->renderPassState.sampleCount = renderPassDesc.samples;
-		
-        if (mActiveRenderTarget->HasDepthBuffer())
-		{
-            VkAttachmentReference depthStencilAttachment{};
-			depthStencilAttachment.attachment = renderPassDesc.depthAttachmentIndex;
-			depthStencilAttachment.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-
-			const auto& depthBuffer = mActiveRenderTarget->GetDepthBuffer();
-			const auto& depthAttachment = renderPassDesc.attachments[renderPassDesc.depthAttachmentIndex];
-
-			auto& depthAttachmentDesc = attachmentDescriptors[renderPassDesc.depthAttachmentIndex];
-			depthAttachmentDesc.format = TextureFormatToVkFormat(depthAttachment.format);
-			depthAttachmentDesc.samples = GetVkSampleCount(renderPassDesc.samples);
-			depthAttachmentDesc.loadOp = AttachmentLoadActionToVkAttachmentLoadOp(depthAttachment.loadAction);
-			depthAttachmentDesc.stencilLoadOp = depthAttachmentDesc.loadOp;
-			depthAttachmentDesc.storeOp = AttachmentStoreActionToVkAttachmentStoreOp(depthAttachment.storeAction);
-			depthAttachmentDesc.stencilStoreOp = depthAttachmentDesc.storeOp;
-			depthAttachmentDesc.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-			depthAttachmentDesc.finalLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-
-			VkClearValue clearValue{};
-			clearValue.depthStencil = { depthAttachment.clearDepth, depthAttachment.clearStencil };
-			clearValues[renderPassDesc.depthAttachmentIndex] = clearValue;
-
-			imageViews[renderPassDesc.depthAttachmentIndex] = As<VkImageView>(depthBuffer->GetImageView());
-			subpassDescriptors[0].pDepthStencilAttachment = &depthStencilAttachment;
-		}
+    if (renderPassDesc.depthAttachment.texture)
+    {
+        uint32_t depthAttachmentIndex = static_cast<uint32_t>(attachmentDescriptors.size()) - 1;
         
-        TArray<VkAttachmentReference> colorAttachments(mActiveRenderTarget->GetColorBuffers().size());
-		for (uint32_t i = 0; i < mActiveRenderTarget->GetColorBuffers().size(); i++)
-		{
-			uint32_t attachmentIndexOffset = static_cast<uint32_t>(mActiveRenderTarget->HasDepthBuffer() && (renderPassDesc.depthAttachmentIndex <= static_cast<int>(i)));
-			uint32_t colorAttachmentIndex = i + attachmentIndexOffset;
+        auto& depthAttachmentDesc = attachmentDescriptors[depthAttachmentIndex];
+        depthAttachmentDesc = {};
+        depthAttachmentDesc.format = TextureFormatToVkFormat(renderPassDesc.depthAttachment.texture->GetDescriptor().format);
+        depthAttachmentDesc.samples = GetVkSampleCount(renderPassDesc.samples);
+        depthAttachmentDesc.loadOp = AttachmentLoadActionToVkAttachmentLoadOp(renderPassDesc.depthAttachment.loadAction);
+        depthAttachmentDesc.stencilLoadOp = depthAttachmentDesc.loadOp;
+        depthAttachmentDesc.storeOp = AttachmentStoreActionToVkAttachmentStoreOp(renderPassDesc.depthAttachment.storeAction);
+        depthAttachmentDesc.stencilStoreOp = depthAttachmentDesc.storeOp;
+        depthAttachmentDesc.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        depthAttachmentDesc.finalLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+        
+        clearValues[depthAttachmentIndex] = {};
+        clearValues[depthAttachmentIndex].depthStencil = { renderPassDesc.depthAttachment.clearDepth, renderPassDesc.depthAttachment.clearStencil };
+        imageViews[depthAttachmentIndex] = As<VkImageView>(renderPassDesc.depthAttachment.texture->GetView());
+        
+        VkAttachmentReference depthStencilAttachment{};
+        depthStencilAttachment.attachment = depthAttachmentIndex;
+        depthStencilAttachment.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+        subpassDescriptors[0].pDepthStencilAttachment = &depthStencilAttachment;
+    }
+    
+    TArray<VkAttachmentReference> colorAttachments(renderPassDesc.colorAttachments.size());
+    TArray<VkAttachmentReference> resolveAttachments(renderPassDesc.sampleCount > 1 ? colorAttachments.size() : 0);
+    for (uint32_t i = 0; i < renderPassDesc.colorAttachments.size(); i++)
+    {
+        colorAttachments[i].attachment = i;
+        colorAttachments[i].layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        
+        if (renderPassDesc.sampleCount > 1)
+        {
+            resolveAttachments[i].attachment = i;
+            resolveAttachments[i].layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        }
 
-			colorAttachments[i].attachment = colorAttachmentIndex;
-			colorAttachments[i].layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        const auto& colorBuffer = renderPassDesc.colorAttachments[i].texture;
+        const auto& colorAttachment = renderPassDesc.attachments[i];
+        auto& colorAttachmentDesc = attachmentDescriptors[i];
+        colorAttachmentDesc = {};
+        colorAttachmentDesc.format = TextureFormatToVkFormat(colorBuffer->GetDescriptor().format);
+        colorAttachmentDesc.samples = GetVkSampleCount(renderPassDesc.samples);
+        colorAttachmentDesc.loadOp = AttachmentLoadActionToVkAttachmentLoadOp(colorAttachment.loadAction);
+        colorAttachmentDesc.storeOp = AttachmentStoreActionToVkAttachmentStoreOp(colorAttachment.storeAction);
+        colorAttachmentDesc.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        colorAttachmentDesc.finalLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
 
-			const auto& colorBuffer = mActiveRenderTarget->GetColorBuffers()[i];
-			const auto& colorAttachment = renderPassDesc.attachments[colorAttachmentIndex];
+        clearValues[i] = { colorAttachment.clearColor.r, colorAttachment.clearColor.g, colorAttachment.clearColor.b, colorAttachment.clearColor.a };
+        imageViews[i] = As<VkImageView>(colorBuffer->GetView());
+    }
 
-			auto& colorAttachmentDesc = attachmentDescriptors[colorAttachmentIndex];
-			colorAttachmentDesc.format = TextureFormatToVkFormat(colorAttachment.format);
-			colorAttachmentDesc.samples = GetVkSampleCount(renderPassDesc.samples);
-			colorAttachmentDesc.loadOp = AttachmentLoadActionToVkAttachmentLoadOp(colorAttachment.loadAction);
-			colorAttachmentDesc.storeOp = AttachmentStoreActionToVkAttachmentStoreOp(colorAttachment.storeAction);
-			colorAttachmentDesc.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-			colorAttachmentDesc.finalLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+    subpassDescriptors[0] = {};
+    subpassDescriptors[0].pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+    subpassDescriptors[0].colorAttachmentCount = static_cast<uint32_t>(colorAttachments.size());
+    subpassDescriptors[0].pColorAttachments = colorAttachments.data();
+    subpassDescriptors[0].pResolveAttachments = resolveAttachments.data();
 
-			clearValues[colorAttachmentIndex] = { colorAttachment.clearColor.r, colorAttachment.clearColor.g, colorAttachment.clearColor.b, colorAttachment.clearColor.a };
-			imageViews[colorAttachmentIndex] = As<VkImageView>(colorBuffer->GetImageView());
-		}
-
-		subpassDescriptors[0] = {};
-		subpassDescriptors[0].pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-		subpassDescriptors[0].colorAttachmentCount = static_cast<uint32_t>(colorAttachments.size());
-		subpassDescriptors[0].pColorAttachments = colorAttachments.data();
-
-		subpassDependencies[0] = {};
-		subpassDependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
-		subpassDependencies[0].dstSubpass = 0;
-		subpassDependencies[0].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-		subpassDependencies[0].dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-		subpassDependencies[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-		subpassDependencies[0].dependencyFlags = 0;
-	}
-
+    subpassDependencies[0] = {};
+    subpassDependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
+    subpassDependencies[0].dstSubpass = 0;
+    subpassDependencies[0].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    subpassDependencies[0].dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    subpassDependencies[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+    subpassDependencies[0].dependencyFlags = 0;
+    
 	VkRenderPassCreateInfo renderPassCreateInfo{ VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO };
 	renderPassCreateInfo.attachmentCount = static_cast<uint32_t>(attachmentDescriptors.size());
 	renderPassCreateInfo.pAttachments = attachmentDescriptors.data();

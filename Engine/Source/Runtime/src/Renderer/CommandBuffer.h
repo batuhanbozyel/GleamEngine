@@ -43,28 +43,18 @@ public:
 
     void SetViewport(const Size& size) const;
     
-    void SetColorAttachment(const RefCounted<RenderTexture>& colorTexture, uint32_t index)
-    {
-        mColorAttachments[index] = colorTexture;
-    }
-    
-    void SetDepthAttachment(const RefCounted<RenderTexture>& depthTexture)
-    {
-        mDepthAttachment = depthTexture;
-    }
-    
     void SetVertexBuffer(const NativeGraphicsHandle buffer, BufferUsage usage, size_t size, size_t offset, uint32_t index) const;
     
     void SetVertexBuffer(const Buffer& buffer, size_t offset, uint32_t index) const
     {
-        SetVertexBuffer(buffer.GetHandle(), buffer.GetUsage(), buffer.GetSize(), offset, index);
+        SetVertexBuffer(buffer.GetHandle(), buffer.GetDescriptor().usage, buffer.GetDescriptor().size, offset, index);
     }
     
     void SetFragmentBuffer(const NativeGraphicsHandle buffer, BufferUsage usage, size_t size, size_t offset, uint32_t index) const;
     
     void SetFragmentBuffer(const Buffer& buffer, size_t offset, uint32_t index) const
     {
-        SetFragmentBuffer(buffer.GetHandle(), buffer.GetUsage(), buffer.GetSize(), offset, index);
+        SetFragmentBuffer(buffer.GetHandle(), buffer.GetDescriptor().usage, buffer.GetDescriptor().size, offset, index);
     }
 
     template<typename T>
@@ -98,9 +88,6 @@ private:
 
     class Impl;
     Scope<Impl> mHandle;
-
-    RefCounted<RenderTexture> mDepthAttachment;
-    TArray<RefCounted<RenderTexture>, maxRenderTargets> mColorAttachments;
     
 };
 
