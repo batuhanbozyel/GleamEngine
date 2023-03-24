@@ -4,26 +4,15 @@
 
 using namespace Gleam;
 
-Buffer::Buffer(const BufferDescriptor& descriptor)
-    : mSize(descriptor.size), mUsage(descriptor.usage), mMemoryType(descriptor.memoryType)
-{
-    Allocate();
-}
-
 Buffer::Buffer(const void* data, const BufferDescriptor& descriptor)
     : Buffer(descriptor)
 {
     SetData(data, descriptor.size);
 }
 
-Buffer::~Buffer()
-{
-    Free();
-}
-
 void Buffer::SetData(const void* data, size_t size, size_t offset) const
 {
-	if (mMemoryType == MemoryType::Static)
+    if (mDescriptor.memoryType == MemoryType::Static)
     {
         BufferDescriptor descriptor;
         descriptor.size = size;
@@ -43,12 +32,7 @@ void Buffer::SetData(const void* data, size_t size, size_t offset) const
     }
 }
 
-size_t Buffer::GetSize() const
+const BufferDescriptor& Buffer::GetDescriptor() const
 {
-    return mSize;
-}
-
-BufferUsage Buffer::GetUsage() const
-{
-    return mUsage;
+    return mDescriptor;
 }

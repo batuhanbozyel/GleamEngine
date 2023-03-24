@@ -26,22 +26,4 @@ protected:
 
 };
 
-class MutableGraphicsObject
-{
-public:
-
-    GLEAM_NONCOPYABLE(MutableGraphicsObject);
-	MutableGraphicsObject();
-    
-    NativeGraphicsHandle GetHandle() const;
-
-    bool IsValid() const;
-
-protected:
-
-	TArray<NativeGraphicsHandle> mHandles;
-    TArray<NativeGraphicsHandle> mMemories;
-
-};
-
 } // namespace Gleam

@@ -4,7 +4,7 @@
 
 namespace Gleam {
 
-class Texture
+class Texture : public GraphicsObject
 {
 public:
     
@@ -14,9 +14,14 @@ public:
         
     }
     
-    const Size& GetDescriptor() const
+    NativeGraphicsHandle GetView() const
     {
-        return mDescriptor.size;
+        return mView;
+    }
+    
+    const TextureDescriptor& GetDescriptor() const
+    {
+        return mDescriptor;
     }
     
     uint32_t GetMipMapLevels() const
@@ -34,9 +39,11 @@ protected:
     uint32_t mMipMapLevels;
     TextureDescriptor mDescriptor;
     
+    NativeGraphicsHandle mView = nullptr;
+    
 };
 
-class Texture2D final : public Texture, public GraphicsObject
+class Texture2D final : public Texture
 {
 public:
 
@@ -45,39 +52,33 @@ public:
 	~Texture2D();
 
 	void SetPixels(const TArray<uint8_t>& pixels) const;
-
-private:
-
-    NativeGraphicsHandle mMemory = nullptr;
-    NativeGraphicsHandle mImageView = nullptr;
 	
 };
 
-class RenderTexture final : public Texture, public MutableGraphicsObject
+class RenderTexture final : public Texture
 {
 public:
     
-    RenderTexture(const RenderTextureDescriptor& descriptor);
+    // Necessary for creating from swapchain image
+    RenderTexture(NativeGraphicsHandle image, NativeGraphicsHandle view, const TextureDescriptor& descriptor)
+        : Texture(descriptor)
+    {
+        mHandle = image;
+        mView = view;
+    }
+    
+    RenderTexture(const TextureDescriptor& descriptor);
     
     ~RenderTexture();
-    
-    uint32_t GetSampleCount() const
-    {
-        return mSampleCount;
-    }
 
-	NativeGraphicsHandle GetImageView() const;
+	NativeGraphicsHandle GetRenderSurface() const;
     
 private:
-    
-    uint32_t mSampleCount = 1;
-    
-    TArray<NativeGraphicsHandle> mImageViews;
 
 	// multisample
 	NativeGraphicsHandle mMultisampleMemory;
-	NativeGraphicsHandle mMultisampleImageView;
-	NativeGraphicsHandle mMultisampleTexture;
+	NativeGraphicsHandle mMultisampleView;
+	NativeGraphicsHandle mMultisampleHandle;
 
 };
 

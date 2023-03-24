@@ -16,12 +16,8 @@ struct TextureDescriptor
     TextureFormat format = TextureFormat::R8G8B8A8_SRGB;
     FilterMode filterMode = FilterMode::Point;
     WrapMode wrapMode = WrapMode::Clamp;
-    bool useMipMap = false;
-};
-
-struct RenderTextureDescriptor : public TextureDescriptor
-{
     uint32_t sampleCount = 1;
+    bool useMipMap = false;
 };
 
 } // namespace Gleam
