@@ -4,7 +4,6 @@
 namespace Gleam {
 
 class CommandBuffer;
-class RenderTexture;
 
 struct RenderGraphContext
 {
@@ -27,20 +26,20 @@ public:
 	const PassData& AddRenderPass(const TStringView name, SetupFunc<PassData>&& setup, RenderFunc<PassData>&& execute)
 	{
         uint32_t nodeId = static_cast<uint32_t>(mPassNodes.size());
-        auto& node = mPassNodes.emplace_back(nodeId, name, std::forward<decltype(execute)>(execute));
-		auto& passData = std::any_cast<PassData&>(node.data);
-		auto builder = RenderGraphBuilder(node, mRegistry);
+        auto& node = mPassNodes.emplace_back(CreateScope<RenderPassNode>(nodeId, name, std::forward<decltype(execute)>(execute)));
+		auto& passData = std::any_cast<PassData&>(node->data);
+		auto builder = RenderGraphBuilder(*node, mRegistry);
 		setup(builder, passData);
 		return passData;
 	}
     
-    RenderTextureHandle Import(const RefCounted<RenderTexture>& renderTexture);
+    RenderTextureHandle ImportBackbuffer(const RefCounted<RenderTexture>& backbuffer);
 
 private:
 
     RenderGraphResourceRegistry mRegistry;
 
-	TArray<RenderPassNode> mPassNodes;
+	TArray<Scope<RenderPassNode>> mPassNodes;
 
 };
 

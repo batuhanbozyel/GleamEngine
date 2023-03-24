@@ -29,6 +29,8 @@ using RenderFunc = std::function<void(const RenderGraphContext& renderGraphConte
 
 struct RenderPassNode : public RenderGraphNode
 {
+    GLEAM_NONCOPYABLE(RenderPassNode);
+    
     using PassCallback = std::function<void(const RenderGraphContext& renderGraphContext)>;
     
     TString name;
@@ -48,12 +50,9 @@ struct RenderPassNode : public RenderGraphNode
     
     template<typename PassData>
     RenderPassNode(uint32_t uniqueId, const TStringView name, RenderFunc<PassData>&& execute)
-        : RenderGraphNode(uniqueId), name(name), data(PassData())
+        : RenderGraphNode(uniqueId), name(name), data(std::make_any<PassData>())
     {
-        callback = [this, execute = move(execute)](const RenderGraphContext& renderGraphContext) mutable
-        {
-            execute(renderGraphContext, std::any_cast<const PassData&>(data));
-        };
+        callback = std::bind(execute, std::placeholders::_1, std::any_cast<const PassData&>(data));
     }
     
     bool isCulled() const
@@ -78,4 +77,3 @@ struct RenderGraphResourceNode : public RenderGraphNode
 };
 
 } // namespace Gleam
-

@@ -26,14 +26,14 @@ RenderGraphBuilder::RenderGraphBuilder(RenderPassNode& node, RenderGraphResource
     
 }
 
-NO_DISCARD RenderTextureHandle RenderGraphBuilder::Create(const RenderTextureDescriptor& descriptor)
+NO_DISCARD RenderTextureHandle RenderGraphBuilder::CreateRenderTexture(const TextureDescriptor& descriptor)
 {
-    RenderTextureHandle renderTexture = mResourceRegistry.Create(descriptor);
+    RenderTextureHandle renderTexture = mResourceRegistry.CreateRT(descriptor);
     mPassNode.renderTextureCreates.emplace_back(renderTexture);
     return renderTexture;
 }
 
-NO_DISCARD RenderTextureHandle RenderGraphBuilder::Write(RenderTextureHandle resource)
+NO_DISCARD RenderTextureHandle RenderGraphBuilder::WriteRenderTexture(RenderTextureHandle resource)
 {
     if (mResourceRegistry.GetRenderTextureEntry(resource).transient == false)
         mPassNode.hasSideEffect = true;
@@ -48,7 +48,7 @@ NO_DISCARD RenderTextureHandle RenderGraphBuilder::Write(RenderTextureHandle res
     else
     {
         Read(resource);
-        auto clone = mResourceRegistry.Clone(resource);
+        auto clone = mResourceRegistry.CloneRT(resource);
         mPassNode.renderTextureWrites.emplace_back(clone);
         return clone;
     }
@@ -60,14 +60,14 @@ RenderTextureHandle RenderGraphBuilder::Read(RenderTextureHandle resource)
     return resource;
 }
 
-NO_DISCARD BufferHandle RenderGraphBuilder::Create(const BufferDescriptor& descriptor)
+NO_DISCARD BufferHandle RenderGraphBuilder::CreateBuffer(const BufferDescriptor& descriptor)
 {
-    BufferHandle buffer = mResourceRegistry.Create(descriptor);
+    BufferHandle buffer = mResourceRegistry.CreateBuffer(descriptor);
     mPassNode.bufferCreates.emplace_back(buffer);
     return buffer;
 }
 
-NO_DISCARD BufferHandle RenderGraphBuilder::Write(BufferHandle resource)
+NO_DISCARD BufferHandle RenderGraphBuilder::WriteBuffer(BufferHandle resource)
 {
     if (mResourceRegistry.GetBufferEntry(resource).transient == false)
         mPassNode.hasSideEffect = true;
@@ -81,14 +81,14 @@ NO_DISCARD BufferHandle RenderGraphBuilder::Write(BufferHandle resource)
     }
     else
     {
-        Read(resource);
-        auto clone = mResourceRegistry.Clone(resource);
+        ReadBuffer(resource);
+        auto clone = mResourceRegistry.CloneBuffer(resource);
         mPassNode.bufferWrites.emplace_back(clone);
         return clone;
     }
 }
 
-BufferHandle RenderGraphBuilder::Read(BufferHandle resource)
+BufferHandle RenderGraphBuilder::ReadBuffer(BufferHandle resource)
 {
     ::Read(mPassNode.bufferReads, resource);
     return resource;

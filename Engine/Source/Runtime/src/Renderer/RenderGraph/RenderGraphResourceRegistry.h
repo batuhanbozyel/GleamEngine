@@ -6,7 +6,7 @@
 //
 
 #pragma once
-#include "RenderGraphNode.h"
+#include "RenderGraphResourceEntry.h"
 
 namespace Gleam {
 
@@ -22,65 +22,68 @@ class RenderGraphResourceRegistry
     
 public:
     
-    const Buffer* GetBuffer(BufferHandle buffer) const
+    void Clear()
     {
-        const auto& node = mBufferNodes[buffer];
-        return mBufferEntries[node.resource].buffer.get();
+        mRenderTextureNodes.clear();
+        mRenderTextureEntries.clear();
+        
+        mBufferNodes.clear();
+        mBufferEntries.clear();
     }
     
-    const RenderTexture* GetRenderTexture(RenderTextureHandle renderTexture) const
+    const RefCounted<Buffer>& GetBuffer(BufferHandle buffer) const
+    {
+        const auto& node = mBufferNodes[buffer];
+        return mBufferEntries[node.resource].buffer;
+    }
+    
+    const RefCounted<RenderTexture>& GetRenderTexture(RenderTextureHandle renderTexture) const
     {
         const auto& node = mRenderTextureNodes[renderTexture];
-        return mRenderTextureEntries[node.resource].renderTexture.get();
+        return mRenderTextureEntries[node.resource].renderTexture;
     }
     
 private:
     
-    NO_DISCARD RenderTextureHandle Create(const RenderTextureDescriptor& descriptor)
+    NO_DISCARD RenderTextureHandle CreateRT(const TextureDescriptor& descriptor)
     {
-        RenderTextureHandle resource;
-        resource.uniqueId = static_cast<uint32_t>(mRenderTextureEntries.size());
+        RenderTextureHandle resource(static_cast<uint32_t>(mRenderTextureEntries.size()));
         mRenderTextureEntries.emplace_back(descriptor, resource, kInitialResourceVersion);
         
-        RenderTextureHandle node;
-        node.uniqueId = static_cast<uint32_t>(mRenderTextureNodes.size());
-        mRenderTextureNodes.emplace_back(node.uniqueId, resource, kInitialResourceVersion);
+        RenderTextureHandle node(static_cast<uint32_t>(mRenderTextureNodes.size()));
+        mRenderTextureNodes.emplace_back(node, resource, kInitialResourceVersion);
         return node;
     }
     
-    NO_DISCARD RenderTextureHandle Clone(RenderTextureHandle resource)
+    NO_DISCARD RenderTextureHandle CloneRT(RenderTextureHandle resource)
     {
         const auto& node = mRenderTextureNodes[resource];
         auto& entry = mRenderTextureEntries[node.resource];
         entry.version++;
         
-        RenderTextureHandle clone;
-        clone.uniqueId = static_cast<uint32_t>(mRenderTextureNodes.size());
-        mRenderTextureNodes.emplace_back(clone.uniqueId, node.resource, entry.version);
+        RenderTextureHandle clone(static_cast<uint32_t>(mRenderTextureNodes.size()));
+        mRenderTextureNodes.emplace_back(clone, node.resource, entry.version);
         return clone;
     }
     
-    NO_DISCARD BufferHandle Create(const BufferDescriptor& descriptor)
+    NO_DISCARD BufferHandle CreateBuffer(const BufferDescriptor& descriptor)
     {
-        BufferHandle resource;
-        resource.uniqueId = static_cast<uint32_t>(mBufferEntries.size());
+        BufferHandle resource(static_cast<uint32_t>(mBufferEntries.size()));
         mBufferEntries.emplace_back(descriptor, resource, kInitialResourceVersion);
         
-        BufferHandle node;
-        node.uniqueId = static_cast<uint32_t>(mBufferNodes.size());
-        mBufferNodes.emplace_back(node.uniqueId, resource, kInitialResourceVersion);
+        BufferHandle node(static_cast<uint32_t>(mBufferNodes.size()));
+        mBufferNodes.emplace_back(node, resource, kInitialResourceVersion);
         return node;
     }
     
-    NO_DISCARD BufferHandle Clone(BufferHandle resource)
+    NO_DISCARD BufferHandle CloneBuffer(BufferHandle resource)
     {
         const auto& node = mBufferNodes[resource];
         auto& entry = mBufferEntries[node.resource];
         entry.version++;
         
-        BufferHandle clone;
-        clone.uniqueId = static_cast<uint32_t>(mBufferNodes.size());
-        mBufferNodes.emplace_back(clone.uniqueId, node.resource, entry.version);
+        BufferHandle clone(static_cast<uint32_t>(mBufferNodes.size()));
+        mBufferNodes.emplace_back(clone, node.resource, entry.version);
         return clone;
     }
     
@@ -89,7 +92,7 @@ private:
         return mRenderTextureNodes[resource];
     }
     
-    const RenderGraphRenderTextureEntry& GetRenderTextureEntry(RenderGraphResource resource) const
+    RenderGraphRenderTextureEntry& GetRenderTextureEntry(RenderGraphResource resource)
     {
         const auto& node = mRenderTextureNodes[resource];
         return mRenderTextureEntries[node.resource];
@@ -100,7 +103,7 @@ private:
         return mBufferNodes[resource];
     }
     
-    const RenderGraphBufferEntry& GetBufferEntry(RenderGraphResource resource) const
+    RenderGraphBufferEntry& GetBufferEntry(RenderGraphResource resource)
     {
         const auto& node = mBufferNodes[resource];
         return mBufferEntries[node.resource];

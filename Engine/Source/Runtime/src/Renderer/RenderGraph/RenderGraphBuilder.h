@@ -13,18 +13,18 @@ public:
     RenderGraphBuilder(RenderPassNode& node, RenderGraphResourceRegistry& registry);
 
     // RenderTexure
-    NO_DISCARD RenderTextureHandle Create(const RenderTextureDescriptor& descriptor);
+    NO_DISCARD RenderTextureHandle CreateRenderTexture(const TextureDescriptor& descriptor);
     
-    NO_DISCARD RenderTextureHandle Write(RenderTextureHandle resource);
+    NO_DISCARD RenderTextureHandle WriteRenderTexture(RenderTextureHandle resource);
     
     RenderTextureHandle Read(RenderTextureHandle resource);
     
     // Buffer
-    NO_DISCARD BufferHandle Create(const BufferDescriptor& descriptor);
+    NO_DISCARD BufferHandle CreateBuffer(const BufferDescriptor& descriptor);
 
-    NO_DISCARD BufferHandle Write(BufferHandle resource);
+    NO_DISCARD BufferHandle WriteBuffer(BufferHandle resource);
     
-    BufferHandle Read(BufferHandle resource);
+    BufferHandle ReadBuffer(BufferHandle resource);
 
 private:
 	

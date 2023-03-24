@@ -1,59 +1,40 @@
 #pragma once
-#include "Buffer.h"
-#include "Texture.h"
 
 namespace Gleam {
 
-struct RenderGraphResource
+class RenderGraphResource
 {
-    static const RenderGraphResource invalidHandle;
+public:
     
-    uint32_t uniqueId;
+    static const RenderGraphResource nullHandle;
+    
+    explicit constexpr RenderGraphResource(uint32_t uniqueId)
+        : uniqueId(uniqueId)
+    {
+        
+    }
     
     operator uint32_t() const
     {
         return uniqueId;
     }
-};
-
-struct BufferHandle : public RenderGraphResource {};
-struct RenderTextureHandle : public RenderGraphResource {};
-
-struct RenderGraphResourceEntry
-{
-    const RenderGraphResource resource;
-    const bool transient;
-    uint32_t version;
     
-    RenderGraphResourceEntry(RenderGraphResource resource, uint32_t version, bool transient)
-        : resource(resource), version(version), transient(transient)
-    {
-        
-    }
+    constexpr RenderGraphResource(const RenderGraphResource& other) = default;
+    FORCE_INLINE constexpr RenderGraphResource& operator=(const RenderGraphResource& other) = default;
+    
+private:
+    
+    uint32_t uniqueId;
+    
 };
 
-struct RenderGraphBufferEntry : public RenderGraphResourceEntry
-{
-    BufferDescriptor descriptor;
-    Scope<Buffer> buffer;
-    
-    RenderGraphBufferEntry(const BufferDescriptor& descriptor, RenderGraphResource resource, uint32_t version, bool transient = true)
-        : RenderGraphResourceEntry(resource, version, transient), descriptor(descriptor)
-    {
-        
-    }
-};
+#define RenderGraphResourceHandle(HandleType) class HandleType : public RenderGraphResource {\
+    public: explicit HandleType(uint32_t uniqueId = nullHandle) : RenderGraphResource(uniqueId) {}\
+    constexpr HandleType(const RenderGraphResource& other) : RenderGraphResource(other) {}\
+    FORCE_INLINE constexpr HandleType& operator=(const RenderGraphResource& other) { RenderGraphResource::operator=(other); return *this; }\
+}
 
-struct RenderGraphRenderTextureEntry : public RenderGraphResourceEntry
-{
-    RenderTextureDescriptor descriptor;
-    Scope<RenderTexture> renderTexture;
-    
-    RenderGraphRenderTextureEntry(const RenderTextureDescriptor& descriptor, RenderGraphResource resource, uint32_t version, bool transient = true)
-        : RenderGraphResourceEntry(resource, version, transient), descriptor(descriptor)
-    {
-        
-    }
-};
+RenderGraphResourceHandle(BufferHandle);
+RenderGraphResourceHandle(RenderTextureHandle);
 
 } // namespace Gleam
