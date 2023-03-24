@@ -31,12 +31,6 @@ struct BoundingBox
         
     }
     
-    constexpr BoundingBox(const Rect& rect)
-        : BoundingBox(rect.min, rect.max)
-    {
-        
-    }
-    
 };
 
 } // namespace Gleam
