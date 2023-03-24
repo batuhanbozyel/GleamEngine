@@ -5,21 +5,8 @@
 #include "MetalPipelineStateManager.h"
 
 #include "Core/Application.h"
-#include "Renderer/RendererContext.h"
 
 using namespace Gleam;
-
-void RendererContext::ConfigureBackend(const TString& appName, const Version& appVersion, const RendererConfig& config)
-{
-    MetalDevice::Init(appName, config);
-    mConfiguration = config;
-    mConfiguration.format = MetalDevice::GetSwapchain().GetFormat();
-}
-
-void RendererContext::DestroyBackend()
-{
-    MetalDevice::Destroy();
-}
 
 void MetalDevice::Init(const TString& appName, const RendererConfig& config)
 {

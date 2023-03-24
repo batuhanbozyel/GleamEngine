@@ -12,13 +12,13 @@ Texture2D::Texture2D(const TextureDescriptor& descriptor)
     MTLTextureDescriptor* textureDesc = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:TextureFormatToMTLPixelFormat(descriptor.format) width:descriptor.size.width height:descriptor.size.height mipmapped:descriptor.useMipMap];
     textureDesc.mipmapLevelCount = mMipMapLevels;
     mHandle = [MetalDevice::GetHandle() newTextureWithDescriptor:textureDesc];
-    mImageView = mHandle;
+    mView = mHandle;
 }
 
 Texture2D::~Texture2D()
 {
     mHandle = nil;
-    mImageView = nil;
+    mView = nil;
 }
 
 void Texture2D::SetPixels(const TArray<uint8_t>& pixels) const
@@ -35,48 +35,44 @@ void Texture2D::SetPixels(const TArray<uint8_t>& pixels) const
     [commandBuffer commit];
 }
 
-RenderTexture::RenderTexture(const RenderTextureDescriptor& descriptor)
-    : Texture(descriptor), mSampleCount(descriptor.sampleCount)
+RenderTexture::RenderTexture(const TextureDescriptor& descriptor)
+    : Texture(descriptor)
 {
-    for (uint32_t i = 0; i < MetalDevice::GetSwapchain().GetMaxFramesInFlight(); i++)
-    {
-        MTLTextureDescriptor* textureDesc = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:TextureFormatToMTLPixelFormat(descriptor.format) width:descriptor.size.width height:descriptor.size.height mipmapped:descriptor.useMipMap];
-        textureDesc.mipmapLevelCount = mMipMapLevels;
-        textureDesc.sampleCount = 1;
-        textureDesc.usage = MTLTextureUsageShaderRead | MTLTextureUsageRenderTarget;
-        textureDesc.storageMode = MTLStorageModePrivate;
-        mHandles[i] = [MetalDevice::GetHandle() newTextureWithDescriptor:textureDesc];
-        mImageViews[i] = mHandles[i];
-    }
+    MTLTextureDescriptor* textureDesc = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:TextureFormatToMTLPixelFormat(descriptor.format) width:descriptor.size.width height:descriptor.size.height mipmapped:descriptor.useMipMap];
+    textureDesc.mipmapLevelCount = mMipMapLevels;
+    textureDesc.sampleCount = 1;
+    textureDesc.usage = MTLTextureUsageShaderRead | MTLTextureUsageRenderTarget;
+    textureDesc.storageMode = MTLStorageModePrivate;
+    mHandle = [MetalDevice::GetHandle() newTextureWithDescriptor:textureDesc];
+    mView = mHandle;
 
-    if (mSampleCount > 1)
+    if (descriptor.sampleCount > 1)
     {
         MTLTextureDescriptor* textureDesc = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:TextureFormatToMTLPixelFormat(descriptor.format) width:descriptor.size.width height:descriptor.size.height mipmapped:false];
         textureDesc.textureType = MTLTextureType2DMultisample;
         textureDesc.mipmapLevelCount = 1;
-        textureDesc.sampleCount = mSampleCount;
+        textureDesc.sampleCount = descriptor.sampleCount;
         textureDesc.usage = MTLTextureUsageRenderTarget;
         textureDesc.storageMode = MTLStorageModeMemoryless;
-        mMultisampleTexture = [MetalDevice::GetHandle() newTextureWithDescriptor:textureDesc];
+        mMultisampleHandle = [MetalDevice::GetHandle() newTextureWithDescriptor:textureDesc];
+        mMultisampleView = mMultisampleHandle;
     }
 }
 
 RenderTexture::~RenderTexture()
 {
-    for (uint32_t i = 0; i < MetalDevice::GetSwapchain().GetMaxFramesInFlight(); i++)
-    {
-        mHandles[i] = nil;
-        mImageViews[i] = nil;
-    }
-    mMultisampleTexture = nil;
+    mView = nil;
+    mHandle = nil;
+    mMultisampleView = nil;
+    mMultisampleHandle = nil;
 }
 
-NativeGraphicsHandle RenderTexture::GetImageView() const
+NativeGraphicsHandle RenderTexture::GetRenderSurface() const
 {
-    if (mMultisampleTexture != nil)
-        return mMultisampleTexture;
+    if (mMultisampleHandle != nil)
+        return mMultisampleHandle;
 
-    return mImageViews[MetalDevice::GetSwapchain().GetFrameIndex()];
+    return mHandle;
 }
 
 #endif

@@ -26,10 +26,6 @@ public:
     TextureFormat GetFormat() const;
 
 	CAMetalLayer* GetHandle() const;
-
-	dispatch_semaphore_t GetImageAcquireSemaphore() const;
-
-	dispatch_semaphore_t GetImageReleaseSemaphore() const;
     
     const Size& GetSize() const;
 

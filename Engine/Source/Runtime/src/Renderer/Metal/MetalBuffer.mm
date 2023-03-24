@@ -6,27 +6,28 @@
 
 using namespace Gleam;
 
-void Buffer::Allocate()
+Buffer::Buffer(const BufferDescriptor& descriptor)
+    : mDescriptor(descriptor)
 {
-    switch (mMemoryType)
+    switch (descriptor.memoryType)
     {
         case MemoryType::Static:
         {
-            mHandle = [MetalDevice::GetHandle() newBufferWithLength:mSize options:MTLResourceStorageModePrivate];
+            mHandle = [MetalDevice::GetHandle() newBufferWithLength:descriptor.size options:MTLResourceStorageModePrivate];
             break;
         }
         case MemoryType::Dynamic:
         {
 #if defined(PLATFORM_MACOS)
-            mHandle = [MetalDevice::GetHandle() newBufferWithLength:mSize options:MTLResourceStorageModeManaged];
+            mHandle = [MetalDevice::GetHandle() newBufferWithLength:descriptor.size options:MTLResourceStorageModeManaged];
 #elif defined(PLATFORM_IOS)
-            mHandle = [MetalDevice::GetHandle() newBufferWithLength:mSize options:MTLResourceStorageModeShared];
+            mHandle = [MetalDevice::GetHandle() newBufferWithLength:descriptor.size options:MTLResourceStorageModeShared];
 #endif
             break;
         }
         case MemoryType::Stream:
         {
-            mHandle = [MetalDevice::GetHandle() newBufferWithLength:mSize options:MTLResourceStorageModeShared];
+            mHandle = [MetalDevice::GetHandle() newBufferWithLength:descriptor.size options:MTLResourceStorageModeShared];
             break;
         }
         default:
@@ -36,14 +37,20 @@ void Buffer::Allocate()
         }
     }
     
-    if (mMemoryType != MemoryType::Static)
+    if (mDescriptor.memoryType != MemoryType::Static)
     {
         mContents = [id<MTLBuffer>(mHandle) contents];
     }
 }
 
-void Buffer::Free()
+Buffer::~Buffer()
 {
     mHandle = nil;
+    
+    if (mDescriptor.memoryType != MemoryType::Static)
+    {
+        mContents = nullptr;
+    }
 }
+
 #endif

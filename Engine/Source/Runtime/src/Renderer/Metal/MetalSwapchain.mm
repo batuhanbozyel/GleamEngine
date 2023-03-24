@@ -57,8 +57,11 @@ void MetalSwapchain::Destroy()
 
 id<CAMetalDrawable> MetalSwapchain::AcquireNextDrawable()
 {
-    dispatch_semaphore_wait(mImageAcquireSemaphore, DISPATCH_TIME_FOREVER);
-    mDrawable = [mHandle nextDrawable];
+    if (mDrawable == nil)
+    {
+        dispatch_semaphore_wait(mImageAcquireSemaphore, DISPATCH_TIME_FOREVER);
+        mDrawable = [mHandle nextDrawable];
+    }
     return mDrawable;
 }
 
@@ -74,6 +77,8 @@ void MetalSwapchain::Present(id<MTLCommandBuffer> commandBuffer)
     UpdateSize();
 
     mCurrentFrameIndex = (mCurrentFrameIndex + 1) % mMaxFramesInFlight;
+    
+    mDrawable = nil;
 }
 
 void MetalSwapchain::UpdateSize()
@@ -94,21 +99,6 @@ TextureFormat MetalSwapchain::GetFormat() const
 CAMetalLayer* MetalSwapchain::GetHandle() const
 {
     return mHandle;
-}
-
-id<CAMetalDrawable> MetalSwapchain::GetDrawable() const
-{
-    return mDrawable;
-}
-
-dispatch_semaphore_t MetalSwapchain::GetImageAcquireSemaphore() const
-{
-    return mImageAcquireSemaphore;
-}
-
-dispatch_semaphore_t MetalSwapchain::GetImageReleaseSemaphore() const
-{
-    return mImageAcquireSemaphore;
 }
 
 const Gleam::Size& MetalSwapchain::GetSize() const
