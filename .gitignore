@@ -42,6 +42,7 @@
 # XCode files and folder
 **.xcworkspace
 **.xcodeproj
+**.DS_STORE
 
 # Binaries
 **/bin/
