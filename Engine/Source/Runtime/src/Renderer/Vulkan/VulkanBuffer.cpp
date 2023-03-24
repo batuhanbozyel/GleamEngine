@@ -6,13 +6,14 @@
 
 using namespace Gleam;
 
-void Buffer::Allocate()
+Buffer::Buffer(const BufferDescriptor& descriptor)
+    : mDescriptor(descriptor)
 {
 	VkBufferCreateInfo createInfo{ VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
-	createInfo.size = mSize;
-	createInfo.usage = BufferUsageToVkBufferUsage(mUsage);
+	createInfo.size = descriptor.size;
+	createInfo.usage = BufferUsageToVkBufferUsage(descriptor.usage);
 
-	if (mMemoryType == MemoryType::Static)
+	if (descriptor.memoryType == MemoryType::Static)
 	{
 		createInfo.usage |= VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
 	}
@@ -26,7 +27,7 @@ void Buffer::Allocate()
 	VkMemoryAllocateInfo allocateInfo{ VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
 	allocateInfo.allocationSize = memoryRequirements.size;
 
-	switch (mMemoryType)
+	switch (descriptor.memoryType)
 	{
 		case MemoryType::Static:
 		{
@@ -53,13 +54,13 @@ void Buffer::Allocate()
 	VK_CHECK(vkAllocateMemory(VulkanDevice::GetHandle(), &allocateInfo, nullptr, As<VkDeviceMemory*>(&mMemory)));
 	VK_CHECK(vkBindBufferMemory(VulkanDevice::GetHandle(), As<VkBuffer>(mHandle), As<VkDeviceMemory>(mMemory), 0));
 
-	if (mMemoryType != MemoryType::Static)
+	if (descriptor.memoryType != MemoryType::Static)
 	{
-		VK_CHECK(vkMapMemory(VulkanDevice::GetHandle(), As<VkDeviceMemory>(mMemory), 0, mSize, 0, &mContents));
+		VK_CHECK(vkMapMemory(VulkanDevice::GetHandle(), As<VkDeviceMemory>(mMemory), 0, descriptor.size, 0, &mContents));
 	}
 }
 
-void Buffer::Free()
+Buffer::~Buffer()
 {
 	vkDestroyBuffer(VulkanDevice::GetHandle(), As<VkBuffer>(mHandle), nullptr);
 	vkFreeMemory(VulkanDevice::GetHandle(), As<VkDeviceMemory>(mMemory), nullptr);
