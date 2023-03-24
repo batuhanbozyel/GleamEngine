@@ -18,9 +18,9 @@ public:
     
     void Exectute(PolyArray<IRenderer>& renderPipeline) const;
     
-	const RefCounted<Shader>& CreateShader(const TString& entryPoint, ShaderStage stage);
+    RefCounted<RenderTexture> GetSwapchainTarget() const;
     
-    const RefCounted<RenderTexture>& GetSwapchainTarget() const;
+	const RefCounted<Shader>& CreateShader(const TString& entryPoint, ShaderStage stage);
 
 	const RendererConfig& GetConfiguration() const;
 

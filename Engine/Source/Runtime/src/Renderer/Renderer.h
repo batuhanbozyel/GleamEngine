@@ -7,6 +7,8 @@
 
 #pragma once
 #include "ShaderTypes.h"
+#include "RenderPassDescriptor.h"
+#include "PipelineStateDescriptor.h"
 #include "RenderGraph/RenderGraph.h"
 
 namespace Gleam {
@@ -16,9 +18,8 @@ class RendererContext;
 
 struct RenderingData
 {
-    RenderTextureHandle colorTarget = { RenderGraphResource::invalidHandle };
-    RenderTextureHandle depthTarget = { RenderGraphResource::invalidHandle };
-    BufferHandle cameraBuffer;
+    RenderTextureHandle colorTarget;
+    RenderTextureHandle depthTarget;
 };
 
 class IRenderer

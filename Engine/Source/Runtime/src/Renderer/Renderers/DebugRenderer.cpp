@@ -5,7 +5,6 @@
 #include "Renderer/CommandBuffer.h"
 #include "Renderer/RendererContext.h"
 #include "Renderer/RendererBindingTable.h"
-#include "Renderer/PipelineStateDescriptor.h"
 
 #include "Core/Application.h"
 
@@ -65,13 +64,13 @@ void DebugRenderer::AddRenderPasses(RenderGraph& graph, const RenderingData& ren
 		descriptor.size = mDebugVertices.size() * sizeof(DebugVertex);
 		descriptor.usage = BufferUsage::VertexBuffer;
 		descriptor.memoryType = MemoryType::Static;
-		passData.vertexBuffer = builder.Create(descriptor);
-		passData.vertexBuffer = builder.Write(passData.vertexBuffer);
+		passData.vertexBuffer = builder.CreateBuffer(descriptor);
+		passData.vertexBuffer = builder.WriteBuffer(passData.vertexBuffer);
         
 		descriptor.usage = BufferUsage::StagingBuffer;
 		descriptor.memoryType = MemoryType::Stream;
-		passData.stagingBuffer = builder.Create(descriptor);
-        passData.stagingBuffer = builder.Write(passData.stagingBuffer);
+		passData.stagingBuffer = builder.CreateBuffer(descriptor);
+        passData.stagingBuffer = builder.WriteBuffer(passData.stagingBuffer);
 	},
 	[this](const RenderGraphContext& renderGraphContext, const CopyPassData& passData)
 	{
@@ -79,7 +78,7 @@ void DebugRenderer::AddRenderPasses(RenderGraph& graph, const RenderingData& ren
         auto vertexBuffer = renderGraphContext.registry->GetBuffer(passData.vertexBuffer);
         auto stagingBuffer = renderGraphContext.registry->GetBuffer(passData.stagingBuffer);
         stagingBuffer->SetData(mDebugVertices.data(), mDebugVertices.size() * sizeof(DebugVertex));
-		renderGraphContext.cmd->CopyBuffer(stagingBuffer->GetHandle(), vertexBuffer->GetHandle(), stagingBuffer->GetSize());
+		renderGraphContext.cmd->CopyBuffer(stagingBuffer->GetHandle(), vertexBuffer->GetHandle(), stagingBuffer->GetDescriptor().size);
 	});
 
 	struct DrawPassData
@@ -90,18 +89,19 @@ void DebugRenderer::AddRenderPasses(RenderGraph& graph, const RenderingData& ren
 
 	graph.AddRenderPass<DrawPassData>("DebugRenderer::DrawPass", [&](RenderGraphBuilder& builder, DrawPassData& passData)
 	{
-		passData.vertexBuffer = copyPass.vertexBuffer;
-		builder.Read(passData.vertexBuffer);
-
-		passData.renderTarget = renderData.colorTarget;
-        passData.renderTarget = builder.Write(passData.renderTarget);
+        passData.vertexBuffer = builder.ReadBuffer(copyPass.vertexBuffer);
+        passData.renderTarget = builder.WriteRenderTexture(renderData.colorTarget);
 	},
-	[this, &renderData](const RenderGraphContext& renderGraphContext, const DrawPassData& passData)
+	[this](const RenderGraphContext& renderGraphContext, const DrawPassData& passData)
 	{
 		// Start rendering
-        auto vertexBuffer = renderGraphContext.registry->GetBuffer(passData.vertexBuffer);
-        auto cameraBuffer = renderGraphContext.registry->GetBuffer(renderData.cameraBuffer);
-		renderGraphContext.cmd->SetVertexBuffer(*cameraBuffer, 0, RendererBindingTable::CameraBuffer);
+        AttachmentDescriptor attachmentDesc;
+        attachmentDesc.texture = renderGraphContext.registry->GetRenderTexture(passData.renderTarget);
+        
+        RenderPassDescriptor renderPassDesc;
+        renderPassDesc.size = attachmentDesc.texture->GetDescriptor().size;
+        renderPassDesc.colorAttachments.emplace_back(attachmentDesc);
+        renderGraphContext.cmd->BeginRenderPass(renderPassDesc);
         
         CameraUniforms uniforms;
         uniforms.viewMatrix = mViewMatrix;
@@ -109,6 +109,7 @@ void DebugRenderer::AddRenderPasses(RenderGraph& graph, const RenderingData& ren
         uniforms.viewProjectionMatrix = mViewProjectionMatrix;
         renderGraphContext.cmd->SetPushConstant(uniforms, ShaderStage_Vertex | ShaderStage_Fragment);
 		
+        auto vertexBuffer = renderGraphContext.registry->GetBuffer(passData.vertexBuffer);
 		if (!mDepthLines.empty())
 		{
             renderGraphContext.cmd->SetVertexBuffer(*vertexBuffer, mDepthLineBufferOffset, RendererBindingTable::Buffer0);
@@ -138,15 +139,15 @@ void DebugRenderer::AddRenderPasses(RenderGraph& graph, const RenderingData& ren
 
 		if (!mDebugMeshes.empty())
 			RenderMeshes(renderGraphContext.cmd, mDebugMeshes, false);
-
-		// clear after rendering
-		mLines.clear();
-		mDepthLines.clear();
-		mTriangles.clear();
-		mDepthTriangles.clear();
-		mDebugVertices.clear();
+        
+        // clear after rendering
+        mLines.clear();
+        mDepthLines.clear();
+        mTriangles.clear();
+        mDepthTriangles.clear();
+        mDebugVertices.clear();
         mDebugMeshes.clear();
-		mDepthDebugMeshes.clear();
+        mDepthDebugMeshes.clear();
 	});
 }
 
