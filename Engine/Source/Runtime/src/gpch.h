@@ -33,6 +33,7 @@
 #include "Container/Pointer.h"
 #include "Container/String.h"
 #include "Container/Array.h"
+#include "Container/Stack.h"
 #include "Container/Hash.h"
 #include "Container/AnyArray.h"
 #include "Container/PolyArray.h"
