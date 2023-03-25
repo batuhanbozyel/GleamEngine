@@ -52,7 +52,10 @@ struct RenderPassNode : public RenderGraphNode
     RenderPassNode(uint32_t uniqueId, const TStringView name, RenderFunc<PassData>&& execute)
         : RenderGraphNode(uniqueId), name(name), data(std::make_any<PassData>())
     {
-        callback = std::bind(execute, std::placeholders::_1, std::any_cast<const PassData&>(data));
+        callback = [execute = move(execute), this](const RenderGraphContext& renderGraphContext)
+        {
+            std::invoke(execute, renderGraphContext, std::any_cast<const PassData&>(data));
+        };
     }
     
     bool isCulled() const

@@ -47,17 +47,16 @@ NO_DISCARD RenderTextureHandle RenderGraphBuilder::WriteRenderTexture(RenderText
     }
     else
     {
-        Read(resource);
+        ReadRenderTexture(resource);
         auto clone = mResourceRegistry.CloneRT(resource);
         mPassNode.renderTextureWrites.emplace_back(clone);
         return clone;
     }
 }
 
-RenderTextureHandle RenderGraphBuilder::Read(RenderTextureHandle resource)
+RenderTextureHandle RenderGraphBuilder::ReadRenderTexture(RenderTextureHandle resource)
 {
-    ::Read(mPassNode.renderTextureReads, resource);
-    return resource;
+    return Read(mPassNode.renderTextureReads, resource);
 }
 
 NO_DISCARD BufferHandle RenderGraphBuilder::CreateBuffer(const BufferDescriptor& descriptor)
@@ -90,6 +89,5 @@ NO_DISCARD BufferHandle RenderGraphBuilder::WriteBuffer(BufferHandle resource)
 
 BufferHandle RenderGraphBuilder::ReadBuffer(BufferHandle resource)
 {
-    ::Read(mPassNode.bufferReads, resource);
-    return resource;
+    return Read(mPassNode.bufferReads, resource);
 }

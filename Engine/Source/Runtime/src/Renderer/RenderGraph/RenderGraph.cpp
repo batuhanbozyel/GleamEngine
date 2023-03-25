@@ -1,5 +1,6 @@
 #include "gpch.h"
 #include "RenderGraph.h"
+#include "Renderer/CommandBuffer.h"
 
 using namespace Gleam;
 
@@ -74,7 +75,7 @@ void RenderGraph::Compile()
     // Calculate resource lifetimes
     for (auto& pass : mPassNodes)
     {
-        if (pass->refCount == 0) continue;
+        if (pass->isCulled()) continue;
         
         // Buffer resources
         for (auto id : pass->bufferCreates)
@@ -100,6 +101,7 @@ void RenderGraph::Execute(const CommandBuffer& cmd)
     context.cmd = &cmd;
     context.registry = &mRegistry;
     
+    cmd.Begin();
     for (auto& pass : mPassNodes)
     {
         if (pass->isCulled())
@@ -136,6 +138,7 @@ void RenderGraph::Execute(const CommandBuffer& cmd)
                 entry.renderTexture.reset();
         }
     }
+    cmd.End();
     
     mRegistry.Clear();
     mPassNodes.clear();
@@ -144,7 +147,7 @@ void RenderGraph::Execute(const CommandBuffer& cmd)
 RenderTextureHandle RenderGraph::ImportBackbuffer(const RefCounted<RenderTexture>& backbuffer)
 {
     RenderTextureHandle resource(static_cast<uint32_t>(mRegistry.mRenderTextureEntries.size()));
-    auto& entry = mRegistry.mRenderTextureEntries.emplace_back(backbuffer->GetDescriptor(), resource, RenderGraphResourceRegistry::kInitialResourceVersion);
+    auto& entry = mRegistry.mRenderTextureEntries.emplace_back(backbuffer->GetDescriptor(), resource, RenderGraphResourceRegistry::kInitialResourceVersion, false);
     entry.renderTexture = backbuffer;
     
     RenderTextureHandle node(static_cast<uint32_t>(mRegistry.mRenderTextureNodes.size()));

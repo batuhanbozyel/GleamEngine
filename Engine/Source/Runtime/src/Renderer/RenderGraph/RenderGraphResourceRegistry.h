@@ -33,12 +33,16 @@ public:
     
     const RefCounted<Buffer>& GetBuffer(BufferHandle buffer) const
     {
+        GLEAM_ASSERT(buffer != RenderGraphResource::nullHandle);
+        
         const auto& node = mBufferNodes[buffer];
         return mBufferEntries[node.resource].buffer;
     }
     
     const RefCounted<RenderTexture>& GetRenderTexture(RenderTextureHandle renderTexture) const
     {
+        GLEAM_ASSERT(renderTexture != RenderGraphResource::nullHandle);
+        
         const auto& node = mRenderTextureNodes[renderTexture];
         return mRenderTextureEntries[node.resource].renderTexture;
     }
@@ -57,6 +61,8 @@ private:
     
     NO_DISCARD RenderTextureHandle CloneRT(RenderTextureHandle resource)
     {
+        GLEAM_ASSERT(resource != RenderGraphResource::nullHandle);
+        
         const auto& node = mRenderTextureNodes[resource];
         auto& entry = mRenderTextureEntries[node.resource];
         entry.version++;
@@ -78,6 +84,8 @@ private:
     
     NO_DISCARD BufferHandle CloneBuffer(BufferHandle resource)
     {
+        GLEAM_ASSERT(resource != RenderGraphResource::nullHandle);
+        
         const auto& node = mBufferNodes[resource];
         auto& entry = mBufferEntries[node.resource];
         entry.version++;
@@ -89,22 +97,30 @@ private:
     
     RenderGraphResourceNode& GetRenderTextureNode(RenderGraphResource resource)
     {
+        GLEAM_ASSERT(resource != RenderGraphResource::nullHandle);
+        
         return mRenderTextureNodes[resource];
     }
     
     RenderGraphRenderTextureEntry& GetRenderTextureEntry(RenderGraphResource resource)
     {
+        GLEAM_ASSERT(resource != RenderGraphResource::nullHandle);
+        
         const auto& node = mRenderTextureNodes[resource];
         return mRenderTextureEntries[node.resource];
     }
     
     RenderGraphResourceNode& GetBufferNode(RenderGraphResource resource)
     {
+        GLEAM_ASSERT(resource != RenderGraphResource::nullHandle);
+        
         return mBufferNodes[resource];
     }
     
     RenderGraphBufferEntry& GetBufferEntry(RenderGraphResource resource)
     {
+        GLEAM_ASSERT(resource != RenderGraphResource::nullHandle);
+        
         const auto& node = mBufferNodes[resource];
         return mBufferEntries[node.resource];
     }

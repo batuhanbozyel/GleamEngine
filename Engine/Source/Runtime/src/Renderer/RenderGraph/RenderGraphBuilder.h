@@ -17,7 +17,7 @@ public:
     
     NO_DISCARD RenderTextureHandle WriteRenderTexture(RenderTextureHandle resource);
     
-    RenderTextureHandle Read(RenderTextureHandle resource);
+    RenderTextureHandle ReadRenderTexture(RenderTextureHandle resource);
     
     // Buffer
     NO_DISCARD BufferHandle CreateBuffer(const BufferDescriptor& descriptor);
