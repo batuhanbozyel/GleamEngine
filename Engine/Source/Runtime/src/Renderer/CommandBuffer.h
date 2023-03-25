@@ -67,10 +67,15 @@ public:
 
 	void DrawIndexed(const NativeGraphicsHandle indexBuffer, IndexType type, uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, uint32_t baseVertex, uint32_t baseInstance) const;
     
+    void CopyBuffer(const Buffer& src, const Buffer& dst) const
+    {
+        auto minSize = Math::Min(src.GetDescriptor().size, dst.GetDescriptor().size);
+        CopyBuffer(src.GetHandle(), dst.GetHandle(), minSize);
+    }
+    
     void CopyBuffer(const NativeGraphicsHandle src, const NativeGraphicsHandle dst, size_t size, uint32_t srcOffset = 0, uint32_t dstOffset = 0) const;
-
-    // Set to Null for swapchain target
-    void Blit(const RenderTexture& texture, const Optional<RenderTexture>& renderTarget) const;
+    
+    void Blit(const RenderTexture& texture, const RenderTexture& renderTarget) const;
 
     void Begin() const;
 
