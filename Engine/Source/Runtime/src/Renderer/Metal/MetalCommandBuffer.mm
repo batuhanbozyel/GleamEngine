@@ -78,7 +78,9 @@ void CommandBuffer::BindGraphicsPipeline(const PipelineStateDescriptor& pipeline
 {
     mHandle->pipelineState = MetalPipelineStateManager::GetGraphicsPipelineState(pipelineDesc, mHandle->renderPassDescriptor, vertexShader, fragmentShader);
     [mHandle->renderCommandEncoder setRenderPipelineState:mHandle->pipelineState.pipeline];
-    [mHandle->renderCommandEncoder setDepthStencilState:mHandle->pipelineState.depthStencil];
+    
+    if (mHandle->renderPassDescriptor.depthAttachment.texture)
+        [mHandle->renderCommandEncoder setDepthStencilState:mHandle->pipelineState.depthStencil];
 }
 
 void CommandBuffer::SetViewport(const Size& size) const
@@ -130,12 +132,10 @@ void CommandBuffer::CopyBuffer(const NativeGraphicsHandle src, const NativeGraph
     [blitCommandEncoder endEncoding];
 }
 
-void CommandBuffer::Blit(const RenderTexture& texture, const Optional<RenderTexture>& target) const
+void CommandBuffer::Blit(const RenderTexture& texture, const RenderTexture& target) const
 {
-    bool swapchainTarget = !target.has_value();
     id<MTLBlitCommandEncoder> blitCommandEncoder = [mHandle->commandBuffer blitCommandEncoder];
-    id targetTexture = swapchainTarget ? MetalDevice::GetSwapchain().AcquireNextDrawable().texture : target.value().GetHandle();
-    [blitCommandEncoder copyFromTexture:texture.GetHandle() toTexture:targetTexture];
+    [blitCommandEncoder copyFromTexture:texture.GetHandle() toTexture:target.GetHandle()];
     [blitCommandEncoder endEncoding];
 }
 

@@ -199,5 +199,21 @@ static constexpr MTLCompareFunction CompareFunctionToMTLCompareFunction(CompareF
     }
 }
 
+static constexpr MTLStencilOperation StencilOpToMTLStencilOperation(StencilOp stencilOp)
+{
+    switch (stencilOp)
+    {
+        case StencilOp::Keep: return MTLStencilOperationKeep;
+        case StencilOp::Zero: return MTLStencilOperationZero;
+        case StencilOp::Replace: return MTLStencilOperationReplace;
+        case StencilOp::IncrementClamp: return MTLStencilOperationIncrementClamp;
+        case StencilOp::DecrementClamp: return MTLStencilOperationDecrementClamp;
+        case StencilOp::IncrementWrap: return MTLStencilOperationIncrementWrap;
+        case StencilOp::DecrementWrap: return MTLStencilOperationDecrementWrap;
+        case StencilOp::Invert: return MTLStencilOperationInvert;
+        default: GLEAM_ASSERT(false, "Metal: Unknown stencil operation specified!"); return MTLStencilOperation(~0);
+    }
+}
+
 } // namespace Gleam
 #endif

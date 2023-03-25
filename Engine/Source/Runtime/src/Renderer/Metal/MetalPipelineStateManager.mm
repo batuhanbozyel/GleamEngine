@@ -67,9 +67,21 @@ id<MTLDepthStencilState> MetalPipelineStateManager::CreateDepthStencil(const Pip
     MTLDepthStencilDescriptor* depthStencilDesc = [MTLDepthStencilDescriptor new];
     depthStencilDesc.depthWriteEnabled = pipelineDesc.depthState.writeEnabled;
     depthStencilDesc.depthCompareFunction = CompareFunctionToMTLCompareFunction(pipelineDesc.depthState.compareFunction);
-    /*
-     TODO: Setup stencil state
-     */
+    
+    if (pipelineDesc.stencilState.enabled)
+    {
+        MTLStencilDescriptor* stencilDesc = [MTLStencilDescriptor new];
+        stencilDesc.readMask = pipelineDesc.stencilState.readMask;
+        stencilDesc.writeMask = pipelineDesc.stencilState.writeMask;
+        stencilDesc.stencilCompareFunction = CompareFunctionToMTLCompareFunction(pipelineDesc.stencilState.compareFunction);
+        stencilDesc.depthFailureOperation = StencilOpToMTLStencilOperation(pipelineDesc.stencilState.depthFailOperation);
+        stencilDesc.stencilFailureOperation = StencilOpToMTLStencilOperation(pipelineDesc.stencilState.depthFailOperation);
+        stencilDesc.depthStencilPassOperation = StencilOpToMTLStencilOperation(pipelineDesc.stencilState.passOperation);
+        
+        depthStencilDesc.backFaceStencil = stencilDesc;
+        depthStencilDesc.frontFaceStencil = stencilDesc;
+    }
+    
     id<MTLDepthStencilState> depthStencilState = [MetalDevice::GetHandle() newDepthStencilStateWithDescriptor:depthStencilDesc];
     return depthStencilState;
 }
