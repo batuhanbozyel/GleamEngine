@@ -16,11 +16,7 @@ void RendererContext::Exectute(PolyArray<IRenderer>& renderPipeline) const
         renderer->AddRenderPasses(graph, renderingData);
     
     graph.Compile();
-    
-    mCommandBuffer.Begin();
     graph.Execute(mCommandBuffer);
-    
-    mCommandBuffer.End();
     mCommandBuffer.Present();
 }
 
