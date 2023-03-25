@@ -78,7 +78,7 @@ void DebugRenderer::AddRenderPasses(RenderGraph& graph, const RenderingData& ren
         auto vertexBuffer = renderGraphContext.registry->GetBuffer(passData.vertexBuffer);
         auto stagingBuffer = renderGraphContext.registry->GetBuffer(passData.stagingBuffer);
         stagingBuffer->SetData(mDebugVertices.data(), mDebugVertices.size() * sizeof(DebugVertex));
-		renderGraphContext.cmd->CopyBuffer(stagingBuffer->GetHandle(), vertexBuffer->GetHandle(), stagingBuffer->GetDescriptor().size);
+		renderGraphContext.cmd->CopyBuffer(*stagingBuffer, *vertexBuffer);
 	});
 
 	struct DrawPassData
@@ -103,10 +103,11 @@ void DebugRenderer::AddRenderPasses(RenderGraph& graph, const RenderingData& ren
         renderPassDesc.colorAttachments.emplace_back(attachmentDesc);
         renderGraphContext.cmd->BeginRenderPass(renderPassDesc);
         
-        CameraUniforms uniforms;
-        uniforms.viewMatrix = mViewMatrix;
-        uniforms.projectionMatrix = mProjectionMatrix;
-        uniforms.viewProjectionMatrix = mViewProjectionMatrix;
+        DebugShaderUniforms uniforms;
+        uniforms.camera.viewMatrix = mViewMatrix;
+        uniforms.camera.projectionMatrix = mProjectionMatrix;
+        uniforms.camera.viewProjectionMatrix = mViewProjectionMatrix;
+        uniforms.color = Color::white;
         renderGraphContext.cmd->SetPushConstant(uniforms, ShaderStage_Vertex | ShaderStage_Fragment);
 		
         auto vertexBuffer = renderGraphContext.registry->GetBuffer(passData.vertexBuffer);
@@ -140,6 +141,8 @@ void DebugRenderer::AddRenderPasses(RenderGraph& graph, const RenderingData& ren
 		if (!mDebugMeshes.empty())
 			RenderMeshes(renderGraphContext.cmd, mDebugMeshes, false);
         
+        renderGraphContext.cmd->EndRenderPass();
+        
         // clear after rendering
         mLines.clear();
         mDepthLines.clear();
@@ -158,11 +161,6 @@ void DebugRenderer::RenderPrimitive(const CommandBuffer* cmd, uint32_t primitive
 	pipelineState.depthState.writeEnabled = depthTest;
 	cmd->BindGraphicsPipeline(pipelineState, mPrimitiveVertexShader, mFragmentShader);
 
-    DebugShaderUniforms uniforms;
-    uniforms.modelMatrix = Matrix4::identity;
-    uniforms.color = Color::white;
-    cmd->SetPushConstant(uniforms, ShaderStage_Fragment);
-
     cmd->Draw(primitiveCount * Utils::PrimitiveTopologyVertexCount(topology));
 }
 
@@ -179,6 +177,9 @@ void DebugRenderer::RenderMeshes(const CommandBuffer* cmd, const TArray<DebugMes
 		cmd->SetVertexBuffer(*meshBuffer.GetPositionBuffer(), 0, RendererBindingTable::Buffer0);
 
 		DebugShaderUniforms uniforms;
+        uniforms.camera.viewMatrix = mViewMatrix;
+        uniforms.camera.projectionMatrix = mProjectionMatrix;
+        uniforms.camera.viewProjectionMatrix = mViewProjectionMatrix;
 		uniforms.modelMatrix = debugMesh.transform;
 		uniforms.color = debugMesh.color;
 		cmd->SetPushConstant(uniforms, ShaderStage_Vertex | ShaderStage_Fragment);

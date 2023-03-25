@@ -16,9 +16,7 @@ class Application;
 template <typename T>
 concept RendererType = std::is_base_of<IRenderer, T>::value;
 
-#define GLEAM_VIEW_CLASS(view) view(RendererContext* rendererContext) : View(rendererContext) {}\
-    view(const view&) = default;\
-    view& operator=(const view&) = default;
+#define GLEAM_VIEW_CLASS(view) view(RendererContext* rendererContext) : View(rendererContext) {}
 
 class View
 {
@@ -65,6 +63,17 @@ public:
     {
 		return mRenderPipeline.contains<T>();
     }
+    
+    void Resize(const Size& size)
+    {
+        mRect.size = size;
+        // TODO: maybe publish an event?
+    }
+    
+    const Size& GetSize() const
+    {
+        return mRect.size;
+    }
 
 protected:
 
@@ -80,6 +89,8 @@ protected:
 
 private:
 
+    Rect mRect;
+    
 	PolyArray<IRenderer> mRenderPipeline;
     
     RendererContext* mRendererContext = nullptr;
