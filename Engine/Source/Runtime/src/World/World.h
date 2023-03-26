@@ -1,11 +1,11 @@
 #pragma once
-#include "System.h"
 #include "EntityManager.h"
+#include "ComponentSystem.h"
 
 namespace Gleam {
 
 template <typename T>
-concept ComponentSystemType = std::is_base_of<ISystem, T>::value;
+concept ComponentSystemType = std::is_base_of<ComponentSystem, T>::value;
 
 class World final
 {
@@ -72,7 +72,7 @@ public:
 private:
 
 	TString mName;
-    PolyArray<ISystem> mSystemManager;
+    PolyArray<ComponentSystem> mSystemManager;
 	EntityManager mEntityManager;
 
 };

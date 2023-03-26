@@ -5,13 +5,13 @@ namespace Gleam {
 class World;
 class EntityManager;
 
-class ISystem
+class ComponentSystem
 {
 	friend class World;
     
 public:
     
-    virtual ~ISystem() = default;
+    virtual ~ComponentSystem() = default;
 
 protected:
 
