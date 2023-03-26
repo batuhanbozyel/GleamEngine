@@ -53,7 +53,6 @@ struct CameraUniforms
 
 struct DebugShaderUniforms
 {
-    CameraUniforms camera;
     Matrix4 modelMatrix;
     Color32 color;
 };

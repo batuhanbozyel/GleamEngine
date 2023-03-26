@@ -14,7 +14,7 @@ class RendererContext final
 
 public:
     
-    void Exectute(PolyArray<IRenderer>& renderPipeline) const;
+    void Execute() const;
     
     RefCounted<RenderTexture> GetSwapchainTarget() const;
     

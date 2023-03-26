@@ -6,7 +6,7 @@
 #include "Renderer/RendererContext.h"
 #include "Renderer/RendererBindingTable.h"
 
-#include "Core/Application.h"
+#include "Core/Game.h"
 
 using namespace Gleam;
 
@@ -52,44 +52,53 @@ void DebugRenderer::AddRenderPasses(RenderGraph& graph, const RenderingData& ren
 	if (mDebugVertices.empty())
 		return;
 
-	struct CopyPassData
+	struct UpdatePassData
 	{
 		BufferHandle vertexBuffer;
-        BufferHandle stagingBuffer;
+        BufferHandle cameraBuffer;
 	};
-
-	const auto& copyPass = graph.AddRenderPass<CopyPassData>("DebugRenderer::CopyPass", [&](RenderGraphBuilder& builder, CopyPassData& passData)
+    
+	const auto& updatePass = graph.AddRenderPass<UpdatePassData>("DebugRenderer::UpdatePass", [&](RenderGraphBuilder& builder, UpdatePassData& passData)
 	{
 		BufferDescriptor descriptor;
 		descriptor.size = mDebugVertices.size() * sizeof(DebugVertex);
 		descriptor.usage = BufferUsage::VertexBuffer;
-		descriptor.memoryType = MemoryType::Static;
+		descriptor.memoryType = MemoryType::Stream;
 		passData.vertexBuffer = builder.CreateBuffer(descriptor);
 		passData.vertexBuffer = builder.WriteBuffer(passData.vertexBuffer);
         
-		descriptor.usage = BufferUsage::StagingBuffer;
-		descriptor.memoryType = MemoryType::Stream;
-		passData.stagingBuffer = builder.CreateBuffer(descriptor);
-        passData.stagingBuffer = builder.WriteBuffer(passData.stagingBuffer);
+        descriptor.size = sizeof(CameraUniforms);
+        descriptor.usage = BufferUsage::UniformBuffer;
+        descriptor.memoryType = MemoryType::Stream;
+        passData.cameraBuffer = builder.CreateBuffer(descriptor);
+        passData.cameraBuffer = builder.WriteBuffer(passData.cameraBuffer);
 	},
-	[this](const RenderGraphContext& renderGraphContext, const CopyPassData& passData)
+	[this](const RenderGraphContext& renderGraphContext, const UpdatePassData& passData)
 	{
 		// Update buffer
         auto vertexBuffer = renderGraphContext.registry->GetBuffer(passData.vertexBuffer);
-        auto stagingBuffer = renderGraphContext.registry->GetBuffer(passData.stagingBuffer);
-        stagingBuffer->SetData(mDebugVertices.data(), mDebugVertices.size() * sizeof(DebugVertex));
-		renderGraphContext.cmd->CopyBuffer(*stagingBuffer, *vertexBuffer);
+        vertexBuffer->SetData(mDebugVertices.data(), mDebugVertices.size() * sizeof(DebugVertex));
+        
+        CameraUniforms camera;
+        camera.viewMatrix = mViewMatrix;
+        camera.projectionMatrix = mProjectionMatrix;
+        camera.viewProjectionMatrix = mViewProjectionMatrix;
+        
+        auto cameraBuffer = renderGraphContext.registry->GetBuffer(passData.cameraBuffer);
+        cameraBuffer->SetData(&camera, sizeof(CameraUniforms));
 	});
 
 	struct DrawPassData
 	{
 		RenderTextureHandle renderTarget;
 		BufferHandle vertexBuffer;
+        BufferHandle cameraBuffer;
 	};
 
 	graph.AddRenderPass<DrawPassData>("DebugRenderer::DrawPass", [&](RenderGraphBuilder& builder, DrawPassData& passData)
 	{
-        passData.vertexBuffer = builder.ReadBuffer(copyPass.vertexBuffer);
+        passData.vertexBuffer = builder.ReadBuffer(updatePass.vertexBuffer);
+        passData.cameraBuffer = builder.ReadBuffer(updatePass.cameraBuffer);
         passData.renderTarget = builder.WriteRenderTexture(renderData.colorTarget);
 	},
 	[this](const RenderGraphContext& renderGraphContext, const DrawPassData& passData)
@@ -103,14 +112,10 @@ void DebugRenderer::AddRenderPasses(RenderGraph& graph, const RenderingData& ren
         renderPassDesc.colorAttachments.emplace_back(attachmentDesc);
         renderGraphContext.cmd->BeginRenderPass(renderPassDesc);
         
-        DebugShaderUniforms uniforms;
-        uniforms.camera.viewMatrix = mViewMatrix;
-        uniforms.camera.projectionMatrix = mProjectionMatrix;
-        uniforms.camera.viewProjectionMatrix = mViewProjectionMatrix;
-        uniforms.color = Color::white;
-        renderGraphContext.cmd->SetPushConstant(uniforms, ShaderStage_Vertex | ShaderStage_Fragment);
+        const auto& cameraBuffer = renderGraphContext.registry->GetBuffer(passData.cameraBuffer);
+        renderGraphContext.cmd->SetVertexBuffer(*cameraBuffer, 0, RendererBindingTable::CameraBuffer);
 		
-        auto vertexBuffer = renderGraphContext.registry->GetBuffer(passData.vertexBuffer);
+        const auto& vertexBuffer = renderGraphContext.registry->GetBuffer(passData.vertexBuffer);
 		if (!mDepthLines.empty())
 		{
             renderGraphContext.cmd->SetVertexBuffer(*vertexBuffer, mDepthLineBufferOffset, RendererBindingTable::Buffer0);
@@ -177,9 +182,6 @@ void DebugRenderer::RenderMeshes(const CommandBuffer* cmd, const TArray<DebugMes
 		cmd->SetVertexBuffer(*meshBuffer.GetPositionBuffer(), 0, RendererBindingTable::Buffer0);
 
 		DebugShaderUniforms uniforms;
-        uniforms.camera.viewMatrix = mViewMatrix;
-        uniforms.camera.projectionMatrix = mProjectionMatrix;
-        uniforms.camera.viewProjectionMatrix = mViewProjectionMatrix;
 		uniforms.modelMatrix = debugMesh.transform;
 		uniforms.color = debugMesh.color;
 		cmd->SetPushConstant(uniforms, ShaderStage_Vertex | ShaderStage_Fragment);

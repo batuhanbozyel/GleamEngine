@@ -14,7 +14,7 @@ namespace Gleam {
 
 class Input final
 {
-    friend class Application;
+    friend class Game;
     
 public:
     

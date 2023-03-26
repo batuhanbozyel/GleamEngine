@@ -9,6 +9,7 @@
 
 #ifdef USE_METAL_RENDERER
 #include "Renderer/RendererContext.h"
+#include "Renderer/RenderPipeline.h"
 #include "MetalDevice.h"
 
 using namespace Gleam;
@@ -18,6 +19,7 @@ void RendererContext::ConfigureBackend(const TString& appName, const Version& ap
     MetalDevice::Init(appName, config);
     mConfiguration = config;
     mConfiguration.format = MetalDevice::GetSwapchain().GetFormat();
+    RenderPipeline::mRendererContext = this;
 }
 
 void RendererContext::DestroyBackend()
