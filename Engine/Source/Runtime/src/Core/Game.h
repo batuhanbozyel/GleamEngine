@@ -87,6 +87,6 @@ private:
 
 };
 
-Game* CreateApplication();
+Game* CreateGameInstance();
 
 } // namespace Gleam

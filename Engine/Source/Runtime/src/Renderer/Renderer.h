@@ -13,7 +13,7 @@
 
 namespace Gleam {
 
-class View;
+class System;
 class RendererContext;
 
 struct RenderingData
@@ -26,7 +26,6 @@ class IRenderer
 {
 public:
     
-    friend class View;
     friend class RendererContext;
     
     virtual ~IRenderer() = default;

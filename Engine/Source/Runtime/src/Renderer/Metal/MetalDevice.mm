@@ -4,7 +4,7 @@
 #include "MetalDevice.h"
 #include "MetalPipelineStateManager.h"
 
-#include "Core/Application.h"
+#include "Core/Game.h"
 
 using namespace Gleam;
 
@@ -24,7 +24,7 @@ void MetalDevice::Init(const TString& appName, const RendererConfig& config)
 
         // init MTLLibrary
         NSError* error;
-        auto binaryData = IOUtils::ReadBinaryFile(ApplicationInstance.GetDefaultAssetPath().append("PrecompiledShaders.metallib"));
+        auto binaryData = IOUtils::ReadBinaryFile(GameInstance.GetDefaultAssetPath().append("PrecompiledShaders.metallib"));
         mShaderLibrary = [mHandle newLibraryWithData:dispatch_data_create(binaryData.data(), binaryData.size(), nil, DISPATCH_DATA_DESTRUCTOR_DEFAULT) error:&error];
         GLEAM_ASSERT(mShaderLibrary);
 

@@ -5,14 +5,12 @@
 
 namespace Gleam {
 
+class Game;
 struct Version;
-
-class View;
-class Application;
 
 class RendererContext final
 {
-	friend class Application;
+	friend class Game;
 
 public:
     

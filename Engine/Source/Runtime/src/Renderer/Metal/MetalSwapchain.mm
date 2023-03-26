@@ -5,7 +5,7 @@
 #include "MetalUtils.h"
 
 #include "Core/Window.h"
-#include "Core/Application.h"
+#include "Core/Game.h"
 #include "Core/Events/RendererEvent.h"
 #include "Renderer/RendererConfig.h"
 
@@ -17,7 +17,7 @@ using namespace Gleam;
 void MetalSwapchain::Initialize(const TString& appName, const RendererConfig& config)
 {
     // Create surface
-    mSurface = SDL_Metal_CreateView(ApplicationInstance.GetActiveWindow().GetSDLWindow());
+    mSurface = SDL_Metal_CreateView(GameInstance.GetActiveWindow().GetSDLWindow());
     GLEAM_ASSERT(mSurface, "Metal: Surface creation failed!");
     
     mHandle = (__bridge CAMetalLayer*)SDL_Metal_GetLayer(mSurface);

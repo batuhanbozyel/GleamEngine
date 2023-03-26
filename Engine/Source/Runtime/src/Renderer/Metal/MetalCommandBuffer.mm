@@ -4,7 +4,7 @@
 #include "Renderer/CommandBuffer.h"
 #include "MetalPipelineStateManager.h"
 
-#include "Core/Application.h"
+#include "Core/Game.h"
 #include "Renderer/RendererBindingTable.h"
 
 using namespace Gleam;

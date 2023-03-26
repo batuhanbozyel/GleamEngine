@@ -11,7 +11,7 @@ using namespace Gleam;
 Shader::Shader(const TString& entryPoint, ShaderStage stage)
 	: mEntryPoint(entryPoint), mStage(stage)
 {
-	TArray<uint8_t> shaderCode = IOUtils::ReadBinaryFile(ApplicationInstance.GetDefaultAssetPath().append(entryPoint + ".spv"));
+	TArray<uint8_t> shaderCode = IOUtils::ReadBinaryFile(GameInstance.GetDefaultAssetPath().append(entryPoint + ".spv"));
 
 	VkShaderModuleCreateInfo createInfo{ VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO };
 	createInfo.codeSize = shaderCode.size();
