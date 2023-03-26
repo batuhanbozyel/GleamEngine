@@ -1,13 +1,13 @@
 #include "gpch.h"
-#include "Application.h"
+#include "Game.h"
 
 #include "Window.h"
 #include "Input/Input.h"
-#include "Renderer/View.h"
+#include "Renderer/RenderPipeline.h"
 
 using namespace Gleam;
 
-int SDLCALL Application::SDL2_EventCallback(void* data, SDL_Event* e)
+int SDLCALL Game::SDL2_EventCallback(void* data, SDL_Event* e)
 {
 	switch (e->type)
 	{
@@ -57,7 +57,7 @@ int SDLCALL Application::SDL2_EventCallback(void* data, SDL_Event* e)
 	return 0;
 }
 
-Application::Application(const ApplicationProperties& props)
+Game::Game(const ApplicationProperties& props)
 	: mVersion(props.appVersion), mEvent()
 {
 	if (mInstance == nullptr)
@@ -95,7 +95,7 @@ Application::Application(const ApplicationProperties& props)
 	}
 }
 
-void Application::Run()
+void Game::Run()
 {
     Time::Reset();
 	while (mRunning)
@@ -105,68 +105,33 @@ void Application::Run()
         Time::Step();
         Input::Update();
 
-		for (auto view : mViews)
+		for (auto system : mSystems)
 		{
-			view->OnUpdate();
+            system->OnUpdate();
 		}
 
 		bool fixedUpdate = Time::fixedTime <= (Time::time - Time::fixedDeltaTime);
         if (fixedUpdate)
         {
             Time::FixedStep();
-            for (auto view : mViews)
+            for (auto system : mSystems)
             {
-                view->OnFixedUpdate();
+                system->OnFixedUpdate();
             }
         }
-
-        for (auto overlay : mOverlays)
-        {
-            overlay->OnUpdate();
-        }
-
-		if (fixedUpdate)
-		{
-			for (auto overlay : mOverlays)
-			{
-                overlay->OnFixedUpdate();
-			}
-		}
 		
-#ifdef USE_METAL_RENDERER
-		@autoreleasepool
-#endif
-		{
-            for (auto view : mViews)
-            {
-                view->OnRender();
-                mRendererContext.Exectute(view->mRenderPipeline);
-            }
-
-            for (auto overlay : mOverlays)
-            {
-                overlay->OnRender();
-                mRendererContext.Exectute(overlay->mRenderPipeline);
-            }
-        }
+        mRendererContext.Execute();
 	}
 }
 
-Application::~Application()
+Game::~Game()
 {
-	// Destroy overlays
-	for (auto overlay : mOverlays)
+	// Destroy systems
+	for (auto system : mSystems)
 	{
-		overlay->OnDestroy();
+        system->OnDestroy();
 	}
-	mOverlays.clear();
-
-	// Destroy views
-	for (auto view : mViews)
-	{
-		view->OnDestroy();
-	}
-	mViews.clear();
+    mSystems.clear();
 
 	// Destroy renderer
 	mRendererContext.DestroyBackend();
