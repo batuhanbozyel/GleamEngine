@@ -11,34 +11,18 @@ class World final
 {
 public:
 
-	World(const TString& name = "World")
-		: mName(name)
-	{
-		
-	}
+	World(const TString& name = "World");
 
-	void Update()
-	{
-		for (auto system : mSystemManager)
-        {
-            system->OnUpdate(mEntityManager);
-        }
-	}
+	void Update();
 
-	void FixedUpdate()
-	{
-        for (auto system : mSystemManager)
-        {
-            system->OnFixedUpdate(mEntityManager);
-        }
-	}
+	void FixedUpdate();
     
     template<ComponentSystemType T>
     T* AddSystem()
     {
         GLEAM_ASSERT(!HasSystem<T>(), "World already has the system!");
         T* system = mSystemManager.emplace<T>();
-		system->OnCreate();
+		system->OnCreate(mEntityManager);
 		return system;
     }
     
@@ -47,7 +31,7 @@ public:
     {
         GLEAM_ASSERT(HasSystem<T>(), "World does not have the system!");
 		T* system = GetSystem<T>();
-		system->OnDestroy();
+		system->OnDestroy(mEntityManager);
         mSystemManager.erase<T>();
     }
     
@@ -63,17 +47,19 @@ public:
     {
 		return mSystemManager.contains<T>();
     }
-    
-	EntityManager& GetEntityManager()
-	{
-		return mEntityManager;
-	}
+
+	static RefCounted<World> Create()
+    {
+        return CreateRef<World>();
+    }
+
+    static inline RefCounted<World> active = Create();
     
 private:
 
 	TString mName;
+    EntityManager mEntityManager;
     PolyArray<ComponentSystem> mSystemManager;
-	EntityManager mEntityManager;
 
 };
 
