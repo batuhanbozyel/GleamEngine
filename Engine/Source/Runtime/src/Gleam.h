@@ -35,6 +35,7 @@
 #include "Renderer/Mesh.h"
 #include "Renderer/Renderer.h"
 #include "Renderer/CommandBuffer.h"
+#include "Renderer/RenderPipeline.h"
 
 #include "Core/Events/ApplicationEvent.h"
 #include "Core/Events/RendererEvent.h"

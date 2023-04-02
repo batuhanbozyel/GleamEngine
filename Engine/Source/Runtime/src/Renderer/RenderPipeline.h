@@ -34,7 +34,7 @@ public:
     template<RendererType T>
     T* AddRenderer()
     {
-        GLEAM_ASSERT(!HasRenderer<T>(), "View already has the renderer!");
+        GLEAM_ASSERT(!HasRenderer<T>(), "Game already has the renderer!");
         T* renderer = mRenderers.emplace<T>();
         renderer->OnCreate(mRendererContext);
         return renderer;
@@ -43,14 +43,14 @@ public:
     template<RendererType T>
     void RemoveRenderer()
     {
-        GLEAM_ASSERT(HasRenderer<T>(), "View does not have the renderer!");
+        GLEAM_ASSERT(HasRenderer<T>(), "Game does not have the renderer!");
         mRenderers.erase<T>();
     }
     
     template<RendererType T>
     T* GetRenderer()
     {
-        GLEAM_ASSERT(HasRenderer<T>(), "View does not have the renderer!");
+        GLEAM_ASSERT(HasRenderer<T>(), "Game does not have the renderer!");
         return mRenderers.get<T>();
     }
     
@@ -69,10 +69,10 @@ private:
     
     PolyArray<IRenderer> mRenderers;
     
-    static inline RefCounted<RenderPipeline> mPipeline = nullptr;
-    
+    // initialized and set when a Game instance is created
     static inline RendererContext* mRendererContext = nullptr;
     
+    static inline RefCounted<RenderPipeline> mPipeline = CreateRef<RenderPipeline>();
     
 };
 
