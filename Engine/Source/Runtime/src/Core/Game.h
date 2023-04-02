@@ -56,9 +56,9 @@ public:
         return Filesystem::current_path().append("Assets/");
     }
 
-	static Game& GetInstance()
+	static Game* GetInstance()
 	{
-		return *mInstance;
+		return mInstance;
 	}
 
 	Color backgroundColor = Color{0.1f, 0.1f, 0.1f, 1.0f};

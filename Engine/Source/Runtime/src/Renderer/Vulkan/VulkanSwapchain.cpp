@@ -16,7 +16,7 @@ using namespace Gleam;
 
 void VulkanSwapchain::Initialize(const RendererConfig& config)
 {
-	SDL_Window* window = GameInstance.GetActiveWindow().GetSDLWindow();
+	SDL_Window* window = GameInstance->GetActiveWindow().GetSDLWindow();
 	mSampleCount = config.sampleCount;
 
     // Create surface
@@ -154,7 +154,7 @@ void VulkanSwapchain::InvalidateAndCreate()
 	vkDeviceWaitIdle(VulkanDevice::GetHandle());
 	
 	int width, height;
-	SDL_Vulkan_GetDrawableSize(GameInstance.GetActiveWindow().GetSDLWindow(), &width, &height);
+	SDL_Vulkan_GetDrawableSize(GameInstance->GetActiveWindow().GetSDLWindow(), &width, &height);
 	VkExtent2D imageExtent{ static_cast<uint32_t>(width), static_cast<uint32_t>(height) };
 	imageExtent.width = Math::Clamp(imageExtent.width, mMinImageExtent.width, mMaxImageExtent.width);
 	imageExtent.height = Math::Clamp(imageExtent.height, mMinImageExtent.height, mMaxImageExtent.height);

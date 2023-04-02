@@ -1,6 +1,5 @@
 #pragma once
 #include "Gleam.h"
-#include "Game.h"
 
 #if defined(PLATFORM_WINDOWS) || defined(PLATFORM_MACOS) || defined(PLATFORM_IOS)
 Gleam::Game* Gleam::CreateGameInstance();
