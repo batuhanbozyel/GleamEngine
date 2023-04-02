@@ -7,15 +7,23 @@ class EntityManager final
 {    
 public:
 
+	template<typename ComponentType, typename Func>
+	void ForEach(Func&& fn)
+	{
+		mRegistry.view<ComponentType>().each(fn);
+	}
+
 	Entity CreateEntity()
 	{
-		return mRegistry.create();
+		auto entity = mRegistry.create();
+        AddComponent<Transform>(entity);
+        return entity;
 	}
 
 	template<typename ... Types>
 	Entity CreateEntity(Types&& ... components)
 	{
-		Entity entity = mRegistry.create();
+        Entity entity = CreateEntity();
 		(AddComponent<Types>(entity, components), ...);
 		return entity;
 	}
@@ -51,7 +59,7 @@ public:
 	}
 
 	template<typename T>
-	T& GetComponent(Entity entity) const
+	T& GetComponent(Entity entity)
 	{
 		GLEAM_ASSERT(HasComponent<T>(entity), "Entity does not have the component!");
 		return mRegistry.get<T>(entity);
