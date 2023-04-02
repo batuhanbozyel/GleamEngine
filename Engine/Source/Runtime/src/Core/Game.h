@@ -22,6 +22,8 @@ public:
 	virtual ~Game();
 
 	void Run();
+    
+    void Quit();
 
 	template<SystemType T>
 	T* AddSystem()

@@ -3,7 +3,7 @@
 
 #include "Window.h"
 #include "Input/Input.h"
-#include "Renderer/RenderPipeline.h"
+#include "World/World.h"
 
 using namespace Gleam;
 
@@ -104,13 +104,9 @@ void Game::Run()
         
         Time::Step();
         Input::Update();
-
-		for (auto system : mSystems)
-		{
-            system->OnUpdate();
-		}
-
-		bool fixedUpdate = Time::fixedTime <= (Time::time - Time::fixedDeltaTime);
+        
+        // Update engine systems
+        bool fixedUpdate = Time::fixedTime <= (Time::time - Time::fixedDeltaTime);
         if (fixedUpdate)
         {
             Time::FixedStep();
@@ -119,9 +115,26 @@ void Game::Run()
                 system->OnFixedUpdate();
             }
         }
+
+		for (auto system : mSystems)
+		{
+            system->OnUpdate();
+		}
+        
+        // Update world
+        if (fixedUpdate)
+        {
+            World::active->FixedUpdate();
+        }
+        World::active->Update();
 		
         mRendererContext.Execute();
 	}
+}
+
+void Game::Quit()
+{
+    EventDispatcher<AppCloseEvent>::Publish(AppCloseEvent());
 }
 
 Game::~Game()
