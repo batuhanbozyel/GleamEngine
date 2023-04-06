@@ -55,6 +55,16 @@ public:
 	
 };
 
+class TextureCube final : public Texture
+{
+public:
+    
+    TextureCube(const TextureDescriptor& descriptor);
+    
+    ~TextureCube();
+    
+};
+
 class RenderTexture final : public Texture
 {
 public:

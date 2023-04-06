@@ -35,6 +35,24 @@ void Texture2D::SetPixels(const TArray<uint8_t>& pixels) const
     [commandBuffer commit];
 }
 
+TextureCube::TextureCube(const TextureDescriptor& descriptor)
+    : Texture(descriptor)
+{
+    float size = Math::Min(mDescriptor.size.width, mDescriptor.size.height);
+    mDescriptor.size.width = size;
+    mDescriptor.size.height = size;
+    MTLTextureDescriptor* textureDesc = [MTLTextureDescriptor textureCubeDescriptorWithPixelFormat:TextureFormatToMTLPixelFormat(mDescriptor.format) size:size mipmapped:mDescriptor.useMipMap];
+    textureDesc.mipmapLevelCount = mMipMapLevels;
+    mHandle = [MetalDevice::GetHandle() newTextureWithDescriptor:textureDesc];
+    mView = mHandle;
+}
+
+TextureCube::~TextureCube()
+{
+    mHandle = nil;
+    mView = nil;
+}
+
 RenderTexture::RenderTexture(const TextureDescriptor& descriptor)
     : Texture(descriptor)
 {
