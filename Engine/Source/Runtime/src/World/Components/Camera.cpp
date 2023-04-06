@@ -95,7 +95,7 @@ void Camera::SetSize(float size)
     mProjectionMatrixDirty = true;
 }
 
-const Matrix4& Camera::GetViewMatrix()
+const Matrix4& Camera::GetViewMatrix() const
 {
     if (mViewMatrixDirty)
     {
@@ -105,7 +105,7 @@ const Matrix4& Camera::GetViewMatrix()
     return mViewMatrix;
 }
 
-const Matrix4& Camera::GetProjectionMatrix()
+const Matrix4& Camera::GetProjectionMatrix() const
 {
     if (mProjectionMatrixDirty)
     {
@@ -115,13 +115,13 @@ const Matrix4& Camera::GetProjectionMatrix()
     return mProjectionMatrix;
 }
 
-void Camera::RecalculateViewMatrix()
+void Camera::RecalculateViewMatrix() const
 {
     mViewMatrixDirty = false;
     mViewMatrix = Matrix4::LookTo(GetWorldPosition(), ForwardVector(), UpVector());
 }
 
-void Camera::RecalculateProjectionMatrix()
+void Camera::RecalculateProjectionMatrix() const
 {
     mProjectionMatrixDirty = false;
     if (mProjectionType == ProjectionType::Perspective)

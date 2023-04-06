@@ -43,7 +43,7 @@ public:
 
 	void DrawMesh(const Mesh* mesh, const Matrix4& transform, Color32 color, bool depthTest = true);
     
-    void UpdateCamera(Camera& camera);
+    void UpdateCamera(const Camera& camera);
     
     virtual void OnCreate(RendererContext* context) override;
     

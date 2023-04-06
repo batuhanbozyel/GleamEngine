@@ -5,6 +5,8 @@ namespace Gleam {
 class Transform2D
 {
 public:
+    
+    virtual ~Transform2D() = default;
 
     void Translate(const Vector2& translation)
     {

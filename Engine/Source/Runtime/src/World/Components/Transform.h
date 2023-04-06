@@ -6,6 +6,8 @@ class Transform
 {
 public:
 
+    virtual ~Transform() = default;
+    
     void Translate(const Vector3& translation)
     {
         mPosition += translation;
@@ -61,7 +63,7 @@ public:
         mScale = scale;
 	}
 
-    NO_DISCARD FORCE_INLINE const Matrix4& GetTransform()
+    NO_DISCARD FORCE_INLINE const Matrix4& GetTransform() const
     {
         if (mIsTransformDirty)
         {
@@ -112,8 +114,8 @@ private:
     Quaternion mRotation = Quaternion::identity;
     Vector3 mScale = Vector3(1.0f, 1.0f, 1.0f);
 
-    Matrix4 mCachedTransform = Matrix4();
-    bool mIsTransformDirty = true;
+    mutable Matrix4 mCachedTransform = Matrix4();
+    mutable bool mIsTransformDirty = true;
     
 };
 

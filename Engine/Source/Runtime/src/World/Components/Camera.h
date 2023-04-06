@@ -10,7 +10,7 @@ enum class ProjectionType
 	Perspective
 };
 
-class Camera : public Transform
+class Camera final : public Transform
 {
 public:
     
@@ -46,14 +46,14 @@ public:
     
     void SetSize(float size);
     
-    const Matrix4& GetProjectionMatrix();
+    const Matrix4& GetProjectionMatrix() const;
     
-    const Matrix4& GetViewMatrix();
+    const Matrix4& GetViewMatrix() const;
     
 private:
     
-    void RecalculateProjectionMatrix();
-    void RecalculateViewMatrix();
+    void RecalculateProjectionMatrix() const;
+    void RecalculateViewMatrix() const;
     
     // Perspective projection properties
     float mFOV = 60.0f;
@@ -66,13 +66,14 @@ private:
     float mNearPlane = 0.1f;
     float mFarPlane = 1000.0f;
     
-    Matrix4 mViewMatrix;
-    Matrix4 mProjectionMatrix;
 	ProjectionType mProjectionType;
     
+    mutable Matrix4 mViewMatrix;
+    mutable Matrix4 mProjectionMatrix;
+    
     // Update flags
-    bool mViewMatrixDirty = true;
-    bool mProjectionMatrixDirty = true;
+    mutable bool mViewMatrixDirty = true;
+    mutable bool mProjectionMatrixDirty = true;
 };
 
 } // namespace Gleam

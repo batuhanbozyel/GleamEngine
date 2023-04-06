@@ -299,7 +299,7 @@ void DebugRenderer::DrawMesh(const Mesh* mesh, const Matrix4& transform, Color32
         mDebugMeshes.push_back(debugMesh);
 }
 
-void DebugRenderer::UpdateCamera(Camera& camera)
+void DebugRenderer::UpdateCamera(const Camera& camera)
 {
     mViewMatrix = camera.GetViewMatrix();
     mProjectionMatrix = camera.GetProjectionMatrix();
