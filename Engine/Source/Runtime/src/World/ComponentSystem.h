@@ -1,9 +1,9 @@
 #pragma once
+#include "EntityManager.h"
 
 namespace Gleam {
 
 class World;
-class EntityManager;
 
 class ComponentSystem
 {

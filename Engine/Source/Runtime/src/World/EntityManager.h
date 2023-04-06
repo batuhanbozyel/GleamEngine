@@ -6,12 +6,12 @@ namespace Gleam {
 class EntityManager final
 {    
 public:
-
-	template<typename ComponentType, typename Func>
-	void ForEach(Func&& fn)
-	{
-		mRegistry.view<ComponentType>().each(fn);
-	}
+    
+    template<typename ... ComponentTypes, typename ... ExcludeComponents, typename Func>
+    void ForEach(Func&& fn, Exclude<ExcludeComponents...> = {})
+    {
+        mRegistry.view<ComponentTypes..., ExcludeComponents...>().each(fn);
+    }
 
 	Entity CreateEntity()
 	{
