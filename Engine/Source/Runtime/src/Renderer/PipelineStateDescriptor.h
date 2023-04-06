@@ -73,7 +73,7 @@ enum class PrimitiveTopology
 
 struct PipelineStateDescriptor
 {
-    TArray<BlendState, 8> blendStates;
+    BlendState blendState;
     DepthState depthState;
     StencilState stencilState;
     CullMode cullingMode = CullMode::Off;

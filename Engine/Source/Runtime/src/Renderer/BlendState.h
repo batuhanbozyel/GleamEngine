@@ -37,6 +37,7 @@ enum class ColorWriteMask
 
 struct BlendState
 {
+    bool enabled = false;
     BlendOp colorBlendOperation = BlendOp::Add;
     BlendOp alphaBlendOperation = BlendOp::Add;
     BlendMode destinationAlphaBlendMode = BlendMode::Zero;
