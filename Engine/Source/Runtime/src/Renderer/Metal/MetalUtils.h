@@ -215,5 +215,50 @@ static constexpr MTLStencilOperation StencilOpToMTLStencilOperation(StencilOp st
     }
 }
 
+static constexpr MTLBlendFactor BlendModeToMTLBlendFactor(BlendMode blendMode)
+{
+    switch (blendMode)
+    {
+        case BlendMode::Zero: return MTLBlendFactorZero;
+        case BlendMode::One: return MTLBlendFactorOne;
+        case BlendMode::DstColor: return MTLBlendFactorDestinationColor;
+        case BlendMode::SrcColor: return MTLBlendFactorSourceColor;
+        case BlendMode::OneMinusDstColor: return MTLBlendFactorOneMinusDestinationColor;
+        case BlendMode::SrcAlpha: return MTLBlendFactorSourceAlpha;
+        case BlendMode::OneMinusSrcColor: return MTLBlendFactorOneMinusSourceColor;
+        case BlendMode::DstAlpha: return MTLBlendFactorDestinationAlpha;
+        case BlendMode::OneMinusDstAlpha: return MTLBlendFactorOneMinusDestinationAlpha;
+        case BlendMode::SrcAlphaClamp: return MTLBlendFactorSourceAlphaSaturated;
+        case BlendMode::OneMinusSrcAlpha: return MTLBlendFactorOneMinusSourceAlpha;
+        default: GLEAM_ASSERT(false, "Metal: Unknown blend mode specified!"); return MTLBlendFactor(~0);
+    }
+}
+
+static constexpr MTLBlendOperation BlendOpToMTLBlendOperation(BlendOp operation)
+{
+    switch (operation)
+    {
+        case BlendOp::Add: return MTLBlendOperationAdd;
+        case BlendOp::Subtract: return MTLBlendOperationSubtract;
+        case BlendOp::ReverseSubtract: return MTLBlendOperationReverseSubtract;
+        case BlendOp::Min: return MTLBlendOperationMin;
+        case BlendOp::Max: return MTLBlendOperationMax;
+        default: GLEAM_ASSERT(false, "Metal: Unknown blend operation specified!"); return MTLBlendOperation(~0);
+    }
+}
+
+static constexpr MTLColorWriteMask ColorWriteMaskToMTLColorWriteMask(ColorWriteMask mask)
+{
+    switch (mask)
+    {
+        case ColorWriteMask::Alpha: return MTLColorWriteMaskAlpha;
+        case ColorWriteMask::Blue: return MTLColorWriteMaskBlue;
+        case ColorWriteMask::Green: return MTLColorWriteMaskGreen;
+        case ColorWriteMask::Red: return MTLColorWriteMaskRed;
+        case ColorWriteMask::All: return MTLColorWriteMaskAll;
+        default: GLEAM_ASSERT(false, "Metal: Unknown color write mask specified!"); return MTLColorWriteMaskNone;
+    }
+}
+
 } // namespace Gleam
 #endif
