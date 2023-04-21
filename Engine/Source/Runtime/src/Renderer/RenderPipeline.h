@@ -19,60 +19,163 @@ class RenderPipeline
 {
     friend class RendererContext;
     
+    using Container = TArray<Scope<IRenderer>>;
+    
 public:
-    
-    static RenderPipeline* Get()
-    {
-        return mPipeline.get();
-    }
-    
-    static void Set(const RefCounted<RenderPipeline>& pipeline)
-    {
-        mPipeline = pipeline;
-    }
     
     template<RendererType T>
     T* AddRenderer()
     {
-        GLEAM_ASSERT(!HasRenderer<T>(), "Game already has the renderer!");
-        T* renderer = mRenderers.emplace<T>();
+        GLEAM_ASSERT(!HasRenderer<T>(), "Render pipeline already has the renderer!");
+        const auto& renderer = mRenderers.emplace_back(CreateScope<T>());
         renderer->OnCreate(mRendererContext);
-        return renderer;
+        return static_cast<T*>(renderer.get());
     }
     
     template<RendererType T>
     void RemoveRenderer()
     {
-        GLEAM_ASSERT(HasRenderer<T>(), "Game does not have the renderer!");
-        mRenderers.erase<T>();
+        GLEAM_ASSERT(HasRenderer<T>(), "Render pipeline does not have the renderer!");
+        auto it = std::remove_if(mRenderers.begin(), mRenderers.end(), [](const Scope<IRenderer>& ptr)
+        {
+            const auto& renderer = *ptr;
+            return typeid(renderer) == typeid(T);
+        });
+        
+        if (it != mRenderers.end()) mRenderers.erase(it);
     }
     
     template<RendererType T>
     T* GetRenderer()
     {
-        GLEAM_ASSERT(HasRenderer<T>(), "Game does not have the renderer!");
-        return mRenderers.get<T>();
+        GLEAM_ASSERT(HasRenderer<T>(), "Render pipeline does not have the renderer!");
+        auto it = std::find_if(mRenderers.begin(), mRenderers.end(), [](const Scope<IRenderer>& ptr)
+        {
+            const auto& renderer = *ptr;
+            return typeid(renderer) == typeid(T);
+        });
+        return static_cast<T*>(it->get());
     }
     
     template<RendererType T>
     bool HasRenderer()
     {
-        return mRenderers.contains<T>();
+        auto it = std::find_if(mRenderers.begin(), mRenderers.end(), [](const Scope<IRenderer>& ptr)
+        {
+            const auto& renderer = *ptr;
+            return typeid(renderer) == typeid(T);
+        });
+        return it != mRenderers.end();
     }
     
-    PolyArray<IRenderer>& GetRenderers()
+    class iterator
     {
-        return mRenderers;
+    public:
+        
+        iterator(typename Container::iterator it)
+        : it(it) {}
+        
+        iterator& operator++()
+        {
+            ++it;
+            return *this;
+        }
+        
+        iterator operator++(int)
+        {
+            iterator copy = *this;
+            ++it;
+            return copy;
+        }
+        
+        bool operator==(const iterator& other) const
+        {
+            return it == other.it;
+        }
+        
+        bool operator!=(const iterator& other) const
+        {
+            return it != other.it;
+        }
+        
+        IRenderer* operator*() const
+        {
+            return it->get();
+        }
+        
+    private:
+        
+        typename Container::iterator it;
+        
+    };
+    
+    class const_iterator
+    {
+    public:
+        
+        const_iterator(typename Container::const_iterator it)
+        : it(it) {}
+        
+        const_iterator& operator++()
+        {
+            ++it;
+            return *this;
+        }
+        
+        const_iterator operator++(int)
+        {
+            const_iterator copy = *this;
+            ++it;
+            return copy;
+        }
+        
+        bool operator==(const const_iterator& other) const
+        {
+            return it == other.it;
+        }
+        
+        bool operator!=(const const_iterator& other) const
+        {
+            return it != other.it;
+        }
+        
+        const IRenderer* operator*() const
+        {
+            return it->get();
+        }
+        
+    private:
+        
+        typename Container::const_iterator it;
+        
+    };
+    
+    iterator begin()
+    {
+        return iterator(mRenderers.begin());
+    }
+    
+    iterator end()
+    {
+        return iterator(mRenderers.end());
+    }
+    
+    const_iterator begin() const
+    {
+        return const_iterator(mRenderers.begin());
+    }
+    
+    const_iterator end() const
+    {
+        return const_iterator(mRenderers.end());
     }
     
 private:
     
-    PolyArray<IRenderer> mRenderers;
+    TArray<Scope<IRenderer>> mRenderers;
     
     // initialized and set when a Game instance is created
     static inline RendererContext* mRendererContext = nullptr;
-    
-    static inline RefCounted<RenderPipeline> mPipeline = CreateRef<RenderPipeline>();
     
 };
 

@@ -1,6 +1,6 @@
 #pragma once
-#include "EntityManager.h"
 #include "ComponentSystem.h"
+#include "Renderer/RenderPipeline.h"
 
 namespace Gleam {
 
@@ -47,6 +47,16 @@ public:
     {
 		return mSystemManager.contains<T>();
     }
+    
+    RenderPipeline& GetRenderPipeline()
+    {
+        return mRenderPipeline;
+    }
+    
+    const RenderPipeline& GetRenderPipeline() const
+    {
+        return mRenderPipeline;
+    }
 
 	static RefCounted<World> Create()
     {
@@ -59,6 +69,7 @@ private:
 
 	TString mName;
     EntityManager mEntityManager;
+    RenderPipeline mRenderPipeline;
     PolyArray<ComponentSystem> mSystemManager;
 
 };
