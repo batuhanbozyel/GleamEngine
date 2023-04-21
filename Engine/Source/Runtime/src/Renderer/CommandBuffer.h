@@ -43,18 +43,24 @@ public:
 
     void SetViewport(const Size& size) const;
     
-    void SetVertexBuffer(const NativeGraphicsHandle buffer, BufferUsage usage, size_t size, size_t offset, uint32_t index) const;
-    
     void SetVertexBuffer(const Buffer& buffer, size_t offset, uint32_t index) const
     {
         SetVertexBuffer(buffer.GetHandle(), buffer.GetDescriptor().usage, buffer.GetDescriptor().size, offset, index);
     }
     
-    void SetFragmentBuffer(const NativeGraphicsHandle buffer, BufferUsage usage, size_t size, size_t offset, uint32_t index) const;
-    
     void SetFragmentBuffer(const Buffer& buffer, size_t offset, uint32_t index) const
     {
         SetFragmentBuffer(buffer.GetHandle(), buffer.GetDescriptor().usage, buffer.GetDescriptor().size, offset, index);
+    }
+    
+    void SetVertexTexture(const Texture& texture, uint32_t index) const
+    {
+        SetVertexTexture(texture.GetView(), index);
+    }
+    
+    void SetFragmentTexture(const Texture& texture, uint32_t index) const
+    {
+        SetFragmentTexture(texture.GetView(), index);
     }
 
     template<typename T>
@@ -64,8 +70,13 @@ public:
     }
 
     void Draw(uint32_t vertexCount, uint32_t instanceCount = 1, uint32_t baseVertex = 0, uint32_t baseInstance = 0) const;
-
-	void DrawIndexed(const NativeGraphicsHandle indexBuffer, IndexType type, uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, uint32_t baseVertex, uint32_t baseInstance) const;
+    
+    void DrawIndexed(const NativeGraphicsHandle indexBuffer, IndexType type, uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, uint32_t baseVertex, uint32_t baseInstance) const;
+    
+    void DrawIndexed(const Buffer& indexBuffer, IndexType type, uint32_t instanceCount = 1, uint32_t firstIndex = 0, uint32_t baseVertex = 0, uint32_t baseInstance = 0) const
+    {
+        DrawIndexed(indexBuffer.GetHandle(), type, static_cast<uint32_t>(indexBuffer.GetDescriptor().size / SizeOfIndexType(type)), instanceCount, firstIndex, baseVertex, baseInstance);
+    }
     
     void CopyBuffer(const Buffer& src, const Buffer& dst) const
     {
@@ -89,6 +100,14 @@ public:
 
 private:
 
+    void SetVertexBuffer(const NativeGraphicsHandle buffer, BufferUsage usage, size_t size, size_t offset, uint32_t index) const;
+    
+    void SetFragmentBuffer(const NativeGraphicsHandle buffer, BufferUsage usage, size_t size, size_t offset, uint32_t index) const;
+    
+    void SetVertexTexture(const NativeGraphicsHandle texture, uint32_t index) const;
+    
+    void SetFragmentTexture(const NativeGraphicsHandle texture, uint32_t index) const;
+    
     void SetPushConstant(const void* data, uint32_t size, ShaderStageFlagBits stage) const;
 
     class Impl;
