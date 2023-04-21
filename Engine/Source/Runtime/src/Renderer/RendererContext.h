@@ -14,22 +14,26 @@ class RendererContext final
 
 public:
     
-    void Execute() const;
-    
-    RefCounted<RenderTexture> GetSwapchainTarget() const;
+    void Execute(RenderPipeline& pipeline) const;
     
 	const RefCounted<Shader>& CreateShader(const TString& entryPoint, ShaderStage stage);
+    
+    RefCounted<RenderTexture> GetSwapchainTarget() const;
 
+    const Size& GetDrawableSize() const;
+    
+    void SetConfiguration(const RendererConfig& config);
+    
 	const RendererConfig& GetConfiguration() const;
 
 private:
+    
+    void ConfigureBackend(const RendererConfig& config);
+    
+    void DestroyBackend();
 
-	void ConfigureBackend(const TString& appName, const Version& appVersion, const RendererConfig& config);
-
-	void DestroyBackend();
-
-	RendererConfig mConfiguration;
-
+    RendererConfig mConfiguration;
+    
     CommandBuffer mCommandBuffer;
     
 	TArray<RefCounted<Shader>> mShaderCache;

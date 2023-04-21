@@ -1,23 +1,25 @@
 #include "gpch.h"
 #include "RendererContext.h"
 #include "RenderPipeline.h"
+
 #include "RenderGraph/RenderGraph.h"
+#include "RenderGraph/RenderGraphBlackboard.h"
 
 using namespace Gleam;
 
-void RendererContext::Execute() const
+void RendererContext::Execute(RenderPipeline& pipeline) const
 {
 #ifdef USE_METAL_RENDERER
     @autoreleasepool
 #endif
     {
         RenderGraph graph;
+        RenderGraphBlackboard blackboard;
         
-        RenderingData renderingData;
-        renderingData.colorTarget = graph.ImportBackbuffer(GetSwapchainTarget());
-        
-        for (auto renderer : RenderPipeline::Get()->GetRenderers())
-            renderer->AddRenderPasses(graph, renderingData);
+        for (auto renderer : pipeline)
+        {
+            renderer->AddRenderPasses(graph, blackboard);
+        }
         
         graph.Compile();
         graph.Execute(mCommandBuffer);
