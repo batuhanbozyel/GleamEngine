@@ -2,10 +2,11 @@
 
 #ifdef USE_METAL_RENDERER
 #include "Renderer/Shader.h"
-#include "MetalShaderReflect.h"
 #include "MetalUtils.h"
 
 using namespace Gleam;
+
+struct Shader::Reflection {};
 
 Shader::Shader(const TString& entryPoint, ShaderStage stage)
     : mEntryPoint(entryPoint), mStage(stage)

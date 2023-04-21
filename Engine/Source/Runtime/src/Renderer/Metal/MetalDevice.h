@@ -11,7 +11,7 @@ class MetalDevice final
 {
 public:
 
-	static void Init(const TString& appName, const RendererConfig& config);
+	static void Init(const RendererConfig& config);
 
     static void Destroy();
 

@@ -12,9 +12,11 @@ class MetalSwapchain final
 {
 public:
 
-	void Initialize(const TString& appName, const RendererConfig& config);
+	void Initialize(const RendererConfig& config);
 
 	void Destroy();
+    
+    void Configure(const RendererConfig& config);
 
 	void UpdateSize();
 
@@ -28,10 +30,6 @@ public:
 	CAMetalLayer* GetHandle() const;
     
     const Size& GetSize() const;
-
-	uint32_t GetFrameIndex() const;
-
-	uint32_t GetMaxFramesInFlight() const;
 
 private:
 

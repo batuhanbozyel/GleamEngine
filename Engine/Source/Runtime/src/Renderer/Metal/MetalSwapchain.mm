@@ -14,17 +14,31 @@
 
 using namespace Gleam;
 
-void MetalSwapchain::Initialize(const TString& appName, const RendererConfig& config)
+void MetalSwapchain::Initialize(const RendererConfig& config)
 {
     // Create surface
-    mSurface = SDL_Metal_CreateView(GameInstance->GetActiveWindow().GetSDLWindow());
+    mSurface = SDL_Metal_CreateView(GameInstance->GetWindow()->GetSDLWindow());
     GLEAM_ASSERT(mSurface, "Metal: Surface creation failed!");
     
     mHandle = (__bridge CAMetalLayer*)SDL_Metal_GetLayer(mSurface);
-    mHandle.name = [NSString stringWithCString:appName.c_str() encoding:NSASCIIStringEncoding];
+    mHandle.name = [NSString stringWithCString:GameInstance->GetWindow()->GetProperties().title.c_str() encoding:NSASCIIStringEncoding];
     mHandle.device = MetalDevice::GetHandle();
     mHandle.framebufferOnly = NO;
     mHandle.opaque = YES;
+    Configure(config);
+    
+    mImageAcquireSemaphore = dispatch_semaphore_create(mMaxFramesInFlight);
+    UpdateSize();
+}
+
+void MetalSwapchain::Destroy()
+{
+    mDrawable = nil;
+    mHandle = nil;
+}
+
+void MetalSwapchain::Configure(const RendererConfig& config)
+{
 #ifdef PLATFORM_MACOS
     mHandle.displaySyncEnabled = config.vsync ? YES : NO;
 #endif
@@ -44,15 +58,6 @@ void MetalSwapchain::Initialize(const TString& appName, const RendererConfig& co
         mMaxFramesInFlight = 1;
         GLEAM_ASSERT(false, "Metal: Neither triple nor double buffering is available!");
     }
-    
-    mImageAcquireSemaphore = dispatch_semaphore_create(mMaxFramesInFlight);
-    UpdateSize();
-}
-
-void MetalSwapchain::Destroy()
-{
-    mDrawable = nil;
-    mHandle = nil;
 }
 
 id<CAMetalDrawable> MetalSwapchain::AcquireNextDrawable()
@@ -104,16 +109,6 @@ CAMetalLayer* MetalSwapchain::GetHandle() const
 const Gleam::Size& MetalSwapchain::GetSize() const
 {
     return mSize;
-}
-
-uint32_t MetalSwapchain::GetFrameIndex() const
-{
-    return mCurrentFrameIndex;
-}
-
-uint32_t MetalSwapchain::GetMaxFramesInFlight() const
-{
-    return mMaxFramesInFlight;
 }
 
 #endif

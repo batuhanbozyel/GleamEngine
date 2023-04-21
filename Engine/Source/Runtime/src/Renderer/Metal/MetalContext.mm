@@ -14,9 +14,9 @@
 
 using namespace Gleam;
 
-void RendererContext::ConfigureBackend(const TString& appName, const Version& appVersion, const RendererConfig& config)
+void RendererContext::ConfigureBackend(const RendererConfig& config)
 {
-    MetalDevice::Init(appName, config);
+    MetalDevice::Init(mConfiguration);
     mConfiguration = config;
     mConfiguration.format = MetalDevice::GetSwapchain().GetFormat();
     RenderPipeline::mRendererContext = this;
@@ -27,10 +27,20 @@ void RendererContext::DestroyBackend()
     MetalDevice::Destroy();
 }
 
+void RendererContext::SetConfiguration(const RendererConfig& config)
+{
+    mConfiguration = config;
+    MetalDevice::GetSwapchain().Configure(config);
+}
+
+const Gleam::Size& RendererContext::GetDrawableSize() const
+{
+    return MetalDevice::GetSwapchain().GetSize();
+}
+
 RefCounted<RenderTexture> RendererContext::GetSwapchainTarget() const
 {
     TextureDescriptor descriptor;
-    descriptor.sampleCount = mConfiguration.sampleCount;
     descriptor.size = MetalDevice::GetSwapchain().GetSize();
     descriptor.format = MetalDevice::GetSwapchain().GetFormat();
     
