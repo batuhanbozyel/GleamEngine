@@ -144,7 +144,7 @@ static constexpr size_t GetTextureFormatSize(TextureFormat format)
 		case TextureFormat::B8G8R8A8_SRGB: return 32;
 		case TextureFormat::B8G8R8A8_UNorm: return 32;
 
-			// Depth - Stencil formats
+        // Depth - Stencil formats
 		case TextureFormat::S8_UInt: return 8;
 		case TextureFormat::D16_UNorm: return 16;
 		case TextureFormat::D32_SFloat: return 32;
@@ -164,6 +164,27 @@ static constexpr bool IsDepthStencilFormat(TextureFormat format)
 		case TextureFormat::D32_SFloat_S8_UInt: return true;
 		default: return false;
 	}
+}
+
+static constexpr bool IsDepthFormat(TextureFormat format)
+{
+    switch (format)
+    {
+        case TextureFormat::D16_UNorm:
+        case TextureFormat::D32_SFloat:
+        case TextureFormat::D32_SFloat_S8_UInt: return true;
+        default: return false;
+    }
+}
+
+static constexpr bool IsStencilFormat(TextureFormat format)
+{
+    switch (format)
+    {
+        case TextureFormat::S8_UInt:
+        case TextureFormat::D32_SFloat_S8_UInt: return true;
+        default: return false;
+    }
 }
 
 } // namespace Utils
