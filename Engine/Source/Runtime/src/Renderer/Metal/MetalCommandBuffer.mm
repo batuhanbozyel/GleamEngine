@@ -36,14 +36,30 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc) 
     
     if (renderPassDesc.depthAttachment.texture)
     {
-        MTLRenderPassDepthAttachmentDescriptor* depthAttachmentDesc = renderPass.depthAttachment;
-        depthAttachmentDesc.clearDepth = renderPassDesc.depthAttachment.clearDepth;
-        depthAttachmentDesc.loadAction = AttachmentLoadActionToMTLLoadAction(renderPassDesc.depthAttachment.loadAction);
-        depthAttachmentDesc.storeAction = AttachmentStoreActionToMTLStoreAction(renderPassDesc.depthAttachment.storeAction);
-        depthAttachmentDesc.texture = renderPassDesc.depthAttachment.texture->GetRenderSurface();
+        if (Utils::IsDepthFormat(renderPassDesc.depthAttachment.texture->GetDescriptor().format))
+        {
+            MTLRenderPassDepthAttachmentDescriptor* depthAttachmentDesc = renderPass.depthAttachment;
+            depthAttachmentDesc.clearDepth = renderPassDesc.depthAttachment.clearDepth;
+            depthAttachmentDesc.loadAction = AttachmentLoadActionToMTLLoadAction(renderPassDesc.depthAttachment.loadAction);
+            depthAttachmentDesc.storeAction = AttachmentStoreActionToMTLStoreAction(renderPassDesc.depthAttachment.storeAction);
+            depthAttachmentDesc.texture = renderPassDesc.depthAttachment.texture->GetRenderSurface();
+            
+            if (renderPassDesc.samples > 1)
+                depthAttachmentDesc.resolveTexture = renderPassDesc.depthAttachment.texture->GetHandle();
+        }
         
-        if (renderPassDesc.samples > 1)
-            depthAttachmentDesc.resolveTexture = renderPassDesc.depthAttachment.texture->GetHandle();
+        
+        if (Utils::IsStencilFormat(renderPassDesc.depthAttachment.texture->GetDescriptor().format))
+        {
+            MTLRenderPassStencilAttachmentDescriptor* stencilAttachmentDesc = renderPass.stencilAttachment;
+            stencilAttachmentDesc.clearStencil = renderPassDesc.depthAttachment.clearStencil;
+            stencilAttachmentDesc.loadAction = AttachmentLoadActionToMTLLoadAction(renderPassDesc.depthAttachment.loadAction);
+            stencilAttachmentDesc.storeAction = AttachmentStoreActionToMTLStoreAction(renderPassDesc.depthAttachment.storeAction);
+            stencilAttachmentDesc.texture = renderPassDesc.depthAttachment.texture->GetRenderSurface();
+            
+            if (renderPassDesc.samples > 1)
+                stencilAttachmentDesc.resolveTexture = renderPassDesc.depthAttachment.texture->GetHandle();
+        }
     }
     
     for (uint32_t i = 0; i < renderPassDesc.colorAttachments.size(); i++)
@@ -100,6 +116,16 @@ void CommandBuffer::SetVertexBuffer(const NativeGraphicsHandle buffer, BufferUsa
 void CommandBuffer::SetFragmentBuffer(const NativeGraphicsHandle buffer, BufferUsage usage, size_t size, size_t offset, uint32_t index) const
 {
     [mHandle->renderCommandEncoder setFragmentBuffer:buffer offset:offset atIndex:index];
+}
+
+void CommandBuffer::SetVertexTexture(const NativeGraphicsHandle texture, uint32_t index) const
+{
+    [mHandle->renderCommandEncoder setVertexTexture:texture atIndex:index];
+}
+
+void CommandBuffer::SetFragmentTexture(const NativeGraphicsHandle texture, uint32_t index) const
+{
+    [mHandle->renderCommandEncoder setFragmentTexture:texture atIndex:index];
 }
 
 void CommandBuffer::SetPushConstant(const void* data, uint32_t size, ShaderStageFlagBits stage) const
