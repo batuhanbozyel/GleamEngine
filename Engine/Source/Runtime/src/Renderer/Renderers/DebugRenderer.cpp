@@ -1,5 +1,6 @@
 #include "gpch.h"
 #include "DebugRenderer.h"
+#include "WorldRenderer.h"
 
 #include "Renderer/Mesh.h"
 #include "Renderer/CommandBuffer.h"
@@ -15,9 +16,15 @@ void DebugRenderer::OnCreate(RendererContext* context)
 	mPrimitiveVertexShader = context->CreateShader("debugVertexShader", ShaderStage::Vertex);
 	mMeshVertexShader = context->CreateShader("debugMeshVertexShader", ShaderStage::Vertex);
 	mFragmentShader = context->CreateShader("debugFragmentShader", ShaderStage::Fragment);
+    
+    BufferDescriptor descriptor;
+    descriptor.memoryType = MemoryType::Dynamic;
+    descriptor.usage = BufferUsage::UniformBuffer;
+    descriptor.size = sizeof(CameraUniforms);
+    mCameraBuffer = CreateScope<Buffer>(descriptor);
 }
 
-void DebugRenderer::AddRenderPasses(RenderGraph& graph, const RenderingData& renderData)
+void DebugRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard)
 {
 	for (const auto& line : mLines)
 	{
@@ -55,7 +62,6 @@ void DebugRenderer::AddRenderPasses(RenderGraph& graph, const RenderingData& ren
 	struct UpdatePassData
 	{
 		BufferHandle vertexBuffer;
-        BufferHandle cameraBuffer;
 	};
     
 	const auto& updatePass = graph.AddRenderPass<UpdatePassData>("DebugRenderer::UpdatePass", [&](RenderGraphBuilder& builder, UpdatePassData& passData)
@@ -66,54 +72,44 @@ void DebugRenderer::AddRenderPasses(RenderGraph& graph, const RenderingData& ren
 		descriptor.memoryType = MemoryType::Stream;
 		passData.vertexBuffer = builder.CreateBuffer(descriptor);
 		passData.vertexBuffer = builder.WriteBuffer(passData.vertexBuffer);
-        
-        descriptor.size = sizeof(CameraUniforms);
-        descriptor.usage = BufferUsage::UniformBuffer;
-        descriptor.memoryType = MemoryType::Stream;
-        passData.cameraBuffer = builder.CreateBuffer(descriptor);
-        passData.cameraBuffer = builder.WriteBuffer(passData.cameraBuffer);
 	},
 	[this](const RenderGraphContext& renderGraphContext, const UpdatePassData& passData)
 	{
 		// Update buffer
         auto vertexBuffer = renderGraphContext.registry->GetBuffer(passData.vertexBuffer);
         vertexBuffer->SetData(mDebugVertices.data(), mDebugVertices.size() * sizeof(DebugVertex));
-        
-        CameraUniforms camera;
-        camera.viewMatrix = mViewMatrix;
-        camera.projectionMatrix = mProjectionMatrix;
-        camera.viewProjectionMatrix = mViewProjectionMatrix;
-        
-        auto cameraBuffer = renderGraphContext.registry->GetBuffer(passData.cameraBuffer);
-        cameraBuffer->SetData(&camera, sizeof(CameraUniforms));
 	});
 
 	struct DrawPassData
 	{
-		RenderTextureHandle renderTarget;
+		RenderTextureHandle colorTarget;
+        RenderTextureHandle depthTarget;
 		BufferHandle vertexBuffer;
-        BufferHandle cameraBuffer;
 	};
 
+    auto& finalPassData = blackboard.Get<WorldRenderer::FinalPassData>();
 	graph.AddRenderPass<DrawPassData>("DebugRenderer::DrawPass", [&](RenderGraphBuilder& builder, DrawPassData& passData)
 	{
         passData.vertexBuffer = builder.ReadBuffer(updatePass.vertexBuffer);
-        passData.cameraBuffer = builder.ReadBuffer(updatePass.cameraBuffer);
-        passData.renderTarget = builder.WriteRenderTexture(renderData.colorTarget);
+        passData.colorTarget = builder.WriteRenderTexture(finalPassData.colorTarget);
+        passData.depthTarget = builder.WriteRenderTexture(finalPassData.depthTarget);
 	},
 	[this](const RenderGraphContext& renderGraphContext, const DrawPassData& passData)
 	{
 		// Start rendering
+        const auto& colorAttachment = renderGraphContext.registry->GetRenderTexture(passData.colorTarget);
+        const auto& depthAttachment = renderGraphContext.registry->GetRenderTexture(passData.depthTarget);
+        
         AttachmentDescriptor attachmentDesc;
-        attachmentDesc.texture = renderGraphContext.registry->GetRenderTexture(passData.renderTarget);
+        attachmentDesc.texture = colorAttachment;
         
         RenderPassDescriptor renderPassDesc;
-        renderPassDesc.size = attachmentDesc.texture->GetDescriptor().size;
+        renderPassDesc.size = colorAttachment->GetDescriptor().size;
         renderPassDesc.colorAttachments.emplace_back(attachmentDesc);
+        renderPassDesc.depthAttachment.texture = depthAttachment;
         renderGraphContext.cmd->BeginRenderPass(renderPassDesc);
         
-        const auto& cameraBuffer = renderGraphContext.registry->GetBuffer(passData.cameraBuffer);
-        renderGraphContext.cmd->SetVertexBuffer(*cameraBuffer, 0, RendererBindingTable::CameraBuffer);
+        renderGraphContext.cmd->SetVertexBuffer(*mCameraBuffer, 0, RendererBindingTable::CameraBuffer);
 		
         const auto& vertexBuffer = renderGraphContext.registry->GetBuffer(passData.vertexBuffer);
 		if (!mDepthLines.empty())
@@ -301,7 +297,9 @@ void DebugRenderer::DrawMesh(const Mesh* mesh, const Matrix4& transform, Color32
 
 void DebugRenderer::UpdateCamera(const Camera& camera)
 {
-    mViewMatrix = camera.GetViewMatrix();
-    mProjectionMatrix = camera.GetProjectionMatrix();
-    mViewProjectionMatrix = mProjectionMatrix * mViewMatrix;
+    CameraUniforms cameraData;
+    cameraData.viewMatrix = camera.GetViewMatrix();
+    cameraData.projectionMatrix = camera.GetProjectionMatrix();
+    cameraData.viewProjectionMatrix = cameraData.projectionMatrix * cameraData.viewMatrix;
+    mCameraBuffer->SetData(&cameraData, sizeof(CameraUniforms));
 }

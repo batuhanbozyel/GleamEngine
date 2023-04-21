@@ -47,7 +47,7 @@ public:
     
     virtual void OnCreate(RendererContext* context) override;
     
-    virtual void AddRenderPasses(RenderGraph& graph, const RenderingData& renderData) override;
+    virtual void AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard) override;
 
 private:
 
@@ -75,9 +75,7 @@ private:
 	RefCounted<Shader> mMeshVertexShader;
 	RefCounted<Shader> mFragmentShader;
     
-    Matrix4 mViewMatrix;
-    Matrix4 mProjectionMatrix;
-    Matrix4 mViewProjectionMatrix;
+    Scope<Buffer> mCameraBuffer;
 
 };
 

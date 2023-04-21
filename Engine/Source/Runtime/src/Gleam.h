@@ -51,3 +51,8 @@
 
 #include "World/World.h"
 #include "Assets/AssetLibrary.h"
+
+#include "Renderer/Renderers/UIRenderer.h"
+#include "Renderer/Renderers/DebugRenderer.h"
+#include "Renderer/Renderers/WorldRenderer.h"
+#include "Renderer/Renderers/CompositeRenderer.h"

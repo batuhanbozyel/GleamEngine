@@ -10,22 +10,18 @@
 #include "RenderPassDescriptor.h"
 #include "PipelineStateDescriptor.h"
 #include "RenderGraph/RenderGraph.h"
+#include "RenderGraph/RenderGraphBlackboard.h"
 
 namespace Gleam {
 
-class System;
+class RenderPipeline;
 class RendererContext;
-
-struct RenderingData
-{
-    RenderTextureHandle colorTarget;
-    RenderTextureHandle depthTarget;
-};
 
 class IRenderer
 {
 public:
     
+    friend class RenderPipeline;
     friend class RendererContext;
     
     virtual ~IRenderer() = default;
@@ -34,7 +30,7 @@ protected:
 
 	virtual void OnCreate(RendererContext* context) {}
 
-	virtual void AddRenderPasses(RenderGraph& graph, const RenderingData& renderData) = 0;
+	virtual void AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard) = 0;
 
 };
 
