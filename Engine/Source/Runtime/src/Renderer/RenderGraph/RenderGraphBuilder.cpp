@@ -10,14 +10,19 @@
 
 using namespace Gleam;
 
-static bool HasResource(const TArray<RenderGraphResource>& resources, RenderGraphResource uniqueId)
+static bool HasResource(const TArray<RenderGraphResource>& resources, RenderGraphResource resource)
 {
-    return std::find(resources.cbegin(), resources.cend(), uniqueId) != resources.cend();
+    return std::find(resources.cbegin(), resources.cend(), resource) != resources.cend();
 }
 
-static RenderGraphResource Read(TArray<RenderGraphResource>& passReads, RenderGraphResource uniqueId)
+static RenderGraphResource Read(TArray<RenderGraphResource>& passReads, RenderGraphResource resource)
 {
-    return HasResource(passReads, uniqueId) ? uniqueId : passReads.emplace_back(uniqueId);
+    return HasResource(passReads, resource) ? resource : passReads.emplace_back(resource);
+}
+
+static RenderGraphResource Write(TArray<RenderGraphResource>& passWrites, RenderGraphResource resource)
+{
+    return HasResource(passWrites, resource) ? resource : passWrites.emplace_back(resource);
 }
 
 RenderGraphBuilder::RenderGraphBuilder(RenderPassNode& node, RenderGraphResourceRegistry& registry)
@@ -40,17 +45,12 @@ NO_DISCARD RenderTextureHandle RenderGraphBuilder::WriteRenderTexture(RenderText
     
     if (HasResource(mPassNode.renderTextureCreates, resource))
     {
-        if (!HasResource(mPassNode.renderTextureWrites, resource))
-            mPassNode.renderTextureWrites.emplace_back(resource);
-        
-        return resource;
+        return Write(mPassNode.renderTextureWrites, resource);
     }
     else
     {
         ReadRenderTexture(resource);
-        auto clone = mResourceRegistry.CloneRT(resource);
-        mPassNode.renderTextureWrites.emplace_back(clone);
-        return clone;
+        return Write(mPassNode.renderTextureWrites, mResourceRegistry.CloneRT(resource));
     }
 }
 
@@ -73,10 +73,7 @@ NO_DISCARD BufferHandle RenderGraphBuilder::WriteBuffer(BufferHandle resource)
     
     if (HasResource(mPassNode.bufferCreates, resource))
     {
-        if (!HasResource(mPassNode.bufferWrites, resource))
-            mPassNode.bufferWrites.emplace_back(resource);
-        
-        return resource;
+        return Write(mPassNode.bufferWrites, resource);
     }
     else
     {
