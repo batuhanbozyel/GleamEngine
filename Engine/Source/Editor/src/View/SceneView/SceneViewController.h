@@ -10,7 +10,7 @@
 
 namespace GEditor {
 
-class EditorSceneViewController : public Gleam::ComponentSystem
+class SceneViewController : public Gleam::ComponentSystem
 {
 public:
     

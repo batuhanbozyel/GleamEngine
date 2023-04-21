@@ -12,17 +12,20 @@ using namespace GEditor;
 
 SceneView::SceneView()
 {
-    Gleam::RenderPipeline::Get()->AddRenderer<Gleam::DebugRenderer>();
-    
     mEditWorld = Gleam::World::active;
-	mEditWorld->AddSystem<EditorSceneViewController>();
+	mEditWorld->AddSystem<SceneViewController>();
+    mEditWorld->GetRenderPipeline().AddRenderer<Gleam::WorldRenderer>();
+    mEditWorld->GetRenderPipeline().AddRenderer<Gleam::DebugRenderer>();
+    mEditWorld->GetRenderPipeline().AddRenderer<Gleam::CompositeRenderer>();
 
     mPlayWorld = Gleam::World::Create();
 }
 
 SceneView::~SceneView()
 {
-    Gleam::RenderPipeline::Get()->RemoveRenderer<Gleam::DebugRenderer>();
+    mEditWorld->GetRenderPipeline().RemoveRenderer<Gleam::CompositeRenderer>();
+    mEditWorld->GetRenderPipeline().RemoveRenderer<Gleam::DebugRenderer>();
+    mEditWorld->GetRenderPipeline().RemoveRenderer<Gleam::WorldRenderer>();
 }
 
 void SceneView::Render()
