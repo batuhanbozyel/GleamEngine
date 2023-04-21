@@ -11,14 +11,21 @@ MACRO(SET_WORKING_DIRECTORY TARGET_NAME GIVEN_PATH)
 	endif()
 ENDMACRO(SET_WORKING_DIRECTORY)
 
-macro(ADD_GRAPHICS_SHADER target file vertexEntry fragmentEntry)
+macro(ADD_VERTEX_SHADER target file entry)
     add_custom_command(
         TARGET ${target}
         PRE_BUILD
-        COMMAND $ENV{VULKAN_SDK}/bin/dxc -spirv -fvk-use-gl-layout -fvk-invert-y -T vs_6_0 -E ${vertexEntry} ${file} -Fo ${CMAKE_SOURCE_DIR}/Assets/${vertexEntry}.spv
-        COMMAND $ENV{VULKAN_SDK}/bin/dxc -spirv -fvk-use-gl-layout -T ps_6_0 -E ${fragmentEntry} ${file} -Fo ${CMAKE_SOURCE_DIR}/Assets/${fragmentEntry}.spv
+        COMMAND $ENV{VULKAN_SDK}/bin/dxc -spirv -fvk-use-gl-layout -fvk-invert-y -T vs_6_0 -E ${entry} ${file} -Fo ${CMAKE_SOURCE_DIR}/Assets/${entry}.spv
     )
-endmacro(ADD_GRAPHICS_SHADER)
+endmacro(ADD_VERTEX_SHADER)
+
+macro(ADD_FRAGMENT_SHADER target file entry)
+    add_custom_command(
+        TARGET ${target}
+        PRE_BUILD
+        COMMAND $ENV{VULKAN_SDK}/bin/dxc -spirv -fvk-use-gl-layout -T ps_6_0 -E ${entry} ${file} -Fo ${CMAKE_SOURCE_DIR}/Assets/${entry}.spv
+    )
+endmacro(ADD_FRAGMENT_SHADER)
 
 macro(ADD_COMPUTE_SHADER target file entry)
     add_custom_command(
