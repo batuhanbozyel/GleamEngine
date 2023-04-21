@@ -44,7 +44,7 @@ public:
     
     void SetFieldOfView(float fov);
     
-    void SetSize(float size);
+    void SetOrthographicSize(float size);
     
     const Matrix4& GetProjectionMatrix() const;
     
@@ -59,7 +59,7 @@ private:
     float mFOV = 60.0f;
     
     // Orthographic projection properties
-    float mSize = 5.0f;
+    float mOrthographicSize = 5.0f;
     
     // Common properties
     float mAspectRatio = 1.0f;

@@ -89,9 +89,9 @@ void Camera::SetFieldOfView(float fov)
     mProjectionMatrixDirty = true;
 }
 
-void Camera::SetSize(float size)
+void Camera::SetOrthographicSize(float size)
 {
-    mSize = size;
+    mOrthographicSize = size;
     mProjectionMatrixDirty = true;
 }
 
@@ -130,8 +130,8 @@ void Camera::RecalculateProjectionMatrix() const
     }
     else
     {
-        float width = mSize * mAspectRatio;
-        float height = mSize;
+        float width = mOrthographicSize * mAspectRatio;
+        float height = mOrthographicSize;
         mProjectionMatrix = Matrix4::Ortho(width, height, mNearPlane, mFarPlane);
     }
 }
