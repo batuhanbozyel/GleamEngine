@@ -117,6 +117,7 @@ VulkanPipeline VulkanPipelineStateManager::CreateGraphicsPipeline(const Pipeline
 	VkPipelineDepthStencilStateCreateInfo depthStencilState{ VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO };
 	pipelineCreateInfo.pDepthStencilState = &depthStencilState;
 
+    // TODO: Add multiple render targets support
 	VkPipelineColorBlendAttachmentState attachmentBlendState{};
 	attachmentBlendState.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
 	VkPipelineColorBlendStateCreateInfo colorBlendState{ VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO };

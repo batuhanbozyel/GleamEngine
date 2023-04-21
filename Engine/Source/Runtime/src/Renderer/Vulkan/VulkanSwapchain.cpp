@@ -16,7 +16,7 @@ using namespace Gleam;
 
 void VulkanSwapchain::Initialize(const RendererConfig& config)
 {
-	SDL_Window* window = GameInstance->GetActiveWindow().GetSDLWindow();
+	SDL_Window* window = GameInstance->GetWindow()->GetSDLWindow();
 	mSampleCount = config.sampleCount;
 
     // Create surface

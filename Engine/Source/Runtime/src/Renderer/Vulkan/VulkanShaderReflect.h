@@ -56,7 +56,7 @@ struct Shader::Reflection
 	TArray<VkDescriptorSetLayout> setLayouts;
 	TArray<VkPushConstantRange> pushConstantRanges;
 
-	Shader::Reflection(const TArray<uint8_t>& source)
+	Reflection(const TArray<uint8_t>& source)
 	{
 		SpvReflectShaderModule shaderReflection;
 		SPV_CHECK(spvReflectCreateShaderModule(source.size(), source.data(), &shaderReflection));
