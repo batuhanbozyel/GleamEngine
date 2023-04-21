@@ -13,21 +13,16 @@ class EventDispatcher;
  */
 class Event
 {
-    template<class EventType>
-    friend class EventDispatcher;
-    
 public:
 
+    virtual ~Event() = default;
+    
 	virtual TString ToString() const
 	{
 		TStringStream ss;
 		ss << "Event";
 		return ss.str();
 	}
-
-private:
-
-	bool mHandled = false;
     
 };
 
@@ -40,18 +35,14 @@ class EventDispatcher
 {
 public:
     
-	using EventHandler = std::function<bool(EventType)>;
+	using EventHandler = std::function<void(EventType)>;
 
 	static void Publish(EventType e)
 	{
 		for (auto& handler : mSubscribers)
 		{
-            e.mHandled = handler(e);
-            
-            if (e.mHandled) break;
+            handler(e);
 		}
-
-		e.mHandled = true;
 	}
 
 	static void Subscribe(const EventHandler& fn)
