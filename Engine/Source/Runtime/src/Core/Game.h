@@ -43,15 +43,20 @@ public:
         mSystems.erase<T>();
 	}
 
-	const Window& GetActiveWindow() const
+	const Window* GetWindow() const
 	{
-		return *mActiveWindow;
+		return mWindow.get();
 	}
 
 	const Version& GetVersion() const
 	{
 		return mVersion;
 	}
+    
+    const RendererConfig& GetRendererConfig() const
+    {
+        return mRendererContext.GetConfiguration();
+    }
     
     Filesystem::path GetDefaultAssetPath() const
     {
@@ -76,8 +81,7 @@ private:
 	PolyArray<System> mSystems;
 
 	SDL_Event mEvent;
-	Window* mActiveWindow;
-	HashMap<SDL_Window*, Scope<Window>> mWindows;
+    Scope<Window> mWindow;
 
 	RendererContext mRendererContext;
 

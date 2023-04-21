@@ -64,33 +64,20 @@ Game::Game(const ApplicationProperties& props)
 	{
 		mInstance = this;
 
+        // init windowing subsystem
 		int initSucess = SDL_Init(SDL_INIT_EVERYTHING);
 		SDL_SetEventFilter(SDL2_EventCallback, nullptr);
 		GLEAM_ASSERT(initSucess == 0, "Window subsystem initialization failed!");
 
-		// init main window
-		mActiveWindow = new Window(props.windowProps);
-		mWindows.emplace(mActiveWindow->GetSDLWindow(), Scope<Window>(mActiveWindow));
+		// create window
+		mWindow = CreateScope<Window>(props.windowProps);
 		
 		// init renderer backend
-		mRendererContext.ConfigureBackend(props.windowProps.title, props.appVersion, props.rendererConfig);
+		mRendererContext.ConfigureBackend(props.rendererConfig);
 
 		EventDispatcher<AppCloseEvent>::Subscribe([this](AppCloseEvent e)
 		{
 			mRunning = false;
-			return true;
-		});
-
-		EventDispatcher<WindowCloseEvent>::Subscribe([this](WindowCloseEvent e)
-		{
-			// if there is only 1 window, application should terminate with the proper deallocation order
-			if (mWindows.size() == 1)
-			{
-				return false;
-			}
-
-			mWindows.erase(e.GetWindow());
-			return true;
 		});
 	}
 }
@@ -128,7 +115,7 @@ void Game::Run()
         }
         World::active->Update();
 		
-        mRendererContext.Execute();
+        mRendererContext.Execute(World::active->GetRenderPipeline());
 	}
 }
 
@@ -149,8 +136,8 @@ Game::~Game()
 	// Destroy renderer
 	mRendererContext.DestroyBackend();
 
-	// Destroy windows and window subsystem
-	mWindows.clear();
+	// Destroy window and windowing subsystem
+	mWindow.reset();
 	SDL_Quit();
 
 	mInstance = nullptr;
