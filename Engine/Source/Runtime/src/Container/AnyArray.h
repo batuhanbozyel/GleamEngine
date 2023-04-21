@@ -40,7 +40,7 @@ public:
 			return it != other.it;
 		}
 
-		std::any& operator*() const
+		std::any& operator*()
 		{
 			return it->second;
 		}
@@ -115,9 +115,14 @@ public:
 	template<class T, class...Args>
 	T& emplace(Args&&... args)
 	{
-        auto& obj = data[typeid(T)] = std::make_any<T>(std::forward<Args>(args)...);
-        return std::any_cast<T&>(obj);
+        return data[typeid(T)].emplace<T>(T{std::forward<Args>(args)...});
 	}
+    
+    template<class T>
+    T& emplace(const T& obj)
+    {
+        return data[typeid(T)].emplace<T>(obj);
+    }
 
 	void clear()
 	{
@@ -131,7 +136,7 @@ public:
 	}
 
 	template<class T>
-	T* get() const
+	T* get()
 	{
 		auto it = data.find(typeid(T));
 		if (it == data.end()) return nullptr;
@@ -139,7 +144,7 @@ public:
 	}
 
 	template<class T>
-	T& get_unsafe() const
+	T& get_unsafe()
 	{
 		auto it = data.find(typeid(T));
 		return std::any_cast<T&>(it->second);
