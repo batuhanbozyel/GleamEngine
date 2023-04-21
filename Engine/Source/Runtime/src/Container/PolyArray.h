@@ -13,7 +13,7 @@ namespace Gleam {
 template<class Base>
 class PolyArray
 {
-    using Container = HashMap<std::type_index, Base*>;
+    using Container = HashMap<std::type_index, Scope<Base>>;
     
 public:
     
@@ -49,7 +49,7 @@ public:
         
         Base* operator*() const
         {
-            return it->second;
+            return it->second.get();
         }
         
     private:
@@ -90,7 +90,7 @@ public:
         
         const Base* operator*() const
         {
-            return it->second;
+            return it->second.get();
         }
         
     private:
@@ -127,16 +127,12 @@ public:
     template<class T, class...Args>
     T* emplace(Args&&... args)
     {
-        T* ptr = new T(std::forward<Args>(args)...);
-        data[typeid(T)] = ptr;
-        return ptr;
+        auto& ptr = data[typeid(T)] = CreateScope<T>(std::forward<Args>(args)...);
+        return static_cast<T*>(ptr.get());
     }
     
     void clear()
     {
-        for (auto[_, ptr] : data)
-            delete ptr;
-        
         data.clear();
     }
     
@@ -151,7 +147,7 @@ public:
     {
         auto it = data.find(typeid(T));
         if (it == data.end()) return nullptr;
-        return static_cast<T*>(it->second);
+        return static_cast<T*>(it->second.get());
     }
     
     template<class T>
