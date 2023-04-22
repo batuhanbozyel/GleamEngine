@@ -18,6 +18,15 @@ struct TextureDescriptor
     WrapMode wrapMode = WrapMode::Clamp;
     uint32_t sampleCount = 1;
     bool useMipMap = false;
+    
+    bool operator==(const TextureDescriptor& other) const
+    {
+        return  size == other.size &&
+                format == other.format &&
+                filterMode == other.filterMode &&
+                wrapMode == other.wrapMode &&
+                sampleCount == other.sampleCount;
+    }
 };
 
 } // namespace Gleam

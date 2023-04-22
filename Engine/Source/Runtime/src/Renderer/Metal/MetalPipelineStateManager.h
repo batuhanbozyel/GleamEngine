@@ -16,7 +16,9 @@ class MetalPipelineStateManager
 {
 public:
 
-	static const MetalPipelineState& GetGraphicsPipelineState(const PipelineStateDescriptor& pipelineDesc, const RenderPassDescriptor& renderPassDesc, const RefCounted<Shader>& vertexShader, const RefCounted<Shader>& fragmentShader);
+	static const MetalPipelineState& GetGraphicsPipelineState(const PipelineStateDescriptor& pipelineDesc, const TArray<TextureDescriptor>& attachmentDescriptors, const RefCounted<Shader>& vertexShader, const RefCounted<Shader>& fragmentShader);
+    
+    static const MetalPipelineState& GetGraphicsPipelineState(const PipelineStateDescriptor& pipelineDesc, const TArray<TextureDescriptor>& attachmentDescriptors, const TextureDescriptor& depthAttachment, const RefCounted<Shader>& vertexShader, const RefCounted<Shader>& fragmentShader);
 
 	static void Clear();
 
@@ -27,11 +29,12 @@ private:
 		RefCounted<Shader> vertexShader;
 		RefCounted<Shader> fragmentShader;
 		MetalPipelineState pipelineState;
-		RenderPassDescriptor renderPassDesc;
-		TArray<TextureFormat> attachmentFormats;
+		TArray<TextureDescriptor> colorAttachments;
+        TextureDescriptor depthAttachment;
+        bool hasDepthAttachment = false;
 	};
     
-	static id<MTLRenderPipelineState> CreateGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc, const RenderPassDescriptor& renderPassDesc, const RefCounted<Shader>& vertexShader, const RefCounted<Shader>& fragmentShader);
+    static id<MTLRenderPipelineState> CreateGraphicsPipeline(const GraphicsPipelineCacheElement& element);
     
     static id<MTLDepthStencilState> CreateDepthStencil(const PipelineStateDescriptor& pipelineDesc);
 

@@ -13,8 +13,11 @@ struct CommandBuffer::Impl
 {
     id<MTLCommandBuffer> commandBuffer = nil;
     id<MTLRenderCommandEncoder> renderCommandEncoder = nil;
-    RenderPassDescriptor renderPassDescriptor;
     MetalPipelineState pipelineState;
+    
+    TArray<TextureDescriptor> colorAttachments;
+    TextureDescriptor depthAttachment;
+    bool hasDepthAttachment = false;
 };
 
 CommandBuffer::CommandBuffer()
@@ -31,12 +34,14 @@ CommandBuffer::~CommandBuffer()
 
 void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc) const
 {
-    mHandle->renderPassDescriptor = renderPassDesc;
     MTLRenderPassDescriptor* renderPass = [MTLRenderPassDescriptor renderPassDescriptor];
     
+    mHandle->hasDepthAttachment = renderPassDesc.depthAttachment.texture != nullptr;
     if (renderPassDesc.depthAttachment.texture)
     {
-        if (Utils::IsDepthFormat(renderPassDesc.depthAttachment.texture->GetDescriptor().format))
+        mHandle->depthAttachment = renderPassDesc.depthAttachment.texture->GetDescriptor();
+        
+        if (Utils::IsDepthFormat(mHandle->depthAttachment.format))
         {
             MTLRenderPassDepthAttachmentDescriptor* depthAttachmentDesc = renderPass.depthAttachment;
             depthAttachmentDesc.clearDepth = renderPassDesc.depthAttachment.clearDepth;
@@ -48,8 +53,7 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc) 
                 depthAttachmentDesc.resolveTexture = renderPassDesc.depthAttachment.texture->GetHandle();
         }
         
-        
-        if (Utils::IsStencilFormat(renderPassDesc.depthAttachment.texture->GetDescriptor().format))
+        if (Utils::IsStencilFormat(mHandle->depthAttachment.format))
         {
             MTLRenderPassStencilAttachmentDescriptor* stencilAttachmentDesc = renderPass.stencilAttachment;
             stencilAttachmentDesc.clearStencil = renderPassDesc.depthAttachment.clearStencil;
@@ -62,9 +66,12 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc) 
         }
     }
     
+    mHandle->colorAttachments.resize(renderPassDesc.colorAttachments.size());
     for (uint32_t i = 0; i < renderPassDesc.colorAttachments.size(); i++)
     {
         const auto& colorAttachment = renderPassDesc.colorAttachments[i];
+        mHandle->colorAttachments[i] = colorAttachment.texture->GetDescriptor();
+        
         MTLRenderPassColorAttachmentDescriptor* colorAttachmentDesc = renderPass.colorAttachments[i];
         colorAttachmentDesc.clearColor =
         {
@@ -92,11 +99,17 @@ void CommandBuffer::EndRenderPass() const
 
 void CommandBuffer::BindGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc, const RefCounted<Shader>& vertexShader, const RefCounted<Shader>& fragmentShader) const
 {
-    mHandle->pipelineState = MetalPipelineStateManager::GetGraphicsPipelineState(pipelineDesc, mHandle->renderPassDescriptor, vertexShader, fragmentShader);
-    [mHandle->renderCommandEncoder setRenderPipelineState:mHandle->pipelineState.pipeline];
-    
-    if (mHandle->renderPassDescriptor.depthAttachment.texture)
+    if (mHandle->hasDepthAttachment)
+    {
+        mHandle->pipelineState = MetalPipelineStateManager::GetGraphicsPipelineState(pipelineDesc, mHandle->colorAttachments, mHandle->depthAttachment, vertexShader, fragmentShader);
+        [mHandle->renderCommandEncoder setRenderPipelineState:mHandle->pipelineState.pipeline];
         [mHandle->renderCommandEncoder setDepthStencilState:mHandle->pipelineState.depthStencil];
+    }
+    else
+    {
+        mHandle->pipelineState = MetalPipelineStateManager::GetGraphicsPipelineState(pipelineDesc, mHandle->colorAttachments, vertexShader, fragmentShader);
+        [mHandle->renderCommandEncoder setRenderPipelineState:mHandle->pipelineState.pipeline];
+    }
 }
 
 void CommandBuffer::SetViewport(const Size& size) const
