@@ -27,8 +27,20 @@ void MetalSwapchain::Initialize(const RendererConfig& config)
     mHandle.opaque = YES;
     Configure(config);
     
+    mSize = GameInstance->GetWindow()->GetResolution();
+    mHandle.frame.size = CGSizeMake(mSize.width, mSize.height);
+    mHandle.drawableSize = CGSizeMake(mSize.width, mSize.height);
+    
+    EventDispatcher<WindowResizeEvent>::Subscribe([this](const WindowResizeEvent& e)
+    {
+        mSize.width = e.GetWidth();
+        mSize.height = e.GetHeight();
+        
+        mHandle.frame.size = CGSizeMake(mSize.width, mSize.height);
+        mHandle.drawableSize = CGSizeMake(mSize.width, mSize.height);
+    });
+    
     mImageAcquireSemaphore = dispatch_semaphore_create(mMaxFramesInFlight);
-    UpdateSize();
 }
 
 void MetalSwapchain::Destroy()
@@ -79,21 +91,9 @@ void MetalSwapchain::Present(id<MTLCommandBuffer> commandBuffer)
     
     [commandBuffer presentDrawable:mDrawable];
 
-    UpdateSize();
-
     mCurrentFrameIndex = (mCurrentFrameIndex + 1) % mMaxFramesInFlight;
     
     mDrawable = nil;
-}
-
-void MetalSwapchain::UpdateSize()
-{
-    if (mSize.width != mHandle.drawableSize.width || mSize.height != mHandle.drawableSize.height)
-    {
-        mSize.width = mHandle.drawableSize.width;
-        mSize.height = mHandle.drawableSize.height;
-        EventDispatcher<RendererResizeEvent>::Publish(RendererResizeEvent(mSize));
-    }
 }
 
 TextureFormat MetalSwapchain::GetFormat() const

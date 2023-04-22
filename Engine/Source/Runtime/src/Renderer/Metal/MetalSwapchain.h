@@ -18,8 +18,6 @@ public:
     
     void Configure(const RendererConfig& config);
 
-	void UpdateSize();
-
 	id<CAMetalDrawable> AcquireNextDrawable();
 	void Present(id<MTLCommandBuffer> commandBuffer);
 
