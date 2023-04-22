@@ -90,9 +90,12 @@ void DebugRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
     auto& finalPassData = blackboard.Get<WorldRenderer::FinalPassData>();
 	graph.AddRenderPass<DrawPassData>("DebugRenderer::DrawPass", [&](RenderGraphBuilder& builder, DrawPassData& passData)
 	{
+        finalPassData.colorTarget = builder.WriteRenderTexture(finalPassData.colorTarget);
+        finalPassData.depthTarget = builder.WriteRenderTexture(finalPassData.depthTarget);
+        
         passData.vertexBuffer = builder.ReadBuffer(updatePass.vertexBuffer);
-        passData.colorTarget = builder.WriteRenderTexture(finalPassData.colorTarget);
-        passData.depthTarget = builder.WriteRenderTexture(finalPassData.depthTarget);
+        passData.colorTarget = finalPassData.colorTarget;
+        passData.depthTarget = finalPassData.depthTarget;
 	},
 	[this](const RenderGraphContext& renderGraphContext, const DrawPassData& passData)
 	{
