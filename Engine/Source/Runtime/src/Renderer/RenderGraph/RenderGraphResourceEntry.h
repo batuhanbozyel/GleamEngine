@@ -16,13 +16,12 @@ struct RenderGraphResourceEntry
 {
     const RenderGraphResource resource;
     const bool transient;
-    uint32_t version;
     
     RenderPassNode* producer = nullptr;
     RenderPassNode* last = nullptr;
     
-    RenderGraphResourceEntry(RenderGraphResource resource, uint32_t version, bool transient)
-        : resource(resource), version(version), transient(transient)
+    RenderGraphResourceEntry(RenderGraphResource resource, bool transient)
+        : resource(resource), transient(transient)
     {
         
     }
@@ -33,8 +32,8 @@ struct RenderGraphBufferEntry : public RenderGraphResourceEntry
     BufferDescriptor descriptor;
     RefCounted<Buffer> buffer;
     
-    RenderGraphBufferEntry(const BufferDescriptor& descriptor, RenderGraphResource resource, uint32_t version, bool transient = true)
-        : RenderGraphResourceEntry(resource, version, transient), descriptor(descriptor)
+    RenderGraphBufferEntry(const BufferDescriptor& descriptor, RenderGraphResource resource, bool transient = true)
+        : RenderGraphResourceEntry(resource, transient), descriptor(descriptor)
     {
         
     }
@@ -45,8 +44,8 @@ struct RenderGraphRenderTextureEntry : public RenderGraphResourceEntry
     TextureDescriptor descriptor;
     RefCounted<RenderTexture> renderTexture;
     
-    RenderGraphRenderTextureEntry(const TextureDescriptor& descriptor, RenderGraphResource resource, uint32_t version, bool transient = true)
-        : RenderGraphResourceEntry(resource, version, transient), descriptor(descriptor)
+    RenderGraphRenderTextureEntry(const TextureDescriptor& descriptor, RenderGraphResource resource, bool transient = true)
+        : RenderGraphResourceEntry(resource, transient), descriptor(descriptor)
     {
         
     }

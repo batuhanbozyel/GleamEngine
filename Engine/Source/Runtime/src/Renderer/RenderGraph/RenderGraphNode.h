@@ -67,13 +67,12 @@ struct RenderPassNode : public RenderGraphNode
 struct RenderGraphResourceNode : public RenderGraphNode
 {
     const RenderGraphResource resource;
-    const uint32_t version;
     
     RenderPassNode* producer = nullptr;
     RenderPassNode* last = nullptr;
     
-    RenderGraphResourceNode(uint32_t uniqueId, RenderGraphResource resource, uint32_t version)
-        : RenderGraphNode(uniqueId), resource(resource), version(version)
+    RenderGraphResourceNode(uint32_t uniqueId, RenderGraphResource resource)
+        : RenderGraphNode(uniqueId), resource(resource)
     {
         
     }
