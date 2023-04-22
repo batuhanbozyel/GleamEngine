@@ -27,7 +27,10 @@ struct DepthState
     CompareFunction compareFunction = CompareFunction::Less;
     bool writeEnabled = false;
 
-	bool operator==(const DepthState&) const = default;
+	bool operator==(const DepthState& other) const
+    {
+        return compareFunction == other.compareFunction && writeEnabled == other.writeEnabled;
+    }
 };
 
 enum class StencilOp
@@ -53,7 +56,17 @@ struct StencilState
     StencilOp passOperation = StencilOp::Keep;
     StencilOp depthFailOperation = StencilOp::Keep;
 
-	bool operator==(const StencilState&) const = default;
+	bool operator==(const StencilState& other) const
+    {
+        return  enabled == other.enabled &&
+                reference == other.reference &&
+                compareFunction == other.compareFunction &&
+                readMask == other.readMask &&
+                writeMask == other.writeMask &&
+                failOperation == other.failOperation &&
+                passOperation == other.passOperation &&
+                depthFailOperation == other.depthFailOperation;
+    }
 };
 
 enum class CullMode
@@ -81,7 +94,15 @@ struct PipelineStateDescriptor
     PipelineBindPoint bindPoint = PipelineBindPoint::Graphics;
     bool alphaToCoverage = false;
 
-	bool operator==(const PipelineStateDescriptor&) const = default;
+	bool operator==(const PipelineStateDescriptor& other) const
+    {
+        return  blendState == other.blendState &&
+                depthState == other.depthState &&
+                stencilState == other.stencilState &&
+                cullingMode == other.cullingMode &&
+                topology == other.topology &&
+                bindPoint == other.bindPoint;
+    }
 };
 
 namespace Utils {
