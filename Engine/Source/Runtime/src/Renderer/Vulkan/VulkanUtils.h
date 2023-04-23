@@ -243,6 +243,7 @@ static constexpr VkPrimitiveTopology PrimitiveToplogyToVkPrimitiveTopology(Primi
 		case PrimitiveTopology::Lines: return VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
 		case PrimitiveTopology::LineStrip: return VK_PRIMITIVE_TOPOLOGY_LINE_STRIP;
 		case PrimitiveTopology::Triangles: return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+        case PrimitiveTopology::TriangleStrip: return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
 		default: return VK_PRIMITIVE_TOPOLOGY_MAX_ENUM;
 	}
 }

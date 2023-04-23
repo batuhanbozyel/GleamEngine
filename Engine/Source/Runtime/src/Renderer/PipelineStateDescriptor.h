@@ -81,7 +81,8 @@ enum class PrimitiveTopology
 	Points,
 	Lines,
 	LineStrip,
-	Triangles
+	Triangles,
+    TriangleStrip
 };
 
 struct PipelineStateDescriptor
