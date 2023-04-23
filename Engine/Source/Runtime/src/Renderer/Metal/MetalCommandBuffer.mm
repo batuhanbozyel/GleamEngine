@@ -18,6 +18,7 @@ struct CommandBuffer::Impl
     TArray<TextureDescriptor> colorAttachments;
     TextureDescriptor depthAttachment;
     bool hasDepthAttachment = false;
+    uint32_t sampleCount = 1;
 };
 
 CommandBuffer::CommandBuffer()
@@ -36,6 +37,7 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc) 
 {
     MTLRenderPassDescriptor* renderPass = [MTLRenderPassDescriptor renderPassDescriptor];
     
+    mHandle->sampleCount = renderPassDesc.samples;
     mHandle->hasDepthAttachment = renderPassDesc.depthAttachment.texture != nullptr;
     if (renderPassDesc.depthAttachment.texture)
     {
@@ -101,13 +103,13 @@ void CommandBuffer::BindGraphicsPipeline(const PipelineStateDescriptor& pipeline
 {
     if (mHandle->hasDepthAttachment)
     {
-        mHandle->pipelineState = MetalPipelineStateManager::GetGraphicsPipelineState(pipelineDesc, mHandle->colorAttachments, mHandle->depthAttachment, vertexShader, fragmentShader);
+        mHandle->pipelineState = MetalPipelineStateManager::GetGraphicsPipelineState(pipelineDesc, mHandle->colorAttachments, mHandle->depthAttachment, vertexShader, fragmentShader, mHandle->sampleCount);
         [mHandle->renderCommandEncoder setRenderPipelineState:mHandle->pipelineState.pipeline];
         [mHandle->renderCommandEncoder setDepthStencilState:mHandle->pipelineState.depthStencil];
     }
     else
     {
-        mHandle->pipelineState = MetalPipelineStateManager::GetGraphicsPipelineState(pipelineDesc, mHandle->colorAttachments, vertexShader, fragmentShader);
+        mHandle->pipelineState = MetalPipelineStateManager::GetGraphicsPipelineState(pipelineDesc, mHandle->colorAttachments, vertexShader, fragmentShader, mHandle->sampleCount);
         [mHandle->renderCommandEncoder setRenderPipelineState:mHandle->pipelineState.pipeline];
     }
 }

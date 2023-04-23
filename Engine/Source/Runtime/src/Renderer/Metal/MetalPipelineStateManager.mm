@@ -5,7 +5,7 @@
 
 using namespace Gleam;
 
-const MetalPipelineState& MetalPipelineStateManager::GetGraphicsPipelineState(const PipelineStateDescriptor& pipelineDesc, const TArray<TextureDescriptor>& colorAttachments, const RefCounted<Shader>& vertexShader, const RefCounted<Shader>& fragmentShader)
+const MetalPipelineState& MetalPipelineStateManager::GetGraphicsPipelineState(const PipelineStateDescriptor& pipelineDesc, const TArray<TextureDescriptor>& colorAttachments, const RefCounted<Shader>& vertexShader, const RefCounted<Shader>& fragmentShader, uint32_t sampleCount)
 {
 	for (uint32_t i = 0; i < mGraphicsPipelineCache.size(); i++)
 	{
@@ -14,6 +14,7 @@ const MetalPipelineState& MetalPipelineStateManager::GetGraphicsPipelineState(co
 			element.vertexShader == vertexShader &&
             element.fragmentShader == fragmentShader &&
             element.colorAttachments.size() == colorAttachments.size() &&
+            element.sampleCount == sampleCount &&
             !element.hasDepthAttachment)
 		{
             bool found = true;
@@ -31,6 +32,7 @@ const MetalPipelineState& MetalPipelineStateManager::GetGraphicsPipelineState(co
 	}
     
 	GraphicsPipelineCacheElement element;
+    element.sampleCount = sampleCount;
 	element.vertexShader = vertexShader;
     element.fragmentShader = fragmentShader;
 	element.colorAttachments = colorAttachments;
@@ -41,7 +43,7 @@ const MetalPipelineState& MetalPipelineStateManager::GetGraphicsPipelineState(co
 	return cachedElement.pipelineState;
 }
 
-const MetalPipelineState& MetalPipelineStateManager::GetGraphicsPipelineState(const PipelineStateDescriptor& pipelineDesc, const TArray<TextureDescriptor>& colorAttachments, const TextureDescriptor& depthAttachment, const RefCounted<Shader>& vertexShader, const RefCounted<Shader>& fragmentShader)
+const MetalPipelineState& MetalPipelineStateManager::GetGraphicsPipelineState(const PipelineStateDescriptor& pipelineDesc, const TArray<TextureDescriptor>& colorAttachments, const TextureDescriptor& depthAttachment, const RefCounted<Shader>& vertexShader, const RefCounted<Shader>& fragmentShader, uint32_t sampleCount)
 {
     for (uint32_t i = 0; i < mGraphicsPipelineCache.size(); i++)
     {
@@ -51,6 +53,7 @@ const MetalPipelineState& MetalPipelineStateManager::GetGraphicsPipelineState(co
             element.fragmentShader == fragmentShader &&
             element.colorAttachments.size() == colorAttachments.size() &&
             element.depthAttachment == depthAttachment &&
+            element.sampleCount == sampleCount &&
             element.hasDepthAttachment)
         {
             bool found = true;
@@ -69,6 +72,7 @@ const MetalPipelineState& MetalPipelineStateManager::GetGraphicsPipelineState(co
     
     GraphicsPipelineCacheElement element;
     element.hasDepthAttachment = true;
+    element.sampleCount = sampleCount;
     element.vertexShader = vertexShader;
     element.fragmentShader = fragmentShader;
     element.colorAttachments = colorAttachments;
@@ -90,6 +94,9 @@ id<MTLRenderPipelineState> MetalPipelineStateManager::CreateGraphicsPipeline(con
     MTLRenderPipelineDescriptor* pipelineDescriptor = [MTLRenderPipelineDescriptor new];
     pipelineDescriptor.vertexFunction = element.vertexShader->GetHandle();
     pipelineDescriptor.fragmentFunction = element.fragmentShader->GetHandle();
+    pipelineDescriptor.rasterSampleCount = element.sampleCount;
+    pipelineDescriptor.alphaToCoverageEnabled = element.pipelineState.descriptor.alphaToCoverage;
+    pipelineDescriptor.inputPrimitiveTopology = PrimitiveToplogyToMTLPrimitiveTopologyClass(element.pipelineState.descriptor.topology);
     
     if (element.hasDepthAttachment)
     {

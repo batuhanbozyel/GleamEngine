@@ -16,9 +16,9 @@ class MetalPipelineStateManager
 {
 public:
 
-	static const MetalPipelineState& GetGraphicsPipelineState(const PipelineStateDescriptor& pipelineDesc, const TArray<TextureDescriptor>& attachmentDescriptors, const RefCounted<Shader>& vertexShader, const RefCounted<Shader>& fragmentShader);
+	static const MetalPipelineState& GetGraphicsPipelineState(const PipelineStateDescriptor& pipelineDesc, const TArray<TextureDescriptor>& attachmentDescriptors, const RefCounted<Shader>& vertexShader, const RefCounted<Shader>& fragmentShader, uint32_t sampleCount);
     
-    static const MetalPipelineState& GetGraphicsPipelineState(const PipelineStateDescriptor& pipelineDesc, const TArray<TextureDescriptor>& attachmentDescriptors, const TextureDescriptor& depthAttachment, const RefCounted<Shader>& vertexShader, const RefCounted<Shader>& fragmentShader);
+    static const MetalPipelineState& GetGraphicsPipelineState(const PipelineStateDescriptor& pipelineDesc, const TArray<TextureDescriptor>& attachmentDescriptors, const TextureDescriptor& depthAttachment, const RefCounted<Shader>& vertexShader, const RefCounted<Shader>& fragmentShader, uint32_t sampleCount);
 
 	static void Clear();
 
@@ -32,6 +32,7 @@ private:
 		TArray<TextureDescriptor> colorAttachments;
         TextureDescriptor depthAttachment;
         bool hasDepthAttachment = false;
+        uint32_t sampleCount = 1;
 	};
     
     static id<MTLRenderPipelineState> CreateGraphicsPipeline(const GraphicsPipelineCacheElement& element);

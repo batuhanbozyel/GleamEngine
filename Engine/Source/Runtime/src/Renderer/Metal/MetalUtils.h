@@ -156,7 +156,21 @@ static constexpr MTLPrimitiveType PrimitiveToplogyToMTLPrimitiveType(PrimitiveTo
         case PrimitiveTopology::Lines: return MTLPrimitiveTypeLine;
         case PrimitiveTopology::LineStrip: return MTLPrimitiveTypeLineStrip;
         case PrimitiveTopology::Triangles: return MTLPrimitiveTypeTriangle;
+        case PrimitiveTopology::TriangleStrip: return MTLPrimitiveTypeTriangleStrip;
         default: GLEAM_ASSERT(false, "Metal: Unknown primitive topology specified!"); return MTLPrimitiveType(~0);
+    }
+}
+
+static constexpr MTLPrimitiveTopologyClass PrimitiveToplogyToMTLPrimitiveTopologyClass(PrimitiveTopology topology)
+{
+    switch (topology)
+    {
+        case PrimitiveTopology::Points: return MTLPrimitiveTopologyClassPoint;
+        case PrimitiveTopology::Lines: return MTLPrimitiveTopologyClassLine;
+        case PrimitiveTopology::LineStrip: return MTLPrimitiveTopologyClassLine;
+        case PrimitiveTopology::Triangles: return MTLPrimitiveTopologyClassTriangle;
+        case PrimitiveTopology::TriangleStrip: return MTLPrimitiveTopologyClassTriangle;
+        default: GLEAM_ASSERT(false, "Metal: Unknown primitive topology specified!"); return MTLPrimitiveTopologyClassUnspecified;
     }
 }
 
