@@ -85,12 +85,4 @@ RenderTexture::~RenderTexture()
     mMultisampleHandle = nil;
 }
 
-NativeGraphicsHandle RenderTexture::GetRenderSurface() const
-{
-    if (mMultisampleHandle != nil)
-        return mMultisampleHandle;
-
-    return mHandle;
-}
-
 #endif

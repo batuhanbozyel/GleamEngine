@@ -81,7 +81,10 @@ public:
     
     ~RenderTexture();
 
-	NativeGraphicsHandle GetRenderSurface() const;
+	NativeGraphicsHandle GetMSAAHandle() const
+    {
+        return mMultisampleHandle;
+    }
     
 private:
 

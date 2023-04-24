@@ -25,7 +25,8 @@ struct TextureDescriptor
                 format == other.format &&
                 filterMode == other.filterMode &&
                 wrapMode == other.wrapMode &&
-                sampleCount == other.sampleCount;
+                sampleCount == other.sampleCount &&
+                useMipMap == other.useMipMap;
     }
 };
 

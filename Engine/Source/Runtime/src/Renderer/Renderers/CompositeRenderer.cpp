@@ -48,7 +48,7 @@ void CompositeRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboar
         renderPassDesc.colorAttachments.resize(1);
         renderPassDesc.colorAttachments[0].texture = swapchainRT;
         renderPassDesc.colorAttachments[0].loadAction = AttachmentLoadAction::DontCare;
-        renderGraphContext.cmd->BeginRenderPass(renderPassDesc);
+        renderGraphContext.cmd->BeginRenderPass(renderPassDesc, "CompositePass");
         
         PipelineStateDescriptor pipelineDesc;
         renderGraphContext.cmd->BindGraphicsPipeline(pipelineDesc, mCompositePassVertexShader, mCompositePassFragmentShader);

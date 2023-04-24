@@ -103,14 +103,17 @@ void DebugRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
         const auto& colorAttachment = renderGraphContext.registry->GetRenderTexture(passData.colorTarget);
         const auto& depthAttachment = renderGraphContext.registry->GetRenderTexture(passData.depthTarget);
         
-        AttachmentDescriptor attachmentDesc;
-        attachmentDesc.texture = colorAttachment;
-        
         RenderPassDescriptor renderPassDesc;
         renderPassDesc.size = colorAttachment->GetDescriptor().size;
-        renderPassDesc.colorAttachments.emplace_back(attachmentDesc);
+        
+        renderPassDesc.colorAttachments.resize(1);
+        renderPassDesc.colorAttachments[0].texture = colorAttachment;
+        renderPassDesc.colorAttachments[0].loadAction = AttachmentLoadAction::Load;
+        
         renderPassDesc.depthAttachment.texture = depthAttachment;
-        renderGraphContext.cmd->BeginRenderPass(renderPassDesc);
+        renderPassDesc.depthAttachment.loadAction = AttachmentLoadAction::Load;
+        
+        renderGraphContext.cmd->BeginRenderPass(renderPassDesc, "DebugRenderer::DrawPass");
         
         renderGraphContext.cmd->SetVertexBuffer(*mCameraBuffer, 0, RendererBindingTable::CameraBuffer);
 		

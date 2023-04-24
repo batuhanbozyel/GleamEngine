@@ -35,8 +35,9 @@ void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
     {
         TextureDescriptor attachmentDesc;
         attachmentDesc.size = mRendererContext->GetDrawableSize();
-        attachmentDesc.format = TextureFormat::R32G32B32A32_SFloat;
         attachmentDesc.sampleCount = mRendererContext->GetConfiguration().sampleCount;
+        
+        attachmentDesc.format = TextureFormat::R32G32B32A32_SFloat;
         passData.colorTarget = builder.CreateRenderTexture(attachmentDesc);
         passData.colorTarget = builder.WriteRenderTexture(passData.colorTarget);
         
@@ -51,14 +52,18 @@ void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
         
         RenderPassDescriptor renderPassDesc;
         renderPassDesc.size = colorAttachment->GetDescriptor().size;
+        renderPassDesc.samples = mRendererContext->GetConfiguration().sampleCount;
         
         renderPassDesc.colorAttachments.resize(1);
         renderPassDesc.colorAttachments[0].texture = colorAttachment;
         renderPassDesc.colorAttachments[0].loadAction = AttachmentLoadAction::Clear;
+        if (renderPassDesc.samples > 1) { renderPassDesc.colorAttachments[0].storeAction = AttachmentStoreAction::Resolve; } ;
         
         renderPassDesc.depthAttachment.texture = depthAttachment;
         renderPassDesc.depthAttachment.loadAction = AttachmentLoadAction::Clear;
-        renderGraphContext.cmd->BeginRenderPass(renderPassDesc);
+        if (renderPassDesc.samples > 1) { renderPassDesc.depthAttachment.storeAction = AttachmentStoreAction::Resolve; } ;
+        
+        renderGraphContext.cmd->BeginRenderPass(renderPassDesc, "WorldRenderer::ForwardPass");
         
         PipelineStateDescriptor pipelineDesc;
         pipelineDesc.cullingMode = CullMode::Back;

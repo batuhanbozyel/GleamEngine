@@ -35,7 +35,7 @@ public:
 
     ~CommandBuffer();
     
-    void BeginRenderPass(const RenderPassDescriptor& renderPassDesc) const;
+    void BeginRenderPass(const RenderPassDescriptor& renderPassDesc, const TStringView debugName = "") const;
 
     void EndRenderPass() const;
 

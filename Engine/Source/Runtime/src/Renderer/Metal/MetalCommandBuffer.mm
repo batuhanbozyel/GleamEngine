@@ -33,7 +33,7 @@ CommandBuffer::~CommandBuffer()
     mHandle->commandBuffer = nil;
 }
 
-void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc) const
+void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, const TStringView debugName) const
 {
     MTLRenderPassDescriptor* renderPass = [MTLRenderPassDescriptor renderPassDescriptor];
     
@@ -49,22 +49,26 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc) 
             depthAttachmentDesc.clearDepth = renderPassDesc.depthAttachment.clearDepth;
             depthAttachmentDesc.loadAction = AttachmentLoadActionToMTLLoadAction(renderPassDesc.depthAttachment.loadAction);
             depthAttachmentDesc.storeAction = AttachmentStoreActionToMTLStoreAction(renderPassDesc.depthAttachment.storeAction);
-            depthAttachmentDesc.texture = renderPassDesc.depthAttachment.texture->GetRenderSurface();
             
             if (renderPassDesc.samples > 1)
+            {
+                depthAttachmentDesc.texture = renderPassDesc.depthAttachment.texture->GetMSAAHandle();
                 depthAttachmentDesc.resolveTexture = renderPassDesc.depthAttachment.texture->GetHandle();
+            }
+            else
+            {
+                depthAttachmentDesc.texture = renderPassDesc.depthAttachment.texture->GetHandle();
+            }
         }
         
         if (Utils::IsStencilFormat(mHandle->depthAttachment.format))
         {
             MTLRenderPassStencilAttachmentDescriptor* stencilAttachmentDesc = renderPass.stencilAttachment;
             stencilAttachmentDesc.clearStencil = renderPassDesc.depthAttachment.clearStencil;
-            stencilAttachmentDesc.loadAction = AttachmentLoadActionToMTLLoadAction(renderPassDesc.depthAttachment.loadAction);
-            stencilAttachmentDesc.storeAction = AttachmentStoreActionToMTLStoreAction(renderPassDesc.depthAttachment.storeAction);
-            stencilAttachmentDesc.texture = renderPassDesc.depthAttachment.texture->GetRenderSurface();
-            
-            if (renderPassDesc.samples > 1)
-                stencilAttachmentDesc.resolveTexture = renderPassDesc.depthAttachment.texture->GetHandle();
+            stencilAttachmentDesc.loadAction = renderPass.depthAttachment.loadAction;
+            stencilAttachmentDesc.storeAction = renderPass.depthAttachment.storeAction;
+            stencilAttachmentDesc.texture = renderPass.depthAttachment.texture;
+            stencilAttachmentDesc.resolveTexture = renderPass.depthAttachment.resolveTexture;
         }
     }
     
@@ -84,13 +88,20 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc) 
         };
         colorAttachmentDesc.loadAction = AttachmentLoadActionToMTLLoadAction(colorAttachment.loadAction);
         colorAttachmentDesc.storeAction = AttachmentStoreActionToMTLStoreAction(colorAttachment.storeAction);
-        colorAttachmentDesc.texture = colorAttachment.texture->GetRenderSurface();
         
         if (renderPassDesc.samples > 1)
+        {
+            colorAttachmentDesc.texture = colorAttachment.texture->GetMSAAHandle();
             colorAttachmentDesc.resolveTexture = colorAttachment.texture->GetHandle();
+        }
+        else
+        {
+            colorAttachmentDesc.texture = colorAttachment.texture->GetHandle();
+        }
     }
     
     mHandle->renderCommandEncoder = [mHandle->commandBuffer renderCommandEncoderWithDescriptor:renderPass];
+    mHandle->renderCommandEncoder.label = TO_NSSTRING(debugName.data());
 }
 
 void CommandBuffer::EndRenderPass() const
@@ -182,7 +193,13 @@ void CommandBuffer::Blit(const RenderTexture& texture, const RenderTexture& targ
 
 void CommandBuffer::Begin() const
 {
+#ifdef GDEBUG
+    MTLCommandBufferDescriptor* descriptor = [MTLCommandBufferDescriptor new];
+    descriptor.errorOptions = MTLCommandBufferErrorOptionEncoderExecutionStatus;
+    mHandle->commandBuffer = [MetalDevice::GetCommandPool() commandBufferWithDescriptor:descriptor];
+#else
     mHandle->commandBuffer = [MetalDevice::GetCommandPool() commandBuffer];
+#endif
 }
 
 void CommandBuffer::End() const
@@ -193,6 +210,7 @@ void CommandBuffer::End() const
 void CommandBuffer::Commit() const
 {
     [mHandle->commandBuffer commit];
+    mHandle->commandBuffer = nil;
 }
 
 void CommandBuffer::Present() const
