@@ -7,7 +7,7 @@ using namespace Gleam;
 Model::Model(const TArray<MeshData>& meshes)
 	: mMeshes(meshes)
 {
-    CalculateNormals();
+    CalculateNormalsIfNeeded();
 }
 
 Model Model::Import(const Filesystem::path& path)
@@ -20,11 +20,11 @@ Model Model::Import(const Filesystem::path& path)
     else
     {
         GLEAM_ASSERT(false, "Model file type is not supported!");
-        return Model();
+        return Model({});
     }
 }
 
-void Model::CalculateNormals()
+void Model::CalculateNormalsIfNeeded()
 {
     for (auto& mesh : mMeshes)
     {

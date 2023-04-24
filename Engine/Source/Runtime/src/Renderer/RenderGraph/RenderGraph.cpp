@@ -46,7 +46,10 @@ void RenderGraph::Compile()
     Stack<RenderGraphResourceNode*> unreferencedBuffers;
     for (auto& node : mRegistry.mBufferNodes)
     {
-        if (node.refCount == 0) unreferencedBuffers.push(&node);
+        if (node.refCount == 0)
+        {
+            unreferencedBuffers.push(&node);
+        }
     }
     
     while (!unreferencedBuffers.empty())
@@ -71,7 +74,10 @@ void RenderGraph::Compile()
     Stack<RenderGraphResourceNode*> unreferencedRenderTextures;
     for (auto& node : mRegistry.mRenderTextureNodes)
     {
-        if (node.refCount == 0) unreferencedRenderTextures.push(&node);
+        if (node.refCount == 0)
+        {
+            unreferencedRenderTextures.push(&node);
+        }
     }
     
     while (!unreferencedRenderTextures.empty())

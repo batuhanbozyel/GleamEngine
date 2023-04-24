@@ -19,8 +19,7 @@ struct MeshData
 class Model
 {
 public:
-
-    Model() = default;
+    
     Model(const TArray<MeshData>& meshes);
 
 	static Model Import(const Filesystem::path& path);
@@ -29,7 +28,7 @@ public:
 
 private:
 
-    void CalculateNormals();
+    void CalculateNormalsIfNeeded();
 
     TArray<MeshData> mMeshes;
 };
