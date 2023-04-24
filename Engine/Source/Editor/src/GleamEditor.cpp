@@ -34,5 +34,6 @@ Gleam::Game* Gleam::CreateGameInstance()
     props.appVersion = Gleam::Version(1, 0, 0);
     props.windowProps.title = "Gleam Editor";
     props.windowProps.windowFlag = Gleam::WindowFlag::MaximizedWindow;
+    props.rendererConfig.sampleCount = 4;
     return new GEditor::GleamEditor(props);
 }
