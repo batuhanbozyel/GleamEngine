@@ -58,6 +58,7 @@
 #include "World/Components/Transform.h"
 #include "World/Components/Transform2D.h"
 #include "World/Components/Camera.h"
+#include "World/Components/MeshRenderer.h"
 
 #include "Renderer/GraphicsObject.h"
 #include "Renderer/ShaderTypes.h"
