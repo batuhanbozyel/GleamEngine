@@ -71,6 +71,8 @@ constexpr inline T As(P p)
 
 #ifdef __OBJC__
 #define OBJC_CLASS(name) @class name
+#define TO_CPP_STRING(x) std::string([(x) UTF8String])
+#define TO_NSSTRING(x) ([NSString stringWithCString:(x) encoding:NSUTF8StringEncoding])
 #else
 #define OBJC_CLASS(name) typedef struct objc_object name
 #endif
