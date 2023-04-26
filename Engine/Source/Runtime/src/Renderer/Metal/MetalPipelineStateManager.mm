@@ -7,9 +7,8 @@ using namespace Gleam;
 
 const MetalPipelineState& MetalPipelineStateManager::GetGraphicsPipelineState(const PipelineStateDescriptor& pipelineDesc, const TArray<TextureDescriptor>& colorAttachments, const RefCounted<Shader>& vertexShader, const RefCounted<Shader>& fragmentShader, uint32_t sampleCount)
 {
-	for (uint32_t i = 0; i < mGraphicsPipelineCache.size(); i++)
+	for (const auto& element : mGraphicsPipelineCache)
 	{
-		const auto& element = mGraphicsPipelineCache[i];
 		if (element.pipelineState.descriptor == pipelineDesc &&
 			element.vertexShader == vertexShader &&
             element.fragmentShader == fragmentShader &&
@@ -18,7 +17,7 @@ const MetalPipelineState& MetalPipelineStateManager::GetGraphicsPipelineState(co
             !element.hasDepthAttachment)
 		{
             bool found = true;
-            for (uint32_t j = 0; j < colorAttachments.size(); j++)
+            for (uint32_t i = 0; i < colorAttachments.size(); i++)
             {
                 if (element.colorAttachments[i] != colorAttachments[i])
                 {
@@ -45,9 +44,8 @@ const MetalPipelineState& MetalPipelineStateManager::GetGraphicsPipelineState(co
 
 const MetalPipelineState& MetalPipelineStateManager::GetGraphicsPipelineState(const PipelineStateDescriptor& pipelineDesc, const TArray<TextureDescriptor>& colorAttachments, const TextureDescriptor& depthAttachment, const RefCounted<Shader>& vertexShader, const RefCounted<Shader>& fragmentShader, uint32_t sampleCount)
 {
-    for (uint32_t i = 0; i < mGraphicsPipelineCache.size(); i++)
+    for (const auto& element : mGraphicsPipelineCache)
     {
-        const auto& element = mGraphicsPipelineCache[i];
         if (element.pipelineState.descriptor == pipelineDesc &&
             element.vertexShader == vertexShader &&
             element.fragmentShader == fragmentShader &&
@@ -57,7 +55,7 @@ const MetalPipelineState& MetalPipelineStateManager::GetGraphicsPipelineState(co
             element.hasDepthAttachment)
         {
             bool found = true;
-            for (uint32_t j = 0; j < colorAttachments.size(); j++)
+            for (uint32_t i = 0; i < colorAttachments.size(); i++)
             {
                 if (element.colorAttachments[i] != colorAttachments[i])
                 {
