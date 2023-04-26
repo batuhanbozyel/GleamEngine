@@ -39,7 +39,7 @@ public:
 
 	uint32_t GetFrameIndex() const;
 
-	uint32_t GetMaxFramesInFlight() const;
+	uint32_t GetFramesInFlight() const;
 
 private:
     

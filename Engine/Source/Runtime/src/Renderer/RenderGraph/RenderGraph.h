@@ -20,7 +20,7 @@ public:
     
     void Compile();
 
-	void Execute(const CommandBuffer& cmd);
+	void Execute(const CommandBuffer* cmd);
 
 	template<typename PassData>
 	const PassData& AddRenderPass(const TStringView name, SetupFunc<PassData>&& setup, RenderFunc<PassData>&& execute)

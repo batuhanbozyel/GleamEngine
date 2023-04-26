@@ -241,9 +241,9 @@ void VulkanDevice::Init(const TString& appName, const Version& appVersion, const
 	VkCommandPoolCreateInfo commandPoolCreateInfo{ VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO };
 	commandPoolCreateInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 
-	mGraphicsCommandPools.resize(mSwapchain.GetMaxFramesInFlight());
-	mTransferCommandPools.resize(mSwapchain.GetMaxFramesInFlight());
-	for (uint32_t i = 0; i < mSwapchain.GetMaxFramesInFlight(); i++)
+	mGraphicsCommandPools.resize(mSwapchain.GetFramesInFlight());
+	mTransferCommandPools.resize(mSwapchain.GetFramesInFlight());
+	for (uint32_t i = 0; i < mSwapchain.GetFramesInFlight(); i++)
 	{
 		commandPoolCreateInfo.queueFamilyIndex = mGraphicsQueue.index;
 		VK_CHECK(vkCreateCommandPool(mHandle, &commandPoolCreateInfo, nullptr, &mGraphicsCommandPools[i]));
@@ -265,7 +265,7 @@ void VulkanDevice::Destroy()
 	vkDestroyPipelineCache(mHandle, mPipelineCache, nullptr);
 
 	// Destroy command pools
-	for (uint32_t i = 0; i < mSwapchain.GetMaxFramesInFlight(); i++)
+	for (uint32_t i = 0; i < mSwapchain.GetFramesInFlight(); i++)
 	{
 		vkDestroyCommandPool(mHandle, mGraphicsCommandPools[i], nullptr);
 		vkDestroyCommandPool(mHandle, mTransferCommandPools[i], nullptr);

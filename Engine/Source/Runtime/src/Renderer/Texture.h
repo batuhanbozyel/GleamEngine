@@ -86,6 +86,11 @@ public:
         return mMultisampleHandle;
     }
     
+    NativeGraphicsHandle GetMSAAView() const
+    {
+        return mMultisampleView;
+    }
+    
 private:
 
 	// multisample

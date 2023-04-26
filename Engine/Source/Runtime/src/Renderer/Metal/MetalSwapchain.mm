@@ -45,8 +45,10 @@ void MetalSwapchain::Initialize(const RendererConfig& config)
 
 void MetalSwapchain::Destroy()
 {
+    mImageAcquireSemaphore = nil;
     mDrawable = nil;
     mHandle = nil;
+    mSurface = nil;
 }
 
 void MetalSwapchain::Configure(const RendererConfig& config)

@@ -58,7 +58,7 @@ struct CommandBuffer::Impl
 CommandBuffer::CommandBuffer()
 	: mHandle(CreateScope<Impl>())
 {
-	uint32_t frames = VulkanDevice::GetSwapchain().GetMaxFramesInFlight();
+	uint32_t frames = VulkanDevice::GetSwapchain().GetFramesInFlight();
 	mHandle->commandBuffers.resize(frames, VK_NULL_HANDLE);
 	mHandle->fences.resize(frames, VK_NULL_HANDLE);
 	for (uint32_t i = 0; i < frames; i++)
@@ -78,7 +78,7 @@ CommandBuffer::CommandBuffer()
 
 CommandBuffer::~CommandBuffer()
 {
-	for (uint32_t i = 0; i < VulkanDevice::GetSwapchain().GetMaxFramesInFlight(); i++)
+	for (uint32_t i = 0; i < VulkanDevice::GetSwapchain().GetFramesInFlight(); i++)
 	{
 		VK_CHECK(vkWaitForFences(VulkanDevice::GetHandle(), 1, &mHandle->fences[i], VK_TRUE, UINT64_MAX));
 		vkFreeCommandBuffers(VulkanDevice::GetHandle(), VulkanDevice::GetGraphicsCommandPool(i), 1, &mHandle->commandBuffers[i]);

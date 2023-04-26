@@ -22,8 +22,8 @@ void RendererContext::Execute(RenderPipeline& pipeline) const
         }
         
         graph.Compile();
-        graph.Execute(mCommandBuffer);
-        mCommandBuffer.Present();
+        graph.Execute(mCommandBuffer.get());
+        mCommandBuffer->Present();
     }
 }
 
@@ -32,7 +32,9 @@ const RefCounted<Shader>& RendererContext::CreateShader(const TString& entryPoin
     for (const auto& shader : mShaderCache)
     {
         if (shader->GetEntryPoint() == entryPoint)
+        {
             return shader;
+        }
     }
     
     return mShaderCache.emplace_back(CreateRef<Shader>(entryPoint, stage));

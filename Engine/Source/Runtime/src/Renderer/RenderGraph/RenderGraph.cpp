@@ -121,13 +121,13 @@ void RenderGraph::Compile()
     }
 }
 
-void RenderGraph::Execute(const CommandBuffer& cmd)
+void RenderGraph::Execute(const CommandBuffer* cmd)
 {
     RenderGraphContext context;
-    context.cmd = &cmd;
+    context.cmd = cmd;
     context.registry = &mRegistry;
     
-    cmd.Begin();
+    cmd->Begin();
     for (auto& pass : mPassNodes)
     {
         if (pass->isCulled()) continue;
@@ -163,7 +163,7 @@ void RenderGraph::Execute(const CommandBuffer& cmd)
                 entry.renderTexture.reset();
         }
     }
-    cmd.End();
+    cmd->End();
     
     mRegistry.Clear();
     mPassNodes.clear();

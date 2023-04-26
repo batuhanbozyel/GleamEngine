@@ -34,7 +34,7 @@ private:
 
     RendererConfig mConfiguration;
     
-    CommandBuffer mCommandBuffer;
+    Scope<CommandBuffer> mCommandBuffer;
     
 	TArray<RefCounted<Shader>> mShaderCache;
 

@@ -66,13 +66,13 @@ RenderTexture::RenderTexture(const TextureDescriptor& descriptor)
 
     if (descriptor.sampleCount > 1)
     {
-        MTLTextureDescriptor* textureDesc = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:TextureFormatToMTLPixelFormat(descriptor.format) width:descriptor.size.width height:descriptor.size.height mipmapped:false];
-        textureDesc.textureType = MTLTextureType2DMultisample;
-        textureDesc.mipmapLevelCount = 1;
-        textureDesc.sampleCount = descriptor.sampleCount;
-        textureDesc.usage = MTLTextureUsageRenderTarget;
-        textureDesc.storageMode = MTLStorageModeMemoryless;
-        mMultisampleHandle = [MetalDevice::GetHandle() newTextureWithDescriptor:textureDesc];
+        MTLTextureDescriptor* msaaTextureDesc = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:textureDesc.pixelFormat width:textureDesc.width height:textureDesc.height mipmapped:false];
+        msaaTextureDesc.textureType = MTLTextureType2DMultisample;
+        msaaTextureDesc.mipmapLevelCount = 1;
+        msaaTextureDesc.sampleCount = descriptor.sampleCount;
+        msaaTextureDesc.usage = MTLTextureUsageRenderTarget;
+        msaaTextureDesc.storageMode = MTLStorageModePrivate; // TODO: Switch to memoryless msaa render targets when Tile shading is supported
+        mMultisampleHandle = [MetalDevice::GetHandle() newTextureWithDescriptor:msaaTextureDesc];
         mMultisampleView = mMultisampleHandle;
     }
 }

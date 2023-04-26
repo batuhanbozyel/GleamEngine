@@ -299,7 +299,7 @@ uint32_t VulkanSwapchain::GetFrameIndex() const
 	return mCurrentFrameIndex;
 }
 
-uint32_t VulkanSwapchain::GetMaxFramesInFlight() const
+uint32_t VulkanSwapchain::GetFramesInFlight() const
 {
 	return mMaxFramesInFlight;
 }
