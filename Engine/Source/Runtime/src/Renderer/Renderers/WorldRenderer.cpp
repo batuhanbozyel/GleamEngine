@@ -51,7 +51,7 @@ void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
         const auto& depthAttachment = renderGraphContext.registry->GetRenderTexture(passData.depthTarget);
         
         RenderPassDescriptor renderPassDesc;
-        renderPassDesc.size = colorAttachment->GetDescriptor().size;
+        renderPassDesc.size = mRendererContext->GetDrawableSize();
         renderPassDesc.samples = mRendererContext->GetConfiguration().sampleCount;
         
         renderPassDesc.colorAttachments.resize(1);
