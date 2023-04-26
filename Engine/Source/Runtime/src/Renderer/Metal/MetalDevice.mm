@@ -36,14 +36,14 @@ void MetalDevice::Destroy()
 {
     MetalPipelineStateManager::Clear();
     
-    // Destroy swapchain
-    mSwapchain.Destroy();
-    
     // Destroy command pool
     mCommandPool = nil;
 
     // Destroy library
     mShaderLibrary = nil;
+    
+    // Destroy swapchain
+    mSwapchain.Destroy();
 
     // Destroy device
     mHandle = nil;

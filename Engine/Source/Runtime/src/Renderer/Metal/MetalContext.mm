@@ -20,10 +20,12 @@ void RendererContext::ConfigureBackend(const RendererConfig& config)
     mConfiguration = config;
     mConfiguration.format = MetalDevice::GetSwapchain().GetFormat();
     RenderPipeline::mRendererContext = this;
+    mCommandBuffer = CreateScope<CommandBuffer>();
 }
 
 void RendererContext::DestroyBackend()
 {
+    mCommandBuffer.reset();
     MetalDevice::Destroy();
 }
 

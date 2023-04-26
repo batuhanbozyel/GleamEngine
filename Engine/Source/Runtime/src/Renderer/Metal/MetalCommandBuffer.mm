@@ -210,7 +210,6 @@ void CommandBuffer::End() const
 void CommandBuffer::Commit() const
 {
     [mHandle->commandBuffer commit];
-    mHandle->commandBuffer = nil;
 }
 
 void CommandBuffer::Present() const
