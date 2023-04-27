@@ -40,14 +40,4 @@ const Gleam::Size& RendererContext::GetDrawableSize() const
     return MetalDevice::GetSwapchain().GetSize();
 }
 
-RefCounted<RenderTexture> RendererContext::GetSwapchainTarget() const
-{
-    TextureDescriptor descriptor;
-    descriptor.size = MetalDevice::GetSwapchain().GetSize();
-    descriptor.format = MetalDevice::GetSwapchain().GetFormat();
-    
-    id<CAMetalDrawable> drawable = MetalDevice::GetSwapchain().AcquireNextDrawable();
-    return CreateRef<RenderTexture>(drawable.texture, drawable.texture, descriptor);
-}
-
 #endif

@@ -30,7 +30,11 @@ void CompositeRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboar
         RenderTextureHandle finalColorTarget;
     };
     
-    auto swapchainTarget = graph.ImportBackbuffer(mRendererContext->GetSwapchainTarget());
+    TextureDescriptor swapchainDesriptor;
+    swapchainDesriptor.size = mRendererContext->GetDrawableSize();
+    swapchainDesriptor.format = mRendererContext->GetConfiguration().format;
+    auto swapchainTarget = graph.ImportBackbuffer(CreateRef<RenderTexture>(swapchainDesriptor, true));
+    
     auto& finalPassData = blackboard.Get<WorldRenderer::FinalPassData>();
     graph.AddRenderPass<CompositePassData>("CompositePass", [&](RenderGraphBuilder& builder, CompositePassData& passData)
     {

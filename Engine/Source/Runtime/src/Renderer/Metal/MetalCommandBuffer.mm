@@ -89,14 +89,21 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, 
         colorAttachmentDesc.loadAction = AttachmentLoadActionToMTLLoadAction(colorAttachment.loadAction);
         colorAttachmentDesc.storeAction = AttachmentStoreActionToMTLStoreAction(colorAttachment.storeAction);
         
-        if (renderPassDesc.samples > 1)
+        if (colorAttachment.texture->GetHandle() == nil)
         {
-            colorAttachmentDesc.texture = colorAttachment.texture->GetMSAAHandle();
-            colorAttachmentDesc.resolveTexture = colorAttachment.texture->GetHandle();
+            colorAttachmentDesc.texture = MetalDevice::GetSwapchain().AcquireNextDrawable().texture;
         }
         else
         {
-            colorAttachmentDesc.texture = colorAttachment.texture->GetHandle();
+            if (renderPassDesc.samples > 1)
+            {
+                colorAttachmentDesc.texture = colorAttachment.texture->GetMSAAHandle();
+                colorAttachmentDesc.resolveTexture = colorAttachment.texture->GetHandle();
+            }
+            else
+            {
+                colorAttachmentDesc.texture = colorAttachment.texture->GetHandle();
+            }
         }
     }
     

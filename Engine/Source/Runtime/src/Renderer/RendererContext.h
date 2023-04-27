@@ -17,8 +17,6 @@ public:
     void Execute(RenderPipeline& pipeline) const;
     
 	const RefCounted<Shader>& CreateShader(const TString& entryPoint, ShaderStage stage);
-    
-    RefCounted<RenderTexture> GetSwapchainTarget() const;
 
     const Size& GetDrawableSize() const;
     

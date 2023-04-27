@@ -69,15 +69,7 @@ class RenderTexture final : public Texture
 {
 public:
     
-    // Necessary for creating from swapchain image
-    RenderTexture(NativeGraphicsHandle image, NativeGraphicsHandle view, const TextureDescriptor& descriptor)
-        : Texture(descriptor)
-    {
-        mHandle = image;
-        mView = view;
-    }
-    
-    RenderTexture(const TextureDescriptor& descriptor);
+    RenderTexture(const TextureDescriptor& descriptor, bool swapchainTarget = false);
     
     ~RenderTexture();
 
