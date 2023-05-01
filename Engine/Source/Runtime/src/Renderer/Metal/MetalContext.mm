@@ -16,9 +16,8 @@ using namespace Gleam;
 
 void RendererContext::ConfigureBackend(const RendererConfig& config)
 {
-    MetalDevice::Init(mConfiguration);
     mConfiguration = config;
-    mConfiguration.format = MetalDevice::GetSwapchain().GetFormat();
+    MetalDevice::Init(mConfiguration);
     RenderPipeline::mRendererContext = this;
     mCommandBuffer = CreateScope<CommandBuffer>();
 }

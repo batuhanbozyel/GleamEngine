@@ -60,7 +60,6 @@ struct DebugShaderUniforms
 struct ForwardPassUniforms
 {
     Matrix4 modelMatrix;
-    Color32 color;
 };
 
 } // namespace Gleam

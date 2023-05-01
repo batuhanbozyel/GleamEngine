@@ -31,57 +31,55 @@ void WorldRenderer::OnCreate(RendererContext* context)
 
 void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard)
 {
-    const auto& finalPassData = graph.AddRenderPass<FinalPassData>("WorldRenderer::ForwardPass", [&](RenderGraphBuilder& builder, FinalPassData& passData)
+    struct ForwardPassData
     {
-        TextureDescriptor attachmentDesc;
-        attachmentDesc.size = mRendererContext->GetDrawableSize();
-        attachmentDesc.sampleCount = mRendererContext->GetConfiguration().sampleCount;
+        RenderTextureHandle colorTarget;
+        RenderTextureHandle depthTarget;
+    };
+    
+    const auto& finalPassData = graph.AddRenderPass<ForwardPassData>("WorldRenderer::ForwardPass", [&](RenderGraphBuilder& builder, ForwardPassData& passData)
+    {
+        auto& renderingData = blackboard.Get<RenderingData>();
+        renderingData.colorTarget = builder.UseColorBuffer({.texture = renderingData.colorTarget, .loadAction = AttachmentLoadAction::Clear, .storeAction = mRendererContext->GetConfiguration().sampleCount > 1 ? AttachmentStoreAction::Resolve : AttachmentStoreAction::Store});
+        renderingData.depthTarget = builder.UseDepthBuffer({.texture = renderingData.depthTarget, .loadAction = AttachmentLoadAction::Clear, .storeAction = mRendererContext->GetConfiguration().sampleCount > 1 ? AttachmentStoreAction::Resolve : AttachmentStoreAction::Store});
         
-        attachmentDesc.format = TextureFormat::R32G32B32A32_SFloat;
-        passData.colorTarget = builder.CreateRenderTexture(attachmentDesc);
-        passData.colorTarget = builder.WriteRenderTexture(passData.colorTarget);
-        
-        attachmentDesc.format = TextureFormat::D32_SFloat_S8_UInt;
-        passData.depthTarget = builder.CreateRenderTexture(attachmentDesc);
-        passData.depthTarget = builder.WriteRenderTexture(passData.depthTarget);
+        passData.colorTarget = renderingData.colorTarget;
+        passData.depthTarget = renderingData.depthTarget;
     },
-    [this](const RenderGraphContext& renderGraphContext, const FinalPassData& passData)
+    [this](const RenderGraphContext& renderGraphContext, const ForwardPassData& passData)
     {
-        const auto& colorAttachment = renderGraphContext.registry->GetRenderTexture(passData.colorTarget);
-        const auto& depthAttachment = renderGraphContext.registry->GetRenderTexture(passData.depthTarget);
-        
-        RenderPassDescriptor renderPassDesc;
-        renderPassDesc.size = mRendererContext->GetDrawableSize();
-        renderPassDesc.samples = mRendererContext->GetConfiguration().sampleCount;
-        
-        renderPassDesc.colorAttachments.resize(1);
-        renderPassDesc.colorAttachments[0].texture = colorAttachment;
-        renderPassDesc.colorAttachments[0].loadAction = AttachmentLoadAction::Clear;
-        if (renderPassDesc.samples > 1) { renderPassDesc.colorAttachments[0].storeAction = AttachmentStoreAction::Resolve; } ;
-        
-        renderPassDesc.depthAttachment.texture = depthAttachment;
-        renderPassDesc.depthAttachment.loadAction = AttachmentLoadAction::Clear;
-        if (renderPassDesc.samples > 1) { renderPassDesc.depthAttachment.storeAction = AttachmentStoreAction::Resolve; } ;
-        
-        renderGraphContext.cmd->BeginRenderPass(renderPassDesc, "WorldRenderer::ForwardPass");
-        
         PipelineStateDescriptor pipelineDesc;
         pipelineDesc.cullingMode = CullMode::Back;
         pipelineDesc.depthState.writeEnabled = true;
-        pipelineDesc.stencilState.enabled = true;
         renderGraphContext.cmd->BindGraphicsPipeline(pipelineDesc, mForwardPassVertexShader, mForwardPassFragmentShader);
         
         renderGraphContext.cmd->SetVertexBuffer(*mCameraBuffer, 0, RendererBindingTable::CameraBuffer);
         
+        for (const auto& element : mOpaqueQueue)
+        {
+            const auto& meshBuffer = element.mesh->GetBuffer();
+            renderGraphContext.cmd->SetVertexBuffer(*meshBuffer.GetPositionBuffer(), 0, RendererBindingTable::PositionBuffer);
+            renderGraphContext.cmd->SetVertexBuffer(*meshBuffer.GetInterleavedBuffer(), 0, RendererBindingTable::InterleavedBuffer);
+            
+            ForwardPassUniforms uniforms;
+            uniforms.modelMatrix = element.transform;
+            renderGraphContext.cmd->SetPushConstant(uniforms, ShaderStage_Vertex | ShaderStage_Fragment);
+            for (const auto& descriptor : element.mesh->GetSubmeshDescriptors())
+            {
+                renderGraphContext.cmd->DrawIndexed(meshBuffer.GetIndexBuffer()->GetHandle(), IndexType::UINT32, descriptor.indexCount, 1, descriptor.firstIndex, descriptor.baseVertex, 0);
+            }
+        }
         
-        renderGraphContext.cmd->EndRenderPass();
+        mOpaqueQueue.clear();
     });
-    blackboard.Add(finalPassData);
 }
 
-void WorldRenderer::DrawMesh(const MeshRenderer& meshRenderer, const Matrix4& transform)
+void WorldRenderer::DrawMesh(const MeshRenderer& meshRenderer, const Transform& transform)
 {
-    
+    RenderQueueElement element;
+    element.mesh = meshRenderer.GetMesh();
+    element.transform = transform.GetTransform();
+    mOpaqueQueue.emplace_back(element);
 }
 
 void WorldRenderer::UpdateCamera(const Camera& camera)

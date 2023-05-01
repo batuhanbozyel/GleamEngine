@@ -26,7 +26,7 @@ public:
 	const PassData& AddRenderPass(const TStringView name, SetupFunc<PassData>&& setup, RenderFunc<PassData>&& execute)
 	{
         uint32_t nodeId = static_cast<uint32_t>(mPassNodes.size());
-        auto& node = mPassNodes.emplace_back(CreateScope<RenderPassNode>(nodeId, name, std::forward<decltype(execute)>(execute)));
+        auto node = mPassNodes.emplace_back(new RenderPassNode(nodeId, name, std::forward<decltype(execute)>(execute)));
 		auto& passData = std::any_cast<PassData&>(node->data);
 		auto builder = RenderGraphBuilder(*node, mRegistry);
 		setup(builder, passData);
@@ -39,7 +39,7 @@ private:
 
     RenderGraphResourceRegistry mRegistry;
 
-	TArray<Scope<RenderPassNode>> mPassNodes;
+	TArray<RenderPassNode*> mPassNodes;
 
 };
 

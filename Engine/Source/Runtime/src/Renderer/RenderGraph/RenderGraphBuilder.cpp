@@ -10,11 +10,6 @@
 
 using namespace Gleam;
 
-static bool HasResource(const TArray<RenderGraphResource>& resources, RenderGraphResource resource)
-{
-    return std::find(resources.cbegin(), resources.cend(), resource) != resources.cend();
-}
-
 static RenderGraphResource EmplaceIfNeeded(TArray<RenderGraphResource>& passResources, RenderGraphResource resource)
 {
     return HasResource(passResources, resource) ? resource : passResources.emplace_back(resource);
@@ -24,6 +19,19 @@ RenderGraphBuilder::RenderGraphBuilder(RenderPassNode& node, RenderGraphResource
     : mPassNode(node), mResourceRegistry(registry)
 {
     
+}
+
+NO_DISCARD RenderTextureHandle RenderGraphBuilder::UseColorBuffer(RenderPassAttachment attachment)
+{;
+    attachment.texture = WriteRenderTexture(attachment.texture);
+    mPassNode.colorAttachments.push_back(attachment);
+    return attachment.texture;
+}
+
+NO_DISCARD RenderTextureHandle RenderGraphBuilder::UseDepthBuffer(RenderPassAttachment attachment)
+{
+    mPassNode.depthAttachment.texture = WriteRenderTexture(attachment.texture);
+    return mPassNode.depthAttachment.texture;
 }
 
 NO_DISCARD BufferHandle RenderGraphBuilder::CreateBuffer(const BufferDescriptor& descriptor)
@@ -42,7 +50,6 @@ NO_DISCARD BufferHandle RenderGraphBuilder::WriteBuffer(BufferHandle resource)
     
     if (!HasResource(mPassNode.bufferCreates, resource))
     {
-        ReadBuffer(resource);
         resource = mResourceRegistry.CloneBuffer(resource);
     }
     return EmplaceIfNeeded(mPassNode.bufferWrites, resource);
@@ -54,7 +61,6 @@ NO_DISCARD RenderTextureHandle RenderGraphBuilder::WriteRenderTexture(RenderText
     
     if (!HasResource(mPassNode.renderTextureCreates, resource))
     {
-        ReadRenderTexture(resource);
         resource = mResourceRegistry.CloneRT(resource);
     }
     return EmplaceIfNeeded(mPassNode.renderTextureWrites, resource);

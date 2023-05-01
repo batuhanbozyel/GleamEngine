@@ -8,7 +8,7 @@ struct VertexOut
 };
 
 vertex VertexOut debugVertexShader(uint vertexID [[vertex_id]],
-                                   constant Gleam::DebugVertex* VertexBuffer [[buffer(Gleam::RendererBindingTable::Buffer0)]],
+                                   constant Gleam::DebugVertex* VertexBuffer [[buffer(Gleam::RendererBindingTable::PositionBuffer)]],
                                    constant Gleam::CameraUniforms& CameraBuffer [[buffer(Gleam::RendererBindingTable::CameraBuffer)]])
 {
     Gleam::DebugVertex vert = VertexBuffer[vertexID];
@@ -20,7 +20,7 @@ vertex VertexOut debugVertexShader(uint vertexID [[vertex_id]],
 }
 
 vertex VertexOut debugMeshVertexShader(uint vertexID [[vertex_id]],
-                                       constant Gleam::Vector3* PositionBuffer [[buffer(Gleam::RendererBindingTable::Buffer0)]],
+                                       constant Gleam::Vector3* PositionBuffer [[buffer(Gleam::RendererBindingTable::PositionBuffer)]],
                                        constant Gleam::CameraUniforms& CameraBuffer [[buffer(Gleam::RendererBindingTable::CameraBuffer)]],
                                        constant Gleam::DebugShaderUniforms& uniforms [[buffer(Gleam::RendererBindingTable::PushConstantBlock)]])
 {

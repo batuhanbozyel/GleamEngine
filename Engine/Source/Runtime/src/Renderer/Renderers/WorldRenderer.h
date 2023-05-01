@@ -17,13 +17,7 @@ class WorldRenderer : public IRenderer
 {
 public:
     
-    struct FinalPassData
-    {
-        RenderTextureHandle colorTarget;
-        RenderTextureHandle depthTarget;
-    };
-    
-    void DrawMesh(const MeshRenderer& meshRenderer, const Matrix4& transform);
+    void DrawMesh(const MeshRenderer& meshRenderer, const Transform& transform);
     
 	void UpdateCamera(const Camera& camera);
     
@@ -32,6 +26,13 @@ public:
     virtual void AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard) override;
 
 private:
+    
+    struct RenderQueueElement
+    {
+        RefCounted<Mesh> mesh;
+        Matrix4 transform;
+    };
+    List<RenderQueueElement> mOpaqueQueue;
     
     Scope<Buffer> mCameraBuffer;
     RefCounted<Shader> mForwardPassVertexShader;

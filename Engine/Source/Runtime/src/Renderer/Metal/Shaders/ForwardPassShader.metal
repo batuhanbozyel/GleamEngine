@@ -9,8 +9,8 @@ struct VertexOut
 };
 
 vertex VertexOut forwardPassVertexShader(uint vertexID [[vertex_id]],
-                                         constant Gleam::Vector3* PositionBuffer [[buffer(Gleam::RendererBindingTable::Buffer0)]],
-                                         constant Gleam::InterleavedMeshVertex* InterleavedBuffer [[buffer(Gleam::RendererBindingTable::Buffer1)]],
+                                         constant Gleam::Vector3* PositionBuffer [[buffer(Gleam::RendererBindingTable::PositionBuffer)]],
+                                         constant Gleam::InterleavedMeshVertex* InterleavedBuffer [[buffer(Gleam::RendererBindingTable::InterleavedBuffer)]],
                                          constant Gleam::CameraUniforms& cameraUniforms [[buffer(Gleam::RendererBindingTable::CameraBuffer)]],
                                          constant Gleam::ForwardPassUniforms& uniforms [[buffer(Gleam::RendererBindingTable::PushConstantBlock)]])
 {
@@ -26,5 +26,5 @@ vertex VertexOut forwardPassVertexShader(uint vertexID [[vertex_id]],
 fragment float4 forwardPassFragmentShader(VertexOut in [[stage_in]],
                                           constant Gleam::ForwardPassUniforms& uniforms [[buffer(Gleam::RendererBindingTable::PushConstantBlock)]])
 {
-    return unpack_unorm4x8_to_float(uniforms.color);
+    return float4(1.0f, 0.71f, 0.75f, 1.0f);
 }

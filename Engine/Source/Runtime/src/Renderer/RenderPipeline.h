@@ -19,24 +19,32 @@ class RenderPipeline
 {
     friend class RendererContext;
     
-    using Container = TArray<Scope<IRenderer>>;
+    using Container = TArray<IRenderer*>;
     
 public:
+    
+    ~RenderPipeline()
+    {
+        for (auto renderer : mRenderers)
+        {
+            delete renderer;
+        }
+    }
     
     template<RendererType T>
     T* AddRenderer()
     {
         GLEAM_ASSERT(!HasRenderer<T>(), "Render pipeline already has the renderer!");
-        const auto& renderer = mRenderers.emplace_back(CreateScope<T>());
+        auto renderer = mRenderers.emplace_back(new T());
         renderer->OnCreate(mRendererContext);
-        return static_cast<T*>(renderer.get());
+        return static_cast<T*>(renderer);
     }
     
     template<RendererType T>
     void RemoveRenderer()
     {
         GLEAM_ASSERT(HasRenderer<T>(), "Render pipeline does not have the renderer!");
-        auto it = std::remove_if(mRenderers.begin(), mRenderers.end(), [](const Scope<IRenderer>& ptr)
+        auto it = std::remove_if(mRenderers.begin(), mRenderers.end(), [](const IRenderer* ptr)
         {
             const auto& renderer = *ptr;
             return typeid(renderer) == typeid(T);
@@ -49,18 +57,18 @@ public:
     T* GetRenderer()
     {
         GLEAM_ASSERT(HasRenderer<T>(), "Render pipeline does not have the renderer!");
-        auto it = std::find_if(mRenderers.begin(), mRenderers.end(), [](const Scope<IRenderer>& ptr)
+        auto it = std::find_if(mRenderers.begin(), mRenderers.end(), [](const IRenderer* ptr)
         {
             const auto& renderer = *ptr;
             return typeid(renderer) == typeid(T);
         });
-        return static_cast<T*>(it->get());
+        return static_cast<T*>(*it);
     }
     
     template<RendererType T>
     bool HasRenderer()
     {
-        auto it = std::find_if(mRenderers.begin(), mRenderers.end(), [](const Scope<IRenderer>& ptr)
+        auto it = std::find_if(mRenderers.begin(), mRenderers.end(), [](const IRenderer* ptr)
         {
             const auto& renderer = *ptr;
             return typeid(renderer) == typeid(T);
@@ -68,111 +76,40 @@ public:
         return it != mRenderers.end();
     }
     
-    class iterator
+    template<RendererType T>
+    uint32_t GetIndexOf() const
     {
-    public:
-        
-        iterator(typename Container::iterator it)
-        : it(it) {}
-        
-        iterator& operator++()
+        auto it = std::find_if(mRenderers.begin(), mRenderers.end(), [](const IRenderer* ptr)
         {
-            ++it;
-            return *this;
-        }
-        
-        iterator operator++(int)
-        {
-            iterator copy = *this;
-            ++it;
-            return copy;
-        }
-        
-        bool operator==(const iterator& other) const
-        {
-            return it == other.it;
-        }
-        
-        bool operator!=(const iterator& other) const
-        {
-            return it != other.it;
-        }
-        
-        IRenderer* operator*() const
-        {
-            return it->get();
-        }
-        
-    private:
-        
-        typename Container::iterator it;
-        
-    };
-    
-    class const_iterator
-    {
-    public:
-        
-        const_iterator(typename Container::const_iterator it)
-        : it(it) {}
-        
-        const_iterator& operator++()
-        {
-            ++it;
-            return *this;
-        }
-        
-        const_iterator operator++(int)
-        {
-            const_iterator copy = *this;
-            ++it;
-            return copy;
-        }
-        
-        bool operator==(const const_iterator& other) const
-        {
-            return it == other.it;
-        }
-        
-        bool operator!=(const const_iterator& other) const
-        {
-            return it != other.it;
-        }
-        
-        const IRenderer* operator*() const
-        {
-            return it->get();
-        }
-        
-    private:
-        
-        typename Container::const_iterator it;
-        
-    };
-    
-    iterator begin()
-    {
-        return iterator(mRenderers.begin());
+            const auto& renderer = *ptr;
+            return typeid(renderer) == typeid(T);
+        });
+        return std::distance(mRenderers.begin(), it);
     }
     
-    iterator end()
+    Container::iterator begin()
     {
-        return iterator(mRenderers.end());
+        return mRenderers.begin();
     }
     
-    const_iterator begin() const
+    Container::iterator end()
     {
-        return const_iterator(mRenderers.begin());
+        return mRenderers.end();
     }
     
-    const_iterator end() const
+    Container::const_iterator begin() const
     {
-        return const_iterator(mRenderers.end());
+        return mRenderers.begin();
+    }
+    
+    Container::const_iterator end() const
+    {
+        return mRenderers.end();
     }
     
 private:
     
-    TArray<Scope<IRenderer>> mRenderers;
+    Container mRenderers;
     
     // initialized and set when a Game instance is created
     static inline RendererContext* mRendererContext = nullptr;

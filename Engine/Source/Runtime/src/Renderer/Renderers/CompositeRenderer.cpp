@@ -17,9 +17,8 @@ using namespace Gleam;
 
 void CompositeRenderer::OnCreate(RendererContext* context)
 {
-    mRendererContext = context;
-    mCompositePassVertexShader = context->CreateShader("fullscreenTriangleVertexShader", ShaderStage::Vertex);
-    mCompositePassFragmentShader = context->CreateShader("compositePassFragmentShader", ShaderStage::Fragment);
+    mVertexShader = context->CreateShader("fullscreenTriangleVertexShader", ShaderStage::Vertex);
+    mFragmentShader = context->CreateShader("compositePassFragmentShader", ShaderStage::Fragment);
 }
 
 void CompositeRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard)
@@ -30,36 +29,21 @@ void CompositeRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboar
         RenderTextureHandle finalColorTarget;
     };
     
-    TextureDescriptor swapchainDesriptor;
-    swapchainDesriptor.size = mRendererContext->GetDrawableSize();
-    swapchainDesriptor.format = mRendererContext->GetConfiguration().format;
-    auto swapchainTarget = graph.ImportBackbuffer(CreateRef<RenderTexture>(swapchainDesriptor, true));
-    
-    auto& finalPassData = blackboard.Get<WorldRenderer::FinalPassData>();
+    auto swapchainTarget = graph.ImportBackbuffer(CreateRef<RenderTexture>());
     graph.AddRenderPass<CompositePassData>("CompositePass", [&](RenderGraphBuilder& builder, CompositePassData& passData)
     {
-        passData.finalColorTarget = builder.ReadRenderTexture(finalPassData.colorTarget);
-        passData.swapchainTarget = builder.WriteRenderTexture(swapchainTarget);
+        const auto& renderingData = blackboard.Get<RenderingData>();
+        passData.finalColorTarget = builder.ReadRenderTexture(renderingData.colorTarget);
+        passData.swapchainTarget = builder.UseColorBuffer({.texture = swapchainTarget, .loadAction = AttachmentLoadAction::Clear});
     },
     [this](const RenderGraphContext& renderGraphContext, const CompositePassData& passData)
     {
         const auto& finalColorRT = renderGraphContext.registry->GetRenderTexture(passData.finalColorTarget);
-        const auto& swapchainRT = renderGraphContext.registry->GetRenderTexture(passData.swapchainTarget);
-        
-        RenderPassDescriptor renderPassDesc;
-        renderPassDesc.size = swapchainRT->GetDescriptor().size;
-        
-        renderPassDesc.colorAttachments.resize(1);
-        renderPassDesc.colorAttachments[0].texture = swapchainRT;
-        renderPassDesc.colorAttachments[0].loadAction = AttachmentLoadAction::DontCare;
-        renderGraphContext.cmd->BeginRenderPass(renderPassDesc, "CompositePass");
         
         PipelineStateDescriptor pipelineDesc;
-        renderGraphContext.cmd->BindGraphicsPipeline(pipelineDesc, mCompositePassVertexShader, mCompositePassFragmentShader);
+        renderGraphContext.cmd->BindGraphicsPipeline(pipelineDesc, mVertexShader, mFragmentShader);
         
         renderGraphContext.cmd->SetFragmentTexture(*finalColorRT, 0);
         renderGraphContext.cmd->Draw(3);
-        
-        renderGraphContext.cmd->EndRenderPass();
     });
 }

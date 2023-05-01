@@ -4,6 +4,11 @@
 
 namespace Gleam {
 
+static bool HasResource(const TArray<RenderGraphResource>& resources, RenderGraphResource resource)
+{
+    return std::find(resources.cbegin(), resources.cend(), resource) != resources.cend();
+}
+
 class RenderGraphBuilder final
 {
 public:
@@ -12,6 +17,10 @@ public:
 
     RenderGraphBuilder(RenderPassNode& node, RenderGraphResourceRegistry& registry);
 
+    NO_DISCARD RenderTextureHandle UseColorBuffer(RenderPassAttachment attachment);
+    
+    NO_DISCARD RenderTextureHandle UseDepthBuffer(RenderPassAttachment attachment);
+    
     // RenderTexure
     NO_DISCARD RenderTextureHandle CreateRenderTexture(const TextureDescriptor& descriptor);
     

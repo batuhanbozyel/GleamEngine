@@ -27,6 +27,16 @@ struct RenderGraphNode
 template<typename PassData>
 using RenderFunc = std::function<void(const RenderGraphContext& renderGraphContext, const PassData& passData)>;
 
+struct RenderPassAttachment
+{
+    Color clearColor = Color::clear;
+    float clearDepth = 1.0f;
+    uint32_t clearStencil = 0;
+    RenderGraphResource texture = RenderGraphResource::nullHandle;
+    AttachmentLoadAction loadAction = AttachmentLoadAction::Load;
+    AttachmentStoreAction storeAction = AttachmentStoreAction::Store;
+};
+
 struct RenderPassNode : public RenderGraphNode
 {
     GLEAM_NONCOPYABLE(RenderPassNode);
@@ -48,6 +58,9 @@ struct RenderPassNode : public RenderGraphNode
     TArray<RenderGraphResource> bufferWrites;
     TArray<RenderGraphResource> bufferCreates;
     
+    TArray<RenderPassAttachment> colorAttachments;
+    RenderPassAttachment depthAttachment;
+    
     template<typename PassData>
     RenderPassNode(uint32_t uniqueId, const TStringView name, RenderFunc<PassData>&& execute)
         : RenderGraphNode(uniqueId), name(name), data(std::make_any<PassData>())
@@ -61,6 +74,11 @@ struct RenderPassNode : public RenderGraphNode
     bool isCulled() const
     {
         return refCount == 0 && !hasSideEffect;
+    }
+    
+    bool isCustomPass() const
+    {
+        return colorAttachments.empty() && depthAttachment.texture == RenderGraphResource::nullHandle;
     }
 };
 

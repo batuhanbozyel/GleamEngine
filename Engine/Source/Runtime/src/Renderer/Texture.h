@@ -69,7 +69,10 @@ class RenderTexture final : public Texture
 {
 public:
     
-    RenderTexture(const TextureDescriptor& descriptor, bool swapchainTarget = false);
+    // Swapchain target
+    RenderTexture();
+    
+    RenderTexture(const TextureDescriptor& descriptor);
     
     ~RenderTexture();
 

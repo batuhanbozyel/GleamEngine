@@ -13,8 +13,23 @@ void RendererContext::Execute(RenderPipeline& pipeline) const
     @autoreleasepool
 #endif
     {
+        TextureDescriptor descriptor;
+        descriptor.size = GetDrawableSize();
+        descriptor.sampleCount = mConfiguration.sampleCount;
+        
+        descriptor.format = TextureFormat::R32G32B32A32_SFloat;
+        auto colorTarget = CreateRef<RenderTexture>(descriptor);
+        
+        descriptor.format = TextureFormat::D32_SFloat;
+        auto depthTarget = CreateRef<RenderTexture>(descriptor);
+        
         RenderGraph graph;
         RenderGraphBlackboard blackboard;
+        
+        RenderingData renderingData;
+        renderingData.colorTarget = graph.ImportBackbuffer(colorTarget);
+        renderingData.depthTarget = graph.ImportBackbuffer(depthTarget);
+        blackboard.Add(renderingData);
         
         for (auto renderer : pipeline)
         {

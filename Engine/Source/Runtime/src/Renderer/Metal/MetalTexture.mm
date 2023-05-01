@@ -53,30 +53,34 @@ TextureCube::~TextureCube()
     mView = nil;
 }
 
-RenderTexture::RenderTexture(const TextureDescriptor& descriptor, bool swapchainTarget)
+RenderTexture::RenderTexture()
+    : Texture(TextureDescriptor({.size = MetalDevice::GetSwapchain().GetSize(),
+                                 .format = MetalDevice::GetSwapchain().GetFormat()}))
+{
+    
+}
+
+RenderTexture::RenderTexture(const TextureDescriptor& descriptor)
     : Texture(descriptor)
 {
-    if (!swapchainTarget)
+    MTLTextureDescriptor* textureDesc = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:TextureFormatToMTLPixelFormat(descriptor.format) width:descriptor.size.width height:descriptor.size.height mipmapped:descriptor.useMipMap];
+    textureDesc.mipmapLevelCount = mMipMapLevels;
+    textureDesc.sampleCount = 1;
+    textureDesc.usage = MTLTextureUsageShaderRead | MTLTextureUsageRenderTarget;
+    textureDesc.storageMode = MTLStorageModePrivate;
+    mHandle = [MetalDevice::GetHandle() newTextureWithDescriptor:textureDesc];
+    mView = mHandle;
+    
+    if (descriptor.sampleCount > 1)
     {
-        MTLTextureDescriptor* textureDesc = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:TextureFormatToMTLPixelFormat(descriptor.format) width:descriptor.size.width height:descriptor.size.height mipmapped:descriptor.useMipMap];
-        textureDesc.mipmapLevelCount = mMipMapLevels;
-        textureDesc.sampleCount = 1;
-        textureDesc.usage = MTLTextureUsageShaderRead | MTLTextureUsageRenderTarget;
-        textureDesc.storageMode = MTLStorageModePrivate;
-        mHandle = [MetalDevice::GetHandle() newTextureWithDescriptor:textureDesc];
-        mView = mHandle;
-        
-        if (descriptor.sampleCount > 1)
-        {
-            MTLTextureDescriptor* msaaTextureDesc = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:textureDesc.pixelFormat width:textureDesc.width height:textureDesc.height mipmapped:false];
-            msaaTextureDesc.textureType = MTLTextureType2DMultisample;
-            msaaTextureDesc.mipmapLevelCount = 1;
-            msaaTextureDesc.sampleCount = descriptor.sampleCount;
-            msaaTextureDesc.usage = MTLTextureUsageRenderTarget;
-            msaaTextureDesc.storageMode = MTLStorageModePrivate; // TODO: Switch to memoryless msaa render targets when Tile shading is supported
-            mMultisampleHandle = [MetalDevice::GetHandle() newTextureWithDescriptor:msaaTextureDesc];
-            mMultisampleView = mMultisampleHandle;
-        }
+        MTLTextureDescriptor* msaaTextureDesc = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:textureDesc.pixelFormat width:textureDesc.width height:textureDesc.height mipmapped:false];
+        msaaTextureDesc.textureType = MTLTextureType2DMultisample;
+        msaaTextureDesc.mipmapLevelCount = 1;
+        msaaTextureDesc.sampleCount = descriptor.sampleCount;
+        msaaTextureDesc.usage = MTLTextureUsageRenderTarget;
+        msaaTextureDesc.storageMode = MTLStorageModePrivate; // TODO: Switch to memoryless msaa render targets when Tile shading is supported
+        mMultisampleHandle = [MetalDevice::GetHandle() newTextureWithDescriptor:msaaTextureDesc];
+        mMultisampleView = mMultisampleHandle;
     }
 }
 

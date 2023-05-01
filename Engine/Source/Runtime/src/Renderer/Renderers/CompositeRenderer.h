@@ -22,10 +22,8 @@ public:
     
 private:
     
-    RefCounted<Shader> mCompositePassVertexShader;
-    RefCounted<Shader> mCompositePassFragmentShader;
-    
-    RendererContext* mRendererContext = nullptr;
+    RefCounted<Shader> mVertexShader;
+    RefCounted<Shader> mFragmentShader;
     
 };
 
