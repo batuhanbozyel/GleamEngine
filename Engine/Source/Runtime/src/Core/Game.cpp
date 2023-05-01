@@ -74,6 +74,9 @@ Game::Game(const ApplicationProperties& props)
 		
 		// init renderer backend
 		mRendererContext.ConfigureBackend(props.rendererConfig);
+        
+        // create world
+        World::active = World::Create();
 
 		EventDispatcher<AppCloseEvent>::Subscribe([this](AppCloseEvent e)
 		{
@@ -132,6 +135,9 @@ Game::~Game()
         system->OnDestroy();
 	}
     mSystems.clear();
+    
+    // Destroy world
+    World::active.reset();
 
 	// Destroy renderer
 	mRendererContext.DestroyBackend();
