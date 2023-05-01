@@ -99,8 +99,9 @@ id<MTLRenderPipelineState> MetalPipelineStateManager::CreateGraphicsPipeline(con
     if (element.hasDepthAttachment)
     {
         MTLPixelFormat format = TextureFormatToMTLPixelFormat(element.depthAttachment.format);
-        pipelineDescriptor.depthAttachmentPixelFormat = format;
-        pipelineDescriptor.stencilAttachmentPixelFormat = format;
+        
+        if (Utils::IsDepthFormat(element.depthAttachment.format)) { pipelineDescriptor.depthAttachmentPixelFormat = format; }
+        if (Utils::IsStencilFormat(element.depthAttachment.format)) { pipelineDescriptor.stencilAttachmentPixelFormat = format; }
     }
     
     for (uint32_t i = 0; i < element.colorAttachments.size(); i++)
