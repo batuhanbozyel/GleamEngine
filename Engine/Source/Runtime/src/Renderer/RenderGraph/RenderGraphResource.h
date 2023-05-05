@@ -28,7 +28,7 @@ private:
     
 };
 
-#define RenderGraphResourceHandle(HandleType) class HandleType : public RenderGraphResource {\
+#define RenderGraphResourceHandle(HandleType) class HandleType final : public RenderGraphResource {\
     public: explicit HandleType(uint32_t uniqueId = nullHandle) : RenderGraphResource(uniqueId) {}\
     constexpr HandleType(const RenderGraphResource& other) : RenderGraphResource(other) {}\
     FORCE_INLINE constexpr HandleType& operator=(const RenderGraphResource& other) { RenderGraphResource::operator=(other); return *this; }\

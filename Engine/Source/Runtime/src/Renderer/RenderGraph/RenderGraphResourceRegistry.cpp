@@ -12,83 +12,64 @@ using namespace Gleam;
 
 void RenderGraphResourceRegistry::Clear()
 {
-    mRenderTextureNodes.clear();
-    mRenderTextureEntries.clear();
-    
-    mBufferNodes.clear();
-    mBufferEntries.clear();
+    mNodes.clear();
+    mEntries.clear();
 }
 
-const RefCounted<Buffer>& RenderGraphResourceRegistry::GetBuffer(BufferHandle buffer) const
+const RefCounted<Buffer>& RenderGraphResourceRegistry::GetBuffer(BufferHandle handle) const
 {
-    GLEAM_ASSERT(buffer != RenderGraphResource::nullHandle);
-    
-    const auto& node = mBufferNodes[buffer];
-    return mBufferEntries[node.resource].buffer;
+    return static_cast<RenderGraphBufferEntry*>(GetResourceEntry(handle))->buffer;
 }
 
-const RefCounted<RenderTexture>& RenderGraphResourceRegistry::GetRenderTexture(RenderTextureHandle renderTexture) const
+const RefCounted<RenderTexture>& RenderGraphResourceRegistry::GetRenderTexture(RenderTextureHandle handle) const
 {
-    GLEAM_ASSERT(renderTexture != RenderGraphResource::nullHandle);
-    
-    const auto& node = mRenderTextureNodes[renderTexture];
-    return mRenderTextureEntries[node.resource].renderTexture;
+    return static_cast<RenderGraphRenderTextureEntry*>(GetResourceEntry(handle))->renderTexture;
 }
 
 NO_DISCARD RenderTextureHandle RenderGraphResourceRegistry::CreateRT(const TextureDescriptor& descriptor)
 {
-    RenderTextureHandle resource(static_cast<uint32_t>(mRenderTextureEntries.size()));
-    mRenderTextureEntries.emplace_back(descriptor, resource);
+    RenderTextureHandle resource(static_cast<uint32_t>(mEntries.size()));
+    mEntries.emplace_back(CreateScope<RenderGraphRenderTextureEntry>(descriptor, resource));
     
-    RenderTextureHandle node(static_cast<uint32_t>(mRenderTextureNodes.size()));
-    mRenderTextureNodes.emplace_back(node, resource);
+    RenderTextureHandle node(static_cast<uint32_t>(mNodes.size()));
+    mNodes.emplace_back(node, resource);
     return node;
-}
-
-NO_DISCARD RenderTextureHandle RenderGraphResourceRegistry::CloneRT(RenderTextureHandle resource)
-{
-    GLEAM_ASSERT(resource != RenderGraphResource::nullHandle);
-    
-    const auto& node = mRenderTextureNodes[resource];
-    auto& entry = mRenderTextureEntries[node.resource];
-    
-    RenderTextureHandle clone(static_cast<uint32_t>(mRenderTextureNodes.size()));
-    mRenderTextureNodes.emplace_back(clone, node.resource);
-    return clone;
 }
 
 NO_DISCARD BufferHandle RenderGraphResourceRegistry::CreateBuffer(const BufferDescriptor& descriptor)
 {
-    BufferHandle resource(static_cast<uint32_t>(mBufferEntries.size()));
-    mBufferEntries.emplace_back(descriptor, resource);
+    BufferHandle resource(static_cast<uint32_t>(mEntries.size()));
+    mEntries.emplace_back(CreateScope<RenderGraphBufferEntry>(descriptor, resource));
     
-    BufferHandle node(static_cast<uint32_t>(mBufferNodes.size()));
-    mBufferNodes.emplace_back(node, resource);
+    BufferHandle node(static_cast<uint32_t>(mNodes.size()));
+    mNodes.emplace_back(node, resource);
     return node;
 }
 
-NO_DISCARD BufferHandle RenderGraphResourceRegistry::CloneBuffer(BufferHandle resource)
+NO_DISCARD RenderGraphResource RenderGraphResourceRegistry::CloneResource(RenderGraphResource resource)
 {
     GLEAM_ASSERT(resource != RenderGraphResource::nullHandle);
     
-    const auto& node = mBufferNodes[resource];
-    auto& entry = mBufferEntries[node.resource];
-    
-    BufferHandle clone(static_cast<uint32_t>(mBufferNodes.size()));
-    mBufferNodes.emplace_back(clone, node.resource);
+    RenderGraphResource clone(static_cast<uint32_t>(mNodes.size()));
+    mNodes.emplace_back(clone, mNodes[resource].resource);
     return clone;
 }
 
-RenderGraphBufferEntry& RenderGraphResourceRegistry::GetBufferEntry(RenderGraphResource resource)
+RenderGraphResourceNode& RenderGraphResourceRegistry::GetResourceNode(RenderGraphResource resource)
 {
-    const auto& node = mBufferNodes[resource];
-    GLEAM_ASSERT(node.resource < mBufferEntries.size());
-    return mBufferEntries[node.resource];
+    GLEAM_ASSERT(resource != RenderGraphResource::nullHandle);
+    return mNodes[resource];
 }
 
-RenderGraphRenderTextureEntry& RenderGraphResourceRegistry::GetRenderTextureEntry(RenderGraphResource resource)
+const RenderGraphResourceNode& RenderGraphResourceRegistry::GetResourceNode(RenderGraphResource resource) const
 {
-    const auto& node = mRenderTextureNodes[resource];
-    GLEAM_ASSERT(node.resource < mRenderTextureEntries.size());
-    return mRenderTextureEntries[node.resource];
+    GLEAM_ASSERT(resource != RenderGraphResource::nullHandle);
+    return mNodes[resource];
+}
+
+RenderGraphResourceEntry* RenderGraphResourceRegistry::GetResourceEntry(RenderGraphResource resource) const
+{
+    const auto& node = GetResourceNode(resource);
+    GLEAM_ASSERT(node.resource < mEntries.size());
+    return mEntries[node.resource].get();
 }

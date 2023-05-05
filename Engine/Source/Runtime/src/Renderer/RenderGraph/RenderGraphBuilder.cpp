@@ -36,44 +36,40 @@ NO_DISCARD RenderTextureHandle RenderGraphBuilder::UseDepthBuffer(RenderPassAtta
 
 NO_DISCARD BufferHandle RenderGraphBuilder::CreateBuffer(const BufferDescriptor& descriptor)
 {
-    return mPassNode.bufferCreates.emplace_back(mResourceRegistry.CreateBuffer(descriptor));
+    return mPassNode.resourceCreates.emplace_back(mResourceRegistry.CreateBuffer(descriptor));
 }
 
 NO_DISCARD RenderTextureHandle RenderGraphBuilder::CreateRenderTexture(const TextureDescriptor& descriptor)
 {
-    return mPassNode.renderTextureCreates.emplace_back(mResourceRegistry.CreateRT(descriptor));
+    return mPassNode.resourceCreates.emplace_back(mResourceRegistry.CreateRT(descriptor));
+}
+
+NO_DISCARD RenderGraphResource RenderGraphBuilder::WriteResource(RenderGraphResource resource)
+{
+    if (mResourceRegistry.GetResourceEntry(resource)->transient == false) { mPassNode.hasSideEffect = true; }
+    
+    mResourceRegistry.GetResourceNode(resource).producer = &mPassNode;
+    return EmplaceIfNeeded(mPassNode.resourceWrites, resource);
 }
 
 NO_DISCARD BufferHandle RenderGraphBuilder::WriteBuffer(BufferHandle resource)
 {
-    if (mResourceRegistry.GetBufferEntry(resource).transient == false) { mPassNode.hasSideEffect = true; }
-    
-    if (!HasResource(mPassNode.bufferCreates, resource))
-    {
-        resource = mResourceRegistry.CloneBuffer(resource);
-    }
-    return EmplaceIfNeeded(mPassNode.bufferWrites, resource);
+    return BufferHandle(WriteResource(resource));
 }
 
 NO_DISCARD RenderTextureHandle RenderGraphBuilder::WriteRenderTexture(RenderTextureHandle resource)
 {
-    if (mResourceRegistry.GetRenderTextureEntry(resource).transient == false) { mPassNode.hasSideEffect = true; }
-    
-    if (!HasResource(mPassNode.renderTextureCreates, resource))
-    {
-        resource = mResourceRegistry.CloneRT(resource);
-    }
-    return EmplaceIfNeeded(mPassNode.renderTextureWrites, resource);
+    return RenderTextureHandle(WriteResource(resource));
 }
 
 BufferHandle RenderGraphBuilder::ReadBuffer(BufferHandle resource)
 {
-    GLEAM_ASSERT(!HasResource(mPassNode.bufferCreates, resource) && !HasResource(mPassNode.bufferWrites, resource));
-    return EmplaceIfNeeded(mPassNode.bufferReads, resource);
+    GLEAM_ASSERT(!HasResource(mPassNode.resourceCreates, resource) && !HasResource(mPassNode.resourceWrites, resource));
+    return EmplaceIfNeeded(mPassNode.resourceReads, resource);
 }
 
 RenderTextureHandle RenderGraphBuilder::ReadRenderTexture(RenderTextureHandle resource)
 {
-    GLEAM_ASSERT(!HasResource(mPassNode.renderTextureCreates, resource) && !HasResource(mPassNode.renderTextureWrites, resource));
-    return EmplaceIfNeeded(mPassNode.renderTextureReads, resource);
+    GLEAM_ASSERT(!HasResource(mPassNode.resourceCreates, resource) && !HasResource(mPassNode.resourceWrites, resource));
+    return EmplaceIfNeeded(mPassNode.resourceReads, resource);
 }

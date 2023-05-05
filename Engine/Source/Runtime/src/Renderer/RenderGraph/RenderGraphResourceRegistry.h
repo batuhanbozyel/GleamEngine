@@ -13,7 +13,7 @@ namespace Gleam {
 class RenderGraph;
 class RenderGraphBuilder;
 
-class RenderGraphResourceRegistry
+class RenderGraphResourceRegistry final
 {
     friend class RenderGraph;
     friend class RenderGraphBuilder;
@@ -22,9 +22,9 @@ public:
     
     void Clear();
     
-    const RefCounted<Buffer>& GetBuffer(BufferHandle buffer) const;
+    const RefCounted<Buffer>& GetBuffer(BufferHandle handle) const;
     
-    const RefCounted<RenderTexture>& GetRenderTexture(RenderTextureHandle renderTexture) const;
+    const RefCounted<RenderTexture>& GetRenderTexture(RenderTextureHandle handle) const;
     
 private:
     
@@ -32,19 +32,16 @@ private:
     
     NO_DISCARD RenderTextureHandle CreateRT(const TextureDescriptor& descriptor);
     
-    NO_DISCARD BufferHandle CloneBuffer(BufferHandle resource);
+    NO_DISCARD RenderGraphResource CloneResource(RenderGraphResource resource);
     
-    NO_DISCARD RenderTextureHandle CloneRT(RenderTextureHandle resource);
+    RenderGraphResourceEntry* GetResourceEntry(RenderGraphResource resource) const;
     
-    RenderGraphBufferEntry& GetBufferEntry(RenderGraphResource resource);
+    RenderGraphResourceNode& GetResourceNode(RenderGraphResource resource);
     
-    RenderGraphRenderTextureEntry& GetRenderTextureEntry(RenderGraphResource resource);
+    const RenderGraphResourceNode& GetResourceNode(RenderGraphResource resource) const;
     
-    TArray<RenderGraphResourceNode> mRenderTextureNodes;
-    TArray<RenderGraphRenderTextureEntry> mRenderTextureEntries;
-    
-    TArray<RenderGraphResourceNode> mBufferNodes;
-    TArray<RenderGraphBufferEntry> mBufferEntries;
+    TArray<RenderGraphResourceNode> mNodes;
+    TArray<Scope<RenderGraphResourceEntry>> mEntries;
     
 };
 

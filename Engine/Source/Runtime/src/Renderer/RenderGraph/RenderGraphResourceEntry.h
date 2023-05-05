@@ -20,14 +20,22 @@ struct RenderGraphResourceEntry
     RenderPassNode* producer = nullptr;
     RenderPassNode* last = nullptr;
     
+    uint32_t refCount = 0;
+    
     RenderGraphResourceEntry(RenderGraphResource resource, bool transient)
         : resource(resource), transient(transient)
     {
         
     }
+    
+    virtual ~RenderGraphResourceEntry() = default;
+    
+    virtual void Allocate() = 0;
+    
+    virtual void Release() = 0;
 };
 
-struct RenderGraphBufferEntry : public RenderGraphResourceEntry
+struct RenderGraphBufferEntry final : public RenderGraphResourceEntry
 {
     BufferDescriptor descriptor;
     RefCounted<Buffer> buffer;
@@ -37,9 +45,19 @@ struct RenderGraphBufferEntry : public RenderGraphResourceEntry
     {
         
     }
+    
+    virtual void Allocate() override
+    {
+        buffer = CreateRef<Buffer>(descriptor);
+    }
+    
+    virtual void Release() override
+    {
+        buffer.reset();
+    }
 };
 
-struct RenderGraphRenderTextureEntry : public RenderGraphResourceEntry
+struct RenderGraphRenderTextureEntry final : public RenderGraphResourceEntry
 {
     TextureDescriptor descriptor;
     RefCounted<RenderTexture> renderTexture;
@@ -48,6 +66,16 @@ struct RenderGraphRenderTextureEntry : public RenderGraphResourceEntry
         : RenderGraphResourceEntry(resource, transient), descriptor(descriptor)
     {
         
+    }
+    
+    virtual void Allocate() override
+    {
+        renderTexture = CreateRef<RenderTexture>(descriptor);
+    }
+    
+    virtual void Release() override
+    {
+        renderTexture.reset();
     }
 };
 

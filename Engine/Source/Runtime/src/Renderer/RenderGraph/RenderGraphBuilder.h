@@ -36,6 +36,8 @@ public:
     BufferHandle ReadBuffer(BufferHandle resource);
 
 private:
+    
+    NO_DISCARD RenderGraphResource WriteResource(RenderGraphResource resource);
 	
 	RenderPassNode& mPassNode;
     

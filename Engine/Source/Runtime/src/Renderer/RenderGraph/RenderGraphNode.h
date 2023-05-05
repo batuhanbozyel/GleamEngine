@@ -12,6 +12,9 @@ namespace Gleam {
 
 struct RenderGraphContext;
 
+template<typename PassData>
+using RenderFunc = std::function<void(const RenderGraphContext& renderGraphContext, const PassData& passData)>;
+
 struct RenderGraphNode
 {
     const uint32_t uniqueId;
@@ -24,9 +27,6 @@ struct RenderGraphNode
     }
 };
 
-template<typename PassData>
-using RenderFunc = std::function<void(const RenderGraphContext& renderGraphContext, const PassData& passData)>;
-
 struct RenderPassAttachment
 {
     Color clearColor = Color::clear;
@@ -37,7 +37,7 @@ struct RenderPassAttachment
     AttachmentStoreAction storeAction = AttachmentStoreAction::Store;
 };
 
-struct RenderPassNode : public RenderGraphNode
+struct RenderPassNode final : public RenderGraphNode
 {
     GLEAM_NONCOPYABLE(RenderPassNode);
     
@@ -50,16 +50,15 @@ struct RenderPassNode : public RenderGraphNode
     
     bool hasSideEffect = false;
     
-    TArray<RenderGraphResource> renderTextureReads;
-    TArray<RenderGraphResource> renderTextureWrites;
-    TArray<RenderGraphResource> renderTextureCreates;
-    
-    TArray<RenderGraphResource> bufferReads;
-    TArray<RenderGraphResource> bufferWrites;
-    TArray<RenderGraphResource> bufferCreates;
+    TArray<RenderGraphResource> resourceReads;
+    TArray<RenderGraphResource> resourceWrites;
+    TArray<RenderGraphResource> resourceCreates;
     
     TArray<RenderPassAttachment> colorAttachments;
     RenderPassAttachment depthAttachment;
+    
+    uint32_t dependencyCount = 0;
+    HashSet<RenderPassNode*> dependents;
     
     template<typename PassData>
     RenderPassNode(uint32_t uniqueId, const TStringView name, RenderFunc<PassData>&& execute)
