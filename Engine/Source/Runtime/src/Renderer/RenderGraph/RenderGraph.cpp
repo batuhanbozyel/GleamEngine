@@ -7,23 +7,25 @@ using namespace Gleam;
 void RenderGraph::Compile()
 {
     // Setup resource dependency
-    Queue<RenderPassNode*> passQueue;
     for (auto pass : mPassNodes)
     {
-        pass->refCount += pass->resourceWrites.size();
         for (auto resource : pass->resourceReads)
         {
             auto& consumed = mRegistry.GetResourceNode(resource);
-            auto [_, success] = consumed.producer->dependents.insert(pass);
-            pass->dependencyCount += static_cast<uint32_t>(success);
+            for (auto producer : consumed.producers)
+            {
+                auto [_, success] = producer->dependents.insert(pass);
+                pass->refCount += static_cast<uint32_t>(success);
+            }
         }
     }
     
     // Perform topological sort
+    Queue<RenderPassNode*> passQueue;
     TArray<RenderPassNode*> sortedPasses;
     for (auto pass : mPassNodes)
     {
-        if (pass->dependencyCount == 0) { passQueue.push(pass); }
+        if (pass->refCount == 0) { passQueue.push(pass); }
     }
     
     while (!passQueue.empty())
@@ -34,7 +36,7 @@ void RenderGraph::Compile()
         sortedPasses.push_back(pass);
         for (auto dependent : pass->dependents)
         {
-            if (--dependent->dependencyCount == 0) { passQueue.push(dependent); }
+            if (--dependent->refCount == 0) { passQueue.push(dependent); }
         }
     }
     mPassNodes = sortedPasses;
@@ -60,8 +62,6 @@ void RenderGraph::Execute(const CommandBuffer* cmd)
     cmd->Begin();
     for (auto& pass : mPassNodes)
     {
-        if (pass->isCulled()) continue;
-        
         // allocate pass resources
         // TODO: use allocators to avoid allocating GPU resources on the fly
         for (auto id : pass->resourceCreates)

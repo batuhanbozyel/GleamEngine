@@ -57,7 +57,6 @@ struct RenderPassNode final : public RenderGraphNode
     TArray<RenderPassAttachment> colorAttachments;
     RenderPassAttachment depthAttachment;
     
-    uint32_t dependencyCount = 0;
     HashSet<RenderPassNode*> dependents;
     
     template<typename PassData>
@@ -84,9 +83,7 @@ struct RenderPassNode final : public RenderGraphNode
 struct RenderGraphResourceNode : public RenderGraphNode
 {
     const RenderGraphResource resource;
-    
-    RenderPassNode* producer = nullptr;
-    RenderPassNode* last = nullptr;
+    TArray<RenderPassNode*> producers;
     
     RenderGraphResourceNode(uint32_t uniqueId, RenderGraphResource resource)
         : RenderGraphNode(uniqueId), resource(resource)

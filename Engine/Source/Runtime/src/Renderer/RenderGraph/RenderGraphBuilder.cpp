@@ -47,9 +47,11 @@ NO_DISCARD RenderTextureHandle RenderGraphBuilder::CreateRenderTexture(const Tex
 NO_DISCARD RenderGraphResource RenderGraphBuilder::WriteResource(RenderGraphResource resource)
 {
     if (mResourceRegistry.GetResourceEntry(resource)->transient == false) { mPassNode.hasSideEffect = true; }
+
+    if (HasResource(mPassNode.resourceWrites, resource)) { return resource; }
     
-    mResourceRegistry.GetResourceNode(resource).producer = &mPassNode;
-    return EmplaceIfNeeded(mPassNode.resourceWrites, resource);
+    mResourceRegistry.GetResourceNode(resource).producers.push_back(&mPassNode);
+    return mPassNode.resourceWrites.emplace_back(resource);
 }
 
 NO_DISCARD BufferHandle RenderGraphBuilder::WriteBuffer(BufferHandle resource)

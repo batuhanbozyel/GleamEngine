@@ -39,12 +39,9 @@ void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
     
     const auto& finalPassData = graph.AddRenderPass<ForwardPassData>("WorldRenderer::ForwardPass", [&](RenderGraphBuilder& builder, ForwardPassData& passData)
     {
-        auto& renderingData = blackboard.Get<RenderingData>();
-        renderingData.colorTarget = builder.UseColorBuffer({.texture = renderingData.colorTarget, .loadAction = AttachmentLoadAction::Clear, .storeAction = mRendererContext->GetConfiguration().sampleCount > 1 ? AttachmentStoreAction::Resolve : AttachmentStoreAction::Store});
-        renderingData.depthTarget = builder.UseDepthBuffer({.texture = renderingData.depthTarget, .loadAction = AttachmentLoadAction::Clear, .storeAction = mRendererContext->GetConfiguration().sampleCount > 1 ? AttachmentStoreAction::Resolve : AttachmentStoreAction::Store});
-        
-        passData.colorTarget = renderingData.colorTarget;
-        passData.depthTarget = renderingData.depthTarget;
+        const auto& renderingData = blackboard.Get<RenderingData>();
+        passData.colorTarget = builder.UseColorBuffer({.texture = renderingData.colorTarget, .loadAction = AttachmentLoadAction::Clear, .storeAction = mRendererContext->GetConfiguration().sampleCount > 1 ? AttachmentStoreAction::Resolve : AttachmentStoreAction::Store});
+        passData.depthTarget = builder.UseDepthBuffer({.texture = renderingData.depthTarget, .loadAction = AttachmentLoadAction::Clear, .storeAction = mRendererContext->GetConfiguration().sampleCount > 1 ? AttachmentStoreAction::Resolve : AttachmentStoreAction::Store});
     },
     [this](const RenderGraphContext& renderGraphContext, const ForwardPassData& passData)
     {
