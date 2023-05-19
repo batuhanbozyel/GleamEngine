@@ -2,6 +2,7 @@
 #include "Window.h"
 #include "System.h"
 #include "ApplicationConfig.h"
+#include "Renderer/RenderPipeline.h"
 #include "Renderer/RendererContext.h"
 
 union SDL_Event;
@@ -12,14 +13,16 @@ namespace Gleam {
 template <typename T>
 concept SystemType = std::is_base_of<System, T>::value;
 
-class Game
+using EventHandlerFn = std::function<void(const SDL_Event*)>;
+
+class Application
 {
 public:
 
-	GLEAM_NONCOPYABLE(Game);
+	GLEAM_NONCOPYABLE(Application);
 
-	Game(const ApplicationProperties& props);
-	virtual ~Game();
+	Application(const ApplicationProperties& props);
+	virtual ~Application();
 
 	void Run();
     
@@ -42,6 +45,28 @@ public:
         system->OnDestroy();
         mSystems.erase<T>();
 	}
+    
+    template<SystemType T>
+    T* GetSystem()
+    {
+        GLEAM_ASSERT(HasSystem<T>(), "Application does not have the system!");
+        return mSystems.get<T>();
+    }
+    
+    void SetEventHandler(EventHandlerFn&& fn)
+    {
+        mEventHandler = std::move(fn);
+    }
+
+	RenderPipeline& GetRenderPipeline()
+    {
+        return mRenderPipeline;
+    }
+    
+    const RenderPipeline& GetRenderPipeline() const
+    {
+        return mRenderPipeline;
+    }
 
 	const Window* GetWindow() const
 	{
@@ -63,7 +88,7 @@ public:
         return Filesystem::current_path().append("Assets/");
     }
 
-	static Game* GetInstance()
+	static Application* GetInstance()
 	{
 		return mInstance;
 	}
@@ -79,20 +104,23 @@ private:
     }
 
 	PolyArray<System> mSystems;
-
-	SDL_Event mEvent;
+    
     Scope<Window> mWindow;
+    
+    EventHandlerFn mEventHandler;
+
+	RenderPipeline mRenderPipeline;
 
 	RendererContext mRendererContext;
 
 	bool mRunning = true;
 	Version mVersion;
 
-	static inline Game* mInstance = nullptr;
+	static inline Application* mInstance = nullptr;
     static int SDLCALL SDL2_EventCallback(void* data, SDL_Event* e);
 
 };
 
-Game* CreateGameInstance();
+Application* CreateApplicationInstance();
 
 } // namespace Gleam

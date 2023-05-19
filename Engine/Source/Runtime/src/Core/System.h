@@ -9,11 +9,11 @@
 
 namespace Gleam {
 
-class Game;
+class Application;
 
 class System
 {
-    friend class Game;
+    friend class Application;
 
 public:
     

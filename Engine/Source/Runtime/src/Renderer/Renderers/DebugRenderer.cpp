@@ -7,7 +7,7 @@
 #include "Renderer/RendererContext.h"
 #include "Renderer/RendererBindingTable.h"
 
-#include "Core/Game.h"
+#include "Core/Application.h"
 
 using namespace Gleam;
 

@@ -43,7 +43,7 @@
 #include "Core/Events/WindowEvent.h"
 #include "Core/Events/MouseEvent.h"
 #include "Core/Events/KeyEvent.h"
-#include "Core/Game.h"
+#include "Core/Application.h"
 #include "Core/System.h"
 #include "Core/Window.h"
 #include "Core/Time.h"

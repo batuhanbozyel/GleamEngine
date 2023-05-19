@@ -62,7 +62,7 @@ constexpr inline T As(P p)
 } // namespace Gleam
 
 
-#define GameInstance Gleam::Game::GetInstance()
+#define GameInstance Gleam::Application::GetInstance()
 
 #define GLEAM_ENGINE_MAJOR_VERSION 1
 #define GLEAM_ENGINE_MINOR_VERSION 0

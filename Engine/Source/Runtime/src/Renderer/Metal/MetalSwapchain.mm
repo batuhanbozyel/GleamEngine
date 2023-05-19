@@ -5,7 +5,7 @@
 #include "MetalUtils.h"
 
 #include "Core/Window.h"
-#include "Core/Game.h"
+#include "Core/Application.h"
 #include "Core/Events/RendererEvent.h"
 #include "Renderer/RendererConfig.h"
 

@@ -2,7 +2,7 @@
 #include "Gleam.h"
 
 #if defined(PLATFORM_WINDOWS) || defined(PLATFORM_MACOS) || defined(PLATFORM_IOS)
-Gleam::Game* Gleam::CreateGameInstance();
+Gleam::Application* Gleam::CreateApplicationInstance();
 
 #ifdef __cplusplus
 extern "C"
@@ -10,7 +10,7 @@ extern "C"
 
 int main(int argc, char* argv[])
 {
-	Gleam::Game* game = Gleam::CreateGameInstance();
+	Gleam::Application* game = Gleam::CreateApplicationInstance();
 
     game->Run();
 

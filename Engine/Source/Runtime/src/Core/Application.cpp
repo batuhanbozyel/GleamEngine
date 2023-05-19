@@ -1,13 +1,14 @@
 #include "gpch.h"
-#include "Game.h"
+#include "Application.h"
 
 #include "Window.h"
 #include "Input/Input.h"
 #include "World/World.h"
+#include "Renderer/Renderers/WorldRenderer.h"
 
 using namespace Gleam;
 
-int SDLCALL Game::SDL2_EventCallback(void* data, SDL_Event* e)
+int SDLCALL Application::SDL2_EventCallback(void* data, SDL_Event* e)
 {
 	switch (e->type)
 	{
@@ -57,8 +58,8 @@ int SDLCALL Game::SDL2_EventCallback(void* data, SDL_Event* e)
 	return 0;
 }
 
-Game::Game(const ApplicationProperties& props)
-	: mVersion(props.appVersion), mEvent()
+Application::Application(const ApplicationProperties& props)
+	: mVersion(props.appVersion)
 {
 	if (mInstance == nullptr)
 	{
@@ -66,7 +67,6 @@ Game::Game(const ApplicationProperties& props)
 
         // init windowing subsystem
 		int initSucess = SDL_Init(SDL_INIT_EVERYTHING);
-		SDL_SetEventFilter(SDL2_EventCallback, nullptr);
 		GLEAM_ASSERT(initSucess == 0, "Window subsystem initialization failed!");
 
 		// create window
@@ -77,6 +77,7 @@ Game::Game(const ApplicationProperties& props)
         
         // create world
         World::active = World::Create();
+        mRenderPipeline.AddRenderer<WorldRenderer>();
 
 		EventDispatcher<AppCloseEvent>::Subscribe([this](AppCloseEvent e)
 		{
@@ -85,12 +86,20 @@ Game::Game(const ApplicationProperties& props)
 	}
 }
 
-void Game::Run()
+void Application::Run()
 {
     Time::Reset();
 	while (mRunning)
 	{
-		while (SDL_PollEvent(&mEvent));
+        SDL_Event event;
+        while (SDL_PollEvent(&event))
+        {
+            SDL2_EventCallback(nullptr, &event);
+            if (mEventHandler)
+            {
+                std::invoke(mEventHandler, &event);
+            }
+        }
         
         Time::Step();
         Input::Update();
@@ -118,33 +127,36 @@ void Game::Run()
         }
         World::active->Update();
 		
-        mRendererContext.Execute(World::active->GetRenderPipeline());
+        mRendererContext.Execute(mRenderPipeline);
 	}
 }
 
-void Game::Quit()
+void Application::Quit()
 {
     EventDispatcher<AppCloseEvent>::Publish(AppCloseEvent());
 }
 
-Game::~Game()
+Application::~Application()
 {
-	// Destroy systems
-	for (auto system : mSystems)
-	{
-        system->OnDestroy();
-	}
-    mSystems.clear();
-    
-    // Destroy world
-    World::active.reset();
-
-	// Destroy renderer
-	mRendererContext.DestroyBackend();
-
-	// Destroy window and windowing subsystem
-	mWindow.reset();
-	SDL_Quit();
-
-	mInstance = nullptr;
+    if (mInstance)
+    {
+        // Destroy systems
+        for (auto system : mSystems)
+        {
+            system->OnDestroy();
+        }
+        mSystems.clear();
+        
+        // Destroy world
+        World::active.reset();
+        
+        // Destroy renderer
+        mRendererContext.DestroyBackend();
+        
+        // Destroy window and windowing subsystem
+        mWindow.reset();
+        SDL_Quit();
+        
+        mInstance = nullptr;
+    }
 }
