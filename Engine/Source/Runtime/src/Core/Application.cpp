@@ -74,10 +74,11 @@ Application::Application(const ApplicationProperties& props)
 		
 		// init renderer backend
 		mRendererContext.ConfigureBackend(props.rendererConfig);
+        mRenderPipeline = CreateScope<RenderPipeline>();
         
         // create world
         World::active = World::Create();
-        mRenderPipeline.AddRenderer<WorldRenderer>();
+        mRenderPipeline->AddRenderer<WorldRenderer>();
 
 		EventDispatcher<AppCloseEvent>::Subscribe([this](AppCloseEvent e)
 		{
@@ -127,7 +128,7 @@ void Application::Run()
         }
         World::active->Update();
 		
-        mRendererContext.Execute(mRenderPipeline);
+        mRendererContext.Execute(mRenderPipeline.get());
 	}
 }
 
@@ -151,6 +152,7 @@ Application::~Application()
         World::active.reset();
         
         // Destroy renderer
+        mRenderPipeline.reset();
         mRendererContext.DestroyBackend();
         
         // Destroy window and windowing subsystem

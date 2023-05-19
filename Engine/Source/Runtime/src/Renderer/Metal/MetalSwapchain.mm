@@ -27,16 +27,17 @@ void MetalSwapchain::Initialize(const RendererConfig& config)
     mHandle.opaque = YES;
     Configure(config);
     
-    mSize = GameInstance->GetWindow()->GetResolution();
+    const auto& resolution = GameInstance->GetWindow()->GetResolution();
+    mSize = resolution * mHandle.contentsScale;
     mHandle.frame.size = CGSizeMake(mSize.width, mSize.height);
-    mHandle.drawableSize = CGSizeMake(mSize.width, mSize.height);
+    mHandle.drawableSize = CGSizeMake(resolution.width, resolution.height);
     
     EventDispatcher<WindowResizeEvent>::Subscribe([this](const WindowResizeEvent& e)
     {
-        mSize.width = e.GetWidth();
-        mSize.height = e.GetHeight();
+        mSize.width = e.GetWidth() * mHandle.contentsScale;
+        mSize.height = e.GetHeight() * mHandle.contentsScale;
         
-        mHandle.frame.size = CGSizeMake(mSize.width, mSize.height);
+        mHandle.frame.size = CGSizeMake(e.GetWidth(), e.GetHeight());
         mHandle.drawableSize = CGSizeMake(mSize.width, mSize.height);
     });
     

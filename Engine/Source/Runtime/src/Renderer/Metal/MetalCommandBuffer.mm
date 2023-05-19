@@ -193,8 +193,11 @@ void CommandBuffer::CopyBuffer(const NativeGraphicsHandle src, const NativeGraph
 
 void CommandBuffer::Blit(const RenderTexture& texture, const RenderTexture& target) const
 {
+    id<MTLTexture> srcTexture = texture.GetHandle();
+    id<MTLTexture> dstTexture = target.IsValid() ? target.GetHandle() : MetalDevice::GetSwapchain().AcquireNextDrawable().texture;
+
     id<MTLBlitCommandEncoder> blitCommandEncoder = [mHandle->commandBuffer blitCommandEncoder];
-    [blitCommandEncoder copyFromTexture:texture.GetHandle() toTexture:target.GetHandle()];
+    [blitCommandEncoder copyFromTexture:srcTexture toTexture:dstTexture];
     [blitCommandEncoder endEncoding];
 }
 
@@ -228,6 +231,16 @@ void CommandBuffer::Present() const
 void CommandBuffer::WaitUntilCompleted() const
 {
     [mHandle->commandBuffer waitUntilCompleted];
+}
+
+NativeGraphicsHandle CommandBuffer::GetHandle() const
+{
+    return mHandle->commandBuffer;
+}
+
+NativeGraphicsHandle CommandBuffer::GetActiveRenderPass() const
+{
+    return mHandle->renderCommandEncoder;
 }
 
 #endif

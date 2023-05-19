@@ -29,8 +29,6 @@ class CommandBuffer final
 {
 public:
     
-    static constexpr uint32_t maxRenderTargets = 8;
-    
     CommandBuffer();
 
     ~CommandBuffer();
@@ -97,6 +95,10 @@ public:
 	void Present() const;
 
     void WaitUntilCompleted() const;
+    
+    NativeGraphicsHandle GetHandle() const;
+    
+    NativeGraphicsHandle GetActiveRenderPass() const;
 
 private:
 

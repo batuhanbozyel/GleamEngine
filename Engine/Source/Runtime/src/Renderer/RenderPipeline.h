@@ -27,6 +27,7 @@ public:
     {
         for (auto renderer : mRenderers)
         {
+			renderer->OnDestroy();
             delete renderer;
         }
     }
@@ -44,13 +45,18 @@ public:
     void RemoveRenderer()
     {
         GLEAM_ASSERT(HasRenderer<T>(), "Render pipeline does not have the renderer!");
-        auto it = std::remove_if(mRenderers.begin(), mRenderers.end(), [](const IRenderer* ptr)
-        {
+        auto it = mRenderers.erase(std::remove_if(mRenderers.begin(), mRenderers.end(), [](const IRenderer* ptr)
+                                        {
             const auto& renderer = *ptr;
             return typeid(renderer) == typeid(T);
-        });
-        
-        if (it != mRenderers.end()) mRenderers.erase(it);
+        }));
+
+        if (it != mRenderers.end()) 
+		{
+            auto renderer = *it;
+            renderer->OnDestroy();
+			delete renderer;
+		}
     }
     
     template<RendererType T>

@@ -6,7 +6,7 @@ using namespace Gleam;
 World::World(const TString& name)
 	: mName(name)
 {
-	
+    
 }
 
 void World::Update()

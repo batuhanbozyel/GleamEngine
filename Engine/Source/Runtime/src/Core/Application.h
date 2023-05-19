@@ -58,14 +58,14 @@ public:
         mEventHandler = std::move(fn);
     }
 
-	RenderPipeline& GetRenderPipeline()
+	RenderPipeline* GetRenderPipeline()
     {
-        return mRenderPipeline;
+        return mRenderPipeline.get();
     }
     
-    const RenderPipeline& GetRenderPipeline() const
+    const RenderPipeline* GetRenderPipeline() const
     {
-        return mRenderPipeline;
+        return mRenderPipeline.get();
     }
 
 	const Window* GetWindow() const
@@ -107,9 +107,9 @@ private:
     
     Scope<Window> mWindow;
     
+    Scope<RenderPipeline> mRenderPipeline;
+    
     EventHandlerFn mEventHandler;
-
-	RenderPipeline mRenderPipeline;
 
 	RendererContext mRendererContext;
 

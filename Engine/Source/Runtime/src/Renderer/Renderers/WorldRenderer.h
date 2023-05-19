@@ -13,6 +13,12 @@ namespace Gleam {
 class Mesh;
 class Shader;
 
+struct WorldRenderingData
+{
+    RenderTextureHandle colorTarget;
+    RenderTextureHandle depthTarget;
+};
+
 class WorldRenderer : public IRenderer
 {
 public:
@@ -37,6 +43,9 @@ private:
     Scope<Buffer> mCameraBuffer;
     RefCounted<Shader> mForwardPassVertexShader;
     RefCounted<Shader> mForwardPassFragmentShader;
+    
+    RefCounted<Shader> mFullscreenTriangleVertexShader;
+    RefCounted<Shader> mPostprocessFragmentShader;
     
     RendererContext* mRendererContext = nullptr;
 

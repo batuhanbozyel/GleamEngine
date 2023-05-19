@@ -30,6 +30,8 @@ protected:
 
 	virtual void OnCreate(RendererContext* context) {}
 
+	virtual void OnDestroy() {}
+
 	virtual void AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard) = 0;
 
 };

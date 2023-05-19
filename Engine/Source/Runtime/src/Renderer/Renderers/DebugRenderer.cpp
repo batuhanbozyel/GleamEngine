@@ -7,8 +7,6 @@
 #include "Renderer/RendererContext.h"
 #include "Renderer/RendererBindingTable.h"
 
-#include "Core/Application.h"
-
 using namespace Gleam;
 
 void DebugRenderer::OnCreate(RendererContext* context)
@@ -89,7 +87,7 @@ void DebugRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 
 	graph.AddRenderPass<DrawPassData>("DebugRenderer::DrawPass", [&](RenderGraphBuilder& builder, DrawPassData& passData)
 	{
-        const auto& renderingData = blackboard.Get<RenderingData>();
+        const auto& renderingData = blackboard.Get<WorldRenderingData>();
         passData.colorTarget = builder.UseColorBuffer({.texture = renderingData.colorTarget});
         passData.depthTarget = builder.UseDepthBuffer({.texture = renderingData.depthTarget});
         passData.vertexBuffer = builder.ReadBuffer(updatePass.vertexBuffer);

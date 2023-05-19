@@ -47,29 +47,18 @@ public:
     {
 		return mSystemManager.contains<T>();
     }
-    
-    RenderPipeline& GetRenderPipeline()
-    {
-        return mRenderPipeline;
-    }
-    
-    const RenderPipeline& GetRenderPipeline() const
-    {
-        return mRenderPipeline;
-    }
 
 	static RefCounted<World> Create()
     {
         return CreateRef<World>();
     }
 
-    static inline RefCounted<World> active = Create();
+    static inline RefCounted<World> active;
     
 private:
 
 	TString mName;
     EntityManager mEntityManager;
-    RenderPipeline mRenderPipeline;
     PolyArray<ComponentSystem> mSystemManager;
 
 };

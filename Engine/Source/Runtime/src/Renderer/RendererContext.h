@@ -5,22 +5,21 @@
 
 namespace Gleam {
 
-class Game;
+class Application;
 struct Version;
 
 struct RenderingData
 {
-    RenderTextureHandle colorTarget;
-    RenderTextureHandle depthTarget;
+    RenderTextureHandle swapchainTarget;
 };
 
 class RendererContext final
 {
-	friend class Game;
+	friend class Application;
 
 public:
     
-    void Execute(RenderPipeline& pipeline) const;
+    void Execute(RenderPipeline* pipeline) const;
     
 	const RefCounted<Shader>& CreateShader(const TString& entryPoint, ShaderStage stage);
     

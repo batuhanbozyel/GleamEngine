@@ -22,6 +22,9 @@ void WorldRenderer::OnCreate(RendererContext* context)
     mForwardPassVertexShader = context->CreateShader("forwardPassVertexShader", ShaderStage::Vertex);
     mForwardPassFragmentShader = context->CreateShader("forwardPassFragmentShader", ShaderStage::Fragment);
     
+    mFullscreenTriangleVertexShader = context->CreateShader("fullscreenTriangleVertexShader", ShaderStage::Vertex);
+    mPostprocessFragmentShader = context->CreateShader("postprocessFragmentShader", ShaderStage::Fragment);
+    
     BufferDescriptor descriptor;
     descriptor.memoryType = MemoryType::Dynamic;
     descriptor.usage = BufferUsage::UniformBuffer;
@@ -31,15 +34,29 @@ void WorldRenderer::OnCreate(RendererContext* context)
 
 void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard)
 {
+    TextureDescriptor descriptor;
+    descriptor.size = mRendererContext->GetDrawableSize();
+    descriptor.sampleCount = mRendererContext->GetConfiguration().sampleCount;
+    
+    descriptor.format = TextureFormat::R32G32B32A32_SFloat;
+    auto colorTarget = CreateRef<RenderTexture>(descriptor);
+    
+    descriptor.format = TextureFormat::D32_SFloat;
+    auto depthTarget = CreateRef<RenderTexture>(descriptor);
+    
+    WorldRenderingData renderingData;
+    renderingData.colorTarget = graph.ImportBackbuffer(colorTarget);
+    renderingData.depthTarget = graph.ImportBackbuffer(depthTarget);
+    blackboard.Add(renderingData);
+    
     struct ForwardPassData
     {
         RenderTextureHandle colorTarget;
         RenderTextureHandle depthTarget;
     };
     
-    const auto& finalPassData = graph.AddRenderPass<ForwardPassData>("WorldRenderer::ForwardPass", [&](RenderGraphBuilder& builder, ForwardPassData& passData)
+    const auto& forwardPassData = graph.AddRenderPass<ForwardPassData>("WorldRenderer::ForwardPass", [&](RenderGraphBuilder& builder, ForwardPassData& passData)
     {
-        const auto& renderingData = blackboard.Get<RenderingData>();
         passData.colorTarget = builder.UseColorBuffer({.texture = renderingData.colorTarget, .loadAction = AttachmentLoadAction::Clear, .storeAction = mRendererContext->GetConfiguration().sampleCount > 1 ? AttachmentStoreAction::Resolve : AttachmentStoreAction::Store});
         passData.depthTarget = builder.UseDepthBuffer({.texture = renderingData.depthTarget, .loadAction = AttachmentLoadAction::Clear, .storeAction = mRendererContext->GetConfiguration().sampleCount > 1 ? AttachmentStoreAction::Resolve : AttachmentStoreAction::Store});
     },
@@ -68,6 +85,28 @@ void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
         }
         
         mOpaqueQueue.clear();
+    });
+    
+    struct PostProcessData
+    {
+        RenderTextureHandle colorTarget;
+        RenderTextureHandle sceneTarget;
+    };
+    
+    graph.AddRenderPass<PostProcessData>("WorldRenderer::PostProcess", [&](RenderGraphBuilder& builder, PostProcessData& passData)
+    {
+        const auto& renderingData = blackboard.Get<RenderingData>();
+        passData.colorTarget = builder.UseColorBuffer({.texture = renderingData.swapchainTarget, .loadAction = AttachmentLoadAction::Clear, .storeAction = mRendererContext->GetConfiguration().sampleCount > 1 ? AttachmentStoreAction::Resolve : AttachmentStoreAction::Store});
+        passData.sceneTarget = builder.ReadRenderTexture(forwardPassData.colorTarget);
+    },
+    [this](const RenderGraphContext& renderGraphContext, const PostProcessData& passData)
+    {
+        const auto& sceneRT = renderGraphContext.registry->GetRenderTexture(passData.sceneTarget);
+        
+        PipelineStateDescriptor pipelineDesc;
+        renderGraphContext.cmd->BindGraphicsPipeline(pipelineDesc, mFullscreenTriangleVertexShader, mPostprocessFragmentShader);
+        renderGraphContext.cmd->SetFragmentTexture(*sceneRT, 0);
+        renderGraphContext.cmd->Draw(3);
     });
 }
 

@@ -37,6 +37,7 @@
 #include "Renderer/Renderer.h"
 #include "Renderer/CommandBuffer.h"
 #include "Renderer/RenderPipeline.h"
+#include "Renderer/RendererContext.h"
 
 #include "Core/Events/ApplicationEvent.h"
 #include "Core/Events/RendererEvent.h"
@@ -56,4 +57,3 @@
 #include "Renderer/Renderers/UIRenderer.h"
 #include "Renderer/Renderers/DebugRenderer.h"
 #include "Renderer/Renderers/WorldRenderer.h"
-#include "Renderer/Renderers/CompositeRenderer.h"

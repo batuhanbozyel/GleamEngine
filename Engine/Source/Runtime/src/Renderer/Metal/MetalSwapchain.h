@@ -21,8 +21,6 @@ public:
 	id<CAMetalDrawable> AcquireNextDrawable();
 	void Present(id<MTLCommandBuffer> commandBuffer);
 
-	id<CAMetalDrawable> GetDrawable() const;
-
     TextureFormat GetFormat() const;
 
 	CAMetalLayer* GetHandle() const;
