@@ -11,25 +11,17 @@
 
 namespace GEditor {
 
-class SceneView : public View
+class SceneView final : public View
 {
 public:
     
     SceneView();
     
-    ~SceneView();
-    
     virtual void Render() override;
     
 private:
     
-    Gleam::Entity mPlayCameraEntity;
-    
-    Gleam::Entity mEditorCameraEntity;
-    
     Gleam::RefCounted<Gleam::World> mEditWorld;
-    
-    Gleam::RefCounted<Gleam::World> mPlayWorld;
     
 };
 

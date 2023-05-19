@@ -2,18 +2,20 @@
 // EntryPoint
 #include "Core/EntryPoint.h"
 #include "View/ViewStack.h"
-#include "View/SceneView/SceneView.h"
+#include "View/Panels/Scene/SceneView.h"
+#include "View/Panels/MenuBar/MenuBarView.h"
 
 namespace GEditor {
 
-class GleamEditor : public Gleam::Game
+class GleamEditor : public Gleam::Application
 {
 public:
 
 	GleamEditor(const Gleam::ApplicationProperties& properties)
-        : Gleam::Game(properties)
+        : Gleam::Application(properties)
 	{
         auto viewStack = GameInstance->AddSystem<ViewStack>();
+		viewStack->AddView<MenuBarView>();
         viewStack->AddView<SceneView>();
 	}
 
@@ -28,12 +30,11 @@ private:
 
 } // namespace GEditor
 
-Gleam::Game* Gleam::CreateGameInstance()
+Gleam::Application* Gleam::CreateApplicationInstance()
 {
     Gleam::ApplicationProperties props;
     props.appVersion = Gleam::Version(1, 0, 0);
     props.windowProps.title = "Gleam Editor";
     props.windowProps.windowFlag = Gleam::WindowFlag::MaximizedWindow;
-    props.rendererConfig.sampleCount = 4;
     return new GEditor::GleamEditor(props);
 }

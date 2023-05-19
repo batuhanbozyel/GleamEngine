@@ -18,13 +18,9 @@ class ViewStack : public Gleam::System
 {
 public:
     
-    virtual void OnUpdate() override
-    {
-        for (auto view : mViews)
-        {
-            view->Render();
-        }
-    }
+    virtual void OnCreate() override;
+
+	virtual void OnDestroy() override;
     
     template<ViewType T>
     T* AddView()
@@ -41,6 +37,16 @@ public:
         T* view = mViews.get<T>();
         mViews.erase<T>();
     }
+
+    Gleam::PolyArray<View>& GetViews()
+    {
+        return mViews;
+    }
+    
+	const Gleam::PolyArray<View>& GetViews() const
+	{
+		return mViews;
+	}
     
 private:
     

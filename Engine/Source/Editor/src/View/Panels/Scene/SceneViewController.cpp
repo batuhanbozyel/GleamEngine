@@ -6,6 +6,13 @@ void SceneViewController::OnCreate(Gleam::EntityManager& entityManager)
 {
 	mCameraEntity = entityManager.CreateEntity();
     entityManager.AddComponent<Gleam::Camera>(mCameraEntity, GameInstance->GetWindow()->GetResolution());
+    
+//    const auto& selectedFiles = Gleam::IOUtils::OpenFileDialog(Gleam::FileType::Model);
+//    for (const auto& file : selectedFiles)
+//    {
+//        auto entity = entityManager.CreateEntity();
+//        entityManager.AddComponent<Gleam::MeshRenderer>(entity, Gleam::AssetLibrary<Gleam::Model>::Import(file));
+//    }
 
 	Gleam::EventDispatcher<Gleam::MouseButtonPressedEvent>::Subscribe([&](Gleam::MouseButtonPressedEvent e)
     {
@@ -29,7 +36,7 @@ void SceneViewController::OnUpdate(Gleam::EntityManager& entityManager)
 	ProcessCameraRotation(camera);
 	ProcessCameraMovement(camera);
 
-	auto debugRenderer = Gleam::World::active->GetRenderPipeline().GetRenderer<Gleam::DebugRenderer>();
+	auto debugRenderer = GameInstance->GetRenderPipeline()->GetRenderer<Gleam::DebugRenderer>();
     debugRenderer->UpdateCamera(camera);
     
     constexpr int gridWidth = 32;
@@ -42,9 +49,17 @@ void SceneViewController::OnUpdate(Gleam::EntityManager& entityManager)
             constexpr float tileWidth = 1.0f;
             constexpr float tileHeight = 1.0f;
             Gleam::Vector3 tilePosition = {float(i - gridWidth / 2), 0.0f, float(j - gridHeight / 2)};
-            debugRenderer->DrawQuad(tilePosition, tileWidth, tileHeight, gridColor);
+            debugRenderer->DrawQuad(tilePosition, tileWidth, tileHeight, gridColor, true);
         }
     }
+    
+    auto worldRenderer = GameInstance->GetRenderPipeline()->GetRenderer<Gleam::WorldRenderer>();
+    worldRenderer->UpdateCamera(camera);
+    
+    entityManager.ForEach<Gleam::MeshRenderer, Gleam::Transform>([&](const Gleam::MeshRenderer& meshRenderer, const Gleam::Transform& transform)
+    {
+        worldRenderer->DrawMesh(meshRenderer, transform);
+    });
 }
 
 void SceneViewController::ProcessCameraRotation(Gleam::Camera& camera)

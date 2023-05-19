@@ -6,3 +6,17 @@
 //
 
 #include "ViewStack.h"
+#include "ImGui/ImGuiRenderer.h"
+
+using namespace GEditor;
+
+void ViewStack::OnCreate()
+{
+	GameInstance->GetRenderPipeline()->AddRenderer<ImGuiRenderer>();
+}
+
+void ViewStack::OnDestroy()
+{
+	GameInstance->GetRenderPipeline()->RemoveRenderer<ImGuiRenderer>();
+	mViews.clear();
+}
