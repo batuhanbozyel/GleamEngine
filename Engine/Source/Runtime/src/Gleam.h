@@ -57,3 +57,4 @@
 #include "Renderer/Renderers/UIRenderer.h"
 #include "Renderer/Renderers/DebugRenderer.h"
 #include "Renderer/Renderers/WorldRenderer.h"
+#include "Renderer/Renderers/PostProcessStack.h"

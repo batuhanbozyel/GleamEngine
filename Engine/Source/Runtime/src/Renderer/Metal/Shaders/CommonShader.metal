@@ -21,7 +21,7 @@ fragment float4 fullscreenTriangleFragmentShader(VertexOut in [[stage_in]])
     return float4(in.texCoord, 0.0, 1.0);
 }
 
-fragment float4 postprocessFragmentShader(VertexOut in [[stage_in]],
+fragment float4 tonemappingFragmentShader(VertexOut in [[stage_in]],
                                           texture2d<float, access::sample> finalColorRT[[texture(0)]])
 {
     constexpr sampler linearSampler(mip_filter::nearest,

@@ -4,7 +4,9 @@
 #include "Window.h"
 #include "Input/Input.h"
 #include "World/World.h"
+
 #include "Renderer/Renderers/WorldRenderer.h"
+#include "Renderer/Renderers/PostProcessStack.h"
 
 using namespace Gleam;
 
@@ -79,6 +81,7 @@ Application::Application(const ApplicationProperties& props)
         // create world
         World::active = World::Create();
         mRenderPipeline->AddRenderer<WorldRenderer>();
+        mRenderPipeline->AddRenderer<PostProcessStack>();
 
 		EventDispatcher<AppCloseEvent>::Subscribe([this](AppCloseEvent e)
 		{

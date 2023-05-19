@@ -22,9 +22,6 @@ void WorldRenderer::OnCreate(RendererContext* context)
     mForwardPassVertexShader = context->CreateShader("forwardPassVertexShader", ShaderStage::Vertex);
     mForwardPassFragmentShader = context->CreateShader("forwardPassFragmentShader", ShaderStage::Fragment);
     
-    mFullscreenTriangleVertexShader = context->CreateShader("fullscreenTriangleVertexShader", ShaderStage::Vertex);
-    mPostprocessFragmentShader = context->CreateShader("postprocessFragmentShader", ShaderStage::Fragment);
-    
     BufferDescriptor descriptor;
     descriptor.memoryType = MemoryType::Dynamic;
     descriptor.usage = BufferUsage::UniformBuffer;
@@ -83,30 +80,7 @@ void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
                 renderGraphContext.cmd->DrawIndexed(meshBuffer.GetIndexBuffer()->GetHandle(), IndexType::UINT32, descriptor.indexCount, 1, descriptor.firstIndex, descriptor.baseVertex, 0);
             }
         }
-        
         mOpaqueQueue.clear();
-    });
-    
-    struct PostProcessData
-    {
-        RenderTextureHandle colorTarget;
-        RenderTextureHandle sceneTarget;
-    };
-    
-    graph.AddRenderPass<PostProcessData>("WorldRenderer::PostProcess", [&](RenderGraphBuilder& builder, PostProcessData& passData)
-    {
-        const auto& renderingData = blackboard.Get<RenderingData>();
-        passData.colorTarget = builder.UseColorBuffer({.texture = renderingData.swapchainTarget, .loadAction = AttachmentLoadAction::Clear, .storeAction = mRendererContext->GetConfiguration().sampleCount > 1 ? AttachmentStoreAction::Resolve : AttachmentStoreAction::Store});
-        passData.sceneTarget = builder.ReadRenderTexture(forwardPassData.colorTarget);
-    },
-    [this](const RenderGraphContext& renderGraphContext, const PostProcessData& passData)
-    {
-        const auto& sceneRT = renderGraphContext.registry->GetRenderTexture(passData.sceneTarget);
-        
-        PipelineStateDescriptor pipelineDesc;
-        renderGraphContext.cmd->BindGraphicsPipeline(pipelineDesc, mFullscreenTriangleVertexShader, mPostprocessFragmentShader);
-        renderGraphContext.cmd->SetFragmentTexture(*sceneRT, 0);
-        renderGraphContext.cmd->Draw(3);
     });
 }
 

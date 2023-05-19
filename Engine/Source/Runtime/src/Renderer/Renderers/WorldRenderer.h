@@ -44,9 +44,6 @@ private:
     RefCounted<Shader> mForwardPassVertexShader;
     RefCounted<Shader> mForwardPassFragmentShader;
     
-    RefCounted<Shader> mFullscreenTriangleVertexShader;
-    RefCounted<Shader> mPostprocessFragmentShader;
-    
     RendererContext* mRendererContext = nullptr;
 
 };
