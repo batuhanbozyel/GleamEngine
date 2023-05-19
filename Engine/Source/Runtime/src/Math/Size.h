@@ -28,6 +28,102 @@ struct Size
 
 	}
     
+    NO_DISCARD FORCE_INLINE constexpr Size operator*(float value) const
+    {
+        return Size{ width * value, height * value };
+    }
+    
+    NO_DISCARD FORCE_INLINE constexpr Size operator*(const Size& other) const
+    {
+        return Size{ width * other.width, height * other.height };
+    }
+    
+    NO_DISCARD FORCE_INLINE constexpr Size operator/(float value) const
+    {
+        return Size{ width / value, height / value };
+    }
+    
+    NO_DISCARD FORCE_INLINE constexpr Size operator/(const Size& other) const
+    {
+        return Size{ width / other.width, height / other.height };
+    }
+    
+    NO_DISCARD FORCE_INLINE constexpr Size operator+(float value) const
+    {
+        return Size{ width + value, height + value };
+    }
+    
+    NO_DISCARD FORCE_INLINE constexpr Size operator+(const Size& other) const
+    {
+        return Size{ width + other.width, height + other.height };
+    }
+    
+    NO_DISCARD FORCE_INLINE constexpr Size operator-(float value) const
+    {
+        return Size{ width - value, height - value };
+    }
+    
+    NO_DISCARD FORCE_INLINE constexpr Size operator-(const Size& other) const
+    {
+        return Size{ width - other.width, height - other.height };
+    }
+    
+    FORCE_INLINE constexpr Size& operator*=(float value)
+    {
+        width *= value;
+        height *= value;
+        return *this;
+    }
+    
+    FORCE_INLINE constexpr Size& operator*=(const Size& other)
+    {
+        width *= other.width;
+        height *= other.height;
+        return *this;
+    }
+    
+    FORCE_INLINE constexpr Size& operator/=(float value)
+    {
+        width /= value;
+        height /= value;
+        return *this;
+    }
+    
+    FORCE_INLINE constexpr Size& operator/=(const Size& other)
+    {
+        width /= other.width;
+        height /= other.height;
+        return *this;
+    }
+    
+    FORCE_INLINE constexpr Size& operator+=(float value)
+    {
+        width += value;
+        height += value;
+        return *this;
+    }
+    
+    FORCE_INLINE constexpr Size& operator+=(const Size& other)
+    {
+        width += other.width;
+        height += other.height;
+        return *this;
+    }
+    
+    FORCE_INLINE constexpr Size& operator-=(float value)
+    {
+        width -= value;
+        height -= value;
+        return *this;
+    }
+    
+    FORCE_INLINE constexpr Size& operator-=(const Size& other)
+    {
+        width -= other.width;
+        height -= other.height;
+        return *this;
+    }
+    
     NO_DISCARD FORCE_INLINE constexpr bool operator==(const Size& other) const
     {
         return (Math::Abs(width - other.width) < Math::Epsilon) && (Math::Abs(height - other.height) < Math::Epsilon);
