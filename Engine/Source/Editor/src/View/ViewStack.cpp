@@ -20,3 +20,11 @@ void ViewStack::OnDestroy()
 	GameInstance->GetRenderPipeline()->RemoveRenderer<ImGuiRenderer>();
 	mViews.clear();
 }
+
+void ViewStack::OnUpdate()
+{
+    for (auto view : mViews)
+    {
+        view->Update();
+    }
+}

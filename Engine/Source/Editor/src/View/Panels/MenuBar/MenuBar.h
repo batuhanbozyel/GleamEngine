@@ -1,5 +1,5 @@
 //
-//  MenuBarView.h
+//  MenuBar.h
 //  Editor
 //
 //  Created by Batuhan Bozyel on 19.05.2023.
@@ -10,11 +10,11 @@
 
 namespace GEditor {
 
-class MenuBarView final : public View
+class MenuBar final : public View
 {
 public:
     
-    MenuBarView();
+    MenuBar();
     
     virtual void Render() override;
     

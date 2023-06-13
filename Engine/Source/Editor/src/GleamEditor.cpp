@@ -2,8 +2,10 @@
 // EntryPoint
 #include "Core/EntryPoint.h"
 #include "View/ViewStack.h"
-#include "View/Panels/Scene/SceneView.h"
-#include "View/Panels/MenuBar/MenuBarView.h"
+
+#include "View/Panels/MenuBar/MenuBar.h"
+#include "View/Panels/World/WorldViewport.h"
+#include "View/Panels/World/WorldOutliner.h"
 
 namespace GEditor {
 
@@ -15,8 +17,9 @@ public:
         : Gleam::Application(properties)
 	{
         auto viewStack = GameInstance->AddSystem<ViewStack>();
-		viewStack->AddView<MenuBarView>();
-        viewStack->AddView<SceneView>();
+		viewStack->AddView<MenuBar>();
+        viewStack->AddView<WorldViewport>();
+        viewStack->AddView<WorldOutliner>();
 	}
 
 	~GleamEditor()

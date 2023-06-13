@@ -33,12 +33,18 @@ void ImGuiRenderer::AddRenderPasses(Gleam::RenderGraph& graph, Gleam::RenderGrap
 {
 	struct ImGuiPassData
 	{
-		Gleam::RenderTextureHandle swapchainTarget;
+		Gleam::RenderTextureHandle sceneTarget;
+        Gleam::RenderTextureHandle swapchainTarget;
 	};
-	graph.AddRenderPass<ImGuiPassData>("ImGui", [&](Gleam::RenderGraphBuilder& builder, ImGuiPassData& passData)
+    
+	graph.AddRenderPass<ImGuiPassData>("ImGuiPass", [&](Gleam::RenderGraphBuilder& builder, ImGuiPassData& passData)
     {
+        auto swapchainTarget = graph.ImportBackbuffer(Gleam::CreateRef<Gleam::RenderTexture>());
+        graph.GetDescriptor(swapchainTarget).clearBuffer = true;
+        
         const auto& renderingData = blackboard.Get<Gleam::RenderingData>();
-        passData.swapchainTarget = builder.UseColorBuffer({.texture = renderingData.swapchainTarget});
+        passData.sceneTarget = builder.ReadRenderTexture(renderingData.backbuffer);
+        passData.swapchainTarget = builder.UseColorBuffer(swapchainTarget);
     },
     [this](const Gleam::RenderGraphContext& renderGraphContext, const ImGuiPassData& passData)
     {
@@ -48,10 +54,7 @@ void ImGuiRenderer::AddRenderPasses(Gleam::RenderGraph& graph, Gleam::RenderGrap
 		{
 			mBackend->BeginFrame();
 			ImGui::NewFrame();
-
-			static bool dockspaceOpen = true;
-			static ImGuiDockNodeFlags dockspace_flags = ImGuiDockNodeFlags_None;
-
+            
 			ImGuiWindowFlags window_flags = ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoDocking;
             ImGuiViewport* viewport = ImGui::GetMainViewport();
             ImGui::SetNextWindowPos(viewport->Pos);
@@ -63,13 +66,12 @@ void ImGuiRenderer::AddRenderPasses(Gleam::RenderGraph& graph, Gleam::RenderGrap
             window_flags |= ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
 
 			ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
-			ImGui::Begin("Editor Dockspace", &dockspaceOpen, window_flags);
+			ImGui::Begin("Editor Dockspace", nullptr, window_flags);
 			ImGui::PopStyleVar();
             ImGui::PopStyleVar(2);
-
-			ImGuiIO& io = ImGui::GetIO();
+            
             ImGuiID dockspace_id = ImGui::GetID("EditorDockSpace");
-            ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), dockspace_flags);
+            ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_None);
 			
             auto viewStack = GameInstance->GetSystem<ViewStack>();
 			for (auto view : viewStack->GetViews())
@@ -78,6 +80,8 @@ void ImGuiRenderer::AddRenderPasses(Gleam::RenderGraph& graph, Gleam::RenderGrap
 			}
             
             ImGui::End();
+            
+            ImGuiIO& io = ImGui::GetIO();
 			const auto& resolution = GameInstance->GetWindow()->GetResolution();
 			io.DisplaySize = ImVec2(resolution.width, resolution.height);
 

@@ -1,8 +1,8 @@
 //
-//  SceneView.h
+//  WorldOutliner.h
 //  Editor
 //
-//  Created by Batuhan Bozyel on 26.03.2023.
+//  Created by Batuhan Bozyel on 25.05.2023.
 //
 
 #pragma once
@@ -11,15 +11,21 @@
 
 namespace GEditor {
 
-class SceneView final : public View
+class WorldOutlineController;
+
+class WorldOutliner final : public View
 {
 public:
     
-    SceneView();
+    WorldOutliner();
     
     virtual void Render() override;
     
 private:
+    
+    Gleam::Entity mSelectedEntity = {};
+    
+    WorldOutlineController* mController;
     
     Gleam::RefCounted<Gleam::World> mEditWorld;
     

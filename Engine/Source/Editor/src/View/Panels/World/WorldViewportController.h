@@ -1,5 +1,5 @@
 //
-//  SceneViewController.h
+//  WorldViewportController.h
 //  Editor
 //
 //  Created by Batuhan Bozyel on 26.03.2023.
@@ -10,13 +10,23 @@
 
 namespace GEditor {
 
-class SceneViewController : public Gleam::ComponentSystem
+class WorldViewportController : public Gleam::ComponentSystem
 {
 public:
     
     virtual void OnCreate(Gleam::EntityManager& entityManager) override;
 
 	virtual void OnUpdate(Gleam::EntityManager& entityManager) override;
+    
+    void SetViewportSize(const Gleam::Size& size)
+    {
+        mViewportSize = size;
+    }
+    
+    void SetViewportFocused(bool focused)
+    {
+        mViewportFocused = focused;
+    }
     
 private:
     
@@ -25,6 +35,10 @@ private:
 	void ProcessCameraRotation(Gleam::Camera& camera);
 
 	bool mCursorVisible = true;
+    
+    bool mViewportFocused = false;
+    
+    Gleam::Size mViewportSize = Gleam::Size::zero;
     
     float mYaw = 0.0f;
     float mPitch = 0.0f;

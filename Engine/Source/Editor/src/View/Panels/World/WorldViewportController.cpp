@@ -1,40 +1,30 @@
-#include "SceneViewController.h"
+//
+//  WorldViewportController.cpp
+//  Editor
+//
+//  Created by Batuhan Bozyel on 26.03.2023.
+//
+
+#include "WorldViewportController.h"
 
 using namespace GEditor;
 
-void SceneViewController::OnCreate(Gleam::EntityManager& entityManager)
+void WorldViewportController::OnCreate(Gleam::EntityManager& entityManager)
 {
 	mCameraEntity = entityManager.CreateEntity();
     entityManager.AddComponent<Gleam::Camera>(mCameraEntity, GameInstance->GetWindow()->GetResolution());
-    
-//    const auto& selectedFiles = Gleam::IOUtils::OpenFileDialog(Gleam::FileType::Model);
-//    for (const auto& file : selectedFiles)
-//    {
-//        auto entity = entityManager.CreateEntity();
-//        entityManager.AddComponent<Gleam::MeshRenderer>(entity, Gleam::AssetLibrary<Gleam::Model>::Import(file));
-//    }
-
-	Gleam::EventDispatcher<Gleam::MouseButtonPressedEvent>::Subscribe([&](Gleam::MouseButtonPressedEvent e)
-    {
-        if (e.GetMouseButton() == Gleam::MouseButton::Right)
-        {
-            mCursorVisible = !mCursorVisible;
-            Gleam::Input::ShowCursor(mCursorVisible);
-        }
-    });
-    
-    Gleam::EventDispatcher<Gleam::WindowResizeEvent>::Subscribe([&](const Gleam::WindowResizeEvent& e)
-    {
-        auto& camera = entityManager.GetComponent<Gleam::Camera>(mCameraEntity);
-        camera.SetViewport(e.GetWidth(), e.GetHeight());
-    });
 }
 
-void SceneViewController::OnUpdate(Gleam::EntityManager& entityManager)
+void WorldViewportController::OnUpdate(Gleam::EntityManager& entityManager)
 {
 	auto& camera = entityManager.GetComponent<Gleam::Camera>(mCameraEntity);
-	ProcessCameraRotation(camera);
-	ProcessCameraMovement(camera);
+    camera.SetViewport(mViewportSize);
+    
+    if (mViewportFocused)
+    {
+        ProcessCameraRotation(camera);
+        ProcessCameraMovement(camera);
+    }
 
 	auto debugRenderer = GameInstance->GetRenderPipeline()->GetRenderer<Gleam::DebugRenderer>();
     debugRenderer->UpdateCamera(camera);
@@ -62,7 +52,7 @@ void SceneViewController::OnUpdate(Gleam::EntityManager& entityManager)
     });
 }
 
-void SceneViewController::ProcessCameraRotation(Gleam::Camera& camera)
+void WorldViewportController::ProcessCameraRotation(Gleam::Camera& camera)
 {
 	if (!Gleam::Input::GetCursorVisible())
     {
@@ -74,7 +64,7 @@ void SceneViewController::ProcessCameraRotation(Gleam::Camera& camera)
     }
 }
 
-void SceneViewController::ProcessCameraMovement(Gleam::Camera& camera)
+void WorldViewportController::ProcessCameraMovement(Gleam::Camera& camera)
 {
     constexpr float cameraSpeed = 5.0f;
     float deltaTime = static_cast<float>(Gleam::Time::deltaTime);

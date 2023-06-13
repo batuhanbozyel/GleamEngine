@@ -1,5 +1,5 @@
 //
-//  ViewStack.hpp
+//  ViewStack.h
 //  Editor
 //
 //  Created by Batuhan Bozyel on 27.03.2023.
@@ -22,6 +22,8 @@ public:
 
 	virtual void OnDestroy() override;
     
+    virtual void OnUpdate() override;
+    
     template<ViewType T>
     T* AddView()
     {
@@ -36,6 +38,13 @@ public:
         GLEAM_ASSERT(HasView<T>(), "Editor does not have the view!");
         T* view = mViews.get<T>();
         mViews.erase<T>();
+    }
+    
+    template<ViewType T>
+    T* GetView()
+    {
+        GLEAM_ASSERT(HasView<T>(), "Editor does not have the view!");
+        return mViews.get<T>();
     }
 
     Gleam::PolyArray<View>& GetViews()

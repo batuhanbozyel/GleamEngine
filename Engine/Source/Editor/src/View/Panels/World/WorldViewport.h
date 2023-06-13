@@ -1,0 +1,52 @@
+//
+//  SceneView.h
+//  Editor
+//
+//  Created by Batuhan Bozyel on 26.03.2023.
+//
+
+#pragma once
+#include "View.h"
+#include "Gleam.h"
+
+namespace GEditor {
+
+class WorldViewportController;
+
+class WorldViewport final : public View
+{
+public:
+    
+    WorldViewport();
+    
+    virtual void Update() override;
+    
+    virtual void Render() override;
+    
+    const Gleam::Size& GetViewportSize() const
+    {
+        return mViewportSize;
+    }
+    
+    const Gleam::RefCounted<Gleam::World>& GetWorld() const
+    {
+        return mEditWorld;
+    }
+    
+private:
+    
+    bool mIsFocused = false;
+    
+    bool mCursorVisible = false;
+    
+    WorldViewportController* mController = nullptr;
+    
+    Gleam::Size mViewportSize;
+    
+    Gleam::RefCounted<Gleam::World> mEditWorld;
+    
+    Gleam::RefCounted<Gleam::RenderTexture> mSceneRT;
+    
+};
+
+} // namespace GEditor

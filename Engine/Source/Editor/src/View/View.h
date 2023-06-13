@@ -1,5 +1,5 @@
 //
-//  ViewStack.h
+//  View.h
 //  Editor
 //
 //  Created by Batuhan Bozyel on 27.03.2023.
@@ -14,6 +14,8 @@ class View
 public:
     
     virtual ~View() = default;
+    
+    virtual void Update() {}
     
     virtual void Render() {}
     
