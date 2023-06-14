@@ -27,16 +27,6 @@ struct RenderGraphNode
     }
 };
 
-struct RenderPassAttachment
-{
-    Color clearColor = Color::clear;
-    float clearDepth = 1.0f;
-    uint32_t clearStencil = 0;
-    RenderGraphResource texture = RenderGraphResource::nullHandle;
-    AttachmentLoadAction loadAction = AttachmentLoadAction::Load;
-    AttachmentStoreAction storeAction = AttachmentStoreAction::Store;
-};
-
 struct RenderPassNode final : public RenderGraphNode
 {
     GLEAM_NONCOPYABLE(RenderPassNode);
@@ -54,8 +44,8 @@ struct RenderPassNode final : public RenderGraphNode
     TArray<RenderGraphResource> resourceWrites;
     TArray<RenderGraphResource> resourceCreates;
     
-    TArray<RenderPassAttachment> colorAttachments;
-    RenderPassAttachment depthAttachment;
+    TArray<RenderGraphResource> colorAttachments;
+    RenderGraphResource depthAttachment = RenderGraphResource::nullHandle;
     
     HashSet<RenderPassNode*> dependents;
     
@@ -76,7 +66,7 @@ struct RenderPassNode final : public RenderGraphNode
     
     bool isCustomPass() const
     {
-        return colorAttachments.empty() && depthAttachment.texture == RenderGraphResource::nullHandle;
+        return colorAttachments.empty() && depthAttachment == RenderGraphResource::nullHandle;
     }
 };
 

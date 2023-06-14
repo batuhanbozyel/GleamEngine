@@ -87,10 +87,13 @@ void DebugRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 
 	graph.AddRenderPass<DrawPassData>("DebugRenderer::DrawPass", [&](RenderGraphBuilder& builder, DrawPassData& passData)
 	{
-        const auto& renderingData = blackboard.Get<WorldRenderingData>();
-        passData.colorTarget = builder.UseColorBuffer({.texture = renderingData.colorTarget});
-        passData.depthTarget = builder.UseDepthBuffer({.texture = renderingData.depthTarget});
+        auto& renderingData = blackboard.Get<WorldRenderingData>();
+        passData.colorTarget = builder.UseColorBuffer(renderingData.colorTarget);
+        passData.depthTarget = builder.UseDepthBuffer(renderingData.depthTarget);
         passData.vertexBuffer = builder.ReadBuffer(updatePass.vertexBuffer);
+        
+        renderingData.colorTarget = passData.colorTarget;
+        renderingData.depthTarget = passData.depthTarget;
 	},
 	[this](const RenderGraphContext& renderGraphContext, const DrawPassData& passData)
 	{

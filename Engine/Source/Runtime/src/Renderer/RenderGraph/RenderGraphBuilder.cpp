@@ -21,17 +21,14 @@ RenderGraphBuilder::RenderGraphBuilder(RenderPassNode& node, RenderGraphResource
     
 }
 
-NO_DISCARD RenderTextureHandle RenderGraphBuilder::UseColorBuffer(RenderPassAttachment attachment)
-{;
-    attachment.texture = WriteRenderTexture(attachment.texture);
-    mPassNode.colorAttachments.push_back(attachment);
-    return attachment.texture;
+NO_DISCARD RenderTextureHandle RenderGraphBuilder::UseColorBuffer(RenderGraphResource attachment)
+{
+    return mPassNode.colorAttachments.emplace_back(WriteRenderTexture(attachment));
 }
 
-NO_DISCARD RenderTextureHandle RenderGraphBuilder::UseDepthBuffer(RenderPassAttachment attachment)
+NO_DISCARD RenderTextureHandle RenderGraphBuilder::UseDepthBuffer(RenderGraphResource attachment)
 {
-    mPassNode.depthAttachment.texture = WriteRenderTexture(attachment.texture);
-    return mPassNode.depthAttachment.texture;
+    return mPassNode.depthAttachment = WriteRenderTexture(attachment);
 }
 
 NO_DISCARD BufferHandle RenderGraphBuilder::CreateBuffer(const BufferDescriptor& descriptor)
@@ -51,7 +48,7 @@ NO_DISCARD RenderGraphResource RenderGraphBuilder::WriteResource(RenderGraphReso
     if (HasResource(mPassNode.resourceWrites, resource)) { return resource; }
     
     mResourceRegistry.GetResourceNode(resource).producers.push_back(&mPassNode);
-    return mPassNode.resourceWrites.emplace_back(resource);
+    return mPassNode.resourceWrites.emplace_back(mResourceRegistry.CloneResource(resource));
 }
 
 NO_DISCARD BufferHandle RenderGraphBuilder::WriteBuffer(BufferHandle resource)

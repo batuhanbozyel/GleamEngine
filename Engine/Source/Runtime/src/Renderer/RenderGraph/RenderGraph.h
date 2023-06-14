@@ -34,6 +34,8 @@ public:
 	}
     
     RenderTextureHandle ImportBackbuffer(const RefCounted<RenderTexture>& backbuffer);
+    
+    RenderTextureDescriptor& GetDescriptor(RenderTextureHandle resource);
 
 private:
 

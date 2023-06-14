@@ -17,7 +17,7 @@ void RendererContext::Execute(RenderPipeline* pipeline) const
         RenderGraphBlackboard blackboard;
         
         RenderingData renderingData;
-        renderingData.swapchainTarget = graph.ImportBackbuffer(CreateRef<RenderTexture>());
+        renderingData.backbuffer = graph.ImportBackbuffer(pipeline->mRenderTarget);
         blackboard.Add(renderingData);
         
         for (auto renderer : *pipeline)
@@ -28,6 +28,8 @@ void RendererContext::Execute(RenderPipeline* pipeline) const
         graph.Compile();
         graph.Execute(mCommandBuffer.get());
         mCommandBuffer->Present();
+        
+        pipeline->SetRenderTarget(CreateRef<RenderTexture>());
     }
 }
 

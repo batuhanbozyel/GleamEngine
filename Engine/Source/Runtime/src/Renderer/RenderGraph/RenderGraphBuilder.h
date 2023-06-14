@@ -17,9 +17,9 @@ public:
 
     RenderGraphBuilder(RenderPassNode& node, RenderGraphResourceRegistry& registry);
 
-    NO_DISCARD RenderTextureHandle UseColorBuffer(RenderPassAttachment attachment);
+    NO_DISCARD RenderTextureHandle UseColorBuffer(RenderGraphResource attachment);
     
-    NO_DISCARD RenderTextureHandle UseDepthBuffer(RenderPassAttachment attachment);
+    NO_DISCARD RenderTextureHandle UseDepthBuffer(RenderGraphResource attachment);
     
     // RenderTexure
     NO_DISCARD RenderTextureHandle CreateRenderTexture(const TextureDescriptor& descriptor);

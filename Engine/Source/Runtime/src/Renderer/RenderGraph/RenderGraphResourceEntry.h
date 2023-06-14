@@ -17,8 +17,9 @@ struct RenderGraphResourceEntry
     const RenderGraphResource resource;
     const bool transient;
     
-    RenderPassNode* producer = nullptr;
-    RenderPassNode* last = nullptr;
+    RenderPassNode* creator = nullptr;
+    RenderPassNode* lastModifier = nullptr;
+    RenderPassNode* lastReference = nullptr;
     
     uint32_t refCount = 0;
     
@@ -59,18 +60,18 @@ struct RenderGraphBufferEntry final : public RenderGraphResourceEntry
 
 struct RenderGraphRenderTextureEntry final : public RenderGraphResourceEntry
 {
-    TextureDescriptor descriptor;
+    RenderTextureDescriptor descriptor;
     RefCounted<RenderTexture> renderTexture;
     
     RenderGraphRenderTextureEntry(const TextureDescriptor& descriptor, RenderGraphResource resource, bool transient = true)
-        : RenderGraphResourceEntry(resource, transient), descriptor(descriptor)
+        : RenderGraphResourceEntry(resource, transient), descriptor{.texture = descriptor}
     {
         
     }
     
     virtual void Allocate() override
     {
-        renderTexture = CreateRef<RenderTexture>(descriptor);
+        renderTexture = CreateRef<RenderTexture>(descriptor.texture);
     }
     
     virtual void Release() override

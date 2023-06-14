@@ -10,7 +10,7 @@ struct Version;
 
 struct RenderingData
 {
-    RenderTextureHandle swapchainTarget;
+    RenderTextureHandle backbuffer;
 };
 
 class RendererContext final

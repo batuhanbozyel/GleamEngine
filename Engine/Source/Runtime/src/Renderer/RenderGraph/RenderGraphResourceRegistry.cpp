@@ -49,10 +49,7 @@ NO_DISCARD BufferHandle RenderGraphResourceRegistry::CreateBuffer(const BufferDe
 NO_DISCARD RenderGraphResource RenderGraphResourceRegistry::CloneResource(RenderGraphResource resource)
 {
     GLEAM_ASSERT(resource != RenderGraphResource::nullHandle);
-    
-    RenderGraphResource clone(static_cast<uint32_t>(mNodes.size()));
-    mNodes.emplace_back(clone, mNodes[resource].resource);
-    return clone;
+    return RenderGraphResource{resource, resource.GetVersion() + 1};
 }
 
 RenderGraphResourceNode& RenderGraphResourceRegistry::GetResourceNode(RenderGraphResource resource)

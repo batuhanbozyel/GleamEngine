@@ -30,5 +30,14 @@ struct TextureDescriptor
     }
 };
 
+struct RenderTextureDescriptor
+{
+    TextureDescriptor texture;
+    Color clearColor = Color::clear;
+    uint32_t clearStencil = 0u;
+    float clearDepth = 1.0f;
+    bool clearBuffer = false;
+};
+
 } // namespace Gleam
 

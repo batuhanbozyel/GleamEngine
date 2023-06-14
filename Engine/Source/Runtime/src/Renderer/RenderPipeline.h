@@ -7,6 +7,7 @@
 
 #pragma once
 #include "Renderer.h"
+#include "Texture.h"
 
 namespace Gleam {
 
@@ -30,6 +31,11 @@ public:
 			renderer->OnDestroy();
             delete renderer;
         }
+    }
+    
+    void SetRenderTarget(const RefCounted<RenderTexture>& rt)
+    {
+        mRenderTarget = rt;
     }
     
     template<RendererType T>
@@ -116,6 +122,8 @@ public:
 private:
     
     Container mRenderers;
+    
+    RefCounted<RenderTexture> mRenderTarget = CreateRef<RenderTexture>();
     
     // initialized and set when a Game instance is created
     static inline RendererContext* mRendererContext = nullptr;

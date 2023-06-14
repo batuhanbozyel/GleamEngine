@@ -31,33 +31,25 @@ void WorldRenderer::OnCreate(RendererContext* context)
 
 void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard)
 {
-    TextureDescriptor descriptor;
-    descriptor.size = mRendererContext->GetDrawableSize();
-    descriptor.sampleCount = mRendererContext->GetConfiguration().sampleCount;
-    
-    descriptor.format = TextureFormat::R32G32B32A32_SFloat;
-    auto colorTarget = CreateRef<RenderTexture>(descriptor);
-    
-    descriptor.format = TextureFormat::D32_SFloat;
-    auto depthTarget = CreateRef<RenderTexture>(descriptor);
-    
-    WorldRenderingData renderingData;
-    renderingData.colorTarget = graph.ImportBackbuffer(colorTarget);
-    renderingData.depthTarget = graph.ImportBackbuffer(depthTarget);
-    blackboard.Add(renderingData);
-    
-    struct ForwardPassData
+    const auto& forwardPassData = graph.AddRenderPass<WorldRenderingData>("WorldRenderer::ForwardPass", [&](RenderGraphBuilder& builder, WorldRenderingData& passData)
     {
-        RenderTextureHandle colorTarget;
-        RenderTextureHandle depthTarget;
-    };
-    
-    const auto& forwardPassData = graph.AddRenderPass<ForwardPassData>("WorldRenderer::ForwardPass", [&](RenderGraphBuilder& builder, ForwardPassData& passData)
-    {
-        passData.colorTarget = builder.UseColorBuffer({.texture = renderingData.colorTarget, .loadAction = AttachmentLoadAction::Clear, .storeAction = mRendererContext->GetConfiguration().sampleCount > 1 ? AttachmentStoreAction::Resolve : AttachmentStoreAction::Store});
-        passData.depthTarget = builder.UseDepthBuffer({.texture = renderingData.depthTarget, .loadAction = AttachmentLoadAction::Clear, .storeAction = mRendererContext->GetConfiguration().sampleCount > 1 ? AttachmentStoreAction::Resolve : AttachmentStoreAction::Store});
+        TextureDescriptor descriptor;
+        descriptor.size = mRendererContext->GetDrawableSize();
+        descriptor.sampleCount = mRendererContext->GetConfiguration().sampleCount;
+        descriptor.format = TextureFormat::R32G32B32A32_SFloat;
+        auto colorTarget = builder.CreateRenderTexture(descriptor);
+        
+        descriptor.format = TextureFormat::D32_SFloat;
+        auto depthTarget = builder.CreateRenderTexture(descriptor);
+        
+        passData.colorTarget = builder.UseColorBuffer(colorTarget);
+        passData.depthTarget = builder.UseDepthBuffer(depthTarget);
+        blackboard.Add(passData);
+        
+        graph.GetDescriptor(colorTarget).clearBuffer = true;
+        graph.GetDescriptor(depthTarget).clearBuffer = true;
     },
-    [this](const RenderGraphContext& renderGraphContext, const ForwardPassData& passData)
+    [this](const RenderGraphContext& renderGraphContext, const WorldRenderingData& passData)
     {
         PipelineStateDescriptor pipelineDesc;
         pipelineDesc.cullingMode = CullMode::Back;
