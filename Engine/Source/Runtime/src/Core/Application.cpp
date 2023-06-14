@@ -10,7 +10,7 @@
 
 using namespace Gleam;
 
-int SDLCALL Application::SDL2_EventCallback(void* data, SDL_Event* e)
+int SDLCALL Application::SDL2_EventHandler(void* data, SDL_Event* e)
 {
 	switch (e->type)
 	{
@@ -98,7 +98,7 @@ void Application::Run()
         SDL_Event event;
         while (SDL_PollEvent(&event))
         {
-            SDL2_EventCallback(nullptr, &event);
+            SDL2_EventHandler(nullptr, &event);
             if (mEventHandler)
             {
                 std::invoke(mEventHandler, &event);

@@ -11,11 +11,15 @@
 
 namespace Gleam {
 
+class Shader;
+
 class Material
 {
 public:
-
-    Material(const TArray<MaterialProperty>& properties, const PipelineStateDescriptor& pipelineState);
+    
+    static Material Import(const Filesystem::path& path);
+    
+    Material(const RefCounted<Shader>& vertexShader, const RefCounted<Shader>& fragmentShader, const TArray<MaterialProperty>& properties);
     
     void SetProperty(const TString& name, float value);
     
@@ -31,6 +35,8 @@ public:
     
     void SetProperty(const TString& name, const RefCounted<TextureCube>& textureCube);
     
+    const TArray<MaterialProperty>& GetProperties() const;
+    
 private:
     
     MaterialProperty* GetProperty(const TString& name);
@@ -38,6 +44,10 @@ private:
     TArray<MaterialProperty> mProperties;
 
 	PipelineStateDescriptor mPipelineState;
+    
+    RefCounted<Shader> mVertexShader;
+    
+    RefCounted<Shader> mFragmentShader;
     
 };
 

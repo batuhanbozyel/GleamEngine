@@ -1,4 +1,5 @@
 #pragma once
+#include "Model.h"
 #include "Renderer/Mesh.h"
 #include "Renderer/Material.h"
 
@@ -8,7 +9,11 @@ class MeshRenderer
 {
 public:
     
-    MeshRenderer(const Model& model);
+    MeshRenderer(const Model& model)
+        : mMesh(CreateRef<Mesh>(model.GetMeshes()))
+    {
+        
+    }
     
     const RefCounted<Mesh>& GetMesh() const
     {

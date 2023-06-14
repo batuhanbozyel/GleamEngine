@@ -10,10 +10,19 @@
 
 using namespace Gleam;
 
-Material::Material(const TArray<MaterialProperty>& properties, const PipelineStateDescriptor& pipelineState)
-	: mProperties(properties), mPipelineState(pipelineState)
+Material Material::Import(const Filesystem::path& path)
 {
+    // TODO: implement custom material file that contains both pipeline state and shaders
+}
 
+Material::Material(const RefCounted<Shader>& vertexShader,
+                   const RefCounted<Shader>& fragmentShader,
+                   const TArray<MaterialProperty>& properties)
+     :  mVertexShader(vertexShader),
+        mFragmentShader(fragmentShader),
+        mProperties(properties)
+{
+    
 }
 
 MaterialProperty* Material::GetProperty(const TString& name)
@@ -28,8 +37,7 @@ MaterialProperty* Material::GetProperty(const TString& name)
 
 void Material::SetProperty(const TString& name, float value)
 {
-    auto property = GetProperty(name);
-    if (property)
+    if (auto property = GetProperty(name))
     {
         GLEAM_ASSERT(property->type == MaterialPropertyType::Scalar, "Material property is not a scalar type!");
         property->value = value;
@@ -38,8 +46,7 @@ void Material::SetProperty(const TString& name, float value)
 
 void Material::SetProperty(const TString& name, const Vector2& value)
 {
-    auto property = GetProperty(name);
-    if (property)
+    if (auto property = GetProperty(name))
     {
         GLEAM_ASSERT(property->type == MaterialPropertyType::Vector2, "Material property is not a 2d vector type!");
         property->value = value;
@@ -48,8 +55,7 @@ void Material::SetProperty(const TString& name, const Vector2& value)
 
 void Material::SetProperty(const TString& name, const Vector3& value)
 {
-    auto property = GetProperty(name);
-    if (property)
+    if (auto property = GetProperty(name))
     {
         GLEAM_ASSERT(property->type == MaterialPropertyType::Vector3, "Material property is not a 3d vector type!");
         property->value = value;
@@ -58,8 +64,7 @@ void Material::SetProperty(const TString& name, const Vector3& value)
 
 void Material::SetProperty(const TString& name, const Vector4& value)
 {
-    auto property = GetProperty(name);
-    if (property)
+    if (auto property = GetProperty(name))
     {
         GLEAM_ASSERT(property->type == MaterialPropertyType::Vector4, "Material property is not a 4d vector type!");
         property->value = value;
@@ -68,8 +73,7 @@ void Material::SetProperty(const TString& name, const Vector4& value)
 
 void Material::SetProperty(const TString& name, const RefCounted<Buffer>& buffer)
 {
-    auto property = GetProperty(name);
-    if (property)
+    if (auto property = GetProperty(name))
     {
         GLEAM_ASSERT(property->type == MaterialPropertyType::Buffer, "Material property is not a buffer!");
         property->value = buffer;
@@ -78,8 +82,7 @@ void Material::SetProperty(const TString& name, const RefCounted<Buffer>& buffer
 
 void Material::SetProperty(const TString& name, const RefCounted<Texture2D>& texture2d)
 {
-    auto property = GetProperty(name);
-    if (property)
+    if (auto property = GetProperty(name))
     {
         GLEAM_ASSERT(property->type == MaterialPropertyType::Texture2D, "Material property is not a texture2d!");
         property->value = texture2d;
@@ -94,4 +97,9 @@ void Material::SetProperty(const TString& name, const RefCounted<TextureCube>& t
         GLEAM_ASSERT(property->type == MaterialPropertyType::TextureCube, "Material property is not a textureCube!");
         property->value = textureCube;
     }
+}
+
+const TArray<MaterialProperty>& Material::GetProperties() const
+{
+    return mProperties;
 }

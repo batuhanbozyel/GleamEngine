@@ -6,6 +6,8 @@
 #include "Container/String.h"
 #include "Container/Array.h"
 #include "Container/Stack.h"
+#include "Container/Queue.h"
+#include "Container/List.h"
 #include "Container/Hash.h"
 #include "Container/AnyArray.h"
 #include "Container/PolyArray.h"
@@ -31,7 +33,6 @@
 #include "World/Components/Transform2D.h"
 #include "World/Components/Transform.h"
 #include "World/Components/Camera.h"
-#include "World/Components/MeshRenderer.h"
 
 #include "Renderer/Mesh.h"
 #include "Renderer/Renderer.h"
@@ -52,6 +53,7 @@
 #include "Input/Input.h"
 
 #include "World/World.h"
+#include "Assets/Model.h"
 #include "Assets/AssetLibrary.h"
 
 #include "Renderer/Renderers/UIRenderer.h"

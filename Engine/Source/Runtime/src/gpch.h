@@ -18,6 +18,7 @@
 #include <chrono>
 #include <string>
 #include <sstream>
+#include <queue>
 #include <list>
 #include <array>
 #include <vector>
@@ -34,6 +35,8 @@
 #include "Container/String.h"
 #include "Container/Array.h"
 #include "Container/Stack.h"
+#include "Container/Queue.h"
+#include "Container/List.h"
 #include "Container/Hash.h"
 #include "Container/AnyArray.h"
 #include "Container/PolyArray.h"

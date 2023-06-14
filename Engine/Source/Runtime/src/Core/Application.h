@@ -117,7 +117,7 @@ private:
 	Version mVersion;
 
 	static inline Application* mInstance = nullptr;
-    static int SDLCALL SDL2_EventCallback(void* data, SDL_Event* e);
+    static int SDLCALL SDL2_EventHandler(void* data, SDL_Event* e);
 
 };
 

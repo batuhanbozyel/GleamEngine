@@ -47,13 +47,18 @@ public:
     {
 		return mSystemManager.contains<T>();
     }
+    
+    EntityManager& GetEntityManager()
+    {
+        return mEntityManager;
+    }
 
 	static RefCounted<World> Create()
     {
         return CreateRef<World>();
     }
 
-    static inline RefCounted<World> active;
+    static inline RefCounted<World> active = nullptr;
     
 private:
 
