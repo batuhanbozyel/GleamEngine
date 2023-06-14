@@ -1,62 +1,17 @@
 #pragma once
+#include "BlendState.h"
 
 namespace Gleam {
 
 enum class PipelineBindPoint
 {
     Graphics,
-    Compute
-};
-    
-enum class BlendOp
-{
-    Add,
-    Subtract,
-    ReverseSubtract,
-    Min,
-    Max
-};
-
-enum class BlendMode
-{
-    Zero,
-    One,
-    DstColor,
-    SrcColor,
-    OneMinusDstColor,
-    SrcAlpha,
-    OneMinusSrcColor,
-    DstAlpha,
-    OneMinusDstAlpha,
-    SrcAlphaClamp,
-    OneMinusSrcAlpha
-};
-
-enum class ColorWriteMask
-{
-    Alpha,
-    Blue,
-    Green,
-    Red,
-    All
-};
-
-struct BlendState
-{
-    BlendOp colorBlendOperation = BlendOp::Add;
-    BlendOp alphaBlendOperation = BlendOp::Add;
-    BlendMode destinationAlphaBlendMode = BlendMode::Zero;
-    BlendMode destinationColorBlendMode = BlendMode::Zero;
-    BlendMode sourceAlphaBlendMode = BlendMode::Zero;
-    BlendMode sourceColorBlendMode = BlendMode::Zero;
-    ColorWriteMask writeMask = ColorWriteMask::All;
-
-	bool operator==(const BlendState&) const = default;
+    Compute,
+	RayTracing
 };
 
 enum class CompareFunction
 {
-    Disabled,
     Never,
     Less,
     Equal,
@@ -72,7 +27,10 @@ struct DepthState
     CompareFunction compareFunction = CompareFunction::Less;
     bool writeEnabled = false;
 
-	bool operator==(const DepthState&) const = default;
+	bool operator==(const DepthState& other) const
+    {
+        return compareFunction == other.compareFunction && writeEnabled == other.writeEnabled;
+    }
 };
 
 enum class StencilOp
@@ -98,7 +56,17 @@ struct StencilState
     StencilOp passOperation = StencilOp::Keep;
     StencilOp depthFailOperation = StencilOp::Keep;
 
-	bool operator==(const StencilState&) const = default;
+	bool operator==(const StencilState& other) const
+    {
+        return  enabled == other.enabled &&
+                reference == other.reference &&
+                compareFunction == other.compareFunction &&
+                readMask == other.readMask &&
+                writeMask == other.writeMask &&
+                failOperation == other.failOperation &&
+                passOperation == other.passOperation &&
+                depthFailOperation == other.depthFailOperation;
+    }
 };
 
 enum class CullMode
@@ -113,12 +81,13 @@ enum class PrimitiveTopology
 	Points,
 	Lines,
 	LineStrip,
-	Triangles
+	Triangles,
+    TriangleStrip
 };
 
 struct PipelineStateDescriptor
 {
-    TArray<BlendState, 8> blendStates;
+    BlendState blendState;
     DepthState depthState;
     StencilState stencilState;
     CullMode cullingMode = CullMode::Off;
@@ -126,7 +95,31 @@ struct PipelineStateDescriptor
     PipelineBindPoint bindPoint = PipelineBindPoint::Graphics;
     bool alphaToCoverage = false;
 
-	bool operator==(const PipelineStateDescriptor&) const = default;
+	bool operator==(const PipelineStateDescriptor& other) const
+    {
+        return  blendState == other.blendState &&
+                depthState == other.depthState &&
+                stencilState == other.stencilState &&
+                cullingMode == other.cullingMode &&
+                topology == other.topology &&
+                bindPoint == other.bindPoint;
+    }
 };
+
+namespace Utils {
+
+static constexpr uint32_t PrimitiveTopologyVertexCount(PrimitiveTopology topology)
+{
+    switch (topology)
+    {
+        case PrimitiveTopology::Points: return 1;
+        case PrimitiveTopology::Lines: return 2;
+        case PrimitiveTopology::LineStrip: return 2;
+        case PrimitiveTopology::Triangles: return 3;
+        default: return 0;
+    }
+}
+
+} // namespace Utils
 
 } // namespace Gleam

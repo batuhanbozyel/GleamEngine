@@ -17,8 +17,6 @@ if (WIN32)
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/SDL2/include
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/fmt/include
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/stb
-        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui
-        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/ImGuizmo
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/entt/single_include
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/tinyobjloader
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/OpenFBX/src
@@ -29,7 +27,6 @@ if (WIN32)
 
     set(LIB_LINKS_RUNTIME
         ${CMAKE_SOURCE_DIR}/bin/$<CONFIG>/volk.lib
-        ${CMAKE_SOURCE_DIR}/bin/$<CONFIG>/imgui.lib
         ${CMAKE_SOURCE_DIR}/bin/$<CONFIG>/spirv-reflect-static.lib
     )
 
@@ -41,17 +38,13 @@ else ()
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/SDL2/include
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/fmt/include
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/stb
-        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui
-        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/ImGuizmo
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/entt/single_include
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/tinyobjloader
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/OpenFBX/src
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/cgltf
     )
 
-    set(LIB_LINKS_RUNTIME
-        ${CMAKE_SOURCE_DIR}/bin/$<CONFIG>/libimgui.a
-    )
+    set(LIB_LINKS_RUNTIME "")
     
 endif()
 
@@ -59,9 +52,8 @@ list(APPEND SOURCE_FILES ${SHADER_FILES})
 add_library(Runtime STATIC ${SOURCE_FILES})
 
 if (NOT APPLE)
-    add_dependencies(Runtime imgui volk spirv-reflect-static)
+    add_dependencies(Runtime volk spirv-reflect-static)
 else()
-    add_dependencies(Runtime imgui)
     set_source_files_properties(${SOURCE_FILES} PROPERTIES COMPILE_FLAGS "-x objective-c++")
     set_target_properties(Runtime PROPERTIES MACOSX_BUNDLE YES XCODE_ATTRIBUTE_CLANG_ENABLE_OBJC_ARC YES)
 endif()
@@ -94,10 +86,15 @@ target_compile_definitions(
 
 if (NOT APPLE)
     set(HLSL_FILE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/src/Renderer/Vulkan/Shaders)
-    ADD_GRAPHICS_SHADER(Runtime ${HLSL_FILE_PATH}/FullscreenTriangleShader.hlsl fullscreenTriangleVertexShader fullscreenTriangleFragmentShader)
-    ADD_GRAPHICS_SHADER(Runtime ${HLSL_FILE_PATH}/ForwardPassShader.hlsl forwardPassVertexShader forwardPassFragmentShader)
-    ADD_GRAPHICS_SHADER(Runtime ${HLSL_FILE_PATH}/DebugShader.hlsl debugVertexShader debugFragmentShader)
-    ADD_GRAPHICS_SHADER(Runtime ${HLSL_FILE_PATH}/DebugShader.hlsl debugMeshVertexShader debugFragmentShader)
+    ADD_VERTEX_SHADER(Runtime ${HLSL_FILE_PATH}/CommonShader.hlsl fullscreenTriangleVertexShader)
+    ADD_FRAGMENT_SHADER(Runtime ${HLSL_FILE_PATH}/CommonShader.hlsl fullscreenTriangleFragmentShader)
+
+    ADD_VERTEX_SHADER(Runtime ${HLSL_FILE_PATH}/ForwardPassShader.hlsl forwardPassVertexShader)
+    ADD_FRAGMENT_SHADER(Runtime ${HLSL_FILE_PATH}/ForwardPassShader.hlsl forwardPassFragmentShader)
+
+    ADD_VERTEX_SHADER(Runtime ${HLSL_FILE_PATH}/DebugShader.hlsl debugVertexShader)
+    ADD_VERTEX_SHADER(Runtime ${HLSL_FILE_PATH}/DebugShader.hlsl debugMeshVertexShader)
+    ADD_FRAGMENT_SHADER(Runtime ${HLSL_FILE_PATH}/DebugShader.hlsl debugFragmentShader)
 else()
     add_custom_command(
         TARGET Runtime

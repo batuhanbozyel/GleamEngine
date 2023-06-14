@@ -1,4 +1,5 @@
 #pragma once
+#ifdef USE_VULKAN_RENDERER
 #include "VulkanUtils.h"
 #include "Renderer/Shader.h"
 
@@ -8,54 +9,39 @@ struct VulkanPipeline
 {
 	VkPipeline handle{ VK_NULL_HANDLE };
 	VkPipelineLayout layout{ VK_NULL_HANDLE };
-	VkDescriptorSetLayout setLayout{ VK_NULL_HANDLE };
+	VkPipelineBindPoint bindPoint{};
 };
 
 struct VulkanRenderPass
 {
 	VkRenderPass handle{ VK_NULL_HANDLE };
-	bool swapchainTarget = false;
-
-	bool operator==(const VulkanRenderPass& other) const
-	{
-		return handle == other.handle;
-	}
+	uint32_t sampleCount = 1;
 };
 
 class VulkanPipelineStateManager
 {
 public:
 
-	static const VulkanRenderPass& GetRenderPass(const RenderPassDescriptor& renderPassDesc);
-
-	static const VulkanPipeline& GetGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc, const GraphicsShader& program, const VulkanRenderPass& renderPass);
+	static const VulkanPipeline& GetGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc, const RefCounted<Shader>& vertexShader, const RefCounted<Shader>& fragmentShader, const VulkanRenderPass& renderPass);
 
 	static void Clear();
 
 private:
 
-	struct RenderPassCacheElement
-	{
-		RenderPassDescriptor renderPassDescriptor;
-		VulkanRenderPass renderPass;
-	};
-
 	struct GraphicsPipelineCacheElement
 	{
 		PipelineStateDescriptor pipelineStateDescriptor;
-		GraphicsShader program;
+		RefCounted<Shader> vertexShader;
+		RefCounted<Shader> fragmentShader;
 		VulkanPipeline pipeline;
-		VulkanRenderPass renderPass;
+		uint32_t sampleCount = 1;
 	};
 
-	static VkRenderPass CreateRenderPass(const RenderPassDescriptor& renderPassDesc);
-
-	static VulkanPipeline CreateGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc, const GraphicsShader& program, VkRenderPass renderPass);
-
-	static inline TArray<RenderPassCacheElement> mRenderPassCache;
+	static VulkanPipeline CreateGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc, const RefCounted<Shader>& vertexShader, const RefCounted<Shader>& fragmentShader, const VulkanRenderPass& renderPass);
 
 	static inline TArray<GraphicsPipelineCacheElement> mGraphicsPipelineCache;
 
 };
 
 } // namespace Gleam
+#endif

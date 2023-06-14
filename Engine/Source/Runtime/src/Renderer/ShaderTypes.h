@@ -14,7 +14,7 @@ typedef float2x2 Matrix2;
 typedef float3x3 Matrix3;
 typedef float4x4 Matrix4;
 typedef float2 Vector2;
-typedef float3 Vector3;
+typedef float4 Vector3;
 typedef float4 Vector4;
 typedef uint Color32;
 #endif
@@ -54,13 +54,12 @@ struct CameraUniforms
 struct DebugShaderUniforms
 {
     Matrix4 modelMatrix;
-    alignas(16) Color32 color;
+    Color32 color;
 };
 
 struct ForwardPassUniforms
 {
     Matrix4 modelMatrix;
-    alignas(16) Color32 color;
 };
 
 } // namespace Gleam

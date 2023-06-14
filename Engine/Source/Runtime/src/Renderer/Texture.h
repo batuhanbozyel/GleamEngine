@@ -1,45 +1,97 @@
 #pragma once
-#include "TextureFormat.h"
 #include "GraphicsObject.h"
+#include "TextureDescriptor.h"
 
 namespace Gleam {
 
-class Texture2D final : public GraphicsObject
+class Texture : public GraphicsObject
+{
+public:
+    
+    Texture(const TextureDescriptor& descriptor)
+        : mDescriptor(descriptor), mMipMapLevels(descriptor.useMipMap ? CalculateMipLevels(descriptor.size) : 1)
+    {
+        
+    }
+    
+    NativeGraphicsHandle GetView() const
+    {
+        return mView;
+    }
+    
+    const TextureDescriptor& GetDescriptor() const
+    {
+        return mDescriptor;
+    }
+    
+    uint32_t GetMipMapLevels() const
+    {
+        return mMipMapLevels;
+    }
+    
+protected:
+
+    static constexpr uint32_t CalculateMipLevels(const Size& size)
+    {
+        return static_cast<uint32_t>(Math::Floor(Math::Log2(Math::Max(size.width, size.height)))) + 1;
+    }
+
+    uint32_t mMipMapLevels;
+    TextureDescriptor mDescriptor;
+    
+    NativeGraphicsHandle mView = nullptr;
+    
+};
+
+class Texture2D final : public Texture
 {
 public:
 
-	Texture2D(uint32_t width, uint32_t height, TextureFormat format, bool useMipMap = false);
+	Texture2D(const TextureDescriptor& descriptor);
+
 	~Texture2D();
 
 	void SetPixels(const TArray<uint8_t>& pixels) const;
-
-private:
-
-	static constexpr uint32_t CalculateMipLevels(uint32_t width, uint32_t height)
-	{
-		return Math::Floor(Math::Log2(Math::Max(width, height))) + 1;
-	}
-
-	TextureFormat mFormat = TextureFormat::R8G8B8A8_SRGB;
-	FilterMode mFilterMode = FilterMode::Point;
-	WrapMode mWrapMode = WrapMode::Clamp;
-	uint32_t mWidth = 0, mHeight = 0;
-	uint32_t mMipMapCount = 0;
-
-	uint32_t mSize = 0;
-	NativeGraphicsHandle mMemory;
-	NativeGraphicsHandle mImageView;
 	
 };
 
-class RenderTexture final : public GraphicsObject
+class TextureCube final : public Texture
 {
 public:
+    
+    TextureCube(const TextureDescriptor& descriptor);
+    
+    ~TextureCube();
+    
+};
 
+class RenderTexture final : public Texture
+{
+public:
+    
+    // Swapchain target
+    RenderTexture();
+    
+    RenderTexture(const TextureDescriptor& descriptor);
+    
+    ~RenderTexture();
 
+	NativeGraphicsHandle GetMSAAHandle() const
+    {
+        return mMultisampleHandle;
+    }
+    
+    NativeGraphicsHandle GetMSAAView() const
+    {
+        return mMultisampleView;
+    }
+    
 private:
 
-
+	// multisample
+	NativeGraphicsHandle mMultisampleMemory;
+	NativeGraphicsHandle mMultisampleView;
+	NativeGraphicsHandle mMultisampleHandle;
 
 };
 

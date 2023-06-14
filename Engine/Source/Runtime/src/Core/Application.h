@@ -1,67 +1,126 @@
 #pragma once
+#include "Window.h"
+#include "System.h"
 #include "ApplicationConfig.h"
+#include "Renderer/RenderPipeline.h"
+#include "Renderer/RendererContext.h"
 
 union SDL_Event;
 struct SDL_Window;
 
 namespace Gleam {
 
-class Layer;
-class Window;
+template <typename T>
+concept SystemType = std::is_base_of<System, T>::value;
+
+using EventHandlerFn = std::function<void(const SDL_Event*)>;
 
 class Application
 {
 public:
 
+	GLEAM_NONCOPYABLE(Application);
+
 	Application(const ApplicationProperties& props);
 	virtual ~Application();
 
 	void Run();
+    
+    void Quit();
 
-	uint32_t PushLayer(const RefCounted<Layer>& layer);
-
-	uint32_t PushOverlay(const RefCounted<Layer>& overlay);
-
-	void RemoveLayer(uint32_t index);
-
-	void RemoveOverlay(uint32_t index);
-
-	void RemoveLayer(const RefCounted<Layer>& layer);
-
-	void RemoveOverlay(const RefCounted<Layer>& overlay);
-
-	const Window& GetActiveWindow() const
+	template<SystemType T>
+	T* AddSystem()
 	{
-		return *mActiveWindow;
+		GLEAM_ASSERT(!HasSystem<T>(), "Application already has the system!");
+		T* system = mSystems.emplace<T>();
+        system->OnCreate();
+		return system;
+	}
+
+	template<SystemType T>
+	void RemoveSystem()
+	{
+		GLEAM_ASSERT(HasSystem<T>(), "Application does not have the system!");
+		T* system = mSystems.get<T>();
+        system->OnDestroy();
+        mSystems.erase<T>();
+	}
+    
+    template<SystemType T>
+    T* GetSystem()
+    {
+        GLEAM_ASSERT(HasSystem<T>(), "Application does not have the system!");
+        return mSystems.get<T>();
+    }
+    
+    void SetEventHandler(EventHandlerFn&& fn)
+    {
+        mEventHandler = std::move(fn);
+    }
+
+	RenderPipeline* GetRenderPipeline()
+    {
+        return mRenderPipeline.get();
+    }
+    
+    const RenderPipeline* GetRenderPipeline() const
+    {
+        return mRenderPipeline.get();
+    }
+
+	const Window* GetWindow() const
+	{
+		return mWindow.get();
 	}
 
 	const Version& GetVersion() const
 	{
 		return mVersion;
 	}
+    
+    const RendererConfig& GetRendererConfig() const
+    {
+        return mRendererContext.GetConfiguration();
+    }
+    
+    Filesystem::path GetDefaultAssetPath() const
+    {
+        return Filesystem::current_path().append("Assets/");
+    }
 
-	static Application& GetInstance()
+	static Application* GetInstance()
 	{
-		return *sInstance;
+		return mInstance;
 	}
 
-private:
-    
-	TArray<RefCounted<Layer>> mLayerStack;
-	TArray<RefCounted<Layer>> mOverlays;
+	Color backgroundColor = Color{0.1f, 0.1f, 0.1f, 1.0f};
 
-	SDL_Event mEvent;
-	Window* mActiveWindow;
-	HashMap<SDL_Window*, Scope<Window>> mWindows;
+private:
+
+	template<SystemType T>
+    bool HasSystem() const
+    {
+		return mSystems.contains<T>();
+    }
+
+	PolyArray<System> mSystems;
+    
+    Scope<Window> mWindow;
+    
+    Scope<RenderPipeline> mRenderPipeline;
+    
+    EventHandlerFn mEventHandler;
+
+	RendererContext mRendererContext;
 
 	bool mRunning = true;
 	Version mVersion;
 
-	static inline Application* sInstance = nullptr;
-    static int SDLCALL SDL2_EventCallback(void* data, SDL_Event* e);
+	static inline Application* mInstance = nullptr;
+    static int SDLCALL SDL2_EventHandler(void* data, SDL_Event* e);
 
 };
 
-Application* CreateApplication();
+Application* CreateApplicationInstance();
 
 } // namespace Gleam

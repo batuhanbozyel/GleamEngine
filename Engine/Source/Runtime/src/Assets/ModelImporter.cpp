@@ -18,20 +18,6 @@ bool operator==(const index_t& lhs, const index_t& rhs)
 
 using namespace Gleam;
 
-Model ModelImporter::Import(const Filesystem::path& path)
-{
-    const auto& ext = path.extension();
-    if (ext == ".obj")
-    {
-        return ImportObj(path);
-    }
-    else
-    {
-        GLEAM_ASSERT(false, "Model file type is not supported!");
-        return Model();
-    }
-}
-
 Model ModelImporter::ImportObj(const Filesystem::path& path)
 {
     TString objFile = IOUtils::ReadFile(path);
@@ -60,7 +46,7 @@ Model ModelImporter::ImportObj(const Filesystem::path& path)
         {
             GLEAM_CORE_ERROR(("TinyObjReader: " + reader.Error()).c_str());
         }
-        return Model();
+        return Model({});
     }
 
     if (!reader.Warning().empty())
@@ -71,7 +57,7 @@ Model ModelImporter::ImportObj(const Filesystem::path& path)
     const auto& attrib = reader.GetAttrib();
     const auto& shapes = reader.GetShapes();
     const auto& materials = reader.GetMaterials();
-
+    
     auto HashIndices = [](const tinyobj::index_t& val)
     {
         int seed = 0xa5a8ae1e;

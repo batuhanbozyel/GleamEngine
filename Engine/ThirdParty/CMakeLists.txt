@@ -7,19 +7,33 @@ add_subdirectory(volk)
 add_subdirectory(googletest)
 add_subdirectory(SPIRV-Reflect)
 
-add_library(imgui STATIC
-    "imgui/imconfig.h"
-    "imgui/imgui.h"
-    "imgui/imgui.cpp"
-    "imgui/imgui_draw.cpp"
-    "imgui/imgui_internal.h"
-    "imgui/imgui_widgets.cpp"
-    "imgui/imstb_rectpack.h"
-    "imgui/imstb_textedit.h"
-    "imgui/imstb_truetype.h"
-    "imgui/imgui_demo.cpp"
-    "imgui/imgui_tables.cpp"
+if (WIN32)
+    add_library(imgui STATIC
+        "imgui/imgui.cpp"
+        "imgui/imgui_draw.cpp"
+        "imgui/imgui_widgets.cpp"
+        "imgui/imgui_demo.cpp"
+        "imgui/imgui_tables.cpp"
+        "imgui/backends/imgui_impl_sdl2.cpp"
+        "imgui/backends/imgui_impl_vulkan.cpp"
+    )
+else()
+    add_library(imgui STATIC
+        "imgui/imgui.cpp"
+        "imgui/imgui_draw.cpp"
+        "imgui/imgui_widgets.cpp"
+        "imgui/imgui_demo.cpp"
+        "imgui/imgui_tables.cpp"
+        "imgui/backends/imgui_impl_sdl2.cpp"
+        "imgui/backends/imgui_impl_metal.mm"
+    )
+endif()
+
+target_include_directories(imgui PRIVATE
+    ${CMAKE_CURRENT_LIST_DIR}/imgui
+    ${CMAKE_CURRENT_LIST_DIR}/SDL2/include
 )
+
 
 set_target_properties (
     SDL2

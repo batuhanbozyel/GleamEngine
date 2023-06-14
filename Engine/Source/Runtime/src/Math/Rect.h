@@ -4,8 +4,8 @@ namespace Gleam {
     
 struct Rect
 {
-    Vector2 min{Math::NegativeInfinity, Math::NegativeInfinity};
-    Vector2 max{Math::Infinity, Math::Infinity};
+    Size size{1.0f, 1.0f};
+    Vector2 offset{0.0f, 0.0f};
     
     constexpr Rect() = default;
     constexpr Rect(Rect&&) = default;
@@ -13,14 +13,14 @@ struct Rect
     FORCE_INLINE constexpr Rect& operator=(Rect&&) = default;
     FORCE_INLINE constexpr Rect& operator=(const Rect&) = default;
     
-    constexpr Rect(float min, float max)
-        : min(min), max(max)
+    constexpr Rect(float width, float height)
+        : size(width, height)
     {
         
     }
     
-    constexpr Rect(const Vector2& min, const Vector2& max)
-        : min(min), max(max)
+    constexpr Rect(const Size& size, const Vector2& offset)
+        : size(size), offset(offset)
     {
         
     }

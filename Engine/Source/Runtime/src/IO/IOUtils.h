@@ -22,7 +22,8 @@ static TArray<uint8_t> ReadBinaryFile(const Filesystem::path& filepath)
         return buffer;
     }
 
-    return {};
+	GLEAM_CORE_ERROR("File {0} could not be opened!", filepath.string());
+	return {};
 }
 
 static TString ReadFile(const Filesystem::path& filepath)
@@ -41,7 +42,8 @@ static TString ReadFile(const Filesystem::path& filepath)
         return buffer;
     }
 
-    return TString();
+	GLEAM_CORE_ERROR("File {0} could not be opened!", filepath.string());
+	return TString();
 }
 
 static void ExecuteCommand(const TString& cmd)

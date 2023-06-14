@@ -21,7 +21,7 @@
 
 #ifdef ENABLE_ASSERTS
 #include "IO/Filesystem.h"
-	#define GLEAM_ASSERT(x, ...) if (!(x)) { GLEAM_CORE_ERROR("Assertion failed at {0}:{1}", Filesystem::path(__FILE__).filename().string(), __LINE__); DEBUGBREAK(); }
+	#define GLEAM_ASSERT(x, ...) if (!(x)) { GLEAM_CORE_ERROR("Assertion failed at {0}:{1}", Gleam::Filesystem::path(__FILE__).filename().string(), __LINE__); DEBUGBREAK(); }
 #else
 	#define GLEAM_ASSERT(...)
 #endif
@@ -29,7 +29,7 @@
 #ifdef USE_VULKAN_RENDERER
 #define VULKAN_API_VERSION VK_API_VERSION_1_1
 using NativeGraphicsHandle = void*;
-using DispatchSemaphore = void*;
+using DispatchSemaphore = NativeGraphicsHandle;
 #else
 #include <objc/objc-runtime.h>
 #include <dispatch/dispatch.h>
@@ -62,7 +62,7 @@ constexpr inline T As(P p)
 } // namespace Gleam
 
 
-#define ApplicationInstance Gleam::Application::GetInstance()
+#define GameInstance Gleam::Application::GetInstance()
 
 #define GLEAM_ENGINE_MAJOR_VERSION 1
 #define GLEAM_ENGINE_MINOR_VERSION 0
@@ -71,6 +71,8 @@ constexpr inline T As(P p)
 
 #ifdef __OBJC__
 #define OBJC_CLASS(name) @class name
+#define TO_CPP_STRING(x) std::string([(x) UTF8String])
+#define TO_NSSTRING(x) ([NSString stringWithCString:(x) encoding:NSUTF8StringEncoding])
 #else
 #define OBJC_CLASS(name) typedef struct objc_object name
 #endif
@@ -78,8 +80,5 @@ constexpr inline T As(P p)
 #define GLEAM_NONCOPYABLE(TypeName) \
     TypeName(const TypeName&) = delete; \
     TypeName& operator=(const TypeName&) = delete; \
-	TypeName(TypeName&&) = default; \
-    TypeName& operator=(TypeName&&) = default
-
-
-#define COMPONENT_BODY() using Component::Component
+	TypeName(TypeName&&) = delete; \
+    TypeName& operator=(TypeName&&) = delete

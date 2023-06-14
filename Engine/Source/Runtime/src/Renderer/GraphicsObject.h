@@ -14,9 +14,15 @@ public:
 		return mHandle;
 	}
 
+	bool IsValid() const
+	{
+		return mHandle;
+	}
+
 protected:
 
 	NativeGraphicsHandle mHandle = nullptr;
+    NativeGraphicsHandle mMemory = nullptr;
 
 };
 

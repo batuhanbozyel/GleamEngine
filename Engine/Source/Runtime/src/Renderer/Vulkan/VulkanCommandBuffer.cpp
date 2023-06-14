@@ -2,11 +2,13 @@
 
 #ifdef USE_VULKAN_RENDERER
 #include "Renderer/CommandBuffer.h"
-#include "Renderer/Renderer.h"
 
 #include "VulkanPipelineStateManager.h"
+#include "VulkanDevice.h"
 
-#define CurrentCommandBuffer (mHandle->commandBuffers[RendererContext::GetSwapchain()->GetFrameIndex()])
+#include "Core/Application.h"
+
+#define CurrentCommandBuffer (mHandle->commandBuffers[VulkanDevice::GetSwapchain().GetFrameIndex()])
 
 using namespace Gleam;
 
@@ -17,45 +19,80 @@ struct CommandBuffer::Impl
 
 	VulkanRenderPass renderPassState;
 	VulkanPipeline pipelineState;
+    bool swapchainTarget = false;
 
 	struct DeletionQueue
 	{
+		TArray<VkRenderPass> renderPasses;
 		TArray<VkFramebuffer> framebuffers;
+
+		void Flush()
+		{
+			for (auto renderPass : renderPasses)
+			{
+				vkDestroyRenderPass(VulkanDevice::GetHandle(), renderPass, nullptr);
+			}
+			renderPasses.clear();
+
+			for (auto framebuffer : framebuffers)
+			{
+				vkDestroyFramebuffer(VulkanDevice::GetHandle(), framebuffer, nullptr);
+			}
+			framebuffers.clear();
+		}
 	};
 	TArray<DeletionQueue> deletionQueue;
+
+	void SubmitCommands(VkSubmitInfo submitInfo)
+	{
+		auto frameIdx = VulkanDevice::GetSwapchain().GetFrameIndex();
+		VK_CHECK(vkWaitForFences(VulkanDevice::GetHandle(), 1, &fences[frameIdx], VK_TRUE, UINT64_MAX));
+		VK_CHECK(vkResetFences(VulkanDevice::GetHandle(), 1, &fences[frameIdx]));
+		VK_CHECK(vkQueueSubmit(VulkanDevice::GetGraphicsQueue().handle, 1, &submitInfo, fences[frameIdx]));
+
+		deletionQueue[frameIdx].Flush();
+		swapchainTarget = false;
+	}
 };
 
 CommandBuffer::CommandBuffer()
 	: mHandle(CreateScope<Impl>())
 {
-	mHandle->commandBuffers.resize(RendererContext::GetProperties().maxFramesInFlight, VK_NULL_HANDLE);
-	mHandle->fences.resize(RendererContext::GetProperties().maxFramesInFlight, VK_NULL_HANDLE);
-	for (uint32_t i = 0; i < RendererContext::GetProperties().maxFramesInFlight; i++)
+	uint32_t frames = VulkanDevice::GetSwapchain().GetFramesInFlight();
+	mHandle->commandBuffers.resize(frames, VK_NULL_HANDLE);
+	mHandle->fences.resize(frames, VK_NULL_HANDLE);
+	for (uint32_t i = 0; i < frames; i++)
 	{
 		VkCommandBufferAllocateInfo allocateInfo{ VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO };
 		allocateInfo.commandBufferCount = 1;
 		allocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-		allocateInfo.commandPool = As<VkCommandPool>(RendererContext::GetGraphicsCommandPool(i));
-		VK_CHECK(vkAllocateCommandBuffers(VulkanDevice, &allocateInfo, &mHandle->commandBuffers[i]));
+		allocateInfo.commandPool = VulkanDevice::GetGraphicsCommandPool(i);
+		VK_CHECK(vkAllocateCommandBuffers(VulkanDevice::GetHandle(), &allocateInfo, &mHandle->commandBuffers[i]));
 
 		VkFenceCreateInfo fenceCreateInfo{ VK_STRUCTURE_TYPE_FENCE_CREATE_INFO };
 		fenceCreateInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-		VK_CHECK(vkCreateFence(VulkanDevice, &fenceCreateInfo, nullptr, &mHandle->fences[i]));
+		VK_CHECK(vkCreateFence(VulkanDevice::GetHandle(), &fenceCreateInfo, nullptr, &mHandle->fences[i]));
 	}
-	mHandle->deletionQueue.resize(RendererContext::GetProperties().maxFramesInFlight);
+	mHandle->deletionQueue.resize(frames);
 }
 
 CommandBuffer::~CommandBuffer()
 {
-	for (uint32_t i = 0; i < RendererContext::GetProperties().maxFramesInFlight; i++)
+	for (uint32_t i = 0; i < VulkanDevice::GetSwapchain().GetFramesInFlight(); i++)
 	{
-		VK_CHECK(vkWaitForFences(VulkanDevice, 1, &mHandle->fences[i], VK_TRUE, UINT64_MAX));
-		vkFreeCommandBuffers(VulkanDevice, As<VkCommandPool>(RendererContext::GetGraphicsCommandPool(i)), 1,&mHandle->commandBuffers[i]);
-		vkDestroyFence(VulkanDevice, mHandle->fences[i], nullptr);
+		VK_CHECK(vkWaitForFences(VulkanDevice::GetHandle(), 1, &mHandle->fences[i], VK_TRUE, UINT64_MAX));
+		vkFreeCommandBuffers(VulkanDevice::GetHandle(), VulkanDevice::GetGraphicsCommandPool(i), 1, &mHandle->commandBuffers[i]);
+		vkDestroyFence(VulkanDevice::GetHandle(), mHandle->fences[i], nullptr);
+
+		for (auto renderPass : mHandle->deletionQueue[i].renderPasses)
+		{
+			vkDestroyRenderPass(VulkanDevice::GetHandle(), renderPass, nullptr);
+		}
+		mHandle->deletionQueue[i].renderPasses.clear();
 
 		for (auto framebuffer : mHandle->deletionQueue[i].framebuffers)
 		{
-			vkDestroyFramebuffer(VulkanDevice, framebuffer, nullptr);
+			vkDestroyFramebuffer(VulkanDevice::GetHandle(), framebuffer, nullptr);
 		}
 		mHandle->deletionQueue[i].framebuffers.clear();
 	}
@@ -63,112 +100,174 @@ CommandBuffer::~CommandBuffer()
 
 void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc) const
 {
-	mHandle->renderPassState = VulkanPipelineStateManager::GetRenderPass(renderPassDesc);
+    mHandle->renderPassState.sampleCount = renderPassDesc.samples;
+    
+    uint32_t attachmentCount = static_cast<uint32_t>(renderPassDesc.colorAttachments.size()) + static_cast<uint32_t>(renderPassDesc.depthAttachment.texture != nullptr);
+	TArray<VkAttachmentDescription> attachmentDescriptors(attachmentCount);
+	TArray<VkImageView> imageViews(attachmentCount);
+	TArray<VkClearValue> clearValues(attachmentCount);
+    
+    // TODO: Check if we can abstract Vulkan subpasses with Metal tiling API
+    // Currently there is no subpass support
+    TArray<VkSubpassDescription> subpassDescriptors(1);
+    TArray<VkSubpassDependency> subpassDependencies(1);
+    if (renderPassDesc.depthAttachment.texture)
+    {
+        uint32_t depthAttachmentIndex = static_cast<uint32_t>(attachmentDescriptors.size()) - 1;
+        
+        auto& depthAttachmentDesc = attachmentDescriptors[depthAttachmentIndex];
+        depthAttachmentDesc = {};
+        depthAttachmentDesc.format = TextureFormatToVkFormat(renderPassDesc.depthAttachment.texture->GetDescriptor().format);
+        depthAttachmentDesc.samples = GetVkSampleCount(renderPassDesc.samples);
+        depthAttachmentDesc.loadOp = AttachmentLoadActionToVkAttachmentLoadOp(renderPassDesc.depthAttachment.loadAction);
+        depthAttachmentDesc.stencilLoadOp = depthAttachmentDesc.loadOp;
+        depthAttachmentDesc.storeOp = AttachmentStoreActionToVkAttachmentStoreOp(renderPassDesc.depthAttachment.storeAction);
+        depthAttachmentDesc.stencilStoreOp = depthAttachmentDesc.storeOp;
+        depthAttachmentDesc.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        depthAttachmentDesc.finalLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+        
+        clearValues[depthAttachmentIndex] = {};
+        clearValues[depthAttachmentIndex].depthStencil = { renderPassDesc.depthAttachment.clearDepth, renderPassDesc.depthAttachment.clearStencil };
+        imageViews[depthAttachmentIndex] = As<VkImageView>(renderPassDesc.depthAttachment.texture->GetView());
+        
+        VkAttachmentReference depthStencilAttachment{};
+        depthStencilAttachment.attachment = depthAttachmentIndex;
+        depthStencilAttachment.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+        subpassDescriptors[0].pDepthStencilAttachment = &depthStencilAttachment;
+    }
+    
+    TArray<VkAttachmentReference> colorAttachments(renderPassDesc.colorAttachments.size());
+    TArray<VkAttachmentReference> resolveAttachments(renderPassDesc.sampleCount > 1 ? colorAttachments.size() : 0);
+    for (uint32_t i = 0; i < renderPassDesc.colorAttachments.size(); i++)
+    {
+        colorAttachments[i].attachment = i;
+        colorAttachments[i].layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        
+        if (renderPassDesc.sampleCount > 1)
+        {
+            resolveAttachments[i].attachment = i;
+            resolveAttachments[i].layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        }
 
-	TArray<VkImageView> imageViews(renderPassDesc.attachments.size());
-	TArray<VkClearValue> clearValues(renderPassDesc.attachments.size());
-	if (renderPassDesc.swapchainTarget)
-	{
-		if (renderPassDesc.attachments.size() > 0)
-		{
-			const auto& clearColor = renderPassDesc.attachments[0].clearColor;
-			clearValues[0] = { clearColor.r, clearColor.g, clearColor.b, clearColor.a };
-		}
-		else
-		{
-			const auto& clearColor = Renderer::clearColor;
-			clearValues.emplace_back(VkClearValue{ clearColor.r, clearColor.g, clearColor.b, clearColor.a });
-		}
+        const auto& colorBuffer = renderPassDesc.colorAttachments[i].texture;
+        const auto& colorAttachment = renderPassDesc.attachments[i];
+        auto& colorAttachmentDesc = attachmentDescriptors[i];
+        colorAttachmentDesc = {};
+        colorAttachmentDesc.format = TextureFormatToVkFormat(colorBuffer->GetDescriptor().format);
+        colorAttachmentDesc.samples = GetVkSampleCount(renderPassDesc.samples);
+        colorAttachmentDesc.loadOp = AttachmentLoadActionToVkAttachmentLoadOp(colorAttachment.loadAction);
+        colorAttachmentDesc.storeOp = AttachmentStoreActionToVkAttachmentStoreOp(colorAttachment.storeAction);
+        colorAttachmentDesc.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        colorAttachmentDesc.finalLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
 
-		auto frameIdx = RendererContext::GetSwapchain()->GetFrameIndex();
-		VK_CHECK(vkWaitForFences(VulkanDevice, 1, &mHandle->fences[frameIdx], VK_TRUE, UINT64_MAX));
-		VK_CHECK(vkResetFences(VulkanDevice, 1, &mHandle->fences[frameIdx]));
+        clearValues[i] = { colorAttachment.clearColor.r, colorAttachment.clearColor.g, colorAttachment.clearColor.b, colorAttachment.clearColor.a };
+        imageViews[i] = As<VkImageView>(colorBuffer->GetView());
+    }
 
-		imageViews.push_back(As<VkImageView>(RendererContext::GetSwapchain()->AcquireNextDrawable()));
-	}
-	else
-	{
-		// TODO:
-	}
+    subpassDescriptors[0] = {};
+    subpassDescriptors[0].pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+    subpassDescriptors[0].colorAttachmentCount = static_cast<uint32_t>(colorAttachments.size());
+    subpassDescriptors[0].pColorAttachments = colorAttachments.data();
+    subpassDescriptors[0].pResolveAttachments = resolveAttachments.data();
+
+    subpassDependencies[0] = {};
+    subpassDependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
+    subpassDependencies[0].dstSubpass = 0;
+    subpassDependencies[0].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    subpassDependencies[0].dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    subpassDependencies[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+    subpassDependencies[0].dependencyFlags = 0;
+    
+	VkRenderPassCreateInfo renderPassCreateInfo{ VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO };
+	renderPassCreateInfo.attachmentCount = static_cast<uint32_t>(attachmentDescriptors.size());
+	renderPassCreateInfo.pAttachments = attachmentDescriptors.data();
+	renderPassCreateInfo.subpassCount = static_cast<uint32_t>(subpassDescriptors.size());
+	renderPassCreateInfo.pSubpasses = subpassDescriptors.data();
+	renderPassCreateInfo.dependencyCount = static_cast<uint32_t>(subpassDependencies.size());
+	renderPassCreateInfo.pDependencies = subpassDependencies.data();
+	VK_CHECK(vkCreateRenderPass(VulkanDevice::GetHandle(), &renderPassCreateInfo, nullptr, &mHandle->renderPassState.handle));
+	mHandle->deletionQueue[VulkanDevice::GetSwapchain().GetFrameIndex()].renderPasses.push_back(mHandle->renderPassState.handle);
 
 	VkFramebuffer framebuffer;
 	VkFramebufferCreateInfo framebufferCreateInfo{ VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO };
 	framebufferCreateInfo.renderPass = mHandle->renderPassState.handle;
 	framebufferCreateInfo.attachmentCount = static_cast<uint32_t>(imageViews.size());
 	framebufferCreateInfo.pAttachments = imageViews.data();
-	framebufferCreateInfo.width = renderPassDesc.width;
-	framebufferCreateInfo.height = renderPassDesc.height;
+	framebufferCreateInfo.width = static_cast<uint32_t>(renderPassDesc.size.width);
+	framebufferCreateInfo.height = static_cast<uint32_t>(renderPassDesc.size.height);
 	framebufferCreateInfo.layers = 1;
-	VK_CHECK(vkCreateFramebuffer(VulkanDevice, &framebufferCreateInfo, nullptr, &framebuffer));
-	mHandle->deletionQueue[RendererContext::GetSwapchain()->GetFrameIndex()].framebuffers.push_back(framebuffer);
+	VK_CHECK(vkCreateFramebuffer(VulkanDevice::GetHandle(), &framebufferCreateInfo, nullptr, &framebuffer));
+	mHandle->deletionQueue[VulkanDevice::GetSwapchain().GetFrameIndex()].framebuffers.push_back(framebuffer);
 
 	VkRenderPassBeginInfo renderPassBeginInfo{ VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO };
 	renderPassBeginInfo.renderPass = mHandle->renderPassState.handle;
 	renderPassBeginInfo.framebuffer = framebuffer;
 	renderPassBeginInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
 	renderPassBeginInfo.pClearValues = clearValues.data();
-	renderPassBeginInfo.renderArea.extent.width = renderPassDesc.width;
-	renderPassBeginInfo.renderArea.extent.height = renderPassDesc.height;
+	renderPassBeginInfo.renderArea.extent.width = static_cast<uint32_t>(renderPassDesc.size.width);
+	renderPassBeginInfo.renderArea.extent.height = static_cast<uint32_t>(renderPassDesc.size.height);
 	vkCmdBeginRenderPass(CurrentCommandBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 }
 
 void CommandBuffer::EndRenderPass() const
 {
-	vkCmdEndRenderPass(CurrentCommandBuffer);
+    vkCmdEndRenderPass(CurrentCommandBuffer);
+    mHandle->renderPassState.handle = VK_NULL_HANDLE;
+    mHandle->renderPassState.sampleCount = 1;
 }
 
-void CommandBuffer::BindPipeline(const PipelineStateDescriptor& pipelineDesc, const GraphicsShader& program) const
+void CommandBuffer::BindGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc, const RefCounted<Shader>& vertexShader, const RefCounted<Shader>& fragmentShader) const
 {
 	mHandle->pipelineState = VulkanPipelineStateManager::GetGraphicsPipeline(pipelineDesc, program, mHandle->renderPassState);
-	vkCmdBindPipeline(CurrentCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mHandle->pipelineState.handle);
+	vkCmdBindPipeline(CurrentCommandBuffer, mHandle->pipelineState.bindPoint, mHandle->pipelineState.handle);
 }
 
-void CommandBuffer::SetViewport(uint32_t width, uint32_t height) const
+void CommandBuffer::SetViewport(const Size& size) const
 {
 	VkViewport viewport{};
-	viewport.width = static_cast<float>(width);
-	viewport.height = static_cast<float>(height);
+	viewport.width = size.width;
+	viewport.height = size.height;
 	viewport.maxDepth = 1.0f;
 	vkCmdSetViewport(CurrentCommandBuffer, 0, 1, &viewport);
 
 	VkRect2D scissor{};
-	scissor.extent.width = width;
-	scissor.extent.height = height;
+	scissor.extent.width = static_cast<uint32_t>(size.width);
+	scissor.extent.height = static_cast<uint32_t>(size.height);
 	vkCmdSetScissor(CurrentCommandBuffer, 0, 1, &scissor);
 }
 
-void CommandBuffer::SetVertexBuffer(const NativeGraphicsHandle buffer, BufferUsage usage, uint32_t index, uint32_t offset) const
+void CommandBuffer::SetVertexBuffer(const NativeGraphicsHandle buffer, BufferUsage usage, size_t size, size_t offset, uint32_t index) const
 {
 	VkDescriptorBufferInfo bufferInfo{};
 	bufferInfo.buffer = As<VkBuffer>(buffer);
 	bufferInfo.offset = offset;
-	bufferInfo.range = buffer.GetSize();
+	bufferInfo.range = size;
 
 	VkWriteDescriptorSet descriptorSet{ VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
 	descriptorSet.dstBinding = index;
 	descriptorSet.descriptorCount = 1;
 	descriptorSet.descriptorType = BufferUsageToVkDescriptorType(usage);
 	descriptorSet.pBufferInfo = &bufferInfo;
-	vkCmdPushDescriptorSetKHR(CurrentCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mHandle->pipelineState.layout, 0, 1, &descriptorSet);
+	vkCmdPushDescriptorSetKHR(CurrentCommandBuffer, mHandle->pipelineState.bindPoint, mHandle->pipelineState.layout, 0, 1, &descriptorSet);
 }
 
-void CommandBuffer::SetFragmentBuffer(const NativeGraphicsHandle buffer, BufferUsage usage, uint32_t index, uint32_t offset) const
+void CommandBuffer::SetFragmentBuffer(const NativeGraphicsHandle buffer, BufferUsage usage, size_t size, size_t offset, uint32_t index) const
 {
 	VkDescriptorBufferInfo bufferInfo{};
 	bufferInfo.buffer = As<VkBuffer>(buffer);
-	bufferInfo.range = buffer.GetSize();
+	bufferInfo.range = size;
 
 	VkWriteDescriptorSet descriptorSet{ VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
 	descriptorSet.dstBinding = index;
 	descriptorSet.descriptorCount = 1;
 	descriptorSet.descriptorType = BufferUsageToVkDescriptorType(usage);
 	descriptorSet.pBufferInfo = &bufferInfo;
-	vkCmdPushDescriptorSetKHR(CurrentCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mHandle->pipelineState.layout, 1, 1, &descriptorSet);
+	vkCmdPushDescriptorSetKHR(CurrentCommandBuffer, mHandle->pipelineState.bindPoint, mHandle->pipelineState.layout, 1, 1, &descriptorSet);
 }
 
 void CommandBuffer::SetPushConstant(const void* data, uint32_t size, ShaderStageFlagBits stage) const
 {
-    VkShaderStageFlagBits flagBits;
+    VkShaderStageFlags flagBits{};
     
     if (stage & ShaderStage_Vertex)
         flagBits |= VK_SHADER_STAGE_VERTEX_BIT;
@@ -193,13 +292,75 @@ void CommandBuffer::DrawIndexed(const NativeGraphicsHandle indexBuffer, IndexTyp
 	vkCmdDrawIndexed(CurrentCommandBuffer, indexCount, instanceCount, firstIndex, baseVertex, baseInstance);
 }
 
-void CommandBuffer::CopyBuffer(const NativeGraphicsHandle src, const NativeGraphicsHandle dst, uint32_t size, uint32_t srcOffset, uint32_t dstOffset) const
+void CommandBuffer::CopyBuffer(const NativeGraphicsHandle src, const NativeGraphicsHandle dst, size_t size, uint32_t srcOffset, uint32_t dstOffset) const
 {
 	VkBufferCopy bufferCopy{};
 	bufferCopy.srcOffset = srcOffset;
 	bufferCopy.dstOffset = dstOffset;
 	bufferCopy.size = size;
 	vkCmdCopyBuffer(CurrentCommandBuffer, As<VkBuffer>(src), As<VkBuffer>(dst), 1, &bufferCopy);
+}
+
+void CommandBuffer::Blit(const RenderTexture& texture, const Optional<RenderTexture>& target) const
+{
+    mHandle->swapchainTarget = !target.has_value();
+	VkImage targetTexture = mHandle->swapchainTarget ? VulkanDevice::GetSwapchain().AcquireNextDrawable().image : As<VkImage>(target.value().GetHandle());
+
+	if (mHandle->swapchainTarget)
+	{
+		VkImageMemoryBarrier imageBarrier{ VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
+		imageBarrier.srcAccessMask = VK_FLAGS_NONE;
+		imageBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+		imageBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		imageBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+		imageBarrier.image = targetTexture;
+		imageBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		imageBarrier.subresourceRange.layerCount = 1;
+		imageBarrier.subresourceRange.baseArrayLayer = 0;
+		imageBarrier.subresourceRange.levelCount = 1;
+		imageBarrier.subresourceRange.baseMipLevel = 0;
+
+		vkCmdPipelineBarrier(CurrentCommandBuffer,
+			VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+			VK_PIPELINE_STAGE_TRANSFER_BIT,
+			VK_FLAGS_NONE,
+			0, nullptr,
+			0, nullptr,
+			1, &imageBarrier);
+	}
+
+	VkImageCopy region{};
+	region.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	region.srcSubresource.layerCount = 1;
+	region.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	region.dstSubresource.layerCount = 1;
+	region.extent.width = static_cast<uint32_t>(texture.GetSize().width);
+	region.extent.height = static_cast<uint32_t>(texture.GetSize().height);
+	region.extent.depth = 1;
+	vkCmdCopyImage(CurrentCommandBuffer, As<VkImage>(texture.GetHandle()), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, targetTexture, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+
+	if (mHandle->swapchainTarget)
+	{
+		VkImageMemoryBarrier imageBarrier{ VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
+		imageBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+		imageBarrier.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+		imageBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+		imageBarrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+		imageBarrier.image = targetTexture;
+		imageBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		imageBarrier.subresourceRange.layerCount = 1;
+		imageBarrier.subresourceRange.baseArrayLayer = 0;
+		imageBarrier.subresourceRange.levelCount = 1;
+		imageBarrier.subresourceRange.baseMipLevel = 0;
+
+		vkCmdPipelineBarrier(CurrentCommandBuffer,
+			VK_PIPELINE_STAGE_TRANSFER_BIT,
+			VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+			VK_FLAGS_NONE,
+			0, nullptr,
+			0, nullptr,
+			1, &imageBarrier);
+	}
 }
 
 void CommandBuffer::Begin() const
@@ -216,47 +377,39 @@ void CommandBuffer::End() const
 
 void CommandBuffer::Commit() const
 {
-	auto frameIdx = RendererContext::GetSwapchain()->GetFrameIndex();
-	if (mHandle->renderPassState.swapchainTarget)
-	{
-		VkSemaphore waitSemaphore = As<VkSemaphore>(RendererContext::GetSwapchain()->GetImageAcquireSemaphore());
-		VkSemaphore signalSemaphore = As<VkSemaphore>(RendererContext::GetSwapchain()->GetImageReleaseSemaphore());
+	VkSubmitInfo submitInfo{ VK_STRUCTURE_TYPE_SUBMIT_INFO };
+	submitInfo.commandBufferCount = 1;
+	submitInfo.pCommandBuffers = &CurrentCommandBuffer;
+	mHandle->SubmitCommands(submitInfo);
+}
 
-		VkPipelineStageFlags waitDstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-		VkSubmitInfo submitInfo{ VK_STRUCTURE_TYPE_SUBMIT_INFO };
-		submitInfo.waitSemaphoreCount = 1;
-		submitInfo.pWaitSemaphores = &waitSemaphore;
-		submitInfo.pWaitDstStageMask = &waitDstStageMask;
-		submitInfo.commandBufferCount = 1;
-		submitInfo.pCommandBuffers = &CurrentCommandBuffer;
-		submitInfo.signalSemaphoreCount = 1;
-		submitInfo.pSignalSemaphores = &signalSemaphore;
-		VK_CHECK(vkQueueSubmit(As<VkQueue>(RendererContext::GetGraphicsQueue()), 1, &submitInfo, mHandle->fences[frameIdx]));
+void CommandBuffer::Present() const
+{
+	VkSemaphore waitSemaphore = VulkanDevice::GetSwapchain().GetImageAcquireSemaphore();
+	VkSemaphore signalSemaphore = VulkanDevice::GetSwapchain().GetImageReleaseSemaphore();
 
-		RendererContext::GetSwapchain()->Present(CurrentCommandBuffer);
+	VkPipelineStageFlags waitDstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	VkSubmitInfo submitInfo{ VK_STRUCTURE_TYPE_SUBMIT_INFO };
+	submitInfo.waitSemaphoreCount = 1;
+	submitInfo.pWaitSemaphores = &waitSemaphore;
+	submitInfo.pWaitDstStageMask = &waitDstStageMask;
+	submitInfo.commandBufferCount = 1;
+	submitInfo.pCommandBuffers = &CurrentCommandBuffer;
+	submitInfo.signalSemaphoreCount = 1;
+	submitInfo.pSignalSemaphores = &signalSemaphore;
 
-		frameIdx = RendererContext::GetSwapchain()->GetFrameIndex();
-		VK_CHECK(vkWaitForFences(VulkanDevice, 1, &mHandle->fences[frameIdx], VK_TRUE, UINT64_MAX));
-		VK_CHECK(vkResetCommandPool(VulkanDevice, As<VkCommandPool>(RendererContext::GetGraphicsCommandPool(frameIdx)), 0));
+	mHandle->SubmitCommands(submitInfo);
+	VulkanDevice::GetSwapchain().Present();
 
-		for (auto framebuffer : mHandle->deletionQueue[frameIdx].framebuffers)
-		{
-			vkDestroyFramebuffer(VulkanDevice, framebuffer, nullptr);
-		}
-		mHandle->deletionQueue[frameIdx].framebuffers.clear();
-	}
-	else
-	{
-		// TODO:
-	}
+	uint32_t frameIdx = VulkanDevice::GetSwapchain().GetFrameIndex();
+	VK_CHECK(vkWaitForFences(VulkanDevice::GetHandle(), 1, &mHandle->fences[frameIdx], VK_TRUE, UINT64_MAX));
+	VK_CHECK(vkResetCommandPool(VulkanDevice::GetHandle(), VulkanDevice::GetGraphicsCommandPool(frameIdx), 0));
 }
 
 void CommandBuffer::WaitUntilCompleted() const
 {
 	for (auto fence : mHandle->fences)
-	{
-		VK_CHECK(vkWaitForFences(VulkanDevice, 1, &fence, VK_TRUE, UINT64_MAX));
-	}
+		VK_CHECK(vkWaitForFences(VulkanDevice::GetHandle(), 1, &fence, VK_TRUE, UINT64_MAX));
 }
 
 #endif

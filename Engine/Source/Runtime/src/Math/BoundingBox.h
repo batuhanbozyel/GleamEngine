@@ -1,7 +1,7 @@
 #pragma once
 
 namespace Gleam {
-    
+
 struct BoundingBox
 {
     Vector3 min{Math::NegativeInfinity, Math::NegativeInfinity, Math::NegativeInfinity};
@@ -31,12 +31,6 @@ struct BoundingBox
         
     }
     
-    constexpr BoundingBox(const Rect& rect)
-        : min(rect.min, 0.0f), max(rect.max, 0.0f)
-    {
-        
-    }
-    
 };
-    
+
 } // namespace Gleam

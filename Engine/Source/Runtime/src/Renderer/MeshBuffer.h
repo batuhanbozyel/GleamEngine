@@ -1,28 +1,33 @@
 #pragma once
-#include "Model.h"
 #include "Buffer.h"
-#include "ShaderTypes.h"
 
 namespace Gleam {
-    
+
+struct MeshData;
+struct InterleavedMeshVertex;
+
 class MeshBuffer
 {
 public:
     
     MeshBuffer(const MeshData& mesh);
+
+	MeshBuffer(const TArray<MeshData>& meshes);
     
-    const VertexBuffer<Vector3>& GetPositionBuffer() const;
+    const Buffer* GetPositionBuffer() const;
     
-    const VertexBuffer<InterleavedMeshVertex>& GetInterleavedBuffer() const;
+    const Buffer* GetInterleavedBuffer() const;
     
-    const IndexBuffer<IndexType::UINT32>& GetIndexBuffer() const;
+    const Buffer* GetIndexBuffer() const;
     
 private:
     
-    IndexBuffer<IndexType::UINT32> mIndexBuffer;
-    VertexBuffer<Vector3> mPositionBuffer;
-    VertexBuffer<InterleavedMeshVertex> mInterleavedBuffer;
+    MeshBuffer(const TArray<Vector3>& positions, const TArray<InterleavedMeshVertex>& interleavedVertices, const TArray<uint32_t>& indices);
+    
+    Scope<Buffer> mIndexBuffer;
+    Scope<Buffer> mPositionBuffer;
+    Scope<Buffer> mInterleavedBuffer;
     
 };
-    
+
 } // namespace Gleam

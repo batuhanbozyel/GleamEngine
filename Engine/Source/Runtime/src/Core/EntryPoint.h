@@ -1,9 +1,8 @@
 #pragma once
 #include "Gleam.h"
-#include "Application.h"
 
 #if defined(PLATFORM_WINDOWS) || defined(PLATFORM_MACOS) || defined(PLATFORM_IOS)
-Gleam::Application* Gleam::CreateApplication();
+Gleam::Application* Gleam::CreateApplicationInstance();
 
 #ifdef __cplusplus
 extern "C"
@@ -11,11 +10,11 @@ extern "C"
 
 int main(int argc, char* argv[])
 {
-	Gleam::Application* app = Gleam::CreateApplication();
+	Gleam::Application* game = Gleam::CreateApplicationInstance();
 
-	app->Run();
+    game->Run();
 
-	delete app;
+	delete game;
 
 	return EXIT_SUCCESS;
 }

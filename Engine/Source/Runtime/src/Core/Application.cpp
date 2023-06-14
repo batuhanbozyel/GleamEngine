@@ -1,14 +1,16 @@
 #include "gpch.h"
 #include "Application.h"
 
-#include "Layer.h"
 #include "Window.h"
 #include "Input/Input.h"
-#include "Renderer/Renderer.h"
+#include "World/World.h"
+
+#include "Renderer/Renderers/WorldRenderer.h"
+#include "Renderer/Renderers/PostProcessStack.h"
 
 using namespace Gleam;
 
-int SDLCALL Application::SDL2_EventCallback(void* data, SDL_Event* e)
+int SDLCALL Application::SDL2_EventHandler(void* data, SDL_Event* e)
 {
 	switch (e->type)
 	{
@@ -59,35 +61,33 @@ int SDLCALL Application::SDL2_EventCallback(void* data, SDL_Event* e)
 }
 
 Application::Application(const ApplicationProperties& props)
-	: mVersion(props.appVersion), mEvent()
+	: mVersion(props.appVersion)
 {
-	sInstance = this;
-
-	int initSucess = SDL_Init(SDL_INIT_EVERYTHING);
-	SDL_SetEventFilter(SDL2_EventCallback, nullptr);
-	GLEAM_ASSERT(initSucess == 0, "Window subsystem initialization failed!");
-
-	mActiveWindow = new Window(props.windowProps);
-	mWindows.emplace(mActiveWindow->GetSDLWindow(), Scope<Window>(mActiveWindow));
-	Renderer::Init(props.windowProps.title, props.appVersion, props.rendererProps);
-
-	EventDispatcher<AppCloseEvent>::Subscribe([this](AppCloseEvent e)
+	if (mInstance == nullptr)
 	{
-		mRunning = false;
-		return true;
-	});
+		mInstance = this;
 
-	EventDispatcher<WindowCloseEvent>::Subscribe([this](WindowCloseEvent e)
-	{
-		// if there is only 1 window, application should terminate with the proper deallocation order
-		if (mWindows.size() == 1)
+        // init windowing subsystem
+		int initSucess = SDL_Init(SDL_INIT_EVERYTHING);
+		GLEAM_ASSERT(initSucess == 0, "Window subsystem initialization failed!");
+
+		// create window
+		mWindow = CreateScope<Window>(props.windowProps);
+		
+		// init renderer backend
+		mRendererContext.ConfigureBackend(props.rendererConfig);
+        mRenderPipeline = CreateScope<RenderPipeline>();
+        
+        // create world
+        World::active = World::Create();
+        mRenderPipeline->AddRenderer<WorldRenderer>();
+        mRenderPipeline->AddRenderer<PostProcessStack>();
+
+		EventDispatcher<AppCloseEvent>::Subscribe([this](AppCloseEvent e)
 		{
-			return false;
-		}
-
-		mWindows.erase(e.GetWindow());
-		return true;
-	});
+			mRunning = false;
+		});
+	}
 }
 
 void Application::Run()
@@ -95,128 +95,73 @@ void Application::Run()
     Time::Reset();
 	while (mRunning)
 	{
-		while (SDL_PollEvent(&mEvent));
+        SDL_Event event;
+        while (SDL_PollEvent(&event))
+        {
+            SDL2_EventHandler(nullptr, &event);
+            if (mEventHandler)
+            {
+                std::invoke(mEventHandler, &event);
+            }
+        }
         
         Time::Step();
         Input::Update();
-
-		for (const auto& layer : mLayerStack)
-		{
-			layer->OnUpdate();
-		}
-
-		bool fixedUpdate = Time::fixedTime <= (Time::time - Time::fixedDeltaTime);
+        
+        // Update engine systems
+        bool fixedUpdate = Time::fixedTime <= (Time::time - Time::fixedDeltaTime);
         if (fixedUpdate)
         {
             Time::FixedStep();
-            for (const auto& layer : mLayerStack)
+            for (auto system : mSystems)
             {
-                layer->OnFixedUpdate();
+                system->OnFixedUpdate();
             }
         }
 
-        for (const auto& overlay : mOverlays)
-        {
-            overlay->OnUpdate();
-        }
-
-		if (fixedUpdate)
+		for (auto system : mSystems)
 		{
-			for (const auto& overlay : mOverlays)
-			{
-				overlay->OnFixedUpdate();
-			}
+            system->OnUpdate();
 		}
-		
-#ifdef USE_METAL_RENDERER
-        @autoreleasepool
-#endif
+        
+        // Update world
+        if (fixedUpdate)
         {
-            for (const auto& layer : mLayerStack)
-            {
-                layer->OnRender();
-            }
-
-            for (const auto& overlay : mOverlays)
-            {
-                overlay->OnRender();
-            }
+            World::active->FixedUpdate();
         }
+        World::active->Update();
+		
+        mRendererContext.Execute(mRenderPipeline.get());
 	}
+}
+
+void Application::Quit()
+{
+    EventDispatcher<AppCloseEvent>::Publish(AppCloseEvent());
 }
 
 Application::~Application()
 {
-	// Destroy overlays
-	for (const auto& overlay : mOverlays)
-	{
-		overlay->OnDetach();
-	}
-	mOverlays.clear();
-
-	// Destroy layers
-	for (const auto& layer : mLayerStack)
-	{
-		layer->OnDetach();
-	}
-	mLayerStack.clear();
-
-	// Destroy renderer
-	Renderer::Destroy();
-
-	// Destroy windows and window subsystem
-	mWindows.clear();
-	SDL_Quit();
-
-	sInstance = nullptr;
-}
-
-uint32_t Application::PushLayer(const RefCounted<Layer>& layer)
-{
-    uint32_t index = static_cast<uint32_t>(mLayerStack.size());
-	layer->OnAttach();
-	mLayerStack.push_back(layer);
-    return index;
-}
-
-uint32_t Application::PushOverlay(const RefCounted<Layer>& overlay)
-{
-    uint32_t index = static_cast<uint32_t>(mOverlays.size());
-	overlay->OnAttach();
-	mOverlays.push_back(overlay);
-    return index;
-}
-
-void Application::RemoveLayer(uint32_t index)
-{
-	GLEAM_ASSERT(index < mLayerStack.size());
-	mLayerStack[index]->OnDetach();
-	mLayerStack.erase(mLayerStack.begin() + index);
-}
-
-void Application::RemoveOverlay(uint32_t index)
-{
-	GLEAM_ASSERT(index < mOverlays.size());
-	mOverlays[index]->OnDetach();
-	mOverlays.erase(mOverlays.begin() + index);
-}
-
-void Application::RemoveLayer(const RefCounted<Layer>& layer)
-{
-	auto layerIt = std::find(mLayerStack.begin(), mLayerStack.end(), layer);
-	if (layerIt != mLayerStack.end())
-	{
-		layer->OnDetach();
-		mLayerStack.erase(layerIt);
-	}
-}
-
-void Application::RemoveOverlay(const RefCounted<Layer>& overlay)
-{
-	auto overlayIt = std::find(mOverlays.begin(), mOverlays.end(), overlay);
-	if (overlayIt != mOverlays.end())
-	{
-		overlay->OnDetach();
-		mOverlays.erase(overlayIt);
-	}
+    if (mInstance)
+    {
+        // Destroy systems
+        for (auto system : mSystems)
+        {
+            system->OnDestroy();
+        }
+        mSystems.clear();
+        
+        // Destroy world
+        World::active.reset();
+        
+        // Destroy renderer
+        mRenderPipeline.reset();
+        mRendererContext.DestroyBackend();
+        
+        // Destroy window and windowing subsystem
+        mWindow.reset();
+        SDL_Quit();
+        
+        mInstance = nullptr;
+    }
 }

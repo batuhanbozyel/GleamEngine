@@ -32,7 +32,6 @@ Window::Window(const WindowProperties& props)
 	{
 		mProperties.display.width = e.GetWidth();
 		mProperties.display.height = e.GetHeight();
-		return false;
 	});
 }
 

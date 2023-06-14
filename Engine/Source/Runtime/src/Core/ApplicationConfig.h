@@ -22,7 +22,7 @@ struct ApplicationProperties
 {
 	Version appVersion;
 	WindowProperties windowProps;
-	RendererProperties rendererProps;
+	RendererConfig rendererConfig;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Version& version)

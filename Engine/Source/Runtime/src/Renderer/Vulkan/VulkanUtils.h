@@ -1,9 +1,8 @@
 #pragma once
 #ifdef USE_VULKAN_RENDERER
 #include <volk.h>
-#include "Renderer/Buffer.h"
+#include "Renderer/BufferDescriptor.h"
 #include "Renderer/TextureFormat.h"
-#include "Renderer/RendererContext.h"
 #include "Renderer/RenderPassDescriptor.h"
 #include "Renderer/PipelineStateDescriptor.h"
 
@@ -12,7 +11,19 @@ namespace Gleam {
 #define VK_CHECK(x) {VkResult result = (x);\
 					GLEAM_ASSERT(result == VK_SUCCESS, VkResultToString(x));}
 
-#define VulkanDevice As<VkDevice>(RendererContext::GetDevice())
+#define VK_FLAGS_NONE 0
+
+struct VulkanDrawable
+{
+	VkImage image{ VK_NULL_HANDLE };
+	VkImageView view{ VK_NULL_HANDLE };
+};
+
+struct VulkanQueue
+{
+	VkQueue handle{ VK_NULL_HANDLE };
+	uint32_t index{ 0 };
+};
 
 static constexpr const char* VkResultToString(VkResult result)
 {
@@ -69,9 +80,67 @@ static constexpr TextureFormat VkFormatToTextureFormat(VkFormat format)
 {
 	switch (format)
 	{
-		case VK_FORMAT_B8G8R8A8_UNORM: return TextureFormat::B8G8R8A8_UNorm;
+		case VK_FORMAT_R8_SRGB: return TextureFormat::R8_SRGB;
+		case VK_FORMAT_R8G8_SRGB: return TextureFormat::R8G8_SRGB;
+		case VK_FORMAT_R8G8B8A8_SRGB: return TextureFormat::R8G8B8A8_SRGB;
+
+		case VK_FORMAT_R8_UNORM: return TextureFormat::R8_UNorm;
+		case VK_FORMAT_R8G8_UNORM: return TextureFormat::R8G8_UNorm;
 		case VK_FORMAT_R8G8B8A8_UNORM: return TextureFormat::R8G8B8A8_UNorm;
-		// TODO:
+
+		case VK_FORMAT_R8_SNORM: return TextureFormat::R8_SNorm;
+		case VK_FORMAT_R8G8_SNORM: return TextureFormat::R8G8_SNorm;
+		case VK_FORMAT_R8G8B8A8_SNORM: return TextureFormat::R8G8B8A8_SNorm;
+
+		case VK_FORMAT_R8_UINT: return TextureFormat::R8_UInt;
+		case VK_FORMAT_R8G8_UINT: return TextureFormat::R8G8_UInt;
+		case VK_FORMAT_R8G8B8A8_UINT: return TextureFormat::R8G8B8A8_UInt;
+
+		case VK_FORMAT_R8_SINT: return TextureFormat::R8_SInt;
+		case VK_FORMAT_R8G8_SINT: return TextureFormat::R8G8_SInt;
+		case VK_FORMAT_R8G8B8A8_SINT: return TextureFormat::R8G8B8A8_SInt;
+
+		case VK_FORMAT_R16_UNORM: return TextureFormat::R16_UNorm;
+		case VK_FORMAT_R16G16_UNORM: return TextureFormat::R16G16_UNorm;
+		case VK_FORMAT_R16G16B16A16_UNORM: return TextureFormat::R16G16B16A16_UNorm;
+
+		case VK_FORMAT_R16_SNORM: return TextureFormat::R16_SNorm;
+		case VK_FORMAT_R16G16_SNORM: return TextureFormat::R16G16_SNorm;
+		case VK_FORMAT_R16G16B16A16_SNORM: return TextureFormat::R16G16B16A16_SNorm;
+
+		case VK_FORMAT_R16_UINT: return TextureFormat::R16_UInt;
+		case VK_FORMAT_R16G16_UINT: return TextureFormat::R16G16_UInt;
+		case VK_FORMAT_R16G16B16A16_UINT: return TextureFormat::R16G16B16A16_UInt;
+
+		case VK_FORMAT_R16_SINT: return TextureFormat::R16_SInt;
+		case VK_FORMAT_R16G16_SINT: return TextureFormat::R16G16_SInt;
+		case VK_FORMAT_R16G16B16A16_SINT: return TextureFormat::R16G16B16A16_SInt;
+
+		case VK_FORMAT_R16_SFLOAT: return TextureFormat::R16_SFloat;
+		case VK_FORMAT_R16G16_SFLOAT: return TextureFormat::R16G16_SFloat;
+		case VK_FORMAT_R16G16B16A16_SFLOAT: return TextureFormat::R16G16B16A16_SFloat;
+
+		case VK_FORMAT_R32_UINT: return TextureFormat::R32_UInt;
+		case VK_FORMAT_R32G32_UINT: return TextureFormat::R32G32_UInt;
+		case VK_FORMAT_R32G32B32A32_UINT: return TextureFormat::R32G32B32A32_UInt;
+
+		case VK_FORMAT_R32_SINT: return TextureFormat::R32_SInt;
+		case VK_FORMAT_R32G32_SINT: return TextureFormat::R32G32_SInt;
+		case VK_FORMAT_R32G32B32A32_SINT: return TextureFormat::R32G32B32A32_SInt;
+
+		case VK_FORMAT_R32_SFLOAT: return TextureFormat::R32_SFloat;
+		case VK_FORMAT_R32G32_SFLOAT: return TextureFormat::R32G32_SFloat;
+		case VK_FORMAT_R32G32B32A32_SFLOAT: return TextureFormat::R32G32B32A32_SFloat;
+
+		case VK_FORMAT_B8G8R8A8_SRGB: return TextureFormat::B8G8R8A8_SRGB;
+		case VK_FORMAT_B8G8R8A8_UNORM: return TextureFormat::B8G8R8A8_UNorm;
+
+		// Depth - Stencil formats
+		case VK_FORMAT_S8_UINT: return TextureFormat::S8_UInt;
+		case VK_FORMAT_D16_UNORM: return TextureFormat::D16_UNorm;
+		case VK_FORMAT_D32_SFLOAT: return TextureFormat::D32_SFloat;
+		case VK_FORMAT_D32_SFLOAT_S8_UINT: return TextureFormat::D32_SFloat_S8_UInt;
+
 		default: return TextureFormat::None;
 	}
 }
@@ -80,9 +149,67 @@ static constexpr VkFormat TextureFormatToVkFormat(TextureFormat format)
 {
 	switch (format)
 	{
-		case TextureFormat::B8G8R8A8_UNorm: return VK_FORMAT_B8G8R8A8_UNORM;
+		case TextureFormat::R8_SRGB: return VK_FORMAT_R8_SRGB;
+		case TextureFormat::R8G8_SRGB: return VK_FORMAT_R8G8_SRGB;
+		case TextureFormat::R8G8B8A8_SRGB: return VK_FORMAT_R8G8B8A8_SRGB;
+
+		case TextureFormat::R8_UNorm: return VK_FORMAT_R8_UNORM;
+		case TextureFormat::R8G8_UNorm: return VK_FORMAT_R8G8_UNORM;
 		case TextureFormat::R8G8B8A8_UNorm: return VK_FORMAT_R8G8B8A8_UNORM;
-		// TODO:
+
+		case TextureFormat::R8_SNorm: return VK_FORMAT_R8_SNORM;
+		case TextureFormat::R8G8_SNorm: return VK_FORMAT_R8G8_SNORM;
+		case TextureFormat::R8G8B8A8_SNorm: return VK_FORMAT_R8G8B8A8_SNORM;
+
+		case TextureFormat::R8_UInt: return VK_FORMAT_R8_UINT;
+		case TextureFormat::R8G8_UInt: return VK_FORMAT_R8G8_UINT;
+		case TextureFormat::R8G8B8A8_UInt: return VK_FORMAT_R8G8B8A8_UINT;
+
+		case TextureFormat::R8_SInt: return VK_FORMAT_R8_SINT;
+		case TextureFormat::R8G8_SInt: return VK_FORMAT_R8G8_SINT;
+		case TextureFormat::R8G8B8A8_SInt: return VK_FORMAT_R8G8B8A8_SINT;
+
+		case TextureFormat::R16_UNorm: return VK_FORMAT_R16_UNORM;
+		case TextureFormat::R16G16_UNorm: return VK_FORMAT_R16G16_UNORM;
+		case TextureFormat::R16G16B16A16_UNorm: return VK_FORMAT_R16G16B16A16_UNORM;
+
+		case TextureFormat::R16_SNorm: return VK_FORMAT_R16_SNORM;
+		case TextureFormat::R16G16_SNorm: return VK_FORMAT_R16G16_SNORM;
+		case TextureFormat::R16G16B16A16_SNorm: return VK_FORMAT_R16G16B16A16_SNORM;
+
+		case TextureFormat::R16_UInt: return VK_FORMAT_R16_UINT;
+		case TextureFormat::R16G16_UInt: return VK_FORMAT_R16G16_UINT;
+		case TextureFormat::R16G16B16A16_UInt: return VK_FORMAT_R16G16B16A16_UINT;
+
+		case TextureFormat::R16_SInt: return VK_FORMAT_R16_SINT;
+		case TextureFormat::R16G16_SInt: return VK_FORMAT_R16G16_SINT;
+		case TextureFormat::R16G16B16A16_SInt: return VK_FORMAT_R16G16B16A16_SINT;
+
+		case TextureFormat::R16_SFloat: return VK_FORMAT_R16_SFLOAT;
+		case TextureFormat::R16G16_SFloat: return VK_FORMAT_R16G16_SFLOAT;
+		case TextureFormat::R16G16B16A16_SFloat: return VK_FORMAT_R16G16B16A16_SFLOAT;
+
+		case TextureFormat::R32_UInt: return VK_FORMAT_R32_UINT;
+		case TextureFormat::R32G32_UInt: return VK_FORMAT_R32G32_UINT;
+		case TextureFormat::R32G32B32A32_UInt: return VK_FORMAT_R32G32B32A32_UINT;
+
+		case TextureFormat::R32_SInt: return VK_FORMAT_R32_SINT;
+		case TextureFormat::R32G32_SInt: return VK_FORMAT_R32G32_SINT;
+		case TextureFormat::R32G32B32A32_SInt: return VK_FORMAT_R32G32B32A32_SINT;
+
+		case TextureFormat::R32_SFloat: return VK_FORMAT_R32_SFLOAT;
+		case TextureFormat::R32G32_SFloat: return VK_FORMAT_R32G32_SFLOAT;
+		case TextureFormat::R32G32B32A32_SFloat: return VK_FORMAT_R32G32B32A32_SFLOAT;
+
+		case TextureFormat::B8G8R8A8_SRGB: return VK_FORMAT_B8G8R8A8_SRGB;
+		case TextureFormat::B8G8R8A8_UNorm: return VK_FORMAT_B8G8R8A8_UNORM;
+
+		// Depth - Stencil formats
+		case TextureFormat::S8_UInt: return VK_FORMAT_S8_UINT;
+		case TextureFormat::D16_UNorm: return VK_FORMAT_D16_UNORM;
+		case TextureFormat::D32_SFloat: return VK_FORMAT_D32_SFLOAT;
+		case TextureFormat::D32_SFloat_S8_UInt: return VK_FORMAT_D32_SFLOAT_S8_UINT;
+
 		default: return VK_FORMAT_UNDEFINED;
 	}
 }
@@ -116,6 +243,7 @@ static constexpr VkPrimitiveTopology PrimitiveToplogyToVkPrimitiveTopology(Primi
 		case PrimitiveTopology::Lines: return VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
 		case PrimitiveTopology::LineStrip: return VK_PRIMITIVE_TOPOLOGY_LINE_STRIP;
 		case PrimitiveTopology::Triangles: return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+        case PrimitiveTopology::TriangleStrip: return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
 		default: return VK_PRIMITIVE_TOPOLOGY_MAX_ENUM;
 	}
 }
@@ -154,6 +282,17 @@ static constexpr VkDescriptorType BufferUsageToVkDescriptorType(BufferUsage usag
 		default: return VK_DESCRIPTOR_TYPE_MAX_ENUM;
 	}
 }
+
+static constexpr VkPipelineBindPoint PipelineBindPointToVkPipelineBindPoint(PipelineBindPoint pipeline)
+{
+	switch (pipeline)
+	{
+		case PipelineBindPoint::Graphics: return VK_PIPELINE_BIND_POINT_GRAPHICS;
+		case PipelineBindPoint::Compute: return VK_PIPELINE_BIND_POINT_COMPUTE;
+		case PipelineBindPoint::RayTracing: return VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR;
+		default: return VK_PIPELINE_BIND_POINT_MAX_ENUM;
+	}
+} 
 
 } // namespace Gleam
 #endif

@@ -117,6 +117,16 @@ struct Color : public Vector4
 
 	NO_DISCARD FORCE_INLINE constexpr operator Color32() const;
 	FORCE_INLINE constexpr Color& operator=(const Color32&);
+    
+    NO_DISCARD FORCE_INLINE constexpr bool operator==(const Color& other) const
+    {
+        return (Math::Abs(r - other.r) < Math::Epsilon) && (Math::Abs(g - other.g) < Math::Epsilon) && (Math::Abs(b - other.b) < Math::Epsilon) && (Math::Abs(a - other.a) < Math::Epsilon);
+    }
+    
+    NO_DISCARD FORCE_INLINE constexpr bool operator!=(const Color& other) const
+    {
+        return !(*this == other);
+    }
 
 };
 
@@ -133,6 +143,16 @@ struct Color32
 
 	NO_DISCARD FORCE_INLINE constexpr operator Color() const;
 	FORCE_INLINE constexpr Color32& operator=(const Color&);
+    
+    NO_DISCARD FORCE_INLINE constexpr bool operator==(const Color32& other) const
+    {
+        return r == other.r && g == other.g && b == other.b && a == other.a;
+    }
+    
+    NO_DISCARD FORCE_INLINE constexpr bool operator!=(const Color32& other) const
+    {
+        return !(*this == other);
+    }
 
 };
 

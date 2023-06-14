@@ -1,16 +1,27 @@
 #pragma once
+#include "EntityManager.h"
 
 namespace Gleam {
 
 class World;
-    
+
 class ComponentSystem
 {
-    friend class World;
+	friend class World;
     
+public:
+    
+    virtual ~ComponentSystem() = default;
+
 protected:
-    
-    virtual void OnUpdate() {}
+
+	virtual void OnCreate(EntityManager& entityManager) {};
+
+	virtual void OnUpdate(EntityManager& entityManager) {};
+
+	virtual void OnFixedUpdate(EntityManager& entityManager) {};
+
+	virtual void OnDestroy(EntityManager& entityManager) {};
 
 };
 

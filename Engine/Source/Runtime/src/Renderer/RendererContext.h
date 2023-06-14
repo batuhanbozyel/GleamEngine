@@ -1,52 +1,45 @@
 #pragma once
-#include "Swapchain.h"
+#include "Shader.h"
+#include "CommandBuffer.h"
+#include "RendererConfig.h"
 
 namespace Gleam {
 
+class Application;
 struct Version;
 
-class RendererContext
+struct RenderingData
 {
+    RenderTextureHandle backbuffer;
+};
+
+class RendererContext final
+{
+	friend class Application;
+
 public:
-
-	static void Init(const TString& appName, const Version& appVersion, const RendererProperties& props);
-
-	static void Destroy();
-
-	static NativeGraphicsHandle GetPhysicalDevice();
-
-	static NativeGraphicsHandle GetGraphicsQueue();
-
-	static NativeGraphicsHandle GetComputeQueue();
-
-	static NativeGraphicsHandle GetTransferQueue();
-
-	static NativeGraphicsHandle GetGraphicsCommandPool(uint32_t index);
-
-	static NativeGraphicsHandle GetTransferCommandPool(uint32_t index);
-
-	static uint32_t GetMemoryTypeForProperties(uint32_t memoryTypeBits, uint32_t properties);
-
-    static NativeGraphicsHandle GetDevice()
-    {
-        return mDevice;
-    }
     
-	static const Scope<Swapchain>& GetSwapchain()
-	{
-		return mSwapchain;
-	}
-
-	static const RendererProperties& GetProperties()
-	{
-		return mSwapchain->GetProperties();
-	}
+    void Execute(RenderPipeline* pipeline) const;
+    
+	const RefCounted<Shader>& CreateShader(const TString& entryPoint, ShaderStage stage);
+    
+    void SetConfiguration(const RendererConfig& config);
+    
+	const RendererConfig& GetConfiguration() const;
+    
+    const Size& GetDrawableSize() const;
 
 private:
     
-    static inline NativeGraphicsHandle mDevice = nullptr;
+    void ConfigureBackend(const RendererConfig& config);
     
-	static inline Scope<Swapchain> mSwapchain = nullptr;
+    void DestroyBackend();
+
+    RendererConfig mConfiguration;
+    
+    Scope<CommandBuffer> mCommandBuffer;
+    
+	TArray<RefCounted<Shader>> mShaderCache;
 
 };
 

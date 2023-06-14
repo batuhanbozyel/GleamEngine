@@ -1,42 +1,38 @@
+//
+//  Renderer.h
+//  Runtime
+//
+//  Created by Batuhan Bozyel on 31.10.2022.
+//
+
 #pragma once
-#include "Camera.h"
-#include "Buffer.h"
 #include "ShaderTypes.h"
+#include "RenderPassDescriptor.h"
+#include "PipelineStateDescriptor.h"
+#include "RenderGraph/RenderGraph.h"
+#include "RenderGraph/RenderGraphBlackboard.h"
 
 namespace Gleam {
 
-struct Version;
-struct RendererProperties;
+class RenderPipeline;
+class RendererContext;
 
-class Renderer
+class IRenderer
 {
 public:
-
-    static void Init(const TString& appName, const Version& appVersion, const RendererProperties& props);
-
-    static void Destroy();
-
-    static Vector2 GetDrawableSize();
-
-    /**
-    * Renderer specific implementations
-    */
-
-    Renderer();
-
-    virtual ~Renderer() = default;
-
-    virtual void Render() = 0;
-
-    void UpdateView(Camera& camera);
-
-    const UniformBuffer<CameraUniforms, MemoryType::Dynamic>& GetCameraBuffer() const;
-
-    static inline Color clearColor{ 0.1f, 0.1f, 0.1f, 1.0f };
     
-private:
+    friend class RenderPipeline;
+    friend class RendererContext;
     
-    TArray<Scope<UniformBuffer<CameraUniforms, MemoryType::Dynamic>>> mCameraBuffers;
+    virtual ~IRenderer() = default;
+
+protected:
+
+	virtual void OnCreate(RendererContext* context) {}
+
+	virtual void OnDestroy() {}
+
+	virtual void AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard) = 0;
 
 };
 

@@ -1,5 +1,6 @@
 #pragma once
 #include <memory>
+#include <optional>
 
 namespace Gleam {
 
@@ -13,7 +14,12 @@ template<typename T>
 using RefCounted = std::shared_ptr<T>;
 
 template<typename T>
-using Weak = std::weak_ptr<T>;
+using WeakPtr = std::weak_ptr<T>;
+
+template<typename T>
+using Optional = std::optional<T>;
+
+static constexpr auto Null = std::nullopt;
 
 template<typename T, typename ... Args>
 NO_DISCARD FORCE_INLINE constexpr Scope<T> CreateScope(Args&& ... args)

@@ -1,127 +1,117 @@
 #include "gpch.h"
 
 #ifdef USE_METAL_RENDERER
-#include "Renderer/Swapchain.h"
+#include "MetalSwapchain.h"
 #include "MetalUtils.h"
 
 #include "Core/Window.h"
 #include "Core/Application.h"
 #include "Core/Events/RendererEvent.h"
+#include "Renderer/RendererConfig.h"
 
 #import <SDL_metal.h>
 #import <QuartzCore/CAMetalLayer.h>
 
 using namespace Gleam;
 
-struct
-{
-    // Synchronization
-    dispatch_semaphore_t imageAcquireSemaphore;
-    
-    // Frame
-    id<CAMetalDrawable> drawable{ nil };
-} mContext;
-
-Swapchain::Swapchain(const RendererProperties& props, NativeGraphicsHandle instance)
-    : mProperties(props)
+void MetalSwapchain::Initialize(const RendererConfig& config)
 {
     // Create surface
-    mSurface = SDL_Metal_CreateView(ApplicationInstance.GetActiveWindow().GetSDLWindow());
+    mSurface = SDL_Metal_CreateView(GameInstance->GetWindow()->GetSDLWindow());
     GLEAM_ASSERT(mSurface, "Metal: Surface creation failed!");
     
-    CAMetalLayer* swapchain = (__bridge CAMetalLayer*)SDL_Metal_GetLayer(mSurface);
-    swapchain.device = MetalDevice;
-    swapchain.framebufferOnly = YES;
-    swapchain.opaque = YES;
-    swapchain.pixelFormat = MTLPixelFormatBGRA8Unorm;
-    swapchain.drawableSize = swapchain.frame.size;
-    mHandle = swapchain;
+    mHandle = (__bridge CAMetalLayer*)SDL_Metal_GetLayer(mSurface);
+    mHandle.name = [NSString stringWithCString:GameInstance->GetWindow()->GetProperties().title.c_str() encoding:NSASCIIStringEncoding];
+    mHandle.device = MetalDevice::GetHandle();
+    mHandle.framebufferOnly = NO;
+    mHandle.opaque = YES;
+    Configure(config);
     
-    mProperties.width = swapchain.frame.size.width;
-    mProperties.height = swapchain.frame.size.height;
+    const auto& resolution = GameInstance->GetWindow()->GetResolution();
+    mSize = resolution * mHandle.contentsScale;
+    mHandle.frame.size = CGSizeMake(mSize.width, mSize.height);
+    mHandle.drawableSize = CGSizeMake(resolution.width, resolution.height);
     
-    if (swapchain.maximumDrawableCount >= 3 && mProperties.tripleBufferingEnabled)
+    EventDispatcher<WindowResizeEvent>::Subscribe([this](const WindowResizeEvent& e)
     {
-        mProperties.maxFramesInFlight = 3;
+        mSize.width = e.GetWidth() * mHandle.contentsScale;
+        mSize.height = e.GetHeight() * mHandle.contentsScale;
+        
+        mHandle.frame.size = CGSizeMake(e.GetWidth(), e.GetHeight());
+        mHandle.drawableSize = CGSizeMake(mSize.width, mSize.height);
+    });
+    
+    mImageAcquireSemaphore = dispatch_semaphore_create(mMaxFramesInFlight);
+}
+
+void MetalSwapchain::Destroy()
+{
+    mImageAcquireSemaphore = nil;
+    mDrawable = nil;
+    mHandle = nil;
+    mSurface = nil;
+}
+
+void MetalSwapchain::Configure(const RendererConfig& config)
+{
+#ifdef PLATFORM_MACOS
+    mHandle.displaySyncEnabled = config.vsync ? YES : NO;
+#endif
+    
+    if (mHandle.maximumDrawableCount >= 3 && config.tripleBufferingEnabled)
+    {
+        mMaxFramesInFlight = 3;
         GLEAM_CORE_TRACE("Metal: Triple buffering enabled.");
     }
-    else if (swapchain.maximumDrawableCount >= 2)
+    else if (mHandle.maximumDrawableCount >= 2)
     {
-        mProperties.maxFramesInFlight = 2;
-        if (mProperties.tripleBufferingEnabled)
-        {
-            mProperties.tripleBufferingEnabled = false;
-        }
+        mMaxFramesInFlight = 2;
         GLEAM_CORE_TRACE("Metal: Double buffering enabled.");
     }
     else
     {
-        mProperties.maxFramesInFlight = 1;
+        mMaxFramesInFlight = 1;
         GLEAM_ASSERT(false, "Metal: Neither triple nor double buffering is available!");
     }
-    
-    mContext.imageAcquireSemaphore = dispatch_semaphore_create(mProperties.maxFramesInFlight);
 }
 
-Swapchain::~Swapchain()
+id<CAMetalDrawable> MetalSwapchain::AcquireNextDrawable()
 {
-    mContext.drawable = nil;
-    mHandle = nil;
+    if (mDrawable == nil)
+    {
+        dispatch_semaphore_wait(mImageAcquireSemaphore, DISPATCH_TIME_FOREVER);
+        mDrawable = [mHandle nextDrawable];
+    }
+    return mDrawable;
 }
 
-NativeGraphicsHandle Swapchain::AcquireNextDrawable()
-{
-    dispatch_semaphore_wait(mContext.imageAcquireSemaphore, DISPATCH_TIME_FOREVER);
-    mContext.drawable = [(CAMetalLayer*)mHandle nextDrawable];
-    return mContext.drawable;
-}
-
-void Swapchain::Present(NativeGraphicsHandle commandBuffer)
+void MetalSwapchain::Present(id<MTLCommandBuffer> commandBuffer)
 {
     [commandBuffer addCompletedHandler:^(id<MTLCommandBuffer> commandBuffer)
     {
-        dispatch_semaphore_signal(mContext.imageAcquireSemaphore);
+        dispatch_semaphore_signal(mImageAcquireSemaphore);
     }];
     
-    [commandBuffer presentDrawable:mContext.drawable];
+    [commandBuffer presentDrawable:mDrawable];
+
+    mCurrentFrameIndex = (mCurrentFrameIndex + 1) % mMaxFramesInFlight;
     
-    [commandBuffer commit];
-
-    InvalidateAndCreate();
-
-    mCurrentFrameIndex = (mCurrentFrameIndex + 1) % mProperties.maxFramesInFlight;
+    mDrawable = nil;
 }
 
-TextureFormat Swapchain::GetFormat() const
+TextureFormat MetalSwapchain::GetFormat() const
 {
-    return MTLPixelFormatToTextureFormat(((CAMetalLayer*)mHandle).pixelFormat);
+    return MTLPixelFormatToTextureFormat(mHandle.pixelFormat);
 }
 
-NativeGraphicsHandle Swapchain::GetDrawable() const
+CAMetalLayer* MetalSwapchain::GetHandle() const
 {
-    return mContext.drawable;
+    return mHandle;
 }
 
-DispatchSemaphore Swapchain::GetImageAcquireSemaphore() const
+const Gleam::Size& MetalSwapchain::GetSize() const
 {
-    return mContext.imageAcquireSemaphore;
-}
-
-DispatchSemaphore Swapchain::GetImageReleaseSemaphore() const
-{
-    return mContext.imageAcquireSemaphore;
-}
-
-void Swapchain::InvalidateAndCreate()
-{
-    CAMetalLayer* swapchain = (CAMetalLayer*)mHandle;
-    if (mProperties.width != swapchain.frame.size.width || mProperties.height != swapchain.frame.size.height)
-    {
-        mProperties.width = swapchain.frame.size.width;
-        mProperties.height = swapchain.frame.size.height;
-        swapchain.drawableSize = swapchain.frame.size;
-        EventDispatcher<RendererResizeEvent>::Publish(RendererResizeEvent(mProperties.width, mProperties.height));
-    }
+    return mSize;
 }
 
 #endif

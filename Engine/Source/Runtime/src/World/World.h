@@ -1,66 +1,70 @@
 #pragma once
-#include "EntityManager.h"
 #include "ComponentSystem.h"
+#include "Renderer/RenderPipeline.h"
 
 namespace Gleam {
 
-template<typename T>
-concept ComponentSystemType = std::same_as<T, ComponentSystem>;
-    
+template <typename T>
+concept ComponentSystemType = std::is_base_of<ComponentSystem, T>::value;
+
 class World final
 {
-    template<typename T>
-    static constexpr auto is_same_system = [](const auto& system) -> bool
-    {
-        return dynamic_cast<const T*>(system.get()) != nullptr;
-    };
-    
 public:
 
-	World(const TString& name = "World")
-		: mName(name)
-	{
-        
-	}
+	World(const TString& name = "World");
+
+	void Update();
+
+	void FixedUpdate();
     
     template<ComponentSystemType T>
-    T& AddSystem()
+    T* AddSystem()
     {
         GLEAM_ASSERT(!HasSystem<T>(), "World already has the system!");
-        return *static_cast<T*>(mSystems.emplace_back(CreateScope<T>()).get());
+        T* system = mSystemManager.emplace<T>();
+		system->OnCreate(mEntityManager);
+		return system;
     }
     
     template<ComponentSystemType T>
     void RemoveSystem()
     {
         GLEAM_ASSERT(HasSystem<T>(), "World does not have the system!");
-        std::erase_if(mSystems, is_same_system<T>);
+		T* system = GetSystem<T>();
+		system->OnDestroy(mEntityManager);
+        mSystemManager.erase<T>();
     }
     
     template<ComponentSystemType T>
-    T& GetSystem()
+    T* GetSystem() const
     {
         GLEAM_ASSERT(HasSystem<T>(), "World does not have the system!");
-        auto system = std::find_if(mSystems.begin(), mSystems.end(), is_same_system<T>);
-        return *static_cast<T*>(system->get());
+        mSystemManager.get<T>();
     }
     
     template<ComponentSystemType T>
     bool HasSystem() const
     {
-        return std::find_if(mSystems.begin(), mSystems.end(), is_same_system<T>) != mSystems.end();
+		return mSystemManager.contains<T>();
     }
     
-	EntityManager& GetEntityManager()
-	{
-		return mEntityManager;
-	}
+    EntityManager& GetEntityManager()
+    {
+        return mEntityManager;
+    }
+
+	static RefCounted<World> Create()
+    {
+        return CreateRef<World>();
+    }
+
+    static inline RefCounted<World> active = nullptr;
     
 private:
 
 	TString mName;
-	EntityManager mEntityManager;
-    TArray<Scope<ComponentSystem>> mSystems;
+    EntityManager mEntityManager;
+    PolyArray<ComponentSystem> mSystemManager;
 
 };
 

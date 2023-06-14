@@ -1,38 +1,43 @@
 #define GDEBUG
 // EntryPoint
 #include "Core/EntryPoint.h"
-#include "SceneView.h"
+#include "View/ViewStack.h"
+
+#include "View/Panels/MenuBar/MenuBar.h"
+#include "View/Panels/World/WorldViewport.h"
+#include "View/Panels/World/WorldOutliner.h"
 
 namespace GEditor {
-    
+
 class GleamEditor : public Gleam::Application
 {
 public:
 
-	GleamEditor(const Gleam::ApplicationProperties& props)
-		: Gleam::Application(props), mSceneView(Gleam::CreateRef<SceneView>())
+	GleamEditor(const Gleam::ApplicationProperties& properties)
+        : Gleam::Application(properties)
 	{
-        PushLayer(mSceneView);
+        auto viewStack = GameInstance->AddSystem<ViewStack>();
+		viewStack->AddView<MenuBar>();
+        viewStack->AddView<WorldViewport>();
+        viewStack->AddView<WorldOutliner>();
 	}
 
 	~GleamEditor()
 	{
-        RemoveLayer(mSceneView);
+        GameInstance->RemoveSystem<ViewStack>();
 	}
 
 private:
     
-    Gleam::RefCounted<SceneView> mSceneView;
-
 };
 
 } // namespace GEditor
 
-Gleam::Application* Gleam::CreateApplication()
+Gleam::Application* Gleam::CreateApplicationInstance()
 {
-	Gleam::ApplicationProperties props;
-	props.appVersion = Gleam::Version(1, 0, 0);
-	props.windowProps.title = "Gleam Editor";
-	props.windowProps.windowFlag = Gleam::WindowFlag::MaximizedWindow;
-	return new GEditor::GleamEditor(props);
+    Gleam::ApplicationProperties props;
+    props.appVersion = Gleam::Version(1, 0, 0);
+    props.windowProps.title = "Gleam Editor";
+    props.windowProps.windowFlag = Gleam::WindowFlag::MaximizedWindow;
+    return new GEditor::GleamEditor(props);
 }
