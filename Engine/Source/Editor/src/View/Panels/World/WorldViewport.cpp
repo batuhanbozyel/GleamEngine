@@ -26,8 +26,8 @@ WorldViewport::WorldViewport()
         {
             if (mIsFocused)
             {
+                mCursorVisible ? Gleam::Input::HideCursor() : Gleam::Input::ShowCursor();
                 mCursorVisible = !mCursorVisible;
-                Gleam::Input::ShowCursor(mCursorVisible);
             }
         }
     });

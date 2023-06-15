@@ -12,42 +12,43 @@ using namespace Gleam;
 
 int SDLCALL Application::SDL2_EventHandler(void* data, SDL_Event* e)
 {
+    if (e->type >= SDL_EVENT_WINDOW_FIRST and e->type <= SDL_EVENT_WINDOW_LAST)
+    {
+        Window::EventHandler(e->window);
+        return 0;
+    }
+    
 	switch (e->type)
 	{
-		case SDL_QUIT:
+		case SDL_EVENT_QUIT:
 		{
 			EventDispatcher<AppCloseEvent>::Publish(AppCloseEvent());
 			break;
 		}
-		case SDL_WINDOWEVENT:
-		{
-			Window::EventHandler(e->window);
-			break;
-		}
-		case SDL_KEYDOWN:
-		case SDL_KEYUP:
+		case SDL_EVENT_KEY_DOWN:
+		case SDL_EVENT_KEY_UP:
 		{
 			Input::KeyboardEventHandler(e->key);
 			break;
 		}
-		case SDL_MOUSEMOTION:
+		case SDL_EVENT_MOUSE_MOTION:
 		{
 			Input::MouseMoveEventHandler(e->motion);
 			break;
 		}
-		case SDL_MOUSEWHEEL:
+		case SDL_EVENT_MOUSE_WHEEL:
 		{
 			Input::MouseScrollEventHandler(e->wheel);
 			break;
 		}
-		case SDL_MOUSEBUTTONDOWN:
-		case SDL_MOUSEBUTTONUP:
+		case SDL_EVENT_MOUSE_BUTTON_DOWN:
+		case SDL_EVENT_MOUSE_BUTTON_UP:
 		{
 			Input::MouseButtonEventHandler(e->button);
 			break;
 		}
 		// This case is here just to ignore this type of event to emit warning log messages
-		case SDL_POLLSENTINEL:
+		case SDL_EVENT_POLL_SENTINEL:
 		{
 			break;
 		}

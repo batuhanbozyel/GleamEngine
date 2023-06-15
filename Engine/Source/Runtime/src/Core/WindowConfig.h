@@ -1,5 +1,5 @@
 #pragma once
-#include <SDL.h>
+#include <SDL3/SDL.h>
 
 namespace Gleam {
 
@@ -12,14 +12,14 @@ namespace Gleam {
 enum class WindowFlag : uint32_t
 {
 #if defined(PLATFORM_WINDOWS) || defined(PLATFORM_MACOS) || defined(PLATFORM_LINUX)
-	BorderlessFullscreen = SDL_WINDOW_BORDERLESS | SDL_WINDOW_FULLSCREEN_DESKTOP | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI | GLEAM_WINDOW_RENDERER_API,
-	ExclusiveFullscreen = SDL_WINDOW_FULLSCREEN_DESKTOP | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI | GLEAM_WINDOW_RENDERER_API,
+	BorderlessFullscreen = SDL_WINDOW_BORDERLESS | SDL_WINDOW_FULLSCREEN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY | GLEAM_WINDOW_RENDERER_API,
+	ExclusiveFullscreen = SDL_WINDOW_FULLSCREEN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY | GLEAM_WINDOW_RENDERER_API,
 #else
-	BorderlessFullscreen = SDL_WINDOW_BORDERLESS | SDL_WINDOW_FULLSCREEN | SDL_WINDOW_ALLOW_HIGHDPI | GLEAM_WINDOW_RENDERER_API,
-	ExclusiveFullscreen = SDL_WINDOW_FULLSCREEN | SDL_WINDOW_ALLOW_HIGHDPI |GLEAM_WINDOW_RENDERER_API,
+	BorderlessFullscreen = SDL_WINDOW_BORDERLESS | SDL_WINDOW_FULLSCREEN | SDL_WINDOW_HIGH_PIXEL_DENSITY| GLEAM_WINDOW_RENDERER_API,
+	ExclusiveFullscreen = SDL_WINDOW_FULLSCREEN | SDL_WINDOW_HIGH_PIXEL_DENSITY | GLEAM_WINDOW_RENDERER_API,
 #endif
-	MaximizedWindow = SDL_WINDOW_MAXIMIZED | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI | GLEAM_WINDOW_RENDERER_API,
-	CustomWindow = SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI | GLEAM_WINDOW_RENDERER_API
+	MaximizedWindow = SDL_WINDOW_MAXIMIZED | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY | GLEAM_WINDOW_RENDERER_API,
+	CustomWindow = SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY | GLEAM_WINDOW_RENDERER_API
 };
 
 struct DisplayMode
@@ -43,51 +43,32 @@ public:
 
 	static DisplayMode GetCurrentDisplayMode(uint32_t monitor)
 	{
-		SDL_DisplayMode currDisplay;
-		SDL_GetCurrentDisplayMode(monitor, &currDisplay);
+		auto currDisplay = SDL_GetCurrentDisplayMode(monitor);
         return DisplayMode
         {
-			static_cast<SDL_PixelFormatEnum>(currDisplay.format),
-			static_cast<uint32_t>(currDisplay.w),
-            static_cast<uint32_t>(currDisplay.h),
-            static_cast<uint32_t>(currDisplay.refresh_rate),
+			static_cast<SDL_PixelFormatEnum>(currDisplay->format),
+			static_cast<uint32_t>(currDisplay->w),
+            static_cast<uint32_t>(currDisplay->h),
+            static_cast<uint32_t>(currDisplay->refresh_rate),
 			monitor
         };
 	}
 
-	static DisplayMode GetDisplayModeWithIndex(uint32_t monitor, uint32_t modeIndex)
+	static TArray<DisplayMode> GetAvailableDisplayModes()
 	{
-		SDL_DisplayMode currDisplay;
-		SDL_GetDisplayMode(monitor, modeIndex, &currDisplay);
-		return DisplayMode
+        SDL_DisplayID display = SDL_GetPrimaryDisplay();
+        int num_modes = 0;
+        auto modes = SDL_GetFullscreenDisplayModes(display, &num_modes);
+        if (modes)
         {
-			static_cast<SDL_PixelFormatEnum>(currDisplay.format),
-            static_cast<uint32_t>(currDisplay.w),
-            static_cast<uint32_t>(currDisplay.h),
-            static_cast<uint32_t>(currDisplay.refresh_rate),
-			monitor
-        };
-	}
-
-	static TArray<DisplayMode> GetAvailableDisplayModes(uint32_t monitor)
-	{
-		uint32_t numDisplayModes = GetNumDisplayModes(monitor);
-		TArray<DisplayMode> availableDisplayModes(numDisplayModes);
-		for (uint32_t i = 0; i < numDisplayModes; i++)
-		{
-			availableDisplayModes[i] = GetDisplayModeWithIndex(monitor, i);
-		}
-		return availableDisplayModes;
-	}
-
-	static uint32_t GetNumDisplayModes(uint32_t monitor)
-	{
-		return SDL_GetNumDisplayModes(monitor);
-	}
-
-	static uint32_t GetNumVideoDisplays()
-	{
-		return SDL_GetNumVideoDisplays();
+            for (int i = 0; i < num_modes; ++i)
+            {
+                auto mode = modes[i];
+                SDL_Log("Display %" SDL_PRIu32 " mode %d: %dx%d@%gx %gHz\n",
+                        display, i, mode->w, mode->h, mode->pixel_density, mode->refresh_rate);
+            }
+            SDL_free(modes);
+        }
 	}
 
 };

@@ -12,7 +12,7 @@ file(GLOB_RECURSE SOURCE_FILES
 
 # Setup link libraries
 if (WIN32)
-    set(GLEAM_RUNTIME_LIB_LINKS SDL2main.lib SDL2-static.lib volk.lib spirv-reflect-static.lib winmm version Imm32 Setupapi PARENT_SCOPE)
+    set(GLEAM_RUNTIME_LIB_LINKS SDL3-static.lib volk.lib spirv-reflect-static.lib winmm version Imm32 Setupapi PARENT_SCOPE)
     set_source_files_properties(${SHADER_FILES} PROPERTIES VS_TOOL_OVERRIDE "None")
 elseif (APPLE)
     SET(MACOS_FRAMEWORKS   "-framework Cocoa
@@ -32,9 +32,9 @@ elseif (APPLE)
                             -framework GameController
                             -framework CoreHaptics
                             -framework UniformTypeIdentifiers")
-    set(GLEAM_RUNTIME_LIB_LINKS ${MACOS_FRAMEWORKS} SDL2main.a SDL2.a iconv PARENT_SCOPE)
+    set(GLEAM_RUNTIME_LIB_LINKS ${MACOS_FRAMEWORKS} SDL3.a iconv PARENT_SCOPE)
 else()
-    set(GLEAM_RUNTIME_LIB_LINKS SDL2main.a SDL2.a volk.a spirv-reflect-static.a PARENT_SCOPE)
+    set(GLEAM_RUNTIME_LIB_LINKS SDL3.a volk.a spirv-reflect-static.a PARENT_SCOPE)
 endif()
 
 # Set Runtime as static library
@@ -46,7 +46,7 @@ if (APPLE)
     set(GLEAM_RUNTIME_INCLUDE_DIRS
         src
         ${Vulkan_INCLUDE_DIRS}
-        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/SDL2/include
+        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/SDL/include
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/fmt/include
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/stb
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/entt/single_include
@@ -62,7 +62,7 @@ else()
     set(GLEAM_RUNTIME_INCLUDE_DIRS
         src
         ${Vulkan_INCLUDE_DIRS}
-        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/SDL2/include
+        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/SDL/include
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/fmt/include
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/stb
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/entt/single_include

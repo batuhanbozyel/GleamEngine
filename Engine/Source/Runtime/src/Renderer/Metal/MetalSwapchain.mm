@@ -9,7 +9,7 @@
 #include "Core/Events/RendererEvent.h"
 #include "Renderer/RendererConfig.h"
 
-#import <SDL_metal.h>
+#import <SDL3/SDL_metal.h>
 #import <QuartzCore/CAMetalLayer.h>
 
 using namespace Gleam;

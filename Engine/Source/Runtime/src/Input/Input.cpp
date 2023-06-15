@@ -1,19 +1,25 @@
 #include "gpch.h"
 #include "Input.h"
 #include "Core/Events/KeyEvent.h"
-#include <SDL.h>
+#include <SDL3/SDL.h>
 
 using namespace Gleam;
 
-void Input::ShowCursor(bool visible)
+void Input::ShowCursor()
 {
-    SDL_ShowCursor(static_cast<int>(visible));
-    SDL_SetRelativeMouseMode(static_cast<SDL_bool>(!visible));
+    SDL_ShowCursor();
+    SDL_SetRelativeMouseMode(SDL_FALSE);
 }
 
-bool Input::GetCursorVisible()
+void Input::HideCursor()
 {
-	return SDL_ShowCursor(SDL_QUERY);
+    SDL_HideCursor();
+    SDL_SetRelativeMouseMode(SDL_TRUE);
+}
+
+bool Input::CursorVisible()
+{
+	return SDL_CursorVisible();
 }
 
 bool Input::GetButtonDown(const KeyCode keycode)
@@ -72,15 +78,9 @@ void Input::KeyboardEventHandler(SDL_KeyboardEvent keyboardEvent)
 
 void Input::Update()
 {
-    int x, y;
-    mMouseState = SDL_GetMouseState(&x, &y);
-    mMousePosition.x = static_cast<float>(x);
-    mMousePosition.y = static_cast<float>(y);
+    mMouseState = SDL_GetMouseState(&mMousePosition.x, &mMousePosition.y);
+    mRelativeMouseState = SDL_GetRelativeMouseState(&mAxis.x, &mAxis.y);
     mKeyboardState = SDL_GetKeyboardState(nullptr);
-    
-    mRelativeMouseState = SDL_GetRelativeMouseState(&x, &y);
-    mAxis.x = static_cast<float>(x);
-    mAxis.y = static_cast<float>(y);
 }
 
 void Input::MouseMoveEventHandler(SDL_MouseMotionEvent motionEvent)
@@ -90,7 +90,7 @@ void Input::MouseMoveEventHandler(SDL_MouseMotionEvent motionEvent)
 
 void Input::MouseScrollEventHandler(SDL_MouseWheelEvent wheelEvent)
 {
-    EventDispatcher<MouseScrolledEvent>::Publish(MouseScrolledEvent(wheelEvent.preciseX, wheelEvent.preciseY));
+    EventDispatcher<MouseScrolledEvent>::Publish(MouseScrolledEvent(wheelEvent.x, wheelEvent.y));
 }
 
 void Input::MouseButtonEventHandler(SDL_MouseButtonEvent buttonEvent)

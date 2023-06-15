@@ -1,9 +1,6 @@
 [submodule "Engine/ThirdParty/entt"]
 	path = Engine/ThirdParty/entt
 	url = https://github.com/skypjack/entt
-[submodule "Engine/ThirdParty/SDL2"]
-	path = Engine/ThirdParty/SDL2
-url=https://github.com/batuhanbozyel/SDL
 [submodule "Engine/ThirdParty/tinyobjloader"]
 	path = Engine/ThirdParty/tinyobjloader
 	url = https://github.com/tinyobjloader/tinyobjloader
@@ -34,3 +31,6 @@ url=https://github.com/batuhanbozyel/SDL
 [submodule "Engine/ThirdParty/SPIRV-Reflect"]
 	path = Engine/ThirdParty/SPIRV-Reflect
 	url = https://github.com/KhronosGroup/SPIRV-Reflect
+[submodule "Engine/ThirdParty/SDL"]
+	path = Engine/ThirdParty/SDL
+	url = https://github.com/libsdl-org/SDL

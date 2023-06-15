@@ -16,14 +16,12 @@ Window::Window(const WindowProperties& props)
 
 	// create window
 	mWindow = SDL_CreateWindow(mProperties.title.c_str(),
-		SDL_WINDOWPOS_CENTERED_DISPLAY(mProperties.display.monitor),
-		SDL_WINDOWPOS_CENTERED_DISPLAY(mProperties.display.monitor),
-		mProperties.display.width, mProperties.display.height,
-		static_cast<uint32_t>(mProperties.windowFlag));
+                               mProperties.display.width, mProperties.display.height,
+                               static_cast<uint32_t>(mProperties.windowFlag));
 	GLEAM_ASSERT(mWindow, "Window creation failed!");
 
 	// update window props with the created window info
-	int monitor = SDL_GetWindowDisplayIndex(mWindow);
+	int monitor = SDL_GetDisplayForWindow(mWindow);
 	GLEAM_ASSERT(monitor >= 0, "Window display index is invalid!");
 
 	mProperties.display = WindowConfig::GetCurrentDisplayMode(monitor);
@@ -42,54 +40,54 @@ Window::~Window()
 
 void Window::EventHandler(SDL_WindowEvent windowEvent)
 {
-	switch (windowEvent.event)
+	switch (windowEvent.type)
 	{
-		case SDL_WINDOWEVENT_MOVED:
+		case SDL_EVENT_WINDOW_MOVED:
 		{
 			EventDispatcher<WindowMovedEvent>::Publish(WindowMovedEvent(SDL_GetWindowFromID(windowEvent.windowID), windowEvent.data1, windowEvent.data2));
 			break;
 		}
-		case SDL_WINDOWEVENT_RESIZED:
+		case SDL_EVENT_WINDOW_RESIZED:
 		{
 			EventDispatcher<WindowResizeEvent>::Publish(WindowResizeEvent(SDL_GetWindowFromID(windowEvent.windowID), windowEvent.data1, windowEvent.data2));
 			break;
 		}
-		case SDL_WINDOWEVENT_MINIMIZED:
+		case SDL_EVENT_WINDOW_MINIMIZED:
 		{
 			EventDispatcher<WindowMinimizeEvent>::Publish(WindowMinimizeEvent(SDL_GetWindowFromID(windowEvent.windowID)));
 			break;
 		}
-		case SDL_WINDOWEVENT_MAXIMIZED:
+		case SDL_EVENT_WINDOW_MAXIMIZED:
 		{
 			EventDispatcher<WindowMaximizeEvent>::Publish(WindowMaximizeEvent(SDL_GetWindowFromID(windowEvent.windowID)));
 			break;
 		}
-		case SDL_WINDOWEVENT_RESTORED:
+		case SDL_EVENT_WINDOW_RESTORED:
 		{
 			EventDispatcher<WindowRestoreEvent>::Publish(WindowRestoreEvent(SDL_GetWindowFromID(windowEvent.windowID)));
 			break;
 		}
-		case SDL_WINDOWEVENT_ENTER:
+		case SDL_EVENT_WINDOW_MOUSE_ENTER:
 		{
 			EventDispatcher<WindowMouseEnterEvent>::Publish(WindowMouseEnterEvent(SDL_GetWindowFromID(windowEvent.windowID)));
 			break;
 		}
-		case SDL_WINDOWEVENT_LEAVE:
+		case SDL_EVENT_WINDOW_MOUSE_LEAVE:
 		{
 			EventDispatcher<WindowMouseLeaveEvent>::Publish(WindowMouseLeaveEvent(SDL_GetWindowFromID(windowEvent.windowID)));
 			break;
 		}
-		case SDL_WINDOWEVENT_FOCUS_GAINED:
+		case SDL_EVENT_WINDOW_FOCUS_GAINED:
 		{
 			EventDispatcher<WindowFocusEvent>::Publish(WindowFocusEvent(SDL_GetWindowFromID(windowEvent.windowID)));
 			break;
 		}
-		case SDL_WINDOWEVENT_FOCUS_LOST:
+		case SDL_EVENT_WINDOW_FOCUS_LOST:
 		{
 			EventDispatcher<WindowLostFocusEvent>::Publish(WindowLostFocusEvent(SDL_GetWindowFromID(windowEvent.windowID)));
 			break;
 		}
-		case SDL_WINDOWEVENT_CLOSE:
+		case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
 		{
 			EventDispatcher<WindowCloseEvent>::Publish(WindowCloseEvent(SDL_GetWindowFromID(windowEvent.windowID)));
 			break;

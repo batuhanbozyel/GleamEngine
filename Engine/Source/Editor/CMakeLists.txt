@@ -3,7 +3,7 @@ include (${CMAKE_SOURCE_DIR}/CMake/CMakeUtils.cmake)
 set(GLEAM_EDITOR_INCLUDE_DIRS
     src
     ${CMAKE_SOURCE_DIR}/Engine/Source/Runtime/src
-    ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/SDL2/include
+    ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/SDL/include
     ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/fmt/include
     ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/entt/single_include
     ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui
@@ -28,7 +28,7 @@ if (APPLE)
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui/imgui_widgets.cpp
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui/imgui_demo.cpp
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui/imgui_tables.cpp
-        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui/backends/imgui_impl_sdl2.cpp
+        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui/backends/imgui_impl_sdl3.cpp
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui/backends/imgui_impl_metal.mm
     )
 
@@ -41,7 +41,7 @@ else ()
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui/imgui_widgets.cpp
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui/imgui_demo.cpp
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui/imgui_tables.cpp
-        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui/backends/imgui_impl_sdl2.cpp
+        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui/backends/imgui_impl_sdl3.cpp
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui/backends/imgui_impl_vulkan.cpp
     )
 endif()
@@ -49,7 +49,7 @@ endif()
 # Configure imgui
 target_include_directories(imgui PRIVATE
     ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui
-    ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/SDL2/include
+    ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/SDL/include
 )
 
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${SOURCE_FILES})

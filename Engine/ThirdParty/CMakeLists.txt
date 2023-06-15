@@ -1,16 +1,16 @@
 include (${CMAKE_SOURCE_DIR}/CMake/CMakeUtils.cmake)
 
+set(BUILD_SHARED_LIBS OFF)
+
 add_subdirectory(fmt)
 add_subdirectory(entt)
-add_subdirectory(SDL2)
+add_subdirectory(SDL)
 add_subdirectory(volk)
 add_subdirectory(googletest)
 add_subdirectory(SPIRV-Reflect)
 
 set_target_properties (
-    SDL2
-    SDL2main
-    SDL2-static
+    SDL3-static
     gmock
     gmock_main
     gtest

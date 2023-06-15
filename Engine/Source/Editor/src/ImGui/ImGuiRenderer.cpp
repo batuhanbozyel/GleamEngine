@@ -3,7 +3,7 @@
 
 #include <imgui.h>
 
-#include "backends/imgui_impl_sdl2.h"
+#include "backends/imgui_impl_sdl3.h"
 
 using namespace GEditor;
 
@@ -19,7 +19,7 @@ void ImGuiRenderer::OnCreate(Gleam::RendererContext* context)
 	mBackend = Gleam::CreateScope<ImGuiBackend>();
     GameInstance->SetEventHandler([](const SDL_Event* e)
     {
-        ImGui_ImplSDL2_ProcessEvent(e);
+        ImGui_ImplSDL3_ProcessEvent(e);
     });
 }
 

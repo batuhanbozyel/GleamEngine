@@ -54,7 +54,7 @@ void WorldViewportController::OnUpdate(Gleam::EntityManager& entityManager)
 
 void WorldViewportController::ProcessCameraRotation(Gleam::Camera& camera)
 {
-	if (!Gleam::Input::GetCursorVisible())
+	if (!Gleam::Input::CursorVisible())
     {
         constexpr float mouseSensitivity = 0.1f;
         mYaw += Gleam::Input::GetAxisX() * mouseSensitivity;
