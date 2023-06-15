@@ -10,8 +10,40 @@ file(GLOB_RECURSE SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/src/*.h
 )
 
+# Setup link libraries
 if (WIN32)
-    set(INCLUDE_DIRS_RUNTIME
+    set(GLEAM_RUNTIME_LIB_LINKS SDL2main.lib SDL2-static.lib volk.lib spirv-reflect-static.lib winmm version Imm32 Setupapi PARENT_SCOPE)
+    set_source_files_properties(${SHADER_FILES} PROPERTIES VS_TOOL_OVERRIDE "None")
+elseif (APPLE)
+    SET(MACOS_FRAMEWORKS   "-framework Cocoa
+                            -framework Carbon
+                            -framework IOKit
+                            -framework ModelIO
+                            -framework ForceFeedback
+                            -framework AudioToolbox
+                            -framework Metal
+                            -framework MetalKit
+                            -framework Foundation
+                            -framework AVFoundation
+                            -framework CoreVideo
+                            -framework CoreAudio
+                            -framework CoreGraphics
+                            -framework QuartzCore
+                            -framework GameController
+                            -framework CoreHaptics
+                            -framework UniformTypeIdentifiers")
+    set(GLEAM_RUNTIME_LIB_LINKS ${MACOS_FRAMEWORKS} SDL2main.a SDL2.a iconv PARENT_SCOPE)
+else()
+    set(GLEAM_RUNTIME_LIB_LINKS SDL2main.a SDL2.a volk.a spirv-reflect-static.a PARENT_SCOPE)
+endif()
+
+# Set Runtime as static library
+list(APPEND SOURCE_FILES ${SHADER_FILES})
+add_library(Runtime STATIC ${SOURCE_FILES})
+
+# Include directories
+if (APPLE)
+    set(GLEAM_RUNTIME_INCLUDE_DIRS
         src
         ${Vulkan_INCLUDE_DIRS}
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/SDL2/include
@@ -24,17 +56,12 @@ if (WIN32)
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/volk
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/SPIRV-Reflect
     )
-
-    set(LIB_LINKS_RUNTIME
-        ${CMAKE_SOURCE_DIR}/bin/$<CONFIG>/volk.lib
-        ${CMAKE_SOURCE_DIR}/bin/$<CONFIG>/spirv-reflect-static.lib
-    )
-
-    set_source_files_properties(${SHADER_FILES} PROPERTIES VS_TOOL_OVERRIDE "None")
-
-else ()
-    set(INCLUDE_DIRS_RUNTIME
+    set_source_files_properties(${SOURCE_FILES} PROPERTIES COMPILE_FLAGS "-x objective-c++")
+    set_target_properties(Runtime PROPERTIES MACOSX_BUNDLE YES XCODE_ATTRIBUTE_CLANG_ENABLE_OBJC_ARC YES)
+else()
+    set(GLEAM_RUNTIME_INCLUDE_DIRS
         src
+        ${Vulkan_INCLUDE_DIRS}
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/SDL2/include
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/fmt/include
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/stb
@@ -42,37 +69,22 @@ else ()
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/tinyobjloader
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/OpenFBX/src
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/cgltf
+        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/volk
+        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/SPIRV-Reflect
     )
-
-    set(LIB_LINKS_RUNTIME "")
-    
 endif()
 
-list(APPEND SOURCE_FILES ${SHADER_FILES})
-add_library(Runtime STATIC ${SOURCE_FILES})
-
-if (NOT APPLE)
-    add_dependencies(Runtime volk spirv-reflect-static)
-else()
-    set_source_files_properties(${SOURCE_FILES} PROPERTIES COMPILE_FLAGS "-x objective-c++")
-    set_target_properties(Runtime PROPERTIES MACOSX_BUNDLE YES XCODE_ATTRIBUTE_CLANG_ENABLE_OBJC_ARC YES)
-endif()
-
-target_include_directories(Runtime PUBLIC ${INCLUDE_DIRS_RUNTIME})
-
-set_property(TARGET Runtime PROPERTY STATIC_LIBRARY_OPTIONS ${LIB_LINKS_RUNTIME})
+# Configure Runtime target
+target_include_directories(Runtime PUBLIC ${GLEAM_RUNTIME_INCLUDE_DIRS})
 target_link_directories(Runtime PUBLIC ${CMAKE_SOURCE_DIR}/bin/$<CONFIG>)
-if (WIN32)
-    target_link_libraries(Runtime PUBLIC SDL2main.lib SDL2-static.lib)
-else()
-    target_link_libraries(Runtime PUBLIC SDL2main.a SDL2.a)
-endif()
-
+target_link_libraries(Runtime PUBLIC ${GLEAM_RUNTIME_LIB_LINKS})
 target_precompile_headers(Runtime PUBLIC "src/gpch.h")
 
+# Setup souce grouping and working directory 
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${SOURCE_FILES})
 SET_WORKING_DIRECTORY(Runtime ${CMAKE_SOURCE_DIR})
 
+# 
 target_compile_definitions(
     Runtime
 
@@ -84,6 +96,7 @@ target_compile_definitions(
     $<$<CONFIG:Release>:GRELEASE>
 )
 
+# Precompile shaders
 if (NOT APPLE)
     set(HLSL_FILE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/src/Renderer/Vulkan/Shaders)
     ADD_VERTEX_SHADER(Runtime ${HLSL_FILE_PATH}/CommonShader.hlsl fullscreenTriangleVertexShader)
@@ -102,3 +115,5 @@ else()
         COMMAND xcrun -sdk macosx metal -frecord-sources=flat ${MSL_FILES} -o ${CMAKE_SOURCE_DIR}/Assets/PrecompiledShaders.metallib
     )
 endif()
+
+add_subdirectory(${CMAKE_SOURCE_DIR}/Engine/ThirdParty ${CMAKE_BINARY_DIR}/ThirdParty)

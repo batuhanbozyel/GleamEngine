@@ -60,7 +60,6 @@ project(GleamEngine)
     set(SPIRV_REFLECT_EXAMPLES OFF CACHE BOOL "" FORCE)
 
     #subfolders
-    add_subdirectory(Engine/ThirdParty)
     add_subdirectory(Engine/Source/Runtime)
     add_subdirectory(Engine/Source/Editor)
     add_subdirectory(Engine/Source/UnitTest)
