@@ -1,5 +1,5 @@
 #pragma once
-#include "Model.h"
+#include "Assets/Model.h"
 #include "Renderer/Mesh.h"
 #include "Renderer/Material.h"
 

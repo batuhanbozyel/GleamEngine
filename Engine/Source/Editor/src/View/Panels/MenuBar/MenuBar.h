@@ -6,7 +6,7 @@
 //
 
 #pragma once
-#include "View.h"
+#include "View/View.h"
 
 namespace GEditor {
 
