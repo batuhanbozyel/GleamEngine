@@ -1,5 +1,6 @@
 #pragma once
 #include "Gleam.h"
+#include <SDL3/SDL_main.h>
 
 #if defined(PLATFORM_WINDOWS) || defined(PLATFORM_MACOS) || defined(PLATFORM_IOS)
 Gleam::Application* Gleam::CreateApplicationInstance();
@@ -10,11 +11,11 @@ extern "C"
 
 int main(int argc, char* argv[])
 {
-	Gleam::Application* game = Gleam::CreateApplicationInstance();
+	Gleam::Application* app = Gleam::CreateApplicationInstance();
 
-    game->Run();
+    app->Run();
 
-	delete game;
+	delete app;
 
 	return EXIT_SUCCESS;
 }
