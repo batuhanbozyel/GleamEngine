@@ -56,8 +56,9 @@ source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${SOURCE_FILES})
 SET_WORKING_DIRECTORY(Editor ${CMAKE_SOURCE_DIR})
 
 # Link Runtime and imgui
+get_target_property(GLEAM_RUNTIME_LIBS Runtime LINK_LIBRARIES)
 if (WIN32)
-    target_link_libraries(Editor PRIVATE Runtime.lib imgui.lib ${GLEAM_RUNTIME_LIB_LINKS})
+    target_link_libraries(Editor PRIVATE Runtime.lib imgui.lib ${GLEAM_RUNTIME_LIBS})
 else()
-    target_link_libraries(Editor PRIVATE Runtime.a imgui.a ${GLEAM_RUNTIME_LIB_LINKS})
+    target_link_libraries(Editor PRIVATE Runtime.a imgui.a ${GLEAM_RUNTIME_LIBS})
 endif()

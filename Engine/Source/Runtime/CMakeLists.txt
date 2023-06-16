@@ -1,9 +1,14 @@
 include (${CMAKE_SOURCE_DIR}/CMake/CMakeUtils.cmake)
 
+# Third-party libraries
+add_subdirectory(${CMAKE_SOURCE_DIR}/Engine/ThirdParty ${CMAKE_BINARY_DIR}/ThirdParty)
+
+# Runtime shader files
 file(GLOB_RECURSE MSL_FILES ${CMAKE_CURRENT_SOURCE_DIR}/src/*.metal)
 file(GLOB_RECURSE HLSL_FILES ${CMAKE_CURRENT_SOURCE_DIR}/src/*.hlsl)
 set(SHADER_FILES ${MSL_FILES} ${HLSL_FILES})
 
+# Runtime source files
 file(GLOB_RECURSE SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/*.mm
@@ -12,29 +17,12 @@ file(GLOB_RECURSE SOURCE_FILES
 
 # Setup link libraries
 if (WIN32)
-    set(GLEAM_RUNTIME_LIB_LINKS SDL3-static.lib volk.lib spirv-reflect-static.lib winmm version Imm32 Setupapi PARENT_SCOPE)
+    set(LIB_LINKS SDL3::SDL3-static volk.lib spirv-reflect-static.lib)
     set_source_files_properties(${SHADER_FILES} PROPERTIES VS_TOOL_OVERRIDE "None")
 elseif (APPLE)
-    SET(MACOS_FRAMEWORKS   "-framework Cocoa
-                            -framework Carbon
-                            -framework IOKit
-                            -framework ModelIO
-                            -framework ForceFeedback
-                            -framework AudioToolbox
-                            -framework Metal
-                            -framework MetalKit
-                            -framework Foundation
-                            -framework AVFoundation
-                            -framework CoreVideo
-                            -framework CoreAudio
-                            -framework CoreGraphics
-                            -framework QuartzCore
-                            -framework GameController
-                            -framework CoreHaptics
-                            -framework UniformTypeIdentifiers")
-    set(GLEAM_RUNTIME_LIB_LINKS ${MACOS_FRAMEWORKS} SDL3.a iconv PARENT_SCOPE)
+    set(LIB_LINKS SDL3::SDL3-static "-framework UniformTypeIdentifiers")
 else()
-    set(GLEAM_RUNTIME_LIB_LINKS SDL3.a volk.a spirv-reflect-static.a PARENT_SCOPE)
+    set(LIB_LINKS SDL3::SDL3-static volk.a spirv-reflect-static.a)
 endif()
 
 # Set Runtime as static library
@@ -43,7 +31,7 @@ add_library(Runtime STATIC ${SOURCE_FILES})
 
 # Include directories
 if (APPLE)
-    set(GLEAM_RUNTIME_INCLUDE_DIRS
+    set(INCLUDE_DIRS
         src
         ${Vulkan_INCLUDE_DIRS}
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/SDL/include
@@ -59,7 +47,7 @@ if (APPLE)
     set_source_files_properties(${SOURCE_FILES} PROPERTIES COMPILE_FLAGS "-x objective-c++")
     set_target_properties(Runtime PROPERTIES MACOSX_BUNDLE YES XCODE_ATTRIBUTE_CLANG_ENABLE_OBJC_ARC YES)
 else()
-    set(GLEAM_RUNTIME_INCLUDE_DIRS
+    set(INCLUDE_DIRS
         src
         ${Vulkan_INCLUDE_DIRS}
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/SDL/include
@@ -75,9 +63,9 @@ else()
 endif()
 
 # Configure Runtime target
-target_include_directories(Runtime PUBLIC ${GLEAM_RUNTIME_INCLUDE_DIRS})
+target_include_directories(Runtime PUBLIC ${INCLUDE_DIRS})
 target_link_directories(Runtime PUBLIC ${CMAKE_SOURCE_DIR}/bin/$<CONFIG>)
-target_link_libraries(Runtime PUBLIC ${GLEAM_RUNTIME_LIB_LINKS})
+target_link_libraries(Runtime PUBLIC ${LIB_LINKS})
 target_precompile_headers(Runtime PUBLIC "src/gpch.h")
 
 # Setup souce grouping and working directory 
@@ -115,5 +103,3 @@ else()
         COMMAND xcrun -sdk macosx metal -frecord-sources=flat ${MSL_FILES} -o ${CMAKE_SOURCE_DIR}/Assets/PrecompiledShaders.metallib
     )
 endif()
-
-add_subdirectory(${CMAKE_SOURCE_DIR}/Engine/ThirdParty ${CMAKE_BINARY_DIR}/ThirdParty)
