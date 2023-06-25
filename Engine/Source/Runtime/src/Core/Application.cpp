@@ -62,7 +62,7 @@ int SDLCALL Application::SDL2_EventHandler(void* data, SDL_Event* e)
 }
 
 Application::Application(const ApplicationProperties& props)
-	: mVersion(props.appVersion)
+	: mVersion(props.version)
 {
 	if (mInstance == nullptr)
 	{

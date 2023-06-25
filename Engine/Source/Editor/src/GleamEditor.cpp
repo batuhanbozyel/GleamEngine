@@ -36,7 +36,7 @@ private:
 Gleam::Application* Gleam::CreateApplicationInstance()
 {
     Gleam::ApplicationProperties props;
-    props.appVersion = Gleam::Version(1, 0, 0);
+    props.version = Gleam::Version(1, 0, 0);
     props.windowProps.title = "Gleam Editor";
     props.windowProps.windowFlag = Gleam::WindowFlag::MaximizedWindow;
     return new GEditor::GleamEditor(props);
