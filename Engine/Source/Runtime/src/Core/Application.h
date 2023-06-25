@@ -1,17 +1,16 @@
 #pragma once
-#include "Window.h"
-#include "System.h"
+#include "Subsystem.h"
 #include "ApplicationConfig.h"
-#include "Renderer/RenderPipeline.h"
-#include "Renderer/RendererContext.h"
 
 union SDL_Event;
 struct SDL_Window;
 
 namespace Gleam {
 
+class InputSystem;
+
 template <typename T>
-concept SystemType = std::is_base_of<System, T>::value;
+concept SystemType = std::is_base_of<Subsystem, T>::value;
 
 using EventHandlerFn = std::function<void(const SDL_Event*)>;
 
@@ -23,34 +22,31 @@ public:
 
 	Application(const ApplicationProperties& props);
 	virtual ~Application();
-
-	void Run();
     
-    void Quit();
+	void Run();
 
 	template<SystemType T>
-	T* AddSystem()
+	T* AddSubsystem()
 	{
-		GLEAM_ASSERT(!HasSystem<T>(), "Application already has the system!");
-		T* system = mSystems.emplace<T>();
-        system->OnCreate();
-		return system;
+		GLEAM_ASSERT(!HasSubsystem<T>(), "Application already has the subsystem!");
+        T* system = mSubsystems.emplace<T>();
+        system->Initialize();
+        return system;
 	}
 
 	template<SystemType T>
-	void RemoveSystem()
+	void RemoveSubsystem()
 	{
-		GLEAM_ASSERT(HasSystem<T>(), "Application does not have the system!");
-		T* system = mSystems.get<T>();
-        system->OnDestroy();
-        mSystems.erase<T>();
+        GLEAM_ASSERT(HasSubsystem<T>(), "Application does not have the subsystem!");
+        auto system = mSubsystems.get<T>();
+        system->Shutdown();
+        mSubsystems.erase<T>();
 	}
     
     template<SystemType T>
-    T* GetSystem()
+    T* GetSubsystem()
     {
-        GLEAM_ASSERT(HasSystem<T>(), "Application does not have the system!");
-        return mSystems.get<T>();
+        return mSubsystems.get<T>();
     }
     
     void SetEventHandler(EventHandlerFn&& fn)
@@ -58,30 +54,10 @@ public:
         mEventHandler = std::move(fn);
     }
 
-	RenderPipeline* GetRenderPipeline()
-    {
-        return mRenderPipeline.get();
-    }
-    
-    const RenderPipeline* GetRenderPipeline() const
-    {
-        return mRenderPipeline.get();
-    }
-
-	const Window* GetWindow() const
-	{
-		return mWindow.get();
-	}
-
 	const Version& GetVersion() const
 	{
 		return mVersion;
 	}
-    
-    const RendererConfig& GetRendererConfig() const
-    {
-        return mRendererContext.GetConfiguration();
-    }
     
     Filesystem::path GetDefaultAssetPath() const
     {
@@ -93,31 +69,27 @@ public:
 		return mInstance;
 	}
 
-	Color backgroundColor = Color{0.1f, 0.1f, 0.1f, 1.0f};
-
 private:
 
 	template<SystemType T>
-    bool HasSystem() const
+    bool HasSubsystem() const
     {
-		return mSystems.contains<T>();
+        return mSubsystems.contains<T>();
     }
-
-	PolyArray<System> mSystems;
     
-    Scope<Window> mWindow;
+    static int SDLCALL SDL2_EventHandler(void* data, SDL_Event* e);
     
-    Scope<RenderPipeline> mRenderPipeline;
+    bool mRunning = true;
+    
+    Version mVersion;
     
     EventHandlerFn mEventHandler;
-
-	RendererContext mRendererContext;
-
-	bool mRunning = true;
-	Version mVersion;
+    
+    AnyArray mResourceRegistry;
+    
+    PolyArray<Subsystem> mSubsystems;
 
 	static inline Application* mInstance = nullptr;
-    static int SDLCALL SDL2_EventHandler(void* data, SDL_Event* e);
 
 };
 

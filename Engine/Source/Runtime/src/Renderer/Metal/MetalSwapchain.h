@@ -12,7 +12,7 @@ class MetalSwapchain final
 {
 public:
 
-	void Initialize(const RendererConfig& config);
+	void Initialize();
 
 	void Destroy();
     

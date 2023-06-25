@@ -23,7 +23,7 @@ public:
     static inline double maxDeltaTime = 0.01;
     static inline double fixedDeltaTime = 1.0 / 60.0;
     
-    static inline const double& time = mElapsedTime;
+    static inline const double& elapsedTime = mElapsedTime;
     static inline const double& deltaTime = mDeltaTime;
     static inline const double& fixedTime = mFixedTime;
     

@@ -9,28 +9,22 @@
 
 #ifdef USE_METAL_RENDERER
 #include "Renderer/RendererContext.h"
-#include "Renderer/RenderPipeline.h"
 #include "MetalDevice.h"
 
 using namespace Gleam;
 
-void RendererContext::ConfigureBackend(const RendererConfig& config)
+void RendererContext::ConfigureBackend()
 {
-    mConfiguration = config;
-    MetalDevice::Init(mConfiguration);
-    RenderPipeline::mRendererContext = this;
-    mCommandBuffer = CreateScope<CommandBuffer>();
+    MetalDevice::Init();
 }
 
 void RendererContext::DestroyBackend()
 {
-    mCommandBuffer.reset();
     MetalDevice::Destroy();
 }
 
-void RendererContext::SetConfiguration(const RendererConfig& config)
+void RendererContext::Configure(const RendererConfig& config) const
 {
-    mConfiguration = config;
     MetalDevice::GetSwapchain().Configure(config);
 }
 

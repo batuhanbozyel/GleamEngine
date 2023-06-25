@@ -17,7 +17,7 @@ using namespace GEditor;
 
 WorldOutliner::WorldOutliner()
 {
-    mEditWorld = GameInstance->GetSystem<ViewStack>()->GetView<WorldViewport>()->GetWorld();
+    mEditWorld = Gleam::World::active; // TODO: Fix me, active world may not be the Editor world
     mController = mEditWorld->AddSystem<WorldOutlineController>();
 }
 

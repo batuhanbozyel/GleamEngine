@@ -8,7 +8,7 @@ class ImGuiRenderer : public Gleam::IRenderer
 {
 public:
     
-    virtual void OnCreate(Gleam::RendererContext* context) override;
+    virtual void OnCreate(Gleam::RendererContext& context) override;
 
 	virtual void OnDestroy() override;
 

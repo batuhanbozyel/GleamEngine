@@ -11,23 +11,19 @@ namespace Gleam {
 
 class Application;
 
-class System
+class Subsystem
 {
     friend class Application;
 
 public:
     
-    virtual ~System() = default;
+    virtual ~Subsystem() = default;
 
 protected:
 
-	virtual void OnCreate() {}
+	virtual void Initialize() {}
     
-	virtual void OnUpdate() {}
-    
-    virtual void OnFixedUpdate() {}
-    
-	virtual void OnDestroy() {}
+	virtual void Shutdown() {}
 
 };
 

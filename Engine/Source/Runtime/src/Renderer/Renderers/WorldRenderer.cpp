@@ -15,12 +15,10 @@
 
 using namespace Gleam;
 
-void WorldRenderer::OnCreate(RendererContext* context)
+void WorldRenderer::OnCreate(RendererContext& context)
 {
-    mRendererContext = context;
-    
-    mForwardPassVertexShader = context->CreateShader("forwardPassVertexShader", ShaderStage::Vertex);
-    mForwardPassFragmentShader = context->CreateShader("forwardPassFragmentShader", ShaderStage::Fragment);
+    mForwardPassVertexShader = context.CreateShader("forwardPassVertexShader", ShaderStage::Vertex);
+    mForwardPassFragmentShader = context.CreateShader("forwardPassFragmentShader", ShaderStage::Fragment);
     
     BufferDescriptor descriptor;
     descriptor.memoryType = MemoryType::Dynamic;
@@ -33,9 +31,12 @@ void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 {
     const auto& forwardPassData = graph.AddRenderPass<WorldRenderingData>("WorldRenderer::ForwardPass", [&](RenderGraphBuilder& builder, WorldRenderingData& passData)
     {
+        const auto& renderingData = blackboard.Get<RenderingData>();
+        const auto& backbufferDescriptor = graph.GetDescriptor(renderingData.backbuffer);
+        
         TextureDescriptor descriptor;
-        descriptor.size = mRendererContext->GetDrawableSize();
-        descriptor.sampleCount = mRendererContext->GetConfiguration().sampleCount;
+        descriptor.size = backbufferDescriptor.texture.size;
+        descriptor.sampleCount = renderingData.config.sampleCount;
         descriptor.format = TextureFormat::R32G32B32A32_SFloat;
         auto colorTarget = builder.CreateRenderTexture(descriptor);
         

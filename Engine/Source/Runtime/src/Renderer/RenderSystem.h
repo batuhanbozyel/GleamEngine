@@ -1,37 +1,37 @@
 //
-//  RenderPipeline.h
-//  GleamEngine
+//  RenderSystem.h
+//  Runtime
 //
-//  Created by Batuhan Bozyel on 26.03.2023.
+//  Created by Batuhan Bozyel on 24.06.2023.
 //
 
 #pragma once
-#include "Renderer.h"
-#include "Texture.h"
+#include "Core/Subsystem.h"
+#include "CommandBuffer.h"
+#include "RendererContext.h"
 
 namespace Gleam {
 
-class RendererContext;
+class RenderTexture;
 
 template <typename T>
 concept RendererType = std::is_base_of<IRenderer, T>::value;
 
-class RenderPipeline
+class RenderSystem final : public Subsystem
 {
-    friend class RendererContext;
-    
     using Container = TArray<IRenderer*>;
     
 public:
     
-    ~RenderPipeline()
-    {
-        for (auto renderer : mRenderers)
-        {
-			renderer->OnDestroy();
-            delete renderer;
-        }
-    }
+    virtual void Initialize() override;
+    
+    virtual void Shutdown() override;
+    
+    void Render();
+    
+    void Configure(const RendererConfig& config);
+    
+    const RendererConfig& GetConfiguration() const;
     
     void SetRenderTarget(const RefCounted<RenderTexture>& rt)
     {
@@ -52,17 +52,17 @@ public:
     {
         GLEAM_ASSERT(HasRenderer<T>(), "Render pipeline does not have the renderer!");
         auto it = mRenderers.erase(std::remove_if(mRenderers.begin(), mRenderers.end(), [](const IRenderer* ptr)
-                                        {
+                                                  {
             const auto& renderer = *ptr;
             return typeid(renderer) == typeid(T);
         }));
-
-        if (it != mRenderers.end()) 
-		{
+        
+        if (it != mRenderers.end())
+        {
             auto renderer = *it;
             renderer->OnDestroy();
-			delete renderer;
-		}
+            delete renderer;
+        }
     }
     
     template<RendererType T>
@@ -70,7 +70,7 @@ public:
     {
         GLEAM_ASSERT(HasRenderer<T>(), "Render pipeline does not have the renderer!");
         auto it = std::find_if(mRenderers.begin(), mRenderers.end(), [](const IRenderer* ptr)
-        {
+                               {
             const auto& renderer = *ptr;
             return typeid(renderer) == typeid(T);
         });
@@ -81,7 +81,7 @@ public:
     bool HasRenderer()
     {
         auto it = std::find_if(mRenderers.begin(), mRenderers.end(), [](const IRenderer* ptr)
-        {
+                               {
             const auto& renderer = *ptr;
             return typeid(renderer) == typeid(T);
         });
@@ -92,7 +92,7 @@ public:
     uint32_t GetIndexOf() const
     {
         auto it = std::find_if(mRenderers.begin(), mRenderers.end(), [](const IRenderer* ptr)
-        {
+                               {
             const auto& renderer = *ptr;
             return typeid(renderer) == typeid(T);
         });
@@ -123,11 +123,15 @@ private:
     
     Container mRenderers;
     
-    RefCounted<RenderTexture> mRenderTarget = CreateRef<RenderTexture>();
+    RendererConfig mConfiguration;
     
-    // initialized and set when a Game instance is created
-    static inline RendererContext* mRendererContext = nullptr;
+    RendererContext mRendererContext;
+    
+    Scope<CommandBuffer> mCommandBuffer;
+    
+    RefCounted<RenderTexture> mRenderTarget;
     
 };
 
-} // Gleam
+} // namespace Gleam
+

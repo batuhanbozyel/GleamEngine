@@ -16,7 +16,7 @@ class PostProcessStack : public IRenderer
 {
 public:
     
-    virtual void OnCreate(RendererContext* context) override;
+    virtual void OnCreate(RendererContext& context) override;
     
     virtual void AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard) override;
     

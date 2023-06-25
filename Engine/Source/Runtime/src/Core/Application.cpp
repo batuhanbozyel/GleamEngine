@@ -1,23 +1,23 @@
 #include "gpch.h"
 #include "Application.h"
+#include "WindowSystem.h"
 
-#include "Window.h"
-#include "Input/Input.h"
 #include "World/World.h"
-
-#include "Renderer/Renderers/WorldRenderer.h"
-#include "Renderer/Renderers/PostProcessStack.h"
+#include "Input/InputSystem.h"
+#include "Renderer/RenderSystem.h"
 
 using namespace Gleam;
 
 int SDLCALL Application::SDL2_EventHandler(void* data, SDL_Event* e)
 {
-    if (e->type >= SDL_EVENT_WINDOW_FIRST and e->type <= SDL_EVENT_WINDOW_LAST)
+    static auto windowSystem = GameInstance->GetSubsystem<WindowSystem>();
+    if (e->type >= SDL_EVENT_WINDOW_FIRST && e->type <= SDL_EVENT_WINDOW_LAST)
     {
-        Window::EventHandler(e->window);
+        windowSystem->EventHandler(e->window);
         return 0;
     }
     
+    static auto inputSystem = GameInstance->GetSubsystem<InputSystem>();
 	switch (e->type)
 	{
 		case SDL_EVENT_QUIT:
@@ -28,23 +28,23 @@ int SDLCALL Application::SDL2_EventHandler(void* data, SDL_Event* e)
 		case SDL_EVENT_KEY_DOWN:
 		case SDL_EVENT_KEY_UP:
 		{
-			Input::KeyboardEventHandler(e->key);
+			inputSystem->KeyboardEventHandler(e->key);
 			break;
 		}
 		case SDL_EVENT_MOUSE_MOTION:
 		{
-			Input::MouseMoveEventHandler(e->motion);
+            inputSystem->MouseMoveEventHandler(e->motion);
 			break;
 		}
 		case SDL_EVENT_MOUSE_WHEEL:
 		{
-			Input::MouseScrollEventHandler(e->wheel);
+            inputSystem->MouseScrollEventHandler(e->wheel);
 			break;
 		}
 		case SDL_EVENT_MOUSE_BUTTON_DOWN:
 		case SDL_EVENT_MOUSE_BUTTON_UP:
 		{
-			Input::MouseButtonEventHandler(e->button);
+            inputSystem->MouseButtonEventHandler(e->button);
 			break;
 		}
 		// This case is here just to ignore this type of event to emit warning log messages
@@ -69,21 +69,17 @@ Application::Application(const ApplicationProperties& props)
 		mInstance = this;
 
         // init windowing subsystem
-		int initSucess = SDL_Init(SDL_INIT_EVERYTHING);
-		GLEAM_ASSERT(initSucess == 0, "Window subsystem initialization failed!");
-
-		// create window
-		mWindow = CreateScope<Window>(props.windowProps);
+        auto windowSubsystem = AddSubsystem<WindowSystem>();
+        windowSubsystem->CreateWindow(props.windowProps);
 		
 		// init renderer backend
-		mRendererContext.ConfigureBackend(props.rendererConfig);
-        mRenderPipeline = CreateScope<RenderPipeline>();
+        auto renderSubsystem = AddSubsystem<RenderSystem>();
+        renderSubsystem->Configure(props.rendererConfig);
         
-        // create world
+        AddSubsystem<InputSystem>();
+        
         World::active = World::Create();
-        mRenderPipeline->AddRenderer<WorldRenderer>();
-        mRenderPipeline->AddRenderer<PostProcessStack>();
-
+        
 		EventDispatcher<AppCloseEvent>::Subscribe([this](AppCloseEvent e)
 		{
 			mRunning = false;
@@ -93,7 +89,9 @@ Application::Application(const ApplicationProperties& props)
 
 void Application::Run()
 {
-    Time::Reset();
+    auto inputSystem = GetSubsystem<InputSystem>();
+    auto renderSystem = GetSubsystem<RenderSystem>();
+    
 	while (mRunning)
 	{
         SDL_Event event;
@@ -106,62 +104,26 @@ void Application::Run()
             }
         }
         
-        Time::Step();
-        Input::Update();
+        inputSystem->Update();
         
-        // Update engine systems
-        bool fixedUpdate = Time::fixedTime <= (Time::time - Time::fixedDeltaTime);
-        if (fixedUpdate)
-        {
-            Time::FixedStep();
-            for (auto system : mSystems)
-            {
-                system->OnFixedUpdate();
-            }
-        }
-
-		for (auto system : mSystems)
-		{
-            system->OnUpdate();
-		}
-        
-        // Update world
-        if (fixedUpdate)
-        {
-            World::active->FixedUpdate();
-        }
         World::active->Update();
-		
-        mRendererContext.Execute(mRenderPipeline.get());
+        
+        renderSystem->Render();
 	}
-}
-
-void Application::Quit()
-{
-    EventDispatcher<AppCloseEvent>::Publish(AppCloseEvent());
 }
 
 Application::~Application()
 {
     if (mInstance)
     {
-        // Destroy systems
-        for (auto system : mSystems)
+        // Destroy subsystems
+        for (auto system : mSubsystems)
         {
-            system->OnDestroy();
+            system->Shutdown();
         }
-        mSystems.clear();
+        mSubsystems.clear();
         
-        // Destroy world
         World::active.reset();
-        
-        // Destroy renderer
-        mRenderPipeline.reset();
-        mRendererContext.DestroyBackend();
-        
-        // Destroy window and windowing subsystem
-        mWindow.reset();
-        SDL_Quit();
         
         mInstance = nullptr;
     }

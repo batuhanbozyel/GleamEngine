@@ -7,7 +7,7 @@
 
 using namespace GEditor;
 
-void ImGuiRenderer::OnCreate(Gleam::RendererContext* context)
+void ImGuiRenderer::OnCreate(Gleam::RendererContext& context)
 {
 	IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -73,7 +73,7 @@ void ImGuiRenderer::AddRenderPasses(Gleam::RenderGraph& graph, Gleam::RenderGrap
             ImGuiID dockspace_id = ImGui::GetID("EditorDockSpace");
             ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_None);
 			
-            auto viewStack = GameInstance->GetSystem<ViewStack>();
+            auto viewStack = Gleam::World::active->GetSystem<ViewStack>();
 			for (auto view : viewStack->GetViews())
 			{
 				view->Render();
@@ -82,7 +82,7 @@ void ImGuiRenderer::AddRenderPasses(Gleam::RenderGraph& graph, Gleam::RenderGrap
             ImGui::End();
             
             ImGuiIO& io = ImGui::GetIO();
-			const auto& resolution = GameInstance->GetWindow()->GetResolution();
+			const auto& resolution = GameInstance->GetSubsystem<Gleam::WindowSystem>()->GetResolution();
 			io.DisplaySize = ImVec2(resolution.width, resolution.height);
 
             ImGui::Render();

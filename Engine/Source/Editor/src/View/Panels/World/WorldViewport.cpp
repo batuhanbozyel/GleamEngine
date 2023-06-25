@@ -14,8 +14,8 @@ using namespace GEditor;
 
 WorldViewport::WorldViewport()
 {
-    GameInstance->GetRenderPipeline()->AddRenderer<Gleam::DebugRenderer>();
-    mViewportSize = GameInstance->GetWindow()->GetResolution();
+    GameInstance->GetSubsystem<Gleam::RenderSystem>()->AddRenderer<Gleam::DebugRenderer>();
+    mViewportSize = GameInstance->GetSubsystem<Gleam::WindowSystem>()->GetResolution();
     
     mEditWorld = Gleam::World::active;
 	mController = mEditWorld->AddSystem<WorldViewportController>();
@@ -26,7 +26,8 @@ WorldViewport::WorldViewport()
         {
             if (mIsFocused)
             {
-                mCursorVisible ? Gleam::Input::HideCursor() : Gleam::Input::ShowCursor();
+                auto inputSystem = GameInstance->GetSubsystem<Gleam::InputSystem>();
+                mCursorVisible ? inputSystem->HideCursor() : inputSystem->ShowCursor();
                 mCursorVisible = !mCursorVisible;
             }
         }
@@ -38,7 +39,7 @@ void WorldViewport::Update()
     Gleam::TextureDescriptor descriptor;
     descriptor.size = mViewportSize;
     mSceneRT = Gleam::CreateRef<Gleam::RenderTexture>(descriptor);
-    GameInstance->GetRenderPipeline()->SetRenderTarget(mSceneRT);
+    GameInstance->GetSubsystem<Gleam::RenderSystem>()->SetRenderTarget(mSceneRT);
     
     mController->SetViewportSize(mViewportSize);
     mController->SetViewportFocused(mIsFocused);

@@ -1,16 +1,18 @@
 #pragma once
+#include "Subsystem.h"
 #include "WindowConfig.h"
 
 namespace Gleam {
 
-class Window final
+class WindowSystem final : public Subsystem
 {
 public:
     
-    GLEAM_NONCOPYABLE(Window);
+    virtual void Initialize() override;
     
-	Window(const WindowProperties& props);
-	~Window();
+    virtual void Shutdown() override;
+    
+    void CreateWindow(const WindowProperties& props);
 
 	Size GetResolution() const
 	{
@@ -27,7 +29,7 @@ public:
 		return mWindow;
 	}
 
-	static void EventHandler(SDL_WindowEvent windowEvent);
+	void EventHandler(SDL_WindowEvent windowEvent);
 
 private:
 

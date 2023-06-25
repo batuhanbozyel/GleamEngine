@@ -14,15 +14,15 @@ namespace GEditor {
 template <typename T>
 concept ViewType = std::is_base_of<View, T>::value;
 
-class ViewStack : public Gleam::System
+class ViewStack : public Gleam::ComponentSystem
 {
 public:
     
-    virtual void OnCreate() override;
+    virtual void OnCreate(Gleam::EntityManager& entityManager) override;
 
-	virtual void OnDestroy() override;
+	virtual void OnDestroy(Gleam::EntityManager& entityManager) override;
     
-    virtual void OnUpdate() override;
+    virtual void OnUpdate(Gleam::EntityManager& entityManager) override;
     
     template<ViewType T>
     T* AddView()

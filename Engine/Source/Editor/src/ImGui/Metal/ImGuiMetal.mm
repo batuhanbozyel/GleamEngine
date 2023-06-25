@@ -11,7 +11,7 @@ using namespace GEditor;
 ImGuiBackend::ImGuiBackend()
 {
     ImGui_ImplMetal_Init(Gleam::MetalDevice::GetHandle());
-    ImGui_ImplSDL3_InitForMetal(GameInstance->GetWindow()->GetSDLWindow());
+    ImGui_ImplSDL3_InitForMetal(GameInstance->GetSubsystem<Gleam::WindowSystem>()->GetSDLWindow());
 }
 
 ImGuiBackend::~ImGuiBackend()

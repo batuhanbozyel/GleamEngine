@@ -7,6 +7,7 @@
 
 #pragma once
 #include "ShaderTypes.h"
+#include "RendererConfig.h"
 #include "RenderPassDescriptor.h"
 #include "PipelineStateDescriptor.h"
 #include "RenderGraph/RenderGraph.h"
@@ -14,21 +15,27 @@
 
 namespace Gleam {
 
-class RenderPipeline;
+class RenderSystem;
 class RendererContext;
+
+struct RenderingData
+{
+    RenderTextureHandle backbuffer;
+    RendererConfig config;
+};
 
 class IRenderer
 {
 public:
     
-    friend class RenderPipeline;
+    friend class RenderSystem;
     friend class RendererContext;
     
     virtual ~IRenderer() = default;
 
 protected:
 
-	virtual void OnCreate(RendererContext* context) {}
+	virtual void OnCreate(RendererContext& context) {}
 
 	virtual void OnDestroy() {}
 

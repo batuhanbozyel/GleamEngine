@@ -8,7 +8,7 @@
 
 using namespace Gleam;
 
-void MetalDevice::Init(const RendererConfig& config)
+void MetalDevice::Init()
 {
     if (mHandle == nil)
     {
@@ -17,7 +17,7 @@ void MetalDevice::Init(const RendererConfig& config)
         GLEAM_ASSERT(mHandle);
 
         // init CAMetalLayer
-        mSwapchain.Initialize(config);
+        mSwapchain.Initialize();
 
         // init MTLCommandQueue
         mCommandPool = [mHandle newCommandQueue];

@@ -31,6 +31,10 @@ class DebugRenderer final : public IRenderer
 {
 public:
 
+    virtual void OnCreate(RendererContext& context) override;
+    
+    virtual void AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard) override;
+    
     void DrawLine(const Vector3& start, const Vector3& end, Color32 color, bool depthTest = true);
 
     void DrawTriangle(const Vector3& v1, const Vector3& v2, const Vector3& v3, Color32 color, bool depthTest = true);
@@ -44,10 +48,6 @@ public:
 	void DrawMesh(const Mesh* mesh, const Matrix4& transform, Color32 color, bool depthTest = true);
     
     void UpdateCamera(const Camera& camera);
-    
-    virtual void OnCreate(RendererContext* context) override;
-    
-    virtual void AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard) override;
 
 private:
 

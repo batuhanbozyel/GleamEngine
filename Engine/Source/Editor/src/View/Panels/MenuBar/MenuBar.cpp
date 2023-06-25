@@ -25,7 +25,9 @@ void MenuBar::Render()
     if (ImGui::BeginMenu("File"))
     {
         if (ImGui::MenuItem("Exit"))
-            GameInstance->Quit();
+        {
+            Gleam::EventDispatcher<Gleam::AppCloseEvent>::Publish(Gleam::AppCloseEvent());
+        }
 
         ImGui::EndMenu();
     }

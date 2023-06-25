@@ -7,7 +7,7 @@ class World;
 
 class ComponentSystem
 {
-	friend class World;
+    friend class World;
     
 public:
     

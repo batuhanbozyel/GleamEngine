@@ -1,13 +1,29 @@
 #include "gpch.h"
-#include "Window.h"
+#include "WindowSystem.h"
 
 #include "Events/WindowEvent.h"
 
 using namespace Gleam;
 
-Window::Window(const WindowProperties& props)
-	: mProperties(props)
+void WindowSystem::Initialize()
 {
+    int initSucess = SDL_Init(SDL_INIT_EVERYTHING);
+    GLEAM_ASSERT(initSucess == 0, "Window subsystem initialization failed!");
+}
+
+void WindowSystem::Shutdown()
+{
+    if (mWindow) { SDL_DestroyWindow(mWindow); }
+    SDL_Quit();
+}
+
+void WindowSystem::CreateWindow(const WindowProperties& props)
+{
+    // destroy old window if exists
+    if (mWindow) { SDL_DestroyWindow(mWindow); }
+    
+    mProperties = props;
+    
 	// query display info to create window if not provided by the user
 	if (props.display.width == 0 || props.display.height == 0)
 	{
@@ -33,12 +49,7 @@ Window::Window(const WindowProperties& props)
 	});
 }
 
-Window::~Window()
-{
-	SDL_DestroyWindow(mWindow);
-}
-
-void Window::EventHandler(SDL_WindowEvent windowEvent)
+void WindowSystem::EventHandler(SDL_WindowEvent windowEvent)
 {
 	switch (windowEvent.type)
 	{

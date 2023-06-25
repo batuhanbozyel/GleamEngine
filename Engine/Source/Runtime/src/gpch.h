@@ -76,7 +76,7 @@
 #include "Core/Events/KeyEvent.h"
 #include "Core/Time.h"
 
-#include "Input/Input.h"
+#include "Input/InputSystem.h"
 
 #ifdef PLATFORM_WINDOWS
 #include <windows.h>

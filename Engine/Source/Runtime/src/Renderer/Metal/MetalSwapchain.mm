@@ -4,7 +4,7 @@
 #include "MetalSwapchain.h"
 #include "MetalUtils.h"
 
-#include "Core/Window.h"
+#include "Core/WindowSystem.h"
 #include "Core/Application.h"
 #include "Core/Events/RendererEvent.h"
 #include "Renderer/RendererConfig.h"
@@ -14,20 +14,21 @@
 
 using namespace Gleam;
 
-void MetalSwapchain::Initialize(const RendererConfig& config)
+void MetalSwapchain::Initialize()
 {
+    auto windowSystem = GameInstance->GetSubsystem<WindowSystem>();
+    
     // Create surface
-    mSurface = SDL_Metal_CreateView(GameInstance->GetWindow()->GetSDLWindow());
+    mSurface = SDL_Metal_CreateView(windowSystem->GetSDLWindow());
     GLEAM_ASSERT(mSurface, "Metal: Surface creation failed!");
     
     mHandle = (__bridge CAMetalLayer*)SDL_Metal_GetLayer(mSurface);
-    mHandle.name = [NSString stringWithCString:GameInstance->GetWindow()->GetProperties().title.c_str() encoding:NSASCIIStringEncoding];
+    mHandle.name = [NSString stringWithCString:windowSystem->GetProperties().title.c_str() encoding:NSASCIIStringEncoding];
     mHandle.device = MetalDevice::GetHandle();
     mHandle.framebufferOnly = NO;
     mHandle.opaque = YES;
-    Configure(config);
     
-    const auto& resolution = GameInstance->GetWindow()->GetResolution();
+    const auto& resolution = windowSystem->GetResolution();
     mSize = resolution * mHandle.contentsScale;
     mHandle.frame.size = CGSizeMake(mSize.width, mSize.height);
     mHandle.drawableSize = CGSizeMake(resolution.width, resolution.height);

@@ -16,10 +16,10 @@
 
 using namespace Gleam;
 
-void PostProcessStack::OnCreate(RendererContext* context)
+void PostProcessStack::OnCreate(RendererContext& context)
 {
-    mFullscreenTriangleVertexShader = context->CreateShader("fullscreenTriangleVertexShader", ShaderStage::Vertex);
-    mTonemappingFragmentShader = context->CreateShader("tonemappingFragmentShader", ShaderStage::Fragment);
+    mFullscreenTriangleVertexShader = context.CreateShader("fullscreenTriangleVertexShader", ShaderStage::Vertex);
+    mTonemappingFragmentShader = context.CreateShader("tonemappingFragmentShader", ShaderStage::Fragment);
 }
 
 void PostProcessStack::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard)

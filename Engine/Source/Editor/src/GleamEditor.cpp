@@ -16,15 +16,15 @@ public:
 	GleamEditor(const Gleam::ApplicationProperties& properties)
         : Gleam::Application(properties)
 	{
-        auto viewStack = GameInstance->AddSystem<ViewStack>();
+        auto viewStack = Gleam::World::active->AddSystem<ViewStack>();
 		viewStack->AddView<MenuBar>();
         viewStack->AddView<WorldViewport>();
         viewStack->AddView<WorldOutliner>();
 	}
-
+    
 	~GleamEditor()
 	{
-        GameInstance->RemoveSystem<ViewStack>();
+        Gleam::World::active->RemoveSystem<ViewStack>();
 	}
 
 private:

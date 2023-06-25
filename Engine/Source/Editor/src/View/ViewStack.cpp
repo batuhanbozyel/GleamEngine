@@ -10,18 +10,18 @@
 
 using namespace GEditor;
 
-void ViewStack::OnCreate()
+void ViewStack::OnCreate(Gleam::EntityManager& entityManager)
 {
-	GameInstance->GetRenderPipeline()->AddRenderer<ImGuiRenderer>();
+	GameInstance->GetSubsystem<Gleam::RenderSystem>()->AddRenderer<ImGuiRenderer>();
 }
 
-void ViewStack::OnDestroy()
+void ViewStack::OnDestroy(Gleam::EntityManager& entityManager)
 {
-	GameInstance->GetRenderPipeline()->RemoveRenderer<ImGuiRenderer>();
+	GameInstance->GetSubsystem<Gleam::RenderSystem>()->RemoveRenderer<ImGuiRenderer>();
 	mViews.clear();
 }
 
-void ViewStack::OnUpdate()
+void ViewStack::OnUpdate(Gleam::EntityManager& entityManager)
 {
     for (auto view : mViews)
     {

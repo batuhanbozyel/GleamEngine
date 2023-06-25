@@ -9,11 +9,11 @@
 
 using namespace Gleam;
 
-void DebugRenderer::OnCreate(RendererContext* context)
+void DebugRenderer::OnCreate(RendererContext& context)
 {
-	mPrimitiveVertexShader = context->CreateShader("debugVertexShader", ShaderStage::Vertex);
-	mMeshVertexShader = context->CreateShader("debugMeshVertexShader", ShaderStage::Vertex);
-	mFragmentShader = context->CreateShader("debugFragmentShader", ShaderStage::Fragment);
+	mPrimitiveVertexShader = context.CreateShader("debugVertexShader", ShaderStage::Vertex);
+	mMeshVertexShader = context.CreateShader("debugMeshVertexShader", ShaderStage::Vertex);
+	mFragmentShader = context.CreateShader("debugFragmentShader", ShaderStage::Fragment);
     
     BufferDescriptor descriptor;
     descriptor.memoryType = MemoryType::Dynamic;

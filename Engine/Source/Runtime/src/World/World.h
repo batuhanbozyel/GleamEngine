@@ -1,6 +1,5 @@
 #pragma once
 #include "ComponentSystem.h"
-#include "Renderer/RenderPipeline.h"
 
 namespace Gleam {
 
@@ -11,17 +10,37 @@ class World final
 {
 public:
 
-	World(const TString& name = "World");
-
-	void Update();
-
-	void FixedUpdate();
+	World(const TString& name = "World")
+        : mName(name)
+    {
+        Time::Reset();
+    }
+    
+    void Update()
+    {
+        Time::Step();
+        
+        bool fixedUpdate = Time::fixedTime <= (Time::elapsedTime - Time::fixedDeltaTime);
+        if (fixedUpdate)
+        {
+            Time::FixedStep();
+            for (auto system : mSystems)
+            {
+                system->OnFixedUpdate(mEntityManager);
+            }
+        }
+        
+        for (auto system : World::active->GetSystems())
+        {
+            system->OnUpdate(mEntityManager);
+        }
+    }
     
     template<ComponentSystemType T>
     T* AddSystem()
     {
         GLEAM_ASSERT(!HasSystem<T>(), "World already has the system!");
-        T* system = mSystemManager.emplace<T>();
+        T* system = mSystems.emplace<T>();
 		system->OnCreate(mEntityManager);
 		return system;
     }
@@ -32,25 +51,30 @@ public:
         GLEAM_ASSERT(HasSystem<T>(), "World does not have the system!");
 		T* system = GetSystem<T>();
 		system->OnDestroy(mEntityManager);
-        mSystemManager.erase<T>();
+        mSystems.erase<T>();
     }
     
     template<ComponentSystemType T>
     T* GetSystem() const
     {
         GLEAM_ASSERT(HasSystem<T>(), "World does not have the system!");
-        mSystemManager.get<T>();
+        return mSystems.get<T>();
     }
     
     template<ComponentSystemType T>
     bool HasSystem() const
     {
-		return mSystemManager.contains<T>();
+		return mSystems.contains<T>();
     }
     
     EntityManager& GetEntityManager()
     {
         return mEntityManager;
+    }
+    
+    PolyArray<ComponentSystem>& GetSystems()
+    {
+        return mSystems;
     }
 
 	static RefCounted<World> Create()
@@ -64,7 +88,7 @@ private:
 
 	TString mName;
     EntityManager mEntityManager;
-    PolyArray<ComponentSystem> mSystemManager;
+    PolyArray<ComponentSystem> mSystems;
 
 };
 
