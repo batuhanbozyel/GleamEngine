@@ -7,9 +7,6 @@
 [submodule "Engine/ThirdParty/stb"]
 	path = Engine/ThirdParty/stb
 	url = https://github.com/nothings/stb
-[submodule "Engine/ThirdParty/OpenFBX"]
-	path = Engine/ThirdParty/OpenFBX
-	url = https://github.com/nem0/OpenFBX
 [submodule "Engine/ThirdParty/imgui"]
 	path = Engine/ThirdParty/imgui
 	url = https://github.com/ocornut/imgui
