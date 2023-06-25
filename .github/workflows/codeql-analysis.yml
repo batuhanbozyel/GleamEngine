@@ -41,7 +41,7 @@ jobs:
       with:
         languages: ${{ matrix.language }}
 
-    - run: ./Mac-GenerateProjects.sh
+    - run: ./Mac-GenerateProjects.command
 
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v2
