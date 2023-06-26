@@ -9,6 +9,13 @@ concept ComponentSystemType = std::is_base_of<ComponentSystem, T>::value;
 class World final
 {
 public:
+    
+    static inline RefCounted<World> active = nullptr;
+    
+    static RefCounted<World> Create()
+    {
+        return CreateRef<World>();
+    }
 
 	World(const TString& name = "World")
         : mName(name)
@@ -26,13 +33,19 @@ public:
             Time::FixedStep();
             for (auto system : mSystems)
             {
-                system->OnFixedUpdate(mEntityManager);
+                if (system->enabled)
+                {
+                    system->OnFixedUpdate(mEntityManager);
+                }
             }
         }
         
-        for (auto system : World::active->GetSystems())
+        for (auto system : mSystems)
         {
-            system->OnUpdate(mEntityManager);
+            if (system->enabled)
+            {
+                system->OnUpdate(mEntityManager);
+            }
         }
     }
     
@@ -71,18 +84,6 @@ public:
     {
         return mEntityManager;
     }
-    
-    PolyArray<ComponentSystem>& GetSystems()
-    {
-        return mSystems;
-    }
-
-	static RefCounted<World> Create()
-    {
-        return CreateRef<World>();
-    }
-
-    static inline RefCounted<World> active = nullptr;
     
 private:
 

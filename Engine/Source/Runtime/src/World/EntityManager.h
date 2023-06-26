@@ -4,8 +4,13 @@
 namespace Gleam {
 
 class EntityManager final
-{    
+{
 public:
+    
+    EntityManager()
+    {
+        mSingleton = CreateEntity();
+    }
     
     template<typename ... ComponentTypes, typename ... ExcludeComponents, typename Func, typename = std::enable_if_t<sizeof...(ComponentTypes) + sizeof...(ExcludeComponents) != 0>>
     void ForEach(Func&& fn, Exclude<ExcludeComponents...> = {})
@@ -43,6 +48,18 @@ public:
 	{
 		mRegistry.destroy(entities.begin(), entities.end());
 	}
+    
+    template<typename T, typename ... Args>
+    void SetSingletonComponent(Args&&... args)
+    {
+        SetComponent(mSingleton, std::forward<Args>(args)...);
+    }
+    
+    template<typename T>
+    T& GetSingletonComponent()
+    {
+        return GetComponent<T>(mSingleton);
+    }
 
 	template<typename T, typename ... Args>
 	T& AddComponent(Entity entity, Args&&... args)
@@ -50,6 +67,13 @@ public:
 		GLEAM_ASSERT(!HasComponent<T>(entity), "Entity already has the component!");
 		return mRegistry.emplace<T>(entity, std::forward<Args>(args)...);
 	}
+    
+    template<typename T, typename ... Args>
+    void SetComponent(Entity entity, Args&&... args)
+    {
+        GLEAM_ASSERT(!HasComponent<T>(entity), "Entity already has the component!");
+        mRegistry.emplace_or_replace<T>(entity, std::forward<Args>(args)...);
+    }
 
 	template<typename T>
 	void RemoveComponent(Entity entity)
@@ -72,6 +96,8 @@ public:
 	}
 
 private:
+    
+    entt::entity mSingleton;
 
 	entt::registry mRegistry;
 
