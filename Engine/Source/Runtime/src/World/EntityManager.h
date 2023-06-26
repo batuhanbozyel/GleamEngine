@@ -7,11 +7,6 @@ class EntityManager final
 {
 public:
     
-    EntityManager()
-    {
-        mSingleton = CreateEntity();
-    }
-    
     template<typename ... ComponentTypes, typename ... ExcludeComponents, typename Func, typename = std::enable_if_t<sizeof...(ComponentTypes) + sizeof...(ExcludeComponents) != 0>>
     void ForEach(Func&& fn, Exclude<ExcludeComponents...> = {})
     {
@@ -52,13 +47,13 @@ public:
     template<typename T, typename ... Args>
     void SetSingletonComponent(Args&&... args)
     {
-        SetComponent(mSingleton, std::forward<Args>(args)...);
+        mRegistry.ctx().emplace<T>(std::forward<Args>(args)...);
     }
     
     template<typename T>
     T& GetSingletonComponent()
     {
-        return GetComponent<T>(mSingleton);
+        return mRegistry.ctx().get<T>();
     }
 
 	template<typename T, typename ... Args>
@@ -96,8 +91,6 @@ public:
 	}
 
 private:
-    
-    entt::entity mSingleton;
 
 	entt::registry mRegistry;
 
