@@ -27,8 +27,6 @@ private:
     
     WorldOutlineController* mController;
     
-    Gleam::RefCounted<Gleam::World> mEditWorld;
-    
 };
 
 } // namespace GEditor

@@ -17,8 +17,7 @@ using namespace GEditor;
 
 WorldOutliner::WorldOutliner()
 {
-    mEditWorld = Gleam::World::active; // TODO: Fix me, active world may not be the Editor world
-    mController = mEditWorld->AddSystem<WorldOutlineController>();
+    mController = Gleam::World::active->AddSystem<WorldOutlineController>();
 }
 
 void WorldOutliner::Render()
@@ -26,7 +25,7 @@ void WorldOutliner::Render()
     if (!ImGui::Begin("World Outliner")) return;
     
     bool entityDeleted = false;
-    auto& entityManager = mEditWorld->GetEntityManager();
+    auto& entityManager = Gleam::World::active->GetEntityManager();
     entityManager.ForEach([&](Gleam::Entity entity)
     {
         ImGuiTreeNodeFlags flags = ((mSelectedEntity == entity) ? ImGuiTreeNodeFlags_Selected : 0) | ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth;
