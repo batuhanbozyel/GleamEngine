@@ -1,10 +1,10 @@
 #include "../../ShaderTypes.h"
 #include "../../RendererBindingTable.h"
 
-[[vk::binding(Gleam::RendererBindingTable::Buffer0)]]
+[[vk::binding(Gleam::RendererBindingTable::PositionBuffer)]]
 StructuredBuffer<Gleam::Vector3> PositionBuffer;
 
-[[vk::binding(Gleam::RendererBindingTable::Buffer1)]]
+[[vk::binding(Gleam::RendererBindingTable::InterleavedBuffer)]]
 StructuredBuffer<Gleam::InterleavedMeshVertex> InterleavedBuffer;
 
 [[vk::binding(Gleam::RendererBindingTable::CameraBuffer)]]
@@ -33,5 +33,5 @@ VertexOut forwardPassVertexShader(uint vertex_id: SV_VertexID)
 
 float4 forwardPassFragmentShader(VertexOut IN) : SV_TARGET
 {
-    return Gleam::unpack_unorm4x8_to_float(uniforms.color);
+    return float4(1.0f, 0.71f, 0.75f, 1.0f);
 }

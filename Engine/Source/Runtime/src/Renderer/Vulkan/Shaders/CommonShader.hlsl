@@ -17,3 +17,13 @@ float4 fullscreenTriangleFragmentShader(VertexOut IN) : SV_TARGET
 {
     return float4(IN.texCoord, 0.0, 1.0);
 }
+
+[[vk::combinedImageSampler]][[vk::binding(0)]]
+Texture2D finalColorRT;
+[[vk::combinedImageSampler]][[vk::binding(0)]]
+SamplerState linearSampler;
+
+float4 tonemappingFragmentShader(VertexOut IN) : SV_TARGET
+{
+    return finalColorRT.Sample(linearSampler, IN.texCoord);
+}

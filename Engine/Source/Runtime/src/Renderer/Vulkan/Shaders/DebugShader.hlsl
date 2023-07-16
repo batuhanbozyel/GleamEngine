@@ -1,10 +1,10 @@
 #include "../../ShaderTypes.h"
 #include "../../RendererBindingTable.h"
 
-[[vk::binding(Gleam::RendererBindingTable::Buffer0)]]
+[[vk::binding(Gleam::RendererBindingTable::PositionBuffer)]]
 StructuredBuffer<Gleam::Vector3> PositionBuffer;
 
-[[vk::binding(Gleam::RendererBindingTable::Buffer0)]]
+[[vk::binding(Gleam::RendererBindingTable::PositionBuffer)]]
 StructuredBuffer<Gleam::DebugVertex> VertexBuffer;
 
 [[vk::binding(Gleam::RendererBindingTable::CameraBuffer)]]
@@ -33,11 +33,11 @@ VertexOut debugMeshVertexShader(uint vertex_id: SV_VertexID)
 {
     VertexOut OUT;
     OUT.position = mul(CameraBuffer.viewProjectionMatrix, mul(uniforms.modelMatrix, float4(PositionBuffer[vertex_id].xyz, 1.0f)));
-    OUT.color = float4(1.0f, 1.0f, 1.0f, 1.0f);
+    OUT.color = Gleam::unpack_unorm4x8_to_float(uniforms.color);
     return OUT;
 }
 
 float4 debugFragmentShader(VertexOut IN) : SV_TARGET
 {
-    return IN.color * Gleam::unpack_unorm4x8_to_float(uniforms.color);
+    return IN.color;
 }
