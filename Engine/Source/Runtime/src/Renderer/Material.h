@@ -16,9 +16,7 @@ class Shader;
 class Material
 {
 public:
-    
-    static Material Import(const Filesystem::path& path);
-    
+
     Material(const RefCounted<Shader>& vertexShader, const RefCounted<Shader>& fragmentShader, const TArray<MaterialProperty>& properties);
     
     void SetProperty(const TString& name, float value);

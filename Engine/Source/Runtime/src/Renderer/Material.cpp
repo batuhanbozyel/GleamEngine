@@ -10,11 +10,6 @@
 
 using namespace Gleam;
 
-Material Material::Import(const Filesystem::path& path)
-{
-    // TODO: implement custom material file that contains both pipeline state and shaders
-}
-
 Material::Material(const RefCounted<Shader>& vertexShader,
                    const RefCounted<Shader>& fragmentShader,
                    const TArray<MaterialProperty>& properties)

@@ -12,7 +12,7 @@ public:
     
     virtual void Shutdown() override;
     
-    void CreateWindow(const WindowProperties& props);
+    void ConfigureWindow(const WindowProperties& props);
 
 	Size GetResolution() const
 	{

@@ -70,7 +70,7 @@ Application::Application(const ApplicationProperties& props)
 
         // init windowing subsystem
         auto windowSubsystem = AddSubsystem<WindowSystem>();
-        windowSubsystem->CreateWindow(props.windowProps);
+        windowSubsystem->ConfigureWindow(props.windowProps);
 		
 		// init renderer backend
         auto renderSubsystem = AddSubsystem<RenderSystem>();

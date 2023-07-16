@@ -19,7 +19,7 @@ struct ArrayHelper<T, 0>
 template<typename T, size_t size = 0>
 using TArray = typename ArrayHelper<T, size>::Type;
 
-template <typename T, size_t size = 0>
+template<typename T, size_t size = 0>
 TArray<T> operator+(const TArray<T>& m, const TArray<T>& n)
 {
 	TArray<T> v;
@@ -29,7 +29,7 @@ TArray<T> operator+(const TArray<T>& m, const TArray<T>& n)
 	return v;
 }
 
-template <typename T>
+template<typename T>
 TArray<T>& operator+=(TArray<T>& m, const TArray<T>& n)
 {
 	m.reserve(m.size() + n.size());

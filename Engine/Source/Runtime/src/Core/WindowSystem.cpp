@@ -17,7 +17,7 @@ void WindowSystem::Shutdown()
     SDL_Quit();
 }
 
-void WindowSystem::CreateWindow(const WindowProperties& props)
+void WindowSystem::ConfigureWindow(const WindowProperties& props)
 {
     // destroy old window if exists
     if (mWindow) { SDL_DestroyWindow(mWindow); }

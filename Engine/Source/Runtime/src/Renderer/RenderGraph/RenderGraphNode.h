@@ -8,6 +8,8 @@
 #pragma once
 #include "RenderGraphResource.h"
 
+#include <functional>
+
 namespace Gleam {
 
 struct RenderGraphContext;
