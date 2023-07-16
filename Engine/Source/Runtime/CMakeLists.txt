@@ -31,9 +31,9 @@ add_library(Runtime STATIC ${SOURCE_FILES})
 
 # Include directories
 if (APPLE)
+    add_dependencies(Runtime SDL3-static)
     set(INCLUDE_DIRS
         src
-        ${Vulkan_INCLUDE_DIRS}
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/SDL/include
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/fmt/include
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/stb
@@ -47,6 +47,7 @@ if (APPLE)
     set_source_files_properties(${SOURCE_FILES} PROPERTIES COMPILE_FLAGS "-x objective-c++")
     set_target_properties(Runtime PROPERTIES MACOSX_BUNDLE YES XCODE_ATTRIBUTE_CLANG_ENABLE_OBJC_ARC YES)
 else()
+    add_dependencies(Runtime SDL3-static volk spirv-reflect-static)
     set(INCLUDE_DIRS
         src
         ${Vulkan_INCLUDE_DIRS}
@@ -78,6 +79,7 @@ target_compile_definitions(
 
     PRIVATE
     "_CRT_SECURE_NO_WARNINGS"
+    "NOMINMAX"
 
     PUBLIC
     $<$<CONFIG:Debug>:GDEBUG>
@@ -89,6 +91,7 @@ if (NOT APPLE)
     set(HLSL_FILE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/src/Renderer/Vulkan/Shaders)
     ADD_VERTEX_SHADER(Runtime ${HLSL_FILE_PATH}/CommonShader.hlsl fullscreenTriangleVertexShader)
     ADD_FRAGMENT_SHADER(Runtime ${HLSL_FILE_PATH}/CommonShader.hlsl fullscreenTriangleFragmentShader)
+    ADD_FRAGMENT_SHADER(Runtime ${HLSL_FILE_PATH}/CommonShader.hlsl tonemappingFragmentShader)
 
     ADD_VERTEX_SHADER(Runtime ${HLSL_FILE_PATH}/ForwardPassShader.hlsl forwardPassVertexShader)
     ADD_FRAGMENT_SHADER(Runtime ${HLSL_FILE_PATH}/ForwardPassShader.hlsl forwardPassFragmentShader)
