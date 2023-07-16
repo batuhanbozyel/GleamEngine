@@ -5,7 +5,7 @@
 
 using namespace Gleam;
 
-const MetalPipelineState& MetalPipelineStateManager::GetGraphicsPipelineState(const PipelineStateDescriptor& pipelineDesc, const TArray<TextureDescriptor>& colorAttachments, const RefCounted<Shader>& vertexShader, const RefCounted<Shader>& fragmentShader, uint32_t sampleCount)
+const MetalPipeline& MetalPipelineStateManager::GetGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc, const TArray<TextureDescriptor>& colorAttachments, const RefCounted<Shader>& vertexShader, const RefCounted<Shader>& fragmentShader, uint32_t sampleCount)
 {
 	for (const auto& element : mGraphicsPipelineCache)
 	{
@@ -26,7 +26,7 @@ const MetalPipelineState& MetalPipelineStateManager::GetGraphicsPipelineState(co
                 }
             }
             
-            if (found) { return element.pipelineState; }
+            if (found) { return element.pipelineState.pipeline; }
 		}
 	}
     
@@ -39,10 +39,10 @@ const MetalPipelineState& MetalPipelineStateManager::GetGraphicsPipelineState(co
 	element.pipelineState.pipeline = CreateGraphicsPipeline(element);
     element.pipelineState.depthStencil = CreateDepthStencil(pipelineDesc);
 	const auto& cachedElement = mGraphicsPipelineCache.emplace_back(element);
-	return cachedElement.pipelineState;
+	return cachedElement.pipelineState.pipeline;
 }
 
-const MetalPipelineState& MetalPipelineStateManager::GetGraphicsPipelineState(const PipelineStateDescriptor& pipelineDesc, const TArray<TextureDescriptor>& colorAttachments, const TextureDescriptor& depthAttachment, const RefCounted<Shader>& vertexShader, const RefCounted<Shader>& fragmentShader, uint32_t sampleCount)
+const MetalPipeline& MetalPipelineStateManager::GetGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc, const TArray<TextureDescriptor>& colorAttachments, const TextureDescriptor& depthAttachment, const RefCounted<Shader>& vertexShader, const RefCounted<Shader>& fragmentShader, uint32_t sampleCount)
 {
     for (const auto& element : mGraphicsPipelineCache)
     {
@@ -64,7 +64,7 @@ const MetalPipelineState& MetalPipelineStateManager::GetGraphicsPipelineState(co
                 }
             }
             
-            if (found) { return element.pipelineState; }
+            if (found) { return element.pipelineState.pipeline; }
         }
     }
     
@@ -76,10 +76,11 @@ const MetalPipelineState& MetalPipelineStateManager::GetGraphicsPipelineState(co
     element.colorAttachments = colorAttachments;
     element.depthAttachment = depthAttachment;
     element.pipelineState.descriptor = pipelineDesc;
-    element.pipelineState.pipeline = CreateGraphicsPipeline(element);
-    element.pipelineState.depthStencil = CreateDepthStencil(pipelineDesc);
+    element.pipelineState.pipeline.topology = PrimitiveTopologyToMTLPrimitiveTopologyClass(element.pipelineState.descriptor.topology);
+    element.pipelineState.pipeline.handle = CreateGraphicsPipeline(element);
+    element.pipelineState.pipeline.depthStencil = CreateDepthStencil(pipelineDesc);
     const auto& cachedElement = mGraphicsPipelineCache.emplace_back(element);
-    return cachedElement.pipelineState;
+    return cachedElement.pipelineState.pipeline;
 }
 
 void MetalPipelineStateManager::Clear()
@@ -94,7 +95,7 @@ id<MTLRenderPipelineState> MetalPipelineStateManager::CreateGraphicsPipeline(con
     pipelineDescriptor.fragmentFunction = element.fragmentShader->GetHandle();
     pipelineDescriptor.rasterSampleCount = element.sampleCount;
     pipelineDescriptor.alphaToCoverageEnabled = element.pipelineState.descriptor.alphaToCoverage;
-    pipelineDescriptor.inputPrimitiveTopology = PrimitiveToplogyToMTLPrimitiveTopologyClass(element.pipelineState.descriptor.topology);
+    pipelineDescriptor.inputPrimitiveTopology = element.pipelineState.pipeline.topology;
     
     if (element.hasDepthAttachment)
     {

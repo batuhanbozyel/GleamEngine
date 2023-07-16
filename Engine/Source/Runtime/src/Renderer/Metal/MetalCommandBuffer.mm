@@ -13,7 +13,7 @@ struct CommandBuffer::Impl
 {
     id<MTLCommandBuffer> commandBuffer = nil;
     id<MTLRenderCommandEncoder> renderCommandEncoder = nil;
-    MetalPipelineState pipelineState;
+    MetalPipeline pipeline;
     
     TArray<TextureDescriptor> colorAttachments;
     TextureDescriptor depthAttachment;
@@ -121,14 +121,14 @@ void CommandBuffer::BindGraphicsPipeline(const PipelineStateDescriptor& pipeline
 {
     if (mHandle->hasDepthAttachment)
     {
-        mHandle->pipelineState = MetalPipelineStateManager::GetGraphicsPipelineState(pipelineDesc, mHandle->colorAttachments, mHandle->depthAttachment, vertexShader, fragmentShader, mHandle->sampleCount);
-        [mHandle->renderCommandEncoder setRenderPipelineState:mHandle->pipelineState.pipeline];
-        [mHandle->renderCommandEncoder setDepthStencilState:mHandle->pipelineState.depthStencil];
+        mHandle->pipeline = MetalPipelineStateManager::GetGraphicsPipeline(pipelineDesc, mHandle->colorAttachments, mHandle->depthAttachment, vertexShader, fragmentShader, mHandle->sampleCount);
+        [mHandle->renderCommandEncoder setRenderPipelineState:mHandle->pipeline.handle];
+        [mHandle->renderCommandEncoder setDepthStencilState:mHandle->pipeline.depthStencil];
     }
     else
     {
-        mHandle->pipelineState = MetalPipelineStateManager::GetGraphicsPipelineState(pipelineDesc, mHandle->colorAttachments, vertexShader, fragmentShader, mHandle->sampleCount);
-        [mHandle->renderCommandEncoder setRenderPipelineState:mHandle->pipelineState.pipeline];
+        mHandle->pipeline = MetalPipelineStateManager::GetGraphicsPipeline(pipelineDesc, mHandle->colorAttachments, vertexShader, fragmentShader, mHandle->sampleCount);
+        [mHandle->renderCommandEncoder setRenderPipelineState:mHandle->pipeline.handle];
     }
 }
 
@@ -175,13 +175,13 @@ void CommandBuffer::SetPushConstant(const void* data, uint32_t size, ShaderStage
 
 void CommandBuffer::Draw(uint32_t vertexCount, uint32_t instanceCount, uint32_t baseVertex, uint32_t baseInstance) const
 {
-    [mHandle->renderCommandEncoder drawPrimitives:PrimitiveToplogyToMTLPrimitiveType(mHandle->pipelineState.descriptor.topology) vertexStart:baseVertex vertexCount:vertexCount instanceCount:instanceCount baseInstance:baseInstance];
+    [mHandle->renderCommandEncoder drawPrimitives:mHandle->pipeline.topology) vertexStart:baseVertex vertexCount:vertexCount instanceCount:instanceCount baseInstance:baseInstance];
 }
 
 void CommandBuffer::DrawIndexed(const NativeGraphicsHandle indexBuffer, IndexType type, uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, uint32_t baseVertex, uint32_t baseInstance) const
 {
     MTLIndexType indexType = static_cast<MTLIndexType>(type);
-    [mHandle->renderCommandEncoder drawIndexedPrimitives:PrimitiveToplogyToMTLPrimitiveType(mHandle->pipelineState.descriptor.topology) indexCount:indexCount indexType:indexType indexBuffer:indexBuffer indexBufferOffset:firstIndex * SizeOfIndexType(type) instanceCount:instanceCount baseVertex:baseVertex baseInstance:baseInstance];
+    [mHandle->renderCommandEncoder drawIndexedPrimitives:mHandle->pipeline.topology) indexCount:indexCount indexType:indexType indexBuffer:indexBuffer indexBufferOffset:firstIndex * SizeOfIndexType(type) instanceCount:instanceCount baseVertex:baseVertex baseInstance:baseInstance];
 }
 
 void CommandBuffer::CopyBuffer(const NativeGraphicsHandle src, const NativeGraphicsHandle dst, size_t size, uint32_t srcOffset, uint32_t dstOffset) const

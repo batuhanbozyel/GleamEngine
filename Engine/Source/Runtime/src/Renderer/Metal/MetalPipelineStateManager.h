@@ -5,20 +5,27 @@
 
 namespace Gleam {
 
+struct MetalPipeline
+{
+	id<MTLRenderPipelineState> handle = nil;
+	id<MTLDepthStencilState> depthStencil = nil;
+	MTLPrimitiveTopologyClass topology = MTLPrimitiveTopologyClassTriangle;
+};
+
 struct MetalPipelineState
 {
     PipelineStateDescriptor descriptor;
-	id<MTLRenderPipelineState> pipeline = nil;
-    id<MTLDepthStencilState> depthStencil = nil;
+	MetalPipeline pipeline;
+	
 };
 
 class MetalPipelineStateManager
 {
 public:
 
-	static const MetalPipelineState& GetGraphicsPipelineState(const PipelineStateDescriptor& pipelineDesc, const TArray<TextureDescriptor>& attachmentDescriptors, const RefCounted<Shader>& vertexShader, const RefCounted<Shader>& fragmentShader, uint32_t sampleCount);
+	static const MetalPipeline& GetGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc, const TArray<TextureDescriptor>& attachmentDescriptors, const RefCounted<Shader>& vertexShader, const RefCounted<Shader>& fragmentShader, uint32_t sampleCount);
     
-    static const MetalPipelineState& GetGraphicsPipelineState(const PipelineStateDescriptor& pipelineDesc, const TArray<TextureDescriptor>& attachmentDescriptors, const TextureDescriptor& depthAttachment, const RefCounted<Shader>& vertexShader, const RefCounted<Shader>& fragmentShader, uint32_t sampleCount);
+    static const MetalPipeline& GetGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc, const TArray<TextureDescriptor>& attachmentDescriptors, const TextureDescriptor& depthAttachment, const RefCounted<Shader>& vertexShader, const RefCounted<Shader>& fragmentShader, uint32_t sampleCount);
 
 	static void Clear();
 

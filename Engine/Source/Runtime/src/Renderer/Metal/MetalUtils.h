@@ -148,7 +148,7 @@ static constexpr MTLPixelFormat TextureFormatToMTLPixelFormat(TextureFormat form
     }
 }
 
-static constexpr MTLPrimitiveType PrimitiveToplogyToMTLPrimitiveType(PrimitiveTopology topology)
+static constexpr MTLPrimitiveType PrimitiveTopologyToMTLPrimitiveType(PrimitiveTopology topology)
 {
     switch (topology)
     {
@@ -161,7 +161,7 @@ static constexpr MTLPrimitiveType PrimitiveToplogyToMTLPrimitiveType(PrimitiveTo
     }
 }
 
-static constexpr MTLPrimitiveTopologyClass PrimitiveToplogyToMTLPrimitiveTopologyClass(PrimitiveTopology topology)
+static constexpr MTLPrimitiveTopologyClass PrimitiveTopologyToMTLPrimitiveTopologyClass(PrimitiveTopology topology)
 {
     switch (topology)
     {
