@@ -19,9 +19,6 @@ using namespace Gleam;
 void RenderSystem::Initialize()
 {
     mRendererContext.ConfigureBackend();
-    mRenderTarget = CreateRef<RenderTexture>();
-    mCommandBuffer = CreateScope<CommandBuffer>();
-    
     AddRenderer<WorldRenderer>();
     AddRenderer<PostProcessStack>();
 }
@@ -58,10 +55,11 @@ void RenderSystem::Render()
         {
             renderer->AddRenderPasses(graph, blackboard);
         }
-        
-        graph.Compile();
-        graph.Execute(mCommandBuffer.get());
-        mCommandBuffer->Present();
+		graph.Compile();
+
+		CommandBuffer cmd;
+        graph.Execute(&cmd);
+		cmd.Present();
         
         // reset rt to swapchain
         mRenderTarget = CreateRef<RenderTexture>();

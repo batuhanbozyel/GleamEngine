@@ -56,7 +56,6 @@ void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
         pipelineDesc.cullingMode = CullMode::Back;
         pipelineDesc.depthState.writeEnabled = true;
         renderGraphContext.cmd->BindGraphicsPipeline(pipelineDesc, mForwardPassVertexShader, mForwardPassFragmentShader);
-        
         renderGraphContext.cmd->SetVertexBuffer(*mCameraBuffer, 0, RendererBindingTable::CameraBuffer);
         
         for (const auto& element : mOpaqueQueue)

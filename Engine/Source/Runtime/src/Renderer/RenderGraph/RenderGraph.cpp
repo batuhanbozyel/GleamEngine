@@ -141,6 +141,7 @@ void RenderGraph::Execute(const CommandBuffer* cmd)
             }
             
             cmd->BeginRenderPass(renderPassDesc, pass->name);
+			cmd->SetViewport(renderPassDesc.size);
             std::invoke(pass->callback, context);
             cmd->EndRenderPass();
         }

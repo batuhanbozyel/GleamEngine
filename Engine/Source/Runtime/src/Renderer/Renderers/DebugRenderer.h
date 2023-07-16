@@ -51,8 +51,6 @@ public:
 
 private:
 
-    void RenderPrimitive(const CommandBuffer* cmd, uint32_t primitiveCount, PrimitiveTopology topology, bool depthTest) const;
-
 	void RenderMeshes(const CommandBuffer* cmd, const TArray<DebugMesh>& debugMeshes, bool depthTest) const;
 
 	uint32_t mLineBufferOffset = 0;

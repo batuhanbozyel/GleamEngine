@@ -53,12 +53,12 @@ public:
     
     void SetVertexTexture(const Texture& texture, uint32_t index) const
     {
-        SetVertexTexture(texture.GetView(), index);
+        SetVertexTexture(texture.GetView(), texture.GetSamplerState(), index);
     }
     
     void SetFragmentTexture(const Texture& texture, uint32_t index) const
     {
-        SetFragmentTexture(texture.GetView(), index);
+        SetFragmentTexture(texture.GetView(), texture.GetSamplerState(), index);
     }
 
     template<typename T>
@@ -106,9 +106,9 @@ private:
     
     void SetFragmentBuffer(const NativeGraphicsHandle buffer, BufferUsage usage, size_t size, size_t offset, uint32_t index) const;
     
-    void SetVertexTexture(const NativeGraphicsHandle texture, uint32_t index) const;
+    void SetVertexTexture(const NativeGraphicsHandle texture, const SamplerState& samplerState, uint32_t index) const;
     
-    void SetFragmentTexture(const NativeGraphicsHandle texture, uint32_t index) const;
+    void SetFragmentTexture(const NativeGraphicsHandle texture, const SamplerState& samplerState, uint32_t index) const;
     
     void SetPushConstant(const void* data, uint32_t size, ShaderStageFlagBits stage) const;
 
