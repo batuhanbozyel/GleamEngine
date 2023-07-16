@@ -5,23 +5,114 @@
 #include "VulkanDevice.h"
 #include "VulkanUtils.h"
 
-#include "Core/Window.h"
+#include "Core/WindowSystem.h"
 #include "Core/Application.h"
 #include "Core/Events/RendererEvent.h"
-#include "Renderer/RendererConfig.h"
+#include "Renderer/RenderSystem.h"
 
 #include <SDL_vulkan.h>
 
 using namespace Gleam;
 
-void VulkanSwapchain::Initialize(const RendererConfig& config)
+void VulkanSwapchain::Initialize()
 {
-	SDL_Window* window = GameInstance->GetWindow()->GetSDLWindow();
-	mSampleCount = config.sampleCount;
+	auto windowSystem = GameInstance->GetSubsystem<WindowSystem>();
 
     // Create surface
-	bool surfaceCreateResult = SDL_Vulkan_CreateSurface(window, VulkanDevice::GetInstance(), &mSurface);
+	bool surfaceCreateResult = SDL_Vulkan_CreateSurface(windowSystem->GetSDLWindow(), VulkanDevice::GetInstance(), &mSurface);
 	GLEAM_ASSERT(surfaceCreateResult, "Vulkan: Surface creation failed!");
+}
+
+void VulkanSwapchain::Destroy()
+{
+	// Destroy swapchain
+	vkDestroySwapchainKHR(VulkanDevice::GetHandle(), mHandle, nullptr);
+
+	// Destroy surface
+	vkDestroySurfaceKHR(VulkanDevice::GetInstance(), mSurface, nullptr);
+
+	// Destroy drawable
+	for (uint32_t i = 0; i < mImages.size(); i++)
+	{
+		vkDestroyImageView(VulkanDevice::GetHandle(), mImages[i].view, nullptr);
+	}
+
+	// Destroy command pools
+	for (uint32_t i = 0; i < mMaxFramesInFlight; i++)
+	{
+		vkDestroyCommandPool(VulkanDevice::GetHandle(), mCommandPools[i], nullptr);
+	}
+	mCommandPools.clear();
+
+	// Destroy sync objects
+	for (uint32_t i = 0; i < mMaxFramesInFlight; i++)
+	{
+		vkDestroySemaphore(VulkanDevice::GetHandle(), mImageAcquireSemaphores[i], nullptr);
+		vkDestroySemaphore(VulkanDevice::GetHandle(), mImageReleaseSemaphores[i], nullptr);
+		vkDestroyFence(VulkanDevice::GetHandle(), mFences[i], nullptr);
+	}
+	mImageAcquireSemaphores.clear();
+	mImageReleaseSemaphores.clear();
+	mFences.clear();
+}
+
+const VulkanDrawable& VulkanSwapchain::AcquireNextDrawable()
+{
+	VkResult result = vkAcquireNextImageKHR(VulkanDevice::GetHandle(), mHandle, UINT64_MAX, mImageAcquireSemaphores[mCurrentFrameIndex], VK_NULL_HANDLE, &mImageIndex);
+	if (result == VK_ERROR_OUT_OF_DATE_KHR)
+	{
+		auto renderSystem = GameInstance->GetSubsystem<RenderSystem>();
+		Configure(renderSystem->GetConfiguration());
+	}
+	else
+	{
+		GLEAM_ASSERT(result == VK_SUCCESS || result == VK_SUBOPTIMAL_KHR, "Vulkan: Swapbuffers failed to acquire next image!");
+	}
+
+	return mImages[mImageIndex];
+}
+
+void VulkanSwapchain::Present(VkCommandBuffer commandBuffer)
+{
+	VkPipelineStageFlags waitDstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	VkSubmitInfo submitInfo{ VK_STRUCTURE_TYPE_SUBMIT_INFO };
+	submitInfo.waitSemaphoreCount = 1;
+	submitInfo.pWaitSemaphores = &mImageAcquireSemaphores[mCurrentFrameIndex];
+	submitInfo.pWaitDstStageMask = &waitDstStageMask;
+	submitInfo.commandBufferCount = 1;
+	submitInfo.pCommandBuffers = &commandBuffer;
+	submitInfo.signalSemaphoreCount = 1;
+	submitInfo.pSignalSemaphores = &mImageReleaseSemaphores[mCurrentFrameIndex];
+	VK_CHECK(vkQueueSubmit(VulkanDevice::GetGraphicsQueue().handle, 1, &submitInfo, mFences[mCurrentFrameIndex]));
+
+	VkPresentInfoKHR presentInfo{ VK_STRUCTURE_TYPE_PRESENT_INFO_KHR };
+	presentInfo.waitSemaphoreCount = 1;
+	presentInfo.pWaitSemaphores = &mImageReleaseSemaphores[mCurrentFrameIndex];
+	presentInfo.swapchainCount = 1;
+	presentInfo.pSwapchains = &mHandle;
+	presentInfo.pImageIndices = &mImageIndex;
+	VkResult result = vkQueuePresentKHR(VulkanDevice::GetGraphicsQueue().handle, &presentInfo);
+	if (result == VK_ERROR_OUT_OF_DATE_KHR)
+	{
+		auto renderSystem = GameInstance->GetSubsystem<RenderSystem>();
+		Configure(renderSystem->GetConfiguration());
+	}
+	else
+	{
+		GLEAM_ASSERT(result == VK_SUCCESS || result == VK_SUBOPTIMAL_KHR, "Vulkan: Image presentation failed!");
+	}
+
+	mCurrentFrameIndex = (mCurrentFrameIndex + 1) % mMaxFramesInFlight;
+
+	VK_CHECK(vkWaitForFences(VulkanDevice::GetHandle(), 1, &mFences[mCurrentFrameIndex], VK_TRUE, UINT64_MAX));
+	VK_CHECK(vkResetCommandPool(VulkanDevice::GetHandle(), mCommandPools[mCurrentFrameIndex], 0));
+	VK_CHECK(vkResetFences(VulkanDevice::GetHandle(), 1, &mFences[mCurrentFrameIndex]));
+}
+
+void VulkanSwapchain::Configure(const RendererConfig& config)
+{
+	auto windowSystem = GameInstance->GetSubsystem<WindowSystem>();
+	vkDeviceWaitIdle(VulkanDevice::GetHandle());
 
 	// Get surface information
 	uint32_t presentModeCount;
@@ -31,29 +122,25 @@ void VulkanSwapchain::Initialize(const RendererConfig& config)
 
 	uint32_t surfaceFormatCount;
 	VK_CHECK(vkGetPhysicalDeviceSurfaceFormatsKHR(VulkanDevice::GetPhysicalDevice(), mSurface, &surfaceFormatCount, nullptr));
-	mSurfaceFormats.resize(surfaceFormatCount);
-	VK_CHECK(vkGetPhysicalDeviceSurfaceFormatsKHR(VulkanDevice::GetPhysicalDevice(), mSurface, &surfaceFormatCount, mSurfaceFormats.data()));
+	TArray<VkSurfaceFormatKHR> surfaceFormats(surfaceFormatCount);
+	VK_CHECK(vkGetPhysicalDeviceSurfaceFormatsKHR(VulkanDevice::GetPhysicalDevice(), mSurface, &surfaceFormatCount, surfaceFormats.data()));
+
+	VkSurfaceCapabilitiesKHR surfaceCapabilities;
+	VK_CHECK(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(VulkanDevice::GetPhysicalDevice(), mSurface, &surfaceCapabilities));
 
 	mImageFormat = [&]()
 	{
-		for (const auto& surfaceFormat : mSurfaceFormats)
+		for (const auto& surfaceFormat : surfaceFormats)
 		{
 			if (surfaceFormat.format == VK_FORMAT_B8G8R8A8_UNORM)
 			{
 				return VK_FORMAT_B8G8R8A8_UNORM;
 			}
-			else if (surfaceFormat.format == VK_FORMAT_R8G8B8A8_UNORM)
-			{
-				return VK_FORMAT_R8G8B8A8_UNORM;
-			}
 		}
-		GLEAM_ASSERT(false, "Vulkan: Swapchain image format could not found!");
-		return VK_FORMAT_UNDEFINED;
+		return VK_FORMAT_R8G8B8A8_UNORM;
 	}();
 
-	VkSurfaceCapabilitiesKHR surfaceCapabilities;
-	VK_CHECK(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(VulkanDevice::GetPhysicalDevice(), mSurface, &surfaceCapabilities));
-
+	// Configure triple buffering
 	if (surfaceCapabilities.minImageCount <= 3 && (surfaceCapabilities.maxImageCount >= 3 || surfaceCapabilities.maxImageCount == 0) && config.tripleBufferingEnabled)
 	{
 		mMaxFramesInFlight = 3;
@@ -69,10 +156,8 @@ void VulkanSwapchain::Initialize(const RendererConfig& config)
 		mMaxFramesInFlight = 1;
 		GLEAM_ASSERT(false, "Vulkan: Neither triple nor double buffering is available!");
 	}
-	mMinImageExtent = surfaceCapabilities.minImageExtent;
-	mMaxImageExtent = surfaceCapabilities.maxImageExtent;
 
-	mPresentMode = [&]()
+	VkPresentModeKHR presentMode = [&]()
 	{
 	#ifndef PLATFORM_ANDROID // use FIFO for mobile to reduce power consumption
 		if (!config.vsync)
@@ -80,7 +165,7 @@ void VulkanSwapchain::Initialize(const RendererConfig& config)
 			return VK_PRESENT_MODE_IMMEDIATE_KHR;
 		}
 
-		for (const auto& presentMode : presentModes)
+		for (auto presentMode : presentModes)
 		{
 			if (presentMode == VK_PRESENT_MODE_MAILBOX_KHR)
 			{
@@ -90,74 +175,13 @@ void VulkanSwapchain::Initialize(const RendererConfig& config)
 	#endif
 		return VK_PRESENT_MODE_FIFO_KHR;
 	}();
-}
 
-void VulkanSwapchain::Destroy()
-{
-	// Destroy swapchain
-	vkDestroySwapchainKHR(VulkanDevice::GetHandle(), mHandle, nullptr);
-
-	// Destroy drawable
-	for (uint32_t i = 0; i < mImages.size(); i++)
-	{
-		vkDestroyImageView(VulkanDevice::GetHandle(), mImages[i].view, nullptr);
-	}
-
-	// Destroy sync objects
-	for (uint32_t i = 0; i < mMaxFramesInFlight; i++)
-	{
-		vkDestroySemaphore(VulkanDevice::GetHandle(), mImageAcquireSemaphores[i], nullptr);
-		vkDestroySemaphore(VulkanDevice::GetHandle(), mImageReleaseSemaphores[i], nullptr);
-	}
-	mImageAcquireSemaphores.clear();
-	mImageReleaseSemaphores.clear();
-}
-
-const VulkanDrawable& VulkanSwapchain::AcquireNextDrawable()
-{
-	VkResult result = vkAcquireNextImageKHR(VulkanDevice::GetHandle(), mHandle, UINT64_MAX, mImageAcquireSemaphores[mCurrentFrameIndex], VK_NULL_HANDLE, &mImageIndex);
-	if (result == VK_ERROR_OUT_OF_DATE_KHR)
-	{
-		InvalidateAndCreate();
-	}
-	else
-	{
-		GLEAM_ASSERT(result == VK_SUCCESS || result == VK_SUBOPTIMAL_KHR, "Vulkan: Swapbuffers failed to acquire next image!");
-	}
-
-	return mImages[mImageIndex];
-}
-
-void VulkanSwapchain::Present()
-{
-	VkPresentInfoKHR presentInfo{ VK_STRUCTURE_TYPE_PRESENT_INFO_KHR };
-	presentInfo.waitSemaphoreCount = 1;
-	presentInfo.pWaitSemaphores = &mImageReleaseSemaphores[mCurrentFrameIndex];
-	presentInfo.swapchainCount = 1;
-	presentInfo.pSwapchains = &mHandle;
-	presentInfo.pImageIndices = &mImageIndex;
-	VkResult result = vkQueuePresentKHR(VulkanDevice::GetGraphicsQueue().handle, &presentInfo);
-	if (result == VK_ERROR_OUT_OF_DATE_KHR)
-	{
-		InvalidateAndCreate();
-	}
-	else
-	{
-		GLEAM_ASSERT(result == VK_SUCCESS || result == VK_SUBOPTIMAL_KHR, "Vulkan: Image presentation failed!");
-	}
-
-	mCurrentFrameIndex = (mCurrentFrameIndex + 1) % mMaxFramesInFlight;
-}
-
-void VulkanSwapchain::InvalidateAndCreate()
-{
-	vkDeviceWaitIdle(VulkanDevice::GetHandle());
-	
+	// Get swapchain extent
 	int width, height;
-	SDL_Vulkan_GetDrawableSize(GameInstance->GetActiveWindow().GetSDLWindow(), &width, &height);
+	SDL_GetWindowSizeInPixels(windowSystem->GetSDLWindow(), &width, &height);
 	VkExtent2D imageExtent{ static_cast<uint32_t>(width), static_cast<uint32_t>(height) };
-	imageExtent.width = Math::Clamp(imageExtent.width, mMinImageExtent.width, mMaxImageExtent.width);
-	imageExtent.height = Math::Clamp(imageExtent.height, mMinImageExtent.height, mMaxImageExtent.height);
+	imageExtent.width = Math::Clamp(imageExtent.width, surfaceCapabilities.minImageExtent.width, surfaceCapabilities.maxImageExtent.width);
+	imageExtent.height = Math::Clamp(imageExtent.height, surfaceCapabilities.minImageExtent.height, surfaceCapabilities.maxImageExtent.height);
 	mSize.width = static_cast<float>(imageExtent.width);
 	mSize.height = static_cast<float>(imageExtent.height);
 
@@ -180,7 +204,7 @@ void VulkanSwapchain::InvalidateAndCreate()
 	swapchainCreateInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
 	swapchainCreateInfo.preTransform = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
 	swapchainCreateInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-	swapchainCreateInfo.presentMode = mPresentMode;
+	swapchainCreateInfo.presentMode = presentMode;
 	swapchainCreateInfo.clipped = VK_TRUE;
 	swapchainCreateInfo.imageArrayLayers = 1;
 	swapchainCreateInfo.imageFormat = mImageFormat;
@@ -192,15 +216,33 @@ void VulkanSwapchain::InvalidateAndCreate()
 	if (mHandle != VK_NULL_HANDLE)
 	{
 		vkDestroySwapchainKHR(VulkanDevice::GetHandle(), mHandle, nullptr);
+
+		// Destroy command pools
+		for (uint32_t i = 0; i < mCommandPools.size(); i++)
+		{
+			vkDestroyCommandPool(VulkanDevice::GetHandle(), mCommandPools[i], nullptr);
+		}
+		mCommandPools.clear();
+
+		// Destroy sync objects
+		for (uint32_t i = 0; i < mImageAcquireSemaphores.size(); i++)
+		{
+			vkDestroySemaphore(VulkanDevice::GetHandle(), mImageAcquireSemaphores[i], nullptr);
+			vkDestroySemaphore(VulkanDevice::GetHandle(), mImageReleaseSemaphores[i], nullptr);
+			vkDestroyFence(VulkanDevice::GetHandle(), mFences[i], nullptr);
+		}
+		mImageAcquireSemaphores.clear();
+		mImageReleaseSemaphores.clear();
+		mFences.clear();
+
+		// Destroy drawable
+		for (uint32_t i = 0; i < mImages.size(); i++)
+		{
+			vkDestroyImageView(VulkanDevice::GetHandle(), mImages[i].view, nullptr);
+		}
+		mImages.clear();
 	}
 	mHandle = newSwapchain;
-
-	// Destroy drawable
-	for (uint32_t i = 0; i < mImages.size(); i++)
-	{
-		vkDestroyImageView(VulkanDevice::GetHandle(), mImages[i].view, nullptr);
-	}
-	mImages.clear();
 
 	uint32_t swapchainImageCount;
 	VK_CHECK(vkGetSwapchainImagesKHR(VulkanDevice::GetHandle(), mHandle, &swapchainImageCount, nullptr));
@@ -237,19 +279,30 @@ void VulkanSwapchain::InvalidateAndCreate()
 	}
 
 	// Create sync objects
-	static std::once_flag flag;
-	std::call_once(flag, [this]()
+	mImageAcquireSemaphores.resize(mMaxFramesInFlight);
+	mImageReleaseSemaphores.resize(mMaxFramesInFlight);
+	mFences.resize(mMaxFramesInFlight);
+
+	VkSemaphoreCreateInfo semaphoreCreateInfo{ VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO };
+	VkFenceCreateInfo fenceCreateInfo{ VK_STRUCTURE_TYPE_FENCE_CREATE_INFO };
+
+	for (uint32_t i = 0; i < mMaxFramesInFlight; i++)
 	{
-		mImageAcquireSemaphores.resize(mMaxFramesInFlight);
-		mImageReleaseSemaphores.resize(mMaxFramesInFlight);
-		
-		VkSemaphoreCreateInfo semaphoreCreateInfo{ VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO };
-		for (uint32_t i = 0; i < mMaxFramesInFlight; i++)
-		{
-			VK_CHECK(vkCreateSemaphore(VulkanDevice::GetHandle(), &semaphoreCreateInfo, nullptr, &mImageAcquireSemaphores[i]));
-			VK_CHECK(vkCreateSemaphore(VulkanDevice::GetHandle(), &semaphoreCreateInfo, nullptr, &mImageReleaseSemaphores[i]));
-		}
-	});
+		VK_CHECK(vkCreateSemaphore(VulkanDevice::GetHandle(), &semaphoreCreateInfo, nullptr, &mImageAcquireSemaphores[i]));
+		VK_CHECK(vkCreateSemaphore(VulkanDevice::GetHandle(), &semaphoreCreateInfo, nullptr, &mImageReleaseSemaphores[i]));
+		VK_CHECK(vkCreateFence(VulkanDevice::GetHandle(), &fenceCreateInfo, nullptr, &mFences[i]));
+	}
+
+	// Create command pools
+	VkCommandPoolCreateInfo commandPoolCreateInfo{ VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO };
+	commandPoolCreateInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+
+	mCommandPools.resize(mMaxFramesInFlight);
+	for (uint32_t i = 0; i < mMaxFramesInFlight; i++)
+	{
+		commandPoolCreateInfo.queueFamilyIndex = VulkanDevice::GetGraphicsQueue().index;
+		VK_CHECK(vkCreateCommandPool(VulkanDevice::GetHandle(), &commandPoolCreateInfo, nullptr, &mCommandPools[i]));
+	}
 
 	EventDispatcher<RendererResizeEvent>::Publish(RendererResizeEvent(mSize));
 }
@@ -257,6 +310,16 @@ void VulkanSwapchain::InvalidateAndCreate()
 const VulkanDrawable& VulkanSwapchain::GetDrawable() const
 {
 	return mImages[mImageIndex];
+}
+
+VkCommandPool VulkanSwapchain::GetCommandPool() const
+{
+	return mCommandPools[mCurrentFrameIndex];
+}
+
+VkFence VulkanSwapchain::GetFence() const
+{
+	return mFences[mCurrentFrameIndex];
 }
 
 TextureFormat VulkanSwapchain::GetFormat() const
@@ -274,24 +337,9 @@ VkSurfaceKHR VulkanSwapchain::GetSurface() const
 	return mSurface;
 }
 
-VkSemaphore VulkanSwapchain::GetImageAcquireSemaphore() const
-{
-	return mImageAcquireSemaphores[mCurrentFrameIndex];
-}
-
-VkSemaphore VulkanSwapchain::GetImageReleaseSemaphore() const
-{
-	return mImageReleaseSemaphores[mCurrentFrameIndex];
-}
-
 const Size& VulkanSwapchain::GetSize() const
 {
 	return mSize;
-}
-
-uint32_t VulkanSwapchain::GetSampleCount() const
-{
-	return mSampleCount;
 }
 
 uint32_t VulkanSwapchain::GetFrameIndex() const

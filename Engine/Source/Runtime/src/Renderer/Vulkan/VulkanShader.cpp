@@ -16,7 +16,6 @@ Shader::Shader(const TString& entryPoint, ShaderStage stage)
 	VkShaderModuleCreateInfo createInfo{ VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO };
 	createInfo.codeSize = shaderCode.size();
 	createInfo.pCode = As<uint32_t*>(shaderCode.data());
-
 	VK_CHECK(vkCreateShaderModule(VulkanDevice::GetHandle(), &createInfo, nullptr, As<VkShaderModule*>(&mHandle)));
 
 	mReflection = CreateScope<Reflection>(shaderCode);

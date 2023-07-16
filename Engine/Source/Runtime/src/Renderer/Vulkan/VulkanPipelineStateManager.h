@@ -9,20 +9,40 @@ struct VulkanPipeline
 {
 	VkPipeline handle{ VK_NULL_HANDLE };
 	VkPipelineLayout layout{ VK_NULL_HANDLE };
-	VkPipelineBindPoint bindPoint{};
+	VkPipelineBindPoint bindPoint{ VK_PIPELINE_BIND_POINT_GRAPHICS };
+	PipelineStateDescriptor descriptor;
 };
 
-struct VulkanRenderPass
+struct VulkanGraphicsPipeline : public VulkanPipeline
 {
-	VkRenderPass handle{ VK_NULL_HANDLE };
-	uint32_t sampleCount = 1;
+	RefCounted<Shader> vertexShader;
+	RefCounted<Shader> fragmentShader;
 };
 
 class VulkanPipelineStateManager
 {
 public:
 
-	static const VulkanPipeline& GetGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc, const RefCounted<Shader>& vertexShader, const RefCounted<Shader>& fragmentShader, const VulkanRenderPass& renderPass);
+	static void Init();
+
+	static void Destroy();
+
+	static const VulkanGraphicsPipeline* GetGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc,
+													 const TArray<TextureDescriptor>& colorAttachments,
+													 const RefCounted<Shader>& vertexShader,
+													 const RefCounted<Shader>& fragmentShader,
+													 VkRenderPass renderPass,
+													 uint32_t sampleCount);
+
+	static const VulkanGraphicsPipeline* GetGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc,
+													 const TArray<TextureDescriptor>& colorAttachments,
+													 const TextureDescriptor& depthAttachment,
+													 const RefCounted<Shader>& vertexShader,
+													 const RefCounted<Shader>& fragmentShader,
+													 VkRenderPass renderPass,
+													 uint32_t sampleCount);
+
+	static VkSampler GetSampler(const SamplerState& samplerState);
 
 	static void Clear();
 
@@ -30,15 +50,16 @@ private:
 
 	struct GraphicsPipelineCacheElement
 	{
-		PipelineStateDescriptor pipelineStateDescriptor;
-		RefCounted<Shader> vertexShader;
-		RefCounted<Shader> fragmentShader;
-		VulkanPipeline pipeline;
+		VulkanGraphicsPipeline pipeline;
+		TArray<TextureDescriptor> colorAttachments;
+		TextureDescriptor depthAttachment;
+		bool hasDepthAttachment = false;
 		uint32_t sampleCount = 1;
 	};
 
-	static VulkanPipeline CreateGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc, const RefCounted<Shader>& vertexShader, const RefCounted<Shader>& fragmentShader, const VulkanRenderPass& renderPass);
+	static void CreateGraphicsPipeline(GraphicsPipelineCacheElement& element, VkRenderPass renderPass);
 
+	static inline TArray<TArray<VkSampler>> mSamplerStates;
 	static inline TArray<GraphicsPipelineCacheElement> mGraphicsPipelineCache;
 
 };

@@ -3,25 +3,12 @@
 #ifdef USE_VULKAN_RENDERER
 #include "VulkanDevice.h"
 #include "VulkanPipelineStateManager.h"
-
-#include "Renderer/RendererContext.h"
-#include "Core/ApplicationConfig.h"
+#include "Core/Application.h"
+#include "Core/WindowSystem.h"
 
 #include <SDL_vulkan.h>
 
 using namespace Gleam;
-
-void RendererContext::ConfigureBackend(const TString& appName, const Version& appVersion, const RendererConfig& config)
-{
-    VulkanDevice::Init(appName, appVersion, config);
-	mConfiguration = config;
-	mConfiguration.format = VulkanDevice::GetSwapchain().GetFormat();
-}
-
-void RendererContext::DestroyBackend()
-{
-    VulkanDevice::Destroy();
-}
 
 VKAPI_ATTR VkBool32 VKAPI_CALL VulkanDebugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT severity,
 												   VkDebugUtilsMessageTypeFlagsEXT type,
@@ -48,20 +35,23 @@ VKAPI_ATTR VkBool32 VKAPI_CALL VulkanDebugCallback(VkDebugUtilsMessageSeverityFl
 	return VK_FALSE;
 }
 
-void VulkanDevice::Init(const TString& appName, const Version& appVersion, const RendererConfig& config)
+void VulkanDevice::Init()
 {
+	auto windowSystem = GameInstance->GetSubsystem<WindowSystem>();
+	const auto& version = GameInstance->GetVersion();
+
 	VkResult loadVKResult = volkInitialize();
 	GLEAM_ASSERT(loadVKResult == VK_SUCCESS, "Vulkan: Meta-loader failed to load entry points!");
 
 	// Get window subsystem extensions
 	uint32_t extensionCount;
-	SDL_Vulkan_GetInstanceExtensions(nullptr, &extensionCount, nullptr);
+	SDL_Vulkan_GetInstanceExtensions(&extensionCount, nullptr);
 	TArray<const char*> extensions(extensionCount);
-	SDL_Vulkan_GetInstanceExtensions(nullptr, &extensionCount, extensions.data());
+	SDL_Vulkan_GetInstanceExtensions(&extensionCount, extensions.data());
 
 	VkApplicationInfo appInfo{ VK_STRUCTURE_TYPE_APPLICATION_INFO };
-	appInfo.pApplicationName = appName.c_str();
-	appInfo.applicationVersion = VK_MAKE_VERSION(appVersion.major, appVersion.minor, appVersion.patch);
+	appInfo.pApplicationName = windowSystem->GetProperties().title.c_str();
+	appInfo.applicationVersion = VK_MAKE_VERSION(version.major, version.minor, version.patch);
 	appInfo.pEngineName = "Gleam Engine";
 	appInfo.engineVersion = VK_MAKE_VERSION(GLEAM_ENGINE_MAJOR_VERSION, GLEAM_ENGINE_MINOR_VERSION, GLEAM_ENGINE_PATCH_VERSION);
 	appInfo.apiVersion = VULKAN_API_VERSION;
@@ -142,7 +132,7 @@ void VulkanDevice::Init(const TString& appName, const Version& appVersion, const
 	vkGetPhysicalDeviceMemoryProperties(mPhysicalDevice, &mMemoryProperties);
 
 	// Create swapchain
-	mSwapchain.Initialize(config);
+	mSwapchain.Initialize();
 
 	// Get physical device queues
 	bool mainQueueFound = false;
@@ -197,7 +187,8 @@ void VulkanDevice::Init(const TString& appName, const Version& appVersion, const
 	TArray<const char*> requiredDeviceExtension
 	{
 		VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-		VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME
+		VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME,
+		VK_KHR_SAMPLER_MIRROR_CLAMP_TO_EDGE_EXTENSION_NAME
 	};
     
 	VkDeviceCreateInfo deviceCreateInfo{ VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO };
@@ -230,27 +221,11 @@ void VulkanDevice::Init(const TString& appName, const Version& appVersion, const
 		GLEAM_CORE_WARN("Vulkan: Transfer queue family could not found, mapping to main queue.");
 	}
 
-	// Create swapchain
-	mSwapchain.InvalidateAndCreate();
-
 	// Create pipeline cache
 	VkPipelineCacheCreateInfo pipelineCacheCreateInfo{ VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO };
 	VK_CHECK(vkCreatePipelineCache(mHandle, &pipelineCacheCreateInfo, nullptr, &mPipelineCache));
 
-	// Create command pools
-	VkCommandPoolCreateInfo commandPoolCreateInfo{ VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO };
-	commandPoolCreateInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-
-	mGraphicsCommandPools.resize(mSwapchain.GetFramesInFlight());
-	mTransferCommandPools.resize(mSwapchain.GetFramesInFlight());
-	for (uint32_t i = 0; i < mSwapchain.GetFramesInFlight(); i++)
-	{
-		commandPoolCreateInfo.queueFamilyIndex = mGraphicsQueue.index;
-		VK_CHECK(vkCreateCommandPool(mHandle, &commandPoolCreateInfo, nullptr, &mGraphicsCommandPools[i]));
-
-		commandPoolCreateInfo.queueFamilyIndex = mTransferQueue.index;
-		VK_CHECK(vkCreateCommandPool(mHandle, &commandPoolCreateInfo, nullptr, &mTransferCommandPools[i]));
-	}
+	VulkanPipelineStateManager::Init();
 
 	GLEAM_CORE_INFO("Vulkan: Graphics device created.");
 }
@@ -259,26 +234,13 @@ void VulkanDevice::Destroy()
 {
 	VK_CHECK(vkDeviceWaitIdle(mHandle));
 
-	VulkanPipelineStateManager::Clear();
+	VulkanPipelineStateManager::Destroy();
 
 	// Destroy pipeline cache
 	vkDestroyPipelineCache(mHandle, mPipelineCache, nullptr);
-
-	// Destroy command pools
-	for (uint32_t i = 0; i < mSwapchain.GetFramesInFlight(); i++)
-	{
-		vkDestroyCommandPool(mHandle, mGraphicsCommandPools[i], nullptr);
-		vkDestroyCommandPool(mHandle, mTransferCommandPools[i], nullptr);
-	}
-	mGraphicsCommandPools.clear();
-	mTransferCommandPools.clear();
-
+	
 	// Destroy swapchain
-	VkSurfaceKHR surface = mSwapchain.GetSurface();
 	mSwapchain.Destroy();
-
-	// Destroy surface
-	vkDestroySurfaceKHR(mInstance, surface, nullptr);
 
 	// Destroy device
 	vkDestroyDevice(mHandle, nullptr);
@@ -327,14 +289,9 @@ VkPhysicalDevice VulkanDevice::GetPhysicalDevice()
 	return mPhysicalDevice;
 }
 
-VkCommandPool VulkanDevice::GetGraphicsCommandPool(uint32_t index)
+VkPipelineCache VulkanDevice::GetPipelineCache()
 {
-	return mGraphicsCommandPools[index];
-}
-
-VkCommandPool VulkanDevice::GetTransferCommandPool(uint32_t index)
-{
-	return mTransferCommandPools[index];
+	return mPipelineCache;
 }
 
 uint32_t VulkanDevice::GetMemoryTypeForProperties(uint32_t memoryTypeBits, uint32_t properties)

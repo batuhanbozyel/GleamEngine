@@ -292,7 +292,82 @@ static constexpr VkPipelineBindPoint PipelineBindPointToVkPipelineBindPoint(Pipe
 		case PipelineBindPoint::RayTracing: return VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR;
 		default: return VK_PIPELINE_BIND_POINT_MAX_ENUM;
 	}
-} 
+}
+static constexpr VkStencilOp StencilOpToVkStencilOp(StencilOp stencilOp)
+{
+	switch (stencilOp)
+	{
+		case Gleam::StencilOp::Keep: return VK_STENCIL_OP_KEEP;
+		case Gleam::StencilOp::Zero: return VK_STENCIL_OP_ZERO;
+		case Gleam::StencilOp::Replace: return VK_STENCIL_OP_REPLACE;
+		case Gleam::StencilOp::IncrementClamp: return VK_STENCIL_OP_INCREMENT_AND_CLAMP;
+		case Gleam::StencilOp::IncrementWrap: return VK_STENCIL_OP_INCREMENT_AND_WRAP;
+		case Gleam::StencilOp::DecrementClamp: return VK_STENCIL_OP_DECREMENT_AND_CLAMP;
+		case Gleam::StencilOp::DecrementWrap: return VK_STENCIL_OP_DECREMENT_AND_WRAP;
+		case Gleam::StencilOp::Invert: return VK_STENCIL_OP_INVERT;
+		default: return VK_STENCIL_OP_MAX_ENUM;
+	}
+}
+
+static constexpr VkCompareOp CompareFunctionToVkCompareOp(CompareFunction compareFunction)
+{
+	switch (compareFunction)
+	{
+		case Gleam::CompareFunction::Never: return VK_COMPARE_OP_NEVER;
+		case Gleam::CompareFunction::Less: return VK_COMPARE_OP_LESS;
+		case Gleam::CompareFunction::Equal: return VK_COMPARE_OP_EQUAL;
+		case Gleam::CompareFunction::LessEqual: return VK_COMPARE_OP_LESS_OR_EQUAL;
+		case Gleam::CompareFunction::Greater: return VK_COMPARE_OP_GREATER;
+		case Gleam::CompareFunction::NotEqual: return VK_COMPARE_OP_NOT_EQUAL;
+		case Gleam::CompareFunction::GreaterEqual: return VK_COMPARE_OP_GREATER_OR_EQUAL;
+		case Gleam::CompareFunction::Always: return VK_COMPARE_OP_ALWAYS;
+		default: return VK_COMPARE_OP_MAX_ENUM;
+	}
+}
+
+static constexpr VkBlendFactor BlendModeToVkBlendFactor(BlendMode blendMode)
+{
+	switch (blendMode)
+	{
+		case BlendMode::Zero: return VK_BLEND_FACTOR_ZERO;
+		case BlendMode::One: return VK_BLEND_FACTOR_ONE;
+		case BlendMode::DstColor: return VK_BLEND_FACTOR_DST_COLOR;
+		case BlendMode::SrcColor: return VK_BLEND_FACTOR_SRC_COLOR;
+		case BlendMode::OneMinusDstColor: return VK_BLEND_FACTOR_ONE_MINUS_DST_COLOR;
+		case BlendMode::SrcAlpha: return VK_BLEND_FACTOR_SRC_ALPHA;
+		case BlendMode::OneMinusSrcColor: return VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR;
+		case BlendMode::DstAlpha: return VK_BLEND_FACTOR_DST_ALPHA;
+		case BlendMode::OneMinusDstAlpha: return VK_BLEND_FACTOR_ONE_MINUS_DST_ALPHA;
+		case BlendMode::SrcAlphaClamp: return VK_BLEND_FACTOR_SRC_ALPHA_SATURATE;
+		case BlendMode::OneMinusSrcAlpha: return VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+		default: return VK_BLEND_FACTOR_MAX_ENUM;
+	}
+}
+
+static constexpr VkBlendOp BlendOpToVkBlendOp(BlendOp blendOp)
+{
+	switch (blendOp)
+	{
+		case BlendOp::Add: return VK_BLEND_OP_ADD;
+		case BlendOp::Subtract: return VK_BLEND_OP_SUBTRACT;
+		case BlendOp::ReverseSubtract: return VK_BLEND_OP_REVERSE_SUBTRACT;
+		case BlendOp::Min: return VK_BLEND_OP_MIN;
+		case BlendOp::Max: return VK_BLEND_OP_MAX;
+		default: return VK_BLEND_OP_MAX_ENUM;
+	}
+}
+
+static constexpr VkColorComponentFlags ColorWriteMaskToVkColorComponentFlags(ColorWriteMask mask)
+{
+	switch (mask)
+	{
+		case ColorWriteMask::Red: return VK_COLOR_COMPONENT_R_BIT;
+		case ColorWriteMask::Green: return VK_COLOR_COMPONENT_G_BIT;
+		case ColorWriteMask::Blue: return VK_COLOR_COMPONENT_B_BIT;
+		case ColorWriteMask::All: return VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+		default: return VK_COLOR_COMPONENT_FLAG_BITS_MAX_ENUM;
+	}
+}
 
 } // namespace Gleam
 #endif

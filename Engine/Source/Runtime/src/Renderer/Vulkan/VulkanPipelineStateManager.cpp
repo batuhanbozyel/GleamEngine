@@ -3,32 +3,203 @@
 #ifdef USE_VULKAN_RENDERER
 #include "VulkanPipelineStateManager.h"
 #include "VulkanShaderReflect.h"
+#include "Container/Array.h"
 
 using namespace Gleam;
 
-const VulkanPipeline& VulkanPipelineStateManager::GetGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc, const RefCounted<Shader>& vertexShader, const RefCounted<Shader>& fragmentShader, const VulkanRenderPass& renderPass)
+static VkSampler CreateVkSampler(FilterMode filterMode, WrapMode wrapMode)
+{
+	VkSampler sampler;
+	VkSamplerCreateInfo createInfo{ VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO };
+
+	switch (filterMode)
+	{
+		case FilterMode::Point:
+		{
+			createInfo.minFilter = VK_FILTER_NEAREST;
+			createInfo.magFilter = VK_FILTER_NEAREST;
+			createInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
+			break;
+		}
+		case FilterMode::Bilinear:
+		{
+			createInfo.minFilter = VK_FILTER_LINEAR;
+			createInfo.magFilter = VK_FILTER_LINEAR;
+			createInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
+			break;
+		}
+		case FilterMode::Trilinear:
+		{
+			createInfo.minFilter = VK_FILTER_LINEAR;
+			createInfo.magFilter = VK_FILTER_LINEAR;
+			createInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+			break;
+		}
+		default: GLEAM_ASSERT(false, "Vulkan: Filter mode is not supported!") break;
+	}
+
+	switch (wrapMode)
+	{
+		case WrapMode::Repeat:
+		{
+			createInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+			createInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+			createInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+			break;
+		}
+		case WrapMode::Clamp:
+		{
+			createInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+			createInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+			createInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+			break;
+		}
+		case WrapMode::Mirror:
+		{
+			createInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
+			createInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
+			createInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
+			break;
+		}
+		case WrapMode::MirrorOnce:
+		{
+			createInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE;
+			createInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE;
+			createInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE;
+			break;
+		}
+		default: GLEAM_ASSERT(false, "Vulkan: Filter mode is not supported!") break;
+	}
+
+	VK_CHECK(vkCreateSampler(VulkanDevice::GetHandle(), &createInfo, nullptr, &sampler));
+	return sampler;
+}
+
+static TArray<VkSampler> CreateVkSamplers(FilterMode filterMode)
+{
+	TArray<VkSampler> samplers;
+	samplers.emplace_back(CreateVkSampler(filterMode, WrapMode::Repeat));
+	samplers.emplace_back(CreateVkSampler(filterMode, WrapMode::Clamp));
+	samplers.emplace_back(CreateVkSampler(filterMode, WrapMode::Mirror));
+	samplers.emplace_back(CreateVkSampler(filterMode, WrapMode::MirrorOnce));
+	return samplers;
+}
+
+void VulkanPipelineStateManager::Init()
+{
+	mSamplerStates.emplace_back(CreateVkSamplers(FilterMode::Point));
+	mSamplerStates.emplace_back(CreateVkSamplers(FilterMode::Bilinear));
+	mSamplerStates.emplace_back(CreateVkSamplers(FilterMode::Trilinear));
+}
+
+void VulkanPipelineStateManager::Destroy()
+{
+	Clear();
+
+	for (const auto& samplers : mSamplerStates)
+	{
+		for (auto sampler : samplers)
+		{
+			vkDestroySampler(VulkanDevice::GetHandle(), sampler, nullptr);
+		}
+	}
+	mSamplerStates.clear();
+}
+
+const VulkanGraphicsPipeline* VulkanPipelineStateManager::GetGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc,
+																			  const TArray<TextureDescriptor>& colorAttachments,
+																			  const RefCounted<Shader>& vertexShader,
+																			  const RefCounted<Shader>& fragmentShader,
+																			  VkRenderPass renderPass,
+																			  uint32_t sampleCount)
 {
 	for (uint32_t i = 0; i < mGraphicsPipelineCache.size(); i++)
 	{
 		const auto& element = mGraphicsPipelineCache[i];
-		if (element.pipelineStateDescriptor == pipelineDesc &&
-			element.vertexShader == vertexShader &&
-			element.fragmentShader == fragmentShader &&
-			element.sampleCount == renderPass.sampleCount)
+		if (element.pipeline.descriptor == pipelineDesc &&
+			element.pipeline.vertexShader == vertexShader &&
+			element.pipeline.fragmentShader == fragmentShader &&
+			element.colorAttachments.size() == colorAttachments.size() &&
+			element.sampleCount == sampleCount &&
+			!element.hasDepthAttachment)
 		{
-			return element.pipeline;
+			bool found = true;
+			for (uint32_t i = 0; i < colorAttachments.size(); i++)
+			{
+				if (element.colorAttachments[i] != colorAttachments[i])
+				{
+					found = false;
+					break;
+				}
+			}
+
+			if (found) { return &element.pipeline; }
 		}
 	}
 
-	PipelineCacheElement element;
-	element.pipelineStateDescriptor = pipelineDesc;
-	element.vertexShader = vertexShader;
-	element.fragmentShader = fragmentShader;
-	element.sampleCount = renderPass.sampleCount;
-	element.pipeline = CreateGraphicsPipeline(pipelineDesc, vertexShader, fragmentShader, renderPass);
+	GraphicsPipelineCacheElement element;
+	element.sampleCount = sampleCount;
+	element.colorAttachments = colorAttachments;
+	element.pipeline.descriptor = pipelineDesc;
+	element.pipeline.vertexShader = vertexShader;
+	element.pipeline.fragmentShader = fragmentShader;
+	CreateGraphicsPipeline(element, renderPass);
 	
 	const auto& cachedElement = mGraphicsPipelineCache.emplace_back(element);
-	return cachedElement.pipeline;
+	return &cachedElement.pipeline;
+}
+
+const VulkanGraphicsPipeline* VulkanPipelineStateManager::GetGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc,
+																	  const TArray<TextureDescriptor>& colorAttachments,
+																	  const TextureDescriptor& depthAttachment,
+																	  const RefCounted<Shader>& vertexShader,
+																	  const RefCounted<Shader>& fragmentShader,
+																	  VkRenderPass renderPass,
+																	  uint32_t sampleCount)
+{
+	for (uint32_t i = 0; i < mGraphicsPipelineCache.size(); i++)
+	{
+		const auto& element = mGraphicsPipelineCache[i];
+		if (element.pipeline.descriptor == pipelineDesc &&
+			element.pipeline.vertexShader == vertexShader &&
+			element.pipeline.fragmentShader == fragmentShader &&
+			element.colorAttachments.size() == colorAttachments.size() &&
+			element.depthAttachment == depthAttachment &&
+			element.sampleCount == sampleCount &&
+			element.hasDepthAttachment)
+		{
+			bool found = true;
+			for (uint32_t i = 0; i < colorAttachments.size(); i++)
+			{
+				if (element.colorAttachments[i] != colorAttachments[i])
+				{
+					found = false;
+					break;
+				}
+			}
+
+			if (found) { return &element.pipeline; }
+		}
+	}
+
+	GraphicsPipelineCacheElement element;
+	element.hasDepthAttachment = true;
+	element.sampleCount = sampleCount;
+	element.colorAttachments = colorAttachments;
+	element.depthAttachment = depthAttachment;
+	element.pipeline.descriptor = pipelineDesc;
+	element.pipeline.vertexShader = vertexShader;
+	element.pipeline.fragmentShader = fragmentShader;
+	CreateGraphicsPipeline(element, renderPass);
+
+	const auto& cachedElement = mGraphicsPipelineCache.emplace_back(element);
+	return &cachedElement.pipeline;
+}
+
+VkSampler VulkanPipelineStateManager::GetSampler(const SamplerState& samplerState)
+{
+	const auto& samplers = mSamplerStates[static_cast<uint32_t>(samplerState.filterMode)];
+	return samplers[static_cast<uint32_t>(samplerState.wrapMode)];
 }
 
 void VulkanPipelineStateManager::Clear()
@@ -41,22 +212,25 @@ void VulkanPipelineStateManager::Clear()
 	mGraphicsPipelineCache.clear();
 }
 
-VulkanPipeline VulkanPipelineStateManager::CreateGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc, const RefCounted<Shader>& vertexShader, const RefCounted<Shader>& fragmentShader, const VulkanRenderPass& renderPass)
+void VulkanPipelineStateManager::CreateGraphicsPipeline(GraphicsPipelineCacheElement& element, VkRenderPass renderPass)
 {
-	VkPipeline pipeline;
+	const auto& pipelineDesc = element.pipeline.descriptor;
+	element.pipeline.bindPoint = PipelineBindPointToVkPipelineBindPoint(pipelineDesc.bindPoint);
+
 	VkGraphicsPipelineCreateInfo pipelineCreateInfo{ VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO };
+	pipelineCreateInfo.renderPass = renderPass;
 
 	// Shader stages
 	TArray<VkPipelineShaderStageCreateInfo, 2> shaderStages{};
 	shaderStages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 	shaderStages[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
-	shaderStages[0].module = As<VkShaderModule>(vertexShader->GetHandle());
-	shaderStages[0].pName = vertexShader->GetEntryPoint().c_str();
+	shaderStages[0].module = As<VkShaderModule>(element.pipeline.vertexShader->GetHandle());
+	shaderStages[0].pName = element.pipeline.vertexShader->GetEntryPoint().c_str();
 
 	shaderStages[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 	shaderStages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-	shaderStages[1].module = As<VkShaderModule>(fragmentShader->GetHandle());
-	shaderStages[1].pName = fragmentShader->GetEntryPoint().c_str();
+	shaderStages[1].module = As<VkShaderModule>(element.pipeline.fragmentShader->GetHandle());
+	shaderStages[1].pName = element.pipeline.fragmentShader->GetEntryPoint().c_str();
 
 	pipelineCreateInfo.stageCount = 2;
 	pipelineCreateInfo.pStages = shaderStages.data();
@@ -75,8 +249,8 @@ VulkanPipeline VulkanPipelineStateManager::CreateGraphicsPipeline(const Pipeline
 	pipelineCreateInfo.pViewportState = &viewportState;
 
 	// Pipeline layout
-	const auto& vertexShaderReflection = vertexShader->GetReflection();
-	const auto& fragmentShaderReflection = fragmentShader->GetReflection();
+	const auto& vertexShaderReflection = element.pipeline.vertexShader->GetReflection();
+	const auto& fragmentShaderReflection = element.pipeline.fragmentShader->GetReflection();
 
 	// Descriptor set layouts
 	TArray<VkDescriptorSetLayout> setLayouts;
@@ -90,14 +264,13 @@ VulkanPipeline VulkanPipelineStateManager::CreateGraphicsPipeline(const Pipeline
 	pushConstantRanges.insert(pushConstantRanges.end(), vertexShaderReflection->pushConstantRanges.begin(), vertexShaderReflection->pushConstantRanges.end());
 	pushConstantRanges.insert(pushConstantRanges.end(), fragmentShaderReflection->pushConstantRanges.begin(), fragmentShaderReflection->pushConstantRanges.end());
 
-	VkPipelineLayout pipelineLayout;
 	VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo{ VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
 	pipelineLayoutCreateInfo.setLayoutCount = static_cast<uint32_t>(setLayouts.size());
 	pipelineLayoutCreateInfo.pSetLayouts = setLayouts.data();
 	pipelineLayoutCreateInfo.pushConstantRangeCount = static_cast<uint32_t>(pushConstantRanges.size());
 	pipelineLayoutCreateInfo.pPushConstantRanges = pushConstantRanges.data();
-	VK_CHECK(vkCreatePipelineLayout(VulkanDevice::GetHandle(), &pipelineLayoutCreateInfo, nullptr, &pipelineLayout));
-	pipelineCreateInfo.layout = pipelineLayout;
+	VK_CHECK(vkCreatePipelineLayout(VulkanDevice::GetHandle(), &pipelineLayoutCreateInfo, nullptr, &element.pipeline.layout));
+	pipelineCreateInfo.layout = element.pipeline.layout;
 
 	// Dynamic state
 	TArray<VkDynamicState, 2> dynamicStates = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
@@ -111,28 +284,53 @@ VulkanPipeline VulkanPipelineStateManager::CreateGraphicsPipeline(const Pipeline
 	pipelineCreateInfo.pRasterizationState = &rasterizationState;
 
 	VkPipelineMultisampleStateCreateInfo multisampleState{ VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO };
-	multisampleState.rasterizationSamples = GetVkSampleCount(renderPass.sampleCount);
+	multisampleState.rasterizationSamples = GetVkSampleCount(element.sampleCount);
 	pipelineCreateInfo.pMultisampleState = &multisampleState;
 
 	VkPipelineDepthStencilStateCreateInfo depthStencilState{ VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO };
+	if (element.hasDepthAttachment)
+	{
+		depthStencilState.depthTestEnable = true;
+		depthStencilState.depthCompareOp = CompareFunctionToVkCompareOp(pipelineDesc.depthState.compareFunction);
+		depthStencilState.depthWriteEnable = pipelineDesc.depthState.writeEnabled;
+		
+		if (pipelineDesc.stencilState.enabled)
+		{
+			depthStencilState.stencilTestEnable = true;
+
+			VkStencilOpState stencilState{};
+			stencilState.reference = pipelineDesc.stencilState.reference;
+			stencilState.compareMask = pipelineDesc.stencilState.readMask;
+			stencilState.writeMask = pipelineDesc.stencilState.writeMask;
+			stencilState.failOp = StencilOpToVkStencilOp(pipelineDesc.stencilState.failOperation);
+			stencilState.passOp = StencilOpToVkStencilOp(pipelineDesc.stencilState.passOperation);
+			stencilState.depthFailOp = StencilOpToVkStencilOp(pipelineDesc.stencilState.depthFailOperation);
+			stencilState.compareOp = CompareFunctionToVkCompareOp(pipelineDesc.stencilState.compareFunction);
+
+			depthStencilState.back = stencilState;
+			depthStencilState.front = stencilState;
+		}
+	}
 	pipelineCreateInfo.pDepthStencilState = &depthStencilState;
 
-    // TODO: Add multiple render targets support
-	VkPipelineColorBlendAttachmentState attachmentBlendState{};
-	attachmentBlendState.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-	VkPipelineColorBlendStateCreateInfo colorBlendState{ VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO };
-	colorBlendState.attachmentCount = 1;
-	colorBlendState.pAttachments = &attachmentBlendState;
-	pipelineCreateInfo.pColorBlendState = &colorBlendState;
-
-	pipelineCreateInfo.renderPass = renderPass.handle;
-	VK_CHECK(vkCreateGraphicsPipelines(VulkanDevice::GetHandle(), nullptr, 1, &pipelineCreateInfo, nullptr, &pipeline));
-
-	return VulkanPipeline
+	TArray<VkPipelineColorBlendAttachmentState> attachmentBlendStates(element.colorAttachments.size());
+	for (uint32_t i = 0; i < element.colorAttachments.size(); i++)
 	{
-		pipeline,
-		pipelineLayout,
-		VK_PIPELINE_BIND_POINT_GRAPHICS
-	};
+		const auto& attachment = element.colorAttachments[i];
+		attachmentBlendStates[i].blendEnable = element.pipeline.descriptor.blendState.enabled;
+		attachmentBlendStates[i].srcColorBlendFactor = BlendModeToVkBlendFactor(element.pipeline.descriptor.blendState.sourceColorBlendMode);
+		attachmentBlendStates[i].dstColorBlendFactor = BlendModeToVkBlendFactor(element.pipeline.descriptor.blendState.destinationColorBlendMode);
+		attachmentBlendStates[i].srcAlphaBlendFactor = BlendModeToVkBlendFactor(element.pipeline.descriptor.blendState.sourceAlphaBlendMode);
+		attachmentBlendStates[i].dstAlphaBlendFactor = BlendModeToVkBlendFactor(element.pipeline.descriptor.blendState.destinationAlphaBlendMode);
+		attachmentBlendStates[i].colorBlendOp = BlendOpToVkBlendOp(element.pipeline.descriptor.blendState.colorBlendOperation);
+		attachmentBlendStates[i].alphaBlendOp = BlendOpToVkBlendOp(element.pipeline.descriptor.blendState.alphaBlendOperation);
+		attachmentBlendStates[i].colorWriteMask = ColorWriteMaskToVkColorComponentFlags(element.pipeline.descriptor.blendState.writeMask);
+	}
+	
+	VkPipelineColorBlendStateCreateInfo colorBlendState{ VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO };
+	colorBlendState.attachmentCount = static_cast<uint32_t>(attachmentBlendStates.size());
+	colorBlendState.pAttachments = attachmentBlendStates.data();
+	pipelineCreateInfo.pColorBlendState = &colorBlendState;
+	VK_CHECK(vkCreateGraphicsPipelines(VulkanDevice::GetHandle(), nullptr, 1, &pipelineCreateInfo, nullptr, &element.pipeline.handle));
 }
 #endif

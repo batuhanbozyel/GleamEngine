@@ -12,54 +12,52 @@ class VulkanSwapchain final
 {
 public:
 
-	void Initialize(const RendererConfig& config);
+	void Initialize();
 
 	void Destroy();
 
-	void InvalidateAndCreate();
+	void Configure(const RendererConfig& config);
 
 	const VulkanDrawable& AcquireNextDrawable();
-	void Present();
+	void Present(VkCommandBuffer commandBuffer);
 
 	const VulkanDrawable& GetDrawable() const;
+
+	VkCommandPool GetCommandPool() const;
+
+	VkFence GetFence() const;
 
     TextureFormat GetFormat() const;
 
 	VkSwapchainKHR GetHandle() const;
 
 	VkSurfaceKHR GetSurface() const;
-
-	VkSemaphore GetImageAcquireSemaphore() const;
-
-	VkSemaphore GetImageReleaseSemaphore() const;
     
     const Size& GetSize() const;
-
-	uint32_t GetSampleCount() const;
 
 	uint32_t GetFrameIndex() const;
 
 	uint32_t GetFramesInFlight() const;
 
 private:
-    
+
 	// Surface
 	VkSurfaceKHR mSurface{ VK_NULL_HANDLE };
-	TArray<VkSurfaceFormatKHR> mSurfaceFormats;
-	VkPresentModeKHR mPresentMode;
-	VkExtent2D mMinImageExtent;
-	VkExtent2D mMaxImageExtent;
 
 	// Frame
 	TArray<VulkanDrawable> mImages;
 	VkFormat mImageFormat;
 	uint32_t mImageIndex;
 	Size mSize = Size::zero;
-	uint32_t mSampleCount = 1;
+
+	// Command Pool
+	TArray<VkCommandPool> mCommandPools;
 
 	// Synchronization
 	TArray<VkSemaphore> mImageAcquireSemaphores;
 	TArray<VkSemaphore> mImageReleaseSemaphores;
+	TArray<VkFence> mFences;
+
 	uint32_t mMaxFramesInFlight = 3;
 	uint32_t mCurrentFrameIndex = 0;
 
