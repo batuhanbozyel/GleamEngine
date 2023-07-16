@@ -1,4 +1,5 @@
 #pragma once
+#include "SamplerState.h"
 #include "GraphicsObject.h"
 #include "TextureDescriptor.h"
 
@@ -13,11 +14,26 @@ public:
     {
         
     }
+
+	void SetFilterMode(FilterMode mode)
+	{
+		mSamplerState.filterMode = mode;
+	}
+
+	void SetWrapMode(WrapMode mode)
+	{
+		mSamplerState.wrapMode = mode;
+	}
     
     NativeGraphicsHandle GetView() const
     {
         return mView;
     }
+
+	const SamplerState& GetSamplerState() const
+	{
+		return mSamplerState;
+	}
     
     const TextureDescriptor& GetDescriptor() const
     {
@@ -28,17 +44,17 @@ public:
     {
         return mMipMapLevels;
     }
+
+	static constexpr uint32_t CalculateMipLevels(const Size& size)
+	{
+		return static_cast<uint32_t>(Math::Floor(Math::Log2(Math::Max(size.width, size.height)))) + 1;
+	}
     
 protected:
-
-    static constexpr uint32_t CalculateMipLevels(const Size& size)
-    {
-        return static_cast<uint32_t>(Math::Floor(Math::Log2(Math::Max(size.width, size.height)))) + 1;
-    }
-
-    uint32_t mMipMapLevels;
-    TextureDescriptor mDescriptor;
     
+    uint32_t mMipMapLevels;
+	SamplerState mSamplerState;
+    TextureDescriptor mDescriptor;
     NativeGraphicsHandle mView = nullptr;
     
 };
@@ -89,9 +105,9 @@ public:
 private:
 
 	// multisample
-	NativeGraphicsHandle mMultisampleMemory;
-	NativeGraphicsHandle mMultisampleView;
-	NativeGraphicsHandle mMultisampleHandle;
+	NativeGraphicsHandle mMultisampleMemory = nullptr;
+	NativeGraphicsHandle mMultisampleView = nullptr;
+	NativeGraphicsHandle mMultisampleHandle = nullptr;
 
 };
 

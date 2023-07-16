@@ -2,21 +2,6 @@
 
 namespace Gleam {
 
-enum class FilterMode
-{
-	Point,
-	Bilinear,
-	Trilinear
-};
-
-enum class WrapMode
-{
-	Repeat,
-	Clamp,
-	Mirror,
-	MirrorOnce
-};
-
 enum class TextureFormat
 {
 	None,
