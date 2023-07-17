@@ -5,8 +5,8 @@ using namespace GEditor;
 #ifdef USE_METAL_RENDERER
 #include "Renderer/Metal/MetalUtils.h"
 
-#include "backends/imgui_impl_sdl3.h"
-#include "backends/imgui_impl_metal.h"
+#include "ImGui/imgui_impl_sdl3.h"
+#include "imgui_impl_metal.h"
 
 ImGuiBackend::ImGuiBackend()
 {

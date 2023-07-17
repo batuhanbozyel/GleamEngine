@@ -28,8 +28,6 @@ if (APPLE)
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui/imgui_widgets.cpp
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui/imgui_demo.cpp
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui/imgui_tables.cpp
-        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui/backends/imgui_impl_sdl3.cpp
-        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui/backends/imgui_impl_metal.mm
     )
 
     set_source_files_properties(${SOURCE_FILES} PROPERTIES COMPILE_FLAGS "-x objective-c++")
@@ -47,8 +45,6 @@ else ()
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui/imgui_widgets.cpp
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui/imgui_demo.cpp
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui/imgui_tables.cpp
-        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui/backends/imgui_impl_sdl3.cpp
-        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui/backends/imgui_impl_vulkan.cpp
     )
 
     # Configure imgui
