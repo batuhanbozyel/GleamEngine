@@ -6,19 +6,32 @@
 //
 
 #pragma once
-#include "Material.h"
 
 namespace Gleam {
 
+class Material;
+
 class MaterialInstance
 {
+    friend class Material;
+    
 public:
     
-    MaterialInstance(const RefCounted<Material>& parentMaterial);
+    MaterialInstance(const RefCounted<Material>& material, uint32_t uniqueId);
+    
+    void SetProperty(const TString& name, const MaterialPropertyValue& value);
+    
+    const RefCounted<Material>& GetMaterial() const;
+    
+    uint32_t GetUniqueId() const;
     
 private:
     
-    RefCounted<Material> mParentMaterial;
+    uint32_t mUniqueId;
+    
+    RefCounted<Material> mMaterial;
+    
+    TArray<MaterialPropertyValue> mPropertyValues;
     
 };
 

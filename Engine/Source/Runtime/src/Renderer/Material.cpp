@@ -7,94 +7,45 @@
 
 #include "gpch.h"
 #include "Material.h"
+#include "MaterialInstance.h"
 
 using namespace Gleam;
 
-Material::Material(const RefCounted<Shader>& vertexShader,
-                   const RefCounted<Shader>& fragmentShader,
-                   const TArray<MaterialProperty>& properties)
-     :  mVertexShader(vertexShader),
-        mFragmentShader(fragmentShader),
-        mProperties(properties)
+Material::Material(const MaterialDescriptor& descriptor)
+    : mDescriptor(descriptor)
 {
-    
+    // TODO: Allocate GPU buffer
 }
 
-MaterialProperty* Material::GetProperty(const TString& name)
+RefCounted<MaterialInstance> Material::CreateInstance()
 {
-    for (auto& property : mProperties)
-    {
-        if (property.name == name) { return &property; }
-    }
-    GLEAM_ASSERT(false, "Material property with name could not found!");
-    return nullptr;
+    // TODO: Suballocate material instance data from material buffer
+    return CreateRef<MaterialInstance>(shared_from_this(), mInstanceCount++);
 }
 
-void Material::SetProperty(const TString& name, float value)
+const TArray<MaterialPass>& Material::GetPasses() const
 {
-    if (auto property = GetProperty(name))
-    {
-        GLEAM_ASSERT(property->type == MaterialPropertyType::Scalar, "Material property is not a scalar type!");
-        property->value = value;
-    }
-}
-
-void Material::SetProperty(const TString& name, const Vector2& value)
-{
-    if (auto property = GetProperty(name))
-    {
-        GLEAM_ASSERT(property->type == MaterialPropertyType::Vector2, "Material property is not a 2d vector type!");
-        property->value = value;
-    }
-}
-
-void Material::SetProperty(const TString& name, const Vector3& value)
-{
-    if (auto property = GetProperty(name))
-    {
-        GLEAM_ASSERT(property->type == MaterialPropertyType::Vector3, "Material property is not a 3d vector type!");
-        property->value = value;
-    }
-}
-
-void Material::SetProperty(const TString& name, const Vector4& value)
-{
-    if (auto property = GetProperty(name))
-    {
-        GLEAM_ASSERT(property->type == MaterialPropertyType::Vector4, "Material property is not a 4d vector type!");
-        property->value = value;
-    }
-}
-
-void Material::SetProperty(const TString& name, const RefCounted<Buffer>& buffer)
-{
-    if (auto property = GetProperty(name))
-    {
-        GLEAM_ASSERT(property->type == MaterialPropertyType::Buffer, "Material property is not a buffer!");
-        property->value = buffer;
-    }
-}
-
-void Material::SetProperty(const TString& name, const RefCounted<Texture2D>& texture2d)
-{
-    if (auto property = GetProperty(name))
-    {
-        GLEAM_ASSERT(property->type == MaterialPropertyType::Texture2D, "Material property is not a texture2d!");
-        property->value = texture2d;
-    }
-}
-
-void Material::SetProperty(const TString& name, const RefCounted<TextureCube>& textureCube)
-{
-    auto property = GetProperty(name);
-    if (property)
-    {
-        GLEAM_ASSERT(property->type == MaterialPropertyType::TextureCube, "Material property is not a textureCube!");
-        property->value = textureCube;
-    }
+    return mDescriptor.passes;
 }
 
 const TArray<MaterialProperty>& Material::GetProperties() const
 {
-    return mProperties;
+    return mDescriptor.properties;
+}
+
+RenderQueue Material::GetRenderQueue() const
+{
+    return mDescriptor.renderQueue;
+}
+
+uint32_t Material::GetPropertyIndex(const TString& name) const
+{
+    for (uint32_t i = 0; i < mDescriptor.properties.size(); i++)
+    {
+        if (mDescriptor.properties[i].name == name)
+        {
+            return i;
+        }
+    }
+    return 0;
 }

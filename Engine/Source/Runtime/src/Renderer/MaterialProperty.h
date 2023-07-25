@@ -11,7 +11,6 @@
 namespace Gleam {
 
 class Buffer;
-class Texture;
 class Texture2D;
 class TextureCube;
 
@@ -31,8 +30,8 @@ using MaterialPropertyValue = std::variant<float, Vector2, Vector3, Vector4, Ref
 struct MaterialProperty
 {
     TString name;
-    MaterialPropertyValue value;
     MaterialPropertyType type;
+    MaterialPropertyValue value;
 };
 
 } // namespace Gleam

@@ -6,46 +6,57 @@
 //
 
 #pragma once
+#include "Shader.h"
 #include "MaterialProperty.h"
 #include "PipelineStateDescriptor.h"
 
 namespace Gleam {
 
-class Shader;
+class MaterialInstance;
 
-class Material
+enum class RenderQueue
+{
+    Opaque,
+    Transparent
+};
+
+struct MaterialPass
+{
+    PipelineStateDescriptor pipelineState;
+    RefCounted<Shader> vertexFunction;
+    RefCounted<Shader> fragmentFunction;
+};
+
+struct MaterialDescriptor
+{
+    TArray<MaterialProperty> properties;
+    TArray<MaterialPass> passes;
+    RenderQueue renderQueue;
+};
+
+class Material : public std::enable_shared_from_this<Material>
 {
 public:
-
-    Material(const RefCounted<Shader>& vertexShader, const RefCounted<Shader>& fragmentShader, const TArray<MaterialProperty>& properties);
     
-    void SetProperty(const TString& name, float value);
+    GLEAM_NONCOPYABLE(Material);
     
-    void SetProperty(const TString& name, const Vector2& value);
+    Material(const MaterialDescriptor& descriptor);
     
-    void SetProperty(const TString& name, const Vector3& value);
+    RefCounted<MaterialInstance> CreateInstance();
     
-    void SetProperty(const TString& name, const Vector4& value);
-    
-    void SetProperty(const TString& name, const RefCounted<Buffer>& buffer);
-    
-    void SetProperty(const TString& name, const RefCounted<Texture2D>& texture2d);
-    
-    void SetProperty(const TString& name, const RefCounted<TextureCube>& textureCube);
+    const TArray<MaterialPass>& GetPasses() const;
     
     const TArray<MaterialProperty>& GetProperties() const;
     
+    RenderQueue GetRenderQueue() const;
+    
+    uint32_t GetPropertyIndex(const TString& name) const;
+    
 private:
     
-    MaterialProperty* GetProperty(const TString& name);
+    uint32_t mInstanceCount = 0;
     
-    TArray<MaterialProperty> mProperties;
-
-	PipelineStateDescriptor mPipelineState;
-    
-    RefCounted<Shader> mVertexShader;
-    
-    RefCounted<Shader> mFragmentShader;
+    MaterialDescriptor mDescriptor;
     
 };
 

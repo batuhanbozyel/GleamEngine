@@ -52,24 +52,27 @@ void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
     },
     [this](const RenderGraphContext& renderGraphContext, const WorldRenderingData& passData)
     {
-        PipelineStateDescriptor pipelineDesc;
-        pipelineDesc.cullingMode = CullMode::Back;
-        pipelineDesc.depthState.writeEnabled = true;
-        renderGraphContext.cmd->BindGraphicsPipeline(pipelineDesc, mForwardPassVertexShader, mForwardPassFragmentShader);
-        renderGraphContext.cmd->SetVertexBuffer(*mCameraBuffer, 0, RendererBindingTable::CameraBuffer);
-        
-        for (const auto& element : mOpaqueQueue)
+        for (auto& [material, meshList] : mOpaqueQueue)
         {
-            const auto& meshBuffer = element.mesh->GetBuffer();
-            renderGraphContext.cmd->SetVertexBuffer(*meshBuffer.GetPositionBuffer(), 0, RendererBindingTable::PositionBuffer);
-            renderGraphContext.cmd->SetVertexBuffer(*meshBuffer.GetInterleavedBuffer(), 0, RendererBindingTable::InterleavedBuffer);
-            
-            ForwardPassUniforms uniforms;
-            uniforms.modelMatrix = element.transform;
-            renderGraphContext.cmd->SetPushConstant(uniforms, ShaderStage_Vertex | ShaderStage_Fragment);
-            for (const auto& descriptor : element.mesh->GetSubmeshDescriptors())
+            for (const auto& pass : material->GetPasses())
             {
-                renderGraphContext.cmd->DrawIndexed(meshBuffer.GetIndexBuffer()->GetHandle(), IndexType::UINT32, descriptor.indexCount, 1, descriptor.firstIndex, descriptor.baseVertex, 0);
+                renderGraphContext.cmd->BindGraphicsPipeline(pass.pipelineState, pass.vertexFunction, pass.fragmentFunction);
+                renderGraphContext.cmd->SetVertexBuffer(*mCameraBuffer, 0, RendererBindingTable::CameraBuffer);
+                
+                for (const auto& element : meshList)
+                {
+                    const auto& meshBuffer = element.mesh->GetBuffer();
+                    renderGraphContext.cmd->SetVertexBuffer(*meshBuffer.GetPositionBuffer(), 0, RendererBindingTable::PositionBuffer);
+                    renderGraphContext.cmd->SetVertexBuffer(*meshBuffer.GetInterleavedBuffer(), 0, RendererBindingTable::InterleavedBuffer);
+                    
+                    ForwardPassUniforms uniforms;
+                    uniforms.modelMatrix = element.transform;
+                    renderGraphContext.cmd->SetPushConstant(uniforms, ShaderStage_Vertex | ShaderStage_Fragment);
+                    for (const auto& descriptor : element.mesh->GetSubmeshDescriptors())
+                    {
+                        renderGraphContext.cmd->DrawIndexed(meshBuffer.GetIndexBuffer()->GetHandle(), IndexType::UINT32, descriptor.indexCount, 1, descriptor.firstIndex, descriptor.baseVertex, 0);
+                    }
+                }
             }
         }
         mOpaqueQueue.clear();
@@ -81,7 +84,15 @@ void WorldRenderer::DrawMesh(const MeshRenderer& meshRenderer, const Transform& 
     RenderQueueElement element;
     element.mesh = meshRenderer.GetMesh();
     element.transform = transform.GetTransform();
-    mOpaqueQueue.emplace_back(element);
+    
+    if (meshRenderer.GetMaterial()->GetRenderQueue() == RenderQueue::Opaque)
+    {
+        mOpaqueQueue[meshRenderer.GetMaterial()].emplace_back(element);
+    }
+    else
+    {
+        mTransparentQueue[meshRenderer.GetMaterial()].emplace_back(element);
+    }
 }
 
 void WorldRenderer::UpdateCamera(const Camera& camera)

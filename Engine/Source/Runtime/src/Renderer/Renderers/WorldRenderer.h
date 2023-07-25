@@ -38,7 +38,8 @@ private:
         RefCounted<Mesh> mesh;
         Matrix4 transform;
     };
-    List<RenderQueueElement> mOpaqueQueue;
+    HashMap<RefCounted<Material>, List<RenderQueueElement>> mOpaqueQueue;
+    HashMap<RefCounted<Material>, List<RenderQueueElement>> mTransparentQueue;
     
     Scope<Buffer> mCameraBuffer;
     RefCounted<Shader> mForwardPassVertexShader;
