@@ -18,7 +18,7 @@ public:
     void Rotate(float rotation)
     {
         mIsTransformDirty = true;
-        mRotation *= rotation;
+        mRotation += rotation;
     }
 
 	void Scale(const Vector2& scale)

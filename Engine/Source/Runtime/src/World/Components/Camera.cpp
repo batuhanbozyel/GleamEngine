@@ -58,11 +58,9 @@ void Camera::SetViewport(const Size& size)
 void Camera::SetViewport(float width, float height)
 {
 	float aspectRatio = width / height;
-	if (Math::Abs(aspectRatio - mAspectRatio) > Math::Epsilon)
-	{
-		mAspectRatio = aspectRatio;
-		mProjectionMatrixDirty = true;
-	}
+    mAspectRatio = aspectRatio;
+    mOrthographicSize = height;
+    mProjectionMatrixDirty = true;
 }
 
 void Camera::SetProjection(ProjectionType type)
