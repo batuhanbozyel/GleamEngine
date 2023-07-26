@@ -297,14 +297,14 @@ static constexpr VkStencilOp StencilOpToVkStencilOp(StencilOp stencilOp)
 {
 	switch (stencilOp)
 	{
-		case Gleam::StencilOp::Keep: return VK_STENCIL_OP_KEEP;
-		case Gleam::StencilOp::Zero: return VK_STENCIL_OP_ZERO;
-		case Gleam::StencilOp::Replace: return VK_STENCIL_OP_REPLACE;
-		case Gleam::StencilOp::IncrementClamp: return VK_STENCIL_OP_INCREMENT_AND_CLAMP;
-		case Gleam::StencilOp::IncrementWrap: return VK_STENCIL_OP_INCREMENT_AND_WRAP;
-		case Gleam::StencilOp::DecrementClamp: return VK_STENCIL_OP_DECREMENT_AND_CLAMP;
-		case Gleam::StencilOp::DecrementWrap: return VK_STENCIL_OP_DECREMENT_AND_WRAP;
-		case Gleam::StencilOp::Invert: return VK_STENCIL_OP_INVERT;
+		case StencilOp::Keep: return VK_STENCIL_OP_KEEP;
+		case StencilOp::Zero: return VK_STENCIL_OP_ZERO;
+		case StencilOp::Replace: return VK_STENCIL_OP_REPLACE;
+		case StencilOp::IncrementClamp: return VK_STENCIL_OP_INCREMENT_AND_CLAMP;
+		case StencilOp::IncrementWrap: return VK_STENCIL_OP_INCREMENT_AND_WRAP;
+		case StencilOp::DecrementClamp: return VK_STENCIL_OP_DECREMENT_AND_CLAMP;
+		case StencilOp::DecrementWrap: return VK_STENCIL_OP_DECREMENT_AND_WRAP;
+		case StencilOp::Invert: return VK_STENCIL_OP_INVERT;
 		default: return VK_STENCIL_OP_MAX_ENUM;
 	}
 }
@@ -313,14 +313,14 @@ static constexpr VkCompareOp CompareFunctionToVkCompareOp(CompareFunction compar
 {
 	switch (compareFunction)
 	{
-		case Gleam::CompareFunction::Never: return VK_COMPARE_OP_NEVER;
-		case Gleam::CompareFunction::Less: return VK_COMPARE_OP_LESS;
-		case Gleam::CompareFunction::Equal: return VK_COMPARE_OP_EQUAL;
-		case Gleam::CompareFunction::LessEqual: return VK_COMPARE_OP_LESS_OR_EQUAL;
-		case Gleam::CompareFunction::Greater: return VK_COMPARE_OP_GREATER;
-		case Gleam::CompareFunction::NotEqual: return VK_COMPARE_OP_NOT_EQUAL;
-		case Gleam::CompareFunction::GreaterEqual: return VK_COMPARE_OP_GREATER_OR_EQUAL;
-		case Gleam::CompareFunction::Always: return VK_COMPARE_OP_ALWAYS;
+		case CompareFunction::Never: return VK_COMPARE_OP_NEVER;
+		case CompareFunction::Less: return VK_COMPARE_OP_LESS;
+		case CompareFunction::Equal: return VK_COMPARE_OP_EQUAL;
+		case CompareFunction::LessEqual: return VK_COMPARE_OP_LESS_OR_EQUAL;
+		case CompareFunction::Greater: return VK_COMPARE_OP_GREATER;
+		case CompareFunction::NotEqual: return VK_COMPARE_OP_NOT_EQUAL;
+		case CompareFunction::GreaterEqual: return VK_COMPARE_OP_GREATER_OR_EQUAL;
+		case CompareFunction::Always: return VK_COMPARE_OP_ALWAYS;
 		default: return VK_COMPARE_OP_MAX_ENUM;
 	}
 }

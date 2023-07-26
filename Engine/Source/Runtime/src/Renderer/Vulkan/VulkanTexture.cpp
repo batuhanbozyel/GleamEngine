@@ -125,7 +125,7 @@ RenderTexture::RenderTexture()
 RenderTexture::RenderTexture(const TextureDescriptor& descriptor)
     : Texture(descriptor)
 {
-    VkImageUsageFlagBits usage = Utils::IsDepthStencilFormat(descriptor.format) ? VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT : VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+    VkImageUsageFlagBits usage = Utils::IsColorFormat(descriptor.format) ? VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT : VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
     VkImageCreateInfo createInfo{ VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
     createInfo.imageType = VK_IMAGE_TYPE_2D;
     createInfo.format = TextureFormatToVkFormat(descriptor.format);
@@ -160,21 +160,20 @@ RenderTexture::RenderTexture(const TextureDescriptor& descriptor)
             VK_COMPONENT_SWIZZLE_IDENTITY,
             VK_COMPONENT_SWIZZLE_IDENTITY
     };
-	if (Utils::IsDepthStencilFormat(descriptor.format))
-	{
-		if (Utils::IsDepthFormat(descriptor.format))
-		{
-			viewCreateInfo.subresourceRange.aspectMask |= VK_IMAGE_ASPECT_DEPTH_BIT;
-		}
 
-		if (Utils::IsStencilFormat(descriptor.format))
-		{
-			viewCreateInfo.subresourceRange.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
-		}
-	}
-	else
+	if (Utils::IsColorFormat(descriptor.format))
 	{
 		viewCreateInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	}
+
+	if (Utils::IsDepthFormat(descriptor.format))
+	{
+		viewCreateInfo.subresourceRange.aspectMask |= VK_IMAGE_ASPECT_DEPTH_BIT;
+	}
+
+	if (Utils::IsStencilFormat(descriptor.format))
+	{
+		viewCreateInfo.subresourceRange.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
 	}
     
     viewCreateInfo.subresourceRange.layerCount = 1;
@@ -185,7 +184,6 @@ RenderTexture::RenderTexture(const TextureDescriptor& descriptor)
     
     if (descriptor.sampleCount > 1)
     {
-        VkImageUsageFlagBits usage = Utils::IsDepthStencilFormat(descriptor.format) ? VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT : VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
         VkImageCreateInfo createInfo{ VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
         createInfo.imageType = VK_IMAGE_TYPE_2D;
         createInfo.format = TextureFormatToVkFormat(descriptor.format);

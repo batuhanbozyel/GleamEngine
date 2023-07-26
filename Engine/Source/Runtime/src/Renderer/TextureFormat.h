@@ -139,12 +139,71 @@ static constexpr size_t GetTextureFormatSize(TextureFormat format)
 	}
 }
 
+static constexpr bool IsColorFormat(TextureFormat format)
+{
+	switch (format)
+	{
+		case TextureFormat::R8_SRGB:
+		case TextureFormat::R8G8_SRGB:
+		case TextureFormat::R8G8B8A8_SRGB:
+
+		case TextureFormat::R8_UNorm:
+		case TextureFormat::R8G8_UNorm:
+		case TextureFormat::R8G8B8A8_UNorm:
+
+		case TextureFormat::R8_SNorm:
+		case TextureFormat::R8G8_SNorm:
+		case TextureFormat::R8G8B8A8_SNorm:
+
+		case TextureFormat::R8_UInt:
+		case TextureFormat::R8G8_UInt:
+		case TextureFormat::R8G8B8A8_UInt:
+
+		case TextureFormat::R8_SInt:
+		case TextureFormat::R8G8_SInt:
+		case TextureFormat::R8G8B8A8_SInt:
+
+		case TextureFormat::R16_UNorm:
+		case TextureFormat::R16G16B16A16_UNorm:
+
+		case TextureFormat::R16_SNorm:
+		case TextureFormat::R16G16_SNorm:
+		case TextureFormat::R16G16B16A16_SNorm:
+
+		case TextureFormat::R16_UInt:
+		case TextureFormat::R16G16_UInt:
+		case TextureFormat::R16G16B16A16_UInt:
+
+		case TextureFormat::R16_SInt:
+		case TextureFormat::R16G16_SInt:
+		case TextureFormat::R16G16B16A16_SInt:
+
+		case TextureFormat::R16_SFloat:
+		case TextureFormat::R16G16_SFloat:
+		case TextureFormat::R16G16B16A16_SFloat:
+
+		case TextureFormat::R32_UInt:
+		case TextureFormat::R32G32_UInt:
+		case TextureFormat::R32G32B32A32_UInt:
+
+		case TextureFormat::R32_SInt:
+		case TextureFormat::R32G32_SInt:
+		case TextureFormat::R32G32B32A32_SInt:
+
+		case TextureFormat::R32_SFloat:
+		case TextureFormat::R32G32_SFloat:
+		case TextureFormat::R32G32B32A32_SFloat:
+
+		case TextureFormat::B8G8R8A8_SRGB:
+		case TextureFormat::B8G8R8A8_UNorm: return true;
+		default: return false;
+	}
+}
+
 static constexpr bool IsDepthStencilFormat(TextureFormat format)
 {
 	switch (format)
 	{
-		case TextureFormat::S8_UInt:
-		case TextureFormat::D16_UNorm:
 		case TextureFormat::D32_SFloat:
 		case TextureFormat::D32_SFloat_S8_UInt: return true;
 		default: return false;
