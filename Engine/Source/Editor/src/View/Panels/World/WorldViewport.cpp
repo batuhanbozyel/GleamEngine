@@ -56,7 +56,7 @@ void WorldViewport::Render()
     mViewportSize.height = viewportSize.y;
     
     const auto& sceneRTsize = mSceneRT->GetDescriptor().size;
-    ImGui::Image(IMGUI_IMAGE_HANDLE(mSceneRT->GetHandle()), ImVec2(sceneRTsize.width, sceneRTsize.height), ImVec2(0.0f, 0.0f), ImVec2(1.0f, 1.0f));
+    ImGui::Image((ImTextureID)mSceneRT->GetHandle(), ImVec2(sceneRTsize.width, sceneRTsize.height), ImVec2(0.0f, 0.0f), ImVec2(1.0f, 1.0f));
     mIsFocused = ImGui::IsWindowFocused();
     
     ImGui::End();
