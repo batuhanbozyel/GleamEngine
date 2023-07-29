@@ -36,8 +36,9 @@ const MetalPipeline& MetalPipelineStateManager::GetGraphicsPipeline(const Pipeli
     element.fragmentShader = fragmentShader;
 	element.colorAttachments = colorAttachments;
     element.pipelineState.descriptor = pipelineDesc;
-	element.pipelineState.pipeline = CreateGraphicsPipeline(element);
-    element.pipelineState.depthStencil = CreateDepthStencil(pipelineDesc);
+    element.pipelineState.pipeline.topology = PrimitiveTopologyToMTLPrimitiveType(element.pipelineState.descriptor.topology);
+	element.pipelineState.pipeline.handle = CreateGraphicsPipeline(element);
+    element.pipelineState.pipeline.depthStencil = CreateDepthStencil(pipelineDesc);
 	const auto& cachedElement = mGraphicsPipelineCache.emplace_back(element);
 	return cachedElement.pipelineState.pipeline;
 }
@@ -76,7 +77,7 @@ const MetalPipeline& MetalPipelineStateManager::GetGraphicsPipeline(const Pipeli
     element.colorAttachments = colorAttachments;
     element.depthAttachment = depthAttachment;
     element.pipelineState.descriptor = pipelineDesc;
-    element.pipelineState.pipeline.topology = PrimitiveTopologyToMTLPrimitiveTopologyClass(element.pipelineState.descriptor.topology);
+    element.pipelineState.pipeline.topology = PrimitiveTopologyToMTLPrimitiveType(element.pipelineState.descriptor.topology);
     element.pipelineState.pipeline.handle = CreateGraphicsPipeline(element);
     element.pipelineState.pipeline.depthStencil = CreateDepthStencil(pipelineDesc);
     const auto& cachedElement = mGraphicsPipelineCache.emplace_back(element);
@@ -95,7 +96,7 @@ id<MTLRenderPipelineState> MetalPipelineStateManager::CreateGraphicsPipeline(con
     pipelineDescriptor.fragmentFunction = element.fragmentShader->GetHandle();
     pipelineDescriptor.rasterSampleCount = element.sampleCount;
     pipelineDescriptor.alphaToCoverageEnabled = element.pipelineState.descriptor.alphaToCoverage;
-    pipelineDescriptor.inputPrimitiveTopology = element.pipelineState.pipeline.topology;
+    pipelineDescriptor.inputPrimitiveTopology = PrimitiveTopologyToMTLPrimitiveTopologyClass(element.pipelineState.descriptor.topology);
     
     if (element.hasDepthAttachment)
     {

@@ -9,7 +9,7 @@ struct MetalPipeline
 {
 	id<MTLRenderPipelineState> handle = nil;
 	id<MTLDepthStencilState> depthStencil = nil;
-	MTLPrimitiveTopologyClass topology = MTLPrimitiveTopologyClassTriangle;
+	MTLPrimitiveType topology = MTLPrimitiveTypeTriangle;
 };
 
 struct MetalPipelineState

@@ -151,12 +151,12 @@ void CommandBuffer::SetFragmentBuffer(const NativeGraphicsHandle buffer, BufferU
     [mHandle->renderCommandEncoder setFragmentBuffer:buffer offset:offset atIndex:index];
 }
 
-void CommandBuffer::SetVertexTexture(const NativeGraphicsHandle texture, uint32_t index) const
+void CommandBuffer::SetVertexTexture(const NativeGraphicsHandle texture, const SamplerState& samplerState, uint32_t index) const
 {
     [mHandle->renderCommandEncoder setVertexTexture:texture atIndex:index];
 }
 
-void CommandBuffer::SetFragmentTexture(const NativeGraphicsHandle texture, uint32_t index) const
+void CommandBuffer::SetFragmentTexture(const NativeGraphicsHandle texture, const SamplerState& samplerState, uint32_t index) const
 {
     [mHandle->renderCommandEncoder setFragmentTexture:texture atIndex:index];
 }
@@ -175,13 +175,13 @@ void CommandBuffer::SetPushConstant(const void* data, uint32_t size, ShaderStage
 
 void CommandBuffer::Draw(uint32_t vertexCount, uint32_t instanceCount, uint32_t baseVertex, uint32_t baseInstance) const
 {
-    [mHandle->renderCommandEncoder drawPrimitives:mHandle->pipeline.topology) vertexStart:baseVertex vertexCount:vertexCount instanceCount:instanceCount baseInstance:baseInstance];
+    [mHandle->renderCommandEncoder drawPrimitives:mHandle->pipeline.topology vertexStart:baseVertex vertexCount:vertexCount instanceCount:instanceCount baseInstance:baseInstance];
 }
 
 void CommandBuffer::DrawIndexed(const NativeGraphicsHandle indexBuffer, IndexType type, uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, uint32_t baseVertex, uint32_t baseInstance) const
 {
     MTLIndexType indexType = static_cast<MTLIndexType>(type);
-    [mHandle->renderCommandEncoder drawIndexedPrimitives:mHandle->pipeline.topology) indexCount:indexCount indexType:indexType indexBuffer:indexBuffer indexBufferOffset:firstIndex * SizeOfIndexType(type) instanceCount:instanceCount baseVertex:baseVertex baseInstance:baseInstance];
+    [mHandle->renderCommandEncoder drawIndexedPrimitives:mHandle->pipeline.topology indexCount:indexCount indexType:indexType indexBuffer:indexBuffer indexBufferOffset:firstIndex * SizeOfIndexType(type) instanceCount:instanceCount baseVertex:baseVertex baseInstance:baseInstance];
 }
 
 void CommandBuffer::CopyBuffer(const NativeGraphicsHandle src, const NativeGraphicsHandle dst, size_t size, uint32_t srcOffset, uint32_t dstOffset) const
