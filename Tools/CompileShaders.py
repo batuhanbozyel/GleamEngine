@@ -6,8 +6,11 @@ import subprocess
 cmd = subprocess.run
 
 VULKAN_SDK = os.getenv("VULKAN_SDK")
-
-DXC = f"{VULKAN_SDK}/bin/dxc"
+if VULKAN_SDK is None:
+    global DXC
+    DXC = "dxc"
+else:
+    DXC = f"{VULKAN_SDK}/bin/dxc"
 MSC = "metal-shaderconverter"
 METAL_PACK = "xcrun -sdk macosx metal-pack"
 
