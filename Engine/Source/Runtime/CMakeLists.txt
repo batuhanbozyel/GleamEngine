@@ -7,9 +7,7 @@ find_package (Python COMPONENTS Interpreter Development REQUIRED)
 add_subdirectory(${CMAKE_SOURCE_DIR}/Engine/ThirdParty ${CMAKE_BINARY_DIR}/ThirdParty)
 
 # Runtime shader files
-file(GLOB_RECURSE MSL_FILES ${CMAKE_CURRENT_SOURCE_DIR}/src/*.metal)
-file(GLOB_RECURSE HLSL_FILES ${CMAKE_CURRENT_SOURCE_DIR}/src/*.hlsl)
-set(SHADER_FILES ${MSL_FILES} ${HLSL_FILES})
+file(GLOB_RECURSE SHADER_FILES ${CMAKE_CURRENT_SOURCE_DIR}/src/*.hlsl)
 
 # Runtime source files
 file(GLOB_RECURSE SOURCE_FILES

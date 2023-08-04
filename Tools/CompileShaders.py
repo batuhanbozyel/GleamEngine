@@ -11,6 +11,7 @@ if VULKAN_SDK is None:
     DXC = "dxc"
 else:
     DXC = f"{VULKAN_SDK}/bin/dxc"
+
 MSC = "metal-shaderconverter"
 METAL_PACK = "xcrun -sdk macosx metal-pack"
 
@@ -37,9 +38,9 @@ def compile_shader(hlsl_file: str, entry_point: str, shader_stage: str, output_d
 
         # Generate SPIR-V
         if shader_stage == "vertex":
-            cmd([DXC, "-spirv", "-T", "-fvk-use-gl-layout", "-fvk-invert-y", HLSL_SHADER_STAGE[shader_stage], "-E", entry_point, hlsl_file, "-Fo", spirv_file])
+            cmd([DXC, "-spirv", "-fvk-use-gl-layout", "-fvk-invert-y", "-T", HLSL_SHADER_STAGE[shader_stage], "-E", entry_point, hlsl_file, "-Fo", spirv_file])
         else:
-            cmd([DXC, "-spirv", "-T", "-fvk-use-gl-layout", HLSL_SHADER_STAGE[shader_stage], "-E", entry_point, hlsl_file, "-Fo", spirv_file])
+            cmd([DXC, "-spirv", "-fvk-use-gl-layout", "-T", HLSL_SHADER_STAGE[shader_stage], "-E", entry_point, hlsl_file, "-Fo", spirv_file])
 
 if __name__ == "__main__":
     if len(sys.argv) < 5 or (len(sys.argv) - 2) % 3 != 0:
