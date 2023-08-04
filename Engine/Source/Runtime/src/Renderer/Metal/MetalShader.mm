@@ -10,7 +10,7 @@ struct Shader::Reflection {};
 
 Shader::Shader(const TString& entryPoint, ShaderStage stage)
     : mEntryPoint(entryPoint), mStage(stage)
-{    
+{
     NSString* functionName = [NSString stringWithCString:entryPoint.c_str() encoding:NSASCIIStringEncoding];
     mHandle = [MetalDevice::GetShaderLibrary() newFunctionWithName:functionName];
 }

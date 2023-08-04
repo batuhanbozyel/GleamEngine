@@ -1,5 +1,8 @@
 include (${CMAKE_SOURCE_DIR}/CMake/CMakeUtils.cmake)
 
+find_package(Vulkan REQUIRED)
+find_package (Python COMPONENTS Interpreter Development REQUIRED)
+
 # Third-party libraries
 add_subdirectory(${CMAKE_SOURCE_DIR}/Engine/ThirdParty ${CMAKE_BINARY_DIR}/ThirdParty)
 
@@ -87,22 +90,19 @@ target_compile_definitions(
 )
 
 # Precompile shaders
-if (NOT APPLE)
-    set(HLSL_FILE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/src/Renderer/Vulkan/Shaders)
-    ADD_VERTEX_SHADER(Runtime ${HLSL_FILE_PATH}/CommonShader.hlsl fullscreenTriangleVertexShader)
-    ADD_FRAGMENT_SHADER(Runtime ${HLSL_FILE_PATH}/CommonShader.hlsl fullscreenTriangleFragmentShader)
-    ADD_FRAGMENT_SHADER(Runtime ${HLSL_FILE_PATH}/CommonShader.hlsl tonemappingFragmentShader)
+set(HLSL_FILE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/src/Renderer/Shaders)
+set(SHADER_FUNCTIONS
+    ${HLSL_FILE_PATH}/CommonShader.hlsl fullscreenTriangleVertexShader vertex
+    ${HLSL_FILE_PATH}/CommonShader.hlsl fullscreenTriangleFragmentShader fragment
+    ${HLSL_FILE_PATH}/CommonShader.hlsl tonemappingFragmentShader fragment
+    ${HLSL_FILE_PATH}/ForwardPassShader.hlsl forwardPassVertexShader vertex
+    ${HLSL_FILE_PATH}/ForwardPassShader.hlsl forwardPassFragmentShader fragment
+    ${HLSL_FILE_PATH}/DebugShader.hlsl debugVertexShader vertex
+    ${HLSL_FILE_PATH}/DebugShader.hlsl debugMeshVertexShader vertex
+    ${HLSL_FILE_PATH}/DebugShader.hlsl debugFragmentShader fragment)
 
-    ADD_VERTEX_SHADER(Runtime ${HLSL_FILE_PATH}/ForwardPassShader.hlsl forwardPassVertexShader)
-    ADD_FRAGMENT_SHADER(Runtime ${HLSL_FILE_PATH}/ForwardPassShader.hlsl forwardPassFragmentShader)
-
-    ADD_VERTEX_SHADER(Runtime ${HLSL_FILE_PATH}/DebugShader.hlsl debugVertexShader)
-    ADD_VERTEX_SHADER(Runtime ${HLSL_FILE_PATH}/DebugShader.hlsl debugMeshVertexShader)
-    ADD_FRAGMENT_SHADER(Runtime ${HLSL_FILE_PATH}/DebugShader.hlsl debugFragmentShader)
-else()
-    add_custom_command(
-        TARGET Runtime
-        PRE_BUILD
-        COMMAND xcrun -sdk macosx metal -frecord-sources=flat ${MSL_FILES} -o ${CMAKE_SOURCE_DIR}/Assets/PrecompiledShaders.metallib
-    )
-endif()
+add_custom_command(
+    TARGET Runtime
+    PRE_BUILD
+    COMMAND Python::Interpreter ${CMAKE_SOURCE_DIR}/Tools/CompileShaders.py ${CMAKE_SOURCE_DIR}/Assets ${SHADER_FUNCTIONS}
+)

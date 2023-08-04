@@ -1,5 +1,5 @@
-#include "../../ShaderTypes.h"
-#include "../../RendererBindingTable.h"
+#include "../ShaderTypes.h"
+#include "../RendererBindingTable.h"
 
 [[vk::binding(Gleam::RendererBindingTable::PositionBuffer)]]
 StructuredBuffer<Gleam::Vector3> PositionBuffer;
