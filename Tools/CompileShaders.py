@@ -33,12 +33,13 @@ def compile_shader(hlsl_file: str, entry_point: str, shader_stage: str, output_d
         # Remove DXIL
         os.remove(dxil_file)
     else:
+        spirv_file = f"{output_dir}/{entry_point}.spv"
+
         # Generate SPIR-V
         if shader_stage == "vertex":
-            cmd([DXC, "-T", "-fvk-use-gl-layout", "-fvk-invert-y", HLSL_SHADER_STAGE[shader_stage], "-E", entry_point, hlsl_file, "-Fo", dxil_file])
+            cmd([DXC, "-spirv", "-T", "-fvk-use-gl-layout", "-fvk-invert-y", HLSL_SHADER_STAGE[shader_stage], "-E", entry_point, hlsl_file, "-Fo", spirv_file])
         else:
-            cmd([DXC, "-T", "-fvk-use-gl-layout", HLSL_SHADER_STAGE[shader_stage], "-E", entry_point, hlsl_file, "-Fo", dxil_file])
-            subprocess.run(cmd)
+            cmd([DXC, "-spirv", "-T", "-fvk-use-gl-layout", HLSL_SHADER_STAGE[shader_stage], "-E", entry_point, hlsl_file, "-Fo", spirv_file])
 
 if __name__ == "__main__":
     if len(sys.argv) < 5 or (len(sys.argv) - 2) % 3 != 0:
@@ -58,7 +59,7 @@ if __name__ == "__main__":
         for file in os.listdir(output_dir):
             print(file)
             if file != "PrecompiledShaders.metallib" and file.endswith(".metallib"):
-                metallib_files.append(f"{output_dir}/{file}") 
+                metallib_files.append(f"{output_dir}/{file}")
 
         packed_metallib = f"{output_dir}/PrecompiledShaders.metallib"
         cmd(METAL_PACK.split() + metallib_files + ["-o", packed_metallib])
