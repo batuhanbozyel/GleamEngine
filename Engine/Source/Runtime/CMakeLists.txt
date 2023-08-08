@@ -1,7 +1,7 @@
 include (${CMAKE_SOURCE_DIR}/CMake/CMakeUtils.cmake)
 
 find_package(Vulkan REQUIRED)
-find_package (Python COMPONENTS Interpreter Development REQUIRED)
+find_package(Python COMPONENTS Interpreter REQUIRED)
 
 # Third-party libraries
 add_subdirectory(${CMAKE_SOURCE_DIR}/Engine/ThirdParty ${CMAKE_BINARY_DIR}/ThirdParty)
@@ -18,12 +18,12 @@ file(GLOB_RECURSE SOURCE_FILES
 
 # Setup link libraries
 if (WIN32)
-    set(LIB_LINKS SDL3::SDL3-static volk.lib spirv-reflect-static.lib)
+    set(LIB_LINKS SDL3::SDL3-static nlohmann_json::nlohmann_json volk.lib spirv-reflect-static.lib)
     set_source_files_properties(${SHADER_FILES} PROPERTIES VS_TOOL_OVERRIDE "None")
 elseif (APPLE)
-    set(LIB_LINKS SDL3::SDL3-static "-framework UniformTypeIdentifiers")
+    set(LIB_LINKS SDL3::SDL3-static nlohmann_json::nlohmann_json "-framework UniformTypeIdentifiers")
 else()
-    set(LIB_LINKS SDL3::SDL3-static volk.a spirv-reflect-static.a)
+    set(LIB_LINKS SDL3::SDL3-static nlohmann_json::nlohmann_json volk.a spirv-reflect-static.a)
 endif()
 
 # Set Runtime as static library
@@ -44,6 +44,7 @@ if (APPLE)
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/cgltf
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/volk
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/SPIRV-Reflect
+        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/json/single_include
     )
     set_source_files_properties(${SOURCE_FILES} PROPERTIES COMPILE_FLAGS "-x objective-c++")
     set_target_properties(Runtime PROPERTIES MACOSX_BUNDLE YES XCODE_ATTRIBUTE_CLANG_ENABLE_OBJC_ARC YES)
@@ -61,6 +62,7 @@ else()
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/cgltf
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/volk
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/SPIRV-Reflect
+        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/json/single_include
     )
 endif()
 
