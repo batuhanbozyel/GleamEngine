@@ -41,24 +41,14 @@ public:
 
     void SetViewport(const Size& size) const;
     
-    void SetVertexBuffer(const Buffer& buffer, size_t offset, uint32_t index) const
+    void BindBuffer(const Buffer& buffer, size_t offset, uint32_t index, ShaderStageFlagBits stage) const
     {
-        SetVertexBuffer(buffer.GetHandle(), buffer.GetDescriptor().usage, buffer.GetDescriptor().size, offset, index);
+        BindBuffer(buffer.GetHandle(), buffer.GetDescriptor().usage, offset, index, stage);
     }
     
-    void SetFragmentBuffer(const Buffer& buffer, size_t offset, uint32_t index) const
+    void BindTexture(const Texture& texture, uint32_t index, ShaderStageFlagBits stage) const
     {
-        SetFragmentBuffer(buffer.GetHandle(), buffer.GetDescriptor().usage, buffer.GetDescriptor().size, offset, index);
-    }
-    
-    void SetVertexTexture(const Texture& texture, uint32_t index) const
-    {
-        SetVertexTexture(texture.GetView(), texture.GetSamplerState(), index);
-    }
-    
-    void SetFragmentTexture(const Texture& texture, uint32_t index) const
-    {
-        SetFragmentTexture(texture.GetView(), texture.GetSamplerState(), index);
+        BindTexture(texture.GetView(), index, stage);
     }
 
     template<typename T>
@@ -102,13 +92,9 @@ public:
 
 private:
 
-    void SetVertexBuffer(const NativeGraphicsHandle buffer, BufferUsage usage, size_t size, size_t offset, uint32_t index) const;
+    void BindBuffer(const NativeGraphicsHandle buffer, BufferUsage usage, size_t offset, uint32_t index, ShaderStageFlagBits stage) const;
     
-    void SetFragmentBuffer(const NativeGraphicsHandle buffer, BufferUsage usage, size_t size, size_t offset, uint32_t index) const;
-    
-    void SetVertexTexture(const NativeGraphicsHandle texture, const SamplerState& samplerState, uint32_t index) const;
-    
-    void SetFragmentTexture(const NativeGraphicsHandle texture, const SamplerState& samplerState, uint32_t index) const;
+    void BindTexture(const NativeGraphicsHandle texture, uint32_t index, ShaderStageFlagBits stage) const;
     
     void SetPushConstant(const void* data, uint32_t size, ShaderStageFlagBits stage) const;
 

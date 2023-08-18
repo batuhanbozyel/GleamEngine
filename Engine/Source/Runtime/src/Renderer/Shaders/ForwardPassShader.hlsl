@@ -1,14 +1,10 @@
 #include "../ShaderTypes.h"
-#include "../RendererBindingTable.h"
 
-[[vk::binding(Gleam::RendererBindingTable::PositionBuffer)]]
-StructuredBuffer<Gleam::Vector3> PositionBuffer;
+StructuredBuffer<Gleam::Vector3> PositionBuffer : register(t0);
 
-[[vk::binding(Gleam::RendererBindingTable::InterleavedBuffer)]]
-StructuredBuffer<Gleam::InterleavedMeshVertex> InterleavedBuffer;
+StructuredBuffer<Gleam::InterleavedMeshVertex> InterleavedBuffer : register(t1);
 
-[[vk::binding(Gleam::RendererBindingTable::CameraBuffer)]]
-ConstantBuffer<Gleam::CameraUniforms> CameraBuffer;
+ConstantBuffer<Gleam::CameraUniforms> CameraBuffer : register(b0);
 
 struct VertexOut
 {

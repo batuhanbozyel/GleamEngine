@@ -11,7 +11,6 @@
 #include "Renderer/Mesh.h"
 #include "Renderer/CommandBuffer.h"
 #include "Renderer/RendererContext.h"
-#include "Renderer/RendererBindingTable.h"
 
 using namespace Gleam;
 
@@ -29,7 +28,7 @@ void WorldRenderer::OnCreate(RendererContext& context)
 
 void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard)
 {
-    const auto& forwardPassData = graph.AddRenderPass<WorldRenderingData>("WorldRenderer::ForwardPass", [&](RenderGraphBuilder& builder, WorldRenderingData& passData)
+    graph.AddRenderPass<WorldRenderingData>("WorldRenderer::ForwardPass", [&](RenderGraphBuilder& builder, WorldRenderingData& passData)
     {
         const auto& renderingData = blackboard.Get<RenderingData>();
         const auto& backbufferDescriptor = graph.GetDescriptor(renderingData.backbuffer);
@@ -57,13 +56,13 @@ void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
             for (const auto& pass : material->GetPasses())
             {
                 renderGraphContext.cmd->BindGraphicsPipeline(pass.pipelineState, pass.vertexFunction, pass.fragmentFunction);
-                renderGraphContext.cmd->SetVertexBuffer(*mCameraBuffer, 0, RendererBindingTable::CameraBuffer);
+                renderGraphContext.cmd->BindBuffer(*mCameraBuffer, 0, 0, ShaderStage_Vertex);
                 
                 for (const auto& element : meshList)
                 {
                     const auto& meshBuffer = element.mesh->GetBuffer();
-                    renderGraphContext.cmd->SetVertexBuffer(*meshBuffer.GetPositionBuffer(), 0, RendererBindingTable::PositionBuffer);
-                    renderGraphContext.cmd->SetVertexBuffer(*meshBuffer.GetInterleavedBuffer(), 0, RendererBindingTable::InterleavedBuffer);
+                    renderGraphContext.cmd->BindBuffer(*meshBuffer.GetPositionBuffer(), 0, 0, ShaderStage_Vertex);
+                    renderGraphContext.cmd->BindBuffer(*meshBuffer.GetInterleavedBuffer(), 0, 1, ShaderStage_Vertex);
                     
                     ForwardPassUniforms uniforms;
                     uniforms.modelMatrix = element.transform;

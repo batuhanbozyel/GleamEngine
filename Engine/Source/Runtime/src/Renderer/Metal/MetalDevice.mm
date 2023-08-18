@@ -21,12 +21,8 @@ void MetalDevice::Init()
 
         // init MTLCommandQueue
         mCommandPool = [mHandle newCommandQueue];
-
-        // init MTLLibrary
-        NSError* error;
-        auto binaryData = IOUtils::ReadBinaryFile(GameInstance->GetDefaultAssetPath().append("PrecompiledShaders.metallib"));
-        mShaderLibrary = [mHandle newLibraryWithData:dispatch_data_create(binaryData.data(), binaryData.size(), nil, DISPATCH_DATA_DESTRUCTOR_DEFAULT) error:&error];
-        GLEAM_ASSERT(mShaderLibrary);
+        
+        MetalPipelineStateManager::Init();
 
         GLEAM_CORE_INFO("Metal: Graphics device created.");
     }
@@ -34,13 +30,10 @@ void MetalDevice::Init()
 
 void MetalDevice::Destroy()
 {
-    MetalPipelineStateManager::Clear();
+    MetalPipelineStateManager::Destroy();
     
     // Destroy command pool
     mCommandPool = nil;
-
-    // Destroy library
-    mShaderLibrary = nil;
     
     // Destroy swapchain
     mSwapchain.Destroy();
@@ -59,11 +52,6 @@ MetalSwapchain& MetalDevice::GetSwapchain()
 id<MTLCommandQueue> MetalDevice::GetCommandPool()
 {
     return mCommandPool;
-}
-
-id<MTLLibrary> MetalDevice::GetShaderLibrary()
-{
-    return mShaderLibrary;
 }
 
 id<MTLDevice> MetalDevice::GetHandle()

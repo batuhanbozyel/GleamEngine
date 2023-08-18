@@ -21,7 +21,8 @@ if (WIN32)
     set(LIB_LINKS SDL3::SDL3-static nlohmann_json::nlohmann_json volk.lib spirv-reflect-static.lib)
     set_source_files_properties(${SHADER_FILES} PROPERTIES VS_TOOL_OVERRIDE "None")
 elseif (APPLE)
-    set(LIB_LINKS SDL3::SDL3-static nlohmann_json::nlohmann_json "-framework UniformTypeIdentifiers")
+    find_library(METALIR_LIB libmetalirconverter.dylib)
+    set(LIB_LINKS SDL3::SDL3-static nlohmann_json::nlohmann_json ${METALIR_LIB} "-framework UniformTypeIdentifiers")
 else()
     set(LIB_LINKS SDL3::SDL3-static nlohmann_json::nlohmann_json volk.a spirv-reflect-static.a)
 endif()
@@ -35,6 +36,7 @@ if (APPLE)
     add_dependencies(Runtime SDL3-static)
     set(INCLUDE_DIRS
         src
+        /usr/local/include
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/SDL/include
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/fmt/include
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/stb
@@ -92,14 +94,15 @@ target_compile_definitions(
 # Precompile shaders
 set(HLSL_FILE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/src/Renderer/Shaders)
 set(SHADER_FUNCTIONS
-    ${HLSL_FILE_PATH}/CommonShader.hlsl fullscreenTriangleVertexShader vertex
-    ${HLSL_FILE_PATH}/CommonShader.hlsl fullscreenTriangleFragmentShader fragment
-    ${HLSL_FILE_PATH}/CommonShader.hlsl tonemappingFragmentShader fragment
+    ${HLSL_FILE_PATH}/FullscreenShader.hlsl fullscreenTriangleVertexShader vertex
+    ${HLSL_FILE_PATH}/FullscreenShader.hlsl fullscreenTriangleFragmentShader fragment
+    ${HLSL_FILE_PATH}/TonemappingShader.hlsl tonemappingFragmentShader fragment
     ${HLSL_FILE_PATH}/ForwardPassShader.hlsl forwardPassVertexShader vertex
     ${HLSL_FILE_PATH}/ForwardPassShader.hlsl forwardPassFragmentShader fragment
     ${HLSL_FILE_PATH}/DebugShader.hlsl debugVertexShader vertex
     ${HLSL_FILE_PATH}/DebugShader.hlsl debugMeshVertexShader vertex
-    ${HLSL_FILE_PATH}/DebugShader.hlsl debugFragmentShader fragment)
+    ${HLSL_FILE_PATH}/DebugShader.hlsl debugFragmentShader fragment
+)
 
 add_custom_command(
     TARGET Runtime

@@ -1,9 +1,9 @@
 #pragma once
 
 namespace Gleam {
-	
+
 template<typename T>
-struct alignas(16) Vector3Base
+struct Vector3Base
 {
     union
     {

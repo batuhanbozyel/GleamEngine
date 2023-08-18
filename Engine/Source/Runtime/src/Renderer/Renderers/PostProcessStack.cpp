@@ -10,7 +10,6 @@
 
 #include "Renderer/CommandBuffer.h"
 #include "Renderer/RendererContext.h"
-#include "Renderer/RendererBindingTable.h"
 
 #include "WorldRenderer.h"
 
@@ -45,7 +44,7 @@ void PostProcessStack::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard
         
         PipelineStateDescriptor pipelineDesc;
         renderGraphContext.cmd->BindGraphicsPipeline(pipelineDesc, mFullscreenTriangleVertexShader, mTonemappingFragmentShader);
-        renderGraphContext.cmd->SetFragmentTexture(*sceneRT, 0);
+        renderGraphContext.cmd->BindTexture(*sceneRT, 0, ShaderStage_Fragment);
         renderGraphContext.cmd->Draw(3);
     });
 }

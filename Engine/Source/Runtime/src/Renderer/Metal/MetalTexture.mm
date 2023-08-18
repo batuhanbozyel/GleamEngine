@@ -10,6 +10,7 @@ Texture2D::Texture2D(const TextureDescriptor& descriptor)
     : Texture(descriptor)
 {
     MTLTextureDescriptor* textureDesc = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:TextureFormatToMTLPixelFormat(descriptor.format) width:descriptor.size.width height:descriptor.size.height mipmapped:descriptor.useMipMap];
+    textureDesc.usage = TextureUsageToMTLTextureUsage(descriptor.usage);
     textureDesc.mipmapLevelCount = mMipMapLevels;
     mHandle = [MetalDevice::GetHandle() newTextureWithDescriptor:textureDesc];
     mView = mHandle;
@@ -21,18 +22,20 @@ Texture2D::~Texture2D()
     mView = nil;
 }
 
-void Texture2D::SetPixels(const TArray<uint8_t>& pixels) const
+void Texture2D::SetPixels(const void* pixels) const
 {
     MTLRegion region = MTLRegionMake2D(0, 0, mDescriptor.size.width, mDescriptor.size.height);
-    [id<MTLTexture>(mHandle) replaceRegion:region mipmapLevel:0 withBytes:pixels.data() bytesPerRow:mDescriptor.size.width * Utils::GetTextureFormatSize(mDescriptor.format)];
+    [id<MTLTexture>(mHandle) replaceRegion:region mipmapLevel:0 withBytes:pixels bytesPerRow:mDescriptor.size.width * Utils::GetTextureFormatSize(mDescriptor.format)];
     
-    id<MTLCommandBuffer> commandBuffer = [MetalDevice::GetCommandPool() commandBuffer];
-    id<MTLBlitCommandEncoder> commandEncoder = [commandBuffer blitCommandEncoder];
-    
-    [commandEncoder generateMipmapsForTexture:id<MTLTexture>(mHandle)];
-    [commandEncoder endEncoding];
-    
-    [commandBuffer commit];
+    if (mMipMapLevels > 1)
+    {
+        id<MTLCommandBuffer> commandBuffer = [MetalDevice::GetCommandPool() commandBuffer];
+        id<MTLBlitCommandEncoder> commandEncoder = [commandBuffer blitCommandEncoder];
+        
+        [commandEncoder generateMipmapsForTexture:id<MTLTexture>(mHandle)];
+        [commandEncoder endEncoding];
+        [commandBuffer commit];
+    }
 }
 
 TextureCube::TextureCube(const TextureDescriptor& descriptor)
@@ -42,6 +45,7 @@ TextureCube::TextureCube(const TextureDescriptor& descriptor)
     mDescriptor.size.width = size;
     mDescriptor.size.height = size;
     MTLTextureDescriptor* textureDesc = [MTLTextureDescriptor textureCubeDescriptorWithPixelFormat:TextureFormatToMTLPixelFormat(mDescriptor.format) size:size mipmapped:mDescriptor.useMipMap];
+    textureDesc.usage = TextureUsageToMTLTextureUsage(descriptor.usage);
     textureDesc.mipmapLevelCount = mMipMapLevels;
     mHandle = [MetalDevice::GetHandle() newTextureWithDescriptor:textureDesc];
     mView = mHandle;
@@ -66,7 +70,7 @@ RenderTexture::RenderTexture(const TextureDescriptor& descriptor)
     MTLTextureDescriptor* textureDesc = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:TextureFormatToMTLPixelFormat(descriptor.format) width:descriptor.size.width height:descriptor.size.height mipmapped:descriptor.useMipMap];
     textureDesc.mipmapLevelCount = mMipMapLevels;
     textureDesc.sampleCount = 1;
-    textureDesc.usage = MTLTextureUsageShaderRead | MTLTextureUsageRenderTarget;
+    textureDesc.usage = TextureUsageToMTLTextureUsage(descriptor.usage) | MTLTextureUsageRenderTarget;
     textureDesc.storageMode = MTLStorageModePrivate;
     mHandle = [MetalDevice::GetHandle() newTextureWithDescriptor:textureDesc];
     mView = mHandle;

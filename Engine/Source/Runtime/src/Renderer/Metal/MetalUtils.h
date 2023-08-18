@@ -148,6 +148,57 @@ static constexpr MTLPixelFormat TextureFormatToMTLPixelFormat(TextureFormat form
     }
 }
 
+static constexpr MTLTextureUsage TextureUsageToMTLTextureUsage(TextureUsageFlagBits flags)
+{
+    MTLTextureUsage usage = 0;
+    if (flags & TextureUsage_Sampled)
+    {
+        usage |= MTLTextureUsageShaderRead;
+    }
+    
+    if (flags & TextureUsage_Storage)
+    {
+        usage |= MTLTextureUsageShaderWrite;
+    }
+    
+    if (flags & TextureUsage_Attachment)
+    {
+        usage |= MTLTextureUsageRenderTarget;
+    }
+    return usage;
+}
+
+static constexpr MTLRenderStages ShaderStagesToMTLRenderStages(ShaderStageFlagBits flags)
+{
+    MTLRenderStages stages = 0;
+    if (flags & ShaderStage_Vertex)
+    {
+        stages |= MTLRenderStageVertex;
+    }
+    
+    if (flags & ShaderStage_Fragment)
+    {
+        stages |= MTLRenderStageFragment;
+    }
+    
+    if (flags & ShaderStage_Compute)
+    {
+        stages |= MTLRenderStageTile;
+    }
+    return stages;
+}
+
+static constexpr MTLCullMode CullModeToMTLCullMode(CullMode cullMode)
+{
+    switch (cullMode)
+    {
+        case CullMode::Off: return MTLCullModeNone;
+        case CullMode::Back: return MTLCullModeBack;
+        case CullMode::Front: return MTLCullModeFront;
+        default: GLEAM_ASSERT(false, "Metal: Unknown culling mode specified!"); return MTLCullMode(~0);
+    }
+}
+
 static constexpr MTLPrimitiveType PrimitiveTopologyToMTLPrimitiveType(PrimitiveTopology topology)
 {
     switch (topology)

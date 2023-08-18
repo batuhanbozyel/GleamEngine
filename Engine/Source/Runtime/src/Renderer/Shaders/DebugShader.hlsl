@@ -1,14 +1,11 @@
+#include "Common.hlsl"
 #include "../ShaderTypes.h"
-#include "../RendererBindingTable.h"
 
-[[vk::binding(Gleam::RendererBindingTable::PositionBuffer)]]
-StructuredBuffer<Gleam::Vector3> PositionBuffer;
+StructuredBuffer<Gleam::Vector3> PositionBuffer : register(t0);
 
-[[vk::binding(Gleam::RendererBindingTable::PositionBuffer)]]
-StructuredBuffer<Gleam::DebugVertex> VertexBuffer;
+StructuredBuffer<Gleam::DebugVertex> VertexBuffer : register(t0);
 
-[[vk::binding(Gleam::RendererBindingTable::CameraBuffer)]]
-ConstantBuffer<Gleam::CameraUniforms> CameraBuffer;
+ConstantBuffer<Gleam::CameraUniforms> CameraBuffer : register(b0);
 
 [[vk::push_constant]]
 Gleam::DebugShaderUniforms uniforms;
@@ -25,7 +22,7 @@ VertexOut debugVertexShader(uint vertex_id: SV_VertexID)
     
     VertexOut OUT;
     OUT.position = mul(CameraBuffer.viewProjectionMatrix, float4(vertex.position.xyz, 1.0f));
-    OUT.color = Gleam::unpack_unorm4x8_to_float(vertex.color);
+    OUT.color = unpack_unorm4x8_to_float(vertex.color);
     return OUT;
 }
 
@@ -33,7 +30,7 @@ VertexOut debugMeshVertexShader(uint vertex_id: SV_VertexID)
 {
     VertexOut OUT;
     OUT.position = mul(CameraBuffer.viewProjectionMatrix, mul(uniforms.modelMatrix, float4(PositionBuffer[vertex_id].xyz, 1.0f)));
-    OUT.color = Gleam::unpack_unorm4x8_to_float(uniforms.color);
+    OUT.color = unpack_unorm4x8_to_float(uniforms.color);
     return OUT;
 }
 

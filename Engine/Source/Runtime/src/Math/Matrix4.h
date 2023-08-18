@@ -2,7 +2,7 @@
 
 namespace Gleam {
 
-struct alignas(16) Matrix4
+struct Matrix4
 {
     union
     {

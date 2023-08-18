@@ -14,26 +14,11 @@ public:
     {
         
     }
-
-	void SetFilterMode(FilterMode mode)
-	{
-		mSamplerState.filterMode = mode;
-	}
-
-	void SetWrapMode(WrapMode mode)
-	{
-		mSamplerState.wrapMode = mode;
-	}
     
     NativeGraphicsHandle GetView() const
     {
         return mView;
     }
-
-	const SamplerState& GetSamplerState() const
-	{
-		return mSamplerState;
-	}
     
     const TextureDescriptor& GetDescriptor() const
     {
@@ -53,7 +38,6 @@ public:
 protected:
     
     uint32_t mMipMapLevels;
-	SamplerState mSamplerState;
     TextureDescriptor mDescriptor;
     NativeGraphicsHandle mView = nullptr;
     
@@ -66,8 +50,8 @@ public:
 	Texture2D(const TextureDescriptor& descriptor);
 
 	~Texture2D();
-
-	void SetPixels(const TArray<uint8_t>& pixels) const;
+    
+    void SetPixels(const void* pixels) const;
 	
 };
 

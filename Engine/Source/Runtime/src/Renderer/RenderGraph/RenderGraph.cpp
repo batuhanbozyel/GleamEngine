@@ -6,7 +6,7 @@ using namespace Gleam;
 
 static AttachmentLoadAction GetLoadActionForRenderTexture(const RefCounted<RenderTexture>& renderTexture, RenderGraphRenderTextureEntry* entry, RenderPassNode* pass)
 {
-    if (entry->creator == pass)
+    if (entry->creator == pass || !entry->transient)
     {
         return entry->descriptor.clearBuffer ? AttachmentLoadAction::Clear : AttachmentLoadAction::DontCare;
     }

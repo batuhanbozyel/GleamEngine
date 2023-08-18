@@ -219,12 +219,12 @@ void CommandBuffer::SetViewport(const Size& size) const
 	vkCmdSetScissor(mHandle->commandBuffer, 0, 1, &scissor);
 }
 
-void CommandBuffer::SetVertexBuffer(const NativeGraphicsHandle buffer, BufferUsage usage, size_t size, size_t offset, uint32_t index) const
+void CommandBuffer::SetVertexBuffer(const NativeGraphicsHandle buffer, BufferUsage usage, size_t offset, uint32_t index) const
 {
 	VkDescriptorBufferInfo bufferInfo{};
 	bufferInfo.buffer = As<VkBuffer>(buffer);
 	bufferInfo.offset = offset;
-	bufferInfo.range = size;
+	bufferInfo.range = VK_WHOLE_SIZE;
 
 	VkWriteDescriptorSet descriptorSet{ VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
 	descriptorSet.dstBinding = index;
@@ -232,24 +232,6 @@ void CommandBuffer::SetVertexBuffer(const NativeGraphicsHandle buffer, BufferUsa
 	descriptorSet.descriptorType = BufferUsageToVkDescriptorType(usage);
 	descriptorSet.pBufferInfo = &bufferInfo;
 	vkCmdPushDescriptorSetKHR(mHandle->commandBuffer, mHandle->pipeline->bindPoint, mHandle->pipeline->layout, 0, 1, &descriptorSet);
-}
-
-void CommandBuffer::SetFragmentBuffer(const NativeGraphicsHandle buffer, BufferUsage usage, size_t size, size_t offset, uint32_t index) const
-{
-	auto pipeline = static_cast<const VulkanGraphicsPipeline*>(mHandle->pipeline);
-	uint32_t setIndex = pipeline->vertexShader->GetReflection()->setLayouts.size();
-
-	VkDescriptorBufferInfo bufferInfo{};
-	bufferInfo.buffer = As<VkBuffer>(buffer);
-	bufferInfo.offset = offset;
-	bufferInfo.range = size;
-
-	VkWriteDescriptorSet descriptorSet{ VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
-	descriptorSet.dstBinding = index;
-	descriptorSet.descriptorCount = 1;
-	descriptorSet.descriptorType = BufferUsageToVkDescriptorType(usage);
-	descriptorSet.pBufferInfo = &bufferInfo;
-	vkCmdPushDescriptorSetKHR(mHandle->commandBuffer, pipeline->bindPoint, pipeline->layout, setIndex, 1, &descriptorSet);
 }
 
 void CommandBuffer::SetVertexTexture(const NativeGraphicsHandle texture, const SamplerState& samplerState, uint32_t index) const
@@ -262,7 +244,7 @@ void CommandBuffer::SetVertexTexture(const NativeGraphicsHandle texture, const S
 	VkWriteDescriptorSet descriptorSet{ VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
 	descriptorSet.dstBinding = index;
 	descriptorSet.descriptorCount = 1;
-	descriptorSet.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	descriptorSet.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 	descriptorSet.pImageInfo = &imageInfo;
 	vkCmdPushDescriptorSetKHR(mHandle->commandBuffer, mHandle->pipeline->bindPoint, mHandle->pipeline->layout, 0, 1, &descriptorSet);
 }
@@ -280,7 +262,7 @@ void CommandBuffer::SetFragmentTexture(const NativeGraphicsHandle texture, const
 	VkWriteDescriptorSet descriptorSet{ VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
 	descriptorSet.dstBinding = index;
 	descriptorSet.descriptorCount = 1;
-	descriptorSet.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	descriptorSet.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 	descriptorSet.pImageInfo = &imageInfo;
 	vkCmdPushDescriptorSetKHR(mHandle->commandBuffer, pipeline->bindPoint, pipeline->layout, setIndex, 1, &descriptorSet);
 }
