@@ -23,22 +23,10 @@ Shader::Shader(const TString& entryPoint, ShaderStage stage)
     auto metalIR = IRCompilerAllocCompileAndLink(compiler, nullptr, 0, dxil, nullptr);
     
     IRMetalLibBinary* metallibBinary = IRMetalLibBinaryCreate();
-    if (stage == ShaderStage::Vertex)
-    {
-        IRVersionedInputLayoutDescriptor layout;
-        auto reflection = IRShaderReflectionCreate();
-        IRMetalLibSynthesizeStageInFunction(compiler, reflection, &layout, metallibBinary);
-        IRShaderReflectionDestroy(reflection);
-    }
-    
     IRObjectGetMetalLibBinary(metalIR, IRObjectGetMetalIRShaderStage(metalIR), metallibBinary);
-    size_t metallibSize = IRMetalLibGetBytecodeSize(metallibBinary);
-    
-    TArray<uint8_t> metallib(metallibSize);
-    IRMetalLibGetBytecode(metallibBinary, metallib.data());
+    dispatch_data_t data = IRMetalLibGetBytecodeData(metallibBinary);
     
     NSError* __autoreleasing error = nil;
-    dispatch_data_t data = dispatch_data_create(metallib.data(), metallibSize, dispatch_get_main_queue(), NULL);
     id<MTLLibrary> library = [MetalDevice::GetHandle() newLibraryWithData:data error:&error];
     
     NSString* functionName = [NSString stringWithCString:entryPoint.c_str() encoding:NSASCIIStringEncoding];
