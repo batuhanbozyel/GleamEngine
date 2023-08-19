@@ -192,11 +192,11 @@ void CommandBuffer::BindBuffer(const NativeGraphicsHandle buffer, BufferUsage us
         
         switch (usage)
         {
-            case BufferUsage::UniformBuffer: return reflection->CBVs[index];
+            case BufferUsage::UniformBuffer: return Shader::Reflection::GetResourceFromTypeArray(reflection->CBVs, index);
             case BufferUsage::VertexBuffer:
             case BufferUsage::StorageBuffer:
             {
-                return reflection->SRVs[index]; // TODO: Add support for UAVs
+                return Shader::Reflection::GetResourceFromTypeArray(reflection->SRVs, index); // TODO: Add support for UAVs
             }
             default: GLEAM_ASSERT(false, "Metal: Trying to bind buffer with invalid usage.") return IRResourceLocation();
         }
@@ -228,7 +228,7 @@ void CommandBuffer::BindTexture(const NativeGraphicsHandle texture, uint32_t ind
         {
             GLEAM_ASSERT(false, "Metal: Shader stage not implemented yet.")
         }
-        return reflection->SRVs[index];
+        return Shader::Reflection::GetResourceFromTypeArray(reflection->SRVs, index); // TODO: Add support for UAVs
     }();
     
     [mHandle->renderCommandEncoder useResource:texture usage:MTLResourceUsageRead stages:ShaderStagesToMTLRenderStages(stage)];
