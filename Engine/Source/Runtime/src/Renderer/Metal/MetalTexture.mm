@@ -13,7 +13,12 @@ Texture2D::Texture2D(const TextureDescriptor& descriptor)
     textureDesc.usage = TextureUsageToMTLTextureUsage(descriptor.usage);
     textureDesc.mipmapLevelCount = mMipMapLevels;
     mHandle = [MetalDevice::GetHandle() newTextureWithDescriptor:textureDesc];
-    mView = mHandle;
+    
+    id<MTLTexture> baseTexture = mHandle;
+    mView = [baseTexture newTextureViewWithPixelFormat:baseTexture.pixelFormat
+                                           textureType:MTLTextureType2DArray
+                                                levels:NSMakeRange(0, mMipMapLevels)
+                                                slices:NSMakeRange(0, 1)];
 }
 
 Texture2D::~Texture2D()
@@ -48,7 +53,12 @@ TextureCube::TextureCube(const TextureDescriptor& descriptor)
     textureDesc.usage = TextureUsageToMTLTextureUsage(descriptor.usage);
     textureDesc.mipmapLevelCount = mMipMapLevels;
     mHandle = [MetalDevice::GetHandle() newTextureWithDescriptor:textureDesc];
-    mView = mHandle;
+    
+    id<MTLTexture> baseTexture = mHandle;
+    mView = [baseTexture newTextureViewWithPixelFormat:baseTexture.pixelFormat
+                                           textureType:MTLTextureTypeCubeArray
+                                                levels:NSMakeRange(0, mMipMapLevels)
+                                                slices:NSMakeRange(0, 1)];
 }
 
 TextureCube::~TextureCube()
@@ -73,7 +83,12 @@ RenderTexture::RenderTexture(const TextureDescriptor& descriptor)
     textureDesc.usage = TextureUsageToMTLTextureUsage(descriptor.usage) | MTLTextureUsageRenderTarget;
     textureDesc.storageMode = MTLStorageModePrivate;
     mHandle = [MetalDevice::GetHandle() newTextureWithDescriptor:textureDesc];
-    mView = mHandle;
+    
+    id<MTLTexture> baseTexture = mHandle;
+    mView = [baseTexture newTextureViewWithPixelFormat:baseTexture.pixelFormat
+                                           textureType:MTLTextureType2DArray
+                                                levels:NSMakeRange(0, mMipMapLevels)
+                                                slices:NSMakeRange(0, 1)];
     
     if (descriptor.sampleCount > 1)
     {
