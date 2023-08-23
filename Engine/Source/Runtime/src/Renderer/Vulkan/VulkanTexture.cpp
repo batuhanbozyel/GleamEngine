@@ -58,7 +58,7 @@ Texture2D::~Texture2D()
 	vkFreeMemory(VulkanDevice::GetHandle(), As<VkDeviceMemory>(mMemory), nullptr);
 }
 
-void Texture2D::SetPixels(const TArray<uint8_t>& pixels) const
+void Texture2D::SetPixels(const void* pixels) const
 {
     // TODO: use staging buffer
 }

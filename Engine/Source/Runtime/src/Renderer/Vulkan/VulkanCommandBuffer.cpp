@@ -219,7 +219,7 @@ void CommandBuffer::SetViewport(const Size& size) const
 	vkCmdSetScissor(mHandle->commandBuffer, 0, 1, &scissor);
 }
 
-void CommandBuffer::SetVertexBuffer(const NativeGraphicsHandle buffer, BufferUsage usage, size_t offset, uint32_t index) const
+void CommandBuffer::BindBuffer(const NativeGraphicsHandle buffer, BufferUsage usage, size_t offset, uint32_t index, ShaderStageFlagBits stage) const
 {
 	VkDescriptorBufferInfo bufferInfo{};
 	bufferInfo.buffer = As<VkBuffer>(buffer);
@@ -234,12 +234,11 @@ void CommandBuffer::SetVertexBuffer(const NativeGraphicsHandle buffer, BufferUsa
 	vkCmdPushDescriptorSetKHR(mHandle->commandBuffer, mHandle->pipeline->bindPoint, mHandle->pipeline->layout, 0, 1, &descriptorSet);
 }
 
-void CommandBuffer::SetVertexTexture(const NativeGraphicsHandle texture, const SamplerState& samplerState, uint32_t index) const
+void CommandBuffer::BindTexture(const NativeGraphicsHandle texture, uint32_t index, ShaderStageFlagBits stage) const
 {
 	VkDescriptorImageInfo imageInfo{};
 	imageInfo.imageView = As<VkImageView>(texture);
-	imageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL; // TODO: Set appropriate image layout
-	imageInfo.sampler = VulkanPipelineStateManager::GetSampler(samplerState);
+	imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL; // TODO: Set appropriate image layout
 
 	VkWriteDescriptorSet descriptorSet{ VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
 	descriptorSet.dstBinding = index;
@@ -247,24 +246,6 @@ void CommandBuffer::SetVertexTexture(const NativeGraphicsHandle texture, const S
 	descriptorSet.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 	descriptorSet.pImageInfo = &imageInfo;
 	vkCmdPushDescriptorSetKHR(mHandle->commandBuffer, mHandle->pipeline->bindPoint, mHandle->pipeline->layout, 0, 1, &descriptorSet);
-}
-
-void CommandBuffer::SetFragmentTexture(const NativeGraphicsHandle texture, const SamplerState& samplerState, uint32_t index) const
-{
-	auto pipeline = static_cast<const VulkanGraphicsPipeline*>(mHandle->pipeline);
-	uint32_t setIndex = pipeline->vertexShader->GetReflection()->setLayouts.size();
-
-	VkDescriptorImageInfo imageInfo{};
-	imageInfo.imageView = As<VkImageView>(texture);
-	imageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL; // TODO: Set appropriate image layout
-	imageInfo.sampler = VulkanPipelineStateManager::GetSampler(samplerState);
-
-	VkWriteDescriptorSet descriptorSet{ VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
-	descriptorSet.dstBinding = index;
-	descriptorSet.descriptorCount = 1;
-	descriptorSet.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-	descriptorSet.pImageInfo = &imageInfo;
-	vkCmdPushDescriptorSetKHR(mHandle->commandBuffer, pipeline->bindPoint, pipeline->layout, setIndex, 1, &descriptorSet);
 }
 
 void CommandBuffer::SetPushConstant(const void* data, uint32_t size, ShaderStageFlagBits stage) const

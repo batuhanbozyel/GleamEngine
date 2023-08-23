@@ -86,13 +86,11 @@ void VulkanPipelineStateManager::Init()
 
 void VulkanPipelineStateManager::Destroy()
 {
-	Clear();
-
 	for (const auto& sampler : mSamplerStates)
 	{
         vkDestroySampler(VulkanDevice::GetHandle(), sampler, nullptr);
 	}
-	mSamplerStates.clear();
+	Clear();
 }
 
 const VulkanGraphicsPipeline* VulkanPipelineStateManager::GetGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc,
