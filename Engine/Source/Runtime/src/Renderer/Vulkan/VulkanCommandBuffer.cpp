@@ -221,21 +221,75 @@ void CommandBuffer::SetViewport(const Size& size) const
 
 void CommandBuffer::BindBuffer(const NativeGraphicsHandle buffer, BufferUsage usage, size_t offset, uint32_t index, ShaderStageFlagBits stage) const
 {
+	auto resource = [=, this]()
+	{
+		Shader::Reflection* reflection = nullptr;
+		if (stage & ShaderStage_Vertex)
+		{
+			auto pipeline = static_cast<const VulkanGraphicsPipeline*>(mHandle->pipeline);
+			reflection = pipeline->vertexShader->GetReflection().get();
+		}
+		else if (stage & ShaderStage_Fragment)
+		{
+			auto pipeline = static_cast<const VulkanGraphicsPipeline*>(mHandle->pipeline);
+			reflection = pipeline->fragmentShader->GetReflection().get();
+		}
+		else
+		{
+			GLEAM_ASSERT(false, "Metal: Shader stage not implemented yet.")
+		}
+
+		switch (usage)
+		{
+			case BufferUsage::UniformBuffer: return reflection->resources[index];
+			case BufferUsage::VertexBuffer:
+			case BufferUsage::StorageBuffer:
+			{
+				return reflection->resources[index + Shader::Reflection::SRV_BINDING_OFFSET]; // TODO: Add support for UAVs
+			}
+			default: GLEAM_ASSERT(false, "Vulkan: Trying to bind buffer with invalid usage.")
+			{
+				SpvReflectDescriptorBinding* resource = nullptr;
+				return resource;
+			}
+		}
+	}();
+
 	VkDescriptorBufferInfo bufferInfo{};
 	bufferInfo.buffer = As<VkBuffer>(buffer);
 	bufferInfo.offset = offset;
 	bufferInfo.range = VK_WHOLE_SIZE;
 
 	VkWriteDescriptorSet descriptorSet{ VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
-	descriptorSet.dstBinding = index;
+	descriptorSet.dstBinding = resource->binding;
 	descriptorSet.descriptorCount = 1;
 	descriptorSet.descriptorType = BufferUsageToVkDescriptorType(usage);
 	descriptorSet.pBufferInfo = &bufferInfo;
-	vkCmdPushDescriptorSetKHR(mHandle->commandBuffer, mHandle->pipeline->bindPoint, mHandle->pipeline->layout, 0, 1, &descriptorSet);
+	vkCmdPushDescriptorSetKHR(mHandle->commandBuffer, mHandle->pipeline->bindPoint, mHandle->pipeline->layout, resource->set, 1, &descriptorSet);
 }
 
 void CommandBuffer::BindTexture(const NativeGraphicsHandle texture, uint32_t index, ShaderStageFlagBits stage) const
 {
+	auto resource = [=, this]()
+	{
+		Shader::Reflection* reflection = nullptr;
+		if (stage & ShaderStage_Vertex)
+		{
+			auto pipeline = static_cast<const VulkanGraphicsPipeline*>(mHandle->pipeline);
+			reflection = pipeline->vertexShader->GetReflection().get();
+		}
+		else if (stage & ShaderStage_Fragment)
+		{
+			auto pipeline = static_cast<const VulkanGraphicsPipeline*>(mHandle->pipeline);
+			reflection = pipeline->fragmentShader->GetReflection().get();
+		}
+		else
+		{
+			GLEAM_ASSERT(false, "Vulkan: Shader stage not implemented yet.")
+		}
+		return reflection->resources[index + Shader::Reflection::SRV_BINDING_OFFSET]; // TODO: Add support for UAVs
+	}();
+
 	VkDescriptorImageInfo imageInfo{};
 	imageInfo.imageView = As<VkImageView>(texture);
 	imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL; // TODO: Set appropriate image layout
@@ -243,9 +297,9 @@ void CommandBuffer::BindTexture(const NativeGraphicsHandle texture, uint32_t ind
 	VkWriteDescriptorSet descriptorSet{ VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
 	descriptorSet.dstBinding = index;
 	descriptorSet.descriptorCount = 1;
-	descriptorSet.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+	descriptorSet.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE; // TODO: Add support for storage image
 	descriptorSet.pImageInfo = &imageInfo;
-	vkCmdPushDescriptorSetKHR(mHandle->commandBuffer, mHandle->pipeline->bindPoint, mHandle->pipeline->layout, 0, 1, &descriptorSet);
+	vkCmdPushDescriptorSetKHR(mHandle->commandBuffer, mHandle->pipeline->bindPoint, mHandle->pipeline->layout, resource->set, 1, &descriptorSet);
 }
 
 void CommandBuffer::SetPushConstant(const void* data, uint32_t size, ShaderStageFlagBits stage) const

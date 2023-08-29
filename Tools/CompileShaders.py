@@ -1,6 +1,5 @@
 import os
 import sys
-import glob
 import platform
 import subprocess
 cmd = subprocess.run
@@ -28,8 +27,7 @@ def compile_shader(hlsl_file: str, entry_point: str, shader_stage: str, output_d
         spriv_gen_command = [DXC, "-spirv", "-fvk-use-scalar-layout"]
         if shader_stage == "vertex":
             spriv_gen_command.append("-fvk-invert-y")
-        spriv_gen_command.extend(["-fvk-t-shift", "0", "1", "-fvk-u-shift", "0", "2", "-T", HLSL_SHADER_STAGE[shader_stage], "-E", entry_point, hlsl_file, "-Fo", spirv_file])
-        print(spriv_gen_command)
+        spriv_gen_command.extend(["-fvk-t-shift", "1000", "0", "-fvk-u-shift", "2000", "0", "-T", HLSL_SHADER_STAGE[shader_stage], "-E", entry_point, hlsl_file, "-Fo", spirv_file])
         cmd(spriv_gen_command)
 
 if __name__ == "__main__":

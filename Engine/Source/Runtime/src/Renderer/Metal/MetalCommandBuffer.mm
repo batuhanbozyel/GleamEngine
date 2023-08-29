@@ -210,7 +210,6 @@ void CommandBuffer::BindBuffer(const NativeGraphicsHandle buffer, BufferUsage us
 void CommandBuffer::BindTexture(const NativeGraphicsHandle texture, uint32_t index, ShaderStageFlagBits stage) const
 {
     auto argumentBufferPtr = static_cast<uint8_t*>([mHandle->topLevelArgumentBuffer contents]);
-    auto pipeline = static_cast<const MetalGraphicsPipeline*>(mHandle->pipeline);
     auto resource = [=, this]()
     {
         Shader::Reflection* reflection = nullptr;
