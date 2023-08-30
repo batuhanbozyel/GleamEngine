@@ -16,20 +16,10 @@ void RenderGraphResourceRegistry::Clear()
     mEntries.clear();
 }
 
-const RefCounted<Buffer>& RenderGraphResourceRegistry::GetBuffer(BufferHandle handle) const
-{
-    return static_cast<RenderGraphBufferEntry*>(GetResourceEntry(handle))->buffer;
-}
-
-const RefCounted<RenderTexture>& RenderGraphResourceRegistry::GetRenderTexture(RenderTextureHandle handle) const
-{
-    return static_cast<RenderGraphRenderTextureEntry*>(GetResourceEntry(handle))->renderTexture;
-}
-
 NO_DISCARD RenderTextureHandle RenderGraphResourceRegistry::CreateRT(const TextureDescriptor& descriptor)
 {
     RenderTextureHandle resource(static_cast<uint32_t>(mEntries.size()));
-    mEntries.emplace_back(CreateScope<RenderGraphRenderTextureEntry>(descriptor, resource));
+    mEntries.emplace_back(RenderGraphResourceEntry(descriptor, resource));
     
     RenderTextureHandle node(static_cast<uint32_t>(mNodes.size()));
     mNodes.emplace_back(node, resource);
@@ -39,7 +29,7 @@ NO_DISCARD RenderTextureHandle RenderGraphResourceRegistry::CreateRT(const Textu
 NO_DISCARD BufferHandle RenderGraphResourceRegistry::CreateBuffer(const BufferDescriptor& descriptor)
 {
     BufferHandle resource(static_cast<uint32_t>(mEntries.size()));
-    mEntries.emplace_back(CreateScope<RenderGraphBufferEntry>(descriptor, resource));
+    mEntries.emplace_back(RenderGraphResourceEntry(descriptor, resource));
     
     BufferHandle node(static_cast<uint32_t>(mNodes.size()));
     mNodes.emplace_back(node, resource);
@@ -64,9 +54,9 @@ const RenderGraphResourceNode& RenderGraphResourceRegistry::GetResourceNode(Rend
     return mNodes[resource];
 }
 
-RenderGraphResourceEntry* RenderGraphResourceRegistry::GetResourceEntry(RenderGraphResource resource) const
+RenderGraphResourceEntry& RenderGraphResourceRegistry::GetResourceEntry(RenderGraphResource resource)
 {
     const auto& node = GetResourceNode(resource);
     GLEAM_ASSERT(node.resource < mEntries.size());
-    return mEntries[node.resource].get();
+    return mEntries[node.resource];
 }

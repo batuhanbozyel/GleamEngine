@@ -11,21 +11,23 @@ Buffer::Buffer(const BufferDescriptor& descriptor)
 {
     switch (descriptor.memoryType)
     {
-        case MemoryType::Static:
+        case MemoryType::GPU:
         {
             mHandle = [MetalDevice::GetHandle() newBufferWithLength:descriptor.size options:MTLResourceStorageModePrivate];
             break;
         }
-        case MemoryType::Dynamic:
+        case MemoryType::Shared:
         {
-#if defined(PLATFORM_MACOS)
+#if defined(PLATFORM_MACOS) && defined(__arm64__)
+            mHandle = [MetalDevice::GetHandle() newBufferWithLength:descriptor.size options:MTLResourceStorageModeShared];
+#elif defiend(PLATFORM_MACOS)
             mHandle = [MetalDevice::GetHandle() newBufferWithLength:descriptor.size options:MTLResourceStorageModeManaged];
 #elif defined(PLATFORM_IOS)
             mHandle = [MetalDevice::GetHandle() newBufferWithLength:descriptor.size options:MTLResourceStorageModeShared];
 #endif
             break;
         }
-        case MemoryType::Stream:
+        case MemoryType::CPU:
         {
             mHandle = [MetalDevice::GetHandle() newBufferWithLength:descriptor.size options:MTLResourceStorageModeShared];
             break;
@@ -37,7 +39,7 @@ Buffer::Buffer(const BufferDescriptor& descriptor)
         }
     }
     
-    if (mDescriptor.memoryType != MemoryType::Static)
+    if (mDescriptor.memoryType != MemoryType::GPU)
     {
         mContents = [id<MTLBuffer>(mHandle) contents];
     }
@@ -46,11 +48,7 @@ Buffer::Buffer(const BufferDescriptor& descriptor)
 Buffer::~Buffer()
 {
     mHandle = nil;
-    
-    if (mDescriptor.memoryType != MemoryType::Static)
-    {
-        mContents = nullptr;
-    }
+    mContents = nullptr;
 }
 
 #endif

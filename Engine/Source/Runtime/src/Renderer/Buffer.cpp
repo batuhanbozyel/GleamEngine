@@ -12,12 +12,12 @@ Buffer::Buffer(const void* data, const BufferDescriptor& descriptor)
 
 void Buffer::SetData(const void* data, size_t size, size_t offset) const
 {
-    if (mDescriptor.memoryType == MemoryType::Static)
+    if (mDescriptor.memoryType == MemoryType::GPU)
     {
         BufferDescriptor descriptor;
         descriptor.size = size;
         descriptor.usage = BufferUsage::StagingBuffer;
-        descriptor.memoryType = MemoryType::Stream;
+        descriptor.memoryType = MemoryType::CPU;
         Buffer stagingBuffer(data, descriptor);
         
         CommandBuffer commandBuffer;

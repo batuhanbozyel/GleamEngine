@@ -22,10 +22,6 @@ public:
     
     void Clear();
     
-    const RefCounted<Buffer>& GetBuffer(BufferHandle handle) const;
-    
-    const RefCounted<RenderTexture>& GetRenderTexture(RenderTextureHandle handle) const;
-    
 private:
     
     NO_DISCARD BufferHandle CreateBuffer(const BufferDescriptor& descriptor);
@@ -34,14 +30,14 @@ private:
     
     NO_DISCARD RenderGraphResource CloneResource(RenderGraphResource resource);
     
-    RenderGraphResourceEntry* GetResourceEntry(RenderGraphResource resource) const;
+    RenderGraphResourceEntry& GetResourceEntry(RenderGraphResource resource);
     
     RenderGraphResourceNode& GetResourceNode(RenderGraphResource resource);
     
     const RenderGraphResourceNode& GetResourceNode(RenderGraphResource resource) const;
     
     TArray<RenderGraphResourceNode> mNodes;
-    TArray<Scope<RenderGraphResourceEntry>> mEntries;
+    TArray<RenderGraphResourceEntry> mEntries;
     
 };
 

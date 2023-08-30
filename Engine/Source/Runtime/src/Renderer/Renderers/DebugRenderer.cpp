@@ -15,7 +15,7 @@ void DebugRenderer::OnCreate(RendererContext& context)
 	mFragmentShader = context.CreateShader("debugFragmentShader", ShaderStage::Fragment);
     
     BufferDescriptor descriptor;
-    descriptor.memoryType = MemoryType::Dynamic;
+    descriptor.memoryType = MemoryType::Shared;
     descriptor.usage = BufferUsage::UniformBuffer;
     descriptor.size = sizeof(CameraUniforms);
     mCameraBuffer = CreateScope<Buffer>(descriptor);
@@ -69,7 +69,7 @@ void DebugRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 		BufferDescriptor descriptor;
 		descriptor.size = mDebugVertices.size() * sizeof(DebugVertex);
 		descriptor.usage = BufferUsage::VertexBuffer;
-		descriptor.memoryType = MemoryType::Stream;
+		descriptor.memoryType = MemoryType::CPU;
 		passData.vertexBuffer = builder.CreateBuffer(descriptor);
 		passData.vertexBuffer = builder.WriteBuffer(passData.vertexBuffer);
 	},

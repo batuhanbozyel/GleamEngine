@@ -64,20 +64,20 @@ void RenderGraph::Compile()
     {
         for (auto id : pass->resourceCreates)
         {
-            auto entry = mRegistry.GetResourceEntry(id);
-            entry->creator = pass;
-            entry->lastModifier = pass;
-            entry->lastReference = pass;
+            auto& entry = mRegistry.GetResourceEntry(id);
+            entry.creator = pass;
+            entry.lastModifier = pass;
+            entry.lastReference = pass;
         }
         for (auto id : pass->resourceWrites)
         {
-            auto entry = mRegistry.GetResourceEntry(id);
-            entry->lastModifier = pass;
-            entry->lastReference = pass;
+            auto& entry = mRegistry.GetResourceEntry(id);
+            entry.lastModifier = pass;
+            entry.lastReference = pass;
         }
         for (auto id : pass->resourceReads)
         {
-            mRegistry.GetResourceEntry(id)->lastReference = pass;
+            mRegistry.GetResourceEntry(id).lastReference = pass;
         }
     }
 }

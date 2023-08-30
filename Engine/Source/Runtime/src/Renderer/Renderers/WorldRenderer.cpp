@@ -20,7 +20,7 @@ void WorldRenderer::OnCreate(RendererContext& context)
     mForwardPassFragmentShader = context.CreateShader("forwardPassFragmentShader", ShaderStage::Fragment);
     
     BufferDescriptor descriptor;
-    descriptor.memoryType = MemoryType::Dynamic;
+    descriptor.memoryType = MemoryType::Shared;
     descriptor.usage = BufferUsage::UniformBuffer;
     descriptor.size = sizeof(CameraUniforms);
     mCameraBuffer = CreateScope<Buffer>(descriptor);

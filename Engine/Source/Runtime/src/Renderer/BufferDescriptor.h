@@ -1,4 +1,5 @@
 #pragma once
+#include "HeapDescriptor.h"
 
 namespace Gleam {
 
@@ -11,18 +12,9 @@ enum class BufferUsage
     StagingBuffer
 };
 
-enum class MemoryType
-{
-    Static,
-    Dynamic,
-    Stream
-};
-
-struct BufferDescriptor
+struct BufferDescriptor : public HeapDescriptor
 {
 	BufferUsage usage = BufferUsage::StorageBuffer;
-	MemoryType memoryType = MemoryType::Static;
-	size_t size = 0;
 };
 
 } // namespace Gleam
