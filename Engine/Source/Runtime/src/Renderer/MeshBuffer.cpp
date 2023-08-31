@@ -83,7 +83,7 @@ MeshBuffer::MeshBuffer(const TArray<Vector3>& positions, const TArray<Interleave
 {
     BufferDescriptor descriptor;
     descriptor.size = positions.size() * sizeof(Vector3);
-    descriptor.usage = BufferUsage::StorageBuffer;
+    descriptor.usage = BufferUsage::VertexBuffer;
     mPositionBuffer = CreateScope<Buffer>(positions.data(), descriptor);
     
     
