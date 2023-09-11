@@ -1,5 +1,4 @@
 #pragma once
-#include "HeapDescriptor.h"
 
 namespace Gleam {
 
@@ -12,9 +11,10 @@ enum class BufferUsage
     StagingBuffer
 };
 
-struct BufferDescriptor : public HeapDescriptor
+struct BufferDescriptor
 {
 	BufferUsage usage = BufferUsage::StorageBuffer;
+    size_t size = 0;
 };
 
 } // namespace Gleam

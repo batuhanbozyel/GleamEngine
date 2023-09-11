@@ -2,21 +2,31 @@
 
 namespace Gleam {
 
-struct RenderGraphResource
+class Buffer;
+class Texture;
+struct RenderGraphResourceNode;
+
+enum class ResourceAccess
+{
+	None,
+    Read,
+    Write
+};
+
+class ResourceHandle
 {
 public:
+    static const ResourceHandle nullHandle;
     
-    static const RenderGraphResource nullHandle;
-    
-    explicit constexpr RenderGraphResource(uint32_t uniqueId, uint32_t version)
-        : uniqueId(uniqueId), version(version)
+    explicit constexpr ResourceHandle(RenderGraphResourceNode* node = nullptr, uint32_t version = 0, ResourceAccess access = ResourceAccess::None)
+        : node(node), version(version), access(access)
     {
         
     }
-    
-    FORCE_INLINE constexpr operator uint32_t() const
+
+	NO_DISCARD FORCE_INLINE constexpr bool IsValid() const
     {
-        return uniqueId;
+        return node != nullptr;
     }
     
     NO_DISCARD FORCE_INLINE constexpr uint32_t GetVersion() const
@@ -24,23 +34,42 @@ public:
         return version;
     }
     
-    constexpr RenderGraphResource(const RenderGraphResource& other) = default;
-    FORCE_INLINE constexpr RenderGraphResource& operator=(const RenderGraphResource& other) = default;
+    NO_DISCARD FORCE_INLINE constexpr ResourceAccess GetAccess() const
+    {
+        return access;
+    }
+    
+    constexpr ResourceHandle(const ResourceHandle& other) = default;
+    FORCE_INLINE constexpr ResourceHandle& operator=(const ResourceHandle& other) = default;
     
 private:
     
     uint32_t version;
-    uint32_t uniqueId;
+    ResourceAccess access;
+    RenderGraphResourceNode* node;
     
 };
 
-#define RenderGraphResourceHandle(HandleType) class HandleType final : public RenderGraphResource {\
-    public: explicit HandleType(uint32_t uniqueId = nullHandle, uint32_t version = 0) : RenderGraphResource(uniqueId, version) {}\
-    constexpr HandleType(const RenderGraphResource& other) : RenderGraphResource(other) {}\
-    FORCE_INLINE constexpr HandleType& operator=(const RenderGraphResource& other) { RenderGraphResource::operator=(other); return *this; }\
-}
+#define RenderGraphResourceHandle(HandleType) explicit HandleType(RenderGraphResourceNode* node = nullptr, uint32_t version = 0, ResourceAccess access = ResourceAccess::None) : ResourceHandle(node, version, access) {}\
+    constexpr HandleType(const ResourceHandle& other) : ResourceHandle(other) {}\
+    FORCE_INLINE constexpr HandleType& operator=(const ResourceHandle& other) { ResourceHandle::operator=(other); return *this; }\
 
-RenderGraphResourceHandle(BufferHandle);
-RenderGraphResourceHandle(RenderTextureHandle);
+class BufferHandle final : public ResourceHandle
+{
+public:
+
+	RenderGraphResourceHandle(BufferHandle)
+
+	NO_DISCARD constexpr operator Buffer() const;
+};
+
+class TextureHandle final : public ResourceHandle
+{
+public:
+
+	RenderGraphResourceHandle(TextureHandle)
+
+    NO_DISCARD FORCE_INLINE constexpr operator Texture() const;
+};
 
 } // namespace Gleam

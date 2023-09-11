@@ -4,18 +4,30 @@
 
 namespace Gleam {
 
+class Buffer;
+struct BufferDescriptor;
+
 class Heap : public GraphicsObject
 {
 public:
     
-	Heap(const HeapDescriptor& descriptor);
-    
+    Heap(const HeapDescriptor& descriptor);
+
     ~Heap();
 
+	Buffer CreateBuffer(const BufferDescriptor& descriptor, size_t offset = 0) const;
+
+	void DestroyBuffer(const Buffer& buffer) const;
+    
+    const HeapDescriptor& GetDescriptor() const
+	{
+		return mDescriptor;
+	}
+    
 private:
 
-	HeapDescriptor mDescriptor;
-
+    const HeapDescriptor mDescriptor;
+    
 };
 
 } // namespace Gleam

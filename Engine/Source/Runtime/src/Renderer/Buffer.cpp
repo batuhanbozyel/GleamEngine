@@ -1,30 +1,38 @@
 #include "gpch.h"
+#include "Heap.h"
 #include "Buffer.h"
 #include "CommandBuffer.h"
 
 using namespace Gleam;
 
-Buffer::Buffer(const void* data, const BufferDescriptor& descriptor)
-    : Buffer(descriptor)
+Buffer::Buffer(NativeGraphicsHandle handle, const BufferDescriptor& descriptor, void* contents)
+    : mHandle(handle), mDescriptor(descriptor), mContents(contents)
 {
-    SetData(data, descriptor.size);
+    
 }
 
 void Buffer::SetData(const void* data, size_t size, size_t offset) const
 {
-    if (mDescriptor.memoryType == MemoryType::GPU)
+    if (mContents == nullptr)
     {
-        BufferDescriptor descriptor;
-        descriptor.size = size;
-        descriptor.usage = BufferUsage::StagingBuffer;
-        descriptor.memoryType = MemoryType::CPU;
-        Buffer stagingBuffer(data, descriptor);
+		HeapDescriptor heapDesc;
+		heapDesc.size = size;
+        heapDesc.memoryType = MemoryType::CPU;
+		Heap heap(heapDesc);
+
+        BufferDescriptor bufferDesc;
+        bufferDesc.size = size;
+        bufferDesc.usage = BufferUsage::StagingBuffer;
+		Buffer stagingBuffer = heap.CreateBuffer(bufferDesc);
+		stagingBuffer.SetData(data, size);
         
         CommandBuffer commandBuffer;
         commandBuffer.Begin();
         commandBuffer.CopyBuffer(stagingBuffer.GetHandle(), GetHandle(), size, 0, static_cast<uint32_t>(offset));
         commandBuffer.End();
         commandBuffer.Commit();
+
+		heap.DestroyBuffer(stagingBuffer);
     }
     else
     {

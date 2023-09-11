@@ -69,21 +69,20 @@ void DebugRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 		BufferDescriptor descriptor;
 		descriptor.size = mDebugVertices.size() * sizeof(DebugVertex);
 		descriptor.usage = BufferUsage::VertexBuffer;
-		descriptor.memoryType = MemoryType::CPU;
 		passData.vertexBuffer = builder.CreateBuffer(descriptor);
 		passData.vertexBuffer = builder.WriteBuffer(passData.vertexBuffer);
 	},
-	[this](const RenderGraphContext& renderGraphContext, const UpdatePassData& passData)
+	[this](const CommandBuffer* cmd, const UpdatePassData& passData)
 	{
 		// Update buffer
-        auto vertexBuffer = renderGraphContext.registry->GetBuffer(passData.vertexBuffer);
-        vertexBuffer->SetData(mDebugVertices.data(), mDebugVertices.size() * sizeof(DebugVertex));
+        const auto& vertexBuffer = static_cast<const Buffer&>(passData.vertexBuffer);
+        vertexBuffer.SetData(mDebugVertices.data(), mDebugVertices.size() * sizeof(DebugVertex));
 	});
 
 	struct DrawPassData
 	{
-		RenderTextureHandle colorTarget;
-        RenderTextureHandle depthTarget;
+        TextureHandle colorTarget;
+        TextureHandle depthTarget;
 		BufferHandle vertexBuffer;
 	};
 
@@ -97,18 +96,17 @@ void DebugRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
         renderingData.colorTarget = passData.colorTarget;
         renderingData.depthTarget = passData.depthTarget;
 	},
-	[this](const RenderGraphContext& renderGraphContext, const DrawPassData& passData)
+	[this](const CommandBuffer* cmd, const DrawPassData& passData)
 	{
-        const auto& vertexBuffer = renderGraphContext.registry->GetBuffer(passData.vertexBuffer);
 		if (!mDepthLines.empty())
 		{
 			PipelineStateDescriptor pipelineState;
 			pipelineState.topology = PrimitiveTopology::Lines;
 			pipelineState.depthState.writeEnabled = true;
-			renderGraphContext.cmd->BindGraphicsPipeline(pipelineState, mPrimitiveVertexShader, mFragmentShader);
-			renderGraphContext.cmd->BindBuffer(*mCameraBuffer, 0, 0, ShaderStage_Vertex);
-			renderGraphContext.cmd->BindBuffer(*vertexBuffer, mDepthLineBufferOffset, 0, ShaderStage_Vertex);
-			renderGraphContext.cmd->Draw(static_cast<uint32_t>(mDepthLines.size())* Utils::PrimitiveTopologyVertexCount(pipelineState.topology));
+			cmd->BindGraphicsPipeline(pipelineState, mPrimitiveVertexShader, mFragmentShader);
+			cmd->BindBuffer(*mCameraBuffer, 0, 0, ShaderStage_Vertex);
+			cmd->BindBuffer(passData.vertexBuffer, mDepthLineBufferOffset, 0, ShaderStage_Vertex);
+			cmd->Draw(static_cast<uint32_t>(mDepthLines.size())* Utils::PrimitiveTopologyVertexCount(pipelineState.topology));
 		}
 
 		if (!mDepthTriangles.empty())
@@ -116,38 +114,42 @@ void DebugRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 			PipelineStateDescriptor pipelineState;
 			pipelineState.topology = PrimitiveTopology::Triangles;
 			pipelineState.depthState.writeEnabled = true;
-			renderGraphContext.cmd->BindGraphicsPipeline(pipelineState, mPrimitiveVertexShader, mFragmentShader);
-            renderGraphContext.cmd->BindBuffer(*mCameraBuffer, 0, 0, ShaderStage_Vertex);
-			renderGraphContext.cmd->BindBuffer(*vertexBuffer, mDepthTriangleBufferOffset, 0, ShaderStage_Vertex);
-			renderGraphContext.cmd->Draw(static_cast<uint32_t>(mDepthTriangles.size())* Utils::PrimitiveTopologyVertexCount(pipelineState.topology));
+			cmd->BindGraphicsPipeline(pipelineState, mPrimitiveVertexShader, mFragmentShader);
+            cmd->BindBuffer(*mCameraBuffer, 0, 0, ShaderStage_Vertex);
+			cmd->BindBuffer(passData.vertexBuffer, mDepthTriangleBufferOffset, 0, ShaderStage_Vertex);
+			cmd->Draw(static_cast<uint32_t>(mDepthTriangles.size())* Utils::PrimitiveTopologyVertexCount(pipelineState.topology));
 		}
 		
 		if (!mDepthDebugMeshes.empty())
-			RenderMeshes(renderGraphContext.cmd, mDepthDebugMeshes, true);
+        {
+            RenderMeshes(cmd, mDepthDebugMeshes, true);
+        }
 
 		if (!mLines.empty())
 		{
 			PipelineStateDescriptor pipelineState;
 			pipelineState.topology = PrimitiveTopology::Lines;
 			pipelineState.depthState.writeEnabled = true;
-			renderGraphContext.cmd->BindGraphicsPipeline(pipelineState, mPrimitiveVertexShader, mFragmentShader);
-            renderGraphContext.cmd->BindBuffer(*mCameraBuffer, 0, 0, ShaderStage_Vertex);
-			renderGraphContext.cmd->BindBuffer(*vertexBuffer, mLineBufferOffset, 0, ShaderStage_Vertex);
-			renderGraphContext.cmd->Draw(static_cast<uint32_t>(mLines.size())* Utils::PrimitiveTopologyVertexCount(pipelineState.topology));
+			cmd->BindGraphicsPipeline(pipelineState, mPrimitiveVertexShader, mFragmentShader);
+            cmd->BindBuffer(*mCameraBuffer, 0, 0, ShaderStage_Vertex);
+			cmd->BindBuffer(passData.vertexBuffer, mLineBufferOffset, 0, ShaderStage_Vertex);
+			cmd->Draw(static_cast<uint32_t>(mLines.size())* Utils::PrimitiveTopologyVertexCount(pipelineState.topology));
 		}
 
 		if (!mTriangles.empty())
 		{
 			PipelineStateDescriptor pipelineState;
 			pipelineState.topology = PrimitiveTopology::Triangles;
-			renderGraphContext.cmd->BindGraphicsPipeline(pipelineState, mPrimitiveVertexShader, mFragmentShader);
-            renderGraphContext.cmd->BindBuffer(*mCameraBuffer, 0, 0, ShaderStage_Vertex);
-			renderGraphContext.cmd->BindBuffer(*vertexBuffer, mTriangleBufferOffset, 0, ShaderStage_Vertex);
-			renderGraphContext.cmd->Draw(static_cast<uint32_t>(mTriangles.size())* Utils::PrimitiveTopologyVertexCount(pipelineState.topology));
+			cmd->BindGraphicsPipeline(pipelineState, mPrimitiveVertexShader, mFragmentShader);
+            cmd->BindBuffer(*mCameraBuffer, 0, 0, ShaderStage_Vertex);
+			cmd->BindBuffer(passData.vertexBuffer, mTriangleBufferOffset, 0, ShaderStage_Vertex);
+			cmd->Draw(static_cast<uint32_t>(mTriangles.size())* Utils::PrimitiveTopologyVertexCount(pipelineState.topology));
 		}
 
 		if (!mDebugMeshes.empty())
-			RenderMeshes(renderGraphContext.cmd, mDebugMeshes, false);
+        {
+            RenderMeshes(cmd, mDebugMeshes, false);
+        }
         
         // clear after rendering
         mLines.clear();

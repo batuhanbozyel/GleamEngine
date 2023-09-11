@@ -42,9 +42,8 @@ struct TextureDescriptor
     }
 };
 
-struct RenderTextureDescriptor
+struct RenderTextureDescriptor : public TextureDescriptor
 {
-    TextureDescriptor texture;
     Color clearColor = Color::clear;
     uint32_t clearStencil = 0u;
     float clearDepth = 1.0f;

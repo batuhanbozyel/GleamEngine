@@ -6,38 +6,27 @@
 //
 
 #pragma once
-#include "RenderGraphResourceEntry.h"
+#include "RenderGraphNode.h"
 
 namespace Gleam {
 
-class RenderGraph;
-class RenderGraphBuilder;
-
 class RenderGraphResourceRegistry final
 {
-    friend class RenderGraph;
-    friend class RenderGraphBuilder;
-    
 public:
     
     void Clear();
     
-private:
-    
     NO_DISCARD BufferHandle CreateBuffer(const BufferDescriptor& descriptor);
     
-    NO_DISCARD RenderTextureHandle CreateRT(const TextureDescriptor& descriptor);
+    NO_DISCARD TextureHandle CreateRT(const RenderTextureDescriptor& descriptor);
     
-    NO_DISCARD RenderGraphResource CloneResource(RenderGraphResource resource);
+    RenderGraphResourceNode& GetResourceNode(ResourceHandle resource);
     
-    RenderGraphResourceEntry& GetResourceEntry(RenderGraphResource resource);
+    const RenderGraphResourceNode& GetResourceNode(ResourceHandle resource) const;
     
-    RenderGraphResourceNode& GetResourceNode(RenderGraphResource resource);
-    
-    const RenderGraphResourceNode& GetResourceNode(RenderGraphResource resource) const;
+private:
     
     TArray<RenderGraphResourceNode> mNodes;
-    TArray<RenderGraphResourceEntry> mEntries;
     
 };
 

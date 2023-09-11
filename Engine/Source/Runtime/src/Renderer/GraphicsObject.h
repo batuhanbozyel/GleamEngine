@@ -22,7 +22,6 @@ public:
 protected:
 
 	NativeGraphicsHandle mHandle = nullptr;
-    NativeGraphicsHandle mMemory = nullptr;
 
 };
 

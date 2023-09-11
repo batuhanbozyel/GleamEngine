@@ -15,8 +15,8 @@ class Shader;
 
 struct WorldRenderingData
 {
-    RenderTextureHandle colorTarget;
-    RenderTextureHandle depthTarget;
+    TextureHandle colorTarget;
+    TextureHandle depthTarget;
 };
 
 class WorldRenderer : public IRenderer

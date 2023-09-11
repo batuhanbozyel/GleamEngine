@@ -60,4 +60,4 @@ const Matrix4 Matrix4::identity
     0.0f, 0.0f, 0.0f, 1.0f
 );
 
-const RenderGraphResource RenderGraphResource::nullHandle(~0u, 0u);
+const ResourceHandle ResourceHandle::nullHandle(nullptr, 0u, ResourceAccess::None);

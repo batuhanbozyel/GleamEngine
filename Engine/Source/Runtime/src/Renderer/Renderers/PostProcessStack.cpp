@@ -25,8 +25,8 @@ void PostProcessStack::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard
 {
     struct PostProcessData
     {
-        RenderTextureHandle colorTarget;
-        RenderTextureHandle sceneTarget;
+        TextureHandle colorTarget;
+        TextureHandle sceneTarget;
     };
     
     graph.AddRenderPass<PostProcessData>("PostProcessStack::Tonemapping", [&](RenderGraphBuilder& builder, PostProcessData& passData)
@@ -38,13 +38,13 @@ void PostProcessStack::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard
         
         renderingData.backbuffer = passData.colorTarget;
     },
-    [this](const RenderGraphContext& renderGraphContext, const PostProcessData& passData)
+    [this](const CommandBuffer* cmd, const PostProcessData& passData)
     {
         const auto& sceneRT = renderGraphContext.registry->GetRenderTexture(passData.sceneTarget);
         
         PipelineStateDescriptor pipelineDesc;
-        renderGraphContext.cmd->BindGraphicsPipeline(pipelineDesc, mFullscreenTriangleVertexShader, mTonemappingFragmentShader);
-        renderGraphContext.cmd->BindTexture(*sceneRT, 0, ShaderStage_Fragment);
-        renderGraphContext.cmd->Draw(3);
+        cmd->BindGraphicsPipeline(pipelineDesc, mFullscreenTriangleVertexShader, mTonemappingFragmentShader);
+        cmd->BindTexture(*sceneRT, 0, ShaderStage_Fragment);
+        cmd->Draw(3);
     });
 }

@@ -30,8 +30,8 @@ Texture2D::Texture2D(const TextureDescriptor& descriptor)
 	VkMemoryAllocateInfo allocateInfo{ VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
 	allocateInfo.allocationSize = memoryRequirements.size;
 	allocateInfo.memoryTypeIndex = VulkanDevice::GetMemoryTypeForProperties(memoryRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-	VK_CHECK(vkAllocateMemory(VulkanDevice::GetHandle(), &allocateInfo, nullptr, As<VkDeviceMemory*>(&mMemory)));
-	VK_CHECK(vkBindImageMemory(VulkanDevice::GetHandle(), As<VkImage>(mHandle), As<VkDeviceMemory>(mMemory), 0));
+	VK_CHECK(vkAllocateMemory(VulkanDevice::GetHandle(), &allocateInfo, nullptr, As<VkDeviceMemory*>(&mHeap)));
+	VK_CHECK(vkBindImageMemory(VulkanDevice::GetHandle(), As<VkImage>(mHandle), As<VkDeviceMemory>(mHeap), 0));
 
 	VkImageViewCreateInfo viewCreateInfo{ VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
 	viewCreateInfo.image = As<VkImage>(mHandle);
@@ -55,7 +55,7 @@ Texture2D::~Texture2D()
 {
 	vkDestroyImageView(VulkanDevice::GetHandle(), As<VkImageView>(mView), nullptr);
 	vkDestroyImage(VulkanDevice::GetHandle(), As<VkImage>(mHandle), nullptr);
-	vkFreeMemory(VulkanDevice::GetHandle(), As<VkDeviceMemory>(mMemory), nullptr);
+	vkFreeMemory(VulkanDevice::GetHandle(), As<VkDeviceMemory>(mHeap), nullptr);
 }
 
 void Texture2D::SetPixels(const void* pixels) const
@@ -87,8 +87,8 @@ TextureCube::TextureCube(const TextureDescriptor& descriptor)
 	VkMemoryAllocateInfo allocateInfo{ VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
 	allocateInfo.allocationSize = memoryRequirements.size;
 	allocateInfo.memoryTypeIndex = VulkanDevice::GetMemoryTypeForProperties(memoryRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-	VK_CHECK(vkAllocateMemory(VulkanDevice::GetHandle(), &allocateInfo, nullptr, As<VkDeviceMemory*>(&mMemory)));
-	VK_CHECK(vkBindImageMemory(VulkanDevice::GetHandle(), As<VkImage>(mHandle), As<VkDeviceMemory>(mMemory), 0));
+	VK_CHECK(vkAllocateMemory(VulkanDevice::GetHandle(), &allocateInfo, nullptr, As<VkDeviceMemory*>(&mHeap)));
+	VK_CHECK(vkBindImageMemory(VulkanDevice::GetHandle(), As<VkImage>(mHandle), As<VkDeviceMemory>(mHeap), 0));
 
 	VkImageViewCreateInfo viewCreateInfo{ VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
 	viewCreateInfo.image = As<VkImage>(mHandle);
@@ -112,7 +112,7 @@ TextureCube::~TextureCube()
 {
 	vkDestroyImageView(VulkanDevice::GetHandle(), As<VkImageView>(mView), nullptr);
 	vkDestroyImage(VulkanDevice::GetHandle(), As<VkImage>(mHandle), nullptr);
-	vkFreeMemory(VulkanDevice::GetHandle(), As<VkDeviceMemory>(mMemory), nullptr);
+	vkFreeMemory(VulkanDevice::GetHandle(), As<VkDeviceMemory>(mHeap), nullptr);
 }
 
 RenderTexture::RenderTexture()
@@ -147,8 +147,8 @@ RenderTexture::RenderTexture(const TextureDescriptor& descriptor)
     VkMemoryAllocateInfo allocateInfo{ VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
     allocateInfo.allocationSize = memoryRequirements.size;
     allocateInfo.memoryTypeIndex = VulkanDevice::GetMemoryTypeForProperties(memoryRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-    VK_CHECK(vkAllocateMemory(VulkanDevice::GetHandle(), &allocateInfo, nullptr, As<VkDeviceMemory*>(&mMemory)));
-    VK_CHECK(vkBindImageMemory(VulkanDevice::GetHandle(), As<VkImage>(mHandle), As<VkDeviceMemory>(mMemory), 0));
+    VK_CHECK(vkAllocateMemory(VulkanDevice::GetHandle(), &allocateInfo, nullptr, As<VkDeviceMemory*>(&mHeap)));
+    VK_CHECK(vkBindImageMemory(VulkanDevice::GetHandle(), As<VkImage>(mHandle), As<VkDeviceMemory>(mHeap), 0));
 
     VkImageViewCreateInfo viewCreateInfo{ VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
     viewCreateInfo.image = As<VkImage>(mHandle);
@@ -237,7 +237,7 @@ RenderTexture::~RenderTexture()
 {
     vkDestroyImageView(VulkanDevice::GetHandle(), As<VkImageView>(mView), nullptr);
     vkDestroyImage(VulkanDevice::GetHandle(), As<VkImage>(mHandle), nullptr);
-    vkFreeMemory(VulkanDevice::GetHandle(), As<VkDeviceMemory>(mMemory), nullptr);
+    vkFreeMemory(VulkanDevice::GetHandle(), As<VkDeviceMemory>(mHeap), nullptr);
     
     if (mDescriptor.sampleCount > 1)
     {

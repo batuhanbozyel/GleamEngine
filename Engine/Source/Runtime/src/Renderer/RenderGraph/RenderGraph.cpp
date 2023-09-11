@@ -4,22 +4,22 @@
 
 using namespace Gleam;
 
-static AttachmentLoadAction GetLoadActionForRenderTexture(const RefCounted<RenderTexture>& renderTexture, RenderGraphRenderTextureEntry* entry, RenderPassNode* pass)
+static AttachmentLoadAction GetLoadActionForRenderTexture(const RefCounted<RenderTexture>& renderTexture, const RenderGraphResourceNode& resource, RenderPassNode* pass)
 {
-    if (entry->creator == pass || !entry->transient)
+    if (resource.creator == pass || !resource.transient)
     {
-        return entry->descriptor.clearBuffer ? AttachmentLoadAction::Clear : AttachmentLoadAction::DontCare;
+        return resource.descriptor.clearBuffer ? AttachmentLoadAction::Clear : AttachmentLoadAction::DontCare;
     }
     return AttachmentLoadAction::Load;
 }
 
-static AttachmentStoreAction GetStoreActionForRenderTexture(const RefCounted<RenderTexture>& renderTexture, RenderGraphRenderTextureEntry* entry, RenderPassNode* pass)
+static AttachmentStoreAction GetStoreActionForRenderTexture(const RefCounted<RenderTexture>& renderTexture, const RenderGraphResourceNode& resource, RenderPassNode* pass)
 {
-    if (renderTexture->GetDescriptor().sampleCount > 1)
+    if (resource.GetDescriptor().sampleCount > 1)
     {
-        return entry->lastModifier == pass ? AttachmentStoreAction::Resolve : AttachmentStoreAction::StoreAndResolve;
+        return resource.lastModifier == pass ? AttachmentStoreAction::Resolve : AttachmentStoreAction::StoreAndResolve;
     }
-    return (entry->lastReference == pass && !pass->hasSideEffect) ? AttachmentStoreAction::DontCare : AttachmentStoreAction::Store;
+    return (resource.lastReference == pass && !pass->hasSideEffect) ? AttachmentStoreAction::DontCare : AttachmentStoreAction::Store;
 }
 
 void RenderGraph::Compile()
@@ -29,7 +29,7 @@ void RenderGraph::Compile()
     {
         for (auto resource : pass->resourceReads)
         {
-            auto& consumed = mRegistry.GetResourceNode(resource);
+            const auto& consumed = mRegistry.GetResourceNode(resource);
             for (auto producer : consumed.producers)
             {
                 auto [_, success] = producer->dependents.insert(pass);
@@ -62,41 +62,42 @@ void RenderGraph::Compile()
     // Calculate resource lifetimes
     for (auto pass : mPassNodes)
     {
-        for (auto id : pass->resourceCreates)
+        for (auto resource : pass->resourceCreates)
         {
-            auto& entry = mRegistry.GetResourceEntry(id);
-            entry.creator = pass;
-            entry.lastModifier = pass;
-            entry.lastReference = pass;
+            auto& node = mRegistry.GetResourceNode(resource);
+            node.creator = pass;
+            node.lastModifier = pass;
+            node.lastReference = pass;
         }
-        for (auto id : pass->resourceWrites)
+        for (auto resource : pass->resourceWrites)
         {
-            auto& entry = mRegistry.GetResourceEntry(id);
-            entry.lastModifier = pass;
-            entry.lastReference = pass;
+            auto& node = mRegistry.GetResourceNode(resource);
+            node.lastModifier = pass;
+            node.lastReference = pass;
         }
-        for (auto id : pass->resourceReads)
+        for (auto resource : pass->resourceReads)
         {
-            mRegistry.GetResourceEntry(id).lastReference = pass;
+            mRegistry.GetResourceNode(resource).lastReference = pass;
         }
     }
 }
 
 void RenderGraph::Execute(const CommandBuffer* cmd)
 {
-    RenderGraphContext context;
-    context.cmd = cmd;
-    context.registry = &mRegistry;
-    
     cmd->Begin();
-    for (auto& pass : mPassNodes)
+    for (auto pass : mPassNodes)
     {
-        // allocate pass resources
-        // TODO: use allocators to avoid allocating GPU resources on the fly
-        for (auto id : pass->resourceCreates)
+        size_t allocationSize = 0;
+        for (auto resource : pass->resourceCreates)
         {
-            auto entry = mRegistry.GetResourceEntry(id);
-            entry->Allocate();
+            auto& node = mRegistry.GetResourceNode(resource);
+            if (node.type == RenderGraphResourceNode::Type::Buffer)
+            {
+                const auto& descriptor = std::get<BufferDescriptor>(node.descriptor);
+                allocationSize += mStackAllocator.Allocate(descriptor);
+            }
+            // if RenderTexture, use RenderGraphPoolAllocator to allocate
+            // else, use RenderGraphStackAllocator
         }
         
         // execute render pass
@@ -110,14 +111,14 @@ void RenderGraph::Execute(const CommandBuffer* cmd)
             renderPassDesc.colorAttachments.resize(pass->colorAttachments.size());
             for (uint32_t i = 0; i < pass->colorAttachments.size(); i++)
             {
-                const auto& attachment = pass->colorAttachments[i];
-                const auto& renderTexture = mRegistry.GetRenderTexture(attachment);
+                auto attachment = pass->colorAttachments[i];
+                const auto& renderTexture = mRegistry.GetRenderTexture(attachment); // Retrieve from Pool
                 renderPassDesc.colorAttachments[i].texture = renderTexture;
                 
-                auto entry = static_cast<RenderGraphRenderTextureEntry*>(mRegistry.GetResourceEntry(attachment));
-                renderPassDesc.colorAttachments[i].loadAction = GetLoadActionForRenderTexture(renderTexture, entry, pass);
-                renderPassDesc.colorAttachments[i].storeAction = GetStoreActionForRenderTexture(renderTexture, entry, pass);
-                renderPassDesc.colorAttachments[i].clearColor = entry->descriptor.clearColor;
+                const auto& node = mRegistry.GetResourceNode(attachment);
+                renderPassDesc.colorAttachments[i].loadAction = GetLoadActionForRenderTexture(renderTexture, node, pass); // maybe store metadata next to RenderGraphResource
+                renderPassDesc.colorAttachments[i].storeAction = GetStoreActionForRenderTexture(renderTexture, node, pass); // maybe store metadata next to RenderGraphResource
+                renderPassDesc.colorAttachments[i].clearColor = node->descriptor.clearColor; // maybe store metadata next to RenderGraphResource
                 
                 const auto& descriptor = renderPassDesc.colorAttachments[i].texture->GetDescriptor();
                 renderPassDesc.size = descriptor.size;
@@ -126,14 +127,14 @@ void RenderGraph::Execute(const CommandBuffer* cmd)
             
             if (pass->depthAttachment != RenderGraphResource::nullHandle)
             {
-                const auto& renderTexture = mRegistry.GetRenderTexture(pass->depthAttachment);
+                const auto& renderTexture = mRegistry.GetRenderTexture(pass->depthAttachment); // Retrieve from Pool
                 renderPassDesc.depthAttachment.texture = renderTexture;
                 
-                auto entry = static_cast<RenderGraphRenderTextureEntry*>(mRegistry.GetResourceEntry(pass->depthAttachment));
-                renderPassDesc.depthAttachment.loadAction = GetLoadActionForRenderTexture(renderTexture, entry, pass);
-                renderPassDesc.depthAttachment.storeAction = GetStoreActionForRenderTexture(renderTexture, entry, pass);
-                renderPassDesc.depthAttachment.clearDepth = entry->descriptor.clearDepth;
-                renderPassDesc.depthAttachment.clearStencil = entry->descriptor.clearStencil;
+                const auto& node = mRegistry.GetResourceNode(pass->depthAttachment);
+                renderPassDesc.depthAttachment.loadAction = GetLoadActionForRenderTexture(renderTexture, node, pass); // maybe store metadata next to RenderGraphResource
+                renderPassDesc.depthAttachment.storeAction = GetStoreActionForRenderTexture(renderTexture, node, pass); // maybe store metadata next to RenderGraphResource
+                renderPassDesc.depthAttachment.clearDepth = node->descriptor.clearDepth; // maybe store metadata next to RenderGraphResource
+                renderPassDesc.depthAttachment.clearStencil = node->descriptor.clearStencil; // maybe store metadata next to RenderGraphResource
                 
                 const auto& descriptor = renderPassDesc.depthAttachment.texture->GetDescriptor();
                 renderPassDesc.size = descriptor.size;
@@ -142,17 +143,12 @@ void RenderGraph::Execute(const CommandBuffer* cmd)
             
             cmd->BeginRenderPass(renderPassDesc, pass->name);
 			cmd->SetViewport(renderPassDesc.size);
-            std::invoke(pass->callback, context);
+            std::invoke(pass->callback, cmd);
             cmd->EndRenderPass();
         }
         
-        // release pass resources
-        // TODO: release from pools
-        for (auto& entry : mRegistry.mEntries)
-        {
-            if (entry->lastReference == pass)
-                entry->Release();
-        }
+        // release resources that are not referenced in later passes
+        mStackAllocator.
     }
     cmd->End();
     
@@ -161,18 +157,20 @@ void RenderGraph::Execute(const CommandBuffer* cmd)
     mRegistry.Clear();
 }
 
-RenderTextureHandle RenderGraph::ImportBackbuffer(const RefCounted<RenderTexture>& backbuffer)
+TextureHandle RenderGraph::ImportBackbuffer(const RefCounted<RenderTexture>& backbuffer)
 {
-    RenderTextureHandle resource(static_cast<uint32_t>(mRegistry.mEntries.size()));
-    auto entry = mRegistry.mEntries.emplace_back(CreateScope<RenderGraphRenderTextureEntry>(backbuffer->GetDescriptor(), resource, false)).get();
-    static_cast<RenderGraphRenderTextureEntry*>(entry)->renderTexture = backbuffer;
-    
-    RenderTextureHandle node(static_cast<uint32_t>(mRegistry.mNodes.size()));
-    mRegistry.mNodes.emplace_back(node, resource);
-    return node;
+    uint32_t id = static_cast<uint32_t>(mRegistry.mNodes.size());
+    TextureHandle resource(id); // TODO: Assign backbuffer to the handle
+    mRegistry.mNodes.emplace_back(id, resource, false);
+    return resource;
 }
 
-RenderTextureDescriptor& RenderGraph::GetDescriptor(RenderTextureHandle resource)
+const BufferDescriptor& RenderGraph::GetDescriptor(BufferHandle handle) const
 {
-    return static_cast<RenderGraphRenderTextureEntry*>(mRegistry.GetResourceEntry(resource))->descriptor;
+    const auto& node = mRegistry.GetResourceNode(handle);
+}
+
+const TextureDescriptor& RenderGraph::GetDescriptor(TextureHandle handle) const
+{
+    
 }

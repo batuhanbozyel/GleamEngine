@@ -1,15 +1,11 @@
 #pragma once
 #include "RenderGraphBuilder.h"
+#include "../Allocators/PoolAllocator.h"
+#include "../Allocators/StackAllocator.h"
 
 namespace Gleam {
 
 class CommandBuffer;
-
-struct RenderGraphContext
-{
-    const CommandBuffer* cmd;
-    const RenderGraphResourceRegistry* registry;
-};
 
 class RenderGraph final
 {
@@ -33,11 +29,17 @@ public:
 		return passData;
 	}
     
-    RenderTextureHandle ImportBackbuffer(const RefCounted<RenderTexture>& backbuffer);
+    TextureHandle ImportBackbuffer(const RefCounted<RenderTexture>& backbuffer);
     
-    RenderTextureDescriptor& GetDescriptor(RenderTextureHandle resource);
+    const BufferDescriptor& GetDescriptor(BufferHandle handle) const;
+    
+    const TextureDescriptor& GetDescriptor(TextureHandle handle) const;
 
 private:
+    
+    PoolAllocator mPoolAllocator;
+    
+    StackAllocator mStackAllocator;
 
     RenderGraphResourceRegistry mRegistry;
 
