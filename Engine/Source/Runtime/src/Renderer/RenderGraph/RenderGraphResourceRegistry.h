@@ -18,15 +18,13 @@ public:
     
     NO_DISCARD BufferHandle CreateBuffer(const BufferDescriptor& descriptor);
     
-    NO_DISCARD TextureHandle CreateRT(const RenderTextureDescriptor& descriptor);
-    
-    RenderGraphResourceNode& GetResourceNode(ResourceHandle resource);
-    
-    const RenderGraphResourceNode& GetResourceNode(ResourceHandle resource) const;
+    NO_DISCARD TextureHandle CreateTexture(const RenderTextureDescriptor& descriptor);
     
 private:
     
-    TArray<RenderGraphResourceNode> mNodes;
+    TArray<RenderGraphBufferNode> mBufferNodes;
+
+	TArray<RenderGraphTextureNode> mTextureNodes;
     
 };
 

@@ -6,9 +6,21 @@
 using namespace Gleam;
 
 Buffer::Buffer(NativeGraphicsHandle handle, const BufferDescriptor& descriptor, void* contents)
-    : mHandle(handle), mDescriptor(descriptor), mContents(contents)
+    : GraphicsObject(handle), mDescriptor(descriptor), mContents(contents)
 {
-    
+
+}
+
+Buffer::Buffer(const Buffer& other)
+	: GraphicsObject(other), mDescriptor(other.mDescriptor), mContents(other.mContents)
+{
+
+}
+
+Buffer& Buffer::operator=(const Buffer& other)
+{
+	GraphicsObject::operator=(other);
+	return *this;
 }
 
 void Buffer::SetData(const void* data, size_t size, size_t offset) const

@@ -7,6 +7,8 @@ class PoolAllocator final
 {
 public:
 
+	Texture CreateTexture(const TextureDescriptor& descriptor);
+
 private:
 
 };

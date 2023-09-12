@@ -15,3 +15,8 @@ const RefCounted<Shader>& RendererContext::CreateShader(const TString& entryPoin
     
     return mShaderCache.emplace_back(CreateRef<Shader>(entryPoint, stage));
 }
+
+Buffer RendererContext::CreateBuffer(const BufferDescriptor& descriptor)
+{
+
+}

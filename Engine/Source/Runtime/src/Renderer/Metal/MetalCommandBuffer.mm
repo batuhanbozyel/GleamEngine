@@ -42,10 +42,10 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, 
     MTLRenderPassDescriptor* renderPass = [MTLRenderPassDescriptor renderPassDescriptor];
     
     mHandle->sampleCount = renderPassDesc.samples;
-    mHandle->hasDepthAttachment = renderPassDesc.depthAttachment.texture != nullptr;
-    if (renderPassDesc.depthAttachment.texture)
+    mHandle->hasDepthAttachment = renderPassDesc.depthAttachment.texture.IsValid();
+    if (mHandle->hasDepthAttachment)
     {
-        mHandle->depthAttachment = renderPassDesc.depthAttachment.texture->GetDescriptor();
+        mHandle->depthAttachment = renderPassDesc.depthAttachment.texture.GetDescriptor();
         
         if (Utils::IsDepthFormat(mHandle->depthAttachment.format))
         {
@@ -56,12 +56,12 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, 
             
             if (renderPassDesc.samples > 1)
             {
-                depthAttachmentDesc.texture = renderPassDesc.depthAttachment.texture->GetMSAAHandle();
-                depthAttachmentDesc.resolveTexture = renderPassDesc.depthAttachment.texture->GetHandle();
+                depthAttachmentDesc.texture = renderPassDesc.depthAttachment.texture.GetMSAAHandle();
+                depthAttachmentDesc.resolveTexture = renderPassDesc.depthAttachment.texture.GetHandle();
             }
             else
             {
-                depthAttachmentDesc.texture = renderPassDesc.depthAttachment.texture->GetHandle();
+                depthAttachmentDesc.texture = renderPassDesc.depthAttachment.texture.GetHandle();
             }
         }
         
@@ -71,7 +71,7 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, 
             stencilAttachmentDesc.clearStencil = renderPassDesc.depthAttachment.clearStencil;
             stencilAttachmentDesc.loadAction = renderPass.depthAttachment.loadAction;
             stencilAttachmentDesc.storeAction = renderPass.depthAttachment.storeAction;
-            stencilAttachmentDesc.texture = renderPass.depthAttachment.texture;
+            stencilAttachmentDesc.texture = renderPass.depthAttachment.texture.GetHandle();
             stencilAttachmentDesc.resolveTexture = renderPass.depthAttachment.resolveTexture;
         }
     }
@@ -80,7 +80,7 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, 
     for (uint32_t i = 0; i < renderPassDesc.colorAttachments.size(); i++)
     {
         const auto& colorAttachment = renderPassDesc.colorAttachments[i];
-        mHandle->colorAttachments[i] = colorAttachment.texture->GetDescriptor();
+        mHandle->colorAttachments[i] = colorAttachment.texture.GetDescriptor();
         
         MTLRenderPassColorAttachmentDescriptor* colorAttachmentDesc = renderPass.colorAttachments[i];
         colorAttachmentDesc.clearColor =
@@ -93,7 +93,7 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, 
         colorAttachmentDesc.loadAction = AttachmentLoadActionToMTLLoadAction(colorAttachment.loadAction);
         colorAttachmentDesc.storeAction = AttachmentStoreActionToMTLStoreAction(colorAttachment.storeAction);
         
-        if (colorAttachment.texture->GetHandle() == nil)
+        if (colorAttachment.texture.GetHandle() == nil)
         {
             colorAttachmentDesc.texture = MetalDevice::GetSwapchain().AcquireNextDrawable().texture;
         }
@@ -101,12 +101,12 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, 
         {
             if (renderPassDesc.samples > 1)
             {
-                colorAttachmentDesc.texture = colorAttachment.texture->GetMSAAHandle();
-                colorAttachmentDesc.resolveTexture = colorAttachment.texture->GetHandle();
+                colorAttachmentDesc.texture = colorAttachment.texture.GetMSAAHandle();
+                colorAttachmentDesc.resolveTexture = colorAttachment.texture.GetHandle();
             }
             else
             {
-                colorAttachmentDesc.texture = colorAttachment.texture->GetHandle();
+                colorAttachmentDesc.texture = colorAttachment.texture.GetHandle();
             }
         }
     }

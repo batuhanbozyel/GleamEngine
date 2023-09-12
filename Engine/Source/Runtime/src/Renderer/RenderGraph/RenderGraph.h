@@ -7,6 +7,12 @@ namespace Gleam {
 
 class CommandBuffer;
 
+struct ImportResourceParams
+{
+	Color clearColor = Color::clear;
+	bool clearOnFirstUse = true;
+};
+
 class RenderGraph final
 {
     template<typename PassData>
@@ -21,15 +27,15 @@ public:
 	template<typename PassData>
 	const PassData& AddRenderPass(const TStringView name, SetupFunc<PassData>&& setup, RenderFunc<PassData>&& execute)
 	{
-        uint32_t nodeId = static_cast<uint32_t>(mPassNodes.size());
-        auto node = mPassNodes.emplace_back(new RenderPassNode(nodeId, name, std::forward<decltype(execute)>(execute)));
+        auto uniqueId = static_cast<uint32_t>(mPassNodes.size());
+        auto node = mPassNodes.emplace_back(new RenderPassNode(uniqueId, name, std::forward<decltype(execute)>(execute)));
 		auto& passData = std::any_cast<PassData&>(node->data);
 		auto builder = RenderGraphBuilder(*node, mRegistry);
 		setup(builder, passData);
 		return passData;
 	}
     
-    TextureHandle ImportBackbuffer(const RefCounted<RenderTexture>& backbuffer);
+    TextureHandle ImportBackbuffer(const RefCounted<RenderTexture>& backbuffer, const ImportResourceParams& params = ImportResourceParams());
     
     const BufferDescriptor& GetDescriptor(BufferHandle handle) const;
     

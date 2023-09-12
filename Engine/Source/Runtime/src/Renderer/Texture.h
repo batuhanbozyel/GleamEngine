@@ -8,7 +8,9 @@ namespace Gleam {
 class Texture : public GraphicsObject
 {
 public:
-    
+
+	Texture() = default;
+
     Texture(const TextureDescriptor& descriptor)
         : mDescriptor(descriptor), mMipMapLevels(descriptor.useMipMap ? CalculateMipLevels(descriptor.size) : 1)
     {
@@ -19,6 +21,16 @@ public:
     {
         return mView;
     }
+
+	NativeGraphicsHandle GetMSAAHandle() const
+	{
+		return mMultisampleHandle;
+	}
+
+	NativeGraphicsHandle GetMSAAView() const
+	{
+		return mMultisampleView;
+	}
     
     const TextureDescriptor& GetDescriptor() const
     {
@@ -41,12 +53,19 @@ protected:
     TextureDescriptor mDescriptor;
 	NativeGraphicsHandle mHeap = nullptr;
     NativeGraphicsHandle mView = nullptr;
+
+	// multisample
+	NativeGraphicsHandle mMultisampleHeap = nullptr;
+	NativeGraphicsHandle mMultisampleView = nullptr;
+	NativeGraphicsHandle mMultisampleHandle = nullptr;
     
 };
 
 class Texture2D final : public Texture
 {
 public:
+
+	GLEAM_NONCOPYABLE(Texture2D);
 
 	Texture2D(const TextureDescriptor& descriptor);
 
@@ -59,6 +78,8 @@ public:
 class TextureCube final : public Texture
 {
 public:
+
+	GLEAM_NONCOPYABLE(TextureCube);
     
     TextureCube(const TextureDescriptor& descriptor);
     
@@ -69,6 +90,8 @@ public:
 class RenderTexture final : public Texture
 {
 public:
+
+	GLEAM_NONCOPYABLE(RenderTexture);
     
     // Swapchain target
     RenderTexture();
@@ -76,23 +99,6 @@ public:
     RenderTexture(const TextureDescriptor& descriptor);
     
     ~RenderTexture();
-
-	NativeGraphicsHandle GetMSAAHandle() const
-    {
-        return mMultisampleHandle;
-    }
-    
-    NativeGraphicsHandle GetMSAAView() const
-    {
-        return mMultisampleView;
-    }
-    
-private:
-
-	// multisample
-	NativeGraphicsHandle mMultisampleMemory = nullptr;
-	NativeGraphicsHandle mMultisampleView = nullptr;
-	NativeGraphicsHandle mMultisampleHandle = nullptr;
 
 };
 

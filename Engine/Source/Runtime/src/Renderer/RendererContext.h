@@ -1,5 +1,6 @@
 #pragma once
 #include "Shader.h"
+#include "Buffer.h"
 #include "RendererConfig.h"
 
 namespace Gleam {
@@ -14,6 +15,8 @@ class RendererContext final
 public:
     
 	const RefCounted<Shader>& CreateShader(const TString& entryPoint, ShaderStage stage);
+
+	Buffer CreateBuffer(const BufferDescriptor& descriptor);
     
     void Configure(const RendererConfig& config) const;
     

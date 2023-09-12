@@ -6,9 +6,18 @@ class GraphicsObject
 {
 public:
 
-    GLEAM_NONCOPYABLE(GraphicsObject);
-    GraphicsObject() = default;
-    
+	GraphicsObject(NativeGraphicsHandle handle)
+		: mHandle(handle)
+	{
+
+	}
+
+	GraphicsObject() = default;
+
+	GraphicsObject(const GraphicsObject&) = default;
+
+	GraphicsObject& operator=(const GraphicsObject&) = default;
+
 	NativeGraphicsHandle GetHandle() const
 	{
 		return mHandle;

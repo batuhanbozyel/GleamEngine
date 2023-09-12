@@ -4,14 +4,6 @@
 
 namespace Gleam {
 
-static bool HasResource(const TArray<ResourceHandle>& resources, ResourceHandle resource)
-{
-    return std::find(resources.cbegin(), resources.cend(), resource) != resources.cend();
-}
-
-template <typename T>
-concept ResourceType = std::is_base_of<ResourceHandle, T>::value;
-
 class RenderGraphBuilder final
 {
 public:
@@ -25,11 +17,11 @@ public:
     NO_DISCARD TextureHandle UseDepthBuffer(TextureHandle attachment);
     
     // RenderTexure
-    NO_DISCARD TextureHandle CreateRenderTexture(const RenderTextureDescriptor& descriptor);
+    NO_DISCARD TextureHandle CreateTexture(const RenderTextureDescriptor& descriptor);
     
-    NO_DISCARD TextureHandle WriteRenderTexture(TextureHandle resource);
+    NO_DISCARD TextureHandle WriteTexture(TextureHandle resource);
     
-    TextureHandle ReadRenderTexture(TextureHandle resource);
+    TextureHandle ReadTexture(TextureHandle resource);
     
     // Buffer
     NO_DISCARD BufferHandle CreateBuffer(const BufferDescriptor& descriptor);
@@ -39,21 +31,6 @@ public:
     BufferHandle ReadBuffer(const BufferHandle& resource);
 
 private:
-    
-    template<ResourceType T>
-    NO_DISCARD T WriteResource(const T& resource)
-    {
-        auto& node = mResourceRegistry.GetResourceNode(resource);
-        if (node.transient == false) { mPassNode.hasSideEffect = true; }
-        
-        if (HasResource(mPassNode.resourceWrites, resource)) { return resource; }
-        
-        node.producers.push_back(&mPassNode);
-        
-        T clone = T(resource, resource.GetVersion() + 1, ResourceAccess::Write);
-        mPassNode.resourceWrites.emplace_back(clone);
-        return clone;
-    }
 	
 	RenderPassNode& mPassNode;
     

@@ -59,7 +59,7 @@ Heap::Heap(const HeapDescriptor& descriptor)
 
 Heap::~Heap()
 {
-	vkFreeMemory(VulkanDevice::GetHandle(), As<VkDeviceMemory>(mMemory), nullptr);
+	vkFreeMemory(VulkanDevice::GetHandle(), As<VkDeviceMemory>(mHandle), nullptr);
 }
 
 Buffer Heap::CreateBuffer(const BufferDescriptor& descriptor, size_t offset) const

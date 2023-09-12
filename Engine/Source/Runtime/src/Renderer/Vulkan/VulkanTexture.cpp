@@ -211,8 +211,8 @@ RenderTexture::RenderTexture(const TextureDescriptor& descriptor)
             allocateInfo.memoryTypeIndex = VulkanDevice::GetMemoryTypeForProperties(memoryRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
         }
         
-        VK_CHECK(vkAllocateMemory(VulkanDevice::GetHandle(), &allocateInfo, nullptr, As<VkDeviceMemory*>(&mMultisampleMemory)));
-        VK_CHECK(vkBindImageMemory(VulkanDevice::GetHandle(), As<VkImage>(mMultisampleHandle), As<VkDeviceMemory>(mMultisampleMemory), 0));
+        VK_CHECK(vkAllocateMemory(VulkanDevice::GetHandle(), &allocateInfo, nullptr, As<VkDeviceMemory*>(&mMultisampleHeap)));
+        VK_CHECK(vkBindImageMemory(VulkanDevice::GetHandle(), As<VkImage>(mMultisampleHandle), As<VkDeviceMemory>(mMultisampleHeap), 0));
         
         VkImageViewCreateInfo viewCreateInfo{ VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
         viewCreateInfo.image = As<VkImage>(mMultisampleHandle);
@@ -243,7 +243,7 @@ RenderTexture::~RenderTexture()
     {
         vkDestroyImageView(VulkanDevice::GetHandle(), As<VkImageView>(mMultisampleView), nullptr);
         vkDestroyImage(VulkanDevice::GetHandle(), As<VkImage>(mMultisampleHandle), nullptr);
-        vkFreeMemory(VulkanDevice::GetHandle(), As<VkDeviceMemory>(mMultisampleMemory), nullptr);
+        vkFreeMemory(VulkanDevice::GetHandle(), As<VkDeviceMemory>(mMultisampleHeap), nullptr);
     }
 }
 

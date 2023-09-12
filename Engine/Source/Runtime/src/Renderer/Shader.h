@@ -22,7 +22,10 @@ class Shader final : public GraphicsObject
 {
 public:
 
+	GLEAM_NONCOPYABLE(Shader);
+
     Shader(const TString& entryPoint, ShaderStage stage);
+
     ~Shader();
 
     ShaderStage GetStage() const

@@ -34,17 +34,15 @@ void PostProcessStack::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard
         auto& renderingData = blackboard.Get<RenderingData>();
         const auto& worldRenderingData = blackboard.Get<WorldRenderingData>();
         passData.colorTarget = builder.UseColorBuffer(renderingData.backbuffer);
-        passData.sceneTarget = builder.ReadRenderTexture(worldRenderingData.colorTarget);
+        passData.sceneTarget = builder.ReadTexture(worldRenderingData.colorTarget);
         
         renderingData.backbuffer = passData.colorTarget;
     },
     [this](const CommandBuffer* cmd, const PostProcessData& passData)
     {
-        const auto& sceneRT = renderGraphContext.registry->GetRenderTexture(passData.sceneTarget);
-        
         PipelineStateDescriptor pipelineDesc;
         cmd->BindGraphicsPipeline(pipelineDesc, mFullscreenTriangleVertexShader, mTonemappingFragmentShader);
-        cmd->BindTexture(*sceneRT, 0, ShaderStage_Fragment);
+        cmd->BindTexture(passData.sceneTarget, 0, ShaderStage_Fragment);
         cmd->Draw(3);
     });
 }

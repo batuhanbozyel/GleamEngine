@@ -19,11 +19,10 @@ void WorldRenderer::OnCreate(RendererContext& context)
     mForwardPassVertexShader = context.CreateShader("forwardPassVertexShader", ShaderStage::Vertex);
     mForwardPassFragmentShader = context.CreateShader("forwardPassFragmentShader", ShaderStage::Fragment);
     
-    BufferDescriptor descriptor;
-    descriptor.memoryType = MemoryType::Shared;
-    descriptor.usage = BufferUsage::UniformBuffer;
-    descriptor.size = sizeof(CameraUniforms);
-    mCameraBuffer = CreateScope<Buffer>(descriptor);
+	BufferDescriptor descriptor;
+	descriptor.usage = BufferUsage::UniformBuffer;
+	descriptor.size = sizeof(CameraUniforms);
+	mCameraBuffer = context.CreateBuffer(descriptor);
 }
 
 void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard)
@@ -34,14 +33,14 @@ void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
         const auto& backbufferDescriptor = graph.GetDescriptor(renderingData.backbuffer);
         
         RenderTextureDescriptor descriptor;
-        descriptor.size = backbufferDescriptor.texture.size;
+        descriptor.size = backbufferDescriptor.size;
         descriptor.sampleCount = renderingData.config.sampleCount;
         descriptor.format = TextureFormat::R32G32B32A32_SFloat;
         descriptor.clearBuffer = true;
-        auto colorTarget = builder.CreateRenderTexture(descriptor);
+        auto colorTarget = builder.CreateTexture(descriptor);
         
         descriptor.format = TextureFormat::D32_SFloat;
-        auto depthTarget = builder.CreateRenderTexture(descriptor);
+        auto depthTarget = builder.CreateTexture(descriptor);
         
         passData.colorTarget = builder.UseColorBuffer(colorTarget);
         passData.depthTarget = builder.UseDepthBuffer(depthTarget);
@@ -54,20 +53,20 @@ void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
             for (const auto& pass : material->GetPasses())
             {
                 cmd->BindGraphicsPipeline(pass.pipelineState, pass.vertexFunction, pass.fragmentFunction);
-                cmd->BindBuffer(*mCameraBuffer, 0, 0, ShaderStage_Vertex);
+                cmd->BindBuffer(mCameraBuffer, 0, 0, ShaderStage_Vertex);
                 
                 for (const auto& element : meshList)
                 {
                     const auto& meshBuffer = element.mesh->GetBuffer();
-                    cmd->BindBuffer(*meshBuffer.GetPositionBuffer(), 0, 0, ShaderStage_Vertex);
-                    cmd->BindBuffer(*meshBuffer.GetInterleavedBuffer(), 0, 1, ShaderStage_Vertex);
+                    cmd->BindBuffer(meshBuffer.GetPositionBuffer(), 0, 0, ShaderStage_Vertex);
+                    cmd->BindBuffer(meshBuffer.GetInterleavedBuffer(), 0, 1, ShaderStage_Vertex);
                     
                     ForwardPassUniforms uniforms;
                     uniforms.modelMatrix = element.transform;
                     cmd->SetPushConstant(uniforms, ShaderStage_Vertex | ShaderStage_Fragment);
                     for (const auto& descriptor : element.mesh->GetSubmeshDescriptors())
                     {
-                        cmd->DrawIndexed(meshBuffer.GetIndexBuffer()->GetHandle(), IndexType::UINT32, descriptor.indexCount, 1, descriptor.firstIndex, descriptor.baseVertex, 0);
+                        cmd->DrawIndexed(meshBuffer.GetIndexBuffer().GetHandle(), IndexType::UINT32, descriptor.indexCount, 1, descriptor.firstIndex, descriptor.baseVertex, 0);
                     }
                 }
             }
@@ -98,5 +97,5 @@ void WorldRenderer::UpdateCamera(const Camera& camera)
     cameraData.viewMatrix = camera.GetViewMatrix();
     cameraData.projectionMatrix = camera.GetProjectionMatrix();
     cameraData.viewProjectionMatrix = cameraData.projectionMatrix * cameraData.viewMatrix;
-    mCameraBuffer->SetData(&cameraData, sizeof(CameraUniforms));
+    mCameraBuffer.SetData(&cameraData, sizeof(CameraUniforms));
 }

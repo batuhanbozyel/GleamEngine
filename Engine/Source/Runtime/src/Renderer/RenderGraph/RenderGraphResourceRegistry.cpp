@@ -12,32 +12,20 @@ using namespace Gleam;
 
 void RenderGraphResourceRegistry::Clear()
 {
-    mNodes.clear();
+	mBufferNodes.clear();
+	mTextureNodes.clear();
 }
 
-NO_DISCARD TextureHandle RenderGraphResourceRegistry::CreateRT(const RenderTextureDescriptor& descriptor)
+NO_DISCARD TextureHandle RenderGraphResourceRegistry::CreateTexture(const RenderTextureDescriptor& descriptor)
 {
-    auto uniqueId = static_cast<uint32_t>(mNodes.size());
-    TextureHandle handle(uniqueId);
-    mNodes.emplace_back(handle, true);
-    return handle;
+    auto uniqueId = static_cast<uint32_t>(mTextureNodes.size());
+	auto node = RenderGraphTextureNode(uniqueId, descriptor, true);
+    return TextureHandle(&mTextureNodes.emplace_back(uniqueId, descriptor, true));
 }
 
 NO_DISCARD BufferHandle RenderGraphResourceRegistry::CreateBuffer(const BufferDescriptor& descriptor)
 {
-    auto uniqueId = static_cast<uint32_t>(mNodes.size());
-    auto& node = mNodes.emplace_back(uniqueId, true);
-    return BufferHandle handle(node);
-}
-
-RenderGraphResourceNode& RenderGraphResourceRegistry::GetResourceNode(ResourceHandle resource)
-{
-    GLEAM_ASSERT(resource != ResourceHandle::nullHandle);
-    return mNodes[resource];
-}
-
-const RenderGraphResourceNode& RenderGraphResourceRegistry::GetResourceNode(ResourceHandle resource) const
-{
-    GLEAM_ASSERT(resource != ResourceHandle::nullHandle);
-    return mNodes[resource];
+    auto uniqueId = static_cast<uint32_t>(mBufferNodes.size());
+	auto node = RenderGraphBufferNode(uniqueId, descriptor, true);
+    return BufferHandle(&mBufferNodes.emplace_back(uniqueId, descriptor, true));
 }

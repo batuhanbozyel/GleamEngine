@@ -4,6 +4,8 @@ namespace Gleam {
 
 class Buffer;
 class Texture;
+class RenderGraph;
+class RenderGraphBuilder;
 struct RenderGraphResourceNode;
 
 enum class ResourceAccess
@@ -15,9 +17,11 @@ enum class ResourceAccess
 
 class ResourceHandle
 {
+	friend class RenderGraph;
+	friend class RenderGraphBuilder;
+
 public:
-    static const ResourceHandle nullHandle;
-    
+
     explicit constexpr ResourceHandle(RenderGraphResourceNode* node = nullptr, uint32_t version = 0, ResourceAccess access = ResourceAccess::None)
         : node(node), version(version), access(access)
     {
@@ -29,20 +33,17 @@ public:
         return node != nullptr;
     }
     
-    NO_DISCARD FORCE_INLINE constexpr uint32_t GetVersion() const
-    {
-        return version;
-    }
-    
     NO_DISCARD FORCE_INLINE constexpr ResourceAccess GetAccess() const
     {
         return access;
     }
     
-    constexpr ResourceHandle(const ResourceHandle& other) = default;
-    FORCE_INLINE constexpr ResourceHandle& operator=(const ResourceHandle& other) = default;
+    constexpr ResourceHandle(const ResourceHandle&) = default;
+    FORCE_INLINE constexpr ResourceHandle& operator=(const ResourceHandle&) = default;
+	FORCE_INLINE constexpr bool operator==(const ResourceHandle&) const = default;
+	FORCE_INLINE constexpr bool operator!=(const ResourceHandle&) const = default;
     
-private:
+protected:
     
     uint32_t version;
     ResourceAccess access;
@@ -60,7 +61,7 @@ public:
 
 	RenderGraphResourceHandle(BufferHandle)
 
-	NO_DISCARD constexpr operator Buffer() const;
+	NO_DISCARD operator Buffer() const;
 };
 
 class TextureHandle final : public ResourceHandle
@@ -69,7 +70,7 @@ public:
 
 	RenderGraphResourceHandle(TextureHandle)
 
-    NO_DISCARD FORCE_INLINE constexpr operator Texture() const;
+    NO_DISCARD operator Texture() const;
 };
 
 } // namespace Gleam

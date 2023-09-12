@@ -10,6 +10,8 @@ struct BufferDescriptor;
 class Heap : public GraphicsObject
 {
 public:
+
+	GLEAM_NONCOPYABLE(Heap);
     
     Heap(const HeapDescriptor& descriptor);
 

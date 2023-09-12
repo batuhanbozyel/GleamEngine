@@ -39,11 +39,9 @@ void ImGuiRenderer::AddRenderPasses(Gleam::RenderGraph& graph, Gleam::RenderGrap
     
 	graph.AddRenderPass<ImGuiPassData>("ImGuiPass", [&](Gleam::RenderGraphBuilder& builder, ImGuiPassData& passData)
     {
-        auto swapchainTarget = graph.ImportBackbuffer(Gleam::CreateRef<Gleam::RenderTexture>());
-        graph.GetDescriptor(swapchainTarget).clearBuffer = true;
-        
-        const auto& renderingData = blackboard.Get<Gleam::RenderingData>();
-        passData.sceneTarget = builder.ReadRenderTexture(renderingData.backbuffer);
+		const auto& renderingData = blackboard.Get<Gleam::RenderingData>();
+		auto swapchainTarget = graph.ImportBackbuffer(Gleam::CreateRef<Gleam::RenderTexture>(), { .clearOnFirstUse = true });
+        passData.sceneTarget = builder.ReadTexture(renderingData.backbuffer);
         passData.swapchainTarget = builder.UseColorBuffer(swapchainTarget);
     },
     [this](const Gleam::CommandBuffer* cmd, const ImGuiPassData& passData)

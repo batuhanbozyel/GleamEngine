@@ -72,7 +72,7 @@ CommandBuffer::~CommandBuffer()
 void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, const TStringView debugName) const
 {
     mHandle->sampleCount = renderPassDesc.samples;
-	mHandle->hasDepthAttachment = renderPassDesc.depthAttachment.texture != nullptr;
+	mHandle->hasDepthAttachment = renderPassDesc.depthAttachment.texture.IsValid();
     
     uint32_t attachmentCount = static_cast<uint32_t>(renderPassDesc.colorAttachments.size()) + static_cast<uint32_t>(mHandle->hasDepthAttachment);
 	TArray<VkAttachmentDescription> attachmentDescriptors(attachmentCount);
@@ -83,15 +83,15 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, 
     // Currently there is no subpass support
     TArray<VkSubpassDescription> subpassDescriptors(1);
     TArray<VkSubpassDependency> subpassDependencies(1);
-    if (renderPassDesc.depthAttachment.texture)
+    if (renderPassDesc.depthAttachment.texture.IsValid())
     {
-		mHandle->depthAttachment = renderPassDesc.depthAttachment.texture->GetDescriptor();
+		mHandle->depthAttachment = renderPassDesc.depthAttachment.texture.GetDescriptor();
 
         uint32_t depthAttachmentIndex = static_cast<uint32_t>(attachmentDescriptors.size()) - 1;
         
         auto& depthAttachmentDesc = attachmentDescriptors[depthAttachmentIndex];
         depthAttachmentDesc = {};
-        depthAttachmentDesc.format = TextureFormatToVkFormat(renderPassDesc.depthAttachment.texture->GetDescriptor().format);
+        depthAttachmentDesc.format = TextureFormatToVkFormat(mHandle->depthAttachment.format);
         depthAttachmentDesc.samples = GetVkSampleCount(renderPassDesc.samples);
         depthAttachmentDesc.loadOp = AttachmentLoadActionToVkAttachmentLoadOp(renderPassDesc.depthAttachment.loadAction);
         depthAttachmentDesc.stencilLoadOp = depthAttachmentDesc.loadOp;
@@ -102,7 +102,7 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, 
         
         clearValues[depthAttachmentIndex] = {};
         clearValues[depthAttachmentIndex].depthStencil = { renderPassDesc.depthAttachment.clearDepth, renderPassDesc.depthAttachment.clearStencil };
-        imageViews[depthAttachmentIndex] = As<VkImageView>(renderPassDesc.depthAttachment.texture->GetView());
+        imageViews[depthAttachmentIndex] = As<VkImageView>(renderPassDesc.depthAttachment.texture.GetView());
         
         VkAttachmentReference depthStencilAttachment{};
         depthStencilAttachment.attachment = depthAttachmentIndex;
@@ -117,7 +117,7 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, 
     for (uint32_t i = 0; i < renderPassDesc.colorAttachments.size(); i++)
     {
 		const auto& colorAttachment = renderPassDesc.colorAttachments[i];
-		mHandle->colorAttachments[i] = colorAttachment.texture->GetDescriptor();
+		mHandle->colorAttachments[i] = colorAttachment.texture.GetDescriptor();
 
         colorAttachments[i].attachment = i;
         colorAttachments[i].layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
@@ -130,7 +130,7 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, 
 
         auto& colorAttachmentDesc = attachmentDescriptors[i];
         colorAttachmentDesc = {};
-        colorAttachmentDesc.format = TextureFormatToVkFormat(colorAttachment.texture->GetDescriptor().format);
+        colorAttachmentDesc.format = TextureFormatToVkFormat(colorAttachment.texture.GetDescriptor().format);
         colorAttachmentDesc.samples = GetVkSampleCount(renderPassDesc.samples);
         colorAttachmentDesc.loadOp = AttachmentLoadActionToVkAttachmentLoadOp(colorAttachment.loadAction);
         colorAttachmentDesc.storeOp = AttachmentStoreActionToVkAttachmentStoreOp(colorAttachment.storeAction);
@@ -138,7 +138,7 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, 
         colorAttachmentDesc.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
         clearValues[i] = { colorAttachment.clearColor.r, colorAttachment.clearColor.g, colorAttachment.clearColor.b, colorAttachment.clearColor.a };
-        imageViews[i] = As<VkImageView>(colorAttachment.texture->GetView());
+        imageViews[i] = As<VkImageView>(colorAttachment.texture.GetView());
     }
 
     subpassDescriptors[0] = {};

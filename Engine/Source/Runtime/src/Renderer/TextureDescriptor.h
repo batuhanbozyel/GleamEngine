@@ -44,10 +44,10 @@ struct TextureDescriptor
 
 struct RenderTextureDescriptor : public TextureDescriptor
 {
-    Color clearColor = Color::clear;
-    uint32_t clearStencil = 0u;
-    float clearDepth = 1.0f;
-    bool clearBuffer = false;
+	Color clearColor = Color::clear;
+	uint32_t clearStencil = 0u;
+	float clearDepth = 1.0f;
+	bool clearBuffer = false;
 };
 
 } // namespace Gleam

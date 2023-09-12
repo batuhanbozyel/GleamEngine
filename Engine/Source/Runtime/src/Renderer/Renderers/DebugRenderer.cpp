@@ -15,10 +15,9 @@ void DebugRenderer::OnCreate(RendererContext& context)
 	mFragmentShader = context.CreateShader("debugFragmentShader", ShaderStage::Fragment);
     
     BufferDescriptor descriptor;
-    descriptor.memoryType = MemoryType::Shared;
     descriptor.usage = BufferUsage::UniformBuffer;
     descriptor.size = sizeof(CameraUniforms);
-    mCameraBuffer = CreateScope<Buffer>(descriptor);
+    mCameraBuffer = context.CreateBuffer(descriptor);
 }
 
 void DebugRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard)
@@ -81,8 +80,8 @@ void DebugRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 
 	struct DrawPassData
 	{
-        TextureHandle colorTarget;
-        TextureHandle depthTarget;
+		TextureHandle colorTarget;
+		TextureHandle depthTarget;
 		BufferHandle vertexBuffer;
 	};
 
@@ -104,7 +103,7 @@ void DebugRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 			pipelineState.topology = PrimitiveTopology::Lines;
 			pipelineState.depthState.writeEnabled = true;
 			cmd->BindGraphicsPipeline(pipelineState, mPrimitiveVertexShader, mFragmentShader);
-			cmd->BindBuffer(*mCameraBuffer, 0, 0, ShaderStage_Vertex);
+			cmd->BindBuffer(mCameraBuffer, 0, 0, ShaderStage_Vertex);
 			cmd->BindBuffer(passData.vertexBuffer, mDepthLineBufferOffset, 0, ShaderStage_Vertex);
 			cmd->Draw(static_cast<uint32_t>(mDepthLines.size())* Utils::PrimitiveTopologyVertexCount(pipelineState.topology));
 		}
@@ -115,7 +114,7 @@ void DebugRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 			pipelineState.topology = PrimitiveTopology::Triangles;
 			pipelineState.depthState.writeEnabled = true;
 			cmd->BindGraphicsPipeline(pipelineState, mPrimitiveVertexShader, mFragmentShader);
-            cmd->BindBuffer(*mCameraBuffer, 0, 0, ShaderStage_Vertex);
+            cmd->BindBuffer(mCameraBuffer, 0, 0, ShaderStage_Vertex);
 			cmd->BindBuffer(passData.vertexBuffer, mDepthTriangleBufferOffset, 0, ShaderStage_Vertex);
 			cmd->Draw(static_cast<uint32_t>(mDepthTriangles.size())* Utils::PrimitiveTopologyVertexCount(pipelineState.topology));
 		}
@@ -131,7 +130,7 @@ void DebugRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 			pipelineState.topology = PrimitiveTopology::Lines;
 			pipelineState.depthState.writeEnabled = true;
 			cmd->BindGraphicsPipeline(pipelineState, mPrimitiveVertexShader, mFragmentShader);
-            cmd->BindBuffer(*mCameraBuffer, 0, 0, ShaderStage_Vertex);
+            cmd->BindBuffer(mCameraBuffer, 0, 0, ShaderStage_Vertex);
 			cmd->BindBuffer(passData.vertexBuffer, mLineBufferOffset, 0, ShaderStage_Vertex);
 			cmd->Draw(static_cast<uint32_t>(mLines.size())* Utils::PrimitiveTopologyVertexCount(pipelineState.topology));
 		}
@@ -141,7 +140,7 @@ void DebugRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 			PipelineStateDescriptor pipelineState;
 			pipelineState.topology = PrimitiveTopology::Triangles;
 			cmd->BindGraphicsPipeline(pipelineState, mPrimitiveVertexShader, mFragmentShader);
-            cmd->BindBuffer(*mCameraBuffer, 0, 0, ShaderStage_Vertex);
+            cmd->BindBuffer(mCameraBuffer, 0, 0, ShaderStage_Vertex);
 			cmd->BindBuffer(passData.vertexBuffer, mTriangleBufferOffset, 0, ShaderStage_Vertex);
 			cmd->Draw(static_cast<uint32_t>(mTriangles.size())* Utils::PrimitiveTopologyVertexCount(pipelineState.topology));
 		}
@@ -168,12 +167,12 @@ void DebugRenderer::RenderMeshes(const CommandBuffer* cmd, const TArray<DebugMes
 	pipelineState.topology = PrimitiveTopology::Triangles;
 	pipelineState.depthState.writeEnabled = depthTest;
 	cmd->BindGraphicsPipeline(pipelineState, mMeshVertexShader, mFragmentShader);
-	cmd->BindBuffer(*mCameraBuffer, 0, 0, ShaderStage_Vertex);
+	cmd->BindBuffer(mCameraBuffer, 0, 0, ShaderStage_Vertex);
 
 	for (const auto& debugMesh : debugMeshes)
 	{
 		const auto& meshBuffer = debugMesh.mesh->GetBuffer();
-		cmd->BindBuffer(*meshBuffer.GetPositionBuffer(), 0, 0, ShaderStage_Vertex);
+		cmd->BindBuffer(meshBuffer.GetPositionBuffer(), 0, 0, ShaderStage_Vertex);
 
 		DebugShaderUniforms uniforms;
 		uniforms.modelMatrix = debugMesh.transform;
@@ -181,7 +180,7 @@ void DebugRenderer::RenderMeshes(const CommandBuffer* cmd, const TArray<DebugMes
 		cmd->SetPushConstant(uniforms, ShaderStage_Vertex | ShaderStage_Fragment);
 	
 		for (const auto& submesh : debugMesh.mesh->GetSubmeshDescriptors())
-			cmd->DrawIndexed(meshBuffer.GetIndexBuffer()->GetHandle(), IndexType::UINT32, submesh.indexCount, 1, submesh.firstIndex, submesh.baseVertex, 0);
+			cmd->DrawIndexed(meshBuffer.GetIndexBuffer().GetHandle(), IndexType::UINT32, submesh.indexCount, 1, submesh.firstIndex, submesh.baseVertex, 0);
 	}	
 }
 
@@ -299,5 +298,5 @@ void DebugRenderer::UpdateCamera(const Camera& camera)
     cameraData.viewMatrix = camera.GetViewMatrix();
     cameraData.projectionMatrix = camera.GetProjectionMatrix();
     cameraData.viewProjectionMatrix = cameraData.projectionMatrix * cameraData.viewMatrix;
-    mCameraBuffer->SetData(&cameraData, sizeof(CameraUniforms));
+    mCameraBuffer.SetData(&cameraData, sizeof(CameraUniforms));
 }

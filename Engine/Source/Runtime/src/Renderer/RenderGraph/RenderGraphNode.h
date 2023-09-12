@@ -12,6 +12,8 @@
 
 namespace Gleam {
 
+class CommandBuffer;
+
 template<typename PassData>
 using RenderFunc = std::function<void(const CommandBuffer* cmd, const PassData& passData)>;
 
@@ -40,9 +42,13 @@ struct RenderPassNode final : public RenderGraphNode
     
     bool hasSideEffect = false;
     
-    TArray<ResourceHandle> resourceReads;
-    TArray<ResourceHandle> resourceWrites;
-    TArray<ResourceHandle> resourceCreates;
+	TArray<BufferHandle> bufferReads;
+	TArray<BufferHandle> bufferWrites;
+	TArray<BufferHandle> bufferCreates;
+
+	TArray<TextureHandle> textureReads;
+	TArray<TextureHandle> textureWrites;
+	TArray<TextureHandle> textureCreates;
     
     TArray<TextureHandle> colorAttachments;
     TextureHandle depthAttachment;
@@ -87,13 +93,32 @@ struct RenderGraphResourceNode : public RenderGraphNode
 
 struct RenderGraphBufferNode final : public RenderGraphResourceNode
 {
-    BufferDescriptor descriptor;
-    size_t offset = 0;
+    Buffer buffer;
+
+	RenderGraphBufferNode(uint32_t uniqueId, const BufferDescriptor& descriptor, bool transient)
+		: RenderGraphResourceNode(uniqueId, transient), buffer(nullptr, descriptor)
+	{
+
+	}
 };
 
 struct RenderGraphTextureNode final : public RenderGraphResourceNode
 {
-    RenderTextureDescriptor descriptor;
+	Color clearColor = Color::clear;
+	uint32_t clearStencil = 0u;
+	float clearDepth = 1.0f;
+	bool clearBuffer = false;
+	Texture texture;
+
+	RenderGraphTextureNode(uint32_t uniqueId, const RenderTextureDescriptor& descriptor, bool transient)
+		: RenderGraphResourceNode(uniqueId, transient), texture(descriptor),
+		clearColor(descriptor.clearColor),
+		clearStencil(descriptor.clearStencil),
+		clearDepth(descriptor.clearDepth),
+		clearBuffer(descriptor.clearBuffer)
+	{
+
+	}
 };
 
 } // namespace Gleam

@@ -41,7 +41,7 @@ private:
     HashMap<RefCounted<Material>, List<RenderQueueElement>> mOpaqueQueue;
     HashMap<RefCounted<Material>, List<RenderQueueElement>> mTransparentQueue;
     
-    Scope<Buffer> mCameraBuffer;
+    Buffer mCameraBuffer;
     RefCounted<Shader> mForwardPassVertexShader;
     RefCounted<Shader> mForwardPassFragmentShader;
 

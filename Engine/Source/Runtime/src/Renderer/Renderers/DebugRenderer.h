@@ -73,7 +73,7 @@ private:
 	RefCounted<Shader> mMeshVertexShader;
 	RefCounted<Shader> mFragmentShader;
     
-    Scope<Buffer> mCameraBuffer;
+    Buffer mCameraBuffer;
 
 };
 

@@ -6,12 +6,12 @@
 
 using namespace Gleam;
 
-NO_DISCARD constexpr BufferHandle::operator Buffer() const
+NO_DISCARD BufferHandle::operator Buffer() const
 {
-
+	return static_cast<RenderGraphBufferNode*>(node)->buffer;
 }
 
-NO_DISCARD constexpr TextureHandle::operator Texture() const
+NO_DISCARD TextureHandle::operator Texture() const
 {
-
+	return static_cast<RenderGraphTextureNode*>(node)->texture;
 }
