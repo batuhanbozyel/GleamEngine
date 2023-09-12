@@ -1,4 +1,5 @@
 #pragma once
+#include "Heap.h"
 #include "Buffer.h"
 
 namespace Gleam {
@@ -14,19 +15,20 @@ public:
 
 	MeshBuffer(const TArray<MeshData>& meshes);
     
-    const Buffer* GetPositionBuffer() const;
+    const Buffer& GetPositionBuffer() const;
     
-    const Buffer* GetInterleavedBuffer() const;
+    const Buffer& GetInterleavedBuffer() const;
     
-    const Buffer* GetIndexBuffer() const;
+    const Buffer& GetIndexBuffer() const;
     
 private:
     
     MeshBuffer(const TArray<Vector3>& positions, const TArray<InterleavedMeshVertex>& interleavedVertices, const TArray<uint32_t>& indices);
-    
-    Scope<Buffer> mIndexBuffer;
-    Scope<Buffer> mPositionBuffer;
-    Scope<Buffer> mInterleavedBuffer;
+
+	Scope<Heap> mHeap;
+	Buffer mIndexBuffer;
+	Buffer mPositionBuffer;
+	Buffer mInterleavedBuffer;
     
 };
 
