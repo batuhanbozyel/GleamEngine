@@ -71,7 +71,7 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, 
             stencilAttachmentDesc.clearStencil = renderPassDesc.depthAttachment.clearStencil;
             stencilAttachmentDesc.loadAction = renderPass.depthAttachment.loadAction;
             stencilAttachmentDesc.storeAction = renderPass.depthAttachment.storeAction;
-            stencilAttachmentDesc.texture = renderPass.depthAttachment.texture.GetHandle();
+            stencilAttachmentDesc.texture = renderPass.depthAttachment.texture;
             stencilAttachmentDesc.resolveTexture = renderPass.depthAttachment.resolveTexture;
         }
     }

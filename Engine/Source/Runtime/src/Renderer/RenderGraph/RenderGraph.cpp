@@ -181,7 +181,12 @@ void RenderGraph::Execute(const CommandBuffer* cmd)
 
 TextureHandle RenderGraph::ImportBackbuffer(const RefCounted<RenderTexture>& backbuffer, const ImportResourceParams& params)
 {
-	RenderTextureDescriptor descriptor(backbuffer->GetDescriptor());
+	RenderTextureDescriptor descriptor;
+    descriptor.size = backbuffer->GetDescriptor().size;
+    descriptor.format = backbuffer->GetDescriptor().format;
+    descriptor.usage = backbuffer->GetDescriptor().usage;
+    descriptor.sampleCount = backbuffer->GetDescriptor().sampleCount;
+    descriptor.useMipMap = backbuffer->GetDescriptor().useMipMap;
 	descriptor.clearBuffer = params.clearOnFirstUse;
 	descriptor.clearColor = params.clearColor;
 

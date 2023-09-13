@@ -332,7 +332,7 @@ static constexpr MTLResourceOptions MemoryTypeToMTLResourceOption(MemoryType typ
         case MemoryType::GPU: return MTLResourceStorageModePrivate;
 #if defined(PLATFORM_MACOS) && defined(__arm64__)
         case MemoryType::Shared: return MTLResourceStorageModeShared;
-#elif defiend(PLATFORM_MACOS)
+#elif defined(PLATFORM_MACOS)
         case MemoryType::Shared: return MTLResourceStorageModeManaged;
 #elif defined(PLATFORM_IOS)
         case MemoryType::Shared: return MTLResourceStorageModeShared;
