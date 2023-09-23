@@ -1,8 +1,6 @@
+#include "gpch.h"
 #include "RenderGraphResource.h"
 #include "RenderGraphNode.h"
-
-#include "../Buffer.h"
-#include "../Texture.h"
 
 using namespace Gleam;
 

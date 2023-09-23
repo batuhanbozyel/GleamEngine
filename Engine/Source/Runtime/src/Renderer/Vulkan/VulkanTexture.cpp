@@ -6,6 +6,29 @@
 
 using namespace Gleam;
 
+void Texture::Dispose()
+{
+    if (mHandle == nullptr) return;
+    
+    vkDestroyImageView(VulkanDevice::GetHandle(), As<VkImageView>(mView), nullptr);
+    vkDestroyImage(VulkanDevice::GetHandle(), As<VkImage>(mHandle), nullptr);
+    vkFreeMemory(VulkanDevice::GetHandle(), As<VkDeviceMemory>(mHeap), nullptr);
+    
+    if (mDescriptor.sampleCount > 1)
+    {
+        vkDestroyImageView(VulkanDevice::GetHandle(), As<VkImageView>(mMultisampleView), nullptr);
+        vkDestroyImage(VulkanDevice::GetHandle(), As<VkImage>(mMultisampleHandle), nullptr);
+        vkFreeMemory(VulkanDevice::GetHandle(), As<VkDeviceMemory>(mMultisampleHeap), nullptr);
+    }
+    
+    mHeap = nullptr;
+    mView = nullptr;
+    mHandle = nullptr;
+    mMultisampleHeap = nullptr;
+    mMultisampleView = nullptr;
+    mMultisampleHandle = nullptr;
+}
+
 Texture2D::Texture2D(const TextureDescriptor& descriptor)
     : Texture(descriptor)
 {
@@ -49,13 +72,6 @@ Texture2D::Texture2D(const TextureDescriptor& descriptor)
 	viewCreateInfo.subresourceRange.levelCount = 1;
 	viewCreateInfo.subresourceRange.baseMipLevel = 0;
 	VK_CHECK(vkCreateImageView(VulkanDevice::GetHandle(), &viewCreateInfo, nullptr, As<VkImageView*>(&mView)));
-}
-
-Texture2D::~Texture2D()
-{
-	vkDestroyImageView(VulkanDevice::GetHandle(), As<VkImageView>(mView), nullptr);
-	vkDestroyImage(VulkanDevice::GetHandle(), As<VkImage>(mHandle), nullptr);
-	vkFreeMemory(VulkanDevice::GetHandle(), As<VkDeviceMemory>(mHeap), nullptr);
 }
 
 void Texture2D::SetPixels(const void* pixels) const
@@ -106,13 +122,6 @@ TextureCube::TextureCube(const TextureDescriptor& descriptor)
 	viewCreateInfo.subresourceRange.levelCount = 1;
 	viewCreateInfo.subresourceRange.baseMipLevel = 0;
 	VK_CHECK(vkCreateImageView(VulkanDevice::GetHandle(), &viewCreateInfo, nullptr, As<VkImageView*>(&mView)));
-}
-
-TextureCube::~TextureCube()
-{
-	vkDestroyImageView(VulkanDevice::GetHandle(), As<VkImageView>(mView), nullptr);
-	vkDestroyImage(VulkanDevice::GetHandle(), As<VkImage>(mHandle), nullptr);
-	vkFreeMemory(VulkanDevice::GetHandle(), As<VkDeviceMemory>(mHeap), nullptr);
 }
 
 RenderTexture::RenderTexture()
@@ -230,20 +239,6 @@ RenderTexture::RenderTexture(const TextureDescriptor& descriptor)
         viewCreateInfo.subresourceRange.levelCount = 1;
         viewCreateInfo.subresourceRange.baseMipLevel = 0;
         VK_CHECK(vkCreateImageView(VulkanDevice::GetHandle(), &viewCreateInfo, nullptr, As<VkImageView*>(&mMultisampleView)));
-    }
-}
-
-RenderTexture::~RenderTexture()
-{
-    vkDestroyImageView(VulkanDevice::GetHandle(), As<VkImageView>(mView), nullptr);
-    vkDestroyImage(VulkanDevice::GetHandle(), As<VkImage>(mHandle), nullptr);
-    vkFreeMemory(VulkanDevice::GetHandle(), As<VkDeviceMemory>(mHeap), nullptr);
-    
-    if (mDescriptor.sampleCount > 1)
-    {
-        vkDestroyImageView(VulkanDevice::GetHandle(), As<VkImageView>(mMultisampleView), nullptr);
-        vkDestroyImage(VulkanDevice::GetHandle(), As<VkImage>(mMultisampleHandle), nullptr);
-        vkFreeMemory(VulkanDevice::GetHandle(), As<VkDeviceMemory>(mMultisampleHeap), nullptr);
     }
 }
 

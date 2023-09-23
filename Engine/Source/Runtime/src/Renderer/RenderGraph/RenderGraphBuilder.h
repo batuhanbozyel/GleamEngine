@@ -4,6 +4,15 @@
 
 namespace Gleam {
 
+template <typename T>
+concept ResourceType = std::is_base_of<ResourceHandle, T>::value;
+
+template <ResourceType T>
+static bool HasResource(const TArray<T>& resources, T resource)
+{
+    return std::find(resources.cbegin(), resources.cend(), resource) != resources.cend();
+}
+
 class RenderGraphBuilder final
 {
 public:
@@ -12,23 +21,23 @@ public:
 
     RenderGraphBuilder(RenderPassNode& node, RenderGraphResourceRegistry& registry);
 
-    NO_DISCARD TextureHandle UseColorBuffer(TextureHandle attachment);
+    NO_DISCARD TextureHandle UseColorBuffer(const TextureHandle& attachment);
     
-    NO_DISCARD TextureHandle UseDepthBuffer(TextureHandle attachment);
+    NO_DISCARD TextureHandle UseDepthBuffer(const TextureHandle& attachment);
     
     // RenderTexure
     NO_DISCARD TextureHandle CreateTexture(const RenderTextureDescriptor& descriptor);
     
-    NO_DISCARD TextureHandle WriteTexture(TextureHandle resource);
+    NO_DISCARD TextureHandle WriteTexture(const TextureHandle& resource);
     
-    TextureHandle ReadTexture(TextureHandle resource);
+    NO_DISCARD TextureHandle ReadTexture(const TextureHandle& resource);
     
     // Buffer
     NO_DISCARD BufferHandle CreateBuffer(const BufferDescriptor& descriptor);
 
     NO_DISCARD BufferHandle WriteBuffer(const BufferHandle& resource);
     
-    BufferHandle ReadBuffer(const BufferHandle& resource);
+    NO_DISCARD BufferHandle ReadBuffer(const BufferHandle& resource);
 
 private:
 	

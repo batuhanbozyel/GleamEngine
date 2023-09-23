@@ -7,8 +7,7 @@ StructuredBuffer<Gleam::DebugVertex> VertexBuffer : register(t0);
 
 ConstantBuffer<Gleam::CameraUniforms> CameraBuffer : register(b0);
 
-[[vk::push_constant]]
-Gleam::DebugShaderUniforms uniforms;
+PUSH_CONSTANT(Gleam::DebugShaderUniforms, uniforms);
 
 struct VertexOut
 {

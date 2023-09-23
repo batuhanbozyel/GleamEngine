@@ -4,9 +4,6 @@
 
 namespace Gleam {
 
-struct Version;
-struct RendererConfig;
-
 class VulkanDevice final
 {
 public:

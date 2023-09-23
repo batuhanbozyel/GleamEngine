@@ -6,13 +6,13 @@ class GraphicsObject
 {
 public:
 
+    GraphicsObject() = default;
+    
 	GraphicsObject(NativeGraphicsHandle handle)
 		: mHandle(handle)
 	{
 
 	}
-
-	GraphicsObject() = default;
 
 	GraphicsObject(const GraphicsObject&) = default;
 

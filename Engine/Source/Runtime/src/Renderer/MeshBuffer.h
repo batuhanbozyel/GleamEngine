@@ -15,6 +15,8 @@ public:
 
 	MeshBuffer(const TArray<MeshData>& meshes);
     
+    void Dispose();
+    
     const Buffer& GetPositionBuffer() const;
     
     const Buffer& GetInterleavedBuffer() const;
@@ -25,7 +27,7 @@ private:
     
     MeshBuffer(const TArray<Vector3>& positions, const TArray<InterleavedMeshVertex>& interleavedVertices, const TArray<uint32_t>& indices);
 
-	Scope<Heap> mHeap;
+	Heap mHeap;
 	Buffer mIndexBuffer;
 	Buffer mPositionBuffer;
 	Buffer mInterleavedBuffer;

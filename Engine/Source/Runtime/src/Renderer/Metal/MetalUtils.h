@@ -4,6 +4,7 @@
 #include "Renderer/TextureFormat.h"
 #include "Renderer/RenderPassDescriptor.h"
 #include "Renderer/PipelineStateDescriptor.h"
+#include "Renderer/RenderGraph/RenderGraphResource.h"
 
 #import <Metal/Metal.h>
 #import <QuartzCore/CAMetalLayer.h>
@@ -338,7 +339,17 @@ static constexpr MTLResourceOptions MemoryTypeToMTLResourceOption(MemoryType typ
         case MemoryType::Shared: return MTLResourceStorageModeShared;
 #endif
         case MemoryType::CPU: return MTLResourceStorageModeShared;
-        default: GLEAM_ASSERT(false, "Metal: Unknown memory type given!"); return MTLResourceOptions(~0);
+        default: GLEAM_ASSERT(false, "Metal: Unknown memory type specified!"); return MTLResourceOptions(~0);
+    }
+}
+
+static constexpr MTLResourceUsage ResourceAccessToMTLResourceUsage(ResourceAccess access)
+{
+    switch (access)
+    {
+        case ResourceAccess::Read: return MTLResourceUsageRead;
+        case ResourceAccess::Write: return MTLResourceUsageWrite;
+        default: GLEAM_ASSERT(false, "Metal: Unknown access mode specified!"); return MTLResourceUsage(~0);
     }
 }
 

@@ -1,6 +1,7 @@
 #include "gpch.h"
 #include "RenderGraph.h"
 #include "Renderer/CommandBuffer.h"
+#include "Renderer/RendererContext.h"
 
 using namespace Gleam;
 
@@ -20,6 +21,12 @@ static AttachmentStoreAction GetStoreActionForRenderTexture(const RenderGraphTex
         return node->lastModifier == pass ? AttachmentStoreAction::Resolve : AttachmentStoreAction::StoreAndResolve;
     }
     return (node->lastReference == pass && !pass->hasSideEffect) ? AttachmentStoreAction::DontCare : AttachmentStoreAction::Store;
+}
+
+RenderGraph::RenderGraph(RendererContext& context)
+    : mContext(context)
+{
+    
 }
 
 void RenderGraph::Compile()
@@ -75,6 +82,9 @@ void RenderGraph::Compile()
 		// Buffer
         for (auto& resource : pass->bufferCreates)
         {
+            auto node = static_cast<RenderGraphBufferNode*>(resource.node);
+            mHeapSize += node->buffer.GetDescriptor().size;
+            
             resource.node->creator = pass;
             resource.node->lastModifier = pass;
             resource.node->lastReference = pass;
@@ -110,21 +120,33 @@ void RenderGraph::Compile()
 
 void RenderGraph::Execute(const CommandBuffer* cmd)
 {
+    Heap heap;
+    if (mHeapSize > 0)
+    {
+        heap = mContext.CreateHeap({.size = mHeapSize, .memoryType = MemoryType::GPU});
+    }
+    size_t bufferOffset = 0;
+    
     cmd->Begin();
     for (auto pass : mPassNodes)
     {
 		// Allocate buffers
         for (auto& resource : pass->bufferCreates)
         {
-			auto node = static_cast<RenderGraphBufferNode*>(resource.node);
-			node->buffer = mStackAllocator.CreateBuffer(node->buffer.GetDescriptor());
+            if (HasResource(pass->bufferWrites, resource))
+            {
+                resource.node->buffer = heap.CreateBuffer(resource.node->buffer.GetDescriptor(), bufferOffset);
+                bufferOffset += resource.node->buffer.GetDescriptor().size;
+            }
         }
 
 		// Allocate textures
 		for (auto& resource : pass->textureCreates)
 		{
-			auto node = static_cast<RenderGraphTextureNode*>(resource.node);
-			node->texture = mPoolAllocator.CreateTexture(node->texture.GetDescriptor());
+            if (HasResource(pass->textureWrites, resource))
+            {
+                resource.node->texture = mContext.CreateTexture(resource.node->texture.GetDescriptor());
+            }
 		}
         
         // execute render pass
@@ -134,12 +156,11 @@ void RenderGraph::Execute(const CommandBuffer* cmd)
         }
         else
         {
-            RenderPassDescriptor renderPassDesc;
+            RenderPassDescriptor renderPassDesc{};
             renderPassDesc.colorAttachments.resize(pass->colorAttachments.size());
             for (uint32_t i = 0; i < pass->colorAttachments.size(); i++)
             {
-                auto& attachment = pass->colorAttachments[i];
-				auto node = static_cast<const RenderGraphTextureNode*>(attachment.node);
+				const auto node = static_cast<const RenderGraphTextureNode*>(pass->colorAttachments[i].node);
                 renderPassDesc.colorAttachments[i].texture = node->texture;
                 renderPassDesc.colorAttachments[i].loadAction = GetLoadActionForRenderTexture(node, pass);
                 renderPassDesc.colorAttachments[i].storeAction = GetStoreActionForRenderTexture(node, pass);
@@ -152,7 +173,7 @@ void RenderGraph::Execute(const CommandBuffer* cmd)
             
             if (pass->depthAttachment.IsValid())
             {
-				auto node = static_cast<const RenderGraphTextureNode*>(pass->depthAttachment.node);
+				const auto node = static_cast<const RenderGraphTextureNode*>(pass->depthAttachment.node);
                 renderPassDesc.depthAttachment.texture = node->texture;
                 renderPassDesc.depthAttachment.loadAction = GetLoadActionForRenderTexture(node, pass);
                 renderPassDesc.depthAttachment.storeAction = GetStoreActionForRenderTexture(node, pass);
@@ -170,29 +191,53 @@ void RenderGraph::Execute(const CommandBuffer* cmd)
             cmd->EndRenderPass();
         }
         
-        // TODO: release resources that are not referenced in later passes
+        // Release textures
+        for (auto& resource : pass->textureWrites)
+        {
+            if (resource.node->lastReference == pass && resource.node->transient)
+            {
+                mContext.ReleaseTexture(resource.node->texture);
+            }
+        }
+        
+        for (auto& resource : pass->textureReads)
+        {
+            if (resource.node->lastReference == pass && resource.node->transient)
+            {
+                mContext.ReleaseTexture(resource.node->texture);
+            }
+        }
     }
     cmd->End();
+    
+    // Release buffers
+    for (auto pass : mPassNodes)
+    {
+        for (auto& resource : pass->bufferCreates)
+        {
+            auto node = static_cast<RenderGraphBufferNode*>(resource.node);
+            node->buffer.Dispose(); // TODO: wait for frame to finish rendering
+        }
+    }
+    
+    if (heap.IsValid())
+    {
+        mContext.ReleaseHeap(heap);
+    }
     
     for (auto pass : mPassNodes) { delete pass; }
     mPassNodes.clear();
     mRegistry.Clear();
 }
 
-TextureHandle RenderGraph::ImportBackbuffer(const RefCounted<RenderTexture>& backbuffer, const ImportResourceParams& params)
+TextureHandle RenderGraph::ImportBackbuffer(const Texture& backbuffer, const ImportResourceParams& params)
 {
-	RenderTextureDescriptor descriptor;
-    descriptor.size = backbuffer->GetDescriptor().size;
-    descriptor.format = backbuffer->GetDescriptor().format;
-    descriptor.usage = backbuffer->GetDescriptor().usage;
-    descriptor.sampleCount = backbuffer->GetDescriptor().sampleCount;
-    descriptor.useMipMap = backbuffer->GetDescriptor().useMipMap;
+	RenderTextureDescriptor descriptor(backbuffer.GetDescriptor());
 	descriptor.clearBuffer = params.clearOnFirstUse;
 	descriptor.clearColor = params.clearColor;
 
-	auto handle = mRegistry.CreateTexture(descriptor);
-	auto node = static_cast<RenderGraphTextureNode*>(handle.node);
-	node->texture = *backbuffer;
+	auto handle = mRegistry.CreateTexture(descriptor, false);
+    handle.node->texture = backbuffer;
     return handle;
 }
 

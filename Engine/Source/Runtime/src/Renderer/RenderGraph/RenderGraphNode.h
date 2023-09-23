@@ -72,7 +72,7 @@ struct RenderPassNode final : public RenderGraphNode
     
     bool isCustomPass() const
     {
-        return colorAttachments.empty() && depthAttachment.IsValid();
+        return colorAttachments.empty() && !depthAttachment.IsValid();
     }
 };
 
@@ -93,7 +93,7 @@ struct RenderGraphResourceNode : public RenderGraphNode
 
 struct RenderGraphBufferNode final : public RenderGraphResourceNode
 {
-    Buffer buffer;
+    Buffer buffer = Buffer();
 
 	RenderGraphBufferNode(uint32_t uniqueId, const BufferDescriptor& descriptor, bool transient)
 		: RenderGraphResourceNode(uniqueId, transient), buffer(nullptr, descriptor)
@@ -108,10 +108,10 @@ struct RenderGraphTextureNode final : public RenderGraphResourceNode
 	uint32_t clearStencil = 0u;
 	float clearDepth = 1.0f;
 	bool clearBuffer = false;
-	Texture texture;
+	Texture texture = Texture();
 
 	RenderGraphTextureNode(uint32_t uniqueId, const RenderTextureDescriptor& descriptor, bool transient)
-		: RenderGraphResourceNode(uniqueId, transient), texture(descriptor),
+		: RenderGraphResourceNode(uniqueId, transient), texture(Texture(descriptor)),
 		clearColor(descriptor.clearColor),
 		clearStencil(descriptor.clearStencil),
 		clearDepth(descriptor.clearDepth),

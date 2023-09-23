@@ -10,13 +10,16 @@ using namespace Gleam;
 Heap::Heap(const HeapDescriptor& descriptor)
     : mDescriptor(descriptor)
 {
+    MTLResourceOptions resourceOptions = MemoryTypeToMTLResourceOption(descriptor.memoryType);
+    MTLSizeAndAlign sizeAndAlign = [MetalDevice::GetHandle() heapBufferSizeAndAlignWithLength:descriptor.size options:resourceOptions];
+    
     MTLHeapDescriptor* desc = [MTLHeapDescriptor new];
-    desc.resourceOptions = MemoryTypeToMTLResourceOption(descriptor.memoryType);
-    desc.size = descriptor.size;
+    desc.resourceOptions = resourceOptions;
+    desc.size = sizeAndAlign.size;
     mHandle = [MetalDevice::GetHandle() newHeapWithDescriptor:desc];
 }
 
-Heap::~Heap()
+void Heap::Dispose()
 {
     mHandle = nil;
 }
@@ -24,7 +27,7 @@ Heap::~Heap()
 Buffer Heap::CreateBuffer(const BufferDescriptor& descriptor, size_t offset) const
 {
     id<MTLHeap> heap = mHandle;
-    id<MTLBuffer> buffer = [heap newBufferWithLength:descriptor.size options:heap.resourceOptions offset:offset];
+    id<MTLBuffer> buffer = [heap newBufferWithLength:descriptor.size options:heap.resourceOptions];
 
     void* contents = nullptr;
     if (mDescriptor.memoryType != MemoryType::GPU)
@@ -34,9 +37,9 @@ Buffer Heap::CreateBuffer(const BufferDescriptor& descriptor, size_t offset) con
     return Buffer(buffer, descriptor, contents);
 }
 
-void Heap::DestroyBuffer(const Buffer& buffer) const
+void Buffer::Dispose()
 {
-    // does nothing on Metal
+    mHandle = nil;
 }
 
 #endif

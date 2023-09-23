@@ -10,16 +10,27 @@ struct BufferDescriptor;
 class Heap : public GraphicsObject
 {
 public:
-
-	GLEAM_NONCOPYABLE(Heap);
+    
+    Heap() = default;
     
     Heap(const HeapDescriptor& descriptor);
+    
+    Heap(const Heap& other)
+        : GraphicsObject(other), mDescriptor(other.mDescriptor)
+    {
+        
+    }
+    
+    Heap& operator=(const Heap& other)
+    {
+        GraphicsObject::operator=(other);
+        mDescriptor = other.mDescriptor;
+        return *this;
+    }
 
-    ~Heap();
+    void Dispose();
 
 	Buffer CreateBuffer(const BufferDescriptor& descriptor, size_t offset = 0) const;
-
-	void DestroyBuffer(const Buffer& buffer) const;
     
     const HeapDescriptor& GetDescriptor() const
 	{
@@ -28,7 +39,7 @@ public:
     
 private:
 
-    const HeapDescriptor mDescriptor;
+    HeapDescriptor mDescriptor;
     
 };
 

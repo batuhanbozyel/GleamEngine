@@ -1,3 +1,4 @@
+#include "gpch.h"
 #include "StackAllocator.h"
 
 using namespace Gleam;

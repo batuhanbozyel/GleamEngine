@@ -1,11 +1,10 @@
 #pragma once
 #include "RenderGraphBuilder.h"
-#include "../Allocators/PoolAllocator.h"
-#include "../Allocators/StackAllocator.h"
 
 namespace Gleam {
 
 class CommandBuffer;
+class RendererContext;
 
 struct ImportResourceParams
 {
@@ -19,6 +18,8 @@ class RenderGraph final
     using SetupFunc = std::function<void(RenderGraphBuilder& builder, PassData& passData)>;
     
 public:
+    
+    RenderGraph(RendererContext& context);
     
     void Compile();
 
@@ -35,7 +36,7 @@ public:
 		return passData;
 	}
     
-    TextureHandle ImportBackbuffer(const RefCounted<RenderTexture>& backbuffer, const ImportResourceParams& params = ImportResourceParams());
+    TextureHandle ImportBackbuffer(const Texture& backbuffer, const ImportResourceParams& params = ImportResourceParams());
     
     const BufferDescriptor& GetDescriptor(BufferHandle handle) const;
     
@@ -43,9 +44,9 @@ public:
 
 private:
     
-    PoolAllocator mPoolAllocator;
+    size_t mHeapSize = 0;
     
-    StackAllocator mStackAllocator;
+    RendererContext& mContext;
 
     RenderGraphResourceRegistry mRegistry;
 

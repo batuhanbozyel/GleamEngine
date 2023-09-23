@@ -14,6 +14,8 @@ struct HeapDescriptor
 {
 	MemoryType memoryType = MemoryType::GPU;
 	size_t size = 0;
+    
+    bool operator==(const HeapDescriptor&) const = default;
 };
 
 } // namespace Gleam

@@ -57,7 +57,7 @@ Heap::Heap(const HeapDescriptor& descriptor)
 	vkDestroyBuffer(VulkanDevice::GetHandle(), buffer, nullptr);
 }
 
-Heap::~Heap()
+void Heap::Dispose()
 {
 	vkFreeMemory(VulkanDevice::GetHandle(), As<VkDeviceMemory>(mHandle), nullptr);
 }
@@ -86,9 +86,9 @@ Buffer Heap::CreateBuffer(const BufferDescriptor& descriptor, size_t offset) con
     return Buffer(buffer, descriptor, contents);
 }
 
-void Heap::DestroyBuffer(const Buffer& buffer) const
+void Buffer::Dispose()
 {
-    vkDestroyBuffer(VulkanDevice::GetHandle(), As<VkBuffer>(buffer.GetHandle()), nullptr);
+    vkDestroyBuffer(VulkanDevice::GetHandle(), As<VkBuffer>(mHandle), nullptr);
 }
 
 #endif

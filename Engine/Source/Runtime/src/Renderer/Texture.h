@@ -9,13 +9,17 @@ class Texture : public GraphicsObject
 {
 public:
 
-	Texture() = default;
+	Texture();
 
-    Texture(const TextureDescriptor& descriptor)
-        : mDescriptor(descriptor), mMipMapLevels(descriptor.useMipMap ? CalculateMipLevels(descriptor.size) : 1)
-    {
-        
-    }
+    Texture(const TextureDescriptor& descriptor);
+    
+    Texture(const Texture& other) = default;
+    
+    Texture& operator=(const Texture& other) = default;
+    
+    void Dispose();
+    
+    void SetPixels(const void* pixels) const;
     
     NativeGraphicsHandle GetView() const
     {
@@ -59,47 +63,6 @@ protected:
 	NativeGraphicsHandle mMultisampleView = nullptr;
 	NativeGraphicsHandle mMultisampleHandle = nullptr;
     
-};
-
-class Texture2D final : public Texture
-{
-public:
-
-	GLEAM_NONCOPYABLE(Texture2D);
-
-	Texture2D(const TextureDescriptor& descriptor);
-
-	~Texture2D();
-    
-    void SetPixels(const void* pixels) const;
-	
-};
-
-class TextureCube final : public Texture
-{
-public:
-
-	GLEAM_NONCOPYABLE(TextureCube);
-    
-    TextureCube(const TextureDescriptor& descriptor);
-    
-    ~TextureCube();
-    
-};
-
-class RenderTexture final : public Texture
-{
-public:
-
-	GLEAM_NONCOPYABLE(RenderTexture);
-    
-    // Swapchain target
-    RenderTexture();
-    
-    RenderTexture(const TextureDescriptor& descriptor);
-    
-    ~RenderTexture();
-
 };
 
 } // namespace Gleam

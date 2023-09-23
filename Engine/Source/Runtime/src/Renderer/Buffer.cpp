@@ -11,18 +11,6 @@ Buffer::Buffer(NativeGraphicsHandle handle, const BufferDescriptor& descriptor, 
 
 }
 
-Buffer::Buffer(const Buffer& other)
-	: GraphicsObject(other), mDescriptor(other.mDescriptor), mContents(other.mContents)
-{
-
-}
-
-Buffer& Buffer::operator=(const Buffer& other)
-{
-	GraphicsObject::operator=(other);
-	return *this;
-}
-
 void Buffer::SetData(const void* data, size_t size, size_t offset) const
 {
     if (mContents == nullptr)
@@ -44,12 +32,18 @@ void Buffer::SetData(const void* data, size_t size, size_t offset) const
         commandBuffer.End();
         commandBuffer.Commit();
 
-		heap.DestroyBuffer(stagingBuffer);
+        stagingBuffer.Dispose();
+        heap.Dispose();
     }
     else
     {
         memcpy(As<uint8_t*>(mContents) + offset, data, size);
     }
+}
+
+void* Buffer::GetContents() const
+{
+    return mContents;
 }
 
 const BufferDescriptor& Buffer::GetDescriptor() const

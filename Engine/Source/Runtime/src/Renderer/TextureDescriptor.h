@@ -1,5 +1,5 @@
 //
-//  RenderTexture.h
+//  TextureDescriptor.h
 //  GleamEngine
 //
 //  Created by Batuhan Bozyel on 14.03.2023.
@@ -9,6 +9,13 @@
 #include "TextureFormat.h"
 
 namespace Gleam {
+
+enum class TextureType
+{
+    Texture2D,
+    TextureCube,
+    RenderTexture
+};
 
 enum class TextureUsage
 {
@@ -30,6 +37,7 @@ struct TextureDescriptor
     Size size = Size::zero;
     TextureFormat format = TextureFormat::R8G8B8A8_SRGB;
     TextureUsageFlagBits usage = TextureUsage_Sampled;
+    TextureType type = TextureType::Texture2D;
     uint32_t sampleCount = 1;
     bool useMipMap = false;
     
@@ -48,6 +56,18 @@ struct RenderTextureDescriptor : public TextureDescriptor
 	uint32_t clearStencil = 0u;
 	float clearDepth = 1.0f;
 	bool clearBuffer = false;
+    
+    RenderTextureDescriptor()
+        : TextureDescriptor()
+    {
+        type = TextureType::RenderTexture;
+    }
+    
+    RenderTextureDescriptor(const TextureDescriptor& descriptor)
+        : TextureDescriptor(descriptor)
+    {
+        type = TextureType::RenderTexture;
+    }
 };
 
 } // namespace Gleam

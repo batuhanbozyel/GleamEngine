@@ -40,8 +40,8 @@ void WorldViewport::Update()
 {
     Gleam::TextureDescriptor descriptor;
     descriptor.size = mViewportSize;
-    mSceneRT = Gleam::CreateRef<Gleam::RenderTexture>(descriptor);
-    GameInstance->GetSubsystem<Gleam::RenderSystem>()->SetRenderTarget(mSceneRT);
+    descriptor.type = Gleam::TextureType::RenderTexture;
+    GameInstance->GetSubsystem<Gleam::RenderSystem>()->SetRenderTarget(descriptor);
     
     mController->SetViewportSize(mViewportSize);
     mController->SetViewportFocused(mIsFocused);
@@ -49,14 +49,16 @@ void WorldViewport::Update()
 
 void WorldViewport::Render()
 {
+    const auto& sceneRT = GameInstance->GetSubsystem<Gleam::RenderSystem>()->GetRenderTarget();
+    const auto& sceneRTsize = sceneRT.GetDescriptor().size;
+    
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
     ImGui::Begin("Viewport");
     ImVec2 viewportSize = ImGui::GetContentRegionAvail();
     mViewportSize.width = viewportSize.x;
     mViewportSize.height = viewportSize.y;
     
-    const auto& sceneRTsize = mSceneRT->GetDescriptor().size;
-    ImGui::Image((ImTextureID)mSceneRT->GetHandle(), ImVec2(sceneRTsize.width, sceneRTsize.height), ImVec2(0.0f, 0.0f), ImVec2(1.0f, 1.0f));
+    ImGui::Image((ImTextureID)sceneRT.GetHandle(), ImVec2(sceneRTsize.width, sceneRTsize.height), ImVec2(0.0f, 0.0f), ImVec2(1.0f, 1.0f));
     mIsFocused = ImGui::IsWindowFocused();
     
     ImGui::End();

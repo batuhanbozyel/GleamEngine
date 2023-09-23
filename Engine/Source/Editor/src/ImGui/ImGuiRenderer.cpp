@@ -33,14 +33,14 @@ void ImGuiRenderer::AddRenderPasses(Gleam::RenderGraph& graph, Gleam::RenderGrap
 {
 	struct ImGuiPassData
 	{
-		Gleam::TextureHandle sceneTarget;
+        Gleam::TextureHandle sceneTarget;
         Gleam::TextureHandle swapchainTarget;
 	};
     
 	graph.AddRenderPass<ImGuiPassData>("ImGuiPass", [&](Gleam::RenderGraphBuilder& builder, ImGuiPassData& passData)
     {
-		const auto& renderingData = blackboard.Get<Gleam::RenderingData>();
-		auto swapchainTarget = graph.ImportBackbuffer(Gleam::CreateRef<Gleam::RenderTexture>(), { .clearOnFirstUse = true });
+        const auto& renderingData = blackboard.Get<Gleam::RenderingData>();
+        auto swapchainTarget = graph.ImportBackbuffer(Gleam::Texture(), { .clearOnFirstUse = true });
         passData.sceneTarget = builder.ReadTexture(renderingData.backbuffer);
         passData.swapchainTarget = builder.UseColorBuffer(swapchainTarget);
     },

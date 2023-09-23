@@ -27,6 +27,7 @@ struct CommandBuffer::Impl
 	bool hasDepthAttachment = false;
 	uint32_t sampleCount = 1;
 
+    // Move TempPool to VulkanDevice
 	struct TempPool
 	{
 		TArray<VkRenderPass> renderPasses;
@@ -55,6 +56,7 @@ CommandBuffer::CommandBuffer()
 	mHandle->allocatedCommandPool = VulkanDevice::GetSwapchain().GetCommandPool();
 	mHandle->frameFence = VulkanDevice::GetSwapchain().GetFence();
 
+    // TODO: use VulkanDevice to allocate command buffer
 	VkCommandBufferAllocateInfo allocateInfo{ VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO };
 	allocateInfo.commandBufferCount = 1;
 	allocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
@@ -64,6 +66,7 @@ CommandBuffer::CommandBuffer()
 
 CommandBuffer::~CommandBuffer()
 {
+    // TODO: return command buffer to VulkanDevice to free
 	VK_CHECK(vkWaitForFences(VulkanDevice::GetHandle(), 1, &mHandle->frameFence, VK_TRUE, UINT64_MAX));
 	vkFreeCommandBuffers(VulkanDevice::GetHandle(), mHandle->allocatedCommandPool, 1, &mHandle->commandBuffer);
 	mHandle->tempPool.Flush();
@@ -219,7 +222,7 @@ void CommandBuffer::SetViewport(const Size& size) const
 	vkCmdSetScissor(mHandle->commandBuffer, 0, 1, &scissor);
 }
 
-void CommandBuffer::BindBuffer(const NativeGraphicsHandle buffer, BufferUsage usage, size_t offset, uint32_t index, ShaderStageFlagBits stage) const
+void CommandBuffer::BindBuffer(const NativeGraphicsHandle buffer, BufferUsage usage, size_t offset, uint32_t index, ShaderStageFlagBits stage, ResourceAccess access) const
 {
 	auto resource = [=, this]()
 	{
@@ -245,12 +248,16 @@ void CommandBuffer::BindBuffer(const NativeGraphicsHandle buffer, BufferUsage us
 			case BufferUsage::VertexBuffer:
 			case BufferUsage::StorageBuffer:
 			{
-				return reflection->resources[index + Shader::Reflection::SRV_BINDING_OFFSET]; // TODO: Add support for UAVs
+                switch(access)
+                {
+                    case ResourceAccess::Read: return reflection->resources[index + Shader::Reflection::SRV_BINDING_OFFSET];
+                    case ResourceAccess::Write: return reflection->resources[index + Shader::Reflection::UAV_BINDING_OFFSET];
+                    default: GLEAM_ASSERT(false, "Vulkan: Trying to bind buffer with invalid access.") return reinterpret_cast<SpvReflectDescriptorBinding*>(nullptr);
+                }
 			}
 			default: GLEAM_ASSERT(false, "Vulkan: Trying to bind buffer with invalid usage.")
 			{
-				SpvReflectDescriptorBinding* resource = nullptr;
-				return resource;
+				return reinterpret_cast<SpvReflectDescriptorBinding*>(nullptr);
 			}
 		}
 	}();
@@ -268,7 +275,7 @@ void CommandBuffer::BindBuffer(const NativeGraphicsHandle buffer, BufferUsage us
 	vkCmdPushDescriptorSetKHR(mHandle->commandBuffer, mHandle->pipeline->bindPoint, mHandle->pipeline->layout, resource->set, 1, &descriptorSet);
 }
 
-void CommandBuffer::BindTexture(const NativeGraphicsHandle texture, uint32_t index, ShaderStageFlagBits stage) const
+void CommandBuffer::BindTexture(const NativeGraphicsHandle texture, uint32_t index, ShaderStageFlagBits stage, ResourceAccess access) const
 {
 	auto resource = [=, this]()
 	{
@@ -287,7 +294,12 @@ void CommandBuffer::BindTexture(const NativeGraphicsHandle texture, uint32_t ind
 		{
 			GLEAM_ASSERT(false, "Vulkan: Shader stage not implemented yet.")
 		}
-		return reflection->resources[index + Shader::Reflection::SRV_BINDING_OFFSET]; // TODO: Add support for UAVs
+        switch(access)
+        {
+            case ResourceAccess::Read: return reflection->resources[index + Shader::Reflection::SRV_BINDING_OFFSET];
+            case ResourceAccess::Write: return reflection->resources[index + Shader::Reflection::UAV_BINDING_OFFSET];
+            default: GLEAM_ASSERT(false, "Vulkan: Trying to bind texture with invalid access.") return reinterpret_cast<SpvReflectDescriptorBinding*>(nullptr);
+        }
 	}();
 
 	VkDescriptorImageInfo imageInfo{};
@@ -329,7 +341,7 @@ void CommandBuffer::DrawIndexed(const NativeGraphicsHandle indexBuffer, IndexTyp
 	vkCmdDrawIndexed(mHandle->commandBuffer, indexCount, instanceCount, firstIndex, baseVertex, baseInstance);
 }
 
-void CommandBuffer::CopyBuffer(const NativeGraphicsHandle src, const NativeGraphicsHandle dst, size_t size, uint32_t srcOffset, uint32_t dstOffset) const
+void CommandBuffer::CopyBuffer(const NativeGraphicsHandle src, const NativeGraphicsHandle dst, size_t size, size_t srcOffset, size_t dstOffset) const
 {
 	VkBufferCopy bufferCopy{};
 	bufferCopy.srcOffset = srcOffset;
@@ -338,7 +350,7 @@ void CommandBuffer::CopyBuffer(const NativeGraphicsHandle src, const NativeGraph
 	vkCmdCopyBuffer(mHandle->commandBuffer, As<VkBuffer>(src), As<VkBuffer>(dst), 1, &bufferCopy);
 }
 
-void CommandBuffer::Blit(const RenderTexture& texture, const RenderTexture& target) const
+void CommandBuffer::Blit(const Texture& texture, const Texture& target) const
 {
     mHandle->swapchainTarget = !target.IsValid();
 	VkImage targetTexture = mHandle->swapchainTarget ? VulkanDevice::GetSwapchain().AcquireNextDrawable().image : As<VkImage>(target.GetHandle());

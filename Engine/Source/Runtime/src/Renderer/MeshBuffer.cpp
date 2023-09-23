@@ -97,11 +97,11 @@ MeshBuffer::MeshBuffer(const TArray<Vector3>& positions, const TArray<Interleave
 	HeapDescriptor heapDesc;
 	heapDesc.memoryType = MemoryType::GPU;
 	heapDesc.size = positionDesc.size + interleavedDesc.size + indexDesc.size;
-	mHeap = CreateScope<Heap>(heapDesc);
+	mHeap = Heap(heapDesc);
 
-	mPositionBuffer = mHeap->CreateBuffer(positionDesc);
-	mInterleavedBuffer = mHeap->CreateBuffer(interleavedDesc);
-	mIndexBuffer = mHeap->CreateBuffer(indexDesc);
+	mPositionBuffer = mHeap.CreateBuffer(positionDesc);
+	mInterleavedBuffer = mHeap.CreateBuffer(interleavedDesc);
+	mIndexBuffer = mHeap.CreateBuffer(indexDesc);
 
 	// Send mesh data to buffers
 	{
@@ -112,7 +112,6 @@ MeshBuffer::MeshBuffer(const TArray<Vector3>& positions, const TArray<Interleave
 		bufferDesc.size = heapDesc.size;
 		bufferDesc.usage = BufferUsage::StagingBuffer;
 		Buffer stagingBuffer = heap.CreateBuffer(bufferDesc);
-		
 
 		CommandBuffer commandBuffer;
 		commandBuffer.Begin();
@@ -132,7 +131,8 @@ MeshBuffer::MeshBuffer(const TArray<Vector3>& positions, const TArray<Interleave
 		commandBuffer.End();
 		commandBuffer.Commit();
 
-		heap.DestroyBuffer(stagingBuffer);
+        stagingBuffer.Dispose();
+        heap.Dispose();
 	}
 }
 
@@ -146,6 +146,14 @@ MeshBuffer::MeshBuffer(const TArray<MeshData>& meshes)
     : MeshBuffer(BatchPositionData(meshes), BatchInterleavedData(meshes), BatchIndexData(meshes))
 {
     
+}
+
+void MeshBuffer::Dispose()
+{
+    mPositionBuffer.Dispose();
+    mInterleavedBuffer.Dispose();
+    mIndexBuffer.Dispose();
+    mHeap.Dispose();
 }
 
 const Buffer& MeshBuffer::GetPositionBuffer() const

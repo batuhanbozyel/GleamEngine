@@ -1,3 +1,4 @@
+#include "Common.hlsl"
 #include "../ShaderTypes.h"
 
 StructuredBuffer<Gleam::Vector3> PositionBuffer : register(t0);
@@ -13,8 +14,7 @@ struct VertexOut
     float2 texCoord : TEXCOORD0;
 };
 
-[[vk::push_constant]]
-Gleam::ForwardPassUniforms uniforms;
+PUSH_CONSTANT(Gleam::ForwardPassUniforms, uniforms);
 
 VertexOut forwardPassVertexShader(uint vertex_id: SV_VertexID)
 {
