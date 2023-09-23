@@ -74,13 +74,12 @@ void Texture::SetPixels(const void* pixels) const
 
 void Texture::Dispose()
 {
-    if (mHandle != nil)
-    {
-        mHandle = nil;
-        mView = nil;
-    }
+    if (mHandle == nil) return;
+
+    mHandle = nil;
+    mView = nil;
     
-    if (mMultisampleHandle != nil)
+    if (mDescriptor.sampleCount > 1)
     {
         mMultisampleHandle = nil;
         mMultisampleView = nil;

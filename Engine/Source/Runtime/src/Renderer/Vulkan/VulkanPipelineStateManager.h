@@ -42,6 +42,8 @@ public:
 													 VkRenderPass renderPass,
 													 uint32_t sampleCount);
 
+	static VkSampler GetSampler(uint32_t index);
+
 	static VkSampler GetSampler(const SamplerState& samplerState);
 
 	static void Clear();

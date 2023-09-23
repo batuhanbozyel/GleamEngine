@@ -206,6 +206,44 @@ void CommandBuffer::BindGraphicsPipeline(const PipelineStateDescriptor& pipeline
 	}
 	
 	vkCmdBindPipeline(mHandle->commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mHandle->pipeline->handle);
+
+	// Set vertex samplers
+	uint32_t samplerCount = vertexShader->GetReflection()->samplers.size() + fragmentShader->GetReflection()->samplers.size();
+	if (samplerCount > 0)
+	{
+		TArray<VkDescriptorImageInfo> samplerInfos;
+		samplerInfos.reserve(samplerCount);
+
+		TArray<VkWriteDescriptorSet> descriptorSets;
+		descriptorSets.reserve(samplerCount);
+		for (const auto& resource : vertexShader->GetReflection()->samplers)
+		{
+			VkDescriptorImageInfo samplerInfo{};
+			samplerInfo.sampler = VulkanPipelineStateManager::GetSampler(resource->binding);
+
+			VkWriteDescriptorSet descriptorSet{ VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
+			descriptorSet.dstBinding = resource->binding;
+			descriptorSet.descriptorCount = 1;
+			descriptorSet.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
+			descriptorSet.pImageInfo = &samplerInfos.emplace_back(samplerInfo);
+			descriptorSets.emplace_back(descriptorSet);
+		}
+
+		// Set fragment samplers
+		for (const auto& resource : fragmentShader->GetReflection()->samplers)
+		{
+			VkDescriptorImageInfo samplerInfo{};
+			samplerInfo.sampler = VulkanPipelineStateManager::GetSampler(resource->binding);
+
+			VkWriteDescriptorSet descriptorSet{ VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
+			descriptorSet.dstBinding = resource->binding;
+			descriptorSet.descriptorCount = 1;
+			descriptorSet.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
+			descriptorSet.pImageInfo = &samplerInfos.emplace_back(samplerInfo);
+			descriptorSets.emplace_back(descriptorSet);
+		}
+		vkCmdPushDescriptorSetKHR(mHandle->commandBuffer, mHandle->pipeline->bindPoint, mHandle->pipeline->layout, 0, descriptorSets.size(), descriptorSets.data());
+	}
 }
 
 void CommandBuffer::SetViewport(const Size& size) const
@@ -252,7 +290,10 @@ void CommandBuffer::BindBuffer(const NativeGraphicsHandle buffer, BufferUsage us
                 {
                     case ResourceAccess::Read: return reflection->resources[index + Shader::Reflection::SRV_BINDING_OFFSET];
                     case ResourceAccess::Write: return reflection->resources[index + Shader::Reflection::UAV_BINDING_OFFSET];
-                    default: GLEAM_ASSERT(false, "Vulkan: Trying to bind buffer with invalid access.") return reinterpret_cast<SpvReflectDescriptorBinding*>(nullptr);
+                    default: GLEAM_ASSERT(false, "Vulkan: Trying to bind buffer with invalid access.")
+					{
+						return reinterpret_cast<SpvReflectDescriptorBinding*>(nullptr);
+					}
                 }
 			}
 			default: GLEAM_ASSERT(false, "Vulkan: Trying to bind buffer with invalid usage.")
@@ -270,7 +311,7 @@ void CommandBuffer::BindBuffer(const NativeGraphicsHandle buffer, BufferUsage us
 	VkWriteDescriptorSet descriptorSet{ VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
 	descriptorSet.dstBinding = resource->binding;
 	descriptorSet.descriptorCount = 1;
-	descriptorSet.descriptorType = BufferUsageToVkDescriptorType(usage);
+	descriptorSet.descriptorType = SpvReflectDescriptorTypeToVkDescriptorType(resource->descriptor_type);
 	descriptorSet.pBufferInfo = &bufferInfo;
 	vkCmdPushDescriptorSetKHR(mHandle->commandBuffer, mHandle->pipeline->bindPoint, mHandle->pipeline->layout, resource->set, 1, &descriptorSet);
 }
@@ -298,7 +339,10 @@ void CommandBuffer::BindTexture(const NativeGraphicsHandle texture, uint32_t ind
         {
             case ResourceAccess::Read: return reflection->resources[index + Shader::Reflection::SRV_BINDING_OFFSET];
             case ResourceAccess::Write: return reflection->resources[index + Shader::Reflection::UAV_BINDING_OFFSET];
-            default: GLEAM_ASSERT(false, "Vulkan: Trying to bind texture with invalid access.") return reinterpret_cast<SpvReflectDescriptorBinding*>(nullptr);
+			default: GLEAM_ASSERT(false, "Vulkan: Trying to bind texture with invalid access.")
+			{
+				return reinterpret_cast<SpvReflectDescriptorBinding*>(nullptr);
+			}
         }
 	}();
 
@@ -307,9 +351,9 @@ void CommandBuffer::BindTexture(const NativeGraphicsHandle texture, uint32_t ind
 	imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL; // TODO: Set appropriate image layout
 
 	VkWriteDescriptorSet descriptorSet{ VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
-	descriptorSet.dstBinding = index;
+	descriptorSet.dstBinding = resource->binding;
 	descriptorSet.descriptorCount = 1;
-	descriptorSet.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE; // TODO: Add support for storage image
+	descriptorSet.descriptorType = SpvReflectDescriptorTypeToVkDescriptorType(resource->descriptor_type);
 	descriptorSet.pImageInfo = &imageInfo;
 	vkCmdPushDescriptorSetKHR(mHandle->commandBuffer, mHandle->pipeline->bindPoint, mHandle->pipeline->layout, resource->set, 1, &descriptorSet);
 }

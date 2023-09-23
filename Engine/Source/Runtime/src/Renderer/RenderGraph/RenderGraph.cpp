@@ -123,7 +123,7 @@ void RenderGraph::Execute(const CommandBuffer* cmd)
     Heap heap;
     if (mHeapSize > 0)
     {
-        heap = mContext.CreateHeap({.size = mHeapSize, .memoryType = MemoryType::GPU});
+        heap = mContext.CreateHeap({ .memoryType = MemoryType::GPU, .size = mHeapSize });
     }
     size_t bufferOffset = 0;
     
@@ -215,8 +215,7 @@ void RenderGraph::Execute(const CommandBuffer* cmd)
     {
         for (auto& resource : pass->bufferCreates)
         {
-            auto node = static_cast<RenderGraphBufferNode*>(resource.node);
-            node->buffer.Dispose(); // TODO: wait for frame to finish rendering
+			resource.node->buffer.Dispose(); // TODO: wait for frame to finish rendering
         }
     }
     

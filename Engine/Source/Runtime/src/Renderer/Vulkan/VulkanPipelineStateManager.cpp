@@ -183,6 +183,11 @@ const VulkanGraphicsPipeline* VulkanPipelineStateManager::GetGraphicsPipeline(co
 	return &cachedElement.pipeline;
 }
 
+VkSampler VulkanPipelineStateManager::GetSampler(uint32_t index)
+{
+	return mSamplerStates[index];
+}
+
 VkSampler VulkanPipelineStateManager::GetSampler(const SamplerState& samplerState)
 {
     std::hash<SamplerState> hasher;

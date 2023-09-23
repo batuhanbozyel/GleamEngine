@@ -88,7 +88,7 @@ struct Shader::Reflection
 				setBindings[j].descriptorCount = setBinding->count;
 				setBindings[j].stageFlags = SpvReflectShaderStageToVkShaderStage(reflection.shader_stage);
 
-				if (setBinding->resource_type == SPV_REFLECT_RESOURCE_FLAG_SAMPLER)
+				if (setBinding->resource_type & SPV_REFLECT_RESOURCE_FLAG_SAMPLER)
 				{
 					samplers.push_back(setBinding);
 				}
