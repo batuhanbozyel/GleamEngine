@@ -2,10 +2,10 @@
 #include "Buffer.h"
 #include "Shader.h"
 #include "Texture.h"
+#include "RenderGraph/RenderGraphResource.h"
 
 namespace Gleam {
 
-class RenderTexture;
 struct RenderPassDescriptor;
 struct PipelineStateDescriptor;
 
@@ -41,24 +41,26 @@ public:
 
     void SetViewport(const Size& size) const;
     
-    void SetVertexBuffer(const Buffer& buffer, size_t offset, uint32_t index) const
+    void BindBuffer(const BufferHandle& handle, size_t offset, uint32_t index, ShaderStageFlagBits stage) const
     {
-        SetVertexBuffer(buffer.GetHandle(), buffer.GetDescriptor().usage, buffer.GetDescriptor().size, offset, index);
+        const Buffer& buffer = handle;
+        BindBuffer(buffer.GetHandle(), buffer.GetDescriptor().usage, offset, index, stage, handle.GetAccess());
     }
     
-    void SetFragmentBuffer(const Buffer& buffer, size_t offset, uint32_t index) const
+    void BindBuffer(const Buffer& buffer, size_t offset, uint32_t index, ShaderStageFlagBits stage, ResourceAccess access = ResourceAccess::Read) const
     {
-        SetFragmentBuffer(buffer.GetHandle(), buffer.GetDescriptor().usage, buffer.GetDescriptor().size, offset, index);
+        BindBuffer(buffer.GetHandle(), buffer.GetDescriptor().usage, offset, index, stage, access);
     }
     
-    void SetVertexTexture(const Texture& texture, uint32_t index) const
+    void BindTexture(const TextureHandle& handle, uint32_t index, ShaderStageFlagBits stage) const
     {
-        SetVertexTexture(texture.GetView(), texture.GetSamplerState(), index);
+        const Texture& texture = handle;
+        BindTexture(texture.GetView(), index, stage, handle.GetAccess());
     }
     
-    void SetFragmentTexture(const Texture& texture, uint32_t index) const
+    void BindTexture(const Texture& texture, uint32_t index, ShaderStageFlagBits stage, ResourceAccess access = ResourceAccess::Read) const
     {
-        SetFragmentTexture(texture.GetView(), texture.GetSamplerState(), index);
+        BindTexture(texture.GetView(), index, stage, access);
     }
 
     template<typename T>
@@ -82,9 +84,36 @@ public:
         CopyBuffer(src.GetHandle(), dst.GetHandle(), minSize);
     }
     
-    void CopyBuffer(const NativeGraphicsHandle src, const NativeGraphicsHandle dst, size_t size, uint32_t srcOffset = 0, uint32_t dstOffset = 0) const;
+    void CopyBuffer(const NativeGraphicsHandle src, const NativeGraphicsHandle dst, size_t size, size_t srcOffset = 0, size_t dstOffset = 0) const;
     
-    void Blit(const RenderTexture& texture, const RenderTexture& renderTarget) const;
+    void SetBufferData(const Buffer& buffer, const void* data, size_t size, size_t offset = 0) const
+    {
+        auto contents = buffer.GetContents();
+        if (contents == nullptr)
+        {
+            HeapDescriptor heapDesc;
+            heapDesc.size = size;
+            heapDesc.memoryType = MemoryType::CPU;
+            Heap heap(heapDesc);
+            
+            BufferDescriptor bufferDesc;
+            bufferDesc.size = size;
+            bufferDesc.usage = BufferUsage::StagingBuffer;
+            Buffer stagingBuffer = heap.CreateBuffer(bufferDesc);
+            
+            memcpy(As<uint8_t*>(stagingBuffer.GetContents()), data, size);
+            CopyBuffer(stagingBuffer.GetHandle(), buffer.GetHandle(), size, 0, offset);
+            
+            stagingBuffer.Dispose();
+            heap.Dispose();
+        }
+        else
+        {
+            memcpy(As<uint8_t*>(contents) + offset, data, size);
+        }
+    }
+    
+    void Blit(const Texture& texture, const Texture& renderTarget) const;
 
     void Begin() const;
 
@@ -102,13 +131,9 @@ public:
 
 private:
 
-    void SetVertexBuffer(const NativeGraphicsHandle buffer, BufferUsage usage, size_t size, size_t offset, uint32_t index) const;
+    void BindBuffer(const NativeGraphicsHandle buffer, BufferUsage usage, size_t offset, uint32_t index, ShaderStageFlagBits stage, ResourceAccess access) const;
     
-    void SetFragmentBuffer(const NativeGraphicsHandle buffer, BufferUsage usage, size_t size, size_t offset, uint32_t index) const;
-    
-    void SetVertexTexture(const NativeGraphicsHandle texture, const SamplerState& samplerState, uint32_t index) const;
-    
-    void SetFragmentTexture(const NativeGraphicsHandle texture, const SamplerState& samplerState, uint32_t index) const;
+    void BindTexture(const NativeGraphicsHandle texture, uint32_t index, ShaderStageFlagBits stage, ResourceAccess access) const;
     
     void SetPushConstant(const void* data, uint32_t size, ShaderStageFlagBits stage) const;
 

@@ -32,8 +32,9 @@ void RenderSystem::Shutdown()
     }
     
     mCommandBuffer.reset();
-    mRenderTarget.reset();
+    mRenderTarget.Dispose();
     
+    mRendererContext.Clear();
     mRendererContext.DestroyBackend();
 }
 
@@ -43,7 +44,7 @@ void RenderSystem::Render()
     @autoreleasepool
 #endif
     {
-        RenderGraph graph;
+        RenderGraph graph(mRendererContext);
         RenderGraphBlackboard blackboard;
         
         RenderingData renderingData;
@@ -62,7 +63,8 @@ void RenderSystem::Render()
 		cmd.Present();
         
         // reset rt to swapchain
-        mRenderTarget = CreateRef<RenderTexture>();
+        mRenderTarget.Dispose();
+        mRenderTarget = Texture();
     }
 }
 
@@ -75,4 +77,19 @@ void RenderSystem::Configure(const RendererConfig& config)
 const RendererConfig& RenderSystem::GetConfiguration() const
 {
     return mConfiguration;
+}
+
+const Texture& RenderSystem::GetRenderTarget() const
+{
+    return mRenderTarget;
+}
+
+void RenderSystem::SetRenderTarget(const TextureDescriptor& descriptor)
+{
+    mRenderTarget = mRendererContext.CreateTexture(descriptor);
+}
+
+void RenderSystem::SetRenderTarget(const Texture& texture)
+{
+    mRenderTarget = texture;
 }

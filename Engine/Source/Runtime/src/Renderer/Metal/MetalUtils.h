@@ -4,6 +4,7 @@
 #include "Renderer/TextureFormat.h"
 #include "Renderer/RenderPassDescriptor.h"
 #include "Renderer/PipelineStateDescriptor.h"
+#include "Renderer/RenderGraph/RenderGraphResource.h"
 
 #import <Metal/Metal.h>
 #import <QuartzCore/CAMetalLayer.h>
@@ -148,6 +149,57 @@ static constexpr MTLPixelFormat TextureFormatToMTLPixelFormat(TextureFormat form
     }
 }
 
+static constexpr MTLTextureUsage TextureUsageToMTLTextureUsage(TextureUsageFlagBits flags)
+{
+    MTLTextureUsage usage = 0;
+    if (flags & TextureUsage_Sampled)
+    {
+        usage |= MTLTextureUsageShaderRead;
+    }
+    
+    if (flags & TextureUsage_Storage)
+    {
+        usage |= MTLTextureUsageShaderWrite;
+    }
+    
+    if (flags & TextureUsage_Attachment)
+    {
+        usage |= MTLTextureUsageRenderTarget;
+    }
+    return usage;
+}
+
+static constexpr MTLRenderStages ShaderStagesToMTLRenderStages(ShaderStageFlagBits flags)
+{
+    MTLRenderStages stages = 0;
+    if (flags & ShaderStage_Vertex)
+    {
+        stages |= MTLRenderStageVertex;
+    }
+    
+    if (flags & ShaderStage_Fragment)
+    {
+        stages |= MTLRenderStageFragment;
+    }
+    
+    if (flags & ShaderStage_Compute)
+    {
+        stages |= MTLRenderStageTile;
+    }
+    return stages;
+}
+
+static constexpr MTLCullMode CullModeToMTLCullMode(CullMode cullMode)
+{
+    switch (cullMode)
+    {
+        case CullMode::Off: return MTLCullModeNone;
+        case CullMode::Back: return MTLCullModeBack;
+        case CullMode::Front: return MTLCullModeFront;
+        default: GLEAM_ASSERT(false, "Metal: Unknown culling mode specified!"); return MTLCullMode(~0);
+    }
+}
+
 static constexpr MTLPrimitiveType PrimitiveTopologyToMTLPrimitiveType(PrimitiveTopology topology)
 {
     switch (topology)
@@ -271,6 +323,33 @@ static constexpr MTLColorWriteMask ColorWriteMaskToMTLColorWriteMask(ColorWriteM
         case ColorWriteMask::Red: return MTLColorWriteMaskRed;
         case ColorWriteMask::All: return MTLColorWriteMaskAll;
         default: GLEAM_ASSERT(false, "Metal: Unknown color write mask specified!"); return MTLColorWriteMaskNone;
+    }
+}
+
+static constexpr MTLResourceOptions MemoryTypeToMTLResourceOption(MemoryType type)
+{
+    switch (type)
+    {
+        case MemoryType::GPU: return MTLResourceStorageModePrivate;
+#if defined(PLATFORM_MACOS) && defined(__arm64__)
+        case MemoryType::Shared: return MTLResourceStorageModeShared;
+#elif defined(PLATFORM_MACOS)
+        case MemoryType::Shared: return MTLResourceStorageModeManaged;
+#elif defined(PLATFORM_IOS)
+        case MemoryType::Shared: return MTLResourceStorageModeShared;
+#endif
+        case MemoryType::CPU: return MTLResourceStorageModeShared;
+        default: GLEAM_ASSERT(false, "Metal: Unknown memory type specified!"); return MTLResourceOptions(~0);
+    }
+}
+
+static constexpr MTLResourceUsage ResourceAccessToMTLResourceUsage(ResourceAccess access)
+{
+    switch (access)
+    {
+        case ResourceAccess::Read: return MTLResourceUsageRead;
+        case ResourceAccess::Write: return MTLResourceUsageWrite;
+        default: GLEAM_ASSERT(false, "Metal: Unknown access mode specified!"); return MTLResourceUsage(~0);
     }
 }
 

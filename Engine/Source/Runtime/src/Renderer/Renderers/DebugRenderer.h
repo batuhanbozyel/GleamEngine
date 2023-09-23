@@ -51,12 +51,14 @@ public:
 
 private:
 
-	void RenderMeshes(const CommandBuffer* cmd, const TArray<DebugMesh>& debugMeshes, bool depthTest) const;
+	void RenderMeshes(const CommandBuffer* cmd, const Buffer& cameraBuffer, const TArray<DebugMesh>& debugMeshes, bool depthTest) const;
 
 	uint32_t mLineBufferOffset = 0;
 	uint32_t mTriangleBufferOffset = 0;
 	uint32_t mDepthLineBufferOffset = 0;
 	uint32_t mDepthTriangleBufferOffset = 0;
+    
+    CameraUniforms mCameraData;
 
     TArray<DebugLine> mLines;
     TArray<DebugLine> mDepthLines;
@@ -72,8 +74,6 @@ private:
 	RefCounted<Shader> mPrimitiveVertexShader;
 	RefCounted<Shader> mMeshVertexShader;
 	RefCounted<Shader> mFragmentShader;
-    
-    Scope<Buffer> mCameraBuffer;
 
 };
 

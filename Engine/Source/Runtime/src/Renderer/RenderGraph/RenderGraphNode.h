@@ -12,10 +12,10 @@
 
 namespace Gleam {
 
-struct RenderGraphContext;
+class CommandBuffer;
 
 template<typename PassData>
-using RenderFunc = std::function<void(const RenderGraphContext& renderGraphContext, const PassData& passData)>;
+using RenderFunc = std::function<void(const CommandBuffer* cmd, const PassData& passData)>;
 
 struct RenderGraphNode
 {
@@ -33,7 +33,7 @@ struct RenderPassNode final : public RenderGraphNode
 {
     GLEAM_NONCOPYABLE(RenderPassNode);
     
-    using PassCallback = std::function<void(const RenderGraphContext& renderGraphContext)>;
+    using PassCallback = std::function<void(const CommandBuffer* cmd)>;
     
     TString name;
     
@@ -42,12 +42,16 @@ struct RenderPassNode final : public RenderGraphNode
     
     bool hasSideEffect = false;
     
-    TArray<RenderGraphResource> resourceReads;
-    TArray<RenderGraphResource> resourceWrites;
-    TArray<RenderGraphResource> resourceCreates;
+	TArray<BufferHandle> bufferReads;
+	TArray<BufferHandle> bufferWrites;
+	TArray<BufferHandle> bufferCreates;
+
+	TArray<TextureHandle> textureReads;
+	TArray<TextureHandle> textureWrites;
+	TArray<TextureHandle> textureCreates;
     
-    TArray<RenderGraphResource> colorAttachments;
-    RenderGraphResource depthAttachment = RenderGraphResource::nullHandle;
+    TArray<TextureHandle> colorAttachments;
+    TextureHandle depthAttachment;
     
     HashSet<RenderPassNode*> dependents;
     
@@ -55,9 +59,9 @@ struct RenderPassNode final : public RenderGraphNode
     RenderPassNode(uint32_t uniqueId, const TStringView name, RenderFunc<PassData>&& execute)
         : RenderGraphNode(uniqueId), name(name), data(std::make_any<PassData>())
     {
-        callback = [execute = move(execute), this](const RenderGraphContext& renderGraphContext)
+        callback = [execute = std::move(execute), this](const CommandBuffer* cmd)
         {
-            std::invoke(execute, renderGraphContext, std::any_cast<const PassData&>(data));
+            std::invoke(execute, cmd, std::any_cast<const PassData&>(data));
         };
     }
     
@@ -68,20 +72,53 @@ struct RenderPassNode final : public RenderGraphNode
     
     bool isCustomPass() const
     {
-        return colorAttachments.empty() && depthAttachment == RenderGraphResource::nullHandle;
+        return colorAttachments.empty() && !depthAttachment.IsValid();
     }
 };
 
 struct RenderGraphResourceNode : public RenderGraphNode
 {
-    const RenderGraphResource resource;
+    const bool transient;
+    RenderPassNode* creator = nullptr;
+    RenderPassNode* lastModifier = nullptr;
+    RenderPassNode* lastReference = nullptr;
     TArray<RenderPassNode*> producers;
     
-    RenderGraphResourceNode(uint32_t uniqueId, RenderGraphResource resource)
-        : RenderGraphNode(uniqueId), resource(resource)
+    RenderGraphResourceNode(uint32_t uniqueId, bool transient)
+        : RenderGraphNode(uniqueId), transient(transient)
     {
         
     }
+};
+
+struct RenderGraphBufferNode final : public RenderGraphResourceNode
+{
+    Buffer buffer = Buffer();
+
+	RenderGraphBufferNode(uint32_t uniqueId, const BufferDescriptor& descriptor, bool transient)
+		: RenderGraphResourceNode(uniqueId, transient), buffer(nullptr, descriptor)
+	{
+
+	}
+};
+
+struct RenderGraphTextureNode final : public RenderGraphResourceNode
+{
+	Color clearColor = Color::clear;
+	uint32_t clearStencil = 0u;
+	float clearDepth = 1.0f;
+	bool clearBuffer = false;
+	Texture texture = Texture();
+
+	RenderGraphTextureNode(uint32_t uniqueId, const RenderTextureDescriptor& descriptor, bool transient)
+		: RenderGraphResourceNode(uniqueId, transient), texture(Texture(descriptor)),
+		clearColor(descriptor.clearColor),
+		clearStencil(descriptor.clearStencil),
+		clearDepth(descriptor.clearDepth),
+		clearBuffer(descriptor.clearBuffer)
+	{
+
+	}
 };
 
 } // namespace Gleam

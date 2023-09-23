@@ -10,9 +10,12 @@ set(SPIRV_REFLECT_STATIC_LIB ON CACHE BOOL "" FORCE)
 set(SPIRV_REFLECT_EXECUTABLE OFF CACHE BOOL "" FORCE)
 set(SPIRV_REFLECT_EXAMPLES OFF CACHE BOOL "" FORCE)
 
+set(JSON_BuildTests OFF CACHE INTERNAL "")
+
 add_subdirectory(fmt)
 add_subdirectory(entt)
 add_subdirectory(volk)
+add_subdirectory(json)
 add_subdirectory(googletest)
 add_subdirectory(SPIRV-Reflect)
 add_subdirectory(SDL EXCLUDE_FROM_ALL)
@@ -23,6 +26,7 @@ set_target_properties (
     gmock_main
     gtest
     gtest_main
+    nlohmann_json
     volk
     fmt
     EnTT

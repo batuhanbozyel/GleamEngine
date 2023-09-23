@@ -188,10 +188,15 @@ void VulkanDevice::Init()
 	{
 		VK_KHR_SWAPCHAIN_EXTENSION_NAME,
 		VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME,
-		VK_KHR_SAMPLER_MIRROR_CLAMP_TO_EDGE_EXTENSION_NAME
+		VK_KHR_SAMPLER_MIRROR_CLAMP_TO_EDGE_EXTENSION_NAME,
+		VK_EXT_SCALAR_BLOCK_LAYOUT_EXTENSION_NAME
 	};
-    
+
+	VkPhysicalDeviceScalarBlockLayoutFeatures scalarBlockLayout{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SCALAR_BLOCK_LAYOUT_FEATURES };
+	scalarBlockLayout.scalarBlockLayout = VK_TRUE;
+
 	VkDeviceCreateInfo deviceCreateInfo{ VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO };
+	deviceCreateInfo.pNext = &scalarBlockLayout;
 	deviceCreateInfo.queueCreateInfoCount = static_cast<uint32_t>(deviceQueueCreateInfos.size());;
 	deviceCreateInfo.pQueueCreateInfos = deviceQueueCreateInfos.data();
 	deviceCreateInfo.enabledExtensionCount = static_cast<uint32_t>(requiredDeviceExtension.size());
@@ -303,7 +308,7 @@ uint32_t VulkanDevice::GetMemoryTypeForProperties(uint32_t memoryTypeBits, uint3
 			return i;
 		}
 	}
-	GLEAM_ASSERT(false, "Vulkan: Vertex Buffer suitable memory type could not found!");
+	GLEAM_ASSERT(false, "Vulkan: Suitable memory type could not found!");
 	return 0u;
 }
 #endif

@@ -1,14 +1,11 @@
-#include "../../ShaderTypes.h"
-#include "../../RendererBindingTable.h"
+#include "Common.hlsl"
+#include "../ShaderTypes.h"
 
-[[vk::binding(Gleam::RendererBindingTable::PositionBuffer)]]
-StructuredBuffer<Gleam::Vector3> PositionBuffer;
+StructuredBuffer<Gleam::Vector3> PositionBuffer : register(t0);
 
-[[vk::binding(Gleam::RendererBindingTable::InterleavedBuffer)]]
-StructuredBuffer<Gleam::InterleavedMeshVertex> InterleavedBuffer;
+StructuredBuffer<Gleam::InterleavedMeshVertex> InterleavedBuffer : register(t1);
 
-[[vk::binding(Gleam::RendererBindingTable::CameraBuffer)]]
-ConstantBuffer<Gleam::CameraUniforms> CameraBuffer;
+ConstantBuffer<Gleam::CameraUniforms> CameraBuffer : register(b0);
 
 struct VertexOut
 {
@@ -17,8 +14,7 @@ struct VertexOut
     float2 texCoord : TEXCOORD0;
 };
 
-[[vk::push_constant]]
-Gleam::ForwardPassUniforms uniforms;
+PUSH_CONSTANT(Gleam::ForwardPassUniforms, uniforms);
 
 VertexOut forwardPassVertexShader(uint vertex_id: SV_VertexID)
 {

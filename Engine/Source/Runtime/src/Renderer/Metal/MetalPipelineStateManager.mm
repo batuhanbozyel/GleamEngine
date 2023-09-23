@@ -5,13 +5,94 @@
 
 using namespace Gleam;
 
-const MetalPipeline& MetalPipelineStateManager::GetGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc, const TArray<TextureDescriptor>& colorAttachments, const RefCounted<Shader>& vertexShader, const RefCounted<Shader>& fragmentShader, uint32_t sampleCount)
+static id<MTLSamplerState> CreateMTLSamplerState(const SamplerState& samplerState)
+{
+    MTLSamplerDescriptor* descriptor = [MTLSamplerDescriptor new];
+    descriptor.supportArgumentBuffers = YES;
+    descriptor.lodMinClamp = 0.0f;
+    descriptor.lodMaxClamp = Math::Infinity;
+    switch (samplerState.filterMode)
+    {
+        case FilterMode::Point:
+        {
+            descriptor.minFilter = MTLSamplerMinMagFilterNearest;
+            descriptor.magFilter = MTLSamplerMinMagFilterNearest;
+            descriptor.mipFilter = MTLSamplerMipFilterNearest;
+            break;
+        }
+        case FilterMode::Bilinear:
+        {
+            descriptor.minFilter = MTLSamplerMinMagFilterLinear;
+            descriptor.magFilter = MTLSamplerMinMagFilterLinear;
+            descriptor.mipFilter = MTLSamplerMipFilterNearest;
+            break;
+        }
+        case FilterMode::Trilinear:
+        {
+            descriptor.minFilter = MTLSamplerMinMagFilterLinear;
+            descriptor.magFilter = MTLSamplerMinMagFilterLinear;
+            descriptor.mipFilter = MTLSamplerMipFilterLinear;
+            break;
+        }
+        default: GLEAM_ASSERT(false, "Metal: Filter mode is not supported!") break;
+    }
+    
+    switch (samplerState.wrapMode)
+    {
+        case WrapMode::Repeat:
+        {
+            descriptor.sAddressMode = MTLSamplerAddressModeRepeat;
+            descriptor.tAddressMode = MTLSamplerAddressModeRepeat;
+            break;
+        }
+        case WrapMode::Clamp:
+        {
+            descriptor.sAddressMode = MTLSamplerAddressModeClampToEdge;
+            descriptor.tAddressMode = MTLSamplerAddressModeClampToEdge;
+            break;
+        }
+        case WrapMode::Mirror:
+        {
+            descriptor.sAddressMode = MTLSamplerAddressModeMirrorRepeat;
+            descriptor.tAddressMode = MTLSamplerAddressModeMirrorRepeat;
+            break;
+        }
+        case WrapMode::MirrorOnce:
+        {
+            descriptor.sAddressMode = MTLSamplerAddressModeMirrorClampToEdge;
+            descriptor.tAddressMode = MTLSamplerAddressModeMirrorClampToEdge;
+            break;
+        }
+        default: GLEAM_ASSERT(false, "Metal: Filter mode is not supported!") break;
+    }
+    return [MetalDevice::GetHandle() newSamplerStateWithDescriptor:descriptor];
+}
+
+void MetalPipelineStateManager::Init()
+{
+    auto samplerSates = SamplerState::GetAllVariations();
+    for (uint32_t i = 0; i < samplerSates.size(); i++)
+    {
+        mSamplerStates[i] = CreateMTLSamplerState(samplerSates[i]);
+    }
+}
+
+void MetalPipelineStateManager::Destroy()
+{
+    for (uint32_t i = 0; i < mSamplerStates.size(); i++)
+    {
+        mSamplerStates[i] = nil;
+    }
+    Clear();
+}
+
+const MetalPipeline* MetalPipelineStateManager::GetGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc, const TArray<TextureDescriptor>& colorAttachments, const RefCounted<Shader>& vertexShader, const RefCounted<Shader>& fragmentShader, uint32_t sampleCount)
 {
 	for (const auto& element : mGraphicsPipelineCache)
 	{
-		if (element.pipelineState.descriptor == pipelineDesc &&
-			element.vertexShader == vertexShader &&
-            element.fragmentShader == fragmentShader &&
+		if (element.pipeline.descriptor == pipelineDesc &&
+			element.pipeline.vertexShader == vertexShader &&
+            element.pipeline.fragmentShader == fragmentShader &&
             element.colorAttachments.size() == colorAttachments.size() &&
             element.sampleCount == sampleCount &&
             !element.hasDepthAttachment)
@@ -26,30 +107,30 @@ const MetalPipeline& MetalPipelineStateManager::GetGraphicsPipeline(const Pipeli
                 }
             }
             
-            if (found) { return element.pipelineState.pipeline; }
+            if (found) { return &element.pipeline; }
 		}
 	}
     
 	GraphicsPipelineCacheElement element;
     element.sampleCount = sampleCount;
-	element.vertexShader = vertexShader;
-    element.fragmentShader = fragmentShader;
 	element.colorAttachments = colorAttachments;
-    element.pipelineState.descriptor = pipelineDesc;
-    element.pipelineState.pipeline.topology = PrimitiveTopologyToMTLPrimitiveType(element.pipelineState.descriptor.topology);
-	element.pipelineState.pipeline.handle = CreateGraphicsPipeline(element);
-    element.pipelineState.pipeline.depthStencil = CreateDepthStencil(pipelineDesc);
+    element.pipeline.descriptor = pipelineDesc;
+    element.pipeline.vertexShader = vertexShader;
+    element.pipeline.fragmentShader = fragmentShader;
+    element.pipeline.topology = PrimitiveTopologyToMTLPrimitiveType(element.pipeline.descriptor.topology);
+	element.pipeline.handle = CreateGraphicsPipeline(element);
+    element.pipeline.depthStencil = CreateDepthStencil(pipelineDesc);
 	const auto& cachedElement = mGraphicsPipelineCache.emplace_back(element);
-	return cachedElement.pipelineState.pipeline;
+	return &cachedElement.pipeline;
 }
 
-const MetalPipeline& MetalPipelineStateManager::GetGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc, const TArray<TextureDescriptor>& colorAttachments, const TextureDescriptor& depthAttachment, const RefCounted<Shader>& vertexShader, const RefCounted<Shader>& fragmentShader, uint32_t sampleCount)
+const MetalPipeline* MetalPipelineStateManager::GetGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc, const TArray<TextureDescriptor>& colorAttachments, const TextureDescriptor& depthAttachment, const RefCounted<Shader>& vertexShader, const RefCounted<Shader>& fragmentShader, uint32_t sampleCount)
 {
     for (const auto& element : mGraphicsPipelineCache)
     {
-        if (element.pipelineState.descriptor == pipelineDesc &&
-            element.vertexShader == vertexShader &&
-            element.fragmentShader == fragmentShader &&
+        if (element.pipeline.descriptor == pipelineDesc &&
+            element.pipeline.vertexShader == vertexShader &&
+            element.pipeline.fragmentShader == fragmentShader &&
             element.colorAttachments.size() == colorAttachments.size() &&
             element.depthAttachment == depthAttachment &&
             element.sampleCount == sampleCount &&
@@ -65,23 +146,34 @@ const MetalPipeline& MetalPipelineStateManager::GetGraphicsPipeline(const Pipeli
                 }
             }
             
-            if (found) { return element.pipelineState.pipeline; }
+            if (found) { return &element.pipeline; }
         }
     }
     
     GraphicsPipelineCacheElement element;
     element.hasDepthAttachment = true;
     element.sampleCount = sampleCount;
-    element.vertexShader = vertexShader;
-    element.fragmentShader = fragmentShader;
     element.colorAttachments = colorAttachments;
     element.depthAttachment = depthAttachment;
-    element.pipelineState.descriptor = pipelineDesc;
-    element.pipelineState.pipeline.topology = PrimitiveTopologyToMTLPrimitiveType(element.pipelineState.descriptor.topology);
-    element.pipelineState.pipeline.handle = CreateGraphicsPipeline(element);
-    element.pipelineState.pipeline.depthStencil = CreateDepthStencil(pipelineDesc);
+    element.pipeline.descriptor = pipelineDesc;
+    element.pipeline.vertexShader = vertexShader;
+    element.pipeline.fragmentShader = fragmentShader;
+    element.pipeline.topology = PrimitiveTopologyToMTLPrimitiveType(element.pipeline.descriptor.topology);
+    element.pipeline.handle = CreateGraphicsPipeline(element);
+    element.pipeline.depthStencil = CreateDepthStencil(pipelineDesc);
     const auto& cachedElement = mGraphicsPipelineCache.emplace_back(element);
-    return cachedElement.pipelineState.pipeline;
+    return &cachedElement.pipeline;
+}
+
+id<MTLSamplerState> MetalPipelineStateManager::GetSamplerState(uint32_t index)
+{
+    return mSamplerStates[index];
+}
+
+id<MTLSamplerState> MetalPipelineStateManager::GetSamplerState(const SamplerState& samplerState)
+{
+    std::hash<SamplerState> hasher;
+    return mSamplerStates[hasher(samplerState)];
 }
 
 void MetalPipelineStateManager::Clear()
@@ -92,11 +184,11 @@ void MetalPipelineStateManager::Clear()
 id<MTLRenderPipelineState> MetalPipelineStateManager::CreateGraphicsPipeline(const GraphicsPipelineCacheElement& element)
 {
     MTLRenderPipelineDescriptor* pipelineDescriptor = [MTLRenderPipelineDescriptor new];
-    pipelineDescriptor.vertexFunction = element.vertexShader->GetHandle();
-    pipelineDescriptor.fragmentFunction = element.fragmentShader->GetHandle();
     pipelineDescriptor.rasterSampleCount = element.sampleCount;
-    pipelineDescriptor.alphaToCoverageEnabled = element.pipelineState.descriptor.alphaToCoverage;
-    pipelineDescriptor.inputPrimitiveTopology = PrimitiveTopologyToMTLPrimitiveTopologyClass(element.pipelineState.descriptor.topology);
+    pipelineDescriptor.vertexFunction = element.pipeline.vertexShader->GetHandle();
+    pipelineDescriptor.fragmentFunction = element.pipeline.fragmentShader->GetHandle();
+    pipelineDescriptor.alphaToCoverageEnabled = element.pipeline.descriptor.alphaToCoverage;
+    pipelineDescriptor.inputPrimitiveTopology = PrimitiveTopologyToMTLPrimitiveTopologyClass(element.pipeline.descriptor.topology);
     
     if (element.hasDepthAttachment)
     {
@@ -110,18 +202,19 @@ id<MTLRenderPipelineState> MetalPipelineStateManager::CreateGraphicsPipeline(con
     {
         const auto& attachmentDesc = element.colorAttachments[i];
         pipelineDescriptor.colorAttachments[i].pixelFormat = TextureFormatToMTLPixelFormat(attachmentDesc.format);
-        pipelineDescriptor.colorAttachments[i].blendingEnabled = element.pipelineState.descriptor.blendState.enabled;
-        pipelineDescriptor.colorAttachments[i].sourceRGBBlendFactor = BlendModeToMTLBlendFactor(element.pipelineState.descriptor.blendState.sourceColorBlendMode);
-        pipelineDescriptor.colorAttachments[i].destinationRGBBlendFactor = BlendModeToMTLBlendFactor(element.pipelineState.descriptor.blendState.destinationColorBlendMode);
-        pipelineDescriptor.colorAttachments[i].sourceAlphaBlendFactor = BlendModeToMTLBlendFactor(element.pipelineState.descriptor.blendState.sourceAlphaBlendMode);
-        pipelineDescriptor.colorAttachments[i].destinationAlphaBlendFactor = BlendModeToMTLBlendFactor(element.pipelineState.descriptor.blendState.destinationAlphaBlendMode);
-        pipelineDescriptor.colorAttachments[i].rgbBlendOperation = BlendOpToMTLBlendOperation(element.pipelineState.descriptor.blendState.colorBlendOperation);
-        pipelineDescriptor.colorAttachments[i].alphaBlendOperation = BlendOpToMTLBlendOperation(element.pipelineState.descriptor.blendState.alphaBlendOperation);
-        pipelineDescriptor.colorAttachments[i].writeMask = ColorWriteMaskToMTLColorWriteMask(element.pipelineState.descriptor.blendState.writeMask);
+        pipelineDescriptor.colorAttachments[i].blendingEnabled = element.pipeline.descriptor.blendState.enabled;
+        pipelineDescriptor.colorAttachments[i].sourceRGBBlendFactor = BlendModeToMTLBlendFactor(element.pipeline.descriptor.blendState.sourceColorBlendMode);
+        pipelineDescriptor.colorAttachments[i].destinationRGBBlendFactor = BlendModeToMTLBlendFactor(element.pipeline.descriptor.blendState.destinationColorBlendMode);
+        pipelineDescriptor.colorAttachments[i].sourceAlphaBlendFactor = BlendModeToMTLBlendFactor(element.pipeline.descriptor.blendState.sourceAlphaBlendMode);
+        pipelineDescriptor.colorAttachments[i].destinationAlphaBlendFactor = BlendModeToMTLBlendFactor(element.pipeline.descriptor.blendState.destinationAlphaBlendMode);
+        pipelineDescriptor.colorAttachments[i].rgbBlendOperation = BlendOpToMTLBlendOperation(element.pipeline.descriptor.blendState.colorBlendOperation);
+        pipelineDescriptor.colorAttachments[i].alphaBlendOperation = BlendOpToMTLBlendOperation(element.pipeline.descriptor.blendState.alphaBlendOperation);
+        pipelineDescriptor.colorAttachments[i].writeMask = ColorWriteMaskToMTLColorWriteMask(element.pipeline.descriptor.blendState.writeMask);
     }
     
-    NSError* error;
+    __autoreleasing NSError* error = nil;
     id<MTLRenderPipelineState> pipeline = [MetalDevice::GetHandle() newRenderPipelineStateWithDescriptor:pipelineDescriptor error:&error];
+    GLEAM_ASSERT(pipeline, "Metal: Pipeline creation failed!");
     return pipeline;
 }
 

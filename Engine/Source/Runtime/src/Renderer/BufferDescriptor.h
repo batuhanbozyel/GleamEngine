@@ -11,18 +11,17 @@ enum class BufferUsage
     StagingBuffer
 };
 
-enum class MemoryType
-{
-    Static,
-    Dynamic,
-    Stream
-};
-
 struct BufferDescriptor
 {
 	BufferUsage usage = BufferUsage::StorageBuffer;
-	MemoryType memoryType = MemoryType::Static;
-	size_t size = 0;
+    size_t size = 0;
+    
+    BufferDescriptor& operator=(const BufferDescriptor& other)
+    {
+        usage = other.usage;
+        size = other.size;
+        return *this;
+    }
 };
 
 } // namespace Gleam

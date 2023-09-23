@@ -45,8 +45,6 @@ private:
     
     Gleam::RefCounted<Gleam::World> mEditWorld;
     
-    Gleam::RefCounted<Gleam::RenderTexture> mSceneRT;
-    
 };
 
 } // namespace GEditor

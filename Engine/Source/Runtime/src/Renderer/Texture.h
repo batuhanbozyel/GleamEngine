@@ -8,31 +8,32 @@ namespace Gleam {
 class Texture : public GraphicsObject
 {
 public:
+
+	Texture();
+
+    Texture(const TextureDescriptor& descriptor);
     
-    Texture(const TextureDescriptor& descriptor)
-        : mDescriptor(descriptor), mMipMapLevels(descriptor.useMipMap ? CalculateMipLevels(descriptor.size) : 1)
-    {
-        
-    }
-
-	void SetFilterMode(FilterMode mode)
-	{
-		mSamplerState.filterMode = mode;
-	}
-
-	void SetWrapMode(WrapMode mode)
-	{
-		mSamplerState.wrapMode = mode;
-	}
+    Texture(const Texture& other) = default;
+    
+    Texture& operator=(const Texture& other) = default;
+    
+    void Dispose();
+    
+    void SetPixels(const void* pixels) const;
     
     NativeGraphicsHandle GetView() const
     {
         return mView;
     }
 
-	const SamplerState& GetSamplerState() const
+	NativeGraphicsHandle GetMSAAHandle() const
 	{
-		return mSamplerState;
+		return mMultisampleHandle;
+	}
+
+	NativeGraphicsHandle GetMSAAView() const
+	{
+		return mMultisampleView;
 	}
     
     const TextureDescriptor& GetDescriptor() const
@@ -53,62 +54,15 @@ public:
 protected:
     
     uint32_t mMipMapLevels;
-	SamplerState mSamplerState;
     TextureDescriptor mDescriptor;
+	NativeGraphicsHandle mHeap = nullptr;
     NativeGraphicsHandle mView = nullptr;
-    
-};
-
-class Texture2D final : public Texture
-{
-public:
-
-	Texture2D(const TextureDescriptor& descriptor);
-
-	~Texture2D();
-
-	void SetPixels(const TArray<uint8_t>& pixels) const;
-	
-};
-
-class TextureCube final : public Texture
-{
-public:
-    
-    TextureCube(const TextureDescriptor& descriptor);
-    
-    ~TextureCube();
-    
-};
-
-class RenderTexture final : public Texture
-{
-public:
-    
-    // Swapchain target
-    RenderTexture();
-    
-    RenderTexture(const TextureDescriptor& descriptor);
-    
-    ~RenderTexture();
-
-	NativeGraphicsHandle GetMSAAHandle() const
-    {
-        return mMultisampleHandle;
-    }
-    
-    NativeGraphicsHandle GetMSAAView() const
-    {
-        return mMultisampleView;
-    }
-    
-private:
 
 	// multisample
-	NativeGraphicsHandle mMultisampleMemory = nullptr;
+	NativeGraphicsHandle mMultisampleHeap = nullptr;
 	NativeGraphicsHandle mMultisampleView = nullptr;
 	NativeGraphicsHandle mMultisampleHandle = nullptr;
-
+    
 };
 
 } // namespace Gleam

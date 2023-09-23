@@ -10,7 +10,6 @@
 
 #include "Renderer/CommandBuffer.h"
 #include "Renderer/RendererContext.h"
-#include "Renderer/RendererBindingTable.h"
 
 #include "WorldRenderer.h"
 
@@ -26,8 +25,8 @@ void PostProcessStack::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard
 {
     struct PostProcessData
     {
-        RenderTextureHandle colorTarget;
-        RenderTextureHandle sceneTarget;
+        TextureHandle colorTarget;
+        TextureHandle sceneTarget;
     };
     
     graph.AddRenderPass<PostProcessData>("PostProcessStack::Tonemapping", [&](RenderGraphBuilder& builder, PostProcessData& passData)
@@ -35,17 +34,15 @@ void PostProcessStack::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard
         auto& renderingData = blackboard.Get<RenderingData>();
         const auto& worldRenderingData = blackboard.Get<WorldRenderingData>();
         passData.colorTarget = builder.UseColorBuffer(renderingData.backbuffer);
-        passData.sceneTarget = builder.ReadRenderTexture(worldRenderingData.colorTarget);
+        passData.sceneTarget = builder.ReadTexture(worldRenderingData.colorTarget);
         
         renderingData.backbuffer = passData.colorTarget;
     },
-    [this](const RenderGraphContext& renderGraphContext, const PostProcessData& passData)
+    [this](const CommandBuffer* cmd, const PostProcessData& passData)
     {
-        const auto& sceneRT = renderGraphContext.registry->GetRenderTexture(passData.sceneTarget);
-        
         PipelineStateDescriptor pipelineDesc;
-        renderGraphContext.cmd->BindGraphicsPipeline(pipelineDesc, mFullscreenTriangleVertexShader, mTonemappingFragmentShader);
-        renderGraphContext.cmd->SetFragmentTexture(*sceneRT, 0);
-        renderGraphContext.cmd->Draw(3);
+        cmd->BindGraphicsPipeline(pipelineDesc, mFullscreenTriangleVertexShader, mTonemappingFragmentShader);
+        cmd->BindTexture(passData.sceneTarget, 0, ShaderStage_Fragment);
+        cmd->Draw(3);
     });
 }

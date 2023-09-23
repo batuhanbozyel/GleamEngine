@@ -1,8 +1,8 @@
 #pragma once
 
 namespace Gleam {
-	
-struct alignas(16) Matrix3
+
+struct Matrix3
 {
     union
     {

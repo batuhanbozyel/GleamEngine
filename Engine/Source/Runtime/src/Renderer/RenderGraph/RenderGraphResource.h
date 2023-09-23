@@ -2,45 +2,144 @@
 
 namespace Gleam {
 
-struct RenderGraphResource
+class Buffer;
+class Texture;
+class RenderGraph;
+class RenderGraphBuilder;
+struct RenderGraphBufferNode;
+struct RenderGraphTextureNode;
+
+enum class ResourceAccess
 {
+	None,
+    Read,
+    Write
+};
+
+class ResourceHandle
+{
+	friend class RenderGraph;
+	friend class RenderGraphBuilder;
+
 public:
-    
-    static const RenderGraphResource nullHandle;
-    
-    explicit constexpr RenderGraphResource(uint32_t uniqueId, uint32_t version)
-        : uniqueId(uniqueId), version(version)
+
+    explicit constexpr ResourceHandle(uint32_t version, ResourceAccess access)
+        : version(version), access(access)
     {
         
     }
     
-    FORCE_INLINE constexpr operator uint32_t() const
+    NO_DISCARD FORCE_INLINE constexpr ResourceAccess GetAccess() const
     {
-        return uniqueId;
+        return access;
     }
     
-    NO_DISCARD FORCE_INLINE constexpr uint32_t GetVersion() const
-    {
-        return version;
-    }
+    constexpr ResourceHandle(const ResourceHandle&) = default;
+    FORCE_INLINE constexpr ResourceHandle& operator=(const ResourceHandle&) = default;
     
-    constexpr RenderGraphResource(const RenderGraphResource& other) = default;
-    FORCE_INLINE constexpr RenderGraphResource& operator=(const RenderGraphResource& other) = default;
-    
-private:
+protected:
     
     uint32_t version;
-    uint32_t uniqueId;
+    ResourceAccess access;
     
 };
 
-#define RenderGraphResourceHandle(HandleType) class HandleType final : public RenderGraphResource {\
-    public: explicit HandleType(uint32_t uniqueId = nullHandle, uint32_t version = 0) : RenderGraphResource(uniqueId, version) {}\
-    constexpr HandleType(const RenderGraphResource& other) : RenderGraphResource(other) {}\
-    FORCE_INLINE constexpr HandleType& operator=(const RenderGraphResource& other) { RenderGraphResource::operator=(other); return *this; }\
-}
+class BufferHandle final : public ResourceHandle
+{
+    friend class RenderGraph;
+    friend class RenderGraphBuilder;
+    
+public:
+    
+    explicit BufferHandle(RenderGraphBufferNode* node = nullptr, uint32_t version = 0, ResourceAccess access = ResourceAccess::None)
+        : ResourceHandle(version, access), node(node)
+    {
+        
+    }
+    
+    constexpr BufferHandle(const BufferHandle& other)
+        : ResourceHandle(other), node(other.node)
+    {
+        
+    }
+    
+    FORCE_INLINE constexpr BufferHandle& operator=(const BufferHandle& other)
+    {
+        ResourceHandle::operator=(other);
+        node = other.node;
+        return *this;
+    }
+    
+    FORCE_INLINE constexpr bool operator==(const BufferHandle& other) const
+    {
+        return node == other.node;
+    }
+    
+    FORCE_INLINE constexpr bool operator!=(const BufferHandle& other) const
+    {
+        return !(*this == other);
+    }
+    
+    NO_DISCARD FORCE_INLINE constexpr bool IsValid() const
+    {
+        return node != nullptr;
+    }
 
-RenderGraphResourceHandle(BufferHandle);
-RenderGraphResourceHandle(RenderTextureHandle);
+	NO_DISCARD operator Buffer() const;
+    
+private:
+    
+    RenderGraphBufferNode* node;
+    
+};
+
+class TextureHandle final : public ResourceHandle
+{
+    friend class RenderGraph;
+    friend class RenderGraphBuilder;
+    
+public:
+    
+    explicit TextureHandle(RenderGraphTextureNode* node = nullptr, uint32_t version = 0, ResourceAccess access = ResourceAccess::None)
+        : ResourceHandle(version, access), node(node)
+    {
+        
+    }
+    
+    constexpr TextureHandle(const TextureHandle& other)
+        : ResourceHandle(other), node(other.node)
+    {
+        
+    }
+    
+    FORCE_INLINE constexpr TextureHandle& operator=(const TextureHandle& other)
+    {
+        ResourceHandle::operator=(other);
+        node = other.node;
+        return *this;
+    }
+    
+    FORCE_INLINE constexpr bool operator==(const TextureHandle& other) const
+    {
+        return node == other.node;
+    }
+    
+    FORCE_INLINE constexpr bool operator!=(const TextureHandle& other) const
+    {
+        return !(*this == other);
+    }
+    
+    NO_DISCARD FORCE_INLINE constexpr bool IsValid() const
+    {
+        return node != nullptr;
+    }
+
+    NO_DISCARD operator Texture() const;
+    
+private:
+    
+    RenderGraphTextureNode* node;
+    
+};
 
 } // namespace Gleam

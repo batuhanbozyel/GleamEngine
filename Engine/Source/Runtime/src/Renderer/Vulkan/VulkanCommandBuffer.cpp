@@ -27,6 +27,7 @@ struct CommandBuffer::Impl
 	bool hasDepthAttachment = false;
 	uint32_t sampleCount = 1;
 
+    // Move TempPool to VulkanDevice
 	struct TempPool
 	{
 		TArray<VkRenderPass> renderPasses;
@@ -55,6 +56,7 @@ CommandBuffer::CommandBuffer()
 	mHandle->allocatedCommandPool = VulkanDevice::GetSwapchain().GetCommandPool();
 	mHandle->frameFence = VulkanDevice::GetSwapchain().GetFence();
 
+    // TODO: use VulkanDevice to allocate command buffer
 	VkCommandBufferAllocateInfo allocateInfo{ VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO };
 	allocateInfo.commandBufferCount = 1;
 	allocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
@@ -64,6 +66,7 @@ CommandBuffer::CommandBuffer()
 
 CommandBuffer::~CommandBuffer()
 {
+    // TODO: return command buffer to VulkanDevice to free
 	VK_CHECK(vkWaitForFences(VulkanDevice::GetHandle(), 1, &mHandle->frameFence, VK_TRUE, UINT64_MAX));
 	vkFreeCommandBuffers(VulkanDevice::GetHandle(), mHandle->allocatedCommandPool, 1, &mHandle->commandBuffer);
 	mHandle->tempPool.Flush();
@@ -72,7 +75,7 @@ CommandBuffer::~CommandBuffer()
 void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, const TStringView debugName) const
 {
     mHandle->sampleCount = renderPassDesc.samples;
-	mHandle->hasDepthAttachment = renderPassDesc.depthAttachment.texture != nullptr;
+	mHandle->hasDepthAttachment = renderPassDesc.depthAttachment.texture.IsValid();
     
     uint32_t attachmentCount = static_cast<uint32_t>(renderPassDesc.colorAttachments.size()) + static_cast<uint32_t>(mHandle->hasDepthAttachment);
 	TArray<VkAttachmentDescription> attachmentDescriptors(attachmentCount);
@@ -83,15 +86,15 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, 
     // Currently there is no subpass support
     TArray<VkSubpassDescription> subpassDescriptors(1);
     TArray<VkSubpassDependency> subpassDependencies(1);
-    if (renderPassDesc.depthAttachment.texture)
+    if (renderPassDesc.depthAttachment.texture.IsValid())
     {
-		mHandle->depthAttachment = renderPassDesc.depthAttachment.texture->GetDescriptor();
+		mHandle->depthAttachment = renderPassDesc.depthAttachment.texture.GetDescriptor();
 
         uint32_t depthAttachmentIndex = static_cast<uint32_t>(attachmentDescriptors.size()) - 1;
         
         auto& depthAttachmentDesc = attachmentDescriptors[depthAttachmentIndex];
         depthAttachmentDesc = {};
-        depthAttachmentDesc.format = TextureFormatToVkFormat(renderPassDesc.depthAttachment.texture->GetDescriptor().format);
+        depthAttachmentDesc.format = TextureFormatToVkFormat(mHandle->depthAttachment.format);
         depthAttachmentDesc.samples = GetVkSampleCount(renderPassDesc.samples);
         depthAttachmentDesc.loadOp = AttachmentLoadActionToVkAttachmentLoadOp(renderPassDesc.depthAttachment.loadAction);
         depthAttachmentDesc.stencilLoadOp = depthAttachmentDesc.loadOp;
@@ -102,7 +105,7 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, 
         
         clearValues[depthAttachmentIndex] = {};
         clearValues[depthAttachmentIndex].depthStencil = { renderPassDesc.depthAttachment.clearDepth, renderPassDesc.depthAttachment.clearStencil };
-        imageViews[depthAttachmentIndex] = As<VkImageView>(renderPassDesc.depthAttachment.texture->GetView());
+        imageViews[depthAttachmentIndex] = As<VkImageView>(renderPassDesc.depthAttachment.texture.GetView());
         
         VkAttachmentReference depthStencilAttachment{};
         depthStencilAttachment.attachment = depthAttachmentIndex;
@@ -117,7 +120,7 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, 
     for (uint32_t i = 0; i < renderPassDesc.colorAttachments.size(); i++)
     {
 		const auto& colorAttachment = renderPassDesc.colorAttachments[i];
-		mHandle->colorAttachments[i] = colorAttachment.texture->GetDescriptor();
+		mHandle->colorAttachments[i] = colorAttachment.texture.GetDescriptor();
 
         colorAttachments[i].attachment = i;
         colorAttachments[i].layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
@@ -130,7 +133,7 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, 
 
         auto& colorAttachmentDesc = attachmentDescriptors[i];
         colorAttachmentDesc = {};
-        colorAttachmentDesc.format = TextureFormatToVkFormat(colorAttachment.texture->GetDescriptor().format);
+        colorAttachmentDesc.format = TextureFormatToVkFormat(colorAttachment.texture.GetDescriptor().format);
         colorAttachmentDesc.samples = GetVkSampleCount(renderPassDesc.samples);
         colorAttachmentDesc.loadOp = AttachmentLoadActionToVkAttachmentLoadOp(colorAttachment.loadAction);
         colorAttachmentDesc.storeOp = AttachmentStoreActionToVkAttachmentStoreOp(colorAttachment.storeAction);
@@ -138,7 +141,7 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, 
         colorAttachmentDesc.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
         clearValues[i] = { colorAttachment.clearColor.r, colorAttachment.clearColor.g, colorAttachment.clearColor.b, colorAttachment.clearColor.a };
-        imageViews[i] = As<VkImageView>(colorAttachment.texture->GetView());
+        imageViews[i] = As<VkImageView>(colorAttachment.texture.GetView());
     }
 
     subpassDescriptors[0] = {};
@@ -219,70 +222,96 @@ void CommandBuffer::SetViewport(const Size& size) const
 	vkCmdSetScissor(mHandle->commandBuffer, 0, 1, &scissor);
 }
 
-void CommandBuffer::SetVertexBuffer(const NativeGraphicsHandle buffer, BufferUsage usage, size_t size, size_t offset, uint32_t index) const
+void CommandBuffer::BindBuffer(const NativeGraphicsHandle buffer, BufferUsage usage, size_t offset, uint32_t index, ShaderStageFlagBits stage, ResourceAccess access) const
 {
+	auto resource = [=, this]()
+	{
+		Shader::Reflection* reflection = nullptr;
+		if (stage & ShaderStage_Vertex)
+		{
+			auto pipeline = static_cast<const VulkanGraphicsPipeline*>(mHandle->pipeline);
+			reflection = pipeline->vertexShader->GetReflection().get();
+		}
+		else if (stage & ShaderStage_Fragment)
+		{
+			auto pipeline = static_cast<const VulkanGraphicsPipeline*>(mHandle->pipeline);
+			reflection = pipeline->fragmentShader->GetReflection().get();
+		}
+		else
+		{
+			GLEAM_ASSERT(false, "Metal: Shader stage not implemented yet.")
+		}
+
+		switch (usage)
+		{
+			case BufferUsage::UniformBuffer: return reflection->resources[index];
+			case BufferUsage::VertexBuffer:
+			case BufferUsage::StorageBuffer:
+			{
+                switch(access)
+                {
+                    case ResourceAccess::Read: return reflection->resources[index + Shader::Reflection::SRV_BINDING_OFFSET];
+                    case ResourceAccess::Write: return reflection->resources[index + Shader::Reflection::UAV_BINDING_OFFSET];
+                    default: GLEAM_ASSERT(false, "Vulkan: Trying to bind buffer with invalid access.") return reinterpret_cast<SpvReflectDescriptorBinding*>(nullptr);
+                }
+			}
+			default: GLEAM_ASSERT(false, "Vulkan: Trying to bind buffer with invalid usage.")
+			{
+				return reinterpret_cast<SpvReflectDescriptorBinding*>(nullptr);
+			}
+		}
+	}();
+
 	VkDescriptorBufferInfo bufferInfo{};
 	bufferInfo.buffer = As<VkBuffer>(buffer);
 	bufferInfo.offset = offset;
-	bufferInfo.range = size;
+	bufferInfo.range = VK_WHOLE_SIZE;
 
 	VkWriteDescriptorSet descriptorSet{ VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
-	descriptorSet.dstBinding = index;
+	descriptorSet.dstBinding = resource->binding;
 	descriptorSet.descriptorCount = 1;
 	descriptorSet.descriptorType = BufferUsageToVkDescriptorType(usage);
 	descriptorSet.pBufferInfo = &bufferInfo;
-	vkCmdPushDescriptorSetKHR(mHandle->commandBuffer, mHandle->pipeline->bindPoint, mHandle->pipeline->layout, 0, 1, &descriptorSet);
+	vkCmdPushDescriptorSetKHR(mHandle->commandBuffer, mHandle->pipeline->bindPoint, mHandle->pipeline->layout, resource->set, 1, &descriptorSet);
 }
 
-void CommandBuffer::SetFragmentBuffer(const NativeGraphicsHandle buffer, BufferUsage usage, size_t size, size_t offset, uint32_t index) const
+void CommandBuffer::BindTexture(const NativeGraphicsHandle texture, uint32_t index, ShaderStageFlagBits stage, ResourceAccess access) const
 {
-	auto pipeline = static_cast<const VulkanGraphicsPipeline*>(mHandle->pipeline);
-	uint32_t setIndex = pipeline->vertexShader->GetReflection()->setLayouts.size();
-
-	VkDescriptorBufferInfo bufferInfo{};
-	bufferInfo.buffer = As<VkBuffer>(buffer);
-	bufferInfo.offset = offset;
-	bufferInfo.range = size;
-
-	VkWriteDescriptorSet descriptorSet{ VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
-	descriptorSet.dstBinding = index;
-	descriptorSet.descriptorCount = 1;
-	descriptorSet.descriptorType = BufferUsageToVkDescriptorType(usage);
-	descriptorSet.pBufferInfo = &bufferInfo;
-	vkCmdPushDescriptorSetKHR(mHandle->commandBuffer, pipeline->bindPoint, pipeline->layout, setIndex, 1, &descriptorSet);
-}
-
-void CommandBuffer::SetVertexTexture(const NativeGraphicsHandle texture, const SamplerState& samplerState, uint32_t index) const
-{
-	VkDescriptorImageInfo imageInfo{};
-	imageInfo.imageView = As<VkImageView>(texture);
-	imageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL; // TODO: Set appropriate image layout
-	imageInfo.sampler = VulkanPipelineStateManager::GetSampler(samplerState);
-
-	VkWriteDescriptorSet descriptorSet{ VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
-	descriptorSet.dstBinding = index;
-	descriptorSet.descriptorCount = 1;
-	descriptorSet.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	descriptorSet.pImageInfo = &imageInfo;
-	vkCmdPushDescriptorSetKHR(mHandle->commandBuffer, mHandle->pipeline->bindPoint, mHandle->pipeline->layout, 0, 1, &descriptorSet);
-}
-
-void CommandBuffer::SetFragmentTexture(const NativeGraphicsHandle texture, const SamplerState& samplerState, uint32_t index) const
-{
-	auto pipeline = static_cast<const VulkanGraphicsPipeline*>(mHandle->pipeline);
-	uint32_t setIndex = pipeline->vertexShader->GetReflection()->setLayouts.size();
+	auto resource = [=, this]()
+	{
+		Shader::Reflection* reflection = nullptr;
+		if (stage & ShaderStage_Vertex)
+		{
+			auto pipeline = static_cast<const VulkanGraphicsPipeline*>(mHandle->pipeline);
+			reflection = pipeline->vertexShader->GetReflection().get();
+		}
+		else if (stage & ShaderStage_Fragment)
+		{
+			auto pipeline = static_cast<const VulkanGraphicsPipeline*>(mHandle->pipeline);
+			reflection = pipeline->fragmentShader->GetReflection().get();
+		}
+		else
+		{
+			GLEAM_ASSERT(false, "Vulkan: Shader stage not implemented yet.")
+		}
+        switch(access)
+        {
+            case ResourceAccess::Read: return reflection->resources[index + Shader::Reflection::SRV_BINDING_OFFSET];
+            case ResourceAccess::Write: return reflection->resources[index + Shader::Reflection::UAV_BINDING_OFFSET];
+            default: GLEAM_ASSERT(false, "Vulkan: Trying to bind texture with invalid access.") return reinterpret_cast<SpvReflectDescriptorBinding*>(nullptr);
+        }
+	}();
 
 	VkDescriptorImageInfo imageInfo{};
 	imageInfo.imageView = As<VkImageView>(texture);
-	imageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL; // TODO: Set appropriate image layout
-	imageInfo.sampler = VulkanPipelineStateManager::GetSampler(samplerState);
+	imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL; // TODO: Set appropriate image layout
 
 	VkWriteDescriptorSet descriptorSet{ VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
 	descriptorSet.dstBinding = index;
 	descriptorSet.descriptorCount = 1;
-	descriptorSet.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	descriptorSet.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE; // TODO: Add support for storage image
 	descriptorSet.pImageInfo = &imageInfo;
-	vkCmdPushDescriptorSetKHR(mHandle->commandBuffer, pipeline->bindPoint, pipeline->layout, setIndex, 1, &descriptorSet);
+	vkCmdPushDescriptorSetKHR(mHandle->commandBuffer, mHandle->pipeline->bindPoint, mHandle->pipeline->layout, resource->set, 1, &descriptorSet);
 }
 
 void CommandBuffer::SetPushConstant(const void* data, uint32_t size, ShaderStageFlagBits stage) const
@@ -312,7 +341,7 @@ void CommandBuffer::DrawIndexed(const NativeGraphicsHandle indexBuffer, IndexTyp
 	vkCmdDrawIndexed(mHandle->commandBuffer, indexCount, instanceCount, firstIndex, baseVertex, baseInstance);
 }
 
-void CommandBuffer::CopyBuffer(const NativeGraphicsHandle src, const NativeGraphicsHandle dst, size_t size, uint32_t srcOffset, uint32_t dstOffset) const
+void CommandBuffer::CopyBuffer(const NativeGraphicsHandle src, const NativeGraphicsHandle dst, size_t size, size_t srcOffset, size_t dstOffset) const
 {
 	VkBufferCopy bufferCopy{};
 	bufferCopy.srcOffset = srcOffset;
@@ -321,7 +350,7 @@ void CommandBuffer::CopyBuffer(const NativeGraphicsHandle src, const NativeGraph
 	vkCmdCopyBuffer(mHandle->commandBuffer, As<VkBuffer>(src), As<VkBuffer>(dst), 1, &bufferCopy);
 }
 
-void CommandBuffer::Blit(const RenderTexture& texture, const RenderTexture& target) const
+void CommandBuffer::Blit(const Texture& texture, const Texture& target) const
 {
     mHandle->swapchainTarget = !target.IsValid();
 	VkImage targetTexture = mHandle->swapchainTarget ? VulkanDevice::GetSwapchain().AcquireNextDrawable().image : As<VkImage>(target.GetHandle());

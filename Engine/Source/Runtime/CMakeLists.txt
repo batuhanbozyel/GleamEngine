@@ -1,12 +1,13 @@
 include (${CMAKE_SOURCE_DIR}/CMake/CMakeUtils.cmake)
 
+find_package(Vulkan REQUIRED)
+find_package(Python COMPONENTS Interpreter REQUIRED)
+
 # Third-party libraries
 add_subdirectory(${CMAKE_SOURCE_DIR}/Engine/ThirdParty ${CMAKE_BINARY_DIR}/ThirdParty)
 
 # Runtime shader files
-file(GLOB_RECURSE MSL_FILES ${CMAKE_CURRENT_SOURCE_DIR}/src/*.metal)
-file(GLOB_RECURSE HLSL_FILES ${CMAKE_CURRENT_SOURCE_DIR}/src/*.hlsl)
-set(SHADER_FILES ${MSL_FILES} ${HLSL_FILES})
+file(GLOB_RECURSE SHADER_FILES ${CMAKE_CURRENT_SOURCE_DIR}/src/*.hlsl)
 
 # Runtime source files
 file(GLOB_RECURSE SOURCE_FILES
@@ -17,12 +18,13 @@ file(GLOB_RECURSE SOURCE_FILES
 
 # Setup link libraries
 if (WIN32)
-    set(LIB_LINKS SDL3::SDL3-static volk.lib spirv-reflect-static.lib)
+    set(LIB_LINKS SDL3::SDL3-static nlohmann_json::nlohmann_json volk.lib spirv-reflect-static.lib)
     set_source_files_properties(${SHADER_FILES} PROPERTIES VS_TOOL_OVERRIDE "None")
 elseif (APPLE)
-    set(LIB_LINKS SDL3::SDL3-static "-framework UniformTypeIdentifiers")
+    find_library(METALIR_LIB libmetalirconverter.dylib)
+    set(LIB_LINKS SDL3::SDL3-static nlohmann_json::nlohmann_json ${METALIR_LIB} "-framework UniformTypeIdentifiers")
 else()
-    set(LIB_LINKS SDL3::SDL3-static volk.a spirv-reflect-static.a)
+    set(LIB_LINKS SDL3::SDL3-static nlohmann_json::nlohmann_json volk.a spirv-reflect-static.a)
 endif()
 
 # Set Runtime as static library
@@ -34,6 +36,7 @@ if (APPLE)
     add_dependencies(Runtime SDL3-static)
     set(INCLUDE_DIRS
         src
+        /usr/local/include
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/SDL/include
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/fmt/include
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/stb
@@ -43,6 +46,7 @@ if (APPLE)
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/cgltf
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/volk
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/SPIRV-Reflect
+        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/json/single_include
     )
     set_source_files_properties(${SOURCE_FILES} PROPERTIES COMPILE_FLAGS "-x objective-c++")
     set_target_properties(Runtime PROPERTIES MACOSX_BUNDLE YES XCODE_ATTRIBUTE_CLANG_ENABLE_OBJC_ARC YES)
@@ -60,6 +64,7 @@ else()
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/cgltf
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/volk
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/SPIRV-Reflect
+        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/json/single_include
     )
 endif()
 
@@ -87,22 +92,20 @@ target_compile_definitions(
 )
 
 # Precompile shaders
-if (NOT APPLE)
-    set(HLSL_FILE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/src/Renderer/Vulkan/Shaders)
-    ADD_VERTEX_SHADER(Runtime ${HLSL_FILE_PATH}/CommonShader.hlsl fullscreenTriangleVertexShader)
-    ADD_FRAGMENT_SHADER(Runtime ${HLSL_FILE_PATH}/CommonShader.hlsl fullscreenTriangleFragmentShader)
-    ADD_FRAGMENT_SHADER(Runtime ${HLSL_FILE_PATH}/CommonShader.hlsl tonemappingFragmentShader)
+set(HLSL_FILE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/src/Renderer/Shaders)
+set(SHADER_FUNCTIONS
+    ${HLSL_FILE_PATH}/FullscreenShader.hlsl fullscreenTriangleVertexShader vertex
+    ${HLSL_FILE_PATH}/FullscreenShader.hlsl fullscreenTriangleFragmentShader fragment
+    ${HLSL_FILE_PATH}/TonemappingShader.hlsl tonemappingFragmentShader fragment
+    ${HLSL_FILE_PATH}/ForwardPassShader.hlsl forwardPassVertexShader vertex
+    ${HLSL_FILE_PATH}/ForwardPassShader.hlsl forwardPassFragmentShader fragment
+    ${HLSL_FILE_PATH}/DebugShader.hlsl debugVertexShader vertex
+    ${HLSL_FILE_PATH}/DebugShader.hlsl debugMeshVertexShader vertex
+    ${HLSL_FILE_PATH}/DebugShader.hlsl debugFragmentShader fragment
+)
 
-    ADD_VERTEX_SHADER(Runtime ${HLSL_FILE_PATH}/ForwardPassShader.hlsl forwardPassVertexShader)
-    ADD_FRAGMENT_SHADER(Runtime ${HLSL_FILE_PATH}/ForwardPassShader.hlsl forwardPassFragmentShader)
-
-    ADD_VERTEX_SHADER(Runtime ${HLSL_FILE_PATH}/DebugShader.hlsl debugVertexShader)
-    ADD_VERTEX_SHADER(Runtime ${HLSL_FILE_PATH}/DebugShader.hlsl debugMeshVertexShader)
-    ADD_FRAGMENT_SHADER(Runtime ${HLSL_FILE_PATH}/DebugShader.hlsl debugFragmentShader)
-else()
-    add_custom_command(
-        TARGET Runtime
-        PRE_BUILD
-        COMMAND xcrun -sdk macosx metal -frecord-sources=flat ${MSL_FILES} -o ${CMAKE_SOURCE_DIR}/Assets/PrecompiledShaders.metallib
-    )
-endif()
+add_custom_command(
+    TARGET Runtime
+    PRE_BUILD
+    COMMAND Python::Interpreter ${CMAKE_SOURCE_DIR}/Tools/CompileShaders.py ${CMAKE_SOURCE_DIR}/Assets ${SHADER_FUNCTIONS}
+)

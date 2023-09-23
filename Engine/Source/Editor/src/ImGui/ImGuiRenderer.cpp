@@ -33,20 +33,18 @@ void ImGuiRenderer::AddRenderPasses(Gleam::RenderGraph& graph, Gleam::RenderGrap
 {
 	struct ImGuiPassData
 	{
-		Gleam::RenderTextureHandle sceneTarget;
-        Gleam::RenderTextureHandle swapchainTarget;
+        Gleam::TextureHandle sceneTarget;
+        Gleam::TextureHandle swapchainTarget;
 	};
     
 	graph.AddRenderPass<ImGuiPassData>("ImGuiPass", [&](Gleam::RenderGraphBuilder& builder, ImGuiPassData& passData)
     {
-        auto swapchainTarget = graph.ImportBackbuffer(Gleam::CreateRef<Gleam::RenderTexture>());
-        graph.GetDescriptor(swapchainTarget).clearBuffer = true;
-        
         const auto& renderingData = blackboard.Get<Gleam::RenderingData>();
-        passData.sceneTarget = builder.ReadRenderTexture(renderingData.backbuffer);
+        auto swapchainTarget = graph.ImportBackbuffer(Gleam::Texture(), { .clearOnFirstUse = true });
+        passData.sceneTarget = builder.ReadTexture(renderingData.backbuffer);
         passData.swapchainTarget = builder.UseColorBuffer(swapchainTarget);
     },
-    [this](const Gleam::RenderGraphContext& renderGraphContext, const ImGuiPassData& passData)
+    [this](const Gleam::CommandBuffer* cmd, const ImGuiPassData& passData)
     {
         mBackend->BeginFrame();
         ImGui::NewFrame();
@@ -82,7 +80,7 @@ void ImGuiRenderer::AddRenderPasses(Gleam::RenderGraph& graph, Gleam::RenderGrap
         io.DisplaySize = ImVec2(resolution.width, resolution.height);
 
         ImGui::Render();
-        mBackend->EndFrame(renderGraphContext.cmd->GetHandle(), renderGraphContext.cmd->GetActiveRenderPass());
+        mBackend->EndFrame(cmd->GetHandle(), cmd->GetActiveRenderPass());
         
         ImGui::UpdatePlatformWindows();
         ImGui::RenderPlatformWindowsDefault();

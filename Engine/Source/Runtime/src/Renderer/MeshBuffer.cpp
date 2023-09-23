@@ -1,5 +1,6 @@
 #include "gpch.h"
 #include "MeshBuffer.h"
+#include "CommandBuffer.h"
 #include "Assets/Model.h"
 
 using namespace Gleam;
@@ -81,18 +82,58 @@ static TArray<InterleavedMeshVertex> GetInterleavedVertices(const MeshData& mesh
 
 MeshBuffer::MeshBuffer(const TArray<Vector3>& positions, const TArray<InterleavedMeshVertex>& interleavedVertices, const TArray<uint32_t>& indices)
 {
-    BufferDescriptor descriptor;
-    descriptor.size = positions.size() * sizeof(Vector3);
-    descriptor.usage = BufferUsage::StorageBuffer;
-    mPositionBuffer = CreateScope<Buffer>(positions.data(), descriptor);
-    
-    
-    descriptor.size = interleavedVertices.size() * sizeof(InterleavedMeshVertex);
-    mInterleavedBuffer = CreateScope<Buffer>(interleavedVertices.data(), descriptor);
-    
-    descriptor.size = indices.size() * sizeof(uint32_t);
-    descriptor.usage = BufferUsage::IndexBuffer;
-    mIndexBuffer = CreateScope<Buffer>(indices.data(), descriptor);
+	BufferDescriptor positionDesc;
+	positionDesc.size = positions.size() * sizeof(Vector3);
+	positionDesc.usage = BufferUsage::VertexBuffer;
+
+	BufferDescriptor interleavedDesc;
+	interleavedDesc.size = interleavedVertices.size() * sizeof(InterleavedMeshVertex);
+	interleavedDesc.usage = BufferUsage::VertexBuffer;
+
+	BufferDescriptor indexDesc;
+	indexDesc.size = indices.size() * sizeof(uint32_t);
+	indexDesc.usage = BufferUsage::IndexBuffer;
+
+	HeapDescriptor heapDesc;
+	heapDesc.memoryType = MemoryType::GPU;
+	heapDesc.size = positionDesc.size + interleavedDesc.size + indexDesc.size;
+	mHeap = Heap(heapDesc);
+
+	mPositionBuffer = mHeap.CreateBuffer(positionDesc);
+	mInterleavedBuffer = mHeap.CreateBuffer(interleavedDesc);
+	mIndexBuffer = mHeap.CreateBuffer(indexDesc);
+
+	// Send mesh data to buffers
+	{
+		heapDesc.memoryType = MemoryType::CPU;
+		Heap heap(heapDesc);
+
+		BufferDescriptor bufferDesc;
+		bufferDesc.size = heapDesc.size;
+		bufferDesc.usage = BufferUsage::StagingBuffer;
+		Buffer stagingBuffer = heap.CreateBuffer(bufferDesc);
+
+		CommandBuffer commandBuffer;
+		commandBuffer.Begin();
+
+		size_t offset = 0;
+		stagingBuffer.SetData(positions.data(), positionDesc.size, offset);
+		commandBuffer.CopyBuffer(stagingBuffer.GetHandle(), mPositionBuffer.GetHandle(), positionDesc.size, offset, 0);
+
+		offset += positionDesc.size;
+		stagingBuffer.SetData(interleavedVertices.data(), interleavedDesc.size, offset);
+		commandBuffer.CopyBuffer(stagingBuffer.GetHandle(), mInterleavedBuffer.GetHandle(), interleavedDesc.size, offset, 0);
+
+		offset += interleavedDesc.size;
+		stagingBuffer.SetData(indices.data(), indexDesc.size, offset);
+		commandBuffer.CopyBuffer(stagingBuffer.GetHandle(), mIndexBuffer.GetHandle(), indexDesc.size, offset, 0);
+
+		commandBuffer.End();
+		commandBuffer.Commit();
+
+        stagingBuffer.Dispose();
+        heap.Dispose();
+	}
 }
 
 MeshBuffer::MeshBuffer(const MeshData& mesh)
@@ -107,17 +148,25 @@ MeshBuffer::MeshBuffer(const TArray<MeshData>& meshes)
     
 }
 
-const Buffer* MeshBuffer::GetPositionBuffer() const
+void MeshBuffer::Dispose()
 {
-    return mPositionBuffer.get();
+    mPositionBuffer.Dispose();
+    mInterleavedBuffer.Dispose();
+    mIndexBuffer.Dispose();
+    mHeap.Dispose();
 }
 
-const Buffer* MeshBuffer::GetInterleavedBuffer() const
+const Buffer& MeshBuffer::GetPositionBuffer() const
 {
-    return mInterleavedBuffer.get();
+    return mPositionBuffer;
 }
 
-const Buffer* MeshBuffer::GetIndexBuffer() const
+const Buffer& MeshBuffer::GetInterleavedBuffer() const
 {
-    return mIndexBuffer.get();
+    return mInterleavedBuffer;
+}
+
+const Buffer& MeshBuffer::GetIndexBuffer() const
+{
+    return mIndexBuffer;
 }

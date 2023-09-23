@@ -15,8 +15,9 @@ class Shader;
 
 struct WorldRenderingData
 {
-    RenderTextureHandle colorTarget;
-    RenderTextureHandle depthTarget;
+    TextureHandle colorTarget;
+    TextureHandle depthTarget;
+    BufferHandle cameraBuffer;
 };
 
 class WorldRenderer : public IRenderer
@@ -41,7 +42,7 @@ private:
     HashMap<RefCounted<Material>, List<RenderQueueElement>> mOpaqueQueue;
     HashMap<RefCounted<Material>, List<RenderQueueElement>> mTransparentQueue;
     
-    Scope<Buffer> mCameraBuffer;
+    CameraUniforms mCameraData;
     RefCounted<Shader> mForwardPassVertexShader;
     RefCounted<Shader> mForwardPassFragmentShader;
 

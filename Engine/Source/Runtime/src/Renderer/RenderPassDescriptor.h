@@ -23,7 +23,7 @@ struct AttachmentDescriptor
 	Color clearColor = Color::clear;
 	float clearDepth = 1.0f;
 	uint32_t clearStencil = 0;
-    RefCounted<RenderTexture> texture;
+    Texture texture = Texture();
 	AttachmentLoadAction loadAction = AttachmentLoadAction::Load;
 	AttachmentStoreAction storeAction = AttachmentStoreAction::Store;
     
@@ -32,7 +32,7 @@ struct AttachmentDescriptor
         return  clearColor == other.clearColor &&
                 (Math::Abs(clearDepth - other.clearDepth) < Math::Epsilon) &&
                 clearStencil == other.clearStencil &&
-                texture->GetDescriptor() == other.texture->GetDescriptor() &&
+                texture.GetDescriptor() == other.texture.GetDescriptor() &&
                 loadAction == other.loadAction &&
                 storeAction == other.storeAction;
     }

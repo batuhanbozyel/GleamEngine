@@ -4,7 +4,11 @@
 
 namespace Gleam {
 
-static bool HasResource(const TArray<RenderGraphResource>& resources, RenderGraphResource resource)
+template <typename T>
+concept ResourceType = std::is_base_of<ResourceHandle, T>::value;
+
+template <ResourceType T>
+static bool HasResource(const TArray<T>& resources, T resource)
 {
     return std::find(resources.cbegin(), resources.cend(), resource) != resources.cend();
 }
@@ -17,27 +21,25 @@ public:
 
     RenderGraphBuilder(RenderPassNode& node, RenderGraphResourceRegistry& registry);
 
-    NO_DISCARD RenderTextureHandle UseColorBuffer(RenderGraphResource attachment);
+    NO_DISCARD TextureHandle UseColorBuffer(const TextureHandle& attachment);
     
-    NO_DISCARD RenderTextureHandle UseDepthBuffer(RenderGraphResource attachment);
+    NO_DISCARD TextureHandle UseDepthBuffer(const TextureHandle& attachment);
     
     // RenderTexure
-    NO_DISCARD RenderTextureHandle CreateRenderTexture(const TextureDescriptor& descriptor);
+    NO_DISCARD TextureHandle CreateTexture(const RenderTextureDescriptor& descriptor);
     
-    NO_DISCARD RenderTextureHandle WriteRenderTexture(RenderTextureHandle resource);
+    NO_DISCARD TextureHandle WriteTexture(const TextureHandle& resource);
     
-    RenderTextureHandle ReadRenderTexture(RenderTextureHandle resource);
+    NO_DISCARD TextureHandle ReadTexture(const TextureHandle& resource);
     
     // Buffer
     NO_DISCARD BufferHandle CreateBuffer(const BufferDescriptor& descriptor);
 
-    NO_DISCARD BufferHandle WriteBuffer(BufferHandle resource);
+    NO_DISCARD BufferHandle WriteBuffer(const BufferHandle& resource);
     
-    BufferHandle ReadBuffer(BufferHandle resource);
+    NO_DISCARD BufferHandle ReadBuffer(const BufferHandle& resource);
 
 private:
-    
-    NO_DISCARD RenderGraphResource WriteResource(RenderGraphResource resource);
 	
 	RenderPassNode& mPassNode;
     

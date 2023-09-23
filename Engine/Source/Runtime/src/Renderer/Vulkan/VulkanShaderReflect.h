@@ -53,20 +53,26 @@ namespace Gleam {
 
 struct Shader::Reflection
 {
+	static constexpr uint32_t SRV_BINDING_OFFSET = 1000;
+	static constexpr uint32_t UAV_BINDING_OFFSET = 2000;
+
+	SpvReflectShaderModule reflection;
 	TArray<VkDescriptorSetLayout> setLayouts;
 	TArray<VkPushConstantRange> pushConstantRanges;
 
+	TArray<SpvReflectDescriptorBinding*> samplers;
+	HashMap<uint32_t, SpvReflectDescriptorBinding*> resources;
+
 	Reflection(const TArray<uint8_t>& source)
 	{
-		SpvReflectShaderModule shaderReflection;
-		SPV_CHECK(spvReflectCreateShaderModule(source.size(), source.data(), &shaderReflection));
+		SPV_CHECK(spvReflectCreateShaderModule(source.size(), source.data(), &reflection));
 
 		// Get descriptor sets
 		uint32_t setCount = 0;
-		spvReflectEnumerateDescriptorSets(&shaderReflection, &setCount, nullptr);
+		spvReflectEnumerateDescriptorSets(&reflection, &setCount, nullptr);
 
 		TArray<SpvReflectDescriptorSet*> descriptorSets(setCount);
-		spvReflectEnumerateDescriptorSets(&shaderReflection, &setCount, descriptorSets.data());
+		spvReflectEnumerateDescriptorSets(&reflection, &setCount, descriptorSets.data());
 
 		setLayouts.resize(setCount);
 		for (uint32_t i = 0; i < setCount; i++)
@@ -80,7 +86,16 @@ struct Shader::Reflection
 				setBindings[j].binding = setBinding->binding;
 				setBindings[j].descriptorType = SpvReflectDescriptorTypeToVkDescriptorType(setBinding->descriptor_type);
 				setBindings[j].descriptorCount = setBinding->count;
-				setBindings[j].stageFlags = SpvReflectShaderStageToVkShaderStage(shaderReflection.shader_stage);
+				setBindings[j].stageFlags = SpvReflectShaderStageToVkShaderStage(reflection.shader_stage);
+
+				if (setBinding->resource_type == SPV_REFLECT_RESOURCE_FLAG_SAMPLER)
+				{
+					samplers.push_back(setBinding);
+				}
+				else
+				{
+					resources[setBinding->binding] = setBinding;
+				}
 			}
 
 			VkDescriptorSetLayoutCreateInfo setCreateInfo{ VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
@@ -92,16 +107,16 @@ struct Shader::Reflection
 
 		// Get push constant
 		uint32_t pushConstantCount = 0;
-		spvReflectEnumeratePushConstantBlocks(&shaderReflection, &pushConstantCount, nullptr);
+		spvReflectEnumeratePushConstantBlocks(&reflection, &pushConstantCount, nullptr);
 
 		TArray<SpvReflectBlockVariable*> pushConstants(pushConstantCount);
-		spvReflectEnumeratePushConstantBlocks(&shaderReflection, &pushConstantCount, pushConstants.data());
+		spvReflectEnumeratePushConstantBlocks(&reflection, &pushConstantCount, pushConstants.data());
 
 		pushConstantRanges.resize(pushConstantCount);
 		for (uint32_t i = 0; i < pushConstantCount; i++)
 		{
 			const auto& pushConstant = pushConstants[i];
-			pushConstantRanges[i].stageFlags = SpvReflectShaderStageToVkShaderStage(shaderReflection.shader_stage);
+			pushConstantRanges[i].stageFlags = SpvReflectShaderStageToVkShaderStage(reflection.shader_stage);
 			pushConstantRanges[i].size = pushConstant->size;
 			pushConstantRanges[i].offset = pushConstant->offset;
 		}
@@ -109,6 +124,7 @@ struct Shader::Reflection
 
 	~Reflection()
 	{
+		spvReflectDestroyShaderModule(&reflection);
 		for (auto setLayout : setLayouts)
 		{
 			vkDestroyDescriptorSetLayout(VulkanDevice::GetHandle(), setLayout, nullptr);

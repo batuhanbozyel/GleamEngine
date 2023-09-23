@@ -10,22 +10,30 @@ struct MetalPipeline
 	id<MTLRenderPipelineState> handle = nil;
 	id<MTLDepthStencilState> depthStencil = nil;
 	MTLPrimitiveType topology = MTLPrimitiveTypeTriangle;
+    PipelineStateDescriptor descriptor;
 };
 
-struct MetalPipelineState
+struct MetalGraphicsPipeline : public MetalPipeline
 {
-    PipelineStateDescriptor descriptor;
-	MetalPipeline pipeline;
-	
+    RefCounted<Shader> vertexShader;
+    RefCounted<Shader> fragmentShader;
 };
 
 class MetalPipelineStateManager
 {
 public:
-
-	static const MetalPipeline& GetGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc, const TArray<TextureDescriptor>& attachmentDescriptors, const RefCounted<Shader>& vertexShader, const RefCounted<Shader>& fragmentShader, uint32_t sampleCount);
     
-    static const MetalPipeline& GetGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc, const TArray<TextureDescriptor>& attachmentDescriptors, const TextureDescriptor& depthAttachment, const RefCounted<Shader>& vertexShader, const RefCounted<Shader>& fragmentShader, uint32_t sampleCount);
+    static void Init();
+    
+    static void Destroy();
+
+	static const MetalPipeline* GetGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc, const TArray<TextureDescriptor>& attachmentDescriptors, const RefCounted<Shader>& vertexShader, const RefCounted<Shader>& fragmentShader, uint32_t sampleCount);
+    
+    static const MetalPipeline* GetGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc, const TArray<TextureDescriptor>& attachmentDescriptors, const TextureDescriptor& depthAttachment, const RefCounted<Shader>& vertexShader, const RefCounted<Shader>& fragmentShader, uint32_t sampleCount);
+    
+    static id<MTLSamplerState> GetSamplerState(uint32_t index);
+    
+    static id<MTLSamplerState> GetSamplerState(const SamplerState& samplerState);
 
 	static void Clear();
 
@@ -33,9 +41,7 @@ private:
 
 	struct GraphicsPipelineCacheElement
 	{
-		RefCounted<Shader> vertexShader;
-		RefCounted<Shader> fragmentShader;
-		MetalPipelineState pipelineState;
+		MetalGraphicsPipeline pipeline;
 		TArray<TextureDescriptor> colorAttachments;
         TextureDescriptor depthAttachment;
         bool hasDepthAttachment = false;
@@ -46,6 +52,8 @@ private:
     
     static id<MTLDepthStencilState> CreateDepthStencil(const PipelineStateDescriptor& pipelineDesc);
 
+    static inline TArray<id<MTLSamplerState>, 12> mSamplerStates;
+    
 	static inline TArray<GraphicsPipelineCacheElement> mGraphicsPipelineCache;
 
 };

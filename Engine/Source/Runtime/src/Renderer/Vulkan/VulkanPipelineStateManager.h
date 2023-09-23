@@ -59,7 +59,7 @@ private:
 
 	static void CreateGraphicsPipeline(GraphicsPipelineCacheElement& element, VkRenderPass renderPass);
 
-	static inline TArray<TArray<VkSampler>> mSamplerStates;
+	static inline TArray<VkSampler, 12> mSamplerStates;
 	static inline TArray<GraphicsPipelineCacheElement> mGraphicsPipelineCache;
 
 };

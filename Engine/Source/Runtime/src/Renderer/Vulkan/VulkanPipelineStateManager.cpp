@@ -7,12 +7,12 @@
 
 using namespace Gleam;
 
-static VkSampler CreateVkSampler(FilterMode filterMode, WrapMode wrapMode)
+static VkSampler CreateVkSampler(const SamplerState& samplerState)
 {
 	VkSampler sampler;
 	VkSamplerCreateInfo createInfo{ VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO };
 
-	switch (filterMode)
+	switch (samplerState.filterMode)
 	{
 		case FilterMode::Point:
 		{
@@ -38,7 +38,7 @@ static VkSampler CreateVkSampler(FilterMode filterMode, WrapMode wrapMode)
 		default: GLEAM_ASSERT(false, "Vulkan: Filter mode is not supported!") break;
 	}
 
-	switch (wrapMode)
+	switch (samplerState.wrapMode)
 	{
 		case WrapMode::Repeat:
 		{
@@ -75,35 +75,22 @@ static VkSampler CreateVkSampler(FilterMode filterMode, WrapMode wrapMode)
 	return sampler;
 }
 
-static TArray<VkSampler> CreateVkSamplers(FilterMode filterMode)
-{
-	TArray<VkSampler> samplers;
-	samplers.emplace_back(CreateVkSampler(filterMode, WrapMode::Repeat));
-	samplers.emplace_back(CreateVkSampler(filterMode, WrapMode::Clamp));
-	samplers.emplace_back(CreateVkSampler(filterMode, WrapMode::Mirror));
-	samplers.emplace_back(CreateVkSampler(filterMode, WrapMode::MirrorOnce));
-	return samplers;
-}
-
 void VulkanPipelineStateManager::Init()
 {
-	mSamplerStates.emplace_back(CreateVkSamplers(FilterMode::Point));
-	mSamplerStates.emplace_back(CreateVkSamplers(FilterMode::Bilinear));
-	mSamplerStates.emplace_back(CreateVkSamplers(FilterMode::Trilinear));
+    auto samplerSates = SamplerState::GetAllVariations();
+    for (uint32_t i = 0; i < samplerSates.size(); i++)
+    {
+        mSamplerStates[i] = CreateVkSampler(samplerSates[i]);
+    }
 }
 
 void VulkanPipelineStateManager::Destroy()
 {
-	Clear();
-
-	for (const auto& samplers : mSamplerStates)
+	for (const auto& sampler : mSamplerStates)
 	{
-		for (auto sampler : samplers)
-		{
-			vkDestroySampler(VulkanDevice::GetHandle(), sampler, nullptr);
-		}
+        vkDestroySampler(VulkanDevice::GetHandle(), sampler, nullptr);
 	}
-	mSamplerStates.clear();
+	Clear();
 }
 
 const VulkanGraphicsPipeline* VulkanPipelineStateManager::GetGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc,
@@ -198,8 +185,8 @@ const VulkanGraphicsPipeline* VulkanPipelineStateManager::GetGraphicsPipeline(co
 
 VkSampler VulkanPipelineStateManager::GetSampler(const SamplerState& samplerState)
 {
-	const auto& samplers = mSamplerStates[static_cast<uint32_t>(samplerState.filterMode)];
-	return samplers[static_cast<uint32_t>(samplerState.wrapMode)];
+    std::hash<SamplerState> hasher;
+    return mSamplerStates[hasher(samplerState)];
 }
 
 void VulkanPipelineStateManager::Clear()
@@ -280,6 +267,7 @@ void VulkanPipelineStateManager::CreateGraphicsPipeline(GraphicsPipelineCacheEle
 	pipelineCreateInfo.pDynamicState = &dynamicState;
 
 	VkPipelineRasterizationStateCreateInfo rasterizationState{ VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO };
+    rasterizationState.cullMode = CullModeToVkCullMode(pipelineDesc.cullingMode);
 	rasterizationState.lineWidth = 1.0f;
 	pipelineCreateInfo.pRasterizationState = &rasterizationState;
 

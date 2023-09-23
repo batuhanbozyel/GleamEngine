@@ -20,7 +20,7 @@ class RendererContext;
 
 struct RenderingData
 {
-    RenderTextureHandle backbuffer;
+    TextureHandle backbuffer;
     RendererConfig config;
 };
 

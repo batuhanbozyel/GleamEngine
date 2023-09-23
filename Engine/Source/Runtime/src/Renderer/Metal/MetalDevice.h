@@ -19,8 +19,6 @@ public:
 
 	static id<MTLCommandQueue> GetCommandPool();
 
-	static id<MTLLibrary> GetShaderLibrary();
-
 	static id<MTLDevice> GetHandle();
 
 private:
@@ -28,8 +26,6 @@ private:
 	static inline MetalSwapchain mSwapchain;
 
 	static inline id<MTLCommandQueue> mCommandPool{ nil };
-
-	static inline id<MTLLibrary> mShaderLibrary{ nil };
 
 	static inline id<MTLDevice> mHandle{ nil };
 

@@ -12,8 +12,6 @@
 
 namespace Gleam {
 
-class RenderTexture;
-
 template <typename T>
 concept RendererType = std::is_base_of<IRenderer, T>::value;
 
@@ -33,10 +31,11 @@ public:
     
     const RendererConfig& GetConfiguration() const;
     
-    void SetRenderTarget(const RefCounted<RenderTexture>& rt)
-    {
-        mRenderTarget = rt;
-    }
+    const Texture& GetRenderTarget() const;
+    
+    void SetRenderTarget(const TextureDescriptor& descriptor);
+    
+    void SetRenderTarget(const Texture& texture);
     
     template<RendererType T>
     T* AddRenderer()
@@ -129,7 +128,7 @@ private:
     
     Scope<CommandBuffer> mCommandBuffer;
     
-    RefCounted<RenderTexture> mRenderTarget;
+    Texture mRenderTarget;
     
 };
 
