@@ -208,7 +208,7 @@ void CommandBuffer::BindGraphicsPipeline(const PipelineStateDescriptor& pipeline
 	vkCmdBindPipeline(mHandle->commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mHandle->pipeline->handle);
 
 	// Set vertex samplers
-	uint32_t samplerCount = vertexShader->GetReflection()->samplers.size() + fragmentShader->GetReflection()->samplers.size();
+	size_t samplerCount = vertexShader->GetReflection()->samplers.size() + fragmentShader->GetReflection()->samplers.size();
 	if (samplerCount > 0)
 	{
 		TArray<VkDescriptorImageInfo> samplerInfos;
@@ -242,7 +242,7 @@ void CommandBuffer::BindGraphicsPipeline(const PipelineStateDescriptor& pipeline
 			descriptorSet.pImageInfo = &samplerInfos.emplace_back(samplerInfo);
 			descriptorSets.emplace_back(descriptorSet);
 		}
-		vkCmdPushDescriptorSetKHR(mHandle->commandBuffer, mHandle->pipeline->bindPoint, mHandle->pipeline->layout, 0, descriptorSets.size(), descriptorSets.data());
+		vkCmdPushDescriptorSetKHR(mHandle->commandBuffer, mHandle->pipeline->bindPoint, mHandle->pipeline->layout, 0, static_cast<uint32_t>(descriptorSets.size()), descriptorSets.data());
 	}
 }
 

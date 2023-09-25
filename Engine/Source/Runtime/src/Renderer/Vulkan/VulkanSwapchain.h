@@ -46,8 +46,8 @@ private:
 
 	// Frame
 	TArray<VulkanDrawable> mImages;
-	VkFormat mImageFormat;
-	uint32_t mImageIndex;
+	VkFormat mImageFormat = VK_FORMAT_UNDEFINED;
+	uint32_t mImageIndex = 0;
 	Size mSize = Size::zero;
 
 	// Command Pool

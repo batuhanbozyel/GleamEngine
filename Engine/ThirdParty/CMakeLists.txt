@@ -19,6 +19,7 @@ add_subdirectory(json)
 add_subdirectory(googletest)
 add_subdirectory(SPIRV-Reflect)
 add_subdirectory(SDL EXCLUDE_FROM_ALL)
+add_subdirectory(VulkanMemoryAllocator)
 
 set_target_properties (
     SDL3-static
