@@ -16,9 +16,11 @@ Texture::Texture()
 
 }
 
-Texture::Texture(const TextureDescriptor& descriptor)
+Texture::Texture(const TextureDescriptor& descriptor, bool allocate)
 	: mDescriptor(descriptor), mMipMapLevels(descriptor.useMipMap ? CalculateMipLevels(descriptor.size) : 1)
 {
+    if (!allocate) return;
+    
 	VkImageCreateInfo createInfo{ VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
 	VkImageUsageFlags usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
 	if (mDescriptor.type == TextureType::TextureCube)

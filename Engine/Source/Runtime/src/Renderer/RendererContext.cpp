@@ -5,24 +5,32 @@ using namespace Gleam;
 
 Heap RendererContext::CreateHeap(const HeapDescriptor& descriptor)
 {
-    for (const auto& heap : mFreeHeaps)
+    auto it = std::find_if(mFreeHeaps.begin(), mFreeHeaps.end(), [&](const Heap& heap) -> bool
     {
-        if (heap.GetDescriptor() == descriptor)
-        {
-            return heap;
-        }
+        return heap.GetDescriptor() == descriptor;
+    });
+    
+    if (it != mFreeHeaps.end())
+    {
+        auto heap = *it;
+        mFreeHeaps.erase(it);
+        return heap;
     }
     return Heap(descriptor);
 }
 
 Texture RendererContext::CreateTexture(const TextureDescriptor& descriptor)
 {
-    for (const auto& texture : mFreeTextures)
+    auto it = std::find_if(mFreeTextures.begin(), mFreeTextures.end(), [&](const Texture& texture) -> bool
     {
-        if (texture.GetDescriptor() == descriptor)
-        {
-            return texture;
-        }
+        return texture.GetDescriptor() == descriptor;
+    });
+    
+    if (it != mFreeTextures.end())
+    {
+        auto texture = *it;
+        mFreeTextures.erase(it);
+        return texture;
     }
     return Texture(descriptor);
 }

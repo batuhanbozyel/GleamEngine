@@ -32,8 +32,6 @@ void RenderSystem::Shutdown()
     }
     
     mCommandBuffer.reset();
-    mRenderTarget.Dispose();
-    
     mRendererContext.Clear();
     mRendererContext.DestroyBackend();
 }
@@ -63,7 +61,10 @@ void RenderSystem::Render()
 		cmd.Present();
         
         // reset rt to swapchain
-        mRenderTarget.Dispose();
+        if (mRenderTarget.IsValid())
+        {
+            mRendererContext.ReleaseTexture(mRenderTarget);
+        }
         mRenderTarget = Texture();
     }
 }

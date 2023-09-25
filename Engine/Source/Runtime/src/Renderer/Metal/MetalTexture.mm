@@ -16,9 +16,11 @@ Texture::Texture()
     
 }
 
-Texture::Texture(const TextureDescriptor& descriptor)
+Texture::Texture(const TextureDescriptor& descriptor, bool allocate)
     : mDescriptor(descriptor), mMipMapLevels(descriptor.useMipMap ? CalculateMipLevels(descriptor.size) : 1)
 {
+    if (!allocate) return;
+    
     MTLTextureDescriptor* textureDesc;
     if (mDescriptor.type == TextureType::TextureCube)
     {
