@@ -1,5 +1,4 @@
 #pragma once
-#include "SamplerState.h"
 #include "GraphicsObject.h"
 #include "TextureDescriptor.h"
 
@@ -11,7 +10,7 @@ public:
 
 	Texture();
 
-    Texture(const TextureDescriptor& descriptor);
+    Texture(const TextureDescriptor& descriptor, bool allocate = true);
     
     Texture(const Texture& other) = default;
     

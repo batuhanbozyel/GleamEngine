@@ -2,6 +2,7 @@
 #ifdef USE_METAL_RENDERER
 #include "MetalUtils.h"
 #include "Renderer/Shader.h"
+#include "Renderer/SamplerState.h"
 
 namespace Gleam {
 

@@ -45,6 +45,8 @@ struct TextureDescriptor
     {
         return  size == other.size &&
                 format == other.format &&
+                usage == other.usage &&
+                type == other.type &&
                 sampleCount == other.sampleCount &&
                 useMipMap == other.useMipMap;
     }

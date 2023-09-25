@@ -36,9 +36,9 @@ private:
     
     void DestroyBackend();
     
-    TArray<Heap> mFreeHeaps;
+    Deque<Heap> mFreeHeaps;
     
-    TArray<Texture> mFreeTextures;
+    Deque<Texture> mFreeTextures;
     
 	TArray<RefCounted<Shader>> mShaderCache;
 
