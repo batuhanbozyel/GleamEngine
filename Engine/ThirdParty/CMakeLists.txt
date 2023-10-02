@@ -32,5 +32,6 @@ set_target_properties (
     fmt
     EnTT
     spirv-reflect-static
+    VulkanMemoryAllocator
     PROPERTIES FOLDER Dependencies
 )

@@ -18,13 +18,13 @@ file(GLOB_RECURSE SOURCE_FILES
 
 # Setup link libraries
 if (WIN32)
-    set(LIB_LINKS SDL3::SDL3-static GPUOpen::VulkanMemoryAllocator nlohmann_json::nlohmann_json volk.lib spirv-reflect-static.lib)
+    set(LIB_LINKS SDL3::SDL3-static nlohmann_json::nlohmann_json volk.lib spirv-reflect-static.lib)
     set_source_files_properties(${SHADER_FILES} PROPERTIES VS_TOOL_OVERRIDE "None")
 elseif (APPLE)
     find_library(METALIR_LIB libmetalirconverter.dylib)
     set(LIB_LINKS SDL3::SDL3-static nlohmann_json::nlohmann_json ${METALIR_LIB} "-framework UniformTypeIdentifiers")
 else()
-    set(LIB_LINKS SDL3::SDL3-static GPUOpen::VulkanMemoryAllocator nlohmann_json::nlohmann_json volk.a spirv-reflect-static.a)
+    set(LIB_LINKS SDL3::SDL3-static nlohmann_json::nlohmann_json volk.a spirv-reflect-static.a)
 endif()
 
 # Set Runtime as static library
@@ -44,7 +44,6 @@ if (APPLE)
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/tinyobjloader
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/OpenFBX/src
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/cgltf
-        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/volk
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/SPIRV-Reflect
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/json/single_include
     )
