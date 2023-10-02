@@ -107,6 +107,7 @@ void VulkanSwapchain::Present(VkCommandBuffer commandBuffer)
 	VK_CHECK(vkWaitForFences(VulkanDevice::GetHandle(), 1, &mFences[mCurrentFrameIndex], VK_TRUE, UINT64_MAX));
 	VK_CHECK(vkResetCommandPool(VulkanDevice::GetHandle(), mCommandPools[mCurrentFrameIndex], 0));
 	VK_CHECK(vkResetFences(VulkanDevice::GetHandle(), 1, &mFences[mCurrentFrameIndex]));
+	mFrameObjects[mCurrentFrameIndex].Flush();
 }
 
 void VulkanSwapchain::Configure(const RendererConfig& config)
@@ -217,6 +218,13 @@ void VulkanSwapchain::Configure(const RendererConfig& config)
 	{
 		vkDestroySwapchainKHR(VulkanDevice::GetHandle(), mHandle, nullptr);
 
+		// Flush pooled objects
+		for (auto& pool : mFrameObjects)
+		{
+			pool.Flush();
+		}
+		mFrameObjects.clear();
+
 		// Destroy command pools
 		for (uint32_t i = 0; i < mCommandPools.size(); i++)
 		{
@@ -303,8 +311,58 @@ void VulkanSwapchain::Configure(const RendererConfig& config)
 		commandPoolCreateInfo.queueFamilyIndex = VulkanDevice::GetGraphicsQueue().index;
 		VK_CHECK(vkCreateCommandPool(VulkanDevice::GetHandle(), &commandPoolCreateInfo, nullptr, &mCommandPools[i]));
 	}
+	mFrameObjects.resize(mMaxFramesInFlight);
 
 	EventDispatcher<RendererResizeEvent>::Publish(RendererResizeEvent(mSize));
+}
+
+VkCommandBuffer VulkanSwapchain::AllocateCommandBuffer()
+{
+	VkCommandBuffer commandBuffer = VK_NULL_HANDLE;
+	VkCommandBufferAllocateInfo allocateInfo{ VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO };
+	allocateInfo.commandBufferCount = 1;
+	allocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+	allocateInfo.commandPool = mCommandPools[mCurrentFrameIndex];
+	VK_CHECK(vkAllocateCommandBuffers(VulkanDevice::GetHandle(), &allocateInfo, &commandBuffer));
+	mFrameObjects[mCurrentFrameIndex].commandBuffers.push_back(commandBuffer);
+	return commandBuffer;
+}
+
+VkRenderPass VulkanSwapchain::CreateRenderPass(const VkRenderPassCreateInfo& createInfo)
+{
+	VkRenderPass renderPass = VK_NULL_HANDLE;
+	VK_CHECK(vkCreateRenderPass(VulkanDevice::GetHandle(), &createInfo, nullptr, &renderPass));
+	mFrameObjects[mCurrentFrameIndex].renderPasses.push_back(renderPass);
+	return renderPass;
+}
+
+VkFramebuffer VulkanSwapchain::CreateFramebuffer(const VkFramebufferCreateInfo& createInfo)
+{
+	VkFramebuffer framebuffer = VK_NULL_HANDLE;
+	VK_CHECK(vkCreateFramebuffer(VulkanDevice::GetHandle(), &createInfo, nullptr, &framebuffer));
+	mFrameObjects[mCurrentFrameIndex].framebuffers.push_back(framebuffer);
+	return framebuffer;
+}
+
+void VulkanSwapchain::ObjectPool::Flush()
+{
+	if (!commandBuffers.empty())
+	{
+		vkFreeCommandBuffers(VulkanDevice::GetHandle(), VulkanDevice::GetSwapchain().GetCommandPool(), static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());
+		commandBuffers.clear();
+	}
+	
+	for (auto renderPass : renderPasses)
+	{
+		vkDestroyRenderPass(VulkanDevice::GetHandle(), renderPass, nullptr);
+	}
+	renderPasses.clear();
+
+	for (auto framebuffer : framebuffers)
+	{
+		vkDestroyFramebuffer(VulkanDevice::GetHandle(), framebuffer, nullptr);
+	}
+	framebuffers.clear();
 }
 
 const VulkanDrawable& VulkanSwapchain::GetDrawable() const

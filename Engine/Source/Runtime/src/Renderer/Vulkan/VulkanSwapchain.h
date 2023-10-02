@@ -21,6 +21,12 @@ public:
 	const VulkanDrawable& AcquireNextDrawable();
 	void Present(VkCommandBuffer commandBuffer);
 
+	VkCommandBuffer AllocateCommandBuffer();
+
+	VkRenderPass CreateRenderPass(const VkRenderPassCreateInfo& createInfo);
+
+	VkFramebuffer CreateFramebuffer(const VkFramebufferCreateInfo& createInfo);
+
 	const VulkanDrawable& GetDrawable() const;
 
 	VkCommandPool GetCommandPool() const;
@@ -40,6 +46,16 @@ public:
 	uint32_t GetFramesInFlight() const;
 
 private:
+
+	struct ObjectPool
+	{
+		TArray<VkRenderPass> renderPasses;
+		TArray<VkFramebuffer> framebuffers;
+		TArray<VkCommandBuffer> commandBuffers;
+
+		void Flush();
+	};
+	TArray<ObjectPool> mFrameObjects;
 
 	// Surface
 	VkSurfaceKHR mSurface{ VK_NULL_HANDLE };

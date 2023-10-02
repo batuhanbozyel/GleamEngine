@@ -13,63 +13,30 @@ using namespace Gleam;
 
 struct CommandBuffer::Impl
 {
-	VkCommandPool allocatedCommandPool;
-	VkCommandBuffer commandBuffer;
-	VkFence frameFence;
+	VkCommandBuffer commandBuffer = VK_NULL_HANDLE;
+	VkFence frameFence = VK_NULL_HANDLE;
 
 	const VulkanPipeline* pipeline = nullptr;
 
-	VkRenderPass renderPass;
+	VkRenderPass renderPass = VK_NULL_HANDLE;
     bool swapchainTarget = false;
 
 	TArray<TextureDescriptor> colorAttachments;
 	TextureDescriptor depthAttachment;
 	bool hasDepthAttachment = false;
 	uint32_t sampleCount = 1;
-
-    // Move TempPool to VulkanDevice
-	struct TempPool
-	{
-		TArray<VkRenderPass> renderPasses;
-		TArray<VkFramebuffer> framebuffers;
-
-		void Flush()
-		{
-			for (auto renderPass : renderPasses)
-			{
-				vkDestroyRenderPass(VulkanDevice::GetHandle(), renderPass, nullptr);
-			}
-			renderPasses.clear();
-
-			for (auto framebuffer : framebuffers)
-			{
-				vkDestroyFramebuffer(VulkanDevice::GetHandle(), framebuffer, nullptr);
-			}
-			framebuffers.clear();
-		}
-	} tempPool;
 };
 
 CommandBuffer::CommandBuffer()
 	: mHandle(CreateScope<Impl>())
 {
-	mHandle->allocatedCommandPool = VulkanDevice::GetSwapchain().GetCommandPool();
 	mHandle->frameFence = VulkanDevice::GetSwapchain().GetFence();
-
-    // TODO: use VulkanDevice to allocate command buffer
-	VkCommandBufferAllocateInfo allocateInfo{ VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO };
-	allocateInfo.commandBufferCount = 1;
-	allocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-	allocateInfo.commandPool = mHandle->allocatedCommandPool;
-	VK_CHECK(vkAllocateCommandBuffers(VulkanDevice::GetHandle(), &allocateInfo, &mHandle->commandBuffer));
+	mHandle->commandBuffer = VulkanDevice::GetSwapchain().AllocateCommandBuffer();
 }
 
 CommandBuffer::~CommandBuffer()
 {
-    // TODO: return command buffer to VulkanDevice to free
-	VK_CHECK(vkWaitForFences(VulkanDevice::GetHandle(), 1, &mHandle->frameFence, VK_TRUE, UINT64_MAX));
-	vkFreeCommandBuffers(VulkanDevice::GetHandle(), mHandle->allocatedCommandPool, 1, &mHandle->commandBuffer);
-	mHandle->tempPool.Flush();
+
 }
 
 void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, const TStringView debugName) const
@@ -165,10 +132,8 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, 
 	renderPassCreateInfo.pSubpasses = subpassDescriptors.data();
 	renderPassCreateInfo.dependencyCount = static_cast<uint32_t>(subpassDependencies.size());
 	renderPassCreateInfo.pDependencies = subpassDependencies.data();
-	VK_CHECK(vkCreateRenderPass(VulkanDevice::GetHandle(), &renderPassCreateInfo, nullptr, &mHandle->renderPass));
-	mHandle->tempPool.renderPasses.push_back(mHandle->renderPass);
+	mHandle->renderPass = VulkanDevice::GetSwapchain().CreateRenderPass(renderPassCreateInfo);
 
-	VkFramebuffer framebuffer;
 	VkFramebufferCreateInfo framebufferCreateInfo{ VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO };
 	framebufferCreateInfo.renderPass = mHandle->renderPass;
 	framebufferCreateInfo.attachmentCount = static_cast<uint32_t>(imageViews.size());
@@ -176,8 +141,7 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, 
 	framebufferCreateInfo.width = static_cast<uint32_t>(renderPassDesc.size.width);
 	framebufferCreateInfo.height = static_cast<uint32_t>(renderPassDesc.size.height);
 	framebufferCreateInfo.layers = 1;
-	VK_CHECK(vkCreateFramebuffer(VulkanDevice::GetHandle(), &framebufferCreateInfo, nullptr, &framebuffer));
-	mHandle->tempPool.framebuffers.push_back(framebuffer);
+	VkFramebuffer framebuffer = VulkanDevice::GetSwapchain().CreateFramebuffer(framebufferCreateInfo);
 
 	VkRenderPassBeginInfo renderPassBeginInfo{ VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO };
 	renderPassBeginInfo.renderPass = mHandle->renderPass;

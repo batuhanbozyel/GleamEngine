@@ -29,9 +29,9 @@ class CommandBuffer final
 {
 public:
     
-    CommandBuffer();
+	CommandBuffer();
 
-    ~CommandBuffer();
+	~CommandBuffer();
     
     void BeginRenderPass(const RenderPassDescriptor& renderPassDesc, const TStringView debugName = "") const;
 
