@@ -12,6 +12,7 @@ namespace Gleam {
 
 class Mesh;
 class Shader;
+class Material;
 
 struct WorldRenderingData
 {
@@ -36,11 +37,12 @@ private:
     
     struct RenderQueueElement
     {
-        RefCounted<Mesh> mesh;
+        const Mesh* mesh;
+		const MaterialInstance* material;
         Matrix4 transform;
     };
-    HashMap<RefCounted<Material>, List<RenderQueueElement>> mOpaqueQueue;
-    HashMap<RefCounted<Material>, List<RenderQueueElement>> mTransparentQueue;
+    HashMap<RefCounted<Material>, TArray<RenderQueueElement>> mOpaqueQueue;
+    HashMap<RefCounted<Material>, TArray<RenderQueueElement>> mTransparentQueue;
     
     CameraUniforms mCameraData;
     RefCounted<Shader> mForwardPassVertexShader;

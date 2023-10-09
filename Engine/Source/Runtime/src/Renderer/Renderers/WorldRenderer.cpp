@@ -11,6 +11,8 @@
 #include "Renderer/Mesh.h"
 #include "Renderer/CommandBuffer.h"
 #include "Renderer/RendererContext.h"
+#include "Renderer/Material/Material.h"
+#include "Renderer/Material/MaterialInstance.h"
 
 using namespace Gleam;
 
@@ -78,6 +80,7 @@ void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
                     ForwardPassUniforms uniforms;
                     uniforms.modelMatrix = element.transform;
                     cmd->SetPushConstant(uniforms, ShaderStage_Vertex);
+					
                     for (const auto& descriptor : element.mesh->GetSubmeshDescriptors())
                     {
                         cmd->DrawIndexed(meshBuffer.GetIndexBuffer().GetHandle(), IndexType::UINT32, descriptor.indexCount, 1, descriptor.firstIndex, descriptor.baseVertex, 0);
@@ -91,17 +94,18 @@ void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 
 void WorldRenderer::DrawMesh(const MeshRenderer& meshRenderer, const Transform& transform)
 {
-    RenderQueueElement element;
-    element.mesh = meshRenderer.GetMesh();
-    element.transform = transform.GetTransform();
-    
-    if (meshRenderer.GetMaterial()->GetRenderQueue() == RenderQueue::Opaque)
+    for (uint32_t i = 0; i < meshRenderer.GetMesh()->GetSubmeshCount(); i++)
     {
-        mOpaqueQueue[meshRenderer.GetMaterial()].emplace_back(element);
-    }
-    else
-    {
-        mTransparentQueue[meshRenderer.GetMaterial()].emplace_back(element);
+        const auto& material = meshRenderer.GetMaterial(i);
+		const auto& baseMaterial = std::static_pointer_cast<Material>(material->GetBaseMaterial());
+        if (baseMaterial->GetRenderQueue() == RenderQueue::Opaque)
+        {
+            mOpaqueQueue[baseMaterial].push_back({ meshRenderer.GetMesh().get(), meshRenderer.GetMaterial(i).get(), transform.GetTransform() });
+        }
+        else
+        {
+            mTransparentQueue[baseMaterial].push_back({ meshRenderer.GetMesh().get(), meshRenderer.GetMaterial(i).get(), transform.GetTransform() });
+        }
     }
 }
 
