@@ -3,18 +3,12 @@
 
 namespace Gleam {
 
-template <typename T>
-concept AssetType = requires(T, const Filesystem::path& path)
-{
-	{ T::Import(path) -> T };
-};
-
 template<typename T>
 class AssetLibrary final
 {
 public:
 
-	static const T& Import(const Filesystem::path& path)
+	static const RefCounted<T>& Import(const Filesystem::path& path)
 	{
 		auto assetCacheIt = mAssetCache.find(path);
 		if (assetCacheIt != mAssetCache.end())

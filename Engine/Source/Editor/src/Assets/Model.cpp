@@ -1,16 +1,10 @@
-#include "gpch.h"
+#include "Gleam.h"
 #include "Model.h"
 #include "ModelImporter.h"
 
-using namespace Gleam;
+using namespace GEditor;
 
-Model::Model(const TArray<MeshData>& meshes)
-	: mMeshes(meshes)
-{
-    CalculateNormalsIfNeeded();
-}
-
-Model Model::Import(const Filesystem::path& path)
+Model Model::Import(const Gleam::Filesystem::path& path)
 {
 	const auto& ext = path.extension();
     if (ext == ".obj")
@@ -20,8 +14,14 @@ Model Model::Import(const Filesystem::path& path)
     else
     {
         GLEAM_ASSERT(false, "Model file type is not supported!");
-        return Model({});
+        return Model({}, {});
     }
+}
+
+Model::Model(const Gleam::TArray<Gleam::MeshData>& meshes, const Gleam::TArray<Gleam::PBRMaterialData>& materials)
+	: mMeshes(meshes), mMaterials(materials)
+{
+    CalculateNormalsIfNeeded();
 }
 
 void Model::CalculateNormalsIfNeeded()
@@ -37,26 +37,26 @@ void Model::CalculateNormalsIfNeeded()
                 auto& position2 = mesh.positions[mesh.indices[i + 1]];
                 auto& position3 = mesh.positions[mesh.indices[i + 2]];
 
-                Vector3 normal{ 0.0f, 0.0f, 0.0f };
+                Gleam::Vector3 normal{ 0.0f, 0.0f, 0.0f };
                 {
-                    Vector3 pos1 = position2 - position1;
-                    Vector3 pos2 = position3 - position1;
-                    normal += Math::Cross(pos1, pos2);
+                    auto pos1 = position2 - position1;
+                    auto pos2 = position3 - position1;
+                    normal += Gleam::Math::Cross(pos1, pos2);
                 }
 
                 {
-                    Vector3 pos1 = position1 - position2;
-                    Vector3 pos2 = position3 - position2;
-                    normal += Math::Cross(pos1, pos2);
+                    auto pos1 = position1 - position2;
+                    auto pos2 = position3 - position2;
+                    normal += Gleam::Math::Cross(pos1, pos2);
                 }
 
                 {
-                    Vector3 pos1 = position1 - position3;
-                    Vector3 pos2 = position2 - position3;
-                    normal += Math::Cross(pos1, pos2);
+                    auto pos1 = position1 - position3;
+                    auto pos2 = position2 - position3;
+                    normal += Gleam::Math::Cross(pos1, pos2);
                 }
 
-                Vector3 normalVec = Math::Normalize(Vector3{ normal.x, normal.y, normal.z });
+                Gleam::Vector3 normalVec = Gleam::Math::Normalize(Gleam::Vector3{ normal.x, normal.y, normal.z });
                 normal.x = normalVec.x;
                 normal.y = normalVec.y;
                 normal.z = normalVec.z;
@@ -69,7 +69,12 @@ void Model::CalculateNormalsIfNeeded()
     }
 }
 
-const TArray<MeshData>& Model::GetMeshes() const
+const Gleam::TArray<Gleam::MeshData>& Model::GetMeshes() const
 {
     return mMeshes;
+}
+
+const Gleam::TArray<Gleam::PBRMaterialData>& Model::GetMaterials() const
+{
+    return mMaterials;
 }

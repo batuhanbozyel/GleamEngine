@@ -15,15 +15,14 @@ bool operator==(const index_t& lhs, const index_t& rhs)
 
 } // namespace tinyobj
 
+using namespace GEditor;
 
-using namespace Gleam;
-
-Model ModelImporter::ImportObj(const Filesystem::path& path)
+Model ModelImporter::ImportObj(const Gleam::Filesystem::path& path)
 {
-    TString objFile = IOUtils::ReadFile(path);
+    Gleam::TString objFile = Gleam::IOUtils::ReadFile(path);
 
-    TString mtlDirectory("");
-    TString mtlFile("");
+    Gleam::TString mtlDirectory("");
+    Gleam::TString mtlFile("");
     auto mtllibIdx = objFile.find("mtllib");
     if (mtllibIdx != std::string::npos)
     {
@@ -34,7 +33,7 @@ Model ModelImporter::ImportObj(const Filesystem::path& path)
             auto mtlfileNameLength = mtlfileEndIdx - mtlfileBeginIdx + 4;
             auto pathStr = path.string();
             auto mtlPath = pathStr.substr(0, pathStr.find_last_of("/\\") + 1) + objFile.substr(mtlfileBeginIdx, mtlfileNameLength);
-            mtlFile = IOUtils::ReadFile(mtlPath);
+            mtlFile = Gleam::IOUtils::ReadFile(mtlPath);
             mtlDirectory = mtlPath.substr(0, mtlPath.find_last_of("/\\") + 1);
         }
     }
@@ -46,7 +45,7 @@ Model ModelImporter::ImportObj(const Filesystem::path& path)
         {
             GLEAM_CORE_ERROR(("TinyObjReader: " + reader.Error()).c_str());
         }
-        return Model({});
+        return Model({}, {});
     }
 
     if (!reader.Warning().empty())
@@ -56,7 +55,7 @@ Model ModelImporter::ImportObj(const Filesystem::path& path)
 
     const auto& attrib = reader.GetAttrib();
     const auto& shapes = reader.GetShapes();
-    const auto& materials = reader.GetMaterials();
+    const auto& objMaterials = reader.GetMaterials();
     
     auto HashIndices = [](const tinyobj::index_t& val)
     {
@@ -96,17 +95,19 @@ Model ModelImporter::ImportObj(const Filesystem::path& path)
         return h;
     };
 
-    TArray<MeshData> meshes(shapes.size());
+    Gleam::TArray<Gleam::MeshData> meshes(shapes.size());
+    Gleam::TArray<Gleam::PBRMaterialData> materials(shapes.size());
     for (uint32_t i = 0; i < shapes.size(); i++)
     {
-        HashMap<tinyobj::index_t, uint32_t, decltype(HashIndices)> uniqueVertices(10, HashIndices);
+        Gleam::HashMap<tinyobj::index_t, uint32_t, decltype(HashIndices)> uniqueVertices(10, HashIndices);
         
         const auto& shape = shapes[i];
         auto& mesh = meshes[i];
+        auto& material = materials[i];
         auto materialId = shape.mesh.material_ids[0]; // per face materials are not supported
-        if (materials.size() > 0 && materialId >= 0)
+        if (objMaterials.size() > 0 && materialId >= 0)
         {
-            mesh.material.baseTexture = mtlDirectory + materials[materialId].diffuse_texname;
+            material.baseTexture = mtlDirectory + objMaterials[materialId].diffuse_texname;
         }
 
         for (uint32_t face = 0; face < shape.mesh.num_face_vertices.size(); face++)
@@ -119,7 +120,7 @@ Model ModelImporter::ImportObj(const Filesystem::path& path)
                 {
                     it = uniqueVertices.insert(uniqueVertices.end(), { index, static_cast<uint32_t>(mesh.positions.size()) });
 
-                    Vector3 position = {
+                    Gleam::Vector3 position = {
                         attrib.vertices[3 * index.vertex_index + 0],
                         attrib.vertices[3 * index.vertex_index + 1],
                         attrib.vertices[3 * index.vertex_index + 2]
@@ -128,7 +129,7 @@ Model ModelImporter::ImportObj(const Filesystem::path& path)
 
                     if (index.normal_index >= 0)
                     {
-                        Vector3 normal = {
+                        Gleam::Vector3 normal = {
                             attrib.normals[3 * index.normal_index + 0],
                             attrib.normals[3 * index.normal_index + 1],
                             attrib.normals[3 * index.normal_index + 2]
@@ -136,7 +137,7 @@ Model ModelImporter::ImportObj(const Filesystem::path& path)
                         mesh.normals.emplace_back(normal);
                     }
 
-                    Vector2 texCoord = { 0.0f, 0.0f };
+                    Gleam::Vector2 texCoord = { 0.0f, 0.0f };
                     if (index.texcoord_index >= 0)
                     {
                         texCoord = {
@@ -151,5 +152,5 @@ Model ModelImporter::ImportObj(const Filesystem::path& path)
         }
     }
 
-    return Model(meshes);
+    return Model(meshes, materials);
 }
