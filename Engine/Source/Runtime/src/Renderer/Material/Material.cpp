@@ -7,13 +7,23 @@
 
 #include "gpch.h"
 #include "Material.h"
-#include "MaterialInstance.h"
+#include "Renderer/Shader.h"
 
 using namespace Gleam;
 
 Material::Material(const MaterialDescriptor& descriptor)
-    : mDescriptor(descriptor)
+    : IMaterial(descriptor.properties), mRenderQueue(descriptor.renderQueue)
 {
+	mPasses.reserve(descriptor.passes.size());
+	for (uint32_t i = 0; i < mPasses.size(); i++)
+	{
+		auto& pass = mPasses[i];
+		auto& passDesc = descriptor.passes[i];
+
+		pass.pipelineState = passDesc.pipelineState;
+		pass.vertexFunction = CreateRef<Shader>(passDesc.vertexEntry, ShaderStage::Vertex);
+		pass.fragmentFunction = CreateRef<Shader>(passDesc.fragmentEntry, ShaderStage::Fragment);
+	}
     // TODO: Allocate GPU buffer
 }
 
@@ -25,27 +35,10 @@ RefCounted<MaterialInstance> Material::CreateInstance()
 
 const TArray<MaterialPass>& Material::GetPasses() const
 {
-    return mDescriptor.passes;
-}
-
-const TArray<MaterialProperty>& Material::GetProperties() const
-{
-    return mDescriptor.properties;
+    return mPasses;
 }
 
 RenderQueue Material::GetRenderQueue() const
 {
-    return mDescriptor.renderQueue;
-}
-
-uint32_t Material::GetPropertyIndex(const TString& name) const
-{
-    for (uint32_t i = 0; i < mDescriptor.properties.size(); i++)
-    {
-        if (mDescriptor.properties[i].name == name)
-        {
-            return i;
-        }
-    }
-    return 0;
+    return mRenderQueue;
 }

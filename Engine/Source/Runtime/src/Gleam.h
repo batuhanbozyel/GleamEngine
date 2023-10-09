@@ -39,6 +39,7 @@
 #include "Renderer/RenderSystem.h"
 #include "Renderer/CommandBuffer.h"
 #include "Renderer/RendererContext.h"
+#include "Renderer/Material/MaterialSystem.h"
 
 #include "Core/Events/ApplicationEvent.h"
 #include "Core/Events/RendererEvent.h"
