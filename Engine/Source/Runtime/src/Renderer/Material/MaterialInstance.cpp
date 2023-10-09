@@ -12,7 +12,7 @@
 using namespace Gleam;
 
 MaterialInstance::MaterialInstance(const RefCounted<IMaterial>& baseMaterial, uint32_t uniqueId)
-	: IMaterial(baseMaterial->GetProperties()), mBaseMaterial(baseMaterial), mPropertyValues(baseMaterial->GetProperties().size()), mUniqueId(uniqueId)
+    : IMaterial(baseMaterial->GetProperties()), mBaseMaterial(baseMaterial), mPropertyValues(baseMaterial->GetProperties().size()), mUniqueId(uniqueId)
 {
     
 }

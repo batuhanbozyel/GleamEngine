@@ -69,7 +69,7 @@ Mesh::~Mesh()
 
 uint32_t Mesh::GetSubmeshCount() const
 {
-	return static_cast<uint32_t>(mSubmeshDescriptors.size());
+    return static_cast<uint32_t>(mSubmeshDescriptors.size());
 }
 
 const MeshBuffer& Mesh::GetBuffer() const

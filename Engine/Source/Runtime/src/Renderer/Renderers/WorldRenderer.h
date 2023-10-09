@@ -38,7 +38,7 @@ private:
     struct RenderQueueElement
     {
         const Mesh* mesh;
-		const MaterialInstance* material;
+        const MaterialInstance* material;
         Matrix4 transform;
     };
     HashMap<RefCounted<Material>, TArray<RenderQueueElement>> mOpaqueQueue;

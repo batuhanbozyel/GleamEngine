@@ -14,31 +14,31 @@ class IMaterial : public std::enable_shared_from_this<IMaterial>
 {
 public:
 
-	GLEAM_NONCOPYABLE(IMaterial);
+    GLEAM_NONCOPYABLE(IMaterial);
 
-	IMaterial(const TArray<MaterialProperty>& properties)
-		: mProperties(properties)
-	{
+    IMaterial(const TArray<MaterialProperty>& properties)
+        : mProperties(properties)
+    {
 
-	}
-    
+    }
+
     const TArray<MaterialProperty>& GetProperties() const
-	{
-		return mProperties;
-	}
-    
+    {
+        return mProperties;
+    }
+
     uint32_t GetPropertyIndex(const TString& name) const
-	{
-		for (uint32_t i = 0; i < mProperties.size(); i++)
-		{
-			if (mProperties[i].name == name) { return i; }
-		}
-		return 0;
-	}
+    {
+        for (uint32_t i = 0; i < mProperties.size(); i++)
+        {
+            if (mProperties[i].name == name) { return i; }
+        }
+        return 0;
+    }
     
 protected:
 
-	TArray<MaterialProperty> mProperties;
+    TArray<MaterialProperty> mProperties;
     
 };
 

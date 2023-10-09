@@ -25,13 +25,13 @@ public:
     
     GLEAM_NONCOPYABLE(Mesh);
     
-	Mesh(const MeshData& mesh);
+    Mesh(const MeshData& mesh);
 
     Mesh(const TArray<MeshData>& meshes);
     
     virtual ~Mesh();
 
-	uint32_t GetSubmeshCount() const;
+    uint32_t GetSubmeshCount() const;
     
     const MeshBuffer& GetBuffer() const;
     

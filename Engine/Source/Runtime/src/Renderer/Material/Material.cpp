@@ -14,16 +14,16 @@ using namespace Gleam;
 Material::Material(const MaterialDescriptor& descriptor)
     : IMaterial(descriptor.properties), mRenderQueue(descriptor.renderQueue)
 {
-	mPasses.reserve(descriptor.passes.size());
-	for (uint32_t i = 0; i < mPasses.size(); i++)
-	{
-		auto& pass = mPasses[i];
-		auto& passDesc = descriptor.passes[i];
+    mPasses.reserve(descriptor.passes.size());
+    for (uint32_t i = 0; i < mPasses.size(); i++)
+    {
+        auto& pass = mPasses[i];
+        auto& passDesc = descriptor.passes[i];
 
-		pass.pipelineState = passDesc.pipelineState;
-		pass.vertexFunction = CreateRef<Shader>(passDesc.vertexEntry, ShaderStage::Vertex);
-		pass.fragmentFunction = CreateRef<Shader>(passDesc.fragmentEntry, ShaderStage::Fragment);
-	}
+        pass.pipelineState = passDesc.pipelineState;
+        pass.vertexFunction = CreateRef<Shader>(passDesc.vertexEntry, ShaderStage::Vertex);
+        pass.fragmentFunction = CreateRef<Shader>(passDesc.fragmentEntry, ShaderStage::Fragment);
+    }
     // TODO: Allocate GPU buffer
 }
 

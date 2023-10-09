@@ -16,7 +16,7 @@ public:
     
     MaterialInstance(const RefCounted<IMaterial>& material, uint32_t uniqueId);
     
-	void SetProperty(const TString& name, const MaterialPropertyValue& value);
+    void SetProperty(const TString& name, const MaterialPropertyValue& value);
 
     const RefCounted<IMaterial>& GetBaseMaterial() const;
     

@@ -30,7 +30,7 @@ struct MaterialProperty
     TString name;
     MaterialPropertyType type;
 
-	bool operator==(const MaterialProperty& other) const
+    bool operator==(const MaterialProperty& other) const
     {
         return name == other.name && type == other.type;
     }

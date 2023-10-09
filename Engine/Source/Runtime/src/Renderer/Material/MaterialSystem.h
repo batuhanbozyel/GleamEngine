@@ -20,11 +20,11 @@ class MaterialSystem final : public Subsystem
 {
 public:
 
-	const RefCounted<Material>& CreateMaterial(const MaterialDescriptor& descriptor);
+    const RefCounted<Material>& CreateMaterial(const MaterialDescriptor& descriptor);
 
 private:
 
-	HashMap<MaterialDescriptor, RefCounted<Material>> mMaterials;
+    HashMap<MaterialDescriptor, RefCounted<Material>> mMaterials;
 
 };
 

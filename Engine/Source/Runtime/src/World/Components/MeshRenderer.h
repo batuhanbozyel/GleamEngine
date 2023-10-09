@@ -9,7 +9,7 @@ class MeshRenderer
 {
 public:
 
-	MeshRenderer(const RefCounted<Mesh>& mesh);
+    MeshRenderer(const RefCounted<Mesh>& mesh);
 
     void SetMaterial(const RefCounted<MaterialInstance>& material, uint32_t index);
 

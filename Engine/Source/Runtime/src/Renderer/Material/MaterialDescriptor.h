@@ -23,7 +23,7 @@ struct MaterialPassDescriptor
     TString vertexEntry;
     TString fragmentEntry;
 
-	bool operator==(const MaterialPassDescriptor& other) const
+    bool operator==(const MaterialPassDescriptor& other) const
     {
         return  pipelineState == other.pipelineState &&
 				vertexEntry == other.vertexEntry &&
@@ -37,7 +37,7 @@ struct MaterialDescriptor
 	TArray<MaterialProperty> properties;
     RenderQueue renderQueue;
 
-	bool operator==(const MaterialDescriptor& other) const
+    bool operator==(const MaterialDescriptor& other) const
     {
 		if (passes.size() != other.passes.size()) return false;
         for (uint32_t i = 0; i < passes.size(); i++)
