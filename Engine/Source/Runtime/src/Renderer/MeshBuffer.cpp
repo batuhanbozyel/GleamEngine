@@ -1,7 +1,7 @@
 #include "gpch.h"
+#include "Mesh.h"
 #include "MeshBuffer.h"
 #include "CommandBuffer.h"
-#include "Assets/Model.h"
 
 using namespace Gleam;
 

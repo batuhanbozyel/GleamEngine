@@ -5,6 +5,7 @@
 #include "World/World.h"
 #include "Input/InputSystem.h"
 #include "Renderer/RenderSystem.h"
+#include "Renderer/Material/MaterialSystem.h"
 
 using namespace Gleam;
 
@@ -77,6 +78,7 @@ Application::Application(const ApplicationProperties& props)
         renderSubsystem->Configure(props.rendererConfig);
         
         AddSubsystem<InputSystem>();
+		AddSubsystem<MaterialSystem>();
         
         World::active = World::Create();
         

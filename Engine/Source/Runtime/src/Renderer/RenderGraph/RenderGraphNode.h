@@ -7,6 +7,8 @@
 
 #pragma once
 #include "RenderGraphResource.h"
+#include "Renderer/Buffer.h"
+#include "Renderer/Texture.h"
 
 #include <functional>
 
