@@ -1,7 +1,9 @@
 #pragma once
 #ifdef USE_METAL_RENDERER
 #include "MetalDevice.h"
+#include "Renderer/Shader.h"
 #include "Renderer/TextureFormat.h"
+#include "Renderer/HeapDescriptor.h"
 #include "Renderer/RenderPassDescriptor.h"
 #include "Renderer/PipelineStateDescriptor.h"
 #include "Renderer/RenderGraph/RenderGraphResource.h"

@@ -5,6 +5,21 @@
 
 using namespace Gleam;
 
+static size_t PipelineHasher(const PipelineStateDescriptor& pipelineDesc, const TArray<TextureDescriptor>& colorAttachments, const TextureDescriptor& depthAttachment, const RefCounted<Shader>& vertexShader, const RefCounted<Shader>& fragmentShader, uint32_t sampleCount)
+{
+    size_t hash = 0;
+    hash_combine(hash, std::hash<PipelineStateDescriptor>()(pipelineDesc));
+    hash_combine(hash, std::hash<RefCounted<Shader>>()(vertexShader));
+    hash_combine(hash, std::hash<RefCounted<Shader>>()(fragmentShader));
+    for (const auto& colorAttachment : colorAttachments)
+    {
+        hash_combine(hash, std::hash<TextureDescriptor>()(colorAttachment));
+    }
+    hash_combine(hash, std::hash<Gleam::TextureDescriptor>()(depthAttachment));
+    hash_combine(hash, std::hash<uint32_t>()(sampleCount));
+    return hash;
+}
+
 static id<MTLSamplerState> CreateMTLSamplerState(const SamplerState& samplerState)
 {
     MTLSamplerDescriptor* descriptor = [MTLSamplerDescriptor new];
@@ -88,81 +103,26 @@ void MetalPipelineStateManager::Destroy()
 
 const MetalPipeline* MetalPipelineStateManager::GetGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc, const TArray<TextureDescriptor>& colorAttachments, const RefCounted<Shader>& vertexShader, const RefCounted<Shader>& fragmentShader, uint32_t sampleCount)
 {
-	for (const auto& element : mGraphicsPipelineCache)
-	{
-		if (element.pipeline.descriptor == pipelineDesc &&
-			element.pipeline.vertexShader == vertexShader &&
-            element.pipeline.fragmentShader == fragmentShader &&
-            element.colorAttachments.size() == colorAttachments.size() &&
-            element.sampleCount == sampleCount &&
-            !element.hasDepthAttachment)
-		{
-            bool found = true;
-            for (uint32_t i = 0; i < colorAttachments.size(); i++)
-            {
-                if (element.colorAttachments[i] != colorAttachments[i])
-                {
-                    found = false;
-                    break;
-                }
-            }
-            
-            if (found) { return &element.pipeline; }
-		}
-	}
-    
-	GraphicsPipelineCacheElement element;
-    element.sampleCount = sampleCount;
-	element.colorAttachments = colorAttachments;
-    element.pipeline.descriptor = pipelineDesc;
-    element.pipeline.vertexShader = vertexShader;
-    element.pipeline.fragmentShader = fragmentShader;
-    element.pipeline.topology = PrimitiveTopologyToMTLPrimitiveType(element.pipeline.descriptor.topology);
-	element.pipeline.handle = CreateGraphicsPipeline(element);
-    element.pipeline.depthStencil = CreateDepthStencil(pipelineDesc);
-	const auto& cachedElement = mGraphicsPipelineCache.emplace_back(element);
-	return &cachedElement.pipeline;
+    return GetGraphicsPipeline(pipelineDesc, colorAttachments, TextureDescriptor(), vertexShader, fragmentShader, sampleCount);
 }
 
 const MetalPipeline* MetalPipelineStateManager::GetGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc, const TArray<TextureDescriptor>& colorAttachments, const TextureDescriptor& depthAttachment, const RefCounted<Shader>& vertexShader, const RefCounted<Shader>& fragmentShader, uint32_t sampleCount)
 {
-    for (const auto& element : mGraphicsPipelineCache)
+    auto key = PipelineHasher(pipelineDesc, colorAttachments, depthAttachment, vertexShader, fragmentShader, sampleCount);
+    auto it = mGraphicsPipelineCache.find(key);
+    if (it != mGraphicsPipelineCache.end())
     {
-        if (element.pipeline.descriptor == pipelineDesc &&
-            element.pipeline.vertexShader == vertexShader &&
-            element.pipeline.fragmentShader == fragmentShader &&
-            element.colorAttachments.size() == colorAttachments.size() &&
-            element.depthAttachment == depthAttachment &&
-            element.sampleCount == sampleCount &&
-            element.hasDepthAttachment)
-        {
-            bool found = true;
-            for (uint32_t i = 0; i < colorAttachments.size(); i++)
-            {
-                if (element.colorAttachments[i] != colorAttachments[i])
-                {
-                    found = false;
-                    break;
-                }
-            }
-            
-            if (found) { return &element.pipeline; }
-        }
+        return it->second.get();
     }
     
-    GraphicsPipelineCacheElement element;
-    element.hasDepthAttachment = true;
-    element.sampleCount = sampleCount;
-    element.colorAttachments = colorAttachments;
-    element.depthAttachment = depthAttachment;
-    element.pipeline.descriptor = pipelineDesc;
-    element.pipeline.vertexShader = vertexShader;
-    element.pipeline.fragmentShader = fragmentShader;
-    element.pipeline.topology = PrimitiveTopologyToMTLPrimitiveType(element.pipeline.descriptor.topology);
-    element.pipeline.handle = CreateGraphicsPipeline(element);
-    element.pipeline.depthStencil = CreateDepthStencil(pipelineDesc);
-    const auto& cachedElement = mGraphicsPipelineCache.emplace_back(element);
-    return &cachedElement.pipeline;
+    auto pipeline = new MetalGraphicsPipeline;
+    pipeline->topology = PrimitiveTopologyToMTLPrimitiveType(pipelineDesc.topology);
+    pipeline->handle = CreateGraphicsPipeline(pipelineDesc, colorAttachments, depthAttachment, vertexShader, fragmentShader, sampleCount);
+    pipeline->depthStencil = CreateDepthStencil(pipelineDesc);
+    pipeline->vertexShader = vertexShader;
+    pipeline->fragmentShader = fragmentShader;
+    mGraphicsPipelineCache.insert(mGraphicsPipelineCache.end(), {key, Scope<MetalGraphicsPipeline>(pipeline)});
+    return pipeline;
 }
 
 id<MTLSamplerState> MetalPipelineStateManager::GetSamplerState(uint32_t index)
@@ -181,35 +141,35 @@ void MetalPipelineStateManager::Clear()
 	mGraphicsPipelineCache.clear();
 }
 
-id<MTLRenderPipelineState> MetalPipelineStateManager::CreateGraphicsPipeline(const GraphicsPipelineCacheElement& element)
+id<MTLRenderPipelineState> MetalPipelineStateManager::CreateGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc, const TArray<TextureDescriptor>& colorAttachments, const TextureDescriptor& depthAttachment, const RefCounted<Shader>& vertexShader, const RefCounted<Shader>& fragmentShader, uint32_t sampleCount)
 {
     MTLRenderPipelineDescriptor* pipelineDescriptor = [MTLRenderPipelineDescriptor new];
-    pipelineDescriptor.rasterSampleCount = element.sampleCount;
-    pipelineDescriptor.vertexFunction = element.pipeline.vertexShader->GetHandle();
-    pipelineDescriptor.fragmentFunction = element.pipeline.fragmentShader->GetHandle();
-    pipelineDescriptor.alphaToCoverageEnabled = element.pipeline.descriptor.alphaToCoverage;
-    pipelineDescriptor.inputPrimitiveTopology = PrimitiveTopologyToMTLPrimitiveTopologyClass(element.pipeline.descriptor.topology);
+    pipelineDescriptor.rasterSampleCount = sampleCount;
+    pipelineDescriptor.vertexFunction = vertexShader->GetHandle();
+    pipelineDescriptor.fragmentFunction = fragmentShader->GetHandle();
+    pipelineDescriptor.alphaToCoverageEnabled = pipelineDesc.alphaToCoverage;
+    pipelineDescriptor.inputPrimitiveTopology = PrimitiveTopologyToMTLPrimitiveTopologyClass(pipelineDesc.topology);
     
-    if (element.hasDepthAttachment)
+    if (Utils::IsDepthFormat(depthAttachment.format) || Utils::IsStencilFormat(depthAttachment.format))
     {
-        MTLPixelFormat format = TextureFormatToMTLPixelFormat(element.depthAttachment.format);
+        MTLPixelFormat format = TextureFormatToMTLPixelFormat(depthAttachment.format);
         
-        if (Utils::IsDepthFormat(element.depthAttachment.format)) { pipelineDescriptor.depthAttachmentPixelFormat = format; }
-        if (Utils::IsStencilFormat(element.depthAttachment.format)) { pipelineDescriptor.stencilAttachmentPixelFormat = format; }
+        if (Utils::IsDepthFormat(depthAttachment.format)) { pipelineDescriptor.depthAttachmentPixelFormat = format; }
+        if (Utils::IsStencilFormat(depthAttachment.format)) { pipelineDescriptor.stencilAttachmentPixelFormat = format; }
     }
     
-    for (uint32_t i = 0; i < element.colorAttachments.size(); i++)
+    for (uint32_t i = 0; i < colorAttachments.size(); i++)
     {
-        const auto& attachmentDesc = element.colorAttachments[i];
+        const auto& attachmentDesc = colorAttachments[i];
         pipelineDescriptor.colorAttachments[i].pixelFormat = TextureFormatToMTLPixelFormat(attachmentDesc.format);
-        pipelineDescriptor.colorAttachments[i].blendingEnabled = element.pipeline.descriptor.blendState.enabled;
-        pipelineDescriptor.colorAttachments[i].sourceRGBBlendFactor = BlendModeToMTLBlendFactor(element.pipeline.descriptor.blendState.sourceColorBlendMode);
-        pipelineDescriptor.colorAttachments[i].destinationRGBBlendFactor = BlendModeToMTLBlendFactor(element.pipeline.descriptor.blendState.destinationColorBlendMode);
-        pipelineDescriptor.colorAttachments[i].sourceAlphaBlendFactor = BlendModeToMTLBlendFactor(element.pipeline.descriptor.blendState.sourceAlphaBlendMode);
-        pipelineDescriptor.colorAttachments[i].destinationAlphaBlendFactor = BlendModeToMTLBlendFactor(element.pipeline.descriptor.blendState.destinationAlphaBlendMode);
-        pipelineDescriptor.colorAttachments[i].rgbBlendOperation = BlendOpToMTLBlendOperation(element.pipeline.descriptor.blendState.colorBlendOperation);
-        pipelineDescriptor.colorAttachments[i].alphaBlendOperation = BlendOpToMTLBlendOperation(element.pipeline.descriptor.blendState.alphaBlendOperation);
-        pipelineDescriptor.colorAttachments[i].writeMask = ColorWriteMaskToMTLColorWriteMask(element.pipeline.descriptor.blendState.writeMask);
+        pipelineDescriptor.colorAttachments[i].blendingEnabled = pipelineDesc.blendState.enabled;
+        pipelineDescriptor.colorAttachments[i].sourceRGBBlendFactor = BlendModeToMTLBlendFactor(pipelineDesc.blendState.sourceColorBlendMode);
+        pipelineDescriptor.colorAttachments[i].destinationRGBBlendFactor = BlendModeToMTLBlendFactor(pipelineDesc.blendState.destinationColorBlendMode);
+        pipelineDescriptor.colorAttachments[i].sourceAlphaBlendFactor = BlendModeToMTLBlendFactor(pipelineDesc.blendState.sourceAlphaBlendMode);
+        pipelineDescriptor.colorAttachments[i].destinationAlphaBlendFactor = BlendModeToMTLBlendFactor(pipelineDesc.blendState.destinationAlphaBlendMode);
+        pipelineDescriptor.colorAttachments[i].rgbBlendOperation = BlendOpToMTLBlendOperation(pipelineDesc.blendState.colorBlendOperation);
+        pipelineDescriptor.colorAttachments[i].alphaBlendOperation = BlendOpToMTLBlendOperation(pipelineDesc.blendState.alphaBlendOperation);
+        pipelineDescriptor.colorAttachments[i].writeMask = ColorWriteMaskToMTLColorWriteMask(pipelineDesc.blendState.writeMask);
     }
     
     __autoreleasing NSError* error = nil;
