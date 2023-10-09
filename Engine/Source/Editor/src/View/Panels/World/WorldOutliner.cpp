@@ -52,19 +52,7 @@ void WorldOutliner::Render()
         ImGui::TreePop();
     });
     
-    if (mSelectedEntity == Gleam::Entity{})
-    {
-        if (ImGui::BeginPopupContextWindow("Create Entity"))
-        {
-            if (ImGui::MenuItem("Import Model"))
-            {
-                mController->ImportAsset(Gleam::FileType::Model);
-            }
-            
-            ImGui::EndPopup();
-        }
-    }
-    else if (entityDeleted)
+    if (entityDeleted)
     {
         entityManager.DestroyEntity(mSelectedEntity);
     }
