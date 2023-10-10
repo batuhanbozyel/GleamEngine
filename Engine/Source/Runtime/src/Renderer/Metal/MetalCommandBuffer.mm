@@ -274,6 +274,11 @@ void CommandBuffer::Blit(const Texture& texture, const Texture& target) const
     [blitCommandEncoder endEncoding];
 }
 
+void CommandBuffer::TransitionLayout(const Texture& texture, ResourceAccess access) const
+{
+	
+}
+
 void CommandBuffer::Begin() const
 {
 #ifdef GDEBUG

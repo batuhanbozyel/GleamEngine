@@ -23,6 +23,8 @@ public:
 
 	VkCommandBuffer AllocateCommandBuffer();
 
+	VkFence CreateFence();
+
 	VkRenderPass CreateRenderPass(const VkRenderPassCreateInfo& createInfo);
 
 	VkFramebuffer CreateFramebuffer(const VkFramebufferCreateInfo& createInfo);
@@ -52,6 +54,7 @@ private:
 		TArray<VkRenderPass> renderPasses;
 		TArray<VkFramebuffer> framebuffers;
 		TArray<VkCommandBuffer> commandBuffers;
+		TArray<VkFence> fences;
 
 		void Flush();
 	};

@@ -3,7 +3,6 @@
 #ifdef USE_VULKAN_RENDERER
 #include "VulkanPipelineStateManager.h"
 #include "VulkanShaderReflect.h"
-#include "Container/Array.h"
 
 using namespace Gleam;
 

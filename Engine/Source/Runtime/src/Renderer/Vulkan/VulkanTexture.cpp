@@ -51,7 +51,7 @@ Texture::Texture(const TextureDescriptor& descriptor, bool allocate)
 	VmaAllocationCreateInfo vmaCreateInfo{};
 	vmaCreateInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
 	vmaCreateInfo.priority = 1.0f;
-	vmaCreateImage(VulkanDevice::GetAllocator(), &createInfo, &vmaCreateInfo, As<VkImage*>(&mHandle), As<VmaAllocation*>(&mHeap), nullptr);
+	VK_CHECK(vmaCreateImage(VulkanDevice::GetAllocator(), &createInfo, &vmaCreateInfo, As<VkImage*>(&mHandle), As<VmaAllocation*>(&mHeap), nullptr));
 
 	VkImageViewCreateInfo viewCreateInfo{ VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
 	viewCreateInfo.image = As<VkImage>(mHandle);
@@ -89,7 +89,7 @@ Texture::Texture(const TextureDescriptor& descriptor, bool allocate)
 		// TODO: Switch to memoryless MSAA render targets when Tile shading is supported
 		createInfo.samples = GetVkSampleCount(descriptor.sampleCount);
 		createInfo.usage = Utils::IsColorFormat(descriptor.format) ? VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT : VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
-		vmaCreateImage(VulkanDevice::GetAllocator(), &createInfo, &vmaCreateInfo, As<VkImage*>(&mMultisampleHandle), As<VmaAllocation*>(&mMultisampleHeap), nullptr);
+		VK_CHECK(vmaCreateImage(VulkanDevice::GetAllocator(), &createInfo, &vmaCreateInfo, As<VkImage*>(&mMultisampleHandle), As<VmaAllocation*>(&mMultisampleHeap), nullptr));
 
 		viewCreateInfo.image = As<VkImage>(mMultisampleHandle);
 		VK_CHECK(vkCreateImageView(VulkanDevice::GetHandle(), &viewCreateInfo, nullptr, As<VkImageView*>(&mMultisampleView)));

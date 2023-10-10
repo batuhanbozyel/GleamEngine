@@ -328,6 +328,15 @@ VkCommandBuffer VulkanSwapchain::AllocateCommandBuffer()
 	return commandBuffer;
 }
 
+VkFence VulkanSwapchain::CreateFence()
+{
+	VkFence fence = VK_NULL_HANDLE;
+	VkFenceCreateInfo createInfo{ VK_STRUCTURE_TYPE_FENCE_CREATE_INFO };
+	VK_CHECK(vkCreateFence(VulkanDevice::GetHandle(), &createInfo, nullptr, &fence));
+	mFrameObjects[mCurrentFrameIndex].fences.push_back(fence);
+	return fence;
+}
+
 VkRenderPass VulkanSwapchain::CreateRenderPass(const VkRenderPassCreateInfo& createInfo)
 {
 	VkRenderPass renderPass = VK_NULL_HANDLE;
@@ -351,6 +360,12 @@ void VulkanSwapchain::ObjectPool::Flush()
 		vkFreeCommandBuffers(VulkanDevice::GetHandle(), VulkanDevice::GetSwapchain().GetCommandPool(), static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());
 		commandBuffers.clear();
 	}
+
+	for (auto fence : fences)
+	{
+		vkDestroyFence(VulkanDevice::GetHandle(), fence, nullptr);
+	}
+	renderPasses.clear();
 	
 	for (auto renderPass : renderPasses)
 	{
