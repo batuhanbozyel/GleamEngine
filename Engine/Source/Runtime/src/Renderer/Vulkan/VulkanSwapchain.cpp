@@ -25,6 +25,12 @@ void VulkanSwapchain::Initialize()
 
 void VulkanSwapchain::Destroy()
 {
+	for (auto& pool : mFrameObjects)
+	{
+		pool.Flush();
+	}
+	mFrameObjects.clear();
+
 	// Destroy swapchain
 	vkDestroySwapchainKHR(VulkanDevice::GetHandle(), mHandle, nullptr);
 
@@ -307,12 +313,13 @@ void VulkanSwapchain::Configure(const RendererConfig& config)
 	commandPoolCreateInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 
 	mCommandPools.resize(mMaxFramesInFlight);
+	mFrameObjects.resize(mMaxFramesInFlight);
 	for (uint32_t i = 0; i < mMaxFramesInFlight; i++)
 	{
+		mFrameObjects[i].frameIdx = i;
 		commandPoolCreateInfo.queueFamilyIndex = VulkanDevice::GetGraphicsQueue().index;
 		VK_CHECK(vkCreateCommandPool(VulkanDevice::GetHandle(), &commandPoolCreateInfo, nullptr, &mCommandPools[i]));
 	}
-	mFrameObjects.resize(mMaxFramesInFlight);
 
 	EventDispatcher<RendererResizeEvent>::Publish(RendererResizeEvent(mSize));
 }
@@ -358,7 +365,7 @@ void VulkanSwapchain::ObjectPool::Flush()
 {
 	if (!commandBuffers.empty())
 	{
-		vkFreeCommandBuffers(VulkanDevice::GetHandle(), VulkanDevice::GetSwapchain().GetCommandPool(), static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());
+		vkFreeCommandBuffers(VulkanDevice::GetHandle(), VulkanDevice::GetSwapchain().GetCommandPool(frameIdx), static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());
 		commandBuffers.clear();
 	}
 
@@ -366,7 +373,7 @@ void VulkanSwapchain::ObjectPool::Flush()
 	{
 		vkDestroyFence(VulkanDevice::GetHandle(), fence, nullptr);
 	}
-	renderPasses.clear();
+	fences.clear();
 	
 	for (auto renderPass : renderPasses)
 	{
@@ -389,6 +396,11 @@ const VulkanDrawable& VulkanSwapchain::GetDrawable() const
 VkCommandPool VulkanSwapchain::GetCommandPool() const
 {
 	return mCommandPools[mCurrentFrameIndex];
+}
+
+VkCommandPool VulkanSwapchain::GetCommandPool(uint32_t frameIdx) const
+{
+	return mCommandPools[frameIdx];
 }
 
 VkFence VulkanSwapchain::GetFence() const

@@ -13,6 +13,11 @@
 
 using namespace Gleam;
 
+void RendererContext::WaitDeviceIdle() const
+{
+	VK_CHECK(vkDeviceWaitIdle(VulkanDevice::GetHandle()));
+}
+
 void RendererContext::ConfigureBackend()
 {
     VulkanDevice::Init();

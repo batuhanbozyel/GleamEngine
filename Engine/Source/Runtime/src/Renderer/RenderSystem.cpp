@@ -25,13 +25,14 @@ void RenderSystem::Initialize()
 
 void RenderSystem::Shutdown()
 {
+	mRendererContext.WaitDeviceIdle();
     for (auto renderer : mRenderers)
     {
         renderer->OnDestroy();
         delete renderer;
     }
-    
-    mRendererContext.Clear();
+
+	mRendererContext.Clear();
     mRendererContext.DestroyBackend();
 }
 

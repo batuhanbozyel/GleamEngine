@@ -31,6 +31,8 @@ public:
 
 	const VulkanDrawable& GetDrawable() const;
 
+	VkCommandPool GetCommandPool(uint32_t frameIdx) const;
+
 	VkCommandPool GetCommandPool() const;
 
 	VkFence GetFence() const;
@@ -51,6 +53,7 @@ private:
 
 	struct ObjectPool
 	{
+		uint32_t frameIdx;
 		TArray<VkRenderPass> renderPasses;
 		TArray<VkFramebuffer> framebuffers;
 		TArray<VkCommandBuffer> commandBuffers;
