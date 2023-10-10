@@ -19,7 +19,6 @@ using namespace Gleam;
 void RenderSystem::Initialize()
 {
     mRendererContext.ConfigureBackend();
-	mRenderTarget = Texture();
     AddRenderer<WorldRenderer>();
     AddRenderer<PostProcessStack>();
 }

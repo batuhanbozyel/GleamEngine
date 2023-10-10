@@ -292,12 +292,13 @@ void VulkanSwapchain::Configure(const RendererConfig& config)
 	mFences.resize(mMaxFramesInFlight);
 
 	VkSemaphoreCreateInfo semaphoreCreateInfo{ VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO };
-	VkFenceCreateInfo fenceCreateInfo{ VK_STRUCTURE_TYPE_FENCE_CREATE_INFO };
-
 	for (uint32_t i = 0; i < mMaxFramesInFlight; i++)
 	{
 		VK_CHECK(vkCreateSemaphore(VulkanDevice::GetHandle(), &semaphoreCreateInfo, nullptr, &mImageAcquireSemaphores[i]));
 		VK_CHECK(vkCreateSemaphore(VulkanDevice::GetHandle(), &semaphoreCreateInfo, nullptr, &mImageReleaseSemaphores[i]));
+
+		VkFenceCreateInfo fenceCreateInfo{ VK_STRUCTURE_TYPE_FENCE_CREATE_INFO };
+		if (i >= 1) { fenceCreateInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT; }
 		VK_CHECK(vkCreateFence(VulkanDevice::GetHandle(), &fenceCreateInfo, nullptr, &mFences[i]));
 	}
 
