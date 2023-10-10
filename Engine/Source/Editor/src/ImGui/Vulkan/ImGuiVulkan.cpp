@@ -83,7 +83,7 @@ ImGuiBackend::ImGuiBackend()
     init_info.PipelineCache = Gleam::VulkanDevice::GetPipelineCache();
 	init_info.DescriptorPool = gDescriptorPool;
     init_info.Subpass = 0;
-    init_info.MinImageCount = 2;
+    init_info.MinImageCount = Gleam::VulkanDevice::GetSwapchain().GetFramesInFlight();
     init_info.ImageCount = Gleam::VulkanDevice::GetSwapchain().GetFramesInFlight();
     init_info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
     init_info.CheckVkResultFn = [](VkResult result)
@@ -94,6 +94,14 @@ ImGuiBackend::ImGuiBackend()
 	ImGui_ImplVulkan_LoadFunctions([](const char* function_name, void*) { return vkGetInstanceProcAddr(Gleam::VulkanDevice::GetInstance(), function_name); });
 	ImGui_ImplSDL3_InitForVulkan(GameInstance->GetSubsystem<Gleam::WindowSystem>()->GetSDLWindow());
     ImGui_ImplVulkan_Init(&init_info, gRenderPass);
+
+	Gleam::CommandBuffer cmd;
+	cmd.Begin();
+	ImGui_ImplVulkan_CreateFontsTexture(Gleam::As<VkCommandBuffer>(cmd.GetHandle()));
+	cmd.End();
+	cmd.Commit();
+	cmd.WaitUntilCompleted();
+	ImGui_ImplVulkan_DestroyFontUploadObjects();
 }
 
 ImGuiBackend::~ImGuiBackend()

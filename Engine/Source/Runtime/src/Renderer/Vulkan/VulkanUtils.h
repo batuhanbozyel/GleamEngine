@@ -1,6 +1,7 @@
 #pragma once
 #ifdef USE_VULKAN_RENDERER
 #include <volk.h>
+#include <vk_mem_alloc.h>
 #include "Renderer/BufferDescriptor.h"
 #include "Renderer/TextureFormat.h"
 #include "Renderer/RenderPassDescriptor.h"
@@ -366,6 +367,18 @@ static constexpr VkColorComponentFlags ColorWriteMaskToVkColorComponentFlags(Col
 		case ColorWriteMask::Blue: return VK_COLOR_COMPONENT_B_BIT;
 		case ColorWriteMask::All: return VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
 		default: return VK_COLOR_COMPONENT_FLAG_BITS_MAX_ENUM;
+	}
+}
+
+static constexpr VmaMemoryUsage MemoryTypeToVmaMemoryUsage(MemoryType type)
+{
+	switch (type)
+	{
+		case MemoryType::GPU: return VMA_MEMORY_USAGE_GPU_ONLY;
+		case MemoryType::Shared: return VMA_MEMORY_USAGE_CPU_TO_GPU;
+		case MemoryType::CPU: return VMA_MEMORY_USAGE_CPU_ONLY;
+		case MemoryType::Transient: return VMA_MEMORY_USAGE_GPU_LAZILY_ALLOCATED;
+		default: return VMA_MEMORY_USAGE_MAX_ENUM;
 	}
 }
 

@@ -44,7 +44,6 @@ if (APPLE)
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/tinyobjloader
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/OpenFBX/src
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/cgltf
-        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/volk
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/SPIRV-Reflect
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/json/single_include
     )
@@ -65,6 +64,7 @@ else()
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/volk
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/SPIRV-Reflect
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/json/single_include
+        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/VulkanMemoryAllocator/include
     )
 endif()
 

@@ -1,6 +1,11 @@
 #include "gpch.h"
 
 #ifdef USE_VULKAN_RENDERER
+
+#define VMA_IMPLEMENTATION
+#define VMA_STATIC_VULKAN_FUNCTIONS 0
+#define VMA_DYNAMIC_VULKAN_FUNCTIONS 1
+
 #include "VulkanDevice.h"
 #include "VulkanPipelineStateManager.h"
 #include "Core/Application.h"
@@ -230,6 +235,19 @@ void VulkanDevice::Init()
 	VkPipelineCacheCreateInfo pipelineCacheCreateInfo{ VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO };
 	VK_CHECK(vkCreatePipelineCache(mHandle, &pipelineCacheCreateInfo, nullptr, &mPipelineCache));
 
+	// Create allocator
+	VmaVulkanFunctions vulkanFunctions = {};
+	vulkanFunctions.vkGetInstanceProcAddr = vkGetInstanceProcAddr;
+	vulkanFunctions.vkGetDeviceProcAddr = vkGetDeviceProcAddr;
+
+	VmaAllocatorCreateInfo vmaCreateInfo{};
+	vmaCreateInfo.instance = mInstance;
+	vmaCreateInfo.device = mHandle;
+	vmaCreateInfo.physicalDevice = mPhysicalDevice;
+	vmaCreateInfo.vulkanApiVersion = VULKAN_API_VERSION;
+	vmaCreateInfo.pVulkanFunctions = &vulkanFunctions;
+	VK_CHECK(vmaCreateAllocator(&vmaCreateInfo, &mAllocator));
+
 	VulkanPipelineStateManager::Init();
 
 	GLEAM_CORE_INFO("Vulkan: Graphics device created.");
@@ -240,6 +258,9 @@ void VulkanDevice::Destroy()
 	VK_CHECK(vkDeviceWaitIdle(mHandle));
 
 	VulkanPipelineStateManager::Destroy();
+
+	// Destroy allocator
+	vmaDestroyAllocator(mAllocator);
 
 	// Destroy pipeline cache
 	vkDestroyPipelineCache(mHandle, mPipelineCache, nullptr);
@@ -299,16 +320,8 @@ VkPipelineCache VulkanDevice::GetPipelineCache()
 	return mPipelineCache;
 }
 
-uint32_t VulkanDevice::GetMemoryTypeForProperties(uint32_t memoryTypeBits, uint32_t properties)
+VmaAllocator VulkanDevice::GetAllocator()
 {
-	for (uint32_t i = 0; i < mMemoryProperties.memoryTypeCount; i++)
-	{
-		if ((memoryTypeBits & BIT(i)) && (mMemoryProperties.memoryTypes[i].propertyFlags & properties) == properties)
-		{
-			return i;
-		}
-	}
-	GLEAM_ASSERT(false, "Vulkan: Suitable memory type could not found!");
-	return 0u;
+	return mAllocator;
 }
 #endif

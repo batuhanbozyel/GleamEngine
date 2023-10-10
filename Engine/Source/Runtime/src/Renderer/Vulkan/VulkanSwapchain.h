@@ -21,7 +21,17 @@ public:
 	const VulkanDrawable& AcquireNextDrawable();
 	void Present(VkCommandBuffer commandBuffer);
 
+	VkCommandBuffer AllocateCommandBuffer();
+
+	VkFence CreateFence();
+
+	VkRenderPass CreateRenderPass(const VkRenderPassCreateInfo& createInfo);
+
+	VkFramebuffer CreateFramebuffer(const VkFramebufferCreateInfo& createInfo);
+
 	const VulkanDrawable& GetDrawable() const;
+
+	VkCommandPool GetCommandPool(uint32_t frameIdx) const;
 
 	VkCommandPool GetCommandPool() const;
 
@@ -41,13 +51,25 @@ public:
 
 private:
 
+	struct ObjectPool
+	{
+		uint32_t frameIdx;
+		TArray<VkRenderPass> renderPasses;
+		TArray<VkFramebuffer> framebuffers;
+		TArray<VkCommandBuffer> commandBuffers;
+		TArray<VkFence> fences;
+
+		void Flush();
+	};
+	TArray<ObjectPool> mFrameObjects;
+
 	// Surface
 	VkSurfaceKHR mSurface{ VK_NULL_HANDLE };
 
 	// Frame
 	TArray<VulkanDrawable> mImages;
-	VkFormat mImageFormat;
-	uint32_t mImageIndex;
+	VkFormat mImageFormat = VK_FORMAT_UNDEFINED;
+	uint32_t mImageIndex = 0;
 	Size mSize = Size::zero;
 
 	// Command Pool

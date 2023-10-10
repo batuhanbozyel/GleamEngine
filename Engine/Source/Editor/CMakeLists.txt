@@ -19,7 +19,12 @@ file(GLOB_RECURSE SOURCE_FILES
 )
 
 add_executable(Editor WIN32 MACOSX_BUNDLE ${SOURCE_FILES})
-target_include_directories(Editor PRIVATE ${INCLUDE_DIRS} ${Vulkan_INCLUDE_DIRS} ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/volk)
+target_include_directories(Editor PRIVATE
+    ${INCLUDE_DIRS} 
+    ${Vulkan_INCLUDE_DIRS} 
+    ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/volk 
+    ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/VulkanMemoryAllocator/include
+)
 target_link_directories(Editor PRIVATE ${CMAKE_SOURCE_DIR}/bin/$<CONFIG>)
 
 # Add imgui as static library

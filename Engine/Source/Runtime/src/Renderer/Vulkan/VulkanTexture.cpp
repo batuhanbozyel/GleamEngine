@@ -47,16 +47,11 @@ Texture::Texture(const TextureDescriptor& descriptor, bool allocate)
 	createInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 	createInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 	createInfo.mipLevels = mMipMapLevels;
-	VK_CHECK(vkCreateImage(VulkanDevice::GetHandle(), &createInfo, nullptr, As<VkImage*>(&mHandle)));
 
-	VkMemoryRequirements memoryRequirements;
-	vkGetImageMemoryRequirements(VulkanDevice::GetHandle(), As<VkImage>(mHandle), &memoryRequirements);
-
-	VkMemoryAllocateInfo allocateInfo{ VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
-	allocateInfo.allocationSize = memoryRequirements.size;
-	allocateInfo.memoryTypeIndex = VulkanDevice::GetMemoryTypeForProperties(memoryRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-	VK_CHECK(vkAllocateMemory(VulkanDevice::GetHandle(), &allocateInfo, nullptr, As<VkDeviceMemory*>(&mHeap)));
-	VK_CHECK(vkBindImageMemory(VulkanDevice::GetHandle(), As<VkImage>(mHandle), As<VkDeviceMemory>(mHeap), 0));
+	VmaAllocationCreateInfo vmaCreateInfo{};
+	vmaCreateInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+	vmaCreateInfo.priority = 1.0f;
+	VK_CHECK(vmaCreateImage(VulkanDevice::GetAllocator(), &createInfo, &vmaCreateInfo, As<VkImage*>(&mHandle), As<VmaAllocation*>(&mHeap), nullptr));
 
 	VkImageViewCreateInfo viewCreateInfo{ VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
 	viewCreateInfo.image = As<VkImage>(mHandle);
@@ -91,18 +86,10 @@ Texture::Texture(const TextureDescriptor& descriptor, bool allocate)
 
 	if (mDescriptor.sampleCount > 1)
 	{
+		// TODO: Switch to memoryless MSAA render targets when Tile shading is supported
 		createInfo.samples = GetVkSampleCount(descriptor.sampleCount);
-		createInfo.usage = Utils::IsColorFormat(descriptor.format) ? VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT : VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT; // TODO: Switch to memoryless msaa render targets when Tile shading is supported
-		VK_CHECK(vkCreateImage(VulkanDevice::GetHandle(), &createInfo, nullptr, As<VkImage*>(&mMultisampleHandle)));
-
-		VkMemoryRequirements memoryRequirements;
-		vkGetImageMemoryRequirements(VulkanDevice::GetHandle(), As<VkImage>(mMultisampleHandle), &memoryRequirements);
-
-		VkMemoryAllocateInfo allocateInfo{ VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
-		allocateInfo.allocationSize = memoryRequirements.size;
-		allocateInfo.memoryTypeIndex = VulkanDevice::GetMemoryTypeForProperties(memoryRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT); // TODO: Switch to memoryless msaa render targets when Tile shading is supported
-		VK_CHECK(vkAllocateMemory(VulkanDevice::GetHandle(), &allocateInfo, nullptr, As<VkDeviceMemory*>(&mMultisampleHeap)));
-		VK_CHECK(vkBindImageMemory(VulkanDevice::GetHandle(), As<VkImage>(mMultisampleHandle), As<VkDeviceMemory>(mMultisampleHeap), 0));
+		createInfo.usage = Utils::IsColorFormat(descriptor.format) ? VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT : VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+		VK_CHECK(vmaCreateImage(VulkanDevice::GetAllocator(), &createInfo, &vmaCreateInfo, As<VkImage*>(&mMultisampleHandle), As<VmaAllocation*>(&mMultisampleHeap), nullptr));
 
 		viewCreateInfo.image = As<VkImage>(mMultisampleHandle);
 		VK_CHECK(vkCreateImageView(VulkanDevice::GetHandle(), &viewCreateInfo, nullptr, As<VkImageView*>(&mMultisampleView)));
@@ -118,15 +105,13 @@ void Texture::Dispose()
 {
     if (mHandle == nullptr) return;
     
-    vkDestroyImageView(VulkanDevice::GetHandle(), As<VkImageView>(mView), nullptr);
-    vkDestroyImage(VulkanDevice::GetHandle(), As<VkImage>(mHandle), nullptr);
-    vkFreeMemory(VulkanDevice::GetHandle(), As<VkDeviceMemory>(mHeap), nullptr);
+	vkDestroyImageView(VulkanDevice::GetHandle(), As<VkImageView>(mView), nullptr);
+	vmaDestroyImage(VulkanDevice::GetAllocator(), As<VkImage>(mHandle), As<VmaAllocation>(mHeap));
     
     if (mDescriptor.sampleCount > 1)
     {
         vkDestroyImageView(VulkanDevice::GetHandle(), As<VkImageView>(mMultisampleView), nullptr);
-        vkDestroyImage(VulkanDevice::GetHandle(), As<VkImage>(mMultisampleHandle), nullptr);
-        vkFreeMemory(VulkanDevice::GetHandle(), As<VkDeviceMemory>(mMultisampleHeap), nullptr);
+		vmaDestroyImage(VulkanDevice::GetAllocator(), As<VkImage>(mMultisampleHandle), As<VmaAllocation>(mMultisampleHeap));
     }
     
     mHeap = nullptr;

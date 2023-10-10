@@ -13,6 +13,11 @@
 
 using namespace Gleam;
 
+void RendererContext::WaitDeviceIdle() const
+{
+	
+}
+
 void RendererContext::ConfigureBackend()
 {
     MetalDevice::Init();

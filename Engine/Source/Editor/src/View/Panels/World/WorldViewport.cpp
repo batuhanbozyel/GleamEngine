@@ -8,8 +8,6 @@
 #include "WorldViewport.h"
 #include "WorldViewportController.h"
 
-#include "ImGui/ImGuiBackend.h"
-
 #include <imgui.h>
 
 using namespace GEditor;
