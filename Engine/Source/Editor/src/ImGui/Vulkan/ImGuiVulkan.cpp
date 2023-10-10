@@ -83,7 +83,7 @@ ImGuiBackend::ImGuiBackend()
     init_info.PipelineCache = Gleam::VulkanDevice::GetPipelineCache();
 	init_info.DescriptorPool = gDescriptorPool;
     init_info.Subpass = 0;
-    init_info.MinImageCount = 2;
+    init_info.MinImageCount = Gleam::VulkanDevice::GetSwapchain().GetFramesInFlight();
     init_info.ImageCount = Gleam::VulkanDevice::GetSwapchain().GetFramesInFlight();
     init_info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
     init_info.CheckVkResultFn = [](VkResult result)
