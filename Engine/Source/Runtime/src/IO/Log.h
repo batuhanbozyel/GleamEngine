@@ -52,14 +52,14 @@ public:
     
 private:
 
-	static constexpr TStringView LogLevelToString(Logger::Level lvl)
+	static constexpr TStringView LogLevelToString(Level lvl)
 	{
 		switch (lvl)
 		{
-			case Logger::Level::Trace: return "[trace] ";
-			case Logger::Level::Info: return "[info] ";
-			case Logger::Level::Warn: return "[warning] ";
-			case Logger::Level::Error: return "[error] ";
+			case Level::Trace: return "[trace] ";
+			case Level::Info: return "[info] ";
+			case Level::Warn: return "[warning] ";
+			case Level::Error: return "[error] ";
 			default: return "[undefined] ";
 		}
 	};

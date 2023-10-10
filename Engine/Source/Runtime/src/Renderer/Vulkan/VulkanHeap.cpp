@@ -23,43 +23,22 @@ Heap::Heap(const HeapDescriptor& descriptor)
 	createInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 	VK_CHECK(vkCreateBuffer(VulkanDevice::GetHandle(), &createInfo, nullptr, &buffer));
 
-	VkMemoryRequirements memoryRequirements;
-	vkGetBufferMemoryRequirements(VulkanDevice::GetHandle(), buffer, &memoryRequirements);
-
-	VkMemoryAllocateInfo allocateInfo{ VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
-	allocateInfo.allocationSize = memoryRequirements.size;
-
-	switch (descriptor.memoryType)
-	{
-		case MemoryType::GPU:
-		{
-			allocateInfo.memoryTypeIndex = VulkanDevice::GetMemoryTypeForProperties(memoryRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-			break;
-		}
-		case MemoryType::Shared:
-		{
-			allocateInfo.memoryTypeIndex = VulkanDevice::GetMemoryTypeForProperties(memoryRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-			break;
-		}
-		case MemoryType::CPU:
-		{
-			allocateInfo.memoryTypeIndex = VulkanDevice::GetMemoryTypeForProperties(memoryRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-			break;
-		}
-		default:
-		{
-			GLEAM_ASSERT(false, "Vulkan: Unknown memory type given!");
-			break;
-		}
-	}
-
-	VK_CHECK(vkAllocateMemory(VulkanDevice::GetHandle(), &allocateInfo, nullptr, As<VkDeviceMemory*>(&mHandle)));
+	VmaAllocationCreateInfo vmaCreateInfo{};
+	vmaCreateInfo.usage = MemoryTypeToVmaMemoryUsage(descriptor.memoryType);
+	vmaCreateInfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT;
+	vmaCreateInfo.priority = 1.0f;
+	VmaAllocationInfo vmaAllocationInfo{};
+	VK_CHECK(vmaAllocateMemoryForBuffer(VulkanDevice::GetAllocator(), buffer, &vmaCreateInfo, As<VmaAllocation*>(&mHandle), &vmaAllocationInfo));
 	vkDestroyBuffer(VulkanDevice::GetHandle(), buffer, nullptr);
 }
 
 void Heap::Dispose()
 {
-	vkFreeMemory(VulkanDevice::GetHandle(), As<VkDeviceMemory>(mHandle), nullptr);
+	if (mDescriptor.memoryType != MemoryType::GPU)
+	{
+		vmaUnmapMemory(VulkanDevice::GetAllocator(), As<VmaAllocation>(mHandle));
+	}
+	vmaFreeMemory(VulkanDevice::GetAllocator(), As<VmaAllocation>(mHandle));
 }
 
 Buffer Heap::CreateBuffer(const BufferDescriptor& descriptor, size_t offset) const
@@ -67,21 +46,22 @@ Buffer Heap::CreateBuffer(const BufferDescriptor& descriptor, size_t offset) con
 	VkBuffer buffer;
     VkBufferCreateInfo createInfo{ VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
 	createInfo.size = descriptor.size;
-	createInfo.usage = BufferUsageToVkBufferUsage(descriptor.usage);
+	createInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT | BufferUsageToVkBufferUsage(descriptor.usage);
 
 	if (mDescriptor.memoryType == MemoryType::GPU)
 	{
-		createInfo.usage |= VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+		createInfo.usage |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 	}
 
 	createInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 	VK_CHECK(vkCreateBuffer(VulkanDevice::GetHandle(), &createInfo, nullptr, &buffer));
-	VK_CHECK(vkBindBufferMemory(VulkanDevice::GetHandle(), buffer, As<VkDeviceMemory>(mHandle), offset));
+	VK_CHECK(vmaBindBufferMemory2(VulkanDevice::GetAllocator(), As<VmaAllocation>(mHandle), offset, buffer, nullptr));
 
     void* contents = nullptr;
     if (mDescriptor.memoryType != MemoryType::GPU)
 	{
-		VK_CHECK(vkMapMemory(VulkanDevice::GetHandle(), As<VkDeviceMemory>(mHandle), offset, descriptor.size, 0, &contents));
+		VK_CHECK(vmaMapMemory(VulkanDevice::GetAllocator(), As<VmaAllocation>(mHandle), &contents));
+		contents = static_cast<uint8_t*>(contents) + offset;
 	}
     return Buffer(buffer, descriptor, contents);
 }

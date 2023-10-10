@@ -33,7 +33,6 @@ CommandBuffer::CommandBuffer()
 
 CommandBuffer::~CommandBuffer()
 {
-    [mHandle->commandBuffer waitUntilCompleted];
     mHandle->commandBuffer = nil;
 }
 
@@ -273,6 +272,11 @@ void CommandBuffer::Blit(const Texture& texture, const Texture& target) const
     id<MTLBlitCommandEncoder> blitCommandEncoder = [mHandle->commandBuffer blitCommandEncoder];
     [blitCommandEncoder copyFromTexture:srcTexture toTexture:dstTexture];
     [blitCommandEncoder endEncoding];
+}
+
+void CommandBuffer::TransitionLayout(const Texture& texture, ResourceAccess access) const
+{
+	
 }
 
 void CommandBuffer::Begin() const

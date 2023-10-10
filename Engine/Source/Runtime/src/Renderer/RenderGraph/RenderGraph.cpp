@@ -148,6 +148,11 @@ void RenderGraph::Execute(const CommandBuffer* cmd)
                 resource.node->texture = mContext.CreateTexture(resource.node->texture.GetDescriptor());
             }
 		}
+
+		for (auto& resource : pass->textureReads)
+		{
+			cmd->TransitionLayout(resource.node->texture, ResourceAccess::Read);
+		}
         
         // execute render pass
         if (pass->isCustomPass())

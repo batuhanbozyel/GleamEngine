@@ -28,7 +28,7 @@ public:
 
 	static VkPipelineCache GetPipelineCache();
 
-	static uint32_t GetMemoryTypeForProperties(uint32_t memoryTypeBits, uint32_t properties);
+	static VmaAllocator GetAllocator();
 
 private:
 
@@ -60,6 +60,9 @@ private:
 	
 	// Swapchain
 	static inline VulkanSwapchain mSwapchain;
+
+	// VMA
+	static inline VmaAllocator mAllocator;
 };
 
 } // namespace Gleam

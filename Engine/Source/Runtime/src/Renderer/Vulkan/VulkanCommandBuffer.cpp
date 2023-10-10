@@ -4,6 +4,7 @@
 #include "Renderer/CommandBuffer.h"
 
 #include "VulkanPipelineStateManager.h"
+#include "VulkanTransitionManager.h"
 #include "VulkanShaderReflect.h"
 #include "VulkanDevice.h"
 
@@ -13,63 +14,30 @@ using namespace Gleam;
 
 struct CommandBuffer::Impl
 {
-	VkCommandPool allocatedCommandPool;
-	VkCommandBuffer commandBuffer;
-	VkFence frameFence;
+	VkCommandBuffer commandBuffer = VK_NULL_HANDLE;
+	VkFence fence = VK_NULL_HANDLE;
 
 	const VulkanPipeline* pipeline = nullptr;
 
-	VkRenderPass renderPass;
+	VkRenderPass renderPass = VK_NULL_HANDLE;
     bool swapchainTarget = false;
 
 	TArray<TextureDescriptor> colorAttachments;
 	TextureDescriptor depthAttachment;
 	bool hasDepthAttachment = false;
 	uint32_t sampleCount = 1;
-
-    // Move TempPool to VulkanDevice
-	struct TempPool
-	{
-		TArray<VkRenderPass> renderPasses;
-		TArray<VkFramebuffer> framebuffers;
-
-		void Flush()
-		{
-			for (auto renderPass : renderPasses)
-			{
-				vkDestroyRenderPass(VulkanDevice::GetHandle(), renderPass, nullptr);
-			}
-			renderPasses.clear();
-
-			for (auto framebuffer : framebuffers)
-			{
-				vkDestroyFramebuffer(VulkanDevice::GetHandle(), framebuffer, nullptr);
-			}
-			framebuffers.clear();
-		}
-	} tempPool;
 };
 
 CommandBuffer::CommandBuffer()
 	: mHandle(CreateScope<Impl>())
 {
-	mHandle->allocatedCommandPool = VulkanDevice::GetSwapchain().GetCommandPool();
-	mHandle->frameFence = VulkanDevice::GetSwapchain().GetFence();
-
-    // TODO: use VulkanDevice to allocate command buffer
-	VkCommandBufferAllocateInfo allocateInfo{ VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO };
-	allocateInfo.commandBufferCount = 1;
-	allocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-	allocateInfo.commandPool = mHandle->allocatedCommandPool;
-	VK_CHECK(vkAllocateCommandBuffers(VulkanDevice::GetHandle(), &allocateInfo, &mHandle->commandBuffer));
+	mHandle->fence = VulkanDevice::GetSwapchain().CreateFence();
+	mHandle->commandBuffer = VulkanDevice::GetSwapchain().AllocateCommandBuffer();
 }
 
 CommandBuffer::~CommandBuffer()
 {
-    // TODO: return command buffer to VulkanDevice to free
-	VK_CHECK(vkWaitForFences(VulkanDevice::GetHandle(), 1, &mHandle->frameFence, VK_TRUE, UINT64_MAX));
-	vkFreeCommandBuffers(VulkanDevice::GetHandle(), mHandle->allocatedCommandPool, 1, &mHandle->commandBuffer);
-	mHandle->tempPool.Flush();
+
 }
 
 void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, const TStringView debugName) const
@@ -100,7 +68,7 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, 
         depthAttachmentDesc.stencilLoadOp = depthAttachmentDesc.loadOp;
         depthAttachmentDesc.storeOp = AttachmentStoreActionToVkAttachmentStoreOp(renderPassDesc.depthAttachment.storeAction);
         depthAttachmentDesc.stencilStoreOp = depthAttachmentDesc.storeOp;
-        depthAttachmentDesc.initialLayout = renderPassDesc.depthAttachment.loadAction == AttachmentLoadAction::Load ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_UNDEFINED;
+		depthAttachmentDesc.initialLayout = VulkanTransitionManager::GetLayout(As<VkImage>(renderPassDesc.depthAttachment.texture.GetHandle()));
 		depthAttachmentDesc.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
         
         clearValues[depthAttachmentIndex] = {};
@@ -111,6 +79,7 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, 
         depthStencilAttachment.attachment = depthAttachmentIndex;
         depthStencilAttachment.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
         subpassDescriptors[0].pDepthStencilAttachment = &depthStencilAttachment;
+		VulkanTransitionManager::SetLayout(As<VkImage>(renderPassDesc.depthAttachment.texture.GetHandle()), VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
     }
     
     TArray<VkAttachmentReference> colorAttachments(renderPassDesc.colorAttachments.size());
@@ -137,11 +106,22 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, 
         colorAttachmentDesc.samples = GetVkSampleCount(renderPassDesc.samples);
         colorAttachmentDesc.loadOp = AttachmentLoadActionToVkAttachmentLoadOp(colorAttachment.loadAction);
         colorAttachmentDesc.storeOp = AttachmentStoreActionToVkAttachmentStoreOp(colorAttachment.storeAction);
-        colorAttachmentDesc.initialLayout = colorAttachment.loadAction == AttachmentLoadAction::Load ? VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_UNDEFINED;
-        colorAttachmentDesc.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        colorAttachmentDesc.initialLayout = VulkanTransitionManager::GetLayout(As<VkImage>(colorAttachment.texture.GetHandle()));
 
-        clearValues[i] = { colorAttachment.clearColor.r, colorAttachment.clearColor.g, colorAttachment.clearColor.b, colorAttachment.clearColor.a };
-        imageViews[i] = As<VkImageView>(colorAttachment.texture.GetView());
+		if (colorAttachment.texture.IsValid())
+		{
+			colorAttachmentDesc.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+			imageViews[i] = As<VkImageView>(colorAttachment.texture.GetView());
+			VulkanTransitionManager::SetLayout(As<VkImage>(colorAttachment.texture.GetHandle()), VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+		}
+		else
+		{
+			colorAttachmentDesc.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+			const auto& drawable = VulkanDevice::GetSwapchain().AcquireNextDrawable();
+			imageViews[i] = drawable.view;
+			VulkanTransitionManager::SetLayout(drawable.image, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+		}
+		clearValues[i] = { colorAttachment.clearColor.r, colorAttachment.clearColor.g, colorAttachment.clearColor.b, colorAttachment.clearColor.a };
     }
 
     subpassDescriptors[0] = {};
@@ -165,10 +145,8 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, 
 	renderPassCreateInfo.pSubpasses = subpassDescriptors.data();
 	renderPassCreateInfo.dependencyCount = static_cast<uint32_t>(subpassDependencies.size());
 	renderPassCreateInfo.pDependencies = subpassDependencies.data();
-	VK_CHECK(vkCreateRenderPass(VulkanDevice::GetHandle(), &renderPassCreateInfo, nullptr, &mHandle->renderPass));
-	mHandle->tempPool.renderPasses.push_back(mHandle->renderPass);
+	mHandle->renderPass = VulkanDevice::GetSwapchain().CreateRenderPass(renderPassCreateInfo);
 
-	VkFramebuffer framebuffer;
 	VkFramebufferCreateInfo framebufferCreateInfo{ VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO };
 	framebufferCreateInfo.renderPass = mHandle->renderPass;
 	framebufferCreateInfo.attachmentCount = static_cast<uint32_t>(imageViews.size());
@@ -176,8 +154,7 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, 
 	framebufferCreateInfo.width = static_cast<uint32_t>(renderPassDesc.size.width);
 	framebufferCreateInfo.height = static_cast<uint32_t>(renderPassDesc.size.height);
 	framebufferCreateInfo.layers = 1;
-	VK_CHECK(vkCreateFramebuffer(VulkanDevice::GetHandle(), &framebufferCreateInfo, nullptr, &framebuffer));
-	mHandle->tempPool.framebuffers.push_back(framebuffer);
+	VkFramebuffer framebuffer = VulkanDevice::GetSwapchain().CreateFramebuffer(framebufferCreateInfo);
 
 	VkRenderPassBeginInfo renderPassBeginInfo{ VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO };
 	renderPassBeginInfo.renderPass = mHandle->renderPass;
@@ -208,7 +185,7 @@ void CommandBuffer::BindGraphicsPipeline(const PipelineStateDescriptor& pipeline
 	vkCmdBindPipeline(mHandle->commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mHandle->pipeline->handle);
 
 	// Set vertex samplers
-	uint32_t samplerCount = vertexShader->GetReflection()->samplers.size() + fragmentShader->GetReflection()->samplers.size();
+	size_t samplerCount = vertexShader->GetReflection()->samplers.size() + fragmentShader->GetReflection()->samplers.size();
 	if (samplerCount > 0)
 	{
 		TArray<VkDescriptorImageInfo> samplerInfos;
@@ -242,7 +219,7 @@ void CommandBuffer::BindGraphicsPipeline(const PipelineStateDescriptor& pipeline
 			descriptorSet.pImageInfo = &samplerInfos.emplace_back(samplerInfo);
 			descriptorSets.emplace_back(descriptorSet);
 		}
-		vkCmdPushDescriptorSetKHR(mHandle->commandBuffer, mHandle->pipeline->bindPoint, mHandle->pipeline->layout, 0, descriptorSets.size(), descriptorSets.data());
+		vkCmdPushDescriptorSetKHR(mHandle->commandBuffer, mHandle->pipeline->bindPoint, mHandle->pipeline->layout, 0, static_cast<uint32_t>(descriptorSets.size()), descriptorSets.data());
 	}
 }
 
@@ -346,9 +323,19 @@ void CommandBuffer::BindTexture(const NativeGraphicsHandle texture, uint32_t ind
         }
 	}();
 
+	auto imageLayout = [=]()
+	{
+		switch (access)
+		{
+			case ResourceAccess::Read: return VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			case ResourceAccess::Write: return VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+			default: return VK_IMAGE_LAYOUT_GENERAL;
+		}
+	}();
+
 	VkDescriptorImageInfo imageInfo{};
 	imageInfo.imageView = As<VkImageView>(texture);
-	imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL; // TODO: Set appropriate image layout
+	imageInfo.imageLayout = imageLayout;
 
 	VkWriteDescriptorSet descriptorSet{ VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
 	descriptorSet.dstBinding = resource->binding;
@@ -401,25 +388,7 @@ void CommandBuffer::Blit(const Texture& texture, const Texture& target) const
 
 	if (mHandle->swapchainTarget)
 	{
-		VkImageMemoryBarrier imageBarrier{ VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
-		imageBarrier.srcAccessMask = VK_FLAGS_NONE;
-		imageBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-		imageBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-		imageBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-		imageBarrier.image = targetTexture;
-		imageBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-		imageBarrier.subresourceRange.layerCount = 1;
-		imageBarrier.subresourceRange.baseArrayLayer = 0;
-		imageBarrier.subresourceRange.levelCount = 1;
-		imageBarrier.subresourceRange.baseMipLevel = 0;
-
-		vkCmdPipelineBarrier(mHandle->commandBuffer,
-			VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-			VK_PIPELINE_STAGE_TRANSFER_BIT,
-			VK_FLAGS_NONE,
-			0, nullptr,
-			0, nullptr,
-			1, &imageBarrier);
+		VulkanTransitionManager::TransitionLayout(mHandle->commandBuffer, targetTexture, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 	}
 
 	VkImageCopy region{};
@@ -434,26 +403,22 @@ void CommandBuffer::Blit(const Texture& texture, const Texture& target) const
 
 	if (mHandle->swapchainTarget)
 	{
-		VkImageMemoryBarrier imageBarrier{ VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
-		imageBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-		imageBarrier.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
-		imageBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-		imageBarrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-		imageBarrier.image = targetTexture;
-		imageBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-		imageBarrier.subresourceRange.layerCount = 1;
-		imageBarrier.subresourceRange.baseArrayLayer = 0;
-		imageBarrier.subresourceRange.levelCount = 1;
-		imageBarrier.subresourceRange.baseMipLevel = 0;
-
-		vkCmdPipelineBarrier(mHandle->commandBuffer,
-			VK_PIPELINE_STAGE_TRANSFER_BIT,
-			VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-			VK_FLAGS_NONE,
-			0, nullptr,
-			0, nullptr,
-			1, &imageBarrier);
+		VulkanTransitionManager::TransitionLayout(mHandle->commandBuffer, targetTexture, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
 	}
+}
+
+void CommandBuffer::TransitionLayout(const Texture& texture, ResourceAccess access) const
+{
+	auto imageLayout = [=]()
+	{
+		switch (access)
+		{
+			case ResourceAccess::Read: return VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			case ResourceAccess::Write: return VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+			default: return VK_IMAGE_LAYOUT_GENERAL;
+		}
+	}();
+	VulkanTransitionManager::TransitionLayout(mHandle->commandBuffer, As<VkImage>(texture.GetHandle()), imageLayout);
 }
 
 void CommandBuffer::Begin() const
@@ -473,7 +438,7 @@ void CommandBuffer::Commit() const
 	VkSubmitInfo submitInfo{ VK_STRUCTURE_TYPE_SUBMIT_INFO };
 	submitInfo.commandBufferCount = 1;
 	submitInfo.pCommandBuffers = &mHandle->commandBuffer;
-	VK_CHECK(vkQueueSubmit(VulkanDevice::GetGraphicsQueue().handle, 1, &submitInfo, mHandle->frameFence));
+	VK_CHECK(vkQueueSubmit(VulkanDevice::GetGraphicsQueue().handle, 1, &submitInfo, mHandle->fence));
 }
 
 void CommandBuffer::Present() const
@@ -483,7 +448,7 @@ void CommandBuffer::Present() const
 
 void CommandBuffer::WaitUntilCompleted() const
 {
-	VK_CHECK(vkWaitForFences(VulkanDevice::GetHandle(), 1, &mHandle->frameFence, VK_TRUE, UINT64_MAX));
+	VK_CHECK(vkWaitForFences(VulkanDevice::GetHandle(), 1, &mHandle->fence, VK_TRUE, UINT64_MAX));
 }
 
 NativeGraphicsHandle CommandBuffer::GetHandle() const

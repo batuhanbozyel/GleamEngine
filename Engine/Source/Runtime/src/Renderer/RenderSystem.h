@@ -126,8 +126,6 @@ private:
     
     RendererContext mRendererContext;
     
-    Scope<CommandBuffer> mCommandBuffer;
-    
     Texture mRenderTarget;
     
 };

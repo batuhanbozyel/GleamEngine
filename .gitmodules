@@ -34,3 +34,6 @@
 [submodule "Engine/ThirdParty/json"]
 	path = Engine/ThirdParty/json
 	url = https://github.com/nlohmann/json
+[submodule "Engine/ThirdParty/VulkanMemoryAllocator"]
+	path = Engine/ThirdParty/VulkanMemoryAllocator
+	url = https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator

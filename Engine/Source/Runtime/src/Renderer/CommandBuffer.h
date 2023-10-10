@@ -30,9 +30,9 @@ class CommandBuffer final
 {
 public:
     
-    CommandBuffer();
+	CommandBuffer();
 
-    ~CommandBuffer();
+	~CommandBuffer();
     
     void BeginRenderPass(const RenderPassDescriptor& renderPassDesc, const TStringView debugName = "") const;
 
@@ -115,6 +115,8 @@ public:
     }
     
     void Blit(const Texture& texture, const Texture& renderTarget) const;
+
+	void TransitionLayout(const Texture& texture, ResourceAccess access) const;
 
     void Begin() const;
 

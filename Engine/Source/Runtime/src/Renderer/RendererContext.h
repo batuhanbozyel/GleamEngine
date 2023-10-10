@@ -31,6 +31,8 @@ public:
     const Size& GetDrawableSize() const;
 
 private:
+
+	void WaitDeviceIdle() const;
     
     void ConfigureBackend();
     
