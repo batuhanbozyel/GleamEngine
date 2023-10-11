@@ -1,6 +1,5 @@
 #pragma once
 #include "Gleam.h"
-#include "ImGuiBackend.h"
 
 namespace GEditor {
 
@@ -13,10 +12,6 @@ public:
 	virtual void OnDestroy() override;
 
 	virtual void AddRenderPasses(Gleam::RenderGraph& graph, Gleam::RenderGraphBlackboard& blackboard) override;
-    
-private:
-    
-    Gleam::Scope<ImGuiBackend> mBackend;
     
 };
 
