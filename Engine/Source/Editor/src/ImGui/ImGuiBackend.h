@@ -1,5 +1,6 @@
 #pragma once
 #include "Gleam.h"
+#include <imgui.h>
 
 namespace GEditor {
 
@@ -7,13 +8,15 @@ class ImGuiBackend
 {
 public:
 
-	ImGuiBackend();
+	static void Init();
 
-	~ImGuiBackend();
+	static void Destroy();
 
-	void BeginFrame() const;
+	static void BeginFrame();
 
-	void EndFrame(NativeGraphicsHandle commandBuffer, NativeGraphicsHandle renderCommandEncoder) const;
+	static void EndFrame(NativeGraphicsHandle commandBuffer, NativeGraphicsHandle renderCommandEncoder);
+
+	static ImTextureID GetImTextureIDForTexture(const Gleam::Texture& texture);
 
 };
 

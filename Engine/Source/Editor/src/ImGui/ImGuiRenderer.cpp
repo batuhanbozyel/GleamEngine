@@ -1,7 +1,6 @@
 #include "ImGuiRenderer.h"
+#include "ImGuiBackend.h"
 #include "View/ViewStack.h"
-
-#include <imgui.h>
 
 #include "backends/imgui_impl_sdl3.h"
 
@@ -16,7 +15,7 @@ void ImGuiRenderer::OnCreate(Gleam::RendererContext& context)
     io.ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange;
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable | ImGuiConfigFlags_ViewportsEnable;
     
-	mBackend = Gleam::CreateScope<ImGuiBackend>();
+	ImGuiBackend::Init();
     GameInstance->SetEventHandler([](const SDL_Event* e)
     {
         ImGui_ImplSDL3_ProcessEvent(e);
@@ -25,7 +24,7 @@ void ImGuiRenderer::OnCreate(Gleam::RendererContext& context)
 
 void ImGuiRenderer::OnDestroy()
 {
-	mBackend.reset();
+	ImGuiBackend::Destroy();
     ImGui::DestroyContext();
 }
 
@@ -46,7 +45,7 @@ void ImGuiRenderer::AddRenderPasses(Gleam::RenderGraph& graph, Gleam::RenderGrap
 	},
     [this](const Gleam::CommandBuffer* cmd, const ImGuiPassData& passData)
     {
-        mBackend->BeginFrame();
+		ImGuiBackend::BeginFrame();
         ImGui::NewFrame();
         
         ImGuiWindowFlags window_flags = ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoDocking;
@@ -80,7 +79,7 @@ void ImGuiRenderer::AddRenderPasses(Gleam::RenderGraph& graph, Gleam::RenderGrap
         io.DisplaySize = ImVec2(resolution.width, resolution.height);
 
         ImGui::Render();
-        mBackend->EndFrame(cmd->GetHandle(), cmd->GetActiveRenderPass());
+		ImGuiBackend::EndFrame(cmd->GetHandle(), cmd->GetActiveRenderPass());
         
         ImGui::UpdatePlatformWindows();
         ImGui::RenderPlatformWindowsDefault();

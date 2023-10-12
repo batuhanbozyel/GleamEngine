@@ -386,6 +386,17 @@ void VulkanSwapchain::ObjectPool::Flush()
 		vkDestroyFramebuffer(VulkanDevice::GetHandle(), framebuffer, nullptr);
 	}
 	framebuffers.clear();
+
+	for (auto& [object, deallocator] : externalObjects)
+	{
+		deallocator(object);
+	}
+	externalObjects.clear();
+}
+
+void VulkanSwapchain::AddPooledObject(void* object, std::function<void(void*)> deallocator)
+{
+	mFrameObjects[mCurrentFrameIndex].externalObjects.push_back(std::make_pair(object, deallocator));
 }
 
 const VulkanDrawable& VulkanSwapchain::GetDrawable() const

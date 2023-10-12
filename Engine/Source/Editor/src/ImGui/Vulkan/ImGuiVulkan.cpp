@@ -4,6 +4,7 @@ using namespace GEditor;
 
 #ifdef USE_VULKAN_RENDERER
 #include "Renderer/Vulkan/VulkanDevice.h"
+#include "Renderer/Vulkan/VulkanPipelineStateManager.h"
 
 #include "ImGui/imgui_impl_sdl3.h"
 #include "imgui_impl_vulkan.h"
@@ -11,7 +12,7 @@ using namespace GEditor;
 static VkDescriptorPool gDescriptorPool = VK_NULL_HANDLE;
 static VkRenderPass gRenderPass = VK_NULL_HANDLE;
 
-ImGuiBackend::ImGuiBackend()
+void ImGuiBackend::Init()
 {
 	// Create descriptor pool
 	VkDescriptorPoolSize pool_sizes[] =
@@ -104,7 +105,7 @@ ImGuiBackend::ImGuiBackend()
 	ImGui_ImplVulkan_DestroyFontUploadObjects();
 }
 
-ImGuiBackend::~ImGuiBackend()
+void ImGuiBackend::Destroy()
 {
     ImGui_ImplVulkan_Shutdown();
     ImGui_ImplSDL3_Shutdown();
@@ -113,15 +114,25 @@ ImGuiBackend::~ImGuiBackend()
 	vkDestroyRenderPass(Gleam::VulkanDevice::GetHandle(), gRenderPass, nullptr);
 }
 
-void ImGuiBackend::BeginFrame() const
+void ImGuiBackend::BeginFrame()
 {
     ImGui_ImplVulkan_NewFrame();
     ImGui_ImplSDL3_NewFrame();
 }
 
-void ImGuiBackend::EndFrame(NativeGraphicsHandle commandBuffer, NativeGraphicsHandle renderPass) const
+void ImGuiBackend::EndFrame(NativeGraphicsHandle commandBuffer, NativeGraphicsHandle renderPass)
 {
     ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), Gleam::As<VkCommandBuffer>(commandBuffer));
+}
+
+ImTextureID ImGuiBackend::GetImTextureIDForTexture(const Gleam::Texture& texture)
+{
+	auto textureID = ImGui_ImplVulkan_AddTexture(Gleam::VulkanPipelineStateManager::GetSampler(0), Gleam::As<VkImageView>(texture.GetView()), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+	Gleam::VulkanDevice::GetSwapchain().AddPooledObject(textureID, [](void* object)
+	{
+		ImGui_ImplVulkan_RemoveTexture(Gleam::As<VkDescriptorSet>(object));
+	});
+	return textureID;
 }
 
 #endif

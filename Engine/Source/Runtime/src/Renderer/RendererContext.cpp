@@ -12,7 +12,7 @@ Heap RendererContext::CreateHeap(const HeapDescriptor& descriptor)
     
     if (it != mFreeHeaps.end())
     {
-        auto heap = *it;
+        auto& heap = *it;
         mFreeHeaps.erase(it);
         return heap;
     }
@@ -28,7 +28,7 @@ Texture RendererContext::CreateTexture(const TextureDescriptor& descriptor)
     
     if (it != mFreeTextures.end())
     {
-        auto texture = *it;
+        auto& texture = *it;
         mFreeTextures.erase(it);
         return texture;
     }

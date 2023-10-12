@@ -29,6 +29,8 @@ public:
 
 	VkFramebuffer CreateFramebuffer(const VkFramebufferCreateInfo& createInfo);
 
+	void AddPooledObject(void* object, std::function<void(void*)> deallocator);
+
 	const VulkanDrawable& GetDrawable() const;
 
 	VkCommandPool GetCommandPool(uint32_t frameIdx) const;
@@ -58,6 +60,9 @@ private:
 		TArray<VkFramebuffer> framebuffers;
 		TArray<VkCommandBuffer> commandBuffers;
 		TArray<VkFence> fences;
+
+		using CustomObject = std::pair<void*, std::function<void(void*)>>;
+		TArray<CustomObject> externalObjects;
 
 		void Flush();
 	};

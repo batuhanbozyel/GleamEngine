@@ -8,7 +8,7 @@
 #include "WorldViewport.h"
 #include "WorldViewportController.h"
 
-#include <imgui.h>
+#include "ImGui/ImGuiBackend.h"
 
 using namespace GEditor;
 
@@ -55,8 +55,8 @@ void WorldViewport::Render()
     ImVec2 viewportSize = ImGui::GetContentRegionAvail();
     mViewportSize.width = viewportSize.x;
     mViewportSize.height = viewportSize.y;
-    
-    ImGui::Image((ImTextureID)sceneRT.GetHandle(), ImVec2(sceneRTsize.width, sceneRTsize.height), ImVec2(0.0f, 0.0f), ImVec2(1.0f, 1.0f));
+
+    ImGui::Image(ImGuiBackend::GetImTextureIDForTexture(sceneRT), ImVec2(sceneRTsize.width, sceneRTsize.height), ImVec2(0.0f, 0.0f), ImVec2(1.0f, 1.0f));
     mIsFocused = ImGui::IsWindowFocused();
     
     ImGui::End();

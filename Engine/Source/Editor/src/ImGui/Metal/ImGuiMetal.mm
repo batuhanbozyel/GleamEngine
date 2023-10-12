@@ -8,19 +8,19 @@ using namespace GEditor;
 #include "ImGui/imgui_impl_sdl3.h"
 #include "imgui_impl_metal.h"
 
-ImGuiBackend::ImGuiBackend()
+void ImGuiBackend::Init()
 {
     ImGui_ImplMetal_Init(Gleam::MetalDevice::GetHandle());
     ImGui_ImplSDL3_InitForMetal(GameInstance->GetSubsystem<Gleam::WindowSystem>()->GetSDLWindow());
 }
 
-ImGuiBackend::~ImGuiBackend()
+void ImGuiBackend::Destroy()
 {
     ImGui_ImplMetal_Shutdown();
     ImGui_ImplSDL3_Shutdown();
 }
 
-void ImGuiBackend::BeginFrame() const
+void ImGuiBackend::BeginFrame()
 {
     MTLRenderPassDescriptor* renderPassDesc = [MTLRenderPassDescriptor new];
     MTLRenderPassColorAttachmentDescriptor* colorAttachmentDesc = renderPassDesc.colorAttachments[0];
@@ -33,9 +33,14 @@ void ImGuiBackend::BeginFrame() const
     ImGui_ImplSDL3_NewFrame();
 }
 
-void ImGuiBackend::EndFrame(NativeGraphicsHandle commandBuffer, NativeGraphicsHandle renderCommandEncoder) const
+void ImGuiBackend::EndFrame(NativeGraphicsHandle commandBuffer, NativeGraphicsHandle renderCommandEncoder)
 {
     ImGui_ImplMetal_RenderDrawData(ImGui::GetDrawData(), commandBuffer, renderCommandEncoder);
+}
+
+ImTextureID ImGuiBackend::GetImTextureIDForTexture(const Gleam::Texture& texture)
+{
+	return (ImTextureID)texture.GetHandle();
 }
 
 #endif
