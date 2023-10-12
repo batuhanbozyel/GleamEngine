@@ -35,6 +35,8 @@ private:
 
     Size mSize = Size::zero;
     
+    MTLPixelFormat mFormat = MTLPixelFormatInvalid;
+    
     void* mSurface = nullptr;
 	
     dispatch_semaphore_t mImageAcquireSemaphore;

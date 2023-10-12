@@ -79,7 +79,7 @@ Application::Application(const ApplicationProperties& props)
 		renderSubsystem->SetRenderTarget(Texture());
         
         AddSubsystem<InputSystem>();
-		AddSubsystem<MaterialSystem>();
+        AddSubsystem<MaterialSystem>();
         
         World::active = World::Create();
         

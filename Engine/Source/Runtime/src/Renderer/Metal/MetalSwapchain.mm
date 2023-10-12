@@ -32,6 +32,7 @@ void MetalSwapchain::Initialize()
     mSize = resolution * mHandle.contentsScale;
     mHandle.frame.size = CGSizeMake(mSize.width, mSize.height);
     mHandle.drawableSize = CGSizeMake(resolution.width, resolution.height);
+    mFormat = mHandle.pixelFormat;
     
     EventDispatcher<WindowResizeEvent>::Subscribe([this](const WindowResizeEvent& e)
     {
@@ -102,7 +103,7 @@ void MetalSwapchain::Present(id<MTLCommandBuffer> commandBuffer)
 
 TextureFormat MetalSwapchain::GetFormat() const
 {
-    return MTLPixelFormatToTextureFormat(mHandle.pixelFormat);
+    return MTLPixelFormatToTextureFormat(mFormat);
 }
 
 CAMetalLayer* MetalSwapchain::GetHandle() const

@@ -220,7 +220,7 @@ void RenderGraph::Execute(const CommandBuffer* cmd)
     {
         for (auto& resource : pass->bufferCreates)
         {
-			resource.node->buffer.Dispose(); // TODO: wait for frame to finish rendering
+			resource.node->buffer.Dispose();
         }
     }
     
