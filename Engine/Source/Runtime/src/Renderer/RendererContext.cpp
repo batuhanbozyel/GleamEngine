@@ -10,6 +10,7 @@ RendererContext::RendererContext()
         auto& releasedTextures = mDeferredReleasedTextures[e.GetFrameIndex()];
         for (const auto& texture : releasedTextures)
         {
+            GLEAM_ASSERT(texture.IsValid());
             mFreeTextures.push_back(texture);
         }
         releasedTextures.clear();
@@ -17,6 +18,7 @@ RendererContext::RendererContext()
         auto& releasedHeaps = mDeferredReleasedHeaps[e.GetFrameIndex()];
         for (const auto& heap : releasedHeaps)
         {
+            GLEAM_ASSERT(heap.IsValid());
             mFreeHeaps.push_back(heap);
         }
         releasedHeaps.clear();
@@ -34,6 +36,7 @@ Heap RendererContext::CreateHeap(const HeapDescriptor& descriptor)
     {
         auto heap = *it;
         mFreeHeaps.erase(it);
+        GLEAM_ASSERT(heap.IsValid());
         return heap;
     }
     return Heap(descriptor);
@@ -50,6 +53,7 @@ Texture RendererContext::CreateTexture(const TextureDescriptor& descriptor)
     {
         auto texture = *it;
         mFreeTextures.erase(it);
+        GLEAM_ASSERT(texture.IsValid());
         return texture;
     }
     return Texture(descriptor);
@@ -69,11 +73,13 @@ const RefCounted<Shader>& RendererContext::CreateShader(const TString& entryPoin
 
 void RendererContext::ReleaseHeap(const Heap& heap)
 {
+    GLEAM_ASSERT(heap.IsValid());
     mDeferredReleasedHeaps[GetFrameIndex()].push_back(heap);
 }
 
 void RendererContext::ReleaseTexture(const Texture& texture)
 {
+    GLEAM_ASSERT(texture.IsValid());
     mDeferredReleasedTextures[GetFrameIndex()].push_back(texture);
 }
 
