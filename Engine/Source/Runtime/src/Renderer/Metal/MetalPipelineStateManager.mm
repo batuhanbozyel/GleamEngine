@@ -8,15 +8,15 @@ using namespace Gleam;
 static size_t PipelineHasher(const PipelineStateDescriptor& pipelineDesc, const TArray<TextureDescriptor>& colorAttachments, const TextureDescriptor& depthAttachment, const RefCounted<Shader>& vertexShader, const RefCounted<Shader>& fragmentShader, uint32_t sampleCount)
 {
     size_t hash = 0;
-    hash_combine(hash, std::hash<PipelineStateDescriptor>()(pipelineDesc));
-    hash_combine(hash, std::hash<RefCounted<Shader>>()(vertexShader));
-    hash_combine(hash, std::hash<RefCounted<Shader>>()(fragmentShader));
+    hash_combine(hash, pipelineDesc);
+    hash_combine(hash, vertexShader);
+    hash_combine(hash, fragmentShader);
     for (const auto& colorAttachment : colorAttachments)
     {
-        hash_combine(hash, std::hash<TextureDescriptor>()(colorAttachment));
+        hash_combine(hash, colorAttachment);
     }
-    hash_combine(hash, std::hash<Gleam::TextureDescriptor>()(depthAttachment));
-    hash_combine(hash, std::hash<uint32_t>()(sampleCount));
+    hash_combine(hash, depthAttachment);
+    hash_combine(hash, sampleCount);
     return hash;
 }
 
