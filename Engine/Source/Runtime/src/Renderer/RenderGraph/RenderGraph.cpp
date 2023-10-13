@@ -144,6 +144,7 @@ void RenderGraph::Execute(const CommandBuffer* cmd)
             {
                 resource.node->buffer = heap.CreateBuffer(resource.node->buffer.GetDescriptor(), bufferOffset);
                 bufferOffset += resource.node->buffer.GetDescriptor().size;
+                GLEAM_ASSERT(resource.node->buffer.IsValid());
             }
         }
 
@@ -153,6 +154,7 @@ void RenderGraph::Execute(const CommandBuffer* cmd)
             if (HasResource(pass->textureWrites, resource))
             {
                 resource.node->texture = mContext.CreateTexture(resource.node->texture.GetDescriptor());
+                GLEAM_ASSERT(resource.node->texture.IsValid());
             }
 		}
 

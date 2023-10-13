@@ -98,6 +98,7 @@ const Texture& RenderSystem::GetRenderTarget() const
 void RenderSystem::SetRenderTarget(const TextureDescriptor& descriptor)
 {
     mRenderTarget = mRendererContext.CreateTexture(descriptor);
+    GLEAM_ASSERT(mRenderTarget.IsValid());
 }
 
 void RenderSystem::SetRenderTarget(const Texture& texture)
