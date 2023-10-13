@@ -32,7 +32,7 @@ void MetalSwapchain::Initialize()
     mSize = resolution * mHandle.contentsScale;
     mHandle.frame.size = CGSizeMake(mSize.width, mSize.height);
     mHandle.drawableSize = CGSizeMake(resolution.width, resolution.height);
-    mFormat = mHandle.pixelFormat;
+    mImageFormat = mHandle.pixelFormat;
     
     EventDispatcher<WindowResizeEvent>::Subscribe([this](const WindowResizeEvent& e)
     {
@@ -75,6 +75,7 @@ void MetalSwapchain::Configure(const RendererConfig& config)
         mMaxFramesInFlight = 1;
         GLEAM_ASSERT(false, "Metal: Neither triple nor double buffering is available!");
     }
+    EventDispatcher<RendererResizeEvent>::Publish(RendererResizeEvent(mSize));
 }
 
 id<CAMetalDrawable> MetalSwapchain::AcquireNextDrawable()
@@ -89,9 +90,11 @@ id<CAMetalDrawable> MetalSwapchain::AcquireNextDrawable()
 
 void MetalSwapchain::Present(id<MTLCommandBuffer> commandBuffer)
 {
+    uint32_t frameIndex = mCurrentFrameIndex;
     [commandBuffer addCompletedHandler:^(id<MTLCommandBuffer> commandBuffer)
     {
         dispatch_semaphore_signal(mImageAcquireSemaphore);
+        EventDispatcher<RendererPresentEvent>::Publish(RendererPresentEvent(frameIndex));
     }];
     
     [commandBuffer presentDrawable:mDrawable];
@@ -101,9 +104,14 @@ void MetalSwapchain::Present(id<MTLCommandBuffer> commandBuffer)
     mDrawable = nil;
 }
 
+dispatch_semaphore_t MetalSwapchain::GetSemaphore() const
+{
+    return mImageAcquireSemaphore;
+}
+
 TextureFormat MetalSwapchain::GetFormat() const
 {
-    return MTLPixelFormatToTextureFormat(mFormat);
+    return MTLPixelFormatToTextureFormat(mImageFormat);
 }
 
 CAMetalLayer* MetalSwapchain::GetHandle() const
@@ -114,6 +122,16 @@ CAMetalLayer* MetalSwapchain::GetHandle() const
 const Gleam::Size& MetalSwapchain::GetSize() const
 {
     return mSize;
+}
+
+uint32_t MetalSwapchain::GetFrameIndex() const
+{
+    return mCurrentFrameIndex;
+}
+
+uint32_t MetalSwapchain::GetFramesInFlight() const
+{
+    return mMaxFramesInFlight;
 }
 
 #endif

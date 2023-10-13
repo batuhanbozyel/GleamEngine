@@ -28,9 +28,21 @@ void RendererContext::DestroyBackend()
     VulkanDevice::Destroy();
 }
 
-void RendererContext::Configure(const RendererConfig& config) const
+void RendererContext::Configure(const RendererConfig& config)
 {
     VulkanDevice::GetSwapchain().Configure(config);
+    mDeferredReleasedHeaps.resize(VulkanDevice::GetSwapchain().GetFramesInFlight());
+    mDeferredReleasedTextures.resize(VulkanDevice::GetSwapchain().GetFramesInFlight());
+}
+
+uint32_t RendererContext::GetFrameIndex() const
+{
+    return VulkanDevice::GetSwapchain().GetFrameIndex();
+}
+
+uint32_t RendererContext::GetFramesInFlight() const
+{
+    return VulkanDevice::GetSwapchain().GetFramesInFlight();
 }
 
 const Gleam::Size& RendererContext::GetDrawableSize() const

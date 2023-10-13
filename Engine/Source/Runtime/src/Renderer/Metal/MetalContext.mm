@@ -15,7 +15,7 @@ using namespace Gleam;
 
 void RendererContext::WaitDeviceIdle() const
 {
-	
+    
 }
 
 void RendererContext::ConfigureBackend()
@@ -28,9 +28,21 @@ void RendererContext::DestroyBackend()
     MetalDevice::Destroy();
 }
 
-void RendererContext::Configure(const RendererConfig& config) const
+void RendererContext::Configure(const RendererConfig& config)
 {
     MetalDevice::GetSwapchain().Configure(config);
+    mDeferredReleasedHeaps.resize(MetalDevice::GetSwapchain().GetFramesInFlight());
+    mDeferredReleasedTextures.resize(MetalDevice::GetSwapchain().GetFramesInFlight());
+}
+
+uint32_t RendererContext::GetFrameIndex() const
+{
+    return MetalDevice::GetSwapchain().GetFrameIndex();
+}
+
+uint32_t RendererContext::GetFramesInFlight() const
+{
+    return MetalDevice::GetSwapchain().GetFramesInFlight();
 }
 
 const Gleam::Size& RendererContext::GetDrawableSize() const

@@ -11,6 +11,27 @@ public:
 
 };
 
+class RendererPresentEvent : public Event
+{
+public:
+    
+    RendererPresentEvent(uint32_t frameIdx)
+        : mFrameIndex(frameIdx)
+    {
+        
+    }
+    
+    uint32_t GetFrameIndex() const
+    {
+        return mFrameIndex;
+    }
+    
+private:
+    
+    uint32_t mFrameIndex;
+    
+};
+
 class RendererResizeEvent : public Event
 {
 public:
@@ -23,7 +44,7 @@ public:
 	TString ToString() const override
 	{
 		TStringStream ss;
-		ss << "RendererDrawableResizeEvent: " << mSize.width << ", " << mSize.height;
+		ss << "RendererResizeEvent: " << mSize.width << ", " << mSize.height;
 		return ss.str();
 	}
 

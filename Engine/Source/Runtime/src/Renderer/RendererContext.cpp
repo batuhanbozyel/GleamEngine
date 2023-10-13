@@ -3,6 +3,26 @@
 
 using namespace Gleam;
 
+RendererContext::RendererContext()
+{
+    EventDispatcher<RendererPresentEvent>::Subscribe([this](RendererPresentEvent e)
+    {
+        auto& releasedTextures = mDeferredReleasedTextures[e.GetFrameIndex()];
+        for (const auto& texture : releasedTextures)
+        {
+            mFreeTextures.push_back(texture);
+        }
+        releasedTextures.clear();
+        
+        auto& releasedHeaps = mDeferredReleasedHeaps[e.GetFrameIndex()];
+        for (const auto& heap : releasedHeaps)
+        {
+            mFreeHeaps.push_back(heap);
+        }
+        releasedHeaps.clear();
+    });
+}
+
 Heap RendererContext::CreateHeap(const HeapDescriptor& descriptor)
 {
     auto it = std::find_if(mFreeHeaps.begin(), mFreeHeaps.end(), [&](const Heap& heap) -> bool
@@ -12,7 +32,7 @@ Heap RendererContext::CreateHeap(const HeapDescriptor& descriptor)
     
     if (it != mFreeHeaps.end())
     {
-        auto& heap = *it;
+        auto heap = *it;
         mFreeHeaps.erase(it);
         return heap;
     }
@@ -28,7 +48,7 @@ Texture RendererContext::CreateTexture(const TextureDescriptor& descriptor)
     
     if (it != mFreeTextures.end())
     {
-        auto& texture = *it;
+        auto texture = *it;
         mFreeTextures.erase(it);
         return texture;
     }
@@ -44,22 +64,39 @@ const RefCounted<Shader>& RendererContext::CreateShader(const TString& entryPoin
             return shader;
         }
     }
-    
     return mShaderCache.emplace_back(CreateRef<Shader>(entryPoint, stage));
 }
 
 void RendererContext::ReleaseHeap(const Heap& heap)
 {
-    mFreeHeaps.push_back(heap);
+    mDeferredReleasedHeaps[GetFrameIndex()].push_back(heap);
 }
 
 void RendererContext::ReleaseTexture(const Texture& texture)
 {
-    mFreeTextures.push_back(texture);
+    mDeferredReleasedTextures[GetFrameIndex()].push_back(texture);
 }
 
 void RendererContext::Clear()
 {
+    for (auto& releasedTextures : mDeferredReleasedTextures)
+    {
+        for (auto& texture : releasedTextures)
+        {
+            texture.Dispose();
+        }
+        releasedTextures.clear();
+    }
+    
+    for (auto& releasedHeaps : mDeferredReleasedHeaps)
+    {
+        for (auto& heap : releasedHeaps)
+        {
+            heap.Dispose();
+        }
+        releasedHeaps.clear();
+    }
+    
     for (auto& texture : mFreeTextures)
     {
         texture.Dispose();

@@ -20,12 +20,18 @@ public:
 
 	id<CAMetalDrawable> AcquireNextDrawable();
 	void Present(id<MTLCommandBuffer> commandBuffer);
+    
+    dispatch_semaphore_t GetSemaphore() const;
 
     TextureFormat GetFormat() const;
 
 	CAMetalLayer* GetHandle() const;
     
     const Size& GetSize() const;
+    
+    uint32_t GetFrameIndex() const;
+    
+    uint32_t GetFramesInFlight() const;
 
 private:
 
@@ -35,7 +41,7 @@ private:
 
     Size mSize = Size::zero;
     
-    MTLPixelFormat mFormat = MTLPixelFormatInvalid;
+    MTLPixelFormat mImageFormat = MTLPixelFormatInvalid;
     
     void* mSurface = nullptr;
 	

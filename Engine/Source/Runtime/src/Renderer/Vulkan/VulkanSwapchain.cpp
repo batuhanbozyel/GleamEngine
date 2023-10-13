@@ -80,6 +80,8 @@ const VulkanDrawable& VulkanSwapchain::AcquireNextDrawable()
 
 void VulkanSwapchain::Present(VkCommandBuffer commandBuffer)
 {
+    uint32_t frameIndex = mCurrentFrameIndex;
+    
 	VkPipelineStageFlags waitDstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 	VkSubmitInfo submitInfo{ VK_STRUCTURE_TYPE_SUBMIT_INFO };
 	submitInfo.waitSemaphoreCount = 1;
@@ -114,6 +116,7 @@ void VulkanSwapchain::Present(VkCommandBuffer commandBuffer)
 	VK_CHECK(vkResetCommandPool(VulkanDevice::GetHandle(), mCommandPools[mCurrentFrameIndex], 0));
 	VK_CHECK(vkResetFences(VulkanDevice::GetHandle(), 1, &mFences[mCurrentFrameIndex]));
 	mFrameObjects[mCurrentFrameIndex].Flush();
+    EventDispatcher<RendererPresentEvent>::Publish(RendererPresentEvent(frameIndex));
 }
 
 void VulkanSwapchain::Configure(const RendererConfig& config)

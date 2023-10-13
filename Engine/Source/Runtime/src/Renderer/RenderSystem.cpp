@@ -14,6 +14,8 @@
 #include "Renderers/WorldRenderer.h"
 #include "Renderers/PostProcessStack.h"
 
+#include "Core/Events/RendererEvent.h"
+
 using namespace Gleam;
 
 void RenderSystem::Initialize()
@@ -63,7 +65,6 @@ void RenderSystem::Render()
 
 		CommandBuffer cmd;
         graph.Execute(&cmd);
-		cmd.Present();
         
         // reset rt to swapchain
         if (mRenderTarget.IsValid())
@@ -71,14 +72,17 @@ void RenderSystem::Render()
             mRendererContext.ReleaseTexture(mRenderTarget);
         }
         mRenderTarget = Texture();
+        
+		cmd.Present();
     }
 }
 
 void RenderSystem::Configure(const RendererConfig& config)
 {
     mConfiguration = config;
-    mRendererContext.Configure(config);
+    mRendererContext.WaitDeviceIdle();
     mRendererContext.Clear();
+    mRendererContext.Configure(config);
 }
 
 const RendererConfig& RenderSystem::GetConfiguration() const

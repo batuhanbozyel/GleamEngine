@@ -14,6 +14,8 @@ class RendererContext final
 
 public:
     
+    RendererContext();
+    
     Heap CreateHeap(const HeapDescriptor& descriptor);
     
     Texture CreateTexture(const TextureDescriptor& descriptor);
@@ -24,15 +26,19 @@ public:
     
     void ReleaseTexture(const Texture& texture);
     
-    void Configure(const RendererConfig& config) const;
+    void Configure(const RendererConfig& config);
+    
+    void WaitDeviceIdle() const;
     
     void Clear();
+    
+    uint32_t GetFrameIndex() const;
+    
+    uint32_t GetFramesInFlight() const;
     
     const Size& GetDrawableSize() const;
 
 private:
-
-	void WaitDeviceIdle() const;
     
     void ConfigureBackend();
     
@@ -41,6 +47,10 @@ private:
     Deque<Heap> mFreeHeaps;
     
     Deque<Texture> mFreeTextures;
+    
+    TArray<Deque<Heap>> mDeferredReleasedHeaps;
+    
+    TArray<Deque<Texture>> mDeferredReleasedTextures;
     
 	TArray<RefCounted<Shader>> mShaderCache;
 
