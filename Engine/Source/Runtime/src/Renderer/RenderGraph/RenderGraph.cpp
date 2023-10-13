@@ -29,6 +29,13 @@ RenderGraph::RenderGraph(RendererContext& context)
     
 }
 
+RenderGraph::~RenderGraph()
+{
+    for (auto pass : mPassNodes) { delete pass; }
+    mPassNodes.clear();
+    mRegistry.Clear();
+}
+
 void RenderGraph::Compile()
 {
     // Setup resource dependency
@@ -212,17 +219,25 @@ void RenderGraph::Execute(const CommandBuffer* cmd)
                 mContext.ReleaseTexture(resource.node->texture);
             }
         }
-    }
-    cmd->End();
-    
-    // Release buffers
-    for (auto pass : mPassNodes)
-    {
-        for (auto& resource : pass->bufferCreates)
+        
+        // Release buffers
+        for (auto& resource : pass->bufferWrites)
         {
-			resource.node->buffer.Dispose();
+            if (resource.node->lastReference == pass && resource.node->transient)
+            {
+                resource.node->buffer.Dispose();
+            }
+        }
+        
+        for (auto& resource : pass->bufferReads)
+        {
+            if (resource.node->lastReference == pass && resource.node->transient)
+            {
+                resource.node->buffer.Dispose();
+            }
         }
     }
+    cmd->End();
     
     if (heap.IsValid())
     {

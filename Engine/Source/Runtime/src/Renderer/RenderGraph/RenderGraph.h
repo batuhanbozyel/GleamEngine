@@ -21,6 +21,8 @@ public:
     
     RenderGraph(RendererContext& context);
     
+    ~RenderGraph();
+    
     void Compile();
 
 	void Execute(const CommandBuffer* cmd);

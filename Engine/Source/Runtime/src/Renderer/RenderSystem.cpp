@@ -21,6 +21,11 @@ void RenderSystem::Initialize()
     mRendererContext.ConfigureBackend();
     AddRenderer<WorldRenderer>();
     AddRenderer<PostProcessStack>();
+    
+    EventDispatcher<RendererResizeEvent>::Subscribe([this](RendererResizeEvent e)
+    {
+        mRendererContext.Clear();
+    });
 }
 
 void RenderSystem::Shutdown()
@@ -73,6 +78,7 @@ void RenderSystem::Configure(const RendererConfig& config)
 {
     mConfiguration = config;
     mRendererContext.Configure(config);
+    mRendererContext.Clear();
 }
 
 const RendererConfig& RenderSystem::GetConfiguration() const
