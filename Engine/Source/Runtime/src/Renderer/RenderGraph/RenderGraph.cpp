@@ -220,27 +220,19 @@ void RenderGraph::Execute(const CommandBuffer* cmd)
             {
                 mContext.ReleaseTexture(resource.node->texture);
             }
-        }
-        
-        // Release buffers
-        for (auto& resource : pass->bufferWrites)
-        {
-            if (resource.node->lastReference == pass && resource.node->transient)
-            {
-                resource.node->buffer.Dispose();
-            }
-        }
-        
-        for (auto& resource : pass->bufferReads)
-        {
-            if (resource.node->lastReference == pass && resource.node->transient)
-            {
-                resource.node->buffer.Dispose();
-            }
-        }
+        }        
     }
     cmd->End();
-    
+
+	// Release buffers
+	for (auto& pass : mPassNodes)
+	{
+		for (auto& resource : pass->bufferCreates)
+		{
+			resource.node->buffer.Dispose();
+		}
+	}
+
     if (heap.IsValid())
     {
         mContext.ReleaseHeap(heap);

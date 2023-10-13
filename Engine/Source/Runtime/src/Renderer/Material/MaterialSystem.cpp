@@ -10,7 +10,6 @@ const RefCounted<Material>& MaterialSystem::CreateMaterial(const MaterialDescrip
     {
         return it->second;
     }
-    auto material = CreateRef<Material>(descriptor);
-    it = mMaterials.insert(mMaterials.end(), {descriptor, material});
-    return material;
+    it = mMaterials.insert(mMaterials.end(), {descriptor, CreateRef<Material>(descriptor) });
+    return it->second;
 }

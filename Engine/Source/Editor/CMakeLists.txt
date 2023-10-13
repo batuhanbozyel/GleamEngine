@@ -13,6 +13,8 @@ set(INCLUDE_DIRS
     ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/cgltf
     ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui
     ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/ImGuizmo
+    ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/volk 
+    ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/VulkanMemoryAllocator/include
 )
 
 file(GLOB_RECURSE SOURCE_FILES 
@@ -24,43 +26,28 @@ file(GLOB_RECURSE SOURCE_FILES
 add_executable(Editor WIN32 MACOSX_BUNDLE ${SOURCE_FILES})
 target_include_directories(Editor PRIVATE
     ${INCLUDE_DIRS} 
-    ${Vulkan_INCLUDE_DIRS} 
-    ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/volk 
-    ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/VulkanMemoryAllocator/include
+    ${Vulkan_INCLUDE_DIRS}
 )
 target_link_directories(Editor PRIVATE ${CMAKE_SOURCE_DIR}/bin/$<CONFIG>)
 
 # Add imgui as static library
+add_library(imgui STATIC
+    ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui/imgui.cpp
+    ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui/imgui_draw.cpp
+    ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui/imgui_widgets.cpp
+    ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui/imgui_demo.cpp
+    ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui/imgui_tables.cpp
+)
+
+# Configure imgui
+target_include_directories(imgui PRIVATE
+    ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui
+    ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/SDL/include
+    ${Vulkan_INCLUDE_DIRS}
+)
+
 if (APPLE)
-    add_library(imgui STATIC
-        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui/imgui.cpp
-        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui/imgui_draw.cpp
-        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui/imgui_widgets.cpp
-        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui/imgui_demo.cpp
-        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui/imgui_tables.cpp
-    )
     set_target_properties(Editor PROPERTIES MACOSX_BUNDLE YES XCODE_ATTRIBUTE_CLANG_ENABLE_OBJC_ARC YES)
-
-    # Configure imgui
-    target_include_directories(imgui PRIVATE
-        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui
-        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/SDL/include
-    )
-else ()
-    add_library(imgui STATIC
-        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui/imgui.cpp
-        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui/imgui_draw.cpp
-        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui/imgui_widgets.cpp
-        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui/imgui_demo.cpp
-        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui/imgui_tables.cpp
-    )
-
-    # Configure imgui
-    target_include_directories(imgui PRIVATE
-        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui
-        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/SDL/include
-        ${Vulkan_INCLUDE_DIRS}
-    )
 endif()
 
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${SOURCE_FILES})
@@ -75,3 +62,11 @@ else()
 endif()
 
 add_dependencies(Editor Runtime imgui)
+
+target_compile_definitions(
+    Editor
+
+    PRIVATE
+    "_CRT_SECURE_NO_WARNINGS"
+    "NOMINMAX"
+)

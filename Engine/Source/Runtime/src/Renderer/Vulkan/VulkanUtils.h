@@ -2,8 +2,9 @@
 #ifdef USE_VULKAN_RENDERER
 #include <volk.h>
 #include <vk_mem_alloc.h>
-#include "Renderer/BufferDescriptor.h"
 #include "Renderer/TextureFormat.h"
+#include "Renderer/HeapDescriptor.h"
+#include "Renderer/BufferDescriptor.h"
 #include "Renderer/RenderPassDescriptor.h"
 #include "Renderer/PipelineStateDescriptor.h"
 

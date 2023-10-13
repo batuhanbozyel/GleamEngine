@@ -5,5 +5,5 @@ using namespace GEditor;
 
 Image Image::Import(const Gleam::Filesystem::path& path)
 {
-	
+	return Image();
 }

@@ -53,7 +53,6 @@
 #include "Input/InputSystem.h"
 
 #include "World/World.h"
-#include "Assets/Model.h"
 #include "Assets/AssetLibrary.h"
 
 #include "Renderer/Renderers/UIRenderer.h"
