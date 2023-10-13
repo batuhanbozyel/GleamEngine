@@ -63,9 +63,9 @@ struct std::hash<Gleam::MaterialPassDescriptor>
     size_t operator()(const Gleam::MaterialPassDescriptor& descriptor) const
     {
         std::size_t hash = 0;
-        Gleam::hash_combine(hash, std::hash<Gleam::PipelineStateDescriptor>()(descriptor.pipelineState));
-        Gleam::hash_combine(hash, std::hash<Gleam::TString>()(descriptor.vertexEntry));
-        Gleam::hash_combine(hash, std::hash<Gleam::TString>()(descriptor.fragmentEntry));
+        Gleam::hash_combine(hash, descriptor.pipelineState);
+        Gleam::hash_combine(hash, descriptor.vertexEntry);
+        Gleam::hash_combine(hash, descriptor.fragmentEntry);
         return hash;
     }
 };
@@ -76,16 +76,16 @@ struct std::hash<Gleam::MaterialDescriptor>
     size_t operator()(const Gleam::MaterialDescriptor& descriptor) const
     {
         std::size_t hash = 0;
-        Gleam::hash_combine(hash, std::hash<int>()(static_cast<int>(descriptor.renderQueue)));
+        Gleam::hash_combine(hash, descriptor.renderQueue);
         
         for (const auto& pass : descriptor.passes)
         {
-            Gleam::hash_combine(hash, std::hash<Gleam::MaterialPassDescriptor>()(pass));
+            Gleam::hash_combine(hash, pass);
         }
         
         for (const auto& property : descriptor.properties)
         {
-            Gleam::hash_combine(hash, std::hash<Gleam::MaterialProperty>()(property));
+            Gleam::hash_combine(hash, property);
         }
         
         return hash;

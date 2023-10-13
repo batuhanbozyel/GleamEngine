@@ -67,14 +67,14 @@ struct std::hash<Gleam::BlendState>
     size_t operator()(const Gleam::BlendState& blendState) const
     {
         size_t hash = 0;
-        Gleam::hash_combine(hash, std::hash<bool>()(blendState.enabled));
-        Gleam::hash_combine(hash, std::hash<int>()(static_cast<int>(blendState.colorBlendOperation)));
-        Gleam::hash_combine(hash, std::hash<int>()(static_cast<int>(blendState.alphaBlendOperation)));
-        Gleam::hash_combine(hash, std::hash<int>()(static_cast<int>(blendState.sourceColorBlendMode)));
-        Gleam::hash_combine(hash, std::hash<int>()(static_cast<int>(blendState.sourceAlphaBlendMode)));
-        Gleam::hash_combine(hash, std::hash<int>()(static_cast<int>(blendState.destinationColorBlendMode)));
-        Gleam::hash_combine(hash, std::hash<int>()(static_cast<int>(blendState.destinationAlphaBlendMode)));
-        Gleam::hash_combine(hash, std::hash<int>()(static_cast<int>(blendState.writeMask)));
+        Gleam::hash_combine(hash, blendState.enabled);
+        Gleam::hash_combine(hash, blendState.colorBlendOperation);
+        Gleam::hash_combine(hash, blendState.alphaBlendOperation);
+        Gleam::hash_combine(hash, blendState.sourceColorBlendMode);
+        Gleam::hash_combine(hash, blendState.sourceAlphaBlendMode);
+        Gleam::hash_combine(hash, blendState.destinationColorBlendMode);
+        Gleam::hash_combine(hash, blendState.destinationAlphaBlendMode);
+        Gleam::hash_combine(hash, blendState.writeMask);
         return hash;
     }
 };

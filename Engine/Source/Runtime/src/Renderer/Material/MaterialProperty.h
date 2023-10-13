@@ -44,8 +44,8 @@ struct std::hash<Gleam::MaterialProperty>
     size_t operator()(const Gleam::MaterialProperty& property) const
     {
         std::size_t hash = 0;
-        Gleam::hash_combine(hash, std::hash<Gleam::TString>()(property.name));
-        Gleam::hash_combine(hash, std::hash<int>()(static_cast<int>(property.type)));
+        Gleam::hash_combine(hash, property.name);
+        Gleam::hash_combine(hash, property.type);
         return hash;
     }
 };

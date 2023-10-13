@@ -80,13 +80,13 @@ struct std::hash<Gleam::TextureDescriptor>
     size_t operator()(const Gleam::TextureDescriptor& descriptor) const
     {
         size_t hash = 0;
-        Gleam::hash_combine(hash, std::hash<float>()(descriptor.size.width));
-        Gleam::hash_combine(hash, std::hash<float>()(descriptor.size.height));
-        Gleam::hash_combine(hash, std::hash<int>()(static_cast<int>(descriptor.format)));
-        Gleam::hash_combine(hash, std::hash<int>()(static_cast<int>(descriptor.usage)));
-        Gleam::hash_combine(hash, std::hash<int>()(static_cast<int>(descriptor.type)));
-        Gleam::hash_combine(hash, std::hash<uint32_t>()(descriptor.sampleCount));
-        Gleam::hash_combine(hash, std::hash<bool>()(descriptor.useMipMap));
+        Gleam::hash_combine(hash, static_cast<int>(descriptor.size.width));
+        Gleam::hash_combine(hash, static_cast<int>(descriptor.size.height));
+        Gleam::hash_combine(hash, descriptor.format);
+        Gleam::hash_combine(hash, descriptor.usage);
+        Gleam::hash_combine(hash, descriptor.type);
+        Gleam::hash_combine(hash, descriptor.sampleCount);
+        Gleam::hash_combine(hash, descriptor.useMipMap);
         return hash;
     }
 };
