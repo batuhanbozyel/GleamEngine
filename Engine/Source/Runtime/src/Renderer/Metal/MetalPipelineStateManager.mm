@@ -13,9 +13,9 @@ static size_t PipelineHasher(const PipelineStateDescriptor& pipelineDesc, const 
     hash_combine(hash, fragmentShader);
     for (const auto& colorAttachment : colorAttachments)
     {
-        hash_combine(hash, colorAttachment);
+        hash_combine(hash, colorAttachment.format);
     }
-    hash_combine(hash, depthAttachment);
+    hash_combine(hash, depthAttachment.format);
     hash_combine(hash, sampleCount);
     return hash;
 }
