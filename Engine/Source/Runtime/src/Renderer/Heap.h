@@ -15,18 +15,9 @@ public:
     
     Heap(const HeapDescriptor& descriptor);
     
-    Heap(const Heap& other)
-        : GraphicsObject(other), mDescriptor(other.mDescriptor)
-    {
-        
-    }
+    Heap(const Heap& other) = default;
     
-    Heap& operator=(const Heap& other)
-    {
-        GraphicsObject::operator=(other);
-        mDescriptor = other.mDescriptor;
-        return *this;
-    }
+    Heap& operator=(const Heap&) = default;
 
     void Dispose();
 

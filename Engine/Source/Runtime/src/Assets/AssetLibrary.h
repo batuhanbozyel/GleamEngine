@@ -21,7 +21,7 @@ public:
 
 private:
 
-	static inline HashMap<Filesystem::path, T> mAssetCache;
+	static inline HashMap<Filesystem::path, RefCounted<T>> mAssetCache;
 
 };
 
