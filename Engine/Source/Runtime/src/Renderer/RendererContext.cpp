@@ -5,24 +5,7 @@ using namespace Gleam;
 
 RendererContext::RendererContext()
 {
-    EventDispatcher<RendererPresentEvent>::Subscribe([this](RendererPresentEvent e)
-    {
-        auto& releasedTextures = mDeferredReleasedTextures[e.GetFrameIndex()];
-        for (const auto& texture : releasedTextures)
-        {
-            GLEAM_ASSERT(texture.IsValid());
-            mFreeTextures.push_back(texture);
-        }
-        releasedTextures.clear();
-        
-        auto& releasedHeaps = mDeferredReleasedHeaps[e.GetFrameIndex()];
-        for (const auto& heap : releasedHeaps)
-        {
-            GLEAM_ASSERT(heap.IsValid());
-            mFreeHeaps.push_back(heap);
-        }
-        releasedHeaps.clear();
-    });
+    
 }
 
 Heap RendererContext::CreateHeap(const HeapDescriptor& descriptor)
@@ -35,8 +18,8 @@ Heap RendererContext::CreateHeap(const HeapDescriptor& descriptor)
     if (it != mFreeHeaps.end())
     {
         auto heap = *it;
-        mFreeHeaps.erase(it);
         GLEAM_ASSERT(heap.IsValid());
+        mFreeHeaps.erase(it);
         return heap;
     }
     return Heap(descriptor);
@@ -52,8 +35,8 @@ Texture RendererContext::CreateTexture(const TextureDescriptor& descriptor)
     if (it != mFreeTextures.end())
     {
         auto texture = *it;
-        mFreeTextures.erase(it);
         GLEAM_ASSERT(texture.IsValid());
+        mFreeTextures.erase(it);
         return texture;
     }
     return Texture(descriptor);
@@ -74,35 +57,23 @@ const RefCounted<Shader>& RendererContext::CreateShader(const TString& entryPoin
 void RendererContext::ReleaseHeap(const Heap& heap)
 {
     GLEAM_ASSERT(heap.IsValid());
-    mDeferredReleasedHeaps[GetFrameIndex()].push_back(heap);
+    AddPooledObject(std::make_any<Heap>(heap), [this](std::any obj)
+    {
+        mFreeHeaps.push_back(std::any_cast<Heap>(obj));
+    });
 }
 
 void RendererContext::ReleaseTexture(const Texture& texture)
 {
     GLEAM_ASSERT(texture.IsValid());
-    mDeferredReleasedTextures[GetFrameIndex()].push_back(texture);
+    AddPooledObject(std::make_any<Texture>(texture), [this](std::any obj)
+    {
+        mFreeTextures.push_back(std::any_cast<Texture>(obj));
+    });
 }
 
 void RendererContext::Clear()
 {
-    for (auto& releasedTextures : mDeferredReleasedTextures)
-    {
-        for (auto& texture : releasedTextures)
-        {
-            texture.Dispose();
-        }
-        releasedTextures.clear();
-    }
-    
-    for (auto& releasedHeaps : mDeferredReleasedHeaps)
-    {
-        for (auto& heap : releasedHeaps)
-        {
-            heap.Dispose();
-        }
-        releasedHeaps.clear();
-    }
-    
     for (auto& texture : mFreeTextures)
     {
         texture.Dispose();

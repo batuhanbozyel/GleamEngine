@@ -21,6 +21,8 @@ public:
 	id<CAMetalDrawable> AcquireNextDrawable();
 	void Present(id<MTLCommandBuffer> commandBuffer);
     
+    void AddPooledObject(std::any object, std::function<void(std::any)> deallocator);
+    
     dispatch_semaphore_t GetSemaphore() const;
 
     TextureFormat GetFormat() const;
@@ -34,6 +36,10 @@ public:
     uint32_t GetFramesInFlight() const;
 
 private:
+    
+    using PooledObject = std::pair<std::any, std::function<void(std::any)>>;
+    using ObjectPool = TArray<PooledObject>;
+    TArray<ObjectPool> mPooledObjects;
 
 	uint32_t mMaxFramesInFlight = 3;
 

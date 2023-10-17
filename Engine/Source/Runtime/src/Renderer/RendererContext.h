@@ -40,6 +40,8 @@ public:
 
 private:
     
+    void AddPooledObject(std::any object, std::function<void(std::any)> deallocator);
+    
     void ConfigureBackend();
     
     void DestroyBackend();
@@ -47,10 +49,6 @@ private:
     Deque<Heap> mFreeHeaps;
     
     Deque<Texture> mFreeTextures;
-    
-    TArray<Deque<Heap>> mDeferredReleasedHeaps;
-    
-    TArray<Deque<Texture>> mDeferredReleasedTextures;
     
 	TArray<RefCounted<Shader>> mShaderCache;
 

@@ -48,6 +48,15 @@ void MetalSwapchain::Initialize()
 
 void MetalSwapchain::Destroy()
 {
+    for (auto& pool : mPooledObjects)
+    {
+        for (auto& [obj, deallocator] : pool)
+        {
+            deallocator(obj);
+        }
+    }
+    mPooledObjects.clear();
+    
     mImageAcquireSemaphore = nil;
     mDrawable = nil;
     mHandle = nil;
@@ -75,6 +84,7 @@ void MetalSwapchain::Configure(const RendererConfig& config)
         mMaxFramesInFlight = 1;
         GLEAM_ASSERT(false, "Metal: Neither triple nor double buffering is available!");
     }
+    mPooledObjects.resize(mMaxFramesInFlight);
     EventDispatcher<RendererResizeEvent>::Publish(RendererResizeEvent(mSize));
 }
 
@@ -83,6 +93,14 @@ id<CAMetalDrawable> MetalSwapchain::AcquireNextDrawable()
     if (mDrawable == nil)
     {
         dispatch_semaphore_wait(mImageAcquireSemaphore, DISPATCH_TIME_FOREVER);
+        
+        auto& pooledObjects = mPooledObjects[mCurrentFrameIndex];
+        for (auto& [obj, deallocate] : pooledObjects)
+        {
+            deallocate(obj);
+        }
+        pooledObjects.clear();
+        
         mDrawable = [mHandle nextDrawable];
     }
     return mDrawable;
@@ -94,7 +112,6 @@ void MetalSwapchain::Present(id<MTLCommandBuffer> commandBuffer)
     [commandBuffer addCompletedHandler:^(id<MTLCommandBuffer> commandBuffer)
     {
         dispatch_semaphore_signal(mImageAcquireSemaphore);
-        EventDispatcher<RendererPresentEvent>::Publish(RendererPresentEvent(frameIndex));
     }];
     
     [commandBuffer presentDrawable:mDrawable];
@@ -102,6 +119,11 @@ void MetalSwapchain::Present(id<MTLCommandBuffer> commandBuffer)
     mCurrentFrameIndex = (mCurrentFrameIndex + 1) % mMaxFramesInFlight;
     
     mDrawable = nil;
+}
+
+void MetalSwapchain::AddPooledObject(std::any object, std::function<void(std::any)> deallocator)
+{
+    mPooledObjects[mCurrentFrameIndex].push_back(std::make_pair(object, deallocator));
 }
 
 dispatch_semaphore_t MetalSwapchain::GetSemaphore() const

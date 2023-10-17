@@ -128,9 +128,9 @@ void ImGuiBackend::EndFrame(NativeGraphicsHandle commandBuffer, NativeGraphicsHa
 ImTextureID ImGuiBackend::GetImTextureIDForTexture(const Gleam::Texture& texture)
 {
 	auto textureID = ImGui_ImplVulkan_AddTexture(Gleam::VulkanPipelineStateManager::GetSampler(0), Gleam::As<VkImageView>(texture.GetView()), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-	Gleam::VulkanDevice::GetSwapchain().AddPooledObject(textureID, [](void* object)
+	Gleam::VulkanDevice::GetSwapchain().AddPooledObject(std::make_any<ImTextureID>(textureID), [](std::any object)
 	{
-		ImGui_ImplVulkan_RemoveTexture(Gleam::As<VkDescriptorSet>(object));
+		ImGui_ImplVulkan_RemoveTexture(Gleam::As<VkDescriptorSet>(std::any_cast<ImTextureID>(object)));
 	});
 	return textureID;
 }

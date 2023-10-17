@@ -31,8 +31,11 @@ void RendererContext::DestroyBackend()
 void RendererContext::Configure(const RendererConfig& config)
 {
     VulkanDevice::GetSwapchain().Configure(config);
-    mDeferredReleasedHeaps.resize(VulkanDevice::GetSwapchain().GetFramesInFlight());
-    mDeferredReleasedTextures.resize(VulkanDevice::GetSwapchain().GetFramesInFlight());
+}
+
+void RendererContext::AddPooledObject(std::any object, std::function<void(std::any)> deallocator)
+{
+    VulkanDevice::GetSwapchain().AddPooledObject(object, deallocator);
 }
 
 uint32_t RendererContext::GetFrameIndex() const

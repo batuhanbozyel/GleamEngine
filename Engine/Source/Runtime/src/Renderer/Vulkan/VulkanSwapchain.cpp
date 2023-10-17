@@ -116,7 +116,6 @@ void VulkanSwapchain::Present(VkCommandBuffer commandBuffer)
 	VK_CHECK(vkResetCommandPool(VulkanDevice::GetHandle(), mCommandPools[mCurrentFrameIndex], 0));
 	VK_CHECK(vkResetFences(VulkanDevice::GetHandle(), 1, &mFences[mCurrentFrameIndex]));
 	mFrameObjects[mCurrentFrameIndex].Flush();
-    EventDispatcher<RendererPresentEvent>::Publish(RendererPresentEvent(frameIndex));
 }
 
 void VulkanSwapchain::Configure(const RendererConfig& config)
@@ -397,7 +396,7 @@ void VulkanSwapchain::ObjectPool::Flush()
 	externalObjects.clear();
 }
 
-void VulkanSwapchain::AddPooledObject(void* object, std::function<void(void*)> deallocator)
+void VulkanSwapchain::AddPooledObject(std::any object, std::function<void(std::any)> deallocator)
 {
 	mFrameObjects[mCurrentFrameIndex].externalObjects.push_back(std::make_pair(object, deallocator));
 }

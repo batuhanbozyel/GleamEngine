@@ -11,27 +11,6 @@ public:
 
 };
 
-class RendererPresentEvent : public Event
-{
-public:
-    
-    RendererPresentEvent(uint32_t frameIdx)
-        : mFrameIndex(frameIdx)
-    {
-        
-    }
-    
-    uint32_t GetFrameIndex() const
-    {
-        return mFrameIndex;
-    }
-    
-private:
-    
-    uint32_t mFrameIndex;
-    
-};
-
 class RendererResizeEvent : public Event
 {
 public:

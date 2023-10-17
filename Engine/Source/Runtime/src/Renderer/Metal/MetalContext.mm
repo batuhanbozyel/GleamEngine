@@ -31,8 +31,11 @@ void RendererContext::DestroyBackend()
 void RendererContext::Configure(const RendererConfig& config)
 {
     MetalDevice::GetSwapchain().Configure(config);
-    mDeferredReleasedHeaps.resize(MetalDevice::GetSwapchain().GetFramesInFlight());
-    mDeferredReleasedTextures.resize(MetalDevice::GetSwapchain().GetFramesInFlight());
+}
+
+void RendererContext::AddPooledObject(std::any object, std::function<void(std::any)> deallocator)
+{
+    MetalDevice::GetSwapchain().AddPooledObject(object, deallocator);
 }
 
 uint32_t RendererContext::GetFrameIndex() const

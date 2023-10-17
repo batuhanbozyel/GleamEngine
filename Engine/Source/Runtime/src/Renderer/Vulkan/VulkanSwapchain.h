@@ -29,7 +29,7 @@ public:
 
 	VkFramebuffer CreateFramebuffer(const VkFramebufferCreateInfo& createInfo);
 
-	void AddPooledObject(void* object, std::function<void(void*)> deallocator);
+	void AddPooledObject(std::any object, std::function<void(std::any)> deallocator);
 
 	const VulkanDrawable& GetDrawable() const;
 
