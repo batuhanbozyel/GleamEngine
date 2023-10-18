@@ -125,7 +125,7 @@ public:
     }
     
     template<class T, class...Args>
-    T* emplace(Args&&... args)
+    T* emplace(Args&&... args) noexcept
     {
         auto& ptr = data[typeid(T)] = CreateScope<T>(std::forward<Args>(args)...);
         return static_cast<T*>(ptr.get());

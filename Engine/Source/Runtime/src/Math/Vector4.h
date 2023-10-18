@@ -22,9 +22,9 @@ struct Vector4Base
     static const Vector4Base one;
 
     constexpr Vector4Base() = default;
-    constexpr Vector4Base(Vector4Base&&) = default;
+    constexpr Vector4Base(Vector4Base&&) noexcept = default;
     constexpr Vector4Base(const Vector4Base&) = default;
-    FORCE_INLINE constexpr Vector4Base& operator=(Vector4Base&&) = default;
+    FORCE_INLINE constexpr Vector4Base& operator=(Vector4Base&&) noexcept = default;
     FORCE_INLINE constexpr Vector4Base& operator=(const Vector4Base&) = default;
 
     constexpr Vector4Base(T v)
