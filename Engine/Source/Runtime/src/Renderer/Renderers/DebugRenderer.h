@@ -31,7 +31,7 @@ class DebugRenderer final : public IRenderer
 {
 public:
 
-    virtual void OnCreate(RendererContext& context) override;
+    virtual void OnCreate(GraphicsDevice* device) override;
     
     virtual void AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard) override;
     
@@ -71,9 +71,9 @@ private:
 
     TArray<DebugVertex> mDebugVertices;
 
-	RefCounted<Shader> mPrimitiveVertexShader;
-	RefCounted<Shader> mMeshVertexShader;
-	RefCounted<Shader> mFragmentShader;
+	Shader mPrimitiveVertexShader;
+	Shader mMeshVertexShader;
+	Shader mFragmentShader;
 
 };
 

@@ -4,15 +4,15 @@
 
 #include "Renderer/Mesh.h"
 #include "Renderer/CommandBuffer.h"
-#include "Renderer/RendererContext.h"
+#include "Renderer/GraphicsDevice.h"
 
 using namespace Gleam;
 
-void DebugRenderer::OnCreate(RendererContext& context)
+void DebugRenderer::OnCreate(GraphicsDevice* device)
 {
-	mPrimitiveVertexShader = context.CreateShader("debugVertexShader", ShaderStage::Vertex);
-	mMeshVertexShader = context.CreateShader("debugMeshVertexShader", ShaderStage::Vertex);
-	mFragmentShader = context.CreateShader("debugFragmentShader", ShaderStage::Fragment);
+	mPrimitiveVertexShader = device->CreateShader("debugVertexShader", ShaderStage::Vertex);
+	mMeshVertexShader = device->CreateShader("debugMeshVertexShader", ShaderStage::Vertex);
+	mFragmentShader = device->CreateShader("debugFragmentShader", ShaderStage::Fragment);
 }
 
 void DebugRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard)

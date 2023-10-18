@@ -1,7 +1,7 @@
 #include "gpch.h"
 #include "RenderGraph.h"
 #include "Renderer/CommandBuffer.h"
-#include "Renderer/RendererContext.h"
+#include "Renderer/GraphicsDevice.h"
 
 using namespace Gleam;
 
@@ -23,8 +23,8 @@ static AttachmentStoreAction GetStoreActionForRenderTexture(const RenderGraphTex
     return (node->lastReference == pass && !pass->hasSideEffect) ? AttachmentStoreAction::DontCare : AttachmentStoreAction::Store;
 }
 
-RenderGraph::RenderGraph(RendererContext& context)
-    : mContext(context)
+RenderGraph::RenderGraph(GraphicsDevice* device)
+    : mDevice(device)
 {
     
 }
@@ -130,7 +130,7 @@ void RenderGraph::Execute(const CommandBuffer* cmd)
     Heap heap;
     if (mHeapSize > 0)
     {
-        heap = mContext.CreateHeap({ .memoryType = MemoryType::GPU, .size = mHeapSize });
+        heap = mDevice->CreateHeap({ .memoryType = MemoryType::GPU, .size = mHeapSize });
     }
     size_t bufferOffset = 0;
     
@@ -153,7 +153,7 @@ void RenderGraph::Execute(const CommandBuffer* cmd)
 		{
             if (HasResource(pass->textureWrites, resource))
             {
-                resource.node->texture = mContext.CreateTexture(resource.node->texture.GetDescriptor());
+                resource.node->texture = mDevice->CreateTexture(resource.node->texture.GetDescriptor());
                 GLEAM_ASSERT(resource.node->texture.IsValid());
             }
 		}
@@ -210,7 +210,7 @@ void RenderGraph::Execute(const CommandBuffer* cmd)
         {
             if (resource.node->lastReference == pass && resource.node->transient)
             {
-                mContext.ReleaseTexture(resource.node->texture);
+                mDevice->ReleaseTexture(resource.node->texture);
             }
         }
         
@@ -218,7 +218,7 @@ void RenderGraph::Execute(const CommandBuffer* cmd)
         {
             if (resource.node->lastReference == pass && resource.node->transient)
             {
-                mContext.ReleaseTexture(resource.node->texture);
+                mDevice->ReleaseTexture(resource.node->texture);
             }
         }        
     }
@@ -229,13 +229,13 @@ void RenderGraph::Execute(const CommandBuffer* cmd)
 	{
 		for (auto& resource : pass->bufferCreates)
 		{
-			resource.node->buffer.Dispose();
+            mDevice->Dispose(resource.node->buffer);
 		}
 	}
 
     if (heap.IsValid())
     {
-        mContext.ReleaseHeap(heap);
+        mDevice->ReleaseHeap(heap);
     }
     
     for (auto pass : mPassNodes) { delete pass; }

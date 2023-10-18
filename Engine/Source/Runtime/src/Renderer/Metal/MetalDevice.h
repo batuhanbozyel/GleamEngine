@@ -1,33 +1,28 @@
 #pragma once
 #ifdef USE_METAL_RENDERER
-#include "MetalSwapchain.h"
+#include "Renderer/GraphicsDevice.h"
+#include <Metal/Metal.h>
 
 namespace Gleam {
 
 struct Version;
 struct RendererConfig;
 
-class MetalDevice final
+class MetalDevice final : public GraphicsDevice
 {
 public:
-
-	static void Init();
-
-    static void Destroy();
-
-	static MetalSwapchain& GetSwapchain();
-
-	static id<MTLCommandQueue> GetCommandPool();
-
-	static id<MTLDevice> GetHandle();
-
+    
+    MetalDevice();
+    
+    ~MetalDevice();
+    
+    id<MTLDevice> GetHandle() const;
+    
+    id<MTLCommandQueue> GetCommandPool() const;
+    
 private:
-
-	static inline MetalSwapchain mSwapchain;
-
-	static inline id<MTLCommandQueue> mCommandPool{ nil };
-
-	static inline id<MTLDevice> mHandle{ nil };
+    
+    id<MTLCommandQueue> mCommandPool{ nil };
 
 };
 

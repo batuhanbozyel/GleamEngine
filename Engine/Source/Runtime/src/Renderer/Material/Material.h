@@ -17,8 +17,8 @@ class Shader;
 struct MaterialPass
 {
     PipelineStateDescriptor pipelineState;
-    RefCounted<Shader> vertexFunction;
-    RefCounted<Shader> fragmentFunction;
+    Shader vertexFunction;
+    Shader fragmentFunction;
 };
 
 class Material : public IMaterial

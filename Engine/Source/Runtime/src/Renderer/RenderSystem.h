@@ -8,7 +8,7 @@
 #pragma once
 #include "Core/Subsystem.h"
 #include "CommandBuffer.h"
-#include "RendererContext.h"
+#include "GraphicsDevice.h"
 
 namespace Gleam {
 
@@ -29,6 +29,10 @@ public:
     
     void Configure(const RendererConfig& config);
     
+    GraphicsDevice* GetDevice();
+    
+    const GraphicsDevice* GetDevice() const;
+    
     const RendererConfig& GetConfiguration() const;
     
     const Texture& GetRenderTarget() const;
@@ -37,12 +41,14 @@ public:
     
     void SetRenderTarget(const Texture& texture);
     
+    void ResetRenderTarget();
+    
     template<RendererType T>
     T* AddRenderer()
     {
         GLEAM_ASSERT(!HasRenderer<T>(), "Render pipeline already has the renderer!");
         auto renderer = mRenderers.emplace_back(new T());
-        renderer->OnCreate(mRendererContext);
+        renderer->OnCreate(mDevice.get());
         return static_cast<T*>(renderer);
     }
     
@@ -122,11 +128,11 @@ private:
     
     Container mRenderers;
     
+    Texture mRenderTarget;
+    
     RendererConfig mConfiguration;
     
-    RendererContext mRendererContext;
-    
-    Texture mRenderTarget;
+    Scope<GraphicsDevice> mDevice;
     
 };
 

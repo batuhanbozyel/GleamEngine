@@ -6,8 +6,10 @@
 
 using namespace GEditor;
 
-void ImGuiRenderer::OnCreate(Gleam::RendererContext& context)
+void ImGuiRenderer::OnCreate(Gleam::GraphicsDevice* device)
 {
+    mDevice = device;
+    
 	IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO();
@@ -15,7 +17,7 @@ void ImGuiRenderer::OnCreate(Gleam::RendererContext& context)
     io.ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange;
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable | ImGuiConfigFlags_ViewportsEnable;
     
-	ImGuiBackend::Init();
+	ImGuiBackend::Init(device);
     GameInstance->SetEventHandler([](const SDL_Event* e)
     {
         ImGui_ImplSDL3_ProcessEvent(e);
@@ -39,7 +41,7 @@ void ImGuiRenderer::AddRenderPasses(Gleam::RenderGraph& graph, Gleam::RenderGrap
 	graph.AddRenderPass<ImGuiPassData>("ImGuiPass", [&](Gleam::RenderGraphBuilder& builder, ImGuiPassData& passData)
 	{
 		const auto& renderingData = blackboard.Get<Gleam::RenderingData>();
-		auto swapchainTarget = graph.ImportBackbuffer(Gleam::Texture());
+		auto swapchainTarget = graph.ImportBackbuffer(mDevice->GetSwapchain()->GetTexture());
 		passData.sceneTarget = builder.ReadTexture(renderingData.backbuffer);
 		passData.swapchainTarget = builder.UseColorBuffer(swapchainTarget);
 	},

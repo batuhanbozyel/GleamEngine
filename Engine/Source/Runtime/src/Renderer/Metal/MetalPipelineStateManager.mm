@@ -5,7 +5,7 @@
 
 using namespace Gleam;
 
-static size_t PipelineHasher(const PipelineStateDescriptor& pipelineDesc, const TArray<TextureDescriptor>& colorAttachments, const TextureDescriptor& depthAttachment, const RefCounted<Shader>& vertexShader, const RefCounted<Shader>& fragmentShader, uint32_t sampleCount)
+static size_t PipelineHasher(const PipelineStateDescriptor& pipelineDesc, const TArray<TextureDescriptor>& colorAttachments, const TextureDescriptor& depthAttachment, const Shader& vertexShader, const Shader& fragmentShader, uint32_t sampleCount)
 {
     size_t hash = 0;
     hash_combine(hash, pipelineDesc);
@@ -20,7 +20,7 @@ static size_t PipelineHasher(const PipelineStateDescriptor& pipelineDesc, const 
     return hash;
 }
 
-static id<MTLSamplerState> CreateMTLSamplerState(const SamplerState& samplerState)
+static id<MTLSamplerState> CreateMTLSamplerState(MetalDevice* device, const SamplerState& samplerState)
 {
     MTLSamplerDescriptor* descriptor = [MTLSamplerDescriptor new];
     descriptor.supportArgumentBuffers = YES;
@@ -80,15 +80,16 @@ static id<MTLSamplerState> CreateMTLSamplerState(const SamplerState& samplerStat
         }
         default: GLEAM_ASSERT(false, "Metal: Filter mode is not supported!") break;
     }
-    return [MetalDevice::GetHandle() newSamplerStateWithDescriptor:descriptor];
+    return [device->GetHandle() newSamplerStateWithDescriptor:descriptor];
 }
 
-void MetalPipelineStateManager::Init()
+void MetalPipelineStateManager::Init(MetalDevice* device)
 {
+    mDevice = device;
     auto samplerSates = SamplerState::GetAllVariations();
     for (uint32_t i = 0; i < samplerSates.size(); i++)
     {
-        mSamplerStates[i] = CreateMTLSamplerState(samplerSates[i]);
+        mSamplerStates[i] = CreateMTLSamplerState(device, samplerSates[i]);
     }
 }
 
@@ -101,12 +102,12 @@ void MetalPipelineStateManager::Destroy()
     Clear();
 }
 
-const MetalPipeline* MetalPipelineStateManager::GetGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc, const TArray<TextureDescriptor>& colorAttachments, const RefCounted<Shader>& vertexShader, const RefCounted<Shader>& fragmentShader, uint32_t sampleCount)
+const MetalPipeline* MetalPipelineStateManager::GetGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc, const TArray<TextureDescriptor>& colorAttachments, const Shader& vertexShader, const Shader& fragmentShader, uint32_t sampleCount)
 {
     return GetGraphicsPipeline(pipelineDesc, colorAttachments, TextureDescriptor(), vertexShader, fragmentShader, sampleCount);
 }
 
-const MetalPipeline* MetalPipelineStateManager::GetGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc, const TArray<TextureDescriptor>& colorAttachments, const TextureDescriptor& depthAttachment, const RefCounted<Shader>& vertexShader, const RefCounted<Shader>& fragmentShader, uint32_t sampleCount)
+const MetalPipeline* MetalPipelineStateManager::GetGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc, const TArray<TextureDescriptor>& colorAttachments, const TextureDescriptor& depthAttachment, const Shader& vertexShader, const Shader& fragmentShader, uint32_t sampleCount)
 {
     auto key = PipelineHasher(pipelineDesc, colorAttachments, depthAttachment, vertexShader, fragmentShader, sampleCount);
     auto it = mGraphicsPipelineCache.find(key);
@@ -141,12 +142,12 @@ void MetalPipelineStateManager::Clear()
 	mGraphicsPipelineCache.clear();
 }
 
-id<MTLRenderPipelineState> MetalPipelineStateManager::CreateGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc, const TArray<TextureDescriptor>& colorAttachments, const TextureDescriptor& depthAttachment, const RefCounted<Shader>& vertexShader, const RefCounted<Shader>& fragmentShader, uint32_t sampleCount)
+id<MTLRenderPipelineState> MetalPipelineStateManager::CreateGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc, const TArray<TextureDescriptor>& colorAttachments, const TextureDescriptor& depthAttachment, const Shader& vertexShader, const Shader& fragmentShader, uint32_t sampleCount)
 {
     MTLRenderPipelineDescriptor* pipelineDescriptor = [MTLRenderPipelineDescriptor new];
     pipelineDescriptor.rasterSampleCount = sampleCount;
-    pipelineDescriptor.vertexFunction = vertexShader->GetHandle();
-    pipelineDescriptor.fragmentFunction = fragmentShader->GetHandle();
+    pipelineDescriptor.vertexFunction = vertexShader.GetHandle();
+    pipelineDescriptor.fragmentFunction = fragmentShader.GetHandle();
     pipelineDescriptor.alphaToCoverageEnabled = pipelineDesc.alphaToCoverage;
     pipelineDescriptor.inputPrimitiveTopology = PrimitiveTopologyToMTLPrimitiveTopologyClass(pipelineDesc.topology);
     
@@ -173,7 +174,7 @@ id<MTLRenderPipelineState> MetalPipelineStateManager::CreateGraphicsPipeline(con
     }
     
     __autoreleasing NSError* error = nil;
-    id<MTLRenderPipelineState> pipeline = [MetalDevice::GetHandle() newRenderPipelineStateWithDescriptor:pipelineDescriptor error:&error];
+    id<MTLRenderPipelineState> pipeline = [mDevice->GetHandle() newRenderPipelineStateWithDescriptor:pipelineDescriptor error:&error];
     GLEAM_ASSERT(pipeline, "Metal: Pipeline creation failed!");
     return pipeline;
 }
@@ -198,7 +199,7 @@ id<MTLDepthStencilState> MetalPipelineStateManager::CreateDepthStencil(const Pip
         depthStencilDesc.frontFaceStencil = stencilDesc;
     }
     
-    id<MTLDepthStencilState> depthStencilState = [MetalDevice::GetHandle() newDepthStencilStateWithDescriptor:depthStencilDesc];
+    id<MTLDepthStencilState> depthStencilState = [mDevice->GetHandle() newDepthStencilStateWithDescriptor:depthStencilDesc];
     return depthStencilState;
 }
 #endif

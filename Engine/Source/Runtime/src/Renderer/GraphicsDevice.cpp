@@ -1,14 +1,19 @@
 #include "gpch.h"
-#include "RendererContext.h"
+#include "GraphicsDevice.h"
 
 using namespace Gleam;
 
-RendererContext::RendererContext()
+GraphicsDevice::~GraphicsDevice()
 {
-    
+    for (auto& shader : mShaderCache)
+    {
+        Dispose(shader);
+    }
+    mShaderCache.clear();
+    Clear();
 }
 
-Heap RendererContext::CreateHeap(const HeapDescriptor& descriptor)
+Heap GraphicsDevice::CreateHeap(const HeapDescriptor& descriptor)
 {
     auto it = std::find_if(mFreeHeaps.begin(), mFreeHeaps.end(), [&](const Heap& heap) -> bool
     {
@@ -22,10 +27,10 @@ Heap RendererContext::CreateHeap(const HeapDescriptor& descriptor)
         mFreeHeaps.erase(it);
         return heap;
     }
-    return Heap(descriptor);
+    return AllocateHeap(descriptor);
 }
 
-Texture RendererContext::CreateTexture(const TextureDescriptor& descriptor)
+Texture GraphicsDevice::CreateTexture(const TextureDescriptor& descriptor)
 {
     auto it = std::find_if(mFreeTextures.begin(), mFreeTextures.end(), [&](const Texture& texture) -> bool
     {
@@ -39,52 +44,67 @@ Texture RendererContext::CreateTexture(const TextureDescriptor& descriptor)
         mFreeTextures.erase(it);
         return texture;
     }
-    return Texture(descriptor);
+    return AllocateTexture(descriptor);
 }
 
-const RefCounted<Shader>& RendererContext::CreateShader(const TString& entryPoint, ShaderStage stage)
+Shader GraphicsDevice::CreateShader(const TString& entryPoint, ShaderStage stage)
 {
     for (const auto& shader : mShaderCache)
     {
-        if (shader->GetEntryPoint() == entryPoint)
+        if (shader.GetEntryPoint() == entryPoint)
         {
             return shader;
         }
     }
-    return mShaderCache.emplace_back(CreateRef<Shader>(entryPoint, stage));
+    return mShaderCache.emplace_back(GenerateShader(entryPoint, stage));
 }
 
-void RendererContext::ReleaseHeap(const Heap& heap)
+void GraphicsDevice::ReleaseHeap(const Heap& heap)
 {
     GLEAM_ASSERT(heap.IsValid());
-    AddPooledObject(std::make_any<Heap>(heap), [this](std::any obj)
+    mSwapchain->AddPooledObject(std::make_any<Heap>(heap), [this](std::any obj)
     {
         mFreeHeaps.push_back(std::any_cast<Heap>(obj));
     });
 }
 
-void RendererContext::ReleaseTexture(const Texture& texture)
+void GraphicsDevice::ReleaseTexture(const Texture& texture)
 {
     GLEAM_ASSERT(texture.IsValid());
-    AddPooledObject(std::make_any<Texture>(texture), [this](std::any obj)
+    mSwapchain->AddPooledObject(std::make_any<Texture>(texture), [this](std::any obj)
     {
         mFreeTextures.push_back(std::any_cast<Texture>(obj));
     });
 }
 
-void RendererContext::Clear()
+void GraphicsDevice::Clear()
 {
     for (auto& texture : mFreeTextures)
     {
-        texture.Dispose();
+        Dispose(texture);
     }
     mFreeTextures.clear();
     
     for (auto& heap : mFreeHeaps)
     {
-        heap.Dispose();
+        Dispose(heap);
     }
     mFreeHeaps.clear();
     
     mShaderCache.clear();
+}
+
+Swapchain* GraphicsDevice::GetSwapchain()
+{
+    return mSwapchain.get();
+}
+
+const Swapchain* GraphicsDevice::GetSwapchain() const
+{
+    return mSwapchain.get();
+}
+
+NativeGraphicsHandle GraphicsDevice::GetHandle() const
+{
+    return mHandle;
 }

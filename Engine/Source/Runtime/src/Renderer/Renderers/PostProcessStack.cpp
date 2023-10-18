@@ -9,16 +9,16 @@
 #include "PostProcessStack.h"
 
 #include "Renderer/CommandBuffer.h"
-#include "Renderer/RendererContext.h"
+#include "Renderer/GraphicsDevice.h"
 
 #include "WorldRenderer.h"
 
 using namespace Gleam;
 
-void PostProcessStack::OnCreate(RendererContext& context)
+void PostProcessStack::OnCreate(GraphicsDevice* device)
 {
-    mFullscreenTriangleVertexShader = context.CreateShader("fullscreenTriangleVertexShader", ShaderStage::Vertex);
-    mTonemappingFragmentShader = context.CreateShader("tonemappingFragmentShader", ShaderStage::Fragment);
+    mFullscreenTriangleVertexShader = device->CreateShader("fullscreenTriangleVertexShader", ShaderStage::Vertex);
+    mTonemappingFragmentShader = device->CreateShader("tonemappingFragmentShader", ShaderStage::Fragment);
 }
 
 void PostProcessStack::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard)

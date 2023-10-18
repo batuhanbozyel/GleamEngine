@@ -8,7 +8,7 @@
 #include "gpch.h"
 
 #ifdef USE_VULKAN_RENDERER
-#include "Renderer/RendererContext.h"
+#include "Renderer/GraphicsDevice.h"
 #include "VulkanDevice.h"
 
 using namespace Gleam;

@@ -1,53 +1,34 @@
 #pragma once
 #ifdef USE_METAL_RENDERER
+#include "Renderer/Swapchain.h"
+
 #import <Metal/Metal.h>
 #import <QuartzCore/CAMetalLayer.h>
 
 namespace Gleam {
 
+class MetalDevice;
 struct RendererConfig;
 enum class TextureFormat;
 
-class MetalSwapchain final
+class MetalSwapchain final : public Swapchain
 {
 public:
-
-	void Initialize();
-
-	void Destroy();
+    
+    void Initialize(MetalDevice* device);
+    
+    void Destroy();
     
     void Configure(const RendererConfig& config);
-
+    
 	id<CAMetalDrawable> AcquireNextDrawable();
 	void Present(id<MTLCommandBuffer> commandBuffer);
     
-    void AddPooledObject(std::any object, std::function<void(std::any)> deallocator);
-    
     dispatch_semaphore_t GetSemaphore() const;
 
-    TextureFormat GetFormat() const;
-
 	CAMetalLayer* GetHandle() const;
-    
-    const Size& GetSize() const;
-    
-    uint32_t GetFrameIndex() const;
-    
-    uint32_t GetFramesInFlight() const;
 
 private:
-    
-    using PooledObject = std::pair<std::any, std::function<void(std::any)>>;
-    using ObjectPool = TArray<PooledObject>;
-    TArray<ObjectPool> mPooledObjects;
-
-	uint32_t mMaxFramesInFlight = 3;
-
-	uint32_t mCurrentFrameIndex = 0;
-
-    Size mSize = Size::zero;
-    
-    MTLPixelFormat mImageFormat = MTLPixelFormatInvalid;
     
     void* mSurface = nullptr;
 	

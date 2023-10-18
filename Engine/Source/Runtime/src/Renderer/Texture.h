@@ -4,21 +4,25 @@
 
 namespace Gleam {
 
+class GraphicsDevice;
+
 class Texture : public GraphicsObject
 {
+    friend class GraphicsDevice;
+    
 public:
-
-	Texture();
-
-    Texture(const TextureDescriptor& descriptor, bool allocate = true);
+    
+    Texture() = default;
     
     Texture(const Texture& other) = default;
     
     Texture& operator=(const Texture& other) = default;
     
-    void Dispose();
-    
-    void SetPixels(const void* pixels) const;
+    Texture(const TextureDescriptor& descriptor)
+        : mDescriptor(descriptor), mMipMapLevels(descriptor.useMipMap ? CalculateMipLevels(descriptor.size) : 1)
+    {
+        
+    }
     
     NativeGraphicsHandle GetView() const
     {

@@ -2,6 +2,7 @@
 
 #ifdef USE_METAL_RENDERER
 #include "MetalSwapchain.h"
+#include "MetalDevice.h"
 #include "MetalUtils.h"
 
 #include "Core/WindowSystem.h"
@@ -14,7 +15,7 @@
 
 using namespace Gleam;
 
-void MetalSwapchain::Initialize()
+void MetalSwapchain::Initialize(MetalDevice* device)
 {
     auto windowSystem = GameInstance->GetSubsystem<WindowSystem>();
     
@@ -24,7 +25,7 @@ void MetalSwapchain::Initialize()
     
     mHandle = (__bridge CAMetalLayer*)SDL_Metal_GetLayer(mSurface);
     mHandle.name = [NSString stringWithCString:windowSystem->GetProperties().title.c_str() encoding:NSASCIIStringEncoding];
-    mHandle.device = MetalDevice::GetHandle();
+    mHandle.device = device->GetHandle();
     mHandle.framebufferOnly = NO;
     mHandle.opaque = YES;
     
@@ -32,7 +33,7 @@ void MetalSwapchain::Initialize()
     mSize = resolution * mHandle.contentsScale;
     mHandle.frame.size = CGSizeMake(mSize.width, mSize.height);
     mHandle.drawableSize = CGSizeMake(resolution.width, resolution.height);
-    mImageFormat = mHandle.pixelFormat;
+    mFormat = MTLPixelFormatToTextureFormat(mHandle.pixelFormat);
     
     EventDispatcher<WindowResizeEvent>::Subscribe([this](const WindowResizeEvent& e)
     {
@@ -121,39 +122,14 @@ void MetalSwapchain::Present(id<MTLCommandBuffer> commandBuffer)
     mDrawable = nil;
 }
 
-void MetalSwapchain::AddPooledObject(std::any object, std::function<void(std::any)> deallocator)
-{
-    mPooledObjects[mCurrentFrameIndex].push_back(std::make_pair(object, deallocator));
-}
-
 dispatch_semaphore_t MetalSwapchain::GetSemaphore() const
 {
     return mImageAcquireSemaphore;
 }
 
-TextureFormat MetalSwapchain::GetFormat() const
-{
-    return MTLPixelFormatToTextureFormat(mImageFormat);
-}
-
 CAMetalLayer* MetalSwapchain::GetHandle() const
 {
     return mHandle;
-}
-
-const Gleam::Size& MetalSwapchain::GetSize() const
-{
-    return mSize;
-}
-
-uint32_t MetalSwapchain::GetFrameIndex() const
-{
-    return mCurrentFrameIndex;
-}
-
-uint32_t MetalSwapchain::GetFramesInFlight() const
-{
-    return mMaxFramesInFlight;
 }
 
 #endif

@@ -3,6 +3,7 @@
 #include "Buffer.h"
 #include "Shader.h"
 #include "Texture.h"
+#include "GraphicsDevice.h"
 #include "RenderGraph/RenderGraphResource.h"
 
 namespace Gleam {
@@ -30,7 +31,7 @@ class CommandBuffer final
 {
 public:
     
-	CommandBuffer();
+	CommandBuffer(GraphicsDevice* device);
 
 	~CommandBuffer();
     
@@ -38,7 +39,7 @@ public:
 
     void EndRenderPass() const;
 
-	void BindGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc, const RefCounted<Shader>& vertexShader, const RefCounted<Shader>& fragmentShader) const;
+	void BindGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc, const Shader& vertexShader, const Shader& fragmentShader) const;
 
     void SetViewport(const Size& size) const;
     
@@ -95,7 +96,7 @@ public:
             HeapDescriptor heapDesc;
             heapDesc.size = size;
             heapDesc.memoryType = MemoryType::CPU;
-            Heap heap(heapDesc);
+            Heap heap = mDevice->CreateHeap(heapDesc);
             
             BufferDescriptor bufferDesc;
             bufferDesc.size = size;
@@ -105,8 +106,8 @@ public:
             memcpy(As<uint8_t*>(stagingBuffer.GetContents()), data, size);
             CopyBuffer(stagingBuffer.GetHandle(), buffer.GetHandle(), size, 0, offset);
             
-            stagingBuffer.Dispose();
-            heap.Dispose();
+            mDevice->Dispose(stagingBuffer);
+            mDevice->Dispose(heap);
         }
         else
         {
@@ -142,6 +143,8 @@ private:
 
     class Impl;
     Scope<Impl> mHandle;
+    
+    GraphicsDevice* mDevice;
     
 };
 
