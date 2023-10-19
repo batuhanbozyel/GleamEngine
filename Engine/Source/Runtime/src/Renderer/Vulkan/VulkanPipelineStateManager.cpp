@@ -126,7 +126,6 @@ const VulkanGraphicsPipeline* VulkanPipelineStateManager::GetGraphicsPipeline(co
     pipeline->vertexShader = vertexShader;
     pipeline->fragmentShader = fragmentShader;
     pipeline->bindPoint = PipelineBindPointToVkPipelineBindPoint(pipelineDesc.bindPoint);
-    pipeline->topology = PrimitiveTopologyToMTLPrimitiveType(pipelineDesc.topology);
     pipeline->layout = CreatePipelineLayout(vertexShader, fragmentShader);
     pipeline->handle = CreateGraphicsPipeline(pipelineDesc, colorAttachments, depthAttachment, vertexShader, fragmentShader, renderPass, pipeline->layout, sampleCount);
     mGraphicsPipelineCache.insert(mGraphicsPipelineCache.end(), {key, Scope<VulkanGraphicsPipeline>(pipeline)});
