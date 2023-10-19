@@ -7,7 +7,11 @@
 #define VMA_DYNAMIC_VULKAN_FUNCTIONS 1
 
 #include "VulkanDevice.h"
+#include "VulkanSwapchain.h"
+#include "VulkanShaderReflect.h"
+#include "VulkanTransitionManager.h"
 #include "VulkanPipelineStateManager.h"
+
 #include "Core/Application.h"
 #include "Core/WindowSystem.h"
 
@@ -40,10 +44,191 @@ VKAPI_ATTR VkBool32 VKAPI_CALL VulkanDebugCallback(VkDebugUtilsMessageSeverityFl
 	return VK_FALSE;
 }
 
-void VulkanDevice::Init()
+Scope<GraphicsDevice> GraphicsDevice::Create()
+{
+	return CreateScope<VulkanDevice>();
+}
+
+void GraphicsDevice::Configure(const RendererConfig& config)
+{
+	As<VulkanSwapchain*>(mSwapchain.get())->Configure(config);
+}
+
+Heap GraphicsDevice::AllocateHeap(const HeapDescriptor& descriptor) const
+{
+	Heap heap(descriptor);
+	heap.mDevice = this;
+
+	VkBuffer buffer;
+	VkBufferCreateInfo createInfo{ VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
+	createInfo.size = descriptor.size;
+	createInfo.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+
+	if (descriptor.memoryType == MemoryType::GPU)
+	{
+		createInfo.usage |= VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+	}
+
+	createInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	VK_CHECK(vkCreateBuffer(As<VkDevice>(mHandle), &createInfo, nullptr, &buffer));
+
+	VmaAllocationCreateInfo vmaCreateInfo{};
+	vmaCreateInfo.usage = MemoryTypeToVmaMemoryUsage(descriptor.memoryType);
+	vmaCreateInfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT;
+	vmaCreateInfo.priority = 1.0f;
+	VmaAllocationInfo vmaAllocationInfo{};
+	VK_CHECK(vmaAllocateMemoryForBuffer(As<const VulkanDevice*>(this)->GetAllocator(), buffer, &vmaCreateInfo, As<VmaAllocation*>(&heap.mHandle), &vmaAllocationInfo));
+	vkDestroyBuffer(As<VkDevice>(mHandle), buffer, nullptr);
+
+	return heap;
+}
+
+Texture GraphicsDevice::AllocateTexture(const TextureDescriptor& descriptor) const
+{
+	Texture texture(descriptor);
+
+	VkImageCreateInfo createInfo{ VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
+	VkImageUsageFlags usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+	if (descriptor.type == TextureType::TextureCube)
+	{
+		float size = Math::Min(descriptor.size.width, descriptor.size.height);
+		texture.mDescriptor.size.width = size;
+		texture.mDescriptor.size.height = size;
+
+		createInfo.imageType = VK_IMAGE_TYPE_3D;
+		createInfo.usage = usage;
+	}
+	else
+	{
+		createInfo.imageType = VK_IMAGE_TYPE_2D;
+		createInfo.usage = descriptor.type == TextureType::RenderTexture ? usage | (Utils::IsColorFormat(descriptor.format) ? VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT : VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) : usage;
+	}
+	createInfo.format = TextureFormatToVkFormat(descriptor.format);
+	createInfo.extent.width = static_cast<uint32_t>(descriptor.size.width);
+	createInfo.extent.height = static_cast<uint32_t>(descriptor.size.height);
+	createInfo.extent.depth = 1;
+	createInfo.arrayLayers = 1;
+	createInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+	createInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+	createInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	createInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	createInfo.mipLevels = texture.mMipMapLevels;
+
+	VmaAllocationCreateInfo vmaCreateInfo{};
+	vmaCreateInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+	vmaCreateInfo.priority = 1.0f;
+	VK_CHECK(vmaCreateImage(As<const VulkanDevice*>(this)->GetAllocator(), &createInfo, &vmaCreateInfo, As<VkImage*>(&texture.mHandle), As<VmaAllocation*>(&texture.mHeap), nullptr));
+
+	VkImageViewCreateInfo viewCreateInfo{ VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
+	viewCreateInfo.image = As<VkImage>(texture.mHandle);
+	viewCreateInfo.viewType = descriptor.type == TextureType::TextureCube ? VK_IMAGE_VIEW_TYPE_CUBE : VK_IMAGE_VIEW_TYPE_2D;
+	viewCreateInfo.format = createInfo.format;
+	viewCreateInfo.components = {
+		VK_COMPONENT_SWIZZLE_IDENTITY,
+		VK_COMPONENT_SWIZZLE_IDENTITY,
+		VK_COMPONENT_SWIZZLE_IDENTITY,
+		VK_COMPONENT_SWIZZLE_IDENTITY
+	};
+	viewCreateInfo.subresourceRange.layerCount = 1;
+	viewCreateInfo.subresourceRange.baseArrayLayer = 0;
+	viewCreateInfo.subresourceRange.levelCount = 1;
+	viewCreateInfo.subresourceRange.baseMipLevel = 0;
+
+	if (Utils::IsColorFormat(descriptor.format))
+	{
+		viewCreateInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	}
+
+	if (Utils::IsDepthFormat(descriptor.format))
+	{
+		viewCreateInfo.subresourceRange.aspectMask |= VK_IMAGE_ASPECT_DEPTH_BIT;
+	}
+
+	if (Utils::IsStencilFormat(descriptor.format))
+	{
+		viewCreateInfo.subresourceRange.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
+	}
+	VK_CHECK(vkCreateImageView(As<VkDevice>(mHandle), &viewCreateInfo, nullptr, As<VkImageView*>(&texture.mView)));
+
+	if (descriptor.sampleCount > 1)
+	{
+		// TODO: Switch to memoryless MSAA render targets when Tile shading is supported
+		createInfo.samples = GetVkSampleCount(descriptor.sampleCount);
+		createInfo.usage = Utils::IsColorFormat(descriptor.format) ? VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT : VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+		VK_CHECK(vmaCreateImage(As<const VulkanDevice*>(this)->GetAllocator(), &createInfo, &vmaCreateInfo, As<VkImage*>(&texture.mMultisampleHandle), As<VmaAllocation*>(&texture.mMultisampleHeap), nullptr));
+
+		viewCreateInfo.image = As<VkImage>(texture.mMultisampleHandle);
+		VK_CHECK(vkCreateImageView(As<VkDevice>(mHandle), &viewCreateInfo, nullptr, As<VkImageView*>(&texture.mMultisampleView)));
+	}
+
+	return texture;
+}
+
+Shader GraphicsDevice::GenerateShader(const TString& entryPoint, ShaderStage stage) const
+{
+	Shader shader(entryPoint, stage);
+
+	TArray<uint8_t> shaderCode = IOUtils::ReadBinaryFile(GameInstance->GetDefaultAssetPath().append(entryPoint + ".spv"));
+	VkShaderModuleCreateInfo createInfo{ VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO };
+	createInfo.codeSize = shaderCode.size();
+	createInfo.pCode = As<uint32_t*>(shaderCode.data());
+	VK_CHECK(vkCreateShaderModule(As<VkDevice>(mHandle), &createInfo, nullptr, As<VkShaderModule*>(&shader.mHandle)));
+	shader.mReflection = CreateScope<Shader::Reflection>(this, shaderCode);
+
+	return shader;
+}
+
+void GraphicsDevice::Dispose(Heap& heap) const
+{
+	if (heap.mDescriptor.memoryType != MemoryType::GPU)
+	{
+		vmaUnmapMemory(As<const VulkanDevice*>(this)->GetAllocator(), As<VmaAllocation>(heap.mHandle));
+	}
+	vmaFreeMemory(As<const VulkanDevice*>(this)->GetAllocator(), As<VmaAllocation>(heap.mHandle));
+}
+
+void GraphicsDevice::Dispose(Buffer& buffer) const
+{
+	vkDestroyBuffer(As<VkDevice>(mHandle), As<VkBuffer>(buffer.mHandle), nullptr);
+}
+
+void GraphicsDevice::Dispose(Shader& shader) const
+{
+	vkDestroyShaderModule(As<VkDevice>(mHandle), As<VkShaderModule>(shader.mHandle), nullptr);
+}
+
+void GraphicsDevice::Dispose(Texture& texture) const
+{
+	if (texture.mHandle == nullptr) return;
+
+	vkDestroyImageView(As<VkDevice>(mHandle), As<VkImageView>(texture.mView), nullptr);
+	vmaDestroyImage(As<const VulkanDevice*>(this)->GetAllocator(), As<VkImage>(texture.mHandle), As<VmaAllocation>(texture.mHeap));
+
+	if (texture.mDescriptor.sampleCount > 1)
+	{
+		vkDestroyImageView(As<VkDevice>(mHandle), As<VkImageView>(texture.mMultisampleView), nullptr);
+		vmaDestroyImage(As<const VulkanDevice*>(this)->GetAllocator(), As<VkImage>(texture.mMultisampleHandle), As<VmaAllocation>(texture.mMultisampleHeap));
+	}
+
+	texture.mHeap = nullptr;
+	texture.mView = nullptr;
+	texture.mHandle = nullptr;
+	texture.mMultisampleHeap = nullptr;
+	texture.mMultisampleView = nullptr;
+	texture.mMultisampleHandle = nullptr;
+}
+
+void GraphicsDevice::WaitDeviceIdle() const
+{
+	VK_CHECK(vkDeviceWaitIdle(As<VkDevice>(mHandle)));
+}
+
+VulkanDevice::VulkanDevice()
 {
 	auto windowSystem = GameInstance->GetSubsystem<WindowSystem>();
 	const auto& version = GameInstance->GetVersion();
+
+	mSwapchain = CreateScope<VulkanSwapchain>();
 
 	VkResult loadVKResult = volkInitialize();
 	GLEAM_ASSERT(loadVKResult == VK_SUCCESS, "Vulkan: Meta-loader failed to load entry points!");
@@ -137,7 +322,7 @@ void VulkanDevice::Init()
 	vkGetPhysicalDeviceMemoryProperties(mPhysicalDevice, &mMemoryProperties);
 
 	// Create swapchain
-	mSwapchain.Initialize();
+	As<VulkanSwapchain*>(mSwapchain.get())->Initialize(this);
 
 	// Get physical device queues
 	bool mainQueueFound = false;
@@ -166,7 +351,7 @@ void VulkanDevice::Init()
 			deviceQueueCreateInfos.push_back(deviceQueueCreateInfo);
 
 			VkBool32 mainQueueSupportsPresent = false;
-			vkGetPhysicalDeviceSurfaceSupportKHR(mPhysicalDevice, i, mSwapchain.GetSurface(), &mainQueueSupportsPresent);
+			vkGetPhysicalDeviceSurfaceSupportKHR(mPhysicalDevice, i, As<VulkanSwapchain*>(mSwapchain.get())->GetSurface(), &mainQueueSupportsPresent);
 			GLEAM_ASSERT(mainQueueSupportsPresent, "Vulkan: Main queue does not support presentation!");
 		}
 		else if (queueFamiySupportsCompute &&
@@ -207,14 +392,14 @@ void VulkanDevice::Init()
 	deviceCreateInfo.enabledExtensionCount = static_cast<uint32_t>(requiredDeviceExtension.size());
 	deviceCreateInfo.ppEnabledExtensionNames = requiredDeviceExtension.data();
 
-	VK_CHECK(vkCreateDevice(mPhysicalDevice, &deviceCreateInfo, nullptr, &mHandle));
-	volkLoadDevice(mHandle);
+	VK_CHECK(vkCreateDevice(mPhysicalDevice, &deviceCreateInfo, nullptr, As<VkDevice*>(&mHandle)));
+	volkLoadDevice(As<VkDevice>(mHandle));
 
 	GLEAM_ASSERT(mainQueueFound, "Vulkan: Main queue could not found!");
-	vkGetDeviceQueue(mHandle, mGraphicsQueue.index, 0, &mGraphicsQueue.handle);
+	vkGetDeviceQueue(As<VkDevice>(mHandle), mGraphicsQueue.index, 0, &mGraphicsQueue.handle);
 	if (computeQueueFound)
 	{
-		vkGetDeviceQueue(mHandle, mComputeQueue.index, 0, &mComputeQueue.handle);
+		vkGetDeviceQueue(As<VkDevice>(mHandle), mComputeQueue.index, 0, &mComputeQueue.handle);
 	}
 	else
 	{
@@ -223,7 +408,7 @@ void VulkanDevice::Init()
 	}
 	if (transferQueueFound)
 	{
-		vkGetDeviceQueue(mHandle, mTransferQueue.index, 0, &mTransferQueue.handle);
+		vkGetDeviceQueue(As<VkDevice>(mHandle), mTransferQueue.index, 0, &mTransferQueue.handle);
 	}
 	else
 	{
@@ -233,7 +418,7 @@ void VulkanDevice::Init()
 
 	// Create pipeline cache
 	VkPipelineCacheCreateInfo pipelineCacheCreateInfo{ VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO };
-	VK_CHECK(vkCreatePipelineCache(mHandle, &pipelineCacheCreateInfo, nullptr, &mPipelineCache));
+	VK_CHECK(vkCreatePipelineCache(As<VkDevice>(mHandle), &pipelineCacheCreateInfo, nullptr, &mPipelineCache));
 
 	// Create allocator
 	VmaVulkanFunctions vulkanFunctions = {};
@@ -242,20 +427,21 @@ void VulkanDevice::Init()
 
 	VmaAllocatorCreateInfo vmaCreateInfo{};
 	vmaCreateInfo.instance = mInstance;
-	vmaCreateInfo.device = mHandle;
+	vmaCreateInfo.device = As<VkDevice>(mHandle);
 	vmaCreateInfo.physicalDevice = mPhysicalDevice;
 	vmaCreateInfo.vulkanApiVersion = VULKAN_API_VERSION;
 	vmaCreateInfo.pVulkanFunctions = &vulkanFunctions;
 	VK_CHECK(vmaCreateAllocator(&vmaCreateInfo, &mAllocator));
 
-	VulkanPipelineStateManager::Init();
+	VulkanPipelineStateManager::Init(this);
+	VulkanTransitionManager::Init(this);
 
 	GLEAM_CORE_INFO("Vulkan: Graphics device created.");
 }
 
-void VulkanDevice::Destroy()
+VulkanDevice::~VulkanDevice()
 {
-	VK_CHECK(vkDeviceWaitIdle(mHandle));
+	VK_CHECK(vkDeviceWaitIdle(As<VkDevice>(mHandle)));
 
 	VulkanPipelineStateManager::Destroy();
 
@@ -263,13 +449,13 @@ void VulkanDevice::Destroy()
 	vmaDestroyAllocator(mAllocator);
 
 	// Destroy pipeline cache
-	vkDestroyPipelineCache(mHandle, mPipelineCache, nullptr);
+	vkDestroyPipelineCache(As<VkDevice>(mHandle), mPipelineCache, nullptr);
 	
 	// Destroy swapchain
-	mSwapchain.Destroy();
+	As<VulkanSwapchain*>(mSwapchain.get())->Destroy();
 
 	// Destroy device
-	vkDestroyDevice(mHandle, nullptr);
+	vkDestroyDevice(As<VkDevice>(mHandle), nullptr);
 
 	// Destroy instance
 #ifdef GDEBUG
@@ -280,47 +466,90 @@ void VulkanDevice::Destroy()
 	GLEAM_CORE_INFO("Vulkan: Graphics device destroyed.");
 }
 
-const VulkanQueue& VulkanDevice::GetGraphicsQueue()
+VkCommandBuffer VulkanDevice::AllocateCommandBuffer()
+{
+	auto swapchain = As<VulkanSwapchain*>(mSwapchain.get());
+	auto frameIdx = mSwapchain->GetFrameIndex();
+
+	VkCommandBuffer commandBuffer = VK_NULL_HANDLE;
+	VkCommandBufferAllocateInfo allocateInfo{ VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO };
+	allocateInfo.commandBufferCount = 1;
+	allocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+	allocateInfo.commandPool = swapchain->GetCommandPool();
+	VK_CHECK(vkAllocateCommandBuffers(As<VkDevice>(mHandle), &allocateInfo, &commandBuffer));
+	mSwapchain->AddPooledObject(std::make_any<VkCommandBuffer>(commandBuffer), [=, this](std::any obj)
+	{
+		auto cmd = std::any_cast<VkCommandBuffer>(obj);
+		vkFreeCommandBuffers(As<VkDevice>(mHandle), swapchain->GetCommandPool(frameIdx), 1, &cmd);
+	});
+	return commandBuffer;
+}
+
+VkFence VulkanDevice::CreateFence()
+{
+	VkFence fence = VK_NULL_HANDLE;
+	VkFenceCreateInfo createInfo{ VK_STRUCTURE_TYPE_FENCE_CREATE_INFO };
+	VK_CHECK(vkCreateFence(As<VkDevice>(mHandle), &createInfo, nullptr, &fence));
+	mSwapchain->AddPooledObject(std::make_any<VkFence>(fence), [this](std::any obj)
+	{
+		vkDestroyFence(As<VkDevice>(mHandle), std::any_cast<VkFence>(obj), nullptr);
+	});
+	return fence;
+}
+
+VkRenderPass VulkanDevice::CreateRenderPass(const VkRenderPassCreateInfo& createInfo)
+{
+	VkRenderPass renderPass = VK_NULL_HANDLE;
+	VK_CHECK(vkCreateRenderPass(As<VkDevice>(mHandle), &createInfo, nullptr, &renderPass));
+	mSwapchain->AddPooledObject(std::make_any<VkRenderPass>(renderPass), [this](std::any obj)
+	{
+		vkDestroyRenderPass(As<VkDevice>(mHandle), std::any_cast<VkRenderPass>(obj), nullptr);
+	});
+	return renderPass;
+}
+
+VkFramebuffer VulkanDevice::CreateFramebuffer(const VkFramebufferCreateInfo& createInfo)
+{
+	VkFramebuffer framebuffer = VK_NULL_HANDLE;
+	VK_CHECK(vkCreateFramebuffer(As<VkDevice>(mHandle), &createInfo, nullptr, &framebuffer));
+	mSwapchain->AddPooledObject(std::make_any<VkFramebuffer>(framebuffer), [this](std::any obj)
+	{
+		vkDestroyFramebuffer(As<VkDevice>(mHandle), std::any_cast<VkFramebuffer>(obj), nullptr);
+	});
+	return framebuffer;
+}
+
+const VulkanQueue& VulkanDevice::GetGraphicsQueue() const
 {
 	return mGraphicsQueue;
 }
 
-const VulkanQueue& VulkanDevice::GetComputeQueue()
+const VulkanQueue& VulkanDevice::GetComputeQueue() const
 {
 	return mComputeQueue;
 }
 
-const VulkanQueue& VulkanDevice::GetTransferQueue()
+const VulkanQueue& VulkanDevice::GetTransferQueue() const
 {
 	return mTransferQueue;
 }
 
-VulkanSwapchain& VulkanDevice::GetSwapchain()
-{
-	return mSwapchain;
-}
-
-VkDevice VulkanDevice::GetHandle()
-{
-	return mHandle;
-}
-
-VkInstance VulkanDevice::GetInstance()
+VkInstance VulkanDevice::GetInstance() const
 {
 	return mInstance;
 }
 
-VkPhysicalDevice VulkanDevice::GetPhysicalDevice()
+VkPhysicalDevice VulkanDevice::GetPhysicalDevice() const
 {
 	return mPhysicalDevice;
 }
 
-VkPipelineCache VulkanDevice::GetPipelineCache()
+VkPipelineCache VulkanDevice::GetPipelineCache() const
 {
 	return mPipelineCache;
 }
 
-VmaAllocator VulkanDevice::GetAllocator()
+VmaAllocator VulkanDevice::GetAllocator() const
 {
 	return mAllocator;
 }

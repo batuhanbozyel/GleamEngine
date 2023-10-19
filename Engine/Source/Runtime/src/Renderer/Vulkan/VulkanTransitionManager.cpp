@@ -4,9 +4,12 @@
 #include "VulkanTransitionManager.h"
 #include "VulkanDevice.h"
 
-#include "Renderer/CommandBuffer.h"
-
 using namespace Gleam;
+
+void VulkanTransitionManager::Init(VulkanDevice* device)
+{
+	mDevice = device;
+}
 
 void VulkanTransitionManager::TransitionLayout(VkCommandBuffer cmd, VkImage image, VkImageLayout layout)
 {
@@ -16,8 +19,8 @@ void VulkanTransitionManager::TransitionLayout(VkCommandBuffer cmd, VkImage imag
 	VkImageMemoryBarrier barrier{ VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
 	barrier.oldLayout = oldLayout;
 	barrier.newLayout = layout;
-	barrier.srcQueueFamilyIndex = VulkanDevice::GetGraphicsQueue().index;
-	barrier.dstQueueFamilyIndex = VulkanDevice::GetGraphicsQueue().index;
+	barrier.srcQueueFamilyIndex = mDevice->GetGraphicsQueue().index;
+	barrier.dstQueueFamilyIndex = mDevice->GetGraphicsQueue().index;
 	barrier.image = image;
 	barrier.subresourceRange.baseMipLevel = 0;
 	barrier.subresourceRange.levelCount = 1;

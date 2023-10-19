@@ -1,6 +1,7 @@
 #pragma once
 #include "Renderer/Shader.h"
 #include "VulkanDevice.h"
+#include "VulkanUtils.h"
 
 #include <spirv_reflect.h>
 
@@ -56,6 +57,8 @@ struct Shader::Reflection
 	static constexpr uint32_t SRV_BINDING_OFFSET = 1000;
 	static constexpr uint32_t UAV_BINDING_OFFSET = 2000;
 
+	const GraphicsDevice* device;
+
 	SpvReflectShaderModule reflection;
 	TArray<VkDescriptorSetLayout> setLayouts;
 	TArray<VkPushConstantRange> pushConstantRanges;
@@ -63,7 +66,8 @@ struct Shader::Reflection
 	TArray<SpvReflectDescriptorBinding*> samplers;
 	HashMap<uint32_t, SpvReflectDescriptorBinding*> resources;
 
-	Reflection(const TArray<uint8_t>& source)
+	Reflection(const GraphicsDevice* device, const TArray<uint8_t>& source)
+		: device(device)
 	{
 		SPV_CHECK(spvReflectCreateShaderModule(source.size(), source.data(), &reflection));
 
@@ -102,7 +106,7 @@ struct Shader::Reflection
 			setCreateInfo.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR;
 			setCreateInfo.bindingCount = static_cast<uint32_t>(setBindings.size());
 			setCreateInfo.pBindings = setBindings.data();
-			VK_CHECK(vkCreateDescriptorSetLayout(VulkanDevice::GetHandle(), &setCreateInfo, nullptr, &setLayouts[i]));
+			VK_CHECK(vkCreateDescriptorSetLayout(As<VkDevice>(device->GetHandle()), &setCreateInfo, nullptr, &setLayouts[i]));
 		}
 
 		// Get push constant
@@ -127,7 +131,7 @@ struct Shader::Reflection
 		spvReflectDestroyShaderModule(&reflection);
 		for (auto setLayout : setLayouts)
 		{
-			vkDestroyDescriptorSetLayout(VulkanDevice::GetHandle(), setLayout, nullptr);
+			vkDestroyDescriptorSetLayout(As<VkDevice>(device->GetHandle()), setLayout, nullptr);
 		}
 	}
 };

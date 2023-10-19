@@ -30,7 +30,7 @@ static constexpr size_t SizeOfIndexType(IndexType indexType)
 class CommandBuffer final
 {
 public:
-    
+
 	CommandBuffer(GraphicsDevice* device);
 
 	~CommandBuffer();

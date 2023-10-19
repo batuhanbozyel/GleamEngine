@@ -14,48 +14,52 @@
 
 using namespace Gleam;
 
-void VulkanSwapchain::Initialize()
+void VulkanSwapchain::Initialize(VulkanDevice* device)
 {
+	mDevice = device;
 	auto windowSystem = GameInstance->GetSubsystem<WindowSystem>();
 
     // Create surface
-	bool surfaceCreateResult = SDL_Vulkan_CreateSurface(windowSystem->GetSDLWindow(), VulkanDevice::GetInstance(), &mSurface);
+	bool surfaceCreateResult = SDL_Vulkan_CreateSurface(windowSystem->GetSDLWindow(), device->GetInstance(), &mSurface);
 	GLEAM_ASSERT(surfaceCreateResult, "Vulkan: Surface creation failed!");
 }
 
 void VulkanSwapchain::Destroy()
 {
-	for (auto& pool : mFrameObjects)
+	for (auto& pool : mPooledObjects)
 	{
-		pool.Flush();
+		for (auto& [obj, deallocator] : pool)
+		{
+			deallocator(obj);
+		}
 	}
-	mFrameObjects.clear();
+	mPooledObjects.clear();
 
 	// Destroy swapchain
-	vkDestroySwapchainKHR(VulkanDevice::GetHandle(), mHandle, nullptr);
+	vkDestroySwapchainKHR(As<VkDevice>(mDevice->GetHandle()), mHandle, nullptr);
 
 	// Destroy surface
-	vkDestroySurfaceKHR(VulkanDevice::GetInstance(), mSurface, nullptr);
+	vkDestroySurfaceKHR(mDevice->GetInstance(), mSurface, nullptr);
 
 	// Destroy drawable
 	for (uint32_t i = 0; i < mImages.size(); i++)
 	{
-		vkDestroyImageView(VulkanDevice::GetHandle(), mImages[i].view, nullptr);
+		vkDestroyImageView(As<VkDevice>(mDevice->GetHandle()), mImages[i].view, nullptr);
 	}
 
 	// Destroy command pools
 	for (uint32_t i = 0; i < mMaxFramesInFlight; i++)
 	{
-		vkDestroyCommandPool(VulkanDevice::GetHandle(), mCommandPools[i], nullptr);
+		vkDestroyCommandPool(As<VkDevice>(mDevice->GetHandle()), mCommandPools[i], nullptr);
 	}
 	mCommandPools.clear();
 
 	// Destroy sync objects
 	for (uint32_t i = 0; i < mMaxFramesInFlight; i++)
 	{
-		vkDestroySemaphore(VulkanDevice::GetHandle(), mImageAcquireSemaphores[i], nullptr);
-		vkDestroySemaphore(VulkanDevice::GetHandle(), mImageReleaseSemaphores[i], nullptr);
-		vkDestroyFence(VulkanDevice::GetHandle(), mFences[i], nullptr);
+		vkDestroySemaphore(As<VkDevice>(mDevice->GetHandle()), mImageAcquireSemaphores[i], nullptr);
+		vkDestroySemaphore(As<VkDevice>(mDevice->GetHandle()), mImageReleaseSemaphores[i], nullptr);
+		vkDestroyFence(As<VkDevice>(mDevice->GetHandle()), mFences[i], nullptr);
 	}
 	mImageAcquireSemaphores.clear();
 	mImageReleaseSemaphores.clear();
@@ -64,7 +68,7 @@ void VulkanSwapchain::Destroy()
 
 const VulkanDrawable& VulkanSwapchain::AcquireNextDrawable()
 {
-	VkResult result = vkAcquireNextImageKHR(VulkanDevice::GetHandle(), mHandle, UINT64_MAX, mImageAcquireSemaphores[mCurrentFrameIndex], VK_NULL_HANDLE, &mImageIndex);
+	VkResult result = vkAcquireNextImageKHR(As<VkDevice>(mDevice->GetHandle()), mHandle, UINT64_MAX, mImageAcquireSemaphores[mCurrentFrameIndex], VK_NULL_HANDLE, &mImageIndex);
 	if (result == VK_ERROR_OUT_OF_DATE_KHR)
 	{
 		auto renderSystem = GameInstance->GetSubsystem<RenderSystem>();
@@ -91,7 +95,7 @@ void VulkanSwapchain::Present(VkCommandBuffer commandBuffer)
 	submitInfo.pCommandBuffers = &commandBuffer;
 	submitInfo.signalSemaphoreCount = 1;
 	submitInfo.pSignalSemaphores = &mImageReleaseSemaphores[mCurrentFrameIndex];
-	VK_CHECK(vkQueueSubmit(VulkanDevice::GetGraphicsQueue().handle, 1, &submitInfo, mFences[mCurrentFrameIndex]));
+	VK_CHECK(vkQueueSubmit(mDevice->GetGraphicsQueue().handle, 1, &submitInfo, mFences[mCurrentFrameIndex]));
 
 	VkPresentInfoKHR presentInfo{ VK_STRUCTURE_TYPE_PRESENT_INFO_KHR };
 	presentInfo.waitSemaphoreCount = 1;
@@ -99,7 +103,7 @@ void VulkanSwapchain::Present(VkCommandBuffer commandBuffer)
 	presentInfo.swapchainCount = 1;
 	presentInfo.pSwapchains = &mHandle;
 	presentInfo.pImageIndices = &mImageIndex;
-	VkResult result = vkQueuePresentKHR(VulkanDevice::GetGraphicsQueue().handle, &presentInfo);
+	VkResult result = vkQueuePresentKHR(mDevice->GetGraphicsQueue().handle, &presentInfo);
 	if (result == VK_ERROR_OUT_OF_DATE_KHR)
 	{
 		auto renderSystem = GameInstance->GetSubsystem<RenderSystem>();
@@ -112,32 +116,38 @@ void VulkanSwapchain::Present(VkCommandBuffer commandBuffer)
 
 	mCurrentFrameIndex = (mCurrentFrameIndex + 1) % mMaxFramesInFlight;
 
-	VK_CHECK(vkWaitForFences(VulkanDevice::GetHandle(), 1, &mFences[mCurrentFrameIndex], VK_TRUE, UINT64_MAX));
-	VK_CHECK(vkResetCommandPool(VulkanDevice::GetHandle(), mCommandPools[mCurrentFrameIndex], 0));
-	VK_CHECK(vkResetFences(VulkanDevice::GetHandle(), 1, &mFences[mCurrentFrameIndex]));
-	mFrameObjects[mCurrentFrameIndex].Flush();
+	VK_CHECK(vkWaitForFences(As<VkDevice>(mDevice->GetHandle()), 1, &mFences[mCurrentFrameIndex], VK_TRUE, UINT64_MAX));
+	VK_CHECK(vkResetCommandPool(As<VkDevice>(mDevice->GetHandle()), mCommandPools[mCurrentFrameIndex], 0));
+	VK_CHECK(vkResetFences(As<VkDevice>(mDevice->GetHandle()), 1, &mFences[mCurrentFrameIndex]));
+	
+	auto& pooledObjects = mPooledObjects[mCurrentFrameIndex];
+	for (auto& [obj, deallocate] : pooledObjects)
+	{
+		deallocate(obj);
+	}
+	pooledObjects.clear();
 }
 
 void VulkanSwapchain::Configure(const RendererConfig& config)
 {
 	auto windowSystem = GameInstance->GetSubsystem<WindowSystem>();
-	vkDeviceWaitIdle(VulkanDevice::GetHandle());
+	vkDeviceWaitIdle(As<VkDevice>(mDevice->GetHandle()));
 
 	// Get surface information
 	uint32_t presentModeCount;
-	VK_CHECK(vkGetPhysicalDeviceSurfacePresentModesKHR(VulkanDevice::GetPhysicalDevice(), mSurface, &presentModeCount, nullptr));
+	VK_CHECK(vkGetPhysicalDeviceSurfacePresentModesKHR(mDevice->GetPhysicalDevice(), mSurface, &presentModeCount, nullptr));
 	TArray<VkPresentModeKHR> presentModes(presentModeCount);
-	VK_CHECK(vkGetPhysicalDeviceSurfacePresentModesKHR(VulkanDevice::GetPhysicalDevice(), mSurface, &presentModeCount, presentModes.data()));
+	VK_CHECK(vkGetPhysicalDeviceSurfacePresentModesKHR(mDevice->GetPhysicalDevice(), mSurface, &presentModeCount, presentModes.data()));
 
 	uint32_t surfaceFormatCount;
-	VK_CHECK(vkGetPhysicalDeviceSurfaceFormatsKHR(VulkanDevice::GetPhysicalDevice(), mSurface, &surfaceFormatCount, nullptr));
+	VK_CHECK(vkGetPhysicalDeviceSurfaceFormatsKHR(mDevice->GetPhysicalDevice(), mSurface, &surfaceFormatCount, nullptr));
 	TArray<VkSurfaceFormatKHR> surfaceFormats(surfaceFormatCount);
-	VK_CHECK(vkGetPhysicalDeviceSurfaceFormatsKHR(VulkanDevice::GetPhysicalDevice(), mSurface, &surfaceFormatCount, surfaceFormats.data()));
+	VK_CHECK(vkGetPhysicalDeviceSurfaceFormatsKHR(mDevice->GetPhysicalDevice(), mSurface, &surfaceFormatCount, surfaceFormats.data()));
 
 	VkSurfaceCapabilitiesKHR surfaceCapabilities;
-	VK_CHECK(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(VulkanDevice::GetPhysicalDevice(), mSurface, &surfaceCapabilities));
+	VK_CHECK(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(mDevice->GetPhysicalDevice(), mSurface, &surfaceCapabilities));
 
-	mImageFormat = [&]()
+	auto imageFormat = [&]()
 	{
 		for (const auto& surfaceFormat : surfaceFormats)
 		{
@@ -148,6 +158,7 @@ void VulkanSwapchain::Configure(const RendererConfig& config)
 		}
 		return VK_FORMAT_R8G8B8A8_UNORM;
 	}();
+	mFormat = VkFormatToTextureFormat(imageFormat);
 
 	// Configure triple buffering
 	if (surfaceCapabilities.minImageCount <= 3 && (surfaceCapabilities.maxImageCount >= 3 || surfaceCapabilities.maxImageCount == 0) && config.tripleBufferingEnabled)
@@ -216,36 +227,39 @@ void VulkanSwapchain::Configure(const RendererConfig& config)
 	swapchainCreateInfo.presentMode = presentMode;
 	swapchainCreateInfo.clipped = VK_TRUE;
 	swapchainCreateInfo.imageArrayLayers = 1;
-	swapchainCreateInfo.imageFormat = mImageFormat;
+	swapchainCreateInfo.imageFormat = imageFormat;
 	swapchainCreateInfo.oldSwapchain = mHandle;
 	VkSwapchainKHR newSwapchain;
-	VK_CHECK(vkCreateSwapchainKHR(VulkanDevice::GetHandle(), &swapchainCreateInfo, nullptr, &newSwapchain));
+	VK_CHECK(vkCreateSwapchainKHR(As<VkDevice>(mDevice->GetHandle()), &swapchainCreateInfo, nullptr, &newSwapchain));
 
 	// Destroy swapchain
 	if (mHandle != VK_NULL_HANDLE)
 	{
-		vkDestroySwapchainKHR(VulkanDevice::GetHandle(), mHandle, nullptr);
+		vkDestroySwapchainKHR(As<VkDevice>(mDevice->GetHandle()), mHandle, nullptr);
 
 		// Flush pooled objects
-		for (auto& pool : mFrameObjects)
+		for (auto& pool : mPooledObjects)
 		{
-			pool.Flush();
+			for (auto& [obj, deallocator] : pool)
+			{
+				deallocator(obj);
+			}
 		}
-		mFrameObjects.clear();
+		mPooledObjects.clear();
 
 		// Destroy command pools
 		for (uint32_t i = 0; i < mCommandPools.size(); i++)
 		{
-			vkDestroyCommandPool(VulkanDevice::GetHandle(), mCommandPools[i], nullptr);
+			vkDestroyCommandPool(As<VkDevice>(mDevice->GetHandle()), mCommandPools[i], nullptr);
 		}
 		mCommandPools.clear();
 
 		// Destroy sync objects
 		for (uint32_t i = 0; i < mImageAcquireSemaphores.size(); i++)
 		{
-			vkDestroySemaphore(VulkanDevice::GetHandle(), mImageAcquireSemaphores[i], nullptr);
-			vkDestroySemaphore(VulkanDevice::GetHandle(), mImageReleaseSemaphores[i], nullptr);
-			vkDestroyFence(VulkanDevice::GetHandle(), mFences[i], nullptr);
+			vkDestroySemaphore(As<VkDevice>(mDevice->GetHandle()), mImageAcquireSemaphores[i], nullptr);
+			vkDestroySemaphore(As<VkDevice>(mDevice->GetHandle()), mImageReleaseSemaphores[i], nullptr);
+			vkDestroyFence(As<VkDevice>(mDevice->GetHandle()), mFences[i], nullptr);
 		}
 		mImageAcquireSemaphores.clear();
 		mImageReleaseSemaphores.clear();
@@ -254,17 +268,17 @@ void VulkanSwapchain::Configure(const RendererConfig& config)
 		// Destroy drawable
 		for (uint32_t i = 0; i < mImages.size(); i++)
 		{
-			vkDestroyImageView(VulkanDevice::GetHandle(), mImages[i].view, nullptr);
+			vkDestroyImageView(As<VkDevice>(mDevice->GetHandle()), mImages[i].view, nullptr);
 		}
 		mImages.clear();
 	}
 	mHandle = newSwapchain;
 
 	uint32_t swapchainImageCount;
-	VK_CHECK(vkGetSwapchainImagesKHR(VulkanDevice::GetHandle(), mHandle, &swapchainImageCount, nullptr));
+	VK_CHECK(vkGetSwapchainImagesKHR(As<VkDevice>(mDevice->GetHandle()), mHandle, &swapchainImageCount, nullptr));
 
 	TArray<VkImage> drawables(swapchainImageCount);
-	VK_CHECK(vkGetSwapchainImagesKHR(VulkanDevice::GetHandle(), mHandle, &swapchainImageCount, drawables.data()));
+	VK_CHECK(vkGetSwapchainImagesKHR(As<VkDevice>(mDevice->GetHandle()), mHandle, &swapchainImageCount, drawables.data()));
 
 	// Create image views
 	VkImageViewUsageCreateInfo imageViewUsageCreateInfo{ VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO };
@@ -272,7 +286,7 @@ void VulkanSwapchain::Configure(const RendererConfig& config)
 
 	VkImageViewCreateInfo imageViewCreateInfo{ VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
 	imageViewCreateInfo.pNext = &imageViewUsageCreateInfo;
-	imageViewCreateInfo.format = mImageFormat;
+	imageViewCreateInfo.format = imageFormat;
 	imageViewCreateInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 	imageViewCreateInfo.subresourceRange.layerCount = 1;
 	imageViewCreateInfo.subresourceRange.baseArrayLayer = 0;
@@ -291,7 +305,7 @@ void VulkanSwapchain::Configure(const RendererConfig& config)
 	{
 		mImages[i].image = drawables[i];
 		imageViewCreateInfo.image = drawables[i];
-		VK_CHECK(vkCreateImageView(VulkanDevice::GetHandle(), &imageViewCreateInfo, nullptr, &mImages[i].view));
+		VK_CHECK(vkCreateImageView(As<VkDevice>(mDevice->GetHandle()), &imageViewCreateInfo, nullptr, &mImages[i].view));
 	}
 
 	// Create sync objects
@@ -302,12 +316,12 @@ void VulkanSwapchain::Configure(const RendererConfig& config)
 	VkSemaphoreCreateInfo semaphoreCreateInfo{ VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO };
 	for (uint32_t i = 0; i < mMaxFramesInFlight; i++)
 	{
-		VK_CHECK(vkCreateSemaphore(VulkanDevice::GetHandle(), &semaphoreCreateInfo, nullptr, &mImageAcquireSemaphores[i]));
-		VK_CHECK(vkCreateSemaphore(VulkanDevice::GetHandle(), &semaphoreCreateInfo, nullptr, &mImageReleaseSemaphores[i]));
+		VK_CHECK(vkCreateSemaphore(As<VkDevice>(mDevice->GetHandle()), &semaphoreCreateInfo, nullptr, &mImageAcquireSemaphores[i]));
+		VK_CHECK(vkCreateSemaphore(As<VkDevice>(mDevice->GetHandle()), &semaphoreCreateInfo, nullptr, &mImageReleaseSemaphores[i]));
 
 		VkFenceCreateInfo fenceCreateInfo{ VK_STRUCTURE_TYPE_FENCE_CREATE_INFO };
 		if (i >= 1) { fenceCreateInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT; }
-		VK_CHECK(vkCreateFence(VulkanDevice::GetHandle(), &fenceCreateInfo, nullptr, &mFences[i]));
+		VK_CHECK(vkCreateFence(As<VkDevice>(mDevice->GetHandle()), &fenceCreateInfo, nullptr, &mFences[i]));
 	}
 
 	// Create command pools
@@ -315,90 +329,14 @@ void VulkanSwapchain::Configure(const RendererConfig& config)
 	commandPoolCreateInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 
 	mCommandPools.resize(mMaxFramesInFlight);
-	mFrameObjects.resize(mMaxFramesInFlight);
+	mPooledObjects.resize(mMaxFramesInFlight);
 	for (uint32_t i = 0; i < mMaxFramesInFlight; i++)
 	{
-		mFrameObjects[i].frameIdx = i;
-		commandPoolCreateInfo.queueFamilyIndex = VulkanDevice::GetGraphicsQueue().index;
-		VK_CHECK(vkCreateCommandPool(VulkanDevice::GetHandle(), &commandPoolCreateInfo, nullptr, &mCommandPools[i]));
+		commandPoolCreateInfo.queueFamilyIndex = mDevice->GetGraphicsQueue().index;
+		VK_CHECK(vkCreateCommandPool(As<VkDevice>(mDevice->GetHandle()), &commandPoolCreateInfo, nullptr, &mCommandPools[i]));
 	}
 
 	EventDispatcher<RendererResizeEvent>::Publish(RendererResizeEvent(mSize));
-}
-
-VkCommandBuffer VulkanSwapchain::AllocateCommandBuffer()
-{
-	VkCommandBuffer commandBuffer = VK_NULL_HANDLE;
-	VkCommandBufferAllocateInfo allocateInfo{ VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO };
-	allocateInfo.commandBufferCount = 1;
-	allocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-	allocateInfo.commandPool = mCommandPools[mCurrentFrameIndex];
-	VK_CHECK(vkAllocateCommandBuffers(VulkanDevice::GetHandle(), &allocateInfo, &commandBuffer));
-	mFrameObjects[mCurrentFrameIndex].commandBuffers.push_back(commandBuffer);
-	return commandBuffer;
-}
-
-VkFence VulkanSwapchain::CreateFence()
-{
-	VkFence fence = VK_NULL_HANDLE;
-	VkFenceCreateInfo createInfo{ VK_STRUCTURE_TYPE_FENCE_CREATE_INFO };
-	VK_CHECK(vkCreateFence(VulkanDevice::GetHandle(), &createInfo, nullptr, &fence));
-	mFrameObjects[mCurrentFrameIndex].fences.push_back(fence);
-	return fence;
-}
-
-VkRenderPass VulkanSwapchain::CreateRenderPass(const VkRenderPassCreateInfo& createInfo)
-{
-	VkRenderPass renderPass = VK_NULL_HANDLE;
-	VK_CHECK(vkCreateRenderPass(VulkanDevice::GetHandle(), &createInfo, nullptr, &renderPass));
-	mFrameObjects[mCurrentFrameIndex].renderPasses.push_back(renderPass);
-	return renderPass;
-}
-
-VkFramebuffer VulkanSwapchain::CreateFramebuffer(const VkFramebufferCreateInfo& createInfo)
-{
-	VkFramebuffer framebuffer = VK_NULL_HANDLE;
-	VK_CHECK(vkCreateFramebuffer(VulkanDevice::GetHandle(), &createInfo, nullptr, &framebuffer));
-	mFrameObjects[mCurrentFrameIndex].framebuffers.push_back(framebuffer);
-	return framebuffer;
-}
-
-void VulkanSwapchain::ObjectPool::Flush()
-{
-	if (!commandBuffers.empty())
-	{
-		vkFreeCommandBuffers(VulkanDevice::GetHandle(), VulkanDevice::GetSwapchain().GetCommandPool(frameIdx), static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());
-		commandBuffers.clear();
-	}
-
-	for (auto fence : fences)
-	{
-		vkDestroyFence(VulkanDevice::GetHandle(), fence, nullptr);
-	}
-	fences.clear();
-	
-	for (auto renderPass : renderPasses)
-	{
-		vkDestroyRenderPass(VulkanDevice::GetHandle(), renderPass, nullptr);
-	}
-	renderPasses.clear();
-
-	for (auto framebuffer : framebuffers)
-	{
-		vkDestroyFramebuffer(VulkanDevice::GetHandle(), framebuffer, nullptr);
-	}
-	framebuffers.clear();
-
-	for (auto& [object, deallocator] : externalObjects)
-	{
-		deallocator(object);
-	}
-	externalObjects.clear();
-}
-
-void VulkanSwapchain::AddPooledObject(std::any object, std::function<void(std::any)> deallocator)
-{
-	mFrameObjects[mCurrentFrameIndex].externalObjects.push_back(std::make_pair(object, deallocator));
 }
 
 const VulkanDrawable& VulkanSwapchain::GetDrawable() const
@@ -421,34 +359,9 @@ VkFence VulkanSwapchain::GetFence() const
 	return mFences[mCurrentFrameIndex];
 }
 
-TextureFormat VulkanSwapchain::GetFormat() const
-{
-	return VkFormatToTextureFormat(mImageFormat);
-}
-
-VkSwapchainKHR VulkanSwapchain::GetHandle() const
-{
-	return mHandle;
-}
-
 VkSurfaceKHR VulkanSwapchain::GetSurface() const
 {
 	return mSurface;
-}
-
-const Size& VulkanSwapchain::GetSize() const
-{
-	return mSize;
-}
-
-uint32_t VulkanSwapchain::GetFrameIndex() const
-{
-	return mCurrentFrameIndex;
-}
-
-uint32_t VulkanSwapchain::GetFramesInFlight() const
-{
-	return mMaxFramesInFlight;
 }
 
 #endif

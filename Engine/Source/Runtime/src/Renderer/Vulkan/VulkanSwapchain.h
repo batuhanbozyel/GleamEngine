@@ -1,18 +1,26 @@
 #pragma once
 #ifdef USE_VULKAN_RENDERER
-#include "VulkanUtils.h"
+#include "Renderer/Swapchain.h"
+
+#include <volk.h>
 
 namespace Gleam {
 
-struct Version;
+class VulkanDevice;
 struct RendererConfig;
 enum class TextureFormat;
 
-class VulkanSwapchain final
+struct VulkanDrawable
+{
+	VkImage image{ VK_NULL_HANDLE };
+	VkImageView view{ VK_NULL_HANDLE };
+};
+
+class VulkanSwapchain final : public Swapchain
 {
 public:
 
-	void Initialize();
+	void Initialize(VulkanDevice* device);
 
 	void Destroy();
 
@@ -20,16 +28,6 @@ public:
 
 	const VulkanDrawable& AcquireNextDrawable();
 	void Present(VkCommandBuffer commandBuffer);
-
-	VkCommandBuffer AllocateCommandBuffer();
-
-	VkFence CreateFence();
-
-	VkRenderPass CreateRenderPass(const VkRenderPassCreateInfo& createInfo);
-
-	VkFramebuffer CreateFramebuffer(const VkFramebufferCreateInfo& createInfo);
-
-	void AddPooledObject(std::any object, std::function<void(std::any)> deallocator);
 
 	const VulkanDrawable& GetDrawable() const;
 
@@ -39,43 +37,16 @@ public:
 
 	VkFence GetFence() const;
 
-    TextureFormat GetFormat() const;
-
-	VkSwapchainKHR GetHandle() const;
-
 	VkSurfaceKHR GetSurface() const;
-    
-    const Size& GetSize() const;
-
-	uint32_t GetFrameIndex() const;
-
-	uint32_t GetFramesInFlight() const;
 
 private:
-
-	struct ObjectPool
-	{
-		uint32_t frameIdx;
-		TArray<VkRenderPass> renderPasses;
-		TArray<VkFramebuffer> framebuffers;
-		TArray<VkCommandBuffer> commandBuffers;
-		TArray<VkFence> fences;
-
-		using CustomObject = std::pair<void*, std::function<void(void*)>>;
-		TArray<CustomObject> externalObjects;
-
-		void Flush();
-	};
-	TArray<ObjectPool> mFrameObjects;
 
 	// Surface
 	VkSurfaceKHR mSurface{ VK_NULL_HANDLE };
 
 	// Frame
 	TArray<VulkanDrawable> mImages;
-	VkFormat mImageFormat = VK_FORMAT_UNDEFINED;
 	uint32_t mImageIndex = 0;
-	Size mSize = Size::zero;
 
 	// Command Pool
 	TArray<VkCommandPool> mCommandPools;
@@ -85,10 +56,9 @@ private:
 	TArray<VkSemaphore> mImageReleaseSemaphores;
 	TArray<VkFence> mFences;
 
-	uint32_t mMaxFramesInFlight = 3;
-	uint32_t mCurrentFrameIndex = 0;
-
 	VkSwapchainKHR mHandle{ VK_NULL_HANDLE };
+
+	VulkanDevice* mDevice = nullptr;
 
 };
 

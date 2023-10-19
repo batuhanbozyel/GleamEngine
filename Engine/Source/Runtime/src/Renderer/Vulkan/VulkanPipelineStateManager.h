@@ -1,6 +1,7 @@
 #pragma once
 #ifdef USE_VULKAN_RENDERER
 #include "VulkanUtils.h"
+#include "VulkanDevice.h"
 #include "Renderer/Shader.h"
 #include "Renderer/SamplerState.h"
 
@@ -16,32 +17,32 @@ struct VulkanPipeline
 
 struct VulkanGraphicsPipeline : public VulkanPipeline
 {
-	RefCounted<Shader> vertexShader;
-	RefCounted<Shader> fragmentShader;
+	Shader vertexShader;
+	Shader fragmentShader;
 };
 
 class VulkanPipelineStateManager
 {
 public:
 
-	static void Init();
+	static void Init(VulkanDevice* device);
 
 	static void Destroy();
 
 	static const VulkanGraphicsPipeline* GetGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc,
-													 const TArray<TextureDescriptor>& colorAttachments,
-													 const RefCounted<Shader>& vertexShader,
-													 const RefCounted<Shader>& fragmentShader,
-													 VkRenderPass renderPass,
-													 uint32_t sampleCount);
+															 const TArray<TextureDescriptor>& colorAttachments,
+															 const Shader& vertexShader,
+															 const Shader& fragmentShader,
+															 VkRenderPass renderPass,
+															 uint32_t sampleCount);
 
 	static const VulkanGraphicsPipeline* GetGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc,
-													 const TArray<TextureDescriptor>& colorAttachments,
-													 const TextureDescriptor& depthAttachment,
-													 const RefCounted<Shader>& vertexShader,
-													 const RefCounted<Shader>& fragmentShader,
-													 VkRenderPass renderPass,
-													 uint32_t sampleCount);
+															 const TArray<TextureDescriptor>& colorAttachments,
+															 const TextureDescriptor& depthAttachment,
+															 const Shader& vertexShader,
+															 const Shader& fragmentShader,
+															 VkRenderPass renderPass,
+															 uint32_t sampleCount);
 
 	static VkSampler GetSampler(uint32_t index);
 
@@ -64,6 +65,8 @@ private:
 
 	static inline TArray<VkSampler, 12> mSamplerStates;
 	static inline TArray<GraphicsPipelineCacheElement> mGraphicsPipelineCache;
+
+	static inline VulkanDevice* mDevice = nullptr;
 
 };
 

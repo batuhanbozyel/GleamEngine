@@ -6,7 +6,7 @@
 
 using namespace Gleam;
 
-static VkSampler CreateVkSampler(const SamplerState& samplerState)
+static VkSampler CreateVkSampler(VulkanDevice* device, const SamplerState& samplerState)
 {
 	VkSampler sampler;
 	VkSamplerCreateInfo createInfo{ VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO };
@@ -70,16 +70,17 @@ static VkSampler CreateVkSampler(const SamplerState& samplerState)
 		default: GLEAM_ASSERT(false, "Vulkan: Filter mode is not supported!") break;
 	}
 
-	VK_CHECK(vkCreateSampler(VulkanDevice::GetHandle(), &createInfo, nullptr, &sampler));
+	VK_CHECK(vkCreateSampler(As<VkDevice>(device->GetHandle()), &createInfo, nullptr, &sampler));
 	return sampler;
 }
 
-void VulkanPipelineStateManager::Init()
+void VulkanPipelineStateManager::Init(VulkanDevice* device)
 {
+	mDevice = device;
     auto samplerSates = SamplerState::GetAllVariations();
     for (uint32_t i = 0; i < samplerSates.size(); i++)
     {
-        mSamplerStates[i] = CreateVkSampler(samplerSates[i]);
+        mSamplerStates[i] = CreateVkSampler(device, samplerSates[i]);
     }
 }
 
@@ -87,15 +88,15 @@ void VulkanPipelineStateManager::Destroy()
 {
 	for (const auto& sampler : mSamplerStates)
 	{
-        vkDestroySampler(VulkanDevice::GetHandle(), sampler, nullptr);
+        vkDestroySampler(As<VkDevice>(mDevice->GetHandle()), sampler, nullptr);
 	}
 	Clear();
 }
 
 const VulkanGraphicsPipeline* VulkanPipelineStateManager::GetGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc,
 																			  const TArray<TextureDescriptor>& colorAttachments,
-																			  const RefCounted<Shader>& vertexShader,
-																			  const RefCounted<Shader>& fragmentShader,
+																			  const Shader& vertexShader,
+																			  const Shader& fragmentShader,
 																			  VkRenderPass renderPass,
 																			  uint32_t sampleCount)
 {
@@ -103,8 +104,8 @@ const VulkanGraphicsPipeline* VulkanPipelineStateManager::GetGraphicsPipeline(co
 	{
 		const auto& element = mGraphicsPipelineCache[i];
 		if (element.pipeline.descriptor == pipelineDesc &&
-			element.pipeline.vertexShader == vertexShader &&
-			element.pipeline.fragmentShader == fragmentShader &&
+			element.pipeline.vertexShader.GetEntryPoint() == vertexShader.GetEntryPoint() &&
+			element.pipeline.fragmentShader.GetEntryPoint() == fragmentShader.GetEntryPoint() &&
 			element.colorAttachments.size() == colorAttachments.size() &&
 			element.sampleCount == sampleCount &&
 			!element.hasDepthAttachment)
@@ -136,19 +137,19 @@ const VulkanGraphicsPipeline* VulkanPipelineStateManager::GetGraphicsPipeline(co
 }
 
 const VulkanGraphicsPipeline* VulkanPipelineStateManager::GetGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc,
-																	  const TArray<TextureDescriptor>& colorAttachments,
-																	  const TextureDescriptor& depthAttachment,
-																	  const RefCounted<Shader>& vertexShader,
-																	  const RefCounted<Shader>& fragmentShader,
-																	  VkRenderPass renderPass,
-																	  uint32_t sampleCount)
+																			  const TArray<TextureDescriptor>& colorAttachments,
+																			  const TextureDescriptor& depthAttachment,
+																			  const Shader& vertexShader,
+																			  const Shader& fragmentShader,
+																			  VkRenderPass renderPass,
+																			  uint32_t sampleCount)
 {
 	for (uint32_t i = 0; i < mGraphicsPipelineCache.size(); i++)
 	{
 		const auto& element = mGraphicsPipelineCache[i];
 		if (element.pipeline.descriptor == pipelineDesc &&
-			element.pipeline.vertexShader == vertexShader &&
-			element.pipeline.fragmentShader == fragmentShader &&
+			element.pipeline.vertexShader.GetEntryPoint() == vertexShader.GetEntryPoint() &&
+			element.pipeline.fragmentShader.GetEntryPoint() == fragmentShader.GetEntryPoint() &&
 			element.colorAttachments.size() == colorAttachments.size() &&
 			element.depthAttachment == depthAttachment &&
 			element.sampleCount == sampleCount &&
@@ -197,8 +198,8 @@ void VulkanPipelineStateManager::Clear()
 {
 	for (const auto& element : mGraphicsPipelineCache)
 	{
-		vkDestroyPipelineLayout(VulkanDevice::GetHandle(), element.pipeline.layout, nullptr);
-		vkDestroyPipeline(VulkanDevice::GetHandle(), element.pipeline.handle, nullptr);
+		vkDestroyPipelineLayout(As<VkDevice>(mDevice->GetHandle()), element.pipeline.layout, nullptr);
+		vkDestroyPipeline(As<VkDevice>(mDevice->GetHandle()), element.pipeline.handle, nullptr);
 	}
 	mGraphicsPipelineCache.clear();
 }
@@ -215,13 +216,13 @@ void VulkanPipelineStateManager::CreateGraphicsPipeline(GraphicsPipelineCacheEle
 	TArray<VkPipelineShaderStageCreateInfo, 2> shaderStages{};
 	shaderStages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 	shaderStages[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
-	shaderStages[0].module = As<VkShaderModule>(element.pipeline.vertexShader->GetHandle());
-	shaderStages[0].pName = element.pipeline.vertexShader->GetEntryPoint().c_str();
+	shaderStages[0].module = As<VkShaderModule>(element.pipeline.vertexShader.GetHandle());
+	shaderStages[0].pName = element.pipeline.vertexShader.GetEntryPoint().c_str();
 
 	shaderStages[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 	shaderStages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-	shaderStages[1].module = As<VkShaderModule>(element.pipeline.fragmentShader->GetHandle());
-	shaderStages[1].pName = element.pipeline.fragmentShader->GetEntryPoint().c_str();
+	shaderStages[1].module = As<VkShaderModule>(element.pipeline.fragmentShader.GetHandle());
+	shaderStages[1].pName = element.pipeline.fragmentShader.GetEntryPoint().c_str();
 
 	pipelineCreateInfo.stageCount = 2;
 	pipelineCreateInfo.pStages = shaderStages.data();
@@ -240,8 +241,8 @@ void VulkanPipelineStateManager::CreateGraphicsPipeline(GraphicsPipelineCacheEle
 	pipelineCreateInfo.pViewportState = &viewportState;
 
 	// Pipeline layout
-	const auto& vertexShaderReflection = element.pipeline.vertexShader->GetReflection();
-	const auto& fragmentShaderReflection = element.pipeline.fragmentShader->GetReflection();
+	const auto& vertexShaderReflection = element.pipeline.vertexShader.GetReflection();
+	const auto& fragmentShaderReflection = element.pipeline.fragmentShader.GetReflection();
 
 	// Descriptor set layouts
 	TArray<VkDescriptorSetLayout> setLayouts;
@@ -260,7 +261,7 @@ void VulkanPipelineStateManager::CreateGraphicsPipeline(GraphicsPipelineCacheEle
 	pipelineLayoutCreateInfo.pSetLayouts = setLayouts.data();
 	pipelineLayoutCreateInfo.pushConstantRangeCount = static_cast<uint32_t>(pushConstantRanges.size());
 	pipelineLayoutCreateInfo.pPushConstantRanges = pushConstantRanges.data();
-	VK_CHECK(vkCreatePipelineLayout(VulkanDevice::GetHandle(), &pipelineLayoutCreateInfo, nullptr, &element.pipeline.layout));
+	VK_CHECK(vkCreatePipelineLayout(As<VkDevice>(mDevice->GetHandle()), &pipelineLayoutCreateInfo, nullptr, &element.pipeline.layout));
 	pipelineCreateInfo.layout = element.pipeline.layout;
 
 	// Dynamic state
@@ -323,6 +324,6 @@ void VulkanPipelineStateManager::CreateGraphicsPipeline(GraphicsPipelineCacheEle
 	colorBlendState.attachmentCount = static_cast<uint32_t>(attachmentBlendStates.size());
 	colorBlendState.pAttachments = attachmentBlendStates.data();
 	pipelineCreateInfo.pColorBlendState = &colorBlendState;
-	VK_CHECK(vkCreateGraphicsPipelines(VulkanDevice::GetHandle(), nullptr, 1, &pipelineCreateInfo, nullptr, &element.pipeline.handle));
+	VK_CHECK(vkCreateGraphicsPipelines(As<VkDevice>(mDevice->GetHandle()), nullptr, 1, &pipelineCreateInfo, nullptr, &element.pipeline.handle));
 }
 #endif
