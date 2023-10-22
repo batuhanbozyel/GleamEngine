@@ -339,11 +339,6 @@ void VulkanSwapchain::Configure(const RendererConfig& config)
 	EventDispatcher<RendererResizeEvent>::Publish(RendererResizeEvent(mSize));
 }
 
-const VulkanDrawable& VulkanSwapchain::GetDrawable() const
-{
-	return mImages[mImageIndex];
-}
-
 VkCommandPool VulkanSwapchain::GetCommandPool() const
 {
 	return mCommandPools[mCurrentFrameIndex];
@@ -352,11 +347,6 @@ VkCommandPool VulkanSwapchain::GetCommandPool() const
 VkCommandPool VulkanSwapchain::GetCommandPool(uint32_t frameIdx) const
 {
 	return mCommandPools[frameIdx];
-}
-
-VkFence VulkanSwapchain::GetFence() const
-{
-	return mFences[mCurrentFrameIndex];
 }
 
 VkSurfaceKHR VulkanSwapchain::GetSurface() const

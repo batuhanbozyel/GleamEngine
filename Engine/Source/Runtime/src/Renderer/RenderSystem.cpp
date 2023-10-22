@@ -35,7 +35,7 @@ void RenderSystem::Shutdown()
 	mDevice->WaitDeviceIdle();
     for (auto renderer : mRenderers)
     {
-        renderer->OnDestroy();
+        renderer->OnDestroy(mDevice.get());
         delete renderer;
     }
 

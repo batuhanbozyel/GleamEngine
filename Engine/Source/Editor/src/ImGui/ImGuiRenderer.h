@@ -9,7 +9,7 @@ public:
     
     virtual void OnCreate(Gleam::GraphicsDevice* device) override;
 
-	virtual void OnDestroy() override;
+	virtual void OnDestroy(Gleam::GraphicsDevice* device) override;
 
 	virtual void AddRenderPasses(Gleam::RenderGraph& graph, Gleam::RenderGraphBlackboard& blackboard) override;
     

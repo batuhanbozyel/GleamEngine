@@ -15,10 +15,14 @@ class GraphicsDevice
 	friend class RenderSystem;
 
 public:
-    
-    static Scope<GraphicsDevice> Create();
-    
-    ~GraphicsDevice();
+
+	GLEAM_NONCOPYABLE(GraphicsDevice);
+
+	static Scope<GraphicsDevice> Create();
+
+	GraphicsDevice() = default;
+
+	virtual ~GraphicsDevice() = default;
     
     Heap CreateHeap(const HeapDescriptor& descriptor);
     
@@ -33,8 +37,6 @@ public:
     void Dispose(Heap& heap) const;
     
     void Dispose(Buffer& buffer) const;
-    
-    void Dispose(Shader& shader) const;
     
     void Dispose(Texture& texture) const;
     
@@ -56,6 +58,12 @@ protected:
     
     Scope<Swapchain> mSwapchain;
 
+	Deque<Heap> mFreeHeaps;
+
+	Deque<Texture> mFreeTextures;
+
+	TArray<Shader> mShaderCache;
+
 private:
     
     Heap AllocateHeap(const HeapDescriptor& descriptor) const;
@@ -63,12 +71,6 @@ private:
     Texture AllocateTexture(const TextureDescriptor& descriptor) const;
     
     Shader GenerateShader(const TString& entryPoint, ShaderStage stage) const;
-    
-    Deque<Heap> mFreeHeaps;
-    
-    Deque<Texture> mFreeTextures;
-    
-	TArray<Shader> mShaderCache;
 
 };
 

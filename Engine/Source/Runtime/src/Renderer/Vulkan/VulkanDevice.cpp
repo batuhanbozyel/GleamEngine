@@ -6,6 +6,10 @@
 #define VMA_STATIC_VULKAN_FUNCTIONS 0
 #define VMA_DYNAMIC_VULKAN_FUNCTIONS 1
 
+#ifdef GDEBUG
+#define VMA_DEBUG_LOG_FORMAT
+#endif
+
 #include "VulkanDevice.h"
 #include "VulkanSwapchain.h"
 #include "VulkanShaderReflect.h"
@@ -72,14 +76,21 @@ Heap GraphicsDevice::AllocateHeap(const HeapDescriptor& descriptor) const
 	createInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 	VK_CHECK(vkCreateBuffer(As<VkDevice>(mHandle), &createInfo, nullptr, &buffer));
 
+	// Query memory requirements to get the alignment
+	VkMemoryRequirements memoryRequirements;
+	vkGetBufferMemoryRequirements(As<VkDevice>(mHandle), buffer, &memoryRequirements);
+
 	VmaAllocationCreateInfo vmaCreateInfo{};
 	vmaCreateInfo.usage = MemoryTypeToVmaMemoryUsage(descriptor.memoryType);
 	vmaCreateInfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT;
 	vmaCreateInfo.priority = 1.0f;
 	VmaAllocationInfo vmaAllocationInfo{};
+
 	VK_CHECK(vmaAllocateMemoryForBuffer(As<const VulkanDevice*>(this)->GetAllocator(), buffer, &vmaCreateInfo, As<VmaAllocation*>(&heap.mHandle), &vmaAllocationInfo));
 	vkDestroyBuffer(As<VkDevice>(mHandle), buffer, nullptr);
 
+	heap.mDescriptor.size = vmaAllocationInfo.size;
+	heap.mAlignment = memoryRequirements.alignment;
 	return heap;
 }
 
@@ -185,22 +196,17 @@ void GraphicsDevice::Dispose(Heap& heap) const
 		vmaUnmapMemory(As<const VulkanDevice*>(this)->GetAllocator(), As<VmaAllocation>(heap.mHandle));
 	}
 	vmaFreeMemory(As<const VulkanDevice*>(this)->GetAllocator(), As<VmaAllocation>(heap.mHandle));
+	heap.mHandle = VK_NULL_HANDLE;
 }
 
 void GraphicsDevice::Dispose(Buffer& buffer) const
 {
 	vkDestroyBuffer(As<VkDevice>(mHandle), As<VkBuffer>(buffer.mHandle), nullptr);
-}
-
-void GraphicsDevice::Dispose(Shader& shader) const
-{
-	vkDestroyShaderModule(As<VkDevice>(mHandle), As<VkShaderModule>(shader.mHandle), nullptr);
+	buffer.mHandle = VK_NULL_HANDLE;
 }
 
 void GraphicsDevice::Dispose(Texture& texture) const
 {
-	if (texture.mHandle == nullptr) return;
-
 	vkDestroyImageView(As<VkDevice>(mHandle), As<VkImageView>(texture.mView), nullptr);
 	vmaDestroyImage(As<const VulkanDevice*>(this)->GetAllocator(), As<VkImage>(texture.mHandle), As<VmaAllocation>(texture.mHeap));
 
@@ -210,12 +216,12 @@ void GraphicsDevice::Dispose(Texture& texture) const
 		vmaDestroyImage(As<const VulkanDevice*>(this)->GetAllocator(), As<VkImage>(texture.mMultisampleHandle), As<VmaAllocation>(texture.mMultisampleHeap));
 	}
 
-	texture.mHeap = nullptr;
-	texture.mView = nullptr;
-	texture.mHandle = nullptr;
-	texture.mMultisampleHeap = nullptr;
-	texture.mMultisampleView = nullptr;
-	texture.mMultisampleHandle = nullptr;
+	texture.mHeap = VK_NULL_HANDLE;
+	texture.mView = VK_NULL_HANDLE;
+	texture.mHandle = VK_NULL_HANDLE;
+	texture.mMultisampleHeap = VK_NULL_HANDLE;
+	texture.mMultisampleView = VK_NULL_HANDLE;
+	texture.mMultisampleHandle = VK_NULL_HANDLE;
 }
 
 void GraphicsDevice::WaitDeviceIdle() const
@@ -443,16 +449,23 @@ VulkanDevice::~VulkanDevice()
 {
 	VK_CHECK(vkDeviceWaitIdle(As<VkDevice>(mHandle)));
 
-	VulkanPipelineStateManager::Destroy();
+	// Destroy swapchain
+	As<VulkanSwapchain*>(mSwapchain.get())->Destroy();
 
-	// Destroy allocator
-	vmaDestroyAllocator(mAllocator);
+	for (auto& shader : mShaderCache)
+	{
+		vkDestroyShaderModule(As<VkDevice>(mHandle), As<VkShaderModule>(shader.GetHandle()), nullptr);
+	}
+	mShaderCache.clear();
+	Clear();
+
+	VulkanPipelineStateManager::Destroy();
 
 	// Destroy pipeline cache
 	vkDestroyPipelineCache(As<VkDevice>(mHandle), mPipelineCache, nullptr);
-	
-	// Destroy swapchain
-	As<VulkanSwapchain*>(mSwapchain.get())->Destroy();
+
+	// Destroy allocator
+	vmaDestroyAllocator(mAllocator);
 
 	// Destroy device
 	vkDestroyDevice(As<VkDevice>(mHandle), nullptr);

@@ -109,7 +109,6 @@ id<CAMetalDrawable> MetalSwapchain::AcquireNextDrawable()
 
 void MetalSwapchain::Present(id<MTLCommandBuffer> commandBuffer)
 {
-    uint32_t frameIndex = mCurrentFrameIndex;
     [commandBuffer addCompletedHandler:^(id<MTLCommandBuffer> commandBuffer)
     {
         dispatch_semaphore_signal(mImageAcquireSemaphore);

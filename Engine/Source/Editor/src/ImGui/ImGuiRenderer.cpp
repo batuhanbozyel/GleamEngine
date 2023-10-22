@@ -24,7 +24,7 @@ void ImGuiRenderer::OnCreate(Gleam::GraphicsDevice* device)
     });
 }
 
-void ImGuiRenderer::OnDestroy()
+void ImGuiRenderer::OnDestroy(Gleam::GraphicsDevice* device)
 {
 	ImGuiBackend::Destroy();
     ImGui::DestroyContext();

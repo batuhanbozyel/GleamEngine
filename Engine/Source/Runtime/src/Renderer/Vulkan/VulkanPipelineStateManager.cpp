@@ -145,7 +145,7 @@ VkSampler VulkanPipelineStateManager::GetSampler(const SamplerState& samplerStat
 
 void VulkanPipelineStateManager::Clear()
 {
-	for (const auto& pipeline : mGraphicsPipelineCache)
+	for (const auto& [_, pipeline] : mGraphicsPipelineCache)
 	{
 		vkDestroyPipelineLayout(As<VkDevice>(mDevice->GetHandle()), pipeline->layout, nullptr);
 		vkDestroyPipeline(As<VkDevice>(mDevice->GetHandle()), pipeline->handle, nullptr);
@@ -234,28 +234,27 @@ VkPipeline VulkanPipelineStateManager::CreateGraphicsPipeline(const PipelineStat
 	pipelineCreateInfo.pMultisampleState = &multisampleState;
 
 	VkPipelineDepthStencilStateCreateInfo depthStencilState{ VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO };
-	if (depthAttachment.IsValid())
+	if (Utils::IsDepthFormat(depthAttachment.format))
 	{
 		depthStencilState.depthTestEnable = true;
 		depthStencilState.depthCompareOp = CompareFunctionToVkCompareOp(pipelineDesc.depthState.compareFunction);
 		depthStencilState.depthWriteEnable = pipelineDesc.depthState.writeEnabled;
-		
-		if (pipelineDesc.stencilState.enabled)
-		{
-			depthStencilState.stencilTestEnable = true;
+	}
+	if (Utils::IsStencilFormat(depthAttachment.format))
+	{
+		depthStencilState.stencilTestEnable = pipelineDesc.stencilState.enabled;
 
-			VkStencilOpState stencilState{};
-			stencilState.reference = pipelineDesc.stencilState.reference;
-			stencilState.compareMask = pipelineDesc.stencilState.readMask;
-			stencilState.writeMask = pipelineDesc.stencilState.writeMask;
-			stencilState.failOp = StencilOpToVkStencilOp(pipelineDesc.stencilState.failOperation);
-			stencilState.passOp = StencilOpToVkStencilOp(pipelineDesc.stencilState.passOperation);
-			stencilState.depthFailOp = StencilOpToVkStencilOp(pipelineDesc.stencilState.depthFailOperation);
-			stencilState.compareOp = CompareFunctionToVkCompareOp(pipelineDesc.stencilState.compareFunction);
+		VkStencilOpState stencilState{};
+		stencilState.reference = pipelineDesc.stencilState.reference;
+		stencilState.compareMask = pipelineDesc.stencilState.readMask;
+		stencilState.writeMask = pipelineDesc.stencilState.writeMask;
+		stencilState.failOp = StencilOpToVkStencilOp(pipelineDesc.stencilState.failOperation);
+		stencilState.passOp = StencilOpToVkStencilOp(pipelineDesc.stencilState.passOperation);
+		stencilState.depthFailOp = StencilOpToVkStencilOp(pipelineDesc.stencilState.depthFailOperation);
+		stencilState.compareOp = CompareFunctionToVkCompareOp(pipelineDesc.stencilState.compareFunction);
 
-			depthStencilState.back = stencilState;
-			depthStencilState.front = stencilState;
-		}
+		depthStencilState.back = stencilState;
+		depthStencilState.front = stencilState;
 	}
 	pipelineCreateInfo.pDepthStencilState = &depthStencilState;
 

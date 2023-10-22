@@ -29,13 +29,9 @@ public:
 	const VulkanDrawable& AcquireNextDrawable();
 	void Present(VkCommandBuffer commandBuffer);
 
-	const VulkanDrawable& GetDrawable() const;
-
 	VkCommandPool GetCommandPool(uint32_t frameIdx) const;
 
 	VkCommandPool GetCommandPool() const;
-
-	VkFence GetFence() const;
 
 	VkSurfaceKHR GetSurface() const;
 

@@ -103,11 +103,15 @@ public:
             bufferDesc.usage = BufferUsage::StagingBuffer;
             Buffer stagingBuffer = heap.CreateBuffer(bufferDesc);
             
-            memcpy(As<uint8_t*>(stagingBuffer.GetContents()), data, size);
+            memcpy(stagingBuffer.GetContents(), data, size);
             CopyBuffer(stagingBuffer.GetHandle(), buffer.GetHandle(), size, 0, offset);
             
             mDevice->Dispose(stagingBuffer);
-            mDevice->Dispose(heap);
+			mDevice->GetSwapchain()->AddPooledObject(std::make_any<Heap>(heap), [this](std::any obj)
+			{
+				auto heap = std::any_cast<Heap>(obj);
+				mDevice->Dispose(heap);
+			});
         }
         else
         {

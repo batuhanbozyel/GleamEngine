@@ -132,7 +132,6 @@ void RenderGraph::Execute(const CommandBuffer* cmd)
     {
         heap = mDevice->CreateHeap({ .memoryType = MemoryType::GPU, .size = mHeapSize });
     }
-    size_t bufferOffset = 0;
     
     cmd->Begin();
     for (auto pass : mPassNodes)
@@ -142,8 +141,7 @@ void RenderGraph::Execute(const CommandBuffer* cmd)
         {
             if (HasResource(pass->bufferWrites, resource))
             {
-                resource.node->buffer = heap.CreateBuffer(resource.node->buffer.GetDescriptor(), bufferOffset);
-                bufferOffset += resource.node->buffer.GetDescriptor().size;
+                resource.node->buffer = heap.CreateBuffer(resource.node->buffer.GetDescriptor());
                 GLEAM_ASSERT(resource.node->buffer.IsValid());
             }
         }
@@ -204,32 +202,20 @@ void RenderGraph::Execute(const CommandBuffer* cmd)
             std::invoke(pass->callback, cmd);
             cmd->EndRenderPass();
         }
-        
-        // Release textures
-        for (auto& resource : pass->textureWrites)
-        {
-            if (resource.node->lastReference == pass && resource.node->transient)
-            {
-                mDevice->ReleaseTexture(resource.node->texture);
-            }
-        }
-        
-        for (auto& resource : pass->textureReads)
-        {
-            if (resource.node->lastReference == pass && resource.node->transient)
-            {
-                mDevice->ReleaseTexture(resource.node->texture);
-            }
-        }        
     }
     cmd->End();
 
-	// Release buffers
+	// Release buffers & textures
 	for (auto& pass : mPassNodes)
 	{
 		for (auto& resource : pass->bufferCreates)
 		{
             mDevice->Dispose(resource.node->buffer);
+		}
+
+		for (auto& resource : pass->textureCreates)
+		{
+			mDevice->ReleaseTexture(resource.node->texture);
 		}
 	}
 

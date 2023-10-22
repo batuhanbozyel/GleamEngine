@@ -65,7 +65,7 @@ public:
         if (it != mRenderers.end())
         {
             auto renderer = *it;
-            renderer->OnDestroy();
+            renderer->OnDestroy(mDevice.get());
             delete renderer;
         }
     }

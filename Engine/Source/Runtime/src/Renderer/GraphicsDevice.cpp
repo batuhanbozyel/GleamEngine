@@ -3,16 +3,6 @@
 
 using namespace Gleam;
 
-GraphicsDevice::~GraphicsDevice()
-{
-    for (auto& shader : mShaderCache)
-    {
-        Dispose(shader);
-    }
-    mShaderCache.clear();
-    Clear();
-}
-
 Heap GraphicsDevice::CreateHeap(const HeapDescriptor& descriptor)
 {
     auto it = std::find_if(mFreeHeaps.begin(), mFreeHeaps.end(), [&](const Heap& heap) -> bool
@@ -64,7 +54,9 @@ void GraphicsDevice::ReleaseHeap(const Heap& heap)
     GLEAM_ASSERT(heap.IsValid());
     mSwapchain->AddPooledObject(std::make_any<Heap>(heap), [this](std::any obj)
     {
-        mFreeHeaps.push_back(std::any_cast<Heap>(obj));
+		auto heap = std::any_cast<Heap>(obj);
+		heap.Reset();
+        mFreeHeaps.push_back(heap);
     });
 }
 
@@ -90,8 +82,6 @@ void GraphicsDevice::Clear()
         Dispose(heap);
     }
     mFreeHeaps.clear();
-    
-    mShaderCache.clear();
 }
 
 Swapchain* GraphicsDevice::GetSwapchain()

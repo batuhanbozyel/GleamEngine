@@ -38,7 +38,7 @@ protected:
 
 	virtual void OnCreate(GraphicsDevice* device) {}
 
-	virtual void OnDestroy() {}
+	virtual void OnDestroy(GraphicsDevice* device) {}
 
 	virtual void AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard) = 0;
 

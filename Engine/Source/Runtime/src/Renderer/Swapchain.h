@@ -12,7 +12,13 @@ namespace Gleam {
 class Swapchain
 {
 public:
-    
+
+	GLEAM_NONCOPYABLE(Swapchain);
+
+	Swapchain() = default;
+
+	virtual ~Swapchain() = default;
+
     Texture GetTexture() const
     {
         return Texture({ .size = mSize,
@@ -40,7 +46,7 @@ public:
         return mSize;
     }
     
-    void AddPooledObject(std::any object, std::function<void(std::any)> deallocator)
+    void AddPooledObject(std::any&& object, const std::function<void(std::any)>& deallocator)
     {
         mPooledObjects[mCurrentFrameIndex].push_back(std::make_pair(object, deallocator));
     }

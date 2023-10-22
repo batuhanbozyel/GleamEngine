@@ -32,7 +32,10 @@ Heap GraphicsDevice::AllocateHeap(const HeapDescriptor& descriptor) const
     desc.type = MTLHeapTypePlacement;
     desc.resourceOptions = resourceOptions;
     desc.size = sizeAndAlign.size;
+
     heap.mHandle = [mHandle newHeapWithDescriptor:desc];
+    heap.mDescriptor.size = sizeAndAlign.size;
+    heap.mAlignment = sizeAndAlign.align;
     return heap;
 }
 
@@ -125,15 +128,8 @@ void GraphicsDevice::Dispose(Buffer& buffer) const
     buffer.mHandle = nil;
 }
 
-void GraphicsDevice::Dispose(Shader& shader) const
-{
-    shader.mHandle = nil;
-}
-
 void GraphicsDevice::Dispose(Texture& texture) const
 {
-    if (texture.mHandle == nil) return;
-    
     texture.mHandle = nil;
     texture.mView = nil;
     
@@ -170,13 +166,16 @@ MetalDevice::MetalDevice()
 
 MetalDevice::~MetalDevice()
 {
+    // Destroy swapchain
+    As<MetalSwapchain*>(mSwapchain.get())->Destroy();
+
+	mShaderCache.clear();
+	Clear();
+
     MetalPipelineStateManager::Destroy();
     
     // Destroy command pool
     mCommandPool = nil;
-    
-    // Destroy swapchain
-    As<MetalSwapchain*>(mSwapchain.get())->Destroy();
 
     // Destroy device
     mHandle = nil;
