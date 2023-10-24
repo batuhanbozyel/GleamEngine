@@ -107,10 +107,10 @@ public:
             CopyBuffer(stagingBuffer.GetHandle(), buffer.GetHandle(), size, 0, offset);
             
             mDevice->Dispose(stagingBuffer);
-            mDevice->GetSwapchain()->AddPooledObject(std::make_any<Heap>(heap), [this](std::any obj)
+            mDevice->GetSwapchain()->AddPooledObject(std::make_any<Heap>(heap), [device = mDevice](std::any obj)
             {
                 auto heap = std::any_cast<Heap>(obj);
-                mDevice->Dispose(heap);
+                device->Dispose(heap);
             });
         }
         else
