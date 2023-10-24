@@ -7,7 +7,7 @@ namespace Gleam {
 struct MeshData;
 struct InterleavedMeshVertex;
 
-class MeshBuffer
+class MeshBuffer final
 {
 public:
     

@@ -8,7 +8,7 @@ class Buffer;
 class GraphicsDevice;
 struct BufferDescriptor;
 
-class Heap : public GraphicsObject
+class Heap final : public GraphicsObject
 {
     friend class GraphicsDevice;
 

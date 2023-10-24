@@ -6,7 +6,7 @@ namespace Gleam {
 
 class GraphicsDevice;
 
-class Texture : public GraphicsObject
+class Texture final : public GraphicsObject
 {
     friend class GraphicsDevice;
     
