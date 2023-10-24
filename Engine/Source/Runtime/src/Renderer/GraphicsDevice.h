@@ -12,57 +12,57 @@ struct Version;
 
 class GraphicsDevice
 {
-	friend class RenderSystem;
+    friend class RenderSystem;
 
 public:
 
-	GLEAM_NONCOPYABLE(GraphicsDevice);
+    GLEAM_NONCOPYABLE(GraphicsDevice);
 
-	static Scope<GraphicsDevice> Create();
+    static Scope<GraphicsDevice> Create();
 
-	GraphicsDevice() = default;
+    GraphicsDevice() = default;
 
-	virtual ~GraphicsDevice() = default;
-    
+    virtual ~GraphicsDevice() = default;
+
     Heap CreateHeap(const HeapDescriptor& descriptor);
-    
+
     Texture CreateTexture(const TextureDescriptor& descriptor);
-    
-	Shader CreateShader(const TString& entryPoint, ShaderStage stage);
-    
+
+    Shader CreateShader(const TString& entryPoint, ShaderStage stage);
+
     void ReleaseHeap(const Heap& heap);
-    
+
     void ReleaseTexture(const Texture& texture);
-    
+
     void Dispose(Heap& heap) const;
-    
+
     void Dispose(Buffer& buffer) const;
-    
+
     void Dispose(Texture& texture) const;
-    
+
     void Configure(const RendererConfig& config);
-    
+
     void WaitDeviceIdle() const;
-    
+
     void Clear();
-    
+
     Swapchain* GetSwapchain();
-    
+
     const Swapchain* GetSwapchain() const;
-    
+
     NativeGraphicsHandle GetHandle() const;
     
 protected:
     
     NativeGraphicsHandle mHandle;
-    
+
     Scope<Swapchain> mSwapchain;
 
-	Deque<Heap> mFreeHeaps;
+    Deque<Heap> mFreeHeaps;
 
-	Deque<Texture> mFreeTextures;
+    Deque<Texture> mFreeTextures;
 
-	TArray<Shader> mShaderCache;
+    TArray<Shader> mShaderCache;
 
 private:
     

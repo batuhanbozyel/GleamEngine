@@ -39,7 +39,7 @@ public:
 
     void EndRenderPass() const;
 
-	void BindGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc, const Shader& vertexShader, const Shader& fragmentShader) const;
+    void BindGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc, const Shader& vertexShader, const Shader& fragmentShader) const;
 
     void SetViewport(const Size& size) const;
     
@@ -107,11 +107,11 @@ public:
             CopyBuffer(stagingBuffer.GetHandle(), buffer.GetHandle(), size, 0, offset);
             
             mDevice->Dispose(stagingBuffer);
-			mDevice->GetSwapchain()->AddPooledObject(std::make_any<Heap>(heap), [this](std::any obj)
-			{
-				auto heap = std::any_cast<Heap>(obj);
-				mDevice->Dispose(heap);
-			});
+            mDevice->GetSwapchain()->AddPooledObject(std::make_any<Heap>(heap), [this](std::any obj)
+            {
+                auto heap = std::any_cast<Heap>(obj);
+                mDevice->Dispose(heap);
+            });
         }
         else
         {

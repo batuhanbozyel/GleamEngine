@@ -54,8 +54,8 @@ void GraphicsDevice::ReleaseHeap(const Heap& heap)
     GLEAM_ASSERT(heap.IsValid());
     mSwapchain->AddPooledObject(std::make_any<Heap>(heap), [this](std::any obj)
     {
-		auto heap = std::any_cast<Heap>(obj);
-		heap.Reset();
+        auto heap = std::any_cast<Heap>(obj);
+        heap.Reset();
         mFreeHeaps.push_back(heap);
     });
 }

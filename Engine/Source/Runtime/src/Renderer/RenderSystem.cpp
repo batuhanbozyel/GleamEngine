@@ -23,7 +23,7 @@ void RenderSystem::Initialize()
     mDevice = GraphicsDevice::Create();
     AddRenderer<WorldRenderer>();
     AddRenderer<PostProcessStack>();
-    
+
     EventDispatcher<RendererResizeEvent>::Subscribe([this](RendererResizeEvent e)
     {
         mDevice->Clear();
@@ -32,14 +32,14 @@ void RenderSystem::Initialize()
 
 void RenderSystem::Shutdown()
 {
-	mDevice->WaitDeviceIdle();
+    mDevice->WaitDeviceIdle();
     for (auto renderer : mRenderers)
     {
         renderer->OnDestroy(mDevice.get());
         delete renderer;
     }
 
-	mDevice->Clear();
+    mDevice->Clear();
     mDevice.reset();
 }
 
@@ -51,29 +51,29 @@ void RenderSystem::Render()
     {
         RenderGraph graph(mDevice.get());
         RenderGraphBlackboard blackboard;
-        
+
         RenderingData renderingData;
         renderingData.backbuffer = graph.ImportBackbuffer(mRenderTarget);
         renderingData.config = mConfiguration;
         blackboard.Add(renderingData);
-        
+
         for (auto renderer : mRenderers)
         {
             renderer->AddRenderPasses(graph, blackboard);
         }
-		graph.Compile();
+        graph.Compile();
 
-		CommandBuffer cmd(mDevice.get());
+        CommandBuffer cmd(mDevice.get());
         graph.Execute(&cmd);
-        
+
         // reset rt to swapchain
         if (mRenderTarget.IsValid())
         {
             mDevice->ReleaseTexture(mRenderTarget);
         }
         ResetRenderTarget();
-        
-		cmd.Present();
+
+        cmd.Present();
     }
 }
 

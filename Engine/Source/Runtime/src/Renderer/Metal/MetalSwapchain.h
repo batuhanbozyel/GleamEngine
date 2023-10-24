@@ -16,27 +16,27 @@ class MetalSwapchain final : public Swapchain
 public:
     
     void Initialize(MetalDevice* device);
-    
+
     void Destroy();
-    
+
     void Configure(const RendererConfig& config);
-    
-	id<CAMetalDrawable> AcquireNextDrawable();
-	void Present(id<MTLCommandBuffer> commandBuffer);
-    
+
+    id<CAMetalDrawable> AcquireNextDrawable();
+    void Present(id<MTLCommandBuffer> commandBuffer);
+
     dispatch_semaphore_t GetSemaphore() const;
 
-	CAMetalLayer* GetHandle() const;
+    CAMetalLayer* GetHandle() const;
 
 private:
     
     void* mSurface = nullptr;
-	
+
     dispatch_semaphore_t mImageAcquireSemaphore;
-    
+
     id<CAMetalDrawable> mDrawable{ nil };
 
-	CAMetalLayer* mHandle = nullptr;
+    CAMetalLayer* mHandle = nullptr;
 
 };
 
