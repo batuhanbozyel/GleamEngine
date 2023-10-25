@@ -1,68 +1,75 @@
 #pragma once
 #ifdef USE_VULKAN_RENDERER
-#include "VulkanSwapchain.h"
+#include "Renderer/GraphicsDevice.h"
+
+#include <volk.h>
+#include <vk_mem_alloc.h>
 
 namespace Gleam {
 
-class VulkanDevice final
+struct VulkanQueue
+{
+	VkQueue handle{ VK_NULL_HANDLE };
+	uint32_t index{ 0 };
+};
+
+class VulkanDevice final : public GraphicsDevice
 {
 public:
 
-    static void Init();
+    VulkanDevice();
 
-    static void Destroy();
+    ~VulkanDevice();
 
-	static const VulkanQueue& GetGraphicsQueue();
+	VkCommandBuffer AllocateCommandBuffer();
 
-	static const VulkanQueue& GetComputeQueue();
+	VkFence CreateFence();
 
-	static const VulkanQueue& GetTransferQueue();
+	VkRenderPass CreateRenderPass(const VkRenderPassCreateInfo& createInfo);
 
-	static VulkanSwapchain& GetSwapchain();
+	VkFramebuffer CreateFramebuffer(const VkFramebufferCreateInfo& createInfo);
 
-	static VkDevice GetHandle();
+	const VulkanQueue& GetGraphicsQueue() const;
 
-	static VkInstance GetInstance();
+	const VulkanQueue& GetComputeQueue() const;
 
-	static VkPhysicalDevice GetPhysicalDevice();
+	const VulkanQueue& GetTransferQueue() const;
 
-	static VkPipelineCache GetPipelineCache();
+	VkInstance GetInstance() const;
 
-	static VmaAllocator GetAllocator();
+	VkPhysicalDevice GetPhysicalDevice() const;
+
+	VkPipelineCache GetPipelineCache() const;
+
+	VmaAllocator GetAllocator() const;
 
 private:
 
-	// Device
-	static inline VkDevice mHandle{ VK_NULL_HANDLE };
-
 	// Instance
-	static inline VkInstance mInstance{ VK_NULL_HANDLE };
-	static inline TArray<VkExtensionProperties> mExtensions;
+	VkInstance mInstance{ VK_NULL_HANDLE };
+	TArray<VkExtensionProperties> mExtensions;
 
 	// Debug/Validation layer
 #ifdef GDEBUG
-	static inline VkDebugUtilsMessengerEXT mDebugMessenger{ VK_NULL_HANDLE };
+	VkDebugUtilsMessengerEXT mDebugMessenger{ VK_NULL_HANDLE };
 #endif
 
 	// Device
-	static inline VkPhysicalDevice mPhysicalDevice{ VK_NULL_HANDLE };
+	VkPhysicalDevice mPhysicalDevice{ VK_NULL_HANDLE };
 
 	// Queue
-	static inline VulkanQueue mGraphicsQueue;
-	static inline VulkanQueue mComputeQueue;
-	static inline VulkanQueue mTransferQueue;
+	VulkanQueue mGraphicsQueue;
+	VulkanQueue mComputeQueue;
+	VulkanQueue mTransferQueue;
 
-	static inline TArray<VkExtensionProperties> mDeviceExtensions;
-	static inline VkPhysicalDeviceMemoryProperties mMemoryProperties;
+	TArray<VkExtensionProperties> mDeviceExtensions;
+	VkPhysicalDeviceMemoryProperties mMemoryProperties;
 
 	// Pipeline cache
-	static inline VkPipelineCache mPipelineCache{ VK_NULL_HANDLE };
-	
-	// Swapchain
-	static inline VulkanSwapchain mSwapchain;
+	VkPipelineCache mPipelineCache{ VK_NULL_HANDLE };
 
 	// VMA
-	static inline VmaAllocator mAllocator;
+	VmaAllocator mAllocator;
 };
 
 } // namespace Gleam

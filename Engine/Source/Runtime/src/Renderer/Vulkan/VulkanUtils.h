@@ -15,18 +15,6 @@ namespace Gleam {
 
 #define VK_FLAGS_NONE 0
 
-struct VulkanDrawable
-{
-	VkImage image{ VK_NULL_HANDLE };
-	VkImageView view{ VK_NULL_HANDLE };
-};
-
-struct VulkanQueue
-{
-	VkQueue handle{ VK_NULL_HANDLE };
-	uint32_t index{ 0 };
-};
-
 static constexpr const char* VkResultToString(VkResult result)
 {
 	switch (result)

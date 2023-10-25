@@ -28,9 +28,9 @@ struct Vector3Base
     static const Vector3Base back;
 
     constexpr Vector3Base() = default;
-    constexpr Vector3Base(Vector3Base&&) = default;
+    constexpr Vector3Base(Vector3Base&&) noexcept = default;
     constexpr Vector3Base(const Vector3Base&) = default;
-    FORCE_INLINE constexpr Vector3Base& operator=(Vector3Base&&) = default;
+    FORCE_INLINE constexpr Vector3Base& operator=(Vector3Base&&) noexcept = default;
     FORCE_INLINE constexpr Vector3Base& operator=(const Vector3Base&) = default;
 
     constexpr Vector3Base(T v)

@@ -56,7 +56,7 @@ struct Color : public Vector4
 
 	// Constructors
 	constexpr Color() = default;
-	constexpr Color(Color&&) = default;
+	constexpr Color(Color&&) noexcept = default;
 	constexpr Color(const Color&) = default;
 
 	constexpr Color(float v)
@@ -94,14 +94,14 @@ struct Color : public Vector4
 	{
 
 	}
-	constexpr Color(Vector4&& color)
+	constexpr Color(Vector4&& color) noexcept
 		: Vector4(std::move(color))
 	{
 
 	}
 
 	// Operator overloads
-    FORCE_INLINE constexpr Color& operator=(Color&&) = default;
+    FORCE_INLINE constexpr Color& operator=(Color&&) noexcept = default;
     FORCE_INLINE constexpr Color& operator=(const Color&) = default;
 
     FORCE_INLINE constexpr Color& operator=(const Vector4& color)
@@ -109,7 +109,7 @@ struct Color : public Vector4
 		value = color.value;
 		return *this;
 	}
-    FORCE_INLINE constexpr Color& operator=(Vector4&& color)
+    FORCE_INLINE constexpr Color& operator=(Vector4&& color) noexcept
 	{
 		value = std::move(color.value);
 		return *this;

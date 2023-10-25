@@ -12,8 +12,10 @@ using namespace GEditor;
 static VkDescriptorPool gDescriptorPool = VK_NULL_HANDLE;
 static VkRenderPass gRenderPass = VK_NULL_HANDLE;
 
-void ImGuiBackend::Init()
+void ImGuiBackend::Init(Gleam::GraphicsDevice* device)
 {
+	mDevice = device;
+
 	// Create descriptor pool
 	VkDescriptorPoolSize pool_sizes[] =
 	{
@@ -34,11 +36,11 @@ void ImGuiBackend::Init()
 	pool_info.maxSets = 1000 * IM_ARRAYSIZE(pool_sizes);
 	pool_info.poolSizeCount = (uint32_t)IM_ARRAYSIZE(pool_sizes);
 	pool_info.pPoolSizes = pool_sizes;
-	VK_CHECK(vkCreateDescriptorPool(Gleam::VulkanDevice::GetHandle(), &pool_info, nullptr, &gDescriptorPool));
+	VK_CHECK(vkCreateDescriptorPool(Gleam::As<VkDevice>(mDevice->GetHandle()), &pool_info, nullptr, &gDescriptorPool));
 
 	// Create render pass
 	VkAttachmentDescription attachment = {};
-	attachment.format = Gleam::TextureFormatToVkFormat(Gleam::VulkanDevice::GetSwapchain().GetFormat());
+	attachment.format = Gleam::TextureFormatToVkFormat(mDevice->GetSwapchain()->GetFormat());
 	attachment.samples = VK_SAMPLE_COUNT_1_BIT;
 	attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 	attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -72,31 +74,32 @@ void ImGuiBackend::Init()
 	info.pSubpasses = &subpass;
 	info.dependencyCount = 1;
 	info.pDependencies = &dependency;
-	VK_CHECK(vkCreateRenderPass(Gleam::VulkanDevice::GetHandle(), &info, nullptr, &gRenderPass));
+	VK_CHECK(vkCreateRenderPass(Gleam::As<VkDevice>(mDevice->GetHandle()), &info, nullptr, &gRenderPass));
 
 	// Initialize ImGui
+	auto vulkanDevice = Gleam::As<Gleam::VulkanDevice*>(mDevice);
 	ImGui_ImplVulkan_InitInfo init_info = {};
-    init_info.Instance = Gleam::VulkanDevice::GetInstance();
-    init_info.PhysicalDevice = Gleam::VulkanDevice::GetPhysicalDevice();
-    init_info.Device = Gleam::VulkanDevice::GetHandle();
-    init_info.QueueFamily = Gleam::VulkanDevice::GetGraphicsQueue().index;
-    init_info.Queue = Gleam::VulkanDevice::GetGraphicsQueue().handle;
-    init_info.PipelineCache = Gleam::VulkanDevice::GetPipelineCache();
+    init_info.Instance = vulkanDevice->GetInstance();
+    init_info.PhysicalDevice = vulkanDevice->GetPhysicalDevice();
+    init_info.Device = Gleam::As<VkDevice>(vulkanDevice->GetHandle());
+    init_info.QueueFamily = vulkanDevice->GetGraphicsQueue().index;
+    init_info.Queue = vulkanDevice->GetGraphicsQueue().handle;
+    init_info.PipelineCache = vulkanDevice->GetPipelineCache();
 	init_info.DescriptorPool = gDescriptorPool;
     init_info.Subpass = 0;
-    init_info.MinImageCount = Gleam::VulkanDevice::GetSwapchain().GetFramesInFlight();
-    init_info.ImageCount = Gleam::VulkanDevice::GetSwapchain().GetFramesInFlight();
+    init_info.MinImageCount = vulkanDevice->GetSwapchain()->GetFramesInFlight();
+    init_info.ImageCount = vulkanDevice->GetSwapchain()->GetFramesInFlight();
     init_info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
     init_info.CheckVkResultFn = [](VkResult result)
 	{
 		GLEAM_ASSERT(result == VK_SUCCESS, VkResultToString(x));;
 	};
 
-	ImGui_ImplVulkan_LoadFunctions([](const char* function_name, void*) { return vkGetInstanceProcAddr(Gleam::VulkanDevice::GetInstance(), function_name); });
+	ImGui_ImplVulkan_LoadFunctions([](const char* function_name, void*) { return vkGetInstanceProcAddr(Gleam::As<Gleam::VulkanDevice*>(mDevice)->GetInstance(), function_name); });
 	ImGui_ImplSDL3_InitForVulkan(GameInstance->GetSubsystem<Gleam::WindowSystem>()->GetSDLWindow());
     ImGui_ImplVulkan_Init(&init_info, gRenderPass);
 
-	Gleam::CommandBuffer cmd;
+	Gleam::CommandBuffer cmd(mDevice);
 	cmd.Begin();
 	ImGui_ImplVulkan_CreateFontsTexture(Gleam::As<VkCommandBuffer>(cmd.GetHandle()));
 	cmd.End();
@@ -110,8 +113,8 @@ void ImGuiBackend::Destroy()
     ImGui_ImplVulkan_Shutdown();
     ImGui_ImplSDL3_Shutdown();
 
-	vkDestroyDescriptorPool(Gleam::VulkanDevice::GetHandle(), gDescriptorPool, nullptr);
-	vkDestroyRenderPass(Gleam::VulkanDevice::GetHandle(), gRenderPass, nullptr);
+	vkDestroyDescriptorPool(Gleam::As<VkDevice>(mDevice->GetHandle()), gDescriptorPool, nullptr);
+	vkDestroyRenderPass(Gleam::As<VkDevice>(mDevice->GetHandle()), gRenderPass, nullptr);
 }
 
 void ImGuiBackend::BeginFrame()
@@ -128,7 +131,7 @@ void ImGuiBackend::EndFrame(NativeGraphicsHandle commandBuffer, NativeGraphicsHa
 ImTextureID ImGuiBackend::GetImTextureIDForTexture(const Gleam::Texture& texture)
 {
 	auto textureID = ImGui_ImplVulkan_AddTexture(Gleam::VulkanPipelineStateManager::GetSampler(0), Gleam::As<VkImageView>(texture.GetView()), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-	Gleam::VulkanDevice::GetSwapchain().AddPooledObject(std::make_any<ImTextureID>(textureID), [](std::any object)
+	mDevice->GetSwapchain()->AddPooledObject(std::make_any<ImTextureID>(textureID), [](std::any object)
 	{
 		ImGui_ImplVulkan_RemoveTexture(Gleam::As<VkDescriptorSet>(std::any_cast<ImTextureID>(object)));
 	});

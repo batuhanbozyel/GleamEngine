@@ -6,6 +6,7 @@
 //
 
 #pragma once
+#include "Shader.h"
 #include "ShaderTypes.h"
 #include "RendererConfig.h"
 #include "RenderPassDescriptor.h"
@@ -16,7 +17,7 @@
 namespace Gleam {
 
 class RenderSystem;
-class RendererContext;
+class GraphicsDevice;
 
 struct RenderingData
 {
@@ -29,15 +30,15 @@ class IRenderer
 public:
     
     friend class RenderSystem;
-    friend class RendererContext;
+    friend class GraphicsDevice;
     
     virtual ~IRenderer() = default;
 
 protected:
 
-	virtual void OnCreate(RendererContext& context) {}
+	virtual void OnCreate(GraphicsDevice* device) {}
 
-	virtual void OnDestroy() {}
+	virtual void OnDestroy(GraphicsDevice* device) {}
 
 	virtual void AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard) = 0;
 

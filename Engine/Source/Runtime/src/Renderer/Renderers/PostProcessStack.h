@@ -16,14 +16,14 @@ class PostProcessStack : public IRenderer
 {
 public:
     
-    virtual void OnCreate(RendererContext& context) override;
+    virtual void OnCreate(GraphicsDevice* device) override;
     
     virtual void AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard) override;
     
 private:
     
-    RefCounted<Shader> mFullscreenTriangleVertexShader;
-    RefCounted<Shader> mTonemappingFragmentShader;
+    Shader mFullscreenTriangleVertexShader;
+    Shader mTonemappingFragmentShader;
     
 };
 

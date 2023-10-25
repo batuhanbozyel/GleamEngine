@@ -14,9 +14,9 @@ struct Matrix4
     static const Matrix4 identity;
 
     constexpr Matrix4() = default;
-    constexpr Matrix4(Matrix4&&) = default;
+    constexpr Matrix4(Matrix4&&) noexcept = default;
     constexpr Matrix4(const Matrix4&) = default;
-    FORCE_INLINE constexpr Matrix4& operator=(Matrix4&&) = default;
+    FORCE_INLINE constexpr Matrix4& operator=(Matrix4&&) noexcept = default;
     FORCE_INLINE constexpr Matrix4& operator=(const Matrix4&) = default;
 
     constexpr Matrix4(float m00, float m01, float m02, float m03,

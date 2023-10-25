@@ -20,27 +20,27 @@ using namespace Gleam;
 
 void RenderSystem::Initialize()
 {
-    mRendererContext.ConfigureBackend();
+    mDevice = GraphicsDevice::Create();
     AddRenderer<WorldRenderer>();
     AddRenderer<PostProcessStack>();
-    
+
     EventDispatcher<RendererResizeEvent>::Subscribe([this](RendererResizeEvent e)
     {
-        mRendererContext.Clear();
+        mDevice->Clear();
     });
 }
 
 void RenderSystem::Shutdown()
 {
-	mRendererContext.WaitDeviceIdle();
+    mDevice->WaitDeviceIdle();
     for (auto renderer : mRenderers)
     {
-        renderer->OnDestroy();
+        renderer->OnDestroy(mDevice.get());
         delete renderer;
     }
 
-	mRendererContext.Clear();
-    mRendererContext.DestroyBackend();
+    mDevice->Clear();
+    mDevice.reset();
 }
 
 void RenderSystem::Render()
@@ -49,40 +49,50 @@ void RenderSystem::Render()
     @autoreleasepool
 #endif
     {
-        RenderGraph graph(mRendererContext);
+        RenderGraph graph(mDevice.get());
         RenderGraphBlackboard blackboard;
-        
+
         RenderingData renderingData;
         renderingData.backbuffer = graph.ImportBackbuffer(mRenderTarget);
         renderingData.config = mConfiguration;
         blackboard.Add(renderingData);
-        
+
         for (auto renderer : mRenderers)
         {
             renderer->AddRenderPasses(graph, blackboard);
         }
-		graph.Compile();
+        graph.Compile();
 
-		CommandBuffer cmd;
+        CommandBuffer cmd(mDevice.get());
         graph.Execute(&cmd);
-        
+
         // reset rt to swapchain
         if (mRenderTarget.IsValid())
         {
-            mRendererContext.ReleaseTexture(mRenderTarget);
+            mDevice->ReleaseTexture(mRenderTarget);
         }
-        mRenderTarget = Texture();
-        
-		cmd.Present();
+        ResetRenderTarget();
+
+        cmd.Present();
     }
 }
 
 void RenderSystem::Configure(const RendererConfig& config)
 {
     mConfiguration = config;
-    mRendererContext.WaitDeviceIdle();
-    mRendererContext.Clear();
-    mRendererContext.Configure(config);
+    mDevice->WaitDeviceIdle();
+    mDevice->Clear();
+    mDevice->Configure(config);
+}
+
+GraphicsDevice* RenderSystem::GetDevice()
+{
+    return mDevice.get();
+}
+
+const GraphicsDevice* RenderSystem::GetDevice() const
+{
+    return mDevice.get();
 }
 
 const RendererConfig& RenderSystem::GetConfiguration() const
@@ -97,11 +107,16 @@ const Texture& RenderSystem::GetRenderTarget() const
 
 void RenderSystem::SetRenderTarget(const TextureDescriptor& descriptor)
 {
-    mRenderTarget = mRendererContext.CreateTexture(descriptor);
+    mRenderTarget = mDevice->CreateTexture(descriptor);
     GLEAM_ASSERT(mRenderTarget.IsValid());
 }
 
 void RenderSystem::SetRenderTarget(const Texture& texture)
 {
     mRenderTarget = texture;
+}
+
+void RenderSystem::ResetRenderTarget()
+{
+    SetRenderTarget(mDevice->GetSwapchain()->GetTexture());
 }

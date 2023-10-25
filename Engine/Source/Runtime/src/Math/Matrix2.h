@@ -14,9 +14,9 @@ struct Matrix2
     static const Matrix2 identity;
 
     constexpr Matrix2() = default;
-    constexpr Matrix2(Matrix2&&) = default;
+    constexpr Matrix2(Matrix2&&) noexcept = default;
     constexpr Matrix2(const Matrix2&) = default;
-    FORCE_INLINE constexpr Matrix2& operator=(Matrix2&&) = default;
+    FORCE_INLINE constexpr Matrix2& operator=(Matrix2&&) noexcept = default;
     FORCE_INLINE constexpr Matrix2& operator=(const Matrix2&) = default;
 
     constexpr Matrix2(float m00, float m01,

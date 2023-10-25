@@ -22,13 +22,13 @@ using Optional = std::optional<T>;
 static constexpr auto Null = std::nullopt;
 
 template<typename T, typename ... Args>
-NO_DISCARD FORCE_INLINE constexpr Scope<T> CreateScope(Args&& ... args)
+NO_DISCARD FORCE_INLINE constexpr Scope<T> CreateScope(Args&& ... args) noexcept
 {
 	return std::make_unique<T>(std::forward<Args>(args)...);
 }
 
 template<typename T, typename ... Args>
-NO_DISCARD FORCE_INLINE constexpr  RefCounted<T> CreateRef(Args&& ... args)
+NO_DISCARD FORCE_INLINE constexpr  RefCounted<T> CreateRef(Args&& ... args) noexcept
 {
 	return std::make_shared<T>(std::forward<Args>(args)...);
 }

@@ -1,7 +1,7 @@
 #include "gpch.h"
 #include "RenderGraph.h"
 #include "Renderer/CommandBuffer.h"
-#include "Renderer/RendererContext.h"
+#include "Renderer/GraphicsDevice.h"
 
 using namespace Gleam;
 
@@ -23,8 +23,8 @@ static AttachmentStoreAction GetStoreActionForRenderTexture(const RenderGraphTex
     return (node->lastReference == pass && !pass->hasSideEffect) ? AttachmentStoreAction::DontCare : AttachmentStoreAction::Store;
 }
 
-RenderGraph::RenderGraph(RendererContext& context)
-    : mContext(context)
+RenderGraph::RenderGraph(GraphicsDevice* device)
+    : mDevice(device)
 {
     
 }
@@ -130,38 +130,36 @@ void RenderGraph::Execute(const CommandBuffer* cmd)
     Heap heap;
     if (mHeapSize > 0)
     {
-        heap = mContext.CreateHeap({ .memoryType = MemoryType::GPU, .size = mHeapSize });
+        heap = mDevice->CreateHeap({ .memoryType = MemoryType::GPU, .size = mHeapSize });
     }
-    size_t bufferOffset = 0;
-    
+
     cmd->Begin();
     for (auto pass : mPassNodes)
     {
-		// Allocate buffers
+        // Allocate buffers
         for (auto& resource : pass->bufferCreates)
         {
             if (HasResource(pass->bufferWrites, resource))
             {
-                resource.node->buffer = heap.CreateBuffer(resource.node->buffer.GetDescriptor(), bufferOffset);
-                bufferOffset += resource.node->buffer.GetDescriptor().size;
+                resource.node->buffer = heap.CreateBuffer(resource.node->buffer.GetDescriptor());
                 GLEAM_ASSERT(resource.node->buffer.IsValid());
             }
         }
 
-		// Allocate textures
-		for (auto& resource : pass->textureCreates)
-		{
+        // Allocate textures
+        for (auto& resource : pass->textureCreates)
+        {
             if (HasResource(pass->textureWrites, resource))
             {
-                resource.node->texture = mContext.CreateTexture(resource.node->texture.GetDescriptor());
+                resource.node->texture = mDevice->CreateTexture(resource.node->texture.GetDescriptor());
                 GLEAM_ASSERT(resource.node->texture.IsValid());
             }
-		}
+        }
 
-		for (auto& resource : pass->textureReads)
-		{
-			cmd->TransitionLayout(resource.node->texture, ResourceAccess::Read);
-		}
+        for (auto& resource : pass->textureReads)
+        {
+            cmd->TransitionLayout(resource.node->texture, ResourceAccess::Read);
+        }
         
         // execute render pass
         if (pass->isCustomPass())
@@ -174,7 +172,7 @@ void RenderGraph::Execute(const CommandBuffer* cmd)
             renderPassDesc.colorAttachments.resize(pass->colorAttachments.size());
             for (uint32_t i = 0; i < pass->colorAttachments.size(); i++)
             {
-				const auto node = static_cast<const RenderGraphTextureNode*>(pass->colorAttachments[i].node);
+                const auto node = static_cast<const RenderGraphTextureNode*>(pass->colorAttachments[i].node);
                 renderPassDesc.colorAttachments[i].texture = node->texture;
                 renderPassDesc.colorAttachments[i].loadAction = GetLoadActionForRenderTexture(node, pass);
                 renderPassDesc.colorAttachments[i].storeAction = GetStoreActionForRenderTexture(node, pass);
@@ -187,7 +185,7 @@ void RenderGraph::Execute(const CommandBuffer* cmd)
             
             if (pass->depthAttachment.IsValid())
             {
-				const auto node = static_cast<const RenderGraphTextureNode*>(pass->depthAttachment.node);
+                const auto node = static_cast<const RenderGraphTextureNode*>(pass->depthAttachment.node);
                 renderPassDesc.depthAttachment.texture = node->texture;
                 renderPassDesc.depthAttachment.loadAction = GetLoadActionForRenderTexture(node, pass);
                 renderPassDesc.depthAttachment.storeAction = GetStoreActionForRenderTexture(node, pass);
@@ -200,42 +198,30 @@ void RenderGraph::Execute(const CommandBuffer* cmd)
             }
             
             cmd->BeginRenderPass(renderPassDesc, pass->name);
-			cmd->SetViewport(renderPassDesc.size);
+            cmd->SetViewport(renderPassDesc.size);
             std::invoke(pass->callback, cmd);
             cmd->EndRenderPass();
         }
-        
-        // Release textures
-        for (auto& resource : pass->textureWrites)
-        {
-            if (resource.node->lastReference == pass && resource.node->transient)
-            {
-                mContext.ReleaseTexture(resource.node->texture);
-            }
-        }
-        
-        for (auto& resource : pass->textureReads)
-        {
-            if (resource.node->lastReference == pass && resource.node->transient)
-            {
-                mContext.ReleaseTexture(resource.node->texture);
-            }
-        }        
     }
     cmd->End();
 
-	// Release buffers
-	for (auto& pass : mPassNodes)
-	{
-		for (auto& resource : pass->bufferCreates)
-		{
-			resource.node->buffer.Dispose();
-		}
-	}
+    // Release buffers & textures
+    for (auto& pass : mPassNodes)
+    {
+        for (auto& resource : pass->bufferCreates)
+        {
+            mDevice->Dispose(resource.node->buffer);
+        }
+
+        for (auto& resource : pass->textureCreates)
+        {
+            mDevice->ReleaseTexture(resource.node->texture);
+        }
+    }
 
     if (heap.IsValid())
     {
-        mContext.ReleaseHeap(heap);
+        mDevice->ReleaseHeap(heap);
     }
     
     for (auto pass : mPassNodes) { delete pass; }

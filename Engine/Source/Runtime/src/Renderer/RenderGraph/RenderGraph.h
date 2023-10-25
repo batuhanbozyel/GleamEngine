@@ -4,7 +4,7 @@
 namespace Gleam {
 
 class CommandBuffer;
-class RendererContext;
+class GraphicsDevice;
 
 struct ImportResourceParams
 {
@@ -19,7 +19,7 @@ class RenderGraph final
     
 public:
     
-    RenderGraph(RendererContext& context);
+    RenderGraph(GraphicsDevice* device);
     
     ~RenderGraph();
     
@@ -48,7 +48,7 @@ private:
     
     size_t mHeapSize = 0;
     
-    RendererContext& mContext;
+    GraphicsDevice* mDevice;
 
     RenderGraphResourceRegistry mRegistry;
 

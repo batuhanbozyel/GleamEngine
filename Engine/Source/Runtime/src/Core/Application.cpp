@@ -76,7 +76,7 @@ Application::Application(const ApplicationProperties& props)
 		// init renderer backend
         auto renderSubsystem = AddSubsystem<RenderSystem>();
         renderSubsystem->Configure(props.rendererConfig);
-		renderSubsystem->SetRenderTarget(Texture());
+		renderSubsystem->ResetRenderTarget();
         
         AddSubsystem<InputSystem>();
         AddSubsystem<MaterialSystem>();

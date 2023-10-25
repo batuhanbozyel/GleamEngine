@@ -31,9 +31,9 @@ struct Quaternion
 	}
 
 	constexpr Quaternion() = default;
-	constexpr Quaternion(Quaternion&&) = default;
+	constexpr Quaternion(Quaternion&&) noexcept = default;
 	constexpr Quaternion(const Quaternion&) = default;
-    FORCE_INLINE constexpr Quaternion& operator=(Quaternion&&) = default;
+    FORCE_INLINE constexpr Quaternion& operator=(Quaternion&&) noexcept = default;
     FORCE_INLINE constexpr Quaternion& operator=(const Quaternion&) = default;
 
 	constexpr Quaternion(float w, float x, float y, float z)

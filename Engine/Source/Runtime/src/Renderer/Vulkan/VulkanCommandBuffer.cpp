@@ -6,6 +6,7 @@
 #include "VulkanPipelineStateManager.h"
 #include "VulkanTransitionManager.h"
 #include "VulkanShaderReflect.h"
+#include "VulkanSwapchain.h"
 #include "VulkanDevice.h"
 
 #include "Core/Application.h"
@@ -14,6 +15,9 @@ using namespace Gleam;
 
 struct CommandBuffer::Impl
 {
+	VulkanDevice* device = nullptr;
+	VulkanSwapchain* swapchain = nullptr;
+
 	VkCommandBuffer commandBuffer = VK_NULL_HANDLE;
 	VkFence fence = VK_NULL_HANDLE;
 
@@ -28,11 +32,13 @@ struct CommandBuffer::Impl
 	uint32_t sampleCount = 1;
 };
 
-CommandBuffer::CommandBuffer()
-	: mHandle(CreateScope<Impl>())
+CommandBuffer::CommandBuffer(GraphicsDevice* device)
+	: mHandle(CreateScope<Impl>()), mDevice(device)
 {
-	mHandle->fence = VulkanDevice::GetSwapchain().CreateFence();
-	mHandle->commandBuffer = VulkanDevice::GetSwapchain().AllocateCommandBuffer();
+	mHandle->device = As<VulkanDevice*>(device);
+	mHandle->swapchain = As<VulkanSwapchain*>(mHandle->device->GetSwapchain());
+	mHandle->fence = mHandle->device->CreateFence();
+	mHandle->commandBuffer = mHandle->device->AllocateCommandBuffer();
 }
 
 CommandBuffer::~CommandBuffer()
@@ -117,7 +123,7 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, 
 		else
 		{
 			colorAttachmentDesc.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-			const auto& drawable = VulkanDevice::GetSwapchain().AcquireNextDrawable();
+			const auto& drawable = mHandle->swapchain->AcquireNextDrawable();
 			imageViews[i] = drawable.view;
 			VulkanTransitionManager::SetLayout(drawable.image, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
 		}
@@ -145,7 +151,7 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, 
 	renderPassCreateInfo.pSubpasses = subpassDescriptors.data();
 	renderPassCreateInfo.dependencyCount = static_cast<uint32_t>(subpassDependencies.size());
 	renderPassCreateInfo.pDependencies = subpassDependencies.data();
-	mHandle->renderPass = VulkanDevice::GetSwapchain().CreateRenderPass(renderPassCreateInfo);
+	mHandle->renderPass = mHandle->device->CreateRenderPass(renderPassCreateInfo);
 
 	VkFramebufferCreateInfo framebufferCreateInfo{ VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO };
 	framebufferCreateInfo.renderPass = mHandle->renderPass;
@@ -154,7 +160,7 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, 
 	framebufferCreateInfo.width = static_cast<uint32_t>(renderPassDesc.size.width);
 	framebufferCreateInfo.height = static_cast<uint32_t>(renderPassDesc.size.height);
 	framebufferCreateInfo.layers = 1;
-	VkFramebuffer framebuffer = VulkanDevice::GetSwapchain().CreateFramebuffer(framebufferCreateInfo);
+	VkFramebuffer framebuffer = mHandle->device->CreateFramebuffer(framebufferCreateInfo);
 
 	VkRenderPassBeginInfo renderPassBeginInfo{ VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO };
 	renderPassBeginInfo.renderPass = mHandle->renderPass;
@@ -171,7 +177,7 @@ void CommandBuffer::EndRenderPass() const
     vkCmdEndRenderPass(mHandle->commandBuffer);
 }
 
-void CommandBuffer::BindGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc, const RefCounted<Shader>& vertexShader, const RefCounted<Shader>& fragmentShader) const
+void CommandBuffer::BindGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc, const Shader& vertexShader, const Shader& fragmentShader) const
 {
 	if (mHandle->hasDepthAttachment)
 	{
@@ -185,7 +191,7 @@ void CommandBuffer::BindGraphicsPipeline(const PipelineStateDescriptor& pipeline
 	vkCmdBindPipeline(mHandle->commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mHandle->pipeline->handle);
 
 	// Set vertex samplers
-	size_t samplerCount = vertexShader->GetReflection()->samplers.size() + fragmentShader->GetReflection()->samplers.size();
+	size_t samplerCount = vertexShader.GetReflection()->samplers.size() + fragmentShader.GetReflection()->samplers.size();
 	if (samplerCount > 0)
 	{
 		TArray<VkDescriptorImageInfo> samplerInfos;
@@ -193,7 +199,7 @@ void CommandBuffer::BindGraphicsPipeline(const PipelineStateDescriptor& pipeline
 
 		TArray<VkWriteDescriptorSet> descriptorSets;
 		descriptorSets.reserve(samplerCount);
-		for (const auto& resource : vertexShader->GetReflection()->samplers)
+		for (const auto& resource : vertexShader.GetReflection()->samplers)
 		{
 			VkDescriptorImageInfo samplerInfo{};
 			samplerInfo.sampler = VulkanPipelineStateManager::GetSampler(resource->binding);
@@ -207,7 +213,7 @@ void CommandBuffer::BindGraphicsPipeline(const PipelineStateDescriptor& pipeline
 		}
 
 		// Set fragment samplers
-		for (const auto& resource : fragmentShader->GetReflection()->samplers)
+		for (const auto& resource : fragmentShader.GetReflection()->samplers)
 		{
 			VkDescriptorImageInfo samplerInfo{};
 			samplerInfo.sampler = VulkanPipelineStateManager::GetSampler(resource->binding);
@@ -241,16 +247,16 @@ void CommandBuffer::BindBuffer(const NativeGraphicsHandle buffer, BufferUsage us
 {
 	auto resource = [=, this]()
 	{
-		Shader::Reflection* reflection = nullptr;
+		const Shader::Reflection* reflection = nullptr;
 		if (stage & ShaderStage_Vertex)
 		{
 			auto pipeline = static_cast<const VulkanGraphicsPipeline*>(mHandle->pipeline);
-			reflection = pipeline->vertexShader->GetReflection().get();
+			reflection = pipeline->vertexShader.GetReflection();
 		}
 		else if (stage & ShaderStage_Fragment)
 		{
 			auto pipeline = static_cast<const VulkanGraphicsPipeline*>(mHandle->pipeline);
-			reflection = pipeline->fragmentShader->GetReflection().get();
+			reflection = pipeline->fragmentShader.GetReflection();
 		}
 		else
 		{
@@ -259,14 +265,14 @@ void CommandBuffer::BindBuffer(const NativeGraphicsHandle buffer, BufferUsage us
 
 		switch (usage)
 		{
-			case BufferUsage::UniformBuffer: return reflection->resources[index];
+			case BufferUsage::UniformBuffer: return reflection->resources.find(index)->second;
 			case BufferUsage::VertexBuffer:
 			case BufferUsage::StorageBuffer:
 			{
                 switch(access)
                 {
-                    case ResourceAccess::Read: return reflection->resources[index + Shader::Reflection::SRV_BINDING_OFFSET];
-                    case ResourceAccess::Write: return reflection->resources[index + Shader::Reflection::UAV_BINDING_OFFSET];
+                    case ResourceAccess::Read: return reflection->resources.find(index + Shader::Reflection::SRV_BINDING_OFFSET)->second;
+                    case ResourceAccess::Write: return reflection->resources.find(index + Shader::Reflection::UAV_BINDING_OFFSET)->second;
                     default: GLEAM_ASSERT(false, "Vulkan: Trying to bind buffer with invalid access.")
 					{
 						return (SpvReflectDescriptorBinding*)nullptr;
@@ -297,16 +303,16 @@ void CommandBuffer::BindTexture(const NativeGraphicsHandle texture, uint32_t ind
 {
 	auto resource = [=, this]()
 	{
-		Shader::Reflection* reflection = nullptr;
+		const Shader::Reflection* reflection = nullptr;
 		if (stage & ShaderStage_Vertex)
 		{
 			auto pipeline = static_cast<const VulkanGraphicsPipeline*>(mHandle->pipeline);
-			reflection = pipeline->vertexShader->GetReflection().get();
+			reflection = pipeline->vertexShader.GetReflection();
 		}
 		else if (stage & ShaderStage_Fragment)
 		{
 			auto pipeline = static_cast<const VulkanGraphicsPipeline*>(mHandle->pipeline);
-			reflection = pipeline->fragmentShader->GetReflection().get();
+			reflection = pipeline->fragmentShader.GetReflection();
 		}
 		else
 		{
@@ -314,8 +320,8 @@ void CommandBuffer::BindTexture(const NativeGraphicsHandle texture, uint32_t ind
 		}
         switch(access)
         {
-            case ResourceAccess::Read: return reflection->resources[index + Shader::Reflection::SRV_BINDING_OFFSET];
-            case ResourceAccess::Write: return reflection->resources[index + Shader::Reflection::UAV_BINDING_OFFSET];
+            case ResourceAccess::Read: return reflection->resources.find(index + Shader::Reflection::SRV_BINDING_OFFSET)->second;
+            case ResourceAccess::Write: return reflection->resources.find(index + Shader::Reflection::UAV_BINDING_OFFSET)->second;
 			default: GLEAM_ASSERT(false, "Vulkan: Trying to bind texture with invalid access.")
 			{
 				return (SpvReflectDescriptorBinding*)nullptr;
@@ -384,7 +390,7 @@ void CommandBuffer::CopyBuffer(const NativeGraphicsHandle src, const NativeGraph
 void CommandBuffer::Blit(const Texture& texture, const Texture& target) const
 {
     mHandle->swapchainTarget = !target.IsValid();
-	VkImage targetTexture = mHandle->swapchainTarget ? VulkanDevice::GetSwapchain().AcquireNextDrawable().image : As<VkImage>(target.GetHandle());
+	VkImage targetTexture = mHandle->swapchainTarget ? mHandle->swapchain->AcquireNextDrawable().image : As<VkImage>(target.GetHandle());
 
 	if (mHandle->swapchainTarget)
 	{
@@ -438,17 +444,17 @@ void CommandBuffer::Commit() const
 	VkSubmitInfo submitInfo{ VK_STRUCTURE_TYPE_SUBMIT_INFO };
 	submitInfo.commandBufferCount = 1;
 	submitInfo.pCommandBuffers = &mHandle->commandBuffer;
-	VK_CHECK(vkQueueSubmit(VulkanDevice::GetGraphicsQueue().handle, 1, &submitInfo, mHandle->fence));
+	VK_CHECK(vkQueueSubmit(mHandle->device->GetGraphicsQueue().handle, 1, &submitInfo, mHandle->fence));
 }
 
 void CommandBuffer::Present() const
 {
-	VulkanDevice::GetSwapchain().Present(mHandle->commandBuffer);
+	mHandle->swapchain->Present(mHandle->commandBuffer);
 }
 
 void CommandBuffer::WaitUntilCompleted() const
 {
-	VK_CHECK(vkWaitForFences(VulkanDevice::GetHandle(), 1, &mHandle->fence, VK_TRUE, UINT64_MAX));
+	VK_CHECK(vkWaitForFences(As<VkDevice>(mHandle->device->GetHandle()), 1, &mHandle->fence, VK_TRUE, UINT64_MAX));
 }
 
 NativeGraphicsHandle CommandBuffer::GetHandle() const

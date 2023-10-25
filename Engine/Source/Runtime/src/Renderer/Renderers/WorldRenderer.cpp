@@ -10,16 +10,16 @@
 
 #include "Renderer/Mesh.h"
 #include "Renderer/CommandBuffer.h"
-#include "Renderer/RendererContext.h"
+#include "Renderer/GraphicsDevice.h"
 #include "Renderer/Material/Material.h"
 #include "Renderer/Material/MaterialInstance.h"
 
 using namespace Gleam;
 
-void WorldRenderer::OnCreate(RendererContext& context)
+void WorldRenderer::OnCreate(GraphicsDevice* device)
 {
-    mForwardPassVertexShader = context.CreateShader("forwardPassVertexShader", ShaderStage::Vertex);
-    mForwardPassFragmentShader = context.CreateShader("forwardPassFragmentShader", ShaderStage::Fragment);
+    mForwardPassVertexShader = device->CreateShader("forwardPassVertexShader", ShaderStage::Vertex);
+    mForwardPassFragmentShader = device->CreateShader("forwardPassFragmentShader", ShaderStage::Fragment);
 }
 
 void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard)

@@ -4,6 +4,7 @@
 #include "Renderer/CommandBuffer.h"
 #include "MetalPipelineStateManager.h"
 #include "MetalShaderReflect.h"
+#include "MetalSwapchain.h"
 
 #include "Core/Application.h"
 
@@ -14,6 +15,9 @@ using namespace Gleam;
 
 struct CommandBuffer::Impl
 {
+    MetalDevice* device = nullptr;
+    MetalSwapchain* swapchain = nullptr;
+    
     id<MTLCommandBuffer> commandBuffer = nil;
     id<MTLRenderCommandEncoder> renderCommandEncoder = nil;
     id<MTLBuffer> topLevelArgumentBuffer = nil;
@@ -25,15 +29,16 @@ struct CommandBuffer::Impl
     uint32_t sampleCount = 1;
 };
 
-CommandBuffer::CommandBuffer()
-    : mHandle(CreateScope<Impl>())
+CommandBuffer::CommandBuffer(GraphicsDevice* device)
+    : mHandle(CreateScope<Impl>()), mDevice(device)
 {
-    
+    mHandle->device = As<MetalDevice*>(device);
+    mHandle->swapchain = As<MetalSwapchain*>(mHandle->device->GetSwapchain());
 }
 
 CommandBuffer::~CommandBuffer()
 {
-    mHandle->commandBuffer = nil;
+
 }
 
 void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, const TStringView debugName) const
@@ -106,7 +111,7 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, 
         }
         else
         {
-            colorAttachmentDesc.texture = MetalDevice::GetSwapchain().AcquireNextDrawable().texture;
+            colorAttachmentDesc.texture = mHandle->swapchain->AcquireNextDrawable().texture;
         }
     }
     
@@ -120,7 +125,7 @@ void CommandBuffer::EndRenderPass() const
     mHandle->renderCommandEncoder = nil;
 }
 
-void CommandBuffer::BindGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc, const RefCounted<Shader>& vertexShader, const RefCounted<Shader>& fragmentShader) const
+void CommandBuffer::BindGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc, const Shader& vertexShader, const Shader& fragmentShader) const
 {
     if (mHandle->hasDepthAttachment)
     {
@@ -135,23 +140,23 @@ void CommandBuffer::BindGraphicsPipeline(const PipelineStateDescriptor& pipeline
     }
     [mHandle->renderCommandEncoder setCullMode:CullModeToMTLCullMode(pipelineDesc.cullingMode)];
     
-    auto argumentBufferSize = vertexShader->GetReflection()->argumentBufferSize + fragmentShader->GetReflection()->argumentBufferSize;
+    auto argumentBufferSize = vertexShader.GetReflection()->argumentBufferSize + fragmentShader.GetReflection()->argumentBufferSize;
     if (argumentBufferSize > 0)
     {
-        mHandle->topLevelArgumentBuffer = [MetalDevice::GetHandle() newBufferWithLength:argumentBufferSize options:MTLResourceStorageModeShared];
+        mHandle->topLevelArgumentBuffer = [mHandle->device->GetHandle() newBufferWithLength:argumentBufferSize options:MTLResourceStorageModeShared];
         [mHandle->renderCommandEncoder setVertexBuffer:mHandle->topLevelArgumentBuffer offset:0 atIndex:kIRArgumentBufferBindPoint];
         [mHandle->renderCommandEncoder setFragmentBuffer:mHandle->topLevelArgumentBuffer offset:0 atIndex:kIRArgumentBufferBindPoint];
         auto argumentBufferPtr = static_cast<uint8_t*>([mHandle->topLevelArgumentBuffer contents]);
         
         // Set vertex samplers
-        for (const auto& resource : vertexShader->GetReflection()->samplers)
+        for (const auto& resource : vertexShader.GetReflection()->samplers)
         {
             auto entry = As<IRDescriptorTableEntry*>(argumentBufferPtr + resource.topLevelOffset);
             IRDescriptorTableSetSampler(entry, MetalPipelineStateManager::GetSamplerState(resource.slot), 0.0f);
         }
         
         // Set fragment samplers
-        for (const auto& resource : fragmentShader->GetReflection()->samplers)
+        for (const auto& resource : fragmentShader.GetReflection()->samplers)
         {
             auto entry = As<IRDescriptorTableEntry*>(argumentBufferPtr + resource.topLevelOffset);
             IRDescriptorTableSetSampler(entry, MetalPipelineStateManager::GetSamplerState(resource.slot), 0.0f);
@@ -173,16 +178,16 @@ void CommandBuffer::BindBuffer(const NativeGraphicsHandle buffer, BufferUsage us
     auto argumentBufferPtr = static_cast<uint8_t*>([mHandle->topLevelArgumentBuffer contents]);
     auto resource = [=, this]()
     {
-        Shader::Reflection* reflection = nullptr;
+        const Shader::Reflection* reflection = nullptr;
         if (stage & ShaderStage_Vertex)
         {
             auto pipeline = static_cast<const MetalGraphicsPipeline*>(mHandle->pipeline);
-            reflection = pipeline->vertexShader->GetReflection().get();
+            reflection = pipeline->vertexShader.GetReflection();
         }
         else if (stage & ShaderStage_Fragment)
         {
             auto pipeline = static_cast<const MetalGraphicsPipeline*>(mHandle->pipeline);
-            reflection = pipeline->fragmentShader->GetReflection().get();
+            reflection = pipeline->fragmentShader.GetReflection();
         }
         GLEAM_ASSERT(reflection, "Metal: Shader stage not implemented yet.");
         
@@ -214,16 +219,16 @@ void CommandBuffer::BindTexture(const NativeGraphicsHandle texture, uint32_t ind
     auto argumentBufferPtr = static_cast<uint8_t*>([mHandle->topLevelArgumentBuffer contents]);
     auto resource = [=, this]()
     {
-        Shader::Reflection* reflection = nullptr;
+        const Shader::Reflection* reflection = nullptr;
         if (stage & ShaderStage_Vertex)
         {
             auto pipeline = static_cast<const MetalGraphicsPipeline*>(mHandle->pipeline);
-            reflection = pipeline->vertexShader->GetReflection().get();
+            reflection = pipeline->vertexShader.GetReflection();
         }
         else if (stage & ShaderStage_Fragment)
         {
             auto pipeline = static_cast<const MetalGraphicsPipeline*>(mHandle->pipeline);
-            reflection = pipeline->fragmentShader->GetReflection().get();
+            reflection = pipeline->fragmentShader.GetReflection();
         }
         GLEAM_ASSERT(reflection, "Metal: Shader stage not implemented yet.");
         
@@ -242,7 +247,7 @@ void CommandBuffer::BindTexture(const NativeGraphicsHandle texture, uint32_t ind
 
 void CommandBuffer::SetPushConstant(const void* data, uint32_t size, ShaderStageFlagBits stage) const
 {
-    auto buffer = [MetalDevice::GetHandle() newBufferWithBytes:data length:size options:MTLResourceStorageModePrivate];
+    auto buffer = [mHandle->device->GetHandle() newBufferWithBytes:data length:size options:MTLResourceStorageModePrivate];
     BindBuffer(buffer, BufferUsage::UniformBuffer, 0, 999, stage, ResourceAccess::Read);
 }
 
@@ -267,7 +272,7 @@ void CommandBuffer::CopyBuffer(const NativeGraphicsHandle src, const NativeGraph
 void CommandBuffer::Blit(const Texture& texture, const Texture& target) const
 {
     id<MTLTexture> srcTexture = texture.GetHandle();
-    id<MTLTexture> dstTexture = target.IsValid() ? target.GetHandle() : MetalDevice::GetSwapchain().AcquireNextDrawable().texture;
+    id<MTLTexture> dstTexture = target.IsValid() ? target.GetHandle() : mHandle->swapchain->AcquireNextDrawable().texture;
 
     id<MTLBlitCommandEncoder> blitCommandEncoder = [mHandle->commandBuffer blitCommandEncoder];
     [blitCommandEncoder copyFromTexture:srcTexture toTexture:dstTexture];
@@ -284,9 +289,9 @@ void CommandBuffer::Begin() const
 #ifdef GDEBUG
     MTLCommandBufferDescriptor* descriptor = [MTLCommandBufferDescriptor new];
     descriptor.errorOptions = MTLCommandBufferErrorOptionEncoderExecutionStatus;
-    mHandle->commandBuffer = [MetalDevice::GetCommandPool() commandBufferWithDescriptor:descriptor];
+    mHandle->commandBuffer = [mHandle->device->GetCommandPool() commandBufferWithDescriptor:descriptor];
 #else
-    mHandle->commandBuffer = [MetalDevice::GetCommandPool() commandBuffer];
+    mHandle->commandBuffer = [mHandle->device->GetCommandPool() commandBuffer];
 #endif
 }
 
@@ -302,7 +307,7 @@ void CommandBuffer::Commit() const
 
 void CommandBuffer::Present() const
 {
-    MetalDevice::GetSwapchain().Present(mHandle->commandBuffer);
+    mHandle->swapchain->Present(mHandle->commandBuffer);
     Commit();
 }
 

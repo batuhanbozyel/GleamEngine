@@ -7,37 +7,20 @@
 
 using namespace Gleam;
 
-static uint64_t AlignTo(const uint64_t offset, const uint64_t alignment)
+Buffer Heap::CreateBuffer(const BufferDescriptor& descriptor)
 {
-    const bool isAligned = offset % alignment == 0;
-    return isAligned ? offset : ((offset / alignment) + 1) * alignment;
-}
+    auto alignedStackPtr = Utils::AlignTo(mStackPtr, mAlignment);
+    auto newStackPtr = alignedStackPtr + descriptor.size;
 
-Heap::Heap(const HeapDescriptor& descriptor)
-    : mDescriptor(descriptor)
-{
-    MTLResourceOptions resourceOptions = MemoryTypeToMTLResourceOption(descriptor.memoryType);
-    MTLSizeAndAlign sizeAndAlign = [MetalDevice::GetHandle() heapBufferSizeAndAlignWithLength:descriptor.size options:resourceOptions];
-    
-    MTLHeapDescriptor* desc = [MTLHeapDescriptor new];
-    desc.type = MTLHeapTypePlacement;
-    desc.resourceOptions = resourceOptions;
-    desc.size = sizeAndAlign.size;
-    mHandle = [MetalDevice::GetHandle() newHeapWithDescriptor:desc];
-}
+    if (Utils::AlignTo(mDescriptor.size, mAlignment) < newStackPtr)
+    {
+        GLEAM_ASSERT(false, "Metal: Heap is full!");
+        return Buffer(nil, descriptor, nullptr);
+    }
+    mStackPtr = newStackPtr;
 
-void Heap::Dispose()
-{
-    mHandle = nil;
-}
-
-Buffer Heap::CreateBuffer(const BufferDescriptor& descriptor, size_t offset) const
-{
-    MTLResourceOptions resourceOptions = MemoryTypeToMTLResourceOption(mDescriptor.memoryType);
-    MTLSizeAndAlign sizeAndAlign = [MetalDevice::GetHandle() heapBufferSizeAndAlignWithLength:descriptor.size options:resourceOptions];
-    
     id<MTLHeap> heap = mHandle;
-    id<MTLBuffer> buffer = [heap newBufferWithLength:descriptor.size options:heap.resourceOptions offset:AlignTo(offset, sizeAndAlign.align)];
+    id<MTLBuffer> buffer = [heap newBufferWithLength:descriptor.size options:heap.resourceOptions offset:alignedStackPtr];
 
     void* contents = nullptr;
     if (mDescriptor.memoryType != MemoryType::GPU)
@@ -45,11 +28,6 @@ Buffer Heap::CreateBuffer(const BufferDescriptor& descriptor, size_t offset) con
         contents = [buffer contents];
     }
     return Buffer(buffer, descriptor, contents);
-}
-
-void Buffer::Dispose()
-{
-    mHandle = nil;
 }
 
 #endif

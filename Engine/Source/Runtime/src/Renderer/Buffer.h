@@ -4,25 +4,35 @@
 
 namespace Gleam {
 
-class Buffer : public GraphicsObject
+class GraphicsDevice;
+
+class Buffer final : public GraphicsObject
 {
+    friend class GraphicsDevice;
+    
 public:
 
 	Buffer() = default;
-
-	Buffer(NativeGraphicsHandle handle, const BufferDescriptor& descriptor, void* contents = nullptr);
-
-	Buffer(const Buffer& other) = default;
-
-	Buffer& operator=(const Buffer& other) = default;
     
-    void Dispose();
+    Buffer(const Buffer& other) = default;
+    
+    Buffer& operator=(const Buffer& other) = default;
 
-	void SetData(const void* data, size_t size, size_t offset = 0) const;
+    Buffer(NativeGraphicsHandle handle, const BufferDescriptor& descriptor, void* contents = nullptr)
+        : GraphicsObject(handle), mDescriptor(descriptor), mContents(contents)
+    {
+        
+    }
     
-    void* GetContents() const;
+    void* GetContents() const
+    {
+        return mContents;
+    }
     
-    const BufferDescriptor& GetDescriptor() const;
+    const BufferDescriptor& GetDescriptor() const
+    {
+        return mDescriptor;
+    }
     
 private:
     

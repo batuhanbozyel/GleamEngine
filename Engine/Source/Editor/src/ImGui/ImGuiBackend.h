@@ -8,7 +8,7 @@ class ImGuiBackend
 {
 public:
 
-	static void Init();
+	static void Init(Gleam::GraphicsDevice* device);
 
 	static void Destroy();
 
@@ -17,6 +17,10 @@ public:
 	static void EndFrame(NativeGraphicsHandle commandBuffer, NativeGraphicsHandle renderCommandEncoder);
 
 	static ImTextureID GetImTextureIDForTexture(const Gleam::Texture& texture);
+    
+private:
+    
+    static inline Gleam::GraphicsDevice* mDevice = nullptr;
 
 };
 

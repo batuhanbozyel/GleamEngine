@@ -14,9 +14,9 @@ struct Matrix3
     static const Matrix3 identity;
 
     constexpr Matrix3() = default;
-    constexpr Matrix3(Matrix3&&) = default;
+    constexpr Matrix3(Matrix3&&) noexcept = default;
     constexpr Matrix3(const Matrix3&) = default;
-    FORCE_INLINE constexpr Matrix3& operator=(Matrix3&&) = default;
+    FORCE_INLINE constexpr Matrix3& operator=(Matrix3&&) noexcept = default;
     FORCE_INLINE constexpr Matrix3& operator=(const Matrix3&) = default;
 
     constexpr Matrix3(float m00, float m01, float m02,

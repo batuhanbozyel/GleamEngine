@@ -2,6 +2,7 @@
 
 #ifdef USE_METAL_RENDERER
 #include "MetalSwapchain.h"
+#include "MetalDevice.h"
 #include "MetalUtils.h"
 
 #include "Core/WindowSystem.h"
@@ -14,7 +15,7 @@
 
 using namespace Gleam;
 
-void MetalSwapchain::Initialize()
+void MetalSwapchain::Initialize(MetalDevice* device)
 {
     auto windowSystem = GameInstance->GetSubsystem<WindowSystem>();
     
@@ -24,7 +25,7 @@ void MetalSwapchain::Initialize()
     
     mHandle = (__bridge CAMetalLayer*)SDL_Metal_GetLayer(mSurface);
     mHandle.name = [NSString stringWithCString:windowSystem->GetProperties().title.c_str() encoding:NSASCIIStringEncoding];
-    mHandle.device = MetalDevice::GetHandle();
+    mHandle.device = device->GetHandle();
     mHandle.framebufferOnly = NO;
     mHandle.opaque = YES;
     
@@ -32,7 +33,7 @@ void MetalSwapchain::Initialize()
     mSize = resolution * mHandle.contentsScale;
     mHandle.frame.size = CGSizeMake(mSize.width, mSize.height);
     mHandle.drawableSize = CGSizeMake(resolution.width, resolution.height);
-    mImageFormat = mHandle.pixelFormat;
+    mFormat = MTLPixelFormatToTextureFormat(mHandle.pixelFormat);
     
     EventDispatcher<WindowResizeEvent>::Subscribe([this](const WindowResizeEvent& e)
     {
@@ -65,6 +66,15 @@ void MetalSwapchain::Destroy()
 
 void MetalSwapchain::Configure(const RendererConfig& config)
 {
+    for (auto& pool : mPooledObjects)
+    {
+        for (auto& [obj, deallocator] : pool)
+        {
+            deallocator(obj);
+        }
+    }
+    mPooledObjects.clear();
+    
 #ifdef PLATFORM_MACOS
     mHandle.displaySyncEnabled = config.vsync ? YES : NO;
 #endif
@@ -92,15 +102,6 @@ id<CAMetalDrawable> MetalSwapchain::AcquireNextDrawable()
 {
     if (mDrawable == nil)
     {
-        dispatch_semaphore_wait(mImageAcquireSemaphore, DISPATCH_TIME_FOREVER);
-        
-        auto& pooledObjects = mPooledObjects[mCurrentFrameIndex];
-        for (auto& [obj, deallocate] : pooledObjects)
-        {
-            deallocate(obj);
-        }
-        pooledObjects.clear();
-        
         mDrawable = [mHandle nextDrawable];
     }
     return mDrawable;
@@ -108,7 +109,6 @@ id<CAMetalDrawable> MetalSwapchain::AcquireNextDrawable()
 
 void MetalSwapchain::Present(id<MTLCommandBuffer> commandBuffer)
 {
-    uint32_t frameIndex = mCurrentFrameIndex;
     [commandBuffer addCompletedHandler:^(id<MTLCommandBuffer> commandBuffer)
     {
         dispatch_semaphore_signal(mImageAcquireSemaphore);
@@ -118,12 +118,16 @@ void MetalSwapchain::Present(id<MTLCommandBuffer> commandBuffer)
 
     mCurrentFrameIndex = (mCurrentFrameIndex + 1) % mMaxFramesInFlight;
     
+    dispatch_semaphore_wait(mImageAcquireSemaphore, DISPATCH_TIME_FOREVER);
+    
+    auto& pooledObjects = mPooledObjects[mCurrentFrameIndex];
+    for (auto& [obj, deallocate] : pooledObjects)
+    {
+        deallocate(obj);
+    }
+    pooledObjects.clear();
+    
     mDrawable = nil;
-}
-
-void MetalSwapchain::AddPooledObject(std::any object, std::function<void(std::any)> deallocator)
-{
-    mPooledObjects[mCurrentFrameIndex].push_back(std::make_pair(object, deallocator));
 }
 
 dispatch_semaphore_t MetalSwapchain::GetSemaphore() const
@@ -131,29 +135,9 @@ dispatch_semaphore_t MetalSwapchain::GetSemaphore() const
     return mImageAcquireSemaphore;
 }
 
-TextureFormat MetalSwapchain::GetFormat() const
-{
-    return MTLPixelFormatToTextureFormat(mImageFormat);
-}
-
 CAMetalLayer* MetalSwapchain::GetHandle() const
 {
     return mHandle;
-}
-
-const Gleam::Size& MetalSwapchain::GetSize() const
-{
-    return mSize;
-}
-
-uint32_t MetalSwapchain::GetFrameIndex() const
-{
-    return mCurrentFrameIndex;
-}
-
-uint32_t MetalSwapchain::GetFramesInFlight() const
-{
-    return mMaxFramesInFlight;
 }
 
 #endif

@@ -3,6 +3,8 @@
 
 namespace Gleam {
 
+class GraphicsDevice;
+
 enum class ShaderStage
 {
     Vertex,
@@ -20,13 +22,21 @@ typedef uint32_t ShaderStageFlagBits;
 
 class Shader final : public GraphicsObject
 {
+    friend class GraphicsDevice;
+    
 public:
-
-	GLEAM_NONCOPYABLE(Shader);
-
-    Shader(const TString& entryPoint, ShaderStage stage);
-
-    ~Shader();
+    
+    Shader() = default;
+    
+    Shader(const Shader& other) = default;
+    
+    Shader& operator=(const Shader& other) = default;
+    
+    Shader(const TString& entryPoint, ShaderStage stage)
+        : mEntryPoint(entryPoint), mStage(stage)
+    {
+        
+    }
 
     ShaderStage GetStage() const
     {
@@ -39,14 +49,14 @@ public:
     }
 
     struct Reflection;
-    const Scope<Reflection>& GetReflection() const
+    const Reflection* GetReflection() const
     {
-        return mReflection;
+        return mReflection.get();
     }
 
 private:
     
-    Scope<Reflection> mReflection;
+    RefCounted<Reflection> mReflection;
 
     ShaderStage mStage;
     TString mEntryPoint;
@@ -55,3 +65,15 @@ private:
 
 
 } // namespace Gleam
+
+template <>
+struct std::hash<Gleam::Shader>
+{
+    size_t operator()(const Gleam::Shader& shader) const
+    {
+        size_t hash = 0;
+        Gleam::hash_combine(hash, shader.GetEntryPoint());
+        Gleam::hash_combine(hash, shader.GetStage());
+        return hash;
+    }
+};

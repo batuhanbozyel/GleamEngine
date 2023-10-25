@@ -7,13 +7,16 @@
 
 #include "gpch.h"
 #include "Material.h"
-#include "Renderer/Shader.h"
+#include "Core/Application.h"
+#include "Renderer/RenderSystem.h"
 
 using namespace Gleam;
 
 Material::Material(const MaterialDescriptor& descriptor)
     : IMaterial(descriptor.properties), mRenderQueue(descriptor.renderQueue)
 {
+    static auto renderSystem = GameInstance->GetSubsystem<RenderSystem>();
+    
     mPasses.reserve(descriptor.passes.size());
     for (uint32_t i = 0; i < mPasses.size(); i++)
     {
@@ -21,8 +24,8 @@ Material::Material(const MaterialDescriptor& descriptor)
         auto& passDesc = descriptor.passes[i];
 
         pass.pipelineState = passDesc.pipelineState;
-        pass.vertexFunction = CreateRef<Shader>(passDesc.vertexEntry, ShaderStage::Vertex);
-        pass.fragmentFunction = CreateRef<Shader>(passDesc.fragmentEntry, ShaderStage::Fragment);
+        pass.vertexFunction = renderSystem->GetDevice()->CreateShader(passDesc.vertexEntry, ShaderStage::Vertex);
+        pass.fragmentFunction = renderSystem->GetDevice()->CreateShader(passDesc.fragmentEntry, ShaderStage::Fragment);
     }
     // TODO: Allocate GPU buffer
 }
