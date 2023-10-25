@@ -7,12 +7,12 @@
 
 using namespace Gleam;
 
-Buffer Heap::CreateBuffer(const BufferDescriptor& descriptor, size_t offset) const
+Buffer Heap::CreateBuffer(const BufferDescriptor& descriptor)
 {
     auto alignedStackPtr = Utils::AlignTo(mStackPtr, mAlignment);
     auto newStackPtr = alignedStackPtr + descriptor.size;
 
-    if (mDescriptor.size < newStackPtr)
+    if (Utils::AlignTo(mDescriptor.size, mAlignment) < newStackPtr)
     {
         GLEAM_ASSERT(false, "Metal: Heap is full!");
         return Buffer(nil, descriptor, nullptr);
@@ -25,7 +25,7 @@ Buffer Heap::CreateBuffer(const BufferDescriptor& descriptor, size_t offset) con
     void* contents = nullptr;
     if (mDescriptor.memoryType != MemoryType::GPU)
     {
-            contents = [buffer contents];
+        contents = [buffer contents];
     }
     return Buffer(buffer, descriptor, contents);
 }

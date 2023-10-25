@@ -31,7 +31,7 @@ Heap GraphicsDevice::AllocateHeap(const HeapDescriptor& descriptor) const
     MTLHeapDescriptor* desc = [MTLHeapDescriptor new];
     desc.type = MTLHeapTypePlacement;
     desc.resourceOptions = resourceOptions;
-    desc.size = sizeAndAlign.size;
+    desc.size = Utils::AlignTo(sizeAndAlign.size, sizeAndAlign.align);
 
     heap.mHandle = [mHandle newHeapWithDescriptor:desc];
     heap.mDescriptor.size = sizeAndAlign.size;
@@ -148,7 +148,7 @@ void GraphicsDevice::WaitDeviceIdle() const
 MetalDevice::MetalDevice()
 {
     mSwapchain = CreateScope<MetalSwapchain>();
-    
+
     // init MTLDevice
     mHandle = MTLCreateSystemDefaultDevice();
     GLEAM_ASSERT(mHandle);
@@ -158,7 +158,7 @@ MetalDevice::MetalDevice()
 
     // init MTLCommandQueue
     mCommandPool = [mHandle newCommandQueue];
-    
+
     MetalPipelineStateManager::Init(this);
 
     GLEAM_CORE_INFO("Metal: Graphics device created.");
@@ -169,17 +169,17 @@ MetalDevice::~MetalDevice()
     // Destroy swapchain
     As<MetalSwapchain*>(mSwapchain.get())->Destroy();
 
-	mShaderCache.clear();
-	Clear();
+    mShaderCache.clear();
+    Clear();
 
     MetalPipelineStateManager::Destroy();
-    
+
     // Destroy command pool
     mCommandPool = nil;
 
     // Destroy device
     mHandle = nil;
-    
+
     GLEAM_CORE_INFO("Metal: Graphics device destroyed.");
 }
 

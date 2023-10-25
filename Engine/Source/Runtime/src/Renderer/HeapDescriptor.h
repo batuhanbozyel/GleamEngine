@@ -15,7 +15,10 @@ struct HeapDescriptor
 	MemoryType memoryType = MemoryType::GPU;
 	size_t size = 0;
     
-    bool operator==(const HeapDescriptor&) const = default;
+    bool operator==(const HeapDescriptor& other) const
+    {
+        return memoryType == other.memoryType && size == other.size;
+    }
 };
 
 } // namespace Gleam

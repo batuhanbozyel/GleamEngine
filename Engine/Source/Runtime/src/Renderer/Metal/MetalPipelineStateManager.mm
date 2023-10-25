@@ -119,7 +119,7 @@ const MetalPipeline* MetalPipelineStateManager::GetGraphicsPipeline(const Pipeli
     auto pipeline = new MetalGraphicsPipeline;
     pipeline->topology = PrimitiveTopologyToMTLPrimitiveType(pipelineDesc.topology);
     pipeline->handle = CreateGraphicsPipeline(pipelineDesc, colorAttachments, depthAttachment, vertexShader, fragmentShader, sampleCount);
-    pipeline->depthStencil = CreateDepthStencil(pipelineDesc);
+    pipeline->depthStencil = (Utils::IsDepthFormat(depthAttachment.format) || Utils::IsStencilFormat(depthAttachment.format)) ? CreateDepthStencil(pipelineDesc) : nil;
     pipeline->vertexShader = vertexShader;
     pipeline->fragmentShader = fragmentShader;
     mGraphicsPipelineCache.insert(mGraphicsPipelineCache.end(), {key, Scope<MetalGraphicsPipeline>(pipeline)});

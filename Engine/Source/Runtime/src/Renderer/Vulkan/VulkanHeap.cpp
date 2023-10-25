@@ -14,7 +14,7 @@ Buffer Heap::CreateBuffer(const BufferDescriptor& descriptor)
 	auto alignedStackPtr = Utils::AlignTo(mStackPtr, mAlignment);
 	auto newStackPtr = alignedStackPtr + descriptor.size;
 
-	if (mDescriptor.size < newStackPtr)
+	if (Utils::AlignTo(mDescriptor.size, mAlignment) < newStackPtr)
 	{
 		GLEAM_ASSERT(false, "Vulkan: Heap is full!");
 		return Buffer(nullptr, descriptor, nullptr);
