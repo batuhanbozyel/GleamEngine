@@ -49,15 +49,7 @@ void MetalSwapchain::Initialize(MetalDevice* device)
 
 void MetalSwapchain::Destroy()
 {
-    for (auto& pool : mPooledObjects)
-    {
-        for (auto& [obj, deallocator] : pool)
-        {
-            deallocator(obj);
-        }
-    }
-    mPooledObjects.clear();
-    
+    ClearAll();
     mImageAcquireSemaphore = nil;
     mDrawable = nil;
     mHandle = nil;
@@ -66,14 +58,7 @@ void MetalSwapchain::Destroy()
 
 void MetalSwapchain::Configure(const RendererConfig& config)
 {
-    for (auto& pool : mPooledObjects)
-    {
-        for (auto& [obj, deallocator] : pool)
-        {
-            deallocator(obj);
-        }
-    }
-    mPooledObjects.clear();
+    ClearAll();
     
 #ifdef PLATFORM_MACOS
     mHandle.displaySyncEnabled = config.vsync ? YES : NO;
@@ -120,12 +105,7 @@ void MetalSwapchain::Present(id<MTLCommandBuffer> commandBuffer)
     
     dispatch_semaphore_wait(mImageAcquireSemaphore, DISPATCH_TIME_FOREVER);
     
-    auto& pooledObjects = mPooledObjects[mCurrentFrameIndex];
-    for (auto& [obj, deallocate] : pooledObjects)
-    {
-        deallocate(obj);
-    }
-    pooledObjects.clear();
+    Clear();
     
     mDrawable = nil;
 }

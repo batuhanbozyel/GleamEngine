@@ -25,6 +25,28 @@ public:
                          .format = mFormat,
                          .type = TextureType::RenderTexture });
     }
+    
+    void ClearAll()
+    {
+        for (auto& pool : mPooledObjects)
+        {
+            for (auto& [obj, deallocator] : pool)
+            {
+                deallocator(obj);
+            }
+        }
+        mPooledObjects.clear();
+    }
+    
+    void Clear()
+    {
+        auto& pooledObjects = mPooledObjects[mCurrentFrameIndex];
+        for (auto& [obj, deallocate] : pooledObjects)
+        {
+            deallocate(obj);
+        }
+        pooledObjects.clear();
+    }
 
     TextureFormat GetFormat() const
     {

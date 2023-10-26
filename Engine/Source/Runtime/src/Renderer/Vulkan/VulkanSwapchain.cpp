@@ -26,14 +26,7 @@ void VulkanSwapchain::Initialize(VulkanDevice* device)
 
 void VulkanSwapchain::Destroy()
 {
-	for (auto& pool : mPooledObjects)
-	{
-		for (auto& [obj, deallocator] : pool)
-		{
-			deallocator(obj);
-		}
-	}
-	mPooledObjects.clear();
+    ClearAll();
 
 	// Destroy swapchain
 	vkDestroySwapchainKHR(As<VkDevice>(mDevice->GetHandle()), mHandle, nullptr);
@@ -119,13 +112,7 @@ void VulkanSwapchain::Present(VkCommandBuffer commandBuffer)
 	VK_CHECK(vkWaitForFences(As<VkDevice>(mDevice->GetHandle()), 1, &mFences[mCurrentFrameIndex], VK_TRUE, UINT64_MAX));
 	VK_CHECK(vkResetCommandPool(As<VkDevice>(mDevice->GetHandle()), mCommandPools[mCurrentFrameIndex], 0));
 	VK_CHECK(vkResetFences(As<VkDevice>(mDevice->GetHandle()), 1, &mFences[mCurrentFrameIndex]));
-	
-	auto& pooledObjects = mPooledObjects[mCurrentFrameIndex];
-	for (auto& [obj, deallocate] : pooledObjects)
-	{
-		deallocate(obj);
-	}
-	pooledObjects.clear();
+    Clear();
 }
 
 void VulkanSwapchain::Configure(const RendererConfig& config)
@@ -238,14 +225,7 @@ void VulkanSwapchain::Configure(const RendererConfig& config)
 		vkDestroySwapchainKHR(As<VkDevice>(mDevice->GetHandle()), mHandle, nullptr);
 
 		// Flush pooled objects
-		for (auto& pool : mPooledObjects)
-		{
-			for (auto& [obj, deallocator] : pool)
-			{
-				deallocator(obj);
-			}
-		}
-		mPooledObjects.clear();
+        ClearAll();
 
 		// Destroy command pools
 		for (uint32_t i = 0; i < mCommandPools.size(); i++)

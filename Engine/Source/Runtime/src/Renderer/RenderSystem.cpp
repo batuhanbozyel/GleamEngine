@@ -26,6 +26,8 @@ void RenderSystem::Initialize()
 
     EventDispatcher<RendererResizeEvent>::Subscribe([this](RendererResizeEvent e)
     {
+        mDevice->WaitDeviceIdle();
+        mDevice->GetSwapchain()->ClearAll();
         mDevice->Clear();
     });
 }

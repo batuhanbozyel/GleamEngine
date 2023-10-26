@@ -19,7 +19,7 @@ public:
 
     void Destroy();
 
-    void Configure(const RendererConfig& config);
+    void Configure(const RendererConfig& config);;
 
     id<CAMetalDrawable> AcquireNextDrawable();
     void Present(id<MTLCommandBuffer> commandBuffer);
