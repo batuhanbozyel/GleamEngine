@@ -100,7 +100,7 @@ void MetalSwapchain::Present(id<MTLCommandBuffer> commandBuffer)
     }];
     
     [commandBuffer presentDrawable:mDrawable];
-
+    
     mCurrentFrameIndex = (mCurrentFrameIndex + 1) % mMaxFramesInFlight;
     
     dispatch_semaphore_wait(mImageAcquireSemaphore, DISPATCH_TIME_FOREVER);

@@ -39,11 +39,16 @@ CommandBuffer::CommandBuffer(GraphicsDevice* device)
 	mHandle->swapchain = As<VulkanSwapchain*>(mHandle->device->GetSwapchain());
 	mHandle->fence = mHandle->device->CreateFence();
 	mHandle->commandBuffer = mHandle->device->AllocateCommandBuffer();
+    
+    HeapDescriptor descriptor;
+    descriptor.size = 4194304; // 4 MB;
+    descriptor.memoryType = MemoryType::CPU;
+    mStagingHeap = mDevice->CreateHeap(descriptor);
 }
 
 CommandBuffer::~CommandBuffer()
 {
-
+    mDevice->ReleaseHeap(mStagingHeap);
 }
 
 void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, const TStringView debugName) const

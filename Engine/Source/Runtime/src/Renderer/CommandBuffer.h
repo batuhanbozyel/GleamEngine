@@ -93,21 +93,15 @@ public:
         auto contents = buffer.GetContents();
         if (contents == nullptr)
         {
-            HeapDescriptor heapDesc;
-            heapDesc.size = size;
-            heapDesc.memoryType = MemoryType::CPU;
-            Heap heap = mDevice->CreateHeap(heapDesc);
-            
             BufferDescriptor bufferDesc;
             bufferDesc.size = size;
             bufferDesc.usage = BufferUsage::StagingBuffer;
-            Buffer stagingBuffer = heap.CreateBuffer(bufferDesc);
+            Buffer stagingBuffer = mStagingHeap.CreateBuffer(bufferDesc);
             
             memcpy(stagingBuffer.GetContents(), data, size);
             CopyBuffer(stagingBuffer.GetHandle(), buffer.GetHandle(), size, 0, offset);
             
             mDevice->Dispose(stagingBuffer);
-            mDevice->ReleaseHeap(heap);
         }
         else
         {
@@ -143,6 +137,8 @@ private:
 
     class Impl;
     Scope<Impl> mHandle;
+    
+    Heap mStagingHeap;
 
     GraphicsDevice* mDevice;
     

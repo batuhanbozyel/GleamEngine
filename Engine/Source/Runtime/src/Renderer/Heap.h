@@ -26,9 +26,9 @@ public:
 
     }
 
-    Buffer CreateBuffer(const BufferDescriptor& descriptor);
+    Buffer CreateBuffer(const BufferDescriptor& descriptor) const;
 
-    void Reset()
+    void Reset() const
     {
         mStackPtr = 0;
     }
@@ -40,7 +40,7 @@ public:
 
 private:
 
-    size_t mStackPtr = 0;
+    mutable size_t mStackPtr = 0;
 
     size_t mAlignment = 0;
 
@@ -52,10 +52,9 @@ private:
 
 namespace Utils {
 
-static constexpr uint64_t AlignTo(const size_t offset, const size_t alignment)
+static constexpr uint64_t AlignUp(const size_t offset, const size_t alignment)
 {
-    const bool isAligned = offset % alignment == 0;
-    return isAligned ? offset : ((offset / alignment) + 1) * alignment;
+    return (offset + alignment - 1) & ~(alignment - 1);
 }
 
 } // namespace Utils

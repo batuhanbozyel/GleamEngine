@@ -9,12 +9,12 @@
 
 using namespace Gleam;
 
-Buffer Heap::CreateBuffer(const BufferDescriptor& descriptor)
+Buffer Heap::CreateBuffer(const BufferDescriptor& descriptor) const
 {
-	auto alignedStackPtr = Utils::AlignTo(mStackPtr, mAlignment);
+	auto alignedStackPtr = Utils::AlignUp(mStackPtr, mAlignment);
 	auto newStackPtr = alignedStackPtr + descriptor.size;
 
-	if (Utils::AlignTo(mDescriptor.size, mAlignment) < newStackPtr)
+	if (Utils::AlignUp(mDescriptor.size, mAlignment) < newStackPtr)
 	{
 		GLEAM_ASSERT(false, "Vulkan: Heap is full!");
 		return Buffer(nullptr, descriptor, nullptr);

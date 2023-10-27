@@ -25,13 +25,13 @@ Heap GraphicsDevice::AllocateHeap(const HeapDescriptor& descriptor) const
     Heap heap(descriptor);
     heap.mDevice = this;
     
-    MTLResourceOptions resourceOptions = MemoryTypeToMTLResourceOption(descriptor.memoryType);
+    MTLResourceOptions resourceOptions = MemoryTypeToMTLResourceOption(descriptor.memoryType) | MTLResourceHazardTrackingModeTracked; // TODO: Remove hazard tracking when async compute passes are implemented with proper resource synchronization
     MTLSizeAndAlign sizeAndAlign = [mHandle heapBufferSizeAndAlignWithLength:descriptor.size options:resourceOptions];
     
     MTLHeapDescriptor* desc = [MTLHeapDescriptor new];
     desc.type = MTLHeapTypePlacement;
     desc.resourceOptions = resourceOptions;
-    desc.size = Utils::AlignTo(sizeAndAlign.size, sizeAndAlign.align);
+    desc.size = Utils::AlignUp(sizeAndAlign.size, sizeAndAlign.align);
 
     heap.mHandle = [mHandle newHeapWithDescriptor:desc];
     heap.mDescriptor.size = sizeAndAlign.size;

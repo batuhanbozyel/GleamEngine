@@ -20,8 +20,8 @@ struct CommandBuffer::Impl
     
     id<MTLCommandBuffer> commandBuffer = nil;
     id<MTLRenderCommandEncoder> renderCommandEncoder = nil;
-    id<MTLBuffer> topLevelArgumentBuffer = nil;
     const MetalPipeline* pipeline = nullptr;
+    Buffer topLevelArgumentBuffer;
     
     TArray<TextureDescriptor> colorAttachments;
     TextureDescriptor depthAttachment;
@@ -34,11 +34,16 @@ CommandBuffer::CommandBuffer(GraphicsDevice* device)
 {
     mHandle->device = As<MetalDevice*>(device);
     mHandle->swapchain = As<MetalSwapchain*>(mHandle->device->GetSwapchain());
+    
+    HeapDescriptor descriptor;
+    descriptor.size = 4194304; // 4 MB;
+    descriptor.memoryType = MemoryType::CPU;
+    mStagingHeap = mDevice->CreateHeap(descriptor);
 }
 
 CommandBuffer::~CommandBuffer()
 {
-
+    mDevice->ReleaseHeap(mStagingHeap);
 }
 
 void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, const TStringView debugName) const
@@ -143,10 +148,10 @@ void CommandBuffer::BindGraphicsPipeline(const PipelineStateDescriptor& pipeline
     auto argumentBufferSize = vertexShader.GetReflection()->argumentBufferSize + fragmentShader.GetReflection()->argumentBufferSize;
     if (argumentBufferSize > 0)
     {
-        mHandle->topLevelArgumentBuffer = [mHandle->device->GetHandle() newBufferWithLength:argumentBufferSize options:MTLResourceStorageModeShared];
-        [mHandle->renderCommandEncoder setVertexBuffer:mHandle->topLevelArgumentBuffer offset:0 atIndex:kIRArgumentBufferBindPoint];
-        [mHandle->renderCommandEncoder setFragmentBuffer:mHandle->topLevelArgumentBuffer offset:0 atIndex:kIRArgumentBufferBindPoint];
-        auto argumentBufferPtr = static_cast<uint8_t*>([mHandle->topLevelArgumentBuffer contents]);
+        mHandle->topLevelArgumentBuffer = mStagingHeap.CreateBuffer({ .size = argumentBufferSize });
+        [mHandle->renderCommandEncoder setVertexBuffer:mHandle->topLevelArgumentBuffer.GetHandle() offset:0 atIndex:kIRArgumentBufferBindPoint];
+        [mHandle->renderCommandEncoder setFragmentBuffer:mHandle->topLevelArgumentBuffer.GetHandle() offset:0 atIndex:kIRArgumentBufferBindPoint];
+        auto argumentBufferPtr = static_cast<uint8_t*>(mHandle->topLevelArgumentBuffer.GetContents());
         
         // Set vertex samplers
         for (const auto& resource : vertexShader.GetReflection()->samplers)
@@ -175,7 +180,7 @@ void CommandBuffer::SetViewport(const Size& size) const
 
 void CommandBuffer::BindBuffer(const NativeGraphicsHandle buffer, BufferUsage usage, size_t offset, uint32_t index, ShaderStageFlagBits stage, ResourceAccess access) const
 {
-    auto argumentBufferPtr = static_cast<uint8_t*>([mHandle->topLevelArgumentBuffer contents]);
+    auto argumentBufferPtr = static_cast<uint8_t*>(mHandle->topLevelArgumentBuffer.GetContents());
     auto resource = [=, this]()
     {
         const Shader::Reflection* reflection = nullptr;
@@ -216,7 +221,7 @@ void CommandBuffer::BindBuffer(const NativeGraphicsHandle buffer, BufferUsage us
 
 void CommandBuffer::BindTexture(const NativeGraphicsHandle texture, uint32_t index, ShaderStageFlagBits stage, ResourceAccess access) const
 {
-    auto argumentBufferPtr = static_cast<uint8_t*>([mHandle->topLevelArgumentBuffer contents]);
+    auto argumentBufferPtr = static_cast<uint8_t*>(mHandle->topLevelArgumentBuffer.GetContents());
     auto resource = [=, this]()
     {
         const Shader::Reflection* reflection = nullptr;
@@ -265,6 +270,7 @@ void CommandBuffer::DrawIndexed(const NativeGraphicsHandle indexBuffer, IndexTyp
 void CommandBuffer::CopyBuffer(const NativeGraphicsHandle src, const NativeGraphicsHandle dst, size_t size, size_t srcOffset, size_t dstOffset) const
 {
     id<MTLBlitCommandEncoder> blitCommandEncoder = [mHandle->commandBuffer blitCommandEncoder];
+    [blitCommandEncoder setLabel:TO_NSSTRING("CommandBuffer::CopyBuffer")];
     [blitCommandEncoder copyFromBuffer:src sourceOffset:srcOffset toBuffer:dst destinationOffset:dstOffset size:size];
     [blitCommandEncoder endEncoding];
 }
@@ -275,6 +281,7 @@ void CommandBuffer::Blit(const Texture& texture, const Texture& target) const
     id<MTLTexture> dstTexture = target.IsValid() ? target.GetHandle() : mHandle->swapchain->AcquireNextDrawable().texture;
 
     id<MTLBlitCommandEncoder> blitCommandEncoder = [mHandle->commandBuffer blitCommandEncoder];
+    [blitCommandEncoder setLabel:TO_NSSTRING("CommandBuffer::Blit")];
     [blitCommandEncoder copyFromTexture:srcTexture toTexture:dstTexture];
     [blitCommandEncoder endEncoding];
 }
