@@ -29,6 +29,26 @@ public:
 	const VulkanDrawable& AcquireNextDrawable();
 	void Present(VkCommandBuffer commandBuffer);
 
+	void AddFrameObject(VkCommandBuffer cmd)
+	{
+		mFrameObjects[mCurrentFrameIndex].commandBuffers.push_back(cmd);
+	}
+
+	void AddFrameObject(VkFramebuffer framebuffer)
+	{
+		mFrameObjects[mCurrentFrameIndex].framebuffers.push_back(framebuffer);
+	}
+
+	void AddFrameObject(VkRenderPass renderPass)
+	{
+		mFrameObjects[mCurrentFrameIndex].renderPasses.push_back(renderPass);
+	}
+
+	void AddFrameObject(VkFence fence)
+	{
+		mFrameObjects[mCurrentFrameIndex].fences.push_back(fence);
+	}
+
 	VkCommandPool GetCommandPool(uint32_t frameIdx) const;
 
 	VkCommandPool GetCommandPool() const;
@@ -37,10 +57,20 @@ public:
 
 private:
 
+	void FlushFrameObjects(uint32_t frameIndex);
+
 	// Surface
 	VkSurfaceKHR mSurface{ VK_NULL_HANDLE };
 
 	// Frame
+	struct FramePool
+	{
+		TArray<VkCommandBuffer> commandBuffers;
+		TArray<VkFramebuffer> framebuffers;
+		TArray<VkRenderPass> renderPasses;
+		TArray<VkFence> fences;
+	};
+	TArray<FramePool> mFrameObjects;
 	TArray<VulkanDrawable> mImages;
 	uint32_t mImageIndex = 0;
 

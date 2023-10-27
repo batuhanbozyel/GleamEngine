@@ -89,6 +89,11 @@ Heap GraphicsDevice::AllocateHeap(const HeapDescriptor& descriptor) const
 	VK_CHECK(vmaAllocateMemoryForBuffer(As<const VulkanDevice*>(this)->GetAllocator(), buffer, &vmaCreateInfo, As<VmaAllocation*>(&heap.mHandle), &vmaAllocationInfo));
 	vkDestroyBuffer(As<VkDevice>(mHandle), buffer, nullptr);
 
+	if (heap.mDescriptor.memoryType != MemoryType::GPU)
+	{
+		VK_CHECK(vmaMapMemory(As<const VulkanDevice*>(this)->GetAllocator(), As<VmaAllocation>(heap.mHandle), &heap.mContents));
+	}
+
 	heap.mDescriptor.size = vmaAllocationInfo.size;
 	heap.mAlignment = memoryRequirements.alignment;
 	return heap;
@@ -191,12 +196,16 @@ Shader GraphicsDevice::GenerateShader(const TString& entryPoint, ShaderStage sta
 
 void GraphicsDevice::Dispose(Heap& heap) const
 {
+	auto allocator = As<const VulkanDevice*>(this)->GetAllocator();
+	auto allocation = As<VmaAllocation>(heap.mHandle);
+
 	if (heap.mDescriptor.memoryType != MemoryType::GPU)
 	{
-		vmaUnmapMemory(As<const VulkanDevice*>(this)->GetAllocator(), As<VmaAllocation>(heap.mHandle));
+		vmaUnmapMemory(allocator, allocation);
 	}
-	vmaFreeMemory(As<const VulkanDevice*>(this)->GetAllocator(), As<VmaAllocation>(heap.mHandle));
+	vmaFreeMemory(allocator, allocation);
 	heap.mHandle = VK_NULL_HANDLE;
+	heap.mDevice = nullptr;
 }
 
 void GraphicsDevice::Dispose(Buffer& buffer) const
@@ -490,11 +499,7 @@ VkCommandBuffer VulkanDevice::AllocateCommandBuffer()
 	allocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 	allocateInfo.commandPool = swapchain->GetCommandPool();
 	VK_CHECK(vkAllocateCommandBuffers(As<VkDevice>(mHandle), &allocateInfo, &commandBuffer));
-	mSwapchain->AddPooledObject(std::make_any<VkCommandBuffer>(commandBuffer), [=, this](std::any obj)
-	{
-		auto cmd = std::any_cast<VkCommandBuffer>(obj);
-		vkFreeCommandBuffers(As<VkDevice>(mHandle), swapchain->GetCommandPool(frameIdx), 1, &cmd);
-	});
+	swapchain->AddFrameObject(commandBuffer);
 	return commandBuffer;
 }
 
@@ -503,10 +508,7 @@ VkFence VulkanDevice::CreateFence()
 	VkFence fence = VK_NULL_HANDLE;
 	VkFenceCreateInfo createInfo{ VK_STRUCTURE_TYPE_FENCE_CREATE_INFO };
 	VK_CHECK(vkCreateFence(As<VkDevice>(mHandle), &createInfo, nullptr, &fence));
-	mSwapchain->AddPooledObject(std::make_any<VkFence>(fence), [this](std::any obj)
-	{
-		vkDestroyFence(As<VkDevice>(mHandle), std::any_cast<VkFence>(obj), nullptr);
-	});
+	As<VulkanSwapchain*>(mSwapchain.get())->AddFrameObject(fence);
 	return fence;
 }
 
@@ -514,10 +516,7 @@ VkRenderPass VulkanDevice::CreateRenderPass(const VkRenderPassCreateInfo& create
 {
 	VkRenderPass renderPass = VK_NULL_HANDLE;
 	VK_CHECK(vkCreateRenderPass(As<VkDevice>(mHandle), &createInfo, nullptr, &renderPass));
-	mSwapchain->AddPooledObject(std::make_any<VkRenderPass>(renderPass), [this](std::any obj)
-	{
-		vkDestroyRenderPass(As<VkDevice>(mHandle), std::any_cast<VkRenderPass>(obj), nullptr);
-	});
+	As<VulkanSwapchain*>(mSwapchain.get())->AddFrameObject(renderPass);
 	return renderPass;
 }
 
@@ -525,10 +524,7 @@ VkFramebuffer VulkanDevice::CreateFramebuffer(const VkFramebufferCreateInfo& cre
 {
 	VkFramebuffer framebuffer = VK_NULL_HANDLE;
 	VK_CHECK(vkCreateFramebuffer(As<VkDevice>(mHandle), &createInfo, nullptr, &framebuffer));
-	mSwapchain->AddPooledObject(std::make_any<VkFramebuffer>(framebuffer), [this](std::any obj)
-	{
-		vkDestroyFramebuffer(As<VkDevice>(mHandle), std::any_cast<VkFramebuffer>(obj), nullptr);
-	});
+	As<VulkanSwapchain*>(mSwapchain.get())->AddFrameObject(framebuffer);
 	return framebuffer;
 }
 

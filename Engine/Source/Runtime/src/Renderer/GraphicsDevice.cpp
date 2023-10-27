@@ -71,6 +71,8 @@ void GraphicsDevice::ReleaseTexture(const Texture& texture)
 
 void GraphicsDevice::Clear()
 {
+	mSwapchain->FlushAll();
+
     for (auto& texture : mFreeTextures)
     {
         Dispose(texture);

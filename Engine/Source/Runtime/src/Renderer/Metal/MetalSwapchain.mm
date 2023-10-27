@@ -49,7 +49,8 @@ void MetalSwapchain::Initialize(MetalDevice* device)
 
 void MetalSwapchain::Destroy()
 {
-    ClearAll();
+    FlushAll();
+    mPooledObjects.clear();
     mImageAcquireSemaphore = nil;
     mDrawable = nil;
     mHandle = nil;
@@ -58,7 +59,8 @@ void MetalSwapchain::Destroy()
 
 void MetalSwapchain::Configure(const RendererConfig& config)
 {
-    ClearAll();
+    FlushAll();
+    mPooledObjects.clear();
     
 #ifdef PLATFORM_MACOS
     mHandle.displaySyncEnabled = config.vsync ? YES : NO;
@@ -105,7 +107,7 @@ void MetalSwapchain::Present(id<MTLCommandBuffer> commandBuffer)
     
     dispatch_semaphore_wait(mImageAcquireSemaphore, DISPATCH_TIME_FOREVER);
     
-    Clear();
+    Flush(mCurrentFrameIndex);
     
     mDrawable = nil;
 }

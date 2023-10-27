@@ -24,23 +24,19 @@ public:
         return Texture({ .size = mSize,
                          .format = mFormat,
                          .type = TextureType::RenderTexture });
-    }
+	}
+
+	void FlushAll()
+	{
+		for (uint32_t i = 0; i < mPooledObjects.size(); i++)
+		{
+			Flush(i);
+		}
+	}
     
-    void ClearAll()
+    void Flush(uint32_t frameIndex)
     {
-        for (auto& pool : mPooledObjects)
-        {
-            for (auto& [obj, deallocator] : pool)
-            {
-                deallocator(obj);
-            }
-        }
-        mPooledObjects.clear();
-    }
-    
-    void Clear()
-    {
-        auto& pooledObjects = mPooledObjects[mCurrentFrameIndex];
+        auto& pooledObjects = mPooledObjects[frameIndex];
         for (auto& [obj, deallocate] : pooledObjects)
         {
             deallocate(obj);

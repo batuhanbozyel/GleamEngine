@@ -40,11 +40,7 @@ public:
 
     void Dispose(Texture& texture) const;
 
-    void Configure(const RendererConfig& config);
-
     void WaitDeviceIdle() const;
-
-    void Clear();
 
     Swapchain* GetSwapchain();
 
@@ -53,7 +49,9 @@ public:
     NativeGraphicsHandle GetHandle() const;
     
 protected:
-    
+
+	void Clear();
+	
     NativeGraphicsHandle mHandle;
 
     Scope<Swapchain> mSwapchain;
@@ -65,7 +63,9 @@ protected:
     TArray<Shader> mShaderCache;
 
 private:
-    
+
+	void Configure(const RendererConfig& config);
+
     Heap AllocateHeap(const HeapDescriptor& descriptor) const;
     
     Texture AllocateTexture(const TextureDescriptor& descriptor) const;

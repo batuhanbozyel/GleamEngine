@@ -26,7 +26,15 @@ void VulkanSwapchain::Initialize(VulkanDevice* device)
 
 void VulkanSwapchain::Destroy()
 {
-    ClearAll();
+	FlushAll();
+	mPooledObjects.clear();
+
+	// Destroy frame objects
+	for (uint32_t frameIndex = 0; frameIndex < mFrameObjects.size(); frameIndex++)
+	{
+		FlushFrameObjects(frameIndex);
+	}
+	mFrameObjects.clear();
 
 	// Destroy swapchain
 	vkDestroySwapchainKHR(As<VkDevice>(mDevice->GetHandle()), mHandle, nullptr);
@@ -112,7 +120,8 @@ void VulkanSwapchain::Present(VkCommandBuffer commandBuffer)
 	VK_CHECK(vkWaitForFences(As<VkDevice>(mDevice->GetHandle()), 1, &mFences[mCurrentFrameIndex], VK_TRUE, UINT64_MAX));
 	VK_CHECK(vkResetCommandPool(As<VkDevice>(mDevice->GetHandle()), mCommandPools[mCurrentFrameIndex], 0));
 	VK_CHECK(vkResetFences(As<VkDevice>(mDevice->GetHandle()), 1, &mFences[mCurrentFrameIndex]));
-    Clear();
+    Flush(mCurrentFrameIndex);
+	FlushFrameObjects(mCurrentFrameIndex);
 }
 
 void VulkanSwapchain::Configure(const RendererConfig& config)
@@ -225,7 +234,15 @@ void VulkanSwapchain::Configure(const RendererConfig& config)
 		vkDestroySwapchainKHR(As<VkDevice>(mDevice->GetHandle()), mHandle, nullptr);
 
 		// Flush pooled objects
-        ClearAll();
+		FlushAll();
+		mPooledObjects.clear();
+
+		// Destroy frame objects
+		for (uint32_t frameIndex = 0; frameIndex < mFrameObjects.size(); frameIndex++)
+		{
+			FlushFrameObjects(frameIndex);
+		}
+		mFrameObjects.clear();
 
 		// Destroy command pools
 		for (uint32_t i = 0; i < mCommandPools.size(); i++)
@@ -310,6 +327,7 @@ void VulkanSwapchain::Configure(const RendererConfig& config)
 
 	mCommandPools.resize(mMaxFramesInFlight);
 	mPooledObjects.resize(mMaxFramesInFlight);
+	mFrameObjects.resize(mMaxFramesInFlight);
 	for (uint32_t i = 0; i < mMaxFramesInFlight; i++)
 	{
 		commandPoolCreateInfo.queueFamilyIndex = mDevice->GetGraphicsQueue().index;
@@ -317,6 +335,34 @@ void VulkanSwapchain::Configure(const RendererConfig& config)
 	}
 
 	EventDispatcher<RendererResizeEvent>::Publish(RendererResizeEvent(mSize));
+}
+
+void VulkanSwapchain::FlushFrameObjects(uint32_t frameIndex)
+{
+	auto& pool = mFrameObjects[frameIndex];
+	if (!pool.commandBuffers.empty())
+	{
+		vkFreeCommandBuffers(As<VkDevice>(mDevice->GetHandle()), mCommandPools[frameIndex], static_cast<uint32_t>(pool.commandBuffers.size()), pool.commandBuffers.data());
+		pool.commandBuffers.clear();
+	}
+
+	for (auto framebuffer : pool.framebuffers)
+	{
+		vkDestroyFramebuffer(As<VkDevice>(mDevice->GetHandle()), framebuffer, nullptr);
+	}
+	pool.framebuffers.clear();
+
+	for (auto renderPass : pool.renderPasses)
+	{
+		vkDestroyRenderPass(As<VkDevice>(mDevice->GetHandle()), renderPass, nullptr);
+	}
+	pool.renderPasses.clear();
+
+	for (auto fence : pool.fences)
+	{
+		vkDestroyFence(As<VkDevice>(mDevice->GetHandle()), fence, nullptr);
+	}
+	pool.fences.clear();
 }
 
 VkCommandPool VulkanSwapchain::GetCommandPool() const

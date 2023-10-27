@@ -44,6 +44,8 @@ private:
 
     size_t mAlignment = 0;
 
+	void* mContents = nullptr;
+
     HeapDescriptor mDescriptor;
 
     const GraphicsDevice* mDevice = nullptr;

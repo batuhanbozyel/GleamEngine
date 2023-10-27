@@ -24,12 +24,11 @@ void RenderSystem::Initialize()
     AddRenderer<WorldRenderer>();
     AddRenderer<PostProcessStack>();
 
-    EventDispatcher<RendererResizeEvent>::Subscribe([this](RendererResizeEvent e)
-    {
-        mDevice->WaitDeviceIdle();
-        mDevice->GetSwapchain()->ClearAll();
-        mDevice->Clear();
-    });
+	EventDispatcher<RendererResizeEvent>::Subscribe([this](RendererResizeEvent e)
+	{
+		mDevice->WaitDeviceIdle();
+		mDevice->Clear();
+	});
 }
 
 void RenderSystem::Shutdown()
