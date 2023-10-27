@@ -76,6 +76,9 @@ static constexpr TextureFormat MTLPixelFormatToTextureFormat(MTLPixelFormat form
         case MTLPixelFormatStencil8: return TextureFormat::S8_UInt;
         case MTLPixelFormatDepth16Unorm: return TextureFormat::D16_UNorm;
         case MTLPixelFormatDepth32Float: return TextureFormat::D32_SFloat;
+#ifdef PLATFORM_MACOS
+        case MTLPixelFormatDepth24Unorm_Stencil8: return TextureFormat::D24_UNorm_S8_UInt;
+#endif
         case MTLPixelFormatDepth32Float_Stencil8: return TextureFormat::D32_SFloat_S8_UInt;
 
         default: return TextureFormat::None;
@@ -145,6 +148,11 @@ static constexpr MTLPixelFormat TextureFormatToMTLPixelFormat(TextureFormat form
         case TextureFormat::S8_UInt: return MTLPixelFormatStencil8;
         case TextureFormat::D16_UNorm: return MTLPixelFormatDepth16Unorm;
         case TextureFormat::D32_SFloat: return MTLPixelFormatDepth32Float;
+#ifdef PLATFORM_MACOS
+        case TextureFormat::D24_UNorm_S8_UInt: return MTLPixelFormatDepth24Unorm_Stencil8;
+#else
+        case TextureFormat::D24_UNorm_S8_UInt: return MTLPixelFormatDepth32Float_Stencil8;
+#endif
         case TextureFormat::D32_SFloat_S8_UInt: return MTLPixelFormatDepth32Float_Stencil8;
 
         default: return MTLPixelFormatInvalid;

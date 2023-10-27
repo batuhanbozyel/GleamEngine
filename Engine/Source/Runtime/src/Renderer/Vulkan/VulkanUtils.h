@@ -129,6 +129,7 @@ static constexpr TextureFormat VkFormatToTextureFormat(VkFormat format)
 		case VK_FORMAT_S8_UINT: return TextureFormat::S8_UInt;
 		case VK_FORMAT_D16_UNORM: return TextureFormat::D16_UNorm;
 		case VK_FORMAT_D32_SFLOAT: return TextureFormat::D32_SFloat;
+        case VK_FORMAT_D24_UNORM_S8_UINT: return TextureFormat::D24_UNorm_S8_UInt;
 		case VK_FORMAT_D32_SFLOAT_S8_UINT: return TextureFormat::D32_SFloat_S8_UInt;
 
 		default: return TextureFormat::None;
@@ -198,6 +199,7 @@ static constexpr VkFormat TextureFormatToVkFormat(TextureFormat format)
 		case TextureFormat::S8_UInt: return VK_FORMAT_S8_UINT;
 		case TextureFormat::D16_UNorm: return VK_FORMAT_D16_UNORM;
 		case TextureFormat::D32_SFloat: return VK_FORMAT_D32_SFLOAT;
+        case TextureFormat::D24_UNorm_S8_UInt: return VK_FORMAT_D24_UNORM_S8_UINT;
 		case TextureFormat::D32_SFloat_S8_UInt: return VK_FORMAT_D32_SFLOAT_S8_UINT;
 
 		default: return VK_FORMAT_UNDEFINED;

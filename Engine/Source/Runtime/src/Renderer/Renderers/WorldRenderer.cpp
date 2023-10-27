@@ -50,11 +50,11 @@ void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
         RenderTextureDescriptor textureDesc;
         textureDesc.size = backbufferDescriptor.size;
         textureDesc.sampleCount = renderingData.config.sampleCount;
-        textureDesc.format = TextureFormat::R32G32B32A32_SFloat;
+        textureDesc.format = TextureFormat::R16G16B16A16_SFloat;
         textureDesc.clearBuffer = true;
         passData.colorTarget = builder.CreateTexture(textureDesc);
         
-        textureDesc.format = TextureFormat::D32_SFloat;
+        textureDesc.format = TextureFormat::D16_UNorm;
         passData.depthTarget = builder.CreateTexture(textureDesc);
         
         passData.colorTarget = builder.UseColorBuffer(passData.colorTarget);
