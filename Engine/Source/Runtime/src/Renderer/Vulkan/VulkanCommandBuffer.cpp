@@ -55,6 +55,8 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, 
 {
     mHandle->sampleCount = renderPassDesc.samples;
 	mHandle->hasDepthAttachment = renderPassDesc.depthAttachment.texture.IsValid();
+
+	auto renderArea = renderPassDesc.size;
     
     uint32_t attachmentCount = static_cast<uint32_t>(renderPassDesc.colorAttachments.size()) + static_cast<uint32_t>(mHandle->hasDepthAttachment);
 	TArray<VkAttachmentDescription> attachmentDescriptors(attachmentCount);
@@ -123,14 +125,15 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, 
 		{
 			colorAttachmentDesc.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 			imageViews[i] = As<VkImageView>(colorAttachment.texture.GetView());
-			VulkanTransitionManager::SetLayout(As<VkImage>(colorAttachment.texture.GetHandle()), VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+			VulkanTransitionManager::SetLayout(As<VkImage>(colorAttachment.texture.GetHandle()), colorAttachmentDesc.finalLayout);
 		}
 		else
 		{
 			colorAttachmentDesc.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 			const auto& drawable = mHandle->swapchain->AcquireNextDrawable();
+			renderArea = mHandle->swapchain->GetDrawableSize();
 			imageViews[i] = drawable.view;
-			VulkanTransitionManager::SetLayout(drawable.image, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+			VulkanTransitionManager::SetLayout(drawable.image, colorAttachmentDesc.finalLayout);
 		}
 		clearValues[i] = { colorAttachment.clearColor.r, colorAttachment.clearColor.g, colorAttachment.clearColor.b, colorAttachment.clearColor.a };
     }
@@ -162,8 +165,8 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, 
 	framebufferCreateInfo.renderPass = mHandle->renderPass;
 	framebufferCreateInfo.attachmentCount = static_cast<uint32_t>(imageViews.size());
 	framebufferCreateInfo.pAttachments = imageViews.data();
-	framebufferCreateInfo.width = static_cast<uint32_t>(renderPassDesc.size.width);
-	framebufferCreateInfo.height = static_cast<uint32_t>(renderPassDesc.size.height);
+	framebufferCreateInfo.width = static_cast<uint32_t>(renderArea.width);
+	framebufferCreateInfo.height = static_cast<uint32_t>(renderArea.height);
 	framebufferCreateInfo.layers = 1;
 	VkFramebuffer framebuffer = mHandle->device->CreateFramebuffer(framebufferCreateInfo);
 
@@ -172,8 +175,8 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, 
 	renderPassBeginInfo.framebuffer = framebuffer;
 	renderPassBeginInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
 	renderPassBeginInfo.pClearValues = clearValues.data();
-	renderPassBeginInfo.renderArea.extent.width = static_cast<uint32_t>(renderPassDesc.size.width);
-	renderPassBeginInfo.renderArea.extent.height = static_cast<uint32_t>(renderPassDesc.size.height);
+	renderPassBeginInfo.renderArea.extent.width = static_cast<uint32_t>(renderArea.width);
+	renderPassBeginInfo.renderArea.extent.height = static_cast<uint32_t>(renderArea.height);
 	vkCmdBeginRenderPass(mHandle->commandBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 }
 
