@@ -37,9 +37,9 @@ public:
     void Flush(uint32_t frameIndex)
     {
         auto& pooledObjects = mPooledObjects[frameIndex];
-        for (auto& [obj, deallocate] : pooledObjects)
+        for (auto& deallocator : pooledObjects)
         {
-            deallocate(obj);
+			deallocator();
         }
         pooledObjects.clear();
     }
@@ -64,15 +64,15 @@ public:
         return mSize;
     }
 
-    void AddPooledObject(std::any&& object, const std::function<void(std::any)>& deallocator)
+	using ObjectDeallocator = std::function<void()>;
+    void AddPooledObject(ObjectDeallocator&& deallocator)
     {
-        mPooledObjects[mCurrentFrameIndex].push_back(std::make_pair(object, deallocator));
+        mPooledObjects[mCurrentFrameIndex].push_back(deallocator);
     }
     
 protected:
     
-    using PooledObject = std::pair<std::any, std::function<void(std::any)>>;
-    using ObjectPool = TArray<PooledObject>;
+    using ObjectPool = TArray<ObjectDeallocator>;
     TArray<ObjectPool> mPooledObjects;
 
     uint32_t mMaxFramesInFlight = 3;

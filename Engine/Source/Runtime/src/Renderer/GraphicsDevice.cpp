@@ -52,9 +52,8 @@ Shader GraphicsDevice::CreateShader(const TString& entryPoint, ShaderStage stage
 void GraphicsDevice::ReleaseHeap(const Heap& heap)
 {
     GLEAM_ASSERT(heap.IsValid());
-    mSwapchain->AddPooledObject(std::make_any<Heap>(heap), [this](std::any obj)
+    mSwapchain->AddPooledObject([this, heap = heap]()
     {
-        auto heap = std::any_cast<Heap>(obj);
         heap.Reset();
         mFreeHeaps.push_back(heap);
     });
@@ -63,9 +62,9 @@ void GraphicsDevice::ReleaseHeap(const Heap& heap)
 void GraphicsDevice::ReleaseTexture(const Texture& texture)
 {
     GLEAM_ASSERT(texture.IsValid());
-    mSwapchain->AddPooledObject(std::make_any<Texture>(texture), [this](std::any obj)
+    mSwapchain->AddPooledObject([this, texture = texture]()
     {
-        mFreeTextures.push_back(std::any_cast<Texture>(obj));
+        mFreeTextures.push_back(texture);
     });
 }
 
