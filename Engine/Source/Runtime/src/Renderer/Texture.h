@@ -56,7 +56,7 @@ public:
     
 protected:
     
-    uint32_t mMipMapLevels;
+    uint32_t mMipMapLevels = 1;
     TextureDescriptor mDescriptor;
 	NativeGraphicsHandle mHeap = nullptr;
     NativeGraphicsHandle mView = nullptr;
