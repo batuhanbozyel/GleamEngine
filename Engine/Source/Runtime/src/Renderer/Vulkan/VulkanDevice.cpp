@@ -233,11 +233,6 @@ void GraphicsDevice::Dispose(Texture& texture) const
 	texture.mMultisampleHandle = VK_NULL_HANDLE;
 }
 
-void GraphicsDevice::WaitDeviceIdle() const
-{
-	VK_CHECK(vkDeviceWaitIdle(As<VkDevice>(mHandle)));
-}
-
 VulkanDevice::VulkanDevice()
 {
 	auto windowSystem = GameInstance->GetSubsystem<WindowSystem>();

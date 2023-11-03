@@ -42,6 +42,7 @@ void MetalSwapchain::Initialize(MetalDevice* device)
         
         mHandle.frame.size = CGSizeMake(e.GetWidth(), e.GetHeight());
         mHandle.drawableSize = CGSizeMake(mSize.width, mSize.height);
+        EventDispatcher<RendererResizeEvent>::Publish(RendererResizeEvent(mSize));
     });
     
     mImageAcquireSemaphore = dispatch_semaphore_create(mMaxFramesInFlight);
@@ -82,7 +83,6 @@ void MetalSwapchain::Configure(const RendererConfig& config)
         GLEAM_ASSERT(false, "Metal: Neither triple nor double buffering is available!");
     }
     mPooledObjects.resize(mMaxFramesInFlight);
-    EventDispatcher<RendererResizeEvent>::Publish(RendererResizeEvent(mSize));
 }
 
 id<CAMetalDrawable> MetalSwapchain::AcquireNextDrawable()

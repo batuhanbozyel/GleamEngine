@@ -48,6 +48,11 @@ public:
     {
         return mFormat;
     }
+    
+    uint32_t GetLastFrameIndex() const
+    {
+        return (mCurrentFrameIndex + (mMaxFramesInFlight - 1)) % mMaxFramesInFlight;
+    }
 
     uint32_t GetFrameIndex() const
     {

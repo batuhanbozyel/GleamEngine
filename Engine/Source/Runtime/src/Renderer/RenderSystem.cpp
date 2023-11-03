@@ -26,14 +26,21 @@ void RenderSystem::Initialize()
 
 	EventDispatcher<RendererResizeEvent>::Subscribe([this](RendererResizeEvent e)
 	{
-		mDevice->WaitDeviceIdle();
-		mDevice->Clear();
+        const auto& cmd = mCommandBuffers[mDevice->GetSwapchain()->GetLastFrameIndex()];
+        if (cmd)
+        {
+            cmd->WaitUntilCompleted();
+        }
+        mDevice->GetSwapchain()->FlushAll();
+        mDevice->Clear();
 	});
 }
 
 void RenderSystem::Shutdown()
 {
-    mDevice->WaitDeviceIdle();
+    mCommandBuffers[mDevice->GetSwapchain()->GetLastFrameIndex()]->WaitUntilCompleted();
+    mCommandBuffers.clear();
+    
     for (auto renderer : mRenderers)
     {
         renderer->OnDestroy(mDevice.get());
@@ -64,8 +71,11 @@ void RenderSystem::Render()
         }
         graph.Compile();
 
-        CommandBuffer cmd(mDevice.get());
-        graph.Execute(&cmd);
+        auto frameIdx = mDevice->GetSwapchain()->GetFrameIndex();
+        mCommandBuffers[frameIdx] = CreateScope<CommandBuffer>(mDevice.get());
+        auto cmd = mCommandBuffers[frameIdx].get();
+        
+        graph.Execute(cmd);
 
         // reset rt to swapchain
         if (mRenderTarget.IsValid())
@@ -74,16 +84,15 @@ void RenderSystem::Render()
         }
         ResetRenderTarget();
 
-        cmd.Present();
+        cmd->Present();
     }
 }
 
 void RenderSystem::Configure(const RendererConfig& config)
 {
     mConfiguration = config;
-    mDevice->WaitDeviceIdle();
-    mDevice->Clear();
     mDevice->Configure(config);
+    mCommandBuffers.resize(mDevice->GetSwapchain()->GetFramesInFlight());
 }
 
 GraphicsDevice* RenderSystem::GetDevice()

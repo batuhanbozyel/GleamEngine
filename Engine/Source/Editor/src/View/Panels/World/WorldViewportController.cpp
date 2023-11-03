@@ -96,3 +96,18 @@ void WorldViewportController::ProcessCameraMovement(Gleam::Camera& camera)
         camera.Translate(Gleam::Vector3::down * cameraSpeed * deltaTime);
     }
 }
+
+const Gleam::Size& WorldViewportController::GetViewportSize() const
+{
+    return mViewportSize;
+}
+
+void WorldViewportController::SetViewportSize(const Gleam::Size& size)
+{
+    mViewportSize = size;
+}
+
+void WorldViewportController::SetViewportFocused(bool focused)
+{
+    mViewportFocused = focused;
+}

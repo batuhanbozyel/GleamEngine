@@ -40,8 +40,6 @@ public:
 
     void Dispose(Texture& texture) const;
 
-    void WaitDeviceIdle() const;
-
     Swapchain* GetSwapchain();
 
     const Swapchain* GetSwapchain() const;

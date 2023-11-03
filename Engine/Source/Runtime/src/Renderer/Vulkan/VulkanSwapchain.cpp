@@ -74,6 +74,7 @@ const VulkanDrawable& VulkanSwapchain::AcquireNextDrawable()
 	{
 		auto renderSystem = GameInstance->GetSubsystem<RenderSystem>();
 		Configure(renderSystem->GetConfiguration());
+        EventDispatcher<RendererResizeEvent>::Publish(RendererResizeEvent(mSize));
 	}
 	else
 	{
@@ -109,6 +110,7 @@ void VulkanSwapchain::Present(VkCommandBuffer commandBuffer)
 	{
 		auto renderSystem = GameInstance->GetSubsystem<RenderSystem>();
 		Configure(renderSystem->GetConfiguration());
+        EventDispatcher<RendererResizeEvent>::Publish(RendererResizeEvent(mSize));
 	}
 	else
 	{
@@ -333,8 +335,6 @@ void VulkanSwapchain::Configure(const RendererConfig& config)
 		commandPoolCreateInfo.queueFamilyIndex = mDevice->GetGraphicsQueue().index;
 		VK_CHECK(vkCreateCommandPool(As<VkDevice>(mDevice->GetHandle()), &commandPoolCreateInfo, nullptr, &mCommandPools[i]));
 	}
-
-	EventDispatcher<RendererResizeEvent>::Publish(RendererResizeEvent(mSize));
 }
 
 void VulkanSwapchain::FlushFrameObjects(uint32_t frameIndex)

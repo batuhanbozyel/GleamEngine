@@ -56,10 +56,9 @@ public:
     void RemoveRenderer()
     {
         GLEAM_ASSERT(HasRenderer<T>(), "Render pipeline does not have the renderer!");
-        auto it = mRenderers.erase(std::remove_if(mRenderers.begin(), mRenderers.end(), [](const IRenderer* ptr)
-                                                  {
-            const auto& renderer = *ptr;
-            return typeid(renderer) == typeid(T);
+        auto it = mRenderers.erase(std::remove_if(mRenderers.begin(), mRenderers.end(), [](const IRenderer* renderer)
+        {
+            return typeid(*renderer) == typeid(T);
         }));
         
         if (it != mRenderers.end())
@@ -74,10 +73,9 @@ public:
     T* GetRenderer()
     {
         GLEAM_ASSERT(HasRenderer<T>(), "Render pipeline does not have the renderer!");
-        auto it = std::find_if(mRenderers.begin(), mRenderers.end(), [](const IRenderer* ptr)
-                               {
-            const auto& renderer = *ptr;
-            return typeid(renderer) == typeid(T);
+        auto it = std::find_if(mRenderers.begin(), mRenderers.end(), [](const IRenderer* renderer)
+        {
+            return typeid(*renderer) == typeid(T);
         });
         return static_cast<T*>(*it);
     }
@@ -85,10 +83,9 @@ public:
     template<RendererType T>
     bool HasRenderer()
     {
-        auto it = std::find_if(mRenderers.begin(), mRenderers.end(), [](const IRenderer* ptr)
-                               {
-            const auto& renderer = *ptr;
-            return typeid(renderer) == typeid(T);
+        auto it = std::find_if(mRenderers.begin(), mRenderers.end(), [](const IRenderer* renderer)
+        {
+            return typeid(*renderer) == typeid(T);
         });
         return it != mRenderers.end();
     }
@@ -96,10 +93,9 @@ public:
     template<RendererType T>
     uint32_t GetIndexOf() const
     {
-        auto it = std::find_if(mRenderers.begin(), mRenderers.end(), [](const IRenderer* ptr)
-                               {
-            const auto& renderer = *ptr;
-            return typeid(renderer) == typeid(T);
+        auto it = std::find_if(mRenderers.begin(), mRenderers.end(), [](const IRenderer* renderer)
+        {
+            return typeid(*renderer) == typeid(T);
         });
         return std::distance(mRenderers.begin(), it);
     }
@@ -126,6 +122,8 @@ public:
     
 private:
     
+    bool mRunning = true;
+    
     Container mRenderers;
     
     Texture mRenderTarget;
@@ -133,6 +131,8 @@ private:
     RendererConfig mConfiguration;
     
     Scope<GraphicsDevice> mDevice;
+    
+    TArray<Scope<CommandBuffer>> mCommandBuffers;
     
 };
 

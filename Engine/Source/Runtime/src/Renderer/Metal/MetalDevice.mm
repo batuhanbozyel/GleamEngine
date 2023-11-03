@@ -140,11 +140,6 @@ void GraphicsDevice::Dispose(Texture& texture) const
     }
 }
 
-void GraphicsDevice::WaitDeviceIdle() const
-{
-    
-}
-
 MetalDevice::MetalDevice()
 {
     mSwapchain = CreateScope<MetalSwapchain>();

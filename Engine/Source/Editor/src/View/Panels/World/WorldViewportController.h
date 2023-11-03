@@ -18,15 +18,11 @@ public:
 
 	virtual void OnUpdate(Gleam::EntityManager& entityManager) override;
     
-    void SetViewportSize(const Gleam::Size& size)
-    {
-        mViewportSize = size;
-    }
+    const Gleam::Size& GetViewportSize() const;
     
-    void SetViewportFocused(bool focused)
-    {
-        mViewportFocused = focused;
-    }
+    void SetViewportSize(const Gleam::Size& size);
+    
+    void SetViewportFocused(bool focused);
     
 private:
     

@@ -19,6 +19,7 @@ WorldViewport::WorldViewport()
     
     mEditWorld = Gleam::World::active;
 	mController = mEditWorld->AddSystem<WorldViewportController>();
+    mController->SetViewportSize(mViewportSize);
     
     Gleam::EventDispatcher<Gleam::MouseButtonPressedEvent>::Subscribe([&](Gleam::MouseButtonPressedEvent e)
     {
@@ -36,12 +37,17 @@ WorldViewport::WorldViewport()
 
 void WorldViewport::Update()
 {
+    if (mViewportSize != mController->GetViewportSize())
+    {
+        mController->SetViewportSize(mViewportSize);
+        Gleam::EventDispatcher<Gleam::RendererResizeEvent>::Publish(Gleam::RendererResizeEvent(mViewportSize));
+    }
+    
     Gleam::TextureDescriptor descriptor;
     descriptor.size = mViewportSize;
     descriptor.type = Gleam::TextureType::RenderTexture;
     GameInstance->GetSubsystem<Gleam::RenderSystem>()->SetRenderTarget(descriptor);
     
-    mController->SetViewportSize(mViewportSize);
     mController->SetViewportFocused(mIsFocused);
 }
 
@@ -53,14 +59,9 @@ void WorldViewport::Render()
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
     ImGui::Begin("Viewport");
     ImVec2 viewportSize = ImGui::GetContentRegionAvail();
+    mViewportSize.width = viewportSize.x;
+    mViewportSize.height = viewportSize.y;
     
-    if (Gleam::Math::Abs(mViewportSize.width - viewportSize.x) > Gleam::Math::Epsilon || Gleam::Math::Abs(mViewportSize.height - viewportSize.y) > Gleam::Math::Epsilon)
-    {
-        mViewportSize.width = viewportSize.x;
-        mViewportSize.height = viewportSize.y;
-        Gleam::EventDispatcher<Gleam::RendererResizeEvent>::Publish(Gleam::RendererResizeEvent(mViewportSize));
-    }
-
     ImGui::Image(ImGuiBackend::GetImTextureIDForTexture(sceneRT), ImVec2(sceneRTsize.width, sceneRTsize.height), ImVec2(0.0f, 0.0f), ImVec2(1.0f, 1.0f));
     mIsFocused = ImGui::IsWindowFocused();
     
