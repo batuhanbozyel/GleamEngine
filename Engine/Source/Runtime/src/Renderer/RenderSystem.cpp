@@ -71,10 +71,12 @@ void RenderSystem::Render()
         }
         graph.Compile();
 
-        auto frameIdx = mDevice->GetSwapchain()->GetFrameIndex();
-        mCommandBuffers[frameIdx] = CreateScope<CommandBuffer>(mDevice.get());
-        auto cmd = mCommandBuffers[frameIdx].get();
-        
+		auto frameIdx = mDevice->GetSwapchain()->GetFrameIndex();
+        const auto cmd = mCommandBuffers[frameIdx].get();
+
+		cmd->WaitUntilCompleted();
+		mDevice->GetSwapchain()->Flush(frameIdx);
+
         graph.Execute(cmd);
 
         // reset rt to swapchain
@@ -93,6 +95,10 @@ void RenderSystem::Configure(const RendererConfig& config)
     mConfiguration = config;
     mDevice->Configure(config);
     mCommandBuffers.resize(mDevice->GetSwapchain()->GetFramesInFlight());
+	for (auto& cmd : mCommandBuffers)
+	{
+		cmd = CreateScope<CommandBuffer>(mDevice.get());
+	}
 }
 
 GraphicsDevice* RenderSystem::GetDevice()

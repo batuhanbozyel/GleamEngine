@@ -27,7 +27,7 @@ public:
 	void Configure(const RendererConfig& config);
 
 	const VulkanDrawable& AcquireNextDrawable();
-	void Present(VkCommandBuffer commandBuffer);
+	void Present();
 
 	void AddFrameObject(VkCommandBuffer cmd)
 	{
@@ -48,6 +48,10 @@ public:
 	{
 		mFrameObjects[mCurrentFrameIndex].fences.push_back(fence);
 	}
+
+	VkSemaphore GetImageAcquireSemaphore() const;
+
+	VkSemaphore GetImageReleaseSemaphore() const;
 
 	VkCommandPool GetCommandPool(uint32_t frameIdx) const;
 
@@ -80,7 +84,6 @@ private:
 	// Synchronization
 	TArray<VkSemaphore> mImageAcquireSemaphores;
 	TArray<VkSemaphore> mImageReleaseSemaphores;
-	TArray<VkFence> mFences;
 
 	VkSwapchainKHR mHandle{ VK_NULL_HANDLE };
 

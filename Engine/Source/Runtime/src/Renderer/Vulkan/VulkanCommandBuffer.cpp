@@ -20,9 +20,9 @@ struct CommandBuffer::Impl
 
 	VkCommandBuffer commandBuffer = VK_NULL_HANDLE;
 	VkFence fence = VK_NULL_HANDLE;
+	uint32_t frameIdx = 0;
 
 	const VulkanPipeline* pipeline = nullptr;
-
 	VkRenderPass renderPass = VK_NULL_HANDLE;
     bool swapchainTarget = false;
 
@@ -37,18 +37,21 @@ CommandBuffer::CommandBuffer(GraphicsDevice* device)
 {
 	mHandle->device = As<VulkanDevice*>(device);
 	mHandle->swapchain = As<VulkanSwapchain*>(mHandle->device->GetSwapchain());
-	mHandle->fence = mHandle->device->CreateFence();
-	mHandle->commandBuffer = mHandle->device->AllocateCommandBuffer();
+	mHandle->frameIdx = mHandle->swapchain->GetFrameIndex();
     
     HeapDescriptor descriptor;
     descriptor.size = 4194304; // 4 MB;
     descriptor.memoryType = MemoryType::CPU;
     mStagingHeap = mDevice->CreateHeap(descriptor);
+
+	VkFenceCreateInfo fenceInfo{ VK_STRUCTURE_TYPE_FENCE_CREATE_INFO };
+	VK_CHECK(vkCreateFence(As<VkDevice>(mHandle->device->GetHandle()), &fenceInfo, nullptr, &mHandle->fence));
 }
 
 CommandBuffer::~CommandBuffer()
 {
     mDevice->ReleaseHeap(mStagingHeap);
+	vkDestroyFence(As<VkDevice>(mHandle->device->GetHandle()), mHandle->fence, nullptr);
 }
 
 void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, const TStringView debugName) const
@@ -159,7 +162,7 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, 
 	renderPassCreateInfo.pSubpasses = subpassDescriptors.data();
 	renderPassCreateInfo.dependencyCount = static_cast<uint32_t>(subpassDependencies.size());
 	renderPassCreateInfo.pDependencies = subpassDependencies.data();
-	mHandle->renderPass = mHandle->device->CreateRenderPass(renderPassCreateInfo);
+	mHandle->renderPass = mHandle->swapchain->CreateRenderPass(renderPassCreateInfo);
 
 	VkFramebufferCreateInfo framebufferCreateInfo{ VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO };
 	framebufferCreateInfo.renderPass = mHandle->renderPass;
@@ -168,7 +171,7 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, 
 	framebufferCreateInfo.width = static_cast<uint32_t>(renderArea.width);
 	framebufferCreateInfo.height = static_cast<uint32_t>(renderArea.height);
 	framebufferCreateInfo.layers = 1;
-	VkFramebuffer framebuffer = mHandle->device->CreateFramebuffer(framebufferCreateInfo);
+	VkFramebuffer framebuffer = mHandle->swapchain->CreateFramebuffer(framebufferCreateInfo);
 
 	VkRenderPassBeginInfo renderPassBeginInfo{ VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO };
 	renderPassBeginInfo.renderPass = mHandle->renderPass;
@@ -437,9 +440,12 @@ void CommandBuffer::TransitionLayout(const Texture& texture, ResourceAccess acce
 
 void CommandBuffer::Begin() const
 {
+	mHandle->commandBuffer = mHandle->swapchain->AllocateCommandBuffer();
 	VkCommandBufferBeginInfo beginInfo{ VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
 	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 	VK_CHECK(vkBeginCommandBuffer(mHandle->commandBuffer, &beginInfo));
+	VK_CHECK(vkResetFences(As<VkDevice>(mHandle->device->GetHandle()), 1, &mHandle->fence));
+	mCommitted = false;
 }
 
 void CommandBuffer::End() const
@@ -453,16 +459,37 @@ void CommandBuffer::Commit() const
 	submitInfo.commandBufferCount = 1;
 	submitInfo.pCommandBuffers = &mHandle->commandBuffer;
 	VK_CHECK(vkQueueSubmit(mHandle->device->GetGraphicsQueue().handle, 1, &submitInfo, mHandle->fence));
+	mStagingHeap.Reset();
+	mCommitted = true;
 }
 
 void CommandBuffer::Present() const
 {
-	mHandle->swapchain->Present(mHandle->commandBuffer);
+	VkPipelineStageFlags waitDstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	VkSemaphore waitSemaphore = mHandle->swapchain->GetImageAcquireSemaphore();
+	VkSemaphore signalSemaphore = mHandle->swapchain->GetImageReleaseSemaphore();
+
+	VkSubmitInfo submitInfo{ VK_STRUCTURE_TYPE_SUBMIT_INFO };
+	submitInfo.waitSemaphoreCount = 1;
+	submitInfo.pWaitSemaphores = &waitSemaphore;
+	submitInfo.pWaitDstStageMask = &waitDstStageMask;
+	submitInfo.commandBufferCount = 1;
+	submitInfo.pCommandBuffers = &mHandle->commandBuffer;
+	submitInfo.signalSemaphoreCount = 1;
+	submitInfo.pSignalSemaphores = &signalSemaphore;
+	VK_CHECK(vkQueueSubmit(mHandle->device->GetGraphicsQueue().handle, 1, &submitInfo, mHandle->fence));
+	mStagingHeap.Reset();
+	mCommitted = true;
+
+	mHandle->swapchain->Present();
 }
 
 void CommandBuffer::WaitUntilCompleted() const
 {
-	VK_CHECK(vkWaitForFences(As<VkDevice>(mHandle->device->GetHandle()), 1, &mHandle->fence, VK_TRUE, UINT64_MAX));
+	if (mCommitted)
+	{
+		VK_CHECK(vkWaitForFences(As<VkDevice>(mHandle->device->GetHandle()), 1, &mHandle->fence, VK_TRUE, UINT64_MAX));
+	}
 }
 
 NativeGraphicsHandle CommandBuffer::GetHandle() const

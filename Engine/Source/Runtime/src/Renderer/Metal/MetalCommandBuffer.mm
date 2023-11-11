@@ -300,6 +300,7 @@ void CommandBuffer::Begin() const
 #else
     mHandle->commandBuffer = [mHandle->device->GetCommandPool() commandBuffer];
 #endif
+    mCommitted = false;
 }
 
 void CommandBuffer::End() const
@@ -310,6 +311,8 @@ void CommandBuffer::End() const
 void CommandBuffer::Commit() const
 {
     [mHandle->commandBuffer commit];
+    mStagingHeap.Reset();
+    mCommitted = true;
 }
 
 void CommandBuffer::Present() const
@@ -320,7 +323,10 @@ void CommandBuffer::Present() const
 
 void CommandBuffer::WaitUntilCompleted() const
 {
-    [mHandle->commandBuffer waitUntilCompleted];
+    if (mCommitted)
+	{
+		[mHandle->commandBuffer waitUntilCompleted];
+	}
 }
 
 NativeGraphicsHandle CommandBuffer::GetHandle() const

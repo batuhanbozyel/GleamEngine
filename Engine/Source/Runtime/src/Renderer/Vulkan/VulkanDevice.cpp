@@ -483,46 +483,6 @@ VulkanDevice::~VulkanDevice()
 	GLEAM_CORE_INFO("Vulkan: Graphics device destroyed.");
 }
 
-VkCommandBuffer VulkanDevice::AllocateCommandBuffer()
-{
-	auto swapchain = As<VulkanSwapchain*>(mSwapchain.get());
-	auto frameIdx = mSwapchain->GetFrameIndex();
-
-	VkCommandBuffer commandBuffer = VK_NULL_HANDLE;
-	VkCommandBufferAllocateInfo allocateInfo{ VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO };
-	allocateInfo.commandBufferCount = 1;
-	allocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-	allocateInfo.commandPool = swapchain->GetCommandPool();
-	VK_CHECK(vkAllocateCommandBuffers(As<VkDevice>(mHandle), &allocateInfo, &commandBuffer));
-	swapchain->AddFrameObject(commandBuffer);
-	return commandBuffer;
-}
-
-VkFence VulkanDevice::CreateFence()
-{
-	VkFence fence = VK_NULL_HANDLE;
-	VkFenceCreateInfo createInfo{ VK_STRUCTURE_TYPE_FENCE_CREATE_INFO };
-	VK_CHECK(vkCreateFence(As<VkDevice>(mHandle), &createInfo, nullptr, &fence));
-	As<VulkanSwapchain*>(mSwapchain.get())->AddFrameObject(fence);
-	return fence;
-}
-
-VkRenderPass VulkanDevice::CreateRenderPass(const VkRenderPassCreateInfo& createInfo)
-{
-	VkRenderPass renderPass = VK_NULL_HANDLE;
-	VK_CHECK(vkCreateRenderPass(As<VkDevice>(mHandle), &createInfo, nullptr, &renderPass));
-	As<VulkanSwapchain*>(mSwapchain.get())->AddFrameObject(renderPass);
-	return renderPass;
-}
-
-VkFramebuffer VulkanDevice::CreateFramebuffer(const VkFramebufferCreateInfo& createInfo)
-{
-	VkFramebuffer framebuffer = VK_NULL_HANDLE;
-	VK_CHECK(vkCreateFramebuffer(As<VkDevice>(mHandle), &createInfo, nullptr, &framebuffer));
-	As<VulkanSwapchain*>(mSwapchain.get())->AddFrameObject(framebuffer);
-	return framebuffer;
-}
-
 const VulkanQueue& VulkanDevice::GetGraphicsQueue() const
 {
 	return mGraphicsQueue;

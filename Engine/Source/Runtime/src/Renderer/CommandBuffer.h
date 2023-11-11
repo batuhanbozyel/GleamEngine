@@ -141,6 +141,8 @@ private:
     Heap mStagingHeap;
 
     GraphicsDevice* mDevice;
+
+	mutable bool mCommitted = false;
     
 };
 

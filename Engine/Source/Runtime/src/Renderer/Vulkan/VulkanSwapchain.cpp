@@ -60,11 +60,9 @@ void VulkanSwapchain::Destroy()
 	{
 		vkDestroySemaphore(As<VkDevice>(mDevice->GetHandle()), mImageAcquireSemaphores[i], nullptr);
 		vkDestroySemaphore(As<VkDevice>(mDevice->GetHandle()), mImageReleaseSemaphores[i], nullptr);
-		vkDestroyFence(As<VkDevice>(mDevice->GetHandle()), mFences[i], nullptr);
 	}
 	mImageAcquireSemaphores.clear();
 	mImageReleaseSemaphores.clear();
-	mFences.clear();
 }
 
 const VulkanDrawable& VulkanSwapchain::AcquireNextDrawable()
@@ -84,21 +82,8 @@ const VulkanDrawable& VulkanSwapchain::AcquireNextDrawable()
 	return mImages[mImageIndex];
 }
 
-void VulkanSwapchain::Present(VkCommandBuffer commandBuffer)
+void VulkanSwapchain::Present()
 {
-    uint32_t frameIndex = mCurrentFrameIndex;
-    
-	VkPipelineStageFlags waitDstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-	VkSubmitInfo submitInfo{ VK_STRUCTURE_TYPE_SUBMIT_INFO };
-	submitInfo.waitSemaphoreCount = 1;
-	submitInfo.pWaitSemaphores = &mImageAcquireSemaphores[mCurrentFrameIndex];
-	submitInfo.pWaitDstStageMask = &waitDstStageMask;
-	submitInfo.commandBufferCount = 1;
-	submitInfo.pCommandBuffers = &commandBuffer;
-	submitInfo.signalSemaphoreCount = 1;
-	submitInfo.pSignalSemaphores = &mImageReleaseSemaphores[mCurrentFrameIndex];
-	VK_CHECK(vkQueueSubmit(mDevice->GetGraphicsQueue().handle, 1, &submitInfo, mFences[mCurrentFrameIndex]));
-
 	VkPresentInfoKHR presentInfo{ VK_STRUCTURE_TYPE_PRESENT_INFO_KHR };
 	presentInfo.waitSemaphoreCount = 1;
 	presentInfo.pWaitSemaphores = &mImageReleaseSemaphores[mCurrentFrameIndex];
@@ -119,9 +104,7 @@ void VulkanSwapchain::Present(VkCommandBuffer commandBuffer)
 
 	mCurrentFrameIndex = (mCurrentFrameIndex + 1) % mMaxFramesInFlight;
 
-	VK_CHECK(vkWaitForFences(As<VkDevice>(mDevice->GetHandle()), 1, &mFences[mCurrentFrameIndex], VK_TRUE, UINT64_MAX));
 	VK_CHECK(vkResetCommandPool(As<VkDevice>(mDevice->GetHandle()), mCommandPools[mCurrentFrameIndex], 0));
-	VK_CHECK(vkResetFences(As<VkDevice>(mDevice->GetHandle()), 1, &mFences[mCurrentFrameIndex]));
     Flush(mCurrentFrameIndex);
 	FlushFrameObjects(mCurrentFrameIndex);
 }
@@ -258,11 +241,9 @@ void VulkanSwapchain::Configure(const RendererConfig& config)
 		{
 			vkDestroySemaphore(As<VkDevice>(mDevice->GetHandle()), mImageAcquireSemaphores[i], nullptr);
 			vkDestroySemaphore(As<VkDevice>(mDevice->GetHandle()), mImageReleaseSemaphores[i], nullptr);
-			vkDestroyFence(As<VkDevice>(mDevice->GetHandle()), mFences[i], nullptr);
 		}
 		mImageAcquireSemaphores.clear();
 		mImageReleaseSemaphores.clear();
-		mFences.clear();
 
 		// Destroy drawable
 		for (uint32_t i = 0; i < mImages.size(); i++)
@@ -310,17 +291,12 @@ void VulkanSwapchain::Configure(const RendererConfig& config)
 	// Create sync objects
 	mImageAcquireSemaphores.resize(mMaxFramesInFlight);
 	mImageReleaseSemaphores.resize(mMaxFramesInFlight);
-	mFences.resize(mMaxFramesInFlight);
 
 	VkSemaphoreCreateInfo semaphoreCreateInfo{ VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO };
 	for (uint32_t i = 0; i < mMaxFramesInFlight; i++)
 	{
 		VK_CHECK(vkCreateSemaphore(As<VkDevice>(mDevice->GetHandle()), &semaphoreCreateInfo, nullptr, &mImageAcquireSemaphores[i]));
 		VK_CHECK(vkCreateSemaphore(As<VkDevice>(mDevice->GetHandle()), &semaphoreCreateInfo, nullptr, &mImageReleaseSemaphores[i]));
-
-		VkFenceCreateInfo fenceCreateInfo{ VK_STRUCTURE_TYPE_FENCE_CREATE_INFO };
-		if (i >= 1) { fenceCreateInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT; }
-		VK_CHECK(vkCreateFence(As<VkDevice>(mDevice->GetHandle()), &fenceCreateInfo, nullptr, &mFences[i]));
 	}
 
 	// Create command pools
@@ -363,6 +339,16 @@ void VulkanSwapchain::FlushFrameObjects(uint32_t frameIndex)
 		vkDestroyFence(As<VkDevice>(mDevice->GetHandle()), fence, nullptr);
 	}
 	pool.fences.clear();
+}
+
+VkSemaphore VulkanSwapchain::GetImageAcquireSemaphore() const
+{
+	return mImageAcquireSemaphores[mCurrentFrameIndex];
+}
+
+VkSemaphore VulkanSwapchain::GetImageReleaseSemaphore() const
+{
+	return mImageReleaseSemaphores[mCurrentFrameIndex];
 }
 
 VkCommandPool VulkanSwapchain::GetCommandPool() const

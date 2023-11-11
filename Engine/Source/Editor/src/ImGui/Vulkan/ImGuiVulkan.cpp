@@ -105,6 +105,7 @@ void ImGuiBackend::Init(Gleam::GraphicsDevice* device)
 	cmd.End();
 	cmd.Commit();
 	cmd.WaitUntilCompleted();
+
 	ImGui_ImplVulkan_DestroyFontUploadObjects();
 }
 
