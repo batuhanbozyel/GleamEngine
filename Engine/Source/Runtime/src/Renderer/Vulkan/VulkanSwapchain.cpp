@@ -103,10 +103,6 @@ void VulkanSwapchain::Present()
 	}
 
 	mCurrentFrameIndex = (mCurrentFrameIndex + 1) % mMaxFramesInFlight;
-
-	VK_CHECK(vkResetCommandPool(As<VkDevice>(mDevice->GetHandle()), mCommandPools[mCurrentFrameIndex], 0));
-    Flush(mCurrentFrameIndex);
-	FlushFrameObjects(mCurrentFrameIndex);
 }
 
 void VulkanSwapchain::Configure(const RendererConfig& config)
@@ -313,6 +309,13 @@ void VulkanSwapchain::Configure(const RendererConfig& config)
 	}
 }
 
+void VulkanSwapchain::Flush(uint32_t frameIndex)
+{
+	Swapchain::Flush(frameIndex);
+	FlushFrameObjects(frameIndex);
+	VK_CHECK(vkResetCommandPool(As<VkDevice>(mDevice->GetHandle()), GetCommandPool(frameIndex), 0));
+}
+
 void VulkanSwapchain::FlushFrameObjects(uint32_t frameIndex)
 {
 	auto& pool = mFrameObjects[frameIndex];
@@ -333,12 +336,34 @@ void VulkanSwapchain::FlushFrameObjects(uint32_t frameIndex)
 		vkDestroyRenderPass(As<VkDevice>(mDevice->GetHandle()), renderPass, nullptr);
 	}
 	pool.renderPasses.clear();
+}
 
-	for (auto fence : pool.fences)
-	{
-		vkDestroyFence(As<VkDevice>(mDevice->GetHandle()), fence, nullptr);
-	}
-	pool.fences.clear();
+VkCommandBuffer VulkanSwapchain::AllocateCommandBuffer()
+{
+	VkCommandBuffer commandBuffer = VK_NULL_HANDLE;
+	VkCommandBufferAllocateInfo allocateInfo{ VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO };
+	allocateInfo.commandBufferCount = 1;
+	allocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+	allocateInfo.commandPool = GetCommandPool();
+	VK_CHECK(vkAllocateCommandBuffers(As<VkDevice>(mDevice->GetHandle()), &allocateInfo, &commandBuffer));
+	mFrameObjects[mCurrentFrameIndex].commandBuffers.push_back(commandBuffer);
+	return commandBuffer;
+}
+
+VkRenderPass VulkanSwapchain::CreateRenderPass(const VkRenderPassCreateInfo& createInfo)
+{
+	VkRenderPass renderPass = VK_NULL_HANDLE;
+	VK_CHECK(vkCreateRenderPass(As<VkDevice>(mDevice->GetHandle()), &createInfo, nullptr, &renderPass));
+	mFrameObjects[mCurrentFrameIndex].renderPasses.push_back(renderPass);
+	return renderPass;
+}
+
+VkFramebuffer VulkanSwapchain::CreateFramebuffer(const VkFramebufferCreateInfo& createInfo)
+{
+	VkFramebuffer framebuffer = VK_NULL_HANDLE;
+	VK_CHECK(vkCreateFramebuffer(As<VkDevice>(mDevice->GetHandle()), &createInfo, nullptr, &framebuffer));
+	mFrameObjects[mCurrentFrameIndex].framebuffers.push_back(framebuffer);
+	return framebuffer;
 }
 
 VkSemaphore VulkanSwapchain::GetImageAcquireSemaphore() const

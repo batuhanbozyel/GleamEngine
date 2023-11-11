@@ -34,7 +34,7 @@ public:
 		}
 	}
     
-    void Flush(uint32_t frameIndex)
+    virtual void Flush(uint32_t frameIndex)
     {
         auto& pooledObjects = mPooledObjects[frameIndex];
         for (auto& deallocator : pooledObjects)

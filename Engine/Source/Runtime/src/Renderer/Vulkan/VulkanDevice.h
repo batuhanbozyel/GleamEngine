@@ -21,14 +21,6 @@ public:
 
     ~VulkanDevice();
 
-	VkCommandBuffer AllocateCommandBuffer();
-
-	VkFence CreateFence();
-
-	VkRenderPass CreateRenderPass(const VkRenderPassCreateInfo& createInfo);
-
-	VkFramebuffer CreateFramebuffer(const VkFramebufferCreateInfo& createInfo);
-
 	const VulkanQueue& GetGraphicsQueue() const;
 
 	const VulkanQueue& GetComputeQueue() const;

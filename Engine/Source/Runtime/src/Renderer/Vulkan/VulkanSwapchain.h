@@ -29,25 +29,11 @@ public:
 	const VulkanDrawable& AcquireNextDrawable();
 	void Present();
 
-	void AddFrameObject(VkCommandBuffer cmd)
-	{
-		mFrameObjects[mCurrentFrameIndex].commandBuffers.push_back(cmd);
-	}
+	VkCommandBuffer AllocateCommandBuffer();
 
-	void AddFrameObject(VkFramebuffer framebuffer)
-	{
-		mFrameObjects[mCurrentFrameIndex].framebuffers.push_back(framebuffer);
-	}
+	VkRenderPass CreateRenderPass(const VkRenderPassCreateInfo& createInfo);
 
-	void AddFrameObject(VkRenderPass renderPass)
-	{
-		mFrameObjects[mCurrentFrameIndex].renderPasses.push_back(renderPass);
-	}
-
-	void AddFrameObject(VkFence fence)
-	{
-		mFrameObjects[mCurrentFrameIndex].fences.push_back(fence);
-	}
+	VkFramebuffer CreateFramebuffer(const VkFramebufferCreateInfo& createInfo);
 
 	VkSemaphore GetImageAcquireSemaphore() const;
 
@@ -58,6 +44,8 @@ public:
 	VkCommandPool GetCommandPool() const;
 
 	VkSurfaceKHR GetSurface() const;
+
+	virtual void Flush(uint32_t frameIndex) override;
 
 private:
 
@@ -72,7 +60,6 @@ private:
 		TArray<VkCommandBuffer> commandBuffers;
 		TArray<VkFramebuffer> framebuffers;
 		TArray<VkRenderPass> renderPasses;
-		TArray<VkFence> fences;
 	};
 	TArray<FramePool> mFrameObjects;
 	TArray<VulkanDrawable> mImages;
