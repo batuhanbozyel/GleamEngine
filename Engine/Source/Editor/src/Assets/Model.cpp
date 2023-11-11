@@ -1,27 +1,34 @@
 #include "Gleam.h"
 #include "Model.h"
-#include "ModelImporter.h"
+
+#define CGLTF_IMPLEMENTATION
+#include <cgltf.h>
 
 using namespace GEditor;
 
 Model Model::Import(const Gleam::Filesystem::path& path)
 {
-	const auto& ext = path.extension();
-    if (ext == ".obj")
-    {
-        return ModelImporter::ImportObj(path);
-    }
-    else
-    {
-        GLEAM_ASSERT(false, "Model file type is not supported!");
-        return Model({}, {});
-    }
-}
+	cgltf_options options = {};
+	cgltf_data* data = nullptr;
+	cgltf_result result = cgltf_parse_file(&options, path.string().c_str(), &data);
+	if (result != cgltf_result_success)
+	{
+		return {};
+	}
 
-Model::Model(const Gleam::TArray<Gleam::MeshData>& meshes, const Gleam::TArray<Gleam::PBRMaterialData>& materials)
-	: mMeshes(meshes), mMaterials(materials)
-{
-    CalculateNormalsIfNeeded();
+	Model model;
+	for (size_t i = 0; i < data->scenes_count; ++i)
+	{
+		cgltf_scene* scene = &data->scenes[i];
+		for (size_t j = 0; j < scene->nodes_count; ++j)
+		{
+			cgltf_node* node = scene->nodes[j];
+		}
+	}
+	cgltf_free(data);
+
+	model.CalculateNormalsIfNeeded();
+	return model;
 }
 
 void Model::CalculateNormalsIfNeeded()
@@ -72,9 +79,4 @@ void Model::CalculateNormalsIfNeeded()
 const Gleam::TArray<Gleam::MeshData>& Model::GetMeshes() const
 {
     return mMeshes;
-}
-
-const Gleam::TArray<Gleam::PBRMaterialData>& Model::GetMaterials() const
-{
-    return mMaterials;
 }
