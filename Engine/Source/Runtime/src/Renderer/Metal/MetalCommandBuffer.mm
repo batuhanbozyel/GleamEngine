@@ -43,7 +43,7 @@ CommandBuffer::CommandBuffer(GraphicsDevice* device)
 
 CommandBuffer::~CommandBuffer()
 {
-    mDevice->ReleaseHeap(mStagingHeap);
+    mDevice->Dispose(mStagingHeap);
 }
 
 void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, const TStringView debugName) const

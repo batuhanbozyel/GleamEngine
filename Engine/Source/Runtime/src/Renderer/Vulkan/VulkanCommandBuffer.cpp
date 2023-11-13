@@ -50,7 +50,7 @@ CommandBuffer::CommandBuffer(GraphicsDevice* device)
 
 CommandBuffer::~CommandBuffer()
 {
-    mDevice->ReleaseHeap(mStagingHeap);
+	mDevice->Dispose(mStagingHeap);
 	vkDestroyFence(As<VkDevice>(mHandle->device->GetHandle()), mHandle->fence, nullptr);
 }
 
