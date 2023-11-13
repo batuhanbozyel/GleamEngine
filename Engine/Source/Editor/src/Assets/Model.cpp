@@ -17,63 +17,58 @@ Model Model::Import(const Gleam::Filesystem::path& path)
 	}
 
 	Model model;
-	for (size_t i = 0; i < data->scenes_count; ++i)
+	for (uint32_t i = 0; i < data->meshes_count; ++i)
 	{
-		cgltf_scene* scene = &data->scenes[i];
-		for (size_t j = 0; j < scene->nodes_count; ++j)
+		cgltf_mesh* mesh = &data->meshes[i];
+		for (uint32_t j = 0; j < mesh->primitives_count; ++j)
 		{
-			cgltf_node* node = scene->nodes[j];
+			const auto& primitive = mesh->primitives[j];
+			uint32_t vertex_count = primitive.attributes_count ? primitive.attributes[0].data->count : 0;
+
+			Gleam::MeshData meshData;
+
+			// process indices
+			if (primitive.indices)
+			{
+				meshData.indices.resize(primitive.indices->count);
+				cgltf_accessor_unpack_indices(primitive.indices, meshData.indices.data(), meshData.indices.size());
+			}
+			else
+			{
+				meshData.indices.resize(vertex_count);
+				for (uint32_t i = 0; i < vertex_count; ++i)
+				{
+					meshData.indices[i] = i;
+				}
+			}
+
+			// process attributes
+			for (uint32_t ai = 0; ai < primitive.attributes_count; ++ai)
+			{
+				const auto& attribute = primitive.attributes[ai];
+				if (attribute.type == cgltf_attribute_type_position)
+				{
+					meshData.positions.resize(vertex_count);
+					cgltf_accessor_unpack_floats(attribute.data, (cgltf_float*)meshData.positions.data(), meshData.positions.size());
+				}
+				else if (attribute.type == cgltf_attribute_type_normal)
+				{
+					meshData.normals.resize(vertex_count);
+					cgltf_accessor_unpack_floats(attribute.data, (cgltf_float*)meshData.normals.data(), meshData.normals.size());
+				}
+				else if (attribute.type == cgltf_attribute_type_texcoord)
+				{
+					meshData.texCoords.resize(vertex_count);
+					cgltf_accessor_unpack_floats(attribute.data, (cgltf_float*)meshData.texCoords.data(), meshData.texCoords.size());
+				}
+			}
+
+			GLEAM_ASSERT(!meshData.positions.empty() && !meshData.normals.empty() && !meshData.texCoords.empty() && !meshData.indices.empty(), "glTF file does not meet the requirements!");
+			model.mMeshes.push_back(meshData);
 		}
 	}
 	cgltf_free(data);
-
-	model.CalculateNormalsIfNeeded();
 	return model;
-}
-
-void Model::CalculateNormalsIfNeeded()
-{
-    for (auto& mesh : mMeshes)
-    {
-        if (mesh.normals.size() == 0)
-        {
-            mesh.normals.resize(mesh.positions.size());
-            for (uint32_t i = 0; i < mesh.indices.size(); i += 3)
-            {
-                auto& position1 = mesh.positions[mesh.indices[i + 0]];
-                auto& position2 = mesh.positions[mesh.indices[i + 1]];
-                auto& position3 = mesh.positions[mesh.indices[i + 2]];
-
-                Gleam::Vector3 normal{ 0.0f, 0.0f, 0.0f };
-                {
-                    auto pos1 = position2 - position1;
-                    auto pos2 = position3 - position1;
-                    normal += Gleam::Math::Cross(pos1, pos2);
-                }
-
-                {
-                    auto pos1 = position1 - position2;
-                    auto pos2 = position3 - position2;
-                    normal += Gleam::Math::Cross(pos1, pos2);
-                }
-
-                {
-                    auto pos1 = position1 - position3;
-                    auto pos2 = position2 - position3;
-                    normal += Gleam::Math::Cross(pos1, pos2);
-                }
-
-                Gleam::Vector3 normalVec = Gleam::Math::Normalize(Gleam::Vector3{ normal.x, normal.y, normal.z });
-                normal.x = normalVec.x;
-                normal.y = normalVec.y;
-                normal.z = normalVec.z;
-
-                mesh.normals[mesh.indices[i + 0]] = normal;
-                mesh.normals[mesh.indices[i + 1]] = normal;
-                mesh.normals[mesh.indices[i + 2]] = normal;
-            }
-        }
-    }
 }
 
 const Gleam::TArray<Gleam::MeshData>& Model::GetMeshes() const
