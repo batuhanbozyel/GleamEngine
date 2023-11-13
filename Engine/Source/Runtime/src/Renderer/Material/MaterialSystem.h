@@ -11,18 +11,15 @@
 
 namespace Gleam {
 
-struct PBRMaterialData
-{
-    TString baseTexture;
-};
-
 class MaterialSystem final : public Subsystem
 {
 public:
 
-    const RefCounted<Material>& CreateMaterial(const MaterialDescriptor& descriptor);
+	RefCounted<Material> CreateMaterial(const MaterialDescriptor& descriptor);
 
 private:
+
+	RefCounted<Material> mDefaultMaterial;
 
     HashMap<MaterialDescriptor, RefCounted<Material>> mMaterials;
 

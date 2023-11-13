@@ -18,12 +18,10 @@ enum class MaterialPropertyType
     Vector2,
     Vector3,
     Vector4,
-    Buffer,
-    Texture2D,
-    TextureCube
+    Texture2D
 };
 
-using MaterialPropertyValue = std::variant<float, Vector2, Vector3, Vector4, Buffer, Texture>;
+using MaterialPropertyValue = std::variant<float, Vector2, Vector3, Vector4, Texture>;
 
 struct MaterialProperty
 {
