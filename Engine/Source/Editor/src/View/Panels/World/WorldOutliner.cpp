@@ -31,9 +31,10 @@ void WorldOutliner::Render()
         ImGuiTreeNodeFlags flags = ((mSelectedEntity == entity) ? ImGuiTreeNodeFlags_Selected : 0) | ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth;
         
         uint32_t id = static_cast<uint32_t>(entity);
-        auto idString = std::to_string(id);
+		Gleam::TStringStream ss;
+		ss << "Entity " << id;
         
-        if (!ImGui::TreeNodeEx((void*)(uint64_t)id, flags, "%s", idString.c_str())) { return; }
+        if (!ImGui::TreeNodeEx((void*)(uint64_t)id, flags, "%s", ss.str().c_str())) { return; }
         
         if (ImGui::IsItemClicked())
         {

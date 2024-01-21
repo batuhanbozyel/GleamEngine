@@ -8,9 +8,17 @@ using namespace GEditor;
 
 Model Model::Import(const Gleam::Filesystem::path& path)
 {
+	std::string gltf_path = path.string();
 	cgltf_options options = {};
 	cgltf_data* data = nullptr;
-	cgltf_result result = cgltf_parse_file(&options, path.string().c_str(), &data);
+
+	cgltf_result result = cgltf_parse_file(&options, gltf_path.c_str(), &data);
+	if (result != cgltf_result_success)
+	{
+		return {};
+	}
+
+	result = cgltf_load_buffers(&options, data, gltf_path.c_str());
 	if (result != cgltf_result_success)
 	{
 		return {};
@@ -23,7 +31,7 @@ Model Model::Import(const Gleam::Filesystem::path& path)
 		for (uint32_t j = 0; j < mesh->primitives_count; ++j)
 		{
 			const auto& primitive = mesh->primitives[j];
-			uint32_t vertex_count = primitive.attributes_count ? primitive.attributes[0].data->count : 0;
+			uint32_t vertex_count = primitive.attributes_count ? static_cast<uint32_t>(primitive.attributes[0].data->count) : 0u;
 
 			Gleam::MeshData meshData;
 
@@ -49,21 +57,25 @@ Model Model::Import(const Gleam::Filesystem::path& path)
 				if (attribute.type == cgltf_attribute_type_position)
 				{
 					meshData.positions.resize(vertex_count);
-					cgltf_accessor_unpack_floats(attribute.data, (cgltf_float*)meshData.positions.data(), meshData.positions.size());
+					cgltf_accessor_unpack_floats(attribute.data, (cgltf_float*)meshData.positions.data(), meshData.positions.size() * 3);
 				}
 				else if (attribute.type == cgltf_attribute_type_normal)
 				{
 					meshData.normals.resize(vertex_count);
-					cgltf_accessor_unpack_floats(attribute.data, (cgltf_float*)meshData.normals.data(), meshData.normals.size());
+					cgltf_accessor_unpack_floats(attribute.data, (cgltf_float*)meshData.normals.data(), meshData.normals.size() * 3);
 				}
 				else if (attribute.type == cgltf_attribute_type_texcoord)
 				{
 					meshData.texCoords.resize(vertex_count);
-					cgltf_accessor_unpack_floats(attribute.data, (cgltf_float*)meshData.texCoords.data(), meshData.texCoords.size());
+					cgltf_accessor_unpack_floats(attribute.data, (cgltf_float*)meshData.texCoords.data(), meshData.texCoords.size() * 2);
 				}
 			}
 
-			GLEAM_ASSERT(!meshData.positions.empty() && !meshData.normals.empty() && !meshData.texCoords.empty() && !meshData.indices.empty(), "glTF file does not meet the requirements!");
+			if (meshData.texCoords.empty())
+			{
+				meshData.texCoords.resize(vertex_count, Gleam::Vector2::zero);
+			}
+
 			model.mMeshes.push_back(meshData);
 		}
 	}

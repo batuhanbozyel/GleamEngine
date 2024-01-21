@@ -6,6 +6,7 @@
 #include "View/Panels/MenuBar/MenuBar.h"
 #include "View/Panels/World/WorldViewport.h"
 #include "View/Panels/World/WorldOutliner.h"
+#include "View/Panels/Project/ContentBrowser.h"
 
 namespace GEditor {
 
@@ -20,6 +21,7 @@ public:
 		viewStack->AddView<MenuBar>();
         viewStack->AddView<WorldViewport>();
         viewStack->AddView<WorldOutliner>();
+		viewStack->AddView<ContentBrowser>();
 	}
     
 	~GleamEditor()

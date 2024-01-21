@@ -1,4 +1,5 @@
 #pragma once
+#include "Gleam.h"
 
 namespace GEditor {
 
@@ -9,12 +10,12 @@ public:
 
     static const T& Import(const Gleam::Filesystem::path& path)
 	{
-		return mAssets.push_back(T::Import(path));
+		return mAssets.emplace_back(T::Import(path));
 	}
 
 private:
 
-	Gleam::TArray<T> mAssets;
+	static inline Gleam::TArray<T> mAssets;
 
 };
 

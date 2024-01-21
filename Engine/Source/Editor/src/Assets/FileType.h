@@ -1,6 +1,7 @@
 #pragma once
+#include "Gleam.h"
 
-namespace Gleam {
+namespace GEditor {
     
 enum class FileType
 {
@@ -9,15 +10,15 @@ enum class FileType
     Font
 };
 
-static TArray<TStringView> FileTypeSupportedExtensions(FileType type)
+static Gleam::TArray<Gleam::TStringView> FileTypeSupportedExtensions(FileType type)
 {
     switch (type)
     {
         case FileType::Image: return {""};
-        case FileType::Model: return {"obj"};
+        case FileType::Model: return {"gltf"};
         case FileType::Font: return {""};
         default: return {""};
     }
 }
 
-} // namespace Gleam
+} // namespace GEditor
