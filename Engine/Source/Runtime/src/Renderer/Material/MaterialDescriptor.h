@@ -35,7 +35,7 @@ struct MaterialDescriptor
 {
     TArray<MaterialPassDescriptor> passes;
 	TArray<MaterialProperty> properties;
-    RenderQueue renderQueue;
+    RenderQueue renderQueue = RenderQueue::Opaque;
 
     bool operator==(const MaterialDescriptor& other) const
     {

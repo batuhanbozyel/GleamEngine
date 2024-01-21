@@ -1,6 +1,5 @@
 #pragma once
 #include <fstream>
-#include "FileType.h"
 
 namespace Gleam {
 
@@ -52,12 +51,7 @@ static void ExecuteCommand(const TString& cmd)
     GLEAM_ASSERT(success == 0);
 }
 
-TArray<Filesystem::path> OpenFileDialog(const TArray<FileType>& filterTypes);
-
-static TArray<Filesystem::path> OpenFileDialog(FileType filter)
-{
-    return OpenFileDialog(TArray<FileType>{filter});
-}
+TArray<Filesystem::path> OpenFileDialog(const TWString& filterName = L"All Files", const TWString& filterExtensions = L"*.*");
 
 } // namespace FileUtils
 

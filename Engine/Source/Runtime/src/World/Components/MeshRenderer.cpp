@@ -11,8 +11,8 @@ MeshRenderer::MeshRenderer(const RefCounted<Mesh>& mesh)
 	: mMesh(mesh)
 {
     PipelineStateDescriptor pipelineDesc;
-    pipelineDesc.cullingMode = CullMode::Back;
-    pipelineDesc.depthState.writeEnabled = true;
+	pipelineDesc.cullingMode = CullMode::Back;
+	pipelineDesc.depthState.writeEnabled = true;
 
     MaterialDescriptor materialDesc;
     materialDesc.passes.push_back({ .pipelineState = pipelineDesc,
@@ -23,7 +23,7 @@ MeshRenderer::MeshRenderer(const RefCounted<Mesh>& mesh)
     static auto materialSystem = GameInstance->GetSubsystem<MaterialSystem>();
     const auto& baseMaterial = materialSystem->CreateMaterial(materialDesc);
 
-    mMaterials.reserve(mesh->GetSubmeshCount());
+    mMaterials.resize(mesh->GetSubmeshCount());
     for (uint32_t i = 0; i < mMaterials.size(); i++)
     {
         mMaterials[i] = baseMaterial->CreateInstance();

@@ -182,7 +182,7 @@ void DebugRenderer::RenderMeshes(const CommandBuffer* cmd, const Buffer& cameraB
 		cmd->SetPushConstant(uniforms, ShaderStage_Vertex | ShaderStage_Fragment);
 	
 		for (const auto& submesh : debugMesh.mesh->GetSubmeshDescriptors())
-			cmd->DrawIndexed(meshBuffer.GetIndexBuffer().GetHandle(), IndexType::UINT32, submesh.indexCount, 1, submesh.firstIndex, submesh.baseVertex, 0);
+			cmd->DrawIndexed(meshBuffer.GetIndexBuffer(), IndexType::UINT32, submesh.indexCount, 1, submesh.firstIndex, submesh.baseVertex, 0);
 	}	
 }
 

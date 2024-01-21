@@ -17,7 +17,7 @@ Material::Material(const MaterialDescriptor& descriptor)
 {
     static auto renderSystem = GameInstance->GetSubsystem<RenderSystem>();
     
-    mPasses.reserve(descriptor.passes.size());
+    mPasses.resize(descriptor.passes.size());
     for (uint32_t i = 0; i < mPasses.size(); i++)
     {
         auto& pass = mPasses[i];

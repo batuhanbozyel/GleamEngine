@@ -73,20 +73,26 @@ public:
 
     void Draw(uint32_t vertexCount, uint32_t instanceCount = 1, uint32_t baseVertex = 0, uint32_t baseInstance = 0) const;
 
-    void DrawIndexed(const NativeGraphicsHandle indexBuffer, IndexType type, uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, uint32_t baseVertex, uint32_t baseInstance) const;
+	void DrawIndexed(const Buffer& indexBuffer, IndexType type, uint32_t indexCount, uint32_t instanceCount = 1, uint32_t firstIndex = 0, uint32_t baseVertex = 0, uint32_t baseInstance = 0) const
+	{
+		DrawIndexed(indexBuffer.GetHandle(), type, indexCount, instanceCount, firstIndex, baseVertex, baseInstance);
+	}
 
     void DrawIndexed(const Buffer& indexBuffer, IndexType type, uint32_t instanceCount = 1, uint32_t firstIndex = 0, uint32_t baseVertex = 0, uint32_t baseInstance = 0) const
     {
         DrawIndexed(indexBuffer.GetHandle(), type, static_cast<uint32_t>(indexBuffer.GetDescriptor().size / SizeOfIndexType(type)), instanceCount, firstIndex, baseVertex, baseInstance);
     }
 
+	void CopyBuffer(const Buffer& src, const Buffer& dst, size_t size, size_t srcOffset = 0, size_t dstOffset = 0) const
+	{
+		CopyBuffer(src.GetHandle(), dst.GetHandle(), size, srcOffset, dstOffset);
+	}
+
     void CopyBuffer(const Buffer& src, const Buffer& dst) const
     {
         auto minSize = Math::Min(src.GetDescriptor().size, dst.GetDescriptor().size);
         CopyBuffer(src.GetHandle(), dst.GetHandle(), minSize);
     }
-
-    void CopyBuffer(const NativeGraphicsHandle src, const NativeGraphicsHandle dst, size_t size, size_t srcOffset = 0, size_t dstOffset = 0) const;
 
     void SetBufferData(const Buffer& buffer, const void* data, size_t size, size_t offset = 0) const
     {
@@ -134,6 +140,10 @@ private:
     void BindTexture(const NativeGraphicsHandle texture, uint32_t index, ShaderStageFlagBits stage, ResourceAccess access) const;
 
     void SetPushConstant(const void* data, uint32_t size, ShaderStageFlagBits stage) const;
+
+	void CopyBuffer(const NativeGraphicsHandle src, const NativeGraphicsHandle dst, size_t size, size_t srcOffset = 0, size_t dstOffset = 0) const;
+
+	void DrawIndexed(const NativeGraphicsHandle indexBuffer, IndexType type, uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, uint32_t baseVertex, uint32_t baseInstance) const;
 
     class Impl;
     Scope<Impl> mHandle;

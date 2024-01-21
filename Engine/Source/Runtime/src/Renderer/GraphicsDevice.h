@@ -30,6 +30,8 @@ public:
 
     Shader CreateShader(const TString& entryPoint, ShaderStage stage);
 
+	MemoryRequirements QueryMemoryRequirements(const HeapDescriptor& descriptor) const;
+
     void ReleaseHeap(const Heap& heap);
 
     void ReleaseTexture(const Texture& texture);

@@ -66,7 +66,7 @@ private:
     float mNearPlane = 0.1f;
     float mFarPlane = 1000.0f;
     
-	ProjectionType mProjectionType;
+	ProjectionType mProjectionType = ProjectionType::Perspective;
     
     mutable Matrix4 mViewMatrix;
     mutable Matrix4 mProjectionMatrix;

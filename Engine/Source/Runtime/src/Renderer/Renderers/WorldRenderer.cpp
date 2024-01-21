@@ -83,7 +83,7 @@ void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 					
                     for (const auto& descriptor : element.mesh->GetSubmeshDescriptors())
                     {
-                        cmd->DrawIndexed(meshBuffer.GetIndexBuffer().GetHandle(), IndexType::UINT32, descriptor.indexCount, 1, descriptor.firstIndex, descriptor.baseVertex, 0);
+                        cmd->DrawIndexed(meshBuffer.GetIndexBuffer(), IndexType::UINT32, descriptor.indexCount, 1, descriptor.firstIndex, descriptor.baseVertex, 0);
                     }
                 }
             }

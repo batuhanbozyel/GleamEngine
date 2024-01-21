@@ -58,6 +58,32 @@ void GraphicsDevice::Configure(const RendererConfig& config)
 	As<VulkanSwapchain*>(mSwapchain.get())->Configure(config);
 }
 
+MemoryRequirements GraphicsDevice::QueryMemoryRequirements(const HeapDescriptor& descriptor) const
+{
+	VkBuffer buffer;
+	VkBufferCreateInfo createInfo{ VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
+	createInfo.size = descriptor.size;
+	createInfo.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+
+	if (descriptor.memoryType == MemoryType::GPU)
+	{
+		createInfo.usage |= VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+	}
+
+	createInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	VK_CHECK(vkCreateBuffer(As<VkDevice>(mHandle), &createInfo, nullptr, &buffer));
+
+	// Query memory requirements to get the alignment
+	VkMemoryRequirements memoryRequirements;
+	vkGetBufferMemoryRequirements(As<VkDevice>(mHandle), buffer, &memoryRequirements);
+
+	return MemoryRequirements
+	{
+		.size = memoryRequirements.size,
+		.alignment = memoryRequirements.alignment
+	};
+}
+
 Heap GraphicsDevice::AllocateHeap(const HeapDescriptor& descriptor) const
 {
 	Heap heap(descriptor);

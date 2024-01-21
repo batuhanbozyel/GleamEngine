@@ -33,6 +33,11 @@ public:
         mStackPtr = 0;
     }
 
+	size_t GetAlignment() const
+	{
+		return mAlignment;
+	}
+
     const HeapDescriptor& GetDescriptor() const
     {
         return mDescriptor;

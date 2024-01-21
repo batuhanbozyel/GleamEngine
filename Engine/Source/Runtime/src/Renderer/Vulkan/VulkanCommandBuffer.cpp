@@ -62,6 +62,7 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, 
 	auto renderArea = renderPassDesc.size;
     
     uint32_t attachmentCount = static_cast<uint32_t>(renderPassDesc.colorAttachments.size()) + static_cast<uint32_t>(mHandle->hasDepthAttachment);
+	TArray<VkSubpassDependency> subpassDependencies(1 + static_cast<uint32_t>(mHandle->hasDepthAttachment));
 	TArray<VkAttachmentDescription> attachmentDescriptors(attachmentCount);
 	TArray<VkImageView> imageViews(attachmentCount);
 	TArray<VkClearValue> clearValues(attachmentCount);
@@ -69,7 +70,10 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, 
     // TODO: Check if we can abstract Vulkan subpasses with Metal tiling API
     // Currently there is no subpass support
     TArray<VkSubpassDescription> subpassDescriptors(1);
-    TArray<VkSubpassDependency> subpassDependencies(1);
+	subpassDescriptors[0] = {};
+	subpassDescriptors[0].pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+
+	VkAttachmentReference depthStencilAttachment{};
     if (renderPassDesc.depthAttachment.texture.IsValid())
     {
 		mHandle->depthAttachment = renderPassDesc.depthAttachment.texture.GetDescriptor();
@@ -81,9 +85,14 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, 
         depthAttachmentDesc.format = TextureFormatToVkFormat(mHandle->depthAttachment.format);
         depthAttachmentDesc.samples = GetVkSampleCount(renderPassDesc.samples);
         depthAttachmentDesc.loadOp = AttachmentLoadActionToVkAttachmentLoadOp(renderPassDesc.depthAttachment.loadAction);
-        depthAttachmentDesc.stencilLoadOp = depthAttachmentDesc.loadOp;
         depthAttachmentDesc.storeOp = AttachmentStoreActionToVkAttachmentStoreOp(renderPassDesc.depthAttachment.storeAction);
-        depthAttachmentDesc.stencilStoreOp = depthAttachmentDesc.storeOp;
+
+		if (Utils::IsStencilFormat(mHandle->depthAttachment.format))
+		{
+			depthAttachmentDesc.stencilLoadOp = depthAttachmentDesc.loadOp;
+			depthAttachmentDesc.stencilStoreOp = depthAttachmentDesc.storeOp;
+		}
+        
 		depthAttachmentDesc.initialLayout = VulkanTransitionManager::GetLayout(As<VkImage>(renderPassDesc.depthAttachment.texture.GetHandle()));
 		depthAttachmentDesc.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
         
@@ -91,11 +100,17 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, 
         clearValues[depthAttachmentIndex].depthStencil = { renderPassDesc.depthAttachment.clearDepth, renderPassDesc.depthAttachment.clearStencil };
         imageViews[depthAttachmentIndex] = As<VkImageView>(renderPassDesc.depthAttachment.texture.GetView());
         
-        VkAttachmentReference depthStencilAttachment{};
         depthStencilAttachment.attachment = depthAttachmentIndex;
         depthStencilAttachment.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
         subpassDescriptors[0].pDepthStencilAttachment = &depthStencilAttachment;
 		VulkanTransitionManager::SetLayout(As<VkImage>(renderPassDesc.depthAttachment.texture.GetHandle()), VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+
+		subpassDependencies[1].srcSubpass = VK_SUBPASS_EXTERNAL;
+		subpassDependencies[1].dstSubpass = 0;
+		subpassDependencies[1].srcStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+		subpassDependencies[1].srcAccessMask = 0;
+		subpassDependencies[1].dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+		subpassDependencies[1].dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
     }
     
     TArray<VkAttachmentReference> colorAttachments(renderPassDesc.colorAttachments.size());
@@ -140,20 +155,17 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, 
 		}
 		clearValues[i] = { colorAttachment.clearColor.r, colorAttachment.clearColor.g, colorAttachment.clearColor.b, colorAttachment.clearColor.a };
     }
-
-    subpassDescriptors[0] = {};
-    subpassDescriptors[0].pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
     subpassDescriptors[0].colorAttachmentCount = static_cast<uint32_t>(colorAttachments.size());
     subpassDescriptors[0].pColorAttachments = colorAttachments.data();
     subpassDescriptors[0].pResolveAttachments = resolveAttachments.data();
 
-    subpassDependencies[0] = {};
-    subpassDependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
-    subpassDependencies[0].dstSubpass = 0;
-    subpassDependencies[0].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-    subpassDependencies[0].dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-    subpassDependencies[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-    subpassDependencies[0].dependencyFlags = 0;
+	subpassDependencies[0] = {};
+	subpassDependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
+	subpassDependencies[0].dstSubpass = 0;
+	subpassDependencies[0].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	subpassDependencies[0].dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	subpassDependencies[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+	subpassDependencies[0].dependencyFlags = 0;
     
 	VkRenderPassCreateInfo renderPassCreateInfo{ VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO };
 	renderPassCreateInfo.attachmentCount = static_cast<uint32_t>(attachmentDescriptors.size());

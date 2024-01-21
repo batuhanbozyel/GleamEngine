@@ -21,4 +21,10 @@ struct HeapDescriptor
     }
 };
 
+struct MemoryRequirements
+{
+	size_t size;
+	size_t alignment;
+};
+
 } // namespace Gleam

@@ -20,6 +20,18 @@ void GraphicsDevice::Configure(const RendererConfig& config)
     As<MetalSwapchain*>(mSwapchain.get())->Configure(config);
 }
 
+MemoryRequirements GraphicsDevice::QueryMemoryRequirements(const HeapDescriptor& descriptor) const
+{
+	MTLResourceOptions resourceOptions = MemoryTypeToMTLResourceOption(descriptor.memoryType);
+    MTLSizeAndAlign sizeAndAlign = [mHandle heapBufferSizeAndAlignWithLength:descriptor.size options:resourceOptions];
+
+    return MemoryRequirements
+	{
+		.size = sizeAndAlign.size,
+		.alignment = sizeAndAlign.align
+	};
+}
+
 Heap GraphicsDevice::AllocateHeap(const HeapDescriptor& descriptor) const
 {
     Heap heap(descriptor);

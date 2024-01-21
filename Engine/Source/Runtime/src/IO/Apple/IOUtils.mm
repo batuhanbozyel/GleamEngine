@@ -7,7 +7,7 @@
 
 using namespace Gleam;
 
-TArray<Filesystem::path> IOUtils::OpenFileDialog(const TArray<FileType>& filterTypes)
+TArray<Filesystem::path> IOUtils::OpenFileDialog(const TWString& filterName, const TWString& filterExtensions)
 {
     TArray<Filesystem::path> selectedFiles;
     

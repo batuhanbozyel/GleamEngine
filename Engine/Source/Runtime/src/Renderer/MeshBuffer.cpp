@@ -100,6 +100,11 @@ MeshBuffer::MeshBuffer(const TArray<Vector3>& positions, const TArray<Interleave
     HeapDescriptor heapDesc;
     heapDesc.memoryType = MemoryType::GPU;
     heapDesc.size = positionDesc.size + interleavedDesc.size + indexDesc.size;
+
+	auto memoryRequirements = renderSystem->GetDevice()->QueryMemoryRequirements(heapDesc);
+	heapDesc.size = Utils::AlignUp(positionDesc.size, memoryRequirements.alignment) +
+					Utils::AlignUp(interleavedDesc.size, memoryRequirements.alignment) +
+					Utils::AlignUp(indexDesc.size, memoryRequirements.alignment);
     mHeap = renderSystem->GetDevice()->CreateHeap(heapDesc);
 
     mPositionBuffer = mHeap.CreateBuffer(positionDesc);
@@ -121,18 +126,19 @@ MeshBuffer::MeshBuffer(const TArray<Vector3>& positions, const TArray<Interleave
 
         size_t offset = 0;
         commandBuffer.SetBufferData(stagingBuffer, positions.data(), positionDesc.size, offset);
-        commandBuffer.CopyBuffer(stagingBuffer.GetHandle(), mPositionBuffer.GetHandle(), positionDesc.size, offset, 0);
+        commandBuffer.CopyBuffer(stagingBuffer, mPositionBuffer, positionDesc.size, offset, 0);
 
         offset += positionDesc.size;
         commandBuffer.SetBufferData(stagingBuffer, interleavedVertices.data(), interleavedDesc.size, offset);
-        commandBuffer.CopyBuffer(stagingBuffer.GetHandle(), mInterleavedBuffer.GetHandle(), interleavedDesc.size, offset, 0);
+        commandBuffer.CopyBuffer(stagingBuffer, mInterleavedBuffer, interleavedDesc.size, offset, 0);
 
         offset += interleavedDesc.size;
         commandBuffer.SetBufferData(stagingBuffer, indices.data(), indexDesc.size, offset);
-        commandBuffer.CopyBuffer(stagingBuffer.GetHandle(), mIndexBuffer.GetHandle(), indexDesc.size, offset, 0);
+        commandBuffer.CopyBuffer(stagingBuffer, mIndexBuffer, indexDesc.size, offset, 0);
 
         commandBuffer.End();
         commandBuffer.Commit();
+		commandBuffer.WaitUntilCompleted();
 
         renderSystem->GetDevice()->Dispose(stagingBuffer);
         renderSystem->GetDevice()->Dispose(heap);
