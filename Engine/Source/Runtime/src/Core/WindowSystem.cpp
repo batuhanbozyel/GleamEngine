@@ -58,14 +58,14 @@ DisplayMode WindowSystem::GetCurrentDisplayMode(uint32_t monitor) const
 
 TArray<DisplayMode> WindowSystem::GetAvailableDisplayModes() const
 {
+    TArray<DisplayMode> displayModes;
+    
     int numDisplays = 0;
     auto displays = SDL_GetFullscreenDisplayModes(SDL_GetPrimaryDisplay(), &numDisplays);
     if (displays)
     {
-        TArray<DisplayMode> displayModes;
         displayModes.reserve(numDisplays);
-        
-        int monitor = SDL_GetDisplayForWindow(mWindow);
+        uint32_t monitor = SDL_GetDisplayForWindow(mWindow);
         
         for (int i = 0; i < numDisplays; ++i)
         {
@@ -77,7 +77,7 @@ TArray<DisplayMode> WindowSystem::GetAvailableDisplayModes() const
                 static_cast<uint32_t>(display->h),
                 static_cast<uint32_t>(display->refresh_rate),
                 monitor
-            })
+            };
         }
         SDL_free(displays);
     }
