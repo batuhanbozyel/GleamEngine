@@ -11,38 +11,55 @@ TArray<Filesystem::path> IOUtils::OpenFileDialog(const TWString& filterName, con
 {
     TArray<Filesystem::path> selectedFiles;
     
-    NSOpenPanel* fileDialog = [NSOpenPanel openPanel];
-    [fileDialog setCanChooseFiles:YES];
-    [fileDialog setAllowsMultipleSelection:YES];
-    [fileDialog setCanChooseDirectories:NO];
+    NSOpenPanel* openPanel = [NSOpenPanel openPanel];
+    [openPanel setTitle:@"Open File"];
+    [openPanel setMessage:@"Choose a file"];
+    [openPanel setCanChooseFiles:YES];
+    [openPanel setCanChooseDirectories:NO];
+    [openPanel setAllowsMultipleSelection:YES];
     
-    NSMutableArray<UTType*>* contentTypes = [NSMutableArray<UTType*> array];
-    for (auto filterType : filterTypes)
+    if (!filterName.empty() && !filterExtensions.empty())
     {
-        auto fileExtensions = FileTypeSupportedExtensions(filterType);
-        for (const auto& extension : fileExtensions)
+        NSMutableArray<UTType*>* contentTypes = [NSMutableArray<UTType*> array];
+        
+        TWStringStream extensions(filterExtensions);
+        for (TWString extension; std::getline(extensions, extension, L',');)
         {
-            if (!extension.empty())
+            extension.erase(extension.begin());
+            NSString* objcExtension = [[NSString alloc] initWithBytes:extension.data()
+                                                               length:extension.size() * sizeof(wchar_t)
+                                                             encoding:NSUTF32LittleEndianStringEncoding];
+            if (UTType* type = [UTType typeWithFilenameExtension:objcExtension])
             {
-                [contentTypes addObject:[UTType typeWithFilenameExtension:[NSString stringWithUTF8String:extension.data()]]];
+                [contentTypes addObject:type];
             }
         }
-    }
-    [fileDialog setAllowedContentTypes:contentTypes];
-    
-    if ([fileDialog runModal] == NSModalResponseOK)
-    {
-        NSArray* urls = [fileDialog URLs];
-        selectedFiles.resize([urls count]);
-        for(int i = 0; i < [urls count]; i++ )
+        
+        if ([contentTypes count] > 0)
         {
-            NSURL* url = [urls objectAtIndex:i];
-            selectedFiles[i] = Filesystem::path([url.path UTF8String]);
+            [openPanel setAllowedContentTypes:contentTypes];
         }
     }
-    [fileDialog close];
     
+    if ([openPanel runModal] == NSModalResponseOK)
+    {
+        NSArray* urls = [openPanel URLs];
+        for (NSURL* url in urls)
+        {
+            NSData* pathData = [[url path] dataUsingEncoding:NSUTF32LittleEndianStringEncoding];
+            TWString pathStr((wchar_t*)[pathData bytes], [pathData length] / sizeof(wchar_t));
+            selectedFiles.push_back(Filesystem::path(pathStr));
+        }
+    }
     return selectedFiles;
+}
+
+std::wstring NSStringToStringW ( NSString* Str )
+{
+    NSStringEncoding pEncode    =   CFStringConvertEncodingToNSStringEncoding ( kCFStringEncodingUTF32LE );
+    NSData* pSData              =   [ Str dataUsingEncoding : pEncode ];
+    
+    return std::wstring ( (wchar_t*) [ pSData bytes ], [ pSData length] / sizeof ( wchar_t ) );
 }
 
 #endif
