@@ -25,9 +25,15 @@ Model Model::Import(const Gleam::Filesystem::path& path)
 	}
 
 	Model model;
-	for (uint32_t i = 0; i < data->meshes_count; ++i)
+	for (uint32_t i = 0; i < data->nodes_count; ++i)
 	{
-		cgltf_mesh* mesh = &data->meshes[i];
+        cgltf_node& node = data->nodes[i];
+        if (!node.mesh)
+        {
+            continue;
+        }
+        
+		cgltf_mesh* mesh = node.mesh;
 		for (uint32_t j = 0; j < mesh->primitives_count; ++j)
 		{
 			const auto& primitive = mesh->primitives[j];
@@ -44,9 +50,9 @@ Model Model::Import(const Gleam::Filesystem::path& path)
 			else
 			{
 				meshData.indices.resize(vertex_count);
-				for (uint32_t i = 0; i < vertex_count; ++i)
+				for (uint32_t idx = 0; idx < vertex_count; ++idx)
 				{
-					meshData.indices[i] = i;
+					meshData.indices[idx] = idx;
 				}
 			}
 
@@ -58,6 +64,16 @@ Model Model::Import(const Gleam::Filesystem::path& path)
 				{
 					meshData.positions.resize(vertex_count);
 					cgltf_accessor_unpack_floats(attribute.data, (cgltf_float*)meshData.positions.data(), meshData.positions.size() * 3);
+                    
+                    if (node.has_translation)
+                    {
+                        for (auto& position : meshData.positions)
+                        {
+                            position.x += node.translation[0];
+                            position.y += node.translation[1];
+                            position.z += node.translation[2];
+                        }
+                    }
 				}
 				else if (attribute.type == cgltf_attribute_type_normal)
 				{
