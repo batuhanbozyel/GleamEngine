@@ -47,6 +47,10 @@ void ImGuiRenderer::AddRenderPasses(Gleam::RenderGraph& graph, Gleam::RenderGrap
 	},
     [this](const Gleam::CommandBuffer* cmd, const ImGuiPassData& passData)
     {
+        ImGuiIO& io = ImGui::GetIO();
+        auto drawableSize = GameInstance->GetSubsystem<Gleam::RenderSystem>()->GetDevice()->GetSwapchain()->GetDrawableSize();
+        io.DisplaySize = ImVec2(drawableSize.width, drawableSize.height);
+        
 		ImGuiBackend::BeginFrame();
         ImGui::NewFrame();
         
@@ -75,11 +79,6 @@ void ImGuiRenderer::AddRenderPasses(Gleam::RenderGraph& graph, Gleam::RenderGrap
         }
         
         ImGui::End();
-        
-        ImGuiIO& io = ImGui::GetIO();
-        const auto& resolution = GameInstance->GetSubsystem<Gleam::WindowSystem>()->GetResolution();
-        io.DisplaySize = ImVec2(resolution.width, resolution.height);
-
         ImGui::Render();
 		ImGuiBackend::EndFrame(cmd->GetHandle(), cmd->GetActiveRenderPass());
         
