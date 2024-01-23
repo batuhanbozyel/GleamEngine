@@ -276,7 +276,7 @@ VulkanDevice::VulkanDevice()
 	SDL_Vulkan_GetInstanceExtensions(&extensionCount, extensions.data());
 
 	VkApplicationInfo appInfo{ VK_STRUCTURE_TYPE_APPLICATION_INFO };
-	appInfo.pApplicationName = windowSystem->GetProperties().title.c_str();
+	appInfo.pApplicationName = windowSystem->GetConfiguration().title.c_str();
 	appInfo.applicationVersion = VK_MAKE_VERSION(version.major, version.minor, version.patch);
 	appInfo.pEngineName = "Gleam Engine";
 	appInfo.engineVersion = VK_MAKE_VERSION(GLEAM_ENGINE_MAJOR_VERSION, GLEAM_ENGINE_MINOR_VERSION, GLEAM_ENGINE_PATCH_VERSION);

@@ -30,47 +30,12 @@ struct DisplayMode
 	uint32_t monitor = 0;
 };
 
-struct WindowProperties
+struct WindowConfig
 {
 	TString title = "Gleam Application";
 	WindowFlag windowFlag = WindowFlag::CustomWindow;
-	DisplayMode display;
-};
-
-class WindowConfig
-{
-public:
-
-	static DisplayMode GetCurrentDisplayMode(uint32_t monitor)
-	{
-		auto currDisplay = SDL_GetCurrentDisplayMode(monitor);
-        return DisplayMode
-        {
-			static_cast<SDL_PixelFormatEnum>(currDisplay->format),
-			static_cast<uint32_t>(currDisplay->w),
-            static_cast<uint32_t>(currDisplay->h),
-            static_cast<uint32_t>(currDisplay->refresh_rate),
-			monitor
-        };
-	}
-
-	static TArray<DisplayMode> GetAvailableDisplayModes()
-	{
-        SDL_DisplayID display = SDL_GetPrimaryDisplay();
-        int num_modes = 0;
-        auto modes = SDL_GetFullscreenDisplayModes(display, &num_modes);
-        if (modes)
-        {
-            for (int i = 0; i < num_modes; ++i)
-            {
-                auto mode = modes[i];
-                SDL_Log("Display %" SDL_PRIu32 " mode %d: %dx%d@%gx %gHz\n",
-                        display, i, mode->w, mode->h, mode->pixel_density, mode->refresh_rate);
-            }
-            SDL_free(modes);
-        }
-	}
-
+    Size size = {1280.0f, 720.0f};
+    float refreshRate = 60.0f;
 };
 
 } // namespace Gleam

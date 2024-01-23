@@ -24,7 +24,7 @@ void MetalSwapchain::Initialize(MetalDevice* device)
     GLEAM_ASSERT(mSurface, "Metal: Surface creation failed!");
     
     mHandle = (__bridge CAMetalLayer*)SDL_Metal_GetLayer(mSurface);
-    mHandle.name = [NSString stringWithCString:windowSystem->GetProperties().title.c_str() encoding:NSASCIIStringEncoding];
+    mHandle.name = [NSString stringWithCString:windowSystem->GetConfiguration().title.c_str() encoding:NSASCIIStringEncoding];
     mHandle.device = device->GetHandle();
     mHandle.framebufferOnly = NO;
     mHandle.opaque = YES;

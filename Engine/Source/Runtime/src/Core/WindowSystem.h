@@ -12,16 +12,20 @@ public:
     
     virtual void Shutdown() override;
     
-    void ConfigureWindow(const WindowProperties& props);
+    void Configure(const WindowConfig& config);
+    
+    DisplayMode GetCurrentDisplayMode(uint32_t monitor) const;
+    
+    TArray<DisplayMode> GetAvailableDisplayModes() const;
 
 	Size GetResolution() const
 	{
-		return { static_cast<float>(mProperties.display.width), static_cast<float>(mProperties.display.height) };
+        return mConfig.size;
 	}
 
-	const WindowProperties& GetProperties() const
+	const WindowConfig& GetConfiguration() const
 	{
-		return mProperties;
+		return mConfig;
 	}
 
 	SDL_Window* GetSDLWindow() const
@@ -34,7 +38,7 @@ public:
 private:
 
 	SDL_Window* mWindow;
-	WindowProperties mProperties;
+	WindowConfig mConfig;
 
 };
 

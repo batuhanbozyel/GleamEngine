@@ -71,7 +71,7 @@ Application::Application(const ApplicationProperties& props)
 
         // init windowing subsystem
         auto windowSubsystem = AddSubsystem<WindowSystem>();
-        windowSubsystem->ConfigureWindow(props.windowProps);
+        windowSubsystem->Configure(props.windowConfig);
 		
 		// init renderer backend
         auto renderSubsystem = AddSubsystem<RenderSystem>();
@@ -119,14 +119,14 @@ Application::~Application()
 {
     if (mInstance)
     {
+        World::active.reset();
+        
         // Destroy subsystems
         for (auto system : mSubsystems)
         {
             system->Shutdown();
         }
         mSubsystems.clear();
-        
-        World::active.reset();
         
         mInstance = nullptr;
     }
