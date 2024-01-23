@@ -34,14 +34,14 @@ public:
 
 private:
     
-    struct RenderQueueElement
+    struct RenderProxy
     {
         const Mesh* mesh;
         const MaterialInstance* material;
         Matrix4 transform;
     };
-    HashMap<RefCounted<Material>, TArray<RenderQueueElement>> mOpaqueQueue;
-    HashMap<RefCounted<Material>, TArray<RenderQueueElement>> mTransparentQueue;
+    HashMap<RefCounted<Material>, TArray<RenderProxy>> mOpaqueQueue;
+    HashMap<RefCounted<Material>, TArray<RenderProxy>> mTransparentQueue;
     
     CameraUniforms mCameraData;
     Shader mForwardPassVertexShader;

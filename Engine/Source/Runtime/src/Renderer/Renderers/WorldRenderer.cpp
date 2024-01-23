@@ -94,18 +94,17 @@ void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 
 void WorldRenderer::DrawMesh(const MeshRenderer& meshRenderer, const Transform& transform)
 {
-    for (uint32_t i = 0; i < meshRenderer.GetMesh()->GetSubmeshCount(); i++)
+    GLEAM_ASSERT(meshRenderer.GetMesh()->GetSubmeshCount() > 0);
+    
+    const auto& material = meshRenderer.GetMaterial(0);
+    const auto& baseMaterial = std::static_pointer_cast<Material>(material->GetBaseMaterial());
+    if (baseMaterial->GetRenderQueue() == RenderQueue::Opaque)
     {
-        const auto& material = meshRenderer.GetMaterial(i);
-        const auto& baseMaterial = std::static_pointer_cast<Material>(material->GetBaseMaterial());
-        if (baseMaterial->GetRenderQueue() == RenderQueue::Opaque)
-        {
-            mOpaqueQueue[baseMaterial].push_back({ meshRenderer.GetMesh().get(), meshRenderer.GetMaterial(i).get(), transform.GetTransform() });
-        }
-        else
-        {
-            mTransparentQueue[baseMaterial].push_back({ meshRenderer.GetMesh().get(), meshRenderer.GetMaterial(i).get(), transform.GetTransform() });
-        }
+        mOpaqueQueue[baseMaterial].push_back({ meshRenderer.GetMesh().get(), meshRenderer.GetMaterial(0).get(), transform.GetTransform() });
+    }
+    else
+    {
+        mTransparentQueue[baseMaterial].push_back({ meshRenderer.GetMesh().get(), meshRenderer.GetMaterial(0).get(), transform.GetTransform() });
     }
 }
 

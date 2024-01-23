@@ -18,7 +18,7 @@ static TArray<Vector3> BatchPositionData(const TArray<MeshData>& meshes)
     TArray<Vector3> positionData(count);
     for (const auto& mesh : meshes)
     {
-        for (uint32_t i = 0; i < mesh.normals.size(); i++)
+        for (uint32_t i = 0; i < mesh.positions.size(); i++)
         {
             positionData[i + offset] = mesh.positions[i];
         }
