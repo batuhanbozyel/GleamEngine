@@ -31,16 +31,13 @@ void MetalSwapchain::Initialize(MetalDevice* device)
     
     const auto& resolution = windowSystem->GetResolution();
     mSize = resolution * mHandle.contentsScale;
-    mHandle.frame.size = CGSizeMake(mSize.width, mSize.height);
-    mHandle.drawableSize = CGSizeMake(resolution.width, resolution.height);
+    mHandle.drawableSize = CGSizeMake(mSize.width, mSize.height);
     mFormat = MTLPixelFormatToTextureFormat(mHandle.pixelFormat);
     
     EventDispatcher<WindowResizeEvent>::Subscribe([this](const WindowResizeEvent& e)
     {
         mSize.width = e.GetWidth() * mHandle.contentsScale;
         mSize.height = e.GetHeight() * mHandle.contentsScale;
-        
-        mHandle.frame.size = CGSizeMake(e.GetWidth(), e.GetHeight());
         mHandle.drawableSize = CGSizeMake(mSize.width, mSize.height);
         EventDispatcher<RendererResizeEvent>::Publish(RendererResizeEvent(mSize));
     });
