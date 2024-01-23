@@ -35,10 +35,6 @@ void WindowSystem::Configure(const WindowConfig& config)
                                mConfig.size.width, mConfig.size.height,
                                static_cast<uint32_t>(mConfig.windowFlag));
 	GLEAM_ASSERT(mWindow, "Window creation failed!");
-
-	// update window props with the created window info
-	int monitor = SDL_GetDisplayForWindow(mWindow);
-	GLEAM_ASSERT(monitor >= 0, "Window display index is invalid!");
     
 	EventDispatcher<WindowResizeEvent>::Subscribe([this](const WindowResizeEvent& e)
 	{
