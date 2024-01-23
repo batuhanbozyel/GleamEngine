@@ -58,19 +58,30 @@ DisplayMode WindowSystem::GetCurrentDisplayMode(uint32_t monitor) const
 
 TArray<DisplayMode> WindowSystem::GetAvailableDisplayModes() const
 {
-    SDL_DisplayID display = SDL_GetPrimaryDisplay();
-    int num_modes = 0;
-    auto modes = SDL_GetFullscreenDisplayModes(display, &num_modes);
-    if (modes)
+    int numDisplays = 0;
+    auto displays = SDL_GetFullscreenDisplayModes(SDL_GetPrimaryDisplay(), &numDisplays);
+    if (displays)
     {
-        for (int i = 0; i < num_modes; ++i)
+        TArray<DisplayMode> displayModes;
+        displayModes.reserve(numDisplays);
+        
+        int monitor = SDL_GetDisplayForWindow(mWindow);
+        
+        for (int i = 0; i < numDisplays; ++i)
         {
-            auto mode = modes[i];
-            SDL_Log("Display %" SDL_PRIu32 " mode %d: %dx%d@%gx %gHz\n",
-                    display, i, mode->w, mode->h, mode->pixel_density, mode->refresh_rate);
+            auto display = displays[i];
+            displayModes[i] = DisplayMode
+            {
+                static_cast<SDL_PixelFormatEnum>(display->format),
+                static_cast<uint32_t>(display->w),
+                static_cast<uint32_t>(display->h),
+                static_cast<uint32_t>(display->refresh_rate),
+                monitor
+            })
         }
-        SDL_free(modes);
+        SDL_free(displays);
     }
+    return displayModes;
 }
 
 void WindowSystem::EventHandler(SDL_WindowEvent windowEvent)
