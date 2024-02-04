@@ -271,9 +271,13 @@ VulkanDevice::VulkanDevice()
 
 	// Get window subsystem extensions
 	uint32_t extensionCount;
-	SDL_Vulkan_GetInstanceExtensions(&extensionCount, nullptr);
+	auto SDLextensions = SDL_Vulkan_GetInstanceExtensions(&extensionCount);
+
 	TArray<const char*> extensions(extensionCount);
-	SDL_Vulkan_GetInstanceExtensions(&extensionCount, extensions.data());
+	for (uint32_t i = 0; i < extensionCount; ++i)
+	{
+		extensions[i] = SDLextensions[i];
+	}
 
 	VkApplicationInfo appInfo{ VK_STRUCTURE_TYPE_APPLICATION_INFO };
 	appInfo.pApplicationName = windowSystem->GetConfiguration().title.c_str();

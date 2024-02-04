@@ -20,7 +20,7 @@ void VulkanSwapchain::Initialize(VulkanDevice* device)
 	auto windowSystem = GameInstance->GetSubsystem<WindowSystem>();
 
     // Create surface
-	bool surfaceCreateResult = SDL_Vulkan_CreateSurface(windowSystem->GetSDLWindow(), device->GetInstance(), &mSurface);
+	bool surfaceCreateResult = SDL_Vulkan_CreateSurface(windowSystem->GetSDLWindow(), device->GetInstance(), nullptr, &mSurface);
 	GLEAM_ASSERT(surfaceCreateResult, "Vulkan: Surface creation failed!");
 }
 

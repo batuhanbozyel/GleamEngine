@@ -98,15 +98,7 @@ void ImGuiBackend::Init(Gleam::GraphicsDevice* device)
 	ImGui_ImplVulkan_LoadFunctions([](const char* function_name, void*) { return vkGetInstanceProcAddr(Gleam::As<Gleam::VulkanDevice*>(mDevice)->GetInstance(), function_name); });
 	ImGui_ImplSDL3_InitForVulkan(GameInstance->GetSubsystem<Gleam::WindowSystem>()->GetSDLWindow());
     ImGui_ImplVulkan_Init(&init_info, gRenderPass);
-
-	Gleam::CommandBuffer cmd(mDevice);
-	cmd.Begin();
-	ImGui_ImplVulkan_CreateFontsTexture(Gleam::As<VkCommandBuffer>(cmd.GetHandle()));
-	cmd.End();
-	cmd.Commit();
-	cmd.WaitUntilCompleted();
-
-	ImGui_ImplVulkan_DestroyFontUploadObjects();
+	ImGui_ImplVulkan_CreateFontsTexture();
 }
 
 void ImGuiBackend::Destroy()
