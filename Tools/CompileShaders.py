@@ -25,8 +25,6 @@ def compile_shader(hlsl_file: str, entry_point: str, shader_stage: str, output_d
         # Generate SPIR-V
         spirv_file = f"{output_dir}/{entry_point}.spv"
         spriv_gen_command = [DXC, "-spirv", "-fvk-use-scalar-layout"]
-        if shader_stage == "vertex":
-            spriv_gen_command.append("-fvk-invert-y")
         spriv_gen_command.extend(["-fvk-t-shift", "1000", "0", "-fvk-u-shift", "2000", "0", "-T", HLSL_SHADER_STAGE[shader_stage], "-E", entry_point, hlsl_file, "-Fo", spirv_file])
         cmd(spriv_gen_command)
 
