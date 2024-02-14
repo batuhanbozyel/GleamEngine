@@ -1,6 +1,8 @@
 include (${CMAKE_SOURCE_DIR}/CMake/CMakeUtils.cmake)
 
-find_package(Vulkan REQUIRED)
+if (WIN32)
+    find_package(Vulkan REQUIRED)
+endif()
 
 set(INCLUDE_DIRS
     src
