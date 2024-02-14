@@ -1,35 +1,6 @@
-# Prerequisites
-*.d
-
-# Compiled Object files
-*.slo
-*.lo
-*.o
-*.obj
-
 # Precompiled Headers
 *.gch
 *.pch
-
-# Compiled Dynamic libraries
-*.so
-*.dylib
-*.dll
-
-# Fortran module files
-*.mod
-*.smod
-
-# Compiled Static libraries
-*.lai
-*.la
-*.a
-*.lib
-
-# Executables
-*.exe
-*.out
-*.app
 
 # Visual Studio files and folder
 .vs/
@@ -45,8 +16,7 @@
 **.DS_STORE
 
 # Binaries
-**/bin/
-bin-int/
+/bin/
 
 # CMake
 /build
@@ -54,7 +24,3 @@ bin-int/
 # Engine generated files
 *.log
 *.err
-
-# Exclude files and folders
-!Tools/premake/bin/
-!Tools/premake/bin/premake5.exe

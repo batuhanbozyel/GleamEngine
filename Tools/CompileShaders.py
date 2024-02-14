@@ -4,12 +4,16 @@ import platform
 import subprocess
 cmd = subprocess.run
 
-VULKAN_SDK = os.getenv("VULKAN_SDK")
-if VULKAN_SDK is None:
+if platform.system() == "Darwin":
     global DXC
-    DXC = "dxc"
+    SCRIPT_DIRECTORY = os.path.dirname(os.path.realpath(__file__))
+    DXC = f"{SCRIPT_DIRECTORY}/bin/dxc"
 else:
-    DXC = f"{VULKAN_SDK}/bin/dxc"
+    VULKAN_SDK = os.getenv("VULKAN_SDK")
+    if VULKAN_SDK is None:
+        DXC = "dxc"
+    else:
+        DXC = f"{VULKAN_SDK}/bin/dxc"
 
 HLSL_SHADER_STAGE = {}
 HLSL_SHADER_STAGE["vertex"] = "vs_6_0"

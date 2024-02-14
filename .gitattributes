@@ -1,0 +1,2 @@
+*.dylib filter=lfs diff=lfs merge=lfs -text
+Tools/bin/dxc filter=lfs diff=lfs merge=lfs -text
