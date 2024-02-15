@@ -15,6 +15,8 @@ class MaterialSystem final : public Subsystem
 {
 public:
 
+	RefCounted<Material> GetDefaultMaterial();
+
 	RefCounted<Material> CreateMaterial(const MaterialDescriptor& descriptor);
 
 private:

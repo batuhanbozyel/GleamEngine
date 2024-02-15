@@ -33,7 +33,7 @@ public:
             Time::FixedStep();
             for (auto system : mSystems)
             {
-                if (system->enabled)
+                if (system->Enabled)
                 {
                     system->OnFixedUpdate(mEntityManager);
                 }
@@ -42,7 +42,7 @@ public:
         
         for (auto system : mSystems)
         {
-            if (system->enabled)
+            if (system->Enabled)
             {
                 system->OnUpdate(mEntityManager);
             }

@@ -23,7 +23,7 @@ protected:
 
 	virtual void OnDestroy(EntityManager& entityManager) {};
     
-    bool enabled = true;
+    bool Enabled = true;
 
 };
 
