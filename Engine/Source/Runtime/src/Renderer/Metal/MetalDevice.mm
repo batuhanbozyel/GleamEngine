@@ -98,24 +98,33 @@ Shader GraphicsDevice::GenerateShader(const TString& entryPoint, ShaderStage sta
     Shader shader(entryPoint, stage);
     
     TArray<uint8_t> shaderCode = IOUtils::ReadBinaryFile(GameInstance->GetDefaultAssetPath().append(entryPoint + ".dxil"));
+    auto dxil = IRObjectCreateFromDXIL(shaderCode.data(), shaderCode.size(), IRBytecodeOwnershipNone);
     
     auto compiler = IRCompilerCreate();
     IRCompilerSetEntryPointName(compiler, entryPoint.data());
     
-    if (stage == ShaderStage::Vertex)
+    IRError* compileError = nullptr;
+    auto metalIR = IRCompilerAllocCompileAndLink(compiler, entryPoint.c_str(), dxil, &compileError);
+    if (compileError)
     {
-        IRCompilerSetStageInGenerationMode(compiler, IRStageInCodeGenerationModeUseSeparateStageInFunction);
+        auto errorCode = IRErrorGetCode(compileError);
+        GLEAM_ERROR("Metal IR generation failed with code: {0}", errorCode);
+        IRErrorDestroy(compileError);
+        compileError = nullptr;
     }
-    
-    auto dxil = IRObjectCreateFromDXIL(shaderCode.data(), shaderCode.size(), IRBytecodeOwnershipNone);
-    auto metalIR = IRCompilerAllocCompileAndLink(compiler, nullptr, 0, dxil, nullptr);
     
     IRMetalLibBinary* metallibBinary = IRMetalLibBinaryCreate();
     IRObjectGetMetalLibBinary(metalIR, IRObjectGetMetalIRShaderStage(metalIR), metallibBinary);
     dispatch_data_t data = IRMetalLibGetBytecodeData(metallibBinary);
     
-    NSError* __autoreleasing error = nil;
-    id<MTLLibrary> library = [mHandle newLibraryWithData:data error:&error];
+    NSError* __autoreleasing libraryError = nil;
+    id<MTLLibrary> library = [mHandle newLibraryWithData:data error:&libraryError];
+    if (libraryError)
+    {
+        auto errorStr = TO_CPP_STRING([libraryError localizedDescription]);
+        GLEAM_ERROR("Metal library load failed: {0}", errorStr);
+        libraryError = nil;
+    }
     
     NSString* functionName = [NSString stringWithCString:entryPoint.c_str() encoding:NSASCIIStringEncoding];
     shader.mHandle = [library newFunctionWithName:functionName];
