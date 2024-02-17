@@ -19,18 +19,22 @@ HLSL_SHADER_STAGE = {}
 HLSL_SHADER_STAGE["vertex"] = "vs_6_0"
 HLSL_SHADER_STAGE["fragment"] = "ps_6_0"
 HLSL_SHADER_STAGE["compute"] = "cs_6_0"
+RUNTIME_INCLUDE_DIRECTORY = f"{SCRIPT_DIRECTORY}/../Engine/Source/Runtime/src/Renderer/Shaders"
 
 def compile_shader(hlsl_file: str, entry_point: str, shader_stage: str, output_dir: str):
+    output_file = ""
+    extra_commands = []
     if platform.system() == "Darwin":
         # Generate DXIL
-        dxil_file = f"{output_dir}/{entry_point}.dxil"
-        cmd([DXC, "-T", HLSL_SHADER_STAGE[shader_stage], "-E", entry_point, hlsl_file, "-Fo", dxil_file])
+        output_file = f"{output_dir}/{entry_point}.dxil"
     else:
         # Generate SPIR-V
-        spirv_file = f"{output_dir}/{entry_point}.spv"
-        spriv_gen_command = [DXC, "-spirv", "-fvk-use-scalar-layout"]
-        spriv_gen_command.extend(["-fvk-t-shift", "1000", "0", "-fvk-u-shift", "2000", "0", "-T", HLSL_SHADER_STAGE[shader_stage], "-E", entry_point, hlsl_file, "-Fo", spirv_file])
-        cmd(spriv_gen_command)
+        output_file = f"{output_dir}/{entry_point}.spv"
+        extra_commands = ["-spirv", "-fvk-use-scalar-layout", "-fvk-t-shift", "1000", "0", "-fvk-u-shift", "2000", "0"]
+    
+    compile_command = [DXC, "-T", HLSL_SHADER_STAGE[shader_stage], "-I", RUNTIME_INCLUDE_DIRECTORY, "-E", entry_point, hlsl_file, "-Fo", output_file]
+    compile_command.extend(extra_commands)
+    cmd(compile_command)
 
 if __name__ == "__main__":
     if len(sys.argv) < 5 or (len(sys.argv) - 2) % 3 != 0:
@@ -38,6 +42,9 @@ if __name__ == "__main__":
         sys.exit(1)
 
     output_dir = sys.argv[1]
+    if (os.path.exists(output_dir) == False):
+        os.mkdir(output_dir)
+
     for i in range(2, len(sys.argv), 3):
         hlsl_file = sys.argv[i]
         entry_point = sys.argv[i + 1]

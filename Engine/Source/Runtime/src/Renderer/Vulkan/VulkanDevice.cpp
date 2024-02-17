@@ -210,7 +210,7 @@ Shader GraphicsDevice::GenerateShader(const TString& entryPoint, ShaderStage sta
 {
 	Shader shader(entryPoint, stage);
 
-	TArray<uint8_t> shaderCode = IOUtils::ReadBinaryFile(GameInstance->GetDefaultAssetPath().append(entryPoint + ".spv"));
+	TArray<uint8_t> shaderCode = IOUtils::ReadBinaryFile(GameInstance->GetDefaultAssetPath().append("Shaders/" + entryPoint + ".spv"));
 	VkShaderModuleCreateInfo createInfo{ VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO };
 	createInfo.codeSize = shaderCode.size();
 	createInfo.pCode = As<uint32_t*>(shaderCode.data());

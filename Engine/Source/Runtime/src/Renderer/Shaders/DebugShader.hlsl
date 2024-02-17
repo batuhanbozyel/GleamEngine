@@ -1,4 +1,4 @@
-#include "Common.hlsl"
+#include "Common.hlsli"
 #include "../ShaderTypes.h"
 
 StructuredBuffer<Gleam::Vector3> PositionBuffer : register(t0);

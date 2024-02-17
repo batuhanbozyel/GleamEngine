@@ -10,13 +10,13 @@ find_package(Python COMPONENTS Interpreter REQUIRED)
 add_subdirectory(${CMAKE_SOURCE_DIR}/Engine/ThirdParty ${CMAKE_BINARY_DIR}/ThirdParty)
 
 # Runtime shader files
-file(GLOB_RECURSE SHADER_FILES ${CMAKE_CURRENT_SOURCE_DIR}/src/*.hlsl)
+file(GLOB_RECURSE SHADER_FILES ${CMAKE_CURRENT_SOURCE_DIR}/src/*.hlsl*)
 
 # Runtime source files
 file(GLOB_RECURSE SOURCE_FILES
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/*.mm
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/*.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/*.c*
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/*.m*
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/*.h*
 )
 
 # Setup link libraries
@@ -104,5 +104,5 @@ set(SHADER_FUNCTIONS
 add_custom_command(
     TARGET Runtime
     PRE_BUILD
-    COMMAND Python::Interpreter ${CMAKE_SOURCE_DIR}/Tools/CompileShaders.py ${CMAKE_SOURCE_DIR}/Assets ${SHADER_FUNCTIONS}
+    COMMAND Python::Interpreter ${CMAKE_SOURCE_DIR}/Tools/CompileShaders.py ${CMAKE_SOURCE_DIR}/Assets/Shaders ${SHADER_FUNCTIONS}
 )
