@@ -60,10 +60,10 @@ void RenderSystem::Render()
         RenderGraph graph(mDevice.get());
         RenderGraphBlackboard blackboard;
 
-        RenderingData renderingData;
-        renderingData.backbuffer = graph.ImportBackbuffer(mRenderTarget);
-        renderingData.config = mConfiguration;
-        blackboard.Add(renderingData);
+        SceneRenderingData sceneData;
+        sceneData.backbuffer = graph.ImportBackbuffer(mRenderTarget);
+        sceneData.config = mConfiguration;
+        blackboard.Add(sceneData);
 
         for (auto renderer : mRenderers)
         {

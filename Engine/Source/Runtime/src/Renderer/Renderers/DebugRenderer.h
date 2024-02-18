@@ -46,8 +46,6 @@ public:
     void DrawBoundingBox(const BoundingBox& boundingBox, const Matrix4& transform, Color32 color, bool depthTest = true);
 
 	void DrawMesh(const Mesh* mesh, const Matrix4& transform, Color32 color, bool depthTest = true);
-    
-    void UpdateCamera(const Camera& camera);
 
 private:
 
@@ -57,8 +55,6 @@ private:
 	uint32_t mTriangleBufferOffset = 0;
 	uint32_t mDepthLineBufferOffset = 0;
 	uint32_t mDepthTriangleBufferOffset = 0;
-    
-    CameraUniforms mCameraData;
 
     TArray<DebugLine> mLines;
     TArray<DebugLine> mDepthLines;

@@ -7,10 +7,10 @@
 
 #pragma once
 #include "Shader.h"
-#include "ShaderTypes.h"
 #include "RendererConfig.h"
 #include "RenderPassDescriptor.h"
 #include "PipelineStateDescriptor.h"
+#include "Shaders/ShaderTypes.h"
 #include "RenderGraph/RenderGraph.h"
 #include "RenderGraph/RenderGraphBlackboard.h"
 
@@ -19,7 +19,7 @@ namespace Gleam {
 class RenderSystem;
 class GraphicsDevice;
 
-struct RenderingData
+struct SceneRenderingData
 {
     TextureHandle backbuffer;
     RendererConfig config;

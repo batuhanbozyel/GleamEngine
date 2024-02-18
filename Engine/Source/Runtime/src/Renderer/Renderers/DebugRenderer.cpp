@@ -56,7 +56,6 @@ void DebugRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 	struct UpdatePassData
 	{
 		BufferHandle vertexBuffer;
-        BufferHandle cameraBuffer;
 	};
     
 	const auto& updatePass = graph.AddRenderPass<UpdatePassData>("DebugRenderer::UpdatePass", [&](RenderGraphBuilder& builder, UpdatePassData& passData)
@@ -66,16 +65,10 @@ void DebugRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 		descriptor.size = mDebugVertices.size() * sizeof(DebugVertex);
 		passData.vertexBuffer = builder.CreateBuffer(descriptor);
 		passData.vertexBuffer = builder.WriteBuffer(passData.vertexBuffer);
-        
-        descriptor.usage = BufferUsage::UniformBuffer;
-        descriptor.size = sizeof(CameraUniforms);
-        passData.cameraBuffer = builder.CreateBuffer(descriptor);
-        passData.cameraBuffer = builder.WriteBuffer(passData.cameraBuffer);
 	},
 	[this](const CommandBuffer* cmd, const UpdatePassData& passData)
 	{
         cmd->SetBufferData(passData.vertexBuffer, mDebugVertices.data(), mDebugVertices.size() * sizeof(DebugVertex));
-        cmd->SetBufferData(passData.cameraBuffer, &mCameraData, sizeof(CameraUniforms));
 	});
 
 	struct DrawPassData
@@ -88,14 +81,14 @@ void DebugRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 
 	graph.AddRenderPass<DrawPassData>("DebugRenderer::DrawPass", [&](RenderGraphBuilder& builder, DrawPassData& passData)
 	{
-        auto& renderingData = blackboard.Get<WorldRenderingData>();
-        passData.colorTarget = builder.UseColorBuffer(renderingData.colorTarget);
-        passData.depthTarget = builder.UseDepthBuffer(renderingData.depthTarget);
+        auto& worldData = blackboard.Get<WorldRenderingData>();
+        passData.colorTarget = builder.UseColorBuffer(worldData.colorTarget);
+        passData.depthTarget = builder.UseDepthBuffer(worldData.depthTarget);
+        passData.cameraBuffer = builder.ReadBuffer(worldData.cameraBuffer);
         passData.vertexBuffer = builder.ReadBuffer(updatePass.vertexBuffer);
-        passData.cameraBuffer = builder.ReadBuffer(updatePass.cameraBuffer);
         
-        renderingData.colorTarget = passData.colorTarget;
-        renderingData.depthTarget = passData.depthTarget;
+        worldData.colorTarget = passData.colorTarget;
+        worldData.depthTarget = passData.depthTarget;
 	},
 	[this](const CommandBuffer* cmd, const DrawPassData& passData)
 	{
@@ -292,11 +285,4 @@ void DebugRenderer::DrawMesh(const Mesh* mesh, const Matrix4& transform, Color32
         mDepthDebugMeshes.push_back(debugMesh);
     else
         mDebugMeshes.push_back(debugMesh);
-}
-
-void DebugRenderer::UpdateCamera(const Camera& camera)
-{
-    mCameraData.viewMatrix = camera.GetViewMatrix();
-    mCameraData.projectionMatrix = camera.GetProjectionMatrix();
-    mCameraData.viewProjectionMatrix = mCameraData.projectionMatrix * mCameraData.viewMatrix;
 }

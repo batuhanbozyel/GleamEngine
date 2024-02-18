@@ -24,12 +24,7 @@ void WorldRenderer::OnCreate(GraphicsDevice* device)
 
 void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard)
 {
-    struct UpdatePassData
-    {
-        BufferHandle cameraBuffer;
-    };
-    
-    const auto& updatePass = graph.AddRenderPass<UpdatePassData>("WorldRenderer::UpdatePass", [&](RenderGraphBuilder& builder, UpdatePassData& passData)
+    const auto& updatePass = graph.AddRenderPass<WorldRenderingData>("WorldRenderer::UpdatePass", [&](RenderGraphBuilder& builder, WorldRenderingData& passData)
     {
         BufferDescriptor descriptor;
         descriptor.usage = BufferUsage::UniformBuffer;
@@ -37,19 +32,19 @@ void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
         passData.cameraBuffer = builder.CreateBuffer(descriptor);
         passData.cameraBuffer = builder.WriteBuffer(passData.cameraBuffer);
     },
-    [this](const CommandBuffer* cmd, const UpdatePassData& passData)
+    [this](const CommandBuffer* cmd, const WorldRenderingData& passData)
     {
         cmd->SetBufferData(passData.cameraBuffer, &mCameraData, sizeof(CameraUniforms));
     });
     
     graph.AddRenderPass<WorldRenderingData>("WorldRenderer::ForwardPass", [&](RenderGraphBuilder& builder, WorldRenderingData& passData)
     {
-        const auto& renderingData = blackboard.Get<RenderingData>();
-        const auto& backbufferDescriptor = graph.GetDescriptor(renderingData.backbuffer);
+        const auto& sceneData = blackboard.Get<SceneRenderingData>();
+        const auto& backbufferDescriptor = graph.GetDescriptor(sceneData.backbuffer);
         
         RenderTextureDescriptor textureDesc;
         textureDesc.size = backbufferDescriptor.size;
-        textureDesc.sampleCount = renderingData.config.sampleCount;
+        textureDesc.sampleCount = sceneData.config.sampleCount;
         textureDesc.format = TextureFormat::R16G16B16A16_SFloat;
         textureDesc.clearBuffer = true;
         passData.colorTarget = builder.CreateTexture(textureDesc);
