@@ -4,6 +4,8 @@ if (WIN32)
     find_package(Vulkan REQUIRED)
 endif()
 
+find_package(Python COMPONENTS Interpreter REQUIRED)
+
 set(INCLUDE_DIRS
     src
     ${CMAKE_SOURCE_DIR}/Engine/Source/Runtime/src
@@ -19,10 +21,17 @@ set(INCLUDE_DIRS
 )
 
 file(GLOB_RECURSE SOURCE_FILES 
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/*.mm
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/*.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/*.c*
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/*.m*
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/*.h*
 )
+
+# Editor shader files
+file(GLOB_RECURSE SHADER_FILES ${CMAKE_CURRENT_SOURCE_DIR}/src/*.hlsl*)
+if (WIN32)
+    set_source_files_properties(${SHADER_FILES} PROPERTIES VS_TOOL_OVERRIDE "None")
+endif()
+list(APPEND SOURCE_FILES ${SHADER_FILES})
 
 add_executable(Editor WIN32 MACOSX_BUNDLE ${SOURCE_FILES})
 target_include_directories(Editor PRIVATE
@@ -70,4 +79,17 @@ target_compile_definitions(
     PRIVATE
     "_CRT_SECURE_NO_WARNINGS"
     "NOMINMAX"
+)
+
+# Precompile shaders
+set(HLSL_FILE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/src/Renderers/Shaders)
+set(SHADER_FUNCTIONS
+    ${HLSL_FILE_PATH}/InfiniteGridShader.hlsl infiniteGridVertexShader vertex
+    ${HLSL_FILE_PATH}/InfiniteGridShader.hlsl infiniteGridFragmentShader fragment
+)
+
+add_custom_command(
+    TARGET Editor
+    PRE_BUILD
+    COMMAND Python::Interpreter ${CMAKE_SOURCE_DIR}/Tools/CompileShaders.py ${CMAKE_SOURCE_DIR}/Assets/Shaders ${SHADER_FUNCTIONS}
 )

@@ -36,6 +36,11 @@ def compile_shader(hlsl_file: str, entry_point: str, shader_stage: str, output_d
     compile_command.extend(extra_commands)
     cmd(compile_command)
 
+    try:
+        cmd(compile_command, stderr=subprocess.PIPE, check=True)
+    except subprocess.CalledProcessError:
+        raise RuntimeError(f"Compilation stopped due to error in shader: {entry_point}")
+
 if __name__ == "__main__":
     if len(sys.argv) < 5 or (len(sys.argv) - 2) % 3 != 0:
         print("Usage: python compile_shaders.py <hlsl_file> <entry_point> <shader_stage> [...]")

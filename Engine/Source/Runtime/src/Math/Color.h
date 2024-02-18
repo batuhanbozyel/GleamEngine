@@ -140,9 +140,17 @@ struct Color32
 	{
 
 	}
+    constexpr Color32(uint32_t color)
+        : r((color >> 24) & 0xFF), g((color >> 16) & 0xFF), b((color >> 8) & 0xFF), a(color & 0xFF)
+    {
+        
+    }
 
 	NO_DISCARD FORCE_INLINE constexpr operator Color() const;
 	FORCE_INLINE constexpr Color32& operator=(const Color&);
+    
+    NO_DISCARD FORCE_INLINE constexpr operator uint32_t() const;
+    FORCE_INLINE constexpr Color32& operator=(uint32_t);
     
     NO_DISCARD FORCE_INLINE constexpr bool operator==(const Color32& other) const
     {
@@ -186,6 +194,16 @@ FORCE_INLINE constexpr Color& Color::operator=(const Color32& color)
 FORCE_INLINE constexpr Color32& Color32::operator=(const Color& color)
 {
 	return *this = static_cast<Color32>(color);
+}
+
+NO_DISCARD FORCE_INLINE constexpr Color32::operator uint32_t() const
+{
+    return (static_cast<uint32_t>(r) << 24) | (static_cast<uint32_t>(g) << 16) | (static_cast<uint32_t>(b) << 8) | static_cast<uint32_t>(a);
+}
+
+FORCE_INLINE constexpr Color32& Color32::operator=(uint32_t color)
+{
+    return *this = static_cast<Color32>(color);
 }
 
 NO_DISCARD FORCE_INLINE constexpr Color32 Mix(Color32 c0, Color32 c1, float a)

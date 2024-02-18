@@ -9,12 +9,13 @@
 #include "WorldViewportController.h"
 
 #include "ImGui/ImGuiBackend.h"
+#include "Renderers/InfiniteGridRenderer.h"
 
 using namespace GEditor;
 
 WorldViewport::WorldViewport()
 {
-    GameInstance->GetSubsystem<Gleam::RenderSystem>()->AddRenderer<Gleam::DebugRenderer>();
+    GameInstance->GetSubsystem<Gleam::RenderSystem>()->AddRenderer<InfiniteGridRenderer>();
     mViewportSize = GameInstance->GetSubsystem<Gleam::WindowSystem>()->GetResolution();
     
     mEditWorld = Gleam::World::active;
