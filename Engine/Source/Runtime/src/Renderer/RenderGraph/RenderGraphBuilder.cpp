@@ -29,12 +29,14 @@ NO_DISCARD TextureHandle RenderGraphBuilder::UseDepthBuffer(const TextureHandle&
 NO_DISCARD BufferHandle RenderGraphBuilder::CreateBuffer(const BufferDescriptor& descriptor)
 {
 	auto handle = mResourceRegistry.CreateBuffer(descriptor);
+    handle.node->creator = &mPassNode;
     return mPassNode.bufferCreates.emplace_back(handle);
 }
 
 NO_DISCARD TextureHandle RenderGraphBuilder::CreateTexture(const RenderTextureDescriptor& descriptor)
 {
     auto handle = mResourceRegistry.CreateTexture(descriptor);
+    handle.node->creator = &mPassNode;
     return mPassNode.textureCreates.emplace_back(handle);
 }
 

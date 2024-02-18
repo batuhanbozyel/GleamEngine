@@ -50,6 +50,15 @@ void RenderGraph::Compile()
                 pass->refCount += static_cast<uint32_t>(success);
             }
         }
+        
+        for (auto& resource : pass->bufferWrites)
+        {
+            if (resource.node->creator && resource.node->creator != pass)
+            {
+                auto [_, success] = resource.node->creator->dependents.insert(pass);
+                pass->refCount += static_cast<uint32_t>(success);
+            }
+        }
 
 		// Texture
 		for (auto& resource : pass->textureReads)
@@ -60,6 +69,15 @@ void RenderGraph::Compile()
 				pass->refCount += static_cast<uint32_t>(success);
 			}
 		}
+        
+        for (auto& resource : pass->textureWrites)
+        {
+            if (resource.node->creator && resource.node->creator != pass)
+            {
+                auto [_, success] = resource.node->creator->dependents.insert(pass);
+                pass->refCount += static_cast<uint32_t>(success);
+            }
+        }
     }
     
     // Perform topological sort
@@ -67,7 +85,10 @@ void RenderGraph::Compile()
     TArray<RenderPassNode*> sortedPasses;
     for (auto pass : mPassNodes)
     {
-        if (pass->refCount == 0) { passQueue.push(pass); }
+        if (pass->refCount == 0)
+        {
+            passQueue.push(pass);
+        }
     }
     
     while (!passQueue.empty())
@@ -78,7 +99,10 @@ void RenderGraph::Compile()
         sortedPasses.push_back(pass);
         for (auto dependent : pass->dependents)
         {
-            if (--dependent->refCount == 0) { passQueue.push(dependent); }
+            if (--dependent->refCount == 0)
+            {
+                passQueue.push(dependent);
+            }
         }
     }
     mPassNodes = sortedPasses;
@@ -91,10 +115,6 @@ void RenderGraph::Compile()
         {
             auto node = static_cast<RenderGraphBufferNode*>(resource.node);
             mHeapSize += node->buffer.GetDescriptor().size;
-            
-            resource.node->creator = pass;
-            resource.node->lastModifier = pass;
-            resource.node->lastReference = pass;
         }
         for (auto& resource : pass->bufferWrites)
         {
@@ -107,12 +127,6 @@ void RenderGraph::Compile()
         }
 
 		// Texture
-		for (auto& resource : pass->textureCreates)
-		{
-			resource.node->creator = pass;
-			resource.node->lastModifier = pass;
-			resource.node->lastReference = pass;
-		}
 		for (auto& resource : pass->textureWrites)
 		{
 			resource.node->lastModifier = pass;
