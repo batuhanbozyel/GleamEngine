@@ -1,7 +1,7 @@
 #include "Common.hlsli"
-#include "../ShaderTypes.h"
+#include "ShaderTypes.h"
 
-StructuredBuffer<Gleam::Vector3> PositionBuffer : register(t0);
+StructuredBuffer<float3> PositionBuffer : register(t0);
 
 StructuredBuffer<Gleam::InterleavedMeshVertex> InterleavedBuffer : register(t1);
 

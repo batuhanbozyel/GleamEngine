@@ -65,8 +65,10 @@
 #include "World/Components/MeshRenderer.h"
 
 #include "Renderer/GraphicsObject.h"
-#include "Renderer/ShaderTypes.h"
 #include "Renderer/Renderer.h"
+
+#include "Renderer/Shaders/ShaderInterop.h"
+#include "Renderer/Shaders/ShaderTypes.h"
 
 #include "Renderer/RenderGraph/RenderGraphResource.h"
 
