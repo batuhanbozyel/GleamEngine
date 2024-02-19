@@ -1,4 +1,5 @@
 #pragma once
+#include "ShaderInterop.h"
 
 #ifdef __spirv__
 #define PUSH_CONSTANT(type, name) [[vk::push_constant]] type name
@@ -36,4 +37,25 @@ float4 unpack_unorm4x8_to_float(uint packedVal)
         float((packedVal >> 16) & 0x000000ff) / 255.0f,
         float(packedVal >> 24) / 255.0f
     );
+}
+
+float3 ClipSpaceToViewSpace(float3 position, float4x4 invProjectionMatrix)
+{
+    float4 viewPosition = mul(invProjectionMatrix, float4(position, 1.0));
+    return viewPosition.xyz /= viewPosition.w;
+}
+
+float3 ViewSpaceToWorldSpace(float3 position, float4x4 invViewMatrix)
+{
+    float4 worldPosition = mul(invViewMatrix, float4(position, 1.0));
+    return worldPosition.xyz;
+}
+
+float3 ClipSpaceToWorldSpace(float3 position, float4x4 invViewMatrix, float4x4 invProjectionMatrix)
+{
+    float4 viewPosition = mul(invProjectionMatrix, float4(position, 1.0));
+    viewPosition /= viewPosition.w;
+    
+    float4 worldPosition = mul(invViewMatrix, viewPosition);
+    return worldPosition.xyz;
 }

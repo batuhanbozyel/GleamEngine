@@ -32,14 +32,15 @@ void WindowSystem::Configure(const WindowConfig& config)
 
 	// create window
 	mWindow = SDL_CreateWindow(mConfig.title.c_str(),
-                               mConfig.size.width, mConfig.size.height,
+                               static_cast<int>(mConfig.size.width),
+							   static_cast<int>(mConfig.size.height),
                                static_cast<uint32_t>(mConfig.windowFlag));
 	GLEAM_ASSERT(mWindow, "Window creation failed!");
     
 	EventDispatcher<WindowResizeEvent>::Subscribe([this](const WindowResizeEvent& e)
 	{
-		mConfig.size.width = e.GetWidth();
-        mConfig.size.height = e.GetHeight();
+		mConfig.size.width = static_cast<float>(e.GetWidth());
+        mConfig.size.height = static_cast<float>(e.GetHeight());
 	});
 }
 

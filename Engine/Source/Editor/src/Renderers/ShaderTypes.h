@@ -8,7 +8,8 @@ namespace GEditor {
 
 struct InfiniteGridUniforms
 {
-	uint color;
+	uint32_t color;
+	float lineWidth;
 };
 
 } // namespace Gleam

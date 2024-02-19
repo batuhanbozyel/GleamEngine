@@ -37,13 +37,14 @@ void InfiniteGridRenderer::AddRenderPasses(Gleam::RenderGraph& graph, Gleam::Ren
     {
 		InfiniteGridUniforms uniforms;
 		uniforms.color = 0xFFFFFFFF;
+		uniforms.lineWidth = 0.01f;
 
         Gleam::PipelineStateDescriptor pipelineDesc;
         pipelineDesc.depthState.writeEnabled = true;
         
         cmd->BindGraphicsPipeline(pipelineDesc, mVertexShader, mFragmentShader);
 		cmd->BindBuffer(passData.cameraBuffer, 0, 0, Gleam::ShaderStage_Vertex);
-		cmd->SetPushConstant(uniforms, Gleam::ShaderStage_Vertex);
+		cmd->SetPushConstant(uniforms, Gleam::ShaderStage_Vertex | Gleam::ShaderStage_Fragment);
         cmd->Draw(6);
     });
 }

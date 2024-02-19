@@ -108,4 +108,7 @@ void WorldRenderer::UpdateCamera(const Camera& camera)
     mCameraData.viewMatrix = camera.GetViewMatrix();
     mCameraData.projectionMatrix = camera.GetProjectionMatrix();
     mCameraData.viewProjectionMatrix = mCameraData.projectionMatrix * mCameraData.viewMatrix;
+	mCameraData.invViewMatrix = Math::Inverse(mCameraData.viewMatrix);
+	mCameraData.invProjectionMatrix = Math::Inverse(mCameraData.projectionMatrix);
+	mCameraData.worldPosition = camera.GetWorldPosition();
 }

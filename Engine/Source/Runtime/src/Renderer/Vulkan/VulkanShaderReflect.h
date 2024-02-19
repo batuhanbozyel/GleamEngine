@@ -64,7 +64,9 @@ struct Shader::Reflection
 	TArray<VkPushConstantRange> pushConstantRanges;
 
 	TArray<SpvReflectDescriptorBinding*> samplers;
-	HashMap<uint32_t, SpvReflectDescriptorBinding*> resources;
+	TArray<SpvReflectDescriptorBinding*> SRVs;
+	TArray<SpvReflectDescriptorBinding*> CBVs;
+	TArray<SpvReflectDescriptorBinding*> UAVs;
 
 	Reflection(const GraphicsDevice* device, const TArray<uint8_t>& source)
 		: device(device)
@@ -96,9 +98,17 @@ struct Shader::Reflection
 				{
 					samplers.push_back(setBinding);
 				}
-				else
+				else if (setBinding->resource_type & SPV_REFLECT_RESOURCE_FLAG_CBV)
 				{
-					resources[setBinding->binding] = setBinding;
+					CBVs.push_back(setBinding);
+				}
+				else if (setBinding->resource_type & SPV_REFLECT_RESOURCE_FLAG_SRV)
+				{
+					SRVs.push_back(setBinding);
+				}
+				else if (setBinding->resource_type & SPV_REFLECT_RESOURCE_FLAG_UAV)
+				{
+					UAVs.push_back(setBinding);
 				}
 			}
 
@@ -124,6 +134,15 @@ struct Shader::Reflection
 			pushConstantRanges[i].size = pushConstant->size;
 			pushConstantRanges[i].offset = pushConstant->offset;
 		}
+
+		auto comparator = [](const SpvReflectDescriptorBinding* left, const SpvReflectDescriptorBinding* right)
+		{
+			return left->binding < right->binding;
+		};
+
+		std::sort(SRVs.begin(), SRVs.end(), comparator);
+		std::sort(CBVs.begin(), CBVs.end(), comparator);
+		std::sort(UAVs.begin(), UAVs.end(), comparator);
 	}
 
 	~Reflection()
@@ -133,6 +152,31 @@ struct Shader::Reflection
 		{
 			vkDestroyDescriptorSetLayout(As<VkDevice>(device->GetHandle()), setLayout, nullptr);
 		}
+	}
+
+	static const SpvReflectDescriptorBinding* GetResourceFromTypeArray(const TArray<SpvReflectDescriptorBinding*>& resources, uint32_t slot)
+	{
+		if (resources.empty())
+		{
+			GLEAM_ASSERT(false, "Vulkan: Shader does not use any resource");
+			return nullptr;
+		}
+
+		uint32_t left = 0;
+		uint32_t right = static_cast<uint32_t>(resources.size() - 1);
+		while (left <= right)
+		{
+			uint32_t middle = (right + left) / 2;
+
+			const auto& resource = resources[middle];
+			if (resource->binding == slot) { return resource; }
+
+			if (resource->binding < slot) { left = middle + 1; }
+			else { right = middle - 1; }
+		}
+
+		GLEAM_ASSERT(false, "Vulkan: Resource reflection not found in slot {0}", slot);
+		return nullptr;
 	}
 };
 

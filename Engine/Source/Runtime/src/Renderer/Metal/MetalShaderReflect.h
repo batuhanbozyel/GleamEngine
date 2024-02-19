@@ -73,6 +73,12 @@ struct Shader::Reflection
     
     static const IRResourceLocation& GetResourceFromTypeArray(const TArray<IRResourceLocation>& resources, uint32_t slot)
     {
+		if (resources.empty())
+		{
+			GLEAM_ASSERT(false, "Metal: Shader does not use any resource");
+			return nullptr;
+		}
+
         uint32_t left = 0;
         uint32_t right = static_cast<uint32_t>(resources.size() - 1);
         while (left <= right)

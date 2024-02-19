@@ -268,7 +268,7 @@ void CommandBuffer::SetViewport(const Size& size) const
 
 void CommandBuffer::BindBuffer(const NativeGraphicsHandle buffer, BufferUsage usage, size_t offset, uint32_t index, ShaderStageFlagBits stage, ResourceAccess access) const
 {
-	auto resource = [=, this]()
+	const auto resource = [=, this]()
 	{
 		const Shader::Reflection* reflection = nullptr;
 		if (stage & ShaderStage_Vertex)
@@ -288,26 +288,27 @@ void CommandBuffer::BindBuffer(const NativeGraphicsHandle buffer, BufferUsage us
 
 		switch (usage)
 		{
-			case BufferUsage::UniformBuffer: return reflection->resources.find(index)->second;
+			case BufferUsage::UniformBuffer: return Shader::Reflection::GetResourceFromTypeArray(reflection->CBVs, index);
 			case BufferUsage::VertexBuffer:
 			case BufferUsage::StorageBuffer:
 			{
                 switch(access)
                 {
-                    case ResourceAccess::Read: return reflection->resources.find(index + Shader::Reflection::SRV_BINDING_OFFSET)->second;
-                    case ResourceAccess::Write: return reflection->resources.find(index + Shader::Reflection::UAV_BINDING_OFFSET)->second;
+                    case ResourceAccess::Read: return Shader::Reflection::GetResourceFromTypeArray(reflection->SRVs, index + Shader::Reflection::SRV_BINDING_OFFSET);
+                    case ResourceAccess::Write: return Shader::Reflection::GetResourceFromTypeArray(reflection->UAVs, index + Shader::Reflection::UAV_BINDING_OFFSET);
                     default: GLEAM_ASSERT(false, "Vulkan: Trying to bind buffer with invalid access.")
 					{
-						return (SpvReflectDescriptorBinding*)nullptr;
+						return (const SpvReflectDescriptorBinding*)nullptr;
 					}
                 }
 			}
 			default: GLEAM_ASSERT(false, "Vulkan: Trying to bind buffer with invalid usage.")
 			{
-				return (SpvReflectDescriptorBinding*)nullptr;
+				return (const SpvReflectDescriptorBinding*)nullptr;
 			}
 		}
 	}();
+	if (resource == nullptr) return;
 
 	VkDescriptorBufferInfo bufferInfo{};
 	bufferInfo.buffer = As<VkBuffer>(buffer);
@@ -324,7 +325,7 @@ void CommandBuffer::BindBuffer(const NativeGraphicsHandle buffer, BufferUsage us
 
 void CommandBuffer::BindTexture(const NativeGraphicsHandle texture, uint32_t index, ShaderStageFlagBits stage, ResourceAccess access) const
 {
-	auto resource = [=, this]()
+	const auto resource = [=, this]()
 	{
 		const Shader::Reflection* reflection = nullptr;
 		if (stage & ShaderStage_Vertex)
@@ -343,14 +344,15 @@ void CommandBuffer::BindTexture(const NativeGraphicsHandle texture, uint32_t ind
 		}
         switch(access)
         {
-            case ResourceAccess::Read: return reflection->resources.find(index + Shader::Reflection::SRV_BINDING_OFFSET)->second;
-            case ResourceAccess::Write: return reflection->resources.find(index + Shader::Reflection::UAV_BINDING_OFFSET)->second;
+            case ResourceAccess::Read: return Shader::Reflection::GetResourceFromTypeArray(reflection->SRVs, index + Shader::Reflection::SRV_BINDING_OFFSET);
+            case ResourceAccess::Write: return Shader::Reflection::GetResourceFromTypeArray(reflection->UAVs, index + Shader::Reflection::UAV_BINDING_OFFSET);
 			default: GLEAM_ASSERT(false, "Vulkan: Trying to bind texture with invalid access.")
 			{
-				return (SpvReflectDescriptorBinding*)nullptr;
+				return (const SpvReflectDescriptorBinding*)nullptr;
 			}
         }
 	}();
+	if (resource == nullptr) return;
 
 	auto imageLayout = [=]()
 	{

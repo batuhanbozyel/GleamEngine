@@ -12,20 +12,13 @@ struct InterleavedMeshVertex
 struct DebugVertex
 {
     float3 position;
-    uint color;
-};
-
-struct CameraUniforms
-{
-    float4x4 viewMatrix;
-    float4x4 projectionMatrix;
-    float4x4 viewProjectionMatrix;
+    uint32_t color;
 };
 
 struct DebugShaderUniforms
 {
     float4x4 modelMatrix;
-    uint color;
+	uint32_t color;
 };
 
 struct ForwardPassUniforms

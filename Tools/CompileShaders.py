@@ -4,9 +4,11 @@ import platform
 import subprocess
 cmd = subprocess.run
 
+SCRIPT_DIRECTORY = os.path.dirname(os.path.realpath(__file__))
+RUNTIME_INCLUDE_DIRECTORY = f"{SCRIPT_DIRECTORY}/../Engine/Source/Runtime/src/Renderer/Shaders"
+
 if platform.system() == "Darwin":
     global DXC
-    SCRIPT_DIRECTORY = os.path.dirname(os.path.realpath(__file__))
     DXC = f"{SCRIPT_DIRECTORY}/bin/dxc"
 else:
     VULKAN_SDK = os.getenv("VULKAN_SDK")
@@ -19,7 +21,6 @@ HLSL_SHADER_STAGE = {}
 HLSL_SHADER_STAGE["vertex"] = "vs_6_0"
 HLSL_SHADER_STAGE["fragment"] = "ps_6_0"
 HLSL_SHADER_STAGE["compute"] = "cs_6_0"
-RUNTIME_INCLUDE_DIRECTORY = f"{SCRIPT_DIRECTORY}/../Engine/Source/Runtime/src/Renderer/Shaders"
 
 def compile_shader(hlsl_file: str, entry_point: str, shader_stage: str, output_dir: str):
     output_file = ""
