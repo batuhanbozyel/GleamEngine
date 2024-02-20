@@ -97,6 +97,7 @@ void DebugRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 			PipelineStateDescriptor pipelineState;
 			pipelineState.topology = PrimitiveTopology::Lines;
 			pipelineState.depthState.writeEnabled = true;
+			pipelineState.depthState.compareFunction = CompareFunction::Less;
 			cmd->BindGraphicsPipeline(pipelineState, mPrimitiveVertexShader, mFragmentShader);
 			cmd->BindBuffer(passData.cameraBuffer, 0, 0, ShaderStage_Vertex);
 			cmd->BindBuffer(passData.vertexBuffer, mDepthLineBufferOffset, 0, ShaderStage_Vertex);
@@ -108,6 +109,7 @@ void DebugRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 			PipelineStateDescriptor pipelineState;
 			pipelineState.topology = PrimitiveTopology::Triangles;
 			pipelineState.depthState.writeEnabled = true;
+			pipelineState.depthState.compareFunction = CompareFunction::Less;
 			cmd->BindGraphicsPipeline(pipelineState, mPrimitiveVertexShader, mFragmentShader);
             cmd->BindBuffer(passData.cameraBuffer, 0, 0, ShaderStage_Vertex);
 			cmd->BindBuffer(passData.vertexBuffer, mDepthTriangleBufferOffset, 0, ShaderStage_Vertex);
@@ -123,7 +125,7 @@ void DebugRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 		{
 			PipelineStateDescriptor pipelineState;
 			pipelineState.topology = PrimitiveTopology::Lines;
-			pipelineState.depthState.writeEnabled = true;
+			pipelineState.depthState.compareFunction = CompareFunction::Less;
 			cmd->BindGraphicsPipeline(pipelineState, mPrimitiveVertexShader, mFragmentShader);
             cmd->BindBuffer(passData.cameraBuffer, 0, 0, ShaderStage_Vertex);
 			cmd->BindBuffer(passData.vertexBuffer, mLineBufferOffset, 0, ShaderStage_Vertex);
@@ -161,6 +163,7 @@ void DebugRenderer::RenderMeshes(const CommandBuffer* cmd, const Buffer& cameraB
 	PipelineStateDescriptor pipelineState;
 	pipelineState.topology = PrimitiveTopology::Triangles;
 	pipelineState.depthState.writeEnabled = depthTest;
+	pipelineState.depthState.compareFunction = depthTest ? CompareFunction::Less : CompareFunction::Always;
 	cmd->BindGraphicsPipeline(pipelineState, mMeshVertexShader, mFragmentShader);
 	cmd->BindBuffer(cameraBuffer, 0, 0, ShaderStage_Vertex);
 

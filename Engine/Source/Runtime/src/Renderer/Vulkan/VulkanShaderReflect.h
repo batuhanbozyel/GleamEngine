@@ -60,7 +60,7 @@ struct Shader::Reflection
 	const GraphicsDevice* device;
 
 	SpvReflectShaderModule reflection;
-	TArray<VkDescriptorSetLayout> setLayouts;
+	TArray<SpvReflectDescriptorSet*> descriptorSets;
 	TArray<VkPushConstantRange> pushConstantRanges;
 
 	TArray<SpvReflectDescriptorBinding*> samplers;
@@ -77,23 +77,14 @@ struct Shader::Reflection
 		uint32_t setCount = 0;
 		spvReflectEnumerateDescriptorSets(&reflection, &setCount, nullptr);
 
-		TArray<SpvReflectDescriptorSet*> descriptorSets(setCount);
+		descriptorSets.resize(setCount);
 		spvReflectEnumerateDescriptorSets(&reflection, &setCount, descriptorSets.data());
 
-		setLayouts.resize(setCount);
-		for (uint32_t i = 0; i < setCount; i++)
+		for (const auto& set : descriptorSets)
 		{
-			const auto& set = descriptorSets[i];
-
-			TArray<VkDescriptorSetLayoutBinding> setBindings(set->binding_count);
 			for (uint32_t j = 0; j < set->binding_count; j++)
 			{
 				auto setBinding = set->bindings[j];
-				setBindings[j].binding = setBinding->binding;
-				setBindings[j].descriptorType = SpvReflectDescriptorTypeToVkDescriptorType(setBinding->descriptor_type);
-				setBindings[j].descriptorCount = setBinding->count;
-				setBindings[j].stageFlags = SpvReflectShaderStageToVkShaderStage(reflection.shader_stage);
-
 				if (setBinding->resource_type & SPV_REFLECT_RESOURCE_FLAG_SAMPLER)
 				{
 					samplers.push_back(setBinding);
@@ -111,12 +102,6 @@ struct Shader::Reflection
 					UAVs.push_back(setBinding);
 				}
 			}
-
-			VkDescriptorSetLayoutCreateInfo setCreateInfo{ VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
-			setCreateInfo.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR;
-			setCreateInfo.bindingCount = static_cast<uint32_t>(setBindings.size());
-			setCreateInfo.pBindings = setBindings.data();
-			VK_CHECK(vkCreateDescriptorSetLayout(As<VkDevice>(device->GetHandle()), &setCreateInfo, nullptr, &setLayouts[i]));
 		}
 
 		// Get push constant
@@ -148,10 +133,6 @@ struct Shader::Reflection
 	~Reflection()
 	{
 		spvReflectDestroyShaderModule(&reflection);
-		for (auto setLayout : setLayouts)
-		{
-			vkDestroyDescriptorSetLayout(As<VkDevice>(device->GetHandle()), setLayout, nullptr);
-		}
 	}
 
 	static const SpvReflectDescriptorBinding* GetResourceFromTypeArray(const TArray<SpvReflectDescriptorBinding*>& resources, uint32_t slot)

@@ -11,6 +11,7 @@ struct VulkanPipeline
 {
 	VkPipeline handle{ VK_NULL_HANDLE };
 	VkPipelineLayout layout{ VK_NULL_HANDLE };
+	VkDescriptorSetLayout setLayout{ VK_NULL_HANDLE };
 	VkPipelineBindPoint bindPoint{ VK_PIPELINE_BIND_POINT_GRAPHICS };
 };
 
@@ -40,7 +41,9 @@ public:
 
 private:
     
-    static VkPipelineLayout CreatePipelineLayout(const Shader& vertexShader, const Shader& fragmentShader);
+    static VkDescriptorSetLayout CreateDescriptorSetLayout(const Shader& vertexShader, const Shader& fragmentShader);
+
+	static VkPipelineLayout CreatePipelineLayout(const Shader& vertexShader, const Shader& fragmentShader, VkDescriptorSetLayout setLayout);
 
 	static VkPipeline CreateGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc, const TArray<TextureDescriptor>& colorAttachments, const TextureDescriptor& depthAttachment, const Shader& vertexShader, const Shader& fragmentShader, VkRenderPass renderPass, VkPipelineLayout layout, uint32_t sampleCount);
 

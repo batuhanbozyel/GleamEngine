@@ -24,7 +24,7 @@ enum class CompareFunction
 
 struct DepthState
 {
-    CompareFunction compareFunction = CompareFunction::Less;
+    CompareFunction compareFunction = CompareFunction::Always;
     bool writeEnabled = false;
 
 	bool operator==(const DepthState& other) const

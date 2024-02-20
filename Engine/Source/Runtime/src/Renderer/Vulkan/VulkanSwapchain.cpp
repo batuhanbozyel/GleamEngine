@@ -162,11 +162,11 @@ void VulkanSwapchain::Configure(const RendererConfig& config)
 			return VK_PRESENT_MODE_IMMEDIATE_KHR;
 		}
 
-		for (auto presentMode : presentModes)
+		for (auto mode : presentModes)
 		{
-			if (presentMode == VK_PRESENT_MODE_MAILBOX_KHR)
+			if (mode == VK_PRESENT_MODE_MAILBOX_KHR)
 			{
-				return presentMode;
+				return mode;
 			}
 		}
 	#endif

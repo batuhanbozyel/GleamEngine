@@ -126,7 +126,8 @@ const VulkanGraphicsPipeline* VulkanPipelineStateManager::GetGraphicsPipeline(co
     pipeline->vertexShader = vertexShader;
     pipeline->fragmentShader = fragmentShader;
     pipeline->bindPoint = PipelineBindPointToVkPipelineBindPoint(pipelineDesc.bindPoint);
-    pipeline->layout = CreatePipelineLayout(vertexShader, fragmentShader);
+	pipeline->setLayout = CreateDescriptorSetLayout(vertexShader, fragmentShader);
+    pipeline->layout = CreatePipelineLayout(vertexShader, fragmentShader, pipeline->setLayout);
     pipeline->handle = CreateGraphicsPipeline(pipelineDesc, colorAttachments, depthAttachment, vertexShader, fragmentShader, renderPass, pipeline->layout, sampleCount);
     mGraphicsPipelineCache.insert(mGraphicsPipelineCache.end(), {key, Scope<VulkanGraphicsPipeline>(pipeline)});
     return pipeline;
@@ -147,24 +148,76 @@ void VulkanPipelineStateManager::Clear()
 {
 	for (const auto& [_, pipeline] : mGraphicsPipelineCache)
 	{
+		vkDestroyDescriptorSetLayout(As<VkDevice>(mDevice->GetHandle()), pipeline->setLayout, nullptr);
 		vkDestroyPipelineLayout(As<VkDevice>(mDevice->GetHandle()), pipeline->layout, nullptr);
 		vkDestroyPipeline(As<VkDevice>(mDevice->GetHandle()), pipeline->handle, nullptr);
 	}
 	mGraphicsPipelineCache.clear();
 }
 
-VkPipelineLayout VulkanPipelineStateManager::CreatePipelineLayout(const Shader& vertexShader, const Shader& fragmentShader)
+VkDescriptorSetLayout VulkanPipelineStateManager::CreateDescriptorSetLayout(const Shader& vertexShader, const Shader& fragmentShader)
+{
+	VkDescriptorSetLayout setLayout;
+
+	const auto& vertexShaderReflection = vertexShader.GetReflection();
+	const auto& fragmentShaderReflection = fragmentShader.GetReflection();
+	auto GetSetBindings = [](const Shader::Reflection* refl)
+	{
+		TArray<VkDescriptorSetLayoutBinding> setBindings;
+		for (const auto& set : refl->descriptorSets)
+		{
+			size_t setOffset = setBindings.size();
+			setBindings.resize(setBindings.size() + set->binding_count);
+			for (uint32_t j = 0; j < set->binding_count; j++)
+			{
+				auto setBinding = set->bindings[j];
+				auto bindingIndex = setOffset + j;
+
+				setBindings[bindingIndex].binding = setBinding->binding;
+				setBindings[bindingIndex].descriptorType = SpvReflectDescriptorTypeToVkDescriptorType(setBinding->descriptor_type);
+				setBindings[bindingIndex].descriptorCount = setBinding->count;
+				setBindings[bindingIndex].stageFlags = SpvReflectShaderStageToVkShaderStage(refl->reflection.shader_stage);
+			}
+		}
+		return setBindings;
+	};
+
+	TArray<VkDescriptorSetLayoutBinding> vertexBindings = GetSetBindings(vertexShaderReflection);
+	TArray<VkDescriptorSetLayoutBinding> fragmentBindings = GetSetBindings(fragmentShaderReflection);
+
+	// Remove duplicate bindings
+	std::for_each(vertexBindings.begin(), vertexBindings.end(), [&](VkDescriptorSetLayoutBinding& vertexBinding)
+	{
+		auto it = std::find_if(fragmentBindings.begin(), fragmentBindings.end(), [&](const VkDescriptorSetLayoutBinding& fragmentBinding)
+		{
+			return fragmentBinding.binding == vertexBinding.binding;
+		});
+		if (it != fragmentBindings.end())
+		{
+			vertexBinding.stageFlags |= VK_SHADER_STAGE_FRAGMENT_BIT;
+			fragmentBindings.erase(it);
+		}
+	});
+
+	TArray<VkDescriptorSetLayoutBinding> setBindings;
+	setBindings.reserve(vertexBindings.size() + fragmentBindings.size());
+	setBindings.insert(setBindings.begin(), vertexBindings.begin(), vertexBindings.end());
+	setBindings.insert(setBindings.begin(), fragmentBindings.begin(), fragmentBindings.end());
+
+	VkDescriptorSetLayoutCreateInfo setCreateInfo{ VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
+	setCreateInfo.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR;
+	setCreateInfo.bindingCount = static_cast<uint32_t>(setBindings.size());
+	setCreateInfo.pBindings = setBindings.data();
+	VK_CHECK(vkCreateDescriptorSetLayout(As<VkDevice>(mDevice->GetHandle()), &setCreateInfo, nullptr, &setLayout));
+	return setLayout;
+}
+
+VkPipelineLayout VulkanPipelineStateManager::CreatePipelineLayout(const Shader& vertexShader, const Shader& fragmentShader, VkDescriptorSetLayout setLayout)
 {
     VkPipelineLayout layout;
     // Pipeline layout
     const auto& vertexShaderReflection = vertexShader.GetReflection();
     const auto& fragmentShaderReflection = fragmentShader.GetReflection();
-    
-    // Descriptor set layouts
-    TArray<VkDescriptorSetLayout> setLayouts;
-    setLayouts.reserve(vertexShaderReflection->setLayouts.size() + fragmentShaderReflection->setLayouts.size());
-    setLayouts.insert(setLayouts.end(), vertexShaderReflection->setLayouts.begin(), vertexShaderReflection->setLayouts.end());
-    setLayouts.insert(setLayouts.end(), fragmentShaderReflection->setLayouts.begin(), fragmentShaderReflection->setLayouts.end());
     
     // Push constant ranges
     TArray<VkPushConstantRange> pushConstantRanges;
@@ -173,8 +226,8 @@ VkPipelineLayout VulkanPipelineStateManager::CreatePipelineLayout(const Shader& 
     pushConstantRanges.insert(pushConstantRanges.end(), fragmentShaderReflection->pushConstantRanges.begin(), fragmentShaderReflection->pushConstantRanges.end());
     
     VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo{ VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
-    pipelineLayoutCreateInfo.setLayoutCount = static_cast<uint32_t>(setLayouts.size());
-    pipelineLayoutCreateInfo.pSetLayouts = setLayouts.data();
+    pipelineLayoutCreateInfo.setLayoutCount = 1;
+    pipelineLayoutCreateInfo.pSetLayouts = &setLayout;
     pipelineLayoutCreateInfo.pushConstantRangeCount = static_cast<uint32_t>(pushConstantRanges.size());
     pipelineLayoutCreateInfo.pPushConstantRanges = pushConstantRanges.data();
     VK_CHECK(vkCreatePipelineLayout(As<VkDevice>(mDevice->GetHandle()), &pipelineLayoutCreateInfo, nullptr, &layout));
@@ -236,7 +289,7 @@ VkPipeline VulkanPipelineStateManager::CreateGraphicsPipeline(const PipelineStat
 	VkPipelineDepthStencilStateCreateInfo depthStencilState{ VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO };
 	if (Utils::IsDepthFormat(depthAttachment.format))
 	{
-		depthStencilState.depthTestEnable = true;
+		depthStencilState.depthTestEnable = pipelineDesc.depthState.compareFunction != CompareFunction::Always;
 		depthStencilState.depthCompareOp = CompareFunctionToVkCompareOp(pipelineDesc.depthState.compareFunction);
 		depthStencilState.depthWriteEnable = pipelineDesc.depthState.writeEnabled;
 	}

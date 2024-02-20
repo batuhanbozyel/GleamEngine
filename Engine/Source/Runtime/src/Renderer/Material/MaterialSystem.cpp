@@ -10,6 +10,7 @@ RefCounted<Material> MaterialSystem::GetDefaultMaterial()
 		PipelineStateDescriptor pipelineDesc;
 		pipelineDesc.cullingMode = CullMode::Back;
 		pipelineDesc.depthState.writeEnabled = true;
+		pipelineDesc.depthState.compareFunction = CompareFunction::Less;
 
 		MaterialDescriptor materialDesc;
 		materialDesc.passes.push_back({ .pipelineState = pipelineDesc,
