@@ -109,21 +109,72 @@ struct Matrix4
         return *this = *this * rhs;
     }
 
+	NO_DISCARD FORCE_INLINE constexpr Matrix4 Adjugate() const
+	{
+		return Matrix4
+		{
+			Vector4
+			{
+				row[1].y * row[2].z * row[3].w + row[3].y * row[1].z * row[2].w + row[2].y * row[3].z * row[1].w - row[1].y * row[3].z * row[2].w
+						- row[2].y * row[1].z * row[3].w - row[3].y * row[2].z * row[1].w,
+				row[0].y * row[3].z * row[2].w + row[2].y * row[0].z * row[3].w + row[3].y * row[2].z * row[0].w - row[3].y * row[0].z * row[2].w
+						- row[2].y * row[3].z * row[0].w - row[0].y * row[2].z * row[3].w,
+				row[0].y * row[1].z * row[3].w + row[3].y * row[0].z * row[1].w + row[1].y * row[3].z * row[0].w - row[0].y * row[3].z * row[1].w
+						- row[1].y * row[0].z * row[3].w - row[3].y * row[1].z * row[0].w,
+				row[0].y * row[2].z * row[1].w + row[1].y * row[0].z * row[2].w + row[2].y * row[1].z * row[0].w - row[0].y * row[1].z * row[2].w
+						- row[2].y * row[0].z * row[1].w - row[1].y * row[2].z * row[0].w
+			},
+			Vector4
+			{
+				row[1].z * row[3].w * row[2].x + row[2].z * row[1].w * row[3].x + row[3].z * row[2].w * row[1].x - row[1].z * row[2].w * row[3].x
+						- row[3].z * row[1].w * row[2].x - row[2].z * row[3].w * row[1].x,
+				row[0].z * row[2].w * row[3].x + row[3].z * row[0].w * row[2].x + row[2].z * row[3].w * row[0].x - row[0].z * row[3].w * row[2].x
+						- row[2].z * row[0].w * row[3].x - row[3].z * row[2].w * row[0].x,
+				row[0].z * row[3].w * row[1].x + row[1].z * row[0].w * row[3].x + row[3].z * row[1].w * row[0].x - row[0].z * row[1].w * row[3].x
+						- row[3].z * row[0].w * row[1].x - row[1].z * row[3].w * row[0].x,
+				row[0].z * row[1].w * row[2].x + row[2].z * row[0].w * row[1].x + row[1].z * row[2].w * row[0].x - row[0].z * row[2].w * row[1].x
+						- row[1].z * row[0].w * row[2].x - row[2].z * row[1].w * row[0].x
+			},
+			Vector4
+			{
+				row[1].w * row[2].x * row[3].y + row[3].w * row[1].x * row[2].y + row[2].w * row[3].x * row[1].y - row[1].w * row[3].x * row[2].y
+						- row[2].w * row[1].x * row[3].y - row[3].w * row[2].x * row[1].y,
+				row[0].w * row[3].x * row[2].y + row[2].w * row[0].x * row[3].y + row[3].w * row[2].x * row[0].y - row[0].w * row[2].x * row[3].y
+						- row[3].w * row[0].x * row[2].y - row[2].w * row[3].x * row[0].y,
+				row[0].w * row[1].x * row[3].y + row[3].w * row[0].x * row[1].y + row[1].w * row[3].x * row[0].y - row[0].w * row[3].x * row[1].y
+						- row[1].w * row[0].x * row[3].y - row[3].w * row[1].x * row[0].y,
+				row[0].w * row[2].x * row[1].y + row[1].w * row[0].x * row[2].y + row[2].w * row[1].x * row[0].y - row[0].w * row[1].x * row[2].y
+						- row[2].w * row[0].x * row[1].y - row[1].w * row[2].x * row[0].y
+			},
+			Vector4
+			{
+				row[1].x * row[3].y * row[2].z + row[2].x * row[1].y * row[3].z + row[3].x * row[2].y * row[1].z - row[1].x * row[2].y * row[3].z
+						- row[3].x * row[1].y * row[2].z - row[2].x * row[3].y * row[1].z,
+				row[0].x * row[2].y * row[3].z + row[3].x * row[0].y * row[2].z + row[2].x * row[3].y * row[0].z - row[0].x * row[3].y * row[2].z
+						- row[2].x * row[0].y * row[3].z - row[3].x * row[2].y * row[0].z,
+				row[0].x * row[3].y * row[1].z + row[1].x * row[0].y * row[3].z + row[3].x * row[1].y * row[0].z - row[0].x * row[1].y * row[3].z
+						- row[3].x * row[0].y * row[1].z - row[1].x * row[3].y * row[0].z,
+				row[0].x * row[1].y * row[2].z + row[2].x * row[0].y * row[1].z + row[1].x * row[2].y * row[0].z - row[0].x * row[2].y * row[1].z
+						- row[1].x * row[0].y * row[2].z - row[2].x * row[1].y * row[0].z
+			}
+		};
+	}
+
 	NO_DISCARD FORCE_INLINE constexpr float Determinant() const
 	{
-		return m[0] * (m[5] * (m[10] * m[15] - m[11] * m[14]) +
-                      m[6] * (m[9] * m[14] - m[10] * m[13]) +
-                      m[7] * (m[9] * m[15] - m[11] * m[13])) -
-               m[1] * (m[4] * (m[10] * m[15] - m[11] * m[14]) +
-                      m[6] * (m[8] * m[15] - m[11] * m[12]) +
-                      m[7] * (m[11] * m[12] - m[8] * m[14])) +
-               m[2] * (m[4] * (m[9] * m[15] - m[13] * m[11]) +
-                      m[5] * (m[13] * m[10] - m[9] * m[14]) +
-                      m[7] * (m[8] * m[13] - m[12] * m[9])) -
-               m[3] * (m[4] * (m[9] * m[14] - m[13] * m[10]) +
-                      m[5] * (m[8] * m[14] - m[12] * m[10]) +
-                      m[6] * (m[12] * m[9] - m[8] * m[13]));
-    }
+		return row[0].x
+			* (row[1].y * row[2].z * row[3].w + row[3].y * row[1].z * row[2].w + row[2].y * row[3].z * row[1].w - row[1].y * row[3].z * row[2].w
+				- row[2].y * row[1].z * row[3].w - row[3].y * row[2].z * row[1].w)
+			+ row[0].y
+			* (row[1].z * row[3].w * row[2].x + row[2].z * row[1].w * row[3].x + row[3].z * row[2].w * row[1].x - row[1].z * row[2].w * row[3].x
+				- row[3].z * row[1].w * row[2].x - row[2].z * row[3].w * row[1].x)
+			+ row[0].z
+			* (row[1].w * row[2].x * row[3].y + row[3].w * row[1].x * row[2].y + row[2].w * row[3].x * row[1].y - row[1].w * row[3].x * row[2].y
+				- row[2].w * row[1].x * row[3].y - row[3].w * row[2].x * row[1].y)
+			+ row[0].w
+			* (row[1].x * row[3].y * row[2].z + row[2].x * row[1].y * row[3].z + row[3].x * row[2].y * row[1].z - row[1].x * row[2].y * row[3].z
+				- row[3].x * row[1].y * row[2].z - row[2].x * row[3].y * row[1].z);
+	}
 
     NO_DISCARD FORCE_INLINE static constexpr Matrix4 Translate(const Vector3& translation)
     {
@@ -252,33 +303,17 @@ struct Matrix4
 
 namespace Math {
 
-NO_DISCARD FORCE_INLINE static constexpr Matrix4 Inverse(const Matrix4& matrix)
+NO_DISCARD FORCE_INLINE static constexpr Matrix4 Inverse(const Matrix4& m)
 {
-	Matrix4 inv;
-
-	float invDet = 1.0f / matrix.Determinant();
-
-	inv[0][0] = invDet * (matrix.m[5] * (matrix.m[10] * matrix.m[15] - matrix.m[11] * matrix.m[14]) + matrix.m[6] * (matrix.m[11] * matrix.m[13] - matrix.m[9] * matrix.m[15]) + matrix.m[7] * (matrix.m[9] * matrix.m[14] - matrix.m[10] * matrix.m[13]));
-	inv[0][1] = invDet * (matrix.m[1] * (matrix.m[10] * matrix.m[15] - matrix.m[11] * matrix.m[14]) + matrix.m[2] * (matrix.m[11] * matrix.m[13] - matrix.m[9] * matrix.m[15]) + matrix.m[3] * (matrix.m[9] * matrix.m[14] - matrix.m[10] * matrix.m[13]));
-	inv[0][2] = invDet * (matrix.m[1] * (matrix.m[6] * matrix.m[15] - matrix.m[7] * matrix.m[14]) + matrix.m[2] * (matrix.m[7] * matrix.m[13] - matrix.m[5] * matrix.m[15]) + matrix.m[3] * (matrix.m[5] * matrix.m[14] - matrix.m[6] * matrix.m[13]));
-	inv[0][3] = invDet * (matrix.m[1] * (matrix.m[7] * matrix.m[10] - matrix.m[6] * matrix.m[11]) + matrix.m[2] * (matrix.m[5] * matrix.m[11] - matrix.m[7] * matrix.m[9]) + matrix.m[3] * (matrix.m[6] * matrix.m[9] - matrix.m[5] * matrix.m[10]));
-
-	inv[1][0] = invDet * (matrix.m[4] * (matrix.m[10] * matrix.m[15] - matrix.m[11] * matrix.m[14]) + matrix.m[6] * (matrix.m[8] * matrix.m[15] - matrix.m[11] * matrix.m[12]) + matrix.m[7] * (matrix.m[11] * matrix.m[12] - matrix.m[8] * matrix.m[14]));
-	inv[1][1] = invDet * (matrix.m[0] * (matrix.m[10] * matrix.m[15] - matrix.m[11] * matrix.m[14]) + matrix.m[2] * (matrix.m[11] * matrix.m[12] - matrix.m[8] * matrix.m[15]) + matrix.m[3] * (matrix.m[8] * matrix.m[14] - matrix.m[10] * matrix.m[12]));
-	inv[1][2] = invDet * (matrix.m[0] * (matrix.m[7] * matrix.m[15] - matrix.m[11] * matrix.m[7]) + matrix.m[2] * (matrix.m[8] * matrix.m[11] - matrix.m[11] * matrix.m[8]) + matrix.m[3] * (matrix.m[11] * matrix.m[7] - matrix.m[8] * matrix.m[15]));
-	inv[1][3] = invDet * (matrix.m[0] * (matrix.m[11] * matrix.m[6] - matrix.m[7] * matrix.m[10]) + matrix.m[2] * (matrix.m[7] * matrix.m[9] - matrix.m[11] * matrix.m[5]) + matrix.m[3] * (matrix.m[10] * matrix.m[5] - matrix.m[6] * matrix.m[9]));
-
-	inv[2][0] = invDet * (matrix.m[4] * (matrix.m[9] * matrix.m[15] - matrix.m[13] * matrix.m[11]) + matrix.m[5] * (matrix.m[13] * matrix.m[10] - matrix.m[9] * matrix.m[14]) + matrix.m[7] * (matrix.m[8] * matrix.m[13] - matrix.m[12] * matrix.m[9]));
-	inv[2][1] = invDet * (matrix.m[0] * (matrix.m[13] * matrix.m[10] - matrix.m[9] * matrix.m[14]) + matrix.m[1] * (matrix.m[8] * matrix.m[13] - matrix.m[12] * matrix.m[9]) + matrix.m[3] * (matrix.m[12] * matrix.m[10] - matrix.m[13] * matrix.m[8]));
-	inv[2][2] = invDet * (matrix.m[0] * (matrix.m[5] * matrix.m[15] - matrix.m[13] * matrix.m[7]) + matrix.m[1] * (matrix.m[13] * matrix.m[3] - matrix.m[12] * matrix.m[7]) + matrix.m[3] * (matrix.m[12] * matrix.m[5] - matrix.m[4] * matrix.m[13]));
-	inv[2][3] = invDet * (matrix.m[0] * (matrix.m[9] * matrix.m[7] - matrix.m[5] * matrix.m[11]) + matrix.m[1] * (matrix.m[4] * matrix.m[11] - matrix.m[7] * matrix.m[8]) + matrix.m[3] * (matrix.m[5] * matrix.m[8] - matrix.m[4] * matrix.m[9]));
-
-	inv[3][0] = invDet * (matrix.m[4] * (matrix.m[13] * matrix.m[10] - matrix.m[9] * matrix.m[14]) + matrix.m[5] * (matrix.m[8] * matrix.m[14] - matrix.m[12] * matrix.m[10]) + matrix.m[6] * (matrix.m[12] * matrix.m[9] - matrix.m[8] * matrix.m[13]));
-	inv[3][1] = invDet * (matrix.m[0] * (matrix.m[9] * matrix.m[14] - matrix.m[13] * matrix.m[10]) + matrix.m[1] * (matrix.m[12] * matrix.m[10] - matrix.m[8] * matrix.m[14]) + matrix.m[2] * (matrix.m[8] * matrix.m[13] - matrix.m[12] * matrix.m[9]));
-	inv[3][2] = invDet * (matrix.m[0] * (matrix.m[13] * matrix.m[6] - matrix.m[5] * matrix.m[14]) + matrix.m[1] * (matrix.m[4] * matrix.m[14] - matrix.m[12] * matrix.m[6]) + matrix.m[2] * (matrix.m[12] * matrix.m[5] - matrix.m[4] * matrix.m[13]));
-	inv[3][3] = invDet * (matrix.m[0] * (matrix.m[5] * matrix.m[10] - matrix.m[9] * matrix.m[6]) + matrix.m[1] * (matrix.m[9] * matrix.m[2] - matrix.m[1] * matrix.m[10]) + matrix.m[2] * (matrix.m[1] * matrix.m[6] - matrix.m[5] * matrix.m[2]));
-
-	return inv;
+	Matrix4 adjudate = m.Adjugate();
+	float invDet = 1.0f / m.Determinant();
+	return Matrix4
+	{
+		adjudate.row[0] * invDet,
+		adjudate.row[1] * invDet,
+		adjudate.row[2] * invDet,
+		adjudate.row[3] * invDet
+	};
 }
 
 } // namespace Math

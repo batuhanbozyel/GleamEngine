@@ -51,6 +51,12 @@ float3 ViewSpaceToWorldSpace(float3 position, float4x4 invViewMatrix)
     return worldPosition.xyz;
 }
 
+float3 ClipSpaceToWorldSpace(float3 position, float4x4 invViewProjectionMatrix)
+{
+    float4 worldPosition = mul(invViewProjectionMatrix, float4(position, 1.0));
+    return worldPosition.xyz /= worldPosition.w;
+}
+
 float3 ClipSpaceToWorldSpace(float3 position, float4x4 invViewMatrix, float4x4 invProjectionMatrix)
 {
     float4 viewPosition = mul(invProjectionMatrix, float4(position, 1.0));

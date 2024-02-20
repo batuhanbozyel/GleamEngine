@@ -36,14 +36,27 @@ void InfiniteGridRenderer::AddRenderPasses(Gleam::RenderGraph& graph, Gleam::Ren
     [this](const Gleam::CommandBuffer* cmd, const PassData& passData)
     {
 		InfiniteGridUniforms uniforms;
-		uniforms.color = 0xFFFFFFFF;
-		uniforms.lineWidth = 0.01f;
+		uniforms.majorGridDivision = 10;
 
+		uniforms.majorLineColor = 0xFFB5B5B5;
+		uniforms.majorLineWidth = 0.05f;
+
+		uniforms.minorLineColor = 0xFFA5A5A5;
+		uniforms.minorLineWidth = 0.015f;
+		
         Gleam::PipelineStateDescriptor pipelineDesc;
-        pipelineDesc.depthState.writeEnabled = true;
-        
+		pipelineDesc.depthState.compareFunction = Gleam::CompareFunction::Less;
+
+		pipelineDesc.blendState.enabled = true;
+		pipelineDesc.blendState.sourceColorBlendMode = Gleam::BlendMode::SrcAlpha;
+		pipelineDesc.blendState.destinationColorBlendMode = Gleam::BlendMode::OneMinusSrcAlpha;
+		pipelineDesc.blendState.colorBlendOperation = Gleam::BlendOp::Add;
+		pipelineDesc.blendState.alphaBlendOperation = Gleam::BlendOp::Add;
+		pipelineDesc.blendState.sourceAlphaBlendMode = Gleam::BlendMode::One;
+		pipelineDesc.blendState.destinationAlphaBlendMode = Gleam::BlendMode::OneMinusSrcAlpha;
+
         cmd->BindGraphicsPipeline(pipelineDesc, mVertexShader, mFragmentShader);
-		cmd->BindBuffer(passData.cameraBuffer, 0, 0, Gleam::ShaderStage_Vertex);
+		cmd->BindBuffer(passData.cameraBuffer, 0, 0, Gleam::ShaderStage_Vertex | Gleam::ShaderStage_Fragment);
 		cmd->SetPushConstant(uniforms, Gleam::ShaderStage_Vertex | Gleam::ShaderStage_Fragment);
         cmd->Draw(6);
     });

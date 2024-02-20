@@ -8,8 +8,13 @@ namespace GEditor {
 
 struct InfiniteGridUniforms
 {
-	uint32_t color;
-	float lineWidth;
+	uint32_t majorGridDivision;
+
+	float majorLineWidth;
+	float minorLineWidth;
+
+	uint32_t majorLineColor;
+	uint32_t minorLineColor;
 };
 
 } // namespace Gleam
