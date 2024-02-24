@@ -37,7 +37,7 @@ void VulkanSwapchain::Destroy()
 	mFrameObjects.clear();
 
 	// Destroy swapchain
-	vkDestroySwapchainKHR(As<VkDevice>(mDevice->GetHandle()), mHandle, nullptr);
+	vkDestroySwapchainKHR(static_cast<VkDevice>(mDevice->GetHandle()), mHandle, nullptr);
 
 	// Destroy surface
 	vkDestroySurfaceKHR(mDevice->GetInstance(), mSurface, nullptr);
@@ -45,21 +45,21 @@ void VulkanSwapchain::Destroy()
 	// Destroy drawable
 	for (uint32_t i = 0; i < mImages.size(); i++)
 	{
-		vkDestroyImageView(As<VkDevice>(mDevice->GetHandle()), mImages[i].view, nullptr);
+		vkDestroyImageView(static_cast<VkDevice>(mDevice->GetHandle()), mImages[i].view, nullptr);
 	}
 
 	// Destroy command pools
 	for (uint32_t i = 0; i < mMaxFramesInFlight; i++)
 	{
-		vkDestroyCommandPool(As<VkDevice>(mDevice->GetHandle()), mCommandPools[i], nullptr);
+		vkDestroyCommandPool(static_cast<VkDevice>(mDevice->GetHandle()), mCommandPools[i], nullptr);
 	}
 	mCommandPools.clear();
 
 	// Destroy sync objects
 	for (uint32_t i = 0; i < mMaxFramesInFlight; i++)
 	{
-		vkDestroySemaphore(As<VkDevice>(mDevice->GetHandle()), mImageAcquireSemaphores[i], nullptr);
-		vkDestroySemaphore(As<VkDevice>(mDevice->GetHandle()), mImageReleaseSemaphores[i], nullptr);
+		vkDestroySemaphore(static_cast<VkDevice>(mDevice->GetHandle()), mImageAcquireSemaphores[i], nullptr);
+		vkDestroySemaphore(static_cast<VkDevice>(mDevice->GetHandle()), mImageReleaseSemaphores[i], nullptr);
 	}
 	mImageAcquireSemaphores.clear();
 	mImageReleaseSemaphores.clear();
@@ -67,7 +67,7 @@ void VulkanSwapchain::Destroy()
 
 const VulkanDrawable& VulkanSwapchain::AcquireNextDrawable()
 {
-	VkResult result = vkAcquireNextImageKHR(As<VkDevice>(mDevice->GetHandle()), mHandle, UINT64_MAX, mImageAcquireSemaphores[mCurrentFrameIndex], VK_NULL_HANDLE, &mImageIndex);
+	VkResult result = vkAcquireNextImageKHR(static_cast<VkDevice>(mDevice->GetHandle()), mHandle, UINT64_MAX, mImageAcquireSemaphores[mCurrentFrameIndex], VK_NULL_HANDLE, &mImageIndex);
 	if (result == VK_ERROR_OUT_OF_DATE_KHR)
 	{
 		auto renderSystem = GameInstance->GetSubsystem<RenderSystem>();
@@ -108,7 +108,7 @@ void VulkanSwapchain::Present()
 void VulkanSwapchain::Configure(const RendererConfig& config)
 {
 	auto windowSystem = GameInstance->GetSubsystem<WindowSystem>();
-	vkDeviceWaitIdle(As<VkDevice>(mDevice->GetHandle()));
+	vkDeviceWaitIdle(static_cast<VkDevice>(mDevice->GetHandle()));
 
 	// Get surface information
 	uint32_t presentModeCount;
@@ -207,12 +207,12 @@ void VulkanSwapchain::Configure(const RendererConfig& config)
 	swapchainCreateInfo.imageFormat = imageFormat;
 	swapchainCreateInfo.oldSwapchain = mHandle;
 	VkSwapchainKHR newSwapchain;
-	VK_CHECK(vkCreateSwapchainKHR(As<VkDevice>(mDevice->GetHandle()), &swapchainCreateInfo, nullptr, &newSwapchain));
+	VK_CHECK(vkCreateSwapchainKHR(static_cast<VkDevice>(mDevice->GetHandle()), &swapchainCreateInfo, nullptr, &newSwapchain));
 
 	// Destroy swapchain
 	if (mHandle != VK_NULL_HANDLE)
 	{
-		vkDestroySwapchainKHR(As<VkDevice>(mDevice->GetHandle()), mHandle, nullptr);
+		vkDestroySwapchainKHR(static_cast<VkDevice>(mDevice->GetHandle()), mHandle, nullptr);
 
 		// Flush pooled objects
 		FlushAll();
@@ -228,15 +228,15 @@ void VulkanSwapchain::Configure(const RendererConfig& config)
 		// Destroy command pools
 		for (uint32_t i = 0; i < mCommandPools.size(); i++)
 		{
-			vkDestroyCommandPool(As<VkDevice>(mDevice->GetHandle()), mCommandPools[i], nullptr);
+			vkDestroyCommandPool(static_cast<VkDevice>(mDevice->GetHandle()), mCommandPools[i], nullptr);
 		}
 		mCommandPools.clear();
 
 		// Destroy sync objects
 		for (uint32_t i = 0; i < mImageAcquireSemaphores.size(); i++)
 		{
-			vkDestroySemaphore(As<VkDevice>(mDevice->GetHandle()), mImageAcquireSemaphores[i], nullptr);
-			vkDestroySemaphore(As<VkDevice>(mDevice->GetHandle()), mImageReleaseSemaphores[i], nullptr);
+			vkDestroySemaphore(static_cast<VkDevice>(mDevice->GetHandle()), mImageAcquireSemaphores[i], nullptr);
+			vkDestroySemaphore(static_cast<VkDevice>(mDevice->GetHandle()), mImageReleaseSemaphores[i], nullptr);
 		}
 		mImageAcquireSemaphores.clear();
 		mImageReleaseSemaphores.clear();
@@ -244,17 +244,17 @@ void VulkanSwapchain::Configure(const RendererConfig& config)
 		// Destroy drawable
 		for (uint32_t i = 0; i < mImages.size(); i++)
 		{
-			vkDestroyImageView(As<VkDevice>(mDevice->GetHandle()), mImages[i].view, nullptr);
+			vkDestroyImageView(static_cast<VkDevice>(mDevice->GetHandle()), mImages[i].view, nullptr);
 		}
 		mImages.clear();
 	}
 	mHandle = newSwapchain;
 
 	uint32_t swapchainImageCount;
-	VK_CHECK(vkGetSwapchainImagesKHR(As<VkDevice>(mDevice->GetHandle()), mHandle, &swapchainImageCount, nullptr));
+	VK_CHECK(vkGetSwapchainImagesKHR(static_cast<VkDevice>(mDevice->GetHandle()), mHandle, &swapchainImageCount, nullptr));
 
 	TArray<VkImage> drawables(swapchainImageCount);
-	VK_CHECK(vkGetSwapchainImagesKHR(As<VkDevice>(mDevice->GetHandle()), mHandle, &swapchainImageCount, drawables.data()));
+	VK_CHECK(vkGetSwapchainImagesKHR(static_cast<VkDevice>(mDevice->GetHandle()), mHandle, &swapchainImageCount, drawables.data()));
 
 	// Create image views
 	VkImageViewUsageCreateInfo imageViewUsageCreateInfo{ VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO };
@@ -281,7 +281,7 @@ void VulkanSwapchain::Configure(const RendererConfig& config)
 	{
 		mImages[i].image = drawables[i];
 		imageViewCreateInfo.image = drawables[i];
-		VK_CHECK(vkCreateImageView(As<VkDevice>(mDevice->GetHandle()), &imageViewCreateInfo, nullptr, &mImages[i].view));
+		VK_CHECK(vkCreateImageView(static_cast<VkDevice>(mDevice->GetHandle()), &imageViewCreateInfo, nullptr, &mImages[i].view));
 	}
 
 	// Create sync objects
@@ -291,8 +291,8 @@ void VulkanSwapchain::Configure(const RendererConfig& config)
 	VkSemaphoreCreateInfo semaphoreCreateInfo{ VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO };
 	for (uint32_t i = 0; i < mMaxFramesInFlight; i++)
 	{
-		VK_CHECK(vkCreateSemaphore(As<VkDevice>(mDevice->GetHandle()), &semaphoreCreateInfo, nullptr, &mImageAcquireSemaphores[i]));
-		VK_CHECK(vkCreateSemaphore(As<VkDevice>(mDevice->GetHandle()), &semaphoreCreateInfo, nullptr, &mImageReleaseSemaphores[i]));
+		VK_CHECK(vkCreateSemaphore(static_cast<VkDevice>(mDevice->GetHandle()), &semaphoreCreateInfo, nullptr, &mImageAcquireSemaphores[i]));
+		VK_CHECK(vkCreateSemaphore(static_cast<VkDevice>(mDevice->GetHandle()), &semaphoreCreateInfo, nullptr, &mImageReleaseSemaphores[i]));
 	}
 
 	// Create command pools
@@ -305,7 +305,7 @@ void VulkanSwapchain::Configure(const RendererConfig& config)
 	for (uint32_t i = 0; i < mMaxFramesInFlight; i++)
 	{
 		commandPoolCreateInfo.queueFamilyIndex = mDevice->GetGraphicsQueue().index;
-		VK_CHECK(vkCreateCommandPool(As<VkDevice>(mDevice->GetHandle()), &commandPoolCreateInfo, nullptr, &mCommandPools[i]));
+		VK_CHECK(vkCreateCommandPool(static_cast<VkDevice>(mDevice->GetHandle()), &commandPoolCreateInfo, nullptr, &mCommandPools[i]));
 	}
 }
 
@@ -313,7 +313,7 @@ void VulkanSwapchain::Flush(uint32_t frameIndex)
 {
 	Swapchain::Flush(frameIndex);
 	FlushFrameObjects(frameIndex);
-	VK_CHECK(vkResetCommandPool(As<VkDevice>(mDevice->GetHandle()), GetCommandPool(frameIndex), 0));
+	VK_CHECK(vkResetCommandPool(static_cast<VkDevice>(mDevice->GetHandle()), GetCommandPool(frameIndex), 0));
 }
 
 void VulkanSwapchain::FlushFrameObjects(uint32_t frameIndex)
@@ -321,19 +321,19 @@ void VulkanSwapchain::FlushFrameObjects(uint32_t frameIndex)
 	auto& pool = mFrameObjects[frameIndex];
 	if (!pool.commandBuffers.empty())
 	{
-		vkFreeCommandBuffers(As<VkDevice>(mDevice->GetHandle()), mCommandPools[frameIndex], static_cast<uint32_t>(pool.commandBuffers.size()), pool.commandBuffers.data());
+		vkFreeCommandBuffers(static_cast<VkDevice>(mDevice->GetHandle()), mCommandPools[frameIndex], static_cast<uint32_t>(pool.commandBuffers.size()), pool.commandBuffers.data());
 		pool.commandBuffers.clear();
 	}
 
 	for (auto framebuffer : pool.framebuffers)
 	{
-		vkDestroyFramebuffer(As<VkDevice>(mDevice->GetHandle()), framebuffer, nullptr);
+		vkDestroyFramebuffer(static_cast<VkDevice>(mDevice->GetHandle()), framebuffer, nullptr);
 	}
 	pool.framebuffers.clear();
 
 	for (auto renderPass : pool.renderPasses)
 	{
-		vkDestroyRenderPass(As<VkDevice>(mDevice->GetHandle()), renderPass, nullptr);
+		vkDestroyRenderPass(static_cast<VkDevice>(mDevice->GetHandle()), renderPass, nullptr);
 	}
 	pool.renderPasses.clear();
 }
@@ -345,7 +345,7 @@ VkCommandBuffer VulkanSwapchain::AllocateCommandBuffer()
 	allocateInfo.commandBufferCount = 1;
 	allocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 	allocateInfo.commandPool = GetCommandPool();
-	VK_CHECK(vkAllocateCommandBuffers(As<VkDevice>(mDevice->GetHandle()), &allocateInfo, &commandBuffer));
+	VK_CHECK(vkAllocateCommandBuffers(static_cast<VkDevice>(mDevice->GetHandle()), &allocateInfo, &commandBuffer));
 	mFrameObjects[mCurrentFrameIndex].commandBuffers.push_back(commandBuffer);
 	return commandBuffer;
 }
@@ -353,7 +353,7 @@ VkCommandBuffer VulkanSwapchain::AllocateCommandBuffer()
 VkRenderPass VulkanSwapchain::CreateRenderPass(const VkRenderPassCreateInfo& createInfo)
 {
 	VkRenderPass renderPass = VK_NULL_HANDLE;
-	VK_CHECK(vkCreateRenderPass(As<VkDevice>(mDevice->GetHandle()), &createInfo, nullptr, &renderPass));
+	VK_CHECK(vkCreateRenderPass(static_cast<VkDevice>(mDevice->GetHandle()), &createInfo, nullptr, &renderPass));
 	mFrameObjects[mCurrentFrameIndex].renderPasses.push_back(renderPass);
 	return renderPass;
 }
@@ -361,7 +361,7 @@ VkRenderPass VulkanSwapchain::CreateRenderPass(const VkRenderPassCreateInfo& cre
 VkFramebuffer VulkanSwapchain::CreateFramebuffer(const VkFramebufferCreateInfo& createInfo)
 {
 	VkFramebuffer framebuffer = VK_NULL_HANDLE;
-	VK_CHECK(vkCreateFramebuffer(As<VkDevice>(mDevice->GetHandle()), &createInfo, nullptr, &framebuffer));
+	VK_CHECK(vkCreateFramebuffer(static_cast<VkDevice>(mDevice->GetHandle()), &createInfo, nullptr, &framebuffer));
 	mFrameObjects[mCurrentFrameIndex].framebuffers.push_back(framebuffer);
 	return framebuffer;
 }

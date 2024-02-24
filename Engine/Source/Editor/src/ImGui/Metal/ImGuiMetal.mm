@@ -13,7 +13,7 @@ using namespace GEditor;
 void ImGuiBackend::Init(Gleam::GraphicsDevice* device)
 {
     mDevice = device;
-    ImGui_ImplMetal_Init(Gleam::As<Gleam::MetalDevice*>(mDevice)->GetHandle());
+    ImGui_ImplMetal_Init(static_cast<Gleam::MetalDevice*>(mDevice)->GetHandle());
     ImGui_ImplSDL3_InitForMetal(GameInstance->GetSubsystem<Gleam::WindowSystem>()->GetSDLWindow());
 }
 
@@ -25,14 +25,14 @@ void ImGuiBackend::Destroy()
 
 void ImGuiBackend::BeginFrame()
 {
-    auto swapchain = Gleam::As<Gleam::MetalDevice*>(mDevice)->GetSwapchain();
+    auto swapchain = static_cast<Gleam::MetalDevice*>(mDevice)->GetSwapchain();
     
     MTLRenderPassDescriptor* renderPassDesc = [MTLRenderPassDescriptor new];
     MTLRenderPassColorAttachmentDescriptor* colorAttachmentDesc = renderPassDesc.colorAttachments[0];
     colorAttachmentDesc.clearColor = { 0.0, 0.0, 0.0, 1.0 };
     colorAttachmentDesc.loadAction = MTLLoadActionLoad;
     colorAttachmentDesc.storeAction = MTLStoreActionStore;
-    colorAttachmentDesc.texture = Gleam::As<Gleam::MetalSwapchain*>(swapchain)->AcquireNextDrawable().texture;
+    colorAttachmentDesc.texture = static_cast<Gleam::MetalSwapchain*>(swapchain)->AcquireNextDrawable().texture;
 
     ImGui_ImplMetal_NewFrame(renderPassDesc);
     ImGui_ImplSDL3_NewFrame();

@@ -26,19 +26,18 @@ void RenderSystem::Initialize()
 
 	EventDispatcher<RendererResizeEvent>::Subscribe([this](RendererResizeEvent e)
 	{
-        const auto& cmd = mCommandBuffers[mDevice->GetSwapchain()->GetLastFrameIndex()];
+        const auto& cmd = mCommandBuffers[mDevice->GetLastFrameIndex()];
         if (cmd)
         {
             cmd->WaitUntilCompleted();
         }
-        mDevice->GetSwapchain()->FlushAll();
-        mDevice->Clear();
+        mDevice->DestroySizeDependentResources();
 	});
 }
 
 void RenderSystem::Shutdown()
 {
-    mCommandBuffers[mDevice->GetSwapchain()->GetLastFrameIndex()]->WaitUntilCompleted();
+    mCommandBuffers[mDevice->GetLastFrameIndex()]->WaitUntilCompleted();
     mCommandBuffers.clear();
     
     for (auto renderer : mRenderers)
@@ -47,7 +46,7 @@ void RenderSystem::Shutdown()
         delete renderer;
     }
 
-    mDevice->Clear();
+    mDevice->DestroyResources();
     mDevice.reset();
 }
 
@@ -71,11 +70,11 @@ void RenderSystem::Render()
         }
         graph.Compile();
 
-		auto frameIdx = mDevice->GetSwapchain()->GetFrameIndex();
+		auto frameIdx = mDevice->GetFrameIndex();
         const auto cmd = mCommandBuffers[frameIdx].get();
 
 		cmd->WaitUntilCompleted();
-		mDevice->GetSwapchain()->Flush(frameIdx);
+		mDevice->DestroyPooledObjects(frameIdx);
 
         graph.Execute(cmd);
 
@@ -94,7 +93,7 @@ void RenderSystem::Configure(const RendererConfig& config)
 {
     mConfiguration = config;
     mDevice->Configure(config);
-    mCommandBuffers.resize(mDevice->GetSwapchain()->GetFramesInFlight());
+    mCommandBuffers.resize(mDevice->GetFramesInFlight());
 	for (auto& cmd : mCommandBuffers)
 	{
 		cmd = CreateScope<CommandBuffer>(mDevice.get());
@@ -134,5 +133,5 @@ void RenderSystem::SetRenderTarget(const Texture& texture)
 
 void RenderSystem::ResetRenderTarget()
 {
-    SetRenderTarget(mDevice->GetSwapchain()->GetTexture());
+    SetRenderTarget(mDevice->GetRenderSurface());
 }

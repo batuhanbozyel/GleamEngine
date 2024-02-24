@@ -62,8 +62,8 @@ struct CommandBuffer::Impl
 CommandBuffer::CommandBuffer(GraphicsDevice* device)
     : mHandle(CreateScope<Impl>()), mDevice(device)
 {
-    mHandle->device = As<MetalDevice*>(device);
-    mHandle->swapchain = As<MetalSwapchain*>(mHandle->device->GetSwapchain());
+    mHandle->device = static_cast<MetalDevice*>(device);
+    mHandle->swapchain = static_cast<MetalSwapchain*>(mHandle->device->GetSwapchain());
     
     HeapDescriptor descriptor;
     descriptor.size = 4194304; // 4 MB;
@@ -186,14 +186,14 @@ void CommandBuffer::BindGraphicsPipeline(const PipelineStateDescriptor& pipeline
         // Set vertex samplers
         for (const auto& resource : vertexShader.GetReflection()->samplers)
         {
-            auto entry = As<IRDescriptorTableEntry*>(argumentBufferPtr + resource.topLevelOffset);
+            auto entry = static_cast<IRDescriptorTableEntry*>(argumentBufferPtr + resource.topLevelOffset);
             IRDescriptorTableSetSampler(entry, MetalPipelineStateManager::GetSamplerState(resource.slot), 0.0f);
         }
         
         // Set fragment samplers
         for (const auto& resource : fragmentShader.GetReflection()->samplers)
         {
-            auto entry = As<IRDescriptorTableEntry*>(argumentBufferPtr + resource.topLevelOffset);
+            auto entry = static_cast<IRDescriptorTableEntry*>(argumentBufferPtr + resource.topLevelOffset);
             IRDescriptorTableSetSampler(entry, MetalPipelineStateManager::GetSamplerState(resource.slot), 0.0f);
         }
     }
@@ -246,7 +246,7 @@ void CommandBuffer::BindBuffer(const NativeGraphicsHandle buffer, BufferUsage us
     if (resource == nullptr) return;
     
     [mHandle->renderCommandEncoder useResource:buffer usage:ResourceAccessToMTLResourceUsage(access) stages:ShaderStagesToMTLRenderStages(stage)];
-    auto entry = As<IRDescriptorTableEntry*>(argumentBufferPtr + resource.topLevelOffset);
+    auto entry = static_cast<IRDescriptorTableEntry*>(argumentBufferPtr + resource.topLevelOffset);
     IRDescriptorTableSetBuffer(entry, [buffer gpuAddress] + offset, 0);
 }
 
@@ -278,7 +278,7 @@ void CommandBuffer::BindTexture(const NativeGraphicsHandle texture, uint32_t ind
     if (resource == nullptr) return;
     
     [mHandle->renderCommandEncoder useResource:texture usage:ResourceAccessToMTLResourceUsage(access) stages:ShaderStagesToMTLRenderStages(stage)];
-    auto entry = As<IRDescriptorTableEntry*>(argumentBufferPtr + resource.topLevelOffset);
+    auto entry = static_cast<IRDescriptorTableEntry*>(argumentBufferPtr + resource.topLevelOffset);
     IRDescriptorTableSetTexture(entry, texture, 0.0f, 0);
 }
 
@@ -303,10 +303,10 @@ void CommandBuffer::Draw(uint32_t vertexCount, uint32_t instanceCount, uint32_t 
  IRRuntimeDrawIndexedPrimitives function ensures SV_VertexID starts always from 0 to follow DirectX12's SV_VertexID model
  Switch to using IRRuntimeDrawIndexedPrimitives if DX12 is the primary Windows API
  */
-void CommandBuffer::DrawIndexed(const NativeGraphicsHandle indexBuffer, IndexType type, uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, uint32_t baseVertex, uint32_t baseInstance) const
+void CommandBuffer::DrawIndexed(const Buffer& indexBuffer, IndexType type, uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, uint32_t baseVertex, uint32_t baseInstance) const
 {
     MTLIndexType indexType = static_cast<MTLIndexType>(type);
-    VkDrawIndexedPrimitives(mHandle->renderCommandEncoder, mHandle->pipeline->topology, indexCount, indexType, indexBuffer, firstIndex * SizeOfIndexType(type), instanceCount, baseVertex, baseInstance);
+    VkDrawIndexedPrimitives(mHandle->renderCommandEncoder, mHandle->pipeline->topology, indexCount, indexType, indexBuffer.GetHandle(), firstIndex * SizeOfIndexType(type), instanceCount, baseVertex, baseInstance);
 }
 
 void CommandBuffer::CopyBuffer(const NativeGraphicsHandle src, const NativeGraphicsHandle dst, size_t size, size_t srcOffset, size_t dstOffset) const

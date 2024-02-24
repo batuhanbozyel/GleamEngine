@@ -35,8 +35,8 @@ struct CommandBuffer::Impl
 CommandBuffer::CommandBuffer(GraphicsDevice* device)
 	: mHandle(CreateScope<Impl>()), mDevice(device)
 {
-	mHandle->device = As<VulkanDevice*>(device);
-	mHandle->swapchain = As<VulkanSwapchain*>(mHandle->device->GetSwapchain());
+	mHandle->device = static_cast<VulkanDevice*>(device);
+	mHandle->swapchain = static_cast<VulkanSwapchain*>(mHandle->device->GetSwapchain());
 	mHandle->frameIdx = mHandle->swapchain->GetFrameIndex();
     
     HeapDescriptor descriptor;
@@ -45,13 +45,13 @@ CommandBuffer::CommandBuffer(GraphicsDevice* device)
     mStagingHeap = mDevice->CreateHeap(descriptor);
 
 	VkFenceCreateInfo fenceInfo{ VK_STRUCTURE_TYPE_FENCE_CREATE_INFO };
-	VK_CHECK(vkCreateFence(As<VkDevice>(mHandle->device->GetHandle()), &fenceInfo, nullptr, &mHandle->fence));
+	VK_CHECK(vkCreateFence(static_cast<VkDevice>(mHandle->device->GetHandle()), &fenceInfo, nullptr, &mHandle->fence));
 }
 
 CommandBuffer::~CommandBuffer()
 {
 	mDevice->Dispose(mStagingHeap);
-	vkDestroyFence(As<VkDevice>(mHandle->device->GetHandle()), mHandle->fence, nullptr);
+	vkDestroyFence(static_cast<VkDevice>(mHandle->device->GetHandle()), mHandle->fence, nullptr);
 }
 
 void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, const TStringView debugName) const
@@ -93,17 +93,17 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, 
 			depthAttachmentDesc.stencilStoreOp = depthAttachmentDesc.storeOp;
 		}
         
-		depthAttachmentDesc.initialLayout = VulkanTransitionManager::GetLayout(As<VkImage>(renderPassDesc.depthAttachment.texture.GetHandle()));
+		depthAttachmentDesc.initialLayout = VulkanTransitionManager::GetLayout(static_cast<VkImage>(renderPassDesc.depthAttachment.texture.GetHandle()));
 		depthAttachmentDesc.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
         
         clearValues[depthAttachmentIndex] = {};
         clearValues[depthAttachmentIndex].depthStencil = { renderPassDesc.depthAttachment.clearDepth, renderPassDesc.depthAttachment.clearStencil };
-        imageViews[depthAttachmentIndex] = As<VkImageView>(renderPassDesc.depthAttachment.texture.GetView());
+        imageViews[depthAttachmentIndex] = static_cast<VkImageView>(renderPassDesc.depthAttachment.texture.GetView());
         
         depthStencilAttachment.attachment = depthAttachmentIndex;
         depthStencilAttachment.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
         subpassDescriptors[0].pDepthStencilAttachment = &depthStencilAttachment;
-		VulkanTransitionManager::SetLayout(As<VkImage>(renderPassDesc.depthAttachment.texture.GetHandle()), VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+		VulkanTransitionManager::SetLayout(static_cast<VkImage>(renderPassDesc.depthAttachment.texture.GetHandle()), VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 
 		subpassDependencies[1].srcSubpass = VK_SUBPASS_EXTERNAL;
 		subpassDependencies[1].dstSubpass = 0;
@@ -137,13 +137,13 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, 
         colorAttachmentDesc.samples = GetVkSampleCount(renderPassDesc.samples);
         colorAttachmentDesc.loadOp = AttachmentLoadActionToVkAttachmentLoadOp(colorAttachment.loadAction);
         colorAttachmentDesc.storeOp = AttachmentStoreActionToVkAttachmentStoreOp(colorAttachment.storeAction);
-        colorAttachmentDesc.initialLayout = VulkanTransitionManager::GetLayout(As<VkImage>(colorAttachment.texture.GetHandle()));
+        colorAttachmentDesc.initialLayout = VulkanTransitionManager::GetLayout(static_cast<VkImage>(colorAttachment.texture.GetHandle()));
 
 		if (colorAttachment.texture.IsValid())
 		{
 			colorAttachmentDesc.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-			imageViews[i] = As<VkImageView>(colorAttachment.texture.GetView());
-			VulkanTransitionManager::SetLayout(As<VkImage>(colorAttachment.texture.GetHandle()), colorAttachmentDesc.finalLayout);
+			imageViews[i] = static_cast<VkImageView>(colorAttachment.texture.GetView());
+			VulkanTransitionManager::SetLayout(static_cast<VkImage>(colorAttachment.texture.GetHandle()), colorAttachmentDesc.finalLayout);
 		}
 		else
 		{
@@ -283,7 +283,7 @@ void CommandBuffer::BindBuffer(const NativeGraphicsHandle buffer, BufferUsage us
 		}
 		else
 		{
-			GLEAM_ASSERT(false, "Metal: Shader stage not implemented yet.")
+			GLEAM_ASSERT(false, "Vulkan: Shader stage not implemented yet.")
 		}
 
 		switch (usage)
@@ -311,7 +311,7 @@ void CommandBuffer::BindBuffer(const NativeGraphicsHandle buffer, BufferUsage us
 	if (resource == nullptr) return;
 
 	VkDescriptorBufferInfo bufferInfo{};
-	bufferInfo.buffer = As<VkBuffer>(buffer);
+	bufferInfo.buffer = static_cast<VkBuffer>(buffer);
 	bufferInfo.offset = offset;
 	bufferInfo.range = VK_WHOLE_SIZE;
 
@@ -365,7 +365,7 @@ void CommandBuffer::BindTexture(const NativeGraphicsHandle texture, uint32_t ind
 	}();
 
 	VkDescriptorImageInfo imageInfo{};
-	imageInfo.imageView = As<VkImageView>(texture);
+	imageInfo.imageView = static_cast<VkImageView>(texture);
 	imageInfo.imageLayout = imageLayout;
 
 	VkWriteDescriptorSet descriptorSet{ VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
@@ -399,7 +399,7 @@ void CommandBuffer::Draw(uint32_t vertexCount, uint32_t instanceCount, uint32_t 
 
 void CommandBuffer::DrawIndexed(const NativeGraphicsHandle indexBuffer, IndexType type, uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, uint32_t baseVertex, uint32_t baseInstance) const
 {
-	vkCmdBindIndexBuffer(mHandle->commandBuffer, As<VkBuffer>(indexBuffer), 0, static_cast<VkIndexType>(type));
+	vkCmdBindIndexBuffer(mHandle->commandBuffer, static_cast<VkBuffer>(indexBuffer), 0, static_cast<VkIndexType>(type));
 	vkCmdDrawIndexed(mHandle->commandBuffer, indexCount, instanceCount, firstIndex, baseVertex, baseInstance);
 }
 
@@ -409,13 +409,13 @@ void CommandBuffer::CopyBuffer(const NativeGraphicsHandle src, const NativeGraph
 	bufferCopy.srcOffset = srcOffset;
 	bufferCopy.dstOffset = dstOffset;
 	bufferCopy.size = size;
-	vkCmdCopyBuffer(mHandle->commandBuffer, As<VkBuffer>(src), As<VkBuffer>(dst), 1, &bufferCopy);
+	vkCmdCopyBuffer(mHandle->commandBuffer, static_cast<VkBuffer>(src), static_cast<VkBuffer>(dst), 1, &bufferCopy);
 }
 
 void CommandBuffer::Blit(const Texture& texture, const Texture& target) const
 {
     mHandle->swapchainTarget = !target.IsValid();
-	VkImage targetTexture = mHandle->swapchainTarget ? mHandle->swapchain->AcquireNextDrawable().image : As<VkImage>(target.GetHandle());
+	VkImage targetTexture = mHandle->swapchainTarget ? mHandle->swapchain->AcquireNextDrawable().image : static_cast<VkImage>(target.GetHandle());
 
 	if (mHandle->swapchainTarget)
 	{
@@ -430,7 +430,7 @@ void CommandBuffer::Blit(const Texture& texture, const Texture& target) const
 	region.extent.width = static_cast<uint32_t>(texture.GetDescriptor().size.width);
 	region.extent.height = static_cast<uint32_t>(texture.GetDescriptor().size.height);
 	region.extent.depth = 1;
-	vkCmdCopyImage(mHandle->commandBuffer, As<VkImage>(texture.GetHandle()), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, targetTexture, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+	vkCmdCopyImage(mHandle->commandBuffer, static_cast<VkImage>(texture.GetHandle()), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, targetTexture, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
 
 	if (mHandle->swapchainTarget)
 	{
@@ -449,7 +449,7 @@ void CommandBuffer::TransitionLayout(const Texture& texture, ResourceAccess acce
 			default: return VK_IMAGE_LAYOUT_GENERAL;
 		}
 	}();
-	VulkanTransitionManager::TransitionLayout(mHandle->commandBuffer, As<VkImage>(texture.GetHandle()), imageLayout);
+	VulkanTransitionManager::TransitionLayout(mHandle->commandBuffer, static_cast<VkImage>(texture.GetHandle()), imageLayout);
 }
 
 void CommandBuffer::Begin() const
@@ -458,7 +458,7 @@ void CommandBuffer::Begin() const
 	VkCommandBufferBeginInfo beginInfo{ VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
 	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 	VK_CHECK(vkBeginCommandBuffer(mHandle->commandBuffer, &beginInfo));
-	VK_CHECK(vkResetFences(As<VkDevice>(mHandle->device->GetHandle()), 1, &mHandle->fence));
+	VK_CHECK(vkResetFences(static_cast<VkDevice>(mHandle->device->GetHandle()), 1, &mHandle->fence));
 	mCommitted = false;
 }
 
@@ -502,7 +502,7 @@ void CommandBuffer::WaitUntilCompleted() const
 {
 	if (mCommitted)
 	{
-		VK_CHECK(vkWaitForFences(As<VkDevice>(mHandle->device->GetHandle()), 1, &mHandle->fence, VK_TRUE, UINT64_MAX));
+		VK_CHECK(vkWaitForFences(static_cast<VkDevice>(mHandle->device->GetHandle()), 1, &mHandle->fence, VK_TRUE, UINT64_MAX));
 	}
 }
 

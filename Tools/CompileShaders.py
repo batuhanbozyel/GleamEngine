@@ -4,16 +4,16 @@ import platform
 import subprocess
 cmd = subprocess.run
 
+VULKAN_SDK = os.getenv("VULKAN_SDK")
 SCRIPT_DIRECTORY = os.path.dirname(os.path.realpath(__file__))
 RUNTIME_INCLUDE_DIRECTORY = f"{SCRIPT_DIRECTORY}/../Engine/Source/Runtime/src/Renderer/Shaders"
 
 if platform.system() == "Darwin":
     global DXC
-    DXC = f"{SCRIPT_DIRECTORY}/bin/dxc"
+    DXC = f"{SCRIPT_DIRECTORY}/dxc/bin/dxc"
 else:
-    VULKAN_SDK = os.getenv("VULKAN_SDK")
     if VULKAN_SDK is None:
-        DXC = "dxc"
+        DXC = f"{SCRIPT_DIRECTORY}/dxc/bin/dxc.exe"
     else:
         DXC = f"{VULKAN_SDK}/bin/dxc"
 
@@ -23,20 +23,12 @@ HLSL_SHADER_STAGE["fragment"] = "ps_6_0"
 HLSL_SHADER_STAGE["compute"] = "cs_6_0"
 
 def compile_shader(hlsl_file: str, entry_point: str, shader_stage: str, output_dir: str):
-    output_file = ""
-    extra_commands = []
-    if platform.system() == "Darwin":
-        # Generate DXIL
-        output_file = f"{output_dir}/{entry_point}.dxil"
-    else:
-        # Generate SPIR-V
-        output_file = f"{output_dir}/{entry_point}.spv"
-        extra_commands = ["-spirv", "-fvk-use-scalar-layout", "-fvk-t-shift", "1000", "0", "-fvk-u-shift", "2000", "0"]
-    
-    compile_command = [DXC, "-T", HLSL_SHADER_STAGE[shader_stage], "-I", RUNTIME_INCLUDE_DIRECTORY, "-E", entry_point, hlsl_file, "-Fo", output_file]
-    compile_command.extend(extra_commands)
+    compile_command = [DXC, hlsl_file,
+                       "-T", HLSL_SHADER_STAGE[shader_stage],
+                       "-I", RUNTIME_INCLUDE_DIRECTORY,
+                       "-E", entry_point,
+                       "-Fo", f"{output_dir}/{entry_point}.dxil"]
     cmd(compile_command)
-
     try:
         cmd(compile_command, stderr=subprocess.PIPE, check=True)
     except subprocess.CalledProcessError:
@@ -44,7 +36,7 @@ def compile_shader(hlsl_file: str, entry_point: str, shader_stage: str, output_d
 
 if __name__ == "__main__":
     if len(sys.argv) < 5 or (len(sys.argv) - 2) % 3 != 0:
-        print("Usage: python compile_shaders.py <hlsl_file> <entry_point> <shader_stage> [...]")
+        print("Usage: python CompileShaders.py <hlsl_file> <entry_point> <shader_stage> [...]")
         sys.exit(1)
 
     output_dir = sys.argv[1]

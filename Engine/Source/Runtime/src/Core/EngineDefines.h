@@ -26,7 +26,10 @@
 	#define GLEAM_ASSERT(...)
 #endif
 
-#ifdef USE_VULKAN_RENDERER
+#if defined(USE_DIRECTX_RENDERER)
+using NativeGraphicsHandle = void*;
+using DispatchSemaphore = NativeGraphicsHandle;
+#elif defined(USE_VULKAN_RENDERER)
 #define VULKAN_API_VERSION VK_API_VERSION_1_1
 using NativeGraphicsHandle = void*;
 using DispatchSemaphore = NativeGraphicsHandle;

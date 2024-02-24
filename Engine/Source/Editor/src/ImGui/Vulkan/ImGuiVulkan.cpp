@@ -36,7 +36,7 @@ void ImGuiBackend::Init(Gleam::GraphicsDevice* device)
 	pool_info.maxSets = 1000 * IM_ARRAYSIZE(pool_sizes);
 	pool_info.poolSizeCount = (uint32_t)IM_ARRAYSIZE(pool_sizes);
 	pool_info.pPoolSizes = pool_sizes;
-	VK_CHECK(vkCreateDescriptorPool(Gleam::As<VkDevice>(mDevice->GetHandle()), &pool_info, nullptr, &gDescriptorPool));
+	VK_CHECK(vkCreateDescriptorPool(static_cast<VkDevice>(mDevice->GetHandle()), &pool_info, nullptr, &gDescriptorPool));
 
 	// Create render pass
 	VkAttachmentDescription attachment = {};
@@ -74,28 +74,28 @@ void ImGuiBackend::Init(Gleam::GraphicsDevice* device)
 	info.pSubpasses = &subpass;
 	info.dependencyCount = 1;
 	info.pDependencies = &dependency;
-	VK_CHECK(vkCreateRenderPass(Gleam::As<VkDevice>(mDevice->GetHandle()), &info, nullptr, &gRenderPass));
+	VK_CHECK(vkCreateRenderPass(static_cast<VkDevice>(mDevice->GetHandle()), &info, nullptr, &gRenderPass));
 
 	// Initialize ImGui
-	auto vulkanDevice = Gleam::As<Gleam::VulkanDevice*>(mDevice);
+	auto vulkanDevice = static_cast<Gleam::VulkanDevice*>(mDevice);
 	ImGui_ImplVulkan_InitInfo init_info = {};
     init_info.Instance = vulkanDevice->GetInstance();
     init_info.PhysicalDevice = vulkanDevice->GetPhysicalDevice();
-    init_info.Device = Gleam::As<VkDevice>(vulkanDevice->GetHandle());
+    init_info.Device = static_cast<VkDevice>(vulkanDevice->GetHandle());
     init_info.QueueFamily = vulkanDevice->GetGraphicsQueue().index;
     init_info.Queue = vulkanDevice->GetGraphicsQueue().handle;
     init_info.PipelineCache = vulkanDevice->GetPipelineCache();
 	init_info.DescriptorPool = gDescriptorPool;
     init_info.Subpass = 0;
-    init_info.MinImageCount = vulkanDevice->GetSwapchain()->GetFramesInFlight();
-    init_info.ImageCount = vulkanDevice->GetSwapchain()->GetFramesInFlight();
+    init_info.MinImageCount = vulkanDevice->GetFramesInFlight();
+    init_info.ImageCount = vulkanDevice->GetFramesInFlight();
     init_info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
     init_info.CheckVkResultFn = [](VkResult result)
 	{
 		GLEAM_ASSERT(result == VK_SUCCESS, VkResultToString(x));;
 	};
 
-	ImGui_ImplVulkan_LoadFunctions([](const char* function_name, void*) { return vkGetInstanceProcAddr(Gleam::As<Gleam::VulkanDevice*>(mDevice)->GetInstance(), function_name); });
+	ImGui_ImplVulkan_LoadFunctions([](const char* function_name, void*) { return vkGetInstanceProcAddr(static_cast<Gleam::VulkanDevice*>(mDevice)->GetInstance(), function_name); });
 	ImGui_ImplSDL3_InitForVulkan(GameInstance->GetSubsystem<Gleam::WindowSystem>()->GetSDLWindow());
     ImGui_ImplVulkan_Init(&init_info, gRenderPass);
 	ImGui_ImplVulkan_CreateFontsTexture();
@@ -106,8 +106,8 @@ void ImGuiBackend::Destroy()
     ImGui_ImplVulkan_Shutdown();
     ImGui_ImplSDL3_Shutdown();
 
-	vkDestroyDescriptorPool(Gleam::As<VkDevice>(mDevice->GetHandle()), gDescriptorPool, nullptr);
-	vkDestroyRenderPass(Gleam::As<VkDevice>(mDevice->GetHandle()), gRenderPass, nullptr);
+	vkDestroyDescriptorPool(static_cast<VkDevice>(mDevice->GetHandle()), gDescriptorPool, nullptr);
+	vkDestroyRenderPass(static_cast<VkDevice>(mDevice->GetHandle()), gRenderPass, nullptr);
 }
 
 void ImGuiBackend::BeginFrame()
@@ -118,15 +118,15 @@ void ImGuiBackend::BeginFrame()
 
 void ImGuiBackend::EndFrame(NativeGraphicsHandle commandBuffer, NativeGraphicsHandle renderPass)
 {
-    ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), Gleam::As<VkCommandBuffer>(commandBuffer));
+    ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), static_cast<VkCommandBuffer>(commandBuffer));
 }
 
 ImTextureID ImGuiBackend::GetImTextureIDForTexture(const Gleam::Texture& texture)
 {
-	auto textureID = ImGui_ImplVulkan_AddTexture(Gleam::VulkanPipelineStateManager::GetSampler(0), Gleam::As<VkImageView>(texture.GetView()), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-	mDevice->GetSwapchain()->AddPooledObject([textureID = textureID]()
+	auto textureID = ImGui_ImplVulkan_AddTexture(Gleam::VulkanPipelineStateManager::GetSampler(0), static_cast<VkImageView>(texture.GetView()), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+	mDevice->AddPooledObject([textureID = textureID]()
 	{
-		ImGui_ImplVulkan_RemoveTexture(Gleam::As<VkDescriptorSet>(textureID));
+		ImGui_ImplVulkan_RemoveTexture(static_cast<VkDescriptorSet>(textureID));
 	});
 	return textureID;
 }

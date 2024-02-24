@@ -16,7 +16,7 @@ static TArray<uint8_t> ReadBinaryFile(const Filesystem::path& filepath)
         TArray<uint8_t> buffer(size);
 
         file.seekg(0);
-        file.read(As<char*>(buffer.data()), size);
+        file.read(reinterpret_cast<char*>(buffer.data()), size);
 
         return buffer;
     }

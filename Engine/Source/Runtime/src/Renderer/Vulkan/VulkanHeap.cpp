@@ -32,8 +32,8 @@ Buffer Heap::CreateBuffer(const BufferDescriptor& descriptor) const
 		createInfo.usage |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 	}
 
-	VK_CHECK(vkCreateBuffer(As<VkDevice>(mDevice->GetHandle()), &createInfo, nullptr, &buffer));
-	VK_CHECK(vmaBindBufferMemory2(As<const VulkanDevice*>(mDevice)->GetAllocator(), As<VmaAllocation>(mHandle), alignedStackPtr, buffer, nullptr));
+	VK_CHECK(vkCreateBuffer(static_cast<VkDevice>(mDevice->GetHandle()), &createInfo, nullptr, &buffer));
+	VK_CHECK(vmaBindBufferMemory2(static_cast<const VulkanDevice*>(mDevice)->GetAllocator(), static_cast<VmaAllocation>(mHandle), alignedStackPtr, buffer, nullptr));
 
     void* contents = nullptr;
     if (mDescriptor.memoryType != MemoryType::GPU)

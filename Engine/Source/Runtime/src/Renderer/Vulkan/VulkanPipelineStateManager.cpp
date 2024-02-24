@@ -85,7 +85,7 @@ static VkSampler CreateVkSampler(VulkanDevice* device, const SamplerState& sampl
 		default: GLEAM_ASSERT(false, "Vulkan: Filter mode is not supported!") break;
 	}
 
-	VK_CHECK(vkCreateSampler(As<VkDevice>(device->GetHandle()), &createInfo, nullptr, &sampler));
+	VK_CHECK(vkCreateSampler(static_cast<VkDevice>(device->GetHandle()), &createInfo, nullptr, &sampler));
 	return sampler;
 }
 
@@ -103,7 +103,7 @@ void VulkanPipelineStateManager::Destroy()
 {
 	for (const auto& sampler : mSamplerStates)
 	{
-        vkDestroySampler(As<VkDevice>(mDevice->GetHandle()), sampler, nullptr);
+        vkDestroySampler(static_cast<VkDevice>(mDevice->GetHandle()), sampler, nullptr);
 	}
 	Clear();
 }
@@ -148,9 +148,9 @@ void VulkanPipelineStateManager::Clear()
 {
 	for (const auto& [_, pipeline] : mGraphicsPipelineCache)
 	{
-		vkDestroyDescriptorSetLayout(As<VkDevice>(mDevice->GetHandle()), pipeline->setLayout, nullptr);
-		vkDestroyPipelineLayout(As<VkDevice>(mDevice->GetHandle()), pipeline->layout, nullptr);
-		vkDestroyPipeline(As<VkDevice>(mDevice->GetHandle()), pipeline->handle, nullptr);
+		vkDestroyDescriptorSetLayout(static_cast<VkDevice>(mDevice->GetHandle()), pipeline->setLayout, nullptr);
+		vkDestroyPipelineLayout(static_cast<VkDevice>(mDevice->GetHandle()), pipeline->layout, nullptr);
+		vkDestroyPipeline(static_cast<VkDevice>(mDevice->GetHandle()), pipeline->handle, nullptr);
 	}
 	mGraphicsPipelineCache.clear();
 }
@@ -208,7 +208,7 @@ VkDescriptorSetLayout VulkanPipelineStateManager::CreateDescriptorSetLayout(cons
 	setCreateInfo.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR;
 	setCreateInfo.bindingCount = static_cast<uint32_t>(setBindings.size());
 	setCreateInfo.pBindings = setBindings.data();
-	VK_CHECK(vkCreateDescriptorSetLayout(As<VkDevice>(mDevice->GetHandle()), &setCreateInfo, nullptr, &setLayout));
+	VK_CHECK(vkCreateDescriptorSetLayout(static_cast<VkDevice>(mDevice->GetHandle()), &setCreateInfo, nullptr, &setLayout));
 	return setLayout;
 }
 
@@ -230,7 +230,7 @@ VkPipelineLayout VulkanPipelineStateManager::CreatePipelineLayout(const Shader& 
     pipelineLayoutCreateInfo.pSetLayouts = &setLayout;
     pipelineLayoutCreateInfo.pushConstantRangeCount = static_cast<uint32_t>(pushConstantRanges.size());
     pipelineLayoutCreateInfo.pPushConstantRanges = pushConstantRanges.data();
-    VK_CHECK(vkCreatePipelineLayout(As<VkDevice>(mDevice->GetHandle()), &pipelineLayoutCreateInfo, nullptr, &layout));
+    VK_CHECK(vkCreatePipelineLayout(static_cast<VkDevice>(mDevice->GetHandle()), &pipelineLayoutCreateInfo, nullptr, &layout));
     return layout;
 }
 
@@ -246,12 +246,12 @@ VkPipeline VulkanPipelineStateManager::CreateGraphicsPipeline(const PipelineStat
 	TArray<VkPipelineShaderStageCreateInfo, 2> shaderStages{};
 	shaderStages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 	shaderStages[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
-	shaderStages[0].module = As<VkShaderModule>(vertexShader.GetHandle());
+	shaderStages[0].module = static_cast<VkShaderModule>(vertexShader.GetHandle());
 	shaderStages[0].pName = vertexShader.GetEntryPoint().c_str();
 
 	shaderStages[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 	shaderStages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-	shaderStages[1].module = As<VkShaderModule>(fragmentShader.GetHandle());
+	shaderStages[1].module = static_cast<VkShaderModule>(fragmentShader.GetHandle());
 	shaderStages[1].pName = fragmentShader.GetEntryPoint().c_str();
 
 	pipelineCreateInfo.stageCount = 2;
@@ -329,7 +329,7 @@ VkPipeline VulkanPipelineStateManager::CreateGraphicsPipeline(const PipelineStat
 	colorBlendState.attachmentCount = static_cast<uint32_t>(attachmentBlendStates.size());
 	colorBlendState.pAttachments = attachmentBlendStates.data();
 	pipelineCreateInfo.pColorBlendState = &colorBlendState;
-	VK_CHECK(vkCreateGraphicsPipelines(As<VkDevice>(mDevice->GetHandle()), nullptr, 1, &pipelineCreateInfo, nullptr, &pipeline));
+	VK_CHECK(vkCreateGraphicsPipelines(static_cast<VkDevice>(mDevice->GetHandle()), nullptr, 1, &pipelineCreateInfo, nullptr, &pipeline));
     return pipeline;
 }
 #endif

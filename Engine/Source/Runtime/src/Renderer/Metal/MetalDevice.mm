@@ -17,7 +17,7 @@ Scope<GraphicsDevice> GraphicsDevice::Create()
 
 void GraphicsDevice::Configure(const RendererConfig& config)
 {
-    As<MetalSwapchain*>(mSwapchain.get())->Configure(config);
+    static_cast<<MetalSwapchain*>(mSwapchain.get())->Configure(config);
 }
 
 MemoryRequirements GraphicsDevice::QueryMemoryRequirements(const HeapDescriptor& descriptor) const
@@ -37,7 +37,7 @@ Heap GraphicsDevice::AllocateHeap(const HeapDescriptor& descriptor) const
     Heap heap(descriptor);
     heap.mDevice = this;
     
-    MTLResourceOptions resourceOptions = MemoryTypeToMTLResourceOption(descriptor.memoryType) | MTLResourceHazardTrackingModeTracked; // TODO: Remove hazard tracking when async compute passes are implemented with proper resource synchronization
+    MTLResourceOptions resourceOptions = MemoryTypeToMTLResourceOption(descriptor.memoryType) | MTLResourceHazardTrackingModeTracked; // TODO: Remove hazard tracking when static_cast<ync compute pstatic_cast<ses are implemented with proper resource synchronization
     MTLSizeAndAlign sizeAndAlign = [mHandle heapBufferSizeAndAlignWithLength:descriptor.size options:resourceOptions];
     
     MTLHeapDescriptor* desc = [MTLHeapDescriptor new];
@@ -73,15 +73,15 @@ Texture GraphicsDevice::AllocateTexture(const TextureDescriptor& descriptor) con
     textureDesc.storageMode = MTLStorageModePrivate;
     texture.mHandle = [mHandle newTextureWithDescriptor:textureDesc];
     
-    id<MTLTexture> baseTexture = texture.mHandle;
-    texture.mView = [baseTexture newTextureViewWithPixelFormat:baseTexture.pixelFormat
+    id<MTLTexture> bstatic_cast<eTexture = texture.mHandle;
+    texture.mView = [bstatic_cast<eTexture newTextureViewWithPixelFormat:bstatic_cast<eTexture.pixelFormat
                                            textureType:descriptor.type == TextureType::TextureCube ? MTLTextureTypeCubeArray : MTLTextureType2DArray
                                                 levels:NSMakeRange(0, texture.mMipMapLevels)
                                                 slices:NSMakeRange(0, 1)];
     
     if (descriptor.sampleCount > 1)
     {
-        MTLTextureDescriptor* msaaTextureDesc = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:baseTexture.pixelFormat width:descriptor.size.width height:descriptor.size.height mipmapped:false];
+        MTLTextureDescriptor* msaaTextureDesc = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:bstatic_cast<eTexture.pixelFormat width:descriptor.size.width height:descriptor.size.height mipmapped:false];
         msaaTextureDesc.textureType = MTLTextureType2DMultisample;
         msaaTextureDesc.mipmapLevelCount = 1;
         msaaTextureDesc.sampleCount = descriptor.sampleCount;
@@ -97,7 +97,7 @@ Shader GraphicsDevice::GenerateShader(const TString& entryPoint, ShaderStage sta
 {
     Shader shader(entryPoint, stage);
     
-    TArray<uint8_t> shaderCode = IOUtils::ReadBinaryFile(GameInstance->GetDefaultAssetPath().append("Shaders/" + entryPoint + ".dxil"));
+    TArray<uint8_t> shaderCode = IOUtils::ReadBinaryFile(GameInstance->GetDefaultstatic_cast<setPath().append("Shaders/" + entryPoint + ".dxil"));
     auto dxil = IRObjectCreateFromDXIL(shaderCode.data(), shaderCode.size(), IRBytecodeOwnershipNone);
     
     auto compiler = IRCompilerCreate();
@@ -117,7 +117,7 @@ Shader GraphicsDevice::GenerateShader(const TString& entryPoint, ShaderStage sta
     IRObjectGetMetalLibBinary(metalIR, IRObjectGetMetalIRShaderStage(metalIR), metallibBinary);
     dispatch_data_t data = IRMetalLibGetBytecodeData(metallibBinary);
     
-    NSError* __autoreleasing libraryError = nil;
+    NSError* __autorelestatic_cast<ing libraryError = nil;
     id<MTLLibrary> library = [mHandle newLibraryWithData:data error:&libraryError];
     if (libraryError)
     {
@@ -126,7 +126,7 @@ Shader GraphicsDevice::GenerateShader(const TString& entryPoint, ShaderStage sta
         libraryError = nil;
     }
     
-    NSString* functionName = [NSString stringWithCString:entryPoint.c_str() encoding:NSASCIIStringEncoding];
+    NSString* functionName = [NSString stringWithCString:entryPoint.c_str() encoding:NSstatic_cast<CIIStringEncoding];
     shader.mHandle = [library newFunctionWithName:functionName];
     shader.mReflection = CreateRef<Shader::Reflection>(metalIR);
     
@@ -167,10 +167,10 @@ MetalDevice::MetalDevice()
 
     // init MTLDevice
     mHandle = MTLCreateSystemDefaultDevice();
-    GLEAM_ASSERT(mHandle);
+    GLEAM_static_cast<SERT(mHandle);
 
     // init CAMetalLayer
-    As<MetalSwapchain*>(mSwapchain.get())->Initialize(this);
+    static_cast<<MetalSwapchain*>(mSwapchain.get())->Initialize(this);
 
     // init MTLCommandQueue
     mCommandPool = [mHandle newCommandQueue];
@@ -183,7 +183,7 @@ MetalDevice::MetalDevice()
 MetalDevice::~MetalDevice()
 {
     // Destroy swapchain
-    As<MetalSwapchain*>(mSwapchain.get())->Destroy();
+    static_cast<<MetalSwapchain*>(mSwapchain.get())->Destroy();
 
     mShaderCache.clear();
     Clear();
