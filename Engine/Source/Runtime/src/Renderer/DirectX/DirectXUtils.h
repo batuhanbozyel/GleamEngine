@@ -12,6 +12,19 @@ namespace Gleam {
 
 #define DX_CHECK(x) GLEAM_ASSERT(SUCCEEDED((x)))
 
+static void WaitForID3D12Fence(ID3D12Fence* fence, uint32_t value)
+{
+	if (fence->GetCompletedValue() < value)
+	{
+		HANDLE fenceEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
+		GLEAM_ASSERT(fenceEvent);
+
+		DX_CHECK(fence->SetEventOnCompletion(value, fenceEvent));
+		WaitForSingleObject(fenceEvent, INFINITE);
+		CloseHandle(fenceEvent);
+	}
+}
+
 static constexpr TextureFormat DXGI_FORMATtoTextureFormat(DXGI_FORMAT format)
 {
 	switch (format)

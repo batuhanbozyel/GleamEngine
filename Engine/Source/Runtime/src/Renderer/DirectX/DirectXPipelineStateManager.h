@@ -29,6 +29,8 @@ public:
 
 	static const DirectXGraphicsPipeline* GetGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc, const TArray<TextureDescriptor>& colorAttachments, const TextureDescriptor& depthAttachment, const Shader& vertexShader, const Shader& fragmentShader, uint32_t sampleCount);
 
+	static ID3D12RootSignature* GetGlobalRootSignature();
+
 	static void Clear();
 
 private:

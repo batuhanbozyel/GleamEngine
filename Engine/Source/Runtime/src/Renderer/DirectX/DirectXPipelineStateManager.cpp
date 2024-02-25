@@ -56,9 +56,9 @@ static D3D12_STATIC_SAMPLER_DESC CreateStaticSampler(const SamplerState& sampler
 	{
 		case WrapMode::Repeat:
 		{
-			sampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_MIRROR;
-			sampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_MIRROR;
-			sampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_MIRROR;
+			sampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+			sampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+			sampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
 			break;
 		}
 		case WrapMode::Clamp:
@@ -253,5 +253,10 @@ ID3D12PipelineState* DirectXPipelineStateManager::CreateGraphicsPipeline(const P
 
 	DX_CHECK(static_cast<ID3D12Device10*>(mDevice->GetHandle())->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&pipeline)));
     return pipeline;
+}
+
+ID3D12RootSignature* DirectXPipelineStateManager::GetGlobalRootSignature()
+{
+	return mRootSignature;
 }
 #endif

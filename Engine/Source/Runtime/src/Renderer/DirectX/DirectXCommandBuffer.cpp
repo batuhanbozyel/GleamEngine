@@ -9,8 +9,6 @@
 #include "DirectXDevice.h"
 #include "DirectXUtils.h"
 
-#include "Core/Application.h"
-
 using namespace Gleam;
 
 struct CommandBuffer::Impl
@@ -20,6 +18,7 @@ struct CommandBuffer::Impl
 	const DirectXPipeline* pipeline = nullptr;
 	DirectXCommandList commandList = {};
 	ID3D12Fence* fence = nullptr;
+	uint32_t fenceValue = 0;
 
 	TArray<TextureDescriptor> colorAttachments;
 	TextureDescriptor depthAttachment;
@@ -37,7 +36,11 @@ CommandBuffer::CommandBuffer(GraphicsDevice* device)
     descriptor.memoryType = MemoryType::CPU;
     mStagingHeap = mDevice->CreateHeap(descriptor);
 
-	DX_CHECK(static_cast<ID3D12Device10*>(mHandle->device->GetHandle())->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&mHandle->fence)));
+	DX_CHECK(static_cast<ID3D12Device10*>(mHandle->device->GetHandle())->CreateFence(
+		mHandle->fenceValue,
+		D3D12_FENCE_FLAG_NONE,
+		IID_PPV_ARGS(&mHandle->fence)
+	));
 }
 
 CommandBuffer::~CommandBuffer()
@@ -133,6 +136,7 @@ void CommandBuffer::BindGraphicsPipeline(const PipelineStateDescriptor& pipeline
 	}
 	mHandle->commandList.handle->SetPipelineState(mHandle->pipeline->handle);
 	mHandle->commandList.handle->IASetPrimitiveTopology(PrimitiveToplogyToD3D_PRIMITIVE_TOPOLOGY(pipelineDesc.topology));
+	mHandle->commandList.handle->SetGraphicsRootSignature(DirectXPipelineStateManager::GetGlobalRootSignature());
 }
 
 void CommandBuffer::SetViewport(const Size& size) const
@@ -331,7 +335,6 @@ void CommandBuffer::TransitionLayout(const Texture& texture, ResourceAccess acce
 void CommandBuffer::Begin() const
 {
 	mHandle->commandList = mHandle->device->AllocateCommandList(D3D12_COMMAND_LIST_TYPE_DIRECT);
-	mHandle->fence->Signal(0);
 	mCommitted = false;
 }
 
@@ -344,6 +347,7 @@ void CommandBuffer::Commit() const
 {
 	ID3D12CommandList* commandList = mHandle->commandList.handle;
 	mHandle->device->GetDirectQueue()->ExecuteCommandLists(1, &commandList);
+	mHandle->device->GetDirectQueue()->Signal(mHandle->fence, mHandle->fenceValue);
 	mStagingHeap.Reset();
 	mCommitted = true;
 }
@@ -358,13 +362,7 @@ void CommandBuffer::WaitUntilCompleted() const
 {
 	if (mCommitted)
 	{
-		if (mHandle->fence->GetCompletedValue() < 1)
-		{
-			HANDLE fenceEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
-			DX_CHECK(mHandle->fence->SetEventOnCompletion(1, fenceEvent));
-			WaitForSingleObject(fenceEvent, INFINITE);
-			CloseHandle(fenceEvent);
-		}
+		WaitForID3D12Fence(mHandle->fence, mHandle->fenceValue++);
 	}
 }
 
