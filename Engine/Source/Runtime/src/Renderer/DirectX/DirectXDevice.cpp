@@ -208,7 +208,7 @@ DirectXDrawable DirectXDevice::AcquireNextDrawable()
 	return drawable;
 }
 
-void DirectXDevice::Present(ID3D12GraphicsCommandList7* commandList)
+void DirectXDevice::Present(const CommandBuffer* cmd)
 {
 	auto& ctx = mFrameContext[mCurrentFrameIndex];
 
@@ -216,11 +216,12 @@ void DirectXDevice::Present(ID3D12GraphicsCommandList7* commandList)
 	barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
 	barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
 	barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-
+	barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
+	barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
 	barrier.Transition.pResource = ctx.renderTarget;
-	barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
-	barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
-	commandList->ResourceBarrier(1, &barrier);
+
+	static_cast<ID3D12GraphicsCommandList7*>(cmd->GetHandle())->ResourceBarrier(1, &barrier);
+	cmd->Commit();
 
 	DXGI_SWAP_CHAIN_DESC1 swapchainDesc{};
 	mSwapchain->GetDesc1(&swapchainDesc);

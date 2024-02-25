@@ -68,6 +68,8 @@ public:
 protected:
 
 	// Implemented by the backend
+	virtual void Present(const CommandBuffer* cmd) = 0;
+
 	virtual void Configure(const RendererConfig& config) = 0;
 
 	virtual void DestroyFrameObjects(uint32_t frameIndex) {}

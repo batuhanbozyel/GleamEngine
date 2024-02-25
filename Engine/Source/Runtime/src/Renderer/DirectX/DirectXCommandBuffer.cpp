@@ -85,9 +85,9 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, 
 			barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
 			barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
 			barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-			barrier.Transition.pResource = drawable.renderTarget;
 			barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
 			barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
+			barrier.Transition.pResource = drawable.renderTarget;
 			mHandle->commandList.handle->ResourceBarrier(1, &barrier);
 		}
 
@@ -350,12 +350,6 @@ void CommandBuffer::Commit() const
 	mHandle->device->GetDirectQueue()->Signal(mHandle->fence, mHandle->fenceValue);
 	mStagingHeap.Reset();
 	mCommitted = true;
-}
-
-void CommandBuffer::Present() const
-{
-	Commit();
-	mHandle->device->Present(mHandle->commandList.handle);
 }
 
 void CommandBuffer::WaitUntilCompleted() const

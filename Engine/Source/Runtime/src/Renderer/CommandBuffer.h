@@ -80,8 +80,6 @@ public:
 
     void Commit() const;
 
-    void Present() const;
-
     void WaitUntilCompleted() const;
 
     NativeGraphicsHandle GetHandle() const;

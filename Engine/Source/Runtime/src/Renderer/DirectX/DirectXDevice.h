@@ -35,8 +35,9 @@ public:
 
     ~DirectXDevice();
 
+	virtual void Present(const CommandBuffer* cmd) override;
+
 	DirectXDrawable AcquireNextDrawable();
-	void Present(ID3D12GraphicsCommandList7* commandList);
 
 	DirectXCommandList AllocateCommandList(D3D12_COMMAND_LIST_TYPE type);
 
