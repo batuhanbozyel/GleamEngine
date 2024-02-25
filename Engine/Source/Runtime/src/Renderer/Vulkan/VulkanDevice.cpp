@@ -215,7 +215,7 @@ Shader GraphicsDevice::GenerateShader(const TString& entryPoint, ShaderStage sta
 	createInfo.codeSize = shaderCode.size();
 	createInfo.pCode = static_cast<uint32_t*>(shaderCode.data());
 	VK_CHECK(vkCreateShaderModule(static_cast<VkDevice>(mHandle), &createInfo, nullptr, static_cast<VkShaderModule*>(&shader.mHandle)));
-	shader.mReflection = CreateScope<Shader::Reflection>(this, shaderCode);
+	shader.mReflection = CreateRef<Shader::Reflection>(this, shaderCode);
 
 	return shader;
 }

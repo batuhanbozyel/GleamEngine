@@ -5,24 +5,48 @@ namespace Gleam {
 
 namespace IOUtils {
 
-static TArray<uint8_t> ReadBinaryFile(const Filesystem::path& filepath)
+static size_t QueryFileBufferSize(const Filesystem::path& filepath)
+{
+	std::ifstream file(filepath, std::ios::ate | std::ios::binary);
+
+	if (file.is_open())
+	{
+		file.seekg(0, std::ios::end);
+		size_t size = file.tellg();
+		return size;
+	}
+
+	GLEAM_CORE_ERROR("File {0} could not be opened!", filepath.string());
+	return 0;
+}
+
+static void ReadBinaryFile(const Filesystem::path& filepath, char* buffer, size_t size)
 {
     std::ifstream file(filepath, std::ios::ate | std::ios::binary);
 
     if (file.is_open())
-    {
-        file.seekg(0, std::ios::end);
-        size_t size = file.tellg();
-        TArray<uint8_t> buffer(size);
-
-        file.seekg(0);
-        file.read(reinterpret_cast<char*>(buffer.data()), size);
-
-        return buffer;
+	{
+        file.read(buffer, size);
     }
 
 	GLEAM_CORE_ERROR("File {0} could not be opened!", filepath.string());
-	return {};
+}
+
+static TArray<uint8_t> ReadBinaryFile(const Filesystem::path& filepath)
+{
+	std::ifstream file(filepath, std::ios::ate | std::ios::binary);
+
+	if (file.is_open())
+	{
+		file.seekg(0, std::ios::end);
+		size_t size = file.tellg();
+		TArray<uint8_t> buffer(size);
+
+		file.seekg(0);
+		file.read(reinterpret_cast<char*>(buffer.data()), size);
+	}
+
+	GLEAM_CORE_ERROR("File {0} could not be opened!", filepath.string());
 }
 
 static TString ReadFile(const Filesystem::path& filepath)

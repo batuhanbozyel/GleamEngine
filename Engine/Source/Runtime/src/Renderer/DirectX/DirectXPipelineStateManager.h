@@ -29,19 +29,17 @@ public:
 
 	static const DirectXGraphicsPipeline* GetGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc, const TArray<TextureDescriptor>& colorAttachments, const TextureDescriptor& depthAttachment, const Shader& vertexShader, const Shader& fragmentShader, uint32_t sampleCount);
 
-	static VkSampler GetSampler(uint32_t index);
-
-	static VkSampler GetSampler(const SamplerState& samplerState);
-
 	static void Clear();
 
 private:
 
 	static ID3D12PipelineState* CreateGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc, const TArray<TextureDescriptor>& colorAttachments, const TextureDescriptor& depthAttachment, const Shader& vertexShader, const Shader& fragmentShader, uint32_t sampleCount);
-
-	static inline TArray<VkSampler, 12> mSamplerStates;
     
     static inline HashMap<size_t, Scope<DirectXGraphicsPipeline>> mGraphicsPipelineCache;
+
+	static inline TArray<D3D12_STATIC_SAMPLER_DESC, 12> mStaticSamplerDescs;
+
+	static inline ID3D12RootSignature* mRootSignature = nullptr;
 
 	static inline DirectXDevice* mDevice = nullptr;
 

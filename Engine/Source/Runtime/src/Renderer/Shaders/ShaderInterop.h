@@ -9,6 +9,10 @@ using float3 = Gleam::Vector3;
 using float4 = Gleam::Vector4;
 #endif
 
+#ifndef __spirv__
+#define PUSH_CONSTANT_SLOT 999
+#endif
+
 namespace Gleam {
 
 struct CameraUniforms

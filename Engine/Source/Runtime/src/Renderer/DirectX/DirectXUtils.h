@@ -211,41 +211,6 @@ static constexpr D3D12_CULL_MODE CullModeToD3D12_CULL_MODE(CullMode cullMode)
 	}
 }
 
-static constexpr VkBufferUsageFlags BufferUsageToVkBufferUsage(BufferUsage usage)
-{
-	switch (usage)
-	{
-		case BufferUsage::VertexBuffer: return VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
-		case BufferUsage::IndexBuffer: return VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
-		case BufferUsage::StorageBuffer: return VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
-		case BufferUsage::UniformBuffer: return VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-		case BufferUsage::StagingBuffer: return VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-		default: return VK_BUFFER_USAGE_FLAG_BITS_MAX_ENUM;
-	}
-}
-
-static constexpr VkDescriptorType BufferUsageToVkDescriptorType(BufferUsage usage)
-{
-	switch (usage)
-	{
-		case BufferUsage::VertexBuffer: return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-		case BufferUsage::StorageBuffer: return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-		case BufferUsage::UniformBuffer: return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		default: return VK_DESCRIPTOR_TYPE_MAX_ENUM;
-	}
-}
-
-static constexpr VkPipelineBindPoint PipelineBindPointToVkPipelineBindPoint(PipelineBindPoint pipeline)
-{
-	switch (pipeline)
-	{
-		case PipelineBindPoint::Graphics: return VK_PIPELINE_BIND_POINT_GRAPHICS;
-		case PipelineBindPoint::Compute: return VK_PIPELINE_BIND_POINT_COMPUTE;
-		case PipelineBindPoint::RayTracing: return VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR;
-		default: return VK_PIPELINE_BIND_POINT_MAX_ENUM;
-	}
-}
-
 static constexpr D3D12_STENCIL_OP StencilOpToD3D12_STENCIL_OP(StencilOp stencilOp)
 {
 	switch (stencilOp)
@@ -319,18 +284,6 @@ static constexpr D3D12_COLOR_WRITE_ENABLE ColorWriteMaskToD3D12_COLOR_WRITE_ENAB
 		case ColorWriteMask::Blue: return D3D12_COLOR_WRITE_ENABLE_BLUE;
 		case ColorWriteMask::All: return D3D12_COLOR_WRITE_ENABLE_ALL;
 		default: return D3D12_COLOR_WRITE_ENABLE_ALL;
-	}
-}
-
-static constexpr VmaMemoryUsage MemoryTypeToVmaMemoryUsage(MemoryType type)
-{
-	switch (type)
-	{
-		case MemoryType::GPU: return VMA_MEMORY_USAGE_GPU_ONLY;
-		case MemoryType::Shared: return VMA_MEMORY_USAGE_CPU_TO_GPU;
-		case MemoryType::CPU: return VMA_MEMORY_USAGE_CPU_ONLY;
-		case MemoryType::Transient: return VMA_MEMORY_USAGE_GPU_LAZILY_ALLOCATED;
-		default: return VMA_MEMORY_USAGE_MAX_ENUM;
 	}
 }
 

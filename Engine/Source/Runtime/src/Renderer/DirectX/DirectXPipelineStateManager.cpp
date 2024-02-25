@@ -22,15 +22,124 @@ static size_t PipelineHasher(const PipelineStateDescriptor& pipelineDesc, const 
     return hash;
 }
 
+static D3D12_STATIC_SAMPLER_DESC CreateStaticSampler(const SamplerState& samplerState)
+{
+	D3D12_STATIC_SAMPLER_DESC sampler{};
+	sampler.MipLODBias = 0;
+	sampler.MaxAnisotropy = 1;
+	sampler.MinLOD = 0.0f;
+	sampler.MaxLOD = 16.0f;
+	sampler.RegisterSpace = 0;
+	sampler.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+
+	switch (samplerState.filterMode)
+	{
+		case FilterMode::Point:
+		{
+			sampler.Filter = D3D12_FILTER_MIN_MAG_MIP_POINT;
+			break;
+		}
+		case FilterMode::Bilinear:
+		{
+			sampler.Filter = D3D12_FILTER_MIN_MAG_LINEAR_MIP_POINT;
+			break;
+		}
+		case FilterMode::Trilinear:
+		{
+			sampler.Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
+			break;
+		}
+		default: GLEAM_ASSERT(false, "DirectX: Filter mode is not supported!") break;
+	}
+
+	switch (samplerState.wrapMode)
+	{
+		case WrapMode::Repeat:
+		{
+			sampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_MIRROR;
+			sampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_MIRROR;
+			sampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_MIRROR;
+			break;
+		}
+		case WrapMode::Clamp:
+		{
+			sampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+			sampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+			sampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+			break;
+		}
+		case WrapMode::Mirror:
+		{
+			sampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_MIRROR;
+			sampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_MIRROR;
+			sampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_MIRROR;
+			break;
+		}
+		case WrapMode::MirrorOnce:
+		{
+			sampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_MIRROR_ONCE;
+			sampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_MIRROR_ONCE;
+			sampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_MIRROR_ONCE;
+			break;
+		}
+		default: GLEAM_ASSERT(false, "DirectX: Wrap mode is not supported!") break;
+	}
+
+	return sampler;
+}
+
 void DirectXPipelineStateManager::Init(DirectXDevice* device)
 {
 	mDevice = device;
+
+	// Static samplers
+	std::hash<SamplerState> hasher;
     auto samplerSates = SamplerState::GetAllVariations();
-	// TODO: Create samplers (or static samplers?)
+	for (uint32_t i = 0; i < samplerSates.size(); i++)
+	{
+		const auto& sampler = samplerSates[i];
+		mStaticSamplerDescs[i] = CreateStaticSampler(sampler);
+		mStaticSamplerDescs[i].ComparisonFunc = D3D12_COMPARISON_FUNC_ALWAYS;
+		mStaticSamplerDescs[i].BorderColor = D3D12_STATIC_BORDER_COLOR_OPAQUE_BLACK;
+		mStaticSamplerDescs[i].ShaderRegister = hasher(sampler);
+	}
+
+	// Root signature
+	D3D12_ROOT_PARAMETER1 pushConstants{};
+	pushConstants.ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
+	pushConstants.Constants.RegisterSpace = 0;
+	pushConstants.Constants.ShaderRegister = PUSH_CONSTANT_SLOT;
+	pushConstants.Constants.Num32BitValues = 4;
+	pushConstants.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+
+	D3D12_VERSIONED_ROOT_SIGNATURE_DESC rootSignature = {};
+	rootSignature.Version = D3D_ROOT_SIGNATURE_VERSION_1_1;
+	rootSignature.Desc_1_1.NumParameters = 1;
+	rootSignature.Desc_1_1.pParameters = &pushConstants;
+	rootSignature.Desc_1_1.NumStaticSamplers = mStaticSamplerDescs.size();
+	rootSignature.Desc_1_1.pStaticSamplers = mStaticSamplerDescs.data();
+	rootSignature.Desc_1_1.Flags =
+		D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS | D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS
+		| D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS
+		| D3D12_ROOT_SIGNATURE_FLAG_CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED | D3D12_ROOT_SIGNATURE_FLAG_SAMPLER_HEAP_DIRECTLY_INDEXED;
+
+	ID3DBlob* blob = nullptr;
+	ID3DBlob* error = nullptr;
+	DX_CHECK(D3D12SerializeVersionedRootSignature(&rootSignature, &blob, &error));
+
+	if (error)
+	{
+		char* error_msg = (char*)error->GetBufferPointer();
+		GLEAM_CORE_ERROR("DirectX: Root signature error: {0}\n", error_msg);
+	}
+
+	DX_CHECK(static_cast<ID3D12Device10*>(mDevice->GetHandle())->CreateRootSignature(0, blob->GetBufferPointer(), blob->GetBufferSize(), IID_PPV_ARGS(&mRootSignature)));
+	blob->Release();
 }
 
 void DirectXPipelineStateManager::Destroy()
 {
+	mRootSignature->Release();
 	Clear();
 }
 
@@ -70,17 +179,30 @@ ID3D12PipelineState* DirectXPipelineStateManager::CreateGraphicsPipeline(const P
 	ID3D12PipelineState* pipeline = nullptr;
 
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc{};
+	psoDesc.pRootSignature = mRootSignature;
+	psoDesc.SampleDesc.Count = sampleCount;
+	psoDesc.SampleMask = UINT_MAX;
 
 	// Shader stages
-	psoDesc.VS; // TODO:
-	psoDesc.PS; // TODO:
+	psoDesc.VS = *static_cast<D3D12_SHADER_BYTECODE*>(vertexShader.GetHandle());
+	psoDesc.PS = *static_cast<D3D12_SHADER_BYTECODE*>(fragmentShader.GetHandle());
 
 	// Input assembly state
 	psoDesc.PrimitiveTopologyType = PrimitiveToplogyToD3D12_PRIMITIVE_TOPOLOGY_TYPE(pipelineDesc.topology);
+	psoDesc.IBStripCutValue = D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_DISABLED;
 
 	// Rasterizer state
 	auto& rasterizerState = psoDesc.RasterizerState;
-	// TODO: 
+	rasterizerState.FrontCounterClockwise = FALSE;
+	rasterizerState.DepthBias = D3D12_DEFAULT_DEPTH_BIAS;
+	rasterizerState.DepthBiasClamp = D3D12_DEFAULT_DEPTH_BIAS_CLAMP;
+	rasterizerState.SlopeScaledDepthBias = D3D12_DEFAULT_SLOPE_SCALED_DEPTH_BIAS;
+	rasterizerState.DepthClipEnable = FALSE;
+	rasterizerState.MultisampleEnable = sampleCount > 1;
+	rasterizerState.AntialiasedLineEnable = FALSE;
+	rasterizerState.ForcedSampleCount = 0;
+	rasterizerState.ConservativeRaster = D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF;
+	rasterizerState.CullMode = CullModeToD3D12_CULL_MODE(pipelineDesc.cullingMode);
 
 	// Depth-stencil state
 	if (Utils::IsDepthFormat(depthAttachment.format))
@@ -110,21 +232,23 @@ ID3D12PipelineState* DirectXPipelineStateManager::CreateGraphicsPipeline(const P
 	}
 
 	// Blend state
+	auto& blendState = psoDesc.BlendState;
+	blendState.AlphaToCoverageEnable = pipelineDesc.alphaToCoverage;
+	blendState.IndependentBlendEnable = FALSE;
+
 	psoDesc.NumRenderTargets = colorAttachments.size();
 	for (uint32_t i = 0; i < colorAttachments.size(); i++)
 	{
 		const auto& attachment = colorAttachments[i];
 		psoDesc.RTVFormats[i] = TextureFormatToDXGI_FORMAT(attachment.format);
-
-		auto& blendState = psoDesc.BlendState;
 		blendState.RenderTarget[i].BlendEnable = pipelineDesc.blendState.enabled;
-		blendState.RenderTarget[i].srcColorBlendFactor = BlendModeToVkBlendFactor(pipelineDesc.blendState.sourceColorBlendMode);
-		blendState.RenderTarget[i].dstColorBlendFactor = BlendModeToVkBlendFactor(pipelineDesc.blendState.destinationColorBlendMode);
-		blendState.RenderTarget[i].srcAlphaBlendFactor = BlendModeToVkBlendFactor(pipelineDesc.blendState.sourceAlphaBlendMode);
-		blendState.RenderTarget[i].dstAlphaBlendFactor = BlendModeToVkBlendFactor(pipelineDesc.blendState.destinationAlphaBlendMode);
-		blendState.RenderTarget[i].colorBlendOp = BlendOpToVkBlendOp(pipelineDesc.blendState.colorBlendOperation);
-		blendState.RenderTarget[i].alphaBlendOp = BlendOpToVkBlendOp(pipelineDesc.blendState.alphaBlendOperation);
-		blendState.RenderTarget[i].colorWriteMask = ColorWriteMaskToVkColorComponentFlags(pipelineDesc.blendState.writeMask);
+		blendState.RenderTarget[i].SrcBlend = BlendModeToD3D12_BLEND(pipelineDesc.blendState.sourceColorBlendMode);
+		blendState.RenderTarget[i].DestBlend = BlendModeToD3D12_BLEND(pipelineDesc.blendState.destinationColorBlendMode);
+		blendState.RenderTarget[i].SrcBlendAlpha = BlendModeToD3D12_BLEND(pipelineDesc.blendState.sourceAlphaBlendMode);
+		blendState.RenderTarget[i].DestBlendAlpha = BlendModeToD3D12_BLEND(pipelineDesc.blendState.destinationAlphaBlendMode);
+		blendState.RenderTarget[i].BlendOp = BlendOpToD3D12_BLEND_OP(pipelineDesc.blendState.colorBlendOperation);
+		blendState.RenderTarget[i].BlendOpAlpha = BlendOpToD3D12_BLEND_OP(pipelineDesc.blendState.alphaBlendOperation);
+		blendState.RenderTarget[i].RenderTargetWriteMask = ColorWriteMaskToD3D12_COLOR_WRITE_ENABLE(pipelineDesc.blendState.writeMask);
 	}
 
 	DX_CHECK(static_cast<ID3D12Device10*>(mDevice->GetHandle())->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&pipeline)));

@@ -82,7 +82,7 @@ static VkSampler CreateVkSampler(VulkanDevice* device, const SamplerState& sampl
 			createInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE;
 			break;
 		}
-		default: GLEAM_ASSERT(false, "Vulkan: Filter mode is not supported!") break;
+		default: GLEAM_ASSERT(false, "Vulkan: Wrap mode is not supported!") break;
 	}
 
 	VK_CHECK(vkCreateSampler(static_cast<VkDevice>(device->GetHandle()), &createInfo, nullptr, &sampler));

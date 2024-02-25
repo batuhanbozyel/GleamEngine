@@ -285,7 +285,7 @@ void CommandBuffer::BindTexture(const NativeGraphicsHandle texture, uint32_t ind
 void CommandBuffer::SetPushConstant(const void* data, uint32_t size, ShaderStageFlagBits stage) const
 {
     auto buffer = [mHandle->device->GetHandle() newBufferWithBytes:data length:size options:MTLResourceStorageModeShared];
-    BindBuffer(buffer, BufferUsage::UniformBuffer, 0, 999, stage, ResourceAccess::Read);
+    BindBuffer(buffer, BufferUsage::UniformBuffer, 0, PUSH_CONSTANT_SLOT, stage, ResourceAccess::Read);
 }
 
 /* NOTE:

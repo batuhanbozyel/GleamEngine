@@ -10,7 +10,7 @@ public:
 
 	static void Init(DirectXDevice* device);
 	
-	static void TransitionLayout(ID3D12CommandList* cmd, ID3D12Resource* resource, D3D12_RESOURCE_STATES layout);
+	static void TransitionLayout(ID3D12GraphicsCommandList7* cmd, ID3D12Resource* resource, D3D12_RESOURCE_STATES layout);
 
 	static void SetLayout(ID3D12Resource* resource, D3D12_RESOURCE_STATES layout);
 
