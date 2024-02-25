@@ -15,6 +15,12 @@ struct DirectXCommandList
 	ID3D12CommandAllocator* allocator;
 };
 
+struct DirectXCommandQueue
+{
+	ID3D12Fence* fence;
+	ID3D12CommandQueue* handle;
+};
+
 struct DirectXDrawable
 {
 	ID3D12Resource* renderTarget;
@@ -32,7 +38,7 @@ public:
 	DirectXDrawable AcquireNextDrawable();
 	void Present(ID3D12GraphicsCommandList7* commandList);
 
-	ID3D12GraphicsCommandList7* AllocateCommandList(D3D12_COMMAND_LIST_TYPE type);
+	DirectXCommandList AllocateCommandList(D3D12_COMMAND_LIST_TYPE type);
 
 	ID3D12CommandQueue* GetDirectQueue() const;
 
@@ -44,9 +50,9 @@ public:
 
 private:
 
-	virtual void DestroyFrameObjects(uint32_t frameIndex) override;
-
 	virtual void Configure(const RendererConfig& config) override;
+
+	DirectXCommandQueue CreateCommandQueue(D3D12_COMMAND_LIST_TYPE type) const;
 
 	IDxcUtils* mDxcUtils = nullptr;
 
@@ -56,26 +62,28 @@ private:
 
 	IDXGIFactory7* mFactory = nullptr;
 
-	ID3D12CommandQueue* mDirectQueue = nullptr;
+	ID3D12Fence* mDirectFence = nullptr;
 
-	ID3D12CommandQueue* mComputeQueue = nullptr;
+	DirectXCommandQueue mDirectQueue;
 
-	ID3D12CommandQueue* mCopyQueue = nullptr;
+	DirectXCommandQueue mComputeQueue;
 
-	ID3D12CommandAllocator* mDirectCommandAllocator = nullptr;
-
-	ID3D12CommandAllocator* mComputeCommandAllocator = nullptr;
-
-	ID3D12CommandAllocator* mCopyCommandAllocator = nullptr;
+	DirectXCommandQueue mCopyQueue;
 
 	// Frame
-	struct FramePool
+	struct CommandPool
 	{
-		TArray<DirectXCommandList> commandLists;
+		Deque<DirectXCommandList> usedCommandLists;
+		Deque<DirectXCommandList> freeCommandLists;
+
+		void Reset();
+
+		void Release();
 	};
-	TArray<FramePool> mFrameObjects;
+	TArray<CommandPool> mCommandPools;
 
 	ID3D12DescriptorHeap* mRTVHeap = nullptr;
+
 	TArray<ID3D12Resource*> mRenderTargets;
 
 };

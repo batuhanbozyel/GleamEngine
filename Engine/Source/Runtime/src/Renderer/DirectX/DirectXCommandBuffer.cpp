@@ -18,9 +18,8 @@ struct CommandBuffer::Impl
 	DirectXDevice* device = nullptr;
 
 	const DirectXPipeline* pipeline = nullptr;
-	ID3D12GraphicsCommandList7* commandList = nullptr;
+	DirectXCommandList commandList = {};
 	ID3D12Fence* fence = nullptr;
-	uint32_t frameIdx = 0;
 
 	TArray<TextureDescriptor> colorAttachments;
 	TextureDescriptor depthAttachment;
@@ -32,7 +31,6 @@ CommandBuffer::CommandBuffer(GraphicsDevice* device)
 	: mHandle(CreateScope<Impl>()), mDevice(device)
 {
 	mHandle->device = static_cast<DirectXDevice*>(device);
-	mHandle->frameIdx = device->GetFrameIndex();
     
     HeapDescriptor descriptor;
     descriptor.size = 4194304; // 4 MB;
@@ -45,7 +43,6 @@ CommandBuffer::CommandBuffer(GraphicsDevice* device)
 CommandBuffer::~CommandBuffer()
 {
 	mDevice->Dispose(mStagingHeap);
-	mHandle->commandList->Release();
 	mHandle->fence->Release();
 }
 
@@ -74,7 +71,7 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, 
 		{
 			auto resource = static_cast<ID3D12Resource*>(colorAttachmentDesc.texture.GetHandle());
 			colorAttachments[i].cpuDescriptor; // TODO:
-			DirectXTransitionManager::TransitionLayout(mHandle->commandList, resource, D3D12_RESOURCE_STATE_RENDER_TARGET);
+			DirectXTransitionManager::TransitionLayout(mHandle->commandList.handle, resource, D3D12_RESOURCE_STATE_RENDER_TARGET);
 		}
 		else
 		{
@@ -88,7 +85,7 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, 
 			barrier.Transition.pResource = drawable.renderTarget;
 			barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
 			barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
-			mHandle->commandList->ResourceBarrier(1, &barrier);
+			mHandle->commandList.handle->ResourceBarrier(1, &barrier);
 		}
 
 		// TODO: implement MSAA resolve -> olorAttachments[i].EndingAccess.Resolve
@@ -98,7 +95,7 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, 
 	{
 		auto format = renderPassDesc.depthAttachment.texture.GetDescriptor().format;
 		auto resource = static_cast<ID3D12Resource*>(renderPassDesc.depthAttachment.texture.GetHandle());
-		DirectXTransitionManager::TransitionLayout(mHandle->commandList, resource, D3D12_RESOURCE_STATE_DEPTH_WRITE);
+		DirectXTransitionManager::TransitionLayout(mHandle->commandList.handle, resource, D3D12_RESOURCE_STATE_DEPTH_WRITE);
 
 		depthAttachment.cpuDescriptor; // TODO:
 		depthAttachment.DepthBeginningAccess.Type = AttachmentLoadActionToDX_TYPE(renderPassDesc.depthAttachment.loadAction);
@@ -116,12 +113,12 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, 
 			depthAttachment.StencilEndingAccess.Type = depthAttachment.DepthEndingAccess.Type;
 		}
 	}
-	mHandle->commandList->BeginRenderPass(colorAttachments.size(), colorAttachments.data(), &depthAttachment, D3D12_RENDER_PASS_FLAG_NONE);
+	mHandle->commandList.handle->BeginRenderPass(colorAttachments.size(), colorAttachments.data(), &depthAttachment, D3D12_RENDER_PASS_FLAG_NONE);
 }
 
 void CommandBuffer::EndRenderPass() const
 {
-	mHandle->commandList->EndRenderPass();
+	mHandle->commandList.handle->EndRenderPass();
 }
 
 void CommandBuffer::BindGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc, const Shader& vertexShader, const Shader& fragmentShader) const
@@ -134,8 +131,8 @@ void CommandBuffer::BindGraphicsPipeline(const PipelineStateDescriptor& pipeline
 	{
 		mHandle->pipeline = DirectXPipelineStateManager::GetGraphicsPipeline(pipelineDesc, mHandle->colorAttachments, vertexShader, fragmentShader, mHandle->sampleCount);
 	}
-	mHandle->commandList->SetPipelineState(mHandle->pipeline->handle);
-	mHandle->commandList->IASetPrimitiveTopology(PrimitiveToplogyToD3D_PRIMITIVE_TOPOLOGY(pipelineDesc.topology));
+	mHandle->commandList.handle->SetPipelineState(mHandle->pipeline->handle);
+	mHandle->commandList.handle->IASetPrimitiveTopology(PrimitiveToplogyToD3D_PRIMITIVE_TOPOLOGY(pipelineDesc.topology));
 }
 
 void CommandBuffer::SetViewport(const Size& size) const
@@ -144,12 +141,12 @@ void CommandBuffer::SetViewport(const Size& size) const
 	viewport.MaxDepth = 1.0f;
 	viewport.Width = size.width;
 	viewport.Height = size.height;
-	mHandle->commandList->RSSetViewports(1, &viewport);
+	mHandle->commandList.handle->RSSetViewports(1, &viewport);
 
 	D3D12_RECT scissor{};
 	scissor.right = static_cast<uint32_t>(size.width);
 	scissor.bottom = static_cast<uint32_t>(size.height);
-	mHandle->commandList->RSSetScissorRects(1, &scissor);
+	mHandle->commandList.handle->RSSetScissorRects(1, &scissor);
 }
 
 void CommandBuffer::BindBuffer(const NativeGraphicsHandle buffer, BufferUsage usage, size_t offset, uint32_t index, ShaderStageFlagBits stage, ResourceAccess access) const
@@ -264,12 +261,12 @@ void CommandBuffer::BindTexture(const NativeGraphicsHandle texture, uint32_t ind
 
 void CommandBuffer::SetPushConstant(const void* data, uint32_t size, ShaderStageFlagBits stage) const
 {
-	mHandle->commandList->SetGraphicsRoot32BitConstants(PUSH_CONSTANT_SLOT, size / sizeof(uint32_t), data, 0);
+	mHandle->commandList.handle->SetGraphicsRoot32BitConstants(PUSH_CONSTANT_SLOT, size / sizeof(uint32_t), data, 0);
 }
 
 void CommandBuffer::Draw(uint32_t vertexCount, uint32_t instanceCount, uint32_t baseVertex, uint32_t baseInstance) const
 {
-	mHandle->commandList->DrawInstanced(vertexCount, instanceCount, baseVertex, baseInstance);
+	mHandle->commandList.handle->DrawInstanced(vertexCount, instanceCount, baseVertex, baseInstance);
 }
 
 void CommandBuffer::DrawIndexed(const Buffer& indexBuffer, IndexType type, uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, uint32_t baseVertex, uint32_t baseInstance) const
@@ -279,15 +276,15 @@ void CommandBuffer::DrawIndexed(const Buffer& indexBuffer, IndexType type, uint3
 	indexBufferView.Format = type == IndexType::UINT16 ? DXGI_FORMAT_R16_UINT : DXGI_FORMAT_R32_UINT;
 	indexBufferView.SizeInBytes = indexBuffer.GetDescriptor().size;
 
-	mHandle->commandList->IASetIndexBuffer(&indexBufferView);
-	mHandle->commandList->DrawIndexedInstanced(indexCount, instanceCount, firstIndex, baseVertex, baseInstance);
+	mHandle->commandList.handle->IASetIndexBuffer(&indexBufferView);
+	mHandle->commandList.handle->DrawIndexedInstanced(indexCount, instanceCount, firstIndex, baseVertex, baseInstance);
 }
 
 void CommandBuffer::CopyBuffer(const NativeGraphicsHandle src, const NativeGraphicsHandle dst, size_t size, size_t srcOffset, size_t dstOffset) const
 {
 	auto srcBuffer = static_cast<ID3D12Resource*>(src);
 	auto dstBuffer = static_cast<ID3D12Resource*>(dst);
-	mHandle->commandList->CopyBufferRegion(srcBuffer, dstOffset, dstBuffer, srcOffset, size);
+	mHandle->commandList.handle->CopyBufferRegion(srcBuffer, dstOffset, dstBuffer, srcOffset, size);
 }
 
 void CommandBuffer::Blit(const Texture& texture, const Texture& target) const
@@ -297,7 +294,7 @@ void CommandBuffer::Blit(const Texture& texture, const Texture& target) const
 
 	if (swapchainTarget)
 	{
-		DirectXTransitionManager::TransitionLayout(mHandle->commandList, targetTexture, D3D12_RESOURCE_STATE_COPY_DEST);
+		DirectXTransitionManager::TransitionLayout(mHandle->commandList.handle, targetTexture, D3D12_RESOURCE_STATE_COPY_DEST);
 	}
 
 	D3D12_TEXTURE_COPY_LOCATION dst{};
@@ -309,11 +306,11 @@ void CommandBuffer::Blit(const Texture& texture, const Texture& target) const
 	dst.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
 	src.pResource = static_cast<ID3D12Resource*>(texture.GetHandle());
 	src.SubresourceIndex = 0;
-	mHandle->commandList->CopyTextureRegion(&dst, 0, 0, 0, &src, nullptr);
+	mHandle->commandList.handle->CopyTextureRegion(&dst, 0, 0, 0, &src, nullptr);
 
 	if (swapchainTarget)
 	{
-		DirectXTransitionManager::TransitionLayout(mHandle->commandList, targetTexture, D3D12_RESOURCE_STATE_PRESENT);
+		DirectXTransitionManager::TransitionLayout(mHandle->commandList.handle, targetTexture, D3D12_RESOURCE_STATE_PRESENT);
 	}
 }
 
@@ -328,7 +325,7 @@ void CommandBuffer::TransitionLayout(const Texture& texture, ResourceAccess acce
 			default: return D3D12_RESOURCE_STATE_COMMON;
 		}
 	}();
-	DirectXTransitionManager::TransitionLayout(mHandle->commandList, static_cast<ID3D12Resource*>(texture.GetHandle()), imageLayout);
+	DirectXTransitionManager::TransitionLayout(mHandle->commandList.handle, static_cast<ID3D12Resource*>(texture.GetHandle()), imageLayout);
 }
 
 void CommandBuffer::Begin() const
@@ -340,12 +337,12 @@ void CommandBuffer::Begin() const
 
 void CommandBuffer::End() const
 {
-	mHandle->commandList->Close();
+	mHandle->commandList.handle->Close();
 }
 
 void CommandBuffer::Commit() const
 {
-	ID3D12CommandList* commandList = mHandle->commandList;
+	ID3D12CommandList* commandList = mHandle->commandList.handle;
 	mHandle->device->GetDirectQueue()->ExecuteCommandLists(1, &commandList);
 	mStagingHeap.Reset();
 	mCommitted = true;
@@ -354,7 +351,7 @@ void CommandBuffer::Commit() const
 void CommandBuffer::Present() const
 {
 	Commit();
-	mHandle->device->Present(mHandle->commandList);
+	mHandle->device->Present(mHandle->commandList.handle);
 }
 
 void CommandBuffer::WaitUntilCompleted() const
@@ -373,7 +370,7 @@ void CommandBuffer::WaitUntilCompleted() const
 
 NativeGraphicsHandle CommandBuffer::GetHandle() const
 {
-	return mHandle->commandList;
+	return mHandle->commandList.handle;
 }
 
 NativeGraphicsHandle CommandBuffer::GetActiveRenderPass() const

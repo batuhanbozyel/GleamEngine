@@ -3,13 +3,14 @@
 #include "Buffer.h"
 #include "Shader.h"
 #include "Texture.h"
-#include "GraphicsDevice.h"
 #include "RenderGraph/RenderGraphResource.h"
 
 namespace Gleam {
 
 struct RenderPassDescriptor;
 struct PipelineStateDescriptor;
+
+class GraphicsDevice;
 
 enum class IndexType
 {
@@ -43,27 +44,13 @@ public:
 
     void SetViewport(const Size& size) const;
 
-    void BindBuffer(const BufferHandle& handle, size_t offset, uint32_t index, ShaderStageFlagBits stage) const
-    {
-        const Buffer& buffer = handle;
-        BindBuffer(buffer.GetHandle(), buffer.GetDescriptor().usage, offset, index, stage, handle.GetAccess());
-    }
+    void BindBuffer(const BufferHandle& handle, size_t offset, uint32_t index, ShaderStageFlagBits stage) const;
 
-    void BindBuffer(const Buffer& buffer, size_t offset, uint32_t index, ShaderStageFlagBits stage, ResourceAccess access = ResourceAccess::Read) const
-    {
-        BindBuffer(buffer.GetHandle(), buffer.GetDescriptor().usage, offset, index, stage, access);
-    }
+    void BindBuffer(const Buffer& buffer, size_t offset, uint32_t index, ShaderStageFlagBits stage, ResourceAccess access = ResourceAccess::Read) const;
 
-    void BindTexture(const TextureHandle& handle, uint32_t index, ShaderStageFlagBits stage) const
-    {
-        const Texture& texture = handle;
-        BindTexture(texture.GetView(), index, stage, handle.GetAccess());
-    }
+    void BindTexture(const TextureHandle& handle, uint32_t index, ShaderStageFlagBits stage) const;
 
-    void BindTexture(const Texture& texture, uint32_t index, ShaderStageFlagBits stage, ResourceAccess access = ResourceAccess::Read) const
-    {
-        BindTexture(texture.GetView(), index, stage, access);
-    }
+    void BindTexture(const Texture& texture, uint32_t index, ShaderStageFlagBits stage, ResourceAccess access = ResourceAccess::Read) const;
 
     template<typename T>
     void SetPushConstant(const T& t, ShaderStageFlagBits stage) const
@@ -75,42 +62,13 @@ public:
 
 	void DrawIndexed(const Buffer& indexBuffer, IndexType type, uint32_t indexCount, uint32_t instanceCount = 1, uint32_t firstIndex = 0, uint32_t baseVertex = 0, uint32_t baseInstance = 0) const;
 
-    void DrawIndexed(const Buffer& indexBuffer, IndexType type, uint32_t instanceCount = 1, uint32_t firstIndex = 0, uint32_t baseVertex = 0, uint32_t baseInstance = 0) const
-    {
-        DrawIndexed(indexBuffer, type, static_cast<uint32_t>(indexBuffer.GetDescriptor().size / SizeOfIndexType(type)), instanceCount, firstIndex, baseVertex, baseInstance);
-    }
+    void DrawIndexed(const Buffer& indexBuffer, IndexType type, uint32_t instanceCount = 1, uint32_t firstIndex = 0, uint32_t baseVertex = 0, uint32_t baseInstance = 0) const;
 
-	void CopyBuffer(const Buffer& src, const Buffer& dst, size_t size, size_t srcOffset = 0, size_t dstOffset = 0) const
-	{
-		CopyBuffer(src.GetHandle(), dst.GetHandle(), size, srcOffset, dstOffset);
-	}
+	void CopyBuffer(const Buffer& src, const Buffer& dst, size_t size, size_t srcOffset = 0, size_t dstOffset = 0) const;
 
-    void CopyBuffer(const Buffer& src, const Buffer& dst) const
-    {
-        auto minSize = Math::Min(src.GetDescriptor().size, dst.GetDescriptor().size);
-        CopyBuffer(src.GetHandle(), dst.GetHandle(), minSize);
-    }
+    void CopyBuffer(const Buffer& src, const Buffer& dst) const;
 
-    void SetBufferData(const Buffer& buffer, const void* data, size_t size, size_t offset = 0) const
-    {
-        auto contents = buffer.GetContents();
-        if (contents == nullptr)
-        {
-            BufferDescriptor bufferDesc;
-            bufferDesc.size = size;
-            bufferDesc.usage = BufferUsage::StagingBuffer;
-            Buffer stagingBuffer = mStagingHeap.CreateBuffer(bufferDesc);
-            
-            memcpy(stagingBuffer.GetContents(), data, size);
-            CopyBuffer(stagingBuffer.GetHandle(), buffer.GetHandle(), size, 0, offset);
-            
-            mDevice->Dispose(stagingBuffer);
-        }
-        else
-        {
-            memcpy(static_cast<uint8_t*>(contents) + offset, data, size);
-        }
-    }
+    void SetBufferData(const Buffer& buffer, const void* data, size_t size, size_t offset = 0) const;
 
     void Blit(const Texture& texture, const Texture& renderTarget) const;
 

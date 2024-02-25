@@ -122,8 +122,6 @@ public:
     
 private:
     
-    bool mRunning = true;
-    
     Container mRenderers;
     
     Texture mRenderTarget;

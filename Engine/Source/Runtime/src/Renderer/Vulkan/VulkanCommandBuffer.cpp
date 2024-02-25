@@ -6,7 +6,6 @@
 #include "VulkanPipelineStateManager.h"
 #include "VulkanTransitionManager.h"
 #include "VulkanShaderReflect.h"
-#include "VulkanSwapchain.h"
 #include "VulkanDevice.h"
 
 #include "Core/Application.h"
@@ -20,7 +19,6 @@ struct CommandBuffer::Impl
 
 	VkCommandBuffer commandBuffer = VK_NULL_HANDLE;
 	VkFence fence = VK_NULL_HANDLE;
-	uint32_t frameIdx = 0;
 
 	const VulkanPipeline* pipeline = nullptr;
 	VkRenderPass renderPass = VK_NULL_HANDLE;
@@ -36,8 +34,6 @@ CommandBuffer::CommandBuffer(GraphicsDevice* device)
 	: mHandle(CreateScope<Impl>()), mDevice(device)
 {
 	mHandle->device = static_cast<VulkanDevice*>(device);
-	mHandle->swapchain = static_cast<VulkanSwapchain*>(mHandle->device->GetSwapchain());
-	mHandle->frameIdx = mHandle->swapchain->GetFrameIndex();
     
     HeapDescriptor descriptor;
     descriptor.size = 4194304; // 4 MB;
@@ -87,7 +83,7 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, 
         depthAttachmentDesc.loadOp = AttachmentLoadActionToVkAttachmentLoadOp(renderPassDesc.depthAttachment.loadAction);
         depthAttachmentDesc.storeOp = AttachmentStoreActionToVkAttachmentStoreOp(renderPassDesc.depthAttachment.storeAction);
 
-		if (Utils::IsStencilFormat(mHandle->depthAttachment.format))
+		if (Utils::IsDepthStencilFormat(mHandle->depthAttachment.format))
 		{
 			depthAttachmentDesc.stencilLoadOp = depthAttachmentDesc.loadOp;
 			depthAttachmentDesc.stencilStoreOp = depthAttachmentDesc.storeOp;

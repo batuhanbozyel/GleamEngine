@@ -71,24 +71,10 @@ DirectXDevice::DirectXDevice()
 
 	DX_CHECK(D3D12CreateDevice(mAdapter, D3D_FEATURE_LEVEL_12_0, __uuidof(ID3D12Device10), &mHandle));
 
-	D3D12_COMMAND_QUEUE_DESC commandQueueDesc = {};
-	commandQueueDesc.Priority = D3D12_COMMAND_QUEUE_PRIORITY_NORMAL;
-
-	// Direct queue
-	commandQueueDesc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
-	DX_CHECK(static_cast<ID3D12Device10*>(mHandle)->CreateCommandQueue(&commandQueueDesc, IID_PPV_ARGS(&mDirectQueue)));
-	DX_CHECK(static_cast<ID3D12Device10*>(mHandle)->CreateCommandAllocator(commandQueueDesc.Type, IID_PPV_ARGS(&mDirectCommandAllocator)));
-
-	// Compute queue
-	commandQueueDesc.Type = D3D12_COMMAND_LIST_TYPE_COMPUTE;
-	DX_CHECK(static_cast<ID3D12Device10*>(mHandle)->CreateCommandQueue(&commandQueueDesc, IID_PPV_ARGS(&mComputeQueue)));
-	DX_CHECK(static_cast<ID3D12Device10*>(mHandle)->CreateCommandAllocator(commandQueueDesc.Type, IID_PPV_ARGS(&mComputeCommandAllocator)));
-
-	// Copy queue
-	commandQueueDesc.Type = D3D12_COMMAND_LIST_TYPE_COPY;
-	DX_CHECK(static_cast<ID3D12Device10*>(mHandle)->CreateCommandQueue(&commandQueueDesc, IID_PPV_ARGS(&mCopyQueue)));
-	DX_CHECK(static_cast<ID3D12Device10*>(mHandle)->CreateCommandAllocator(commandQueueDesc.Type, IID_PPV_ARGS(&mCopyCommandAllocator)));
-
+	mDirectQueue = CreateCommandQueue(D3D12_COMMAND_LIST_TYPE_DIRECT);
+	mComputeQueue = CreateCommandQueue(D3D12_COMMAND_LIST_TYPE_COMPUTE);
+	mCopyQueue = CreateCommandQueue(D3D12_COMMAND_LIST_TYPE_COPY);
+	
 	DX_CHECK(DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&mDxcUtils)));
 	DirectXPipelineStateManager::Init(this);
 
@@ -107,14 +93,14 @@ DirectXDevice::~DirectXDevice()
 
 	DirectXPipelineStateManager::Destroy();
 
-	mDirectQueue->Release();
-	mDirectCommandAllocator->Release();
+	mDirectQueue.fence->Release();
+	mDirectQueue.handle->Release();
 
-	mComputeQueue->Release();
-	mComputeCommandAllocator->Release();
+	mComputeQueue.fence->Release();
+	mComputeQueue.handle->Release();
 
-	mCopyQueue->Release();
-	mCopyCommandAllocator->Release();
+	mCopyQueue.fence->Release();
+	mCopyQueue.handle->Release();
 
 	mDxcUtils->Release();
 	mSwapchain->Release();
@@ -137,12 +123,12 @@ void DirectXDevice::Configure(const RendererConfig& config)
 
 	if (mSwapchain != nullptr)
 	{
-		// Destroy frame objects
-		for (uint32_t frameIndex = 0; frameIndex < mFrameObjects.size(); frameIndex++)
+		// Destroy command pools
+		for (auto& pool : mCommandPools)
 		{
-			DestroyFrameObjects(frameIndex);
+			pool.Release();
 		}
-		mFrameObjects.clear();
+		mCommandPools.clear();
 
 		// Destroy RenderTargets
 		for (auto renderTarget : mRenderTargets)
@@ -177,13 +163,13 @@ void DirectXDevice::Configure(const RendererConfig& config)
 		HWND hwnd = (HWND)SDL_GetProperty(SDL_GetWindowProperties(window), SDL_PROPERTY_WINDOW_WIN32_HWND_POINTER, NULL);
 
 		IDXGISwapChain1* swapchain1 = nullptr;
-		DX_CHECK(mFactory->CreateSwapChainForHwnd(mDirectQueue, hwnd, &swapchainDesc, nullptr, nullptr, &swapchain1));
+		DX_CHECK(mFactory->CreateSwapChainForHwnd(mDirectQueue.handle, hwnd, &swapchainDesc, nullptr, nullptr, &swapchain1));
 		DX_CHECK(swapchain1->QueryInterface(IID_PPV_ARGS(&mSwapchain)));
 		swapchain1->Release();
 	}
 
 	mCurrentFrameIndex = mSwapchain->GetCurrentBackBufferIndex();
-	mFrameObjects.resize(mMaxFramesInFlight);
+	mCommandPools.resize(mMaxFramesInFlight);
 
 	D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc{};
 	rtvHeapDesc.NumDescriptors = mMaxFramesInFlight;
@@ -239,64 +225,80 @@ void DirectXDevice::Present(ID3D12GraphicsCommandList7* commandList)
 	}
 }
 
-void DirectXDevice::DestroyFrameObjects(uint32_t frameIndex)
+DirectXCommandList DirectXDevice::AllocateCommandList(D3D12_COMMAND_LIST_TYPE type)
 {
-	auto& pool = mFrameObjects[frameIndex];
-	for (const auto& commandList : pool.commandLists)
+	auto& pool = mCommandPools[mCurrentFrameIndex];
+
+	DirectXCommandList commandList{};
+	if (pool.freeCommandLists.empty())
 	{
-		commandList.handle->Reset(commandList.allocator, nullptr);
+		DX_CHECK(static_cast<ID3D12Device10*>(mHandle)->CreateCommandAllocator(type, IID_PPV_ARGS(&commandList.allocator)));
+		DX_CHECK(static_cast<ID3D12Device10*>(mHandle)->CreateCommandList1(0, type, D3D12_COMMAND_LIST_FLAG_NONE, IID_PPV_ARGS(&commandList.handle)));
+		pool.usedCommandLists.push_back(commandList);
 	}
+	else
+	{
+		commandList = pool.freeCommandLists.front();
+		pool.freeCommandLists.pop_front();
+	}
+
+	commandList.handle->Reset(commandList.allocator, nullptr);
+	commandList.allocator->Reset();
+
+	return commandList;
 }
 
-ID3D12GraphicsCommandList7* DirectXDevice::AllocateCommandList(D3D12_COMMAND_LIST_TYPE type)
+DirectXCommandQueue DirectXDevice::CreateCommandQueue(D3D12_COMMAND_LIST_TYPE type) const
 {
-	DirectXCommandList commandList{};
-	switch (type)
-	{
-		case D3D12_COMMAND_LIST_TYPE_DIRECT:
-		{
-			commandList.allocator = mDirectCommandAllocator;
-			break;
-		}
-		case D3D12_COMMAND_LIST_TYPE_COMPUTE:
-		{
-			commandList.allocator = mComputeCommandAllocator;
-			break;
-		}
-		case D3D12_COMMAND_LIST_TYPE_COPY:
-		{
-			commandList.allocator = mCopyCommandAllocator;
-			break;
-		}
-		default:
-		{
-			GLEAM_ASSERT(false, "DirectX: Command list type is not supported!");
-			return nullptr;
-		}
-	}
-	DX_CHECK(static_cast<ID3D12Device10*>(mHandle)->CreateCommandList(0, type, commandList.allocator, nullptr, IID_PPV_ARGS(&commandList.handle)));
-	mFrameObjects[mCurrentFrameIndex].commandLists.push_back(commandList);
-	return commandList.handle;
+	D3D12_COMMAND_QUEUE_DESC desc{};
+	desc.Priority = D3D12_COMMAND_QUEUE_PRIORITY_NORMAL;
+	desc.Type = type;
+
+	DirectXCommandQueue queue{};
+	DX_CHECK(static_cast<ID3D12Device10*>(mHandle)->CreateCommandQueue(&desc, IID_PPV_ARGS(&queue.handle)));
+	DX_CHECK(static_cast<ID3D12Device10*>(mHandle)->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&queue.fence)));
+	return queue;
 }
 
 ID3D12CommandQueue* DirectXDevice::GetDirectQueue() const
 {
-	return mDirectQueue;
+	return mDirectQueue.handle;
 }
 
 ID3D12CommandQueue* DirectXDevice::GetComputeQueue() const
 {
-	return mComputeQueue;
+	return mComputeQueue.handle;
 }
 
 ID3D12CommandQueue* DirectXDevice::GetCopyQueue() const
 {
-	return mCopyQueue;
+	return mCopyQueue.handle;
 }
 
 IDxcUtils* DirectXDevice::GetDxcUtils() const
 {
 	return mDxcUtils;
+}
+
+void DirectXDevice::CommandPool::Reset()
+{
+	freeCommandLists.insert(freeCommandLists.end(), usedCommandLists.begin(), usedCommandLists.end());
+	usedCommandLists.clear();
+}
+
+void DirectXDevice::CommandPool::Release()
+{
+	for (auto& cmd : usedCommandLists)
+	{
+		cmd.handle->Release();
+		cmd.allocator->Release();
+	}
+
+	for (auto& cmd : freeCommandLists)
+	{
+		cmd.handle->Release();
+		cmd.allocator->Release();
+	}
 }
 
 #endif

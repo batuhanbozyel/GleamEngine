@@ -1,7 +1,5 @@
 #pragma once
-#include "Heap.h"
-#include "Shader.h"
-#include "Texture.h"
+#include "CommandBuffer.h"
 #include "RendererConfig.h"
 
 namespace Gleam {
