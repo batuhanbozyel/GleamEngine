@@ -76,6 +76,7 @@ MemoryRequirements GraphicsDevice::QueryMemoryRequirements(const HeapDescriptor&
 	// Query memory requirements to get the alignment
 	VkMemoryRequirements memoryRequirements;
 	vkGetBufferMemoryRequirements(static_cast<VkDevice>(mHandle), buffer, &memoryRequirements);
+	vkDestroyBuffer(static_cast<VkDevice>(mHandle), buffer, nullptr);
 
 	return MemoryRequirements
 	{

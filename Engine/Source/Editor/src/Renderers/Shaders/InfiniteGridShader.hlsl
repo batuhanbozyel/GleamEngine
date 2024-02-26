@@ -42,7 +42,7 @@ float PristineGrid(float2 uv, float lineWidth)
     lineWidth = saturate(lineWidth);
     float4 uvDDXY = float4(ddx(uv), ddy(uv));
     float2 uvDeriv = float2(length(uvDDXY.xz), length(uvDDXY.yw));
-    bool2 invertLine = lineWidth > 0.5;
+    bool invertLine = lineWidth > 0.5;
     float2 targetWidth = invertLine ? 1.0 - lineWidth : lineWidth;
     float2 drawWidth = clamp(targetWidth, uvDeriv, 0.5);
     float2 lineAA = max(uvDeriv, 0.000001) * 1.5;

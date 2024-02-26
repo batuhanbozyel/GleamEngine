@@ -300,5 +300,18 @@ static constexpr D3D12_COLOR_WRITE_ENABLE ColorWriteMaskToD3D12_COLOR_WRITE_ENAB
 	}
 }
 
+static constexpr D3D12_RESOURCE_STATES BufferUsageToD3D12_RESOURCE_STATE(BufferUsage usage)
+{
+	switch (usage)
+	{
+		case BufferUsage::VertexBuffer:
+		case BufferUsage::IndexBuffer:
+		case BufferUsage::UniformBuffer: return D3D12_RESOURCE_STATE_GENERIC_READ;
+		case BufferUsage::StorageBuffer: return D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+		case BufferUsage::StagingBuffer: return D3D12_RESOURCE_STATE_COPY_SOURCE;
+		default: return D3D12_RESOURCE_STATE_GENERIC_READ;
+	}
+}
+
 } // namespace Gleam
 #endif

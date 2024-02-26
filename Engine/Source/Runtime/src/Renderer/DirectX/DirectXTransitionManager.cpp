@@ -13,13 +13,12 @@ void DirectXTransitionManager::Init(DirectXDevice* device)
 void DirectXTransitionManager::TransitionLayout(ID3D12GraphicsCommandList7* cmd, ID3D12Resource* resource, D3D12_RESOURCE_STATES layout)
 {
 	D3D12_RESOURCE_STATES oldLayout = GetLayout(resource);
-	if (oldLayout == layout) { return; }
-
+	if ((oldLayout & layout) == layout) { return; }
+	
 	D3D12_RESOURCE_BARRIER barrier{};
 	barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
 	barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
 	barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-
 	barrier.Transition.pResource = resource;
 	barrier.Transition.StateBefore = oldLayout;
 	barrier.Transition.StateAfter = layout;

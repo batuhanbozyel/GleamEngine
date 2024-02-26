@@ -17,17 +17,131 @@ Scope<GraphicsDevice> GraphicsDevice::Create()
 	return CreateScope<DirectXDevice>();
 }
 
+MemoryRequirements GraphicsDevice::QueryMemoryRequirements(const HeapDescriptor& descriptor) const
+{
+	D3D12_HEAP_PROPERTIES heapProperties = {
+		.Type = D3D12_HEAP_TYPE_DEFAULT,
+		.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN,
+		.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN,
+		.CreationNodeMask = 1,
+		.VisibleNodeMask = 1
+	};
+
+	D3D12_RESOURCE_DESC resourceDesc = {
+		.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER,
+		.Alignment = 0,
+		.Width = descriptor.size,
+		.Height = 1,
+		.DepthOrArraySize = 1,
+		.MipLevels = 1,
+		.Format = DXGI_FORMAT_UNKNOWN,
+		.SampleDesc = { .Count = 1, .Quality = 0 },
+		.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR,
+		.Flags = D3D12_RESOURCE_FLAG_NONE
+	};
+
+	if (descriptor.memoryType == MemoryType::GPU)
+	{
+		resourceDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+	}
+
+	D3D12_RESOURCE_ALLOCATION_INFO allocationInfo = static_cast<ID3D12Device10*>(mHandle)->GetResourceAllocationInfo(0, 1, &resourceDesc);
+	return MemoryRequirements
+	{
+		.size = allocationInfo.SizeInBytes,
+		.alignment = allocationInfo.Alignment
+	};
+}
+
 Heap GraphicsDevice::AllocateHeap(const HeapDescriptor& descriptor) const
 {
 	Heap heap(descriptor);
 	heap.mDevice = this;
 
+	auto memoryRequirements = QueryMemoryRequirements(descriptor);
+	heap.mDescriptor.size = memoryRequirements.size;
+	heap.mAlignment = memoryRequirements.alignment;
+
+	D3D12_HEAP_DESC desc{};
+	desc.Alignment = heap.mAlignment;
+	desc.SizeInBytes = heap.mDescriptor.size;
+	desc.Flags = D3D12_HEAP_FLAG_ALLOW_ONLY_BUFFERS;
+	desc.Properties.Type = descriptor.memoryType == MemoryType::CPU ? D3D12_HEAP_TYPE_UPLOAD : D3D12_HEAP_TYPE_DEFAULT;
+	static_cast<ID3D12Device10*>(mHandle)->CreateHeap(&desc, __uuidof(ID3D12Heap*), &heap.mHandle);
 	return heap;
 }
 
 Texture GraphicsDevice::AllocateTexture(const TextureDescriptor& descriptor) const
 {
 	Texture texture(descriptor);
+
+	D3D12_RESOURCE_FLAGS flags = D3D12_RESOURCE_FLAG_NONE;
+	D3D12_RESOURCE_STATES initialState = D3D12_RESOURCE_STATE_COPY_SOURCE | D3D12_RESOURCE_STATE_COPY_DEST;
+
+	if (descriptor.usage & TextureUsage_Attachment)
+	{
+		if (Utils::IsColorFormat(descriptor.format))
+		{
+			flags |= D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
+			initialState |= D3D12_RESOURCE_STATE_RENDER_TARGET;
+		}
+		else
+		{
+			flags |= D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
+			initialState |= D3D12_RESOURCE_STATE_DEPTH_WRITE;
+		}
+	}
+
+	if (descriptor.usage & TextureUsage_Storage)
+	{
+		flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+		initialState |= D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+	}
+
+	if (descriptor.usage & TextureUsage_Sampled)
+	{
+		if (Utils::IsColorFormat(descriptor.format))
+		{
+			initialState |= D3D12_RESOURCE_STATE_GENERIC_READ;
+		}
+		else
+		{
+			initialState |= D3D12_RESOURCE_STATE_DEPTH_READ;
+		}
+	}
+
+	D3D12_RESOURCE_DESC resourceDesc = {
+		.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER,
+		.Alignment = 0,
+		.Width = (UINT64)descriptor.size.width,
+		.Height = (UINT64)descriptor.size.height,
+		.DepthOrArraySize = 1,
+		.MipLevels = texture.mMipMapLevels,
+		.Format = DXGI_FORMAT_UNKNOWN,
+		.SampleDesc = {.Count = descriptor.sampleCount, .Quality = 0 },
+		.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR,
+		.Flags = flags
+	};
+
+	D3D12_HEAP_PROPERTIES heapProperties = {
+		.Type = D3D12_HEAP_TYPE_DEFAULT,
+		.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN,
+		.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN,
+		.CreationNodeMask = 1,
+		.VisibleNodeMask = 1
+	};
+
+	static_cast<ID3D12Device10*>(mHandle)->CreateCommittedResource(
+		&heapProperties,
+		D3D12_HEAP_FLAG_NONE,
+		&resourceDesc,
+		initialState,
+		nullptr,
+		__uuidof(ID3D12Resource*),
+		&texture.mHandle
+	);
+	DirectXTransitionManager::SetLayout(static_cast<ID3D12Resource*>(texture.mHandle), initialState);
+
 	return texture;
 }
 
@@ -48,6 +162,24 @@ Shader GraphicsDevice::GenerateShader(const TString& entryPoint, ShaderStage sta
 	shader.mHandle = shaderBytecode;
 
 	return shader;
+}
+
+void GraphicsDevice::Dispose(Heap& heap) const
+{
+	static_cast<ID3D12Heap*>(heap.mHandle)->Release();
+	heap.mHandle = nullptr;
+}
+
+void GraphicsDevice::Dispose(Buffer& buffer) const
+{
+	static_cast<ID3D12Resource*>(buffer.mHandle)->Release();
+	buffer.mHandle = nullptr;
+}
+
+void GraphicsDevice::Dispose(Texture& texture) const
+{
+	static_cast<ID3D12Resource*>(texture.mHandle)->Release();
+	texture.mHandle = nullptr;
 }
 
 DirectXDevice::DirectXDevice()

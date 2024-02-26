@@ -41,14 +41,14 @@ void ImGuiRenderer::AddRenderPasses(Gleam::RenderGraph& graph, Gleam::RenderGrap
 	graph.AddRenderPass<ImGuiPassData>("ImGuiPass", [&](Gleam::RenderGraphBuilder& builder, ImGuiPassData& passData)
 	{
 		const auto& sceneData = blackboard.Get<Gleam::SceneRenderingData>();
-		auto swapchainTarget = graph.ImportBackbuffer(mDevice->GetSwapchain()->GetTexture());
+		auto swapchainTarget = graph.ImportBackbuffer(mDevice->GetRenderSurface());
 		passData.sceneTarget = builder.ReadTexture(sceneData.backbuffer);
 		passData.swapchainTarget = builder.UseColorBuffer(swapchainTarget);
 	},
     [this](const Gleam::CommandBuffer* cmd, const ImGuiPassData& passData)
     {
         ImGuiIO& io = ImGui::GetIO();
-        auto drawableSize = GameInstance->GetSubsystem<Gleam::RenderSystem>()->GetDevice()->GetSwapchain()->GetDrawableSize();
+        auto drawableSize = GameInstance->GetSubsystem<Gleam::RenderSystem>()->GetDevice()->GetDrawableSize();
         io.DisplaySize = ImVec2(drawableSize.width, drawableSize.height);
         
 		ImGuiBackend::BeginFrame();

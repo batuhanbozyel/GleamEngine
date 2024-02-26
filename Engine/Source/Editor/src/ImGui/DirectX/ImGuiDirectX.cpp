@@ -3,6 +3,7 @@
 using namespace GEditor;
 
 #ifdef USE_DIRECTX_RENDERER
+#include "Renderer/DirectX/DirectXUtils.h"
 #include "Renderer/DirectX/DirectXDevice.h"
 #include "Renderer/DirectX/DirectXPipelineStateManager.h"
 
@@ -14,7 +15,12 @@ void ImGuiBackend::Init(Gleam::GraphicsDevice* device)
 	mDevice = device;
 
 	ImGui_ImplSDL3_InitForD3D(GameInstance->GetSubsystem<Gleam::WindowSystem>()->GetSDLWindow());
-	ImGui_ImplDX12_Init(&init_info, gRenderPass);
+	ImGui_ImplDX12_Init(static_cast<ID3D12Device*>(mDevice->GetHandle()),
+		mDevice->GetFramesInFlight(),
+		Gleam::TextureFormatToDXGI_FORMAT(mDevice->GetFormat()),
+		gCbvSrvHeap,
+		gCbvSrvHeap->GetCPUDescriptorHandleForHeapStart(),
+		gCbvSrvHeap->GetGPUDescriptorHandleForHeapStart());
 }
 
 void ImGuiBackend::Destroy()
