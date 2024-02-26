@@ -101,7 +101,7 @@ void DirectXPipelineStateManager::Init(DirectXDevice* device)
 		mStaticSamplerDescs[i] = CreateStaticSampler(sampler);
 		mStaticSamplerDescs[i].ComparisonFunc = D3D12_COMPARISON_FUNC_ALWAYS;
 		mStaticSamplerDescs[i].BorderColor = D3D12_STATIC_BORDER_COLOR_OPAQUE_BLACK;
-		mStaticSamplerDescs[i].ShaderRegister = hasher(sampler);
+		mStaticSamplerDescs[i].ShaderRegister = (UINT)hasher(sampler);
 	}
 
 	// Root signature
