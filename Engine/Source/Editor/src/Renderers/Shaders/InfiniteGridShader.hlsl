@@ -37,7 +37,7 @@ struct FragmentOut
     float depth : SV_Depth;
 };
 
-float PristineGrid(float2 uv, float lineWidth)
+float PristineGrid(float2 uv, float lineWidth, float2 axisLines)
 {
     lineWidth = saturate(lineWidth);
     float4 uvDDXY = float4(ddx(uv), ddy(uv));
@@ -50,6 +50,7 @@ float PristineGrid(float2 uv, float lineWidth)
     gridUV = invertLine ? gridUV : 1.0 - gridUV;
     float2 grid2 = smoothstep(drawWidth + lineAA, drawWidth - lineAA, gridUV);
     grid2 *= saturate(targetWidth / drawWidth);
+    grid2 = saturate(grid2 - axisLines); // hack
     grid2 = lerp(grid2, targetWidth, saturate(uvDeriv * 2.0 - 1.0));
     grid2 = invertLine ? 1.0 - grid2 : grid2;
     return lerp(grid2.x, 1.0, grid2.y);
@@ -63,15 +64,34 @@ float ComputeDepth(float3 pos)
 
 FragmentOut infiniteGridFragmentShader(VertexOut IN)
 {
+    static const float4 AXIS_X_COLOR = float4(1.0f, 0.0f, 0.0f, 1.0f);
+    static const float4 AXIS_Y_COLOR = float4(0.0f, 1.0f, 0.0f, 1.0f);
+    
     float t = -IN.nearPoint.y / (IN.farPoint.y - IN.nearPoint.y);
     float3 gridPos = IN.nearPoint + t * (IN.farPoint - IN.nearPoint);
-
+    
     float division = max(2.0f, float(uniforms.majorGridDivision));
-    float4 majorGrid = IN.majorLineColor * PristineGrid(gridPos.xz / division, uniforms.majorLineWidth / division);
-    float4 minorGrid = IN.minorLineColor * PristineGrid(gridPos.xz, uniforms.minorLineWidth);
+    float majorLineWidth = saturate(uniforms.majorLineWidth / division);
+    float minorLineWidth = saturate(uniforms.minorLineWidth);
+    
+    float2 uv = gridPos.xz;
+    float2 majorUV = uv / division;
+    
+    // Axis lines
+    float4 uvDDXY = float4(ddx(majorUV), ddy(majorUV));
+    float2 uvDeriv = float2(length(uvDDXY.xz), length(uvDDXY.yw));
+    float2 axisDrawWidth = max(majorLineWidth, uvDeriv);
+    float2 axisLineAA = uvDeriv * 1.5;
+    float2 axisLines2 = smoothstep(axisDrawWidth + axisLineAA, axisDrawWidth - axisLineAA, abs(majorUV * 2.0));
+    axisLines2 *= saturate(majorLineWidth / axisDrawWidth);
+    float4 axisLines = lerp(AXIS_X_COLOR * axisLines2.y, AXIS_Y_COLOR, axisLines2.x);
+    
+    float4 majorGrid = IN.majorLineColor * PristineGrid(majorUV, majorLineWidth, axisLines2);
+    float4 minorGrid = IN.minorLineColor * PristineGrid(uv, minorLineWidth, axisLines2);
+    float4 grid = saturate(minorGrid * (1.0f - majorGrid.a) + majorGrid);
 
     FragmentOut OUT;
     OUT.depth = ComputeDepth(gridPos);
-    OUT.color = saturate(minorGrid * (1.0f - majorGrid.a) + majorGrid) * float(t > 0.0f);
+    OUT.color = saturate(grid * (1.0f - axisLines.a) + axisLines) * float(t > 0.0f);
     return OUT;
 }

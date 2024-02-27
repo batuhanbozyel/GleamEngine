@@ -73,10 +73,12 @@ struct Shader::Reflection
     
     static const IRResourceLocation& GetResourceFromTypeArray(const TArray<IRResourceLocation>& resources, uint32_t slot)
     {
+        static IRResourceLocation dummy;
 		if (resources.empty())
 		{
+            dummy.resourceType = IRResourceTypeInvalid;
 			GLEAM_ASSERT(false, "Metal: Shader does not use any resource");
-			return nullptr;
+			return dummy;
 		}
 
         uint32_t left = 0;
@@ -93,7 +95,7 @@ struct Shader::Reflection
         }
         
         GLEAM_ASSERT(false, "Metal: Resource reflection not found in slot {0}", slot);
-        static IRResourceLocation dummy;
+        dummy.resourceType = IRResourceTypeInvalid;
         return dummy;
     }
 };
