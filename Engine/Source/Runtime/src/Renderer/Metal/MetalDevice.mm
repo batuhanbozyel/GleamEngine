@@ -98,6 +98,7 @@ Shader GraphicsDevice::GenerateShader(const TString& entryPoint, ShaderStage sta
     
     auto compiler = IRCompilerCreate();
     IRCompilerSetEntryPointName(compiler, entryPoint.data());
+    IRCompilerSetGlobalRootSignature(compiler, MetalPipelineStateManager::GetGlobalRootSignature());
     
     IRError* compileError = nullptr;
     auto metalIR = IRCompilerAllocCompileAndLink(compiler, entryPoint.c_str(), dxil, &compileError);

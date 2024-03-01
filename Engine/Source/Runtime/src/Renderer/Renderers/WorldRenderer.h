@@ -29,8 +29,6 @@ public:
     virtual void AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard) override;
     
     void DrawMesh(const MeshRenderer& meshRenderer, const Transform& transform);
-    
-	void UpdateCamera(const Camera& camera);
 
 private:
     
@@ -43,7 +41,6 @@ private:
     HashMap<RefCounted<Material>, TArray<RenderProxy>> mOpaqueQueue;
     HashMap<RefCounted<Material>, TArray<RenderProxy>> mTransparentQueue;
     
-    CameraUniforms mCameraData;
     Shader mForwardPassVertexShader;
     Shader mForwardPassFragmentShader;
 

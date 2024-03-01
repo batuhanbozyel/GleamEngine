@@ -4,23 +4,6 @@
 
 using namespace Gleam;
 
-void CommandBuffer::BindBuffer(const BufferHandle& handle,
-	size_t offset,
-	uint32_t index,
-	ShaderStageFlagBits stage) const
-{
-	const Buffer& buffer = handle;
-	BindBuffer(buffer, offset, index, stage, handle.GetAccess());
-}
-
-void CommandBuffer::BindTexture(const TextureHandle& handle,
-	uint32_t index,
-	ShaderStageFlagBits stage) const
-{
-	const Texture& texture = handle;
-	BindTexture(texture, index, stage, handle.GetAccess());
-}
-
 void CommandBuffer::DrawIndexed(const Buffer& indexBuffer,
 	IndexType type,
 	uint32_t instanceCount,

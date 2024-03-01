@@ -12,14 +12,6 @@ enum class ShaderStage
     Compute
 };
 
-enum ShaderStageFlag
-{
-    ShaderStage_Vertex = BIT(static_cast<uint32_t>(ShaderStage::Vertex)),
-    ShaderStage_Fragment = BIT(static_cast<uint32_t>(ShaderStage::Fragment)),
-    ShaderStage_Compute = BIT(static_cast<uint32_t>(ShaderStage::Compute))
-};
-typedef uint32_t ShaderStageFlagBits;
-
 class Shader final : public GraphicsObject
 {
     friend class GraphicsDevice;

@@ -10,36 +10,6 @@
 #define IR_PRIVATE_IMPLEMENTATION
 #include <metal_irconverter_runtime/metal_irconverter_runtime.h>
 
-static void VkDrawPrimitives(id<MTLRenderCommandEncoder> enc, MTLPrimitiveType primitiveType, uint64_t vertexStart, uint64_t vertexCount, uint64_t instanceCount, uint64_t baseInstance)
-{
-    IRRuntimeDrawArgument da = { (uint32_t)vertexCount, (uint32_t)instanceCount, 0, 0 };
-    IRRuntimeDrawParams dp = { .draw = da };
-    IRRuntimeDrawInfo di = { 0, (uint8_t)primitiveType, 0, 0, 0 };
-    
-    [enc setVertexBytes:&dp length:sizeof( IRRuntimeDrawParams ) atIndex:kIRArgumentBufferDrawArgumentsBindPoint];
-    [enc setVertexBytes:&di length:sizeof( IRRuntimeDrawInfo ) atIndex:kIRArgumentBufferUniformsBindPoint];
-    [enc drawPrimitives:primitiveType vertexStart:vertexStart vertexCount:vertexCount instanceCount:instanceCount baseInstance:baseInstance];
-}
-
-static void VkDrawIndexedPrimitives(id<MTLRenderCommandEncoder> enc, MTLPrimitiveType primitiveType, uint64_t indexCount, MTLIndexType indexType, id<MTLBuffer> indexBuffer, uint64_t indexBufferOffset, uint64_t instanceCount, int64_t baseVertex, uint64_t baseInstance)
-{
-    IRRuntimeDrawIndexedArgument da = (IRRuntimeDrawIndexedArgument)
-    {
-        .indexCountPerInstance = (uint32_t)indexCount,
-        .instanceCount = (uint32_t)instanceCount,
-        .startIndexLocation = (uint32_t)indexBufferOffset,
-        .baseVertexLocation = 0,
-        .startInstanceLocation = 0
-    };
-    
-    IRRuntimeDrawParams dp = { .drawIndexed = da };
-    IRRuntimeDrawInfo di = { .indexType = (uint8_t)(indexType+1), .primitiveTopology = (uint8_t)primitiveType };
-    
-    [enc setVertexBytes:&dp length:sizeof( IRRuntimeDrawParams ) atIndex:kIRArgumentBufferDrawArgumentsBindPoint];
-    [enc setVertexBytes:&di length:sizeof( IRRuntimeDrawInfo ) atIndex:kIRArgumentBufferUniformsBindPoint];
-    [enc drawIndexedPrimitives:primitiveType indexCount:indexCount indexType:indexType indexBuffer:indexBuffer indexBufferOffset:indexBufferOffset instanceCount:instanceCount baseVertex:baseVertex baseInstance:baseInstance];
-}
-
 using namespace Gleam;
 
 struct CommandBuffer::Impl
@@ -205,105 +175,25 @@ void CommandBuffer::SetViewport(const Size& size) const
     [mHandle->renderCommandEncoder setViewport:viewport];
 }
 
-void CommandBuffer::BindBuffer(const Buffer& buffer, size_t offset, uint32_t index, ShaderStageFlagBits stage, ResourceAccess access) const
+void CommandBuffer::SetConstantBuffer(const void* data, uint32_t size, uint32_t slot) const
 {
-    auto argumentBufferPtr = static_cast<uint8_t*>(mHandle->topLevelArgumentBuffer.GetContents());
-    auto resource = [&, this]()
-    {
-        const Shader::Reflection* reflection = nullptr;
-        if (stage & ShaderStage_Vertex)
-        {
-            auto pipeline = static_cast<const MetalGraphicsPipeline*>(mHandle->pipeline);
-            reflection = pipeline->vertexShader.GetReflection();
-        }
-        else if (stage & ShaderStage_Fragment)
-        {
-            auto pipeline = static_cast<const MetalGraphicsPipeline*>(mHandle->pipeline);
-            reflection = pipeline->fragmentShader.GetReflection();
-        }
-        GLEAM_ASSERT(reflection, "Metal: Shader stage not implemented yet.");
-        
-        switch (buffer.GetDescriptor().usage)
-        {
-            case BufferUsage::UniformBuffer: return Shader::Reflection::GetResourceFromTypeArray(reflection->CBVs, index);
-            case BufferUsage::VertexBuffer:
-            case BufferUsage::StorageBuffer:
-            {
-                switch(access)
-                {
-                    case ResourceAccess::Read: return Shader::Reflection::GetResourceFromTypeArray(reflection->SRVs, index);
-                    case ResourceAccess::Write: return Shader::Reflection::GetResourceFromTypeArray(reflection->UAVs, index);
-                    default: GLEAM_ASSERT(false, "Metal: Trying to bind buffer with invalid access.") return Shader::Reflection::invalidResource;
-                }
-                
-            }
-            default: GLEAM_ASSERT(false, "Metal: Trying to bind buffer with invalid usage.") return Shader::Reflection::invalidResource;
-        }
-    }();
-    if (resource.resourceType == IRResourceTypeInvalid) return;
-    
-    [mHandle->renderCommandEncoder useResource:buffer.GetHandle() usage:ResourceAccessToMTLResourceUsage(access) stages:ShaderStagesToMTLRenderStages(stage)];
-    auto entry = reinterpret_cast<IRDescriptorTableEntry*>(argumentBufferPtr + resource.topLevelOffset);
-    IRDescriptorTableSetBuffer(entry, [buffer.GetHandle() gpuAddress] + offset, 0);
+    // TODO:
 }
 
-void CommandBuffer::BindTexture(const Texture& texture, uint32_t index, ShaderStageFlagBits stage, ResourceAccess access) const
+void CommandBuffer::SetPushConstant(const void* data, uint32_t size) const
 {
-    auto argumentBufferPtr = static_cast<uint8_t*>(mHandle->topLevelArgumentBuffer.GetContents());
-    auto resource = [&, this]()
-    {
-        const Shader::Reflection* reflection = nullptr;
-        if (stage & ShaderStage_Vertex)
-        {
-            auto pipeline = static_cast<const MetalGraphicsPipeline*>(mHandle->pipeline);
-            reflection = pipeline->vertexShader.GetReflection();
-        }
-        else if (stage & ShaderStage_Fragment)
-        {
-            auto pipeline = static_cast<const MetalGraphicsPipeline*>(mHandle->pipeline);
-            reflection = pipeline->fragmentShader.GetReflection();
-        }
-        GLEAM_ASSERT(reflection, "Metal: Shader stage not implemented yet.");
-        
-        switch(access)
-        {
-            case ResourceAccess::Read: return Shader::Reflection::GetResourceFromTypeArray(reflection->SRVs, index);
-            case ResourceAccess::Write: return Shader::Reflection::GetResourceFromTypeArray(reflection->UAVs, index);
-            default: GLEAM_ASSERT(false, "Metal: Trying to bind texture with invalid access.") return Shader::Reflection::invalidResource;
-        }
-    }();
-    if (resource.resourceType == IRResourceTypeInvalid) return;
-    
-    [mHandle->renderCommandEncoder useResource:texture.GetView() usage:ResourceAccessToMTLResourceUsage(access) stages:ShaderStagesToMTLRenderStages(stage)];
-    auto entry = static_cast<IRDescriptorTableEntry*>(argumentBufferPtr + resource.topLevelOffset);
-    IRDescriptorTableSetTexture(entry, texture.GetView(), 0.0f, 0);
+    // TODO:
 }
 
-void CommandBuffer::SetPushConstant(const void* data, uint32_t size, ShaderStageFlagBits stage) const
-{
-    auto buffer = [mHandle->device->GetHandle() newBufferWithBytes:data length:size options:MTLResourceStorageModeShared];
-    BindBuffer(buffer, BufferUsage::UniformBuffer, 0, PUSH_CONSTANT_SLOT, stage, ResourceAccess::Read);
-}
-
-/* NOTE:
- VkDrawPrimitives function ensures [[vertex_id]] starts from baseVertex value to follow Vulkan and Metal's model
- IRRuntimeDrawPrimitives function ensures SV_VertexID starts always from 0 to follow DirectX12's SV_VertexID model
- Switch to using IRRuntimeDrawIndexedPrimitives if DX12 is the primary Windows API
- */
 void CommandBuffer::Draw(uint32_t vertexCount, uint32_t instanceCount, uint32_t baseVertex, uint32_t baseInstance) const
 {
-    VkDrawPrimitives(mHandle->renderCommandEncoder, mHandle->pipeline->topology, baseVertex, vertexCount, instanceCount, baseInstance);
+    IRRuntimeDrawPrimitives(mHandle->renderCommandEncoder, mHandle->pipeline->topology, baseVertex, vertexCount, instanceCount, baseInstance);
 }
 
-/* NOTE:
- VkDrawIndexedPrimitives function ensures [[vertex_id]] starts from baseVertex value to follow Vulkan and Metal's model
- IRRuntimeDrawIndexedPrimitives function ensures SV_VertexID starts always from 0 to follow DirectX12's SV_VertexID model
- Switch to using IRRuntimeDrawIndexedPrimitives if DX12 is the primary Windows API
- */
 void CommandBuffer::DrawIndexed(const Buffer& indexBuffer, IndexType type, uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, uint32_t baseVertex, uint32_t baseInstance) const
 {
     MTLIndexType indexType = static_cast<MTLIndexType>(type);
-    VkDrawIndexedPrimitives(mHandle->renderCommandEncoder, mHandle->pipeline->topology, indexCount, indexType, indexBuffer.GetHandle(), firstIndex * SizeOfIndexType(type), instanceCount, baseVertex, baseInstance);
+    IRRuntimeDrawIndexedPrimitives(mHandle->renderCommandEncoder, mHandle->pipeline->topology, indexCount, indexType, indexBuffer.GetHandle(), firstIndex * SizeOfIndexType(type), instanceCount, baseVertex, baseInstance);
 }
 
 void CommandBuffer::CopyBuffer(const NativeGraphicsHandle src, const NativeGraphicsHandle dst, size_t size, size_t srcOffset, size_t dstOffset) const

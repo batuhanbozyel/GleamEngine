@@ -15,15 +15,28 @@ struct DebugVertex
     uint32_t color;
 };
 
-struct DebugShaderUniforms
+struct DebugMeshUniforms
 {
     float4x4 modelMatrix;
 	uint32_t color;
 };
 
+struct DebugShaderResources
+{
+    ShaderResourceIndex vertexBuffer;
+    ShaderResourceIndex cameraBuffer;
+};
+
 struct ForwardPassUniforms
 {
     float4x4 modelMatrix;
+    ShaderResourceIndex positionBuffer;
+    ShaderResourceIndex interleavedBuffer;
+};
+
+struct TonemapUniforms
+{
+    ShaderResourceIndex sceneRT;
 };
 
 } // namespace Gleam

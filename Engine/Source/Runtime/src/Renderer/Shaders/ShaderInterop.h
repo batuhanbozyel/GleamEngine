@@ -10,10 +10,42 @@ using float4 = Gleam::Vector4;
 #endif
 
 #ifndef __spirv__
-#define PUSH_CONSTANT_SLOT 999
+#define PUSH_CONSTANT_SLOT 9
+#define PUSH_CONSTANT_REGISTER 999
 #endif
 
 namespace Gleam {
+
+#define InvalidResourceIndex ShaderResourceIndex(~0Ui32)
+
+#ifdef __cplusplus
+struct ShaderResourceIndex
+{
+    uint32_t data;
+
+    ShaderResourceIndex()
+        : data(InvalidResourceIndex)
+    {
+    }
+
+    explicit ShaderResourceIndex(uint32_t index)
+        : data(index)
+    {
+    }
+
+    bool operator==(const ShaderResourceIndex& other) const
+    {
+        return data == other.data;
+    }
+
+    bool operator!=(const ShaderResourceIndex& other) const
+    {
+        return data != other.data;
+    }
+};
+#else
+using ShaderResourceIndex = uint32_t;
+#endif
 
 struct CameraUniforms
 {

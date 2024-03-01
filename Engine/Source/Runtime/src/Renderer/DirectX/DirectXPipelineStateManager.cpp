@@ -7,6 +7,8 @@
 
 using namespace Gleam;
 
+uint32_t PushConstantRootParameterIndex = 0;
+
 static size_t PipelineHasher(const PipelineStateDescriptor& pipelineDesc, const TArray<TextureDescriptor>& colorAttachments, const TextureDescriptor& depthAttachment, const Shader& vertexShader, const Shader& fragmentShader, uint32_t sampleCount)
 {
     size_t hash = 0;
@@ -57,29 +59,29 @@ static D3D12_STATIC_SAMPLER_DESC CreateStaticSampler(const SamplerState& sampler
 		case WrapMode::Repeat:
 		{
 			sampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-			sampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-			sampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+			sampler.AddressV = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+			sampler.AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
 			break;
 		}
 		case WrapMode::Clamp:
 		{
 			sampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-			sampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-			sampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+			sampler.AddressV = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+			sampler.AddressW = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
 			break;
 		}
 		case WrapMode::Mirror:
 		{
 			sampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_MIRROR;
-			sampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_MIRROR;
-			sampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_MIRROR;
+			sampler.AddressV = D3D12_TEXTURE_ADDRESS_MODE_MIRROR;
+			sampler.AddressW = D3D12_TEXTURE_ADDRESS_MODE_MIRROR;
 			break;
 		}
 		case WrapMode::MirrorOnce:
 		{
 			sampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_MIRROR_ONCE;
-			sampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_MIRROR_ONCE;
-			sampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_MIRROR_ONCE;
+			sampler.AddressV = D3D12_TEXTURE_ADDRESS_MODE_MIRROR_ONCE;
+			sampler.AddressW = D3D12_TEXTURE_ADDRESS_MODE_MIRROR_ONCE;
 			break;
 		}
 		default: GLEAM_ASSERT(false, "DirectX: Wrap mode is not supported!") break;
@@ -103,63 +105,36 @@ void DirectXPipelineStateManager::Init(DirectXDevice* device)
 		mStaticSamplerDescs[i].BorderColor = D3D12_STATIC_BORDER_COLOR_OPAQUE_BLACK;
 		mStaticSamplerDescs[i].ShaderRegister = (UINT)hasher(sampler);
 	}
-
-	// Root signature
-	D3D12_DESCRIPTOR_RANGE1 descriptorRanges[] = {
-		// SRV
-		{
-			.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
-			.NumDescriptors = D3D12_MAX_SHADER_VISIBLE_DESCRIPTOR_HEAP_SIZE_TIER_2,
-			.BaseShaderRegister = 0,
-			.RegisterSpace = 0,
-			.Flags = D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE,
-			.OffsetInDescriptorsFromTableStart = 0
-		},
-		// UAV
-		{
-			.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV,
-			.NumDescriptors = D3D12_MAX_SHADER_VISIBLE_DESCRIPTOR_HEAP_SIZE_TIER_2,
-			.BaseShaderRegister = 0,
-			.RegisterSpace = 0,
-			.Flags = D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE,
-			.OffsetInDescriptorsFromTableStart = 0
-		},
-		// CBV
-		{
-			.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV,
-			.NumDescriptors = D3D12_MAX_SHADER_VISIBLE_DESCRIPTOR_HEAP_SIZE_TIER_2,
-			.BaseShaderRegister = 0,
-			.RegisterSpace = 0,
-			.Flags = D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE,
-			.OffsetInDescriptorsFromTableStart = 0
-		},
-	};
-
-	D3D12_ROOT_PARAMETER1 rootSigParams[] = {
-		// Descriptor table
-		{
-			.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
-			.DescriptorTable = {
-				.NumDescriptorRanges = _countof(descriptorRanges),
-				.pDescriptorRanges = descriptorRanges
-			},
-			.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL
-		},
-		// Push constant
-		{
-			.ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS,
-			.Constants = {
-				.ShaderRegister = PUSH_CONSTANT_SLOT,
-				.RegisterSpace = 0,
-				.Num32BitValues = 4,
-			},
-			.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL
-		}
-	};
-
+    
+    // Root signature
+    constexpr uint32_t NumRootParams = PUSH_CONSTANT_SLOT + 1;
+    D3D12_ROOT_PARAMETER1 rootSigParams[NumRootParams];
+    for (uint32_t i = 0; i < PUSH_CONSTANT_SLOT; i++)
+    {
+        rootSigParams[i] = {
+          .ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV,
+          .Descriptor = {
+              .ShaderRegister = i,
+              .RegisterSpace = 0,
+              .Flags = D3D12_ROOT_DESCRIPTOR_FLAG_DATA_VOLATILE
+          },
+          .ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL
+        };
+    }
+    // Push constant
+    rootSigParams[PUSH_CONSTANT_SLOT] = {
+      .ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS,
+      .Constants = {
+          .ShaderRegister = PUSH_CONSTANT_REGISTER,
+          .RegisterSpace = 0,
+          .Num32BitValues = 4
+      },
+      .ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL
+    };
+    
 	D3D12_VERSIONED_ROOT_SIGNATURE_DESC rootSignature = {};
 	rootSignature.Version = D3D_ROOT_SIGNATURE_VERSION_1_1;
-	rootSignature.Desc_1_1.NumParameters = _countof(rootSigParams);
+	rootSignature.Desc_1_1.NumParameters = NumRootParams;
 	rootSignature.Desc_1_1.pParameters = rootSigParams;
 	rootSignature.Desc_1_1.NumStaticSamplers = mStaticSamplerDescs.size();
 	rootSignature.Desc_1_1.pStaticSamplers = mStaticSamplerDescs.data();

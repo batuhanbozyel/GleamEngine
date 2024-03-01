@@ -1,12 +1,6 @@
 #include "Common.hlsli"
 #include "ShaderTypes.h"
 
-StructuredBuffer<float3> PositionBuffer : register(t0);
-
-StructuredBuffer<Gleam::InterleavedMeshVertex> InterleavedBuffer : register(t1);
-
-ConstantBuffer<Gleam::CameraUniforms> CameraBuffer : register(b0);
-
 struct VertexOut
 {
     float4 position : SV_POSITION;
@@ -18,6 +12,10 @@ PUSH_CONSTANT(Gleam::ForwardPassUniforms, uniforms);
 
 VertexOut forwardPassVertexShader(uint vertex_id: SV_VertexID)
 {
+    StructuredBuffer<float3> PositionBuffer = ResourceDescriptorHeap[uniforms.positionBuffer];
+    StructuredBuffer<Gleam::InterleavedMeshVertex> InterleavedBuffer = ResourceDescriptorHeap[uniforms.interleavedBuffer];
+    ConstantBuffer<Gleam::CameraUniforms> CameraBuffer = ResourceDescriptorHeap[uniforms.cameraBuffer];
+    
     Gleam::InterleavedMeshVertex interleavedVert = InterleavedBuffer[vertex_id];
 
     VertexOut OUT;

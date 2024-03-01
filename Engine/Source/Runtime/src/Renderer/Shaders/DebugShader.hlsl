@@ -1,13 +1,9 @@
 #include "Common.hlsli"
 #include "ShaderTypes.h"
 
-StructuredBuffer<float3> PositionBuffer : register(t0);
+ConstantBuffer<Gleam::DebugShaderResources> resources : register(b0);
 
-StructuredBuffer<Gleam::DebugVertex> VertexBuffer : register(t0);
-
-ConstantBuffer<Gleam::CameraUniforms> CameraBuffer : register(b0);
-
-PUSH_CONSTANT(Gleam::DebugShaderUniforms, uniforms);
+PUSH_CONSTANT(Gleam::DebugMeshUniforms, uniforms);
 
 struct VertexOut
 {
@@ -17,6 +13,9 @@ struct VertexOut
 
 VertexOut debugVertexShader(uint vertex_id: SV_VertexID)
 {
+    StructuredBuffer<Gleam::CameraUniforms> CameraBuffer = ResourceDescriptorHeap[resources.cameraBuffer];
+    StructuredBuffer<Gleam::DebugVertex> VertexBuffer = ResourceDescriptorHeap[resources.vertexBuffer];
+    
     Gleam::DebugVertex vertex = VertexBuffer[vertex_id];
     
     VertexOut OUT;
@@ -27,6 +26,9 @@ VertexOut debugVertexShader(uint vertex_id: SV_VertexID)
 
 VertexOut debugMeshVertexShader(uint vertex_id: SV_VertexID)
 {
+    StructuredBuffer<Gleam::CameraUniforms> CameraBuffer = ResourceDescriptorHeap[resources.cameraBuffer];
+    StructuredBuffer<float3> PositionBuffer = ResourceDescriptorHeap[resources.vertexBuffer];
+    
     VertexOut OUT;
     OUT.position = mul(CameraBuffer.viewProjectionMatrix, mul(uniforms.modelMatrix, float4(PositionBuffer[vertex_id].xyz, 1.0f)));
     OUT.color = unpack_unorm4x8_to_float(uniforms.color);

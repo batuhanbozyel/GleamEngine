@@ -24,19 +24,6 @@ void WorldRenderer::OnCreate(GraphicsDevice* device)
 
 void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard)
 {
-    const auto& updatePass = graph.AddRenderPass<WorldRenderingData>("WorldRenderer::UpdatePass", [&](RenderGraphBuilder& builder, WorldRenderingData& passData)
-    {
-        BufferDescriptor descriptor;
-        descriptor.usage = BufferUsage::UniformBuffer;
-        descriptor.size = sizeof(CameraUniforms);
-        passData.cameraBuffer = builder.CreateBuffer(descriptor);
-        passData.cameraBuffer = builder.WriteBuffer(passData.cameraBuffer);
-    },
-    [this](const CommandBuffer* cmd, const WorldRenderingData& passData)
-    {
-        cmd->SetBufferData(passData.cameraBuffer, &mCameraData, sizeof(CameraUniforms));
-    });
-    
     graph.AddRenderPass<WorldRenderingData>("WorldRenderer::ForwardPass", [&](RenderGraphBuilder& builder, WorldRenderingData& passData)
     {
         const auto& sceneData = blackboard.Get<SceneRenderingData>();
@@ -54,7 +41,7 @@ void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
         
         passData.colorTarget = builder.UseColorBuffer(passData.colorTarget);
         passData.depthTarget = builder.UseDepthBuffer(passData.depthTarget);
-        passData.cameraBuffer = builder.ReadBuffer(updatePass.cameraBuffer);
+        passData.cameraBuffer = builder.ReadBuffer(sceneData.cameraBuffer);
         blackboard.Add(passData);
     },
     [this](const CommandBuffer* cmd, const WorldRenderingData& passData)
@@ -64,17 +51,17 @@ void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
             for (const auto& pass : material->GetPasses())
             {
                 cmd->BindGraphicsPipeline(pass.pipelineState, pass.vertexFunction, pass.fragmentFunction);
-                cmd->BindBuffer(passData.cameraBuffer, 0, 0, ShaderStage_Vertex);
                 
                 for (const auto& element : meshList)
                 {
                     const auto& meshBuffer = element.mesh->GetBuffer();
-                    cmd->BindBuffer(meshBuffer.GetPositionBuffer(), 0, 0, ShaderStage_Vertex);
-                    cmd->BindBuffer(meshBuffer.GetInterleavedBuffer(), 0, 1, ShaderStage_Vertex);
                     
                     ForwardPassUniforms uniforms;
                     uniforms.modelMatrix = element.transform;
-                    cmd->SetPushConstant(uniforms, ShaderStage_Vertex);
+                    uniforms.cameraBuffer = passData.cameraBuffer;
+                    uniforms.positionBuffer = meshBuffer.GetPositionBuffer();
+                    uniforms.interleavedBuffer = meshBuffer.GetInterleavedBuffer();
+                    cmd->SetPushConstant(uniforms);
 					
                     for (const auto& descriptor : element.mesh->GetSubmeshDescriptors())
                     {
@@ -101,15 +88,4 @@ void WorldRenderer::DrawMesh(const MeshRenderer& meshRenderer, const Transform& 
     {
         mTransparentQueue[baseMaterial].push_back({ meshRenderer.GetMesh().get(), meshRenderer.GetMaterial(0).get(), transform.GetTransform() });
     }
-}
-
-void WorldRenderer::UpdateCamera(const Camera& camera)
-{
-    mCameraData.viewMatrix = camera.GetViewMatrix();
-    mCameraData.projectionMatrix = camera.GetProjectionMatrix();
-    mCameraData.viewProjectionMatrix = mCameraData.projectionMatrix * mCameraData.viewMatrix;
-	mCameraData.invViewMatrix = Math::Inverse(mCameraData.viewMatrix);
-	mCameraData.invProjectionMatrix = Math::Inverse(mCameraData.projectionMatrix);
-	mCameraData.invViewProjectionMatrix = Math::Inverse(mCameraData.viewProjectionMatrix);
-	mCameraData.worldPosition = camera.GetWorldPosition();
 }

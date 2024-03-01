@@ -10,8 +10,9 @@ struct VertexOut
     float3 farPoint : ATTRIBUTE3;
 };
 
-ConstantBuffer<Gleam::CameraUniforms> CameraBuffer : register(b0);
 PUSH_CONSTANT(GEditor::InfiniteGridUniforms, uniforms);
+
+ConstantBuffer<Gleam::CameraUniforms> CameraBuffer = ResourceDescriptorHeap[uniforms.cameraBuffer];
 
 VertexOut infiniteGridVertexShader(uint vertex_id: SV_VertexID)
 {

@@ -37,6 +37,8 @@ public:
     
     const Texture& GetRenderTarget() const;
     
+    void UpdateCamera(const Camera& camera);
+    
     void SetRenderTarget(const TextureDescriptor& descriptor);
     
     void SetRenderTarget(const Texture& texture);
@@ -125,6 +127,8 @@ private:
     Container mRenderers;
     
     Texture mRenderTarget;
+    
+    CameraUniforms mCameraData;
     
     RendererConfig mConfiguration;
     

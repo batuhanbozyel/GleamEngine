@@ -177,26 +177,6 @@ static constexpr MTLTextureUsage TextureUsageToMTLTextureUsage(TextureUsageFlagB
     return usage;
 }
 
-static constexpr MTLRenderStages ShaderStagesToMTLRenderStages(ShaderStageFlagBits flags)
-{
-    MTLRenderStages stages = 0;
-    if (flags & ShaderStage_Vertex)
-    {
-        stages |= MTLRenderStageVertex;
-    }
-    
-    if (flags & ShaderStage_Fragment)
-    {
-        stages |= MTLRenderStageFragment;
-    }
-    
-    if (flags & ShaderStage_Compute)
-    {
-        stages |= MTLRenderStageTile;
-    }
-    return stages;
-}
-
 static constexpr MTLCullMode CullModeToMTLCullMode(CullMode cullMode)
 {
     switch (cullMode)

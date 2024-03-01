@@ -18,9 +18,9 @@ else:
         DXC = f"{VULKAN_SDK}/bin/dxc"
 
 HLSL_SHADER_STAGE = {}
-HLSL_SHADER_STAGE["vertex"] = "vs_6_0"
-HLSL_SHADER_STAGE["fragment"] = "ps_6_0"
-HLSL_SHADER_STAGE["compute"] = "cs_6_0"
+HLSL_SHADER_STAGE["vertex"] = "vs_6_6"
+HLSL_SHADER_STAGE["fragment"] = "ps_6_6"
+HLSL_SHADER_STAGE["compute"] = "cs_6_6"
 
 def compile_shader(hlsl_file: str, entry_point: str, shader_stage: str, output_dir: str):
     compile_command = [DXC, hlsl_file,

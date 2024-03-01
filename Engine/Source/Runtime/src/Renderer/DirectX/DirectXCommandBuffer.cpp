@@ -160,108 +160,14 @@ void CommandBuffer::SetViewport(const Size& size) const
 	mHandle->commandList.handle->RSSetScissorRects(1, &scissor);
 }
 
-void CommandBuffer::BindBuffer(const Buffer& buffer,
-	size_t offset,
-	uint32_t index,
-	ShaderStageFlagBits stage,
-	ResourceAccess access) const
+void CommandBuffer::SetConstantBuffer(const void* data, uint32_t size, uint32_t slot) const
 {
-	const auto resource = [&, this]()
-	{
-		const Shader::Reflection* reflection = nullptr;
-		if (stage & ShaderStage_Vertex)
-		{
-			auto pipeline = static_cast<const DirectXGraphicsPipeline*>(mHandle->pipeline);
-			reflection = pipeline->vertexShader.GetReflection();
-		}
-		else if (stage & ShaderStage_Fragment)
-		{
-			auto pipeline = static_cast<const DirectXGraphicsPipeline*>(mHandle->pipeline);
-			reflection = pipeline->fragmentShader.GetReflection();
-		}
-		else
-		{
-			GLEAM_ASSERT(false, "DirectX: Shader stage not implemented yet.")
-		}
-
-		switch (buffer.GetDescriptor().usage)
-		{
-			case BufferUsage::UniformBuffer: return Shader::Reflection::GetResourceFromTypeArray(reflection->CBVs, index);
-			case BufferUsage::VertexBuffer:
-			case BufferUsage::StorageBuffer:
-			{
-                switch(access)
-                {
-                    case ResourceAccess::Read: return Shader::Reflection::GetResourceFromTypeArray(reflection->SRVs, index);
-                    case ResourceAccess::Write: return Shader::Reflection::GetResourceFromTypeArray(reflection->UAVs, index);
-                    default: GLEAM_ASSERT(false, "DirectX: Trying to bind buffer with invalid access.")
-					{
-						return Shader::Reflection::invalidResource;
-					}
-                }
-			}
-			default: GLEAM_ASSERT(false, "DirectX: Trying to bind buffer with invalid usage.")
-			{
-				return Shader::Reflection::invalidResource;
-			}
-		}
-	}();
-	if (resource.Type == Shader::Reflection::invalidResource.Type) return;
-
-	// TODO: update descriptor heap
+    mHandle->commandList.handle->SetGraphicsConstantBufferView(/* TODO */);
 }
 
-void CommandBuffer::BindTexture(const Texture& texture,
-	uint32_t index,
-	ShaderStageFlagBits stage,
-	ResourceAccess access) const
+void CommandBuffer::SetPushConstant(const void* data, uint32_t size) const
 {
-	const auto resource = [&, this]()
-	{
-		const Shader::Reflection* reflection = nullptr;
-		if (stage & ShaderStage_Vertex)
-		{
-			auto pipeline = static_cast<const DirectXGraphicsPipeline*>(mHandle->pipeline);
-			reflection = pipeline->vertexShader.GetReflection();
-		}
-		else if (stage & ShaderStage_Fragment)
-		{
-			auto pipeline = static_cast<const DirectXGraphicsPipeline*>(mHandle->pipeline);
-			reflection = pipeline->fragmentShader.GetReflection();
-		}
-		else
-		{
-			GLEAM_ASSERT(false, "DirectX: Shader stage not implemented yet.")
-		}
-        switch(access)
-        {
-            case ResourceAccess::Read: return Shader::Reflection::GetResourceFromTypeArray(reflection->SRVs, index);
-            case ResourceAccess::Write: return Shader::Reflection::GetResourceFromTypeArray(reflection->UAVs, index);
-			default: GLEAM_ASSERT(false, "DirectX: Trying to bind texture with invalid access.")
-			{
-				return Shader::Reflection::invalidResource;
-			}
-        }
-	}();
-	if (resource.Type == Shader::Reflection::invalidResource.Type) return;
-
-	auto imageLayout = [access]()
-	{
-		switch (access)
-		{
-			case ResourceAccess::Read: return D3D12_RESOURCE_STATE_GENERIC_READ;
-			case ResourceAccess::Write: return D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-			default: return D3D12_RESOURCE_STATE_COMMON;
-		}
-	}();
-	DirectXTransitionManager::TransitionLayout(mHandle->commandList.handle, static_cast<ID3D12Resource*>(texture.GetHandle()), imageLayout);
-
-	// TODO: update descriptor heap
-}
-
-void CommandBuffer::SetPushConstant(const void* data, uint32_t size, ShaderStageFlagBits stage) const
-{
-	mHandle->commandList.handle->SetGraphicsRoot32BitConstants(D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS, size / sizeof(uint32_t), data, 0);
+	mHandle->commandList.handle->SetGraphicsRoot32BitConstants(PUSH_CONSTANT_SLOT, size / sizeof(uint32_t), data, 0);
 }
 
 void CommandBuffer::Draw(uint32_t vertexCount,

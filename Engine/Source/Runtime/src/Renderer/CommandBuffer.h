@@ -45,31 +45,17 @@ public:
 		const Shader& fragmentShader) const;
 
     void SetViewport(const Size& size) const;
-
-    void BindBuffer(const BufferHandle& handle,
-		size_t offset,
-		uint32_t index,
-		ShaderStageFlagBits stage) const;
-
-    void BindBuffer(const Buffer& buffer,
-		size_t offset,
-		uint32_t index,
-		ShaderStageFlagBits stage,
-		ResourceAccess access = ResourceAccess::Read) const;
-
-    void BindTexture(const TextureHandle& handle,
-		uint32_t index,
-		ShaderStageFlagBits stage) const;
-
-    void BindTexture(const Texture& texture,
-		uint32_t index,
-		ShaderStageFlagBits stage,
-		ResourceAccess access = ResourceAccess::Read) const;
+    
+    template<typename T>
+    void SetConstantBuffer(const T& t, uint32_t slot) const
+    {
+        SetConstantBuffer(&t, sizeof(T), slot);
+    }
 
     template<typename T>
-    void SetPushConstant(const T& t, ShaderStageFlagBits stage) const
+    void SetPushConstant(const T& t) const
     {
-        SetPushConstant(&t, sizeof(T), stage);
+        SetPushConstant(&t, sizeof(T));
     }
 
     void Draw(uint32_t vertexCount,
@@ -114,8 +100,10 @@ public:
     NativeGraphicsHandle GetActiveRenderPass() const;
 
 private:
+    
+    void SetConstantBuffer(const void* data, uint32_t size, uint32_t slot) const;
 
-    void SetPushConstant(const void* data, uint32_t size, ShaderStageFlagBits stage) const;
+    void SetPushConstant(const void* data, uint32_t size) const;
 
 	void CopyBuffer(const NativeGraphicsHandle src, const NativeGraphicsHandle dst,
 		size_t size,

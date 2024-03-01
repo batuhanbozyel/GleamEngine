@@ -87,6 +87,8 @@ public:
 
 	NO_DISCARD operator Buffer() const;
     
+    NO_DISCARD operator ShaderResourceIndex() const;
+    
 private:
     
     RenderGraphBufferNode* node;

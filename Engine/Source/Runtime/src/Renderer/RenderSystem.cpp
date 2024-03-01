@@ -58,8 +58,19 @@ void RenderSystem::Render()
     {
         RenderGraph graph(mDevice.get());
         RenderGraphBlackboard blackboard;
-
-        SceneRenderingData sceneData;
+        
+        auto& sceneData = graph.AddRenderPass<SceneRenderingData>("SceneRenderingData", [&](RenderGraphBuilder& builder, SceneRenderingData& passData)
+        {
+            BufferDescriptor descriptor;
+            descriptor.usage = BufferUsage::UniformBuffer;
+            descriptor.size = sizeof(CameraUniforms);
+            passData.cameraBuffer = builder.CreateBuffer(descriptor);
+            passData.cameraBuffer = builder.WriteBuffer(passData.cameraBuffer);
+        },
+        [this](const CommandBuffer* cmd, const SceneRenderingData& passData)
+        {
+            cmd->SetBufferData(passData.cameraBuffer, &mCameraData, sizeof(CameraUniforms));
+        });
         sceneData.backbuffer = graph.ImportBackbuffer(mRenderTarget);
         sceneData.config = mConfiguration;
         blackboard.Add(sceneData);
@@ -98,6 +109,17 @@ void RenderSystem::Configure(const RendererConfig& config)
 	{
 		cmd = CreateScope<CommandBuffer>(mDevice.get());
 	}
+}
+
+void RenderSystem::UpdateCamera(const Camera& camera)
+{
+    mCameraData.viewMatrix = camera.GetViewMatrix();
+    mCameraData.projectionMatrix = camera.GetProjectionMatrix();
+    mCameraData.viewProjectionMatrix = mCameraData.projectionMatrix * mCameraData.viewMatrix;
+    mCameraData.invViewMatrix = Math::Inverse(mCameraData.viewMatrix);
+    mCameraData.invProjectionMatrix = Math::Inverse(mCameraData.projectionMatrix);
+    mCameraData.invViewProjectionMatrix = Math::Inverse(mCameraData.viewProjectionMatrix);
+    mCameraData.worldPosition = camera.GetWorldPosition();
 }
 
 GraphicsDevice* RenderSystem::GetDevice()
