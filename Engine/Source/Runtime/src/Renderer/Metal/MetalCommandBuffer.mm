@@ -243,7 +243,7 @@ void CommandBuffer::BindBuffer(const NativeGraphicsHandle buffer, BufferUsage us
             default: GLEAM_ASSERT(false, "Metal: Trying to bind buffer with invalid usage.") return IRResourceLocation();
         }
     }();
-    if (resource == nullptr) return;
+    if (resource.resourceType == IRResourceTypeInvalid) return;
     
     [mHandle->renderCommandEncoder useResource:buffer usage:ResourceAccessToMTLResourceUsage(access) stages:ShaderStagesToMTLRenderStages(stage)];
     auto entry = static_cast<IRDescriptorTableEntry*>(argumentBufferPtr + resource.topLevelOffset);
@@ -275,7 +275,7 @@ void CommandBuffer::BindTexture(const NativeGraphicsHandle texture, uint32_t ind
             default: GLEAM_ASSERT(false, "Metal: Trying to bind texture with invalid access.") return IRResourceLocation();
         }
     }();
-    if (resource == nullptr) return;
+    if (resource.resourceType == IRResourceTypeInvalid) return;
     
     [mHandle->renderCommandEncoder useResource:texture usage:ResourceAccessToMTLResourceUsage(access) stages:ShaderStagesToMTLRenderStages(stage)];
     auto entry = static_cast<IRDescriptorTableEntry*>(argumentBufferPtr + resource.topLevelOffset);

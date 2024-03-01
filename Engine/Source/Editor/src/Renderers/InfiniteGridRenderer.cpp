@@ -39,10 +39,10 @@ void InfiniteGridRenderer::AddRenderPasses(Gleam::RenderGraph& graph, Gleam::Ren
 		uniforms.majorGridDivision = 10;
 
 		uniforms.majorLineColor = 0xFFB5B5B5;
-		uniforms.majorLineWidth = 0.05f;
+		uniforms.majorLineWidth = 0.15f;
 
 		uniforms.minorLineColor = 0xFFA5A5A5;
-		uniforms.minorLineWidth = 0.015f;
+		uniforms.minorLineWidth = 0.04f;
 		
         Gleam::PipelineStateDescriptor pipelineDesc;
 		pipelineDesc.depthState.compareFunction = Gleam::CompareFunction::Less;

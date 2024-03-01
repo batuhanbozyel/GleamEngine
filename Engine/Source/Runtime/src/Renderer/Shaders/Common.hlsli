@@ -4,8 +4,7 @@
 #ifdef __spirv__
 #define PUSH_CONSTANT(type, name) [[vk::push_constant]] type name
 #else
-#define PUSH_CONSTANT_HELPER PUSH_CONSTANT(type, name, slot) ConstantBuffer<type> name : register(b##slot)
-#define PUSH_CONSTANT(type, name) PUSH_CONSTANT_HELPER(type, name, PUSH_CONSTANT_SLOT)
+#define PUSH_CONSTANT(type, name) ConstantBuffer<type> name : register(b999)
 #endif
 
 struct FScreenVertexOutput

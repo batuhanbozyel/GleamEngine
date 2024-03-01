@@ -9,16 +9,16 @@
 
 namespace Gleam {
 
+struct DirectXDescriptorHeap
+{
+	uint32_t size;
+	ID3D12DescriptorHeap* handle;
+};
+
 struct DirectXCommandList
 {
 	ID3D12GraphicsCommandList7* handle;
 	ID3D12CommandAllocator* allocator;
-};
-
-struct DirectXCommandQueue
-{
-	ID3D12Fence* fence;
-	ID3D12CommandQueue* handle;
 };
 
 struct DirectXDrawable
@@ -36,7 +36,6 @@ public:
     ~DirectXDevice();
 
 	DirectXDrawable AcquireNextDrawable();
-	void Present(ID3D12GraphicsCommandList7* commandList);
 
 	DirectXCommandList AllocateCommandList(D3D12_COMMAND_LIST_TYPE type);
 
@@ -50,9 +49,13 @@ public:
 
 private:
 
+	virtual void Present(const CommandBuffer* cmd) override;
+
 	virtual void Configure(const RendererConfig& config) override;
 
-	DirectXCommandQueue CreateCommandQueue(D3D12_COMMAND_LIST_TYPE type) const;
+	ID3D12CommandQueue* CreateCommandQueue(D3D12_COMMAND_LIST_TYPE type) const;
+
+	DirectXDescriptorHeap CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE type) const;
 
 	IDxcUtils* mDxcUtils = nullptr;
 
@@ -64,13 +67,12 @@ private:
 
 	ID3D12Fence* mDirectFence = nullptr;
 
-	DirectXCommandQueue mDirectQueue;
+	ID3D12CommandQueue* mDirectQueue;
 
-	DirectXCommandQueue mComputeQueue;
+	ID3D12CommandQueue* mComputeQueue;
 
-	DirectXCommandQueue mCopyQueue;
+	ID3D12CommandQueue* mCopyQueue;
 
-	// Frame
 	struct CommandPool
 	{
 		Deque<DirectXCommandList> usedCommandLists;
@@ -80,11 +82,19 @@ private:
 
 		void Release();
 	};
-	TArray<CommandPool> mCommandPools;
 
-	ID3D12DescriptorHeap* mRTVHeap = nullptr;
+	struct Context
+	{
+		ID3D12Fence* fence;
+		ID3D12Resource* renderTarget;
+		CommandPool commandPool;
+		uint32_t frameCount = 0;
+	};
+	TArray<Context> mFrameContext;
 
-	TArray<ID3D12Resource*> mRenderTargets;
+	DirectXDescriptorHeap mRtvHeap;
+	DirectXDescriptorHeap mDsvHeap;
+	DirectXDescriptorHeap mCbvSrvUavHeap;
 
 };
 

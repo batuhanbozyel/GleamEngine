@@ -4,8 +4,9 @@
 #include "Renderer/Heap.h"
 #include "Renderer/Buffer.h"
 
-#include "VulkanDevice.h"
-#include "VulkanUtils.h"
+#include "DirectXTransitionManager.h"
+#include "DirectXDevice.h"
+#include "DirectXUtils.h"
 
 using namespace Gleam;
 
@@ -16,24 +17,48 @@ Buffer Heap::CreateBuffer(const BufferDescriptor& descriptor) const
 
 	if (Utils::AlignUp(mDescriptor.size, mAlignment) < newStackPtr)
 	{
-		GLEAM_ASSERT(false, "Vulkan: Heap is full!");
+		GLEAM_ASSERT(false, "DirectX: Heap is full!");
 		return Buffer(nullptr, descriptor, nullptr);
 	}
 	mStackPtr = newStackPtr;
 
-	VkBuffer buffer = VK_NULL_HANDLE;
-    VkBufferCreateInfo createInfo{ VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
-	createInfo.size = descriptor.size;
-	createInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-	createInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT | BufferUsageToVkBufferUsage(descriptor.usage);
+	auto initialState = D3D12_RESOURCE_STATE_GENERIC_READ;
+	auto flags = D3D12_RESOURCE_FLAG_NONE;
+
+	if (descriptor.usage == BufferUsage::StorageBuffer)
+	{
+		initialState |= D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+		flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+	}
 
 	if (mDescriptor.memoryType == MemoryType::GPU)
 	{
-		createInfo.usage |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+		initialState |= D3D12_RESOURCE_STATE_COPY_DEST | D3D12_RESOURCE_STATE_COPY_SOURCE;
 	}
 
-	VK_CHECK(vkCreateBuffer(static_cast<VkDevice>(mDevice->GetHandle()), &createInfo, nullptr, &buffer));
-	VK_CHECK(vmaBindBufferMemory2(static_cast<const VulkanDevice*>(mDevice)->GetAllocator(), static_cast<VmaAllocation>(mHandle), alignedStackPtr, buffer, nullptr));
+	D3D12_RESOURCE_DESC resourceDesc = {
+		.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER,
+		.Alignment = 0,
+		.Width = descriptor.size,
+		.Height = 1,
+		.DepthOrArraySize = 1,
+		.MipLevels = 1,
+		.Format = DXGI_FORMAT_UNKNOWN,
+		.SampleDesc = {.Count = 1, .Quality = 0 },
+		.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR,
+		.Flags = flags
+	};
+
+	ID3D12Resource* buffer = nullptr;
+	static_cast<ID3D12Device10*>(mDevice->GetHandle())->CreatePlacedResource(
+		static_cast<ID3D12Heap*>(mHandle),
+		alignedStackPtr,
+		&resourceDesc,
+		initialState,
+		nullptr,
+		IID_PPV_ARGS(&buffer)
+	);
+	DirectXTransitionManager::SetLayout(buffer, initialState);
 
     void* contents = nullptr;
     if (mDescriptor.memoryType != MemoryType::GPU)

@@ -85,7 +85,7 @@ void RenderSystem::Render()
         }
         ResetRenderTarget();
 
-        cmd->Present();
+        mDevice->Present(cmd);
     }
 }
 
