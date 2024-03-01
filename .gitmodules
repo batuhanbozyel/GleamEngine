@@ -25,6 +25,3 @@
 [submodule "Engine/ThirdParty/json"]
 	path = Engine/ThirdParty/json
 	url = https://github.com/nlohmann/json
-[submodule "Engine/ThirdParty/D3D12MemoryAllocator"]
-	path = Engine/ThirdParty/D3D12MemoryAllocator
-	url = https://github.com/GPUOpen-LibrariesAndSDKs/D3D12MemoryAllocator
