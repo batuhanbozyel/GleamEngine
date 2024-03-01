@@ -27,6 +27,7 @@ static void ReadBinaryFile(const Filesystem::path& filepath, char* buffer, size_
     if (file.is_open())
 	{
         file.read(buffer, size);
+        return;
     }
 
 	GLEAM_CORE_ERROR("File {0} could not be opened!", filepath.string());
@@ -44,9 +45,12 @@ static TArray<uint8_t> ReadBinaryFile(const Filesystem::path& filepath)
 
 		file.seekg(0);
 		file.read(reinterpret_cast<char*>(buffer.data()), size);
+        
+        return buffer;
 	}
 
 	GLEAM_CORE_ERROR("File {0} could not be opened!", filepath.string());
+    return TArray<uint8_t>();
 }
 
 static TString ReadFile(const Filesystem::path& filepath)

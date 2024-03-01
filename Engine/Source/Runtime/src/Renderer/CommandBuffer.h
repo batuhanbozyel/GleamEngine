@@ -101,8 +101,6 @@ public:
 
     void Blit(const Texture& texture, const Texture& renderTarget) const;
 
-    void TransitionLayout(const Texture& texture, ResourceAccess access) const;
-
     void Begin() const;
 
     void End() const;

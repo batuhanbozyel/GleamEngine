@@ -267,6 +267,7 @@ void DirectXDevice::Configure(const RendererConfig& config)
 	if (mSwapchain != nullptr)
 	{
 		// Destroy old context
+        DestroyPooledObjects();
 		for (auto& ctx : mFrameContext)
 		{
 			ctx.commandPool.Release();
@@ -274,7 +275,7 @@ void DirectXDevice::Configure(const RendererConfig& config)
 			ctx.fence->Release();
 		}
 		mFrameContext.clear();
-
+        
 		mSwapchain->ResizeBuffers(mMaxFramesInFlight, (UINT)mSize.width, (UINT)mSize.height, TextureFormatToDXGI_FORMAT(mFormat), 0);
 	}
 	else
@@ -309,6 +310,7 @@ void DirectXDevice::Configure(const RendererConfig& config)
 	D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle(mRtvHeap.handle->GetCPUDescriptorHandleForHeapStart());
 
 	mFrameContext.resize(mMaxFramesInFlight);
+    mPooledObjects.resize(mMaxFramesInFlight);
 	for (uint32_t i = 0; i < mMaxFramesInFlight; i++)
 	{
 		auto& ctx = mFrameContext[i];

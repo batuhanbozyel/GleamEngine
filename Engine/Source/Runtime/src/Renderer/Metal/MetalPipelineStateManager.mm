@@ -119,7 +119,7 @@ const MetalPipeline* MetalPipelineStateManager::GetGraphicsPipeline(const Pipeli
     auto pipeline = new MetalGraphicsPipeline;
     pipeline->topology = PrimitiveTopologyToMTLPrimitiveType(pipelineDesc.topology);
     pipeline->handle = CreateGraphicsPipeline(pipelineDesc, colorAttachments, depthAttachment, vertexShader, fragmentShader, sampleCount);
-    pipeline->depthStencil = (Utils::IsDepthFormat(depthAttachment.format) || Utils::IsStencilFormat(depthAttachment.format)) ? CreateDepthStencil(pipelineDesc) : nil;
+    pipeline->depthStencil = Utils::IsDepthFormat(depthAttachment.format) ? CreateDepthStencil(pipelineDesc) : nil;
     pipeline->vertexShader = vertexShader;
     pipeline->fragmentShader = fragmentShader;
     mGraphicsPipelineCache.insert(mGraphicsPipelineCache.end(), {key, Scope<MetalGraphicsPipeline>(pipeline)});
@@ -151,12 +151,12 @@ id<MTLRenderPipelineState> MetalPipelineStateManager::CreateGraphicsPipeline(con
     pipelineDescriptor.alphaToCoverageEnabled = pipelineDesc.alphaToCoverage;
     pipelineDescriptor.inputPrimitiveTopology = PrimitiveTopologyToMTLPrimitiveTopologyClass(pipelineDesc.topology);
     
-    if (Utils::IsDepthFormat(depthAttachment.format) || Utils::IsStencilFormat(depthAttachment.format))
+    if (Utils::IsDepthFormat(depthAttachment.format))
     {
         MTLPixelFormat format = TextureFormatToMTLPixelFormat(depthAttachment.format);
         
         if (Utils::IsDepthFormat(depthAttachment.format)) { pipelineDescriptor.depthAttachmentPixelFormat = format; }
-        if (Utils::IsStencilFormat(depthAttachment.format)) { pipelineDescriptor.stencilAttachmentPixelFormat = format; }
+        if (Utils::IsDepthStencilFormat(depthAttachment.format)) { pipelineDescriptor.stencilAttachmentPixelFormat = format; }
     }
     
     for (uint32_t i = 0; i < colorAttachments.size(); i++)

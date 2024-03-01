@@ -17,7 +17,7 @@ file(GLOB_RECURSE SOURCE_FILES
 
 # Setup link libraries
 if (WIN32)
-    set(LIB_LINKS SDL3::SDL3-static nlohmann_json::nlohmann_json d3d12.lib dxgi.lib D3D12MemoryAllocator)
+    set(LIB_LINKS SDL3::SDL3-static nlohmann_json::nlohmann_json d3d12.lib dxgi.lib)
     set_source_files_properties(${SHADER_FILES} PROPERTIES VS_TOOL_OVERRIDE "None")
 elseif (APPLE)
     find_library(METALIR_LIB libmetalirconverter.dylib)
@@ -50,7 +50,6 @@ else()
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/stb
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/entt/single_include
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/json/single_include
-        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/D3D12MemoryAllocator/include
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/DirectXAgilitySDK/build/native/include
     )
 endif()

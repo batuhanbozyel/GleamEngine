@@ -73,7 +73,6 @@ static constexpr TextureFormat MTLPixelFormatToTextureFormat(MTLPixelFormat form
         case MTLPixelFormatBGRA8Unorm: return TextureFormat::B8G8R8A8_UNorm;
             
         // Depth - Stencil formats
-        case MTLPixelFormatStencil8: return TextureFormat::S8_UInt;
         case MTLPixelFormatDepth16Unorm: return TextureFormat::D16_UNorm;
         case MTLPixelFormatDepth32Float: return TextureFormat::D32_SFloat;
 #ifdef PLATFORM_MACOS
@@ -145,7 +144,6 @@ static constexpr MTLPixelFormat TextureFormatToMTLPixelFormat(TextureFormat form
         case TextureFormat::B8G8R8A8_UNorm: return MTLPixelFormatBGRA8Unorm;
 
         // Depth - Stencil formats
-        case TextureFormat::S8_UInt: return MTLPixelFormatStencil8;
         case TextureFormat::D16_UNorm: return MTLPixelFormatDepth16Unorm;
         case TextureFormat::D32_SFloat: return MTLPixelFormatDepth32Float;
 #ifdef PLATFORM_MACOS

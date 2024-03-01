@@ -169,11 +169,6 @@ void RenderGraph::Execute(const CommandBuffer* cmd)
                 GLEAM_ASSERT(resource.node->texture.IsValid());
             }
         }
-
-        for (auto& resource : pass->textureReads)
-        {
-            cmd->TransitionLayout(resource.node->texture, ResourceAccess::Read);
-        }
         
         // execute render pass
         if (pass->isCustomPass())

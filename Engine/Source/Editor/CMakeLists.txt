@@ -27,10 +27,7 @@ endif()
 list(APPEND SOURCE_FILES ${SHADER_FILES})
 
 add_executable(Editor WIN32 MACOSX_BUNDLE ${SOURCE_FILES})
-target_include_directories(Editor PRIVATE
-    ${INCLUDE_DIRS} 
-    ${Vulkan_INCLUDE_DIRS}
-)
+target_include_directories(Editor PRIVATE ${INCLUDE_DIRS})
 target_link_directories(Editor PRIVATE ${CMAKE_BINARY_DIR}/$<CONFIG>)
 
 # Add imgui as static library

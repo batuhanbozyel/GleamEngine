@@ -5,7 +5,6 @@ using namespace GEditor;
 #ifdef USE_METAL_RENDERER
 #include "Renderer/Metal/MetalUtils.h"
 #include "Renderer/Metal/MetalDevice.h"
-#include "Renderer/Metal/MetalSwapchain.h"
 
 #include "ImGui/imgui_impl_sdl3.h"
 #include "imgui_impl_metal.h"
@@ -25,14 +24,12 @@ void ImGuiBackend::Destroy()
 
 void ImGuiBackend::BeginFrame()
 {
-    auto swapchain = static_cast<Gleam::MetalDevice*>(mDevice)->GetSwapchain();
-    
     MTLRenderPassDescriptor* renderPassDesc = [MTLRenderPassDescriptor new];
     MTLRenderPassColorAttachmentDescriptor* colorAttachmentDesc = renderPassDesc.colorAttachments[0];
     colorAttachmentDesc.clearColor = { 0.0, 0.0, 0.0, 1.0 };
     colorAttachmentDesc.loadAction = MTLLoadActionLoad;
     colorAttachmentDesc.storeAction = MTLStoreActionStore;
-    colorAttachmentDesc.texture = static_cast<Gleam::MetalSwapchain*>(swapchain)->AcquireNextDrawable().texture;
+    colorAttachmentDesc.texture = static_cast<Gleam::MetalDevice*>(mDevice)->AcquireNextDrawable().texture;
 
     ImGui_ImplMetal_NewFrame(renderPassDesc);
     ImGui_ImplSDL3_NewFrame();
