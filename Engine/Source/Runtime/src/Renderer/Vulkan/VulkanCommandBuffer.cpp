@@ -262,9 +262,9 @@ void CommandBuffer::SetViewport(const Size& size) const
 	vkCmdSetScissor(mHandle->commandBuffer, 0, 1, &scissor);
 }
 
-void CommandBuffer::BindBuffer(const NativeGraphicsHandle buffer, BufferUsage usage, size_t offset, uint32_t index, ShaderStageFlagBits stage, ResourceAccess access) const
+void CommandBuffer::BindBuffer(const Buffer& buffer, size_t offset, uint32_t index, ShaderStageFlagBits stage, ResourceAccess access) const
 {
-	const auto resource = [=, this]()
+	const auto resource = [&, this]()
 	{
 		const Shader::Reflection* reflection = nullptr;
 		if (stage & ShaderStage_Vertex)
@@ -282,7 +282,7 @@ void CommandBuffer::BindBuffer(const NativeGraphicsHandle buffer, BufferUsage us
 			GLEAM_ASSERT(false, "Vulkan: Shader stage not implemented yet.")
 		}
 
-		switch (usage)
+		switch (buffer.GetDescriptor().usage)
 		{
 			case BufferUsage::UniformBuffer: return Shader::Reflection::GetResourceFromTypeArray(reflection->CBVs, index);
 			case BufferUsage::VertexBuffer:
@@ -307,7 +307,7 @@ void CommandBuffer::BindBuffer(const NativeGraphicsHandle buffer, BufferUsage us
 	if (resource == nullptr) return;
 
 	VkDescriptorBufferInfo bufferInfo{};
-	bufferInfo.buffer = static_cast<VkBuffer>(buffer);
+	bufferInfo.buffer = static_cast<VkBuffer>(buffer.GetHandle());
 	bufferInfo.offset = offset;
 	bufferInfo.range = VK_WHOLE_SIZE;
 
@@ -319,9 +319,9 @@ void CommandBuffer::BindBuffer(const NativeGraphicsHandle buffer, BufferUsage us
 	vkCmdPushDescriptorSetKHR(mHandle->commandBuffer, mHandle->pipeline->bindPoint, mHandle->pipeline->layout, resource->set, 1, &descriptorSet);
 }
 
-void CommandBuffer::BindTexture(const NativeGraphicsHandle texture, uint32_t index, ShaderStageFlagBits stage, ResourceAccess access) const
+void CommandBuffer::BindTexture(const Texture& texture, uint32_t index, ShaderStageFlagBits stage, ResourceAccess access) const
 {
-	const auto resource = [=, this]()
+	const auto resource = [&, this]()
 	{
 		const Shader::Reflection* reflection = nullptr;
 		if (stage & ShaderStage_Vertex)
@@ -350,7 +350,7 @@ void CommandBuffer::BindTexture(const NativeGraphicsHandle texture, uint32_t ind
 	}();
 	if (resource == nullptr) return;
 
-	auto imageLayout = [=]()
+	auto imageLayout = [access]()
 	{
 		switch (access)
 		{
@@ -359,9 +359,10 @@ void CommandBuffer::BindTexture(const NativeGraphicsHandle texture, uint32_t ind
 			default: return VK_IMAGE_LAYOUT_GENERAL;
 		}
 	}();
+	VulkanTransitionManager::TransitionLayout(mHandle->commandBuffer, static_cast<VkImage>(texture.GetHandle()), imageLayout);
 
 	VkDescriptorImageInfo imageInfo{};
-	imageInfo.imageView = static_cast<VkImageView>(texture);
+	imageInfo.imageView = static_cast<VkImageView>(texture.GetView());
 	imageInfo.imageLayout = imageLayout;
 
 	VkWriteDescriptorSet descriptorSet{ VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
@@ -432,20 +433,6 @@ void CommandBuffer::Blit(const Texture& texture, const Texture& target) const
 	{
 		VulkanTransitionManager::TransitionLayout(mHandle->commandBuffer, targetTexture, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
 	}
-}
-
-void CommandBuffer::TransitionLayout(const Texture& texture, ResourceAccess access) const
-{
-	auto imageLayout = [=]()
-	{
-		switch (access)
-		{
-			case ResourceAccess::Read: return VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-			case ResourceAccess::Write: return VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-			default: return VK_IMAGE_LAYOUT_GENERAL;
-		}
-	}();
-	VulkanTransitionManager::TransitionLayout(mHandle->commandBuffer, static_cast<VkImage>(texture.GetHandle()), imageLayout);
 }
 
 void CommandBuffer::Begin() const

@@ -10,16 +10,7 @@ void CommandBuffer::BindBuffer(const BufferHandle& handle,
 	ShaderStageFlagBits stage) const
 {
 	const Buffer& buffer = handle;
-	BindBuffer(buffer.GetHandle(), buffer.GetDescriptor().usage, offset, index, stage, handle.GetAccess());
-}
-
-void CommandBuffer::BindBuffer(const Buffer& buffer,
-	size_t offset,
-	uint32_t index,
-	ShaderStageFlagBits stage,
-	ResourceAccess access) const
-{
-	BindBuffer(buffer.GetHandle(), buffer.GetDescriptor().usage, offset, index, stage, access);
+	BindBuffer(buffer, offset, index, stage, handle.GetAccess());
 }
 
 void CommandBuffer::BindTexture(const TextureHandle& handle,
@@ -27,15 +18,7 @@ void CommandBuffer::BindTexture(const TextureHandle& handle,
 	ShaderStageFlagBits stage) const
 {
 	const Texture& texture = handle;
-	BindTexture(texture.GetView(), index, stage, handle.GetAccess());
-}
-
-void CommandBuffer::BindTexture(const Texture& texture,
-	uint32_t index,
-	ShaderStageFlagBits stage,
-	ResourceAccess access) const
-{
-	BindTexture(texture.GetView(), index, stage, access);
+	BindTexture(texture, index, stage, handle.GetAccess());
 }
 
 void CommandBuffer::DrawIndexed(const Buffer& indexBuffer,

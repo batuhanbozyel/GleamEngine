@@ -139,6 +139,11 @@ void CommandBuffer::BindGraphicsPipeline(const PipelineStateDescriptor& pipeline
 	mHandle->commandList.handle->SetPipelineState(mHandle->pipeline->handle);
 	mHandle->commandList.handle->IASetPrimitiveTopology(PrimitiveToplogyToD3D_PRIMITIVE_TOPOLOGY(pipelineDesc.topology));
 	mHandle->commandList.handle->SetGraphicsRootSignature(DirectXPipelineStateManager::GetGlobalRootSignature());
+	mHandle->commandList.handle->OMSetStencilRef(pipelineDesc.stencilState.reference);
+
+	const auto& cbvSrvUavHeap = mHandle->device->GetCbvSrvUavHeap();
+	mHandle->commandList.handle->SetDescriptorHeaps(1, &cbvSrvUavHeap.handle);
+	mHandle->commandList.handle->SetGraphicsRootDescriptorTable(D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE, cbvSrvUavHeap.gpuHandle);
 }
 
 void CommandBuffer::SetViewport(const Size& size) const
@@ -155,14 +160,13 @@ void CommandBuffer::SetViewport(const Size& size) const
 	mHandle->commandList.handle->RSSetScissorRects(1, &scissor);
 }
 
-void CommandBuffer::BindBuffer(const NativeGraphicsHandle buffer,
-	BufferUsage usage,
+void CommandBuffer::BindBuffer(const Buffer& buffer,
 	size_t offset,
 	uint32_t index,
 	ShaderStageFlagBits stage,
 	ResourceAccess access) const
 {
-	const auto resource = [=, this]()
+	const auto resource = [&, this]()
 	{
 		const Shader::Reflection* reflection = nullptr;
 		if (stage & ShaderStage_Vertex)
@@ -180,7 +184,7 @@ void CommandBuffer::BindBuffer(const NativeGraphicsHandle buffer,
 			GLEAM_ASSERT(false, "DirectX: Shader stage not implemented yet.")
 		}
 
-		switch (usage)
+		switch (buffer.GetDescriptor().usage)
 		{
 			case BufferUsage::UniformBuffer: return Shader::Reflection::GetResourceFromTypeArray(reflection->CBVs, index);
 			case BufferUsage::VertexBuffer:
@@ -188,41 +192,31 @@ void CommandBuffer::BindBuffer(const NativeGraphicsHandle buffer,
 			{
                 switch(access)
                 {
-                    case ResourceAccess::Read: return Shader::Reflection::GetResourceFromTypeArray(reflection->SRVs, index + Shader::Reflection::SRV_BINDING_OFFSET);
-                    case ResourceAccess::Write: return Shader::Reflection::GetResourceFromTypeArray(reflection->UAVs, index + Shader::Reflection::UAV_BINDING_OFFSET);
+                    case ResourceAccess::Read: return Shader::Reflection::GetResourceFromTypeArray(reflection->SRVs, index);
+                    case ResourceAccess::Write: return Shader::Reflection::GetResourceFromTypeArray(reflection->UAVs, index);
                     default: GLEAM_ASSERT(false, "DirectX: Trying to bind buffer with invalid access.")
 					{
-						return (const SpvReflectDescriptorBinding*)nullptr;
+						return Shader::Reflection::invalidResource;
 					}
                 }
 			}
 			default: GLEAM_ASSERT(false, "DirectX: Trying to bind buffer with invalid usage.")
 			{
-				return (const SpvReflectDescriptorBinding*)nullptr;
+				return Shader::Reflection::invalidResource;
 			}
 		}
 	}();
-	if (resource == nullptr) return;
+	if (resource.Type == Shader::Reflection::invalidResource.Type) return;
 
-	VkDescriptorBufferInfo bufferInfo{};
-	bufferInfo.buffer = static_cast<VkBuffer>(buffer);
-	bufferInfo.offset = offset;
-	bufferInfo.range = VK_WHOLE_SIZE;
-
-	VkWriteDescriptorSet descriptorSet{ VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
-	descriptorSet.dstBinding = resource->binding;
-	descriptorSet.descriptorCount = 1;
-	descriptorSet.descriptorType = SpvReflectDescriptorTypeToVkDescriptorType(resource->descriptor_type);
-	descriptorSet.pBufferInfo = &bufferInfo;
-	vkCmdPushDescriptorSetKHR(mHandle->commandBuffer, mHandle->pipeline->bindPoint, mHandle->pipeline->layout, resource->set, 1, &descriptorSet);
+	// TODO: update descriptor heap
 }
 
-void CommandBuffer::BindTexture(const NativeGraphicsHandle texture,
+void CommandBuffer::BindTexture(const Texture& texture,
 	uint32_t index,
 	ShaderStageFlagBits stage,
 	ResourceAccess access) const
 {
-	const auto resource = [=, this]()
+	const auto resource = [&, this]()
 	{
 		const Shader::Reflection* reflection = nullptr;
 		if (stage & ShaderStage_Vertex)
@@ -241,41 +235,33 @@ void CommandBuffer::BindTexture(const NativeGraphicsHandle texture,
 		}
         switch(access)
         {
-            case ResourceAccess::Read: return Shader::Reflection::GetResourceFromTypeArray(reflection->SRVs, index + Shader::Reflection::SRV_BINDING_OFFSET);
-            case ResourceAccess::Write: return Shader::Reflection::GetResourceFromTypeArray(reflection->UAVs, index + Shader::Reflection::UAV_BINDING_OFFSET);
+            case ResourceAccess::Read: return Shader::Reflection::GetResourceFromTypeArray(reflection->SRVs, index);
+            case ResourceAccess::Write: return Shader::Reflection::GetResourceFromTypeArray(reflection->UAVs, index);
 			default: GLEAM_ASSERT(false, "DirectX: Trying to bind texture with invalid access.")
 			{
-				return (const SpvReflectDescriptorBinding*)nullptr;
+				return Shader::Reflection::invalidResource;
 			}
         }
 	}();
-	if (resource == nullptr) return;
+	if (resource.Type == Shader::Reflection::invalidResource.Type) return;
 
-	auto imageLayout = [=]()
+	auto imageLayout = [access]()
 	{
 		switch (access)
 		{
-			case ResourceAccess::Read: return VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-			case ResourceAccess::Write: return VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-			default: return VK_IMAGE_LAYOUT_GENERAL;
+			case ResourceAccess::Read: return D3D12_RESOURCE_STATE_GENERIC_READ;
+			case ResourceAccess::Write: return D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+			default: return D3D12_RESOURCE_STATE_COMMON;
 		}
 	}();
+	DirectXTransitionManager::TransitionLayout(mHandle->commandList.handle, static_cast<ID3D12Resource*>(texture.GetHandle()), imageLayout);
 
-	VkDescriptorImageInfo imageInfo{};
-	imageInfo.imageView = static_cast<VkImageView>(texture);
-	imageInfo.imageLayout = imageLayout;
-
-	VkWriteDescriptorSet descriptorSet{ VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
-	descriptorSet.dstBinding = resource->binding;
-	descriptorSet.descriptorCount = 1;
-	descriptorSet.descriptorType = SpvReflectDescriptorTypeToVkDescriptorType(resource->descriptor_type);
-	descriptorSet.pImageInfo = &imageInfo;
-	vkCmdPushDescriptorSetKHR(mHandle->commandBuffer, mHandle->pipeline->bindPoint, mHandle->pipeline->layout, resource->set, 1, &descriptorSet);
+	// TODO: update descriptor heap
 }
 
 void CommandBuffer::SetPushConstant(const void* data, uint32_t size, ShaderStageFlagBits stage) const
 {
-	mHandle->commandList.handle->SetGraphicsRoot32BitConstants(PUSH_CONSTANT_SLOT, size / sizeof(uint32_t), data, 0);
+	mHandle->commandList.handle->SetGraphicsRoot32BitConstants(D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS, size / sizeof(uint32_t), data, 0);
 }
 
 void CommandBuffer::Draw(uint32_t vertexCount,
@@ -337,20 +323,6 @@ void CommandBuffer::Blit(const Texture& texture, const Texture& target) const
 	{
 		DirectXTransitionManager::TransitionLayout(mHandle->commandList.handle, targetTexture, D3D12_RESOURCE_STATE_PRESENT);
 	}
-}
-
-void CommandBuffer::TransitionLayout(const Texture& texture, ResourceAccess access) const
-{
-	auto imageLayout = [=]()
-	{
-		switch (access)
-		{
-			case ResourceAccess::Read: return D3D12_RESOURCE_STATE_GENERIC_READ;
-			case ResourceAccess::Write: return D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-			default: return D3D12_RESOURCE_STATE_COMMON;
-		}
-	}();
-	DirectXTransitionManager::TransitionLayout(mHandle->commandList.handle, static_cast<ID3D12Resource*>(texture.GetHandle()), imageLayout);
 }
 
 void CommandBuffer::Begin() const

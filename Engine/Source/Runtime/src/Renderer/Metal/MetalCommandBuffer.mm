@@ -205,10 +205,10 @@ void CommandBuffer::SetViewport(const Size& size) const
     [mHandle->renderCommandEncoder setViewport:viewport];
 }
 
-void CommandBuffer::BindBuffer(const NativeGraphicsHandle buffer, BufferUsage usage, size_t offset, uint32_t index, ShaderStageFlagBits stage, ResourceAccess access) const
+void CommandBuffer::BindBuffer(const Buffer& buffer, size_t offset, uint32_t index, ShaderStageFlagBits stage, ResourceAccess access) const
 {
     auto argumentBufferPtr = static_cast<uint8_t*>(mHandle->topLevelArgumentBuffer.GetContents());
-    auto resource = [=, this]()
+    auto resource = [&, this]()
     {
         const Shader::Reflection* reflection = nullptr;
         if (stage & ShaderStage_Vertex)
@@ -223,7 +223,7 @@ void CommandBuffer::BindBuffer(const NativeGraphicsHandle buffer, BufferUsage us
         }
         GLEAM_ASSERT(reflection, "Metal: Shader stage not implemented yet.");
         
-        switch (usage)
+        switch (buffer.GetDescriptor().usage)
         {
             case BufferUsage::UniformBuffer: return Shader::Reflection::GetResourceFromTypeArray(reflection->CBVs, index);
             case BufferUsage::VertexBuffer:
@@ -233,24 +233,24 @@ void CommandBuffer::BindBuffer(const NativeGraphicsHandle buffer, BufferUsage us
                 {
                     case ResourceAccess::Read: return Shader::Reflection::GetResourceFromTypeArray(reflection->SRVs, index);
                     case ResourceAccess::Write: return Shader::Reflection::GetResourceFromTypeArray(reflection->UAVs, index);
-                    default: GLEAM_ASSERT(false, "Metal: Trying to bind buffer with invalid access.") return IRResourceLocation();
+                    default: GLEAM_ASSERT(false, "Metal: Trying to bind buffer with invalid access.") return Shader::Reflection::invalidResource;
                 }
                 
             }
-            default: GLEAM_ASSERT(false, "Metal: Trying to bind buffer with invalid usage.") return IRResourceLocation();
+            default: GLEAM_ASSERT(false, "Metal: Trying to bind buffer with invalid usage.") return Shader::Reflection::invalidResource;
         }
     }();
     if (resource.resourceType == IRResourceTypeInvalid) return;
     
-    [mHandle->renderCommandEncoder useResource:buffer usage:ResourceAccessToMTLResourceUsage(access) stages:ShaderStagesToMTLRenderStages(stage)];
+    [mHandle->renderCommandEncoder useResource:buffer.GetHandle() usage:ResourceAccessToMTLResourceUsage(access) stages:ShaderStagesToMTLRenderStages(stage)];
     auto entry = reinterpret_cast<IRDescriptorTableEntry*>(argumentBufferPtr + resource.topLevelOffset);
-    IRDescriptorTableSetBuffer(entry, [buffer gpuAddress] + offset, 0);
+    IRDescriptorTableSetBuffer(entry, [buffer.GetHandle() gpuAddress] + offset, 0);
 }
 
-void CommandBuffer::BindTexture(const NativeGraphicsHandle texture, uint32_t index, ShaderStageFlagBits stage, ResourceAccess access) const
+void CommandBuffer::BindTexture(const Texture& texture, uint32_t index, ShaderStageFlagBits stage, ResourceAccess access) const
 {
     auto argumentBufferPtr = static_cast<uint8_t*>(mHandle->topLevelArgumentBuffer.GetContents());
-    auto resource = [=, this]()
+    auto resource = [&, this]()
     {
         const Shader::Reflection* reflection = nullptr;
         if (stage & ShaderStage_Vertex)
@@ -269,14 +269,14 @@ void CommandBuffer::BindTexture(const NativeGraphicsHandle texture, uint32_t ind
         {
             case ResourceAccess::Read: return Shader::Reflection::GetResourceFromTypeArray(reflection->SRVs, index);
             case ResourceAccess::Write: return Shader::Reflection::GetResourceFromTypeArray(reflection->UAVs, index);
-            default: GLEAM_ASSERT(false, "Metal: Trying to bind texture with invalid access.") return IRResourceLocation();
+            default: GLEAM_ASSERT(false, "Metal: Trying to bind texture with invalid access.") return Shader::Reflection::invalidResource;
         }
     }();
     if (resource.resourceType == IRResourceTypeInvalid) return;
     
-    [mHandle->renderCommandEncoder useResource:texture usage:ResourceAccessToMTLResourceUsage(access) stages:ShaderStagesToMTLRenderStages(stage)];
-    auto entry = reinterpret_cast<IRDescriptorTableEntry*>(argumentBufferPtr + resource.topLevelOffset);
-    IRDescriptorTableSetTexture(entry, texture, 0.0f, 0);
+    [mHandle->renderCommandEncoder useResource:texture.GetView() usage:ResourceAccessToMTLResourceUsage(access) stages:ShaderStagesToMTLRenderStages(stage)];
+    auto entry = static_cast<IRDescriptorTableEntry*>(argumentBufferPtr + resource.topLevelOffset);
+    IRDescriptorTableSetTexture(entry, texture.GetView(), 0.0f, 0);
 }
 
 void CommandBuffer::SetPushConstant(const void* data, uint32_t size, ShaderStageFlagBits stage) const

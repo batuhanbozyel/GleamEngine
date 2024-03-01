@@ -173,6 +173,7 @@ void GraphicsDevice::Dispose(Heap& heap) const
 void GraphicsDevice::Dispose(Buffer& buffer) const
 {
 	static_cast<ID3D12Resource*>(buffer.mHandle)->Release();
+	buffer.mContents = nullptr;
 	buffer.mHandle = nullptr;
 }
 
@@ -207,9 +208,9 @@ DirectXDevice::DirectXDevice()
 	mComputeQueue = CreateCommandQueue(D3D12_COMMAND_LIST_TYPE_COMPUTE);
 	mCopyQueue = CreateCommandQueue(D3D12_COMMAND_LIST_TYPE_COPY);
 
-	mRtvHeap = CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-	mDsvHeap = CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
-	mCbvSrvUavHeap = CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+	mRtvHeap = CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_RTV, D3D12_DESCRIPTOR_HEAP_FLAG_NONE, 8192);
+	mDsvHeap = CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_DSV, D3D12_DESCRIPTOR_HEAP_FLAG_NONE, 8192);
+	mCbvSrvUavHeap = CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE, 128 * 1024);
 	
 	DX_CHECK(DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&mDxcUtils)));
 	DirectXPipelineStateManager::Init(this);
@@ -406,17 +407,24 @@ ID3D12CommandQueue* DirectXDevice::CreateCommandQueue(D3D12_COMMAND_LIST_TYPE ty
 	return queue;
 }
 
-DirectXDescriptorHeap DirectXDevice::CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE type) const
+DirectXDescriptorHeap DirectXDevice::CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE type, D3D12_DESCRIPTOR_HEAP_FLAGS flags, UINT capacity) const
 {
-	D3D12_DESCRIPTOR_HEAP_DESC desc{};
-	desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
-	desc.NumDescriptors = D3D12_MAX_SHADER_VISIBLE_DESCRIPTOR_HEAP_SIZE_TIER_2;
+	D3D12_DESCRIPTOR_HEAP_DESC desc = {};
 	desc.Type = type;
+	desc.Flags = flags;
+	desc.NumDescriptors = capacity;
 
 	DirectXDescriptorHeap heap{};
 	DX_CHECK(static_cast<ID3D12Device10*>(mHandle)->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&heap.handle)));
 	heap.size = static_cast<ID3D12Device10*>(mHandle)->GetDescriptorHandleIncrementSize(type);
+	heap.cpuHandle = heap.handle->GetCPUDescriptorHandleForHeapStart();
+	heap.gpuHandle = heap.handle->GetGPUDescriptorHandleForHeapStart();
 	return heap;
+}
+
+const DirectXDescriptorHeap& DirectXDevice::GetCbvSrvUavHeap() const
+{
+	return mCbvSrvUavHeap;
 }
 
 ID3D12CommandQueue* DirectXDevice::GetDirectQueue() const

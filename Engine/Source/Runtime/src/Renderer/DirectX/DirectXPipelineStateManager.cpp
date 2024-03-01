@@ -105,23 +105,68 @@ void DirectXPipelineStateManager::Init(DirectXDevice* device)
 	}
 
 	// Root signature
-	D3D12_ROOT_PARAMETER1 pushConstants{};
-	pushConstants.ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
-	pushConstants.Constants.RegisterSpace = 0;
-	pushConstants.Constants.ShaderRegister = PUSH_CONSTANT_SLOT;
-	pushConstants.Constants.Num32BitValues = 4;
-	pushConstants.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+	D3D12_DESCRIPTOR_RANGE1 descriptorRanges[] = {
+		// SRV
+		{
+			.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
+			.NumDescriptors = D3D12_MAX_SHADER_VISIBLE_DESCRIPTOR_HEAP_SIZE_TIER_2,
+			.BaseShaderRegister = 0,
+			.RegisterSpace = 0,
+			.Flags = D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE,
+			.OffsetInDescriptorsFromTableStart = 0
+		},
+		// UAV
+		{
+			.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV,
+			.NumDescriptors = D3D12_MAX_SHADER_VISIBLE_DESCRIPTOR_HEAP_SIZE_TIER_2,
+			.BaseShaderRegister = 0,
+			.RegisterSpace = 0,
+			.Flags = D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE,
+			.OffsetInDescriptorsFromTableStart = 0
+		},
+		// CBV
+		{
+			.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV,
+			.NumDescriptors = D3D12_MAX_SHADER_VISIBLE_DESCRIPTOR_HEAP_SIZE_TIER_2,
+			.BaseShaderRegister = 0,
+			.RegisterSpace = 0,
+			.Flags = D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE,
+			.OffsetInDescriptorsFromTableStart = 0
+		},
+	};
+
+	D3D12_ROOT_PARAMETER1 rootSigParams[] = {
+		// Descriptor table
+		{
+			.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
+			.DescriptorTable = {
+				.NumDescriptorRanges = _countof(descriptorRanges),
+				.pDescriptorRanges = descriptorRanges
+			},
+			.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL
+		},
+		// Push constant
+		{
+			.ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS,
+			.Constants = {
+				.ShaderRegister = PUSH_CONSTANT_SLOT,
+				.RegisterSpace = 0,
+				.Num32BitValues = 4,
+			},
+			.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL
+		}
+	};
 
 	D3D12_VERSIONED_ROOT_SIGNATURE_DESC rootSignature = {};
 	rootSignature.Version = D3D_ROOT_SIGNATURE_VERSION_1_1;
-	rootSignature.Desc_1_1.NumParameters = 1;
-	rootSignature.Desc_1_1.pParameters = &pushConstants;
+	rootSignature.Desc_1_1.NumParameters = _countof(rootSigParams);
+	rootSignature.Desc_1_1.pParameters = rootSigParams;
 	rootSignature.Desc_1_1.NumStaticSamplers = mStaticSamplerDescs.size();
 	rootSignature.Desc_1_1.pStaticSamplers = mStaticSamplerDescs.data();
 	rootSignature.Desc_1_1.Flags =
 		D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS | D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS
 		| D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS
-		| D3D12_ROOT_SIGNATURE_FLAG_CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED | D3D12_ROOT_SIGNATURE_FLAG_SAMPLER_HEAP_DIRECTLY_INDEXED;
+		| D3D12_ROOT_SIGNATURE_FLAG_CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED;
 
 	ID3DBlob* blob = nullptr;
 	ID3DBlob* error = nullptr;

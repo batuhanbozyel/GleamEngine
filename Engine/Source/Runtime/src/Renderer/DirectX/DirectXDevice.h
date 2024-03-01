@@ -5,14 +5,18 @@
 #include <d3d12.h>
 #include <dxcapi.h>
 #include <dxgi1_6.h>
-#include <D3D12MemAlloc.h>
 
 namespace Gleam {
 
-struct DirectXDescriptorHeap
+class DirectXDescriptorHeap
 {
-	uint32_t size;
-	ID3D12DescriptorHeap* handle;
+public:
+	ID3D12DescriptorHeap* handle = nullptr;
+	D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle;
+	D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle;
+	D3D12_DESCRIPTOR_HEAP_TYPE type;
+	UINT size;
+	UINT capacity;
 };
 
 struct DirectXCommandList
@@ -39,6 +43,8 @@ public:
 
 	DirectXCommandList AllocateCommandList(D3D12_COMMAND_LIST_TYPE type);
 
+	const DirectXDescriptorHeap& GetCbvSrvUavHeap() const;
+
 	ID3D12CommandQueue* GetDirectQueue() const;
 
 	ID3D12CommandQueue* GetComputeQueue() const;
@@ -55,7 +61,7 @@ private:
 
 	ID3D12CommandQueue* CreateCommandQueue(D3D12_COMMAND_LIST_TYPE type) const;
 
-	DirectXDescriptorHeap CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE type) const;
+	DirectXDescriptorHeap CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE type, D3D12_DESCRIPTOR_HEAP_FLAGS flags, UINT capacity) const;
 
 	IDxcUtils* mDxcUtils = nullptr;
 

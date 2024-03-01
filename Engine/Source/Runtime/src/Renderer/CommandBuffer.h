@@ -115,18 +115,6 @@ public:
 
 private:
 
-    void BindBuffer(const NativeGraphicsHandle buffer,
-		BufferUsage usage,
-		size_t offset,
-		uint32_t index,
-		ShaderStageFlagBits stage,
-		ResourceAccess access) const;
-
-    void BindTexture(const NativeGraphicsHandle texture,
-		uint32_t index,
-		ShaderStageFlagBits stage,
-		ResourceAccess access) const;
-
     void SetPushConstant(const void* data, uint32_t size, ShaderStageFlagBits stage) const;
 
 	void CopyBuffer(const NativeGraphicsHandle src, const NativeGraphicsHandle dst,

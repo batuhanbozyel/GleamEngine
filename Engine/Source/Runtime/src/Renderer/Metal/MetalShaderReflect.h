@@ -8,6 +8,8 @@ namespace Gleam {
 
 struct Shader::Reflection
 {
+	static inline IRResourceLocation invalidResource = { .resourceType = IRResourceTypeInvalid };
+
     IRShaderReflection* reflection;
     TArray<IRResourceLocation> SRVs;
     TArray<IRResourceLocation> CBVs;
@@ -73,12 +75,10 @@ struct Shader::Reflection
     
     static const IRResourceLocation& GetResourceFromTypeArray(const TArray<IRResourceLocation>& resources, uint32_t slot)
     {
-        static IRResourceLocation dummy;
 		if (resources.empty())
 		{
-            dummy.resourceType = IRResourceTypeInvalid;
 			GLEAM_ASSERT(false, "Metal: Shader does not use any resource");
-			return dummy;
+			return invalidResource;
 		}
 
         uint32_t left = 0;
@@ -95,8 +95,7 @@ struct Shader::Reflection
         }
         
         GLEAM_ASSERT(false, "Metal: Resource reflection not found in slot {0}", slot);
-        dummy.resourceType = IRResourceTypeInvalid;
-        return dummy;
+        return invalidResource;
     }
 };
 

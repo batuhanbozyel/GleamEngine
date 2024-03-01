@@ -63,7 +63,7 @@ Buffer Heap::CreateBuffer(const BufferDescriptor& descriptor) const
     void* contents = nullptr;
     if (mDescriptor.memoryType != MemoryType::GPU)
 	{
-		contents = static_cast<uint8_t*>(mContents) + alignedStackPtr;
+		DX_CHECK(buffer->Map(0, nullptr, &contents));
 	}
     return Buffer(buffer, descriptor, contents);
 }
