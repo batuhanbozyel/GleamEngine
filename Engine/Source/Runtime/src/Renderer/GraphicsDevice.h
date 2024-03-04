@@ -1,6 +1,7 @@
 #pragma once
 #include "CommandBuffer.h"
 #include "RendererConfig.h"
+#include "ResourceDescriptorHeap.h"
 
 namespace Gleam {
 
@@ -35,17 +36,15 @@ public:
 
     Shader CreateShader(const TString& entryPoint, ShaderStage stage);
 
-	MemoryRequirements QueryMemoryRequirements(const HeapDescriptor& descriptor) const;
-
     void ReleaseHeap(const Heap& heap);
 
     void ReleaseTexture(const Texture& texture);
 
-    void Dispose(Heap& heap) const;
+    void Dispose(Heap& heap);
 
-    void Dispose(Buffer& buffer) const;
+    void Dispose(Buffer& buffer);
 
-    void Dispose(Texture& texture) const;
+    void Dispose(Texture& texture);
 
 	Texture GetRenderSurface() const;
 
@@ -58,6 +57,8 @@ public:
 	uint32_t GetFramesInFlight() const;
 
 	const Size& GetDrawableSize() const;
+    
+    MemoryRequirements QueryMemoryRequirements(const HeapDescriptor& descriptor) const;
 
 	using ObjectDeallocator = std::function<void()>;
 	void AddPooledObject(ObjectDeallocator&& deallocator)
@@ -73,6 +74,12 @@ protected:
 	virtual void Configure(const RendererConfig& config) = 0;
 
 	virtual void DestroyFrameObjects(uint32_t frameIndex) {}
+    
+    virtual ShaderResourceIndex CreateResourceView(const Buffer& buffer) = 0;
+    
+    virtual ShaderResourceIndex CreateResourceView(const Texture& texture) = 0;
+    
+    virtual void ReleaseResourceView(ShaderResourceIndex view) = 0;
 
 	using ObjectPool = TArray<ObjectDeallocator>;
 	TArray<ObjectPool> mPooledObjects;
@@ -93,9 +100,9 @@ protected:
 
 private:
 
-    Heap AllocateHeap(const HeapDescriptor& descriptor) const;
+    Heap AllocateHeap(const HeapDescriptor& descriptor);
     
-    Texture AllocateTexture(const TextureDescriptor& descriptor) const;
+    Texture AllocateTexture(const TextureDescriptor& descriptor);
     
     Shader GenerateShader(const TString& entryPoint, ShaderStage stage) const;
 

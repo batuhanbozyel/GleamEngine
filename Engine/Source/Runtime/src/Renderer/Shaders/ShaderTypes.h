@@ -30,6 +30,7 @@ struct DebugShaderResources
 struct ForwardPassUniforms
 {
     float4x4 modelMatrix;
+    ShaderResourceIndex cameraBuffer;
     ShaderResourceIndex positionBuffer;
     ShaderResourceIndex interleavedBuffer;
 };

@@ -20,14 +20,16 @@ Buffer Heap::CreateBuffer(const BufferDescriptor& descriptor) const
     mStackPtr = newStackPtr;
 
     id<MTLHeap> heap = mHandle;
-    id<MTLBuffer> buffer = [heap newBufferWithLength:descriptor.size options:heap.resourceOptions offset:alignedStackPtr];
+    id<MTLBuffer> mtlBuffer = [heap newBufferWithLength:descriptor.size options:heap.resourceOptions offset:alignedStackPtr];
 
     void* contents = nullptr;
     if (mDescriptor.memoryType != MemoryType::GPU)
     {
-        contents = [buffer contents];
+        contents = [mtlBuffer contents];
     }
-    return Buffer(buffer, descriptor, contents);
+    Buffer buffer(mtlBuffer, descriptor, contents);
+    buffer.mResourceView = static_cast<MetalDevice*>(mDevice)->CreateResourceView(buffer);
+    return buffer;
 }
 
 #endif

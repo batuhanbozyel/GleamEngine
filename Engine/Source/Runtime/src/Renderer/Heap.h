@@ -53,7 +53,7 @@ private:
 
     HeapDescriptor mDescriptor;
 
-    const GraphicsDevice* mDevice = nullptr;
+    GraphicsDevice* mDevice = nullptr;
 
 };
 

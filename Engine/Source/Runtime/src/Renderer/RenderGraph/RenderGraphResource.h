@@ -11,9 +11,9 @@ struct RenderGraphTextureNode;
 
 enum class ResourceAccess
 {
-	None,
-    Read,
-    Write
+    Read = 0, // maps to SRV heap local index
+    Write = 1,  // maps to UAV heap local index
+    None
 };
 
 class ResourceHandle
@@ -51,7 +51,9 @@ class BufferHandle final : public ResourceHandle
     
 public:
     
-    explicit BufferHandle(RenderGraphBufferNode* node = nullptr, uint32_t version = 0, ResourceAccess access = ResourceAccess::None)
+    explicit BufferHandle(RenderGraphBufferNode* node = nullptr,
+                          uint32_t version = 0,
+                          ResourceAccess access = ResourceAccess::None)
         : ResourceHandle(version, access), node(node)
     {
         
@@ -102,7 +104,9 @@ class TextureHandle final : public ResourceHandle
     
 public:
     
-    explicit TextureHandle(RenderGraphTextureNode* node = nullptr, uint32_t version = 0, ResourceAccess access = ResourceAccess::None)
+    explicit TextureHandle(RenderGraphTextureNode* node = nullptr,
+                           uint32_t version = 0,
+                           ResourceAccess access = ResourceAccess::None)
         : ResourceHandle(version, access), node(node)
     {
         
@@ -137,6 +141,8 @@ public:
     }
 
     NO_DISCARD operator Texture() const;
+    
+    NO_DISCARD operator ShaderResourceIndex() const;
     
 private:
     

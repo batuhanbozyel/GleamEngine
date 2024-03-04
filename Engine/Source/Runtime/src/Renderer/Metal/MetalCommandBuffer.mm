@@ -4,10 +4,8 @@
 #include "Renderer/CommandBuffer.h"
 #include "MetalPipelineStateManager.h"
 #include "MetalShaderReflect.h"
-
 #include "Core/Application.h"
 
-#define IR_PRIVATE_IMPLEMENTATION
 #include <metal_irconverter_runtime/metal_irconverter_runtime.h>
 
 using namespace Gleam;
@@ -141,29 +139,14 @@ void CommandBuffer::BindGraphicsPipeline(const PipelineStateDescriptor& pipeline
         [mHandle->renderCommandEncoder setRenderPipelineState:mHandle->pipeline->handle];
     }
     [mHandle->renderCommandEncoder setCullMode:CullModeToMTLCullMode(pipelineDesc.cullingMode)];
-    
-    auto argumentBufferSize = vertexShader.GetReflection()->argumentBufferSize + fragmentShader.GetReflection()->argumentBufferSize;
-    if (argumentBufferSize > 0)
-    {
-        mHandle->topLevelArgumentBuffer = mStagingHeap.CreateBuffer({ .size = argumentBufferSize });
-        [mHandle->renderCommandEncoder setVertexBuffer:mHandle->topLevelArgumentBuffer.GetHandle() offset:0 atIndex:kIRArgumentBufferBindPoint];
-        [mHandle->renderCommandEncoder setFragmentBuffer:mHandle->topLevelArgumentBuffer.GetHandle() offset:0 atIndex:kIRArgumentBufferBindPoint];
-        auto argumentBufferPtr = static_cast<uint8_t*>(mHandle->topLevelArgumentBuffer.GetContents());
-        
-        // Set vertex samplers
-        for (const auto& resource : vertexShader.GetReflection()->samplers)
-        {
-            auto entry = reinterpret_cast<IRDescriptorTableEntry*>(argumentBufferPtr + resource.topLevelOffset);
-            IRDescriptorTableSetSampler(entry, MetalPipelineStateManager::GetSamplerState(resource.slot), 0.0f);
-        }
-        
-        // Set fragment samplers
-        for (const auto& resource : fragmentShader.GetReflection()->samplers)
-        {
-            auto entry = reinterpret_cast<IRDescriptorTableEntry*>(argumentBufferPtr + resource.topLevelOffset);
-            IRDescriptorTableSetSampler(entry, MetalPipelineStateManager::GetSamplerState(resource.slot), 0.0f);
-        }
-    }
+    // Descriptor heap
+    [mHandle->renderCommandEncoder setVertexBuffer:mHandle->device->GetCbvSrvUavHeap() offset:0 atIndex:kIRDescriptorHeapBindPoint];
+    [mHandle->renderCommandEncoder setFragmentBuffer:mHandle->device->GetCbvSrvUavHeap() offset:0 atIndex:kIRDescriptorHeapBindPoint];
+    // Top-level argument buffer
+    mHandle->topLevelArgumentBuffer = mStagingHeap.CreateBuffer({ .size = MetalPipelineStateManager::GetTopLevelArgumentBufferSize() });
+    [mHandle->renderCommandEncoder setVertexBuffer:mHandle->topLevelArgumentBuffer.GetHandle() offset:0 atIndex:kIRArgumentBufferBindPoint];
+    [mHandle->renderCommandEncoder setFragmentBuffer:mHandle->topLevelArgumentBuffer.GetHandle() offset:0 atIndex:kIRArgumentBufferBindPoint];
+
 }
 
 void CommandBuffer::SetViewport(const Size& size) const
@@ -177,12 +160,17 @@ void CommandBuffer::SetViewport(const Size& size) const
 
 void CommandBuffer::SetConstantBuffer(const void* data, uint32_t size, uint32_t slot) const
 {
-    // TODO:
+    auto buffer = mStagingHeap.CreateBuffer({ .size = size });
+    SetBufferData(buffer, data, size);
+    
+    auto argumentBufferPtr = static_cast<uint64_t*>(mHandle->topLevelArgumentBuffer.GetContents());
+    argumentBufferPtr[slot] = [buffer.GetHandle() gpuAddress];
 }
 
 void CommandBuffer::SetPushConstant(const void* data, uint32_t size) const
 {
-    // TODO:
+    auto argumentBufferPtr = static_cast<uint64_t*>(mHandle->topLevelArgumentBuffer.GetContents());
+    memcpy(argumentBufferPtr + PUSH_CONSTANT_SLOT, data, size);
 }
 
 void CommandBuffer::Draw(uint32_t vertexCount, uint32_t instanceCount, uint32_t baseVertex, uint32_t baseInstance) const

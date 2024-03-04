@@ -128,10 +128,10 @@ void MetalPipelineStateManager::Init(MetalDevice* device)
     
     IRVersionedRootSignatureDescriptor rootSignature = {};
     rootSignature.version = IRRootSignatureVersion_1_1;
-    rootSignature.desc_1_1.Flags =
-        IRRootSignatureFlagDenyHullShaderRootAccess | IRRootSignatureFlagDenyDomainShaderRootAccess
-        | IRRootSignatureFlagDenyGeometryShaderRootAccess
-        | IRRootSignatureFlagCBVSRVUAVHeapDirectlyIndexed;
+    rootSignature.desc_1_1.Flags = IRRootSignatureFlags(IRRootSignatureFlagDenyHullShaderRootAccess
+                                                        | IRRootSignatureFlagDenyDomainShaderRootAccess
+                                                        | IRRootSignatureFlagDenyGeometryShaderRootAccess
+                                                        | IRRootSignatureFlagCBVSRVUAVHeapDirectlyIndexed);
 
     rootSignature.desc_1_1.NumStaticSamplers = mStaticSamplerDescs.size();
     rootSignature.desc_1_1.pStaticSamplers = mStaticSamplerDescs.data();
@@ -248,5 +248,10 @@ id<MTLDepthStencilState> MetalPipelineStateManager::CreateDepthStencil(const Pip
 IRRootSignature* MetalPipelineStateManager::GetGlobalRootSignature()
 {
     return mRootSignature;
+}
+
+size_t MetalPipelineStateManager::GetTopLevelArgumentBufferSize()
+{
+    return PUSH_CONSTANT_SLOT * sizeof(uint64_t) + 128;
 }
 #endif

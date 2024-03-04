@@ -4,10 +4,12 @@
 
 namespace Gleam {
 
+class Heap;
 class GraphicsDevice;
 
-class Buffer final : public GraphicsObject
+class Buffer final : public ShaderResource
 {
+    friend class Heap;
     friend class GraphicsDevice;
     
 public:
@@ -19,7 +21,7 @@ public:
     Buffer& operator=(const Buffer& other) = default;
 
     Buffer(NativeGraphicsHandle handle, const BufferDescriptor& descriptor, void* contents = nullptr)
-        : GraphicsObject(handle), mDescriptor(descriptor), mContents(contents)
+        : ShaderResource(handle), mDescriptor(descriptor), mContents(contents)
     {
         
     }

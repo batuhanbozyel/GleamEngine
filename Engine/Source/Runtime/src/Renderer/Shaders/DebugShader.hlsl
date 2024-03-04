@@ -13,7 +13,7 @@ struct VertexOut
 
 VertexOut debugVertexShader(uint vertex_id: SV_VertexID)
 {
-    StructuredBuffer<Gleam::CameraUniforms> CameraBuffer = ResourceDescriptorHeap[resources.cameraBuffer];
+    ConstantBuffer<Gleam::CameraUniforms> CameraBuffer = ResourceDescriptorHeap[resources.cameraBuffer];
     StructuredBuffer<Gleam::DebugVertex> VertexBuffer = ResourceDescriptorHeap[resources.vertexBuffer];
     
     Gleam::DebugVertex vertex = VertexBuffer[vertex_id];
@@ -26,7 +26,7 @@ VertexOut debugVertexShader(uint vertex_id: SV_VertexID)
 
 VertexOut debugMeshVertexShader(uint vertex_id: SV_VertexID)
 {
-    StructuredBuffer<Gleam::CameraUniforms> CameraBuffer = ResourceDescriptorHeap[resources.cameraBuffer];
+    ConstantBuffer<Gleam::CameraUniforms> CameraBuffer = ResourceDescriptorHeap[resources.cameraBuffer];
     StructuredBuffer<float3> PositionBuffer = ResourceDescriptorHeap[resources.vertexBuffer];
     
     VertexOut OUT;

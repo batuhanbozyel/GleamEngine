@@ -10,6 +10,12 @@ namespace Gleam {
 struct Version;
 struct RendererConfig;
 
+struct MetalDescriptorHeap
+{
+    ResourceDescriptorHeap heap;
+    id<MTLBuffer> handle;
+};
+
 class MetalDevice final : public GraphicsDevice
 {
 public:
@@ -18,15 +24,25 @@ public:
     
     ~MetalDevice();
     
+    id<MTLBuffer> GetCbvSrvUavHeap() const;
+    
     id<CAMetalDrawable> AcquireNextDrawable();
     
     id<MTLCommandQueue> GetCommandPool() const;
+    
+    virtual ShaderResourceIndex CreateResourceView(const Buffer& buffer) override;
+    
+    virtual ShaderResourceIndex CreateResourceView(const Texture& texture) override;
+    
+    virtual void ReleaseResourceView(ShaderResourceIndex view) override;
     
 private:
 
 	virtual void Present(const CommandBuffer* cmd) override;
 
 	virtual void Configure(const RendererConfig& config) override;
+    
+    MetalDescriptorHeap CreateDescriptorHeap(uint32_t capacity) const;
     
 	void* mSurface = nullptr;
 
@@ -37,6 +53,8 @@ private:
     CAMetalLayer* mSwapchain = nullptr;
 
     id<MTLCommandQueue> mCommandPool{ nil };
+    
+    MetalDescriptorHeap mCbvSrvUavHeap;
 
 };
 

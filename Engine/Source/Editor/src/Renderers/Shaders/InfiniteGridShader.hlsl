@@ -12,7 +12,7 @@ struct VertexOut
 
 PUSH_CONSTANT(GEditor::InfiniteGridUniforms, uniforms);
 
-ConstantBuffer<Gleam::CameraUniforms> CameraBuffer = ResourceDescriptorHeap[uniforms.cameraBuffer];
+static ConstantBuffer<Gleam::CameraUniforms> CameraBuffer = ResourceDescriptorHeap[uniforms.cameraBuffer];
 
 VertexOut infiniteGridVertexShader(uint vertex_id: SV_VertexID)
 {

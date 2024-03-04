@@ -11,7 +11,7 @@ NO_DISCARD BufferHandle::operator Buffer() const
 
 NO_DISCARD BufferHandle::operator ShaderResourceIndex() const
 {
-    
+    return ShaderResourceIndex(node->buffer.GetResourceView().data + static_cast<uint32_t>(access));
 }
 
 NO_DISCARD TextureHandle::operator Texture() const
@@ -21,5 +21,5 @@ NO_DISCARD TextureHandle::operator Texture() const
 
 NO_DISCARD TextureHandle::operator ShaderResourceIndex() const
 {
-    
+    return ShaderResourceIndex(node->texture.GetResourceView().data + static_cast<uint32_t>(access));
 }

@@ -6,7 +6,7 @@ namespace Gleam {
 
 class GraphicsDevice;
 
-class Texture final : public GraphicsObject
+class Texture final : public ShaderResource
 {
     friend class GraphicsDevice;
     
@@ -54,7 +54,7 @@ public:
 		return static_cast<uint32_t>(Math::Floor(Math::Log2(Math::Max(size.width, size.height)))) + 1;
 	}
     
-protected:
+private:
     
     uint32_t mMipMapLevels = 1;
     TextureDescriptor mDescriptor;

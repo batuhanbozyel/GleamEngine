@@ -16,7 +16,7 @@ using float4 = Gleam::Vector4;
 
 namespace Gleam {
 
-#define InvalidResourceIndex ShaderResourceIndex(~0Ui32)
+#define InvalidResourceIndex ShaderResourceIndex(-1)
 
 #ifdef __cplusplus
 struct ShaderResourceIndex
@@ -24,7 +24,7 @@ struct ShaderResourceIndex
     uint32_t data;
 
     ShaderResourceIndex()
-        : data(InvalidResourceIndex)
+        : data(InvalidResourceIndex.data)
     {
     }
 
@@ -44,7 +44,7 @@ struct ShaderResourceIndex
     }
 };
 #else
-using ShaderResourceIndex = uint32_t;
+using ShaderResourceIndex = uint;
 #endif
 
 struct CameraUniforms

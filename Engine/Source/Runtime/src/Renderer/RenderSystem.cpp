@@ -59,20 +59,21 @@ void RenderSystem::Render()
         RenderGraph graph(mDevice.get());
         RenderGraphBlackboard blackboard;
         
-        auto& sceneData = graph.AddRenderPass<SceneRenderingData>("SceneRenderingData", [&](RenderGraphBuilder& builder, SceneRenderingData& passData)
+        const auto& sceneData = graph.AddRenderPass<SceneRenderingData>("SceneRenderingData", [&](RenderGraphBuilder& builder, SceneRenderingData& passData)
         {
             BufferDescriptor descriptor;
             descriptor.usage = BufferUsage::UniformBuffer;
             descriptor.size = sizeof(CameraUniforms);
             passData.cameraBuffer = builder.CreateBuffer(descriptor);
             passData.cameraBuffer = builder.WriteBuffer(passData.cameraBuffer);
+            
+            passData.backbuffer = graph.ImportBackbuffer(mRenderTarget);
+            passData.config = mConfiguration;
         },
         [this](const CommandBuffer* cmd, const SceneRenderingData& passData)
         {
             cmd->SetBufferData(passData.cameraBuffer, &mCameraData, sizeof(CameraUniforms));
         });
-        sceneData.backbuffer = graph.ImportBackbuffer(mRenderTarget);
-        sceneData.config = mConfiguration;
         blackboard.Add(sceneData);
 
         for (auto renderer : mRenderers)

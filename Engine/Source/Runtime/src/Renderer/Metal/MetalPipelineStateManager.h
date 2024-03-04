@@ -34,6 +34,8 @@ public:
     static const MetalPipeline* GetGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc, const TArray<TextureDescriptor>& colorAttachments, const TextureDescriptor& depthAttachment, const Shader& vertexShader, const Shader& fragmentShader, uint32_t sampleCount);
     
     static IRRootSignature* GetGlobalRootSignature();
+    
+    static size_t GetTopLevelArgumentBufferSize();
 
     static void Clear();
 

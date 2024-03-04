@@ -26,8 +26,9 @@ void WorldViewportController::OnUpdate(Gleam::EntityManager& entityManager)
         ProcessCameraMovement(camera);
     }
     
-    auto worldRenderer = GameInstance->GetSubsystem<Gleam::RenderSystem>()->GetRenderer<Gleam::WorldRenderer>();
-    worldRenderer->UpdateCamera(camera);
+    auto renderSystem = GameInstance->GetSubsystem<Gleam::RenderSystem>();
+    auto worldRenderer = renderSystem->GetRenderer<Gleam::WorldRenderer>();
+    renderSystem->UpdateCamera(camera);
     
     entityManager.ForEach<Gleam::MeshRenderer, Gleam::Transform>([&](const Gleam::MeshRenderer& meshRenderer, const Gleam::Transform& transform)
     {

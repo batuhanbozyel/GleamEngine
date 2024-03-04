@@ -3,6 +3,10 @@
 #include "Renderer/CommandBuffer.h"
 #include "Renderer/GraphicsDevice.h"
 
+#ifdef USE_METAL_RENDERER
+#import <Metal/Metal.h>
+#endif
+
 using namespace Gleam;
 
 static AttachmentLoadAction GetLoadActionForRenderTexture(const RenderGraphTextureNode* node, RenderPassNode* pass)
@@ -208,6 +212,11 @@ void RenderGraph::Execute(const CommandBuffer* cmd)
             
             cmd->BeginRenderPass(renderPassDesc, pass->name);
             cmd->SetViewport(renderPassDesc.size);
+            
+#ifdef USE_METAL_RENDERER
+            [cmd->GetActiveRenderPass() useHeap:heap.GetHandle()];
+#endif
+            
             std::invoke(pass->callback, cmd);
             cmd->EndRenderPass();
         }

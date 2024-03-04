@@ -9,6 +9,9 @@
 #include "Core/Application.h"
 #include "Core/Events/RendererEvent.h"
 
+#define IR_PRIVATE_IMPLEMENTATION
+#include <metal_irconverter_runtime/metal_irconverter_runtime.h>
+
 using namespace Gleam;
 
 Scope<GraphicsDevice> GraphicsDevice::Create()
@@ -28,7 +31,7 @@ MemoryRequirements GraphicsDevice::QueryMemoryRequirements(const HeapDescriptor&
 	};
 }
 
-Heap GraphicsDevice::AllocateHeap(const HeapDescriptor& descriptor) const
+Heap GraphicsDevice::AllocateHeap(const HeapDescriptor& descriptor)
 {
     Heap heap(descriptor);
     heap.mDevice = this;
@@ -47,7 +50,7 @@ Heap GraphicsDevice::AllocateHeap(const HeapDescriptor& descriptor) const
     return heap;
 }
 
-Texture GraphicsDevice::AllocateTexture(const TextureDescriptor& descriptor) const
+Texture GraphicsDevice::AllocateTexture(const TextureDescriptor& descriptor)
 {
     Texture texture(descriptor);
     
@@ -71,9 +74,9 @@ Texture GraphicsDevice::AllocateTexture(const TextureDescriptor& descriptor) con
     
     id<MTLTexture> baseTexture = texture.mHandle;
     texture.mView = [baseTexture newTextureViewWithPixelFormat:baseTexture.pixelFormat
-                                           textureType:descriptor.type == TextureType::TextureCube ? MTLTextureTypeCubeArray : MTLTextureType2DArray
-                                                levels:NSMakeRange(0, texture.mMipMapLevels)
-                                                slices:NSMakeRange(0, 1)];
+                                                   textureType:descriptor.type == TextureType::TextureCube ? MTLTextureTypeCubeArray : MTLTextureType2DArray
+                                                        levels:NSMakeRange(0, texture.mMipMapLevels)
+                                                        slices:NSMakeRange(0, 1)];
     
     if (descriptor.sampleCount > 1)
     {
@@ -86,6 +89,8 @@ Texture GraphicsDevice::AllocateTexture(const TextureDescriptor& descriptor) con
         texture.mMultisampleHandle = [mHandle newTextureWithDescriptor:msaaTextureDesc];
         texture.mMultisampleView = texture.mMultisampleHandle;
     }
+    
+    texture.mResourceView = CreateResourceView(texture);
     return texture;
 }
 
@@ -136,18 +141,20 @@ Shader GraphicsDevice::GenerateShader(const TString& entryPoint, ShaderStage sta
     return shader;
 }
 
-void GraphicsDevice::Dispose(Heap& heap) const
+void GraphicsDevice::Dispose(Heap& heap)
 {
     heap.mHandle = nil;
 }
 
-void GraphicsDevice::Dispose(Buffer& buffer) const
+void GraphicsDevice::Dispose(Buffer& buffer)
 {
+    ReleaseResourceView(buffer.mResourceView);
     buffer.mHandle = nil;
 }
 
-void GraphicsDevice::Dispose(Texture& texture) const
+void GraphicsDevice::Dispose(Texture& texture)
 {
+    ReleaseResourceView(texture.mResourceView);
     texture.mHandle = nil;
     texture.mView = nil;
     
@@ -194,6 +201,9 @@ MetalDevice::MetalDevice()
 
     // init MTLCommandQueue
     mCommandPool = [mHandle newCommandQueue];
+    
+    // create descriptor heap
+    mCbvSrvUavHeap = CreateDescriptorHeap(128 * 1024);
 
     MetalPipelineStateManager::Init(this);
 
@@ -211,6 +221,9 @@ MetalDevice::~MetalDevice()
     mShaderCache.clear();
 
     MetalPipelineStateManager::Destroy();
+    
+    // Destroy descriptor heap
+    mCbvSrvUavHeap.handle = nil;
 
     // Destroy command pool
     mCommandPool = nil;
@@ -275,6 +288,40 @@ void MetalDevice::Present(const CommandBuffer* cmd)
     mCurrentFrameIndex = (mCurrentFrameIndex + 1) % mMaxFramesInFlight;
     
     mDrawable = nil;
+}
+
+ShaderResourceIndex MetalDevice::CreateResourceView(const Buffer& buffer)
+{
+    auto index = mCbvSrvUavHeap.heap.Allocate();
+    auto descriptorTable = static_cast<IRDescriptorTableEntry*>([mCbvSrvUavHeap.handle contents]);
+    IRDescriptorTableSetBuffer(descriptorTable + index.data, [buffer.GetHandle() gpuAddress], 0);
+    return index;
+}
+
+ShaderResourceIndex MetalDevice::CreateResourceView(const Texture& texture)
+{
+    auto index = mCbvSrvUavHeap.heap.Allocate();
+    auto descriptorTable = static_cast<IRDescriptorTableEntry*>([mCbvSrvUavHeap.handle contents]);
+    IRDescriptorTableSetTexture(descriptorTable + index.data, texture.GetView(), 0.0f, 0);
+    return index;
+}
+
+void MetalDevice::ReleaseResourceView(ShaderResourceIndex view)
+{
+    mCbvSrvUavHeap.heap.Release(view);
+}
+
+MetalDescriptorHeap MetalDevice::CreateDescriptorHeap(uint32_t capacity) const
+{
+    MetalDescriptorHeap heap;
+    heap.handle = [mHandle newBufferWithLength:capacity * sizeof(IRDescriptorTableEntry) options:MTLResourceStorageModeShared];
+    heap.heap = ResourceDescriptorHeap(capacity);
+    return heap;
+}
+
+id<MTLBuffer> MetalDevice::GetCbvSrvUavHeap() const
+{
+    return mCbvSrvUavHeap.handle;
 }
 
 id<MTLCommandQueue> MetalDevice::GetCommandPool() const
