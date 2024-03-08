@@ -73,13 +73,13 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, 
 		if (colorAttachmentDesc.texture.IsValid())
 		{
 			auto resource = static_cast<ID3D12Resource*>(colorAttachmentDesc.texture.GetHandle());
-			colorAttachments[i].cpuDescriptor; // TODO:
+			colorAttachments[i].cpuDescriptor = colorAttachmentDesc.texture.GetView();
 			DirectXTransitionManager::TransitionLayout(mHandle->commandList.handle, resource, D3D12_RESOURCE_STATE_RENDER_TARGET);
 		}
 		else
 		{
 			const auto& drawable = mHandle->device->AcquireNextDrawable();
-			colorAttachments[i].cpuDescriptor = drawable.descriptor;
+			colorAttachments[i].cpuDescriptor = drawable.view;
 
 			D3D12_RESOURCE_BARRIER barrier{};
 			barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
@@ -100,7 +100,7 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, 
 		auto resource = static_cast<ID3D12Resource*>(renderPassDesc.depthAttachment.texture.GetHandle());
 		DirectXTransitionManager::TransitionLayout(mHandle->commandList.handle, resource, D3D12_RESOURCE_STATE_DEPTH_WRITE);
 
-		depthAttachment.cpuDescriptor; // TODO:
+		depthAttachment.cpuDescriptor = renderPassDesc.depthAttachment.texture.GetView();
 		depthAttachment.DepthBeginningAccess.Type = AttachmentLoadActionToDX_TYPE(renderPassDesc.depthAttachment.loadAction);
 		depthAttachment.DepthBeginningAccess.Clear.ClearValue.Format = TextureFormatToDXGI_FORMAT(format);
 		depthAttachment.DepthBeginningAccess.Clear.ClearValue.DepthStencil.Depth = renderPassDesc.depthAttachment.clearDepth;
@@ -116,7 +116,7 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, 
 			depthAttachment.StencilEndingAccess.Type = depthAttachment.DepthEndingAccess.Type;
 		}
 	}
-	mHandle->commandList.handle->BeginRenderPass(colorAttachments.size(), colorAttachments.data(), &depthAttachment, D3D12_RENDER_PASS_FLAG_NONE);
+	mHandle->commandList.handle->BeginRenderPass((UINT)colorAttachments.size(), colorAttachments.data(), &depthAttachment, D3D12_RENDER_PASS_FLAG_NONE);
 }
 
 void CommandBuffer::EndRenderPass() const
@@ -162,7 +162,10 @@ void CommandBuffer::SetViewport(const Size& size) const
 
 void CommandBuffer::SetConstantBuffer(const void* data, uint32_t size, uint32_t slot) const
 {
-    mHandle->commandList.handle->SetGraphicsConstantBufferView(/* TODO */);
+	auto buffer = mStagingHeap.CreateBuffer({ .size = size });
+	SetBufferData(buffer, data, size);
+
+    mHandle->commandList.handle->SetGraphicsRootConstantBufferView(slot, static_cast<ID3D12Resource*>(buffer.GetHandle())->GetGPUVirtualAddress());
 }
 
 void CommandBuffer::SetPushConstant(const void* data, uint32_t size) const
@@ -188,7 +191,7 @@ void CommandBuffer::DrawIndexed(const Buffer& indexBuffer, IndexType type,
 	D3D12_INDEX_BUFFER_VIEW indexBufferView = {};
 	indexBufferView.BufferLocation = static_cast<ID3D12Resource*>(indexBuffer.GetHandle())->GetGPUVirtualAddress();
 	indexBufferView.Format = type == IndexType::UINT16 ? DXGI_FORMAT_R16_UINT : DXGI_FORMAT_R32_UINT;
-	indexBufferView.SizeInBytes = indexBuffer.GetDescriptor().size;
+	indexBufferView.SizeInBytes = (UINT)indexBuffer.GetDescriptor().size;
 
 	mHandle->commandList.handle->IASetIndexBuffer(&indexBufferView);
 	mHandle->commandList.handle->DrawIndexedInstanced(indexCount, instanceCount, firstIndex, baseVertex, baseInstance);

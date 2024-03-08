@@ -12,10 +12,10 @@ struct VertexOut
 
 PUSH_CONSTANT(GEditor::InfiniteGridUniforms, uniforms);
 
-static ConstantBuffer<Gleam::CameraUniforms> CameraBuffer = ResourceDescriptorHeap[uniforms.cameraBuffer];
-
 VertexOut infiniteGridVertexShader(uint vertex_id: SV_VertexID)
 {
+    Gleam::CameraUniforms CameraBuffer = uniforms.cameraBuffer.Load<Gleam::CameraUniforms>();
+
     static const float3 gridPlane[6] = {
         float3( 1, -1, 0), float3(-1,  1, 0), float3(-1, -1, 0),
         float3(-1,  1, 0), float3( 1, -1, 0), float3( 1,  1, 0)
@@ -57,14 +57,16 @@ float PristineGrid(float2 uv, float lineWidth, float2 axisLines)
     return lerp(grid2.x, 1.0, grid2.y);
 }
 
-float ComputeDepth(float3 pos)
+float ComputeDepth(float3 pos, float4x4 viewProjectionMatrix)
 {
-    float4 clipPos = mul(CameraBuffer.viewProjectionMatrix, float4(pos, 1.0));
+    float4 clipPos = mul(viewProjectionMatrix, float4(pos, 1.0));
     return clipPos.z / clipPos.w;
 }
 
 FragmentOut infiniteGridFragmentShader(VertexOut IN)
 {
+    Gleam::CameraUniforms CameraBuffer = uniforms.cameraBuffer.Load<Gleam::CameraUniforms>();
+
     static const float4 AXIS_X_COLOR = float4(1.0f, 0.0f, 0.0f, 1.0f);
     static const float4 AXIS_Y_COLOR = float4(0.0f, 1.0f, 0.0f, 1.0f);
     
@@ -92,7 +94,7 @@ FragmentOut infiniteGridFragmentShader(VertexOut IN)
     float4 grid = saturate(minorGrid * (1.0f - majorGrid.a) + majorGrid);
 
     FragmentOut OUT;
-    OUT.depth = ComputeDepth(gridPos);
+    OUT.depth = ComputeDepth(gridPos, CameraBuffer.viewProjectionMatrix);
     OUT.color = saturate(grid * (1.0f - axisLines.a) + axisLines) * float(t > 0.0f);
     return OUT;
 }

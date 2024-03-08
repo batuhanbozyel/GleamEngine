@@ -3,7 +3,6 @@
 #include "Renderer/GraphicsDevice.h"
 
 #include <d3d12.h>
-#include <dxcapi.h>
 #include <dxgi1_6.h>
 
 namespace Gleam {
@@ -11,12 +10,15 @@ namespace Gleam {
 class DirectXDescriptorHeap
 {
 public:
+	ResourceDescriptorHeap heap;
 	ID3D12DescriptorHeap* handle = nullptr;
 	D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle;
 	D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle;
 	D3D12_DESCRIPTOR_HEAP_TYPE type;
 	UINT size;
 	UINT capacity;
+
+	ShaderResourceIndex GetResourceIndex(D3D12_CPU_DESCRIPTOR_HANDLE view);
 };
 
 struct DirectXCommandList
@@ -25,14 +27,26 @@ struct DirectXCommandList
 	ID3D12CommandAllocator* allocator;
 };
 
+struct DirectXCommandPool
+{
+	Deque<DirectXCommandList> usedCommandLists;
+	Deque<DirectXCommandList> freeCommandLists;
+
+	void Reset();
+
+	void Release();
+};
+
 struct DirectXDrawable
 {
 	ID3D12Resource* renderTarget;
-	D3D12_CPU_DESCRIPTOR_HANDLE descriptor;
+	D3D12_CPU_DESCRIPTOR_HANDLE view;
 };
 
 class DirectXDevice final : public GraphicsDevice
 {
+	friend class GraphicsDevice;
+
 public:
 
 	DirectXDevice();
@@ -51,7 +65,11 @@ public:
 
 	ID3D12CommandQueue* GetCopyQueue() const;
 
-	IDxcUtils* GetDxcUtils() const;
+	virtual ShaderResourceIndex CreateResourceView(const Buffer& buffer) override;
+
+	virtual ShaderResourceIndex CreateResourceView(const Texture& texture) override;
+
+	virtual void ReleaseResourceView(ShaderResourceIndex view) override;
 
 private:
 
@@ -62,8 +80,6 @@ private:
 	ID3D12CommandQueue* CreateCommandQueue(D3D12_COMMAND_LIST_TYPE type) const;
 
 	DirectXDescriptorHeap CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE type, D3D12_DESCRIPTOR_HEAP_FLAGS flags, UINT capacity) const;
-
-	IDxcUtils* mDxcUtils = nullptr;
 
 	IDXGISwapChain4* mSwapchain = nullptr;
 
@@ -79,21 +95,11 @@ private:
 
 	ID3D12CommandQueue* mCopyQueue;
 
-	struct CommandPool
-	{
-		Deque<DirectXCommandList> usedCommandLists;
-		Deque<DirectXCommandList> freeCommandLists;
-
-		void Reset();
-
-		void Release();
-	};
-
 	struct Context
 	{
 		ID3D12Fence* fence;
-		ID3D12Resource* renderTarget;
-		CommandPool commandPool;
+		DirectXDrawable drawable;
+		DirectXCommandPool commandPool;
 		uint32_t frameCount = 0;
 	};
 	TArray<Context> mFrameContext;

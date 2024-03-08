@@ -24,6 +24,7 @@ HLSL_SHADER_STAGE["compute"] = "cs_6_6"
 
 def compile_shader(hlsl_file: str, entry_point: str, shader_stage: str, output_dir: str):
     compile_command = [DXC, hlsl_file,
+                       "-HV", "2021",
                        "-T", HLSL_SHADER_STAGE[shader_stage],
                        "-I", RUNTIME_INCLUDE_DIRECTORY,
                        "-E", entry_point,

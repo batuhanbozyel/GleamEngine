@@ -11,6 +11,7 @@ set(INCLUDE_DIRS
     ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/cgltf
     ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui
     ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/ImGuizmo
+    ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/DirectXAgilitySDK/build/native/include
 )
 
 file(GLOB_RECURSE SOURCE_FILES 
@@ -43,7 +44,7 @@ add_library(imgui STATIC
 target_include_directories(imgui PRIVATE
     ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui
     ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/SDL/include
-    ${Vulkan_INCLUDE_DIRS}
+    ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/DirectXAgilitySDK/build/native/include
 )
 
 if (APPLE)

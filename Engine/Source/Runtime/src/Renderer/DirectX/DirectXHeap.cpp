@@ -49,23 +49,25 @@ Buffer Heap::CreateBuffer(const BufferDescriptor& descriptor) const
 		.Flags = flags
 	};
 
-	ID3D12Resource* buffer = nullptr;
+	ID3D12Resource* resource = nullptr;
 	static_cast<ID3D12Device10*>(mDevice->GetHandle())->CreatePlacedResource(
 		static_cast<ID3D12Heap*>(mHandle),
 		alignedStackPtr,
 		&resourceDesc,
 		initialState,
 		nullptr,
-		IID_PPV_ARGS(&buffer)
+		IID_PPV_ARGS(&resource)
 	);
-	DirectXTransitionManager::SetLayout(buffer, initialState);
+	DirectXTransitionManager::SetLayout(resource, initialState);
 
     void* contents = nullptr;
     if (mDescriptor.memoryType != MemoryType::GPU)
 	{
-		DX_CHECK(buffer->Map(0, nullptr, &contents));
+		DX_CHECK(resource->Map(0, nullptr, &contents));
 	}
-    return Buffer(buffer, descriptor, contents);
+	Buffer buffer(resource, descriptor, contents);
+	buffer.mResourceView = static_cast<DirectXDevice*>(mDevice)->CreateResourceView(buffer);
+    return buffer;
 }
 
 #endif

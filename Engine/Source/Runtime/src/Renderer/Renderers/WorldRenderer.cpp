@@ -59,8 +59,8 @@ void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
                     ForwardPassUniforms uniforms;
                     uniforms.modelMatrix = element.transform;
                     uniforms.cameraBuffer = passData.cameraBuffer;
-                    uniforms.positionBuffer = meshBuffer.GetPositionBuffer();
-                    uniforms.interleavedBuffer = meshBuffer.GetInterleavedBuffer();
+                    uniforms.positionBuffer = meshBuffer.GetPositionBuffer().GetResourceView();
+                    uniforms.interleavedBuffer = meshBuffer.GetInterleavedBuffer().GetResourceView();
                     cmd->SetPushConstant(uniforms);
 					
                     for (const auto& descriptor : element.mesh->GetSubmeshDescriptors())

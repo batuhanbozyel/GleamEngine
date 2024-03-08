@@ -108,7 +108,7 @@ void DirectXPipelineStateManager::Init(DirectXDevice* device)
     
     // Root signature
     constexpr uint32_t NumRootParams = PUSH_CONSTANT_SLOT + 1;
-    D3D12_ROOT_PARAMETER1 rootSigParams[NumRootParams];
+	D3D12_ROOT_PARAMETER1 rootSigParams[NumRootParams] = {};
     for (uint32_t i = 0; i < PUSH_CONSTANT_SLOT; i++)
     {
         rootSigParams[i] = {
@@ -136,7 +136,7 @@ void DirectXPipelineStateManager::Init(DirectXDevice* device)
 	rootSignature.Version = D3D_ROOT_SIGNATURE_VERSION_1_1;
 	rootSignature.Desc_1_1.NumParameters = NumRootParams;
 	rootSignature.Desc_1_1.pParameters = rootSigParams;
-	rootSignature.Desc_1_1.NumStaticSamplers = mStaticSamplerDescs.size();
+	rootSignature.Desc_1_1.NumStaticSamplers = (UINT)mStaticSamplerDescs.size();
 	rootSignature.Desc_1_1.pStaticSamplers = mStaticSamplerDescs.data();
 	rootSignature.Desc_1_1.Flags =
 		D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS | D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS
@@ -256,7 +256,7 @@ ID3D12PipelineState* DirectXPipelineStateManager::CreateGraphicsPipeline(const P
 	blendState.AlphaToCoverageEnable = pipelineDesc.alphaToCoverage;
 	blendState.IndependentBlendEnable = FALSE;
 
-	psoDesc.NumRenderTargets = colorAttachments.size();
+	psoDesc.NumRenderTargets = (UINT)colorAttachments.size();
 	for (uint32_t i = 0; i < colorAttachments.size(); i++)
 	{
 		const auto& attachment = colorAttachments[i];

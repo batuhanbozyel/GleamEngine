@@ -1,7 +1,6 @@
 #pragma once
 #ifdef USE_DIRECTX_RENDERER
 #include <d3d12.h>
-#include <D3D12MemAlloc.h>
 #include "Renderer/TextureFormat.h"
 #include "Renderer/HeapDescriptor.h"
 #include "Renderer/BufferDescriptor.h"
@@ -17,7 +16,7 @@ static void WaitForID3D12Fence(ID3D12Fence* fence, uint32_t value)
 	if (fence->GetCompletedValue() < value)
 	{
 		HANDLE fenceEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
-		GLEAM_ASSERT(fenceEvent);
+		GLEAM_ASSERT(fenceEvent != 0);
 
 		DX_CHECK(fence->SetEventOnCompletion(value, fenceEvent));
 		WaitForSingleObject(fenceEvent, INFINITE);
@@ -310,6 +309,50 @@ static constexpr D3D12_RESOURCE_STATES BufferUsageToD3D12_RESOURCE_STATE(BufferU
 		case BufferUsage::StorageBuffer: return D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
 		case BufferUsage::StagingBuffer: return D3D12_RESOURCE_STATE_COPY_SOURCE;
 		default: return D3D12_RESOURCE_STATE_GENERIC_READ;
+	}
+}
+
+static constexpr D3D12_SRV_DIMENSION TextureTypeToD3D12_SRV_DIMENSION(TextureType type)
+{
+	switch (type)
+	{
+		case TextureType::Texture2D: return D3D12_SRV_DIMENSION_TEXTURE2D;
+		case TextureType::RenderTexture: return D3D12_SRV_DIMENSION_TEXTURE2D;
+		case TextureType::TextureCube: return D3D12_SRV_DIMENSION_TEXTURECUBE;
+		default: return D3D12_SRV_DIMENSION_UNKNOWN;
+	}
+}
+
+static constexpr D3D12_UAV_DIMENSION TextureTypeToD3D12_UAV_DIMENSION(TextureType type)
+{
+	switch (type)
+	{
+		case TextureType::Texture2D: return D3D12_UAV_DIMENSION_TEXTURE2D;
+		case TextureType::RenderTexture: return D3D12_UAV_DIMENSION_TEXTURE2D;
+		case TextureType::TextureCube: return D3D12_UAV_DIMENSION_TEXTURE2DARRAY;
+		default: return D3D12_UAV_DIMENSION_UNKNOWN;
+	}
+}
+
+static constexpr D3D12_RTV_DIMENSION TextureTypeToD3D12_RTV_DIMENSION(TextureType type)
+{
+	switch (type)
+	{
+		case TextureType::Texture2D: return D3D12_RTV_DIMENSION_TEXTURE2D;
+		case TextureType::RenderTexture: return D3D12_RTV_DIMENSION_TEXTURE2D;
+		case TextureType::TextureCube: return D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
+		default: return D3D12_RTV_DIMENSION_UNKNOWN;
+	}
+}
+
+static constexpr D3D12_DSV_DIMENSION TextureTypeToD3D12_DSV_DIMENSION(TextureType type)
+{
+	switch (type)
+	{
+		case TextureType::Texture2D: return D3D12_DSV_DIMENSION_TEXTURE2D;
+		case TextureType::RenderTexture: return D3D12_DSV_DIMENSION_TEXTURE2D;
+		case TextureType::TextureCube: return D3D12_DSV_DIMENSION_TEXTURE2DARRAY;
+		default: return D3D12_DSV_DIMENSION_UNKNOWN;
 	}
 }
 

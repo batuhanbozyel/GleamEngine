@@ -53,7 +53,7 @@ MemoryRequirements GraphicsDevice::QueryMemoryRequirements(const HeapDescriptor&
 	};
 }
 
-Heap GraphicsDevice::AllocateHeap(const HeapDescriptor& descriptor) const
+Heap GraphicsDevice::AllocateHeap(const HeapDescriptor& descriptor)
 {
 	Heap heap(descriptor);
 	heap.mDevice = this;
@@ -71,7 +71,7 @@ Heap GraphicsDevice::AllocateHeap(const HeapDescriptor& descriptor) const
 	return heap;
 }
 
-Texture GraphicsDevice::AllocateTexture(const TextureDescriptor& descriptor) const
+Texture GraphicsDevice::AllocateTexture(const TextureDescriptor& descriptor)
 {
 	Texture texture(descriptor);
 
@@ -116,9 +116,9 @@ Texture GraphicsDevice::AllocateTexture(const TextureDescriptor& descriptor) con
 		.Width = (UINT64)descriptor.size.width,
 		.Height = (UINT64)descriptor.size.height,
 		.DepthOrArraySize = 1,
-		.MipLevels = texture.mMipMapLevels,
-		.Format = DXGI_FORMAT_UNKNOWN,
-		.SampleDesc = {.Count = descriptor.sampleCount, .Quality = 0 },
+		.MipLevels = (UINT16)texture.mMipMapLevels,
+		.Format = TextureFormatToDXGI_FORMAT(descriptor.format),
+		.SampleDesc = {.Count = 1, .Quality = 0 },
 		.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR,
 		.Flags = flags
 	};
@@ -131,6 +131,7 @@ Texture GraphicsDevice::AllocateTexture(const TextureDescriptor& descriptor) con
 		.VisibleNodeMask = 1
 	};
 
+	// TODO: Create MSAA texture
 	static_cast<ID3D12Device10*>(mHandle)->CreateCommittedResource(
 		&heapProperties,
 		D3D12_HEAP_FLAG_NONE,
@@ -140,8 +141,49 @@ Texture GraphicsDevice::AllocateTexture(const TextureDescriptor& descriptor) con
 		__uuidof(ID3D12Resource*),
 		&texture.mHandle
 	);
-	DirectXTransitionManager::SetLayout(static_cast<ID3D12Resource*>(texture.mHandle), initialState);
 
+	// Create RTV or DSV for attachments
+	if (descriptor.usage & TextureUsage_Attachment)
+	{
+		if (Utils::IsDepthFormat(descriptor.format))
+		{
+			auto& dsvHeap = static_cast<DirectXDevice*>(this)->mDsvHeap;
+			auto index = dsvHeap.heap.Allocate();
+
+			D3D12_CPU_DESCRIPTOR_HANDLE handle = dsvHeap.cpuHandle;
+			handle.ptr += (size_t)index.data * (size_t)dsvHeap.size;
+
+			D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
+			dsvDesc.Format = resourceDesc.Format;
+			dsvDesc.ViewDimension = TextureTypeToD3D12_DSV_DIMENSION(descriptor.type);
+			static_cast<ID3D12Device10*>(mHandle)->CreateDepthStencilView(static_cast<ID3D12Resource*>(texture.mHandle), &dsvDesc, handle);
+		}
+		else
+		{
+			auto& rtvHeap = static_cast<DirectXDevice*>(this)->mRtvHeap;
+			auto index = rtvHeap.heap.Allocate();
+
+			D3D12_CPU_DESCRIPTOR_HANDLE handle = rtvHeap.cpuHandle;
+			handle.ptr += (size_t)index.data * (size_t)rtvHeap.size;
+
+			D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
+			rtvDesc.Format = resourceDesc.Format;
+			rtvDesc.ViewDimension = TextureTypeToD3D12_RTV_DIMENSION(descriptor.type);
+			if (descriptor.type == TextureType::TextureCube)
+			{
+				rtvDesc.Texture2DArray = {
+					.MipSlice = 0,
+					.FirstArraySlice = 0,
+					.ArraySize = 6,
+					.PlaneSlice = 0
+				};
+			}
+			static_cast<ID3D12Device10*>(mHandle)->CreateRenderTargetView(static_cast<ID3D12Resource*>(texture.mHandle), &rtvDesc, handle);
+		}
+	}
+	
+	DirectXTransitionManager::SetLayout(static_cast<ID3D12Resource*>(texture.mHandle), initialState);
+	texture.mResourceView = CreateResourceView(texture);
 	return texture;
 }
 
@@ -157,28 +199,47 @@ Shader GraphicsDevice::GenerateShader(const TString& entryPoint, ShaderStage sta
 	D3D12_SHADER_BYTECODE* shaderBytecode = new D3D12_SHADER_BYTECODE;
 	shaderBytecode->pShaderBytecode = bytecode;
 	shaderBytecode->BytecodeLength = bytecodeLength;
-
-	shader.mReflection = CreateScope<Shader::Reflection>(this, shaderBytecode);
 	shader.mHandle = shaderBytecode;
 
 	return shader;
 }
 
-void GraphicsDevice::Dispose(Heap& heap) const
+void GraphicsDevice::Dispose(Heap& heap)
 {
 	static_cast<ID3D12Heap*>(heap.mHandle)->Release();
 	heap.mHandle = nullptr;
 }
 
-void GraphicsDevice::Dispose(Buffer& buffer) const
+void GraphicsDevice::Dispose(Buffer& buffer)
 {
+	auto& cbvSrvUavHeap = static_cast<DirectXDevice*>(this)->mCbvSrvUavHeap;
+	cbvSrvUavHeap.heap.Release(buffer.GetResourceView());
+
 	static_cast<ID3D12Resource*>(buffer.mHandle)->Release();
 	buffer.mContents = nullptr;
 	buffer.mHandle = nullptr;
 }
 
-void GraphicsDevice::Dispose(Texture& texture) const
+void GraphicsDevice::Dispose(Texture& texture)
 {
+	if (texture.GetDescriptor().usage & TextureUsage_Attachment)
+	{
+		if (Utils::IsDepthFormat(texture.GetDescriptor().format))
+		{
+			auto& dsvHeap = static_cast<DirectXDevice*>(this)->mDsvHeap;
+			dsvHeap.heap.Release(dsvHeap.GetResourceIndex(texture.GetView()));
+		}
+		else
+		{
+			auto& rtvHeap = static_cast<DirectXDevice*>(this)->mRtvHeap;
+			rtvHeap.heap.Release(rtvHeap.GetResourceIndex(texture.GetView()));
+		}
+
+	}
+
+	auto& cbvSrvUavHeap = static_cast<DirectXDevice*>(this)->mCbvSrvUavHeap;
+	cbvSrvUavHeap.heap.Release(texture.GetResourceView());
+
 	static_cast<ID3D12Resource*>(texture.mHandle)->Release();
 	texture.mHandle = nullptr;
 }
@@ -210,9 +271,8 @@ DirectXDevice::DirectXDevice()
 
 	mRtvHeap = CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_RTV, D3D12_DESCRIPTOR_HEAP_FLAG_NONE, 8192);
 	mDsvHeap = CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_DSV, D3D12_DESCRIPTOR_HEAP_FLAG_NONE, 8192);
-	mCbvSrvUavHeap = CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE, 128 * 1024);
-	
-	DX_CHECK(DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&mDxcUtils)));
+	mCbvSrvUavHeap = CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE, 128 * 1024 * 2);
+
 	DirectXPipelineStateManager::Init(this);
 
 	GLEAM_CORE_INFO("DirectX: Graphics device created.");
@@ -231,8 +291,10 @@ DirectXDevice::~DirectXDevice()
 	for (auto& ctx : mFrameContext)
 	{
 		ctx.commandPool.Release();
-		ctx.renderTarget->Release();
 		ctx.fence->Release();
+
+		ctx.drawable.renderTarget->Release();
+		mRtvHeap.heap.Release(mRtvHeap.GetResourceIndex(ctx.drawable.view));
 	}
 	mFrameContext.clear();
 
@@ -246,7 +308,6 @@ DirectXDevice::~DirectXDevice()
 	mComputeQueue->Release();
 	mCopyQueue->Release();
 
-	mDxcUtils->Release();
 	mSwapchain->Release();
 	mFactory->Release();
 	mAdapter->Release();
@@ -272,8 +333,10 @@ void DirectXDevice::Configure(const RendererConfig& config)
 		for (auto& ctx : mFrameContext)
 		{
 			ctx.commandPool.Release();
-			ctx.renderTarget->Release();
 			ctx.fence->Release();
+
+			ctx.drawable.renderTarget->Release();
+			mRtvHeap.heap.Release(mRtvHeap.GetResourceIndex(ctx.drawable.view));
 		}
 		mFrameContext.clear();
         
@@ -308,18 +371,19 @@ void DirectXDevice::Configure(const RendererConfig& config)
 		swapchain1->Release();
 	}
 
-	D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle(mRtvHeap.handle->GetCPUDescriptorHandleForHeapStart());
-
 	mFrameContext.resize(mMaxFramesInFlight);
     mPooledObjects.resize(mMaxFramesInFlight);
 	for (uint32_t i = 0; i < mMaxFramesInFlight; i++)
 	{
 		auto& ctx = mFrameContext[i];
 
+		auto index = mRtvHeap.heap.Allocate();
+		ctx.drawable.view = mRtvHeap.cpuHandle;
+		ctx.drawable.view.ptr += (size_t)index.data * (size_t)mRtvHeap.size;
+
 		// create swapchain RTV
-		DX_CHECK(mSwapchain->GetBuffer(i, IID_PPV_ARGS(&ctx.renderTarget)));
-		static_cast<ID3D12Device10*>(mHandle)->CreateRenderTargetView(ctx.renderTarget, nullptr, rtvHandle);
-		rtvHandle.ptr += mRtvHeap.size;
+		DX_CHECK(mSwapchain->GetBuffer(i, IID_PPV_ARGS(&ctx.drawable.renderTarget)));
+		static_cast<ID3D12Device10*>(mHandle)->CreateRenderTargetView(ctx.drawable.renderTarget, nullptr, ctx.drawable.view);
 
 		// create fence
 		DX_CHECK(static_cast<ID3D12Device10*>(mHandle)->CreateFence(
@@ -335,12 +399,7 @@ DirectXDrawable DirectXDevice::AcquireNextDrawable()
 {
 	auto& ctx = mFrameContext[mCurrentFrameIndex];
 	WaitForID3D12Fence(ctx.fence, ctx.frameCount);
-
-	DirectXDrawable drawable{};
-	drawable.descriptor = mRtvHeap.handle->GetCPUDescriptorHandleForHeapStart();
-	drawable.descriptor.ptr = drawable.descriptor.ptr + SIZE_T(mCurrentFrameIndex * mRtvHeap.size);
-	drawable.renderTarget = ctx.renderTarget;
-	return drawable;
+	return ctx.drawable;
 }
 
 void DirectXDevice::Present(const CommandBuffer* cmd)
@@ -353,7 +412,7 @@ void DirectXDevice::Present(const CommandBuffer* cmd)
 	barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
 	barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
 	barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
-	barrier.Transition.pResource = ctx.renderTarget;
+	barrier.Transition.pResource = ctx.drawable.renderTarget;
 
 	static_cast<ID3D12GraphicsCommandList7*>(cmd->GetHandle())->ResourceBarrier(1, &barrier);
 	cmd->Commit();
@@ -415,11 +474,82 @@ DirectXDescriptorHeap DirectXDevice::CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_
 	desc.NumDescriptors = capacity;
 
 	DirectXDescriptorHeap heap{};
+	heap.heap = ResourceDescriptorHeap(capacity);
 	DX_CHECK(static_cast<ID3D12Device10*>(mHandle)->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&heap.handle)));
 	heap.size = static_cast<ID3D12Device10*>(mHandle)->GetDescriptorHandleIncrementSize(type);
 	heap.cpuHandle = heap.handle->GetCPUDescriptorHandleForHeapStart();
 	heap.gpuHandle = heap.handle->GetGPUDescriptorHandleForHeapStart();
 	return heap;
+}
+
+ShaderResourceIndex DirectXDevice::CreateResourceView(const Buffer& buffer)
+{
+	auto index = mCbvSrvUavHeap.heap.Allocate();
+	index.data *= 2;
+
+	D3D12_CPU_DESCRIPTOR_HANDLE handle = mCbvSrvUavHeap.cpuHandle;
+	handle.ptr += (size_t)index.data * (size_t)mCbvSrvUavHeap.size;
+
+	// SRV
+	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+	srvDesc.Format = DXGI_FORMAT_R32_TYPELESS;
+	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+	srvDesc.Buffer.FirstElement = 0;
+	srvDesc.Buffer.NumElements = (UINT)buffer.GetDescriptor().size >> 2;
+	srvDesc.Buffer.StructureByteStride = 0;
+	srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_RAW;
+	static_cast<ID3D12Device10*>(mHandle)->CreateShaderResourceView(static_cast<ID3D12Resource*>(buffer.GetHandle()), &srvDesc, handle);
+
+	handle.ptr += mCbvSrvUavHeap.size;
+
+	// UAV
+	D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
+	uavDesc.Format = DXGI_FORMAT_R32_TYPELESS;
+	uavDesc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
+	uavDesc.Buffer.FirstElement = 0;
+	uavDesc.Buffer.NumElements = (UINT)buffer.GetDescriptor().size >> 2;
+	uavDesc.Buffer.StructureByteStride = 0;
+	uavDesc.Buffer.CounterOffsetInBytes = 0;
+	uavDesc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_RAW;
+	static_cast<ID3D12Device10*>(mHandle)->CreateUnorderedAccessView(static_cast<ID3D12Resource*>(buffer.GetHandle()), nullptr, &uavDesc, handle);
+	return index;
+}
+
+ShaderResourceIndex DirectXDevice::CreateResourceView(const Texture& texture)
+{
+	auto index = mCbvSrvUavHeap.heap.Allocate();
+	index.data *= 2;
+
+	D3D12_CPU_DESCRIPTOR_HANDLE handle = mCbvSrvUavHeap.cpuHandle;
+	handle.ptr += (size_t)index.data * (size_t)mCbvSrvUavHeap.size;
+
+	// SRV
+	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+	srvDesc.Format = DXGI_FORMAT_R32_TYPELESS;
+	srvDesc.ViewDimension = TextureTypeToD3D12_SRV_DIMENSION(texture.GetDescriptor().type);
+	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+	/*
+	* TODO:
+	*/
+	static_cast<ID3D12Device10*>(mHandle)->CreateShaderResourceView(static_cast<ID3D12Resource*>(texture.GetHandle()), &srvDesc, handle);
+
+	handle.ptr += mCbvSrvUavHeap.size;
+
+	// UAV
+	D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
+	uavDesc.Format = DXGI_FORMAT_R32_TYPELESS;
+	uavDesc.ViewDimension = TextureTypeToD3D12_UAV_DIMENSION(texture.GetDescriptor().type);
+	/*
+	* TODO:
+	*/
+	static_cast<ID3D12Device10*>(mHandle)->CreateUnorderedAccessView(static_cast<ID3D12Resource*>(texture.GetHandle()), nullptr, &uavDesc, handle);
+	return index;
+}
+
+void DirectXDevice::ReleaseResourceView(ShaderResourceIndex view)
+{
+	mCbvSrvUavHeap.heap.Release(view);
 }
 
 const DirectXDescriptorHeap& DirectXDevice::GetCbvSrvUavHeap() const
@@ -442,18 +572,13 @@ ID3D12CommandQueue* DirectXDevice::GetCopyQueue() const
 	return mCopyQueue;
 }
 
-IDxcUtils* DirectXDevice::GetDxcUtils() const
-{
-	return mDxcUtils;
-}
-
-void DirectXDevice::CommandPool::Reset()
+void DirectXCommandPool::Reset()
 {
 	freeCommandLists.insert(freeCommandLists.end(), usedCommandLists.begin(), usedCommandLists.end());
 	usedCommandLists.clear();
 }
 
-void DirectXDevice::CommandPool::Release()
+void DirectXCommandPool::Release()
 {
 	for (auto& cmd : usedCommandLists)
 	{
@@ -466,6 +591,13 @@ void DirectXDevice::CommandPool::Release()
 		cmd.handle->Release();
 		cmd.allocator->Release();
 	}
+}
+
+ShaderResourceIndex DirectXDescriptorHeap::GetResourceIndex(D3D12_CPU_DESCRIPTOR_HANDLE view)
+{
+	ShaderResourceIndex index;
+	index.data = (UINT)((view.ptr - handle->GetCPUDescriptorHandleForHeapStart().ptr) / (SIZE_T)size);
+	return index;
 }
 
 #endif
