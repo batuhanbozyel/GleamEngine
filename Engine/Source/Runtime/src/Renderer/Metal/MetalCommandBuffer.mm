@@ -3,7 +3,6 @@
 #ifdef USE_METAL_RENDERER
 #include "Renderer/CommandBuffer.h"
 #include "MetalPipelineStateManager.h"
-#include "MetalShaderReflect.h"
 #include "Core/Application.h"
 
 #include <metal_irconverter_runtime/metal_irconverter_runtime.h>

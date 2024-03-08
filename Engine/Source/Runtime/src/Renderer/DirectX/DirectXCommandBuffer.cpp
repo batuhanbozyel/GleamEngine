@@ -5,7 +5,6 @@
 
 #include "DirectXPipelineStateManager.h"
 #include "DirectXTransitionManager.h"
-#include "DirectXShaderReflect.h"
 #include "DirectXDevice.h"
 #include "DirectXUtils.h"
 

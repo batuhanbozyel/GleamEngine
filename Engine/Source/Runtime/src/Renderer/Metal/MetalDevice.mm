@@ -2,7 +2,6 @@
 
 #ifdef USE_METAL_RENDERER
 #include "MetalDevice.h"
-#include "MetalShaderReflect.h"
 #include "MetalPipelineStateManager.h"
 
 #include "Core/WindowSystem.h"
@@ -130,7 +129,6 @@ Shader GraphicsDevice::GenerateShader(const TString& entryPoint, ShaderStage sta
     
     NSString* functionName = [NSString stringWithCString:entryPoint.c_str() encoding:NSASCIIStringEncoding];
     shader.mHandle = [library newFunctionWithName:functionName];
-    shader.mReflection = CreateRef<Shader::Reflection>(metalIR);
     
     // Clean up
     IRMetalLibBinaryDestroy(metallibBinary);

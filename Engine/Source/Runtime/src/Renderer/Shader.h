@@ -40,15 +40,7 @@ public:
         return mEntryPoint;
     }
 
-    struct Reflection;
-    const Reflection* GetReflection() const
-    {
-        return mReflection.get();
-    }
-
 private:
-    
-    RefCounted<Reflection> mReflection;
 
     ShaderStage mStage;
     TString mEntryPoint;

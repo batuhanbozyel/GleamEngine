@@ -2,7 +2,6 @@
 
 #ifdef USE_DIRECTX_RENDERER
 #include "DirectXPipelineStateManager.h"
-#include "DirectXShaderReflect.h"
 #include "DirectXUtils.h"
 
 using namespace Gleam;

@@ -3,7 +3,6 @@
 #ifdef USE_DIRECTX_RENDERER
 #include "DirectXDevice.h"
 #include "DirectXUtils.h"
-#include "DirectXShaderReflect.h"
 #include "DirectXTransitionManager.h"
 #include "DirectXPipelineStateManager.h"
 
