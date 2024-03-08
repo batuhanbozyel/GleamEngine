@@ -18,6 +18,8 @@ using float4 = Gleam::Vector4;
 namespace Gleam {
 
 #define InvalidResourceIndex ShaderResourceIndex(-1)
+#define SRVIndex(index) (index)
+#define UAVIndex(index) (index + 1)
 
 #ifdef __cplusplus
 struct ShaderResourceIndex
@@ -45,19 +47,99 @@ struct ShaderResourceIndex
     }
 };
 #else
-using ShaderResourceIndex = uint;
+typedef uint ShaderResourceIndex;
 #endif
 
-struct CameraUniforms
+struct ConstantBufferView
 {
-	float4x4 viewMatrix;
-	float4x4 projectionMatrix;
-	float4x4 viewProjectionMatrix;
-	float4x4 invViewMatrix;
-	float4x4 invProjectionMatrix;
-	float4x4 invViewProjectionMatrix;
+	ShaderResourceIndex index;
 
-	float3 worldPosition;
+#ifdef __HLSL_VERSION
+	template<typename T>
+	T Load()
+	{
+		ByteAddressBuffer buffer = ResourceDescriptorHeap[SRVIndex(index)];
+		return buffer.Load<T>(0);
+	}
+#else
+	ConstantBufferView& operator=(ShaderResourceIndex other)
+	{
+		index = other;
+		return *this;
+	}
+#endif
+};
+
+struct BufferResourceView
+{
+	ShaderResourceIndex index;
+
+#ifdef __HLSL_VERSION
+	template<typename T>
+	T Load(uint id)
+	{
+		ByteAddressBuffer buffer = ResourceDescriptorHeap[SRVIndex(index)];
+		return buffer.Load<T>(sizeof(T) * id);
+	}
+#else
+	BufferResourceView& operator=(ShaderResourceIndex other)
+	{
+		index = other;
+		return *this;
+	}
+#endif
+};
+
+template<typename T>
+struct Texture2DResourceView
+{
+	ShaderResourceIndex index;
+
+#ifdef __HLSL_VERSION
+	T Load(uint2 pos)
+	{
+		Texture2D<T> texture = ResourceDescriptorHeap[SRVIndex(index)];
+		return texture.Load(uint3(pos, 0));
+	}
+
+	T Sample(SamplerState sampler, float2 uv, float mip = 0.0f)
+	{
+		Texture2D<T> texture = ResourceDescriptorHeap[SRVIndex(index)];
+		return texture.Sample(sampler, uv, mip);
+	}
+#else
+	Texture2DResourceView& operator=(ShaderResourceIndex other)
+	{
+		index = other;
+		return *this;
+	}
+#endif
+};
+
+template<typename T>
+struct Texture3DResourceView
+{
+	ShaderResourceIndex index;
+
+#ifdef __HLSL_VERSION
+	T Load(uint3 pos)
+	{
+		Texture3D<T> texture = ResourceDescriptorHeap[SRVIndex(index)];
+		return texture.Load(uint4(pos, 0));
+	}
+
+	T Sample(SamplerState sampler, float3 uv, float mip = 0.0f)
+	{
+		Texture3D<T> texture = ResourceDescriptorHeap[SRVIndex(index)];
+		return texture.Sample(sampler, uv, mip);
+	}
+#else
+	Texture3DResourceView& operator=(ShaderResourceIndex other)
+	{
+		index = other;
+		return *this;
+	}
+#endif
 };
 
 } // namespace Gleam

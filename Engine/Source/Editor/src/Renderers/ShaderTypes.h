@@ -8,7 +8,7 @@ namespace GEditor {
 
 struct InfiniteGridUniforms
 {
-    Gleam::ShaderResourceIndex cameraBuffer;
+    Gleam::ConstantBufferView cameraBuffer;
     
 	uint32_t majorGridDivision;
 

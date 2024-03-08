@@ -12,14 +12,12 @@ PUSH_CONSTANT(Gleam::ForwardPassUniforms, uniforms);
 
 VertexOut forwardPassVertexShader(uint vertex_id: SV_VertexID)
 {
-    StructuredBuffer<float3> PositionBuffer = ResourceDescriptorHeap[uniforms.positionBuffer];
-    StructuredBuffer<Gleam::InterleavedMeshVertex> InterleavedBuffer = ResourceDescriptorHeap[uniforms.interleavedBuffer];
-    ConstantBuffer<Gleam::CameraUniforms> CameraBuffer = ResourceDescriptorHeap[uniforms.cameraBuffer];
-    
-    Gleam::InterleavedMeshVertex interleavedVert = InterleavedBuffer[vertex_id];
+    Gleam::CameraUniforms CameraBuffer = uniforms.cameraBuffer.Load<Gleam::CameraUniforms>();
+    Gleam::InterleavedMeshVertex interleavedVert = uniforms.interleavedBuffer.Load<Gleam::InterleavedMeshVertex>(vertex_id);
+    float3 position = uniforms.positionBuffer.Load<float3>(vertex_id);
 
     VertexOut OUT;
-    OUT.position = mul(CameraBuffer.viewProjectionMatrix, mul(uniforms.modelMatrix, float4(PositionBuffer[vertex_id].xyz, 1.0f)));
+    OUT.position = mul(CameraBuffer.viewProjectionMatrix, mul(uniforms.modelMatrix, float4(position, 1.0f)));
     OUT.normal = interleavedVert.normal.xyz;
     OUT.texCoord = interleavedVert.texCoord;
     return OUT;

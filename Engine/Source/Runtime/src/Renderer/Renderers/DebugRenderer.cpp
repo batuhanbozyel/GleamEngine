@@ -169,7 +169,7 @@ void DebugRenderer::RenderMeshes(const CommandBuffer* cmd, const BufferHandle& c
 		const auto& meshBuffer = debugMesh.mesh->GetBuffer();
         
         DebugShaderResources resources;
-        resources.vertexBuffer = meshBuffer.GetPositionBuffer();
+        resources.vertexBuffer = meshBuffer.GetPositionBuffer().GetResourceView();
         resources.cameraBuffer = cameraBuffer;
         cmd->SetConstantBuffer(resources, 0);
 

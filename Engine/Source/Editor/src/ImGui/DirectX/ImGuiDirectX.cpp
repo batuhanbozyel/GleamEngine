@@ -52,7 +52,7 @@ void ImGuiBackend::EndFrame(NativeGraphicsHandle commandBuffer, NativeGraphicsHa
 
 ImTextureID ImGuiBackend::GetImTextureIDForTexture(const Gleam::Texture& texture)
 {
-	return (ImTextureID)texture.GetView();
+	return (ImTextureID)texture.GetHandle();
 }
 
 #endif

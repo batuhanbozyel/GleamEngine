@@ -24,7 +24,7 @@ public:
         
     }
     
-    NativeGraphicsHandle GetView() const
+	NativeGraphicsResourceView GetView() const
     {
         return mView;
     }
@@ -34,7 +34,7 @@ public:
 		return mMultisampleHandle;
 	}
 
-	NativeGraphicsHandle GetMSAAView() const
+	NativeGraphicsResourceView GetMSAAView() const
 	{
 		return mMultisampleView;
 	}
@@ -59,12 +59,12 @@ private:
     uint32_t mMipMapLevels = 1;
     TextureDescriptor mDescriptor;
 	NativeGraphicsHandle mHeap = nullptr;
-    NativeGraphicsHandle mView = nullptr;
+	NativeGraphicsResourceView mView;
 
 	// multisample
 	NativeGraphicsHandle mMultisampleHeap = nullptr;
-	NativeGraphicsHandle mMultisampleView = nullptr;
 	NativeGraphicsHandle mMultisampleHandle = nullptr;
+	NativeGraphicsResourceView mMultisampleView;
     
 };
 

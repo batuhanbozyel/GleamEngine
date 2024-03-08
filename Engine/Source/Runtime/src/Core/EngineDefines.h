@@ -27,16 +27,20 @@
 #endif
 
 #if defined(USE_DIRECTX_RENDERER)
+#include <d3d12.h>
 using NativeGraphicsHandle = void*;
+using NativeGraphicsResourceView = D3D12_CPU_DESCRIPTOR_HANDLE;
 using DispatchSemaphore = NativeGraphicsHandle;
 #elif defined(USE_VULKAN_RENDERER)
 #define VULKAN_API_VERSION VK_API_VERSION_1_1
 using NativeGraphicsHandle = void*;
+using NativeGraphicsResourceView = void*;
 using DispatchSemaphore = NativeGraphicsHandle;
 #else
 #include <objc/objc-runtime.h>
 #include <dispatch/dispatch.h>
 using NativeGraphicsHandle = id;
+using NativeGraphicsResourceView = id;
 using DispatchSemaphore = dispatch_semaphore_t;
 #endif
 
