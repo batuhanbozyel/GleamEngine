@@ -139,10 +139,16 @@ void CommandBuffer::BindGraphicsPipeline(const PipelineStateDescriptor& pipeline
         [mHandle->renderCommandEncoder setRenderPipelineState:mHandle->pipeline->handle];
     }
     [mHandle->renderCommandEncoder setCullMode:CullModeToMTLCullMode(pipelineDesc.cullingMode)];
+    
     // Descriptor heap
     [mHandle->renderCommandEncoder setVertexBuffer:mHandle->device->GetCbvSrvUavHeap() offset:0 atIndex:kIRDescriptorHeapBindPoint];
     [mHandle->renderCommandEncoder setFragmentBuffer:mHandle->device->GetCbvSrvUavHeap() offset:0 atIndex:kIRDescriptorHeapBindPoint];
+    
     // Top-level argument buffer
+    if (mHandle->topLevelArgumentBuffer.IsValid())
+    {
+        mDevice->Dispose(mHandle->topLevelArgumentBuffer);
+    }
     mHandle->topLevelArgumentBuffer = mStagingHeap.CreateBuffer({ .size = MetalPipelineStateManager::GetTopLevelArgumentBufferSize() });
     [mHandle->renderCommandEncoder setVertexBuffer:mHandle->topLevelArgumentBuffer.GetHandle() offset:0 atIndex:kIRArgumentBufferBindPoint];
     [mHandle->renderCommandEncoder setFragmentBuffer:mHandle->topLevelArgumentBuffer.GetHandle() offset:0 atIndex:kIRArgumentBufferBindPoint];
@@ -223,8 +229,13 @@ void CommandBuffer::End() const
 void CommandBuffer::Commit() const
 {
     [mHandle->commandBuffer commit];
-    mStagingHeap.Reset();
     mCommitted = true;
+    
+    if (mHandle->topLevelArgumentBuffer.IsValid())
+    {
+        mDevice->Dispose(mHandle->topLevelArgumentBuffer);
+    }
+    mStagingHeap.Reset();
 }
 
 void CommandBuffer::WaitUntilCompleted() const

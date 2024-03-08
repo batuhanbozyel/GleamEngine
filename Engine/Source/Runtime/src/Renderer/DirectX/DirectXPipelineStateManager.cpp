@@ -127,7 +127,7 @@ void DirectXPipelineStateManager::Init(DirectXDevice* device)
       .Constants = {
           .ShaderRegister = PUSH_CONSTANT_REGISTER,
           .RegisterSpace = 0,
-          .Num32BitValues = 4
+          .Num32BitValues = PUSH_CONSTANT_SIZE / sizeof(uint32_t)
       },
       .ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL
     };

@@ -215,8 +215,12 @@ void RenderGraph::Execute(const CommandBuffer* cmd)
             
 #ifdef USE_METAL_RENDERER
             [cmd->GetActiveRenderPass() useHeap:heap.GetHandle()];
-#endif
             
+            for (auto& resource : pass->textureReads)
+            {
+                [cmd->GetActiveRenderPass() useResource:resource.node->texture.GetView() usage:MTLResourceUsageRead stages:MTLRenderStageVertex | MTLRenderStageFragment];
+            }
+#endif
             std::invoke(pass->callback, cmd);
             cmd->EndRenderPass();
         }

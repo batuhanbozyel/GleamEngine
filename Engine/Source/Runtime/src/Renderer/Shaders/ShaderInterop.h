@@ -10,6 +10,7 @@ using float4 = Gleam::Vector4;
 #endif
 
 #ifndef __spirv__
+#define PUSH_CONSTANT_SIZE 64
 #define PUSH_CONSTANT_SLOT 9
 #define PUSH_CONSTANT_REGISTER 999
 #endif

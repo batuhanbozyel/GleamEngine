@@ -55,6 +55,7 @@ public:
     template<typename T>
     void SetPushConstant(const T& t) const
     {
+        static_assert(sizeof(T) <= PUSH_CONSTANT_SIZE, "Push constant limit is 64 bytes.");
         SetPushConstant(&t, sizeof(T));
     }
 
