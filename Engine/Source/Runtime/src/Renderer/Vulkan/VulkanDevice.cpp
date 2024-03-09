@@ -132,7 +132,7 @@ Texture GraphicsDevice::AllocateTexture(const TextureDescriptor& descriptor) con
 
 	VkImageCreateInfo createInfo{ VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
 	VkImageUsageFlags usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
-	if (descriptor.type == TextureType::TextureCube)
+	if (descriptor.dimension == TextureDimension::TextureCube)
 	{
 		float size = Math::Min(descriptor.size.width, descriptor.size.height);
 		texture.mDescriptor.size.width = size;
@@ -144,7 +144,7 @@ Texture GraphicsDevice::AllocateTexture(const TextureDescriptor& descriptor) con
 	else
 	{
 		createInfo.imageType = VK_IMAGE_TYPE_2D;
-		createInfo.usage = descriptor.type == TextureType::RenderTexture ? usage | (Utils::IsColorFormat(descriptor.format) ? VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT : VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) : usage;
+		createInfo.usage = descriptor.dimension == TextureDimension::RenderTexture ? usage | (Utils::IsColorFormat(descriptor.format) ? VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT : VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) : usage;
 	}
 	createInfo.format = TextureFormatToVkFormat(descriptor.format);
 	createInfo.extent.width = static_cast<uint32_t>(descriptor.size.width);
@@ -164,7 +164,7 @@ Texture GraphicsDevice::AllocateTexture(const TextureDescriptor& descriptor) con
 
 	VkImageViewCreateInfo viewCreateInfo{ VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
 	viewCreateInfo.image = static_cast<VkImage>(texture.mHandle);
-	viewCreateInfo.viewType = descriptor.type == TextureType::TextureCube ? VK_IMAGE_VIEW_TYPE_CUBE : VK_IMAGE_VIEW_TYPE_2D;
+	viewCreateInfo.viewType = descriptor.dimension == TextureDimension::TextureCube ? VK_IMAGE_VIEW_TYPE_CUBE : VK_IMAGE_VIEW_TYPE_2D;
 	viewCreateInfo.format = createInfo.format;
 	viewCreateInfo.components = {
 		VK_COMPONENT_SWIZZLE_IDENTITY,

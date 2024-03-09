@@ -6,8 +6,6 @@ enum class TextureFormat
 {
 	None,
 
-	R8_SRGB,
-	R8G8_SRGB,
 	R8G8B8A8_SRGB,
 
 	R8_UNorm,
@@ -74,8 +72,6 @@ static constexpr size_t GetTextureFormatSizeInBytes(TextureFormat format)
 {
 	switch (format)
 	{
-		case TextureFormat::R8_SRGB: return 1;
-		case TextureFormat::R8G8_SRGB: return 2;
 		case TextureFormat::R8G8B8A8_SRGB: return 4;
 
 		case TextureFormat::R8_UNorm: return 1;
@@ -143,8 +139,6 @@ static constexpr bool IsColorFormat(TextureFormat format)
 {
 	switch (format)
 	{
-		case TextureFormat::R8_SRGB:
-		case TextureFormat::R8G8_SRGB:
 		case TextureFormat::R8G8B8A8_SRGB:
 
 		case TextureFormat::R8_UNorm:

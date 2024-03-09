@@ -138,6 +138,7 @@ void CommandBuffer::BindGraphicsPipeline(const PipelineStateDescriptor& pipeline
         [mHandle->renderCommandEncoder setRenderPipelineState:mHandle->pipeline->handle];
     }
     [mHandle->renderCommandEncoder setCullMode:CullModeToMTLCullMode(pipelineDesc.cullingMode)];
+    [mHandle->renderCommandEncoder setTriangleFillMode:pipelineDesc.wireframe ? MTLTriangleFillModeLines : MTLTriangleFillModeFill];
     
     // Descriptor heap
     [mHandle->renderCommandEncoder setVertexBuffer:mHandle->device->GetCbvSrvUavHeap() offset:0 atIndex:kIRDescriptorHeapBindPoint];
@@ -197,10 +198,10 @@ void CommandBuffer::CopyBuffer(const NativeGraphicsHandle src, const NativeGraph
     [blitCommandEncoder endEncoding];
 }
 
-void CommandBuffer::Blit(const Texture& texture, const Texture& target) const
+void CommandBuffer::Blit(const Texture& source, const Texture& destination) const
 {
-    id<MTLTexture> srcTexture = texture.GetHandle();
-    id<MTLTexture> dstTexture = target.IsValid() ? target.GetHandle() : mHandle->device->AcquireNextDrawable().texture;
+    id<MTLTexture> srcTexture = source.GetHandle();
+    id<MTLTexture> dstTexture = destination.IsValid() ? destination.GetHandle() : mHandle->device->AcquireNextDrawable().texture;
 
     id<MTLBlitCommandEncoder> blitCommandEncoder = [mHandle->commandBuffer blitCommandEncoder];
     [blitCommandEncoder setLabel:TO_NSSTRING("CommandBuffer::Blit")];

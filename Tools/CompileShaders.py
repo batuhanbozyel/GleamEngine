@@ -4,18 +4,17 @@ import platform
 import subprocess
 cmd = subprocess.run
 
-VULKAN_SDK = os.getenv("VULKAN_SDK")
 SCRIPT_DIRECTORY = os.path.dirname(os.path.realpath(__file__))
 RUNTIME_INCLUDE_DIRECTORY = f"{SCRIPT_DIRECTORY}/../Engine/Source/Runtime/src/Renderer/Shaders"
 
 if platform.system() == "Darwin":
     global DXC
+    global RENDERER_API
     DXC = f"{SCRIPT_DIRECTORY}/dxc/bin/dxc"
+    RENDERER_API = "USE_METAL_RENDERER"
 else:
-    if VULKAN_SDK is None:
-        DXC = f"{SCRIPT_DIRECTORY}/dxc/bin/dxc.exe"
-    else:
-        DXC = f"{VULKAN_SDK}/bin/dxc"
+    DXC = f"{SCRIPT_DIRECTORY}/dxc/bin/dxc.exe"
+    RENDERER_API = "USE_DIRECTX_RENDERER"
 
 HLSL_SHADER_STAGE = {}
 HLSL_SHADER_STAGE["vertex"] = "vs_6_6"
@@ -25,15 +24,16 @@ HLSL_SHADER_STAGE["compute"] = "cs_6_6"
 def compile_shader(hlsl_file: str, entry_point: str, shader_stage: str, output_dir: str):
     compile_command = [DXC, hlsl_file,
                        "-HV", "2021",
+                       "-D", RENDERER_API,
                        "-T", HLSL_SHADER_STAGE[shader_stage],
                        "-I", RUNTIME_INCLUDE_DIRECTORY,
                        "-E", entry_point,
                        "-Fo", f"{output_dir}/{entry_point}.dxil"]
-    cmd(compile_command)
     try:
+        print(f"Compiling HLSL file {os.path.basename(hlsl_file)} for {shader_stage} stage, entry point: {entry_point}")
         cmd(compile_command, stderr=subprocess.PIPE, check=True)
     except subprocess.CalledProcessError:
-        raise RuntimeError(f"Compilation stopped due to error in shader: {entry_point}")
+        raise RuntimeError(f"Compilation stopped due to error in shader")
 
 if __name__ == "__main__":
     if len(sys.argv) < 5 or (len(sys.argv) - 2) % 3 != 0:

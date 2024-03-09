@@ -22,18 +22,16 @@ Buffer Heap::CreateBuffer(const BufferDescriptor& descriptor) const
 	}
 	mStackPtr = newStackPtr;
 
-	auto initialState = D3D12_RESOURCE_STATE_GENERIC_READ;
 	auto flags = D3D12_RESOURCE_FLAG_NONE;
-
 	if (descriptor.usage == BufferUsage::StorageBuffer)
 	{
-		initialState |= D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
 		flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
 	}
 
-	if (mDescriptor.memoryType == MemoryType::GPU)
+	auto initialState = D3D12_RESOURCE_STATE_COMMON;
+	if (descriptor.usage == BufferUsage::StagingBuffer)
 	{
-		initialState |= D3D12_RESOURCE_STATE_COPY_DEST | D3D12_RESOURCE_STATE_COPY_SOURCE;
+		initialState = D3D12_RESOURCE_STATE_COPY_SOURCE;
 	}
 
 	D3D12_RESOURCE_DESC resourceDesc = {
@@ -50,15 +48,14 @@ Buffer Heap::CreateBuffer(const BufferDescriptor& descriptor) const
 	};
 
 	ID3D12Resource* resource = nullptr;
-	static_cast<ID3D12Device10*>(mDevice->GetHandle())->CreatePlacedResource(
+	DX_CHECK(static_cast<ID3D12Device10*>(mDevice->GetHandle())->CreatePlacedResource(
 		static_cast<ID3D12Heap*>(mHandle),
 		alignedStackPtr,
 		&resourceDesc,
 		initialState,
 		nullptr,
 		IID_PPV_ARGS(&resource)
-	);
-	DirectXTransitionManager::SetLayout(resource, initialState);
+	));
 
     void* contents = nullptr;
     if (mDescriptor.memoryType != MemoryType::GPU)
@@ -66,7 +63,7 @@ Buffer Heap::CreateBuffer(const BufferDescriptor& descriptor) const
 		DX_CHECK(resource->Map(0, nullptr, &contents));
 	}
 	Buffer buffer(resource, descriptor, contents);
-	buffer.mResourceView = static_cast<DirectXDevice*>(mDevice)->CreateResourceView(buffer);
+	buffer.mResourceView = descriptor.usage == BufferUsage::StagingBuffer ? InvalidResourceIndex : static_cast<DirectXDevice*>(mDevice)->CreateResourceView(buffer);
     return buffer;
 }
 

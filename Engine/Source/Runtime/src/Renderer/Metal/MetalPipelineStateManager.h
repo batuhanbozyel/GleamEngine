@@ -45,8 +45,6 @@ private:
 
     static id<MTLDepthStencilState> CreateDepthStencil(const PipelineStateDescriptor& pipelineDesc);
 
-    static inline TArray<IRStaticSamplerDescriptor, 12> mStaticSamplerDescs;
-
     static inline HashMap<size_t, Scope<MetalGraphicsPipeline>> mGraphicsPipelineCache;
     
     static inline IRRootSignature* mRootSignature = nullptr;

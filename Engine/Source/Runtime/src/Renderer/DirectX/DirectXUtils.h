@@ -9,7 +9,26 @@
 
 namespace Gleam {
 
-#define DX_CHECK(x) GLEAM_ASSERT(SUCCEEDED((x)))
+#define DX_CHECK(x) {HRESULT result = (x);\
+					GLEAM_ASSERT(SUCCEEDED(result), HRESULTtoString(x));}
+
+static constexpr const char* HRESULTtoString(HRESULT result)
+{
+	switch (result)
+	{
+		case E_ABORT:			return "Operation aborted";
+		case E_ACCESSDENIED:	return "General access denied error";
+		case E_FAIL:			return "Unspecified failure";
+		case E_HANDLE:			return "Handle that is not valid";
+		case E_INVALIDARG:		return "One or more arguments are not valid";
+		case E_NOINTERFACE:		return "No such interface supported";
+		case E_NOTIMPL:			return "Not implemented";
+		case E_OUTOFMEMORY:		return "Failed to allocate necessary memory";
+		case E_POINTER:			return "Pointer that is not valid";
+		case E_UNEXPECTED:		return "Unexpected failure";
+		default:				return "UNKNOWN DIRECTX ERROR";
+	}
+}
 
 static void WaitForID3D12Fence(ID3D12Fence* fence, uint32_t value)
 {
@@ -28,9 +47,7 @@ static constexpr TextureFormat DXGI_FORMATtoTextureFormat(DXGI_FORMAT format)
 {
 	switch (format)
 	{
-		case DXGI_FORMAT_R8_TYPELESS: return TextureFormat::R8_SRGB;
-		case DXGI_FORMAT_R8G8_TYPELESS: return TextureFormat::R8G8_SRGB;
-		case DXGI_FORMAT_R8G8B8A8_TYPELESS: return TextureFormat::R8G8B8A8_SRGB;
+		case DXGI_FORMAT_R8G8B8A8_UNORM_SRGB: return TextureFormat::R8G8B8A8_SRGB;
 
 		case DXGI_FORMAT_R8_UNORM: return TextureFormat::R8_UNorm;
 		case DXGI_FORMAT_R8G8_UNORM: return TextureFormat::R8G8_UNorm;
@@ -80,7 +97,7 @@ static constexpr TextureFormat DXGI_FORMATtoTextureFormat(DXGI_FORMAT format)
 		case DXGI_FORMAT_R32G32_FLOAT: return TextureFormat::R32G32_SFloat;
 		case DXGI_FORMAT_R32G32B32A32_FLOAT: return TextureFormat::R32G32B32A32_SFloat;
 
-		case DXGI_FORMAT_B8G8R8A8_TYPELESS: return TextureFormat::B8G8R8A8_SRGB;
+		case DXGI_FORMAT_B8G8R8A8_UNORM_SRGB: return TextureFormat::B8G8R8A8_SRGB;
 		case DXGI_FORMAT_B8G8R8A8_UNORM: return TextureFormat::B8G8R8A8_UNorm;
 
 		// Depth - Stencil formats
@@ -97,9 +114,7 @@ static constexpr DXGI_FORMAT TextureFormatToDXGI_FORMAT(TextureFormat format)
 {
 	switch (format)
 	{
-		case TextureFormat::R8_SRGB: return DXGI_FORMAT_R8_TYPELESS;
-		case TextureFormat::R8G8_SRGB: return DXGI_FORMAT_R8G8_TYPELESS;
-		case TextureFormat::R8G8B8A8_SRGB: return DXGI_FORMAT_R8G8B8A8_TYPELESS;
+		case TextureFormat::R8G8B8A8_SRGB: return DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
 
 		case TextureFormat::R8_UNorm: return DXGI_FORMAT_R8_UNORM;
 		case TextureFormat::R8G8_UNorm: return DXGI_FORMAT_R8G8_UNORM;
@@ -312,46 +327,52 @@ static constexpr D3D12_RESOURCE_STATES BufferUsageToD3D12_RESOURCE_STATE(BufferU
 	}
 }
 
-static constexpr D3D12_SRV_DIMENSION TextureTypeToD3D12_SRV_DIMENSION(TextureType type)
+static constexpr D3D12_RESOURCE_DIMENSION TextureDimensionToD3D12_RESOURCE_DIMENSION(TextureDimension dimension)
 {
-	switch (type)
+	switch (dimension)
 	{
-		case TextureType::Texture2D: return D3D12_SRV_DIMENSION_TEXTURE2D;
-		case TextureType::RenderTexture: return D3D12_SRV_DIMENSION_TEXTURE2D;
-		case TextureType::TextureCube: return D3D12_SRV_DIMENSION_TEXTURECUBE;
+		case TextureDimension::Texture2D: return D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+		case TextureDimension::TextureCube: return D3D12_RESOURCE_DIMENSION_TEXTURE3D;
+		default: return D3D12_RESOURCE_DIMENSION_UNKNOWN;
+	}
+}
+
+static constexpr D3D12_SRV_DIMENSION TextureDimensionToD3D12_SRV_DIMENSION(TextureDimension dimension)
+{
+	switch (dimension)
+	{
+		case TextureDimension::Texture2D: return D3D12_SRV_DIMENSION_TEXTURE2D;
+		case TextureDimension::TextureCube: return D3D12_SRV_DIMENSION_TEXTURECUBE;
 		default: return D3D12_SRV_DIMENSION_UNKNOWN;
 	}
 }
 
-static constexpr D3D12_UAV_DIMENSION TextureTypeToD3D12_UAV_DIMENSION(TextureType type)
+static constexpr D3D12_UAV_DIMENSION TextureDimensionToD3D12_UAV_DIMENSION(TextureDimension dimension)
 {
-	switch (type)
+	switch (dimension)
 	{
-		case TextureType::Texture2D: return D3D12_UAV_DIMENSION_TEXTURE2D;
-		case TextureType::RenderTexture: return D3D12_UAV_DIMENSION_TEXTURE2D;
-		case TextureType::TextureCube: return D3D12_UAV_DIMENSION_TEXTURE2DARRAY;
+		case TextureDimension::Texture2D: return D3D12_UAV_DIMENSION_TEXTURE2D;
+		case TextureDimension::TextureCube: return D3D12_UAV_DIMENSION_TEXTURE2DARRAY;
 		default: return D3D12_UAV_DIMENSION_UNKNOWN;
 	}
 }
 
-static constexpr D3D12_RTV_DIMENSION TextureTypeToD3D12_RTV_DIMENSION(TextureType type)
+static constexpr D3D12_RTV_DIMENSION TextureDimensionToD3D12_RTV_DIMENSION(TextureDimension dimension)
 {
-	switch (type)
+	switch (dimension)
 	{
-		case TextureType::Texture2D: return D3D12_RTV_DIMENSION_TEXTURE2D;
-		case TextureType::RenderTexture: return D3D12_RTV_DIMENSION_TEXTURE2D;
-		case TextureType::TextureCube: return D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
+		case TextureDimension::Texture2D: return D3D12_RTV_DIMENSION_TEXTURE2D;
+		case TextureDimension::TextureCube: return D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
 		default: return D3D12_RTV_DIMENSION_UNKNOWN;
 	}
 }
 
-static constexpr D3D12_DSV_DIMENSION TextureTypeToD3D12_DSV_DIMENSION(TextureType type)
+static constexpr D3D12_DSV_DIMENSION TextureDimensionToD3D12_DSV_DIMENSION(TextureDimension dimension)
 {
-	switch (type)
+	switch (dimension)
 	{
-		case TextureType::Texture2D: return D3D12_DSV_DIMENSION_TEXTURE2D;
-		case TextureType::RenderTexture: return D3D12_DSV_DIMENSION_TEXTURE2D;
-		case TextureType::TextureCube: return D3D12_DSV_DIMENSION_TEXTURE2DARRAY;
+		case TextureDimension::Texture2D: return D3D12_DSV_DIMENSION_TEXTURE2D;
+		case TextureDimension::TextureCube: return D3D12_DSV_DIMENSION_TEXTURE2DARRAY;
 		default: return D3D12_DSV_DIMENSION_UNKNOWN;
 	}
 }

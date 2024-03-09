@@ -10,30 +10,28 @@ using namespace GEditor;
 #include "ImGui/imgui_impl_sdl3.h"
 #include "imgui_impl_dx12.h"
 
-static ID3D12DescriptorHeap* gCbvSrvHeap = nullptr;
-
 void ImGuiBackend::Init(Gleam::GraphicsDevice* device)
 {
 	mDevice = device;
+	auto& cbvSrvUavHeap = static_cast<Gleam::DirectXDevice*>(mDevice)->GetCbvSrvUavHeap();
+	auto index = cbvSrvUavHeap.heap.Allocate();
 
-	D3D12_DESCRIPTOR_HEAP_DESC desc{};
-	desc.NumDescriptors = 1;
-	desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-	desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-	DX_CHECK(static_cast<ID3D12Device10*>(mDevice->GetHandle())->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&gCbvSrvHeap)));
+	D3D12_CPU_DESCRIPTOR_HANDLE fontSrvCPUdescriptor = cbvSrvUavHeap.handle->GetCPUDescriptorHandleForHeapStart();
+	fontSrvCPUdescriptor.ptr += (UINT64)(index.data * cbvSrvUavHeap.size);
+	D3D12_GPU_DESCRIPTOR_HANDLE fontSrvGPUdescriptor = cbvSrvUavHeap.handle->GetGPUDescriptorHandleForHeapStart();
+	fontSrvGPUdescriptor.ptr += (UINT64)(index.data * cbvSrvUavHeap.size);
 
 	ImGui_ImplSDL3_InitForD3D(GameInstance->GetSubsystem<Gleam::WindowSystem>()->GetSDLWindow());
 	ImGui_ImplDX12_Init(static_cast<ID3D12Device*>(mDevice->GetHandle()),
 		mDevice->GetFramesInFlight(),
 		Gleam::TextureFormatToDXGI_FORMAT(mDevice->GetFormat()),
-		gCbvSrvHeap,
-		gCbvSrvHeap->GetCPUDescriptorHandleForHeapStart(),
-		gCbvSrvHeap->GetGPUDescriptorHandleForHeapStart());
+		cbvSrvUavHeap.handle,
+		fontSrvCPUdescriptor,
+		fontSrvGPUdescriptor);
 }
 
 void ImGuiBackend::Destroy()
 {
-	gCbvSrvHeap->Release();
 	ImGui_ImplDX12_Shutdown();
     ImGui_ImplSDL3_Shutdown();
 }
@@ -46,13 +44,15 @@ void ImGuiBackend::BeginFrame()
 
 void ImGuiBackend::EndFrame(NativeGraphicsHandle commandBuffer, NativeGraphicsHandle renderPass)
 {
-	static_cast<ID3D12GraphicsCommandList7*>(commandBuffer)->SetDescriptorHeaps(1, &gCbvSrvHeap);
 	ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), static_cast<ID3D12GraphicsCommandList*>(commandBuffer));
 }
 
 ImTextureID ImGuiBackend::GetImTextureIDForTexture(const Gleam::Texture& texture)
 {
-	return (ImTextureID)texture.GetHandle();
+	auto& cbvSrvUavHeap = static_cast<Gleam::DirectXDevice*>(mDevice)->GetCbvSrvUavHeap();
+	D3D12_GPU_DESCRIPTOR_HANDLE srvGPUdescriptor = cbvSrvUavHeap.handle->GetGPUDescriptorHandleForHeapStart();
+	srvGPUdescriptor.ptr += (UINT64)(texture.GetResourceView().data * cbvSrvUavHeap.size);
+	return (ImTextureID)srvGPUdescriptor.ptr;
 }
 
 #endif

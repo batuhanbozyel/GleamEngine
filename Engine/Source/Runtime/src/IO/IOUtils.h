@@ -8,6 +8,7 @@ namespace IOUtils {
 static size_t QueryFileBufferSize(const Filesystem::path& filepath)
 {
 	std::ifstream file(filepath, std::ios::ate | std::ios::binary);
+	file.unsetf(std::ios::skipws);
 
 	if (file.is_open())
 	{
@@ -20,13 +21,16 @@ static size_t QueryFileBufferSize(const Filesystem::path& filepath)
 	return 0;
 }
 
-static void ReadBinaryFile(const Filesystem::path& filepath, char* buffer, size_t size)
+static void ReadBinaryFile(const Filesystem::path& filepath, uint8_t* buffer, size_t size)
 {
-    std::ifstream file(filepath, std::ios::ate | std::ios::binary);
+	static_assert(sizeof(char) == sizeof(uint8_t));
+
+    std::ifstream file(filepath, std::ios::binary);
+	file.unsetf(std::ios::skipws);
 
     if (file.is_open())
 	{
-        file.read(buffer, size);
+        file.read(reinterpret_cast<char*>(buffer), size);
         return;
     }
 
@@ -35,7 +39,8 @@ static void ReadBinaryFile(const Filesystem::path& filepath, char* buffer, size_
 
 static TArray<uint8_t> ReadBinaryFile(const Filesystem::path& filepath)
 {
-	std::ifstream file(filepath, std::ios::ate | std::ios::binary);
+	std::ifstream file(filepath, std::ios::binary);
+	file.unsetf(std::ios::skipws);
 
 	if (file.is_open())
 	{
@@ -43,7 +48,7 @@ static TArray<uint8_t> ReadBinaryFile(const Filesystem::path& filepath)
 		size_t size = file.tellg();
 		TArray<uint8_t> buffer(size);
 
-		file.seekg(0);
+		file.seekg(0, std::ios::beg);
 		file.read(reinterpret_cast<char*>(buffer.data()), size);
         
         return buffer;

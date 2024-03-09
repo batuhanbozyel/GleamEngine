@@ -39,8 +39,6 @@ private:
     
     static inline HashMap<size_t, Scope<DirectXGraphicsPipeline>> mGraphicsPipelineCache;
 
-	static inline TArray<D3D12_STATIC_SAMPLER_DESC, 12> mStaticSamplerDescs;
-
 	static inline ID3D12RootSignature* mRootSignature = nullptr;
 
 	static inline DirectXDevice* mDevice = nullptr;

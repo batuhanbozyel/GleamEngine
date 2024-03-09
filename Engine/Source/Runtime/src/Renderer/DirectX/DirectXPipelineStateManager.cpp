@@ -32,6 +32,8 @@ static D3D12_STATIC_SAMPLER_DESC CreateStaticSampler(const SamplerState& sampler
 	sampler.MaxLOD = 16.0f;
 	sampler.RegisterSpace = 0;
 	sampler.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+	sampler.ComparisonFunc = D3D12_COMPARISON_FUNC_ALWAYS;
+	sampler.BorderColor = D3D12_STATIC_BORDER_COLOR_OPAQUE_BLACK;
 
 	switch (samplerState.filterMode)
 	{
@@ -94,15 +96,13 @@ void DirectXPipelineStateManager::Init(DirectXDevice* device)
 	mDevice = device;
 
 	// Static samplers
-	std::hash<SamplerState> hasher;
-    auto samplerSates = SamplerState::GetAllVariations();
+    auto samplerSates = SamplerState::GetStaticSamplers();
+	TArray<D3D12_STATIC_SAMPLER_DESC, samplerSates.size()> staticSamplerDescs{};
 	for (uint32_t i = 0; i < samplerSates.size(); i++)
 	{
 		const auto& sampler = samplerSates[i];
-		mStaticSamplerDescs[i] = CreateStaticSampler(sampler);
-		mStaticSamplerDescs[i].ComparisonFunc = D3D12_COMPARISON_FUNC_ALWAYS;
-		mStaticSamplerDescs[i].BorderColor = D3D12_STATIC_BORDER_COLOR_OPAQUE_BLACK;
-		mStaticSamplerDescs[i].ShaderRegister = (UINT)hasher(sampler);
+		staticSamplerDescs[i] = CreateStaticSampler(sampler);
+		staticSamplerDescs[i].ShaderRegister = i;
 	}
     
     // Root signature
@@ -135,8 +135,8 @@ void DirectXPipelineStateManager::Init(DirectXDevice* device)
 	rootSignature.Version = D3D_ROOT_SIGNATURE_VERSION_1_1;
 	rootSignature.Desc_1_1.NumParameters = NumRootParams;
 	rootSignature.Desc_1_1.pParameters = rootSigParams;
-	rootSignature.Desc_1_1.NumStaticSamplers = (UINT)mStaticSamplerDescs.size();
-	rootSignature.Desc_1_1.pStaticSamplers = mStaticSamplerDescs.data();
+	rootSignature.Desc_1_1.NumStaticSamplers = (UINT)staticSamplerDescs.size();
+	rootSignature.Desc_1_1.pStaticSamplers = staticSamplerDescs.data();
 	rootSignature.Desc_1_1.Flags =
 		D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS | D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS
 		| D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS
@@ -144,12 +144,12 @@ void DirectXPipelineStateManager::Init(DirectXDevice* device)
 
 	ID3DBlob* blob = nullptr;
 	ID3DBlob* error = nullptr;
-	DX_CHECK(D3D12SerializeVersionedRootSignature(&rootSignature, &blob, &error));
+	D3D12SerializeVersionedRootSignature(&rootSignature, &blob, &error);
 
 	if (error)
 	{
 		char* error_msg = (char*)error->GetBufferPointer();
-		GLEAM_CORE_ERROR("DirectX: Root signature error: {0}\n", error_msg);
+		GLEAM_ASSERT(false, "DirectX: Root signature error: {0}\n", error_msg);
 	}
 
 	DX_CHECK(static_cast<ID3D12Device10*>(mDevice->GetHandle())->CreateRootSignature(0, blob->GetBufferPointer(), blob->GetBufferSize(), IID_PPV_ARGS(&mRootSignature)));
@@ -212,6 +212,7 @@ ID3D12PipelineState* DirectXPipelineStateManager::CreateGraphicsPipeline(const P
 
 	// Rasterizer state
 	auto& rasterizerState = psoDesc.RasterizerState;
+	rasterizerState.FillMode = pipelineDesc.wireframe ? D3D12_FILL_MODE_WIREFRAME : D3D12_FILL_MODE_SOLID;
 	rasterizerState.FrontCounterClockwise = FALSE;
 	rasterizerState.DepthBias = D3D12_DEFAULT_DEPTH_BIAS;
 	rasterizerState.DepthBiasClamp = D3D12_DEFAULT_DEPTH_BIAS_CLAMP;

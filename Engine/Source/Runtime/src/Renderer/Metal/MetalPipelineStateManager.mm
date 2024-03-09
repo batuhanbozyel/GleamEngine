@@ -93,11 +93,12 @@ static IRStaticSamplerDescriptor CreateStaticSampler(const SamplerState& sampler
 void MetalPipelineStateManager::Init(MetalDevice* device)
 {
     mDevice = device;
-    auto samplerSates = SamplerState::GetAllVariations();
+    auto samplerSates = SamplerState::GetStaticSamplers();
+    TArray<IRStaticSamplerDescriptor, samplerSates.size()> staticSamplerDescs{};
     for (uint32_t i = 0; i < samplerSates.size(); i++)
     {
-        mStaticSamplerDescs[i] = CreateStaticSampler(samplerSates[i]);
-        mStaticSamplerDescs[i].ShaderRegister = i;
+        staticSamplerDescs[i] = CreateStaticSampler(samplerSates[i]);
+        staticSamplerDescs[i].ShaderRegister = i;
     }
     
     // Root signature
@@ -133,8 +134,8 @@ void MetalPipelineStateManager::Init(MetalDevice* device)
                                                         | IRRootSignatureFlagDenyGeometryShaderRootAccess
                                                         | IRRootSignatureFlagCBVSRVUAVHeapDirectlyIndexed);
 
-    rootSignature.desc_1_1.NumStaticSamplers = mStaticSamplerDescs.size();
-    rootSignature.desc_1_1.pStaticSamplers = mStaticSamplerDescs.data();
+    rootSignature.desc_1_1.NumStaticSamplers = staticSamplerDescs.size();
+    rootSignature.desc_1_1.pStaticSamplers = staticSamplerDescs.data();
     rootSignature.desc_1_1.pParameters = rootSigParams;
     rootSignature.desc_1_1.NumParameters = NumRootParams;
     

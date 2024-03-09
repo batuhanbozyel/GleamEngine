@@ -59,12 +59,12 @@ private:
     uint32_t mMipMapLevels = 1;
     TextureDescriptor mDescriptor;
 	NativeGraphicsHandle mHeap = nullptr;
-	NativeGraphicsResourceView mView;
+	NativeGraphicsResourceView mView = {};
 
 	// multisample
 	NativeGraphicsHandle mMultisampleHeap = nullptr;
 	NativeGraphicsHandle mMultisampleHandle = nullptr;
-	NativeGraphicsResourceView mMultisampleView;
+	NativeGraphicsResourceView mMultisampleView = {};
     
 };
 

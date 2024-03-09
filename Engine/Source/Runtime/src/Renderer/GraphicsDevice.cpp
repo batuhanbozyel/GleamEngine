@@ -113,7 +113,8 @@ Texture GraphicsDevice::GetRenderSurface() const
 {
 	return Texture({ .size = mSize,
 					 .format = mFormat,
-					 .type = TextureType::RenderTexture });
+					 .usage = TextureUsage_Attachment,
+					 .dimension = TextureDimension::Texture2D });
 }
 
 TextureFormat GraphicsDevice::GetFormat() const

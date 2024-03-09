@@ -5,6 +5,10 @@
 #include <d3d12.h>
 #include <dxgi1_6.h>
 
+#ifdef GDEBUG
+#include <d3d12sdklayers.h>
+#endif
+
 namespace Gleam {
 
 class DirectXDescriptorHeap
@@ -57,6 +61,8 @@ public:
 
 	DirectXCommandList AllocateCommandList(D3D12_COMMAND_LIST_TYPE type);
 
+	DirectXDescriptorHeap& GetCbvSrvUavHeap();
+
 	const DirectXDescriptorHeap& GetCbvSrvUavHeap() const;
 
 	ID3D12CommandQueue* GetDirectQueue() const;
@@ -80,6 +86,11 @@ private:
 	ID3D12CommandQueue* CreateCommandQueue(D3D12_COMMAND_LIST_TYPE type) const;
 
 	DirectXDescriptorHeap CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE type, D3D12_DESCRIPTOR_HEAP_FLAGS flags, UINT capacity) const;
+
+#ifdef GDEBUG
+	DWORD mDebugCallbackCookie = 0;
+	ID3D12InfoQueue1* mInfoQueue = nullptr;
+#endif
 
 	IDXGISwapChain4* mSwapchain = nullptr;
 

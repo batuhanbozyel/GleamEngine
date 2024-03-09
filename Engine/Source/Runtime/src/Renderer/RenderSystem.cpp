@@ -88,6 +88,7 @@ void RenderSystem::Render()
 		cmd->WaitUntilCompleted();
 		mDevice->DestroyPooledObjects(frameIdx);
 
+		cmd->Begin();
         graph.Execute(cmd);
 
         // reset rt to swapchain

@@ -151,7 +151,6 @@ void RenderGraph::Execute(const CommandBuffer* cmd)
         heap = mDevice->CreateHeap({ .memoryType = MemoryType::GPU, .size = mHeapSize });
     }
 
-    cmd->Begin();
     for (auto pass : mPassNodes)
     {
         // Allocate buffers
@@ -225,7 +224,6 @@ void RenderGraph::Execute(const CommandBuffer* cmd)
             cmd->EndRenderPass();
         }
     }
-    cmd->End();
 
     // Release buffers & textures
     for (auto& pass : mPassNodes)

@@ -53,13 +53,13 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, 
     mHandle->sampleCount = renderPassDesc.samples;
 	mHandle->hasDepthAttachment = renderPassDesc.depthAttachment.texture.IsValid();
 
-	D3D12_RENDER_PASS_DEPTH_STENCIL_DESC depthAttachment{};
 	TArray<D3D12_RENDER_PASS_RENDER_TARGET_DESC> colorAttachments(renderPassDesc.colorAttachments.size());
-
+	mHandle->colorAttachments.resize(renderPassDesc.colorAttachments.size());
 	for (uint32_t i = 0; i < colorAttachments.size(); ++i)
 	{
 		const auto& colorAttachmentDesc = renderPassDesc.colorAttachments[i];
 		auto format = colorAttachmentDesc.texture.GetDescriptor().format;
+		mHandle->colorAttachments[i] = colorAttachmentDesc.texture.GetDescriptor();
 
 		colorAttachments[i].BeginningAccess.Type = AttachmentLoadActionToDX_TYPE(colorAttachmentDesc.loadAction);
 		colorAttachments[i].BeginningAccess.Clear.ClearValue.Format = TextureFormatToDXGI_FORMAT(format);
@@ -95,10 +95,12 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, 
 
 	if (mHandle->hasDepthAttachment)
 	{
+		mHandle->depthAttachment = renderPassDesc.depthAttachment.texture.GetDescriptor();
 		auto format = renderPassDesc.depthAttachment.texture.GetDescriptor().format;
 		auto resource = static_cast<ID3D12Resource*>(renderPassDesc.depthAttachment.texture.GetHandle());
 		DirectXTransitionManager::TransitionLayout(mHandle->commandList.handle, resource, D3D12_RESOURCE_STATE_DEPTH_WRITE);
 
+		D3D12_RENDER_PASS_DEPTH_STENCIL_DESC depthAttachment{};
 		depthAttachment.cpuDescriptor = renderPassDesc.depthAttachment.texture.GetView();
 		depthAttachment.DepthBeginningAccess.Type = AttachmentLoadActionToDX_TYPE(renderPassDesc.depthAttachment.loadAction);
 		depthAttachment.DepthBeginningAccess.Clear.ClearValue.Format = TextureFormatToDXGI_FORMAT(format);
@@ -114,8 +116,12 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, 
 			depthAttachment.StencilBeginningAccess.Clear.ClearValue.DepthStencil.Stencil = renderPassDesc.depthAttachment.clearStencil;
 			depthAttachment.StencilEndingAccess.Type = depthAttachment.DepthEndingAccess.Type;
 		}
+		mHandle->commandList.handle->BeginRenderPass((UINT)colorAttachments.size(), colorAttachments.data(), &depthAttachment, D3D12_RENDER_PASS_FLAG_NONE);
 	}
-	mHandle->commandList.handle->BeginRenderPass((UINT)colorAttachments.size(), colorAttachments.data(), &depthAttachment, D3D12_RENDER_PASS_FLAG_NONE);
+	else
+	{
+		mHandle->commandList.handle->BeginRenderPass((UINT)colorAttachments.size(), colorAttachments.data(), nullptr, D3D12_RENDER_PASS_FLAG_NONE);
+	}
 }
 
 void CommandBuffer::EndRenderPass() const
@@ -142,7 +148,6 @@ void CommandBuffer::BindGraphicsPipeline(const PipelineStateDescriptor& pipeline
 
 	const auto& cbvSrvUavHeap = mHandle->device->GetCbvSrvUavHeap();
 	mHandle->commandList.handle->SetDescriptorHeaps(1, &cbvSrvUavHeap.handle);
-	mHandle->commandList.handle->SetGraphicsRootDescriptorTable(D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE, cbvSrvUavHeap.gpuHandle);
 }
 
 void CommandBuffer::SetViewport(const Size& size) const
@@ -203,34 +208,40 @@ void CommandBuffer::CopyBuffer(const NativeGraphicsHandle src, const NativeGraph
 {
 	auto srcBuffer = static_cast<ID3D12Resource*>(src);
 	auto dstBuffer = static_cast<ID3D12Resource*>(dst);
-	mHandle->commandList.handle->CopyBufferRegion(srcBuffer, dstOffset, dstBuffer, srcOffset, size);
+
+	DirectXTransitionManager::TransitionLayout(mHandle->commandList.handle, dstBuffer, D3D12_RESOURCE_STATE_COPY_DEST);
+	mHandle->commandList.handle->CopyBufferRegion(dstBuffer, dstOffset, srcBuffer, srcOffset, size);
+	DirectXTransitionManager::TransitionLayout(mHandle->commandList.handle, dstBuffer, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
 }
 
-void CommandBuffer::Blit(const Texture& texture, const Texture& target) const
+void CommandBuffer::Blit(const Texture& source, const Texture& destination) const
 {
-    auto swapchainTarget = !target.IsValid();
-	auto targetTexture = swapchainTarget ? mHandle->device->AcquireNextDrawable().renderTarget : static_cast<ID3D12Resource*>(target.GetHandle());
+    auto swapchainTarget = destination.IsValid() == false;
+	auto srcTexture = static_cast<ID3D12Resource*>(source.GetHandle());
+	auto dstTexture = swapchainTarget ? mHandle->device->AcquireNextDrawable().renderTarget : static_cast<ID3D12Resource*>(destination.GetHandle());
 
-	if (swapchainTarget)
-	{
-		DirectXTransitionManager::TransitionLayout(mHandle->commandList.handle, targetTexture, D3D12_RESOURCE_STATE_COPY_DEST);
-	}
+	DirectXTransitionManager::TransitionLayout(mHandle->commandList.handle, dstTexture, D3D12_RESOURCE_STATE_COPY_DEST);
+	DirectXTransitionManager::TransitionLayout(mHandle->commandList.handle, srcTexture, D3D12_RESOURCE_STATE_COPY_SOURCE);
 
 	D3D12_TEXTURE_COPY_LOCATION dst{};
 	dst.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
-	dst.pResource = targetTexture;
+	dst.pResource = dstTexture;
 	dst.SubresourceIndex = 0;
 
 	D3D12_TEXTURE_COPY_LOCATION src{};
 	dst.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
-	src.pResource = static_cast<ID3D12Resource*>(texture.GetHandle());
+	src.pResource = srcTexture;
 	src.SubresourceIndex = 0;
 	mHandle->commandList.handle->CopyTextureRegion(&dst, 0, 0, 0, &src, nullptr);
 
+	D3D12_RESOURCE_STATES finalLayout = D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE;
 	if (swapchainTarget)
 	{
-		DirectXTransitionManager::TransitionLayout(mHandle->commandList.handle, targetTexture, D3D12_RESOURCE_STATE_PRESENT);
+		finalLayout = D3D12_RESOURCE_STATE_RENDER_TARGET;
 	}
+
+	DirectXTransitionManager::TransitionLayout(mHandle->commandList.handle, srcTexture, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
+	DirectXTransitionManager::TransitionLayout(mHandle->commandList.handle, dstTexture, finalLayout);
 }
 
 void CommandBuffer::Begin() const

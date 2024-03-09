@@ -28,7 +28,7 @@ Buffer Heap::CreateBuffer(const BufferDescriptor& descriptor) const
         contents = [mtlBuffer contents];
     }
     Buffer buffer(mtlBuffer, descriptor, contents);
-    buffer.mResourceView = static_cast<MetalDevice*>(mDevice)->CreateResourceView(buffer);
+    buffer.mResourceView = descriptor.usage == BufferUsage::StagingBuffer ? InvalidResourceIndex : static_cast<MetalDevice*>(mDevice)->CreateResourceView(buffer);
     return buffer;
 }
 

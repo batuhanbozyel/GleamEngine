@@ -54,7 +54,7 @@ Texture GraphicsDevice::AllocateTexture(const TextureDescriptor& descriptor)
     Texture texture(descriptor);
     
     MTLTextureDescriptor* textureDesc;
-    if (descriptor.type == TextureType::TextureCube)
+    if (descriptor.dimension == TextureDimension::TextureCube)
     {
         float size = Math::Min(descriptor.size.width, descriptor.size.height);
         texture.mDescriptor.size.width = size;
@@ -67,13 +67,13 @@ Texture GraphicsDevice::AllocateTexture(const TextureDescriptor& descriptor)
     }
     textureDesc.mipmapLevelCount = texture.mMipMapLevels;
     textureDesc.sampleCount = 1;
-    textureDesc.usage = descriptor.type == TextureType::RenderTexture ? TextureUsageToMTLTextureUsage(descriptor.usage) | MTLTextureUsageRenderTarget : TextureUsageToMTLTextureUsage(descriptor.usage);
+    textureDesc.usage = TextureUsageToMTLTextureUsage(descriptor.usage);
     textureDesc.storageMode = MTLStorageModePrivate;
     texture.mHandle = [mHandle newTextureWithDescriptor:textureDesc];
     
     id<MTLTexture> baseTexture = texture.mHandle;
     texture.mView = [baseTexture newTextureViewWithPixelFormat:baseTexture.pixelFormat
-                                                   textureType:descriptor.type == TextureType::TextureCube ? MTLTextureTypeCubeArray : MTLTextureType2DArray
+                                                   textureType:descriptor.dimension == TextureDimension::TextureCube ? MTLTextureTypeCubeArray : MTLTextureType2DArray
                                                         levels:NSMakeRange(0, texture.mMipMapLevels)
                                                         slices:NSMakeRange(0, 1)];
     
@@ -89,7 +89,7 @@ Texture GraphicsDevice::AllocateTexture(const TextureDescriptor& descriptor)
         texture.mMultisampleView = texture.mMultisampleHandle;
     }
     
-    texture.mResourceView = CreateResourceView(texture);
+    texture.mResourceView = Utils::IsDepthFormat(descriptor.format) ? InvalidResourceIndex : CreateResourceView(texture);
     return texture;
 }
 
@@ -146,7 +146,7 @@ void GraphicsDevice::Dispose(Heap& heap)
 
 void GraphicsDevice::Dispose(Buffer& buffer)
 {
-    ReleaseResourceView(buffer.mResourceView);
+	ReleaseResourceView(buffer.mResourceView);
     buffer.mHandle = nil;
 }
 
@@ -281,7 +281,8 @@ void MetalDevice::Present(const CommandBuffer* cmd)
     }];
     
     [commandBuffer presentDrawable:mDrawable];
-    cmd->Commit();
+    cmd->End();
+	cmd->Commit();
     
     mCurrentFrameIndex = (mCurrentFrameIndex + 1) % mMaxFramesInFlight;
     
@@ -306,7 +307,10 @@ ShaderResourceIndex MetalDevice::CreateResourceView(const Texture& texture)
 
 void MetalDevice::ReleaseResourceView(ShaderResourceIndex view)
 {
-    mCbvSrvUavHeap.heap.Release(view);
+    if (view != InvalidResourceIndex)
+    {
+        mCbvSrvUavHeap.heap.Release(view);
+    }
 }
 
 MetalDescriptorHeap MetalDevice::CreateDescriptorHeap(uint32_t capacity) const

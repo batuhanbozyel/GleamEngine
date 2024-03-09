@@ -86,7 +86,7 @@ public:
 
     void SetBufferData(const Buffer& buffer, const void* data, size_t size, size_t offset = 0) const;
 
-    void Blit(const Texture& texture, const Texture& renderTarget) const;
+    void Blit(const Texture& source, const Texture& destination) const;
 
     void Begin() const;
 

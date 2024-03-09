@@ -17,9 +17,15 @@ using float4 = Gleam::Vector4;
 
 namespace Gleam {
 
+#define CBV_SRV_HEAP_SIZE (128 * 1024)
 #define InvalidResourceIndex ShaderResourceIndex(-1)
 #define SRVIndex(index) (index)
-#define UAVIndex(index) (index + 1)
+
+#if defined(USE_DIRECTX_RENDERER)
+#define UAVIndex(index) (index + CBV_SRV_HEAP_SIZE)
+#else
+#define UAVIndex(index) SRVIndex(index)
+#endif
 
 #ifdef __cplusplus
 struct ShaderResourceIndex
