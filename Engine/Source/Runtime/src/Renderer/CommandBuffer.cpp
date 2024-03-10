@@ -11,7 +11,7 @@ void CommandBuffer::DrawIndexed(const Buffer& indexBuffer,
 	uint32_t baseVertex,
 	uint32_t baseInstance) const
 {
-	DrawIndexed(indexBuffer, type, static_cast<uint32_t>(indexBuffer.GetDescriptor().size / SizeOfIndexType(type)), instanceCount, firstIndex, baseVertex, baseInstance);
+	DrawIndexed(indexBuffer, type, static_cast<uint32_t>(indexBuffer.GetSize() / SizeOfIndexType(type)), instanceCount, firstIndex, baseVertex, baseInstance);
 }
 
 void CommandBuffer::CopyBuffer(const Buffer& src, const Buffer& dst,
@@ -24,7 +24,7 @@ void CommandBuffer::CopyBuffer(const Buffer& src, const Buffer& dst,
 
 void CommandBuffer::CopyBuffer(const Buffer& src, const Buffer& dst) const
 {
-	auto minSize = Math::Min(src.GetDescriptor().size, dst.GetDescriptor().size);
+	auto minSize = Math::Min(src.GetSize(), dst.GetSize());
 	CopyBuffer(src.GetHandle(), dst.GetHandle(), minSize);
 }
 
@@ -33,15 +33,10 @@ void CommandBuffer::SetBufferData(const Buffer& buffer, const void* data, size_t
 	auto contents = buffer.GetContents();
 	if (contents == nullptr)
 	{
-		BufferDescriptor bufferDesc;
-		bufferDesc.size = size;
-		bufferDesc.usage = BufferUsage::StagingBuffer;
-		Buffer stagingBuffer = mStagingHeap.CreateBuffer(bufferDesc);
-		
+		Buffer stagingBuffer = mStagingHeap.CreateBuffer(size);
 		memcpy(stagingBuffer.GetContents(), data, size);
 		CopyBuffer(stagingBuffer.GetHandle(), buffer.GetHandle(), size, 0, offset);
-		
-		mDevice->Dispose(stagingBuffer);
+		mDevice->ReleaseBuffer(stagingBuffer);
 	}
 	else
 	{

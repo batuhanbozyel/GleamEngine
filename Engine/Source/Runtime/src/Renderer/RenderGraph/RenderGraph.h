@@ -40,8 +40,6 @@ public:
     
     TextureHandle ImportBackbuffer(const Texture& backbuffer, const ImportResourceParams& params = ImportResourceParams());
     
-    const BufferDescriptor& GetDescriptor(BufferHandle handle) const;
-    
     const TextureDescriptor& GetDescriptor(TextureHandle handle) const;
 
 private:

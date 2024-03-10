@@ -166,7 +166,7 @@ void CommandBuffer::SetViewport(const Size& size) const
 
 void CommandBuffer::SetConstantBuffer(const void* data, uint32_t size, uint32_t slot) const
 {
-    auto buffer = mStagingHeap.CreateBuffer({ .size = size });
+    auto buffer = mStagingHeap.CreateBuffer(size);
     SetBufferData(buffer, data, size);
     
     auto argumentBufferPtr = static_cast<uint64_t*>(mHandle->topLevelArgumentBuffer.GetContents());
@@ -244,6 +244,7 @@ void CommandBuffer::WaitUntilCompleted() const
 	{
 		[mHandle->commandBuffer waitUntilCompleted];
 	}
+    mCommitted = false;
 }
 
 NativeGraphicsHandle CommandBuffer::GetHandle() const

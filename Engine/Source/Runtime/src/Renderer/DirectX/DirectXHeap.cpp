@@ -10,34 +10,28 @@
 
 using namespace Gleam;
 
-Buffer Heap::CreateBuffer(const BufferDescriptor& descriptor) const
+Buffer Heap::CreateBuffer(size_t size) const
 {
 	auto alignedStackPtr = Utils::AlignUp(mStackPtr, mAlignment);
-	auto newStackPtr = alignedStackPtr + descriptor.size;
+	auto newStackPtr = alignedStackPtr + size;
 
 	if (Utils::AlignUp(mDescriptor.size, mAlignment) < newStackPtr)
 	{
 		GLEAM_ASSERT(false, "DirectX: Heap is full!");
-		return Buffer(nullptr, descriptor, nullptr);
+		return Buffer(nullptr, size, nullptr);
 	}
 	mStackPtr = newStackPtr;
 
 	auto flags = D3D12_RESOURCE_FLAG_NONE;
-	if (descriptor.usage == BufferUsage::StorageBuffer)
+	if (mDescriptor.memoryType != MemoryType::CPU)
 	{
 		flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
-	}
-
-	auto initialState = D3D12_RESOURCE_STATE_COMMON;
-	if (descriptor.usage == BufferUsage::StagingBuffer)
-	{
-		initialState = D3D12_RESOURCE_STATE_COPY_SOURCE;
 	}
 
 	D3D12_RESOURCE_DESC resourceDesc = {
 		.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER,
 		.Alignment = 0,
-		.Width = descriptor.size,
+		.Width = size,
 		.Height = 1,
 		.DepthOrArraySize = 1,
 		.MipLevels = 1,
@@ -52,7 +46,7 @@ Buffer Heap::CreateBuffer(const BufferDescriptor& descriptor) const
 		static_cast<ID3D12Heap*>(mHandle),
 		alignedStackPtr,
 		&resourceDesc,
-		initialState,
+		D3D12_RESOURCE_STATE_COMMON,
 		nullptr,
 		IID_PPV_ARGS(&resource)
 	));
@@ -62,8 +56,8 @@ Buffer Heap::CreateBuffer(const BufferDescriptor& descriptor) const
 	{
 		DX_CHECK(resource->Map(0, nullptr, &contents));
 	}
-	Buffer buffer(resource, descriptor, contents);
-	buffer.mResourceView = descriptor.usage == BufferUsage::StagingBuffer ? InvalidResourceIndex : static_cast<DirectXDevice*>(mDevice)->CreateResourceView(buffer);
+	Buffer buffer(resource, size, contents);
+	buffer.mResourceView = mDescriptor.memoryType == MemoryType::CPU ? InvalidResourceIndex : static_cast<DirectXDevice*>(mDevice)->CreateResourceView(buffer);
     return buffer;
 }
 

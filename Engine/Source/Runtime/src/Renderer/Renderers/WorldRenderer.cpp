@@ -82,10 +82,10 @@ void WorldRenderer::DrawMesh(const MeshRenderer& meshRenderer, const Transform& 
     const auto& baseMaterial = std::static_pointer_cast<Material>(material->GetBaseMaterial());
     if (baseMaterial->GetRenderQueue() == RenderQueue::Opaque)
     {
-        mOpaqueQueue[baseMaterial].push_back({ meshRenderer.GetMesh().get(), meshRenderer.GetMaterial(0).get(), transform.GetTransform() });
+        mOpaqueQueue[baseMaterial].push_back({ meshRenderer.GetMesh().get(), material.get(), transform.GetTransform() });
     }
     else
     {
-        mTransparentQueue[baseMaterial].push_back({ meshRenderer.GetMesh().get(), meshRenderer.GetMaterial(0).get(), transform.GetTransform() });
+        mTransparentQueue[baseMaterial].push_back({ meshRenderer.GetMesh().get(), material.get(), transform.GetTransform() });
     }
 }

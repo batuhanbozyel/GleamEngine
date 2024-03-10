@@ -61,10 +61,7 @@ void RenderSystem::Render()
         
         const auto& sceneData = graph.AddRenderPass<SceneRenderingData>("SceneRenderingData", [&](RenderGraphBuilder& builder, SceneRenderingData& passData)
         {
-            BufferDescriptor descriptor;
-            descriptor.usage = BufferUsage::UniformBuffer;
-            descriptor.size = sizeof(CameraUniforms);
-            passData.cameraBuffer = builder.CreateBuffer(descriptor);
+            passData.cameraBuffer = builder.CreateBuffer(sizeof(CameraUniforms));
             passData.cameraBuffer = builder.WriteBuffer(passData.cameraBuffer);
             
             passData.backbuffer = graph.ImportBackbuffer(mRenderTarget);

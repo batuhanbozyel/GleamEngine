@@ -60,10 +60,7 @@ void DebugRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
     
 	const auto& updatePass = graph.AddRenderPass<UpdatePassData>("DebugRenderer::UpdatePass", [&](RenderGraphBuilder& builder, UpdatePassData& passData)
 	{
-		BufferDescriptor descriptor;
-        descriptor.usage = BufferUsage::VertexBuffer;
-		descriptor.size = mDebugVertices.size() * sizeof(DebugVertex);
-		passData.vertexBuffer = builder.CreateBuffer(descriptor);
+		passData.vertexBuffer = builder.CreateBuffer(mDebugVertices.size() * sizeof(DebugVertex));
 		passData.vertexBuffer = builder.WriteBuffer(passData.vertexBuffer);
 	},
 	[this](const CommandBuffer* cmd, const UpdatePassData& passData)

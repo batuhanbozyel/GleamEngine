@@ -3,7 +3,6 @@
 #include <d3d12.h>
 #include "Renderer/TextureFormat.h"
 #include "Renderer/HeapDescriptor.h"
-#include "Renderer/BufferDescriptor.h"
 #include "Renderer/RenderPassDescriptor.h"
 #include "Renderer/PipelineStateDescriptor.h"
 
@@ -35,11 +34,13 @@ static void WaitForID3D12Fence(ID3D12Fence* fence, uint32_t value)
 	if (fence->GetCompletedValue() < value)
 	{
 		HANDLE fenceEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
-		GLEAM_ASSERT(fenceEvent != 0);
-
 		DX_CHECK(fence->SetEventOnCompletion(value, fenceEvent));
-		WaitForSingleObject(fenceEvent, INFINITE);
-		CloseHandle(fenceEvent);
+
+		if (fenceEvent != 0)
+		{
+			WaitForSingleObject(fenceEvent, INFINITE);
+			CloseHandle(fenceEvent);
+		}
 	}
 }
 
@@ -311,19 +312,6 @@ static constexpr D3D12_COLOR_WRITE_ENABLE ColorWriteMaskToD3D12_COLOR_WRITE_ENAB
 		case ColorWriteMask::Blue: return D3D12_COLOR_WRITE_ENABLE_BLUE;
 		case ColorWriteMask::All: return D3D12_COLOR_WRITE_ENABLE_ALL;
 		default: return D3D12_COLOR_WRITE_ENABLE_ALL;
-	}
-}
-
-static constexpr D3D12_RESOURCE_STATES BufferUsageToD3D12_RESOURCE_STATE(BufferUsage usage)
-{
-	switch (usage)
-	{
-		case BufferUsage::VertexBuffer:
-		case BufferUsage::IndexBuffer:
-		case BufferUsage::UniformBuffer: return D3D12_RESOURCE_STATE_GENERIC_READ;
-		case BufferUsage::StorageBuffer: return D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-		case BufferUsage::StagingBuffer: return D3D12_RESOURCE_STATE_COPY_SOURCE;
-		default: return D3D12_RESOURCE_STATE_GENERIC_READ;
 	}
 }
 

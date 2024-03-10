@@ -166,7 +166,7 @@ void CommandBuffer::SetViewport(const Size& size) const
 
 void CommandBuffer::SetConstantBuffer(const void* data, uint32_t size, uint32_t slot) const
 {
-	auto buffer = mStagingHeap.CreateBuffer({ .size = size });
+	auto buffer = mStagingHeap.CreateBuffer(size);
 	SetBufferData(buffer, data, size);
 
     mHandle->commandList.handle->SetGraphicsRootConstantBufferView(slot, static_cast<ID3D12Resource*>(buffer.GetHandle())->GetGPUVirtualAddress());
@@ -195,7 +195,7 @@ void CommandBuffer::DrawIndexed(const Buffer& indexBuffer, IndexType type,
 	D3D12_INDEX_BUFFER_VIEW indexBufferView = {};
 	indexBufferView.BufferLocation = static_cast<ID3D12Resource*>(indexBuffer.GetHandle())->GetGPUVirtualAddress();
 	indexBufferView.Format = type == IndexType::UINT16 ? DXGI_FORMAT_R16_UINT : DXGI_FORMAT_R32_UINT;
-	indexBufferView.SizeInBytes = (UINT)indexBuffer.GetDescriptor().size;
+	indexBufferView.SizeInBytes = (UINT)indexBuffer.GetSize();
 
 	mHandle->commandList.handle->IASetIndexBuffer(&indexBufferView);
 	mHandle->commandList.handle->DrawIndexedInstanced(indexCount, instanceCount, firstIndex, baseVertex, baseInstance);

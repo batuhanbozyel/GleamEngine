@@ -519,26 +519,24 @@ ShaderResourceIndex DirectXDevice::CreateResourceView(const Buffer& buffer)
 	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
 	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 	srvDesc.Buffer.FirstElement = 0;
-	srvDesc.Buffer.NumElements = (UINT)buffer.GetDescriptor().size >> 2;
+	srvDesc.Buffer.NumElements = (UINT)buffer.GetSize() >> 2;
 	srvDesc.Buffer.StructureByteStride = 0;
 	srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_RAW;
 	static_cast<ID3D12Device10*>(mHandle)->CreateShaderResourceView(static_cast<ID3D12Resource*>(buffer.GetHandle()), &srvDesc, handle);
 
-	if (buffer.GetDescriptor().usage == BufferUsage::StorageBuffer)
-	{
-		handle.ptr += (UINT64)(mCbvSrvUavHeap.size * CBV_SRV_HEAP_SIZE);
+	handle.ptr += (UINT64)(mCbvSrvUavHeap.size * CBV_SRV_HEAP_SIZE);
 
-		// UAV
-		D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
-		uavDesc.Format = DXGI_FORMAT_R32_TYPELESS;
-		uavDesc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
-		uavDesc.Buffer.FirstElement = 0;
-		uavDesc.Buffer.NumElements = (UINT)buffer.GetDescriptor().size >> 2;
-		uavDesc.Buffer.StructureByteStride = 0;
-		uavDesc.Buffer.CounterOffsetInBytes = 0;
-		uavDesc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_RAW;
-		static_cast<ID3D12Device10*>(mHandle)->CreateUnorderedAccessView(static_cast<ID3D12Resource*>(buffer.GetHandle()), nullptr, &uavDesc, handle);
-	}
+	// UAV
+	D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
+	uavDesc.Format = DXGI_FORMAT_R32_TYPELESS;
+	uavDesc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
+	uavDesc.Buffer.FirstElement = 0;
+	uavDesc.Buffer.NumElements = (UINT)buffer.GetSize() >> 2;
+	uavDesc.Buffer.StructureByteStride = 0;
+	uavDesc.Buffer.CounterOffsetInBytes = 0;
+	uavDesc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_RAW;
+	static_cast<ID3D12Device10*>(mHandle)->CreateUnorderedAccessView(static_cast<ID3D12Resource*>(buffer.GetHandle()), nullptr, &uavDesc, handle);
+
 	return index;
 }
 

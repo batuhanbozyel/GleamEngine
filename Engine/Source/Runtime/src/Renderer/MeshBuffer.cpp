@@ -85,56 +85,42 @@ MeshBuffer::MeshBuffer(const TArray<Vector3>& positions, const TArray<Interleave
 {
     static auto renderSystem = GameInstance->GetSubsystem<RenderSystem>();
 
-    BufferDescriptor positionDesc;
-    positionDesc.size = positions.size() * sizeof(Vector3);
-    positionDesc.usage = BufferUsage::VertexBuffer;
-
-    BufferDescriptor interleavedDesc;
-    interleavedDesc.size = interleavedVertices.size() * sizeof(InterleavedMeshVertex);
-    interleavedDesc.usage = BufferUsage::VertexBuffer;
-
-    BufferDescriptor indexDesc;
-    indexDesc.size = indices.size() * sizeof(uint32_t);
-    indexDesc.usage = BufferUsage::IndexBuffer;
+    size_t positionSize = positions.size() * sizeof(Vector3);
+	size_t interleavedSize = interleavedVertices.size() * sizeof(InterleavedMeshVertex);
+	size_t indexSize = indices.size() * sizeof(uint32_t);
 
     HeapDescriptor heapDesc;
     heapDesc.memoryType = MemoryType::GPU;
-    heapDesc.size = positionDesc.size + interleavedDesc.size + indexDesc.size;
-
 	auto memoryRequirements = renderSystem->GetDevice()->QueryMemoryRequirements(heapDesc);
-	heapDesc.size = Utils::AlignUp(positionDesc.size, memoryRequirements.alignment) +
-					Utils::AlignUp(interleavedDesc.size, memoryRequirements.alignment) +
-					Utils::AlignUp(indexDesc.size, memoryRequirements.alignment);
+	heapDesc.size = Utils::AlignUp(positionSize, memoryRequirements.alignment) +
+					Utils::AlignUp(interleavedSize, memoryRequirements.alignment) +
+					Utils::AlignUp(indexSize, memoryRequirements.alignment);
     mHeap = renderSystem->GetDevice()->CreateHeap(heapDesc);
 
-    mPositionBuffer = mHeap.CreateBuffer(positionDesc);
-    mInterleavedBuffer = mHeap.CreateBuffer(interleavedDesc);
-    mIndexBuffer = mHeap.CreateBuffer(indexDesc);
+    mPositionBuffer = mHeap.CreateBuffer(positionSize);
+    mInterleavedBuffer = mHeap.CreateBuffer(interleavedSize);
+    mIndexBuffer = mHeap.CreateBuffer(indexSize);
 
     // Send mesh data to buffers
     {
         heapDesc.memoryType = MemoryType::CPU;
         Heap heap = renderSystem->GetDevice()->CreateHeap(heapDesc);
-
-        BufferDescriptor bufferDesc;
-        bufferDesc.size = heapDesc.size;
-        bufferDesc.usage = BufferUsage::StagingBuffer;
-        Buffer stagingBuffer = heap.CreateBuffer(bufferDesc);
+        Buffer stagingBuffer = heap.CreateBuffer(heapDesc.size);
 
         CommandBuffer commandBuffer(renderSystem->GetDevice());
         commandBuffer.Begin();
 
         size_t offset = 0;
-        commandBuffer.SetBufferData(stagingBuffer, positions.data(), positionDesc.size, offset);
-        commandBuffer.CopyBuffer(stagingBuffer, mPositionBuffer, positionDesc.size, offset, 0);
+        commandBuffer.SetBufferData(stagingBuffer, positions.data(), positionSize, offset);
+        commandBuffer.CopyBuffer(stagingBuffer, mPositionBuffer, positionSize, offset, 0);
 
-        offset += positionDesc.size;
-        commandBuffer.SetBufferData(stagingBuffer, interleavedVertices.data(), interleavedDesc.size, offset);
-        commandBuffer.CopyBuffer(stagingBuffer, mInterleavedBuffer, interleavedDesc.size, offset, 0);
+        offset += positionSize;
+        commandBuffer.SetBufferData(stagingBuffer, interleavedVertices.data(), interleavedSize, offset);
+        commandBuffer.CopyBuffer(stagingBuffer, mInterleavedBuffer, interleavedSize, offset, 0);
 
-        offset += interleavedDesc.size;
-        commandBuffer.SetBufferData(stagingBuffer, indices.data(), indexDesc.size, offset);
-        commandBuffer.CopyBuffer(stagingBuffer, mIndexBuffer, indexDesc.size, offset, 0);
+        offset += interleavedSize;
+        commandBuffer.SetBufferData(stagingBuffer, indices.data(), indexSize, offset);
+        commandBuffer.CopyBuffer(stagingBuffer, mIndexBuffer, indexSize, offset, 0);
 
         commandBuffer.End();
         commandBuffer.Commit();
