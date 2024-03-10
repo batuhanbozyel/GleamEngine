@@ -28,7 +28,7 @@ Buffer Heap::CreateBuffer(size_t size) const
         contents = [mtlBuffer contents];
     }
     Buffer buffer(mtlBuffer, size, contents);
-    buffer.mResourceView = mDescriptor.memoryType != MemoryType::CPU ? InvalidResourceIndex : static_cast<MetalDevice*>(mDevice)->CreateResourceView(buffer);
+    buffer.mResourceView = mDescriptor.memoryType == MemoryType::CPU ? InvalidResourceIndex : static_cast<MetalDevice*>(mDevice)->CreateResourceView(buffer);
     return buffer;
 }
 
