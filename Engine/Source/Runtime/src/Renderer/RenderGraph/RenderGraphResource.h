@@ -1,18 +1,22 @@
 #pragma once
+#include "../Shaders/ShaderInterop.h"
+#include "../Texture.h"
+#include "../Buffer.h"
 
 namespace Gleam {
 
-class Buffer;
-class Texture;
 class RenderGraph;
 class RenderGraphBuilder;
 struct RenderGraphBufferNode;
 struct RenderGraphTextureNode;
 
+template <typename T>
+concept TextureResourceViewType = std::is_base_of<TextureResourceView, T>::value;
+
 enum class ResourceAccess
 {
-    Read = 0, // maps to SRV heap local index
-    Write = 1,  // maps to UAV heap local index
+    Read,
+    Write,
     None
 };
 
@@ -87,9 +91,28 @@ public:
         return node != nullptr;
     }
 
-	NO_DISCARD operator Buffer() const;
+    NO_DISCARD operator ConstantBufferView() const
+    {
+        GLEAM_ASSERT(access == ResourceAccess::Read);
+        GLEAM_ASSERT(GetBuffer().GetResourceView() != InvalidResourceIndex);
+        ConstantBufferView cbv = GetBuffer().GetResourceView();
+        return cbv;
+    }
     
-    NO_DISCARD operator ShaderResourceIndex() const;
+    NO_DISCARD operator BufferResourceView() const
+    {
+        GLEAM_ASSERT(access == ResourceAccess::Read);
+        GLEAM_ASSERT(GetBuffer().GetResourceView() != InvalidResourceIndex);
+        BufferResourceView srv = GetBuffer().GetResourceView();
+        return srv;
+    }
+    
+    NO_DISCARD operator Buffer() const
+    {
+        return GetBuffer();
+    }
+    
+	NO_DISCARD const Buffer& GetBuffer() const;
     
 private:
     
@@ -139,10 +162,22 @@ public:
     {
         return node != nullptr;
     }
-
-    NO_DISCARD operator Texture() const;
     
-    NO_DISCARD operator ShaderResourceIndex() const;
+    template<TextureResourceViewType T>
+    NO_DISCARD operator T() const
+    {
+        GLEAM_ASSERT(access == ResourceAccess::Read);
+        GLEAM_ASSERT(GetTexture().GetResourceView() != InvalidResourceIndex);
+        T srv = GetTexture().GetResourceView();
+        return srv;
+    }
+    
+    NO_DISCARD operator Texture() const
+    {
+        return GetTexture();
+    }
+
+    NO_DISCARD const Texture& GetTexture() const;
     
 private:
     

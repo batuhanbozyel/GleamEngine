@@ -4,24 +4,12 @@
 
 using namespace Gleam;
 
-NO_DISCARD BufferHandle::operator Buffer() const
+NO_DISCARD const Buffer& BufferHandle::GetBuffer() const
 {
 	return node->buffer;
 }
 
-NO_DISCARD BufferHandle::operator ShaderResourceIndex() const
-{
-    GLEAM_ASSERT(node->buffer.IsValid());
-    return ShaderResourceIndex(node->buffer.GetResourceView().data + static_cast<uint32_t>(access));
-}
-
-NO_DISCARD TextureHandle::operator Texture() const
+NO_DISCARD const Texture& TextureHandle::GetTexture() const
 {
 	return node->texture;
-}
-
-NO_DISCARD TextureHandle::operator ShaderResourceIndex() const
-{
-    GLEAM_ASSERT(node->texture.IsValid());
-    return ShaderResourceIndex(node->texture.GetResourceView().data + static_cast<uint32_t>(access));
 }

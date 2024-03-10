@@ -69,11 +69,12 @@ struct ConstantBufferView
 		return buffer.Load<T>(0);
 	}
 #else
-	ConstantBufferView& operator=(ShaderResourceIndex other)
-	{
-		index = other;
-		return *this;
-	}
+    ConstantBufferView() = default;
+    ConstantBufferView(ShaderResourceIndex index)
+        : index(index)
+    {
+        
+    }
 #endif
 };
 
@@ -89,16 +90,19 @@ struct BufferResourceView
 		return buffer.Load<T>(sizeof(T) * id);
 	}
 #else
-	BufferResourceView& operator=(ShaderResourceIndex other)
-	{
-		index = other;
-		return *this;
-	}
+    BufferResourceView() = default;
+    BufferResourceView(ShaderResourceIndex index)
+        : index(index)
+    {
+        
+    }
 #endif
 };
 
+struct TextureResourceView {};
+
 template<typename T>
-struct Texture2DResourceView
+struct Texture2DResourceView : TextureResourceView
 {
 	ShaderResourceIndex index;
 
@@ -115,16 +119,17 @@ struct Texture2DResourceView
 		return texture.Sample(sampler, uv, mip);
 	}
 #else
-	Texture2DResourceView& operator=(ShaderResourceIndex other)
-	{
-		index = other;
-		return *this;
-	}
+    Texture2DResourceView() = default;
+    Texture2DResourceView(ShaderResourceIndex index)
+        : index(index)
+    {
+        
+    }
 #endif
 };
 
 template<typename T>
-struct Texture3DResourceView
+struct Texture3DResourceView : TextureResourceView
 {
 	ShaderResourceIndex index;
 
@@ -141,11 +146,12 @@ struct Texture3DResourceView
 		return texture.Sample(sampler, uv, mip);
 	}
 #else
-	Texture3DResourceView& operator=(ShaderResourceIndex other)
-	{
-		index = other;
-		return *this;
-	}
+    Texture3DResourceView() = default;
+    Texture3DResourceView(ShaderResourceIndex index)
+        : index(index)
+    {
+        
+    }
 #endif
 };
 
