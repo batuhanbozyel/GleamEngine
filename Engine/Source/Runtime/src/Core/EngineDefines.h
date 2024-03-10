@@ -72,12 +72,8 @@ constexpr inline T As(P p)
 #define GLEAM_ENGINE_VERSION constexpr Gleam::Version(GLEAM_ENGINE_MAJOR_VERSION, GLEAM_ENGINE_MINOR_VERSION, GLEAM_ENGINE_PATCH_VERSION)
 
 #ifdef __OBJC__
-#define OBJC_CLASS(name) @class name
 #define TO_CPP_STRING(x) std::string([(x) UTF8String])
 #define TO_NSSTRING(x) ([NSString stringWithCString:(x) encoding:NSUTF8StringEncoding])
-#define ARC_SAFE_RELEASE(x) if (x != nil) { x = nil; }
-#else
-#define OBJC_CLASS(name) typedef struct objc_object name
 #endif
 
 #define GLEAM_NONCOPYABLE(TypeName) \
