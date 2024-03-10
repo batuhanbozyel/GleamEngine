@@ -83,6 +83,8 @@ private:
 
 	virtual void Configure(const RendererConfig& config) override;
 
+	virtual void DestroyFrameObjects(uint32_t frameIndex) override;
+
 	ID3D12CommandQueue* CreateCommandQueue(D3D12_COMMAND_LIST_TYPE type) const;
 
 	DirectXDescriptorHeap CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE type, D3D12_DESCRIPTOR_HEAP_FLAGS flags, UINT capacity) const;

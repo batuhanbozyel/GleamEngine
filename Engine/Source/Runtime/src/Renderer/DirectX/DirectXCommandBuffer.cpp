@@ -273,7 +273,7 @@ void CommandBuffer::Commit() const
 {
 	ID3D12CommandList* commandList = mHandle->commandList.handle;
 	mHandle->device->GetDirectQueue()->ExecuteCommandLists(1, &commandList);
-	mHandle->device->GetDirectQueue()->Signal(mHandle->fence, mHandle->fenceValue);
+	mHandle->device->GetDirectQueue()->Signal(mHandle->fence, ++mHandle->fenceValue);
 	mStagingHeap.Reset();
 	mCommitted = true;
 }
@@ -282,8 +282,9 @@ void CommandBuffer::WaitUntilCompleted() const
 {
 	if (mCommitted)
 	{
-		WaitForID3D12Fence(mHandle->fence, mHandle->fenceValue++);
+		WaitForID3D12Fence(mHandle->fence, mHandle->fenceValue);
 	}
+	mCommitted = false;
 }
 
 NativeGraphicsHandle CommandBuffer::GetHandle() const

@@ -83,7 +83,7 @@ Heap GraphicsDevice::AllocateHeap(const HeapDescriptor& descriptor)
 	heap.mDevice = this;
 
 	auto memoryRequirements = QueryMemoryRequirements(descriptor);
-	heap.mDescriptor.size = Utils::AlignUp(descriptor.size, memoryRequirements.alignment);
+	heap.mDescriptor.size = memoryRequirements.size;
 	heap.mAlignment = memoryRequirements.alignment;
 
 	D3D12_HEAP_DESC desc{};
@@ -451,6 +451,12 @@ void DirectXDevice::Present(const CommandBuffer* cmd)
 
 	mDirectQueue->Signal(ctx.fence, ++ctx.frameCount);
 	mCurrentFrameIndex = mSwapchain->GetCurrentBackBufferIndex();
+	GLEAM_ASSERT(mCurrentFrameIndex < mMaxFramesInFlight);
+}
+
+void DirectXDevice::DestroyFrameObjects(uint32_t frameIndex)
+{
+	mFrameContext[mCurrentFrameIndex].commandPool.Reset();
 }
 
 DirectXCommandList DirectXDevice::AllocateCommandList(D3D12_COMMAND_LIST_TYPE type)
@@ -462,7 +468,6 @@ DirectXCommandList DirectXDevice::AllocateCommandList(D3D12_COMMAND_LIST_TYPE ty
 	{
 		DX_CHECK(static_cast<ID3D12Device10*>(mHandle)->CreateCommandAllocator(type, IID_PPV_ARGS(&commandList.allocator)));
 		DX_CHECK(static_cast<ID3D12Device10*>(mHandle)->CreateCommandList1(0, type, D3D12_COMMAND_LIST_FLAG_NONE, IID_PPV_ARGS(&commandList.handle)));
-		pool.usedCommandLists.push_back(commandList);
 	}
 	else
 	{
@@ -470,6 +475,7 @@ DirectXCommandList DirectXDevice::AllocateCommandList(D3D12_COMMAND_LIST_TYPE ty
 		commandList = pool.freeCommandLists.front();
 		pool.freeCommandLists.pop_front();
 	}
+	pool.usedCommandLists.push_back(commandList);
 
 	commandList.allocator->Reset();
 	commandList.handle->Reset(commandList.allocator, nullptr);
