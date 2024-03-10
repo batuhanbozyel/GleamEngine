@@ -7,7 +7,8 @@ Heap GraphicsDevice::CreateHeap(const HeapDescriptor& descriptor)
 {
     auto it = std::find_if(mFreeHeaps.begin(), mFreeHeaps.end(), [&](const Heap& heap) -> bool
     {
-        return heap.GetDescriptor() == descriptor;
+        return heap.GetDescriptor().memoryType == descriptor.memoryType
+			&& heap.GetDescriptor().size >= descriptor.size;
     });
     
     if (it != mFreeHeaps.end())
@@ -59,6 +60,15 @@ void GraphicsDevice::ReleaseHeap(const Heap& heap)
     });
 }
 
+void GraphicsDevice::ReleaseBuffer(const Buffer& buffer)
+{
+	GLEAM_ASSERT(buffer.IsValid());
+	AddPooledObject([this, buffer = buffer]() mutable
+	{
+		Dispose(buffer);
+	});
+}
+
 void GraphicsDevice::ReleaseTexture(const Texture& texture)
 {
     GLEAM_ASSERT(texture.IsValid());
@@ -107,6 +117,12 @@ void GraphicsDevice::DestroyPooledObjects(uint32_t frameIndex)
 		deallocator();
 	}
 	pooledObjects.clear();
+
+	// TODO: implement a better algorithm to retrieve heaps so that always the closest fitting heap is returned
+	std::sort(mFreeHeaps.begin(), mFreeHeaps.end(), [](const Heap& left, const Heap& right)
+	{
+		return left.GetDescriptor().size < right.GetDescriptor().size;
+	});
 }
 
 Texture GraphicsDevice::GetRenderSurface() const

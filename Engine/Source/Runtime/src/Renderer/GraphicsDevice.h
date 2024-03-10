@@ -38,6 +38,8 @@ public:
 
     void ReleaseHeap(const Heap& heap);
 
+	void ReleaseBuffer(const Buffer& buffer);
+
     void ReleaseTexture(const Texture& texture);
 
     void Dispose(Heap& heap);

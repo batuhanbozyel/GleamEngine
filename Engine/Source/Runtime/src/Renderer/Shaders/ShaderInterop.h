@@ -52,6 +52,7 @@ struct ShaderResourceIndex
         return data != other.data;
     }
 };
+static_assert(sizeof(ShaderResourceIndex) == sizeof(uint32_t));
 #else
 typedef uint ShaderResourceIndex;
 #endif

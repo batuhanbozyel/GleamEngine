@@ -201,7 +201,7 @@ MetalDevice::MetalDevice()
     mCommandPool = [mHandle newCommandQueue];
     
     // create descriptor heap
-    mCbvSrvUavHeap = CreateDescriptorHeap(128 * 1024);
+    mCbvSrvUavHeap = CreateDescriptorHeap(CBV_SRV_HEAP_SIZE);
 
     MetalPipelineStateManager::Init(this);
 
