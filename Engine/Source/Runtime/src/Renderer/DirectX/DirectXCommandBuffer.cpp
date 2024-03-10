@@ -72,6 +72,13 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, 
 		if (colorAttachmentDesc.texture.IsValid())
 		{
 			auto resource = static_cast<ID3D12Resource*>(colorAttachmentDesc.texture.GetHandle());
+
+		#ifdef GDEBUG
+			TStringStream resourceName;
+			resourceName << debugName << "::colorAttachment_" << i;
+			resource->SetName(StringUtils::Convert(resourceName.str()).data());
+		#endif
+
 			colorAttachments[i].cpuDescriptor = colorAttachmentDesc.texture.GetView();
 			DirectXTransitionManager::TransitionLayout(mHandle->commandList.handle, resource, D3D12_RESOURCE_STATE_RENDER_TARGET);
 		}
@@ -98,6 +105,13 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, 
 		mHandle->depthAttachment = renderPassDesc.depthAttachment.texture.GetDescriptor();
 		auto format = renderPassDesc.depthAttachment.texture.GetDescriptor().format;
 		auto resource = static_cast<ID3D12Resource*>(renderPassDesc.depthAttachment.texture.GetHandle());
+
+	#ifdef GDEBUG
+		TStringStream resourceName;
+		resourceName << debugName << "::depthAttachment";
+		resource->SetName(StringUtils::Convert(resourceName.str()).data());
+	#endif
+
 		DirectXTransitionManager::TransitionLayout(mHandle->commandList.handle, resource, D3D12_RESOURCE_STATE_DEPTH_WRITE);
 
 		D3D12_RENDER_PASS_DEPTH_STENCIL_DESC depthAttachment{};
