@@ -1,4 +1,3 @@
-#include "gpch.h"
 #include "InfiniteGridRenderer.h"
 #include "ShaderTypes.h"
 
