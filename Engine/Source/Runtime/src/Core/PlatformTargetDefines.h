@@ -32,17 +32,4 @@
 #define USE_METAL_RENDERER
 #else
 #define USE_DIRECTX_RENDERER
-//#define USE_VULKAN_RENDERER
-#ifdef USE_VULKAN_RENDERER
-	#ifdef PLATFORM_WINDOWS
-	#define VK_USE_PLATFORM_WIN32_KHR
-
-	#elif defined(PLATFORM_ANDROID)
-	#define VK_USE_PLATFORM_ANDROID_KHR
-
-	#elif defined(PLATFORM_LINUX)
-	#define VK_USE_PLATFORM_XCB_KHR
-	#endif
-#endif
-
 #endif
