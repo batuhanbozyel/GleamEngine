@@ -149,7 +149,7 @@ void CommandBuffer::BindGraphicsPipeline(const PipelineStateDescriptor& pipeline
     {
         mDevice->Dispose(mHandle->topLevelArgumentBuffer);
     }
-    mHandle->topLevelArgumentBuffer = mStagingHeap.CreateBuffer({ .size = MetalPipelineStateManager::GetTopLevelArgumentBufferSize() });
+    mHandle->topLevelArgumentBuffer = mStagingHeap.CreateBuffer(MetalPipelineStateManager::GetTopLevelArgumentBufferSize());
     [mHandle->renderCommandEncoder setVertexBuffer:mHandle->topLevelArgumentBuffer.GetHandle() offset:0 atIndex:kIRArgumentBufferBindPoint];
     [mHandle->renderCommandEncoder setFragmentBuffer:mHandle->topLevelArgumentBuffer.GetHandle() offset:0 atIndex:kIRArgumentBufferBindPoint];
 

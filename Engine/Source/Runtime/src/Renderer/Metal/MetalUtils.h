@@ -86,8 +86,6 @@ static constexpr MTLPixelFormat TextureFormatToMTLPixelFormat(TextureFormat form
 {
     switch (format)
     {
-        case TextureFormat::R8_SRGB: return MTLPixelFormatR8Unorm_sRGB;
-        case TextureFormat::R8G8_SRGB: return MTLPixelFormatRG8Unorm_sRGB;
         case TextureFormat::R8G8B8A8_SRGB: return MTLPixelFormatRGBA8Unorm_sRGB;
 
         case TextureFormat::R8_UNorm: return MTLPixelFormatR8Unorm;

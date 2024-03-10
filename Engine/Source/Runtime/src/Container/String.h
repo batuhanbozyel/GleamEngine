@@ -1,6 +1,8 @@
 #pragma once
 #include <string>
 #include <sstream>
+#include <locale>
+#include <codecvt>
 
 namespace Gleam {
 
@@ -19,12 +21,17 @@ namespace StringUtils {
 static TWString Convert(const TString& as)
 {
 	if (as.empty()) return TWString();
+    
+    std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+    return converter.from_bytes(as.c_str());
+}
 
-	size_t reqLength = ::MultiByteToWideChar(CP_UTF8, 0, as.c_str(), (int)as.length(), 0, 0);
-	TWString ret(reqLength, L'\0');
-
-	::MultiByteToWideChar(CP_UTF8, 0, as.c_str(), (int)as.length(), &ret[0], (int)ret.length());
-	return ret;
+static TString Convert(const TWString& as)
+{
+    if (as.empty()) return TString();
+    
+    std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+    return converter.to_bytes(as.c_str());
 }
 
 } // namespace StringUtils
