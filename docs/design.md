@@ -21,7 +21,7 @@ Gleam Engine leverages a pure Entity Component System (ECS) architecture for man
     * `OnUpdate(EntityManager& entityManager)`
     * `OnFixedUpdate(EntityManager& entityManager)`
     * `OnDestroy(EntityManager& entityManager)`
-* **EntityManager:** (interface)
+* **EntityManager:**
     * **Entity Creation:**
         * `CreateEntity()`
         * `CreateEntity(Types&& ... components)`
