@@ -100,41 +100,36 @@ This example demonstrates how a `PostProcessStack` renderer might be implemented
 ```c++
 void PostProcessStack::OnCreate(GraphicsDevice* device)
 {
-  mFullscreenTriangleVertexShader = device->CreateShader("fullscreenTriangleVertexShader", ShaderStage::Vertex);
-  mTonemappingFragmentShader = device->CreateShader("tonemappingFragmentShader", ShaderStage::Fragment);
+    mFullscreenTriangleVertexShader = device->CreateShader("fullscreenTriangleVertexShader", ShaderStage::Vertex);
+    mTonemappingFragmentShader = device->CreateShader("tonemappingFragmentShader", ShaderStage::Fragment);
 }
 
 void PostProcessStack::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard)
 {
-  // Define data shared between passes
-  struct PostProcessData
-  {
-    TextureHandle colorTarget;
-    TextureHandle sceneTarget;
-  };
-
-  graph.AddRenderPass<PostProcessData>("PostProcessStack::Tonemapping", &: RenderGraphBuilder& builder, PostProcessData& passData
-  {
-    // Access data from the blackboard
-    auto& sceneData = blackboard.Get<SceneRenderingData>();
-    const auto& worldData = blackboard.Get<WorldRenderingData>();
-
-    // Define pass outputs and dependencies
-    passData.colorTarget = builder.UseColorBuffer(sceneData.backbuffer);
-    passData.sceneTarget = builder.ReadTexture(worldData.colorTarget);
-
-    // Update the backbuffer for the next pass
-    sceneData.backbuffer = passData.colorTarget;
-  },
-  this: const CommandBuffer* cmd, const PostProcessData& passData
-  {
-    // Set up uniforms and pipeline state
-    TonemapUniforms uniforms;
-    uniforms.sceneRT = passData.sceneTarget;
-
-    PipelineStateDescriptor pipelineDesc;
-    cmd->BindGraphicsPipeline(pipelineDesc, mFullscreenTriangleVertexShader, mTonemappingFragmentShader);
-    cmd->SetPushConstant(uniforms);
-    cmd->Draw(3);
-  });
+    struct PostProcessData
+    {
+        TextureHandle colorTarget;
+        TextureHandle sceneTarget;
+    };
+    
+    graph.AddRenderPass<PostProcessData>("PostProcessStack::Tonemapping", [&](RenderGraphBuilder& builder, PostProcessData& passData)
+    {
+        auto& sceneData = blackboard.Get<SceneRenderingData>();
+        const auto& worldData = blackboard.Get<WorldRenderingData>();
+        passData.colorTarget = builder.UseColorBuffer(sceneData.backbuffer);
+        passData.sceneTarget = builder.ReadTexture(worldData.colorTarget);
+        
+        sceneData.backbuffer = passData.colorTarget;
+    },
+    [this](const CommandBuffer* cmd, const PostProcessData& passData)
+    {
+        TonemapUniforms uniforms;
+        uniforms.sceneRT = passData.sceneTarget;
+        
+        PipelineStateDescriptor pipelineDesc;
+        cmd->BindGraphicsPipeline(pipelineDesc, mFullscreenTriangleVertexShader, mTonemappingFragmentShader);
+        cmd->SetPushConstant(uniforms);
+        cmd->Draw(3);
+    });
 }
+```
