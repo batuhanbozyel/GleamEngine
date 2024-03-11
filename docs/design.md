@@ -38,7 +38,44 @@ Gleam Engine leverages a pure Entity Component System (ECS) architecture for man
         * `GetComponent(Entity entity)`
 
 ## Renderer Hardware Interface (RHI)
-Gleam Engine prioritizes performance and avoids unnecessary abstraction layers to achieve this. It accomplishes this through a unique approach to its Renderer Hardware Interface (RHI).
+
+Gleam Engine prioritizes performance and avoids unnecessary abstraction layers, favoring a streamlined approach to its Renderer Hardware Interface (RHI). This is achieved through several key design choices:
+
+**Bindless Rendering:**
+
+Gleam Engine exclusively utilizes bindless rendering. This eliminates the need for manual shader resource binding, reducing CPU overhead and simplifying the rendering pipeline. Resource management and indexing are handled internally, ensuring efficient GPU utilization.
+
+**Single HLSL Shader for Both Backends (DX12/Metal):**
+
+Gleam Engine leverages Apple's Metal Shader Converter library to achieve a single-shader approach. This library compiles Metal shader libraries from DirectX Intermediate Language (DXIL), enabling the use of a unified HLSL shader codebase for both DirectX 12 and Metal backends. The library also provides interfaces that mirror DirectX pipeline creation and command list calls, further streamlining the rendering process.
+
+**Type-Safe Resource Management:**
+
+For enhanced type-safety and improved debugging capabilities, Gleam Engine implements distinct resource types to manage bindless resources. These types encapsulate descriptor heap indexing internally and perform resource access validation during debug builds. This approach helps prevent errors and simplifies resource management.
+
+**Example:**
+
+```c++
+// Shared between C++ and HLSL
+struct DebugShaderResources
+{
+  BufferResourceView vertexBuffer;
+  ConstantBufferView cameraBuffer;
+};
+```
+
+```c++
+VertexOut debugVertexShader(uint vertex_id: SV_VertexID)
+{
+    Gleam::CameraUniforms CameraBuffer = resources.cameraBuffer.Load<Gleam::CameraUniforms>();
+    Gleam::DebugVertex vertex = resources.vertexBuffer.Load<Gleam::DebugVertex>(vertex_id);
+    
+    VertexOut OUT;
+    OUT.position = mul(CameraBuffer.viewProjectionMatrix, float4(vertex.position.xyz, 1.0f));
+    OUT.color = unpack_unorm4x8_to_float(vertex.color);
+    return OUT;
+}
+```
 
 **Command Buffers and Compile-Time Decisions:**
 
