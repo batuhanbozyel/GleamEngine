@@ -80,21 +80,15 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, 
 		#endif
 
 			colorAttachments[i].cpuDescriptor = colorAttachmentDesc.texture.GetView();
-			DirectXTransitionManager::TransitionLayout(mHandle->commandList.handle, resource, D3D12_RESOURCE_STATE_RENDER_TARGET);
+			DirectXTransitionManager::TransitionLayout(mHandle->commandList.handle,
+				resource, D3D12_RESOURCE_STATE_RENDER_TARGET);
 		}
 		else
 		{
 			const auto& drawable = mHandle->device->AcquireNextDrawable();
 			colorAttachments[i].cpuDescriptor = drawable.view;
-
-			D3D12_RESOURCE_BARRIER barrier{};
-			barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-			barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-			barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-			barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
-			barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
-			barrier.Transition.pResource = drawable.renderTarget;
-			mHandle->commandList.handle->ResourceBarrier(1, &barrier);
+			DirectXTransitionManager::TransitionLayout(mHandle->commandList.handle,
+				drawable.renderTarget, D3D12_RESOURCE_STATE_RENDER_TARGET);
 		}
 
 		// TODO: implement MSAA resolve -> olorAttachments[i].EndingAccess.Resolve
@@ -261,6 +255,11 @@ void CommandBuffer::Blit(const Texture& source, const Texture& destination) cons
 void CommandBuffer::Begin() const
 {
 	mHandle->commandList = mHandle->device->AllocateCommandList(D3D12_COMMAND_LIST_TYPE_DIRECT);
+#ifdef GDEBUG
+	TStringStream resourceName;
+	resourceName << "CommandList::Direct_" << mHandle->device->GetFrameIndex();
+	mHandle->commandList.handle->SetName(StringUtils::Convert(resourceName.str()).data());
+#endif
 	mCommitted = false;
 }
 

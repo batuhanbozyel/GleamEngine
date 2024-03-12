@@ -120,7 +120,8 @@ void RenderGraph::Compile()
         for (auto& resource : pass->bufferCreates)
         {
             auto node = static_cast<RenderGraphBufferNode*>(resource.node);
-            mHeapSize += node->buffer.GetSize();
+			auto memoryRequirements = mDevice->QueryMemoryRequirements({ .memoryType = MemoryType::GPU, .size = node->buffer.GetSize() });
+            mHeapSize += Utils::AlignUp(memoryRequirements.size, memoryRequirements.alignment);
         }
         for (auto& resource : pass->bufferWrites)
         {

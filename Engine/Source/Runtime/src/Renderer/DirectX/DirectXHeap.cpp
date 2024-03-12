@@ -5,7 +5,6 @@
 #include "Renderer/Buffer.h"
 
 #include "DirectXTransitionManager.h"
-#include "DirectXDevice.h"
 #include "DirectXUtils.h"
 
 using namespace Gleam;
@@ -22,15 +21,20 @@ Buffer Heap::CreateBuffer(size_t size) const
 	}
 	mStackPtr = newStackPtr;
 
+	auto initialState = D3D12_RESOURCE_STATE_GENERIC_READ;
 	auto flags = D3D12_RESOURCE_FLAG_NONE;
 	if (mDescriptor.memoryType != MemoryType::CPU)
 	{
 		flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
 	}
+	else
+	{
+		initialState = D3D12_RESOURCE_STATE_GENERIC_READ;
+	}
 
 	D3D12_RESOURCE_DESC resourceDesc = {
 		.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER,
-		.Alignment = 0,
+		.Alignment = mAlignment,
 		.Width = size,
 		.Height = 1,
 		.DepthOrArraySize = 1,
@@ -46,10 +50,11 @@ Buffer Heap::CreateBuffer(size_t size) const
 		static_cast<ID3D12Heap*>(mHandle),
 		alignedStackPtr,
 		&resourceDesc,
-		D3D12_RESOURCE_STATE_COMMON,
+		initialState,
 		nullptr,
 		IID_PPV_ARGS(&resource)
 	));
+	DirectXTransitionManager::SetLayout(resource, initialState);
 
     void* contents = nullptr;
     if (mDescriptor.memoryType != MemoryType::GPU)
