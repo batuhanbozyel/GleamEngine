@@ -71,6 +71,8 @@ public:
 
 	ID3D12CommandQueue* GetCopyQueue() const;
 
+	void WaitQueueIdle(ID3D12CommandQueue* queue) const;
+
 	virtual ShaderResourceIndex CreateResourceView(const Buffer& buffer) override;
 
 	virtual ShaderResourceIndex CreateResourceView(const Texture& texture) override;

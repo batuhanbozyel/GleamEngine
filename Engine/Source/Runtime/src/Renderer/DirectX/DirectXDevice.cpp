@@ -44,7 +44,7 @@ Scope<GraphicsDevice> GraphicsDevice::Create()
 MemoryRequirements GraphicsDevice::QueryMemoryRequirements(const HeapDescriptor& descriptor) const
 {
 	D3D12_HEAP_PROPERTIES heapProperties = {
-		.Type = D3D12_HEAP_TYPE_DEFAULT,
+		.Type = descriptor.memoryType == MemoryType::CPU ? D3D12_HEAP_TYPE_UPLOAD : D3D12_HEAP_TYPE_DEFAULT,
 		.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN,
 		.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN,
 		.CreationNodeMask = 0,
@@ -285,6 +285,41 @@ DirectXDevice::DirectXDevice()
 
 	DirectXPipelineStateManager::Init(this);
 
+	EventDispatcher<WindowResizeEvent>::Subscribe([this](const WindowResizeEvent& e)
+	{
+		WaitQueueIdle(mDirectQueue);
+		for (auto& ctx : mFrameContext)
+		{
+			ctx.drawable.renderTarget->Release();
+			mRtvHeap.heap.Release(mRtvHeap.GetResourceIndex(ctx.drawable.view));
+		}
+
+		mSize.width = static_cast<float>(e.GetWidth());
+		mSize.height = static_cast<float>(e.GetHeight());
+		mSwapchain->ResizeBuffers(mMaxFramesInFlight, (UINT)mSize.width, (UINT)mSize.height, TextureFormatToDXGI_FORMAT(mFormat), 0);
+
+		for (uint32_t i = 0; i < mMaxFramesInFlight; i++)
+		{
+			auto& ctx = mFrameContext[i];
+
+			auto index = mRtvHeap.heap.Allocate();
+			ctx.drawable.view = mRtvHeap.cpuHandle;
+			ctx.drawable.view.ptr += (size_t)index.data * (size_t)mRtvHeap.size;
+
+			// create swapchain RTV
+			DX_CHECK(mSwapchain->GetBuffer(i, IID_PPV_ARGS(&ctx.drawable.renderTarget)));
+			static_cast<ID3D12Device10*>(mHandle)->CreateRenderTargetView(ctx.drawable.renderTarget, nullptr, ctx.drawable.view);
+			DirectXTransitionManager::SetLayout(ctx.drawable.renderTarget, D3D12_RESOURCE_STATE_PRESENT);
+
+		#ifdef GDEBUG
+			TStringStream resourceName;
+			resourceName << "Swapchain::Drawable_" << i;
+			ctx.drawable.renderTarget->SetName(StringUtils::Convert(resourceName.str()).data());
+		#endif
+		}
+		EventDispatcher<RendererResizeEvent>::Publish(RendererResizeEvent(mSize));
+	});
+
 	GLEAM_CORE_INFO("DirectX: Graphics device created.");
 }
 
@@ -405,6 +440,13 @@ void DirectXDevice::Configure(const RendererConfig& config)
 		// create swapchain RTV
 		DX_CHECK(mSwapchain->GetBuffer(i, IID_PPV_ARGS(&ctx.drawable.renderTarget)));
 		static_cast<ID3D12Device10*>(mHandle)->CreateRenderTargetView(ctx.drawable.renderTarget, nullptr, ctx.drawable.view);
+		DirectXTransitionManager::SetLayout(ctx.drawable.renderTarget, D3D12_RESOURCE_STATE_PRESENT);
+
+	#ifdef GDEBUG
+		TStringStream resourceName;
+		resourceName << "Swapchain::Drawable_" << i;
+		ctx.drawable.renderTarget->SetName(StringUtils::Convert(resourceName.str()).data());
+	#endif
 
 		// create fence
 		DX_CHECK(static_cast<ID3D12Device10*>(mHandle)->CreateFence(
@@ -427,14 +469,9 @@ void DirectXDevice::Present(const CommandBuffer* cmd)
 {
 	auto& ctx = mFrameContext[mCurrentFrameIndex];
 
-	D3D12_RESOURCE_BARRIER barrier{};
-	barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-	barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-	barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-	barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
-	barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
-	barrier.Transition.pResource = ctx.drawable.renderTarget;
-	static_cast<ID3D12GraphicsCommandList7*>(cmd->GetHandle())->ResourceBarrier(1, &barrier);
+	DirectXTransitionManager::TransitionLayout(static_cast<ID3D12GraphicsCommandList7*>(cmd->GetHandle()),
+		ctx.drawable.renderTarget, D3D12_RESOURCE_STATE_PRESENT);
+
 	cmd->End();
 	cmd->Commit();
 
@@ -629,6 +666,21 @@ void DirectXDevice::ReleaseResourceView(ShaderResourceIndex view)
 	{
 		mCbvSrvUavHeap.heap.Release(view);
 	}
+}
+
+void DirectXDevice::WaitQueueIdle(ID3D12CommandQueue* queue) const
+{
+	constexpr static uint64_t fenceValue = 1;
+
+	ID3D12Fence* fence = nullptr;
+	DX_CHECK(static_cast<ID3D12Device10*>(mHandle)->CreateFence(
+		fenceValue,
+		D3D12_FENCE_FLAG_NONE,
+		IID_PPV_ARGS(&fence)
+	));
+
+	DX_CHECK(queue->Signal(fence, fenceValue));
+	WaitForID3D12Fence(fence, fenceValue);
 }
 
 DirectXDescriptorHeap& DirectXDevice::GetCbvSrvUavHeap()
