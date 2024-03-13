@@ -11,9 +11,9 @@ struct Size
     static const Size one;
     
     constexpr Size() = default;
-    constexpr Size(Size&&) = default;
+    constexpr Size(Size&&) noexcept = default;
     constexpr Size(const Size&) = default;
-    FORCE_INLINE constexpr Size& operator=(Size&&) = default;
+    FORCE_INLINE constexpr Size& operator=(Size&&) noexcept = default;
     FORCE_INLINE constexpr Size& operator=(const Size&) = default;
     
     constexpr Size(float width, float height)

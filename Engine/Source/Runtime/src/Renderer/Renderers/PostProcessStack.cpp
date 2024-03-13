@@ -9,16 +9,16 @@
 #include "PostProcessStack.h"
 
 #include "Renderer/CommandBuffer.h"
-#include "Renderer/RendererContext.h"
+#include "Renderer/GraphicsDevice.h"
 
 #include "WorldRenderer.h"
 
 using namespace Gleam;
 
-void PostProcessStack::OnCreate(RendererContext& context)
+void PostProcessStack::OnCreate(GraphicsDevice* device)
 {
-    mFullscreenTriangleVertexShader = context.CreateShader("fullscreenTriangleVertexShader", ShaderStage::Vertex);
-    mTonemappingFragmentShader = context.CreateShader("tonemappingFragmentShader", ShaderStage::Fragment);
+    mFullscreenTriangleVertexShader = device->CreateShader("fullscreenTriangleVertexShader", ShaderStage::Vertex);
+    mTonemappingFragmentShader = device->CreateShader("tonemappingFragmentShader", ShaderStage::Fragment);
 }
 
 void PostProcessStack::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard)
@@ -31,18 +31,21 @@ void PostProcessStack::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard
     
     graph.AddRenderPass<PostProcessData>("PostProcessStack::Tonemapping", [&](RenderGraphBuilder& builder, PostProcessData& passData)
     {
-        auto& renderingData = blackboard.Get<RenderingData>();
-        const auto& worldRenderingData = blackboard.Get<WorldRenderingData>();
-        passData.colorTarget = builder.UseColorBuffer(renderingData.backbuffer);
-        passData.sceneTarget = builder.ReadTexture(worldRenderingData.colorTarget);
+        auto& sceneData = blackboard.Get<SceneRenderingData>();
+        const auto& worldData = blackboard.Get<WorldRenderingData>();
+        passData.colorTarget = builder.UseColorBuffer(sceneData.backbuffer);
+        passData.sceneTarget = builder.ReadTexture(worldData.colorTarget);
         
-        renderingData.backbuffer = passData.colorTarget;
+        sceneData.backbuffer = passData.colorTarget;
     },
     [this](const CommandBuffer* cmd, const PostProcessData& passData)
     {
+        TonemapUniforms uniforms;
+        uniforms.sceneRT = passData.sceneTarget;
+        
         PipelineStateDescriptor pipelineDesc;
         cmd->BindGraphicsPipeline(pipelineDesc, mFullscreenTriangleVertexShader, mTonemappingFragmentShader);
-        cmd->BindTexture(passData.sceneTarget, 0, ShaderStage_Fragment);
+        cmd->SetPushConstant(uniforms);
         cmd->Draw(3);
     });
 }

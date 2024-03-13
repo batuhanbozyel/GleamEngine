@@ -1,7 +1,9 @@
 #pragma once
 #ifdef USE_METAL_RENDERER
 #include "MetalDevice.h"
+#include "Renderer/Shader.h"
 #include "Renderer/TextureFormat.h"
+#include "Renderer/HeapDescriptor.h"
 #include "Renderer/RenderPassDescriptor.h"
 #include "Renderer/PipelineStateDescriptor.h"
 #include "Renderer/RenderGraph/RenderGraphResource.h"
@@ -15,8 +17,6 @@ static constexpr TextureFormat MTLPixelFormatToTextureFormat(MTLPixelFormat form
 {
     switch (format)
     {
-        case MTLPixelFormatR8Unorm_sRGB: return TextureFormat::R8_SRGB;
-        case MTLPixelFormatRG8Unorm_sRGB: return TextureFormat::R8G8_SRGB;
         case MTLPixelFormatRGBA8Unorm_sRGB: return TextureFormat::R8G8B8A8_SRGB;
 
         case MTLPixelFormatR8Unorm: return TextureFormat::R8_UNorm;
@@ -71,9 +71,11 @@ static constexpr TextureFormat MTLPixelFormatToTextureFormat(MTLPixelFormat form
         case MTLPixelFormatBGRA8Unorm: return TextureFormat::B8G8R8A8_UNorm;
             
         // Depth - Stencil formats
-        case MTLPixelFormatStencil8: return TextureFormat::S8_UInt;
         case MTLPixelFormatDepth16Unorm: return TextureFormat::D16_UNorm;
         case MTLPixelFormatDepth32Float: return TextureFormat::D32_SFloat;
+#ifdef PLATFORM_MACOS
+        case MTLPixelFormatDepth24Unorm_Stencil8: return TextureFormat::D24_UNorm_S8_UInt;
+#endif
         case MTLPixelFormatDepth32Float_Stencil8: return TextureFormat::D32_SFloat_S8_UInt;
 
         default: return TextureFormat::None;
@@ -84,8 +86,6 @@ static constexpr MTLPixelFormat TextureFormatToMTLPixelFormat(TextureFormat form
 {
     switch (format)
     {
-        case TextureFormat::R8_SRGB: return MTLPixelFormatR8Unorm_sRGB;
-        case TextureFormat::R8G8_SRGB: return MTLPixelFormatRG8Unorm_sRGB;
         case TextureFormat::R8G8B8A8_SRGB: return MTLPixelFormatRGBA8Unorm_sRGB;
 
         case TextureFormat::R8_UNorm: return MTLPixelFormatR8Unorm;
@@ -140,9 +140,13 @@ static constexpr MTLPixelFormat TextureFormatToMTLPixelFormat(TextureFormat form
         case TextureFormat::B8G8R8A8_UNorm: return MTLPixelFormatBGRA8Unorm;
 
         // Depth - Stencil formats
-        case TextureFormat::S8_UInt: return MTLPixelFormatStencil8;
         case TextureFormat::D16_UNorm: return MTLPixelFormatDepth16Unorm;
         case TextureFormat::D32_SFloat: return MTLPixelFormatDepth32Float;
+#ifdef PLATFORM_MACOS
+        case TextureFormat::D24_UNorm_S8_UInt: return MTLPixelFormatDepth24Unorm_Stencil8;
+#else
+        case TextureFormat::D24_UNorm_S8_UInt: return MTLPixelFormatDepth32Float_Stencil8;
+#endif
         case TextureFormat::D32_SFloat_S8_UInt: return MTLPixelFormatDepth32Float_Stencil8;
 
         default: return MTLPixelFormatInvalid;
@@ -167,26 +171,6 @@ static constexpr MTLTextureUsage TextureUsageToMTLTextureUsage(TextureUsageFlagB
         usage |= MTLTextureUsageRenderTarget;
     }
     return usage;
-}
-
-static constexpr MTLRenderStages ShaderStagesToMTLRenderStages(ShaderStageFlagBits flags)
-{
-    MTLRenderStages stages = 0;
-    if (flags & ShaderStage_Vertex)
-    {
-        stages |= MTLRenderStageVertex;
-    }
-    
-    if (flags & ShaderStage_Fragment)
-    {
-        stages |= MTLRenderStageFragment;
-    }
-    
-    if (flags & ShaderStage_Compute)
-    {
-        stages |= MTLRenderStageTile;
-    }
-    return stages;
 }
 
 static constexpr MTLCullMode CullModeToMTLCullMode(CullMode cullMode)

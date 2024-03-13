@@ -6,8 +6,6 @@ enum class TextureFormat
 {
 	None,
 
-	R8_SRGB,
-	R8G8_SRGB,
 	R8G8B8A8_SRGB,
 
 	R8_UNorm,
@@ -62,20 +60,18 @@ enum class TextureFormat
     B8G8R8A8_UNorm,
     
     // Depth - Stencil formats
-    S8_UInt,
     D16_UNorm,
     D32_SFloat,
+    D24_UNorm_S8_UInt,
     D32_SFloat_S8_UInt
 };
 
 namespace Utils {
 
-static constexpr size_t GetTextureFormatSize(TextureFormat format)
+static constexpr size_t GetTextureFormatSizeInBytes(TextureFormat format)
 {
 	switch (format)
 	{
-		case TextureFormat::R8_SRGB: return 1;
-		case TextureFormat::R8G8_SRGB: return 2;
 		case TextureFormat::R8G8B8A8_SRGB: return 4;
 
 		case TextureFormat::R8_UNorm: return 1;
@@ -130,9 +126,9 @@ static constexpr size_t GetTextureFormatSize(TextureFormat format)
 		case TextureFormat::B8G8R8A8_UNorm: return 4;
 
         // Depth - Stencil formats
-		case TextureFormat::S8_UInt: return 1;
 		case TextureFormat::D16_UNorm: return 2;
 		case TextureFormat::D32_SFloat: return 4;
+        case TextureFormat::D24_UNorm_S8_UInt: return 4;
 		case TextureFormat::D32_SFloat_S8_UInt: return 5;
 
 		default: return 0;
@@ -143,8 +139,6 @@ static constexpr bool IsColorFormat(TextureFormat format)
 {
 	switch (format)
 	{
-		case TextureFormat::R8_SRGB:
-		case TextureFormat::R8G8_SRGB:
 		case TextureFormat::R8G8B8A8_SRGB:
 
 		case TextureFormat::R8_UNorm:
@@ -205,6 +199,7 @@ static constexpr bool IsDepthStencilFormat(TextureFormat format)
 	switch (format)
 	{
 		case TextureFormat::D32_SFloat:
+        case TextureFormat::D24_UNorm_S8_UInt:
 		case TextureFormat::D32_SFloat_S8_UInt: return true;
 		default: return false;
 	}
@@ -216,16 +211,7 @@ static constexpr bool IsDepthFormat(TextureFormat format)
     {
         case TextureFormat::D16_UNorm:
         case TextureFormat::D32_SFloat:
-        case TextureFormat::D32_SFloat_S8_UInt: return true;
-        default: return false;
-    }
-}
-
-static constexpr bool IsStencilFormat(TextureFormat format)
-{
-    switch (format)
-    {
-        case TextureFormat::S8_UInt:
+        case TextureFormat::D24_UNorm_S8_UInt:
         case TextureFormat::D32_SFloat_S8_UInt: return true;
         default: return false;
     }

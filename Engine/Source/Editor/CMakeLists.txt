@@ -1,6 +1,6 @@
 include (${CMAKE_SOURCE_DIR}/CMake/CMakeUtils.cmake)
 
-find_package(Vulkan REQUIRED)
+find_package(Python COMPONENTS Interpreter REQUIRED)
 
 set(INCLUDE_DIRS
     src
@@ -8,56 +8,47 @@ set(INCLUDE_DIRS
     ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/SDL/include
     ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/fmt/include
     ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/entt/single_include
+    ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/cgltf
     ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui
     ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/ImGuizmo
+    ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/DirectXAgilitySDK/build/native/include
 )
 
 file(GLOB_RECURSE SOURCE_FILES 
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/*.mm
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/*.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/*.c*
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/*.m*
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/*.h*
 )
+
+# Editor shader files
+file(GLOB_RECURSE SHADER_FILES ${CMAKE_CURRENT_SOURCE_DIR}/src/*.hlsl*)
+if (WIN32)
+    set_source_files_properties(${SHADER_FILES} PROPERTIES VS_TOOL_OVERRIDE "None")
+endif()
+list(APPEND SOURCE_FILES ${SHADER_FILES})
 
 add_executable(Editor WIN32 MACOSX_BUNDLE ${SOURCE_FILES})
-target_include_directories(Editor PRIVATE
-    ${INCLUDE_DIRS} 
-    ${Vulkan_INCLUDE_DIRS} 
-    ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/volk 
-    ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/VulkanMemoryAllocator/include
-)
-target_link_directories(Editor PRIVATE ${CMAKE_SOURCE_DIR}/bin/$<CONFIG>)
+target_include_directories(Editor PRIVATE ${INCLUDE_DIRS})
+target_link_directories(Editor PRIVATE ${CMAKE_BINARY_DIR}/$<CONFIG>)
 
 # Add imgui as static library
+add_library(imgui STATIC
+    ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui/imgui.cpp
+    ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui/imgui_draw.cpp
+    ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui/imgui_widgets.cpp
+    ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui/imgui_demo.cpp
+    ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui/imgui_tables.cpp
+)
+
+# Configure imgui
+target_include_directories(imgui PRIVATE
+    ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui
+    ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/SDL/include
+    ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/DirectXAgilitySDK/build/native/include
+)
+
 if (APPLE)
-    add_library(imgui STATIC
-        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui/imgui.cpp
-        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui/imgui_draw.cpp
-        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui/imgui_widgets.cpp
-        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui/imgui_demo.cpp
-        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui/imgui_tables.cpp
-    )
     set_target_properties(Editor PROPERTIES MACOSX_BUNDLE YES XCODE_ATTRIBUTE_CLANG_ENABLE_OBJC_ARC YES)
-
-    # Configure imgui
-    target_include_directories(imgui PRIVATE
-        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui
-        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/SDL/include
-    )
-else ()
-    add_library(imgui STATIC
-        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui/imgui.cpp
-        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui/imgui_draw.cpp
-        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui/imgui_widgets.cpp
-        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui/imgui_demo.cpp
-        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui/imgui_tables.cpp
-    )
-
-    # Configure imgui
-    target_include_directories(imgui PRIVATE
-        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui
-        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/SDL/include
-        ${Vulkan_INCLUDE_DIRS}
-    )
 endif()
 
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${SOURCE_FILES})
@@ -72,3 +63,29 @@ else()
 endif()
 
 add_dependencies(Editor Runtime imgui)
+
+target_compile_definitions(
+    Editor
+
+    PRIVATE
+    "_CRT_SECURE_NO_WARNINGS"
+    "WIN32_LEAN_AND_MEAN"
+    "NOMINMAX"
+    
+    PUBLIC
+    $<$<CONFIG:Debug>:GDEBUG>
+    $<$<CONFIG:Release>:GRELEASE>
+)
+
+# Precompile shaders
+set(HLSL_FILE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/src/Renderers/Shaders)
+set(SHADER_FUNCTIONS
+    ${HLSL_FILE_PATH}/InfiniteGridShader.hlsl infiniteGridVertexShader vertex
+    ${HLSL_FILE_PATH}/InfiniteGridShader.hlsl infiniteGridFragmentShader fragment
+)
+
+add_custom_command(
+    TARGET Editor
+    PRE_BUILD
+    COMMAND Python::Interpreter ${CMAKE_SOURCE_DIR}/Tools/CompileShaders.py ${CMAKE_SOURCE_DIR}/Assets/Shaders ${SHADER_FUNCTIONS}
+)

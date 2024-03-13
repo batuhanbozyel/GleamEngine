@@ -9,16 +9,18 @@
 #include "WorldViewportController.h"
 
 #include "ImGui/ImGuiBackend.h"
+#include "Renderers/InfiniteGridRenderer.h"
 
 using namespace GEditor;
 
 WorldViewport::WorldViewport()
 {
-    GameInstance->GetSubsystem<Gleam::RenderSystem>()->AddRenderer<Gleam::DebugRenderer>();
+    GameInstance->GetSubsystem<Gleam::RenderSystem>()->AddRenderer<InfiniteGridRenderer>();
     mViewportSize = GameInstance->GetSubsystem<Gleam::WindowSystem>()->GetResolution();
     
     mEditWorld = Gleam::World::active;
 	mController = mEditWorld->AddSystem<WorldViewportController>();
+    mController->SetViewportSize(mViewportSize);
     
     Gleam::EventDispatcher<Gleam::MouseButtonPressedEvent>::Subscribe([&](Gleam::MouseButtonPressedEvent e)
     {
@@ -36,12 +38,17 @@ WorldViewport::WorldViewport()
 
 void WorldViewport::Update()
 {
+    if (mViewportSize != mController->GetViewportSize())
+    {
+        mController->SetViewportSize(mViewportSize);
+        Gleam::EventDispatcher<Gleam::RendererResizeEvent>::Publish(Gleam::RendererResizeEvent(mViewportSize));
+    }
+    
     Gleam::TextureDescriptor descriptor;
     descriptor.size = mViewportSize;
-    descriptor.type = Gleam::TextureType::RenderTexture;
+    descriptor.usage = Gleam::TextureUsage_Attachment | Gleam::TextureUsage_Sampled;
     GameInstance->GetSubsystem<Gleam::RenderSystem>()->SetRenderTarget(descriptor);
     
-    mController->SetViewportSize(mViewportSize);
     mController->SetViewportFocused(mIsFocused);
 }
 
@@ -55,7 +62,7 @@ void WorldViewport::Render()
     ImVec2 viewportSize = ImGui::GetContentRegionAvail();
     mViewportSize.width = viewportSize.x;
     mViewportSize.height = viewportSize.y;
-
+    
     ImGui::Image(ImGuiBackend::GetImTextureIDForTexture(sceneRT), ImVec2(sceneRTsize.width, sceneRTsize.height), ImVec2(0.0f, 0.0f), ImVec2(1.0f, 1.0f));
     mIsFocused = ImGui::IsWindowFocused();
     

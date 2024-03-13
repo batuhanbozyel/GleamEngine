@@ -113,7 +113,7 @@ public:
     }
     
 	template<class T, class...Args>
-	T& emplace(Args&&... args)
+	T& emplace(Args&&... args) noexcept
 	{
         return data[typeid(T)].emplace<T>(T{std::forward<Args>(args)...});
 	}

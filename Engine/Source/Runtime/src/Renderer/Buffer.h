@@ -1,34 +1,45 @@
 #pragma once
 #include "GraphicsObject.h"
-#include "BufferDescriptor.h"
 
 namespace Gleam {
 
-class Buffer : public GraphicsObject
+class Heap;
+class GraphicsDevice;
+
+class Buffer final : public ShaderResource
 {
+    friend class Heap;
+    friend class GraphicsDevice;
+    
 public:
 
 	Buffer() = default;
-
-	Buffer(NativeGraphicsHandle handle, const BufferDescriptor& descriptor, void* contents = nullptr);
-
-	Buffer(const Buffer& other) = default;
-
-	Buffer& operator=(const Buffer& other) = default;
     
-    void Dispose();
+    Buffer(const Buffer& other) = default;
+    
+    Buffer& operator=(const Buffer& other) = default;
 
-	void SetData(const void* data, size_t size, size_t offset = 0) const;
+    Buffer(NativeGraphicsHandle handle, size_t size, void* contents = nullptr)
+        : ShaderResource(handle), mSize(size), mContents(contents)
+    {
+        
+    }
     
-    void* GetContents() const;
+    void* GetContents() const
+    {
+        return mContents;
+    }
     
-    const BufferDescriptor& GetDescriptor() const;
+	size_t GetSize() const
+    {
+        return mSize;
+    }
     
 private:
     
 	void* mContents = nullptr;
 
-    BufferDescriptor mDescriptor;
+	size_t mSize;
     
 };
 

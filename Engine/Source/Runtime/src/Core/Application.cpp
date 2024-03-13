@@ -5,6 +5,7 @@
 #include "World/World.h"
 #include "Input/InputSystem.h"
 #include "Renderer/RenderSystem.h"
+#include "Renderer/Material/MaterialSystem.h"
 
 using namespace Gleam;
 
@@ -70,14 +71,15 @@ Application::Application(const ApplicationProperties& props)
 
         // init windowing subsystem
         auto windowSubsystem = AddSubsystem<WindowSystem>();
-        windowSubsystem->ConfigureWindow(props.windowProps);
+        windowSubsystem->Configure(props.windowConfig);
 		
 		// init renderer backend
         auto renderSubsystem = AddSubsystem<RenderSystem>();
         renderSubsystem->Configure(props.rendererConfig);
-		renderSubsystem->SetRenderTarget(Texture());
+		renderSubsystem->ResetRenderTarget();
         
         AddSubsystem<InputSystem>();
+        AddSubsystem<MaterialSystem>();
         
         World::active = World::Create();
         
@@ -117,14 +119,14 @@ Application::~Application()
 {
     if (mInstance)
     {
+        World::active.reset();
+        
         // Destroy subsystems
         for (auto system : mSubsystems)
         {
             system->Shutdown();
         }
         mSubsystems.clear();
-        
-        World::active.reset();
         
         mInstance = nullptr;
     }

@@ -1,8 +1,9 @@
-#include "Common.hlsl"
+#include "Common.hlsli"
+#include "ShaderTypes.h"
 
-Texture2D finalColorRT : register(t0);
+PUSH_CONSTANT(Gleam::TonemapUniforms, uniforms);
 
 float4 tonemappingFragmentShader(FScreenVertexOutput IN) : SV_TARGET
 {
-    return finalColorRT.Sample(Sampler_Point_Clamp, IN.texCoord);
+    return uniforms.sceneRT.Sample(Sampler_Point_Clamp, IN.texCoord);
 }

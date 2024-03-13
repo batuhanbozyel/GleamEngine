@@ -24,7 +24,7 @@ enum class CompareFunction
 
 struct DepthState
 {
-    CompareFunction compareFunction = CompareFunction::Less;
+    CompareFunction compareFunction = CompareFunction::Always;
     bool writeEnabled = false;
 
 	bool operator==(const DepthState& other) const
@@ -87,13 +87,14 @@ enum class PrimitiveTopology
 
 struct PipelineStateDescriptor
 {
-    BlendState blendState;
-    DepthState depthState;
-    StencilState stencilState;
+    BlendState blendState{};
+    DepthState depthState{};
+    StencilState stencilState{};
     CullMode cullingMode = CullMode::Off;
 	PrimitiveTopology topology = PrimitiveTopology::Triangles;
     PipelineBindPoint bindPoint = PipelineBindPoint::Graphics;
     bool alphaToCoverage = false;
+	bool wireframe = false;
 
 	bool operator==(const PipelineStateDescriptor& other) const
     {
@@ -102,7 +103,9 @@ struct PipelineStateDescriptor
                 stencilState == other.stencilState &&
                 cullingMode == other.cullingMode &&
                 topology == other.topology &&
-                bindPoint == other.bindPoint;
+                bindPoint == other.bindPoint &&
+                alphaToCoverage == other.alphaToCoverage &&
+				wireframe == other.wireframe;
     }
 };
 
@@ -123,3 +126,51 @@ static constexpr uint32_t PrimitiveTopologyVertexCount(PrimitiveTopology topolog
 } // namespace Utils
 
 } // namespace Gleam
+
+template <>
+struct std::hash<Gleam::DepthState>
+{
+    size_t operator()(const Gleam::DepthState& depthState) const
+    {
+        size_t hash = 0;
+        Gleam::hash_combine(hash, depthState.compareFunction);
+        Gleam::hash_combine(hash, depthState.writeEnabled);
+        return hash;
+    }
+};
+
+template <>
+struct std::hash<Gleam::StencilState>
+{
+    size_t operator()(const Gleam::StencilState& stencilState) const
+    {
+        std::size_t hash = 0;
+        Gleam::hash_combine(hash, stencilState.enabled);
+        Gleam::hash_combine(hash, stencilState.reference);
+        Gleam::hash_combine(hash, stencilState.compareFunction);
+        Gleam::hash_combine(hash, stencilState.readMask);
+        Gleam::hash_combine(hash, stencilState.writeMask);
+        Gleam::hash_combine(hash, stencilState.failOperation);
+        Gleam::hash_combine(hash, stencilState.passOperation);
+        Gleam::hash_combine(hash, stencilState.depthFailOperation);
+        return hash;
+    }
+};
+
+template <>
+struct std::hash<Gleam::PipelineStateDescriptor>
+{
+    size_t operator()(const Gleam::PipelineStateDescriptor& descriptor) const
+    {
+        std::size_t hash = 0;
+        Gleam::hash_combine(hash, descriptor.blendState);
+        Gleam::hash_combine(hash, descriptor.depthState);
+        Gleam::hash_combine(hash, descriptor.stencilState);
+        Gleam::hash_combine(hash, descriptor.cullingMode);
+        Gleam::hash_combine(hash, descriptor.topology);
+        Gleam::hash_combine(hash, descriptor.bindPoint);
+        Gleam::hash_combine(hash, descriptor.alphaToCoverage);
+		Gleam::hash_combine(hash, descriptor.wireframe);
+        return hash;
+    }
+};

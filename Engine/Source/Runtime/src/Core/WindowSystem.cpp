@@ -7,7 +7,7 @@ using namespace Gleam;
 
 void WindowSystem::Initialize()
 {
-    int initSucess = SDL_Init(SDL_INIT_EVERYTHING);
+    int initSucess = SDL_Init(SDL_INIT_VIDEO | SDL_INIT_JOYSTICK | SDL_INIT_HAPTIC | SDL_INIT_GAMEPAD | SDL_INIT_EVENTS | SDL_INIT_SENSOR);
     GLEAM_ASSERT(initSucess == 0, "Window subsystem initialization failed!");
 }
 
@@ -17,36 +17,72 @@ void WindowSystem::Shutdown()
     SDL_Quit();
 }
 
-void WindowSystem::ConfigureWindow(const WindowProperties& props)
+void WindowSystem::Configure(const WindowConfig& config)
 {
     // destroy old window if exists
     if (mWindow) { SDL_DestroyWindow(mWindow); }
     
-    mProperties = props;
+    mConfig = config;
     
 	// query display info to create window if not provided by the user
-	if (props.display.width == 0 || props.display.height == 0)
+	if (static_cast<uint32_t>(config.size.width) == 0 || static_cast<uint32_t>(config.size.height) == 0)
 	{
-		mProperties.windowFlag = WindowFlag::MaximizedWindow;
+		mConfig.windowFlag = WindowFlag::MaximizedWindow;
 	}
 
 	// create window
-	mWindow = SDL_CreateWindow(mProperties.title.c_str(),
-                               mProperties.display.width, mProperties.display.height,
-                               static_cast<uint32_t>(mProperties.windowFlag));
+	mWindow = SDL_CreateWindow(mConfig.title.c_str(),
+                               static_cast<int>(mConfig.size.width),
+							   static_cast<int>(mConfig.size.height),
+                               static_cast<uint32_t>(mConfig.windowFlag));
 	GLEAM_ASSERT(mWindow, "Window creation failed!");
-
-	// update window props with the created window info
-	int monitor = SDL_GetDisplayForWindow(mWindow);
-	GLEAM_ASSERT(monitor >= 0, "Window display index is invalid!");
-
-	mProperties.display = WindowConfig::GetCurrentDisplayMode(monitor);
-
+    
 	EventDispatcher<WindowResizeEvent>::Subscribe([this](const WindowResizeEvent& e)
 	{
-		mProperties.display.width = e.GetWidth();
-		mProperties.display.height = e.GetHeight();
+		mConfig.size.width = static_cast<float>(e.GetWidth());
+        mConfig.size.height = static_cast<float>(e.GetHeight());
 	});
+}
+
+DisplayMode WindowSystem::GetCurrentDisplayMode(uint32_t monitor) const
+{
+    auto currDisplay = SDL_GetCurrentDisplayMode(monitor);
+    return DisplayMode
+    {
+        static_cast<SDL_PixelFormatEnum>(currDisplay->format),
+        static_cast<uint32_t>(currDisplay->w),
+        static_cast<uint32_t>(currDisplay->h),
+        static_cast<uint32_t>(currDisplay->refresh_rate),
+        monitor
+    };
+}
+
+TArray<DisplayMode> WindowSystem::GetAvailableDisplayModes() const
+{
+    TArray<DisplayMode> displayModes;
+    
+    int numDisplays = 0;
+    auto displays = SDL_GetFullscreenDisplayModes(SDL_GetPrimaryDisplay(), &numDisplays);
+    if (displays)
+    {
+        displayModes.reserve(numDisplays);
+        uint32_t monitor = SDL_GetDisplayForWindow(mWindow);
+        
+        for (int i = 0; i < numDisplays; ++i)
+        {
+            auto display = displays[i];
+            displayModes[i] = DisplayMode
+            {
+                static_cast<SDL_PixelFormatEnum>(display->format),
+                static_cast<uint32_t>(display->w),
+                static_cast<uint32_t>(display->h),
+                static_cast<uint32_t>(display->refresh_rate),
+                monitor
+            };
+        }
+        SDL_free(displays);
+    }
+    return displayModes;
 }
 
 void WindowSystem::EventHandler(SDL_WindowEvent windowEvent)

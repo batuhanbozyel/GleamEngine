@@ -5,42 +5,64 @@
 namespace Gleam {
 
 class Buffer;
-struct BufferDescriptor;
+class GraphicsDevice;
 
-class Heap : public GraphicsObject
+class Heap final : public GraphicsObject
 {
+    friend class GraphicsDevice;
+
 public:
-    
+
     Heap() = default;
-    
-    Heap(const HeapDescriptor& descriptor);
-    
-    Heap(const Heap& other)
-        : GraphicsObject(other), mDescriptor(other.mDescriptor)
+
+    Heap(const Heap& other) = default;
+
+    Heap& operator=(const Heap&) = default;
+
+    Heap(const HeapDescriptor& descriptor)
+        : mDescriptor(descriptor)
     {
-        
-    }
-    
-    Heap& operator=(const Heap& other)
-    {
-        GraphicsObject::operator=(other);
-        mDescriptor = other.mDescriptor;
-        return *this;
+
     }
 
-    void Dispose();
+    Buffer CreateBuffer(size_t size) const;
 
-	Buffer CreateBuffer(const BufferDescriptor& descriptor, size_t offset = 0) const;
-    
-    const HeapDescriptor& GetDescriptor() const
+    void Reset() const
+    {
+        mStackPtr = 0;
+    }
+
+	size_t GetAlignment() const
 	{
-		return mDescriptor;
+		return mAlignment;
 	}
-    
+
+    const HeapDescriptor& GetDescriptor() const
+    {
+        return mDescriptor;
+    }
+
 private:
 
+    mutable size_t mStackPtr = 0;
+
+    size_t mAlignment = 0;
+
+	void* mContents = nullptr;
+
     HeapDescriptor mDescriptor;
-    
+
+    GraphicsDevice* mDevice = nullptr;
+
 };
+
+namespace Utils {
+
+static constexpr uint64_t AlignUp(const size_t offset, const size_t alignment)
+{
+    return (offset + alignment - 1) & ~(alignment - 1);
+}
+
+} // namespace Utils
 
 } // namespace Gleam

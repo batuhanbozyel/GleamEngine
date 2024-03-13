@@ -4,13 +4,15 @@ using namespace GEditor;
 
 #ifdef USE_METAL_RENDERER
 #include "Renderer/Metal/MetalUtils.h"
+#include "Renderer/Metal/MetalDevice.h"
 
 #include "ImGui/imgui_impl_sdl3.h"
 #include "imgui_impl_metal.h"
 
-void ImGuiBackend::Init()
+void ImGuiBackend::Init(Gleam::GraphicsDevice* device)
 {
-    ImGui_ImplMetal_Init(Gleam::MetalDevice::GetHandle());
+    mDevice = device;
+    ImGui_ImplMetal_Init(static_cast<Gleam::MetalDevice*>(mDevice)->GetHandle());
     ImGui_ImplSDL3_InitForMetal(GameInstance->GetSubsystem<Gleam::WindowSystem>()->GetSDLWindow());
 }
 
@@ -27,7 +29,7 @@ void ImGuiBackend::BeginFrame()
     colorAttachmentDesc.clearColor = { 0.0, 0.0, 0.0, 1.0 };
     colorAttachmentDesc.loadAction = MTLLoadActionLoad;
     colorAttachmentDesc.storeAction = MTLStoreActionStore;
-    colorAttachmentDesc.texture = Gleam::MetalDevice::GetSwapchain().AcquireNextDrawable().texture;
+    colorAttachmentDesc.texture = static_cast<Gleam::MetalDevice*>(mDevice)->AcquireNextDrawable().texture;
 
     ImGui_ImplMetal_NewFrame(renderPassDesc);
     ImGui_ImplSDL3_NewFrame();
@@ -40,7 +42,7 @@ void ImGuiBackend::EndFrame(NativeGraphicsHandle commandBuffer, NativeGraphicsHa
 
 ImTextureID ImGuiBackend::GetImTextureIDForTexture(const Gleam::Texture& texture)
 {
-	return (ImTextureID)texture.GetHandle();
+    return (__bridge ImTextureID)texture.GetHandle();
 }
 
 #endif

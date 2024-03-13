@@ -8,7 +8,7 @@ class EntityManager final
 public:
     
     template<typename ... ComponentTypes, typename ... ExcludeComponents, typename Func, typename = std::enable_if_t<sizeof...(ComponentTypes) + sizeof...(ExcludeComponents) != 0>>
-    void ForEach(Func&& fn, Exclude<ExcludeComponents...> = {})
+    void ForEach(Func&& fn, Exclude<ExcludeComponents...> = Exclude<ExcludeComponents...>{})
     {
         mRegistry.view<ComponentTypes..., ExcludeComponents...>().each(fn);
     }
@@ -16,7 +16,10 @@ public:
     template<typename Func>
     void ForEach(Func&& fn)
     {
-        mRegistry.each(fn);
+        for (auto [entt] : mRegistry.storage<Entity>().each())
+        {
+            fn(entt);
+        }
     }
 
 	Entity CreateEntity()

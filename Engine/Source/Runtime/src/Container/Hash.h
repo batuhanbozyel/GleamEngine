@@ -18,4 +18,10 @@ using HashMap = std::unordered_map<Key, Value, Hasher, Comparator>;
 template<class Key, class Hasher = std::hash<Key>, class Comparator = std::equal_to<Key>>
 using HashSet = std::unordered_set<Key, Hasher, Comparator>;
 
+template <typename T>
+constexpr void hash_combine(size_t& seed, const T& value)
+{
+    seed ^= std::hash<T>()(value) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+}
+
 } // namespace Gleam

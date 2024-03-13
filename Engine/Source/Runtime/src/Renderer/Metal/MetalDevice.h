@@ -1,33 +1,60 @@
 #pragma once
 #ifdef USE_METAL_RENDERER
-#include "MetalSwapchain.h"
+#include "Renderer/GraphicsDevice.h"
+
+#include <Metal/Metal.h>
+#import <QuartzCore/CAMetalLayer.h>
 
 namespace Gleam {
 
 struct Version;
 struct RendererConfig;
 
-class MetalDevice final
+struct MetalDescriptorHeap
+{
+    ResourceDescriptorHeap heap;
+    id<MTLBuffer> handle;
+};
+
+class MetalDevice final : public GraphicsDevice
 {
 public:
-
-	static void Init();
-
-    static void Destroy();
-
-	static MetalSwapchain& GetSwapchain();
-
-	static id<MTLCommandQueue> GetCommandPool();
-
-	static id<MTLDevice> GetHandle();
-
+    
+    MetalDevice();
+    
+    ~MetalDevice();
+    
+    id<MTLBuffer> GetCbvSrvUavHeap() const;
+    
+    id<CAMetalDrawable> AcquireNextDrawable();
+    
+    id<MTLCommandQueue> GetCommandPool() const;
+    
+    virtual ShaderResourceIndex CreateResourceView(const Buffer& buffer) override;
+    
+    virtual ShaderResourceIndex CreateResourceView(const Texture& texture) override;
+    
+    virtual void ReleaseResourceView(ShaderResourceIndex view) override;
+    
 private:
 
-	static inline MetalSwapchain mSwapchain;
+	virtual void Present(const CommandBuffer* cmd) override;
 
-	static inline id<MTLCommandQueue> mCommandPool{ nil };
+	virtual void Configure(const RendererConfig& config) override;
+    
+    MetalDescriptorHeap CreateDescriptorHeap(uint32_t capacity) const;
+    
+	void* mSurface = nullptr;
 
-	static inline id<MTLDevice> mHandle{ nil };
+    dispatch_semaphore_t mImageAcquireSemaphore;
+
+    id<CAMetalDrawable> mDrawable{ nil };
+
+    CAMetalLayer* mSwapchain = nullptr;
+
+    id<MTLCommandQueue> mCommandPool{ nil };
+    
+    MetalDescriptorHeap mCbvSrvUavHeap;
 
 };
 

@@ -23,7 +23,7 @@ public:
 	TString ToString() const override
 	{
 		TStringStream ss;
-		ss << "RendererDrawableResizeEvent: " << mSize.width << ", " << mSize.height;
+		ss << "RendererResizeEvent: " << mSize.width << ", " << mSize.height;
 		return ss.str();
 	}
 

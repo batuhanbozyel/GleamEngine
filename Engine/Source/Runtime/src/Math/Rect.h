@@ -8,9 +8,9 @@ struct Rect
     Vector2 offset{0.0f, 0.0f};
     
     constexpr Rect() = default;
-    constexpr Rect(Rect&&) = default;
+    constexpr Rect(Rect&&) noexcept = default;
     constexpr Rect(const Rect&) = default;
-    FORCE_INLINE constexpr Rect& operator=(Rect&&) = default;
+    FORCE_INLINE constexpr Rect& operator=(Rect&&) noexcept = default;
     FORCE_INLINE constexpr Rect& operator=(const Rect&) = default;
     
     constexpr Rect(float width, float height)

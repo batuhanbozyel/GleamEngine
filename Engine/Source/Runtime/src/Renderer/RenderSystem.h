@@ -8,7 +8,7 @@
 #pragma once
 #include "Core/Subsystem.h"
 #include "CommandBuffer.h"
-#include "RendererContext.h"
+#include "GraphicsDevice.h"
 
 namespace Gleam {
 
@@ -29,20 +29,28 @@ public:
     
     void Configure(const RendererConfig& config);
     
+    GraphicsDevice* GetDevice();
+    
+    const GraphicsDevice* GetDevice() const;
+    
     const RendererConfig& GetConfiguration() const;
     
     const Texture& GetRenderTarget() const;
     
+    void UpdateCamera(const Camera& camera);
+    
     void SetRenderTarget(const TextureDescriptor& descriptor);
     
     void SetRenderTarget(const Texture& texture);
+    
+    void ResetRenderTarget();
     
     template<RendererType T>
     T* AddRenderer()
     {
         GLEAM_ASSERT(!HasRenderer<T>(), "Render pipeline already has the renderer!");
         auto renderer = mRenderers.emplace_back(new T());
-        renderer->OnCreate(mRendererContext);
+        renderer->OnCreate(mDevice.get());
         return static_cast<T*>(renderer);
     }
     
@@ -50,17 +58,17 @@ public:
     void RemoveRenderer()
     {
         GLEAM_ASSERT(HasRenderer<T>(), "Render pipeline does not have the renderer!");
-        auto it = mRenderers.erase(std::remove_if(mRenderers.begin(), mRenderers.end(), [](const IRenderer* ptr)
-                                                  {
-            const auto& renderer = *ptr;
-            return typeid(renderer) == typeid(T);
-        }));
+        auto it = std::find_if(mRenderers.begin(), mRenderers.end(), [](const IRenderer* renderer)
+        {
+            return typeid(*renderer) == typeid(T);
+        });
         
         if (it != mRenderers.end())
         {
             auto renderer = *it;
-            renderer->OnDestroy();
+            renderer->OnDestroy(mDevice.get());
             delete renderer;
+			mRenderers.erase(it);
         }
     }
     
@@ -68,10 +76,9 @@ public:
     T* GetRenderer()
     {
         GLEAM_ASSERT(HasRenderer<T>(), "Render pipeline does not have the renderer!");
-        auto it = std::find_if(mRenderers.begin(), mRenderers.end(), [](const IRenderer* ptr)
-                               {
-            const auto& renderer = *ptr;
-            return typeid(renderer) == typeid(T);
+        auto it = std::find_if(mRenderers.begin(), mRenderers.end(), [](const IRenderer* renderer)
+        {
+            return typeid(*renderer) == typeid(T);
         });
         return static_cast<T*>(*it);
     }
@@ -79,10 +86,9 @@ public:
     template<RendererType T>
     bool HasRenderer()
     {
-        auto it = std::find_if(mRenderers.begin(), mRenderers.end(), [](const IRenderer* ptr)
-                               {
-            const auto& renderer = *ptr;
-            return typeid(renderer) == typeid(T);
+        auto it = std::find_if(mRenderers.begin(), mRenderers.end(), [](const IRenderer* renderer)
+        {
+            return typeid(*renderer) == typeid(T);
         });
         return it != mRenderers.end();
     }
@@ -90,10 +96,9 @@ public:
     template<RendererType T>
     uint32_t GetIndexOf() const
     {
-        auto it = std::find_if(mRenderers.begin(), mRenderers.end(), [](const IRenderer* ptr)
-                               {
-            const auto& renderer = *ptr;
-            return typeid(renderer) == typeid(T);
+        auto it = std::find_if(mRenderers.begin(), mRenderers.end(), [](const IRenderer* renderer)
+        {
+            return typeid(*renderer) == typeid(T);
         });
         return std::distance(mRenderers.begin(), it);
     }
@@ -122,11 +127,15 @@ private:
     
     Container mRenderers;
     
+    Texture mRenderTarget;
+    
+    CameraUniforms mCameraData;
+    
     RendererConfig mConfiguration;
     
-    RendererContext mRendererContext;
+    Scope<GraphicsDevice> mDevice;
     
-    Texture mRenderTarget;
+    TArray<Scope<CommandBuffer>> mCommandBuffers;
     
 };
 

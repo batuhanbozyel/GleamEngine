@@ -25,26 +25,10 @@ void WorldViewportController::OnUpdate(Gleam::EntityManager& entityManager)
         ProcessCameraRotation(camera);
         ProcessCameraMovement(camera);
     }
-
-	auto debugRenderer = GameInstance->GetSubsystem<Gleam::RenderSystem>()->GetRenderer<Gleam::DebugRenderer>();
-    debugRenderer->UpdateCamera(camera);
     
-    constexpr int gridWidth = 32;
-    constexpr int gridHeight = 32;
-    Gleam::Color gridColor = Gleam::Color::HSVToRGB(static_cast<float>(Gleam::Time::elapsedTime), 1.0f, 1.0f);
-    for (int i = 0; i < gridWidth; i++)
-    {
-        for (int j = 0; j < gridHeight; j++)
-        {
-            constexpr float tileWidth = 1.0f;
-            constexpr float tileHeight = 1.0f;
-            Gleam::Vector3 tilePosition = {float(i - gridWidth / 2), 0.0f, float(j - gridHeight / 2)};
-            debugRenderer->DrawQuad(tilePosition, tileWidth, tileHeight, gridColor, true);
-        }
-    }
-    
-    auto worldRenderer = GameInstance->GetSubsystem<Gleam::RenderSystem>()->GetRenderer<Gleam::WorldRenderer>();
-    worldRenderer->UpdateCamera(camera);
+    auto renderSystem = GameInstance->GetSubsystem<Gleam::RenderSystem>();
+    auto worldRenderer = renderSystem->GetRenderer<Gleam::WorldRenderer>();
+    renderSystem->UpdateCamera(camera);
     
     entityManager.ForEach<Gleam::MeshRenderer, Gleam::Transform>([&](const Gleam::MeshRenderer& meshRenderer, const Gleam::Transform& transform)
     {
@@ -95,4 +79,19 @@ void WorldViewportController::ProcessCameraMovement(Gleam::Camera& camera)
     {
         camera.Translate(Gleam::Vector3::down * cameraSpeed * deltaTime);
     }
+}
+
+const Gleam::Size& WorldViewportController::GetViewportSize() const
+{
+    return mViewportSize;
+}
+
+void WorldViewportController::SetViewportSize(const Gleam::Size& size)
+{
+    mViewportSize = size;
+}
+
+void WorldViewportController::SetViewportFocused(bool focused)
+{
+    mViewportFocused = focused;
 }

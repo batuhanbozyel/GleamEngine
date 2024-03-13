@@ -1,35 +1,27 @@
 #pragma once
-#include "Assets/Model.h"
-#include "Renderer/Mesh.h"
-#include "Renderer/Material.h"
 
 namespace Gleam {
+
+class Mesh;
+class MaterialInstance;
 
 class MeshRenderer
 {
 public:
-    
-    MeshRenderer(const Model& model)
-        : mMesh(CreateRef<Mesh>(model.GetMeshes()))
-    {
-        
-    }
-    
-    const RefCounted<Mesh>& GetMesh() const
-    {
-        return mMesh;
-    }
-    
-    const RefCounted<Material>& GetMaterial() const
-    {
-        return mMaterial;
-    }
+
+    MeshRenderer(const RefCounted<Mesh>& mesh);
+
+    void SetMaterial(const RefCounted<MaterialInstance>& material, uint32_t index);
+
+    const RefCounted<MaterialInstance>& GetMaterial(uint32_t index) const;
+
+    const RefCounted<Mesh>& GetMesh() const;
     
 private:
     
     RefCounted<Mesh> mMesh;
     
-    RefCounted<Material> mMaterial;
+    TArray<RefCounted<MaterialInstance>> mMaterials;
     
 };
 

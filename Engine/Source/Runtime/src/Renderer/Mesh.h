@@ -2,8 +2,14 @@
 #include "MeshBuffer.h"
 
 namespace Gleam {
-    
-class Model;
+
+struct MeshData
+{
+    TArray<Vector3> positions;
+    TArray<Vector3> normals;
+    TArray<Vector2> texCoords;
+    TArray<uint32_t> indices;
+};
 
 struct SubmeshDescriptor
 {
@@ -17,9 +23,15 @@ class Mesh
 {
 public:
     
-	Mesh(const MeshData& mesh);
+    GLEAM_NONCOPYABLE(Mesh);
+    
+    Mesh(const MeshData& mesh);
 
     Mesh(const TArray<MeshData>& meshes);
+    
+    virtual ~Mesh();
+
+    uint32_t GetSubmeshCount() const;
     
     const MeshBuffer& GetBuffer() const;
     
@@ -27,27 +39,29 @@ public:
     
 protected:
     
-    Mesh(const MeshData& mesh, bool isBatched);
-    
     MeshBuffer mBuffer;
     
     TArray<SubmeshDescriptor> mSubmeshDescriptors;
     
 };
 
-class StaticMesh : public Mesh
+class StaticMesh final : public Mesh
 {
 public:
 
-    StaticMesh(const Model& model);
+    StaticMesh(const MeshData& mesh);
+
+    StaticMesh(const TArray<MeshData>& meshes);
     
 };
 
-class SkeletalMesh : public Mesh
+class SkeletalMesh final : public Mesh
 {
 public:
     
-    SkeletalMesh(const Model& model);
+    SkeletalMesh(const MeshData& mesh);
+
+    SkeletalMesh(const TArray<MeshData>& meshes);
     
 };
 

@@ -60,3 +60,21 @@ struct BlendState
 };
 
 } // namespace Gleam
+
+template <>
+struct std::hash<Gleam::BlendState>
+{
+    size_t operator()(const Gleam::BlendState& blendState) const
+    {
+        size_t hash = 0;
+        Gleam::hash_combine(hash, blendState.enabled);
+        Gleam::hash_combine(hash, blendState.colorBlendOperation);
+        Gleam::hash_combine(hash, blendState.alphaBlendOperation);
+        Gleam::hash_combine(hash, blendState.sourceColorBlendMode);
+        Gleam::hash_combine(hash, blendState.sourceAlphaBlendMode);
+        Gleam::hash_combine(hash, blendState.destinationColorBlendMode);
+        Gleam::hash_combine(hash, blendState.destinationAlphaBlendMode);
+        Gleam::hash_combine(hash, blendState.writeMask);
+        return hash;
+    }
+};

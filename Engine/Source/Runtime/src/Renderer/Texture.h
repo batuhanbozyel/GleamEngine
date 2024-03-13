@@ -4,23 +4,27 @@
 
 namespace Gleam {
 
-class Texture : public GraphicsObject
+class GraphicsDevice;
+
+class Texture final : public ShaderResource
 {
+    friend class GraphicsDevice;
+    
 public:
-
-	Texture();
-
-    Texture(const TextureDescriptor& descriptor, bool allocate = true);
+    
+    Texture() = default;
     
     Texture(const Texture& other) = default;
     
     Texture& operator=(const Texture& other) = default;
     
-    void Dispose();
+    Texture(const TextureDescriptor& descriptor)
+        : mDescriptor(descriptor), mMipMapLevels(descriptor.useMipMap ? CalculateMipLevels(descriptor.size) : 1)
+    {
+        
+    }
     
-    void SetPixels(const void* pixels) const;
-    
-    NativeGraphicsHandle GetView() const
+	NativeGraphicsResourceView GetView() const
     {
         return mView;
     }
@@ -30,7 +34,7 @@ public:
 		return mMultisampleHandle;
 	}
 
-	NativeGraphicsHandle GetMSAAView() const
+	NativeGraphicsResourceView GetMSAAView() const
 	{
 		return mMultisampleView;
 	}
@@ -50,17 +54,17 @@ public:
 		return static_cast<uint32_t>(Math::Floor(Math::Log2(Math::Max(size.width, size.height)))) + 1;
 	}
     
-protected:
+private:
     
-    uint32_t mMipMapLevels;
+    uint32_t mMipMapLevels = 1;
     TextureDescriptor mDescriptor;
 	NativeGraphicsHandle mHeap = nullptr;
-    NativeGraphicsHandle mView = nullptr;
+	NativeGraphicsResourceView mView = {};
 
 	// multisample
 	NativeGraphicsHandle mMultisampleHeap = nullptr;
-	NativeGraphicsHandle mMultisampleView = nullptr;
 	NativeGraphicsHandle mMultisampleHandle = nullptr;
+	NativeGraphicsResourceView mMultisampleView = {};
     
 };
 

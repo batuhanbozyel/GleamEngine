@@ -31,7 +31,7 @@ class DebugRenderer final : public IRenderer
 {
 public:
 
-    virtual void OnCreate(RendererContext& context) override;
+    virtual void OnCreate(GraphicsDevice* device) override;
     
     virtual void AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard) override;
     
@@ -46,19 +46,15 @@ public:
     void DrawBoundingBox(const BoundingBox& boundingBox, const Matrix4& transform, Color32 color, bool depthTest = true);
 
 	void DrawMesh(const Mesh* mesh, const Matrix4& transform, Color32 color, bool depthTest = true);
-    
-    void UpdateCamera(const Camera& camera);
 
 private:
 
-	void RenderMeshes(const CommandBuffer* cmd, const Buffer& cameraBuffer, const TArray<DebugMesh>& debugMeshes, bool depthTest) const;
+	void RenderMeshes(const CommandBuffer* cmd, const BufferHandle& cameraBuffer, const TArray<DebugMesh>& debugMeshes, bool depthTest) const;
 
 	uint32_t mLineBufferOffset = 0;
 	uint32_t mTriangleBufferOffset = 0;
 	uint32_t mDepthLineBufferOffset = 0;
 	uint32_t mDepthTriangleBufferOffset = 0;
-    
-    CameraUniforms mCameraData;
 
     TArray<DebugLine> mLines;
     TArray<DebugLine> mDepthLines;
@@ -71,9 +67,9 @@ private:
 
     TArray<DebugVertex> mDebugVertices;
 
-	RefCounted<Shader> mPrimitiveVertexShader;
-	RefCounted<Shader> mMeshVertexShader;
-	RefCounted<Shader> mFragmentShader;
+	Shader mPrimitiveVertexShader;
+	Shader mMeshVertexShader;
+	Shader mFragmentShader;
 
 };
 

@@ -21,7 +21,7 @@ struct Version
 struct ApplicationProperties
 {
 	Version version;
-	WindowProperties windowProps;
+	WindowConfig windowConfig;
 	RendererConfig rendererConfig;
 };
 

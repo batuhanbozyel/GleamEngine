@@ -11,7 +11,7 @@
 namespace Gleam {
 
 class Mesh;
-class Shader;
+class Material;
 
 struct WorldRenderingData
 {
@@ -24,27 +24,25 @@ class WorldRenderer : public IRenderer
 {
 public:
     
-    virtual void OnCreate(RendererContext& context) override;
+    virtual void OnCreate(GraphicsDevice* device) override;
     
     virtual void AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard) override;
     
     void DrawMesh(const MeshRenderer& meshRenderer, const Transform& transform);
-    
-	void UpdateCamera(const Camera& camera);
 
 private:
     
-    struct RenderQueueElement
+    struct RenderProxy
     {
-        RefCounted<Mesh> mesh;
+        const Mesh* mesh;
+        const MaterialInstance* material;
         Matrix4 transform;
     };
-    HashMap<RefCounted<Material>, List<RenderQueueElement>> mOpaqueQueue;
-    HashMap<RefCounted<Material>, List<RenderQueueElement>> mTransparentQueue;
+    HashMap<RefCounted<Material>, TArray<RenderProxy>> mOpaqueQueue;
+    HashMap<RefCounted<Material>, TArray<RenderProxy>> mTransparentQueue;
     
-    CameraUniforms mCameraData;
-    RefCounted<Shader> mForwardPassVertexShader;
-    RefCounted<Shader> mForwardPassFragmentShader;
+    Shader mForwardPassVertexShader;
+    Shader mForwardPassFragmentShader;
 
 };
 

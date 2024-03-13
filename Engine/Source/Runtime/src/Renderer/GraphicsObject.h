@@ -1,4 +1,5 @@
 #pragma once
+#include "Shaders/ShaderInterop.h"
 
 namespace Gleam {
 
@@ -13,6 +14,8 @@ public:
 	{
 
 	}
+    
+    virtual ~GraphicsObject() = default;
 
 	GraphicsObject(const GraphicsObject&) = default;
 
@@ -32,6 +35,35 @@ protected:
 
 	NativeGraphicsHandle mHandle = nullptr;
 
+};
+
+class ShaderResource : public GraphicsObject
+{
+public:
+    
+    ShaderResource() = default;
+    
+    ShaderResource(NativeGraphicsHandle handle)
+        : GraphicsObject(handle)
+    {
+
+    }
+    
+    virtual ~ShaderResource() = default;
+    
+    ShaderResource(const ShaderResource&) = default;
+
+    ShaderResource& operator=(const ShaderResource&) = default;
+    
+    ShaderResourceIndex GetResourceView() const
+    {
+        return mResourceView;
+    }
+    
+protected:
+    
+    ShaderResourceIndex mResourceView = InvalidResourceIndex;
+    
 };
 
 } // namespace Gleam

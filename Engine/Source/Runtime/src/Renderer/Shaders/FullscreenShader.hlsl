@@ -1,4 +1,4 @@
-#include "Common.hlsl"
+#include "Common.hlsli"
 
 FScreenVertexOutput fullscreenTriangleVertexShader(uint vertex_id: SV_VertexID)
 {

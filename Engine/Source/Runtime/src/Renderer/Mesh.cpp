@@ -1,6 +1,5 @@
 #include "gpch.h"
 #include "Mesh.h"
-#include "Assets/Model.h"
 
 using namespace Gleam;
 
@@ -63,16 +62,14 @@ Mesh::Mesh(const TArray<MeshData>& meshes)
 	}
 }
 
-StaticMesh::StaticMesh(const Model& model)
-    : Mesh(BatchMeshes(model.GetMeshes()))
+Mesh::~Mesh()
 {
-    
+    mBuffer.Dispose();
 }
 
-SkeletalMesh::SkeletalMesh(const Model& model)
-    : Mesh(model.GetMeshes())
+uint32_t Mesh::GetSubmeshCount() const
 {
-    
+    return static_cast<uint32_t>(mSubmeshDescriptors.size());
 }
 
 const MeshBuffer& Mesh::GetBuffer() const
@@ -83,4 +80,28 @@ const MeshBuffer& Mesh::GetBuffer() const
 const TArray<SubmeshDescriptor>& Mesh::GetSubmeshDescriptors() const
 {
     return mSubmeshDescriptors;
+}
+
+StaticMesh::StaticMesh(const MeshData& mesh)
+    : Mesh(mesh)
+{
+    
+}
+
+StaticMesh::StaticMesh(const TArray<MeshData>& meshes)
+    : Mesh(BatchMeshes(meshes))
+{
+    
+}
+
+SkeletalMesh::SkeletalMesh(const MeshData& mesh)
+    : Mesh(mesh)
+{
+    
+}
+
+SkeletalMesh::SkeletalMesh(const TArray<MeshData>& meshes)
+    : Mesh(meshes)
+{
+    
 }

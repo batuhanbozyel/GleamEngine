@@ -56,20 +56,25 @@ struct Color : public Vector4
 
 	// Constructors
 	constexpr Color() = default;
-	constexpr Color(Color&&) = default;
+	constexpr Color(Color&&) noexcept = default;
 	constexpr Color(const Color&) = default;
 
-	constexpr Color(float v)
+	constexpr Color(std::floating_point auto v)
 		: Vector4(v)
 	{
 
 	}
-	constexpr Color(float r, float g, float b)
+	constexpr Color(std::floating_point auto r,
+					std::floating_point auto g,
+					std::floating_point auto b)
 		: Vector4(r, g, b, 1.0f)
 	{
 
 	}
-	constexpr Color(float r, float g, float b, float a)
+	constexpr Color(std::floating_point auto r,
+					std::floating_point auto g,
+					std::floating_point auto b,
+					std::floating_point auto a)
 		: Vector4(r, g, b, a)
 	{
 
@@ -94,14 +99,14 @@ struct Color : public Vector4
 	{
 
 	}
-	constexpr Color(Vector4&& color)
+	constexpr Color(Vector4&& color) noexcept
 		: Vector4(std::move(color))
 	{
 
 	}
 
 	// Operator overloads
-    FORCE_INLINE constexpr Color& operator=(Color&&) = default;
+    FORCE_INLINE constexpr Color& operator=(Color&&) noexcept = default;
     FORCE_INLINE constexpr Color& operator=(const Color&) = default;
 
     FORCE_INLINE constexpr Color& operator=(const Vector4& color)
@@ -109,7 +114,7 @@ struct Color : public Vector4
 		value = color.value;
 		return *this;
 	}
-    FORCE_INLINE constexpr Color& operator=(Vector4&& color)
+    FORCE_INLINE constexpr Color& operator=(Vector4&& color) noexcept
 	{
 		value = std::move(color.value);
 		return *this;
@@ -140,9 +145,17 @@ struct Color32
 	{
 
 	}
+    constexpr Color32(uint32_t color)
+        : r((color >> 24) & 0xFF), g((color >> 16) & 0xFF), b((color >> 8) & 0xFF), a(color & 0xFF)
+    {
+        
+    }
 
 	NO_DISCARD FORCE_INLINE constexpr operator Color() const;
 	FORCE_INLINE constexpr Color32& operator=(const Color&);
+    
+    NO_DISCARD FORCE_INLINE constexpr operator uint32_t() const;
+    FORCE_INLINE constexpr Color32& operator=(uint32_t);
     
     NO_DISCARD FORCE_INLINE constexpr bool operator==(const Color32& other) const
     {
@@ -167,6 +180,11 @@ NO_DISCARD FORCE_INLINE constexpr Color::operator Color32() const
 	};
 }
 
+FORCE_INLINE constexpr Color& Color::operator=(const Color32& color)
+{
+	return *this = static_cast<Color>(color);
+}
+
 NO_DISCARD FORCE_INLINE constexpr Color32::operator Color() const
 {
 	return Color
@@ -178,14 +196,19 @@ NO_DISCARD FORCE_INLINE constexpr Color32::operator Color() const
 	};
 }
 
-FORCE_INLINE constexpr Color& Color::operator=(const Color32& color)
-{
-	return *this = static_cast<Color>(color);
-}
-
 FORCE_INLINE constexpr Color32& Color32::operator=(const Color& color)
 {
 	return *this = static_cast<Color32>(color);
+}
+
+NO_DISCARD FORCE_INLINE constexpr Color32::operator uint32_t() const
+{
+	return (static_cast<uint32_t>(r) << 24) | (static_cast<uint32_t>(g) << 16) | (static_cast<uint32_t>(b) << 8) | static_cast<uint32_t>(a);
+}
+
+FORCE_INLINE constexpr Color32& Color32::operator=(uint32_t color)
+{
+    return *this = static_cast<Color32>(color);
 }
 
 NO_DISCARD FORCE_INLINE constexpr Color32 Mix(Color32 c0, Color32 c1, float a)

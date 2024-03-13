@@ -14,9 +14,9 @@ struct Matrix4
     static const Matrix4 identity;
 
     constexpr Matrix4() = default;
-    constexpr Matrix4(Matrix4&&) = default;
+    constexpr Matrix4(Matrix4&&) noexcept = default;
     constexpr Matrix4(const Matrix4&) = default;
-    FORCE_INLINE constexpr Matrix4& operator=(Matrix4&&) = default;
+    FORCE_INLINE constexpr Matrix4& operator=(Matrix4&&) noexcept = default;
     FORCE_INLINE constexpr Matrix4& operator=(const Matrix4&) = default;
 
     constexpr Matrix4(float m00, float m01, float m02, float m03,
@@ -108,6 +108,73 @@ struct Matrix4
     {
         return *this = *this * rhs;
     }
+
+	NO_DISCARD FORCE_INLINE constexpr Matrix4 Adjugate() const
+	{
+		return Matrix4
+		{
+			Vector4
+			{
+				row[1].y * row[2].z * row[3].w + row[3].y * row[1].z * row[2].w + row[2].y * row[3].z * row[1].w - row[1].y * row[3].z * row[2].w
+						- row[2].y * row[1].z * row[3].w - row[3].y * row[2].z * row[1].w,
+				row[0].y * row[3].z * row[2].w + row[2].y * row[0].z * row[3].w + row[3].y * row[2].z * row[0].w - row[3].y * row[0].z * row[2].w
+						- row[2].y * row[3].z * row[0].w - row[0].y * row[2].z * row[3].w,
+				row[0].y * row[1].z * row[3].w + row[3].y * row[0].z * row[1].w + row[1].y * row[3].z * row[0].w - row[0].y * row[3].z * row[1].w
+						- row[1].y * row[0].z * row[3].w - row[3].y * row[1].z * row[0].w,
+				row[0].y * row[2].z * row[1].w + row[1].y * row[0].z * row[2].w + row[2].y * row[1].z * row[0].w - row[0].y * row[1].z * row[2].w
+						- row[2].y * row[0].z * row[1].w - row[1].y * row[2].z * row[0].w
+			},
+			Vector4
+			{
+				row[1].z * row[3].w * row[2].x + row[2].z * row[1].w * row[3].x + row[3].z * row[2].w * row[1].x - row[1].z * row[2].w * row[3].x
+						- row[3].z * row[1].w * row[2].x - row[2].z * row[3].w * row[1].x,
+				row[0].z * row[2].w * row[3].x + row[3].z * row[0].w * row[2].x + row[2].z * row[3].w * row[0].x - row[0].z * row[3].w * row[2].x
+						- row[2].z * row[0].w * row[3].x - row[3].z * row[2].w * row[0].x,
+				row[0].z * row[3].w * row[1].x + row[1].z * row[0].w * row[3].x + row[3].z * row[1].w * row[0].x - row[0].z * row[1].w * row[3].x
+						- row[3].z * row[0].w * row[1].x - row[1].z * row[3].w * row[0].x,
+				row[0].z * row[1].w * row[2].x + row[2].z * row[0].w * row[1].x + row[1].z * row[2].w * row[0].x - row[0].z * row[2].w * row[1].x
+						- row[1].z * row[0].w * row[2].x - row[2].z * row[1].w * row[0].x
+			},
+			Vector4
+			{
+				row[1].w * row[2].x * row[3].y + row[3].w * row[1].x * row[2].y + row[2].w * row[3].x * row[1].y - row[1].w * row[3].x * row[2].y
+						- row[2].w * row[1].x * row[3].y - row[3].w * row[2].x * row[1].y,
+				row[0].w * row[3].x * row[2].y + row[2].w * row[0].x * row[3].y + row[3].w * row[2].x * row[0].y - row[0].w * row[2].x * row[3].y
+						- row[3].w * row[0].x * row[2].y - row[2].w * row[3].x * row[0].y,
+				row[0].w * row[1].x * row[3].y + row[3].w * row[0].x * row[1].y + row[1].w * row[3].x * row[0].y - row[0].w * row[3].x * row[1].y
+						- row[1].w * row[0].x * row[3].y - row[3].w * row[1].x * row[0].y,
+				row[0].w * row[2].x * row[1].y + row[1].w * row[0].x * row[2].y + row[2].w * row[1].x * row[0].y - row[0].w * row[1].x * row[2].y
+						- row[2].w * row[0].x * row[1].y - row[1].w * row[2].x * row[0].y
+			},
+			Vector4
+			{
+				row[1].x * row[3].y * row[2].z + row[2].x * row[1].y * row[3].z + row[3].x * row[2].y * row[1].z - row[1].x * row[2].y * row[3].z
+						- row[3].x * row[1].y * row[2].z - row[2].x * row[3].y * row[1].z,
+				row[0].x * row[2].y * row[3].z + row[3].x * row[0].y * row[2].z + row[2].x * row[3].y * row[0].z - row[0].x * row[3].y * row[2].z
+						- row[2].x * row[0].y * row[3].z - row[3].x * row[2].y * row[0].z,
+				row[0].x * row[3].y * row[1].z + row[1].x * row[0].y * row[3].z + row[3].x * row[1].y * row[0].z - row[0].x * row[1].y * row[3].z
+						- row[3].x * row[0].y * row[1].z - row[1].x * row[3].y * row[0].z,
+				row[0].x * row[1].y * row[2].z + row[2].x * row[0].y * row[1].z + row[1].x * row[2].y * row[0].z - row[0].x * row[2].y * row[1].z
+						- row[1].x * row[0].y * row[2].z - row[2].x * row[1].y * row[0].z
+			}
+		};
+	}
+
+	NO_DISCARD FORCE_INLINE constexpr float Determinant() const
+	{
+		return row[0].x
+			* (row[1].y * row[2].z * row[3].w + row[3].y * row[1].z * row[2].w + row[2].y * row[3].z * row[1].w - row[1].y * row[3].z * row[2].w
+				- row[2].y * row[1].z * row[3].w - row[3].y * row[2].z * row[1].w)
+			+ row[0].y
+			* (row[1].z * row[3].w * row[2].x + row[2].z * row[1].w * row[3].x + row[3].z * row[2].w * row[1].x - row[1].z * row[2].w * row[3].x
+				- row[3].z * row[1].w * row[2].x - row[2].z * row[3].w * row[1].x)
+			+ row[0].z
+			* (row[1].w * row[2].x * row[3].y + row[3].w * row[1].x * row[2].y + row[2].w * row[3].x * row[1].y - row[1].w * row[3].x * row[2].y
+				- row[2].w * row[1].x * row[3].y - row[3].w * row[2].x * row[1].y)
+			+ row[0].w
+			* (row[1].x * row[3].y * row[2].z + row[2].x * row[1].y * row[3].z + row[3].x * row[2].y * row[1].z - row[1].x * row[2].y * row[3].z
+				- row[3].x * row[1].y * row[2].z - row[2].x * row[3].y * row[1].z);
+	}
 
     NO_DISCARD FORCE_INLINE static constexpr Matrix4 Translate(const Vector3& translation)
     {
@@ -233,5 +300,22 @@ struct Matrix4
         };
     }
 };
+
+namespace Math {
+
+NO_DISCARD FORCE_INLINE static constexpr Matrix4 Inverse(const Matrix4& m)
+{
+	Matrix4 adjudate = m.Adjugate();
+	float invDet = 1.0f / m.Determinant();
+	return Matrix4
+	{
+		adjudate.row[0] * invDet,
+		adjudate.row[1] * invDet,
+		adjudate.row[2] * invDet,
+		adjudate.row[3] * invDet
+	};
+}
+
+} // namespace Math
 
 } // namespace Gleam

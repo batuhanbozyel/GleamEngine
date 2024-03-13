@@ -6,23 +6,25 @@
 
 using namespace GEditor;
 
-void ImGuiRenderer::OnCreate(Gleam::RendererContext& context)
+void ImGuiRenderer::OnCreate(Gleam::GraphicsDevice* device)
 {
+    mDevice = device;
+    
 	IMGUI_CHECKVERSION();
     ImGui::CreateContext();
-    ImGuiIO& io = ImGui::GetIO(); (void)io;
+    ImGuiIO& io = ImGui::GetIO();
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
     io.ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange;
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable | ImGuiConfigFlags_ViewportsEnable;
     
-	ImGuiBackend::Init();
+	ImGuiBackend::Init(device);
     GameInstance->SetEventHandler([](const SDL_Event* e)
     {
         ImGui_ImplSDL3_ProcessEvent(e);
     });
 }
 
-void ImGuiRenderer::OnDestroy()
+void ImGuiRenderer::OnDestroy(Gleam::GraphicsDevice* device)
 {
 	ImGuiBackend::Destroy();
     ImGui::DestroyContext();
@@ -38,13 +40,17 @@ void ImGuiRenderer::AddRenderPasses(Gleam::RenderGraph& graph, Gleam::RenderGrap
     
 	graph.AddRenderPass<ImGuiPassData>("ImGuiPass", [&](Gleam::RenderGraphBuilder& builder, ImGuiPassData& passData)
 	{
-		const auto& renderingData = blackboard.Get<Gleam::RenderingData>();
-		auto swapchainTarget = graph.ImportBackbuffer(Gleam::Texture(), { .clearOnFirstUse = true });
-		passData.sceneTarget = builder.ReadTexture(renderingData.backbuffer);
+		const auto& sceneData = blackboard.Get<Gleam::SceneRenderingData>();
+		auto swapchainTarget = graph.ImportBackbuffer(mDevice->GetRenderSurface());
+		passData.sceneTarget = builder.ReadTexture(sceneData.backbuffer);
 		passData.swapchainTarget = builder.UseColorBuffer(swapchainTarget);
 	},
     [this](const Gleam::CommandBuffer* cmd, const ImGuiPassData& passData)
     {
+        ImGuiIO& io = ImGui::GetIO();
+        auto drawableSize = GameInstance->GetSubsystem<Gleam::RenderSystem>()->GetDevice()->GetDrawableSize();
+        io.DisplaySize = ImVec2(drawableSize.width, drawableSize.height);
+        
 		ImGuiBackend::BeginFrame();
         ImGui::NewFrame();
         
@@ -73,11 +79,6 @@ void ImGuiRenderer::AddRenderPasses(Gleam::RenderGraph& graph, Gleam::RenderGrap
         }
         
         ImGui::End();
-        
-        ImGuiIO& io = ImGui::GetIO();
-        const auto& resolution = GameInstance->GetSubsystem<Gleam::WindowSystem>()->GetResolution();
-        io.DisplaySize = ImVec2(resolution.width, resolution.height);
-
         ImGui::Render();
 		ImGuiBackend::EndFrame(cmd->GetHandle(), cmd->GetActiveRenderPass());
         

@@ -1,9 +1,6 @@
 [submodule "Engine/ThirdParty/entt"]
 	path = Engine/ThirdParty/entt
 	url = https://github.com/skypjack/entt
-[submodule "Engine/ThirdParty/tinyobjloader"]
-	path = Engine/ThirdParty/tinyobjloader
-	url = https://github.com/tinyobjloader/tinyobjloader
 [submodule "Engine/ThirdParty/stb"]
 	path = Engine/ThirdParty/stb
 	url = https://github.com/nothings/stb
@@ -19,21 +16,12 @@
 [submodule "Engine/ThirdParty/googletest"]
 	path = Engine/ThirdParty/googletest
 	url = https://github.com/google/googletest
-[submodule "Engine/ThirdParty/volk"]
-	path = Engine/ThirdParty/volk
-	url = https://github.com/zeux/volk
 [submodule "Engine/ThirdParty/fmt"]
 	path = Engine/ThirdParty/fmt
 	url = https://github.com/fmtlib/fmt
-[submodule "Engine/ThirdParty/SPIRV-Reflect"]
-	path = Engine/ThirdParty/SPIRV-Reflect
-	url = https://github.com/KhronosGroup/SPIRV-Reflect
 [submodule "Engine/ThirdParty/SDL"]
 	path = Engine/ThirdParty/SDL
 	url = https://github.com/libsdl-org/SDL
 [submodule "Engine/ThirdParty/json"]
 	path = Engine/ThirdParty/json
 	url = https://github.com/nlohmann/json
-[submodule "Engine/ThirdParty/VulkanMemoryAllocator"]
-	path = Engine/ThirdParty/VulkanMemoryAllocator
-	url = https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator
