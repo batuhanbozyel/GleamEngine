@@ -42,6 +42,11 @@ D3D12_RESOURCE_STATES DirectXTransitionManager::GetLayout(ID3D12Resource* resour
 	return layout;
 }
 
+void DirectXTransitionManager::RemoveResource(ID3D12Resource* resource)
+{
+	mResourceLayoutCache.erase(resource);
+}
+
 void DirectXTransitionManager::Clear()
 {
 	mResourceLayoutCache.clear();

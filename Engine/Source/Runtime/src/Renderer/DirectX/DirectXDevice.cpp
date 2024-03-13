@@ -219,6 +219,7 @@ void GraphicsDevice::Dispose(Heap& heap)
 
 void GraphicsDevice::Dispose(Buffer& buffer)
 {
+	DirectXTransitionManager::RemoveResource(static_cast<ID3D12Resource*>(buffer.mHandle));
 	ReleaseResourceView(buffer.mResourceView);
 	static_cast<ID3D12Resource*>(buffer.mHandle)->Release();
 	buffer.mResourceView = InvalidResourceIndex;
@@ -228,6 +229,7 @@ void GraphicsDevice::Dispose(Buffer& buffer)
 
 void GraphicsDevice::Dispose(Texture& texture)
 {
+	DirectXTransitionManager::RemoveResource(static_cast<ID3D12Resource*>(texture.mHandle));
 	if (texture.GetDescriptor().usage & TextureUsage_Attachment)
 	{
 		if (Utils::IsDepthFormat(texture.GetDescriptor().format))

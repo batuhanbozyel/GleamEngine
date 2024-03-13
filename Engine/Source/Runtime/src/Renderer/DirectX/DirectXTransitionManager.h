@@ -16,6 +16,8 @@ public:
 
 	static D3D12_RESOURCE_STATES GetLayout(ID3D12Resource* resource);
 
+	static void RemoveResource(ID3D12Resource* resource);
+
 	static void Clear();
 
 private:
