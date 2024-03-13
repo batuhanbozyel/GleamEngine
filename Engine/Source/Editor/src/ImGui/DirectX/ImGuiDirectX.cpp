@@ -32,6 +32,7 @@ void ImGuiBackend::Init(Gleam::GraphicsDevice* device)
 
 void ImGuiBackend::Destroy()
 {
+	static_cast<Gleam::DirectXDevice*>(mDevice)->WaitDeviceIdle();
 	ImGui_ImplDX12_Shutdown();
     ImGui_ImplSDL3_Shutdown();
 }
