@@ -31,6 +31,7 @@ void RenderSystem::Initialize()
         {
             cmd->WaitUntilCompleted();
         }
+		mDevice->DestroyPooledObjects();
         mDevice->DestroySizeDependentResources();
 	});
 }

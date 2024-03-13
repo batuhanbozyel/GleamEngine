@@ -89,8 +89,8 @@ void GraphicsDevice::DestroySizeDependentResources()
 
 void GraphicsDevice::DestroyResources()
 {
-	DestroySizeDependentResources();
 	DestroyPooledObjects();
+	DestroySizeDependentResources();
     
     for (auto& heap : mFreeHeaps)
     {
