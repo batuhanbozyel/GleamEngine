@@ -158,8 +158,9 @@ void DirectXPipelineStateManager::Init(DirectXDevice* device)
 
 void DirectXPipelineStateManager::Destroy()
 {
-	mRootSignature->Release();
 	Clear();
+	mRootSignature->Release();
+	mRootSignature = nullptr;
 }
 
 const DirectXGraphicsPipeline* DirectXPipelineStateManager::GetGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc, const TArray<TextureDescriptor>& colorAttachments, const Shader& vertexShader, const Shader& fragmentShader, uint32_t sampleCount)
@@ -189,6 +190,7 @@ void DirectXPipelineStateManager::Clear()
 	for (const auto& [_, pipeline] : mGraphicsPipelineCache)
 	{
 		pipeline->handle->Release();
+		pipeline->handle = nullptr;
 	}
 	mGraphicsPipelineCache.clear();
 }

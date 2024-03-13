@@ -38,8 +38,9 @@ static void WaitForID3D12Fence(ID3D12Fence* fence, uint32_t value)
 
 		if (fenceEvent != 0)
 		{
-			WaitForSingleObject(fenceEvent, INFINITE);
+			DWORD result = WaitForSingleObject(fenceEvent, INFINITE);
 			CloseHandle(fenceEvent);
+			GLEAM_ASSERT(result == WAIT_OBJECT_0);
 		}
 	}
 }

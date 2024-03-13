@@ -7,6 +7,7 @@
 
 #ifdef GDEBUG
 #include <d3d12sdklayers.h>
+#include <dxgidebug.h>
 #endif
 
 namespace Gleam {
@@ -59,9 +60,9 @@ public:
 
 	DirectXDrawable AcquireNextDrawable();
 
-	DirectXCommandList AllocateCommandList(D3D12_COMMAND_LIST_TYPE type);
-
 	DirectXDescriptorHeap& GetCbvSrvUavHeap();
+
+	ID3D12GraphicsCommandList7* AllocateCommandList(D3D12_COMMAND_LIST_TYPE type);
 
 	const DirectXDescriptorHeap& GetCbvSrvUavHeap() const;
 
@@ -70,6 +71,8 @@ public:
 	ID3D12CommandQueue* GetComputeQueue() const;
 
 	ID3D12CommandQueue* GetCopyQueue() const;
+
+	void WaitDeviceIdle() const;
 
 	void WaitQueueIdle(ID3D12CommandQueue* queue) const;
 
@@ -91,9 +94,16 @@ private:
 
 	DirectXDescriptorHeap CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE type, D3D12_DESCRIPTOR_HEAP_FLAGS flags, UINT capacity) const;
 
+	DirectXDrawable GetSwapchainBuffer(uint32_t buffer);
+
+	void ReleaseSwapchainBuffer(DirectXDrawable& drawable);
+
 #ifdef GDEBUG
 	DWORD mDebugCallbackCookie = 0;
 	ID3D12InfoQueue1* mInfoQueue = nullptr;
+
+	ID3D12Debug6* mD3D12Debug = nullptr;
+	IDXGIDebug1* mDXGIDebug = nullptr;
 #endif
 
 	IDXGISwapChain4* mSwapchain = nullptr;

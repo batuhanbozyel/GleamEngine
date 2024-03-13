@@ -8,7 +8,7 @@ namespace Gleam {
 
 struct DirectXPipeline
 {
-	ID3D12PipelineState* handle = nullptr ;
+	ID3D12PipelineState* handle = nullptr;
 };
 
 struct DirectXGraphicsPipeline : public DirectXPipeline

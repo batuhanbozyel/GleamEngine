@@ -221,6 +221,7 @@ void GraphicsDevice::Dispose(Buffer& buffer)
 {
 	ReleaseResourceView(buffer.mResourceView);
 	static_cast<ID3D12Resource*>(buffer.mHandle)->Release();
+	buffer.mResourceView = InvalidResourceIndex;
 	buffer.mContents = nullptr;
 	buffer.mHandle = nullptr;
 }
@@ -243,6 +244,7 @@ void GraphicsDevice::Dispose(Texture& texture)
 
 	ReleaseResourceView(texture.mResourceView);
 	static_cast<ID3D12Resource*>(texture.mHandle)->Release();
+	texture.mResourceView = InvalidResourceIndex;
 	texture.mHandle = nullptr;
 }
 
@@ -250,14 +252,17 @@ DirectXDevice::DirectXDevice()
 {
 	UINT dxgiFactoryFlags = 0;
 #ifdef GDEBUG
-	ID3D12Debug6* debugController = nullptr;
-	if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController))))
+	if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&mD3D12Debug))))
 	{
 		dxgiFactoryFlags |= DXGI_CREATE_FACTORY_DEBUG;
 
-		debugController->EnableDebugLayer();
-		debugController->SetEnableGPUBasedValidation(true);
-		debugController->Release();
+		mD3D12Debug->EnableDebugLayer();
+		mD3D12Debug->SetEnableGPUBasedValidation(true);
+
+		if (SUCCEEDED(DXGIGetDebugInterface1(0, IID_PPV_ARGS(&mDXGIDebug))))
+		{
+			mDXGIDebug->EnableLeakTrackingForThread();
+		}
 	}
 #endif
 
@@ -287,11 +292,10 @@ DirectXDevice::DirectXDevice()
 
 	EventDispatcher<WindowResizeEvent>::Subscribe([this](const WindowResizeEvent& e)
 	{
-		WaitQueueIdle(mDirectQueue);
+		WaitDeviceIdle();
 		for (auto& ctx : mFrameContext)
 		{
-			ctx.drawable.renderTarget->Release();
-			mRtvHeap.heap.Release(mRtvHeap.GetResourceIndex(ctx.drawable.view));
+			ReleaseSwapchainBuffer(ctx.drawable);
 		}
 
 		mSize.width = static_cast<float>(e.GetWidth());
@@ -301,21 +305,7 @@ DirectXDevice::DirectXDevice()
 		for (uint32_t i = 0; i < mMaxFramesInFlight; i++)
 		{
 			auto& ctx = mFrameContext[i];
-
-			auto index = mRtvHeap.heap.Allocate();
-			ctx.drawable.view = mRtvHeap.cpuHandle;
-			ctx.drawable.view.ptr += (size_t)index.data * (size_t)mRtvHeap.size;
-
-			// create swapchain RTV
-			DX_CHECK(mSwapchain->GetBuffer(i, IID_PPV_ARGS(&ctx.drawable.renderTarget)));
-			static_cast<ID3D12Device10*>(mHandle)->CreateRenderTargetView(ctx.drawable.renderTarget, nullptr, ctx.drawable.view);
-			DirectXTransitionManager::SetLayout(ctx.drawable.renderTarget, D3D12_RESOURCE_STATE_PRESENT);
-
-		#ifdef GDEBUG
-			TStringStream resourceName;
-			resourceName << "Swapchain::Drawable_" << i;
-			ctx.drawable.renderTarget->SetName(StringUtils::Convert(resourceName.str()).data());
-		#endif
+			ctx.drawable = GetSwapchainBuffer(i);
 		}
 		EventDispatcher<RendererResizeEvent>::Publish(RendererResizeEvent(mSize));
 	});
@@ -325,6 +315,8 @@ DirectXDevice::DirectXDevice()
 
 DirectXDevice::~DirectXDevice()
 {
+	WaitDeviceIdle();
+
 	for (auto& shader : mShaderCache)
 	{
 		auto bytecode = static_cast<D3D12_SHADER_BYTECODE*>(shader.GetHandle());
@@ -338,12 +330,12 @@ DirectXDevice::~DirectXDevice()
 		ctx.commandPool.Release();
 		ctx.fence->Release();
 
-		ctx.drawable.renderTarget->Release();
-		mRtvHeap.heap.Release(mRtvHeap.GetResourceIndex(ctx.drawable.view));
+		ReleaseSwapchainBuffer(ctx.drawable);
 	}
 	mFrameContext.clear();
 
 	DirectXPipelineStateManager::Destroy();
+	DirectXTransitionManager::Clear();
 
 	mRtvHeap.handle->Release();
 	mDsvHeap.handle->Release();
@@ -353,19 +345,32 @@ DirectXDevice::~DirectXDevice()
 	mComputeQueue->Release();
 	mCopyQueue->Release();
 
+	mSwapchain->Release();
+	mFactory->Release();
+	mAdapter->Release();
+	static_cast<ID3D12Device10*>(mHandle)->Release();
+
 #ifdef GDEBUG
 	if (mInfoQueue)
 	{
 		mInfoQueue->UnregisterMessageCallback(mDebugCallbackCookie);
 		mInfoQueue->Release();
 	}
+
+	if (mD3D12Debug)
+	{
+		mD3D12Debug->Release();
+	}
+	if (mDXGIDebug)
+	{
+		OutputDebugStringW(L"DXGI Reports living device objects:\n");
+		mDXGIDebug->ReportLiveObjects(DXGI_DEBUG_ALL,
+			DXGI_DEBUG_RLO_FLAGS(DXGI_DEBUG_RLO_DETAIL | DXGI_DEBUG_RLO_IGNORE_INTERNAL)
+		);
+
+		mDXGIDebug->Release();
+	}
 #endif
-
-	mSwapchain->Release();
-	mFactory->Release();
-	mAdapter->Release();
-	static_cast<ID3D12Device10*>(mHandle)->Release();
-
 	GLEAM_CORE_INFO("DirectX: Graphics device destroyed.");
 }
 
@@ -379,38 +384,36 @@ void DirectXDevice::Configure(const RendererConfig& config)
 	mSize.height = static_cast<float>(height);
 	mMaxFramesInFlight = config.tripleBufferingEnabled ? 3 : 2;
 
+	DXGI_FORMAT format = DXGI_FORMAT_B8G8R8A8_UNORM;
+	mFormat = DXGI_FORMATtoTextureFormat(format);
+
 	if (mSwapchain != nullptr)
 	{
 		// Destroy old context
         DestroyPooledObjects();
 		for (auto& ctx : mFrameContext)
 		{
+			ReleaseSwapchainBuffer(ctx.drawable);
 			ctx.commandPool.Release();
 			ctx.fence->Release();
-
-			ctx.drawable.renderTarget->Release();
-			mRtvHeap.heap.Release(mRtvHeap.GetResourceIndex(ctx.drawable.view));
 		}
 		mFrameContext.clear();
         
-		mSwapchain->ResizeBuffers(mMaxFramesInFlight, (UINT)mSize.width, (UINT)mSize.height, TextureFormatToDXGI_FORMAT(mFormat), 0);
+		mSwapchain->ResizeBuffers(mMaxFramesInFlight, (UINT)mSize.width, (UINT)mSize.height, format, 0);
 	}
 	else
 	{
-		DXGI_FORMAT format = DXGI_FORMAT_B8G8R8A8_UNORM;
-		mFormat = DXGI_FORMATtoTextureFormat(format);
-
 		DXGI_SWAP_CHAIN_DESC1 swapchainDesc =
 		{
 			.Width = (UINT)mSize.width,
 			.Height = (UINT)mSize.height,
-			.Format = DXGI_FORMAT_B8G8R8A8_UNORM,
+			.Format = format,
 			.SampleDesc = {.Count = 1, .Quality = 0 },
 			.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT,
 			.BufferCount = mMaxFramesInFlight,
 			.Scaling = DXGI_SCALING_STRETCH,
 			.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD,
-			.AlphaMode = DXGI_ALPHA_MODE_UNSPECIFIED,
+			.AlphaMode = DXGI_ALPHA_MODE_IGNORE,
 			.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH
 		};
 		if (config.vsync == false)
@@ -432,21 +435,7 @@ void DirectXDevice::Configure(const RendererConfig& config)
 	for (uint32_t i = 0; i < mMaxFramesInFlight; i++)
 	{
 		auto& ctx = mFrameContext[i];
-
-		auto index = mRtvHeap.heap.Allocate();
-		ctx.drawable.view = mRtvHeap.cpuHandle;
-		ctx.drawable.view.ptr += (size_t)index.data * (size_t)mRtvHeap.size;
-
-		// create swapchain RTV
-		DX_CHECK(mSwapchain->GetBuffer(i, IID_PPV_ARGS(&ctx.drawable.renderTarget)));
-		static_cast<ID3D12Device10*>(mHandle)->CreateRenderTargetView(ctx.drawable.renderTarget, nullptr, ctx.drawable.view);
-		DirectXTransitionManager::SetLayout(ctx.drawable.renderTarget, D3D12_RESOURCE_STATE_PRESENT);
-
-	#ifdef GDEBUG
-		TStringStream resourceName;
-		resourceName << "Swapchain::Drawable_" << i;
-		ctx.drawable.renderTarget->SetName(StringUtils::Convert(resourceName.str()).data());
-	#endif
+		ctx.drawable = GetSwapchainBuffer(i);
 
 		// create fence
 		DX_CHECK(static_cast<ID3D12Device10*>(mHandle)->CreateFence(
@@ -455,12 +444,12 @@ void DirectXDevice::Configure(const RendererConfig& config)
 			IID_PPV_ARGS(&ctx.fence)
 		));
 	}
-	mCurrentFrameIndex = mSwapchain->GetCurrentBackBufferIndex();
 }
 
 DirectXDrawable DirectXDevice::AcquireNextDrawable()
 {
-	auto& ctx = mFrameContext[mCurrentFrameIndex];
+	auto idx = mSwapchain->GetCurrentBackBufferIndex();
+	auto& ctx = mFrameContext[idx];
 	WaitForID3D12Fence(ctx.fence, ctx.frameCount);
 	return ctx.drawable;
 }
@@ -487,8 +476,7 @@ void DirectXDevice::Present(const CommandBuffer* cmd)
 	}
 
 	mDirectQueue->Signal(ctx.fence, ++ctx.frameCount);
-	mCurrentFrameIndex = mSwapchain->GetCurrentBackBufferIndex();
-	GLEAM_ASSERT(mCurrentFrameIndex < mMaxFramesInFlight);
+	mCurrentFrameIndex = (mCurrentFrameIndex + 1) % mMaxFramesInFlight;
 }
 
 void DirectXDevice::DestroyFrameObjects(uint32_t frameIndex)
@@ -496,7 +484,7 @@ void DirectXDevice::DestroyFrameObjects(uint32_t frameIndex)
 	mFrameContext[mCurrentFrameIndex].commandPool.Reset();
 }
 
-DirectXCommandList DirectXDevice::AllocateCommandList(D3D12_COMMAND_LIST_TYPE type)
+ID3D12GraphicsCommandList7* DirectXDevice::AllocateCommandList(D3D12_COMMAND_LIST_TYPE type)
 {
 	auto& pool = mFrameContext[mCurrentFrameIndex].commandPool;
 
@@ -517,7 +505,41 @@ DirectXCommandList DirectXDevice::AllocateCommandList(D3D12_COMMAND_LIST_TYPE ty
 	commandList.allocator->Reset();
 	commandList.handle->Reset(commandList.allocator, nullptr);
 
-	return commandList;
+	return commandList.handle;
+}
+
+DirectXDrawable DirectXDevice::GetSwapchainBuffer(uint32_t buffer)
+{
+	DirectXDrawable drawable{};
+	auto index = mRtvHeap.heap.Allocate();
+	drawable.view = mRtvHeap.cpuHandle;
+	drawable.view.ptr += (size_t)index.data * (size_t)mRtvHeap.size;
+
+	// create swapchain RTV
+	D3D12_RENDER_TARGET_VIEW_DESC rtvDesc =
+	{
+		.Format = TextureFormatToDXGI_FORMAT(mFormat),
+		.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D
+	};
+
+	DX_CHECK(mSwapchain->GetBuffer(buffer, IID_PPV_ARGS(&drawable.renderTarget)));
+	static_cast<ID3D12Device10*>(mHandle)->CreateRenderTargetView(drawable.renderTarget, &rtvDesc, drawable.view);
+	DirectXTransitionManager::SetLayout(drawable.renderTarget, D3D12_RESOURCE_STATE_PRESENT);
+
+#ifdef GDEBUG
+	TStringStream resourceName;
+	resourceName << "Swapchain::Drawable_" << buffer;
+	drawable.renderTarget->SetName(StringUtils::Convert(resourceName.str()).data());
+#endif
+
+	return drawable;
+}
+
+void DirectXDevice::ReleaseSwapchainBuffer(DirectXDrawable& drawable)
+{
+	drawable.renderTarget->Release();
+	mRtvHeap.heap.Release(mRtvHeap.GetResourceIndex(drawable.view));
+	drawable.renderTarget = nullptr;
 }
 
 ID3D12CommandQueue* DirectXDevice::CreateCommandQueue(D3D12_COMMAND_LIST_TYPE type) const
@@ -668,6 +690,13 @@ void DirectXDevice::ReleaseResourceView(ShaderResourceIndex view)
 	}
 }
 
+void DirectXDevice::WaitDeviceIdle() const
+{
+	WaitQueueIdle(mCopyQueue);
+	WaitQueueIdle(mComputeQueue);
+	WaitQueueIdle(mDirectQueue);
+}
+
 void DirectXDevice::WaitQueueIdle(ID3D12CommandQueue* queue) const
 {
 	constexpr static uint64_t fenceValue = 1;
@@ -681,6 +710,7 @@ void DirectXDevice::WaitQueueIdle(ID3D12CommandQueue* queue) const
 
 	DX_CHECK(queue->Signal(fence, fenceValue));
 	WaitForID3D12Fence(fence, fenceValue);
+	fence->Release();
 }
 
 DirectXDescriptorHeap& DirectXDevice::GetCbvSrvUavHeap()
@@ -720,12 +750,18 @@ void DirectXCommandPool::Release()
 	{
 		cmd.handle->Release();
 		cmd.allocator->Release();
+
+		cmd.handle = nullptr;
+		cmd.allocator = nullptr;
 	}
 
 	for (auto& cmd : freeCommandLists)
 	{
 		cmd.handle->Release();
 		cmd.allocator->Release();
+
+		cmd.handle = nullptr;
+		cmd.allocator = nullptr;
 	}
 }
 
