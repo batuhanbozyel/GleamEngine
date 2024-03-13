@@ -3,6 +3,12 @@
 #include "Renderer/CommandBuffer.h"
 #include "Renderer/GraphicsDevice.h"
 
+#if defined(USE_METAL_RENDERER)
+#import <Metal/Metal.h>
+#elif defined(USE_DIRECTX_RENDERER)
+#include "../DirectX/DirectXTransitionManager.h"
+#endif
+
 using namespace Gleam;
 
 static AttachmentLoadAction GetLoadActionForRenderTexture(const RenderGraphTextureNode* node, RenderPassNode* pass)
@@ -114,7 +120,8 @@ void RenderGraph::Compile()
         for (auto& resource : pass->bufferCreates)
         {
             auto node = static_cast<RenderGraphBufferNode*>(resource.node);
-            mHeapSize += node->buffer.GetDescriptor().size;
+			auto memoryRequirements = mDevice->QueryMemoryRequirements({ .memoryType = MemoryType::GPU, .size = node->buffer.GetSize() });
+            mHeapSize += Utils::AlignUp(memoryRequirements.size, memoryRequirements.alignment);
         }
         for (auto& resource : pass->bufferWrites)
         {
@@ -147,7 +154,6 @@ void RenderGraph::Execute(const CommandBuffer* cmd)
         heap = mDevice->CreateHeap({ .memoryType = MemoryType::GPU, .size = mHeapSize });
     }
 
-    cmd->Begin();
     for (auto pass : mPassNodes)
     {
         // Allocate buffers
@@ -155,7 +161,7 @@ void RenderGraph::Execute(const CommandBuffer* cmd)
         {
             if (HasResource(pass->bufferWrites, resource))
             {
-                resource.node->buffer = heap.CreateBuffer(resource.node->buffer.GetDescriptor());
+                resource.node->buffer = heap.CreateBuffer(resource.node->buffer.GetSize());
                 GLEAM_ASSERT(resource.node->buffer.IsValid());
             }
         }
@@ -168,11 +174,6 @@ void RenderGraph::Execute(const CommandBuffer* cmd)
                 resource.node->texture = mDevice->CreateTexture(resource.node->texture.GetDescriptor());
                 GLEAM_ASSERT(resource.node->texture.IsValid());
             }
-        }
-
-        for (auto& resource : pass->textureReads)
-        {
-            cmd->TransitionLayout(resource.node->texture, ResourceAccess::Read);
         }
         
         // execute render pass
@@ -213,18 +214,35 @@ void RenderGraph::Execute(const CommandBuffer* cmd)
             
             cmd->BeginRenderPass(renderPassDesc, pass->name);
             cmd->SetViewport(renderPassDesc.size);
+            
+		#if defined(USE_METAL_RENDERER)
+            [cmd->GetActiveRenderPass() useHeap:heap.GetHandle()];
+            
+            for (auto& resource : pass->textureReads)
+            {
+                [cmd->GetActiveRenderPass() useResource:resource.node->texture.GetView() usage:MTLResourceUsageRead stages:MTLRenderStageVertex | MTLRenderStageFragment];
+            }
+		#elif defined(USE_DIRECTX_RENDERER)
+			for (auto& resource : pass->textureReads)
+			{
+				DirectXTransitionManager::TransitionLayout(
+					static_cast<ID3D12GraphicsCommandList7*>(cmd->GetHandle()),
+					static_cast<ID3D12Resource*>(resource.node->texture.GetHandle()),
+					D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE
+				);
+			}
+		#endif
             std::invoke(pass->callback, cmd);
             cmd->EndRenderPass();
         }
     }
-    cmd->End();
 
     // Release buffers & textures
     for (auto& pass : mPassNodes)
     {
         for (auto& resource : pass->bufferCreates)
         {
-            mDevice->Dispose(resource.node->buffer);
+            mDevice->ReleaseBuffer(resource.node->buffer);
         }
 
         for (auto& resource : pass->textureCreates)
@@ -252,12 +270,6 @@ TextureHandle RenderGraph::ImportBackbuffer(const Texture& backbuffer, const Imp
 	auto handle = mRegistry.CreateTexture(descriptor, false);
     handle.node->texture = backbuffer;
     return handle;
-}
-
-const BufferDescriptor& RenderGraph::GetDescriptor(BufferHandle handle) const
-{
-	auto node = static_cast<const RenderGraphBufferNode*>(handle.node);
-	return node->buffer.GetDescriptor();
 }
 
 const TextureDescriptor& RenderGraph::GetDescriptor(TextureHandle handle) const

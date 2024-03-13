@@ -6,7 +6,6 @@ namespace Gleam {
 
 class Buffer;
 class GraphicsDevice;
-struct BufferDescriptor;
 
 class Heap final : public GraphicsObject
 {
@@ -26,7 +25,7 @@ public:
 
     }
 
-    Buffer CreateBuffer(const BufferDescriptor& descriptor) const;
+    Buffer CreateBuffer(size_t size) const;
 
     void Reset() const
     {
@@ -53,7 +52,7 @@ private:
 
     HeapDescriptor mDescriptor;
 
-    const GraphicsDevice* mDevice = nullptr;
+    GraphicsDevice* mDevice = nullptr;
 
 };
 

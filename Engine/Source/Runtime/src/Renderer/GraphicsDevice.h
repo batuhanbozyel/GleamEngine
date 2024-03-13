@@ -1,16 +1,14 @@
 #pragma once
-#include "Heap.h"
-#include "Shader.h"
-#include "Texture.h"
-#include "Swapchain.h"
+#include "CommandBuffer.h"
 #include "RendererConfig.h"
+#include "ResourceDescriptorHeap.h"
 
 namespace Gleam {
 
 class RenderSystem;
 struct Version;
 
-class GraphicsDevice
+class GraphicsDevice : public GraphicsObject
 {
     friend class RenderSystem;
 
@@ -24,37 +22,69 @@ public:
 
     virtual ~GraphicsDevice() = default;
 
+	void DestroyResources();
+
+	void DestroySizeDependentResources();
+
+	void DestroyPooledObjects();
+
+	void DestroyPooledObjects(uint32_t frameIndex);
+
     Heap CreateHeap(const HeapDescriptor& descriptor);
 
     Texture CreateTexture(const TextureDescriptor& descriptor);
 
     Shader CreateShader(const TString& entryPoint, ShaderStage stage);
 
-	MemoryRequirements QueryMemoryRequirements(const HeapDescriptor& descriptor) const;
-
     void ReleaseHeap(const Heap& heap);
+
+	void ReleaseBuffer(const Buffer& buffer);
 
     void ReleaseTexture(const Texture& texture);
 
-    void Dispose(Heap& heap) const;
+    void Dispose(Heap& heap);
 
-    void Dispose(Buffer& buffer) const;
+    void Dispose(Buffer& buffer);
 
-    void Dispose(Texture& texture) const;
+    void Dispose(Texture& texture);
 
-    Swapchain* GetSwapchain();
+	Texture GetRenderSurface() const;
 
-    const Swapchain* GetSwapchain() const;
+	TextureFormat GetFormat() const;
 
-    NativeGraphicsHandle GetHandle() const;
+	uint32_t GetLastFrameIndex() const;
+
+	uint32_t GetFrameIndex() const;
+
+	uint32_t GetFramesInFlight() const;
+
+	const Size& GetDrawableSize() const;
+    
+    MemoryRequirements QueryMemoryRequirements(const HeapDescriptor& descriptor) const;
+
+	using ObjectDeallocator = std::function<void()>;
+	void AddPooledObject(ObjectDeallocator&& deallocator)
+	{
+		mPooledObjects[mCurrentFrameIndex].push_back(deallocator);
+	}
     
 protected:
 
-	void Clear();
-	
-    NativeGraphicsHandle mHandle;
+	// Implemented by the backend
+	virtual void Present(const CommandBuffer* cmd) = 0;
 
-    Scope<Swapchain> mSwapchain;
+	virtual void Configure(const RendererConfig& config) = 0;
+
+	virtual void DestroyFrameObjects(uint32_t frameIndex) {}
+    
+    virtual ShaderResourceIndex CreateResourceView(const Buffer& buffer) = 0;
+    
+    virtual ShaderResourceIndex CreateResourceView(const Texture& texture) = 0;
+    
+    virtual void ReleaseResourceView(ShaderResourceIndex view) = 0;
+
+	using ObjectPool = TArray<ObjectDeallocator>;
+	TArray<ObjectPool> mPooledObjects;
 
     Deque<Heap> mFreeHeaps;
 
@@ -62,13 +92,19 @@ protected:
 
     TArray<Shader> mShaderCache;
 
+	uint32_t mMaxFramesInFlight = 3;
+
+	uint32_t mCurrentFrameIndex = 0;
+
+	TextureFormat mFormat = TextureFormat::None;
+
+	Size mSize = Size::zero;
+
 private:
 
-	void Configure(const RendererConfig& config);
-
-    Heap AllocateHeap(const HeapDescriptor& descriptor) const;
+    Heap AllocateHeap(const HeapDescriptor& descriptor);
     
-    Texture AllocateTexture(const TextureDescriptor& descriptor) const;
+    Texture AllocateTexture(const TextureDescriptor& descriptor);
     
     Shader GenerateShader(const TString& entryPoint, ShaderStage stage) const;
 

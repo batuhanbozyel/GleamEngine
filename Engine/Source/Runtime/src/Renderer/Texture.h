@@ -6,7 +6,7 @@ namespace Gleam {
 
 class GraphicsDevice;
 
-class Texture final : public GraphicsObject
+class Texture final : public ShaderResource
 {
     friend class GraphicsDevice;
     
@@ -24,7 +24,7 @@ public:
         
     }
     
-    NativeGraphicsHandle GetView() const
+	NativeGraphicsResourceView GetView() const
     {
         return mView;
     }
@@ -34,7 +34,7 @@ public:
 		return mMultisampleHandle;
 	}
 
-	NativeGraphicsHandle GetMSAAView() const
+	NativeGraphicsResourceView GetMSAAView() const
 	{
 		return mMultisampleView;
 	}
@@ -54,17 +54,17 @@ public:
 		return static_cast<uint32_t>(Math::Floor(Math::Log2(Math::Max(size.width, size.height)))) + 1;
 	}
     
-protected:
+private:
     
     uint32_t mMipMapLevels = 1;
     TextureDescriptor mDescriptor;
 	NativeGraphicsHandle mHeap = nullptr;
-    NativeGraphicsHandle mView = nullptr;
+	NativeGraphicsResourceView mView = {};
 
 	// multisample
 	NativeGraphicsHandle mMultisampleHeap = nullptr;
-	NativeGraphicsHandle mMultisampleView = nullptr;
 	NativeGraphicsHandle mMultisampleHandle = nullptr;
+	NativeGraphicsResourceView mMultisampleView = {};
     
 };
 

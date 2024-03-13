@@ -29,30 +29,71 @@ struct SamplerState
         return filterMode == other.filterMode && wrapMode == other.wrapMode;
     }
     
-    static constexpr TArray<SamplerState, 12> GetAllVariations()
+	static constexpr TArray<SamplerState, 12> GetStaticSamplers()
     {
-        uint32_t index = 0;
-        TArray<SamplerState, 12> samplerStates;
-        for (uint32_t filterMode = 0; filterMode < static_cast<size_t>(FilterMode::COUNT); filterMode++)
-        {
-            for (uint32_t wrapMode = 0; wrapMode < static_cast<size_t>(WrapMode::COUNT); wrapMode++)
-            {
-                samplerStates[index].filterMode = static_cast<FilterMode>(filterMode);
-                samplerStates[index].wrapMode = static_cast<WrapMode>(wrapMode);
-                index++;
-            }
-        }
-        return samplerStates;
+		return TArray<SamplerState, 12>{
+			// Sampler_Point_Repeat
+			SamplerState{
+				.filterMode = FilterMode::Point,
+				.wrapMode = WrapMode::Repeat
+			},
+			// Sampler_Point_Clamp
+			SamplerState{
+				.filterMode = FilterMode::Point,
+				.wrapMode = WrapMode::Clamp
+			},
+			// Sampler_Point_Mirror
+			SamplerState{
+				.filterMode = FilterMode::Point,
+				.wrapMode = WrapMode::Mirror
+			},
+			// Sampler_Point_MirrorOnce
+			SamplerState{
+				.filterMode = FilterMode::Point,
+				.wrapMode = WrapMode::MirrorOnce
+			},
+			// Sampler_Bilinear_Repeat
+			SamplerState{
+				.filterMode = FilterMode::Bilinear,
+				.wrapMode = WrapMode::Repeat
+			},
+			// Sampler_Bilinear_Clamp
+			SamplerState{
+				.filterMode = FilterMode::Bilinear,
+				.wrapMode = WrapMode::Clamp
+			},
+			// Sampler_Bilinear_Mirror
+			SamplerState{
+				.filterMode = FilterMode::Bilinear,
+				.wrapMode = WrapMode::Mirror
+			},
+			// Sampler_Bilinear_MirrorOnce
+			SamplerState{
+				.filterMode = FilterMode::Bilinear,
+				.wrapMode = WrapMode::MirrorOnce
+			},
+			// Sampler_Trilinear_Repeat
+			SamplerState{
+				.filterMode = FilterMode::Trilinear,
+				.wrapMode = WrapMode::Repeat
+			},
+			// Sampler_Trilinear_Clamp
+			SamplerState{
+				.filterMode = FilterMode::Trilinear,
+				.wrapMode = WrapMode::Clamp
+			},
+			// Sampler_Trilinear_Mirror
+			SamplerState{
+				.filterMode = FilterMode::Trilinear,
+				.wrapMode = WrapMode::Mirror
+			},
+			// Sampler_Trilinear_MirrorOnce
+			SamplerState{
+				.filterMode = FilterMode::Trilinear,
+				.wrapMode = WrapMode::MirrorOnce
+			}
+		};
     }
 };
 
 } // namespace Gleam
-
-template <>
-struct std::hash<Gleam::SamplerState>
-{
-    size_t operator()(const Gleam::SamplerState& state) const
-    {
-        return static_cast<size_t>(state.filterMode) * static_cast<size_t>(Gleam::WrapMode::MirrorOnce) + static_cast<size_t>(state.wrapMode);
-    }
-};

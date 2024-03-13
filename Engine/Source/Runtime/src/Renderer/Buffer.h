@@ -1,13 +1,14 @@
 #pragma once
 #include "GraphicsObject.h"
-#include "BufferDescriptor.h"
 
 namespace Gleam {
 
+class Heap;
 class GraphicsDevice;
 
-class Buffer final : public GraphicsObject
+class Buffer final : public ShaderResource
 {
+    friend class Heap;
     friend class GraphicsDevice;
     
 public:
@@ -18,8 +19,8 @@ public:
     
     Buffer& operator=(const Buffer& other) = default;
 
-    Buffer(NativeGraphicsHandle handle, const BufferDescriptor& descriptor, void* contents = nullptr)
-        : GraphicsObject(handle), mDescriptor(descriptor), mContents(contents)
+    Buffer(NativeGraphicsHandle handle, size_t size, void* contents = nullptr)
+        : ShaderResource(handle), mSize(size), mContents(contents)
     {
         
     }
@@ -29,16 +30,16 @@ public:
         return mContents;
     }
     
-    const BufferDescriptor& GetDescriptor() const
+	size_t GetSize() const
     {
-        return mDescriptor;
+        return mSize;
     }
     
 private:
     
 	void* mContents = nullptr;
 
-    BufferDescriptor mDescriptor;
+	size_t mSize;
     
 };
 

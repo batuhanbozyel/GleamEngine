@@ -46,7 +46,7 @@ void WorldViewport::Update()
     
     Gleam::TextureDescriptor descriptor;
     descriptor.size = mViewportSize;
-    descriptor.type = Gleam::TextureType::RenderTexture;
+    descriptor.usage = Gleam::TextureUsage_Attachment | Gleam::TextureUsage_Sampled;
     GameInstance->GetSubsystem<Gleam::RenderSystem>()->SetRenderTarget(descriptor);
     
     mController->SetViewportFocused(mIsFocused);

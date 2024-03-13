@@ -10,11 +10,10 @@
 
 namespace Gleam {
 
-enum class TextureType
+enum class TextureDimension
 {
     Texture2D,
-    TextureCube,
-    RenderTexture
+    TextureCube
 };
 
 enum class TextureUsage
@@ -35,9 +34,9 @@ typedef uint32_t TextureUsageFlagBits;
 struct TextureDescriptor
 {
     Size size = Size::zero;
-    TextureFormat format = TextureFormat::R8G8B8A8_SRGB;
+    TextureFormat format = TextureFormat::R8G8B8A8_UNorm;
     TextureUsageFlagBits usage = TextureUsage_Sampled;
-    TextureType type = TextureType::Texture2D;
+    TextureDimension dimension = TextureDimension::Texture2D;
     uint32_t sampleCount = 1;
     bool useMipMap = false;
     
@@ -46,7 +45,7 @@ struct TextureDescriptor
         return  size == other.size &&
                 format == other.format &&
                 usage == other.usage &&
-                type == other.type &&
+				dimension == other.dimension &&
                 sampleCount == other.sampleCount &&
                 useMipMap == other.useMipMap;
     }
@@ -62,13 +61,13 @@ struct RenderTextureDescriptor : public TextureDescriptor
     RenderTextureDescriptor()
         : TextureDescriptor()
     {
-        type = TextureType::RenderTexture;
+        usage |= TextureUsage_Attachment;
     }
     
     RenderTextureDescriptor(const TextureDescriptor& descriptor)
         : TextureDescriptor(descriptor)
     {
-        type = TextureType::RenderTexture;
+		usage |= TextureUsage_Attachment;
     }
 };
 
@@ -84,7 +83,7 @@ struct std::hash<Gleam::TextureDescriptor>
         Gleam::hash_combine(hash, static_cast<int>(descriptor.size.height));
         Gleam::hash_combine(hash, descriptor.format);
         Gleam::hash_combine(hash, descriptor.usage);
-        Gleam::hash_combine(hash, descriptor.type);
+        Gleam::hash_combine(hash, descriptor.dimension);
         Gleam::hash_combine(hash, descriptor.sampleCount);
         Gleam::hash_combine(hash, descriptor.useMipMap);
         return hash;

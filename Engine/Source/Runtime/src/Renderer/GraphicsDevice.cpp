@@ -7,7 +7,8 @@ Heap GraphicsDevice::CreateHeap(const HeapDescriptor& descriptor)
 {
     auto it = std::find_if(mFreeHeaps.begin(), mFreeHeaps.end(), [&](const Heap& heap) -> bool
     {
-        return heap.GetDescriptor() == descriptor;
+        return heap.GetDescriptor().memoryType == descriptor.memoryType
+			&& heap.GetDescriptor().size >= descriptor.size;
     });
     
     if (it != mFreeHeaps.end())
@@ -52,29 +53,44 @@ Shader GraphicsDevice::CreateShader(const TString& entryPoint, ShaderStage stage
 void GraphicsDevice::ReleaseHeap(const Heap& heap)
 {
     GLEAM_ASSERT(heap.IsValid());
-    mSwapchain->AddPooledObject([this, heap = heap]()
+    AddPooledObject([this, heap = heap]()
     {
         heap.Reset();
         mFreeHeaps.push_back(heap);
     });
 }
 
+void GraphicsDevice::ReleaseBuffer(const Buffer& buffer)
+{
+	GLEAM_ASSERT(buffer.IsValid());
+	AddPooledObject([this, buffer = buffer]() mutable
+	{
+		Dispose(buffer);
+	});
+}
+
 void GraphicsDevice::ReleaseTexture(const Texture& texture)
 {
     GLEAM_ASSERT(texture.IsValid());
-    mSwapchain->AddPooledObject([this, texture = texture]()
+    AddPooledObject([this, texture = texture]()
     {
         mFreeTextures.push_back(texture);
     });
 }
 
-void GraphicsDevice::Clear()
+void GraphicsDevice::DestroySizeDependentResources()
 {
-    for (auto& texture : mFreeTextures)
-    {
-        Dispose(texture);
-    }
-    mFreeTextures.clear();
+	for (auto& texture : mFreeTextures)
+	{
+		Dispose(texture);
+	}
+	mFreeTextures.clear();
+}
+
+void GraphicsDevice::DestroyResources()
+{
+	DestroyPooledObjects();
+	DestroySizeDependentResources();
     
     for (auto& heap : mFreeHeaps)
     {
@@ -83,17 +99,61 @@ void GraphicsDevice::Clear()
     mFreeHeaps.clear();
 }
 
-Swapchain* GraphicsDevice::GetSwapchain()
+void GraphicsDevice::DestroyPooledObjects()
 {
-    return mSwapchain.get();
+	for (uint32_t i = 0; i < mPooledObjects.size(); i++)
+	{
+		DestroyPooledObjects(i);
+	}
 }
 
-const Swapchain* GraphicsDevice::GetSwapchain() const
+void GraphicsDevice::DestroyPooledObjects(uint32_t frameIndex)
 {
-    return mSwapchain.get();
+	DestroyFrameObjects(frameIndex);
+
+	auto& pooledObjects = mPooledObjects[frameIndex];
+	for (auto& deallocator : pooledObjects)
+	{
+		deallocator();
+	}
+	pooledObjects.clear();
+
+	// TODO: implement a better algorithm to retrieve heaps so that always the closest fitting heap is returned
+	std::sort(mFreeHeaps.begin(), mFreeHeaps.end(), [](const Heap& left, const Heap& right)
+	{
+		return left.GetDescriptor().size < right.GetDescriptor().size;
+	});
 }
 
-NativeGraphicsHandle GraphicsDevice::GetHandle() const
+Texture GraphicsDevice::GetRenderSurface() const
 {
-    return mHandle;
+	return Texture({ .size = mSize,
+					 .format = mFormat,
+					 .usage = TextureUsage_Attachment,
+					 .dimension = TextureDimension::Texture2D });
+}
+
+TextureFormat GraphicsDevice::GetFormat() const
+{
+	return mFormat;
+}
+
+uint32_t GraphicsDevice::GetLastFrameIndex() const
+{
+	return (mCurrentFrameIndex + (mMaxFramesInFlight - 1)) % mMaxFramesInFlight;
+}
+
+uint32_t GraphicsDevice::GetFrameIndex() const
+{
+	return mCurrentFrameIndex;
+}
+
+uint32_t GraphicsDevice::GetFramesInFlight() const
+{
+	return mMaxFramesInFlight;
+}
+
+const Size& GraphicsDevice::GetDrawableSize() const
+{
+	return mSize;
 }

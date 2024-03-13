@@ -49,7 +49,7 @@ public:
 
 private:
 
-	void RenderMeshes(const CommandBuffer* cmd, const Buffer& cameraBuffer, const TArray<DebugMesh>& debugMeshes, bool depthTest) const;
+	void RenderMeshes(const CommandBuffer* cmd, const BufferHandle& cameraBuffer, const TArray<DebugMesh>& debugMeshes, bool depthTest) const;
 
 	uint32_t mLineBufferOffset = 0;
 	uint32_t mTriangleBufferOffset = 0;

@@ -37,6 +37,8 @@ public:
     
     const Texture& GetRenderTarget() const;
     
+    void UpdateCamera(const Camera& camera);
+    
     void SetRenderTarget(const TextureDescriptor& descriptor);
     
     void SetRenderTarget(const Texture& texture);
@@ -56,16 +58,17 @@ public:
     void RemoveRenderer()
     {
         GLEAM_ASSERT(HasRenderer<T>(), "Render pipeline does not have the renderer!");
-        auto it = mRenderers.erase(std::remove_if(mRenderers.begin(), mRenderers.end(), [](const IRenderer* renderer)
+        auto it = std::find_if(mRenderers.begin(), mRenderers.end(), [](const IRenderer* renderer)
         {
             return typeid(*renderer) == typeid(T);
-        }));
+        });
         
         if (it != mRenderers.end())
         {
             auto renderer = *it;
             renderer->OnDestroy(mDevice.get());
             delete renderer;
+			mRenderers.erase(it);
         }
     }
     
@@ -122,11 +125,11 @@ public:
     
 private:
     
-    bool mRunning = true;
-    
     Container mRenderers;
     
     Texture mRenderTarget;
+    
+    CameraUniforms mCameraData;
     
     RendererConfig mConfiguration;
     

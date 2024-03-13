@@ -26,19 +26,19 @@ void RenderSystem::Initialize()
 
 	EventDispatcher<RendererResizeEvent>::Subscribe([this](RendererResizeEvent e)
 	{
-        const auto& cmd = mCommandBuffers[mDevice->GetSwapchain()->GetLastFrameIndex()];
+        const auto& cmd = mCommandBuffers[mDevice->GetLastFrameIndex()];
         if (cmd)
         {
             cmd->WaitUntilCompleted();
         }
-        mDevice->GetSwapchain()->FlushAll();
-        mDevice->Clear();
+		mDevice->DestroyPooledObjects();
+        mDevice->DestroySizeDependentResources();
 	});
 }
 
 void RenderSystem::Shutdown()
 {
-    mCommandBuffers[mDevice->GetSwapchain()->GetLastFrameIndex()]->WaitUntilCompleted();
+    mCommandBuffers[mDevice->GetLastFrameIndex()]->WaitUntilCompleted();
     mCommandBuffers.clear();
     
     for (auto renderer : mRenderers)
@@ -47,7 +47,7 @@ void RenderSystem::Shutdown()
         delete renderer;
     }
 
-    mDevice->Clear();
+    mDevice->DestroyResources();
     mDevice.reset();
 }
 
@@ -59,10 +59,19 @@ void RenderSystem::Render()
     {
         RenderGraph graph(mDevice.get());
         RenderGraphBlackboard blackboard;
-
-        SceneRenderingData sceneData;
-        sceneData.backbuffer = graph.ImportBackbuffer(mRenderTarget);
-        sceneData.config = mConfiguration;
+        
+        const auto& sceneData = graph.AddRenderPass<SceneRenderingData>("SceneRenderingData", [&](RenderGraphBuilder& builder, SceneRenderingData& passData)
+        {
+            passData.cameraBuffer = builder.CreateBuffer(sizeof(CameraUniforms));
+            passData.cameraBuffer = builder.WriteBuffer(passData.cameraBuffer);
+            
+            passData.backbuffer = graph.ImportBackbuffer(mRenderTarget);
+            passData.config = mConfiguration;
+        },
+        [this](const CommandBuffer* cmd, const SceneRenderingData& passData)
+        {
+            cmd->SetBufferData(passData.cameraBuffer, &mCameraData, sizeof(CameraUniforms));
+        });
         blackboard.Add(sceneData);
 
         for (auto renderer : mRenderers)
@@ -71,12 +80,13 @@ void RenderSystem::Render()
         }
         graph.Compile();
 
-		auto frameIdx = mDevice->GetSwapchain()->GetFrameIndex();
+		auto frameIdx = mDevice->GetFrameIndex();
         const auto cmd = mCommandBuffers[frameIdx].get();
 
 		cmd->WaitUntilCompleted();
-		mDevice->GetSwapchain()->Flush(frameIdx);
+		mDevice->DestroyPooledObjects(frameIdx);
 
+		cmd->Begin();
         graph.Execute(cmd);
 
         // reset rt to swapchain
@@ -86,7 +96,7 @@ void RenderSystem::Render()
         }
         ResetRenderTarget();
 
-        cmd->Present();
+        mDevice->Present(cmd);
     }
 }
 
@@ -94,11 +104,22 @@ void RenderSystem::Configure(const RendererConfig& config)
 {
     mConfiguration = config;
     mDevice->Configure(config);
-    mCommandBuffers.resize(mDevice->GetSwapchain()->GetFramesInFlight());
+    mCommandBuffers.resize(mDevice->GetFramesInFlight());
 	for (auto& cmd : mCommandBuffers)
 	{
 		cmd = CreateScope<CommandBuffer>(mDevice.get());
 	}
+}
+
+void RenderSystem::UpdateCamera(const Camera& camera)
+{
+    mCameraData.viewMatrix = camera.GetViewMatrix();
+    mCameraData.projectionMatrix = camera.GetProjectionMatrix();
+    mCameraData.viewProjectionMatrix = mCameraData.projectionMatrix * mCameraData.viewMatrix;
+    mCameraData.invViewMatrix = Math::Inverse(mCameraData.viewMatrix);
+    mCameraData.invProjectionMatrix = Math::Inverse(mCameraData.projectionMatrix);
+    mCameraData.invViewProjectionMatrix = Math::Inverse(mCameraData.viewProjectionMatrix);
+    mCameraData.worldPosition = camera.GetWorldPosition();
 }
 
 GraphicsDevice* RenderSystem::GetDevice()
@@ -134,5 +155,5 @@ void RenderSystem::SetRenderTarget(const Texture& texture)
 
 void RenderSystem::ResetRenderTarget()
 {
-    SetRenderTarget(mDevice->GetSwapchain()->GetTexture());
+    SetRenderTarget(mDevice->GetRenderSurface());
 }

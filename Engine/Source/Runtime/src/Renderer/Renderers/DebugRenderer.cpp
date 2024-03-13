@@ -60,10 +60,7 @@ void DebugRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
     
 	const auto& updatePass = graph.AddRenderPass<UpdatePassData>("DebugRenderer::UpdatePass", [&](RenderGraphBuilder& builder, UpdatePassData& passData)
 	{
-		BufferDescriptor descriptor;
-        descriptor.usage = BufferUsage::VertexBuffer;
-		descriptor.size = mDebugVertices.size() * sizeof(DebugVertex);
-		passData.vertexBuffer = builder.CreateBuffer(descriptor);
+		passData.vertexBuffer = builder.CreateBuffer(mDebugVertices.size() * sizeof(DebugVertex));
 		passData.vertexBuffer = builder.WriteBuffer(passData.vertexBuffer);
 	},
 	[this](const CommandBuffer* cmd, const UpdatePassData& passData)
@@ -81,17 +78,23 @@ void DebugRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 
 	graph.AddRenderPass<DrawPassData>("DebugRenderer::DrawPass", [&](RenderGraphBuilder& builder, DrawPassData& passData)
 	{
+        const auto& sceneData = blackboard.Get<SceneRenderingData>();
         auto& worldData = blackboard.Get<WorldRenderingData>();
         passData.colorTarget = builder.UseColorBuffer(worldData.colorTarget);
         passData.depthTarget = builder.UseDepthBuffer(worldData.depthTarget);
-        passData.cameraBuffer = builder.ReadBuffer(worldData.cameraBuffer);
         passData.vertexBuffer = builder.ReadBuffer(updatePass.vertexBuffer);
+        passData.cameraBuffer = builder.ReadBuffer(sceneData.cameraBuffer);
         
         worldData.colorTarget = passData.colorTarget;
         worldData.depthTarget = passData.depthTarget;
 	},
 	[this](const CommandBuffer* cmd, const DrawPassData& passData)
 	{
+        DebugShaderResources resources;
+        resources.vertexBuffer = passData.vertexBuffer;
+        resources.cameraBuffer = passData.cameraBuffer;
+        cmd->SetConstantBuffer(resources, 0);
+        
 		if (!mDepthLines.empty())
 		{
 			PipelineStateDescriptor pipelineState;
@@ -99,9 +102,7 @@ void DebugRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 			pipelineState.depthState.writeEnabled = true;
 			pipelineState.depthState.compareFunction = CompareFunction::Less;
 			cmd->BindGraphicsPipeline(pipelineState, mPrimitiveVertexShader, mFragmentShader);
-			cmd->BindBuffer(passData.cameraBuffer, 0, 0, ShaderStage_Vertex);
-			cmd->BindBuffer(passData.vertexBuffer, mDepthLineBufferOffset, 0, ShaderStage_Vertex);
-			cmd->Draw(static_cast<uint32_t>(mDepthLines.size())* Utils::PrimitiveTopologyVertexCount(pipelineState.topology));
+			cmd->Draw(static_cast<uint32_t>(mDepthLines.size()) * Utils::PrimitiveTopologyVertexCount(pipelineState.topology));
 		}
 
 		if (!mDepthTriangles.empty())
@@ -111,9 +112,7 @@ void DebugRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 			pipelineState.depthState.writeEnabled = true;
 			pipelineState.depthState.compareFunction = CompareFunction::Less;
 			cmd->BindGraphicsPipeline(pipelineState, mPrimitiveVertexShader, mFragmentShader);
-            cmd->BindBuffer(passData.cameraBuffer, 0, 0, ShaderStage_Vertex);
-			cmd->BindBuffer(passData.vertexBuffer, mDepthTriangleBufferOffset, 0, ShaderStage_Vertex);
-			cmd->Draw(static_cast<uint32_t>(mDepthTriangles.size())* Utils::PrimitiveTopologyVertexCount(pipelineState.topology));
+			cmd->Draw(static_cast<uint32_t>(mDepthTriangles.size()) * Utils::PrimitiveTopologyVertexCount(pipelineState.topology));
 		}
 		
 		if (!mDepthDebugMeshes.empty())
@@ -127,9 +126,7 @@ void DebugRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 			pipelineState.topology = PrimitiveTopology::Lines;
 			pipelineState.depthState.compareFunction = CompareFunction::Less;
 			cmd->BindGraphicsPipeline(pipelineState, mPrimitiveVertexShader, mFragmentShader);
-            cmd->BindBuffer(passData.cameraBuffer, 0, 0, ShaderStage_Vertex);
-			cmd->BindBuffer(passData.vertexBuffer, mLineBufferOffset, 0, ShaderStage_Vertex);
-			cmd->Draw(static_cast<uint32_t>(mLines.size())* Utils::PrimitiveTopologyVertexCount(pipelineState.topology));
+			cmd->Draw(static_cast<uint32_t>(mLines.size()) * Utils::PrimitiveTopologyVertexCount(pipelineState.topology));
 		}
 
 		if (!mTriangles.empty())
@@ -137,9 +134,7 @@ void DebugRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 			PipelineStateDescriptor pipelineState;
 			pipelineState.topology = PrimitiveTopology::Triangles;
 			cmd->BindGraphicsPipeline(pipelineState, mPrimitiveVertexShader, mFragmentShader);
-            cmd->BindBuffer(passData.cameraBuffer, 0, 0, ShaderStage_Vertex);
-			cmd->BindBuffer(passData.vertexBuffer, mTriangleBufferOffset, 0, ShaderStage_Vertex);
-			cmd->Draw(static_cast<uint32_t>(mTriangles.size())* Utils::PrimitiveTopologyVertexCount(pipelineState.topology));
+			cmd->Draw(static_cast<uint32_t>(mTriangles.size()) * Utils::PrimitiveTopologyVertexCount(pipelineState.topology));
 		}
 
 		if (!mDebugMeshes.empty())
@@ -158,28 +153,31 @@ void DebugRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 	});
 }
 
-void DebugRenderer::RenderMeshes(const CommandBuffer* cmd, const Buffer& cameraBuffer, const TArray<DebugMesh>& debugMeshes, bool depthTest) const
+void DebugRenderer::RenderMeshes(const CommandBuffer* cmd, const BufferHandle& cameraBuffer, const TArray<DebugMesh>& debugMeshes, bool depthTest) const
 {
 	PipelineStateDescriptor pipelineState;
 	pipelineState.topology = PrimitiveTopology::Triangles;
 	pipelineState.depthState.writeEnabled = depthTest;
 	pipelineState.depthState.compareFunction = depthTest ? CompareFunction::Less : CompareFunction::Always;
 	cmd->BindGraphicsPipeline(pipelineState, mMeshVertexShader, mFragmentShader);
-	cmd->BindBuffer(cameraBuffer, 0, 0, ShaderStage_Vertex);
 
 	for (const auto& debugMesh : debugMeshes)
 	{
 		const auto& meshBuffer = debugMesh.mesh->GetBuffer();
-		cmd->BindBuffer(meshBuffer.GetPositionBuffer(), 0, 0, ShaderStage_Vertex);
+        
+        DebugShaderResources resources;
+        resources.vertexBuffer = meshBuffer.GetPositionBuffer().GetResourceView();
+        resources.cameraBuffer = cameraBuffer;
+        cmd->SetConstantBuffer(resources, 0);
 
-		DebugShaderUniforms uniforms;
+		DebugMeshUniforms uniforms;
 		uniforms.modelMatrix = debugMesh.transform;
 		uniforms.color = debugMesh.color;
-		cmd->SetPushConstant(uniforms, ShaderStage_Vertex | ShaderStage_Fragment);
+		cmd->SetPushConstant(uniforms);
 	
 		for (const auto& submesh : debugMesh.mesh->GetSubmeshDescriptors())
 			cmd->DrawIndexed(meshBuffer.GetIndexBuffer(), IndexType::UINT32, submesh.indexCount, 1, submesh.firstIndex, submesh.baseVertex, 0);
-	}	
+	}
 }
 
 void DebugRenderer::DrawLine(const Vector3& start, const Vector3& end, Color32 color, bool depthTest)

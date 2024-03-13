@@ -22,6 +22,7 @@ class GraphicsDevice;
 struct SceneRenderingData
 {
     TextureHandle backbuffer;
+    BufferHandle cameraBuffer;
     RendererConfig config;
 };
 

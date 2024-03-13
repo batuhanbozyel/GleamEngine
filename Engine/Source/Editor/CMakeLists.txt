@@ -1,9 +1,5 @@
 include (${CMAKE_SOURCE_DIR}/CMake/CMakeUtils.cmake)
 
-if (WIN32)
-    find_package(Vulkan REQUIRED)
-endif()
-
 find_package(Python COMPONENTS Interpreter REQUIRED)
 
 set(INCLUDE_DIRS
@@ -12,12 +8,10 @@ set(INCLUDE_DIRS
     ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/SDL/include
     ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/fmt/include
     ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/entt/single_include
-    ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/OpenFBX/src
     ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/cgltf
     ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui
     ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/ImGuizmo
-    ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/volk 
-    ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/VulkanMemoryAllocator/include
+    ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/DirectXAgilitySDK/build/native/include
 )
 
 file(GLOB_RECURSE SOURCE_FILES 
@@ -34,11 +28,8 @@ endif()
 list(APPEND SOURCE_FILES ${SHADER_FILES})
 
 add_executable(Editor WIN32 MACOSX_BUNDLE ${SOURCE_FILES})
-target_include_directories(Editor PRIVATE
-    ${INCLUDE_DIRS} 
-    ${Vulkan_INCLUDE_DIRS}
-)
-target_link_directories(Editor PRIVATE ${CMAKE_SOURCE_DIR}/bin/$<CONFIG>)
+target_include_directories(Editor PRIVATE ${INCLUDE_DIRS})
+target_link_directories(Editor PRIVATE ${CMAKE_BINARY_DIR}/$<CONFIG>)
 
 # Add imgui as static library
 add_library(imgui STATIC
@@ -53,7 +44,7 @@ add_library(imgui STATIC
 target_include_directories(imgui PRIVATE
     ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui
     ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/SDL/include
-    ${Vulkan_INCLUDE_DIRS}
+    ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/DirectXAgilitySDK/build/native/include
 )
 
 if (APPLE)
@@ -78,7 +69,12 @@ target_compile_definitions(
 
     PRIVATE
     "_CRT_SECURE_NO_WARNINGS"
+    "WIN32_LEAN_AND_MEAN"
     "NOMINMAX"
+    
+    PUBLIC
+    $<$<CONFIG:Debug>:GDEBUG>
+    $<$<CONFIG:Release>:GRELEASE>
 )
 
 # Precompile shaders

@@ -37,7 +37,7 @@ TArray<Filesystem::path> IOUtils::OpenFileDialog(const TWString& filterName, con
 		pInitialDirItem->Release();
 	}
 
-	COMDLG_FILTERSPEC filterSpec;
+	COMDLG_FILTERSPEC filterSpec{};
 	filterSpec.pszName = filterName.c_str();
 	filterSpec.pszSpec = filterExtensions.c_str();
 

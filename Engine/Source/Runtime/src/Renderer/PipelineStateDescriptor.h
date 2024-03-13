@@ -94,6 +94,7 @@ struct PipelineStateDescriptor
 	PrimitiveTopology topology = PrimitiveTopology::Triangles;
     PipelineBindPoint bindPoint = PipelineBindPoint::Graphics;
     bool alphaToCoverage = false;
+	bool wireframe = false;
 
 	bool operator==(const PipelineStateDescriptor& other) const
     {
@@ -103,7 +104,8 @@ struct PipelineStateDescriptor
                 cullingMode == other.cullingMode &&
                 topology == other.topology &&
                 bindPoint == other.bindPoint &&
-                alphaToCoverage == other.alphaToCoverage;
+                alphaToCoverage == other.alphaToCoverage &&
+				wireframe == other.wireframe;
     }
 };
 
@@ -168,6 +170,7 @@ struct std::hash<Gleam::PipelineStateDescriptor>
         Gleam::hash_combine(hash, descriptor.topology);
         Gleam::hash_combine(hash, descriptor.bindPoint);
         Gleam::hash_combine(hash, descriptor.alphaToCoverage);
+		Gleam::hash_combine(hash, descriptor.wireframe);
         return hash;
     }
 };

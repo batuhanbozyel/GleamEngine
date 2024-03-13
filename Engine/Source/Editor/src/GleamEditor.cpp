@@ -1,4 +1,3 @@
-#define GDEBUG
 // EntryPoint
 #include "Core/EntryPoint.h"
 #include "View/ViewStack.h"

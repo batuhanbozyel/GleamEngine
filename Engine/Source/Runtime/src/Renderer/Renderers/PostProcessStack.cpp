@@ -40,9 +40,12 @@ void PostProcessStack::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard
     },
     [this](const CommandBuffer* cmd, const PostProcessData& passData)
     {
+        TonemapUniforms uniforms;
+        uniforms.sceneRT = passData.sceneTarget;
+        
         PipelineStateDescriptor pipelineDesc;
         cmd->BindGraphicsPipeline(pipelineDesc, mFullscreenTriangleVertexShader, mTonemappingFragmentShader);
-        cmd->BindTexture(passData.sceneTarget, 0, ShaderStage_Fragment);
+        cmd->SetPushConstant(uniforms);
         cmd->Draw(3);
     });
 }

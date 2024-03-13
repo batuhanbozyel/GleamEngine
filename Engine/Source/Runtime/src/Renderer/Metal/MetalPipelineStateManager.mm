@@ -5,6 +5,8 @@
 
 using namespace Gleam;
 
+uint32_t PushConstantRootParameterIndex = 0;
+
 static size_t PipelineHasher(const PipelineStateDescriptor& pipelineDesc, const TArray<TextureDescriptor>& colorAttachments, const TextureDescriptor& depthAttachment, const Shader& vertexShader, const Shader& fragmentShader, uint32_t sampleCount)
 {
     size_t hash = 0;
@@ -20,85 +22,137 @@ static size_t PipelineHasher(const PipelineStateDescriptor& pipelineDesc, const 
     return hash;
 }
 
-static id<MTLSamplerState> CreateMTLSamplerState(MetalDevice* device, const SamplerState& samplerState)
+static IRStaticSamplerDescriptor CreateStaticSampler(const SamplerState& samplerState)
 {
-    MTLSamplerDescriptor* descriptor = [MTLSamplerDescriptor new];
-    descriptor.supportArgumentBuffers = YES;
-    descriptor.lodMinClamp = 0.0f;
-    descriptor.lodMaxClamp = Math::Infinity;
+    IRStaticSamplerDescriptor sampler{};
+    sampler.MipLODBias = 0;
+    sampler.MaxAnisotropy = 1;
+    sampler.MinLOD = 0.0f;
+    sampler.MaxLOD = 16.0f;
+    sampler.RegisterSpace = 0;
+    sampler.ShaderVisibility = IRShaderVisibilityAll;
+    sampler.ComparisonFunc = IRComparisonFunctionAlways;
+    sampler.BorderColor = IRStaticBorderColorOpaqueBlack;
+    
     switch (samplerState.filterMode)
     {
         case FilterMode::Point:
         {
-            descriptor.minFilter = MTLSamplerMinMagFilterNearest;
-            descriptor.magFilter = MTLSamplerMinMagFilterNearest;
-            descriptor.mipFilter = MTLSamplerMipFilterNearest;
+            sampler.Filter = IRFilterMinMagMipPoint;
             break;
         }
         case FilterMode::Bilinear:
         {
-            descriptor.minFilter = MTLSamplerMinMagFilterLinear;
-            descriptor.magFilter = MTLSamplerMinMagFilterLinear;
-            descriptor.mipFilter = MTLSamplerMipFilterNearest;
+            sampler.Filter = IRFilterMinMagLinearMipPoint;
             break;
         }
         case FilterMode::Trilinear:
         {
-            descriptor.minFilter = MTLSamplerMinMagFilterLinear;
-            descriptor.magFilter = MTLSamplerMinMagFilterLinear;
-            descriptor.mipFilter = MTLSamplerMipFilterLinear;
+            sampler.Filter = IRFilterMinMagMipLinear;
             break;
         }
         default: GLEAM_ASSERT(false, "Metal: Filter mode is not supported!") break;
     }
-    
+
     switch (samplerState.wrapMode)
     {
         case WrapMode::Repeat:
         {
-            descriptor.sAddressMode = MTLSamplerAddressModeRepeat;
-            descriptor.tAddressMode = MTLSamplerAddressModeRepeat;
+            sampler.AddressU = IRTextureAddressModeWrap;
+            sampler.AddressV = IRTextureAddressModeWrap;
+            sampler.AddressW = IRTextureAddressModeWrap;
             break;
         }
         case WrapMode::Clamp:
         {
-            descriptor.sAddressMode = MTLSamplerAddressModeClampToEdge;
-            descriptor.tAddressMode = MTLSamplerAddressModeClampToEdge;
+            sampler.AddressU = IRTextureAddressModeClamp;
+            sampler.AddressV = IRTextureAddressModeClamp;
+            sampler.AddressW = IRTextureAddressModeClamp;
             break;
         }
         case WrapMode::Mirror:
         {
-            descriptor.sAddressMode = MTLSamplerAddressModeMirrorRepeat;
-            descriptor.tAddressMode = MTLSamplerAddressModeMirrorRepeat;
+            sampler.AddressU = IRTextureAddressModeMirror;
+            sampler.AddressV = IRTextureAddressModeMirror;
+            sampler.AddressW = IRTextureAddressModeMirror;
             break;
         }
         case WrapMode::MirrorOnce:
         {
-            descriptor.sAddressMode = MTLSamplerAddressModeMirrorClampToEdge;
-            descriptor.tAddressMode = MTLSamplerAddressModeMirrorClampToEdge;
+            sampler.AddressU = IRTextureAddressModeMirrorOnce;
+            sampler.AddressV = IRTextureAddressModeMirrorOnce;
+            sampler.AddressW = IRTextureAddressModeMirrorOnce;
             break;
         }
-        default: GLEAM_ASSERT(false, "Metal: Filter mode is not supported!") break;
+        default: GLEAM_ASSERT(false, "Metal: Wrap mode is not supported!") break;
     }
-    return [device->GetHandle() newSamplerStateWithDescriptor:descriptor];
+
+    return sampler;
 }
 
 void MetalPipelineStateManager::Init(MetalDevice* device)
 {
     mDevice = device;
-    auto samplerSates = SamplerState::GetAllVariations();
+    auto samplerSates = SamplerState::GetStaticSamplers();
+    TArray<IRStaticSamplerDescriptor, samplerSates.size()> staticSamplerDescs{};
     for (uint32_t i = 0; i < samplerSates.size(); i++)
     {
-        mSamplerStates[i] = CreateMTLSamplerState(device, samplerSates[i]);
+        staticSamplerDescs[i] = CreateStaticSampler(samplerSates[i]);
+        staticSamplerDescs[i].ShaderRegister = i;
+    }
+    
+    // Root signature
+    constexpr uint32_t NumRootParams = PUSH_CONSTANT_SLOT + 1;
+    IRRootParameter1 rootSigParams[NumRootParams];
+    for (uint32_t i = 0; i < PUSH_CONSTANT_SLOT; i++)
+    {
+        rootSigParams[i] = {
+          .ParameterType = IRRootParameterTypeCBV,
+          .Descriptor = {
+              .ShaderRegister = i,
+              .RegisterSpace = 0,
+              .Flags = IRRootDescriptorFlagDataVolatile
+          },
+          .ShaderVisibility = IRShaderVisibilityAll
+        };
+    }
+    // Push constant
+    rootSigParams[PUSH_CONSTANT_SLOT] = {
+      .ParameterType = IRRootParameterType32BitConstants,
+      .Constants = {
+          .ShaderRegister = PUSH_CONSTANT_REGISTER,
+          .RegisterSpace = 0,
+          .Num32BitValues = PUSH_CONSTANT_SIZE / sizeof(uint32_t)
+      },
+      .ShaderVisibility = IRShaderVisibilityAll
+    };
+    
+    IRVersionedRootSignatureDescriptor rootSignature = {};
+    rootSignature.version = IRRootSignatureVersion_1_1;
+    rootSignature.desc_1_1.Flags = IRRootSignatureFlags(IRRootSignatureFlagDenyHullShaderRootAccess
+                                                        | IRRootSignatureFlagDenyDomainShaderRootAccess
+                                                        | IRRootSignatureFlagDenyGeometryShaderRootAccess
+                                                        | IRRootSignatureFlagCBVSRVUAVHeapDirectlyIndexed);
+
+    rootSignature.desc_1_1.NumStaticSamplers = staticSamplerDescs.size();
+    rootSignature.desc_1_1.pStaticSamplers = staticSamplerDescs.data();
+    rootSignature.desc_1_1.pParameters = rootSigParams;
+    rootSignature.desc_1_1.NumParameters = NumRootParams;
+    
+    IRError* pRootSigError = nullptr;
+    mRootSignature = IRRootSignatureCreateFromDescriptor(&rootSignature, &pRootSigError);
+    
+    if (pRootSigError)
+    {
+        char* error_msg = (char*)IRErrorGetPayload(pRootSigError);
+        GLEAM_CORE_ERROR("Metal: Root signature error: {0}\n", error_msg);
+        IRErrorDestroy(pRootSigError);
     }
 }
 
 void MetalPipelineStateManager::Destroy()
 {
-    for (uint32_t i = 0; i < mSamplerStates.size(); i++)
-    {
-        mSamplerStates[i] = nil;
-    }
+    IRRootSignatureDestroy(mRootSignature);
     Clear();
 }
 
@@ -119,22 +173,11 @@ const MetalPipeline* MetalPipelineStateManager::GetGraphicsPipeline(const Pipeli
     auto pipeline = new MetalGraphicsPipeline;
     pipeline->topology = PrimitiveTopologyToMTLPrimitiveType(pipelineDesc.topology);
     pipeline->handle = CreateGraphicsPipeline(pipelineDesc, colorAttachments, depthAttachment, vertexShader, fragmentShader, sampleCount);
-    pipeline->depthStencil = (Utils::IsDepthFormat(depthAttachment.format) || Utils::IsStencilFormat(depthAttachment.format)) ? CreateDepthStencil(pipelineDesc) : nil;
+    pipeline->depthStencil = Utils::IsDepthFormat(depthAttachment.format) ? CreateDepthStencil(pipelineDesc) : nil;
     pipeline->vertexShader = vertexShader;
     pipeline->fragmentShader = fragmentShader;
     mGraphicsPipelineCache.insert(mGraphicsPipelineCache.end(), {key, Scope<MetalGraphicsPipeline>(pipeline)});
     return pipeline;
-}
-
-id<MTLSamplerState> MetalPipelineStateManager::GetSamplerState(uint32_t index)
-{
-    return mSamplerStates[index];
-}
-
-id<MTLSamplerState> MetalPipelineStateManager::GetSamplerState(const SamplerState& samplerState)
-{
-    std::hash<SamplerState> hasher;
-    return mSamplerStates[hasher(samplerState)];
 }
 
 void MetalPipelineStateManager::Clear()
@@ -151,12 +194,12 @@ id<MTLRenderPipelineState> MetalPipelineStateManager::CreateGraphicsPipeline(con
     pipelineDescriptor.alphaToCoverageEnabled = pipelineDesc.alphaToCoverage;
     pipelineDescriptor.inputPrimitiveTopology = PrimitiveTopologyToMTLPrimitiveTopologyClass(pipelineDesc.topology);
     
-    if (Utils::IsDepthFormat(depthAttachment.format) || Utils::IsStencilFormat(depthAttachment.format))
+    if (Utils::IsDepthFormat(depthAttachment.format))
     {
         MTLPixelFormat format = TextureFormatToMTLPixelFormat(depthAttachment.format);
         
         if (Utils::IsDepthFormat(depthAttachment.format)) { pipelineDescriptor.depthAttachmentPixelFormat = format; }
-        if (Utils::IsStencilFormat(depthAttachment.format)) { pipelineDescriptor.stencilAttachmentPixelFormat = format; }
+        if (Utils::IsDepthStencilFormat(depthAttachment.format)) { pipelineDescriptor.stencilAttachmentPixelFormat = format; }
     }
     
     for (uint32_t i = 0; i < colorAttachments.size(); i++)
@@ -201,5 +244,15 @@ id<MTLDepthStencilState> MetalPipelineStateManager::CreateDepthStencil(const Pip
     
     id<MTLDepthStencilState> depthStencilState = [mDevice->GetHandle() newDepthStencilStateWithDescriptor:depthStencilDesc];
     return depthStencilState;
+}
+
+IRRootSignature* MetalPipelineStateManager::GetGlobalRootSignature()
+{
+    return mRootSignature;
+}
+
+size_t MetalPipelineStateManager::GetTopLevelArgumentBufferSize()
+{
+    return PUSH_CONSTANT_SLOT * sizeof(uint64_t) + 128;
 }
 #endif

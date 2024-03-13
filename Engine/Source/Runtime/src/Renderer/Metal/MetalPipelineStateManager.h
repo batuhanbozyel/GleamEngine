@@ -4,6 +4,8 @@
 #include "Renderer/Shader.h"
 #include "Renderer/SamplerState.h"
 
+#include <metal_irconverter/metal_irconverter.h>
+
 namespace Gleam {
 
 struct MetalPipeline
@@ -30,10 +32,10 @@ public:
     static const MetalPipeline* GetGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc, const TArray<TextureDescriptor>& colorAttachments, const Shader& vertexShader, const Shader& fragmentShader, uint32_t sampleCount);
 
     static const MetalPipeline* GetGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc, const TArray<TextureDescriptor>& colorAttachments, const TextureDescriptor& depthAttachment, const Shader& vertexShader, const Shader& fragmentShader, uint32_t sampleCount);
-
-    static id<MTLSamplerState> GetSamplerState(uint32_t index);
-
-    static id<MTLSamplerState> GetSamplerState(const SamplerState& samplerState);
+    
+    static IRRootSignature* GetGlobalRootSignature();
+    
+    static size_t GetTopLevelArgumentBufferSize();
 
     static void Clear();
 
@@ -43,9 +45,9 @@ private:
 
     static id<MTLDepthStencilState> CreateDepthStencil(const PipelineStateDescriptor& pipelineDesc);
 
-    static inline TArray<id<MTLSamplerState>, 12> mSamplerStates;
-
     static inline HashMap<size_t, Scope<MetalGraphicsPipeline>> mGraphicsPipelineCache;
+    
+    static inline IRRootSignature* mRootSignature = nullptr;
     
     static inline MetalDevice* mDevice = nullptr;
 

@@ -1,5 +1,5 @@
 #pragma once
-#include "Renderer/Renderer.h"
+#include "Gleam.h"
 
 namespace GEditor {
 

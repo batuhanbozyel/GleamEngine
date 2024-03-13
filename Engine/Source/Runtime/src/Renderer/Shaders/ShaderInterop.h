@@ -9,18 +9,150 @@ using float3 = Gleam::Vector3;
 using float4 = Gleam::Vector4;
 #endif
 
+#ifndef __spirv__
+#define PUSH_CONSTANT_SIZE 128
+#define PUSH_CONSTANT_SLOT 9
+#define PUSH_CONSTANT_REGISTER 999
+#endif
+
 namespace Gleam {
 
-struct CameraUniforms
-{
-	float4x4 viewMatrix;
-	float4x4 projectionMatrix;
-	float4x4 viewProjectionMatrix;
-	float4x4 invViewMatrix;
-	float4x4 invProjectionMatrix;
-	float4x4 invViewProjectionMatrix;
+#define CBV_SRV_HEAP_SIZE (128 * 1024)
+#define InvalidResourceIndex ShaderResourceIndex(-1)
+#define SRVIndex(index) (index)
 
-	float3 worldPosition;
+#if defined(USE_DIRECTX_RENDERER)
+#define UAVIndex(index) (index + CBV_SRV_HEAP_SIZE)
+#else
+#define UAVIndex(index) SRVIndex(index)
+#endif
+
+#ifdef __cplusplus
+struct ShaderResourceIndex
+{
+    uint32_t data;
+
+    ShaderResourceIndex()
+        : data(InvalidResourceIndex.data)
+    {
+    }
+
+    explicit ShaderResourceIndex(uint32_t index)
+        : data(index)
+    {
+    }
+
+    bool operator==(const ShaderResourceIndex& other) const
+    {
+        return data == other.data;
+    }
+
+    bool operator!=(const ShaderResourceIndex& other) const
+    {
+        return data != other.data;
+    }
+};
+static_assert(sizeof(ShaderResourceIndex) == sizeof(uint32_t));
+#else
+typedef uint ShaderResourceIndex;
+#endif
+
+struct ConstantBufferView
+{
+	ShaderResourceIndex index;
+
+#ifdef __HLSL_VERSION
+	template<typename T>
+	T Load()
+	{
+		ByteAddressBuffer buffer = ResourceDescriptorHeap[SRVIndex(index)];
+		return buffer.Load<T>(0);
+	}
+#else
+    ConstantBufferView() = default;
+    ConstantBufferView(ShaderResourceIndex index)
+        : index(index)
+    {
+        
+    }
+#endif
+};
+
+struct BufferResourceView
+{
+	ShaderResourceIndex index;
+
+#ifdef __HLSL_VERSION
+	template<typename T>
+	T Load(uint id)
+	{
+		ByteAddressBuffer buffer = ResourceDescriptorHeap[SRVIndex(index)];
+		return buffer.Load<T>(sizeof(T) * id);
+	}
+#else
+    BufferResourceView() = default;
+    BufferResourceView(ShaderResourceIndex index)
+        : index(index)
+    {
+        
+    }
+#endif
+};
+
+struct TextureResourceView {};
+
+template<typename T>
+struct Texture2DResourceView : TextureResourceView
+{
+	ShaderResourceIndex index;
+
+#ifdef __HLSL_VERSION
+	T Load(uint2 pos)
+	{
+		Texture2D<T> texture = ResourceDescriptorHeap[SRVIndex(index)];
+		return texture.Load(uint3(pos, 0));
+	}
+
+	T Sample(SamplerState sampler, float2 uv, float mip = 0.0f)
+	{
+		Texture2D<T> texture = ResourceDescriptorHeap[SRVIndex(index)];
+		return texture.Sample(sampler, uv, mip);
+	}
+#else
+    Texture2DResourceView() = default;
+    Texture2DResourceView(ShaderResourceIndex index)
+        : index(index)
+    {
+        
+    }
+#endif
+};
+
+template<typename T>
+struct Texture3DResourceView : TextureResourceView
+{
+	ShaderResourceIndex index;
+
+#ifdef __HLSL_VERSION
+	T Load(uint3 pos)
+	{
+		Texture3D<T> texture = ResourceDescriptorHeap[SRVIndex(index)];
+		return texture.Load(uint4(pos, 0));
+	}
+
+	T Sample(SamplerState sampler, float3 uv, float mip = 0.0f)
+	{
+		Texture3D<T> texture = ResourceDescriptorHeap[SRVIndex(index)];
+		return texture.Sample(sampler, uv, mip);
+	}
+#else
+    Texture3DResourceView() = default;
+    Texture3DResourceView(ShaderResourceIndex index)
+        : index(index)
+    {
+        
+    }
+#endif
 };
 
 } // namespace Gleam
