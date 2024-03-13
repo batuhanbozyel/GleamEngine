@@ -153,13 +153,19 @@ void CommandBuffer::BindGraphicsPipeline(const PipelineStateDescriptor& pipeline
 	{
 		mHandle->pipeline = DirectXPipelineStateManager::GetGraphicsPipeline(pipelineDesc, mHandle->colorAttachments, vertexShader, fragmentShader, mHandle->sampleCount);
 	}
-	mHandle->commandList->SetPipelineState(mHandle->pipeline->handle);
-	mHandle->commandList->IASetPrimitiveTopology(PrimitiveToplogyToD3D_PRIMITIVE_TOPOLOGY(pipelineDesc.topology));
-	mHandle->commandList->SetGraphicsRootSignature(DirectXPipelineStateManager::GetGlobalRootSignature());
-	mHandle->commandList->OMSetStencilRef(pipelineDesc.stencilState.reference);
+#ifdef GDEBUG
+	TStringStream pipelineName;
+	pipelineName << "GraphicsPipeline::" << vertexShader.GetEntryPoint() << "_" << fragmentShader.GetEntryPoint();
+	mHandle->pipeline->handle->SetName(StringUtils::Convert(pipelineName.str()).data());
+#endif
 
 	const auto& cbvSrvUavHeap = mHandle->device->GetCbvSrvUavHeap();
 	mHandle->commandList->SetDescriptorHeaps(1, &cbvSrvUavHeap.handle);
+	mHandle->commandList->SetGraphicsRootSignature(DirectXPipelineStateManager::GetGlobalRootSignature());
+
+	mHandle->commandList->SetPipelineState(mHandle->pipeline->handle);
+	mHandle->commandList->OMSetStencilRef(pipelineDesc.stencilState.reference);
+	mHandle->commandList->IASetPrimitiveTopology(PrimitiveToplogyToD3D_PRIMITIVE_TOPOLOGY(pipelineDesc.topology));
 }
 
 void CommandBuffer::SetViewport(const Size& size) const
@@ -260,9 +266,9 @@ void CommandBuffer::Begin() const
 {
 	mHandle->commandList = mHandle->device->AllocateCommandList(D3D12_COMMAND_LIST_TYPE_DIRECT);
 #ifdef GDEBUG
-	TStringStream resourceName;
-	resourceName << "CommandList::Direct_" << mHandle->device->GetFrameIndex();
-	mHandle->commandList->SetName(StringUtils::Convert(resourceName.str()).data());
+	TStringStream cmdlistName;
+	cmdlistName << "CommandList::Direct_" << mHandle->device->GetFrameIndex();
+	mHandle->commandList->SetName(StringUtils::Convert(cmdlistName.str()).data());
 #endif
 	mCommitted = false;
 }

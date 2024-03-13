@@ -31,17 +31,19 @@ static constexpr const char* HRESULTtoString(HRESULT result)
 
 static void WaitForID3D12Fence(ID3D12Fence* fence, uint32_t value)
 {
-	if (fence->GetCompletedValue() < value)
+	if (fence->GetCompletedValue() >= value)
 	{
-		HANDLE fenceEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
-		DX_CHECK(fence->SetEventOnCompletion(value, fenceEvent));
+		return;
+	}
 
-		if (fenceEvent != 0)
-		{
-			DWORD result = WaitForSingleObject(fenceEvent, INFINITE);
-			CloseHandle(fenceEvent);
-			GLEAM_ASSERT(result == WAIT_OBJECT_0);
-		}
+	HANDLE fenceEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
+	DX_CHECK(fence->SetEventOnCompletion(value, fenceEvent));
+
+	if (fenceEvent != 0)
+	{
+		DWORD result = WaitForSingleObject(fenceEvent, INFINITE);
+		CloseHandle(fenceEvent);
+		GLEAM_ASSERT(result == WAIT_OBJECT_0);
 	}
 }
 

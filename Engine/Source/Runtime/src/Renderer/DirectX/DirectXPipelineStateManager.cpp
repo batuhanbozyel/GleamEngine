@@ -154,6 +154,11 @@ void DirectXPipelineStateManager::Init(DirectXDevice* device)
 
 	DX_CHECK(static_cast<ID3D12Device10*>(mDevice->GetHandle())->CreateRootSignature(0, blob->GetBufferPointer(), blob->GetBufferSize(), IID_PPV_ARGS(&mRootSignature)));
 	blob->Release();
+
+#ifdef GDEBUG
+	mRootSignature->SetName(L"GlobalRootSignature");
+#endif
+
 }
 
 void DirectXPipelineStateManager::Destroy()
