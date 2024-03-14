@@ -87,6 +87,21 @@ public:
     {
         return mScale;
     }
+    
+    NO_DISCARD FORCE_INLINE const Vector3& GetLocalPosition() const
+    {
+        return mPosition;
+    }
+
+    NO_DISCARD FORCE_INLINE const Quaternion& GetLocalRotation() const
+    {
+        return mRotation;
+    }
+
+    NO_DISCARD FORCE_INLINE const Vector3& GetLocalScale() const
+    {
+        return mScale;
+    }
 
     NO_DISCARD FORCE_INLINE Vector3 ForwardVector() const
     {
