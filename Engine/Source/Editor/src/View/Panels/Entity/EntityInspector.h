@@ -1,8 +1,8 @@
 //
-//  WorldOutliner.h
+//  EntityInspector.h
 //  Editor
 //
-//  Created by Batuhan Bozyel on 25.05.2023.
+//  Created by Batuhan Bozyel on 26.03.2023.
 //
 
 #pragma once
@@ -11,17 +11,17 @@
 
 namespace GEditor {
 
-class WorldOutliner final : public View
+class EntityInspector final : public View
 {
 public:
     
-    WorldOutliner();
+    EntityInspector();
     
     virtual void Render(Gleam::ImGuiRenderer* imgui) override;
     
 private:
-    
-    Gleam::Entity mSelectedEntity = Gleam::InvalidEntity;
+
+	Gleam::Entity mSelectedEntity = Gleam::InvalidEntity;
     
 };
 

@@ -7,6 +7,7 @@
 
 #pragma once
 #include "Gleam.h"
+#include "Events/EntityEvent.h"
 
 namespace GEditor {
 

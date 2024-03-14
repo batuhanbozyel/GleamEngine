@@ -7,9 +7,6 @@
 
 #include "WorldOutliner.h"
 #include "WorldViewport.h"
-#include "WorldOutlineController.h"
-
-#include "View/ViewStack.h"
 
 #include <imgui.h>
 
@@ -17,7 +14,7 @@ using namespace GEditor;
 
 WorldOutliner::WorldOutliner()
 {
-    mController = Gleam::World::active->AddSystem<WorldOutlineController>();
+    
 }
 
 void WorldOutliner::Render(Gleam::ImGuiRenderer* imgui)
@@ -26,7 +23,6 @@ void WorldOutliner::Render(Gleam::ImGuiRenderer* imgui)
 	{
 		if (!ImGui::Begin("World Outliner")) return;
     
-		bool entityDeleted = false;
 		auto& entityManager = Gleam::World::active->GetEntityManager();
 		entityManager.ForEach([&](Gleam::Entity entity)
 		{
@@ -40,6 +36,7 @@ void WorldOutliner::Render(Gleam::ImGuiRenderer* imgui)
 			
 			if (ImGui::IsItemClicked())
 			{
+				Gleam::EventDispatcher<EntitySelectedEvent>::Publish(EntitySelectedEvent(entity));
 				mSelectedEntity = entity;
 			}
 			
@@ -47,18 +44,13 @@ void WorldOutliner::Render(Gleam::ImGuiRenderer* imgui)
 			{
 				if (ImGui::MenuItem("Destroy Entity"))
 				{
-					entityDeleted = true;
+					// TODO: 
 				}
 				ImGui::EndPopup();
 			}
 			
 			ImGui::TreePop();
 		});
-		
-		if (entityDeleted)
-		{
-			entityManager.DestroyEntity(mSelectedEntity);
-		}
 		
 		ImGui::End();
 	});
