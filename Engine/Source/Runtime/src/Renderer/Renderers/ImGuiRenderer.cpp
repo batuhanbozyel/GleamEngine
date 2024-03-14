@@ -1,12 +1,13 @@
 #include "ImGuiRenderer.h"
-#include "ImGuiBackend.h"
-#include "View/ViewStack.h"
 
-#include "backends/imgui_impl_sdl3.h"
+#include "Core/Application.h"
+#include "Renderer/RenderSystem.h"
+#include "Renderer/ImGui/ImGuiBackend.h"
+#include "Renderer/ImGui/imgui_impl_sdl3.h"
 
-using namespace GEditor;
+using namespace Gleam;
 
-void ImGuiRenderer::OnCreate(Gleam::GraphicsDevice* device)
+void ImGuiRenderer::OnCreate(GraphicsDevice* device)
 {
     mDevice = device;
     
@@ -24,31 +25,31 @@ void ImGuiRenderer::OnCreate(Gleam::GraphicsDevice* device)
     });
 }
 
-void ImGuiRenderer::OnDestroy(Gleam::GraphicsDevice* device)
+void ImGuiRenderer::OnDestroy(GraphicsDevice* device)
 {
 	ImGuiBackend::Destroy();
     ImGui::DestroyContext();
 }
 
-void ImGuiRenderer::AddRenderPasses(Gleam::RenderGraph& graph, Gleam::RenderGraphBlackboard& blackboard)
+void ImGuiRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard)
 {
 	struct ImGuiPassData
 	{
-		Gleam::TextureHandle sceneTarget;
-		Gleam::TextureHandle swapchainTarget;
+		TextureHandle sceneTarget;
+		TextureHandle swapchainTarget;
 	};
     
-	graph.AddRenderPass<ImGuiPassData>("ImGuiPass", [&](Gleam::RenderGraphBuilder& builder, ImGuiPassData& passData)
+	graph.AddRenderPass<ImGuiPassData>("ImGuiPass", [&](RenderGraphBuilder& builder, ImGuiPassData& passData)
 	{
 		const auto& sceneData = blackboard.Get<Gleam::SceneRenderingData>();
 		auto swapchainTarget = graph.ImportBackbuffer(mDevice->GetRenderSurface());
 		passData.sceneTarget = builder.ReadTexture(sceneData.backbuffer);
 		passData.swapchainTarget = builder.UseColorBuffer(swapchainTarget);
 	},
-    [this](const Gleam::CommandBuffer* cmd, const ImGuiPassData& passData)
+    [this](const CommandBuffer* cmd, const ImGuiPassData& passData)
     {
         ImGuiIO& io = ImGui::GetIO();
-        auto drawableSize = GameInstance->GetSubsystem<Gleam::RenderSystem>()->GetDevice()->GetDrawableSize();
+        auto drawableSize = GameInstance->GetSubsystem<RenderSystem>()->GetDevice()->GetDrawableSize();
         io.DisplaySize = ImVec2(drawableSize.width, drawableSize.height);
         
 		ImGuiBackend::BeginFrame();
@@ -72,11 +73,11 @@ void ImGuiRenderer::AddRenderPasses(Gleam::RenderGraph& graph, Gleam::RenderGrap
         ImGuiID dockspace_id = ImGui::GetID("EditorDockSpace");
         ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_None);
         
-        auto viewStack = Gleam::World::active->GetSystem<ViewStack>();
-        for (auto view : viewStack->GetViews())
+        for (auto view : mViews)
         {
-            view->Render();
+            std::invoke(view);
         }
+		mViews.clear();
         
         ImGui::End();
         ImGui::Render();
@@ -85,4 +86,9 @@ void ImGuiRenderer::AddRenderPasses(Gleam::RenderGraph& graph, Gleam::RenderGrap
         ImGui::UpdatePlatformWindows();
         ImGui::RenderPlatformWindowsDefault();
     });
+}
+
+void ImGuiRenderer::PushView(ImGuiView&& view)
+{
+	mViews.emplace_back(std::move(view));
 }

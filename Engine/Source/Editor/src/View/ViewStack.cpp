@@ -6,18 +6,17 @@
 //
 
 #include "ViewStack.h"
-#include "ImGui/ImGuiRenderer.h"
 
 using namespace GEditor;
 
 void ViewStack::OnCreate(Gleam::EntityManager& entityManager)
 {
-	GameInstance->GetSubsystem<Gleam::RenderSystem>()->AddRenderer<ImGuiRenderer>();
+	mImgui = GameInstance->GetSubsystem<Gleam::RenderSystem>()->AddRenderer<Gleam::ImGuiRenderer>();
 }
 
 void ViewStack::OnDestroy(Gleam::EntityManager& entityManager)
 {
-	GameInstance->GetSubsystem<Gleam::RenderSystem>()->RemoveRenderer<ImGuiRenderer>();
+	GameInstance->GetSubsystem<Gleam::RenderSystem>()->RemoveRenderer<Gleam::ImGuiRenderer>();
 	mViews.clear();
 }
 
@@ -26,5 +25,10 @@ void ViewStack::OnUpdate(Gleam::EntityManager& entityManager)
     for (auto view : mViews)
     {
         view->Update();
+    }
+
+	for (auto view : mViews)
+    {
+        view->Render(mImgui);
     }
 }

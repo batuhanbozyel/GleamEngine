@@ -6,6 +6,7 @@
 //
 
 #pragma once
+#include "Gleam.h"
 
 namespace GEditor {
 
@@ -17,7 +18,7 @@ public:
     
     virtual void Update() {}
     
-    virtual void Render() {}
+    virtual void Render(Gleam::ImGuiRenderer* imgui) {}
     
 };
 

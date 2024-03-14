@@ -21,7 +21,7 @@ public:
     
     virtual void Update() override;
     
-    virtual void Render() override;
+    virtual void Render(Gleam::ImGuiRenderer* imgui) override;
     
     const Gleam::Size& GetViewportSize() const
     {

@@ -15,19 +15,35 @@ file(GLOB_RECURSE SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/src/*.h*
 )
 
+# Add imgui as static library
+add_library(imgui STATIC
+    ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui/imgui.cpp
+    ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui/imgui_draw.cpp
+    ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui/imgui_widgets.cpp
+    ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui/imgui_demo.cpp
+    ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui/imgui_tables.cpp
+)
+
+# Configure imgui
+target_include_directories(imgui PRIVATE
+    ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui
+    ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/SDL/include
+    ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/DirectXAgilitySDK/build/native/include
+)
+
 # Setup link libraries
 if (WIN32)
-    set(LIB_LINKS SDL3::SDL3-static nlohmann_json::nlohmann_json d3d12.lib dxgi.lib dxguid.lib)
+    set(LIB_LINKS SDL3::SDL3-static nlohmann_json::nlohmann_json d3d12.lib dxgi.lib dxguid.lib imgui.lib)
     set_source_files_properties(${SHADER_FILES} PROPERTIES VS_TOOL_OVERRIDE "None")
 elseif (APPLE)
     find_library(METALIR_LIB libmetalirconverter.dylib)
-    set(LIB_LINKS SDL3::SDL3-static nlohmann_json::nlohmann_json ${METALIR_LIB} "-framework UniformTypeIdentifiers")
+    set(LIB_LINKS SDL3::SDL3-static nlohmann_json::nlohmann_json imgui ${METALIR_LIB} "-framework UniformTypeIdentifiers")
 endif()
 
 # Set Runtime as static library
 list(APPEND SOURCE_FILES ${SHADER_FILES})
 add_library(Runtime STATIC ${SOURCE_FILES})
-add_dependencies(Runtime SDL3-static)
+add_dependencies(Runtime SDL3-static imgui)
 
 # Include directories
 if (APPLE)
@@ -39,6 +55,8 @@ if (APPLE)
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/stb
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/entt/single_include
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/json/single_include
+        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui
+        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/ImGuizmo
     )
     set_source_files_properties(${SOURCE_FILES} PROPERTIES COMPILE_FLAGS "-x objective-c++")
     set_target_properties(Runtime PROPERTIES MACOSX_BUNDLE YES XCODE_ATTRIBUTE_CLANG_ENABLE_OBJC_ARC YES)
@@ -51,6 +69,8 @@ else()
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/entt/single_include
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/json/single_include
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/DirectXAgilitySDK/build/native/include
+        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui
+        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/ImGuizmo
     )
 endif()
 

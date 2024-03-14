@@ -66,6 +66,8 @@ private:
     }
     
     Gleam::PolyArray<View> mViews;
+
+	Gleam::ImGuiRenderer* mImgui = nullptr;
     
 };
 

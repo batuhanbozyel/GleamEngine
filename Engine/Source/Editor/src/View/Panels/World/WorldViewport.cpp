@@ -8,7 +8,7 @@
 #include "WorldViewport.h"
 #include "WorldViewportController.h"
 
-#include "ImGui/ImGuiBackend.h"
+#include "Renderer/ImGui/ImGuiBackend.h"
 #include "Renderers/InfiniteGridRenderer.h"
 
 using namespace GEditor;
@@ -52,20 +52,23 @@ void WorldViewport::Update()
     mController->SetViewportFocused(mIsFocused);
 }
 
-void WorldViewport::Render()
+void WorldViewport::Render(Gleam::ImGuiRenderer* imgui)
 {
-    const auto& sceneRT = GameInstance->GetSubsystem<Gleam::RenderSystem>()->GetRenderTarget();
-    const auto& sceneRTsize = sceneRT.GetDescriptor().size;
-    
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
-    ImGui::Begin("Viewport");
-    ImVec2 viewportSize = ImGui::GetContentRegionAvail();
-    mViewportSize.width = viewportSize.x;
-    mViewportSize.height = viewportSize.y;
-    
-    ImGui::Image(ImGuiBackend::GetImTextureIDForTexture(sceneRT), ImVec2(sceneRTsize.width, sceneRTsize.height), ImVec2(0.0f, 0.0f), ImVec2(1.0f, 1.0f));
-    mIsFocused = ImGui::IsWindowFocused();
-    
-    ImGui::End();
-    ImGui::PopStyleVar();
+	imgui->PushView([this]()
+	{
+		const auto& sceneRT = GameInstance->GetSubsystem<Gleam::RenderSystem>()->GetRenderTarget();
+		const auto& sceneRTsize = sceneRT.GetDescriptor().size;
+		
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+		ImGui::Begin("Viewport");
+		ImVec2 viewportSize = ImGui::GetContentRegionAvail();
+		mViewportSize.width = viewportSize.x;
+		mViewportSize.height = viewportSize.y;
+		
+		ImGui::Image(Gleam::ImGuiBackend::GetImTextureIDForTexture(sceneRT), ImVec2(sceneRTsize.width, sceneRTsize.height), ImVec2(0.0f, 0.0f), ImVec2(1.0f, 1.0f));
+		mIsFocused = ImGui::IsWindowFocused();
+		
+		ImGui::End();
+		ImGui::PopStyleVar();
+	});
 }

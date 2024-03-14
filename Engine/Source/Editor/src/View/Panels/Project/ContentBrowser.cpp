@@ -21,33 +21,36 @@ ContentBrowser::ContentBrowser()
 
 }
 
-void ContentBrowser::Render()
+void ContentBrowser::Render(Gleam::ImGuiRenderer* imgui)
 {
-    ImGui::Begin("Content Browser");
+	imgui->PushView([this]()
+	{
+		ImGui::Begin("Content Browser");
 
-	if (ImGui::Button("Add"))
-    {
-        
-    }
-
-    ImGui::SameLine();
-
-    if (ImGui::Button("Import"))
-    {
-		auto& entityManager = Gleam::World::active->GetEntityManager();
-        auto files = Gleam::IOUtils::OpenFileDialog();
-		for (const auto& path : files)
+		if (ImGui::Button("Add"))
 		{
-			if (path.extension() == ".gltf")
-			{
-				auto model = AssetImporter<Model>::Import(path);
-				auto mesh = Gleam::CreateRef<Gleam::Mesh>(model.GetMeshes());
+			
+		}
 
-				auto entity = entityManager.CreateEntity();
-				entityManager.AddComponent<Gleam::MeshRenderer>(entity, mesh);
+		ImGui::SameLine();
+
+		if (ImGui::Button("Import"))
+		{
+			auto& entityManager = Gleam::World::active->GetEntityManager();
+			auto files = Gleam::IOUtils::OpenFileDialog();
+			for (const auto& path : files)
+			{
+				if (path.extension() == ".gltf")
+				{
+					auto model = AssetImporter<Model>::Import(path);
+					auto mesh = Gleam::CreateRef<Gleam::Mesh>(model.GetMeshes());
+
+					auto entity = entityManager.CreateEntity();
+					entityManager.AddComponent<Gleam::MeshRenderer>(entity, mesh);
+				}
 			}
 		}
-    }
 
-	ImGui::End();
+		ImGui::End();
+	});
 }

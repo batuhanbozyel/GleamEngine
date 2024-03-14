@@ -19,7 +19,7 @@ public:
     
     WorldOutliner();
     
-    virtual void Render() override;
+    virtual void Render(Gleam::ImGuiRenderer* imgui) override;
     
 private:
     
