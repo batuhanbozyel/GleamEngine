@@ -32,8 +32,9 @@ def compile_shader(hlsl_file: str, entry_point: str, shader_stage: str, output_d
     try:
         print(f"Compiling HLSL file {os.path.basename(hlsl_file)} for {shader_stage} stage, entry point: {entry_point}")
         cmd(compile_command, stderr=subprocess.PIPE, check=True)
-    except subprocess.CalledProcessError:
-        raise RuntimeError(f"Compilation stopped due to error in shader")
+    except subprocess.CalledProcessError as e:
+        print(f"Shader compilation failed for {hlsl_file}:\n {e.stderr.decode('utf-8')}")
+        raise RuntimeError(f"Shader compilation failed for {hlsl_file}")
 
 if __name__ == "__main__":
     if len(sys.argv) < 5 or (len(sys.argv) - 2) % 3 != 0:
