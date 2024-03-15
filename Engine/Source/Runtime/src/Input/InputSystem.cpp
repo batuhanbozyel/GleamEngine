@@ -1,5 +1,7 @@
 #include "gpch.h"
 #include "InputSystem.h"
+#include "Core/Application.h"
+#include "Core/WindowSystem.h"
 #include "Core/Events/KeyEvent.h"
 #include <SDL3/SDL.h>
 
@@ -7,21 +9,28 @@ using namespace Gleam;
 
 void InputSystem::Update()
 {
-    mMouseState = SDL_GetMouseState(&mMousePosition.x, &mMousePosition.y);
-    mRelativeMouseState = SDL_GetRelativeMouseState(&mAxis.x, &mAxis.y);
     mKeyboardState = SDL_GetKeyboardState(nullptr);
+    mMouseState = SDL_GetMouseState(&mMousePosition.x, &mMousePosition.y);
+    SDL_GetRelativeMouseState(&mAxis.x, &mAxis.y);
 }
 
 void InputSystem::ShowCursor() const
 {
+	static auto windowSystem = GameInstance->GetSubsystem<WindowSystem>();
+	SDL_WarpMouseInWindow(windowSystem->GetSDLWindow(), mCursorHidePosition.x, mCursorHidePosition.y);
+	SDL_SetRelativeMouseMode(SDL_FALSE);
     SDL_ShowCursor();
-    SDL_SetRelativeMouseMode(SDL_FALSE);
+
+	mCursorHidden = false;
 }
 
 void InputSystem::HideCursor() const
 {
     SDL_HideCursor();
-    SDL_SetRelativeMouseMode(SDL_TRUE);
+	SDL_SetRelativeMouseMode(SDL_TRUE);
+	SDL_GetMouseState(&mCursorHidePosition.x, &mCursorHidePosition.y);
+
+	mCursorHidden = true;
 }
 
 bool InputSystem::CursorVisible() const

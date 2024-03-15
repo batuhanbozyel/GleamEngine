@@ -44,16 +44,18 @@ private:
     void MouseScrollEventHandler(SDL_MouseWheelEvent wheelEvent) const;
 
     void MouseButtonEventHandler(SDL_MouseButtonEvent buttonEvent) const;
-    
+
     Vector2 mMousePosition = Vector2::zero;
     
     Vector2 mAxis = Vector2::zero;
     
     uint32_t mMouseState = 0;
-    
-    uint32_t mRelativeMouseState = 0;
-    
-    const uint8_t* mKeyboardState = nullptr;
+
+	const uint8_t* mKeyboardState = nullptr;
+
+	mutable bool mCursorHidden = false;
+
+	mutable Vector2 mCursorHidePosition = Vector2::zero;
     
 };
 
