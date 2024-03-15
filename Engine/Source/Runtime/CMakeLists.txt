@@ -111,8 +111,8 @@ set(SHADER_FUNCTIONS
     ${HLSL_FILE_PATH}/DebugShader.hlsl debugFragmentShader fragment
 )
 
-DEPLOY_FILE(${CMAKE_SOURCE_DIR}/Engine/ThirdParty/DirectXAgilitySDK/build/native/bin/x64/D3D12Core.dll D3D12)
-DEPLOY_FILE(${CMAKE_SOURCE_DIR}/Engine/ThirdParty/DirectXAgilitySDK/build/native/bin/x64/d3d12SDKLayers.dll D3D12)
+DEPLOY_FILE_TO(${CMAKE_SOURCE_DIR}/Engine/ThirdParty/DirectXAgilitySDK/build/native/bin/x64/D3D12Core.dll D3D12)
+DEPLOY_FILE_TO(${CMAKE_SOURCE_DIR}/Engine/ThirdParty/DirectXAgilitySDK/build/native/bin/x64/d3d12SDKLayers.dll D3D12)
 
 add_custom_command(
     TARGET Runtime
