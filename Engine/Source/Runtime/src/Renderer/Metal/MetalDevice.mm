@@ -109,7 +109,7 @@ Shader GraphicsDevice::GenerateShader(const TString& entryPoint, ShaderStage sta
     if (compileError)
     {
         auto errorCode = IRErrorGetCode(compileError);
-        GLEAM_ERROR("Metal IR generation failed with code: {0}", errorCode);
+        GLEAM_CORE_ERROR("Metal IR generation failed with code: {0}", errorCode);
         IRErrorDestroy(compileError);
         compileError = nullptr;
     }
@@ -123,7 +123,7 @@ Shader GraphicsDevice::GenerateShader(const TString& entryPoint, ShaderStage sta
     if (libraryError)
     {
         auto errorStr = TO_CPP_STRING([libraryError localizedDescription]);
-        GLEAM_ERROR("Metal library load failed: {0}", errorStr);
+        GLEAM_CORE_ERROR("Metal library load failed: {0}", errorStr);
         libraryError = nil;
     }
     
