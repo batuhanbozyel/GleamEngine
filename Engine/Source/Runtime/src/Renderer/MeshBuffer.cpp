@@ -91,7 +91,9 @@ MeshBuffer::MeshBuffer(const TArray<Vector3>& positions, const TArray<Interleave
 
     HeapDescriptor heapDesc;
     heapDesc.memoryType = MemoryType::GPU;
+	heapDesc.size = positionSize + interleavedSize + indexSize;
 	auto memoryRequirements = renderSystem->GetDevice()->QueryMemoryRequirements(heapDesc);
+
 	heapDesc.size = Utils::AlignUp(positionSize, memoryRequirements.alignment) +
 					Utils::AlignUp(interleavedSize, memoryRequirements.alignment) +
 					Utils::AlignUp(indexSize, memoryRequirements.alignment);

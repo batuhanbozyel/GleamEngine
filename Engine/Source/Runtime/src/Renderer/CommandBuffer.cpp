@@ -7,11 +7,9 @@ using namespace Gleam;
 void CommandBuffer::DrawIndexed(const Buffer& indexBuffer,
 	IndexType type,
 	uint32_t instanceCount,
-	uint32_t firstIndex,
-	uint32_t baseVertex,
-	uint32_t baseInstance) const
+	uint32_t firstIndex) const
 {
-	DrawIndexed(indexBuffer, type, static_cast<uint32_t>(indexBuffer.GetSize() / SizeOfIndexType(type)), instanceCount, firstIndex, baseVertex, baseInstance);
+	DrawIndexed(indexBuffer, type, static_cast<uint32_t>(indexBuffer.GetSize() / SizeOfIndexType(type)), instanceCount, firstIndex);
 }
 
 void CommandBuffer::CopyBuffer(const Buffer& src, const Buffer& dst,

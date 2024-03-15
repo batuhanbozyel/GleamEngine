@@ -55,17 +55,16 @@ void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
                 for (const auto& element : meshList)
                 {
                     const auto& meshBuffer = element.mesh->GetBuffer();
-                    
-                    ForwardPassUniforms uniforms;
-                    uniforms.modelMatrix = element.transform;
-                    uniforms.cameraBuffer = passData.cameraBuffer;
-                    uniforms.positionBuffer = meshBuffer.GetPositionBuffer().GetResourceView();
-                    uniforms.interleavedBuffer = meshBuffer.GetInterleavedBuffer().GetResourceView();
-                    cmd->SetPushConstant(uniforms);
-					
                     for (const auto& descriptor : element.mesh->GetSubmeshDescriptors())
                     {
-                        cmd->DrawIndexed(meshBuffer.GetIndexBuffer(), IndexType::UINT32, descriptor.indexCount, 1, descriptor.firstIndex, descriptor.baseVertex, 0);
+						ForwardPassUniforms uniforms;
+						uniforms.modelMatrix = element.transform;
+						uniforms.baseVertex = descriptor.baseVertex;
+						uniforms.cameraBuffer = passData.cameraBuffer;
+						uniforms.positionBuffer = meshBuffer.GetPositionBuffer().GetResourceView();
+						uniforms.interleavedBuffer = meshBuffer.GetInterleavedBuffer().GetResourceView();
+						cmd->SetPushConstant(uniforms);
+                        cmd->DrawIndexed(meshBuffer.GetIndexBuffer(), IndexType::UINT32, descriptor.indexCount, 1, descriptor.firstIndex);
                     }
                 }
             }

@@ -169,14 +169,16 @@ void DebugRenderer::RenderMeshes(const CommandBuffer* cmd, const BufferHandle& c
         resources.vertexBuffer = meshBuffer.GetPositionBuffer().GetResourceView();
         resources.cameraBuffer = cameraBuffer;
         cmd->SetConstantBuffer(resources, 0);
-
-		DebugMeshUniforms uniforms;
-		uniforms.modelMatrix = debugMesh.transform;
-		uniforms.color = debugMesh.color;
-		cmd->SetPushConstant(uniforms);
 	
 		for (const auto& submesh : debugMesh.mesh->GetSubmeshDescriptors())
-			cmd->DrawIndexed(meshBuffer.GetIndexBuffer(), IndexType::UINT32, submesh.indexCount, 1, submesh.firstIndex, submesh.baseVertex, 0);
+		{
+			DebugMeshUniforms uniforms;
+			uniforms.modelMatrix = debugMesh.transform;
+			uniforms.baseVertex = submesh.baseVertex;
+			uniforms.color = debugMesh.color;
+			cmd->SetPushConstant(uniforms);
+			cmd->DrawIndexed(meshBuffer.GetIndexBuffer(), IndexType::UINT32, submesh.indexCount, 1, submesh.firstIndex);
+		}
 	}
 }
 

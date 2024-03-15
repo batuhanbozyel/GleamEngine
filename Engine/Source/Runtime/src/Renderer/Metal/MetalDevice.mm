@@ -93,7 +93,7 @@ Texture GraphicsDevice::AllocateTexture(const TextureDescriptor& descriptor)
     return texture;
 }
 
-Shader GraphicsDevice::GenerateShader(const TString& entryPoint, ShaderStage stage) const
+Shader GraphicsDevice::GenerateShader(const TString& entryPoint, ShaderStage stage)
 {
     Shader shader(entryPoint, stage);
     

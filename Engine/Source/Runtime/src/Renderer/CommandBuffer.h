@@ -7,6 +7,9 @@
 
 namespace Gleam {
 
+template<typename T>
+concept PODType = !std::is_void_v<std::remove_const_t<T>>;
+
 struct RenderPassDescriptor;
 struct PipelineStateDescriptor;
 
@@ -46,36 +49,29 @@ public:
 
     void SetViewport(const Size& size) const;
     
-    template<typename T>
+    template<PODType T>
     void SetConstantBuffer(const T& t, uint32_t slot) const
     {
         SetConstantBuffer(&t, sizeof(T), slot);
     }
 
-    template<typename T>
+    template<PODType T>
     void SetPushConstant(const T& t) const
     {
         static_assert(sizeof(T) <= PUSH_CONSTANT_SIZE, "Push constant limit is 64 bytes.");
         SetPushConstant(&t, sizeof(T));
     }
 
-    void Draw(uint32_t vertexCount,
-		uint32_t instanceCount = 1,
-		uint32_t baseVertex = 0,
-		uint32_t baseInstance = 0) const;
+    void Draw(uint32_t vertexCount, uint32_t instanceCount = 1) const;
 
 	void DrawIndexed(const Buffer& indexBuffer, IndexType type,
 		uint32_t indexCount,
 		uint32_t instanceCount = 1,
-		uint32_t firstIndex = 0,
-		uint32_t baseVertex = 0,
-		uint32_t baseInstance = 0) const;
+		uint32_t firstIndex = 0) const;
 
     void DrawIndexed(const Buffer& indexBuffer, IndexType type,
 		uint32_t instanceCount = 1,
-		uint32_t firstIndex = 0,
-		uint32_t baseVertex = 0,
-		uint32_t baseInstance = 0) const;
+		uint32_t firstIndex = 0) const;
 
 	void CopyBuffer(const Buffer& src, const Buffer& dst,
 		size_t size,
@@ -83,6 +79,12 @@ public:
 		size_t dstOffset = 0) const;
 
     void CopyBuffer(const Buffer& src, const Buffer& dst) const;
+
+	template<PODType T>
+	void SetBufferData(const Buffer& buffer, const T& data, size_t offset = 0) const
+	{
+		SetBufferData(buffer, &data, sizeof(T), offset);
+	}
 
     void SetBufferData(const Buffer& buffer, const void* data, size_t size, size_t offset = 0) const;
 

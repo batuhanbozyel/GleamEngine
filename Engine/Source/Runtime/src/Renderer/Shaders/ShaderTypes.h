@@ -19,6 +19,7 @@ struct DebugVertex
 struct DebugMeshUniforms
 {
     float4x4 modelMatrix;
+	uint32_t baseVertex;
 	uint32_t color;
 };
 
@@ -34,6 +35,7 @@ struct ForwardPassUniforms
     ConstantBufferView cameraBuffer;
     BufferResourceView positionBuffer;
     BufferResourceView interleavedBuffer;
+	uint32_t baseVertex;
 };
 
 struct TonemapUniforms

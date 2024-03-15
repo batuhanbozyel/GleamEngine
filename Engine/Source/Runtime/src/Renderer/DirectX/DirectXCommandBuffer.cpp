@@ -195,20 +195,15 @@ void CommandBuffer::SetPushConstant(const void* data, uint32_t size) const
 	mHandle->commandList->SetGraphicsRoot32BitConstants(PUSH_CONSTANT_SLOT, size / sizeof(uint32_t), data, 0);
 }
 
-void CommandBuffer::Draw(uint32_t vertexCount,
-	uint32_t instanceCount,
-	uint32_t baseVertex,
-	uint32_t baseInstance) const
+void CommandBuffer::Draw(uint32_t vertexCount, uint32_t instanceCount) const
 {
-	mHandle->commandList->DrawInstanced(vertexCount, instanceCount, baseVertex, baseInstance);
+	mHandle->commandList->DrawInstanced(vertexCount, instanceCount, 0, 0);
 }
 
 void CommandBuffer::DrawIndexed(const Buffer& indexBuffer, IndexType type,
 	uint32_t indexCount,
 	uint32_t instanceCount,
-	uint32_t firstIndex,
-	uint32_t baseVertex,
-	uint32_t baseInstance) const
+	uint32_t firstIndex) const
 {
 	D3D12_INDEX_BUFFER_VIEW indexBufferView = {};
 	indexBufferView.BufferLocation = static_cast<ID3D12Resource*>(indexBuffer.GetHandle())->GetGPUVirtualAddress();
@@ -216,7 +211,7 @@ void CommandBuffer::DrawIndexed(const Buffer& indexBuffer, IndexType type,
 	indexBufferView.SizeInBytes = (UINT)indexBuffer.GetSize();
 
 	mHandle->commandList->IASetIndexBuffer(&indexBufferView);
-	mHandle->commandList->DrawIndexedInstanced(indexCount, instanceCount, firstIndex, baseVertex, baseInstance);
+	mHandle->commandList->DrawIndexedInstanced(indexCount, instanceCount, firstIndex, 0, 0);
 }
 
 void CommandBuffer::CopyBuffer(const NativeGraphicsHandle src, const NativeGraphicsHandle dst,

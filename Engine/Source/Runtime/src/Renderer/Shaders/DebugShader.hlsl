@@ -10,12 +10,10 @@ struct VertexOut
     float4 color : COLOR;
 };
 
-VertexOut debugVertexShader(uint vertex_id: SV_VertexID,
-                            uint base_vertex: BaseVertexLocation)
+VertexOut debugVertexShader(uint vertex_id: SV_VertexID)
 {
-    uint vertexID = vertex_id + base_vertex;
     Gleam::CameraUniforms CameraBuffer = resources.cameraBuffer.Load<Gleam::CameraUniforms>();
-    Gleam::DebugVertex vertex = resources.vertexBuffer.Load<Gleam::DebugVertex>(vertexID);
+    Gleam::DebugVertex vertex = resources.vertexBuffer.Load<Gleam::DebugVertex>(vertex_id);
     
     VertexOut OUT;
     OUT.position = mul(CameraBuffer.viewProjectionMatrix, float4(vertex.position.xyz, 1.0f));
@@ -23,10 +21,9 @@ VertexOut debugVertexShader(uint vertex_id: SV_VertexID,
     return OUT;
 }
 
-VertexOut debugMeshVertexShader(uint vertex_id: SV_VertexID,
-                                uint base_vertex: BaseVertexLocation)
+VertexOut debugMeshVertexShader(uint vertex_id: SV_VertexID)
 {
-    uint vertexID = vertex_id + base_vertex;
+    uint vertexID = vertex_id + uniforms.baseVertex;
     Gleam::CameraUniforms CameraBuffer = resources.cameraBuffer.Load<Gleam::CameraUniforms>();
     float3 position = resources.vertexBuffer.Load<float3>(vertexID);
     

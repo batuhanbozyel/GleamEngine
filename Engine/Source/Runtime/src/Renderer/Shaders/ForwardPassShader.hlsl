@@ -10,10 +10,9 @@ struct VertexOut
 
 PUSH_CONSTANT(Gleam::ForwardPassUniforms, uniforms);
 
-VertexOut forwardPassVertexShader(uint vertex_id: SV_VertexID,
-                                  uint base_vertex: BaseVertexLocation)
+VertexOut forwardPassVertexShader(uint vertex_id: SV_VertexID)
 {
-    uint vertexID = vertex_id + base_vertex;
+    uint vertexID = vertex_id + uniforms.baseVertex;
     Gleam::CameraUniforms CameraBuffer = uniforms.cameraBuffer.Load<Gleam::CameraUniforms>();
     Gleam::InterleavedMeshVertex interleavedVert = uniforms.interleavedBuffer.Load<Gleam::InterleavedMeshVertex>(vertexID);
     float3 position = uniforms.positionBuffer.Load<float3>(vertexID);

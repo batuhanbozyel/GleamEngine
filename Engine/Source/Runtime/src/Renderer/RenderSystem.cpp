@@ -70,7 +70,7 @@ void RenderSystem::Render()
         },
         [this](const CommandBuffer* cmd, const SceneRenderingData& passData)
         {
-            cmd->SetBufferData(passData.cameraBuffer, &mCameraData, sizeof(CameraUniforms));
+            cmd->SetBufferData(passData.cameraBuffer, mCameraData);
         });
         blackboard.Add(sceneData);
 

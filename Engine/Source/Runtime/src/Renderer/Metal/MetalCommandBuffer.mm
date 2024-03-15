@@ -179,15 +179,15 @@ void CommandBuffer::SetPushConstant(const void* data, uint32_t size) const
     memcpy(argumentBufferPtr + PUSH_CONSTANT_SLOT, data, size);
 }
 
-void CommandBuffer::Draw(uint32_t vertexCount, uint32_t instanceCount, uint32_t baseVertex, uint32_t baseInstance) const
+void CommandBuffer::Draw(uint32_t vertexCount, uint32_t instanceCount) const
 {
-    IRRuntimeDrawPrimitives(mHandle->renderCommandEncoder, mHandle->pipeline->topology, baseVertex, vertexCount, instanceCount, baseInstance);
+    IRRuntimeDrawPrimitives(mHandle->renderCommandEncoder, mHandle->pipeline->topology, 0, vertexCount, instanceCount, 0);
 }
 
-void CommandBuffer::DrawIndexed(const Buffer& indexBuffer, IndexType type, uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, uint32_t baseVertex, uint32_t baseInstance) const
+void CommandBuffer::DrawIndexed(const Buffer& indexBuffer, IndexType type, uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex) const
 {
     MTLIndexType indexType = static_cast<MTLIndexType>(type);
-    IRRuntimeDrawIndexedPrimitives(mHandle->renderCommandEncoder, mHandle->pipeline->topology, indexCount, indexType, indexBuffer.GetHandle(), firstIndex * SizeOfIndexType(type), instanceCount, baseVertex, baseInstance);
+    IRRuntimeDrawIndexedPrimitives(mHandle->renderCommandEncoder, mHandle->pipeline->topology, indexCount, indexType, indexBuffer.GetHandle(), firstIndex * SizeOfIndexType(type), instanceCount);
 }
 
 void CommandBuffer::CopyBuffer(const NativeGraphicsHandle src, const NativeGraphicsHandle dst, size_t size, size_t srcOffset, size_t dstOffset) const

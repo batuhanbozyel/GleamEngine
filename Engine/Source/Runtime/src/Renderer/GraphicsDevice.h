@@ -106,7 +106,7 @@ private:
     
     Texture AllocateTexture(const TextureDescriptor& descriptor);
     
-    Shader GenerateShader(const TString& entryPoint, ShaderStage stage) const;
+    Shader GenerateShader(const TString& entryPoint, ShaderStage stage);
 
 };
 
