@@ -72,7 +72,6 @@ static void DrawVec3Control(const std::string& label, Gleam::Vector3& values, fl
     ImGui::PopItemWidth();
 
     ImGui::PopStyleVar();
-
     ImGui::Columns(1);
 
     ImGui::PopID();
@@ -82,9 +81,6 @@ template<typename T, typename UIFunction>
 static void DrawComponent(const std::string& name, T& component, UIFunction uiFunction)
 {
     const ImGuiTreeNodeFlags treeNodeFlags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_AllowItemOverlap | ImGuiTreeNodeFlags_FramePadding;
-    
-    ImVec2 contentRegionAvailable = ImGui::GetContentRegionAvail();
-
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2{ 4, 4 });
     float lineHeight = GImGui->Font->FontSize + GImGui->Style.FramePadding.y * 2.0f;
     ImGui::Separator();

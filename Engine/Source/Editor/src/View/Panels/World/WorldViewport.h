@@ -37,7 +37,7 @@ private:
     
     bool mIsFocused = false;
     
-    bool mCursorVisible = false;
+    bool mCursorVisible = true;
     
     WorldViewportController* mController = nullptr;
     
