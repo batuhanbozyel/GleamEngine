@@ -59,6 +59,8 @@ public:
     
 private:
     
+    void SetDarkTheme() const;
+    
     template<ViewType T>
     bool HasView() const
     {
