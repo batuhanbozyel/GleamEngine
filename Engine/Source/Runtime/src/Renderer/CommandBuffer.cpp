@@ -31,7 +31,7 @@ void CommandBuffer::SetBufferData(const Buffer& buffer, const void* data, size_t
 	auto contents = buffer.GetContents();
 	if (contents == nullptr)
 	{
-		Buffer stagingBuffer = mStagingHeap.CreateBuffer(size);
+		Buffer stagingBuffer = mStagingHeap.CreateBuffer(size, "CommandBuffer::StagingBuffer");
 		memcpy(stagingBuffer.GetContents(), data, size);
 		CopyBuffer(stagingBuffer.GetHandle(), buffer.GetHandle(), size, 0, offset);
 		mDevice->ReleaseBuffer(stagingBuffer);

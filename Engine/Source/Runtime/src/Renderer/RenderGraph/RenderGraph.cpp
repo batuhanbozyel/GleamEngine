@@ -151,27 +151,33 @@ void RenderGraph::Execute(const CommandBuffer* cmd)
     Heap heap;
     if (mHeapSize > 0)
     {
-        heap = mDevice->CreateHeap({ .memoryType = MemoryType::GPU, .size = mHeapSize });
+        heap = mDevice->CreateHeap({ .memoryType = MemoryType::GPU, .size = mHeapSize }, "RenderGraph::Heap");
     }
 
     for (auto pass : mPassNodes)
     {
         // Allocate buffers
-        for (auto& resource : pass->bufferCreates)
+        for (uint32_t i = 0; i < pass->bufferCreates.size(); i++)
         {
+            auto& resource = pass->bufferCreates[i];
             if (HasResource(pass->bufferWrites, resource))
             {
-                resource.node->buffer = heap.CreateBuffer(resource.node->buffer.GetSize());
+                TStringStream name;
+                name << pass->name << "::Buffer_" << i;
+                resource.node->buffer = heap.CreateBuffer(resource.node->buffer.GetSize(), name.str().data());
                 GLEAM_ASSERT(resource.node->buffer.IsValid());
             }
         }
 
         // Allocate textures
-        for (auto& resource : pass->textureCreates)
+        for (uint32_t i = 0; i < pass->textureCreates.size(); i++)
         {
+            auto& resource = pass->textureCreates[i];
             if (HasResource(pass->textureWrites, resource))
             {
-                resource.node->texture = mDevice->CreateTexture(resource.node->texture.GetDescriptor());
+                TStringStream name;
+                name << pass->name << "::Texture_" << i;
+                resource.node->texture = mDevice->CreateTexture(resource.node->texture.GetDescriptor(), name.str().data());
                 GLEAM_ASSERT(resource.node->texture.IsValid());
             }
         }

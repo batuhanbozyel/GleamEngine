@@ -30,7 +30,7 @@ MemoryRequirements GraphicsDevice::QueryMemoryRequirements(const HeapDescriptor&
 	};
 }
 
-Heap GraphicsDevice::AllocateHeap(const HeapDescriptor& descriptor)
+Heap GraphicsDevice::AllocateHeap(const HeapDescriptor& descriptor, const TStringView name)
 {
     Heap heap(descriptor);
     heap.mDevice = this;
@@ -46,10 +46,12 @@ Heap GraphicsDevice::AllocateHeap(const HeapDescriptor& descriptor)
     heap.mHandle = [mHandle newHeapWithDescriptor:desc];
     heap.mDescriptor.size = sizeAndAlign.size;
     heap.mAlignment = sizeAndAlign.align;
+    
+    [heap.mHandle setLabel:TO_NSSTRING(name.data())];
     return heap;
 }
 
-Texture GraphicsDevice::AllocateTexture(const TextureDescriptor& descriptor)
+Texture GraphicsDevice::AllocateTexture(const TextureDescriptor& descriptor, const TStringView name)
 {
     Texture texture(descriptor);
     
@@ -76,6 +78,8 @@ Texture GraphicsDevice::AllocateTexture(const TextureDescriptor& descriptor)
                                                    textureType:descriptor.dimension == TextureDimension::TextureCube ? MTLTextureTypeCubeArray : MTLTextureType2DArray
                                                         levels:NSMakeRange(0, texture.mMipMapLevels)
                                                         slices:NSMakeRange(0, 1)];
+    [baseTexture setLabel:TO_NSSTRING(name.data())];
+    [texture.mView setLabel:TO_NSSTRING(name.data())];
     
     if (descriptor.sampleCount > 1)
     {
@@ -87,8 +91,12 @@ Texture GraphicsDevice::AllocateTexture(const TextureDescriptor& descriptor)
         msaaTextureDesc.storageMode = MTLStorageModePrivate; // TODO: Switch to memoryless msaa render targets when Tile shading is supported
         texture.mMultisampleHandle = [mHandle newTextureWithDescriptor:msaaTextureDesc];
         texture.mMultisampleView = texture.mMultisampleHandle;
+        
+        TStringStream multisampleName;
+        multisampleName << name << "::MSAA";
+        [texture.mMultisampleHandle setLabel:TO_NSSTRING(multisampleName.str().data())];
+        [texture.mMultisampleView setLabel:TO_NSSTRING(multisampleName.str().data())];
     }
-    
     texture.mResourceView = Utils::IsDepthFormat(descriptor.format) ? InvalidResourceIndex : CreateResourceView(texture);
     return texture;
 }
@@ -318,6 +326,8 @@ MetalDescriptorHeap MetalDevice::CreateDescriptorHeap(uint32_t capacity) const
     MetalDescriptorHeap heap;
     heap.handle = [mHandle newBufferWithLength:capacity * sizeof(IRDescriptorTableEntry) options:MTLResourceStorageModeShared];
     heap.heap = ResourceDescriptorHeap(capacity);
+    
+    [heap.handle setLabel:@"DescriptorHeap"];
     return heap;
 }
 

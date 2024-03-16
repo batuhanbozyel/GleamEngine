@@ -25,7 +25,7 @@ public:
 
     }
 
-    Buffer CreateBuffer(size_t size) const;
+    Buffer CreateBuffer(size_t size, const TStringView name) const;
 
     void Reset() const
     {

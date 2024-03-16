@@ -99,17 +99,17 @@ MeshBuffer::MeshBuffer(const TArray<Vector3>& positions, const TArray<Interleave
     indexSize = Utils::AlignUp(indexSize, memoryRequirements.alignment);
 
     heapDesc.size = positionSize + interleavedSize + indexSize;
-    mHeap = renderSystem->GetDevice()->CreateHeap(heapDesc);
+    mHeap = renderSystem->GetDevice()->CreateHeap(heapDesc, "MeshBuffer::Heap");
 
-    mPositionBuffer = mHeap.CreateBuffer(positionSize);
-    mInterleavedBuffer = mHeap.CreateBuffer(interleavedSize);
-    mIndexBuffer = mHeap.CreateBuffer(indexSize);
+    mPositionBuffer = mHeap.CreateBuffer(positionSize, "MeshBuffer::Positions");
+    mInterleavedBuffer = mHeap.CreateBuffer(interleavedSize, "MeshBuffer::InterleavedData");
+    mIndexBuffer = mHeap.CreateBuffer(indexSize, "MeshBuffer::Indices");
 
     // Send mesh data to buffers
     {
         heapDesc.memoryType = MemoryType::CPU;
-        Heap heap = renderSystem->GetDevice()->CreateHeap(heapDesc);
-        Buffer stagingBuffer = heap.CreateBuffer(heapDesc.size);
+        Heap heap = renderSystem->GetDevice()->CreateHeap(heapDesc, "MeshBuffer::StagingHeap");
+        Buffer stagingBuffer = heap.CreateBuffer(heapDesc.size, "MeshBuffer::StagingBuffer");
 
         CommandBuffer commandBuffer(renderSystem->GetDevice());
         commandBuffer.Begin();

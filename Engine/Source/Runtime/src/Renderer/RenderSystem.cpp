@@ -144,7 +144,7 @@ const Texture& RenderSystem::GetRenderTarget() const
 
 void RenderSystem::SetRenderTarget(const TextureDescriptor& descriptor)
 {
-    mRenderTarget = mDevice->CreateTexture(descriptor);
+    mRenderTarget = mDevice->CreateTexture(descriptor, "Backbuffer");
     GLEAM_ASSERT(mRenderTarget.IsValid());
 }
 
