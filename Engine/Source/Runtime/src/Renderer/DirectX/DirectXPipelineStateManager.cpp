@@ -6,8 +6,6 @@
 
 using namespace Gleam;
 
-uint32_t PushConstantRootParameterIndex = 0;
-
 static size_t PipelineHasher(const PipelineStateDescriptor& pipelineDesc, const TArray<TextureDescriptor>& colorAttachments, const TextureDescriptor& depthAttachment, const Shader& vertexShader, const Shader& fragmentShader, uint32_t sampleCount)
 {
     size_t hash = 0;

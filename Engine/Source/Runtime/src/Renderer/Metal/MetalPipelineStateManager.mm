@@ -5,8 +5,6 @@
 
 using namespace Gleam;
 
-uint32_t PushConstantRootParameterIndex = 0;
-
 static size_t PipelineHasher(const PipelineStateDescriptor& pipelineDesc, const TArray<TextureDescriptor>& colorAttachments, const TextureDescriptor& depthAttachment, const Shader& vertexShader, const Shader& fragmentShader, uint32_t sampleCount)
 {
     size_t hash = 0;
@@ -253,6 +251,6 @@ IRRootSignature* MetalPipelineStateManager::GetGlobalRootSignature()
 
 size_t MetalPipelineStateManager::GetTopLevelArgumentBufferSize()
 {
-    return PUSH_CONSTANT_SLOT * sizeof(uint64_t) + 128;
+    return PUSH_CONSTANT_SLOT * sizeof(uint64_t) + PUSH_CONSTANT_SIZE;
 }
 #endif
