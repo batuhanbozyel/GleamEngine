@@ -1,7 +1,7 @@
 #include "Common.hlsli"
 #include "ShaderTypes.h"
 
-DECLARE_CONSTANT_BUFFER(Gleam::DebugShaderResources, resources, 0);
+CONSTANT_BUFFER(Gleam::DebugShaderResources, resources, 0);
 PUSH_CONSTANT(Gleam::DebugMeshUniforms, uniforms);
 
 struct VertexOut

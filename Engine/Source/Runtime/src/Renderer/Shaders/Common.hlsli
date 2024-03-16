@@ -2,13 +2,13 @@
 #include "ShaderInterop.h"
 #include "SharedTypes.h"
 
+#define CONSTANT_BUFFER(type, name, slot) ConstantBuffer<type> name : register(b##slot)
+
 #ifdef __spirv__
 #define PUSH_CONSTANT(type, name) [[vk::push_constant]] type name
 #else
-#define PUSH_CONSTANT(type, name) ConstantBuffer<type> name : register(b999)
+#define PUSH_CONSTANT(type, name) CONSTANT_BUFFER(type, name, 999)
 #endif
-
-#define DECLARE_CONSTANT_BUFFER(type, name, slot) ConstantBuffer<type> name : register(b##slot)
 
 struct FScreenVertexOutput
 {
