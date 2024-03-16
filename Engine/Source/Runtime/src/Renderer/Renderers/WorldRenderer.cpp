@@ -14,6 +14,12 @@
 #include "Renderer/Material/Material.h"
 #include "Renderer/Material/MaterialInstance.h"
 
+#if defined(USE_METAL_RENDERER)
+#import <Metal/Metal.h>
+#elif defined(USE_DIRECTX_RENDERER)
+#include "../DirectX/DirectXTransitionManager.h"
+#endif
+
 using namespace Gleam;
 
 void WorldRenderer::OnCreate(GraphicsDevice* device)
@@ -55,14 +61,33 @@ void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
                 for (const auto& element : meshList)
                 {
                     const auto& meshBuffer = element.mesh->GetBuffer();
+                    const auto& positionBuffer = meshBuffer.GetPositionBuffer();
+                    const auto& interleavedBuffer = meshBuffer.GetInterleavedBuffer();
+#ifdef USE_METAL_RENDERER
+                    [cmd->GetActiveRenderPass() useResource:positionBuffer.GetHandle() usage:MTLResourceUsageRead stages:MTLRenderStageVertex];
+                    [cmd->GetActiveRenderPass() useResource:interleavedBuffer.GetHandle() usage:MTLResourceUsageRead stages:MTLRenderStageVertex];
+#elif defined(USE_DIRECTX_RENDERER)
+                    DirectXTransitionManager::TransitionLayout(
+                        static_cast<ID3D12GraphicsCommandList7*>(cmd->GetHandle()),
+                        static_cast<ID3D12Resource*>(positionBuffer.GetHandle()),
+                        D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE
+                    );
+                    
+                    DirectXTransitionManager::TransitionLayout(
+                        static_cast<ID3D12GraphicsCommandList7*>(cmd->GetHandle()),
+                        static_cast<ID3D12Resource*>(interleavedBuffer.GetHandle()),
+                        D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE
+                    );
+#endif
+                    
                     for (const auto& descriptor : element.mesh->GetSubmeshDescriptors())
                     {
 						ForwardPassUniforms uniforms;
 						uniforms.modelMatrix = element.transform;
 						uniforms.baseVertex = descriptor.baseVertex;
 						uniforms.cameraBuffer = passData.cameraBuffer;
-						uniforms.positionBuffer = meshBuffer.GetPositionBuffer().GetResourceView();
-						uniforms.interleavedBuffer = meshBuffer.GetInterleavedBuffer().GetResourceView();
+						uniforms.positionBuffer = positionBuffer.GetResourceView();
+						uniforms.interleavedBuffer = interleavedBuffer.GetResourceView();
 						cmd->SetPushConstant(uniforms);
                         cmd->DrawIndexed(meshBuffer.GetIndexBuffer(), IndexType::UINT32, descriptor.indexCount, 1, descriptor.firstIndex);
                     }
