@@ -16,7 +16,9 @@ struct CommandBuffer::Impl
     id<MTLCommandBuffer> commandBuffer = nil;
     id<MTLRenderCommandEncoder> renderCommandEncoder = nil;
     const MetalPipeline* pipeline = nullptr;
+    
     Buffer topLevelArgumentBuffer;
+    TArray<Buffer, PUSH_CONSTANT_SLOT> constantBuffers;
     
     TArray<TextureDescriptor> colorAttachments;
     TextureDescriptor depthAttachment;
@@ -37,6 +39,19 @@ CommandBuffer::CommandBuffer(GraphicsDevice* device)
 
 CommandBuffer::~CommandBuffer()
 {
+    if (mHandle->topLevelArgumentBuffer.IsValid())
+    {
+        mDevice->Dispose(mHandle->topLevelArgumentBuffer);
+    }
+    
+    for (auto& buffer : mHandle->constantBuffers)
+    {
+        if (buffer.IsValid())
+        {
+            mDevice->Dispose(buffer);
+        }
+    }
+    
     mDevice->Dispose(mStagingHeap);
 }
 
@@ -152,7 +167,15 @@ void CommandBuffer::BindGraphicsPipeline(const PipelineStateDescriptor& pipeline
     mHandle->topLevelArgumentBuffer = mStagingHeap.CreateBuffer(MetalPipelineStateManager::GetTopLevelArgumentBufferSize());
     [mHandle->renderCommandEncoder setVertexBuffer:mHandle->topLevelArgumentBuffer.GetHandle() offset:0 atIndex:kIRArgumentBufferBindPoint];
     [mHandle->renderCommandEncoder setFragmentBuffer:mHandle->topLevelArgumentBuffer.GetHandle() offset:0 atIndex:kIRArgumentBufferBindPoint];
-
+    
+    // Root constants
+    for (auto& buffer : mHandle->constantBuffers)
+    {
+        if (buffer.IsValid())
+        {
+            mDevice->Dispose(buffer);
+        }
+    }
 }
 
 void CommandBuffer::SetViewport(const Size& size) const
@@ -171,6 +194,9 @@ void CommandBuffer::SetConstantBuffer(const void* data, uint32_t size, uint32_t 
     
     auto argumentBufferPtr = static_cast<uint64_t*>(mHandle->topLevelArgumentBuffer.GetContents());
     argumentBufferPtr[slot] = [buffer.GetHandle() gpuAddress];
+    
+    [mHandle->renderCommandEncoder useResource:buffer.GetHandle() usage:MTLResourceUsageRead stages:MTLRenderStageVertex | MTLRenderStageFragment];
+    mHandle->constantBuffers[slot] = buffer;
 }
 
 void CommandBuffer::SetPushConstant(const void* data, uint32_t size) const
