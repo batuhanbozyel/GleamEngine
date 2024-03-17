@@ -8,14 +8,15 @@ struct VertexOut
     float2 texCoord : TEXCOORD0;
 };
 
+CONSTANT_BUFFER(Gleam::MeshPassResources, resources, 0);
 PUSH_CONSTANT(Gleam::ForwardPassUniforms, uniforms);
 
 VertexOut forwardPassVertexShader(uint vertex_id: SV_VertexID)
 {
     uint vertexID = vertex_id + uniforms.baseVertex;
-    Gleam::CameraUniforms CameraBuffer = uniforms.cameraBuffer.Load<Gleam::CameraUniforms>();
-    Gleam::InterleavedMeshVertex interleavedVert = uniforms.interleavedBuffer.Load<Gleam::InterleavedMeshVertex>(vertexID);
-    float3 position = uniforms.positionBuffer.Load<float3>(vertexID);
+    Gleam::CameraUniforms CameraBuffer = resources.cameraBuffer.Load<Gleam::CameraUniforms>();
+    Gleam::InterleavedMeshVertex interleavedVert = resources.interleavedBuffer.Load<Gleam::InterleavedMeshVertex>(vertexID);
+    float3 position = resources.positionBuffer.Load<float3>(vertexID);
 
     VertexOut OUT;
     OUT.position = mul(CameraBuffer.viewProjectionMatrix, mul(uniforms.modelMatrix, float4(position, 1.0f)));

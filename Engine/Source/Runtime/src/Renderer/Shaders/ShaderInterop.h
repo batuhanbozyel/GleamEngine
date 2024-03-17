@@ -60,6 +60,9 @@ typedef uint ShaderResourceIndex;
 struct ConstantBufferView
 {
 	ShaderResourceIndex index;
+	uint32_t padding0;
+	uint32_t padding1;
+	uint32_t padding2;
 
 #ifdef __HLSL_VERSION
 	template<typename T>
@@ -81,6 +84,9 @@ struct ConstantBufferView
 struct BufferResourceView
 {
 	ShaderResourceIndex index;
+	uint32_t padding0;
+	uint32_t padding1;
+	uint32_t padding2;
 
 #ifdef __HLSL_VERSION
 	template<typename T>
@@ -105,6 +111,9 @@ template<typename T>
 struct Texture2DResourceView : TextureResourceView
 {
 	ShaderResourceIndex index;
+	uint32_t padding0;
+	uint32_t padding1;
+	uint32_t padding2;
 
 #ifdef __HLSL_VERSION
 	T Load(uint2 pos)
@@ -132,6 +141,9 @@ template<typename T>
 struct Texture3DResourceView : TextureResourceView
 {
 	ShaderResourceIndex index;
+	uint32_t padding0;
+	uint32_t padding1;
+	uint32_t padding2;
 
 #ifdef __HLSL_VERSION
 	T Load(uint3 pos)
