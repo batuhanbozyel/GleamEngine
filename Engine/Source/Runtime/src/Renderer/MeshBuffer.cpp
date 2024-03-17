@@ -94,16 +94,16 @@ MeshBuffer::MeshBuffer(const TArray<Vector3>& positions, const TArray<Interleave
 	heapDesc.size = positionSize + interleavedSize + indexSize;
 	auto memoryRequirements = renderSystem->GetDevice()->QueryMemoryRequirements(heapDesc);
     
-    positionSize = Utils::AlignUp(positionSize, memoryRequirements.alignment);
-    interleavedSize = Utils::AlignUp(interleavedSize, memoryRequirements.alignment);
-    indexSize = Utils::AlignUp(indexSize, memoryRequirements.alignment);
+	size_t positionBufferSize = Utils::AlignUp(positionSize, memoryRequirements.alignment);
+	size_t interleavedBufferSize = Utils::AlignUp(interleavedSize, memoryRequirements.alignment);
+	size_t indexBufferSize = Utils::AlignUp(indexSize, memoryRequirements.alignment);
 
-    heapDesc.size = positionSize + interleavedSize + indexSize;
+    heapDesc.size = positionBufferSize + interleavedBufferSize + indexBufferSize;
     mHeap = renderSystem->GetDevice()->CreateHeap(heapDesc, "MeshBuffer::Heap");
 
-    mPositionBuffer = mHeap.CreateBuffer(positionSize, "MeshBuffer::Positions");
-    mInterleavedBuffer = mHeap.CreateBuffer(interleavedSize, "MeshBuffer::InterleavedData");
-    mIndexBuffer = mHeap.CreateBuffer(indexSize, "MeshBuffer::Indices");
+    mPositionBuffer = mHeap.CreateBuffer(positionBufferSize, "MeshBuffer::Positions");
+    mInterleavedBuffer = mHeap.CreateBuffer(interleavedBufferSize, "MeshBuffer::InterleavedData");
+    mIndexBuffer = mHeap.CreateBuffer(indexBufferSize, "MeshBuffer::Indices");
 
     // Send mesh data to buffers
     {
@@ -115,16 +115,16 @@ MeshBuffer::MeshBuffer(const TArray<Vector3>& positions, const TArray<Interleave
         commandBuffer.Begin();
 
         size_t offset = 0;
-        commandBuffer.SetBufferData(stagingBuffer, positions.data(), positions.size(), offset);
-        commandBuffer.CopyBuffer(stagingBuffer, mPositionBuffer, positions.size(), offset, 0);
+        commandBuffer.SetBufferData(stagingBuffer, positions.data(), positionSize, offset);
+        commandBuffer.CopyBuffer(stagingBuffer, mPositionBuffer, positionSize, offset, 0);
 
-        offset += positionSize;
-        commandBuffer.SetBufferData(stagingBuffer, interleavedVertices.data(), interleavedVertices.size(), offset);
-        commandBuffer.CopyBuffer(stagingBuffer, mInterleavedBuffer, interleavedVertices.size(), offset, 0);
+        offset += positionBufferSize;
+        commandBuffer.SetBufferData(stagingBuffer, interleavedVertices.data(), interleavedSize, offset);
+        commandBuffer.CopyBuffer(stagingBuffer, mInterleavedBuffer, interleavedSize, offset, 0);
 
-        offset += interleavedSize;
-        commandBuffer.SetBufferData(stagingBuffer, indices.data(), indices.size(), offset);
-        commandBuffer.CopyBuffer(stagingBuffer, mIndexBuffer, indices.size(), offset, 0);
+        offset += interleavedBufferSize;
+        commandBuffer.SetBufferData(stagingBuffer, indices.data(), indexSize, offset);
+        commandBuffer.CopyBuffer(stagingBuffer, mIndexBuffer, indexSize, offset, 0);
 
         commandBuffer.End();
         commandBuffer.Commit();
