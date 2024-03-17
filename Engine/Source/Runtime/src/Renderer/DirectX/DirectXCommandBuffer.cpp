@@ -35,7 +35,7 @@ CommandBuffer::CommandBuffer(GraphicsDevice* device)
     HeapDescriptor descriptor;
     descriptor.size = 4194304; // 4 MB;
     descriptor.memoryType = MemoryType::CPU;
-    mStagingHeap = mDevice->CreateHeap(descriptor);
+    mStagingHeap = mDevice->CreateHeap(descriptor, "CommandBuffer::StagingHeap");
 
 	DX_CHECK(static_cast<ID3D12Device10*>(mHandle->device->GetHandle())->CreateFence(
 		mHandle->fenceValue,
@@ -86,13 +86,6 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, 
 		if (colorAttachmentDesc.texture.IsValid())
 		{
 			auto resource = static_cast<ID3D12Resource*>(colorAttachmentDesc.texture.GetHandle());
-
-		#ifdef GDEBUG
-			TStringStream resourceName;
-			resourceName << debugName << "::colorAttachment_" << i;
-			resource->SetName(StringUtils::Convert(resourceName.str()).data());
-		#endif
-
 			colorAttachments[i].cpuDescriptor = colorAttachmentDesc.texture.GetView();
 			DirectXTransitionManager::TransitionLayout(mHandle->commandList,
 				resource, D3D12_RESOURCE_STATE_RENDER_TARGET);
@@ -113,13 +106,6 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, 
 		mHandle->depthAttachment = renderPassDesc.depthAttachment.texture.GetDescriptor();
 		auto format = renderPassDesc.depthAttachment.texture.GetDescriptor().format;
 		auto resource = static_cast<ID3D12Resource*>(renderPassDesc.depthAttachment.texture.GetHandle());
-
-	#ifdef GDEBUG
-		TStringStream resourceName;
-		resourceName << debugName << "::depthAttachment";
-		resource->SetName(StringUtils::Convert(resourceName.str()).data());
-	#endif
-
 		DirectXTransitionManager::TransitionLayout(mHandle->commandList, resource, D3D12_RESOURCE_STATE_DEPTH_WRITE);
 
 		D3D12_RENDER_PASS_DEPTH_STENCIL_DESC depthAttachment{};
@@ -163,11 +149,9 @@ void CommandBuffer::BindGraphicsPipeline(const PipelineStateDescriptor& pipeline
 	{
 		mHandle->pipeline = DirectXPipelineStateManager::GetGraphicsPipeline(pipelineDesc, mHandle->colorAttachments, vertexShader, fragmentShader, mHandle->sampleCount);
 	}
-#ifdef GDEBUG
 	TStringStream pipelineName;
 	pipelineName << "GraphicsPipeline::" << vertexShader.GetEntryPoint() << "_" << fragmentShader.GetEntryPoint();
 	mHandle->pipeline->handle->SetName(StringUtils::Convert(pipelineName.str()).data());
-#endif
 
 	const auto& cbvSrvUavHeap = mHandle->device->GetCbvSrvUavHeap();
 	mHandle->commandList->SetDescriptorHeaps(1, &cbvSrvUavHeap.handle);
@@ -203,7 +187,9 @@ void CommandBuffer::SetViewport(const Size& size) const
 
 void CommandBuffer::SetConstantBuffer(const void* data, uint32_t size, uint32_t slot) const
 {
-	auto buffer = mStagingHeap.CreateBuffer(size);
+	TStringStream name;
+	name << "CommandBuffer::ConstantBuffer_" << slot;
+	auto buffer = mStagingHeap.CreateBuffer(size, name.str().data());
 	SetBufferData(buffer, data, size);
 
     mHandle->commandList->SetGraphicsRootConstantBufferView(slot, static_cast<ID3D12Resource*>(buffer.GetHandle())->GetGPUVirtualAddress());
@@ -280,12 +266,11 @@ void CommandBuffer::Blit(const Texture& source, const Texture& destination) cons
 void CommandBuffer::Begin() const
 {
 	mHandle->commandList = mHandle->device->AllocateCommandList(D3D12_COMMAND_LIST_TYPE_DIRECT);
-#ifdef GDEBUG
+	mCommitted = false;
+
 	TStringStream cmdlistName;
 	cmdlistName << "CommandList::Direct_" << mHandle->device->GetFrameIndex();
 	mHandle->commandList->SetName(StringUtils::Convert(cmdlistName.str()).data());
-#endif
-	mCommitted = false;
 }
 
 void CommandBuffer::End() const
