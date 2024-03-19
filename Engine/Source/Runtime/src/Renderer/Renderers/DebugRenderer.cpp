@@ -163,10 +163,8 @@ void DebugRenderer::RenderMeshes(const CommandBuffer* cmd, const BufferHandle& c
 
 	for (const auto& debugMesh : debugMeshes)
 	{
-		const auto& meshBuffer = debugMesh.mesh->GetBuffer();
-        
         DebugShaderResources resources;
-        resources.vertexBuffer = meshBuffer.GetPositionBuffer().GetResourceView();
+        resources.vertexBuffer = debugMesh.mesh->GetPositionBuffer().GetResourceView();
         resources.cameraBuffer = cameraBuffer;
         cmd->SetConstantBuffer(resources, 0);
 	
@@ -177,7 +175,7 @@ void DebugRenderer::RenderMeshes(const CommandBuffer* cmd, const BufferHandle& c
 			uniforms.baseVertex = submesh.baseVertex;
 			uniforms.color = debugMesh.color;
 			cmd->SetPushConstant(uniforms);
-			cmd->DrawIndexed(meshBuffer.GetIndexBuffer(), IndexType::UINT32, submesh.indexCount, 1, submesh.firstIndex);
+			cmd->DrawIndexed(debugMesh.mesh->GetIndexBuffer(), IndexType::UINT32, submesh.indexCount, 1, submesh.firstIndex);
 		}
 	}
 }

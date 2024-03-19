@@ -1,13 +1,14 @@
 #pragma once
-#include "MeshBuffer.h"
+#include "Heap.h"
+#include "Buffer.h"
 
 namespace Gleam {
 
-struct MeshData
+struct MeshDescriptor
 {
+    TString name;
     TArray<Vector3> positions;
-    TArray<Vector3> normals;
-    TArray<Vector2> texCoords;
+    TArray<InterleavedMeshVertex> interleavedVertices;
     TArray<uint32_t> indices;
 };
 
@@ -17,6 +18,7 @@ struct SubmeshDescriptor
     uint32_t baseVertex = 0;
     uint32_t firstIndex = 0;
     uint32_t indexCount = 0;
+    uint32_t materialIndex = 0;
 };
 
 class Mesh
@@ -25,21 +27,28 @@ public:
     
     GLEAM_NONCOPYABLE(Mesh);
     
-    Mesh(const MeshData& mesh);
-
-    Mesh(const TArray<MeshData>& meshes);
+    virtual ~Mesh() = default;
     
-    virtual ~Mesh();
+    Mesh(const MeshDescriptor& mesh, const TArray<SubmeshDescriptor>& submeshes);
+    
+    void Dispose();
+    
+    const Buffer& GetPositionBuffer() const;
+    
+    const Buffer& GetInterleavedBuffer() const;
+    
+    const Buffer& GetIndexBuffer() const;
 
     uint32_t GetSubmeshCount() const;
-    
-    const MeshBuffer& GetBuffer() const;
     
     const TArray<SubmeshDescriptor>& GetSubmeshDescriptors() const;
     
 protected:
     
-    MeshBuffer mBuffer;
+    Heap mHeap;
+    Buffer mIndexBuffer;
+    Buffer mPositionBuffer;
+    Buffer mInterleavedBuffer;
     
     TArray<SubmeshDescriptor> mSubmeshDescriptors;
     
@@ -48,20 +57,12 @@ protected:
 class StaticMesh final : public Mesh
 {
 public:
-
-    StaticMesh(const MeshData& mesh);
-
-    StaticMesh(const TArray<MeshData>& meshes);
     
 };
 
 class SkeletalMesh final : public Mesh
 {
 public:
-    
-    SkeletalMesh(const MeshData& mesh);
-
-    SkeletalMesh(const TArray<MeshData>& meshes);
     
 };
 

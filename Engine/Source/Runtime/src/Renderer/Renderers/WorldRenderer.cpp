@@ -60,9 +60,8 @@ void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
                 
                 for (const auto& element : meshList)
                 {
-                    const auto& meshBuffer = element.mesh->GetBuffer();
-                    const auto& positionBuffer = meshBuffer.GetPositionBuffer();
-                    const auto& interleavedBuffer = meshBuffer.GetInterleavedBuffer();
+                    const auto& positionBuffer = element.mesh->GetPositionBuffer();
+                    const auto& interleavedBuffer = element.mesh->GetInterleavedBuffer();
 				#ifdef USE_METAL_RENDERER
                     [cmd->GetActiveRenderPass() useResource:positionBuffer.GetHandle() usage:MTLResourceUsageRead stages:MTLRenderStageVertex];
                     [cmd->GetActiveRenderPass() useResource:interleavedBuffer.GetHandle() usage:MTLResourceUsageRead stages:MTLRenderStageVertex];
@@ -92,7 +91,7 @@ void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 						uniforms.modelMatrix = element.transform;
 						uniforms.baseVertex = descriptor.baseVertex;
 						cmd->SetPushConstant(uniforms);
-                        cmd->DrawIndexed(meshBuffer.GetIndexBuffer(), IndexType::UINT32, descriptor.indexCount, 1, descriptor.firstIndex);
+                        cmd->DrawIndexed(element.mesh->GetIndexBuffer(), IndexType::UINT32, descriptor.indexCount, 1, descriptor.firstIndex);
                     }
                 }
             }
@@ -109,10 +108,10 @@ void WorldRenderer::DrawMesh(const MeshRenderer& meshRenderer, const Transform& 
     const auto& baseMaterial = std::static_pointer_cast<Material>(material->GetBaseMaterial());
     if (baseMaterial->GetRenderQueue() == RenderQueue::Opaque)
     {
-        mOpaqueQueue[baseMaterial].push_back({ meshRenderer.GetMesh().get(), material.get(), transform.GetTransform() });
+        mOpaqueQueue[baseMaterial].push_back({ meshRenderer.GetMesh().get(), material.get(), transform.GetWorldTransform() });
     }
     else
     {
-        mTransparentQueue[baseMaterial].push_back({ meshRenderer.GetMesh().get(), material.get(), transform.GetTransform() });
+        mTransparentQueue[baseMaterial].push_back({ meshRenderer.GetMesh().get(), material.get(), transform.GetWorldTransform() });
     }
 }
