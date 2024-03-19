@@ -24,7 +24,7 @@ void WorldOutliner::Render(Gleam::ImGuiRenderer* imgui)
 		if (!ImGui::Begin("World Outliner")) return;
     
 		auto& entityManager = Gleam::World::active->GetEntityManager();
-		entityManager.ForEach([&](Gleam::Entity entity)
+		entityManager.ForEach([&](Gleam::EntityHandle entity)
 		{
 			ImGuiTreeNodeFlags flags = ((mSelectedEntity == entity) ? ImGuiTreeNodeFlags_Selected : 0) | ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth;
 			

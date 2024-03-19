@@ -107,7 +107,13 @@ void EntityInspector::Render(Gleam::ImGuiRenderer* imgui)
 	imgui->PushView([this]()
 	{
 		if (!ImGui::Begin("Entity Inspector")) return;
-
+        
+        if (mSelectedEntity == Gleam::InvalidEntity)
+        {
+            ImGui::End();
+            return;
+        }
+        
         auto& entityManager = Gleam::World::active->GetEntityManager();
         if (entityManager.HasComponent<Gleam::Camera>(mSelectedEntity))
         {

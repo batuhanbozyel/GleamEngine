@@ -1,4 +1,5 @@
 #pragma once
+#include "World/Entity.h"
 
 namespace Gleam {
 
@@ -7,6 +8,11 @@ class Transform2D
 public:
     
     virtual ~Transform2D() = default;
+    
+    void SetParent(Entity parent)
+    {
+        mParent = parent;
+    }
 
     void Translate(const Vector2& translation)
     {
@@ -51,7 +57,7 @@ public:
         mScale = scale;
     }
 
-    NO_DISCARD FORCE_INLINE const Matrix4& GetTransform()
+    NO_DISCARD FORCE_INLINE const Matrix4& GetLocalTransform()
     {
         if (mIsTransformDirty)
         {
@@ -61,22 +67,24 @@ public:
         return mCachedTransform;
     }
 
-    NO_DISCARD FORCE_INLINE const Vector2& GetPosition() const
+    NO_DISCARD FORCE_INLINE const Vector2& GetLocalPosition() const
     {
         return mPosition;
     }
 
-    NO_DISCARD FORCE_INLINE float GetRotation() const
+    NO_DISCARD FORCE_INLINE float GetLocalRotation() const
     {
         return mRotation;
     }
 
-	NO_DISCARD FORCE_INLINE const Vector2& GetScale() const
+	NO_DISCARD FORCE_INLINE const Vector2& GetLocalScale() const
     {
         return mScale;
     }
     
 private:
+    
+    Entity mParent = InvalidEntity;
     
     Vector2 mPosition = Vector2(0.0f, 0.0f);
     float mRotation = 0.0f;

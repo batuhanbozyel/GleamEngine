@@ -1,4 +1,5 @@
 #pragma once
+#include "World/Entity.h"
 
 namespace Gleam {
 
@@ -7,6 +8,11 @@ class Transform
 public:
 
     virtual ~Transform() = default;
+    
+    void SetParent(Entity parent)
+    {
+        mParent = parent;
+    }
     
     void Translate(const Vector3& translation)
     {
@@ -62,8 +68,18 @@ public:
 		mIsTransformDirty = true;
         mScale = scale;
 	}
+    
+    NO_DISCARD FORCE_INLINE Matrix4 GetWorldTransform() const
+    {
+        if (mParent.IsValid())
+        {
+            const auto& parent = mParent.GetComponent<Transform>();
+            return parent.GetWorldTransform() * GetLocalTransform();
+        }
+        return GetLocalTransform();
+    }
 
-    NO_DISCARD FORCE_INLINE const Matrix4& GetTransform() const
+    NO_DISCARD FORCE_INLINE const Matrix4& GetLocalTransform() const
     {
         if (mIsTransformDirty)
         {
@@ -73,19 +89,15 @@ public:
         return mCachedTransform;
     }
 
-    NO_DISCARD FORCE_INLINE const Vector3& GetWorldPosition() const
+    NO_DISCARD FORCE_INLINE Vector3 GetWorldPosition() const
     {
+        if (mParent.IsValid())
+        {
+            const auto& parent = mParent.GetComponent<Transform>();
+            auto position = parent.GetWorldTransform() * Vector4(mPosition, 1.0f);
+            return { position.x, position.y, position.z };
+        }
         return mPosition;
-    }
-
-    NO_DISCARD FORCE_INLINE const Quaternion& GetWorldRotation() const
-    {
-        return mRotation;
-    }
-
-	NO_DISCARD FORCE_INLINE const Vector3& GetWorldScale() const
-    {
-        return mScale;
     }
     
     NO_DISCARD FORCE_INLINE const Vector3& GetLocalPosition() const
@@ -93,9 +105,30 @@ public:
         return mPosition;
     }
 
+    NO_DISCARD FORCE_INLINE Quaternion GetWorldRotation() const
+    {
+        if (mParent.IsValid())
+        {
+            const auto& parent = mParent.GetComponent<Transform>();
+            return parent.GetWorldTransform() * mRotation;
+        }
+        return mRotation;
+    }
+    
     NO_DISCARD FORCE_INLINE const Quaternion& GetLocalRotation() const
     {
         return mRotation;
+    }
+
+	NO_DISCARD FORCE_INLINE Vector3 GetWorldScale() const
+    {
+        if (mParent.IsValid())
+        {
+            const auto& parent = mParent.GetComponent<Transform>();
+            auto scale = parent.GetWorldTransform() * Vector4(mScale, 1.0f);
+            return { scale.x, scale.y, scale.z };
+        }
+        return mScale;
     }
 
     NO_DISCARD FORCE_INLINE const Vector3& GetLocalScale() const
@@ -124,6 +157,8 @@ public:
     }
     
 private:
+    
+    Entity mParent = {};
     
     Vector3 mPosition = Vector3(0.0f, 0.0f, 0.0f);
     Quaternion mRotation = Quaternion::identity;

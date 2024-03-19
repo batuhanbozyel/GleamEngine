@@ -16,7 +16,7 @@ public:
     template<typename Func>
     void ForEach(Func&& fn)
     {
-        for (auto [entt] : mRegistry.storage<Entity>().each())
+        for (auto [entt] : mRegistry.storage<EntityHandle>().each())
         {
             fn(entt);
         }
@@ -24,9 +24,9 @@ public:
 
 	Entity CreateEntity()
 	{
-		auto entity = mRegistry.create();
-        AddComponent<Transform>(entity);
-        return entity;
+		auto handle = mRegistry.create();
+        AddComponent<Transform>(handle);
+        return Entity(handle, &mRegistry);
 	}
 
 	template<typename ... Types>
@@ -37,12 +37,12 @@ public:
 		return entity;
 	}
 
-	void DestroyEntity(Entity entity)
+	void DestroyEntity(EntityHandle entity)
 	{
 		mRegistry.destroy(entity);
 	}
 
-	void DestroyEntity(const TArray<Entity>& entities)
+	void DestroyEntity(const TArray<EntityHandle>& entities)
 	{
 		mRegistry.destroy(entities.begin(), entities.end());
 	}
@@ -60,34 +60,34 @@ public:
     }
 
 	template<typename T, typename ... Args>
-	T& AddComponent(Entity entity, Args&&... args)
+	T& AddComponent(EntityHandle entity, Args&&... args)
 	{
 		GLEAM_ASSERT(!HasComponent<T>(entity), "Entity already has the component!");
 		return mRegistry.emplace<T>(entity, std::forward<Args>(args)...);
 	}
     
     template<typename T, typename ... Args>
-    void SetComponent(Entity entity, Args&&... args)
+    void SetComponent(EntityHandle entity, Args&&... args)
     {
         GLEAM_ASSERT(!HasComponent<T>(entity), "Entity already has the component!");
         mRegistry.emplace_or_replace<T>(entity, std::forward<Args>(args)...);
     }
 
 	template<typename T>
-	void RemoveComponent(Entity entity)
+	void RemoveComponent(EntityHandle entity)
 	{
 		GLEAM_ASSERT(HasComponent<T>(entity), "Entity does not have the component!");
 		mRegistry.remove<T>(entity);
 	}
 
 	template<typename T>
-	bool HasComponent(Entity entity) const
+	bool HasComponent(EntityHandle entity) const
 	{
 		return mRegistry.all_of<T>(entity);
 	}
 
 	template<typename T>
-	T& GetComponent(Entity entity)
+	T& GetComponent(EntityHandle entity)
 	{
 		GLEAM_ASSERT(HasComponent<T>(entity), "Entity does not have the component!");
 		return mRegistry.get<T>(entity);

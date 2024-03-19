@@ -103,6 +103,46 @@ struct Matrix4
             rhs.m[12] * m[3] + rhs.m[13] * m[7] + rhs.m[14] * m[11] + rhs.m[15] * m[15]
         };
     }
+    
+    NO_DISCARD FORCE_INLINE constexpr Quaternion operator*(const Quaternion& quat)
+    {
+        float trace = row[0][0] + row[1][1] + row[2][2];
+        if (trace > 0.0f)
+        {
+            float s = 0.5f / Math::Sqrt(trace + 1.0f);
+            return quat * Quaternion(0.25f / s,
+                                     (row[2][1] - row[1][2]) * s,
+                                     (row[0][2] - row[2][0]) * s,
+                                     (row[1][0] - row[0][1]) * s);
+        }
+        else
+        {
+            if (row[0][0] > row[1][1] && row[0][0] > row[2][2])
+            {
+                float s = 2.0f * Math::Sqrt(1.0 + row[0][0] - row[1][1] - row[2][2]);
+                return quat * Quaternion((row[2][1] - row[1][2]) / s,
+                                         0.25f * s,
+                                         (row[0][1] + row[1][0]) / s,
+                                         (row[0][2] + row[2][0]) / s);
+            }
+            else if (row[1][1] > row[2][2])
+            {
+                float s = 2.0f * Math::Sqrt(1.0f + row[1][1] - row[0][0] - row[2][2]);
+                return quat * Quaternion((row[0][2] - row[2][0]) / s,
+                                         (row[0][1] + row[1][0]) / s,
+                                         0.25f * s,
+                                         (row[1][2] + row[2][1]) / s);
+            }
+            else
+            {
+                float s = 2.0f * Math::Sqrt(1.0f + row[2][2] - row[0][0] - row[1][1]);
+                return quat * Quaternion((row[1][0] - row[0][1]) / s,
+                                         (row[0][2] + row[2][0]) / s,
+                                         (row[1][2] + row[2][1]) / s,
+                                         0.25f * s);
+            }
+        }
+    }
 
     NO_DISCARD FORCE_INLINE constexpr Matrix4& operator*=(const Matrix4& rhs)
     {
