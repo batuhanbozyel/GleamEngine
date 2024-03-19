@@ -42,11 +42,10 @@ void ContentBrowser::Render(Gleam::ImGuiRenderer* imgui)
 			{
 				if (path.extension() == ".gltf")
 				{
-					auto model = AssetImporter<Model>::Import(path);
-					auto mesh = Gleam::CreateRef<Gleam::Mesh>(model.GetMeshes());
-
-					auto entity = entityManager.CreateEntity();
-					entityManager.AddComponent<Gleam::MeshRenderer>(entity, mesh);
+                    auto model = Model();
+                    auto settings = Model::ImportSettings();
+					bool success = model.Import(path, settings);
+                    // TODO: Create mesh asset and write to current directory
 				}
 			}
 		}

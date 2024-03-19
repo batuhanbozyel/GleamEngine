@@ -6,14 +6,19 @@
 //
 
 #pragma once
+#include "Core/GUID.h"
 
 namespace Gleam {
 
 class Asset
 {
 public:
+
+	virtual ~Asset() = default;
     
 private:
+    
+    GUID mGuid = InvalidGuid;
     
 };
 
