@@ -29,6 +29,19 @@
 #include "Math/Rect.h"
 #include "Math/BoundingBox.h"
 
+#include "Core/Events/ApplicationEvent.h"
+#include "Core/Events/RendererEvent.h"
+#include "Core/Events/WindowEvent.h"
+#include "Core/Events/MouseEvent.h"
+#include "Core/Events/KeyEvent.h"
+#include "Core/WindowSystem.h"
+#include "Core/Application.h"
+#include "Core/GUID.h"
+#include "Core/Time.h"
+
+#include "Renderer/Shaders/ShaderInterop.h"
+#include "Renderer/Shaders/ShaderTypes.h"
+
 #include "World/Components/MeshRenderer.h"
 #include "World/Components/Transform2D.h"
 #include "World/Components/Transform.h"
@@ -40,15 +53,6 @@
 #include "Renderer/CommandBuffer.h"
 #include "Renderer/GraphicsDevice.h"
 #include "Renderer/Material/MaterialSystem.h"
-
-#include "Core/Events/ApplicationEvent.h"
-#include "Core/Events/RendererEvent.h"
-#include "Core/Events/WindowEvent.h"
-#include "Core/Events/MouseEvent.h"
-#include "Core/Events/KeyEvent.h"
-#include "Core/WindowSystem.h"
-#include "Core/Application.h"
-#include "Core/Time.h"
 
 #include "Input/InputSystem.h"
 

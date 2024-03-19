@@ -33,7 +33,7 @@ target_include_directories(imgui PRIVATE
 
 # Setup link libraries
 if (WIN32)
-    set(LIB_LINKS SDL3::SDL3-static nlohmann_json::nlohmann_json d3d12.lib dxgi.lib dxguid.lib imgui.lib)
+    set(LIB_LINKS SDL3::SDL3-static nlohmann_json::nlohmann_json d3d12.lib dxgi.lib dxguid.lib imgui.lib Ole32.lib)
     set_source_files_properties(${SHADER_FILES} PROPERTIES VS_TOOL_OVERRIDE "None")
 elseif (APPLE)
     find_library(METALIR_LIB libmetalirconverter.dylib)
