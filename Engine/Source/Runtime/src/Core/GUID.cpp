@@ -5,32 +5,8 @@
 #include <objbase.h>
 Gleam::Guid Gleam::Guid::NewGuid()
 {
-	GUID uuid;
-	CoCreateGuid(&uuid);
-
-    Gleam::Guid guid;
-	guid.mBytes =
-	{
-		(uint8_t)((uuid.Data1 >> 24) & 0xFF),
-		(uint8_t)((uuid.Data1 >> 16) & 0xFF),
-		(uint8_t)((uuid.Data1 >> 8) & 0xFF),
-		(uint8_t)((uuid.Data1) & 0xff),
-
-		(uint8_t)((uuid.Data2 >> 8) & 0xFF),
-		(uint8_t)((uuid.Data2) & 0xff),
-
-		(uint8_t)((uuid.Data3 >> 8) & 0xFF),
-		(uint8_t)((uuid.Data3) & 0xFF),
-
-		(uint8_t)uuid.Data4[0],
-		(uint8_t)uuid.Data4[1],
-		(uint8_t)uuid.Data4[2],
-		(uint8_t)uuid.Data4[3],
-		(uint8_t)uuid.Data4[4],
-		(uint8_t)uuid.Data4[5],
-		(uint8_t)uuid.Data4[6],
-		(uint8_t)uuid.Data4[7]
-	};
+	Gleam::Guid guid = InvalidGuid;
+	if (SUCCEEDED(CoCreateGuid((GUID*)&guid))) {} // to emit warning
 	return guid;
 }
 #elif defined(PLATFORM_MACOS)
@@ -70,18 +46,39 @@ using namespace Gleam;
 static constexpr uint8_t HexDigitToByte(char ch)
 {
 	// 0-9
-	if (ch > 47 && ch < 58)
-		return ch - 48;
+	if (ch >= '0' && ch <= '9')
+		return ch - '0';
 
 	// a-f
-	if (ch > 96 && ch < 103)
-		return ch - 87;
+	if (ch >= 'a' && ch <= 'f')
+		return 10 + ch - 'a';
 
 	// A-F
-	if (ch > 64 && ch < 71)
-		return ch - 55;
+	if (ch >= 'A' && ch <= 'F')
+		return 10 + ch - 'A';
 
 	return 0;
+}
+
+template<typename T>
+static constexpr T ParseHexDigits(const char*& str)
+{
+	constexpr uint32_t numBytes = sizeof(T) * 2;
+	constexpr uint32_t bitsPerByte = 4;
+
+	T bytes{};
+	for (uint32_t i = 1; i <= numBytes; ++i)
+	{
+		bytes |= HexDigitToByte(*str) << (bitsPerByte * (numBytes - i));
+		str++;
+	}
+
+	if (*str == '-')
+	{
+		str++;
+	}
+
+	return bytes;
 }
 
 static constexpr bool IsValidHexChar(char ch)
@@ -101,50 +98,36 @@ static constexpr bool IsValidHexChar(char ch)
 	return false;
 }
 
-static constexpr uint8_t HexPairToByte(char a, char b)
-{
-	return HexDigitToByte(a) * 16 + HexDigitToByte(b);
-}
-
 Guid::Guid(const TStringView str)
 {
-	if (str.length() != 20) // 16 bytes + 4 seperators
+	if (str.length() < 20) // 16 bytes + 4 separators
 	{
 		mBytes = InvalidGuid.mBytes;
 		GLEAM_ASSERT(false, "Invalid Guid string!");
 		return;
 	}
 
-	char charOne = '\0';
-	char charTwo = '\0';
-	bool lookingForFirstChar = true;
-	uint32_t nextByte = 0;
-
-	for (const char ch : str)
+	auto it = str.data();
+	if (*it == '{')
 	{
-		if (ch == '-')
-			continue;
-
-		if (IsValidHexChar(ch) == false)
-		{
-			mBytes = InvalidGuid.mBytes;
-			GLEAM_ASSERT(false, "Invalid Guid string!");
-			return;
-		}
-		
-		if (lookingForFirstChar)
-		{
-			charOne = ch;
-			lookingForFirstChar = false;
-		}
-		else
-		{
-			charTwo = ch;
-			auto byte = HexPairToByte(charOne, charTwo);
-			mBytes[nextByte++] = byte;
-			lookingForFirstChar = true;
-		}
+		it++;
 	}
+
+	// {mData1-mData2-mData3-mData4[0,1]-mData4[2,7]}
+	// {XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX}
+	mData1 = ParseHexDigits<uint32_t>(it);
+	mData2 = ParseHexDigits<uint16_t>(it);
+	mData3 = ParseHexDigits<uint16_t>(it);
+
+	mData4[0] = ParseHexDigits<uint8_t>(it);
+	mData4[1] = ParseHexDigits<uint8_t>(it);
+
+	mData4[2] = ParseHexDigits<uint8_t>(it);
+	mData4[3] = ParseHexDigits<uint8_t>(it);
+	mData4[4] = ParseHexDigits<uint8_t>(it);
+	mData4[5] = ParseHexDigits<uint8_t>(it);
+	mData4[6] = ParseHexDigits<uint8_t>(it);
+	mData4[7] = ParseHexDigits<uint8_t>(it);
 }
 
 Guid::operator TString() const
