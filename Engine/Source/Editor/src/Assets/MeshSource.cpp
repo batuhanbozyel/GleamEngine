@@ -1,5 +1,5 @@
 #include "Gleam.h"
-#include "Model.h"
+#include "MeshSource.h"
 
 #define CGLTF_IMPLEMENTATION
 #include <cgltf.h>
@@ -10,7 +10,7 @@ static uint32_t InsertUniqueMaterial(Gleam::TArray<RawMaterial>& materials, cons
 static RawMesh ProcessAttributes(const cgltf_primitive& primitive);
 static RawMaterial ProcessMaterial(const cgltf_material& material);
 
-bool Model::Import(const Gleam::Filesystem::path& path, const ImportSettings& settings)
+bool MeshSource::Import(const Gleam::Filesystem::path& path, const ImportSettings& settings)
 {
 	Gleam::TString gltf_path = path.string();
 	cgltf_options options = {};
@@ -35,7 +35,10 @@ bool Model::Import(const Gleam::Filesystem::path& path, const ImportSettings& se
         for(uint32_t meshIdx = 0; meshIdx < mesh.primitives_count; ++meshIdx)
         {
             auto rawMesh = ProcessAttributes(mesh.primitives[meshIdx]);
-            rawMesh.name = mesh.name;
+			if (mesh.name)
+			{
+				rawMesh.name = mesh.name;
+			}
             
             RawMaterial material;
             if (auto mat = mesh.primitives[meshIdx].material; mat != nullptr)
@@ -109,7 +112,10 @@ RawMesh ProcessAttributes(const cgltf_primitive& primitive)
 RawMaterial ProcessMaterial(const cgltf_material& mat)
 {
     RawMaterial material;
-    material.name = mat.name;
+	if (mat.name)
+	{
+		material.name = mat.name;
+	}
     
     // Albedo - Metallic - Roughness
     if (mat.has_pbr_metallic_roughness)
@@ -125,29 +131,33 @@ RawMaterial ProcessMaterial(const cgltf_material& mat)
         
         if (auto texture = pbr.base_color_texture.texture; texture != nullptr)
         {
-            material.textures[RawTexture::Albedo].name = texture->image->name;
-            material.textures[RawTexture::Albedo].file = texture->image->uri;
+			Gleam::Filesystem::path file = texture->image->uri;
+            material.textures[RawTexture::Albedo].file = file;
+            material.textures[RawTexture::Albedo].name = file.filename().string();
         }
         
         if (auto texture = pbr.metallic_roughness_texture.texture; texture != nullptr)
         {
-            material.textures[RawTexture::MetallicRoughness].name = texture->image->name;
-            material.textures[RawTexture::MetallicRoughness].file = texture->image->uri;
+			Gleam::Filesystem::path file = texture->image->uri;
+            material.textures[RawTexture::MetallicRoughness].file = file;
+			material.textures[RawTexture::MetallicRoughness].name = file.filename().string();
         }
     }
     
     // Normal
     if (auto texture = mat.normal_texture.texture; texture != nullptr)
     {
-        material.textures[RawTexture::Normal].name = texture->image->name;
-        material.textures[RawTexture::Normal].file = texture->image->uri;
+		Gleam::Filesystem::path file = texture->image->uri;
+        material.textures[RawTexture::Normal].file = file;
+		material.textures[RawTexture::Normal].name = file.filename().string();
     }
     
     // Emissive
     if (auto texture = mat.emissive_texture.texture; texture != nullptr)
     {
-        material.textures[RawTexture::Emissive].name = texture->image->name;
-        material.textures[RawTexture::Emissive].file = texture->image->uri;
+		Gleam::Filesystem::path file = texture->image->uri;
+        material.textures[RawTexture::Emissive].file = file;
+		material.textures[RawTexture::Emissive].name = file.filename().string();
     }
     
     float emissiveStrength = mat.has_emissive_strength ? mat.emissive_strength.emissive_strength : 1.0f;
@@ -159,8 +169,9 @@ RawMaterial ProcessMaterial(const cgltf_material& mat)
     // Occlusion
     if (auto texture = mat.occlusion_texture.texture; texture != nullptr)
     {
-        material.textures[RawTexture::Occlusion].name = texture->image->name;
-        material.textures[RawTexture::Occlusion].file = texture->image->uri;
+		Gleam::Filesystem::path file = texture->image->uri;
+        material.textures[RawTexture::Occlusion].file = file;
+		material.textures[RawTexture::Occlusion].name = file.filename().string();
     }
     
     material.doubleSided = mat.double_sided;
@@ -175,13 +186,9 @@ RawMaterial ProcessMaterial(const cgltf_material& mat)
             break;
         }
         case cgltf_alpha_mode_blend:
+		case cgltf_alpha_mode_mask:
         {
             material.alphaBlend = Gleam::RenderQueue::Transparent;
-            break;
-        }
-        case cgltf_alpha_mode_mask:
-        {
-            GLEAM_ASSERT(false, "Not implemented yet!");
             break;
         }
         default:
@@ -196,11 +203,15 @@ RawMaterial ProcessMaterial(const cgltf_material& mat)
 
 uint32_t InsertUniqueMaterial(Gleam::TArray<RawMaterial>& materials, const RawMaterial& material)
 {
-    auto beginIt = materials.begin();
     auto materialIt = std::find(materials.begin(), materials.end(), material);
     if (materialIt == materials.end())
     {
+		uint32_t materialIdx = materials.size();
         materials.push_back(material);
+		return materialIdx;
     }
-    return static_cast<uint32_t>(std::distance(beginIt, materialIt));
+	else
+	{
+		return static_cast<uint32_t>(std::distance(materials.begin(), materialIt));
+	}
 }

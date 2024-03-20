@@ -9,7 +9,7 @@
 #include "Gleam.h"
 
 #include "Assets/AssetImporter.h"
-#include "Assets/Model.h"
+#include "Assets/MeshSource.h"
 
 #include <imgui.h>
 
@@ -42,8 +42,8 @@ void ContentBrowser::Render(Gleam::ImGuiRenderer* imgui)
 			{
 				if (path.extension() == ".gltf")
 				{
-                    auto model = Model();
-                    auto settings = Model::ImportSettings();
+                    auto model = MeshSource();
+                    auto settings = MeshSource::ImportSettings();
 					bool success = model.Import(path, settings);
                     // TODO: Create mesh asset and write to current directory
 				}

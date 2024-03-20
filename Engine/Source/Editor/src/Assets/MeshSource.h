@@ -5,8 +5,8 @@ namespace GEditor {
 
 struct RawTexture
 {
-    Gleam::TString name;
-    Gleam::Filesystem::path file;
+    Gleam::TString name = "";
+    Gleam::Filesystem::path file = "";
     
     enum Type
     {
@@ -26,7 +26,7 @@ struct RawTexture
 
 struct RawMaterial
 {
-    Gleam::TString name;
+    Gleam::TString name = "";
     Gleam::TArray<RawTexture, RawTexture::COUNT> textures;
     Gleam::Color albedoColor = Gleam::Color::white;
     Gleam::Color emissiveColor = Gleam::Color::clear;
@@ -67,7 +67,7 @@ struct RawMesh
     uint32_t materialIndex = 0;
 };
 
-struct Model
+struct MeshSource
 {
     struct ImportSettings
     {
