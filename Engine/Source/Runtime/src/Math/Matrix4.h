@@ -119,7 +119,7 @@ struct Matrix4
         {
             if (row[0][0] > row[1][1] && row[0][0] > row[2][2])
             {
-                float s = 2.0f * Math::Sqrt(1.0 + row[0][0] - row[1][1] - row[2][2]);
+                float s = 2.0f * Math::Sqrt(1.0f + row[0][0] - row[1][1] - row[2][2]);
                 return quat * Quaternion((row[2][1] - row[1][2]) / s,
                                          0.25f * s,
                                          (row[0][1] + row[1][0]) / s,
