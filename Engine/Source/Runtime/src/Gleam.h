@@ -12,9 +12,9 @@
 #include "Container/AnyArray.h"
 #include "Container/PolyArray.h"
 
-#include "IO/Filesystem.h"
 #include "IO/Log.h"
-#include "IO/IOUtils.h"
+#include "IO/File.h"
+#include "IO/FileDialog.h"
 
 #include "Math/Common.h"
 #include "Math/Vector2.h"
@@ -38,6 +38,8 @@
 #include "Core/Application.h"
 #include "Core/GUID.h"
 #include "Core/Time.h"
+
+#include "Assets/Asset.h"
 
 #include "Renderer/Shaders/ShaderInterop.h"
 #include "Renderer/Shaders/ShaderTypes.h"

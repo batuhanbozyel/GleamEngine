@@ -201,10 +201,11 @@ Shader GraphicsDevice::GenerateShader(const TString& entryPoint, ShaderStage sta
 {
 	Shader shader(entryPoint, stage);
 
-	auto shaderFile = GameInstance->GetDefaultAssetPath().append("Shaders/" + entryPoint + ".dxil");
-	auto bytecodeLength = IOUtils::QueryFileBufferSize(shaderFile);
+	auto shaderFile = File(GameInstance->GetDefaultAssetPath().append("Shaders/" + entryPoint + ".dxil"), FileType::Binary);
+	auto shaderCode = shaderFile.Read();
+	auto bytecodeLength = shaderCode.size();
 	auto bytecode = new uint8_t[bytecodeLength];
-	IOUtils::ReadBinaryFile(shaderFile, bytecode, bytecodeLength);
+	memcpy(bytecode, shaderCode.data(), shaderCode.size());
 
 	D3D12_SHADER_BYTECODE* shaderBytecode = new D3D12_SHADER_BYTECODE;
 	shaderBytecode->pShaderBytecode = bytecode;

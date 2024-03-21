@@ -105,8 +105,9 @@ Shader GraphicsDevice::GenerateShader(const TString& entryPoint, ShaderStage sta
 {
     Shader shader(entryPoint, stage);
     
-    TArray<uint8_t> shaderCode = IOUtils::ReadBinaryFile(GameInstance->GetDefaultAssetPath().append("Shaders/" + entryPoint + ".dxil"));
-    auto dxil = IRObjectCreateFromDXIL(shaderCode.data(), shaderCode.size(), IRBytecodeOwnershipNone);
+    File shaderFile(GameInstance->GetDefaultAssetPath().append("Shaders/" + entryPoint + ".dxil"), FileType::Binary);
+    auto shaderCode = shaderFile.Read();
+    auto dxil = IRObjectCreateFromDXIL((uint8_t*)shaderCode.data(), shaderCode.size(), IRBytecodeOwnershipNone);
     
     auto compiler = IRCompilerCreate();
     IRCompilerSetEntryPointName(compiler, entryPoint.data());

@@ -42,9 +42,9 @@
 #include "Container/AnyArray.h"
 #include "Container/PolyArray.h"
 
-#include "IO/Filesystem.h"
 #include "IO/Log.h"
-#include "IO/IOUtils.h"
+#include "IO/File.h"
+#include "IO/FileDialog.h"
 
 #include "Math/Common.h"
 #include "Math/Vector2.h"

@@ -1,13 +1,14 @@
 #include "gpch.h"
 
 #ifdef PLATFORM_MACOS
-#include "IO/IOUtils.h"
+#include "IO/FileDialog.h"
+
 #import <AppKit/AppKit.h>
 #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
 
 using namespace Gleam;
 
-TArray<Filesystem::path> IOUtils::OpenFileDialog(const TWString& filterName, const TWString& filterExtensions)
+TArray<Filesystem::path> FileDialog::Open(const TWString& filterName, const TWString& filterExtensions)
 {
     TArray<Filesystem::path> selectedFiles;
     
