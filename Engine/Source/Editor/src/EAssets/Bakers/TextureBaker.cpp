@@ -1,8 +1,5 @@
 #include "TextureBaker.h"
 
-#include <rapidjson/writer.h>
-#include <rapidjson/stringbuffer.h>
-
 using namespace GEditor;
 
 TextureBaker::TextureBaker(const Gleam::TextureDescriptor& descriptor)
@@ -13,7 +10,10 @@ TextureBaker::TextureBaker(const Gleam::TextureDescriptor& descriptor)
 
 Gleam::Asset TextureBaker::Bake(const Gleam::Filesystem::path& directory) const
 {
-	
+    Gleam::Guid guid = Gleam::Guid::NewGuid();
+    Gleam::Asset asset(guid);
+    // TODO:
+    return asset;
 }
 
 const Gleam::TString& TextureBaker::Filename() const

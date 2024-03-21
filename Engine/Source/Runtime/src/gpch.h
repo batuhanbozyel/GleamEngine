@@ -32,6 +32,8 @@
 #include "Core/PlatformTargetDefines.h"
 #include "Core/EngineDefines.h"
 
+#include "Reflection/Reflection.h"
+
 #include "Container/Pointer.h"
 #include "Container/String.h"
 #include "Container/Array.h"

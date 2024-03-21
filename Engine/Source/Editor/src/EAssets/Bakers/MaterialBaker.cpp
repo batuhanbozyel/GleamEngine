@@ -1,8 +1,5 @@
 #include "MaterialBaker.h"
 
-#include <rapidjson/writer.h>
-#include <rapidjson/stringbuffer.h>
-
 using namespace GEditor;
 
 MaterialBaker::MaterialBaker(const Gleam::MaterialDescriptor& descriptor)
@@ -13,7 +10,10 @@ MaterialBaker::MaterialBaker(const Gleam::MaterialDescriptor& descriptor)
 
 Gleam::Asset MaterialBaker::Bake(const Gleam::Filesystem::path& directory) const
 {
-	
+    Gleam::Guid guid = Gleam::Guid::NewGuid();
+    Gleam::Asset asset(guid);
+    // TODO:
+    return asset;
 }
 
 const Gleam::TString& MaterialBaker::Filename() const
