@@ -52,6 +52,34 @@ static TString Convert(const TWStringView as)
 	return converter.to_bytes(as.data());
 }
 
+static TString Serialize(const TString& str)
+{
+    TString binary;
+    for (char c : str)
+    {
+        std::bitset<8> bits(c);
+        binary += bits.to_string();
+    }
+    return binary;
+}
+
+static TString Deserialize(const TString& binary)
+{
+    if (binary.length() % 8 != 0)
+    {
+        return "";
+    }
+
+    TString text;
+    for (size_t i = 0; i < binary.length(); i += 8)
+    {
+        TString byte = binary.substr(i, 8);
+        char c = static_cast<char>(std::bitset<8>(byte).to_ulong());
+        text += c;
+    }
+    return text;
+}
+
 } // namespace StringUtils
 
 } // namespace Gleam
