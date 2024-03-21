@@ -33,6 +33,7 @@ struct MaterialPassDescriptor
 
 struct MaterialDescriptor
 {
+	TString name;
     TArray<MaterialPassDescriptor> passes;
 	TArray<MaterialProperty> properties;
     RenderQueue renderQueue = RenderQueue::Opaque;
