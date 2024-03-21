@@ -22,6 +22,6 @@
 [submodule "Engine/ThirdParty/SDL"]
 	path = Engine/ThirdParty/SDL
 	url = https://github.com/libsdl-org/SDL
-[submodule "Engine/ThirdParty/json"]
-	path = Engine/ThirdParty/json
-	url = https://github.com/nlohmann/json
+[submodule "Engine/ThirdParty/rapidjson"]
+	path = Engine/ThirdParty/rapidjson
+	url = https://github.com/Tencent/rapidjson

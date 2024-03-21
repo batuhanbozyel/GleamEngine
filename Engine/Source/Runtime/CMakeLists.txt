@@ -31,13 +31,15 @@ target_include_directories(imgui PRIVATE
     ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/DirectXAgilitySDK/build/native/include
 )
 
+set_target_properties (imgui PROPERTIES FOLDER Dependencies)
+
 # Setup link libraries
 if (WIN32)
-    set(LIB_LINKS SDL3::SDL3-static nlohmann_json::nlohmann_json d3d12.lib dxgi.lib dxguid.lib imgui.lib Ole32.lib)
+    set(LIB_LINKS SDL3::SDL3-static d3d12.lib dxgi.lib dxguid.lib imgui.lib Ole32.lib)
     set_source_files_properties(${SHADER_FILES} PROPERTIES VS_TOOL_OVERRIDE "None")
 elseif (APPLE)
     find_library(METALIR_LIB libmetalirconverter.dylib)
-    set(LIB_LINKS SDL3::SDL3-static nlohmann_json::nlohmann_json imgui ${METALIR_LIB} "-framework UniformTypeIdentifiers")
+    set(LIB_LINKS SDL3::SDL3-static imgui ${METALIR_LIB} "-framework UniformTypeIdentifiers")
 endif()
 
 # Set Runtime as static library
@@ -54,7 +56,7 @@ if (APPLE)
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/fmt/include
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/stb
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/entt/single_include
-        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/json/single_include
+        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/rapidjson/include
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/ImGuizmo
     )
@@ -67,7 +69,7 @@ else()
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/fmt/include
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/stb
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/entt/single_include
-        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/json/single_include
+        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/rapidjson/include
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/DirectXAgilitySDK/build/native/include
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/ImGuizmo
