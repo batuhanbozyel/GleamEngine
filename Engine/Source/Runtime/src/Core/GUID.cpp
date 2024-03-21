@@ -149,12 +149,12 @@ Guid::operator TString() const
 	return out.str();
 }
 
-bool Guid::operator==(const Guid &other) const
+bool Guid::operator==(const Guid& other) const
 {
 	return mBytes == other.mBytes;
 }
 
-bool Guid::operator!=(const Guid &other) const
+bool Guid::operator!=(const Guid& other) const
 {
 	return !((*this) == other);
 }
