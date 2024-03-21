@@ -4,14 +4,6 @@
 
 namespace Gleam {
 
-struct MeshDescriptor
-{
-    TString name;
-    TArray<Vector3> positions;
-    TArray<InterleavedMeshVertex> interleavedVertices;
-    TArray<uint32_t> indices;
-};
-
 struct SubmeshDescriptor
 {
     BoundingBox bounds;
@@ -19,6 +11,15 @@ struct SubmeshDescriptor
     uint32_t firstIndex = 0;
     uint32_t indexCount = 0;
     uint32_t materialIndex = 0;
+};
+
+struct MeshDescriptor
+{
+    TString name;
+    TArray<uint32_t> indices;
+    TArray<Vector3> positions;
+    TArray<InterleavedMeshVertex> interleavedVertices;
+    TArray<SubmeshDescriptor> submeshes;
 };
 
 class Mesh
@@ -29,7 +30,7 @@ public:
     
     virtual ~Mesh() = default;
     
-    Mesh(const MeshDescriptor& mesh, const TArray<SubmeshDescriptor>& submeshes);
+    Mesh(const MeshDescriptor& mesh);
     
     void Dispose();
     

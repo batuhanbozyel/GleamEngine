@@ -5,8 +5,8 @@
 
 using namespace Gleam;
 
-Mesh::Mesh(const MeshDescriptor& mesh, const TArray<SubmeshDescriptor>& submeshes)
-    : mSubmeshDescriptors(submeshes)
+Mesh::Mesh(const MeshDescriptor& mesh)
+    : mSubmeshDescriptors(mesh.submeshes)
 {
     static auto renderSystem = GameInstance->GetSubsystem<RenderSystem>();
     
