@@ -17,6 +17,7 @@ set(RAPIDJSON_BUILD_CXX11 OFF CACHE BOOL "" FORCE)
 
 add_subdirectory(fmt)
 add_subdirectory(entt)
+add_subdirectory(refl-cpp)
 add_subdirectory(rapidjson)
 add_subdirectory(googletest)
 add_subdirectory(SDL EXCLUDE_FROM_ALL)
@@ -29,6 +30,7 @@ set_target_properties (
     gtest_main
     RapidJSON
     travis_doc
+    refl-cpp
     fmt
     EnTT
     PROPERTIES FOLDER Dependencies

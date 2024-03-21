@@ -25,3 +25,6 @@
 [submodule "Engine/ThirdParty/rapidjson"]
 	path = Engine/ThirdParty/rapidjson
 	url = https://github.com/Tencent/rapidjson
+[submodule "Engine/ThirdParty/refl-cpp"]
+	path = Engine/ThirdParty/refl-cpp
+	url = https://github.com/veselink1/refl-cpp
