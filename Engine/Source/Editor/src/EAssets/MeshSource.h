@@ -1,5 +1,6 @@
 #pragma once
 #include "Gleam.h"
+#include "AssetPackage.h"
 
 namespace GEditor {
 
@@ -67,15 +68,12 @@ struct RawMesh
     uint32_t materialIndex = 0;
 };
 
-struct MeshSource
+struct MeshSource : AssetPackage
 {
     struct ImportSettings
     {
         bool combineMeshes = false;
     };
-    
-    Gleam::TArray<RawMesh> meshes;
-    Gleam::TArray<RawMaterial> materials;
     
 	/*
 	* glTF file requirements:

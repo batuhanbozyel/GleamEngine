@@ -1,14 +1,22 @@
 #include "Gleam.h"
 #include "MeshSource.h"
 
+#include "Bakers/MeshBaker.h"
+#include "Bakers/TextureBaker.h"
+#include "Bakers/MaterialBaker.h"
+
 #define CGLTF_IMPLEMENTATION
 #include <cgltf.h>
 
 using namespace GEditor;
 
+static RawMesh ProcessAttributes(const cgltf_primitive& primitive, const MeshSource::ImportSettings& settings);
+static RawMaterial ProcessMaterial(const cgltf_material& material, const MeshSource::ImportSettings& settings);
+
 static uint32_t InsertUniqueMaterial(Gleam::TArray<RawMaterial>& materials, const RawMaterial& material);
-static RawMesh ProcessAttributes(const cgltf_primitive& primitive);
-static RawMaterial ProcessMaterial(const cgltf_material& material);
+static Gleam::TArray<Gleam::InterleavedMeshVertex> InterleaveMeshVertices(const RawMesh& mesh);
+static Gleam::MeshDescriptor CombineMeshes(const Gleam::TArray<RawMesh>& meshes);
+static Gleam::BoundingBox CalculateBounds(const Gleam::TArray<Gleam::Vector3>& positions);
 
 bool MeshSource::Import(const Gleam::Filesystem::path& path, const ImportSettings& settings)
 {
@@ -29,21 +37,41 @@ bool MeshSource::Import(const Gleam::Filesystem::path& path, const ImportSetting
 		return false;
 	}
     
+    auto filename = path.filename().replace_extension().string();
+
+	Gleam::TArray<RawMesh> meshes;
+    Gleam::TArray<RawMaterial> materials;
     for(uint32_t i = 0; i < data->meshes_count; ++i)
     {
         const auto& mesh = data->meshes[i];
         for(uint32_t meshIdx = 0; meshIdx < mesh.primitives_count; ++meshIdx)
         {
-            auto rawMesh = ProcessAttributes(mesh.primitives[meshIdx]);
+            auto rawMesh = ProcessAttributes(mesh.primitives[meshIdx], settings);
 			if (mesh.name)
 			{
 				rawMesh.name = mesh.name;
 			}
+            else
+            {
+                Gleam::TStringStream ss;
+                ss << filename << "_mesh" << i * data->meshes_count + meshIdx;
+                rawMesh.name = ss.str();
+            }
             
             RawMaterial material;
             if (auto mat = mesh.primitives[meshIdx].material; mat != nullptr)
             {
-                material = ProcessMaterial(*mat);
+                material = ProcessMaterial(*mat, settings);
+                if (mat->name)
+                {
+                    material.name = mat->name;
+                }
+                else
+                {
+                    Gleam::TStringStream ss;
+                    ss << filename << "_material" << i * data->meshes_count + meshIdx;
+                    material.name = ss.str();
+                }
             }
             rawMesh.materialIndex = InsertUniqueMaterial(materials, material);
             
@@ -51,11 +79,37 @@ bool MeshSource::Import(const Gleam::Filesystem::path& path, const ImportSetting
         }
     }
     
+    if (settings.combineMeshes)
+    {
+        auto combined = CombineMeshes(meshes);
+        combined.name = filename;
+        bakers.emplace_back(Gleam::CreateRef<MeshBaker>(combined));
+    }
+    else
+    {
+        for (const auto& mesh : meshes)
+        {
+            Gleam::MeshDescriptor descriptor;
+            descriptor.name = mesh.name;
+            descriptor.indices = mesh.indices;
+            descriptor.positions = mesh.positions;
+            descriptor.interleavedVertices = InterleaveMeshVertices(mesh);
+            
+            Gleam::SubmeshDescriptor submesh;
+            submesh.bounds = CalculateBounds(mesh.positions);
+            submesh.indexCount = static_cast<uint32_t>(mesh.indices.size());
+            submesh.materialIndex = mesh.materialIndex;
+            descriptor.submeshes.push_back(submesh);
+            
+            bakers.emplace_back(Gleam::CreateRef<MeshBaker>(descriptor));
+        }
+    }
+    
 	cgltf_free(data);
     return true;
 }
 
-RawMesh ProcessAttributes(const cgltf_primitive& primitive)
+RawMesh ProcessAttributes(const cgltf_primitive& primitive, const MeshSource::ImportSettings& settings)
 {
     RawMesh mesh;
     uint32_t vertex_count = static_cast<uint32_t>(primitive.attributes[0].data->count);
@@ -109,13 +163,9 @@ RawMesh ProcessAttributes(const cgltf_primitive& primitive)
     return mesh;
 }
 
-RawMaterial ProcessMaterial(const cgltf_material& mat)
+RawMaterial ProcessMaterial(const cgltf_material& mat, const MeshSource::ImportSettings& settings)
 {
     RawMaterial material;
-	if (mat.name)
-	{
-		material.name = mat.name;
-	}
     
     // Albedo - Metallic - Roughness
     if (mat.has_pbr_metallic_roughness)
@@ -206,7 +256,7 @@ uint32_t InsertUniqueMaterial(Gleam::TArray<RawMaterial>& materials, const RawMa
     auto materialIt = std::find(materials.begin(), materials.end(), material);
     if (materialIt == materials.end())
     {
-		uint32_t materialIdx = materials.size();
+		uint32_t materialIdx = static_cast<uint32_t>(materials.size());
         materials.push_back(material);
 		return materialIdx;
     }
@@ -214,4 +264,50 @@ uint32_t InsertUniqueMaterial(Gleam::TArray<RawMaterial>& materials, const RawMa
 	{
 		return static_cast<uint32_t>(std::distance(materials.begin(), materialIt));
 	}
+}
+
+Gleam::TArray<Gleam::InterleavedMeshVertex> InterleaveMeshVertices(const RawMesh& mesh)
+{
+    Gleam::TArray<Gleam::InterleavedMeshVertex> interleaved(mesh.normals.size());
+    for (uint32_t i = 0; i < mesh.normals.size(); ++i)
+    {
+        interleaved[i].normal = mesh.normals[i];
+        interleaved[i].texCoord = mesh.texCoords[i];
+    }
+    return interleaved;
+}
+
+Gleam::MeshDescriptor CombineMeshes(const Gleam::TArray<RawMesh>& meshes)
+{
+    Gleam::MeshDescriptor combined;
+    combined.submeshes.resize(meshes.size());
+    
+    Gleam::SubmeshDescriptor submesh;
+    for (uint32_t i = 0; i < meshes.size(); ++i)
+    {
+        const auto& mesh = meshes[i];
+        submesh.bounds = CalculateBounds(mesh.positions);
+        submesh.materialIndex = mesh.materialIndex;
+        submesh.indexCount = static_cast<uint32_t>(mesh.indices.size());
+        combined.submeshes[i] = submesh;
+        
+        auto interleaved = InterleaveMeshVertices(mesh);
+        combined.indices.insert(combined.indices.end(), mesh.indices.begin(), mesh.indices.end());
+        combined.positions.insert(combined.positions.end(), mesh.positions.begin(), mesh.positions.end());
+        combined.interleavedVertices.insert(combined.interleavedVertices.end(), interleaved.begin(), interleaved.end());
+        
+        submesh.baseVertex += static_cast<uint32_t>(mesh.positions.size());
+        submesh.firstIndex += static_cast<uint32_t>(mesh.indices.size());
+    }
+}
+
+Gleam::BoundingBox CalculateBounds(const Gleam::TArray<Gleam::Vector3>& positions)
+{
+    Gleam::BoundingBox bounds(Gleam::Math::Infinity, Gleam::Math::NegativeInfinity);
+    for (const auto& position : positions)
+    {
+        bounds.min = Gleam::Math::Min(bounds.min, position);
+        bounds.max = Gleam::Math::Max(bounds.max, position);
+    }
+    return bounds;
 }
