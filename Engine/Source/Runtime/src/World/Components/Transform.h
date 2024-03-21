@@ -9,9 +9,19 @@ public:
 
     virtual ~Transform() = default;
     
+    Entity GetParent() const
+    {
+        return mParent;
+    }
+    
     void SetParent(Entity parent)
     {
         mParent = parent;
+    }
+    
+    bool HasParent() const
+    {
+        return mParent.IsValid();
     }
     
     void Translate(const Vector3& translation)

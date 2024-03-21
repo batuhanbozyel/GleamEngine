@@ -6,8 +6,9 @@
 //
 
 #pragma once
-#include "View/View.h"
 #include "Gleam.h"
+#include "View/View.h"
+#include "EAssets/AssetManager.h"
 
 namespace GEditor {
 
@@ -20,7 +21,13 @@ public:
     virtual void Render(Gleam::ImGuiRenderer* imgui) override;
     
 private:
+    
+    void ShowDirectoryContents(const Gleam::Filesystem::path& directory);
+    
+    AssetManager mAssetManager;
 
+    Gleam::Filesystem::path mCurrentDirectory;
+    
 	Gleam::Filesystem::path mAssetDirectory;
     
 };

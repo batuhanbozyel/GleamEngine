@@ -26,32 +26,43 @@ void WorldOutliner::Render(Gleam::ImGuiRenderer* imgui)
 		auto& entityManager = Gleam::World::active->GetEntityManager();
 		entityManager.ForEach([&](Gleam::EntityHandle entity)
 		{
-			ImGuiTreeNodeFlags flags = ((mSelectedEntity == entity) ? ImGuiTreeNodeFlags_Selected : 0) | ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth;
-			
 			uint32_t id = static_cast<uint32_t>(entity);
 			Gleam::TStringStream ss;
 			ss << "Entity " << id;
 			
-			if (!ImGui::TreeNodeEx((void*)(uint64_t)id, flags, "%s", ss.str().c_str())) { return; }
-			
-			if (ImGui::IsItemClicked())
-			{
-				Gleam::EventDispatcher<EntitySelectedEvent>::Publish(EntitySelectedEvent(entity));
-				mSelectedEntity = entity;
-			}
-			
-			if (ImGui::BeginPopupContextItem())
-			{
-				if (ImGui::MenuItem("Destroy Entity"))
-				{
-					// TODO: 
-				}
-				ImGui::EndPopup();
-			}
-			
-			ImGui::TreePop();
+            ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_Leaf;
+            if (entity == mSelectedEntity)
+            {
+                flags |= ImGuiTreeNodeFlags_Selected;
+            }
+            
+            ImGui::Unindent(ImGui::GetTreeNodeToLabelSpacing());
+			if (ImGui::TreeNodeEx((void*)(uint64_t)id, flags, "%s", ss.str().c_str()))
+            {
+                if (ImGui::IsItemClicked())
+                {
+                    Gleam::EventDispatcher<EntitySelectedEvent>::Publish(EntitySelectedEvent(entity));
+                    mSelectedEntity = entity;
+                }
+                DrawEntityPopupMenu();
+                
+                ImGui::TreePop();
+            }
+            ImGui::Indent(ImGui::GetTreeNodeToLabelSpacing());
 		});
 		
 		ImGui::End();
 	});
+}
+
+void WorldOutliner::DrawEntityPopupMenu()
+{
+    if (ImGui::BeginPopupContextItem())
+    {
+        if (ImGui::MenuItem("Destroy Entity"))
+        {
+            // TODO:
+        }
+        ImGui::EndPopup();
+    }
 }

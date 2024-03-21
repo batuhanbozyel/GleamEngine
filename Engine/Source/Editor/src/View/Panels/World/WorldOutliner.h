@@ -21,6 +21,8 @@ public:
     
 private:
     
+    void DrawEntityPopupMenu();
+    
     Gleam::Entity mSelectedEntity = Gleam::InvalidEntity;
     
 };
