@@ -5,7 +5,7 @@
 #include <objbase.h>
 Gleam::Guid Gleam::Guid::NewGuid()
 {
-	Gleam::Guid guid = InvalidGuid;
+	Gleam::Guid guid = Gleam::Guid::InvalidGuid();
 	if (SUCCEEDED(CoCreateGuid((GUID*)&guid))) {} // to emit warning
 	return guid;
 }
@@ -102,7 +102,7 @@ Guid::Guid(const TStringView str)
 {
 	if (str.length() < 20) // 16 bytes + 4 separators
 	{
-		mBytes = InvalidGuid.mBytes;
+		*this = Guid::InvalidGuid();
 		GLEAM_ASSERT(false, "Invalid Guid string!");
 		return;
 	}

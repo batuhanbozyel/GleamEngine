@@ -16,11 +16,6 @@ void AssetManager::Import(const Gleam::Filesystem::path& directory, const AssetP
 	{
 		auto asset = baker->Bake(directory);
         auto path = directory/baker->Filename();
-        mAssetCache.insert({asset, path});
+		mAssetCache.insert({ asset, path });
 	}
-}
-
-AssetType AssetManager::GetAssetType(const Gleam::Asset& asset) const
-{
-    
 }

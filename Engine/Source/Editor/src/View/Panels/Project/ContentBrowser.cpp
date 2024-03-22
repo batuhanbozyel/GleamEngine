@@ -33,24 +33,33 @@ void ContentBrowser::Render(Gleam::ImGuiRenderer* imgui)
 			auto files = Gleam::FileDialog::Open();
 			for (const auto& path : files)
 			{
-				if (path.extension() == ".gltf")
-				{
-                    auto meshSource = MeshSource();
-                    auto settings = MeshSource::ImportSettings();
-					bool success = meshSource.Import(path, settings);
-                    mAssetManager.Import(mCurrentDirectory, meshSource);
-				}
+				ImportAsset(path);
 			}
 		}
-        ShowDirectoryContents(mAssetDirectory);
+        DrawDirectoryTreeView(mAssetDirectory);
 
 		ImGui::End();
 	});
 }
 
-void ContentBrowser::ShowDirectoryContents(const Gleam::Filesystem::path& node)
+bool ContentBrowser::ImportAsset(const Gleam::Filesystem::path& path)
 {
-    auto filename = node.filename();
+	if (path.extension() == ".gltf")
+	{
+		auto meshSource = MeshSource();
+		auto settings = MeshSource::ImportSettings();
+		if (meshSource.Import(path, settings))
+		{
+			mAssetManager.Import(mCurrentDirectory, meshSource);
+			return true;
+		}
+	}
+	return false;
+}
+
+void ContentBrowser::DrawDirectoryTreeView(const Gleam::Filesystem::path& node)
+{
+    auto filename = node.filename().string();
     ImGui::PushID(filename.c_str());
     if (Gleam::Filesystem::is_directory(node))
     {
@@ -59,7 +68,7 @@ void ContentBrowser::ShowDirectoryContents(const Gleam::Filesystem::path& node)
         {
             for (auto& entry : Gleam::Filesystem::directory_iterator(node))
             {
-                ShowDirectoryContents(entry);
+                DrawDirectoryTreeView(entry);
             }
             ImGui::TreePop();
         }

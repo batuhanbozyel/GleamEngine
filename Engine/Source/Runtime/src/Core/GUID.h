@@ -8,7 +8,11 @@ class Guid
     
 public:
 
-	static Guid NewGuid();
+	static constexpr Guid NewGuid();
+	static constexpr Guid InvalidGuid()
+	{
+		return Guid();
+	}
 
 	Guid() = default;
 	Guid(const TStringView str);
@@ -39,8 +43,6 @@ private:
 	};
 
 };
-
-static const Guid InvalidGuid = Guid();
 
 } // namespace Gleam
 

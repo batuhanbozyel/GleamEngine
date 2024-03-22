@@ -21,8 +21,10 @@ public:
     virtual void Render(Gleam::ImGuiRenderer* imgui) override;
     
 private:
+
+	bool ImportAsset(const Gleam::Filesystem::path& path);
     
-    void ShowDirectoryContents(const Gleam::Filesystem::path& directory);
+    void DrawDirectoryTreeView(const Gleam::Filesystem::path& directory);
     
     AssetManager mAssetManager;
 

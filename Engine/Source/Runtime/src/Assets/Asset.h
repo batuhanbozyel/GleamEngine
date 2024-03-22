@@ -20,8 +20,8 @@ public:
     }
     
     Asset() = default;
-    Asset(const Guid& guid)
-        : mGuid(guid)
+    Asset(const Guid& guid, const Guid& type)
+        : mGuid(guid), mType(type)
     {
         
     }
@@ -38,14 +38,21 @@ public:
         return !(*this == other);
     }
 
+	const Guid& GetType() const
+	{
+		return mType;
+	}
+
 	const Guid& GetGuid() const
 	{
 		return mGuid;
 	}
     
 private:
+
+	Guid mType = Guid::InvalidGuid();
     
-    Guid mGuid = InvalidGuid;
+    Guid mGuid = Guid::InvalidGuid();
     
 };
 

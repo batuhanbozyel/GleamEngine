@@ -19,7 +19,7 @@ TString File::Read() const
 {
 	if (not mHandle.is_open())
 	{
-		GLEAM_CORE_ERROR("File {0} could not be opened!", mName);
+		GLEAM_CORE_ERROR("File {0} could not be opened!", GetName());
 		return "";
 	}
 
@@ -39,12 +39,12 @@ void File::Write(const TString& contents)
 {
 	if (not mHandle.is_open())
 	{
-		GLEAM_CORE_ERROR("File {0} could not be opened!", mName);
+		GLEAM_CORE_ERROR("File {0} could not be opened!", GetName());
 		return;
 	}
 }
 
 const TString& File::GetName() const
 {
-	return mName;
+	return mName.string();
 }

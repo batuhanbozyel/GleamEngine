@@ -299,6 +299,7 @@ Gleam::MeshDescriptor CombineMeshes(const Gleam::TArray<RawMesh>& meshes)
         submesh.baseVertex += static_cast<uint32_t>(mesh.positions.size());
         submesh.firstIndex += static_cast<uint32_t>(mesh.indices.size());
     }
+	return combined;
 }
 
 Gleam::BoundingBox CalculateBounds(const Gleam::TArray<Gleam::Vector3>& positions)

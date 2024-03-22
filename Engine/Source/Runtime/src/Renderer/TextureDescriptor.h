@@ -33,6 +33,7 @@ typedef uint32_t TextureUsageFlagBits;
 
 struct TextureDescriptor
 {
+	TString name;
     Size size = Size::zero;
     TextureFormat format = TextureFormat::R8G8B8A8_UNorm;
     TextureUsageFlagBits usage = TextureUsage_Sampled;

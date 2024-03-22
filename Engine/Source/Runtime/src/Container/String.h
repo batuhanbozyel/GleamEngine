@@ -3,6 +3,7 @@
 #include <sstream>
 #include <locale>
 #include <codecvt>
+#include <bitset>
 
 namespace Gleam {
 
