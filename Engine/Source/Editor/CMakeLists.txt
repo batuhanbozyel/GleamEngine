@@ -7,8 +7,8 @@ set(INCLUDE_DIRS
     ${CMAKE_SOURCE_DIR}/Engine/Source/Runtime/src
     ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/SDL/include
     ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/fmt/include
-    ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/entt/single_include
     ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/refl-cpp/include
+    ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/entt/src
     ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/cgltf
     ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui
     ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/ImGuizmo

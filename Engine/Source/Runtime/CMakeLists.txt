@@ -55,7 +55,7 @@ if (APPLE)
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/SDL/include
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/fmt/include
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/stb
-        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/entt/single_include
+        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/entt/src
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/rapidjson/include
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/refl-cpp/include
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui
@@ -69,7 +69,7 @@ else()
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/SDL/include
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/fmt/include
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/stb
-        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/entt/single_include
+        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/entt/src
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/rapidjson/include
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/refl-cpp/include
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/DirectXAgilitySDK/build/native/include
