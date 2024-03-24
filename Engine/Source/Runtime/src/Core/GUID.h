@@ -8,7 +8,7 @@ class Guid
     
 public:
 
-	static constexpr Guid NewGuid();
+	static Guid NewGuid();
 	static constexpr Guid InvalidGuid()
 	{
 		return Guid();
@@ -17,10 +17,10 @@ public:
 	Guid() = default;
 	Guid(const TStringView str);
 
-	operator TString() const;
-    TString ToString() const
+    TString ToString() const;
+	operator TString() const
     {
-        return TString(*this);
+        return ToString();
     }
 
 	bool operator==(const Guid& other) const;

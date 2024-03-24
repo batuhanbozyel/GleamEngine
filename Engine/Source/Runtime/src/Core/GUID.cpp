@@ -130,23 +130,25 @@ Guid::Guid(const TStringView str)
 	mData4[7] = ParseHexDigits<uint8_t>(it);
 }
 
-Guid::operator TString() const
+TString Guid::ToString() const
 {
-	char one[10], two[6], three[6], four[6], five[14];
-
-	snprintf(one, 10, "%02x%02x%02x%02x", mBytes[0], mBytes[1], mBytes[2], mBytes[3]);
-	snprintf(two, 6, "%02x%02x", mBytes[4], mBytes[5]);
-	snprintf(three, 6, "%02x%02x", mBytes[6], mBytes[7]);
-	snprintf(four, 6, "%02x%02x", mBytes[8], mBytes[9]);
-	snprintf(five, 14, "%02x%02x%02x%02x%02x%02x", mBytes[10], mBytes[11], mBytes[12], mBytes[13], mBytes[14], mBytes[15]);
-
-	TStringStream out;
-	out << one;
-	out << '-' << two;
-	out << '-' << three;
-	out << '-' << four;
-	out << '-' << five;
-	return out.str();
+    TString out;
+    out.resize(38);
+    snprintf(out.data(),
+             out.length(),
+             "%08X-%04hX-%04hX-%02hhX%02hhX-%02hhX%02hhX%02hhX%02hhX%02hhX%02hhX",
+             mData1,
+             mData2,
+             mData3,
+             mData4[0],
+             mData4[1],
+             mData4[2],
+             mData4[3],
+             mData4[4],
+             mData4[5],
+             mData4[6],
+             mData4[7]);
+	return out;
 }
 
 bool Guid::operator==(const Guid& other) const
