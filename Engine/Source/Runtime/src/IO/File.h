@@ -25,7 +25,7 @@ public:
 
 private:
 
-	Filesystem::path mName;
+	TString mName;
 
 	mutable std::fstream mHandle;
     

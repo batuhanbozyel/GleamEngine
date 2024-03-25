@@ -4,7 +4,7 @@
 using namespace Gleam;
 
 File::File(const Filesystem::path& path, FileType type)
-	: mName(path.filename())
+	: mName(path.filename().string())
 {
 	auto flags = std::ios::out | std::ios::in;
 	if (type == FileType::Binary)
@@ -46,5 +46,5 @@ void File::Write(const TString& contents)
 
 const TString& File::GetName() const
 {
-	return mName.string();
+	return mName;
 }
