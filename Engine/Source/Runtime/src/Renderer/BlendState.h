@@ -78,3 +78,14 @@ struct std::hash<Gleam::BlendState>
         return hash;
     }
 };
+
+GLEAM_TYPE(Gleam::BlendState, Guid("44649502-2AE5-47DD-9A9C-322E01BCE028"))
+	GLEAM_FIELD(enabled, Serializable())
+	GLEAM_FIELD(colorBlendOperation, Serializable())
+	GLEAM_FIELD(alphaBlendOperation, Serializable())
+	GLEAM_FIELD(sourceColorBlendMode, Serializable())
+	GLEAM_FIELD(sourceAlphaBlendMode, Serializable())
+	GLEAM_FIELD(destinationColorBlendMode, Serializable())
+	GLEAM_FIELD(destinationAlphaBlendMode, Serializable())
+	GLEAM_FIELD(writeMask, Serializable())
+GLEAM_END

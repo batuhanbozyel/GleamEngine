@@ -174,3 +174,30 @@ struct std::hash<Gleam::PipelineStateDescriptor>
         return hash;
     }
 };
+
+GLEAM_TYPE(Gleam::DepthState, Guid("8C7CB2F5-A47D-459B-88E4-23EB990E8B56"))
+	GLEAM_FIELD(compareFunction, Serializable())
+	GLEAM_FIELD(writeEnabled, Serializable())
+GLEAM_END
+
+GLEAM_TYPE(Gleam::StencilState, Guid("44649502-2AE5-47DD-9A9C-322E01BCE028"))
+	GLEAM_FIELD(enabled, Serializable())
+	GLEAM_FIELD(reference, Serializable())
+	GLEAM_FIELD(compareFunction, Serializable())
+	GLEAM_FIELD(readMask, Serializable())
+	GLEAM_FIELD(writeMask, Serializable())
+	GLEAM_FIELD(failOperation, Serializable())
+	GLEAM_FIELD(passOperation, Serializable())
+	GLEAM_FIELD(depthFailOperation, Serializable())
+GLEAM_END
+
+GLEAM_TYPE(Gleam::PipelineStateDescriptor, Guid("B7B4E150-285D-47CD-8116-DEE2CE7AAF9C"))
+	GLEAM_FIELD(blendState, Serializable())
+	GLEAM_FIELD(depthState, Serializable())
+	GLEAM_FIELD(stencilState, Serializable())
+	GLEAM_FIELD(cullingMode, Serializable())
+	GLEAM_FIELD(topology, Serializable())
+	GLEAM_FIELD(bindPoint, Serializable())
+	GLEAM_FIELD(alphaToCoverage, Serializable())
+	GLEAM_FIELD(wireframe, Serializable())
+GLEAM_END

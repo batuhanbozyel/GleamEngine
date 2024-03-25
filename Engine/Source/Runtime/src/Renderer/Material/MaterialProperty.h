@@ -47,3 +47,8 @@ struct std::hash<Gleam::MaterialProperty>
         return hash;
     }
 };
+
+GLEAM_TYPE(Gleam::MaterialProperty, Guid("A69E7110-6B1B-41B9-ACFB-AA363C9A0943"))
+	GLEAM_FIELD(name, Serializable())
+	GLEAM_FIELD(type, Serializable())
+GLEAM_END

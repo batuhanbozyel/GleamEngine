@@ -90,3 +90,13 @@ struct std::hash<Gleam::TextureDescriptor>
         return hash;
     }
 };
+
+GLEAM_TYPE(Gleam::TextureDescriptor, Guid("5B36D630-8A7E-47BE-A9F0-1702AB9F9C8C"))
+	GLEAM_FIELD(name, Serializable())
+	GLEAM_FIELD(size, Serializable())
+	GLEAM_FIELD(format, Serializable())
+	GLEAM_FIELD(usage, Serializable())
+	GLEAM_FIELD(dimension, Serializable())
+	GLEAM_FIELD(sampleCount, Serializable())
+	GLEAM_FIELD(useMipMap, Serializable())
+GLEAM_END
