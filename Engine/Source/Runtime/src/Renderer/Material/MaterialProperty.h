@@ -15,13 +15,13 @@ namespace Gleam {
 enum class MaterialPropertyType
 {
     Scalar,
-    Vector2,
-    Vector3,
-    Vector4,
+    Float2,
+    Float3,
+    Float4,
     Texture2D
 };
 
-using MaterialPropertyValue = std::variant<float, Vector2, Vector3, Vector4, Texture>;
+using MaterialPropertyValue = std::variant<float, Float2, Float3, Float4, Texture>;
 
 struct MaterialProperty
 {

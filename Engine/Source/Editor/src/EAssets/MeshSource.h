@@ -61,9 +61,9 @@ struct RawMaterial
 struct RawMesh
 {
     Gleam::TString name;
-    Gleam::TArray<Gleam::Vector3> positions;
-    Gleam::TArray<Gleam::Vector3> normals;
-    Gleam::TArray<Gleam::Vector2> texCoords;
+    Gleam::TArray<Gleam::Float3> positions;
+    Gleam::TArray<Gleam::Float3> normals;
+    Gleam::TArray<Gleam::Float2> texCoords;
     Gleam::TArray<uint32_t> indices;
     uint32_t materialIndex = 0;
 };

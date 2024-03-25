@@ -5,7 +5,7 @@ namespace Gleam {
 struct Rect
 {
     Size size{1.0f, 1.0f};
-    Vector2 offset{0.0f, 0.0f};
+    Float2 offset{0.0f, 0.0f};
     
     constexpr Rect() = default;
     constexpr Rect(Rect&&) noexcept = default;
@@ -19,7 +19,7 @@ struct Rect
         
     }
     
-    constexpr Rect(const Size& size, const Vector2& offset)
+    constexpr Rect(const Size& size, const Float2& offset)
         : size(size), offset(offset)
     {
         

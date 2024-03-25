@@ -3,7 +3,7 @@
 namespace Gleam {
 
 template<typename T>
-struct Vector4Base
+struct Vector4
 {
     union
     {
@@ -18,38 +18,38 @@ struct Vector4Base
         TArray<T, 4> value{};
     };
 
-    static const Vector4Base zero;
-    static const Vector4Base one;
+    static const Vector4 zero;
+    static const Vector4 one;
 
-    constexpr Vector4Base() = default;
-    constexpr Vector4Base(Vector4Base&&) noexcept = default;
-    constexpr Vector4Base(const Vector4Base&) = default;
-    FORCE_INLINE constexpr Vector4Base& operator=(Vector4Base&&) noexcept = default;
-    FORCE_INLINE constexpr Vector4Base& operator=(const Vector4Base&) = default;
+    constexpr Vector4() = default;
+    constexpr Vector4(Vector4&&) noexcept = default;
+    constexpr Vector4(const Vector4&) = default;
+    FORCE_INLINE constexpr Vector4& operator=(Vector4&&) noexcept = default;
+    FORCE_INLINE constexpr Vector4& operator=(const Vector4&) = default;
 
-    constexpr Vector4Base(T v)
+    constexpr Vector4(T v)
         : x(v), y(v), z(v), w(v)
     {
 
     }
-    constexpr Vector4Base(T x, T y, T z, T w)
+    constexpr Vector4(T x, T y, T z, T w)
         : x(x), y(y), z(z), w(w)
     {
 
     }
-    constexpr Vector4Base(const TArray<T, 4>& vec)
+    constexpr Vector4(const TArray<T, 4>& vec)
         : x(vec[0]), y(vec[1]), z(vec[2]), w(vec[3])
     {
 
     }
 
-    constexpr Vector4Base(const Vector3& vec, float w)
+    constexpr Vector4(const Float3& vec, float w)
         : x(vec.x), y(vec.y), z(vec.z), w(w)
     {
 
     }
 
-    NO_DISCARD FORCE_INLINE constexpr bool operator==(const Vector4Base& vec) const
+    NO_DISCARD FORCE_INLINE constexpr bool operator==(const Vector4& vec) const
     {
         return x == vec.x && y == vec.y && z == vec.z && w == vec.w;
     }
@@ -64,9 +64,9 @@ struct Vector4Base
         return value[i];
     }
 
-    NO_DISCARD FORCE_INLINE constexpr Vector4Base operator-() const
+    NO_DISCARD FORCE_INLINE constexpr Vector4 operator-() const
     {
-        return Vector4Base
+        return Vector4
         {
             -x,
             -y,
@@ -75,9 +75,9 @@ struct Vector4Base
         };
     }
 
-    NO_DISCARD FORCE_INLINE constexpr Vector4Base operator*(T val) const
+    NO_DISCARD FORCE_INLINE constexpr Vector4 operator*(T val) const
     {
-        return Vector4Base
+        return Vector4
         {
             x * val,
             y * val,
@@ -86,9 +86,9 @@ struct Vector4Base
         };
     }
 
-    NO_DISCARD FORCE_INLINE constexpr Vector4Base operator/(T val) const
+    NO_DISCARD FORCE_INLINE constexpr Vector4 operator/(T val) const
     {
-        return Vector4Base
+        return Vector4
         {
             x / val,
             y / val,
@@ -97,9 +97,9 @@ struct Vector4Base
         };
     }
 
-    NO_DISCARD FORCE_INLINE constexpr Vector4Base operator+(T val) const
+    NO_DISCARD FORCE_INLINE constexpr Vector4 operator+(T val) const
     {
-        return Vector4Base
+        return Vector4
         {
             x + val,
             y + val,
@@ -108,9 +108,9 @@ struct Vector4Base
         };
     }
 
-    NO_DISCARD FORCE_INLINE constexpr Vector4Base operator-(T val) const
+    NO_DISCARD FORCE_INLINE constexpr Vector4 operator-(T val) const
     {
-        return Vector4Base
+        return Vector4
         {
             x - val,
             y - val,
@@ -119,9 +119,9 @@ struct Vector4Base
         };
     }
 
-    NO_DISCARD FORCE_INLINE constexpr Vector4Base operator*(const Vector4Base& vec) const
+    NO_DISCARD FORCE_INLINE constexpr Vector4 operator*(const Vector4& vec) const
     {
-        return Vector4Base
+        return Vector4
         {
             x * vec.x,
             y * vec.y,
@@ -130,9 +130,9 @@ struct Vector4Base
         };
     }
 
-    NO_DISCARD FORCE_INLINE constexpr Vector4Base operator/(const Vector4Base& vec) const
+    NO_DISCARD FORCE_INLINE constexpr Vector4 operator/(const Vector4& vec) const
     {
-        return Vector4Base
+        return Vector4
         {
             x / vec.x,
             y / vec.y,
@@ -141,9 +141,9 @@ struct Vector4Base
         };
     }
 
-    NO_DISCARD FORCE_INLINE constexpr Vector4Base operator+(const Vector4Base& vec) const
+    NO_DISCARD FORCE_INLINE constexpr Vector4 operator+(const Vector4& vec) const
     {
-        return Vector4Base
+        return Vector4
         {
             x + vec.x,
             y + vec.y,
@@ -152,9 +152,9 @@ struct Vector4Base
         };
     }
 
-    NO_DISCARD FORCE_INLINE constexpr Vector4Base operator-(const Vector4Base& vec) const
+    NO_DISCARD FORCE_INLINE constexpr Vector4 operator-(const Vector4& vec) const
     {
-        return Vector4Base
+        return Vector4
         {
             x - vec.x,
             y - vec.y,
@@ -163,7 +163,7 @@ struct Vector4Base
         };
     }
 
-    FORCE_INLINE constexpr Vector4Base& operator*=(T val)
+    FORCE_INLINE constexpr Vector4& operator*=(T val)
     {
         x *= val;
         y *= val;
@@ -172,7 +172,7 @@ struct Vector4Base
         return *this;
     }
 
-    FORCE_INLINE constexpr Vector4Base& operator/=(T val)
+    FORCE_INLINE constexpr Vector4& operator/=(T val)
     {
         x /= val;
         y /= val;
@@ -181,7 +181,7 @@ struct Vector4Base
         return *this;
     }
 
-    FORCE_INLINE constexpr Vector4Base& operator+=(T val)
+    FORCE_INLINE constexpr Vector4& operator+=(T val)
     {
         x += val;
         y += val;
@@ -190,7 +190,7 @@ struct Vector4Base
         return *this;
     }
 
-    FORCE_INLINE constexpr Vector4Base& operator-=(T val)
+    FORCE_INLINE constexpr Vector4& operator-=(T val)
     {
         x -= val;
         y -= val;
@@ -199,7 +199,7 @@ struct Vector4Base
         return *this;
     }
 
-    FORCE_INLINE constexpr Vector4Base& operator*=(const Vector4Base& vec)
+    FORCE_INLINE constexpr Vector4& operator*=(const Vector4& vec)
     {
         x *= vec.x;
         y *= vec.y;
@@ -208,7 +208,7 @@ struct Vector4Base
         return *this;
     }
 
-    FORCE_INLINE constexpr Vector4Base& operator/=(const Vector4Base& vec)
+    FORCE_INLINE constexpr Vector4& operator/=(const Vector4& vec)
     {
         x /= vec.x;
         y /= vec.y;
@@ -217,7 +217,7 @@ struct Vector4Base
         return *this;
     }
 
-    FORCE_INLINE constexpr Vector4Base& operator+=(const Vector4Base& vec)
+    FORCE_INLINE constexpr Vector4& operator+=(const Vector4& vec)
     {
         x += vec.x;
         y += vec.y;
@@ -226,7 +226,7 @@ struct Vector4Base
         return *this;
     }
 
-    FORCE_INLINE constexpr Vector4Base& operator-=(const Vector4Base& vec)
+    FORCE_INLINE constexpr Vector4& operator-=(const Vector4& vec)
     {
         x -= vec.x;
         y -= vec.y;
@@ -238,25 +238,25 @@ struct Vector4Base
 };
 
 template<typename T>
-NO_DISCARD FORCE_INLINE Vector4Base<T> operator+(T val, const Vector4Base<T>& vec)
+NO_DISCARD FORCE_INLINE Vector4<T> operator+(T val, const Vector4<T>& vec)
 {
     return vec + val;
 }
 
 template<typename T>
-NO_DISCARD FORCE_INLINE Vector4Base<T> operator-(T val, const Vector4Base<T>& vec)
+NO_DISCARD FORCE_INLINE Vector4<T> operator-(T val, const Vector4<T>& vec)
 {
     return vec - val;
 }
     
 template<typename T>
-NO_DISCARD FORCE_INLINE Vector4Base<T> operator*(T val, const Vector4Base<T>& vec)
+NO_DISCARD FORCE_INLINE Vector4<T> operator*(T val, const Vector4<T>& vec)
 {
     return vec * val;
 }
     
 template<typename T>
-NO_DISCARD FORCE_INLINE Vector4Base<T> operator/(T val, const Vector4Base<T>& vec)
+NO_DISCARD FORCE_INLINE Vector4<T> operator/(T val, const Vector4<T>& vec)
 {
     return vec / val;
 }
@@ -264,9 +264,9 @@ NO_DISCARD FORCE_INLINE Vector4Base<T> operator/(T val, const Vector4Base<T>& ve
 namespace Math {
 
 template<typename T>
-NO_DISCARD FORCE_INLINE constexpr Vector4Base<T> Cos(const Vector4Base<T>& vec)
+NO_DISCARD FORCE_INLINE constexpr Vector4<T> Cos(const Vector4<T>& vec)
 {
-    return Vector4Base
+    return Vector4
     {
         Cos(vec.x),
         Cos(vec.y),
@@ -276,9 +276,9 @@ NO_DISCARD FORCE_INLINE constexpr Vector4Base<T> Cos(const Vector4Base<T>& vec)
 }
 
 template<typename T>
-NO_DISCARD FORCE_INLINE constexpr Vector4Base<T> Sin(const Vector4Base<T>& vec)
+NO_DISCARD FORCE_INLINE constexpr Vector4<T> Sin(const Vector4<T>& vec)
 {
-    return Vector4Base
+    return Vector4
     {
         Sin(vec.x),
         Sin(vec.y),
@@ -288,9 +288,9 @@ NO_DISCARD FORCE_INLINE constexpr Vector4Base<T> Sin(const Vector4Base<T>& vec)
 }
 
 template<typename T>
-NO_DISCARD FORCE_INLINE constexpr Vector4Base<T> Abs(const Vector4Base<T>& vec)
+NO_DISCARD FORCE_INLINE constexpr Vector4<T> Abs(const Vector4<T>& vec)
 {
-    return Vector4Base
+    return Vector4
     {
         Abs(vec.x),
         Abs(vec.y),
@@ -300,9 +300,9 @@ NO_DISCARD FORCE_INLINE constexpr Vector4Base<T> Abs(const Vector4Base<T>& vec)
 }
 
 template<typename T>
-NO_DISCARD FORCE_INLINE constexpr Vector4Base<T> Fract(const Vector4Base<T>& vec)
+NO_DISCARD FORCE_INLINE constexpr Vector4<T> Fract(const Vector4<T>& vec)
 {
-    return Vector4Base
+    return Vector4
     {
         vec.x - static_cast<long>(vec.x),
         vec.y - static_cast<long>(vec.y),
@@ -312,9 +312,9 @@ NO_DISCARD FORCE_INLINE constexpr Vector4Base<T> Fract(const Vector4Base<T>& vec
 }
 
 template<typename T>
-NO_DISCARD FORCE_INLINE constexpr Vector4Base<T> Deg2Rad(const Vector4Base<T>& degrees)
+NO_DISCARD FORCE_INLINE constexpr Vector4<T> Deg2Rad(const Vector4<T>& degrees)
 {
-    return Vector4Base
+    return Vector4
     {
         Deg2Rad(degrees.x),
         Deg2Rad(degrees.y),
@@ -324,9 +324,9 @@ NO_DISCARD FORCE_INLINE constexpr Vector4Base<T> Deg2Rad(const Vector4Base<T>& d
 }
 
 template<typename T>
-NO_DISCARD FORCE_INLINE constexpr Vector4Base<T> Rad2Deg(const Vector4Base<T>& radians)
+NO_DISCARD FORCE_INLINE constexpr Vector4<T> Rad2Deg(const Vector4<T>& radians)
 {
-    return Vector4Base
+    return Vector4
     {
         Rad2Deg(radians.x),
         Rad2Deg(radians.y),
@@ -336,9 +336,9 @@ NO_DISCARD FORCE_INLINE constexpr Vector4Base<T> Rad2Deg(const Vector4Base<T>& r
 }
 
 template<typename T>
-NO_DISCARD FORCE_INLINE constexpr Vector4Base<T> Min(const Vector4Base<T>& v0, const Vector4Base<T>& v1)
+NO_DISCARD FORCE_INLINE constexpr Vector4<T> Min(const Vector4<T>& v0, const Vector4<T>& v1)
 {
-    return Vector4Base
+    return Vector4
     {
         Min(v0.x, v1.x),
         Min(v0.y, v1.y),
@@ -348,9 +348,9 @@ NO_DISCARD FORCE_INLINE constexpr Vector4Base<T> Min(const Vector4Base<T>& v0, c
 }
 
 template<typename T>
-NO_DISCARD FORCE_INLINE constexpr Vector4Base<T> Max(const Vector4Base<T>& v0, const Vector4Base<T>& v1)
+NO_DISCARD FORCE_INLINE constexpr Vector4<T> Max(const Vector4<T>& v0, const Vector4<T>& v1)
 {
-    return Vector4Base
+    return Vector4
     {
         Max(v0.x, v1.x),
         Max(v0.y, v1.y),
@@ -360,15 +360,15 @@ NO_DISCARD FORCE_INLINE constexpr Vector4Base<T> Max(const Vector4Base<T>& v0, c
 }
 
 template<typename T>
-NO_DISCARD FORCE_INLINE constexpr Vector4Base<T> Mix(const Vector4Base<T>& v0, const Vector4Base<T>& v1, T a)
+NO_DISCARD FORCE_INLINE constexpr Vector4<T> Mix(const Vector4<T>& v0, const Vector4<T>& v1, T a)
 {
     return v0 * (T(1) - a) + v1 * a;
 }
 
 template<typename T>
-NO_DISCARD FORCE_INLINE constexpr Vector4Base<T> Clamp(const  Vector4Base<T>& value, T min, T max)
+NO_DISCARD FORCE_INLINE constexpr Vector4<T> Clamp(const  Vector4<T>& value, T min, T max)
 {
-    return Vector4Base
+    return Vector4
     {
         Min(Max(value.x, min), max),
         Min(Max(value.y, min), max),
@@ -378,31 +378,31 @@ NO_DISCARD FORCE_INLINE constexpr Vector4Base<T> Clamp(const  Vector4Base<T>& va
 }
 
 template<typename T>
-NO_DISCARD FORCE_INLINE constexpr T Dot(const Vector4Base<T>& vec1, const Vector4Base<T>& vec2)
+NO_DISCARD FORCE_INLINE constexpr T Dot(const Vector4<T>& vec1, const Vector4<T>& vec2)
 {
     return vec1.x * vec2.x + vec1.y * vec2.y + vec1.z * vec2.z + vec1.w * vec2.w;
 }
 
 template<typename T>
-NO_DISCARD FORCE_INLINE constexpr T Length(const Vector4Base<T>& vec)
+NO_DISCARD FORCE_INLINE constexpr T Length(const Vector4<T>& vec)
 {
     return Sqrt(Dot(vec, vec));
 }
 
 template<typename T>
-NO_DISCARD FORCE_INLINE constexpr Vector4Base<T> Normalize(const Vector4Base<T>& vec)
+NO_DISCARD FORCE_INLINE constexpr Vector4<T> Normalize(const Vector4<T>& vec)
 {
     return vec / Length(vec);
 }
 
 } // namespace Math
 
-using Vector4 = Vector4Base<float>;
-using Vector4Int = Vector4Base<int>;
+using Float4 = Vector4<float>;
+using Int4 = Vector4<int>;
     
 template<typename T>
-const Vector4Base<T> Vector4Base<T>::zero{T(0), T(0), T(0), T(0)};
+const Vector4<T> Vector4<T>::zero{T(0), T(0), T(0), T(0)};
 template<typename T>
-const Vector4Base<T> Vector4Base<T>::one{T(1), T(1), T(1), T(1)};
+const Vector4<T> Vector4<T>::one{T(1), T(1), T(1), T(1)};
 
 } // namespace Gleam

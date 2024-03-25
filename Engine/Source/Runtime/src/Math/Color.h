@@ -4,7 +4,7 @@ namespace Gleam {
 
 struct Color32;
 
-struct Color : public Vector4
+struct Color : public Float4
 {
 	static const Color clear;
 	static const Color black;
@@ -24,20 +24,20 @@ struct Color : public Vector4
 
 	NO_DISCARD FORCE_INLINE static constexpr Color HSVToRGB(float h, float s, float v)
 	{
-		return Math::Mix(Vector3(1.0f), Math::Clamp(Math::Abs(Math::Fract(Vector3(h + 1.0f, h + 2.0f / 3.0f, h + 1.0f / 3.0f)) * 6.0f - 3.0f) - 1.0f, 0.0f, 1.0f), s) * v;
+		return Math::Mix(Float3(1.0f), Math::Clamp(Math::Abs(Math::Fract(Float3(h + 1.0f, h + 2.0f / 3.0f, h + 1.0f / 3.0f)) * 6.0f - 3.0f) - 1.0f, 0.0f, 1.0f), s) * v;
 	}
 
 	NO_DISCARD FORCE_INLINE static constexpr Color HSVToRGB(const Color& hsv)
 	{
-		return Math::Mix(Vector3(1.0f), Math::Clamp(Math::Abs(Math::Fract(Vector3(hsv.x + 1.0f, hsv.x + 2.0f / 3.0f, hsv.x + 1.0f / 3.0f)) * 6.0f - 3.0f) - 1.0f, 0.0f, 1.0f), hsv.y) * hsv.z;
+		return Math::Mix(Float3(1.0f), Math::Clamp(Math::Abs(Math::Fract(Float3(hsv.x + 1.0f, hsv.x + 2.0f / 3.0f, hsv.x + 1.0f / 3.0f)) * 6.0f - 3.0f) - 1.0f, 0.0f, 1.0f), hsv.y) * hsv.z;
 	}
 
 	NO_DISCARD FORCE_INLINE static constexpr Color RGBToHSV(float r, float g, float b)
 	{
-		constexpr Vector4 K = Vector4(0.0f, -1.0f / 3.0f, 2.0f / 3.0f, -1.0f);
+		constexpr Float4 K = Float4(0.0f, -1.0f / 3.0f, 2.0f / 3.0f, -1.0f);
 
-		Vector4 p = Math::Mix(Vector4(b, g, K.w, K.z), Vector4(g, b, K.x, K.y), Math::Step(b, g));
-		Vector4 q = Math::Mix(Vector4(p.x, p.y, p.w, r), Vector4(r, p.y, p.z, p.x), Math::Step(p.x, r));
+		Float4 p = Math::Mix(Float4(b, g, K.w, K.z), Float4(g, b, K.x, K.y), Math::Step(b, g));
+		Float4 q = Math::Mix(Float4(p.x, p.y, p.w, r), Float4(r, p.y, p.z, p.x), Math::Step(p.x, r));
 		float d = q.x - Math::Min(q.w, q.y);
 
 		return Color(Math::Abs(q.z + (q.w - q.y) / (6.0f * d + Math::Epsilon)), d / (q.x + Math::Epsilon), q.x);
@@ -45,10 +45,10 @@ struct Color : public Vector4
 
 	NO_DISCARD FORCE_INLINE static constexpr Color RGBToHSV(const Color& color)
 	{
-		constexpr Vector4 K = Vector4(0.0f, -1.0f / 3.0f, 2.0f / 3.0f, -1.0f);
+		constexpr Float4 K = Float4(0.0f, -1.0f / 3.0f, 2.0f / 3.0f, -1.0f);
 
-		Vector4 p = Math::Mix(Vector4(color.b, color.g, K.w, K.z), Vector4(color.g, color.b, K.x, K.y), Math::Step(color.b, color.g));
-		Vector4 q = Math::Mix(Vector4(p.x, p.y, p.w, color.r), Vector4(color.r, p.y, p.z, p.x), Math::Step(p.x, color.r));
+		Float4 p = Math::Mix(Float4(color.b, color.g, K.w, K.z), Float4(color.g, color.b, K.x, K.y), Math::Step(color.b, color.g));
+		Float4 q = Math::Mix(Float4(p.x, p.y, p.w, color.r), Float4(color.r, p.y, p.z, p.x), Math::Step(p.x, color.r));
 		float d = q.x - Math::Min(q.w, q.y);
 
 		return Color(Math::Abs(q.z + (q.w - q.y) / (6.0f * d + Math::Epsilon)), d / (q.x + Math::Epsilon), q.x);
@@ -60,14 +60,14 @@ struct Color : public Vector4
 	constexpr Color(const Color&) = default;
 
 	constexpr Color(std::floating_point auto v)
-		: Vector4(v)
+		: Float4(v)
 	{
 
 	}
 	constexpr Color(std::floating_point auto r,
 					std::floating_point auto g,
 					std::floating_point auto b)
-		: Vector4(r, g, b, 1.0f)
+		: Float4(r, g, b, 1.0f)
 	{
 
 	}
@@ -75,32 +75,32 @@ struct Color : public Vector4
 					std::floating_point auto g,
 					std::floating_point auto b,
 					std::floating_point auto a)
-		: Vector4(r, g, b, a)
+		: Float4(r, g, b, a)
 	{
 
 	}
 	constexpr Color(const TArray<float, 3>& color)
-		: Vector4(color[0], color[1], color[2], 1.0f)
+		: Float4(color[0], color[1], color[2], 1.0f)
 	{
 
 	}
 	constexpr Color(const TArray<float, 4>& color)
-		: Vector4(color)
+		: Float4(color)
 	{
 
 	}
-	constexpr Color(const Vector3& color)
-		: Vector4(color.r, color.g, color.b, 1.0f)
+	constexpr Color(const Float3& color)
+		: Float4(color.r, color.g, color.b, 1.0f)
 	{
 
 	}
-	constexpr Color(const Vector4& color)
-		: Vector4(color)
+	constexpr Color(const Float4& color)
+		: Float4(color)
 	{
 
 	}
-	constexpr Color(Vector4&& color) noexcept
-		: Vector4(std::move(color))
+	constexpr Color(Float4&& color) noexcept
+		: Float4(std::move(color))
 	{
 
 	}
@@ -109,12 +109,12 @@ struct Color : public Vector4
     FORCE_INLINE constexpr Color& operator=(Color&&) noexcept = default;
     FORCE_INLINE constexpr Color& operator=(const Color&) = default;
 
-    FORCE_INLINE constexpr Color& operator=(const Vector4& color)
+    FORCE_INLINE constexpr Color& operator=(const Float4& color)
 	{
 		value = color.value;
 		return *this;
 	}
-    FORCE_INLINE constexpr Color& operator=(Vector4&& color) noexcept
+    FORCE_INLINE constexpr Color& operator=(Float4&& color) noexcept
 	{
 		value = std::move(color.value);
 		return *this;

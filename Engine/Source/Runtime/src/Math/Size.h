@@ -22,7 +22,7 @@ struct Size
         
     }
 
-	constexpr Size(const Vector2& size)
+	constexpr Size(const Float2& size)
 		: width(size.x), height(size.y)
 	{
 
@@ -134,11 +134,16 @@ struct Size
         return (Math::Abs(width - other.width) >= Math::Epsilon) || (Math::Abs(height - other.height) >= Math::Epsilon);
     }
     
-    NO_DISCARD FORCE_INLINE constexpr operator Vector2() const
+    NO_DISCARD FORCE_INLINE constexpr operator Float2() const
     {
-        return Vector2{width, height};
+        return Float2{width, height};
     }
     
 };
     
 } // namespace Gleam
+
+GLEAM_TYPE(Gleam::Size, Guid("6FAF00C4-631C-4F00-832B-6554DCFB3078"))
+	GLEAM_FIELD(width, Serializable())
+	GLEAM_FIELD(height, Serializable())
+GLEAM_END

@@ -18,7 +18,7 @@ struct MeshDescriptor
 {
     TString name;
     TArray<uint32_t> indices;
-    TArray<Vector3> positions;
+    TArray<Float3> positions;
     TArray<InterleavedMeshVertex> interleavedVertices;
     TArray<SubmeshDescriptor> submeshes;
 };

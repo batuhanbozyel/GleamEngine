@@ -2,24 +2,24 @@
 
 namespace Gleam {
 
-struct Matrix3
+struct Float3x3
 {
     union
     {
         TArray<float, 9> m;
-        TArray<Vector3, 3> row{};
+        TArray<Float3, 3> row{};
     };
 
-    static const Matrix3 zero;
-    static const Matrix3 identity;
+    static const Float3x3 zero;
+    static const Float3x3 identity;
 
-    constexpr Matrix3() = default;
-    constexpr Matrix3(Matrix3&&) noexcept = default;
-    constexpr Matrix3(const Matrix3&) = default;
-    FORCE_INLINE constexpr Matrix3& operator=(Matrix3&&) noexcept = default;
-    FORCE_INLINE constexpr Matrix3& operator=(const Matrix3&) = default;
+    constexpr Float3x3() = default;
+    constexpr Float3x3(Float3x3&&) noexcept = default;
+    constexpr Float3x3(const Float3x3&) = default;
+    FORCE_INLINE constexpr Float3x3& operator=(Float3x3&&) noexcept = default;
+    FORCE_INLINE constexpr Float3x3& operator=(const Float3x3&) = default;
 
-    constexpr Matrix3(float m00, float m01, float m02,
+    constexpr Float3x3(float m00, float m01, float m02,
                       float m10, float m11, float m12,
                       float m20, float m21, float m22)
         : m{m00, m01, m02,
@@ -28,30 +28,30 @@ struct Matrix3
     {
 
     }
-    constexpr Matrix3(const Vector3& row0, const Vector3& row1, const Vector3& row2)
+    constexpr Float3x3(const Float3& row0, const Float3& row1, const Float3& row2)
         : row{ row0, row1, row2 }
     {
 
     }
-    constexpr Matrix3(const TArray<float, 9>& m)
+    constexpr Float3x3(const TArray<float, 9>& m)
         : m(m)
     {
 
     }
-    constexpr Matrix3(const TArray<Vector3, 3>& row)
+    constexpr Float3x3(const TArray<Float3, 3>& row)
         : row(row)
     {
 
     }
 
-    NO_DISCARD FORCE_INLINE constexpr const Vector3& operator[](size_t i) const
+    NO_DISCARD FORCE_INLINE constexpr const Float3& operator[](size_t i) const
     {
         return row[i];
     }
 
-    NO_DISCARD FORCE_INLINE constexpr Vector3 operator*(const Vector3& vec) const
+    NO_DISCARD FORCE_INLINE constexpr Float3 operator*(const Float3& vec) const
     {
-        return Vector3
+        return Float3
         {
             vec.x * m[0] + vec.y * m[3] + vec.z * m[6],
             vec.x * m[1] + vec.y * m[4] + vec.z * m[7],
@@ -59,9 +59,9 @@ struct Matrix3
         };
     }
 
-    NO_DISCARD FORCE_INLINE constexpr Matrix3 operator*(const Matrix3& rhs) const
+    NO_DISCARD FORCE_INLINE constexpr Float3x3 operator*(const Float3x3& rhs) const
     {
-        return Matrix3
+        return Float3x3
         {
             rhs.m[0] * m[0] + rhs.m[1] * m[3] + rhs.m[2] * m[6],
             rhs.m[0] * m[1] + rhs.m[1] * m[4] + rhs.m[2] * m[7],
@@ -77,7 +77,7 @@ struct Matrix3
         };
     }
 
-    FORCE_INLINE constexpr Matrix3& operator*=(const Matrix3& rhs)
+    FORCE_INLINE constexpr Float3x3& operator*=(const Float3x3& rhs)
     {
         return *this = *this * rhs;
     }

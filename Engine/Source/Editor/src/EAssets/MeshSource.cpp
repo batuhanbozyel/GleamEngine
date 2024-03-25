@@ -16,7 +16,7 @@ static RawMaterial ProcessMaterial(const cgltf_material& material, const MeshSou
 static uint32_t InsertUniqueMaterial(Gleam::TArray<RawMaterial>& materials, const RawMaterial& material);
 static Gleam::TArray<Gleam::InterleavedMeshVertex> InterleaveMeshVertices(const RawMesh& mesh);
 static Gleam::MeshDescriptor CombineMeshes(const Gleam::TArray<RawMesh>& meshes);
-static Gleam::BoundingBox CalculateBounds(const Gleam::TArray<Gleam::Vector3>& positions);
+static Gleam::BoundingBox CalculateBounds(const Gleam::TArray<Gleam::Float3>& positions);
 
 bool MeshSource::Import(const Gleam::Filesystem::path& path, const ImportSettings& settings)
 {
@@ -153,12 +153,12 @@ RawMesh ProcessAttributes(const cgltf_primitive& primitive, const MeshSource::Im
     // TODO: calculate normals
     if (mesh.normals.empty())
     {
-        mesh.normals.resize(vertex_count, Gleam::Vector3(0.5f, 0.5f, 1.0f));
+        mesh.normals.resize(vertex_count, Gleam::Float3(0.5f, 0.5f, 1.0f));
     }
     
     if (mesh.texCoords.empty())
     {
-        mesh.texCoords.resize(vertex_count, Gleam::Vector2::zero);
+        mesh.texCoords.resize(vertex_count, Gleam::Float2::zero);
     }
     return mesh;
 }
@@ -302,7 +302,7 @@ Gleam::MeshDescriptor CombineMeshes(const Gleam::TArray<RawMesh>& meshes)
 	return combined;
 }
 
-Gleam::BoundingBox CalculateBounds(const Gleam::TArray<Gleam::Vector3>& positions)
+Gleam::BoundingBox CalculateBounds(const Gleam::TArray<Gleam::Float3>& positions)
 {
     Gleam::BoundingBox bounds(Gleam::Math::Infinity, Gleam::Math::NegativeInfinity);
     for (const auto& position : positions)

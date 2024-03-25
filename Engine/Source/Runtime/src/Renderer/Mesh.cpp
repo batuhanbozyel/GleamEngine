@@ -10,7 +10,7 @@ Mesh::Mesh(const MeshDescriptor& mesh)
 {
     static auto renderSystem = GameInstance->GetSubsystem<RenderSystem>();
     
-    size_t positionSize = mesh.positions.size() * sizeof(Vector3);
+    size_t positionSize = mesh.positions.size() * sizeof(Float3);
     size_t interleavedSize = mesh.interleavedVertices.size() * sizeof(InterleavedMeshVertex);
     size_t indexSize = mesh.indices.size() * sizeof(uint32_t);
 

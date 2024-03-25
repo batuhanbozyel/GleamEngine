@@ -17,7 +17,7 @@ RefCounted<Material> MaterialSystem::GetDefaultMaterial()
 										.vertexEntry = "forwardPassVertexShader",
 										.fragmentEntry = "forwardPassFragmentShader" });
 		materialDesc.properties = {
-			MaterialProperty{ "BaseColor", MaterialPropertyType::Vector4 },
+			MaterialProperty{ "BaseColor", MaterialPropertyType::Float4 },
 			MaterialProperty{ "Metallic", MaterialPropertyType::Scalar },
 			MaterialProperty{ "Roughness", MaterialPropertyType::Scalar },
 			MaterialProperty{ "Emissive", MaterialPropertyType::Scalar },

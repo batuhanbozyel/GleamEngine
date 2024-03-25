@@ -2,24 +2,24 @@
 
 namespace Gleam {
 
-struct Matrix4
+struct Float4x4
 {
     union
     {
         TArray<float, 16> m;
-        TArray<Vector4, 4> row{};
+        TArray<Float4, 4> row{};
     };
 
-    static const Matrix4 zero;
-    static const Matrix4 identity;
+    static const Float4x4 zero;
+    static const Float4x4 identity;
 
-    constexpr Matrix4() = default;
-    constexpr Matrix4(Matrix4&&) noexcept = default;
-    constexpr Matrix4(const Matrix4&) = default;
-    FORCE_INLINE constexpr Matrix4& operator=(Matrix4&&) noexcept = default;
-    FORCE_INLINE constexpr Matrix4& operator=(const Matrix4&) = default;
+    constexpr Float4x4() = default;
+    constexpr Float4x4(Float4x4&&) noexcept = default;
+    constexpr Float4x4(const Float4x4&) = default;
+    FORCE_INLINE constexpr Float4x4& operator=(Float4x4&&) noexcept = default;
+    FORCE_INLINE constexpr Float4x4& operator=(const Float4x4&) = default;
 
-    constexpr Matrix4(float m00, float m01, float m02, float m03,
+    constexpr Float4x4(float m00, float m01, float m02, float m03,
                       float m10, float m11, float m12, float m13,
                       float m20, float m21, float m22, float m23,
                       float m30, float m31, float m32, float m33)
@@ -30,36 +30,36 @@ struct Matrix4
     {
 
     }
-    constexpr Matrix4(const Vector4& row0, const Vector4& row1, const Vector4& row2, const Vector4& row3)
+    constexpr Float4x4(const Float4& row0, const Float4& row1, const Float4& row2, const Float4& row3)
         : row{ row0, row1, row2, row3 }
     {
 
     }
-    constexpr Matrix4(const TArray<float, 16>& m)
+    constexpr Float4x4(const TArray<float, 16>& m)
         : m(m)
     {
 
     }
-    constexpr Matrix4(const TArray<Vector4, 4>& row)
+    constexpr Float4x4(const TArray<Float4, 4>& row)
         : row(row)
     {
 
     }
 
-    NO_DISCARD FORCE_INLINE constexpr Vector4& operator[](size_t i)
+    NO_DISCARD FORCE_INLINE constexpr Float4& operator[](size_t i)
     {
         return row[i];
     }
 
-    NO_DISCARD FORCE_INLINE constexpr const Vector4& operator[](size_t i) const
+    NO_DISCARD FORCE_INLINE constexpr const Float4& operator[](size_t i) const
     {
         return row[i];
     }
 
-    NO_DISCARD FORCE_INLINE constexpr Vector3 operator*(const Vector3& vec) const
+    NO_DISCARD FORCE_INLINE constexpr Float3 operator*(const Float3& vec) const
     {
         float invW = 1.0f / (vec.x * m[3] + vec.y * m[7] + vec.z * m[11] + m[15]);
-        return Vector3
+        return Float3
         {
             (vec.x * m[0] + vec.y * m[4] + vec.z * m[8] + m[12]) * invW,
             (vec.x * m[1] + vec.y * m[5] + vec.z * m[9] + m[13]) * invW,
@@ -67,9 +67,9 @@ struct Matrix4
         };
     }
 
-    NO_DISCARD FORCE_INLINE constexpr Vector4 operator*(const Vector4& vec) const
+    NO_DISCARD FORCE_INLINE constexpr Float4 operator*(const Float4& vec) const
     {
-        return Vector4
+        return Float4
         {
             vec.x * m[0] + vec.y * m[4] + vec.z * m[8] + vec.w * m[12],
             vec.x * m[1] + vec.y * m[5] + vec.z * m[9] + vec.w * m[13],
@@ -78,9 +78,9 @@ struct Matrix4
         };
     }
 
-    NO_DISCARD FORCE_INLINE constexpr Matrix4 operator*(const Matrix4& rhs) const
+    NO_DISCARD FORCE_INLINE constexpr Float4x4 operator*(const Float4x4& rhs) const
     {
-        return Matrix4
+        return Float4x4
         {
             rhs.m[0] * m[0] + rhs.m[1] * m[4] + rhs.m[2] * m[8] + rhs.m[3] * m[12],
             rhs.m[0] * m[1] + rhs.m[1] * m[5] + rhs.m[2] * m[9] + rhs.m[3] * m[13],
@@ -144,16 +144,16 @@ struct Matrix4
         }
     }
 
-    NO_DISCARD FORCE_INLINE constexpr Matrix4& operator*=(const Matrix4& rhs)
+    NO_DISCARD FORCE_INLINE constexpr Float4x4& operator*=(const Float4x4& rhs)
     {
         return *this = *this * rhs;
     }
 
-	NO_DISCARD FORCE_INLINE constexpr Matrix4 Adjugate() const
+	NO_DISCARD FORCE_INLINE constexpr Float4x4 Adjugate() const
 	{
-		return Matrix4
+		return Float4x4
 		{
-			Vector4
+			Float4
 			{
 				row[1].y * row[2].z * row[3].w + row[3].y * row[1].z * row[2].w + row[2].y * row[3].z * row[1].w - row[1].y * row[3].z * row[2].w
 						- row[2].y * row[1].z * row[3].w - row[3].y * row[2].z * row[1].w,
@@ -164,7 +164,7 @@ struct Matrix4
 				row[0].y * row[2].z * row[1].w + row[1].y * row[0].z * row[2].w + row[2].y * row[1].z * row[0].w - row[0].y * row[1].z * row[2].w
 						- row[2].y * row[0].z * row[1].w - row[1].y * row[2].z * row[0].w
 			},
-			Vector4
+			Float4
 			{
 				row[1].z * row[3].w * row[2].x + row[2].z * row[1].w * row[3].x + row[3].z * row[2].w * row[1].x - row[1].z * row[2].w * row[3].x
 						- row[3].z * row[1].w * row[2].x - row[2].z * row[3].w * row[1].x,
@@ -175,7 +175,7 @@ struct Matrix4
 				row[0].z * row[1].w * row[2].x + row[2].z * row[0].w * row[1].x + row[1].z * row[2].w * row[0].x - row[0].z * row[2].w * row[1].x
 						- row[1].z * row[0].w * row[2].x - row[2].z * row[1].w * row[0].x
 			},
-			Vector4
+			Float4
 			{
 				row[1].w * row[2].x * row[3].y + row[3].w * row[1].x * row[2].y + row[2].w * row[3].x * row[1].y - row[1].w * row[3].x * row[2].y
 						- row[2].w * row[1].x * row[3].y - row[3].w * row[2].x * row[1].y,
@@ -186,7 +186,7 @@ struct Matrix4
 				row[0].w * row[2].x * row[1].y + row[1].w * row[0].x * row[2].y + row[2].w * row[1].x * row[0].y - row[0].w * row[1].x * row[2].y
 						- row[2].w * row[0].x * row[1].y - row[1].w * row[2].x * row[0].y
 			},
-			Vector4
+			Float4
 			{
 				row[1].x * row[3].y * row[2].z + row[2].x * row[1].y * row[3].z + row[3].x * row[2].y * row[1].z - row[1].x * row[2].y * row[3].z
 						- row[3].x * row[1].y * row[2].z - row[2].x * row[3].y * row[1].z,
@@ -216,9 +216,9 @@ struct Matrix4
 				- row[3].x * row[1].y * row[2].z - row[2].x * row[3].y * row[1].z);
 	}
 
-    NO_DISCARD FORCE_INLINE static constexpr Matrix4 Translate(const Vector3& translation)
+    NO_DISCARD FORCE_INLINE static constexpr Float4x4 Translate(const Float3& translation)
     {
-        return Matrix4
+        return Float4x4
         {
             1.0f,           0.0f,           0.0f,           0.0f,
             0.0f,           1.0f,           0.0f,           0.0f,
@@ -227,7 +227,7 @@ struct Matrix4
         };
     }
 
-    NO_DISCARD FORCE_INLINE static constexpr Matrix4 Rotate(const Quaternion& quat)
+    NO_DISCARD FORCE_INLINE static constexpr Float4x4 Rotate(const Quaternion& quat)
     {
         float qxx = quat.x * quat.x;
         float qxy = quat.x * quat.y;
@@ -239,7 +239,7 @@ struct Matrix4
         float qwy = quat.w * quat.y;
         float qwz = quat.w * quat.z;
 
-        return Matrix4
+        return Float4x4
         {
             1.0f - 2.0f * (qyy + qzz),	2.0f * (qxy + qwz),			2.0f * (qxz - qwy),			0.0f,
             2.0f * (qxy - qwz),			1.0f - 2.0f * (qxx + qzz),	2.0f * (qyz + qwx),			0.0f,
@@ -248,9 +248,9 @@ struct Matrix4
         };
     }
 
-    NO_DISCARD FORCE_INLINE static constexpr Matrix4 Scale(const Vector3& scale)
+    NO_DISCARD FORCE_INLINE static constexpr Float4x4 Scale(const Float3& scale)
     {
-        return Matrix4
+        return Float4x4
         {
             scale.x,	0.0f,		0.0f,		0.0f,
             0.0f,		scale.y,	0.0f,		0.0f,
@@ -259,7 +259,7 @@ struct Matrix4
         };
     }
 
-    NO_DISCARD FORCE_INLINE static constexpr Matrix4 TRS(const Vector3& translation, const Quaternion& rotation, const Vector3& scale)
+    NO_DISCARD FORCE_INLINE static constexpr Float4x4 TRS(const Float3& translation, const Quaternion& rotation, const Float3& scale)
     {
         float qxx = rotation.x * rotation.x;
         float qxy = rotation.x * rotation.y;
@@ -271,7 +271,7 @@ struct Matrix4
         float qwy = rotation.w * rotation.y;
         float qwz = rotation.w * rotation.z;
 
-        return Matrix4
+        return Float4x4
         {
             scale.x - 2.0f * scale.x * (qyy + qzz),		2.0f * (qxy + qwz),							2.0f * (qxz - qwy),						0.0f,
             2.0f * (qxy - qwz),							scale.y - 2.0f * scale.y * (qxx + qzz),		2.0f * (qyz + qwx),						0.0f,
@@ -280,13 +280,13 @@ struct Matrix4
         };
     }
 
-    NO_DISCARD FORCE_INLINE static constexpr Matrix4 LookTo(const Vector3& eye, const Vector3& to, const Vector3& up)
+    NO_DISCARD FORCE_INLINE static constexpr Float4x4 LookTo(const Float3& eye, const Float3& to, const Float3& up)
     {
-        Vector3 front = Math::Normalize(to);
-        Vector3 side = Math::Normalize(Math::Cross(up, front));
-        Vector3 upV = Math::Cross(front, side);
+        Float3 front = Math::Normalize(to);
+        Float3 side = Math::Normalize(Math::Cross(up, front));
+        Float3 upV = Math::Cross(front, side);
         
-        return Matrix4
+        return Float4x4
         {
             side.x,                     upV.x,                  front.x,                    0.0f,
             side.y,                     upV.y,                  front.y,                    0.0f,
@@ -295,15 +295,15 @@ struct Matrix4
         };
     }
 
-    NO_DISCARD FORCE_INLINE static constexpr Matrix4 LookAt(const Vector3& eye, const Vector3& at, const Vector3& up)
+    NO_DISCARD FORCE_INLINE static constexpr Float4x4 LookAt(const Float3& eye, const Float3& at, const Float3& up)
     {
         return LookTo(eye, at - eye, up);
     }
 
-    NO_DISCARD FORCE_INLINE static constexpr Matrix4 Ortho(float width, float height, float zNear, float zFar)
+    NO_DISCARD FORCE_INLINE static constexpr Float4x4 Ortho(float width, float height, float zNear, float zFar)
     {
         float fRange = 1.0f / (zFar - zNear);
-        return Matrix4
+        return Float4x4
         {
             2.0f / width,   0.0f,           0.0f,               0.0f,
             0.0f,           2.0f / height,  0.0f,               0.0f,
@@ -312,12 +312,12 @@ struct Matrix4
         };
     }
 
-    NO_DISCARD FORCE_INLINE static constexpr Matrix4 Ortho(float left, float right, float bottom, float top, float zNear, float zFar)
+    NO_DISCARD FORCE_INLINE static constexpr Float4x4 Ortho(float left, float right, float bottom, float top, float zNear, float zFar)
     {
         float width = 1.0f / (right - left);
         float height = 1.0f / (top - bottom);
         float fRange = 1.0f / (zFar - zNear);
-        return Matrix4
+        return Float4x4
         {
             width + width,              0.0f,                      0.0f,            0.0f,
             0.0f,                       height + height,           0.0f,            0.0f,
@@ -326,12 +326,12 @@ struct Matrix4
         };
     }
 
-    NO_DISCARD FORCE_INLINE static constexpr Matrix4 Perspective(float fov, float aspect, float zNear, float zFar)
+    NO_DISCARD FORCE_INLINE static constexpr Float4x4 Perspective(float fov, float aspect, float zNear, float zFar)
     {
         float fRange = zFar / (zFar - zNear);
         float height = 1.0f / Math::Tan(Math::Deg2Rad(fov) / 2.0f);
         float width = height / aspect;
-        return Matrix4
+        return Float4x4
         {
             width,  0.0f,   0.0f,            0.0f,
             0.0f,   height, 0.0f,            0.0f,
@@ -343,11 +343,11 @@ struct Matrix4
 
 namespace Math {
 
-NO_DISCARD FORCE_INLINE static constexpr Matrix4 Inverse(const Matrix4& m)
+NO_DISCARD FORCE_INLINE static constexpr Float4x4 Inverse(const Float4x4& m)
 {
-	Matrix4 adjudate = m.Adjugate();
+	Float4x4 adjudate = m.Adjugate();
 	float invDet = 1.0f / m.Determinant();
-	return Matrix4
+	return Float4x4
 	{
 		adjudate.row[0] * invDet,
 		adjudate.row[1] * invDet,

@@ -15,9 +15,9 @@ struct Quaternion
 
     static const Quaternion identity;
     
-	NO_DISCARD FORCE_INLINE constexpr Vector3 EulerAngles() const
+	NO_DISCARD FORCE_INLINE constexpr Float3 EulerAngles() const
 	{
-		return Vector3
+		return Float3
 		{
 			Math::Atan2(2.0f * (w * x + y * z), 1.0f - 2.0f * (x * x + y * y)),
 			Math::Asin(Math::Clamp(2.0f * (w * y - z * x), -1.0f, 1.0f)),
@@ -61,10 +61,10 @@ struct Quaternion
 		y = ccs - ssc;
 		z = y;
 	}
-	constexpr Quaternion(const Vector3& eularAngles)
+	constexpr Quaternion(const Float3& eularAngles)
 	{
-		Vector3 c = Math::Cos(eularAngles * 0.5f);
-		Vector3 s = Math::Sin(eularAngles * 0.5f);
+		Float3 c = Math::Cos(eularAngles * 0.5f);
+		Float3 s = Math::Sin(eularAngles * 0.5f);
         
 		w = c.x * c.y * c.z + s.x * s.y * s.z;
 		x = s.x * c.y * c.z + c.x * s.y * s.z;
@@ -72,7 +72,7 @@ struct Quaternion
 		z = c.x * c.y * s.z - s.x * s.y * c.z;
 	}
     constexpr Quaternion(float pitch, float yaw, float roll)
-        : Quaternion(Vector3{pitch, yaw, roll})
+        : Quaternion(Float3{pitch, yaw, roll})
     {
         
     }
@@ -119,11 +119,11 @@ struct Quaternion
     
 };
 
-NO_DISCARD FORCE_INLINE constexpr Vector3 operator*(const Quaternion& quat, const Vector3& vec)
+NO_DISCARD FORCE_INLINE constexpr Float3 operator*(const Quaternion& quat, const Float3& vec)
 {
     Quaternion v{0.0f, vec.x, vec.y, vec.z};
     auto result = quat.Conjugate() * v * quat;
-    return Vector3{result.x, result.y, result.z};
+    return Float3{result.x, result.y, result.z};
 }
 
 namespace Math {

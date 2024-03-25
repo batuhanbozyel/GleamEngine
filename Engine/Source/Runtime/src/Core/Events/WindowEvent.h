@@ -113,7 +113,7 @@ public:
 
 private:
 
-	Vector2Int mWindowPos;
+	Int2 mWindowPos;
 };
 
 class WindowMouseLeaveEvent : public WindowEvent

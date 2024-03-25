@@ -56,7 +56,7 @@ public:
 		: mPosition(xpos, ypos) {}
 
 
-	const Vector2& GetPosition() const { return mPosition; }
+	const Float2& GetPosition() const { return mPosition; }
 
 	TString ToString() const override
 	{
@@ -67,7 +67,7 @@ public:
 
 private:
 
-	Vector2 mPosition;
+	Float2 mPosition;
 };
 
 class MouseScrolledEvent : public Event
@@ -77,7 +77,7 @@ public:
 	MouseScrolledEvent(float xoffset, float yoffset)
 		: mScrollOffset(xoffset, yoffset) {}
 
-	const Vector2& GetOffset() const { return mScrollOffset; }
+	const Float2& GetOffset() const { return mScrollOffset; }
 
 	TString ToString() const override
 	{
@@ -88,7 +88,7 @@ public:
 
 private:
 
-	Vector2 mScrollOffset;
+	Float2 mScrollOffset;
 };
 
 } // namespace Gleam

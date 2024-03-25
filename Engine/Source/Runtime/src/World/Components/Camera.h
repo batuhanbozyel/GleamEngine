@@ -20,15 +20,15 @@ public:
 
     Camera(float width, float height, ProjectionType type = ProjectionType::Perspective);
     
-    void Translate(const Vector3& translation);
+    void Translate(const Float3& translation);
     
     void Rotate(const Quaternion& rotation);
     
-    void Rotate(const Vector3& eulers);
+    void Rotate(const Float3& eulers);
     
     void Rotate(float xAngle, float yAngle, float zAngle);
     
-    void SetTranslation(const Vector3& translation);
+    void SetTranslation(const Float3& translation);
     
     void SetRotation(const Quaternion& rotation);
     
@@ -46,9 +46,9 @@ public:
     
     void SetOrthographicSize(float size);
     
-    const Matrix4& GetProjectionMatrix() const;
+    const Float4x4& GetProjectionMatrix() const;
     
-    const Matrix4& GetViewMatrix() const;
+    const Float4x4& GetViewMatrix() const;
     
 private:
     
@@ -68,8 +68,8 @@ private:
     
 	ProjectionType mProjectionType = ProjectionType::Perspective;
     
-    mutable Matrix4 mViewMatrix;
-    mutable Matrix4 mProjectionMatrix;
+    mutable Float4x4 mViewMatrix;
+    mutable Float4x4 mProjectionMatrix;
     
     // Update flags
     mutable bool mViewMatrixDirty = true;

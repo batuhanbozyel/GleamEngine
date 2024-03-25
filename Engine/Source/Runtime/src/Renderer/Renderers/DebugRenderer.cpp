@@ -180,7 +180,7 @@ void DebugRenderer::RenderMeshes(const CommandBuffer* cmd, const BufferHandle& c
 	}
 }
 
-void DebugRenderer::DrawLine(const Vector3& start, const Vector3& end, Color32 color, bool depthTest)
+void DebugRenderer::DrawLine(const Float3& start, const Float3& end, Color32 color, bool depthTest)
 {
     DebugLine line;
     line.start = {start, color};
@@ -192,7 +192,7 @@ void DebugRenderer::DrawLine(const Vector3& start, const Vector3& end, Color32 c
         mLines.emplace_back(std::move(line));
 }
 
-void DebugRenderer::DrawTriangle(const Vector3& v1, const Vector3& v2, const Vector3& v3, Color32 color, bool depthTest)
+void DebugRenderer::DrawTriangle(const Float3& v1, const Float3& v2, const Float3& v3, Color32 color, bool depthTest)
 {
     DebugTriangle triangle;
     triangle.vertex1 = {v1, color};
@@ -205,15 +205,15 @@ void DebugRenderer::DrawTriangle(const Vector3& v1, const Vector3& v2, const Vec
         mTriangles.emplace_back(std::move(triangle));
 }
 
-void DebugRenderer::DrawQuad(const Vector3& center, float width, float height, Color32 color, bool depthTest)
+void DebugRenderer::DrawQuad(const Float3& center, float width, float height, Color32 color, bool depthTest)
 {
     float halftWidth = width / 2.0f;
     float halfHeight = height / 2.0f;
 
-    Vector3 v0{ center.x - halftWidth, center.y, center.z - halfHeight };
-    Vector3 v1{ center.x + halftWidth, center.y, center.z - halfHeight };
-    Vector3 v2{ center.x + halftWidth, center.y, center.z + halfHeight };
-    Vector3 v3{ center.x - halftWidth, center.y, center.z + halfHeight };
+    Float3 v0{ center.x - halftWidth, center.y, center.z - halfHeight };
+    Float3 v1{ center.x + halftWidth, center.y, center.z - halfHeight };
+    Float3 v2{ center.x + halftWidth, center.y, center.z + halfHeight };
+    Float3 v3{ center.x - halftWidth, center.y, center.z + halfHeight };
 
     DrawLine(v0, v1, color, depthTest);
     DrawLine(v1, v2, color, depthTest);
@@ -223,15 +223,15 @@ void DebugRenderer::DrawQuad(const Vector3& center, float width, float height, C
 
 void DebugRenderer::DrawBoundingBox(const BoundingBox& boundingBox, Color32 color, bool depthTest)
 {
-    const Vector3& min = boundingBox.min;
-    const Vector3& max = boundingBox.max;
+    const Float3& min = boundingBox.min;
+    const Float3& max = boundingBox.max;
 
-    Vector3 v1(max.x, min.y, min.z);
-    Vector3 v2(max.x, max.y, min.z);
-    Vector3 v3(min.x, max.y, min.z);
-    Vector3 v4(min.x, min.y, max.z);
-    Vector3 v5(max.x, min.y, max.z);
-    Vector3 v6(min.x, max.y, max.z);
+    Float3 v1(max.x, min.y, min.z);
+    Float3 v2(max.x, max.y, min.z);
+    Float3 v3(min.x, max.y, min.z);
+    Float3 v4(min.x, min.y, max.z);
+    Float3 v5(max.x, min.y, max.z);
+    Float3 v6(min.x, max.y, max.z);
 
     DrawLine(min, v1, color, depthTest);
     DrawLine(v1, v2, color, depthTest);
@@ -247,19 +247,19 @@ void DebugRenderer::DrawBoundingBox(const BoundingBox& boundingBox, Color32 colo
     DrawLine(v3, v6, color, depthTest);
 }
 
-void DebugRenderer::DrawBoundingBox(const BoundingBox& boundingBox, const Matrix4& transform, Color32 color, bool depthTest)
+void DebugRenderer::DrawBoundingBox(const BoundingBox& boundingBox, const Float4x4& transform, Color32 color, bool depthTest)
 {
-    const Vector3& min = boundingBox.min;
-    const Vector3& max = boundingBox.max;
+    const Float3& min = boundingBox.min;
+    const Float3& max = boundingBox.max;
 
-    Vector3 v0(transform * min);
-    Vector3 v1(transform * Vector3(max.x, min.y, min.z));
-    Vector3 v2(transform * Vector3(max.x, max.y, min.z));
-    Vector3 v3(transform * Vector3(min.x, max.y, min.z));
-    Vector3 v4(transform * Vector3(min.x, min.y, max.z));
-    Vector3 v5(transform * Vector3(max.x, min.y, max.z));
-    Vector3 v6(transform * Vector3(min.x, max.y, max.z));
-    Vector3 v7(transform * max);
+    Float3 v0(transform * min);
+    Float3 v1(transform * Float3(max.x, min.y, min.z));
+    Float3 v2(transform * Float3(max.x, max.y, min.z));
+    Float3 v3(transform * Float3(min.x, max.y, min.z));
+    Float3 v4(transform * Float3(min.x, min.y, max.z));
+    Float3 v5(transform * Float3(max.x, min.y, max.z));
+    Float3 v6(transform * Float3(min.x, max.y, max.z));
+    Float3 v7(transform * max);
 
     DrawLine(v0, v1, color, depthTest);
     DrawLine(v1, v2, color, depthTest);
@@ -275,7 +275,7 @@ void DebugRenderer::DrawBoundingBox(const BoundingBox& boundingBox, const Matrix
     DrawLine(v3, v6, color, depthTest);
 }
 
-void DebugRenderer::DrawMesh(const Mesh* mesh, const Matrix4& transform, Color32 color, bool depthTest)
+void DebugRenderer::DrawMesh(const Mesh* mesh, const Float4x4& transform, Color32 color, bool depthTest)
 {
 	DebugMesh debugMesh;
 	debugMesh.mesh = mesh;

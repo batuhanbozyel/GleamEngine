@@ -49,12 +49,12 @@ bool InputSystem::GetButtonDown(const MouseButton button) const
     return mMouseState & SDL_BUTTON(static_cast<uint8_t>(button));
 }
 
-const Vector2& InputSystem::GetMousePosition() const
+const Float2& InputSystem::GetMousePosition() const
 {
     return mMousePosition;
 }
 
-const Vector2& InputSystem::GetAxis() const
+const Float2& InputSystem::GetAxis() const
 {
     return mAxis;
 }
