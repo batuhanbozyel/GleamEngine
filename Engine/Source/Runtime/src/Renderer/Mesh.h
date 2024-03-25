@@ -1,6 +1,7 @@
 #pragma once
 #include "Heap.h"
 #include "Buffer.h"
+#include "Core/GUID.h"
 
 namespace Gleam {
 
@@ -68,3 +69,11 @@ public:
 };
 
 } // namespace Gleam
+
+GLEAM_TYPE(Gleam::MeshDescriptor, Guid("59E4007E-F7D4-4107-A05F-E1121067DCD3"))
+    GLEAM_FIELD(name, Serializable())
+    GLEAM_FIELD(indices, Serializable())
+    GLEAM_FIELD(positions, Serializable())
+    GLEAM_FIELD(interleavedVertices, Serializable())
+    GLEAM_FIELD(submeshes, Serializable())
+GLEAM_END

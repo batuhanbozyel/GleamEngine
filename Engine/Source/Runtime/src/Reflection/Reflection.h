@@ -1,10 +1,42 @@
 #pragma once
-#include <refl.hpp>
+#include "Meta.h"
+#include "Core/Subsystem.h"
 
-namespace Gleam {
+namespace Gleam::Reflection {
 
-namespace Reflection {
+class System final : public Subsystem
+{
+public:
 
-} // namespace Reflection
+	virtual void Initialize() override;
+    
+	virtual void Shutdown() override;
 
-} // namespace Gleam
+private:
+
+};
+
+template<typename T>
+constexpr ClassDescription<T> GetClass()
+{
+    auto type = refl::reflect<T>();
+    return ClassDescription(type);
+}
+
+} // namespace Gleam::Reflection
+
+#define GLEAM_TYPE(TypeName, ...) \
+    namespace refl_impl::metadata { \
+        using namespace ::Gleam::Reflection::Attribute; \
+        template<> struct type_info__<TypeName> { \
+        REFL_DETAIL_TYPE_BODY((TypeName), __VA_ARGS__)
+
+#define GLEAM_TEMPLATE(TemplateDeclaration, TypeName, ...) \
+    namespace refl_impl::metadata { \
+        using namespace ::Gleam::Reflection::Attribute; \
+        template <REFL_DETAIL_GROUP TemplateDeclaration> struct type_info__<REFL_DETAIL_GROUP TypeName> { \
+        REFL_DETAIL_TYPE_BODY(TypeName, __VA_ARGS__)
+
+#define GLEAM_END REFL_END
+#define GLEAM_FIELD REFL_FIELD
+#define GLEAM_FUNC REFL_FUNC

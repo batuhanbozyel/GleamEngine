@@ -1,9 +1,9 @@
 #pragma once
 
+#include <cstdlib>
 #include <fstream>
 #include <iostream>
 #include <filesystem>
-#include <cstdlib>
 #include <memory>
 #include <optional>
 #include <mutex>
@@ -33,8 +33,6 @@
 #include "Core/PlatformTargetDefines.h"
 #include "Core/EngineDefines.h"
 
-#include "Reflection/Reflection.h"
-
 #include "Container/Pointer.h"
 #include "Container/String.h"
 #include "Container/Array.h"
@@ -48,6 +46,10 @@
 #include "IO/Log.h"
 #include "IO/File.h"
 #include "IO/FileDialog.h"
+
+#include "Reflection/Attribute.h"
+#include "Reflection/Meta.h"
+#include "Reflection/Reflection.h"
 
 #include "Math/Common.h"
 #include "Math/Vector2.h"

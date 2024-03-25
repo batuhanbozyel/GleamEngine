@@ -43,61 +43,6 @@ Gleam::Guid Gleam::Guid::NewGuid()
 
 using namespace Gleam;
 
-static constexpr uint8_t HexDigitToByte(char ch)
-{
-	// 0-9
-	if (ch >= '0' && ch <= '9')
-		return ch - '0';
-
-	// a-f
-	if (ch >= 'a' && ch <= 'f')
-		return 10 + ch - 'a';
-
-	// A-F
-	if (ch >= 'A' && ch <= 'F')
-		return 10 + ch - 'A';
-
-	return 0;
-}
-
-template<typename T>
-static constexpr T ParseHexDigits(const char*& str)
-{
-	constexpr uint32_t numBytes = sizeof(T) * 2;
-	constexpr uint32_t bitsPerByte = 4;
-
-	T bytes{};
-	for (uint32_t i = 1; i <= numBytes; ++i)
-	{
-		bytes |= HexDigitToByte(*str) << (bitsPerByte * (numBytes - i));
-		str++;
-	}
-
-	if (*str == '-')
-	{
-		str++;
-	}
-
-	return bytes;
-}
-
-static constexpr bool IsValidHexChar(char ch)
-{
-	// 0-9
-	if (ch > 47 && ch < 58)
-		return true;
-
-	// a-f
-	if (ch > 96 && ch < 103)
-		return true;
-
-	// A-F
-	if (ch > 64 && ch < 71)
-		return true;
-
-	return false;
-}
-
 Guid::Guid(const TStringView str)
 {
 	if (str.length() < 20) // 16 bytes + 4 separators
@@ -128,6 +73,18 @@ Guid::Guid(const TStringView str)
 	mData4[5] = ParseHexDigits<uint8_t>(it);
 	mData4[6] = ParseHexDigits<uint8_t>(it);
 	mData4[7] = ParseHexDigits<uint8_t>(it);
+}
+
+Guid::Guid(const Reflection::Attribute::Guid& guid)
+{
+    static_assert(sizeof(Guid) == sizeof(Reflection::Attribute::Guid), "Both Guid types need to have same memory layout!");
+    *this = *(Guid*)(&guid);
+}
+
+Guid& Guid::operator=(const Reflection::Attribute::Guid& guid)
+{
+    static_assert(sizeof(Guid) == sizeof(Reflection::Attribute::Guid), "Both Guid types need to have same memory layout!");
+    return *this = *(Guid*)(&guid);
 }
 
 TString Guid::ToString() const

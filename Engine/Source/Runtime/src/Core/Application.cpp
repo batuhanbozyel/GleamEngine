@@ -68,7 +68,10 @@ Application::Application(const ApplicationProperties& props)
 	if (mInstance == nullptr)
 	{
 		mInstance = this;
-
+        
+        // init reflection system
+        AddSubsystem<Reflection::System>();
+        
         // init windowing subsystem
         auto windowSubsystem = AddSubsystem<WindowSystem>();
         windowSubsystem->Configure(props.windowConfig);

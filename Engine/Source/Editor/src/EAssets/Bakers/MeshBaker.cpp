@@ -10,9 +10,10 @@ MeshBaker::MeshBaker(const Gleam::MeshDescriptor& descriptor)
 
 Gleam::Asset MeshBaker::Bake(const Gleam::Filesystem::path& directory) const
 {
-    Gleam::Guid guid = Gleam::Guid::NewGuid();
-    Gleam::Asset asset(guid);
-    // TODO: 
+    auto guid = Gleam::Guid::NewGuid();
+    auto typeGuid = Gleam::Reflection::GetClass<Gleam::MeshDescriptor>().Guid();
+    Gleam::Asset asset(guid, typeGuid);
+    // TODO:
     return asset;
 }
 

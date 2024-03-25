@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Core/EngineDefines.h"
-#include "Reflection/Reflection.h"
 
 #include "Container/Pointer.h"
 #include "Container/String.h"
@@ -16,6 +15,10 @@
 #include "IO/Log.h"
 #include "IO/File.h"
 #include "IO/FileDialog.h"
+
+#include "Reflection/Attribute.h"
+#include "Reflection/Meta.h"
+#include "Reflection/Reflection.h"
 
 #include "Math/Common.h"
 #include "Math/Vector2.h"
