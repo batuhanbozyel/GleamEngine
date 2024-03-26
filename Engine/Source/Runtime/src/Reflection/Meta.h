@@ -3,17 +3,13 @@
 
 namespace Gleam::Reflection {
 
-template<typename T>
-concept AttributeType = std::is_base_of_v<refl::attr::usage::type, T> 
-                     || std::is_base_of_v<refl::attr::usage::field, T>;
-
 enum class FieldType
 {
-    Invalid,
     Primitive,
     Array,
     Class,
-    Enum
+    Enum,
+    Invalid
 };
 
 enum class PrimitiveType
@@ -37,96 +33,162 @@ enum class PrimitiveType
     COUNT
 };
 
-class PrimitiveDescription
+struct PrimitiveField
 {
-public:
-    explicit PrimitiveDescription()
-    {
-        
-    }
-private:
+    static constexpr FieldType type = FieldType::Primitive;
+    
+    PrimitiveType primitive;
 };
+
+struct ArrayField
+{
+    static constexpr FieldType type = FieldType::Array;
+    
+    uint32_t stride;
+    uint32_t count;
+};
+
+struct ClassField
+{
+    static constexpr FieldType type = FieldType::Class;
+};
+
+struct EnumField
+{
+    static constexpr FieldType type = FieldType::Enum;
+};
+
+using Field = std::variant<PrimitiveField, ArrayField, ClassField, EnumField>;
 
 class FieldDescription
 {
 public:
-    explicit FieldDescription()
+    template<typename T, size_t N>
+    explicit constexpr FieldDescription(const refl::field_descriptor<T, N>& field)
+        : mName(field.name.c_str())
+        , mSize(sizeof(T))
     {
-        
+        if constexpr (std::is_fundamental<T>::value)
+        {
+            mType = FieldType::Primitive;
+        }
+        else if (std::is_array<T>::value)
+        {
+            mType = FieldType::Array;
+        }
+        else if (std::is_class<T>::value)
+        {
+            mType = FieldType::Class;
+        }
+        else if (std::is_enum<T>::value)
+        {
+            mType = FieldType::Enum;
+        }
+        else
+        {
+            mType = FieldType::Invalid;
+        }
     }
     
-    const TStringView ResolveName() const
+    template<typename T>
+        requires(std::is_same<typename T::type, FieldType>::value)
+    constexpr const T& GetField() const
+    {
+        static_assert(T::type == mType, "Requested field type does not match!");
+        return std::get<static_cast<uint32_t>(T::type)>(mField);
+    }
+    
+    constexpr const TStringView ResolveName() const
     {
         return mName;
     }
     
-    template<AttributeType T>
+    constexpr FieldType GetType() const
+    {
+        return mType;
+    }
+    
+    template<AttributeType Attrib>
     bool HasAttribute() const
     {
         
     }
     
-    template<AttributeType T>
-    T GetAttribute() const
+    template<AttributeType Attrib>
+    const auto& GetAttribute() const
     {
         
     }
     
 private:
     
-    Guid guid;
+    size_t mSize;
+    Field mField;
     FieldType mType;
     TStringView mName;
 };
 
-template<typename T>
 class ClassDescription
 {
 public:
+    template<typename T>
     explicit constexpr ClassDescription(const refl::type_descriptor<T>& type)
-        : mType(type)
+        : mGuid(refl::descriptor::get_attribute<Reflection::Guid>(type))
+        , mName(type.name.c_str())
     {
-        mGuid = GetAttribute<Attribute::Guid>();
+        // resolve fields
+        auto fields = refl::util::filter(type.members, [](auto member) { return refl::descriptor::is_field(member); });
+        refl::util::for_each(fields, [&](auto member)
+        {
+            mFields.emplace_back(member);
+        });
+        
+        // resolve base classes
+        refl::util::for_each(type.bases, [&](auto base)
+        {
+            mBaseClasses.emplace_back(base);
+        });
     }
     
-    const Gleam::Guid& Guid() const
+    constexpr const Gleam::Guid& Guid() const
     {
         return mGuid;
     }
     
-    const TStringView ResolveName() const
+    constexpr const TStringView ResolveName() const
     {
-        return mType.name;
+        return mName;
     }
     
-    const TArray<FieldDescription>& ResolveFields() const
+    constexpr const TArray<FieldDescription>& ResolveFields() const
     {
-        
+        return mFields;
     }
     
-    const TArray<ClassDescription>& ResolveBaseClasses() const
+    constexpr const TArray<ClassDescription>& ResolveBaseClasses() const
+    {
+        return mBaseClasses;
+    }
+    
+    template<AttributeType Attrib>
+    bool HasAttribute() const noexcept
     {
         
     }
     
     template<AttributeType Attrib>
-    constexpr bool HasAttribute() const noexcept
+    const auto& GetAttribute() const noexcept
     {
-        return refl::descriptor::has_attribute<Attrib>(mType);
-    }
-    
-    template<AttributeType Attrib>
-    constexpr const Attrib& GetAttribute() const noexcept
-    {
-        return refl::descriptor::get_attribute<Attrib>(mType);
+        
     }
     
 private:
     
     Gleam::Guid mGuid;
+    TStringView mName;
     TArray<FieldDescription> mFields;
     TArray<ClassDescription> mBaseClasses;
-    refl::type_descriptor<T> mType;
+    TArray<AttributeDescription> mAttributes;
 };
 
 } // namespace Gleam::Reflection

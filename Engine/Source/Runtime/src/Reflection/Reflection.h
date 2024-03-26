@@ -17,7 +17,7 @@ private:
 };
 
 template<typename T>
-constexpr ClassDescription<T> GetClass()
+constexpr ClassDescription GetClass()
 {
     auto type = refl::reflect<T>();
     return ClassDescription(type);
@@ -27,13 +27,13 @@ constexpr ClassDescription<T> GetClass()
 
 #define GLEAM_TYPE(TypeName, ...) \
     namespace refl_impl::metadata { \
-        using namespace ::Gleam::Reflection::Attribute; \
+        using namespace ::Gleam::Reflection; \
         template<> struct type_info__<TypeName> { \
         REFL_DETAIL_TYPE_BODY((TypeName), __VA_ARGS__)
 
 #define GLEAM_TEMPLATE(TemplateDeclaration, TypeName, ...) \
     namespace refl_impl::metadata { \
-        using namespace ::Gleam::Reflection::Attribute; \
+        using namespace ::Gleam::Reflection; \
         template <REFL_DETAIL_GROUP TemplateDeclaration> struct type_info__<REFL_DETAIL_GROUP TypeName> { \
         REFL_DETAIL_TYPE_BODY(TypeName, __VA_ARGS__)
 

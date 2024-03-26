@@ -5,7 +5,18 @@
 
 namespace Gleam::Reflection {
 
-namespace Attribute {
+template<typename T>
+concept AttributeType = std::is_base_of_v<refl::attr::usage::type, T>
+                     || std::is_base_of_v<refl::attr::usage::field, T>;
+
+class AttributeDescription
+{
+public:
+    
+    
+private:
+    
+};
 
 struct Guid : refl::attr::usage::type
 {
@@ -71,8 +82,12 @@ struct PrettyName : refl::attr::usage::type,
                     refl::attr::usage::field
 {
     TStringView name;
+    
+    explicit constexpr PrettyName(const TStringView name)
+        : name(name)
+    {
+        
+    }
 };
 
-} // namespace Reflection::Attribute
-
-} // namespace Gleam
+} // namespace Gleam::Reflection
