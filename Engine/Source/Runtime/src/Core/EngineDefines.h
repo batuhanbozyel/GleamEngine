@@ -81,3 +81,6 @@ constexpr inline T As(P p)
     TypeName& operator=(const TypeName&) = delete; \
 	TypeName(TypeName&&) = delete; \
     TypeName& operator=(TypeName&&) = delete
+
+#define STRINGIFY_HELPER(x) #x
+#define STRINGIFY(x) STRINGIFY_HELPER(x)

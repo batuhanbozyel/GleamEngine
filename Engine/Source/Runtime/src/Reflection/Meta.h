@@ -1,7 +1,20 @@
 #pragma once
 #include "Attribute.h"
 
+#include <entt/meta/factory.hpp>
+
+static constexpr uint32_t operator"" _hs(const char* str, size_t size)
+{
+    return entt::hashed_string(str);
+}
+
 namespace Gleam::Reflection {
+
+struct AttributePair
+{
+    AttributeDescription description;
+    std::any value;
+};
 
 enum class FieldType
 {
@@ -44,6 +57,7 @@ struct ArrayField
 {
     static constexpr FieldType type = FieldType::Array;
     
+    FieldType elementType;
     uint32_t stride;
     uint32_t count;
 };
@@ -88,10 +102,16 @@ public:
         {
             mType = FieldType::Invalid;
         }
+        
+        // resolve attributes
+        std::apply([&](auto attrib)
+        {
+            mAttributes.push_back({ .description = attrib.description,
+                                    .value = std::make_any<decltype(attrib)>(attrib) });
+        }, field.attributes);
     }
     
-    template<typename T>
-        requires(std::is_same<typename T::type, FieldType>::value)
+    template<typename T> requires(std::is_same<typename T::type, FieldType>::value)
     constexpr const T& GetField() const
     {
         static_assert(T::type == mType, "Requested field type does not match!");
@@ -109,15 +129,29 @@ public:
     }
     
     template<AttributeType Attrib>
-    bool HasAttribute() const
+    constexpr bool HasAttribute() const
     {
-        
+        for (const auto& attrib : mAttributes)
+        {
+            if (attrib.description.hash == Attrib::description.hash)
+            {
+                return true;
+            }
+        }
+        return false;
     }
     
     template<AttributeType Attrib>
-    const auto& GetAttribute() const
+    constexpr Attrib GetAttribute() const
     {
-        
+        for (const auto& attrib : mAttributes)
+        {
+            if (attrib.description.hash == Attrib::description.hash)
+            {
+                return std::any_cast<Attrib>(attrib.value);
+            }
+        }
+        return Attrib({});
     }
     
 private:
@@ -126,6 +160,7 @@ private:
     Field mField;
     FieldType mType;
     TStringView mName;
+    TArray<AttributePair> mAttributes;
 };
 
 class ClassDescription
@@ -133,7 +168,7 @@ class ClassDescription
 public:
     template<typename T>
     explicit constexpr ClassDescription(const refl::type_descriptor<T>& type)
-        : mGuid(refl::descriptor::get_attribute<Reflection::Guid>(type))
+        : mGuid(refl::descriptor::get_attribute<Reflection::Attribute::Guid>(type))
         , mName(type.name.c_str())
     {
         // resolve fields
@@ -148,6 +183,13 @@ public:
         {
             mBaseClasses.emplace_back(base);
         });
+        
+        // resolve attributes
+        std::apply([&](auto attrib)
+        {
+            mAttributes.push_back({ .description = attrib.description,
+                                    .value = std::make_any<decltype(attrib)>(attrib) });
+        }, type.attributes);
     }
     
     constexpr const Gleam::Guid& Guid() const
@@ -171,15 +213,29 @@ public:
     }
     
     template<AttributeType Attrib>
-    bool HasAttribute() const noexcept
+    constexpr bool HasAttribute() const
     {
-        
+        for (const auto& attrib : mAttributes)
+        {
+            if (attrib.description.hash == Attrib::description.hash)
+            {
+                return true;
+            }
+        }
+        return false;
     }
     
     template<AttributeType Attrib>
-    const auto& GetAttribute() const noexcept
+    constexpr Attrib GetAttribute() const
     {
-        
+        for (const auto& attrib : mAttributes)
+        {
+            if (attrib.description.hash == Attrib::description.hash)
+            {
+                return std::any_cast<Attrib>(attrib.value);
+            }
+        }
+        return Attrib({});
     }
     
 private:
@@ -188,7 +244,7 @@ private:
     TStringView mName;
     TArray<FieldDescription> mFields;
     TArray<ClassDescription> mBaseClasses;
-    TArray<AttributeDescription> mAttributes;
+    TArray<AttributePair> mAttributes;
 };
 
 } // namespace Gleam::Reflection

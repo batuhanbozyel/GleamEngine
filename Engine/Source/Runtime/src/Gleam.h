@@ -9,6 +9,7 @@
 #include "Container/Queue.h"
 #include "Container/List.h"
 #include "Container/Hash.h"
+#include "Container/Tuple.h"
 #include "Container/AnyArray.h"
 #include "Container/PolyArray.h"
 

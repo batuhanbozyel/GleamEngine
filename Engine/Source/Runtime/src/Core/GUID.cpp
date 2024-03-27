@@ -75,15 +75,15 @@ Guid::Guid(const TStringView str)
 	mData4[7] = ParseHexDigits<uint8_t>(it);
 }
 
-Guid::Guid(const Reflection::Guid& guid)
+Guid::Guid(const Reflection::Attribute::Guid& guid)
 {
-    static_assert(sizeof(Guid) == sizeof(Reflection::Guid), "Both Guid types need to have same memory layout!");
+    static_assert(sizeof(Guid) == sizeof(Reflection::Attribute::Guid), "Both Guid types need to have same memory layout!");
     *this = *(Guid*)(&guid);
 }
 
-Guid& Guid::operator=(const Reflection::Guid& guid)
+Guid& Guid::operator=(const Reflection::Attribute::Guid& guid)
 {
-    static_assert(sizeof(Guid) == sizeof(Reflection::Guid), "Both Guid types need to have same memory layout!");
+    static_assert(sizeof(Guid) == sizeof(Reflection::Attribute::Guid), "Both Guid types need to have same memory layout!");
     return *this = *(Guid*)(&guid);
 }
 

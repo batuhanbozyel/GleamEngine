@@ -2,6 +2,7 @@
 #include "Core/GUID.h"
 
 #include <refl.hpp>
+#include <entt/core/hashed_string.hpp>
 
 namespace Gleam::Reflection {
 
@@ -9,16 +10,25 @@ template<typename T>
 concept AttributeType = std::is_base_of_v<refl::attr::usage::type, T>
                      || std::is_base_of_v<refl::attr::usage::field, T>;
 
-class AttributeDescription
+struct AttributeDescription
 {
-public:
+    const char* tag;
+    uint32_t hash;
     
-    
-private:
-    
+    explicit constexpr AttributeDescription(const char* str)
+        : tag(str)
+        , hash(entt::hashed_string(str))
+    {
+    }
 };
 
-struct Guid : refl::attr::usage::type
+#define GLEAM_ATTRIBUTE(tag, ...) \
+struct AttributeBase_##tag { static constexpr auto description = AttributeDescription(#tag); }; \
+struct tag : AttributeBase_##tag, ##__VA_ARGS__
+
+namespace Attribute {
+
+GLEAM_ATTRIBUTE(Guid, refl::attr::usage::type)
 {
     union
     {
@@ -62,7 +72,7 @@ struct Guid : refl::attr::usage::type
     }
 };
 
-struct Version : refl::attr::usage::type
+GLEAM_ATTRIBUTE(Version, refl::attr::usage::type)
 {
     uint32_t version;
     
@@ -73,13 +83,11 @@ struct Version : refl::attr::usage::type
     }
 };
 
-struct Serializable : refl::attr::usage::field
+GLEAM_ATTRIBUTE(Serializable, refl::attr::usage::field)
 {
-    
 };
 
-struct PrettyName : refl::attr::usage::type,
-                    refl::attr::usage::field
+GLEAM_ATTRIBUTE(PrettyName, refl::attr::usage::type, refl::attr::usage::field)
 {
     TStringView name;
     
@@ -90,4 +98,6 @@ struct PrettyName : refl::attr::usage::type,
     }
 };
 
+
+} // namespace Attribute
 } // namespace Gleam::Reflection

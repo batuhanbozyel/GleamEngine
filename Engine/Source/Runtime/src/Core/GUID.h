@@ -2,7 +2,7 @@
 
 namespace Gleam {
 
-namespace Reflection {
+namespace Reflection::Attribute {
 struct Guid;
 } // Reflection::Attribute
 
@@ -75,10 +75,10 @@ public:
 
 	Guid() = default;
 	Guid(const TStringView str);
-    Guid(const Reflection::Guid& guid);
+    Guid(const Reflection::Attribute::Guid& guid);
     
     Guid& operator=(const Guid&) = default;
-    Guid& operator=(const Reflection::Guid& guid);
+    Guid& operator=(const Reflection::Attribute::Guid& guid);
 
     TString ToString() const;
 	operator TString() const
