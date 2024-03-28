@@ -6,9 +6,10 @@
 //
 
 #pragma once
-#include <variant>
 #include "Renderer/Buffer.h"
 #include "Renderer/Texture.h"
+
+#include <variant>
 
 namespace Gleam {
 

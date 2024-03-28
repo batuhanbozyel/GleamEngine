@@ -31,7 +31,7 @@ using Field = refl::attr::usage::field;
 
 #define GLEAM_ATTRIBUTE(tag, ...) \
 struct AttributeBase_##tag { static constexpr auto description = AttributeDescription(#tag); }; \
-struct tag : AttributeBase_##tag __VA_OPT__(, ##__VA_ARGS__)
+struct tag : AttributeBase_##tag, __VA_ARGS__
 
 GLEAM_ATTRIBUTE(Guid, Target::Class)
 {

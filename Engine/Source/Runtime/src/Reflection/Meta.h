@@ -2,6 +2,7 @@
 #include "Attribute.h"
 
 #include <entt/meta/factory.hpp>
+#include <variant>
 
 static constexpr uint32_t operator"" _hs(const char* str, size_t size)
 {

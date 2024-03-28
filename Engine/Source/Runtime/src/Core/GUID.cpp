@@ -76,15 +76,15 @@ Guid::Guid(const TStringView str)
 }
 
 Guid::Guid(const Reflection::Attribute::Guid& guid)
+	: mBytes(guid.bytes)
 {
-    static_assert(sizeof(Guid) == sizeof(Reflection::Attribute::Guid), "Both Guid types need to have same memory layout!");
-    *this = *(Guid*)(&guid);
+    
 }
 
 Guid& Guid::operator=(const Reflection::Attribute::Guid& guid)
 {
-    static_assert(sizeof(Guid) == sizeof(Reflection::Attribute::Guid), "Both Guid types need to have same memory layout!");
-    return *this = *(Guid*)(&guid);
+    mBytes = guid.bytes;
+	return *this;
 }
 
 TString Guid::ToString() const
