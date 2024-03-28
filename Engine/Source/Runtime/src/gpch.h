@@ -32,6 +32,7 @@
 #include <unordered_set>
 
 #include "Core/PlatformTargetDefines.h"
+#include "Core/Macro.h"
 #include "Core/EngineDefines.h"
 
 #include "Container/Pointer.h"

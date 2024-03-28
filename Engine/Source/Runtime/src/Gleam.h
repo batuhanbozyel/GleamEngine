@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Core/Macro.h"
 #include "Core/EngineDefines.h"
 
 #include "Container/Pointer.h"
