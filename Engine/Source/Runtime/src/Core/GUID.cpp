@@ -118,7 +118,7 @@ bool Guid::operator!=(const Guid& other) const
 	return !((*this) == other);
 }
 
-std::ostream& operator<<(std::ostream& s, const Guid& guid)
+static std::ostream& operator<<(std::ostream& s, const Guid& guid)
 {
 	std::ios_base::fmtflags f(s.flags());
     const auto& bytes = guid.GetBytes();
