@@ -22,13 +22,18 @@ struct AttributeDescription
     }
 };
 
-#define GLEAM_ATTRIBUTE(tag, ...) \
-struct AttributeBase_##tag { static constexpr auto description = AttributeDescription(#tag); }; \
-struct tag : AttributeBase_##tag, ##__VA_ARGS__
-
 namespace Attribute {
 
-GLEAM_ATTRIBUTE(Guid, refl::attr::usage::type)
+namespace Target {
+using Class = refl::attr::usage::type;
+using Field = refl::attr::usage::field;
+} // namespace Type
+
+#define GLEAM_ATTRIBUTE(tag, ...) \
+struct AttributeBase_##tag { static constexpr auto description = AttributeDescription(#tag); }; \
+struct tag : AttributeBase_##tag __VA_OPT__(, ##__VA_ARGS__)
+
+GLEAM_ATTRIBUTE(Guid, Target::Class)
 {
     union
     {
@@ -72,7 +77,7 @@ GLEAM_ATTRIBUTE(Guid, refl::attr::usage::type)
     }
 };
 
-GLEAM_ATTRIBUTE(Version, refl::attr::usage::type)
+GLEAM_ATTRIBUTE(Version, Target::Class)
 {
     uint32_t version;
     
@@ -83,11 +88,11 @@ GLEAM_ATTRIBUTE(Version, refl::attr::usage::type)
     }
 };
 
-GLEAM_ATTRIBUTE(Serializable, refl::attr::usage::field)
+GLEAM_ATTRIBUTE(Serializable, Target::Field)
 {
 };
 
-GLEAM_ATTRIBUTE(PrettyName, refl::attr::usage::type, refl::attr::usage::field)
+GLEAM_ATTRIBUTE(PrettyName, Target::Class, Target::Field)
 {
     TStringView name;
     
