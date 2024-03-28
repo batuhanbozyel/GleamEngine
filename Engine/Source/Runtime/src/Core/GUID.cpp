@@ -43,6 +43,16 @@ Gleam::Guid Gleam::Guid::NewGuid()
 
 using namespace Gleam;
 
+Guid Guid::Combine(const Guid& guid1, const Guid& guid2)
+{
+    Guid combined;
+    for (int i = 0; i < combined.mBytes.size(); i++)
+    {
+        combined.mBytes[i] = guid1.mBytes[i] ^ guid2.mBytes[i];
+    }
+    return combined;
+}
+
 Guid::Guid(const TStringView str)
 {
 	if (str.length() < 20) // 16 bytes + 4 separators

@@ -112,10 +112,10 @@ public:
         }, field.attributes);
     }
     
-    template<typename T> requires(std::is_same<typename T::type, FieldType>::value)
+    template<typename T>
     constexpr const T& GetField() const
     {
-        static_assert(T::type == mType, "Requested field type does not match!");
+        GLEAM_ASSERT(T::type == mType, "Requested field type does not match!");
         return std::get<static_cast<uint32_t>(T::type)>(mField);
     }
     

@@ -111,9 +111,34 @@ static void SerializeClassObjectFields(const void* obj,
     
     for (const auto& field : classDesc.ResolveFields())
     {
+        auto newGuid = Guid::Combine(fieldGuid, classDesc.Guid());
         if (field.HasAttribute<Reflection::Attribute::Serializable>())
         {
-            // TODO:
+            switch (field.GetType())
+            {
+                case Reflection::FieldType::Class:
+                {
+                    auto classField = field.GetField<Reflection::ClassField>();
+                    break;
+                }
+                case Reflection::FieldType::Array:
+                {
+                    auto arrayField = field.GetField<Reflection::ArrayField>();
+                    break;
+                }
+                case Reflection::FieldType::Enum:
+                {
+                    auto enumField = field.GetField<Reflection::EnumField>();
+                    break;
+                }
+                case Reflection::FieldType::Primitive:
+                {
+                    auto primitiveField = field.GetField<Reflection::PrimitiveField>();
+                    break;
+                }
+                default:
+                    continue;
+            }
         }
     }
 }

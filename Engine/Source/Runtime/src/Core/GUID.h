@@ -72,6 +72,7 @@ public:
 	{
 		return Guid();
 	}
+    static Guid Combine(const Guid& guid1, const Guid& guid2);
 
 	Guid() = default;
 	Guid(const TStringView str);
