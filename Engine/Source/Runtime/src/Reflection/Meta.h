@@ -47,30 +47,33 @@ enum class PrimitiveType
     COUNT
 };
 
-struct PrimitiveField
+template<FieldType T>
+struct FieldBase
 {
-    static constexpr FieldType type = FieldType::Primitive;
+    static constexpr FieldType type = T;
     
+    size_t size;
+    size_t offset;
+};
+
+struct PrimitiveField : FieldBase<FieldType::Primitive>
+{
     PrimitiveType primitive;
 };
 
-struct ArrayField
+struct ArrayField : FieldBase<FieldType::Array>
 {
-    static constexpr FieldType type = FieldType::Array;
-    
     FieldType elementType;
     uint32_t stride;
     uint32_t count;
 };
 
-struct ClassField
+struct ClassField : FieldBase<FieldType::Class>
 {
-    static constexpr FieldType type = FieldType::Class;
 };
 
-struct EnumField
+struct EnumField : FieldBase<FieldType::Enum>
 {
-    static constexpr FieldType type = FieldType::Enum;
 };
 
 using Field = std::variant<PrimitiveField, ArrayField, ClassField, EnumField>;
@@ -79,37 +82,17 @@ class FieldDescription
 {
 public:
     template<typename T, size_t N>
-    explicit constexpr FieldDescription(const refl::field_descriptor<T, N>& field)
-        : mName(field.name.c_str())
-        , mSize(sizeof(T))
+    explicit constexpr FieldDescription(const refl::field_descriptor<T, N>& fieldDesc, const Field& field)
+        : mName(fieldDesc.name.c_str())
+        , mType(static_cast<FieldType>(field.index()))
+        , mField(field)
     {
-        if constexpr (std::is_fundamental<T>::value)
-        {
-            mType = FieldType::Primitive;
-        }
-        else if (std::is_array<T>::value)
-        {
-            mType = FieldType::Array;
-        }
-        else if (std::is_class<T>::value)
-        {
-            mType = FieldType::Class;
-        }
-        else if (std::is_enum<T>::value)
-        {
-            mType = FieldType::Enum;
-        }
-        else
-        {
-            mType = FieldType::Invalid;
-        }
-        
         // resolve attributes
         std::apply([&](auto attrib)
         {
             mAttributes.push_back({ .description = attrib.description,
                                     .value = std::make_any<decltype(attrib)>(attrib) });
-        }, field.attributes);
+        }, fieldDesc.attributes);
     }
     
     template<typename T>
@@ -157,7 +140,6 @@ public:
     
 private:
     
-    size_t mSize;
     Field mField;
     FieldType mType;
     TStringView mName;
@@ -173,10 +155,42 @@ public:
         , mName(type.name.c_str())
     {
         // resolve fields
+        size_t fieldOffset = 0;
         auto fields = refl::util::filter(type.members, [](auto member) { return refl::descriptor::is_field(member); });
         refl::util::for_each(fields, [&](auto member)
         {
-            mFields.emplace_back(member);
+            using ValueType = typename decltype(member)::value_type;
+            
+            size_t fieldSize = sizeof(ValueType);
+            if constexpr (std::is_fundamental<ValueType>::value)
+            {
+                auto field = PrimitiveField();
+                field.offset = fieldOffset;
+                field.size = fieldSize;
+                mFields.emplace_back(member, field);
+            }
+            else if (std::is_array<ValueType>::value)
+            {
+                auto field = ArrayField();
+                field.offset = fieldOffset;
+                field.size = fieldSize;
+                mFields.emplace_back(member, field);
+            }
+            else if (std::is_class<ValueType>::value)
+            {
+                auto field = ClassField();
+                field.offset = fieldOffset;
+                field.size = fieldSize;
+                mFields.emplace_back(member, field);
+            }
+            else if (std::is_enum<ValueType>::value)
+            {
+                auto field = EnumField();
+                field.offset = fieldOffset;
+                field.size = fieldSize;
+                mFields.emplace_back(member, field);
+            }
+            fieldOffset += fieldSize;
         });
         
         // resolve base classes

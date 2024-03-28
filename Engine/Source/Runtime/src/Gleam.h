@@ -45,6 +45,8 @@
 #include "Core/GUID.h"
 #include "Core/Time.h"
 
+#include "Serialization/JSONSerializer.h"
+
 #include "Assets/Asset.h"
 
 #include "Renderer/Shaders/ShaderInterop.h"
