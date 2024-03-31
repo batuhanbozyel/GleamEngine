@@ -4,6 +4,12 @@
 #include <locale>
 #include <codecvt>
 #include <bitset>
+#include <entt/core/hashed_string.hpp>
+
+static constexpr uint32_t operator"" _hs(const char* str, size_t size)
+{
+    return entt::hashed_string(str);
+}
 
 namespace Gleam {
 
@@ -20,6 +26,21 @@ using TStringStream = std::stringstream;
 using TWStringStream = std::wstringstream;
 
 namespace StringUtils {
+
+static constexpr uint32_t Hash(const char* str)
+{
+	return entt::hashed_string(str);
+}
+
+static constexpr uint32_t Hash(const TStringView str)
+{
+	return Hash(str.data());
+}
+
+static constexpr uint32_t Hash(const TString& str)
+{
+	return Hash(str.c_str());
+}
 
 static TWString Convert(const TString& as)
 {
