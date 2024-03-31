@@ -50,6 +50,7 @@
 #include "IO/File.h"
 #include "IO/FileDialog.h"
 
+#include "Reflection/TypeTraits.h"
 #include "Reflection/Attribute.h"
 #include "Reflection/Meta.h"
 #include "Reflection/Reflection.h"
