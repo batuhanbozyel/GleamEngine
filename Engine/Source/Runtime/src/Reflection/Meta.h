@@ -1,15 +1,12 @@
 #pragma once
 #include "Attribute.h"
 
-#include <entt/meta/factory.hpp>
 #include <variant>
-
-static constexpr uint32_t operator"" _hs(const char* str, size_t size)
-{
-    return entt::hashed_string(str);
-}
+#include <any>
 
 namespace Gleam::Reflection {
+
+class Database;
 
 struct AttributePair
 {
@@ -70,6 +67,13 @@ struct ArrayField : FieldBase<FieldType::Array>
 
 struct ClassField : FieldBase<FieldType::Class>
 {
+    size_t hash;
+    
+    explicit constexpr ClassField(size_t hash)
+        : FieldBase(), hash(hash)
+    {
+        
+    }
 };
 
 struct EnumField : FieldBase<FieldType::Enum>
@@ -80,20 +84,8 @@ using Field = std::variant<PrimitiveField, ArrayField, ClassField, EnumField>;
 
 class FieldDescription
 {
+	friend class Database;
 public:
-    template<typename T, size_t N>
-    explicit constexpr FieldDescription(const refl::field_descriptor<T, N>& fieldDesc, const Field& field)
-        : mName(fieldDesc.name.c_str())
-        , mType(static_cast<FieldType>(field.index()))
-        , mField(field)
-    {
-        // resolve attributes
-        std::apply([&](auto attrib)
-        {
-            mAttributes.push_back({ .description = attrib.description,
-                                    .value = std::make_any<decltype(attrib)>(attrib) });
-        }, fieldDesc.attributes);
-    }
     
     template<typename T>
     constexpr const T& GetField() const
@@ -148,65 +140,9 @@ private:
 
 class ClassDescription
 {
+	friend class Database;
 public:
-    template<typename T>
-    explicit constexpr ClassDescription(const refl::type_descriptor<T>& type)
-        : mGuid(refl::descriptor::get_attribute<Reflection::Attribute::Guid>(type))
-        , mName(type.name.c_str())
-    {
-        // resolve fields
-        size_t fieldOffset = 0;
-        auto fields = refl::util::filter(type.members, [](auto member) { return refl::descriptor::is_field(member); });
-        refl::util::for_each(fields, [&](auto member)
-        {
-            using ValueType = typename decltype(member)::value_type;
-            
-            size_t fieldSize = sizeof(ValueType);
-            if constexpr (std::is_fundamental<ValueType>::value)
-            {
-                auto field = PrimitiveField();
-                field.offset = fieldOffset;
-                field.size = fieldSize;
-                mFields.emplace_back(member, field);
-            }
-            else if (std::is_array<ValueType>::value)
-            {
-                auto field = ArrayField();
-                field.offset = fieldOffset;
-                field.size = fieldSize;
-                mFields.emplace_back(member, field);
-            }
-            else if (std::is_class<ValueType>::value)
-            {
-                auto field = ClassField();
-                field.offset = fieldOffset;
-                field.size = fieldSize;
-                mFields.emplace_back(member, field);
-            }
-            else if (std::is_enum<ValueType>::value)
-            {
-                auto field = EnumField();
-                field.offset = fieldOffset;
-                field.size = fieldSize;
-                mFields.emplace_back(member, field);
-            }
-            fieldOffset += fieldSize;
-        });
-        
-        // resolve base classes
-        refl::util::for_each(type.bases, [&](auto base)
-        {
-            mBaseClasses.emplace_back(base);
-        });
-        
-        // resolve attributes
-        std::apply([&](auto attrib)
-        {
-            mAttributes.push_back({ .description = attrib.description,
-                                    .value = std::make_any<decltype(attrib)>(attrib) });
-        }, type.attributes);
-    }
-    
+
     constexpr const Gleam::Guid& Guid() const
     {
         return mGuid;

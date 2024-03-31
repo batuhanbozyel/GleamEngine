@@ -1,8 +1,6 @@
 #pragma once
+#include "Macro.h"
 #include "Core/GUID.h"
-
-#include <refl.hpp>
-#include <entt/core/hashed_string.hpp>
 
 namespace Gleam::Reflection {
 
@@ -17,7 +15,7 @@ struct AttributeDescription
     
     explicit constexpr AttributeDescription(const char* str)
         : tag(str)
-        , hash(entt::hashed_string(str))
+        , hash(StringUtils::Hash(str))
     {
     }
 };
@@ -28,10 +26,6 @@ namespace Target {
 using Class = refl::attr::usage::type;
 using Field = refl::attr::usage::field;
 } // namespace Type
-
-#define GLEAM_ATTRIBUTE(tag, ...) \
-struct AttributeBase_##tag { static constexpr auto description = AttributeDescription(#tag); }; \
-struct tag : AttributeBase_##tag, __VA_ARGS__
 
 GLEAM_ATTRIBUTE(Guid, Target::Class)
 {
