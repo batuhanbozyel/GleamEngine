@@ -79,6 +79,9 @@ struct std::hash<Gleam::BlendState>
     }
 };
 
+GLEAM_ENUM(Gleam::BlendOp, Guid("D26E6319-703C-41B1-BA5F-013F93C24997"))
+GLEAM_ENUM(Gleam::BlendMode, Guid("8828343E-F79D-4D31-98E9-ED4583DACF37"))
+GLEAM_ENUM(Gleam::ColorWriteMask, Guid("F918BF9C-F295-470B-AC85-3935F3870C6F"))
 GLEAM_TYPE(Gleam::BlendState, Guid("44649502-2AE5-47DD-9A9C-322E01BCE028"))
 	GLEAM_FIELD(enabled, Serializable())
 	GLEAM_FIELD(colorBlendOperation, Serializable())

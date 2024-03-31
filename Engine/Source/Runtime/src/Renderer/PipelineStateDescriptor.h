@@ -175,6 +175,12 @@ struct std::hash<Gleam::PipelineStateDescriptor>
     }
 };
 
+GLEAM_ENUM(Gleam::PipelineBindPoint, Guid("8AC91A75-CBC6-4B14-9A78-A0B2E83ADFD6"))
+GLEAM_ENUM(Gleam::CompareFunction, Guid("101AB027-6BC3-4323-8239-D26414769AE9"))
+GLEAM_ENUM(Gleam::StencilOp, Guid("A47E53E9-5241-4D0D-B92D-53252F432AA0"))
+GLEAM_ENUM(Gleam::CullMode, Guid("26E2A687-B6E2-40E1-9153-CDFA49036D5B"))
+GLEAM_ENUM(Gleam::PrimitiveTopology, Guid("EA2043A9-969A-4B45-ABBE-E29CECC2D193"))
+
 GLEAM_TYPE(Gleam::DepthState, Guid("8C7CB2F5-A47D-459B-88E4-23EB990E8B56"))
 	GLEAM_FIELD(compareFunction, Serializable())
 	GLEAM_FIELD(writeEnabled, Serializable())

@@ -51,9 +51,7 @@ protected:
     Buffer mIndexBuffer;
     Buffer mPositionBuffer;
     Buffer mInterleavedBuffer;
-    
     TArray<SubmeshDescriptor> mSubmeshDescriptors;
-    
 };
 
 class StaticMesh final : public Mesh
@@ -69,6 +67,11 @@ public:
 };
 
 } // namespace Gleam
+
+GLEAM_TYPE(Gleam::InterleavedMeshVertex, Guid("4AFE936A-550F-419C-A7F0-5ED38D9D1642"))
+    GLEAM_FIELD(normal, Serializable())
+    GLEAM_FIELD(texCoord, Serializable())
+GLEAM_END
 
 GLEAM_TYPE(Gleam::MeshDescriptor, Guid("59E4007E-F7D4-4107-A05F-E1121067DCD3"))
     GLEAM_FIELD(name, Serializable())

@@ -93,6 +93,8 @@ struct std::hash<Gleam::MaterialDescriptor>
     }
 };
 
+GLEAM_ENUM(Gleam::RenderQueue, Guid("D3A2EE76-2603-4D10-AAF4-07810827A117"))
+
 GLEAM_TYPE(Gleam::MaterialPassDescriptor, Guid("123C5669-2376-46B4-B5FD-4076ADE86397"))
 	GLEAM_FIELD(pipelineState, Serializable())
 	GLEAM_FIELD(vertexEntry, Serializable())
