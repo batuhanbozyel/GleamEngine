@@ -24,10 +24,76 @@ static Value StringRef(const Guid& guid)
 
 } // namespace rapidjson
 
+static void SerializePrimitiveObjectValue(const void* obj,
+                                          Reflection::PrimitiveType type,
+                                          rapidjson::Document::AllocatorType& allocator,
+                                          rapidjson::Value& node);
+
+static void SerializeClassObjectFields(const void* obj,
+                                       const Guid& fieldGuid,
+                                       const TStringView fieldName,
+                                       const Reflection::ClassDescription& classDesc,
+                                       rapidjson::Document::AllocatorType& allocator,
+                                       rapidjson::Value& outFields);
+
 static void SerializePrimitiveObject(const void* obj,
+                                     const Guid& fieldGuid,
+                                     const TStringView fieldName,
                                      Reflection::PrimitiveType type,
                                      rapidjson::Document::AllocatorType& allocator,
-                                     rapidjson::Value& node)
+                                     rapidjson::Value& outObject);
+
+static void SerializeClassObject(const void* obj,
+                                 const Guid& fieldGuid,
+                                 const TStringView fieldName,
+                                 const Reflection::ClassDescription& classDesc,
+                                 rapidjson::Document::AllocatorType& allocator,
+                                 rapidjson::Value& outObjects);
+
+static void SerializePrimitiveHeader(Reflection::PrimitiveType type,
+                                     const Guid& fieldGuid,
+                                     const TStringView fieldName,
+                                     rapidjson::Document::AllocatorType& allocator,
+                                     rapidjson::Value& outObject)
+{
+    outObject.AddMember("Kind", rapidjson::StringRef("Primitive"), allocator);
+    outObject.AddMember("FieldGuid", rapidjson::StringRef(fieldGuid), allocator);
+    outObject.AddMember("TypeName", rapidjson::StringRef(Reflection::Database::GetPrimitiveName(type).data()), allocator);
+    
+    if (not fieldName.empty())
+    {
+        outObject.AddMember("FieldName", rapidjson::StringRef(fieldName.data()), allocator);
+    }
+}
+
+static void SerializeClassHeader(const Reflection::ClassDescription& classDesc,
+                                 const Guid& fieldGuid,
+                                 const TStringView fieldName,
+                                 rapidjson::Document::AllocatorType& allocator,
+                                 rapidjson::Value& outObject)
+{
+    outObject.AddMember("Kind", rapidjson::StringRef("Class"), allocator);
+    outObject.AddMember("FieldGuid", rapidjson::StringRef(fieldGuid), allocator);
+    outObject.AddMember("TypeGuid", rapidjson::StringRef(classDesc.Guid()), allocator);
+    outObject.AddMember("TypeName", rapidjson::StringRef(classDesc.ResolveName().data()), allocator);
+    
+    if (not fieldName.empty())
+    {
+        outObject.AddMember("FieldName", rapidjson::StringRef(fieldName.data()), allocator);
+    }
+    
+    if (classDesc.HasAttribute<Reflection::Attribute::Version>())
+    {
+        const auto& attr = classDesc.GetAttribute<Reflection::Attribute::Version>();
+        const auto& desc = Reflection::Attribute::Version::description;
+        outObject.AddMember(rapidjson::StringRef(desc.tag), rapidjson::Value().SetUint(attr.version), allocator);
+    }
+}
+
+void SerializePrimitiveObjectValue(const void* obj,
+                                   Reflection::PrimitiveType type,
+                                   rapidjson::Document::AllocatorType& allocator,
+                                   rapidjson::Value& node)
 {
     switch (type)
     {
@@ -73,36 +139,12 @@ static void SerializePrimitiveObject(const void* obj,
     }
 }
 
-static void SerializeClassHeader(const Reflection::ClassDescription& classDesc,
-                                 const Guid& fieldGuid,
-                                 const TStringView fieldName,
-                                 rapidjson::Document::AllocatorType& allocator,
-                                 rapidjson::Value& outObject)
-{
-    outObject.AddMember("Kind", rapidjson::StringRef("Class"), allocator);
-    outObject.AddMember("FieldGuid", rapidjson::StringRef(fieldGuid), allocator);
-    outObject.AddMember("TypeGuid", rapidjson::StringRef(classDesc.Guid()), allocator);
-    outObject.AddMember("TypeName", rapidjson::StringRef(classDesc.ResolveName().data()), allocator);
-    
-    if (not fieldName.empty())
-    {
-        outObject.AddMember("FieldName", rapidjson::StringRef(fieldName.data()), allocator);
-    }
-    
-    if (classDesc.HasAttribute<Reflection::Attribute::Version>())
-    {
-        const auto& attr = classDesc.GetAttribute<Reflection::Attribute::Version>();
-        const auto& desc = Reflection::Attribute::Version::description;
-        outObject.AddMember(rapidjson::StringRef(desc.tag), rapidjson::Value().SetUint(attr.version), allocator);
-    }
-}
-
-static void SerializeClassObjectFields(const void* obj,
-                                       const Guid& fieldGuid,
-                                       const TStringView fieldName,
-                                       const Reflection::ClassDescription& classDesc,
-                                       rapidjson::Document::AllocatorType& allocator,
-                                       rapidjson::Value& outFields)
+void SerializeClassObjectFields(const void* obj,
+                                const Guid& fieldGuid,
+                                const TStringView fieldName,
+                                const Reflection::ClassDescription& classDesc,
+                                rapidjson::Document::AllocatorType& allocator,
+                                rapidjson::Value& outFields)
 {
     for (const auto& baseClass : classDesc.ResolveBaseClasses())
     {
@@ -111,14 +153,17 @@ static void SerializeClassObjectFields(const void* obj,
     
     for (const auto& field : classDesc.ResolveFields())
     {
-        auto newGuid = Guid::Combine(fieldGuid, classDesc.Guid());
         if (field.HasAttribute<Reflection::Attribute::Serializable>())
         {
+            auto newGuid = Guid::Combine(fieldGuid, classDesc.Guid());
+            auto fieldNode = rapidjson::Value(rapidjson::kObjectType);
             switch (field.GetType())
             {
                 case Reflection::FieldType::Class:
                 {
                     auto classField = field.GetField<Reflection::ClassField>();
+                    const auto& fieldDesc = Reflection::GetClass(classField.hash);
+                    SerializeClassObject(OffsetPointer(obj, classField.offset), newGuid, field.ResolveName(), fieldDesc, allocator, fieldNode);
                     break;
                 }
                 case Reflection::FieldType::Array:
@@ -134,21 +179,37 @@ static void SerializeClassObjectFields(const void* obj,
                 case Reflection::FieldType::Primitive:
                 {
                     auto primitiveField = field.GetField<Reflection::PrimitiveField>();
+                    auto primitiveType = primitiveField.primitive;
+                    SerializePrimitiveObject(OffsetPointer(obj, primitiveField.offset), newGuid, field.ResolveName(), primitiveType, allocator, fieldNode);
                     break;
                 }
                 default:
                     continue;
             }
+            outFields.PushBack(fieldNode, allocator);
         }
     }
 }
 
-static void SerializeClassObject(const void* obj,
-                                 const Guid& fieldGuid,
-                                 const TStringView fieldName,
-                                 const Reflection::ClassDescription& classDesc,
-                                 rapidjson::Document::AllocatorType& allocator,
-                                 rapidjson::Value& outObjects)
+void SerializePrimitiveObject(const void* obj,
+                              const Guid& fieldGuid,
+                              const TStringView fieldName,
+                              Reflection::PrimitiveType type,
+                              rapidjson::Document::AllocatorType& allocator,
+                              rapidjson::Value& outObject)
+{
+    rapidjson::Value node(rapidjson::kObjectType);
+    SerializePrimitiveObjectValue(obj, type, allocator, node);
+    SerializePrimitiveHeader(type, fieldGuid, fieldName, allocator, outObject);
+    outObject.AddMember("Data", node, allocator);
+}
+
+void SerializeClassObject(const void* obj,
+                          const Guid& fieldGuid,
+                          const TStringView fieldName,
+                          const Reflection::ClassDescription& classDesc,
+                          rapidjson::Document::AllocatorType& allocator,
+                          rapidjson::Value& outObjects)
 {
     rapidjson::Value fields(rapidjson::kArrayType);
     SerializeClassObjectFields(obj, fieldGuid, fieldName, classDesc, allocator, fields);

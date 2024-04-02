@@ -1,6 +1,7 @@
 #include "gpch.h"
 #include "Application.h"
 #include "WindowSystem.h"
+#include "Reflection/Database.h"
 
 #include "World/World.h"
 #include "Input/InputSystem.h"
@@ -68,6 +69,9 @@ Application::Application(const ApplicationProperties& props)
 	if (mInstance == nullptr)
 	{
 		mInstance = this;
+        
+        // init reflection
+        AddSubsystem<Reflection::Database>();
         
         // init windowing subsystem
         auto windowSubsystem = AddSubsystem<WindowSystem>();

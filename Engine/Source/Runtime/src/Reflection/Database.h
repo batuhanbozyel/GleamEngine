@@ -1,13 +1,21 @@
 #pragma once
 #include "Meta.h"
 #include "Primitives.h"
-#include "TypeTraits.h"
+#include "Core/Subsystem.h"
 
 namespace Gleam::Reflection {
 
-class Database
+class Database : public Subsystem
 {
 public:
+    
+    virtual void Initialize() override;
+    
+    virtual void Shutdown() override;
+    
+    static PrimitiveType GetPrimitiveType(size_t hash);
+    
+    static const TStringView GetPrimitiveName(PrimitiveType type);
     
     template<typename T>
     static const ClassDescription& GetClass()
@@ -31,6 +39,7 @@ private:
 	static constexpr ClassDescription CreateClassDescription(const refl::type_descriptor<T>& type)
 	{
 		ClassDescription desc;
+        desc.mSize = sizeof(T);
 		desc.mName = type.name.c_str();
 		desc.mGuid = refl::descriptor::get_attribute<Reflection::Attribute::Guid>(type);
 
@@ -44,14 +53,8 @@ private:
             size_t fieldSize = sizeof(ValueType);
             if constexpr (Traits::IsPrimitive<ValueType>::value)
             {
-                auto field = PrimitiveField();
-                field.offset = fieldOffset;
-                field.size = fieldSize;
-                desc.mFields.emplace_back(CreateFieldDescription(member, field));
-            }
-            else if (Traits::IsArray<ValueType>::value)
-            {
-                auto field = ArrayField();
+                auto hash = typeid(ValueType).hash_code();
+                auto field = PrimitiveField(GetPrimitiveType(hash));
                 field.offset = fieldOffset;
                 field.size = fieldSize;
                 desc.mFields.emplace_back(CreateFieldDescription(member, field));
@@ -59,6 +62,13 @@ private:
             else if (Traits::IsEnum<ValueType>::value)
             {
                 auto field = EnumField();
+                field.offset = fieldOffset;
+                field.size = fieldSize;
+                desc.mFields.emplace_back(CreateFieldDescription(member, field));
+            }
+            else if (Traits::IsArray<ValueType>::value)
+            {
+                auto field = ArrayField();
                 field.offset = fieldOffset;
                 field.size = fieldSize;
                 desc.mFields.emplace_back(CreateFieldDescription(member, field));
@@ -112,6 +122,8 @@ private:
     }
     
     static inline HashMap<size_t, ClassDescription> mClasses;
+    static inline HashMap<size_t, PrimitiveType> mPrimitiveTypes;
+    static inline HashMap<PrimitiveType, TStringView, EnumClassHash> mPrimitiveNames;
     
 };
 

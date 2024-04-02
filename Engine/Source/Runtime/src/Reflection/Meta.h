@@ -1,5 +1,6 @@
 #pragma once
 #include "Attribute.h"
+#include "TypeTraits.h"
 
 #include <variant>
 #include <any>
@@ -16,11 +17,11 @@ struct AttributePair
 
 enum class FieldType
 {
+    Invalid,
     Primitive,
     Array,
     Class,
-    Enum,
-    Invalid
+    Enum
 };
 
 enum class PrimitiveType
@@ -53,16 +54,29 @@ struct FieldBase
     size_t offset;
 };
 
+struct NullField : FieldBase<FieldType::Invalid> {};
+
 struct PrimitiveField : FieldBase<FieldType::Primitive>
 {
     PrimitiveType primitive;
+    
+    explicit constexpr PrimitiveField(PrimitiveType primitive)
+        : primitive(primitive)
+    {
+        
+    }
 };
 
 struct ArrayField : FieldBase<FieldType::Array>
 {
     FieldType elementType;
     uint32_t stride;
-    uint32_t count;
+    
+//    explicit constexpr ArrayField(FieldType type, uint32_t stride)
+//        : FieldBase(), elementType(type), stride(stride)
+//    {
+//        
+//    }
 };
 
 struct ClassField : FieldBase<FieldType::Class>
@@ -80,7 +94,12 @@ struct EnumField : FieldBase<FieldType::Enum>
 {
 };
 
-using Field = std::variant<PrimitiveField, ArrayField, ClassField, EnumField>;
+// IMPORTANT: the order needs to match with FieldType enum items order
+using Field = std::variant<NullField,
+                           PrimitiveField,
+                           ArrayField,
+                           ClassField,
+                           EnumField>;
 
 class FieldDescription
 {
@@ -189,8 +208,14 @@ public:
         return Attrib({});
     }
     
+    constexpr size_t GetSize() const
+    {
+        return mSize;
+    }
+    
 private:
     
+    size_t mSize;
     Gleam::Guid mGuid;
     TStringView mName;
     TArray<FieldDescription> mFields;
