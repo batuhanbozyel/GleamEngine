@@ -14,4 +14,16 @@ static constexpr const ClassDescription& GetClass(size_t hash)
     return Database::GetClass(hash);
 }
 
+template<typename T>
+static constexpr T& Get(void* ptr)
+{
+    return *static_cast<T*>(ptr);
+}
+
+template<typename T>
+static constexpr const T& Get(const void* ptr)
+{
+    return *static_cast<const T*>(ptr);
+}
+
 } // namespace Gleam::Reflection

@@ -1,7 +1,9 @@
 #include "gpch.h"
 #include "Application.h"
 #include "WindowSystem.h"
+
 #include "Reflection/Database.h"
+#include "Serialization/JSONSerializer.h"
 
 #include "World/World.h"
 #include "Input/InputSystem.h"
@@ -70,8 +72,9 @@ Application::Application(const ApplicationProperties& props)
 	{
 		mInstance = this;
         
-        // init reflection
+        // init reflection & serialization
         AddSubsystem<Reflection::Database>();
+        AddSubsystem<JSONSerializer>();
         
         // init windowing subsystem
         auto windowSubsystem = AddSubsystem<WindowSystem>();

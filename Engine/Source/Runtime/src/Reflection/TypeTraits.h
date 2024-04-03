@@ -10,9 +10,7 @@ using IsPrimitive = std::is_fundamental<T>;
 // is array
 template <class T> struct IsArray : public std::false_type {};
 template <class T> struct IsArray<T[]> : public std::true_type {};
-template <class T> struct IsArray<std::vector<T>> : public std::true_type {};
 template <class T, size_t N> struct IsArray<T[N]> : public std::true_type {};
-template <class T, size_t N> struct IsArray<std::array<T, N>> : public std::true_type {};
 
 // is enum
 template<typename T>
