@@ -1,6 +1,7 @@
 #include "gpch.h"
 #include "JSONSerializer.h"
 
+#define RAPIDJSON_HAS_STDSTRING 1
 #include <rapidjson/document.h>
 #include <rapidjson/prettywriter.h>
 #include <rapidjson/stringbuffer.h>
@@ -71,11 +72,6 @@ static TString Convert(const rapidjson::Value& value)
     return buffer.GetString();
 }
 
-static Value::StringRefType StringRef(const Guid& guid)
-{
-    return StringRef(guid.ToString().c_str());
-}
-
 } // namespace rapidjson
 
 static void SerializePrimitiveObjectValue(const void* obj,
@@ -139,7 +135,7 @@ void SerializePrimitiveHeader(Reflection::PrimitiveType type,
                               rapidjson::Node& node)
 {
     node.AddMember("Kind", rapidjson::StringRef("Primitive"));
-    node.AddMember("FieldGuid", rapidjson::StringRef(fieldGuid));
+    node.AddMember("FieldGuid", fieldGuid.ToString());
     node.AddMember("TypeName", rapidjson::StringRef(Reflection::Database::GetPrimitiveName(type).data()));
     
     if (not fieldName.empty())
@@ -154,8 +150,8 @@ void SerializeClassHeader(const Reflection::ClassDescription& classDesc,
                           rapidjson::Node& node)
 {
     node.AddMember("Kind", rapidjson::StringRef("Class"));
-    node.AddMember("FieldGuid", rapidjson::StringRef(fieldGuid));
-    node.AddMember("TypeGuid", rapidjson::StringRef(classDesc.Guid()));
+    node.AddMember("FieldGuid", fieldGuid.ToString());
+    node.AddMember("TypeGuid", classDesc.Guid().ToString());
     node.AddMember("TypeName", rapidjson::StringRef(classDesc.ResolveName().data()));
     
     if (not fieldName.empty())
