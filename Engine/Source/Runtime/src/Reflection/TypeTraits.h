@@ -8,9 +8,8 @@ template<typename T>
 using IsPrimitive = std::is_fundamental<T>;
 
 // is array
-template <class T> struct IsArray : public std::false_type {};
-template <class T> struct IsArray<T[]> : public std::true_type {};
-template <class T, size_t N> struct IsArray<T[N]> : public std::true_type {};
+template<typename T>
+using IsArray = std::is_array<T>;
 
 // is enum
 template<typename T>

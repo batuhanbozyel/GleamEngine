@@ -71,9 +71,9 @@ static TString Convert(const rapidjson::Value& value)
     return buffer.GetString();
 }
 
-static Value StringRef(const Guid& guid)
+static Value::StringRefType StringRef(const Guid& guid)
 {
-    return Value(StringRef(guid.ToString().c_str()));
+    return StringRef(guid.ToString().c_str());
 }
 
 } // namespace rapidjson
@@ -120,12 +120,11 @@ void JSONSerializer::Initialize()
     {
         auto str = Reflection::Get<TString>(obj).c_str();
         auto& outObject = Reflection::Get<rapidjson::Node>(userData);
-        rapidjson::Value object(rapidjson::kStringType);
+        rapidjson::Value object(rapidjson::kObjectType);
         rapidjson::Node node(object, outObject.allocator);
         node.AddMember("Value", rapidjson::StringRef(str));
         SerializeClassHeader(classDesc, fieldGuid, fieldName, outObject);
         outObject.AddMember("Data", object);
-        
     };
 }
 

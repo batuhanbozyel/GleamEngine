@@ -72,11 +72,11 @@ struct ArrayField : FieldBase<FieldType::Array>
     FieldType elementType;
     uint32_t stride;
     
-//    explicit constexpr ArrayField(FieldType type, uint32_t stride)
-//        : FieldBase(), elementType(type), stride(stride)
-//    {
-//        
-//    }
+    explicit constexpr ArrayField(FieldType type, uint32_t stride)
+        : FieldBase(), elementType(type), stride(stride)
+    {
+        
+    }
 };
 
 struct ClassField : FieldBase<FieldType::Class>

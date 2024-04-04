@@ -68,7 +68,8 @@ private:
             }
             else if (Traits::IsArray<ValueType>::value)
             {
-                auto field = ArrayField();
+                using ElementType = std::remove_all_extents<ValueType>::type;
+                auto field = ArrayField(GetFieldType<ElementType>(), sizeof(ElementType));
                 field.offset = fieldOffset;
                 field.size = fieldSize;
                 desc.mFields.emplace_back(CreateFieldDescription(member, field));
@@ -119,6 +120,28 @@ private:
         }, fieldDesc.attributes);
 
 		return desc;
+    }
+    
+    template<typename T>
+    static constexpr FieldType GetFieldType()
+    {
+        if constexpr (Traits::IsPrimitive<T>::value)
+        {
+            return FieldType::Primitive;
+        }
+        else if (Traits::IsEnum<T>::value)
+        {
+            return FieldType::Enum;
+        }
+        else if (Traits::IsArray<T>::value)
+        {
+            return FieldType::Array;
+        }
+        else if (Traits::IsClass<T>::value)
+        {
+            return FieldType::Class;
+        }
+        return FieldType::Invalid;;
     }
     
     static inline HashMap<size_t, ClassDescription> mClasses;
