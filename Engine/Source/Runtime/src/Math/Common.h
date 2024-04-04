@@ -1,8 +1,6 @@
 #pragma once
 
-namespace Gleam {
-
-namespace Math {
+namespace Gleam::Math {
 
 constexpr float PI = 3.14159265359f;
 constexpr float PI_2 = 1.57079632679f;
@@ -153,6 +151,4 @@ NO_DISCARD FORCE_INLINE T constexpr Sqrt(T v)
     return static_cast<T>(std::sqrt(v));
 }
 
-} // namespace Math
-
-} // namespace Gleam
+} // namespace Gleam::Math

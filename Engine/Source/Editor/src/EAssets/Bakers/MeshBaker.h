@@ -11,7 +11,7 @@ public:
 
 	virtual Gleam::Asset Bake(const Gleam::Filesystem::path& directory) const override;
     
-    virtual const Gleam::TString& Filename() const override;
+    virtual Gleam::TString Filename() const override;
 
 private:
 

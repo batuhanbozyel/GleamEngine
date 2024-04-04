@@ -11,7 +11,7 @@ public:
 
 	virtual Gleam::Asset Bake(const Gleam::Filesystem::path& directory) const = 0;
 
-    virtual const Gleam::TString& Filename() const = 0;
+    virtual Gleam::TString Filename() const = 0;
 
 };
 

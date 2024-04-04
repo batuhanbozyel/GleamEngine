@@ -17,7 +17,7 @@ Gleam::Asset TextureBaker::Bake(const Gleam::Filesystem::path& directory) const
     return asset;
 }
 
-const Gleam::TString& TextureBaker::Filename() const
+Gleam::TString TextureBaker::Filename() const
 {
-	return mDescriptor.name;
+	return mDescriptor.name + ".asset";
 }

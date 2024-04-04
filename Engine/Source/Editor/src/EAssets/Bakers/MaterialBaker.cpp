@@ -17,7 +17,7 @@ Gleam::Asset MaterialBaker::Bake(const Gleam::Filesystem::path& directory) const
     return asset;
 }
 
-const Gleam::TString& MaterialBaker::Filename() const
+Gleam::TString MaterialBaker::Filename() const
 {
-    return mDescriptor.name;
+    return mDescriptor.name + ".mat";
 }

@@ -13,11 +13,14 @@ Gleam::Asset MeshBaker::Bake(const Gleam::Filesystem::path& directory) const
     const auto& typeGuid = Gleam::Reflection::GetClass<Gleam::MeshDescriptor>().Guid();
     auto guid = Gleam::Guid::NewGuid();
     Gleam::Asset asset(guid, typeGuid);
-    // TODO:
+    
+    auto serialized = Gleam::JSONSerializer::Serialize<Gleam::MeshDescriptor>(mDescriptor);
+    auto file = Gleam::File(directory/Filename(), Gleam::FileType::Text);
+    file.Write(serialized);
     return asset;
 }
 
-const Gleam::TString& MeshBaker::Filename() const
+Gleam::TString MeshBaker::Filename() const
 {
-    return mDescriptor.name;
+    return mDescriptor.name + ".asset";
 }

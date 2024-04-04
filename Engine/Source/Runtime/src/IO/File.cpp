@@ -5,6 +5,8 @@ using namespace Gleam;
 
 File::File(const Filesystem::path& path, FileType type)
 	: mName(path.filename().string())
+    , mFullPath(path)
+    , mType(type)
 {
 	auto flags = std::ios::out | std::ios::in;
 	if (type == FileType::Binary)
@@ -39,9 +41,15 @@ void File::Write(const TString& contents)
 {
 	if (not mHandle.is_open())
 	{
-		GLEAM_CORE_ERROR("File {0} could not be opened!", GetName());
-		return;
+        auto flags = std::ios::out | std::ios::in | std::ios::app;
+        if (mType == FileType::Binary)
+        {
+            flags |= std::ios::binary;
+        }
+        mHandle.open(mFullPath, flags);
+        mHandle.unsetf(std::ios::skipws);
 	}
+    mHandle << contents;
 }
 
 const TString& File::GetName() const

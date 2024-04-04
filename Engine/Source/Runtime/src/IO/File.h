@@ -26,6 +26,10 @@ public:
 private:
 
 	TString mName;
+    
+    FileType mType;
+    
+    Filesystem::path mFullPath;
 
 	mutable std::fstream mHandle;
     
