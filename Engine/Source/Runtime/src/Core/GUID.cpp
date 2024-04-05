@@ -99,10 +99,10 @@ Guid& Guid::operator=(const Reflection::Attribute::Guid& guid)
 
 TString Guid::ToString() const
 {
-    TString out;
-    out.resize(38);
-    snprintf(out.data(),
-             out.length(),
+    TString str;
+    str.resize(36);
+    snprintf(str.data(),
+             str.length() + 1,
              "%08X-%04hX-%04hX-%02hhX%02hhX-%02hhX%02hhX%02hhX%02hhX%02hhX%02hhX",
              mData1,
              mData2,
@@ -115,7 +115,7 @@ TString Guid::ToString() const
              mData4[5],
              mData4[6],
              mData4[7]);
-	return out;
+    return str;
 }
 
 bool Guid::operator==(const Guid& other) const
