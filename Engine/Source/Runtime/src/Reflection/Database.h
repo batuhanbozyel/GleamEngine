@@ -31,7 +31,23 @@ public:
         return mClasses.insert(mClasses.end(), { hash, CreateClassDescription(type) })->second;
     }
     
+    template<typename T, typename = std::enable_if_t<Traits::IsEnum<T>::value>>
+    static const EnumDescription& GetEnum()
+    {
+        auto hash = typeid(T).hash_code();
+        auto it = mEnums.find(hash);
+        if (it != mEnums.end())
+        {
+            return it->second;
+        }
+        
+        auto type = refl::reflect<T>();
+        return mEnums.insert(mEnums.end(), { hash, CreateEnumDescription(type) })->second;
+    }
+    
     static const ClassDescription& GetClass(size_t hash);
+    
+    static const EnumDescription& GetEnum(size_t hash);
     
 private:
 
@@ -61,7 +77,8 @@ private:
             }
             else if (Traits::IsEnum<ValueType>::value)
             {
-                auto field = EnumField();
+                auto hash = typeid(ValueType).hash_code();
+                auto field = EnumField(hash);
                 field.offset = fieldOffset;
                 field.size = fieldSize;
                 desc.mFields.emplace_back(CreateFieldDescription(member, field));
@@ -69,10 +86,20 @@ private:
             else if (Traits::IsArray<ValueType>::value)
             {
                 using ElementType = std::remove_all_extents<ValueType>::type;
-                auto field = ArrayField(GetFieldType<ElementType>(), sizeof(ElementType));
+                auto elementHash = typeid(ElementType).hash_code();
+                auto elementName = refl::reflect<ElementType>().name;
+                auto elementType = GetFieldType<ElementType>();
+                
+                auto field = ArrayField(elementName.c_str(), elementType, elementHash, sizeof(ElementType));
                 field.offset = fieldOffset;
                 field.size = fieldSize;
                 desc.mFields.emplace_back(CreateFieldDescription(member, field));
+                
+                if constexpr (Traits::IsArray<ElementType>::value)
+                {
+                    auto classType = refl::reflect<ElementType>();
+                    mClasses[elementHash] = CreateClassDescription(classType);
+                }
             }
             else if (Traits::IsClass<ValueType>::value)
             {
@@ -122,6 +149,23 @@ private:
 		return desc;
     }
     
+    template<typename T, typename = std::enable_if_t<Traits::IsEnum<T>::value>>
+    static constexpr EnumDescription CreateEnumDescription(const refl::type_descriptor<T>& type)
+    {
+        EnumDescription desc;
+        desc.mName = type.name.c_str();
+        desc.mGuid = refl::descriptor::get_attribute<Reflection::Attribute::Guid>(type);
+        
+        // resolve attributes
+        std::apply([&](auto attrib)
+        {
+            desc.mAttributes.push_back({ .description = attrib.description,
+                                         .value = std::make_any<decltype(attrib)>(attrib) });
+        }, type.attributes);
+        
+        return desc;
+    }
+    
     template<typename T>
     static constexpr FieldType GetFieldType()
     {
@@ -144,6 +188,7 @@ private:
         return FieldType::Invalid;;
     }
     
+    static inline HashMap<size_t, EnumDescription> mEnums;
     static inline HashMap<size_t, ClassDescription> mClasses;
     static inline HashMap<size_t, PrimitiveType> mPrimitiveTypes;
     static inline HashMap<PrimitiveType, TStringView, EnumClassHash> mPrimitiveNames;

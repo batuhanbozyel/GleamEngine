@@ -14,6 +14,17 @@ static constexpr const ClassDescription& GetClass(size_t hash)
     return Database::GetClass(hash);
 }
 
+template<typename T, typename = std::enable_if_t<Traits::IsEnum<T>::value>>
+static constexpr const EnumDescription& GetEnum()
+{
+    return Database::GetEnum<T>();
+}
+
+static constexpr const EnumDescription& GetEnum(size_t hash)
+{
+    return Database::GetEnum(hash);
+}
+
 template<typename T>
 static constexpr T& Get(void* ptr)
 {

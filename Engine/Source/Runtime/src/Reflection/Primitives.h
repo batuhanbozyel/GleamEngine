@@ -6,6 +6,11 @@ struct Dummy {};
 GLEAM_TYPE(Dummy, Guid("00000000-0000-0000-0000-000000000000"))
 GLEAM_END
 
+// This should never be used, but it is here to avoid returning reference to local variable
+enum class DummyEnum {};
+GLEAM_TYPE(DummyEnum, Guid("00000000-0000-0000-0000-000000000000"))
+GLEAM_END
+
 GLEAM_TYPE(Gleam::TString, Guid("D41E842F-8A78-41A0-9ADF-3CE585F51668"))
     GLEAM_FUNC(length)
     GLEAM_FUNC(c_str)

@@ -75,3 +75,16 @@ const ClassDescription& Database::GetClass(size_t hash)
 	auto type = refl::reflect<Dummy>();
 	return mClasses.insert(mClasses.end(), { hash, CreateClassDescription(type) })->second;
 }
+
+const EnumDescription& Database::GetEnum(size_t hash)
+{
+    auto it = mEnums.find(hash);
+    if (it != mEnums.end())
+    {
+        return it->second;
+    }
+    GLEAM_ASSERT(false, "Invalid enum hash!");
+    
+    auto type = refl::reflect<DummyEnum>();
+    return mEnums.insert(mEnums.end(), { hash, CreateEnumDescription(type) })->second;
+}

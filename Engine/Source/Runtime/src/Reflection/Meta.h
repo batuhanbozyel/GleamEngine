@@ -69,11 +69,13 @@ struct PrimitiveField : FieldBase<FieldType::Primitive>
 
 struct ArrayField : FieldBase<FieldType::Array>
 {
+    TStringView elementName;
     FieldType elementType;
+    size_t elementHash;
     uint32_t stride;
     
-    explicit constexpr ArrayField(FieldType type, uint32_t stride)
-        : FieldBase(), elementType(type), stride(stride)
+    explicit constexpr ArrayField(const TStringView typeName, FieldType type, size_t hash, uint32_t stride)
+        : FieldBase(), elementName(typeName), elementType(type), elementHash(hash), stride(stride)
     {
         
     }
@@ -92,6 +94,13 @@ struct ClassField : FieldBase<FieldType::Class>
 
 struct EnumField : FieldBase<FieldType::Enum>
 {
+    size_t hash;
+    
+    explicit constexpr EnumField(size_t hash)
+        : FieldBase(), hash(hash)
+    {
+        
+    }
 };
 
 // IMPORTANT: the order needs to match with FieldType enum items order
@@ -155,6 +164,55 @@ private:
     FieldType mType;
     TStringView mName;
     TArray<AttributePair> mAttributes;
+};
+
+class EnumDescription
+{
+    friend class Database;
+public:
+    
+    constexpr const Gleam::Guid& Guid() const
+    {
+        return mGuid;
+    }
+    
+    constexpr const TStringView ResolveName() const
+    {
+        return mName;
+    }
+    
+    template<AttributeType Attrib>
+    constexpr bool HasAttribute() const
+    {
+        for (const auto& attrib : mAttributes)
+        {
+            if (attrib.description.hash == Attrib::description.hash)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+    
+    template<AttributeType Attrib>
+    constexpr Attrib GetAttribute() const
+    {
+        for (const auto& attrib : mAttributes)
+        {
+            if (attrib.description.hash == Attrib::description.hash)
+            {
+                return std::any_cast<Attrib>(attrib.value);
+            }
+        }
+        return Attrib({});
+    }
+    
+private:
+    
+    Gleam::Guid mGuid;
+    TStringView mName;
+    TArray<AttributePair> mAttributes;
+    
 };
 
 class ClassDescription
