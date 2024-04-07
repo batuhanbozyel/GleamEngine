@@ -20,21 +20,31 @@ public:
     
     static TString Serialize(const void* obj, const Reflection::ClassDescription& desc);
     
-    static bool TryCustomSerializer(const void* obj,
-                                    const Guid& fieldGuid,
-                                    const TStringView fieldName,
-                                    const Reflection::ClassField& classField,
-                                    void* userData);
+    static bool TryCustomObjectSerializer(const void* obj,
+                                          const Guid& fieldGuid,
+                                          const TStringView fieldName,
+                                          const Reflection::ClassField& classField,
+                                          void* userData);
+    
+    static bool TryCustomArraySerializer(const void* obj,
+                                         const Reflection::ClassField& classField,
+                                         void* userData);
     
 private:
     
-    using SerializerFn = std::function<void(const void* obj,
-                                            const Guid& fieldGuid,
-                                            const TStringView fieldName,
-                                            const Reflection::ClassDescription& classDesc,
-                                            void* userData)>;
+    using ObjectSerializerFn = std::function<void(const void* obj,
+                                                  const Guid& fieldGuid,
+                                                  const TStringView fieldName,
+                                                  const Reflection::ClassDescription& classDesc,
+                                                  void* userData)>;
+    
+    using ArraySerializerFn = std::function<void(const void* obj,
+                                                 const Reflection::ClassDescription& classDesc,
+                                                 void* userData)>;
 
-    static inline HashMap<TStringView, SerializerFn> mCustomSerializers;
+    static inline HashMap<TStringView, ObjectSerializerFn> mCustomObjectSerializers;
+    
+    static inline HashMap<TStringView, ArraySerializerFn> mCustomArraySerializers;
     
 };
 
