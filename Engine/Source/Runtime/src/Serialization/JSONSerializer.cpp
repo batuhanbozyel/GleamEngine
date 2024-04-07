@@ -133,7 +133,7 @@ static void SerializeClassObject(const void* obj,
 static void SerializeArrayObject(const void* obj,
                                  const Guid& fieldGuid,
                                  const TStringView fieldName,
-                                 const Reflection::ArrayField& arrayField,
+                                 const Reflection::ArrayDescription& arrayDesc,
                                  rapidjson::Node& outObjects);
 
 void JSONSerializer::Initialize()
@@ -316,7 +316,8 @@ void SerializeClassObjectFields(const void* obj,
                 case Reflection::FieldType::Array:
                 {
                     auto arrayField = field.GetField<Reflection::ArrayField>();
-                    SerializeArrayObject(OffsetPointer(obj, arrayField.offset), newGuid, field.ResolveName(), arrayField, fieldNode);
+                    const auto& arrayDesc = Reflection::GetArray(arrayField.hash);
+                    SerializeArrayObject(OffsetPointer(obj, arrayField.offset), newGuid, field.ResolveName(), arrayDesc, fieldNode);
                     break;
                 }
                 case Reflection::FieldType::Enum:
@@ -392,7 +393,7 @@ void SerializeClassObject(const void* obj,
 void SerializeArrayObject(const void* obj,
                           const Guid& fieldGuid,
                           const TStringView fieldName,
-                          const Reflection::ArrayField& arrayField,
+                          const Reflection::ArrayDescription& arrayDesc,
                           rapidjson::Node& outObjects)
 {
     rapidjson::Value header(rapidjson::kObjectType);
@@ -400,41 +401,31 @@ void SerializeArrayObject(const void* obj,
     
     rapidjson::Value elements(rapidjson::kArrayType);
     rapidjson::Node elementsNode(elements, outObjects.allocator);
-    if (arrayField.elementType == Reflection::FieldType::Primitive)
+    if (arrayDesc.ElementType() == Reflection::FieldType::Primitive)
     {
-        auto primitiveType = Reflection::Database::GetPrimitiveType(arrayField.elementHash);
+        auto primitiveType = Reflection::Database::GetPrimitiveType(arrayDesc.ElementHash());
         headerNode.AddMember("Kind", rapidjson::StringRef("Primitive"));
         
-        for (size_t elementOffset = 0; elementOffset < arrayField.size; elementOffset += arrayField.stride)
+        for (size_t elementOffset = 0; elementOffset < arrayDesc.GetSize(); elementOffset += arrayDesc.GetStride())
         {
             SerializePrimitiveObjectValue(OffsetPointer(obj, elementOffset), primitiveType, elementsNode);
         }
     }
-    else if (arrayField.elementType == Reflection::FieldType::Array)
+    else if (arrayDesc.ElementType() == Reflection::FieldType::Array)
     {
-        const auto& arrayDesc = Reflection::GetClass(arrayField.elementHash);
-        auto innerField = Reflection::ArrayField(arrayDesc.ResolveName(), Reflection::FieldType::Array, arrayField.elementHash, arrayDesc.GetSize());
-        
         headerNode.AddMember("Kind", rapidjson::StringRef("Array"));
-        headerNode.AddMember("TypeGuid", arrayDesc.Guid().ToString());
-        
-        if (arrayDesc.HasAttribute<Reflection::Attribute::Version>())
-        {
-            const auto& attr = arrayDesc.GetAttribute<Reflection::Attribute::Version>();
-            const auto& desc = Reflection::Attribute::Version::description;
-            headerNode.AddMember(rapidjson::StringRef(desc.tag), rapidjson::Value().SetUint(attr.version));
-        }
         
         rapidjson::Value innerElements(rapidjson::kArrayType);
         rapidjson::Node innerElementsNode(innerElements, outObjects.allocator);
-        for (size_t elementOffset = 0; elementOffset < arrayField.size; elementOffset += arrayField.stride)
+        const auto& innerDesc = Reflection::GetArray(arrayDesc.ElementHash());
+        for (size_t elementOffset = 0; elementOffset < arrayDesc.GetSize(); elementOffset += arrayDesc.GetStride())
         {
-            SerializeArrayObject(OffsetPointer(obj, elementOffset), fieldGuid, arrayField.elementName, innerField, innerElementsNode);
+            SerializeArrayObject(OffsetPointer(obj, elementOffset), fieldGuid, arrayDesc.ResolveName(), innerDesc, innerElementsNode);
         }
     }
-    else if (arrayField.elementType == Reflection::FieldType::Class)
+    else if (arrayDesc.ElementType() == Reflection::FieldType::Class)
     {
-        auto classDesc = Reflection::Database::GetClass(arrayField.elementHash);
+        auto classDesc = Reflection::Database::GetClass(arrayDesc.ElementHash());
         headerNode.AddMember("Kind", rapidjson::StringRef("Class"));
         headerNode.AddMember("TypeGuid", classDesc.Guid().ToString());
         
@@ -445,14 +436,14 @@ void SerializeArrayObject(const void* obj,
             headerNode.AddMember(rapidjson::StringRef(desc.tag), rapidjson::Value().SetUint(attr.version));
         }
         
-        for (size_t elementOffset = 0; elementOffset < arrayField.size; elementOffset += arrayField.stride)
+        for (size_t elementOffset = 0; elementOffset < arrayDesc.GetSize(); elementOffset += arrayDesc.GetStride())
         {
             SerializeClassObjectFields(OffsetPointer(obj, elementOffset), fieldGuid, fieldName, classDesc, elementsNode);
         }
     }
-    else if (arrayField.elementType == Reflection::FieldType::Enum)
+    else if (arrayDesc.ElementType() == Reflection::FieldType::Enum)
     {
-        auto enumDesc = Reflection::Database::GetEnum(arrayField.elementHash);
+        auto enumDesc = Reflection::Database::GetEnum(arrayDesc.ElementHash());
         headerNode.AddMember("Kind", rapidjson::StringRef("Enum"));
         headerNode.AddMember("TypeGuid", enumDesc.Guid().ToString());
         
@@ -463,7 +454,7 @@ void SerializeArrayObject(const void* obj,
             headerNode.AddMember(rapidjson::StringRef(desc.tag), rapidjson::Value().SetUint(attr.version));
         }
         
-        for (size_t elementOffset = 0; elementOffset < arrayField.size; elementOffset += arrayField.stride)
+        for (size_t elementOffset = 0; elementOffset < arrayDesc.GetSize(); elementOffset += arrayDesc.GetStride())
         {
             SerializeEnumObjectValue(OffsetPointer(obj, elementOffset), elementsNode);
         }
@@ -472,7 +463,7 @@ void SerializeArrayObject(const void* obj,
     // Header
     if (elements.Size() > 0)
     {
-        headerNode.AddMember("TypeName", rapidjson::StringRef(arrayField.elementName.data()));
+        headerNode.AddMember("TypeName", rapidjson::StringRef(arrayDesc.ResolveName().data()));
         headerNode.AddMember("FieldGuid", fieldGuid.ToString());
         if (not fieldName.empty())
         {

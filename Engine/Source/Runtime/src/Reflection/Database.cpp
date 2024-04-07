@@ -88,3 +88,14 @@ const EnumDescription& Database::GetEnum(size_t hash)
     auto type = refl::reflect<DummyEnum>();
     return mEnums.insert(mEnums.end(), { hash, CreateEnumDescription(type) })->second;
 }
+
+const ArrayDescription& Database::GetArray(size_t hash)
+{
+    auto it = mArrays.find(hash);
+    if (it != mArrays.end())
+    {
+        return it->second;
+    }
+    GLEAM_ASSERT(false, "Invalid array hash!");
+    return mArrays.insert(mArrays.end(), { hash, CreateArrayDescription<Dummy[1]>() })->second;
+}

@@ -21,6 +21,7 @@ GLEAM_TEMPLATE((typename T), (std::vector<T>), Guid("FA7B0E0D-F6B5-4060-9E2B-E43
     GLEAM_FUNC(data)
 GLEAM_END
 
-GLEAM_TEMPLATE((typename T, size_t size), (std::array<T, size>), Guid("4D138331-C39C-4845-BE74-C0CEA70DDCFD"))
+GLEAM_TEMPLATE((typename T, size_t s), (std::array<T, s>), Guid("4D138331-C39C-4845-BE74-C0CEA70DDCFD"))
+    GLEAM_FUNC(size)
     GLEAM_FUNC(data)
 GLEAM_END

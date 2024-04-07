@@ -69,13 +69,10 @@ struct PrimitiveField : FieldBase<FieldType::Primitive>
 
 struct ArrayField : FieldBase<FieldType::Array>
 {
-    TStringView elementName;
-    FieldType elementType;
-    size_t elementHash;
-    uint32_t stride;
+    size_t hash;
     
-    explicit constexpr ArrayField(const TStringView typeName, FieldType type, size_t hash, uint32_t stride)
-        : FieldBase(), elementName(typeName), elementType(type), elementHash(hash), stride(stride)
+    explicit constexpr ArrayField(size_t hash)
+        : FieldBase(), hash(hash)
     {
         
     }
@@ -279,6 +276,46 @@ private:
     TArray<FieldDescription> mFields;
     TArray<ClassDescription> mBaseClasses;
     TArray<AttributePair> mAttributes;
+};
+
+class ArrayDescription
+{
+    friend class Database;
+public:
+    
+    constexpr const TStringView ResolveName() const
+    {
+        return mName;
+    }
+    
+    constexpr size_t GetSize() const
+    {
+        return mSize;
+    }
+    
+    constexpr size_t GetStride() const
+    {
+        return mStride;
+    }
+    
+    constexpr size_t ElementHash() const
+    {
+        return mHash;
+    }
+    
+    constexpr FieldType ElementType() const
+    {
+        return mType;
+    }
+    
+private:
+    
+    size_t mHash;
+    size_t mSize;
+    size_t mStride;
+    FieldType mType;
+    TStringView mName;
+    
 };
 
 } // namespace Gleam::Reflection

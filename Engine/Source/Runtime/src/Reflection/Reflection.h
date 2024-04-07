@@ -25,6 +25,11 @@ static constexpr const EnumDescription& GetEnum(size_t hash)
     return Database::GetEnum(hash);
 }
 
+static constexpr const ArrayDescription& GetArray(size_t hash)
+{
+    return Database::GetArray(hash);
+}
+
 template<typename T>
 static constexpr T& Get(void* ptr)
 {
