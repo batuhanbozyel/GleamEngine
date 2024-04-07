@@ -1,6 +1,16 @@
 #include "gpch.h"
 #include "Database.h"
 
+// This should never be used, but it is here to avoid returning reference to local variable
+struct Dummy {};
+GLEAM_TYPE(Dummy, Guid("00000000-0000-0000-0000-000000000000"))
+GLEAM_END
+
+// This should never be used, but it is here to avoid returning reference to local variable
+enum class DummyEnum {};
+GLEAM_TYPE(DummyEnum, Guid("00000000-0000-0000-0000-000000000000"))
+GLEAM_END
+
 using namespace Gleam::Reflection;
 
 void Database::Initialize()

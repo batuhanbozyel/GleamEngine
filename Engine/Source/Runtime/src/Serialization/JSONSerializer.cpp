@@ -102,7 +102,6 @@ static void SerializePrimitiveObjectValue(const void* obj,
 static void SerializeEnumObjectValue(const void* obj,
                                      rapidjson::Node& node);
 
-
 static void SerializeClassObjectFields(const void* obj,
                                        const Guid& fieldGuid,
                                        const TStringView fieldName,
@@ -138,19 +137,32 @@ static void SerializeArrayObject(const void* obj,
 
 void JSONSerializer::Initialize()
 {
-    mCustomSerializers[typeid(TString).hash_code()] = [](const void* obj,
-                                                         const Guid& fieldGuid,
-                                                         const TStringView fieldName,
-                                                         const Reflection::ClassDescription& classDesc,
-                                                         void* userData)
+    mCustomSerializers[Reflection::GetClass<TString>().ResolveName()] = [](const void* obj,
+                                                                           const Guid& fieldGuid,
+                                                                           const TStringView fieldName,
+                                                                           const Reflection::ClassDescription& classDesc,
+                                                                           void* userData)
     {
-        auto str = Reflection::Get<TString>(obj).c_str();
+        const auto& str = Reflection::Get<TString>(obj);
         auto& outObject = Reflection::Get<rapidjson::Node>(userData);
         rapidjson::Value object(rapidjson::kObjectType);
         rapidjson::Node node(object, outObject.allocator);
-        node.AddMember("Value", rapidjson::StringRef(str));
+        node.AddMember("Value", rapidjson::StringRef(str.c_str(), str.length()));
         SerializeClassHeader(classDesc, fieldGuid, fieldName, outObject);
         outObject.AddMember("Data", object);
+    };
+    
+    mCustomSerializers[Reflection::GetClass<TArray<void*>>().ResolveName()] = [](const void* obj,
+                                                                                 const Guid& fieldGuid,
+                                                                                 const TStringView fieldName,
+                                                                                 const Reflection::ClassDescription& classDesc,
+                                                                                 void* userData)
+    {
+        const auto& arr = Reflection::Get<TArray<void*>>(obj);
+        auto& outObject = Reflection::Get<rapidjson::Node>(userData);
+        const auto& arrDesc = Reflection::GetArray(classDesc.ContainerHash());
+        auto containerDesc = Reflection::ArrayDescription(arrDesc.ResolveName(), arrDesc.ElementType(), arrDesc.ElementHash(), arrDesc.GetStride() * arr.size(), arrDesc.GetStride());
+        SerializeArrayObject(arr.data(), fieldGuid, fieldName, containerDesc, outObject);
     };
 }
 
@@ -488,10 +500,10 @@ bool JSONSerializer::TryCustomSerializer(const void* obj,
                                          const Reflection::ClassField& classField,
                                          void* userData)
 {
-    auto it = mCustomSerializers.find(classField.hash);
+    const auto& fieldDesc = Reflection::GetClass(classField.hash);
+    auto it = mCustomSerializers.find(fieldDesc.ResolveName());
     if (it != mCustomSerializers.end())
     {
-        const auto& fieldDesc = Reflection::GetClass(classField.hash);
         it->second(obj, fieldGuid, fieldName, fieldDesc, userData);
         return true;
     }

@@ -268,6 +268,11 @@ public:
         return mSize;
     }
     
+    constexpr size_t ContainerHash() const
+    {
+        return mContainerHash;
+    }
+    
 private:
     
     size_t mSize;
@@ -276,12 +281,22 @@ private:
     TArray<FieldDescription> mFields;
     TArray<ClassDescription> mBaseClasses;
     TArray<AttributePair> mAttributes;
+    
+    size_t mContainerHash;
 };
 
 class ArrayDescription
 {
     friend class Database;
 public:
+    
+    ArrayDescription() = default;
+    ArrayDescription(const ArrayDescription&) = default;
+    ArrayDescription(const TStringView name, FieldType type, size_t hash, size_t size, size_t stride)
+        : mName(name), mType(type), mHash(hash), mSize(size), mStride(stride)
+    {
+        
+    }
     
     constexpr const TStringView ResolveName() const
     {

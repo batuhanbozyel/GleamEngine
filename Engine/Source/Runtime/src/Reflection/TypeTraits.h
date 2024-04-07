@@ -46,10 +46,22 @@ struct IsBaseCheckerHelper<Template, Instance,
     std::void_t<decltype(IsBaseChecker<Template>(std::declval<Instance*>()))>
 > : decltype(IsBaseChecker<Template>(std::declval<Instance*>())) {};
 
+// SFIANE support for detecting whether the type T supports member .begin() and .end() operations. */
+template <typename U>
+static auto IsContainerTest(int) -> decltype(std::declval<U>().begin(), std::declval<U>().end(), std::true_type{});
+
+// SFIANE support for detecting whether the type T supports member .begin() and .end() operations. */
+template <typename U>
+static std::false_type IsContainerTest(...);
+
 } // namespace Detail
 
 // is derived of template
 template<template<class...> class Template, class Instance>
 struct IsDerivedOfTemplate : Detail::IsBaseCheckerHelper<Template, Instance> {};
+
+// is container, aka type T support member .begin() and .end() operations
+template <typename T>
+struct IsContainer : decltype(Detail::IsContainerTest<T>(0)) {};
 
 } // namespace Gleam::Reflection::Traits

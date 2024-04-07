@@ -18,7 +18,7 @@ public:
     static const TStringView GetPrimitiveName(PrimitiveType type);
     
     template<typename T>
-    static const ClassDescription& CreateClassIfNotExist()
+    static ClassDescription& CreateClassIfNotExist()
     {
         auto hash = typeid(T).hash_code();
         auto it = mClasses.find(hash);
@@ -32,7 +32,7 @@ public:
     }
     
     template<typename T, std::enable_if_t<Traits::IsEnum<T>::value, bool> = true>
-    static const EnumDescription& CreateEnumIfNotExist()
+    static EnumDescription& CreateEnumIfNotExist()
     {
         auto hash = typeid(T).hash_code();
         auto it = mEnums.find(hash);
@@ -46,7 +46,7 @@ public:
     }
     
     template<typename T, std::enable_if_t<Traits::IsArray<T>::value, bool> = true>
-    static const ArrayDescription& CreateArrayIfNotExist()
+    static ArrayDescription& CreateArrayIfNotExist()
     {
         auto hash = typeid(T).hash_code();
         auto it = mArrays.find(hash);
@@ -115,7 +115,14 @@ private:
                 field.offset = fieldOffset;
                 field.size = fieldSize;
                 desc.mFields.emplace_back(CreateFieldDescription(member, field));
-                CreateClassIfNotExist<ValueType>();
+                auto& classDesc = CreateClassIfNotExist<ValueType>();
+                
+                if constexpr (Traits::IsContainer<ValueType>::value)
+                {
+                    using ElementType = ValueType::value_type;
+                    CreateArrayIfNotExist<ElementType[1]>();
+                    classDesc.mContainerHash = typeid(ElementType[1]).hash_code();
+                }
             }
             fieldOffset += fieldSize;
         });

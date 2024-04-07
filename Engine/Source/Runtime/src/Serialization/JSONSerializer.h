@@ -34,7 +34,7 @@ private:
                                             const Reflection::ClassDescription& classDesc,
                                             void* userData)>;
 
-    static inline HashMap<size_t, SerializerFn> mCustomSerializers;
+    static inline HashMap<TStringView, SerializerFn> mCustomSerializers;
     
 };
 
