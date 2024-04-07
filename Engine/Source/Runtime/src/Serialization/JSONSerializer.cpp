@@ -490,7 +490,7 @@ void SerializeArrayObjectElements(const void* obj,
         const auto& innerDesc = Reflection::GetArray(arrayDesc.ElementHash());
         for (size_t elementOffset = 0; elementOffset < arrayDesc.GetSize(); elementOffset += arrayDesc.GetStride())
         {
-            SerializeArrayObjectElements(OffsetPointer(obj, elementOffset), fieldGuid, arrayDesc.ResolveName(), innerDesc, outElements);
+            SerializeArrayObjectElements(OffsetPointer(obj, elementOffset), fieldGuid, arrayDesc.ResolveName(), innerDesc, elementsNode);
         }
         outElements.PushBack(elementsNode.object);
     }
