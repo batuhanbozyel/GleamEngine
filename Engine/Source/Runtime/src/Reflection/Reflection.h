@@ -6,7 +6,7 @@ namespace Gleam::Reflection {
 template<typename T>
 static constexpr const ClassDescription& GetClass()
 {
-    return Database::GetClass<T>();
+    return Database::CreateClassIfNotExist<T>();
 }
 
 static constexpr const ClassDescription& GetClass(size_t hash)
@@ -17,12 +17,18 @@ static constexpr const ClassDescription& GetClass(size_t hash)
 template<typename T, typename = std::enable_if_t<Traits::IsEnum<T>::value>>
 static constexpr const EnumDescription& GetEnum()
 {
-    return Database::GetEnum<T>();
+    return Database::CreateEnumIfNotExist<T>();
 }
 
 static constexpr const EnumDescription& GetEnum(size_t hash)
 {
     return Database::GetEnum(hash);
+}
+
+template<typename T, typename = std::enable_if_t<Traits::IsArray<T>::value>>
+static constexpr const ArrayDescription& GetArray()
+{
+    return Database::CreateArrayIfNotExist<T>();
 }
 
 static constexpr const ArrayDescription& GetArray(size_t hash)

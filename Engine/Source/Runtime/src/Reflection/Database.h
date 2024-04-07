@@ -18,7 +18,7 @@ public:
     static const TStringView GetPrimitiveName(PrimitiveType type);
     
     template<typename T>
-    static const ClassDescription& GetClass()
+    static const ClassDescription& CreateClassIfNotExist()
     {
         auto hash = typeid(T).hash_code();
         auto it = mClasses.find(hash);
@@ -32,7 +32,7 @@ public:
     }
     
     template<typename T, std::enable_if_t<Traits::IsEnum<T>::value, bool> = true>
-    static const EnumDescription& GetEnum()
+    static const EnumDescription& CreateEnumIfNotExist()
     {
         auto hash = typeid(T).hash_code();
         auto it = mEnums.find(hash);
@@ -46,7 +46,7 @@ public:
     }
     
     template<typename T, std::enable_if_t<Traits::IsArray<T>::value, bool> = true>
-    static const ArrayDescription& GetArray()
+    static const ArrayDescription& CreateArrayIfNotExist()
     {
         auto hash = typeid(T).hash_code();
         auto it = mArrays.find(hash);
@@ -97,9 +97,7 @@ private:
                 field.offset = fieldOffset;
                 field.size = fieldSize;
                 desc.mFields.emplace_back(CreateFieldDescription(member, field));
-                
-                auto enumType = refl::reflect<ValueType>();
-                mEnums[hash] = CreateEnumDescription(enumType);
+                CreateEnumIfNotExist<ValueType>();
             }
             else if constexpr (Traits::IsArray<ValueType>::value)
             {
@@ -108,7 +106,7 @@ private:
                 field.offset = fieldOffset;
                 field.size = fieldSize;
                 desc.mFields.emplace_back(CreateFieldDescription(member, field));
-                mArrays[hash] = CreateArrayDescription<ValueType>();
+                CreateArrayIfNotExist<ValueType>();
             }
             else if constexpr (Traits::IsClass<ValueType>::value)
             {
@@ -117,9 +115,7 @@ private:
                 field.offset = fieldOffset;
                 field.size = fieldSize;
                 desc.mFields.emplace_back(CreateFieldDescription(member, field));
-                
-                auto classType = refl::reflect<ValueType>();
-				mClasses[hash] = CreateClassDescription(classType);
+                CreateClassIfNotExist<ValueType>();
             }
             fieldOffset += fieldSize;
         });
