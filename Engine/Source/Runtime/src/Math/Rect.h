@@ -28,3 +28,8 @@ struct Rect
 };
     
 } // namespace Gleam
+
+GLEAM_TYPE(Gleam::Rect, Guid("CB0D2255-72B8-433A-A169-AE80581A0478"))
+    GLEAM_FIELD(size, Serializable())
+    GLEAM_FIELD(offset, Serializable())
+GLEAM_END

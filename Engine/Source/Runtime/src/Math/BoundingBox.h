@@ -34,3 +34,8 @@ struct BoundingBox
 };
 
 } // namespace Gleam
+
+GLEAM_TYPE(Gleam::BoundingBox, Guid("AB9094D8-003E-4868-8C9D-20336D882EAD"))
+    GLEAM_FIELD(min, Serializable())
+    GLEAM_FIELD(max, Serializable())
+GLEAM_END

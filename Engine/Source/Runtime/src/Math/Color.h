@@ -223,3 +223,13 @@ NO_DISCARD FORCE_INLINE constexpr Color32 Mix(Color32 c0, Color32 c1, float a)
 }
 
 } // namespace Gleam
+
+GLEAM_TYPE(Gleam::Color, Guid("9C2ADB39-C783-4826-9FD4-DE1062A08094"))
+GLEAM_END
+
+GLEAM_TYPE(Gleam::Color32, Guid("88FA9547-6F5F-45C4-8AE1-135B27AD29F7"))
+    GLEAM_FIELD(r, Serializable())
+    GLEAM_FIELD(g, Serializable())
+    GLEAM_FIELD(b, Serializable())
+    GLEAM_FIELD(a, Serializable())
+GLEAM_END

@@ -68,6 +68,13 @@ public:
 
 } // namespace Gleam
 
+GLEAM_TYPE(Gleam::SubmeshDescriptor, Guid("DD7E3A74-ADF4-45A9-8DFD-CA252EDC49A6"))
+    GLEAM_FIELD(baseVertex, Serializable())
+    GLEAM_FIELD(firstIndex, Serializable())
+    GLEAM_FIELD(indexCount, Serializable())
+    GLEAM_FIELD(materialIndex, Serializable())
+GLEAM_END
+
 GLEAM_TYPE(Gleam::InterleavedMeshVertex, Guid("4AFE936A-550F-419C-A7F0-5ED38D9D1642"))
     GLEAM_FIELD(normal, Serializable())
     GLEAM_FIELD(texCoord, Serializable())

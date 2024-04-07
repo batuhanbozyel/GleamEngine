@@ -423,3 +423,9 @@ template<typename T>
 const Vector3<T> Vector3<T>::back{T(0), T(0), T(-1)};
 	
 } // namespace Gleam
+
+GLEAM_TEMPLATE((typename T), (Gleam::Vector3<T>), Guid("3978CBC8-A694-45FF-B056-DE21F69421AC"))
+    GLEAM_FIELD(x, Serializable())
+    GLEAM_FIELD(y, Serializable())
+    GLEAM_FIELD(z, Serializable())
+GLEAM_END
