@@ -183,10 +183,10 @@ void JSONSerializer::Initialize()
     };
     
     mCustomObjectSerializers[Reflection::GetClass<TArray<intptr_t>>().ResolveName()] = [](const void* obj,
-                                                                                    const Guid& fieldGuid,
-                                                                                    const TStringView fieldName,
-                                                                                    const Reflection::ClassDescription& classDesc,
-                                                                                    void* userData)
+																						  const Guid& fieldGuid,
+																						  const TStringView fieldName,
+																						  const Reflection::ClassDescription& classDesc,
+																						  void* userData)
     {
         const auto& arr = Reflection::Get<TArray<intptr_t>>(obj);
         auto& outObject = Reflection::Get<rapidjson::Node>(userData);
@@ -292,13 +292,13 @@ void SerializeArrayHeader(const Reflection::ArrayDescription& arrayDesc,
     }
     else if (arrayDesc.ElementType() == Reflection::FieldType::Class)
     {
-        auto classDesc = Reflection::Database::GetClass(arrayDesc.ElementHash());
+		const auto& classDesc = Reflection::Database::GetClass(arrayDesc.ElementHash());
         node.AddMember("Kind", rapidjson::StringRef("Class"));
         node.AddMember("TypeGuid", classDesc.Guid().ToString());
     }
     else if (arrayDesc.ElementType() == Reflection::FieldType::Enum)
     {
-        auto enumDesc = Reflection::Database::GetEnum(arrayDesc.ElementHash());
+		const auto& enumDesc = Reflection::Database::GetEnum(arrayDesc.ElementHash());
         node.AddMember("Kind", rapidjson::StringRef("Enum"));
         node.AddMember("TypeGuid", enumDesc.Guid().ToString());
         
@@ -456,7 +456,7 @@ void SerializeClassObjectFields(const void* obj,
             {
                 case Reflection::FieldType::Class:
                 {
-                    auto classField = field.GetField<Reflection::ClassField>();
+					const auto& classField = field.GetField<Reflection::ClassField>();
                     if (JSONSerializer::TryCustomObjectSerializer(OffsetPointer(obj, classField.offset), newGuid, field.ResolveName(), classField, &fieldNode) == false)
                     {
                         const auto& fieldDesc = Reflection::GetClass(classField.hash);
@@ -466,21 +466,21 @@ void SerializeClassObjectFields(const void* obj,
                 }
                 case Reflection::FieldType::Array:
                 {
-                    auto arrayField = field.GetField<Reflection::ArrayField>();
+					const auto& arrayField = field.GetField<Reflection::ArrayField>();
                     const auto& arrayDesc = Reflection::GetArray(arrayField.hash);
                     SerializeArrayObjectElements(OffsetPointer(obj, arrayField.offset), arrayDesc, fieldNode);
                     break;
                 }
                 case Reflection::FieldType::Enum:
                 {
-                    auto enumField = field.GetField<Reflection::EnumField>();
+					const auto& enumField = field.GetField<Reflection::EnumField>();
                     const auto& enumDesc = Reflection::GetEnum(enumField.hash);
                     SerializeEnumObject(OffsetPointer(obj, enumField.offset), newGuid, field.ResolveName(), enumDesc, fieldNode);
                     break;
                 }
                 case Reflection::FieldType::Primitive:
                 {
-                    auto primitiveField = field.GetField<Reflection::PrimitiveField>();
+					const auto& primitiveField = field.GetField<Reflection::PrimitiveField>();
                     auto primitiveType = primitiveField.primitive;
                     SerializePrimitiveObject(OffsetPointer(obj, primitiveField.offset), newGuid, field.ResolveName(), primitiveType, fieldNode);
                     break;
@@ -512,7 +512,7 @@ void SerializeClassArrayFields(const void* obj,
                 {
                     auto elements = rapidjson::Value(rapidjson::kArrayType);
                     auto elementsNode = rapidjson::Node(elements, outFields.allocator);
-                    auto classField = field.GetField<Reflection::ClassField>();
+					const auto& classField = field.GetField<Reflection::ClassField>();
                     if (JSONSerializer::TryCustomArraySerializer(OffsetPointer(obj, classField.offset), classField, &elementsNode) == false)
                     {
                         const auto& fieldDesc = Reflection::GetClass(classField.hash);
@@ -526,7 +526,7 @@ void SerializeClassArrayFields(const void* obj,
                     auto elements = rapidjson::Value(rapidjson::kArrayType);
                     auto elementsNode = rapidjson::Node(elements, outFields.allocator);
                     
-                    auto arrayField = field.GetField<Reflection::ArrayField>();
+					const auto& arrayField = field.GetField<Reflection::ArrayField>();
                     const auto& arrayDesc = Reflection::GetArray(arrayField.hash);
                     SerializeArrayObjectElements(OffsetPointer(obj, arrayField.offset), arrayDesc, elementsNode);
                     outFields.PushBack(elementsNode.object);
@@ -534,13 +534,13 @@ void SerializeClassArrayFields(const void* obj,
                 }
                 case Reflection::FieldType::Enum:
                 {
-                    auto enumField = field.GetField<Reflection::EnumField>();
+					const auto& enumField = field.GetField<Reflection::EnumField>();
                     SerializeEnumArrayValue(OffsetPointer(obj, enumField.offset), outFields);
                     break;
                 }
                 case Reflection::FieldType::Primitive:
                 {
-                    auto primitiveField = field.GetField<Reflection::PrimitiveField>();
+                    const auto& primitiveField = field.GetField<Reflection::PrimitiveField>();
                     auto primitiveType = primitiveField.primitive;
                     SerializePrimitiveArrayValue(OffsetPointer(obj, primitiveField.offset), primitiveType, outFields);
                     break;
@@ -578,7 +578,7 @@ void SerializeArrayObjectElements(const void* obj,
     }
     else if (arrayDesc.ElementType() == Reflection::FieldType::Class)
     {
-        auto classDesc = Reflection::Database::GetClass(arrayDesc.ElementHash());
+        const auto& classDesc = Reflection::Database::GetClass(arrayDesc.ElementHash());
         for (size_t elementOffset = 0; elementOffset < arrayDesc.GetSize(); elementOffset += arrayDesc.GetStride())
         {
             auto elements = rapidjson::Value(rapidjson::kArrayType);
@@ -589,7 +589,7 @@ void SerializeArrayObjectElements(const void* obj,
     }
     else if (arrayDesc.ElementType() == Reflection::FieldType::Enum)
     {
-        auto enumDesc = Reflection::Database::GetEnum(arrayDesc.ElementHash());
+        const auto& enumDesc = Reflection::Database::GetEnum(arrayDesc.ElementHash());
         for (size_t elementOffset = 0; elementOffset < arrayDesc.GetSize(); elementOffset += arrayDesc.GetStride())
         {
             SerializeEnumArrayValue(OffsetPointer(obj, elementOffset), outElements);

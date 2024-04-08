@@ -9,7 +9,7 @@ static constexpr const ClassDescription& GetClass()
     return Database::CreateClassIfNotExist<T>();
 }
 
-static constexpr const ClassDescription& GetClass(size_t hash)
+static const ClassDescription& GetClass(size_t hash)
 {
     return Database::GetClass(hash);
 }
@@ -20,7 +20,7 @@ static constexpr const EnumDescription& GetEnum()
     return Database::CreateEnumIfNotExist<T>();
 }
 
-static constexpr const EnumDescription& GetEnum(size_t hash)
+static const EnumDescription& GetEnum(size_t hash)
 {
     return Database::GetEnum(hash);
 }
@@ -31,7 +31,7 @@ static constexpr const ArrayDescription& GetArray()
     return Database::CreateArrayIfNotExist<T>();
 }
 
-static constexpr const ArrayDescription& GetArray(size_t hash)
+static const ArrayDescription& GetArray(size_t hash)
 {
     return Database::GetArray(hash);
 }
