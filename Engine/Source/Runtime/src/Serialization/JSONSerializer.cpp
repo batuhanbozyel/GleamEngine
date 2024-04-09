@@ -68,7 +68,8 @@ static TString Convert(const rapidjson::Value& value)
 {
     StringBuffer buffer;
     PrettyWriter<StringBuffer> writer(buffer);
-    writer.SetFormatOptions(PrettyFormatOptions::kFormatSingleLineArray);
+	writer.SetFormatOptions(PrettyFormatOptions::kFormatSingleLineArray);
+	writer.SetMaxDecimalPlaces(6);
     writer.SetIndent('\t', 1);
     value.Accept(writer);
     return buffer.GetString();
