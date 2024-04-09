@@ -69,6 +69,7 @@ static TString Convert(const rapidjson::Value& value)
     StringBuffer buffer;
     PrettyWriter<StringBuffer> writer(buffer);
     writer.SetFormatOptions(PrettyFormatOptions::kFormatSingleLineArray);
+    writer.SetIndent('\t', 1);
     value.Accept(writer);
     return buffer.GetString();
 }
@@ -551,7 +552,6 @@ void SerializeClassArrayFields(const void* obj,
         }
     }
 }
-
 
 void SerializeArrayObjectElements(const void* obj,
                                   const Reflection::ArrayDescription& arrayDesc,
