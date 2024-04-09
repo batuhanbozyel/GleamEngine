@@ -160,10 +160,10 @@ static void SerializeArrayObject(const void* obj,
 void JSONSerializer::Initialize()
 {
     mCustomObjectSerializers[Reflection::GetClass<TString>().ResolveName()] = [](const void* obj,
-                                                                           const Guid& fieldGuid,
-                                                                           const TStringView fieldName,
-                                                                           const Reflection::ClassDescription& classDesc,
-                                                                           void* userData)
+																				 const Guid& fieldGuid,
+																				 const TStringView fieldName,
+																				 const Reflection::ClassDescription& classDesc,
+																				 void* userData)
     {
         const auto& str = Reflection::Get<TString>(obj);
         auto& outObject = Reflection::Get<rapidjson::Node>(userData);
@@ -183,27 +183,27 @@ void JSONSerializer::Initialize()
         outObject.PushBack(rapidjson::Value(rapidjson::StringRef(str.c_str(), str.length())));
     };
     
-    mCustomObjectSerializers[Reflection::GetClass<TArray<intptr_t>>().ResolveName()] = [](const void* obj,
-																						  const Guid& fieldGuid,
-																						  const TStringView fieldName,
-																						  const Reflection::ClassDescription& classDesc,
-																						  void* userData)
+    mCustomObjectSerializers[Reflection::GetClass<TArray<uint8_t>>().ResolveName()] = [](const void* obj,
+																						 const Guid& fieldGuid,
+																						 const TStringView fieldName,
+																						 const Reflection::ClassDescription& classDesc,
+																						 void* userData)
     {
-        const auto& arr = Reflection::Get<TArray<intptr_t>>(obj);
+        const auto& arr = Reflection::Get<TArray<uint8_t>>(obj);
         auto& outObject = Reflection::Get<rapidjson::Node>(userData);
         const auto& arrDesc = Reflection::GetArray(classDesc.ContainerHash());
-        auto containerDesc = Reflection::ArrayDescription(arrDesc.ResolveName(), arrDesc.ElementType(), arrDesc.ElementHash(), arrDesc.GetStride() * arr.size(), arrDesc.GetStride());
+        auto containerDesc = Reflection::ArrayDescription(arrDesc.ResolveName(), arrDesc.ElementType(), arrDesc.ElementHash(), arr.size(), arrDesc.GetStride());
         SerializeArrayObject(arr.data(), fieldGuid, fieldName, containerDesc, outObject);
     };
     
-    mCustomArraySerializers[Reflection::GetClass<TArray<intptr_t>>().ResolveName()] = [](const void* obj,
-                                                                                         const Reflection::ClassDescription& classDesc,
-                                                                                         void* userData)
+    mCustomArraySerializers[Reflection::GetClass<TArray<uint8_t>>().ResolveName()] = [](const void* obj,
+                                                                                        const Reflection::ClassDescription& classDesc,
+                                                                                        void* userData)
     {
-        const auto& arr = Reflection::Get<TArray<intptr_t>>(obj);
+        const auto& arr = Reflection::Get<TArray<uint8_t>>(obj);
         auto& outObject = Reflection::Get<rapidjson::Node>(userData);
         const auto& arrDesc = Reflection::GetArray(classDesc.ContainerHash());
-        auto containerDesc = Reflection::ArrayDescription(arrDesc.ResolveName(), arrDesc.ElementType(), arrDesc.ElementHash(), arrDesc.GetStride() * arr.size(), arrDesc.GetStride());
+        auto containerDesc = Reflection::ArrayDescription(arrDesc.ResolveName(), arrDesc.ElementType(), arrDesc.ElementHash(), arr.size(), arrDesc.GetStride());
         SerializeArrayObjectElements(arr.data(), containerDesc, outObject);
     };
 }
