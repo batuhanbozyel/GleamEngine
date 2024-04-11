@@ -6,25 +6,25 @@ namespace Reflection::Attribute {
 struct Guid;
 } // Reflection::Attribute
 
-static constexpr uint8_t HexDigitToByte(char ch)
+static constexpr uint8_t HexDigitToByte(const char ch)
 {
     // 0-9
     if (ch >= '0' && ch <= '9')
-        return ch - '0';
+        return uint8_t(ch - '0');
 
     // a-f
     if (ch >= 'a' && ch <= 'f')
-        return 10 + ch - 'a';
+        return uint8_t(10 + ch - 'a');
 
     // A-F
     if (ch >= 'A' && ch <= 'F')
-        return 10 + ch - 'A';
+        return uint8_t(10 + ch - 'A');
 
-    return 0;
+    return uint8_t(0);
 }
 
 template<typename T>
-static constexpr T ParseHexDigits(const char*& str)
+static constexpr T ParseHexDigits(const char* (&str))
 {
     constexpr uint32_t numBytes = sizeof(T) * 2;
     constexpr uint32_t bitsPerByte = 4;
@@ -103,7 +103,7 @@ private:
 			uint16_t mData3;
 			uint8_t mData4[8];
 		};
-		TArray<uint8_t, 16> mBytes = { 0 };
+		TArray<uint8_t, 16> mBytes;
 	};
 
 };

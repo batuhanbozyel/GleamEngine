@@ -29,45 +29,41 @@ using Field = refl::attr::usage::field;
 
 GLEAM_ATTRIBUTE(Guid, Target::Class)
 {
-    union
+	TArray<uint8_t, 16> bytes;
+
+	template<size_t N>
+    explicit constexpr Guid(const char (&str)[N])
+		: bytes{
+			static_cast<uint8_t>((HexDigitToByte(str[6]) << 4) | (HexDigitToByte(str[7]) << 0)),
+			static_cast<uint8_t>((HexDigitToByte(str[4]) << 4) | (HexDigitToByte(str[5]) << 0)),
+			static_cast<uint8_t>((HexDigitToByte(str[2]) << 4) | (HexDigitToByte(str[3]) << 0)),
+			static_cast<uint8_t>((HexDigitToByte(str[0]) << 4) | (HexDigitToByte(str[1]) << 0)),
+
+			// str[8] = separator
+
+			static_cast<uint8_t>((HexDigitToByte(str[11]) << 4) | (HexDigitToByte(str[12]) << 0)),
+			static_cast<uint8_t>((HexDigitToByte(str[9]) << 4) | (HexDigitToByte(str[10]) << 0)),
+
+			// str[13] = separator
+
+			static_cast<uint8_t>((HexDigitToByte(str[16]) << 4) | (HexDigitToByte(str[17]) << 0)),
+			static_cast<uint8_t>((HexDigitToByte(str[14]) << 4) | (HexDigitToByte(str[15]) << 0)),
+
+			// str[18] = separator
+
+			static_cast<uint8_t>((HexDigitToByte(str[19]) << 4) | (HexDigitToByte(str[20]) << 0)),
+			static_cast<uint8_t>((HexDigitToByte(str[21]) << 4) | (HexDigitToByte(str[22]) << 0)),
+
+			// str[23] = separator
+			static_cast<uint8_t>((HexDigitToByte(str[24]) << 4) | (HexDigitToByte(str[25]) << 0)),
+			static_cast<uint8_t>((HexDigitToByte(str[26]) << 4) | (HexDigitToByte(str[27]) << 0)),
+			static_cast<uint8_t>((HexDigitToByte(str[28]) << 4) | (HexDigitToByte(str[29]) << 0)),
+			static_cast<uint8_t>((HexDigitToByte(str[30]) << 4) | (HexDigitToByte(str[31]) << 0)),
+			static_cast<uint8_t>((HexDigitToByte(str[32]) << 4) | (HexDigitToByte(str[33]) << 0)),
+			static_cast<uint8_t>((HexDigitToByte(str[34]) << 4) | (HexDigitToByte(str[35]) << 0))
+		}
     {
-        struct
-        {
-            uint32_t data1;
-            uint16_t data2;
-            uint16_t data3;
-            uint8_t data4[8];
-        };
-        TArray<uint8_t, 16> bytes = { 0 };
-    };
-    
-    explicit constexpr Guid(const TStringView str)
-    {
-        if (str.length() < 20) // 16 bytes + 4 separators
-        {
-            GLEAM_ASSERT(false, "Invalid Guid string!");
-            return;
-        }
-
-        auto it = str.data();
-        if (*it == '{')
-        {
-            it++;
-        }
-        
-        data1 = ParseHexDigits<uint32_t>(it);
-        data2 = ParseHexDigits<uint16_t>(it);
-        data3 = ParseHexDigits<uint16_t>(it);
-
-        data4[0] = ParseHexDigits<uint8_t>(it);
-        data4[1] = ParseHexDigits<uint8_t>(it);
-
-        data4[2] = ParseHexDigits<uint8_t>(it);
-        data4[3] = ParseHexDigits<uint8_t>(it);
-        data4[4] = ParseHexDigits<uint8_t>(it);
-        data4[5] = ParseHexDigits<uint8_t>(it);
-        data4[6] = ParseHexDigits<uint8_t>(it);
-        data4[7] = ParseHexDigits<uint8_t>(it);
+		static_assert(N == 37); // 32 bytes + 4 separators + null terminator
     }
 };
 
