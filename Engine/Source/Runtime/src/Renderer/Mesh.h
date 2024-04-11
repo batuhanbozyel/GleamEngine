@@ -69,6 +69,7 @@ public:
 } // namespace Gleam
 
 GLEAM_TYPE(Gleam::SubmeshDescriptor, Guid("DD7E3A74-ADF4-45A9-8DFD-CA252EDC49A6"))
+	GLEAM_FIELD(bounds, Serializable())
     GLEAM_FIELD(baseVertex, Serializable())
     GLEAM_FIELD(firstIndex, Serializable())
     GLEAM_FIELD(indexCount, Serializable())

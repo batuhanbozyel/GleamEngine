@@ -75,7 +75,7 @@ public:
     static Guid Combine(const Guid& guid1, const Guid& guid2);
 
 	Guid() = default;
-	Guid(const TStringView str);
+	Guid(const TString& str);
     Guid(const Reflection::Attribute::Guid& guid);
     
     Guid& operator=(const Guid&) = default;

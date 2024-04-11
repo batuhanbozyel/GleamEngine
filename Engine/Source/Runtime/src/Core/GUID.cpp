@@ -53,7 +53,8 @@ Guid Guid::Combine(const Guid& guid1, const Guid& guid2)
     return combined;
 }
 
-Guid::Guid(const TStringView str)
+Guid::Guid(const TString& str)
+	: mBytes({ 0 })
 {
 	if (str.length() < 20) // 16 bytes + 4 separators
 	{
