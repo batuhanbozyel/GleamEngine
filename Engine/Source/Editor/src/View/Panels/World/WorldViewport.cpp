@@ -67,6 +67,20 @@ void WorldViewport::Render(Gleam::ImGuiRenderer* imgui)
 		
 		ImGui::Image(Gleam::ImGuiBackend::GetImTextureIDForTexture(sceneRT), ImVec2(sceneRTsize.width, sceneRTsize.height), ImVec2(0.0f, 0.0f), ImVec2(1.0f, 1.0f));
 		mIsFocused = ImGui::IsWindowFocused();
+
+		if (ImGui::BeginDragDropTarget())
+		{
+			if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("ASSET"))
+			{
+				IM_ASSERT(payload->DataSize == sizeof(Gleam::Asset));
+				const auto& asset = *(const Gleam::Asset*)payload->Data;
+				if (asset.GetType() == Gleam::Reflection::GetClass<Gleam::MeshDescriptor>().Guid())
+				{
+
+				}
+			}
+			ImGui::EndDragDropTarget();
+		}
 		
 		ImGui::End();
 		ImGui::PopStyleVar();

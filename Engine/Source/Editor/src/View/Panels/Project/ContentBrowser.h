@@ -26,7 +26,7 @@ private:
     
     void DrawDirectoryTreeView(const Gleam::Filesystem::path& directory);
     
-    AssetManager mAssetManager;
+    EAssetManager mAssetManager;
 
     Gleam::Filesystem::path mCurrentDirectory;
     

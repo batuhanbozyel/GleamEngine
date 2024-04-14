@@ -18,7 +18,7 @@ ContentBrowser::ContentBrowser()
 	: mAssetDirectory(GameInstance->GetDefaultAssetPath())
 {
     mCurrentDirectory = mAssetDirectory;
-    mAssetManager = AssetManager(mAssetDirectory);
+    mAssetManager = EAssetManager(mAssetDirectory);
 }
 
 void ContentBrowser::Render(Gleam::ImGuiRenderer* imgui)
@@ -78,7 +78,13 @@ void ContentBrowser::DrawDirectoryTreeView(const Gleam::Filesystem::path& node)
         ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen | ImGuiTreeNodeFlags_SpanAvailWidth;
         if (ImGui::TreeNodeEx(filename.c_str(), flags))
         {
-            
+			if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None))
+			{
+				const auto& asset = mAssetManager.GetAsset(node);
+				ImGui::SetDragDropPayload("ASSET", &asset, sizeof(Gleam::Asset));
+				ImGui::Text("%s", filename.c_str());
+				ImGui::EndDragDropSource();
+			}
         }
     }
     ImGui::PopID();

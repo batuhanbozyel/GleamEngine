@@ -67,7 +67,7 @@
 #include "Input/InputSystem.h"
 
 #include "World/World.h"
-#include "Assets/AssetLibrary.h"
+#include "Assets/AssetManager.h"
 
 #include "Renderer/Renderers/UIRenderer.h"
 #include "Renderer/Renderers/DebugRenderer.h"
