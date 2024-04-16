@@ -1,5 +1,7 @@
 #pragma once
-#include "ShaderInterop.h"
+#if defined(__cplusplus)
+#include "Renderer/Shaders/ShaderInterop.h"
+#endif
 
 namespace Gleam {
 

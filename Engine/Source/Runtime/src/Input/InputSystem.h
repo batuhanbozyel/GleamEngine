@@ -29,9 +29,9 @@ public:
     
     bool GetButtonDown(const MouseButton button) const;
     
-    const Vector2& GetMousePosition() const;
+    const Float2& GetMousePosition() const;
     
-    const Vector2& GetAxis() const;
+    const Float2& GetAxis() const;
 
 private:
     
@@ -44,16 +44,18 @@ private:
     void MouseScrollEventHandler(SDL_MouseWheelEvent wheelEvent) const;
 
     void MouseButtonEventHandler(SDL_MouseButtonEvent buttonEvent) const;
+
+    Float2 mMousePosition = Float2::zero;
     
-    Vector2 mMousePosition = Vector2::zero;
-    
-    Vector2 mAxis = Vector2::zero;
+    Float2 mAxis = Float2::zero;
     
     uint32_t mMouseState = 0;
-    
-    uint32_t mRelativeMouseState = 0;
-    
-    const uint8_t* mKeyboardState = nullptr;
+
+	const uint8_t* mKeyboardState = nullptr;
+
+	mutable bool mCursorHidden = false;
+
+	mutable Float2 mCursorHidePosition = Float2::zero;
     
 };
 

@@ -7,11 +7,9 @@ using namespace Gleam;
 void CommandBuffer::DrawIndexed(const Buffer& indexBuffer,
 	IndexType type,
 	uint32_t instanceCount,
-	uint32_t firstIndex,
-	uint32_t baseVertex,
-	uint32_t baseInstance) const
+	uint32_t firstIndex) const
 {
-	DrawIndexed(indexBuffer, type, static_cast<uint32_t>(indexBuffer.GetSize() / SizeOfIndexType(type)), instanceCount, firstIndex, baseVertex, baseInstance);
+	DrawIndexed(indexBuffer, type, static_cast<uint32_t>(indexBuffer.GetSize() / SizeOfIndexType(type)), instanceCount, firstIndex);
 }
 
 void CommandBuffer::CopyBuffer(const Buffer& src, const Buffer& dst,
@@ -33,7 +31,7 @@ void CommandBuffer::SetBufferData(const Buffer& buffer, const void* data, size_t
 	auto contents = buffer.GetContents();
 	if (contents == nullptr)
 	{
-		Buffer stagingBuffer = mStagingHeap.CreateBuffer(size);
+		Buffer stagingBuffer = mStagingHeap.CreateBuffer(size, "CommandBuffer::StagingBuffer");
 		memcpy(stagingBuffer.GetContents(), data, size);
 		CopyBuffer(stagingBuffer.GetHandle(), buffer.GetHandle(), size, 0, offset);
 		mDevice->ReleaseBuffer(stagingBuffer);

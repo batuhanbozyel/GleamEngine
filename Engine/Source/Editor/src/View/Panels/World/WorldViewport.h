@@ -1,5 +1,5 @@
 //
-//  SceneView.h
+//  WorldViewport.h
 //  Editor
 //
 //  Created by Batuhan Bozyel on 26.03.2023.
@@ -21,7 +21,7 @@ public:
     
     virtual void Update() override;
     
-    virtual void Render() override;
+    virtual void Render(Gleam::ImGuiRenderer* imgui) override;
     
     const Gleam::Size& GetViewportSize() const
     {
@@ -37,7 +37,7 @@ private:
     
     bool mIsFocused = false;
     
-    bool mCursorVisible = false;
+    bool mCursorVisible = true;
     
     WorldViewportController* mController = nullptr;
     

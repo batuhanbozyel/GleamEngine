@@ -1,7 +1,7 @@
 #include "Common.hlsli"
 #include "ShaderTypes.h"
 
-DECLARE_CONSTANT_BUFFER(Gleam::DebugShaderResources, resources, 0);
+CONSTANT_BUFFER(Gleam::DebugShaderResources, resources, 0);
 PUSH_CONSTANT(Gleam::DebugMeshUniforms, uniforms);
 
 struct VertexOut
@@ -23,8 +23,9 @@ VertexOut debugVertexShader(uint vertex_id: SV_VertexID)
 
 VertexOut debugMeshVertexShader(uint vertex_id: SV_VertexID)
 {
+    uint vertexID = vertex_id + uniforms.baseVertex;
     Gleam::CameraUniforms CameraBuffer = resources.cameraBuffer.Load<Gleam::CameraUniforms>();
-    float3 position = resources.vertexBuffer.Load<float3>(vertex_id);
+    float3 position = resources.vertexBuffer.Load<float3>(vertexID);
     
     VertexOut OUT;
     OUT.position = mul(CameraBuffer.viewProjectionMatrix, mul(uniforms.modelMatrix, float4(position, 1.0f)));

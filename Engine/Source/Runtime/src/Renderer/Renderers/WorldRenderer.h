@@ -36,7 +36,7 @@ private:
     {
         const Mesh* mesh;
         const MaterialInstance* material;
-        Matrix4 transform;
+        Float4x4 transform;
     };
     HashMap<RefCounted<Material>, TArray<RenderProxy>> mOpaqueQueue;
     HashMap<RefCounted<Material>, TArray<RenderProxy>> mTransparentQueue;

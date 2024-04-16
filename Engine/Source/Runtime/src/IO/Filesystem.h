@@ -3,7 +3,10 @@
 
 namespace Gleam {
 
-namespace Filesystem = std::filesystem;
+namespace Filesystem {
+using namespace std::filesystem;
+
+} // namespace Filesystem
 
 } // namespace Gleam
 

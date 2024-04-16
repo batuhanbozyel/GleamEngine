@@ -33,6 +33,7 @@ struct MaterialPassDescriptor
 
 struct MaterialDescriptor
 {
+	TString name;
     TArray<MaterialPassDescriptor> passes;
 	TArray<MaterialProperty> properties;
     RenderQueue renderQueue = RenderQueue::Opaque;
@@ -91,3 +92,18 @@ struct std::hash<Gleam::MaterialDescriptor>
         return hash;
     }
 };
+
+GLEAM_ENUM(Gleam::RenderQueue, Guid("D3A2EE76-2603-4D10-AAF4-07810827A117"))
+
+GLEAM_TYPE(Gleam::MaterialPassDescriptor, Guid("123C5669-2376-46B4-B5FD-4076ADE86397"))
+	GLEAM_FIELD(pipelineState, Serializable())
+	GLEAM_FIELD(vertexEntry, Serializable())
+	GLEAM_FIELD(fragmentEntry, Serializable())
+GLEAM_END
+
+GLEAM_TYPE(Gleam::MaterialDescriptor, Guid("37CF7896-D930-435B-A5FF-DF9CEB5C605D"))
+	GLEAM_FIELD(name, Serializable())
+	GLEAM_FIELD(passes, Serializable())
+	GLEAM_FIELD(properties, Serializable())
+	GLEAM_FIELD(renderQueue, Serializable())
+GLEAM_END

@@ -16,7 +16,7 @@ Camera::Camera(const Size& size, ProjectionType type)
 	SetViewport(size);
 }
 
-void Camera::Translate(const Vector3& translation)
+void Camera::Translate(const Float3& translation)
 {
     mViewMatrixDirty = true;
     Transform::Translate(translation);
@@ -28,17 +28,17 @@ void Camera::Rotate(const Quaternion& rotation)
     Transform::Rotate(rotation);
 }
 
-void Camera::Rotate(const Vector3& eulers)
+void Camera::Rotate(const Float3& eulers)
 {
     Rotate(Quaternion(eulers));
 }
 
 void Camera::Rotate(float xAngle, float yAngle, float zAngle)
 {
-    Rotate(Vector3{xAngle, yAngle, zAngle});
+    Rotate(Float3{xAngle, yAngle, zAngle});
 }
 
-void Camera::SetTranslation(const Vector3& translation)
+void Camera::SetTranslation(const Float3& translation)
 {
     mViewMatrixDirty = true;
     Transform::SetTranslation(translation);
@@ -93,7 +93,7 @@ void Camera::SetOrthographicSize(float size)
     mProjectionMatrixDirty = true;
 }
 
-const Matrix4& Camera::GetViewMatrix() const
+const Float4x4& Camera::GetViewMatrix() const
 {
     if (mViewMatrixDirty)
     {
@@ -103,7 +103,7 @@ const Matrix4& Camera::GetViewMatrix() const
     return mViewMatrix;
 }
 
-const Matrix4& Camera::GetProjectionMatrix() const
+const Float4x4& Camera::GetProjectionMatrix() const
 {
     if (mProjectionMatrixDirty)
     {
@@ -116,7 +116,7 @@ const Matrix4& Camera::GetProjectionMatrix() const
 void Camera::RecalculateViewMatrix() const
 {
     mViewMatrixDirty = false;
-    mViewMatrix = Matrix4::LookTo(GetWorldPosition(), ForwardVector(), UpVector());
+    mViewMatrix = Float4x4::LookTo(GetWorldPosition(), ForwardVector(), UpVector());
 }
 
 void Camera::RecalculateProjectionMatrix() const
@@ -124,12 +124,12 @@ void Camera::RecalculateProjectionMatrix() const
     mProjectionMatrixDirty = false;
     if (mProjectionType == ProjectionType::Perspective)
     {
-        mProjectionMatrix = Matrix4::Perspective(mFOV, mAspectRatio, mNearPlane, mFarPlane);
+        mProjectionMatrix = Float4x4::Perspective(mFOV, mAspectRatio, mNearPlane, mFarPlane);
     }
     else
     {
         float width = mOrthographicSize * mAspectRatio;
         float height = mOrthographicSize;
-        mProjectionMatrix = Matrix4::Ortho(width, height, mNearPlane, mFarPlane);
+        mProjectionMatrix = Float4x4::Ortho(width, height, mNearPlane, mFarPlane);
     }
 }

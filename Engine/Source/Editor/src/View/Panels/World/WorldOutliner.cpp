@@ -7,9 +7,6 @@
 
 #include "WorldOutliner.h"
 #include "WorldViewport.h"
-#include "WorldOutlineController.h"
-
-#include "View/ViewStack.h"
 
 #include <imgui.h>
 
@@ -17,46 +14,55 @@ using namespace GEditor;
 
 WorldOutliner::WorldOutliner()
 {
-    mController = Gleam::World::active->AddSystem<WorldOutlineController>();
+    
 }
 
-void WorldOutliner::Render()
+void WorldOutliner::Render(Gleam::ImGuiRenderer* imgui)
 {
-    if (!ImGui::Begin("World Outliner")) return;
+	imgui->PushView([this]()
+	{
+		if (!ImGui::Begin("World Outliner")) return;
     
-    bool entityDeleted = false;
-    auto& entityManager = Gleam::World::active->GetEntityManager();
-    entityManager.ForEach([&](Gleam::Entity entity)
-    {
-        ImGuiTreeNodeFlags flags = ((mSelectedEntity == entity) ? ImGuiTreeNodeFlags_Selected : 0) | ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth;
-        
-        uint32_t id = static_cast<uint32_t>(entity);
-		Gleam::TStringStream ss;
-		ss << "Entity " << id;
-        
-        if (!ImGui::TreeNodeEx((void*)(uint64_t)id, flags, "%s", ss.str().c_str())) { return; }
-        
-        if (ImGui::IsItemClicked())
-        {
-            mSelectedEntity = entity;
-        }
-        
-        if (ImGui::BeginPopupContextItem())
-        {
-            if (ImGui::MenuItem("Destroy Entity"))
+		auto& entityManager = Gleam::World::active->GetEntityManager();
+		entityManager.ForEach([&](Gleam::EntityHandle entity)
+		{
+			uint32_t id = static_cast<uint32_t>(entity);
+			Gleam::TStringStream ss;
+			ss << "Entity " << id;
+			
+            ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_Leaf;
+            if (entity == mSelectedEntity)
             {
-                entityDeleted = true;
+                flags |= ImGuiTreeNodeFlags_Selected;
             }
-            ImGui::EndPopup();
-        }
-        
-        ImGui::TreePop();
-    });
-    
-    if (entityDeleted)
+            
+            ImGui::Unindent(ImGui::GetTreeNodeToLabelSpacing());
+			if (ImGui::TreeNodeEx((void*)(uint64_t)id, flags, "%s", ss.str().c_str()))
+            {
+                if (ImGui::IsItemClicked())
+                {
+                    Gleam::EventDispatcher<EntitySelectedEvent>::Publish(EntitySelectedEvent(entity));
+                    mSelectedEntity = entity;
+                }
+                DrawEntityPopupMenu();
+                
+                ImGui::TreePop();
+            }
+            ImGui::Indent(ImGui::GetTreeNodeToLabelSpacing());
+		});
+		
+		ImGui::End();
+	});
+}
+
+void WorldOutliner::DrawEntityPopupMenu()
+{
+    if (ImGui::BeginPopupContextItem())
     {
-        entityManager.DestroyEntity(mSelectedEntity);
+        if (ImGui::MenuItem("Destroy Entity"))
+        {
+            // TODO:
+        }
+        ImGui::EndPopup();
     }
-    
-    ImGui::End();
 }

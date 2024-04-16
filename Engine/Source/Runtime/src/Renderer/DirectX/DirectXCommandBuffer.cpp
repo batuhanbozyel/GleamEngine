@@ -18,6 +18,8 @@ struct CommandBuffer::Impl
 	ID3D12GraphicsCommandList7* commandList = nullptr;
 	ID3D12Fence* fence = nullptr;
 	uint32_t fenceValue = 0;
+    
+    TArray<Buffer, PUSH_CONSTANT_SLOT> constantBuffers;
 
 	TArray<TextureDescriptor> colorAttachments;
 	TextureDescriptor depthAttachment;
@@ -33,7 +35,7 @@ CommandBuffer::CommandBuffer(GraphicsDevice* device)
     HeapDescriptor descriptor;
     descriptor.size = 4194304; // 4 MB;
     descriptor.memoryType = MemoryType::CPU;
-    mStagingHeap = mDevice->CreateHeap(descriptor);
+    mStagingHeap = mDevice->CreateHeap(descriptor, "CommandBuffer::StagingHeap");
 
 	DX_CHECK(static_cast<ID3D12Device10*>(mHandle->device->GetHandle())->CreateFence(
 		mHandle->fenceValue,
@@ -44,6 +46,14 @@ CommandBuffer::CommandBuffer(GraphicsDevice* device)
 
 CommandBuffer::~CommandBuffer()
 {
+    for (auto& buffer : mHandle->constantBuffers)
+    {
+        if (buffer.IsValid())
+        {
+            mDevice->Dispose(buffer);
+        }
+    }
+    
 	mDevice->Dispose(mStagingHeap);
 	mHandle->fence->Release();
 
@@ -76,13 +86,6 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, 
 		if (colorAttachmentDesc.texture.IsValid())
 		{
 			auto resource = static_cast<ID3D12Resource*>(colorAttachmentDesc.texture.GetHandle());
-
-		#ifdef GDEBUG
-			TStringStream resourceName;
-			resourceName << debugName << "::colorAttachment_" << i;
-			resource->SetName(StringUtils::Convert(resourceName.str()).data());
-		#endif
-
 			colorAttachments[i].cpuDescriptor = colorAttachmentDesc.texture.GetView();
 			DirectXTransitionManager::TransitionLayout(mHandle->commandList,
 				resource, D3D12_RESOURCE_STATE_RENDER_TARGET);
@@ -103,13 +106,6 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, 
 		mHandle->depthAttachment = renderPassDesc.depthAttachment.texture.GetDescriptor();
 		auto format = renderPassDesc.depthAttachment.texture.GetDescriptor().format;
 		auto resource = static_cast<ID3D12Resource*>(renderPassDesc.depthAttachment.texture.GetHandle());
-
-	#ifdef GDEBUG
-		TStringStream resourceName;
-		resourceName << debugName << "::depthAttachment";
-		resource->SetName(StringUtils::Convert(resourceName.str()).data());
-	#endif
-
 		DirectXTransitionManager::TransitionLayout(mHandle->commandList, resource, D3D12_RESOURCE_STATE_DEPTH_WRITE);
 
 		D3D12_RENDER_PASS_DEPTH_STENCIL_DESC depthAttachment{};
@@ -153,11 +149,9 @@ void CommandBuffer::BindGraphicsPipeline(const PipelineStateDescriptor& pipeline
 	{
 		mHandle->pipeline = DirectXPipelineStateManager::GetGraphicsPipeline(pipelineDesc, mHandle->colorAttachments, vertexShader, fragmentShader, mHandle->sampleCount);
 	}
-#ifdef GDEBUG
 	TStringStream pipelineName;
 	pipelineName << "GraphicsPipeline::" << vertexShader.GetEntryPoint() << "_" << fragmentShader.GetEntryPoint();
 	mHandle->pipeline->handle->SetName(StringUtils::Convert(pipelineName.str()).data());
-#endif
 
 	const auto& cbvSrvUavHeap = mHandle->device->GetCbvSrvUavHeap();
 	mHandle->commandList->SetDescriptorHeaps(1, &cbvSrvUavHeap.handle);
@@ -166,6 +160,15 @@ void CommandBuffer::BindGraphicsPipeline(const PipelineStateDescriptor& pipeline
 	mHandle->commandList->SetPipelineState(mHandle->pipeline->handle);
 	mHandle->commandList->OMSetStencilRef(pipelineDesc.stencilState.reference);
 	mHandle->commandList->IASetPrimitiveTopology(PrimitiveToplogyToD3D_PRIMITIVE_TOPOLOGY(pipelineDesc.topology));
+    
+    // Root constants
+    for (auto& buffer : mHandle->constantBuffers)
+    {
+        if (buffer.IsValid())
+        {
+            mDevice->Dispose(buffer);
+        }
+    }
 }
 
 void CommandBuffer::SetViewport(const Size& size) const
@@ -184,10 +187,13 @@ void CommandBuffer::SetViewport(const Size& size) const
 
 void CommandBuffer::SetConstantBuffer(const void* data, uint32_t size, uint32_t slot) const
 {
-	auto buffer = mStagingHeap.CreateBuffer(size);
+	TStringStream name;
+	name << "CommandBuffer::ConstantBuffer_" << slot;
+	auto buffer = mStagingHeap.CreateBuffer(size, name.str().data());
 	SetBufferData(buffer, data, size);
 
     mHandle->commandList->SetGraphicsRootConstantBufferView(slot, static_cast<ID3D12Resource*>(buffer.GetHandle())->GetGPUVirtualAddress());
+    mHandle->constantBuffers[slot] = buffer;
 }
 
 void CommandBuffer::SetPushConstant(const void* data, uint32_t size) const
@@ -195,20 +201,15 @@ void CommandBuffer::SetPushConstant(const void* data, uint32_t size) const
 	mHandle->commandList->SetGraphicsRoot32BitConstants(PUSH_CONSTANT_SLOT, size / sizeof(uint32_t), data, 0);
 }
 
-void CommandBuffer::Draw(uint32_t vertexCount,
-	uint32_t instanceCount,
-	uint32_t baseVertex,
-	uint32_t baseInstance) const
+void CommandBuffer::Draw(uint32_t vertexCount, uint32_t instanceCount) const
 {
-	mHandle->commandList->DrawInstanced(vertexCount, instanceCount, baseVertex, baseInstance);
+	mHandle->commandList->DrawInstanced(vertexCount, instanceCount, 0, 0);
 }
 
 void CommandBuffer::DrawIndexed(const Buffer& indexBuffer, IndexType type,
 	uint32_t indexCount,
 	uint32_t instanceCount,
-	uint32_t firstIndex,
-	uint32_t baseVertex,
-	uint32_t baseInstance) const
+	uint32_t firstIndex) const
 {
 	D3D12_INDEX_BUFFER_VIEW indexBufferView = {};
 	indexBufferView.BufferLocation = static_cast<ID3D12Resource*>(indexBuffer.GetHandle())->GetGPUVirtualAddress();
@@ -216,7 +217,7 @@ void CommandBuffer::DrawIndexed(const Buffer& indexBuffer, IndexType type,
 	indexBufferView.SizeInBytes = (UINT)indexBuffer.GetSize();
 
 	mHandle->commandList->IASetIndexBuffer(&indexBufferView);
-	mHandle->commandList->DrawIndexedInstanced(indexCount, instanceCount, firstIndex, baseVertex, baseInstance);
+	mHandle->commandList->DrawIndexedInstanced(indexCount, instanceCount, firstIndex, 0, 0);
 }
 
 void CommandBuffer::CopyBuffer(const NativeGraphicsHandle src, const NativeGraphicsHandle dst,
@@ -265,12 +266,11 @@ void CommandBuffer::Blit(const Texture& source, const Texture& destination) cons
 void CommandBuffer::Begin() const
 {
 	mHandle->commandList = mHandle->device->AllocateCommandList(D3D12_COMMAND_LIST_TYPE_DIRECT);
-#ifdef GDEBUG
+	mCommitted = false;
+
 	TStringStream cmdlistName;
 	cmdlistName << "CommandList::Direct_" << mHandle->device->GetFrameIndex();
 	mHandle->commandList->SetName(StringUtils::Convert(cmdlistName.str()).data());
-#endif
-	mCommitted = false;
 }
 
 void CommandBuffer::End() const

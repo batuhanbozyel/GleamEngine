@@ -70,7 +70,7 @@ void RenderSystem::Render()
         },
         [this](const CommandBuffer* cmd, const SceneRenderingData& passData)
         {
-            cmd->SetBufferData(passData.cameraBuffer, &mCameraData, sizeof(CameraUniforms));
+            cmd->SetBufferData(passData.cameraBuffer, mCameraData);
         });
         blackboard.Add(sceneData);
 
@@ -144,7 +144,7 @@ const Texture& RenderSystem::GetRenderTarget() const
 
 void RenderSystem::SetRenderTarget(const TextureDescriptor& descriptor)
 {
-    mRenderTarget = mDevice->CreateTexture(descriptor);
+    mRenderTarget = mDevice->CreateTexture(descriptor, "Backbuffer");
     GLEAM_ASSERT(mRenderTarget.IsValid());
 }
 

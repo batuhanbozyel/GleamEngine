@@ -77,7 +77,7 @@ MemoryRequirements GraphicsDevice::QueryMemoryRequirements(const HeapDescriptor&
 	};
 }
 
-Heap GraphicsDevice::AllocateHeap(const HeapDescriptor& descriptor)
+Heap GraphicsDevice::AllocateHeap(const HeapDescriptor& descriptor, const TStringView name)
 {
 	Heap heap(descriptor);
 	heap.mDevice = this;
@@ -92,10 +92,11 @@ Heap GraphicsDevice::AllocateHeap(const HeapDescriptor& descriptor)
 	desc.Flags = D3D12_HEAP_FLAG_ALLOW_ONLY_BUFFERS;
 	desc.Properties.Type = descriptor.memoryType == MemoryType::CPU ? D3D12_HEAP_TYPE_UPLOAD : D3D12_HEAP_TYPE_DEFAULT;
 	DX_CHECK(static_cast<ID3D12Device10*>(mHandle)->CreateHeap(&desc, __uuidof(ID3D12Heap*), &heap.mHandle));
+	static_cast<ID3D12Resource*>(heap.mHandle)->SetName(StringUtils::Convert(name).c_str());
 	return heap;
 }
 
-Texture GraphicsDevice::AllocateTexture(const TextureDescriptor& descriptor)
+Texture GraphicsDevice::AllocateTexture(const TextureDescriptor& descriptor, const TStringView name)
 {
 	Texture texture(descriptor);
 
@@ -148,6 +149,7 @@ Texture GraphicsDevice::AllocateTexture(const TextureDescriptor& descriptor)
 		__uuidof(ID3D12Resource*),
 		&texture.mHandle
 	));
+	static_cast<ID3D12Resource*>(texture.mHandle)->SetName(StringUtils::Convert(name).c_str());
 
 	// Create RTV or DSV for attachments
 	if (descriptor.usage & TextureUsage_Attachment)
@@ -195,14 +197,15 @@ Texture GraphicsDevice::AllocateTexture(const TextureDescriptor& descriptor)
 	return texture;
 }
 
-Shader GraphicsDevice::GenerateShader(const TString& entryPoint, ShaderStage stage) const
+Shader GraphicsDevice::GenerateShader(const TString& entryPoint, ShaderStage stage)
 {
 	Shader shader(entryPoint, stage);
 
-	auto shaderFile = GameInstance->GetDefaultAssetPath().append("Shaders/" + entryPoint + ".dxil");
-	auto bytecodeLength = IOUtils::QueryFileBufferSize(shaderFile);
+	auto shaderFile = File(GameInstance->GetDefaultAssetPath().append("Shaders/" + entryPoint + ".dxil"), FileType::Binary);
+	auto shaderCode = shaderFile.Read();
+	auto bytecodeLength = shaderCode.size();
 	auto bytecode = new uint8_t[bytecodeLength];
-	IOUtils::ReadBinaryFile(shaderFile, bytecode, bytecodeLength);
+	memcpy(bytecode, shaderCode.data(), shaderCode.size());
 
 	D3D12_SHADER_BYTECODE* shaderBytecode = new D3D12_SHADER_BYTECODE;
 	shaderBytecode->pShaderBytecode = bytecode;
@@ -528,11 +531,9 @@ DirectXDrawable DirectXDevice::GetSwapchainBuffer(uint32_t buffer)
 	static_cast<ID3D12Device10*>(mHandle)->CreateRenderTargetView(drawable.renderTarget, &rtvDesc, drawable.view);
 	DirectXTransitionManager::SetLayout(drawable.renderTarget, D3D12_RESOURCE_STATE_PRESENT);
 
-#ifdef GDEBUG
 	TStringStream resourceName;
 	resourceName << "Swapchain::Drawable_" << buffer;
 	drawable.renderTarget->SetName(StringUtils::Convert(resourceName.str()).data());
-#endif
 
 	return drawable;
 }

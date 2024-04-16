@@ -59,6 +59,8 @@ public:
     
 private:
     
+    void SetDarkTheme() const;
+    
     template<ViewType T>
     bool HasView() const
     {
@@ -66,6 +68,8 @@ private:
     }
     
     Gleam::PolyArray<View> mViews;
+
+	Gleam::ImGuiRenderer* mImgui = nullptr;
     
 };
 

@@ -17,20 +17,22 @@ MenuBar::MenuBar()
 
 }
 
-void MenuBar::Render()
+void MenuBar::Render(Gleam::ImGuiRenderer* imgui)
 {
-    if (!ImGui::BeginMenuBar()) { return; }
-    
-    
-    if (ImGui::BeginMenu("File"))
-    {
-        if (ImGui::MenuItem("Exit"))
-        {
-            Gleam::EventDispatcher<Gleam::AppCloseEvent>::Publish(Gleam::AppCloseEvent());
-        }
+	imgui->PushView([this]()
+	{
+		if (!ImGui::BeginMenuBar()) { return; }
+		
+		if (ImGui::BeginMenu("File"))
+		{
+			if (ImGui::MenuItem("Exit"))
+			{
+				Gleam::EventDispatcher<Gleam::AppCloseEvent>::Publish(Gleam::AppCloseEvent());
+			}
 
-        ImGui::EndMenu();
-    }
-    
-    ImGui::EndMenuBar();
+			ImGui::EndMenu();
+		}
+		
+		ImGui::EndMenuBar();
+	});
 }

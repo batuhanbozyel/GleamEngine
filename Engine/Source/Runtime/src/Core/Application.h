@@ -61,7 +61,7 @@ public:
     
     Filesystem::path GetDefaultAssetPath() const
     {
-        return Filesystem::current_path().append("Assets/");
+        return Filesystem::current_path().append("Assets");
     }
 
 	static Application* GetInstance()

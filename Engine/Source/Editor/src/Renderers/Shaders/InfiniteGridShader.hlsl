@@ -68,7 +68,7 @@ FragmentOut infiniteGridFragmentShader(VertexOut IN)
     Gleam::CameraUniforms CameraBuffer = uniforms.cameraBuffer.Load<Gleam::CameraUniforms>();
 
     static const float4 AXIS_X_COLOR = float4(1.0f, 0.0f, 0.0f, 1.0f);
-    static const float4 AXIS_Y_COLOR = float4(0.0f, 1.0f, 0.0f, 1.0f);
+    static const float4 AXIS_Z_COLOR = float4(0.0f, 0.0f, 1.0f, 1.0f);
     
     float t = -IN.nearPoint.y / (IN.farPoint.y - IN.nearPoint.y);
     float3 gridPos = IN.nearPoint + t * (IN.farPoint - IN.nearPoint);
@@ -87,7 +87,7 @@ FragmentOut infiniteGridFragmentShader(VertexOut IN)
     float2 axisLineAA = uvDeriv * 1.5;
     float2 axisLines2 = smoothstep(axisDrawWidth + axisLineAA, axisDrawWidth - axisLineAA, abs(majorUV * 2.0));
     axisLines2 *= saturate(majorLineWidth / axisDrawWidth);
-    float4 axisLines = lerp(AXIS_X_COLOR * axisLines2.y, AXIS_Y_COLOR, axisLines2.x);
+    float4 axisLines = lerp(AXIS_X_COLOR * axisLines2.y, AXIS_Z_COLOR, axisLines2.x);
     
     float4 majorGrid = IN.majorLineColor * PristineGrid(majorUV, majorLineWidth, axisLines2);
     float4 minorGrid = IN.minorLineColor * PristineGrid(uv, minorLineWidth, axisLines2);

@@ -4,8 +4,8 @@ namespace Gleam {
 
 struct BoundingBox
 {
-    Vector3 min{Math::NegativeInfinity, Math::NegativeInfinity, Math::NegativeInfinity};
-    Vector3 max{Math::Infinity, Math::Infinity, Math::Infinity};
+    Float3 min{Math::NegativeInfinity, Math::NegativeInfinity, Math::NegativeInfinity};
+    Float3 max{Math::Infinity, Math::Infinity, Math::Infinity};
     
     constexpr BoundingBox() = default;
     constexpr BoundingBox(BoundingBox&&) noexcept = default;
@@ -19,13 +19,13 @@ struct BoundingBox
         
     }
     
-    constexpr BoundingBox(const Vector2& min, const Vector2& max)
+    constexpr BoundingBox(const Float2& min, const Float2& max)
         : min(min, 0.0f), max(max, 0.0f)
     {
         
     }
     
-    constexpr BoundingBox(const Vector3& min, const Vector3& max)
+    constexpr BoundingBox(const Float3& min, const Float3& max)
         : min(min), max(max)
     {
         
@@ -34,3 +34,8 @@ struct BoundingBox
 };
 
 } // namespace Gleam
+
+GLEAM_TYPE(Gleam::BoundingBox, Guid("AB9094D8-003E-4868-8C9D-20336D882EAD"))
+    GLEAM_FIELD(min, Serializable())
+    GLEAM_FIELD(max, Serializable())
+GLEAM_END

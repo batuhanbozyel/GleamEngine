@@ -46,7 +46,7 @@ void WorldViewportController::ProcessCameraRotation(Gleam::Camera& camera)
         mYaw += axis.x * mouseSensitivity;
         mPitch += axis.y * mouseSensitivity;
         mPitch = Gleam::Math::Clamp(mPitch, -80.0f, 80.0f);
-        camera.SetRotation(Gleam::Quaternion(Gleam::Math::Deg2Rad(Gleam::Vector3{ mPitch, mYaw, 0.0f })));
+        camera.SetRotation(Gleam::Quaternion(Gleam::Math::Deg2Rad(Gleam::Float3{ mPitch, mYaw, 0.0f })));
     }
 }
 
@@ -73,11 +73,11 @@ void WorldViewportController::ProcessCameraMovement(Gleam::Camera& camera)
     }
     if (inputSystem->GetButtonDown(Gleam::KeyCode::Space))
     {
-        camera.Translate(Gleam::Vector3::up * cameraSpeed * deltaTime);
+        camera.Translate(Gleam::Float3::up * cameraSpeed * deltaTime);
     }
     if (inputSystem->GetButtonDown(Gleam::KeyCode::LeftControl))
     {
-        camera.Translate(Gleam::Vector3::down * cameraSpeed * deltaTime);
+        camera.Translate(Gleam::Float3::down * cameraSpeed * deltaTime);
     }
 }
 

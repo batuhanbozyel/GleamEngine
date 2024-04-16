@@ -7,7 +7,7 @@
 
 using namespace Gleam;
 
-Buffer Heap::CreateBuffer(size_t size) const
+Buffer Heap::CreateBuffer(size_t size, const TStringView name) const
 {
     auto alignedStackPtr = Utils::AlignUp(mStackPtr, mAlignment);
     auto newStackPtr = alignedStackPtr + size;
@@ -27,6 +27,8 @@ Buffer Heap::CreateBuffer(size_t size) const
     {
         contents = [mtlBuffer contents];
     }
+    [mtlBuffer setLabel:TO_NSSTRING(name.data())];
+    
     Buffer buffer(mtlBuffer, size, contents);
     buffer.mResourceView = mDescriptor.memoryType == MemoryType::CPU ? InvalidResourceIndex : static_cast<MetalDevice*>(mDevice)->CreateResourceView(buffer);
     return buffer;

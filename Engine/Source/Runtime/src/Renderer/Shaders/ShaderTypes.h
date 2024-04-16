@@ -1,5 +1,4 @@
 #pragma once
-#include "ShaderInterop.h"
 #include "SharedTypes.h"
 
 namespace Gleam {
@@ -18,27 +17,33 @@ struct DebugVertex
 
 struct DebugMeshUniforms
 {
-    float4x4 modelMatrix;
+	float4x4 modelMatrix;
+	uint32_t baseVertex;
 	uint32_t color;
 };
 
 struct DebugShaderResources
 {
-    BufferResourceView vertexBuffer;
-    ConstantBufferView cameraBuffer;
+	BufferResourceView vertexBuffer;
+	ConstantBufferView cameraBuffer;
+};
+
+struct MeshPassResources
+{
+	ConstantBufferView cameraBuffer;
+	BufferResourceView positionBuffer;
+	BufferResourceView interleavedBuffer;
 };
 
 struct ForwardPassUniforms
 {
-    float4x4 modelMatrix;
-    ConstantBufferView cameraBuffer;
-    BufferResourceView positionBuffer;
-    BufferResourceView interleavedBuffer;
+	float4x4 modelMatrix;
+	uint32_t baseVertex;
 };
 
 struct TonemapUniforms
 {
-    Texture2DResourceView<float4> sceneRT;
-};
+	Texture2DResourceView<float4> sceneRT;
+};  
 
 } // namespace Gleam

@@ -18,33 +18,33 @@ const Quaternion Quaternion::identity(1.0f, 0.0f, 0.0f, 0.0f);
 const Size Size::zero(0.0f, 0.0f);
 const Size Size::one(1.0f, 1.0f);
 
-const Matrix2 Matrix2::zero
+const Float2x2 Float2x2::zero
 (
     0.0f, 0.0f,
     0.0f, 0.0f
 );
 
-const Matrix2 Matrix2::identity
+const Float2x2 Float2x2::identity
 (
     1.0f, 0.0f,
     0.0f, 1.0f
 );
 
-const Matrix3 Matrix3::zero
+const Float3x3 Float3x3::zero
 (
     0.0f, 0.0f, 0.0f,
     0.0f, 0.0f, 0.0f,
     0.0f, 0.0f, 0.0f
 );
 
-const Matrix3 Matrix3::identity
+const Float3x3 Float3x3::identity
 (
     1.0f, 0.0f, 0.0f,
     0.0f, 1.0f, 0.0f,
     0.0f, 0.0f, 1.0f
 );
 
-const Matrix4 Matrix4::zero
+const Float4x4 Float4x4::zero
 (
     0.0f, 0.0f, 0.0f, 0.0f,
     0.0f, 0.0f, 0.0f, 0.0f,
@@ -52,7 +52,7 @@ const Matrix4 Matrix4::zero
     0.0f, 0.0f, 0.0f, 0.0f
 );
 
-const Matrix4 Matrix4::identity
+const Float4x4 Float4x4::identity
 (
     1.0f, 0.0f, 0.0f, 0.0f,
     0.0f, 1.0f, 0.0f, 0.0f,

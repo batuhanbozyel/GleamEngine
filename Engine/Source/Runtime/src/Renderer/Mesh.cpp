@@ -1,70 +1,87 @@
 #include "gpch.h"
 #include "Mesh.h"
+#include "Core/Application.h"
+#include "Renderer/RenderSystem.h"
 
 using namespace Gleam;
 
-static BoundingBox CalculateBoundingBox(const TArray<Vector3>& positions)
+Mesh::Mesh(const MeshDescriptor& mesh)
+    : mSubmeshDescriptors(mesh.submeshes)
 {
-    BoundingBox bounds(Math::Infinity, Math::NegativeInfinity);
-    for (const auto& position : positions)
+    static auto renderSystem = GameInstance->GetSubsystem<RenderSystem>();
+    
+    size_t positionSize = mesh.positions.size() * sizeof(Float3);
+    size_t interleavedSize = mesh.interleavedVertices.size() * sizeof(InterleavedMeshVertex);
+    size_t indexSize = mesh.indices.size() * sizeof(uint32_t);
+
+    HeapDescriptor heapDesc;
+    heapDesc.memoryType = MemoryType::GPU;
+    heapDesc.size = positionSize + interleavedSize + indexSize;
+    auto memoryRequirements = renderSystem->GetDevice()->QueryMemoryRequirements(heapDesc);
+    
+    size_t positionBufferSize = Utils::AlignUp(positionSize, memoryRequirements.alignment);
+    size_t interleavedBufferSize = Utils::AlignUp(interleavedSize, memoryRequirements.alignment);
+    size_t indexBufferSize = Utils::AlignUp(indexSize, memoryRequirements.alignment);
+
+    heapDesc.size = positionBufferSize + interleavedBufferSize + indexBufferSize;
+    mHeap = renderSystem->GetDevice()->CreateHeap(heapDesc, mesh.name + "::Heap");
+
+    mPositionBuffer = mHeap.CreateBuffer(positionBufferSize, mesh.name + "::Positions");
+    mInterleavedBuffer = mHeap.CreateBuffer(interleavedBufferSize, mesh.name + "::InterleavedData");
+    mIndexBuffer = mHeap.CreateBuffer(indexBufferSize, mesh.name + "::Indices");
+
+    // Send mesh data to buffers
     {
-        bounds.min = Math::Min(bounds.min, position);
-        bounds.max = Math::Max(bounds.max, position);
+        heapDesc.memoryType = MemoryType::CPU;
+        Heap heap = renderSystem->GetDevice()->CreateHeap(heapDesc, mesh.name + "::StagingHeap");
+        Buffer stagingBuffer = heap.CreateBuffer(heapDesc.size, mesh.name + "::StagingBuffer");
+
+        CommandBuffer commandBuffer(renderSystem->GetDevice());
+        commandBuffer.Begin();
+
+        size_t offset = 0;
+        commandBuffer.SetBufferData(stagingBuffer, mesh.positions.data(), positionSize, offset);
+        commandBuffer.CopyBuffer(stagingBuffer, mPositionBuffer, positionSize, offset, 0);
+
+        offset += positionBufferSize;
+        commandBuffer.SetBufferData(stagingBuffer, mesh.interleavedVertices.data(), interleavedSize, offset);
+        commandBuffer.CopyBuffer(stagingBuffer, mInterleavedBuffer, interleavedSize, offset, 0);
+
+        offset += interleavedBufferSize;
+        commandBuffer.SetBufferData(stagingBuffer, mesh.indices.data(), indexSize, offset);
+        commandBuffer.CopyBuffer(stagingBuffer, mIndexBuffer, indexSize, offset, 0);
+
+        commandBuffer.End();
+        commandBuffer.Commit();
+        commandBuffer.WaitUntilCompleted();
+
+        renderSystem->GetDevice()->Dispose(stagingBuffer);
+        renderSystem->GetDevice()->Dispose(heap);
     }
-    return bounds;
 }
 
-static MeshData BatchMeshes(const TArray<MeshData>& meshes)
+void Mesh::Dispose()
 {
-    MeshData batchedMesh;
-    for (const auto& mesh : meshes)
-    {
-        auto endIdx = batchedMesh.indices.size();
-        batchedMesh.indices.insert(batchedMesh.indices.end(), mesh.indices.begin(), mesh.indices.end());
-        
-        for (auto i = endIdx; i < batchedMesh.indices.size(); i++)
-        {
-            batchedMesh.indices[i] += static_cast<uint32_t>(batchedMesh.positions.size());
-        }
-        
-        batchedMesh.positions.insert(batchedMesh.positions.end(), mesh.positions.begin(), mesh.positions.end());
-        batchedMesh.normals.insert(batchedMesh.normals.end(), mesh.normals.begin(), mesh.normals.end());
-        batchedMesh.texCoords.insert(batchedMesh.texCoords.end(), mesh.texCoords.begin(), mesh.texCoords.end());
-    }
-    return batchedMesh;
+    static auto renderSystem = GameInstance->GetSubsystem<RenderSystem>();
+    renderSystem->GetDevice()->Dispose(mPositionBuffer);
+    renderSystem->GetDevice()->Dispose(mInterleavedBuffer);
+    renderSystem->GetDevice()->Dispose(mIndexBuffer);
+    renderSystem->GetDevice()->Dispose(mHeap);
 }
 
-Mesh::Mesh(const MeshData& mesh)
-    : mBuffer(mesh)
+const Buffer& Mesh::GetPositionBuffer() const
 {
-	mSubmeshDescriptors.resize(1);
-	mSubmeshDescriptors[0].baseVertex = 0;
-	mSubmeshDescriptors[0].firstIndex = 0;
-	mSubmeshDescriptors[0].indexCount = static_cast<uint32_t>(mesh.indices.size());
-	mSubmeshDescriptors[0].bounds = CalculateBoundingBox(mesh.positions);
+    return mPositionBuffer;
 }
 
-Mesh::Mesh(const TArray<MeshData>& meshes)
-    : mBuffer(meshes)
+const Buffer& Mesh::GetInterleavedBuffer() const
 {
-	uint32_t baseVertex = 0;
-	uint32_t firstIndex = 0;
-	mSubmeshDescriptors.resize(meshes.size());
-	for (uint32_t i = 0; i < meshes.size(); i++)
-	{
-		mSubmeshDescriptors[i].baseVertex = baseVertex;
-		mSubmeshDescriptors[i].firstIndex = firstIndex;
-		mSubmeshDescriptors[i].indexCount = static_cast<uint32_t>(meshes[i].indices.size());
-		mSubmeshDescriptors[i].bounds = CalculateBoundingBox(meshes[i].positions);
-		
-		baseVertex += static_cast<uint32_t>(meshes[i].positions.size());
-		firstIndex += static_cast<uint32_t>(meshes[i].indices.size());
-	}
+    return mInterleavedBuffer;
 }
 
-Mesh::~Mesh()
+const Buffer& Mesh::GetIndexBuffer() const
 {
-    mBuffer.Dispose();
+    return mIndexBuffer;
 }
 
 uint32_t Mesh::GetSubmeshCount() const
@@ -72,36 +89,7 @@ uint32_t Mesh::GetSubmeshCount() const
     return static_cast<uint32_t>(mSubmeshDescriptors.size());
 }
 
-const MeshBuffer& Mesh::GetBuffer() const
-{
-    return mBuffer;
-}
-
 const TArray<SubmeshDescriptor>& Mesh::GetSubmeshDescriptors() const
 {
     return mSubmeshDescriptors;
-}
-
-StaticMesh::StaticMesh(const MeshData& mesh)
-    : Mesh(mesh)
-{
-    
-}
-
-StaticMesh::StaticMesh(const TArray<MeshData>& meshes)
-    : Mesh(BatchMeshes(meshes))
-{
-    
-}
-
-SkeletalMesh::SkeletalMesh(const MeshData& mesh)
-    : Mesh(mesh)
-{
-    
-}
-
-SkeletalMesh::SkeletalMesh(const TArray<MeshData>& meshes)
-    : Mesh(meshes)
-{
-    
 }

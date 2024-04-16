@@ -11,21 +11,19 @@
 
 namespace GEditor {
 
-class WorldOutlineController;
-
 class WorldOutliner final : public View
 {
 public:
     
     WorldOutliner();
     
-    virtual void Render() override;
+    virtual void Render(Gleam::ImGuiRenderer* imgui) override;
     
 private:
     
-    Gleam::Entity mSelectedEntity = {};
+    void DrawEntityPopupMenu();
     
-    WorldOutlineController* mController;
+    Gleam::Entity mSelectedEntity = Gleam::InvalidEntity;
     
 };
 

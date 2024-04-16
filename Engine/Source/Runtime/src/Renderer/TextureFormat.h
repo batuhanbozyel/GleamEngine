@@ -220,3 +220,5 @@ static constexpr bool IsDepthFormat(TextureFormat format)
 } // namespace Utils
     
 } // namespace Gleam
+
+GLEAM_ENUM(Gleam::TextureFormat, Guid("B87B25FD-841E-45C8-A2D4-27540B268A52"))

@@ -8,8 +8,7 @@
 #include "ContentBrowser.h"
 #include "Gleam.h"
 
-#include "Assets/AssetImporter.h"
-#include "Assets/Model.h"
+#include "EAssets/MeshSource.h"
 
 #include <imgui.h>
 
@@ -18,36 +17,75 @@ using namespace GEditor;
 ContentBrowser::ContentBrowser()
 	: mAssetDirectory(GameInstance->GetDefaultAssetPath())
 {
-
+    mCurrentDirectory = mAssetDirectory;
+    mAssetManager = EAssetManager(mAssetDirectory);
 }
 
-void ContentBrowser::Render()
+void ContentBrowser::Render(Gleam::ImGuiRenderer* imgui)
 {
-    ImGui::Begin("Content Browser");
-
-	if (ImGui::Button("Add"))
-    {
+	imgui->PushView([this]()
+	{
+		ImGui::Begin("Content Browser");
         
-    }
-
-    ImGui::SameLine();
-
-    if (ImGui::Button("Import"))
-    {
-		auto& entityManager = Gleam::World::active->GetEntityManager();
-        auto files = Gleam::IOUtils::OpenFileDialog();
-		for (const auto& path : files)
+		if (ImGui::Button("Import"))
 		{
-			if (path.extension() == ".gltf")
+			auto& entityManager = Gleam::World::active->GetEntityManager();
+			auto files = Gleam::FileDialog::Open();
+			for (const auto& path : files)
 			{
-				auto model = AssetImporter<Model>::Import(path);
-				auto mesh = Gleam::CreateRef<Gleam::Mesh>(model.GetMeshes());
-
-				auto entity = entityManager.CreateEntity();
-				entityManager.AddComponent<Gleam::MeshRenderer>(entity, mesh);
+				ImportAsset(path);
 			}
 		}
-    }
+        DrawDirectoryTreeView(mAssetDirectory);
 
-	ImGui::End();
+		ImGui::End();
+	});
+}
+
+bool ContentBrowser::ImportAsset(const Gleam::Filesystem::path& path)
+{
+	if (path.extension() == ".gltf")
+	{
+		auto meshSource = MeshSource();
+		auto settings = MeshSource::ImportSettings();
+		if (meshSource.Import(path, settings))
+		{
+			mAssetManager.Import(mCurrentDirectory, meshSource);
+			return true;
+		}
+	}
+	return false;
+}
+
+void ContentBrowser::DrawDirectoryTreeView(const Gleam::Filesystem::path& node)
+{
+    auto filename = node.filename().string();
+    ImGui::PushID(filename.c_str());
+    if (Gleam::Filesystem::is_directory(node))
+    {
+        ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth;
+        if (ImGui::TreeNodeEx(filename.c_str(), flags))
+        {
+            for (auto& entry : Gleam::Filesystem::directory_iterator(node))
+            {
+                DrawDirectoryTreeView(entry);
+            }
+            ImGui::TreePop();
+        }
+    }
+    else
+    {
+        ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen | ImGuiTreeNodeFlags_SpanAvailWidth;
+        if (ImGui::TreeNodeEx(filename.c_str(), flags))
+        {
+			if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None))
+			{
+				const auto& asset = mAssetManager.GetAsset(node);
+				ImGui::SetDragDropPayload("ASSET", &asset, sizeof(Gleam::Asset));
+				ImGui::Text("%s", filename.c_str());
+				ImGui::EndDragDropSource();
+			}
+        }
+    }
+    ImGui::PopID();
 }

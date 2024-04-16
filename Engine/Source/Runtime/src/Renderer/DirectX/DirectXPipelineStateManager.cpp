@@ -6,8 +6,6 @@
 
 using namespace Gleam;
 
-uint32_t PushConstantRootParameterIndex = 0;
-
 static size_t PipelineHasher(const PipelineStateDescriptor& pipelineDesc, const TArray<TextureDescriptor>& colorAttachments, const TextureDescriptor& depthAttachment, const Shader& vertexShader, const Shader& fragmentShader, uint32_t sampleCount)
 {
     size_t hash = 0;
@@ -155,10 +153,7 @@ void DirectXPipelineStateManager::Init(DirectXDevice* device)
 	DX_CHECK(static_cast<ID3D12Device10*>(mDevice->GetHandle())->CreateRootSignature(0, blob->GetBufferPointer(), blob->GetBufferSize(), IID_PPV_ARGS(&mRootSignature)));
 	blob->Release();
 
-#ifdef GDEBUG
 	mRootSignature->SetName(L"GlobalRootSignature");
-#endif
-
 }
 
 void DirectXPipelineStateManager::Destroy()

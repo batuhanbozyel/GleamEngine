@@ -23,7 +23,7 @@ struct DebugTriangle
 struct DebugMesh
 {
 	const Mesh* mesh;
-	Matrix4 transform;
+	Float4x4 transform;
 	Color32 color;
 };
 
@@ -35,17 +35,17 @@ public:
     
     virtual void AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard) override;
     
-    void DrawLine(const Vector3& start, const Vector3& end, Color32 color, bool depthTest = true);
+    void DrawLine(const Float3& start, const Float3& end, Color32 color, bool depthTest = true);
 
-    void DrawTriangle(const Vector3& v1, const Vector3& v2, const Vector3& v3, Color32 color, bool depthTest = true);
+    void DrawTriangle(const Float3& v1, const Float3& v2, const Float3& v3, Color32 color, bool depthTest = true);
 
-    void DrawQuad(const Vector3& center, float width, float height, Color32 color, bool depthTest = true);
+    void DrawQuad(const Float3& center, float width, float height, Color32 color, bool depthTest = true);
 
     void DrawBoundingBox(const BoundingBox& boundingBox, Color32 color, bool depthTest = true);
 
-    void DrawBoundingBox(const BoundingBox& boundingBox, const Matrix4& transform, Color32 color, bool depthTest = true);
+    void DrawBoundingBox(const BoundingBox& boundingBox, const Float4x4& transform, Color32 color, bool depthTest = true);
 
-	void DrawMesh(const Mesh* mesh, const Matrix4& transform, Color32 color, bool depthTest = true);
+	void DrawMesh(const Mesh* mesh, const Float4x4& transform, Color32 color, bool depthTest = true);
 
 private:
 

@@ -3,7 +3,7 @@
 
 using namespace Gleam;
 
-Heap GraphicsDevice::CreateHeap(const HeapDescriptor& descriptor)
+Heap GraphicsDevice::CreateHeap(const HeapDescriptor& descriptor, const TStringView name)
 {
     auto it = std::find_if(mFreeHeaps.begin(), mFreeHeaps.end(), [&](const Heap& heap) -> bool
     {
@@ -18,10 +18,10 @@ Heap GraphicsDevice::CreateHeap(const HeapDescriptor& descriptor)
         mFreeHeaps.erase(it);
         return heap;
     }
-    return AllocateHeap(descriptor);
+    return AllocateHeap(descriptor, name);
 }
 
-Texture GraphicsDevice::CreateTexture(const TextureDescriptor& descriptor)
+Texture GraphicsDevice::CreateTexture(const TextureDescriptor& descriptor, const TStringView name)
 {
     auto it = std::find_if(mFreeTextures.begin(), mFreeTextures.end(), [&](const Texture& texture) -> bool
     {
@@ -35,7 +35,7 @@ Texture GraphicsDevice::CreateTexture(const TextureDescriptor& descriptor)
         mFreeTextures.erase(it);
         return texture;
     }
-    return AllocateTexture(descriptor);
+    return AllocateTexture(descriptor, name);
 }
 
 Shader GraphicsDevice::CreateShader(const TString& entryPoint, ShaderStage stage)

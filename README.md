@@ -87,7 +87,7 @@ Gleam Engine adopts the following conventions for mathematical operations:
     * **Z-forward:** The positive Z-axis points forward (out of the screen) in the viewport.
     * **Y-up:** The positive Y-axis points up in the viewport.
 * **Matrix Ordering:**
-    * **Row-major:** Matrices are stored in row-major order, where elements are accessed by row and then column.
+    * **Column-major:** Matrices are stored in row-vector column-major order, where elements are accessed by row and then column.
 
 ## Engine Design
 For detailed information on the Gleam Engine's design choices for various parts (e.g. Render Graph, Entity Component System), please refer to the engine design document [here](docs/design.md).

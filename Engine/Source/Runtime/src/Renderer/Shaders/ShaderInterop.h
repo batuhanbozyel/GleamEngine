@@ -1,12 +1,12 @@
 #pragma once
 
 #if defined(__cplusplus)
-using float2x2 = Gleam::Matrix2;
-using float3x3 = Gleam::Matrix3;
-using float4x4 = Gleam::Matrix4;
-using float2 = Gleam::Vector2;
-using float3 = Gleam::Vector3;
-using float4 = Gleam::Vector4;
+using float2x2 = Gleam::Float2x2;
+using float3x3 = Gleam::Float3x3;
+using float4x4 = Gleam::Float4x4;
+using float2 = Gleam::Float2;
+using float3 = Gleam::Float3;
+using float4 = Gleam::Float4;
 #endif
 
 #ifndef __spirv__
@@ -60,6 +60,9 @@ typedef uint ShaderResourceIndex;
 struct ConstantBufferView
 {
 	ShaderResourceIndex index;
+	uint32_t padding0;
+	uint32_t padding1;
+	uint32_t padding2;
 
 #ifdef __HLSL_VERSION
 	template<typename T>
@@ -73,7 +76,7 @@ struct ConstantBufferView
     ConstantBufferView(ShaderResourceIndex index)
         : index(index)
     {
-        
+        GLEAM_ASSERT(index != InvalidResourceIndex);
     }
 #endif
 };
@@ -81,6 +84,9 @@ struct ConstantBufferView
 struct BufferResourceView
 {
 	ShaderResourceIndex index;
+	uint32_t padding0;
+	uint32_t padding1;
+	uint32_t padding2;
 
 #ifdef __HLSL_VERSION
 	template<typename T>
@@ -94,7 +100,7 @@ struct BufferResourceView
     BufferResourceView(ShaderResourceIndex index)
         : index(index)
     {
-        
+        GLEAM_ASSERT(index != InvalidResourceIndex);
     }
 #endif
 };
@@ -105,6 +111,9 @@ template<typename T>
 struct Texture2DResourceView : TextureResourceView
 {
 	ShaderResourceIndex index;
+	uint32_t padding0;
+	uint32_t padding1;
+	uint32_t padding2;
 
 #ifdef __HLSL_VERSION
 	T Load(uint2 pos)
@@ -123,7 +132,7 @@ struct Texture2DResourceView : TextureResourceView
     Texture2DResourceView(ShaderResourceIndex index)
         : index(index)
     {
-        
+        GLEAM_ASSERT(index != InvalidResourceIndex);
     }
 #endif
 };
@@ -132,6 +141,9 @@ template<typename T>
 struct Texture3DResourceView : TextureResourceView
 {
 	ShaderResourceIndex index;
+	uint32_t padding0;
+	uint32_t padding1;
+	uint32_t padding2;
 
 #ifdef __HLSL_VERSION
 	T Load(uint3 pos)
@@ -150,7 +162,7 @@ struct Texture3DResourceView : TextureResourceView
     Texture3DResourceView(ShaderResourceIndex index)
         : index(index)
     {
-        
+        GLEAM_ASSERT(index != InvalidResourceIndex);
     }
 #endif
 };

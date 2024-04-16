@@ -2,6 +2,9 @@
 #include "Application.h"
 #include "WindowSystem.h"
 
+#include "Reflection/Database.h"
+#include "Serialization/JSONSerializer.h"
+
 #include "World/World.h"
 #include "Input/InputSystem.h"
 #include "Renderer/RenderSystem.h"
@@ -68,7 +71,11 @@ Application::Application(const ApplicationProperties& props)
 	if (mInstance == nullptr)
 	{
 		mInstance = this;
-
+        
+        // init reflection & serialization
+        AddSubsystem<Reflection::Database>();
+        AddSubsystem<JSONSerializer>();
+        
         // init windowing subsystem
         auto windowSubsystem = AddSubsystem<WindowSystem>();
         windowSubsystem->Configure(props.windowConfig);

@@ -9,7 +9,7 @@
 
 using namespace Gleam;
 
-Buffer Heap::CreateBuffer(size_t size) const
+Buffer Heap::CreateBuffer(size_t size, TStringView name) const
 {
 	auto alignedStackPtr = Utils::AlignUp(mStackPtr, mAlignment);
 	auto newStackPtr = alignedStackPtr + size;
@@ -54,6 +54,7 @@ Buffer Heap::CreateBuffer(size_t size) const
 		nullptr,
 		IID_PPV_ARGS(&resource)
 	));
+	resource->SetName(StringUtils::Convert(name).c_str());
 	DirectXTransitionManager::SetLayout(resource, initialState);
 
     void* contents = nullptr;

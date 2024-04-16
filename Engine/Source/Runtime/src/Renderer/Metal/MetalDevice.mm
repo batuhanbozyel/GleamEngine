@@ -30,7 +30,7 @@ MemoryRequirements GraphicsDevice::QueryMemoryRequirements(const HeapDescriptor&
 	};
 }
 
-Heap GraphicsDevice::AllocateHeap(const HeapDescriptor& descriptor)
+Heap GraphicsDevice::AllocateHeap(const HeapDescriptor& descriptor, const TStringView name)
 {
     Heap heap(descriptor);
     heap.mDevice = this;
@@ -46,10 +46,12 @@ Heap GraphicsDevice::AllocateHeap(const HeapDescriptor& descriptor)
     heap.mHandle = [mHandle newHeapWithDescriptor:desc];
     heap.mDescriptor.size = sizeAndAlign.size;
     heap.mAlignment = sizeAndAlign.align;
+    
+    [heap.mHandle setLabel:TO_NSSTRING(name.data())];
     return heap;
 }
 
-Texture GraphicsDevice::AllocateTexture(const TextureDescriptor& descriptor)
+Texture GraphicsDevice::AllocateTexture(const TextureDescriptor& descriptor, const TStringView name)
 {
     Texture texture(descriptor);
     
@@ -76,6 +78,8 @@ Texture GraphicsDevice::AllocateTexture(const TextureDescriptor& descriptor)
                                                    textureType:descriptor.dimension == TextureDimension::TextureCube ? MTLTextureTypeCubeArray : MTLTextureType2DArray
                                                         levels:NSMakeRange(0, texture.mMipMapLevels)
                                                         slices:NSMakeRange(0, 1)];
+    [baseTexture setLabel:TO_NSSTRING(name.data())];
+    [texture.mView setLabel:TO_NSSTRING(name.data())];
     
     if (descriptor.sampleCount > 1)
     {
@@ -87,18 +91,23 @@ Texture GraphicsDevice::AllocateTexture(const TextureDescriptor& descriptor)
         msaaTextureDesc.storageMode = MTLStorageModePrivate; // TODO: Switch to memoryless msaa render targets when Tile shading is supported
         texture.mMultisampleHandle = [mHandle newTextureWithDescriptor:msaaTextureDesc];
         texture.mMultisampleView = texture.mMultisampleHandle;
+        
+        TStringStream multisampleName;
+        multisampleName << name << "::MSAA";
+        [texture.mMultisampleHandle setLabel:TO_NSSTRING(multisampleName.str().data())];
+        [texture.mMultisampleView setLabel:TO_NSSTRING(multisampleName.str().data())];
     }
-    
     texture.mResourceView = Utils::IsDepthFormat(descriptor.format) ? InvalidResourceIndex : CreateResourceView(texture);
     return texture;
 }
 
-Shader GraphicsDevice::GenerateShader(const TString& entryPoint, ShaderStage stage) const
+Shader GraphicsDevice::GenerateShader(const TString& entryPoint, ShaderStage stage)
 {
     Shader shader(entryPoint, stage);
     
-    TArray<uint8_t> shaderCode = IOUtils::ReadBinaryFile(GameInstance->GetDefaultAssetPath().append("Shaders/" + entryPoint + ".dxil"));
-    auto dxil = IRObjectCreateFromDXIL(shaderCode.data(), shaderCode.size(), IRBytecodeOwnershipNone);
+    File shaderFile(GameInstance->GetDefaultAssetPath().append("Shaders/" + entryPoint + ".dxil"), FileType::Binary);
+    auto shaderCode = shaderFile.Read();
+    auto dxil = IRObjectCreateFromDXIL((uint8_t*)shaderCode.data(), shaderCode.size(), IRBytecodeOwnershipNone);
     
     auto compiler = IRCompilerCreate();
     IRCompilerSetEntryPointName(compiler, entryPoint.data());
@@ -109,7 +118,7 @@ Shader GraphicsDevice::GenerateShader(const TString& entryPoint, ShaderStage sta
     if (compileError)
     {
         auto errorCode = IRErrorGetCode(compileError);
-        GLEAM_ERROR("Metal IR generation failed with code: {0}", errorCode);
+        GLEAM_CORE_ERROR("Metal IR generation failed with code: {0}", errorCode);
         IRErrorDestroy(compileError);
         compileError = nullptr;
     }
@@ -123,7 +132,7 @@ Shader GraphicsDevice::GenerateShader(const TString& entryPoint, ShaderStage sta
     if (libraryError)
     {
         auto errorStr = TO_CPP_STRING([libraryError localizedDescription]);
-        GLEAM_ERROR("Metal library load failed: {0}", errorStr);
+        GLEAM_CORE_ERROR("Metal library load failed: {0}", errorStr);
         libraryError = nil;
     }
     
@@ -318,6 +327,8 @@ MetalDescriptorHeap MetalDevice::CreateDescriptorHeap(uint32_t capacity) const
     MetalDescriptorHeap heap;
     heap.handle = [mHandle newBufferWithLength:capacity * sizeof(IRDescriptorTableEntry) options:MTLResourceStorageModeShared];
     heap.heap = ResourceDescriptorHeap(capacity);
+    
+    [heap.handle setLabel:@"DescriptorHeap"];
     return heap;
 }
 

@@ -14,6 +14,12 @@
 #include "Renderer/Material/Material.h"
 #include "Renderer/Material/MaterialInstance.h"
 
+#if defined(USE_METAL_RENDERER)
+#import <Metal/Metal.h>
+#elif defined(USE_DIRECTX_RENDERER)
+#include "../DirectX/DirectXTransitionManager.h"
+#endif
+
 using namespace Gleam;
 
 void WorldRenderer::OnCreate(GraphicsDevice* device)
@@ -54,18 +60,38 @@ void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
                 
                 for (const auto& element : meshList)
                 {
-                    const auto& meshBuffer = element.mesh->GetBuffer();
+                    const auto& positionBuffer = element.mesh->GetPositionBuffer();
+                    const auto& interleavedBuffer = element.mesh->GetInterleavedBuffer();
+				#ifdef USE_METAL_RENDERER
+                    [cmd->GetActiveRenderPass() useResource:positionBuffer.GetHandle() usage:MTLResourceUsageRead stages:MTLRenderStageVertex];
+                    [cmd->GetActiveRenderPass() useResource:interleavedBuffer.GetHandle() usage:MTLResourceUsageRead stages:MTLRenderStageVertex];
+				#elif defined(USE_DIRECTX_RENDERER)
+                    DirectXTransitionManager::TransitionLayout(
+                        static_cast<ID3D12GraphicsCommandList7*>(cmd->GetHandle()),
+                        static_cast<ID3D12Resource*>(positionBuffer.GetHandle()),
+                        D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE
+                    );
                     
-                    ForwardPassUniforms uniforms;
-                    uniforms.modelMatrix = element.transform;
-                    uniforms.cameraBuffer = passData.cameraBuffer;
-                    uniforms.positionBuffer = meshBuffer.GetPositionBuffer().GetResourceView();
-                    uniforms.interleavedBuffer = meshBuffer.GetInterleavedBuffer().GetResourceView();
-                    cmd->SetPushConstant(uniforms);
-					
+                    DirectXTransitionManager::TransitionLayout(
+                        static_cast<ID3D12GraphicsCommandList7*>(cmd->GetHandle()),
+                        static_cast<ID3D12Resource*>(interleavedBuffer.GetHandle()),
+                        D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE
+                    );
+				#endif
+
+					MeshPassResources resources;
+					resources.cameraBuffer = passData.cameraBuffer;
+					resources.positionBuffer = positionBuffer.GetResourceView();
+					resources.interleavedBuffer = interleavedBuffer.GetResourceView();
+					cmd->SetConstantBuffer(resources, 0);
+
                     for (const auto& descriptor : element.mesh->GetSubmeshDescriptors())
                     {
-                        cmd->DrawIndexed(meshBuffer.GetIndexBuffer(), IndexType::UINT32, descriptor.indexCount, 1, descriptor.firstIndex, descriptor.baseVertex, 0);
+						ForwardPassUniforms uniforms;
+						uniforms.modelMatrix = element.transform;
+						uniforms.baseVertex = descriptor.baseVertex;
+						cmd->SetPushConstant(uniforms);
+                        cmd->DrawIndexed(element.mesh->GetIndexBuffer(), IndexType::UINT32, descriptor.indexCount, 1, descriptor.firstIndex);
                     }
                 }
             }
@@ -82,10 +108,10 @@ void WorldRenderer::DrawMesh(const MeshRenderer& meshRenderer, const Transform& 
     const auto& baseMaterial = std::static_pointer_cast<Material>(material->GetBaseMaterial());
     if (baseMaterial->GetRenderQueue() == RenderQueue::Opaque)
     {
-        mOpaqueQueue[baseMaterial].push_back({ meshRenderer.GetMesh().get(), material.get(), transform.GetTransform() });
+        mOpaqueQueue[baseMaterial].push_back({ meshRenderer.GetMesh().get(), material.get(), transform.GetWorldTransform() });
     }
     else
     {
-        mTransparentQueue[baseMaterial].push_back({ meshRenderer.GetMesh().get(), material.get(), transform.GetTransform() });
+        mTransparentQueue[baseMaterial].push_back({ meshRenderer.GetMesh().get(), material.get(), transform.GetWorldTransform() });
     }
 }

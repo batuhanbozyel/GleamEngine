@@ -1,4 +1,5 @@
 #pragma once
+#include "World/Entity.h"
 
 namespace Gleam {
 
@@ -7,8 +8,13 @@ class Transform2D
 public:
     
     virtual ~Transform2D() = default;
+    
+    void SetParent(Entity parent)
+    {
+        mParent = parent;
+    }
 
-    void Translate(const Vector2& translation)
+    void Translate(const Float2& translation)
     {
         mPosition += translation;
         mCachedTransform.m[12] += mPosition.x;
@@ -21,7 +27,7 @@ public:
         mRotation += rotation;
     }
 
-	void Scale(const Vector2& scale)
+	void Scale(const Float2& scale)
 	{
 		mIsTransformDirty = true;
 		mScale *= scale;
@@ -29,10 +35,10 @@ public:
 
 	void Scale(float scale)
 	{
-		Scale(Vector2(scale));
+		Scale(Float2(scale));
 	}
 
-    void SetTranslation(const Vector2& translation)
+    void SetTranslation(const Float2& translation)
     {
         mPosition = translation;
         mCachedTransform.m[12] = mPosition.x;
@@ -45,44 +51,46 @@ public:
         mRotation = rotation;
     }
 
-	void SetScale(const Vector2& scale)
+	void SetScale(const Float2& scale)
     {
         mIsTransformDirty = true;
         mScale = scale;
     }
 
-    NO_DISCARD FORCE_INLINE const Matrix4& GetTransform()
+    NO_DISCARD FORCE_INLINE const Float4x4& GetLocalTransform()
     {
         if (mIsTransformDirty)
         {
             mIsTransformDirty = false;
-            mCachedTransform = Matrix4::TRS(mPosition, Quaternion(mRotation), mScale);
+            mCachedTransform = Float4x4::TRS(mPosition, Quaternion(mRotation), mScale);
         }
         return mCachedTransform;
     }
 
-    NO_DISCARD FORCE_INLINE const Vector2& GetPosition() const
+    NO_DISCARD FORCE_INLINE const Float2& GetLocalPosition() const
     {
         return mPosition;
     }
 
-    NO_DISCARD FORCE_INLINE float GetRotation() const
+    NO_DISCARD FORCE_INLINE float GetLocalRotation() const
     {
         return mRotation;
     }
 
-	NO_DISCARD FORCE_INLINE const Vector2& GetScale() const
+	NO_DISCARD FORCE_INLINE const Float2& GetLocalScale() const
     {
         return mScale;
     }
     
 private:
     
-    Vector2 mPosition = Vector2(0.0f, 0.0f);
+    Entity mParent = InvalidEntity;
+    
+    Float2 mPosition = Float2(0.0f, 0.0f);
     float mRotation = 0.0f;
-    Vector2 mScale = Vector2(1.0f, 1.0f);
+    Float2 mScale = Float2(1.0f, 1.0f);
 
-	Matrix4 mCachedTransform = Matrix4();
+	Float4x4 mCachedTransform = Float4x4();
     bool mIsTransformDirty = true;
     
 };
