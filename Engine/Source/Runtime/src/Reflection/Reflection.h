@@ -14,6 +14,12 @@ static const ClassDescription& GetClass(size_t hash)
     return Database::GetClass(hash);
 }
 
+static const ClassDescription& GetClass(const TStringView name)
+{
+	auto hash = Database::GetTypeHash(name);
+	return GetClass(hash);
+}
+
 template<typename T, typename = std::enable_if_t<Traits::IsEnum<T>::value>>
 static constexpr const EnumDescription& GetEnum()
 {
@@ -23,6 +29,12 @@ static constexpr const EnumDescription& GetEnum()
 static const EnumDescription& GetEnum(size_t hash)
 {
     return Database::GetEnum(hash);
+}
+
+static const EnumDescription& GetEnum(const TStringView name)
+{
+	auto hash = Database::GetTypeHash(name);
+	return GetEnum(hash);
 }
 
 template<typename T, typename = std::enable_if_t<Traits::IsArray<T>::value>>

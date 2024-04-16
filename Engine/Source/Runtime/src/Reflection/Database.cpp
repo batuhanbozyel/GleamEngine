@@ -82,8 +82,9 @@ const ClassDescription& Database::GetClass(size_t hash)
 	}
 	GLEAM_ASSERT(false, "Invalid class hash!");
 	
-	auto type = refl::reflect<Dummy>();
-	return mClasses.insert(mClasses.end(), { hash, CreateClassDescription(type) })->second;
+	static auto type = refl::reflect<Dummy>();
+	static auto dummy = CreateClassDescription(type);
+	return dummy;
 }
 
 const EnumDescription& Database::GetEnum(size_t hash)
@@ -95,8 +96,9 @@ const EnumDescription& Database::GetEnum(size_t hash)
     }
     GLEAM_ASSERT(false, "Invalid enum hash!");
     
-    auto type = refl::reflect<DummyEnum>();
-    return mEnums.insert(mEnums.end(), { hash, CreateEnumDescription(type) })->second;
+    static auto type = refl::reflect<DummyEnum>();
+	static auto dummy = CreateEnumDescription(type);
+	return dummy;
 }
 
 const ArrayDescription& Database::GetArray(size_t hash)
@@ -107,5 +109,17 @@ const ArrayDescription& Database::GetArray(size_t hash)
         return it->second;
     }
     GLEAM_ASSERT(false, "Invalid array hash!");
-    return mArrays.insert(mArrays.end(), { hash, CreateArrayDescription<Dummy[1]>() })->second;
+	static auto dummy = CreateArrayDescription<Dummy[1]>();
+	return dummy;
+}
+
+size_t Database::GetTypeHash(const TStringView name)
+{
+	auto it = mTypeNameToHash.find(name);
+	if (it != mTypeNameToHash.end())
+	{
+		return it->second;
+	}
+	GLEAM_ASSERT(false, "Invalid type name!");
+	return 0;
 }

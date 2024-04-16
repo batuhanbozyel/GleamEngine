@@ -28,6 +28,7 @@ public:
         }
         
         auto type = refl::reflect<T>();
+		mTypeNameToHash.insert(mTypeNameToHash.end(), { type.name.c_str(), hash});
         return mClasses.insert(mClasses.end(), { hash, CreateClassDescription(type) })->second;
     }
     
@@ -42,6 +43,7 @@ public:
         }
         
         auto type = refl::reflect<T>();
+		mTypeNameToHash.insert(mTypeNameToHash.end(), { type.name.c_str(), hash });
         return mEnums.insert(mEnums.end(), { hash, CreateEnumDescription(type) })->second;
     }
     
@@ -54,7 +56,7 @@ public:
         {
             return it->second;
         }
-        
+
         return mArrays.insert(mArrays.end(), { hash, CreateArrayDescription<T>() })->second;
     }
     
@@ -63,6 +65,8 @@ public:
     static const EnumDescription& GetEnum(size_t hash);
     
     static const ArrayDescription& GetArray(size_t hash);
+
+	static size_t GetTypeHash(const TStringView name);
     
 private:
 
@@ -198,25 +202,22 @@ private:
         else if constexpr (Traits::IsEnum<ElementType>::value)
         {
             desc.mType = FieldType::Enum;
-            
-            auto enumType = refl::reflect<ElementType>();
-            mEnums[hash] = CreateEnumDescription(enumType);
+			CreateEnumIfNotExist<ElementType>();
         }
         else if constexpr (Traits::IsArray<ElementType>::value)
         {
             desc.mType = FieldType::Array;
-            mArrays[hash] = CreateArrayDescription<ElementType>();
+			CreateArrayIfNotExist<ElementType>();
         }
         else if constexpr (Traits::IsClass<ElementType>::value)
         {
             desc.mType = FieldType::Class;
-            
-            auto classType = refl::reflect<ElementType>();
-            mClasses[hash] = CreateClassDescription(classType);
+			CreateClassIfNotExist<ElementType>();
         }
         return desc;
     }
-    
+
+	static inline HashMap<TStringView, size_t> mTypeNameToHash;
     static inline HashMap<size_t, EnumDescription> mEnums;
     static inline HashMap<size_t, ArrayDescription> mArrays;
     static inline HashMap<size_t, ClassDescription> mClasses;
