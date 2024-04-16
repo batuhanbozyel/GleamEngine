@@ -42,6 +42,8 @@ static constexpr uint32_t Hash(const TString& str)
 	return Hash(str.c_str());
 }
 
+#pragma warning(push)
+#pragma warning(disable:4996)
 static TWString Convert(const TString& as)
 {
 	if (as.empty()) return TWString();
@@ -73,6 +75,7 @@ static TString Convert(const TWStringView as)
 	std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
 	return converter.to_bytes(as.data());
 }
+#pragma warning(pop)
 
 static TString Serialize(const TString& str)
 {
