@@ -39,17 +39,29 @@ TString File::Read() const
 
 void File::Write(const TString& contents)
 {
+	CreateIfNotExists();
+	mHandle << contents;
+}
+
+void File::Append(const TString& contents)
+{
+	CreateIfNotExists();
+	mHandle.seekg(0, std::ios::end);
+	Write(contents);
+}
+
+void File::CreateIfNotExists()
+{
 	if (not mHandle.is_open())
 	{
-        auto flags = std::ios::out | std::ios::in | std::ios::app;
-        if (mType == FileType::Binary)
-        {
-            flags |= std::ios::binary;
-        }
-        mHandle.open(mFullPath, flags);
-        mHandle.unsetf(std::ios::skipws);
+		auto flags = std::ios::out | std::ios::in | std::ios::app;
+		if (mType == FileType::Binary)
+		{
+			flags |= std::ios::binary;
+		}
+		mHandle.open(mFullPath, flags);
+		mHandle.unsetf(std::ios::skipws);
 	}
-    mHandle << contents;
 }
 
 const TString& File::GetName() const

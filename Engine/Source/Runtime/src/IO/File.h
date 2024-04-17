@@ -21,9 +21,13 @@ public:
 
 	void Write(const TString& contents);
 
+	void Append(const TString& contents);
+
 	const TString& GetName() const;
 
 private:
+
+	void CreateIfNotExists();
 
 	TString mName;
     
