@@ -247,11 +247,11 @@ void JSONSerializer::Initialize()
 		{
 			const auto& str = Reflection::Get<TString>(obj);
 			auto& outObject = Reflection::Get<rapidjson::Node>(userData);
+			SerializeClassHeader(classDesc, fieldGuid, fieldName, outObject);
+
 			rapidjson::Value object(rapidjson::kObjectType);
 			rapidjson::Node node(object, outObject.allocator);
-			node.AddMember("Value", rapidjson::StringRef(str.c_str(), str.length()));
-			SerializeClassHeader(classDesc, fieldGuid, fieldName, outObject);
-			outObject.AddMember("Data", object);
+			outObject.AddMember("Value", rapidjson::StringRef(str.c_str(), str.length()));
 		};
 
 		mCustomArraySerializers[Reflection::GetClass<TString>().ResolveName()] = [](const void* obj,
@@ -924,7 +924,6 @@ void DeserializeClassObject(const rapidjson::Value& object,
 {
 	auto data = object["Data"].GetObj();
 	auto fields = data["Fields"].GetArray();
-	auto typeName = data["TypeName"].GetString();
 
 	uint32_t fieldIdx = 0;
 	for (const auto& base : classDesc.ResolveBaseClasses())
