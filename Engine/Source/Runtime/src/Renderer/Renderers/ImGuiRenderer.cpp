@@ -32,13 +32,7 @@ void ImGuiRenderer::OnDestroy(GraphicsDevice* device)
 }
 
 void ImGuiRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard)
-{
-	struct ImGuiPassData
-	{
-		TextureHandle sceneTarget;
-		TextureHandle swapchainTarget;
-	};
-    
+{    
 	graph.AddRenderPass<ImGuiPassData>("ImGuiPass", [&](RenderGraphBuilder& builder, ImGuiPassData& passData)
 	{
 		const auto& sceneData = blackboard.Get<Gleam::SceneRenderingData>();
@@ -73,9 +67,9 @@ void ImGuiRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
         ImGuiID dockspace_id = ImGui::GetID("EditorDockSpace");
         ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_None);
         
-        for (auto view : mViews)
+        for (auto& view : mViews)
         {
-            std::invoke(view);
+            std::invoke(view, passData);
         }
 		mViews.clear();
         

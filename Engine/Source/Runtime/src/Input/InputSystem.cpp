@@ -16,7 +16,7 @@ void InputSystem::Update()
 
 void InputSystem::ShowCursor() const
 {
-	static auto windowSystem = GameInstance->GetSubsystem<WindowSystem>();
+	static auto windowSystem = mAppInstance->GetSubsystem<WindowSystem>();
 	SDL_WarpMouseInWindow(windowSystem->GetSDLWindow(), mCursorHidePosition.x, mCursorHidePosition.y);
 	SDL_SetRelativeMouseMode(SDL_FALSE);
     SDL_ShowCursor();

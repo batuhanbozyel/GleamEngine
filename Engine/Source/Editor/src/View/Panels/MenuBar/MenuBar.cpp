@@ -19,7 +19,7 @@ MenuBar::MenuBar()
 
 void MenuBar::Render(Gleam::ImGuiRenderer* imgui)
 {
-	imgui->PushView([this]()
+	imgui->PushView([this](const Gleam::ImGuiPassData& passData)
 	{
 		if (!ImGui::BeginMenuBar()) { return; }
 		

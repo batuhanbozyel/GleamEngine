@@ -23,7 +23,7 @@ ContentBrowser::ContentBrowser()
 
 void ContentBrowser::Render(Gleam::ImGuiRenderer* imgui)
 {
-	imgui->PushView([this]()
+	imgui->PushView([this](const Gleam::ImGuiPassData& passData)
 	{
 		ImGui::Begin("Content Browser");
         

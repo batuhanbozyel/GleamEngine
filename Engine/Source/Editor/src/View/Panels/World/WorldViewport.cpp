@@ -54,18 +54,16 @@ void WorldViewport::Update()
 
 void WorldViewport::Render(Gleam::ImGuiRenderer* imgui)
 {
-	imgui->PushView([this]()
+	imgui->PushView([this](const Gleam::ImGuiPassData& passData)
 	{
-		const auto& sceneRT = GameInstance->GetSubsystem<Gleam::RenderSystem>()->GetRenderTarget();
-		const auto& sceneRTsize = sceneRT.GetDescriptor().size;
-		
+		const auto& sceneRTsize = passData.sceneTarget.GetTexture().GetDescriptor().size;
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
 		ImGui::Begin("Viewport");
 		ImVec2 viewportSize = ImGui::GetContentRegionAvail();
 		mViewportSize.width = viewportSize.x;
 		mViewportSize.height = viewportSize.y;
 		
-		ImGui::Image(Gleam::ImGuiBackend::GetImTextureIDForTexture(sceneRT), ImVec2(sceneRTsize.width, sceneRTsize.height), ImVec2(0.0f, 0.0f), ImVec2(1.0f, 1.0f));
+		ImGui::Image(Gleam::ImGuiBackend::GetImTextureIDForTexture(passData.sceneTarget), ImVec2(sceneRTsize.width, sceneRTsize.height), ImVec2(0.0f, 0.0f), ImVec2(1.0f, 1.0f));
 		mIsFocused = ImGui::IsWindowFocused();
 
 		if (ImGui::BeginDragDropTarget())

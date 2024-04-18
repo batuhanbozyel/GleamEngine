@@ -19,7 +19,7 @@ WorldOutliner::WorldOutliner()
 
 void WorldOutliner::Render(Gleam::ImGuiRenderer* imgui)
 {
-	imgui->PushView([this]()
+	imgui->PushView([this](const Gleam::ImGuiPassData& passData)
 	{
 		if (!ImGui::Begin("World Outliner")) return;
     
