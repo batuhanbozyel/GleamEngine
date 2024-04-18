@@ -29,7 +29,13 @@ public:
 	T* AddSubsystem()
 	{
 		GLEAM_ASSERT(!HasSubsystem<T>(), "Application already has the subsystem!");
-        T* system = mSubsystems.emplace<T>();
+
+		T* system = mSubsystems.emplace<T>();
+		if constexpr (std::is_base_of<TickableSubsystem, T>::value)
+		{
+			mTickableSubsystems.push_back(system);
+		}
+		system->mAppInstance = this;
         system->Initialize();
         return system;
 	}
@@ -38,7 +44,13 @@ public:
 	void RemoveSubsystem()
 	{
         GLEAM_ASSERT(HasSubsystem<T>(), "Application does not have the subsystem!");
-        auto system = mSubsystems.get<T>();
+
+        T* system = mSubsystems.get<T>();
+		if constexpr (std::is_base_of<TickableSubsystem, T>::value)
+		{
+			mTickableSubsystems.erase(std::remove(mTickableSubsystems.begin(), mTickableSubsystems.end(), system));
+		}
+
         system->Shutdown();
         mSubsystems.erase<T>();
 	}
@@ -74,7 +86,7 @@ private:
 	template<SystemType T>
     bool HasSubsystem() const
     {
-        return mSubsystems.contains<T>();
+		return mSubsystems.contains<T>();
     }
     
     static int SDLCALL SDL2_EventHandler(void* data, SDL_Event* e);
@@ -85,9 +97,9 @@ private:
     
     EventHandlerFn mEventHandler;
     
-    AnyArray mResourceRegistry;
-    
     PolyArray<Subsystem> mSubsystems;
+
+	TArray<TickableSubsystem*> mTickableSubsystems;
 
 	static inline Application* mInstance = nullptr;
 

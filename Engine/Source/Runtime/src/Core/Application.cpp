@@ -115,6 +115,11 @@ void Application::Run()
         }
         
         inputSystem->Update();
+
+		for (auto system : mTickableSubsystems)
+		{
+			system->Tick();
+		}
         
         World::active->Update();
         
@@ -134,6 +139,7 @@ Application::~Application()
             system->Shutdown();
         }
         mSubsystems.clear();
+		mTickableSubsystems.clear();
         
         mInstance = nullptr;
     }
