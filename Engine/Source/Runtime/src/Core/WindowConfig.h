@@ -32,7 +32,6 @@ struct DisplayMode
 
 struct WindowConfig
 {
-	TString title = "Gleam Application";
 	WindowFlag windowFlag = WindowFlag::CustomWindow;
     Size size = {1280.0f, 720.0f};
     float refreshRate = 60.0f;

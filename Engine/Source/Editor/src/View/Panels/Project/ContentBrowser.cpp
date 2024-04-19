@@ -15,7 +15,7 @@
 using namespace GEditor;
 
 ContentBrowser::ContentBrowser()
-	: mAssetDirectory(GameInstance->GetDefaultAssetPath())
+	: mAssetDirectory(Gleam::Globals::ProjectContentDirectory)
 {
     mCurrentDirectory = mAssetDirectory;
     mAssetManager = EAssetManager(mAssetDirectory);
@@ -29,7 +29,6 @@ void ContentBrowser::Render(Gleam::ImGuiRenderer* imgui)
         
 		if (ImGui::Button("Import"))
 		{
-			auto& entityManager = Gleam::World::active->GetEntityManager();
 			auto files = Gleam::FileDialog::Open();
 			for (const auto& path : files)
 			{
@@ -81,7 +80,7 @@ void ContentBrowser::DrawDirectoryTreeView(const Gleam::Filesystem::path& node)
 			if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None))
 			{
 				const auto& asset = mAssetManager.GetAsset(node);
-				ImGui::SetDragDropPayload("ASSET", &asset, sizeof(Gleam::Asset));
+				ImGui::SetDragDropPayload("ASSET", &asset, sizeof(Gleam::AssetReference));
 				ImGui::Text("%s", filename.c_str());
 				ImGui::EndDragDropSource();
 			}

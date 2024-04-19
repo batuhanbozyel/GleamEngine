@@ -1,12 +1,13 @@
 #include "gpch.h"
+#include "Globals.h"
 #include "Application.h"
 #include "WindowSystem.h"
 
 #include "Reflection/Database.h"
 #include "Serialization/JSONSerializer.h"
 
-#include "World/World.h"
 #include "Input/InputSystem.h"
+#include "World/WorldManager.h"
 #include "Renderer/RenderSystem.h"
 #include "Renderer/Material/MaterialSystem.h"
 
@@ -65,12 +66,19 @@ int SDLCALL Application::SDL2_EventHandler(void* data, SDL_Event* e)
 	return 0;
 }
 
-Application::Application(const ApplicationProperties& props)
-	: mVersion(props.version)
+Application::Application(const Project& project)
+	: mVersion(project.engineConfig.version)
 {
 	if (mInstance == nullptr)
 	{
 		mInstance = this;
+
+		// setup globals
+		Globals::ProjectName = project.name;
+		Globals::ProjectDirectory = project.path;
+		Globals::StartupDirectory = Filesystem::current_path();
+		Globals::BuiltinAssetsDirectory = Globals::StartupDirectory/"Assets";
+		Globals::ProjectContentDirectory = Globals::ProjectDirectory/"Assets";
         
         // init reflection & serialization
         AddSubsystem<Reflection::Database>();
@@ -78,17 +86,19 @@ Application::Application(const ApplicationProperties& props)
         
         // init windowing subsystem
         auto windowSubsystem = AddSubsystem<WindowSystem>();
-        windowSubsystem->Configure(props.windowConfig);
+        windowSubsystem->Configure(project.engineConfig.window);
 		
 		// init renderer backend
         auto renderSubsystem = AddSubsystem<RenderSystem>();
-        renderSubsystem->Configure(props.rendererConfig);
+        renderSubsystem->Configure(project.engineConfig.renderer);
 		renderSubsystem->ResetRenderTarget();
         
+		// init world manager
+		auto worldManager = AddSubsystem<WorldManager>();
+		worldManager->Configure(project.worldConfig);
+
         AddSubsystem<InputSystem>();
         AddSubsystem<MaterialSystem>();
-        
-        World::active = World::Create();
         
 		EventDispatcher<AppCloseEvent>::Subscribe([this](AppCloseEvent e)
 		{
@@ -101,6 +111,7 @@ void Application::Run()
 {
     auto inputSystem = GetSubsystem<InputSystem>();
     auto renderSystem = GetSubsystem<RenderSystem>();
+	auto worldManager = GetSubsystem<WorldManager>();
     
 	while (mRunning)
 	{
@@ -113,7 +124,6 @@ void Application::Run()
                 std::invoke(mEventHandler, &event);
             }
         }
-        
         inputSystem->Update();
 
 		for (auto system : mTickableSubsystems)
@@ -121,8 +131,9 @@ void Application::Run()
 			system->Tick();
 		}
         
-        World::active->Update();
-        
+		auto world = worldManager->GetActiveWorld();
+        world->Update();
+
         renderSystem->Render();
 	}
 }
@@ -131,8 +142,6 @@ Application::~Application()
 {
     if (mInstance)
     {
-        World::active.reset();
-        
         // Destroy subsystems
         for (auto system : mSubsystems)
         {

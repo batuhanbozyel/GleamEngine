@@ -1,4 +1,5 @@
 #include "gpch.h"
+#include "Globals.h"
 #include "WindowSystem.h"
 
 #include "Events/WindowEvent.h"
@@ -31,7 +32,7 @@ void WindowSystem::Configure(const WindowConfig& config)
 	}
 
 	// create window
-	mWindow = SDL_CreateWindow(mConfig.title.c_str(),
+	mWindow = SDL_CreateWindow(Globals::ProjectName.c_str(),
                                static_cast<int>(mConfig.size.width),
 							   static_cast<int>(mConfig.size.height),
                                static_cast<uint32_t>(mConfig.windowFlag));

@@ -15,13 +15,15 @@ class WorldOutliner final : public View
 {
 public:
     
-    WorldOutliner();
+    WorldOutliner(Gleam::World* world);
     
     virtual void Render(Gleam::ImGuiRenderer* imgui) override;
     
 private:
     
     void DrawEntityPopupMenu();
+
+	Gleam::World* mEditWorld;
     
     Gleam::Entity mSelectedEntity = Gleam::InvalidEntity;
     

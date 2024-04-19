@@ -9,7 +9,7 @@ public:
 
 	MeshBaker(const Gleam::MeshDescriptor& descriptor);
 
-	virtual Gleam::Asset Bake(const Gleam::Filesystem::path& directory) const override;
+	virtual Gleam::AssetReference Bake(const Gleam::Filesystem::path& directory) const override;
     
     virtual Gleam::TString Filename() const override;
 

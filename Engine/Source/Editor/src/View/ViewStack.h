@@ -24,11 +24,11 @@ public:
     
     virtual void Tick() override;
 	
-    template<ViewType T>
-    T* AddView()
+    template<ViewType T, class...Args>
+    T* AddView(Args&&... args)
     {
         GLEAM_ASSERT(!HasView<T>(), "Editor already has the view!");
-        T* view = mViews.emplace<T>();
+        T* view = mViews.emplace<T>(std::forward<Args>(args)...);
         return view;
     }
     

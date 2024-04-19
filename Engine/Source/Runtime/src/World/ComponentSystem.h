@@ -13,6 +13,8 @@ public:
     
     virtual ~ComponentSystem() = default;
 
+	bool Enabled = true;
+
 protected:
 
 	virtual void OnCreate(EntityManager& entityManager) {};
@@ -22,8 +24,6 @@ protected:
 	virtual void OnFixedUpdate(EntityManager& entityManager) {};
 
 	virtual void OnDestroy(EntityManager& entityManager) {};
-    
-    bool Enabled = true;
 
 };
 

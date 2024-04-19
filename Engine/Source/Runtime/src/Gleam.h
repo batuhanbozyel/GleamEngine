@@ -42,11 +42,14 @@
 #include "Core/Events/KeyEvent.h"
 #include "Core/WindowSystem.h"
 #include "Core/Application.h"
+#include "Core/CommandLine.h"
+#include "Core/Globals.h"
 #include "Core/GUID.h"
 #include "Core/Time.h"
 
 #include "Serialization/JSONSerializer.h"
 
+#include "Assets/AssetReference.h"
 #include "Assets/Asset.h"
 
 #include "Renderer/Shaders/ShaderInterop.h"
@@ -66,7 +69,7 @@
 
 #include "Input/InputSystem.h"
 
-#include "World/World.h"
+#include "World/WorldManager.h"
 #include "Assets/AssetManager.h"
 
 #include "Renderer/Renderers/UIRenderer.h"

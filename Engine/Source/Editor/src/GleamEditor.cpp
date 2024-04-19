@@ -14,14 +14,17 @@ class GleamEditor : public Gleam::Application
 {
 public:
 
-	GleamEditor(const Gleam::ApplicationProperties& properties)
-        : Gleam::Application(properties)
+	GleamEditor(const Gleam::Project& project)
+        : Gleam::Application(project)
 	{
+		auto worldManager = GetSubsystem<Gleam::WorldManager>();
+		auto world = worldManager->GetActiveWorld();
+
         auto viewStack = AddSubsystem<ViewStack>();
 		viewStack->AddView<MenuBar>();
-        viewStack->AddView<WorldViewport>();
-        viewStack->AddView<WorldOutliner>();
-		viewStack->AddView<EntityInspector>();
+        viewStack->AddView<WorldViewport>(world);
+        viewStack->AddView<WorldOutliner>(world);
+		viewStack->AddView<EntityInspector>(world);
 		viewStack->AddView<ContentBrowser>();
 	}
     
@@ -36,11 +39,11 @@ private:
 
 } // namespace GEditor
 
-Gleam::Application* Gleam::CreateApplicationInstance()
+Gleam::Application* Gleam::CreateApplicationInstance(const Gleam::CommandLine& cli)
 {
-    Gleam::ApplicationProperties props;
-    props.version = Gleam::Version(1, 0, 0);
-    props.windowConfig.title = "Gleam Editor";
-    props.windowConfig.windowFlag = Gleam::WindowFlag::MaximizedWindow;
-    return new GEditor::GleamEditor(props);
+	Gleam::Project project;
+    project.name = "Gleam Editor";
+    project.engineConfig.version = Gleam::Version(1, 0, 0);
+    project.engineConfig.window.windowFlag = Gleam::WindowFlag::MaximizedWindow;
+    return new GEditor::GleamEditor(project);
 }

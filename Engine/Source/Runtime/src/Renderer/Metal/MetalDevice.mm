@@ -4,6 +4,7 @@
 #include "MetalDevice.h"
 #include "MetalPipelineStateManager.h"
 
+#include "Core/Globals.h"
 #include "Core/WindowSystem.h"
 #include "Core/Application.h"
 #include "Core/Events/RendererEvent.h"
@@ -104,8 +105,8 @@ Texture GraphicsDevice::AllocateTexture(const TextureDescriptor& descriptor, con
 Shader GraphicsDevice::GenerateShader(const TString& entryPoint, ShaderStage stage)
 {
     Shader shader(entryPoint, stage);
-    
-    File shaderFile(GameInstance->GetDefaultAssetPath().append("Shaders/" + entryPoint + ".dxil"), FileType::Binary);
+    auto shaderPath = Globals::BuiltinAssetsDirectory/"Shaders";
+    File shaderFile(shaderPath.append(entryPoint + ".dxil"), FileType::Binary);
     auto shaderCode = shaderFile.Read();
     auto dxil = IRObjectCreateFromDXIL((uint8_t*)shaderCode.data(), shaderCode.size(), IRBytecodeOwnershipNone);
     
@@ -186,7 +187,7 @@ MetalDevice::MetalDevice()
     GLEAM_ASSERT(mSurface, "Metal: Surface creation failed!");
     
     mSwapchain = (__bridge CAMetalLayer*)SDL_Metal_GetLayer(mSurface);
-    mSwapchain.name = [NSString stringWithCString:windowSystem->GetConfiguration().title.c_str() encoding:NSASCIIStringEncoding];
+    mSwapchain.name = [NSString stringWithCString:Globals::ProjectName.c_str() encoding:NSASCIIStringEncoding];
     mSwapchain.device = mHandle;
     mSwapchain.framebufferOnly = NO;
     mSwapchain.opaque = YES;

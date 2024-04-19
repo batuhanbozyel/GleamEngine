@@ -73,6 +73,7 @@
 #include "Core/Events/WindowEvent.h"
 #include "Core/Events/MouseEvent.h"
 #include "Core/Events/KeyEvent.h"
+#include "Core/Globals.h"
 #include "Core/GUID.h"
 #include "Core/Time.h"
 

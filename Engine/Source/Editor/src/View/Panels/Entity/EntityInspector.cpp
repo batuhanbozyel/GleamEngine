@@ -94,7 +94,8 @@ static void DrawComponent(const std::string& name, T& component, UIFunction uiFu
     }
 }
 
-EntityInspector::EntityInspector()
+EntityInspector::EntityInspector(Gleam::World* world)
+	: mEditWorld(world)
 {
     Gleam::EventDispatcher<EntitySelectedEvent>::Subscribe([this](EntitySelectedEvent e)
     {
@@ -114,7 +115,7 @@ void EntityInspector::Render(Gleam::ImGuiRenderer* imgui)
             return;
         }
         
-        auto& entityManager = Gleam::World::active->GetEntityManager();
+        auto& entityManager = mEditWorld->GetEntityManager();
         if (entityManager.HasComponent<Gleam::Camera>(mSelectedEntity))
         {
             auto& component = entityManager.GetComponent<Gleam::Camera>(mSelectedEntity);

@@ -21,13 +21,13 @@ void EAssetManager::Import(const Gleam::Filesystem::path& directory, const Asset
 	}
 }
 
-const Gleam::Asset& EAssetManager::GetAsset(const Gleam::Filesystem::path& path) const
+const Gleam::AssetReference& EAssetManager::GetAsset(const Gleam::Filesystem::path& path) const
 {
 	auto it = mAssetCache.find(path);
 	if (it != mAssetCache.end())
 	{
 		return it->second;
 	}
-	static Gleam::Asset invalidAsset;
+	static Gleam::AssetReference invalidAsset;
 	return invalidAsset;
 }

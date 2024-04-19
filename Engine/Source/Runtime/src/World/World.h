@@ -10,13 +10,6 @@ class World final
 {
 public:
     
-    static inline RefCounted<World> active = nullptr;
-    
-    static RefCounted<World> Create()
-    {
-        return CreateRef<World>();
-    }
-
 	World(const TString& name = "World")
         : mName(name)
     {

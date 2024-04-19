@@ -10,7 +10,7 @@
 
 namespace GEditor {
 
-class WorldViewportController : public Gleam::ComponentSystem
+class EditorCameraController : public Gleam::ComponentSystem
 {
 public:
     
@@ -18,11 +18,7 @@ public:
 
 	virtual void OnUpdate(Gleam::EntityManager& entityManager) override;
     
-    const Gleam::Size& GetViewportSize() const;
-    
-    void SetViewportSize(const Gleam::Size& size);
-    
-    void SetViewportFocused(bool focused);
+    void Resize(const Gleam::Size& size);
     
 private:
     

@@ -8,11 +8,11 @@ TextureBaker::TextureBaker(const Gleam::TextureDescriptor& descriptor)
 	
 }
 
-Gleam::Asset TextureBaker::Bake(const Gleam::Filesystem::path& directory) const
+Gleam::AssetReference TextureBaker::Bake(const Gleam::Filesystem::path& directory) const
 {
     const auto& typeGuid = Gleam::Reflection::GetClass<Gleam::TextureDescriptor>().Guid();
     auto guid = Gleam::Guid::NewGuid();
-    Gleam::Asset asset(guid, typeGuid);
+    Gleam::AssetReference asset(guid, typeGuid);
     // TODO:
     return asset;
 }

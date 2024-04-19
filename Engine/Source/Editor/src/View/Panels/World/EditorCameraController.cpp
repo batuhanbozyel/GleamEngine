@@ -5,38 +5,29 @@
 //  Created by Batuhan Bozyel on 26.03.2023.
 //
 
-#include "WorldViewportController.h"
+#include "EditorCameraController.h"
 
 using namespace GEditor;
 
-void WorldViewportController::OnCreate(Gleam::EntityManager& entityManager)
+void EditorCameraController::OnCreate(Gleam::EntityManager& entityManager)
 {
 	mCameraEntity = entityManager.CreateEntity();
     entityManager.AddComponent<Gleam::Camera>(mCameraEntity, GameInstance->GetSubsystem<Gleam::WindowSystem>()->GetResolution());
 }
 
-void WorldViewportController::OnUpdate(Gleam::EntityManager& entityManager)
+void EditorCameraController::OnUpdate(Gleam::EntityManager& entityManager)
 {
 	auto& camera = entityManager.GetComponent<Gleam::Camera>(mCameraEntity);
     camera.SetViewport(mViewportSize);
     
-    if (mViewportFocused)
-    {
-        ProcessCameraRotation(camera);
-        ProcessCameraMovement(camera);
-    }
+	ProcessCameraRotation(camera);
+	ProcessCameraMovement(camera);
     
     auto renderSystem = GameInstance->GetSubsystem<Gleam::RenderSystem>();
-    auto worldRenderer = renderSystem->GetRenderer<Gleam::WorldRenderer>();
     renderSystem->UpdateCamera(camera);
-    
-    entityManager.ForEach<Gleam::MeshRenderer, Gleam::Transform>([&](const Gleam::MeshRenderer& meshRenderer, const Gleam::Transform& transform)
-    {
-        worldRenderer->DrawMesh(meshRenderer, transform);
-    });
 }
 
-void WorldViewportController::ProcessCameraRotation(Gleam::Camera& camera)
+void EditorCameraController::ProcessCameraRotation(Gleam::Camera& camera)
 {
     auto inputSystem = GameInstance->GetSubsystem<Gleam::InputSystem>();
 	if (!inputSystem->CursorVisible())
@@ -50,7 +41,7 @@ void WorldViewportController::ProcessCameraRotation(Gleam::Camera& camera)
     }
 }
 
-void WorldViewportController::ProcessCameraMovement(Gleam::Camera& camera)
+void EditorCameraController::ProcessCameraMovement(Gleam::Camera& camera)
 {
     constexpr float cameraSpeed = 5.0f;
     auto deltaTime = static_cast<float>(Gleam::Time::deltaTime);
@@ -81,17 +72,7 @@ void WorldViewportController::ProcessCameraMovement(Gleam::Camera& camera)
     }
 }
 
-const Gleam::Size& WorldViewportController::GetViewportSize() const
-{
-    return mViewportSize;
-}
-
-void WorldViewportController::SetViewportSize(const Gleam::Size& size)
+void EditorCameraController::Resize(const Gleam::Size& size)
 {
     mViewportSize = size;
-}
-
-void WorldViewportController::SetViewportFocused(bool focused)
-{
-    mViewportFocused = focused;
 }

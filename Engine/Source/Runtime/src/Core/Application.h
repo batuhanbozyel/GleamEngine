@@ -1,13 +1,13 @@
 #pragma once
 #include "Subsystem.h"
-#include "ApplicationConfig.h"
+#include "Project.h"
 
 union SDL_Event;
 struct SDL_Window;
 
 namespace Gleam {
 
-class InputSystem;
+class CommandLine;
 
 template <typename T>
 concept SystemType = std::is_base_of<Subsystem, T>::value;
@@ -20,7 +20,7 @@ public:
 
 	GLEAM_NONCOPYABLE(Application);
 
-	Application(const ApplicationProperties& props);
+	Application(const Project& project);
 	virtual ~Application();
     
 	void Run();
@@ -70,11 +70,6 @@ public:
 	{
 		return mVersion;
 	}
-    
-    Filesystem::path GetDefaultAssetPath() const
-    {
-        return Filesystem::current_path().append("Assets");
-    }
 
 	static Application* GetInstance()
 	{
@@ -105,6 +100,6 @@ private:
 
 };
 
-Application* CreateApplicationInstance();
+Application* CreateApplicationInstance(const CommandLine& cli);
 
 } // namespace Gleam

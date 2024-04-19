@@ -13,13 +13,13 @@ public:
 
 	void Import(const Gleam::Filesystem::path& directory, const AssetPackage& package);
 
-	const Gleam::Asset& GetAsset(const Gleam::Filesystem::path& path) const;
+	const Gleam::AssetReference& GetAsset(const Gleam::Filesystem::path& path) const;
 
 private:
 
 	Gleam::Filesystem::path mAssetDirectory;
     
-    Gleam::HashMap<Gleam::Filesystem::path, Gleam::Asset> mAssetCache;
+    Gleam::HashMap<Gleam::Filesystem::path, Gleam::AssetReference> mAssetCache;
 
 };
 

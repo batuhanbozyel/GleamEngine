@@ -12,7 +12,8 @@
 
 using namespace GEditor;
 
-WorldOutliner::WorldOutliner()
+WorldOutliner::WorldOutliner(Gleam::World* world)
+	: mEditWorld(world)
 {
     
 }
@@ -23,7 +24,7 @@ void WorldOutliner::Render(Gleam::ImGuiRenderer* imgui)
 	{
 		if (!ImGui::Begin("World Outliner")) return;
     
-		auto& entityManager = Gleam::World::active->GetEntityManager();
+		auto& entityManager = mEditWorld->GetEntityManager();
 		entityManager.ForEach([&](Gleam::EntityHandle entity)
 		{
 			uint32_t id = static_cast<uint32_t>(entity);

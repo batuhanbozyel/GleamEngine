@@ -6,21 +6,21 @@
 //
 
 #include "WorldViewport.h"
-#include "WorldViewportController.h"
+#include "EditorCameraController.h"
 
 #include "Renderer/ImGui/ImGuiBackend.h"
 #include "Renderers/InfiniteGridRenderer.h"
 
 using namespace GEditor;
 
-WorldViewport::WorldViewport()
+WorldViewport::WorldViewport(Gleam::World* world)
+	: mEditWorld(world)
 {
     GameInstance->GetSubsystem<Gleam::RenderSystem>()->AddRenderer<InfiniteGridRenderer>();
     mViewportSize = GameInstance->GetSubsystem<Gleam::WindowSystem>()->GetResolution();
     
-    mEditWorld = Gleam::World::active;
-	mController = mEditWorld->AddSystem<WorldViewportController>();
-    mController->SetViewportSize(mViewportSize);
+	mController = mEditWorld->AddSystem<EditorCameraController>();
+    mController->Resize(mViewportSize);
     
     Gleam::EventDispatcher<Gleam::MouseButtonPressedEvent>::Subscribe([&](Gleam::MouseButtonPressedEvent e)
     {
@@ -38,9 +38,10 @@ WorldViewport::WorldViewport()
 
 void WorldViewport::Update()
 {
-    if (mViewportSize != mController->GetViewportSize())
+	mController->Enabled = mIsFocused;
+    if (mViewportSizeChanged)
     {
-        mController->SetViewportSize(mViewportSize);
+        mController->Resize(mViewportSize);
         Gleam::EventDispatcher<Gleam::RendererResizeEvent>::Publish(Gleam::RendererResizeEvent(mViewportSize));
     }
     
@@ -48,8 +49,6 @@ void WorldViewport::Update()
     descriptor.size = mViewportSize;
     descriptor.usage = Gleam::TextureUsage_Attachment | Gleam::TextureUsage_Sampled;
     GameInstance->GetSubsystem<Gleam::RenderSystem>()->SetRenderTarget(descriptor);
-    
-    mController->SetViewportFocused(mIsFocused);
 }
 
 void WorldViewport::Render(Gleam::ImGuiRenderer* imgui)
@@ -60,8 +59,12 @@ void WorldViewport::Render(Gleam::ImGuiRenderer* imgui)
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
 		ImGui::Begin("Viewport");
 		ImVec2 viewportSize = ImGui::GetContentRegionAvail();
-		mViewportSize.width = viewportSize.x;
-		mViewportSize.height = viewportSize.y;
+		if (mViewportSize != Gleam::Size(viewportSize.x, viewportSize.y))
+		{
+			mViewportSize.width = viewportSize.x;
+			mViewportSize.height = viewportSize.y;
+			mViewportSizeChanged = true;
+		}
 		
 		ImGui::Image(Gleam::ImGuiBackend::GetImTextureIDForTexture(passData.sceneTarget), ImVec2(sceneRTsize.width, sceneRTsize.height), ImVec2(0.0f, 0.0f), ImVec2(1.0f, 1.0f));
 		mIsFocused = ImGui::IsWindowFocused();
@@ -70,8 +73,8 @@ void WorldViewport::Render(Gleam::ImGuiRenderer* imgui)
 		{
 			if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("ASSET"))
 			{
-				IM_ASSERT(payload->DataSize == sizeof(Gleam::Asset));
-				const auto& asset = *(const Gleam::Asset*)payload->Data;
+				IM_ASSERT(payload->DataSize == sizeof(Gleam::AssetReference));
+				const auto& asset = *(const Gleam::AssetReference*)payload->Data;
 				if (asset.GetType() == Gleam::Reflection::GetClass<Gleam::MeshDescriptor>().Guid())
 				{
 

@@ -200,8 +200,8 @@ Texture GraphicsDevice::AllocateTexture(const TextureDescriptor& descriptor, con
 Shader GraphicsDevice::GenerateShader(const TString& entryPoint, ShaderStage stage)
 {
 	Shader shader(entryPoint, stage);
-
-	auto shaderFile = File(GameInstance->GetDefaultAssetPath().append("Shaders/" + entryPoint + ".dxil"), FileType::Binary);
+	auto shaderPath = Globals::BuiltinAssetsDirectory/"Shaders";
+	auto shaderFile = File(shaderPath.append(entryPoint + ".dxil"), FileType::Binary);
 	auto shaderCode = shaderFile.Read();
 	auto bytecodeLength = shaderCode.size();
 	auto bytecode = new uint8_t[bytecodeLength];

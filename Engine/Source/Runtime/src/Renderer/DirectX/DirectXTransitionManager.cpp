@@ -12,6 +12,7 @@ void DirectXTransitionManager::Init(DirectXDevice* device)
 
 void DirectXTransitionManager::TransitionLayout(ID3D12GraphicsCommandList7* cmd, ID3D12Resource* resource, D3D12_RESOURCE_STATES layout)
 {
+	GLEAM_ASSERT(resource, "DirectX: Null resource transition");
 	D3D12_RESOURCE_STATES oldLayout = GetLayout(resource);
 	if (oldLayout == layout) { return; }
 	

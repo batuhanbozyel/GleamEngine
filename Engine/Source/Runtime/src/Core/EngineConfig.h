@@ -18,11 +18,11 @@ struct Version
     }
 };
 
-struct ApplicationProperties
+struct EngineConfig
 {
 	Version version;
-	WindowConfig windowConfig;
-	RendererConfig rendererConfig;
+	WindowConfig window;
+	RendererConfig renderer;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Version& version)
