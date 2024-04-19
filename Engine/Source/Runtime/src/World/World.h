@@ -42,11 +42,11 @@ public:
         }
     }
     
-    template<ComponentSystemType T>
-    T* AddSystem()
+    template<ComponentSystemType T, class...Args>
+    T* AddSystem(Args&&... args)
     {
         GLEAM_ASSERT(!HasSystem<T>(), "World already has the system!");
-        T* system = mSystems.emplace<T>();
+        T* system = mSystems.emplace<T>(std::forward<Args>(args)...);
 		system->OnCreate(mEntityManager);
 		return system;
     }

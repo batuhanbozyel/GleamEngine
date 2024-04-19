@@ -25,12 +25,12 @@ public:
     
 	void Run();
 
-	template<SystemType T>
-	T* AddSubsystem()
+	template<SystemType T, class...Args>
+	T* AddSubsystem(Args&&... args)
 	{
 		GLEAM_ASSERT(!HasSubsystem<T>(), "Application already has the subsystem!");
 
-		T* system = mSubsystems.emplace<T>();
+		T* system = mSubsystems.emplace<T>(std::forward<Args>(args)...);
 		if constexpr (std::is_base_of<TickableSubsystem, T>::value)
 		{
 			mTickableSubsystems.push_back(system);

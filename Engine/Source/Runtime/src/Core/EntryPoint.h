@@ -17,6 +17,7 @@ extern "C"
 
 int main(int argc, char* argv[])
 {
+	// TODO: parse command line, check if project is provided, then launch Game, otherwise launch custom application instance
 	Gleam::Application* app = Gleam::CreateApplicationInstance(Gleam::CommandLine(argc, argv));
 
     app->Run();

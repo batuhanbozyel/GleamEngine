@@ -45,11 +45,11 @@ public:
     
     void ResetRenderTarget();
     
-    template<RendererType T>
-    T* AddRenderer()
+    template<RendererType T, class...Args>
+    T* AddRenderer(Args&&... args)
     {
         GLEAM_ASSERT(!HasRenderer<T>(), "Render pipeline already has the renderer!");
-        auto renderer = mRenderers.emplace_back(new T());
+        auto renderer = mRenderers.emplace_back(new T(std::forward<Args>(args)...));
         renderer->OnCreate(mDevice.get());
         return static_cast<T*>(renderer);
     }
