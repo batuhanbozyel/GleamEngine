@@ -18,7 +18,7 @@ public:
 
 	virtual void OnUpdate(Gleam::EntityManager& entityManager) override;
     
-    void Resize(const Gleam::Size& size);
+    void Resize(Gleam::EntityManager& entityManager, const Gleam::Size& size);
     
 private:
     

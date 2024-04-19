@@ -20,7 +20,7 @@ WorldViewport::WorldViewport(Gleam::World* world)
     mViewportSize = GameInstance->GetSubsystem<Gleam::WindowSystem>()->GetResolution();
     
 	mController = mEditWorld->AddSystem<EditorCameraController>();
-    mController->Resize(mViewportSize);
+    mController->Resize(mEditWorld->GetEntityManager(), mViewportSize);
     
     Gleam::EventDispatcher<Gleam::MouseButtonPressedEvent>::Subscribe([&](Gleam::MouseButtonPressedEvent e)
     {
@@ -41,7 +41,8 @@ void WorldViewport::Update()
 	mController->Enabled = mIsFocused;
     if (mViewportSizeChanged)
     {
-        mController->Resize(mViewportSize);
+		mViewportSizeChanged = false;
+        mController->Resize(mEditWorld->GetEntityManager(), mViewportSize);
         Gleam::EventDispatcher<Gleam::RendererResizeEvent>::Publish(Gleam::RendererResizeEvent(mViewportSize));
     }
     

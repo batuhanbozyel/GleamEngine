@@ -72,7 +72,13 @@ void EditorCameraController::ProcessCameraMovement(Gleam::Camera& camera)
     }
 }
 
-void EditorCameraController::Resize(const Gleam::Size& size)
+void EditorCameraController::Resize(Gleam::EntityManager& entityManager, const Gleam::Size& size)
 {
     mViewportSize = size;
+
+	auto& camera = entityManager.GetComponent<Gleam::Camera>(mCameraEntity);
+	camera.SetViewport(mViewportSize);
+
+	auto renderSystem = GameInstance->GetSubsystem<Gleam::RenderSystem>();
+	renderSystem->UpdateCamera(camera);
 }
