@@ -33,6 +33,7 @@ typedef uint32_t TextureUsageFlagBits;
 
 struct TextureDescriptor
 {
+    TString name;
     Size size = Size::zero;
     TextureFormat format = TextureFormat::R8G8B8A8_UNorm;
     TextureUsageFlagBits usage = TextureUsage_Sampled;
@@ -94,6 +95,7 @@ GLEAM_ENUM(Gleam::TextureUsage, Guid("7EFFFEDD-F5B2-443B-9888-49C88D41779B"))
 GLEAM_ENUM(Gleam::TextureDimension, Guid("7A1CDA2E-8B61-4558-9255-B919E70E92F7"))
 GLEAM_ENUM(Gleam::TextureUsageFlag, Guid("86B2EAED-95E1-4FAD-927E-E744324A42A0"))
 GLEAM_TYPE(Gleam::TextureDescriptor, Guid("5B36D630-8A7E-47BE-A9F0-1702AB9F9C8C"))
+    GLEAM_FIELD(name, Serializable())
 	GLEAM_FIELD(size, Serializable())
 	GLEAM_FIELD(format, Serializable())
 	GLEAM_FIELD(usage, Serializable())

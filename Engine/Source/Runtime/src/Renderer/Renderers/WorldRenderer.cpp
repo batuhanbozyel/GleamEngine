@@ -36,12 +36,14 @@ void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
         const auto& backbufferDescriptor = graph.GetDescriptor(sceneData.backbuffer);
         
         RenderTextureDescriptor textureDesc;
+        textureDesc.name = "SceneColorRT";
         textureDesc.size = backbufferDescriptor.size;
         textureDesc.sampleCount = sceneData.config.sampleCount;
         textureDesc.format = TextureFormat::R16G16B16A16_SFloat;
         textureDesc.clearBuffer = true;
         passData.colorTarget = builder.CreateTexture(textureDesc);
         
+        textureDesc.name = "SceneDepthRT";
         textureDesc.format = TextureFormat::D16_UNorm;
         passData.depthTarget = builder.CreateTexture(textureDesc);
         

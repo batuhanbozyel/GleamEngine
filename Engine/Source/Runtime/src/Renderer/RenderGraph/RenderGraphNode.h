@@ -97,8 +97,8 @@ struct RenderGraphBufferNode final : public RenderGraphResourceNode
 {
     Buffer buffer = Buffer();
 
-	RenderGraphBufferNode(uint32_t uniqueId, size_t size, bool transient)
-		: RenderGraphResourceNode(uniqueId, transient), buffer(nullptr, size)
+	RenderGraphBufferNode(uint32_t uniqueId, const BufferDescriptor& descriptor, bool transient)
+		: RenderGraphResourceNode(uniqueId, transient), buffer(descriptor)
 	{
 
 	}

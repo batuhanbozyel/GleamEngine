@@ -62,7 +62,11 @@ void RenderSystem::Render()
         
         const auto& sceneData = graph.AddRenderPass<SceneRenderingData>("SceneRenderingData", [&](RenderGraphBuilder& builder, SceneRenderingData& passData)
         {
-            passData.cameraBuffer = builder.CreateBuffer(sizeof(CameraUniforms));
+            BufferDescriptor bufferDesc;
+            bufferDesc.name = "CameraBuffer";
+            bufferDesc.size = sizeof(CameraUniforms);
+            
+            passData.cameraBuffer = builder.CreateBuffer(bufferDesc);
             passData.cameraBuffer = builder.WriteBuffer(passData.cameraBuffer);
             
             passData.backbuffer = graph.ImportBackbuffer(mRenderTarget);
@@ -144,7 +148,7 @@ const Texture& RenderSystem::GetRenderTarget() const
 
 void RenderSystem::SetRenderTarget(const TextureDescriptor& descriptor)
 {
-    mRenderTarget = mDevice->CreateTexture(descriptor, "Backbuffer");
+    mRenderTarget = mDevice->CreateTexture(descriptor);
     GLEAM_ASSERT(mRenderTarget.IsValid());
 }
 

@@ -9,15 +9,15 @@
 
 using namespace Gleam;
 
-Buffer Heap::CreateBuffer(size_t size, TStringView name) const
+Buffer Heap::CreateBuffer(const BufferDescriptor& descriptor) const
 {
 	auto alignedStackPtr = Utils::AlignUp(mStackPtr, mAlignment);
-	auto newStackPtr = alignedStackPtr + size;
+	auto newStackPtr = alignedStackPtr + descriptor.size;
 
 	if (Utils::AlignUp(mDescriptor.size, mAlignment) < newStackPtr)
 	{
 		GLEAM_ASSERT(false, "DirectX: Heap is full!");
-		return Buffer(nullptr, size, nullptr);
+		return Buffer(descriptor);
 	}
 	mStackPtr = newStackPtr;
 
@@ -35,7 +35,7 @@ Buffer Heap::CreateBuffer(size_t size, TStringView name) const
 	D3D12_RESOURCE_DESC resourceDesc = {
 		.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER,
 		.Alignment = mAlignment,
-		.Width = size,
+		.Width = descriptor.size,
 		.Height = 1,
 		.DepthOrArraySize = 1,
 		.MipLevels = 1,
@@ -54,7 +54,10 @@ Buffer Heap::CreateBuffer(size_t size, TStringView name) const
 		nullptr,
 		IID_PPV_ARGS(&resource)
 	));
-	resource->SetName(StringUtils::Convert(name).c_str());
+    
+    TStringStream resourceName;
+    resourceName << mDescriptor.name << "::" << descriptor.name;
+	resource->SetName(StringUtils::Convert(resourceName.str()).c_str());
 	DirectXTransitionManager::SetLayout(resource, initialState);
 
     void* contents = nullptr;
@@ -62,7 +65,10 @@ Buffer Heap::CreateBuffer(size_t size, TStringView name) const
 	{
 		DX_CHECK(resource->Map(0, nullptr, &contents));
 	}
-	Buffer buffer(resource, size, contents);
+    
+    Buffer buffer(descriptor);
+    buffer.mHandle = resource;
+    buffer.mContents = contents;
 	buffer.mResourceView = mDescriptor.memoryType == MemoryType::CPU ? InvalidResourceIndex : static_cast<DirectXDevice*>(mDevice)->CreateResourceView(buffer);
     return buffer;
 }

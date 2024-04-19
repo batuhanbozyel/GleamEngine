@@ -31,7 +31,7 @@ MemoryRequirements GraphicsDevice::QueryMemoryRequirements(const HeapDescriptor&
 	};
 }
 
-Heap GraphicsDevice::AllocateHeap(const HeapDescriptor& descriptor, const TStringView name)
+Heap GraphicsDevice::AllocateHeap(const HeapDescriptor& descriptor)
 {
     Heap heap(descriptor);
     heap.mDevice = this;
@@ -48,11 +48,11 @@ Heap GraphicsDevice::AllocateHeap(const HeapDescriptor& descriptor, const TStrin
     heap.mDescriptor.size = sizeAndAlign.size;
     heap.mAlignment = sizeAndAlign.align;
     
-    [heap.mHandle setLabel:TO_NSSTRING(name.data())];
+    [heap.mHandle setLabel:TO_NSSTRING(descriptor.name.c_str())];
     return heap;
 }
 
-Texture GraphicsDevice::AllocateTexture(const TextureDescriptor& descriptor, const TStringView name)
+Texture GraphicsDevice::AllocateTexture(const TextureDescriptor& descriptor)
 {
     Texture texture(descriptor);
     
@@ -79,8 +79,8 @@ Texture GraphicsDevice::AllocateTexture(const TextureDescriptor& descriptor, con
                                                    textureType:descriptor.dimension == TextureDimension::TextureCube ? MTLTextureTypeCubeArray : MTLTextureType2DArray
                                                         levels:NSMakeRange(0, texture.mMipMapLevels)
                                                         slices:NSMakeRange(0, 1)];
-    [baseTexture setLabel:TO_NSSTRING(name.data())];
-    [texture.mView setLabel:TO_NSSTRING(name.data())];
+    [baseTexture setLabel:TO_NSSTRING(descriptor.name.c_str())];
+    [texture.mView setLabel:TO_NSSTRING(descriptor.name.c_str())];
     
     if (descriptor.sampleCount > 1)
     {
@@ -94,7 +94,7 @@ Texture GraphicsDevice::AllocateTexture(const TextureDescriptor& descriptor, con
         texture.mMultisampleView = texture.mMultisampleHandle;
         
         TStringStream multisampleName;
-        multisampleName << name << "::MSAA";
+        multisampleName << descriptor.name << "::MSAA";
         [texture.mMultisampleHandle setLabel:TO_NSSTRING(multisampleName.str().data())];
         [texture.mMultisampleView setLabel:TO_NSSTRING(multisampleName.str().data())];
     }

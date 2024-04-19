@@ -26,9 +26,9 @@ NO_DISCARD TextureHandle RenderGraphBuilder::UseDepthBuffer(const TextureHandle&
     return mPassNode.depthAttachment = WriteTexture(attachment);
 }
 
-NO_DISCARD BufferHandle RenderGraphBuilder::CreateBuffer(size_t size)
+NO_DISCARD BufferHandle RenderGraphBuilder::CreateBuffer(const BufferDescriptor& descriptor)
 {
-	auto handle = mResourceRegistry.CreateBuffer(size);
+	auto handle = mResourceRegistry.CreateBuffer(descriptor);
     handle.node->creator = &mPassNode;
     return mPassNode.bufferCreates.emplace_back(handle);
 }

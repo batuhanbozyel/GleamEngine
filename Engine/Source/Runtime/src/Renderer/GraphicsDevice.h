@@ -30,9 +30,9 @@ public:
 
 	void DestroyPooledObjects(uint32_t frameIndex);
 
-    Heap CreateHeap(const HeapDescriptor& descriptor, const TStringView name);
+    Heap CreateHeap(const HeapDescriptor& descriptor);
 
-    Texture CreateTexture(const TextureDescriptor& descriptor, const TStringView name);
+    Texture CreateTexture(const TextureDescriptor& descriptor);
 
     Shader CreateShader(const TString& entryPoint, ShaderStage stage);
 
@@ -102,9 +102,9 @@ protected:
 
 private:
 
-    Heap AllocateHeap(const HeapDescriptor& descriptor, const TStringView name);
+    Heap AllocateHeap(const HeapDescriptor& descriptor);
     
-    Texture AllocateTexture(const TextureDescriptor& descriptor, const TStringView name);
+    Texture AllocateTexture(const TextureDescriptor& descriptor);
     
     Shader GenerateShader(const TString& entryPoint, ShaderStage stage);
 

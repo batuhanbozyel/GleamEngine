@@ -12,6 +12,7 @@ enum class MemoryType
 
 struct HeapDescriptor
 {
+    TString name;
 	MemoryType memoryType = MemoryType::GPU;
 	size_t size = 0;
     

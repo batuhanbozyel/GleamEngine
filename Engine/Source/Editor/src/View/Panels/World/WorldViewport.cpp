@@ -47,6 +47,7 @@ void WorldViewport::Update()
     }
     
     Gleam::TextureDescriptor descriptor;
+    descriptor.name = "Editor::Backbuffer";
     descriptor.size = mViewportSize;
     descriptor.usage = Gleam::TextureUsage_Attachment | Gleam::TextureUsage_Sampled;
     GameInstance->GetSubsystem<Gleam::RenderSystem>()->SetRenderTarget(descriptor);

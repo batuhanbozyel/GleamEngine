@@ -33,9 +33,10 @@ CommandBuffer::CommandBuffer(GraphicsDevice* device)
 	mHandle->device = static_cast<DirectXDevice*>(device);
     
     HeapDescriptor descriptor;
+    descriptor.name = "CommandBuffer::StagingHeap";
     descriptor.size = 4194304; // 4 MB;
     descriptor.memoryType = MemoryType::CPU;
-    mStagingHeap = mDevice->CreateHeap(descriptor, "CommandBuffer::StagingHeap");
+    mStagingHeap = mDevice->CreateHeap(descriptor);
 
 	DX_CHECK(static_cast<ID3D12Device10*>(mHandle->device->GetHandle())->CreateFence(
 		mHandle->fenceValue,
@@ -189,7 +190,11 @@ void CommandBuffer::SetConstantBuffer(const void* data, uint32_t size, uint32_t 
 {
 	TStringStream name;
 	name << "CommandBuffer::ConstantBuffer_" << slot;
-	auto buffer = mStagingHeap.CreateBuffer(size, name.str().data());
+    
+    BufferDescriptor constantBufferDesc;
+    constantBufferDesc.name = name.str();
+    constantBufferDesc.size = size;
+	auto buffer = mStagingHeap.CreateBuffer(constantBufferDesc);
 	SetBufferData(buffer, data, size);
 
     mHandle->commandList->SetGraphicsRootConstantBufferView(slot, static_cast<ID3D12Resource*>(buffer.GetHandle())->GetGPUVirtualAddress());
