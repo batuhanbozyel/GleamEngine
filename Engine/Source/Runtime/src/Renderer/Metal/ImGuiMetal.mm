@@ -5,7 +5,6 @@
 #include "MetalDevice.h"
 
 #include "imgui_impl_metal.h"
-
 #include "Core/Engine.h"
 #include "Core/Globals.h"
 #include "Core/WindowSystem.h"

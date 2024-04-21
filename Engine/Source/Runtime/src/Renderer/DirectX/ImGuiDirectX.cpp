@@ -6,6 +6,8 @@
 #include "DirectXPipelineStateManager.h"
 
 #include "imgui_impl_dx12.h"
+#include "Core/Engine.h"
+#include "Core/Globals.h"
 #include "Core/Application.h"
 #include "Core/WindowSystem.h"
 #include "Renderer/ImGui/imgui_impl_sdl3.h"
