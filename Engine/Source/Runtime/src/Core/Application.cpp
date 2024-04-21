@@ -20,7 +20,6 @@ Application::Application(const Project& project)
 	// setup globals
 	Globals::ProjectName = project.name;
 	Globals::ProjectDirectory = project.path;
-	Globals::StartupDirectory = Filesystem::current_path();
 	Globals::BuiltinAssetsDirectory = Globals::StartupDirectory/"Assets";
 	Globals::ProjectContentDirectory = Globals::ProjectDirectory/"Assets";
 	

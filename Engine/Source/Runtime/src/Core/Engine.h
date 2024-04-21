@@ -52,7 +52,7 @@ public:
 
 private:
     
-    void SaveConfigToDisk();
+    void SaveConfigToDisk() const;
 
 	EngineConfig mConfig;
 	PolyArray<Subsystem> mSubsystems;

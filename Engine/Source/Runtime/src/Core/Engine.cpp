@@ -12,8 +12,6 @@ using namespace Gleam;
 
 void Engine::Initialize()
 {
-    // TODO: load config from config.ini
-    
 	// init reflection & serialization
 	AddSubsystem<Reflection::Database>();
 	AddSubsystem<JSONSerializer>();
@@ -21,6 +19,15 @@ void Engine::Initialize()
 	// init core subsystems
 	AddSubsystem<EventSystem>();
 	AddSubsystem<InputSystem>();
+
+	// setup config
+	Globals::StartupDirectory = Filesystem::current_path();
+	auto configFile = Globals::StartupDirectory / "Engine.config";
+	if (Filesystem::exists(configFile))
+	{
+		auto file = File(configFile, FileType::Text);
+		mConfig = JSONSerializer::Deserialize<EngineConfig>(file.Read());
+	}
 	
 	// init windowing subsystem
 	auto windowSubsystem = AddSubsystem<WindowSystem>();
@@ -47,9 +54,11 @@ void Engine::Shutdown()
 	mSubsystems.clear();
 }
 
-void Engine::SaveConfigToDisk()
+void Engine::SaveConfigToDisk() const
 {
-    // TODO: write to config.ini
+	auto serialized = JSONSerializer::Serialize(mConfig);
+	auto file = File(Globals::StartupDirectory/"Engine.config", FileType::Text);
+	file.Write(serialized);
 }
 
 void Engine::UpdateConfig(const WindowConfig& config)

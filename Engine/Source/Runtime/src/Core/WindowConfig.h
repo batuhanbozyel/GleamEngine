@@ -38,3 +38,10 @@ struct WindowConfig
 };
 
 } // namespace Gleam
+
+GLEAM_ENUM(Gleam::WindowFlag, Guid("1237B8F5-13B3-4166-809D-96F61DF19A4A"))
+GLEAM_TYPE(Gleam::WindowConfig, Guid("5AA6CC17-C7FB-4A8E-86ED-A58C7092CFB1"))
+	GLEAM_FIELD(windowFlag, Serializable())
+	GLEAM_FIELD(size, Serializable())
+	GLEAM_FIELD(refreshRate, Serializable())
+GLEAM_END
