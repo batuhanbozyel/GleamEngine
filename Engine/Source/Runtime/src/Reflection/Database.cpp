@@ -60,6 +60,7 @@ PrimitiveType Database::GetPrimitiveType(size_t hash)
     {
         return it->second;
     }
+	GLEAM_ASSERT(false, "Invalid primitive hash.");
     return PrimitiveType::Invalid;
 }
 
@@ -70,6 +71,7 @@ const Gleam::TStringView Database::GetPrimitiveName(PrimitiveType type)
     {
         return it->second;
     }
+	GLEAM_ASSERT(false, "Invalid primitive type.");
     return "";
 }
 
@@ -80,8 +82,7 @@ const ClassDescription& Database::GetClass(size_t hash)
 	{
 		return it->second;
 	}
-	GLEAM_ASSERT(false, "Invalid class hash!");
-	
+	GLEAM_ASSERT(false, "Invalid class hash.");
 	static auto type = refl::reflect<Dummy>();
 	static auto dummy = CreateClassDescription(type);
 	return dummy;
@@ -94,8 +95,7 @@ const EnumDescription& Database::GetEnum(size_t hash)
     {
         return it->second;
     }
-    GLEAM_ASSERT(false, "Invalid enum hash!");
-    
+    GLEAM_ASSERT(false, "Invalid enum hash.");
     static auto type = refl::reflect<DummyEnum>();
 	static auto dummy = CreateEnumDescription(type);
 	return dummy;
@@ -108,7 +108,7 @@ const ArrayDescription& Database::GetArray(size_t hash)
     {
         return it->second;
     }
-    GLEAM_ASSERT(false, "Invalid array hash!");
+    GLEAM_ASSERT(false, "Invalid array hash.");
 	static auto dummy = CreateArrayDescription<Dummy[1]>();
 	return dummy;
 }
@@ -120,6 +120,6 @@ size_t Database::GetTypeHash(const TStringView name)
 	{
 		return it->second;
 	}
-	GLEAM_ASSERT(false, "Invalid type name!");
+	GLEAM_ASSERT(false, "Invalid type name.");
 	return 0;
 }
