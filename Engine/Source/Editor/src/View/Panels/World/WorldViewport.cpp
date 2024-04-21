@@ -16,8 +16,8 @@ using namespace GEditor;
 WorldViewport::WorldViewport(Gleam::World* world)
 	: mEditWorld(world)
 {
-    GameInstance->GetSubsystem<Gleam::RenderSystem>()->AddRenderer<InfiniteGridRenderer>();
-    mViewportSize = GameInstance->GetSubsystem<Gleam::WindowSystem>()->GetResolution();
+    Gleam::Globals::Engine->GetSubsystem<Gleam::RenderSystem>()->AddRenderer<InfiniteGridRenderer>();
+    mViewportSize = Gleam::Globals::Engine->GetResolution();
     
 	mController = mEditWorld->AddSystem<EditorCameraController>();
     mController->Resize(mEditWorld->GetEntityManager(), mViewportSize);
@@ -28,7 +28,7 @@ WorldViewport::WorldViewport(Gleam::World* world)
         {
             if (mIsFocused)
             {
-                auto inputSystem = GameInstance->GetSubsystem<Gleam::InputSystem>();
+                auto inputSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::InputSystem>();
                 mCursorVisible ? inputSystem->HideCursor() : inputSystem->ShowCursor();
                 mCursorVisible = !mCursorVisible;
             }
@@ -50,7 +50,7 @@ void WorldViewport::Update()
     descriptor.name = "Editor::Backbuffer";
     descriptor.size = mViewportSize;
     descriptor.usage = Gleam::TextureUsage_Attachment | Gleam::TextureUsage_Sampled;
-    GameInstance->GetSubsystem<Gleam::RenderSystem>()->SetRenderTarget(descriptor);
+    Gleam::Globals::Engine->GetSubsystem<Gleam::RenderSystem>()->SetBackbuffer(descriptor);
 }
 
 void WorldViewport::Render(Gleam::ImGuiRenderer* imgui)

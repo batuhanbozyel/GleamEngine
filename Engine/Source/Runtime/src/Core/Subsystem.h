@@ -1,5 +1,5 @@
 //
-//  View.h
+//  Subsystem.h
 //  Runtime
 //
 //  Created by Batuhan Bozyel on 31.10.2022.
@@ -9,10 +9,12 @@
 
 namespace Gleam {
 
+class Engine;
 class Application;
 
 class Subsystem
 {
+	friend class Engine;
     friend class Application;
 
 public:
@@ -25,12 +27,11 @@ protected:
     
 	virtual void Shutdown() {}
 
-	Application* mAppInstance = nullptr;
-
 };
 
 class TickableSubsystem : public Subsystem
 {
+	friend class Engine;
 	friend class Application;
 
 public:
@@ -46,5 +47,8 @@ protected:
 	virtual void Tick() {}
 
 };
+
+template <typename T>
+concept SystemType = std::is_base_of<Subsystem, T>::value;
 
 } // namespace Gleam

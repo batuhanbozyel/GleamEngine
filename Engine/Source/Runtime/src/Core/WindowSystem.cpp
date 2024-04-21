@@ -1,7 +1,7 @@
 #include "gpch.h"
+#include "Engine.h"
 #include "Globals.h"
 #include "WindowSystem.h"
-
 #include "Events/WindowEvent.h"
 
 using namespace Gleam;
@@ -20,29 +20,17 @@ void WindowSystem::Shutdown()
 
 void WindowSystem::Configure(const WindowConfig& config)
 {
+    Globals::Engine->UpdateConfig(config);
+    
     // destroy old window if exists
     if (mWindow) { SDL_DestroyWindow(mWindow); }
-    
-    mConfig = config;
-    
-	// query display info to create window if not provided by the user
-	if (static_cast<uint32_t>(config.size.width) == 0 || static_cast<uint32_t>(config.size.height) == 0)
-	{
-		mConfig.windowFlag = WindowFlag::MaximizedWindow;
-	}
 
 	// create window
 	mWindow = SDL_CreateWindow(Globals::ProjectName.c_str(),
-                               static_cast<int>(mConfig.size.width),
-							   static_cast<int>(mConfig.size.height),
-                               static_cast<uint32_t>(mConfig.windowFlag));
+                               static_cast<int>(config.size.width),
+							   static_cast<int>(config.size.height),
+                               static_cast<uint32_t>(config.windowFlag));
 	GLEAM_ASSERT(mWindow, "Window creation failed!");
-    
-	EventDispatcher<WindowResizeEvent>::Subscribe([this](const WindowResizeEvent& e)
-	{
-		mConfig.size.width = static_cast<float>(e.GetWidth());
-        mConfig.size.height = static_cast<float>(e.GetHeight());
-	});
 }
 
 DisplayMode WindowSystem::GetCurrentDisplayMode(uint32_t monitor) const

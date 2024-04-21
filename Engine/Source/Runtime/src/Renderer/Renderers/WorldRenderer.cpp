@@ -8,6 +8,9 @@
 #include "gpch.h"
 #include "WorldRenderer.h"
 
+#include "Core/Engine.h"
+#include "Core/Globals.h"
+
 #include "Renderer/Mesh.h"
 #include "Renderer/CommandBuffer.h"
 #include "Renderer/GraphicsDevice.h"
@@ -34,11 +37,12 @@ void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
     {
         const auto& sceneData = blackboard.Get<SceneRenderingData>();
         const auto& backbufferDescriptor = graph.GetDescriptor(sceneData.backbuffer);
+        auto sampleCount = Globals::Engine->GetConfiguration().renderer.sampleCount;
         
         RenderTextureDescriptor textureDesc;
         textureDesc.name = "SceneColorRT";
         textureDesc.size = backbufferDescriptor.size;
-        textureDesc.sampleCount = sceneData.config.sampleCount;
+        textureDesc.sampleCount = sampleCount;
         textureDesc.format = TextureFormat::R16G16B16A16_SFloat;
         textureDesc.clearBuffer = true;
         passData.colorTarget = builder.CreateTexture(textureDesc);

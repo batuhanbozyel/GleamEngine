@@ -43,7 +43,6 @@ Gleam::Application* Gleam::CreateApplicationInstance(const Gleam::CommandLine& c
 {
 	Gleam::Project project;
     project.name = "Gleam Editor";
-    project.engineConfig.version = Gleam::Version(1, 0, 0);
-    project.engineConfig.window.windowFlag = Gleam::WindowFlag::MaximizedWindow;
+    project.version = Gleam::Version(1, 0, 0);
     return new GEditor::GleamEditor(project);
 }

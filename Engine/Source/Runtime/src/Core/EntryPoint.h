@@ -17,13 +17,16 @@ extern "C"
 
 int main(int argc, char* argv[])
 {
+    Gleam::Engine engine;
+    Gleam::Globals::Engine = &engine;
+    engine.Initialize();
+
 	// TODO: parse command line, check if project is provided, then launch Game, otherwise launch custom application instance
-	Gleam::Application* app = Gleam::CreateApplicationInstance(Gleam::CommandLine(argc, argv));
+	Gleam::Globals::GameInstance = Gleam::CreateApplicationInstance(Gleam::CommandLine(argc, argv));
+	Gleam::Globals::GameInstance->Run();
 
-    app->Run();
-
-	delete app;
-
+	delete Gleam::Globals::GameInstance;
+    engine.Shutdown();
 	return EXIT_SUCCESS;
 }
 #else

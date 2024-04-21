@@ -12,7 +12,7 @@ using namespace GEditor;
 void EditorCameraController::OnCreate(Gleam::EntityManager& entityManager)
 {
 	mCameraEntity = entityManager.CreateEntity();
-    entityManager.AddComponent<Gleam::Camera>(mCameraEntity, GameInstance->GetSubsystem<Gleam::WindowSystem>()->GetResolution());
+    entityManager.AddComponent<Gleam::Camera>(mCameraEntity, Gleam::Globals::Engine->GetResolution());
 }
 
 void EditorCameraController::OnUpdate(Gleam::EntityManager& entityManager)
@@ -23,13 +23,13 @@ void EditorCameraController::OnUpdate(Gleam::EntityManager& entityManager)
 	ProcessCameraRotation(camera);
 	ProcessCameraMovement(camera);
     
-    auto renderSystem = GameInstance->GetSubsystem<Gleam::RenderSystem>();
+    auto renderSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::RenderSystem>();
     renderSystem->UpdateCamera(camera);
 }
 
 void EditorCameraController::ProcessCameraRotation(Gleam::Camera& camera)
 {
-    auto inputSystem = GameInstance->GetSubsystem<Gleam::InputSystem>();
+    auto inputSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::InputSystem>();
 	if (!inputSystem->CursorVisible())
     {
         constexpr float mouseSensitivity = 0.1f;
@@ -45,7 +45,7 @@ void EditorCameraController::ProcessCameraMovement(Gleam::Camera& camera)
 {
     constexpr float cameraSpeed = 5.0f;
     auto deltaTime = static_cast<float>(Gleam::Time::deltaTime);
-    auto inputSystem = GameInstance->GetSubsystem<Gleam::InputSystem>();
+    auto inputSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::InputSystem>();
     if (inputSystem->GetButtonDown(Gleam::KeyCode::A))
     {
         camera.Translate(-camera.RightVector() * cameraSpeed * deltaTime);
@@ -79,6 +79,6 @@ void EditorCameraController::Resize(Gleam::EntityManager& entityManager, const G
 	auto& camera = entityManager.GetComponent<Gleam::Camera>(mCameraEntity);
 	camera.SetViewport(mViewportSize);
 
-	auto renderSystem = GameInstance->GetSubsystem<Gleam::RenderSystem>();
+	auto renderSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::RenderSystem>();
 	renderSystem->UpdateCamera(camera);
 }

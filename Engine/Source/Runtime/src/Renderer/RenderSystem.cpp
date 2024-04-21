@@ -8,11 +8,11 @@
 #include "gpch.h"
 #include "RenderSystem.h"
 
+#include "Core/Engine.h"
+#include "Core/Globals.h"
+
 #include "RenderGraph/RenderGraph.h"
 #include "RenderGraph/RenderGraphBlackboard.h"
-
-#include "Renderers/WorldRenderer.h"
-#include "Renderers/PostProcessStack.h"
 
 #include "Core/Events/RendererEvent.h"
 
@@ -21,9 +21,6 @@ using namespace Gleam;
 void RenderSystem::Initialize()
 {
     mDevice = GraphicsDevice::Create();
-    AddRenderer<WorldRenderer>();
-    AddRenderer<PostProcessStack>();
-
 	EventDispatcher<RendererResizeEvent>::Subscribe([this](RendererResizeEvent e)
 	{
         const auto& cmd = mCommandBuffers[mDevice->GetLastFrameIndex()];
@@ -70,7 +67,6 @@ void RenderSystem::Render()
             passData.cameraBuffer = builder.WriteBuffer(passData.cameraBuffer);
             
             passData.backbuffer = graph.ImportBackbuffer(mRenderTarget);
-            passData.config = mConfiguration;
         },
         [this](const CommandBuffer* cmd, const SceneRenderingData& passData)
         {
@@ -106,7 +102,8 @@ void RenderSystem::Render()
 
 void RenderSystem::Configure(const RendererConfig& config)
 {
-    mConfiguration = config;
+    Globals::Engine->UpdateConfig(config);
+    
     mDevice->Configure(config);
     mCommandBuffers.resize(mDevice->GetFramesInFlight());
 	for (auto& cmd : mCommandBuffers)
@@ -136,28 +133,23 @@ const GraphicsDevice* RenderSystem::GetDevice() const
     return mDevice.get();
 }
 
-const RendererConfig& RenderSystem::GetConfiguration() const
-{
-    return mConfiguration;
-}
-
 const Texture& RenderSystem::GetRenderTarget() const
 {
     return mRenderTarget;
 }
 
-void RenderSystem::SetRenderTarget(const TextureDescriptor& descriptor)
+void RenderSystem::SetBackbuffer(const TextureDescriptor& descriptor)
 {
     mRenderTarget = mDevice->CreateTexture(descriptor);
     GLEAM_ASSERT(mRenderTarget.IsValid());
 }
 
-void RenderSystem::SetRenderTarget(const Texture& texture)
+void RenderSystem::SetBackbuffer(const Texture& texture)
 {
     mRenderTarget = texture;
 }
 
 void RenderSystem::ResetRenderTarget()
 {
-    SetRenderTarget(mDevice->GetRenderSurface());
+    SetBackbuffer(mDevice->GetRenderSurface());
 }

@@ -33,15 +33,13 @@ public:
     
     const GraphicsDevice* GetDevice() const;
     
-    const RendererConfig& GetConfiguration() const;
-    
     const Texture& GetRenderTarget() const;
     
     void UpdateCamera(const Camera& camera);
     
-    void SetRenderTarget(const TextureDescriptor& descriptor);
+    void SetBackbuffer(const TextureDescriptor& descriptor);
     
-    void SetRenderTarget(const Texture& texture);
+    void SetBackbuffer(const Texture& texture);
     
     void ResetRenderTarget();
     
@@ -130,8 +128,6 @@ private:
     Texture mRenderTarget;
     
     CameraUniforms mCameraData;
-    
-    RendererConfig mConfiguration;
     
     Scope<GraphicsDevice> mDevice;
     

@@ -6,7 +6,8 @@
 #include "DirectXTransitionManager.h"
 #include "DirectXPipelineStateManager.h"
 
-#include "Core/Application.h"
+#include "Core/Engine.h"
+#include "Core/Globals.h"
 #include "Core/WindowSystem.h"
 
 using namespace Gleam;
@@ -381,7 +382,7 @@ DirectXDevice::~DirectXDevice()
 
 void DirectXDevice::Configure(const RendererConfig& config)
 {
-	auto windowSystem = GameInstance->GetSubsystem<WindowSystem>();
+	auto windowSystem = Globals::Engine->GetSubsystem<WindowSystem>();
 
 	int width, height;
 	SDL_GetWindowSizeInPixels(windowSystem->GetSDLWindow(), &width, &height);
@@ -426,7 +427,7 @@ void DirectXDevice::Configure(const RendererConfig& config)
 			swapchainDesc.Flags |= DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
 		}
 
-		SDL_Window* window = GameInstance->GetSubsystem<WindowSystem>()->GetSDLWindow();
+		SDL_Window* window = Globals::Engine->GetSubsystem<WindowSystem>()->GetSDLWindow();
 		HWND hwnd = (HWND)SDL_GetProperty(SDL_GetWindowProperties(window), SDL_PROPERTY_WINDOW_WIN32_HWND_POINTER, NULL);
 
 		IDXGISwapChain1* swapchain1 = nullptr;

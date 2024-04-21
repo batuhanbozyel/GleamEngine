@@ -7,7 +7,7 @@ namespace Gleam {
 
 struct Project
 {
-	EngineConfig engineConfig;
+    Version version;
 	WorldConfig worldConfig;
 	Filesystem::path path;
 	TString name;

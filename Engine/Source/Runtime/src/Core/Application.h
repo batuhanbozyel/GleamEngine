@@ -1,26 +1,20 @@
 #pragma once
-#include "Subsystem.h"
 #include "Project.h"
-
-union SDL_Event;
-struct SDL_Window;
 
 namespace Gleam {
 
+class Engine;
 class CommandLine;
-
-template <typename T>
-concept SystemType = std::is_base_of<Subsystem, T>::value;
-
-using EventHandlerFn = std::function<void(const SDL_Event*)>;
 
 class Application
 {
+	friend class Engine;
 public:
 
 	GLEAM_NONCOPYABLE(Application);
 
 	Application(const Project& project);
+
 	virtual ~Application();
     
 	void Run();
@@ -35,7 +29,6 @@ public:
 		{
 			mTickableSubsystems.push_back(system);
 		}
-		system->mAppInstance = this;
         system->Initialize();
         return system;
 	}
@@ -60,43 +53,22 @@ public:
     {
         return mSubsystems.get<T>();
     }
-    
-    void SetEventHandler(EventHandlerFn&& fn)
-    {
-        mEventHandler = std::move(fn);
-    }
-
-	const Version& GetVersion() const
-	{
-		return mVersion;
-	}
-
-	static Application* GetInstance()
-	{
-		return mInstance;
-	}
-
-private:
 
 	template<SystemType T>
     bool HasSubsystem() const
     {
 		return mSubsystems.contains<T>();
     }
-    
-    static int SDLCALL SDL2_EventHandler(void* data, SDL_Event* e);
+
+private:
     
     bool mRunning = true;
     
-    Version mVersion;
-    
-    EventHandlerFn mEventHandler;
-    
-    PolyArray<Subsystem> mSubsystems;
+    Project mProject;
+
+	PolyArray<Subsystem> mSubsystems;
 
 	TArray<TickableSubsystem*> mTickableSubsystems;
-
-	static inline Application* mInstance = nullptr;
 
 };
 

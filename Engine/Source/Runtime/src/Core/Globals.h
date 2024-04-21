@@ -2,8 +2,15 @@
 
 namespace Gleam {
 
+class Engine;
+class Application;
+
 struct Globals final
 {
+	static inline Engine* Engine;
+
+	static inline Application* GameInstance;
+
 	static inline TString ProjectName;
 
 	static inline Filesystem::path StartupDirectory;

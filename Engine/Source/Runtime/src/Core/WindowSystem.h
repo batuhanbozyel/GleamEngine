@@ -4,8 +4,11 @@
 
 namespace Gleam {
 
+class EventSystem;
+
 class WindowSystem final : public Subsystem
 {
+	friend class EventSystem;
 public:
     
     virtual void Initialize() override;
@@ -18,27 +21,16 @@ public:
     
     TArray<DisplayMode> GetAvailableDisplayModes() const;
 
-	Size GetResolution() const
-	{
-        return mConfig.size;
-	}
-
-	const WindowConfig& GetConfiguration() const
-	{
-		return mConfig;
-	}
-
 	SDL_Window* GetSDLWindow() const
 	{
 		return mWindow;
 	}
 
-	void EventHandler(SDL_WindowEvent windowEvent);
-
 private:
 
+	void EventHandler(SDL_WindowEvent windowEvent);
+
 	SDL_Window* mWindow;
-	WindowConfig mConfig;
 
 };
 

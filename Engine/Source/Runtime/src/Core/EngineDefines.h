@@ -14,7 +14,6 @@ using NativeGraphicsResourceView = id;
 using DispatchSemaphore = dispatch_semaphore_t;
 #endif
 
-#define GameInstance Gleam::Application::GetInstance()
 #define GLEAM_ENGINE_MAJOR_VERSION 1
 #define GLEAM_ENGINE_MINOR_VERSION 0
 #define GLEAM_ENGINE_PATCH_VERSION 0

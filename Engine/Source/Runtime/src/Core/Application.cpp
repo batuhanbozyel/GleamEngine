@@ -1,129 +1,55 @@
 #include "gpch.h"
+#include "Engine.h"
 #include "Globals.h"
 #include "Application.h"
-#include "WindowSystem.h"
 
-#include "Reflection/Database.h"
-#include "Serialization/JSONSerializer.h"
-
+#include "EventSystem.h"
 #include "Input/InputSystem.h"
-#include "World/WorldManager.h"
 #include "Renderer/RenderSystem.h"
+
+#include "World/WorldManager.h"
+#include "Renderer/Renderers/WorldRenderer.h"
+#include "Renderer/Renderers/PostProcessStack.h"
 #include "Renderer/Material/MaterialSystem.h"
 
 using namespace Gleam;
 
-int SDLCALL Application::SDL2_EventHandler(void* data, SDL_Event* e)
-{
-    static auto windowSystem = GameInstance->GetSubsystem<WindowSystem>();
-    if (e->type >= SDL_EVENT_WINDOW_FIRST && e->type <= SDL_EVENT_WINDOW_LAST)
-    {
-        windowSystem->EventHandler(e->window);
-        return 0;
-    }
-    
-    static auto inputSystem = GameInstance->GetSubsystem<InputSystem>();
-	switch (e->type)
-	{
-		case SDL_EVENT_QUIT:
-		{
-			EventDispatcher<AppCloseEvent>::Publish(AppCloseEvent());
-			break;
-		}
-		case SDL_EVENT_KEY_DOWN:
-		case SDL_EVENT_KEY_UP:
-		{
-			inputSystem->KeyboardEventHandler(e->key);
-			break;
-		}
-		case SDL_EVENT_MOUSE_MOTION:
-		{
-            inputSystem->MouseMoveEventHandler(e->motion);
-			break;
-		}
-		case SDL_EVENT_MOUSE_WHEEL:
-		{
-            inputSystem->MouseScrollEventHandler(e->wheel);
-			break;
-		}
-		case SDL_EVENT_MOUSE_BUTTON_DOWN:
-		case SDL_EVENT_MOUSE_BUTTON_UP:
-		{
-            inputSystem->MouseButtonEventHandler(e->button);
-			break;
-		}
-		// This case is here just to ignore this type of event to emit warning log messages
-		case SDL_EVENT_POLL_SENTINEL:
-		{
-			break;
-		}
-		default:
-		{
-			GLEAM_CORE_WARN("Unhandled event type: {0}", e->type);
-			break;
-		}
-	}
-	return 0;
-}
-
 Application::Application(const Project& project)
-	: mVersion(project.engineConfig.version)
+	: mProject(project)
 {
-	if (mInstance == nullptr)
+	// setup globals
+	Globals::ProjectName = project.name;
+	Globals::ProjectDirectory = project.path;
+	Globals::StartupDirectory = Filesystem::current_path();
+	Globals::BuiltinAssetsDirectory = Globals::StartupDirectory/"Assets";
+	Globals::ProjectContentDirectory = Globals::ProjectDirectory/"Assets";
+	
+	// init world manager
+	auto worldManager = AddSubsystem<WorldManager>();
+	worldManager->Configure(project.worldConfig);
+	AddSubsystem<MaterialSystem>();
+    
+    // add default renderers
+    auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
+    renderSystem->AddRenderer<WorldRenderer>();
+    renderSystem->AddRenderer<PostProcessStack>();
+	
+	EventDispatcher<AppCloseEvent>::Subscribe([this](AppCloseEvent e)
 	{
-		mInstance = this;
-
-		// setup globals
-		Globals::ProjectName = project.name;
-		Globals::ProjectDirectory = project.path;
-		Globals::StartupDirectory = Filesystem::current_path();
-		Globals::BuiltinAssetsDirectory = Globals::StartupDirectory/"Assets";
-		Globals::ProjectContentDirectory = Globals::ProjectDirectory/"Assets";
-        
-        // init reflection & serialization
-        AddSubsystem<Reflection::Database>();
-        AddSubsystem<JSONSerializer>();
-        
-        // init windowing subsystem
-        auto windowSubsystem = AddSubsystem<WindowSystem>();
-        windowSubsystem->Configure(project.engineConfig.window);
-		
-		// init renderer backend
-        auto renderSubsystem = AddSubsystem<RenderSystem>();
-        renderSubsystem->Configure(project.engineConfig.renderer);
-		renderSubsystem->ResetRenderTarget();
-        
-		// init world manager
-		auto worldManager = AddSubsystem<WorldManager>();
-		worldManager->Configure(project.worldConfig);
-
-        AddSubsystem<InputSystem>();
-        AddSubsystem<MaterialSystem>();
-        
-		EventDispatcher<AppCloseEvent>::Subscribe([this](AppCloseEvent e)
-		{
-			mRunning = false;
-		});
-	}
+		mRunning = false;
+	});
 }
 
 void Application::Run()
 {
-    auto inputSystem = GetSubsystem<InputSystem>();
-    auto renderSystem = GetSubsystem<RenderSystem>();
+	auto eventSystem = Globals::Engine->GetSubsystem<EventSystem>();
+    auto inputSystem = Globals::Engine->GetSubsystem<InputSystem>();
+    auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
 	auto worldManager = GetSubsystem<WorldManager>();
-    
+
 	while (mRunning)
 	{
-        SDL_Event event;
-        while (SDL_PollEvent(&event))
-        {
-            SDL2_EventHandler(nullptr, &event);
-            if (mEventHandler)
-            {
-                std::invoke(mEventHandler, &event);
-            }
-        }
+        eventSystem->Update();
         inputSystem->Update();
 
 		for (auto system : mTickableSubsystems)
@@ -140,16 +66,10 @@ void Application::Run()
 
 Application::~Application()
 {
-    if (mInstance)
+    for (auto system : mSubsystems)
     {
-        // Destroy subsystems
-        for (auto system : mSubsystems)
-        {
-            system->Shutdown();
-        }
-        mSubsystems.clear();
-		mTickableSubsystems.clear();
-        
-        mInstance = nullptr;
+        system->Shutdown();
     }
+	mSubsystems.clear();
+	mTickableSubsystems.clear();
 }

@@ -13,13 +13,13 @@ using namespace GEditor;
 
 void ViewStack::Initialize()
 {
-	mImgui = mAppInstance->GetSubsystem<Gleam::RenderSystem>()->AddRenderer<Gleam::ImGuiRenderer>();
+	mImgui = Gleam::Globals::Engine->GetSubsystem<Gleam::RenderSystem>()->AddRenderer<Gleam::ImGuiRenderer>();
     SetDarkTheme();
 }
 
 void ViewStack::Shutdown()
 {
-	mAppInstance->GetSubsystem<Gleam::RenderSystem>()->RemoveRenderer<Gleam::ImGuiRenderer>();
+	Gleam::Globals::Engine->GetSubsystem<Gleam::RenderSystem>()->RemoveRenderer<Gleam::ImGuiRenderer>();
 	mViews.clear();
 }
 

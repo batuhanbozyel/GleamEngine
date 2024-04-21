@@ -7,7 +7,9 @@
 
 #include "gpch.h"
 #include "Material.h"
-#include "Core/Application.h"
+
+#include "Core/Engine.h"
+#include "Core/Globals.h"
 #include "Renderer/RenderSystem.h"
 
 using namespace Gleam;
@@ -15,7 +17,7 @@ using namespace Gleam;
 Material::Material(const MaterialDescriptor& descriptor)
     : IMaterial(descriptor.properties), mRenderQueue(descriptor.renderQueue)
 {
-    static auto renderSystem = GameInstance->GetSubsystem<RenderSystem>();
+    static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
     
     mPasses.resize(descriptor.passes.size());
     for (uint32_t i = 0; i < mPasses.size(); i++)

@@ -1,6 +1,8 @@
 #include "gpch.h"
 #include "Mesh.h"
-#include "Core/Application.h"
+
+#include "Core/Engine.h"
+#include "Core/Globals.h"
 #include "Renderer/RenderSystem.h"
 
 using namespace Gleam;
@@ -8,7 +10,7 @@ using namespace Gleam;
 Mesh::Mesh(const MeshDescriptor& mesh)
     : mSubmeshDescriptors(mesh.submeshes)
 {
-    static auto renderSystem = GameInstance->GetSubsystem<RenderSystem>();
+    static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
     
     size_t positionSize = mesh.positions.size() * sizeof(Float3);
     size_t interleavedSize = mesh.interleavedVertices.size() * sizeof(InterleavedMeshVertex);
@@ -76,7 +78,7 @@ Mesh::Mesh(const MeshDescriptor& mesh)
 
 void Mesh::Dispose()
 {
-    static auto renderSystem = GameInstance->GetSubsystem<RenderSystem>();
+    static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
     renderSystem->GetDevice()->Dispose(mPositionBuffer);
     renderSystem->GetDevice()->Dispose(mInterleavedBuffer);
     renderSystem->GetDevice()->Dispose(mIndexBuffer);

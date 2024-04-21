@@ -1,7 +1,8 @@
 #include "gpch.h"
 #include "MeshRenderer.h"
 
-#include "Core/Application.h"
+#include "Core/Engine.h"
+#include "Core/Globals.h"
 #include "Renderer/Mesh.h"
 #include "Renderer/Material/MaterialSystem.h"
 
@@ -10,7 +11,7 @@ using namespace Gleam;
 MeshRenderer::MeshRenderer(const RefCounted<Mesh>& mesh)
 	: mMesh(mesh)
 {
-    static auto materialSystem = GameInstance->GetSubsystem<MaterialSystem>();
+    static auto materialSystem = Globals::Engine->GetSubsystem<MaterialSystem>();
     const auto& baseMaterial = materialSystem->GetDefaultMaterial();
 
     mMaterials.resize(mesh->GetSubmeshCount());

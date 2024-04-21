@@ -13,10 +13,12 @@ struct SDL_MouseButtonEvent;
 
 namespace Gleam {
 
+class EventSystem;
+
 class InputSystem final : public Subsystem
 {
-    friend class Application;
-    
+	friend class Application;
+    friend class EventSystem;
 public:
     
     void ShowCursor() const;

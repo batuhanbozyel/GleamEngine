@@ -20,7 +20,6 @@ struct Version
 
 struct EngineConfig
 {
-	Version version;
 	WindowConfig window;
 	RendererConfig renderer;
 };

@@ -4,9 +4,9 @@
 #include "MetalDevice.h"
 #include "MetalPipelineStateManager.h"
 
+#include "Core/Engine.h"
 #include "Core/Globals.h"
 #include "Core/WindowSystem.h"
-#include "Core/Application.h"
 #include "Core/Events/RendererEvent.h"
 
 #define IR_PRIVATE_IMPLEMENTATION
@@ -180,7 +180,7 @@ MetalDevice::MetalDevice()
     GLEAM_ASSERT(mHandle);
 
     // init CAMetalLayer
-    auto windowSystem = GameInstance->GetSubsystem<WindowSystem>();
+    auto windowSystem = Globals::Engine->GetSubsystem<WindowSystem>();
     
     // Create surface
     mSurface = SDL_Metal_CreateView(windowSystem->GetSDLWindow());
@@ -192,7 +192,7 @@ MetalDevice::MetalDevice()
     mSwapchain.framebufferOnly = NO;
     mSwapchain.opaque = YES;
     
-    const auto& resolution = windowSystem->GetResolution();
+    const auto& resolution = Globals::Engine->GetResolution();
     mSize = resolution * mSwapchain.contentsScale;
     mSwapchain.drawableSize = CGSizeMake(mSize.width, mSize.height);
     mFormat = MTLPixelFormatToTextureFormat(mSwapchain.pixelFormat);

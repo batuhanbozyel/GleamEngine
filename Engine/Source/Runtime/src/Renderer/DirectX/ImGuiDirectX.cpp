@@ -23,7 +23,7 @@ void ImGuiBackend::Init(GraphicsDevice* device)
 	D3D12_GPU_DESCRIPTOR_HANDLE fontSrvGPUdescriptor = cbvSrvUavHeap.handle->GetGPUDescriptorHandleForHeapStart();
 	fontSrvGPUdescriptor.ptr += (UINT64)(index.data * cbvSrvUavHeap.size);
 
-	ImGui_ImplSDL3_InitForD3D(GameInstance->GetSubsystem<WindowSystem>()->GetSDLWindow());
+	ImGui_ImplSDL3_InitForD3D(Globals::Engine->GetSubsystem<WindowSystem>()->GetSDLWindow());
 	ImGui_ImplDX12_Init(static_cast<ID3D12Device*>(mDevice->GetHandle()),
 		mDevice->GetFramesInFlight(),
 		TextureFormatToDXGI_FORMAT(mDevice->GetFormat()),
