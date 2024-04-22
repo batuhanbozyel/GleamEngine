@@ -22,7 +22,7 @@ void Engine::Initialize()
 
 	// setup config
 	Globals::StartupDirectory = Filesystem::current_path();
-	auto configFile = Globals::StartupDirectory / "Engine.config";
+	auto configFile = Globals::StartupDirectory/"Engine.config";
 	if (Filesystem::exists(configFile))
 	{
 		auto file = File(configFile, FileType::Text);
@@ -40,7 +40,8 @@ void Engine::Initialize()
     
     EventDispatcher<WindowResizeEvent>::Subscribe([this](WindowResizeEvent e)
     {
-        mConfig.window.size = Size(e.GetWidth(), e.GetHeight());
+        mConfig.window.size = Size(static_cast<float>(e.GetWidth()),
+								   static_cast<float>(e.GetHeight()));
         SaveConfigToDisk();
     });
 }

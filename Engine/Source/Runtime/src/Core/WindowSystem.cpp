@@ -26,11 +26,29 @@ void WindowSystem::Configure(const WindowConfig& config)
     if (mWindow) { SDL_DestroyWindow(mWindow); }
 
 	// create window
-	mWindow = SDL_CreateWindow(Globals::ProjectName.c_str(),
-                               static_cast<int>(config.size.width),
-							   static_cast<int>(config.size.height),
+	int width = static_cast<int>(config.size.width), height = static_cast<int>(config.size.height);
+	if (width == 0 || height == 0)
+	{
+		auto display = GetPrimaryDisplayMode();
+		width = display.width;
+		height = display.height;
+	}
+
+	mWindow = SDL_CreateWindow(Globals::ProjectName.c_str(), width, height,
                                static_cast<uint32_t>(config.windowFlag));
+
+	if (width != static_cast<int>(config.size.width) ||
+		height != static_cast<int>(config.size.height))
+	{
+		EventDispatcher<WindowResizeEvent>::Publish(WindowResizeEvent(mWindow, width, height));
+	}
+
 	GLEAM_ASSERT(mWindow, "Window creation failed!");
+}
+
+DisplayMode WindowSystem::GetPrimaryDisplayMode() const
+{
+	return GetCurrentDisplayMode(SDL_GetPrimaryDisplay());
 }
 
 DisplayMode WindowSystem::GetCurrentDisplayMode(uint32_t monitor) const

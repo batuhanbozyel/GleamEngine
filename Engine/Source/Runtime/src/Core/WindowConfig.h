@@ -32,8 +32,8 @@ struct DisplayMode
 
 struct WindowConfig
 {
-	WindowFlag windowFlag = WindowFlag::CustomWindow;
-    Size size = {1280.0f, 720.0f};
+	WindowFlag windowFlag = WindowFlag::MaximizedWindow;
+    Size size = {0.0f, 0.0f};
     float refreshRate = 60.0f;
 };
 

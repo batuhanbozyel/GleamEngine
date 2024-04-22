@@ -16,6 +16,8 @@ public:
     virtual void Shutdown() override;
     
     void Configure(const WindowConfig& config);
+
+	DisplayMode GetPrimaryDisplayMode() const;
     
     DisplayMode GetCurrentDisplayMode(uint32_t monitor) const;
     
