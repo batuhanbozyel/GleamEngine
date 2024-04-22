@@ -77,7 +77,7 @@ void WorldViewport::Render(Gleam::ImGuiRenderer* imgui)
 			{
 				IM_ASSERT(payload->DataSize == sizeof(Gleam::AssetReference));
 				const auto& asset = *(const Gleam::AssetReference*)payload->Data;
-				if (asset.GetType() == Gleam::Reflection::GetClass<Gleam::MeshDescriptor>().Guid())
+				if (asset.type == Gleam::Reflection::GetClass<Gleam::MeshDescriptor>().Guid())
 				{
 
 				}

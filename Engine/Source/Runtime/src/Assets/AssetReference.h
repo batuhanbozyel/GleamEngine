@@ -10,45 +10,20 @@
 
 namespace Gleam {
 
-class AssetReference final
+struct AssetReference
 {
-public:
-    
-    AssetReference() = default;
-    AssetReference(const Guid& guid, const Guid& type)
-        : mGuid(guid), mType(type)
-    {
-        
-    }
-
-	~AssetReference() = default;
+	Guid type = Guid::InvalidGuid();
+	Guid guid = Guid::InvalidGuid();
     
     bool operator==(const AssetReference &other) const
     {
-        return mGuid == other.mGuid;
+        return guid == other.guid;
     }
     
     bool operator!=(const AssetReference& other) const
     {
         return !(*this == other);
     }
-
-	const Guid& GetType() const
-	{
-		return mType;
-	}
-
-	const Guid& GetGuid() const
-	{
-		return mGuid;
-	}
-    
-private:
-
-	Guid mType = Guid::InvalidGuid();
-    
-    Guid mGuid = Guid::InvalidGuid();
-    
 };
 
 } // Gleam
@@ -59,7 +34,7 @@ struct std::hash<Gleam::AssetReference>
     size_t operator()(const Gleam::AssetReference& asset) const
     {
         size_t hash = 0;
-        Gleam::hash_combine(hash, asset.GetGuid());
+        Gleam::hash_combine(hash, asset.guid);
         return hash;
     }
 };

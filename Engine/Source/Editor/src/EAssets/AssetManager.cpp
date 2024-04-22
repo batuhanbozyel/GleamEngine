@@ -17,7 +17,7 @@ void EAssetManager::Import(const Gleam::Filesystem::path& directory, const Asset
 		auto asset = baker->Bake(directory);
         auto path = directory/baker->Filename();
 		mAssetCache.insert({ path, asset });
-        GLEAM_INFO("Asset imported: {0} GUID: {1}", baker->Filename(), asset.GetGuid().ToString());
+        GLEAM_INFO("Asset imported: {0} GUID: {1}", baker->Filename(), asset.guid.ToString());
 	}
 }
 
