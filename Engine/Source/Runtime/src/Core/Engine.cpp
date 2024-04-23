@@ -20,6 +20,14 @@ void Engine::Initialize()
 	AddSubsystem<EventSystem>();
 	AddSubsystem<InputSystem>();
 
+	// subscribe to window resize
+	EventDispatcher<WindowResizeEvent>::Subscribe([this](WindowResizeEvent e)
+	{
+		mConfig.window.size = Size(static_cast<float>(e.GetWidth()),
+								   static_cast<float>(e.GetHeight()));
+		SaveConfigToDisk();
+	});
+
 	// setup config
 	Globals::StartupDirectory = Filesystem::current_path();
 	auto configFile = Globals::StartupDirectory/"Engine.config";
@@ -37,13 +45,6 @@ void Engine::Initialize()
 	auto renderSubsystem = AddSubsystem<RenderSystem>();
 	renderSubsystem->Configure(mConfig.renderer);
 	renderSubsystem->ResetRenderTarget();
-    
-    EventDispatcher<WindowResizeEvent>::Subscribe([this](WindowResizeEvent e)
-    {
-        mConfig.window.size = Size(static_cast<float>(e.GetWidth()),
-								   static_cast<float>(e.GetHeight()));
-        SaveConfigToDisk();
-    });
 }
 
 void Engine::Shutdown()

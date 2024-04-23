@@ -34,7 +34,7 @@ struct WindowConfig
 {
 	WindowFlag windowFlag = WindowFlag::MaximizedWindow;
     Size size = {0.0f, 0.0f};
-    float refreshRate = 60.0f;
+    uint32_t refreshRate = 0;
 };
 
 } // namespace Gleam

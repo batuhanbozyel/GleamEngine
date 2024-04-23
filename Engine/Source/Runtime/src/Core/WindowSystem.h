@@ -17,9 +17,13 @@ public:
     
     void Configure(const WindowConfig& config);
 
+	void SetDisplayMode(uint32_t mode) const;
+
 	DisplayMode GetPrimaryDisplayMode() const;
     
-    DisplayMode GetCurrentDisplayMode(uint32_t monitor) const;
+	DisplayMode GetCurrentDisplayMode() const;
+
+    DisplayMode GetDisplayMode(uint32_t monitor) const;
     
     TArray<DisplayMode> GetAvailableDisplayModes() const;
 

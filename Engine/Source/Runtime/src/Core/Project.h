@@ -7,10 +7,10 @@ namespace Gleam {
 
 struct Project
 {
-    Version version;
-	WorldConfig worldConfig;
-	Filesystem::path path;
 	TString name;
+    Version version;
+	Filesystem::path path;
+	WorldConfig worldConfig;
 };
 
 } // namespace Gleam

@@ -44,6 +44,7 @@
 #include "Core/EventSystem.h"
 #include "Core/Application.h"
 #include "Core/CommandLine.h"
+#include "Core/Project.h"
 #include "Core/Globals.h"
 #include "Core/Engine.h"
 #include "Core/GUID.h"
