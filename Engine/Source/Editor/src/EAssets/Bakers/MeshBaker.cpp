@@ -12,7 +12,7 @@ Gleam::AssetReference MeshBaker::Bake(const Gleam::Filesystem::path& directory) 
 {
     const auto& typeGuid = Gleam::Reflection::GetClass<Gleam::MeshDescriptor>().Guid();
     auto guid = Gleam::Guid::NewGuid();
-    Gleam::AssetReference asset(guid, typeGuid);
+    Gleam::AssetReference asset{ .type = typeGuid, .guid = guid };
     
     auto serialized = Gleam::JSONSerializer::Serialize(mDescriptor);
     auto file = Gleam::File(directory/Filename(), Gleam::FileType::Text);

@@ -12,7 +12,7 @@ Gleam::AssetReference MaterialBaker::Bake(const Gleam::Filesystem::path& directo
 {
     const auto& typeGuid = Gleam::Reflection::GetClass<Gleam::MaterialDescriptor>().Guid();
     auto guid = Gleam::Guid::NewGuid();
-    Gleam::AssetReference asset(guid, typeGuid);
+    Gleam::AssetReference asset{ .type = typeGuid, .guid = guid };
     // TODO:
     return asset;
 }
