@@ -239,6 +239,30 @@ void JSONSerializer::Initialize()
 {
 	// Custom serializers
 	{
+        mCustomObjectSerializers[Reflection::GetClass<Guid>().ResolveName()] = [](const void* obj,
+            const Guid& fieldGuid,
+            const TStringView fieldName,
+            const Reflection::ClassDescription& classDesc,
+            void* userData)
+        {
+            auto guidStr = Reflection::Get<Guid>(obj).ToString();
+            auto& outObject = Reflection::Get<rapidjson::Node>(userData);
+            SerializeClassHeader(classDesc, fieldGuid, fieldName, outObject);
+
+            rapidjson::Value object(rapidjson::kObjectType);
+            rapidjson::Node node(object, outObject.allocator);
+            outObject.AddMember("Value", rapidjson::StringRef(guidStr.c_str(), guidStr.length()));
+        };
+        
+        mCustomArraySerializers[Reflection::GetClass<Guid>().ResolveName()] = [](const void* obj,
+            const Reflection::ClassDescription& classDesc,
+            void* userData)
+        {
+            auto guidStr = Reflection::Get<Guid>(obj).ToString();
+            auto& outObject = Reflection::Get<rapidjson::Node>(userData);
+            outObject.PushBack(rapidjson::Value(rapidjson::StringRef(guidStr.c_str(), guidStr.length())));
+        };
+        
 		mCustomObjectSerializers[Reflection::GetClass<TString>().ResolveName()] = [](const void* obj,
 			const Guid& fieldGuid,
 			const TStringView fieldName,
@@ -262,6 +286,33 @@ void JSONSerializer::Initialize()
 			auto& outObject = Reflection::Get<rapidjson::Node>(userData);
 			outObject.PushBack(rapidjson::Value(rapidjson::StringRef(str.c_str(), str.length())));
 		};
+        
+        mCustomObjectSerializers[Reflection::GetClass<Filesystem::path>().ResolveName()] = [](const void* obj,
+            const Guid& fieldGuid,
+            const TStringView fieldName,
+            const Reflection::ClassDescription& classDesc,
+            void* userData)
+        {
+            const auto& path = Reflection::Get<Filesystem::path>(obj);
+            const auto& pathStr = path.string();
+            auto& outObject = Reflection::Get<rapidjson::Node>(userData);
+            SerializeClassHeader(classDesc, fieldGuid, fieldName, outObject);
+
+            rapidjson::Value object(rapidjson::kObjectType);
+            rapidjson::Node node(object, outObject.allocator);
+            outObject.AddMember("Value", rapidjson::StringRef(pathStr.c_str(), pathStr.length()));
+        };
+
+        mCustomArraySerializers[Reflection::GetClass<Filesystem::path>().ResolveName()] = [](const void* obj,
+            const Reflection::ClassDescription& classDesc,
+            void* userData)
+        {
+            const auto& path = Reflection::Get<Filesystem::path>(obj);
+            const auto& pathStr = path.string();
+            
+            auto& outObject = Reflection::Get<rapidjson::Node>(userData);
+            outObject.PushBack(rapidjson::Value(rapidjson::StringRef(pathStr.c_str(), pathStr.length())));
+        };
 
 		mCustomObjectSerializers[Reflection::GetClass<TArray<uint8_t>>().ResolveName()] = [](const void* obj,
 			const Guid& fieldGuid,
@@ -290,6 +341,14 @@ void JSONSerializer::Initialize()
 
 	// Custom deserializers
 	{
+        mCustomObjectDeserializers[Reflection::GetClass<Guid>().ResolveName()] = [](const void* userData,
+            const Reflection::ClassDescription& classDesc,
+            void* obj)
+        {
+            const auto& value = Reflection::Get<rapidjson::Value>(userData);
+            Reflection::Get<Guid>(obj) = Guid(value["Value"].GetString());
+        };
+        
 		mCustomObjectDeserializers[Reflection::GetClass<TString>().ResolveName()] = [](const void* userData,
 			const Reflection::ClassDescription& classDesc,
 			void* obj)
@@ -297,6 +356,14 @@ void JSONSerializer::Initialize()
 			const auto& value = Reflection::Get<rapidjson::Value>(userData);
 			Reflection::Get<TString>(obj) = value["Value"].GetString();
 		};
+        
+        mCustomObjectDeserializers[Reflection::GetClass<Filesystem::path>().ResolveName()] = [](const void* userData,
+            const Reflection::ClassDescription& classDesc,
+            void* obj)
+        {
+            const auto& value = Reflection::Get<rapidjson::Value>(userData);
+            Reflection::Get<Filesystem::path>(obj) = value["Value"].GetString();
+        };
 
 		mCustomObjectDeserializers[Reflection::GetClass<TArray<uint8_t>>().ResolveName()] = [](const void* userData,
 			const Reflection::ClassDescription& classDesc,

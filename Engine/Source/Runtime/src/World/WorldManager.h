@@ -16,11 +16,11 @@ public:
 
 	void Configure(const WorldConfig& config);
 
-	size_t LoadWorld(size_t buildIndex);
+	size_t LoadWorld(uint32_t buildIndex);
 
-	void UnloadWorld(size_t index);
+	void UnloadWorld(uint32_t index);
 
-	World* GetWorld(size_t index);
+	World* GetWorld(uint32_t index);
 
 	World* GetActiveWorld();
 

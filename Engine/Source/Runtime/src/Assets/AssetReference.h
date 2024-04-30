@@ -38,3 +38,8 @@ struct std::hash<Gleam::AssetReference>
         return hash;
     }
 };
+
+GLEAM_TYPE(Gleam::AssetReference, Guid("7C59A995-BA05-4A2A-9F48-AD5170F05CF8"))
+    GLEAM_FIELD(type, Serializable())
+    GLEAM_FIELD(guid, Serializable())
+GLEAM_END

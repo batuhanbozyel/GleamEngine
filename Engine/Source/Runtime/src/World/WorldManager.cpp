@@ -20,7 +20,7 @@ void WorldManager::Configure(const WorldConfig& config)
 	LoadWorld(config.startingWorldIndex);
 }
 
-size_t WorldManager::LoadWorld(size_t buildIndex)
+size_t WorldManager::LoadWorld(uint32_t buildIndex)
 {
 	auto index = mLoadedWorlds.size();
 	// TODO: Load from world asset file
@@ -28,7 +28,7 @@ size_t WorldManager::LoadWorld(size_t buildIndex)
 	return index;
 }
 
-void WorldManager::UnloadWorld(size_t index)
+void WorldManager::UnloadWorld(uint32_t index)
 {
 	if (index >= mLoadedWorlds.size())
 	{
@@ -38,7 +38,7 @@ void WorldManager::UnloadWorld(size_t index)
 	mLoadedWorlds.erase(mLoadedWorlds.begin() + index);
 }
 
-World* WorldManager::GetWorld(size_t index)
+World* WorldManager::GetWorld(uint32_t index)
 {
 	if (index >= mLoadedWorlds.size())
 	{
