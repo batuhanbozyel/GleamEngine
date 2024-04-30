@@ -10,18 +10,14 @@
 
 namespace Gleam {
 
-class Asset final
+struct Asset
 {
-public:
+    Filesystem::path path;
     
     static constexpr TStringView extension()
     {
         return ".asset";
     }
-    
-private:
-
-    
 };
 
 } // Gleam

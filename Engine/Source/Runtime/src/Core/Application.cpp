@@ -8,6 +8,8 @@
 #include "Renderer/RenderSystem.h"
 
 #include "World/WorldManager.h"
+#include "Assets/AssetManager.h"
+
 #include "Renderer/Renderers/WorldRenderer.h"
 #include "Renderer/Renderers/PostProcessStack.h"
 #include "Renderer/Material/MaterialSystem.h"
@@ -23,7 +25,10 @@ Application::Application(const Project& project)
 	Globals::BuiltinAssetsDirectory = Globals::StartupDirectory/"Assets";
 	Globals::ProjectContentDirectory = Globals::ProjectDirectory/"Assets";
 	
-	// init world manager
+	// init world & asset managers
+    auto assetManager = AddSubsystem<AssetManager>();
+    assetManager->Reload(Globals::ProjectContentDirectory);
+    
 	auto worldManager = AddSubsystem<WorldManager>();
 	worldManager->Configure(project.worldConfig);
 	AddSubsystem<MaterialSystem>();

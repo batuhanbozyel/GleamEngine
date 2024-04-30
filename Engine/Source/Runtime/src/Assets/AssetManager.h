@@ -1,17 +1,27 @@
 #pragma once
+#include "Asset.h"
+#include "AssetReference.h"
+#include "Core/Subsystem.h"
 
 namespace Gleam {
 
-class AssetManager final
+struct Asset;
+
+class AssetManager final : public Subsystem
 {
 public:
+    
+    virtual void Initialize() override;
 
-	AssetManager() = default;
-	AssetManager(const Filesystem::path& directory);
+    virtual void Shutdown() override;
+    
+    void Reload(const Filesystem::path& directory);
+    
+    const Asset& GetAsset(const AssetReference& asset) const;
 
 private:
-
-	Filesystem::path mRootDirectory;
+    
+    HashMap<AssetReference, Asset> mAssets;
 
 };
 
