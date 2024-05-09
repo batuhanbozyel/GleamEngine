@@ -27,8 +27,6 @@ class Mesh
 {
 public:
     
-    GLEAM_NONCOPYABLE(Mesh);
-    
     virtual ~Mesh() = default;
     
     Mesh(const MeshDescriptor& mesh);

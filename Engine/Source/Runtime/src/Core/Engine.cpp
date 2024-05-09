@@ -7,7 +7,6 @@
 #include "Reflection/Database.h"
 #include "Renderer/RenderSystem.h"
 #include "Serialization/JSONSerializer.h"
-#include "Serialization/BinarySerializer.h"
 
 using namespace Gleam;
 
@@ -15,7 +14,6 @@ void Engine::Initialize()
 {
 	// init reflection & serialization
 	AddSubsystem<Reflection::Database>();
-	AddSubsystem<BinarySerializer>();
 	AddSubsystem<JSONSerializer>();
 
 	// init core subsystems
@@ -36,7 +34,8 @@ void Engine::Initialize()
 	if (Filesystem::exists(configFile))
 	{
 		auto file = File(configFile, FileType::Text);
-		mConfig = JSONSerializer::Deserialize<EngineConfig>(file.Read());
+        auto serializer = JSONSerializer(file.GetStream());
+		mConfig = serializer.Deserialize<EngineConfig>();
 	}
 	
 	// init windowing subsystem
@@ -60,9 +59,9 @@ void Engine::Shutdown()
 
 void Engine::SaveConfigToDisk() const
 {
-	auto serialized = JSONSerializer::Serialize(mConfig);
-	auto file = File(Globals::StartupDirectory/"Engine.config", FileType::Text);
-	file.Write(serialized);
+    auto file = File(Globals::StartupDirectory/"Engine.config", FileType::Text);
+    auto serializer = JSONSerializer(file.GetStream());
+    serializer.Serialize(mConfig);
 }
 
 void Engine::UpdateConfig(const WindowConfig& config)

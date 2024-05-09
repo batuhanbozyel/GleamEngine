@@ -113,7 +113,7 @@ private:
 		size_t srcOffset = 0,
 		size_t dstOffset = 0) const;
 
-    class Impl;
+    struct Impl;
     Scope<Impl> mHandle;
     
     Heap mStagingHeap;

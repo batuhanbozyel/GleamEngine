@@ -68,3 +68,8 @@ const TString& File::GetName() const
 {
 	return mName;
 }
+
+std::fstream& File::GetStream()
+{
+    return mHandle;
+}

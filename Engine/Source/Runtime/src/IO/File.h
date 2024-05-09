@@ -24,6 +24,8 @@ public:
 	void Append(const TString& contents);
 
 	const TString& GetName() const;
+    
+    std::fstream& GetStream();
 
 private:
 

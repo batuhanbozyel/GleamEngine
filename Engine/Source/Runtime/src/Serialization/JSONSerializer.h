@@ -7,29 +7,35 @@ class JSONSerializer final : public Subsystem
 {
 public:
     
+    JSONSerializer() = default;
+    
+    JSONSerializer(std::iostream& stream);
+    
+    ~JSONSerializer();
+    
     virtual void Initialize() override;
     
     virtual void Shutdown() override;
 
     template<typename T>
-    static TString Serialize(const T& object)
+    void Serialize(const T& object)
     {
         const auto& classDesc = Reflection::GetClass<T>();
-        return Serialize(&object, classDesc);
+        Serialize(&object, classDesc);
     }
 
 	template<typename T>
-	static T Deserialize(const TString& json)
+	T Deserialize()
 	{
 		T object = T();
 		const auto& classDesc = Reflection::GetClass<T>();
-		Deserialize(json, classDesc, &object);
+		Deserialize(classDesc, &object);
 		return object;
 	}
 
-    static TString Serialize(const void* obj, const Reflection::ClassDescription& desc);
+    void Serialize(const void* obj, const Reflection::ClassDescription& desc);
     
-	static void Deserialize(const TString& json, const Reflection::ClassDescription& desc, void* obj);
+	void Deserialize(const Reflection::ClassDescription& desc, void* obj);
     
     static bool TryCustomObjectSerializer(const void* obj,
                                           const Guid& fieldGuid,
@@ -70,6 +76,11 @@ private:
     static inline HashMap<TStringView, ArraySerializerFn> mCustomArraySerializers;
 
 	static inline HashMap<TStringView, ObjectDeserializerFn> mCustomObjectDeserializers;
+    
+private:
+    
+    struct Impl;
+    Impl* mHandle = nullptr;
     
 };
 

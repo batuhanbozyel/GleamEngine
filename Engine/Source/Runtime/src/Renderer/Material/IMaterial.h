@@ -14,8 +14,6 @@ class IMaterial : public std::enable_shared_from_this<IMaterial>
 {
 public:
 
-    GLEAM_NONCOPYABLE(IMaterial);
-
     IMaterial(const TArray<MaterialProperty>& properties)
         : mProperties(properties)
     {
