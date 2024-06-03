@@ -29,12 +29,8 @@ public:
     }
     
     template<typename T>
-    TArray<T> Deserialize()
+    TArray<T> Deserialize(size_t size)
     {
-        mStream.seekg(0, std::ios::end);
-        size_t size = mStream.tellg();
-        mStream.seekg(0, std::ios::beg);
-        
         TArray<T> object(size / sizeof(T));
         for (auto& element : object)
         {
@@ -44,12 +40,8 @@ public:
     }
     
     template<typename K, typename V>
-    HashMap<K, V> Deserialize()
+    HashMap<K, V> Deserialize(size_t size)
     {
-        mStream.seekg(0, std::ios::end);
-        size_t size = mStream.tellg();
-        mStream.seekg(0, std::ios::beg);
-        
         HashMap<K, V> object(size / (sizeof(K) + sizeof(V)));
         for (auto& [key, value] : object)
         {
