@@ -5,6 +5,12 @@
 
 namespace Gleam::Reflection {
 
+template <typename T, typename R, R T::*M>
+static constexpr std::size_t OffsetOf()
+{
+    return reinterpret_cast<size_t>(&(((T*)0)->*M));
+}
+
 class Database : public Subsystem
 {
 public:
@@ -79,13 +85,13 @@ private:
 		desc.mGuid = refl::descriptor::get_attribute<Reflection::Attribute::Guid>(type);
 
 		// resolve fields
-        size_t fieldOffset = 0;
         auto fields = refl::util::filter(type.members, [&](auto member) { return refl::descriptor::is_field(member); });
         refl::util::for_each(fields, [&](auto member)
         {
             using ValueType = typename decltype(member)::value_type;
             
             size_t fieldSize = sizeof(ValueType);
+            size_t fieldOffset = OffsetOf<T, ValueType, member.pointer>();
             if constexpr (Traits::IsPrimitive<ValueType>::value)
             {
                 auto hash = typeid(ValueType).hash_code();
@@ -128,7 +134,6 @@ private:
                     classDesc.mContainerHash = typeid(ElementType[1]).hash_code();
                 }
             }
-            fieldOffset += fieldSize;
         });
         
         // resolve base classes
