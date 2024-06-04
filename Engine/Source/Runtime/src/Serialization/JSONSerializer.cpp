@@ -157,79 +157,79 @@ struct JSONSerializer::Impl
 #pragma region mark SerializeForwardDecl
 
 #pragma region mark SerializeHeaders
-    void SerializePrimitiveHeader(Reflection::PrimitiveType type,
-                                  const Guid& fieldGuid,
-                                  const TStringView fieldName,
-                                  rapidjson::Node& node);
+    static void SerializePrimitiveHeader(Reflection::PrimitiveType type,
+                                         const Guid& fieldGuid,
+                                         const TStringView fieldName,
+                                         rapidjson::Node& node);
 
-    void SerializeEnumHeader(const Reflection::EnumDescription& enumDesc,
-                             const Guid& fieldGuid,
-                             const TStringView fieldName,
-                             rapidjson::Node& node);
+    static void SerializeEnumHeader(const Reflection::EnumDescription& enumDesc,
+                                    const Guid& fieldGuid,
+                                    const TStringView fieldName,
+                                    rapidjson::Node& node);
     
-    void SerializeClassHeader(const Reflection::ClassDescription& classDesc,
-                              const Guid& fieldGuid,
-                              const TStringView fieldName,
-                              rapidjson::Node& node);
+    static void SerializeClassHeader(const Reflection::ClassDescription& classDesc,
+                                     const Guid& fieldGuid,
+                                     const TStringView fieldName,
+                                     rapidjson::Node& node);
 
-    void SerializeArrayHeader(const Reflection::ArrayDescription& arrayDesc,
-                              const Guid& fieldGuid,
-                              const TStringView fieldName,
-                              rapidjson::Node& node);
+    static void SerializeArrayHeader(const Reflection::ArrayDescription& arrayDesc,
+                                     const Guid& fieldGuid,
+                                     const TStringView fieldName,
+                                     rapidjson::Node& node);
 #pragma endregion SerializeHeaders
 
 #pragma region mark SerializeValues
-    void SerializePrimitiveObjectValue(const void* obj,
-                                       Reflection::PrimitiveType type,
-                                       rapidjson::Node& node);
+    static void SerializePrimitiveObjectValue(const void* obj,
+                                              Reflection::PrimitiveType type,
+                                              rapidjson::Node& node);
 
-    void SerializePrimitiveArrayValue(const void* obj,
-                                      Reflection::PrimitiveType type,
-                                      rapidjson::Node& node);
+    static void SerializePrimitiveArrayValue(const void* obj,
+                                             Reflection::PrimitiveType type,
+                                             rapidjson::Node& node);
 
-    void SerializeEnumObjectValue(const void* obj, rapidjson::Node& node);
+    static void SerializeEnumObjectValue(const void* obj, rapidjson::Node& node);
 
-    void SerializeEnumArrayValue(const void* obj, rapidjson::Node& node);
+    static void SerializeEnumArrayValue(const void* obj, rapidjson::Node& node);
 
-    void SerializeClassObjectFields(const void* obj,
-                                    const Guid& fieldGuid,
-                                    const TStringView fieldName,
-                                    const Reflection::ClassDescription& classDesc,
-                                    rapidjson::Node& node);
+    static void SerializeClassObjectFields(const void* obj,
+                                           const Guid& fieldGuid,
+                                           const TStringView fieldName,
+                                           const Reflection::ClassDescription& classDesc,
+                                           rapidjson::Node& node);
 
-    void SerializeClassArrayFields(const void* obj,
-                                   const Reflection::ClassDescription& classDesc,
-                                   rapidjson::Node& node);
+    static void SerializeClassArrayFields(const void* obj,
+                                          const Reflection::ClassDescription& classDesc,
+                                          rapidjson::Node& node);
 
-    void SerializeArrayObjectElements(const void* obj,
-                                      const Reflection::ArrayDescription& arrayDesc,
-                                      rapidjson::Node& outElements);
+    static void SerializeArrayObjectElements(const void* obj,
+                                             const Reflection::ArrayDescription& arrayDesc,
+                                             rapidjson::Node& outElements);
 #pragma endregion SerializeValues
 
 #pragma region mark SerializeObjects
-    void SerializePrimitiveObject(const void* obj,
-                                  const Guid& fieldGuid,
-                                  const TStringView fieldName,
-                                  Reflection::PrimitiveType type,
-                                  rapidjson::Node& node);
+    static void SerializePrimitiveObject(const void* obj,
+                                         const Guid& fieldGuid,
+                                         const TStringView fieldName,
+                                         Reflection::PrimitiveType type,
+                                         rapidjson::Node& node);
 
-    void SerializeEnumObject(const void* obj,
-                             const Guid& fieldGuid,
-                             const TStringView fieldName,
-                             const Reflection::EnumDescription& enumDesc,
-                             rapidjson::Node& outObject);
+    static void SerializeEnumObject(const void* obj,
+                                    const Guid& fieldGuid,
+                                    const TStringView fieldName,
+                                    const Reflection::EnumDescription& enumDesc,
+                                    rapidjson::Node& outObject);
 
-    void SerializeClassObject(const void* obj,
-                              const Guid& fieldGuid,
-                              const TStringView fieldName,
-                              const Reflection::ClassDescription& classDesc,
-                              rapidjson::Node& node);
+    static void SerializeClassObject(const void* obj,
+                                     const Guid& fieldGuid,
+                                     const TStringView fieldName,
+                                     const Reflection::ClassDescription& classDesc,
+                                     rapidjson::Node& node);
 
-    void SerializeArrayObject(const void* obj,
-                              const Guid& fieldGuid,
-                              const TStringView fieldName,
-                              const Reflection::ArrayDescription& arrayDesc,
-                              rapidjson::Node& outObjects);
+    static void SerializeArrayObject(const void* obj,
+                                     const Guid& fieldGuid,
+                                     const TStringView fieldName,
+                                     const Reflection::ArrayDescription& arrayDesc,
+                                     rapidjson::Node& outObjects);
 #pragma endregion SerializeObjects
 
 #pragma endregion SerializeForwardDecl
@@ -237,13 +237,13 @@ struct JSONSerializer::Impl
 
 #pragma region mark DeserializeForwardDecl
 
-    void DeserializePrimitiveObject(const rapidjson::Value& object, Reflection::PrimitiveType primitiveType, void* obj);
+    static void DeserializePrimitiveObject(const rapidjson::Value& object, Reflection::PrimitiveType primitiveType, void* obj);
 
-    void DeserializeEnumObject(const rapidjson::Value& object, const Reflection::EnumDescription& enumDesc, void* obj);
+    static void DeserializeEnumObject(const rapidjson::Value& object, const Reflection::EnumDescription& enumDesc, void* obj);
 
-    void DeserializeClassObject(const rapidjson::Value& object, const Reflection::ClassDescription& classDesc, void* obj);
+    static void DeserializeClassObject(const rapidjson::Value& object, const Reflection::ClassDescription& classDesc, void* obj);
 
-    void DeserializeArrayObject(const rapidjson::Value& object, const Reflection::ArrayDescription& arrayDesc, void* obj);
+    static void DeserializeArrayObject(const rapidjson::Value& object, const Reflection::ArrayDescription& arrayDesc, void* obj);
 
 #pragma endregion DeserializeForwardDecl
 };
@@ -266,7 +266,7 @@ void JSONSerializer::Initialize()
 {
 	// Custom serializers
 	{
-        mCustomObjectSerializers[Reflection::GetClass<Guid>().ResolveName()] = [this](const void* obj,
+        mCustomObjectSerializers[Reflection::GetClass<Guid>().ResolveName()] = [](const void* obj,
             const Guid& fieldGuid,
             const TStringView fieldName,
             const Reflection::ClassDescription& classDesc,
@@ -274,14 +274,14 @@ void JSONSerializer::Initialize()
         {
             auto guidStr = Reflection::Get<Guid>(obj).ToString();
             auto& outObject = Reflection::Get<rapidjson::Node>(userData);
-            mHandle->SerializeClassHeader(classDesc, fieldGuid, fieldName, outObject);
+            Impl::SerializeClassHeader(classDesc, fieldGuid, fieldName, outObject);
 
             rapidjson::Value object(rapidjson::kObjectType);
             rapidjson::Node node(object, outObject.allocator);
             outObject.AddMember("Value", rapidjson::StringRef(guidStr.c_str(), guidStr.length()));
         };
         
-        mCustomArraySerializers[Reflection::GetClass<Guid>().ResolveName()] = [this](const void* obj,
+        mCustomArraySerializers[Reflection::GetClass<Guid>().ResolveName()] = [](const void* obj,
             const Reflection::ClassDescription& classDesc,
             void* userData)
         {
@@ -290,7 +290,7 @@ void JSONSerializer::Initialize()
             outObject.PushBack(rapidjson::Value(rapidjson::StringRef(guidStr.c_str(), guidStr.length())));
         };
         
-		mCustomObjectSerializers[Reflection::GetClass<TString>().ResolveName()] = [this](const void* obj,
+		mCustomObjectSerializers[Reflection::GetClass<TString>().ResolveName()] = [](const void* obj,
 			const Guid& fieldGuid,
 			const TStringView fieldName,
 			const Reflection::ClassDescription& classDesc,
@@ -298,14 +298,14 @@ void JSONSerializer::Initialize()
 		{
 			const auto& str = Reflection::Get<TString>(obj);
 			auto& outObject = Reflection::Get<rapidjson::Node>(userData);
-            mHandle->SerializeClassHeader(classDesc, fieldGuid, fieldName, outObject);
+            Impl::SerializeClassHeader(classDesc, fieldGuid, fieldName, outObject);
 
 			rapidjson::Value object(rapidjson::kObjectType);
 			rapidjson::Node node(object, outObject.allocator);
 			outObject.AddMember("Value", rapidjson::StringRef(str.c_str(), str.length()));
 		};
 
-		mCustomArraySerializers[Reflection::GetClass<TString>().ResolveName()] = [this](const void* obj,
+		mCustomArraySerializers[Reflection::GetClass<TString>().ResolveName()] = [](const void* obj,
 			const Reflection::ClassDescription& classDesc,
 			void* userData)
 		{
@@ -314,7 +314,7 @@ void JSONSerializer::Initialize()
 			outObject.PushBack(rapidjson::Value(rapidjson::StringRef(str.c_str(), str.length())));
 		};
         
-        mCustomObjectSerializers[Reflection::GetClass<Filesystem::path>().ResolveName()] = [this](const void* obj,
+        mCustomObjectSerializers[Reflection::GetClass<Filesystem::path>().ResolveName()] = [](const void* obj,
             const Guid& fieldGuid,
             const TStringView fieldName,
             const Reflection::ClassDescription& classDesc,
@@ -323,14 +323,14 @@ void JSONSerializer::Initialize()
             const auto& path = Reflection::Get<Filesystem::path>(obj);
             const auto& pathStr = path.string();
             auto& outObject = Reflection::Get<rapidjson::Node>(userData);
-            mHandle->SerializeClassHeader(classDesc, fieldGuid, fieldName, outObject);
+            Impl::SerializeClassHeader(classDesc, fieldGuid, fieldName, outObject);
 
             rapidjson::Value object(rapidjson::kObjectType);
             rapidjson::Node node(object, outObject.allocator);
             outObject.AddMember("Value", rapidjson::StringRef(pathStr.c_str(), pathStr.length()));
         };
 
-        mCustomArraySerializers[Reflection::GetClass<Filesystem::path>().ResolveName()] = [this](const void* obj,
+        mCustomArraySerializers[Reflection::GetClass<Filesystem::path>().ResolveName()] = [](const void* obj,
             const Reflection::ClassDescription& classDesc,
             void* userData)
         {
@@ -341,7 +341,7 @@ void JSONSerializer::Initialize()
             outObject.PushBack(rapidjson::Value(rapidjson::StringRef(pathStr.c_str(), pathStr.length())));
         };
 
-		mCustomObjectSerializers[Reflection::GetClass<TArray<uint8_t>>().ResolveName()] = [this](const void* obj,
+		mCustomObjectSerializers[Reflection::GetClass<TArray<uint8_t>>().ResolveName()] = [](const void* obj,
 			const Guid& fieldGuid,
 			const TStringView fieldName,
 			const Reflection::ClassDescription& classDesc,
@@ -351,10 +351,10 @@ void JSONSerializer::Initialize()
 			auto& outObject = Reflection::Get<rapidjson::Node>(userData);
 			const auto& arrDesc = Reflection::GetArray(classDesc.ContainerHash());
 			auto containerDesc = Reflection::ArrayDescription(arrDesc.ResolveName(), arrDesc.ElementType(), arrDesc.ElementHash(), arr.size(), arrDesc.GetStride());
-            mHandle->SerializeArrayObject(arr.data(), fieldGuid, fieldName, containerDesc, outObject);
+            Impl::SerializeArrayObject(arr.data(), fieldGuid, fieldName, containerDesc, outObject);
 		};
 
-		mCustomArraySerializers[Reflection::GetClass<TArray<uint8_t>>().ResolveName()] = [this](const void* obj,
+		mCustomArraySerializers[Reflection::GetClass<TArray<uint8_t>>().ResolveName()] = [](const void* obj,
 			const Reflection::ClassDescription& classDesc,
 			void* userData)
 		{
@@ -362,13 +362,13 @@ void JSONSerializer::Initialize()
 			auto& outObject = Reflection::Get<rapidjson::Node>(userData);
 			const auto& arrDesc = Reflection::GetArray(classDesc.ContainerHash());
 			auto containerDesc = Reflection::ArrayDescription(arrDesc.ResolveName(), arrDesc.ElementType(), arrDesc.ElementHash(), arr.size(), arrDesc.GetStride());
-            mHandle->SerializeArrayObjectElements(arr.data(), containerDesc, outObject);
+            Impl::SerializeArrayObjectElements(arr.data(), containerDesc, outObject);
 		};
 	}
 
 	// Custom deserializers
 	{
-        mCustomObjectDeserializers[Reflection::GetClass<Guid>().ResolveName()] = [this](const void* userData,
+        mCustomObjectDeserializers[Reflection::GetClass<Guid>().ResolveName()] = [](const void* userData,
             const Reflection::ClassDescription& classDesc,
             void* obj)
         {
@@ -376,7 +376,7 @@ void JSONSerializer::Initialize()
             Reflection::Get<Guid>(obj) = Guid(value["Value"].GetString());
         };
         
-		mCustomObjectDeserializers[Reflection::GetClass<TString>().ResolveName()] = [this](const void* userData,
+		mCustomObjectDeserializers[Reflection::GetClass<TString>().ResolveName()] = [](const void* userData,
 			const Reflection::ClassDescription& classDesc,
 			void* obj)
 		{
@@ -384,7 +384,7 @@ void JSONSerializer::Initialize()
 			Reflection::Get<TString>(obj) = value["Value"].GetString();
 		};
         
-        mCustomObjectDeserializers[Reflection::GetClass<Filesystem::path>().ResolveName()] = [this](const void* userData,
+        mCustomObjectDeserializers[Reflection::GetClass<Filesystem::path>().ResolveName()] = [](const void* userData,
             const Reflection::ClassDescription& classDesc,
             void* obj)
         {
@@ -392,7 +392,7 @@ void JSONSerializer::Initialize()
             Reflection::Get<Filesystem::path>(obj) = value["Value"].GetString();
         };
 
-		mCustomObjectDeserializers[Reflection::GetClass<TArray<uint8_t>>().ResolveName()] = [this](const void* userData,
+		mCustomObjectDeserializers[Reflection::GetClass<TArray<uint8_t>>().ResolveName()] = [](const void* userData,
 			const Reflection::ClassDescription& classDesc,
 			void* obj)
 		{
@@ -408,7 +408,7 @@ void JSONSerializer::Initialize()
 			size_t offset = 0;
 			for (const auto& element : elements)
 			{
-                mHandle->DeserializeArrayObject(value, containerDesc, OffsetPointer(arr.data(), offset));
+                Impl::DeserializeArrayObject(value, containerDesc, OffsetPointer(arr.data(), offset));
 				offset += arrDesc.GetStride();
 			}
 		};
