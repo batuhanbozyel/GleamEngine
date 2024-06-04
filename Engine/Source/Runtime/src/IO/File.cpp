@@ -3,6 +3,13 @@
 
 using namespace Gleam;
 
+File File::Create(const Filesystem::path& path, FileType type)
+{
+    File file(path, type);
+    file.CreateIfNotExists();
+    return file;
+}
+
 File::File(const Filesystem::path& path, FileType type)
 	: mName(path.filename().string())
     , mFullPath(path)

@@ -26,6 +26,8 @@ public:
 	const TString& GetName() const;
     
     std::fstream& GetStream();
+    
+    static File Create(const Filesystem::path& path, FileType type);
 
 private:
 
