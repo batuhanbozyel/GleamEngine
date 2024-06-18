@@ -78,6 +78,11 @@ public:
         return mEntityManager;
     }
     
+    const EntityManager& GetEntityManager() const
+    {
+        return mEntityManager;
+    }
+    
 private:
 
 	TString mName;

@@ -13,10 +13,25 @@ public:
         mRegistry.view<ComponentTypes..., ExcludeComponents...>().each(fn);
     }
     
+    template<typename ... ComponentTypes, typename ... ExcludeComponents, typename Func, typename = std::enable_if_t<sizeof...(ComponentTypes) + sizeof...(ExcludeComponents) != 0>>
+    void ForEach(Func&& fn, Exclude<ExcludeComponents...> = Exclude<ExcludeComponents...>{}) const
+    {
+        mRegistry.view<ComponentTypes..., ExcludeComponents...>().each(fn);
+    }
+    
     template<typename Func>
     void ForEach(Func&& fn)
     {
         for (auto [entt] : mRegistry.storage<EntityHandle>().each())
+        {
+            fn(entt);
+        }
+    }
+    
+    template<typename Func>
+    void ForEach(Func&& fn) const
+    {
+        for (const auto [entt] : mRegistry.storage<EntityHandle>()->each())
         {
             fn(entt);
         }
@@ -58,6 +73,12 @@ public:
     {
         return mRegistry.ctx().get<T>();
     }
+    
+    template<typename T>
+    const T& GetSingletonComponent() const
+    {
+        return mRegistry.ctx().get<T>();
+    }
 
 	template<typename T, typename ... Args>
 	T& AddComponent(EntityHandle entity, Args&&... args)
@@ -92,6 +113,13 @@ public:
 		GLEAM_ASSERT(HasComponent<T>(entity), "Entity does not have the component!");
 		return mRegistry.get<T>(entity);
 	}
+    
+    template<typename T>
+    const T& GetComponent(EntityHandle entity) const
+    {
+        GLEAM_ASSERT(HasComponent<T>(entity), "Entity does not have the component!");
+        return mRegistry.get<T>(entity);
+    }
 
 private:
 
