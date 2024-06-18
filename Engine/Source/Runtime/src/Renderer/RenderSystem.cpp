@@ -48,7 +48,7 @@ void RenderSystem::Shutdown()
     mDevice.reset();
 }
 
-void RenderSystem::Render()
+void RenderSystem::Render(const World* world)
 {
 #ifdef USE_METAL_RENDERER
     @autoreleasepool
@@ -65,8 +65,8 @@ void RenderSystem::Render()
             
             passData.cameraBuffer = builder.CreateBuffer(bufferDesc);
             passData.cameraBuffer = builder.WriteBuffer(passData.cameraBuffer);
-            
             passData.backbuffer = graph.ImportBackbuffer(mRenderTarget);
+            passData.world = world;
         },
         [this](const CommandBuffer* cmd, const SceneRenderingData& passData)
         {

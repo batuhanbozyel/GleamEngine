@@ -12,6 +12,8 @@
 
 namespace Gleam {
 
+class World;
+
 template <typename T>
 concept RendererType = std::is_base_of<IRenderer, T>::value;
 
@@ -25,7 +27,7 @@ public:
     
     virtual void Shutdown() override;
     
-    void Render();
+    void Render(const World* world);
     
     void Configure(const RendererConfig& config);
     

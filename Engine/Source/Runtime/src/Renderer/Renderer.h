@@ -16,11 +16,13 @@
 
 namespace Gleam {
 
+class World;
 class RenderSystem;
 class GraphicsDevice;
 
 struct SceneRenderingData
 {
+    const World* world = nullptr;
     TextureHandle backbuffer;
     BufferHandle cameraBuffer;
 };
