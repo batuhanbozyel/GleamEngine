@@ -38,7 +38,6 @@ public:
 	void Deserialize(const Reflection::ClassDescription& desc, void* obj);
     
     static bool TryCustomObjectSerializer(const void* obj,
-                                          const Guid& fieldGuid,
                                           const TStringView fieldName,
                                           const Reflection::ClassDescription& classDesc,
                                           void* userData);
@@ -54,7 +53,6 @@ public:
 private:
     
     using ObjectSerializerFn = std::function<void(const void* obj,
-                                                  const Guid& fieldGuid,
                                                   const TStringView fieldName,
                                                   const Reflection::ClassDescription& classDesc,
                                                   void* userData)>;
