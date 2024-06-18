@@ -42,11 +42,15 @@ public:
     template<typename K, typename V>
     HashMap<K, V> Deserialize(size_t size)
     {
-        HashMap<K, V> object(size / (sizeof(K) + sizeof(V)));
-        for (auto& [key, value] : object)
+        HashMap<K, V> object;
+        size_t count = size / (sizeof(K) + sizeof(V));
+        for (uint32_t i = 0; i < count; i++)
         {
+            K key{};
+            V value{};
             mStream.read(reinterpret_cast<char*>(&key), sizeof(K));
             mStream.read(reinterpret_cast<char*>(&value), sizeof(V));
+            object[key] = value;
         }
         return object;
     }
