@@ -6,13 +6,22 @@
 //
 
 #pragma once
-#include "Core/GUID.h"
 
 namespace Gleam {
 
 struct Asset
 {
     Filesystem::path path;
+    
+    bool operator==(const Asset& other) const
+    {
+        return path == other.path;
+    }
+    
+    bool operator!=(const Asset& other) const
+    {
+        return !(*this == other);
+    }
     
     static constexpr TStringView extension()
     {
