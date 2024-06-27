@@ -1,21 +1,60 @@
 #include "gpch.h"
 #include "AssetManager.h"
+#include "Core/Engine.h"
+#include "Core/Globals.h"
+#include "IO/FileWatcher.h"
+#include "Serialization/BinarySerializer.h"
 
 using namespace Gleam;
 
 void AssetManager::Initialize()
 {
+    auto meta = Globals::ProjectContentDirectory/"Assets.meta";
+    if (Filesystem::exists(meta))
+    {
+        auto file = File(meta, FileType::Binary);
+        auto serializer = BinarySerializer(file.GetStream());
+        mAssets = serializer.Deserialize<AssetReference, Asset>(file.GetSize());
+    }
     
+    auto fileWatcher = Globals::Engine->GetSubsystem<FileWatcher>();
+    fileWatcher->AddWatch(Globals::ProjectContentDirectory, [this](const Filesystem::path& path, FileWatchEvent event)
+    {
+        if (path.extension() != Asset::extension())
+        {
+            return;
+        }
+        
+        Asset asset{ .path = Filesystem::relative(path, Globals::ProjectContentDirectory) };
+        switch (event)
+        {
+            case FileWatchEvent::Added:
+            {
+                //mAssets.emplace_hint(mAssets.end(), { .type = ..., .guid = ... });
+                break;
+            }
+            case FileWatchEvent::Removed:
+            {
+                auto it = std::find_if(mAssets.begin(), mAssets.end(), [&](auto pair)
+                {
+                    return pair.second == asset;
+                });
+                
+                if (it != mAssets.end())
+                {
+                    mAssets.erase(it);
+                }
+                
+                break;
+            }
+            default: break;
+        }
+    });
 }
 
 void AssetManager::Shutdown()
 {
     mAssets.clear();
-}
-
-void AssetManager::Reload(const Filesystem::path& directory)
-{
-    
 }
 
 const Asset& AssetManager::GetAsset(const AssetReference& asset) const

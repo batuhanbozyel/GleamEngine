@@ -15,8 +15,6 @@ public:
 
     virtual void Shutdown() override;
     
-    void Reload(const Filesystem::path& directory);
-    
     const Asset& GetAsset(const AssetReference& asset) const;
 
 private:
