@@ -31,16 +31,12 @@ TString File::Read() const
 		GLEAM_CORE_ERROR("File {0} could not be opened.", GetName());
 		return "";
 	}
-
-	mHandle.seekg(0, std::ios::end);
-	size_t size = mHandle.tellg();
-
-	TString contents;
+    
+	size_t size = GetSize();
+    
+    TString contents;
 	contents.resize(size);
-
-	mHandle.seekg(0, std::ios::beg);
 	mHandle.read(contents.data(), size);
-
 	return contents;
 }
 
@@ -69,6 +65,18 @@ void File::CreateIfNotExists()
 		mHandle.open(mFullPath, flags);
 		mHandle.unsetf(std::ios::skipws);
 	}
+}
+
+size_t File::GetSize() const
+{
+    if (mHandle.is_open())
+    {
+        mHandle.seekg(0, std::ios::end);
+        size_t size = mHandle.tellg();
+        mHandle.seekg(0, std::ios::beg);
+        return size;
+    }
+    return 0;
 }
 
 const TString& File::GetName() const

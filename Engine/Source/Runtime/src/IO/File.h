@@ -27,6 +27,8 @@ public:
     
     std::fstream& GetStream();
     
+    size_t GetSize() const;
+    
     static File Create(const Filesystem::path& path, FileType type);
 
 private:
