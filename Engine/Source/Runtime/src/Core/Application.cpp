@@ -21,14 +21,12 @@ Application::Application(const Project& project)
 {
 	// setup globals
 	Globals::ProjectName = project.name;
-	Globals::ProjectDirectory = project.path;
+	Globals::ProjectDirectory = Globals::StartupDirectory/project.path;
 	Globals::BuiltinAssetsDirectory = Globals::StartupDirectory/"Assets";
 	Globals::ProjectContentDirectory = Globals::ProjectDirectory/"Assets";
 	
 	// init world & asset managers
     auto assetManager = AddSubsystem<AssetManager>();
-    assetManager->Reload(Globals::ProjectContentDirectory);
-    
 	auto worldManager = AddSubsystem<WorldManager>();
 	worldManager->Configure(project.worldConfig);
 	AddSubsystem<MaterialSystem>();
@@ -64,7 +62,7 @@ void Application::Run()
 		auto world = worldManager->GetActiveWorld();
         world->Update();
 
-        renderSystem->Render();
+        renderSystem->Render(world);
 	}
 }
 
