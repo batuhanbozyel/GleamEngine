@@ -3,6 +3,7 @@
 
 #include "EventSystem.h"
 #include "WindowSystem.h"
+#include "IO/FileWatcher.h"
 #include "Input/InputSystem.h"
 #include "Reflection/Database.h"
 #include "Renderer/RenderSystem.h"
@@ -19,6 +20,7 @@ void Engine::Initialize()
 	// init core subsystems
 	AddSubsystem<EventSystem>();
 	AddSubsystem<InputSystem>();
+    AddSubsystem<FileWatcher>();
 
 	// subscribe to window resize
 	EventDispatcher<WindowResizeEvent>::Subscribe([this](WindowResizeEvent e)

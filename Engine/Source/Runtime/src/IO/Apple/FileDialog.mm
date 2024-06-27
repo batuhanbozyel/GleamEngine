@@ -4,6 +4,7 @@
 #include "IO/FileDialog.h"
 
 #import <AppKit/AppKit.h>
+#import <CoreServices/CoreServices.h>
 #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
 
 using namespace Gleam;
@@ -53,14 +54,6 @@ TArray<Filesystem::path> FileDialog::Open(const TWString& filterName, const TWSt
         }
     }
     return selectedFiles;
-}
-
-std::wstring NSStringToStringW ( NSString* Str )
-{
-    NSStringEncoding pEncode    =   CFStringConvertEncodingToNSStringEncoding ( kCFStringEncodingUTF32LE );
-    NSData* pSData              =   [ Str dataUsingEncoding : pEncode ];
-    
-    return std::wstring ( (wchar_t*) [ pSData bytes ], [ pSData length] / sizeof ( wchar_t ) );
 }
 
 #endif

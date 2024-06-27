@@ -16,7 +16,6 @@ class Subsystem
 {
 	friend class Engine;
     friend class Application;
-
 public:
 
     virtual ~Subsystem() = default;
@@ -33,7 +32,6 @@ class TickableSubsystem : public Subsystem
 {
 	friend class Engine;
 	friend class Application;
-
 public:
 
 	virtual ~TickableSubsystem() = default;
