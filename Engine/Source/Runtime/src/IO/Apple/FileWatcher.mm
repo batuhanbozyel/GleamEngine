@@ -84,10 +84,17 @@ void FileWatcher::Shutdown()
     {
         delete watcher;
     }
+    mWatchers.clear();
 }
 
 void FileWatcher::AddWatch(const Filesystem::path& dir, FileWatchHandler&& handler)
 {
+    if (Filesystem::is_directory(dir) == false)
+	{
+        GLEAM_CORE_ERROR("FileWatcher requires directory: {0}", dir.string());
+		return;
+	}
+
     if (mWatchers.find(dir) != mWatchers.end())
     {
         RemoveWatch(dir);
