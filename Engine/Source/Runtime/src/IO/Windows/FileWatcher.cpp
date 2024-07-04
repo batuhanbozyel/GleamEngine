@@ -49,13 +49,20 @@ struct FileWatcher::Watcher
 
 	~Watcher()
 	{
-		running = false;
 		::CancelIo(win32Handle);
 		if (watchThread.joinable())
 		{
+			::QueueUserAPC(TerminateProc, reinterpret_cast<HANDLE>(watchThread.native_handle()), (ULONG_PTR)this);
 			watchThread.join();
 		}
 		::CloseHandle(win32Handle);
+	}
+
+	// Called by QueueUserAPC to start orderly shutdown.
+	static void CALLBACK TerminateProc(__in  ULONG_PTR arg)
+	{
+		Watcher* watcher = (Watcher*)arg;
+		watcher->running = false;
 	}
 
 	static void CALLBACK CallbackHandler(DWORD errorCode, DWORD bytesTransferred, LPOVERLAPPED lpOverlapped)
