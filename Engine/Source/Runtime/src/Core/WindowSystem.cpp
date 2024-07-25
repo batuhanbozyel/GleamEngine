@@ -30,7 +30,6 @@ void WindowSystem::Configure(const WindowConfig& config)
 	// if window size is not provided, use primary display mode
 	if (static_cast<int>(newConfig.size.width) == 0 || static_cast<int>(newConfig.size.height) == 0)
 	{
-		
 		newConfig.size.width = static_cast<float>(display.width);
 		newConfig.size.height = static_cast<float>(display.height);
 	}
@@ -55,9 +54,7 @@ void WindowSystem::Configure(const WindowConfig& config)
 	{
 		newConfig.refreshRate = display.refreshRate;
 	}
-
-	// if refresh rate config is different than the display, update display mode
-	else if (newConfig.refreshRate != display.refreshRate)
+	else if (newConfig.refreshRate != display.refreshRate) // if refresh rate config is different than the display, update display mode
 	{
 		uint32_t mode = 0;
 		for (const auto& displayMode : GetAvailableDisplayModes())
@@ -67,6 +64,7 @@ void WindowSystem::Configure(const WindowConfig& config)
 				displayMode.refreshRate == newConfig.refreshRate)
 			{
 				SetDisplayMode(mode);
+				break;
 			}
 			++mode;
 		}

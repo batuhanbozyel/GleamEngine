@@ -145,9 +145,9 @@ struct TypeHelper<ValueType, uint16_t>
 struct JSONSerializer::Impl
 {
     rapidjson::Document document;
-    std::iostream& stream;
+	FileStream& stream;
     
-    Impl(std::iostream& stream)
+    Impl(FileStream& stream)
         : stream(stream)
         , document(rapidjson::kObjectType)
     {
@@ -239,7 +239,7 @@ struct JSONSerializer::Impl
 #pragma endregion DeserializeForwardDecl
 };
 
-JSONSerializer::JSONSerializer(std::iostream& stream)
+JSONSerializer::JSONSerializer(FileStream& stream)
     : mHandle(new Impl(stream))
 {
     

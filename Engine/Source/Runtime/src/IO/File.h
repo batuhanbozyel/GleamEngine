@@ -5,6 +5,8 @@
 
 namespace Gleam {
 
+using FileStream = std::fstream;
+
 enum class FileType
 {
 	Binary,
@@ -25,7 +27,7 @@ public:
 
 	const TString& GetName() const;
     
-    std::fstream& GetStream();
+	FileStream& GetStream();
     
     size_t GetSize() const;
     
@@ -41,7 +43,7 @@ private:
     
     Filesystem::path mFullPath;
 
-	mutable std::fstream mHandle;
+	mutable FileStream mHandle;
     
 };
 

@@ -6,7 +6,7 @@ class BinarySerializer final
 {
 public:
     
-    BinarySerializer(std::iostream& stream)
+    BinarySerializer(FileStream& stream)
         : mStream(stream)
     {
         
@@ -57,7 +57,7 @@ public:
     
 private:
     
-    std::iostream& mStream;
+	FileStream& mStream;
     
 };
 

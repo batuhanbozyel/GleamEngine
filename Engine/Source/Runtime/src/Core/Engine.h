@@ -8,6 +8,10 @@ class Engine final
 {
 public:
 
+	GLEAM_NONCOPYABLE(Engine);
+
+	Engine() = default;
+
 	void Initialize();
 
 	void Shutdown();
@@ -16,23 +20,9 @@ public:
     
     void UpdateConfig(const RendererConfig& config);
 
-	template<SystemType T, class...Args>
-	T* AddSubsystem(Args&&... args)
-	{
-		GLEAM_ASSERT(!HasSubsystem<T>(), "Engine already has the subsystem!");
-		T* system = mSubsystems.emplace<T>(std::forward<Args>(args)...);
-        system->Initialize();
-        return system;
-	}
+	Size GetResolution() const;
 
-	template<SystemType T>
-	void RemoveSubsystem()
-	{
-        GLEAM_ASSERT(HasSubsystem<T>(), "Engine does not have the subsystem!");
-        T* system = mSubsystems.get<T>();
-        system->Shutdown();
-        mSubsystems.erase<T>();
-	}
+	const EngineConfig& GetConfiguration() const;
     
     template<SystemType T>
     T* GetSubsystem()
@@ -45,13 +35,27 @@ public:
     {
 		return mSubsystems.contains<T>();
     }
-    
-    Size GetResolution() const;
-
-    const EngineConfig& GetConfiguration() const;
 
 private:
-    
+
+	template<SystemType T, class...Args>
+	T* AddSubsystem(Args&&... args)
+	{
+		GLEAM_ASSERT(!HasSubsystem<T>(), "Engine already has the subsystem!");
+		T* system = mSubsystems.emplace<T>(std::forward<Args>(args)...);
+		system->Initialize();
+		return system;
+	}
+
+	template<SystemType T>
+	void RemoveSubsystem()
+	{
+		GLEAM_ASSERT(HasSubsystem<T>(), "Engine does not have the subsystem!");
+		T* system = mSubsystems.get<T>();
+		system->Shutdown();
+		mSubsystems.erase<T>();
+	}
+
     void SaveConfigToDisk() const;
 
 	EngineConfig mConfig;

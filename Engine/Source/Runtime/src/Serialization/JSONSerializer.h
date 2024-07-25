@@ -9,7 +9,7 @@ public:
     
     JSONSerializer() = default;
     
-    JSONSerializer(std::iostream& stream);
+    JSONSerializer(FileStream& stream);
     
     ~JSONSerializer();
     
