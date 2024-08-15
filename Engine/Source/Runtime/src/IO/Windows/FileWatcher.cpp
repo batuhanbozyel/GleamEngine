@@ -9,7 +9,7 @@ using namespace Gleam;
 
 struct FileWatcher::Watcher
 {
-	Filesystem::path path;
+	Filesystem::Path path;
 	FileWatchHandler handler;
 
 	BYTE buffer[1024];
@@ -19,7 +19,7 @@ struct FileWatcher::Watcher
 	std::atomic<bool> running;
 	std::condition_variable condition;
 
-	Watcher(const Filesystem::path& path, FileWatchHandler&& handler, HANDLE dirHandle)
+	Watcher(const Filesystem::Path& path, FileWatchHandler&& handler, HANDLE dirHandle)
 		: path(path), handler(std::move(handler)), win32Handle(dirHandle), running(true)
 	{
 		memset(&overlapped, 0, sizeof(OVERLAPPED));
@@ -77,7 +77,7 @@ struct FileWatcher::Watcher
 		FILE_NOTIFY_INFORMATION* info = (FILE_NOTIFY_INFORMATION*)watcher->buffer;
 		while (true)
 		{
-			Filesystem::path filepath = watcher->path / TWString(info->FileName, info->FileNameLength / sizeof(WCHAR));
+			Filesystem::Path filepath = watcher->path / TWString(info->FileName, info->FileNameLength / sizeof(WCHAR));
 			switch (info->Action)
 			{
 				case FILE_ACTION_ADDED:
@@ -133,9 +133,9 @@ void FileWatcher::Shutdown()
 	mWatchers.clear();
 }
 
-void FileWatcher::AddWatch(const Filesystem::path& dir, FileWatchHandler&& handler)
+void FileWatcher::AddWatch(const Filesystem::Path& dir, FileWatchHandler&& handler)
 {
-	if (Filesystem::is_directory(dir) == false)
+	if (Filesystem::IsDirectory(dir) == false)
 	{
 		GLEAM_CORE_ERROR("FileWatcher requires directory: {0}", dir.string());
 		return;
@@ -164,7 +164,7 @@ void FileWatcher::AddWatch(const Filesystem::path& dir, FileWatchHandler&& handl
 	mWatchers[dir] = watcher;
 }
 
-void FileWatcher::RemoveWatch(const Filesystem::path& dir)
+void FileWatcher::RemoveWatch(const Filesystem::Path& dir)
 {
     auto it = mWatchers.find(dir);
     if (it == mWatchers.end())

@@ -9,9 +9,9 @@
 
 using namespace Gleam;
 
-TArray<Filesystem::path> FileDialog::Open(const TWString& filterName, const TWString& filterExtensions)
+TArray<Filesystem::Path> FileDialog::Open(const TWString& filterName, const TWString& filterExtensions)
 {
-    TArray<Filesystem::path> selectedFiles;
+    TArray<Filesystem::Path> selectedFiles;
     
     NSOpenPanel* openPanel = [NSOpenPanel openPanel];
     [openPanel setTitle:@"Open File"];
@@ -50,7 +50,7 @@ TArray<Filesystem::path> FileDialog::Open(const TWString& filterName, const TWSt
         {
             NSData* pathData = [[url path] dataUsingEncoding:NSUTF32LittleEndianStringEncoding];
             TWString pathStr((wchar_t*)[pathData bytes], [pathData length] / sizeof(wchar_t));
-            selectedFiles.push_back(Filesystem::path(pathStr));
+            selectedFiles.push_back(Filesystem::Path(pathStr));
         }
     }
     return selectedFiles;

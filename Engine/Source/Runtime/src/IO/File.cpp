@@ -3,14 +3,14 @@
 
 using namespace Gleam;
 
-File File::Create(const Filesystem::path& path, FileType type)
+File File::Create(const Filesystem::Path& path, FileType type)
 {
     File file(path, type);
     file.CreateIfNotExists();
     return file;
 }
 
-File::File(const Filesystem::path& path, FileType type)
+File::File(const Filesystem::Path& path, FileType type)
 	: mName(path.filename().string())
     , mFullPath(path)
     , mType(type)
@@ -77,6 +77,11 @@ size_t File::GetSize() const
         return size;
     }
     return 0;
+}
+
+bool File::Empty() const
+{
+	return GetSize() == 0;
 }
 
 const TString& File::GetName() const

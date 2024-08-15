@@ -41,7 +41,7 @@ void ContentBrowser::Render(Gleam::ImGuiRenderer* imgui)
 	});
 }
 
-bool ContentBrowser::ImportAsset(const Gleam::Filesystem::path& path)
+bool ContentBrowser::ImportAsset(const Gleam::Filesystem::Path& path)
 {
 	if (path.extension() == ".gltf")
 	{
@@ -56,16 +56,16 @@ bool ContentBrowser::ImportAsset(const Gleam::Filesystem::path& path)
 	return false;
 }
 
-void ContentBrowser::DrawDirectoryTreeView(const Gleam::Filesystem::path& node)
+void ContentBrowser::DrawDirectoryTreeView(const Gleam::Filesystem::Path& node)
 {
     auto filename = node.filename().string();
     ImGui::PushID(filename.c_str());
-    if (Gleam::Filesystem::is_directory(node))
+    if (Gleam::Filesystem::IsDirectory(node))
     {
         ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth;
         if (ImGui::TreeNodeEx(filename.c_str(), flags))
         {
-            for (auto& entry : Gleam::Filesystem::directory_iterator(node))
+            for (auto& entry : Gleam::Filesystem::DirectoryIterator(node))
             {
                 DrawDirectoryTreeView(entry);
             }

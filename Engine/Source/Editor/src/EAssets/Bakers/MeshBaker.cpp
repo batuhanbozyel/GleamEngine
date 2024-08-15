@@ -8,13 +8,14 @@ MeshBaker::MeshBaker(const Gleam::MeshDescriptor& descriptor)
 	
 }
 
-Gleam::AssetReference MeshBaker::Bake(const Gleam::Filesystem::path& directory) const
+Gleam::AssetReference MeshBaker::Bake(const Gleam::Filesystem::Path& directory) const
 {
     auto guid = Gleam::Guid::NewGuid();
     const auto& typeGuid = Gleam::Reflection::GetClass<Gleam::MeshDescriptor>().Guid();
     Gleam::AssetReference asset{ .type = typeGuid, .guid = guid };
-    
-    auto file = Gleam::File::Create(directory/Filename(), Gleam::FileType::Text);
+
+	auto filename = guid.ToString() + Gleam::Asset::extension().data();
+    auto file = Gleam::File::Create(directory/filename, Gleam::FileType::Text);
     auto serializer = Gleam::JSONSerializer(file.GetStream());
     serializer.Serialize(mDescriptor);
     return asset;

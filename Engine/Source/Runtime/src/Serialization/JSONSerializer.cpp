@@ -303,12 +303,12 @@ void JSONSerializer::Initialize()
 			outObject.PushBack(rapidjson::Value(rapidjson::StringRef(str.c_str(), str.length())));
 		};
         
-        mCustomObjectSerializers[Reflection::GetClass<Filesystem::path>().ResolveName()] = [](const void* obj,
+        mCustomObjectSerializers[Reflection::GetClass<Filesystem::Path>().ResolveName()] = [](const void* obj,
             const TStringView fieldName,
             const Reflection::ClassDescription& classDesc,
             void* userData)
         {
-            const auto& path = Reflection::Get<Filesystem::path>(obj);
+            const auto& path = Reflection::Get<Filesystem::Path>(obj);
             const auto& pathStr = path.string();
             auto& outObject = Reflection::Get<rapidjson::Node>(userData);
             Impl::SerializeClassHeader(classDesc, fieldName, outObject);
@@ -318,11 +318,11 @@ void JSONSerializer::Initialize()
             outObject.AddMember("Value", rapidjson::StringRef(pathStr.c_str(), pathStr.length()));
         };
 
-        mCustomArraySerializers[Reflection::GetClass<Filesystem::path>().ResolveName()] = [](const void* obj,
+        mCustomArraySerializers[Reflection::GetClass<Filesystem::Path>().ResolveName()] = [](const void* obj,
             const Reflection::ClassDescription& classDesc,
             void* userData)
         {
-            const auto& path = Reflection::Get<Filesystem::path>(obj);
+            const auto& path = Reflection::Get<Filesystem::Path>(obj);
             const auto& pathStr = path.string();
             
             auto& outObject = Reflection::Get<rapidjson::Node>(userData);
@@ -377,14 +377,14 @@ void JSONSerializer::Initialize()
             }
 		};
         
-        mCustomObjectDeserializers[Reflection::GetClass<Filesystem::path>().ResolveName()] = [](const void* userData,
+        mCustomObjectDeserializers[Reflection::GetClass<Filesystem::Path>().ResolveName()] = [](const void* userData,
             const Reflection::ClassDescription& classDesc,
             void* obj)
         {
             const auto& value = Reflection::Get<rapidjson::Value>(userData);
             if (value.HasMember("Value"))
             {
-                Reflection::Get<Filesystem::path>(obj) = value["Value"].GetString();
+                Reflection::Get<Filesystem::Path>(obj) = value["Value"].GetString();
             }
         };
 

@@ -7,7 +7,7 @@ namespace GEditor {
 struct RawTexture
 {
     Gleam::TString name = "";
-    Gleam::Filesystem::path file = "";
+    Gleam::Filesystem::Path file = "";
     
     enum Type
     {
@@ -80,7 +80,7 @@ struct MeshSource : AssetPackage
 	*	- position, normal, uv attributes
 	*	- triangulated primitive type and indices
 	*/
-	bool Import(const Gleam::Filesystem::path& path, const ImportSettings& settings);
+	bool Import(const Gleam::Filesystem::Path& path, const ImportSettings& settings);
 };
 
 } // namespace GEditor

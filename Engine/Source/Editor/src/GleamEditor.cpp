@@ -44,7 +44,7 @@ Gleam::Application* Gleam::CreateApplicationInstance(const Gleam::CommandLine& c
     auto projectFile = Globals::StartupDirectory/"Editor.gproj";
     
     Gleam::Project project;
-    if (Gleam::Filesystem::exists(projectFile))
+    if (Gleam::Filesystem::Exists(projectFile))
     {
         auto file = Gleam::File(projectFile, Gleam::FileType::Text);
         auto serializer = Gleam::JSONSerializer(file.GetStream());

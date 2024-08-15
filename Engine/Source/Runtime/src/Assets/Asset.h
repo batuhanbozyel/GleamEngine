@@ -11,7 +11,7 @@ namespace Gleam {
 
 struct Asset
 {
-    Filesystem::path path;
+    Filesystem::Path path;
     
     bool operator==(const Asset& other) const
     {

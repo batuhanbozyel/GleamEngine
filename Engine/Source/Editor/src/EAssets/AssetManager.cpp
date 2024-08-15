@@ -4,13 +4,13 @@
 
 using namespace GEditor;
 
-EAssetManager::EAssetManager(const Gleam::Filesystem::path& directory)
+EAssetManager::EAssetManager(const Gleam::Filesystem::Path& directory)
 	: mAssetDirectory(directory)
 {
 	
 }
 
-void EAssetManager::Import(const Gleam::Filesystem::path& directory, const AssetPackage& package)
+void EAssetManager::Import(const Gleam::Filesystem::Path& directory, const AssetPackage& package)
 {
 	for (auto& baker : package.bakers)
 	{
@@ -21,7 +21,7 @@ void EAssetManager::Import(const Gleam::Filesystem::path& directory, const Asset
 	}
 }
 
-const Gleam::AssetReference& EAssetManager::GetAsset(const Gleam::Filesystem::path& path) const
+const Gleam::AssetReference& EAssetManager::GetAsset(const Gleam::Filesystem::Path& path) const
 {
 	auto it = mAssetCache.find(path);
 	if (it != mAssetCache.end())

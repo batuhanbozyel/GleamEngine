@@ -9,17 +9,17 @@ class EAssetManager final
 public:
 
     EAssetManager() = default;
-	EAssetManager(const Gleam::Filesystem::path& directory);
+	EAssetManager(const Gleam::Filesystem::Path& directory);
 
-	void Import(const Gleam::Filesystem::path& directory, const AssetPackage& package);
+	void Import(const Gleam::Filesystem::Path& directory, const AssetPackage& package);
 
-	const Gleam::AssetReference& GetAsset(const Gleam::Filesystem::path& path) const;
+	const Gleam::AssetReference& GetAsset(const Gleam::Filesystem::Path& path) const;
 
 private:
 
-	Gleam::Filesystem::path mAssetDirectory;
+	Gleam::Filesystem::Path mAssetDirectory;
     
-    Gleam::HashMap<Gleam::Filesystem::path, Gleam::AssetReference> mAssetCache;
+    Gleam::HashMap<Gleam::Filesystem::Path, Gleam::AssetReference> mAssetCache;
 
 };
 

@@ -8,7 +8,7 @@ MaterialBaker::MaterialBaker(const Gleam::MaterialDescriptor& descriptor)
 	
 }
 
-Gleam::AssetReference MaterialBaker::Bake(const Gleam::Filesystem::path& directory) const
+Gleam::AssetReference MaterialBaker::Bake(const Gleam::Filesystem::Path& directory) const
 {
     const auto& typeGuid = Gleam::Reflection::GetClass<Gleam::MaterialDescriptor>().Guid();
     auto guid = Gleam::Guid::NewGuid();

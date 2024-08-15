@@ -3,10 +3,21 @@
 
 namespace Gleam {
 
-namespace Filesystem {
-using namespace std::filesystem;
+class Filesystem
+{
+public:
+	using Path = std::filesystem::path;
+	using DirectoryIterator = std::filesystem::directory_iterator;
 
-} // namespace Filesystem
+	static Path WorkingDirectory();
+
+	static Path Relative(const Path& path, const Path& base);
+
+	static bool Exists(const Path& path);
+
+	static bool IsDirectory(const Path& path);
+
+};
 
 } // namespace Gleam
 

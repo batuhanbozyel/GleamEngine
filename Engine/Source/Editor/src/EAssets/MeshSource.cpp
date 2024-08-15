@@ -18,7 +18,7 @@ static Gleam::TArray<Gleam::InterleavedMeshVertex> InterleaveMeshVertices(const 
 static Gleam::MeshDescriptor CombineMeshes(const Gleam::TArray<RawMesh>& meshes);
 static Gleam::BoundingBox CalculateBounds(const Gleam::TArray<Gleam::Float3>& positions);
 
-bool MeshSource::Import(const Gleam::Filesystem::path& path, const ImportSettings& settings)
+bool MeshSource::Import(const Gleam::Filesystem::Path& path, const ImportSettings& settings)
 {
 	Gleam::TString gltf_path = path.string();
 	cgltf_options options = {};
@@ -181,14 +181,14 @@ RawMaterial ProcessMaterial(const cgltf_material& mat, const MeshSource::ImportS
         
         if (auto texture = pbr.base_color_texture.texture; texture != nullptr)
         {
-			Gleam::Filesystem::path file = texture->image->uri;
+			Gleam::Filesystem::Path file = texture->image->uri;
             material.textures[RawTexture::Albedo].file = file;
             material.textures[RawTexture::Albedo].name = file.filename().string();
         }
         
         if (auto texture = pbr.metallic_roughness_texture.texture; texture != nullptr)
         {
-			Gleam::Filesystem::path file = texture->image->uri;
+			Gleam::Filesystem::Path file = texture->image->uri;
             material.textures[RawTexture::MetallicRoughness].file = file;
 			material.textures[RawTexture::MetallicRoughness].name = file.filename().string();
         }
@@ -197,7 +197,7 @@ RawMaterial ProcessMaterial(const cgltf_material& mat, const MeshSource::ImportS
     // Normal
     if (auto texture = mat.normal_texture.texture; texture != nullptr)
     {
-		Gleam::Filesystem::path file = texture->image->uri;
+		Gleam::Filesystem::Path file = texture->image->uri;
         material.textures[RawTexture::Normal].file = file;
 		material.textures[RawTexture::Normal].name = file.filename().string();
     }
@@ -205,7 +205,7 @@ RawMaterial ProcessMaterial(const cgltf_material& mat, const MeshSource::ImportS
     // Emissive
     if (auto texture = mat.emissive_texture.texture; texture != nullptr)
     {
-		Gleam::Filesystem::path file = texture->image->uri;
+		Gleam::Filesystem::Path file = texture->image->uri;
         material.textures[RawTexture::Emissive].file = file;
 		material.textures[RawTexture::Emissive].name = file.filename().string();
     }
@@ -219,7 +219,7 @@ RawMaterial ProcessMaterial(const cgltf_material& mat, const MeshSource::ImportS
     // Occlusion
     if (auto texture = mat.occlusion_texture.texture; texture != nullptr)
     {
-		Gleam::Filesystem::path file = texture->image->uri;
+		Gleam::Filesystem::Path file = texture->image->uri;
         material.textures[RawTexture::Occlusion].file = file;
 		material.textures[RawTexture::Occlusion].name = file.filename().string();
     }

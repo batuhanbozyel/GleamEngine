@@ -11,7 +11,7 @@ struct MaterialSource : AssetPackage
 		
 	};
 
-	static MaterialSource Import(const Gleam::Filesystem::path& path, const ImportSettings& settings);
+	static MaterialSource Import(const Gleam::Filesystem::Path& path, const ImportSettings& settings);
 };
 
 } // namespace GEditor

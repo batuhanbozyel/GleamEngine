@@ -31,9 +31,9 @@ void Engine::Initialize()
 	});
 
 	// setup config
-	Globals::StartupDirectory = Filesystem::current_path();
+	Globals::StartupDirectory = Filesystem::WorkingDirectory();
 	auto configFile = Globals::StartupDirectory/"Engine.config";
-	if (Filesystem::exists(configFile))
+	if (Filesystem::Exists(configFile))
 	{
 		auto file = File(configFile, FileType::Text);
         auto serializer = JSONSerializer(file.GetStream());

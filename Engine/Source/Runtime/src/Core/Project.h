@@ -8,7 +8,7 @@ struct Project
 {
 	TString name;
     Version version;
-	Filesystem::path path;
+	Filesystem::Path path;
 	WorldConfig worldConfig;
 };
 

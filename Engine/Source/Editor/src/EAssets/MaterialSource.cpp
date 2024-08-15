@@ -3,7 +3,7 @@
 
 using namespace GEditor;
 
-MaterialSource MaterialSource::Import(const Gleam::Filesystem::path& path, const ImportSettings& settings)
+MaterialSource MaterialSource::Import(const Gleam::Filesystem::Path& path, const ImportSettings& settings)
 {
 	return MaterialSource();
 }

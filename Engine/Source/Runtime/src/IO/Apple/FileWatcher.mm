@@ -10,11 +10,11 @@ using namespace Gleam;
 
 struct FileWatcher::Watcher
 {
-    Filesystem::path path;
+    Filesystem::Path path;
     FileWatchHandler handler;
     FSEventStreamRef _Nonnull stream;
  
-    Watcher(const Filesystem::path& path, FileWatchHandler&& handler)
+    Watcher(const Filesystem::Path& path, FileWatchHandler&& handler)
         : path(path), handler(std::move(handler)), stream(nullptr)
     {
         
@@ -37,7 +37,7 @@ struct FileWatcher::Watcher
         auto* watcher = static_cast<Watcher*>(clientCallBackInfo);
         for (size_t i = 0; i < numEvents; ++i)
         {
-            Filesystem::path path = ((const char**)eventPaths)[i];
+            Filesystem::Path path = ((const char**)eventPaths)[i];
             const FSEventStreamEventFlags flags = eventFlags[i];
             if (!(flags & kFSEventStreamEventFlagItemIsFile))
             {
@@ -87,9 +87,9 @@ void FileWatcher::Shutdown()
     mWatchers.clear();
 }
 
-void FileWatcher::AddWatch(const Filesystem::path& dir, FileWatchHandler&& handler)
+void FileWatcher::AddWatch(const Filesystem::Path& dir, FileWatchHandler&& handler)
 {
-    if (Filesystem::is_directory(dir) == false)
+    if (Filesystem::IsDirectory(dir) == false)
 	{
         GLEAM_CORE_ERROR("FileWatcher requires directory: {0}", dir.string());
 		return;
@@ -129,7 +129,7 @@ void FileWatcher::AddWatch(const Filesystem::path& dir, FileWatchHandler&& handl
     CFRelease(pathCF);
 }
 
-void FileWatcher::RemoveWatch(const Filesystem::path& dir)
+void FileWatcher::RemoveWatch(const Filesystem::Path& dir)
 {
     auto it = mWatchers.find(dir);
     if (it == mWatchers.end())
