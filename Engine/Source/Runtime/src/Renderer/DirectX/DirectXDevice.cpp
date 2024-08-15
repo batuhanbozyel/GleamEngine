@@ -428,7 +428,7 @@ void DirectXDevice::Configure(const RendererConfig& config)
 		}
 
 		SDL_Window* window = Globals::Engine->GetSubsystem<WindowSystem>()->GetSDLWindow();
-		HWND hwnd = (HWND)SDL_GetProperty(SDL_GetWindowProperties(window), SDL_PROPERTY_WINDOW_WIN32_HWND_POINTER, NULL);
+		HWND hwnd = (HWND)SDL_GetPointerProperty(SDL_GetWindowProperties(window), SDL_PROP_WINDOW_WIN32_HWND_POINTER, NULL);
 
 		IDXGISwapChain1* swapchain1 = nullptr;
 		DX_CHECK(mFactory->CreateSwapChainForHwnd(mDirectQueue, hwnd, &swapchainDesc, nullptr, nullptr, &swapchain1));

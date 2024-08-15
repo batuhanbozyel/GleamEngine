@@ -24,7 +24,7 @@ enum class WindowFlag : uint32_t
 
 struct DisplayMode
 {
-	SDL_PixelFormatEnum format = SDL_PIXELFORMAT_UNKNOWN;
+	SDL_PixelFormat format = SDL_PIXELFORMAT_UNKNOWN;
 	uint32_t width = 0, height = 0;
 	uint32_t refreshRate = 0;
 	uint32_t monitor = 0;

@@ -96,7 +96,7 @@ DisplayMode WindowSystem::GetDisplayMode(uint32_t monitor) const
     auto currDisplay = SDL_GetCurrentDisplayMode(monitor);
     return DisplayMode
     {
-        static_cast<SDL_PixelFormatEnum>(currDisplay->format),
+        static_cast<SDL_PixelFormat>(currDisplay->format),
         static_cast<uint32_t>(currDisplay->w),
         static_cast<uint32_t>(currDisplay->h),
         static_cast<uint32_t>(currDisplay->refresh_rate),
@@ -120,7 +120,7 @@ TArray<DisplayMode> WindowSystem::GetAvailableDisplayModes() const
             auto display = displays[i];
             displayModes[i] = DisplayMode
             {
-                static_cast<SDL_PixelFormatEnum>(display->format),
+                static_cast<SDL_PixelFormat>(display->format),
                 static_cast<uint32_t>(display->w),
                 static_cast<uint32_t>(display->h),
                 static_cast<uint32_t>(display->refresh_rate),
