@@ -3,25 +3,12 @@
 
 using namespace Gleam;
 
-File File::Create(const Filesystem::Path& path, FileType type)
-{
-    File file(path, type);
-    file.CreateIfNotExists();
-    return file;
-}
-
-File::File(const Filesystem::Path& path, FileType type)
+File::File(FileStream&& handle, const Filesystem::Path& path)
 	: mName(path.filename().string())
     , mFullPath(path)
-    , mType(type)
+	, mHandle(std::move(handle))
 {
-	auto flags = std::ios::out | std::ios::in;
-	if (type == FileType::Binary)
-	{
-		flags |= std::ios::binary;
-	}
-	mHandle.open(path, flags);
-	mHandle.unsetf(std::ios::skipws);
+	
 }
 
 TString File::Read() const
@@ -42,29 +29,25 @@ TString File::Read() const
 
 void File::Write(const TString& contents)
 {
-	CreateIfNotExists();
+	if (not mHandle.is_open())
+	{
+		GLEAM_CORE_ERROR("File {0} could not be opened.", GetName());
+		return;
+	}
+
 	mHandle << contents;
 }
 
 void File::Append(const TString& contents)
 {
-	CreateIfNotExists();
-	mHandle.seekg(0, std::ios::end);
-	Write(contents);
-}
-
-void File::CreateIfNotExists()
-{
 	if (not mHandle.is_open())
 	{
-		auto flags = std::ios::out | std::ios::in | std::ios::app;
-		if (mType == FileType::Binary)
-		{
-			flags |= std::ios::binary;
-		}
-		mHandle.open(mFullPath, flags);
-		mHandle.unsetf(std::ios::skipws);
+		GLEAM_CORE_ERROR("File {0} could not be opened.", GetName());
+		return;
 	}
+
+	mHandle.seekg(0, std::ios::end);
+	mHandle << contents;
 }
 
 size_t File::GetSize() const

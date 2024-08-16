@@ -15,7 +15,7 @@ Gleam::AssetReference MeshBaker::Bake(const Gleam::Filesystem::Path& directory) 
     Gleam::AssetReference asset{ .type = typeGuid, .guid = guid };
 
 	auto filename = guid.ToString() + Gleam::Asset::extension().data();
-    auto file = Gleam::File::Create(directory/filename, Gleam::FileType::Text);
+    auto file = Gleam::Filesystem::Create(directory/filename, Gleam::FileType::Text);
     auto serializer = Gleam::JSONSerializer(file.GetStream());
     serializer.Serialize(mDescriptor);
     return asset;

@@ -106,7 +106,7 @@ Shader GraphicsDevice::GenerateShader(const TString& entryPoint, ShaderStage sta
 {
     Shader shader(entryPoint, stage);
     auto shaderPath = Globals::BuiltinAssetsDirectory/"Shaders";
-    File shaderFile(shaderPath.append(entryPoint + ".dxil"), FileType::Binary);
+    File shaderFile = Filesystem::Open(shaderPath.append(entryPoint + ".dxil"), FileType::Binary);
     auto shaderCode = shaderFile.Read();
     auto dxil = IRObjectCreateFromDXIL((uint8_t*)shaderCode.data(), shaderCode.size(), IRBytecodeOwnershipNone);
     

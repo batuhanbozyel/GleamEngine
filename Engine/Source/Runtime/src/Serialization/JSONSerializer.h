@@ -3,6 +3,14 @@
 
 namespace Gleam {
 
+struct JSONHeader
+{
+	Reflection::FieldType kind = Reflection::FieldType::Invalid;
+	TString name = "";
+	Guid guid = Guid::InvalidGuid();
+	uint32_t version = 0;
+};
+
 class JSONSerializer final : public Subsystem
 {
 public:
@@ -16,6 +24,8 @@ public:
     virtual void Initialize() override;
     
     virtual void Shutdown() override;
+
+	JSONHeader ParseHeader();
 
     template<typename T>
     void Serialize(const T& object)

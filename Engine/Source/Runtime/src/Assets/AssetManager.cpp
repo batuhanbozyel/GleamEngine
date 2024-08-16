@@ -3,6 +3,7 @@
 #include "Core/Engine.h"
 #include "Core/Globals.h"
 #include "IO/FileWatcher.h"
+#include "Serialization/JSONSerializer.h"
 #include "Serialization/BinarySerializer.h"
 
 using namespace Gleam;
@@ -10,27 +11,27 @@ using namespace Gleam;
 void AssetManager::Initialize()
 {
     auto meta = Globals::ProjectContentDirectory/"Assets.meta";
-    if (Filesystem::exists(meta))
+    if (Filesystem::Exists(meta))
     {
-        auto file = File(meta, FileType::Binary);
+        auto file = Filesystem::Open(meta, FileType::Binary);
         auto serializer = BinarySerializer(file.GetStream());
         mAssets = serializer.Deserialize<AssetReference, Asset>(file.GetSize());
     }
     
     auto fileWatcher = Globals::Engine->GetSubsystem<FileWatcher>();
-    fileWatcher->AddWatch(Globals::ProjectContentDirectory, [this](const Filesystem::path& path, FileWatchEvent event)
+    fileWatcher->AddWatch(Globals::ProjectContentDirectory, [this](const Filesystem::Path& path, FileWatchEvent event)
     {
         if (path.extension() != Asset::extension())
         {
             return;
         }
         
-        Asset asset{ .path = Filesystem::relative(path, Globals::ProjectContentDirectory) };
+        Asset asset{ .path = Filesystem::Relative(path, Globals::ProjectContentDirectory) };
         switch (event)
         {
             case FileWatchEvent::Added:
             {
-                //mAssets.emplace_hint(mAssets.end(), { .type = ..., .guid = ... });
+				TryEmplaceAsset(asset);
                 break;
             }
             case FileWatchEvent::Removed:
@@ -47,6 +48,19 @@ void AssetManager::Initialize()
                 
                 break;
             }
+			case FileWatchEvent::Modified:
+			{
+				auto it = std::find_if(mAssets.begin(), mAssets.end(), [&](auto pair)
+				{
+					return pair.second == asset;
+				});
+
+				if (it == mAssets.end())
+				{
+					TryEmplaceAsset(asset);
+				}
+				break;
+			}
             default: break;
         }
     });
@@ -69,4 +83,25 @@ const Asset& AssetManager::GetAsset(const AssetReference& asset) const
     GLEAM_ASSERT(false);
     static Asset invalidAsset;
     return invalidAsset;
+}
+
+void AssetManager::TryEmplaceAsset(const Asset& asset)
+{
+	Guid guid = asset.path.stem().string();
+	if (guid == Guid::InvalidGuid())
+	{
+		return;
+	}
+
+	auto file = Filesystem::Open(Globals::ProjectContentDirectory/asset.path, FileType::Text);
+	if (not file.Empty())
+	{
+		auto serializer = JSONSerializer(file.GetStream());
+		auto typeHeader = serializer.ParseHeader();
+
+		AssetReference assetRef = { .type = typeHeader.guid, .guid = guid };
+
+		std::lock_guard<std::mutex> lock(mEmplaceMutex);
+		mAssets.emplace(assetRef, asset);
+	}
 }

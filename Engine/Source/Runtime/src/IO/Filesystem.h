@@ -3,11 +3,18 @@
 
 namespace Gleam {
 
+class File;
+enum class FileType;
+
 class Filesystem
 {
 public:
 	using Path = std::filesystem::path;
 	using DirectoryIterator = std::filesystem::directory_iterator;
+
+	static File Create(const Filesystem::Path& path, FileType type);
+
+	static File Open(const Filesystem::Path& path, FileType type);
 
 	static Path WorkingDirectory();
 

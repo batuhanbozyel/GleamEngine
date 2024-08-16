@@ -35,7 +35,7 @@ void Engine::Initialize()
 	auto configFile = Globals::StartupDirectory/"Engine.config";
 	if (Filesystem::Exists(configFile))
 	{
-		auto file = File(configFile, FileType::Text);
+		auto file = Filesystem::Open(configFile, FileType::Text);
         auto serializer = JSONSerializer(file.GetStream());
 		mConfig = serializer.Deserialize<EngineConfig>();
 	}
@@ -61,7 +61,7 @@ void Engine::Shutdown()
 
 void Engine::SaveConfigToDisk() const
 {
-    auto file = File(Globals::StartupDirectory/"Engine.config", FileType::Text);
+    auto file = Filesystem::Open(Globals::StartupDirectory/"Engine.config", FileType::Text);
     auto serializer = JSONSerializer(file.GetStream());
     serializer.Serialize(mConfig);
 }

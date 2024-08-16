@@ -3,6 +3,8 @@
 #include "AssetReference.h"
 #include "Core/Subsystem.h"
 
+#include <mutex>
+
 namespace Gleam {
 
 struct Asset;
@@ -18,6 +20,10 @@ public:
     const Asset& GetAsset(const AssetReference& asset) const;
 
 private:
+
+	void TryEmplaceAsset(const Asset& asset);
+
+	std::mutex mEmplaceMutex;
     
     HashMap<AssetReference, Asset> mAssets;
 

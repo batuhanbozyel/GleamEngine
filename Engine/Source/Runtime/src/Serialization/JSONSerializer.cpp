@@ -420,6 +420,46 @@ void JSONSerializer::Shutdown()
     mCustomArraySerializers.clear();
 }
 
+JSONHeader JSONSerializer::ParseHeader()
+{
+	rapidjson::IStreamWrapper ss(mHandle->stream);
+	mHandle->document.ParseStream(ss);
+
+	JSONHeader header;
+	header.guid = TString(mHandle->document["TypeGuid"].GetString());
+	header.name = TString(mHandle->document["TypeName"].GetString());
+	
+	TString kind = mHandle->document["Kind"].GetString();
+	if (kind == "Primitive")
+	{
+		header.kind = Reflection::FieldType::Primitive;
+	}
+	else if (kind == "Array")
+	{
+		header.kind = Reflection::FieldType::Array;
+	}
+	else if (kind == "Class")
+	{
+		header.kind = Reflection::FieldType::Class;
+	}
+	else if (kind == "Enum")
+	{
+		header.kind = Reflection::FieldType::Enum;
+	}
+	else
+	{
+		header.kind = Reflection::FieldType::Invalid;
+	}
+
+	constexpr auto version = Reflection::Attribute::Version::description;
+	if (mHandle->document.HasMember(version.tag))
+	{
+		header.version = mHandle->document[version.tag].Get<uint32_t>();
+	}
+
+	return header;
+}
+
 void JSONSerializer::Serialize(const void* obj, const Reflection::ClassDescription& classDesc)
 {
 	rapidjson::Node root(mHandle->document, mHandle->document.GetAllocator());

@@ -17,7 +17,7 @@ class File final
 {
 public:
     
-    File(const Filesystem::Path& path, FileType type);
+    File(FileStream&& handle, const Filesystem::Path& path);
 
 	TString Read() const;
 
@@ -32,16 +32,10 @@ public:
     size_t GetSize() const;
 
 	bool Empty() const;
-    
-    static File Create(const Filesystem::Path& path, FileType type);
 
 private:
 
-	void CreateIfNotExists();
-
 	TString mName;
-    
-    FileType mType;
     
     Filesystem::Path mFullPath;
 
