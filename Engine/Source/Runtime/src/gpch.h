@@ -48,6 +48,7 @@
 
 #include "IO/Log.h"
 #include "IO/File.h"
+#include "IO/Filesystem.h"
 #include "IO/FileDialog.h"
 
 #include "Reflection/TypeTraits.h"

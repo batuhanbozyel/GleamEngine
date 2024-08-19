@@ -6,15 +6,25 @@ using namespace Gleam;
 
 File Filesystem::Create(const Filesystem::Path& path, FileType type)
 {
-	auto flags = std::ios::out | std::ios::in | std::ios::app;
-	if (type == FileType::Binary)
-	{
-		flags |= std::ios::binary;
-	}
-	FileStream handle(path, flags);
-	handle.unsetf(std::ios::skipws);
-
-	return File(std::move(handle), path);
+    auto flags = std::ios::out | std::ios::in | std::ios::app;
+    if (type == FileType::Binary)
+    {
+        flags |= std::ios::binary;
+    }
+    FileStream handle(path, flags);
+    handle.unsetf(std::ios::skipws);
+    
+    std::lock_guard<std::mutex> lock(mFileCreateMutex);
+    if (auto it = mFileAccessors.find(path); it != mFileAccessors.end())
+    {
+        return File(std::move(handle), path, it->second);
+    }
+    
+    auto it = mFileAccessors.emplace_hint(mFileAccessors.end(),
+                                          std::piecewise_construct,
+                                          std::forward_as_tuple(path),
+                                          std::forward_as_tuple());
+	return File(std::move(handle), path, it->second);
 }
 
 File Filesystem::Open(const Filesystem::Path& path, FileType type)
@@ -26,8 +36,9 @@ File Filesystem::Open(const Filesystem::Path& path, FileType type)
 	}
 	FileStream handle(path, flags);
 	handle.unsetf(std::ios::skipws);
-
-	return File(std::move(handle), path);
+    
+    std::lock_guard<std::mutex> lock(mFileCreateMutex);
+	return File(std::move(handle), path, mFileAccessors[path]);
 }
 
 Filesystem::Path Filesystem::WorkingDirectory()
