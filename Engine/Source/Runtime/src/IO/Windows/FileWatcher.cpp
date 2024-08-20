@@ -12,7 +12,7 @@ struct FileWatcher::Watcher
 	Filesystem::Path path;
 	FileWatchHandler handler;
 
-	BYTE buffer[1024];
+	BYTE buffer[8192];
 	HANDLE win32Handle;
 	OVERLAPPED overlapped;
 	std::thread watchThread;

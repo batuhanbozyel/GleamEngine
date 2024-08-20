@@ -31,11 +31,13 @@ void AssetManager::Initialize()
         {
             case FileWatchEvent::Added:
             {
+				std::lock_guard<std::mutex> lock(mMutex);
 				TryEmplaceAsset(asset);
                 break;
             }
             case FileWatchEvent::Removed:
             {
+				std::lock_guard<std::mutex> lock(mMutex);
                 auto it = std::find_if(mAssets.begin(), mAssets.end(), [&](auto pair)
                 {
                     return pair.second == asset;
@@ -45,11 +47,11 @@ void AssetManager::Initialize()
                 {
                     mAssets.erase(it);
                 }
-                
                 break;
             }
 			case FileWatchEvent::Modified:
 			{
+				std::lock_guard<std::mutex> lock(mMutex);
 				auto it = std::find_if(mAssets.begin(), mAssets.end(), [&](auto pair)
 				{
 					return pair.second == asset;
@@ -100,8 +102,7 @@ void AssetManager::TryEmplaceAsset(const Asset& asset)
 		auto typeHeader = serializer.ParseHeader();
 
 		AssetReference assetRef = { .type = typeHeader.guid, .guid = guid };
-
-		std::lock_guard<std::mutex> lock(mEmplaceMutex);
-		mAssets.emplace(assetRef, asset);
+		auto it = mAssets.emplace_hint(mAssets.end(), assetRef, asset);
+		GLEAM_ASSERT(it != mAssets.end());
 	}
 }

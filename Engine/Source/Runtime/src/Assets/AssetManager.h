@@ -23,7 +23,7 @@ private:
 
 	void TryEmplaceAsset(const Asset& asset);
 
-	std::mutex mEmplaceMutex;
+	std::mutex mMutex;
     
     HashMap<AssetReference, Asset> mAssets;
 
