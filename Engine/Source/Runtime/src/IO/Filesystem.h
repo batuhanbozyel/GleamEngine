@@ -49,6 +49,8 @@ public:
 
 	static File Open(const Filesystem::Path& path, FileType type);
 
+	static FileAccessor& Accessor(const Filesystem::Path& path);
+
 	static Path WorkingDirectory();
 
 	static Path Relative(const Path& path, const Path& base);

@@ -41,6 +41,11 @@ File Filesystem::Open(const Filesystem::Path& path, FileType type)
 	return File(std::move(handle), path, mFileAccessors[path]);
 }
 
+FileAccessor& Filesystem::Accessor(const Filesystem::Path& path)
+{
+	return mFileAccessors[path];
+}
+
 Filesystem::Path Filesystem::WorkingDirectory()
 {
 	return std::filesystem::current_path();

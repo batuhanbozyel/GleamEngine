@@ -16,8 +16,16 @@ Gleam::AssetReference MeshBaker::Bake(const Gleam::Filesystem::Path& directory) 
 
 	auto filename = guid.ToString() + Gleam::Asset::extension().data();
     auto file = Gleam::Filesystem::Create(directory/filename, Gleam::FileType::Text);
-    auto serializer = Gleam::JSONSerializer(file.GetStream());
-    serializer.Serialize(mDescriptor);
+	auto& accessor = Gleam::Filesystem::Accessor(directory/filename);
+	{
+		auto serializer = Gleam::JSONSerializer(file.GetStream());
+
+		std::lock_guard<std::mutex> lock(accessor.mutex);
+		accessor.status = Gleam::FileStatus::Writing;
+		serializer.Serialize(mDescriptor);
+		accessor.status = Gleam::FileStatus::Available;
+	}
+	accessor.condition.notify_all();
     return asset;
 }
 
