@@ -10,14 +10,6 @@ using namespace Gleam;
 
 void AssetManager::Initialize()
 {
-    auto meta = Globals::ProjectContentDirectory/"Assets.meta";
-    if (Filesystem::Exists(meta))
-    {
-        auto file = Filesystem::Open(meta, FileType::Binary);
-        auto serializer = BinarySerializer(file.GetStream());
-        mAssets = serializer.Deserialize<AssetReference, Asset>(file.GetSize());
-    }
-    
     auto fileWatcher = Globals::Engine->GetSubsystem<FileWatcher>();
     fileWatcher->AddWatch(Globals::ProjectContentDirectory, [this](const Filesystem::Path& path, FileWatchEvent event)
     {
@@ -87,12 +79,12 @@ const Asset& AssetManager::GetAsset(const AssetReference& asset) const
     return invalidAsset;
 }
 
-void AssetManager::TryEmplaceAsset(const Asset& asset)
+bool AssetManager::TryEmplaceAsset(const Asset& asset)
 {
 	Guid guid = asset.path.stem().string();
 	if (guid == Guid::InvalidGuid())
 	{
-		return;
+		return false;
 	}
 
 	auto file = Filesystem::Open(Globals::ProjectContentDirectory/asset.path, FileType::Text);
@@ -102,7 +94,8 @@ void AssetManager::TryEmplaceAsset(const Asset& asset)
 		auto typeHeader = serializer.ParseHeader();
 
 		AssetReference assetRef = { .type = typeHeader.guid, .guid = guid };
-		auto it = mAssets.emplace_hint(mAssets.end(), assetRef, asset);
-		GLEAM_ASSERT(it != mAssets.end());
+		mAssets[assetRef] = asset;
+		return true;
 	}
+	return false;
 }

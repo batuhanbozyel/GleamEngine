@@ -21,7 +21,7 @@ public:
 
 private:
 
-	void TryEmplaceAsset(const Asset& asset);
+	bool TryEmplaceAsset(const Asset& asset);
 
 	std::mutex mMutex;
     
