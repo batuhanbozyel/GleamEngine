@@ -20,7 +20,7 @@ public:
         Error
     };
 
-	Logger(const TStringView name);
+	Logger(const TString& name);
     ~Logger();
     
     static const Logger& GetCoreLogger()
@@ -31,7 +31,7 @@ public:
     
     static const Logger& GetClientLogger()
     {
-        static Logger sLogger("APP");
+        static Logger sLogger(Globals::ProjectName);
         return sLogger;
     }
 

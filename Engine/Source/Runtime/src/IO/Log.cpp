@@ -3,7 +3,7 @@
 
 using namespace Gleam;
 
-Logger::Logger(const TStringView name)
+Logger::Logger(const TString& name)
     : mName(name)
 {
 	mName.append(": ");
