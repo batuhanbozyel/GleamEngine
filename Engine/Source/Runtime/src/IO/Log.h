@@ -23,17 +23,9 @@ public:
 	Logger(const TString& name);
     ~Logger();
     
-    static const Logger& GetCoreLogger()
-    {
-        static Logger sLogger("GLEAM");
-        return sLogger;
-    }
-    
-    static const Logger& GetClientLogger()
-    {
-        static Logger sLogger(Globals::ProjectName);
-        return sLogger;
-    }
+	static const Logger& GetCoreLogger();
+
+	static const Logger& GetClientLogger();
 
 	template<typename ... Args>
 	void Log(Level lvl, const TStringView frmt, Args&& ... args) const
