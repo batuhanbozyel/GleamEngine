@@ -73,7 +73,7 @@ const Asset& AssetManager::GetAsset(const AssetReference& asset) const
         return it->second;
     }
     
-    GLEAM_CORE_ERROR("Asset could not located GUID: {0}, type: {1}", asset.guid.ToString(), asset.type.ToString());
+    GLEAM_CORE_ERROR("Asset could not located GUID: {0}", asset.guid.ToString());
     GLEAM_ASSERT(false);
     static Asset invalidAsset;
     return invalidAsset;
@@ -87,15 +87,7 @@ bool AssetManager::TryEmplaceAsset(const Asset& asset)
 		return false;
 	}
 
-	auto file = Filesystem::Open(Globals::ProjectContentDirectory/asset.path, FileType::Text);
-	if (not file.Empty())
-	{
-		auto serializer = JSONSerializer(file.GetStream());
-		auto typeHeader = serializer.ParseHeader();
-
-		AssetReference assetRef = { .type = typeHeader.guid, .guid = guid };
-		mAssets[assetRef] = asset;
-		return true;
-	}
-	return false;
+	AssetReference assetRef = { .guid = guid };
+	mAssets[assetRef] = asset;
+	return true;
 }

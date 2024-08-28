@@ -12,7 +12,6 @@ namespace Gleam {
 
 struct AssetReference
 {
-	Guid type = Guid::InvalidGuid();
 	Guid guid = Guid::InvalidGuid();
     
     bool operator==(const AssetReference &other) const
@@ -40,6 +39,5 @@ struct std::hash<Gleam::AssetReference>
 };
 
 GLEAM_TYPE(Gleam::AssetReference, Guid("7C59A995-BA05-4A2A-9F48-AD5170F05CF8"))
-    GLEAM_FIELD(type, Serializable())
     GLEAM_FIELD(guid, Serializable())
 GLEAM_END
