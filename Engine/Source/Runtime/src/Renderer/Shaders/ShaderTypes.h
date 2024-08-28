@@ -44,6 +44,24 @@ struct ForwardPassUniforms
 struct TonemapUniforms
 {
 	Texture2DResourceView<float4> sceneRT;
-};  
+};
+
+struct SurfaceInput
+{
+	float4 color;
+	float3 position;
+	float3 worldNormal;
+	float2 uv;
+};
+
+struct SurfaceOutput
+{
+	float4 albedo;
+	float4 emission;
+	float3 normal;
+	float metallic;
+	float roughness;
+	float occlusion;
+};
 
 } // namespace Gleam

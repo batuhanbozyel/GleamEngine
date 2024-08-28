@@ -79,6 +79,11 @@ struct ConstantBufferView
         GLEAM_ASSERT(index != InvalidResourceIndex);
     }
 #endif
+
+	bool IsValid()
+	{
+		return index != InvalidResourceIndex;
+	}
 };
 
 struct BufferResourceView
@@ -103,6 +108,11 @@ struct BufferResourceView
         GLEAM_ASSERT(index != InvalidResourceIndex);
     }
 #endif
+
+	bool IsValid()
+	{
+		return index != InvalidResourceIndex;
+	}
 };
 
 struct TextureResourceView {};
@@ -135,6 +145,11 @@ struct Texture2DResourceView : TextureResourceView
         GLEAM_ASSERT(index != InvalidResourceIndex);
     }
 #endif
+
+	bool IsValid()
+	{
+		return index != InvalidResourceIndex;
+	}
 };
 
 template<typename T>
@@ -165,6 +180,11 @@ struct Texture3DResourceView : TextureResourceView
         GLEAM_ASSERT(index != InvalidResourceIndex);
     }
 #endif
+
+	bool IsValid()
+	{
+		return index != InvalidResourceIndex;
+	}
 };
 
 } // namespace Gleam
