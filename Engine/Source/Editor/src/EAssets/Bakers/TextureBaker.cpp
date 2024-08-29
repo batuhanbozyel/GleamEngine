@@ -19,5 +19,5 @@ Gleam::AssetReference TextureBaker::Bake(const Gleam::Filesystem::Path& director
 
 Gleam::TString TextureBaker::Filename() const
 {
-	return mDescriptor.name + Gleam::Asset::extension().data();
+	return mDescriptor.name;
 }

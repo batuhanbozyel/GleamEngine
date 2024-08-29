@@ -29,6 +29,18 @@ void WorldRenderer::OnCreate(GraphicsDevice* device)
 {
     mForwardPassVertexShader = device->CreateShader("forwardPassVertexShader", ShaderStage::Vertex);
     mForwardPassFragmentShader = device->CreateShader("forwardPassFragmentShader", ShaderStage::Fragment);
+	mShadingPipelines[0] = {
+		.blendState = {},
+		.depthState = {
+			.compareFunction = CompareFunction::Less,
+			.writeEnabled = true},
+		.stencilState = {},
+		.cullingMode = CullMode::Back,
+		.topology = PrimitiveTopology::Triangles,
+		.bindPoint = PipelineBindPoint::Graphics,
+		.alphaToCoverage = false,
+		.wireframe = false
+	};
 }
 
 void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard)
@@ -60,7 +72,7 @@ void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
     {
         for (auto& [material, meshList] : mOpaqueQueue)
         {
-			const auto& pipeline = mPipelines[material->GetPipelineHash()];
+			const auto& pipeline = mShadingPipelines[material->GetPipelineHash()];
 			cmd->BindGraphicsPipeline(pipeline, mForwardPassVertexShader, mForwardPassFragmentShader);
 
 			for (const auto& element : meshList)

@@ -24,7 +24,7 @@ public:
 
 	const Shader& GetShader() const;
 
-	size_t GetPipelineHash() const;
+	uint32_t GetPipelineHash() const;
     
     RenderQueue GetRenderQueue() const;
     
@@ -34,7 +34,7 @@ private:
     
     RenderQueue mRenderQueue;
 
-	size_t mPipelineStateHash;
+	uint32_t mPipelineStateHash = 0;
 
     uint32_t mInstanceCount = 0;
     

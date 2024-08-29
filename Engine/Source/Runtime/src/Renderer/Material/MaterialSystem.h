@@ -19,15 +19,11 @@ public:
 
 	virtual void Shutdown() override;
 
-	RefCounted<Material> GetDefaultMaterial();
-
-	RefCounted<Material> CreateMaterial(const MaterialDescriptor& descriptor);
+	RefCounted<Material> GetDefaultMaterial() const;
 
 private:
 
 	RefCounted<Material> mDefaultMaterial;
-
-    HashMap<MaterialDescriptor, RefCounted<Material>> mMaterials;
 
 };
 

@@ -27,7 +27,7 @@ RefCounted<MaterialInstance> Material::CreateInstance()
     return CreateRef<MaterialInstance>(shared_from_this(), mInstanceCount++);
 }
 
-size_t Material::GetPipelineHash() const
+uint32_t Material::GetPipelineHash() const
 {
 	return mPipelineStateHash;
 }

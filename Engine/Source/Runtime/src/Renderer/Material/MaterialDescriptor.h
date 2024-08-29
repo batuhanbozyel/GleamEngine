@@ -6,6 +6,7 @@
 //
 
 #pragma once
+#include "Core/GUID.h"
 #include "MaterialProperty.h"
 #include "Assets/AssetReference.h"
 #include "Renderer/PipelineStateDescriptor.h"
@@ -20,6 +21,7 @@ enum class RenderQueue
 
 struct MaterialDescriptor
 {
+	TString name;
 	AssetReference surfaceShader;
 	AssetReference vertexShader;
 	BlendState blendState{};
@@ -35,6 +37,7 @@ struct MaterialDescriptor
 GLEAM_ENUM(Gleam::RenderQueue, Guid("D3A2EE76-2603-4D10-AAF4-07810827A117"))
 
 GLEAM_TYPE(Gleam::MaterialDescriptor, Guid("37CF7896-D930-435B-A5FF-DF9CEB5C605D"))
+	GLEAM_FIELD(name, Serializable())
 	GLEAM_FIELD(surfaceShader, Serializable())
 	GLEAM_FIELD(vertexShader, Serializable())
 	GLEAM_FIELD(blendState, Serializable())

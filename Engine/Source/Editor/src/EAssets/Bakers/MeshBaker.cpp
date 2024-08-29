@@ -31,5 +31,5 @@ Gleam::AssetReference MeshBaker::Bake(const Gleam::Filesystem::Path& directory) 
 
 Gleam::TString MeshBaker::Filename() const
 {
-    return mDescriptor.name + Gleam::Asset::extension().data();
+    return mDescriptor.name;
 }

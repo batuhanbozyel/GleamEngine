@@ -12,7 +12,7 @@ EAssetManager::EAssetManager(const Gleam::Filesystem::Path& directory)
 
 void EAssetManager::Import(const Gleam::Filesystem::Path& directory, const AssetPackage& package)
 {
-	for (auto& baker : package.bakers)
+	for (const auto& baker : package.bakers)
 	{
 		auto asset = baker->Bake(directory);
         auto path = directory/baker->Filename();
