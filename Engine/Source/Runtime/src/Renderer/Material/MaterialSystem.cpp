@@ -3,24 +3,29 @@
 
 using namespace Gleam;
 
+void MaterialSystem::Initialize()
+{
+
+}
+
+void MaterialSystem::Shutdown()
+{
+
+}
+
 RefCounted<Material> MaterialSystem::GetDefaultMaterial()
 {
 	if (mDefaultMaterial == nullptr)
 	{
-		PipelineStateDescriptor pipelineDesc;
-		pipelineDesc.cullingMode = CullMode::Back;
-		pipelineDesc.depthState.writeEnabled = true;
-		pipelineDesc.depthState.compareFunction = CompareFunction::Less;
-
 		MaterialDescriptor materialDesc;
-		materialDesc.passes.push_back({ .pipelineState = pipelineDesc,
-										.vertexEntry = "forwardPassVertexShader",
-										.fragmentEntry = "forwardPassFragmentShader" });
+		materialDesc.depthState.writeEnabled = true;
+		materialDesc.depthState.compareFunction = CompareFunction::Less;
+		materialDesc.cullingMode = CullMode::Back;
 		materialDesc.properties = {
 			MaterialProperty{ "BaseColor", MaterialPropertyType::Float4 },
 			MaterialProperty{ "Metallic", MaterialPropertyType::Scalar },
 			MaterialProperty{ "Roughness", MaterialPropertyType::Scalar },
-			MaterialProperty{ "Emissive", MaterialPropertyType::Scalar },
+			MaterialProperty{ "Emission", MaterialPropertyType::Scalar },
 			MaterialProperty{ "BaseColorTexture", MaterialPropertyType::Texture2D },
 			MaterialProperty{ "NormalTexture", MaterialPropertyType::Texture2D },
 			MaterialProperty{ "MetallicRoughnessTexture", MaterialPropertyType::Texture2D },

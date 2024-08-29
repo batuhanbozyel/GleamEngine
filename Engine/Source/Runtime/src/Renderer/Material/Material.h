@@ -14,13 +14,6 @@ namespace Gleam {
 
 class Shader;
 
-struct MaterialPass
-{
-    PipelineStateDescriptor pipelineState;
-    Shader vertexFunction;
-    Shader fragmentFunction;
-};
-
 class Material : public IMaterial
 {
 public:
@@ -28,18 +21,22 @@ public:
     Material(const MaterialDescriptor& descriptor);
     
     RefCounted<MaterialInstance> CreateInstance();
+
+	const Shader& GetShader() const;
+
+	size_t GetPipelineHash() const;
     
     RenderQueue GetRenderQueue() const;
-
-	const TArray<MaterialPass>& GetPasses() const;
     
 private:
     
-    uint32_t mInstanceCount = 0;
+	Shader mShader;
     
     RenderQueue mRenderQueue;
 
-	TArray<MaterialPass> mPasses;
+	size_t mPipelineStateHash;
+
+    uint32_t mInstanceCount = 0;
     
 };
 

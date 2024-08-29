@@ -43,6 +43,7 @@ private:
     
     Shader mForwardPassVertexShader;
     Shader mForwardPassFragmentShader;
+	HashMap<uint32_t, PipelineStateDescriptor> mPipelines;
 
 };
 

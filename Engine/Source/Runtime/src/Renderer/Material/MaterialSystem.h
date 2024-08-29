@@ -15,6 +15,10 @@ class MaterialSystem final : public Subsystem
 {
 public:
 
+	virtual void Initialize() override;
+
+	virtual void Shutdown() override;
+
 	RefCounted<Material> GetDefaultMaterial();
 
 	RefCounted<Material> CreateMaterial(const MaterialDescriptor& descriptor);

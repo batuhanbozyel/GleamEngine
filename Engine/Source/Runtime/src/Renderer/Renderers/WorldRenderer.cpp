@@ -60,47 +60,45 @@ void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
     {
         for (auto& [material, meshList] : mOpaqueQueue)
         {
-            for (const auto& pass : material->GetPasses())
-            {
-                cmd->BindGraphicsPipeline(pass.pipelineState, pass.vertexFunction, pass.fragmentFunction);
-                
-                for (const auto& element : meshList)
-                {
-                    const auto& positionBuffer = element.mesh->GetPositionBuffer();
-                    const auto& interleavedBuffer = element.mesh->GetInterleavedBuffer();
-				#ifdef USE_METAL_RENDERER
-                    [cmd->GetActiveRenderPass() useResource:positionBuffer.GetHandle() usage:MTLResourceUsageRead stages:MTLRenderStageVertex];
-                    [cmd->GetActiveRenderPass() useResource:interleavedBuffer.GetHandle() usage:MTLResourceUsageRead stages:MTLRenderStageVertex];
-				#elif defined(USE_DIRECTX_RENDERER)
-                    DirectXTransitionManager::TransitionLayout(
-                        static_cast<ID3D12GraphicsCommandList7*>(cmd->GetHandle()),
-                        static_cast<ID3D12Resource*>(positionBuffer.GetHandle()),
-                        D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE
-                    );
-                    
-                    DirectXTransitionManager::TransitionLayout(
-                        static_cast<ID3D12GraphicsCommandList7*>(cmd->GetHandle()),
-                        static_cast<ID3D12Resource*>(interleavedBuffer.GetHandle()),
-                        D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE
-                    );
-				#endif
+			const auto& pipeline = mPipelines[material->GetPipelineHash()];
+			cmd->BindGraphicsPipeline(pipeline, mForwardPassVertexShader, mForwardPassFragmentShader);
 
-					MeshPassResources resources;
-					resources.cameraBuffer = passData.cameraBuffer;
-					resources.positionBuffer = positionBuffer.GetResourceView();
-					resources.interleavedBuffer = interleavedBuffer.GetResourceView();
-					cmd->SetConstantBuffer(resources, 0);
+			for (const auto& element : meshList)
+			{
+				const auto& positionBuffer = element.mesh->GetPositionBuffer();
+				const auto& interleavedBuffer = element.mesh->GetInterleavedBuffer();
+			#ifdef USE_METAL_RENDERER
+				[cmd->GetActiveRenderPass() useResource:positionBuffer.GetHandle() usage : MTLResourceUsageRead stages : MTLRenderStageVertex];
+				[cmd->GetActiveRenderPass() useResource:interleavedBuffer.GetHandle() usage : MTLResourceUsageRead stages : MTLRenderStageVertex] ;
+			#elif defined(USE_DIRECTX_RENDERER)
+				DirectXTransitionManager::TransitionLayout(
+					static_cast<ID3D12GraphicsCommandList7*>(cmd->GetHandle()),
+					static_cast<ID3D12Resource*>(positionBuffer.GetHandle()),
+					D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE
+				);
 
-                    for (const auto& descriptor : element.mesh->GetSubmeshDescriptors())
-                    {
-						ForwardPassUniforms uniforms;
-						uniforms.modelMatrix = element.transform;
-						uniforms.baseVertex = descriptor.baseVertex;
-						cmd->SetPushConstant(uniforms);
-                        cmd->DrawIndexed(element.mesh->GetIndexBuffer(), IndexType::UINT32, descriptor.indexCount, 1, descriptor.firstIndex);
-                    }
-                }
-            }
+				DirectXTransitionManager::TransitionLayout(
+					static_cast<ID3D12GraphicsCommandList7*>(cmd->GetHandle()),
+					static_cast<ID3D12Resource*>(interleavedBuffer.GetHandle()),
+					D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE
+				);
+			#endif
+
+				MeshPassResources resources;
+				resources.cameraBuffer = passData.cameraBuffer;
+				resources.positionBuffer = positionBuffer.GetResourceView();
+				resources.interleavedBuffer = interleavedBuffer.GetResourceView();
+				cmd->SetConstantBuffer(resources, 0);
+
+				for (const auto& descriptor : element.mesh->GetSubmeshDescriptors())
+				{
+					ForwardPassUniforms uniforms;
+					uniforms.modelMatrix = element.transform;
+					uniforms.baseVertex = descriptor.baseVertex;
+					cmd->SetPushConstant(uniforms);
+					cmd->DrawIndexed(element.mesh->GetIndexBuffer(), IndexType::UINT32, descriptor.indexCount, 1, descriptor.firstIndex);
+				}
+			}
         }
         mOpaqueQueue.clear();
     });
