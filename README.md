@@ -74,9 +74,7 @@ Here's a table outlining the recommended naming conventions for Gleam Engine:
 | Macros                      | SCREAMING_SNAKE_CASE             | `PLATFORM_WINDOWS`, `ENABLE_ASSERTS`                  |
 
 **Additional Notes:**
-* Follow consistent casing throughout your code for readability and maintainability.
-* Adhere to these conventions as a general guideline, but use your judgement for specific cases where clarity might be improved by deviating slightly.
-* **Globals are not allowed:** Instead, consider using singletons, dependency injection, or configuration files to manage data that needs to be accessed from various parts of your code.
+* **Globals are not allowed:** Instead, consider using singletons, dependency injection, or configuration files to manage data that needs access from various parts of your code.
 
 ## Math Conventions
 Gleam Engine adopts the following conventions for mathematical operations:
