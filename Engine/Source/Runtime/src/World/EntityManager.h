@@ -37,17 +37,18 @@ public:
         }
     }
 
-	Entity CreateEntity()
+	Entity& CreateEntity()
 	{
 		auto handle = mRegistry.create();
         AddComponent<Transform>(handle);
-        return Entity(handle, &mRegistry);
+        auto& entity = AddComponent<Entity>(handle, handle, &mRegistry);
+        return entity;
 	}
 
 	template<typename ... Types>
-	Entity CreateEntity(Types&& ... components)
+	Entity& CreateEntity(Types&& ... components)
 	{
-        Entity entity = CreateEntity();
+        Entity& entity = CreateEntity();
 		(AddComponent<Types>(entity, components), ...);
 		return entity;
 	}

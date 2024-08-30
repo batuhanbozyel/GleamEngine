@@ -69,6 +69,7 @@
 #include "Renderer/RenderSystem.h"
 #include "Renderer/CommandBuffer.h"
 #include "Renderer/GraphicsDevice.h"
+#include "Renderer/RenderSceneProxy.h"
 #include "Renderer/Material/MaterialSystem.h"
 
 #include "Input/InputSystem.h"

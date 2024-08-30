@@ -7,14 +7,14 @@
 
 #include "gpch.h"
 #include "RenderSystem.h"
-
-#include "Core/Engine.h"
-#include "Core/Globals.h"
-
 #include "RenderGraph/RenderGraph.h"
 #include "RenderGraph/RenderGraphBlackboard.h"
 
+#include "Core/Engine.h"
+#include "Core/Globals.h"
 #include "Core/Events/RendererEvent.h"
+
+#include "World/World.h"
 
 using namespace Gleam;
 
@@ -50,6 +50,8 @@ void RenderSystem::Shutdown()
 
 void RenderSystem::Render(const World* world)
 {
+    mSceneProxy.Update(world);
+    
 #ifdef USE_METAL_RENDERER
     @autoreleasepool
 #endif
@@ -66,11 +68,13 @@ void RenderSystem::Render(const World* world)
             passData.cameraBuffer = builder.CreateBuffer(bufferDesc);
             passData.cameraBuffer = builder.WriteBuffer(passData.cameraBuffer);
             passData.backbuffer = graph.ImportBackbuffer(mRenderTarget);
+            passData.sceneProxy = &mSceneProxy;
             passData.world = world;
         },
         [this](const CommandBuffer* cmd, const SceneRenderingData& passData)
         {
-            cmd->SetBufferData(passData.cameraBuffer, mCameraData);
+            auto cameraData = GetCameraRenderData(passData.sceneProxy->GetActiveCamera());
+            cmd->SetBufferData(passData.cameraBuffer, cameraData);
         });
         blackboard.Add(sceneData);
 
@@ -112,15 +116,22 @@ void RenderSystem::Configure(const RendererConfig& config)
 	}
 }
 
-void RenderSystem::UpdateCamera(const Camera& camera)
+CameraUniforms RenderSystem::GetCameraRenderData(const Camera* camera) const
 {
-    mCameraData.viewMatrix = camera.GetViewMatrix();
-    mCameraData.projectionMatrix = camera.GetProjectionMatrix();
-    mCameraData.viewProjectionMatrix = mCameraData.projectionMatrix * mCameraData.viewMatrix;
-    mCameraData.invViewMatrix = Math::Inverse(mCameraData.viewMatrix);
-    mCameraData.invProjectionMatrix = Math::Inverse(mCameraData.projectionMatrix);
-    mCameraData.invViewProjectionMatrix = Math::Inverse(mCameraData.viewProjectionMatrix);
-    mCameraData.worldPosition = camera.GetWorldPosition();
+    if (camera == nullptr)
+    {
+        return CameraUniforms{};
+    }
+    
+    CameraUniforms cameraData;
+    cameraData.viewMatrix = camera->GetViewMatrix();
+    cameraData.projectionMatrix = camera->GetProjectionMatrix();
+    cameraData.viewProjectionMatrix = cameraData.projectionMatrix * cameraData.viewMatrix;
+    cameraData.invViewMatrix = Math::Inverse(cameraData.viewMatrix);
+    cameraData.invProjectionMatrix = Math::Inverse(cameraData.projectionMatrix);
+    cameraData.invViewProjectionMatrix = Math::Inverse(cameraData.viewProjectionMatrix);
+    cameraData.worldPosition = camera->GetWorldPosition();
+    return cameraData;
 }
 
 GraphicsDevice* RenderSystem::GetDevice()

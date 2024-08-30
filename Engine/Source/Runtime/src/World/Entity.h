@@ -74,12 +74,19 @@ public:
         return mHandle != InvalidEntity && mRegistry != nullptr;
     }
     
+    bool IsActive() const
+    {
+        return mActive;
+    }
+    
 	operator EntityHandle() const
 	{
 		return mHandle;
 	}
 
 private:
+    
+    bool mActive = true;
     
     EntityHandle mHandle = InvalidEntity;
     

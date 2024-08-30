@@ -9,6 +9,7 @@
 #include "Core/Subsystem.h"
 #include "CommandBuffer.h"
 #include "GraphicsDevice.h"
+#include "RenderSceneProxy.h"
 
 namespace Gleam {
 
@@ -125,11 +126,13 @@ public:
     
 private:
     
+    CameraUniforms GetCameraRenderData(const Camera* camera) const;
+    
     Container mRenderers;
     
     Texture mRenderTarget;
     
-    CameraUniforms mCameraData;
+    RenderSceneProxy mSceneProxy;
     
     Scope<GraphicsDevice> mDevice;
     

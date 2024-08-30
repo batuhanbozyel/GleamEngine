@@ -14,6 +14,7 @@
 #include "Renderer/Mesh.h"
 #include "Renderer/CommandBuffer.h"
 #include "Renderer/GraphicsDevice.h"
+#include "Renderer/RenderSceneProxy.h"
 #include "Renderer/Material/Material.h"
 #include "Renderer/Material/MaterialInstance.h"
 
@@ -68,66 +69,50 @@ void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
         passData.cameraBuffer = builder.ReadBuffer(sceneData.cameraBuffer);
         blackboard.Add(passData);
     },
-    [this](const CommandBuffer* cmd, const WorldRenderingData& passData)
+    [this, blackboard](const CommandBuffer* cmd, const WorldRenderingData& passData)
     {
-        for (auto& [material, meshList] : mOpaqueQueue)
+        const auto& sceneData = blackboard.Get<SceneRenderingData>();
+        sceneData.sceneProxy->ForEach([this, cmd, passData](const Material* material, const TArray<MeshBatch>& batches)
         {
-			const auto& pipeline = mShadingPipelines[material->GetPipelineHash()];
-			cmd->BindGraphicsPipeline(pipeline, mForwardPassVertexShader, mForwardPassFragmentShader);
+            const auto& pipeline = mShadingPipelines[material->GetPipelineHash()];
+            cmd->BindGraphicsPipeline(pipeline, mForwardPassVertexShader, mForwardPassFragmentShader);
 
-			for (const auto& element : meshList)
-			{
-				const auto& positionBuffer = element.mesh->GetPositionBuffer();
-				const auto& interleavedBuffer = element.mesh->GetInterleavedBuffer();
-			#ifdef USE_METAL_RENDERER
-				[cmd->GetActiveRenderPass() useResource:positionBuffer.GetHandle() usage : MTLResourceUsageRead stages : MTLRenderStageVertex];
-				[cmd->GetActiveRenderPass() useResource:interleavedBuffer.GetHandle() usage : MTLResourceUsageRead stages : MTLRenderStageVertex] ;
-			#elif defined(USE_DIRECTX_RENDERER)
-				DirectXTransitionManager::TransitionLayout(
-					static_cast<ID3D12GraphicsCommandList7*>(cmd->GetHandle()),
-					static_cast<ID3D12Resource*>(positionBuffer.GetHandle()),
-					D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE
-				);
+            for (const auto& batch : batches)
+            {
+                const auto& positionBuffer = batch.mesh->GetPositionBuffer();
+                const auto& interleavedBuffer = batch.mesh->GetInterleavedBuffer();
+            #ifdef USE_METAL_RENDERER
+                [cmd->GetActiveRenderPass() useResource:positionBuffer.GetHandle() usage : MTLResourceUsageRead stages : MTLRenderStageVertex];
+                [cmd->GetActiveRenderPass() useResource:interleavedBuffer.GetHandle() usage : MTLResourceUsageRead stages : MTLRenderStageVertex] ;
+            #elif defined(USE_DIRECTX_RENDERER)
+                DirectXTransitionManager::TransitionLayout(
+                    static_cast<ID3D12GraphicsCommandList7*>(cmd->GetHandle()),
+                    static_cast<ID3D12Resource*>(positionBuffer.GetHandle()),
+                    D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE
+                );
 
-				DirectXTransitionManager::TransitionLayout(
-					static_cast<ID3D12GraphicsCommandList7*>(cmd->GetHandle()),
-					static_cast<ID3D12Resource*>(interleavedBuffer.GetHandle()),
-					D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE
-				);
-			#endif
+                DirectXTransitionManager::TransitionLayout(
+                    static_cast<ID3D12GraphicsCommandList7*>(cmd->GetHandle()),
+                    static_cast<ID3D12Resource*>(interleavedBuffer.GetHandle()),
+                    D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE
+                );
+            #endif
 
-				MeshPassResources resources;
-				resources.cameraBuffer = passData.cameraBuffer;
-				resources.positionBuffer = positionBuffer.GetResourceView();
-				resources.interleavedBuffer = interleavedBuffer.GetResourceView();
-				cmd->SetConstantBuffer(resources, 0);
+                MeshPassResources resources;
+                resources.cameraBuffer = passData.cameraBuffer;
+                resources.positionBuffer = positionBuffer.GetResourceView();
+                resources.interleavedBuffer = interleavedBuffer.GetResourceView();
+                cmd->SetConstantBuffer(resources, 0);
 
-				for (const auto& descriptor : element.mesh->GetSubmeshDescriptors())
-				{
-					ForwardPassUniforms uniforms;
-					uniforms.modelMatrix = element.transform;
-					uniforms.baseVertex = descriptor.baseVertex;
-					cmd->SetPushConstant(uniforms);
-					cmd->DrawIndexed(element.mesh->GetIndexBuffer(), IndexType::UINT32, descriptor.indexCount, 1, descriptor.firstIndex);
-				}
-			}
-        }
-        mOpaqueQueue.clear();
+                for (const auto& descriptor : batch.mesh->GetSubmeshDescriptors())
+                {
+                    ForwardPassUniforms uniforms;
+                    uniforms.modelMatrix = batch.transform;
+                    uniforms.baseVertex = descriptor.baseVertex;
+                    cmd->SetPushConstant(uniforms);
+                    cmd->DrawIndexed(batch.mesh->GetIndexBuffer(), IndexType::UINT32, descriptor.indexCount, 1, descriptor.firstIndex);
+                }
+            }
+        });
     });
-}
-
-void WorldRenderer::DrawMesh(const MeshRenderer& meshRenderer, const Transform& transform)
-{
-    GLEAM_ASSERT(meshRenderer.GetMesh()->GetSubmeshCount() > 0);
-    
-    const auto& material = meshRenderer.GetMaterial(0);
-    const auto& baseMaterial = std::static_pointer_cast<Material>(material->GetBaseMaterial());
-    if (baseMaterial->GetRenderQueue() == RenderQueue::Opaque)
-    {
-        mOpaqueQueue[baseMaterial].push_back({ meshRenderer.GetMesh().get(), material.get(), transform.GetWorldTransform() });
-    }
-    else
-    {
-        mTransparentQueue[baseMaterial].push_back({ meshRenderer.GetMesh().get(), material.get(), transform.GetWorldTransform() });
-    }
 }

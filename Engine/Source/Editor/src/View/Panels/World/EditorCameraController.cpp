@@ -22,9 +22,6 @@ void EditorCameraController::OnUpdate(Gleam::EntityManager& entityManager)
     
 	ProcessCameraRotation(camera);
 	ProcessCameraMovement(camera);
-    
-    auto renderSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::RenderSystem>();
-    renderSystem->UpdateCamera(camera);
 }
 
 void EditorCameraController::ProcessCameraRotation(Gleam::Camera& camera)
@@ -78,7 +75,4 @@ void EditorCameraController::Resize(Gleam::EntityManager& entityManager, const G
 
 	auto& camera = entityManager.GetComponent<Gleam::Camera>(mCameraEntity);
 	camera.SetViewport(mViewportSize);
-
-	auto renderSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::RenderSystem>();
-	renderSystem->UpdateCamera(camera);
 }
