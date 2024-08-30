@@ -13,12 +13,6 @@
 
 namespace Gleam {
 
-enum class RenderQueue
-{
-    Opaque,
-    Transparent
-};
-
 struct MaterialDescriptor
 {
 	TString name;
@@ -28,13 +22,10 @@ struct MaterialDescriptor
 	DepthState depthState{};
 	StencilState stencilState{};
 	CullMode cullingMode = CullMode::Off;
-    RenderQueue renderQueue = RenderQueue::Opaque;
 	TArray<MaterialProperty> properties;
 };
 
 } // namespace Gleam
-
-GLEAM_ENUM(Gleam::RenderQueue, Guid("D3A2EE76-2603-4D10-AAF4-07810827A117"))
 
 GLEAM_TYPE(Gleam::MaterialDescriptor, Guid("37CF7896-D930-435B-A5FF-DF9CEB5C605D"))
 	GLEAM_FIELD(name, Serializable())
@@ -44,6 +35,5 @@ GLEAM_TYPE(Gleam::MaterialDescriptor, Guid("37CF7896-D930-435B-A5FF-DF9CEB5C605D
 	GLEAM_FIELD(depthState, Serializable())
 	GLEAM_FIELD(stencilState, Serializable())
 	GLEAM_FIELD(cullingMode, Serializable())
-	GLEAM_FIELD(renderQueue, Serializable())
 	GLEAM_FIELD(properties, Serializable())
 GLEAM_END

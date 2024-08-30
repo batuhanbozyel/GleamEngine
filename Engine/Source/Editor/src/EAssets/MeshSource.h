@@ -31,11 +31,11 @@ struct RawMaterial
     Gleam::TArray<RawTexture, RawTexture::COUNT> textures;
     Gleam::Color albedoColor = Gleam::Color::white;
     Gleam::Color emissiveColor = Gleam::Color::clear;
-    Gleam::RenderQueue alphaBlend = Gleam::RenderQueue::Opaque;
     float alphaCutoff = 0.5f;
     float metallicFactor = 1.0f;
     float roughnessFactor = 1.0f;
     bool doubleSided = false;
+    bool alphaBlend = false;
     bool unlit = false;
     
     bool operator==(const RawMaterial& other) const
@@ -44,12 +44,12 @@ struct RawMaterial
             && textures == other.textures
             && albedoColor == other.albedoColor
             && emissiveColor == other.emissiveColor
-            && alphaBlend == other.alphaBlend
             && alphaCutoff == other.alphaCutoff
             && metallicFactor == other.metallicFactor
             && roughnessFactor == other.roughnessFactor
             && doubleSided == other.doubleSided
-            && unlit == other.unlit; 
+            && alphaBlend == other.alphaBlend
+            && unlit == other.unlit;
     }
     
     bool operator!=(const RawMaterial& other) const

@@ -26,13 +26,9 @@ public:
 
 	uint32_t GetPipelineHash() const;
     
-    RenderQueue GetRenderQueue() const;
-    
 private:
     
 	Shader mShader;
-    
-    RenderQueue mRenderQueue;
 
 	uint32_t mPipelineStateHash = 0;
 

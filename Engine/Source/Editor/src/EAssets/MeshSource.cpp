@@ -232,13 +232,13 @@ RawMaterial ProcessMaterial(const cgltf_material& mat, const MeshSource::ImportS
     {
         case cgltf_alpha_mode_opaque:
         {
-            material.alphaBlend = Gleam::RenderQueue::Opaque;
+            material.alphaBlend = false;
             break;
         }
         case cgltf_alpha_mode_blend:
 		case cgltf_alpha_mode_mask:
         {
-            material.alphaBlend = Gleam::RenderQueue::Transparent;
+            material.alphaBlend = true;
             break;
         }
         default:

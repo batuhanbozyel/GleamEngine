@@ -20,7 +20,6 @@ void MaterialSystem::Initialize()
 		MaterialProperty{ "EmissiveTexture", MaterialPropertyType::Texture2D },
 		MaterialProperty{ "OcclusionTexture", MaterialPropertyType::Texture2D }
 	};
-	materialDesc.renderQueue = RenderQueue::Opaque;
 	mDefaultMaterial = CreateRef<Material>(materialDesc);
 }
 
