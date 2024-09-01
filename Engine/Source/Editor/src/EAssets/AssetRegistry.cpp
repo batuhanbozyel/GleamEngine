@@ -1,11 +1,11 @@
 #include "Gleam.h"
-#include "AssetManager.h"
+#include "AssetRegistry.h"
 #include "AssetBaker.h"
 #include "MaterialSource.h"
 
 using namespace GEditor;
 
-EAssetManager::EAssetManager(const Gleam::Filesystem::Path& directory)
+AssetRegistry::AssetRegistry(const Gleam::Filesystem::Path& directory)
 	: mAssetDirectory(directory)
 {
     Gleam::Filesystem::ForEach(directory, [this](const auto& entry)
@@ -19,7 +19,7 @@ EAssetManager::EAssetManager(const Gleam::Filesystem::Path& directory)
     }, true);
 }
 
-void EAssetManager::Import(const Gleam::Filesystem::Path& directory, const AssetPackage& package)
+void AssetRegistry::Import(const Gleam::Filesystem::Path& directory, const AssetPackage& package)
 {
 	for (const auto& baker : package.bakers)
 	{
@@ -30,7 +30,7 @@ void EAssetManager::Import(const Gleam::Filesystem::Path& directory, const Asset
 	}
 }
 
-const Gleam::AssetReference& EAssetManager::GetAsset(const Gleam::Filesystem::Path& path) const
+const Gleam::AssetReference& AssetRegistry::GetAsset(const Gleam::Filesystem::Path& path) const
 {
 	auto it = mAssetCache.find(path);
 	if (it != mAssetCache.end())

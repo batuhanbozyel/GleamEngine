@@ -18,7 +18,7 @@ ContentBrowser::ContentBrowser()
 	: mAssetDirectory(Gleam::Globals::ProjectContentDirectory)
 {
     mCurrentDirectory = mAssetDirectory;
-    mAssetManager = EAssetManager(mAssetDirectory);
+    mAssetRegistry = AssetRegistry(mAssetDirectory);
 }
 
 void ContentBrowser::Render(Gleam::ImGuiRenderer* imgui)
@@ -49,7 +49,7 @@ bool ContentBrowser::ImportAsset(const Gleam::Filesystem::Path& path)
 		auto settings = MeshSource::ImportSettings();
 		if (meshSource.Import(path, settings))
 		{
-			mAssetManager.Import(mCurrentDirectory, meshSource);
+			mAssetRegistry.Import(mCurrentDirectory, meshSource);
 			return true;
 		}
 	}
@@ -79,7 +79,7 @@ void ContentBrowser::DrawDirectoryTreeView(const Gleam::Filesystem::Path& node)
         {
 			if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None))
 			{
-				const auto& asset = mAssetManager.GetAsset(node);
+				const auto& asset = mAssetRegistry.GetAsset(node);
 				ImGui::SetDragDropPayload("ASSET", &asset, sizeof(Gleam::AssetReference));
 				ImGui::Text("%s", filename.c_str());
 				ImGui::EndDragDropSource();

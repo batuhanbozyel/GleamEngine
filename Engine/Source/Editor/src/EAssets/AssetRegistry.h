@@ -4,12 +4,12 @@
 
 namespace GEditor {
 
-class EAssetManager final
+class AssetRegistry final
 {
 public:
 
-    EAssetManager() = default;
-	EAssetManager(const Gleam::Filesystem::Path& directory);
+    AssetRegistry() = default;
+	AssetRegistry(const Gleam::Filesystem::Path& directory);
 
 	void Import(const Gleam::Filesystem::Path& directory, const AssetPackage& package);
 
