@@ -43,11 +43,15 @@ class Filesystem
 {
 public:
 	using Path = std::filesystem::path;
-	using DirectoryIterator = std::filesystem::directory_iterator;
+    using DirectoryFn = std::function<void(const Path& node)>;
+    
+    static void ForEach(const Path& path, const DirectoryFn& fn, bool recursive);
     
 	static File Create(const Filesystem::Path& path, FileType type);
 
 	static File Open(const Filesystem::Path& path, FileType type);
+    
+    static bool Remove(const Filesystem::Path& path);
 
 	static FileAccessor& Accessor(const Filesystem::Path& path);
 

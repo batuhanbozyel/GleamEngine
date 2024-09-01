@@ -4,9 +4,24 @@
 
 using namespace Gleam;
 
+void Filesystem::ForEach(const Path& path, const DirectoryFn& fn, bool recursive)
+{
+    for (auto& node : std::filesystem::directory_iterator(path))
+    {
+        if (recursive && IsDirectory(node))
+        {
+            ForEach(node, fn, recursive);
+        }
+        else
+        {
+            fn(node);
+        }
+    }
+}
+
 File Filesystem::Create(const Filesystem::Path& path, FileType type)
 {
-    auto flags = std::ios::out | std::ios::in | std::ios::app;
+    auto flags = std::ios::out | std::ios::in | std::ios::trunc;
     if (type == FileType::Binary)
     {
         flags |= std::ios::binary;
@@ -39,6 +54,11 @@ File Filesystem::Open(const Filesystem::Path& path, FileType type)
     
     std::lock_guard<std::mutex> lock(mFileCreateMutex);
 	return File(std::move(handle), path, mFileAccessors[path]);
+}
+
+bool Filesystem::Remove(const Filesystem::Path& path)
+{
+    std::filesystem::remove(path);
 }
 
 FileAccessor& Filesystem::Accessor(const Filesystem::Path& path)

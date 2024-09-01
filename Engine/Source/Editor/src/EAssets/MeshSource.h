@@ -4,31 +4,22 @@
 
 namespace GEditor {
 
-struct RawTexture
+struct PBRTexture
 {
-    Gleam::TString name = "";
-    Gleam::Filesystem::Path file = "";
-    
     enum Type
     {
         Albedo,
         MetallicRoughness,
         Normal,
         Emissive,
-        Occlusion,
         COUNT
     };
-    
-    bool operator==(const RawTexture& other) const
-    {
-        return name == other.name;
-    }
 };
 
-struct RawMaterial
+struct RawPBRMaterial
 {
     Gleam::TString name = "";
-    Gleam::TArray<RawTexture, RawTexture::COUNT> textures;
+    Gleam::TArray<Gleam::Filesystem::Path, PBRTexture::COUNT> textures;
     Gleam::Color albedoColor = Gleam::Color::white;
     Gleam::Color emissiveColor = Gleam::Color::clear;
     float alphaCutoff = 0.5f;
@@ -38,7 +29,7 @@ struct RawMaterial
     bool alphaBlend = false;
     bool unlit = false;
     
-    bool operator==(const RawMaterial& other) const
+    bool operator==(const RawPBRMaterial& other) const
     {
         return name == other.name
             && textures == other.textures
@@ -52,7 +43,7 @@ struct RawMaterial
             && unlit == other.unlit;
     }
     
-    bool operator!=(const RawMaterial& other) const
+    bool operator!=(const RawPBRMaterial& other) const
     {
         return !(*this == other);
     }
@@ -81,6 +72,7 @@ struct MeshSource : AssetPackage
 	*	- triangulated primitive type and indices
 	*/
 	bool Import(const Gleam::Filesystem::Path& path, const ImportSettings& settings);
+    
 };
 
 } // namespace GEditor

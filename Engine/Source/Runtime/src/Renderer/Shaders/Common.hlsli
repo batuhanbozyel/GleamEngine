@@ -16,6 +16,14 @@ struct FScreenVertexOutput
     float2 texCoord : TEXCOORD0;
 };
 
+struct MeshVertexOut
+{
+    float4 position : SV_POSITION;
+    float3 worldNormal : NORMAL;
+	float3 color : COLOR;
+	float2 uv : TEXCOORD0;
+};
+
 SamplerState Sampler_Point_Repeat : register(s0);
 SamplerState Sampler_Point_Clamp : register(s1);
 SamplerState Sampler_Point_Mirror : register(s2);

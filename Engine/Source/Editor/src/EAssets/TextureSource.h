@@ -11,7 +11,7 @@ struct TextureSource : AssetPackage
 		
 	};
 
-	static TextureSource Import(const Gleam::Filesystem::Path& path, const ImportSettings& settings);
+	bool Import(const Gleam::Filesystem::Path& path, const ImportSettings& settings);
 };
 
 } // namespace GEditor

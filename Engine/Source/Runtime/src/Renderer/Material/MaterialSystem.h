@@ -19,11 +19,7 @@ public:
 
 	virtual void Shutdown() override;
 
-	RefCounted<Material> GetDefaultMaterial() const;
-
 private:
-
-	RefCounted<Material> mDefaultMaterial;
 
 };
 

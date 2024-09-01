@@ -6,8 +6,7 @@
 //
 
 #pragma once
-#include "Renderer/Buffer.h"
-#include "Renderer/Texture.h"
+#include "Assets/AssetReference.h"
 
 #include <variant>
 
@@ -22,17 +21,12 @@ enum class MaterialPropertyType
     Texture2D
 };
 
-using MaterialPropertyValue = std::variant<float, Float2, Float3, Float4, Texture>;
+using MaterialPropertyValue = std::variant<float, Float2, Float3, Float4, AssetReference>;
 
 struct MaterialProperty
 {
     TString name;
     MaterialPropertyType type;
-
-    bool operator==(const MaterialProperty& other) const
-    {
-        return name == other.name && type == other.type;
-    }
 };
 
 } // namespace Gleam

@@ -4,6 +4,18 @@
 
 namespace GEditor {
 
+struct RawMaterial
+{
+    Gleam::TString name;
+    Gleam::TString surfaceShader;
+    Gleam::TString vertexShader;
+    Gleam::BlendState blendState{};
+    Gleam::DepthState depthState{};
+    Gleam::StencilState stencilState{};
+    Gleam::CullMode cullingMode = Gleam::CullMode::Off;
+    Gleam::TArray<Gleam::MaterialProperty> properties;
+};
+
 struct MaterialSource : AssetPackage
 {
 	struct ImportSettings
@@ -11,7 +23,7 @@ struct MaterialSource : AssetPackage
 		
 	};
 
-	static MaterialSource Import(const Gleam::Filesystem::Path& path, const ImportSettings& settings);
+	bool Import(const Gleam::Filesystem::Path& path, const ImportSettings& settings);
 };
 
 } // namespace GEditor

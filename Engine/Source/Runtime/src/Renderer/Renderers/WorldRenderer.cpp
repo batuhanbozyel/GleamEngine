@@ -28,8 +28,7 @@ using namespace Gleam;
 
 void WorldRenderer::OnCreate(GraphicsDevice* device)
 {
-    mForwardPassVertexShader = device->CreateShader("forwardPassVertexShader", ShaderStage::Vertex);
-    mForwardPassFragmentShader = device->CreateShader("forwardPassFragmentShader", ShaderStage::Fragment);
+    // TODO: create material pipelines
 	mShadingPipelines[0] = {
 		.blendState = {},
 		.depthState = {
@@ -42,6 +41,10 @@ void WorldRenderer::OnCreate(GraphicsDevice* device)
 		.alphaToCoverage = false,
 		.wireframe = false
 	};
+    
+    // TODO: create material shaders
+    mMeshVertexShader = device->CreateShader("meshVertexShader", ShaderStage::Vertex);
+    mMeshShadingFragmentShaders["SurfaceLit"] = device->CreateShader("SurfaceLit", ShaderStage::Fragment);
 }
 
 void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard)
@@ -74,8 +77,10 @@ void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
         const auto& sceneData = blackboard.Get<SceneRenderingData>();
         sceneData.sceneProxy->ForEach([this, cmd, passData](const Material* material, const TArray<MeshBatch>& batches)
         {
+            const auto& materialBuffer = material->GetBuffer();
+            const auto& shader = mMeshShadingFragmentShaders[material->GetName()];
             const auto& pipeline = mShadingPipelines[material->GetPipelineHash()];
-            cmd->BindGraphicsPipeline(pipeline, mForwardPassVertexShader, mForwardPassFragmentShader);
+            cmd->BindGraphicsPipeline(pipeline, mMeshVertexShader, shader);
 
             for (const auto& batch : batches)
             {
@@ -102,6 +107,8 @@ void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
                 resources.cameraBuffer = passData.cameraBuffer;
                 resources.positionBuffer = positionBuffer.GetResourceView();
                 resources.interleavedBuffer = interleavedBuffer.GetResourceView();
+                resources.materialBuffer = materialBuffer.GetResourceView();
+                resources.materialInstanceId = batch.material->GetUniqueId();
                 cmd->SetConstantBuffer(resources, 0);
 
                 for (const auto& descriptor : batch.mesh->GetSubmeshDescriptors())

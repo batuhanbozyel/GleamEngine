@@ -16,6 +16,7 @@ using namespace Gleam;
 
 Material::Material(const MaterialDescriptor& descriptor)
     : IMaterial(descriptor.properties)
+    , mName(descriptor.name)
 {
     static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
     // TODO: Allocate GPU buffer
@@ -27,12 +28,17 @@ RefCounted<MaterialInstance> Material::CreateInstance()
     return CreateRef<MaterialInstance>(shared_from_this(), mInstanceCount++);
 }
 
+const Buffer& Material::GetBuffer() const
+{
+    return mBuffer;
+}
+
+const TString& Material::GetName() const
+{
+    return mName;
+}
+
 uint32_t Material::GetPipelineHash() const
 {
 	return mPipelineStateHash;
-}
-
-const Shader& Material::GetShader() const
-{
-	return mShader;
 }

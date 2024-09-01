@@ -1,13 +1,22 @@
 #include "Gleam.h"
 #include "AssetManager.h"
 #include "AssetBaker.h"
+#include "MaterialSource.h"
 
 using namespace GEditor;
 
 EAssetManager::EAssetManager(const Gleam::Filesystem::Path& directory)
 	: mAssetDirectory(directory)
 {
-	
+    Gleam::Filesystem::ForEach(directory, [this](const auto& entry)
+    {
+        if (entry.extension() == ".mat")
+        {
+            auto materialSource = MaterialSource();
+            auto settings = MaterialSource::ImportSettings();
+            materialSource.Import(entry, settings);
+        }
+    }, true);
 }
 
 void EAssetManager::Import(const Gleam::Filesystem::Path& directory, const AssetPackage& package)

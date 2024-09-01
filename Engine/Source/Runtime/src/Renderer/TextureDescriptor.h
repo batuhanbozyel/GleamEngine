@@ -40,13 +40,14 @@ struct TextureDescriptor
     TextureDimension dimension = TextureDimension::Texture2D;
     uint32_t sampleCount = 1;
     bool useMipMap = false;
+    TArray<uint8_t> pixels;
     
     bool operator==(const TextureDescriptor& other) const
     {
         return  size == other.size &&
                 format == other.format &&
                 usage == other.usage &&
-				dimension == other.dimension &&
+                dimension == other.dimension &&
                 sampleCount == other.sampleCount &&
                 useMipMap == other.useMipMap;
     }
@@ -102,4 +103,5 @@ GLEAM_TYPE(Gleam::TextureDescriptor, Guid("5B36D630-8A7E-47BE-A9F0-1702AB9F9C8C"
 	GLEAM_FIELD(dimension, Serializable())
 	GLEAM_FIELD(sampleCount, Serializable())
 	GLEAM_FIELD(useMipMap, Serializable())
+    GLEAM_FIELD(pixels, Serializable())
 GLEAM_END

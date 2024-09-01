@@ -1,4 +1,4 @@
-float4 GetBaseColor(SurfaceInput IN)
+float4 GetBaseColor(MeshVertexOut IN)
 {
     float4 baseColor = Material.BaseColor * float4(IN.color, 1.0);
     if (Material.BaseColorTexture.IsValid())
@@ -8,7 +8,7 @@ float4 GetBaseColor(SurfaceInput IN)
     return baseColor;
 }
 
-float3 GetWorldNormal(SurfaceInput IN)
+float3 GetWorldNormal(MeshVertexOut IN)
 {
     if (Material.NormalTexture.IsValid())
     {
@@ -17,7 +17,7 @@ float3 GetWorldNormal(SurfaceInput IN)
     return float3(0.0, 0.0, 1.0);
 }
 
-float4 GetEmission(SurfaceInput IN)
+float4 GetEmission(MeshVertexOut IN)
 {
     float4 emission = Material.Emission;
     if (Material.EmissiveTexture.IsValid())
@@ -27,7 +27,7 @@ float4 GetEmission(SurfaceInput IN)
     return emission;
 }
 
-float2 GetMetallicRoughness(SurfaceInput IN)
+float2 GetMetallicRoughness(MeshVertexOut IN)
 {
     float2 metallicRoughness = float2(Material.Metallic, Material.Roughness);
     if (Material.MetallicRoughnessTexture.IsValid())
@@ -37,11 +37,11 @@ float2 GetMetallicRoughness(SurfaceInput IN)
     return metallicRoughness;
 }
 
-SurfaceOutput surf(SurfaceInput IN)
+Gleam::SurfaceOutput surf(MeshVertexOut IN)
 {
-    float3 metallicRoughness = GetMetallicRoughness(IN);
+    float2 metallicRoughness = GetMetallicRoughness(IN);
 
-    SurfaceOutput OUT;
+    Gleam::SurfaceOutput OUT;
     OUT.albedo = GetBaseColor(IN);
     OUT.emission = GetEmission(IN);
     OUT.normal = GetWorldNormal(IN);

@@ -12,7 +12,7 @@ MeshRenderer::MeshRenderer(const RefCounted<Mesh>& mesh)
 	: mMesh(mesh)
 {
     static auto materialSystem = Globals::Engine->GetSubsystem<MaterialSystem>();
-    const auto& baseMaterial = materialSystem->GetDefaultMaterial();
+    const auto& baseMaterial = CreateRef<Material>(MaterialDescriptor{});
 
     mMaterials.resize(mesh->GetSubmeshCount());
     for (uint32_t i = 0; i < mMaterials.size(); i++)

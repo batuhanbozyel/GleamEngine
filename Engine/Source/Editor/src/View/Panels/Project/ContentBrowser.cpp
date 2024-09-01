@@ -65,10 +65,10 @@ void ContentBrowser::DrawDirectoryTreeView(const Gleam::Filesystem::Path& node)
         ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth;
         if (ImGui::TreeNodeEx(filename.c_str(), flags))
         {
-            for (auto& entry : Gleam::Filesystem::DirectoryIterator(node))
+            Gleam::Filesystem::ForEach(node, [this](const auto& entry)
             {
                 DrawDirectoryTreeView(entry);
-            }
+            }, false);
             ImGui::TreePop();
         }
     }

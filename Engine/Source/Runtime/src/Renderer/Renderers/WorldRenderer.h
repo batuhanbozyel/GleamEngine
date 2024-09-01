@@ -27,8 +27,8 @@ public:
 
 private:
     
-    Shader mForwardPassVertexShader;
-    Shader mForwardPassFragmentShader;
+    Shader mMeshVertexShader;
+    HashMap<TString, Shader> mMeshShadingFragmentShaders;
 	HashMap<uint32_t, PipelineStateDescriptor> mShadingPipelines;
 
 };

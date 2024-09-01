@@ -33,6 +33,8 @@ struct MeshPassResources
 	ConstantBufferView cameraBuffer;
 	BufferResourceView positionBuffer;
 	BufferResourceView interleavedBuffer;
+    BufferResourceView materialBuffer;
+    uint32_t materialInstanceId;
 };
 
 struct ForwardPassUniforms
@@ -48,7 +50,7 @@ struct TonemapUniforms
 
 struct SurfaceInput
 {
-	float3 position;
+	float4 position;
 	float3 worldNormal;
 	float3 color;
 	float2 uv;

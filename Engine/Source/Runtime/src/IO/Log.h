@@ -77,8 +77,8 @@ private:
 #define GLEAM_WARN(...) ::Gleam::Logger::GetClientLogger().Log(::Gleam::Logger::Level::Warn, __VA_ARGS__)
 #define GLEAM_ERROR(...) ::Gleam::Logger::GetClientLogger().Log(::Gleam::Logger::Level::Error, __VA_ARGS__)
 
-static void ExecuteCommand(const Gleam::TString& cmd)
+static bool ExecuteCommand(const Gleam::TString& cmd)
 {
     int success = system((cmd + " > command.err 2>&1").c_str());
-    GLEAM_ASSERT(success == 0);
+    return success == 0;
 }

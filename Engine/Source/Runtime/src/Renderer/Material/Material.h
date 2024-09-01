@@ -21,14 +21,18 @@ public:
     Material(const MaterialDescriptor& descriptor);
     
     RefCounted<MaterialInstance> CreateInstance();
-
-	const Shader& GetShader() const;
+    
+    const Buffer& GetBuffer() const;
+    
+    const TString& GetName() const;
 
 	uint32_t GetPipelineHash() const;
     
 private:
     
-	Shader mShader;
+    TString mName;
+    
+    Buffer mBuffer;
 
 	uint32_t mPipelineStateHash = 0;
 
