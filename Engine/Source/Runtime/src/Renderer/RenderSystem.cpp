@@ -73,7 +73,19 @@ void RenderSystem::Render(const World* world)
         },
         [this](const CommandBuffer* cmd, const SceneRenderingData& passData)
         {
-            auto cameraData = GetCameraRenderData(passData.sceneProxy->GetActiveCamera());
+            auto camera = passData.sceneProxy->GetActiveCamera();
+            
+            CameraUniforms cameraData;
+            if (camera)
+            {
+                cameraData.viewMatrix = camera->GetViewMatrix();
+                cameraData.projectionMatrix = camera->GetProjectionMatrix();
+                cameraData.viewProjectionMatrix = cameraData.projectionMatrix * cameraData.viewMatrix;
+                cameraData.invViewMatrix = Math::Inverse(cameraData.viewMatrix);
+                cameraData.invProjectionMatrix = Math::Inverse(cameraData.projectionMatrix);
+                cameraData.invViewProjectionMatrix = Math::Inverse(cameraData.viewProjectionMatrix);
+                cameraData.worldPosition = camera->GetWorldPosition();
+            }
             cmd->SetBufferData(passData.cameraBuffer, cameraData);
         });
         blackboard.Add(sceneData);
@@ -114,24 +126,6 @@ void RenderSystem::Configure(const RendererConfig& config)
 	{
 		cmd = CreateScope<CommandBuffer>(mDevice.get());
 	}
-}
-
-CameraUniforms RenderSystem::GetCameraRenderData(const Camera* camera) const
-{
-    if (camera == nullptr)
-    {
-        return CameraUniforms{};
-    }
-    
-    CameraUniforms cameraData;
-    cameraData.viewMatrix = camera->GetViewMatrix();
-    cameraData.projectionMatrix = camera->GetProjectionMatrix();
-    cameraData.viewProjectionMatrix = cameraData.projectionMatrix * cameraData.viewMatrix;
-    cameraData.invViewMatrix = Math::Inverse(cameraData.viewMatrix);
-    cameraData.invProjectionMatrix = Math::Inverse(cameraData.projectionMatrix);
-    cameraData.invViewProjectionMatrix = Math::Inverse(cameraData.viewProjectionMatrix);
-    cameraData.worldPosition = camera->GetWorldPosition();
-    return cameraData;
 }
 
 GraphicsDevice* RenderSystem::GetDevice()

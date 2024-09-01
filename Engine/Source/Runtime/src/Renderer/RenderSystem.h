@@ -126,8 +126,6 @@ public:
     
 private:
     
-    CameraUniforms GetCameraRenderData(const Camera* camera) const;
-    
     Container mRenderers;
     
     Texture mRenderTarget;

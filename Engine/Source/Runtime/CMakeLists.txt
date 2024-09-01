@@ -102,24 +102,13 @@ target_compile_definitions(
     $<$<CONFIG:Release>:GRELEASE>
 )
 
-# Precompile shaders
-set(HLSL_FILE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/src/Renderer/Shaders)
-set(SHADER_FUNCTIONS
-    ${HLSL_FILE_PATH}/FullscreenShader.hlsl fullscreenTriangleVertexShader vertex
-    ${HLSL_FILE_PATH}/FullscreenShader.hlsl fullscreenTriangleFragmentShader fragment
-    ${HLSL_FILE_PATH}/TonemappingShader.hlsl tonemappingFragmentShader fragment
-    ${HLSL_FILE_PATH}/ForwardPassShader.hlsl forwardPassVertexShader vertex
-    ${HLSL_FILE_PATH}/ForwardPassShader.hlsl forwardPassFragmentShader fragment
-    ${HLSL_FILE_PATH}/DebugShader.hlsl debugVertexShader vertex
-    ${HLSL_FILE_PATH}/DebugShader.hlsl debugMeshVertexShader vertex
-    ${HLSL_FILE_PATH}/DebugShader.hlsl debugFragmentShader fragment
-)
-
 DEPLOY_FILE_TO(${CMAKE_SOURCE_DIR}/Engine/ThirdParty/DirectXAgilitySDK/build/native/bin/x64/D3D12Core.dll D3D12)
 DEPLOY_FILE_TO(${CMAKE_SOURCE_DIR}/Engine/ThirdParty/DirectXAgilitySDK/build/native/bin/x64/d3d12SDKLayers.dll D3D12)
 
+# Precompile shaders
+set(HLSL_FILE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/src/Renderer/Shaders)
 add_custom_command(
     TARGET Runtime
     PRE_BUILD
-    COMMAND Python::Interpreter ${CMAKE_SOURCE_DIR}/Tools/CompileShaders.py ${CMAKE_SOURCE_DIR}/Assets/Shaders ${SHADER_FUNCTIONS}
+    COMMAND Python::Interpreter ${CMAKE_SOURCE_DIR}/Tools/CompileShaders.py "-d" ${HLSL_FILE_PATH}
 )

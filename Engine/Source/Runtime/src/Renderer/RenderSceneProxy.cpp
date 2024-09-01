@@ -19,7 +19,7 @@ void RenderSceneProxy::Update(const World* world)
         const auto& material = meshRenderer.GetMaterial(0);
         const auto& baseMaterial = std::static_pointer_cast<Material>(material->GetBaseMaterial());
         
-        MeshBatch batch = { 
+        MeshBatch batch = {
             .mesh = meshRenderer.GetMesh().get(),
             .material = material.get(),
             .transform = transform.GetWorldTransform()

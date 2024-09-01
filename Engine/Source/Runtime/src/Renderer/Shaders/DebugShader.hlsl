@@ -10,6 +10,10 @@ struct VertexOut
     float4 color : COLOR;
 };
 
+#pragma vertex debugVertexShader
+#pragma vertex debugMeshVertexShader
+#pragma fragment debugFragmentShader
+
 VertexOut debugVertexShader(uint vertex_id: SV_VertexID)
 {
     Gleam::CameraUniforms CameraBuffer = resources.cameraBuffer.Load<Gleam::CameraUniforms>();

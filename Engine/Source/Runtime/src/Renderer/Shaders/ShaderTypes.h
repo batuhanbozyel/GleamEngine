@@ -48,9 +48,9 @@ struct TonemapUniforms
 
 struct SurfaceInput
 {
-	float4 color;
 	float3 position;
 	float3 worldNormal;
+	float3 color;
 	float2 uv;
 };
 
@@ -61,7 +61,6 @@ struct SurfaceOutput
 	float3 normal;
 	float metallic;
 	float roughness;
-	float occlusion;
 };
 
 } // namespace Gleam
