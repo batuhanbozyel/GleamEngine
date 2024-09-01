@@ -1,6 +1,7 @@
 #pragma once
 #include <mutex>
 #include <fstream>
+#include <functional>
 #include <filesystem>
 
 #ifndef _MSC_VER

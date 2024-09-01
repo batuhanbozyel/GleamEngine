@@ -58,7 +58,7 @@ File Filesystem::Open(const Filesystem::Path& path, FileType type)
 
 bool Filesystem::Remove(const Filesystem::Path& path)
 {
-    std::filesystem::remove(path);
+    return std::filesystem::remove(path);
 }
 
 FileAccessor& Filesystem::Accessor(const Filesystem::Path& path)
