@@ -1,6 +1,6 @@
 float4 GetBaseColor(SurfaceInput IN)
 {
-    float4 baseColor = Material.BaseColor * IN.color;
+    float4 baseColor = Material.BaseColor * float4(IN.color, 1.0);
     if (Material.BaseColorTexture.IsValid())
     {
         baseColor *= Material.BaseColorTexture.Sample(Sampler_Trilinear_Repeat, IN.uv);
@@ -12,7 +12,7 @@ float3 GetWorldNormal(SurfaceInput IN)
 {
     if (Material.NormalTexture.IsValid())
     {
-        return 2.0 * Material.NormalTexture.Sample(Sampler_Trilinear_Repeat, IN.uv).rgb - 1.0;
+        return normalize(2.0 * Material.NormalTexture.Sample(Sampler_Trilinear_Repeat, IN.uv).rgb - 1.0);
     }
     return float3(0.0, 0.0, 1.0);
 }
@@ -27,23 +27,25 @@ float4 GetEmission(SurfaceInput IN)
     return emission;
 }
 
-float3 GetMetallicRoughnessAo(SurfaceInput IN)
+float2 GetMetallicRoughness(SurfaceInput IN)
 {
-    float3 metallicRoughnessAo = float3(Material.Metallic, Material.Roughness, 1.0);
+    float2 metallicRoughness = float2(Material.Metallic, Material.Roughness);
     if (Material.MetallicRoughnessTexture.IsValid())
     {
-        metallicRoughnessAo *= Material.MetallicRoughnessTexture.Sample(Sampler_Trilinear_Repeat, IN.uv).rgb;
+        metallicRoughness *= Material.MetallicRoughnessTexture.Sample(Sampler_Trilinear_Repeat, IN.uv).rg;
     }
-    return metallicRoughnessAo;
+    return metallicRoughness;
 }
 
-void surf(SurfaceInput IN, inout SurfaceOutput OUT)
+SurfaceOutput surf(SurfaceInput IN)
 {
-    float3 metallicRoughnessAo = GetMetallicRoughnessAo(IN);
+    float3 metallicRoughness = GetMetallicRoughness(IN);
+
+    SurfaceOutput OUT;
     OUT.albedo = GetBaseColor(IN);
     OUT.emission = GetEmission(IN);
     OUT.normal = GetWorldNormal(IN);
-    OUT.metallic = metallicRoughnessAo.r;
-    OUT.roughness = metallicRoughnessAo.g;
-    OUT.occlusion = metallicRoughnessAo.b;
+    OUT.metallic = metallicRoughness.r;
+    OUT.roughness = metallicRoughness.g;
+    return OUT;
 }
