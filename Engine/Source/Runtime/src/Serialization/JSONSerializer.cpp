@@ -262,22 +262,22 @@ void JSONSerializer::Initialize()
             const Reflection::ClassDescription& classDesc,
             void* userData)
         {
-            auto guidStr = Reflection::Get<Guid>(obj).ToString();
+            auto& guid = Reflection::Get<Guid>(obj);
             auto& outObject = Reflection::Get<rapidjson::Node>(userData);
             Impl::SerializeClassHeader(classDesc, fieldName, outObject);
 
             rapidjson::Value object(rapidjson::kObjectType);
             rapidjson::Node node(object, outObject.allocator);
-            outObject.AddMember("Value", rapidjson::StringRef(guidStr.c_str(), guidStr.length()));
+            outObject.AddMember("Value", guid.ToString());
         };
         
         mCustomArraySerializers[Reflection::GetClass<Guid>().ResolveName()] = [](const void* obj,
             const Reflection::ClassDescription& classDesc,
             void* userData)
         {
-            auto guidStr = Reflection::Get<Guid>(obj).ToString();
+            auto& guid = Reflection::Get<Guid>(obj);
             auto& outObject = Reflection::Get<rapidjson::Node>(userData);
-            outObject.PushBack(rapidjson::Value(rapidjson::StringRef(guidStr.c_str(), guidStr.length())));
+            outObject.PushBack(rapidjson::Value(guid.ToString(), outObject.allocator));
         };
         
 		mCustomObjectSerializers[Reflection::GetClass<TString>().ResolveName()] = [](const void* obj,
