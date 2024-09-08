@@ -353,6 +353,8 @@ void JSONSerializer::Initialize()
 		};
 	}
 
+	// TODO: implement HashMap custom serializer
+
 	// Custom deserializers
 	{
         mCustomObjectDeserializers[Reflection::GetClass<Guid>().ResolveName()] = [](const void* userData,
@@ -411,6 +413,8 @@ void JSONSerializer::Initialize()
                 }
             }
 		};
+
+		// TODO: implement HashMap custom deserializer
 	}
 }
 

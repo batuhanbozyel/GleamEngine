@@ -38,8 +38,6 @@ public:
     
     const Texture& GetRenderTarget() const;
     
-    void UpdateCamera(const Camera& camera);
-    
     void SetBackbuffer(const TextureDescriptor& descriptor);
     
     void SetBackbuffer(const Texture& texture);

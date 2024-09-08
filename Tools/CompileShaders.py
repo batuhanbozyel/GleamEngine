@@ -32,7 +32,7 @@ def read_include_file(include_file: str, include_dirs: list[str]):
     for directory in include_dirs:
         include_file_path = os.path.join(directory, os.path.basename(include_file))
         if os.path.exists(include_file_path):
-            with open(include_file_path, 'rb') as include_file:
+            with open(include_file_path, 'r') as include_file:
                 contents = include_file.read()
             break
     return contents
@@ -96,7 +96,7 @@ if __name__ == "__main__":
                 temp_file.write(read_include_file(args.include, include_dirs))
                 
                 # append with original file contents
-                with open(hlsl_file, 'rb') as original_file:
+                with open(hlsl_file, 'r') as original_file:
                     temp_file.write(original_file.read())
                 hlsl_file = temp_file.name
 

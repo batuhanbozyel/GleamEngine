@@ -44,7 +44,7 @@ void WorldRenderer::OnCreate(GraphicsDevice* device)
     
     // TODO: create material shaders
     mMeshVertexShader = device->CreateShader("meshVertexShader", ShaderStage::Vertex);
-    mMeshShadingFragmentShaders["SurfaceLit"] = device->CreateShader("SurfaceLit", ShaderStage::Fragment);
+    mMeshShadingFragmentShaders["OpaqueLit"] = device->CreateShader("SurfaceLit", ShaderStage::Fragment);
 }
 
 void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard)
@@ -84,8 +84,8 @@ void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 
             for (const auto& batch : batches)
             {
-                const auto& positionBuffer = batch.mesh->GetPositionBuffer();
-                const auto& interleavedBuffer = batch.mesh->GetInterleavedBuffer();
+                const auto& positionBuffer = batch.mesh.GetPositionBuffer();
+                const auto& interleavedBuffer = batch.mesh.GetInterleavedBuffer();
             #ifdef USE_METAL_RENDERER
                 [cmd->GetActiveRenderPass() useResource:positionBuffer.GetHandle() usage : MTLResourceUsageRead stages : MTLRenderStageVertex];
                 [cmd->GetActiveRenderPass() useResource:interleavedBuffer.GetHandle() usage : MTLResourceUsageRead stages : MTLRenderStageVertex] ;
@@ -108,16 +108,16 @@ void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
                 resources.positionBuffer = positionBuffer.GetResourceView();
                 resources.interleavedBuffer = interleavedBuffer.GetResourceView();
                 resources.materialBuffer = materialBuffer.GetResourceView();
-                resources.materialInstanceId = batch.material->GetUniqueId();
+                resources.materialInstanceId = batch.material.GetUniqueId();
                 cmd->SetConstantBuffer(resources, 0);
 
-                for (const auto& descriptor : batch.mesh->GetSubmeshDescriptors())
+                for (const auto& descriptor : batch.mesh.GetSubmeshDescriptors())
                 {
                     ForwardPassUniforms uniforms;
                     uniforms.modelMatrix = batch.transform;
                     uniforms.baseVertex = descriptor.baseVertex;
                     cmd->SetPushConstant(uniforms);
-                    cmd->DrawIndexed(batch.mesh->GetIndexBuffer(), IndexType::UINT32, descriptor.indexCount, 1, descriptor.firstIndex);
+                    cmd->DrawIndexed(batch.mesh.GetIndexBuffer(), IndexType::UINT32, descriptor.indexCount, 1, descriptor.firstIndex);
                 }
             }
         });

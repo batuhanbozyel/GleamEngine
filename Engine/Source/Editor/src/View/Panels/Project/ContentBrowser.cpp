@@ -45,7 +45,7 @@ bool ContentBrowser::ImportAsset(const Gleam::Filesystem::Path& path)
 {
 	if (path.extension() == ".gltf")
 	{
-		auto meshSource = MeshSource();
+		auto meshSource = MeshSource(&mAssetRegistry);
 		auto settings = MeshSource::ImportSettings();
 		if (meshSource.Import(path, settings))
 		{

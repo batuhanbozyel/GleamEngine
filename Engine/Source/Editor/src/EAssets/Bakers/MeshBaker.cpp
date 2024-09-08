@@ -10,8 +10,7 @@ MeshBaker::MeshBaker(const Gleam::MeshDescriptor& descriptor)
 
 Gleam::AssetReference MeshBaker::Bake(const Gleam::Filesystem::Path& directory) const
 {
-    auto guid = Gleam::Guid::NewGuid();
-    const auto& typeGuid = Gleam::Reflection::GetClass<Gleam::MeshDescriptor>().Guid();
+	const auto& guid = GetGuid();
     Gleam::AssetReference asset{ .guid = guid };
 
 	auto filename = guid.ToString() + Gleam::Asset::extension().data();

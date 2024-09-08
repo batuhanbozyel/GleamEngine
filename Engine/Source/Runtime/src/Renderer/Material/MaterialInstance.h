@@ -13,22 +13,22 @@ namespace Gleam {
 class MaterialInstance : public IMaterial
 {
 public:
-    
-    MaterialInstance(const RefCounted<IMaterial>& material, uint32_t uniqueId);
+
+    MaterialInstance(const IMaterial* material, uint32_t uniqueId);
     
     void SetProperty(const TString& name, const MaterialPropertyValue& value);
 
-    const RefCounted<IMaterial>& GetBaseMaterial() const;
+    const IMaterial* GetBaseMaterial() const;
     
     uint32_t GetUniqueId() const;
     
 private:
     
-    uint32_t mUniqueId;
+    uint32_t mUniqueId = 0;
     
-    RefCounted<IMaterial> mBaseMaterial;
-    
-    TArray<MaterialPropertyValue> mPropertyValues;
+	const IMaterial* mBaseMaterial = nullptr;
+
+	TArray<MaterialPropertyValue> mPropertyValues;
     
 };
 

@@ -8,32 +8,32 @@
 
 using namespace Gleam;
 
-MeshRenderer::MeshRenderer(const RefCounted<Mesh>& mesh)
+MeshRenderer::MeshRenderer(const Mesh& mesh)
 	: mMesh(mesh)
 {
     static auto materialSystem = Globals::Engine->GetSubsystem<MaterialSystem>();
-    const auto& baseMaterial = CreateRef<Material>(MaterialDescriptor{});
+    const auto& baseMaterial = materialSystem->Get("OpaqueLit");
 
-    mMaterials.resize(mesh->GetSubmeshCount());
-    for (uint32_t i = 0; i < mMaterials.size(); i++)
+    mMaterials.reserve(mesh.GetSubmeshCount());
+    for (uint32_t i = 0; i < mesh.GetSubmeshCount(); i++)
     {
-        mMaterials[i] = baseMaterial->CreateInstance();
+        mMaterials.emplace_back(baseMaterial->CreateInstance());
     }
 }
 
-void MeshRenderer::SetMaterial(const RefCounted<MaterialInstance>& material, uint32_t index)
+void MeshRenderer::SetMaterial(const MaterialInstance& material, uint32_t index)
 {
     GLEAM_ASSERT(mMaterials.size() > index, "Material index out of range.");
     mMaterials[index] = material;
 }
 
-const RefCounted<MaterialInstance>& MeshRenderer::GetMaterial(uint32_t index) const
+const MaterialInstance& MeshRenderer::GetMaterial(uint32_t index) const
 {
     GLEAM_ASSERT(mMaterials.size() > index, "Material index out of range.");
     return mMaterials[index];
 }
 
-const RefCounted<Mesh>& MeshRenderer::GetMesh() const
+const Mesh& MeshRenderer::GetMesh() const
 {
     return mMesh;
 }

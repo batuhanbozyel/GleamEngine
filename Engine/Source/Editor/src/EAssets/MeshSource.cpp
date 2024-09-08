@@ -2,6 +2,7 @@
 #include "MeshSource.h"
 #include "TextureSource.h"
 #include "MaterialSource.h"
+#include "AssetRegistry.h"
 
 #include "Bakers/MeshBaker.h"
 #include "Bakers/TextureBaker.h"
@@ -13,7 +14,7 @@
 using namespace GEditor;
 
 static RawMesh ProcessAttributes(const cgltf_primitive& primitive, const MeshSource::ImportSettings& settings);
-static RawPBRMaterial ProcessMaterial(const cgltf_material& material, const MeshSource::ImportSettings& settings);
+static RawMaterial ProcessMaterial(const cgltf_material& material, const MeshSource::ImportSettings& settings);
 
 static Gleam::TArray<Gleam::InterleavedMeshVertex> InterleaveMeshVertices(const RawMesh& mesh);
 static Gleam::MeshDescriptor CombineMeshes(const Gleam::TArray<RawMesh>& meshes);
@@ -41,7 +42,7 @@ bool MeshSource::Import(const Gleam::Filesystem::Path& path, const ImportSetting
     auto filename = path.stem().string();
 
 	Gleam::TArray<RawMesh> meshes;
-    Gleam::TArray<RawPBRMaterial> materials;
+    Gleam::TArray<RawMaterial> materials;
     for(uint32_t i = 0; i < data->meshes_count; ++i)
     {
         const auto& mesh = data->meshes[i];
@@ -59,7 +60,7 @@ bool MeshSource::Import(const Gleam::Filesystem::Path& path, const ImportSetting
                 rawMesh.name = ss.str();
             }
             
-            RawPBRMaterial material;
+			RawMaterial material;
             if (auto mat = mesh.primitives[meshIdx].material; mat != nullptr)
             {
                 material = ProcessMaterial(*mat, settings);
@@ -81,11 +82,11 @@ bool MeshSource::Import(const Gleam::Filesystem::Path& path, const ImportSetting
             {
                 uint32_t materialIdx = static_cast<uint32_t>(materials.size());
                 materials.push_back(material);
-                rawMesh.materialIndex = materialIdx;
+				rawMesh.material = material.name;
             }
             else
             {
-                rawMesh.materialIndex = static_cast<uint32_t>(std::distance(materials.begin(), materialIt));
+                rawMesh.material = materialIt->name;
             }
             meshes.push_back(rawMesh);
         }
@@ -110,55 +111,82 @@ bool MeshSource::Import(const Gleam::Filesystem::Path& path, const ImportSetting
             Gleam::SubmeshDescriptor submesh;
             submesh.bounds = CalculateBounds(mesh.positions);
             submesh.indexCount = static_cast<uint32_t>(mesh.indices.size());
-            submesh.materialIndex = mesh.materialIndex;
             descriptor.submeshes.push_back(submesh);
             
             bakers.emplace_back(Gleam::CreateRef<MeshBaker>(descriptor));
         }
     }
     
-    for (const auto& pbr : materials)
+    for (const auto& material : materials)
     {
-//        const auto& albedo = pbr.textures[PBRTexture::Albedo];
-//        
-//        auto textureSource = TextureSource();
-//        auto textureSettings = TextureSource::ImportSettings();
-//        if (textureSource.Import(albedo, textureSettings))
-//        {
-//            GLEAM_ASSERT(textureSource.bakers.size() == 1);
-//            const auto& baker = std::static_pointer_cast<TextureBaker>(textureSource.bakers[0]);
-//            
-//        }
-//        
-//        RawMaterial material;
-//        material.name = material.name;
-//        material.surfaceShader = "Materials/SurfaceLit";
-//        material.cullingMode = pbr.doubleSided ? Gleam::CullMode::Off : Gleam::CullMode::Back;
-//        material.depthState.writeEnabled = pbr.alphaBlend == false;
-//        material.depthState.compareFunction = CompareFunction::Less;
-//        material.properties = {
-//            Gleam::MaterialProperty{ "BaseColor", Gleam::MaterialPropertyType::Float4, pbr.albedoColor },
-//            Gleam::MaterialProperty{ "Emission", Gleam::MaterialPropertyType::Float4, pbr.emissiveColor },
-//            Gleam::MaterialProperty{ "Metallic", Gleam::MaterialPropertyType::Scalar, pbr.metallicFactor },
-//            Gleam::MaterialProperty{ "Roughness", Gleam::MaterialPropertyType::Scalar, pbr.roughnessFactor },
-//            Gleam::MaterialProperty{ "BaseColorTexture", Gleam::MaterialPropertyType::Texture2D },
-//            Gleam::MaterialProperty{ "NormalTexture", Gleam::MaterialPropertyType::Texture2D },
-//            Gleam::MaterialProperty{ "MetallicRoughnessTexture", Gleam::MaterialPropertyType::Texture2D },
-//            Gleam::MaterialProperty{ "EmissiveTexture", Gleam::MaterialPropertyType::Texture2D }
-//        };
-//        
-//        if (pbr.alphaBlend)
-//        {
-//            material.blendState = Gleam::BlendState {
-//                .enabled = true,
-//                .sourceColorBlendMode = Gleam::BlendMode::SrcAlpha,
-//                .sourceAlphaBlendMode = Gleam::BlendMode::One,
-//                .destinationColorBlendMode = Gleam::BlendMode::OneMinusSrcAlpha,
-//                .destinationAlphaBlendMode = Gleam::BlendMode::Zero
-//            };
-//        }
+		Gleam::MaterialInstanceDescriptor descriptor;
+		descriptor.name = material.name;
+		descriptor.values["BaseColor"] = material.albedoColor;
+		descriptor.values["Emission"] = material.emissiveColor;
+		descriptor.values["Metallic"] = material.metallicFactor;
+		descriptor.values["Roughness"] = material.roughnessFactor;
+		descriptor.values["BaseColorTexture"] = Gleam::AssetReference();
+		descriptor.values["NormalTexture"] = Gleam::AssetReference();
+		descriptor.values["MetallicRoughnessTexture"] = Gleam::AssetReference();
+		descriptor.values["EmissiveTexture"] = Gleam::AssetReference();
+
+		if (material.alphaBlend)
+		{
+			descriptor.material = registry->GetAsset("Materials/TransparentLit");
+		}
+		else
+		{
+			descriptor.material = registry->GetAsset("Materials/OpaqueLit");
+		}
+
+		if (const auto& texture = material.textures[PBRTexture::Albedo]; texture.empty() == false)
+		{
+			auto textureSource = TextureSource(registry);
+			auto textureSettings = TextureSource::ImportSettings();
+			if (textureSource.Import(texture, textureSettings))
+			{
+				descriptor.values["BaseColorTexture"] = Gleam::AssetReference{ .guid = textureSource.bakers[0]->GetGuid() };
+				bakers.emplace_back(textureSource.bakers[0]);
+			}
+		}
+
+		if (const auto& texture = material.textures[PBRTexture::Normal]; texture.empty() == false)
+		{
+			auto textureSource = TextureSource(registry);
+			auto textureSettings = TextureSource::ImportSettings();
+			if (textureSource.Import(texture, textureSettings))
+			{
+				descriptor.values["NormalTexture"] = Gleam::AssetReference{ .guid = textureSource.bakers[0]->GetGuid() };
+				bakers.emplace_back(textureSource.bakers[0]);
+			}
+		}
+
+		if (const auto& texture = material.textures[PBRTexture::MetallicRoughness]; texture.empty() == false)
+		{
+			auto textureSource = TextureSource(registry);
+			auto textureSettings = TextureSource::ImportSettings();
+			if (textureSource.Import(texture, textureSettings))
+			{
+				descriptor.values["MetallicRoughnessTexture"] = Gleam::AssetReference{ .guid = textureSource.bakers[0]->GetGuid() };
+				bakers.emplace_back(textureSource.bakers[0]);
+			}
+		}
+
+		if (const auto& texture = material.textures[PBRTexture::Emissive]; texture.empty() == false)
+		{
+			auto textureSource = TextureSource(registry);
+			auto textureSettings = TextureSource::ImportSettings();
+			if (textureSource.Import(texture, textureSettings))
+			{
+				descriptor.values["EmissiveTexture"] = Gleam::AssetReference{ .guid = textureSource.bakers[0]->GetGuid() };
+				bakers.emplace_back(textureSource.bakers[0]);
+			}
+		}
+
+		auto materialBaker = Gleam::CreateRef<MaterialInstanceBaker>(descriptor);
+		bakers.emplace_back(materialBaker);
     }
-    
+
 	cgltf_free(data);
     return true;
 }
@@ -217,9 +245,9 @@ RawMesh ProcessAttributes(const cgltf_primitive& primitive, const MeshSource::Im
     return mesh;
 }
 
-RawPBRMaterial ProcessMaterial(const cgltf_material& mat, const MeshSource::ImportSettings& settings)
+RawMaterial ProcessMaterial(const cgltf_material& mat, const MeshSource::ImportSettings& settings)
 {
-    RawPBRMaterial material;
+	RawMaterial material;
     
     // Albedo - Metallic - Roughness
     if (mat.has_pbr_metallic_roughness)
@@ -314,7 +342,6 @@ Gleam::MeshDescriptor CombineMeshes(const Gleam::TArray<RawMesh>& meshes)
     {
         const auto& mesh = meshes[i];
         submesh.bounds = CalculateBounds(mesh.positions);
-        submesh.materialIndex = mesh.materialIndex;
         submesh.indexCount = static_cast<uint32_t>(mesh.indices.size());
         combined.submeshes[i] = submesh;
         

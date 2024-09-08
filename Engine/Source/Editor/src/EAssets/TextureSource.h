@@ -6,6 +6,8 @@ namespace GEditor {
 
 struct TextureSource : AssetPackage
 {
+	AssetPackageType(TextureSource);
+
 	struct ImportSettings
 	{
 		

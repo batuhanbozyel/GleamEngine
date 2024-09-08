@@ -73,7 +73,7 @@ const Asset& AssetManager::GetAsset(const AssetReference& asset) const
         return it->second;
     }
     
-    GLEAM_CORE_ERROR("Asset could not located GUID: {0}", asset.guid.ToString());
+    GLEAM_CORE_ERROR("Asset could not located for GUID: {0}", asset.guid.ToString());
     GLEAM_ASSERT(false);
     static Asset invalidAsset;
     return invalidAsset;

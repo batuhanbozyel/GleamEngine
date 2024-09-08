@@ -12,15 +12,15 @@
 
 namespace Gleam {
 
-class Shader;
-
 class Material : public IMaterial
 {
 public:
     
     Material(const MaterialDescriptor& descriptor);
+
+    MaterialInstance CreateInstance();
     
-    RefCounted<MaterialInstance> CreateInstance();
+	void Dispose();
     
     const Buffer& GetBuffer() const;
     

@@ -8,8 +8,8 @@ class MaterialInstance;
 
 struct MeshBatch
 {
-	const Mesh* mesh;
-    const MaterialInstance* material;
+	Mesh mesh;
+    MaterialInstance material;
     Float4x4 transform;
 };
 
@@ -28,7 +28,7 @@ private:
     
     const Camera* mActiveCamera = nullptr;
     
-    HashMap<RefCounted<Material>, TArray<MeshBatch>> mStaticBatches;
+    HashMap<const Material*, TArray<MeshBatch>> mStaticBatches;
     
 };
 

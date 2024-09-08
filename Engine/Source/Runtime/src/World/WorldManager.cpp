@@ -32,7 +32,7 @@ void WorldManager::UnloadWorld(uint32_t index)
 {
 	if (index >= mLoadedWorlds.size())
 	{
-		GLEAM_CORE_ERROR("World id: {0} is not loaded", index);
+		GLEAM_CORE_ERROR("World is not loaded: {0}", index);
 		return;
 	}
 	mLoadedWorlds.erase(mLoadedWorlds.begin() + index);
@@ -42,7 +42,7 @@ World* WorldManager::GetWorld(uint32_t index)
 {
 	if (index >= mLoadedWorlds.size())
 	{
-		GLEAM_CORE_ERROR("World id: {0} is not loaded", index);
+		GLEAM_CORE_ERROR("World is not loaded: {0}", index);
 		return GetActiveWorld();
 	}
 	return mLoadedWorlds[index].get();

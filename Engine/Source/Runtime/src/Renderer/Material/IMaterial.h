@@ -10,7 +10,7 @@
 
 namespace Gleam {
 
-class IMaterial : public std::enable_shared_from_this<IMaterial>
+class IMaterial
 {
 public:
 

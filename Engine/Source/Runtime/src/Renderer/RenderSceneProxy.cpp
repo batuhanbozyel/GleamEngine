@@ -14,14 +14,14 @@ void RenderSceneProxy::Update(const World* world)
     mStaticBatches.clear();
     world->GetEntityManager().ForEach<MeshRenderer, Transform>([this](const MeshRenderer& meshRenderer, const Transform& transform)
     {
-        GLEAM_ASSERT(meshRenderer.GetMesh()->GetSubmeshCount() > 0);
+        GLEAM_ASSERT(meshRenderer.GetMesh().GetSubmeshCount() > 0);
         
         const auto& material = meshRenderer.GetMaterial(0);
-        const auto& baseMaterial = std::static_pointer_cast<Material>(material->GetBaseMaterial());
+        const auto& baseMaterial = static_cast<const Material*>(material.GetBaseMaterial());
         
         MeshBatch batch = {
-            .mesh = meshRenderer.GetMesh().get(),
-            .material = material.get(),
+            .mesh = meshRenderer.GetMesh(),
+            .material = material,
             .transform = transform.GetWorldTransform()
         };
         mStaticBatches[baseMaterial].emplace_back(batch);
@@ -43,7 +43,7 @@ void RenderSceneProxy::ForEach(BatchFn&& fn) const
 {
     for (const auto& [material, batch] : mStaticBatches)
     {
-        fn(material.get(), batch);
+        fn(material, batch);
     }
 }
 

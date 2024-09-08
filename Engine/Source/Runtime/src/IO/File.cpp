@@ -16,7 +16,7 @@ TString File::Read() const
 {
 	if (not mHandle.is_open())
 	{
-		GLEAM_CORE_ERROR("File {0} could not be opened.", GetName());
+		GLEAM_CORE_ERROR("File could not be opened: {0}", GetName());
 		return "";
 	}
 
@@ -48,7 +48,7 @@ void File::Write(const TString& contents)
 {
 	if (not mHandle.is_open())
 	{
-		GLEAM_CORE_ERROR("File {0} could not be opened.", GetName());
+		GLEAM_CORE_ERROR("File could not be opened: {0}", GetName());
 		return;
 	}
     
@@ -69,7 +69,7 @@ void File::Append(const TString& contents)
 {
 	if (not mHandle.is_open())
 	{
-		GLEAM_CORE_ERROR("File {0} could not be opened.", GetName());
+		GLEAM_CORE_ERROR("File could not be opened: {0}", GetName());
 		return;
 	}
     

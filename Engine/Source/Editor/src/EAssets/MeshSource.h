@@ -9,14 +9,14 @@ struct PBRTexture
     enum Type
     {
         Albedo,
-        MetallicRoughness,
         Normal,
+        MetallicRoughness,
         Emissive,
         COUNT
     };
 };
 
-struct RawPBRMaterial
+struct RawMaterial
 {
     Gleam::TString name = "";
     Gleam::TArray<Gleam::Filesystem::Path, PBRTexture::COUNT> textures;
@@ -29,7 +29,7 @@ struct RawPBRMaterial
     bool alphaBlend = false;
     bool unlit = false;
     
-    bool operator==(const RawPBRMaterial& other) const
+    bool operator==(const RawMaterial& other) const
     {
         return name == other.name
             && textures == other.textures
@@ -43,7 +43,7 @@ struct RawPBRMaterial
             && unlit == other.unlit;
     }
     
-    bool operator!=(const RawPBRMaterial& other) const
+    bool operator!=(const RawMaterial& other) const
     {
         return !(*this == other);
     }
@@ -52,15 +52,17 @@ struct RawPBRMaterial
 struct RawMesh
 {
     Gleam::TString name;
+	Gleam::TString material;
     Gleam::TArray<Gleam::Float3> positions;
     Gleam::TArray<Gleam::Float3> normals;
     Gleam::TArray<Gleam::Float2> texCoords;
     Gleam::TArray<uint32_t> indices;
-    uint32_t materialIndex = 0;
 };
 
 struct MeshSource : AssetPackage
 {
+	AssetPackageType(MeshSource);
+
     struct ImportSettings
     {
         bool combineMeshes = false;

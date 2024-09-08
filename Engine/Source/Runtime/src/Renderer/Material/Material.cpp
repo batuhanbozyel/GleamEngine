@@ -22,10 +22,15 @@ Material::Material(const MaterialDescriptor& descriptor)
     // TODO: Allocate GPU buffer
 }
 
-RefCounted<MaterialInstance> Material::CreateInstance()
+MaterialInstance Material::CreateInstance()
 {
     // TODO: Suballocate material instance data from material buffer
-    return CreateRef<MaterialInstance>(shared_from_this(), mInstanceCount++);
+    return MaterialInstance(this, mInstanceCount++);
+}
+
+void Material::Dispose()
+{
+	// TOOD: dispose material buffer
 }
 
 const Buffer& Material::GetBuffer() const

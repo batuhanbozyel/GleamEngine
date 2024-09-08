@@ -7,6 +7,55 @@
 
 using namespace GEditor;
 
+static Gleam::BlendMode BlendModeFromObject(const rapidjson::Value& object)
+{
+	Gleam::TString value = object.GetString();
+	if (value == "One")
+	{
+		return Gleam::BlendMode::One;
+	}
+	else if (value == "Zero")
+	{
+		return Gleam::BlendMode::Zero;
+	}
+	else if (value == "DstColor")
+	{
+		return Gleam::BlendMode::DstColor;
+	}
+	else if (value == "SrcColor")
+	{
+		return Gleam::BlendMode::SrcColor;
+	}
+	else if (value == "OneMinusDstColor")
+	{
+		return Gleam::BlendMode::OneMinusDstColor;
+	}
+	else if (value == "OneMinusSrcColor")
+	{
+		return Gleam::BlendMode::OneMinusSrcColor;
+	}
+	else if (value == "DstAlpha")
+	{
+		return Gleam::BlendMode::DstAlpha;
+	}
+	else if (value == "OneMinusDstAlpha")
+	{
+		return Gleam::BlendMode::OneMinusDstAlpha;
+	}
+	else if (value == "SrcAlphaClamp")
+	{
+		return Gleam::BlendMode::SrcAlphaClamp;
+	}
+	else if (value == "OneMinusSrcAlpha")
+	{
+		return Gleam::BlendMode::OneMinusSrcAlpha;
+	}
+	else
+	{
+		return Gleam::BlendMode::One;
+	}
+}
+
 bool MaterialSource::Import(const Gleam::Filesystem::Path& path, const ImportSettings& settings)
 {
     auto file = Gleam::Filesystem::Open(path, Gleam::FileType::Text);
@@ -112,11 +161,15 @@ bool MaterialSource::Import(const Gleam::Filesystem::Path& path, const ImportSet
         cmd << Gleam::TString(PYTHON_INTERPRETER) << " ";
         cmd << Gleam::Globals::StartupDirectory/"Tools/CompileShaders.py";
         cmd << " -f " << generatedPath;
-        cmd << " -o " << descriptor.name;
+        cmd << " -o " << descriptor.surfaceShader;
         cmd << " -i " << "MeshShading.hlsli";
         bool success = ExecuteCommand(cmd.str());
         Gleam::Filesystem::Remove(generatedPath);
-        return success;
+
+		if (success == false)
+		{
+			return false;
+		}
     }
     
     if (document.HasMember("ZWrite"))
@@ -179,7 +232,68 @@ bool MaterialSource::Import(const Gleam::Filesystem::Path& path, const ImportSet
         }
     }
     
-    // TODO: Parse blend mode
+	if (document.HasMember("Blend"))
+	{
+		auto array = document["Blend"].GetArray();
+		if (array.Size() == 2)
+		{
+			auto srcBlendMode = BlendModeFromObject(array[0]);
+			auto dstBlendMode = BlendModeFromObject(array[1]);
+
+			descriptor.blendState.enabled = true;
+
+			descriptor.blendState.sourceColorBlendMode = srcBlendMode;
+			descriptor.blendState.sourceAlphaBlendMode = srcBlendMode;
+
+			descriptor.blendState.destinationColorBlendMode = dstBlendMode;
+			descriptor.blendState.destinationAlphaBlendMode = dstBlendMode;
+		}
+		else if (array.Size() == 4)
+		{
+			descriptor.blendState.enabled = true;
+
+			descriptor.blendState.sourceColorBlendMode = BlendModeFromObject(array[0]);
+			descriptor.blendState.sourceAlphaBlendMode = BlendModeFromObject(array[1]);
+
+			descriptor.blendState.destinationColorBlendMode = BlendModeFromObject(array[2]);
+			descriptor.blendState.destinationAlphaBlendMode = BlendModeFromObject(array[3]);
+		}
+	}
+
+	if (document.HasMember("BlendOp"))
+	{
+		Gleam::TString value = document["BlendOp"].GetString();
+		if (value == "Add")
+		{
+			descriptor.blendState.enabled = true;
+			descriptor.blendState.colorBlendOperation = Gleam::BlendOp::Add;
+			descriptor.blendState.alphaBlendOperation = Gleam::BlendOp::Add;
+		}
+		else if (value == "Subtract")
+		{
+			descriptor.blendState.enabled = true;
+			descriptor.blendState.colorBlendOperation = Gleam::BlendOp::Subtract;
+			descriptor.blendState.alphaBlendOperation = Gleam::BlendOp::Subtract;
+		}
+		else if (value == "ReverseSubtract")
+		{
+			descriptor.blendState.enabled = true;
+			descriptor.blendState.colorBlendOperation = Gleam::BlendOp::ReverseSubtract;
+			descriptor.blendState.alphaBlendOperation = Gleam::BlendOp::ReverseSubtract;
+		}
+		else if (value == "Min")
+		{
+			descriptor.blendState.enabled = true;
+			descriptor.blendState.colorBlendOperation = Gleam::BlendOp::Min;
+			descriptor.blendState.alphaBlendOperation = Gleam::BlendOp::Min;
+		}
+		else if (value == "Max")
+		{
+			descriptor.blendState.enabled = true;
+			descriptor.blendState.colorBlendOperation = Gleam::BlendOp::Max;
+			descriptor.blendState.alphaBlendOperation = Gleam::BlendOp::Max;
+		}
+	}
     
     bakers.emplace_back(Gleam::CreateRef<MaterialBaker>(descriptor));
     return true;

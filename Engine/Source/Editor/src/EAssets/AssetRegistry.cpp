@@ -12,9 +12,10 @@ AssetRegistry::AssetRegistry(const Gleam::Filesystem::Path& directory)
     {
         if (entry.extension() == ".mat")
         {
-            auto materialSource = MaterialSource();
+            auto materialSource = MaterialSource(this);
             auto settings = MaterialSource::ImportSettings();
             materialSource.Import(entry, settings);
+			Import(mAssetDirectory/"Materials", materialSource);
         }
     }, true);
 }
@@ -25,14 +26,16 @@ void AssetRegistry::Import(const Gleam::Filesystem::Path& directory, const Asset
 	{
 		auto asset = baker->Bake(directory);
         auto path = directory/baker->Filename();
-		mAssetCache.insert({ path, asset });
+		auto relPath = Gleam::Filesystem::Relative(path, mAssetDirectory);
+		mAssetCache.insert({ relPath, asset });
         GLEAM_INFO("Asset imported: {0} GUID: {1}", baker->Filename(), asset.guid.ToString());
 	}
 }
 
 const Gleam::AssetReference& AssetRegistry::GetAsset(const Gleam::Filesystem::Path& path) const
 {
-	auto it = mAssetCache.find(path);
+	auto relPath = path.is_relative() ? path : Gleam::Filesystem::Relative(path, mAssetDirectory);
+	auto it = mAssetCache.find(relPath);
 	if (it != mAssetCache.end())
 	{
 		return it->second;
