@@ -32,3 +32,8 @@ Gleam::TString MeshBaker::Filename() const
 {
     return mDescriptor.name;
 }
+
+Gleam::Guid MeshBaker::TypeGuid() const
+{
+    return Gleam::Reflection::GetClass<decltype(mDescriptor)>().Guid();
+}

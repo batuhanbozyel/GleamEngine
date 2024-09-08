@@ -5,11 +5,60 @@
 
 using namespace GEditor;
 
+static Gleam::TString ParseNameFromAssetFile(Gleam::JSONSerializer& serializer, const Gleam::Guid& typeGuid)
+{
+    if (typeGuid == Gleam::Reflection::GetClass<Gleam::MeshDescriptor>().Guid())
+    {
+        auto descriptor = serializer.Deserialize<Gleam::MeshDescriptor>();
+        return descriptor.name;
+    }
+    
+    if (typeGuid == Gleam::Reflection::GetClass<Gleam::TextureDescriptor>().Guid())
+    {
+        auto descriptor = serializer.Deserialize<Gleam::TextureDescriptor>();
+        return descriptor.name;
+    }
+    
+    if (typeGuid == Gleam::Reflection::GetClass<Gleam::MaterialDescriptor>().Guid())
+    {
+        auto descriptor = serializer.Deserialize<Gleam::MaterialDescriptor>();
+        return descriptor.name;
+    }
+    
+    if (typeGuid == Gleam::Reflection::GetClass<Gleam::MaterialInstanceDescriptor>().Guid())
+    {
+        auto descriptor = serializer.Deserialize<Gleam::MaterialInstanceDescriptor>();
+        return descriptor.name;
+    }
+    
+    return "";
+}
+
 AssetRegistry::AssetRegistry(const Gleam::Filesystem::Path& directory)
 	: mAssetDirectory(directory)
 {
-    // TODO: register all serialized assets on init
-    // materials should only compile when first seen by the registry
+    Gleam::Filesystem::ForEach(directory, [this](const auto& entry)
+    {
+        if (entry.extension() == ".asset")
+        {
+            auto file = Gleam::Filesystem::Open(entry, Gleam::FileType::Text);
+            auto serializer = Gleam::JSONSerializer(file.GetStream());
+            auto header = serializer.ParseHeader();
+            
+            auto relPath = Gleam::Filesystem::Relative(entry, mAssetDirectory);
+            auto guid = Gleam::Guid(entry.stem().string());
+            auto asset = Gleam::AssetReference{ .guid = guid };
+            auto name = ParseNameFromAssetFile(serializer, header.guid);
+            auto item = AssetItem{
+                .reference = asset,
+                .type = header.guid,
+                .name = name
+            };
+            mAssetCache.insert({ relPath, item });
+        }
+    }, true);
+    
+    // TODO: materials should only compile when first seen by the registry
     // existing materials should not change guid
     // it should only reimport if material/shader source changed since last compile
     Gleam::Filesystem::ForEach(directory, [this](const auto& entry)
@@ -31,7 +80,14 @@ void AssetRegistry::Import(const Gleam::Filesystem::Path& directory, const Asset
 		auto asset = baker->Bake(directory);
         auto path = directory/baker->Filename();
 		auto relPath = Gleam::Filesystem::Relative(path, mAssetDirectory);
-		mAssetCache.insert({ relPath, asset });
+        
+        auto item = AssetItem{
+            .reference = asset,
+            .type = baker->TypeGuid(),
+            .name = baker->Filename()
+        };
+        
+		mAssetCache.insert({ relPath, item });
         GLEAM_INFO("Asset imported: {0} GUID: {1}", baker->Filename(), asset.guid.ToString());
 	}
 }
@@ -42,7 +98,7 @@ const Gleam::AssetReference& AssetRegistry::GetAsset(const Gleam::Filesystem::Pa
 	auto it = mAssetCache.find(relPath);
 	if (it != mAssetCache.end())
 	{
-		return it->second;
+		return it->second.reference;
 	}
 	static Gleam::AssetReference invalidAsset;
 	return invalidAsset;

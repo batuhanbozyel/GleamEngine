@@ -32,3 +32,8 @@ Gleam::TString TextureBaker::Filename() const
 {
 	return mDescriptor.name;
 }
+
+Gleam::Guid TextureBaker::TypeGuid() const
+{
+    return Gleam::Reflection::GetClass<decltype(mDescriptor)>().Guid();
+}

@@ -18,6 +18,8 @@ public:
 	virtual Gleam::AssetReference Bake(const Gleam::Filesystem::Path& directory) const = 0;
 
     virtual Gleam::TString Filename() const = 0;
+    
+    virtual Gleam::Guid TypeGuid() const = 0;
 
 	const Gleam::Guid& GetGuid() const
 	{

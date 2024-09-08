@@ -4,6 +4,13 @@
 
 namespace GEditor {
 
+struct AssetItem
+{
+    Gleam::AssetReference reference;
+    Gleam::Guid type;
+    Gleam::TString name;
+};
+
 class AssetRegistry final
 {
 public:
@@ -19,7 +26,7 @@ private:
 
 	Gleam::Filesystem::Path mAssetDirectory;
     
-    Gleam::HashMap<Gleam::Filesystem::Path, Gleam::AssetReference> mAssetCache;
+    Gleam::HashMap<Gleam::Filesystem::Path, AssetItem> mAssetCache;
 
 };
 

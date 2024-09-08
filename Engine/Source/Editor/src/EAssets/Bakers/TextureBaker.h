@@ -12,6 +12,8 @@ public:
 	virtual Gleam::AssetReference Bake(const Gleam::Filesystem::Path& directory) const override;
     
     virtual Gleam::TString Filename() const override;
+    
+    virtual Gleam::Guid TypeGuid() const override;
 
 private:
 

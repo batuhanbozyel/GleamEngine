@@ -34,6 +34,11 @@ Gleam::TString MaterialBaker::Filename() const
     return mDescriptor.name;
 }
 
+Gleam::Guid MaterialBaker::TypeGuid() const
+{
+    return Gleam::Reflection::GetClass<decltype(mDescriptor)>().Guid();
+}
+
 // MaterialInstanceBaker
 MaterialInstanceBaker::MaterialInstanceBaker(const Gleam::MaterialInstanceDescriptor& descriptor)
 	: mDescriptor(descriptor)
@@ -64,4 +69,9 @@ Gleam::AssetReference MaterialInstanceBaker::Bake(const Gleam::Filesystem::Path&
 Gleam::TString MaterialInstanceBaker::Filename() const
 {
 	return mDescriptor.name;
+}
+
+Gleam::Guid MaterialInstanceBaker::TypeGuid() const
+{
+    return Gleam::Reflection::GetClass<decltype(mDescriptor)>().Guid();
 }
