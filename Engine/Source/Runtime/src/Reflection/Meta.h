@@ -204,8 +204,14 @@ public:
         return Attrib({});
     }
     
+    constexpr size_t GetSize() const
+    {
+        return mSize;
+    }
+    
 private:
     
+    size_t mSize;
     Gleam::Guid mGuid;
     TStringView mName;
     TArray<AttributePair> mAttributes;

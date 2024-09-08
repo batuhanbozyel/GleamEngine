@@ -8,6 +8,10 @@ using namespace GEditor;
 AssetRegistry::AssetRegistry(const Gleam::Filesystem::Path& directory)
 	: mAssetDirectory(directory)
 {
+    // TODO: register all serialized assets on init
+    // materials should only compile when first seen by the registry
+    // existing materials should not change guid
+    // it should only reimport if material/shader source changed since last compile
     Gleam::Filesystem::ForEach(directory, [this](const auto& entry)
     {
         if (entry.extension() == ".mat")

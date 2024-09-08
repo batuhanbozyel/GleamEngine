@@ -183,9 +183,9 @@ struct JSONSerializer::Impl
                                              Reflection::PrimitiveType type,
                                              rapidjson::Node& node);
 
-    static void SerializeEnumObjectValue(const void* obj, rapidjson::Node& node);
+    static void SerializeEnumObjectValue(const void* obj, rapidjson::Node& node, size_t size);
 
-    static void SerializeEnumArrayValue(const void* obj, rapidjson::Node& node);
+    static void SerializeEnumArrayValue(const void* obj, rapidjson::Node& node, size_t size);
 
     static void SerializeClassObjectFields(const void* obj,
                                            const TStringView fieldName,
@@ -731,14 +731,21 @@ void JSONSerializer::Impl::SerializePrimitiveArrayValue(const void* obj,
     }
 }
 
-void JSONSerializer::Impl::SerializeEnumObjectValue(const void* obj, rapidjson::Node& node)
+void JSONSerializer::Impl::SerializeEnumObjectValue(const void* obj, rapidjson::Node& node, size_t size)
 {
-    node.AddMember("Value", Reflection::Get<int64_t>(obj));
+    GLEAM_ASSERT(size <= sizeof(int64_t), "JSONSerializer: Enum is larger than 8 bytes");
+    int64_t value = 0;
+    int64_t field = Reflection::Get<int64_t>(obj);
+    memcpy(&value, &field, size);
+    node.AddMember("Value", value);
 }
 
-void JSONSerializer::Impl::SerializeEnumArrayValue(const void* obj, rapidjson::Node& node)
+void JSONSerializer::Impl::SerializeEnumArrayValue(const void* obj, rapidjson::Node& node, size_t size)
 {
-    node.PushBack(rapidjson::Value(Reflection::Get<int64_t>(obj)));
+    int64_t value = 0;
+    int64_t field = Reflection::Get<int64_t>(obj);
+    memcpy(&value, &field, size);
+    node.PushBack(rapidjson::Value(value));
 }
 
 void JSONSerializer::Impl::SerializeClassObjectFields(const void* obj,
@@ -840,7 +847,7 @@ void JSONSerializer::Impl::SerializeClassArrayFields(const void* obj,
                 case Reflection::FieldType::Enum:
                 {
 					const auto& enumField = field.GetField<Reflection::EnumField>();
-                    SerializeEnumArrayValue(OffsetPointer(obj, enumField.offset), outFields);
+                    SerializeEnumArrayValue(OffsetPointer(obj, enumField.offset), outFields, enumField.size);
                     break;
                 }
                 case Reflection::FieldType::Primitive:
@@ -899,7 +906,7 @@ void JSONSerializer::Impl::SerializeArrayObjectElements(const void* obj,
         const auto& enumDesc = Reflection::Database::GetEnum(arrayDesc.ElementHash());
         for (size_t elementOffset = 0; elementOffset < arrayDesc.GetSize(); elementOffset += arrayDesc.GetStride())
         {
-            SerializeEnumArrayValue(OffsetPointer(obj, elementOffset), outElements);
+            SerializeEnumArrayValue(OffsetPointer(obj, elementOffset), outElements, enumDesc.GetSize());
         }
     }
 	else
@@ -926,7 +933,7 @@ void JSONSerializer::Impl::SerializeEnumObject(const void* obj,
                                                rapidjson::Node& outObject)
 {
     SerializeEnumHeader(enumDesc, fieldName, outObject);
-    SerializeEnumObjectValue(obj, outObject);
+    SerializeEnumObjectValue(obj, outObject, enumDesc.GetSize());
 }
 
 void JSONSerializer::Impl::SerializeClassObject(const void* obj,

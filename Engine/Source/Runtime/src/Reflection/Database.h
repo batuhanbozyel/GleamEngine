@@ -174,6 +174,7 @@ private:
     static constexpr EnumDescription CreateEnumDescription(const refl::type_descriptor<T>& type)
     {
         EnumDescription desc;
+        desc.mSize = sizeof(T);
         desc.mName = type.name.c_str();
         desc.mGuid = refl::descriptor::get_attribute<Reflection::Attribute::Guid>(type);
         
