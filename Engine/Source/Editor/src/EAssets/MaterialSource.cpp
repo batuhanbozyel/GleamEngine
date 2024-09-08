@@ -125,9 +125,11 @@ bool MaterialSource::Import(const Gleam::Filesystem::Path& path, const ImportSet
     
     if (document.HasMember("SurfaceShader"))
     {
+        descriptor.surfaceShader = document["SurfaceShader"].GetString();
+        
         auto shaderPath = path;
         shaderPath.remove_filename();
-        shaderPath /= document["SurfaceShader"].GetString();
+        shaderPath /= descriptor.surfaceShader;
         
         if (shaderPath.has_extension() == false)
         {
