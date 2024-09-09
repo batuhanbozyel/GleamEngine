@@ -5,6 +5,7 @@
 #include "Core/Globals.h"
 #include "Renderer/Mesh.h"
 #include "Renderer/Material/MaterialSystem.h"
+#include "Assets/AssetReference.h"
 
 using namespace Gleam;
 
@@ -12,7 +13,7 @@ MeshRenderer::MeshRenderer(const Mesh& mesh)
 	: mMesh(mesh)
 {
     static auto materialSystem = Globals::Engine->GetSubsystem<MaterialSystem>();
-    const auto& baseMaterial = materialSystem->Get("OpaqueLit");
+    auto baseMaterial = materialSystem->GetMaterial(AssetReference());
 
     mMaterials.reserve(mesh.GetSubmeshCount());
     for (uint32_t i = 0; i < mesh.GetSubmeshCount(); i++)

@@ -58,7 +58,7 @@ AssetRegistry::AssetRegistry(const Gleam::Filesystem::Path& directory)
         }
     }, true);
     
-    // TODO: materials should only compile when first seen by the registry
+    // TODO: materials should only compile and imported when first seen by the registry
     // existing materials should not change guid
     // it should only reimport if material/shader source changed since last compile
     Gleam::Filesystem::ForEach(directory, [this](const auto& entry)

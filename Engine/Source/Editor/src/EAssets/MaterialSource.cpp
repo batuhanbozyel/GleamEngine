@@ -128,7 +128,7 @@ bool MaterialSource::Import(const Gleam::Filesystem::Path& path, const ImportSet
         auto shaderPath = path;
         shaderPath.remove_filename();
         shaderPath /= document["SurfaceShader"].GetString();
-        descriptor.surfaceShader = shaderPath.filename();
+        descriptor.surfaceShader = shaderPath.stem().string();
         
         if (shaderPath.has_extension() == false)
         {
@@ -159,7 +159,7 @@ bool MaterialSource::Import(const Gleam::Filesystem::Path& path, const ImportSet
         }
         
         Gleam::TStringStream cmd;
-        cmd << Gleam::TString(PYTHON_INTERPRETER) << " ";
+        cmd << PYTHON_INTERPRETER << " ";
         cmd << Gleam::Globals::StartupDirectory/"Tools/CompileShaders.py";
         cmd << " -f " << generatedPath;
         cmd << " -o " << descriptor.surfaceShader;

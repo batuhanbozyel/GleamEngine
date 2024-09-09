@@ -15,6 +15,3 @@ GLEAM_END
 
 GLEAM_TEMPLATE((typename T, size_t s), (std::array<T, s>), Guid("4D138331-C39C-4845-BE74-C0CEA70DDCFD"))
 GLEAM_END
-
-GLEAM_TEMPLATE((typename K, typename V), (std::unordered_map<K, V>), Guid("FFFDC18B-7731-45AC-A58F-7C0EBBE3802D"))
-GLEAM_END

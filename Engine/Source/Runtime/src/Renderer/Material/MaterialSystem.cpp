@@ -13,18 +13,15 @@ void MaterialSystem::Shutdown()
 
 }
 
-Material* MaterialSystem::Get(const TString& name) const
+Material* MaterialSystem::GetMaterial(const AssetReference& ref) const
 {
-	auto it = std::find_if(mMaterials.begin(), mMaterials.end(), [&](const auto& material)
-	{
-		return material->GetName() == name;
-	});
-
+	
+	auto it = mMaterials.find(ref);
 	if (it == mMaterials.end())
 	{
-		GLEAM_CORE_ERROR("Material could not found: {0}", name);
+		GLEAM_CORE_ERROR("Material could not found for GUID: {0}", ref.guid.ToString());
 		GLEAM_ASSERT(false);
 		return nullptr;
 	}
-	return it->get();
+	return it->second;
 }
