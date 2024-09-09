@@ -45,7 +45,6 @@ AssetRegistry::AssetRegistry(const Gleam::Filesystem::Path& directory)
             auto serializer = Gleam::JSONSerializer(file.GetStream());
             auto header = serializer.ParseHeader();
             
-            auto relPath = Gleam::Filesystem::Relative(entry, mAssetDirectory);
             auto guid = Gleam::Guid(entry.stem().string());
             auto asset = Gleam::AssetReference{ .guid = guid };
             auto name = ParseNameFromAssetFile(serializer, header.guid);
@@ -54,6 +53,8 @@ AssetRegistry::AssetRegistry(const Gleam::Filesystem::Path& directory)
                 .type = header.guid,
                 .name = name
             };
+            auto relPath = Gleam::Filesystem::Relative(entry.parent_path(), mAssetDirectory);
+            relPath /= name;
             mAssetCache.insert({ relPath, item });
         }
     }, true);
@@ -65,10 +66,15 @@ AssetRegistry::AssetRegistry(const Gleam::Filesystem::Path& directory)
     {
         if (entry.extension() == ".mat")
         {
-            auto materialSource = MaterialSource(this);
-            auto settings = MaterialSource::ImportSettings();
-            materialSource.Import(entry, settings);
-			Import(mAssetDirectory/"Materials", materialSource);
+            auto path = entry.parent_path()/entry.stem();
+            auto relPath = Gleam::Filesystem::Relative(path, mAssetDirectory);
+            if (mAssetCache.find(relPath) == mAssetCache.end())
+            {
+                auto materialSource = MaterialSource(this);
+                auto settings = MaterialSource::ImportSettings();
+                materialSource.Import(entry, settings);
+                Import(mAssetDirectory/"Materials", materialSource);
+            }
         }
     }, true);
 }
