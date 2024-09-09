@@ -60,6 +60,10 @@ public:
 											const Reflection::ClassDescription& classDesc,
 											void* obj);
     
+    static bool TryCustomArrayDeserializer(const void* userData,
+                                           const Reflection::ClassDescription& classDesc,
+                                           void* obj);
+    
 private:
     
     using ObjectSerializerFn = std::function<void(const void* obj,
@@ -84,6 +88,8 @@ private:
     static inline HashMap<TStringView, ArraySerializerFn> mCustomArraySerializers;
 
 	static inline HashMap<TStringView, ObjectDeserializerFn> mCustomObjectDeserializers;
+    
+    static inline HashMap<TStringView, ArrayDeserializerFn> mCustomArrayDeserializers;
     
 private:
     
