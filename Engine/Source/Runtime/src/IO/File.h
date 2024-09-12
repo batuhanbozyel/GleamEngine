@@ -12,7 +12,7 @@ enum class FileType
 class File final
 {
 public:
-    
+
     File(FileStream&& handle, const Filesystem::Path& path, FileAccessor& accessor);
 
 	TString Read() const;

@@ -8,24 +8,10 @@ MeshBaker::MeshBaker(const Gleam::MeshDescriptor& descriptor)
 	
 }
 
-Gleam::AssetReference MeshBaker::Bake(const Gleam::Filesystem::Path& directory) const
+void MeshBaker::Bake(Gleam::FileStream& stream) const
 {
-	const auto& guid = GetGuid();
-    Gleam::AssetReference asset{ .guid = guid };
-
-	auto filename = guid.ToString() + Gleam::Asset::extension().data();
-    auto file = Gleam::Filesystem::Create(directory/filename, Gleam::FileType::Text);
-	auto& accessor = Gleam::Filesystem::Accessor(directory/filename);
-	{
-		auto serializer = Gleam::JSONSerializer(file.GetStream());
-
-		std::lock_guard<std::mutex> lock(accessor.mutex);
-		accessor.status = Gleam::FileStatus::Writing;
-		serializer.Serialize(mDescriptor);
-		accessor.status = Gleam::FileStatus::Available;
-	}
-	accessor.condition.notify_all();
-    return asset;
+	auto serializer = Gleam::JSONSerializer(stream);
+	serializer.Serialize(mDescriptor);
 }
 
 Gleam::TString MeshBaker::Filename() const

@@ -42,6 +42,7 @@ AssetRegistry::AssetRegistry(const Gleam::Filesystem::Path& directory)
         if (entry.extension() == ".asset")
         {
             auto file = Gleam::Filesystem::Open(entry, Gleam::FileType::Text);
+			auto accessor = Gleam::Filesystem::ReadAccessor(entry);
             auto serializer = Gleam::JSONSerializer(file.GetStream());
             auto header = serializer.ParseHeader();
             
@@ -83,19 +84,35 @@ void AssetRegistry::Import(const Gleam::Filesystem::Path& directory, const Asset
 {
 	for (const auto& baker : package.bakers)
 	{
-		auto asset = baker->Bake(directory);
-        auto path = directory/baker->Filename();
-		auto relPath = Gleam::Filesystem::Relative(path, mAssetDirectory);
-        
-        auto item = AssetItem{
-            .reference = asset,
-            .type = baker->TypeGuid(),
-            .name = baker->Filename()
-        };
-        
-		mAssetCache.insert({ relPath, item });
-        GLEAM_INFO("Asset imported: {0} GUID: {1}", baker->Filename(), asset.guid.ToString());
+		auto path = directory / baker->Filename();
+		const auto& asset = RegisterAsset(path, baker->TypeGuid());
+
+		auto filename = asset.guid.ToString() + Gleam::Asset::extension().data();
+		auto file = Gleam::Filesystem::Create(directory / filename, Gleam::FileType::Text);
+		auto accessor = Gleam::Filesystem::WriteAccessor(directory / filename);
+		baker->Bake(file.GetStream());
 	}
+}
+
+const Gleam::AssetReference& AssetRegistry::RegisterAsset(const Gleam::Filesystem::Path& path, const Gleam::Guid& type)
+{
+	auto relPath = path.is_relative() ? path : Gleam::Filesystem::Relative(path, mAssetDirectory);
+	auto it = mAssetCache.find(relPath);
+	if (it != mAssetCache.end())
+	{
+		return it->second.reference;
+	}
+
+	auto asset = Gleam::AssetReference{ .guid = Gleam::Guid::NewGuid() };
+	auto item = AssetItem{
+		.reference = asset,
+		.type = type,
+		.name = path.stem().string()
+	};
+
+	it = mAssetCache.emplace_hint(mAssetCache.end(), relPath, item);
+	GLEAM_INFO("Asset imported: {0} GUID: {1}", item.name, asset.guid.ToString());
+	return it->second.reference;
 }
 
 const Gleam::AssetReference& AssetRegistry::GetAsset(const Gleam::Filesystem::Path& path) const

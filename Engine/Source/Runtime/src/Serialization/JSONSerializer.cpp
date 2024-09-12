@@ -425,17 +425,17 @@ void JSONSerializer::Initialize()
 			void* obj)
 		{
 			const auto& value = Reflection::Get<rapidjson::Value>(userData);
-            if (value.HasMember("Elements"))
-            {
-                const auto& elements = value["Elements"].GetArray();
+			if (value.HasMember("Elements"))
+			{
+				const auto& elements = value["Elements"].GetArray();
 
-                const auto& arrDesc = Reflection::GetArray(classDesc.ContainerHash());
-                auto containerDesc = Reflection::ArrayDescription(arrDesc.ResolveName(), arrDesc.ElementType(), arrDesc.ElementHash(), elements.Size(), arrDesc.GetStride());
+				const auto& arrDesc = Reflection::GetArray(classDesc.ContainerHash());
+				auto containerDesc = Reflection::ArrayDescription(arrDesc.ResolveName(), arrDesc.ElementType(), arrDesc.ElementHash(), elements.Size(), arrDesc.GetStride());
 
-                auto& arr = Reflection::Get<TArray<uint8_t>>(obj);
-                arr.resize(elements.Size() * arrDesc.GetStride());
-                Impl::DeserializeArrayElements(elements, containerDesc, arr.data());
-            }
+				auto& arr = Reflection::Get<TArray<uint8_t>>(obj);
+				arr.resize(elements.Size() * arrDesc.GetStride());
+				Impl::DeserializeArrayElements(elements, containerDesc, arr.data());
+			}
 		};
         
         mCustomArrayDeserializers[Reflection::GetClass<TArray<uint8_t>>().ResolveName()] = [](const void* userData,
@@ -457,6 +457,8 @@ void JSONSerializer::Shutdown()
 {
     mCustomObjectSerializers.clear();
     mCustomArraySerializers.clear();
+	mCustomObjectDeserializers.clear();
+	mCustomArrayDeserializers.clear();
 }
 
 JSONHeader JSONSerializer::ParseHeader()

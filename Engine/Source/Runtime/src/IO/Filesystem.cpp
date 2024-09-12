@@ -66,6 +66,16 @@ FileAccessor& Filesystem::Accessor(const Filesystem::Path& path)
 	return mFileAccessors[path];
 }
 
+FileAccessor::Read Filesystem::ReadAccessor(const Filesystem::Path& path)
+{
+	return FileAccessor::Read(Accessor(path));
+}
+
+FileAccessor::Write Filesystem::WriteAccessor(const Filesystem::Path& path)
+{
+	return FileAccessor::Write(Accessor(path));
+}
+
 Filesystem::Path Filesystem::WorkingDirectory()
 {
 	return std::filesystem::current_path();
@@ -84,4 +94,47 @@ bool Filesystem::Exists(const Filesystem::Path& path)
 bool Filesystem::IsDirectory(const Filesystem::Path& path)
 {
 	return std::filesystem::is_directory(path);
+}
+
+// File::Accessors
+
+FileAccessor::Write::Write(FileAccessor& accessor)
+	: mAccessor(accessor)
+{
+	std::unique_lock<std::mutex> lock(mAccessor.mutex);
+	mAccessor.condition.wait(lock, [this]
+	{
+		return mAccessor.status == FileStatus::Available;
+	});
+	mAccessor.status = Gleam::FileStatus::Writing;
+}
+
+FileAccessor::Write::~Write()
+{
+	mAccessor.status = Gleam::FileStatus::Available;
+	mAccessor.condition.notify_all();
+}
+
+FileAccessor::Read::Read(FileAccessor& accessor)
+	: mAccessor(accessor)
+	, mLock(accessor.mutex)
+{
+	mAccessor.condition.wait(mLock, [this]
+	{
+		return mAccessor.status != FileStatus::Writing;
+	});
+
+	++mAccessor.concurrentReaders;
+	mAccessor.status = FileStatus::Reading;
+	mLock.unlock();
+}
+
+FileAccessor::Read::~Read()
+{
+	mLock.lock();
+	if (--mAccessor.concurrentReaders == 0)
+	{
+		mAccessor.status = FileStatus::Available;
+		mAccessor.condition.notify_all();
+	}
 }

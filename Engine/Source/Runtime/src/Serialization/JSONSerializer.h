@@ -37,7 +37,7 @@ public:
 	template<typename T>
 	T Deserialize()
 	{
-		T object = T();
+		T object{};
 		const auto& classDesc = Reflection::GetClass<T>();
 		Deserialize(classDesc, &object);
 		return object;

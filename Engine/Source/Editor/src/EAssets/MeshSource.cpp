@@ -141,44 +141,48 @@ bool MeshSource::Import(const Gleam::Filesystem::Path& path, const ImportSetting
 
 		if (const auto& texture = material.textures[PBRTexture::Albedo]; texture.empty() == false)
 		{
+			auto texturePath = path.parent_path() / texture;
 			auto textureSource = TextureSource(registry);
 			auto textureSettings = TextureSource::ImportSettings();
-			if (textureSource.Import(texture, textureSettings))
+			if (textureSource.Import(texturePath, textureSettings))
 			{
-				descriptor.values["BaseColorTexture"] = Gleam::AssetReference{ .guid = textureSource.bakers[0]->GetGuid() };
+				descriptor.values["BaseColorTexture"] = registry->GetAsset(texturePath);
 				bakers.emplace_back(textureSource.bakers[0]);
 			}
 		}
 
 		if (const auto& texture = material.textures[PBRTexture::Normal]; texture.empty() == false)
 		{
+			auto texturePath = path.parent_path() / texture;
 			auto textureSource = TextureSource(registry);
 			auto textureSettings = TextureSource::ImportSettings();
-			if (textureSource.Import(texture, textureSettings))
+			if (textureSource.Import(texturePath, textureSettings))
 			{
-				descriptor.values["NormalTexture"] = Gleam::AssetReference{ .guid = textureSource.bakers[0]->GetGuid() };
+				descriptor.values["NormalTexture"] = registry->GetAsset(texturePath);
 				bakers.emplace_back(textureSource.bakers[0]);
 			}
 		}
 
 		if (const auto& texture = material.textures[PBRTexture::MetallicRoughness]; texture.empty() == false)
 		{
+			auto texturePath = path.parent_path() / texture;
 			auto textureSource = TextureSource(registry);
 			auto textureSettings = TextureSource::ImportSettings();
-			if (textureSource.Import(texture, textureSettings))
+			if (textureSource.Import(texturePath, textureSettings))
 			{
-				descriptor.values["MetallicRoughnessTexture"] = Gleam::AssetReference{ .guid = textureSource.bakers[0]->GetGuid() };
+				descriptor.values["MetallicRoughnessTexture"] = registry->GetAsset(texturePath);
 				bakers.emplace_back(textureSource.bakers[0]);
 			}
 		}
 
 		if (const auto& texture = material.textures[PBRTexture::Emissive]; texture.empty() == false)
 		{
+			auto texturePath = path.parent_path() / texture;
 			auto textureSource = TextureSource(registry);
 			auto textureSettings = TextureSource::ImportSettings();
-			if (textureSource.Import(texture, textureSettings))
+			if (textureSource.Import(texturePath, textureSettings))
 			{
-				descriptor.values["EmissiveTexture"] = Gleam::AssetReference{ .guid = textureSource.bakers[0]->GetGuid() };
+				descriptor.values["EmissiveTexture"] = registry->GetAsset(texturePath);
 				bakers.emplace_back(textureSource.bakers[0]);
 			}
 		}

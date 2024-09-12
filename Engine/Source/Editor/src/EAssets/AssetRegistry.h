@@ -20,6 +20,8 @@ public:
 
 	void Import(const Gleam::Filesystem::Path& directory, const AssetPackage& package);
 
+	const Gleam::AssetReference& RegisterAsset(const Gleam::Filesystem::Path& path, const Gleam::Guid& type);
+
 	const Gleam::AssetReference& GetAsset(const Gleam::Filesystem::Path& path) const;
 
 private:

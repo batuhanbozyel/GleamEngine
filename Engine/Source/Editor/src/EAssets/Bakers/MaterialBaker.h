@@ -9,7 +9,7 @@ public:
 
 	MaterialBaker(const Gleam::MaterialDescriptor& descriptor);
 
-	virtual Gleam::AssetReference Bake(const Gleam::Filesystem::Path& directory) const override;
+	virtual void Bake(Gleam::FileStream& stream) const override;
     
     virtual Gleam::TString Filename() const override;
     
@@ -27,7 +27,7 @@ public:
 
 	MaterialInstanceBaker(const Gleam::MaterialInstanceDescriptor& descriptor);
 
-	virtual Gleam::AssetReference Bake(const Gleam::Filesystem::Path& directory) const override;
+	virtual void Bake(Gleam::FileStream& stream) const override;
 
 	virtual Gleam::TString Filename() const override;
     

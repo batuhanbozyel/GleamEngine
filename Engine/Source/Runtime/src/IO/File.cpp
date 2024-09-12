@@ -20,27 +20,13 @@ TString File::Read() const
 		return "";
 	}
 
-    std::unique_lock<std::mutex> lock(mAccessor.mutex);
-    mAccessor.condition.wait(lock, [this]
-    {
-        return mAccessor.status != FileStatus::Writing;
-    });
-    
-    ++mAccessor.concurrentReaders;
-    mAccessor.status = FileStatus::Reading;
-    lock.unlock();
-    
+	FileAccessor::Read accessor(mAccessor);
+
 	size_t size = GetSize();
     TString contents;
 	contents.resize(size);
 	mHandle.read(contents.data(), size);
-    
-    lock.lock();
-    if (--mAccessor.concurrentReaders == 0)
-    {
-        mAccessor.status = FileStatus::Available;
-        mAccessor.condition.notify_all();
-    }
+
 	return contents;
 }
 
@@ -51,18 +37,9 @@ void File::Write(const TString& contents)
 		GLEAM_CORE_ERROR("File could not be opened: {0}", GetName());
 		return;
 	}
-    
-    std::unique_lock<std::mutex> lock(mAccessor.mutex);
-    mAccessor.condition.wait(lock, [this] 
-    {
-        return mAccessor.status == FileStatus::Available;
-    });
-    
-    mAccessor.status = FileStatus::Writing;
+
+	FileAccessor::Write accessor(mAccessor);
     mHandle << contents;
-    mAccessor.status = FileStatus::Available;
-    
-    mAccessor.condition.notify_all();
 }
 
 void File::Append(const TString& contents)
@@ -73,30 +50,16 @@ void File::Append(const TString& contents)
 		return;
 	}
     
-    std::unique_lock<std::mutex> lock(mAccessor.mutex);
-    mAccessor.condition.wait(lock, [this]
-    {
-        return mAccessor.status == FileStatus::Available;
-    });
-    
-    mAccessor.status = FileStatus::Writing;
+	FileAccessor::Write accessor(mAccessor);
     mHandle.seekg(0, std::ios::end);
     mHandle << contents;
-    mAccessor.status = FileStatus::Available;
-    
-    mAccessor.condition.notify_all();
 }
 
 size_t File::GetSize() const
 {
     if (mHandle.is_open())
     {
-        std::unique_lock<std::mutex> lock(mAccessor.mutex);
-        mAccessor.condition.wait(lock, [this]
-        {
-            return mAccessor.status != FileStatus::Writing;
-        });
-        
+		FileAccessor::Read accessor(mAccessor);
         mHandle.seekg(0, std::ios::end);
         size_t size = mHandle.tellg();
         mHandle.seekg(0, std::ios::beg);

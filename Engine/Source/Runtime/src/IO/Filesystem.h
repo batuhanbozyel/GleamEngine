@@ -38,6 +38,23 @@ struct FileAccessor
     std::condition_variable condition;
     std::atomic<uint32_t> concurrentReaders = 0;
     FileStatus status = FileStatus::Available;
+
+	struct Write
+	{
+		FileAccessor& mAccessor;
+
+		Write(FileAccessor& accessor);
+		~Write();
+	};
+
+	struct Read
+	{
+		FileAccessor& mAccessor;
+		std::unique_lock<std::mutex> mLock;
+
+		Read(FileAccessor& accessor);
+		~Read();
+	};
 };
 
 class Filesystem
@@ -53,6 +70,10 @@ public:
 	static File Open(const Filesystem::Path& path, FileType type);
     
     static bool Remove(const Filesystem::Path& path);
+
+	static FileAccessor::Read ReadAccessor(const Filesystem::Path& path);
+
+	static FileAccessor::Write WriteAccessor(const Filesystem::Path& path);
 
 	static FileAccessor& Accessor(const Filesystem::Path& path);
 
