@@ -1085,7 +1085,9 @@ void JSONSerializer::Impl::DeserializeEnumObject(const rapidjson::Value& object,
                                                  const Reflection::EnumDescription& enumDesc,
                                                  void* obj)
 {
-	DeserializeValue<int64_t>(object, obj);
+	int64_t value = 0;
+	DeserializeValue<int64_t>(object, &value);
+	memcpy(obj, &value, enumDesc.GetSize());
 }
 
 void JSONSerializer::Impl::DeserializeClassObject(const rapidjson::Value& object,
