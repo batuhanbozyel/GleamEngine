@@ -3,13 +3,22 @@
 #include "Core/Engine.h"
 #include "Core/Globals.h"
 #include "IO/FileWatcher.h"
-#include "Serialization/JSONSerializer.h"
-#include "Serialization/BinarySerializer.h"
 
 using namespace Gleam;
 
 void AssetManager::Initialize()
 {
+	Filesystem::ForEach(Globals::ProjectContentDirectory, [this](const auto& entry)
+	{
+		if (entry.extension() == ".asset")
+		{
+			Asset asset{ .path = Filesystem::Relative(entry, Globals::ProjectContentDirectory) };
+			Guid guid = entry.stem().string();
+			AssetReference assetRef = { .guid = guid };
+			mAssets.emplace(assetRef, asset);
+		}
+	}, true);
+
     auto fileWatcher = Globals::Engine->GetSubsystem<FileWatcher>();
     fileWatcher->AddWatch(Globals::ProjectContentDirectory, [this](const Filesystem::Path& path, FileWatchEvent event)
     {
@@ -63,20 +72,6 @@ void AssetManager::Initialize()
 void AssetManager::Shutdown()
 {
     mAssets.clear();
-}
-
-const Asset& AssetManager::GetAsset(const AssetReference& asset) const
-{
-    auto it = mAssets.find(asset);
-    if (it != mAssets.end())
-    {
-        return it->second;
-    }
-    
-    GLEAM_CORE_ERROR("Asset could not located for GUID: {0}", asset.guid.ToString());
-    GLEAM_ASSERT(false);
-    static Asset invalidAsset;
-    return invalidAsset;
 }
 
 bool AssetManager::TryEmplaceAsset(const Asset& asset)
