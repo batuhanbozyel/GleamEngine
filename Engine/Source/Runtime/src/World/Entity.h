@@ -16,7 +16,7 @@ public:
     
     Entity() = default;
     
-    Entity(EntityHandle handle, entt::registry* registry = nullptr)
+    Entity(EntityHandle handle, entt::registry* registry)
 		: mHandle(handle), mRegistry(registry)
 	{
 

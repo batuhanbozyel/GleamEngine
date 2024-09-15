@@ -7,17 +7,17 @@ class EntitySelectedEvent : public Gleam::Event
 {
 public:
 
-	EntitySelectedEvent(Gleam::Entity entity)
+	EntitySelectedEvent(Gleam::EntityHandle entity)
 		: mEntity(entity) {}
 
-	Gleam::Entity GetEntity() const
+	Gleam::EntityHandle GetEntity() const
 	{
 		return mEntity;
 	}
 
 private:
 
-	Gleam::Entity mEntity;
+	Gleam::EntityHandle mEntity;
 };
 
 } // namespace Gleam

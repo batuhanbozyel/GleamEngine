@@ -8,7 +8,12 @@ class Transform2D
 public:
     
     virtual ~Transform2D() = default;
-    
+
+	Entity GetParent() const
+	{
+		return mParent;
+	}
+
     void SetParent(Entity parent)
     {
         mParent = parent;
@@ -84,7 +89,7 @@ public:
     
 private:
     
-    Entity mParent = InvalidEntity;
+	Entity mParent = {};
     
     Float2 mPosition = Float2(0.0f, 0.0f);
     float mRotation = 0.0f;

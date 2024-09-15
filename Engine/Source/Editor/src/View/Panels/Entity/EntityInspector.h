@@ -23,7 +23,7 @@ private:
 
 	Gleam::World* mEditWorld;
 
-	Gleam::Entity mSelectedEntity = Gleam::InvalidEntity;
+	Gleam::EntityHandle mSelectedEntity = Gleam::InvalidEntity;
     
 };
 
