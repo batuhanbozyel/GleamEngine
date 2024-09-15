@@ -9,8 +9,9 @@ class MaterialInstance;
 struct MeshBatch
 {
 	Mesh mesh;
-    MaterialInstance material;
     Float4x4 transform;
+	SubmeshDescriptor submesh;
+    MaterialInstance material;
 };
 
 class RenderSceneProxy

@@ -15,16 +15,22 @@ void RenderSceneProxy::Update(const World* world)
     world->GetEntityManager().ForEach<MeshRenderer, Transform>([this](const MeshRenderer& meshRenderer, const Transform& transform)
     {
         GLEAM_ASSERT(meshRenderer.GetMesh().GetSubmeshCount() > 0);
-        
-        const auto& material = meshRenderer.GetMaterial(0);
-        const auto& baseMaterial = static_cast<const Material*>(material.GetBaseMaterial());
-        
-        MeshBatch batch = {
-            .mesh = meshRenderer.GetMesh(),
-            .material = material,
-            .transform = transform.GetWorldTransform()
-        };
-        mStaticBatches[baseMaterial].emplace_back(batch);
+		GLEAM_ASSERT(meshRenderer.GetMaterials().size() == meshRenderer.GetMesh().GetSubmeshCount());
+
+		const auto& materials = meshRenderer.GetMaterials();
+		const auto& submeshes = meshRenderer.GetMesh().GetSubmeshDescriptors();
+		for (uint32_t i = 0; i < meshRenderer.GetMesh().GetSubmeshCount(); ++i)
+		{
+			MeshBatch batch = {
+				.mesh = meshRenderer.GetMesh(),
+				.transform = transform.GetWorldTransform(),
+				.submesh = submeshes[i],
+				.material = materials[i]
+			};
+
+			const auto& baseMaterial = static_cast<const Material*>(batch.material.GetBaseMaterial());
+			mStaticBatches[baseMaterial].emplace_back(batch);
+		}
     });
     
     // update active camera

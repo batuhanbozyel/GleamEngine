@@ -15,7 +15,6 @@ void MaterialSystem::Shutdown()
 
 Material* MaterialSystem::GetMaterial(const AssetReference& ref) const
 {
-	
 	auto it = mMaterials.find(ref);
 	if (it == mMaterials.end())
 	{

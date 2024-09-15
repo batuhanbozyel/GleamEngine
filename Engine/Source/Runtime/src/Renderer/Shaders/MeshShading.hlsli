@@ -2,7 +2,6 @@
 #include "ShaderTypes.h"
 
 CONSTANT_BUFFER(Gleam::MeshPassResources, resources, 0);
-PUSH_CONSTANT(Gleam::ForwardPassUniforms, uniforms);
 
 #pragma fragment meshShadingPassShader
 

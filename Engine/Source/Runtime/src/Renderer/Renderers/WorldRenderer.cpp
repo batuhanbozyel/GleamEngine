@@ -108,17 +108,11 @@ void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
                 resources.positionBuffer = positionBuffer.GetResourceView();
                 resources.interleavedBuffer = interleavedBuffer.GetResourceView();
                 resources.materialBuffer = materialBuffer.GetResourceView();
-                resources.materialInstanceId = batch.material.GetUniqueId();
+				resources.material = batch.material.GetUniqueId();
+				resources.modelMatrix = batch.transform;
+				resources.baseVertex = batch.submesh.baseVertex;
                 cmd->SetConstantBuffer(resources, 0);
-
-                for (const auto& descriptor : batch.mesh.GetSubmeshDescriptors())
-                {
-                    ForwardPassUniforms uniforms;
-                    uniforms.modelMatrix = batch.transform;
-                    uniforms.baseVertex = descriptor.baseVertex;
-                    cmd->SetPushConstant(uniforms);
-                    cmd->DrawIndexed(batch.mesh.GetIndexBuffer(), IndexType::UINT32, descriptor.indexCount, 1, descriptor.firstIndex);
-                }
+				cmd->DrawIndexed(batch.mesh.GetIndexBuffer(), IndexType::UINT32, batch.submesh.indexCount, 1, batch.submesh.firstIndex);
             }
         });
     });

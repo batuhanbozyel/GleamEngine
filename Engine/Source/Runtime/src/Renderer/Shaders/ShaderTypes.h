@@ -34,13 +34,11 @@ struct MeshPassResources
 	BufferResourceView positionBuffer;
 	BufferResourceView interleavedBuffer;
     BufferResourceView materialBuffer;
-    uint32_t materialInstanceId;
-};
 
-struct ForwardPassUniforms
-{
 	float4x4 modelMatrix;
+
 	uint32_t baseVertex;
+	uint32_t material;
 };
 
 struct TonemapUniforms
