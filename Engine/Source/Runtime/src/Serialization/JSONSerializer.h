@@ -11,7 +11,7 @@ struct JSONHeader
 	uint32_t version = 0;
 };
 
-class JSONSerializer final : public Subsystem
+class JSONSerializer final : public EngineSubsystem
 {
 public:
     
@@ -21,7 +21,7 @@ public:
     
     ~JSONSerializer();
     
-    virtual void Initialize() override;
+    virtual void Initialize(Engine* engine) override;
     
     virtual void Shutdown() override;
 

@@ -11,8 +11,9 @@
 
 using namespace GEditor;
 
-void ViewStack::Initialize()
+void ViewStack::Initialize(Gleam::World* world)
 {
+	mWorld = world;
 	mImgui = Gleam::Globals::Engine->GetSubsystem<Gleam::RenderSystem>()->AddRenderer<Gleam::ImGuiRenderer>();
     SetDarkTheme();
 }

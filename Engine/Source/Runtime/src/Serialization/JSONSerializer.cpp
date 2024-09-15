@@ -261,7 +261,7 @@ JSONSerializer::~JSONSerializer()
     }
 }
 
-void JSONSerializer::Initialize()
+void JSONSerializer::Initialize(Engine* engine)
 {
 	// Custom serializers
 	{

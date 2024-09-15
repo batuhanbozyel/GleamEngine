@@ -1,8 +1,9 @@
 #include "gpch.h"
 #include "MeshRenderer.h"
 
-#include "Core/Engine.h"
 #include "Core/Globals.h"
+#include "Core/Application.h"
+
 #include "Renderer/Mesh.h"
 #include "Renderer/Material/MaterialSystem.h"
 #include "Assets/AssetManager.h"
@@ -11,14 +12,15 @@
 using namespace Gleam;
 
 MeshRenderer::MeshRenderer(const AssetReference& mesh, const TArray<AssetReference>& materials)
-	: mMesh(Globals::Engine->GetSubsystem<AssetManager>()->Get<MeshDescriptor>(mesh))
+	: mMesh(Globals::GameInstance->GetSubsystem<AssetManager>()->Get<MeshDescriptor>(mesh))
 {
-	auto materialSystem = Globals::Engine->GetSubsystem<MaterialSystem>();
-	auto baseMaterial = materialSystem->GetMaterial(AssetReference());
+	auto materialSystem = Globals::GameInstance->GetSubsystem<MaterialSystem>();
 
-	mMaterials.reserve(mMesh.GetSubmeshCount());
-	for (uint32_t i = 0; i < mMesh.GetSubmeshCount(); i++)
+	mMaterials.reserve(materials.size());
+	for (const auto& material : materials)
 	{
+		auto descriptor = Globals::GameInstance->GetSubsystem<AssetManager>()->Get<MaterialInstanceDescriptor>(material);
+		auto baseMaterial = materialSystem->GetMaterial(descriptor.material);
 		mMaterials.emplace_back(baseMaterial->CreateInstance());
 	}
 }

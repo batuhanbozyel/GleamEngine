@@ -12,10 +12,9 @@
 
 using namespace GEditor;
 
-WorldOutliner::WorldOutliner(Gleam::World* world)
-	: mEditWorld(world)
+void WorldOutliner::Init(Gleam::World* world)
 {
-    
+	mEditWorld = world;
 }
 
 void WorldOutliner::Render(Gleam::ImGuiRenderer* imgui)

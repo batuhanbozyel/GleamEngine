@@ -18,13 +18,13 @@ class World;
 template <typename T>
 concept RendererType = std::is_base_of<IRenderer, T>::value;
 
-class RenderSystem final : public Subsystem
+class RenderSystem final : public EngineSubsystem
 {
     using Container = TArray<IRenderer*>;
     
 public:
     
-    virtual void Initialize() override;
+    virtual void Initialize(Engine* engine) override;
     
     virtual void Shutdown() override;
     
@@ -123,6 +123,8 @@ public:
     }
     
 private:
+
+	Engine* mEngine;
     
     Container mRenderers;
     

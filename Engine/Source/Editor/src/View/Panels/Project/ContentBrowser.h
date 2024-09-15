@@ -16,7 +16,7 @@ class ContentBrowser final : public View
 {
 public:
     
-    ContentBrowser();
+	virtual void Init(Gleam::World* world) override;
     
     virtual void Render(Gleam::ImGuiRenderer* imgui) override;
     
@@ -26,7 +26,7 @@ private:
     
     void DrawDirectoryTreeView(const Gleam::Filesystem::Path& directory);
     
-    AssetRegistry mAssetRegistry;
+    AssetRegistry* mAssetRegistry;
 
     Gleam::Filesystem::Path mCurrentDirectory;
     

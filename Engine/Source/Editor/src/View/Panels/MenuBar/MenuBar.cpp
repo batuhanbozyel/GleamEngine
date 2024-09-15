@@ -12,11 +12,6 @@
 
 using namespace GEditor;
 
-MenuBar::MenuBar()
-{
-
-}
-
 void MenuBar::Render(Gleam::ImGuiRenderer* imgui)
 {
 	imgui->PushView([this](const Gleam::ImGuiPassData& passData)

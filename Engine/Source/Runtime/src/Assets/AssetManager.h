@@ -10,11 +10,11 @@ namespace Gleam {
 
 struct Asset;
 
-class AssetManager final : public Subsystem
+class AssetManager final : public GameInstanceSubsystem
 {
 public:
     
-    virtual void Initialize() override;
+    virtual void Initialize(Application* app) override;
 
     virtual void Shutdown() override;
 

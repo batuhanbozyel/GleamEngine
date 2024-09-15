@@ -12,41 +12,40 @@ namespace Gleam {
 class Engine;
 class Application;
 
-class Subsystem
+class EngineSubsystem
 {
 	friend class Engine;
-    friend class Application;
 public:
 
-    virtual ~Subsystem() = default;
+    virtual ~EngineSubsystem() = default;
 
 protected:
 
-	virtual void Initialize() {}
+	virtual void Initialize(Engine* engine) {}
     
 	virtual void Shutdown() {}
 
 };
 
-class TickableSubsystem : public Subsystem
+class GameInstanceSubsystem
 {
-	friend class Engine;
 	friend class Application;
 public:
 
-	virtual ~TickableSubsystem() = default;
+	virtual ~GameInstanceSubsystem() = default;
 
 protected:
 
-	virtual void Initialize() override {}
+	virtual void Initialize(Application* app) {}
 
-	virtual void Shutdown() override {}
-
-	virtual void Tick() {}
+	virtual void Shutdown() {}
 
 };
 
 template <typename T>
-concept SystemType = std::is_base_of<Subsystem, T>::value;
+concept EngineSystemType = std::is_base_of<EngineSubsystem, T>::value;
+
+template <typename T>
+concept GameInstanceSystemType = std::is_base_of<GameInstanceSubsystem, T>::value;
 
 } // namespace Gleam

@@ -13,7 +13,7 @@ GLEAM_END
 
 using namespace Gleam::Reflection;
 
-void Database::Initialize()
+void Database::Initialize(Engine* engine)
 {
     mPrimitiveNames[PrimitiveType::Bool] = refl::reflect<bool>().name.c_str();
     mPrimitiveNames[PrimitiveType::WChar] = refl::reflect<wchar_t>().name.c_str();

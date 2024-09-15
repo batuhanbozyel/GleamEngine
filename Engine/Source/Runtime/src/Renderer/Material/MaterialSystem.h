@@ -11,19 +11,19 @@
 
 namespace Gleam {
 
-class MaterialSystem final : public Subsystem
+class MaterialSystem final : public GameInstanceSubsystem
 {
 public:
 
-	virtual void Initialize() override;
+	virtual void Initialize(Application* app) override;
 
 	virtual void Shutdown() override;
 
-	Material* GetMaterial(const AssetReference& ref) const;
+	Material* GetMaterial(const AssetReference& ref);
 
 private:
 
-	HashMap<AssetReference, Material*> mMaterials;
+	HashMap<AssetReference, Scope<Material>> mMaterials;
 
 };
 

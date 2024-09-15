@@ -6,14 +6,16 @@
 
 using namespace Gleam;
 
-void AssetManager::Initialize()
+void AssetManager::Initialize(Application* app)
 {
 	Filesystem::ForEach(Globals::ProjectContentDirectory, [this](const auto& entry)
 	{
 		if (entry.extension() == ".asset")
 		{
-			Asset asset{ .path = Filesystem::Relative(entry, Globals::ProjectContentDirectory) };
-			Guid guid = entry.stem().string();
+			auto guid = Guid(entry.stem().string());
+			auto relPath = Filesystem::Relative(entry, Globals::ProjectContentDirectory);
+
+			Asset asset{ .path = relPath };
 			AssetReference assetRef = { .guid = guid };
 			mAssets.emplace(assetRef, asset);
 		}
@@ -28,17 +30,17 @@ void AssetManager::Initialize()
         }
         
         Asset asset{ .path = Filesystem::Relative(path, Globals::ProjectContentDirectory) };
+
+		std::lock_guard<std::mutex> lock(mMutex);
         switch (event)
         {
             case FileWatchEvent::Added:
             {
-				std::lock_guard<std::mutex> lock(mMutex);
 				TryEmplaceAsset(asset);
                 break;
             }
             case FileWatchEvent::Removed:
             {
-				std::lock_guard<std::mutex> lock(mMutex);
                 auto it = std::find_if(mAssets.begin(), mAssets.end(), [&](auto pair)
                 {
                     return pair.second == asset;
@@ -52,7 +54,6 @@ void AssetManager::Initialize()
             }
 			case FileWatchEvent::Modified:
 			{
-				std::lock_guard<std::mutex> lock(mMutex);
 				auto it = std::find_if(mAssets.begin(), mAssets.end(), [&](auto pair)
 				{
 					return pair.second == asset;

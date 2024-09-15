@@ -94,9 +94,9 @@ static void DrawComponent(const std::string& name, T& component, UIFunction uiFu
     }
 }
 
-EntityInspector::EntityInspector(Gleam::World* world)
-	: mEditWorld(world)
+void EntityInspector::Init(Gleam::World* world)
 {
+	mEditWorld = world;
     Gleam::EventDispatcher<EntitySelectedEvent>::Subscribe([this](EntitySelectedEvent e)
     {
         mSelectedEntity = e.GetEntity();

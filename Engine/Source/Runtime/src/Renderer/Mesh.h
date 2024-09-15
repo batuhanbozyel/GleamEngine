@@ -34,16 +34,4 @@ protected:
     TArray<SubmeshDescriptor> mSubmeshDescriptors;
 };
 
-class StaticMesh final : public Mesh
-{
-public:
-    
-};
-
-class SkeletalMesh final : public Mesh
-{
-public:
-    
-};
-
 } // namespace Gleam

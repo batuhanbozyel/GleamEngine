@@ -6,11 +6,11 @@
 
 namespace Gleam {
 
-class WorldManager final : public Subsystem
+class WorldManager final : public GameInstanceSubsystem
 {
 public:
 
-	virtual void Initialize() override;
+	virtual void Initialize(Application* app) override;
 
 	virtual void Shutdown() override;
 
@@ -31,6 +31,5 @@ private:
 	TArray<AssetReference> mWorldsInBuild;
 
 };
-
 
 } // namespace Gleam

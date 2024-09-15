@@ -15,7 +15,7 @@ namespace Gleam {
 
 class EventSystem;
 
-class InputSystem final : public Subsystem
+class InputSystem final : public EngineSubsystem
 {
 	friend class Application;
     friend class EventSystem;

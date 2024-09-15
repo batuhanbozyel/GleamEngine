@@ -54,11 +54,6 @@ void Application::Run()
         eventSystem->Update();
         inputSystem->Update();
 
-		for (auto system : mTickableSubsystems)
-		{
-			system->Tick();
-		}
-        
 		auto world = worldManager->GetActiveWorld();
         world->Update();
 
@@ -73,5 +68,4 @@ Application::~Application()
         system->Shutdown();
     }
 	mSubsystems.clear();
-	mTickableSubsystems.clear();
 }

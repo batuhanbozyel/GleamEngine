@@ -105,7 +105,7 @@ struct BufferResourceView
     BufferResourceView(ShaderResourceIndex index)
         : index(index)
     {
-        GLEAM_ASSERT(index != InvalidResourceIndex);
+        
     }
 #endif
 
@@ -142,7 +142,7 @@ struct Texture2DResourceView : TextureResourceView
     Texture2DResourceView(ShaderResourceIndex index)
         : index(index)
     {
-        GLEAM_ASSERT(index != InvalidResourceIndex);
+        
     }
 #endif
 
@@ -177,7 +177,7 @@ struct Texture3DResourceView : TextureResourceView
     Texture3DResourceView(ShaderResourceIndex index)
         : index(index)
     {
-        GLEAM_ASSERT(index != InvalidResourceIndex);
+        
     }
 #endif
 

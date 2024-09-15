@@ -14,11 +14,11 @@
 
 using namespace GEditor;
 
-ContentBrowser::ContentBrowser()
-	: mAssetDirectory(Gleam::Globals::ProjectContentDirectory)
+void ContentBrowser::Init(Gleam::World* world)
 {
+	mAssetDirectory = Gleam::Globals::ProjectContentDirectory;
     mCurrentDirectory = mAssetDirectory;
-    mAssetRegistry = AssetRegistry(mAssetDirectory);
+    mAssetRegistry = world->AddSubsystem<AssetRegistry>(mAssetDirectory);
 }
 
 void ContentBrowser::Render(Gleam::ImGuiRenderer* imgui)
@@ -45,11 +45,11 @@ bool ContentBrowser::ImportAsset(const Gleam::Filesystem::Path& path)
 {
 	if (path.extension() == ".gltf")
 	{
-		auto meshSource = MeshSource(&mAssetRegistry);
+		auto meshSource = MeshSource(mAssetRegistry);
 		auto settings = MeshSource::ImportSettings();
 		if (meshSource.Import(path, settings))
 		{
-			mAssetRegistry.Import(mCurrentDirectory, meshSource);
+			mAssetRegistry->Import(mCurrentDirectory, meshSource);
 			return true;
 		}
 	}
@@ -80,7 +80,7 @@ void ContentBrowser::DrawDirectoryTreeView(const Gleam::Filesystem::Path& node)
 			if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None))
 			{
 				auto guid = Gleam::Guid(node.stem().string());
-				const auto& asset = mAssetRegistry.GetAsset(guid);
+				const auto& asset = mAssetRegistry->GetAsset(guid);
 				ImGui::SetDragDropPayload("EDITOR_ASSET", &asset, sizeof(AssetItem));
 				ImGui::Text("%s", filename.c_str());
 				ImGui::EndDragDropSource();

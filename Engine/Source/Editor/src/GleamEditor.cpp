@@ -1,6 +1,7 @@
 // EntryPoint
 #include "Core/EntryPoint.h"
 #include "View/ViewStack.h"
+#include "World/World.h"
 
 #include "View/Panels/MenuBar/MenuBar.h"
 #include "View/Panels/World/WorldViewport.h"
@@ -18,22 +19,24 @@ public:
         : Gleam::Application(project)
 	{
 		auto worldManager = GetSubsystem<Gleam::WorldManager>();
-		auto world = worldManager->GetActiveWorld();
+		mEditWorld = worldManager->GetActiveWorld();
 
-        auto viewStack = AddSubsystem<ViewStack>();
+        auto viewStack = mEditWorld->AddSubsystem<ViewStack>();
 		viewStack->AddView<MenuBar>();
-        viewStack->AddView<WorldViewport>(world);
-        viewStack->AddView<WorldOutliner>(world);
-		viewStack->AddView<EntityInspector>(world);
+        viewStack->AddView<WorldViewport>();
+        viewStack->AddView<WorldOutliner>();
+		viewStack->AddView<EntityInspector>();
 		viewStack->AddView<ContentBrowser>();
 	}
     
 	~GleamEditor()
 	{
-        RemoveSubsystem<ViewStack>();
+		mEditWorld->RemoveSubsystem<ViewStack>();
 	}
 
 private:
+
+	Gleam::World* mEditWorld;
     
 };
 

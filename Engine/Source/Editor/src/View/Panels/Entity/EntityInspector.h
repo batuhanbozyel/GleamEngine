@@ -15,7 +15,7 @@ class EntityInspector final : public View
 {
 public:
     
-    EntityInspector(Gleam::World* world);
+	virtual void Init(Gleam::World* world) override;
     
     virtual void Render(Gleam::ImGuiRenderer* imgui) override;
     

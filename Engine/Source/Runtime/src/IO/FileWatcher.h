@@ -15,11 +15,11 @@ enum class FileWatchEvent
 
 using FileWatchHandler = std::function<void(const Filesystem::Path&, FileWatchEvent)>;
 
-class FileWatcher final : public Subsystem
+class FileWatcher final : public EngineSubsystem
 {
 public:
     
-    virtual void Initialize() override;
+    virtual void Initialize(Engine* engine) override;
     
     virtual void Shutdown() override;
     

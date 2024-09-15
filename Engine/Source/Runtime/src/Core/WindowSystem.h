@@ -6,12 +6,12 @@ namespace Gleam {
 
 class EventSystem;
 
-class WindowSystem final : public Subsystem
+class WindowSystem final : public EngineSubsystem
 {
 	friend class EventSystem;
 public:
     
-    virtual void Initialize() override;
+    virtual void Initialize(Engine* engine) override;
     
     virtual void Shutdown() override;
     
@@ -35,6 +35,8 @@ public:
 private:
 
 	void EventHandler(SDL_WindowEvent windowEvent);
+
+	Engine* mEngine;
 
 	SDL_Window* mWindow;
 

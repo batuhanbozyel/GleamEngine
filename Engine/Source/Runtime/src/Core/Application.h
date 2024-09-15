@@ -19,42 +19,33 @@ public:
     
 	void Run();
 
-	template<SystemType T, class...Args>
+	template<GameInstanceSystemType T, class...Args>
 	T* AddSubsystem(Args&&... args)
 	{
 		GLEAM_ASSERT(!HasSubsystem<T>(), "Application already has the subsystem!");
 
 		T* system = mSubsystems.emplace<T>(std::forward<Args>(args)...);
-		if constexpr (std::is_base_of<TickableSubsystem, T>::value)
-		{
-			mTickableSubsystems.push_back(system);
-		}
-        system->Initialize();
+        system->Initialize(this);
         return system;
 	}
 
-	template<SystemType T>
+	template<GameInstanceSystemType T>
 	void RemoveSubsystem()
 	{
         GLEAM_ASSERT(HasSubsystem<T>(), "Application does not have the subsystem!");
 
         T* system = mSubsystems.get<T>();
-		if constexpr (std::is_base_of<TickableSubsystem, T>::value)
-		{
-			mTickableSubsystems.erase(std::remove(mTickableSubsystems.begin(), mTickableSubsystems.end(), system));
-		}
-
         system->Shutdown();
         mSubsystems.erase<T>();
 	}
     
-    template<SystemType T>
+    template<GameInstanceSystemType T>
     T* GetSubsystem()
     {
         return mSubsystems.get<T>();
     }
 
-	template<SystemType T>
+	template<GameInstanceSystemType T>
     bool HasSubsystem() const
     {
 		return mSubsystems.contains<T>();
@@ -66,9 +57,7 @@ private:
     
     Project mProject;
 
-	PolyArray<Subsystem> mSubsystems;
-
-	TArray<TickableSubsystem*> mTickableSubsystems;
+	PolyArray<GameInstanceSubsystem> mSubsystems;
 
 };
 

@@ -24,13 +24,13 @@ public:
 
 	const EngineConfig& GetConfiguration() const;
     
-    template<SystemType T>
+    template<EngineSystemType T>
     T* GetSubsystem()
     {
         return mSubsystems.get<T>();
     }
 
-	template<SystemType T>
+	template<EngineSystemType T>
     bool HasSubsystem() const
     {
 		return mSubsystems.contains<T>();
@@ -38,16 +38,16 @@ public:
 
 private:
 
-	template<SystemType T, class...Args>
+	template<EngineSystemType T, class...Args>
 	T* AddSubsystem(Args&&... args)
 	{
 		GLEAM_ASSERT(!HasSubsystem<T>(), "Engine already has the subsystem!");
 		T* system = mSubsystems.emplace<T>(std::forward<Args>(args)...);
-		system->Initialize();
+		system->Initialize(this);
 		return system;
 	}
 
-	template<SystemType T>
+	template<EngineSystemType T>
 	void RemoveSubsystem()
 	{
 		GLEAM_ASSERT(HasSubsystem<T>(), "Engine does not have the subsystem!");
@@ -59,7 +59,7 @@ private:
     void SaveConfigToDisk() const;
 
 	EngineConfig mConfig;
-	PolyArray<Subsystem> mSubsystems;
+	PolyArray<EngineSubsystem> mSubsystems;
 
 };
 	

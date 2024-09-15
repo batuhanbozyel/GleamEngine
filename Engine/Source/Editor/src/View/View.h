@@ -16,6 +16,8 @@ class View
 public:
     
     virtual ~View() = default;
+
+	virtual void Init(Gleam::World* world) {}
     
     virtual void Update() {}
     

@@ -37,7 +37,12 @@ static Gleam::TString ParseNameFromAssetFile(Gleam::JSONSerializer& serializer, 
 AssetRegistry::AssetRegistry(const Gleam::Filesystem::Path& directory)
 	: mAssetDirectory(directory)
 {
-    Gleam::Filesystem::ForEach(directory, [this](const auto& entry)
+
+}
+
+void AssetRegistry::Initialize(Gleam::World* world)
+{
+    Gleam::Filesystem::ForEach(mAssetDirectory, [this](const auto& entry)
     {
         if (entry.extension() == ".asset")
         {
@@ -64,7 +69,7 @@ AssetRegistry::AssetRegistry(const Gleam::Filesystem::Path& directory)
     // TODO: materials should only compile and imported when first seen by the registry
     // existing materials should not change guid
     // it should only reimport if material/shader source changed since last compile
-    Gleam::Filesystem::ForEach(directory, [this](const auto& entry)
+    Gleam::Filesystem::ForEach(mAssetDirectory, [this](const auto& entry)
     {
         if (entry.extension() == ".mat")
         {
@@ -79,6 +84,11 @@ AssetRegistry::AssetRegistry(const Gleam::Filesystem::Path& directory)
             }
         }
     }, true);
+}
+
+void AssetRegistry::Shutdown()
+{
+	mAssetCache.clear();
 }
 
 void AssetRegistry::Import(const Gleam::Filesystem::Path& directory, const AssetPackage& package)

@@ -3,7 +3,7 @@
 
 using namespace Gleam;
 
-void WorldManager::Initialize()
+void WorldManager::Initialize(Application* app)
 {
 
 }

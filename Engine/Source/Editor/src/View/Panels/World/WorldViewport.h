@@ -17,7 +17,7 @@ class WorldViewport final : public View
 {
 public:
     
-    WorldViewport(Gleam::World* world);
+	virtual void Init(Gleam::World* world) override;
     
     virtual void Update() override;
     
@@ -36,7 +36,7 @@ private:
 
 	bool mViewportSizeChanged = false;
     
-    EditorCameraController* mController = nullptr;
+    EditorCameraController* mCameraController = nullptr;
     
     Gleam::Size mViewportSize;
     

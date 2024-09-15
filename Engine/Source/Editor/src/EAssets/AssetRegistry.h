@@ -11,12 +11,15 @@ struct AssetItem
     Gleam::TString name;
 };
 
-class AssetRegistry final
+class AssetRegistry final : public Gleam::WorldSubsystem
 {
 public:
 
-    AssetRegistry() = default;
 	AssetRegistry(const Gleam::Filesystem::Path& directory);
+
+	virtual void Initialize(Gleam::World* world) override;
+
+	virtual void Shutdown() override;
 
 	void Import(const Gleam::Filesystem::Path& directory, const AssetPackage& package);
 

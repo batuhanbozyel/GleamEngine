@@ -6,8 +6,9 @@
 
 using namespace Gleam;
 
-void WindowSystem::Initialize()
+void WindowSystem::Initialize(Engine* engine)
 {
+	mEngine = engine;
     int initSucess = SDL_Init(SDL_INIT_VIDEO | SDL_INIT_JOYSTICK | SDL_INIT_HAPTIC | SDL_INIT_GAMEPAD | SDL_INIT_EVENTS | SDL_INIT_SENSOR);
     GLEAM_ASSERT(initSucess == 0, "Window subsystem initialization failed!");
 }
@@ -70,7 +71,7 @@ void WindowSystem::Configure(const WindowConfig& config)
 		}
 	}
 
-	Globals::Engine->UpdateConfig(newConfig);
+	mEngine->UpdateConfig(newConfig);
 	GLEAM_ASSERT(mWindow, "Window creation failed!");
 }
 

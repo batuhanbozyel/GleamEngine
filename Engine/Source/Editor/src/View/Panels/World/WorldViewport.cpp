@@ -13,14 +13,14 @@
 
 using namespace GEditor;
 
-WorldViewport::WorldViewport(Gleam::World* world)
-	: mEditWorld(world)
+void WorldViewport::Init(Gleam::World* world)
 {
+	mEditWorld = world;
     Gleam::Globals::Engine->GetSubsystem<Gleam::RenderSystem>()->AddRenderer<InfiniteGridRenderer>();
     mViewportSize = Gleam::Globals::Engine->GetResolution();
     
-	mController = mEditWorld->AddSystem<EditorCameraController>();
-    mController->Resize(mEditWorld->GetEntityManager(), mViewportSize);
+	mCameraController = mEditWorld->AddSystem<EditorCameraController>();
+    mCameraController->Resize(mEditWorld->GetEntityManager(), mViewportSize);
     
     Gleam::EventDispatcher<Gleam::MouseButtonPressedEvent>::Subscribe([&](Gleam::MouseButtonPressedEvent e)
     {
@@ -38,11 +38,11 @@ WorldViewport::WorldViewport(Gleam::World* world)
 
 void WorldViewport::Update()
 {
-	mController->Enabled = mIsFocused;
+	mCameraController->Enabled = mIsFocused;
     if (mViewportSizeChanged)
     {
 		mViewportSizeChanged = false;
-        mController->Resize(mEditWorld->GetEntityManager(), mViewportSize);
+        mCameraController->Resize(mEditWorld->GetEntityManager(), mViewportSize);
         Gleam::EventDispatcher<Gleam::RendererResizeEvent>::Publish(Gleam::RendererResizeEvent(mViewportSize));
     }
     
@@ -79,15 +79,24 @@ void WorldViewport::Render(Gleam::ImGuiRenderer* imgui)
 				const auto& assetItem = *(const AssetItem*)payload->Data;
 
 				// TODO: remove this, it is for testing only
-				if (assetItem.type == Gleam::Reflection::GetClass<Gleam::MeshDescriptor>().Guid())
+				/*if (assetItem.type == Gleam::Reflection::GetClass<Gleam::MeshDescriptor>().Guid())
 				{
+					auto materialSystem = Gleam::Globals::GameInstance->GetSubsystem<Gleam::MaterialSystem>();
 					auto assetManager = Gleam::Globals::GameInstance->GetSubsystem<Gleam::AssetManager>();
-					auto asset = assetManager->Get<Gleam::MeshDescriptor>(assetItem.reference);
+					auto mesh = assetManager->Get<Gleam::MeshDescriptor>(assetItem.reference);
+
+					Gleam::AssetReference meshRef = assetItem.reference;
+					Gleam::TArray<Gleam::AssetReference> materialRefs;
+					for (uint32_t i = 0; i < mesh.submeshes.size(); ++i)
+					{
+						Gleam::AssetReference material = { .guid = Gleam::Guid("044B0097-7F40-438D-9FD4-3606E73EDFD6") };
+						materialRefs.push_back(material);
+					}
 
 					auto& entityManager = mEditWorld->GetEntityManager();
-					/*auto& entity = entityManager.CreateEntity();
-					entity.AddComponent<Gleam::MeshRenderer>(assetItem.reference, Gleam::TArray<Gleam::AssetReference>{});*/
-				}
+					auto& entity = entityManager.CreateEntity();
+					entity.AddComponent<Gleam::MeshRenderer>(meshRef, materialRefs);
+				}*/
 			}
 			ImGui::EndDragDropTarget();
 		}

@@ -119,7 +119,7 @@ struct FileWatcher::Watcher
 	}
 };
 
-void FileWatcher::Initialize()
+void FileWatcher::Initialize(Engine* engine)
 {
     
 }

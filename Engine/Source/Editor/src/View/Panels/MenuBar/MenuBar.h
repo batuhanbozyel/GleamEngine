@@ -14,13 +14,9 @@ class MenuBar final : public View
 {
 public:
     
-    MenuBar();
-    
     virtual void Render(Gleam::ImGuiRenderer* imgui) override;
     
 private:
-
-
     
 };
 

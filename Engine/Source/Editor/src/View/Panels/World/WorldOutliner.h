@@ -15,7 +15,7 @@ class WorldOutliner final : public View
 {
 public:
     
-    WorldOutliner(Gleam::World* world);
+	virtual void Init(Gleam::World* world) override;
     
     virtual void Render(Gleam::ImGuiRenderer* imgui) override;
     

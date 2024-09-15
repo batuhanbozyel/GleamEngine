@@ -18,8 +18,9 @@
 
 using namespace Gleam;
 
-void RenderSystem::Initialize()
+void RenderSystem::Initialize(Engine* engine)
 {
+	mEngine = engine;
     mDevice = GraphicsDevice::Create();
 	EventDispatcher<RendererResizeEvent>::Subscribe([this](RendererResizeEvent e)
 	{
@@ -118,8 +119,7 @@ void RenderSystem::Render(const World* world)
 
 void RenderSystem::Configure(const RendererConfig& config)
 {
-    Globals::Engine->UpdateConfig(config);
-    
+	mEngine->UpdateConfig(config);
     mDevice->Configure(config);
     mCommandBuffers.resize(mDevice->GetFramesInFlight());
 	for (auto& cmd : mCommandBuffers)

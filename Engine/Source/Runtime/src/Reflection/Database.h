@@ -11,11 +11,11 @@ static constexpr std::size_t OffsetOf()
     return reinterpret_cast<size_t>(&(((T*)0)->*M));
 }
 
-class Database : public Subsystem
+class Database : public EngineSubsystem
 {
 public:
     
-    virtual void Initialize() override;
+    virtual void Initialize(Engine* engine) override;
     
     virtual void Shutdown() override;
     
