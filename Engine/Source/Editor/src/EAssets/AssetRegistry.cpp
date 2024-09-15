@@ -56,7 +56,8 @@ AssetRegistry::AssetRegistry(const Gleam::Filesystem::Path& directory)
             };
             auto relPath = Gleam::Filesystem::Relative(entry.parent_path(), mAssetDirectory);
             relPath /= name;
-            mAssetCache.insert({ relPath, item });
+			auto& items = mAssetCache[relPath];
+			items.push_back(item);
         }
     }, true);
     
@@ -87,20 +88,23 @@ void AssetRegistry::Import(const Gleam::Filesystem::Path& directory, const Asset
 		auto path = directory / baker->Filename();
 		const auto& asset = RegisterAsset(path, baker->TypeGuid());
 
-		auto filename = asset.guid.ToString() + Gleam::Asset::extension().data();
+		auto filename = asset.reference.guid.ToString() + Gleam::Asset::extension().data();
 		auto file = Gleam::Filesystem::Create(directory / filename, Gleam::FileType::Text);
 		auto accessor = Gleam::Filesystem::WriteAccessor(directory / filename);
 		baker->Bake(file.GetStream());
 	}
 }
 
-const Gleam::AssetReference& AssetRegistry::RegisterAsset(const Gleam::Filesystem::Path& path, const Gleam::Guid& type)
+const AssetItem& AssetRegistry::RegisterAsset(const Gleam::Filesystem::Path& path, const Gleam::Guid& type)
 {
 	auto relPath = path.is_relative() ? path : Gleam::Filesystem::Relative(path, mAssetDirectory);
-	auto it = mAssetCache.find(relPath);
-	if (it != mAssetCache.end())
+	auto& items = mAssetCache[relPath];
+	for (const auto& item : items)
 	{
-		return it->second.reference;
+		if (item.type == type)
+		{
+			return item;
+		}
 	}
 
 	auto asset = Gleam::AssetReference{ .guid = Gleam::Guid::NewGuid() };
@@ -109,20 +113,25 @@ const Gleam::AssetReference& AssetRegistry::RegisterAsset(const Gleam::Filesyste
 		.type = type,
 		.name = path.stem().string()
 	};
-
-	it = mAssetCache.emplace_hint(mAssetCache.end(), relPath, item);
 	GLEAM_INFO("Asset imported: {0} GUID: {1}", item.name, asset.guid.ToString());
-	return it->second.reference;
+	return items.emplace_back(item);
 }
 
-const Gleam::AssetReference& AssetRegistry::GetAsset(const Gleam::Filesystem::Path& path) const
+const AssetItem& AssetRegistry::GetAsset(const Gleam::Guid& guid) const
 {
-	auto relPath = path.is_relative() ? path : Gleam::Filesystem::Relative(path, mAssetDirectory);
-	auto it = mAssetCache.find(relPath);
-	if (it != mAssetCache.end())
+	for (const auto& [path, items] : mAssetCache)
 	{
-		return it->second.reference;
+		for (const auto& item : items)
+		{
+			if (item.reference.guid == guid)
+			{
+				return item;
+			}
+		}
 	}
-	static Gleam::AssetReference invalidAsset;
+
+	GLEAM_CORE_ERROR("Asset could not located for GUID: {0}", guid.ToString());
+	GLEAM_ASSERT(false);
+	static AssetItem invalidAsset;
 	return invalidAsset;
 }

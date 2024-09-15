@@ -79,8 +79,9 @@ void ContentBrowser::DrawDirectoryTreeView(const Gleam::Filesystem::Path& node)
         {
 			if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None))
 			{
-				const auto& asset = mAssetRegistry.GetAsset(node);
-				ImGui::SetDragDropPayload("ASSET", &asset, sizeof(Gleam::AssetReference));
+				auto guid = Gleam::Guid(node.stem().string());
+				const auto& asset = mAssetRegistry.GetAsset(guid);
+				ImGui::SetDragDropPayload("EDITOR_ASSET", &asset, sizeof(AssetItem));
 				ImGui::Text("%s", filename.c_str());
 				ImGui::EndDragDropSource();
 			}

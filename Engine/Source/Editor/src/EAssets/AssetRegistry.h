@@ -20,15 +20,45 @@ public:
 
 	void Import(const Gleam::Filesystem::Path& directory, const AssetPackage& package);
 
-	const Gleam::AssetReference& RegisterAsset(const Gleam::Filesystem::Path& path, const Gleam::Guid& type);
+	template<typename T>
+	const AssetItem& RegisterAsset(const Gleam::Filesystem::Path& path)
+	{
+		const auto& type = Gleam::Reflection::GetClass<T>().Guid();
+		return RegisterAsset(path, type);
+	}
 
-	const Gleam::AssetReference& GetAsset(const Gleam::Filesystem::Path& path) const;
+	template<typename T>
+	const AssetItem& GetAsset(const Gleam::Filesystem::Path& path) const
+	{
+		const auto& type = Gleam::Reflection::GetClass<T>().Guid();
+		auto relPath = path.is_relative() ? path : Gleam::Filesystem::Relative(path, mAssetDirectory);
+		auto it = mAssetCache.find(relPath);
+		if (it != mAssetCache.end())
+		{
+			for (const auto& item : it->second)
+			{
+				if (item.type == type)
+				{
+					return item;
+				}
+			}
+		}
+
+		GLEAM_ERROR("Asset could not located for path: {0}", relPath.string());
+		GLEAM_ASSERT(false);
+		static AssetItem invalidAsset;
+		return invalidAsset;
+	}
+
+	const AssetItem& GetAsset(const Gleam::Guid& guid) const;
 
 private:
 
+	const AssetItem& RegisterAsset(const Gleam::Filesystem::Path& path, const Gleam::Guid& type);
+
 	Gleam::Filesystem::Path mAssetDirectory;
     
-    Gleam::HashMap<Gleam::Filesystem::Path, AssetItem> mAssetCache;
+    Gleam::HashMap<Gleam::Filesystem::Path, Gleam::TArray<AssetItem>> mAssetCache;
 
 };
 

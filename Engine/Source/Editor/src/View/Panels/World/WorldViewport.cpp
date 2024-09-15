@@ -7,7 +7,7 @@
 
 #include "WorldViewport.h"
 #include "EditorCameraController.h"
-
+#include "EAssets/AssetRegistry.h"
 #include "Renderer/ImGui/ImGuiBackend.h"
 #include "Renderers/InfiniteGridRenderer.h"
 
@@ -73,10 +73,21 @@ void WorldViewport::Render(Gleam::ImGuiRenderer* imgui)
 
 		if (ImGui::BeginDragDropTarget())
 		{
-			if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("ASSET"))
+			if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("EDITOR_ASSET"))
 			{
-				IM_ASSERT(payload->DataSize == sizeof(Gleam::AssetReference));
-				const auto& asset = *(const Gleam::AssetReference*)payload->Data;
+				IM_ASSERT(payload->DataSize == sizeof(AssetItem));
+				const auto& assetItem = *(const AssetItem*)payload->Data;
+
+				// TODO: remove this, it is for testing only
+				if (assetItem.type == Gleam::Reflection::GetClass<Gleam::MeshDescriptor>().Guid())
+				{
+					auto assetManager = Gleam::Globals::GameInstance->GetSubsystem<Gleam::AssetManager>();
+					auto asset = assetManager->Get<Gleam::MeshDescriptor>(assetItem.reference);
+
+					auto& entityManager = mEditWorld->GetEntityManager();
+					/*auto& entity = entityManager.CreateEntity();
+					entity.AddComponent<Gleam::MeshRenderer>(assetItem.reference, Gleam::TArray<Gleam::AssetReference>{});*/
+				}
 			}
 			ImGui::EndDragDropTarget();
 		}

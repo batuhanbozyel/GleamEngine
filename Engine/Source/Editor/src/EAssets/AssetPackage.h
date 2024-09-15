@@ -9,9 +9,9 @@ class AssetRegistry;
 struct AssetPackage
 {
 	Gleam::TArray<Gleam::RefCounted<AssetBaker>> bakers;
-	const AssetRegistry* registry;
+	AssetRegistry* registry;
 
-	AssetPackage(const AssetRegistry* registry)
+	AssetPackage(AssetRegistry* registry)
 		: registry(registry)
 	{
 
@@ -20,6 +20,6 @@ struct AssetPackage
 	virtual ~AssetPackage() = default;
 };
 
-#define AssetPackageType(type) type(const AssetRegistry* registry) : AssetPackage(registry) {}
+#define AssetPackageType(type) type(AssetRegistry* registry) : AssetPackage(registry) {}
 
 } // namespace GEditor
