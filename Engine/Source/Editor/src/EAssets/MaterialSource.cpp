@@ -87,35 +87,40 @@ bool MaterialSource::Import(const Gleam::Filesystem::Path& path, const ImportSet
                     generatedShader << "\tfloat " << propertyName << ";\n";
                     descriptor.properties.emplace_back(Gleam::MaterialProperty{
                         .name = propertyName,
-                        .type = Gleam::MaterialPropertyType::Scalar });
+                        .type = Gleam::MaterialPropertyType::Scalar,
+						.value = 0.0f });
                 }
                 else if (propertyType == "Float2")
                 {
                     generatedShader << "\tfloat2 " << propertyName << ";\n";
                     descriptor.properties.emplace_back(Gleam::MaterialProperty{
                         .name = propertyName,
-                        .type = Gleam::MaterialPropertyType::Float2 });
+                        .type = Gleam::MaterialPropertyType::Float2,
+						.value = Gleam::Float2() });
                 }
                 else if (propertyType == "Float3")
                 {
                     generatedShader << "\tfloat3 " << propertyName << ";\n";
                     descriptor.properties.emplace_back(Gleam::MaterialProperty{
                         .name = propertyName,
-                        .type = Gleam::MaterialPropertyType::Float3 });
+                        .type = Gleam::MaterialPropertyType::Float3,
+						.value = Gleam::Float3() });
                 }
                 else if (propertyType == "Float4")
                 {
                     generatedShader << "\tfloat4 " << propertyName << ";\n";
                     descriptor.properties.emplace_back(Gleam::MaterialProperty{
                         .name = propertyName,
-                        .type = Gleam::MaterialPropertyType::Float4 });
+                        .type = Gleam::MaterialPropertyType::Float4,
+						.value = Gleam::Float4() });
                 }
                 else if (propertyType == "Texture2D")
                 {
                     generatedShader << "\tGleam::Texture2DResourceView<float4> " << propertyName << ";\n";
                     descriptor.properties.emplace_back(Gleam::MaterialProperty{
                         .name = propertyName,
-                        .type = Gleam::MaterialPropertyType::Texture2D });
+                        .type = Gleam::MaterialPropertyType::Texture2D,
+						.value = Gleam::AssetReference() });
                 }
             }
         }

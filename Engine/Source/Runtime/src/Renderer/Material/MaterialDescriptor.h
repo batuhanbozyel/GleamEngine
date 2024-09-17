@@ -28,7 +28,21 @@ struct MaterialInstanceDescriptor
 {
 	TString name;
 	AssetReference material;
-	HashMap<TString, MaterialPropertyValue> values;
+	TArray<MaterialProperty> properties;
+
+	MaterialPropertyValue& operator[](const TString& name)
+	{
+		for (auto& property : properties)
+		{
+			if (property.name == name)
+			{
+				return property.value;
+			}
+		}
+		GLEAM_ASSERT(false, "Material instance does not have the property {0}", name);
+		static MaterialPropertyValue value;
+		return value;
+	}
 };
 
 } // namespace Gleam
@@ -55,5 +69,5 @@ GLEAM_END
 GLEAM_TYPE(Gleam::MaterialInstanceDescriptor, Guid("910243E7-F9B5-4722-8C77-CB7A81DF4775"))
 	GLEAM_FIELD(name, Serializable())
 	GLEAM_FIELD(material, Serializable())
-	//GLEAM_FIELD(values, Serializable())
+	GLEAM_FIELD(properties, Serializable())
 GLEAM_END
