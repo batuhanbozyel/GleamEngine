@@ -359,3 +359,7 @@ NO_DISCARD FORCE_INLINE static constexpr Float4x4 Inverse(const Float4x4& m)
 } // namespace Math
 
 } // namespace Gleam
+
+GLEAM_TYPE(Gleam::Float4x4, Guid("770BABFC-E66A-4CE5-8453-A505EB3016BE"))
+	GLEAM_FIELD(row, Serializable())
+GLEAM_END
