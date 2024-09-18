@@ -785,16 +785,14 @@ void JSONSerializer::Impl::SerializeEnumObjectValue(const void* obj, rapidjson::
 {
     GLEAM_ASSERT(size <= sizeof(int64_t), "JSONSerializer: Enum is larger than 8 bytes");
     int64_t value = 0;
-    int64_t field = Reflection::Get<int64_t>(obj);
-    memcpy(&value, &field, size);
+    memcpy(&value, obj, size);
     node.AddMember("Value", value);
 }
 
 void JSONSerializer::Impl::SerializeEnumArrayValue(const void* obj, rapidjson::Node& node, size_t size)
 {
     int64_t value = 0;
-    int64_t field = Reflection::Get<int64_t>(obj);
-    memcpy(&value, &field, size);
+    memcpy(&value, obj, size);
     node.PushBack(rapidjson::Value(value));
 }
 
