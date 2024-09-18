@@ -389,7 +389,7 @@ void JSONSerializer::Initialize(Engine* engine)
 			const auto& value = Reflection::Get<rapidjson::Value>(userData);
             if (value.HasMember("Value"))
             {
-                Reflection::Get<TString>(obj) = value["Value"].GetString();
+                Reflection::Get<TString>(obj) = TString(value["Value"].GetString());
             }
 		};
         
@@ -398,7 +398,7 @@ void JSONSerializer::Initialize(Engine* engine)
             void* obj)
         {
             const auto& element = Reflection::Get<rapidjson::Value>(userData);
-            Reflection::Get<TString>(obj) = element.GetString();
+            Reflection::Get<TString>(obj) = TString(element.GetString());
         };
         
         mCustomObjectDeserializers[Reflection::GetClass<Filesystem::Path>().ResolveName()] = [](const void* userData,
@@ -408,7 +408,7 @@ void JSONSerializer::Initialize(Engine* engine)
             const auto& value = Reflection::Get<rapidjson::Value>(userData);
             if (value.HasMember("Value"))
             {
-                Reflection::Get<Filesystem::Path>(obj) = value["Value"].GetString();
+                Reflection::Get<Filesystem::Path>(obj) = TString(value["Value"].GetString());
             }
         };
         
@@ -417,7 +417,7 @@ void JSONSerializer::Initialize(Engine* engine)
             void* obj)
         {
             const auto& element = Reflection::Get<rapidjson::Value>(userData);
-            Reflection::Get<Filesystem::Path>(obj) = element.GetString();
+            Reflection::Get<Filesystem::Path>(obj) = TString(element.GetString());
         };
 
 		mCustomObjectDeserializers[Reflection::GetClass<TArray<uint8_t>>().ResolveName()] = [](const void* userData,
