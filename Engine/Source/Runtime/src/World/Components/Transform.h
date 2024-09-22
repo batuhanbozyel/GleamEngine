@@ -32,13 +32,13 @@ public:
         mPosition += translation;
 		mGlobalPosition += translation;
 
-        mLocalTransform.m[12] += mPosition.x;
-        mLocalTransform.m[13] += mPosition.y;
-        mLocalTransform.m[14] += mPosition.z;
+        mLocalTransform.m[12] += translation.x;
+        mLocalTransform.m[13] += translation.y;
+        mLocalTransform.m[14] += translation.z;
 
-		mGlobalTransform.m[12] += mPosition.x;
-		mGlobalTransform.m[13] += mPosition.y;
-		mGlobalTransform.m[14] += mPosition.z;
+		mGlobalTransform.m[12] += translation.x;
+		mGlobalTransform.m[13] += translation.y;
+		mGlobalTransform.m[14] += translation.z;
     }
 
     void Rotate(const Quaternion& rotation)
@@ -96,7 +96,6 @@ public:
 
 	void UpdateTransform(const Float4x4& local, const Float4x4& global)
 	{
-		mIsTransformDirty = false;
 		mLocalTransform = local;
 		mGlobalTransform = global;
 		Math::Decompose(mGlobalTransform, mGlobalPosition, mGlobalRotation, mGlobalScale);
