@@ -14,6 +14,7 @@ using namespace Gleam;
 MeshRenderer::MeshRenderer(const AssetReference& mesh, const TArray<AssetReference>& materials)
 	: mMesh(Globals::GameInstance->GetSubsystem<AssetManager>()->Get<MeshDescriptor>(mesh))
 {
+	GLEAM_ASSERT(mMesh.GetSubmeshCount() == materials.size(), "MeshRenderer is missing material for one or more submeshes");
 	auto materialSystem = Globals::GameInstance->GetSubsystem<MaterialSystem>();
 
 	mMaterials.reserve(materials.size());

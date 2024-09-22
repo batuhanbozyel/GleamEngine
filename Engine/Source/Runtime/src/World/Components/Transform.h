@@ -1,35 +1,44 @@
 #pragma once
-#include "World/Entity.h"
+#include "World/EntityReference.h"
 
 namespace Gleam {
 
+class TransformSystem;
+
 class Transform
 {
+	friend class TransformSystem;
 public:
 
     virtual ~Transform() = default;
     
-    Entity GetParent() const
+    const EntityReference& GetParent() const
     {
         return mParent;
     }
     
-    void SetParent(Entity parent)
+    void SetParent(const EntityReference& parent)
     {
         mParent = parent;
     }
     
     bool HasParent() const
     {
-        return mParent.IsValid();
+		return mParent;
     }
     
     void Translate(const Float3& translation)
     {
         mPosition += translation;
-        mCachedTransform.m[12] += mPosition.x;
-        mCachedTransform.m[13] += mPosition.y;
-        mCachedTransform.m[14] += mPosition.z;
+		mGlobalPosition += translation;
+
+        mLocalTransform.m[12] += mPosition.x;
+        mLocalTransform.m[13] += mPosition.y;
+        mLocalTransform.m[14] += mPosition.z;
+
+		mGlobalTransform.m[12] += mPosition.x;
+		mGlobalTransform.m[13] += mPosition.y;
+		mGlobalTransform.m[14] += mPosition.z;
     }
 
     void Rotate(const Quaternion& rotation)
@@ -61,10 +70,16 @@ public:
 
     void SetTranslation(const Float3& translation)
     {
+		mGlobalPosition = mGlobalPosition - mPosition + translation;
         mPosition = translation;
-        mCachedTransform.m[12] = mPosition.x;
-        mCachedTransform.m[13] = mPosition.y;
-        mCachedTransform.m[14] = mPosition.z;
+
+        mLocalTransform.m[12] = mPosition.x;
+        mLocalTransform.m[13] = mPosition.y;
+        mLocalTransform.m[14] = mPosition.z;
+
+		mGlobalTransform.m[12] = mGlobalPosition.x;
+		mGlobalTransform.m[13] = mGlobalPosition.y;
+		mGlobalTransform.m[14] = mGlobalPosition.z;
     }
 
     void SetRotation(const Quaternion& rotation)
@@ -78,36 +93,28 @@ public:
 		mIsTransformDirty = true;
         mScale = scale;
 	}
+
+	void UpdateTransform(const Float4x4& local, const Float4x4& global)
+	{
+		mIsTransformDirty = false;
+		mLocalTransform = local;
+		mGlobalTransform = global;
+		Math::Decompose(mGlobalTransform, mGlobalPosition, mGlobalRotation, mGlobalScale);
+	}
     
-    NO_DISCARD FORCE_INLINE Float4x4 GetWorldTransform() const
+    NO_DISCARD FORCE_INLINE const Float4x4& GetWorldTransform() const
     {
-        if (mParent.IsValid())
-        {
-            const auto& parent = mParent.GetComponent<Transform>();
-            return parent.GetWorldTransform() * GetLocalTransform();
-        }
-        return GetLocalTransform();
+        return mGlobalTransform;
     }
 
     NO_DISCARD FORCE_INLINE const Float4x4& GetLocalTransform() const
     {
-        if (mIsTransformDirty)
-        {
-            mIsTransformDirty = false;
-            mCachedTransform = Float4x4::TRS(mPosition, mRotation, mScale);
-        }
-        return mCachedTransform;
+        return mLocalTransform;
     }
 
-    NO_DISCARD FORCE_INLINE Float3 GetWorldPosition() const
+    NO_DISCARD FORCE_INLINE const Float3& GetWorldPosition() const
     {
-        if (mParent.IsValid())
-        {
-            const auto& parent = mParent.GetComponent<Transform>();
-            auto position = parent.GetWorldTransform() * Float4(mPosition, 1.0f);
-            return { position.x, position.y, position.z };
-        }
-        return mPosition;
+		return mGlobalPosition;
     }
     
     NO_DISCARD FORCE_INLINE const Float3& GetLocalPosition() const
@@ -115,14 +122,9 @@ public:
         return mPosition;
     }
 
-    NO_DISCARD FORCE_INLINE Quaternion GetWorldRotation() const
+    NO_DISCARD FORCE_INLINE const Quaternion& GetWorldRotation() const
     {
-        if (mParent.IsValid())
-        {
-            const auto& parent = mParent.GetComponent<Transform>();
-            return parent.GetWorldTransform() * mRotation;
-        }
-        return mRotation;
+        return mGlobalRotation;
     }
     
     NO_DISCARD FORCE_INLINE const Quaternion& GetLocalRotation() const
@@ -130,15 +132,9 @@ public:
         return mRotation;
     }
 
-	NO_DISCARD FORCE_INLINE Float3 GetWorldScale() const
+	NO_DISCARD FORCE_INLINE const Float3& GetWorldScale() const
     {
-        if (mParent.IsValid())
-        {
-            const auto& parent = mParent.GetComponent<Transform>();
-            auto scale = parent.GetWorldTransform() * Float4(mScale, 1.0f);
-            return { scale.x, scale.y, scale.z };
-        }
-        return mScale;
+        return mGlobalScale;
     }
 
     NO_DISCARD FORCE_INLINE const Float3& GetLocalScale() const
@@ -168,14 +164,19 @@ public:
     
 private:
     
-    Entity mParent = {};
+	EntityReference mParent = {};
     
     Float3 mPosition = Float3(0.0f, 0.0f, 0.0f);
     Quaternion mRotation = Quaternion::identity;
     Float3 mScale = Float3(1.0f, 1.0f, 1.0f);
 
-    mutable Float4x4 mCachedTransform = Float4x4();
-    mutable bool mIsTransformDirty = true;
+	Float3 mGlobalPosition = Float3(0.0f, 0.0f, 0.0f);
+	Quaternion mGlobalRotation = Quaternion::identity;
+	Float3 mGlobalScale = Float3(1.0f, 1.0f, 1.0f);
+
+    Float4x4 mLocalTransform = Float4x4();
+	Float4x4 mGlobalTransform = Float4x4();
+    bool mIsTransformDirty = true;
     
 };
 

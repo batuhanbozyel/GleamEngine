@@ -3,6 +3,7 @@
 namespace Gleam {
 
 class Transform;
+class TransformSystem;
 
 enum class ProjectionType
 {
@@ -12,6 +13,7 @@ enum class ProjectionType
 
 class Camera final : public Transform
 {
+	friend class TransformSystem;
 public:
     
 	Camera() = default;
@@ -52,8 +54,9 @@ public:
     
 private:
     
-    void RecalculateProjectionMatrix() const;
-    void RecalculateViewMatrix() const;
+    void RecalculateProjectionMatrix();
+
+    void RecalculateViewMatrix();
     
     // Perspective projection properties
     float mFOV = 60.0f;
@@ -68,12 +71,12 @@ private:
     
 	ProjectionType mProjectionType = ProjectionType::Perspective;
     
-    mutable Float4x4 mViewMatrix;
-    mutable Float4x4 mProjectionMatrix;
+    Float4x4 mViewMatrix;
+    Float4x4 mProjectionMatrix;
     
     // Update flags
-    mutable bool mViewMatrixDirty = true;
-    mutable bool mProjectionMatrixDirty = true;
+	bool mViewMatrixDirty = true;
+	bool mProjectionMatrixDirty = true;
 };
 
 } // namespace Gleam

@@ -95,31 +95,21 @@ void Camera::SetOrthographicSize(float size)
 
 const Float4x4& Camera::GetViewMatrix() const
 {
-    if (mViewMatrixDirty)
-    {
-        RecalculateViewMatrix();
-    }
-    
     return mViewMatrix;
 }
 
 const Float4x4& Camera::GetProjectionMatrix() const
 {
-    if (mProjectionMatrixDirty)
-    {
-        RecalculateProjectionMatrix();
-    }
-    
     return mProjectionMatrix;
 }
 
-void Camera::RecalculateViewMatrix() const
+void Camera::RecalculateViewMatrix()
 {
     mViewMatrixDirty = false;
     mViewMatrix = Float4x4::LookTo(GetWorldPosition(), ForwardVector(), UpVector());
 }
 
-void Camera::RecalculateProjectionMatrix() const
+void Camera::RecalculateProjectionMatrix()
 {
     mProjectionMatrixDirty = false;
     if (mProjectionType == ProjectionType::Perspective)
