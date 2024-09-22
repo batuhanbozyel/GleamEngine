@@ -26,9 +26,17 @@ public:
 
 private:
 
+	std::mutex mMutex;
+
 	size_t mActiveWorld = 0;
+
+	Application* mApp = nullptr;
+
 	TArray<Scope<World>> mLoadedWorlds;
+
 	TArray<AssetReference> mWorldsInBuild;
+
+	HashMap<AssetReference, Filesystem::Path> mWorldPaths;
 
 };
 

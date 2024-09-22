@@ -34,9 +34,8 @@ struct MaterialPropertyValue
 	};
 
 	MaterialPropertyValue()
-		: value()
 	{
-
+		memset(value, 0, sizeof(value));
 	}
 
 	MaterialPropertyValue(float scalar)

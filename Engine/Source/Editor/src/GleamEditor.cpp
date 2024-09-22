@@ -55,11 +55,24 @@ Gleam::Application* Gleam::CreateApplicationInstance(const Gleam::CommandLine& c
     }
     else
     {
-        auto file = Gleam::Filesystem::Create(projectFile, Gleam::FileType::Text);
-        auto serializer = Gleam::JSONSerializer(file.GetStream());
-        project.name = "Gleam Editor";
-        project.version = Gleam::Version(1, 0, 0);
-        serializer.Serialize(project);
+		project.name = "Gleam Editor";
+		project.version = Gleam::Version(1, 0, 0);
+
+		auto worldRef = Gleam::AssetReference{ .guid = Gleam::Guid::NewGuid() };
+		auto worldName = worldRef.guid.ToString() + Gleam::World::Extension().data();
+		auto worldFile = Globals::StartupDirectory/project.path/"Assets"/worldName;
+		{
+			auto file = Gleam::Filesystem::Create(worldFile, Gleam::FileType::Text);
+			auto world = Gleam::World("Starter World");
+			world.Serialize(file.GetStream());
+		}
+		project.worldConfig.worlds.emplace_back(worldRef);
+
+		{
+			auto file = Gleam::Filesystem::Create(projectFile, Gleam::FileType::Text);
+			auto serializer = Gleam::JSONSerializer(file.GetStream());
+			serializer.Serialize(project);
+		}
     }
     return new GEditor::GleamEditor(project);
 }

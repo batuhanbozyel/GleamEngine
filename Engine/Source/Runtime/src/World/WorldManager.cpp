@@ -1,16 +1,46 @@
 #include "gpch.h"
 #include "WorldManager.h"
+#include "Core/Engine.h"
+#include "Core/Globals.h"
+#include "IO/FileWatcher.h"
 
 using namespace Gleam;
 
 void WorldManager::Initialize(Application* app)
 {
+	Filesystem::ForEach(Globals::ProjectContentDirectory, [this](const auto& entry)
+	{
+		if (entry.extension() == World::Extension())
+		{
+			auto guid = Guid(entry.stem().string());
+			auto path = Filesystem::Relative(entry, Globals::ProjectContentDirectory);
 
+			AssetReference assetRef = { .guid = guid };
+			mWorldPaths.emplace(assetRef, path);
+		}
+	}, true);
+
+	auto fileWatcher = Globals::Engine->GetSubsystem<FileWatcher>();
+	fileWatcher->AddWatch(Globals::ProjectContentDirectory, [this](const Filesystem::Path& path, FileWatchEvent event)
+	{
+		if (path.extension() == World::Extension() && event == FileWatchEvent::Added)
+		{
+			std::lock_guard<std::mutex> lock(mMutex);
+
+			auto guid = Guid(path.stem().string());
+			auto relPath = Filesystem::Relative(path, Globals::ProjectContentDirectory);
+
+			AssetReference assetRef = { .guid = guid };
+			mWorldPaths.emplace(assetRef, relPath);
+		}
+	});
 }
 
 void WorldManager::Shutdown()
 {
+	mWorldPaths.clear();
 	mLoadedWorlds.clear();
+	mWorldsInBuild.clear();
 }
 
 void WorldManager::Configure(const WorldConfig& config)
@@ -22,9 +52,15 @@ void WorldManager::Configure(const WorldConfig& config)
 
 size_t WorldManager::LoadWorld(uint32_t buildIndex)
 {
+	const auto& worldRef = mWorldsInBuild[buildIndex];
+	auto worldFile = Globals::ProjectContentDirectory/mWorldPaths[worldRef];
+	auto file = Filesystem::Open(worldFile, FileType::Text);
+
+	auto world = CreateScope<World>();
+	world->Deserialize(file.GetStream());
+
 	auto index = mLoadedWorlds.size();
-	// TODO: Load from world asset file
-	mLoadedWorlds.emplace_back(CreateScope<World>("Starter World"));
+	mLoadedWorlds.emplace_back(std::move(world));
 	return index;
 }
 

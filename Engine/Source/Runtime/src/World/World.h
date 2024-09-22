@@ -13,43 +13,19 @@ concept WorldSystemType = std::is_base_of<WorldSubsystem, T>::value;
 class World final
 {
 public:
-    
-	World(const TString& name = "World")
-        : mName(name)
-    {
-        Time::Reset();
-    }
-    
-    void Update()
-    {
-        Time::Step();
 
-		for (auto subsystem : mTickableSubsystems)
-		{
-			subsystem->Tick();
-		}
-        
-        bool fixedUpdate = Time::fixedTime <= (Time::elapsedTime - Time::fixedDeltaTime);
-        if (fixedUpdate)
-        {
-            Time::FixedStep();
-            for (auto system : mSystems)
-            {
-                if (system->Enabled)
-                {
-                    system->OnFixedUpdate(mEntityManager);
-                }
-            }
-        }
-        
-        for (auto system : mSystems)
-        {
-            if (system->Enabled)
-            {
-                system->OnUpdate(mEntityManager);
-            }
-        }
-    }
+	static constexpr TStringView Extension()
+	{
+		return ".gworld";
+	}
+    
+	World(const TString& name = "World");
+    
+    void Update();
+
+	void Serialize(FileStream& stream);
+
+	void Deserialize(FileStream& stream);
 
 	template<WorldSystemType T, class...Args>
 	T* AddSubsystem(Args&&... args)
