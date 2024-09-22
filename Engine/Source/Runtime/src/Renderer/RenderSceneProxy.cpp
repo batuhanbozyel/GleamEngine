@@ -35,9 +35,8 @@ void RenderSceneProxy::Update(const World* world)
     
     // update active camera
     mActiveCamera = nullptr;
-    world->GetEntityManager().ForEach<Camera>([&](EntityHandle handle, const Camera& component)
+    world->GetEntityManager().ForEach<Entity, Camera>([&](const Entity& entity, const Camera& component)
     {
-        const auto& entity = world->GetEntityManager().GetComponent<Entity>(handle);
         if (entity.IsActive())
         {
             mActiveCamera = &component;

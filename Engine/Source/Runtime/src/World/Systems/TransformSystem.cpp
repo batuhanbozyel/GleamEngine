@@ -6,9 +6,12 @@ using namespace Gleam;
 
 void TransformSystem::OnUpdate(EntityManager& entityManager)
 {
-	entityManager.ForEach<Transform>([&](Transform& transform)
+	entityManager.ForEach<Entity, Transform>([&](const Entity& entity, Transform& transform)
 	{
-		UpdateTransform(entityManager, transform);
+		if (entity.IsActive())
+		{
+			UpdateTransform(entityManager, transform);
+		}
 	});
 
 	entityManager.ForEach<Entity, Camera>([&](const Entity& entity, Camera& camera)
