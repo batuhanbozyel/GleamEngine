@@ -37,18 +37,19 @@ public:
         }
     }
 
-	Entity& CreateEntity()
+	Entity& CreateEntity(const Guid& guid)
 	{
 		auto handle = mRegistry.create();
         AddComponent<Transform>(handle);
-        auto& entity = AddComponent<Entity>(handle, handle, &mRegistry);
+        auto& entity = AddComponent<Entity>(handle, handle, &mRegistry, guid);
+		mHandles[guid] = handle;
         return entity;
 	}
 
 	template<typename ... Types>
-	Entity& CreateEntity(Types&& ... components)
+	Entity& CreateEntity(const Guid& guid, Types&& ... components)
 	{
-        Entity& entity = CreateEntity();
+        Entity& entity = CreateEntity(guid);
 		(AddComponent<Types>(entity, components), ...);
 		return entity;
 	}
@@ -122,9 +123,21 @@ public:
         return mRegistry.get<T>(entity);
     }
 
+	EntityHandle operator[](const EntityReference& ref) const
+	{
+		auto it = mHandles.find(ref.guid);
+		if (it != mHandles.end())
+		{
+			return it->second;
+		}
+		return InvalidEntity;
+	}
+
 private:
 
 	entt::registry mRegistry;
+
+	HashMap<Guid, EntityHandle> mHandles;
 
 };
 

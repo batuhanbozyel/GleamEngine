@@ -11,7 +11,7 @@ using namespace GEditor;
 
 void EditorCameraController::OnCreate(Gleam::EntityManager& entityManager)
 {
-	mCameraEntity = entityManager.CreateEntity();
+	mCameraEntity = entityManager.CreateEntity(Gleam::Guid::NewGuid());
     entityManager.AddComponent<Gleam::Camera>(mCameraEntity, Gleam::Globals::Engine->GetResolution());
 }
 

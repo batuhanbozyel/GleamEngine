@@ -16,8 +16,8 @@ public:
     
     Entity() = default;
     
-    Entity(EntityHandle handle, entt::registry* registry)
-		: mHandle(handle), mRegistry(registry)
+    Entity(EntityHandle handle, entt::registry* registry, const Guid& guid)
+		: mHandle(handle), mRegistry(registry), mGuid(guid)
 	{
 
 	}
@@ -68,7 +68,12 @@ public:
         GLEAM_ASSERT(HasComponent<T>(), "Entity does not have the component!");
         return mRegistry->get<T>(mHandle);
     }
-    
+
+	void SetActive(bool active)
+	{
+		mActive = active;
+	}
+
     bool IsValid() const
     {
         return mHandle != InvalidEntity && mRegistry != nullptr;
@@ -78,6 +83,11 @@ public:
     {
         return mActive;
     }
+
+	const Guid& GetGuid() const
+	{
+		return mGuid;
+	}
     
 	operator EntityHandle() const
 	{
@@ -87,6 +97,8 @@ public:
 private:
     
     bool mActive = true;
+
+	Guid mGuid = Guid::InvalidGuid();
     
     EntityHandle mHandle = InvalidEntity;
     
