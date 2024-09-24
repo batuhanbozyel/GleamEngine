@@ -2,13 +2,13 @@
 #include "Database.h"
 
 // This should never be used, but it is here to avoid returning reference to local variable
-struct Dummy {};
-GLEAM_TYPE(Dummy, Guid("00000000-0000-0000-0000-000000000000"))
+struct NullType {};
+GLEAM_TYPE(NullType, Guid("00000000-0000-0000-0000-000000000000"))
 GLEAM_END
 
 // This should never be used, but it is here to avoid returning reference to local variable
-enum class DummyEnum {};
-GLEAM_TYPE(DummyEnum, Guid("00000000-0000-0000-0000-000000000000"))
+enum class NullEnum {};
+GLEAM_TYPE(NullEnum, Guid("00000000-0000-0000-0000-000000000000"))
 GLEAM_END
 
 using namespace Gleam::Reflection;
@@ -83,9 +83,9 @@ const ClassDescription& Database::GetClass(size_t hash)
 		return it->second;
 	}
 	GLEAM_ASSERT(false, "Invalid class hash.");
-	static auto type = refl::reflect<Dummy>();
-	static auto dummy = CreateClassDescription(type);
-	return dummy;
+	static auto type = refl::reflect<NullType>();
+	static auto null = CreateClassDescription(type);
+	return null;
 }
 
 const EnumDescription& Database::GetEnum(size_t hash)
@@ -96,9 +96,9 @@ const EnumDescription& Database::GetEnum(size_t hash)
         return it->second;
     }
     GLEAM_ASSERT(false, "Invalid enum hash.");
-    static auto type = refl::reflect<DummyEnum>();
-	static auto dummy = CreateEnumDescription(type);
-	return dummy;
+    static auto type = refl::reflect<NullEnum>();
+	static auto null = CreateEnumDescription(type);
+	return null;
 }
 
 const ArrayDescription& Database::GetArray(size_t hash)
@@ -109,8 +109,8 @@ const ArrayDescription& Database::GetArray(size_t hash)
         return it->second;
     }
     GLEAM_ASSERT(false, "Invalid array hash.");
-	static auto dummy = CreateArrayDescription<Dummy[1]>();
-	return dummy;
+	static auto null = CreateArrayDescription<NullType[1]>();
+	return null;
 }
 
 size_t Database::GetTypeHash(const TStringView name)

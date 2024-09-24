@@ -63,6 +63,11 @@ void World::Serialize(FileStream& stream)
 		entityObject.AddMember("Entity", rapidjson::StringRef(guid.c_str()), root.GetAllocator());
 		entityObject.AddMember("Active", entity.IsActive(), root.GetAllocator());
 
+		mEntityManager.Visit(handle, [&](const void* component, const Reflection::ClassDescription& classDesc)
+		{
+			// TODO: 
+		});
+
 		entities.PushBack(entityObject, root.GetAllocator());
 	});
 	root.AddMember("Entities", entities, root.GetAllocator());

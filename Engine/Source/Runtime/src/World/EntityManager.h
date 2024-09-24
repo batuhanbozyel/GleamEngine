@@ -31,11 +31,47 @@ public:
     template<typename Func>
     void ForEach(Func&& fn) const
     {
-        for (const auto [entt] : mRegistry.storage<EntityHandle>()->each())
+        for (const auto [entt] : mRegistry.storage<EntityHandle>().each())
         {
             fn(entt);
         }
     }
+
+	template<typename Func>
+	void Visit(EntityHandle entity, Func&& fn)
+	{
+		for (const auto& [id, storage] : mRegistry.storage())
+		{
+			if (storage.contains(entity))
+			{
+				// TODO: refactor Reflection system to use entt::type_id instead of C++ typeid
+				const auto& classDesc = Reflection::GetClass(id);
+				if (classDesc.Guid() != Guid::InvalidGuid())
+				{
+					void* component = storage.value(entity);
+					fn(component, classDesc);
+				}
+			}
+		}
+	}
+
+	template<typename Func>
+	void Visit(Func&& fn, EntityHandle entity) const
+	{
+		for (const auto& [id, storage] : mRegistry.storage())
+		{
+			if (storage.contains(entity))
+			{
+				// TODO: refactor Reflection system to use entt::type_id instead of C++ typeid
+				const auto& classDesc = Reflection::GetClass(id);
+				if (classDesc.Guid() != Guid::InvalidGuid())
+				{
+					const void* component = storage.value(entity);
+					fn(component, classDesc);
+				}
+			}
+		}
+	}
 
 	Entity& CreateEntity(const Guid& guid)
 	{
