@@ -17,7 +17,7 @@ void DebugRenderer::OnCreate(GraphicsDevice* device)
 
 void DebugRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard)
 {
-	size_t vertexCount = mLines.size() + mTriangles.size() + mDepthLines.size() + mDepthTriangles.size();
+	size_t vertexCount = (mLines.size() + mDepthLines.size()) * 2;
 	mDebugVertices.reserve(vertexCount);
 
 	// nothing to render
@@ -30,27 +30,11 @@ void DebugRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 		mDebugVertices.push_back(line.end);
 	}
 
-	mTriangleBufferOffset = static_cast<uint32_t>(mDebugVertices.size() * sizeof(DebugVertex));
-	for (const auto& triangle : mTriangles)
-	{
-		mDebugVertices.push_back(triangle.vertex1);
-		mDebugVertices.push_back(triangle.vertex2);
-		mDebugVertices.push_back(triangle.vertex3);
-	}
-
 	mDepthLineBufferOffset = static_cast<uint32_t>(mDebugVertices.size() * sizeof(DebugVertex));
 	for (const auto& line : mDepthLines)
 	{
 		mDebugVertices.push_back(line.start);
 		mDebugVertices.push_back(line.end);
-	}
-
-	mDepthTriangleBufferOffset = static_cast<uint32_t>(mDebugVertices.size() * sizeof(DebugVertex));
-	for (const auto& triangle : mDepthTriangles)
-	{
-		mDebugVertices.push_back(triangle.vertex1);
-		mDebugVertices.push_back(triangle.vertex2);
-		mDebugVertices.push_back(triangle.vertex3);
 	}
 
 	struct UpdatePassData
@@ -108,16 +92,6 @@ void DebugRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 			cmd->BindGraphicsPipeline(pipelineState, mPrimitiveVertexShader, mFragmentShader);
 			cmd->Draw(static_cast<uint32_t>(mDepthLines.size()) * Utils::PrimitiveTopologyVertexCount(pipelineState.topology));
 		}
-
-		if (!mDepthTriangles.empty())
-		{
-			PipelineStateDescriptor pipelineState;
-			pipelineState.topology = PrimitiveTopology::Triangles;
-			pipelineState.depthState.writeEnabled = true;
-			pipelineState.depthState.compareFunction = CompareFunction::Less;
-			cmd->BindGraphicsPipeline(pipelineState, mPrimitiveVertexShader, mFragmentShader);
-			cmd->Draw(static_cast<uint32_t>(mDepthTriangles.size()) * Utils::PrimitiveTopologyVertexCount(pipelineState.topology));
-		}
 		
 		if (!mDepthDebugMeshes.empty())
         {
@@ -133,14 +107,6 @@ void DebugRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 			cmd->Draw(static_cast<uint32_t>(mLines.size()) * Utils::PrimitiveTopologyVertexCount(pipelineState.topology));
 		}
 
-		if (!mTriangles.empty())
-		{
-			PipelineStateDescriptor pipelineState;
-			pipelineState.topology = PrimitiveTopology::Triangles;
-			cmd->BindGraphicsPipeline(pipelineState, mPrimitiveVertexShader, mFragmentShader);
-			cmd->Draw(static_cast<uint32_t>(mTriangles.size()) * Utils::PrimitiveTopologyVertexCount(pipelineState.topology));
-		}
-
 		if (!mDebugMeshes.empty())
         {
             RenderMeshes(cmd, passData.cameraBuffer, mDebugMeshes, false);
@@ -149,8 +115,6 @@ void DebugRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
         // clear after rendering
         mLines.clear();
         mDepthLines.clear();
-        mTriangles.clear();
-        mDepthTriangles.clear();
         mDebugVertices.clear();
         mDebugMeshes.clear();
         mDepthDebugMeshes.clear();
@@ -198,15 +162,9 @@ void DebugRenderer::DrawLine(const Float3& start, const Float3& end, Color32 col
 
 void DebugRenderer::DrawTriangle(const Float3& v1, const Float3& v2, const Float3& v3, Color32 color, bool depthTest)
 {
-    DebugTriangle triangle;
-    triangle.vertex1 = {v1, color};
-    triangle.vertex2 = {v2, color};
-    triangle.vertex3 = {v3, color};
-
-    if (depthTest)
-        mDepthTriangles.emplace_back(std::move(triangle));
-    else
-        mTriangles.emplace_back(std::move(triangle));
+	DrawLine(v1, v2, color, depthTest);
+	DrawLine(v2, v3, color, depthTest);
+	DrawLine(v3, v1, color, depthTest);
 }
 
 void DebugRenderer::DrawQuad(const Float3& center, float width, float height, Color32 color, bool depthTest)
