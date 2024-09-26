@@ -1,14 +1,10 @@
 #include "gpch.h"
 #include "World.h"
 #include "Systems/TransformSystem.h"
+#include "Serialization/JSONInternal.h"
+#include "Serialization/JSONSerializer.h"
 
 using namespace Gleam;
-
-#include <rapidjson/document.h>
-#include <rapidjson/prettywriter.h>
-#include <rapidjson/stringbuffer.h>
-#include <rapidjson/istreamwrapper.h>
-#include <rapidjson/ostreamwrapper.h>
 
 World::World(const TString& name)
 	: mName(name)
@@ -50,34 +46,43 @@ void World::Update()
 
 void World::Serialize(FileStream& stream)
 {
-	rapidjson::Document root(rapidjson::kObjectType);
-	root.AddMember("Name", rapidjson::StringRef(mName.c_str()), root.GetAllocator());
+	rapidjson::Document document(rapidjson::kObjectType);
+	rapidjson::Node root(document, document.GetAllocator());
+	root.AddMember("Name", rapidjson::StringRef(mName.c_str()));
 
 	rapidjson::Value entities(rapidjson::kArrayType);
+	rapidjson::Node entitiesNode(entities, root.allocator);
+
 	mEntityManager.ForEach([&](EntityHandle handle)
 	{
 		const auto& entity = mEntityManager.GetComponent<Entity>(handle);
 		auto guid = entity.GetGuid().ToString();
 
 		rapidjson::Value entityObject(rapidjson::kObjectType);
-		entityObject.AddMember("Entity", rapidjson::StringRef(guid.c_str()), root.GetAllocator());
-		entityObject.AddMember("Active", entity.IsActive(), root.GetAllocator());
+		rapidjson::Node entityNode(entityObject, root.allocator);
+
+		entityNode.AddMember("Entity", rapidjson::StringRef(guid.c_str()));
+		entityNode.AddMember("Active", entity.IsActive());
 
 		mEntityManager.Visit(handle, [&](const void* component, const Reflection::ClassDescription& classDesc)
 		{
-			// TODO: 
+			if (classDesc.HasAttribute<Reflection::Attribute::EntityComponent>())
+			{
+				JSONSerializer serializer(stream);
+				serializer.Serialize(component, classDesc, entityNode);
+			}
 		});
 
-		entities.PushBack(entityObject, root.GetAllocator());
+		entitiesNode.PushBack(entityObject);
 	});
-	root.AddMember("Entities", entities, root.GetAllocator());
+	root.AddMember("Entities", entities);
 
 	rapidjson::OStreamWrapper ss(stream);
 	rapidjson::PrettyWriter writer(ss);
 	writer.SetFormatOptions(rapidjson::PrettyFormatOptions::kFormatSingleLineArray);
 	writer.SetMaxDecimalPlaces(6);
 	writer.SetIndent('\t', 1);
-	root.Accept(writer);
+	document.Accept(writer);
 }
 
 void World::Deserialize(FileStream& stream)

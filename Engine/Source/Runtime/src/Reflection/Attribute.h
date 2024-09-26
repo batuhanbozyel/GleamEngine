@@ -78,6 +78,10 @@ GLEAM_ATTRIBUTE(Version, Target::Class)
     }
 };
 
+GLEAM_ATTRIBUTE(EntityComponent, Target::Class)
+{
+};
+
 GLEAM_ATTRIBUTE(Serializable, Target::Field)
 {
 };

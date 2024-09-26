@@ -16,11 +16,11 @@ public:
 
 	void Configure(const WorldConfig& config);
 
-	size_t LoadWorld(uint32_t buildIndex);
+	void OpenWorld(uint32_t buildIndex);
 
-	void UnloadWorld(uint32_t index);
+	void LoadWorld(uint32_t buildIndex);
 
-	World* GetWorld(uint32_t index);
+	void SaveWorld();
 
 	World* GetActiveWorld();
 
@@ -28,13 +28,13 @@ private:
 
 	std::mutex mMutex;
 
-	size_t mActiveWorld = 0;
+	uint32_t mActiveWorld = 0;
 
 	Application* mApp = nullptr;
 
-	TArray<Scope<World>> mLoadedWorlds;
-
 	TArray<AssetReference> mWorldsInBuild;
+
+	HashMap<AssetReference, Scope<World>> mLoadedWorlds;
 
 	HashMap<AssetReference, Filesystem::Path> mWorldPaths;
 

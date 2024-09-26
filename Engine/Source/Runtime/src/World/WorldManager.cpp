@@ -50,7 +50,13 @@ void WorldManager::Configure(const WorldConfig& config)
 	LoadWorld(config.startingWorldIndex);
 }
 
-size_t WorldManager::LoadWorld(uint32_t buildIndex)
+void WorldManager::OpenWorld(uint32_t buildIndex)
+{
+	LoadWorld(buildIndex);
+	mActiveWorld = buildIndex;
+}
+
+void WorldManager::LoadWorld(uint32_t buildIndex)
 {
 	const auto& worldRef = mWorldsInBuild[buildIndex];
 	auto worldFile = Globals::ProjectContentDirectory/mWorldPaths[worldRef];
@@ -58,34 +64,20 @@ size_t WorldManager::LoadWorld(uint32_t buildIndex)
 
 	auto world = CreateScope<World>();
 	world->Deserialize(file.GetStream());
-
-	auto index = mLoadedWorlds.size();
-	mLoadedWorlds.emplace_back(std::move(world));
-	return index;
+	mLoadedWorlds.emplace(worldRef, std::move(world));
 }
 
-void WorldManager::UnloadWorld(uint32_t index)
+void WorldManager::SaveWorld()
 {
-	if (index >= mLoadedWorlds.size())
-	{
-		GLEAM_CORE_ERROR("World is not loaded: {0}", index);
-		return;
-	}
-	mLoadedWorlds.erase(mLoadedWorlds.begin() + index);
-}
-
-World* WorldManager::GetWorld(uint32_t index)
-{
-	if (index >= mLoadedWorlds.size())
-	{
-		GLEAM_CORE_ERROR("World is not loaded: {0}", index);
-		return GetActiveWorld();
-	}
-	return mLoadedWorlds[index].get();
+	const auto& worldRef = mWorldsInBuild[mActiveWorld];
+	auto worldFile = Globals::ProjectContentDirectory / mWorldPaths[worldRef];
+	auto file = Filesystem::Create(worldFile, FileType::Text);
+	auto world = mLoadedWorlds[worldRef].get();
+	world->Serialize(file.GetStream());
 }
 
 World* WorldManager::GetActiveWorld()
 {
-	GLEAM_ASSERT(mActiveWorld < mLoadedWorlds.size(), "Active world index is out of bounds");
-	return mLoadedWorlds[mActiveWorld].get();
+	const auto& worldRef = mWorldsInBuild[mActiveWorld];
+	return mLoadedWorlds[worldRef].get();
 }

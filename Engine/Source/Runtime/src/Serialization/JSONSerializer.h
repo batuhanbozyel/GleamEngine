@@ -1,6 +1,10 @@
 #pragma once
 #include "Core/Subsystem.h"
 
+namespace rapidjson {
+struct Node;
+} // namespace rapidjson
+
 namespace Gleam {
 
 struct JSONHeader
@@ -43,24 +47,28 @@ public:
 		return object;
 	}
 
-    void Serialize(const void* obj, const Reflection::ClassDescription& desc);
+    void Serialize(const void* obj, const Reflection::ClassDescription& classDesc);
+
+	void Serialize(const void* obj, const Reflection::ClassDescription& classDesc, rapidjson::Node& root);
     
-	void Deserialize(const Reflection::ClassDescription& desc, void* obj);
+	void Deserialize(const Reflection::ClassDescription& classDesc, void* obj);
+
+	void Deserialize(const Reflection::ClassDescription& classDesc, void* obj, rapidjson::Node& root);
     
     static bool TryCustomObjectSerializer(const void* obj,
                                           const TStringView fieldName,
                                           const Reflection::ClassDescription& classDesc,
-                                          void* userData);
+                                          rapidjson::Node& node);
     
     static bool TryCustomArraySerializer(const void* obj,
                                          const Reflection::ClassDescription& classDesc,
-                                         void* userData);
+										 rapidjson::Node& node);
 
-	static bool TryCustomObjectDeserializer(const void* userData,
+	static bool TryCustomObjectDeserializer(const rapidjson::Node& node,
 											const Reflection::ClassDescription& classDesc,
 											void* obj);
     
-    static bool TryCustomArrayDeserializer(const void* userData,
+    static bool TryCustomArrayDeserializer(const rapidjson::Node& node,
                                            const Reflection::ClassDescription& classDesc,
                                            void* obj);
     
@@ -69,17 +77,17 @@ private:
     using ObjectSerializerFn = std::function<void(const void* obj,
                                                   const TStringView fieldName,
                                                   const Reflection::ClassDescription& classDesc,
-                                                  void* userData)>;
+												  rapidjson::Node& node)>;
     
     using ArraySerializerFn = std::function<void(const void* obj,
                                                  const Reflection::ClassDescription& classDesc,
-                                                 void* userData)>;
+												 rapidjson::Node& node)>;
 
-	using ObjectDeserializerFn = std::function<void(const void* userData,
+	using ObjectDeserializerFn = std::function<void(const rapidjson::Node& node,
 													const Reflection::ClassDescription& classDesc,
 													void* obj)>;
 
-	using ArrayDeserializerFn = std::function<void(const void* userData,
+	using ArrayDeserializerFn = std::function<void(const rapidjson::Node& node,
 												   const Reflection::ClassDescription& classDesc,
 												   void* obj)>;
 
