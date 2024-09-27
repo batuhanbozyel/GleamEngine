@@ -5,6 +5,7 @@ namespace Gleam {
 
 class EntityManager final
 {
+	friend class Entity;
 public:
     
     template<typename ... ComponentTypes, typename ... ExcludeComponents, typename Func, typename = std::enable_if_t<sizeof...(ComponentTypes) + sizeof...(ExcludeComponents) != 0>>
@@ -76,7 +77,6 @@ public:
 	Entity& CreateEntity(const Guid& guid)
 	{
 		auto handle = mRegistry.create();
-        AddComponent<Transform>(handle);
         auto& entity = AddComponent<Entity>(handle, handle, &mRegistry, guid);
 		mHandles[guid] = handle;
         return entity;
@@ -92,11 +92,18 @@ public:
 
 	void DestroyEntity(EntityHandle entity)
 	{
+		const auto& guid = mRegistry.get<Entity>(entity).GetGuid();
+		mHandles.erase(guid);
 		mRegistry.destroy(entity);
 	}
 
 	void DestroyEntity(const TArray<EntityHandle>& entities)
 	{
+		for (auto entity : entities)
+		{
+			const auto& guid = mRegistry.get<Entity>(entity).GetGuid();
+			mHandles.erase(guid);
+		}
 		mRegistry.destroy(entities.begin(), entities.end());
 	}
     
@@ -159,7 +166,7 @@ public:
         return mRegistry.get<T>(entity);
     }
 
-	EntityHandle operator[](const EntityReference& ref) const
+	EntityHandle GetEntity(const EntityReference& ref) const
 	{
 		auto it = mHandles.find(ref.guid);
 		if (it != mHandles.end())

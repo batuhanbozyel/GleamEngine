@@ -74,13 +74,23 @@ void RenderSystem::Render(const World* world)
         },
         [this](const CommandBuffer* cmd, const SceneRenderingData& passData)
         {
-            auto camera = passData.sceneProxy->GetActiveCamera();
-            
             CameraUniforms cameraData;
-            if (camera)
+            if (auto camera = passData.sceneProxy->GetActiveCamera(); camera)
             {
-                cameraData.viewMatrix = camera->GetViewMatrix();
-                cameraData.projectionMatrix = camera->GetProjectionMatrix();
+				const auto& cameraComponent = camera->GetComponent<Camera>();
+                cameraData.viewMatrix = Float4x4::LookTo(camera->GetWorldPosition(), camera->ForwardVector(), camera->UpVector());
+
+				if (cameraComponent.projectionType == ProjectionType::Perspective)
+				{
+					cameraData.projectionMatrix = Float4x4::Perspective(cameraComponent.fov, cameraComponent.aspectRatio, cameraComponent.nearPlane, cameraComponent.farPlane);
+				}
+				else
+				{
+					float width = cameraComponent.orthographicSize * cameraComponent.aspectRatio;
+					float height = cameraComponent.orthographicSize;
+					cameraData.projectionMatrix = Float4x4::Ortho(width, height, cameraComponent.nearPlane, cameraComponent.farPlane);
+				}
+
                 cameraData.viewProjectionMatrix = cameraData.projectionMatrix * cameraData.viewMatrix;
                 cameraData.invViewMatrix = Math::Inverse(cameraData.viewMatrix);
                 cameraData.invProjectionMatrix = Math::Inverse(cameraData.projectionMatrix);

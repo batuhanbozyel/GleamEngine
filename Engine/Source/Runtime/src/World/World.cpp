@@ -1,6 +1,5 @@
 #include "gpch.h"
 #include "World.h"
-#include "Systems/TransformSystem.h"
 #include "Serialization/JSONInternal.h"
 #include "Serialization/JSONSerializer.h"
 
@@ -10,7 +9,6 @@ World::World(const TString& name)
 	: mName(name)
 {
 	Time::Reset();
-	AddSystem<TransformSystem>();
 }
 
 void World::Update()

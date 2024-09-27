@@ -22,9 +22,9 @@ public:
     
 private:
     
-	void ProcessCameraMovement(Gleam::Camera& camera);
+	void ProcessCameraMovement(Gleam::Entity& camera);
 
-	void ProcessCameraRotation(Gleam::Camera& camera);
+	void ProcessCameraRotation(Gleam::Entity& camera);
 
 	bool mCursorVisible = true;
     
@@ -35,7 +35,7 @@ private:
     float mYaw = 0.0f;
     float mPitch = 0.0f;
 
-    Gleam::Entity mCameraEntity;
+    Gleam::EntityHandle mCameraEntity;
     
 };
 

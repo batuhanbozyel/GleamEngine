@@ -19,12 +19,13 @@ void EditorCameraController::OnUpdate(Gleam::EntityManager& entityManager)
 {
 	auto& camera = entityManager.GetComponent<Gleam::Camera>(mCameraEntity);
     camera.SetViewport(mViewportSize);
-    
-	ProcessCameraRotation(camera);
-	ProcessCameraMovement(camera);
+
+	auto& cameraEntity = entityManager.GetComponent<Gleam::Entity>(mCameraEntity);
+	ProcessCameraRotation(cameraEntity);
+	ProcessCameraMovement(cameraEntity);
 }
 
-void EditorCameraController::ProcessCameraRotation(Gleam::Camera& camera)
+void EditorCameraController::ProcessCameraRotation(Gleam::Entity& camera)
 {
     auto inputSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::InputSystem>();
 	if (!inputSystem->CursorVisible())
@@ -34,38 +35,38 @@ void EditorCameraController::ProcessCameraRotation(Gleam::Camera& camera)
         mYaw += axis.x * mouseSensitivity;
         mPitch += axis.y * mouseSensitivity;
         mPitch = Gleam::Math::Clamp(mPitch, -80.0f, 80.0f);
-        camera.SetRotation(Gleam::Quaternion(Gleam::Math::Deg2Rad(Gleam::Float3{ mPitch, mYaw, 0.0f })));
+		camera.SetRotation(Gleam::Quaternion(Gleam::Math::Deg2Rad(Gleam::Float3{ mPitch, mYaw, 0.0f })));
     }
 }
 
-void EditorCameraController::ProcessCameraMovement(Gleam::Camera& camera)
+void EditorCameraController::ProcessCameraMovement(Gleam::Entity& camera)
 {
     constexpr float cameraSpeed = 5.0f;
     auto deltaTime = static_cast<float>(Gleam::Time::deltaTime);
     auto inputSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::InputSystem>();
     if (inputSystem->GetButtonDown(Gleam::KeyCode::A))
     {
-        camera.Translate(-camera.RightVector() * cameraSpeed * deltaTime);
+		camera.Translate(-camera.RightVector() * cameraSpeed * deltaTime);
     }
     if (inputSystem->GetButtonDown(Gleam::KeyCode::D))
     {
-        camera.Translate(camera.RightVector() * cameraSpeed * deltaTime);
+		camera.Translate(camera.RightVector() * cameraSpeed * deltaTime);
     }
     if (inputSystem->GetButtonDown(Gleam::KeyCode::W))
     {
-        camera.Translate(camera.ForwardVector() * cameraSpeed * deltaTime);
+		camera.Translate(camera.ForwardVector() * cameraSpeed * deltaTime);
     }
     if (inputSystem->GetButtonDown(Gleam::KeyCode::S))
     {
-        camera.Translate(-camera.ForwardVector() * cameraSpeed * deltaTime);
+		camera.Translate(-camera.ForwardVector() * cameraSpeed * deltaTime);
     }
     if (inputSystem->GetButtonDown(Gleam::KeyCode::Space))
     {
-        camera.Translate(Gleam::Float3::up * cameraSpeed * deltaTime);
+		camera.Translate(Gleam::Float3::up * cameraSpeed * deltaTime);
     }
     if (inputSystem->GetButtonDown(Gleam::KeyCode::LeftControl))
     {
-        camera.Translate(Gleam::Float3::down * cameraSpeed * deltaTime);
+		camera.Translate(Gleam::Float3::down * cameraSpeed * deltaTime);
     }
 }
 

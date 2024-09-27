@@ -3,6 +3,7 @@
 namespace Gleam {
 
 class Mesh;
+class Entity;
 class Material;
 class MaterialInstance;
 
@@ -23,11 +24,11 @@ public:
     
     void ForEach(BatchFn&& fn) const;
     
-    const Camera* GetActiveCamera() const;
+    const Entity* GetActiveCamera() const;
 
 private:
     
-    const Camera* mActiveCamera = nullptr;
+    const Entity* mActiveCamera = nullptr;
     
     HashMap<const Material*, TArray<MeshBatch>> mStaticBatches;
     

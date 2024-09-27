@@ -12,7 +12,7 @@ void RenderSceneProxy::Update(const World* world)
 {
     // update static batches
     mStaticBatches.clear();
-    world->GetEntityManager().ForEach<MeshRenderer, Transform>([this](const MeshRenderer& meshRenderer, const Transform& transform)
+    world->GetEntityManager().ForEach<Entity, MeshRenderer>([this](const Entity& entity, const MeshRenderer& meshRenderer)
     {
         GLEAM_ASSERT(meshRenderer.GetMesh().GetSubmeshCount() > 0);
 		GLEAM_ASSERT(meshRenderer.GetMaterials().size() == meshRenderer.GetMesh().GetSubmeshCount());
@@ -23,7 +23,7 @@ void RenderSceneProxy::Update(const World* world)
 		{
 			MeshBatch batch = {
 				.mesh = meshRenderer.GetMesh(),
-				.transform = transform.GetWorldTransform(),
+				.transform = entity.GetWorldTransform(),
 				.submesh = submeshes[i],
 				.material = materials[i]
 			};
@@ -39,7 +39,7 @@ void RenderSceneProxy::Update(const World* world)
     {
         if (entity.IsActive())
         {
-            mActiveCamera = &component;
+            mActiveCamera = &entity;
         }
     });
 }
@@ -52,7 +52,7 @@ void RenderSceneProxy::ForEach(BatchFn&& fn) const
     }
 }
 
-const Camera* RenderSceneProxy::GetActiveCamera() const
+const Entity* RenderSceneProxy::GetActiveCamera() const
 {
     return mActiveCamera;
 }
