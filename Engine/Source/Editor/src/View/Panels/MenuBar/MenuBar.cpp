@@ -12,6 +12,11 @@
 
 using namespace GEditor;
 
+void MenuBar::Init(Gleam::World* world)
+{
+	mWorld = world;
+}
+
 void MenuBar::Render(Gleam::ImGuiRenderer* imgui)
 {
 	imgui->PushView([this](const Gleam::ImGuiPassData& passData)
@@ -20,6 +25,12 @@ void MenuBar::Render(Gleam::ImGuiRenderer* imgui)
 		
 		if (ImGui::BeginMenu("File"))
 		{
+			if (ImGui::MenuItem("Save"))
+			{
+				auto worldManager = Gleam::Globals::GameInstance->GetSubsystem<Gleam::WorldManager>();
+				worldManager->SaveWorld();
+			}
+
 			if (ImGui::MenuItem("Exit"))
 			{
 				Gleam::EventDispatcher<Gleam::AppCloseEvent>::Publish(Gleam::AppCloseEvent());
