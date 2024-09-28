@@ -15,6 +15,7 @@
 #include "Core/Events/RendererEvent.h"
 
 #include "World/World.h"
+#include "World/Systems/RenderSceneProxy.h"
 
 using namespace Gleam;
 
@@ -51,8 +52,6 @@ void RenderSystem::Shutdown()
 
 void RenderSystem::Render(const World* world)
 {
-    mSceneProxy.Update(world);
-    
 #ifdef USE_METAL_RENDERER
     @autoreleasepool
 #endif
@@ -69,7 +68,7 @@ void RenderSystem::Render(const World* world)
             passData.cameraBuffer = builder.CreateBuffer(bufferDesc);
             passData.cameraBuffer = builder.WriteBuffer(passData.cameraBuffer);
             passData.backbuffer = graph.ImportBackbuffer(mRenderTarget);
-            passData.sceneProxy = &mSceneProxy;
+            passData.sceneProxy = world->GetSystem<RenderSceneProxy>();
             passData.world = world;
         },
         [this](const CommandBuffer* cmd, const SceneRenderingData& passData)

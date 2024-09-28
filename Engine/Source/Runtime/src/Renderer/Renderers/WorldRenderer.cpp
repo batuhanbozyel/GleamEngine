@@ -14,9 +14,9 @@
 #include "Renderer/Mesh.h"
 #include "Renderer/CommandBuffer.h"
 #include "Renderer/GraphicsDevice.h"
-#include "Renderer/RenderSceneProxy.h"
 #include "Renderer/Material/Material.h"
 #include "Renderer/Material/MaterialInstance.h"
+#include "World/Systems/RenderSceneProxy.h"
 
 #if defined(USE_METAL_RENDERER)
 #import <Metal/Metal.h>

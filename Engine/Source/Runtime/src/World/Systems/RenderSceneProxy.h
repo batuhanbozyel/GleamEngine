@@ -1,4 +1,5 @@
 #pragma once
+#include "World/ComponentSystem.h"
 
 namespace Gleam {
 
@@ -15,12 +16,12 @@ struct MeshBatch
     MaterialInstance material;
 };
 
-class RenderSceneProxy
+class RenderSceneProxy : public ComponentSystem
 {
     using BatchFn = std::function<void(const Material*, const TArray<MeshBatch>&)>;
 public:
     
-    void Update(const World* world);
+    virtual void OnUpdate(EntityManager& entityManager) override;
     
     void ForEach(BatchFn&& fn) const;
     

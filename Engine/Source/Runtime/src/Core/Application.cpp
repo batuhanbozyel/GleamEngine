@@ -32,7 +32,6 @@ Application::Application(const Project& project)
 	auto materialSystem = AddSubsystem<MaterialSystem>();
 	auto worldManager = AddSubsystem<WorldManager>();
 	worldManager->Configure(project.worldConfig);
-	worldManager->OpenWorld(project.worldConfig.startingWorldIndex);
     
     // add default renderers
     auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
@@ -43,6 +42,8 @@ Application::Application(const Project& project)
 	{
 		mRunning = false;
 	});
+
+	worldManager->OpenWorld(project.worldConfig.startingWorldIndex);
 }
 
 void Application::Run()

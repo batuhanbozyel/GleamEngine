@@ -1,18 +1,18 @@
 #include "gpch.h"
 #include "RenderSceneProxy.h"
 
-#include "Mesh.h"
 #include "World/World.h"
-#include "Material/Material.h"
-#include "Material/MaterialInstance.h"
+#include "Renderer/Mesh.h"
+#include "Renderer/Material/Material.h"
+#include "Renderer/Material/MaterialInstance.h"
 
 using namespace Gleam;
 
-void RenderSceneProxy::Update(const World* world)
+void RenderSceneProxy::OnUpdate(EntityManager& entityManager)
 {
     // update static batches
     mStaticBatches.clear();
-    world->GetEntityManager().ForEach<Entity, MeshRenderer>([this](const Entity& entity, const MeshRenderer& meshRenderer)
+    entityManager.ForEach<Entity, MeshRenderer>([this](const Entity& entity, const MeshRenderer& meshRenderer)
     {
         GLEAM_ASSERT(meshRenderer.GetMesh().GetSubmeshCount() > 0);
 		GLEAM_ASSERT(meshRenderer.GetMaterials().size() == meshRenderer.GetMesh().GetSubmeshCount());
@@ -35,7 +35,7 @@ void RenderSceneProxy::Update(const World* world)
     
     // update active camera
     mActiveCamera = nullptr;
-    world->GetEntityManager().ForEach<Entity, Camera>([&](const Entity& entity, const Camera& component)
+    entityManager.ForEach<Entity, Camera>([&](const Entity& entity, const Camera& component)
     {
         if (entity.IsActive())
         {
