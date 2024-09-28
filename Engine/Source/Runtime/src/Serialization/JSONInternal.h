@@ -14,8 +14,8 @@ namespace rapidjson {
 
 struct Node
 {
-    Document::AllocatorType& allocator;
     Value& object;
+    Document::AllocatorType& allocator;
     
     template <typename T>
     RAPIDJSON_DISABLEIF_RETURN((internal::OrExpr<internal::IsPointer<T>, internal::IsGenericValue<T> >), (Node&))
@@ -69,6 +69,22 @@ struct Node
     {
         
     }
+};
+
+struct ConstNode
+{
+	const Value& object;
+
+	explicit ConstNode(const Value& object)
+		: object(object)
+	{
+
+	}
+
+	const Value& operator[](const char* name) const
+	{
+		return object[name];
+	}
 };
 
 static Gleam::TString Convert(const rapidjson::Value& value)

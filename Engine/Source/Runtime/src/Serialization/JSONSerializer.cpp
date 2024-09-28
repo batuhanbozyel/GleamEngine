@@ -88,21 +88,21 @@ struct JSONSerializer::Impl
 
 #pragma region mark DeserializeForwardDecl
 
-    static void DeserializePrimitiveObject(const rapidjson::Node& object, Reflection::PrimitiveType primitiveType, void* obj);
+    static void DeserializePrimitiveObject(const rapidjson::ConstNode& object, Reflection::PrimitiveType primitiveType, void* obj);
 
-    static void DeserializeEnumObject(const rapidjson::Node& object, const Reflection::EnumDescription& enumDesc, void* obj);
+    static void DeserializeEnumObject(const rapidjson::ConstNode& object, const Reflection::EnumDescription& enumDesc, void* obj);
 
-    static void DeserializeClassObject(const rapidjson::Node& object, const Reflection::ClassDescription& classDesc, void* obj);
+    static void DeserializeClassObject(const rapidjson::ConstNode& object, const Reflection::ClassDescription& classDesc, void* obj);
 
-    static void DeserializeArrayObject(const rapidjson::Node& object, const Reflection::ArrayDescription& arrayDesc, void* obj);
+    static void DeserializeArrayObject(const rapidjson::ConstNode& object, const Reflection::ArrayDescription& arrayDesc, void* obj);
     
-    static void DeserializePrimitiveArrayValue(const rapidjson::Node& element, Reflection::PrimitiveType type, void* obj);
+    static void DeserializePrimitiveArrayValue(const rapidjson::ConstNode& element, Reflection::PrimitiveType type, void* obj);
     
-    static void DeserializeEnumArrayValue(const rapidjson::Node& element, const Reflection::EnumDescription& enumDesc, void* obj);
+    static void DeserializeEnumArrayValue(const rapidjson::ConstNode& element, const Reflection::EnumDescription& enumDesc, void* obj);
     
-    static void DeserializeClassArrayValue(const rapidjson::Node& element, const Reflection::ClassDescription& classDesc, void* obj);
+    static void DeserializeClassArrayValue(const rapidjson::ConstNode& element, const Reflection::ClassDescription& classDesc, void* obj);
     
-    static void DeserializeArrayElements(const rapidjson::Node& array, const Reflection::ArrayDescription& arrayDesc, void* obj);
+    static void DeserializeArrayElements(const rapidjson::ConstNode& array, const Reflection::ArrayDescription& arrayDesc, void* obj);
 
 #pragma endregion DeserializeForwardDecl
 };
@@ -205,7 +205,7 @@ void JSONSerializer::Initialize(Engine* engine)
     
 	// Custom deserializers
 	{
-        mCustomObjectDeserializers[Reflection::GetClass<Guid>().ResolveName()] = [](const rapidjson::Node& node,
+        mCustomObjectDeserializers[Reflection::GetClass<Guid>().ResolveName()] = [](const rapidjson::ConstNode& node,
             const Reflection::ClassDescription& classDesc,
             void* obj)
         {
@@ -215,14 +215,14 @@ void JSONSerializer::Initialize(Engine* engine)
             }
         };
         
-        mCustomArrayDeserializers[Reflection::GetClass<Guid>().ResolveName()] = [](const rapidjson::Node& node,
+        mCustomArrayDeserializers[Reflection::GetClass<Guid>().ResolveName()] = [](const rapidjson::ConstNode& node,
             const Reflection::ClassDescription& classDesc,
             void* obj)
         {
             Reflection::Get<Guid>(obj) = Guid(node.object.GetString());
         };
         
-		mCustomObjectDeserializers[Reflection::GetClass<TString>().ResolveName()] = [](const rapidjson::Node& node,
+		mCustomObjectDeserializers[Reflection::GetClass<TString>().ResolveName()] = [](const rapidjson::ConstNode& node,
 			const Reflection::ClassDescription& classDesc,
 			void* obj)
 		{
@@ -232,14 +232,14 @@ void JSONSerializer::Initialize(Engine* engine)
             }
 		};
         
-        mCustomArrayDeserializers[Reflection::GetClass<TString>().ResolveName()] = [](const rapidjson::Node& node,
+        mCustomArrayDeserializers[Reflection::GetClass<TString>().ResolveName()] = [](const rapidjson::ConstNode& node,
             const Reflection::ClassDescription& classDesc,
             void* obj)
         {
             Reflection::Get<TString>(obj) = TString(node.object.GetString());
         };
         
-        mCustomObjectDeserializers[Reflection::GetClass<Filesystem::Path>().ResolveName()] = [](const rapidjson::Node& node,
+        mCustomObjectDeserializers[Reflection::GetClass<Filesystem::Path>().ResolveName()] = [](const rapidjson::ConstNode& node,
             const Reflection::ClassDescription& classDesc,
             void* obj)
         {
@@ -249,14 +249,14 @@ void JSONSerializer::Initialize(Engine* engine)
             }
         };
         
-        mCustomArrayDeserializers[Reflection::GetClass<Filesystem::Path>().ResolveName()] = [](const rapidjson::Node& node,
+        mCustomArrayDeserializers[Reflection::GetClass<Filesystem::Path>().ResolveName()] = [](const rapidjson::ConstNode& node,
             const Reflection::ClassDescription& classDesc,
             void* obj)
         {
             Reflection::Get<Filesystem::Path>(obj) = TString(node.object.GetString());
         };
 
-		mCustomObjectDeserializers[Reflection::GetClass<TArray<uint8_t>>().ResolveName()] = [](const rapidjson::Node& node,
+		mCustomObjectDeserializers[Reflection::GetClass<TArray<uint8_t>>().ResolveName()] = [](const rapidjson::ConstNode& node,
 			const Reflection::ClassDescription& classDesc,
 			void* obj)
 		{
@@ -270,12 +270,12 @@ void JSONSerializer::Initialize(Engine* engine)
 				auto& arr = Reflection::Get<TArray<uint8_t>>(obj);
 				arr.resize(elements.Size() * arrDesc.GetStride());
 
-				rapidjson::Node elementsNode(elements, node.allocator);
+				rapidjson::ConstNode elementsNode(elements);
 				Impl::DeserializeArrayElements(elementsNode, containerDesc, arr.data());
 			}
 		};
         
-        mCustomArrayDeserializers[Reflection::GetClass<TArray<uint8_t>>().ResolveName()] = [](const rapidjson::Node& node,
+        mCustomArrayDeserializers[Reflection::GetClass<TArray<uint8_t>>().ResolveName()] = [](const rapidjson::ConstNode& node,
             const Reflection::ClassDescription& classDesc,
             void* obj)
         {
@@ -363,15 +363,14 @@ void JSONSerializer::Serialize(const void* obj, const Reflection::ClassDescripti
 void JSONSerializer::Deserialize(const Reflection::ClassDescription& classDesc, void* obj)
 {
 	rapidjson::Document document(rapidjson::kObjectType);
-	rapidjson::Node root(document, document.GetAllocator());
-
     rapidjson::IStreamWrapper ss(mHandle->stream);
 	document.ParseStream(ss);
 
+	rapidjson::ConstNode root(document);
 	Deserialize(classDesc, obj, root);
 }
 
-void JSONSerializer::Deserialize(const Reflection::ClassDescription& classDesc, void* obj, rapidjson::Node& root)
+void JSONSerializer::Deserialize(const Reflection::ClassDescription& classDesc, void* obj, const rapidjson::ConstNode& root)
 {
 	if (TryCustomObjectDeserializer(root, classDesc, obj) == false)
 	{
@@ -406,7 +405,7 @@ bool JSONSerializer::TryCustomArraySerializer(const void* obj,
 	return false;
 }
 
-bool JSONSerializer::TryCustomObjectDeserializer(const rapidjson::Node& node,
+bool JSONSerializer::TryCustomObjectDeserializer(const rapidjson::ConstNode& node,
 												 const Reflection::ClassDescription& classDesc,
 												 void* obj)
 {
@@ -419,7 +418,7 @@ bool JSONSerializer::TryCustomObjectDeserializer(const rapidjson::Node& node,
 	return false;
 }
 
-bool JSONSerializer::TryCustomArrayDeserializer(const rapidjson::Node& node,
+bool JSONSerializer::TryCustomArrayDeserializer(const rapidjson::ConstNode& node,
                                                 const Reflection::ClassDescription& classDesc,
                                                 void* obj)
 {
@@ -879,7 +878,7 @@ constexpr void DeserializeValue(const rapidjson::Value& object, void* obj)
     }
 }
 
-void JSONSerializer::Impl::DeserializePrimitiveObject(const rapidjson::Node& node,
+void JSONSerializer::Impl::DeserializePrimitiveObject(const rapidjson::ConstNode& node,
                                                       Reflection::PrimitiveType type,
                                                       void* obj)
 {
@@ -930,7 +929,7 @@ void JSONSerializer::Impl::DeserializePrimitiveObject(const rapidjson::Node& nod
 	}
 }
 
-void JSONSerializer::Impl::DeserializeEnumObject(const rapidjson::Node& node,
+void JSONSerializer::Impl::DeserializeEnumObject(const rapidjson::ConstNode& node,
                                                  const Reflection::EnumDescription& enumDesc,
                                                  void* obj)
 {
@@ -939,7 +938,7 @@ void JSONSerializer::Impl::DeserializeEnumObject(const rapidjson::Node& node,
 	memcpy(obj, &value, enumDesc.GetSize());
 }
 
-void JSONSerializer::Impl::DeserializeClassObject(const rapidjson::Node& node,
+void JSONSerializer::Impl::DeserializeClassObject(const rapidjson::ConstNode& node,
                                                   const Reflection::ClassDescription& classDesc,
                                                   void* obj)
 {
@@ -952,13 +951,13 @@ void JSONSerializer::Impl::DeserializeClassObject(const rapidjson::Node& node,
     auto fields = node.object["Fields"].GetArray();
 	for (const auto& base : classDesc.ResolveBaseClasses())
 	{
-		rapidjson::Node fieldNode(fields[fieldIdx++], node.allocator);
+		rapidjson::ConstNode fieldNode(fields[fieldIdx++]);
 		DeserializeClassObject(fieldNode, base, obj);
 	}
 
 	for (const auto& fieldDesc : classDesc.ResolveFields())
 	{
-		rapidjson::Node fieldNode(fields[fieldIdx++], node.allocator);
+		rapidjson::ConstNode fieldNode(fields[fieldIdx++]);
 		if (fieldDesc.GetType() == Reflection::FieldType::Primitive)
 		{
 			const auto& primitiveField = fieldDesc.GetField<Reflection::PrimitiveField>();
@@ -993,7 +992,7 @@ void JSONSerializer::Impl::DeserializeClassObject(const rapidjson::Node& node,
 	}
 }
 
-void JSONSerializer::Impl::DeserializeArrayObject(const rapidjson::Node& node,
+void JSONSerializer::Impl::DeserializeArrayObject(const rapidjson::ConstNode& node,
                                                   const Reflection::ArrayDescription& arrayDesc,
                                                   void* obj)
 {
@@ -1011,7 +1010,7 @@ void JSONSerializer::Impl::DeserializeArrayObject(const rapidjson::Node& node,
 			size_t offset = 0;
 			for (auto& element : node.object["Elements"].GetArray())
 			{
-				rapidjson::Node elementNode(element, node.allocator);
+				rapidjson::ConstNode elementNode(element);
 				DeserializePrimitiveObject(elementNode, primitiveType, OffsetPointer(obj, offset));
 				offset += arrayDesc.GetStride();
 			}
@@ -1024,7 +1023,7 @@ void JSONSerializer::Impl::DeserializeArrayObject(const rapidjson::Node& node,
 			size_t offset = 0;
 			for (auto& element : node.object["Elements"].GetArray())
 			{
-				rapidjson::Node elementNode(element, node.allocator);
+				rapidjson::ConstNode elementNode(element);
 				DeserializeArrayObject(elementNode, innerDesc, OffsetPointer(obj, offset));
 				offset += arrayDesc.GetStride();
 			}
@@ -1037,7 +1036,7 @@ void JSONSerializer::Impl::DeserializeArrayObject(const rapidjson::Node& node,
 			size_t offset = 0;
 			for (auto& element : node.object["Elements"].GetArray())
 			{
-				rapidjson::Node elementNode(element, node.allocator);
+				rapidjson::ConstNode elementNode(element);
 				if (JSONSerializer::TryCustomObjectDeserializer(elementNode, classDesc, OffsetPointer(obj, offset)) == false)
 				{
 					DeserializeClassObject(elementNode, classDesc, OffsetPointer(obj, offset));
@@ -1053,7 +1052,7 @@ void JSONSerializer::Impl::DeserializeArrayObject(const rapidjson::Node& node,
 			size_t offset = 0;
 			for (auto& element : node.object["Elements"].GetArray())
 			{
-				rapidjson::Node elementNode(element, node.allocator);
+				rapidjson::ConstNode elementNode(element);
 				DeserializeEnumObject(elementNode, enumDesc, OffsetPointer(obj, offset));
 				offset += arrayDesc.GetStride();
 			}
@@ -1067,7 +1066,7 @@ void JSONSerializer::Impl::DeserializeArrayObject(const rapidjson::Node& node,
 	}
 }
 
-void JSONSerializer::Impl::DeserializePrimitiveArrayValue(const rapidjson::Node& node,
+void JSONSerializer::Impl::DeserializePrimitiveArrayValue(const rapidjson::ConstNode& node,
                                                           Reflection::PrimitiveType type,
                                                           void* obj)
 {
@@ -1118,14 +1117,14 @@ void JSONSerializer::Impl::DeserializePrimitiveArrayValue(const rapidjson::Node&
     }
 }
 
-void JSONSerializer::Impl::DeserializeEnumArrayValue(const rapidjson::Node& node,
+void JSONSerializer::Impl::DeserializeEnumArrayValue(const rapidjson::ConstNode& node,
                                                      const Reflection::EnumDescription& enumDesc,
                                                      void* obj)
 {
     Reflection::Get<int64_t>(obj) = node.object.Get<int64_t>();
 }
 
-void JSONSerializer::Impl::DeserializeClassArrayValue(const rapidjson::Node& node,
+void JSONSerializer::Impl::DeserializeClassArrayValue(const rapidjson::ConstNode& node,
                                                       const Reflection::ClassDescription& classDesc,
                                                       void* obj)
 {
@@ -1133,13 +1132,13 @@ void JSONSerializer::Impl::DeserializeClassArrayValue(const rapidjson::Node& nod
     auto fields = node.object.GetArray();
     for (const auto& base : classDesc.ResolveBaseClasses())
     {
-		rapidjson::Node fieldNode(fields[fieldIdx++], node.allocator);
+		rapidjson::ConstNode fieldNode(fields[fieldIdx++]);
         DeserializeClassArrayValue(fieldNode, base, obj);
     }
 
     for (const auto& fieldDesc : classDesc.ResolveFields())
     {
-		rapidjson::Node fieldNode(fields[fieldIdx++], node.allocator);
+		rapidjson::ConstNode fieldNode(fields[fieldIdx++]);
         if (fieldDesc.GetType() == Reflection::FieldType::Primitive)
         {
             const auto& primitiveField = fieldDesc.GetField<Reflection::PrimitiveField>();
@@ -1174,7 +1173,7 @@ void JSONSerializer::Impl::DeserializeClassArrayValue(const rapidjson::Node& nod
     }
 }
 
-void JSONSerializer::Impl::DeserializeArrayElements(const rapidjson::Node& node,
+void JSONSerializer::Impl::DeserializeArrayElements(const rapidjson::ConstNode& node,
                                                     const Reflection::ArrayDescription& arrayDesc,
                                                     void* obj)
 {
@@ -1187,7 +1186,7 @@ void JSONSerializer::Impl::DeserializeArrayElements(const rapidjson::Node& node,
             size_t offset = 0;
             for (auto& element : node.object.GetArray())
             {
-				rapidjson::Node elementNode(element, node.allocator);
+				rapidjson::ConstNode elementNode(element);
                 DeserializePrimitiveArrayValue(elementNode, primitiveType, OffsetPointer(obj, offset));
                 offset += arrayDesc.GetStride();
             }
@@ -1200,7 +1199,7 @@ void JSONSerializer::Impl::DeserializeArrayElements(const rapidjson::Node& node,
             size_t offset = 0;
             for (auto& element : node.object.GetArray())
             {
-				rapidjson::Node elementNode(element, node.allocator);
+				rapidjson::ConstNode elementNode(element);
                 DeserializeArrayElements(elementNode, innerDesc, OffsetPointer(obj, offset));
                 offset += arrayDesc.GetStride();
             }
@@ -1213,7 +1212,7 @@ void JSONSerializer::Impl::DeserializeArrayElements(const rapidjson::Node& node,
             size_t offset = 0;
             for (auto& element : node.object.GetArray())
             {
-				rapidjson::Node elementNode(element, node.allocator);
+				rapidjson::ConstNode elementNode(element);
                 if (JSONSerializer::TryCustomArrayDeserializer(elementNode, classDesc, OffsetPointer(obj, offset)) == false)
                 {
                     DeserializeClassArrayValue(elementNode, classDesc, OffsetPointer(obj, offset));
@@ -1229,7 +1228,7 @@ void JSONSerializer::Impl::DeserializeArrayElements(const rapidjson::Node& node,
             size_t offset = 0;
             for (auto& element : node.object.GetArray())
             {
-				rapidjson::Node elementNode(element, node.allocator);
+				rapidjson::ConstNode elementNode(element);
                 DeserializeEnumArrayValue(elementNode, enumDesc, OffsetPointer(obj, offset));
                 offset += arrayDesc.GetStride();
             }
