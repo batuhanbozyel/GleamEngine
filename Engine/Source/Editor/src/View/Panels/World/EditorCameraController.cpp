@@ -9,17 +9,19 @@
 
 using namespace GEditor;
 
+EditorCameraController::EditorCameraController(Gleam::EntityHandle cameraEntity)
+	: mCameraEntity(cameraEntity)
+{
+
+}
+
 void EditorCameraController::OnCreate(Gleam::EntityManager& entityManager)
 {
-	mCameraEntity = entityManager.CreateEntity(Gleam::Guid::NewGuid());
-    entityManager.AddComponent<Gleam::Camera>(mCameraEntity, Gleam::Globals::Engine->GetResolution());
+	
 }
 
 void EditorCameraController::OnUpdate(Gleam::EntityManager& entityManager)
 {
-	auto& camera = entityManager.GetComponent<Gleam::Camera>(mCameraEntity);
-    camera.SetViewport(mViewportSize);
-
 	auto& cameraEntity = entityManager.GetComponent<Gleam::Entity>(mCameraEntity);
 	ProcessCameraRotation(cameraEntity);
 	ProcessCameraMovement(cameraEntity);
@@ -68,12 +70,4 @@ void EditorCameraController::ProcessCameraMovement(Gleam::Entity& camera)
     {
 		camera.Translate(Gleam::Float3::down * cameraSpeed * deltaTime);
     }
-}
-
-void EditorCameraController::Resize(Gleam::EntityManager& entityManager, const Gleam::Size& size)
-{
-    mViewportSize = size;
-
-	auto& camera = entityManager.GetComponent<Gleam::Camera>(mCameraEntity);
-	camera.SetViewport(mViewportSize);
 }

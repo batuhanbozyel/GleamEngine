@@ -29,6 +29,8 @@ public:
     }
     
 private:
+
+	void Resize(Gleam::EntityManager& entityManager, const Gleam::Size& size);
     
     bool mIsFocused = false;
     
@@ -37,6 +39,8 @@ private:
 	bool mViewportSizeChanged = false;
     
     EditorCameraController* mCameraController = nullptr;
+
+	Gleam::EntityHandle mCamera;
     
     Gleam::Size mViewportSize;
     

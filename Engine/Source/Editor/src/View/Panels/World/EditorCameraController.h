@@ -13,12 +13,12 @@ namespace GEditor {
 class EditorCameraController : public Gleam::ComponentSystem
 {
 public:
+
+	EditorCameraController(Gleam::EntityHandle cameraEntity);
     
     virtual void OnCreate(Gleam::EntityManager& entityManager) override;
 
 	virtual void OnUpdate(Gleam::EntityManager& entityManager) override;
-    
-    void Resize(Gleam::EntityManager& entityManager, const Gleam::Size& size);
     
 private:
     
@@ -29,8 +29,6 @@ private:
 	bool mCursorVisible = true;
     
     bool mViewportFocused = false;
-    
-    Gleam::Size mViewportSize = Gleam::Size::zero;
     
     float mYaw = 0.0f;
     float mPitch = 0.0f;

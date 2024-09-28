@@ -18,9 +18,17 @@ void WorldViewport::Init(Gleam::World* world)
 	mEditWorld = world;
     Gleam::Globals::Engine->GetSubsystem<Gleam::RenderSystem>()->AddRenderer<InfiniteGridRenderer>();
     mViewportSize = Gleam::Globals::Engine->GetResolution();
-    
-	mCameraController = mEditWorld->AddSystem<EditorCameraController>();
-    mCameraController->Resize(mEditWorld->GetEntityManager(), mViewportSize);
+
+	mEditWorld->GetEntityManager().ForEach<Gleam::Entity, Gleam::Camera>([&](const Gleam::Entity& entity, const Gleam::Camera& camera)
+	{
+		if (entity.IsActive())
+		{
+			mCamera = entity;
+		}
+	});
+
+	mCameraController = mEditWorld->AddSystem<EditorCameraController>(mCamera);
+    Resize(mEditWorld->GetEntityManager(), mViewportSize);
     
     Gleam::EventDispatcher<Gleam::MouseButtonPressedEvent>::Subscribe([&](Gleam::MouseButtonPressedEvent e)
     {
@@ -41,9 +49,7 @@ void WorldViewport::Update()
 	mCameraController->Enabled = mIsFocused;
     if (mViewportSizeChanged)
     {
-		mViewportSizeChanged = false;
-        mCameraController->Resize(mEditWorld->GetEntityManager(), mViewportSize);
-        Gleam::EventDispatcher<Gleam::RendererResizeEvent>::Publish(Gleam::RendererResizeEvent(mViewportSize));
+		Resize(mEditWorld->GetEntityManager(), mViewportSize);
     }
     
     Gleam::TextureDescriptor descriptor;
@@ -104,4 +110,15 @@ void WorldViewport::Render(Gleam::ImGuiRenderer* imgui)
 		ImGui::End();
 		ImGui::PopStyleVar();
 	});
+}
+
+void WorldViewport::Resize(Gleam::EntityManager& entityManager, const Gleam::Size& size)
+{
+	mViewportSize = size;
+	mViewportSizeChanged = false;
+
+	auto& camera = entityManager.GetComponent<Gleam::Camera>(mCamera);
+	camera.SetViewport(mViewportSize);
+
+	Gleam::EventDispatcher<Gleam::RendererResizeEvent>::Publish(Gleam::RendererResizeEvent(mViewportSize));
 }
