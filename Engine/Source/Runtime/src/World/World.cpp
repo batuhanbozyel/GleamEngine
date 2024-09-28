@@ -146,14 +146,11 @@ void World::Deserialize(FileStream& stream)
 
 			auto meta = entt::resolve(static_cast<uint32_t>(typeHash));
 			auto func = meta.func("AddComponent"_hs);
-			if (func)
-			{
-				auto component = func.invoke({}, Ref(entity));
-				GLEAM_ASSERT(component, "Entity component could not deserialize");
+			auto component = func.invoke({}, Ref(entity));
+			GLEAM_ASSERT(component, "Entity component could not deserialize");
 
-				JSONSerializer serializer(stream);
-				serializer.Deserialize(classDesc, component.data());
-			}
+			JSONSerializer serializer(stream);
+			serializer.Deserialize(classDesc, component.data());
 		}
 	}
 
