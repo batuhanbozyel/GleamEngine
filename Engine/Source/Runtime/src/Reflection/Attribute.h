@@ -97,6 +97,5 @@ GLEAM_ATTRIBUTE(PrettyName, Target::Class, Target::Field)
     }
 };
 
-
 } // namespace Attribute
 } // namespace Gleam::Reflection

@@ -26,7 +26,7 @@ public:
     template<typename T>
     static ClassDescription& CreateClassIfNotExist()
     {
-        auto hash = typeid(T).hash_code();
+        auto hash = entt::type_id<T>().hash();
         auto it = mClasses.find(hash);
         if (it != mClasses.end())
         {
@@ -41,7 +41,7 @@ public:
     template<typename T, std::enable_if_t<Traits::IsEnum<T>::value, bool> = true>
     static EnumDescription& CreateEnumIfNotExist()
     {
-        auto hash = typeid(T).hash_code();
+        auto hash = entt::type_id<T>().hash();
         auto it = mEnums.find(hash);
         if (it != mEnums.end())
         {
@@ -56,7 +56,7 @@ public:
     template<typename T, std::enable_if_t<Traits::IsArray<T>::value, bool> = true>
     static ArrayDescription& CreateArrayIfNotExist()
     {
-        auto hash = typeid(T).hash_code();
+        auto hash = entt::type_id<T>().hash();
         auto it = mArrays.find(hash);
         if (it != mArrays.end())
         {
@@ -94,7 +94,7 @@ private:
             size_t fieldOffset = OffsetOf<T, ValueType, member.pointer>();
             if constexpr (Traits::IsPrimitive<ValueType>::value)
             {
-                auto hash = typeid(ValueType).hash_code();
+                auto hash = entt::type_id<ValueType>().hash();
                 auto field = PrimitiveField(GetPrimitiveType(hash));
                 field.offset = fieldOffset;
                 field.size = fieldSize;
@@ -102,7 +102,7 @@ private:
             }
             else if constexpr (Traits::IsEnum<ValueType>::value)
             {
-                auto hash = typeid(ValueType).hash_code();
+                auto hash = entt::type_id<ValueType>().hash();
                 auto field = EnumField(hash);
                 field.offset = fieldOffset;
                 field.size = fieldSize;
@@ -111,7 +111,7 @@ private:
             }
             else if constexpr (Traits::IsArray<ValueType>::value)
             {
-                auto hash = typeid(ValueType).hash_code();
+                auto hash = entt::type_id<ValueType>().hash();
                 auto field = ArrayField(hash);
                 field.offset = fieldOffset;
                 field.size = fieldSize;
@@ -120,7 +120,7 @@ private:
             }
             else if constexpr (Traits::IsClass<ValueType>::value)
             {
-				auto hash = typeid(ValueType).hash_code();
+				auto hash = entt::type_id<ValueType>().hash();
                 auto field = ClassField(hash);
                 field.offset = fieldOffset;
                 field.size = fieldSize;
@@ -131,7 +131,7 @@ private:
                 {
                     using ElementType = ValueType::value_type;
                     CreateArrayIfNotExist<ElementType[1]>();
-                    classDesc.mContainerHash = typeid(ElementType[1]).hash_code();
+                    classDesc.mContainerHash = entt::type_id<ElementType[1]>().hash();
                 }
             }
         });
@@ -143,11 +143,16 @@ private:
         });
         
         // resolve attributes
-        std::apply([&](auto attrib)
-        {
-            desc.mAttributes.push_back({ .description = attrib.description,
+		std::apply([&](const auto&... attributes)
+		{
+			auto resolveAttrib = [&](auto attrib)
+			{
+				desc.mAttributes.push_back({ .description = attrib.description,
 										 .value = std::make_any<decltype(attrib)>(attrib) });
-        }, type.attributes);
+			};
+			(resolveAttrib(attributes), ...);
+
+		}, type.attributes);
 		
 		return desc;
 	}
@@ -161,10 +166,15 @@ private:
         desc.mField = field;
 
         // resolve attributes
-        std::apply([&](auto attrib)
+        std::apply([&](const auto&... attributes)
         {
-            desc.mAttributes.push_back({ .description = attrib.description,
-                                    	 .value = std::make_any<decltype(attrib)>(attrib) });
+			auto resolveAttrib = [&](auto attrib)
+			{
+				desc.mAttributes.push_back({ .description = attrib.description,
+										 .value = std::make_any<decltype(attrib)>(attrib) });
+			};
+			(resolveAttrib(attributes), ...);
+
         }, fieldDesc.attributes);
 
 		return desc;
@@ -179,11 +189,16 @@ private:
         desc.mGuid = refl::descriptor::get_attribute<Reflection::Attribute::Guid>(type);
         
         // resolve attributes
-        std::apply([&](auto attrib)
-        {
-            desc.mAttributes.push_back({ .description = attrib.description,
-                                         .value = std::make_any<decltype(attrib)>(attrib) });
-        }, type.attributes);
+		std::apply([&](const auto&... attributes)
+		{
+			auto resolveAttrib = [&](auto attrib)
+			{
+				desc.mAttributes.push_back({ .description = attrib.description,
+										 .value = std::make_any<decltype(attrib)>(attrib) });
+			};
+			(resolveAttrib(attributes), ...);
+
+		}, type.attributes);
         
         return desc;
     }
@@ -192,7 +207,7 @@ private:
     static constexpr ArrayDescription CreateArrayDescription()
     {
         using ElementType = std::remove_reference_t<decltype(std::declval<T>()[0])>;
-        auto hash = typeid(ElementType).hash_code();
+        auto hash = entt::type_id<ElementType>().hash();
         auto type = refl::reflect<ElementType>();
         
         ArrayDescription desc;

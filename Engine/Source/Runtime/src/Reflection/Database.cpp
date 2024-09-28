@@ -31,20 +31,20 @@ void Database::Initialize(Engine* engine)
     mPrimitiveNames[PrimitiveType::Void] = refl::reflect<void>().name.c_str();
     
     
-    mPrimitiveTypes[typeid(bool).hash_code()] = PrimitiveType::Bool;
-    mPrimitiveTypes[typeid(wchar_t).hash_code()] = PrimitiveType::WChar;
-    mPrimitiveTypes[typeid(char).hash_code()] = PrimitiveType::Char;
-    mPrimitiveTypes[typeid(int8_t).hash_code()] = PrimitiveType::Int8;
-    mPrimitiveTypes[typeid(int16_t).hash_code()] = PrimitiveType::Int16;
-    mPrimitiveTypes[typeid(int32_t).hash_code()] = PrimitiveType::Int32;
-    mPrimitiveTypes[typeid(int64_t).hash_code()] = PrimitiveType::Int64;
-    mPrimitiveTypes[typeid(uint8_t).hash_code()] = PrimitiveType::UInt8;
-    mPrimitiveTypes[typeid(uint16_t).hash_code()] = PrimitiveType::UInt16;
-    mPrimitiveTypes[typeid(uint32_t).hash_code()] = PrimitiveType::UInt32;
-    mPrimitiveTypes[typeid(uint64_t).hash_code()] = PrimitiveType::UInt64;
-    mPrimitiveTypes[typeid(float).hash_code()] = PrimitiveType::Float;
-    mPrimitiveTypes[typeid(double).hash_code()] = PrimitiveType::Double;
-    mPrimitiveTypes[typeid(void).hash_code()] = PrimitiveType::Void;
+    mPrimitiveTypes[entt::type_id<bool>().hash()] = PrimitiveType::Bool;
+    mPrimitiveTypes[entt::type_id<wchar_t>().hash()] = PrimitiveType::WChar;
+    mPrimitiveTypes[entt::type_id<char>().hash()] = PrimitiveType::Char;
+    mPrimitiveTypes[entt::type_id<int8_t>().hash()] = PrimitiveType::Int8;
+    mPrimitiveTypes[entt::type_id<int16_t>().hash()] = PrimitiveType::Int16;
+    mPrimitiveTypes[entt::type_id<int32_t>().hash()] = PrimitiveType::Int32;
+    mPrimitiveTypes[entt::type_id<int64_t>().hash()] = PrimitiveType::Int64;
+    mPrimitiveTypes[entt::type_id<uint8_t>().hash()] = PrimitiveType::UInt8;
+    mPrimitiveTypes[entt::type_id<uint16_t>().hash()] = PrimitiveType::UInt16;
+    mPrimitiveTypes[entt::type_id<uint32_t>().hash()] = PrimitiveType::UInt32;
+    mPrimitiveTypes[entt::type_id<uint64_t>().hash()] = PrimitiveType::UInt64;
+    mPrimitiveTypes[entt::type_id<float>().hash()] = PrimitiveType::Float;
+    mPrimitiveTypes[entt::type_id<double>().hash()] = PrimitiveType::Double;
+    mPrimitiveTypes[entt::type_id<void>().hash()] = PrimitiveType::Void;
 }
 
 void Database::Shutdown()
@@ -82,7 +82,7 @@ const ClassDescription& Database::GetClass(size_t hash)
 	{
 		return it->second;
 	}
-	GLEAM_ASSERT(false, "Invalid class hash.");
+	GLEAM_WARN("Invalid class hash.");
 	static auto type = refl::reflect<NullType>();
 	static auto null = CreateClassDescription(type);
 	return null;
@@ -95,7 +95,7 @@ const EnumDescription& Database::GetEnum(size_t hash)
     {
         return it->second;
     }
-    GLEAM_ASSERT(false, "Invalid enum hash.");
+	GLEAM_WARN("Invalid enum hash.");
     static auto type = refl::reflect<NullEnum>();
 	static auto null = CreateEnumDescription(type);
 	return null;
@@ -108,7 +108,7 @@ const ArrayDescription& Database::GetArray(size_t hash)
     {
         return it->second;
     }
-    GLEAM_ASSERT(false, "Invalid array hash.");
+	GLEAM_WARN("Invalid array hash.");
 	static auto null = CreateArrayDescription<NullType[1]>();
 	return null;
 }
@@ -120,6 +120,6 @@ size_t Database::GetTypeHash(const TStringView name)
 	{
 		return it->second;
 	}
-	GLEAM_ASSERT(false, "Invalid type name.");
+	GLEAM_WARN("Invalid type name.");
 	return 0;
 }

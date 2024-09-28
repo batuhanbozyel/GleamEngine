@@ -1,5 +1,6 @@
 #pragma once
 #include <refl.hpp>
+#include <entt/core/type_info.hpp>
 
 #define GLEAM_TYPE(TypeName, ...)                                                                           \
     namespace refl_impl::metadata {                                                                         \
