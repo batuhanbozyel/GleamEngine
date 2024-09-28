@@ -29,10 +29,7 @@ public:
 		return mParent;
 	}
 
-	void SetParent(const EntityHandle parent)
-	{
-		mParent = parent;
-	}
+	void SetParent(const EntityHandle parent);
 
 	bool HasParent() const
 	{
@@ -64,6 +61,7 @@ public:
 	{
         GLEAM_ASSERT(IsValid(), "Entity is invalid!");
 		GLEAM_ASSERT(!HasComponent<T>(), "Entity already has the component!");
+		const auto& desc = Reflection::GetClass<T>(); // hacky fix to register components to the database
 		return mRegistry->emplace<T>(mHandle, std::forward<Args>(args)...);
 	}
     
@@ -123,9 +121,17 @@ public:
 
 	void SetScale(const Float3& scale);
 
-	NO_DISCARD const float4x4& GetWorldTransform() const;
+	NO_DISCARD FORCE_INLINE const Transform& GetWorldTransform() const
+	{
+		UpdateTransform();
+		return mGlobalTransform;
+	}
 
-	NO_DISCARD const float4x4& GetLocalTransform() const;
+	NO_DISCARD FORCE_INLINE const Transform& GetLocalTransform() const
+	{
+		UpdateTransform();
+		return mLocalTransform;
+	}
 
 	NO_DISCARD FORCE_INLINE const Float3& GetWorldPosition() const
 	{
@@ -191,6 +197,8 @@ private:
 
 	Guid mGuid = Guid::InvalidGuid();
     
+	TArray<EntityHandle> mChildren;
+
 	EntityHandle mParent = InvalidEntity;
 
     EntityHandle mHandle = InvalidEntity;
@@ -201,3 +209,6 @@ private:
 };
 
 } // namespace Gleam
+
+GLEAM_TYPE(Gleam::Entity, Guid("9662B020-8A90-47FE-8C12-2D46316A6590"))
+GLEAM_END

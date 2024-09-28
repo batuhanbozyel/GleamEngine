@@ -31,6 +31,11 @@
 #include <unordered_map>
 #include <unordered_set>
 
+#include <entt/core/type_info.hpp>
+#include <entt/core/hashed_string.hpp>
+#include <entt/entity/entity.hpp>
+#include <entt/entity/registry.hpp>
+
 #include "Core/PlatformTargetDefines.h"
 #include "Core/Macro.h"
 #include "Core/EngineDefines.h"

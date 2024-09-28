@@ -45,7 +45,6 @@ public:
 		{
 			if (storage.contains(entity))
 			{
-				// TODO: refactor Reflection system to use entt::type_id instead of C++ typeid
 				const auto& classDesc = Reflection::GetClass(id);
 				if (classDesc.Guid() != Guid::InvalidGuid())
 				{
@@ -57,13 +56,12 @@ public:
 	}
 
 	template<typename Func>
-	void Visit(Func&& fn, EntityHandle entity) const
+	void Visit(EntityHandle entity, Func&& fn) const
 	{
 		for (const auto& [id, storage] : mRegistry.storage())
 		{
 			if (storage.contains(entity))
 			{
-				// TODO: refactor Reflection system to use entt::type_id instead of C++ typeid
 				const auto& classDesc = Reflection::GetClass(id);
 				if (classDesc.Guid() != Guid::InvalidGuid())
 				{
@@ -110,6 +108,7 @@ public:
     template<typename T, typename ... Args>
     void SetSingletonComponent(Args&&... args)
     {
+		const auto& desc = Reflection::GetClass<T>(); // hacky fix to register components to the database
         mRegistry.ctx().emplace<T>(std::forward<Args>(args)...);
     }
     
@@ -129,6 +128,7 @@ public:
 	T& AddComponent(EntityHandle entity, Args&&... args)
 	{
 		GLEAM_ASSERT(!HasComponent<T>(entity), "Entity already has the component!");
+		const auto& desc = Reflection::GetClass<T>(); // hacky fix to register components to the database
 		return mRegistry.emplace<T>(entity, std::forward<Args>(args)...);
 	}
     
@@ -136,6 +136,7 @@ public:
     void SetComponent(EntityHandle entity, Args&&... args)
     {
         GLEAM_ASSERT(!HasComponent<T>(entity), "Entity already has the component!");
+		const auto& desc = Reflection::GetClass<T>(); // hacky fix to register components to the database
         mRegistry.emplace_or_replace<T>(entity, std::forward<Args>(args)...);
     }
 
