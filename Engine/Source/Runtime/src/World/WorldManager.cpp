@@ -47,7 +47,6 @@ void WorldManager::Configure(const WorldConfig& config)
 {
 	mWorldsInBuild = config.worlds;
 	mActiveWorld = config.startingWorldIndex;
-	LoadWorld(config.startingWorldIndex);
 }
 
 void WorldManager::OpenWorld(uint32_t buildIndex)
@@ -79,5 +78,10 @@ void WorldManager::SaveWorld()
 World* WorldManager::GetActiveWorld()
 {
 	const auto& worldRef = mWorldsInBuild[mActiveWorld];
-	return mLoadedWorlds[worldRef].get();
+	auto it = mLoadedWorlds.find(worldRef);
+	if (it != mLoadedWorlds.end())
+	{
+		return it->second.get();
+	}
+	return nullptr;
 }

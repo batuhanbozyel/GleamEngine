@@ -108,7 +108,6 @@ public:
     template<typename T, typename ... Args>
     void SetSingletonComponent(Args&&... args)
     {
-		const auto& desc = Reflection::GetClass<T>(); // hacky fix to register components to the database
         mRegistry.ctx().emplace<T>(std::forward<Args>(args)...);
     }
     
@@ -128,7 +127,6 @@ public:
 	T& AddComponent(EntityHandle entity, Args&&... args)
 	{
 		GLEAM_ASSERT(!HasComponent<T>(entity), "Entity already has the component!");
-		const auto& desc = Reflection::GetClass<T>(); // hacky fix to register components to the database
 		return mRegistry.emplace<T>(entity, std::forward<Args>(args)...);
 	}
     
@@ -136,7 +134,6 @@ public:
     void SetComponent(EntityHandle entity, Args&&... args)
     {
         GLEAM_ASSERT(!HasComponent<T>(entity), "Entity already has the component!");
-		const auto& desc = Reflection::GetClass<T>(); // hacky fix to register components to the database
         mRegistry.emplace_or_replace<T>(entity, std::forward<Args>(args)...);
     }
 

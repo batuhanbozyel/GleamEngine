@@ -112,6 +112,8 @@ void World::Deserialize(FileStream& stream)
 	root.ParseStream(ss);
 
 	mName = TString(root["Name"].GetString());
+
+	HashMap<Guid, TArray<Entity*>> entityParentRelation;
 	for (const auto& entityObject : root["Entities"].GetArray())
 	{
 		auto entityGuid = TString(entityObject["Entity"].GetString());
@@ -121,9 +123,8 @@ void World::Deserialize(FileStream& stream)
 
 		if (entityObject.HasMember("Parent"))
 		{
-			// TODO: store parent relation in a hashmap
-			// after all entities are deserialized,
-			// setup the parent-child hierarchy
+			auto parentGuid = Guid(entityObject["Parent"].GetString());
+			entityParentRelation[parentGuid].push_back(&entity);
 		}
 
 		const auto& transformObject = entityObject["Transform"];
@@ -139,7 +140,29 @@ void World::Deserialize(FileStream& stream)
 
 		for (const auto& componentObject : entityObject["Components"].GetArray())
 		{
+			auto typeName = componentObject["TypeName"].GetString();
+			auto typeHash = Reflection::Database::GetTypeHash(typeName);
+			const auto& classDesc = Reflection::GetClass(typeHash);
 
+			auto meta = entt::resolve(static_cast<uint32_t>(typeHash));
+			auto func = meta.func("AddComponent"_hs);
+			if (func)
+			{
+				auto component = func.invoke({}, Ref(entity));
+				GLEAM_ASSERT(component, "Entity component could not deserialize");
+
+				JSONSerializer serializer(stream);
+				serializer.Deserialize(classDesc, component.data());
+			}
+		}
+	}
+
+	for (auto& [parentGuid, entities] : entityParentRelation)
+	{
+		auto parent = mEntityManager.GetEntity(EntityReference{ .guid = parentGuid });
+		for (auto& entity : entities)
+		{
+			entity->SetParent(parent);
 		}
 	}
 }

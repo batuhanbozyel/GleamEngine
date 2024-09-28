@@ -31,20 +31,20 @@ void Database::Initialize(Engine* engine)
     mPrimitiveNames[PrimitiveType::Void] = refl::reflect<void>().name.c_str();
     
     
-    mPrimitiveTypes[entt::type_id<bool>().hash()] = PrimitiveType::Bool;
-    mPrimitiveTypes[entt::type_id<wchar_t>().hash()] = PrimitiveType::WChar;
-    mPrimitiveTypes[entt::type_id<char>().hash()] = PrimitiveType::Char;
-    mPrimitiveTypes[entt::type_id<int8_t>().hash()] = PrimitiveType::Int8;
-    mPrimitiveTypes[entt::type_id<int16_t>().hash()] = PrimitiveType::Int16;
-    mPrimitiveTypes[entt::type_id<int32_t>().hash()] = PrimitiveType::Int32;
-    mPrimitiveTypes[entt::type_id<int64_t>().hash()] = PrimitiveType::Int64;
-    mPrimitiveTypes[entt::type_id<uint8_t>().hash()] = PrimitiveType::UInt8;
-    mPrimitiveTypes[entt::type_id<uint16_t>().hash()] = PrimitiveType::UInt16;
-    mPrimitiveTypes[entt::type_id<uint32_t>().hash()] = PrimitiveType::UInt32;
-    mPrimitiveTypes[entt::type_id<uint64_t>().hash()] = PrimitiveType::UInt64;
-    mPrimitiveTypes[entt::type_id<float>().hash()] = PrimitiveType::Float;
-    mPrimitiveTypes[entt::type_id<double>().hash()] = PrimitiveType::Double;
-    mPrimitiveTypes[entt::type_id<void>().hash()] = PrimitiveType::Void;
+	mPrimitiveTypes[entt::type_hash<bool>::value()] = PrimitiveType::Bool;
+	mPrimitiveTypes[entt::type_hash<wchar_t>::value()] = PrimitiveType::WChar;
+	mPrimitiveTypes[entt::type_hash<char>::value()] = PrimitiveType::Char;
+	mPrimitiveTypes[entt::type_hash<int8_t>::value()] = PrimitiveType::Int8;
+	mPrimitiveTypes[entt::type_hash<int16_t>::value()] = PrimitiveType::Int16;
+	mPrimitiveTypes[entt::type_hash<int32_t>::value()] = PrimitiveType::Int32;
+	mPrimitiveTypes[entt::type_hash<int64_t>::value()] = PrimitiveType::Int64;
+	mPrimitiveTypes[entt::type_hash<uint8_t>::value()] = PrimitiveType::UInt8;
+	mPrimitiveTypes[entt::type_hash<uint16_t>::value()] = PrimitiveType::UInt16;
+	mPrimitiveTypes[entt::type_hash<uint32_t>::value()] = PrimitiveType::UInt32;
+	mPrimitiveTypes[entt::type_hash<uint64_t>::value()] = PrimitiveType::UInt64;
+	mPrimitiveTypes[entt::type_hash<float>::value()] = PrimitiveType::Float;
+	mPrimitiveTypes[entt::type_hash<double>::value()] = PrimitiveType::Double;
+	mPrimitiveTypes[entt::type_hash<void>::value()] = PrimitiveType::Void;
 }
 
 void Database::Shutdown()

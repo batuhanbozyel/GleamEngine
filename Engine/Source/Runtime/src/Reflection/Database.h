@@ -26,7 +26,7 @@ public:
     template<typename T>
     static ClassDescription& CreateClassIfNotExist()
     {
-        auto hash = entt::type_id<T>().hash();
+        auto hash = entt::type_hash<T>::value();
         auto it = mClasses.find(hash);
         if (it != mClasses.end())
         {
@@ -41,7 +41,7 @@ public:
     template<typename T, std::enable_if_t<Traits::IsEnum<T>::value, bool> = true>
     static EnumDescription& CreateEnumIfNotExist()
     {
-        auto hash = entt::type_id<T>().hash();
+        auto hash = entt::type_hash<T>::value();
         auto it = mEnums.find(hash);
         if (it != mEnums.end())
         {
@@ -56,7 +56,7 @@ public:
     template<typename T, std::enable_if_t<Traits::IsArray<T>::value, bool> = true>
     static ArrayDescription& CreateArrayIfNotExist()
     {
-        auto hash = entt::type_id<T>().hash();
+        auto hash = entt::type_hash<T>::value();
         auto it = mArrays.find(hash);
         if (it != mArrays.end())
         {
@@ -73,7 +73,7 @@ public:
     static const ArrayDescription& GetArray(size_t hash);
 
 	static size_t GetTypeHash(const TStringView name);
-    
+
 private:
 
 	template<typename T>
@@ -94,7 +94,7 @@ private:
             size_t fieldOffset = OffsetOf<T, ValueType, member.pointer>();
             if constexpr (Traits::IsPrimitive<ValueType>::value)
             {
-                auto hash = entt::type_id<ValueType>().hash();
+                auto hash = entt::type_hash<ValueType>::value();
                 auto field = PrimitiveField(GetPrimitiveType(hash));
                 field.offset = fieldOffset;
                 field.size = fieldSize;
@@ -102,7 +102,7 @@ private:
             }
             else if constexpr (Traits::IsEnum<ValueType>::value)
             {
-                auto hash = entt::type_id<ValueType>().hash();
+                auto hash = entt::type_hash<ValueType>::value();
                 auto field = EnumField(hash);
                 field.offset = fieldOffset;
                 field.size = fieldSize;
@@ -111,7 +111,7 @@ private:
             }
             else if constexpr (Traits::IsArray<ValueType>::value)
             {
-                auto hash = entt::type_id<ValueType>().hash();
+                auto hash = entt::type_hash<ValueType>::value();
                 auto field = ArrayField(hash);
                 field.offset = fieldOffset;
                 field.size = fieldSize;
@@ -120,7 +120,7 @@ private:
             }
             else if constexpr (Traits::IsClass<ValueType>::value)
             {
-				auto hash = entt::type_id<ValueType>().hash();
+				auto hash = entt::type_hash<ValueType>::value();
                 auto field = ClassField(hash);
                 field.offset = fieldOffset;
                 field.size = fieldSize;
@@ -131,7 +131,7 @@ private:
                 {
                     using ElementType = ValueType::value_type;
                     CreateArrayIfNotExist<ElementType[1]>();
-                    classDesc.mContainerHash = entt::type_id<ElementType[1]>().hash();
+                    classDesc.mContainerHash = entt::type_hash<ElementType[1]>::value();
                 }
             }
         });
@@ -207,7 +207,7 @@ private:
     static constexpr ArrayDescription CreateArrayDescription()
     {
         using ElementType = std::remove_reference_t<decltype(std::declval<T>()[0])>;
-        auto hash = entt::type_id<ElementType>().hash();
+        auto hash = entt::type_hash<ElementType>::value();
         auto type = refl::reflect<ElementType>();
         
         ArrayDescription desc;

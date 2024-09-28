@@ -5,6 +5,7 @@
 
 #include "EventSystem.h"
 #include "Input/InputSystem.h"
+#include "World/ScriptingSystem.h"
 #include "Renderer/RenderSystem.h"
 
 #include "World/WorldManager.h"
@@ -25,11 +26,13 @@ Application::Application(const Project& project)
 	Globals::BuiltinAssetsDirectory = Globals::StartupDirectory/"Assets";
 	Globals::ProjectContentDirectory = Globals::ProjectDirectory/"Assets";
 	
-	// init world & asset managers
+	// init game instance subsystems
     auto assetManager = AddSubsystem<AssetManager>();
+	auto scriptingSystem = AddSubsystem<ScriptingSystem>();
+	auto materialSystem = AddSubsystem<MaterialSystem>();
 	auto worldManager = AddSubsystem<WorldManager>();
 	worldManager->Configure(project.worldConfig);
-	AddSubsystem<MaterialSystem>();
+	worldManager->OpenWorld(project.worldConfig.startingWorldIndex);
     
     // add default renderers
     auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();

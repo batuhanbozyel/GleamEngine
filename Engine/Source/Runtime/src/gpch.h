@@ -33,6 +33,8 @@
 
 #include <entt/core/type_info.hpp>
 #include <entt/core/hashed_string.hpp>
+#include <entt/meta/meta.hpp>
+#include <entt/meta/factory.hpp>
 #include <entt/entity/entity.hpp>
 #include <entt/entity/registry.hpp>
 

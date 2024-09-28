@@ -84,7 +84,7 @@ static void DrawComponent(const std::string& name, T& component, UIFunction uiFu
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2{ 4, 4 });
     float lineHeight = GImGui->Font->FontSize + GImGui->Style.FramePadding.y * 2.0f;
     ImGui::Separator();
-	size_t hash = entt::type_id<T>().hash();
+	size_t hash = entt::type_hash<T>::value();
     bool open = ImGui::TreeNodeEx((void*)hash, treeNodeFlags, "%s", name.c_str());
     ImGui::PopStyleVar();
 
