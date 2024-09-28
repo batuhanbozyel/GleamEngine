@@ -5,8 +5,20 @@
 
 using namespace GEditor;
 
-static Gleam::TString ParseNameFromAssetFile(Gleam::JSONSerializer& serializer, const Gleam::Guid& typeGuid)
+static Gleam::JSONHeader ParseAssetHeader(const Gleam::Filesystem::Path& asset)
 {
+	auto file = Gleam::Filesystem::Open(asset, Gleam::FileType::Text);
+	auto accessor = Gleam::Filesystem::ReadAccessor(asset);
+	auto serializer = Gleam::JSONSerializer(file.GetStream());
+	return serializer.ParseHeader();
+}
+
+static Gleam::TString ParseAssetName(const Gleam::Filesystem::Path& asset, const Gleam::Guid& typeGuid)
+{
+	auto file = Gleam::Filesystem::Open(asset, Gleam::FileType::Text);
+	auto accessor = Gleam::Filesystem::ReadAccessor(asset);
+	auto serializer = Gleam::JSONSerializer(file.GetStream());
+
     if (typeGuid == Gleam::Reflection::GetClass<Gleam::MeshDescriptor>().Guid())
     {
         auto descriptor = serializer.Deserialize<Gleam::MeshDescriptor>();
@@ -46,14 +58,11 @@ void AssetRegistry::Initialize(Gleam::World* world)
     {
         if (entry.extension() == ".asset")
         {
-            auto file = Gleam::Filesystem::Open(entry, Gleam::FileType::Text);
-			auto accessor = Gleam::Filesystem::ReadAccessor(entry);
-            auto serializer = Gleam::JSONSerializer(file.GetStream());
-            auto header = serializer.ParseHeader();
+            auto header = ParseAssetHeader(entry);
             
             auto guid = Gleam::Guid(entry.stem().string());
             auto asset = Gleam::AssetReference{ .guid = guid };
-            auto name = ParseNameFromAssetFile(serializer, header.guid);
+            auto name = ParseAssetName(entry, header.guid);
             auto item = AssetItem{
                 .reference = asset,
                 .type = header.guid,
