@@ -18,8 +18,6 @@ struct CommandBuffer::Impl
 	ID3D12GraphicsCommandList7* commandList = nullptr;
 	ID3D12Fence* fence = nullptr;
 	uint32_t fenceValue = 0;
-    
-    TArray<Buffer, PUSH_CONSTANT_SLOT> constantBuffers;
 
 	TArray<TextureDescriptor> colorAttachments;
 	TextureDescriptor depthAttachment;
@@ -29,12 +27,13 @@ struct CommandBuffer::Impl
 
 CommandBuffer::CommandBuffer(GraphicsDevice* device)
 	: mHandle(CreateScope<Impl>()), mDevice(device)
+	, mConstantBuffer(device, 4194304) // 4 MB
 {
 	mHandle->device = static_cast<DirectXDevice*>(device);
     
     HeapDescriptor descriptor;
     descriptor.name = "CommandBuffer::StagingHeap";
-    descriptor.size = 4194304; // 4 MB;
+    descriptor.size = 4194304; // 4 MB
     descriptor.memoryType = MemoryType::CPU;
     mStagingHeap = mDevice->CreateHeap(descriptor);
 
@@ -47,14 +46,6 @@ CommandBuffer::CommandBuffer(GraphicsDevice* device)
 
 CommandBuffer::~CommandBuffer()
 {
-    for (auto& buffer : mHandle->constantBuffers)
-    {
-        if (buffer.IsValid())
-        {
-            mDevice->Dispose(buffer);
-        }
-    }
-    
 	mDevice->Dispose(mStagingHeap);
 	mHandle->fence->Release();
 
@@ -161,15 +152,6 @@ void CommandBuffer::BindGraphicsPipeline(const PipelineStateDescriptor& pipeline
 	mHandle->commandList->SetPipelineState(mHandle->pipeline->handle);
 	mHandle->commandList->OMSetStencilRef(pipelineDesc.stencilState.reference);
 	mHandle->commandList->IASetPrimitiveTopology(PrimitiveToplogyToD3D_PRIMITIVE_TOPOLOGY(pipelineDesc.topology));
-    
-    // Root constants
-    for (auto& buffer : mHandle->constantBuffers)
-    {
-        if (buffer.IsValid())
-        {
-            mDevice->Dispose(buffer);
-        }
-    }
 }
 
 void CommandBuffer::SetViewport(const Size& size) const
@@ -188,17 +170,9 @@ void CommandBuffer::SetViewport(const Size& size) const
 
 void CommandBuffer::SetConstantBuffer(const void* data, uint32_t size, uint32_t slot) const
 {
-	TStringStream name;
-	name << "ConstantBuffer" << slot;
-    
-    BufferDescriptor constantBufferDesc;
-    constantBufferDesc.name = name.str();
-    constantBufferDesc.size = size;
-	auto buffer = mStagingHeap.CreateBuffer(constantBufferDesc);
-	SetBufferData(buffer, data, size);
-
-    mHandle->commandList->SetGraphicsRootConstantBufferView(slot, static_cast<ID3D12Resource*>(buffer.GetHandle())->GetGPUVirtualAddress());
-    mHandle->constantBuffers[slot] = buffer;
+	auto gpuAddress = static_cast<ID3D12Resource*>(mConstantBuffer.GetHandle())->GetGPUVirtualAddress(); 
+	gpuAddress += mConstantBuffer.Write(data, size);
+    mHandle->commandList->SetGraphicsRootConstantBufferView(slot, gpuAddress);
 }
 
 void CommandBuffer::SetPushConstant(const void* data, uint32_t size) const
@@ -288,6 +262,7 @@ void CommandBuffer::Commit() const
 	ID3D12CommandList* commandList = mHandle->commandList;
 	mHandle->device->GetDirectQueue()->ExecuteCommandLists(1, &commandList);
 	mHandle->device->GetDirectQueue()->Signal(mHandle->fence, ++mHandle->fenceValue);
+	mConstantBuffer.Reset();
 	mStagingHeap.Reset();
 	mCommitted = true;
 }

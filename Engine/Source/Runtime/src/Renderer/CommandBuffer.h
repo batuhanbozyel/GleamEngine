@@ -3,6 +3,7 @@
 #include "Buffer.h"
 #include "Shader.h"
 #include "Texture.h"
+#include "ConstantBuffer.h"
 #include "RenderGraph/RenderGraphResource.h"
 
 namespace Gleam {
@@ -49,6 +50,7 @@ public:
     template<typename T>
     void SetConstantBuffer(const T& t, uint32_t slot) const
     {
+		auto gpuAddress = mConstantBuffer.Write(t);
         SetConstantBuffer(&t, sizeof(T), slot);
     }
 
@@ -112,10 +114,12 @@ private:
 
     struct Impl;
     Scope<Impl> mHandle;
-    
-    Heap mStagingHeap;
 
     GraphicsDevice* mDevice;
+
+    mutable Heap mStagingHeap;
+
+	mutable ConstantBuffer mConstantBuffer;
 
 	mutable bool mCommitted = false;
     

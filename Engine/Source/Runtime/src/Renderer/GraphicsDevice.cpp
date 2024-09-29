@@ -53,7 +53,7 @@ Shader GraphicsDevice::CreateShader(const TString& entryPoint, ShaderStage stage
 void GraphicsDevice::ReleaseHeap(const Heap& heap)
 {
     GLEAM_ASSERT(heap.IsValid());
-    AddPooledObject([this, heap = heap]()
+    AddPooledObject([this, heap = heap]() mutable
     {
         heap.Reset();
         mFreeHeaps.push_back(heap);
@@ -72,7 +72,7 @@ void GraphicsDevice::ReleaseBuffer(const Buffer& buffer)
 void GraphicsDevice::ReleaseTexture(const Texture& texture)
 {
     GLEAM_ASSERT(texture.IsValid());
-    AddPooledObject([this, texture = texture]()
+    AddPooledObject([this, texture = texture]() mutable
     {
         mFreeTextures.push_back(texture);
     });
