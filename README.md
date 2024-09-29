@@ -1,7 +1,7 @@
 # Gleam Engine
 Gleam Engine is a high quality modern 3D game engine written in C++ targeting desktop platforms (Windows and Mac). Designed with modularity and data-oriented principles in mind.
 
-[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](License)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
 ## Supported Platforms and Low-Level Graphics APIs
 
