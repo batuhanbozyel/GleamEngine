@@ -189,7 +189,7 @@ void CommandBuffer::SetViewport(const Size& size) const
 void CommandBuffer::SetConstantBuffer(const void* data, uint32_t size, uint32_t slot) const
 {
 	TStringStream name;
-	name << "CommandBuffer::ConstantBuffer_" << slot;
+	name << "ConstantBuffer" << slot;
     
     BufferDescriptor constantBufferDesc;
     constantBufferDesc.name = name.str();

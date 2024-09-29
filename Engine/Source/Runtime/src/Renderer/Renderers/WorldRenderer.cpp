@@ -108,7 +108,7 @@ void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
                 resources.positionBuffer = positionBuffer.GetResourceView();
                 resources.interleavedBuffer = interleavedBuffer.GetResourceView();
                 resources.materialBuffer = materialBuffer.GetResourceView();
-				resources.material = batch.material.GetUniqueId();
+				resources.materialID = batch.material.GetUniqueId();
 				resources.modelMatrix = batch.transform;
 				resources.baseVertex = batch.submesh.baseVertex;
                 cmd->SetConstantBuffer(resources, 0);

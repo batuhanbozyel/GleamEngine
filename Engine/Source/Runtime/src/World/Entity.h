@@ -61,7 +61,6 @@ public:
 	{
         GLEAM_ASSERT(IsValid(), "Entity is invalid!");
 		GLEAM_ASSERT(!HasComponent<T>(), "Entity already has the component!");
-		const auto& desc = Reflection::GetClass<T>(); // hacky fix to register components to the database
 		return mRegistry->emplace<T>(mHandle, std::forward<Args>(args)...);
 	}
     

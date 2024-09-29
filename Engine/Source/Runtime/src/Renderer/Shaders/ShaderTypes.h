@@ -38,7 +38,7 @@ struct MeshPassResources
 	float4x4 modelMatrix;
 
 	uint32_t baseVertex;
-	uint32_t material;
+	uint32_t materialID;
 };
 
 struct TonemapUniforms

@@ -3,25 +3,12 @@
 #include "SharedTypes.h"
 
 #define CONSTANT_BUFFER(type, name, slot) ConstantBuffer<type> name : register(b##slot)
-
-#ifdef __spirv__
-#define PUSH_CONSTANT(type, name) [[vk::push_constant]] type name
-#else
 #define PUSH_CONSTANT(type, name) CONSTANT_BUFFER(type, name, 999)
-#endif
 
 struct FScreenVertexOutput
 {
     noperspective float4 position : SV_POSITION;
     float2 texCoord : TEXCOORD0;
-};
-
-struct MeshVertexOut
-{
-    float4 position : SV_POSITION;
-    float3 worldNormal : NORMAL;
-	float3 color : COLOR;
-	float2 uv : TEXCOORD0;
 };
 
 SamplerState Sampler_Point_Repeat : register(s0);
