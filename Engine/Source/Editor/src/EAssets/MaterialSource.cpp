@@ -125,7 +125,7 @@ bool MaterialSource::Import(const Gleam::Filesystem::Path& path, const ImportSet
             }
         }
         generatedShader << "};\n\n";
-        generatedShader << "static MaterialProperties Material = resources.materialBuffer.Load<MaterialProperties>(resources.materialInstanceId);\n\n";
+        generatedShader << "static MaterialProperties Material = resources.materialBuffer.Load<MaterialProperties>(resources.materialID);\n\n";
     }
     
     if (document.HasMember("SurfaceShader"))

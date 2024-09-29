@@ -7,7 +7,7 @@ PUSH_CONSTANT(Gleam::DebugMeshUniforms, uniforms);
 struct VertexOut
 {
     float4 position : SV_POSITION;
-    float4 color : COLOR;
+    float4 color : ATTRIB0;
 };
 
 #pragma vertex debugVertexShader
