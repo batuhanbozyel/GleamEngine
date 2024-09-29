@@ -1,6 +1,9 @@
 #include "ImGuiRenderer.h"
 
+#include "Core/Globals.h"
+#include "Core/Engine.h"
 #include "Core/Application.h"
+#include "Core/EventSystem.h"
 #include "Renderer/RenderSystem.h"
 #include "Renderer/ImGui/ImGuiBackend.h"
 #include "Renderer/ImGui/imgui_impl_sdl3.h"
@@ -19,7 +22,7 @@ void ImGuiRenderer::OnCreate(GraphicsDevice* device)
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable | ImGuiConfigFlags_ViewportsEnable;
     
 	ImGuiBackend::Init(device);
-    GameInstance->SetEventHandler([](const SDL_Event* e)
+    Globals::Engine->GetSubsystem<EventSystem>()->SetEventHandler([](const SDL_Event* e)
     {
         ImGui_ImplSDL3_ProcessEvent(e);
     });
@@ -32,13 +35,7 @@ void ImGuiRenderer::OnDestroy(GraphicsDevice* device)
 }
 
 void ImGuiRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard)
-{
-	struct ImGuiPassData
-	{
-		TextureHandle sceneTarget;
-		TextureHandle swapchainTarget;
-	};
-    
+{    
 	graph.AddRenderPass<ImGuiPassData>("ImGuiPass", [&](RenderGraphBuilder& builder, ImGuiPassData& passData)
 	{
 		const auto& sceneData = blackboard.Get<Gleam::SceneRenderingData>();
@@ -49,7 +46,7 @@ void ImGuiRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
     [this](const CommandBuffer* cmd, const ImGuiPassData& passData)
     {
         ImGuiIO& io = ImGui::GetIO();
-        auto drawableSize = GameInstance->GetSubsystem<RenderSystem>()->GetDevice()->GetDrawableSize();
+        auto drawableSize = Globals::Engine->GetSubsystem<RenderSystem>()->GetDevice()->GetDrawableSize();
         io.DisplaySize = ImVec2(drawableSize.width, drawableSize.height);
         
 		ImGuiBackend::BeginFrame();
@@ -73,9 +70,9 @@ void ImGuiRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
         ImGuiID dockspace_id = ImGui::GetID("EditorDockSpace");
         ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_None);
         
-        for (auto view : mViews)
+        for (auto& view : mViews)
         {
-            std::invoke(view);
+            std::invoke(view, passData);
         }
 		mViews.clear();
         

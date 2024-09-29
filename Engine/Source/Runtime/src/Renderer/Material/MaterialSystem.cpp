@@ -1,47 +1,49 @@
 #include "gpch.h"
 #include "MaterialSystem.h"
+#include "Core/Globals.h"
+#include "Core/Application.h"
+#include "Assets/AssetManager.h"
 
 using namespace Gleam;
 
-RefCounted<Material> MaterialSystem::GetDefaultMaterial()
+void MaterialSystem::Initialize(Application* app)
 {
-	if (mDefaultMaterial == nullptr)
+	Filesystem::ForEach(Globals::ProjectContentDirectory, [&, this](const auto& entry)
 	{
-		PipelineStateDescriptor pipelineDesc;
-		pipelineDesc.cullingMode = CullMode::Back;
-		pipelineDesc.depthState.writeEnabled = true;
-		pipelineDesc.depthState.compareFunction = CompareFunction::Less;
+		if (entry.extension() == ".asset")
+		{
+			auto file = Filesystem::Open(entry, FileType::Text);
+			auto accessor = Filesystem::ReadAccessor(entry);
+			auto serializer = JSONSerializer(file.GetStream());
+			auto header = serializer.ParseHeader();
 
-		MaterialDescriptor materialDesc;
-		materialDesc.passes.push_back({ .pipelineState = pipelineDesc,
-										.vertexEntry = "forwardPassVertexShader",
-										.fragmentEntry = "forwardPassFragmentShader" });
-		materialDesc.properties = {
-			MaterialProperty{ "BaseColor", MaterialPropertyType::Float4 },
-			MaterialProperty{ "Metallic", MaterialPropertyType::Scalar },
-			MaterialProperty{ "Roughness", MaterialPropertyType::Scalar },
-			MaterialProperty{ "Emissive", MaterialPropertyType::Scalar },
-			MaterialProperty{ "BaseColorTexture", MaterialPropertyType::Texture2D },
-			MaterialProperty{ "NormalTexture", MaterialPropertyType::Texture2D },
-			MaterialProperty{ "MetallicRoughnessTexture", MaterialPropertyType::Texture2D },
-			MaterialProperty{ "EmissiveTexture", MaterialPropertyType::Texture2D },
-			MaterialProperty{ "OcclusionTexture", MaterialPropertyType::Texture2D }
-		};
-		materialDesc.renderQueue = RenderQueue::Opaque;
-		mDefaultMaterial = CreateMaterial(materialDesc);
-	}
-	return mDefaultMaterial;
+			if (header.guid == Reflection::GetClass<MaterialDescriptor>().Guid())
+			{
+				auto guid = Guid(entry.stem().string());
+				AssetReference ref = { .guid = guid };
+				auto descriptor = app->GetSubsystem<AssetManager>()->Get<MaterialDescriptor>(ref);
+				mMaterials.emplace_hint(mMaterials.end(), ref, CreateScope<Material>(descriptor));
+			}
+		}
+	}, true);
 }
 
-RefCounted<Material> MaterialSystem::CreateMaterial(const MaterialDescriptor& descriptor)
+void MaterialSystem::Shutdown()
 {
-    auto it = mMaterials.find(descriptor);
-    if (it != mMaterials.end())
-    {
-        return it->second;
-    }
+	for (auto& [ref, material] : mMaterials)
+	{
+		material->Dispose();
+	}
+	mMaterials.clear();
+}
 
-	auto material = CreateRef<Material>(descriptor);
-    it = mMaterials.insert(mMaterials.end(), { descriptor, material });
-    return material;
+Material* MaterialSystem::GetMaterial(const AssetReference& ref)
+{
+	auto it = mMaterials.find(ref);
+	if (it == mMaterials.end())
+	{
+		auto descriptor = Globals::GameInstance->GetSubsystem<AssetManager>()->Get<MaterialDescriptor>(ref);
+		it = mMaterials.emplace_hint(mMaterials.end(), ref, CreateScope<Material>(descriptor));
+	}
+	return it->second.get();
 }

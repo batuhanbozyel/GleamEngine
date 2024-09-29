@@ -7,41 +7,43 @@
 
 #include "gpch.h"
 #include "Material.h"
-#include "Core/Application.h"
+
+#include "Core/Engine.h"
+#include "Core/Globals.h"
 #include "Renderer/RenderSystem.h"
 
 using namespace Gleam;
 
 Material::Material(const MaterialDescriptor& descriptor)
-    : IMaterial(descriptor.properties), mRenderQueue(descriptor.renderQueue)
+    : IMaterial(descriptor.properties)
+    , mName(descriptor.name)
 {
-    static auto renderSystem = GameInstance->GetSubsystem<RenderSystem>();
-    
-    mPasses.resize(descriptor.passes.size());
-    for (uint32_t i = 0; i < mPasses.size(); i++)
-    {
-        auto& pass = mPasses[i];
-        auto& passDesc = descriptor.passes[i];
-
-        pass.pipelineState = passDesc.pipelineState;
-        pass.vertexFunction = renderSystem->GetDevice()->CreateShader(passDesc.vertexEntry, ShaderStage::Vertex);
-        pass.fragmentFunction = renderSystem->GetDevice()->CreateShader(passDesc.fragmentEntry, ShaderStage::Fragment);
-    }
+    static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
     // TODO: Allocate GPU buffer
 }
 
-RefCounted<MaterialInstance> Material::CreateInstance()
+MaterialInstance Material::CreateInstance()
 {
     // TODO: Suballocate material instance data from material buffer
-    return CreateRef<MaterialInstance>(shared_from_this(), mInstanceCount++);
+    return MaterialInstance(this, mInstanceCount++);
 }
 
-const TArray<MaterialPass>& Material::GetPasses() const
+void Material::Dispose()
 {
-    return mPasses;
+	// TOOD: dispose material buffer
 }
 
-RenderQueue Material::GetRenderQueue() const
+const Buffer& Material::GetBuffer() const
 {
-    return mRenderQueue;
+    return mBuffer;
+}
+
+const TString& Material::GetName() const
+{
+    return mName;
+}
+
+uint32_t Material::GetPipelineHash() const
+{
+	return mPipelineStateHash;
 }

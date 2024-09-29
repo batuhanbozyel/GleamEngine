@@ -149,6 +149,13 @@ public:
 		auto it = data.find(typeid(T));
 		return std::any_cast<T&>(it->second);
 	}
+    
+    template<class T>
+    const T& get_unsafe() const
+    {
+        auto it = data.find(typeid(T));
+        return std::any_cast<const T&>(it->second);
+    }
 	
 	template<class T>
 	bool contains() const

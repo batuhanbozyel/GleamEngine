@@ -1,5 +1,8 @@
 #include "Gleam.h"
 #include "MeshSource.h"
+#include "TextureSource.h"
+#include "MaterialSource.h"
+#include "AssetRegistry.h"
 
 #include "Bakers/MeshBaker.h"
 #include "Bakers/TextureBaker.h"
@@ -13,31 +16,30 @@ using namespace GEditor;
 static RawMesh ProcessAttributes(const cgltf_primitive& primitive, const MeshSource::ImportSettings& settings);
 static RawMaterial ProcessMaterial(const cgltf_material& material, const MeshSource::ImportSettings& settings);
 
-static uint32_t InsertUniqueMaterial(Gleam::TArray<RawMaterial>& materials, const RawMaterial& material);
 static Gleam::TArray<Gleam::InterleavedMeshVertex> InterleaveMeshVertices(const RawMesh& mesh);
 static Gleam::MeshDescriptor CombineMeshes(const Gleam::TArray<RawMesh>& meshes);
 static Gleam::BoundingBox CalculateBounds(const Gleam::TArray<Gleam::Float3>& positions);
 
-bool MeshSource::Import(const Gleam::Filesystem::path& path, const ImportSettings& settings)
+bool MeshSource::Import(const Gleam::Filesystem::Path& path, const ImportSettings& settings)
 {
-	Gleam::TString gltf_path = path.string();
+	Gleam::TString gltfPath = path.string();
 	cgltf_options options = {};
 	cgltf_data* data = nullptr;
 
-	cgltf_result result = cgltf_parse_file(&options, gltf_path.c_str(), &data);
+	cgltf_result result = cgltf_parse_file(&options, gltfPath.c_str(), &data);
 	if (result != cgltf_result_success)
 	{
 		return false;
 	}
 
-	result = cgltf_load_buffers(&options, data, gltf_path.c_str());
+	result = cgltf_load_buffers(&options, data, gltfPath.c_str());
 	if (result != cgltf_result_success)
 	{
         cgltf_free(data);
 		return false;
 	}
     
-    auto filename = path.filename().replace_extension().string();
+    auto filename = path.stem().string();
 
 	Gleam::TArray<RawMesh> meshes;
     Gleam::TArray<RawMaterial> materials;
@@ -58,7 +60,7 @@ bool MeshSource::Import(const Gleam::Filesystem::path& path, const ImportSetting
                 rawMesh.name = ss.str();
             }
             
-            RawMaterial material;
+			RawMaterial material;
             if (auto mat = mesh.primitives[meshIdx].material; mat != nullptr)
             {
                 material = ProcessMaterial(*mat, settings);
@@ -73,8 +75,19 @@ bool MeshSource::Import(const Gleam::Filesystem::path& path, const ImportSetting
                     material.name = ss.str();
                 }
             }
-            rawMesh.materialIndex = InsertUniqueMaterial(materials, material);
             
+            // insert unique material
+            auto materialIt = std::find(materials.begin(), materials.end(), material);
+            if (materialIt == materials.end())
+            {
+                uint32_t materialIdx = static_cast<uint32_t>(materials.size());
+                materials.push_back(material);
+				rawMesh.material = material.name;
+            }
+            else
+            {
+                rawMesh.material = materialIt->name;
+            }
             meshes.push_back(rawMesh);
         }
     }
@@ -98,13 +111,97 @@ bool MeshSource::Import(const Gleam::Filesystem::path& path, const ImportSetting
             Gleam::SubmeshDescriptor submesh;
             submesh.bounds = CalculateBounds(mesh.positions);
             submesh.indexCount = static_cast<uint32_t>(mesh.indices.size());
-            submesh.materialIndex = mesh.materialIndex;
             descriptor.submeshes.push_back(submesh);
-            
+
+			auto meshPath = path.parent_path() / mesh.name;
+			registry->RegisterAsset<Gleam::MeshDescriptor>(meshPath);
             bakers.emplace_back(Gleam::CreateRef<MeshBaker>(descriptor));
         }
     }
-    
+
+	auto opaqueLitMaterialAsset = registry->GetAsset<Gleam::MaterialDescriptor>("Materials/OpaqueLit").reference;
+	auto transparentLitMaterialAsset = registry->GetAsset<Gleam::MaterialDescriptor>("Materials/TransparentLit").reference;
+
+	auto assetManager = Gleam::Globals::GameInstance->GetSubsystem<Gleam::AssetManager>();
+	auto opaqueLitMaterial = assetManager->Get<Gleam::MaterialDescriptor>(opaqueLitMaterialAsset);
+	auto transparentLitMaterial = assetManager->Get<Gleam::MaterialDescriptor>(transparentLitMaterialAsset);
+    for (const auto& material : materials)
+	{
+		Gleam::MaterialInstanceDescriptor descriptor;
+		descriptor.name = material.name;
+
+		if (material.alphaBlend)
+		{
+			descriptor.material = transparentLitMaterialAsset;
+			descriptor.properties = transparentLitMaterial.properties;
+		}
+		else
+		{
+			descriptor.material = opaqueLitMaterialAsset;
+			descriptor.properties = opaqueLitMaterial.properties;
+		}
+		
+		descriptor["BaseColor"] = material.albedoColor;
+		descriptor["Emission"] = material.emissiveColor;
+		descriptor["Metallic"] = material.metallicFactor;
+		descriptor["Roughness"] = material.roughnessFactor;
+		descriptor["BaseColorTexture"] = Gleam::AssetReference();
+		descriptor["NormalTexture"] = Gleam::AssetReference();
+		descriptor["MetallicRoughnessTexture"] = Gleam::AssetReference();
+		descriptor["EmissiveTexture"] = Gleam::AssetReference();
+
+		if (const auto& texture = material.textures[PBRTexture::Albedo]; texture.empty() == false)
+		{
+			auto texturePath = path.parent_path() / texture;
+			auto textureSource = TextureSource(registry);
+			auto textureSettings = TextureSource::ImportSettings();
+			if (textureSource.Import(texturePath, textureSettings))
+			{
+				descriptor["BaseColorTexture"] = registry->GetAsset<Gleam::TextureDescriptor>(texturePath).reference;
+				bakers.emplace_back(textureSource.bakers[0]);
+			}
+		}
+
+		if (const auto& texture = material.textures[PBRTexture::Normal]; texture.empty() == false)
+		{
+			auto texturePath = path.parent_path() / texture;
+			auto textureSource = TextureSource(registry);
+			auto textureSettings = TextureSource::ImportSettings();
+			if (textureSource.Import(texturePath, textureSettings))
+			{
+				descriptor["NormalTexture"] = registry->GetAsset<Gleam::TextureDescriptor>(texturePath).reference;
+				bakers.emplace_back(textureSource.bakers[0]);
+			}
+		}
+
+		if (const auto& texture = material.textures[PBRTexture::MetallicRoughness]; texture.empty() == false)
+		{
+			auto texturePath = path.parent_path() / texture;
+			auto textureSource = TextureSource(registry);
+			auto textureSettings = TextureSource::ImportSettings();
+			if (textureSource.Import(texturePath, textureSettings))
+			{
+				descriptor["MetallicRoughnessTexture"] = registry->GetAsset<Gleam::TextureDescriptor>(texturePath).reference;
+				bakers.emplace_back(textureSource.bakers[0]);
+			}
+		}
+
+		if (const auto& texture = material.textures[PBRTexture::Emissive]; texture.empty() == false)
+		{
+			auto texturePath = path.parent_path() / texture;
+			auto textureSource = TextureSource(registry);
+			auto textureSettings = TextureSource::ImportSettings();
+			if (textureSource.Import(texturePath, textureSettings))
+			{
+				descriptor["EmissiveTexture"] = registry->GetAsset<Gleam::TextureDescriptor>(texturePath).reference;
+				bakers.emplace_back(textureSource.bakers[0]);
+			}
+		}
+
+		auto materialBaker = Gleam::CreateRef<MaterialInstanceBaker>(descriptor);
+		bakers.emplace_back(materialBaker);
+    }
+
 	cgltf_free(data);
     return true;
 }
@@ -165,7 +262,7 @@ RawMesh ProcessAttributes(const cgltf_primitive& primitive, const MeshSource::Im
 
 RawMaterial ProcessMaterial(const cgltf_material& mat, const MeshSource::ImportSettings& settings)
 {
-    RawMaterial material;
+	RawMaterial material;
     
     // Albedo - Metallic - Roughness
     if (mat.has_pbr_metallic_roughness)
@@ -181,33 +278,29 @@ RawMaterial ProcessMaterial(const cgltf_material& mat, const MeshSource::ImportS
         
         if (auto texture = pbr.base_color_texture.texture; texture != nullptr)
         {
-			Gleam::Filesystem::path file = texture->image->uri;
-            material.textures[RawTexture::Albedo].file = file;
-            material.textures[RawTexture::Albedo].name = file.filename().string();
+			Gleam::Filesystem::Path file = texture->image->uri;
+            material.textures[PBRTexture::Albedo] = file;
         }
         
         if (auto texture = pbr.metallic_roughness_texture.texture; texture != nullptr)
         {
-			Gleam::Filesystem::path file = texture->image->uri;
-            material.textures[RawTexture::MetallicRoughness].file = file;
-			material.textures[RawTexture::MetallicRoughness].name = file.filename().string();
+			Gleam::Filesystem::Path file = texture->image->uri;
+            material.textures[PBRTexture::MetallicRoughness] = file;
         }
     }
     
     // Normal
     if (auto texture = mat.normal_texture.texture; texture != nullptr)
     {
-		Gleam::Filesystem::path file = texture->image->uri;
-        material.textures[RawTexture::Normal].file = file;
-		material.textures[RawTexture::Normal].name = file.filename().string();
+		Gleam::Filesystem::Path file = texture->image->uri;
+        material.textures[PBRTexture::Normal] = file;
     }
     
     // Emissive
     if (auto texture = mat.emissive_texture.texture; texture != nullptr)
     {
-		Gleam::Filesystem::path file = texture->image->uri;
-        material.textures[RawTexture::Emissive].file = file;
-		material.textures[RawTexture::Emissive].name = file.filename().string();
+		Gleam::Filesystem::Path file = texture->image->uri;
+        material.textures[PBRTexture::Emissive] = file;
     }
     
     float emissiveStrength = mat.has_emissive_strength ? mat.emissive_strength.emissive_strength : 1.0f;
@@ -215,14 +308,6 @@ RawMaterial ProcessMaterial(const cgltf_material& mat, const MeshSource::ImportS
                                           mat.emissive_factor[1] * emissiveStrength,
                                           mat.emissive_factor[2] * emissiveStrength,
                                           1.0f);
-    
-    // Occlusion
-    if (auto texture = mat.occlusion_texture.texture; texture != nullptr)
-    {
-		Gleam::Filesystem::path file = texture->image->uri;
-        material.textures[RawTexture::Occlusion].file = file;
-		material.textures[RawTexture::Occlusion].name = file.filename().string();
-    }
     
     material.doubleSided = mat.double_sided;
     material.alphaCutoff = mat.alpha_cutoff;
@@ -232,13 +317,13 @@ RawMaterial ProcessMaterial(const cgltf_material& mat, const MeshSource::ImportS
     {
         case cgltf_alpha_mode_opaque:
         {
-            material.alphaBlend = Gleam::RenderQueue::Opaque;
+            material.alphaBlend = false;
             break;
         }
         case cgltf_alpha_mode_blend:
 		case cgltf_alpha_mode_mask:
         {
-            material.alphaBlend = Gleam::RenderQueue::Transparent;
+            material.alphaBlend = true;
             break;
         }
         default:
@@ -249,21 +334,6 @@ RawMaterial ProcessMaterial(const cgltf_material& mat, const MeshSource::ImportS
     }
     
     return material;
-}
-
-uint32_t InsertUniqueMaterial(Gleam::TArray<RawMaterial>& materials, const RawMaterial& material)
-{
-    auto materialIt = std::find(materials.begin(), materials.end(), material);
-    if (materialIt == materials.end())
-    {
-		uint32_t materialIdx = static_cast<uint32_t>(materials.size());
-        materials.push_back(material);
-		return materialIdx;
-    }
-	else
-	{
-		return static_cast<uint32_t>(std::distance(materials.begin(), materialIt));
-	}
 }
 
 Gleam::TArray<Gleam::InterleavedMeshVertex> InterleaveMeshVertices(const RawMesh& mesh)
@@ -287,7 +357,6 @@ Gleam::MeshDescriptor CombineMeshes(const Gleam::TArray<RawMesh>& meshes)
     {
         const auto& mesh = meshes[i];
         submesh.bounds = CalculateBounds(mesh.positions);
-        submesh.materialIndex = mesh.materialIndex;
         submesh.indexCount = static_cast<uint32_t>(mesh.indices.size());
         combined.submeshes[i] = submesh;
         

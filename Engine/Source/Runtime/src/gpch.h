@@ -31,6 +31,13 @@
 #include <unordered_map>
 #include <unordered_set>
 
+#include <entt/core/type_info.hpp>
+#include <entt/core/hashed_string.hpp>
+#include <entt/meta/meta.hpp>
+#include <entt/meta/factory.hpp>
+#include <entt/entity/entity.hpp>
+#include <entt/entity/registry.hpp>
+
 #include "Core/PlatformTargetDefines.h"
 #include "Core/Macro.h"
 #include "Core/EngineDefines.h"
@@ -48,6 +55,7 @@
 
 #include "IO/Log.h"
 #include "IO/File.h"
+#include "IO/Filesystem.h"
 #include "IO/FileDialog.h"
 
 #include "Reflection/TypeTraits.h"
@@ -73,6 +81,7 @@
 #include "Core/Events/WindowEvent.h"
 #include "Core/Events/MouseEvent.h"
 #include "Core/Events/KeyEvent.h"
+#include "Core/Globals.h"
 #include "Core/GUID.h"
 #include "Core/Time.h"
 
@@ -80,9 +89,8 @@
 #include "Renderer/Shaders/ShaderTypes.h"
 #include "Renderer/GraphicsObject.h"
 
-#include "World/Components/Transform.h"
-#include "World/Components/Transform2D.h"
 #include "World/Components/MeshRenderer.h"
+#include "World/Components/Transform.h"
 #include "World/Components/Camera.h"
 
 #include "Renderer/RenderGraph/RenderGraphResource.h"

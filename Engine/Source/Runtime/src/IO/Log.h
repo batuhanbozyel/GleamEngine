@@ -20,20 +20,12 @@ public:
         Error
     };
 
-	Logger(const TStringView name);
+	Logger(const TString& name);
     ~Logger();
     
-    static const Logger& GetCoreLogger()
-    {
-        static Logger sLogger("GLEAM");
-        return sLogger;
-    }
-    
-    static const Logger& GetClientLogger()
-    {
-        static Logger sLogger("APP");
-        return sLogger;
-    }
+	static const Logger& GetCoreLogger();
+
+	static const Logger& GetClientLogger();
 
 	template<typename ... Args>
 	void Log(Level lvl, const TStringView frmt, Args&& ... args) const
@@ -85,8 +77,8 @@ private:
 #define GLEAM_WARN(...) ::Gleam::Logger::GetClientLogger().Log(::Gleam::Logger::Level::Warn, __VA_ARGS__)
 #define GLEAM_ERROR(...) ::Gleam::Logger::GetClientLogger().Log(::Gleam::Logger::Level::Error, __VA_ARGS__)
 
-static void ExecuteCommand(const Gleam::TString& cmd)
+static bool ExecuteCommand(const Gleam::TString& cmd)
 {
     int success = system((cmd + " > command.err 2>&1").c_str());
-    GLEAM_ASSERT(success == 0);
+    return success == 0;
 }

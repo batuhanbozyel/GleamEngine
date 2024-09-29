@@ -204,8 +204,14 @@ public:
         return Attrib({});
     }
     
+    constexpr size_t GetSize() const
+    {
+        return mSize;
+    }
+    
 private:
     
+    size_t mSize;
     Gleam::Guid mGuid;
     TStringView mName;
     TArray<AttributePair> mAttributes;
@@ -325,11 +331,11 @@ public:
     
 private:
     
-    size_t mHash;
-    size_t mSize;
-    size_t mStride;
-    FieldType mType;
-    TStringView mName;
+    size_t mHash = 0;
+    size_t mSize = 0;
+    size_t mStride = 0;
+	FieldType mType = FieldType::Invalid;
+    TStringView mName = "";
     
 };
 

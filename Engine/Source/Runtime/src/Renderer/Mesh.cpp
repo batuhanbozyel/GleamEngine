@@ -1,6 +1,8 @@
 #include "gpch.h"
 #include "Mesh.h"
-#include "Core/Application.h"
+
+#include "Core/Engine.h"
+#include "Core/Globals.h"
 #include "Renderer/RenderSystem.h"
 
 using namespace Gleam;
@@ -8,13 +10,14 @@ using namespace Gleam;
 Mesh::Mesh(const MeshDescriptor& mesh)
     : mSubmeshDescriptors(mesh.submeshes)
 {
-    static auto renderSystem = GameInstance->GetSubsystem<RenderSystem>();
+    static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
     
     size_t positionSize = mesh.positions.size() * sizeof(Float3);
     size_t interleavedSize = mesh.interleavedVertices.size() * sizeof(InterleavedMeshVertex);
     size_t indexSize = mesh.indices.size() * sizeof(uint32_t);
 
     HeapDescriptor heapDesc;
+    heapDesc.name = mesh.name;
     heapDesc.memoryType = MemoryType::GPU;
     heapDesc.size = positionSize + interleavedSize + indexSize;
     auto memoryRequirements = renderSystem->GetDevice()->QueryMemoryRequirements(heapDesc);
@@ -24,17 +27,30 @@ Mesh::Mesh(const MeshDescriptor& mesh)
     size_t indexBufferSize = Utils::AlignUp(indexSize, memoryRequirements.alignment);
 
     heapDesc.size = positionBufferSize + interleavedBufferSize + indexBufferSize;
-    mHeap = renderSystem->GetDevice()->CreateHeap(heapDesc, mesh.name + "::Heap");
+    mHeap = renderSystem->GetDevice()->CreateHeap(heapDesc);
 
-    mPositionBuffer = mHeap.CreateBuffer(positionBufferSize, mesh.name + "::Positions");
-    mInterleavedBuffer = mHeap.CreateBuffer(interleavedBufferSize, mesh.name + "::InterleavedData");
-    mIndexBuffer = mHeap.CreateBuffer(indexBufferSize, mesh.name + "::Indices");
+    BufferDescriptor bufferDesc;
+    bufferDesc.name = "Positions";
+    bufferDesc.size = positionBufferSize;
+    mPositionBuffer = mHeap.CreateBuffer(bufferDesc);
+    
+    bufferDesc.name = "InterleavedData";
+    bufferDesc.size = interleavedBufferSize;
+    mInterleavedBuffer = mHeap.CreateBuffer(bufferDesc);
+    
+    bufferDesc.name = "Indices";
+    bufferDesc.size = indexBufferSize;
+    mIndexBuffer = mHeap.CreateBuffer(bufferDesc);
 
     // Send mesh data to buffers
     {
+        heapDesc.name += "::StagingHeap";
         heapDesc.memoryType = MemoryType::CPU;
-        Heap heap = renderSystem->GetDevice()->CreateHeap(heapDesc, mesh.name + "::StagingHeap");
-        Buffer stagingBuffer = heap.CreateBuffer(heapDesc.size, mesh.name + "::StagingBuffer");
+        Heap heap = renderSystem->GetDevice()->CreateHeap(heapDesc);
+        
+        bufferDesc.name = "StagingBuffer";
+        bufferDesc.size = heapDesc.size;
+        Buffer stagingBuffer = heap.CreateBuffer(bufferDesc);
 
         CommandBuffer commandBuffer(renderSystem->GetDevice());
         commandBuffer.Begin();
@@ -62,7 +78,7 @@ Mesh::Mesh(const MeshDescriptor& mesh)
 
 void Mesh::Dispose()
 {
-    static auto renderSystem = GameInstance->GetSubsystem<RenderSystem>();
+    static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
     renderSystem->GetDevice()->Dispose(mPositionBuffer);
     renderSystem->GetDevice()->Dispose(mInterleavedBuffer);
     renderSystem->GetDevice()->Dispose(mIndexBuffer);

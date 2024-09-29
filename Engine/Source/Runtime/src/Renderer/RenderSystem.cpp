@@ -7,23 +7,22 @@
 
 #include "gpch.h"
 #include "RenderSystem.h"
-
 #include "RenderGraph/RenderGraph.h"
 #include "RenderGraph/RenderGraphBlackboard.h"
 
-#include "Renderers/WorldRenderer.h"
-#include "Renderers/PostProcessStack.h"
-
+#include "Core/Engine.h"
+#include "Core/Globals.h"
 #include "Core/Events/RendererEvent.h"
+
+#include "World/World.h"
+#include "World/Systems/RenderSceneProxy.h"
 
 using namespace Gleam;
 
-void RenderSystem::Initialize()
+void RenderSystem::Initialize(Engine* engine)
 {
+	mEngine = engine;
     mDevice = GraphicsDevice::Create();
-    AddRenderer<WorldRenderer>();
-    AddRenderer<PostProcessStack>();
-
 	EventDispatcher<RendererResizeEvent>::Subscribe([this](RendererResizeEvent e)
 	{
         const auto& cmd = mCommandBuffers[mDevice->GetLastFrameIndex()];
@@ -51,7 +50,7 @@ void RenderSystem::Shutdown()
     mDevice.reset();
 }
 
-void RenderSystem::Render()
+void RenderSystem::Render(const World* world)
 {
 #ifdef USE_METAL_RENDERER
     @autoreleasepool
@@ -62,15 +61,42 @@ void RenderSystem::Render()
         
         const auto& sceneData = graph.AddRenderPass<SceneRenderingData>("SceneRenderingData", [&](RenderGraphBuilder& builder, SceneRenderingData& passData)
         {
-            passData.cameraBuffer = builder.CreateBuffer(sizeof(CameraUniforms));
-            passData.cameraBuffer = builder.WriteBuffer(passData.cameraBuffer);
+            BufferDescriptor bufferDesc;
+            bufferDesc.name = "CameraBuffer";
+            bufferDesc.size = sizeof(CameraUniforms);
             
+            passData.cameraBuffer = builder.CreateBuffer(bufferDesc);
+            passData.cameraBuffer = builder.WriteBuffer(passData.cameraBuffer);
             passData.backbuffer = graph.ImportBackbuffer(mRenderTarget);
-            passData.config = mConfiguration;
+            passData.sceneProxy = world->GetSystem<RenderSceneProxy>();
+            passData.world = world;
         },
         [this](const CommandBuffer* cmd, const SceneRenderingData& passData)
         {
-            cmd->SetBufferData(passData.cameraBuffer, mCameraData);
+            CameraUniforms cameraData;
+            if (auto camera = passData.sceneProxy->GetActiveCamera(); camera)
+            {
+				const auto& cameraComponent = camera->GetComponent<Camera>();
+                cameraData.viewMatrix = Float4x4::LookTo(camera->GetWorldPosition(), camera->ForwardVector(), camera->UpVector());
+
+				if (cameraComponent.projectionType == ProjectionType::Perspective)
+				{
+					cameraData.projectionMatrix = Float4x4::Perspective(cameraComponent.fov, cameraComponent.aspectRatio, cameraComponent.nearPlane, cameraComponent.farPlane);
+				}
+				else
+				{
+					float width = cameraComponent.orthographicSize * cameraComponent.aspectRatio;
+					float height = cameraComponent.orthographicSize;
+					cameraData.projectionMatrix = Float4x4::Ortho(width, height, cameraComponent.nearPlane, cameraComponent.farPlane);
+				}
+
+                cameraData.viewProjectionMatrix = cameraData.projectionMatrix * cameraData.viewMatrix;
+                cameraData.invViewMatrix = Math::Inverse(cameraData.viewMatrix);
+                cameraData.invProjectionMatrix = Math::Inverse(cameraData.projectionMatrix);
+                cameraData.invViewProjectionMatrix = Math::Inverse(cameraData.viewProjectionMatrix);
+                cameraData.worldPosition = camera->GetWorldPosition();
+            }
+            cmd->SetBufferData(passData.cameraBuffer, cameraData);
         });
         blackboard.Add(sceneData);
 
@@ -102,24 +128,13 @@ void RenderSystem::Render()
 
 void RenderSystem::Configure(const RendererConfig& config)
 {
-    mConfiguration = config;
+	mEngine->UpdateConfig(config);
     mDevice->Configure(config);
     mCommandBuffers.resize(mDevice->GetFramesInFlight());
 	for (auto& cmd : mCommandBuffers)
 	{
 		cmd = CreateScope<CommandBuffer>(mDevice.get());
 	}
-}
-
-void RenderSystem::UpdateCamera(const Camera& camera)
-{
-    mCameraData.viewMatrix = camera.GetViewMatrix();
-    mCameraData.projectionMatrix = camera.GetProjectionMatrix();
-    mCameraData.viewProjectionMatrix = mCameraData.projectionMatrix * mCameraData.viewMatrix;
-    mCameraData.invViewMatrix = Math::Inverse(mCameraData.viewMatrix);
-    mCameraData.invProjectionMatrix = Math::Inverse(mCameraData.projectionMatrix);
-    mCameraData.invViewProjectionMatrix = Math::Inverse(mCameraData.viewProjectionMatrix);
-    mCameraData.worldPosition = camera.GetWorldPosition();
 }
 
 GraphicsDevice* RenderSystem::GetDevice()
@@ -132,28 +147,23 @@ const GraphicsDevice* RenderSystem::GetDevice() const
     return mDevice.get();
 }
 
-const RendererConfig& RenderSystem::GetConfiguration() const
-{
-    return mConfiguration;
-}
-
 const Texture& RenderSystem::GetRenderTarget() const
 {
     return mRenderTarget;
 }
 
-void RenderSystem::SetRenderTarget(const TextureDescriptor& descriptor)
+void RenderSystem::SetBackbuffer(const TextureDescriptor& descriptor)
 {
-    mRenderTarget = mDevice->CreateTexture(descriptor, "Backbuffer");
+    mRenderTarget = mDevice->CreateTexture(descriptor);
     GLEAM_ASSERT(mRenderTarget.IsValid());
 }
 
-void RenderSystem::SetRenderTarget(const Texture& texture)
+void RenderSystem::SetBackbuffer(const Texture& texture)
 {
     mRenderTarget = texture;
 }
 
 void RenderSystem::ResetRenderTarget()
 {
-    SetRenderTarget(mDevice->GetRenderSurface());
+    SetBackbuffer(mDevice->GetRenderSurface());
 }

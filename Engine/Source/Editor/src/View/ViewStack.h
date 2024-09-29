@@ -14,21 +14,22 @@ namespace GEditor {
 template <typename T>
 concept ViewType = std::is_base_of<View, T>::value;
 
-class ViewStack : public Gleam::ComponentSystem
+class ViewStack : public Gleam::TickableWorldSubsystem
 {
 public:
     
-    virtual void OnCreate(Gleam::EntityManager& entityManager) override;
+    virtual void Initialize(Gleam::World* world) override;
 
-	virtual void OnDestroy(Gleam::EntityManager& entityManager) override;
+	virtual void Shutdown() override;
     
-    virtual void OnUpdate(Gleam::EntityManager& entityManager) override;
-    
-    template<ViewType T>
-    T* AddView()
+    virtual void Tick() override;
+	
+    template<ViewType T, class...Args>
+    T* AddView(Args&&... args)
     {
         GLEAM_ASSERT(!HasView<T>(), "Editor already has the view!");
-        T* view = mViews.emplace<T>();
+        T* view = mViews.emplace<T>(std::forward<Args>(args)...);
+		view->Init(mWorld);
         return view;
     }
     
@@ -66,6 +67,8 @@ private:
     {
         return mViews.contains<T>();
     }
+
+	Gleam::World* mWorld;
     
     Gleam::PolyArray<View> mViews;
 

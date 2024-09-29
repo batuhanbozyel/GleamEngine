@@ -85,3 +85,7 @@ struct Float3x3
 };
 
 } // namespace Gleam
+
+GLEAM_TYPE(Gleam::Float3x3, Guid("83B947F2-3F44-4C81-B719-E74A3991B373"))
+	GLEAM_FIELD(row, Serializable())
+GLEAM_END

@@ -24,8 +24,8 @@
 #endif
 
 #ifdef ENABLE_ASSERTS
-#include "IO/Filesystem.h"
-	#define GLEAM_ASSERT(x, ...) if (!(x)) { GLEAM_CORE_ERROR("Assertion failed at {0}:{1}", Gleam::Filesystem::path(__FILE__).filename().string(), __LINE__); DEBUGBREAK(); }
+#include <filesystem>
+	#define GLEAM_ASSERT(x, ...) if (!(x)) { GLEAM_CORE_ERROR("Assertion failed at {0}:{1}", std::filesystem::path(__FILE__).filename().string(), __LINE__); DEBUGBREAK(); }
 #else
 	#define GLEAM_ASSERT(...)
 #endif

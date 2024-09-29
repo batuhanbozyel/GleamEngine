@@ -103,7 +103,7 @@ private:
 			uint16_t mData3;
 			uint8_t mData4[8];
 		};
-		TArray<uint8_t, 16> mBytes;
+		TArray<uint8_t, 16> mBytes{};
 	};
 
 };

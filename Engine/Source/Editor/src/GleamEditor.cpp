@@ -1,6 +1,7 @@
 // EntryPoint
 #include "Core/EntryPoint.h"
 #include "View/ViewStack.h"
+#include "World/World.h"
 
 #include "View/Panels/MenuBar/MenuBar.h"
 #include "View/Panels/World/WorldViewport.h"
@@ -14,10 +15,13 @@ class GleamEditor : public Gleam::Application
 {
 public:
 
-	GleamEditor(const Gleam::ApplicationProperties& properties)
-        : Gleam::Application(properties)
+	GleamEditor(const Gleam::Project& project)
+        : Gleam::Application(project)
 	{
-        auto viewStack = Gleam::World::active->AddSystem<ViewStack>();
+		auto worldManager = GetSubsystem<Gleam::WorldManager>();
+		mEditWorld = worldManager->GetActiveWorld();
+
+        auto viewStack = mEditWorld->AddSubsystem<ViewStack>();
 		viewStack->AddView<MenuBar>();
         viewStack->AddView<WorldViewport>();
         viewStack->AddView<WorldOutliner>();
@@ -27,20 +31,52 @@ public:
     
 	~GleamEditor()
 	{
-        Gleam::World::active->RemoveSystem<ViewStack>();
+		mEditWorld->RemoveSubsystem<ViewStack>();
 	}
 
 private:
+
+	Gleam::World* mEditWorld;
     
 };
 
 } // namespace GEditor
 
-Gleam::Application* Gleam::CreateApplicationInstance()
+Gleam::Application* Gleam::CreateApplicationInstance(const Gleam::CommandLine& cli)
 {
-    Gleam::ApplicationProperties props;
-    props.version = Gleam::Version(1, 0, 0);
-    props.windowConfig.title = "Gleam Editor";
-    props.windowConfig.windowFlag = Gleam::WindowFlag::MaximizedWindow;
-    return new GEditor::GleamEditor(props);
+    auto projectFile = Globals::StartupDirectory/"Editor.gproj";
+    
+    Gleam::Project project;
+    if (Gleam::Filesystem::Exists(projectFile))
+    {
+        auto file = Gleam::Filesystem::Open(projectFile, Gleam::FileType::Text);
+        auto serializer = Gleam::JSONSerializer(file.GetStream());
+        project = serializer.Deserialize<Gleam::Project>();
+    }
+    else
+    {
+		project.name = "Gleam Editor";
+		project.version = Gleam::Version(1, 0, 0);
+
+		auto worldRef = Gleam::AssetReference{ .guid = Gleam::Guid::NewGuid() };
+		auto worldName = worldRef.guid.ToString() + Gleam::World::Extension().data();
+		auto worldFile = Globals::StartupDirectory/project.path/"Assets"/worldName;
+		{
+			auto file = Gleam::Filesystem::Create(worldFile, Gleam::FileType::Text);
+			auto world = Gleam::World("Starter World");
+
+			auto& camera = world.GetEntityManager().CreateEntity(Gleam::Guid::NewGuid());
+			world.GetEntityManager().AddComponent<Gleam::Camera>(camera, Gleam::Size(1280.0f, 720.0f));
+
+			world.Serialize(file.GetStream());
+		}
+		project.worldConfig.worlds.emplace_back(worldRef);
+
+		{
+			auto file = Gleam::Filesystem::Create(projectFile, Gleam::FileType::Text);
+			auto serializer = Gleam::JSONSerializer(file.GetStream());
+			serializer.Serialize(project);
+		}
+    }
+    return new GEditor::GleamEditor(project);
 }

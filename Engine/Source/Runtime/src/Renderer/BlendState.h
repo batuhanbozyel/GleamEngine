@@ -1,4 +1,5 @@
 #pragma once
+#include "Core/GUID.h"
 
 namespace Gleam {
 

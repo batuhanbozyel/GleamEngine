@@ -10,9 +10,6 @@
 
 namespace Gleam {
 
-class Mesh;
-class Material;
-
 struct WorldRenderingData
 {
     TextureHandle colorTarget;
@@ -27,22 +24,12 @@ public:
     virtual void OnCreate(GraphicsDevice* device) override;
     
     virtual void AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard) override;
-    
-    void DrawMesh(const MeshRenderer& meshRenderer, const Transform& transform);
 
 private:
     
-    struct RenderProxy
-    {
-        const Mesh* mesh;
-        const MaterialInstance* material;
-        Float4x4 transform;
-    };
-    HashMap<RefCounted<Material>, TArray<RenderProxy>> mOpaqueQueue;
-    HashMap<RefCounted<Material>, TArray<RenderProxy>> mTransparentQueue;
-    
-    Shader mForwardPassVertexShader;
-    Shader mForwardPassFragmentShader;
+    Shader mMeshVertexShader;
+    HashMap<TString, Shader> mMeshShadingFragmentShaders;
+	HashMap<uint32_t, PipelineStateDescriptor> mShadingPipelines;
 
 };
 

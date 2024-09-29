@@ -3,7 +3,13 @@
 
 namespace Gleam {
 
-using ImGuiView = std::function<void()>;
+struct ImGuiPassData
+{
+	TextureHandle sceneTarget;
+	TextureHandle swapchainTarget;
+};
+
+using ImGuiView = std::function<void(const ImGuiPassData&)>;
 
 class ImGuiRenderer : public IRenderer
 {

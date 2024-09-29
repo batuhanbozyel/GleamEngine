@@ -78,6 +78,10 @@ GLEAM_ATTRIBUTE(Version, Target::Class)
     }
 };
 
+GLEAM_ATTRIBUTE(EntityComponent, Target::Class)
+{
+};
+
 GLEAM_ATTRIBUTE(Serializable, Target::Field)
 {
 };
@@ -92,7 +96,6 @@ GLEAM_ATTRIBUTE(PrettyName, Target::Class, Target::Field)
         
     }
 };
-
 
 } // namespace Attribute
 } // namespace Gleam::Reflection

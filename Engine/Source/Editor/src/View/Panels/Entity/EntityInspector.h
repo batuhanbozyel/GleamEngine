@@ -15,13 +15,15 @@ class EntityInspector final : public View
 {
 public:
     
-    EntityInspector();
+	virtual void Init(Gleam::World* world) override;
     
     virtual void Render(Gleam::ImGuiRenderer* imgui) override;
     
 private:
 
-	Gleam::Entity mSelectedEntity = Gleam::InvalidEntity;
+	Gleam::World* mEditWorld;
+
+	Gleam::EntityHandle mSelectedEntity = Gleam::InvalidEntity;
     
 };
 

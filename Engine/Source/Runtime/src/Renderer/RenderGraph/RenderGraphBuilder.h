@@ -33,7 +33,7 @@ public:
     NO_DISCARD TextureHandle ReadTexture(const TextureHandle& resource);
     
     // Buffer
-    NO_DISCARD BufferHandle CreateBuffer(size_t size);
+    NO_DISCARD BufferHandle CreateBuffer(const BufferDescriptor& descriptor);
 
     NO_DISCARD BufferHandle WriteBuffer(const BufferHandle& resource);
     

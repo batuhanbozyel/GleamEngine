@@ -8,6 +8,7 @@ set(INCLUDE_DIRS
     ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/SDL/include
     ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/fmt/include
     ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/refl-cpp/include
+    ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/rapidjson/include
     ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/entt/src
     ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/cgltf
     ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui
@@ -53,6 +54,7 @@ target_compile_definitions(
     Editor
 
     PRIVATE
+    PYTHON_INTERPRETER=\"${Python_EXECUTABLE}\"
     "_CRT_SECURE_NO_WARNINGS"
     "WIN32_LEAN_AND_MEAN"
     "NOMINMAX"
@@ -64,13 +66,8 @@ target_compile_definitions(
 
 # Precompile shaders
 set(HLSL_FILE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/src/Renderers/Shaders)
-set(SHADER_FUNCTIONS
-    ${HLSL_FILE_PATH}/InfiniteGridShader.hlsl infiniteGridVertexShader vertex
-    ${HLSL_FILE_PATH}/InfiniteGridShader.hlsl infiniteGridFragmentShader fragment
-)
-
 add_custom_command(
     TARGET Editor
     PRE_BUILD
-    COMMAND Python::Interpreter ${CMAKE_SOURCE_DIR}/Tools/CompileShaders.py ${CMAKE_SOURCE_DIR}/Assets/Shaders ${SHADER_FUNCTIONS}
+    COMMAND Python::Interpreter ${CMAKE_SOURCE_DIR}/Tools/CompileShaders.py "-d" ${HLSL_FILE_PATH}
 )

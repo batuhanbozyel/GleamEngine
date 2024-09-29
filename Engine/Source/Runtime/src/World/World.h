@@ -1,59 +1,78 @@
 #pragma once
 #include "ComponentSystem.h"
+#include "WorldSubsystem.h"
 
 namespace Gleam {
 
 template <typename T>
 concept ComponentSystemType = std::is_base_of<ComponentSystem, T>::value;
 
+template <typename T>
+concept WorldSystemType = std::is_base_of<WorldSubsystem, T>::value;
+
 class World final
 {
 public:
-    
-    static inline RefCounted<World> active = nullptr;
-    
-    static RefCounted<World> Create()
-    {
-        return CreateRef<World>();
-    }
 
-	World(const TString& name = "World")
-        : mName(name)
-    {
-        Time::Reset();
-    }
+	static constexpr TStringView Extension()
+	{
+		return ".gworld";
+	}
     
-    void Update()
-    {
-        Time::Step();
-        
-        bool fixedUpdate = Time::fixedTime <= (Time::elapsedTime - Time::fixedDeltaTime);
-        if (fixedUpdate)
-        {
-            Time::FixedStep();
-            for (auto system : mSystems)
-            {
-                if (system->Enabled)
-                {
-                    system->OnFixedUpdate(mEntityManager);
-                }
-            }
-        }
-        
-        for (auto system : mSystems)
-        {
-            if (system->Enabled)
-            {
-                system->OnUpdate(mEntityManager);
-            }
-        }
-    }
+	World(const TString& name = "World");
     
-    template<ComponentSystemType T>
-    T* AddSystem()
+    void Update();
+
+	void Serialize(FileStream& stream);
+
+	void Deserialize(FileStream& stream);
+
+	template<WorldSystemType T, class...Args>
+	T* AddSubsystem(Args&&... args)
+	{
+		GLEAM_ASSERT(!HasSubsystem<T>(), "World already has the subsystem!");
+
+		T* system = mSubsystems.emplace<T>(std::forward<Args>(args)...);
+		if constexpr (std::is_base_of<TickableWorldSubsystem, T>::value)
+		{
+			mTickableSubsystems.push_back(system);
+		}
+		system->Initialize(this);
+		return system;
+	}
+
+	template<WorldSystemType T>
+	void RemoveSubsystem()
+	{
+		GLEAM_ASSERT(HasSubsystem<T>(), "World does not have the subsystem!");
+
+		T* system = mSubsystems.get<T>();
+		if constexpr (std::is_base_of<TickableWorldSubsystem, T>::value)
+		{
+			mTickableSubsystems.erase(std::remove(mTickableSubsystems.begin(), mTickableSubsystems.end(), system));
+		}
+
+		system->Shutdown();
+		mSubsystems.erase<T>();
+	}
+
+	template<WorldSystemType T>
+	T* GetSubsystem()
+	{
+		return mSubsystems.get<T>();
+	}
+
+	template<WorldSystemType T>
+	bool HasSubsystem() const
+	{
+		return mSubsystems.contains<T>();
+	}
+    
+    template<ComponentSystemType T, class...Args>
+    T* AddSystem(Args&&... args)
     {
         GLEAM_ASSERT(!HasSystem<T>(), "World already has the system!");
-        T* system = mSystems.emplace<T>();
+        T* system = mSystems.emplace<T>(std::forward<Args>(args)...);
 		system->OnCreate(mEntityManager);
 		return system;
     }
@@ -85,11 +104,18 @@ public:
         return mEntityManager;
     }
     
+    const EntityManager& GetEntityManager() const
+    {
+        return mEntityManager;
+    }
+    
 private:
 
 	TString mName;
     EntityManager mEntityManager;
     PolyArray<ComponentSystem> mSystems;
+	PolyArray<WorldSubsystem> mSubsystems;
+	TArray<TickableWorldSubsystem*> mTickableSubsystems;
 
 };
 

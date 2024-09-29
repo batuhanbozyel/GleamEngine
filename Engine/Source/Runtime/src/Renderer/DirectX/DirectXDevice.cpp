@@ -6,7 +6,8 @@
 #include "DirectXTransitionManager.h"
 #include "DirectXPipelineStateManager.h"
 
-#include "Core/Application.h"
+#include "Core/Engine.h"
+#include "Core/Globals.h"
 #include "Core/WindowSystem.h"
 
 using namespace Gleam;
@@ -77,7 +78,7 @@ MemoryRequirements GraphicsDevice::QueryMemoryRequirements(const HeapDescriptor&
 	};
 }
 
-Heap GraphicsDevice::AllocateHeap(const HeapDescriptor& descriptor, const TStringView name)
+Heap GraphicsDevice::AllocateHeap(const HeapDescriptor& descriptor)
 {
 	Heap heap(descriptor);
 	heap.mDevice = this;
@@ -92,11 +93,11 @@ Heap GraphicsDevice::AllocateHeap(const HeapDescriptor& descriptor, const TStrin
 	desc.Flags = D3D12_HEAP_FLAG_ALLOW_ONLY_BUFFERS;
 	desc.Properties.Type = descriptor.memoryType == MemoryType::CPU ? D3D12_HEAP_TYPE_UPLOAD : D3D12_HEAP_TYPE_DEFAULT;
 	DX_CHECK(static_cast<ID3D12Device10*>(mHandle)->CreateHeap(&desc, __uuidof(ID3D12Heap*), &heap.mHandle));
-	static_cast<ID3D12Resource*>(heap.mHandle)->SetName(StringUtils::Convert(name).c_str());
+	static_cast<ID3D12Resource*>(heap.mHandle)->SetName(StringUtils::Convert(descriptor.name).c_str());
 	return heap;
 }
 
-Texture GraphicsDevice::AllocateTexture(const TextureDescriptor& descriptor, const TStringView name)
+Texture GraphicsDevice::AllocateTexture(const TextureDescriptor& descriptor)
 {
 	Texture texture(descriptor);
 
@@ -149,7 +150,7 @@ Texture GraphicsDevice::AllocateTexture(const TextureDescriptor& descriptor, con
 		__uuidof(ID3D12Resource*),
 		&texture.mHandle
 	));
-	static_cast<ID3D12Resource*>(texture.mHandle)->SetName(StringUtils::Convert(name).c_str());
+	static_cast<ID3D12Resource*>(texture.mHandle)->SetName(StringUtils::Convert(descriptor.name).c_str());
 
 	// Create RTV or DSV for attachments
 	if (descriptor.usage & TextureUsage_Attachment)
@@ -200,8 +201,8 @@ Texture GraphicsDevice::AllocateTexture(const TextureDescriptor& descriptor, con
 Shader GraphicsDevice::GenerateShader(const TString& entryPoint, ShaderStage stage)
 {
 	Shader shader(entryPoint, stage);
-
-	auto shaderFile = File(GameInstance->GetDefaultAssetPath().append("Shaders/" + entryPoint + ".dxil"), FileType::Binary);
+	auto shaderPath = Globals::BuiltinAssetsDirectory/"Shaders";
+	auto shaderFile = Filesystem::Open(shaderPath.append(entryPoint + ".dxil"), FileType::Binary);
 	auto shaderCode = shaderFile.Read();
 	auto bytecodeLength = shaderCode.size();
 	auto bytecode = new uint8_t[bytecodeLength];
@@ -381,7 +382,7 @@ DirectXDevice::~DirectXDevice()
 
 void DirectXDevice::Configure(const RendererConfig& config)
 {
-	auto windowSystem = GameInstance->GetSubsystem<WindowSystem>();
+	auto windowSystem = Globals::Engine->GetSubsystem<WindowSystem>();
 
 	int width, height;
 	SDL_GetWindowSizeInPixels(windowSystem->GetSDLWindow(), &width, &height);
@@ -426,8 +427,8 @@ void DirectXDevice::Configure(const RendererConfig& config)
 			swapchainDesc.Flags |= DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
 		}
 
-		SDL_Window* window = GameInstance->GetSubsystem<WindowSystem>()->GetSDLWindow();
-		HWND hwnd = (HWND)SDL_GetProperty(SDL_GetWindowProperties(window), SDL_PROPERTY_WINDOW_WIN32_HWND_POINTER, NULL);
+		SDL_Window* window = Globals::Engine->GetSubsystem<WindowSystem>()->GetSDLWindow();
+		HWND hwnd = (HWND)SDL_GetPointerProperty(SDL_GetWindowProperties(window), SDL_PROP_WINDOW_WIN32_HWND_POINTER, NULL);
 
 		IDXGISwapChain1* swapchain1 = nullptr;
 		DX_CHECK(mFactory->CreateSwapChainForHwnd(mDirectQueue, hwnd, &swapchainDesc, nullptr, nullptr, &swapchain1));

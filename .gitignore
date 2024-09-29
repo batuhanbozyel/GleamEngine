@@ -24,3 +24,5 @@
 # Engine generated files
 *.log
 *.err
+*.config
+*.gproj

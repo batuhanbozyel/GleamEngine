@@ -6,6 +6,17 @@ namespace Gleam {
 class Heap;
 class GraphicsDevice;
 
+struct BufferDescriptor
+{
+    TString name;
+    size_t size = 0;
+    
+    bool operator==(const BufferDescriptor& other) const
+    {
+        return size == other.size;
+    }
+};
+
 class Buffer final : public ShaderResource
 {
     friend class Heap;
@@ -19,8 +30,8 @@ public:
     
     Buffer& operator=(const Buffer& other) = default;
 
-    Buffer(NativeGraphicsHandle handle, size_t size, void* contents = nullptr)
-        : ShaderResource(handle), mSize(size), mContents(contents)
+    Buffer(const BufferDescriptor& descriptor)
+        : mDescriptor(descriptor)
     {
         
     }
@@ -30,16 +41,21 @@ public:
         return mContents;
     }
     
-	size_t GetSize() const
+    size_t GetSize() const
     {
-        return mSize;
+        return mDescriptor.size;
+    }
+    
+    const BufferDescriptor& GetDescriptor() const
+    {
+        return mDescriptor;
     }
     
 private:
     
 	void* mContents = nullptr;
 
-	size_t mSize;
+    BufferDescriptor mDescriptor;
     
 };
 

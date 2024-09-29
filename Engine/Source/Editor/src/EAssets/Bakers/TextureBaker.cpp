@@ -8,16 +8,18 @@ TextureBaker::TextureBaker(const Gleam::TextureDescriptor& descriptor)
 	
 }
 
-Gleam::Asset TextureBaker::Bake(const Gleam::Filesystem::path& directory) const
+void TextureBaker::Bake(Gleam::FileStream& stream) const
 {
-    const auto& typeGuid = Gleam::Reflection::GetClass<Gleam::TextureDescriptor>().Guid();
-    auto guid = Gleam::Guid::NewGuid();
-    Gleam::Asset asset(guid, typeGuid);
-    // TODO:
-    return asset;
+	auto serializer = Gleam::JSONSerializer(stream);
+	serializer.Serialize(mDescriptor);
 }
 
 Gleam::TString TextureBaker::Filename() const
 {
-	return mDescriptor.name + Gleam::Asset::extension().data();
+	return mDescriptor.name;
+}
+
+Gleam::Guid TextureBaker::TypeGuid() const
+{
+    return Gleam::Reflection::GetClass<decltype(mDescriptor)>().Guid();
 }

@@ -12,6 +12,9 @@ struct VertexOut
 
 PUSH_CONSTANT(GEditor::InfiniteGridUniforms, uniforms);
 
+#pragma vertex infiniteGridVertexShader
+#pragma fragment infiniteGridFragmentShader
+
 VertexOut infiniteGridVertexShader(uint vertex_id: SV_VertexID)
 {
     Gleam::CameraUniforms CameraBuffer = uniforms.cameraBuffer.Load<Gleam::CameraUniforms>();

@@ -6,65 +6,27 @@
 //
 
 #pragma once
-#include "Core/GUID.h"
 
 namespace Gleam {
 
-class Asset final
+struct Asset
 {
-public:
+    Filesystem::Path path;
     
-    static constexpr TStringView extension()
+    bool operator==(const Asset& other) const
     {
-        return ".asset";
-    }
-    
-    Asset() = default;
-    Asset(const Guid& guid, const Guid& type)
-        : mGuid(guid), mType(type)
-    {
-        
-    }
-
-	~Asset() = default;
-    
-    bool operator==(const Asset &other) const
-    {
-        return mGuid == other.mGuid;
+        return path == other.path;
     }
     
     bool operator!=(const Asset& other) const
     {
         return !(*this == other);
     }
-
-	const Guid& GetType() const
-	{
-		return mType;
-	}
-
-	const Guid& GetGuid() const
-	{
-		return mGuid;
-	}
     
-private:
-
-	Guid mType = Guid::InvalidGuid();
-    
-    Guid mGuid = Guid::InvalidGuid();
-    
+    static constexpr TStringView extension()
+    {
+        return ".asset";
+    }
 };
 
 } // Gleam
-
-template <>
-struct std::hash<Gleam::Asset>
-{
-    size_t operator()(const Gleam::Asset& asset) const
-    {
-        size_t hash = 0;
-        Gleam::hash_combine(hash, asset.GetGuid());
-        return hash;
-    }
-};

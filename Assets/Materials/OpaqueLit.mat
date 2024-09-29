@@ -1,0 +1,19 @@
+{
+    "ZWrite" : "On",
+    "ZTest" : "Less",
+    "Cull" : "Back",
+
+    "Properties" : [
+        {"BaseColor": "Float4"},
+        {"Emission": "Float4"},
+        {"Metallic": "Float"},
+        {"Roughness": "Float"},
+        {"BaseColorTexture": "Texture2D"},
+        {"NormalTexture": "Texture2D"},
+        {"MetallicRoughnessTexture": "Texture2D"},
+        {"EmissiveTexture": "Texture2D"}
+    ],
+
+    "Lighting": "On",
+    "SurfaceShader": "SurfaceLit"
+}

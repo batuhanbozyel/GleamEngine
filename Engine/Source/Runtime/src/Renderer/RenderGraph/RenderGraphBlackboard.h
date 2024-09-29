@@ -28,6 +28,13 @@ public:
     }
     
     template<typename T>
+    const T& Get() const
+    {
+        GLEAM_ASSERT(Has<T>(), "Render graph blackboard does not contain the pass data!");
+        return mBlackboard.get_unsafe<T>();
+    }
+    
+    template<typename T>
     bool Has() const
     {
         return mBlackboard.contains<T>();

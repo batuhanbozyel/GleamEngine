@@ -7,9 +7,6 @@
 
 namespace Gleam {
 
-template<typename T>
-concept PODType = !std::is_void_v<std::remove_const_t<T>>;
-
 struct RenderPassDescriptor;
 struct PipelineStateDescriptor;
 
@@ -49,16 +46,16 @@ public:
 
     void SetViewport(const Size& size) const;
     
-    template<PODType T>
+    template<typename T>
     void SetConstantBuffer(const T& t, uint32_t slot) const
     {
         SetConstantBuffer(&t, sizeof(T), slot);
     }
 
-    template<PODType T>
+    template<typename T>
     void SetPushConstant(const T& t) const
     {
-        static_assert(sizeof(T) <= PUSH_CONSTANT_SIZE, "Push constant limit is 64 bytes.");
+        static_assert(sizeof(T) <= PUSH_CONSTANT_SIZE, "Push constant limit is 128 bytes.");
         SetPushConstant(&t, sizeof(T));
     }
 
@@ -80,7 +77,7 @@ public:
 
     void CopyBuffer(const Buffer& src, const Buffer& dst) const;
 
-	template<PODType T>
+	template<typename T>
 	void SetBufferData(const Buffer& buffer, const T& data, size_t offset = 0) const
 	{
 		SetBufferData(buffer, &data, sizeof(T), offset);
@@ -113,7 +110,7 @@ private:
 		size_t srcOffset = 0,
 		size_t dstOffset = 0) const;
 
-    class Impl;
+    struct Impl;
     Scope<Impl> mHandle;
     
     Heap mStagingHeap;

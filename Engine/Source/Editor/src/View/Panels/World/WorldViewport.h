@@ -11,13 +11,13 @@
 
 namespace GEditor {
 
-class WorldViewportController;
+class EditorCameraController;
 
 class WorldViewport final : public View
 {
 public:
     
-    WorldViewport();
+	virtual void Init(Gleam::World* world) override;
     
     virtual void Update() override;
     
@@ -28,22 +28,23 @@ public:
         return mViewportSize;
     }
     
-    const Gleam::RefCounted<Gleam::World>& GetWorld() const
-    {
-        return mEditWorld;
-    }
-    
 private:
+
+	void Resize(Gleam::EntityManager& entityManager, const Gleam::Size& size);
     
     bool mIsFocused = false;
     
     bool mCursorVisible = true;
+
+	bool mViewportSizeChanged = false;
     
-    WorldViewportController* mController = nullptr;
+    EditorCameraController* mCameraController = nullptr;
+
+	Gleam::EntityHandle mCamera;
     
     Gleam::Size mViewportSize;
     
-    Gleam::RefCounted<Gleam::World> mEditWorld;
+    Gleam::World* mEditWorld;
     
 };
 

@@ -4,38 +4,29 @@
 
 namespace GEditor {
 
-struct RawTexture
+struct PBRTexture
 {
-    Gleam::TString name = "";
-    Gleam::Filesystem::path file = "";
-    
     enum Type
     {
         Albedo,
-        MetallicRoughness,
         Normal,
+        MetallicRoughness,
         Emissive,
-        Occlusion,
         COUNT
     };
-    
-    bool operator==(const RawTexture& other) const
-    {
-        return name == other.name;
-    }
 };
 
 struct RawMaterial
 {
     Gleam::TString name = "";
-    Gleam::TArray<RawTexture, RawTexture::COUNT> textures;
+    Gleam::TArray<Gleam::Filesystem::Path, PBRTexture::COUNT> textures;
     Gleam::Color albedoColor = Gleam::Color::white;
     Gleam::Color emissiveColor = Gleam::Color::clear;
-    Gleam::RenderQueue alphaBlend = Gleam::RenderQueue::Opaque;
     float alphaCutoff = 0.5f;
     float metallicFactor = 1.0f;
     float roughnessFactor = 1.0f;
     bool doubleSided = false;
+    bool alphaBlend = false;
     bool unlit = false;
     
     bool operator==(const RawMaterial& other) const
@@ -44,12 +35,12 @@ struct RawMaterial
             && textures == other.textures
             && albedoColor == other.albedoColor
             && emissiveColor == other.emissiveColor
-            && alphaBlend == other.alphaBlend
             && alphaCutoff == other.alphaCutoff
             && metallicFactor == other.metallicFactor
             && roughnessFactor == other.roughnessFactor
             && doubleSided == other.doubleSided
-            && unlit == other.unlit; 
+            && alphaBlend == other.alphaBlend
+            && unlit == other.unlit;
     }
     
     bool operator!=(const RawMaterial& other) const
@@ -61,15 +52,17 @@ struct RawMaterial
 struct RawMesh
 {
     Gleam::TString name;
+	Gleam::TString material;
     Gleam::TArray<Gleam::Float3> positions;
     Gleam::TArray<Gleam::Float3> normals;
     Gleam::TArray<Gleam::Float2> texCoords;
     Gleam::TArray<uint32_t> indices;
-    uint32_t materialIndex = 0;
 };
 
 struct MeshSource : AssetPackage
 {
+	AssetPackageType(MeshSource);
+
     struct ImportSettings
     {
         bool combineMeshes = false;
@@ -80,7 +73,8 @@ struct MeshSource : AssetPackage
 	*	- position, normal, uv attributes
 	*	- triangulated primitive type and indices
 	*/
-	bool Import(const Gleam::Filesystem::path& path, const ImportSettings& settings);
+	bool Import(const Gleam::Filesystem::Path& path, const ImportSettings& settings);
+    
 };
 
 } // namespace GEditor

@@ -24,7 +24,7 @@ enum class WindowFlag : uint32_t
 
 struct DisplayMode
 {
-	SDL_PixelFormatEnum format = SDL_PIXELFORMAT_UNKNOWN;
+	SDL_PixelFormat format = SDL_PIXELFORMAT_UNKNOWN;
 	uint32_t width = 0, height = 0;
 	uint32_t refreshRate = 0;
 	uint32_t monitor = 0;
@@ -32,10 +32,16 @@ struct DisplayMode
 
 struct WindowConfig
 {
-	TString title = "Gleam Application";
-	WindowFlag windowFlag = WindowFlag::CustomWindow;
-    Size size = {1280.0f, 720.0f};
-    float refreshRate = 60.0f;
+	WindowFlag windowFlag = WindowFlag::MaximizedWindow;
+    Size size = {0.0f, 0.0f};
+    uint32_t refreshRate = 0;
 };
 
 } // namespace Gleam
+
+GLEAM_ENUM(Gleam::WindowFlag, Guid("1237B8F5-13B3-4166-809D-96F61DF19A4A"))
+GLEAM_TYPE(Gleam::WindowConfig, Guid("5AA6CC17-C7FB-4A8E-86ED-A58C7092CFB1"))
+	GLEAM_FIELD(windowFlag, Serializable())
+	GLEAM_FIELD(size, Serializable())
+	GLEAM_FIELD(refreshRate, Serializable())
+GLEAM_END

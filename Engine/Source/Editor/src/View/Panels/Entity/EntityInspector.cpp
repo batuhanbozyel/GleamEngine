@@ -84,7 +84,8 @@ static void DrawComponent(const std::string& name, T& component, UIFunction uiFu
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2{ 4, 4 });
     float lineHeight = GImGui->Font->FontSize + GImGui->Style.FramePadding.y * 2.0f;
     ImGui::Separator();
-    bool open = ImGui::TreeNodeEx((void*)typeid(T).hash_code(), treeNodeFlags, "%s", name.c_str());
+	size_t hash = entt::type_hash<T>::value();
+    bool open = ImGui::TreeNodeEx((void*)hash, treeNodeFlags, "%s", name.c_str());
     ImGui::PopStyleVar();
 
     if (open)
@@ -94,8 +95,9 @@ static void DrawComponent(const std::string& name, T& component, UIFunction uiFu
     }
 }
 
-EntityInspector::EntityInspector()
+void EntityInspector::Init(Gleam::World* world)
 {
+	mEditWorld = world;
     Gleam::EventDispatcher<EntitySelectedEvent>::Subscribe([this](EntitySelectedEvent e)
     {
         mSelectedEntity = e.GetEntity();
@@ -104,7 +106,7 @@ EntityInspector::EntityInspector()
 
 void EntityInspector::Render(Gleam::ImGuiRenderer* imgui)
 {
-	imgui->PushView([this]()
+	imgui->PushView([this](const Gleam::ImGuiPassData& passData)
 	{
 		if (!ImGui::Begin("Entity Inspector")) return;
         
@@ -114,43 +116,22 @@ void EntityInspector::Render(Gleam::ImGuiRenderer* imgui)
             return;
         }
         
-        auto& entityManager = Gleam::World::active->GetEntityManager();
-        if (entityManager.HasComponent<Gleam::Camera>(mSelectedEntity))
-        {
-            auto& component = entityManager.GetComponent<Gleam::Camera>(mSelectedEntity);
-            DrawComponent<Gleam::Camera>("Local Transform", component, [](auto& component)
-            {
-                auto localPosition = component.GetLocalPosition();
-                DrawVec3Control("Translation", localPosition);
-                component.SetTranslation(localPosition);
-                
-                auto localRotation = Gleam::Math::Rad2Deg(component.GetLocalRotation().EulerAngles());
-                DrawVec3Control("Rotation", localRotation);
-                component.SetRotation(Gleam::Quaternion(Gleam::Math::Deg2Rad(localRotation)));
-                
-                auto localScale = component.GetLocalScale();
-                DrawVec3Control("Scale", localScale, 1.0f);
-                component.SetScale(localScale);
-            });
-        }
-        else
-        {
-            auto& component = entityManager.GetComponent<Gleam::Transform>(mSelectedEntity);
-            DrawComponent<Gleam::Transform>("Local Transform", component, [](auto& component)
-            {
-                auto localPosition = component.GetLocalPosition();
-                DrawVec3Control("Translation", localPosition);
-                component.SetTranslation(localPosition);
-                
-                auto localRotation = Gleam::Math::Rad2Deg(component.GetLocalRotation().EulerAngles());
-                DrawVec3Control("Rotation", localRotation);
-                component.SetRotation(Gleam::Quaternion(Gleam::Math::Deg2Rad(localRotation)));
-                
-                auto localScale = component.GetLocalScale();
-                DrawVec3Control("Scale", localScale, 1.0f);
-                component.SetScale(localScale);
-            });
-        }
+        auto& entityManager = mEditWorld->GetEntityManager();
+		auto& entity = entityManager.GetComponent<Gleam::Entity>(mSelectedEntity);
+		DrawComponent<Gleam::Entity>("Local Transform", entity, [](auto& entity)
+		{
+			auto localPosition = entity.GetLocalPosition();
+			DrawVec3Control("Translation", localPosition);
+			entity.SetTranslation(localPosition);
+
+			auto localRotation = Gleam::Math::Rad2Deg(entity.GetLocalRotation().EulerAngles());
+			DrawVec3Control("Rotation", localRotation);
+			entity.SetRotation(Gleam::Quaternion(Gleam::Math::Deg2Rad(localRotation)));
+
+			auto localScale = entity.GetLocalScale();
+			DrawVec3Control("Scale", localScale, 1.0f);
+			entity.SetScale(localScale);
+		});
         
 		ImGui::End();
 	});

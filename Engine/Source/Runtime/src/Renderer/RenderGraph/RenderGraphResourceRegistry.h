@@ -16,7 +16,7 @@ public:
     
     void Clear();
     
-    NO_DISCARD BufferHandle CreateBuffer(size_t size, bool transient = true);
+    NO_DISCARD BufferHandle CreateBuffer(const BufferDescriptor& descriptor, bool transient = true);
     
     NO_DISCARD TextureHandle CreateTexture(const RenderTextureDescriptor& descriptor, bool transient = true);
     

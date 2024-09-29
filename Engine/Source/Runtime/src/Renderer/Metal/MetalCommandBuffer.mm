@@ -32,9 +32,10 @@ CommandBuffer::CommandBuffer(GraphicsDevice* device)
     mHandle->device = static_cast<MetalDevice*>(device);
     
     HeapDescriptor descriptor;
+    descriptor.name = "CommandBuffer::StagingHeap";
     descriptor.size = 4194304; // 4 MB;
     descriptor.memoryType = MemoryType::CPU;
-    mStagingHeap = mDevice->CreateHeap(descriptor, "CommandBuffer::StagingHeap");
+    mStagingHeap = mDevice->CreateHeap(descriptor);
 }
 
 CommandBuffer::~CommandBuffer()
@@ -164,7 +165,11 @@ void CommandBuffer::BindGraphicsPipeline(const PipelineStateDescriptor& pipeline
     {
         mDevice->Dispose(mHandle->topLevelArgumentBuffer);
     }
-    mHandle->topLevelArgumentBuffer = mStagingHeap.CreateBuffer(MetalPipelineStateManager::GetTopLevelArgumentBufferSize(), "CommandBuffer::TopLevelArgumentBuffer");
+    
+    BufferDescriptor argumentBufferDesc;
+    argumentBufferDesc.name = "CommandBuffer::TopLevelArgumentBuffer";
+    argumentBufferDesc.size = MetalPipelineStateManager::GetTopLevelArgumentBufferSize();
+    mHandle->topLevelArgumentBuffer = mStagingHeap.CreateBuffer(argumentBufferDesc);
     [mHandle->renderCommandEncoder setVertexBuffer:mHandle->topLevelArgumentBuffer.GetHandle() offset:0 atIndex:kIRArgumentBufferBindPoint];
     [mHandle->renderCommandEncoder setFragmentBuffer:mHandle->topLevelArgumentBuffer.GetHandle() offset:0 atIndex:kIRArgumentBufferBindPoint];
     
@@ -191,7 +196,11 @@ void CommandBuffer::SetConstantBuffer(const void* data, uint32_t size, uint32_t 
 {
     TStringStream name;
     name << "CommandBuffer::ConstantBuffer_" << slot;
-    auto buffer = mStagingHeap.CreateBuffer(size, name.str().data());
+    
+    BufferDescriptor constantBufferDesc;
+    constantBufferDesc.name = name.str();
+    constantBufferDesc.size = size;
+    auto buffer = mStagingHeap.CreateBuffer(constantBufferDesc);
     SetBufferData(buffer, data, size);
     
     auto argumentBufferPtr = static_cast<uint64_t*>(mHandle->topLevelArgumentBuffer.GetContents());

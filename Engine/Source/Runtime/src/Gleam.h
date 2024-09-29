@@ -41,19 +41,25 @@
 #include "Core/Events/MouseEvent.h"
 #include "Core/Events/KeyEvent.h"
 #include "Core/WindowSystem.h"
+#include "Core/EventSystem.h"
 #include "Core/Application.h"
+#include "Core/CommandLine.h"
+#include "Core/Project.h"
+#include "Core/Globals.h"
+#include "Core/Engine.h"
 #include "Core/GUID.h"
 #include "Core/Time.h"
 
+#include "Serialization/BinarySerializer.h"
 #include "Serialization/JSONSerializer.h"
 
+#include "Assets/AssetReference.h"
 #include "Assets/Asset.h"
 
 #include "Renderer/Shaders/ShaderInterop.h"
 #include "Renderer/Shaders/ShaderTypes.h"
 
 #include "World/Components/MeshRenderer.h"
-#include "World/Components/Transform2D.h"
 #include "World/Components/Transform.h"
 #include "World/Components/Camera.h"
 
@@ -66,8 +72,10 @@
 
 #include "Input/InputSystem.h"
 
-#include "World/World.h"
+#include "World/WorldManager.h"
 #include "Assets/AssetManager.h"
+#include "World/ScriptingSystem.h"
+#include "World/Systems/RenderSceneProxy.h"
 
 #include "Renderer/Renderers/UIRenderer.h"
 #include "Renderer/Renderers/DebugRenderer.h"

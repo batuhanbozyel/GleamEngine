@@ -24,7 +24,7 @@ project(GleamEngine)
 
     #check the compiler
     MESSAGE(STATUS "compiler id ${CMAKE_CXX_COMPILER_ID} ${MSVC}")
-    if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+    if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
     # using Clang
     set(COMMON_CXX_FLAGS "${COMMON_CXX_FLAGS} -g3 -O0 -Wall -pedantic -Wextra -m64 -mavx2 -mfma -ffast-math")
     elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")

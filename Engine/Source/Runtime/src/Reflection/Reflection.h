@@ -3,7 +3,7 @@
 
 namespace Gleam::Reflection {
 
-template<typename T>
+template<typename T, typename = std::enable_if_t<Traits::IsClass<T>::value>>
 static constexpr const ClassDescription& GetClass()
 {
     return Database::CreateClassIfNotExist<T>();

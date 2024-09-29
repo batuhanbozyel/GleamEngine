@@ -33,20 +33,21 @@ typedef uint32_t TextureUsageFlagBits;
 
 struct TextureDescriptor
 {
-	TString name;
+    TString name;
     Size size = Size::zero;
     TextureFormat format = TextureFormat::R8G8B8A8_UNorm;
     TextureUsageFlagBits usage = TextureUsage_Sampled;
     TextureDimension dimension = TextureDimension::Texture2D;
     uint32_t sampleCount = 1;
     bool useMipMap = false;
+    TArray<uint8_t> pixels;
     
     bool operator==(const TextureDescriptor& other) const
     {
         return  size == other.size &&
                 format == other.format &&
                 usage == other.usage &&
-				dimension == other.dimension &&
+                dimension == other.dimension &&
                 sampleCount == other.sampleCount &&
                 useMipMap == other.useMipMap;
     }
@@ -95,11 +96,12 @@ GLEAM_ENUM(Gleam::TextureUsage, Guid("7EFFFEDD-F5B2-443B-9888-49C88D41779B"))
 GLEAM_ENUM(Gleam::TextureDimension, Guid("7A1CDA2E-8B61-4558-9255-B919E70E92F7"))
 GLEAM_ENUM(Gleam::TextureUsageFlag, Guid("86B2EAED-95E1-4FAD-927E-E744324A42A0"))
 GLEAM_TYPE(Gleam::TextureDescriptor, Guid("5B36D630-8A7E-47BE-A9F0-1702AB9F9C8C"))
-	GLEAM_FIELD(name, Serializable())
+    GLEAM_FIELD(name, Serializable())
 	GLEAM_FIELD(size, Serializable())
 	GLEAM_FIELD(format, Serializable())
 	GLEAM_FIELD(usage, Serializable())
 	GLEAM_FIELD(dimension, Serializable())
 	GLEAM_FIELD(sampleCount, Serializable())
 	GLEAM_FIELD(useMipMap, Serializable())
+    GLEAM_FIELD(pixels, Serializable())
 GLEAM_END

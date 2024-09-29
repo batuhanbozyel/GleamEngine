@@ -9,9 +9,11 @@ public:
 
 	TextureBaker(const Gleam::TextureDescriptor& descriptor);
 
-	virtual Gleam::Asset Bake(const Gleam::Filesystem::path& directory) const override;
+	virtual void Bake(Gleam::FileStream& stream) const override;
     
     virtual Gleam::TString Filename() const override;
+    
+    virtual Gleam::Guid TypeGuid() const override;
 
 private:
 

@@ -7,6 +7,8 @@ namespace Gleam {
 class Buffer;
 class GraphicsDevice;
 
+struct BufferDescriptor;
+
 class Heap final : public GraphicsObject
 {
     friend class GraphicsDevice;
@@ -25,7 +27,7 @@ public:
 
     }
 
-    Buffer CreateBuffer(size_t size, const TStringView name) const;
+    Buffer CreateBuffer(const BufferDescriptor& descriptor) const;
 
     void Reset() const
     {

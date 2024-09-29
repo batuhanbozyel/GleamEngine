@@ -6,12 +6,14 @@ namespace GEditor {
 
 struct MaterialSource : AssetPackage
 {
+	AssetPackageType(MaterialSource);
+
 	struct ImportSettings
 	{
 		
 	};
 
-	static MaterialSource Import(const Gleam::Filesystem::path& path, const ImportSettings& settings);
+	bool Import(const Gleam::Filesystem::Path& path, const ImportSettings& settings);
 };
 
 } // namespace GEditor

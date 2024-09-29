@@ -1,9 +1,10 @@
 #include "gpch.h"
 #include "Log.h"
+#include "Core/Globals.h"
 
 using namespace Gleam;
 
-Logger::Logger(const TStringView name)
+Logger::Logger(const TString& name)
     : mName(name)
 {
 	mName.append(": ");
@@ -22,4 +23,16 @@ Logger::~Logger()
     {
         mFileStream.reset();
     }
+}
+
+const Logger& Logger::GetCoreLogger()
+{
+	static Logger sLogger("GLEAM");
+	return sLogger;
+}
+
+const Logger& Logger::GetClientLogger()
+{
+	static Logger sLogger(Globals::ProjectName);
+	return sLogger;
 }

@@ -7,29 +7,34 @@
 
 using namespace Gleam;
 
-Buffer Heap::CreateBuffer(size_t size, const TStringView name) const
+Buffer Heap::CreateBuffer(const BufferDescriptor& descriptor) const
 {
     auto alignedStackPtr = Utils::AlignUp(mStackPtr, mAlignment);
-    auto newStackPtr = alignedStackPtr + size;
+    auto newStackPtr = alignedStackPtr + descriptor.size;
 
     if (Utils::AlignUp(mDescriptor.size, mAlignment) < newStackPtr)
     {
         GLEAM_ASSERT(false, "Metal: Heap is full!");
-        return Buffer(nil, size, nullptr);
+        return Buffer(descriptor);
     }
     mStackPtr = newStackPtr;
 
     id<MTLHeap> heap = mHandle;
-    id<MTLBuffer> mtlBuffer = [heap newBufferWithLength:size options:heap.resourceOptions offset:alignedStackPtr];
+    id<MTLBuffer> mtlBuffer = [heap newBufferWithLength:descriptor.size options:heap.resourceOptions offset:alignedStackPtr];
 
     void* contents = nullptr;
     if (mDescriptor.memoryType != MemoryType::GPU)
     {
         contents = [mtlBuffer contents];
     }
-    [mtlBuffer setLabel:TO_NSSTRING(name.data())];
     
-    Buffer buffer(mtlBuffer, size, contents);
+    TStringStream resourceName;
+    resourceName << mDescriptor.name << "::" << descriptor.name;
+    [mtlBuffer setLabel:TO_NSSTRING(resourceName.str().c_str())];
+    
+    Buffer buffer(descriptor);
+    buffer.mHandle = mtlBuffer;
+    buffer.mContents = contents;
     buffer.mResourceView = mDescriptor.memoryType == MemoryType::CPU ? InvalidResourceIndex : static_cast<MetalDevice*>(mDevice)->CreateResourceView(buffer);
     return buffer;
 }

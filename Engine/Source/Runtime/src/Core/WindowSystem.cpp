@@ -1,12 +1,14 @@
 #include "gpch.h"
+#include "Engine.h"
+#include "Globals.h"
 #include "WindowSystem.h"
-
 #include "Events/WindowEvent.h"
 
 using namespace Gleam;
 
-void WindowSystem::Initialize()
+void WindowSystem::Initialize(Engine* engine)
 {
+	mEngine = engine;
     int initSucess = SDL_Init(SDL_INIT_VIDEO | SDL_INIT_JOYSTICK | SDL_INIT_HAPTIC | SDL_INIT_GAMEPAD | SDL_INIT_EVENTS | SDL_INIT_SENSOR);
     GLEAM_ASSERT(initSucess == 0, "Window subsystem initialization failed!");
 }
@@ -21,35 +23,81 @@ void WindowSystem::Configure(const WindowConfig& config)
 {
     // destroy old window if exists
     if (mWindow) { SDL_DestroyWindow(mWindow); }
-    
-    mConfig = config;
-    
-	// query display info to create window if not provided by the user
-	if (static_cast<uint32_t>(config.size.width) == 0 || static_cast<uint32_t>(config.size.height) == 0)
-	{
-		mConfig.windowFlag = WindowFlag::MaximizedWindow;
-	}
 
 	// create window
-	mWindow = SDL_CreateWindow(mConfig.title.c_str(),
-                               static_cast<int>(mConfig.size.width),
-							   static_cast<int>(mConfig.size.height),
-                               static_cast<uint32_t>(mConfig.windowFlag));
-	GLEAM_ASSERT(mWindow, "Window creation failed!");
-    
-	EventDispatcher<WindowResizeEvent>::Subscribe([this](const WindowResizeEvent& e)
+	auto newConfig = config;
+	auto display = GetPrimaryDisplayMode();
+
+	// if window size is not provided, use primary display mode
+	if (static_cast<int>(newConfig.size.width) == 0 || static_cast<int>(newConfig.size.height) == 0)
 	{
-		mConfig.size.width = static_cast<float>(e.GetWidth());
-        mConfig.size.height = static_cast<float>(e.GetHeight());
-	});
+		newConfig.size.width = static_cast<float>(display.width);
+		newConfig.size.height = static_cast<float>(display.height);
+	}
+
+	mWindow = SDL_CreateWindow(Globals::ProjectName.c_str(),
+							   static_cast<int>(newConfig.size.width),
+							   static_cast<int>(newConfig.size.height),
+                               static_cast<uint32_t>(config.windowFlag));
+
+	if (static_cast<int>(newConfig.size.width) != static_cast<int>(config.size.width) ||
+		static_cast<int>(newConfig.size.height) != static_cast<int>(config.size.height))
+	{
+		WindowResizeEvent e(mWindow,
+			static_cast<int>(newConfig.size.width),
+			static_cast<int>(newConfig.size.height));
+
+		EventDispatcher<WindowResizeEvent>::Publish(e);
+	}
+
+	// if refresh rate is not provided, use primary display mode
+	if (newConfig.refreshRate == 0)
+	{
+		newConfig.refreshRate = display.refreshRate;
+	}
+	else if (newConfig.refreshRate != display.refreshRate) // if refresh rate config is different than the display, update display mode
+	{
+		uint32_t mode = 0;
+		for (const auto& displayMode : GetAvailableDisplayModes())
+		{
+			if (displayMode.width == static_cast<uint32_t>(newConfig.size.width) &&
+				displayMode.height == static_cast<uint32_t>(newConfig.size.height) &&
+				displayMode.refreshRate == newConfig.refreshRate)
+			{
+				SetDisplayMode(mode);
+				break;
+			}
+			++mode;
+		}
+	}
+
+	mEngine->UpdateConfig(newConfig);
+	GLEAM_ASSERT(mWindow, "Window creation failed!");
 }
 
-DisplayMode WindowSystem::GetCurrentDisplayMode(uint32_t monitor) const
+void WindowSystem::SetDisplayMode(uint32_t mode) const
+{
+	auto displays = SDL_GetFullscreenDisplayModes(SDL_GetDisplayForWindow(mWindow), nullptr);
+	SDL_SetWindowFullscreenMode(mWindow, displays[mode]);
+	SDL_free(displays);
+}
+
+DisplayMode WindowSystem::GetPrimaryDisplayMode() const
+{
+	return GetDisplayMode(SDL_GetPrimaryDisplay());
+}
+
+DisplayMode WindowSystem::GetCurrentDisplayMode() const
+{
+	return GetDisplayMode(SDL_GetDisplayForWindow(mWindow));
+}
+
+DisplayMode WindowSystem::GetDisplayMode(uint32_t monitor) const
 {
     auto currDisplay = SDL_GetCurrentDisplayMode(monitor);
     return DisplayMode
     {
-        static_cast<SDL_PixelFormatEnum>(currDisplay->format),
+        static_cast<SDL_PixelFormat>(currDisplay->format),
         static_cast<uint32_t>(currDisplay->w),
         static_cast<uint32_t>(currDisplay->h),
         static_cast<uint32_t>(currDisplay->refresh_rate),
@@ -62,10 +110,10 @@ TArray<DisplayMode> WindowSystem::GetAvailableDisplayModes() const
     TArray<DisplayMode> displayModes;
     
     int numDisplays = 0;
-    auto displays = SDL_GetFullscreenDisplayModes(SDL_GetPrimaryDisplay(), &numDisplays);
+    auto displays = SDL_GetFullscreenDisplayModes(SDL_GetDisplayForWindow(mWindow), &numDisplays);
     if (displays)
     {
-        displayModes.reserve(numDisplays);
+        displayModes.resize(numDisplays);
         uint32_t monitor = SDL_GetDisplayForWindow(mWindow);
         
         for (int i = 0; i < numDisplays; ++i)
@@ -73,7 +121,7 @@ TArray<DisplayMode> WindowSystem::GetAvailableDisplayModes() const
             auto display = displays[i];
             displayModes[i] = DisplayMode
             {
-                static_cast<SDL_PixelFormatEnum>(display->format),
+                static_cast<SDL_PixelFormat>(display->format),
                 static_cast<uint32_t>(display->w),
                 static_cast<uint32_t>(display->h),
                 static_cast<uint32_t>(display->refresh_rate),

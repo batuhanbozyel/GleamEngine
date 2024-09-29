@@ -356,6 +356,42 @@ NO_DISCARD FORCE_INLINE static constexpr Float4x4 Inverse(const Float4x4& m)
 	};
 }
 
+NO_DISCARD FORCE_INLINE static void Decompose(const Float4x4& transform, Float3& translation, Quaternion& rotation, Float3& scale)
+{
+	translation.x = transform.m[12];
+	translation.y = transform.m[13];
+	translation.z = transform.m[14];
+
+	scale.x = Length(Float3(transform.m[0], transform.m[1], transform.m[2]));
+	scale.y = Length(Float3(transform.m[4], transform.m[5], transform.m[6]));
+	scale.z = Length(Float3(transform.m[8], transform.m[9], transform.m[10]));
+
+	auto rotationMatrix = transform;
+	rotationMatrix.m[12] = rotationMatrix.m[13] = rotationMatrix.m[14] = 0.0f;
+	rotationMatrix.m[0] /= scale.x;
+	rotationMatrix.m[1] /= scale.x;
+	rotationMatrix.m[2] /= scale.x;
+
+	rotationMatrix.m[4] /= scale.y;
+	rotationMatrix.m[5] /= scale.y;
+	rotationMatrix.m[6] /= scale.y;
+
+	rotationMatrix.m[8] /= scale.z;
+	rotationMatrix.m[9] /= scale.z;
+	rotationMatrix.m[10] /= scale.z;
+
+	Float3 eularAngles(
+		Atan2(rotationMatrix.m[6], rotationMatrix.m[8]),
+		Atan2(-rotationMatrix.m[2], Sqrt(rotationMatrix.m[6] * rotationMatrix.m[6] + rotationMatrix.m[10] * rotationMatrix.m[10])),
+		Atan2(rotationMatrix.m[1], rotationMatrix.m[0])
+	);
+	rotation = Quaternion(eularAngles);
+}
+
 } // namespace Math
 
 } // namespace Gleam
+
+GLEAM_TYPE(Gleam::Float4x4, Guid("770BABFC-E66A-4CE5-8453-A505EB3016BE"))
+	GLEAM_FIELD(row, Serializable())
+GLEAM_END

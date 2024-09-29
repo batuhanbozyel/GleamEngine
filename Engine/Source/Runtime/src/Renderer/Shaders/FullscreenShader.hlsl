@@ -1,5 +1,8 @@
 #include "Common.hlsli"
 
+#pragma vertex fullscreenTriangleVertexShader
+#pragma fragment fullscreenTriangleFragmentShader
+
 FScreenVertexOutput fullscreenTriangleVertexShader(uint vertex_id: SV_VertexID)
 {
     FScreenVertexOutput OUT;

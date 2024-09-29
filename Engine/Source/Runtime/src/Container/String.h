@@ -42,6 +42,22 @@ static constexpr uint32_t Hash(const TString& str)
 	return Hash(str.c_str());
 }
 
+static TString ToLower(const TString& str)
+{
+    TString newStr = str;
+    std::transform(newStr.begin(), newStr.end(), newStr.begin(),
+        [](char c){ return std::tolower(c); });
+    return newStr;
+}
+
+static TString ToUpper(const TString& str)
+{
+    TString newStr = str;
+    std::transform(newStr.begin(), newStr.end(), newStr.begin(),
+        [](char c){ return std::toupper(c); });
+    return newStr;
+}
+
 #pragma warning(push)
 #pragma warning(disable:4996)
 static TWString Convert(const TString& as)

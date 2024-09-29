@@ -1,4 +1,5 @@
 include (${CMAKE_SOURCE_DIR}/CMake/CMakeUtils.cmake)
+include (${CMAKE_SOURCE_DIR}/CMake/PreseedClangCache.cmake)
 
 # Set defaults preventing destination file conflicts
 set(SDL_CMAKE_DEBUG_POSTFIX "" CACHE STRING "Name suffix for debug builds" FORCE)

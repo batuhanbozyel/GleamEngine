@@ -4,8 +4,9 @@
 #include "MetalDevice.h"
 #include "MetalPipelineStateManager.h"
 
+#include "Core/Engine.h"
+#include "Core/Globals.h"
 #include "Core/WindowSystem.h"
-#include "Core/Application.h"
 #include "Core/Events/RendererEvent.h"
 
 #define IR_PRIVATE_IMPLEMENTATION
@@ -30,7 +31,7 @@ MemoryRequirements GraphicsDevice::QueryMemoryRequirements(const HeapDescriptor&
 	};
 }
 
-Heap GraphicsDevice::AllocateHeap(const HeapDescriptor& descriptor, const TStringView name)
+Heap GraphicsDevice::AllocateHeap(const HeapDescriptor& descriptor)
 {
     Heap heap(descriptor);
     heap.mDevice = this;
@@ -47,11 +48,11 @@ Heap GraphicsDevice::AllocateHeap(const HeapDescriptor& descriptor, const TStrin
     heap.mDescriptor.size = sizeAndAlign.size;
     heap.mAlignment = sizeAndAlign.align;
     
-    [heap.mHandle setLabel:TO_NSSTRING(name.data())];
+    [heap.mHandle setLabel:TO_NSSTRING(descriptor.name.c_str())];
     return heap;
 }
 
-Texture GraphicsDevice::AllocateTexture(const TextureDescriptor& descriptor, const TStringView name)
+Texture GraphicsDevice::AllocateTexture(const TextureDescriptor& descriptor)
 {
     Texture texture(descriptor);
     
@@ -78,8 +79,8 @@ Texture GraphicsDevice::AllocateTexture(const TextureDescriptor& descriptor, con
                                                    textureType:descriptor.dimension == TextureDimension::TextureCube ? MTLTextureTypeCubeArray : MTLTextureType2DArray
                                                         levels:NSMakeRange(0, texture.mMipMapLevels)
                                                         slices:NSMakeRange(0, 1)];
-    [baseTexture setLabel:TO_NSSTRING(name.data())];
-    [texture.mView setLabel:TO_NSSTRING(name.data())];
+    [baseTexture setLabel:TO_NSSTRING(descriptor.name.c_str())];
+    [texture.mView setLabel:TO_NSSTRING(descriptor.name.c_str())];
     
     if (descriptor.sampleCount > 1)
     {
@@ -93,7 +94,7 @@ Texture GraphicsDevice::AllocateTexture(const TextureDescriptor& descriptor, con
         texture.mMultisampleView = texture.mMultisampleHandle;
         
         TStringStream multisampleName;
-        multisampleName << name << "::MSAA";
+        multisampleName << descriptor.name << "::MSAA";
         [texture.mMultisampleHandle setLabel:TO_NSSTRING(multisampleName.str().data())];
         [texture.mMultisampleView setLabel:TO_NSSTRING(multisampleName.str().data())];
     }
@@ -104,8 +105,8 @@ Texture GraphicsDevice::AllocateTexture(const TextureDescriptor& descriptor, con
 Shader GraphicsDevice::GenerateShader(const TString& entryPoint, ShaderStage stage)
 {
     Shader shader(entryPoint, stage);
-    
-    File shaderFile(GameInstance->GetDefaultAssetPath().append("Shaders/" + entryPoint + ".dxil"), FileType::Binary);
+    auto shaderPath = Globals::BuiltinAssetsDirectory/"Shaders";
+    File shaderFile = Filesystem::Open(shaderPath.append(entryPoint + ".dxil"), FileType::Binary);
     auto shaderCode = shaderFile.Read();
     auto dxil = IRObjectCreateFromDXIL((uint8_t*)shaderCode.data(), shaderCode.size(), IRBytecodeOwnershipNone);
     
@@ -179,19 +180,19 @@ MetalDevice::MetalDevice()
     GLEAM_ASSERT(mHandle);
 
     // init CAMetalLayer
-    auto windowSystem = GameInstance->GetSubsystem<WindowSystem>();
+    auto windowSystem = Globals::Engine->GetSubsystem<WindowSystem>();
     
     // Create surface
     mSurface = SDL_Metal_CreateView(windowSystem->GetSDLWindow());
     GLEAM_ASSERT(mSurface, "Metal: Surface creation failed!");
     
     mSwapchain = (__bridge CAMetalLayer*)SDL_Metal_GetLayer(mSurface);
-    mSwapchain.name = [NSString stringWithCString:windowSystem->GetConfiguration().title.c_str() encoding:NSASCIIStringEncoding];
+    mSwapchain.name = [NSString stringWithCString:Globals::ProjectName.c_str() encoding:NSASCIIStringEncoding];
     mSwapchain.device = mHandle;
     mSwapchain.framebufferOnly = NO;
     mSwapchain.opaque = YES;
     
-    const auto& resolution = windowSystem->GetResolution();
+    const auto& resolution = Globals::Engine->GetResolution();
     mSize = resolution * mSwapchain.contentsScale;
     mSwapchain.drawableSize = CGSizeMake(mSize.width, mSize.height);
     mFormat = MTLPixelFormatToTextureFormat(mSwapchain.pixelFormat);

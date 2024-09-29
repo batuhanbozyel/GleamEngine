@@ -151,7 +151,7 @@ void RenderGraph::Execute(const CommandBuffer* cmd)
     Heap heap;
     if (mHeapSize > 0)
     {
-        heap = mDevice->CreateHeap({ .memoryType = MemoryType::GPU, .size = mHeapSize }, "RenderGraph::Heap");
+        heap = mDevice->CreateHeap({ .name = "RenderGraph", .memoryType = MemoryType::GPU, .size = mHeapSize });
     }
 
     for (auto pass : mPassNodes)
@@ -163,8 +163,12 @@ void RenderGraph::Execute(const CommandBuffer* cmd)
             if (HasResource(pass->bufferWrites, resource))
             {
                 TStringStream name;
-                name << pass->name << "::Buffer_" << i;
-                resource.node->buffer = heap.CreateBuffer(resource.node->buffer.GetSize(), name.str().data());
+                auto descriptor = resource.node->buffer.GetDescriptor();
+                descriptor.name.empty() ? (name << pass->name << "::Buffer[" << i << "]")
+                                        : (name << pass->name << "::" << descriptor.name);
+                descriptor.name = name.str();
+                
+                resource.node->buffer = heap.CreateBuffer(descriptor);
                 GLEAM_ASSERT(resource.node->buffer.IsValid());
             }
         }
@@ -176,8 +180,12 @@ void RenderGraph::Execute(const CommandBuffer* cmd)
             if (HasResource(pass->textureWrites, resource))
             {
                 TStringStream name;
-                name << pass->name << "::Texture_" << i;
-                resource.node->texture = mDevice->CreateTexture(resource.node->texture.GetDescriptor(), name.str().data());
+                auto descriptor = resource.node->texture.GetDescriptor();
+                descriptor.name.empty() ? (name << pass->name << "::Texture[" << i << "]")
+                                        : (name << pass->name << "::" << descriptor.name);
+                descriptor.name = name.str();
+                
+                resource.node->texture = mDevice->CreateTexture(descriptor);
                 GLEAM_ASSERT(resource.node->texture.IsValid());
             }
         }

@@ -6,12 +6,14 @@ namespace GEditor {
 class AssetBaker
 {
 public:
-    
+
 	virtual ~AssetBaker() = default;
 
-	virtual Gleam::Asset Bake(const Gleam::Filesystem::path& directory) const = 0;
+	virtual void Bake(Gleam::FileStream& stream) const = 0;
 
     virtual Gleam::TString Filename() const = 0;
+    
+    virtual Gleam::Guid TypeGuid() const = 0;
 
 };
 

@@ -13,13 +13,6 @@ struct DebugLine
     DebugVertex end;
 };
 
-struct DebugTriangle
-{
-    DebugVertex vertex1;
-    DebugVertex vertex2;
-    DebugVertex vertex3;
-};
-
 struct DebugMesh
 {
 	const Mesh* mesh;
@@ -52,15 +45,10 @@ private:
 	void RenderMeshes(const CommandBuffer* cmd, const BufferHandle& cameraBuffer, const TArray<DebugMesh>& debugMeshes, bool depthTest) const;
 
 	uint32_t mLineBufferOffset = 0;
-	uint32_t mTriangleBufferOffset = 0;
 	uint32_t mDepthLineBufferOffset = 0;
-	uint32_t mDepthTriangleBufferOffset = 0;
 
     TArray<DebugLine> mLines;
     TArray<DebugLine> mDepthLines;
-
-    TArray<DebugTriangle> mTriangles;
-    TArray<DebugTriangle> mDepthTriangles;
 
 	TArray<DebugMesh> mDebugMeshes;
     TArray<DebugMesh> mDepthDebugMeshes;

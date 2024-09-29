@@ -9,13 +9,33 @@ public:
 
 	MaterialBaker(const Gleam::MaterialDescriptor& descriptor);
 
-	virtual Gleam::Asset Bake(const Gleam::Filesystem::path& directory) const override;
+	virtual void Bake(Gleam::FileStream& stream) const override;
     
     virtual Gleam::TString Filename() const override;
+    
+    virtual Gleam::Guid TypeGuid() const override;
 
 private:
 
 	Gleam::MaterialDescriptor mDescriptor;
+
+};
+
+class MaterialInstanceBaker final : public AssetBaker
+{
+public:
+
+	MaterialInstanceBaker(const Gleam::MaterialInstanceDescriptor& descriptor);
+
+	virtual void Bake(Gleam::FileStream& stream) const override;
+
+	virtual Gleam::TString Filename() const override;
+    
+    virtual Gleam::Guid TypeGuid() const override;
+
+private:
+
+	Gleam::MaterialInstanceDescriptor mDescriptor;
 
 };
 

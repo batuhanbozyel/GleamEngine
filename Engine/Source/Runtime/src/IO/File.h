@@ -1,8 +1,6 @@
 #pragma once
 #include "Filesystem.h"
 
-#include <fstream>
-
 namespace Gleam {
 
 enum class FileType
@@ -14,8 +12,8 @@ enum class FileType
 class File final
 {
 public:
-    
-    File(const Filesystem::path& path, FileType type);
+
+    File(FileStream&& handle, const Filesystem::Path& path, FileAccessor& accessor);
 
 	TString Read() const;
 
@@ -24,18 +22,22 @@ public:
 	void Append(const TString& contents);
 
 	const TString& GetName() const;
+    
+	FileStream& GetStream();
+    
+    size_t GetSize() const;
+
+	bool Empty() const;
 
 private:
 
-	void CreateIfNotExists();
-
 	TString mName;
     
-    FileType mType;
+    Filesystem::Path mFullPath;
     
-    Filesystem::path mFullPath;
+    FileAccessor& mAccessor;
 
-	mutable std::fstream mHandle;
+	mutable FileStream mHandle;
     
 };
 

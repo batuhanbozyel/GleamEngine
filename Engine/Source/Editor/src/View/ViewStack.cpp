@@ -11,19 +11,20 @@
 
 using namespace GEditor;
 
-void ViewStack::OnCreate(Gleam::EntityManager& entityManager)
+void ViewStack::Initialize(Gleam::World* world)
 {
-	mImgui = GameInstance->GetSubsystem<Gleam::RenderSystem>()->AddRenderer<Gleam::ImGuiRenderer>();
+	mWorld = world;
+	mImgui = Gleam::Globals::Engine->GetSubsystem<Gleam::RenderSystem>()->AddRenderer<Gleam::ImGuiRenderer>();
     SetDarkTheme();
 }
 
-void ViewStack::OnDestroy(Gleam::EntityManager& entityManager)
+void ViewStack::Shutdown()
 {
-	GameInstance->GetSubsystem<Gleam::RenderSystem>()->RemoveRenderer<Gleam::ImGuiRenderer>();
+	Gleam::Globals::Engine->GetSubsystem<Gleam::RenderSystem>()->RemoveRenderer<Gleam::ImGuiRenderer>();
 	mViews.clear();
 }
 
-void ViewStack::OnUpdate(Gleam::EntityManager& entityManager)
+void ViewStack::Tick()
 {
     for (auto view : mViews)
     {

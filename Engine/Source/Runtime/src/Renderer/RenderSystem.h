@@ -12,20 +12,22 @@
 
 namespace Gleam {
 
+class World;
+
 template <typename T>
 concept RendererType = std::is_base_of<IRenderer, T>::value;
 
-class RenderSystem final : public Subsystem
+class RenderSystem final : public EngineSubsystem
 {
     using Container = TArray<IRenderer*>;
     
 public:
     
-    virtual void Initialize() override;
+    virtual void Initialize(Engine* engine) override;
     
     virtual void Shutdown() override;
     
-    void Render();
+    void Render(const World* world);
     
     void Configure(const RendererConfig& config);
     
@@ -33,23 +35,19 @@ public:
     
     const GraphicsDevice* GetDevice() const;
     
-    const RendererConfig& GetConfiguration() const;
-    
     const Texture& GetRenderTarget() const;
     
-    void UpdateCamera(const Camera& camera);
+    void SetBackbuffer(const TextureDescriptor& descriptor);
     
-    void SetRenderTarget(const TextureDescriptor& descriptor);
-    
-    void SetRenderTarget(const Texture& texture);
+    void SetBackbuffer(const Texture& texture);
     
     void ResetRenderTarget();
     
-    template<RendererType T>
-    T* AddRenderer()
+    template<RendererType T, class...Args>
+    T* AddRenderer(Args&&... args)
     {
         GLEAM_ASSERT(!HasRenderer<T>(), "Render pipeline already has the renderer!");
-        auto renderer = mRenderers.emplace_back(new T());
+        auto renderer = mRenderers.emplace_back(new T(std::forward<Args>(args)...));
         renderer->OnCreate(mDevice.get());
         return static_cast<T*>(renderer);
     }
@@ -124,14 +122,12 @@ public:
     }
     
 private:
+
+	Engine* mEngine;
     
     Container mRenderers;
     
     Texture mRenderTarget;
-    
-    CameraUniforms mCameraData;
-    
-    RendererConfig mConfiguration;
     
     Scope<GraphicsDevice> mDevice;
     

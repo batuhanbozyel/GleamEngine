@@ -33,17 +33,34 @@ struct MeshPassResources
 	ConstantBufferView cameraBuffer;
 	BufferResourceView positionBuffer;
 	BufferResourceView interleavedBuffer;
-};
+    BufferResourceView materialBuffer;
 
-struct ForwardPassUniforms
-{
 	float4x4 modelMatrix;
+
 	uint32_t baseVertex;
+	uint32_t materialID;
 };
 
 struct TonemapUniforms
 {
 	Texture2DResourceView<float4> sceneRT;
-};  
+};
+
+struct SurfaceInput
+{
+	float4 position;
+	float3 worldNormal;
+	float3 color;
+	float2 uv;
+};
+
+struct SurfaceOutput
+{
+	float4 albedo;
+	float4 emission;
+	float3 normal;
+	float metallic;
+	float roughness;
+};
 
 } // namespace Gleam

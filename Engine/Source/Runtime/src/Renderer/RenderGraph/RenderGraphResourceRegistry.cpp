@@ -24,10 +24,10 @@ NO_DISCARD TextureHandle RenderGraphResourceRegistry::CreateTexture(const Render
     return handle;
 }
 
-NO_DISCARD BufferHandle RenderGraphResourceRegistry::CreateBuffer(size_t size, bool transient)
+NO_DISCARD BufferHandle RenderGraphResourceRegistry::CreateBuffer(const BufferDescriptor& descriptor, bool transient)
 {
     auto uniqueId = static_cast<uint32_t>(mBufferNodes.size());
-	auto& node = mBufferNodes.emplace_back(uniqueId, size, transient);
+	auto& node = mBufferNodes.emplace_back(uniqueId, descriptor, transient);
     auto handle = BufferHandle(&node);
     return handle;
 }

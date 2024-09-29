@@ -3,35 +3,28 @@
 
 using namespace Gleam;
 
-File::File(const Filesystem::path& path, FileType type)
+File::File(FileStream&& handle, const Filesystem::Path& path, FileAccessor& accessor)
 	: mName(path.filename().string())
     , mFullPath(path)
-    , mType(type)
+	, mHandle(std::move(handle))
+    , mAccessor(accessor)
 {
-	auto flags = std::ios::out | std::ios::in;
-	if (type == FileType::Binary)
-	{
-		flags |= std::ios::binary;
-	}
-	mHandle.open(path, flags);
-	mHandle.unsetf(std::ios::skipws);
+	
 }
 
 TString File::Read() const
 {
 	if (not mHandle.is_open())
 	{
-		GLEAM_CORE_ERROR("File {0} could not be opened!", GetName());
+		GLEAM_CORE_ERROR("File could not be opened: {0}", GetName());
 		return "";
 	}
 
-	mHandle.seekg(0, std::ios::end);
-	size_t size = mHandle.tellg();
+	FileAccessor::Read accessor(mAccessor);
 
-	TString contents;
+	size_t size = GetSize();
+    TString contents;
 	contents.resize(size);
-
-	mHandle.seekg(0, std::ios::beg);
 	mHandle.read(contents.data(), size);
 
 	return contents;
@@ -39,32 +32,53 @@ TString File::Read() const
 
 void File::Write(const TString& contents)
 {
-	CreateIfNotExists();
-	mHandle << contents;
+	if (not mHandle.is_open())
+	{
+		GLEAM_CORE_ERROR("File could not be opened: {0}", GetName());
+		return;
+	}
+
+	FileAccessor::Write accessor(mAccessor);
+    mHandle << contents;
 }
 
 void File::Append(const TString& contents)
 {
-	CreateIfNotExists();
-	mHandle.seekg(0, std::ios::end);
-	Write(contents);
-}
-
-void File::CreateIfNotExists()
-{
 	if (not mHandle.is_open())
 	{
-		auto flags = std::ios::out | std::ios::in | std::ios::app;
-		if (mType == FileType::Binary)
-		{
-			flags |= std::ios::binary;
-		}
-		mHandle.open(mFullPath, flags);
-		mHandle.unsetf(std::ios::skipws);
+		GLEAM_CORE_ERROR("File could not be opened: {0}", GetName());
+		return;
 	}
+    
+	FileAccessor::Write accessor(mAccessor);
+    mHandle.seekg(0, std::ios::end);
+    mHandle << contents;
+}
+
+size_t File::GetSize() const
+{
+    if (mHandle.is_open())
+    {
+		FileAccessor::Read accessor(mAccessor);
+        mHandle.seekg(0, std::ios::end);
+        size_t size = mHandle.tellg();
+        mHandle.seekg(0, std::ios::beg);
+        return size;
+    }
+    return 0;
+}
+
+bool File::Empty() const
+{
+	return GetSize() == 0;
 }
 
 const TString& File::GetName() const
 {
 	return mName;
+}
+
+FileStream& File::GetStream()
+{
+    return mHandle;
 }

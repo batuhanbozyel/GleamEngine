@@ -5,7 +5,8 @@
 #include "MetalDevice.h"
 
 #include "imgui_impl_metal.h"
-#include "Core/Application.h"
+#include "Core/Engine.h"
+#include "Core/Globals.h"
 #include "Core/WindowSystem.h"
 #include "Renderer/ImGui/imgui_impl_sdl3.h"
 
@@ -15,7 +16,7 @@ void ImGuiBackend::Init(GraphicsDevice* device)
 {
     mDevice = device;
     ImGui_ImplMetal_Init(static_cast<MetalDevice*>(mDevice)->GetHandle());
-    ImGui_ImplSDL3_InitForMetal(GameInstance->GetSubsystem<WindowSystem>()->GetSDLWindow());
+    ImGui_ImplSDL3_InitForMetal(Globals::Engine->GetSubsystem<WindowSystem>()->GetSDLWindow());
 }
 
 void ImGuiBackend::Destroy()

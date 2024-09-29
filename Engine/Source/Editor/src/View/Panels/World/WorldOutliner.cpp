@@ -12,18 +12,18 @@
 
 using namespace GEditor;
 
-WorldOutliner::WorldOutliner()
+void WorldOutliner::Init(Gleam::World* world)
 {
-    
+	mEditWorld = world;
 }
 
 void WorldOutliner::Render(Gleam::ImGuiRenderer* imgui)
 {
-	imgui->PushView([this]()
+	imgui->PushView([this](const Gleam::ImGuiPassData& passData)
 	{
 		if (!ImGui::Begin("World Outliner")) return;
     
-		auto& entityManager = Gleam::World::active->GetEntityManager();
+		auto& entityManager = mEditWorld->GetEntityManager();
 		entityManager.ForEach([&](Gleam::EntityHandle entity)
 		{
 			uint32_t id = static_cast<uint32_t>(entity);
