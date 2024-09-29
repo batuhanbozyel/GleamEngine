@@ -6,6 +6,7 @@
 #include "IO/FileWatcher.h"
 #include "Input/InputSystem.h"
 #include "Reflection/Database.h"
+#include "World/ScriptingSystem.h"
 #include "Renderer/RenderSystem.h"
 #include "Serialization/JSONSerializer.h"
 
@@ -21,6 +22,7 @@ void Engine::Initialize()
 	AddSubsystem<EventSystem>();
 	AddSubsystem<InputSystem>();
     AddSubsystem<FileWatcher>();
+	AddSubsystem<ScriptingSystem>();
 
 	// subscribe to window resize
 	EventDispatcher<WindowResizeEvent>::Subscribe([this](WindowResizeEvent e)

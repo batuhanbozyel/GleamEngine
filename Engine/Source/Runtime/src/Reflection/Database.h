@@ -94,7 +94,7 @@ private:
             size_t fieldOffset = OffsetOf<T, ValueType, member.pointer>();
             if constexpr (Traits::IsPrimitive<ValueType>::value)
             {
-                auto hash = entt::type_hash<ValueType>::value();
+                constexpr auto hash = entt::type_hash<ValueType>::value();
                 auto field = PrimitiveField(GetPrimitiveType(hash));
                 field.offset = fieldOffset;
                 field.size = fieldSize;
@@ -102,7 +102,7 @@ private:
             }
             else if constexpr (Traits::IsEnum<ValueType>::value)
             {
-                auto hash = entt::type_hash<ValueType>::value();
+				constexpr auto hash = entt::type_hash<ValueType>::value();
                 auto field = EnumField(hash);
                 field.offset = fieldOffset;
                 field.size = fieldSize;
@@ -111,7 +111,7 @@ private:
             }
             else if constexpr (Traits::IsArray<ValueType>::value)
             {
-                auto hash = entt::type_hash<ValueType>::value();
+				constexpr auto hash = entt::type_hash<ValueType>::value();
                 auto field = ArrayField(hash);
                 field.offset = fieldOffset;
                 field.size = fieldSize;
@@ -120,7 +120,7 @@ private:
             }
             else if constexpr (Traits::IsClass<ValueType>::value)
             {
-				auto hash = entt::type_hash<ValueType>::value();
+				constexpr auto hash = entt::type_hash<ValueType>::value();
                 auto field = ClassField(hash);
                 field.offset = fieldOffset;
                 field.size = fieldSize;
@@ -207,7 +207,7 @@ private:
     static constexpr ArrayDescription CreateArrayDescription()
     {
         using ElementType = std::remove_reference_t<decltype(std::declval<T>()[0])>;
-        auto hash = entt::type_hash<ElementType>::value();
+		constexpr auto hash = entt::type_hash<ElementType>::value();
         auto type = refl::reflect<ElementType>();
         
         ArrayDescription desc;

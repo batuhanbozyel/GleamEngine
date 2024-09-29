@@ -5,11 +5,11 @@
 
 namespace Gleam {
 
-class ScriptingSystem final : public GameInstanceSubsystem
+class ScriptingSystem final : public EngineSubsystem
 {
 public:
 
-	virtual void Initialize(Application* app) override;
+	virtual void Initialize(Engine* engine) override;
 
 	virtual void Shutdown() override;
 
