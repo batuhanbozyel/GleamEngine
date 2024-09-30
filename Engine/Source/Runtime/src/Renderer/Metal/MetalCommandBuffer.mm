@@ -179,7 +179,6 @@ void CommandBuffer::SetConstantBuffer(const void* data, uint32_t size, uint32_t 
 {
     auto gpuAddress = [mConstantBuffer.GetHandle() gpuAddress]; 
 	gpuAddress += mConstantBuffer.Write(data, size);
-    mHandle->commandList->SetGraphicsRootConstantBufferView(slot, gpuAddress);
     
     auto argumentBufferPtr = static_cast<uint64_t*>(mHandle->topLevelArgumentBuffer.GetContents());
     argumentBufferPtr[slot] = gpuAddress;

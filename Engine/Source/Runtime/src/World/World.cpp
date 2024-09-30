@@ -148,7 +148,7 @@ void World::Deserialize(FileStream& stream)
 
 			auto meta = entt::resolve(static_cast<uint32_t>(typeHash));
 			auto func = meta.func("AddComponent"_hs);
-			auto component = func.invoke({}, Ref(entity));
+			auto component = func.invoke({}, Ref<Entity>(entity));
 			GLEAM_ASSERT(component, "Entity component could not deserialize");
 
 			JSONSerializer serializer(stream);

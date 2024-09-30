@@ -17,7 +17,7 @@ public:
 	static void RegisterMetaComponent()
 	{
 		const auto& classDesc = Reflection::GetClass<T>();
-		if (classDesc.HasAttribute<Reflection::Attribute::EntityComponent>())
+		if (classDesc.template HasAttribute<Reflection::Attribute::EntityComponent>())
 		{
 			entt::meta<T>()
 				.type(entt::type_hash<T>::value())

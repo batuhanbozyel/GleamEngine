@@ -32,7 +32,7 @@ public:
     template<typename Func>
     void ForEach(Func&& fn) const
     {
-        for (const auto [entt] : mRegistry.storage<EntityHandle>().each())
+        for (const auto [entt] : mRegistry.storage<EntityHandle>()->each())
         {
             fn(entt);
         }
