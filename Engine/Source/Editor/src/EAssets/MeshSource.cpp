@@ -145,10 +145,6 @@ bool MeshSource::Import(const Gleam::Filesystem::Path& path, const ImportSetting
 		descriptor["Emission"] = material.emissiveColor;
 		descriptor["Metallic"] = material.metallicFactor;
 		descriptor["Roughness"] = material.roughnessFactor;
-		descriptor["BaseColorTexture"] = Gleam::AssetReference();
-		descriptor["NormalTexture"] = Gleam::AssetReference();
-		descriptor["MetallicRoughnessTexture"] = Gleam::AssetReference();
-		descriptor["EmissiveTexture"] = Gleam::AssetReference();
 
 		if (const auto& texture = material.textures[PBRTexture::Albedo]; texture.empty() == false)
 		{
