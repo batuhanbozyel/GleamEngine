@@ -18,6 +18,8 @@ public:
 	{
 		return ".gworld";
 	}
+	
+	World(World&&) = default;
     
 	World(const TString& name = "World");
     
@@ -108,6 +110,11 @@ public:
     {
         return mEntityManager;
     }
+
+	const TString& GetName() const
+	{
+		return mName;
+	}
     
 private:
 
