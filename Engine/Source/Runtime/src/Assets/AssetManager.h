@@ -36,6 +36,8 @@ public:
 		return T();
 	}
 
+	const Asset& GetAsset(const AssetReference& ref) const;
+
 private:
 
 	bool TryEmplaceAsset(const Asset& asset);

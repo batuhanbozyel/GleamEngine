@@ -75,9 +75,7 @@ void AssetRegistry::Initialize(Gleam::World* world)
         }
     }, true);
     
-    // TODO: materials should only compile and imported when first seen by the registry
-    // existing materials should not change guid
-    // it should only reimport if material/shader source changed since last compile
+    // TODO: reimport if material/shader source changed since last compile
     Gleam::Filesystem::ForEach(mAssetDirectory, [this](const auto& entry)
     {
         if (entry.extension() == ".mat")

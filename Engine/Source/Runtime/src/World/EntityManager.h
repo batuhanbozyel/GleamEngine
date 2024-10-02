@@ -1,12 +1,24 @@
 #pragma once
 #include "Entity.h"
+#include "Prefab.h"
 
 namespace Gleam {
 
 class EntityManager final
 {
 	friend class Entity;
+	
+	using VisitFn = std::function<void(void* component, const Reflection::ClassDescription& classDesc)>;
+	using ConstVisitFn = std::function<void(const void* component, const Reflection::ClassDescription& classDesc)>;
 public:
+
+	Entity& CreateFromPrefab(const Prefab& prefab);
+
+	Entity& CreateEntity(const Guid& guid);
+
+	void DestroyEntity(EntityHandle entity);
+
+	void DestroyEntity(const TArray<EntityHandle>& entities);
     
     template<typename ... ComponentTypes, typename ... ExcludeComponents, typename Func, typename = std::enable_if_t<sizeof...(ComponentTypes) + sizeof...(ExcludeComponents) != 0>>
     void ForEach(Func&& fn, Exclude<ExcludeComponents...> = Exclude<ExcludeComponents...>{})
@@ -38,8 +50,7 @@ public:
         }
     }
 
-	template<typename Func>
-	void Visit(EntityHandle entity, Func&& fn)
+	void Visit(EntityHandle entity, VisitFn&& fn)
 	{
 		for (const auto& [id, storage] : mRegistry.storage())
 		{
@@ -55,8 +66,7 @@ public:
 		}
 	}
 
-	template<typename Func>
-	void Visit(EntityHandle entity, Func&& fn) const
+	void Visit(EntityHandle entity, ConstVisitFn&& fn) const
 	{
 		for (const auto& [id, storage] : mRegistry.storage())
 		{
@@ -72,37 +82,12 @@ public:
 		}
 	}
 
-	Entity& CreateEntity(const Guid& guid)
-	{
-		auto handle = mRegistry.create();
-        auto& entity = AddComponent<Entity>(handle, handle, &mRegistry, guid);
-		mHandles[guid] = handle;
-        return entity;
-	}
-
 	template<typename ... Types>
 	Entity& CreateEntity(const Guid& guid, Types&& ... components)
 	{
         Entity& entity = CreateEntity(guid);
 		(AddComponent<Types>(entity, components), ...);
 		return entity;
-	}
-
-	void DestroyEntity(EntityHandle entity)
-	{
-		const auto& guid = mRegistry.get<Entity>(entity).GetGuid();
-		mHandles.erase(guid);
-		mRegistry.destroy(entity);
-	}
-
-	void DestroyEntity(const TArray<EntityHandle>& entities)
-	{
-		for (auto entity : entities)
-		{
-			const auto& guid = mRegistry.get<Entity>(entity).GetGuid();
-			mHandles.erase(guid);
-		}
-		mRegistry.destroy(entities.begin(), entities.end());
 	}
     
     template<typename T, typename ... Args>
@@ -164,17 +149,13 @@ public:
         return mRegistry.get<T>(entity);
     }
 
-	EntityHandle GetEntity(const EntityReference& ref) const
-	{
-		auto it = mHandles.find(ref.guid);
-		if (it != mHandles.end())
-		{
-			return it->second;
-		}
-		return InvalidEntity;
-	}
+	size_t GetEntityCount() const;
+
+	EntityHandle GetEntity(const EntityReference& ref) const;
 
 private:
+	
+	Entity& CreateCopy(EntityManager& from, const Entity& source);
 
 	entt::registry mRegistry;
 

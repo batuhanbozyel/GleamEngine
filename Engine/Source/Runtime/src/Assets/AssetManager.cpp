@@ -75,6 +75,16 @@ void AssetManager::Shutdown()
     mAssets.clear();
 }
 
+const Asset& AssetManager::GetAsset(const AssetReference& ref) const
+{
+	auto it = mAssets.find(ref);
+	if (it != mAssets.end())
+	{
+		return it->second;
+	}
+	return Asset();
+}
+
 bool AssetManager::TryEmplaceAsset(const Asset& asset)
 {
 	Guid guid = asset.path.stem().string();

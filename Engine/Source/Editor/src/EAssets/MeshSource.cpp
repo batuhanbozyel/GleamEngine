@@ -5,6 +5,7 @@
 #include "AssetRegistry.h"
 
 #include "Bakers/MeshBaker.h"
+#include "Bakers/PrefabBaker.h"
 #include "Bakers/TextureBaker.h"
 #include "Bakers/MaterialBaker.h"
 
@@ -193,7 +194,10 @@ bool MeshSource::Import(const Gleam::Filesystem::Path& path, const ImportSetting
 				bakers.emplace_back(textureSource.bakers[0]);
 			}
 		}
-
+		
+		auto materialPath = path.parent_path() / material.name;
+		registry->RegisterAsset<Gleam::MaterialInstanceDescriptor>(materialPath);
+		
 		auto materialBaker = Gleam::CreateRef<MaterialInstanceBaker>(descriptor);
 		bakers.emplace_back(materialBaker);
     }
