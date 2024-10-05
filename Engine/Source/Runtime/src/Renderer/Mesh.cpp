@@ -8,7 +8,7 @@
 using namespace Gleam;
 
 Mesh::Mesh(const MeshDescriptor& mesh)
-    : mSubmeshDescriptors(mesh.submeshes)
+    : mSubmeshes(mesh.submeshes)
 {
     static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
     
@@ -102,10 +102,10 @@ const Buffer& Mesh::GetIndexBuffer() const
 
 uint32_t Mesh::GetSubmeshCount() const
 {
-    return static_cast<uint32_t>(mSubmeshDescriptors.size());
+    return static_cast<uint32_t>(mSubmeshes.size());
 }
 
-const TArray<SubmeshDescriptor>& Mesh::GetSubmeshDescriptors() const
+const TArray<SubmeshDescriptor>& Mesh::GetSubmeshes() const
 {
-    return mSubmeshDescriptors;
+    return mSubmeshes;
 }

@@ -7,7 +7,7 @@ class PrefabBaker final : public AssetBaker
 {
 public:
 
-	PrefabBaker(Gleam::World&& world);
+	PrefabBaker(const Gleam::RefCounted<Gleam::World>& world);
 
 	virtual void Bake(Gleam::FileStream& stream) const override;
     
@@ -17,7 +17,7 @@ public:
 
 private:
 
-	Gleam::World mWorld;
+	Gleam::RefCounted<Gleam::World> mWorld;
 
 };
 

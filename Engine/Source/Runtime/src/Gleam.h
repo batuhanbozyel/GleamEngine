@@ -51,6 +51,7 @@
 #include "Core/Time.h"
 
 #include "Serialization/BinarySerializer.h"
+#include "Serialization/EntitySerializer.h"
 #include "Serialization/JSONSerializer.h"
 
 #include "Assets/AssetReference.h"

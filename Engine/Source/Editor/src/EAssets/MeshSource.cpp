@@ -39,7 +39,8 @@ bool MeshSource::Import(const Gleam::Filesystem::Path& path, const ImportSetting
         cgltf_free(data);
 		return false;
 	}
-    
+
+	auto directory = path.parent_path();
     auto filename = path.stem().string();
 
 	Gleam::TArray<RawMesh> meshes;
@@ -83,21 +84,29 @@ bool MeshSource::Import(const Gleam::Filesystem::Path& path, const ImportSetting
             {
                 uint32_t materialIdx = static_cast<uint32_t>(materials.size());
                 materials.push_back(material);
-				rawMesh.material = material.name;
+				rawMesh.material = materialIdx;
             }
             else
             {
-                rawMesh.material = materialIt->name;
+				uint32_t materialIdx = static_cast<uint32_t>(std::distance(materials.begin(), materialIt));
+                rawMesh.material = materialIdx;
             }
             meshes.push_back(rawMesh);
         }
     }
-    
+
+	PrefabHierarchy hierarchy;
     if (settings.combineMeshes)
     {
         auto combined = CombineMeshes(meshes);
         combined.name = filename;
-        bakers.emplace_back(Gleam::CreateRef<MeshBaker>(combined));
+
+		auto meshBaker = Gleam::CreateRef<MeshBaker>(combined);
+		bakers.push_back(meshBaker);
+		hierarchy.meshes.push_back(meshBaker);
+
+		auto meshPath = directory / combined.name;
+		registry->RegisterAsset<Gleam::MeshDescriptor>(meshPath);
     }
     else
     {
@@ -110,13 +119,17 @@ bool MeshSource::Import(const Gleam::Filesystem::Path& path, const ImportSetting
             descriptor.interleavedVertices = InterleaveMeshVertices(mesh);
             
             Gleam::SubmeshDescriptor submesh;
+			submesh.materialIndex = mesh.material;
             submesh.bounds = CalculateBounds(mesh.positions);
             submesh.indexCount = static_cast<uint32_t>(mesh.indices.size());
             descriptor.submeshes.push_back(submesh);
 
-			auto meshPath = path.parent_path() / mesh.name;
+			auto meshPath = directory / mesh.name;
 			registry->RegisterAsset<Gleam::MeshDescriptor>(meshPath);
-            bakers.emplace_back(Gleam::CreateRef<MeshBaker>(descriptor));
+
+			auto meshBaker = Gleam::CreateRef<MeshBaker>(descriptor);
+			bakers.push_back(meshBaker);
+			hierarchy.meshes.push_back(meshBaker);
         }
     }
 
@@ -149,7 +162,7 @@ bool MeshSource::Import(const Gleam::Filesystem::Path& path, const ImportSetting
 
 		if (const auto& texture = material.textures[PBRTexture::Albedo]; texture.empty() == false)
 		{
-			auto texturePath = path.parent_path() / texture;
+			auto texturePath = directory / texture;
 			auto textureSource = TextureSource(registry);
 			auto textureSettings = TextureSource::ImportSettings();
 			if (textureSource.Import(texturePath, textureSettings))
@@ -161,7 +174,7 @@ bool MeshSource::Import(const Gleam::Filesystem::Path& path, const ImportSetting
 
 		if (const auto& texture = material.textures[PBRTexture::Normal]; texture.empty() == false)
 		{
-			auto texturePath = path.parent_path() / texture;
+			auto texturePath = directory / texture;
 			auto textureSource = TextureSource(registry);
 			auto textureSettings = TextureSource::ImportSettings();
 			if (textureSource.Import(texturePath, textureSettings))
@@ -173,7 +186,7 @@ bool MeshSource::Import(const Gleam::Filesystem::Path& path, const ImportSetting
 
 		if (const auto& texture = material.textures[PBRTexture::MetallicRoughness]; texture.empty() == false)
 		{
-			auto texturePath = path.parent_path() / texture;
+			auto texturePath = directory / texture;
 			auto textureSource = TextureSource(registry);
 			auto textureSettings = TextureSource::ImportSettings();
 			if (textureSource.Import(texturePath, textureSettings))
@@ -185,7 +198,7 @@ bool MeshSource::Import(const Gleam::Filesystem::Path& path, const ImportSetting
 
 		if (const auto& texture = material.textures[PBRTexture::Emissive]; texture.empty() == false)
 		{
-			auto texturePath = path.parent_path() / texture;
+			auto texturePath = directory / texture;
 			auto textureSource = TextureSource(registry);
 			auto textureSettings = TextureSource::ImportSettings();
 			if (textureSource.Import(texturePath, textureSettings))
@@ -195,12 +208,39 @@ bool MeshSource::Import(const Gleam::Filesystem::Path& path, const ImportSetting
 			}
 		}
 		
-		auto materialPath = path.parent_path() / material.name;
+		auto materialPath = directory / material.name;
 		registry->RegisterAsset<Gleam::MaterialInstanceDescriptor>(materialPath);
 		
 		auto materialBaker = Gleam::CreateRef<MaterialInstanceBaker>(descriptor);
-		bakers.emplace_back(materialBaker);
+		bakers.push_back(materialBaker);
+		hierarchy.materials.push_back(materialBaker);
     }
+
+	// Create prefab
+	if (not hierarchy.meshes.empty())
+	{
+		auto world = Gleam::CreateRef<Gleam::World>(filename);
+		for (const auto& meshBaker : hierarchy.meshes)
+		{
+			const auto& descriptor = meshBaker->GetDescriptor();
+			const auto& meshItem = registry->GetAsset<Gleam::MeshDescriptor>(directory / meshBaker->Filename());
+
+			Gleam::TArray<Gleam::AssetReference> materials;
+			for (const auto& submesh : descriptor.submeshes)
+			{
+				const auto& materialBaker = hierarchy.materials[submesh.materialIndex];
+				const auto& descriptor = materialBaker->GetDescriptor();
+				const auto& materialItem = registry->GetAsset<Gleam::MaterialInstanceDescriptor>(directory / materialBaker->Filename());
+				materials.push_back(materialItem.reference);
+			}
+
+			auto& entity = world->GetEntityManager().CreateEntity(Gleam::Guid::NewGuid());
+			entity.AddComponent<Gleam::MeshRenderer>(meshItem.reference, materials);
+		}
+		auto prefabPath = directory / filename;
+		bakers.emplace_back(Gleam::CreateRef<PrefabBaker>(world));
+		registry->RegisterAsset<Gleam::Prefab>(prefabPath);
+	}
 
 	cgltf_free(data);
     return true;
@@ -356,6 +396,7 @@ Gleam::MeshDescriptor CombineMeshes(const Gleam::TArray<RawMesh>& meshes)
     for (uint32_t i = 0; i < meshes.size(); ++i)
     {
         const auto& mesh = meshes[i];
+		submesh.materialIndex = mesh.material;
         submesh.bounds = CalculateBounds(mesh.positions);
         submesh.indexCount = static_cast<uint32_t>(mesh.indices.size());
         combined.submeshes[i] = submesh;

@@ -23,3 +23,8 @@ Gleam::Guid MeshBaker::TypeGuid() const
 {
     return Gleam::Reflection::GetClass<decltype(mDescriptor)>().Guid();
 }
+
+const Gleam::MeshDescriptor& MeshBaker::GetDescriptor() const
+{
+	return mDescriptor;
+}

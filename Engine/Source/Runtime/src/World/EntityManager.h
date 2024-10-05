@@ -1,6 +1,7 @@
 #pragma once
 #include "Entity.h"
 #include "Prefab.h"
+#include "EntityReference.h"
 
 namespace Gleam {
 
@@ -12,7 +13,7 @@ class EntityManager final
 	using ConstVisitFn = std::function<void(const void* component, const Reflection::ClassDescription& classDesc)>;
 public:
 
-	Entity& CreateFromPrefab(const Prefab& prefab);
+	Entity& CreateFromPrefab(const AssetReference& ref);
 
 	Entity& CreateEntity(const Guid& guid);
 

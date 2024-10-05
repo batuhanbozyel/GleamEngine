@@ -1,4 +1,6 @@
 #pragma once
+#include "Components/Transform.h"
+
 #include <entt/entity/entity.hpp>
 #include <entt/entity/registry.hpp>
 

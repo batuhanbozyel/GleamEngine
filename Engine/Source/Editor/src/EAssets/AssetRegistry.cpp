@@ -42,6 +42,12 @@ static Gleam::TString ParseAssetName(const Gleam::Filesystem::Path& asset, const
         auto descriptor = serializer.Deserialize<Gleam::MaterialInstanceDescriptor>();
         return descriptor.name;
     }
+
+	if (typeGuid == Gleam::Reflection::GetClass<Gleam::Prefab>().Guid())
+	{
+		auto prefab = serializer.Deserialize<Gleam::Prefab>();
+		return prefab.name;
+	}
     
     return "";
 }
@@ -105,7 +111,7 @@ void AssetRegistry::Import(const Gleam::Filesystem::Path& directory, const Asset
 		auto path = directory / baker->Filename();
 		const auto& asset = RegisterAsset(path, baker->TypeGuid());
 
-		auto filename = asset.reference.guid.ToString() + Gleam::Asset::extension().data();
+		auto filename = asset.reference.guid.ToString() + Gleam::Asset::Extension().data();
 		auto file = Gleam::Filesystem::Create(directory / filename, Gleam::FileType::Text);
 		auto accessor = Gleam::Filesystem::WriteAccessor(directory / filename);
 		baker->Bake(file.GetStream());

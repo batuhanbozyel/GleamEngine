@@ -23,7 +23,7 @@ public:
 
     uint32_t GetSubmeshCount() const;
     
-    const TArray<SubmeshDescriptor>& GetSubmeshDescriptors() const;
+    const TArray<SubmeshDescriptor>& GetSubmeshes() const;
     
 protected:
     
@@ -31,7 +31,7 @@ protected:
     Buffer mIndexBuffer;
     Buffer mPositionBuffer;
     Buffer mInterleavedBuffer;
-    TArray<SubmeshDescriptor> mSubmeshDescriptors;
+    TArray<SubmeshDescriptor> mSubmeshes;
 };
 
 } // namespace Gleam

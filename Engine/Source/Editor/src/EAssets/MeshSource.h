@@ -4,6 +4,9 @@
 
 namespace GEditor {
 
+class MeshBaker;
+class MaterialInstanceBaker;
+
 struct PBRTexture
 {
     enum Type
@@ -52,11 +55,17 @@ struct RawMaterial
 struct RawMesh
 {
     Gleam::TString name;
-	Gleam::TString material;
     Gleam::TArray<Gleam::Float3> positions;
     Gleam::TArray<Gleam::Float3> normals;
     Gleam::TArray<Gleam::Float2> texCoords;
     Gleam::TArray<uint32_t> indices;
+	uint32_t material;
+};
+
+struct PrefabHierarchy
+{
+	Gleam::TArray<Gleam::RefCounted<MeshBaker>> meshes;
+	Gleam::TArray<Gleam::RefCounted<MaterialInstanceBaker>> materials;
 };
 
 struct MeshSource : AssetPackage

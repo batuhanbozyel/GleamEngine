@@ -84,25 +84,10 @@ void WorldViewport::Render(Gleam::ImGuiRenderer* imgui)
 				IM_ASSERT(payload->DataSize == sizeof(AssetItem));
 				const auto& assetItem = *(const AssetItem*)payload->Data;
 
-				// TODO: remove this, it is for testing only
-				/*if (assetItem.type == Gleam::Reflection::GetClass<Gleam::MeshDescriptor>().Guid())
+				if (assetItem.type == Gleam::Reflection::GetClass<Gleam::Prefab>().Guid())
 				{
-					auto materialSystem = Gleam::Globals::GameInstance->GetSubsystem<Gleam::MaterialSystem>();
-					auto assetManager = Gleam::Globals::GameInstance->GetSubsystem<Gleam::AssetManager>();
-					auto mesh = assetManager->Get<Gleam::MeshDescriptor>(assetItem.reference);
-
-					Gleam::AssetReference meshRef = assetItem.reference;
-					Gleam::TArray<Gleam::AssetReference> materialRefs;
-					for (uint32_t i = 0; i < mesh.submeshes.size(); ++i)
-					{
-						Gleam::AssetReference material = { .guid = Gleam::Guid("044B0097-7F40-438D-9FD4-3606E73EDFD6") };
-						materialRefs.push_back(material);
-					}
-
-					auto& entityManager = mEditWorld->GetEntityManager();
-					auto& entity = entityManager.CreateEntity();
-					entity.AddComponent<Gleam::MeshRenderer>(meshRef, materialRefs);
-				}*/
+					auto& entity = mEditWorld->GetEntityManager().CreateFromPrefab(assetItem.reference);
+				}
 			}
 			ImGui::EndDragDropTarget();
 		}

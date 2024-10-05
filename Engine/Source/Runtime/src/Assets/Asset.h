@@ -23,7 +23,7 @@ struct Asset
         return !(*this == other);
     }
     
-    static constexpr TStringView extension()
+    static constexpr TStringView Extension()
     {
         return ".asset";
     }

@@ -24,7 +24,7 @@ void AssetManager::Initialize(Application* app)
     auto fileWatcher = Globals::Engine->GetSubsystem<FileWatcher>();
     fileWatcher->AddWatch(Globals::ProjectContentDirectory, [this](const Filesystem::Path& path, FileWatchEvent event)
     {
-        if (path.extension() != Asset::extension())
+        if (path.extension() != Asset::Extension())
         {
             return;
         }
@@ -82,7 +82,8 @@ const Asset& AssetManager::GetAsset(const AssetReference& ref) const
 	{
 		return it->second;
 	}
-	return Asset();
+	static Asset invalidAsset;
+	return invalidAsset;
 }
 
 bool AssetManager::TryEmplaceAsset(const Asset& asset)

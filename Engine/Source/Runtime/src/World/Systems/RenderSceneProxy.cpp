@@ -2,9 +2,7 @@
 #include "RenderSceneProxy.h"
 
 #include "World/World.h"
-#include "Renderer/Mesh.h"
 #include "Renderer/Material/Material.h"
-#include "Renderer/Material/MaterialInstance.h"
 
 using namespace Gleam;
 
@@ -18,7 +16,7 @@ void RenderSceneProxy::OnUpdate(EntityManager& entityManager)
 		GLEAM_ASSERT(meshRenderer.GetMaterials().size() == meshRenderer.GetMesh().GetSubmeshCount());
 
 		const auto& materials = meshRenderer.GetMaterials();
-		const auto& submeshes = meshRenderer.GetMesh().GetSubmeshDescriptors();
+		const auto& submeshes = meshRenderer.GetMesh().GetSubmeshes();
 		for (uint32_t i = 0; i < meshRenderer.GetMesh().GetSubmeshCount(); ++i)
 		{
 			MeshBatch batch = {

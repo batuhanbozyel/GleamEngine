@@ -136,7 +136,7 @@ void DebugRenderer::RenderMeshes(const CommandBuffer* cmd, const BufferHandle& c
         resources.cameraBuffer = cameraBuffer;
         cmd->SetConstantBuffer(resources, 0);
 	
-		for (const auto& submesh : debugMesh.mesh->GetSubmeshDescriptors())
+		for (const auto& submesh : debugMesh.mesh->GetSubmeshes())
 		{
 			DebugMeshUniforms uniforms;
 			uniforms.modelMatrix = debugMesh.transform;

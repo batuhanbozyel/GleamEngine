@@ -1,5 +1,4 @@
 #pragma once
-#include "World/EntityReference.h"
 
 namespace Gleam {
 

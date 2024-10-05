@@ -8,22 +8,22 @@
 
 using namespace Gleam;
 
-Entity& EntityManager::CreateFromPrefab(const Prefab& prefab)
+Entity& EntityManager::CreateFromPrefab(const AssetReference& ref)
 {
 	auto assetManager = Globals::GameInstance->GetSubsystem<AssetManager>();
-	const auto& asset = assetManager->GetAsset(prefab.reference);
+	const auto& asset = assetManager->GetAsset(ref);
+	auto prefab = assetManager->Get<Prefab>(ref);
 
 	auto fullpath = Globals::ProjectContentDirectory / asset.path;
 	auto file = Filesystem::Open(fullpath, FileType::Text);
 
-	World world;
-	world.Deserialize(file.GetStream());
-
-	auto& entityManager = world.GetEntityManager();
-	auto entityCount = entityManager.GetEntityCount();
-	if (entityCount > 1)
+	if (prefab.entityCount > 1)
 	{
-		auto& root = CreateEntity(prefab.reference.guid);
+		auto& root = CreateEntity(ref.guid);
+
+		World world(prefab.name);
+		auto& entityManager = world.GetEntityManager();
+		prefab.Deserialize(entityManager, file.GetStream());
 		entityManager.ForEach<Entity>([&](Entity& source)
 		{
 			auto& entity = CreateCopy(entityManager, source);
@@ -31,9 +31,9 @@ Entity& EntityManager::CreateFromPrefab(const Prefab& prefab)
 		});
 		return root;
 	}
-	auto& entity = *entityManager.mRegistry.storage<Entity>().begin();
-	auto& root = CreateCopy(entityManager, entity);
-	return root;
+
+	auto root = prefab.Deserialize(*this, file.GetStream()).back();
+	return GetComponent<Entity>(root);
 }
 
 Entity& EntityManager::CreateCopy(EntityManager& from, const Entity& source)
