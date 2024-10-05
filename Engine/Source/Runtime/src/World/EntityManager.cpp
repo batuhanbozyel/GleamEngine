@@ -62,15 +62,21 @@ Entity& EntityManager::CreateCopy(EntityManager& from, const Entity& source)
 
 Entity& EntityManager::CreateEntity(const Guid& guid)
 {
+	auto it = mHandles.find(guid);
+	if (it != mHandles.end())
+	{
+		return GetComponent<Entity>(it->second);
+	}
+
 	auto handle = mRegistry.create();
 	auto& entity = AddComponent<Entity>(handle, handle, &mRegistry, guid);
-	mHandles[guid] = handle;
+	mHandles.emplace_hint(mHandles.end(), guid, handle);
 	return entity;
 }
 
 void EntityManager::DestroyEntity(EntityHandle entity)
 {
-	const auto& guid = mRegistry.get<Entity>(entity).GetGuid();
+	const auto& guid = GetComponent<Entity>(entity).GetGuid();
 	mHandles.erase(guid);
 	mRegistry.destroy(entity);
 }
@@ -79,7 +85,7 @@ void EntityManager::DestroyEntity(const TArray<EntityHandle>& entities)
 {
 	for (auto entity : entities)
 	{
-		const auto& guid = mRegistry.get<Entity>(entity).GetGuid();
+		const auto& guid = GetComponent<Entity>(entity).GetGuid();
 		mHandles.erase(guid);
 	}
 	mRegistry.destroy(entities.begin(), entities.end());
