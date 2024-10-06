@@ -8,19 +8,19 @@
 
 using namespace Gleam;
 
-struct FileWatcher::Watcher
+struct FileWatcher::Handle
 {
     Filesystem::Path path;
     FileWatchHandler handler;
     FSEventStreamRef _Nonnull stream;
  
-    Watcher(const Filesystem::Path& path, FileWatchHandler&& handler)
+    Handle(const Filesystem::Path& path, FileWatchHandler&& handler)
         : path(path), handler(std::move(handler)), stream(nullptr)
     {
         
     }
     
-    ~Watcher()
+    ~Handle()
     {
         FSEventStreamStop(stream);
         FSEventStreamInvalidate(stream);
@@ -34,7 +34,7 @@ struct FileWatcher::Watcher
                                 const FSEventStreamEventFlags* _Nonnull eventFlags,
                                 const FSEventStreamEventId* _Nonnull eventIds)
     {
-        auto* watcher = static_cast<Watcher*>(clientCallBackInfo);
+        auto* watcher = static_cast<Handle*>(clientCallBackInfo);
         for (size_t i = 0; i < numEvents; ++i)
         {
             Filesystem::Path path = ((const char**)eventPaths)[i];
@@ -80,30 +80,28 @@ void FileWatcher::Initialize(Engine* engine)
 
 void FileWatcher::Shutdown()
 {
-    for (auto& [_, watcher] : mWatchers)
+    for (auto& [_, watchers] : mWatchers)
     {
-        delete watcher;
+		for (auto watcher : watchers)
+		{
+			delete watcher;
+		}
     }
-    mWatchers.clear();
+	mWatchers.clear();
 }
 
-void FileWatcher::AddWatch(const Filesystem::Path& dir, FileWatchHandler&& handler)
+FileWatcher::Handle* FileWatcher::AddWatch(const Filesystem::Path& dir, FileWatchHandler&& handler)
 {
     if (Filesystem::IsDirectory(dir) == false)
 	{
         GLEAM_CORE_ERROR("FileWatcher requires directory: {0}", dir.string());
-		return;
+		return nullptr;
 	}
-
-    if (mWatchers.find(dir) != mWatchers.end())
-    {
-        RemoveWatch(dir);
-    }
     
     CFStringRef pathCF = CFStringCreateWithCString(NULL, dir.c_str(), kCFStringEncodingUTF8);
     CFArrayRef pathsCF = CFArrayCreate(NULL, (const void**)&pathCF, 1, NULL);
     
-    Watcher* watcher = new Watcher(dir, std::forward<FileWatchHandler>(handler));
+    Handle* watcher = new Handle(dir, std::forward<FileWatchHandler>(handler));
     mWatchers[dir] = watcher;
     
     FSEventStreamContext context;
@@ -114,7 +112,7 @@ void FileWatcher::AddWatch(const Filesystem::Path& dir, FileWatchHandler&& handl
     context.copyDescription = NULL;
     
     watcher->stream = FSEventStreamCreate(NULL,
-                                          &Watcher::CallbackHandler,
+                                          &Handle::CallbackHandler,
                                           &context,
                                           pathsCF,
                                           kFSEventStreamEventIdSinceNow,
@@ -127,19 +125,25 @@ void FileWatcher::AddWatch(const Filesystem::Path& dir, FileWatchHandler&& handl
     
     CFRelease(pathsCF);
     CFRelease(pathCF);
+    return watcher;
 }
 
-void FileWatcher::RemoveWatch(const Filesystem::Path& dir)
+void FileWatcher::RemoveWatch(Handle* watcher)
 {
-    auto it = mWatchers.find(dir);
+    auto it = mWatchers.find(watcher->path);
     if (it == mWatchers.end())
     {
         return;
     }
     
-    Watcher* watcher = it->second;
-    mWatchers.erase(it);
-    delete watcher;
+    auto& watchers = it->second;
+	auto watcherIt = std::remove(watchers.begin(), watchers.end(), watcher);
+	if (watcherIt != watchers.end())
+	{
+		watchers.erase(watcherIt);
+		delete watcher;
+		watcher = nullptr;
+	}
 }
 
 #endif
