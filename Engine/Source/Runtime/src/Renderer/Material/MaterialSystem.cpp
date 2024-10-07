@@ -22,7 +22,10 @@ void MaterialSystem::Initialize(Application* app)
 				auto guid = Guid(entry.stem().string());
 				AssetReference ref = { .guid = guid };
 				auto descriptor = app->GetSubsystem<AssetManager>()->Get<MaterialDescriptor>(ref);
-				mMaterials.emplace_hint(mMaterials.end(), ref, CreateScope<Material>(descriptor));
+				mMaterials.emplace_hint(mMaterials.end(),
+										std::piecewise_construct,
+										std::forward_as_tuple(ref),
+										std::forward_as_tuple(descriptor));
 			}
 		}
 	}, true);
@@ -32,18 +35,21 @@ void MaterialSystem::Shutdown()
 {
 	for (auto& [ref, material] : mMaterials)
 	{
-		material->Dispose();
+		material.Dispose();
 	}
 	mMaterials.clear();
 }
 
-Material* MaterialSystem::GetMaterial(const AssetReference& ref)
+Material& MaterialSystem::GetMaterial(const AssetReference& ref)
 {
 	auto it = mMaterials.find(ref);
 	if (it == mMaterials.end())
 	{
 		auto descriptor = Globals::GameInstance->GetSubsystem<AssetManager>()->Get<MaterialDescriptor>(ref);
-		it = mMaterials.emplace_hint(mMaterials.end(), ref, CreateScope<Material>(descriptor));
+		it = mMaterials.emplace_hint(mMaterials.end(),
+									 std::piecewise_construct,
+									 std::forward_as_tuple(ref),
+									 std::forward_as_tuple(descriptor));
 	}
-	return it->second.get();
+	return it->second;
 }

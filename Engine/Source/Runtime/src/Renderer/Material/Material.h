@@ -7,10 +7,11 @@
 
 #pragma once
 #include "IMaterial.h"
-#include "MaterialInstance.h"
 #include "MaterialDescriptor.h"
 
 namespace Gleam {
+
+class MaterialInstance;
 
 class Material : public IMaterial
 {
@@ -18,7 +19,7 @@ public:
     
     Material(const MaterialDescriptor& descriptor);
 
-    MaterialInstance CreateInstance();
+	uint32_t CreateInstance(const TArray<MaterialPropertyValue>& values);
     
 	void Dispose();
     

@@ -10,15 +10,17 @@
 
 namespace Gleam {
 
+struct MaterialInstanceDescriptor;
+
 class MaterialInstance : public IMaterial
 {
 public:
 
-    MaterialInstance(const IMaterial* material, uint32_t uniqueId);
+    MaterialInstance(const MaterialInstanceDescriptor& descriptor);
     
-    void SetProperty(const TString& name, const MaterialPropertyValue& value);
+	void SetProperty(const TString& name, const MaterialPropertyValue& value);
 
-    const IMaterial* GetBaseMaterial() const;
+	const AssetReference& GetBaseMaterial() const;
     
     uint32_t GetUniqueId() const;
     
@@ -26,7 +28,7 @@ private:
     
     uint32_t mUniqueId = 0;
     
-	const IMaterial* mBaseMaterial = nullptr;
+	AssetReference mBaseMaterial;
 
 	TArray<MaterialPropertyValue> mPropertyValues;
     

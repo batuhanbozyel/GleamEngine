@@ -7,6 +7,7 @@
 
 #include "gpch.h"
 #include "Material.h"
+#include "MaterialInstance.h"
 
 #include "Core/Engine.h"
 #include "Core/Globals.h"
@@ -22,15 +23,21 @@ Material::Material(const MaterialDescriptor& descriptor)
     // TODO: Allocate GPU buffer
 }
 
-MaterialInstance Material::CreateInstance()
-{
-    // TODO: Suballocate material instance data from material buffer
-    return MaterialInstance(this, mInstanceCount++);
-}
-
 void Material::Dispose()
 {
-	// TOOD: dispose material buffer
+	static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
+	auto device = renderSystem->GetDevice();
+
+	device->AddPooledObject([&]()
+	{
+		//device->Dispose(mBuffer);
+	});
+}
+
+uint32_t Material::CreateInstance(const TArray<MaterialPropertyValue>& values)
+{
+	// TODO: update GPU buffer with instance values
+	return mInstanceCount++;
 }
 
 const Buffer& Material::GetBuffer() const

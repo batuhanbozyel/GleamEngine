@@ -6,18 +6,27 @@
 //
 
 #include "gpch.h"
-#include "Material.h"
 #include "MaterialInstance.h"
+#include "MaterialSystem.h"
+
+#include "Core/Globals.h"
+#include "Core/Application.h"
 
 using namespace Gleam;
 
-MaterialInstance::MaterialInstance(const IMaterial* baseMaterial, uint32_t uniqueId)
-    : IMaterial(baseMaterial->GetProperties())
-	, mBaseMaterial(baseMaterial)
-	, mPropertyValues(baseMaterial->GetProperties().size())
-	, mUniqueId(uniqueId)
+MaterialInstance::MaterialInstance(const MaterialInstanceDescriptor& descriptor)
+    : IMaterial(descriptor.properties)
+	, mBaseMaterial(descriptor.material)
 {
-    
+	mPropertyValues.reserve(descriptor.properties.size());
+	for (const auto& property : descriptor.properties)
+	{
+		mPropertyValues.push_back(property.value);
+	}
+
+	auto materialSystem = Globals::GameInstance->GetSubsystem<MaterialSystem>();
+	auto& material = materialSystem->GetMaterial(mBaseMaterial);
+	mUniqueId = material.CreateInstance(mPropertyValues);
 }
 
 void MaterialInstance::SetProperty(const TString& name, const MaterialPropertyValue& value)
@@ -25,7 +34,7 @@ void MaterialInstance::SetProperty(const TString& name, const MaterialPropertyVa
 	mPropertyValues[GetPropertyIndex(name)] = value;
 }
 
-const IMaterial* MaterialInstance::GetBaseMaterial() const
+const AssetReference& MaterialInstance::GetBaseMaterial() const
 {
     return mBaseMaterial;
 }

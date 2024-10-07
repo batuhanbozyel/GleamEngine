@@ -75,11 +75,11 @@ void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
     [this, blackboard](const CommandBuffer* cmd, const WorldRenderingData& passData)
     {
         const auto& sceneData = blackboard.Get<SceneRenderingData>();
-        sceneData.sceneProxy->ForEach([this, cmd, passData](const Material* material, const TArray<MeshBatch>& batches)
+        sceneData.sceneProxy->ForEach([this, cmd, passData](const Material& material, const TArray<MeshBatch>& batches)
         {
-            const auto& materialBuffer = material->GetBuffer();
-            const auto& shader = mMeshShadingFragmentShaders[material->GetName()];
-            const auto& pipeline = mShadingPipelines[material->GetPipelineHash()];
+            const auto& materialBuffer = material.GetBuffer();
+            const auto& shader = mMeshShadingFragmentShaders[material.GetName()];
+            const auto& pipeline = mShadingPipelines[material.GetPipelineHash()];
             cmd->BindGraphicsPipeline(pipeline, mMeshVertexShader, shader);
 
             for (const auto& batch : batches)

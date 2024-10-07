@@ -19,11 +19,11 @@ public:
 
 	virtual void Shutdown() override;
 
-	Material* GetMaterial(const AssetReference& ref);
+	Material& GetMaterial(const AssetReference& ref);
 
 private:
 
-	HashMap<AssetReference, Scope<Material>> mMaterials;
+	HashMap<AssetReference, Material> mMaterials;
 
 };
 

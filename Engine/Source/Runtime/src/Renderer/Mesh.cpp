@@ -43,6 +43,7 @@ Mesh::Mesh(const MeshDescriptor& mesh)
     mIndexBuffer = mHeap.CreateBuffer(bufferDesc);
 
     // Send mesh data to buffers
+	// TODO: use upload manager to send data to the GPU
     {
         heapDesc.name += "::StagingHeap";
         heapDesc.memoryType = MemoryType::CPU;
@@ -79,10 +80,15 @@ Mesh::Mesh(const MeshDescriptor& mesh)
 void Mesh::Dispose()
 {
     static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
-    renderSystem->GetDevice()->Dispose(mPositionBuffer);
-    renderSystem->GetDevice()->Dispose(mInterleavedBuffer);
-    renderSystem->GetDevice()->Dispose(mIndexBuffer);
-    renderSystem->GetDevice()->Dispose(mHeap);
+	auto device = renderSystem->GetDevice();
+
+	device->AddPooledObject([&]()
+	{
+		device->Dispose(mPositionBuffer);
+		device->Dispose(mInterleavedBuffer);
+		device->Dispose(mIndexBuffer);
+		device->Dispose(mHeap);
+	});
 }
 
 const Buffer& Mesh::GetPositionBuffer() const
@@ -98,11 +104,6 @@ const Buffer& Mesh::GetInterleavedBuffer() const
 const Buffer& Mesh::GetIndexBuffer() const
 {
     return mIndexBuffer;
-}
-
-uint32_t Mesh::GetSubmeshCount() const
-{
-    return static_cast<uint32_t>(mSubmeshes.size());
 }
 
 const TArray<SubmeshDescriptor>& Mesh::GetSubmeshes() const

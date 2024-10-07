@@ -20,8 +20,6 @@ public:
     const Buffer& GetInterleavedBuffer() const;
     
     const Buffer& GetIndexBuffer() const;
-
-    uint32_t GetSubmeshCount() const;
     
     const TArray<SubmeshDescriptor>& GetSubmeshes() const;
     

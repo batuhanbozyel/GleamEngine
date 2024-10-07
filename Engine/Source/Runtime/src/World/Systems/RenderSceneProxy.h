@@ -18,20 +18,30 @@ struct MeshBatch
 
 class RenderSceneProxy : public ComponentSystem
 {
-    using BatchFn = std::function<void(const Material*, const TArray<MeshBatch>&)>;
+    using BatchFn = std::function<void(const Material&, const TArray<MeshBatch>&)>;
 public:
     
     virtual void OnUpdate(EntityManager& entityManager) override;
+
+	virtual void OnDestroy(EntityManager& entityManager) override;
     
     void ForEach(BatchFn&& fn) const;
     
     const Entity* GetActiveCamera() const;
 
 private:
+
+	const Mesh& GetMesh(const AssetReference& ref);
+
+	const MaterialInstance& GetMaterialInstance(const AssetReference& ref);
     
     const Entity* mActiveCamera = nullptr;
-    
-    HashMap<const Material*, TArray<MeshBatch>> mStaticBatches;
+
+	HashMap<AssetReference, Mesh> mMeshes;
+
+	HashMap<AssetReference, MaterialInstance> mMaterialInstances;
+
+    HashMap<AssetReference, TArray<MeshBatch>> mStaticBatches;
     
 };
 

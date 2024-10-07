@@ -104,7 +104,7 @@ TArray<EntityHandle> EntitySerializer::Deserialize(const rapidjson::ConstNode& r
 			GLEAM_ASSERT(component, "Entity component could not deserialize");
 
 			JSONSerializer serializer(mStream);
-			serializer.Deserialize(classDesc, component.data());
+			serializer.Deserialize(classDesc, component.data(), rapidjson::ConstNode(componentObject));
 		}
 
 		entities.emplace_back(entity);
