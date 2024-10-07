@@ -301,6 +301,6 @@ bool MaterialSource::Import(const Gleam::Filesystem::Path& path, const ImportSet
 		}
 	}
     
-    bakers.emplace_back(Gleam::CreateRef<MaterialBaker>(descriptor));
+    mBakers.emplace_back(Gleam::CreateRef<MaterialBaker>(descriptor));
     return true;
 }

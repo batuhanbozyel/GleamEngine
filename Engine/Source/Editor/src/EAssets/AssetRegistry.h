@@ -1,6 +1,5 @@
 #pragma once
 #include "Gleam.h"
-#include "AssetPackage.h"
 
 namespace GEditor {
 
@@ -9,19 +8,20 @@ struct AssetItem
     Gleam::AssetReference reference;
     Gleam::Guid type;
     Gleam::TString name;
+
+	bool operator==(const AssetItem& other) const
+	{
+		return reference == other.reference
+			&& type == other.type
+			&& name == other.name;
+	}
 };
 
-class AssetRegistry final : public Gleam::WorldSubsystem
+class AssetRegistry
 {
 public:
 
 	AssetRegistry(const Gleam::Filesystem::Path& directory);
-
-	virtual void Initialize(Gleam::World* world) override;
-
-	virtual void Shutdown() override;
-
-	void Import(const Gleam::Filesystem::Path& directory, const AssetPackage& package);
 
 	template<typename T>
 	const AssetItem& RegisterAsset(const Gleam::Filesystem::Path& path)
@@ -30,39 +30,26 @@ public:
 		return RegisterAsset(path, type);
 	}
 
+	const AssetItem& RegisterAsset(const Gleam::Filesystem::Path& path, const Gleam::Guid& type);
+
+	const AssetItem& RegisterAsset(const Gleam::Filesystem::Path& path, const AssetItem& item);
+
+	const AssetItem& GetAsset(const Gleam::Guid& guid) const;
+
 	template<typename T>
 	const AssetItem& GetAsset(const Gleam::Filesystem::Path& path) const
 	{
 		const auto& type = Gleam::Reflection::GetClass<T>().Guid();
-		auto relPath = path.is_relative() ? path : Gleam::Filesystem::Relative(path, mAssetDirectory);
-		auto it = mAssetCache.find(relPath);
-		if (it != mAssetCache.end())
-		{
-			for (const auto& item : it->second)
-			{
-				if (item.type == type)
-				{
-					return item;
-				}
-			}
-		}
-
-		GLEAM_ERROR("Asset could not located for path: {0}", relPath.string());
-		GLEAM_ASSERT(false);
-		static AssetItem invalidAsset;
-		return invalidAsset;
+		return GetAsset(path, type);
 	}
 
-	const AssetItem& GetAsset(const Gleam::Guid& guid) const;
+	const AssetItem& GetAsset(const Gleam::Filesystem::Path& path, const Gleam::Guid& type) const;
 
 private:
 
-	const AssetItem& RegisterAsset(const Gleam::Filesystem::Path& path, const Gleam::Guid& type);
-
 	Gleam::Filesystem::Path mAssetDirectory;
-    
-    Gleam::HashMap<Gleam::Filesystem::Path, Gleam::TArray<AssetItem>> mAssetCache;
 
+	Gleam::HashMap<Gleam::Filesystem::Path, Gleam::TArray<AssetItem>> mAssets;
 };
 
 } // namespace GEditor

@@ -8,7 +8,7 @@
 #pragma once
 #include "Gleam.h"
 #include "View/View.h"
-#include "EAssets/AssetRegistry.h"
+#include "EAssets/EAssetManager.h"
 
 namespace GEditor {
 
@@ -26,7 +26,7 @@ private:
     
     void DrawDirectoryTreeView(const Gleam::Filesystem::Path& directory);
     
-    AssetRegistry* mAssetRegistry;
+    EAssetManager* mAssetManager;
 
     Gleam::Filesystem::Path mCurrentDirectory;
     

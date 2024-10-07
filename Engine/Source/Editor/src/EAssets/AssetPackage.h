@@ -5,14 +5,17 @@ namespace GEditor {
 
 class AssetBaker;
 class AssetRegistry;
+class EAssetManager;
 
 struct AssetPackage
 {
-	Gleam::TArray<Gleam::RefCounted<AssetBaker>> bakers;
-	AssetRegistry* registry;
+	Gleam::TArray<Gleam::RefCounted<AssetBaker>> mBakers;
+	EAssetManager* mAssetManager;
+	AssetRegistry* mRegistry;
 
-	AssetPackage(AssetRegistry* registry)
-		: registry(registry)
+	AssetPackage(EAssetManager* assetManager, AssetRegistry* registry)
+		: mAssetManager(assetManager)
+		, mRegistry(registry)
 	{
 
 	}
@@ -20,6 +23,6 @@ struct AssetPackage
 	virtual ~AssetPackage() = default;
 };
 
-#define AssetPackageType(type) type(AssetRegistry* registry) : AssetPackage(registry) {}
+#define AssetPackageType(type) type(EAssetManager* assetManager, AssetRegistry* registry) : AssetPackage(assetManager, registry) {}
 
 } // namespace GEditor

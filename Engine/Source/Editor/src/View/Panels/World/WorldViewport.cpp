@@ -7,7 +7,7 @@
 
 #include "WorldViewport.h"
 #include "EditorCameraController.h"
-#include "EAssets/AssetRegistry.h"
+#include "EAssets/EAssetManager.h"
 #include "Renderer/ImGui/ImGuiBackend.h"
 #include "Renderers/InfiniteGridRenderer.h"
 
