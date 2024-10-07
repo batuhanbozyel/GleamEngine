@@ -156,7 +156,7 @@ public:
 
 private:
 	
-	Entity& CreateCopy(EntityManager& from, const Entity& source);
+	Entity& CopyEntity(EntityManager& from, const Entity& source);
 
 	entt::registry mRegistry;
 

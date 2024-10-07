@@ -60,8 +60,6 @@ public:
 
 	static FileAccessor::Write WriteAccessor(const Filesystem::Path& path);
 
-	static FileAccessor& Accessor(const Filesystem::Path& path);
-
 	static Path WorkingDirectory();
 
 	static Path Relative(const Path& path, const Path& base);
@@ -71,6 +69,8 @@ public:
 	static bool IsDirectory(const Path& path);
     
 private:
+
+	static FileAccessor& Accessor(const Filesystem::Path& path);
     
     static inline std::mutex mFileCreateMutex;
     

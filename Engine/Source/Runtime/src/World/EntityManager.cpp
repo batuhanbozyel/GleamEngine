@@ -26,7 +26,7 @@ Entity& EntityManager::CreateFromPrefab(const AssetReference& ref)
 		prefab.Deserialize(entityManager, file.GetStream());
 		entityManager.ForEach<Entity>([&](Entity& source)
 		{
-			auto& entity = CreateCopy(entityManager, source);
+			auto& entity = CopyEntity(entityManager, source);
 			entity.SetParent(root);
 		});
 		return root;
@@ -36,7 +36,7 @@ Entity& EntityManager::CreateFromPrefab(const AssetReference& ref)
 	return GetComponent<Entity>(root);
 }
 
-Entity& EntityManager::CreateCopy(EntityManager& from, const Entity& source)
+Entity& EntityManager::CopyEntity(EntityManager& from, const Entity& source)
 {
 	auto& copy = CreateEntity(source.GetGuid());
 	copy.SetTranslation(source.GetLocalPosition());
