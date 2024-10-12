@@ -4,6 +4,13 @@
 
 namespace GEditor {
 
+struct RawTexture
+{
+	Gleam::TString name;
+	int width, height, channels;
+	uint8_t* pixels;
+};
+
 class TextureSource : public AssetPackage
 {
 public:

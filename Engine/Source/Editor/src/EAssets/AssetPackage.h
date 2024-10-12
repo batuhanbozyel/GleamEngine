@@ -28,7 +28,12 @@ public:
 	bool ImportReference(const Gleam::Filesystem::Path& path, const T::ImportSettings& settings)
 	{
 		auto package = T(mAssetManager, mRegistry);
-		return package.Import(path, settings);
+		if (package.Import(path, settings))
+		{
+			Gleam::ArrayUtils::Append<Gleam::RefCounted<AssetBaker>>(mBakers, package.mBakers);
+			return true;
+		}
+		return false;
 	}
 	
 	template<BakerType T, typename ... Args>
