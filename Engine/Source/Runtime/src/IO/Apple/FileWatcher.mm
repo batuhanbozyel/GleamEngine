@@ -102,7 +102,7 @@ FileWatcher::Handle* FileWatcher::AddWatch(const Filesystem::Path& dir, FileWatc
     CFArrayRef pathsCF = CFArrayCreate(NULL, (const void**)&pathCF, 1, NULL);
     
     Handle* watcher = new Handle(dir, std::forward<FileWatchHandler>(handler));
-    mWatchers[dir] = watcher;
+    mWatchers[dir].push_back(watcher);
     
     FSEventStreamContext context;
     context.version = 0;

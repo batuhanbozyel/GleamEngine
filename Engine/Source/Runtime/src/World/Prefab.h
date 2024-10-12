@@ -9,7 +9,7 @@ class EntityManager;
 struct Prefab
 {
 	TString name;
-	size_t entityCount;
+	uint32_t entityCount;
 	//AssetReference parent; // TODO: how to handle nested prefabs?
 
 	void Serialize(const EntityManager& entityManager, FileStream& stream) const;

@@ -20,7 +20,7 @@ public:
 	const AssetItem& GetAsset(const Gleam::Guid& guid) const;
 
 	template<typename T>
-	const AssetItem& GetAsset(const Gleam::Filesystem::Path& path)
+	const AssetItem& GetAsset(const Gleam::Filesystem::Path& path) const
 	{
 		return mRegistry.GetAsset<T>(path);
 	}

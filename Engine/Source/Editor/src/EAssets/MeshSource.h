@@ -68,8 +68,9 @@ struct PrefabHierarchy
 	Gleam::TArray<Gleam::RefCounted<MaterialInstanceBaker>> materials;
 };
 
-struct MeshSource : AssetPackage
+class MeshSource : public AssetPackage
 {
+public:
 	AssetPackageType(MeshSource);
 
     struct ImportSettings

@@ -101,10 +101,8 @@ bool MeshSource::Import(const Gleam::Filesystem::Path& path, const ImportSetting
         auto combined = CombineMeshes(meshes);
         combined.name = filename;
 
-		auto meshBaker = Gleam::CreateRef<MeshBaker>(combined);
-		mBakers.push_back(meshBaker);
+		auto meshBaker = EmplaceBaker<MeshBaker>(combined);
 		hierarchy.meshes.push_back(meshBaker);
-		mRegistry->RegisterAsset<Gleam::MeshDescriptor>(combined.name);
     }
     else
     {
@@ -122,15 +120,13 @@ bool MeshSource::Import(const Gleam::Filesystem::Path& path, const ImportSetting
             submesh.indexCount = static_cast<uint32_t>(mesh.indices.size());
             descriptor.submeshes.push_back(submesh);
 
-			auto meshBaker = Gleam::CreateRef<MeshBaker>(descriptor);
-			mBakers.push_back(meshBaker);
+			auto meshBaker = EmplaceBaker<MeshBaker>(descriptor);
 			hierarchy.meshes.push_back(meshBaker);
-			mRegistry->RegisterAsset<Gleam::MeshDescriptor>(mesh.name);
         }
     }
 
-	auto opaqueLitMaterialAsset = mAssetManager->GetAsset<Gleam::MaterialDescriptor>("Materials/OpaqueLit").reference;
-	auto transparentLitMaterialAsset = mAssetManager->GetAsset<Gleam::MaterialDescriptor>("Materials/TransparentLit").reference;
+	auto opaqueLitMaterialAsset = AssetManager()->GetAsset<Gleam::MaterialDescriptor>("Materials/OpaqueLit").reference;
+	auto transparentLitMaterialAsset = AssetManager()->GetAsset<Gleam::MaterialDescriptor>("Materials/TransparentLit").reference;
 
 	auto assetManager = Gleam::Globals::GameInstance->GetSubsystem<Gleam::AssetManager>();
 	auto opaqueLitMaterial = assetManager->Get<Gleam::MaterialDescriptor>(opaqueLitMaterialAsset);
@@ -159,55 +155,45 @@ bool MeshSource::Import(const Gleam::Filesystem::Path& path, const ImportSetting
 		if (const auto& texture = material.textures[PBRTexture::Albedo]; texture.empty() == false)
 		{
 			auto texturePath = directory / texture;
-			auto textureSource = TextureSource(mAssetManager, mRegistry);
 			auto textureSettings = TextureSource::ImportSettings();
-			if (textureSource.Import(texturePath, textureSettings))
+			if (ImportReference<TextureSource>(texturePath, textureSettings))
 			{
-				descriptor["BaseColorTexture"] = mRegistry->GetAsset<Gleam::TextureDescriptor>(texture).reference;
-				mBakers.emplace_back(textureSource.mBakers[0]);
+				descriptor["BaseColorTexture"] = Registry()->GetAsset<Gleam::TextureDescriptor>(texture).reference;
 			}
 		}
 
 		if (const auto& texture = material.textures[PBRTexture::Normal]; texture.empty() == false)
 		{
 			auto texturePath = directory / texture;
-			auto textureSource = TextureSource(mAssetManager, mRegistry);
 			auto textureSettings = TextureSource::ImportSettings();
-			if (textureSource.Import(texturePath, textureSettings))
+			if (ImportReference<TextureSource>(texturePath, textureSettings))
 			{
-				descriptor["NormalTexture"] = mRegistry->GetAsset<Gleam::TextureDescriptor>(texture).reference;
-				mBakers.emplace_back(textureSource.mBakers[0]);
+				descriptor["NormalTexture"] = Registry()->GetAsset<Gleam::TextureDescriptor>(texture).reference;
 			}
 		}
 
 		if (const auto& texture = material.textures[PBRTexture::MetallicRoughness]; texture.empty() == false)
 		{
 			auto texturePath = directory / texture;
-			auto textureSource = TextureSource(mAssetManager, mRegistry);
 			auto textureSettings = TextureSource::ImportSettings();
-			if (textureSource.Import(texturePath, textureSettings))
+			if (ImportReference<TextureSource>(texturePath, textureSettings))
 			{
-				descriptor["MetallicRoughnessTexture"] = mRegistry->GetAsset<Gleam::TextureDescriptor>(texture).reference;
-				mBakers.emplace_back(textureSource.mBakers[0]);
+				descriptor["MetallicRoughnessTexture"] = Registry()->GetAsset<Gleam::TextureDescriptor>(texture).reference;
 			}
 		}
 
 		if (const auto& texture = material.textures[PBRTexture::Emissive]; texture.empty() == false)
 		{
 			auto texturePath = directory / texture;
-			auto textureSource = TextureSource(mAssetManager, mRegistry);
 			auto textureSettings = TextureSource::ImportSettings();
-			if (textureSource.Import(texturePath, textureSettings))
+			if (ImportReference<TextureSource>(texturePath, textureSettings))
 			{
-				descriptor["EmissiveTexture"] = mRegistry->GetAsset<Gleam::TextureDescriptor>(texture).reference;
-				mBakers.emplace_back(textureSource.mBakers[0]);
+				descriptor["EmissiveTexture"] = Registry()->GetAsset<Gleam::TextureDescriptor>(texture).reference;
 			}
 		}
 		
-		auto materialBaker = Gleam::CreateRef<MaterialInstanceBaker>(descriptor);
-		mBakers.push_back(materialBaker);
+		auto materialBaker = EmplaceBaker<MaterialInstanceBaker>(descriptor);
 		hierarchy.materials.push_back(materialBaker);
-		mRegistry->RegisterAsset<Gleam::MaterialInstanceDescriptor>(material.name);
     }
 
 	// Create prefab
@@ -217,22 +203,21 @@ bool MeshSource::Import(const Gleam::Filesystem::Path& path, const ImportSetting
 		for (const auto& meshBaker : hierarchy.meshes)
 		{
 			const auto& descriptor = meshBaker->GetDescriptor();
-			const auto& meshItem = mRegistry->GetAsset<Gleam::MeshDescriptor>(meshBaker->Filename());
+			const auto& meshItem = Registry()->GetAsset<Gleam::MeshDescriptor>(meshBaker->Filename());
 
 			Gleam::TArray<Gleam::AssetReference> materials;
 			for (const auto& submesh : descriptor.submeshes)
 			{
 				const auto& materialBaker = hierarchy.materials[submesh.materialIndex];
 				const auto& descriptor = materialBaker->GetDescriptor();
-				const auto& materialItem = mRegistry->GetAsset<Gleam::MaterialInstanceDescriptor>(materialBaker->Filename());
+				const auto& materialItem = Registry()->GetAsset<Gleam::MaterialInstanceDescriptor>(materialBaker->Filename());
 				materials.push_back(materialItem.reference);
 			}
 
 			auto& entity = world->GetEntityManager().CreateEntity(Gleam::Guid::NewGuid());
 			entity.AddComponent<Gleam::MeshRenderer>(meshItem.reference, materials);
 		}
-		mBakers.emplace_back(Gleam::CreateRef<PrefabBaker>(world));
-		mRegistry->RegisterAsset<Gleam::Prefab>(filename);
+		EmplaceBaker<PrefabBaker>(world);
 	}
 
 	cgltf_free(data);
