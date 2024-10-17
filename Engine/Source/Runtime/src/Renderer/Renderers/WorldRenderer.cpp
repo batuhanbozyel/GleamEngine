@@ -84,8 +84,8 @@ void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 
             for (const auto& batch : batches)
             {
-                const auto& positionBuffer = batch.mesh.GetPositionBuffer();
-                const auto& interleavedBuffer = batch.mesh.GetInterleavedBuffer();
+                const auto& positionBuffer = batch.mesh->GetPositionBuffer();
+                const auto& interleavedBuffer = batch.mesh->GetInterleavedBuffer();
             #ifdef USE_METAL_RENDERER
                 [cmd->GetActiveRenderPass() useResource:positionBuffer.GetHandle() usage : MTLResourceUsageRead stages : MTLRenderStageVertex];
                 [cmd->GetActiveRenderPass() useResource:interleavedBuffer.GetHandle() usage : MTLResourceUsageRead stages : MTLRenderStageVertex] ;
@@ -108,11 +108,11 @@ void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
                 resources.positionBuffer = positionBuffer.GetResourceView();
                 resources.interleavedBuffer = interleavedBuffer.GetResourceView();
                 resources.materialBuffer = materialBuffer.GetResourceView();
-				resources.materialID = batch.material.GetUniqueId();
+				resources.materialID = batch.material->GetUniqueId();
 				resources.modelMatrix = batch.transform;
 				resources.baseVertex = batch.submesh.baseVertex;
                 cmd->SetConstantBuffer(resources, 0);
-				cmd->DrawIndexed(batch.mesh.GetIndexBuffer(), IndexType::UINT32, batch.submesh.indexCount, 1, batch.submesh.firstIndex);
+				cmd->DrawIndexed(batch.mesh->GetIndexBuffer(), IndexType::UINT32, batch.submesh.indexCount, 1, batch.submesh.firstIndex);
             }
         });
     });

@@ -129,8 +129,8 @@ bool MeshSource::Import(const Gleam::Filesystem::Path& path, const ImportSetting
 	auto transparentLitMaterialAsset = AssetManager()->GetAsset<Gleam::MaterialDescriptor>("Materials/TransparentLit").reference;
 
 	auto assetManager = Gleam::Globals::GameInstance->GetSubsystem<Gleam::AssetManager>();
-	auto opaqueLitMaterial = assetManager->Get<Gleam::MaterialDescriptor>(opaqueLitMaterialAsset);
-	auto transparentLitMaterial = assetManager->Get<Gleam::MaterialDescriptor>(transparentLitMaterialAsset);
+	auto opaqueLitMaterial = assetManager->LoadDescriptor<Gleam::MaterialDescriptor>(opaqueLitMaterialAsset);
+	auto transparentLitMaterial = assetManager->LoadDescriptor<Gleam::MaterialDescriptor>(transparentLitMaterialAsset);
     for (const auto& material : materials)
 	{
 		Gleam::MaterialInstanceDescriptor descriptor;

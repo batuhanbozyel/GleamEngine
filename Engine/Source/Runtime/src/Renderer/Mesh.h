@@ -2,16 +2,17 @@
 #include "Heap.h"
 #include "Buffer.h"
 #include "MeshDescriptor.h"
+#include "Assets/Asset.h"
 
 namespace Gleam {
 
-class Mesh
+class Mesh : public Asset
 {
 public:
     
-    virtual ~Mesh() = default;
-    
     Mesh(const MeshDescriptor& mesh);
+	
+	virtual ~Mesh() = default;
     
     void Dispose();
     

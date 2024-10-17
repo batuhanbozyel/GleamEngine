@@ -7,6 +7,7 @@
 
 #pragma once
 #include "IMaterial.h"
+#include "Assets/Asset.h"
 
 namespace Gleam {
 

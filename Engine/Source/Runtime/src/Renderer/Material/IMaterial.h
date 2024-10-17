@@ -7,10 +7,11 @@
 
 #pragma once
 #include "MaterialProperty.h"
+#include "Assets/Asset.h"
 
 namespace Gleam {
 
-class IMaterial
+class IMaterial : public Asset
 {
 public:
 

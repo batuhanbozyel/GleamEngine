@@ -10,10 +10,10 @@ class Material;
 
 struct MeshBatch
 {
-	Mesh mesh;
+	const Mesh* mesh = nullptr;
+	const MaterialInstance* material = nullptr;
     Float4x4 transform;
 	SubmeshDescriptor submesh;
-    MaterialInstance material;
 };
 
 class RenderSceneProxy : public ComponentSystem
@@ -22,24 +22,14 @@ class RenderSceneProxy : public ComponentSystem
 public:
     
     virtual void OnUpdate(EntityManager& entityManager) override;
-
-	virtual void OnDestroy(EntityManager& entityManager) override;
     
     void ForEach(BatchFn&& fn) const;
     
     const Entity* GetActiveCamera() const;
 
 private:
-
-	const Mesh& GetMesh(const AssetReference& ref);
-
-	const MaterialInstance& GetMaterialInstance(const AssetReference& ref);
     
     const Entity* mActiveCamera = nullptr;
-
-	HashMap<AssetReference, Mesh> mMeshes;
-
-	HashMap<AssetReference, MaterialInstance> mMaterialInstances;
 
     HashMap<AssetReference, TArray<MeshBatch>> mStaticBatches;
     

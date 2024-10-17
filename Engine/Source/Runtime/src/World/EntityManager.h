@@ -150,7 +150,7 @@ public:
         return mRegistry.get<T>(entity);
     }
 
-	size_t GetEntityCount() const;
+	uint32_t GetEntityCount() const;
 
 	EntityHandle GetEntity(const EntityReference& ref) const;
 

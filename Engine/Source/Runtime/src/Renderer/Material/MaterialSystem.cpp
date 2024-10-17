@@ -21,7 +21,7 @@ void MaterialSystem::Initialize(Application* app)
 			{
 				auto guid = Guid(entry.stem().string());
 				AssetReference ref = { .guid = guid };
-				auto descriptor = app->GetSubsystem<AssetManager>()->Get<MaterialDescriptor>(ref);
+				auto descriptor = app->GetSubsystem<AssetManager>()->LoadDescriptor<MaterialDescriptor>(ref);
 				mMaterials.emplace_hint(mMaterials.end(),
 										std::piecewise_construct,
 										std::forward_as_tuple(ref),
@@ -45,7 +45,7 @@ Material& MaterialSystem::GetMaterial(const AssetReference& ref)
 	auto it = mMaterials.find(ref);
 	if (it == mMaterials.end())
 	{
-		auto descriptor = Globals::GameInstance->GetSubsystem<AssetManager>()->Get<MaterialDescriptor>(ref);
+		auto descriptor = Globals::GameInstance->GetSubsystem<AssetManager>()->LoadDescriptor<MaterialDescriptor>(ref);
 		it = mMaterials.emplace_hint(mMaterials.end(),
 									 std::piecewise_construct,
 									 std::forward_as_tuple(ref),

@@ -1,12 +1,13 @@
 #pragma once
 #include "GraphicsObject.h"
 #include "TextureDescriptor.h"
+#include "Assets/Asset.h"
 
 namespace Gleam {
 
 class GraphicsDevice;
 
-class Texture final : public ShaderResource
+class Texture final : public ShaderResource, public Asset
 {
     friend class GraphicsDevice;
     

@@ -11,10 +11,10 @@ using namespace Gleam;
 Entity& EntityManager::CreateFromPrefab(const AssetReference& ref)
 {
 	auto assetManager = Globals::GameInstance->GetSubsystem<AssetManager>();
-	const auto& asset = assetManager->GetAsset(ref);
-	auto prefab = assetManager->Get<Prefab>(ref);
+	const auto& path = assetManager->GetAssetPath(ref);
+	auto prefab = assetManager->LoadDescriptor<Prefab>(ref);
 
-	auto fullpath = Globals::ProjectContentDirectory / asset.path;
+	auto fullpath = Globals::ProjectContentDirectory / path;
 	auto file = Filesystem::Open(fullpath, FileType::Text);
 
 	if (prefab.entityCount > 1)
@@ -91,9 +91,9 @@ void EntityManager::DestroyEntity(const TArray<EntityHandle>& entities)
 	mRegistry.destroy(entities.begin(), entities.end());
 }
 
-size_t EntityManager::GetEntityCount() const
+uint32_t EntityManager::GetEntityCount() const
 {
-	return mRegistry.storage<EntityHandle>()->size();
+	return static_cast<uint32_t>(mRegistry.storage<EntityHandle>()->size());
 }
 
 EntityHandle EntityManager::GetEntity(const EntityReference& ref) const

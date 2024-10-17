@@ -1,14 +1,19 @@
 #pragma once
 #include "Asset.h"
 #include "AssetReference.h"
+
+#include "Core/Globals.h"
 #include "Core/Subsystem.h"
+#include "Core/Application.h"
+
 #include "Serialization/JSONSerializer.h"
 
 #include <mutex>
 
 namespace Gleam {
 
-struct Asset;
+template <typename T>
+concept AssetType = std::is_base_of<Asset, T>::value;
 
 class AssetManager final : public GameInstanceSubsystem
 {
@@ -17,14 +22,32 @@ public:
     virtual void Initialize(Application* app) override;
 
     virtual void Shutdown() override;
-
-	template<typename T>
-	T Get(const AssetReference& ref) const
+	
+	template<AssetType T>
+	const T* Load(const AssetReference& ref)
 	{
-		auto it = mAssets.find(ref);
-		if (it != mAssets.end())
+		if (auto it = mAssetCache.find(ref); it != mAssetCache.end())
 		{
-			auto fullpath = Globals::ProjectContentDirectory / it->second.path;
+			return static_cast<const T*>(it->second.get());
+		}
+		
+		auto typeHash = entt::type_hash<T>::value();
+		auto meta = entt::resolve(static_cast<uint32_t>(typeHash));
+		auto asset = Reflection::Get<T*>(meta.func("CreateAsset"_hs).invoke({}, ref).data());
+		auto it = mAssetCache.emplace_hint(mAssetCache.end(),
+										   std::piecewise_construct,
+										   std::forward_as_tuple(ref),
+										   std::forward_as_tuple(asset));
+		return static_cast<const T*>(it->second.get());
+	}
+	
+	template<typename T>
+	T LoadDescriptor(const AssetReference& ref) const
+	{
+		auto it = mAssetPaths.find(ref);
+		if (it != mAssetPaths.end())
+		{
+			auto fullpath = Globals::ProjectContentDirectory / it->second;
 			auto file = Filesystem::Open(fullpath, FileType::Text);
 			auto serializer = JSONSerializer(file.GetStream());
 			auto asset = serializer.Deserialize<T>();
@@ -35,16 +58,33 @@ public:
 		GLEAM_ASSERT(false);
 		return T();
 	}
-
-	const Asset& GetAsset(const AssetReference& ref) const;
+	
+	template<AssetType T, typename Desc>
+	static void RegisterMetaAsset()
+	{
+		entt::meta<T>()
+			.type(entt::type_hash<T>::value())
+			.template func<&CreateAsset<T, Desc>>("CreateAsset"_hs);
+	}
+	
+	const Filesystem::Path& GetAssetPath(const AssetReference& ref) const;
 
 private:
+	
+	template<AssetType T, typename Desc>
+	static T* CreateAsset(const AssetReference& ref)
+	{
+		auto instance = Globals::GameInstance->GetSubsystem<AssetManager>();
+		return new T(instance->LoadDescriptor<Desc>(ref));
+	}
 
-	bool TryEmplaceAsset(const Asset& asset);
+	void EmplaceAssetPath(const Filesystem::Path& path);
 
 	std::mutex mMutex;
+	
+	HashMap<AssetReference, Scope<Asset>> mAssetCache;
     
-    HashMap<AssetReference, Asset> mAssets;
+    HashMap<AssetReference, Filesystem::Path> mAssetPaths;
 
 };
 

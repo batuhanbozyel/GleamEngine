@@ -4,20 +4,25 @@
 #include "Core/Globals.h"
 #include "IO/FileWatcher.h"
 
+#include "Renderer/Mesh.h"
+#include "Renderer/Texture.h"
+#include "Renderer/Material/Material.h"
+#include "Renderer/Material/MaterialInstance.h"
+
 using namespace Gleam;
 
 void AssetManager::Initialize(Application* app)
 {
+	RegisterMetaAsset<Mesh, MeshDescriptor>();
+	RegisterMetaAsset<Texture, TextureDescriptor>();
+	RegisterMetaAsset<Material, MaterialDescriptor>();
+	RegisterMetaAsset<MaterialInstance, MaterialInstanceDescriptor>();
+	
 	Filesystem::ForEach(Globals::ProjectContentDirectory, [this](const auto& entry)
 	{
 		if (entry.extension() == ".asset")
 		{
-			auto guid = Guid(entry.stem().string());
-			auto relPath = Filesystem::Relative(entry, Globals::ProjectContentDirectory);
-
-			Asset asset{ .path = relPath };
-			AssetReference assetRef = { .guid = guid };
-			mAssets.emplace(assetRef, asset);
+			EmplaceAssetPath(entry);
 		}
 	}, true);
 
@@ -29,39 +34,38 @@ void AssetManager::Initialize(Application* app)
             return;
         }
         
-        Asset asset{ .path = Filesystem::Relative(path, Globals::ProjectContentDirectory) };
-
+		auto relPath = Filesystem::Relative(path, Globals::ProjectContentDirectory);
 		std::lock_guard<std::mutex> lock(mMutex);
         switch (event)
         {
             case FileWatchEvent::Added:
             {
-				TryEmplaceAsset(asset);
+				EmplaceAssetPath(relPath);
                 break;
             }
             case FileWatchEvent::Removed:
             {
-                auto it = std::find_if(mAssets.begin(), mAssets.end(), [&](auto pair)
+                auto it = std::find_if(mAssetPaths.begin(), mAssetPaths.end(), [&](auto pair)
                 {
-                    return pair.second == asset;
+					return pair.second == relPath;
                 });
                 
-                if (it != mAssets.end())
+                if (it != mAssetPaths.end())
                 {
-                    mAssets.erase(it);
+					mAssetPaths.erase(it);
                 }
                 break;
             }
 			case FileWatchEvent::Modified:
 			{
-				auto it = std::find_if(mAssets.begin(), mAssets.end(), [&](auto pair)
+				auto it = std::find_if(mAssetPaths.begin(), mAssetPaths.end(), [&](auto pair)
 				{
-					return pair.second == asset;
+					return pair.second == relPath;
 				});
 
-				if (it == mAssets.end())
+				if (it == mAssetPaths.end())
 				{
-					TryEmplaceAsset(asset);
+					EmplaceAssetPath(relPath);
 				}
 				break;
 			}
@@ -72,29 +76,31 @@ void AssetManager::Initialize(Application* app)
 
 void AssetManager::Shutdown()
 {
-    mAssets.clear();
+	mAssetPaths.clear();
 }
 
-const Asset& AssetManager::GetAsset(const AssetReference& ref) const
+void AssetManager::EmplaceAssetPath(const Filesystem::Path& path)
 {
-	auto it = mAssets.find(ref);
-	if (it != mAssets.end())
+	Guid guid = path.stem().string();
+	auto relPath = Filesystem::Relative(path, Globals::ProjectContentDirectory);
+	
+	if (guid != Guid::InvalidGuid())
+	{
+		AssetReference assetRef = { .guid = guid };
+		mAssetPaths[assetRef] = relPath;
+	}
+}
+
+const Filesystem::Path& AssetManager::GetAssetPath(const AssetReference& ref) const
+{
+	auto it = mAssetPaths.find(ref);
+	if (it != mAssetPaths.end())
 	{
 		return it->second;
 	}
-	static Asset invalidAsset;
-	return invalidAsset;
-}
 
-bool AssetManager::TryEmplaceAsset(const Asset& asset)
-{
-	Guid guid = asset.path.stem().string();
-	if (guid == Guid::InvalidGuid())
-	{
-		return false;
-	}
-
-	AssetReference assetRef = { .guid = guid };
-	mAssets[assetRef] = asset;
-	return true;
+	GLEAM_CORE_ERROR("Asset could not located for GUID: {0}", ref.guid.ToString());
+	GLEAM_ASSERT(false);
+	static Filesystem::Path invalidPath;
+	return invalidPath;
 }
