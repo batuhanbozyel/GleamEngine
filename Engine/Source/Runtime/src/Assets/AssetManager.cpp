@@ -82,7 +82,7 @@ void AssetManager::Shutdown()
 void AssetManager::EmplaceAssetPath(const Filesystem::Path& path)
 {
 	Guid guid = path.stem().string();
-	auto relPath = Filesystem::Relative(path, Globals::ProjectContentDirectory);
+	auto relPath = path.is_relative() ? path : Filesystem::Relative(path, Globals::ProjectContentDirectory);
 	
 	if (guid != Guid::InvalidGuid())
 	{

@@ -24,11 +24,12 @@ void RenderSceneProxy::OnUpdate(EntityManager& entityManager)
 		GLEAM_ASSERT(meshRenderer.materials.size() == submeshes.size());
 		for (uint32_t i = 0; i < submeshes.size(); ++i)
 		{
+			const auto material = assetManager->Load<MaterialInstance>(meshRenderer.materials[i]);
 			MeshBatch batch = {
 				.mesh = mesh,
+				.material = material,
 				.transform = entity.GetWorldTransform(),
-				.submesh = submeshes[i],
-				.material = assetManager->Load<MaterialInstance>(meshRenderer.materials[i])
+				.submesh = submeshes[i]
 			};
 			mStaticBatches[batch.material->GetBaseMaterial()].emplace_back(batch);
 		}
