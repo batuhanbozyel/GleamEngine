@@ -1,13 +1,12 @@
 #pragma once
 #include "GraphicsObject.h"
 #include "TextureDescriptor.h"
-#include "Assets/Asset.h"
 
 namespace Gleam {
 
 class GraphicsDevice;
 
-class Texture final : public ShaderResource, public Asset
+class Texture final : public ShaderResource
 {
     friend class GraphicsDevice;
     
@@ -20,7 +19,8 @@ public:
     Texture& operator=(const Texture& other) = default;
     
     Texture(const TextureDescriptor& descriptor)
-        : mDescriptor(descriptor), mMipMapLevels(descriptor.useMipMap ? CalculateMipLevels(descriptor.size) : 1)
+        : mDescriptor(descriptor)
+		, mMipMapLevels(descriptor.useMipMap ? CalculateMipLevels(descriptor.size) : 1)
     {
         
     }

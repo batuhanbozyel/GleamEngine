@@ -158,7 +158,7 @@ bool MeshSource::Import(const Gleam::Filesystem::Path& path, const ImportSetting
 			auto textureSettings = TextureSource::ImportSettings();
 			if (ImportReference<TextureSource>(texturePath, textureSettings))
 			{
-				descriptor["BaseColorTexture"] = Registry()->GetAsset<Gleam::TextureDescriptor>(texture).reference;
+				descriptor["BaseColorTexture"] = Registry()->GetAsset<Gleam::Texture2DDescriptor>(texture).reference;
 			}
 		}
 
@@ -168,7 +168,7 @@ bool MeshSource::Import(const Gleam::Filesystem::Path& path, const ImportSetting
 			auto textureSettings = TextureSource::ImportSettings();
 			if (ImportReference<TextureSource>(texturePath, textureSettings))
 			{
-				descriptor["NormalTexture"] = Registry()->GetAsset<Gleam::TextureDescriptor>(texture).reference;
+				descriptor["NormalTexture"] = Registry()->GetAsset<Gleam::Texture2DDescriptor>(texture).reference;
 			}
 		}
 
@@ -178,7 +178,7 @@ bool MeshSource::Import(const Gleam::Filesystem::Path& path, const ImportSetting
 			auto textureSettings = TextureSource::ImportSettings();
 			if (ImportReference<TextureSource>(texturePath, textureSettings))
 			{
-				descriptor["MetallicRoughnessTexture"] = Registry()->GetAsset<Gleam::TextureDescriptor>(texture).reference;
+				descriptor["MetallicRoughnessTexture"] = Registry()->GetAsset<Gleam::Texture2DDescriptor>(texture).reference;
 			}
 		}
 
@@ -188,7 +188,7 @@ bool MeshSource::Import(const Gleam::Filesystem::Path& path, const ImportSetting
 			auto textureSettings = TextureSource::ImportSettings();
 			if (ImportReference<TextureSource>(texturePath, textureSettings))
 			{
-				descriptor["EmissiveTexture"] = Registry()->GetAsset<Gleam::TextureDescriptor>(texture).reference;
+				descriptor["EmissiveTexture"] = Registry()->GetAsset<Gleam::Texture2DDescriptor>(texture).reference;
 			}
 		}
 		

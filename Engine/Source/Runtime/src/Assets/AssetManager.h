@@ -31,7 +31,7 @@ public:
 			return static_cast<const T*>(it->second.get());
 		}
 		
-		auto typeHash = entt::type_hash<T>::value();
+		constexpr auto typeHash = entt::type_hash<T>::value();
 		auto meta = entt::resolve(static_cast<uint32_t>(typeHash));
 		auto asset = Reflection::Get<T*>(meta.func("CreateAsset"_hs).invoke({}, ref).data());
 		auto it = mAssetCache.emplace_hint(mAssetCache.end(),
@@ -62,6 +62,7 @@ public:
 	template<AssetType T, typename Desc>
 	static void RegisterMetaAsset()
 	{
+		[[maybe_unused]] const auto& classDesc = Reflection::GetClass<Desc>();
 		entt::meta<T>()
 			.type(entt::type_hash<T>::value())
 			.template func<&CreateAsset<T, Desc>>("CreateAsset"_hs);

@@ -2,7 +2,7 @@
 
 using namespace GEditor;
 
-TextureBaker::TextureBaker(const Gleam::TextureDescriptor& descriptor)
+TextureBaker::TextureBaker(const Gleam::Texture2DDescriptor& descriptor)
 	: mDescriptor(descriptor)
 {
 	

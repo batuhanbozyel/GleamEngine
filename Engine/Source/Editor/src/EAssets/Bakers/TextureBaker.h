@@ -7,7 +7,7 @@ class TextureBaker final : public AssetBaker
 {
 public:
 
-	TextureBaker(const Gleam::TextureDescriptor& descriptor);
+	TextureBaker(const Gleam::Texture2DDescriptor& descriptor);
 
 	virtual void Bake(Gleam::FileStream& stream) const override;
     
@@ -17,7 +17,7 @@ public:
 
 private:
 
-	Gleam::TextureDescriptor mDescriptor;
+	Gleam::Texture2DDescriptor mDescriptor;
 
 };
 

@@ -5,7 +5,7 @@
 #include "IO/FileWatcher.h"
 
 #include "Renderer/Mesh.h"
-#include "Renderer/Texture.h"
+#include "Renderer/Texture2D.h"
 #include "Renderer/Material/Material.h"
 #include "Renderer/Material/MaterialInstance.h"
 
@@ -14,8 +14,8 @@ using namespace Gleam;
 void AssetManager::Initialize(Application* app)
 {
 	RegisterMetaAsset<Mesh, MeshDescriptor>();
-	RegisterMetaAsset<Texture, TextureDescriptor>();
 	RegisterMetaAsset<Material, MaterialDescriptor>();
+	RegisterMetaAsset<Texture2D, Texture2DDescriptor>();
 	RegisterMetaAsset<MaterialInstance, MaterialInstanceDescriptor>();
 	
 	Filesystem::ForEach(Globals::ProjectContentDirectory, [this](const auto& entry)
@@ -76,6 +76,11 @@ void AssetManager::Initialize(Application* app)
 
 void AssetManager::Shutdown()
 {
+	for (auto& [ref, asset] : mAssetCache)
+	{
+		asset->Release();
+	}
+	mAssetCache.clear();
 	mAssetPaths.clear();
 }
 

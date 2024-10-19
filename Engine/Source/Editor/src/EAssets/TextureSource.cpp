@@ -40,7 +40,7 @@ bool TextureSource::Import(const Gleam::Filesystem::Path& path, const ImportSett
 		return false;
 	}
 	
-	Gleam::TextureDescriptor descriptor;
+	Gleam::Texture2DDescriptor descriptor;
 	descriptor.format = format;
 	descriptor.name = path.stem().string();
 	descriptor.size.width = static_cast<float>(texture.width);
