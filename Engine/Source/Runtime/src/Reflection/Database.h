@@ -85,7 +85,7 @@ private:
 		desc.mGuid = refl::descriptor::get_attribute<Reflection::Attribute::Guid>(type);
 
 		// resolve fields
-        auto fields = refl::util::filter(type.members, [&](auto member) { return refl::descriptor::is_field(member); });
+        auto fields = refl::util::filter(type.declared_members, [&](auto member) { return refl::descriptor::is_field(member); });
         refl::util::for_each(fields, [&](auto member)
         {
             using ValueType = typename decltype(member)::value_type;
@@ -137,18 +137,23 @@ private:
         });
         
         // resolve base classes
-        refl::util::for_each(type.bases, [&](auto base)
-        {
-            desc.mBaseClasses.emplace_back(base);
-        });
+		refl::util::for_each(refl::util::reflect_types(type.declared_bases), [&](auto base)
+		{
+			using BaseType = typename decltype(base)::type;
+			auto& classDesc = CreateClassIfNotExist<BaseType>();
+			desc.mBaseClasses.emplace_back(classDesc);
+		});
         
         // resolve attributes
-		std::apply([&](const auto&... attributes)
+		std::apply([&](auto&&... attributes)
 		{
 			auto resolveAttrib = [&](auto attrib)
 			{
-				desc.mAttributes.push_back({ .description = attrib.description,
+				if constexpr (AttributeType<decltype(attrib)>)
+				{
+					desc.mAttributes.push_back({ .description = attrib.description,
 										 .value = std::make_any<decltype(attrib)>(attrib) });
+				};
 			};
 			(resolveAttrib(attributes), ...);
 

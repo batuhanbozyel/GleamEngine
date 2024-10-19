@@ -653,7 +653,10 @@ void JSONSerializer::Impl::SerializeClassObjectFields(const void* obj,
 {
     for (const auto& baseClass : classDesc.ResolveBaseClasses())
     {
-        SerializeClassObjectFields(obj, fieldName, baseClass, outFields);
+		auto baseObject = rapidjson::Value(rapidjson::kObjectType);
+		auto baseNode = rapidjson::Node(baseObject, outFields.allocator);
+        SerializeClassObject(obj, fieldName, baseClass, baseNode);
+		outFields.PushBack(baseNode.object);
     }
     
     for (const auto& field : classDesc.ResolveFields())
