@@ -18,6 +18,8 @@ class MaterialInstance : public IMaterial
 public:
 
     MaterialInstance(const MaterialInstanceDescriptor& descriptor);
+
+	virtual void Release() override;
     
 	void SetProperty(const TString& name, const MaterialPropertyValue& value);
 

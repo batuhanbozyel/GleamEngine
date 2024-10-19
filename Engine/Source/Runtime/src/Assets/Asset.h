@@ -9,9 +9,12 @@
 
 namespace Gleam {
 
-struct Asset
+class Asset
 {
+public:
 	virtual ~Asset() = default;
+
+	virtual void Release() = 0;
 	
     static constexpr TStringView Extension()
     {

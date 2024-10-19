@@ -29,9 +29,18 @@ MaterialInstance::MaterialInstance(const MaterialInstanceDescriptor& descriptor)
 	mUniqueId = material.CreateInstance(mPropertyValues);
 }
 
+void MaterialInstance::Release()
+{
+	// TODO:
+}
+
 void MaterialInstance::SetProperty(const TString& name, const MaterialPropertyValue& value)
 {
-	mPropertyValues[GetPropertyIndex(name)] = value;
+	auto propertyIdx = GetPropertyIndex(name);
+	if (propertyIdx != ~0u)
+	{
+		mPropertyValues[propertyIdx] = value;
+	}
 }
 
 const AssetReference& MaterialInstance::GetBaseMaterial() const

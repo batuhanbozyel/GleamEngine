@@ -77,18 +77,14 @@ Mesh::Mesh(const MeshDescriptor& mesh)
     }
 }
 
-void Mesh::Dispose()
+void Mesh::Release()
 {
-    static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
+	static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
 	auto device = renderSystem->GetDevice();
-
-	device->AddPooledObject([&]()
-	{
-		device->Dispose(mPositionBuffer);
-		device->Dispose(mInterleavedBuffer);
-		device->Dispose(mIndexBuffer);
-		device->Dispose(mHeap);
-	});
+	device->ReleaseBuffer(mPositionBuffer);
+	device->ReleaseBuffer(mInterleavedBuffer);
+	device->ReleaseBuffer(mIndexBuffer);
+	device->ReleaseHeap(mHeap);
 }
 
 const Buffer& Mesh::GetPositionBuffer() const

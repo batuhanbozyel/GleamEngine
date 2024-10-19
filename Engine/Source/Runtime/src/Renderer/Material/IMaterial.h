@@ -32,7 +32,7 @@ public:
         {
             if (mProperties[i].name == name) { return i; }
         }
-        return 0;
+        return ~0u;
     }
     
 protected:

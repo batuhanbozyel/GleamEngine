@@ -11,6 +11,9 @@
 
 #include "Core/Engine.h"
 #include "Core/Globals.h"
+#include "Core/Application.h"
+#include "Assets/AssetManager.h"
+#include "Renderer/Texture2D.h"
 #include "Renderer/RenderSystem.h"
 
 using namespace Gleam;
@@ -23,19 +26,34 @@ Material::Material(const MaterialDescriptor& descriptor)
     // TODO: Allocate GPU buffer
 }
 
-void Material::Dispose()
+void Material::Release()
 {
 	static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
 	auto device = renderSystem->GetDevice();
 
-	device->AddPooledObject([&]()
+	device->AddPooledObject([buffer = mBuffer]() mutable
 	{
-		//device->Dispose(mBuffer);
+		//device->Dispose(buffer);
 	});
 }
 
 uint32_t Material::CreateInstance(const TArray<MaterialPropertyValue>& values)
 {
+	GLEAM_ASSERT(values.size() == mProperties.size(), "Material properties do not match with instance properties.");
+
+	auto assetManager = Globals::GameInstance->GetSubsystem<AssetManager>();
+	for (uint32_t i = 0; i < values.size(); ++i)
+	{
+		if (mProperties[i].type == MaterialPropertyType::Texture2D)
+		{
+			const auto& asset = values[i].texture;
+			if (asset.guid != Guid::InvalidGuid())
+			{
+				auto texture = assetManager->Load<Texture2D>(values[i].texture);
+			}
+		}
+	}
+
 	// TODO: update GPU buffer with instance values
 	return mInstanceCount++;
 }

@@ -22,7 +22,7 @@ public:
 
 	uint32_t CreateInstance(const TArray<MaterialPropertyValue>& values);
     
-	void Dispose();
+	virtual void Release() override;
     
     const Buffer& GetBuffer() const;
     

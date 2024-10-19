@@ -35,7 +35,7 @@ void MaterialSystem::Shutdown()
 {
 	for (auto& [ref, material] : mMaterials)
 	{
-		material.Dispose();
+		material.Release();
 	}
 	mMaterials.clear();
 }

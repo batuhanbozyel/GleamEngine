@@ -14,7 +14,7 @@ public:
 	
 	virtual ~Mesh() = default;
     
-    void Dispose();
+    virtual void Release() override;
     
     const Buffer& GetPositionBuffer() const;
     
