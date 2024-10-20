@@ -10,8 +10,8 @@ TextureBaker::TextureBaker(const Gleam::Texture2DDescriptor& descriptor)
 
 void TextureBaker::Bake(Gleam::FileStream& stream) const
 {
-	auto serializer = Gleam::JSONSerializer(stream);
-	serializer.Serialize(mDescriptor);
+	auto serializer = Gleam::JSONSerializer();
+	serializer.Serialize(mDescriptor, stream);
 }
 
 Gleam::TString TextureBaker::Filename() const

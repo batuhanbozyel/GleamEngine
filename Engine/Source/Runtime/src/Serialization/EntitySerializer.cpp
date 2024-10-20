@@ -31,7 +31,7 @@ void EntitySerializer::Serialize(const EntityManager& entityManager, rapidjson::
 		rapidjson::Value transformObject(rapidjson::kObjectType);
 		rapidjson::Node transformNode(transformObject, root.allocator);
 		{
-			JSONSerializer serializer(mStream);
+			JSONSerializer serializer;
 			serializer.Serialize<Transform>(entity.GetLocalTransform(), transformNode);
 		}
 		entityNode.AddMember("Transform", transformObject);
@@ -45,7 +45,7 @@ void EntitySerializer::Serialize(const EntityManager& entityManager, rapidjson::
 				rapidjson::Value componentObject(rapidjson::kObjectType);
 				rapidjson::Node componentNode(componentObject, root.allocator);
 
-				JSONSerializer serializer(mStream);
+				JSONSerializer serializer;
 				serializer.Serialize(component, classDesc, componentNode);
 
 				componentsArrayNode.PushBack(componentObject);
@@ -55,13 +55,6 @@ void EntitySerializer::Serialize(const EntityManager& entityManager, rapidjson::
 		entitiesNode.PushBack(entityObject);
 	});
 	root.AddMember("Entities", entities);
-
-	rapidjson::OStreamWrapper ss(mStream);
-	rapidjson::PrettyWriter writer(ss);
-	writer.SetFormatOptions(rapidjson::PrettyFormatOptions::kFormatSingleLineArray);
-	writer.SetMaxDecimalPlaces(6);
-	writer.SetIndent('\t', 1);
-	root.object.Accept(writer);
 }
 
 TArray<EntityHandle> EntitySerializer::Deserialize(const rapidjson::ConstNode& root, EntityManager& entityManager)
@@ -84,7 +77,7 @@ TArray<EntityHandle> EntitySerializer::Deserialize(const rapidjson::ConstNode& r
 		const auto& transformObject = entityObject["Transform"];
 		rapidjson::ConstNode transformNode(transformObject);
 		{
-			JSONSerializer serializer(mStream);
+			JSONSerializer serializer;
 			auto transform = serializer.Deserialize<Transform>(transformNode);
 
 			entity.SetTranslation(transform.position);
@@ -103,7 +96,7 @@ TArray<EntityHandle> EntitySerializer::Deserialize(const rapidjson::ConstNode& r
 			auto component = func.invoke({}, Ref<Entity>(entity));
 			GLEAM_ASSERT(component, "Entity component could not deserialize");
 
-			JSONSerializer serializer(mStream);
+			JSONSerializer serializer;
 			serializer.Deserialize(classDesc, component.data(), rapidjson::ConstNode(componentObject));
 		}
 

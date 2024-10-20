@@ -4,6 +4,7 @@
 #include <locale>
 #include <codecvt>
 #include <bitset>
+#include <algorithm>
 #include <entt/core/hashed_string.hpp>
 
 static constexpr uint32_t operator"" _hs(const char* str, size_t size)

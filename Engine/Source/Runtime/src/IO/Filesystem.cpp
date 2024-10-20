@@ -106,12 +106,12 @@ FileAccessor::Write::Write(FileAccessor& accessor)
 	{
 		return mAccessor.status == FileStatus::Available;
 	});
-	mAccessor.status = Gleam::FileStatus::Writing;
+	mAccessor.status = FileStatus::Writing;
 }
 
 FileAccessor::Write::~Write()
 {
-	mAccessor.status = Gleam::FileStatus::Available;
+	mAccessor.status = FileStatus::Available;
 	mAccessor.condition.notify_all();
 }
 

@@ -2,7 +2,6 @@
 #include "World.h"
 #include "Systems/RenderSceneProxy.h"
 #include "Serialization/JSONInternal.h"
-#include "Serialization/JSONSerializer.h"
 #include "Serialization/EntitySerializer.h"
 
 using namespace Gleam;
@@ -51,8 +50,15 @@ void World::Serialize(FileStream& stream)
 	rapidjson::Node root(document, document.GetAllocator());
 	root.AddMember("Name", rapidjson::StringRef(mName.c_str()));
 
-	EntitySerializer serializer(stream);
+	EntitySerializer serializer;
 	serializer.Serialize(mEntityManager, root);
+
+	rapidjson::OStreamWrapper ss(stream);
+	rapidjson::PrettyWriter writer(ss);
+	writer.SetFormatOptions(rapidjson::PrettyFormatOptions::kFormatSingleLineArray);
+	writer.SetMaxDecimalPlaces(6);
+	writer.SetIndent('\t', 1);
+	root.object.Accept(writer);
 }
 
 void World::Deserialize(FileStream& stream)
@@ -63,6 +69,6 @@ void World::Deserialize(FileStream& stream)
 
 	mName = TString(root["Name"].GetString());
 
-	EntitySerializer serializer(stream);
+	EntitySerializer serializer;
 	serializer.Deserialize(rapidjson::ConstNode(root), mEntityManager);
 }

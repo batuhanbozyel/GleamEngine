@@ -20,23 +20,17 @@ class JSONSerializer final : public EngineSubsystem
 {
 public:
     
-    JSONSerializer() = default;
-    
-    JSONSerializer(FileStream& stream);
-    
-    ~JSONSerializer();
-    
     virtual void Initialize(Engine* engine) override;
     
     virtual void Shutdown() override;
 
-	JSONHeader ParseHeader();
+	JSONHeader ParseHeader(FileStream& stream);
 
     template<typename T>
-    void Serialize(const T& object)
+    void Serialize(const T& object, FileStream& stream)
     {
         const auto& classDesc = Reflection::GetClass<T>();
-        Serialize(&object, classDesc);
+        Serialize(&object, classDesc, stream);
     }
 
 	template<typename T>
@@ -47,11 +41,11 @@ public:
 	}
 
 	template<typename T>
-	T Deserialize()
+	T Deserialize(FileStream& stream)
 	{
 		T object{};
 		const auto& classDesc = Reflection::GetClass<T>();
-		Deserialize(classDesc, &object);
+		Deserialize(stream, classDesc, &object);
 		return object;
 	}
 
@@ -64,11 +58,11 @@ public:
 		return object;
 	}
 
-    void Serialize(const void* obj, const Reflection::ClassDescription& classDesc);
+    void Serialize(const void* obj, const Reflection::ClassDescription& classDesc, FileStream& stream);
 
 	void Serialize(const void* obj, const Reflection::ClassDescription& classDesc, rapidjson::Node& root);
     
-	void Deserialize(const Reflection::ClassDescription& classDesc, void* obj);
+	void Deserialize(FileStream& stream, const Reflection::ClassDescription& classDesc, void* obj);
 
 	void Deserialize(const Reflection::ClassDescription& classDesc, void* obj, const rapidjson::ConstNode& root);
     
@@ -115,11 +109,6 @@ private:
 	static inline HashMap<TStringView, ObjectDeserializerFn> mCustomObjectDeserializers;
     
     static inline HashMap<TStringView, ArrayDeserializerFn> mCustomArrayDeserializers;
-    
-private:
-    
-    struct Impl;
-    Impl* mHandle = nullptr;
     
 };
 

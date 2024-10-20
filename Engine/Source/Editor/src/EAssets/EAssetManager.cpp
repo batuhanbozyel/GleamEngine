@@ -8,43 +8,43 @@ static Gleam::JSONHeader ParseAssetHeader(const Gleam::Filesystem::Path& asset)
 {
 	auto file = Gleam::Filesystem::Open(asset, Gleam::FileType::Text);
 	auto accessor = Gleam::Filesystem::ReadAccessor(asset);
-	auto serializer = Gleam::JSONSerializer(file.GetStream());
-	return serializer.ParseHeader();
+	auto serializer = Gleam::JSONSerializer();
+	return serializer.ParseHeader(file.GetStream());
 }
 
 static Gleam::TString ParseAssetName(const Gleam::Filesystem::Path& asset, const Gleam::Guid& typeGuid)
 {
 	auto file = Gleam::Filesystem::Open(asset, Gleam::FileType::Text);
 	auto accessor = Gleam::Filesystem::ReadAccessor(asset);
-	auto serializer = Gleam::JSONSerializer(file.GetStream());
+	auto serializer = Gleam::JSONSerializer();
 
     if (typeGuid == Gleam::Reflection::GetClass<Gleam::MeshDescriptor>().Guid())
     {
-        auto descriptor = serializer.Deserialize<Gleam::MeshDescriptor>();
+        auto descriptor = serializer.Deserialize<Gleam::MeshDescriptor>(file.GetStream());
         return descriptor.name;
     }
     
     if (typeGuid == Gleam::Reflection::GetClass<Gleam::TextureDescriptor>().Guid())
     {
-        auto descriptor = serializer.Deserialize<Gleam::TextureDescriptor>();
+        auto descriptor = serializer.Deserialize<Gleam::TextureDescriptor>(file.GetStream());
         return descriptor.name;
     }
     
     if (typeGuid == Gleam::Reflection::GetClass<Gleam::MaterialDescriptor>().Guid())
     {
-        auto descriptor = serializer.Deserialize<Gleam::MaterialDescriptor>();
+        auto descriptor = serializer.Deserialize<Gleam::MaterialDescriptor>(file.GetStream());
         return descriptor.name;
     }
     
     if (typeGuid == Gleam::Reflection::GetClass<Gleam::MaterialInstanceDescriptor>().Guid())
     {
-        auto descriptor = serializer.Deserialize<Gleam::MaterialInstanceDescriptor>();
+        auto descriptor = serializer.Deserialize<Gleam::MaterialInstanceDescriptor>(file.GetStream());
         return descriptor.name;
     }
 
 	if (typeGuid == Gleam::Reflection::GetClass<Gleam::Prefab>().Guid())
 	{
-		auto prefab = serializer.Deserialize<Gleam::Prefab>();
+		auto prefab = serializer.Deserialize<Gleam::Prefab>(file.GetStream());
 		return prefab.name;
 	}
     

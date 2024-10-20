@@ -38,8 +38,9 @@ void Engine::Initialize()
 	if (Filesystem::Exists(configFile))
 	{
 		auto file = Filesystem::Open(configFile, FileType::Text);
-        auto serializer = JSONSerializer(file.GetStream());
-		mConfig = serializer.Deserialize<EngineConfig>();
+		auto accessor = Filesystem::ReadAccessor(configFile);
+        auto serializer = JSONSerializer();
+		mConfig = serializer.Deserialize<EngineConfig>(file.GetStream());
 	}
 	
 	// init windowing subsystem
@@ -63,9 +64,10 @@ void Engine::Shutdown()
 
 void Engine::SaveConfigToDisk() const
 {
-    auto file = Filesystem::Open(Globals::StartupDirectory/"Engine.config", FileType::Text);
-    auto serializer = JSONSerializer(file.GetStream());
-    serializer.Serialize(mConfig);
+    auto file = Filesystem::Create(Globals::StartupDirectory/"Engine.config", FileType::Text);
+	auto accessor = Filesystem::WriteAccessor(Globals::StartupDirectory / "Engine.config");
+    auto serializer = JSONSerializer();
+    serializer.Serialize(mConfig, file.GetStream());
 }
 
 void Engine::UpdateConfig(const WindowConfig& config)

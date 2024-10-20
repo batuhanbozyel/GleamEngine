@@ -93,6 +93,7 @@ target_compile_definitions(
     Runtime
 
     PRIVATE
+    "_DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR"
     "_CRT_SECURE_NO_WARNINGS"
     "WIN32_LEAN_AND_MEAN"
     "NOMINMAX"
