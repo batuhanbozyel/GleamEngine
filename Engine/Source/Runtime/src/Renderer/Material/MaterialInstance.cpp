@@ -26,7 +26,7 @@ MaterialInstance::MaterialInstance(const MaterialInstanceDescriptor& descriptor)
 
 	auto materialSystem = Globals::GameInstance->GetSubsystem<MaterialSystem>();
 	auto& material = materialSystem->GetMaterial(mBaseMaterial);
-	mUniqueId = material.CreateInstance(mPropertyValues);
+	mResourceView = material.CreateInstance(mPropertyValues);
 }
 
 void MaterialInstance::Release()
@@ -48,7 +48,7 @@ const AssetReference& MaterialInstance::GetBaseMaterial() const
     return mBaseMaterial;
 }
 
-uint32_t MaterialInstance::GetUniqueId() const
+uint32_t MaterialInstance::GetID() const
 {
-    return mUniqueId;
+    return mResourceView.data;
 }

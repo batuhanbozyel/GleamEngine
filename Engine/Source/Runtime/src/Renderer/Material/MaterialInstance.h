@@ -7,11 +7,9 @@
 
 #pragma once
 #include "IMaterial.h"
-#include "Assets/Asset.h"
+#include "MaterialDescriptor.h"
 
 namespace Gleam {
-
-struct MaterialInstanceDescriptor;
 
 class MaterialInstance : public IMaterial
 {
@@ -25,11 +23,11 @@ public:
 
 	const AssetReference& GetBaseMaterial() const;
     
-    uint32_t GetUniqueId() const;
+	uint32_t GetID() const;
     
 private:
     
-    uint32_t mUniqueId = 0;
+	ShaderResourceIndex mResourceView = InvalidResourceIndex;
     
 	AssetReference mBaseMaterial;
 

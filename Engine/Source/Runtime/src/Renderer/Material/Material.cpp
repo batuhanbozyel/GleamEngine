@@ -21,6 +21,7 @@ using namespace Gleam;
 Material::Material(const MaterialDescriptor& descriptor)
     : IMaterial(descriptor.properties)
     , mName(descriptor.name)
+	, mInstanceDescriptorHeap(MaxMaterialInstances)
 {
     static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
     // TODO: Allocate GPU buffer
@@ -37,7 +38,7 @@ void Material::Release()
 	});
 }
 
-uint32_t Material::CreateInstance(const TArray<MaterialPropertyValue>& values)
+ShaderResourceIndex Material::CreateInstance(const TArray<MaterialPropertyValue>& values)
 {
 	GLEAM_ASSERT(values.size() == mProperties.size(), "Material properties do not match with instance properties.");
 
@@ -55,7 +56,7 @@ uint32_t Material::CreateInstance(const TArray<MaterialPropertyValue>& values)
 	}
 
 	// TODO: update GPU buffer with instance values
-	return mInstanceCount++;
+	return mInstanceDescriptorHeap.Allocate();
 }
 
 const Buffer& Material::GetBuffer() const
