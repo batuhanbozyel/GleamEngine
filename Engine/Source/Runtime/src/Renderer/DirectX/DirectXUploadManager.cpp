@@ -14,46 +14,69 @@ struct UploadManager::Impl
 {
 	IDStorageFactory* factory = nullptr;
 
-	ID3D12Fence* fence = nullptr;
-	uint32_t fenceValue = 0;
+	IDStorageQueue* memoryQueue = nullptr;
+	ID3D12Fence* memoryFence = nullptr;
+	uint32_t memoryFenceValue = 0;
 
-	using UploadCommand = std::function<void(ID3D12GraphicsCommandList7* commandList)>;
-	TArray<UploadCommand> uploadQueue;
+	IDStorageQueue* fileQueue = nullptr;
+	ID3D12Fence* fileFence = nullptr;
+	uint32_t fileFenceValue = 0;
 };
 
 UploadManager::UploadManager(GraphicsDevice* device)
 	: mHandle(CreateScope<Impl>())
 	, mDevice(device)
 {
-	
 	DX_CHECK(DStorageGetFactory(IID_PPV_ARGS(&mHandle->factory)));
+	mHandle->factory->SetStagingBufferSize(UploadHeapSize);
+	mHandle->factory->SetDebugFlags(DSTORAGE_DEBUG_SHOW_ERRORS | DSTORAGE_DEBUG_BREAK_ON_ERROR);
 
+	DSTORAGE_QUEUE_DESC queueDesc = {};
+	queueDesc.Device = static_cast<ID3D12Device*>(mDevice->GetHandle());
+	queueDesc.Capacity = DSTORAGE_MAX_QUEUE_CAPACITY;
+	queueDesc.Priority = DSTORAGE_PRIORITY_NORMAL;
+
+	queueDesc.SourceType = DSTORAGE_REQUEST_SOURCE_FILE;
+	queueDesc.Name = "DStorage File Queue";
+	DX_CHECK(mHandle->factory->CreateQueue(&queueDesc, IID_PPV_ARGS(&mHandle->fileQueue)));
 
 	DX_CHECK(static_cast<ID3D12Device10*>(mDevice->GetHandle())->CreateFence(
-		mHandle->fenceValue,
+		mHandle->fileFenceValue,
 		D3D12_FENCE_FLAG_NONE,
-		IID_PPV_ARGS(&mHandle->fence)
+		IID_PPV_ARGS(&mHandle->fileFence)
+	));
+
+	queueDesc.SourceType = DSTORAGE_REQUEST_SOURCE_MEMORY;
+	queueDesc.Name = "DStorage Memory Queue";
+	DX_CHECK(mHandle->factory->CreateQueue(&queueDesc, IID_PPV_ARGS(&mHandle->memoryQueue)));
+
+	DX_CHECK(static_cast<ID3D12Device10*>(mDevice->GetHandle())->CreateFence(
+		mHandle->memoryFenceValue,
+		D3D12_FENCE_FLAG_NONE,
+		IID_PPV_ARGS(&mHandle->memoryFence)
 	));
 }
 
 UploadManager::~UploadManager()
 {
-	mHandle->fence->Release();
+	mHandle->fileFence->Release();
+	mHandle->fileQueue->Release();
+
+	mHandle->memoryFence->Release();
+	mHandle->memoryQueue->Release();
+
 	mHandle->factory->Release();
 }
 
 void UploadManager::Commit()
 {
-	auto commandList = static_cast<DirectXDevice*>(mDevice)->AllocateCommandList(D3D12_COMMAND_LIST_TYPE_COPY);
-	for (auto& command : mHandle->uploadQueue)
-	{
-		command(commandList);
-	}
-	mHandle->uploadQueue.clear();
+	mHandle->fileQueue->EnqueueSignal(mHandle->fileFence, mHandle->fileFenceValue);
+	mHandle->fileQueue->Submit();
 
-	ID3D12CommandList* cmd = commandList;
-	static_cast<DirectXDevice*>(mDevice)->GetDirectQueue()->ExecuteCommandLists(1, &cmd);
-	static_cast<DirectXDevice*>(mDevice)->GetDirectQueue()->Signal(mHandle->fence, ++mHandle->fenceValue);
+	mHandle->memoryQueue->EnqueueSignal(mHandle->memoryFence, mHandle->memoryFenceValue);
+	mHandle->memoryQueue->Submit();
+
+	mUploadBufferOffset = 0;
 }
 
 void UploadManager::CommitUpload(const Buffer& buffer, const void* data, size_t size, size_t offset)
@@ -61,54 +84,27 @@ void UploadManager::CommitUpload(const Buffer& buffer, const void* data, size_t 
 	auto bufferContents = buffer.GetContents();
 	if (bufferContents == nullptr)
 	{
-		D3D12_RESOURCE_DESC resourceDesc = {
-			.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER,
-			.Alignment = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT,
-			.Width = size,
-			.Height = 1,
-			.DepthOrArraySize = 1,
-			.MipLevels = 1,
-			.Format = DXGI_FORMAT_UNKNOWN,
-			.SampleDesc = {.Count = 1, .Quality = 0 },
-			.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR,
-			.Flags = D3D12_RESOURCE_FLAG_NONE
-		};
+		auto dstBuffer = static_cast<ID3D12Resource*>(buffer.GetHandle());
+		auto size32 = static_cast<uint32_t>(size);
+		auto srcData = CopyUploadData(data, size);
 
-		D3D12_HEAP_PROPERTIES heapProperties = {
-			.Type = D3D12_HEAP_TYPE_UPLOAD,
-			.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN,
-			.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN,
-			.CreationNodeMask = 0,
-			.VisibleNodeMask = 0
-		};
-
-		ID3D12Resource* stagingBuffer = nullptr;
-		DX_CHECK(static_cast<ID3D12Device10*>(mDevice->GetHandle())->CreateCommittedResource(
-			&heapProperties,
-			D3D12_HEAP_FLAG_NONE,
-			&resourceDesc,
-			D3D12_RESOURCE_STATE_COPY_SOURCE,
-			nullptr,
-			IID_PPV_ARGS(&stagingBuffer)
-		));
-
-		void* stagingBufferPtr = nullptr;
-		DX_CHECK(stagingBuffer->Map(0, nullptr, &stagingBufferPtr));
-		memcpy(stagingBufferPtr, data, size);
-
-		mHandle->uploadQueue.emplace_back([=, this](ID3D12GraphicsCommandList7* cmd)
+		if (srcData)
 		{
-			auto dstBuffer = static_cast<ID3D12Resource*>(buffer.GetHandle());
-			DirectXTransitionManager::TransitionLayout(cmd, dstBuffer, D3D12_RESOURCE_STATE_COPY_DEST);
-			cmd->CopyBufferRegion(dstBuffer, offset, stagingBuffer, 0, size);
-			DirectXTransitionManager::TransitionLayout(cmd, dstBuffer, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
+			DSTORAGE_REQUEST request = {};
+			request.Options.SourceType = DSTORAGE_REQUEST_SOURCE_MEMORY;
+			request.Options.DestinationType = DSTORAGE_REQUEST_DESTINATION_BUFFER;
+			request.Options.CompressionFormat = DSTORAGE_COMPRESSION_FORMAT_NONE;
 
-			mDevice->AddPooledObject([this, buffer = stagingBuffer]() mutable
-			{
-				buffer->Release();
-			});
-		});
-		
+			request.Source.Memory.Source = srcData;
+			request.Source.Memory.Size = size32;
+
+			request.Destination.Buffer.Resource = dstBuffer;
+			request.Destination.Buffer.Offset = offset;
+			request.Destination.Buffer.Size = size32;
+
+			request.UncompressedSize = size32;
+			mHandle->memoryQueue->EnqueueRequest(&request);
+		}
 	}
 	else
 	{
@@ -116,9 +112,29 @@ void UploadManager::CommitUpload(const Buffer& buffer, const void* data, size_t 
 	}
 }
 
-void UploadManager::CommitUpload(const Texture& texture, const void* data, size_t size, uint32_t dstX, uint32_t dstY, uint32_t dstZ)
+void UploadManager::CommitUpload(const Texture& texture, const void* data, size_t size)
 {
+	auto dstTexture = static_cast<ID3D12Resource*>(texture.GetHandle());
+	auto size32 = static_cast<uint32_t>(size);
+	auto srcData = CopyUploadData(data, size);
 
+	if (srcData)
+	{
+		DSTORAGE_REQUEST request = {};
+		request.Options.SourceType = DSTORAGE_REQUEST_SOURCE_MEMORY;
+
+		request.Options.DestinationType = DSTORAGE_REQUEST_DESTINATION_MULTIPLE_SUBRESOURCES;
+		request.Options.CompressionFormat = DSTORAGE_COMPRESSION_FORMAT_NONE;
+
+		request.Source.Memory.Source = srcData;
+		request.Source.Memory.Size = size32;
+
+		request.Destination.MultipleSubresources.Resource = dstTexture;
+		request.Destination.MultipleSubresources.FirstSubresource = 0;
+
+		request.UncompressedSize = 0;
+		mHandle->memoryQueue->EnqueueRequest(&request);
+	}
 }
 
 #endif

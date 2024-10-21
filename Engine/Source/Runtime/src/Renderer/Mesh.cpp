@@ -11,6 +11,7 @@ Mesh::Mesh(const MeshDescriptor& mesh)
     : mSubmeshes(mesh.submeshes)
 {
     static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
+	static auto uploadManager = renderSystem->GetUploadManager();
     
     size_t positionSize = mesh.positions.size() * sizeof(Float3);
     size_t interleavedSize = mesh.interleavedVertices.size() * sizeof(InterleavedMeshVertex);
@@ -43,38 +44,11 @@ Mesh::Mesh(const MeshDescriptor& mesh)
     mIndexBuffer = mHeap.CreateBuffer(bufferDesc);
 
     // Send mesh data to buffers
-	// TODO: use upload manager to send data to the GPU
-    {
-        heapDesc.name += "::StagingHeap";
-        heapDesc.memoryType = MemoryType::CPU;
-        Heap heap = renderSystem->GetDevice()->CreateHeap(heapDesc);
-        
-        bufferDesc.name = "StagingBuffer";
-        bufferDesc.size = heapDesc.size;
-        Buffer stagingBuffer = heap.CreateBuffer(bufferDesc);
-
-        CommandBuffer commandBuffer(renderSystem->GetDevice());
-        commandBuffer.Begin();
-
-        size_t offset = 0;
-        commandBuffer.SetBufferData(stagingBuffer, mesh.positions.data(), positionSize, offset);
-        commandBuffer.CopyBuffer(stagingBuffer, mPositionBuffer, positionSize, offset, 0);
-
-        offset += positionBufferSize;
-        commandBuffer.SetBufferData(stagingBuffer, mesh.interleavedVertices.data(), interleavedSize, offset);
-        commandBuffer.CopyBuffer(stagingBuffer, mInterleavedBuffer, interleavedSize, offset, 0);
-
-        offset += interleavedBufferSize;
-        commandBuffer.SetBufferData(stagingBuffer, mesh.indices.data(), indexSize, offset);
-        commandBuffer.CopyBuffer(stagingBuffer, mIndexBuffer, indexSize, offset, 0);
-
-        commandBuffer.End();
-        commandBuffer.Commit();
-        commandBuffer.WaitUntilCompleted();
-
-        renderSystem->GetDevice()->Dispose(stagingBuffer);
-        renderSystem->GetDevice()->Dispose(heap);
-    }
+	{
+		uploadManager->CommitUpload(mPositionBuffer, mesh.positions.data(), positionSize);
+		uploadManager->CommitUpload(mInterleavedBuffer, mesh.interleavedVertices.data(), interleavedSize);
+		uploadManager->CommitUpload(mIndexBuffer, mesh.indices.data(), indexSize);
+	}
 }
 
 void Mesh::Release()

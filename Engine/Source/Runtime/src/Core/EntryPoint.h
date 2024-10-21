@@ -12,7 +12,6 @@ extern "C"
 {
 	__declspec(dllexport) extern const UINT D3D12SDKVersion = D3D12_SDK_VERSION;
 	__declspec(dllexport) extern LPCSTR D3D12SDKPath = ".\\D3D12\\";
-	__declspec(dllexport) extern LPCSTR DStorageSDKPath = ".\\D3D12\\";
 }
 #endif
 

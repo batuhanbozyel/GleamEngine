@@ -9,6 +9,7 @@
 #include "Core/Subsystem.h"
 #include "CommandBuffer.h"
 #include "GraphicsDevice.h"
+#include "UploadManager.h"
 
 namespace Gleam {
 
@@ -34,6 +35,8 @@ public:
     GraphicsDevice* GetDevice();
     
     const GraphicsDevice* GetDevice() const;
+
+	UploadManager* GetUploadManager();
     
     const Texture& GetRenderTarget() const;
     
@@ -128,8 +131,10 @@ private:
     Container mRenderers;
     
     Texture mRenderTarget;
-    
+
     Scope<GraphicsDevice> mDevice;
+    
+	Scope<UploadManager> mUploadManager;
     
     TArray<Scope<CommandBuffer>> mCommandBuffers;
     

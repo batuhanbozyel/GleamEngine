@@ -12,12 +12,13 @@ Texture2D::Texture2D(const Texture2DDescriptor& descriptor)
 	GLEAM_ASSERT(descriptor.dimension == TextureDimension::Texture2D, "Texture2D descriptor dimension mismatch.");
 
 	static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
+	static auto uploadManager = renderSystem->GetUploadManager();
 	mTexture = renderSystem->GetDevice()->CreateTexture(descriptor);
 
 	// Send texture data to buffers
 	if (descriptor.pixels.empty() == false)
 	{
-		// TODO: use upload manager to send data to the GPU
+		uploadManager->CommitUpload(mTexture, descriptor.pixels.data(), descriptor.pixels.size());
 	}
 }
 

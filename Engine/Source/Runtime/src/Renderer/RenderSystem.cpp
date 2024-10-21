@@ -23,6 +23,7 @@ void RenderSystem::Initialize(Engine* engine)
 {
 	mEngine = engine;
     mDevice = GraphicsDevice::Create();
+	mUploadManager = CreateScope<UploadManager>(mDevice.get());
 	EventDispatcher<RendererResizeEvent>::Subscribe([this](RendererResizeEvent e)
 	{
         const auto& cmd = mCommandBuffers[mDevice->GetLastFrameIndex()];
@@ -39,6 +40,7 @@ void RenderSystem::Shutdown()
 {
     mCommandBuffers[mDevice->GetLastFrameIndex()]->WaitUntilCompleted();
     mCommandBuffers.clear();
+	mUploadManager.reset();
     
     for (auto renderer : mRenderers)
     {
@@ -122,6 +124,7 @@ void RenderSystem::Render(const World* world)
         }
         ResetRenderTarget();
 
+		mUploadManager->Commit();
         mDevice->Present(cmd);
     }
 }
@@ -145,6 +148,11 @@ GraphicsDevice* RenderSystem::GetDevice()
 const GraphicsDevice* RenderSystem::GetDevice() const
 {
     return mDevice.get();
+}
+
+UploadManager* RenderSystem::GetUploadManager()
+{
+	return mUploadManager.get();
 }
 
 const Texture& RenderSystem::GetRenderTarget() const
