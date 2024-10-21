@@ -26,19 +26,14 @@ public:
 	ShaderResourceIndex GetResourceIndex(D3D12_CPU_DESCRIPTOR_HANDLE view);
 };
 
-struct DirectXCommandList
-{
-	ID3D12GraphicsCommandList7* handle;
-	ID3D12CommandAllocator* allocator;
-};
-
 struct DirectXCommandPool
 {
-	Deque<DirectXCommandList> usedCommandLists;
-	Deque<DirectXCommandList> freeCommandLists;
+	Deque<ID3D12GraphicsCommandList7*> usedCommandLists;
+	Deque<ID3D12GraphicsCommandList7*> freeCommandLists;
+	ID3D12CommandAllocator* allocator;
+	D3D12_COMMAND_LIST_TYPE type;
 
 	void Reset();
-
 	void Release();
 };
 
@@ -124,7 +119,7 @@ private:
 	{
 		ID3D12Fence* fence;
 		DirectXDrawable drawable;
-		DirectXCommandPool commandPool;
+		TArray<DirectXCommandPool> commandPools;
 		uint32_t frameCount = 0;
 	};
 	TArray<Context> mFrameContext;

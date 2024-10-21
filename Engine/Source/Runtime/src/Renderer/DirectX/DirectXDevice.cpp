@@ -333,7 +333,10 @@ DirectXDevice::~DirectXDevice()
 
 	for (auto& ctx : mFrameContext)
 	{
-		ctx.commandPool.Release();
+		for (auto& pool : ctx.commandPools)
+		{
+			pool.Release();
+		}
 		ctx.fence->Release();
 
 		ReleaseSwapchainBuffer(ctx.drawable);
@@ -400,7 +403,10 @@ void DirectXDevice::Configure(const RendererConfig& config)
 		for (auto& ctx : mFrameContext)
 		{
 			ReleaseSwapchainBuffer(ctx.drawable);
-			ctx.commandPool.Release();
+			for (auto& pool : ctx.commandPools)
+			{
+				pool.Release();
+			}
 			ctx.fence->Release();
 		}
 		mFrameContext.clear();
@@ -442,6 +448,21 @@ void DirectXDevice::Configure(const RendererConfig& config)
 	{
 		auto& ctx = mFrameContext[i];
 		ctx.drawable = GetSwapchainBuffer(i);
+
+		{
+			auto& pool = ctx.commandPools.emplace_back();
+			DX_CHECK(static_cast<ID3D12Device10*>(mHandle)->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&pool.allocator)));
+		}
+
+		{
+			auto& pool = ctx.commandPools.emplace_back();
+			DX_CHECK(static_cast<ID3D12Device10*>(mHandle)->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_COMPUTE, IID_PPV_ARGS(&pool.allocator)));
+		}
+
+		{
+			auto& pool = ctx.commandPools.emplace_back();
+			DX_CHECK(static_cast<ID3D12Device10*>(mHandle)->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_COPY, IID_PPV_ARGS(&pool.allocator)));
+		}
 
 		// create fence
 		DX_CHECK(static_cast<ID3D12Device10*>(mHandle)->CreateFence(
@@ -487,31 +508,43 @@ void DirectXDevice::Present(const CommandBuffer* cmd)
 
 void DirectXDevice::DestroyFrameObjects(uint32_t frameIndex)
 {
-	mFrameContext[mCurrentFrameIndex].commandPool.Reset();
+	for (auto& pool : mFrameContext[mCurrentFrameIndex].commandPools)
+	{
+		pool.Reset();
+	}
 }
 
 ID3D12GraphicsCommandList7* DirectXDevice::AllocateCommandList(D3D12_COMMAND_LIST_TYPE type)
 {
-	auto& pool = mFrameContext[mCurrentFrameIndex].commandPool;
+	for (auto& pool : mFrameContext[mCurrentFrameIndex].commandPools)
+	{
+		if (pool.type == type)
+		{
+			ID3D12GraphicsCommandList7* commandList = nullptr;
+			if (pool.freeCommandLists.empty())
+			{
+				DX_CHECK(static_cast<ID3D12Device10*>(mHandle)->CreateCommandList1(0, type, D3D12_COMMAND_LIST_FLAG_NONE, IID_PPV_ARGS(&commandList)));
+			}
+			else
+			{
+				commandList = pool.freeCommandLists.front();
+				pool.freeCommandLists.pop_front();
+			}
 
-	DirectXCommandList commandList{};
-	if (pool.freeCommandLists.empty())
-	{
-		DX_CHECK(static_cast<ID3D12Device10*>(mHandle)->CreateCommandAllocator(type, IID_PPV_ARGS(&commandList.allocator)));
-		DX_CHECK(static_cast<ID3D12Device10*>(mHandle)->CreateCommandList1(0, type, D3D12_COMMAND_LIST_FLAG_NONE, IID_PPV_ARGS(&commandList.handle)));
+			pool.usedCommandLists.push_back(commandList);
+			commandList->Reset(pool.allocator, nullptr);
+			return commandList;
+		}
 	}
-	else
-	{
-		// TODO: implement searching for appropriate D3D12_COMMAND_LIST_TYPE
-		commandList = pool.freeCommandLists.front();
-		pool.freeCommandLists.pop_front();
-	}
+
+	auto& pool = mFrameContext[mCurrentFrameIndex].commandPools.emplace_back();
+	DX_CHECK(static_cast<ID3D12Device10*>(mHandle)->CreateCommandAllocator(type, IID_PPV_ARGS(&pool.allocator)));
+
+	ID3D12GraphicsCommandList7* commandList = nullptr;
+	DX_CHECK(static_cast<ID3D12Device10*>(mHandle)->CreateCommandList1(0, type, D3D12_COMMAND_LIST_FLAG_NONE, IID_PPV_ARGS(&commandList)));
 	pool.usedCommandLists.push_back(commandList);
-
-	commandList.allocator->Reset();
-	commandList.handle->Reset(commandList.allocator, nullptr);
-
-	return commandList.handle;
+	commandList->Reset(pool.allocator, nullptr);
+	return commandList;
 }
 
 DirectXDrawable DirectXDevice::GetSwapchainBuffer(uint32_t buffer)
@@ -746,27 +779,25 @@ void DirectXCommandPool::Reset()
 {
 	freeCommandLists.insert(freeCommandLists.end(), usedCommandLists.begin(), usedCommandLists.end());
 	usedCommandLists.clear();
+	allocator->Reset();
 }
 
 void DirectXCommandPool::Release()
 {
-	for (auto& cmd : usedCommandLists)
+	for (auto cmdList : usedCommandLists)
 	{
-		cmd.handle->Release();
-		cmd.allocator->Release();
-
-		cmd.handle = nullptr;
-		cmd.allocator = nullptr;
+		cmdList->Release();
 	}
+	usedCommandLists.clear();
 
-	for (auto& cmd : freeCommandLists)
+	for (auto cmdList : freeCommandLists)
 	{
-		cmd.handle->Release();
-		cmd.allocator->Release();
-
-		cmd.handle = nullptr;
-		cmd.allocator = nullptr;
+		cmdList->Release();
 	}
+	freeCommandLists.clear();
+
+	allocator->Release();
+	allocator = nullptr;
 }
 
 ShaderResourceIndex DirectXDescriptorHeap::GetResourceIndex(D3D12_CPU_DESCRIPTOR_HANDLE view)

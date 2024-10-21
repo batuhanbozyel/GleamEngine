@@ -48,10 +48,6 @@ CommandBuffer::~CommandBuffer()
 {
 	mDevice->Dispose(mStagingHeap);
 	mHandle->fence->Release();
-
-	mHandle->pipeline = nullptr;
-	mHandle->commandList = nullptr;
-	mHandle->fence = nullptr;
 }
 
 void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, const TStringView debugName) const
