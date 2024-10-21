@@ -6,10 +6,14 @@
 #include "DirectXUtils.h"
 #include "DirectXTransitionManager.h"
 
+#include <dstorage.h>
+
 using namespace Gleam;
 
 struct UploadManager::Impl
 {
+	IDStorageFactory* factory = nullptr;
+
 	ID3D12Fence* fence = nullptr;
 	uint32_t fenceValue = 0;
 
@@ -21,6 +25,10 @@ UploadManager::UploadManager(GraphicsDevice* device)
 	: mHandle(CreateScope<Impl>())
 	, mDevice(device)
 {
+	
+	DX_CHECK(DStorageGetFactory(IID_PPV_ARGS(&mHandle->factory)));
+
+
 	DX_CHECK(static_cast<ID3D12Device10*>(mDevice->GetHandle())->CreateFence(
 		mHandle->fenceValue,
 		D3D12_FENCE_FLAG_NONE,
@@ -31,6 +39,7 @@ UploadManager::UploadManager(GraphicsDevice* device)
 UploadManager::~UploadManager()
 {
 	mHandle->fence->Release();
+	mHandle->factory->Release();
 }
 
 void UploadManager::Commit()

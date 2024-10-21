@@ -72,6 +72,7 @@ else()
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/entt/src
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/rapidjson/include
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/refl-cpp/include
+        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/DirectStorage/native/include
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/DirectXAgilitySDK/build/native/include
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/ImGuizmo
@@ -102,6 +103,9 @@ target_compile_definitions(
     $<$<CONFIG:Debug>:GDEBUG>
     $<$<CONFIG:Release>:GRELEASE>
 )
+
+DEPLOY_FILE_TO(${CMAKE_SOURCE_DIR}/Engine/ThirdParty/DirectStorage/native/bin/x64/dstorage.dll D3D12)
+DEPLOY_FILE_TO(${CMAKE_SOURCE_DIR}/Engine/ThirdParty/DirectStorage/native/bin/x64/dstoragecore.dll D3D12)
 
 DEPLOY_FILE_TO(${CMAKE_SOURCE_DIR}/Engine/ThirdParty/DirectXAgilitySDK/build/native/bin/x64/D3D12Core.dll D3D12)
 DEPLOY_FILE_TO(${CMAKE_SOURCE_DIR}/Engine/ThirdParty/DirectXAgilitySDK/build/native/bin/x64/d3d12SDKLayers.dll D3D12)
