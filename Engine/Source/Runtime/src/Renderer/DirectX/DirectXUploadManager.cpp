@@ -21,6 +21,21 @@ struct UploadManager::Impl
 	IDStorageQueue* fileQueue = nullptr;
 	ID3D12Fence* fileFence = nullptr;
 	uint32_t fileFenceValue = 0;
+	
+	size_t uploadBufferOffset = 0;
+	TArray<uint8_t, UploadHeapSize> uploadBuffer;
+	
+	void* CopyUploadData(const void* data, size_t size)
+	{
+		if (uploadBufferOffset + size < uploadBuffer.size())
+		{
+			auto dst = OffsetPointer(uploadBuffer.data(), uploadBufferOffset);
+			memcpy(dst, data, size);
+			uploadBufferOffset += size;
+			return dst;
+		}
+		return nullptr;
+	}
 };
 
 UploadManager::UploadManager(GraphicsDevice* device)
@@ -86,7 +101,7 @@ void UploadManager::CommitUpload(const Buffer& buffer, const void* data, size_t 
 	{
 		auto dstBuffer = static_cast<ID3D12Resource*>(buffer.GetHandle());
 		auto size32 = static_cast<uint32_t>(size);
-		auto srcData = CopyUploadData(data, size);
+		auto srcData = mHandle->CopyUploadData(data, size);
 
 		if (srcData)
 		{
@@ -108,7 +123,7 @@ void UploadManager::CommitUpload(const Buffer& buffer, const void* data, size_t 
 	}
 	else
 	{
-		memcpy(static_cast<uint8_t*>(bufferContents) + offset, data, size);
+		memcpy(OffsetPointer(bufferContents, offset), data, size);
 	}
 }
 
@@ -116,7 +131,7 @@ void UploadManager::CommitUpload(const Texture& texture, const void* data, size_
 {
 	auto dstTexture = static_cast<ID3D12Resource*>(texture.GetHandle());
 	auto size32 = static_cast<uint32_t>(size);
-	auto srcData = CopyUploadData(data, size);
+	auto srcData = mHandle->CopyUploadData(data, size);
 
 	if (srcData)
 	{

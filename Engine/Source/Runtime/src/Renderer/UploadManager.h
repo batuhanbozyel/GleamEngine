@@ -21,26 +21,10 @@ public:
 
 private:
 
-	void* CopyUploadData(const void* data, size_t size)
-	{
-		if (mUploadBufferOffset + size < mUploadBuffer.size())
-		{
-			auto dst = OffsetPointer(mUploadBuffer.data(), mUploadBufferOffset);
-			memcpy(dst, data, size);
-			mUploadBufferOffset += size;
-			return dst;
-		}
-		return nullptr;
-	}
-
 	struct Impl;
 	Scope<Impl> mHandle;
 
     GraphicsDevice* mDevice;
-
-	size_t mUploadBufferOffset = 0;
-
-	TArray<uint8_t, UploadHeapSize> mUploadBuffer;
 
 };
 
