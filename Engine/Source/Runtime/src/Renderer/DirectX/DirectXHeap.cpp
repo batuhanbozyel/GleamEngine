@@ -16,20 +16,16 @@ Buffer Heap::CreateBuffer(const BufferDescriptor& descriptor)
 
 	if (Utils::AlignUp(mDescriptor.size, mAlignment) < newStackPtr)
 	{
-		GLEAM_ASSERT(false, "DirectX: Heap is full!");
+		GLEAM_ASSERT(false, "DirectX: Heap is full.");
 		return Buffer(descriptor);
 	}
 	mStackPtr = newStackPtr;
 
-	auto initialState = D3D12_RESOURCE_STATE_GENERIC_READ;
+	auto initialState = D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE;
 	auto flags = D3D12_RESOURCE_FLAG_NONE;
 	if (mDescriptor.memoryType != MemoryType::CPU)
 	{
 		flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
-	}
-	else
-	{
-		initialState = D3D12_RESOURCE_STATE_GENERIC_READ;
 	}
 
 	D3D12_RESOURCE_DESC resourceDesc = {
