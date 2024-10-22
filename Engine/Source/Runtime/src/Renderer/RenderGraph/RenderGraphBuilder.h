@@ -19,7 +19,7 @@ public:
 
 	GLEAM_NONCOPYABLE(RenderGraphBuilder);
 
-    RenderGraphBuilder(RenderPassNode& node, RenderGraphResourceRegistry& registry);
+    RenderGraphBuilder(RenderGraphPassNode& node, RenderGraphResourceRegistry& registry);
 
     NO_DISCARD TextureHandle UseColorBuffer(const TextureHandle& attachment);
     
@@ -41,7 +41,7 @@ public:
 
 private:
 	
-	RenderPassNode& mPassNode;
+	RenderGraphPassNode& mPassNode;
     
     RenderGraphResourceRegistry& mResourceRegistry;
 };

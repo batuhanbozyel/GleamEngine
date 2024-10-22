@@ -10,7 +10,7 @@
 
 using namespace Gleam;
 
-RenderGraphBuilder::RenderGraphBuilder(RenderPassNode& node, RenderGraphResourceRegistry& registry)
+RenderGraphBuilder::RenderGraphBuilder(RenderGraphPassNode& node, RenderGraphResourceRegistry& registry)
     : mPassNode(node), mResourceRegistry(registry)
 {
     
