@@ -11,7 +11,6 @@ Mesh::Mesh(const MeshDescriptor& mesh)
     : mSubmeshes(mesh.submeshes)
 {
     static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
-	static auto uploadManager = renderSystem->GetUploadManager();
     
     size_t positionSize = mesh.positions.size() * sizeof(Float3);
     size_t interleavedSize = mesh.interleavedVertices.size() * sizeof(InterleavedMeshVertex);
@@ -45,9 +44,9 @@ Mesh::Mesh(const MeshDescriptor& mesh)
 
     // Send mesh data to buffers
 	{
-		uploadManager->CommitUpload(mPositionBuffer, mesh.positions.data(), positionSize);
-		uploadManager->CommitUpload(mInterleavedBuffer, mesh.interleavedVertices.data(), interleavedSize);
-		uploadManager->CommitUpload(mIndexBuffer, mesh.indices.data(), indexSize);
+		renderSystem->GetDevice()->GetUploadManager()->CommitUpload(mPositionBuffer, mesh.positions.data(), positionSize);
+		renderSystem->GetDevice()->GetUploadManager()->CommitUpload(mInterleavedBuffer, mesh.interleavedVertices.data(), interleavedSize);
+		renderSystem->GetDevice()->GetUploadManager()->CommitUpload(mIndexBuffer, mesh.indices.data(), indexSize);
 	}
 }
 

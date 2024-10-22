@@ -54,7 +54,7 @@ UploadManager::~UploadManager()
     mHandle->memoryCommandBuffer = nil;
 }
 
-void UploadManager::Commit()
+void UploadManager::Commit() const
 {
     if (mHandle->fileCommandBuffer != nil)
     {
@@ -67,10 +67,14 @@ void UploadManager::Commit()
         [mHandle->memoryCommandBuffer commit];
         mHandle->memoryCommandBuffer = nil;
     }
+}
+
+void UploadManager::Reset() const
+{
     mHandle->stagingBufferOffset = 0;
 }
 
-void UploadManager::CommitUpload(const Buffer& buffer, const void* data, size_t size, size_t offset)
+void UploadManager::CommitUpload(const Buffer& buffer, const void* data, size_t size, size_t offset) const
 {
     auto bufferContents = buffer.GetContents();
     if (bufferContents == nullptr)
@@ -97,7 +101,7 @@ void UploadManager::CommitUpload(const Buffer& buffer, const void* data, size_t 
     }
 }
 
-void UploadManager::CommitUpload(const Texture& texture, const void* data, size_t size)
+void UploadManager::CommitUpload(const Texture& texture, const void* data, size_t size) const
 {
     void* srcBufferPtr = OffsetPointer(mHandle->stagingBufferPtr, mHandle->stagingBufferOffset);
     memcpy(srcBufferPtr, data, size);

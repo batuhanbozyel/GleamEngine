@@ -316,6 +316,8 @@ DirectXDevice::DirectXDevice()
 		EventDispatcher<RendererResizeEvent>::Publish(RendererResizeEvent(mSize));
 	});
 
+	mUploadManager = CreateScope<UploadManager>(this);
+	
 	GLEAM_CORE_INFO("DirectX: Graphics device created.");
 }
 

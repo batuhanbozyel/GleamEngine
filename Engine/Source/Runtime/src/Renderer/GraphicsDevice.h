@@ -1,4 +1,5 @@
 #pragma once
+#include "UploadManager.h"
 #include "CommandBuffer.h"
 #include "RendererConfig.h"
 #include "ResourceDescriptorHeap.h"
@@ -59,6 +60,8 @@ public:
 	uint32_t GetFramesInFlight() const;
 
 	const Size& GetDrawableSize() const;
+	
+	const UploadManager* GetUploadManager() const;
     
     MemoryRequirements QueryMemoryRequirements(const HeapDescriptor& descriptor) const;
 
@@ -91,14 +94,16 @@ protected:
     Deque<Texture> mFreeTextures;
 
     TArray<Shader> mShaderCache;
+	
+	Scope<UploadManager> mUploadManager;
 
 	uint32_t mMaxFramesInFlight = 3;
 
 	uint32_t mCurrentFrameIndex = 0;
 
-	TextureFormat mFormat = TextureFormat::None;
-
 	Size mSize = Size::zero;
+	
+	TextureFormat mFormat = TextureFormat::None;
 
 private:
 

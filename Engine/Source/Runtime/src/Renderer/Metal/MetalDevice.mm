@@ -214,6 +214,8 @@ MetalDevice::MetalDevice()
     mCbvSrvUavHeap = CreateDescriptorHeap(CBV_SRV_HEAP_SIZE);
 
     MetalPipelineStateManager::Init(this);
+    
+    mUploadManager = CreateScope<UploadManager>(this);
 
     GLEAM_CORE_INFO("Metal: Graphics device created.");
 }

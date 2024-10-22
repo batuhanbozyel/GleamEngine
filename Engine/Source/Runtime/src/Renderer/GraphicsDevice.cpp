@@ -157,3 +157,8 @@ const Size& GraphicsDevice::GetDrawableSize() const
 {
 	return mSize;
 }
+
+const UploadManager* GraphicsDevice::GetUploadManager() const
+{
+	return mUploadManager.get();
+}

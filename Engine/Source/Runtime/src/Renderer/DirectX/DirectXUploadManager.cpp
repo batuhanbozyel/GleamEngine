@@ -22,16 +22,16 @@ struct UploadManager::Impl
 	ID3D12Fence* fileFence = nullptr;
 	uint32_t fileFenceValue = 0;
 	
-	size_t uploadBufferOffset = 0;
-	TArray<uint8_t, UploadHeapSize> uploadBuffer;
+	size_t stagingBufferOffset = 0;
+	TArray<uint8_t, UploadHeapSize> stagingBuffer;
 	
 	void* CopyUploadData(const void* data, size_t size)
 	{
-		if (uploadBufferOffset + size < uploadBuffer.size())
+		if (stagingBufferOffset + size < stagingBuffer.size())
 		{
-			auto dst = OffsetPointer(uploadBuffer.data(), uploadBufferOffset);
+			auto dst = OffsetPointer(stagingBuffer.data(), stagingBufferOffset);
 			memcpy(dst, data, size);
-			uploadBufferOffset += size;
+			stagingBufferOffset += size;
 			return dst;
 		}
 		return nullptr;
@@ -83,18 +83,21 @@ UploadManager::~UploadManager()
 	mHandle->factory->Release();
 }
 
-void UploadManager::Commit()
+void UploadManager::Commit() const
 {
 	mHandle->fileQueue->EnqueueSignal(mHandle->fileFence, mHandle->fileFenceValue);
 	mHandle->fileQueue->Submit();
 
 	mHandle->memoryQueue->EnqueueSignal(mHandle->memoryFence, mHandle->memoryFenceValue);
 	mHandle->memoryQueue->Submit();
-
-	mUploadBufferOffset = 0;
 }
 
-void UploadManager::CommitUpload(const Buffer& buffer, const void* data, size_t size, size_t offset)
+void UploadManager::Reset() const
+{
+	mHandle->stagingBufferOffset = 0;
+}
+
+void UploadManager::CommitUpload(const Buffer& buffer, const void* data, size_t size, size_t offset) const
 {
 	auto bufferContents = buffer.GetContents();
 	if (bufferContents == nullptr)
@@ -127,7 +130,7 @@ void UploadManager::CommitUpload(const Buffer& buffer, const void* data, size_t 
 	}
 }
 
-void UploadManager::CommitUpload(const Texture& texture, const void* data, size_t size)
+void UploadManager::CommitUpload(const Texture& texture, const void* data, size_t size) const
 {
 	auto dstTexture = static_cast<ID3D12Resource*>(texture.GetHandle());
 	auto size32 = static_cast<uint32_t>(size);

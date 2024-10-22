@@ -79,14 +79,6 @@ public:
 
     void CopyBuffer(const Buffer& src, const Buffer& dst) const;
 
-	template<typename T>
-	void SetBufferData(const Buffer& buffer, const T& data, size_t offset = 0) const
-	{
-		SetBufferData(buffer, &data, sizeof(T), offset);
-	}
-
-    void SetBufferData(const Buffer& buffer, const void* data, size_t size, size_t offset = 0) const;
-
     void Blit(const Texture& source, const Texture& destination) const;
 
     void Begin() const;
