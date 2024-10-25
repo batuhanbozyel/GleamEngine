@@ -20,44 +20,17 @@ Entity& EntityManager::CreateFromPrefab(const AssetReference& ref)
 	if (prefab.entityCount > 1)
 	{
 		auto& root = CreateEntity(ref.guid);
-
-		World world(prefab.name);
-		auto& entityManager = world.GetEntityManager();
-		prefab.Deserialize(entityManager, file.GetStream());
-		entityManager.ForEach<Entity>([&](Entity& source)
+		auto entities = prefab.Deserialize(*this, file.GetStream());
+		for (auto handle : entities)
 		{
-			auto& entity = CopyEntity(entityManager, source);
+			auto& entity = GetComponent<Entity>(handle);
 			entity.SetParent(root);
-		});
+		}
 		return root;
 	}
 
 	auto root = prefab.Deserialize(*this, file.GetStream()).back();
 	return GetComponent<Entity>(root);
-}
-
-Entity& EntityManager::CopyEntity(EntityManager& from, const Entity& source)
-{
-	auto& copy = CreateEntity(source.GetGuid());
-	copy.SetTranslation(source.GetLocalPosition());
-	copy.SetRotation(source.GetLocalRotation());
-	copy.SetScale(source.GetLocalScale());
-	copy.SetParent(source.GetParent());
-	copy.SetActive(source.IsActive());
-	
-	from.Visit(source, [&](const void* srcComponent, const Reflection::ClassDescription& classDesc)
-	{
-		if (classDesc.HasAttribute<Reflection::Attribute::EntityComponent>())
-		{
-			auto typeHash = Reflection::Database::GetTypeHash(classDesc.ResolveName());
-			auto meta = entt::resolve(static_cast<uint32_t>(typeHash));
-			auto func = meta.func("AddComponent"_hs);
-			auto dstComponent = func.invoke({}, Ref<Entity>(copy));
-			GLEAM_ASSERT(dstComponent, "Entity component could not copied");
-			memcpy(dstComponent.data(), srcComponent, classDesc.GetSize());
-		}
-	});
-	return copy;
 }
 
 Entity& EntityManager::CreateEntity(const Guid& guid)
