@@ -27,11 +27,10 @@ struct UploadManager::Impl
 	
 	void* CopyUploadData(const void* data, size_t size)
 	{
-		if (stagingBufferOffset + size < stagingBuffer.size())
+		if (stagingBufferOffset + size < UploadHeapSize)
 		{
 			auto dst = OffsetPointer(stagingBuffer.data(), stagingBufferOffset);
 			memcpy(dst, data, size);
-			stagingBufferOffset += size;
 			return dst;
 		}
 		return nullptr;
@@ -122,6 +121,8 @@ void UploadManager::CommitUpload(const Buffer& buffer, const void* data, size_t 
 
 			request.UncompressedSize = size32;
 			mHandle->memoryQueue->EnqueueRequest(&request);
+
+			mHandle->stagingBufferOffset += size;
 		}
 	}
 	else

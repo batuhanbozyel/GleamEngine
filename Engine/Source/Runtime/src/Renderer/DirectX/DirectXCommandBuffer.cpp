@@ -30,13 +30,6 @@ CommandBuffer::CommandBuffer(GraphicsDevice* device)
 	, mConstantBuffer(device, 4194304) // 4 MB
 {
 	mHandle->device = static_cast<DirectXDevice*>(device);
-    
-    HeapDescriptor descriptor;
-    descriptor.name = "CommandBuffer::StagingHeap";
-    descriptor.size = 4194304; // 4 MB
-    descriptor.memoryType = MemoryType::CPU;
-    mStagingHeap = mDevice->CreateHeap(descriptor);
-
 	DX_CHECK(static_cast<ID3D12Device10*>(mHandle->device->GetHandle())->CreateFence(
 		mHandle->fenceValue,
 		D3D12_FENCE_FLAG_NONE,
@@ -46,7 +39,6 @@ CommandBuffer::CommandBuffer(GraphicsDevice* device)
 
 CommandBuffer::~CommandBuffer()
 {
-	mDevice->Dispose(mStagingHeap);
 	mHandle->fence->Release();
 }
 
@@ -259,7 +251,6 @@ void CommandBuffer::Commit() const
 	mHandle->device->GetDirectQueue()->ExecuteCommandLists(1, &commandList);
 	mHandle->device->GetDirectQueue()->Signal(mHandle->fence, ++mHandle->fenceValue);
 	mConstantBuffer.Reset();
-	mStagingHeap.Reset();
 	mCommitted = true;
 }
 

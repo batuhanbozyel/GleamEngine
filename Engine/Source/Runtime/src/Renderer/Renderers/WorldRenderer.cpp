@@ -45,6 +45,7 @@ void WorldRenderer::OnCreate(GraphicsDevice* device)
     // TODO: create material shaders
     mMeshVertexShader = device->CreateShader("meshVertexShader", ShaderStage::Vertex);
     mMeshShadingFragmentShaders["OpaqueLit"] = device->CreateShader("SurfaceLit", ShaderStage::Fragment);
+	mMeshShadingFragmentShaders["TransparentLit"] = device->CreateShader("SurfaceLit", ShaderStage::Fragment);
 }
 
 void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard)

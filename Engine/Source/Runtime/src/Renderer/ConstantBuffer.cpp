@@ -4,6 +4,12 @@
 
 using namespace Gleam;
 
+#ifdef USE_DIRECTX_RENDERER
+static constexpr size_t Alignment = D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT;
+#else
+static constexpr size_t Alignment = 4;
+#endif
+
 ConstantBuffer::ConstantBuffer(GraphicsDevice* device, size_t size)
 	: mDevice(device)
 {
@@ -27,10 +33,10 @@ ConstantBuffer::~ConstantBuffer()
 
 size_t ConstantBuffer::Write(const void* data, size_t size)
 {
-	auto alignedStackPtr = Utils::AlignUp(mStackPtr, mHeap.GetAlignment());
+	auto alignedStackPtr = Utils::AlignUp(mStackPtr, Alignment);
 	auto newStackPtr = alignedStackPtr + size;
 
-	if (Utils::AlignUp(mHeap.GetDescriptor().size, mHeap.GetAlignment()) < newStackPtr)
+	if (Utils::AlignUp(mHeap.GetDescriptor().size, Alignment) < newStackPtr)
 	{
 		GLEAM_ASSERT(false, "ConstantBuffer has reached its capacity");
 		return 0;

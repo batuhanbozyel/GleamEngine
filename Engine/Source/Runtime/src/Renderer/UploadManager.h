@@ -6,7 +6,7 @@ class GraphicsDevice;
 
 class UploadManager final
 {
-	static constexpr size_t UploadHeapSize = 512 * 1024 * 1024;
+	static constexpr size_t UploadHeapSize = 128 * 1024 * 1024;
 public:
 
     UploadManager(GraphicsDevice* device);

@@ -109,8 +109,6 @@ private:
 
     GraphicsDevice* mDevice;
 
-    mutable Heap mStagingHeap;
-
 	mutable ConstantBuffer mConstantBuffer;
 
 	mutable bool mCommitted = false;
