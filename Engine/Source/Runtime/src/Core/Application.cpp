@@ -53,6 +53,7 @@ void Application::Run()
 
 	while (mRunning)
 	{
+		EventDispatcher<AppTickEvent>::Publish(AppTickEvent());
         eventSystem->Update();
         inputSystem->Update();
 

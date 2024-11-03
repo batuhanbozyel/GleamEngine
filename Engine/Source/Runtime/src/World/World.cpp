@@ -9,23 +9,21 @@ using namespace Gleam;
 World::World(const TString& name)
 	: mName(name)
 {
-	Time::Reset();
+	Timestep::Reset();
 	AddSystem<RenderSceneProxy>();
 }
 
 void World::Update()
 {
-	Time::Step();
-
+	Timestep::Step();
 	for (auto subsystem : mTickableSubsystems)
 	{
 		subsystem->Tick();
 	}
-	
-	bool fixedUpdate = Time::fixedTime <= (Time::elapsedTime - Time::fixedDeltaTime);
-	if (fixedUpdate)
+
+	while (Timestep::InFixedTimeStep())
 	{
-		Time::FixedStep();
+		Timestep::FixedStep();
 		for (auto system : mSystems)
 		{
 			if (system->Enabled)
@@ -34,6 +32,7 @@ void World::Update()
 			}
 		}
 	}
+	Timestep::Update();
 	
 	for (auto system : mSystems)
 	{
