@@ -12,6 +12,7 @@ static constexpr size_t Alignment = 4;
 
 ConstantBuffer::ConstantBuffer(GraphicsDevice* device, size_t size)
 	: mDevice(device)
+	, mCapacity(Utils::AlignUp(size, Alignment))
 {
 	HeapDescriptor heapDesc;
 	heapDesc.name = "ConstantBuffer::Heap";
@@ -33,18 +34,26 @@ ConstantBuffer::~ConstantBuffer()
 
 size_t ConstantBuffer::Write(const void* data, size_t size)
 {
+	auto ptr = Allocate(size);
+	if (ptr < mCapacity)
+	{
+		auto dst = OffsetPointer(mBuffer.GetContents(), ptr);
+		memcpy(dst, data, size);
+	}
+	return ptr;
+}
+
+size_t ConstantBuffer::Allocate(size_t size)
+{
 	auto alignedStackPtr = Utils::AlignUp(mStackPtr, Alignment);
 	auto newStackPtr = alignedStackPtr + size;
 
-	if (Utils::AlignUp(mHeap.GetDescriptor().size, Alignment) < newStackPtr)
+	if (mCapacity < newStackPtr)
 	{
 		GLEAM_ASSERT(false, "ConstantBuffer has reached its capacity");
 		return 0;
 	}
 	mStackPtr = newStackPtr;
-
-	auto dst = OffsetPointer(mBuffer.GetContents(), alignedStackPtr);
-	memcpy(dst, data, size);
 	return alignedStackPtr;
 }
 

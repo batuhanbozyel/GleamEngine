@@ -25,7 +25,7 @@ struct UploadManager::Impl
 	size_t stagingBufferOffset = 0;
 	TArray<uint8_t, UploadHeapSize> stagingBuffer;
 	
-	void* CopyUploadData(const void* data, size_t size)
+	const void* CopyUploadData(const void* data, size_t size)
 	{
 		if (stagingBufferOffset + size < UploadHeapSize)
 		{
@@ -42,7 +42,7 @@ UploadManager::UploadManager(GraphicsDevice* device)
 	, mDevice(device)
 {
 	DX_CHECK(DStorageGetFactory(IID_PPV_ARGS(&mHandle->factory)));
-	mHandle->factory->SetStagingBufferSize(UploadHeapSize);
+	mHandle->factory->SetStagingBufferSize(DSTORAGE_STAGING_BUFFER_SIZE_32MB);
 	mHandle->factory->SetDebugFlags(DSTORAGE_DEBUG_SHOW_ERRORS | DSTORAGE_DEBUG_BREAK_ON_ERROR);
 
 	DSTORAGE_QUEUE_DESC queueDesc = {};
@@ -119,7 +119,7 @@ void UploadManager::CommitUpload(const Buffer& buffer, const void* data, size_t 
 			request.Destination.Buffer.Offset = offset;
 			request.Destination.Buffer.Size = size32;
 
-			request.UncompressedSize = size32;
+			request.UncompressedSize = 0;
 			mHandle->memoryQueue->EnqueueRequest(&request);
 
 			mHandle->stagingBufferOffset += size;

@@ -24,6 +24,8 @@ public:
 
 	size_t Write(const void* data, size_t size);
 
+	size_t Allocate(size_t size);
+
 	NativeGraphicsHandle GetHandle() const
 	{
 		return mBuffer.GetHandle();
@@ -32,6 +34,8 @@ public:
 private:
 
 	size_t mStackPtr = 0;
+
+	size_t mCapacity = 0;
 
 	Heap mHeap;
 
