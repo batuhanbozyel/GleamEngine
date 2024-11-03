@@ -4,8 +4,9 @@
 
 namespace GEditor {
 
-struct MaterialSource : AssetPackage
+class MaterialSource : public AssetPackage
 {
+public:
 	AssetPackageType(MaterialSource);
 
 	struct ImportSettings

@@ -4,10 +4,6 @@
 
 namespace Gleam::Reflection {
 
-template<typename T>
-concept AttributeType = std::is_base_of_v<refl::attr::usage::type, T>
-                     || std::is_base_of_v<refl::attr::usage::field, T>;
-
 struct AttributeDescription
 {
     const char* tag;
@@ -23,8 +19,8 @@ struct AttributeDescription
 namespace Attribute {
 
 namespace Target {
-using Class = refl::attr::usage::type;
-using Field = refl::attr::usage::field;
+struct Class : refl::attr::usage::type{};
+struct Field : refl::attr::usage::field{};
 } // namespace Type
 
 GLEAM_ATTRIBUTE(Guid, Target::Class)
@@ -98,4 +94,9 @@ GLEAM_ATTRIBUTE(PrettyName, Target::Class, Target::Field)
 };
 
 } // namespace Attribute
+
+template<typename T>
+concept AttributeType = std::is_base_of_v<Attribute::Target::Class, T>
+					 || std::is_base_of_v<Attribute::Target::Field, T>;
+
 } // namespace Gleam::Reflection

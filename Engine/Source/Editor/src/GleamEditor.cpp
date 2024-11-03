@@ -50,8 +50,8 @@ Gleam::Application* Gleam::CreateApplicationInstance(const Gleam::CommandLine& c
     if (Gleam::Filesystem::Exists(projectFile))
     {
         auto file = Gleam::Filesystem::Open(projectFile, Gleam::FileType::Text);
-        auto serializer = Gleam::JSONSerializer(file.GetStream());
-        project = serializer.Deserialize<Gleam::Project>();
+        auto serializer = Gleam::JSONSerializer();
+        project = serializer.Deserialize<Gleam::Project>(file.GetStream());
     }
     else
     {
@@ -74,8 +74,8 @@ Gleam::Application* Gleam::CreateApplicationInstance(const Gleam::CommandLine& c
 
 		{
 			auto file = Gleam::Filesystem::Create(projectFile, Gleam::FileType::Text);
-			auto serializer = Gleam::JSONSerializer(file.GetStream());
-			serializer.Serialize(project);
+			auto serializer = Gleam::JSONSerializer();
+			serializer.Serialize(project, file.GetStream());
 		}
     }
     return new GEditor::GleamEditor(project);

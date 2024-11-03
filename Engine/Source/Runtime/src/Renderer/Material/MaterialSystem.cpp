@@ -8,42 +8,28 @@ using namespace Gleam;
 
 void MaterialSystem::Initialize(Application* app)
 {
-	Filesystem::ForEach(Globals::ProjectContentDirectory, [&, this](const auto& entry)
-	{
-		if (entry.extension() == ".asset")
-		{
-			auto file = Filesystem::Open(entry, FileType::Text);
-			auto accessor = Filesystem::ReadAccessor(entry);
-			auto serializer = JSONSerializer(file.GetStream());
-			auto header = serializer.ParseHeader();
-
-			if (header.guid == Reflection::GetClass<MaterialDescriptor>().Guid())
-			{
-				auto guid = Guid(entry.stem().string());
-				AssetReference ref = { .guid = guid };
-				auto descriptor = app->GetSubsystem<AssetManager>()->Get<MaterialDescriptor>(ref);
-				mMaterials.emplace_hint(mMaterials.end(), ref, CreateScope<Material>(descriptor));
-			}
-		}
-	}, true);
+	
 }
 
 void MaterialSystem::Shutdown()
 {
 	for (auto& [ref, material] : mMaterials)
 	{
-		material->Dispose();
+		material.Release();
 	}
 	mMaterials.clear();
 }
 
-Material* MaterialSystem::GetMaterial(const AssetReference& ref)
+Material& MaterialSystem::GetMaterial(const AssetReference& ref)
 {
 	auto it = mMaterials.find(ref);
 	if (it == mMaterials.end())
 	{
-		auto descriptor = Globals::GameInstance->GetSubsystem<AssetManager>()->Get<MaterialDescriptor>(ref);
-		it = mMaterials.emplace_hint(mMaterials.end(), ref, CreateScope<Material>(descriptor));
+		auto descriptor = Globals::GameInstance->GetSubsystem<AssetManager>()->LoadDescriptor<MaterialDescriptor>(ref);
+		it = mMaterials.emplace_hint(mMaterials.end(),
+									 std::piecewise_construct,
+									 std::forward_as_tuple(ref),
+									 std::forward_as_tuple(descriptor));
 	}
-	return it->second.get();
+	return it->second;
 }

@@ -9,21 +9,14 @@
 
 namespace Gleam {
 
-struct Asset
+class Asset
 {
-    Filesystem::Path path;
-    
-    bool operator==(const Asset& other) const
-    {
-        return path == other.path;
-    }
-    
-    bool operator!=(const Asset& other) const
-    {
-        return !(*this == other);
-    }
-    
-    static constexpr TStringView extension()
+public:
+	virtual ~Asset() = default;
+
+	virtual void Release() = 0;
+	
+    static constexpr TStringView Extension()
     {
         return ".asset";
     }

@@ -128,7 +128,7 @@ private:
     Container mRenderers;
     
     Texture mRenderTarget;
-    
+
     Scope<GraphicsDevice> mDevice;
     
     TArray<Scope<CommandBuffer>> mCommandBuffers;

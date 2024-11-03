@@ -15,6 +15,10 @@
 namespace Gleam {
 
 class CommandBuffer;
+class UploadManager;
+
+template<typename PassData>
+using CopyFunc = std::function<void(const UploadManager* upload, const PassData& passData)>;
 
 template<typename PassData>
 using RenderFunc = std::function<void(const CommandBuffer* cmd, const PassData& passData)>;
@@ -29,17 +33,26 @@ struct RenderGraphNode
     {
         
     }
+	
+	virtual ~RenderGraphNode() = default;
 };
 
-struct RenderPassNode final : public RenderGraphNode
+enum class RenderGraphPassType
 {
-    GLEAM_NONCOPYABLE(RenderPassNode);
+	Copy,
+	Raster,
+	Compute,
+	Custom
+};
+
+struct RenderGraphPassNode : public RenderGraphNode
+{
+    GLEAM_NONCOPYABLE(RenderGraphPassNode);
     
-    using PassCallback = std::function<void(const CommandBuffer* cmd)>;
+    using PassCallback = std::function<void(const void* userData)>;
     
     TString name;
-    
-    std::any data;
+	std::any data;
     PassCallback callback;
     
     bool hasSideEffect = false;
@@ -55,36 +68,65 @@ struct RenderPassNode final : public RenderGraphNode
     TArray<TextureHandle> colorAttachments;
     TextureHandle depthAttachment;
     
-    HashSet<RenderPassNode*> dependents;
+    HashSet<RenderGraphPassNode*> dependents;
     
-    template<typename PassData>
-    RenderPassNode(uint32_t uniqueId, const TStringView name, RenderFunc<PassData>&& execute)
-        : RenderGraphNode(uniqueId), name(name), data(std::make_any<PassData>())
+    RenderGraphPassNode(uint32_t uniqueId, const TStringView name)
+        : RenderGraphNode(uniqueId)
+		, name(name)
     {
-        callback = [execute = std::move(execute), this](const CommandBuffer* cmd)
-        {
-            std::invoke(execute, cmd, std::any_cast<const PassData&>(data));
-        };
+        
     }
+	
+	virtual ~RenderGraphPassNode() = default;
     
-    bool isCulled() const
-    {
-        return refCount == 0 && !hasSideEffect;
-    }
-    
-    bool isCustomPass() const
-    {
-        return colorAttachments.empty() && !depthAttachment.IsValid();
-    }
+	virtual RenderGraphPassType GetType() const = 0;
+};
+
+struct RenderGraphCopyPassNode final : public RenderGraphPassNode
+{
+	template<typename PassData>
+	RenderGraphCopyPassNode(uint32_t uniqueId, const TStringView name, CopyFunc<PassData>&& execute)
+		: RenderGraphPassNode(uniqueId, name)
+	{
+		data = std::make_any<PassData>();
+		callback = [execute = std::move(execute), this](const void* userData)
+		{
+			std::invoke(execute, static_cast<const UploadManager*>(userData), std::any_cast<const PassData&>(data));
+		};
+	}
+	
+	virtual RenderGraphPassType GetType() const override
+	{
+		return RenderGraphPassType::Copy;
+	}
+};
+
+struct RenderGraphRenderPassNode final : public RenderGraphPassNode
+{
+	template<typename PassData>
+	RenderGraphRenderPassNode(uint32_t uniqueId, const TStringView name, RenderFunc<PassData>&& execute)
+		: RenderGraphPassNode(uniqueId, name)
+	{
+		data = std::make_any<PassData>();
+		callback = [execute = std::move(execute), this](const void* userData)
+		{
+			std::invoke(execute, static_cast<const CommandBuffer*>(userData), std::any_cast<const PassData&>(data));
+		};
+	}
+	
+	virtual RenderGraphPassType GetType() const override
+	{
+		return RenderGraphPassType::Raster;
+	}
 };
 
 struct RenderGraphResourceNode : public RenderGraphNode
 {
     const bool transient;
-    RenderPassNode* creator = nullptr;
-    RenderPassNode* lastModifier = nullptr;
-    RenderPassNode* lastReference = nullptr;
-    TArray<RenderPassNode*> producers;
+    RenderGraphPassNode* creator = nullptr;
+    RenderGraphPassNode* lastModifier = nullptr;
+    RenderGraphPassNode* lastReference = nullptr;
+    TArray<RenderGraphPassNode*> producers;
     
     RenderGraphResourceNode(uint32_t uniqueId, bool transient)
         : RenderGraphNode(uniqueId), transient(transient)

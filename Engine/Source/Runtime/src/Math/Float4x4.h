@@ -356,7 +356,7 @@ NO_DISCARD FORCE_INLINE static constexpr Float4x4 Inverse(const Float4x4& m)
 	};
 }
 
-NO_DISCARD FORCE_INLINE static void Decompose(const Float4x4& transform, Float3& translation, Quaternion& rotation, Float3& scale)
+FORCE_INLINE static void Decompose(const Float4x4& transform, Float3& translation, Quaternion& rotation, Float3& scale)
 {
 	translation.x = transform.m[12];
 	translation.y = transform.m[13];

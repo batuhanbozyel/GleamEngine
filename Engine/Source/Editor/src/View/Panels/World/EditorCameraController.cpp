@@ -44,7 +44,7 @@ void EditorCameraController::ProcessCameraRotation(Gleam::Entity& camera)
 void EditorCameraController::ProcessCameraMovement(Gleam::Entity& camera)
 {
     constexpr float cameraSpeed = 5.0f;
-    auto deltaTime = static_cast<float>(Gleam::Time::deltaTime);
+    auto deltaTime = static_cast<float>(Gleam::Timestep::deltaTime);
     auto inputSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::InputSystem>();
     if (inputSystem->GetButtonDown(Gleam::KeyCode::A))
     {

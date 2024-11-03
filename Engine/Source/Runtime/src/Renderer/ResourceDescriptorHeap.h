@@ -27,7 +27,7 @@ private:
     
     uint32_t mSize = 0;
 
-	uint32_t mCapacity;
+	uint32_t mCapacity = 0;
     
     TArray<ShaderResourceIndex> mDenseArray;
     

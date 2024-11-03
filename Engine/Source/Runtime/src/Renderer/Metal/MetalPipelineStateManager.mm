@@ -216,7 +216,7 @@ id<MTLRenderPipelineState> MetalPipelineStateManager::CreateGraphicsPipeline(con
     
     __autoreleasing NSError* error = nil;
     id<MTLRenderPipelineState> pipeline = [mDevice->GetHandle() newRenderPipelineStateWithDescriptor:pipelineDescriptor error:&error];
-    GLEAM_ASSERT(pipeline, "Metal: Pipeline creation failed!");
+    GLEAM_ASSERT(pipeline, "Metal: Pipeline creation failed.");
     return pipeline;
 }
 

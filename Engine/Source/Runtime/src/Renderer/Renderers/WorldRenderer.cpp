@@ -45,6 +45,7 @@ void WorldRenderer::OnCreate(GraphicsDevice* device)
     // TODO: create material shaders
     mMeshVertexShader = device->CreateShader("meshVertexShader", ShaderStage::Vertex);
     mMeshShadingFragmentShaders["OpaqueLit"] = device->CreateShader("SurfaceLit", ShaderStage::Fragment);
+	mMeshShadingFragmentShaders["TransparentLit"] = device->CreateShader("SurfaceLit", ShaderStage::Fragment);
 }
 
 void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard)
@@ -75,17 +76,17 @@ void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
     [this, blackboard](const CommandBuffer* cmd, const WorldRenderingData& passData)
     {
         const auto& sceneData = blackboard.Get<SceneRenderingData>();
-        sceneData.sceneProxy->ForEach([this, cmd, passData](const Material* material, const TArray<MeshBatch>& batches)
+        sceneData.sceneProxy->ForEach([this, cmd, passData](const Material& material, const TArray<MeshBatch>& batches)
         {
-            const auto& materialBuffer = material->GetBuffer();
-            const auto& shader = mMeshShadingFragmentShaders[material->GetName()];
-            const auto& pipeline = mShadingPipelines[material->GetPipelineHash()];
+            const auto& materialBuffer = material.GetBuffer();
+            const auto& shader = mMeshShadingFragmentShaders[material.GetName()];
+            const auto& pipeline = mShadingPipelines[material.GetPipelineHash()];
             cmd->BindGraphicsPipeline(pipeline, mMeshVertexShader, shader);
 
             for (const auto& batch : batches)
             {
-                const auto& positionBuffer = batch.mesh.GetPositionBuffer();
-                const auto& interleavedBuffer = batch.mesh.GetInterleavedBuffer();
+                const auto& positionBuffer = batch.mesh->GetPositionBuffer();
+                const auto& interleavedBuffer = batch.mesh->GetInterleavedBuffer();
             #ifdef USE_METAL_RENDERER
                 [cmd->GetActiveRenderPass() useResource:positionBuffer.GetHandle() usage : MTLResourceUsageRead stages : MTLRenderStageVertex];
                 [cmd->GetActiveRenderPass() useResource:interleavedBuffer.GetHandle() usage : MTLResourceUsageRead stages : MTLRenderStageVertex] ;
@@ -108,11 +109,11 @@ void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
                 resources.positionBuffer = positionBuffer.GetResourceView();
                 resources.interleavedBuffer = interleavedBuffer.GetResourceView();
                 resources.materialBuffer = materialBuffer.GetResourceView();
-				resources.materialID = batch.material.GetUniqueId();
+				resources.materialID = batch.material->GetID();
 				resources.modelMatrix = batch.transform;
 				resources.baseVertex = batch.submesh.baseVertex;
                 cmd->SetConstantBuffer(resources, 0);
-				cmd->DrawIndexed(batch.mesh.GetIndexBuffer(), IndexType::UINT32, batch.submesh.indexCount, 1, batch.submesh.firstIndex);
+				cmd->DrawIndexed(batch.mesh->GetIndexBuffer(), IndexType::UINT32, batch.submesh.indexCount, 1, batch.submesh.firstIndex);
             }
         });
     });

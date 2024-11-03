@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+  <PropertyGroup>
+    <IsDirectStorageSupportedPlatform Condition="!$(Platform.Contains('Gaming.Xbox.'))">true</IsDirectStorageSupportedPlatform>
+    <NativeBuildDirectory>$(MSBuildThisFileDirectory)..\..\..\native</NativeBuildDirectory>
+  </PropertyGroup>
+
+  <ItemDefinitionGroup Condition="'$(IsDirectStorageSupportedPlatform)'=='true'">
+    <ClCompile>
+      <PreprocessorDefinitions>USING_DIRECTSTORAGE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(NativeBuildDirectory)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+  </ItemDefinitionGroup>
+
+  <ItemDefinitionGroup Condition="'$(PlatformTarget)'=='x64' AND '$(IsDirectStorageSupportedPlatform)'=='true'">
+    <Link>
+      <AdditionalLibraryDirectories>$(NativeBuildDirectory)\lib\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>%(AdditionalDependencies);dstorage.lib</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+
+  <ItemDefinitionGroup Condition="'$(PlatformTarget)'=='ARM64' AND '$(IsDirectStorageSupportedPlatform)'=='true'">
+    <Link>
+      <AdditionalLibraryDirectories>$(NativeBuildDirectory)\lib\ARM64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>%(AdditionalDependencies);dstorage.lib</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+
+  <ItemDefinitionGroup Condition="'$(PlatformTarget)'=='x86' AND '$(IsDirectStorageSupportedPlatform)'=='true'">
+    <Link>
+      <AdditionalLibraryDirectories>$(NativeBuildDirectory)\lib\x86;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>%(AdditionalDependencies);dstorage.lib</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+
+  <ItemGroup Condition="'$(PlatformTarget)'=='x64' AND '$(IsDirectStorageSupportedPlatform)'=='true'">
+    <Content Include="$(NativeBuildDirectory)\bin\x64\dstorage.dll">
+      <Link>%(RecursiveDir)%(FileName)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="$(NativeBuildDirectory)\bin\x64\dstoragecore.dll">
+      <Link>%(RecursiveDir)%(FileName)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(PlatformTarget)'=='ARM64' AND '$(IsDirectStorageSupportedPlatform)'=='true'">
+    <Content Include="$(NativeBuildDirectory)\bin\ARM64\dstorage.dll">
+      <Link>%(RecursiveDir)%(FileName)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="$(NativeBuildDirectory)\bin\ARM64\dstoragecore.dll">
+      <Link>%(RecursiveDir)%(FileName)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(PlatformTarget)'=='x86' AND '$(IsDirectStorageSupportedPlatform)'=='true'">
+    <Content Include="$(NativeBuildDirectory)\bin\x86\dstorage.dll">
+      <Link>%(RecursiveDir)%(FileName)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="$(NativeBuildDirectory)\bin\x86\dstoragecore.dll">
+      <Link>%(RecursiveDir)%(FileName)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+</Project>

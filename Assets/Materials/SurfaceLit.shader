@@ -1,6 +1,6 @@
 float4 GetBaseColor(MeshVertexOut IN)
 {
-    float4 baseColor = Material.BaseColor * float4(IN.color, 1.0);
+    float4 baseColor = Material.BaseColor * IN.color;
     if (Material.BaseColorTexture.IsValid())
     {
         baseColor *= Material.BaseColorTexture.Sample(Sampler_Trilinear_Repeat, IN.uv);

@@ -17,20 +17,20 @@ using FileWatchHandler = std::function<void(const Filesystem::Path&, FileWatchEv
 
 class FileWatcher final : public EngineSubsystem
 {
+	struct Handle;
 public:
     
     virtual void Initialize(Engine* engine) override;
     
     virtual void Shutdown() override;
     
-    void AddWatch(const Filesystem::Path& dir, FileWatchHandler&& handler);
+	Handle* AddWatch(const Filesystem::Path& dir, FileWatchHandler&& handler);
     
-    void RemoveWatch(const Filesystem::Path& dir);
+    void RemoveWatch(Handle* watcher);
     
 private:
     
-    struct Watcher;
-    HashMap<Filesystem::Path, Watcher*> mWatchers;
+    HashMap<Filesystem::Path, TArray<Handle*>> mWatchers;
     
 };
 

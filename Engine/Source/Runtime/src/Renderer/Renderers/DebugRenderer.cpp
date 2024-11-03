@@ -42,7 +42,7 @@ void DebugRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 		BufferHandle vertexBuffer;
 	};
     
-	const auto& updatePass = graph.AddRenderPass<UpdatePassData>("DebugRenderer::UpdatePass", [&](RenderGraphBuilder& builder, UpdatePassData& passData)
+	const auto& updatePass = graph.AddCopyPass<UpdatePassData>("DebugRenderer::UpdatePass", [&](RenderGraphBuilder& builder, UpdatePassData& passData)
 	{
         BufferDescriptor bufferDesc;
         bufferDesc.name = "DebugVertices";
@@ -51,9 +51,9 @@ void DebugRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 		passData.vertexBuffer = builder.CreateBuffer(bufferDesc);
 		passData.vertexBuffer = builder.WriteBuffer(passData.vertexBuffer);
 	},
-	[this](const CommandBuffer* cmd, const UpdatePassData& passData)
+	[this](const UploadManager* uploadManager, const UpdatePassData& passData)
 	{
-        cmd->SetBufferData(passData.vertexBuffer, mDebugVertices.data(), mDebugVertices.size() * sizeof(DebugVertex));
+		uploadManager->CommitUpload(passData.vertexBuffer, mDebugVertices.data(), mDebugVertices.size() * sizeof(DebugVertex));
 	});
 
 	struct DrawPassData
@@ -136,7 +136,7 @@ void DebugRenderer::RenderMeshes(const CommandBuffer* cmd, const BufferHandle& c
         resources.cameraBuffer = cameraBuffer;
         cmd->SetConstantBuffer(resources, 0);
 	
-		for (const auto& submesh : debugMesh.mesh->GetSubmeshDescriptors())
+		for (const auto& submesh : debugMesh.mesh->GetSubmeshes())
 		{
 			DebugMeshUniforms uniforms;
 			uniforms.modelMatrix = debugMesh.transform;

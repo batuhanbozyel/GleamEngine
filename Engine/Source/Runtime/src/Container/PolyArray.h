@@ -99,6 +99,10 @@ public:
         
     };
     
+	PolyArray() = default;
+	PolyArray(PolyArray&&) = default;
+	PolyArray& operator=(PolyArray&&) noexcept = default;
+	
     ~PolyArray()
     {
         clear();

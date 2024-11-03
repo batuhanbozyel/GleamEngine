@@ -18,8 +18,8 @@ namespace Gleam {
 
 class World;
 class RenderSystem;
-class RenderSceneProxy;
 class GraphicsDevice;
+class RenderSceneProxy;
 
 struct SceneRenderingData
 {

@@ -27,9 +27,9 @@ public:
 
     }
 
-    Buffer CreateBuffer(const BufferDescriptor& descriptor) const;
+    Buffer CreateBuffer(const BufferDescriptor& descriptor);
 
-    void Reset() const
+    void Reset()
     {
         mStackPtr = 0;
     }
@@ -46,7 +46,7 @@ public:
 
 private:
 
-    mutable size_t mStackPtr = 0;
+    size_t mStackPtr = 0;
 
     size_t mAlignment = 0;
 

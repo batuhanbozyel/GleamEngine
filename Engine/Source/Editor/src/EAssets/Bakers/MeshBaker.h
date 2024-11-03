@@ -15,6 +15,8 @@ public:
     
     virtual Gleam::Guid TypeGuid() const override;
 
+	const Gleam::MeshDescriptor& GetDescriptor() const;
+
 private:
 
 	Gleam::MeshDescriptor mDescriptor;

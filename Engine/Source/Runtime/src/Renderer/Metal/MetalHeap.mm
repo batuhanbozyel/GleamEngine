@@ -7,7 +7,7 @@
 
 using namespace Gleam;
 
-Buffer Heap::CreateBuffer(const BufferDescriptor& descriptor) const
+Buffer Heap::CreateBuffer(const BufferDescriptor& descriptor)
 {
     auto alignedStackPtr = Utils::AlignUp(mStackPtr, mAlignment);
     auto newStackPtr = alignedStackPtr + descriptor.size;

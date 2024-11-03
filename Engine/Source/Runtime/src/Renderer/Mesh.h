@@ -2,28 +2,27 @@
 #include "Heap.h"
 #include "Buffer.h"
 #include "MeshDescriptor.h"
+#include "Assets/Asset.h"
 
 namespace Gleam {
 
-class Mesh
+class Mesh : public Asset
 {
 public:
     
-    virtual ~Mesh() = default;
-    
     Mesh(const MeshDescriptor& mesh);
+	
+	virtual ~Mesh() = default;
     
-    void Dispose();
+    virtual void Release() override;
     
     const Buffer& GetPositionBuffer() const;
     
     const Buffer& GetInterleavedBuffer() const;
     
     const Buffer& GetIndexBuffer() const;
-
-    uint32_t GetSubmeshCount() const;
     
-    const TArray<SubmeshDescriptor>& GetSubmeshDescriptors() const;
+    const TArray<SubmeshDescriptor>& GetSubmeshes() const;
     
 protected:
     
@@ -31,7 +30,7 @@ protected:
     Buffer mIndexBuffer;
     Buffer mPositionBuffer;
     Buffer mInterleavedBuffer;
-    TArray<SubmeshDescriptor> mSubmeshDescriptors;
+    TArray<SubmeshDescriptor> mSubmeshes;
 };
 
 } // namespace Gleam

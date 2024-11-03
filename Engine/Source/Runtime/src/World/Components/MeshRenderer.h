@@ -1,29 +1,17 @@
 #pragma once
-#include "Renderer/Mesh.h"
-#include "Renderer/Material/MaterialInstance.h"
+#include "Assets/AssetReference.h"
 
 namespace Gleam {
 
-class MeshRenderer
+struct MeshRenderer
 {
-public:
-
-    MeshRenderer(const AssetReference& mesh, const TArray<AssetReference>& materials);
-
-    void SetMaterial(const MaterialInstance& material, uint32_t index);
-
-	const MaterialInstance& GetMaterial(uint32_t index) const;
-
-    const TArray<MaterialInstance>& GetMaterials() const;
-
-    const Mesh& GetMesh() const;
-    
-private:
-    
-    Mesh mMesh;
-    
-    TArray<MaterialInstance> mMaterials;
-    
+	AssetReference mesh;
+	TArray<AssetReference> materials;
 };
 
 } // namespace Gleam
+
+GLEAM_TYPE(Gleam::MeshRenderer, Guid("71B269C7-DCF6-4E00-A914-62CE71321893"), EntityComponent())
+	GLEAM_FIELD(mesh, Serializable())
+	GLEAM_FIELD(materials, Serializable())
+GLEAM_END

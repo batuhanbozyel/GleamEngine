@@ -4,21 +4,6 @@
 #include <functional>
 #include <filesystem>
 
-#ifndef _MSC_VER
-namespace std {
-
-template <>
-struct hash<filesystem::path>
-{
-    size_t operator()(const filesystem::path& path) const
-    {
-        return hash_value(path);
-    }
-};
-
-} // namespace std
-#endif
-
 namespace Gleam {
 
 class File;
@@ -75,8 +60,6 @@ public:
 
 	static FileAccessor::Write WriteAccessor(const Filesystem::Path& path);
 
-	static FileAccessor& Accessor(const Filesystem::Path& path);
-
 	static Path WorkingDirectory();
 
 	static Path Relative(const Path& path, const Path& base);
@@ -86,6 +69,8 @@ public:
 	static bool IsDirectory(const Path& path);
     
 private:
+
+	static FileAccessor& Accessor(const Filesystem::Path& path);
     
     static inline std::mutex mFileCreateMutex;
     

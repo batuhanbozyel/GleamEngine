@@ -1,37 +1,39 @@
 #include "gpch.h"
 #include "RenderSceneProxy.h"
 
+#include "Core/Globals.h"
+#include "Core/Application.h"
+
 #include "World/World.h"
-#include "Renderer/Mesh.h"
-#include "Renderer/Material/Material.h"
-#include "Renderer/Material/MaterialInstance.h"
+#include "Assets/AssetManager.h"
+#include "Renderer/Material/MaterialSystem.h"
 
 using namespace Gleam;
 
 void RenderSceneProxy::OnUpdate(EntityManager& entityManager)
 {
+	auto assetManager = Globals::GameInstance->GetSubsystem<AssetManager>();
+	
     // update static batches
     mStaticBatches.clear();
-    entityManager.ForEach<Entity, MeshRenderer>([this](const Entity& entity, const MeshRenderer& meshRenderer)
-    {
-        GLEAM_ASSERT(meshRenderer.GetMesh().GetSubmeshCount() > 0);
-		GLEAM_ASSERT(meshRenderer.GetMaterials().size() == meshRenderer.GetMesh().GetSubmeshCount());
+	entityManager.ForEach<Entity, MeshRenderer>([&](const Entity& entity, const MeshRenderer& meshRenderer)
+	{
+		const auto mesh = assetManager->Load<Mesh>(meshRenderer.mesh);
+		const auto& submeshes = mesh->GetSubmeshes();
 
-		const auto& materials = meshRenderer.GetMaterials();
-		const auto& submeshes = meshRenderer.GetMesh().GetSubmeshDescriptors();
-		for (uint32_t i = 0; i < meshRenderer.GetMesh().GetSubmeshCount(); ++i)
+		GLEAM_ASSERT(meshRenderer.materials.size() == submeshes.size());
+		for (uint32_t i = 0; i < submeshes.size(); ++i)
 		{
+			const auto material = assetManager->Load<MaterialInstance>(meshRenderer.materials[i]);
 			MeshBatch batch = {
-				.mesh = meshRenderer.GetMesh(),
+				.mesh = mesh,
+				.material = material,
 				.transform = entity.GetWorldTransform(),
-				.submesh = submeshes[i],
-				.material = materials[i]
+				.submesh = submeshes[i]
 			};
-
-			const auto& baseMaterial = static_cast<const Material*>(batch.material.GetBaseMaterial());
-			mStaticBatches[baseMaterial].emplace_back(batch);
+			mStaticBatches[batch.material->GetBaseMaterial()].emplace_back(batch);
 		}
-    });
+	});
     
     // update active camera
     mActiveCamera = nullptr;
@@ -46,8 +48,10 @@ void RenderSceneProxy::OnUpdate(EntityManager& entityManager)
 
 void RenderSceneProxy::ForEach(BatchFn&& fn) const
 {
-    for (const auto& [material, batch] : mStaticBatches)
+	auto materialSystem = Globals::GameInstance->GetSubsystem<MaterialSystem>();
+    for (const auto& [materialRef, batch] : mStaticBatches)
     {
+		const auto& material = materialSystem->GetMaterial(materialRef);
         fn(material, batch);
     }
 }

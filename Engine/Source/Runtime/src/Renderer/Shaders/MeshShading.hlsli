@@ -6,9 +6,9 @@ CONSTANT_BUFFER(Gleam::MeshPassResources, resources, 0);
 struct MeshVertexOut
 {
 	float4 position : SV_POSITION;
-	float3 worldNormal : NORMAL;
-	float3 color : COLOR;
-	float2 uv : TEXCOORD0;
+	float3 worldNormal : ATTRIB0;
+	float4 color : ATTRIB1;
+	float2 uv : ATTRIB2;
 };
 
 #pragma fragment meshShadingPassShader

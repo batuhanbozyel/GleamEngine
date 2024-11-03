@@ -15,6 +15,8 @@ public:
     
     virtual Gleam::Guid TypeGuid() const override;
 
+	const Gleam::MaterialDescriptor& GetDescriptor() const;
+
 private:
 
 	Gleam::MaterialDescriptor mDescriptor;
@@ -32,6 +34,8 @@ public:
 	virtual Gleam::TString Filename() const override;
     
     virtual Gleam::Guid TypeGuid() const override;
+
+	const Gleam::MaterialInstanceDescriptor& GetDescriptor() const;
 
 private:
 

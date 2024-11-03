@@ -17,8 +17,7 @@ struct CommandBuffer::Impl
     id<MTLRenderCommandEncoder> renderCommandEncoder = nil;
     const MetalPipeline* pipeline = nullptr;
     
-    Buffer topLevelArgumentBuffer;
-    TArray<Buffer, PUSH_CONSTANT_SLOT> constantBuffers;
+    uint64_t* topLevelArgumentBuffer = nullptr;
     
     TArray<TextureDescriptor> colorAttachments;
     TextureDescriptor depthAttachment;
@@ -28,32 +27,14 @@ struct CommandBuffer::Impl
 
 CommandBuffer::CommandBuffer(GraphicsDevice* device)
     : mHandle(CreateScope<Impl>()), mDevice(device)
+    , mConstantBuffer(device, 4194304) // 4 MB
 {
     mHandle->device = static_cast<MetalDevice*>(device);
-    
-    HeapDescriptor descriptor;
-    descriptor.name = "CommandBuffer::StagingHeap";
-    descriptor.size = 4194304; // 4 MB;
-    descriptor.memoryType = MemoryType::CPU;
-    mStagingHeap = mDevice->CreateHeap(descriptor);
 }
 
 CommandBuffer::~CommandBuffer()
 {
-    if (mHandle->topLevelArgumentBuffer.IsValid())
-    {
-        mDevice->Dispose(mHandle->topLevelArgumentBuffer);
-    }
     
-    for (auto& buffer : mHandle->constantBuffers)
-    {
-        if (buffer.IsValid())
-        {
-            mDevice->Dispose(buffer);
-        }
-    }
-    
-    mDevice->Dispose(mStagingHeap);
 }
 
 void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, const TStringView debugName) const
@@ -161,26 +142,10 @@ void CommandBuffer::BindGraphicsPipeline(const PipelineStateDescriptor& pipeline
     [mHandle->renderCommandEncoder setFragmentBuffer:mHandle->device->GetCbvSrvUavHeap() offset:0 atIndex:kIRDescriptorHeapBindPoint];
     
     // Top-level argument buffer
-    if (mHandle->topLevelArgumentBuffer.IsValid())
-    {
-        mDevice->Dispose(mHandle->topLevelArgumentBuffer);
-    }
-    
-    BufferDescriptor argumentBufferDesc;
-    argumentBufferDesc.name = "CommandBuffer::TopLevelArgumentBuffer";
-    argumentBufferDesc.size = MetalPipelineStateManager::GetTopLevelArgumentBufferSize();
-    mHandle->topLevelArgumentBuffer = mStagingHeap.CreateBuffer(argumentBufferDesc);
-    [mHandle->renderCommandEncoder setVertexBuffer:mHandle->topLevelArgumentBuffer.GetHandle() offset:0 atIndex:kIRArgumentBufferBindPoint];
-    [mHandle->renderCommandEncoder setFragmentBuffer:mHandle->topLevelArgumentBuffer.GetHandle() offset:0 atIndex:kIRArgumentBufferBindPoint];
-    
-    // Root constants
-    for (auto& buffer : mHandle->constantBuffers)
-    {
-        if (buffer.IsValid())
-        {
-            mDevice->Dispose(buffer);
-        }
-    }
+    size_t argumentBufferOffset = mConstantBuffer.Allocate(MetalPipelineStateManager::GetTopLevelArgumentBufferSize());
+    mHandle->topLevelArgumentBuffer = static_cast<uint64_t*>(OffsetPointer([mConstantBuffer.GetNativeHandle() contents], argumentBufferOffset));
+    [mHandle->renderCommandEncoder setVertexBuffer:mConstantBuffer.GetNativeHandle() offset:argumentBufferOffset atIndex:kIRArgumentBufferBindPoint];
+    [mHandle->renderCommandEncoder setFragmentBuffer:mConstantBuffer.GetNativeHandle() offset:argumentBufferOffset atIndex:kIRArgumentBufferBindPoint];
 }
 
 void CommandBuffer::SetViewport(const Size& size) const
@@ -194,26 +159,16 @@ void CommandBuffer::SetViewport(const Size& size) const
 
 void CommandBuffer::SetConstantBuffer(const void* data, uint32_t size, uint32_t slot) const
 {
-    TStringStream name;
-    name << "CommandBuffer::ConstantBuffer_" << slot;
+    auto gpuAddress = [mConstantBuffer.GetHandle() gpuAddress]; 
+	gpuAddress += mConstantBuffer.Write(data, size);
+    mHandle->topLevelArgumentBuffer[slot] = gpuAddress;
     
-    BufferDescriptor constantBufferDesc;
-    constantBufferDesc.name = name.str();
-    constantBufferDesc.size = size;
-    auto buffer = mStagingHeap.CreateBuffer(constantBufferDesc);
-    SetBufferData(buffer, data, size);
-    
-    auto argumentBufferPtr = static_cast<uint64_t*>(mHandle->topLevelArgumentBuffer.GetContents());
-    argumentBufferPtr[slot] = [buffer.GetHandle() gpuAddress];
-    
-    [mHandle->renderCommandEncoder useResource:buffer.GetHandle() usage:MTLResourceUsageRead stages:MTLRenderStageVertex | MTLRenderStageFragment];
-    mHandle->constantBuffers[slot] = buffer;
+    [mHandle->renderCommandEncoder useResource:mConstantBuffer.GetHandle() usage:MTLResourceUsageRead stages:MTLRenderStageVertex | MTLRenderStageFragment];
 }
 
 void CommandBuffer::SetPushConstant(const void* data, uint32_t size) const
 {
-    auto argumentBufferPtr = static_cast<uint64_t*>(mHandle->topLevelArgumentBuffer.GetContents());
-    memcpy(argumentBufferPtr + PUSH_CONSTANT_SLOT, data, size);
+    memcpy(mHandle->topLevelArgumentBuffer + PUSH_CONSTANT_SLOT, data, size);
 }
 
 void CommandBuffer::Draw(uint32_t vertexCount, uint32_t instanceCount) const
@@ -266,13 +221,8 @@ void CommandBuffer::End() const
 void CommandBuffer::Commit() const
 {
     [mHandle->commandBuffer commit];
+    mConstantBuffer.Reset();
     mCommitted = true;
-    
-    if (mHandle->topLevelArgumentBuffer.IsValid())
-    {
-        mDevice->Dispose(mHandle->topLevelArgumentBuffer);
-    }
-    mStagingHeap.Reset();
 }
 
 void CommandBuffer::WaitUntilCompleted() const

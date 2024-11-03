@@ -7,7 +7,7 @@
 
 using namespace Gleam;
 
-struct FileWatcher::Watcher
+struct FileWatcher::Handle
 {
 	Filesystem::Path path;
 	FileWatchHandler handler;
@@ -19,7 +19,7 @@ struct FileWatcher::Watcher
 	std::atomic<bool> running;
 	std::condition_variable condition;
 
-	Watcher(const Filesystem::Path& path, FileWatchHandler&& handler, HANDLE dirHandle)
+	Handle(const Filesystem::Path& path, FileWatchHandler&& handler, HANDLE dirHandle)
 		: path(path), handler(std::move(handler)), win32Handle(dirHandle), running(true)
 	{
 		memset(&overlapped, 0, sizeof(OVERLAPPED));
@@ -47,7 +47,7 @@ struct FileWatcher::Watcher
 		});
 	}
 
-	~Watcher()
+	~Handle()
 	{
 		::CancelIo(win32Handle);
 		if (watchThread.joinable())
@@ -61,13 +61,13 @@ struct FileWatcher::Watcher
 	// Called by QueueUserAPC to start orderly shutdown.
 	static void CALLBACK TerminateProc(__in  ULONG_PTR arg)
 	{
-		Watcher* watcher = (Watcher*)arg;
+		Handle* watcher = (Handle*)arg;
 		watcher->running = false;
 	}
 
 	static void CALLBACK CallbackHandler(DWORD errorCode, DWORD bytesTransferred, LPOVERLAPPED lpOverlapped)
 	{
-		Watcher* watcher = static_cast<Watcher*>(lpOverlapped->hEvent);
+		Handle* watcher = static_cast<Handle*>(lpOverlapped->hEvent);
 		if (errorCode != ERROR_SUCCESS)
 		{
 			watcher->running = false;
@@ -126,25 +126,23 @@ void FileWatcher::Initialize(Engine* engine)
 
 void FileWatcher::Shutdown()
 {
-    for (auto& [_, watcher] : mWatchers)
+    for (auto& [_, watchers] : mWatchers)
     {
-        delete watcher;
+		for (auto watcher : watchers)
+		{
+			delete watcher;
+		}
     }
 	mWatchers.clear();
 }
 
-void FileWatcher::AddWatch(const Filesystem::Path& dir, FileWatchHandler&& handler)
+FileWatcher::Handle* FileWatcher::AddWatch(const Filesystem::Path& dir, FileWatchHandler&& handler)
 {
 	if (Filesystem::IsDirectory(dir) == false)
 	{
 		GLEAM_CORE_ERROR("FileWatcher requires directory: {0}", dir.string());
-		return;
+		return nullptr;
 	}
-
-    if (mWatchers.find(dir) != mWatchers.end())
-    {
-        RemoveWatch(dir);
-    }
 
 	HANDLE dirHandle = ::CreateFileA(dir.string().c_str(),
 		FILE_LIST_DIRECTORY,
@@ -157,24 +155,30 @@ void FileWatcher::AddWatch(const Filesystem::Path& dir, FileWatchHandler&& handl
 	if (dirHandle == INVALID_HANDLE_VALUE)
 	{
 		GLEAM_CORE_ERROR("FileWatcher Win32 handle creation failed: {0}", dir.string());
-		return;
+		return nullptr;
 	}
 
-	Watcher* watcher = new Watcher(dir, std::forward<FileWatchHandler>(handler), dirHandle);
-	mWatchers[dir] = watcher;
+	Handle* watcher = new Handle(dir, std::forward<FileWatchHandler>(handler), dirHandle);
+	mWatchers[dir].push_back(watcher);
+	return watcher;
 }
 
-void FileWatcher::RemoveWatch(const Filesystem::Path& dir)
+void FileWatcher::RemoveWatch(Handle* watcher)
 {
-    auto it = mWatchers.find(dir);
+    auto it = mWatchers.find(watcher->path);
     if (it == mWatchers.end())
     {
         return;
     }
-    
-    Watcher* watcher = it->second;
-    mWatchers.erase(it);
-    delete watcher;
+
+	auto& watchers = it->second;
+	auto watcherIt = std::remove(watchers.begin(), watchers.end(), watcher);
+	if (watcherIt != watchers.end())
+	{
+		watchers.erase(watcherIt);
+		delete watcher;
+		watcher = nullptr;
+	}
 }
 
 #endif

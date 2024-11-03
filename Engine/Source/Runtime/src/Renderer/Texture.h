@@ -19,7 +19,8 @@ public:
     Texture& operator=(const Texture& other) = default;
     
     Texture(const TextureDescriptor& descriptor)
-        : mDescriptor(descriptor), mMipMapLevels(descriptor.useMipMap ? CalculateMipLevels(descriptor.size) : 1)
+        : mDescriptor(descriptor)
+		, mMipMapLevels(descriptor.useMipMap ? CalculateMipLevels(descriptor.size) : 1)
     {
         
     }

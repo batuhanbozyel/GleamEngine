@@ -35,7 +35,7 @@ set_target_properties (imgui PROPERTIES FOLDER Dependencies)
 
 # Setup link libraries
 if (WIN32)
-    set(LIB_LINKS SDL3::SDL3-static d3d12.lib dxgi.lib dxguid.lib imgui.lib Ole32.lib)
+    set(LIB_LINKS SDL3::SDL3-static d3d12.lib dxgi.lib dxguid.lib dstorage.lib imgui.lib Ole32.lib)
     set_source_files_properties(${SHADER_FILES} PROPERTIES VS_TOOL_OVERRIDE "None")
 elseif (APPLE)
     find_library(METALIR_LIB libmetalirconverter.dylib)
@@ -72,6 +72,7 @@ else()
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/entt/src
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/rapidjson/include
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/refl-cpp/include
+        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/DirectStorage/native/include
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/DirectXAgilitySDK/build/native/include
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/ImGuizmo
@@ -93,6 +94,7 @@ target_compile_definitions(
     Runtime
 
     PRIVATE
+    "_DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR"
     "_CRT_SECURE_NO_WARNINGS"
     "WIN32_LEAN_AND_MEAN"
     "NOMINMAX"
@@ -101,6 +103,10 @@ target_compile_definitions(
     $<$<CONFIG:Debug>:GDEBUG>
     $<$<CONFIG:Release>:GRELEASE>
 )
+
+DEPLOY_FILE(${CMAKE_SOURCE_DIR}/Engine/ThirdParty/DirectStorage/native/lib/x64/dstorage.lib)
+DEPLOY_FILE(${CMAKE_SOURCE_DIR}/Engine/ThirdParty/DirectStorage/native/bin/x64/dstorage.dll)
+DEPLOY_FILE(${CMAKE_SOURCE_DIR}/Engine/ThirdParty/DirectStorage/native/bin/x64/dstoragecore.dll)
 
 DEPLOY_FILE_TO(${CMAKE_SOURCE_DIR}/Engine/ThirdParty/DirectXAgilitySDK/build/native/bin/x64/D3D12Core.dll D3D12)
 DEPLOY_FILE_TO(${CMAKE_SOURCE_DIR}/Engine/ThirdParty/DirectXAgilitySDK/build/native/bin/x64/d3d12SDKLayers.dll D3D12)

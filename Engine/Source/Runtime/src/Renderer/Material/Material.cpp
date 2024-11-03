@@ -7,9 +7,13 @@
 
 #include "gpch.h"
 #include "Material.h"
+#include "MaterialInstance.h"
 
 #include "Core/Engine.h"
 #include "Core/Globals.h"
+#include "Core/Application.h"
+#include "Assets/AssetManager.h"
+#include "Renderer/Texture2D.h"
 #include "Renderer/RenderSystem.h"
 
 using namespace Gleam;
@@ -17,20 +21,42 @@ using namespace Gleam;
 Material::Material(const MaterialDescriptor& descriptor)
     : IMaterial(descriptor.properties)
     , mName(descriptor.name)
+	, mInstanceDescriptorHeap(MaxMaterialInstances)
 {
     static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
     // TODO: Allocate GPU buffer
 }
 
-MaterialInstance Material::CreateInstance()
+void Material::Release()
 {
-    // TODO: Suballocate material instance data from material buffer
-    return MaterialInstance(this, mInstanceCount++);
+	static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
+	auto device = renderSystem->GetDevice();
+
+	device->AddPooledObject([buffer = mBuffer]() mutable
+	{
+		//device->Dispose(buffer);
+	});
 }
 
-void Material::Dispose()
+ShaderResourceIndex Material::CreateInstance(const TArray<MaterialPropertyValue>& values)
 {
-	// TOOD: dispose material buffer
+	GLEAM_ASSERT(values.size() == mProperties.size(), "Material properties do not match with instance properties.");
+
+	auto assetManager = Globals::GameInstance->GetSubsystem<AssetManager>();
+	for (uint32_t i = 0; i < values.size(); ++i)
+	{
+		if (mProperties[i].type == MaterialPropertyType::Texture2D)
+		{
+			const auto& asset = values[i].texture;
+			if (asset.guid != Guid::InvalidGuid())
+			{
+				auto texture = assetManager->Load<Texture2D>(values[i].texture);
+			}
+		}
+	}
+
+	// TODO: update GPU buffer with instance values
+	return mInstanceDescriptorHeap.Allocate();
 }
 
 const Buffer& Material::GetBuffer() const

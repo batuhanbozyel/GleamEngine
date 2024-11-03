@@ -11,7 +11,7 @@
 
 using namespace Gleam;
 
-static AttachmentLoadAction GetLoadActionForRenderTexture(const RenderGraphTextureNode* node, RenderPassNode* pass)
+static AttachmentLoadAction GetLoadActionForRenderTexture(const RenderGraphTextureNode* node, RenderGraphPassNode* pass)
 {
     if (node->creator == pass || !node->transient)
     {
@@ -20,7 +20,7 @@ static AttachmentLoadAction GetLoadActionForRenderTexture(const RenderGraphTextu
     return AttachmentLoadAction::Load;
 }
 
-static AttachmentStoreAction GetStoreActionForRenderTexture(const RenderGraphTextureNode* node, RenderPassNode* pass)
+static AttachmentStoreAction GetStoreActionForRenderTexture(const RenderGraphTextureNode* node, RenderGraphPassNode* pass)
 {
     if (node->texture.GetDescriptor().sampleCount > 1)
     {
@@ -87,8 +87,8 @@ void RenderGraph::Compile()
     }
     
     // Perform topological sort
-    Queue<RenderPassNode*> passQueue;
-    TArray<RenderPassNode*> sortedPasses;
+    Queue<RenderGraphPassNode*> passQueue;
+    TArray<RenderGraphPassNode*> sortedPasses;
     for (auto pass : mPassNodes)
     {
         if (pass->refCount == 0)
@@ -191,11 +191,15 @@ void RenderGraph::Execute(const CommandBuffer* cmd)
         }
         
         // execute render pass
-        if (pass->isCustomPass())
+		if (pass->GetType() == RenderGraphPassType::Custom)
         {
             std::invoke(pass->callback, cmd);
         }
-        else
+		else if (pass->GetType() == RenderGraphPassType::Copy)
+		{
+			std::invoke(pass->callback, mDevice->GetUploadManager());
+		}
+        else if (pass->GetType() == RenderGraphPassType::Raster)
         {
             RenderPassDescriptor renderPassDesc{};
             renderPassDesc.colorAttachments.resize(pass->colorAttachments.size());

@@ -7,6 +7,7 @@
 
 #pragma once
 #include "IMaterial.h"
+#include "MaterialDescriptor.h"
 
 namespace Gleam {
 
@@ -14,19 +15,21 @@ class MaterialInstance : public IMaterial
 {
 public:
 
-    MaterialInstance(const IMaterial* material, uint32_t uniqueId);
-    
-    void SetProperty(const TString& name, const MaterialPropertyValue& value);
+    MaterialInstance(const MaterialInstanceDescriptor& descriptor);
 
-    const IMaterial* GetBaseMaterial() const;
+	virtual void Release() override;
     
-    uint32_t GetUniqueId() const;
+	void SetProperty(const TString& name, const MaterialPropertyValue& value);
+
+	const AssetReference& GetBaseMaterial() const;
+    
+	uint32_t GetID() const;
     
 private:
     
-    uint32_t mUniqueId = 0;
+	ShaderResourceIndex mResourceView = InvalidResourceIndex;
     
-	const IMaterial* mBaseMaterial = nullptr;
+	AssetReference mBaseMaterial;
 
 	TArray<MaterialPropertyValue> mPropertyValues;
     

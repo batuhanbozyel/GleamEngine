@@ -59,7 +59,7 @@ void RenderSystem::Render(const World* world)
         RenderGraph graph(mDevice.get());
         RenderGraphBlackboard blackboard;
         
-        const auto& sceneData = graph.AddRenderPass<SceneRenderingData>("SceneRenderingData", [&](RenderGraphBuilder& builder, SceneRenderingData& passData)
+        const auto& sceneData = graph.AddCopyPass<SceneRenderingData>("SceneRenderingData", [&](RenderGraphBuilder& builder, SceneRenderingData& passData)
         {
             BufferDescriptor bufferDesc;
             bufferDesc.name = "CameraBuffer";
@@ -71,7 +71,7 @@ void RenderSystem::Render(const World* world)
             passData.sceneProxy = world->GetSystem<RenderSceneProxy>();
             passData.world = world;
         },
-        [this](const CommandBuffer* cmd, const SceneRenderingData& passData)
+        [this](const UploadManager* uploadManager, const SceneRenderingData& passData)
         {
             CameraUniforms cameraData;
             if (auto camera = passData.sceneProxy->GetActiveCamera(); camera)
@@ -96,7 +96,7 @@ void RenderSystem::Render(const World* world)
                 cameraData.invViewProjectionMatrix = Math::Inverse(cameraData.viewProjectionMatrix);
                 cameraData.worldPosition = camera->GetWorldPosition();
             }
-            cmd->SetBufferData(passData.cameraBuffer, cameraData);
+			uploadManager->CommitUpload(passData.cameraBuffer, &cameraData, sizeof(CameraUniforms));
         });
         blackboard.Add(sceneData);
 
@@ -111,6 +111,11 @@ void RenderSystem::Render(const World* world)
 
 		cmd->WaitUntilCompleted();
 		mDevice->DestroyPooledObjects(frameIdx);
+		
+		if (frameIdx == 0)
+		{
+			mDevice->GetUploadManager()->Reset();
+		}
 
 		cmd->Begin();
         graph.Execute(cmd);
@@ -122,6 +127,7 @@ void RenderSystem::Render(const World* world)
         }
         ResetRenderTarget();
 
+		mDevice->GetUploadManager()->Commit();
         mDevice->Present(cmd);
     }
 }

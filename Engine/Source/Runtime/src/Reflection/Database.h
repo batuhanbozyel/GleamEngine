@@ -85,7 +85,7 @@ private:
 		desc.mGuid = refl::descriptor::get_attribute<Reflection::Attribute::Guid>(type);
 
 		// resolve fields
-        auto fields = refl::util::filter(type.members, [&](auto member) { return refl::descriptor::is_field(member); });
+        auto fields = refl::util::filter(type.declared_members, [&](auto member) { return refl::descriptor::is_field(member); });
         refl::util::for_each(fields, [&](auto member)
         {
             using ValueType = typename decltype(member)::value_type;
@@ -94,7 +94,7 @@ private:
             size_t fieldOffset = OffsetOf<T, ValueType, member.pointer>();
             if constexpr (Traits::IsPrimitive<ValueType>::value)
             {
-                auto hash = entt::type_hash<ValueType>::value();
+                constexpr auto hash = entt::type_hash<ValueType>::value();
                 auto field = PrimitiveField(GetPrimitiveType(hash));
                 field.offset = fieldOffset;
                 field.size = fieldSize;
@@ -102,7 +102,7 @@ private:
             }
             else if constexpr (Traits::IsEnum<ValueType>::value)
             {
-                auto hash = entt::type_hash<ValueType>::value();
+				constexpr auto hash = entt::type_hash<ValueType>::value();
                 auto field = EnumField(hash);
                 field.offset = fieldOffset;
                 field.size = fieldSize;
@@ -111,7 +111,7 @@ private:
             }
             else if constexpr (Traits::IsArray<ValueType>::value)
             {
-                auto hash = entt::type_hash<ValueType>::value();
+				constexpr auto hash = entt::type_hash<ValueType>::value();
                 auto field = ArrayField(hash);
                 field.offset = fieldOffset;
                 field.size = fieldSize;
@@ -120,7 +120,7 @@ private:
             }
             else if constexpr (Traits::IsClass<ValueType>::value)
             {
-				auto hash = entt::type_hash<ValueType>::value();
+				constexpr auto hash = entt::type_hash<ValueType>::value();
                 auto field = ClassField(hash);
                 field.offset = fieldOffset;
                 field.size = fieldSize;
@@ -137,18 +137,23 @@ private:
         });
         
         // resolve base classes
-        refl::util::for_each(type.bases, [&](auto base)
-        {
-            desc.mBaseClasses.emplace_back(base);
-        });
+		refl::util::for_each(refl::util::reflect_types(type.declared_bases), [&](auto base)
+		{
+			using BaseType = typename decltype(base)::type;
+			auto& classDesc = CreateClassIfNotExist<BaseType>();
+			desc.mBaseClasses.emplace_back(classDesc);
+		});
         
         // resolve attributes
-		std::apply([&](const auto&... attributes)
+		std::apply([&](auto&&... attributes)
 		{
 			auto resolveAttrib = [&](auto attrib)
 			{
-				desc.mAttributes.push_back({ .description = attrib.description,
+				if constexpr (AttributeType<decltype(attrib)>)
+				{
+					desc.mAttributes.push_back({ .description = attrib.description,
 										 .value = std::make_any<decltype(attrib)>(attrib) });
+				};
 			};
 			(resolveAttrib(attributes), ...);
 
@@ -207,7 +212,7 @@ private:
     static constexpr ArrayDescription CreateArrayDescription()
     {
         using ElementType = std::remove_reference_t<decltype(std::declval<T>()[0])>;
-        auto hash = entt::type_hash<ElementType>::value();
+		constexpr auto hash = entt::type_hash<ElementType>::value();
         auto type = refl::reflect<ElementType>();
         
         ArrayDescription desc;

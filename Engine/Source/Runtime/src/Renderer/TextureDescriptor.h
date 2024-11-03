@@ -40,7 +40,6 @@ struct TextureDescriptor
     TextureDimension dimension = TextureDimension::Texture2D;
     uint32_t sampleCount = 1;
     bool useMipMap = false;
-    TArray<uint8_t> pixels;
     
     bool operator==(const TextureDescriptor& other) const
     {
@@ -53,7 +52,12 @@ struct TextureDescriptor
     }
 };
 
-struct RenderTextureDescriptor : public TextureDescriptor
+struct Texture2DDescriptor : TextureDescriptor
+{
+	TArray<uint8_t> pixels;
+};
+
+struct RenderTextureDescriptor : TextureDescriptor
 {
 	Color clearColor = Color::clear;
 	uint32_t clearStencil = 0u;
@@ -103,5 +107,8 @@ GLEAM_TYPE(Gleam::TextureDescriptor, Guid("5B36D630-8A7E-47BE-A9F0-1702AB9F9C8C"
 	GLEAM_FIELD(dimension, Serializable())
 	GLEAM_FIELD(sampleCount, Serializable())
 	GLEAM_FIELD(useMipMap, Serializable())
-    GLEAM_FIELD(pixels, Serializable())
+GLEAM_END
+
+GLEAM_TYPE(Gleam::Texture2DDescriptor, Guid("CC19ED9A-2B9F-4258-B0E5-1F0EB34373A1"), bases<Gleam::TextureDescriptor>)
+	GLEAM_FIELD(pixels, Serializable())
 GLEAM_END

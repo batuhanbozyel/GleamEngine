@@ -8,7 +8,7 @@
 struct FScreenVertexOutput
 {
     noperspective float4 position : SV_POSITION;
-    float2 texCoord : TEXCOORD0;
+	float2 texCoord : ATTRIB0;
 };
 
 SamplerState Sampler_Point_Repeat : register(s0);

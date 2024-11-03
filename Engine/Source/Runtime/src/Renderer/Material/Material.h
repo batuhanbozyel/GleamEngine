@@ -7,10 +7,12 @@
 
 #pragma once
 #include "IMaterial.h"
-#include "MaterialInstance.h"
 #include "MaterialDescriptor.h"
+#include "Renderer/ResourceDescriptorHeap.h"
 
 namespace Gleam {
+
+class MaterialInstance;
 
 class Material : public IMaterial
 {
@@ -18,9 +20,9 @@ public:
     
     Material(const MaterialDescriptor& descriptor);
 
-    MaterialInstance CreateInstance();
+	ShaderResourceIndex CreateInstance(const TArray<MaterialPropertyValue>& values);
     
-	void Dispose();
+	virtual void Release() override;
     
     const Buffer& GetBuffer() const;
     
@@ -36,7 +38,9 @@ private:
 
 	uint32_t mPipelineStateHash = 0;
 
-    uint32_t mInstanceCount = 0;
+	ResourceDescriptorHeap mInstanceDescriptorHeap;
+
+	static constexpr uint32_t MaxMaterialInstances = 1000;
     
 };
 

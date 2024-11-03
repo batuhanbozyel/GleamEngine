@@ -10,8 +10,8 @@ MeshBaker::MeshBaker(const Gleam::MeshDescriptor& descriptor)
 
 void MeshBaker::Bake(Gleam::FileStream& stream) const
 {
-	auto serializer = Gleam::JSONSerializer(stream);
-	serializer.Serialize(mDescriptor);
+	auto serializer = Gleam::JSONSerializer();
+	serializer.Serialize(mDescriptor, stream);
 }
 
 Gleam::TString MeshBaker::Filename() const
@@ -22,4 +22,9 @@ Gleam::TString MeshBaker::Filename() const
 Gleam::Guid MeshBaker::TypeGuid() const
 {
     return Gleam::Reflection::GetClass<decltype(mDescriptor)>().Guid();
+}
+
+const Gleam::MeshDescriptor& MeshBaker::GetDescriptor() const
+{
+	return mDescriptor;
 }
