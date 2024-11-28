@@ -73,6 +73,11 @@ bool File::Empty() const
 	return GetSize() == 0;
 }
 
+bool File::IsOpen() const
+{
+	return mHandle.is_open();
+}
+
 const TString& File::GetName() const
 {
 	return mName;

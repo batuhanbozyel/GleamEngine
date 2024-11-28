@@ -9,6 +9,7 @@
 #include "World/ScriptingSystem.h"
 #include "Renderer/RenderSystem.h"
 #include "Serialization/JSONSerializer.h"
+#include "Serialization/BinarySerializer.h"
 
 using namespace Gleam;
 
@@ -16,6 +17,7 @@ void Engine::Initialize()
 {
 	// init reflection & serialization
 	AddSubsystem<Reflection::Database>();
+	AddSubsystem<BinarySerializer>();
 	AddSubsystem<JSONSerializer>();
 
 	// init core subsystems

@@ -86,6 +86,12 @@ Guid::Guid(const TString& str)
 	mData4[7] = ParseHexDigits<uint8_t>(it);
 }
 
+Guid::Guid(const TArray<uint8_t, 16>& bytes)
+	: mBytes(bytes)
+{
+	
+}
+
 Guid::Guid(const Reflection::Attribute::Guid& guid)
 	: mBytes(guid.bytes)
 {

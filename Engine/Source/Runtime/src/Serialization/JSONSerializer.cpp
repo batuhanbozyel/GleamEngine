@@ -105,7 +105,7 @@ void JSONSerializer::Initialize(Engine* engine)
             const Reflection::ClassDescription& classDesc,
 			rapidjson::Node& node)
         {
-            auto& guid = Reflection::Get<Guid>(obj);
+            const auto& guid = Reflection::Get<Guid>(obj);
             SerializeClassHeader(classDesc, fieldName, node);
 			node.AddMember("Value", guid.ToString());
         };
@@ -114,7 +114,7 @@ void JSONSerializer::Initialize(Engine* engine)
             const Reflection::ClassDescription& classDesc,
 			rapidjson::Node& node)
         {
-            auto& guid = Reflection::Get<Guid>(obj);
+            const auto& guid = Reflection::Get<Guid>(obj);
             node.PushBack(rapidjson::Value(guid.ToString(), node.allocator));
         };
         
@@ -700,13 +700,14 @@ void SerializeClassArrayFields(const void* obj,
                 {
 					const auto& classField = field.GetField<Reflection::ClassField>();
 					const auto& fieldDesc = Reflection::GetClass(classField.hash);
-                    if (JSONSerializer::TryCustomArraySerializer(OffsetPointer(obj, classField.offset), fieldDesc, outFields) == false)
+					
+					auto elements = rapidjson::Value(rapidjson::kArrayType);
+					auto elementsNode = rapidjson::Node(elements, outFields.allocator);
+                    if (JSONSerializer::TryCustomArraySerializer(OffsetPointer(obj, classField.offset), fieldDesc, elementsNode) == false)
                     {
-                        auto elements = rapidjson::Value(rapidjson::kArrayType);
-                        auto elementsNode = rapidjson::Node(elements, outFields.allocator);
                         SerializeClassArrayFields(OffsetPointer(obj, classField.offset), fieldDesc, elementsNode);
-                        outFields.PushBack(elementsNode.object);
                     }
+					outFields.PushBack(elementsNode.object);
                     break;
                 }
                 case Reflection::FieldType::Array:
@@ -773,7 +774,10 @@ void SerializeArrayObjectElements(const void* obj,
         {
             auto elements = rapidjson::Value(rapidjson::kArrayType);
             auto elementsNode = rapidjson::Node(elements, outElements.allocator);
-            SerializeClassArrayFields(OffsetPointer(obj, elementOffset), classDesc, elementsNode);
+			if (JSONSerializer::TryCustomArraySerializer(OffsetPointer(obj, elementOffset), classDesc, elementsNode) == false)
+			{
+				SerializeClassArrayFields(OffsetPointer(obj, elementOffset), classDesc, elementsNode);
+			}
             outElements.PushBack(elementsNode.object);
         }
     }

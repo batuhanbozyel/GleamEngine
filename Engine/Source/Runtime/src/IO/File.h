@@ -28,6 +28,8 @@ public:
     size_t GetSize() const;
 
 	bool Empty() const;
+	
+	bool IsOpen() const;
 
 private:
 
