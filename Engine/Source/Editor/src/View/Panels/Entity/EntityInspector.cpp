@@ -34,8 +34,12 @@ static void DrawVec3Control(const std::string& label, Gleam::Float3& values, flo
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4{ 0.9f, 0.2f, 0.2f, 1.0f });
     ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4{ 0.8f, 0.1f, 0.15f, 1.0f });
     ImGui::PushFont(boldFont);
-    if (ImGui::Button("X", buttonSize))
-        values.x = resetValue;
+
+	if (ImGui::Button("X", buttonSize))
+	{
+		values.x = resetValue;
+	}
+
     ImGui::PopFont();
     ImGui::PopStyleColor(3);
 
@@ -48,8 +52,12 @@ static void DrawVec3Control(const std::string& label, Gleam::Float3& values, flo
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4{ 0.3f, 0.8f, 0.3f, 1.0f });
     ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4{ 0.2f, 0.7f, 0.2f, 1.0f });
     ImGui::PushFont(boldFont);
+
     if (ImGui::Button("Y", buttonSize))
-        values.y = resetValue;
+    {
+		values.y = resetValue;
+	}
+
     ImGui::PopFont();
     ImGui::PopStyleColor(3);
 
@@ -62,8 +70,12 @@ static void DrawVec3Control(const std::string& label, Gleam::Float3& values, flo
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4{ 0.2f, 0.35f, 0.9f, 1.0f });
     ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4{ 0.1f, 0.25f, 0.8f, 1.0f });
     ImGui::PushFont(boldFont);
-    if (ImGui::Button("Z", buttonSize))
-        values.z = resetValue;
+
+	if (ImGui::Button("Z", buttonSize))
+	{
+		values.z = resetValue;
+	}
+
     ImGui::PopFont();
     ImGui::PopStyleColor(3);
 
@@ -82,9 +94,11 @@ static void DrawComponent(const std::string& name, T& component, UIFunction uiFu
 {
     const ImGuiTreeNodeFlags treeNodeFlags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_AllowItemOverlap | ImGuiTreeNodeFlags_FramePadding;
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2{ 4, 4 });
+
     float lineHeight = GImGui->Font->FontSize + GImGui->Style.FramePadding.y * 2.0f;
     ImGui::Separator();
-	size_t hash = entt::type_hash<T>::value();
+
+	constexpr uint32_t hash = entt::type_hash<T>::value();
     bool open = ImGui::TreeNodeEx((void*)hash, treeNodeFlags, "%s", name.c_str());
     ImGui::PopStyleVar();
 

@@ -95,7 +95,8 @@ void BinarySerializer::Initialize(Engine* engine)
 			Reflection::Get<Guid>(obj) = Guid(bytes);
 		};
 		
-		mCustomDeserializers[Reflection::GetClass<TString>().ResolveName()] = [](FileStream& stream,const 																	 Reflection::ClassDescription& classDesc,
+		mCustomDeserializers[Reflection::GetClass<TString>().ResolveName()] = [](FileStream& stream,
+																				 const Reflection::ClassDescription& classDesc,
 																				 void* obj)
 		{
 			uint32_t len = 0;
@@ -400,13 +401,97 @@ void DeserializeClass(FileStream& stream,
 					  const Reflection::ClassDescription& classDesc,
 					  void* obj)
 {
-	
+	for (const auto& base : classDesc.ResolveBaseClasses())
+	{
+		DeserializeClass(stream, base, obj);
+	}
+
+	for (const auto& fieldDesc : classDesc.ResolveFields())
+	{
+		if (fieldDesc.GetType() == Reflection::FieldType::Primitive)
+		{
+			const auto& primitiveField = fieldDesc.GetField<Reflection::PrimitiveField>();
+			DeserializePrimitive(stream, primitiveField.primitive, OffsetPointer(obj, primitiveField.offset));
+		}
+		else if (fieldDesc.GetType() == Reflection::FieldType::Array)
+		{
+			const auto& arrayField = fieldDesc.GetField<Reflection::ArrayField>();
+			const auto& desc = Reflection::GetArray(arrayField.hash);
+			DeserializeArray(stream, desc, OffsetPointer(obj, arrayField.offset));
+		}
+		else if (fieldDesc.GetType() == Reflection::FieldType::Class)
+		{
+			const auto& classField = fieldDesc.GetField<Reflection::ClassField>();
+			const auto& desc = Reflection::GetClass(classField.hash);
+			if (BinarySerializer::TryCustomDeserializer(stream, desc, OffsetPointer(obj, classField.offset)) == false)
+			{
+				DeserializeClass(stream, desc, OffsetPointer(obj, classField.offset));
+			}
+		}
+		else if (fieldDesc.GetType() == Reflection::FieldType::Enum)
+		{
+			const auto& enumField = fieldDesc.GetField<Reflection::EnumField>();
+			const auto& desc = Reflection::GetEnum(enumField.hash);
+			DeserializeEnum(stream, desc, OffsetPointer(obj, enumField.offset));
+		}
+		else
+		{
+			GLEAM_ASSERT(false, "BinarySerializer: Unknown object kind");
+			continue;
+		}
+	}
 }
 
 void DeserializeArray(FileStream& stream,
 					  const Reflection::ArrayDescription& arrayDesc,
 					  void* obj)
 {
-	
+	switch (arrayDesc.ElementType())
+	{
+		case Reflection::FieldType::Primitive:
+		{
+			auto primitiveType = Reflection::Database::GetPrimitiveType(arrayDesc.ElementHash());
+			for (size_t elementOffset = 0; elementOffset < arrayDesc.GetSize(); elementOffset += arrayDesc.GetStride())
+			{
+				DeserializePrimitive(stream, primitiveType, OffsetPointer(obj, elementOffset));
+			}
+			return;
+		}
+		case Reflection::FieldType::Array:
+		{
+			const auto& innerDesc = Reflection::GetArray(arrayDesc.ElementHash());
+			for (size_t elementOffset = 0; elementOffset < arrayDesc.GetSize(); elementOffset += arrayDesc.GetStride())
+			{
+				DeserializeArray(stream, innerDesc, OffsetPointer(obj, elementOffset));
+			}
+			return;
+		}
+		case Reflection::FieldType::Class:
+		{
+			const auto& classDesc = Reflection::GetClass(arrayDesc.ElementHash());
+			for (size_t elementOffset = 0; elementOffset < arrayDesc.GetSize(); elementOffset += arrayDesc.GetStride())
+			{
+				if (BinarySerializer::TryCustomDeserializer(stream, classDesc, OffsetPointer(obj, elementOffset)) == false)
+				{
+					DeserializeClass(stream, classDesc, OffsetPointer(obj, elementOffset));
+				}
+			}
+			return;
+		}
+		case Reflection::FieldType::Enum:
+		{
+			const auto& enumDesc = Reflection::GetEnum(arrayDesc.ElementHash());
+			for (size_t elementOffset = 0; elementOffset < arrayDesc.GetSize(); elementOffset += arrayDesc.GetStride())
+			{
+				DeserializeEnum(stream, enumDesc, OffsetPointer(obj, elementOffset));
+			}
+			return;
+		}
+		default:
+		{
+			GLEAM_ASSERT(false, "BinarySerializer: Unknown object kind");
+			return;
+		}
+	}
 }
 #pragma endregion DeserializeFunctionsImpl
