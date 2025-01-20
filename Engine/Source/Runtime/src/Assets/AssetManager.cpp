@@ -4,6 +4,9 @@
 #include "Core/Globals.h"
 #include "IO/FileWatcher.h"
 
+#include "World/World.h"
+#include "World/Prefab.h"
+
 #include "Renderer/Mesh.h"
 #include "Renderer/Texture2D.h"
 #include "Renderer/Material/Material.h"
@@ -20,7 +23,9 @@ void AssetManager::Initialize(Application* app)
 	
 	Filesystem::ForEach(Globals::ProjectContentDirectory, [this](const auto& entry)
 	{
-		if (entry.extension() == ".asset")
+		if (entry.extension() == Asset::Extension() ||
+			entry.extension() == Prefab::Extension() ||
+			entry.extension() == World::Extension())
 		{
 			EmplaceAssetPath(entry);
 		}
@@ -29,7 +34,9 @@ void AssetManager::Initialize(Application* app)
     auto fileWatcher = Globals::Engine->GetSubsystem<FileWatcher>();
     fileWatcher->AddWatch(Globals::ProjectContentDirectory, [this](const Filesystem::Path& path, FileWatchEvent event)
     {
-        if (path.extension() != Asset::Extension())
+        if (path.extension() != Asset::Extension() ||
+			path.extension() != Prefab::Extension() ||
+			path.extension() != World::Extension())
         {
             return;
         }

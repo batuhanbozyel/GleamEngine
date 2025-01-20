@@ -4,11 +4,11 @@
 
 using namespace GEditor;
 
-static Gleam::JSONHeader ParseAssetHeader(const Gleam::Filesystem::Path& asset)
+static Gleam::BinaryHeader ParseAssetHeader(const Gleam::Filesystem::Path& asset)
 {
 	auto file = Gleam::Filesystem::Open(asset, Gleam::FileType::Text);
 	auto accessor = Gleam::Filesystem::ReadAccessor(asset);
-	auto serializer = Gleam::JSONSerializer();
+	auto serializer = Gleam::BinarySerializer();
 	return serializer.ParseHeader(file.GetStream());
 }
 
@@ -16,7 +16,7 @@ static Gleam::TString ParseAssetName(const Gleam::Filesystem::Path& asset, const
 {
 	auto file = Gleam::Filesystem::Open(asset, Gleam::FileType::Text);
 	auto accessor = Gleam::Filesystem::ReadAccessor(asset);
-	auto serializer = Gleam::JSONSerializer();
+	auto serializer = Gleam::BinarySerializer();
 
     if (typeGuid == Gleam::Reflection::GetClass<Gleam::MeshDescriptor>().Guid())
     {

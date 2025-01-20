@@ -5,17 +5,16 @@
 #include "Core/Globals.h"
 #include "Core/Application.h"
 #include "Assets/AssetManager.h"
+#include "Serialization/JSONSerializer.h"
 
 using namespace Gleam;
 
 Entity& EntityManager::CreateFromPrefab(const AssetReference& ref)
 {
-	auto assetManager = Globals::GameInstance->GetSubsystem<AssetManager>();
-	const auto& path = assetManager->GetAssetPath(ref);
-	auto prefab = assetManager->LoadDescriptor<Prefab>(ref);
-
-	auto fullpath = Globals::ProjectContentDirectory / path;
-	auto file = Filesystem::Open(fullpath, FileType::Text);
+	const auto& path = Globals::GameInstance->GetSubsystem<AssetManager>()->GetAssetPath(ref);
+	auto file = Filesystem::Open(Globals::ProjectContentDirectory / path, FileType::Text);
+	auto serializer = JSONSerializer();
+	auto prefab = serializer.Deserialize<Prefab>(file.GetStream());
 
 	if (prefab.entityCount > 1)
 	{

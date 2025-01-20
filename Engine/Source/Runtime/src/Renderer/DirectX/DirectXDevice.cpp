@@ -345,6 +345,7 @@ DirectXDevice::~DirectXDevice()
 	}
 	mFrameContext.clear();
 
+	mUploadManager.reset();
 	DirectXPipelineStateManager::Destroy();
 	DirectXTransitionManager::Clear();
 

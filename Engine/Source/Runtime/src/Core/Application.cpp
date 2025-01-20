@@ -20,6 +20,7 @@ Application::Application(const Project& project)
 	: mProject(project)
 {
 	// setup globals
+	Globals::GameInstance = this;
 	Globals::ProjectName = project.name;
 	Globals::ProjectDirectory = Globals::StartupDirectory/project.path;
 	Globals::BuiltinAssetsDirectory = Globals::StartupDirectory/"Assets";

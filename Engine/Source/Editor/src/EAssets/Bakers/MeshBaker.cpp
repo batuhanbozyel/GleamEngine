@@ -10,7 +10,7 @@ MeshBaker::MeshBaker(const Gleam::MeshDescriptor& descriptor)
 
 void MeshBaker::Bake(Gleam::FileStream& stream) const
 {
-	auto serializer = Gleam::JSONSerializer();
+	auto serializer = Gleam::BinarySerializer();
 	serializer.Serialize(mDescriptor, stream);
 }
 

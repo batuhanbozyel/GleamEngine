@@ -10,7 +10,7 @@ TextureBaker::TextureBaker(const Gleam::Texture2DDescriptor& descriptor)
 
 void TextureBaker::Bake(Gleam::FileStream& stream) const
 {
-	auto serializer = Gleam::JSONSerializer();
+	auto serializer = Gleam::BinarySerializer();
 	serializer.Serialize(mDescriptor, stream);
 }
 

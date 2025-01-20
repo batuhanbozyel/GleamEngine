@@ -6,7 +6,7 @@
 #include "Core/Subsystem.h"
 #include "Core/Application.h"
 
-#include "Serialization/JSONSerializer.h"
+#include "Serialization/BinarySerializer.h"
 
 #include <mutex>
 
@@ -49,7 +49,7 @@ public:
 		{
 			auto fullpath = Globals::ProjectContentDirectory / it->second;
 			auto file = Filesystem::Open(fullpath, FileType::Text);
-			auto serializer = JSONSerializer();
+			auto serializer = BinarySerializer();
 			auto asset = serializer.Deserialize<T>(file.GetStream());
 			return asset;
 		}
@@ -75,7 +75,7 @@ private:
 	template<AssetType T, typename Desc>
 	static T* CreateAsset(const AssetReference& ref)
 	{
-		auto instance = Globals::GameInstance->GetSubsystem<AssetManager>();
+		static auto instance = Globals::GameInstance->GetSubsystem<AssetManager>();
 		return new T(instance->LoadDescriptor<Desc>(ref));
 	}
 

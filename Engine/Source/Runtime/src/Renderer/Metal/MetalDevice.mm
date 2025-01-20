@@ -229,7 +229,7 @@ MetalDevice::~MetalDevice()
     mSurface = nil;
 
     mShaderCache.clear();
-
+    mUploadManager.reset();
     MetalPipelineStateManager::Destroy();
     
     // Destroy descriptor heap

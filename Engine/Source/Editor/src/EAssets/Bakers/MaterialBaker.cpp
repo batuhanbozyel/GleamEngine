@@ -11,7 +11,7 @@ MaterialBaker::MaterialBaker(const Gleam::MaterialDescriptor& descriptor)
 
 void MaterialBaker::Bake(Gleam::FileStream& stream) const
 {
-	auto serializer = Gleam::JSONSerializer();
+	auto serializer = Gleam::BinarySerializer();
 	serializer.Serialize(mDescriptor, stream);
 }
 
@@ -39,7 +39,7 @@ MaterialInstanceBaker::MaterialInstanceBaker(const Gleam::MaterialInstanceDescri
 
 void MaterialInstanceBaker::Bake(Gleam::FileStream& stream) const
 {
-	auto serializer = Gleam::JSONSerializer();
+	auto serializer = Gleam::BinarySerializer();
 	serializer.Serialize(mDescriptor, stream);
 }
 

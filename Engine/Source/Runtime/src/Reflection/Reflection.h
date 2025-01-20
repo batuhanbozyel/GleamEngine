@@ -3,6 +3,11 @@
 
 namespace Gleam::Reflection {
 
+static PrimitiveType GetPrimitiveType(size_t hash)
+{
+	return Database::GetPrimitiveType(hash);
+}
+
 template<typename T, typename = std::enable_if_t<Traits::IsClass<T>::value>>
 static constexpr const ClassDescription& GetClass()
 {

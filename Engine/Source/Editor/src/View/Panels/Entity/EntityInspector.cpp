@@ -99,7 +99,7 @@ static void DrawComponent(const std::string& name, T& component, UIFunction uiFu
     ImGui::Separator();
 
 	constexpr uint32_t hash = entt::type_hash<T>::value();
-    bool open = ImGui::TreeNodeEx((void*)hash, treeNodeFlags, "%s", name.c_str());
+    bool open = ImGui::TreeNodeEx((void*)(size_t)hash, treeNodeFlags, "%s", name.c_str());
     ImGui::PopStyleVar();
 
     if (open)

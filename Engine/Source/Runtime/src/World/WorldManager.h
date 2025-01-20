@@ -30,13 +30,9 @@ private:
 
 	uint32_t mActiveWorld = 0;
 
-	Application* mApp = nullptr;
-
 	TArray<AssetReference> mWorldsInBuild;
 
 	HashMap<AssetReference, Scope<World>> mLoadedWorlds;
-
-	HashMap<AssetReference, Filesystem::Path> mWorldPaths;
 
 };
 
