@@ -268,7 +268,7 @@ void BinarySerializer::Initialize(Engine* engine)
 
 			const auto& containerDesc = Reflection::GetArray(classDesc.ContainerHash());
 			auto arrDesc = Reflection::ArrayDescription(containerDesc.ResolveName(), containerDesc.ElementType(), containerDesc.ElementHash(), arr.size(), containerDesc.GetStride());
-			DeserializeArrayElements(stream, containerDesc, arr.data());
+			DeserializeArrayElements(stream, arrDesc, arr.data());
 		};
 
 		mCustomArrayDeserializers[Reflection::GetClass<TArray<uint8_t>>().ResolveName()] = [](FileStream& stream,
