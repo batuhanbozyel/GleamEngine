@@ -11,14 +11,14 @@ PrefabBaker::PrefabBaker(const Gleam::RefCounted<Gleam::World>& world)
 void PrefabBaker::Bake(Gleam::FileStream& stream) const
 {
 	Gleam::Prefab prefab;
-	prefab.name = mWorld->GetName();
+	prefab.name = mWorld->name;
 	prefab.entityCount = mWorld->GetEntityManager().GetEntityCount();
 	prefab.Serialize(mWorld->GetEntityManager(), stream);
 }
 
 Gleam::TString PrefabBaker::Filename() const
 {
-	return mWorld->GetName();
+	return mWorld->name;
 }
 
 Gleam::Guid PrefabBaker::TypeGuid() const
