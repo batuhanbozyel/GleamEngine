@@ -3,13 +3,15 @@
 
 namespace GEditor {
 
+struct AssetItem;
+
 class AssetBaker
 {
 public:
 
 	virtual ~AssetBaker() = default;
 
-	virtual void Bake(Gleam::FileStream& stream) const = 0;
+	virtual void Bake(const Gleam::Filesystem::Path& directory, const AssetItem& item) const = 0;
 
     virtual Gleam::TString Filename() const = 0;
     

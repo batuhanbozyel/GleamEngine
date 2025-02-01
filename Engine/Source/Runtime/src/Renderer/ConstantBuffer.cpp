@@ -35,11 +35,10 @@ ConstantBuffer::~ConstantBuffer()
 size_t ConstantBuffer::Write(const void* data, size_t size)
 {
 	auto ptr = Allocate(size);
-	if (ptr < mCapacity)
-	{
-		auto dst = OffsetPointer(mBuffer.GetContents(), ptr);
-		memcpy(dst, data, size);
-	}
+	GLEAM_ASSERT(mCapacity > ptr, "ConstantBuffer has reached its capacity");
+
+	auto dst = OffsetPointer(mBuffer.GetContents(), ptr);
+	memcpy(dst, data, size);
 	return ptr;
 }
 
@@ -47,12 +46,8 @@ size_t ConstantBuffer::Allocate(size_t size)
 {
 	auto alignedStackPtr = Utils::AlignUp(mStackPtr, Alignment);
 	auto newStackPtr = alignedStackPtr + size;
+	GLEAM_ASSERT(mCapacity > newStackPtr, "ConstantBuffer has reached its capacity");
 
-	if (mCapacity < newStackPtr)
-	{
-		GLEAM_ASSERT(false, "ConstantBuffer has reached its capacity");
-		return 0;
-	}
 	mStackPtr = newStackPtr;
 	return alignedStackPtr;
 }

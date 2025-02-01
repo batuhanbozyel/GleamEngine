@@ -9,7 +9,7 @@ public:
 
 	TextureBaker(const Gleam::Texture2DDescriptor& descriptor);
 
-	virtual void Bake(Gleam::FileStream& stream) const override;
+	virtual void Bake(const Gleam::Filesystem::Path& directory, const AssetItem& item) const override;
     
     virtual Gleam::TString Filename() const override;
     

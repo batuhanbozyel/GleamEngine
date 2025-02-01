@@ -171,11 +171,7 @@ void EAssetManager::Import(const Gleam::Filesystem::Path& directory, const Asset
 		auto path = directory / baker->Filename();
 		const auto& item = package.mRegistry->GetAsset(baker->Filename(), baker->TypeGuid());
 		const auto& asset = mRegistry.RegisterAsset(path, item);
-
-		auto filename = asset.reference.guid.ToString() + Gleam::Asset::Extension().data();
-		auto file = Gleam::Filesystem::Create(directory / filename, Gleam::FileType::Text);
-		auto accessor = Gleam::Filesystem::WriteAccessor(directory / filename);
-		baker->Bake(file.GetStream());
+		baker->Bake(directory, asset);
 	}
 }
 

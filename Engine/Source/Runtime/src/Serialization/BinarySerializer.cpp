@@ -390,7 +390,7 @@ void SerializeHeader(const BinaryHeader& header, FileStream& stream)
 void SerializePrimitiveHeader(Reflection::PrimitiveType type, FileStream& stream)
 {
 	BinaryHeader header;
-	header.kind = Reflection::FieldType::Enum;
+	header.kind = Reflection::FieldType::Primitive;
 	header.name = Reflection::Database::GetPrimitiveName(type);
 
 	switch (type)
@@ -474,7 +474,7 @@ void SerializeClassHeader(const Reflection::ClassDescription& classDesc, FileStr
 void SerializeArrayHeader(const Reflection::ArrayDescription& arrayDesc, FileStream& stream)
 {
 	BinaryHeader header;
-	header.kind = Reflection::FieldType::Class;
+	header.kind = Reflection::FieldType::Array;
 	header.name = arrayDesc.ResolveName();
 	if (arrayDesc.ElementType() == Reflection::FieldType::Class)
 	{
@@ -821,7 +821,10 @@ void DeserializeArrayElements(FileStream& stream,
 		case Reflection::FieldType::Array:
 		{
 			const auto& innerDesc = Reflection::GetArray(arrayDesc.ElementHash());
-			DeserializeArrayElements(stream, innerDesc, obj);
+			for (size_t elementOffset = 0; elementOffset < arrayDesc.GetSize(); elementOffset += arrayDesc.GetStride())
+			{
+				DeserializeArrayElements(stream, innerDesc, OffsetPointer(obj, elementOffset));
+			}
 			return;
 		}
 		case Reflection::FieldType::Class:

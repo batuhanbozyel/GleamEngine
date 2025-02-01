@@ -48,7 +48,7 @@ public:
 		if (it != mAssetPaths.end())
 		{
 			auto fullpath = Globals::ProjectContentDirectory / it->second;
-			auto file = Filesystem::Open(fullpath, FileType::Text);
+			auto file = Filesystem::Open(fullpath, FileType::Binary);
 			auto serializer = BinarySerializer();
 			auto asset = serializer.Deserialize<T>(file.GetStream());
 			return asset;

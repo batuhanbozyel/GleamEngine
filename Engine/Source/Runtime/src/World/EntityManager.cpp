@@ -13,13 +13,13 @@ Entity& EntityManager::CreateFromPrefab(const AssetReference& ref)
 {
 	const auto& path = Globals::GameInstance->GetSubsystem<AssetManager>()->GetAssetPath(ref);
 	auto file = Filesystem::Open(Globals::ProjectContentDirectory / path, FileType::Text);
-	auto serializer = JSONSerializer();
-	auto prefab = serializer.Deserialize<Prefab>(file.GetStream());
 
-	if (prefab.entityCount > 1)
+	Prefab prefab;
+	auto entities = prefab.Deserialize(*this, file.GetStream());
+
+	if (entities.size() > 1)
 	{
 		auto& root = CreateEntity(ref.guid);
-		auto entities = prefab.Deserialize(*this, file.GetStream());
 		for (auto handle : entities)
 		{
 			auto& entity = GetComponent<Entity>(handle);
@@ -28,7 +28,7 @@ Entity& EntityManager::CreateFromPrefab(const AssetReference& ref)
 		return root;
 	}
 
-	auto root = prefab.Deserialize(*this, file.GetStream()).back();
+	auto root = entities.back();
 	return GetComponent<Entity>(root);
 }
 
