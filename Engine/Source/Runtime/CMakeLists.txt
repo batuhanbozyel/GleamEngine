@@ -116,5 +116,7 @@ set(HLSL_FILE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/src/Renderer/Shaders)
 add_custom_command(
     TARGET Runtime
     PRE_BUILD
-    COMMAND Python::Interpreter ${CMAKE_SOURCE_DIR}/Tools/CompileShaders.py "-d" ${HLSL_FILE_PATH}
+    COMMAND Python::Interpreter ${CMAKE_SOURCE_DIR}/Tools/CompileShaders.py
+        "-d" ${HLSL_FILE_PATH} 
+        $<$<CONFIG:Debug>:--debug>
 )

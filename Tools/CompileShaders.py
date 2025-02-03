@@ -66,6 +66,7 @@ if __name__ == "__main__":
     parser.add_argument("-f", "--files", type=str, nargs='+', help="Specific HLSL files to compile.")
     parser.add_argument("-i", "--include", type=str, help="Forced include file (.hlsli) to be used during compilation.")
     parser.add_argument("-o", "--output", type=str, help="Output DXIL filename.")
+    parser.add_argument("--debug", action="store_true", help="Enable debug information.")
     args = parser.parse_args()
 
     output_dir = f"{SCRIPT_DIRECTORY}/../Assets/Shaders"
@@ -118,6 +119,9 @@ if __name__ == "__main__":
                        "-T", HLSL_SHADER_STAGE[shader_stage],
                        "-E", entry_point,
                        "-Fo", output_file]
+                    
+                    if args.debug:
+                        compile_command.extend(["-Zi", "-Qembed_debug"])
                     
                     for directory in include_dirs:
                         compile_command.extend(["-I", directory])
