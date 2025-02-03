@@ -17,8 +17,8 @@ using namespace GEditor;
 static RawMesh ProcessAttributes(const cgltf_primitive& primitive, const MeshSource::ImportSettings& settings);
 static RawMaterial ProcessMaterial(const cgltf_material& material, const MeshSource::ImportSettings& settings);
 
-static Gleam::TArray<Gleam::InterleavedMeshVertex> InterleaveMeshVertices(const RawMesh& mesh);
 static Gleam::MeshDescriptor CombineMeshes(const Gleam::TArray<RawMesh>& meshes);
+static Gleam::TArray<Gleam::InterleavedMeshVertex> InterleaveMeshVertices(const RawMesh& mesh);
 static Gleam::BoundingBox CalculateBounds(const Gleam::TArray<Gleam::Float3>& positions);
 
 bool MeshSource::Import(const Gleam::Filesystem::Path& path, const ImportSettings& settings)
@@ -42,96 +42,82 @@ bool MeshSource::Import(const Gleam::Filesystem::Path& path, const ImportSetting
 
 	auto directory = path.parent_path();
     auto filename = path.stem().string();
-
-	Gleam::TArray<RawMesh> meshes;
-    Gleam::TArray<RawMaterial> materials;
-    for(uint32_t i = 0; i < data->meshes_count; ++i)
-    {
-        const auto& mesh = data->meshes[i];
-        for(uint32_t meshIdx = 0; meshIdx < mesh.primitives_count; ++meshIdx)
-        {
-            auto rawMesh = ProcessAttributes(mesh.primitives[meshIdx], settings);
-			if (mesh.name)
+	
+    Gleam::TArray<RawMaterial> rawMaterials;
+	Gleam::HashMap<const cgltf_mesh*, Gleam::RefCounted<MeshBaker>> meshes;
+	for (uint32_t i = 0; i < data->meshes_count; ++i)
+	{
+		const auto& mesh = data->meshes[i];
+		
+		Gleam::TArray<RawMesh> rawMeshes;
+		rawMeshes.reserve(mesh.primitives_count);
+		for(uint32_t meshIdx = 0; meshIdx < mesh.primitives_count; ++meshIdx)
+		{
+			auto rawMesh = ProcessAttributes(mesh.primitives[meshIdx], settings);
+			
+			RawMaterial rawMaterial;
+			if (auto mat = mesh.primitives[meshIdx].material; mat != nullptr)
 			{
-				rawMesh.name = mesh.name;
+				rawMaterial = ProcessMaterial(*mat, settings);
+				if (mat->name)
+				{
+					rawMaterial.name = mat->name;
+				}
+				else
+				{
+					if (mesh.name)
+					{
+						rawMaterial.name = mesh.name;
+					}
+					else
+					{
+						Gleam::TStringStream ss;
+						ss << filename << i * data->meshes_count + meshIdx;
+						rawMaterial.name = ss.str();
+					}
+				}
 			}
-            else
-            {
-                Gleam::TStringStream ss;
-                ss << filename << "_mesh" << i * data->meshes_count + meshIdx;
-                rawMesh.name = ss.str();
-            }
-            
-			RawMaterial material;
-            if (auto mat = mesh.primitives[meshIdx].material; mat != nullptr)
-            {
-                material = ProcessMaterial(*mat, settings);
-                if (mat->name)
-                {
-                    material.name = mat->name;
-                }
-                else
-                {
-                    Gleam::TStringStream ss;
-                    ss << filename << "_material" << i * data->meshes_count + meshIdx;
-                    material.name = ss.str();
-                }
-            }
-            
-            // insert unique material
-            auto materialIt = std::find(materials.begin(), materials.end(), material);
-            if (materialIt == materials.end())
-            {
-                uint32_t materialIdx = static_cast<uint32_t>(materials.size());
-                materials.push_back(material);
+			
+			// insert unique material
+			auto materialIt = std::find(rawMaterials.begin(), rawMaterials.end(), rawMaterial);
+			if (materialIt == rawMaterials.end())
+			{
+				uint32_t materialIdx = static_cast<uint32_t>(rawMaterials.size());
+				rawMaterials.push_back(rawMaterial);
 				rawMesh.material = materialIdx;
-            }
-            else
-            {
-				uint32_t materialIdx = static_cast<uint32_t>(std::distance(materials.begin(), materialIt));
-                rawMesh.material = materialIdx;
-            }
-            meshes.push_back(rawMesh);
-        }
-    }
-
-	PrefabHierarchy hierarchy;
-    if (settings.combineMeshes)
-    {
-        auto combined = CombineMeshes(meshes);
-        combined.name = filename;
-
-		auto meshBaker = EmplaceBaker<MeshBaker>(combined);
-		hierarchy.meshes.push_back(meshBaker);
-    }
-    else
-    {
-        for (const auto& mesh : meshes)
-        {
-            Gleam::MeshDescriptor descriptor;
-            descriptor.name = mesh.name;
-            descriptor.indices = mesh.indices;
-            descriptor.positions = mesh.positions;
-            descriptor.interleavedVertices = InterleaveMeshVertices(mesh);
-            
-            Gleam::SubmeshDescriptor submesh;
-			submesh.materialIndex = mesh.material;
-            submesh.bounds = CalculateBounds(mesh.positions);
-            submesh.indexCount = static_cast<uint32_t>(mesh.indices.size());
-            descriptor.submeshes.push_back(submesh);
-
-			auto meshBaker = EmplaceBaker<MeshBaker>(descriptor);
-			hierarchy.meshes.push_back(meshBaker);
-        }
-    }
-
+			}
+			else
+			{
+				uint32_t materialIdx = static_cast<uint32_t>(std::distance(rawMaterials.begin(), materialIt));
+				rawMesh.material = materialIdx;
+			}
+			rawMeshes.push_back(rawMesh);
+		}
+		
+		Gleam::MeshDescriptor descriptor = CombineMeshes(rawMeshes);
+		if (mesh.name)
+		{
+			descriptor.name = mesh.name;
+		}
+		else
+		{
+			Gleam::TStringStream ss;
+			ss << filename << i;
+			descriptor.name = ss.str();
+		}
+		meshes[&mesh] = EmplaceBaker<MeshBaker>(descriptor);
+	}
+	
 	auto opaqueLitMaterialAsset = AssetManager()->GetAsset<Gleam::MaterialDescriptor>("Materials/OpaqueLit").reference;
 	auto transparentLitMaterialAsset = AssetManager()->GetAsset<Gleam::MaterialDescriptor>("Materials/TransparentLit").reference;
 
 	auto assetManager = Gleam::Globals::GameInstance->GetSubsystem<Gleam::AssetManager>();
 	auto opaqueLitMaterial = assetManager->LoadDescriptor<Gleam::MaterialDescriptor>(opaqueLitMaterialAsset);
 	auto transparentLitMaterial = assetManager->LoadDescriptor<Gleam::MaterialDescriptor>(transparentLitMaterialAsset);
-    for (const auto& material : materials)
+	
+	Gleam::TArray<Gleam::RefCounted<MaterialInstanceBaker>> materials;
+	materials.reserve(rawMaterials.size());
+    for (const auto& material : rawMaterials)
 	{
 		Gleam::MaterialInstanceDescriptor descriptor;
 		descriptor.name = material.name;
@@ -191,31 +177,49 @@ bool MeshSource::Import(const Gleam::Filesystem::Path& path, const ImportSetting
 				descriptor["EmissiveTexture"] = Registry()->GetAsset<Gleam::Texture2DDescriptor>(texture).reference;
 			}
 		}
-		
-		auto materialBaker = EmplaceBaker<MaterialInstanceBaker>(descriptor);
-		hierarchy.materials.push_back(materialBaker);
+		materials.emplace_back(EmplaceBaker<MaterialInstanceBaker>(descriptor));
     }
 
 	// Create prefab
-	if (not hierarchy.meshes.empty())
+	if (data->nodes_count > 0)
 	{
 		auto world = Gleam::CreateRef<Gleam::World>(filename);
-		for (const auto& meshBaker : hierarchy.meshes)
+		for (uint32_t i = 0; i < data->nodes_count; ++i)
 		{
-			const auto& descriptor = meshBaker->GetDescriptor();
-			const auto& meshItem = Registry()->GetAsset<Gleam::MeshDescriptor>(meshBaker->Filename());
-
-			Gleam::TArray<Gleam::AssetReference> materials;
-			for (const auto& submesh : descriptor.submeshes)
+			const auto& node = data->nodes[i];
+			if (node.mesh)
 			{
-				const auto& materialBaker = hierarchy.materials[submesh.materialIndex];
-				const auto& descriptor = materialBaker->GetDescriptor();
-				const auto& materialItem = Registry()->GetAsset<Gleam::MaterialInstanceDescriptor>(materialBaker->Filename());
-				materials.push_back(materialItem.reference);
-			}
+				const auto& meshBaker = meshes[node.mesh];
+				const auto& meshDesc = meshBaker->GetDescriptor();
+				const auto& meshItem = Registry()->GetAsset<Gleam::MeshDescriptor>(meshBaker->Filename());
 
-			auto& entity = world->GetEntityManager().CreateEntity(Gleam::Guid::NewGuid());
-			entity.AddComponent<Gleam::MeshRenderer>(meshItem.reference, materials);
+				Gleam::TArray<Gleam::AssetReference> materialRefs;
+				materialRefs.reserve(meshDesc.submeshes.size());
+				for (const auto& submesh : meshDesc.submeshes)
+				{
+					const auto& materialBaker = materials[submesh.materialIndex];
+					const auto& materialItem = Registry()->GetAsset<Gleam::MaterialInstanceDescriptor>(materialBaker->Filename());
+					materialRefs.push_back(materialItem.reference);
+				}
+
+				auto& entity = world->GetEntityManager().CreateEntity(meshDesc.name, Gleam::Guid::NewGuid());
+				entity.AddComponent<Gleam::MeshRenderer>(meshItem.reference, materialRefs);
+
+				if (node.has_translation)
+				{
+					entity.SetTranslation(Gleam::Float3(node.translation[0], node.translation[1], node.translation[2]));
+				}
+				
+				if (node.has_rotation)
+				{
+					entity.SetRotation(Gleam::Quaternion(node.rotation[3], node.rotation[0], node.rotation[1], node.rotation[2]));
+				}
+				
+				if (node.has_scale)
+				{
+					entity.SetScale(Gleam::Float3(node.scale[0], node.scale[1], node.scale[2]));
+				}
+			}
 		}
 		EmplaceBaker<PrefabBaker>(world);
 	}
@@ -227,7 +231,7 @@ bool MeshSource::Import(const Gleam::Filesystem::Path& path, const ImportSetting
 RawMesh ProcessAttributes(const cgltf_primitive& primitive, const MeshSource::ImportSettings& settings)
 {
     RawMesh mesh;
-    uint32_t vertex_count = static_cast<uint32_t>(primitive.attributes[0].data->count);
+    uint32_t vertexCount = static_cast<uint32_t>(primitive.attributes[0].data->count);
     
     // process indices
     if (primitive.indices)
@@ -237,8 +241,8 @@ RawMesh ProcessAttributes(const cgltf_primitive& primitive, const MeshSource::Im
     }
     else
     {
-        mesh.indices.resize(vertex_count);
-        for (uint32_t idx = 0; idx < vertex_count; ++idx)
+        mesh.indices.resize(vertexCount);
+        for (uint32_t idx = 0; idx < vertexCount; ++idx)
         {
             mesh.indices[idx] = idx;
         }
@@ -250,17 +254,17 @@ RawMesh ProcessAttributes(const cgltf_primitive& primitive, const MeshSource::Im
         const auto& attribute = primitive.attributes[ai];
         if (attribute.type == cgltf_attribute_type_position)
         {
-            mesh.positions.resize(vertex_count);
+            mesh.positions.resize(vertexCount);
             cgltf_accessor_unpack_floats(attribute.data, (cgltf_float*)mesh.positions.data(), mesh.positions.size() * 3);
         }
         else if (attribute.type == cgltf_attribute_type_normal)
         {
-            mesh.normals.resize(vertex_count);
+            mesh.normals.resize(vertexCount);
             cgltf_accessor_unpack_floats(attribute.data, (cgltf_float*)mesh.normals.data(), mesh.normals.size() * 3);
         }
         else if (attribute.type == cgltf_attribute_type_texcoord)
         {
-            mesh.texCoords.resize(vertex_count);
+            mesh.texCoords.resize(vertexCount);
             cgltf_accessor_unpack_floats(attribute.data, (cgltf_float*)mesh.texCoords.data(), mesh.texCoords.size() * 2);
         }
     }
@@ -268,12 +272,12 @@ RawMesh ProcessAttributes(const cgltf_primitive& primitive, const MeshSource::Im
     // TODO: calculate normals
     if (mesh.normals.empty())
     {
-        mesh.normals.resize(vertex_count, Gleam::Float3(0.5f, 0.5f, 1.0f));
+        mesh.normals.resize(vertexCount, Gleam::Float3(0.5f, 0.5f, 1.0f));
     }
     
     if (mesh.texCoords.empty())
     {
-        mesh.texCoords.resize(vertex_count, Gleam::Float2::zero);
+        mesh.texCoords.resize(vertexCount, Gleam::Float2::zero);
     }
     return mesh;
 }
@@ -354,17 +358,6 @@ RawMaterial ProcessMaterial(const cgltf_material& mat, const MeshSource::ImportS
     return material;
 }
 
-Gleam::TArray<Gleam::InterleavedMeshVertex> InterleaveMeshVertices(const RawMesh& mesh)
-{
-    Gleam::TArray<Gleam::InterleavedMeshVertex> interleaved(mesh.normals.size());
-    for (uint32_t i = 0; i < mesh.normals.size(); ++i)
-    {
-        interleaved[i].normal = mesh.normals[i];
-        interleaved[i].texCoord = mesh.texCoords[i];
-    }
-    return interleaved;
-}
-
 Gleam::MeshDescriptor CombineMeshes(const Gleam::TArray<RawMesh>& meshes)
 {
     Gleam::MeshDescriptor combined;
@@ -388,6 +381,17 @@ Gleam::MeshDescriptor CombineMeshes(const Gleam::TArray<RawMesh>& meshes)
         submesh.firstIndex += static_cast<uint32_t>(mesh.indices.size());
     }
 	return combined;
+}
+
+Gleam::TArray<Gleam::InterleavedMeshVertex> InterleaveMeshVertices(const RawMesh& mesh)
+{
+	Gleam::TArray<Gleam::InterleavedMeshVertex> interleaved(mesh.normals.size());
+	for (uint32_t i = 0; i < mesh.normals.size(); ++i)
+	{
+		interleaved[i].normal = mesh.normals[i];
+		interleaved[i].texCoord = mesh.texCoords[i];
+	}
+	return interleaved;
 }
 
 Gleam::BoundingBox CalculateBounds(const Gleam::TArray<Gleam::Float3>& positions)

@@ -21,7 +21,7 @@ struct PBRTexture
 
 struct RawMaterial
 {
-    Gleam::TString name = "";
+    Gleam::TString name = "Default";
     Gleam::TArray<Gleam::Filesystem::Path, PBRTexture::COUNT> textures;
     Gleam::Color albedoColor = Gleam::Color::white;
     Gleam::Color emissiveColor = Gleam::Color::clear;
@@ -34,8 +34,7 @@ struct RawMaterial
     
     bool operator==(const RawMaterial& other) const
     {
-        return name == other.name
-            && textures == other.textures
+        return textures == other.textures
             && albedoColor == other.albedoColor
             && emissiveColor == other.emissiveColor
             && alphaCutoff == other.alphaCutoff
@@ -62,10 +61,11 @@ struct RawMesh
 	uint32_t material;
 };
 
-struct PrefabHierarchy
+struct EntityRelation
 {
-	Gleam::TArray<Gleam::RefCounted<MeshBaker>> meshes;
-	Gleam::TArray<Gleam::RefCounted<MaterialInstanceBaker>> materials;
+	uint32_t mesh;
+	uint32_t material;
+	Gleam::Transform transform;
 };
 
 class MeshSource : public AssetPackage
@@ -75,7 +75,6 @@ public:
 
     struct ImportSettings
     {
-        bool combineMeshes = false;
     };
     
 	/*
