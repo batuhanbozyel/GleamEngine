@@ -24,12 +24,12 @@ struct Color : public Float4
 
 	NO_DISCARD FORCE_INLINE static constexpr Color HSVToRGB(float h, float s, float v)
 	{
-		return Math::Mix(Float3(1.0f), Math::Clamp(Math::Abs(Math::Fract(Float3(h + 1.0f, h + 2.0f / 3.0f, h + 1.0f / 3.0f)) * 6.0f - 3.0f) - 1.0f, 0.0f, 1.0f), s) * v;
+		return Color(Math::Mix(Float3(1.0f), Math::Clamp(Math::Abs(Math::Fract(Float3(h + 1.0f, h + 2.0f / 3.0f, h + 1.0f / 3.0f)) * 6.0f - 3.0f) - 1.0f, 0.0f, 1.0f), s) * v);
 	}
 
 	NO_DISCARD FORCE_INLINE static constexpr Color HSVToRGB(const Color& hsv)
 	{
-		return Math::Mix(Float3(1.0f), Math::Clamp(Math::Abs(Math::Fract(Float3(hsv.x + 1.0f, hsv.x + 2.0f / 3.0f, hsv.x + 1.0f / 3.0f)) * 6.0f - 3.0f) - 1.0f, 0.0f, 1.0f), hsv.y) * hsv.z;
+		return Color(Math::Mix(Float3(1.0f), Math::Clamp(Math::Abs(Math::Fract(Float3(hsv.x + 1.0f, hsv.x + 2.0f / 3.0f, hsv.x + 1.0f / 3.0f)) * 6.0f - 3.0f) - 1.0f, 0.0f, 1.0f), hsv.y) * hsv.z);
 	}
 
 	NO_DISCARD FORCE_INLINE static constexpr Color RGBToHSV(float r, float g, float b)
@@ -59,47 +59,47 @@ struct Color : public Float4
 	constexpr Color(Color&&) noexcept = default;
 	constexpr Color(const Color&) = default;
 
-	constexpr Color(std::floating_point auto v)
+	constexpr explicit Color(std::floating_point auto v)
 		: Float4(v)
 	{
 
 	}
-	constexpr Color(std::floating_point auto r,
-					std::floating_point auto g,
-					std::floating_point auto b)
+	constexpr explicit Color(std::floating_point auto r,
+							 std::floating_point auto g,
+							 std::floating_point auto b)
 		: Float4(r, g, b, 1.0f)
 	{
 
 	}
-	constexpr Color(std::floating_point auto r,
-					std::floating_point auto g,
-					std::floating_point auto b,
-					std::floating_point auto a)
+	constexpr explicit Color(std::floating_point auto r,
+							 std::floating_point auto g,
+							 std::floating_point auto b,
+							 std::floating_point auto a)
 		: Float4(r, g, b, a)
 	{
 
 	}
-	constexpr Color(const TArray<float, 3>& color)
+	constexpr explicit Color(const TArray<float, 3>& color)
 		: Float4(color[0], color[1], color[2], 1.0f)
 	{
 
 	}
-	constexpr Color(const TArray<float, 4>& color)
+	constexpr explicit Color(const TArray<float, 4>& color)
 		: Float4(color)
 	{
 
 	}
-	constexpr Color(const Float3& color)
+	constexpr explicit Color(const Float3& color)
 		: Float4(color.r, color.g, color.b, 1.0f)
 	{
 
 	}
-	constexpr Color(const Float4& color)
+	constexpr explicit Color(const Float4& color)
 		: Float4(color)
 	{
 
 	}
-	constexpr Color(Float4&& color) noexcept
+	constexpr explicit Color(Float4&& color) noexcept
 		: Float4(std::move(color))
 	{
 
