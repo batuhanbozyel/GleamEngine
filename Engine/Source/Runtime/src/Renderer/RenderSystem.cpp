@@ -111,11 +111,7 @@ void RenderSystem::Render(const World* world)
 
 		cmd->WaitUntilCompleted();
 		mDevice->DestroyPooledObjects(frameIdx);
-		
-		if (frameIdx == 0)
-		{
-			mDevice->GetUploadManager()->Reset();
-		}
+		mDevice->GetUploadManager()->Reset(frameIdx);
 
 		cmd->Begin();
         graph.Execute(cmd);

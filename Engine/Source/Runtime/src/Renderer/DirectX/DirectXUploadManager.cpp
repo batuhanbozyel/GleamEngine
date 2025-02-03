@@ -23,13 +23,17 @@ struct UploadManager::Impl
 	uint32_t fileFenceValue = 0;
 	
 	size_t stagingBufferOffset = 0;
-	TArray<uint8_t, UploadHeapSize> stagingBuffer;
+	TArray<uint8_t> stagingBuffer;
+	uint32_t frameIdx = 0;
+	
+	TArray<TArray<ID3D12Resource*>> tempBuffers;
 	
 	const void* CopyUploadData(const void* data, size_t size)
 	{
 		if (stagingBufferOffset + size < UploadHeapSize)
 		{
-			auto dst = OffsetPointer(stagingBuffer.data(), stagingBufferOffset);
+			size_t offset = stagingBufferOffset + frameIdx * UploadHeapSize;
+			auto dst = OffsetPointer(stagingBuffer.data(), offset);
 			memcpy(dst, data, size);
 			return dst;
 		}
@@ -41,6 +45,8 @@ UploadManager::UploadManager(GraphicsDevice* device)
 	: mHandle(CreateScope<Impl>())
 	, mDevice(device)
 {
+	mHandle->stagingBuffer.resize(UploadHeapSize * mDevice->GetFramesInFlight());
+	
 	DX_CHECK(DStorageGetFactory(IID_PPV_ARGS(&mHandle->factory)));
 	mHandle->factory->SetStagingBufferSize(DSTORAGE_STAGING_BUFFER_SIZE_32MB);
 	mHandle->factory->SetDebugFlags(DSTORAGE_DEBUG_SHOW_ERRORS | DSTORAGE_DEBUG_BREAK_ON_ERROR);
@@ -73,6 +79,15 @@ UploadManager::UploadManager(GraphicsDevice* device)
 
 UploadManager::~UploadManager()
 {
+	for (auto& tempBuffers : mHandle->tempBuffers)
+	{
+		for (auto buffer : tempBuffers)
+		{
+			buffer->Release();
+		}
+	}
+	mHandle->tempBuffers.clear();
+	
 	mHandle->fileFence->Release();
 	mHandle->fileQueue->Release();
 
@@ -91,9 +106,16 @@ void UploadManager::Commit() const
 	mHandle->memoryQueue->Submit();
 }
 
-void UploadManager::Reset() const
+void UploadManager::Reset(uint32_t frameIdx) const
 {
+	mHandle->frameIdx = frameIdx;
 	mHandle->stagingBufferOffset = 0;
+	
+	for (auto buffer : mHandle->tempBuffers[frameIdx])
+	{
+		buffer->Release();
+	}
+	mHandle->tempBuffers[frameIdx].clear();
 }
 
 void UploadManager::CommitUpload(const Buffer& buffer, const void* data, size_t size, size_t offset) const
@@ -124,6 +146,10 @@ void UploadManager::CommitUpload(const Buffer& buffer, const void* data, size_t 
 
 			mHandle->stagingBufferOffset += size;
 		}
+		else
+		{
+			// TODO: create temp buffer
+		}
 	}
 	else
 	{
@@ -153,6 +179,10 @@ void UploadManager::CommitUpload(const Texture& texture, const void* data, size_
 
 		request.UncompressedSize = 0;
 		mHandle->memoryQueue->EnqueueRequest(&request);
+	}
+	else
+	{
+		// TODO: create temp buffer
 	}
 }
 

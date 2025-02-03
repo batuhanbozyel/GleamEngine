@@ -112,6 +112,7 @@ Shader GraphicsDevice::GenerateShader(const TString& entryPoint, ShaderStage sta
     
     auto compiler = IRCompilerCreate();
     IRCompilerSetEntryPointName(compiler, entryPoint.data());
+    IRCompilerSetMinimumDeploymentTarget(compiler, IROperatingSystem_macOS, "14.0");
     IRCompilerSetGlobalRootSignature(compiler, MetalPipelineStateManager::GetGlobalRootSignature());
     
     IRError* compileError = nullptr;
