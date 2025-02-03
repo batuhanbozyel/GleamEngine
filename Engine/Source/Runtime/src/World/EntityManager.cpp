@@ -19,7 +19,7 @@ Entity& EntityManager::CreateFromPrefab(const AssetReference& ref)
 
 	if (entities.size() > 1)
 	{
-		auto& root = CreateEntity(ref.guid);
+		auto& root = CreateEntity(prefab.name, ref.guid);
 		for (auto handle : entities)
 		{
 			auto& entity = GetComponent<Entity>(handle);
@@ -32,7 +32,7 @@ Entity& EntityManager::CreateFromPrefab(const AssetReference& ref)
 	return GetComponent<Entity>(root);
 }
 
-Entity& EntityManager::CreateEntity(const Guid& guid)
+Entity& EntityManager::CreateEntity(const TString& name, const Guid& guid)
 {
 	auto it = mHandles.find(guid);
 	if (it != mHandles.end())
@@ -41,7 +41,7 @@ Entity& EntityManager::CreateEntity(const Guid& guid)
 	}
 
 	auto handle = mRegistry.create();
-	auto& entity = AddComponent<Entity>(handle, handle, &mRegistry, guid);
+	auto& entity = AddComponent<Entity>(handle, handle, &mRegistry, name, guid);
 	mHandles.emplace_hint(mHandles.end(), guid, handle);
 	return entity;
 }
