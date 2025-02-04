@@ -38,6 +38,8 @@ struct UploadManager::Impl
             size_t offset = stagingBufferOffset + frameIdx * UploadHeapSize;
 			auto dst = OffsetPointer(stagingBufferPtr, offset);
 			memcpy(dst, data, size);
+
+            stagingBufferOffset += size;
 			return true;
 		}
 		return false;
@@ -111,7 +113,6 @@ void UploadManager::CommitUpload(const Buffer& buffer, const void* data, size_t 
         {
             size_t srcOffset = mHandle->frameIdx * UploadHeapSize + mHandle->stagingBufferOffset;
             [blitCommandEncoder copyFromBuffer:mHandle->stagingBuffer sourceOffset:srcOffset toBuffer:dstBuffer destinationOffset:offset size:size];
-            mHandle->stagingBufferOffset += size;
         }
         else
         {
@@ -155,7 +156,6 @@ void UploadManager::CommitUpload(const Texture& texture, const void* data, size_
                           destinationSlice:0
                           destinationLevel:0
                          destinationOrigin:MTLOriginMake(0, 0, 0)];
-        mHandle->stagingBufferOffset += size;
     }
     else
     {

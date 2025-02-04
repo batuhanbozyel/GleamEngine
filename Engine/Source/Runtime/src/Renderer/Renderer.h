@@ -25,8 +25,8 @@ struct SceneRenderingData
 {
     const RenderSceneProxy* sceneProxy = nullptr;
     const World* world = nullptr;
+	CameraUniforms camera;
     TextureHandle backbuffer;
-    BufferHandle cameraBuffer;
 };
 
 class IRenderer

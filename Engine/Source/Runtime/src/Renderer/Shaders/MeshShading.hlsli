@@ -2,6 +2,7 @@
 #include "ShaderTypes.h"
 
 CONSTANT_BUFFER(Gleam::MeshPassResources, resources, 0);
+CONSTANT_BUFFER(Gleam::CameraUniforms, camera, 1);
 
 struct MeshVertexOut
 {

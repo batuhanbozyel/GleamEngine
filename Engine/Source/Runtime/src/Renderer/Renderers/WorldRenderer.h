@@ -14,7 +14,6 @@ struct WorldRenderingData
 {
     TextureHandle colorTarget;
     TextureHandle depthTarget;
-    BufferHandle cameraBuffer;
 };
 
 class WorldRenderer : public IRenderer

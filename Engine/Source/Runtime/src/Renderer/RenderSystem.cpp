@@ -58,47 +58,36 @@ void RenderSystem::Render(const World* world)
     {
         RenderGraph graph(mDevice.get());
         RenderGraphBlackboard blackboard;
-        
-        const auto& sceneData = graph.AddCopyPass<SceneRenderingData>("SceneRenderingData", [&](RenderGraphBuilder& builder, SceneRenderingData& passData)
-        {
-            BufferDescriptor bufferDesc;
-            bufferDesc.name = "CameraBuffer";
-            bufferDesc.size = sizeof(CameraUniforms);
-            
-            passData.cameraBuffer = builder.CreateBuffer(bufferDesc);
-            passData.cameraBuffer = builder.WriteBuffer(passData.cameraBuffer);
-            passData.backbuffer = graph.ImportBackbuffer(mRenderTarget);
-            passData.sceneProxy = world->GetSystem<RenderSceneProxy>();
-            passData.world = world;
-        },
-        [this](const UploadManager* uploadManager, const SceneRenderingData& passData)
-        {
-            CameraUniforms cameraData;
-            if (auto camera = passData.sceneProxy->GetActiveCamera(); camera)
-            {
-				const auto& cameraComponent = camera->GetComponent<Camera>();
-                cameraData.viewMatrix = Float4x4::LookTo(camera->GetWorldPosition(), camera->ForwardVector(), camera->UpVector());
 
-				if (cameraComponent.projectionType == ProjectionType::Perspective)
-				{
-					cameraData.projectionMatrix = Float4x4::Perspective(cameraComponent.fov, cameraComponent.aspectRatio, cameraComponent.nearPlane, cameraComponent.farPlane);
-				}
-				else
-				{
-					float width = cameraComponent.orthographicSize * cameraComponent.aspectRatio;
-					float height = cameraComponent.orthographicSize;
-					cameraData.projectionMatrix = Float4x4::Ortho(width, height, cameraComponent.nearPlane, cameraComponent.farPlane);
-				}
+		SceneRenderingData sceneData;
+		sceneData.backbuffer = graph.ImportBackbuffer(mRenderTarget);
+		sceneData.sceneProxy = world->GetSystem<RenderSceneProxy>();
+		sceneData.world = world;
 
-                cameraData.viewProjectionMatrix = cameraData.projectionMatrix * cameraData.viewMatrix;
-                cameraData.invViewMatrix = Math::Inverse(cameraData.viewMatrix);
-                cameraData.invProjectionMatrix = Math::Inverse(cameraData.projectionMatrix);
-                cameraData.invViewProjectionMatrix = Math::Inverse(cameraData.viewProjectionMatrix);
-                cameraData.worldPosition = camera->GetWorldPosition();
-            }
-			uploadManager->CommitUpload(passData.cameraBuffer, &cameraData, sizeof(CameraUniforms));
-        });
-        blackboard.Add(sceneData);
+		if (auto camera = sceneData.sceneProxy->GetActiveCamera(); camera)
+		{
+			const auto& cameraComponent = camera->GetComponent<Camera>();
+			sceneData.camera.viewMatrix = Float4x4::LookTo(camera->GetWorldPosition(), camera->ForwardVector(), camera->UpVector());
+
+			if (cameraComponent.projectionType == ProjectionType::Perspective)
+			{
+				sceneData.camera.projectionMatrix = Float4x4::Perspective(cameraComponent.fov, cameraComponent.aspectRatio, cameraComponent.nearPlane, cameraComponent.farPlane);
+			}
+			else
+			{
+				float width = cameraComponent.orthographicSize * cameraComponent.aspectRatio;
+				float height = cameraComponent.orthographicSize;
+				sceneData.camera.projectionMatrix = Float4x4::Ortho(width, height, cameraComponent.nearPlane, cameraComponent.farPlane);
+			}
+
+			sceneData.camera.viewProjectionMatrix = sceneData.camera.projectionMatrix * sceneData.camera.viewMatrix;
+			sceneData.camera.invViewMatrix = Math::Inverse(sceneData.camera.viewMatrix);
+			sceneData.camera.invProjectionMatrix = Math::Inverse(sceneData.camera.projectionMatrix);
+			sceneData.camera.invViewProjectionMatrix = Math::Inverse(sceneData.camera.viewProjectionMatrix);
+			sceneData.camera.worldPosition = camera->GetWorldPosition();
+		}
+
+		blackboard.Add(sceneData);
 
         for (auto renderer : mRenderers)
         {
@@ -114,7 +103,9 @@ void RenderSystem::Render(const World* world)
 		mDevice->GetUploadManager()->Reset(frameIdx);
 
 		cmd->Begin();
+
         graph.Execute(cmd);
+		mDevice->GetUploadManager()->Commit();
 
         // reset rt to swapchain
         if (mRenderTarget.IsValid())
@@ -122,8 +113,6 @@ void RenderSystem::Render(const World* world)
             mDevice->ReleaseTexture(mRenderTarget);
         }
         ResetRenderTarget();
-
-		mDevice->GetUploadManager()->Commit();
         mDevice->Present(cmd);
     }
 }

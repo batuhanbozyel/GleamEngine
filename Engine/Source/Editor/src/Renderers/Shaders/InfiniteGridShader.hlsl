@@ -11,14 +11,13 @@ struct VertexOut
 };
 
 PUSH_CONSTANT(GEditor::InfiniteGridUniforms, uniforms);
+CONSTANT_BUFFER(Gleam::CameraUniforms, camera, 0);
 
 #pragma vertex infiniteGridVertexShader
 #pragma fragment infiniteGridFragmentShader
 
 VertexOut infiniteGridVertexShader(uint vertex_id: SV_VertexID)
 {
-    Gleam::CameraUniforms CameraBuffer = uniforms.cameraBuffer.Load<Gleam::CameraUniforms>();
-
     static const float3 gridPlane[6] = {
         float3( 1, -1, 0), float3(-1,  1, 0), float3(-1, -1, 0),
         float3(-1,  1, 0), float3( 1, -1, 0), float3( 1,  1, 0)
@@ -28,8 +27,8 @@ VertexOut infiniteGridVertexShader(uint vertex_id: SV_VertexID)
 
     VertexOut OUT;
     OUT.position = float4(clipPos, 1.0f);
-    OUT.nearPoint = ClipSpaceToWorldSpace(float3(clipPos.xy, 0.0f), CameraBuffer.invViewProjectionMatrix);
-    OUT.farPoint = ClipSpaceToWorldSpace(float3(clipPos.xy, 1.0f), CameraBuffer.invViewProjectionMatrix);
+    OUT.nearPoint = ClipSpaceToWorldSpace(float3(clipPos.xy, 0.0f), camera.invViewProjectionMatrix);
+    OUT.farPoint = ClipSpaceToWorldSpace(float3(clipPos.xy, 1.0f), camera.invViewProjectionMatrix);
     OUT.majorLineColor = unpack_unorm4x8_to_float(uniforms.majorLineColor);
     OUT.minorLineColor = unpack_unorm4x8_to_float(uniforms.minorLineColor);
     return OUT;
@@ -68,8 +67,6 @@ float ComputeDepth(float3 pos, float4x4 viewProjectionMatrix)
 
 FragmentOut infiniteGridFragmentShader(VertexOut IN)
 {
-    Gleam::CameraUniforms CameraBuffer = uniforms.cameraBuffer.Load<Gleam::CameraUniforms>();
-
     static const float4 AXIS_X_COLOR = float4(1.0f, 0.0f, 0.0f, 1.0f);
     static const float4 AXIS_Z_COLOR = float4(0.0f, 0.0f, 1.0f, 1.0f);
     
@@ -97,7 +94,7 @@ FragmentOut infiniteGridFragmentShader(VertexOut IN)
     float4 grid = saturate(minorGrid * (1.0f - majorGrid.a) + majorGrid);
 
     FragmentOut OUT;
-    OUT.depth = ComputeDepth(gridPos, CameraBuffer.viewProjectionMatrix);
+    OUT.depth = ComputeDepth(gridPos, camera.viewProjectionMatrix);
     OUT.color = saturate(grid * (1.0f - axisLines.a) + axisLines) * float(t > 0.0f);
     return OUT;
 }

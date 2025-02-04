@@ -19,25 +19,22 @@ void InfiniteGridRenderer::AddRenderPasses(Gleam::RenderGraph& graph, Gleam::Ren
     {
         Gleam::TextureHandle colorTarget;
         Gleam::TextureHandle depthTarget;
-        Gleam::BufferHandle cameraBuffer;
     };
 
     graph.AddRenderPass<PassData>("InfiniteGridPass", [&](Gleam::RenderGraphBuilder& builder, PassData& passData)
     {
-        const auto& sceneData = blackboard.Get<Gleam::SceneRenderingData>();
         auto& worldData = blackboard.Get<Gleam::WorldRenderingData>();
         passData.colorTarget = builder.UseColorBuffer(worldData.colorTarget);
         passData.depthTarget = builder.UseDepthBuffer(worldData.depthTarget);
-        passData.cameraBuffer = builder.ReadBuffer(sceneData.cameraBuffer);
         
         worldData.colorTarget = passData.colorTarget;
         worldData.depthTarget = passData.depthTarget;
     },
-    [this](const Gleam::CommandBuffer* cmd, const PassData& passData)
+    [this, blackboard](const Gleam::CommandBuffer* cmd, const PassData& passData)
     {
+		const auto& sceneData = blackboard.Get<Gleam::SceneRenderingData>();
+
 		InfiniteGridUniforms uniforms;
-        uniforms.cameraBuffer = passData.cameraBuffer;
-        
 		uniforms.majorGridDivision = 10;
 
 		uniforms.majorLineColor = 0xFFB5B5B5;
@@ -58,6 +55,7 @@ void InfiniteGridRenderer::AddRenderPasses(Gleam::RenderGraph& graph, Gleam::Ren
 		pipelineDesc.blendState.destinationAlphaBlendMode = Gleam::BlendMode::OneMinusSrcAlpha;
 
         cmd->BindGraphicsPipeline(pipelineDesc, mVertexShader, mFragmentShader);
+		cmd->SetConstantBuffer(sceneData.camera, 0);
 		cmd->SetPushConstant(uniforms);
         cmd->Draw(6);
     });

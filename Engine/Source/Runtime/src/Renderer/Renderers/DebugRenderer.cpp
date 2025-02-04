@@ -10,78 +10,66 @@ using namespace Gleam;
 
 void DebugRenderer::OnCreate(GraphicsDevice* device)
 {
+	mDevice = device;
 	mPrimitiveVertexShader = device->CreateShader("debugVertexShader", ShaderStage::Vertex);
 	mMeshVertexShader = device->CreateShader("debugMeshVertexShader", ShaderStage::Vertex);
 	mFragmentShader = device->CreateShader("debugFragmentShader", ShaderStage::Fragment);
 }
 
+void DebugRenderer::OnDestroy(GraphicsDevice* device)
+{
+	device->Dispose(mVertexBuffer);
+	device->Dispose(mVertexHeap);
+}
+
 void DebugRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard)
 {
 	size_t vertexCount = (mLines.size() + mDepthLines.size()) * 2;
-	mDebugVertices.reserve(vertexCount);
+	size_t bufferSize = vertexCount * sizeof(DebugVertex);
 
 	// nothing to render
 	if (vertexCount == 0 && mDebugMeshes.empty())
 		return;
 
-	for (const auto& line : mLines)
+	if (mVertexHeap.GetDescriptor().size < bufferSize)
 	{
-		mDebugVertices.push_back(line.start);
-		mDebugVertices.push_back(line.end);
+		if (mVertexHeap.IsValid())
+		{
+			mDevice->Dispose(mVertexBuffer);
+			mDevice->Dispose(mVertexHeap);
+		}
+
+		HeapDescriptor descriptor{ .name = "DebugVertex::Heap", .memoryType = MemoryType::CPU, .size = Math::RoundUpTo(bufferSize, 65536ull) };
+		mVertexHeap = mDevice->CreateHeap(descriptor);
+		mVertexBuffer = mVertexHeap.CreateBuffer({ .name = "DebugVertex::Buffer", .size = descriptor.size });
 	}
 
-	mDepthLineBufferOffset = static_cast<uint32_t>(mDebugVertices.size() * sizeof(DebugVertex));
-	for (const auto& line : mDepthLines)
-	{
-		mDebugVertices.push_back(line.start);
-		mDebugVertices.push_back(line.end);
-	}
+	void* vertexBufferPtr = mVertexBuffer.GetContents();
+	size_t depthLineBufferOffset = mLines.size() * sizeof(DebugLine);
 
-	struct UpdatePassData
-	{
-		BufferHandle vertexBuffer;
-	};
-    
-	const auto& updatePass = graph.AddCopyPass<UpdatePassData>("DebugRenderer::UpdatePass", [&](RenderGraphBuilder& builder, UpdatePassData& passData)
-	{
-        BufferDescriptor bufferDesc;
-        bufferDesc.name = "DebugVertices";
-        bufferDesc.size = mDebugVertices.size() * sizeof(DebugVertex);
-        
-		passData.vertexBuffer = builder.CreateBuffer(bufferDesc);
-		passData.vertexBuffer = builder.WriteBuffer(passData.vertexBuffer);
-	},
-	[this](const UploadManager* uploadManager, const UpdatePassData& passData)
-	{
-		uploadManager->CommitUpload(passData.vertexBuffer, mDebugVertices.data(), mDebugVertices.size() * sizeof(DebugVertex));
-	});
+	memcpy(vertexBufferPtr, mLines.data(), mLines.size() * sizeof(DebugLine));
+	memcpy(OffsetPointer(vertexBufferPtr, depthLineBufferOffset), mDepthLines.data(), mDepthLines.size() * sizeof(DebugLine));
 
 	struct DrawPassData
 	{
 		TextureHandle colorTarget;
 		TextureHandle depthTarget;
-		BufferHandle vertexBuffer;
-        BufferHandle cameraBuffer;
 	};
 
 	graph.AddRenderPass<DrawPassData>("DebugRenderer::DrawPass", [&](RenderGraphBuilder& builder, DrawPassData& passData)
 	{
-        const auto& sceneData = blackboard.Get<SceneRenderingData>();
         auto& worldData = blackboard.Get<WorldRenderingData>();
         passData.colorTarget = builder.UseColorBuffer(worldData.colorTarget);
         passData.depthTarget = builder.UseDepthBuffer(worldData.depthTarget);
-        passData.vertexBuffer = builder.ReadBuffer(updatePass.vertexBuffer);
-        passData.cameraBuffer = builder.ReadBuffer(sceneData.cameraBuffer);
         
         worldData.colorTarget = passData.colorTarget;
         worldData.depthTarget = passData.depthTarget;
 	},
-	[this](const CommandBuffer* cmd, const DrawPassData& passData)
+	[this, blackboard](const CommandBuffer* cmd, const DrawPassData& passData)
 	{
         DebugShaderResources resources;
-        resources.vertexBuffer = passData.vertexBuffer;
-        resources.cameraBuffer = passData.cameraBuffer;
-        cmd->SetConstantBuffer(resources, 0);
+        resources.vertexBuffer = mVertexBuffer.GetResourceView();
+		const auto& sceneData = blackboard.Get<SceneRenderingData>();
         
 		if (!mDepthLines.empty())
 		{
@@ -90,12 +78,14 @@ void DebugRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 			pipelineState.depthState.writeEnabled = true;
 			pipelineState.depthState.compareFunction = CompareFunction::Less;
 			cmd->BindGraphicsPipeline(pipelineState, mPrimitiveVertexShader, mFragmentShader);
+			cmd->SetConstantBuffer(resources, 0);
+			cmd->SetConstantBuffer(sceneData.camera, 1);
 			cmd->Draw(static_cast<uint32_t>(mDepthLines.size()) * Utils::PrimitiveTopologyVertexCount(pipelineState.topology));
 		}
 		
 		if (!mDepthDebugMeshes.empty())
         {
-            RenderMeshes(cmd, passData.cameraBuffer, mDepthDebugMeshes, true);
+            RenderMeshes(cmd, sceneData.camera, mDepthDebugMeshes, true);
         }
 
 		if (!mLines.empty())
@@ -104,36 +94,37 @@ void DebugRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 			pipelineState.topology = PrimitiveTopology::Lines;
 			pipelineState.depthState.compareFunction = CompareFunction::Less;
 			cmd->BindGraphicsPipeline(pipelineState, mPrimitiveVertexShader, mFragmentShader);
+			cmd->SetConstantBuffer(resources, 0);
+			cmd->SetConstantBuffer(sceneData.camera, 1);
 			cmd->Draw(static_cast<uint32_t>(mLines.size()) * Utils::PrimitiveTopologyVertexCount(pipelineState.topology));
 		}
 
 		if (!mDebugMeshes.empty())
         {
-            RenderMeshes(cmd, passData.cameraBuffer, mDebugMeshes, false);
+            RenderMeshes(cmd, sceneData.camera, mDebugMeshes, false);
         }
         
         // clear after rendering
         mLines.clear();
         mDepthLines.clear();
-        mDebugVertices.clear();
         mDebugMeshes.clear();
         mDepthDebugMeshes.clear();
 	});
 }
 
-void DebugRenderer::RenderMeshes(const CommandBuffer* cmd, const BufferHandle& cameraBuffer, const TArray<DebugMesh>& debugMeshes, bool depthTest) const
+void DebugRenderer::RenderMeshes(const CommandBuffer* cmd, const CameraUniforms& cameraData, const TArray<DebugMesh>& debugMeshes, bool depthTest) const
 {
 	PipelineStateDescriptor pipelineState;
 	pipelineState.topology = PrimitiveTopology::Triangles;
 	pipelineState.depthState.writeEnabled = depthTest;
 	pipelineState.depthState.compareFunction = depthTest ? CompareFunction::Less : CompareFunction::Always;
 	cmd->BindGraphicsPipeline(pipelineState, mMeshVertexShader, mFragmentShader);
+	cmd->SetConstantBuffer(cameraData, 1);
 
 	for (const auto& debugMesh : debugMeshes)
 	{
         DebugShaderResources resources;
         resources.vertexBuffer = debugMesh.mesh->GetPositionBuffer().GetResourceView();
-        resources.cameraBuffer = cameraBuffer;
         cmd->SetConstantBuffer(resources, 0);
 	
 		for (const auto& submesh : debugMesh.mesh->GetSubmeshes())

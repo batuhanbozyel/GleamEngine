@@ -17,7 +17,7 @@ struct CommandBuffer::Impl
 	const DirectXPipeline* pipeline = nullptr;
 	ID3D12GraphicsCommandList7* commandList = nullptr;
 	ID3D12Fence* fence = nullptr;
-	uint32_t fenceValue = 0;
+	uint64_t fenceValue = 0;
 
 	TArray<TextureDescriptor> colorAttachments;
 	TextureDescriptor depthAttachment;
