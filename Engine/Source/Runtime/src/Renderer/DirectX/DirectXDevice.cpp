@@ -316,8 +316,6 @@ DirectXDevice::DirectXDevice()
 		EventDispatcher<RendererResizeEvent>::Publish(RendererResizeEvent(mSize));
 	});
 
-	mUploadManager = CreateScope<UploadManager>(this);
-	
 	GLEAM_CORE_INFO("DirectX: Graphics device created.");
 }
 
@@ -345,7 +343,6 @@ DirectXDevice::~DirectXDevice()
 	}
 	mFrameContext.clear();
 
-	mUploadManager.reset();
 	DirectXPipelineStateManager::Destroy();
 	DirectXTransitionManager::Clear();
 
@@ -480,14 +477,14 @@ DirectXDrawable DirectXDevice::AcquireNextDrawable()
 {
 	auto idx = mSwapchain->GetCurrentBackBufferIndex();
 	auto& ctx = mFrameContext[idx];
-	WaitForID3D12Fence(ctx.fence, ctx.frameCount);
+	WaitForID3D12Fence(ctx.fence, ctx.waitFenceValue);
 	return ctx.drawable;
 }
 
 void DirectXDevice::Present(const CommandBuffer* cmd)
 {
 	auto& ctx = mFrameContext[mCurrentFrameIndex];
-
+	
 	DirectXTransitionManager::TransitionLayout(static_cast<ID3D12GraphicsCommandList7*>(cmd->GetHandle()),
 		ctx.drawable.renderTarget, D3D12_RESOURCE_STATE_PRESENT);
 
@@ -505,7 +502,8 @@ void DirectXDevice::Present(const CommandBuffer* cmd)
 		mSwapchain->Present(1, 0);
 	}
 
-	mDirectQueue->Signal(ctx.fence, ++ctx.frameCount);
+	ctx.waitFenceValue = ctx.frameCount++;
+	mDirectQueue->Signal(ctx.fence, ctx.frameCount);
 	mCurrentFrameIndex = (mCurrentFrameIndex + 1) % mMaxFramesInFlight;
 }
 
@@ -742,12 +740,7 @@ void DirectXDevice::WaitQueueIdle(ID3D12CommandQueue* queue) const
 	constexpr static uint64_t fenceValue = 1;
 
 	ID3D12Fence* fence = nullptr;
-	DX_CHECK(static_cast<ID3D12Device10*>(mHandle)->CreateFence(
-		fenceValue,
-		D3D12_FENCE_FLAG_NONE,
-		IID_PPV_ARGS(&fence)
-	));
-
+	DX_CHECK(static_cast<ID3D12Device10*>(mHandle)->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&fence)));
 	DX_CHECK(queue->Signal(fence, fenceValue));
 	WaitForID3D12Fence(fence, fenceValue);
 	fence->Release();

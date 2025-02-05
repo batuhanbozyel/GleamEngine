@@ -23,6 +23,7 @@ void RenderSystem::Initialize(Engine* engine)
 {
 	mEngine = engine;
     mDevice = GraphicsDevice::Create();
+	mUploadManager = CreateScope<UploadManager>(mDevice.get());
 	EventDispatcher<RendererResizeEvent>::Subscribe([this](RendererResizeEvent e)
 	{
         const auto& cmd = mCommandBuffers[mDevice->GetLastFrameIndex()];
@@ -37,6 +38,8 @@ void RenderSystem::Initialize(Engine* engine)
 
 void RenderSystem::Shutdown()
 {
+	mUploadManager.reset();
+
     mCommandBuffers[mDevice->GetLastFrameIndex()]->WaitUntilCompleted();
     mCommandBuffers.clear();
     
@@ -45,6 +48,7 @@ void RenderSystem::Shutdown()
         renderer->OnDestroy(mDevice.get());
         delete renderer;
     }
+	mRenderers.clear();
 
     mDevice->DestroyResources();
     mDevice.reset();
@@ -100,12 +104,12 @@ void RenderSystem::Render(const World* world)
 
 		cmd->WaitUntilCompleted();
 		mDevice->DestroyPooledObjects(frameIdx);
-		mDevice->GetUploadManager()->Reset(frameIdx);
+		mUploadManager->Flush();
 
 		cmd->Begin();
 
         graph.Execute(cmd);
-		mDevice->GetUploadManager()->Commit();
+		mUploadManager->Commit();
 
         // reset rt to swapchain
         if (mRenderTarget.IsValid())
@@ -126,6 +130,11 @@ void RenderSystem::Configure(const RendererConfig& config)
 	{
 		cmd = CreateScope<CommandBuffer>(mDevice.get());
 	}
+}
+
+UploadManager* RenderSystem::GetUploadManager()
+{
+	return mUploadManager.get();
 }
 
 GraphicsDevice* RenderSystem::GetDevice()

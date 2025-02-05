@@ -16,9 +16,8 @@ struct UploadManager::Impl
     id<MTLBuffer> stagingBuffer{ nil };
     void* stagingBufferPtr = nullptr;
     size_t stagingBufferOffset = 0;
-    uint32_t frameIdx = 0;
     
-    TArray<TArray<id<MTLBuffer>>> tempBuffers;
+    TArray<id<MTLBuffer>> tempBuffers;
     
     id<MTLCommandBuffer> CreateMemoryCommandBuffer(GraphicsDevice* device)
     {
@@ -35,8 +34,7 @@ struct UploadManager::Impl
 	{
         if (stagingBufferOffset + size < UploadHeapSize)
 		{
-            size_t offset = stagingBufferOffset + frameIdx * UploadHeapSize;
-			auto dst = OffsetPointer(stagingBufferPtr, offset);
+			auto dst = OffsetPointer(stagingBufferPtr, stagingBufferOffset);
 			memcpy(dst, data, size);
 
             stagingBufferOffset += size;
@@ -88,11 +86,10 @@ void UploadManager::Commit() const
     }
 }
 
-void UploadManager::Reset(uint32_t frameIdx) const
+void UploadManager::Flush() const
 {
-    mHandle->frameIdx = frameIdx;
     mHandle->stagingBufferOffset = 0;
-    mHandle->tempBuffers[frameIdx].clear();
+    mHandle->tempBuffers.clear();
 }
 
 void UploadManager::CommitUpload(const Buffer& buffer, const void* data, size_t size, size_t offset) const
@@ -109,15 +106,15 @@ void UploadManager::CommitUpload(const Buffer& buffer, const void* data, size_t 
         id<MTLBlitCommandEncoder> blitCommandEncoder = [mHandle->memoryCommandBuffer blitCommandEncoder];
         [blitCommandEncoder setLabel:TO_NSSTRING("UploadManager::CommitUpload")];
         
+        size_t srcOffset = mHandle->stagingBufferOffset;
         if (mHandle->CopyUploadData(data, size))
         {
-            size_t srcOffset = mHandle->frameIdx * UploadHeapSize + mHandle->stagingBufferOffset;
             [blitCommandEncoder copyFromBuffer:mHandle->stagingBuffer sourceOffset:srcOffset toBuffer:dstBuffer destinationOffset:offset size:size];
         }
         else
         {
             id<MTLBuffer> srcBuffer = [mDevice->GetHandle() newBufferWithBytes:data length:size options:MTLResourceStorageModeShared];
-            mHandle->tempBuffers[mHandle->frameIdx].push_back(srcBuffer);
+            mHandle->tempBuffers.push_back(srcBuffer);
             
             [blitCommandEncoder copyFromBuffer:srcBuffer sourceOffset:0 toBuffer:dstBuffer destinationOffset:offset size:size];
         }
@@ -144,9 +141,9 @@ void UploadManager::CommitUpload(const Texture& texture, const void* data, size_
     size_t sourceBytesPerImage = sourceBytesPerRow * texture.GetDescriptor().size.height;
     MTLSize sourceSize = MTLSizeMake(texture.GetDescriptor().size.width, texture.GetDescriptor().size.height, 1);
     
+    size_t srcOffset = mHandle->stagingBufferOffset;
     if (mHandle->CopyUploadData(data, size))
     {
-        size_t srcOffset = mHandle->frameIdx * UploadHeapSize + mHandle->stagingBufferOffset;
         [blitCommandEncoder copyFromBuffer:mHandle->stagingBuffer
                               sourceOffset:srcOffset
                          sourceBytesPerRow:sourceBytesPerRow
@@ -160,7 +157,7 @@ void UploadManager::CommitUpload(const Texture& texture, const void* data, size_
     else
     {
         id<MTLBuffer> srcBuffer = [mDevice->GetHandle() newBufferWithBytes:data length:size options:MTLResourceStorageModeShared];
-        mHandle->tempBuffers[mHandle->frameIdx].push_back(srcBuffer);
+        mHandle->tempBuffers.push_back(srcBuffer);
         
         [blitCommandEncoder copyFromBuffer:srcBuffer
                               sourceOffset:0

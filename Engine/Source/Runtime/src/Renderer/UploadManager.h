@@ -15,7 +15,7 @@ public:
 
 	void Commit() const;
 	
-	void Reset(uint32_t frameIdx) const;
+	void Flush() const;
 	
 	void CommitUpload(const Buffer& buffer, const void* data, size_t size, size_t offset = 0) const;
 

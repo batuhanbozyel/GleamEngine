@@ -13,6 +13,7 @@
 namespace Gleam {
 
 class World;
+class UploadManager;
 
 template <typename T>
 concept RendererType = std::is_base_of<IRenderer, T>::value;
@@ -30,6 +31,8 @@ public:
     void Render(const World* world);
     
     void Configure(const RendererConfig& config);
+
+	UploadManager* GetUploadManager();
     
     GraphicsDevice* GetDevice();
     
@@ -130,6 +133,8 @@ private:
     Texture mRenderTarget;
 
     Scope<GraphicsDevice> mDevice;
+
+	Scope<UploadManager> mUploadManager;
     
     TArray<Scope<CommandBuffer>> mCommandBuffers;
     

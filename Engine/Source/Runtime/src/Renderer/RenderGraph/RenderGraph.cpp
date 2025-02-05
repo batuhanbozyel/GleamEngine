@@ -195,10 +195,6 @@ void RenderGraph::Execute(const CommandBuffer* cmd)
         {
             std::invoke(pass->callback, cmd);
         }
-		else if (pass->GetType() == RenderGraphPassType::Copy)
-		{
-			std::invoke(pass->callback, mDevice->GetUploadManager());
-		}
         else if (pass->GetType() == RenderGraphPassType::Raster)
         {
             RenderPassDescriptor renderPassDesc{};
