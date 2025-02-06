@@ -29,7 +29,7 @@ static constexpr const char* HRESULTtoString(HRESULT result)
 	}
 }
 
-static void WaitForID3D12Fence(ID3D12Fence* fence, uint32_t value)
+static void WaitForID3D12Fence(ID3D12Fence* fence, uint64_t value)
 {
 	if (fence->GetCompletedValue() >= value)
 	{

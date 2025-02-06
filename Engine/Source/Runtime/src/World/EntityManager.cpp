@@ -5,22 +5,21 @@
 #include "Core/Globals.h"
 #include "Core/Application.h"
 #include "Assets/AssetManager.h"
+#include "Serialization/JSONSerializer.h"
 
 using namespace Gleam;
 
 Entity& EntityManager::CreateFromPrefab(const AssetReference& ref)
 {
-	auto assetManager = Globals::GameInstance->GetSubsystem<AssetManager>();
-	const auto& path = assetManager->GetAssetPath(ref);
-	auto prefab = assetManager->LoadDescriptor<Prefab>(ref);
+	const auto& path = Globals::GameInstance->GetSubsystem<AssetManager>()->GetAssetPath(ref);
+	auto file = Filesystem::Open(Globals::ProjectContentDirectory / path, FileType::Text);
 
-	auto fullpath = Globals::ProjectContentDirectory / path;
-	auto file = Filesystem::Open(fullpath, FileType::Text);
+	Prefab prefab;
+	auto entities = prefab.Deserialize(*this, file.GetStream());
 
-	if (prefab.entityCount > 1)
+	if (entities.size() > 1)
 	{
-		auto& root = CreateEntity(ref.guid);
-		auto entities = prefab.Deserialize(*this, file.GetStream());
+		auto& root = CreateEntity(prefab.name, ref.guid);
 		for (auto handle : entities)
 		{
 			auto& entity = GetComponent<Entity>(handle);
@@ -29,11 +28,11 @@ Entity& EntityManager::CreateFromPrefab(const AssetReference& ref)
 		return root;
 	}
 
-	auto root = prefab.Deserialize(*this, file.GetStream()).back();
+	auto root = entities.back();
 	return GetComponent<Entity>(root);
 }
 
-Entity& EntityManager::CreateEntity(const Guid& guid)
+Entity& EntityManager::CreateEntity(const TString& name, const Guid& guid)
 {
 	auto it = mHandles.find(guid);
 	if (it != mHandles.end())
@@ -42,7 +41,7 @@ Entity& EntityManager::CreateEntity(const Guid& guid)
 	}
 
 	auto handle = mRegistry.create();
-	auto& entity = AddComponent<Entity>(handle, handle, &mRegistry, guid);
+	auto& entity = AddComponent<Entity>(handle, handle, &mRegistry, name, guid);
 	mHandles.emplace_hint(mHandles.end(), guid, handle);
 	return entity;
 }

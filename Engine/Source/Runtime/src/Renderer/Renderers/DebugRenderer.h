@@ -1,5 +1,7 @@
 #pragma once
 #include "Renderer/Renderer.h"
+#include "Renderer/Buffer.h"
+#include "Renderer/Heap.h"
 
 namespace Gleam {
 
@@ -25,6 +27,8 @@ class DebugRenderer final : public IRenderer
 public:
 
     virtual void OnCreate(GraphicsDevice* device) override;
+
+	virtual void OnDestroy(GraphicsDevice* device) override;
     
     virtual void AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard) override;
     
@@ -42,10 +46,10 @@ public:
 
 private:
 
-	void RenderMeshes(const CommandBuffer* cmd, const BufferHandle& cameraBuffer, const TArray<DebugMesh>& debugMeshes, bool depthTest) const;
+	void RenderMeshes(const CommandBuffer* cmd, const CameraUniforms& cameraData, const TArray<DebugMesh>& debugMeshes, bool depthTest) const;
 
-	uint32_t mLineBufferOffset = 0;
-	uint32_t mDepthLineBufferOffset = 0;
+	Heap mVertexHeap;
+	Buffer mVertexBuffer;
 
     TArray<DebugLine> mLines;
     TArray<DebugLine> mDepthLines;
@@ -53,11 +57,11 @@ private:
 	TArray<DebugMesh> mDebugMeshes;
     TArray<DebugMesh> mDepthDebugMeshes;
 
-    TArray<DebugVertex> mDebugVertices;
-
 	Shader mPrimitiveVertexShader;
 	Shader mMeshVertexShader;
 	Shader mFragmentShader;
+
+	GraphicsDevice* mDevice = nullptr;
 
 };
 

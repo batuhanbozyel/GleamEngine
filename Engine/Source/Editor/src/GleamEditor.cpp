@@ -65,7 +65,7 @@ Gleam::Application* Gleam::CreateApplicationInstance(const Gleam::CommandLine& c
 			auto file = Gleam::Filesystem::Create(worldFile, Gleam::FileType::Text);
 			auto world = Gleam::World("Starter World");
 
-			auto& camera = world.GetEntityManager().CreateEntity(Gleam::Guid::NewGuid());
+			auto& camera = world.GetEntityManager().CreateEntity("Editor Camera", Gleam::Guid::NewGuid());
 			world.GetEntityManager().AddComponent<Gleam::Camera>(camera, Gleam::Size(1280.0f, 720.0f));
 
 			world.Serialize(file.GetStream());

@@ -14,6 +14,11 @@ struct Prefab
 	void Serialize(const EntityManager& entityManager, FileStream& stream) const;
 
 	TArray<EntityHandle> Deserialize(EntityManager& entityManager, FileStream& stream);
+
+	static constexpr TStringView Extension()
+	{
+		return ".prefab";
+	}
 };
 
 } // namespace Gleam

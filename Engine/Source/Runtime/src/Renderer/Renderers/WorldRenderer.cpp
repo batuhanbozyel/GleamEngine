@@ -70,18 +70,18 @@ void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
         
         passData.colorTarget = builder.UseColorBuffer(passData.colorTarget);
         passData.depthTarget = builder.UseDepthBuffer(passData.depthTarget);
-        passData.cameraBuffer = builder.ReadBuffer(sceneData.cameraBuffer);
         blackboard.Add(passData);
     },
     [this, blackboard](const CommandBuffer* cmd, const WorldRenderingData& passData)
     {
         const auto& sceneData = blackboard.Get<SceneRenderingData>();
-        sceneData.sceneProxy->ForEach([this, cmd, passData](const Material& material, const TArray<MeshBatch>& batches)
+        sceneData.sceneProxy->ForEach([this, cmd, passData, sceneData](const Material& material, const TArray<MeshBatch>& batches)
         {
             const auto& materialBuffer = material.GetBuffer();
             const auto& shader = mMeshShadingFragmentShaders[material.GetName()];
             const auto& pipeline = mShadingPipelines[material.GetPipelineHash()];
             cmd->BindGraphicsPipeline(pipeline, mMeshVertexShader, shader);
+			cmd->SetConstantBuffer(sceneData.camera, 1);
 
             for (const auto& batch : batches)
             {
@@ -105,7 +105,6 @@ void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
             #endif
 
                 MeshPassResources resources;
-                resources.cameraBuffer = passData.cameraBuffer;
                 resources.positionBuffer = positionBuffer.GetResourceView();
                 resources.interleavedBuffer = interleavedBuffer.GetResourceView();
                 resources.materialBuffer = materialBuffer.GetResourceView();

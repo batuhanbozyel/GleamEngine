@@ -36,17 +36,17 @@ struct Quaternion
     FORCE_INLINE constexpr Quaternion& operator=(Quaternion&&) noexcept = default;
     FORCE_INLINE constexpr Quaternion& operator=(const Quaternion&) = default;
 
-	constexpr Quaternion(float w, float x, float y, float z)
+	constexpr explicit Quaternion(float w, float x, float y, float z)
 		: w(w), x(x), y(y), z(z)
 	{
 
 	}
-	constexpr Quaternion(const TArray<float, 4>& quat)
+	constexpr explicit Quaternion(const TArray<float, 4>& quat)
 		: w(quat[0]), x(quat[1]), y(quat[2]), z(quat[3])
 	{
 
 	}
-	constexpr Quaternion(float eularAngle)
+	constexpr explicit Quaternion(float eularAngle)
 	{
 		float c = Math::Cos(eularAngle * 0.5f);
 		float s = Math::Sin(eularAngle * 0.5f);
@@ -61,7 +61,7 @@ struct Quaternion
 		y = ccs - ssc;
 		z = y;
 	}
-	constexpr Quaternion(const Float3& eularAngles)
+	constexpr explicit Quaternion(const Float3& eularAngles)
 	{
 		Float3 c = Math::Cos(eularAngles * 0.5f);
 		Float3 s = Math::Sin(eularAngles * 0.5f);
@@ -71,7 +71,7 @@ struct Quaternion
 		y = c.x * s.y * c.z - s.x * c.y * s.z;
 		z = c.x * c.y * s.z - s.x * s.y * c.z;
 	}
-    constexpr Quaternion(float pitch, float yaw, float roll)
+    constexpr explicit Quaternion(float pitch, float yaw, float roll)
         : Quaternion(Float3{pitch, yaw, roll})
     {
         

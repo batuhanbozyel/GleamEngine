@@ -25,12 +25,10 @@ struct DebugMeshUniforms
 struct DebugShaderResources
 {
 	BufferResourceView vertexBuffer;
-	ConstantBufferView cameraBuffer;
 };
 
 struct MeshPassResources
 {
-	ConstantBufferView cameraBuffer;
 	BufferResourceView positionBuffer;
 	BufferResourceView interleavedBuffer;
     BufferResourceView materialBuffer;

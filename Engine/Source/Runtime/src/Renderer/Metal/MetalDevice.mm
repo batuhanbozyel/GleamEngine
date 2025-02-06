@@ -112,6 +112,7 @@ Shader GraphicsDevice::GenerateShader(const TString& entryPoint, ShaderStage sta
     
     auto compiler = IRCompilerCreate();
     IRCompilerSetEntryPointName(compiler, entryPoint.data());
+    IRCompilerSetMinimumDeploymentTarget(compiler, IROperatingSystem_macOS, "14.0");
     IRCompilerSetGlobalRootSignature(compiler, MetalPipelineStateManager::GetGlobalRootSignature());
     
     IRError* compileError = nullptr;
@@ -214,8 +215,6 @@ MetalDevice::MetalDevice()
     mCbvSrvUavHeap = CreateDescriptorHeap(CBV_SRV_HEAP_SIZE);
 
     MetalPipelineStateManager::Init(this);
-    
-    mUploadManager = CreateScope<UploadManager>(this);
 
     GLEAM_CORE_INFO("Metal: Graphics device created.");
 }
@@ -229,7 +228,6 @@ MetalDevice::~MetalDevice()
     mSurface = nil;
 
     mShaderCache.clear();
-
     MetalPipelineStateManager::Destroy();
     
     // Destroy descriptor heap

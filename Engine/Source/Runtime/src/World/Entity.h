@@ -20,10 +20,23 @@ public:
     
     Entity() = default;
     
-    Entity(EntityHandle handle, entt::registry* registry, const Guid& guid)
-		: mHandle(handle), mRegistry(registry), mGuid(guid)
+    Entity(EntityHandle handle, entt::registry* registry, const TString& name, const Guid& guid)
+		: mHandle(handle)
+		, mRegistry(registry)
+		, mName(name)
+		, mGuid(guid)
 	{
 
+	}
+	
+	const TString& GetName() const
+	{
+		return mName;
+	}
+	
+	void SetName(const TString& name)
+	{
+		mName = name;
 	}
 
 	EntityHandle GetParent() const
@@ -195,6 +208,8 @@ private:
 	Transform mLocalTransform;
 
 	Transform mGlobalTransform;
+	
+	TString mName = "Entity";
 
 	Guid mGuid = Guid::InvalidGuid();
     

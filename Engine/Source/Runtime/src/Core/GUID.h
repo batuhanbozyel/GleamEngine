@@ -76,6 +76,7 @@ public:
 
 	Guid() = default;
 	Guid(const TString& str);
+	Guid(const TArray<uint8_t, 16>& bytes);
     Guid(const Reflection::Attribute::Guid& guid);
     
     Guid& operator=(const Guid&) = default;

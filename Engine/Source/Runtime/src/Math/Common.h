@@ -73,6 +73,12 @@ NO_DISCARD FORCE_INLINE constexpr T Floor(T x)
 }
 
 template<typename T>
+NO_DISCARD FORCE_INLINE constexpr T Ceil(T x)
+{
+	return static_cast<T>(std::ceil(x));
+}
+
+template<typename T>
 NO_DISCARD FORCE_INLINE constexpr T Round(T x)
 {
     return static_cast<T>(std::round(x));
@@ -149,6 +155,31 @@ template<typename T>
 NO_DISCARD FORCE_INLINE T constexpr Sqrt(T v)
 {
     return static_cast<T>(std::sqrt(v));
+}
+
+template<typename T>
+NO_DISCARD FORCE_INLINE size_t constexpr RoundUpTo(T value, T to)
+{
+	if (to == T{ 0 })
+	{
+		return T{ 0 };
+	}
+
+	if constexpr (std::is_integral_v<T>)
+	{
+		if (value % to == T{ 0 })
+		{
+			return value;
+		}
+		T div = value / to;
+		return (div + T{ 1 }) * to;
+	}
+	else
+	{
+		T div = value / to;
+		T roundedDiv = Ceil(div);
+		return roundedDiv * to;
+	}
 }
 
 } // namespace Gleam::Math

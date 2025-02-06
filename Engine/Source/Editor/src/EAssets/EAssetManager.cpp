@@ -4,7 +4,15 @@
 
 using namespace GEditor;
 
-static Gleam::JSONHeader ParseAssetHeader(const Gleam::Filesystem::Path& asset)
+static Gleam::BinaryHeader ParseBinaryHeader(const Gleam::Filesystem::Path& asset)
+{
+	auto file = Gleam::Filesystem::Open(asset, Gleam::FileType::Binary);
+	auto accessor = Gleam::Filesystem::ReadAccessor(asset);
+	auto serializer = Gleam::BinarySerializer();
+	return serializer.ParseHeader(file.GetStream());
+}
+
+static Gleam::JSONHeader ParseJSONHeader(const Gleam::Filesystem::Path& asset)
 {
 	auto file = Gleam::Filesystem::Open(asset, Gleam::FileType::Text);
 	auto accessor = Gleam::Filesystem::ReadAccessor(asset);
@@ -14,38 +22,64 @@ static Gleam::JSONHeader ParseAssetHeader(const Gleam::Filesystem::Path& asset)
 
 static Gleam::TString ParseAssetName(const Gleam::Filesystem::Path& asset, const Gleam::Guid& typeGuid)
 {
-	auto file = Gleam::Filesystem::Open(asset, Gleam::FileType::Text);
-	auto accessor = Gleam::Filesystem::ReadAccessor(asset);
-	auto serializer = Gleam::JSONSerializer();
-
     if (typeGuid == Gleam::Reflection::GetClass<Gleam::MeshDescriptor>().Guid())
     {
+		auto file = Gleam::Filesystem::Open(asset, Gleam::FileType::Binary);
+		auto accessor = Gleam::Filesystem::ReadAccessor(asset);
+		auto serializer = Gleam::BinarySerializer();
+		
         auto descriptor = serializer.Deserialize<Gleam::MeshDescriptor>(file.GetStream());
         return descriptor.name;
     }
     
     if (typeGuid == Gleam::Reflection::GetClass<Gleam::TextureDescriptor>().Guid())
     {
+		auto file = Gleam::Filesystem::Open(asset, Gleam::FileType::Binary);
+		auto accessor = Gleam::Filesystem::ReadAccessor(asset);
+		auto serializer = Gleam::BinarySerializer();
+		
         auto descriptor = serializer.Deserialize<Gleam::TextureDescriptor>(file.GetStream());
         return descriptor.name;
     }
     
     if (typeGuid == Gleam::Reflection::GetClass<Gleam::MaterialDescriptor>().Guid())
     {
+		auto file = Gleam::Filesystem::Open(asset, Gleam::FileType::Binary);
+		auto accessor = Gleam::Filesystem::ReadAccessor(asset);
+		auto serializer = Gleam::BinarySerializer();
+		
         auto descriptor = serializer.Deserialize<Gleam::MaterialDescriptor>(file.GetStream());
         return descriptor.name;
     }
     
     if (typeGuid == Gleam::Reflection::GetClass<Gleam::MaterialInstanceDescriptor>().Guid())
     {
+		auto file = Gleam::Filesystem::Open(asset, Gleam::FileType::Binary);
+		auto accessor = Gleam::Filesystem::ReadAccessor(asset);
+		auto serializer = Gleam::BinarySerializer();
+		
         auto descriptor = serializer.Deserialize<Gleam::MaterialInstanceDescriptor>(file.GetStream());
         return descriptor.name;
     }
 
 	if (typeGuid == Gleam::Reflection::GetClass<Gleam::Prefab>().Guid())
 	{
+		auto file = Gleam::Filesystem::Open(asset, Gleam::FileType::Text);
+		auto accessor = Gleam::Filesystem::ReadAccessor(asset);
+		auto serializer = Gleam::JSONSerializer();
+		
 		auto prefab = serializer.Deserialize<Gleam::Prefab>(file.GetStream());
 		return prefab.name;
+	}
+	
+	if (typeGuid == Gleam::Reflection::GetClass<Gleam::World>().Guid())
+	{
+		auto file = Gleam::Filesystem::Open(asset, Gleam::FileType::Text);
+		auto accessor = Gleam::Filesystem::ReadAccessor(asset);
+		auto serializer = Gleam::JSONSerializer();
+		
+		auto world = serializer.Deserialize<Gleam::World>(file.GetStream());
+		return world.name;
 	}
     
     return "";
@@ -62,9 +96,9 @@ void EAssetManager::Initialize(Gleam::World* world)
 {
     Gleam::Filesystem::ForEach(mAssetDirectory, [this](const auto& entry)
     {
-        if (entry.extension() == ".asset")
+        if (entry.extension() == Gleam::Asset::Extension())
         {
-            auto header = ParseAssetHeader(entry);
+            auto header = ParseBinaryHeader(entry);
             auto guid = Gleam::Guid(entry.stem().string());
             auto asset = Gleam::AssetReference{ .guid = guid };
             auto name = ParseAssetName(entry, header.guid);
@@ -76,6 +110,34 @@ void EAssetManager::Initialize(Gleam::World* world)
 			auto path = entry.parent_path() / name;
 			mRegistry.RegisterAsset(path, item);
         }
+		else if (entry.extension() == Gleam::Prefab::Extension())
+		{
+			auto typeGuid = Gleam::Reflection::GetClass<Gleam::Prefab>().Guid();
+			auto guid = Gleam::Guid(entry.stem().string());
+			auto asset = Gleam::AssetReference{ .guid = guid };
+			auto name = ParseAssetName(entry, typeGuid);
+			auto item = AssetItem{
+				.reference = asset,
+				.type = typeGuid,
+				.name = name
+			};
+			auto path = entry.parent_path() / name;
+			mRegistry.RegisterAsset(path, item);
+		}
+		else if (entry.extension() == Gleam::World::Extension())
+		{
+			auto typeGuid = Gleam::Reflection::GetClass<Gleam::World>().Guid();
+			auto guid = Gleam::Guid(entry.stem().string());
+			auto asset = Gleam::AssetReference{ .guid = guid };
+			auto name = ParseAssetName(entry, typeGuid);
+			auto item = AssetItem{
+				.reference = asset,
+				.type = typeGuid,
+				.name = name
+			};
+			auto path = entry.parent_path() / name;
+			mRegistry.RegisterAsset(path, item);
+		}
     }, true);
     
     // TODO: reimport if material/shader source changed since last compile
@@ -109,11 +171,7 @@ void EAssetManager::Import(const Gleam::Filesystem::Path& directory, const Asset
 		auto path = directory / baker->Filename();
 		const auto& item = package.mRegistry->GetAsset(baker->Filename(), baker->TypeGuid());
 		const auto& asset = mRegistry.RegisterAsset(path, item);
-
-		auto filename = asset.reference.guid.ToString() + Gleam::Asset::Extension().data();
-		auto file = Gleam::Filesystem::Create(directory / filename, Gleam::FileType::Text);
-		auto accessor = Gleam::Filesystem::WriteAccessor(directory / filename);
-		baker->Bake(file.GetStream());
+		baker->Bake(directory, asset);
 	}
 }
 

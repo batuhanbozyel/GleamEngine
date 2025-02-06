@@ -15,7 +15,7 @@ public:
 
 	Entity& CreateFromPrefab(const AssetReference& ref);
 
-	Entity& CreateEntity(const Guid& guid);
+	Entity& CreateEntity(const TString& name, const Guid& guid);
 
 	void DestroyEntity(EntityHandle entity);
 
@@ -84,9 +84,9 @@ public:
 	}
 
 	template<typename ... Types>
-	Entity& CreateEntity(const Guid& guid, Types&& ... components)
+	Entity& CreateEntity(const TString& name, const Guid& guid, Types&& ... components)
 	{
-        Entity& entity = CreateEntity(guid);
+        Entity& entity = CreateEntity(name, guid);
 		(AddComponent<Types>(entity, components), ...);
 		return entity;
 	}

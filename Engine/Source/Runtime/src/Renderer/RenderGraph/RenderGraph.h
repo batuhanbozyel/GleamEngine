@@ -26,14 +26,6 @@ public:
     void Compile();
 
 	void Execute(const CommandBuffer* cmd);
-
-	template<typename PassData>
-	const PassData& AddCopyPass(const TStringView name, SetupFunc<PassData>&& setup, CopyFunc<PassData>&& execute)
-	{
-		auto uniqueId = static_cast<uint32_t>(mPassNodes.size());
-		auto node = new RenderGraphCopyPassNode(uniqueId, name, std::forward<decltype(execute)>(execute));
-		return AddPassNode<PassData>(node, std::forward<decltype(setup)>(setup));
-	}
 	
 	template<typename PassData>
 	const PassData& AddRenderPass(const TStringView name, SetupFunc<PassData>&& setup, RenderFunc<PassData>&& execute)

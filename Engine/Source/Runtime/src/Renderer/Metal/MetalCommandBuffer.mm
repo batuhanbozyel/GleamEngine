@@ -142,10 +142,11 @@ void CommandBuffer::BindGraphicsPipeline(const PipelineStateDescriptor& pipeline
     [mHandle->renderCommandEncoder setFragmentBuffer:mHandle->device->GetCbvSrvUavHeap() offset:0 atIndex:kIRDescriptorHeapBindPoint];
     
     // Top-level argument buffer
+    id<MTLBuffer> constantBuffer = mConstantBuffer.GetHandle();
     size_t argumentBufferOffset = mConstantBuffer.Allocate(MetalPipelineStateManager::GetTopLevelArgumentBufferSize());
-    mHandle->topLevelArgumentBuffer = static_cast<uint64_t*>(OffsetPointer([mConstantBuffer.GetNativeHandle() contents], argumentBufferOffset));
-    [mHandle->renderCommandEncoder setVertexBuffer:mConstantBuffer.GetNativeHandle() offset:argumentBufferOffset atIndex:kIRArgumentBufferBindPoint];
-    [mHandle->renderCommandEncoder setFragmentBuffer:mConstantBuffer.GetNativeHandle() offset:argumentBufferOffset atIndex:kIRArgumentBufferBindPoint];
+    mHandle->topLevelArgumentBuffer = static_cast<uint64_t*>(OffsetPointer([constantBuffer contents], argumentBufferOffset));
+    [mHandle->renderCommandEncoder setVertexBuffer:constantBuffer offset:argumentBufferOffset atIndex:kIRArgumentBufferBindPoint];
+    [mHandle->renderCommandEncoder setFragmentBuffer:constantBuffer offset:argumentBufferOffset atIndex:kIRArgumentBufferBindPoint];
 }
 
 void CommandBuffer::SetViewport(const Size& size) const

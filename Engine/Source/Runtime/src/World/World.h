@@ -110,15 +110,11 @@ public:
     {
         return mEntityManager;
     }
-
-	const TString& GetName() const
-	{
-		return mName;
-	}
+	
+	TString name;
     
 private:
-
-	TString mName;
+	
     EntityManager mEntityManager;
     PolyArray<ComponentSystem> mSystems;
 	PolyArray<WorldSubsystem> mSubsystems;
@@ -127,3 +123,7 @@ private:
 };
 
 } // namespace Gleam
+
+GLEAM_TYPE(Gleam::World, Guid("F2C18BDA-C06B-466F-B2E4-1DE905786688"))
+	GLEAM_FIELD(name, Serializable())
+GLEAM_END

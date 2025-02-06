@@ -5,7 +5,6 @@
 MeshVertexOut meshVertexShader(uint vertex_id: SV_VertexID)
 {
     uint vertexID = vertex_id + resources.baseVertex;
-    Gleam::CameraUniforms camera = resources.cameraBuffer.Load<Gleam::CameraUniforms>();
     Gleam::InterleavedMeshVertex interleavedVert = resources.interleavedBuffer.Load<Gleam::InterleavedMeshVertex>(vertexID);
     float3 position = resources.positionBuffer.Load<float3>(vertexID);
 

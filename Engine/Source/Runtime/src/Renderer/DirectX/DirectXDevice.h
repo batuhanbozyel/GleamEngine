@@ -120,7 +120,8 @@ private:
 		ID3D12Fence* fence;
 		DirectXDrawable drawable;
 		TArray<DirectXCommandPool> commandPools;
-		uint32_t frameCount = 0;
+		uint64_t waitFenceValue = 0;
+		uint64_t frameCount = 0;
 	};
 	TArray<Context> mFrameContext;
 

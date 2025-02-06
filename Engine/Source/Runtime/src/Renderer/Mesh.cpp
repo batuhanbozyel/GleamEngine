@@ -44,9 +44,9 @@ Mesh::Mesh(const MeshDescriptor& mesh)
 
     // Send mesh data to buffers
 	{
-		renderSystem->GetDevice()->GetUploadManager()->CommitUpload(mPositionBuffer, mesh.positions.data(), positionSize);
-		renderSystem->GetDevice()->GetUploadManager()->CommitUpload(mInterleavedBuffer, mesh.interleavedVertices.data(), interleavedSize);
-		renderSystem->GetDevice()->GetUploadManager()->CommitUpload(mIndexBuffer, mesh.indices.data(), indexSize);
+		renderSystem->GetUploadManager()->CommitUpload(mPositionBuffer, mesh.positions.data(), positionSize);
+		renderSystem->GetUploadManager()->CommitUpload(mInterleavedBuffer, mesh.interleavedVertices.data(), interleavedSize);
+		renderSystem->GetUploadManager()->CommitUpload(mIndexBuffer, mesh.indices.data(), indexSize);
 	}
 }
 

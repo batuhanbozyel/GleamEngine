@@ -27,23 +27,23 @@ struct Vector4
     FORCE_INLINE constexpr Vector4& operator=(Vector4&&) noexcept = default;
     FORCE_INLINE constexpr Vector4& operator=(const Vector4&) = default;
 
-    constexpr Vector4(T v)
+    constexpr explicit Vector4(T v)
         : x(v), y(v), z(v), w(v)
     {
 
     }
-    constexpr Vector4(T x, T y, T z, T w)
+    constexpr explicit Vector4(T x, T y, T z, T w)
         : x(x), y(y), z(z), w(w)
     {
 
     }
-    constexpr Vector4(const TArray<T, 4>& vec)
+    constexpr explicit Vector4(const TArray<T, 4>& vec)
         : x(vec[0]), y(vec[1]), z(vec[2]), w(vec[3])
     {
 
     }
 
-    constexpr Vector4(const Float3& vec, float w)
+    constexpr explicit Vector4(const Vector3<T>& vec, float w)
         : x(vec.x), y(vec.y), z(vec.z), w(w)
     {
 

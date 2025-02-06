@@ -60,8 +60,6 @@ public:
 	uint32_t GetFramesInFlight() const;
 
 	const Size& GetDrawableSize() const;
-	
-	const UploadManager* GetUploadManager() const;
     
     MemoryRequirements QueryMemoryRequirements(const HeapDescriptor& descriptor) const;
 
@@ -94,8 +92,6 @@ protected:
     Deque<Texture> mFreeTextures;
 
     TArray<Shader> mShaderCache;
-	
-	Scope<UploadManager> mUploadManager;
 
 	uint32_t mMaxFramesInFlight = 3;
 

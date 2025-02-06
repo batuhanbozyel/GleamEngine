@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.13)
 
 set(CMAKE_CONFIGURATION_TYPES Debug Release RelWithDebInfo CACHE TYPE INTERNAL FORCE)
 
+option(ENABLE_ASAN "Enable Address Sanitizer" OFF)
+
 project(GleamEngine)
 
     if (WIN32)
@@ -24,25 +26,26 @@ project(GleamEngine)
 
     #check the compiler
     MESSAGE(STATUS "compiler id ${CMAKE_CXX_COMPILER_ID} ${MSVC}")
-    if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
     # using Clang
-    set(COMMON_CXX_FLAGS "${COMMON_CXX_FLAGS} -g3 -O0 -Wall -pedantic -Wextra -m64 -mavx2 -mfma -ffast-math")
-    elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+    if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
+        set(COMMON_CXX_FLAGS "${COMMON_CXX_FLAGS} -g3 -O0 -Wall -pedantic -Wextra -m64 -mavx2 -mfma -ffast-math")
     # using GCC
-    set(COMMON_CXX_FLAGS "${COMMON_CXX_FLAGS} -Wall -pedantic -Wextra -m64 -mavx2 -mfma -ffast-math")
-    elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
+    elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+        set(COMMON_CXX_FLAGS "${COMMON_CXX_FLAGS} -Wall -pedantic -Wextra -m64 -mavx2 -mfma -ffast-math")
     # using Intel C++
-    elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+    elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
     # using Visual Studio C++
-    set(COMMON_CXX_FLAGS "${COMMON_CXX_FLAGS}  /std:c++20 /W4 /arch:AVX2 /fp:fast /MP /DNOMINMAX")
-    endif()
-
-    if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+    elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+        set(COMMON_CXX_FLAGS "${COMMON_CXX_FLAGS}  /std:c++20 /W4 /arch:AVX2 /fp:fast /MP /DNOMINMAX")
         add_compile_options(/wd4251 /wd4275 /wd4099 /wd4204)
     endif()
 
-    set_property(GLOBAL PROPERTY USE_FOLDERS ON)
+    if (ENABLE_ASAN)
+        add_compile_options(-fsanitize=address)
+        add_link_options(-fsanitize=address)
+    endif()
 
+    set_property(GLOBAL PROPERTY USE_FOLDERS ON)
     set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIGURATION>)
     set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIGURATION>)
     set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIGURATION>)

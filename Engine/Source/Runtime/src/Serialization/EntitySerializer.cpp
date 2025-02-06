@@ -20,6 +20,7 @@ void EntitySerializer::Serialize(const EntityManager& entityManager, rapidjson::
 
 		entityNode.AddMember("Entity", entityGuid);
 		entityNode.AddMember("Active", entity.IsActive());
+		entityNode.AddMember("Name", entity.GetName());
 
 		if (entity.HasParent())
 		{
@@ -64,8 +65,9 @@ TArray<EntityHandle> EntitySerializer::Deserialize(const rapidjson::ConstNode& r
 	for (const auto& entityObject : root["Entities"].GetArray())
 	{
 		auto entityGuid = TString(entityObject["Entity"].GetString());
+		auto name = TString(entityObject["Name"].GetString());
 		auto active = entityObject["Active"].GetBool();
-		auto& entity = entityManager.CreateEntity(entityGuid);
+		auto& entity = entityManager.CreateEntity(name, entityGuid);
 		entity.SetActive(active);
 
 		if (entityObject.HasMember("Parent"))
