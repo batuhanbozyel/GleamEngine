@@ -277,7 +277,7 @@ RawMesh ProcessAttributes(const cgltf_primitive& primitive, const MeshSource::Im
     // TODO: calculate normals
     if (mesh.normals.empty())
     {
-        mesh.normals.resize(vertexCount, Gleam::Float3(0.0f, 1.0f, 0.0f));
+        mesh.normals.resize(vertexCount, Gleam::Float3(0.0f, 0.0f, 1.0f));
     }
 
 	if (mesh.tangents.empty())

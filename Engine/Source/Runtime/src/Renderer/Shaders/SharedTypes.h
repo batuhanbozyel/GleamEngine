@@ -14,7 +14,7 @@ struct CameraUniforms
 	float4x4 invProjectionMatrix;
 	float4x4 invViewProjectionMatrix;
 
-	float3 worldPosition;
+	float3 position;
 };
 
 } // namespace Gleam

@@ -2,6 +2,8 @@
 #include "ShaderInterop.h"
 #include "SharedTypes.h"
 
+#define PI 3.1415926535897932384626433832795
+
 #define CONSTANT_BUFFER(type, name, slot) ConstantBuffer<type> name : register(b##slot)
 #define PUSH_CONSTANT(type, name) CONSTANT_BUFFER(type, name, 999)
 

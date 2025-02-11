@@ -88,7 +88,7 @@ void RenderSystem::Render(const World* world)
 			sceneData.camera.invViewMatrix = Math::Inverse(sceneData.camera.viewMatrix);
 			sceneData.camera.invProjectionMatrix = Math::Inverse(sceneData.camera.projectionMatrix);
 			sceneData.camera.invViewProjectionMatrix = Math::Inverse(sceneData.camera.viewProjectionMatrix);
-			sceneData.camera.worldPosition = camera->GetWorldPosition();
+			sceneData.camera.position = camera->GetWorldPosition();
 		}
 		blackboard.Add(sceneData);
 
