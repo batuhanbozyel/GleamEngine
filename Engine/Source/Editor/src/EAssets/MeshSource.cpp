@@ -262,6 +262,11 @@ RawMesh ProcessAttributes(const cgltf_primitive& primitive, const MeshSource::Im
             mesh.normals.resize(vertexCount);
             cgltf_accessor_unpack_floats(attribute.data, (cgltf_float*)mesh.normals.data(), mesh.normals.size() * 3);
         }
+		else if (attribute.type == cgltf_attribute_type_tangent)
+		{
+			mesh.tangents.resize(vertexCount);
+			cgltf_accessor_unpack_floats(attribute.data, (cgltf_float*)mesh.tangents.data(), mesh.tangents.size() * 4);
+		}
         else if (attribute.type == cgltf_attribute_type_texcoord)
         {
             mesh.texCoords.resize(vertexCount);
@@ -272,8 +277,13 @@ RawMesh ProcessAttributes(const cgltf_primitive& primitive, const MeshSource::Im
     // TODO: calculate normals
     if (mesh.normals.empty())
     {
-        mesh.normals.resize(vertexCount, Gleam::Float3(0.5f, 0.5f, 1.0f));
+        mesh.normals.resize(vertexCount, Gleam::Float3(0.0f, 1.0f, 0.0f));
     }
+
+	if (mesh.tangents.empty())
+	{
+		mesh.tangents.resize(vertexCount, Gleam::Float4(1.0f, 0.0f, 0.0f, 1.0f));
+	}
     
     if (mesh.texCoords.empty())
     {
@@ -389,6 +399,7 @@ Gleam::TArray<Gleam::InterleavedMeshVertex> InterleaveMeshVertices(const RawMesh
 	for (uint32_t i = 0; i < mesh.normals.size(); ++i)
 	{
 		interleaved[i].normal = mesh.normals[i];
+		interleaved[i].tangent = mesh.tangents[i];
 		interleaved[i].texCoord = mesh.texCoords[i];
 	}
 	return interleaved;

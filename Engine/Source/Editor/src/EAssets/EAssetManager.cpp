@@ -140,7 +140,6 @@ void EAssetManager::Initialize(Gleam::World* world)
 		}
     }, true);
     
-    // TODO: reimport if material/shader source changed since last compile
     Gleam::Filesystem::ForEach(mAssetDirectory, [this](const auto& entry)
     {
         if (entry.extension() == ".mat")
@@ -153,8 +152,19 @@ void EAssetManager::Initialize(Gleam::World* world)
                 auto materialSource = MaterialSource(this, &assetRegistry);
                 auto settings = MaterialSource::ImportSettings();
                 materialSource.Import(entry, settings);
-                Import(mAssetDirectory/"Materials", materialSource);
+                Import(mAssetDirectory / "Materials", materialSource);
             }
+			else
+			{
+				// TODO: reimport only if material/shader source changed since last compile
+				auto assetRegistry = AssetRegistry(entry.parent_path());
+				assetRegistry.RegisterAsset(entry.stem(), item);
+
+				auto materialSource = MaterialSource(this, &assetRegistry);
+				auto settings = MaterialSource::ImportSettings();
+				materialSource.Import(entry, settings);
+				Import(mAssetDirectory / "Materials", materialSource);
+			}
         }
     }, true);
 }

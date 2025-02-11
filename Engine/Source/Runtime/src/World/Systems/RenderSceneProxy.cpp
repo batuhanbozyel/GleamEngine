@@ -2,10 +2,12 @@
 #include "RenderSceneProxy.h"
 
 #include "Core/Globals.h"
+#include "Core/Engine.h"
 #include "Core/Application.h"
 
 #include "World/World.h"
 #include "Assets/AssetManager.h"
+#include "Renderer/RenderSystem.h"
 #include "Renderer/Material/MaterialSystem.h"
 
 using namespace Gleam;
@@ -34,6 +36,8 @@ void RenderSceneProxy::OnUpdate(EntityManager& entityManager)
 			mStaticBatches[batch.material->GetBaseMaterial()].emplace_back(batch);
 		}
 	});
+	auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
+	renderSystem->GetUploadManager()->Flush();
     
     // update active camera
     mActiveCamera = nullptr;

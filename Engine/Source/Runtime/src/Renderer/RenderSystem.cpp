@@ -90,7 +90,6 @@ void RenderSystem::Render(const World* world)
 			sceneData.camera.invViewProjectionMatrix = Math::Inverse(sceneData.camera.viewProjectionMatrix);
 			sceneData.camera.worldPosition = camera->GetWorldPosition();
 		}
-
 		blackboard.Add(sceneData);
 
         for (auto renderer : mRenderers)

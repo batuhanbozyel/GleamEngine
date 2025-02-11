@@ -32,6 +32,7 @@ GLEAM_END
 
 GLEAM_TYPE(Gleam::InterleavedMeshVertex, Guid("4AFE936A-550F-419C-A7F0-5ED38D9D1642"))
     GLEAM_FIELD(normal, Serializable())
+	GLEAM_FIELD(tangent, Serializable())
     GLEAM_FIELD(texCoord, Serializable())
 GLEAM_END
 

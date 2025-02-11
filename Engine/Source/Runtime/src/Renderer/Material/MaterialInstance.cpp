@@ -31,7 +31,9 @@ MaterialInstance::MaterialInstance(const MaterialInstanceDescriptor& descriptor)
 
 void MaterialInstance::Release()
 {
-	// TODO:
+	auto materialSystem = Globals::GameInstance->GetSubsystem<MaterialSystem>();
+	auto& material = materialSystem->GetMaterial(mBaseMaterial);
+	material.DestroyInstance(mResourceView);
 }
 
 void MaterialInstance::SetProperty(const TString& name, const MaterialPropertyValue& value)

@@ -72,7 +72,7 @@ bool MaterialSource::Import(const Gleam::Filesystem::Path& path, const ImportSet
     descriptor.name = path.stem().string();
     
     Gleam::TStringStream generatedShader;
-    generatedShader << "struct MaterialProperties\n{\n";
+    generatedShader << "\n\nstruct MaterialProperties\n{\n";
     if (document.HasMember("Properties") && document["Properties"].IsArray())
     {
         for (const auto& property : document["Properties"].GetArray())
@@ -144,7 +144,7 @@ bool MaterialSource::Import(const Gleam::Filesystem::Path& path, const ImportSet
         generatedPath.concat(".gen.hlsl");
         {
             auto shaderFile = Gleam::Filesystem::Open(shaderPath, Gleam::FileType::Text);
-            generatedShader << shaderFile.Read();
+            generatedShader << shaderFile.Read() << "\0";
             
             auto generatedFile = Gleam::Filesystem::Create(generatedPath, Gleam::FileType::Text);
             generatedFile.Write(generatedShader.str());
@@ -162,13 +162,24 @@ bool MaterialSource::Import(const Gleam::Filesystem::Path& path, const ImportSet
                 // TODO: generate unlit shader
             }
         }
-        
+
+		Gleam::Filesystem::Path dxilShader = Gleam::Globals::BuiltinAssetsDirectory / "Shaders" / descriptor.surfaceShader;
+		dxilShader.replace_extension("dxil");
+
+		if (Gleam::Filesystem::Exists(dxilShader))
+		{
+			Gleam::Filesystem::Remove(dxilShader);
+		}
+
         Gleam::TStringStream cmd;
         cmd << PYTHON_INTERPRETER << " ";
         cmd << Gleam::Globals::StartupDirectory/"Tools/CompileShaders.py";
         cmd << " -f " << generatedPath;
         cmd << " -o " << descriptor.surfaceShader;
         cmd << " -i " << "MeshShading.hlsli";
+	#ifdef GDEBUG
+		cmd << " --debug";
+	#endif
         bool success = ExecuteCommand(cmd.str());
         Gleam::Filesystem::Remove(generatedPath);
 

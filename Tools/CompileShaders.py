@@ -25,6 +25,11 @@ HLSL_SHADER_STAGE["vertex"] = "vs_6_6"
 HLSL_SHADER_STAGE["fragment"] = "ps_6_6"
 HLSL_SHADER_STAGE["compute"] = "cs_6_6"
 
+SHADER_TARGET_DEFINE = {}
+SHADER_TARGET_DEFINE["vertex"] = "SHADER_TARGET_VERTEX"
+SHADER_TARGET_DEFINE["fragment"] = "SHADER_TARGET_FRAGMENT"
+SHADER_TARGET_DEFINE["compute"] = "SHADER_TARGET_COMPUTE"
+
 SHADER_STAGE_REGEX = re.compile(r'#pragma\s+(vertex|fragment|compute)\s+(\w+)')
 
 def read_include_file(include_file: str, include_dirs: list[str]):
@@ -115,7 +120,8 @@ if __name__ == "__main__":
                     output_file = f"{output_dir}/{entry_point}.dxil"
                     compile_command = [DXC, hlsl_file,
                        "-HV", "2021",
-                       "-D", RENDERER_API,
+                       "-D", RENDERER_API, 
+                       "-D", SHADER_TARGET_DEFINE[shader_stage],
                        "-T", HLSL_SHADER_STAGE[shader_stage],
                        "-E", entry_point,
                        "-Fo", output_file]
@@ -125,7 +131,7 @@ if __name__ == "__main__":
                     
                     for directory in include_dirs:
                         compile_command.extend(["-I", directory])
-
+                    
                     cmd(compile_command, stderr=subprocess.PIPE, check=True)
                 except subprocess.CalledProcessError as e:
                     print(f"Shader compilation failed for {filename}:\n {e.stderr.decode('utf-8')}")

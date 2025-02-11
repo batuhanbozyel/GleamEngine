@@ -10,13 +10,18 @@ AssetRegistry::AssetRegistry(const Gleam::Filesystem::Path& directory)
 
 const AssetItem& AssetRegistry::RegisterAsset(const Gleam::Filesystem::Path& path, const Gleam::Guid& type)
 {
-	auto asset = Gleam::AssetReference{ .guid = Gleam::Guid::NewGuid() };
-	auto item = AssetItem{
-		.reference = asset,
-		.type = type,
-		.name = path.stem().string()
-	};
-	return RegisterAsset(path, item);
+	const auto& item = GetAsset(path, type);
+	if (item.reference.guid == Gleam::Guid::InvalidGuid())
+	{
+		auto asset = Gleam::AssetReference{ .guid = Gleam::Guid::NewGuid() };
+		auto item = AssetItem{
+			.reference = asset,
+			.type = type,
+			.name = path.stem().string()
+		};
+		return RegisterAsset(path, item);
+	}
+	return item;
 }
 
 const AssetItem& AssetRegistry::RegisterAsset(const Gleam::Filesystem::Path& path, const AssetItem& item)
