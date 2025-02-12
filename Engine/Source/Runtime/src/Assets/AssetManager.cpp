@@ -34,8 +34,8 @@ void AssetManager::Initialize(Application* app)
     auto fileWatcher = Globals::Engine->GetSubsystem<FileWatcher>();
     fileWatcher->AddWatch(Globals::ProjectContentDirectory, [this](const Filesystem::Path& path, FileWatchEvent event)
     {
-        if (path.extension() != Asset::Extension() ||
-			path.extension() != Prefab::Extension() ||
+        if (path.extension() != Asset::Extension() &&
+			path.extension() != Prefab::Extension() &&
 			path.extension() != World::Extension())
         {
             return;
