@@ -96,7 +96,7 @@ UploadManager::~UploadManager()
 	mHandle->factory->Release();
 }
 
-void UploadManager::Commit() const
+void UploadManager::Execute() const
 {
 	mHandle->waitFenceValue = mHandle->fenceValue++;
 
@@ -119,7 +119,7 @@ void UploadManager::Flush() const
 	mHandle->tempBuffers.clear();
 }
 
-void UploadManager::CommitUpload(const Buffer& buffer, const void* data, size_t size, size_t offset) const
+void UploadManager::Commit(const Buffer& buffer, const void* data, size_t size, size_t offset) const
 {
 	auto bufferContents = buffer.GetContents();
 	if (bufferContents == nullptr)
@@ -202,7 +202,7 @@ void UploadManager::CommitUpload(const Buffer& buffer, const void* data, size_t 
 	}
 }
 
-void UploadManager::CommitUpload(const Texture& texture, const void* data, size_t size) const
+void UploadManager::Commit(const Texture& texture, const void* data, size_t size) const
 {
 	auto dstTexture = static_cast<ID3D12Resource*>(texture.GetHandle());
 	auto size32 = static_cast<uint32_t>(size);

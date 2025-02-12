@@ -13,13 +13,13 @@ public:
 
     ~UploadManager();
 
-	void Commit() const;
+	void Execute() const;
 	
 	void Flush() const;
 	
-	void CommitUpload(const Buffer& buffer, const void* data, size_t size, size_t offset = 0) const;
+	void Commit(const Buffer& buffer, const void* data, size_t size, size_t offset = 0) const;
 
-	void CommitUpload(const Texture& texture, const void* data, size_t size) const;
+	void Commit(const Texture& texture, const void* data, size_t size) const;
 
 private:
 

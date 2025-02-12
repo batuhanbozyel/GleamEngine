@@ -71,7 +71,7 @@ UploadManager::~UploadManager()
     mHandle->memoryCommandBuffer = nil;
 }
 
-void UploadManager::Commit() const
+void UploadManager::Execute() const
 {
     if (mHandle->fileCommandBuffer != nil)
     {
@@ -92,7 +92,7 @@ void UploadManager::Flush() const
     mHandle->tempBuffers.clear();
 }
 
-void UploadManager::CommitUpload(const Buffer& buffer, const void* data, size_t size, size_t offset) const
+void UploadManager::Commit(const Buffer& buffer, const void* data, size_t size, size_t offset) const
 {
     auto bufferContents = buffer.GetContents();
     if (bufferContents == nullptr)
@@ -104,7 +104,7 @@ void UploadManager::CommitUpload(const Buffer& buffer, const void* data, size_t 
         
         id<MTLBuffer> dstBuffer = buffer.GetHandle();
         id<MTLBlitCommandEncoder> blitCommandEncoder = [mHandle->memoryCommandBuffer blitCommandEncoder];
-        [blitCommandEncoder setLabel:TO_NSSTRING("UploadManager::CommitUpload")];
+        [blitCommandEncoder setLabel:TO_NSSTRING("UploadManager::Commit")];
         
         size_t srcOffset = mHandle->stagingBufferOffset;
         if (mHandle->CopyUploadData(data, size))
@@ -126,7 +126,7 @@ void UploadManager::CommitUpload(const Buffer& buffer, const void* data, size_t 
     }
 }
 
-void UploadManager::CommitUpload(const Texture& texture, const void* data, size_t size) const
+void UploadManager::Commit(const Texture& texture, const void* data, size_t size) const
 {
     if (mHandle->memoryCommandBuffer == nil)
     {
@@ -135,7 +135,7 @@ void UploadManager::CommitUpload(const Texture& texture, const void* data, size_
     
     id<MTLTexture> dstTexture = texture.GetHandle();
     id<MTLBlitCommandEncoder> blitCommandEncoder = [mHandle->memoryCommandBuffer blitCommandEncoder];
-    [blitCommandEncoder setLabel:TO_NSSTRING("UploadManager::CommitUpload")];
+    [blitCommandEncoder setLabel:TO_NSSTRING("UploadManager::Commit")];
     
     size_t sourceBytesPerRow = texture.GetDescriptor().size.width * Utils::GetTextureFormatSizeInBytes(texture.GetDescriptor().format);
     size_t sourceBytesPerImage = sourceBytesPerRow * texture.GetDescriptor().size.height;

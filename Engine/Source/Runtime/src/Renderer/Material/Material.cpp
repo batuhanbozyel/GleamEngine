@@ -134,7 +134,7 @@ ShaderResourceIndex Material::CreateInstance(const TArray<MaterialPropertyValue>
 	auto uploadManager = renderSystem->GetUploadManager();
 
 	auto instance = mInstanceDescriptorHeap.Allocate();
-	uploadManager->CommitUpload(mBuffer, instanceData.data(), mInstanceSize, mInstanceSize * instance.data);
+	uploadManager->Commit(mBuffer, instanceData.data(), mInstanceSize, mInstanceSize * instance.data);
 	return instance;
 }
 

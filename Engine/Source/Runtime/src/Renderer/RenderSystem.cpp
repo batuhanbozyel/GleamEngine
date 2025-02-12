@@ -108,7 +108,7 @@ void RenderSystem::Render(const World* world)
 		cmd->Begin();
 
         graph.Execute(cmd);
-		mUploadManager->Commit();
+		mUploadManager->Execute();
 
         // reset rt to swapchain
         if (mRenderTarget.IsValid())
