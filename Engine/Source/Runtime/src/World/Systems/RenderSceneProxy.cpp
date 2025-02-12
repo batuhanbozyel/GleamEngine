@@ -37,7 +37,8 @@ void RenderSceneProxy::OnUpdate(EntityManager& entityManager)
 		}
 	});
 	auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
-	renderSystem->GetUploadManager()->Flush();
+	renderSystem->GetUploadManager()->Execute();
+	renderSystem->GetUploadManager()->WaitUntilCompleted();
     
     // update active camera
     mActiveCamera = nullptr;

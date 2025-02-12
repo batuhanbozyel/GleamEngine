@@ -49,6 +49,7 @@ Heap GraphicsDevice::AllocateHeap(const HeapDescriptor& descriptor)
     heap.mAlignment = sizeAndAlign.align;
     
     [heap.mHandle setLabel:TO_NSSTRING(descriptor.name.c_str())];
+    [static_cast<MetalDevice*>(this)->GetResidencySet() addAllocation:heap.mHandle];
     return heap;
 }
 
@@ -81,6 +82,7 @@ Texture GraphicsDevice::AllocateTexture(const TextureDescriptor& descriptor)
                                                         slices:NSMakeRange(0, 1)];
     [baseTexture setLabel:TO_NSSTRING(descriptor.name.c_str())];
     [texture.mView setLabel:TO_NSSTRING(descriptor.name.c_str())];
+    [static_cast<MetalDevice*>(this)->GetResidencySet() addAllocation:texture.mHandle];
     
     if (descriptor.sampleCount > 1)
     {
@@ -152,6 +154,7 @@ Shader GraphicsDevice::GenerateShader(const TString& entryPoint, ShaderStage sta
 
 void GraphicsDevice::Dispose(Heap& heap)
 {
+    [static_cast<MetalDevice*>(this)->GetResidencySet() removeAllocation:heap.mHandle];
     heap.mHandle = nil;
 }
 
@@ -163,6 +166,7 @@ void GraphicsDevice::Dispose(Buffer& buffer)
 
 void GraphicsDevice::Dispose(Texture& texture)
 {
+    [static_cast<MetalDevice*>(this)->GetResidencySet() removeAllocation:texture.mHandle];
     ReleaseResourceView(texture.mResourceView);
     texture.mHandle = nil;
     texture.mView = nil;
@@ -208,8 +212,16 @@ MetalDevice::MetalDevice()
     
     mImageAcquireSemaphore = dispatch_semaphore_create(mMaxFramesInFlight);
 
+    // init MTLResidencySet
+    __autoreleasing NSError* error = nil;
+    MTLResidencySetDescriptor* residencySetDesc = [MTLResidencySetDescriptor new];
+    residencySetDesc.initialCapacity = 1024;
+    mResidencySet = [mHandle newResidencySetWithDescriptor:residencySetDesc error:&error];
+    GLEAM_ASSERT(mResidencySet, "Metal: Residency set creation failed.");
+    
     // init MTLCommandQueue
     mCommandPool = [mHandle newCommandQueue];
+    [mCommandPool addResidencySet:mResidencySet];
     
     // create descriptor heap
     mCbvSrvUavHeap = CreateDescriptorHeap(CBV_SRV_HEAP_SIZE);
@@ -232,6 +244,10 @@ MetalDevice::~MetalDevice()
     
     // Destroy descriptor heap
     mCbvSrvUavHeap.handle = nil;
+    
+    // Destroy residency set
+    [mCommandPool removeResidencySet:mResidencySet];
+    mResidencySet = nil;
 
     // Destroy command pool
     mCommandPool = nil;
@@ -341,6 +357,23 @@ id<MTLBuffer> MetalDevice::GetCbvSrvUavHeap() const
 id<MTLCommandQueue> MetalDevice::GetCommandPool() const
 {
     return mCommandPool;
+}
+
+id<MTLResidencySet> MetalDevice::GetResidencySet() const
+{
+    return mResidencySet;
+}
+
+id<MTLCommandBuffer> MetalDevice::AllocateCommandBuffer() const
+{
+    [mResidencySet commit];
+#ifdef GDEBUG
+    MTLCommandBufferDescriptor* descriptor = [MTLCommandBufferDescriptor new];
+    descriptor.errorOptions = MTLCommandBufferErrorOptionEncoderExecutionStatus;
+    return [mCommandPool commandBufferWithDescriptor:descriptor];
+#else
+    return [mCommandPool commandBuffer];
+#endif
 }
 
 #endif

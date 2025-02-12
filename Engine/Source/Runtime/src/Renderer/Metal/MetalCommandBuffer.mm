@@ -204,13 +204,7 @@ void CommandBuffer::Blit(const Texture& source, const Texture& destination) cons
 
 void CommandBuffer::Begin() const
 {
-#ifdef GDEBUG
-    MTLCommandBufferDescriptor* descriptor = [MTLCommandBufferDescriptor new];
-    descriptor.errorOptions = MTLCommandBufferErrorOptionEncoderExecutionStatus;
-    mHandle->commandBuffer = [mHandle->device->GetCommandPool() commandBufferWithDescriptor:descriptor];
-#else
-    mHandle->commandBuffer = [mHandle->device->GetCommandPool() commandBuffer];
-#endif
+    mHandle->commandBuffer = mHandle->device->AllocateCommandBuffer();
     mCommitted = false;
 }
 

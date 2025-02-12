@@ -39,7 +39,7 @@ void DebugRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 			mDevice->Dispose(mVertexHeap);
 		}
 
-		HeapDescriptor descriptor{ .name = "DebugVertex::Heap", .memoryType = MemoryType::CPU, .size = Math::RoundUpTo(bufferSize, 65536ull) };
+		HeapDescriptor descriptor{ .name = "DebugVertex::Heap", .memoryType = MemoryType::CPU, .size = Math::RoundUpTo(bufferSize, (size_t)65536ull) };
 		mVertexHeap = mDevice->CreateHeap(descriptor);
 		mVertexBuffer = mVertexHeap.CreateBuffer({ .name = "DebugVertex::Buffer", .size = descriptor.size });
 	}

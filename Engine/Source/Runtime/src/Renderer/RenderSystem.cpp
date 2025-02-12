@@ -103,12 +103,10 @@ void RenderSystem::Render(const World* world)
 
 		cmd->WaitUntilCompleted();
 		mDevice->DestroyPooledObjects(frameIdx);
-		mUploadManager->Flush();
 
 		cmd->Begin();
 
         graph.Execute(cmd);
-		mUploadManager->Execute();
 
         // reset rt to swapchain
         if (mRenderTarget.IsValid())

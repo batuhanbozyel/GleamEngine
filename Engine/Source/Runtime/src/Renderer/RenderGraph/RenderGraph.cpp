@@ -228,15 +228,8 @@ void RenderGraph::Execute(const CommandBuffer* cmd)
             
             cmd->BeginRenderPass(renderPassDesc, pass->name);
             cmd->SetViewport(renderPassDesc.size);
-            
-		#if defined(USE_METAL_RENDERER)
-            [cmd->GetActiveRenderPass() useHeap:heap.GetHandle()];
-            
-            for (auto& resource : pass->textureReads)
-            {
-                [cmd->GetActiveRenderPass() useResource:resource.node->texture.GetView() usage:MTLResourceUsageRead stages:MTLRenderStageVertex | MTLRenderStageFragment];
-            }
-		#elif defined(USE_DIRECTX_RENDERER)
+			
+		#if defined(USE_DIRECTX_RENDERER)
 			for (auto& resource : pass->textureReads)
 			{
 				DirectXTransitionManager::TransitionLayout(

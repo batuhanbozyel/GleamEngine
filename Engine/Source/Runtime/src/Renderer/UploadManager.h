@@ -15,7 +15,7 @@ public:
 
 	void Execute() const;
 	
-	void Flush() const;
+	void WaitUntilCompleted() const;
 	
 	void Commit(const Buffer& buffer, const void* data, size_t size, size_t offset = 0) const;
 

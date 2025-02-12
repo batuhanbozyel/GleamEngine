@@ -87,10 +87,7 @@ void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
             {
                 const auto& positionBuffer = batch.mesh->GetPositionBuffer();
                 const auto& interleavedBuffer = batch.mesh->GetInterleavedBuffer();
-            #ifdef USE_METAL_RENDERER
-                [cmd->GetActiveRenderPass() useResource:positionBuffer.GetHandle() usage : MTLResourceUsageRead stages : MTLRenderStageVertex];
-                [cmd->GetActiveRenderPass() useResource:interleavedBuffer.GetHandle() usage : MTLResourceUsageRead stages : MTLRenderStageVertex] ;
-            #elif defined(USE_DIRECTX_RENDERER)
+            #if defined(USE_DIRECTX_RENDERER)
                 DirectXTransitionManager::TransitionLayout(
                     static_cast<ID3D12GraphicsCommandList7*>(cmd->GetHandle()),
                     static_cast<ID3D12Resource*>(positionBuffer.GetHandle()),

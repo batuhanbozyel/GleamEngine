@@ -29,6 +29,10 @@ public:
     id<CAMetalDrawable> AcquireNextDrawable();
     
     id<MTLCommandQueue> GetCommandPool() const;
+	
+	id<MTLResidencySet> GetResidencySet() const;
+	
+	id<MTLCommandBuffer> AllocateCommandBuffer() const;
     
     virtual ShaderResourceIndex CreateResourceView(const Buffer& buffer) override;
     
@@ -53,6 +57,8 @@ private:
     CAMetalLayer* mSwapchain = nullptr;
 
     id<MTLCommandQueue> mCommandPool{ nil };
+	
+	id<MTLResidencySet> mResidencySet{ nil };
     
     MetalDescriptorHeap mCbvSrvUavHeap;
 

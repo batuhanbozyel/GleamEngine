@@ -107,7 +107,7 @@ void UploadManager::Execute() const
 	mHandle->memoryQueue->Submit();
 }
 
-void UploadManager::Flush() const
+void UploadManager::WaitUntilCompleted() const
 {
 	mHandle->stagingBufferOffset = 0;
 	WaitForID3D12Fence(mHandle->memoryFence, mHandle->waitFenceValue);
