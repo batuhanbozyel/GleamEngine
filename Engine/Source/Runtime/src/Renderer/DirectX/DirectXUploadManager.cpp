@@ -171,7 +171,7 @@ void UploadManager::Commit(const Buffer& buffer, const void* data, size_t size, 
 				&heapProperties,
 				D3D12_HEAP_FLAG_NONE,
 				&resourceDesc,
-				D3D12_RESOURCE_STATE_GENERIC_READ,
+				D3D12_RESOURCE_STATE_COPY_SOURCE,
 				nullptr,
 				IID_PPV_ARGS(&stagingBuffer)));
 			mHandle->tempBuffers.push_back(stagingBuffer);
@@ -252,7 +252,7 @@ void UploadManager::Commit(const Texture& texture, const void* data, size_t size
 			&heapProperties,
 			D3D12_HEAP_FLAG_NONE,
 			&resourceDesc,
-			D3D12_RESOURCE_STATE_GENERIC_READ,
+			D3D12_RESOURCE_STATE_COPY_SOURCE,
 			nullptr,
 			IID_PPV_ARGS(&stagingBuffer)));
 		mHandle->tempBuffers.push_back(stagingBuffer);

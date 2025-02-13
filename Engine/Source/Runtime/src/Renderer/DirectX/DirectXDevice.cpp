@@ -102,15 +102,18 @@ Texture GraphicsDevice::AllocateTexture(const TextureDescriptor& descriptor)
 	Texture texture(descriptor);
 
 	D3D12_RESOURCE_FLAGS flags = D3D12_RESOURCE_FLAG_NONE;
+	D3D12_RESOURCE_STATES initialState = D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE;
 	if (descriptor.usage & TextureUsage_Attachment)
 	{
 		if (Utils::IsColorFormat(descriptor.format))
 		{
 			flags |= D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
+			initialState = D3D12_RESOURCE_STATE_RENDER_TARGET;
 		}
 		else
 		{
 			flags |= D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
+			initialState = D3D12_RESOURCE_STATE_DEPTH_WRITE;
 		}
 	}
 
@@ -140,8 +143,7 @@ Texture GraphicsDevice::AllocateTexture(const TextureDescriptor& descriptor)
 		.VisibleNodeMask = 0
 	};
 
-	// TODO: Create MSAA texture
-	auto initialState = D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE;
+	// TODO: Create MSAA texture	
 	DX_CHECK(static_cast<ID3D12Device10*>(mHandle)->CreateCommittedResource(
 		&heapProperties,
 		D3D12_HEAP_FLAG_NONE,
@@ -152,7 +154,7 @@ Texture GraphicsDevice::AllocateTexture(const TextureDescriptor& descriptor)
 		&texture.mHandle
 	));
 	static_cast<ID3D12Resource*>(texture.mHandle)->SetName(StringUtils::Convert(descriptor.name).c_str());
-	DirectXTransitionManager::SetLayout(texture.mHandle, initialState);
+	DirectXTransitionManager::SetLayout(static_cast<ID3D12Resource*>(texture.mHandle), initialState);
 
 	// Create RTV or DSV for attachments
 	if (descriptor.usage & TextureUsage_Attachment)
