@@ -229,16 +229,6 @@ void RenderGraph::Execute(const CommandBuffer* cmd)
             cmd->BeginRenderPass(renderPassDesc, pass->name);
             cmd->SetViewport(renderPassDesc.size);
 			
-		#if defined(USE_DIRECTX_RENDERER)
-			for (auto& resource : pass->textureReads)
-			{
-				DirectXTransitionManager::TransitionLayout(
-					static_cast<ID3D12GraphicsCommandList7*>(cmd->GetHandle()),
-					static_cast<ID3D12Resource*>(resource.node->texture.GetHandle()),
-					D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE
-				);
-			}
-		#endif
             std::invoke(pass->callback, cmd);
             cmd->EndRenderPass();
         }

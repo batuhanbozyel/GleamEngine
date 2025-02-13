@@ -87,20 +87,7 @@ void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
             {
                 const auto& positionBuffer = batch.mesh->GetPositionBuffer();
                 const auto& interleavedBuffer = batch.mesh->GetInterleavedBuffer();
-            #if defined(USE_DIRECTX_RENDERER)
-                DirectXTransitionManager::TransitionLayout(
-                    static_cast<ID3D12GraphicsCommandList7*>(cmd->GetHandle()),
-                    static_cast<ID3D12Resource*>(positionBuffer.GetHandle()),
-                    D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE
-                );
-
-                DirectXTransitionManager::TransitionLayout(
-                    static_cast<ID3D12GraphicsCommandList7*>(cmd->GetHandle()),
-                    static_cast<ID3D12Resource*>(interleavedBuffer.GetHandle()),
-                    D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE
-                );
-            #endif
-
+				
                 MeshPassResources resources;
                 resources.positionBuffer = positionBuffer.GetResourceView();
                 resources.interleavedBuffer = interleavedBuffer.GetResourceView();

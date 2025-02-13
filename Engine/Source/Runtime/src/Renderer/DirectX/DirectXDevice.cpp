@@ -141,16 +141,18 @@ Texture GraphicsDevice::AllocateTexture(const TextureDescriptor& descriptor)
 	};
 
 	// TODO: Create MSAA texture
+	auto initialState = D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE;
 	DX_CHECK(static_cast<ID3D12Device10*>(mHandle)->CreateCommittedResource(
 		&heapProperties,
 		D3D12_HEAP_FLAG_NONE,
 		&resourceDesc,
-		D3D12_RESOURCE_STATE_COMMON,
+		initialState,
 		nullptr,
 		__uuidof(ID3D12Resource*),
 		&texture.mHandle
 	));
 	static_cast<ID3D12Resource*>(texture.mHandle)->SetName(StringUtils::Convert(descriptor.name).c_str());
+	DirectXTransitionManager::SetLayout(texture.mHandle, initialState);
 
 	// Create RTV or DSV for attachments
 	if (descriptor.usage & TextureUsage_Attachment)

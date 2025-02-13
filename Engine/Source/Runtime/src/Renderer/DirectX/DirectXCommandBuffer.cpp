@@ -197,7 +197,11 @@ void CommandBuffer::CopyBuffer(const NativeGraphicsHandle src, const NativeGraph
 	auto dstBuffer = static_cast<ID3D12Resource*>(dst);
 
 	DirectXTransitionManager::TransitionLayout(mHandle->commandList, dstBuffer, D3D12_RESOURCE_STATE_COPY_DEST);
+	DirectXTransitionManager::TransitionLayout(mHandle->commandList, srcBuffer, D3D12_RESOURCE_STATE_COPY_SOURCE);
+	
 	mHandle->commandList->CopyBufferRegion(dstBuffer, dstOffset, srcBuffer, srcOffset, size);
+	
+	DirectXTransitionManager::TransitionLayout(mHandle->commandList, srcBuffer, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
 	DirectXTransitionManager::TransitionLayout(mHandle->commandList, dstBuffer, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
 }
 
