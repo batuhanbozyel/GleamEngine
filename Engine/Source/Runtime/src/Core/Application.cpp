@@ -12,7 +12,6 @@
 
 #include "Renderer/Renderers/WorldRenderer.h"
 #include "Renderer/Renderers/PostProcessStack.h"
-#include "Renderer/Material/MaterialSystem.h"
 
 using namespace Gleam;
 
@@ -28,7 +27,6 @@ Application::Application(const Project& project)
 	
 	// init game instance subsystems
     auto assetManager = AddSubsystem<AssetManager>();
-	auto materialSystem = AddSubsystem<MaterialSystem>();
 	auto worldManager = AddSubsystem<WorldManager>();
 	worldManager->Configure(project.worldConfig);
     

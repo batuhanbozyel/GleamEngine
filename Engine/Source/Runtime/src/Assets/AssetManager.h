@@ -24,11 +24,23 @@ public:
     virtual void Shutdown() override;
 	
 	template<AssetType T>
-	const T* Load(const AssetReference& ref)
+	T* Get(const AssetReference& ref) const
 	{
 		if (auto it = mAssetCache.find(ref); it != mAssetCache.end())
 		{
-			return static_cast<const T*>(it->second.get());
+			return static_cast<T*>(it->second.get());
+		}
+		GLEAM_CORE_ERROR("Asset is not loaded for GUID: {0}", ref.guid.ToString());
+		GLEAM_ASSERT(false);
+		return nullptr;
+	}
+	
+	template<AssetType T>
+	T* Load(const AssetReference& ref)
+	{
+		if (auto it = mAssetCache.find(ref); it != mAssetCache.end())
+		{
+			return static_cast<T*>(it->second.get());
 		}
 		
 		constexpr auto typeHash = entt::type_hash<T>::value();
@@ -38,7 +50,7 @@ public:
 										   std::piecewise_construct,
 										   std::forward_as_tuple(ref),
 										   std::forward_as_tuple(asset));
-		return static_cast<const T*>(it->second.get());
+		return static_cast<T*>(it->second.get());
 	}
 	
 	template<typename T>

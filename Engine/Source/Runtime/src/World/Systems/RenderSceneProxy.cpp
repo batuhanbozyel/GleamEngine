@@ -8,7 +8,6 @@
 #include "World/World.h"
 #include "Assets/AssetManager.h"
 #include "Renderer/RenderSystem.h"
-#include "Renderer/Material/MaterialSystem.h"
 
 using namespace Gleam;
 
@@ -53,10 +52,10 @@ void RenderSceneProxy::OnUpdate(EntityManager& entityManager)
 
 void RenderSceneProxy::ForEach(BatchFn&& fn) const
 {
-	auto materialSystem = Globals::GameInstance->GetSubsystem<MaterialSystem>();
+	auto assetManager = Globals::GameInstance->GetSubsystem<AssetManager>();
     for (const auto& [materialRef, batch] : mStaticBatches)
     {
-		const auto& material = materialSystem->GetMaterial(materialRef);
+		auto material = assetManager->Get<Material>(materialRef);
         fn(material, batch);
     }
 }

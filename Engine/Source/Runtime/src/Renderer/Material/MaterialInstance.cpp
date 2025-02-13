@@ -7,10 +7,11 @@
 
 #include "gpch.h"
 #include "MaterialInstance.h"
-#include "MaterialSystem.h"
+#include "Material.h"
 
 #include "Core/Globals.h"
 #include "Core/Application.h"
+#include "Assets/AssetManager.h"
 
 using namespace Gleam;
 
@@ -24,16 +25,16 @@ MaterialInstance::MaterialInstance(const MaterialInstanceDescriptor& descriptor)
 		mPropertyValues.push_back(property.value);
 	}
 
-	auto materialSystem = Globals::GameInstance->GetSubsystem<MaterialSystem>();
-	auto& material = materialSystem->GetMaterial(mBaseMaterial);
-	mResourceView = material.CreateInstance(mPropertyValues);
+	auto assetManager = Globals::GameInstance->GetSubsystem<AssetManager>();
+	auto material = assetManager->Load<Material>(mBaseMaterial);
+	mResourceView = material->CreateInstance(mPropertyValues);
 }
 
 void MaterialInstance::Release()
 {
-	auto materialSystem = Globals::GameInstance->GetSubsystem<MaterialSystem>();
-	auto& material = materialSystem->GetMaterial(mBaseMaterial);
-	material.DestroyInstance(mResourceView);
+	auto assetManager = Globals::GameInstance->GetSubsystem<AssetManager>();
+	auto material = assetManager->Get<Material>(mBaseMaterial);
+	material->DestroyInstance(mResourceView);
 }
 
 void MaterialInstance::SetProperty(const TString& name, const MaterialPropertyValue& value)
