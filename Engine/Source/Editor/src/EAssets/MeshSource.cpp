@@ -45,18 +45,29 @@ bool MeshSource::Import(const Gleam::Filesystem::Path& path, const ImportSetting
 	
     Gleam::TArray<RawMaterial> rawMaterials;
 	Gleam::HashMap<const cgltf_mesh*, Gleam::RefCounted<MeshBaker>> meshes;
-	for (uint32_t i = 0; i < data->meshes_count; ++i)
+	for (uint32_t nodeIdx = 0; nodeIdx < data->nodes_count; ++nodeIdx)
 	{
-		const auto& mesh = data->meshes[i];
+		const auto& node = data->nodes[nodeIdx];
+		auto mesh = node.mesh;
+		if (mesh == nullptr)
+		{
+			continue;
+		}
+		
+		// mesh already imported
+		auto meshIt = meshes.find(mesh);
+		if (meshIt != meshes.end())
+		{
+			continue;
+		}
 		
 		Gleam::TArray<RawMesh> rawMeshes;
-		rawMeshes.reserve(mesh.primitives_count);
-		for(uint32_t meshIdx = 0; meshIdx < mesh.primitives_count; ++meshIdx)
+		for(uint32_t meshIdx = 0; meshIdx < mesh->primitives_count; ++meshIdx)
 		{
-			auto rawMesh = ProcessAttributes(mesh.primitives[meshIdx], settings);
+			auto rawMesh = ProcessAttributes(mesh->primitives[meshIdx], settings);
 			
 			RawMaterial rawMaterial;
-			if (auto mat = mesh.primitives[meshIdx].material; mat != nullptr)
+			if (auto mat = mesh->primitives[meshIdx].material; mat != nullptr)
 			{
 				rawMaterial = ProcessMaterial(*mat, settings);
 				if (mat->name)
@@ -65,14 +76,14 @@ bool MeshSource::Import(const Gleam::Filesystem::Path& path, const ImportSetting
 				}
 				else
 				{
-					if (mesh.name)
+					if (mesh->name)
 					{
-						rawMaterial.name = mesh.name;
+						rawMaterial.name = mesh->name;
 					}
 					else
 					{
 						Gleam::TStringStream ss;
-						ss << filename << i * data->meshes_count + meshIdx;
+						ss << filename << nodeIdx * data->nodes_count + meshIdx;
 						rawMaterial.name = ss.str();
 					}
 				}
@@ -95,17 +106,17 @@ bool MeshSource::Import(const Gleam::Filesystem::Path& path, const ImportSetting
 		}
 		
 		Gleam::MeshDescriptor descriptor = CombineMeshes(rawMeshes);
-		if (mesh.name)
+		if (mesh->name)
 		{
-			descriptor.name = mesh.name;
+			descriptor.name = mesh->name;
 		}
 		else
 		{
 			Gleam::TStringStream ss;
-			ss << filename << i;
+			ss << filename << nodeIdx;
 			descriptor.name = ss.str();
 		}
-		meshes[&mesh] = EmplaceBaker<MeshBaker>(descriptor);
+		meshes[mesh] = EmplaceBaker<MeshBaker>(descriptor);
 	}
 	
 	auto opaqueLitMaterialAsset = AssetManager()->GetAsset<Gleam::MaterialDescriptor>("Materials/OpaqueLit").reference;
@@ -144,7 +155,7 @@ bool MeshSource::Import(const Gleam::Filesystem::Path& path, const ImportSetting
 			auto textureSettings = TextureSource::ImportSettings();
 			if (ImportReference<TextureSource>(texturePath, textureSettings))
 			{
-				descriptor["BaseColorTexture"] = Registry()->GetAsset<Gleam::Texture2DDescriptor>(texture).reference;
+				descriptor["BaseColorTexture"] = Registry()->GetAsset<Gleam::Texture2DDescriptor>(texture.stem()).reference;
 			}
 		}
 
@@ -154,7 +165,7 @@ bool MeshSource::Import(const Gleam::Filesystem::Path& path, const ImportSetting
 			auto textureSettings = TextureSource::ImportSettings();
 			if (ImportReference<TextureSource>(texturePath, textureSettings))
 			{
-				descriptor["NormalTexture"] = Registry()->GetAsset<Gleam::Texture2DDescriptor>(texture).reference;
+				descriptor["NormalTexture"] = Registry()->GetAsset<Gleam::Texture2DDescriptor>(texture.stem()).reference;
 			}
 		}
 
@@ -164,7 +175,7 @@ bool MeshSource::Import(const Gleam::Filesystem::Path& path, const ImportSetting
 			auto textureSettings = TextureSource::ImportSettings();
 			if (ImportReference<TextureSource>(texturePath, textureSettings))
 			{
-				descriptor["MetallicRoughnessTexture"] = Registry()->GetAsset<Gleam::Texture2DDescriptor>(texture).reference;
+				descriptor["MetallicRoughnessTexture"] = Registry()->GetAsset<Gleam::Texture2DDescriptor>(texture.stem()).reference;
 			}
 		}
 
@@ -174,7 +185,7 @@ bool MeshSource::Import(const Gleam::Filesystem::Path& path, const ImportSetting
 			auto textureSettings = TextureSource::ImportSettings();
 			if (ImportReference<TextureSource>(texturePath, textureSettings))
 			{
-				descriptor["EmissiveTexture"] = Registry()->GetAsset<Gleam::Texture2DDescriptor>(texture).reference;
+				descriptor["EmissiveTexture"] = Registry()->GetAsset<Gleam::Texture2DDescriptor>(texture.stem()).reference;
 			}
 		}
 		materials.emplace_back(EmplaceBaker<MaterialInstanceBaker>(descriptor));
