@@ -7,9 +7,9 @@
 
 #pragma once
 #include "Shader.h"
+#include "Pipeline.h"
 #include "RendererConfig.h"
 #include "RenderPassDescriptor.h"
-#include "PipelineStateDescriptor.h"
 #include "Shaders/ShaderTypes.h"
 #include "RenderGraph/RenderGraph.h"
 #include "RenderGraph/RenderGraphBlackboard.h"

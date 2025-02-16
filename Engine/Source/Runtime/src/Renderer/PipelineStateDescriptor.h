@@ -3,13 +3,6 @@
 
 namespace Gleam {
 
-enum class PipelineBindPoint
-{
-    Graphics,
-    Compute,
-	RayTracing
-};
-
 enum class CompareFunction
 {
     Never,
@@ -92,7 +85,6 @@ struct PipelineStateDescriptor
     StencilState stencilState{};
     CullMode cullingMode = CullMode::Off;
 	PrimitiveTopology topology = PrimitiveTopology::Triangles;
-    PipelineBindPoint bindPoint = PipelineBindPoint::Graphics;
     bool alphaToCoverage = false;
 	bool wireframe = false;
 
@@ -103,10 +95,19 @@ struct PipelineStateDescriptor
                 stencilState == other.stencilState &&
                 cullingMode == other.cullingMode &&
                 topology == other.topology &&
-                bindPoint == other.bindPoint &&
                 alphaToCoverage == other.alphaToCoverage &&
 				wireframe == other.wireframe;
     }
+};
+
+struct GraphicsPipelineStateDescriptor : PipelineStateDescriptor
+{
+	TArray<TextureFormat> colorFormats = {};
+	TextureFormat depthFormat = TextureFormat::None;
+
+	TString vertexEntry{};
+	TString fragmentEntry{};
+	uint32_t sampleCount = 1;
 };
 
 namespace Utils {
@@ -168,14 +169,30 @@ struct std::hash<Gleam::PipelineStateDescriptor>
         Gleam::hash_combine(hash, descriptor.stencilState);
         Gleam::hash_combine(hash, descriptor.cullingMode);
         Gleam::hash_combine(hash, descriptor.topology);
-        Gleam::hash_combine(hash, descriptor.bindPoint);
         Gleam::hash_combine(hash, descriptor.alphaToCoverage);
 		Gleam::hash_combine(hash, descriptor.wireframe);
         return hash;
     }
 };
 
-GLEAM_ENUM(Gleam::PipelineBindPoint, Guid("8AC91A75-CBC6-4B14-9A78-A0B2E83ADFD6"))
+template <>
+struct std::hash<Gleam::GraphicsPipelineStateDescriptor>
+{
+	size_t operator()(const Gleam::GraphicsPipelineStateDescriptor& descriptor) const
+	{
+		std::size_t hash = std::hash<Gleam::PipelineStateDescriptor>()(descriptor);
+		Gleam::hash_combine(hash, descriptor.vertexEntry);
+		Gleam::hash_combine(hash, descriptor.fragmentEntry);
+		for (const auto colorFormat : descriptor.colorFormats)
+		{
+			Gleam::hash_combine(hash, colorFormat);
+		}
+		Gleam::hash_combine(hash, descriptor.depthFormat);
+		Gleam::hash_combine(hash, descriptor.sampleCount);
+		return hash;
+	}
+};
+
 GLEAM_ENUM(Gleam::CompareFunction, Guid("101AB027-6BC3-4323-8239-D26414769AE9"))
 GLEAM_ENUM(Gleam::StencilOp, Guid("A47E53E9-5241-4D0D-B92D-53252F432AA0"))
 GLEAM_ENUM(Gleam::CullMode, Guid("26E2A687-B6E2-40E1-9153-CDFA49036D5B"))
@@ -203,7 +220,14 @@ GLEAM_TYPE(Gleam::PipelineStateDescriptor, Guid("B7B4E150-285D-47CD-8116-DEE2CE7
 	GLEAM_FIELD(stencilState, Serializable())
 	GLEAM_FIELD(cullingMode, Serializable())
 	GLEAM_FIELD(topology, Serializable())
-	GLEAM_FIELD(bindPoint, Serializable())
 	GLEAM_FIELD(alphaToCoverage, Serializable())
 	GLEAM_FIELD(wireframe, Serializable())
+GLEAM_END
+
+GLEAM_TYPE(Gleam::GraphicsPipelineStateDescriptor, Guid("413BE6F8-3433-4B3A-8ABF-31F89EE7AA1F"), bases<Gleam::PipelineStateDescriptor>)
+	GLEAM_FIELD(colorFormats, Serializable())
+	GLEAM_FIELD(depthFormat, Serializable())
+	GLEAM_FIELD(vertexEntry, Serializable())
+	GLEAM_FIELD(fragmentEntry, Serializable())
+	GLEAM_FIELD(sampleCount, Serializable())
 GLEAM_END

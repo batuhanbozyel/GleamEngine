@@ -18,34 +18,31 @@
 #include "Renderer/Material/MaterialInstance.h"
 #include "World/Systems/RenderSceneProxy.h"
 
-#if defined(USE_METAL_RENDERER)
-#import <Metal/Metal.h>
-#elif defined(USE_DIRECTX_RENDERER)
-#include "../DirectX/DirectXTransitionManager.h"
-#endif
-
 using namespace Gleam;
 
 void WorldRenderer::OnCreate(GraphicsDevice* device)
 {
-    // TODO: create material pipelines
-	mShadingPipelines[0] = {
-		.blendState = {},
-		.depthState = {
+	GraphicsPipelineStateDescriptor pipelineDesc = {
+		PipelineStateDescriptor {
+			.blendState = {},
+			.depthState = {
 			.compareFunction = CompareFunction::Less,
 			.writeEnabled = true},
-		.stencilState = {},
-		.cullingMode = CullMode::Back,
-		.topology = PrimitiveTopology::Triangles,
-		.bindPoint = PipelineBindPoint::Graphics,
-		.alphaToCoverage = false,
-		.wireframe = false
+			.stencilState = {},
+			.cullingMode = CullMode::Back,
+			.topology = PrimitiveTopology::Triangles,
+			.alphaToCoverage = false,
+			.wireframe = false
+		}
 	};
-    
-    // TODO: create material shaders
-    mMeshVertexShader = device->CreateShader("meshVertexShader", ShaderStage::Vertex);
-    mMeshShadingFragmentShaders["OpaqueLit"] = device->CreateShader("SurfaceLit", ShaderStage::Fragment);
-	mMeshShadingFragmentShaders["TransparentLit"] = device->CreateShader("SurfaceLit", ShaderStage::Fragment);
+	pipelineDesc.colorFormats = { TextureFormat::R16G16B16A16_SFloat };
+	pipelineDesc.depthFormat = TextureFormat::D16_UNorm;
+	pipelineDesc.vertexEntry = "meshVertexShader";
+	pipelineDesc.fragmentEntry = "SurfaceLit";
+	pipelineDesc.sampleCount = Globals::Engine->GetConfiguration().renderer.sampleCount;
+
+    // TODO: create material pipelines
+	mShadingPipelines[0] = device->CreateGraphicsPipeline(pipelineDesc);
 }
 
 void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard)
@@ -78,9 +75,9 @@ void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
         sceneData.sceneProxy->ForEach([this, cmd, passData, sceneData](const Material* material, const TArray<MeshBatch>& batches)
         {
             const auto& materialBuffer = material->GetBuffer();
-            const auto& shader = mMeshShadingFragmentShaders[material->GetName()];
             const auto& pipeline = mShadingPipelines[material->GetPipelineHash()];
-            cmd->BindGraphicsPipeline(pipeline, mMeshVertexShader, shader);
+
+            cmd->BindGraphicsPipeline(pipeline);
 			cmd->SetConstantBuffer(sceneData.camera, 1);
 
             for (const auto& batch : batches)

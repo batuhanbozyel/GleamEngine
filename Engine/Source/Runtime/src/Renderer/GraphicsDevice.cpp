@@ -47,7 +47,23 @@ Shader GraphicsDevice::CreateShader(const TString& entryPoint, ShaderStage stage
             return shader;
         }
     }
-    return mShaderCache.emplace_back(GenerateShader(entryPoint, stage));
+    return mShaderCache.emplace_back(CompileShader(entryPoint, stage));
+}
+
+GraphicsPipelineHandle GraphicsDevice::CreateGraphicsPipeline(const GraphicsPipelineStateDescriptor& pipelineDesc)
+{
+	GraphicsPipelineHandle handle{ std::hash<GraphicsPipelineStateDescriptor>()(pipelineDesc) };
+	auto it = mGraphicsPipelineCache.find(handle);
+	if (it != mGraphicsPipelineCache.end())
+	{
+		return handle;
+	}
+
+	auto pipeline = CompileGraphicsPipeline(pipelineDesc);
+	mShaderPipelineReferences[pipelineDesc.vertexEntry].insert(handle);
+	mShaderPipelineReferences[pipelineDesc.fragmentEntry].insert(handle);
+	mGraphicsPipelineCache.emplace_hint(mGraphicsPipelineCache.end(), handle, pipeline);
+	return handle;
 }
 
 void GraphicsDevice::ReleaseHeap(const Heap& heap)
@@ -123,6 +139,19 @@ void GraphicsDevice::DestroyPooledObjects(uint32_t frameIndex)
 	{
 		return left.GetDescriptor().size < right.GetDescriptor().size;
 	});
+}
+
+const GraphicsPipeline& GraphicsDevice::GetGraphicsPipeline(GraphicsPipelineHandle handle) const
+{
+	auto it = mGraphicsPipelineCache.find(handle);
+	if (it != mGraphicsPipelineCache.end())
+	{
+		return it->second;
+	}
+
+	GLEAM_ASSERT(false);
+	static GraphicsPipeline invalid;
+	return invalid;
 }
 
 Texture GraphicsDevice::GetRenderSurface() const

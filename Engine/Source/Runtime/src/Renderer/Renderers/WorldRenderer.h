@@ -26,9 +26,7 @@ public:
 
 private:
     
-    Shader mMeshVertexShader;
-    HashMap<TString, Shader> mMeshShadingFragmentShaders;
-	HashMap<uint32_t, PipelineStateDescriptor> mShadingPipelines;
+	HashMap<uint32_t, GraphicsPipelineHandle> mShadingPipelines;
 
 };
 

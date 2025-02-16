@@ -41,9 +41,7 @@ public:
 
     void EndRenderPass() const;
 
-    void BindGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc,
-		const Shader& vertexShader,
-		const Shader& fragmentShader) const;
+    void BindGraphicsPipeline(const GraphicsPipeline& pipeline) const;
 
     void SetViewport(const Size& size) const;
     

@@ -3,7 +3,6 @@
 #ifdef USE_DIRECTX_RENDERER
 #include "DirectXUtils.h"
 #include "DirectXDevice.h"
-#include "DirectXPipelineStateManager.h"
 
 #include "imgui_impl_dx12.h"
 #include "Core/Engine.h"

@@ -6,6 +6,7 @@
 #include <filesystem>
 #include <memory>
 #include <optional>
+#include <regex>
 #include <mutex>
 #include <atomic>
 #include <utility>

@@ -10,8 +10,6 @@
 
 namespace Gleam {
 
-class Shader;
-
 class PostProcessStack : public IRenderer
 {
 public:
@@ -22,8 +20,7 @@ public:
     
 private:
     
-    Shader mFullscreenTriangleVertexShader;
-    Shader mTonemappingFragmentShader;
+	GraphicsPipelineHandle mPipeline;
     
 };
 

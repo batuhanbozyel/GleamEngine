@@ -3,7 +3,6 @@
 #ifdef USE_DIRECTX_RENDERER
 #include "Renderer/CommandBuffer.h"
 
-#include "DirectXPipelineStateManager.h"
 #include "DirectXTransitionManager.h"
 #include "DirectXDevice.h"
 #include "DirectXUtils.h"
@@ -14,7 +13,6 @@ struct CommandBuffer::Impl
 {
 	DirectXDevice* device = nullptr;
 
-	const DirectXPipeline* pipeline = nullptr;
 	ID3D12GraphicsCommandList7* commandList = nullptr;
 	ID3D12Fence* fence = nullptr;
 	uint64_t fenceValue = 0;
@@ -118,29 +116,15 @@ void CommandBuffer::EndRenderPass() const
 	mHandle->commandList->EndRenderPass();
 }
 
-void CommandBuffer::BindGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc,
-	const Shader& vertexShader,
-	const Shader& fragmentShader) const
+void CommandBuffer::BindGraphicsPipeline(const GraphicsPipeline& pipeline) const
 {
-	if (mHandle->hasDepthAttachment)
-	{
-		mHandle->pipeline = DirectXPipelineStateManager::GetGraphicsPipeline(pipelineDesc, mHandle->colorAttachments, mHandle->depthAttachment, vertexShader, fragmentShader, mHandle->sampleCount);
-	}
-	else
-	{
-		mHandle->pipeline = DirectXPipelineStateManager::GetGraphicsPipeline(pipelineDesc, mHandle->colorAttachments, vertexShader, fragmentShader, mHandle->sampleCount);
-	}
-	TStringStream pipelineName;
-	pipelineName << "GraphicsPipeline::" << vertexShader.GetEntryPoint() << "_" << fragmentShader.GetEntryPoint();
-	mHandle->pipeline->handle->SetName(StringUtils::Convert(pipelineName.str()).data());
-
 	const auto& cbvSrvUavHeap = mHandle->device->GetCbvSrvUavHeap();
 	mHandle->commandList->SetDescriptorHeaps(1, &cbvSrvUavHeap.handle);
-	mHandle->commandList->SetGraphicsRootSignature(DirectXPipelineStateManager::GetGlobalRootSignature());
+	mHandle->commandList->SetGraphicsRootSignature(mHandle->device->GetGlobalRootSignature());
 
-	mHandle->commandList->SetPipelineState(mHandle->pipeline->handle);
-	mHandle->commandList->OMSetStencilRef(pipelineDesc.stencilState.reference);
-	mHandle->commandList->IASetPrimitiveTopology(PrimitiveToplogyToD3D_PRIMITIVE_TOPOLOGY(pipelineDesc.topology));
+	mHandle->commandList->SetPipelineState(static_cast<ID3D12PipelineState*>(pipeline.GetHandle()));
+	mHandle->commandList->OMSetStencilRef(pipeline.GetDescriptor().stencilState.reference);
+	mHandle->commandList->IASetPrimitiveTopology(PrimitiveToplogyToD3D_PRIMITIVE_TOPOLOGY(pipeline.GetDescriptor().topology));
 }
 
 void CommandBuffer::SetViewport(const Size& size) const

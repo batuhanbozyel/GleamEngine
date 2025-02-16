@@ -164,3 +164,39 @@ void RenderSystem::ResetRenderTarget()
 {
     SetBackbuffer(mDevice->GetRenderSurface());
 }
+
+void RenderSystem::RecompileShader(const TString& entryPoint)
+{
+	//mCommandBuffers[mDevice->GetLastFrameIndex()]->WaitUntilCompleted();
+
+	for (auto& shader : mDevice->mShaderCache)
+	{
+		if (shader.GetEntryPoint() == entryPoint)
+		{
+			auto newShader = mDevice->CompileShader(shader.GetEntryPoint(), shader.GetStage());
+			if (newShader.IsValid())
+			{
+				mDevice->Dispose(shader);
+				shader = newShader;
+
+				for (auto pipelineHash : mDevice->mShaderPipelineReferences[entryPoint])
+				{
+					for (auto& [handle, pipeline] : mDevice->mGraphicsPipelineCache)
+					{
+						if (handle == pipelineHash)
+						{
+							auto newPipeline = mDevice->CompileGraphicsPipeline(pipeline.GetDescriptor());
+							if (newPipeline.IsValid())
+							{
+								mDevice->Dispose(pipeline);
+								pipeline = newPipeline;
+							}
+							break;
+						}
+					}
+				}
+			}
+			break;
+		}
+	}
+}

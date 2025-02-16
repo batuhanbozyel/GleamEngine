@@ -37,6 +37,8 @@ public:
 
     Shader CreateShader(const TString& entryPoint, ShaderStage stage);
 
+	GraphicsPipelineHandle CreateGraphicsPipeline(const GraphicsPipelineStateDescriptor& pipelineDesc);
+
     void ReleaseHeap(const Heap& heap);
 
 	void ReleaseBuffer(const Buffer& buffer);
@@ -49,6 +51,10 @@ public:
 
     void Dispose(Texture& texture);
 
+	void Dispose(Shader& shader);
+
+	void Dispose(GraphicsPipeline& pipeline);
+
 	Texture GetRenderSurface() const;
 
 	TextureFormat GetFormat() const;
@@ -60,6 +66,8 @@ public:
 	uint32_t GetFramesInFlight() const;
 
 	const Size& GetDrawableSize() const;
+
+	const GraphicsPipeline& GetGraphicsPipeline(GraphicsPipelineHandle handle) const;
     
     MemoryRequirements QueryMemoryRequirements(const HeapDescriptor& descriptor) const;
 
@@ -93,6 +101,10 @@ protected:
 
     TArray<Shader> mShaderCache;
 
+	HashMap<TString, HashSet<PipelineHandle>> mShaderPipelineReferences;
+
+	HashMap<GraphicsPipelineHandle, GraphicsPipeline> mGraphicsPipelineCache;
+
 	uint32_t mMaxFramesInFlight = 3;
 
 	uint32_t mCurrentFrameIndex = 0;
@@ -106,8 +118,10 @@ private:
     Heap AllocateHeap(const HeapDescriptor& descriptor);
     
     Texture AllocateTexture(const TextureDescriptor& descriptor);
-    
-    Shader GenerateShader(const TString& entryPoint, ShaderStage stage);
+
+	Shader CompileShader(const TString& entryPoint, ShaderStage stage);
+
+	GraphicsPipeline CompileGraphicsPipeline(const GraphicsPipelineStateDescriptor& pipelineDesc);
 
 };
 

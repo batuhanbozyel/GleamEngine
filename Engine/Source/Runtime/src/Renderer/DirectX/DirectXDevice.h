@@ -67,6 +67,8 @@ public:
 
 	ID3D12CommandQueue* GetCopyQueue() const;
 
+	ID3D12RootSignature* GetGlobalRootSignature() const;
+
 	void WaitDeviceIdle() const;
 
 	void WaitQueueIdle(ID3D12CommandQueue* queue) const;
@@ -109,11 +111,13 @@ private:
 
 	ID3D12Fence* mDirectFence = nullptr;
 
-	ID3D12CommandQueue* mDirectQueue;
+	ID3D12CommandQueue* mDirectQueue = nullptr;
 
-	ID3D12CommandQueue* mComputeQueue;
+	ID3D12CommandQueue* mComputeQueue = nullptr;
 
-	ID3D12CommandQueue* mCopyQueue;
+	ID3D12CommandQueue* mCopyQueue = nullptr;
+
+	ID3D12RootSignature* mRootSignature = nullptr;
 
 	struct Context
 	{

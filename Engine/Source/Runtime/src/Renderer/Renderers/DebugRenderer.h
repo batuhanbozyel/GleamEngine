@@ -6,8 +6,6 @@
 namespace Gleam {
 
 class Mesh;
-class Shader;
-enum class PrimitiveTopology;
 
 struct DebugLine
 {
@@ -57,9 +55,11 @@ private:
 	TArray<DebugMesh> mDebugMeshes;
     TArray<DebugMesh> mDepthDebugMeshes;
 
-	Shader mPrimitiveVertexShader;
-	Shader mMeshVertexShader;
-	Shader mFragmentShader;
+	GraphicsPipelineHandle mPrimitivePipeline;
+	GraphicsPipelineHandle mPrimitiveDepthPipeline;
+
+	GraphicsPipelineHandle mMeshPipeline;
+	GraphicsPipelineHandle mMeshDepthPipeline;
 
 	GraphicsDevice* mDevice = nullptr;
 

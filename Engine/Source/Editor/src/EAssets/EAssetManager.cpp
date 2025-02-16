@@ -164,6 +164,12 @@ void EAssetManager::Initialize(Gleam::World* world)
 				auto settings = MaterialSource::ImportSettings();
 				materialSource.Import(entry, settings);
 				Import(mAssetDirectory / "Materials", materialSource);
+
+				auto assetManager = Gleam::Globals::GameInstance->GetSubsystem<Gleam::AssetManager>();
+				auto material = assetManager->LoadDescriptor<Gleam::MaterialDescriptor>(item.reference);
+
+				auto renderSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::RenderSystem>();
+				renderSystem->RecompileShader(material.surfaceShader);
 			}
         }
     }, true);

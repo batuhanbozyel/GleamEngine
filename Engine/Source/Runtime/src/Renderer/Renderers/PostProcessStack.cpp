@@ -17,8 +17,11 @@ using namespace Gleam;
 
 void PostProcessStack::OnCreate(GraphicsDevice* device)
 {
-    mFullscreenTriangleVertexShader = device->CreateShader("fullscreenTriangleVertexShader", ShaderStage::Vertex);
-    mTonemappingFragmentShader = device->CreateShader("tonemappingFragmentShader", ShaderStage::Fragment);
+	GraphicsPipelineStateDescriptor pipelineState;
+	pipelineState.colorFormats = { device->GetRenderSurface().GetDescriptor().format };
+	pipelineState.vertexEntry = "fullscreenTriangleVertexShader";
+	pipelineState.fragmentEntry = "tonemappingFragmentShader";
+	mPipeline = device->CreateGraphicsPipeline(pipelineState);
 }
 
 void PostProcessStack::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard)
@@ -43,8 +46,7 @@ void PostProcessStack::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard
         TonemapUniforms uniforms;
         uniforms.sceneRT = passData.sceneTarget;
         
-        PipelineStateDescriptor pipelineDesc;
-        cmd->BindGraphicsPipeline(pipelineDesc, mFullscreenTriangleVertexShader, mTonemappingFragmentShader);
+        cmd->BindGraphicsPipeline(mPipeline);
         cmd->SetPushConstant(uniforms);
         cmd->Draw(3);
     });

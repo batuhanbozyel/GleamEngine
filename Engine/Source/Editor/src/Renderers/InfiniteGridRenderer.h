@@ -13,8 +13,7 @@ public:
 
 private:
     
-    Gleam::Shader mVertexShader;
-    Gleam::Shader mFragmentShader;
+    Gleam::GraphicsPipelineHandle mPipeline;
 
 };
 

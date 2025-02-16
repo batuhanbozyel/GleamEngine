@@ -45,6 +45,8 @@ public:
     void SetBackbuffer(const Texture& texture);
     
     void ResetRenderTarget();
+
+	void RecompileShader(const TString& entryPoint);
     
     template<RendererType T, class...Args>
     T* AddRenderer(Args&&... args)
