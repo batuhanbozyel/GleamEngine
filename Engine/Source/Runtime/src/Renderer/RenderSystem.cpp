@@ -151,12 +151,14 @@ const Texture& RenderSystem::GetRenderTarget() const
 
 void RenderSystem::SetBackbuffer(const TextureDescriptor& descriptor)
 {
+	GLEAM_ASSERT(descriptor.format == mDevice->GetRenderSurface().GetDescriptor().format, "Backbuffer format must match with render surface format.");
     mRenderTarget = mDevice->CreateTexture(descriptor);
     GLEAM_ASSERT(mRenderTarget.IsValid());
 }
 
 void RenderSystem::SetBackbuffer(const Texture& texture)
 {
+	GLEAM_ASSERT(texture.GetDescriptor().format == mDevice->GetRenderSurface().GetDescriptor().format, "Backbuffer format must match with render surface format.");
     mRenderTarget = texture;
 }
 
@@ -167,7 +169,7 @@ void RenderSystem::ResetRenderTarget()
 
 void RenderSystem::RecompileShader(const TString& entryPoint)
 {
-	//mCommandBuffers[mDevice->GetLastFrameIndex()]->WaitUntilCompleted();
+	mCommandBuffers[mDevice->GetLastFrameIndex()]->WaitUntilCompleted();
 
 	for (auto& shader : mDevice->mShaderCache)
 	{
