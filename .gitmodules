@@ -28,3 +28,6 @@
 [submodule "Engine/ThirdParty/refl-cpp"]
 	path = Engine/ThirdParty/refl-cpp
 	url = https://github.com/veselink1/refl-cpp
+[submodule "Engine/ThirdParty/MikkTSpace"]
+	path = Engine/ThirdParty/MikkTSpace
+	url = https://github.com/mmikk/MikkTSpace

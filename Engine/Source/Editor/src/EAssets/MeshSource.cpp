@@ -12,6 +12,8 @@
 #define CGLTF_IMPLEMENTATION
 #include <cgltf.h>
 
+#include <mikktspace.h>
+
 using namespace GEditor;
 
 static RawMesh ProcessAttributes(const cgltf_primitive& primitive, const MeshSource::ImportSettings& settings);
@@ -21,6 +23,60 @@ static Gleam::MeshDescriptor CombineMeshes(const Gleam::TArray<RawMesh>& meshes)
 static Gleam::TArray<Gleam::InterleavedMeshVertex> InterleaveMeshVertices(const RawMesh& mesh);
 static Gleam::BoundingBox CalculateBounds(const Gleam::TArray<Gleam::Float3>& positions);
 
+static Gleam::TArray<Gleam::Float4> GenerateTangents(const RawMesh& mesh);
+
+struct MikkTInterface
+{
+	const RawMesh* mesh;
+	Gleam::TArray<Gleam::Float4> tangents;
+
+	static int getNumFaces(const SMikkTSpaceContext* context)
+	{
+		auto userData = static_cast<MikkTInterface*>(context->m_pUserData);
+		return static_cast<int>(userData->mesh->indices.size() / 3);
+	}
+
+	static int getNumVerticesOfFace(const SMikkTSpaceContext* context, int faceIdx)
+	{
+		return 3; // We're always using triangles
+	}
+
+	static void getPosition(const SMikkTSpaceContext* context, float outpos[], int faceIdx, int vertIdx)
+	{
+		auto* userData = static_cast<MikkTInterface*>(context->m_pUserData);
+		int idx = userData->mesh->indices[faceIdx * 3 + vertIdx];
+		const auto& pos = userData->mesh->positions[idx];
+		outpos[0] = pos.x;
+		outpos[1] = pos.y;
+		outpos[2] = pos.z;
+	}
+
+	static void getNormal(const SMikkTSpaceContext* context, float outnormal[], int faceIdx, int vertIdx)
+	{
+		auto* userData = static_cast<MikkTInterface*>(context->m_pUserData);
+		int idx = userData->mesh->indices[faceIdx * 3 + vertIdx];
+		const auto& normal = userData->mesh->normals[idx];
+		outnormal[0] = normal.x;
+		outnormal[1] = normal.y;
+		outnormal[2] = normal.z;
+	}
+
+	static void getTexCoord(const SMikkTSpaceContext* context, float outuv[], int faceIdx, int vertIdx)
+	{
+		auto* userData = static_cast<MikkTInterface*>(context->m_pUserData);
+		int idx = userData->mesh->indices[faceIdx * 3 + vertIdx];
+		const auto& uv = userData->mesh->texCoords[idx];
+		outuv[0] = uv.x;
+		outuv[1] = uv.y;
+	}
+
+	static void setTSpaceBasic(const SMikkTSpaceContext* context, const float tangent[], float sign, int faceIdx, int vertIdx)
+	{
+		auto* userData = static_cast<MikkTInterface*>(context->m_pUserData);
+		int idx = userData->mesh->indices[faceIdx * 3 + vertIdx];
+		userData->tangents[idx] = Gleam::Float4(tangent[0], tangent[1], tangent[2], sign);
+	}
+};
 bool MeshSource::Import(const Gleam::Filesystem::Path& path, const ImportSettings& settings)
 {
 	Gleam::TString gltfPath = path.string();
@@ -290,16 +346,16 @@ RawMesh ProcessAttributes(const cgltf_primitive& primitive, const MeshSource::Im
     {
         mesh.normals.resize(vertexCount, Gleam::Float3(0.0f, 0.0f, 1.0f));
     }
+	if (mesh.texCoords.empty())
+	{
+		mesh.texCoords.resize(vertexCount, Gleam::Float2::zero);
+	}
 
 	if (mesh.tangents.empty())
 	{
-		mesh.tangents.resize(vertexCount, Gleam::Float4(1.0f, 0.0f, 0.0f, 1.0f));
+		mesh.tangents = std::move(GenerateTangents(mesh));
 	}
-    
-    if (mesh.texCoords.empty())
-    {
-        mesh.texCoords.resize(vertexCount, Gleam::Float2::zero);
-    }
+
     return mesh;
 }
 
@@ -425,4 +481,31 @@ Gleam::BoundingBox CalculateBounds(const Gleam::TArray<Gleam::Float3>& positions
         bounds.max = Gleam::Math::Max(bounds.max, position);
     }
     return bounds;
+}
+
+Gleam::TArray<Gleam::Float4> GenerateTangents(const RawMesh& mesh)
+{
+	MikkTInterface mikkT;
+	mikkT.mesh = &mesh;
+	mikkT.tangents.resize(mesh.positions.size());
+
+	SMikkTSpaceInterface mikktInterface = {};
+	mikktInterface.m_getNumFaces = MikkTInterface::getNumFaces;
+	mikktInterface.m_getNumVerticesOfFace = MikkTInterface::getNumVerticesOfFace;
+	mikktInterface.m_getPosition = MikkTInterface::getPosition;
+	mikktInterface.m_getNormal = MikkTInterface::getNormal;
+	mikktInterface.m_getTexCoord = MikkTInterface::getTexCoord;
+	mikktInterface.m_setTSpaceBasic = MikkTInterface::setTSpaceBasic;
+
+	SMikkTSpaceContext context = {};
+	context.m_pInterface = &mikktInterface;
+	context.m_pUserData = &mikkT;
+
+	if (genTangSpaceDefault(&context))
+	{
+		return mikkT.tangents;
+	}
+
+	Gleam::TArray<Gleam::Float4> defaultTangents(mesh.positions.size(), Gleam::Float4(1.0f, 0.0f, 0.0f, 1.0f));
+	return defaultTangents;
 }
