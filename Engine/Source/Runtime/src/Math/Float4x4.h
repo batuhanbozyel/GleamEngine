@@ -19,10 +19,19 @@ struct Float4x4
     FORCE_INLINE constexpr Float4x4& operator=(Float4x4&&) noexcept = default;
     FORCE_INLINE constexpr Float4x4& operator=(const Float4x4&) = default;
 
+	constexpr Float4x4(float mat[16])
+		: m{mat[0], mat[1], mat[2], mat[3],
+			mat[4], mat[5], mat[6], mat[7],
+			mat[8], mat[9], mat[10], mat[11],
+			mat[12], mat[13], mat[14], mat[15]}
+	{
+
+	}
+
     constexpr Float4x4(float m00, float m01, float m02, float m03,
-                      float m10, float m11, float m12, float m13,
-                      float m20, float m21, float m22, float m23,
-                      float m30, float m31, float m32, float m33)
+                       float m10, float m11, float m12, float m13,
+                       float m20, float m21, float m22, float m23,
+                       float m30, float m31, float m32, float m33)
         : m{m00, m01, m02, m03,
             m10, m11, m12, m13,
             m20, m21, m22, m23,

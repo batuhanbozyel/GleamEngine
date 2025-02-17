@@ -23,6 +23,7 @@ static Gleam::MeshDescriptor CombineMeshes(const Gleam::TArray<RawMesh>& meshes)
 static Gleam::TArray<Gleam::InterleavedMeshVertex> InterleaveMeshVertices(const RawMesh& mesh);
 static Gleam::BoundingBox CalculateBounds(const Gleam::TArray<Gleam::Float3>& positions);
 
+static Gleam::TArray<Gleam::Float3> GenerateSmoothNormals(const RawMesh& mesh);
 static Gleam::TArray<Gleam::Float4> GenerateTangents(const RawMesh& mesh);
 
 struct MikkTInterface
@@ -77,6 +78,7 @@ struct MikkTInterface
 		userData->tangents[idx] = Gleam::Float4(tangent[0], tangent[1], tangent[2], sign);
 	}
 };
+
 bool MeshSource::Import(const Gleam::Filesystem::Path& path, const ImportSettings& settings)
 {
 	Gleam::TString gltfPath = path.string();
@@ -251,9 +253,36 @@ bool MeshSource::Import(const Gleam::Filesystem::Path& path, const ImportSetting
 	if (data->nodes_count > 0)
 	{
 		auto world = Gleam::CreateRef<Gleam::World>(filename);
+		Gleam::HashMap<const cgltf_node*, Gleam::EntityHandle> nodeToEntity;
 		for (uint32_t i = 0; i < data->nodes_count; ++i)
 		{
 			const auto& node = data->nodes[i];
+
+			Gleam::TString entityName = node.name ? node.name : (filename + std::to_string(i));
+			auto& entity = world->GetEntityManager().CreateEntity(entityName, Gleam::Guid::NewGuid());
+			nodeToEntity[&node] = entity;
+
+			if (node.has_translation)
+			{
+				entity.SetTranslation(Gleam::Float3(node.translation[0], node.translation[1], node.translation[2]));
+			}
+
+			if (node.has_rotation)
+			{
+				entity.SetRotation(Gleam::Quaternion(node.rotation[3], node.rotation[0], node.rotation[1], node.rotation[2]));
+			}
+
+			if (node.has_scale)
+			{
+				entity.SetScale(Gleam::Float3(node.scale[0], node.scale[1], node.scale[2]));
+			}
+
+			if (node.has_matrix)
+			{
+				Gleam::Float4x4 transform((float*)node.matrix);
+				entity.SetLocalTransform(transform);
+			}
+
 			if (node.mesh)
 			{
 				const auto& meshBaker = meshes[node.mesh];
@@ -268,26 +297,24 @@ bool MeshSource::Import(const Gleam::Filesystem::Path& path, const ImportSetting
 					const auto& materialItem = Registry()->GetAsset<Gleam::MaterialInstanceDescriptor>(materialBaker->Filename());
 					materialRefs.push_back(materialItem.reference);
 				}
-
-				auto& entity = world->GetEntityManager().CreateEntity(meshDesc.name, Gleam::Guid::NewGuid());
 				entity.AddComponent<Gleam::MeshRenderer>(meshItem.reference, materialRefs);
-
-				if (node.has_translation)
-				{
-					entity.SetTranslation(Gleam::Float3(node.translation[0], node.translation[1], node.translation[2]));
-				}
-				
-				if (node.has_rotation)
-				{
-					entity.SetRotation(Gleam::Quaternion(node.rotation[3], node.rotation[0], node.rotation[1], node.rotation[2]));
-				}
-				
-				if (node.has_scale)
-				{
-					entity.SetScale(Gleam::Float3(node.scale[0], node.scale[1], node.scale[2]));
-				}
 			}
 		}
+
+		for (uint32_t i = 0; i < data->nodes_count; ++i)
+		{
+			const auto& node = data->nodes[i];
+			auto entity = nodeToEntity[&node];
+
+			for (uint32_t childIdx = 0; childIdx < node.children_count; ++childIdx)
+			{
+				const auto* childNode = node.children[childIdx];
+				auto child = nodeToEntity[childNode];
+				auto& childEntity = world->GetEntityManager().GetComponent<Gleam::Entity>(child);
+				childEntity.SetParent(entity);
+			}
+		}
+
 		EmplaceBaker<PrefabBaker>(world);
 	}
 
@@ -341,14 +368,14 @@ RawMesh ProcessAttributes(const cgltf_primitive& primitive, const MeshSource::Im
         }
     }
     
-    // TODO: calculate normals
-    if (mesh.normals.empty())
-    {
-        mesh.normals.resize(vertexCount, Gleam::Float3(0.0f, 0.0f, 1.0f));
-    }
 	if (mesh.texCoords.empty())
 	{
 		mesh.texCoords.resize(vertexCount, Gleam::Float2::zero);
+	}
+
+	if (mesh.normals.empty())
+	{
+		mesh.normals = std::move(GenerateSmoothNormals(mesh));
 	}
 
 	if (mesh.tangents.empty())
@@ -481,6 +508,44 @@ Gleam::BoundingBox CalculateBounds(const Gleam::TArray<Gleam::Float3>& positions
         bounds.max = Gleam::Math::Max(bounds.max, position);
     }
     return bounds;
+}
+
+Gleam::TArray<Gleam::Float3> GenerateSmoothNormals(const RawMesh& mesh)
+{
+	Gleam::TArray<Gleam::Float3> normals(mesh.positions.size());
+
+	for (size_t i = 0; i < mesh.indices.size(); i += 3)
+	{
+		uint32_t i0 = mesh.indices[i];
+		uint32_t i1 = mesh.indices[i + 1];
+		uint32_t i2 = mesh.indices[i + 2];
+
+		const Gleam::Float3& v0 = mesh.positions[i0];
+		const Gleam::Float3& v1 = mesh.positions[i1];
+		const Gleam::Float3& v2 = mesh.positions[i2];
+
+		Gleam::Float3 edge1 = v1 - v0;
+		Gleam::Float3 edge2 = v2 - v0;
+		Gleam::Float3 faceNormal = Gleam::Math::Cross(edge1, edge2);
+
+		normals[i0] += faceNormal;
+		normals[i1] += faceNormal;
+		normals[i2] += faceNormal;
+	}
+
+	for (auto& normal : normals)
+	{
+		if (Gleam::Math::LengthSquared(normal) > Gleam::Math::Epsilon)
+		{
+			normal = Gleam::Math::Normalize(normal);
+		}
+		else
+		{
+			normal = Gleam::Float3(0.0f, 0.0f, 1.0f);
+		}
+	}
+
+	return normals;
 }
 
 Gleam::TArray<Gleam::Float4> GenerateTangents(const RawMesh& mesh)

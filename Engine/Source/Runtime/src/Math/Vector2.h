@@ -332,6 +332,12 @@ NO_DISCARD FORCE_INLINE constexpr T Length(const Vector2<T>& vec)
 }
 
 template<typename T>
+NO_DISCARD FORCE_INLINE constexpr T LengthSquared(const Vector2<T>& vec)
+{
+	return Dot(vec, vec);
+}
+
+template<typename T>
 NO_DISCARD FORCE_INLINE constexpr Vector2<T> Normalize(const Vector2<T>& vec)
 {
     return vec / Length(vec);
