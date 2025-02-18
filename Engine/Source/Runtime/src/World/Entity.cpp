@@ -21,23 +21,22 @@ void Entity::SetParent(const EntityHandle parent)
 		auto& parentEntity = mRegistry->get<Entity>(mParent);
 		parentEntity.mChildren.push_back(mHandle);
 	}
+	UpdateTransform();
 }
 
 void Entity::UpdateTransform() const
 {
-	if (RequiresTransformUpdate())
+	mIsTransformDirty = false;
+	mLocalTransform.matrix = Float4x4::TRS(mLocalTransform.position, mLocalTransform.rotation, mLocalTransform.scale);
+	if (HasParent())
 	{
-		mIsTransformDirty = false;
-		mLocalTransform.matrix = Float4x4::TRS(mLocalTransform.position, mLocalTransform.rotation, mLocalTransform.scale);
-		if (HasParent())
-		{
-			auto& parent = mRegistry->get<Entity>(mParent);
-			mGlobalTransform.matrix = parent.GetWorldTransform().matrix * mLocalTransform.matrix;
-		}
-		else
-		{
-			mGlobalTransform.matrix = mLocalTransform.matrix;
-		}
+		auto& parent = mRegistry->get<Entity>(mParent);
+		mGlobalTransform.matrix = parent.GetWorldTransform().matrix * mLocalTransform.matrix;
+		Math::Decompose(mGlobalTransform.matrix, mGlobalTransform.position, mGlobalTransform.rotation, mGlobalTransform.scale);
+	}
+	else
+	{
+		mGlobalTransform = mLocalTransform;
 	}
 }
 
@@ -68,15 +67,12 @@ void Entity::Translate(const Float3& translation)
 	{
 		auto& childEntity = mRegistry->get<Entity>(child);
 		childEntity.mGlobalTransform.position += translation;
-		childEntity.mGlobalTransform.matrix.m[12] += translation.x;
-		childEntity.mGlobalTransform.matrix.m[13] += translation.y;
-		childEntity.mGlobalTransform.matrix.m[14] += translation.z;
+		childEntity.SetDirty();
 	}
 }
 
 void Entity::Rotate(const Quaternion& rotation)
 {
-	mIsTransformDirty = true;
 	mLocalTransform.rotation *= rotation;
 	mGlobalTransform.rotation *= rotation;
 
@@ -85,6 +81,7 @@ void Entity::Rotate(const Quaternion& rotation)
 		auto& childEntity = mRegistry->get<Entity>(child);
 		childEntity.mGlobalTransform.rotation *= rotation;
 	}
+	SetDirty();
 }
 
 void Entity::Rotate(const Float3& eulers)
@@ -99,7 +96,6 @@ void Entity::Rotate(float xAngle, float yAngle, float zAngle)
 
 void Entity::Scale(const Float3& scale)
 {
-	mIsTransformDirty = true;
 	mLocalTransform.scale *= scale;
 	mGlobalTransform.scale *= scale;
 
@@ -108,6 +104,7 @@ void Entity::Scale(const Float3& scale)
 		auto& childEntity = mRegistry->get<Entity>(child);
 		childEntity.mGlobalTransform.scale *= scale;
 	}
+	SetDirty();
 }
 
 void Entity::Scale(float scale)
@@ -131,16 +128,13 @@ void Entity::SetTranslation(const Float3& translation)
 	for (auto child : mChildren)
 	{
 		auto& childEntity = mRegistry->get<Entity>(child);
-		childEntity.mGlobalTransform.position = childEntity.mGlobalTransform.position - childEntity.mLocalTransform.position + translation;
-		childEntity.mGlobalTransform.matrix.m[12] = childEntity.mGlobalTransform.position.x;
-		childEntity.mGlobalTransform.matrix.m[13] = childEntity.mGlobalTransform.position.y;
-		childEntity.mGlobalTransform.matrix.m[14] = childEntity.mGlobalTransform.position.z;
+		childEntity.mGlobalTransform.position = childEntity.mLocalTransform.position + mGlobalTransform.position;
+		childEntity.SetDirty();
 	}
 }
 
 void Entity::SetRotation(const Quaternion& rotation)
 {
-	mIsTransformDirty = true;
 	mLocalTransform.rotation = rotation;
 
 	if (HasParent())
@@ -158,11 +152,11 @@ void Entity::SetRotation(const Quaternion& rotation)
 		auto& childEntity = mRegistry->get<Entity>(child);
 		childEntity.mGlobalTransform.rotation = GetWorldRotation() * childEntity.mLocalTransform.rotation;
 	}
+	SetDirty();
 }
 
 void Entity::SetScale(const Float3& scale)
 {
-	mIsTransformDirty = true;
 	mLocalTransform.scale = scale;
 
 	if (HasParent())
@@ -179,5 +173,38 @@ void Entity::SetScale(const Float3& scale)
 	{
 		auto& childEntity = mRegistry->get<Entity>(child);
 		childEntity.mGlobalTransform.scale = GetWorldScale() * childEntity.mLocalTransform.scale;
+	}
+	SetDirty();
+}
+
+void Entity::SetLocalTransform(const Float4x4& transform)
+{
+	mLocalTransform.matrix = transform;
+	Math::Decompose(transform, mLocalTransform.position, mLocalTransform.rotation, mLocalTransform.scale);
+
+	if (HasParent())
+	{
+		auto& parent = mRegistry->get<Entity>(mParent);
+		mGlobalTransform.matrix = parent.GetWorldTransform().matrix * mLocalTransform.matrix;
+	}
+	else
+	{
+		mGlobalTransform.matrix = mLocalTransform.matrix;
+	}
+
+	for (auto child : mChildren)
+	{
+		auto& childEntity = mRegistry->get<Entity>(child);
+		childEntity.SetDirty();
+	}
+}
+
+void Entity::SetDirty()
+{
+	mIsTransformDirty = true;
+	for (auto child : mChildren)
+	{
+		auto& childEntity = mRegistry->get<Entity>(child);
+		childEntity.SetDirty();
 	}
 }

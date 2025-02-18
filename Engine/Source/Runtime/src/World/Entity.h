@@ -135,15 +135,23 @@ public:
 
 	void SetScale(const Float3& scale);
 
+	void SetLocalTransform(const Float4x4& transform);
+
 	NO_DISCARD FORCE_INLINE const Transform& GetWorldTransform() const
 	{
-		UpdateTransform();
+		if (RequiresTransformUpdate())
+		{
+			UpdateTransform();
+		}
 		return mGlobalTransform;
 	}
 
 	NO_DISCARD FORCE_INLINE const Transform& GetLocalTransform() const
 	{
-		UpdateTransform();
+		if (RequiresTransformUpdate())
+		{
+			UpdateTransform();
+		}
 		return mLocalTransform;
 	}
 
@@ -202,12 +210,14 @@ private:
 	void UpdateTransform() const;
 
 	bool RequiresTransformUpdate() const;
+
+	void SetDirty();
     
     bool mActive = true;
 
 	Transform mLocalTransform;
 
-	Transform mGlobalTransform;
+	mutable Transform mGlobalTransform;
 	
 	TString mName = "Entity";
 
