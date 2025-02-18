@@ -17,7 +17,6 @@ void PrefabBaker::Bake(const Gleam::Filesystem::Path& directory, const AssetItem
 
 	Gleam::Prefab prefab;
 	prefab.name = mWorld->name;
-	prefab.entityCount = mWorld->GetEntityManager().GetEntityCount();
 	prefab.Serialize(mWorld->GetEntityManager(), file.GetStream());
 }
 

@@ -137,6 +137,31 @@ NO_DISCARD FORCE_INLINE constexpr Quaternion Inverse(const Quaternion& q)
 {
     return q.Conjugate() / Math::Max(Dot(q, q), Math::Epsilon);
 }
+
+NO_DISCARD FORCE_INLINE constexpr float LengthSquared(const Quaternion& q)
+{
+	return Dot(q, q);
+}
+
+NO_DISCARD FORCE_INLINE constexpr float Length(const Quaternion& q)
+{
+	return Sqrt(LengthSquared(q));
+}
+
+NO_DISCARD FORCE_INLINE constexpr Quaternion Normalize(const Quaternion& q)
+{
+	float length = Length(q);
+	GLEAM_ASSERT(length > Math::Epsilon);
+
+	float invLength = 1.0f / length;
+	return Quaternion
+	{
+		q.w * invLength,
+		q.x * invLength,
+		q.y * invLength,
+		q.z * invLength
+	};
+}
     
 } // namespace Math
 

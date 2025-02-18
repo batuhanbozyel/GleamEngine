@@ -44,6 +44,11 @@ struct Float3x3
 
     }
 
+	NO_DISCARD FORCE_INLINE constexpr Float3& operator[](size_t i)
+	{
+		return row[i];
+	}
+
     NO_DISCARD FORCE_INLINE constexpr const Float3& operator[](size_t i) const
     {
         return row[i];

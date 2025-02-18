@@ -26,6 +26,8 @@ static Gleam::BoundingBox CalculateBounds(const Gleam::TArray<Gleam::Float3>& po
 static Gleam::TArray<Gleam::Float3> GenerateSmoothNormals(const RawMesh& mesh);
 static Gleam::TArray<Gleam::Float4> GenerateTangents(const RawMesh& mesh);
 
+static Gleam::TString GetNodeName(const cgltf_node& node, const Gleam::TString& fallback);
+
 struct MikkTInterface
 {
 	const RawMesh* mesh;
@@ -253,15 +255,9 @@ bool MeshSource::Import(const Gleam::Filesystem::Path& path, const ImportSetting
 	if (data->nodes_count > 0)
 	{
 		auto world = Gleam::CreateRef<Gleam::World>(filename);
-		Gleam::HashMap<const cgltf_node*, Gleam::EntityHandle> nodeToEntity;
-		for (uint32_t i = 0; i < data->nodes_count; ++i)
+		auto ProcessNode = [&](auto self, const cgltf_node& node, const Gleam::TString& name) -> Gleam::EntityHandle
 		{
-			const auto& node = data->nodes[i];
-
-			Gleam::TString entityName = node.name ? node.name : (filename + std::to_string(i));
-			auto& entity = world->GetEntityManager().CreateEntity(entityName, Gleam::Guid::NewGuid());
-			nodeToEntity[&node] = entity;
-
+			auto& entity = world->GetEntityManager().CreateEntity(name, Gleam::Guid::NewGuid());
 			if (node.has_translation)
 			{
 				entity.SetTranslation(Gleam::Float3(node.translation[0], node.translation[1], node.translation[2]));
@@ -299,22 +295,51 @@ bool MeshSource::Import(const Gleam::Filesystem::Path& path, const ImportSetting
 				}
 				entity.AddComponent<Gleam::MeshRenderer>(meshItem.reference, materialRefs);
 			}
-		}
 
-		for (uint32_t i = 0; i < data->nodes_count; ++i)
-		{
-			const auto& node = data->nodes[i];
-			auto entity = nodeToEntity[&node];
-
-			for (uint32_t childIdx = 0; childIdx < node.children_count; ++childIdx)
+			if (node.children_count > 0)
 			{
-				const auto* childNode = node.children[childIdx];
-				auto child = nodeToEntity[childNode];
-				auto& childEntity = world->GetEntityManager().GetComponent<Gleam::Entity>(child);
-				childEntity.SetParent(entity);
+				for (uint32_t childIdx = 0; childIdx < node.children_count; ++childIdx)
+				{
+					const auto& childNode = node.children[childIdx];
+					auto childName = GetNodeName(*childNode, filename + std::to_string(childIdx));
+					auto childHandle = self(self, *childNode, childName);
+					auto& childEntity = world->GetEntityManager().GetComponent<Gleam::Entity>(childHandle);
+					childEntity.SetParent(entity);
+				}
+			}
+			return entity;
+		};
+		
+		Gleam::HashSet<const cgltf_node*> rootNodes;
+		for (uint32_t nodeIdx = 0; nodeIdx < data->nodes_count; ++nodeIdx)
+		{
+			const auto& node = data->nodes[nodeIdx];
+			if (node.parent == nullptr)
+			{
+				rootNodes.emplace(&node);
 			}
 		}
 
+		if (rootNodes.size() == 1)
+		{
+			const auto root = *rootNodes.begin();
+			auto entityName = GetNodeName(*root, filename);
+			auto entity = ProcessNode(ProcessNode , *root, entityName);
+		}
+		else
+		{
+			auto& rootEntity = world->GetEntityManager().CreateEntity(filename, Gleam::Guid::NewGuid());
+
+			uint32_t nodeIdx = 1;
+			for (auto node : rootNodes)
+			{
+				auto entityName = GetNodeName(*node, filename + std::to_string(nodeIdx));
+				auto entityHandle = ProcessNode(ProcessNode, *node, entityName);
+				auto& entity = world->GetEntityManager().GetComponent<Gleam::Entity>(entityHandle);
+				entity.SetParent(rootEntity);
+				nodeIdx++;
+			}
+		}
 		EmplaceBaker<PrefabBaker>(world);
 	}
 
@@ -573,4 +598,19 @@ Gleam::TArray<Gleam::Float4> GenerateTangents(const RawMesh& mesh)
 
 	Gleam::TArray<Gleam::Float4> defaultTangents(mesh.positions.size(), Gleam::Float4(1.0f, 0.0f, 0.0f, 1.0f));
 	return defaultTangents;
+}
+
+Gleam::TString GetNodeName(const cgltf_node& node, const Gleam::TString& fallback)
+{
+	if (node.name)
+	{
+		return Gleam::TString(node.name);
+	}
+
+	if (node.mesh && node.mesh->name)
+	{
+		return Gleam::TString(node.mesh->name);
+	}
+
+	return fallback;
 }

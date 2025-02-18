@@ -15,20 +15,7 @@ Entity& EntityManager::CreateFromPrefab(const AssetReference& ref)
 	auto file = Filesystem::Open(Globals::ProjectContentDirectory / path, FileType::Text);
 
 	Prefab prefab;
-	auto entities = prefab.Deserialize(*this, file.GetStream());
-
-	if (entities.size() > 1)
-	{
-		auto& root = CreateEntity(prefab.name, ref.guid);
-		for (auto handle : entities)
-		{
-			auto& entity = GetComponent<Entity>(handle);
-			entity.SetParent(root);
-		}
-		return root;
-	}
-
-	auto root = entities.back();
+	auto root = prefab.Deserialize(*this, file.GetStream());
 	return GetComponent<Entity>(root);
 }
 

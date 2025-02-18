@@ -44,24 +44,29 @@ struct FileWatcher::Handle
                 // TODO: implement support for subdirectories
                 if (flags & kFSEventStreamEventFlagItemRemoved)
                 {
+                    GLEAM_CORE_INFO("FileWatcher file removed: {}", path.string());
                     watcher->handler(path, FileWatchEvent::Removed);
                     break;
                 }
             }
             else if (flags & kFSEventStreamEventFlagItemCreated)
             {
+                GLEAM_CORE_INFO("FileWatcher file added: {}", path.string());
                 watcher->handler(path, FileWatchEvent::Added);
             }
             else if (flags & kFSEventStreamEventFlagItemRemoved)
             {
+                GLEAM_CORE_INFO("FileWatcher file removed: {}", path.string());
                 watcher->handler(path, FileWatchEvent::Removed);
             }
             else if (flags & (kFSEventStreamEventFlagItemRenamed))
             {
+                GLEAM_CORE_INFO("FileWatcher file renamed: {}", path.string());
                 watcher->handler(path, FileWatchEvent::Renamed);
             }
             else if (flags & (kFSEventStreamEventFlagItemModified))
             {
+                GLEAM_CORE_INFO("FileWatcher file modified: {}", path.string());
                 watcher->handler(path, FileWatchEvent::Modified);
             }
             // default

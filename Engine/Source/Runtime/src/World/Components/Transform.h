@@ -8,11 +8,19 @@ struct Transform
 	Quaternion rotation = Quaternion::identity;
 	Float3 scale = Float3(1.0f, 1.0f, 1.0f);
 
-	mutable Float4x4 matrix = Float4x4::identity;
-
 	operator Float4x4() const
 	{
-		return matrix;
+		return Float4x4::TRS(position, rotation, scale);
+	}
+
+	Transform operator*(const Transform& rhs) const
+	{
+		return Transform
+		{
+			.position = position + rhs.position,
+			.rotation = rotation * rhs.rotation,
+			.scale = scale * rhs.scale
+		};
 	}
 };
 

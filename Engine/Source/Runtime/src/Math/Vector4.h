@@ -384,21 +384,24 @@ NO_DISCARD FORCE_INLINE constexpr T Dot(const Vector4<T>& vec1, const Vector4<T>
 }
 
 template<typename T>
-NO_DISCARD FORCE_INLINE constexpr T Length(const Vector4<T>& vec)
-{
-    return Sqrt(Dot(vec, vec));
-}
-
-template<typename T>
 NO_DISCARD FORCE_INLINE constexpr T LengthSquared(const Vector4<T>& vec)
 {
 	return Dot(vec, vec);
 }
 
 template<typename T>
+NO_DISCARD FORCE_INLINE constexpr T Length(const Vector4<T>& vec)
+{
+    return Sqrt(LengthSquared(vec));
+}
+
+template<typename T>
 NO_DISCARD FORCE_INLINE constexpr Vector4<T> Normalize(const Vector4<T>& vec)
 {
-    return vec / Length(vec);
+	float length = Length(vec);
+	GLEAM_ASSERT(length > Math::Epsilon);
+
+	return vec / length;
 }
 
 } // namespace Math

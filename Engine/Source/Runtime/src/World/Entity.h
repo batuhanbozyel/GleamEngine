@@ -139,19 +139,11 @@ public:
 
 	NO_DISCARD FORCE_INLINE const Transform& GetWorldTransform() const
 	{
-		if (RequiresTransformUpdate())
-		{
-			UpdateTransform();
-		}
 		return mGlobalTransform;
 	}
 
 	NO_DISCARD FORCE_INLINE const Transform& GetLocalTransform() const
 	{
-		if (RequiresTransformUpdate())
-		{
-			UpdateTransform();
-		}
 		return mLocalTransform;
 	}
 
@@ -206,18 +198,12 @@ public:
 	}
 
 private:
-
-	void UpdateTransform() const;
-
-	bool RequiresTransformUpdate() const;
-
-	void SetDirty();
     
     bool mActive = true;
 
 	Transform mLocalTransform;
 
-	mutable Transform mGlobalTransform;
+	Transform mGlobalTransform;
 	
 	TString mName = "Entity";
 
@@ -230,8 +216,6 @@ private:
     EntityHandle mHandle = InvalidEntity;
     
     entt::registry* mRegistry = nullptr;
-
-	mutable bool mIsTransformDirty = true;
 };
 
 } // namespace Gleam

@@ -55,10 +55,10 @@ struct Float4x4
 
     }
 
-    NO_DISCARD FORCE_INLINE constexpr Float4& operator[](size_t i)
-    {
-        return row[i];
-    }
+	NO_DISCARD FORCE_INLINE constexpr Float4& operator[](size_t i)
+	{
+		return row[i];
+	}
 
     NO_DISCARD FORCE_INLINE constexpr const Float4& operator[](size_t i) const
     {
@@ -367,34 +367,59 @@ NO_DISCARD FORCE_INLINE static constexpr Float4x4 Inverse(const Float4x4& m)
 
 FORCE_INLINE static void Decompose(const Float4x4& transform, Float3& translation, Quaternion& rotation, Float3& scale)
 {
-	translation.x = transform.m[12];
-	translation.y = transform.m[13];
-	translation.z = transform.m[14];
+	translation = Float3(transform.m[12], transform.m[13], transform.m[14]);
 
-	scale.x = Length(Float3(transform.m[0], transform.m[1], transform.m[2]));
-	scale.y = Length(Float3(transform.m[4], transform.m[5], transform.m[6]));
-	scale.z = Length(Float3(transform.m[8], transform.m[9], transform.m[10]));
+	Float3 xAxis(transform.m[0], transform.m[1], transform.m[2]);
+	Float3 yAxis(transform.m[4], transform.m[5], transform.m[6]);
+	Float3 zAxis(transform.m[8], transform.m[9], transform.m[10]);
 
-	auto rotationMatrix = transform;
-	rotationMatrix.m[12] = rotationMatrix.m[13] = rotationMatrix.m[14] = 0.0f;
-	rotationMatrix.m[0] /= scale.x;
-	rotationMatrix.m[1] /= scale.x;
-	rotationMatrix.m[2] /= scale.x;
+	scale.x = Length(xAxis);
+	scale.y = Length(yAxis);
+	scale.z = Length(zAxis);
+	GLEAM_ASSERT(scale.x > Epsilon && scale.y > Epsilon && scale.z > Epsilon);
 
-	rotationMatrix.m[4] /= scale.y;
-	rotationMatrix.m[5] /= scale.y;
-	rotationMatrix.m[6] /= scale.y;
+	Float3x3 rotMatrix;
+	rotMatrix[0] = xAxis / scale.x;
+	rotMatrix[1] = yAxis / scale.y;
+	rotMatrix[2] = zAxis / scale.z;
 
-	rotationMatrix.m[8] /= scale.z;
-	rotationMatrix.m[9] /= scale.z;
-	rotationMatrix.m[10] /= scale.z;
+	float trace = rotMatrix[0][0] + rotMatrix[1][1] + rotMatrix[2][2];
+	if (trace > 0.0f)
+	{
+		float s = Math::Sqrt(trace + 1.0f);
+		float w = s * 0.5f;
+		s = 0.5f / s;
+		rotation = Quaternion(
+			w,
+			(rotMatrix[2][1] - rotMatrix[1][2]) * s,
+			(rotMatrix[0][2] - rotMatrix[2][0]) * s,
+			(rotMatrix[1][0] - rotMatrix[0][1]) * s
+		);
+	}
+	else
+	{
+		// Find the largest diagonal element to avoid division by zero
+		int i = 0;
+		if (rotMatrix[1][1] > rotMatrix[0][0]) i = 1;
+		if (rotMatrix[2][2] > rotMatrix[i][i]) i = 2;
 
-	Float3 eularAngles(
-		Atan2(rotationMatrix.m[6], rotationMatrix.m[8]),
-		Atan2(-rotationMatrix.m[2], Sqrt(rotationMatrix.m[6] * rotationMatrix.m[6] + rotationMatrix.m[10] * rotationMatrix.m[10])),
-		Atan2(rotationMatrix.m[1], rotationMatrix.m[0])
-	);
-	rotation = Quaternion(eularAngles);
+		const int next[3] = { 1, 2, 0 };
+		int j = next[i];
+		int k = next[j];
+
+		float s = Math::Sqrt(rotMatrix[i][i] - rotMatrix[j][j] - rotMatrix[k][k] + 1.0f);
+		float q[4];
+		q[i + 1] = s * 0.5f;
+
+		if (s != 0.0f) s = 0.5f / s;
+
+		q[0] = (rotMatrix[k][j] - rotMatrix[j][k]) * s;
+		q[j + 1] = (rotMatrix[j][i] + rotMatrix[i][j]) * s;
+		q[k + 1] = (rotMatrix[k][i] + rotMatrix[i][k]) * s;
+
+		rotation = Quaternion(q[0], q[1], q[2], q[3]);
+	}
+	rotation = Normalize(rotation);
 }
 
 } // namespace Math

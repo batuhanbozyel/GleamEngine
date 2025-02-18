@@ -324,12 +324,6 @@ NO_DISCARD FORCE_INLINE constexpr T Dot(const Vector2<T>& vec1, const Vector2<T>
 {
     return vec1.x * vec2.x + vec1.y * vec2.y;
 }
-    
-template<typename T>
-NO_DISCARD FORCE_INLINE constexpr T Length(const Vector2<T>& vec)
-{
-    return Sqrt(Dot(vec, vec));
-}
 
 template<typename T>
 NO_DISCARD FORCE_INLINE constexpr T LengthSquared(const Vector2<T>& vec)
@@ -338,9 +332,18 @@ NO_DISCARD FORCE_INLINE constexpr T LengthSquared(const Vector2<T>& vec)
 }
 
 template<typename T>
+NO_DISCARD FORCE_INLINE constexpr T Length(const Vector2<T>& vec)
+{
+    return Sqrt(LengthSquared(vec));
+}
+
+template<typename T>
 NO_DISCARD FORCE_INLINE constexpr Vector2<T> Normalize(const Vector2<T>& vec)
 {
-    return vec / Length(vec);
+	float length = Length(vec);
+	GLEAM_ASSERT(length > Math::Epsilon);
+
+    return vec / length;
 }
 
 } // namespace Math

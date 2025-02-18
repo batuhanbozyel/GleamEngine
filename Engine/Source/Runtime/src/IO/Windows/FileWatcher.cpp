@@ -82,26 +82,26 @@ struct FileWatcher::Handle
 			{
 				case FILE_ACTION_ADDED:
 				{
-					GLEAM_CORE_INFO("FileWatcher file added event: {}", filepath.string());
+					GLEAM_CORE_INFO("FileWatcher file added: {}", filepath.string());
 					watcher->handler(filepath, FileWatchEvent::Added);
 					break;
 				}
 				case FILE_ACTION_REMOVED:
 				{
-					GLEAM_CORE_INFO("FileWatcher file removed event: {}", filepath.string());
+					GLEAM_CORE_INFO("FileWatcher file removed: {}", filepath.string());
 					watcher->handler(filepath, FileWatchEvent::Removed);
 					break;
 				}
 				case FILE_ACTION_MODIFIED:
 				{
-					GLEAM_CORE_INFO("FileWatcher file modified event: {}", filepath.string());
+					GLEAM_CORE_INFO("FileWatcher file modified: {}", filepath.string());
 					watcher->handler(filepath, FileWatchEvent::Modified);
 					break;
 				}
 				case FILE_ACTION_RENAMED_OLD_NAME:
 				case FILE_ACTION_RENAMED_NEW_NAME:
 				{
-					GLEAM_CORE_INFO("FileWatcher file renamed event: {}", filepath.string());
+					GLEAM_CORE_INFO("FileWatcher file renamed: {}", filepath.string());
 					watcher->handler(filepath, FileWatchEvent::Renamed);
 					break;
 				}

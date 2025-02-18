@@ -42,6 +42,11 @@ struct Float2x2
 
     }
 
+	NO_DISCARD FORCE_INLINE constexpr Float2& operator[](size_t i)
+	{
+		return row[i];
+	}
+
     NO_DISCARD FORCE_INLINE constexpr const Float2& operator[](size_t i) const
     {
         return row[i];
