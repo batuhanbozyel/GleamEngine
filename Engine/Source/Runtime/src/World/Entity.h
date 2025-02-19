@@ -125,7 +125,6 @@ public:
 	void Rotate(const Float3& eulers);
 
 	void Rotate(float xAngle, float yAngle, float zAngle);
-	void Scale(const Float3& scale);
 
 	void Scale(float scale);
 
@@ -133,7 +132,7 @@ public:
 
 	void SetRotation(const Quaternion& rotation);
 
-	void SetScale(const Float3& scale);
+	void SetScale(float scale);
 
 	void SetLocalTransform(const Float4x4& transform);
 
@@ -167,12 +166,12 @@ public:
 		return mLocalTransform.rotation;
 	}
 
-	NO_DISCARD FORCE_INLINE const Float3& GetWorldScale() const
+	NO_DISCARD FORCE_INLINE float GetWorldScale() const
 	{
 		return mGlobalTransform.scale;
 	}
 
-	NO_DISCARD FORCE_INLINE const Float3& GetLocalScale() const
+	NO_DISCARD FORCE_INLINE float GetLocalScale() const
 	{
 		return mLocalTransform.scale;
 	}

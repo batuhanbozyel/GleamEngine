@@ -12,6 +12,48 @@
 
 using namespace GEditor;
 
+static void DrawFloatControl(const std::string& label, float& value, float resetValue = 0.0f, float columnWidth = 100.0f)
+{
+	ImGuiIO& io = ImGui::GetIO();
+	auto boldFont = io.Fonts->Fonts[0];
+
+	ImGui::PushID(label.c_str());
+
+	ImGui::Columns(2);
+	ImGui::SetColumnWidth(0, columnWidth);
+	ImGui::Text("%s", label.c_str());
+	ImGui::NextColumn();
+
+	ImGui::PushItemWidth(ImGui::CalcItemWidth());
+	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2{ 0, 0 });
+
+	float lineHeight = GImGui->Font->FontSize + GImGui->Style.FramePadding.y * 2.0f;
+	ImVec2 buttonSize = { lineHeight + 3.0f, lineHeight };
+
+	ImGui::PushStyleColor(ImGuiCol_Button, ImVec4{ 0.8f, 0.1f, 0.15f, 1.0f });
+	ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4{ 0.9f, 0.2f, 0.2f, 1.0f });
+	ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4{ 0.8f, 0.1f, 0.15f, 1.0f });
+	ImGui::PushFont(boldFont);
+
+	if (ImGui::Button("X", buttonSize))
+	{
+		value = resetValue;
+	}
+
+	ImGui::PopFont();
+	ImGui::PopStyleColor(3);
+
+	ImGui::SameLine();
+	ImGui::DragFloat("##X", &value, 0.05f, 0.0f, 0.0f, "%.2f");
+	ImGui::PopItemWidth();
+	ImGui::SameLine();
+
+	ImGui::PopStyleVar();
+	ImGui::Columns(1);
+
+	ImGui::PopID();
+}
+
 static void DrawVec3Control(const std::string& label, Gleam::Float3& values, float resetValue = 0.0f, float columnWidth = 100.0f)
 {
     ImGuiIO& io = ImGui::GetIO();
@@ -44,7 +86,7 @@ static void DrawVec3Control(const std::string& label, Gleam::Float3& values, flo
     ImGui::PopStyleColor(3);
 
     ImGui::SameLine();
-    ImGui::DragFloat("##X", &values.x, 0.1f, 0.0f, 0.0f, "%.2f");
+    ImGui::DragFloat("##X", &values.x, 0.05f, 0.0f, 0.0f, "%.2f");
     ImGui::PopItemWidth();
     ImGui::SameLine();
 
@@ -62,7 +104,7 @@ static void DrawVec3Control(const std::string& label, Gleam::Float3& values, flo
     ImGui::PopStyleColor(3);
 
     ImGui::SameLine();
-    ImGui::DragFloat("##Y", &values.y, 0.1f, 0.0f, 0.0f, "%.2f");
+    ImGui::DragFloat("##Y", &values.y, 0.05f, 0.0f, 0.0f, "%.2f");
     ImGui::PopItemWidth();
     ImGui::SameLine();
 
@@ -80,7 +122,7 @@ static void DrawVec3Control(const std::string& label, Gleam::Float3& values, flo
     ImGui::PopStyleColor(3);
 
     ImGui::SameLine();
-    ImGui::DragFloat("##Z", &values.z, 0.1f, 0.0f, 0.0f, "%.2f");
+    ImGui::DragFloat("##Z", &values.z, 0.05f, 0.0f, 0.0f, "%.2f");
     ImGui::PopItemWidth();
 
     ImGui::PopStyleVar();
@@ -134,16 +176,19 @@ void EntityInspector::Render(Gleam::ImGuiRenderer* imgui)
 		auto& entity = entityManager.GetComponent<Gleam::Entity>(mSelectedEntity);
 		DrawComponent<Gleam::Entity>("Local Transform", entity, [](auto& entity)
 		{
+			auto panelWidth = ImGui::GetContentRegionAvail().x;
+			auto labelWidth = panelWidth * 0.3f;
+
 			auto localPosition = entity.GetLocalPosition();
-			DrawVec3Control("Translation", localPosition);
+			DrawVec3Control("Translation", localPosition, 0.0f, labelWidth);
 			entity.SetTranslation(localPosition);
 
 			auto localRotation = Gleam::Math::Rad2Deg(entity.GetLocalRotation().EulerAngles());
-			DrawVec3Control("Rotation", localRotation);
+			DrawVec3Control("Rotation", localRotation, 0.0f, labelWidth);
 			entity.SetRotation(Gleam::Quaternion(Gleam::Math::Deg2Rad(localRotation)));
 
 			auto localScale = entity.GetLocalScale();
-			DrawVec3Control("Scale", localScale, 1.0f);
+			DrawFloatControl("Scale", localScale, 1.0f, labelWidth);
 			entity.SetScale(localScale);
 		});
         

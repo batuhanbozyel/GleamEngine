@@ -69,7 +69,7 @@ void Entity::Rotate(float xAngle, float yAngle, float zAngle)
 	Rotate(Float3{ xAngle, yAngle, zAngle });
 }
 
-void Entity::Scale(const Float3& scale)
+void Entity::Scale(float scale)
 {
 	mLocalTransform.scale *= scale;
 	mGlobalTransform.scale *= scale;
@@ -79,11 +79,6 @@ void Entity::Scale(const Float3& scale)
 		auto& childEntity = mRegistry->get<Entity>(child);
 		childEntity.mGlobalTransform.scale *= scale;
 	}
-}
-
-void Entity::Scale(float scale)
-{
-	Scale(Float3(scale));
 }
 
 void Entity::SetTranslation(const Float3& translation)
@@ -119,7 +114,7 @@ void Entity::SetRotation(const Quaternion& rotation)
 	}
 }
 
-void Entity::SetScale(const Float3& scale)
+void Entity::SetScale(float scale)
 {
 	mLocalTransform.scale = scale;
 

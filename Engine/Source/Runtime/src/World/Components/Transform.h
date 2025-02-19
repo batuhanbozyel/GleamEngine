@@ -6,7 +6,7 @@ struct Transform
 {
 	Float3 position = Float3(0.0f, 0.0f, 0.0f);
 	Quaternion rotation = Quaternion::identity;
-	Float3 scale = Float3(1.0f, 1.0f, 1.0f);
+	float scale = 1.0f;
 
 	operator Float4x4() const
 	{
@@ -15,11 +15,12 @@ struct Transform
 
 	Transform operator*(const Transform& rhs) const
 	{
+		auto nonUniformScale = Math::Inverse(rhs.rotation) * ((rhs.rotation * rhs.scale) * scale);
 		return Transform
 		{
-			.position = position + rhs.position,
+			.position = position + (rotation * (rhs.position * scale)),
 			.rotation = rotation * rhs.rotation,
-			.scale = scale * rhs.scale
+			.scale = (nonUniformScale.x + nonUniformScale.y + nonUniformScale.z) / 3.0f
 		};
 	}
 };

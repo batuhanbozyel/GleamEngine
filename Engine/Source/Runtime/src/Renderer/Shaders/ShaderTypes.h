@@ -30,11 +30,11 @@ struct DebugShaderResources
 
 struct MeshPassResources
 {
+	float4x4 modelMatrix;
+
 	BufferResourceView positionBuffer;
 	BufferResourceView interleavedBuffer;
     BufferResourceView materialBuffer;
-
-	float4x4 modelMatrix;
 
 	uint32_t baseVertex;
 	uint32_t materialID;

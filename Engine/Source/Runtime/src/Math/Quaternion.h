@@ -57,9 +57,9 @@ struct Quaternion
 		float ccs = cc * s;
 
 		w = cc * c + ss * s;
-		x = ccs + ssc;
-		y = ccs - ssc;
-		z = y;
+		x = ccs - ssc;
+		y = ccs + ssc;
+		z = x;
 	}
 	constexpr explicit Quaternion(const Float3& eularAngles)
 	{
@@ -67,8 +67,8 @@ struct Quaternion
 		Float3 s = Math::Sin(eularAngles * 0.5f);
         
 		w = c.x * c.y * c.z + s.x * s.y * s.z;
-		x = s.x * c.y * c.z + c.x * s.y * s.z;
-		y = c.x * s.y * c.z - s.x * c.y * s.z;
+		x = s.x * c.y * c.z - c.x * s.y * s.z;
+		y = c.x * s.y * c.z + s.x * c.y * s.z;
 		z = c.x * c.y * s.z - s.x * s.y * c.z;
 	}
     constexpr explicit Quaternion(float pitch, float yaw, float roll)
@@ -89,13 +89,17 @@ struct Quaternion
     
     NO_DISCARD FORCE_INLINE constexpr Quaternion operator*(const Quaternion& rhs) const
     {
-        return Quaternion
-        {
-            rhs.w * w - rhs.x * x - rhs.y * y - rhs.z * z,
-            rhs.w * x + rhs.x * w + rhs.y * z - rhs.z * y,
-            rhs.w * y - rhs.x * z + rhs.y * w + rhs.z * x,
-            rhs.w * z + rhs.x * y - rhs.y * x + rhs.z * w
-        };
+		// q = [w, v]
+		// w = [w1 * w2 - dot(w1, w2)]
+		// v = [w2 * v1 + w1 * v2 + v1 x v2]
+
+		return Quaternion
+		{
+			w * rhs.w - x * rhs.x - y * rhs.y - z * rhs.z,
+			w * rhs.x + rhs.w * x + y * rhs.z - rhs.y * z,
+			w * rhs.y + rhs.w * y + z * rhs.x - rhs.z * x,
+			w * rhs.z + rhs.w * z + x * rhs.y - rhs.x * y
+		};
     }
     
     FORCE_INLINE constexpr Quaternion& operator*=(const Quaternion& rhs)
@@ -121,9 +125,10 @@ struct Quaternion
 
 NO_DISCARD FORCE_INLINE constexpr Float3 operator*(const Quaternion& quat, const Float3& vec)
 {
-    Quaternion v{0.0f, vec.x, vec.y, vec.z};
-    auto result = quat.Conjugate() * v * quat;
-    return Float3{result.x, result.y, result.z};
+	Float3 quatVec{ quat.x, quat.y, quat.z };
+	Float3 uv = Math::Cross(quatVec, vec);
+	Float3 uuv = Math::Cross(quatVec, uv);
+	return vec + ((uv * quat.w) + uuv) * 2.0f;
 }
 
 namespace Math {
@@ -135,7 +140,7 @@ NO_DISCARD FORCE_INLINE constexpr float Dot(const Quaternion& q1, const Quaterni
     
 NO_DISCARD FORCE_INLINE constexpr Quaternion Inverse(const Quaternion& q)
 {
-    return q.Conjugate() / Math::Max(Dot(q, q), Math::Epsilon);
+    return q.Conjugate() / Dot(q, q);
 }
 
 NO_DISCARD FORCE_INLINE constexpr float LengthSquared(const Quaternion& q)
@@ -150,10 +155,7 @@ NO_DISCARD FORCE_INLINE constexpr float Length(const Quaternion& q)
 
 NO_DISCARD FORCE_INLINE constexpr Quaternion Normalize(const Quaternion& q)
 {
-	float length = Length(q);
-	GLEAM_ASSERT(length > Math::Epsilon);
-
-	float invLength = 1.0f / length;
+	float invLength = 1.0f / Length(q);
 	return Quaternion
 	{
 		q.w * invLength,

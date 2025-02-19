@@ -38,5 +38,14 @@ EntityHandle Prefab::Deserialize(EntityManager& entityManager, FileStream& strea
 
 	EntitySerializer entitySerializer;
 	auto entities = entitySerializer.Deserialize(rapidjson::ConstNode(root), entityManager);
+	for (auto entityHandle : entities)
+	{
+		auto& entity = entityManager.GetComponent<Entity>(entityHandle);
+		if (entity.HasParent() == false)
+		{
+			return entity;
+		}
+	}
+	GLEAM_ASSERT(false, "Root entity could not found.");
 	return entities[0];
 }
