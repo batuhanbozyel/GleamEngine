@@ -359,44 +359,7 @@ FORCE_INLINE static void Decompose(const Float4x4& transform, Float3& translatio
 	rotMatrix[0] = xAxis / scale;
 	rotMatrix[1] = yAxis / scale;
 	rotMatrix[2] = zAxis / scale;
-
-	float trace = rotMatrix[0][0] + rotMatrix[1][1] + rotMatrix[2][2];
-	if (trace > 0.0f)
-	{
-		float s = Math::Sqrt(trace + 1.0f);
-		float w = s * 0.5f;
-		s = 0.5f / s;
-		rotation = Quaternion(
-			w,
-			(rotMatrix[2][1] - rotMatrix[1][2]) * s,
-			(rotMatrix[0][2] - rotMatrix[2][0]) * s,
-			(rotMatrix[1][0] - rotMatrix[0][1]) * s
-		);
-	}
-	else
-	{
-		// Find the largest diagonal element to avoid division by zero
-		int i = 0;
-		if (rotMatrix[1][1] > rotMatrix[0][0]) i = 1;
-		if (rotMatrix[2][2] > rotMatrix[i][i]) i = 2;
-
-		const int next[3] = { 1, 2, 0 };
-		int j = next[i];
-		int k = next[j];
-
-		float s = Math::Sqrt(rotMatrix[i][i] - rotMatrix[j][j] - rotMatrix[k][k] + 1.0f);
-		float q[4];
-		q[i + 1] = s * 0.5f;
-
-		if (s != 0.0f) s = 0.5f / s;
-
-		q[0] = (rotMatrix[k][j] - rotMatrix[j][k]) * s;
-		q[j + 1] = (rotMatrix[j][i] + rotMatrix[i][j]) * s;
-		q[k + 1] = (rotMatrix[k][i] + rotMatrix[i][k]) * s;
-
-		rotation = Quaternion(q[0], q[1], q[2], q[3]);
-	}
-	rotation = Normalize(rotation);
+	rotation = Quaternion(rotMatrix);
 }
 
 } // namespace Math

@@ -76,6 +76,56 @@ struct Quaternion
     {
         
     }
+	constexpr explicit Quaternion(const Float3x3& mat)
+		: Quaternion(identity)
+	{
+		float fourXSquaredMinus1 = mat.row[0][0] - mat.row[1][1] - mat.row[2][2];
+		float fourYSquaredMinus1 = mat.row[1][1] - mat.row[0][0] - mat.row[2][2];
+		float fourZSquaredMinus1 = mat.row[2][2] - mat.row[0][0] - mat.row[1][1];
+		float fourWSquaredMinus1 = mat.row[0][0] + mat.row[1][1] + mat.row[2][2];
+
+		int biggestIndex = 0;
+		float fourBiggestSquaredMinus1 = fourWSquaredMinus1;
+		if (fourXSquaredMinus1 > fourBiggestSquaredMinus1)
+		{
+			fourBiggestSquaredMinus1 = fourXSquaredMinus1;
+			biggestIndex = 1;
+		}
+		if (fourYSquaredMinus1 > fourBiggestSquaredMinus1)
+		{
+			fourBiggestSquaredMinus1 = fourYSquaredMinus1;
+			biggestIndex = 2;
+		}
+		if (fourZSquaredMinus1 > fourBiggestSquaredMinus1)
+		{
+			fourBiggestSquaredMinus1 = fourZSquaredMinus1;
+			biggestIndex = 3;
+		}
+
+		float biggestVal = Math::Sqrt(fourBiggestSquaredMinus1 + 1.0f) * 0.5f;
+		float mult = 0.25f / biggestVal;
+		switch (biggestIndex)
+		{
+			case 0:
+				value = { biggestVal, (mat[1][2] - mat[2][1]) * mult, (mat[2][0] - mat[0][2]) * mult, (mat[0][1] - mat[1][0]) * mult};
+				break;
+			case 1:
+				value = { (mat[1][2] - mat[2][1]) * mult, biggestVal, (mat[0][1] + mat[1][0]) * mult, (mat[2][0] + mat[0][2]) * mult};
+				break;
+			case 2:
+				value = { (mat[2][0] - mat[0][2]) * mult, (mat[0][1] + mat[1][0]) * mult, biggestVal, (mat[1][2] + mat[2][1]) * mult};
+				break;
+			case 3:
+				value = { (mat[0][1] - mat[1][0]) * mult, (mat[2][0] + mat[0][2]) * mult,  (mat[1][2] + mat[2][1]) * mult, biggestVal };
+				break;
+		}
+
+		float invLength = 1.0f / Math::Sqrt(w * w + x * x + y * y + z * z);
+		w *= invLength;
+		x *= invLength;
+		y *= invLength;
+		z *= invLength;
+	}
     
     NO_DISCARD FORCE_INLINE constexpr float& operator[](size_t i)
     {
@@ -120,7 +170,6 @@ struct Quaternion
         z /= s;
         return *this;
     }
-    
 };
 
 NO_DISCARD FORCE_INLINE constexpr Float3 operator*(const Quaternion& quat, const Float3& vec)
