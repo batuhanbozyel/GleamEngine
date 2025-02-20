@@ -32,7 +32,7 @@ float2 GetMetallicRoughness(MeshVertexOut IN)
     float2 metallicRoughness = float2(Material.Metallic, Material.Roughness);
     if (Material.MetallicRoughnessTexture.IsValid())
     {
-        metallicRoughness *= Material.MetallicRoughnessTexture.Sample(Sampler_Trilinear_Repeat, IN.uv).rg;
+        metallicRoughness *= Material.MetallicRoughnessTexture.Sample(Sampler_Trilinear_Repeat, IN.uv).bg;
     }
     return metallicRoughness;
 }

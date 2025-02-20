@@ -526,9 +526,9 @@ void RemoveDegenerateFaces(RawMesh& mesh)
 		Gleam::Float3 edge2 = v2 - v0;
 
 		Gleam::Float3 cross = Gleam::Math::Cross(edge1, edge2);
-		float area = Gleam::Math::Length(cross) * 0.5f;
+		double area = Gleam::Math::Length(cross) * 0.5;
 
-		if (area > Gleam::Math::Epsilon)
+		if (area > Gleam::Math::SmallEpsilon)
 		{
 			newIndices.push_back(i0);
 			newIndices.push_back(i1);
