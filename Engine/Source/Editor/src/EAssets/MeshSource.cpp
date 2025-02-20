@@ -23,6 +23,7 @@ static Gleam::MeshDescriptor CombineMeshes(const Gleam::TArray<RawMesh>& meshes)
 static Gleam::TArray<Gleam::InterleavedMeshVertex> InterleaveMeshVertices(const RawMesh& mesh);
 static Gleam::BoundingBox CalculateBounds(const Gleam::TArray<Gleam::Float3>& positions);
 
+static void RemoveDegenerateFaces(RawMesh& mesh);
 static void ComputeSmoothNormals(RawMesh& mesh);
 static void ComputeTangents(RawMesh& mesh);
 
@@ -355,12 +356,13 @@ RawMesh ProcessAttributes(const cgltf_primitive& primitive, const MeshSource::Im
             cgltf_accessor_unpack_floats(attribute.data, (cgltf_float*)mesh.texCoords.data(), mesh.texCoords.size() * 2);
         }
     }
-
+	
 	if (mesh.normals.empty())
 	{
 		ComputeSmoothNormals(mesh);
 	}
 
+	RemoveDegenerateFaces(mesh);
 	if (mesh.tangents.empty())
 	{
 		if (mesh.texCoords.empty())
@@ -375,29 +377,7 @@ RawMesh ProcessAttributes(const cgltf_primitive& primitive, const MeshSource::Im
 
 	if (mesh.texCoords.empty())
 	{
-		mesh.texCoords.resize(vertexCount, Gleam::Float2::zero);
-	}
-
-	for (uint32_t i = 0; i < mesh.normals.size(); ++i)
-	{
-		auto& normal = mesh.normals[i];
-		auto& tangent = mesh.tangents[i];
-
-		if (Gleam::Math::Abs(Gleam::Math::Dot(normal, Gleam::Float3(tangent.x, tangent.y, tangent.z))) > 0.99f)
-		{
-			if (Gleam::Math::Abs(normal.x) > Gleam::Math::Abs(normal.y))
-			{
-				tangent = Gleam::Float4(0.0f, 1.0f, 0.0f, 1.0f);
-			}
-			else if (Gleam::Math::Abs(normal.x) < Gleam::Math::Abs(normal.y))
-			{
-				tangent = Gleam::Float4(1.0f, 0.0f, 0.0f, 1.0f);
-			}
-			else
-			{
-				tangent = Gleam::Float4(0.0f, 0.0f, 1.0f, 1.0f);
-			}
-		}
+		mesh.texCoords.resize(mesh.positions.size(), Gleam::Float2::zero);
 	}
 
     return mesh;
@@ -527,6 +507,113 @@ Gleam::BoundingBox CalculateBounds(const Gleam::TArray<Gleam::Float3>& positions
     return bounds;
 }
 
+void RemoveDegenerateFaces(RawMesh& mesh)
+{
+	Gleam::TArray<uint32_t> newIndices;
+	newIndices.reserve(mesh.indices.size());
+
+	for (size_t i = 0; i < mesh.indices.size(); i += 3)
+	{
+		uint32_t i0 = mesh.indices[i];
+		uint32_t i1 = mesh.indices[i + 1];
+		uint32_t i2 = mesh.indices[i + 2];
+
+		const Gleam::Float3& v0 = mesh.positions[i0];
+		const Gleam::Float3& v1 = mesh.positions[i1];
+		const Gleam::Float3& v2 = mesh.positions[i2];
+
+		Gleam::Float3 edge1 = v1 - v0;
+		Gleam::Float3 edge2 = v2 - v0;
+
+		Gleam::Float3 cross = Gleam::Math::Cross(edge1, edge2);
+		float area = Gleam::Math::Length(cross) * 0.5f;
+
+		if (area > Gleam::Math::Epsilon)
+		{
+			newIndices.push_back(i0);
+			newIndices.push_back(i1);
+			newIndices.push_back(i2);
+		}
+	}
+
+	if (newIndices.size() == mesh.indices.size())
+	{
+		return;
+	}
+
+	Gleam::TArray<bool> vertexUsed(mesh.positions.size(), false);
+	for (uint32_t index : newIndices)
+	{
+		vertexUsed[index] = true;
+	}
+
+	Gleam::TArray<uint32_t> remapping(mesh.positions.size());
+	uint32_t newVertexCount = 0;
+	for (size_t i = 0; i < vertexUsed.size(); ++i)
+	{
+		if (vertexUsed[i])
+		{
+			remapping[i] = newVertexCount++;
+		}
+	}
+
+	for (uint32_t& index : newIndices)
+	{
+		index = remapping[index];
+	}
+
+	Gleam::TArray<Gleam::Float3> newPositions;
+	Gleam::TArray<Gleam::Float3> newNormals;
+	Gleam::TArray<Gleam::Float4> newTangents;
+	Gleam::TArray<Gleam::Float2> newTexCoords;
+
+	newPositions.reserve(newVertexCount);
+	newNormals.reserve(newVertexCount);
+
+	if (not mesh.tangents.empty())
+	{
+		newTangents.reserve(newVertexCount);
+	}
+
+	if (not mesh.texCoords.empty())
+	{
+		newTexCoords.reserve(newVertexCount);
+	}
+
+	for (size_t i = 0; i < vertexUsed.size(); ++i)
+	{
+		if (vertexUsed[i])
+		{
+			newPositions.push_back(mesh.positions[i]);
+			newNormals.push_back(mesh.normals[i]);
+
+			if (not mesh.tangents.empty())
+			{
+				newTangents.push_back(mesh.tangents[i]);
+			}
+
+			if (not mesh.texCoords.empty())
+			{
+				newTexCoords.push_back(mesh.texCoords[i]);
+			}
+		}
+	}
+
+	mesh.indices = std::move(newIndices);
+	mesh.positions = std::move(newPositions);
+	mesh.normals = std::move(newNormals);
+
+	if (not mesh.tangents.empty())
+	{
+		mesh.tangents = std::move(newTangents);
+	}
+
+	if (not mesh.texCoords.empty())
+	{
+		mesh.texCoords = std::move(newTexCoords);
+	}
+}
+
 void ComputeSmoothNormals(RawMesh& mesh)
 {
 	mesh.normals.resize(mesh.positions.size());
@@ -565,12 +652,12 @@ void ComputeSmoothNormals(RawMesh& mesh)
 void ComputeTangents(RawMesh& mesh)
 {
 	SMikkTSpaceInterface mikktInterface = {};
-	mikktInterface.m_getNumFaces = MikkT::getNumFaces;
-	mikktInterface.m_getNumVerticesOfFace = MikkT::getNumVerticesOfFace;
-	mikktInterface.m_getPosition = MikkT::getPosition;
-	mikktInterface.m_getNormal = MikkT::getNormal;
-	mikktInterface.m_getTexCoord = MikkT::getTexCoord;
-	mikktInterface.m_setTSpaceBasic = MikkT::setTSpaceBasic;
+	mikktInterface.m_getNumFaces = &MikkT::getNumFaces;
+	mikktInterface.m_getNumVerticesOfFace = &MikkT::getNumVerticesOfFace;
+	mikktInterface.m_getPosition = &MikkT::getPosition;
+	mikktInterface.m_getNormal = &MikkT::getNormal;
+	mikktInterface.m_getTexCoord = &MikkT::getTexCoord;
+	mikktInterface.m_setTSpaceBasic = &MikkT::setTSpaceBasic;
 
 	SMikkTSpaceContext context = {};
 	context.m_pInterface = &mikktInterface;
@@ -598,7 +685,6 @@ Gleam::TString GetNodeName(const cgltf_node& node, const Gleam::TString& fallbac
 	return fallback;
 }
 
-
 namespace MikkT {
 
 int getNumFaces(const SMikkTSpaceContext* context)
@@ -614,9 +700,8 @@ int getNumVerticesOfFace(const SMikkTSpaceContext* context, int faceIdx)
 
 void getPosition(const SMikkTSpaceContext* context, float outpos[], int faceIdx, int vertIdx)
 {
-	auto mesh = static_cast<RawMesh*>(context->m_pUserData);
-	auto idx = mesh->indices[faceIdx * 3 + vertIdx];
-	const auto& pos = mesh->positions[idx];
+	const auto mesh = static_cast<const RawMesh*>(context->m_pUserData);
+	const auto& pos = mesh->positions[mesh->indices[faceIdx * 3 + vertIdx]];
 	outpos[0] = pos.x;
 	outpos[1] = pos.y;
 	outpos[2] = pos.z;
@@ -624,9 +709,8 @@ void getPosition(const SMikkTSpaceContext* context, float outpos[], int faceIdx,
 
 void getNormal(const SMikkTSpaceContext* context, float outnormal[], int faceIdx, int vertIdx)
 {
-	auto mesh = static_cast<RawMesh*>(context->m_pUserData);
-	auto idx = mesh->indices[faceIdx * 3 + vertIdx];
-	const auto& normal = mesh->normals[idx];
+	const auto mesh = static_cast<const RawMesh*>(context->m_pUserData);
+	const auto& normal = mesh->normals[mesh->indices[faceIdx * 3 + vertIdx]];
 	outnormal[0] = normal.x;
 	outnormal[1] = normal.y;
 	outnormal[2] = normal.z;
@@ -634,9 +718,8 @@ void getNormal(const SMikkTSpaceContext* context, float outnormal[], int faceIdx
 
 void getTexCoord(const SMikkTSpaceContext* context, float outuv[], int faceIdx, int vertIdx)
 {
-	auto mesh = static_cast<RawMesh*>(context->m_pUserData);
-	auto idx = mesh->indices[faceIdx * 3 + vertIdx];
-	const auto& uv = mesh->texCoords[idx];
+	const auto mesh = static_cast<const RawMesh*>(context->m_pUserData);
+	const auto& uv = mesh->texCoords[mesh->indices[faceIdx * 3 + vertIdx]];
 	outuv[0] = uv.x;
 	outuv[1] = uv.y;
 }
@@ -644,17 +727,11 @@ void getTexCoord(const SMikkTSpaceContext* context, float outuv[], int faceIdx, 
 void setTSpaceBasic(const SMikkTSpaceContext* context, const float inTangent[], float sign, int faceIdx, int vertIdx)
 {
 	auto mesh = static_cast<RawMesh*>(context->m_pUserData);
-	auto idx = mesh->indices[faceIdx * 3 + vertIdx];
-
-	Gleam::Float3 tangent = (inTangent[0], inTangent[1], inTangent[2]);
-	if (Gleam::Math::LengthSquared(tangent) <= Gleam::Math::Epsilon)
-	{
-		mesh->tangents[idx] = Gleam::Float4(1.0f, 0.0f, 0.0f, 1.0f);
-	}
-	else
-	{
-		mesh->tangents[idx] = Gleam::Float4(tangent, -1.0f * sign);
-	}
+	auto& tangent = mesh->tangents[mesh->indices[faceIdx * 3 + vertIdx]];
+	tangent.x = inTangent[0];
+	tangent.y = inTangent[1];
+	tangent.z = inTangent[2];
+	tangent.w = -1.0f * sign;
 }
 
 } // namespace MikkT

@@ -14,7 +14,7 @@ float3 GetWorldNormal(MeshVertexOut IN)
     {
         return normalize(Material.NormalTexture.Sample(Sampler_Trilinear_Repeat, IN.uv).rgb * 2.0 - 1.0);
     }
-    return float3(0.0, 1.0, 0.0);
+    return float3(0.0, 0.0, 1.0);
 }
 
 float4 GetEmission(MeshVertexOut IN)
