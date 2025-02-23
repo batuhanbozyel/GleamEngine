@@ -22,10 +22,6 @@ static AttachmentLoadAction GetLoadActionForRenderTexture(const RenderGraphTextu
 
 static AttachmentStoreAction GetStoreActionForRenderTexture(const RenderGraphTextureNode* node, RenderGraphPassNode* pass)
 {
-    if (node->texture.GetDescriptor().sampleCount > 1)
-    {
-        return node->lastModifier == pass ? AttachmentStoreAction::Resolve : AttachmentStoreAction::StoreAndResolve;
-    }
     return (node->lastReference == pass && !pass->hasSideEffect) ? AttachmentStoreAction::DontCare : AttachmentStoreAction::Store;
 }
 
@@ -209,7 +205,6 @@ void RenderGraph::Execute(const CommandBuffer* cmd)
                 
                 const auto& descriptor = renderPassDesc.colorAttachments[i].texture.GetDescriptor();
                 renderPassDesc.size = descriptor.size;
-                renderPassDesc.samples = descriptor.sampleCount;
             }
             
             if (pass->depthAttachment.IsValid())
@@ -223,7 +218,6 @@ void RenderGraph::Execute(const CommandBuffer* cmd)
                 
                 const auto& descriptor = renderPassDesc.depthAttachment.texture.GetDescriptor();
                 renderPassDesc.size = descriptor.size;
-                renderPassDesc.samples = descriptor.sampleCount;
             }
             
             cmd->BeginRenderPass(renderPassDesc, pass->name);

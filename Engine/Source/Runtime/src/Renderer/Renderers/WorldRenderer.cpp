@@ -39,7 +39,6 @@ void WorldRenderer::OnCreate(GraphicsDevice* device)
 	pipelineDesc.depthFormat = TextureFormat::D16_UNorm;
 	pipelineDesc.vertexEntry = "meshVertexShader";
 	pipelineDesc.fragmentEntry = "SurfaceLit";
-	pipelineDesc.sampleCount = Globals::Engine->GetConfiguration().renderer.sampleCount;
 
     // TODO: create material pipelines
 	mShadingPipelines[0] = device->CreateGraphicsPipeline(pipelineDesc);
@@ -51,12 +50,10 @@ void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
     {
         const auto& sceneData = blackboard.Get<SceneRenderingData>();
         const auto& backbufferDescriptor = graph.GetDescriptor(sceneData.backbuffer);
-        auto sampleCount = Globals::Engine->GetConfiguration().renderer.sampleCount;
         
         RenderTextureDescriptor textureDesc;
         textureDesc.name = "SceneColorRT";
         textureDesc.size = backbufferDescriptor.size;
-        textureDesc.sampleCount = sampleCount;
         textureDesc.format = TextureFormat::R16G16B16A16_SFloat;
         textureDesc.clearBuffer = true;
         passData.colorTarget = builder.CreateTexture(textureDesc);

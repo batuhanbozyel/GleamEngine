@@ -14,8 +14,6 @@ using namespace Gleam;
 void DebugRenderer::OnCreate(GraphicsDevice* device)
 {
 	mDevice = device;
-	auto sampleCount = Globals::Engine->GetConfiguration().renderer.sampleCount;
-
 	// Primitive pipelines
 	{
 		GraphicsPipelineStateDescriptor pipelineState;
@@ -24,7 +22,6 @@ void DebugRenderer::OnCreate(GraphicsDevice* device)
 		pipelineState.colorFormats = { TextureFormat::R16G16B16A16_SFloat };
 		pipelineState.vertexEntry = "debugVertexShader";
 		pipelineState.fragmentEntry = "debugFragmentShader";
-		pipelineState.sampleCount = sampleCount;
 		mPrimitivePipeline = device->CreateGraphicsPipeline(pipelineState);
 
 		pipelineState.depthState.writeEnabled = true;
@@ -41,7 +38,6 @@ void DebugRenderer::OnCreate(GraphicsDevice* device)
 		pipelineState.colorFormats = { TextureFormat::R16G16B16A16_SFloat };
 		pipelineState.vertexEntry = "debugMeshVertexShader";
 		pipelineState.fragmentEntry = "debugFragmentShader";
-		pipelineState.sampleCount = sampleCount;
 		mMeshPipeline = device->CreateGraphicsPipeline(pipelineState);
 
 		pipelineState.depthState.writeEnabled = true;

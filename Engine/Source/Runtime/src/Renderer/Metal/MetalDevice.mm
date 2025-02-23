@@ -83,28 +83,11 @@ Texture GraphicsDevice::AllocateTexture(const TextureDescriptor& descriptor)
     [baseTexture setLabel:TO_NSSTRING(descriptor.name.c_str())];
     [texture.mView setLabel:TO_NSSTRING(descriptor.name.c_str())];
     [static_cast<MetalDevice*>(this)->GetResidencySet() addAllocation:texture.mHandle];
-    
-    if (descriptor.sampleCount > 1)
-    {
-        MTLTextureDescriptor* msaaTextureDesc = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:baseTexture.pixelFormat width:descriptor.size.width height:descriptor.size.height mipmapped:false];
-        msaaTextureDesc.textureType = MTLTextureType2DMultisample;
-        msaaTextureDesc.mipmapLevelCount = 1;
-        msaaTextureDesc.sampleCount = descriptor.sampleCount;
-        msaaTextureDesc.usage = MTLTextureUsageRenderTarget | MTLTextureUsageShaderWrite;
-        msaaTextureDesc.storageMode = MTLStorageModePrivate; // TODO: Switch to memoryless msaa render targets when Tile shading is supported
-        texture.mMultisampleHandle = [mHandle newTextureWithDescriptor:msaaTextureDesc];
-        texture.mMultisampleView = texture.mMultisampleHandle;
-        
-        TStringStream multisampleName;
-        multisampleName << descriptor.name << "::MSAA";
-        [texture.mMultisampleHandle setLabel:TO_NSSTRING(multisampleName.str().data())];
-        [texture.mMultisampleView setLabel:TO_NSSTRING(multisampleName.str().data())];
-    }
     texture.mResourceView = Utils::IsDepthFormat(descriptor.format) ? InvalidResourceIndex : CreateResourceView(texture);
     return texture;
 }
 
-Shader GraphicsDevice::GenerateShader(const TString& entryPoint, ShaderStage stage)
+Shader GraphicsDevice::CompileShader(const TString& entryPoint, ShaderStage stage)
 {
     Shader shader(entryPoint, stage);
     auto shaderPath = Globals::BuiltinAssetsDirectory/"Shaders";
@@ -176,6 +159,11 @@ void GraphicsDevice::Dispose(Texture& texture)
         texture.mMultisampleHandle = nil;
         texture.mMultisampleView = nil;
     }
+}
+
+void GraphicsDevice::Dispose(Shader& shader)
+{
+	shader.mHandle = nil;
 }
 
 MetalDevice::MetalDevice()

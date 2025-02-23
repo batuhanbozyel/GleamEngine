@@ -38,7 +38,6 @@ struct TextureDescriptor
     TextureFormat format = TextureFormat::R8G8B8A8_UNorm;
     TextureUsageFlagBits usage = TextureUsage_Sampled;
     TextureDimension dimension = TextureDimension::Texture2D;
-    uint32_t sampleCount = 1;
     bool useMipMap = false;
     
     bool operator==(const TextureDescriptor& other) const
@@ -47,7 +46,6 @@ struct TextureDescriptor
                 format == other.format &&
                 usage == other.usage &&
                 dimension == other.dimension &&
-                sampleCount == other.sampleCount &&
                 useMipMap == other.useMipMap;
     }
 };
@@ -90,7 +88,6 @@ struct std::hash<Gleam::TextureDescriptor>
         Gleam::hash_combine(hash, descriptor.format);
         Gleam::hash_combine(hash, descriptor.usage);
         Gleam::hash_combine(hash, descriptor.dimension);
-        Gleam::hash_combine(hash, descriptor.sampleCount);
         Gleam::hash_combine(hash, descriptor.useMipMap);
         return hash;
     }
@@ -105,7 +102,6 @@ GLEAM_TYPE(Gleam::TextureDescriptor, Guid("5B36D630-8A7E-47BE-A9F0-1702AB9F9C8C"
 	GLEAM_FIELD(format, Serializable())
 	GLEAM_FIELD(usage, Serializable())
 	GLEAM_FIELD(dimension, Serializable())
-	GLEAM_FIELD(sampleCount, Serializable())
 	GLEAM_FIELD(useMipMap, Serializable())
 GLEAM_END
 

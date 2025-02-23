@@ -107,7 +107,6 @@ struct GraphicsPipelineStateDescriptor : PipelineStateDescriptor
 
 	TString vertexEntry{};
 	TString fragmentEntry{};
-	uint32_t sampleCount = 1;
 };
 
 namespace Utils {
@@ -188,7 +187,6 @@ struct std::hash<Gleam::GraphicsPipelineStateDescriptor>
 			Gleam::hash_combine(hash, colorFormat);
 		}
 		Gleam::hash_combine(hash, descriptor.depthFormat);
-		Gleam::hash_combine(hash, descriptor.sampleCount);
 		return hash;
 	}
 };
@@ -229,5 +227,4 @@ GLEAM_TYPE(Gleam::GraphicsPipelineStateDescriptor, Guid("413BE6F8-3433-4B3A-8ABF
 	GLEAM_FIELD(depthFormat, Serializable())
 	GLEAM_FIELD(vertexEntry, Serializable())
 	GLEAM_FIELD(fragmentEntry, Serializable())
-	GLEAM_FIELD(sampleCount, Serializable())
 GLEAM_END

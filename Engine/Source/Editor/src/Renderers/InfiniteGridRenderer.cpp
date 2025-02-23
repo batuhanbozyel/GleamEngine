@@ -25,7 +25,6 @@ void InfiniteGridRenderer::OnCreate(Gleam::GraphicsDevice* device)
 
 	pipelineDesc.vertexEntry = "infiniteGridVertexShader";
 	pipelineDesc.fragmentEntry = "infiniteGridFragmentShader";
-	pipelineDesc.sampleCount = Gleam::Globals::Engine->GetConfiguration().renderer.sampleCount;
 	mPipeline = device->CreateGraphicsPipeline(pipelineDesc);
 }
 

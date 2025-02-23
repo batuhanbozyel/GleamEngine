@@ -43,7 +43,6 @@ struct RenderPassDescriptor
 	TArray<AttachmentDescriptor> colorAttachments;
     AttachmentDescriptor depthAttachment;
     Size size = Size::zero;
-	uint32_t samples = 1;
 	bool useMipMap = false;
     
     bool operator==(const RenderPassDescriptor& other) const
@@ -53,7 +52,7 @@ struct RenderPassDescriptor
         {
             if (colorAttachments[i] != other.colorAttachments[i]) { return false; }
         }
-        return depthAttachment == other.depthAttachment && size == other.size && samples == other.samples && useMipMap == other.useMipMap;
+        return depthAttachment == other.depthAttachment && size == other.size && useMipMap == other.useMipMap;
     }
 };
 
