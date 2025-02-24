@@ -11,9 +11,9 @@
 
 using namespace Gleam;
 
-void DebugRenderer::OnCreate(GraphicsDevice* device)
+void DebugRenderer::OnCreate(RenderContext& context)
 {
-	mDevice = device;
+	mDevice = context.device;
 	// Primitive pipelines
 	{
 		GraphicsPipelineStateDescriptor pipelineState;
@@ -22,12 +22,12 @@ void DebugRenderer::OnCreate(GraphicsDevice* device)
 		pipelineState.colorFormats = { TextureFormat::R16G16B16A16_SFloat };
 		pipelineState.vertexEntry = "debugVertexShader";
 		pipelineState.fragmentEntry = "debugFragmentShader";
-		mPrimitivePipeline = device->CreateGraphicsPipeline(pipelineState);
+		mPrimitivePipeline = mDevice->CreateGraphicsPipeline(pipelineState);
 
 		pipelineState.depthState.writeEnabled = true;
 		pipelineState.depthFormat = TextureFormat::D16_UNorm;
 		pipelineState.depthState.compareFunction = CompareFunction::Less;
-		mPrimitiveDepthPipeline = device->CreateGraphicsPipeline(pipelineState);
+		mPrimitiveDepthPipeline = mDevice->CreateGraphicsPipeline(pipelineState);
 	}
 
 	// Mesh pipelines
@@ -38,19 +38,19 @@ void DebugRenderer::OnCreate(GraphicsDevice* device)
 		pipelineState.colorFormats = { TextureFormat::R16G16B16A16_SFloat };
 		pipelineState.vertexEntry = "debugMeshVertexShader";
 		pipelineState.fragmentEntry = "debugFragmentShader";
-		mMeshPipeline = device->CreateGraphicsPipeline(pipelineState);
+		mMeshPipeline = mDevice->CreateGraphicsPipeline(pipelineState);
 
 		pipelineState.depthState.writeEnabled = true;
 		pipelineState.depthFormat = TextureFormat::D16_UNorm;
 		pipelineState.depthState.compareFunction = CompareFunction::Less;
-		mMeshDepthPipeline = device->CreateGraphicsPipeline(pipelineState);
+		mMeshDepthPipeline = mDevice->CreateGraphicsPipeline(pipelineState);
 	}
 }
 
-void DebugRenderer::OnDestroy(GraphicsDevice* device)
+void DebugRenderer::OnDestroy(RenderContext& context)
 {
-	device->Dispose(mVertexBuffer);
-	device->Dispose(mVertexHeap);
+	context.device->Dispose(mVertexBuffer);
+	context.device->Dispose(mVertexHeap);
 }
 
 void DebugRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard)

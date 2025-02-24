@@ -21,18 +21,23 @@ using namespace Gleam;
 
 void RenderSystem::Initialize(Engine* engine)
 {
+	InitializeBackend();
+
 	mEngine = engine;
-    mDevice = GraphicsDevice::Create();
+	mContext.device = mDevice.get();
+	mContext.surface = mSwapchain.get();
 	mUploadManager = CreateScope<UploadManager>(mDevice.get());
+
 	EventDispatcher<RendererResizeEvent>::Subscribe([this](RendererResizeEvent e)
 	{
-        const auto& cmd = mCommandBuffers[mDevice->GetLastFrameIndex()];
+        const auto& cmd = mCommandBuffers[mSwapchain->GetFrameIndex()];
         if (cmd)
         {
             cmd->WaitUntilCompleted();
         }
 		mDevice->DestroyPooledObjects();
         mDevice->DestroySizeDependentResources();
+		mSwapchain->Resize(mDevice.get(), e.GetSize());
 	});
 }
 
@@ -40,12 +45,12 @@ void RenderSystem::Shutdown()
 {
 	mUploadManager.reset();
 
-    mCommandBuffers[mDevice->GetLastFrameIndex()]->WaitUntilCompleted();
+    mCommandBuffers[mSwapchain->GetFrameIndex()]->WaitUntilCompleted();
     mCommandBuffers.clear();
-    
+
     for (auto renderer : mRenderers)
     {
-        renderer->OnDestroy(mDevice.get());
+        renderer->OnDestroy(mContext);
         delete renderer;
     }
 	mRenderers.clear();
@@ -60,11 +65,15 @@ void RenderSystem::Render(const World* world)
     @autoreleasepool
 #endif
     {
+		const auto& backbuffer = mSwapchain->AcquireNextDrawable();
+		auto frameIdx = mSwapchain->GetFrameIndex();
+		mDevice->DestroyPooledObjects(frameIdx);
+
         RenderGraph graph(mDevice.get());
         RenderGraphBlackboard blackboard;
 
 		SceneRenderingData sceneData;
-		sceneData.backbuffer = graph.ImportBackbuffer(mRenderTarget);
+		sceneData.backbuffer = graph.ImportBackbuffer(backbuffer);
 		sceneData.sceneProxy = world->GetSystem<RenderSceneProxy>();
 		sceneData.world = world;
 
@@ -98,23 +107,10 @@ void RenderSystem::Render(const World* world)
         }
         graph.Compile();
 
-		auto frameIdx = mDevice->GetFrameIndex();
-        const auto cmd = mCommandBuffers[frameIdx].get();
-
-		cmd->WaitUntilCompleted();
-		mDevice->DestroyPooledObjects(frameIdx);
-
+		const auto cmd = mCommandBuffers[frameIdx].get();
 		cmd->Begin();
-
         graph.Execute(cmd);
-
-        // reset rt to swapchain
-        if (mRenderTarget.IsValid())
-        {
-            mDevice->ReleaseTexture(mRenderTarget);
-        }
-        ResetRenderTarget();
-        mDevice->Present(cmd);
+		mSwapchain->Present(cmd);
     }
 }
 
@@ -122,7 +118,8 @@ void RenderSystem::Configure(const RendererConfig& config)
 {
 	mEngine->UpdateConfig(config);
     mDevice->Configure(config);
-    mCommandBuffers.resize(mDevice->GetFramesInFlight());
+
+    mCommandBuffers.resize(mSwapchain->GetFramesInFlight());
 	for (auto& cmd : mCommandBuffers)
 	{
 		cmd = CreateScope<CommandBuffer>(mDevice.get());
@@ -144,32 +141,19 @@ const GraphicsDevice* RenderSystem::GetDevice() const
     return mDevice.get();
 }
 
-const Texture& RenderSystem::GetRenderTarget() const
+RenderSurface* RenderSystem::GetSurface()
 {
-    return mRenderTarget;
+	return mSwapchain.get();
 }
 
-void RenderSystem::SetBackbuffer(const TextureDescriptor& descriptor)
+const RenderSurface* RenderSystem::GetSurface() const
 {
-	GLEAM_ASSERT(descriptor.format == mDevice->GetRenderSurface().GetDescriptor().format, "Backbuffer format must match with render surface format.");
-    mRenderTarget = mDevice->CreateTexture(descriptor);
-    GLEAM_ASSERT(mRenderTarget.IsValid());
-}
-
-void RenderSystem::SetBackbuffer(const Texture& texture)
-{
-	GLEAM_ASSERT(texture.GetDescriptor().format == mDevice->GetRenderSurface().GetDescriptor().format, "Backbuffer format must match with render surface format.");
-    mRenderTarget = texture;
-}
-
-void RenderSystem::ResetRenderTarget()
-{
-    SetBackbuffer(mDevice->GetRenderSurface());
+	return mSwapchain.get();
 }
 
 void RenderSystem::RecompileShader(const TString& entryPoint)
 {
-	mCommandBuffers[mDevice->GetLastFrameIndex()]->WaitUntilCompleted();
+	mCommandBuffers[mSwapchain->GetFrameIndex()]->WaitUntilCompleted();
 
 	for (auto& shader : mDevice->mShaderCache)
 	{

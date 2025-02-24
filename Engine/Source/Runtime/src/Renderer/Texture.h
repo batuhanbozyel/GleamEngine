@@ -24,6 +24,15 @@ public:
     {
         
     }
+
+	Texture(NativeGraphicsHandle handle, RenderTargetView rtv, const TextureDescriptor& descriptor)
+        : ShaderResource(handle)
+		, mView(rtv)
+		, mDescriptor(descriptor)
+		, mMipMapLevels(descriptor.useMipMap ? CalculateMipLevels(descriptor.size) : 1)
+    {
+        
+    }
     
 	RenderTargetView GetRenderTargetView() const
     {

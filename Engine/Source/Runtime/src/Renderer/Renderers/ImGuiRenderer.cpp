@@ -10,9 +10,9 @@
 
 using namespace Gleam;
 
-void ImGuiRenderer::OnCreate(GraphicsDevice* device)
+void ImGuiRenderer::OnCreate(RenderContext& context)
 {
-    mDevice = device;
+    mDevice = context.device;
     
 	IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -21,14 +21,14 @@ void ImGuiRenderer::OnCreate(GraphicsDevice* device)
     io.ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange;
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable | ImGuiConfigFlags_ViewportsEnable;
     
-	ImGuiBackend::Init(device);
+	ImGuiBackend::Init(mDevice);
     Globals::Engine->GetSubsystem<EventSystem>()->SetEventHandler([](const SDL_Event* e)
     {
         ImGui_ImplSDL3_ProcessEvent(e);
     });
 }
 
-void ImGuiRenderer::OnDestroy(GraphicsDevice* device)
+void ImGuiRenderer::OnDestroy(RenderContext& context)
 {
 	ImGuiBackend::Destroy();
     ImGui::DestroyContext();

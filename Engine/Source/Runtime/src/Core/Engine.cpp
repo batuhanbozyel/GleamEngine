@@ -52,7 +52,6 @@ void Engine::Initialize()
 	// init renderer backend
 	auto renderSubsystem = AddSubsystem<RenderSystem>();
 	renderSubsystem->Configure(mConfig.renderer);
-	renderSubsystem->ResetRenderTarget();
 }
 
 void Engine::Shutdown()

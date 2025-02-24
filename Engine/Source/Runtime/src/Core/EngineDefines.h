@@ -4,13 +4,13 @@
 #if defined(USE_DIRECTX_RENDERER)
 #include <d3d12.h>
 using NativeGraphicsHandle = void*;
-using NativeGraphicsResourceView = D3D12_CPU_DESCRIPTOR_HANDLE;
+using RenderTargetView = D3D12_CPU_DESCRIPTOR_HANDLE;
 using DispatchSemaphore = NativeGraphicsHandle;
 #else
 #include <objc/objc-runtime.h>
 #include <dispatch/dispatch.h>
 using NativeGraphicsHandle = id;
-using NativeGraphicsResourceView = id;
+using RenderTargetView = id;
 using DispatchSemaphore = dispatch_semaphore_t;
 #endif
 

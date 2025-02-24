@@ -7,7 +7,7 @@
 
 using namespace GEditor;
 
-void InfiniteGridRenderer::OnCreate(Gleam::GraphicsDevice* device)
+void InfiniteGridRenderer::OnCreate(Gleam::RenderContext& context)
 {
 	Gleam::GraphicsPipelineStateDescriptor pipelineDesc;
 	pipelineDesc.depthState.compareFunction = Gleam::CompareFunction::Less;
@@ -25,7 +25,7 @@ void InfiniteGridRenderer::OnCreate(Gleam::GraphicsDevice* device)
 
 	pipelineDesc.vertexEntry = "infiniteGridVertexShader";
 	pipelineDesc.fragmentEntry = "infiniteGridFragmentShader";
-	mPipeline = device->CreateGraphicsPipeline(pipelineDesc);
+	mPipeline = context.device->CreateGraphicsPipeline(pipelineDesc);
 }
 
 void InfiniteGridRenderer::AddRenderPasses(Gleam::RenderGraph& graph, Gleam::RenderGraphBlackboard& blackboard)

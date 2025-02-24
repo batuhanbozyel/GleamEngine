@@ -153,36 +153,3 @@ const GraphicsPipeline& GraphicsDevice::GetGraphicsPipeline(GraphicsPipelineHand
 	static GraphicsPipeline invalid;
 	return invalid;
 }
-
-Texture GraphicsDevice::GetRenderSurface() const
-{
-	return Texture({ .size = mSize,
-					 .format = mFormat,
-					 .usage = TextureUsage_Attachment,
-					 .dimension = TextureDimension::Texture2D });
-}
-
-TextureFormat GraphicsDevice::GetFormat() const
-{
-	return mFormat;
-}
-
-uint32_t GraphicsDevice::GetLastFrameIndex() const
-{
-	return (mCurrentFrameIndex + (mMaxFramesInFlight - 1)) % mMaxFramesInFlight;
-}
-
-uint32_t GraphicsDevice::GetFrameIndex() const
-{
-	return mCurrentFrameIndex;
-}
-
-uint32_t GraphicsDevice::GetFramesInFlight() const
-{
-	return mMaxFramesInFlight;
-}
-
-const Size& GraphicsDevice::GetDrawableSize() const
-{
-	return mSize;
-}

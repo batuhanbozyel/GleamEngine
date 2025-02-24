@@ -12,6 +12,9 @@
 
 namespace Gleam {
 
+class RenderSurface;
+class DirectXSwapchain;
+
 class DirectXDescriptorHeap
 {
 public:
@@ -22,6 +25,10 @@ public:
 	D3D12_DESCRIPTOR_HEAP_TYPE type;
 	UINT size;
 	UINT capacity;
+
+	D3D12_CPU_DESCRIPTOR_HANDLE Allocate();
+
+	void Release(D3D12_CPU_DESCRIPTOR_HANDLE handle);
 
 	ShaderResourceIndex GetResourceIndex(D3D12_CPU_DESCRIPTOR_HANDLE view);
 };
@@ -37,27 +44,27 @@ struct DirectXCommandPool
 	void Release();
 };
 
-struct DirectXDrawable
-{
-	ID3D12Resource* renderTarget;
-	D3D12_CPU_DESCRIPTOR_HANDLE view;
-};
-
 class DirectXDevice final : public GraphicsDevice
 {
 	friend class GraphicsDevice;
 
 public:
 
-	DirectXDevice();
+	DirectXDevice(RenderSurface* surface);
 
     ~DirectXDevice();
 
-	DirectXDrawable AcquireNextDrawable();
+	DirectXDescriptorHeap& GetRtvHeap();
+
+	DirectXDescriptorHeap& GetDsvHeap();
 
 	DirectXDescriptorHeap& GetCbvSrvUavHeap();
 
 	ID3D12GraphicsCommandList7* AllocateCommandList(D3D12_COMMAND_LIST_TYPE type);
+
+	const DirectXDescriptorHeap& GetRtvHeap() const;
+
+	const DirectXDescriptorHeap& GetDsvHeap() const;
 
 	const DirectXDescriptorHeap& GetCbvSrvUavHeap() const;
 
@@ -81,8 +88,6 @@ public:
 
 private:
 
-	virtual void Present(const CommandBuffer* cmd) override;
-
 	virtual void Configure(const RendererConfig& config) override;
 
 	virtual void DestroyFrameObjects(uint32_t frameIndex) override;
@@ -91,23 +96,13 @@ private:
 
 	DirectXDescriptorHeap CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE type, D3D12_DESCRIPTOR_HEAP_FLAGS flags, UINT capacity) const;
 
-	DirectXDrawable GetSwapchainBuffer(uint32_t buffer);
-
-	void ReleaseSwapchainBuffer(DirectXDrawable& drawable);
+	DirectXSwapchain* mSwapchain = nullptr;
 
 #ifdef GDEBUG
 	DWORD mDebugCallbackCookie = 0;
 	ID3D12InfoQueue1* mInfoQueue = nullptr;
-
 	ID3D12Debug6* mD3D12Debug = nullptr;
-	IDXGIDebug1* mDXGIDebug = nullptr;
 #endif
-
-	IDXGISwapChain4* mSwapchain = nullptr;
-
-	IDXGIAdapter4* mAdapter = nullptr;
-
-	IDXGIFactory7* mFactory = nullptr;
 
 	ID3D12Fence* mDirectFence = nullptr;
 
@@ -121,11 +116,7 @@ private:
 
 	struct Context
 	{
-		ID3D12Fence* fence;
-		DirectXDrawable drawable;
 		TArray<DirectXCommandPool> commandPools;
-		uint64_t waitFenceValue = 0;
-		uint64_t frameCount = 0;
 	};
 	TArray<Context> mFrameContext;
 

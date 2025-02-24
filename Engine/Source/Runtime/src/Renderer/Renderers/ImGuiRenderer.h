@@ -15,9 +15,9 @@ class ImGuiRenderer : public IRenderer
 {
 public:
     
-    virtual void OnCreate(GraphicsDevice* device) override;
+    virtual void OnCreate(RenderContext& context) override;
 
-	virtual void OnDestroy(GraphicsDevice* device) override;
+	virtual void OnDestroy(RenderContext& context) override;
 
 	virtual void AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard) override;
 

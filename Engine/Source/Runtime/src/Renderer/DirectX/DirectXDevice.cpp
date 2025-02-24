@@ -3,12 +3,14 @@
 #ifdef USE_DIRECTX_RENDERER
 #include "DirectXDevice.h"
 #include "DirectXUtils.h"
+#include "DirectXSwapchain.h"
 #include "DirectXTransitionManager.h"
 
 #include "Core/Engine.h"
 #include "Core/Globals.h"
 #include "Core/WindowSystem.h"
 #include "Renderer/SamplerState.h"
+#include "Renderer/RenderSystem.h"
 
 using namespace Gleam;
 
@@ -37,9 +39,10 @@ static void DirectXDebugCallback(D3D12_MESSAGE_CATEGORY Category,
 	}
 }
 
-Scope<GraphicsDevice> GraphicsDevice::Create()
+void RenderSystem::InitializeBackend()
 {
-	return CreateScope<DirectXDevice>();
+	mSwapchain = CreateScope<DirectXSwapchain>();
+	mDevice = CreateScope<DirectXDevice>(mSwapchain.get());
 }
 
 static D3D12_STATIC_SAMPLER_DESC CreateStaticSampler(const SamplerState& samplerState)
@@ -295,7 +298,7 @@ GraphicsPipeline GraphicsDevice::CompileGraphicsPipeline(const GraphicsPipelineS
 
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc{};
 	psoDesc.pRootSignature = static_cast<DirectXDevice*>(this)->mRootSignature;
-	psoDesc.SampleDesc.Count = pipelineDesc.sampleCount;
+	psoDesc.SampleDesc.Count = 1;
 	psoDesc.SampleMask = UINT_MAX;
 
 	// Shader stages
@@ -314,7 +317,7 @@ GraphicsPipeline GraphicsDevice::CompileGraphicsPipeline(const GraphicsPipelineS
 	rasterizerState.DepthBiasClamp = D3D12_DEFAULT_DEPTH_BIAS_CLAMP;
 	rasterizerState.SlopeScaledDepthBias = D3D12_DEFAULT_SLOPE_SCALED_DEPTH_BIAS;
 	rasterizerState.DepthClipEnable = FALSE;
-	rasterizerState.MultisampleEnable = pipelineDesc.sampleCount > 1;
+	rasterizerState.MultisampleEnable = FALSE;
 	rasterizerState.AntialiasedLineEnable = FALSE;
 	rasterizerState.ForcedSampleCount = 0;
 	rasterizerState.ConservativeRaster = D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF;
@@ -398,12 +401,12 @@ void GraphicsDevice::Dispose(Texture& texture)
 		if (Utils::IsDepthFormat(texture.GetDescriptor().format))
 		{
 			auto& dsvHeap = static_cast<DirectXDevice*>(this)->mDsvHeap;
-			dsvHeap.heap.Release(dsvHeap.GetResourceIndex(texture.GetView()));
+			dsvHeap.heap.Release(dsvHeap.GetResourceIndex(texture.GetRenderTargetView()));
 		}
 		else
 		{
 			auto& rtvHeap = static_cast<DirectXDevice*>(this)->mRtvHeap;
-			rtvHeap.heap.Release(rtvHeap.GetResourceIndex(texture.GetView()));
+			rtvHeap.heap.Release(rtvHeap.GetResourceIndex(texture.GetRenderTargetView()));
 		}
 	}
 
@@ -427,37 +430,23 @@ void GraphicsDevice::Dispose(GraphicsPipeline& pipeline)
 	pipeline.mHandle = nullptr;
 }
 
-DirectXDevice::DirectXDevice()
+DirectXDevice::DirectXDevice(RenderSurface* surface)
+	: mSwapchain(static_cast<DirectXSwapchain*>(surface))
 {
-	UINT dxgiFactoryFlags = 0;
 #ifdef GDEBUG
 	if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&mD3D12Debug))))
 	{
-		dxgiFactoryFlags |= DXGI_CREATE_FACTORY_DEBUG;
-
 		mD3D12Debug->EnableDebugLayer();
 		mD3D12Debug->SetEnableGPUBasedValidation(true);
-
-		if (SUCCEEDED(DXGIGetDebugInterface1(0, IID_PPV_ARGS(&mDXGIDebug))))
-		{
-			mDXGIDebug->EnableLeakTrackingForThread();
-		}
 	}
-#endif
 
-	DX_CHECK(CreateDXGIFactory2(dxgiFactoryFlags, IID_PPV_ARGS(&mFactory)));
-
-#ifdef GDEBUG
-	if (SUCCEEDED(mFactory->QueryInterface(IID_PPV_ARGS(&mInfoQueue))))
+	if (SUCCEEDED(mSwapchain->mFactory->QueryInterface(IID_PPV_ARGS(&mInfoQueue))))
 	{
 		static void* emitWarning = nullptr;
 		DX_CHECK(mInfoQueue->RegisterMessageCallback(DirectXDebugCallback, D3D12_MESSAGE_CALLBACK_FLAG_NONE, emitWarning, &mDebugCallbackCookie));
 	}
 #endif
-
-	DX_CHECK(mFactory->EnumAdapterByGpuPreference(0, DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE, IID_PPV_ARGS(&mAdapter)));
-
-	DX_CHECK(D3D12CreateDevice(mAdapter, D3D_FEATURE_LEVEL_12_0, __uuidof(ID3D12Device10), &mHandle));
+	DX_CHECK(D3D12CreateDevice(mSwapchain->mAdapter, D3D_FEATURE_LEVEL_12_0, __uuidof(ID3D12Device10), &mHandle));
 
 	mDirectQueue = CreateCommandQueue(D3D12_COMMAND_LIST_TYPE_DIRECT);
 	mComputeQueue = CreateCommandQueue(D3D12_COMMAND_LIST_TYPE_COMPUTE);
@@ -526,28 +515,7 @@ DirectXDevice::DirectXDevice()
 
 	DX_CHECK(static_cast<ID3D12Device10*>(mHandle)->CreateRootSignature(0, blob->GetBufferPointer(), blob->GetBufferSize(), IID_PPV_ARGS(&mRootSignature)));
 	blob->Release();
-
 	mRootSignature->SetName(L"GlobalRootSignature");
-
-	EventDispatcher<WindowResizeEvent>::Subscribe([this](const WindowResizeEvent& e)
-	{
-		WaitDeviceIdle();
-		for (auto& ctx : mFrameContext)
-		{
-			ReleaseSwapchainBuffer(ctx.drawable);
-		}
-
-		mSize.width = static_cast<float>(e.GetWidth());
-		mSize.height = static_cast<float>(e.GetHeight());
-		mSwapchain->ResizeBuffers(mMaxFramesInFlight, (UINT)mSize.width, (UINT)mSize.height, TextureFormatToDXGI_FORMAT(mFormat), 0);
-
-		for (uint32_t i = 0; i < mMaxFramesInFlight; i++)
-		{
-			auto& ctx = mFrameContext[i];
-			ctx.drawable = GetSwapchainBuffer(i);
-		}
-		EventDispatcher<RendererResizeEvent>::Publish(RendererResizeEvent(mSize));
-	});
 
 	GLEAM_CORE_INFO("DirectX: Graphics device created.");
 }
@@ -562,9 +530,6 @@ DirectXDevice::~DirectXDevice()
 		{
 			pool.Release();
 		}
-		ctx.fence->Release();
-
-		ReleaseSwapchainBuffer(ctx.drawable);
 	}
 	mFrameContext.clear();
 
@@ -589,9 +554,6 @@ DirectXDevice::~DirectXDevice()
 	mCopyQueue->Release();
 
 	mRootSignature->Release();
-	mSwapchain->Release();
-	mFactory->Release();
-	mAdapter->Release();
 	static_cast<ID3D12Device10*>(mHandle)->Release();
 
 #ifdef GDEBUG
@@ -605,85 +567,19 @@ DirectXDevice::~DirectXDevice()
 	{
 		mD3D12Debug->Release();
 	}
-	if (mDXGIDebug)
-	{
-		OutputDebugStringW(L"DXGI Reports living device objects:\n");
-		mDXGIDebug->ReportLiveObjects(DXGI_DEBUG_ALL,
-			DXGI_DEBUG_RLO_FLAGS(DXGI_DEBUG_RLO_DETAIL | DXGI_DEBUG_RLO_IGNORE_INTERNAL)
-		);
-
-		mDXGIDebug->Release();
-	}
 #endif
 	GLEAM_CORE_INFO("DirectX: Graphics device destroyed.");
 }
 
 void DirectXDevice::Configure(const RendererConfig& config)
 {
-	auto windowSystem = Globals::Engine->GetSubsystem<WindowSystem>();
+	mSwapchain->Configure(this, config);
 
-	int width, height;
-	SDL_GetWindowSizeInPixels(windowSystem->GetSDLWindow(), &width, &height);
-	mSize.width = static_cast<float>(width);
-	mSize.height = static_cast<float>(height);
-	mMaxFramesInFlight = config.tripleBufferingEnabled ? 3 : 2;
-
-	DXGI_FORMAT format = DXGI_FORMAT_B8G8R8A8_UNORM;
-	mFormat = DXGI_FORMATtoTextureFormat(format);
-
-	if (mSwapchain != nullptr)
-	{
-		// Destroy old context
-        DestroyPooledObjects();
-		for (auto& ctx : mFrameContext)
-		{
-			ReleaseSwapchainBuffer(ctx.drawable);
-			for (auto& pool : ctx.commandPools)
-			{
-				pool.Release();
-			}
-			ctx.fence->Release();
-		}
-		mFrameContext.clear();
-        
-		mSwapchain->ResizeBuffers(mMaxFramesInFlight, (UINT)mSize.width, (UINT)mSize.height, format, 0);
-	}
-	else
-	{
-		DXGI_SWAP_CHAIN_DESC1 swapchainDesc =
-		{
-			.Width = (UINT)mSize.width,
-			.Height = (UINT)mSize.height,
-			.Format = format,
-			.SampleDesc = {.Count = 1, .Quality = 0 },
-			.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT,
-			.BufferCount = mMaxFramesInFlight,
-			.Scaling = DXGI_SCALING_STRETCH,
-			.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD,
-			.AlphaMode = DXGI_ALPHA_MODE_IGNORE,
-			.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH
-		};
-		if (config.vsync == false)
-		{
-			swapchainDesc.Flags |= DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
-		}
-
-		SDL_Window* window = Globals::Engine->GetSubsystem<WindowSystem>()->GetSDLWindow();
-		HWND hwnd = (HWND)SDL_GetPointerProperty(SDL_GetWindowProperties(window), SDL_PROP_WINDOW_WIN32_HWND_POINTER, NULL);
-
-		IDXGISwapChain1* swapchain1 = nullptr;
-		DX_CHECK(mFactory->CreateSwapChainForHwnd(mDirectQueue, hwnd, &swapchainDesc, nullptr, nullptr, &swapchain1));
-		DX_CHECK(swapchain1->QueryInterface(IID_PPV_ARGS(&mSwapchain)));
-		swapchain1->Release();
-	}
-
-	mFrameContext.resize(mMaxFramesInFlight);
-    mPooledObjects.resize(mMaxFramesInFlight);
-	for (uint32_t i = 0; i < mMaxFramesInFlight; i++)
+	mFrameContext.resize(mSwapchain->mMaxFramesInFlight);
+    mPooledObjects.resize(mSwapchain->mMaxFramesInFlight);
+	for (uint32_t i = 0; i < mSwapchain->mMaxFramesInFlight; i++)
 	{
 		auto& ctx = mFrameContext[i];
-		ctx.drawable = GetSwapchainBuffer(i);
-
 		{
 			auto& pool = ctx.commandPools.emplace_back();
 			DX_CHECK(static_cast<ID3D12Device10*>(mHandle)->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&pool.allocator)));
@@ -698,53 +594,12 @@ void DirectXDevice::Configure(const RendererConfig& config)
 			auto& pool = ctx.commandPools.emplace_back();
 			DX_CHECK(static_cast<ID3D12Device10*>(mHandle)->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_COPY, IID_PPV_ARGS(&pool.allocator)));
 		}
-
-		// create fence
-		DX_CHECK(static_cast<ID3D12Device10*>(mHandle)->CreateFence(
-			ctx.frameCount,
-			D3D12_FENCE_FLAG_NONE,
-			IID_PPV_ARGS(&ctx.fence)
-		));
 	}
-}
-
-DirectXDrawable DirectXDevice::AcquireNextDrawable()
-{
-	auto idx = mSwapchain->GetCurrentBackBufferIndex();
-	auto& ctx = mFrameContext[idx];
-	WaitForID3D12Fence(ctx.fence, ctx.waitFenceValue);
-	return ctx.drawable;
-}
-
-void DirectXDevice::Present(const CommandBuffer* cmd)
-{
-	auto& ctx = mFrameContext[mCurrentFrameIndex];
-	
-	DirectXTransitionManager::TransitionLayout(static_cast<ID3D12GraphicsCommandList7*>(cmd->GetHandle()),
-		ctx.drawable.renderTarget, D3D12_RESOURCE_STATE_PRESENT);
-
-	cmd->End();
-	cmd->Commit();
-
-	DXGI_SWAP_CHAIN_DESC1 swapchainDesc{};
-	mSwapchain->GetDesc1(&swapchainDesc);
-	if (swapchainDesc.Flags & DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING)
-	{
-		mSwapchain->Present(0, DXGI_PRESENT_ALLOW_TEARING);
-	}
-	else
-	{
-		mSwapchain->Present(1, 0);
-	}
-
-	ctx.waitFenceValue = ctx.frameCount++;
-	mDirectQueue->Signal(ctx.fence, ctx.frameCount);
-	mCurrentFrameIndex = (mCurrentFrameIndex + 1) % mMaxFramesInFlight;
 }
 
 void DirectXDevice::DestroyFrameObjects(uint32_t frameIndex)
 {
-	for (auto& pool : mFrameContext[mCurrentFrameIndex].commandPools)
+	for (auto& pool : mFrameContext[frameIndex].commandPools)
 	{
 		pool.Reset();
 	}
@@ -752,7 +607,10 @@ void DirectXDevice::DestroyFrameObjects(uint32_t frameIndex)
 
 ID3D12GraphicsCommandList7* DirectXDevice::AllocateCommandList(D3D12_COMMAND_LIST_TYPE type)
 {
-	for (auto& pool : mFrameContext[mCurrentFrameIndex].commandPools)
+	TStringStream cmdlistName;
+	cmdlistName << ID3D12CommandListTypeToString(type) << mSwapchain->mCurrentFrameIndex;
+
+	for (auto& pool : mFrameContext[mSwapchain->mCurrentFrameIndex].commandPools)
 	{
 		if (pool.type == type)
 		{
@@ -769,50 +627,20 @@ ID3D12GraphicsCommandList7* DirectXDevice::AllocateCommandList(D3D12_COMMAND_LIS
 
 			pool.usedCommandLists.push_back(commandList);
 			commandList->Reset(pool.allocator, nullptr);
+			commandList->SetName(StringUtils::Convert(cmdlistName.str()).data());
 			return commandList;
 		}
 	}
 
-	auto& pool = mFrameContext[mCurrentFrameIndex].commandPools.emplace_back();
+	auto& pool = mFrameContext[mSwapchain->mCurrentFrameIndex].commandPools.emplace_back();
 	DX_CHECK(static_cast<ID3D12Device10*>(mHandle)->CreateCommandAllocator(type, IID_PPV_ARGS(&pool.allocator)));
 
 	ID3D12GraphicsCommandList7* commandList = nullptr;
 	DX_CHECK(static_cast<ID3D12Device10*>(mHandle)->CreateCommandList1(0, type, D3D12_COMMAND_LIST_FLAG_NONE, IID_PPV_ARGS(&commandList)));
 	pool.usedCommandLists.push_back(commandList);
 	commandList->Reset(pool.allocator, nullptr);
+	commandList->SetName(StringUtils::Convert(cmdlistName.str()).data());
 	return commandList;
-}
-
-DirectXDrawable DirectXDevice::GetSwapchainBuffer(uint32_t buffer)
-{
-	DirectXDrawable drawable{};
-	auto index = mRtvHeap.heap.Allocate();
-	drawable.view = mRtvHeap.cpuHandle;
-	drawable.view.ptr += (size_t)index.data * (size_t)mRtvHeap.size;
-
-	// create swapchain RTV
-	D3D12_RENDER_TARGET_VIEW_DESC rtvDesc =
-	{
-		.Format = TextureFormatToDXGI_FORMAT(mFormat),
-		.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D
-	};
-
-	DX_CHECK(mSwapchain->GetBuffer(buffer, IID_PPV_ARGS(&drawable.renderTarget)));
-	static_cast<ID3D12Device10*>(mHandle)->CreateRenderTargetView(drawable.renderTarget, &rtvDesc, drawable.view);
-	DirectXTransitionManager::SetLayout(drawable.renderTarget, D3D12_RESOURCE_STATE_PRESENT);
-
-	TStringStream resourceName;
-	resourceName << "Swapchain::Drawable_" << buffer;
-	drawable.renderTarget->SetName(StringUtils::Convert(resourceName.str()).data());
-
-	return drawable;
-}
-
-void DirectXDevice::ReleaseSwapchainBuffer(DirectXDrawable& drawable)
-{
-	drawable.renderTarget->Release();
-	mRtvHeap.heap.Release(mRtvHeap.GetResourceIndex(drawable.view));
-	drawable.renderTarget = nullptr;
 }
 
 ID3D12CommandQueue* DirectXDevice::CreateCommandQueue(D3D12_COMMAND_LIST_TYPE type) const
@@ -936,9 +764,7 @@ ShaderResourceIndex DirectXDevice::CreateResourceView(const Texture& texture)
 		}
 	}
 
-	auto index = mCbvSrvUavHeap.heap.Allocate();
-	D3D12_CPU_DESCRIPTOR_HANDLE handle = mCbvSrvUavHeap.cpuHandle;
-	handle.ptr += (size_t)index.data * (size_t)mCbvSrvUavHeap.size;
+	auto handle = mCbvSrvUavHeap.Allocate();
 
 	// SRV
 	if (texture.GetDescriptor().usage & TextureUsage_Sampled)
@@ -952,7 +778,7 @@ ShaderResourceIndex DirectXDevice::CreateResourceView(const Texture& texture)
 		handle.ptr += (UINT64)(mCbvSrvUavHeap.size * CBV_SRV_HEAP_SIZE);
 		static_cast<ID3D12Device10*>(mHandle)->CreateUnorderedAccessView(static_cast<ID3D12Resource*>(texture.GetHandle()), nullptr, &uavDesc, handle);
 	}
-	return index;
+	return mCbvSrvUavHeap.GetResourceIndex(handle);
 }
 
 void DirectXDevice::ReleaseResourceView(ShaderResourceIndex view)
@@ -981,9 +807,29 @@ void DirectXDevice::WaitQueueIdle(ID3D12CommandQueue* queue) const
 	fence->Release();
 }
 
+DirectXDescriptorHeap& DirectXDevice::GetRtvHeap()
+{
+	return mRtvHeap;
+}
+
+DirectXDescriptorHeap& DirectXDevice::GetDsvHeap()
+{
+	return mDsvHeap;
+}
+
 DirectXDescriptorHeap& DirectXDevice::GetCbvSrvUavHeap()
 {
 	return mCbvSrvUavHeap;
+}
+
+const DirectXDescriptorHeap& DirectXDevice::GetRtvHeap() const
+{
+	return mRtvHeap;
+}
+
+const DirectXDescriptorHeap& DirectXDevice::GetDsvHeap() const
+{
+	return mDsvHeap;
 }
 
 const DirectXDescriptorHeap& DirectXDevice::GetCbvSrvUavHeap() const
@@ -1034,6 +880,19 @@ void DirectXCommandPool::Release()
 
 	allocator->Release();
 	allocator = nullptr;
+}
+
+D3D12_CPU_DESCRIPTOR_HANDLE DirectXDescriptorHeap::Allocate()
+{
+	auto index = heap.Allocate();
+	auto view = cpuHandle;
+	view.ptr += (size_t)index.data * (size_t)size;
+	return view;
+}
+
+void DirectXDescriptorHeap::Release(D3D12_CPU_DESCRIPTOR_HANDLE handle)
+{
+	heap.Release(GetResourceIndex(handle));
 }
 
 ShaderResourceIndex DirectXDescriptorHeap::GetResourceIndex(D3D12_CPU_DESCRIPTOR_HANDLE view)

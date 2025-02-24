@@ -18,8 +18,15 @@ namespace Gleam {
 
 class World;
 class RenderSystem;
+class RenderSurface;
 class GraphicsDevice;
 class RenderSceneProxy;
+
+struct RenderContext
+{
+	GraphicsDevice* device = nullptr;
+	RenderSurface* surface = nullptr;
+};
 
 struct SceneRenderingData
 {
@@ -40,9 +47,9 @@ public:
 
 protected:
 
-	virtual void OnCreate(GraphicsDevice* device) {}
+	virtual void OnCreate(RenderContext& context) {}
 
-	virtual void OnDestroy(GraphicsDevice* device) {}
+	virtual void OnDestroy(RenderContext& context) {}
 
 	virtual void AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard) = 0;
 

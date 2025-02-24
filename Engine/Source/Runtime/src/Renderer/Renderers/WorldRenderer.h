@@ -20,7 +20,7 @@ class WorldRenderer : public IRenderer
 {
 public:
     
-    virtual void OnCreate(GraphicsDevice* device) override;
+    virtual void OnCreate(RenderContext& context) override;
     
     virtual void AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard) override;
 

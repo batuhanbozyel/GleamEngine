@@ -9,19 +9,20 @@
 #include "PostProcessStack.h"
 
 #include "Renderer/CommandBuffer.h"
+#include "Renderer/RenderSurface.h"
 #include "Renderer/GraphicsDevice.h"
 
 #include "WorldRenderer.h"
 
 using namespace Gleam;
 
-void PostProcessStack::OnCreate(GraphicsDevice* device)
+void PostProcessStack::OnCreate(RenderContext& context)
 {
 	GraphicsPipelineStateDescriptor pipelineState;
-	pipelineState.colorFormats = { device->GetRenderSurface().GetDescriptor().format };
+	pipelineState.colorFormats = { context.surface->GetFormat() };
 	pipelineState.vertexEntry = "fullscreenTriangleVertexShader";
 	pipelineState.fragmentEntry = "tonemappingFragmentShader";
-	mPipeline = device->CreateGraphicsPipeline(pipelineState);
+	mPipeline = context.device->CreateGraphicsPipeline(pipelineState);
 }
 
 void PostProcessStack::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard)

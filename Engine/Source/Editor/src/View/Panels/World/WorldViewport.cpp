@@ -52,8 +52,8 @@ void WorldViewport::Update()
 		Resize(mEditWorld->GetEntityManager(), mViewportSize);
     }
 
-	auto device = Gleam::Globals::Engine->GetSubsystem<Gleam::RenderSystem>()->GetDevice();
-	auto backbufferFormat = device->GetRenderSurface().GetDescriptor().format;
+	auto surface = Gleam::Globals::Engine->GetSubsystem<Gleam::RenderSystem>()->GetSurface();
+	auto backbufferFormat = surface->GetFormat();
 
     Gleam::TextureDescriptor descriptor;
 	descriptor.format = backbufferFormat;

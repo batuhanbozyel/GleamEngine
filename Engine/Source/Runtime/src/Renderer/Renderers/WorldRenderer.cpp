@@ -20,7 +20,7 @@
 
 using namespace Gleam;
 
-void WorldRenderer::OnCreate(GraphicsDevice* device)
+void WorldRenderer::OnCreate(RenderContext& context)
 {
 	GraphicsPipelineStateDescriptor pipelineDesc = {
 		PipelineStateDescriptor {
@@ -41,7 +41,7 @@ void WorldRenderer::OnCreate(GraphicsDevice* device)
 	pipelineDesc.fragmentEntry = "SurfaceLit";
 
     // TODO: create material pipelines
-	mShadingPipelines[0] = device->CreateGraphicsPipeline(pipelineDesc);
+	mShadingPipelines[0] = context.device->CreateGraphicsPipeline(pipelineDesc);
 }
 
 void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard)

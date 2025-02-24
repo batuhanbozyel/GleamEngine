@@ -1,5 +1,4 @@
 #pragma once
-#include "UploadManager.h"
 #include "CommandBuffer.h"
 #include "RendererConfig.h"
 #include "ResourceDescriptorHeap.h"
@@ -16,8 +15,6 @@ class GraphicsDevice : public GraphicsObject
 public:
 
     GLEAM_NONCOPYABLE(GraphicsDevice);
-
-    static Scope<GraphicsDevice> Create();
 
     GraphicsDevice() = default;
 
@@ -55,18 +52,6 @@ public:
 
 	void Dispose(GraphicsPipeline& pipeline);
 
-	Texture GetRenderSurface() const;
-
-	TextureFormat GetFormat() const;
-
-	uint32_t GetLastFrameIndex() const;
-
-	uint32_t GetFrameIndex() const;
-
-	uint32_t GetFramesInFlight() const;
-
-	const Size& GetDrawableSize() const;
-
 	const GraphicsPipeline& GetGraphicsPipeline(GraphicsPipelineHandle handle) const;
     
     MemoryRequirements QueryMemoryRequirements(const HeapDescriptor& descriptor) const;
@@ -80,8 +65,6 @@ public:
 protected:
 
 	// Implemented by the backend
-	virtual void Present(const CommandBuffer* cmd) = 0;
-
 	virtual void Configure(const RendererConfig& config) = 0;
 
 	virtual void DestroyFrameObjects(uint32_t frameIndex) {}
@@ -89,6 +72,8 @@ protected:
     virtual ShaderResourceIndex CreateResourceView(const Buffer& buffer) = 0;
     
     virtual ShaderResourceIndex CreateResourceView(const Texture& texture) = 0;
+
+	virtual ShaderResourceIndex CreateRenderTargetView(const NativeGraphicsHandle texture) = 0;
     
     virtual void ReleaseResourceView(ShaderResourceIndex view) = 0;
 
@@ -104,14 +89,6 @@ protected:
 	HashMap<TString, HashSet<PipelineHandle>> mShaderPipelineReferences;
 
 	HashMap<GraphicsPipelineHandle, GraphicsPipeline> mGraphicsPipelineCache;
-
-	uint32_t mMaxFramesInFlight = 3;
-
-	uint32_t mCurrentFrameIndex = 0;
-
-	Size mSize = Size::zero;
-	
-	TextureFormat mFormat = TextureFormat::None;
 
 private:
 

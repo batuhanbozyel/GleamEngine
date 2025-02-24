@@ -8,6 +8,7 @@
 #include "World/World.h"
 #include "Assets/AssetManager.h"
 #include "Renderer/RenderSystem.h"
+#include "Renderer/UploadManager.h"
 
 using namespace Gleam;
 

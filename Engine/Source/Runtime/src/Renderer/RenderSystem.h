@@ -9,6 +9,7 @@
 #include "Core/Subsystem.h"
 #include "CommandBuffer.h"
 #include "GraphicsDevice.h"
+#include "Swapchain.h"
 
 namespace Gleam {
 
@@ -37,14 +38,10 @@ public:
     GraphicsDevice* GetDevice();
     
     const GraphicsDevice* GetDevice() const;
-    
-    const Texture& GetRenderTarget() const;
-    
-    void SetBackbuffer(const TextureDescriptor& descriptor);
-    
-    void SetBackbuffer(const Texture& texture);
-    
-    void ResetRenderTarget();
+
+	RenderSurface* GetSurface();
+
+	const RenderSurface* GetSurface() const;
 
 	void RecompileShader(const TString& entryPoint);
     
@@ -53,7 +50,7 @@ public:
     {
         GLEAM_ASSERT(!HasRenderer<T>(), "Render pipeline already has the renderer!");
         auto renderer = mRenderers.emplace_back(new T(std::forward<Args>(args)...));
-        renderer->OnCreate(mDevice.get());
+        renderer->OnCreate(mContext);
         return static_cast<T*>(renderer);
     }
     
@@ -69,7 +66,7 @@ public:
         if (it != mRenderers.end())
         {
             auto renderer = *it;
-            renderer->OnDestroy(mDevice.get());
+            renderer->OnDestroy(mContext);
             delete renderer;
 			mRenderers.erase(it);
         }
@@ -128,13 +125,17 @@ public:
     
 private:
 
+	void InitializeBackend();
+
 	Engine* mEngine;
     
     Container mRenderers;
-    
-    Texture mRenderTarget;
 
-    Scope<GraphicsDevice> mDevice;
+	RenderContext mContext;
+
+    Scope<Swapchain> mSwapchain;
+
+	Scope<GraphicsDevice> mDevice;
 
 	Scope<UploadManager> mUploadManager;
     
