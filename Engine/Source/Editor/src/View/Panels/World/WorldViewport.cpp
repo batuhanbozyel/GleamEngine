@@ -50,17 +50,7 @@ void WorldViewport::Update()
     if (mViewportSizeChanged)
     {
 		Resize(mEditWorld->GetEntityManager(), mViewportSize);
-    }
-
-	auto surface = Gleam::Globals::Engine->GetSubsystem<Gleam::RenderSystem>()->GetSurface();
-	auto backbufferFormat = surface->GetFormat();
-
-    Gleam::TextureDescriptor descriptor;
-	descriptor.format = backbufferFormat;
-    descriptor.name = "Editor::Backbuffer";
-    descriptor.size = mViewportSize;
-    descriptor.usage = Gleam::TextureUsage_Attachment | Gleam::TextureUsage_Sampled;
-    Gleam::Globals::Engine->GetSubsystem<Gleam::RenderSystem>()->SetBackbuffer(descriptor);
+	}
 }
 
 void WorldViewport::Render(Gleam::ImGuiRenderer* imgui)

@@ -62,10 +62,16 @@ void RenderSystem::Shutdown()
 void RenderSystem::Render(const World* world)
 {
 #ifdef USE_METAL_RENDERER
-    @autoreleasepool
+	@autoreleasepool
 #endif
-    {
-		const auto& backbuffer = mSwapchain->AcquireNextDrawable();
+	{
+		// TODO: Set backbuffer to swapchain image for game runtime
+		RenderTextureDescriptor backbufferDesc{};
+		backbufferDesc.name = "Scene Backbuffer";
+		backbufferDesc.size = mSwapchain->GetSize();
+		backbufferDesc.format = mSwapchain->GetFormat();
+
+		auto backbuffer = mDevice->CreateTexture(backbufferDesc);
 		auto frameIdx = mSwapchain->GetFrameIndex();
 		mDevice->DestroyPooledObjects(frameIdx);
 
@@ -73,7 +79,7 @@ void RenderSystem::Render(const World* world)
         RenderGraphBlackboard blackboard;
 
 		SceneRenderingData sceneData;
-		sceneData.backbuffer = graph.ImportBackbuffer(backbuffer);
+		sceneData.backbuffer = graph.ImportBackbuffer(backbuffer, ImportResourceParams{ .clearColor = backbufferDesc.clearColor, .clearOnFirstUse = backbufferDesc.clearBuffer });
 		sceneData.sceneProxy = world->GetSystem<RenderSceneProxy>();
 		sceneData.world = world;
 

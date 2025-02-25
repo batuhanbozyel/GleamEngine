@@ -185,57 +185,63 @@ void RenderGraph::Execute(const CommandBuffer* cmd)
                 GLEAM_ASSERT(resource.node->texture.IsValid());
             }
         }
-        
+
+	#if defined(USE_DIRECTX_RENDERER)
+		for (auto& resource : pass->textureReads)
+		{
+			DirectXTransitionManager::TransitionLayout(
+				static_cast<ID3D12GraphicsCommandList7*>(cmd->GetHandle()),
+				static_cast<ID3D12Resource*>(resource.node->texture.GetHandle()),
+				D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE
+			);
+		}
+	#endif
+
         // execute render pass
-		if (pass->GetType() == RenderGraphPassType::Custom)
+		if (pass->GetType() == RenderGraphPassType::Native)
         {
             std::invoke(pass->callback, cmd);
         }
         else if (pass->GetType() == RenderGraphPassType::Raster)
         {
-            RenderPassDescriptor renderPassDesc{};
-            renderPassDesc.colorAttachments.resize(pass->colorAttachments.size());
-            for (uint32_t i = 0; i < pass->colorAttachments.size(); i++)
-            {
-                const auto node = static_cast<const RenderGraphTextureNode*>(pass->colorAttachments[i].node);
-                renderPassDesc.colorAttachments[i].texture = node->texture;
-                renderPassDesc.colorAttachments[i].loadAction = GetLoadActionForRenderTexture(node, pass);
-                renderPassDesc.colorAttachments[i].storeAction = GetStoreActionForRenderTexture(node, pass);
-                renderPassDesc.colorAttachments[i].clearColor = node->clearColor;
-                
-                const auto& descriptor = renderPassDesc.colorAttachments[i].texture.GetDescriptor();
-                renderPassDesc.size = descriptor.size;
-            }
-            
-            if (pass->depthAttachment.IsValid())
-            {
-                const auto node = static_cast<const RenderGraphTextureNode*>(pass->depthAttachment.node);
-                renderPassDesc.depthAttachment.texture = node->texture;
-                renderPassDesc.depthAttachment.loadAction = GetLoadActionForRenderTexture(node, pass);
-                renderPassDesc.depthAttachment.storeAction = GetStoreActionForRenderTexture(node, pass);
-                renderPassDesc.depthAttachment.clearDepth = node->clearDepth;
-                renderPassDesc.depthAttachment.clearStencil = node->clearStencil;
-                
-                const auto& descriptor = renderPassDesc.depthAttachment.texture.GetDescriptor();
-                renderPassDesc.size = descriptor.size;
-            }
-            
-            cmd->BeginRenderPass(renderPassDesc, pass->name);
-            cmd->SetViewport(renderPassDesc.size);
-
-		#if defined(USE_DIRECTX_RENDERER)
-			for (auto& resource : pass->textureReads)
+			if (pass->colorAttachments.empty() && pass->depthAttachment.IsValid() == false)
 			{
-				DirectXTransitionManager::TransitionLayout(
-					static_cast<ID3D12GraphicsCommandList7*>(cmd->GetHandle()),
-					static_cast<ID3D12Resource*>(resource.node->texture.GetHandle()),
-					D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE
-				);
+				std::invoke(pass->callback, cmd);
 			}
-		#endif
+			else
+			{
+				RenderPassDescriptor renderPassDesc{};
+				renderPassDesc.colorAttachments.resize(pass->colorAttachments.size());
+				for (uint32_t i = 0; i < pass->colorAttachments.size(); i++)
+				{
+					const auto node = static_cast<const RenderGraphTextureNode*>(pass->colorAttachments[i].node);
+					renderPassDesc.colorAttachments[i].texture = node->texture;
+					renderPassDesc.colorAttachments[i].loadAction = GetLoadActionForRenderTexture(node, pass);
+					renderPassDesc.colorAttachments[i].storeAction = GetStoreActionForRenderTexture(node, pass);
+					renderPassDesc.colorAttachments[i].clearColor = node->clearColor;
 
-            std::invoke(pass->callback, cmd);
-            cmd->EndRenderPass();
+					const auto& descriptor = renderPassDesc.colorAttachments[i].texture.GetDescriptor();
+					renderPassDesc.size = descriptor.size;
+				}
+
+				if (pass->depthAttachment.IsValid())
+				{
+					const auto node = static_cast<const RenderGraphTextureNode*>(pass->depthAttachment.node);
+					renderPassDesc.depthAttachment.texture = node->texture;
+					renderPassDesc.depthAttachment.loadAction = GetLoadActionForRenderTexture(node, pass);
+					renderPassDesc.depthAttachment.storeAction = GetStoreActionForRenderTexture(node, pass);
+					renderPassDesc.depthAttachment.clearDepth = node->clearDepth;
+					renderPassDesc.depthAttachment.clearStencil = node->clearStencil;
+
+					const auto& descriptor = renderPassDesc.depthAttachment.texture.GetDescriptor();
+					renderPassDesc.size = descriptor.size;
+				}
+
+				cmd->BeginRenderPass(renderPassDesc, pass->name);
+				cmd->SetViewport(renderPassDesc.size);
+				std::invoke(pass->callback, cmd);
+				cmd->EndRenderPass();
+			}
         }
     }
 

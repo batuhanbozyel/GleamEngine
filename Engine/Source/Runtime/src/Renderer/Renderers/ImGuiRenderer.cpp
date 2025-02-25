@@ -13,6 +13,7 @@ using namespace Gleam;
 void ImGuiRenderer::OnCreate(RenderContext& context)
 {
     mDevice = context.device;
+	mSurface = context.surface;
     
 	IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -39,14 +40,28 @@ void ImGuiRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 	graph.AddRenderPass<ImGuiPassData>("ImGuiPass", [&](RenderGraphBuilder& builder, ImGuiPassData& passData)
 	{
 		const auto& sceneData = blackboard.Get<Gleam::SceneRenderingData>();
-		auto swapchainTarget = graph.ImportBackbuffer(mDevice->GetRenderSurface());
 		passData.sceneTarget = builder.ReadTexture(sceneData.backbuffer);
-		passData.swapchainTarget = builder.UseColorBuffer(swapchainTarget);
+		builder.AllowPassCulling(false);
 	},
     [this](const CommandBuffer* cmd, const ImGuiPassData& passData)
     {
+		AttachmentDescriptor swapchainTarget{};
+		swapchainTarget.texture = static_cast<Swapchain*>(mSurface)->AcquireNextDrawable();
+
+		// for game runtime, imgui might render to swapchain on top of scene view
+		// in that case, load action needs to be load
+		swapchainTarget.loadAction = AttachmentLoadAction::Clear; 
+		swapchainTarget.storeAction = AttachmentStoreAction::Store;
+
+		RenderPassDescriptor renderPassDesc{};
+		renderPassDesc.size = mSurface->GetSize();
+		renderPassDesc.colorAttachments.push_back(swapchainTarget);
+
+		cmd->BeginRenderPass(renderPassDesc, "ImGuiPass");
+		cmd->SetViewport(renderPassDesc.size);
+
         ImGuiIO& io = ImGui::GetIO();
-        const auto& drawableSize = Globals::Engine->GetSubsystem<RenderSystem>()->GetDevice()->GetDrawableSize();
+        const auto& drawableSize = mSurface->GetSize();
         io.DisplaySize = ImVec2(drawableSize.width, drawableSize.height);
         
 		ImGuiBackend::BeginFrame();
@@ -82,6 +97,8 @@ void ImGuiRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
         
         ImGui::UpdatePlatformWindows();
         ImGui::RenderPlatformWindowsDefault();
+
+		cmd->EndRenderPass();
     });
 }
 

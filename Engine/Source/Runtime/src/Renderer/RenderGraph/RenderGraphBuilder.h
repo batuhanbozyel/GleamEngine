@@ -21,6 +21,8 @@ public:
 
     RenderGraphBuilder(RenderGraphPassNode& node, RenderGraphResourceRegistry& registry);
 
+	void AllowPassCulling(bool enable);
+
     NO_DISCARD TextureHandle UseColorBuffer(const TextureHandle& attachment);
     
     NO_DISCARD TextureHandle UseDepthBuffer(const TextureHandle& attachment);

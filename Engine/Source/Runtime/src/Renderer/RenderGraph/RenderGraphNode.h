@@ -42,7 +42,7 @@ enum class RenderGraphPassType
 	Copy,
 	Raster,
 	Compute,
-	Custom
+	Native
 };
 
 struct RenderGraphPassNode : public RenderGraphNode

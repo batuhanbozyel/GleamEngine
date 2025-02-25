@@ -6,7 +6,6 @@ namespace Gleam {
 struct ImGuiPassData
 {
 	TextureHandle sceneTarget;
-	TextureHandle swapchainTarget;
 };
 
 using ImGuiView = std::function<void(const ImGuiPassData&)>;
@@ -24,6 +23,8 @@ public:
 	void PushView(ImGuiView&& view);
     
 private:
+
+	RenderSurface* mSurface;
     
     GraphicsDevice* mDevice;
 
