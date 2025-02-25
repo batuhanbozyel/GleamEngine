@@ -18,7 +18,7 @@ RenderGraphBuilder::RenderGraphBuilder(RenderGraphPassNode& node, RenderGraphRes
 
 void RenderGraphBuilder::AllowPassCulling(bool enable)
 {
-	mPassNode.hasSideEffect = enable;
+	mPassNode.hasSideEffect = not enable;
 }
 
 NO_DISCARD TextureHandle RenderGraphBuilder::UseColorBuffer(const TextureHandle& attachment)

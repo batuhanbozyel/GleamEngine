@@ -129,6 +129,7 @@ void DirectXSwapchain::Resize(GraphicsDevice* device, const Size& size)
 	{
 		mTextures[i] = CreateSwapchainBuffer(device, i);
 	}
+	mCurrentFrameIndex = mHandle->GetCurrentBackBufferIndex();
 }
 
 const Texture& DirectXSwapchain::AcquireNextDrawable()
