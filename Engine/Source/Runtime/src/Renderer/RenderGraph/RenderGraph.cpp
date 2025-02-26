@@ -1,5 +1,7 @@
 #include "gpch.h"
 #include "RenderGraph.h"
+#include "Renderer/Renderer.h"
+#include "Renderer/Swapchain.h"
 #include "Renderer/CommandBuffer.h"
 #include "Renderer/GraphicsDevice.h"
 
@@ -25,8 +27,9 @@ static AttachmentStoreAction GetStoreActionForRenderTexture(const RenderGraphTex
     return (node->lastReference == pass && !pass->hasSideEffect) ? AttachmentStoreAction::DontCare : AttachmentStoreAction::Store;
 }
 
-RenderGraph::RenderGraph(GraphicsDevice* device)
-    : mDevice(device)
+RenderGraph::RenderGraph(RenderContext& context)
+    : mDevice(context.device)
+	, mSurface(context.surface)
 {
     
 }
@@ -142,7 +145,7 @@ void RenderGraph::Compile()
     }
 }
 
-void RenderGraph::Execute(const CommandBuffer* cmd)
+void RenderGraph::Execute(const CommandBuffer* cmd, SceneRenderingData& sceneData)
 {
     Heap heap;
     if (mHeapSize > 0)
@@ -185,6 +188,17 @@ void RenderGraph::Execute(const CommandBuffer* cmd)
                 GLEAM_ASSERT(resource.node->texture.IsValid());
             }
         }
+
+		// Acquire backbuffer texture
+		for (uint32_t i = 0; i < pass->textureWrites.size(); i++)
+		{
+			auto& resource = pass->textureWrites[i];
+			if (resource == sceneData.backbuffer)
+			{
+				sceneData.backbuffer.node->texture = static_cast<Swapchain*>(mSurface)->AcquireNextDrawable();
+				resource.node->texture = sceneData.backbuffer.node->texture;
+			}
+		}
 
 	#if defined(USE_DIRECTX_RENDERER)
 		for (auto& resource : pass->textureReads)

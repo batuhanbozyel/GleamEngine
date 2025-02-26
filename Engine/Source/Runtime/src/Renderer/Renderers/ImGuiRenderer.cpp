@@ -40,26 +40,11 @@ void ImGuiRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 	graph.AddRenderPass<ImGuiPassData>("ImGuiPass", [&](RenderGraphBuilder& builder, ImGuiPassData& passData)
 	{
 		const auto& sceneData = blackboard.Get<Gleam::SceneRenderingData>();
-		passData.sceneTarget = builder.ReadTexture(sceneData.backbuffer);
-		builder.AllowPassCulling(false);
+		passData.sceneTarget = builder.ReadTexture(sceneData.sceneTarget);
+		passData.backbuffer = builder.UseColorBuffer(sceneData.backbuffer);
 	},
     [this](const CommandBuffer* cmd, const ImGuiPassData& passData)
     {
-		AttachmentDescriptor swapchainTarget{};
-		swapchainTarget.texture = static_cast<Swapchain*>(mSurface)->AcquireNextDrawable();
-
-		// for game runtime, imgui might render to swapchain on top of scene view
-		// in that case, load action needs to be load
-		swapchainTarget.loadAction = AttachmentLoadAction::Clear; 
-		swapchainTarget.storeAction = AttachmentStoreAction::Store;
-
-		RenderPassDescriptor renderPassDesc{};
-		renderPassDesc.size = mSurface->GetSize();
-		renderPassDesc.colorAttachments.push_back(swapchainTarget);
-
-		cmd->BeginRenderPass(renderPassDesc, "ImGuiPass");
-		cmd->SetViewport(renderPassDesc.size);
-
         ImGuiIO& io = ImGui::GetIO();
         const auto& drawableSize = mSurface->GetSize();
         io.DisplaySize = ImVec2(drawableSize.width, drawableSize.height);
@@ -82,8 +67,8 @@ void ImGuiRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
         ImGui::PopStyleVar();
         ImGui::PopStyleVar(2);
         
-        ImGuiID dockspace_id = ImGui::GetID("EditorDockSpace");
-        ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_None);
+        ImGuiID dockspaceID = ImGui::GetID("EditorDockSpace");
+        ImGui::DockSpace(dockspaceID, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_None);
         
         for (auto& view : mViews)
         {
@@ -97,8 +82,6 @@ void ImGuiRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
         
         ImGui::UpdatePlatformWindows();
         ImGui::RenderPlatformWindowsDefault();
-
-		cmd->EndRenderPass();
     });
 }
 

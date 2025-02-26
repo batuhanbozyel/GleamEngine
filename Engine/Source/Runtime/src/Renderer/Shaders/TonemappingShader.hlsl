@@ -7,5 +7,5 @@ PUSH_CONSTANT(Gleam::TonemapUniforms, uniforms);
 
 float4 tonemappingFragmentShader(FScreenVertexOutput IN) : SV_TARGET
 {
-    return uniforms.sceneRT.Sample(Sampler_Point_Clamp, IN.texCoord);
+    return uniforms.sceneColor.Sample(Sampler_Point_Clamp, IN.texCoord);
 }

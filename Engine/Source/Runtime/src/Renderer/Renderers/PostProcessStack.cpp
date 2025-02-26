@@ -29,23 +29,23 @@ void PostProcessStack::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard
 {
     struct PostProcessData
     {
-        TextureHandle colorTarget;
-        TextureHandle sceneTarget;
+        TextureHandle renderTarget;
+        TextureHandle sceneColor;
     };
     
     graph.AddRenderPass<PostProcessData>("PostProcessStack::Tonemapping", [&](RenderGraphBuilder& builder, PostProcessData& passData)
     {
         auto& sceneData = blackboard.Get<SceneRenderingData>();
         const auto& worldData = blackboard.Get<WorldRenderingData>();
-        passData.colorTarget = builder.UseColorBuffer(sceneData.backbuffer);
-        passData.sceneTarget = builder.ReadTexture(worldData.colorTarget);
+        passData.renderTarget = builder.UseColorBuffer(sceneData.sceneTarget);
+        passData.sceneColor = builder.ReadTexture(worldData.colorTarget);
         
-        sceneData.backbuffer = passData.colorTarget;
+        sceneData.sceneTarget = passData.renderTarget;
     },
     [this](const CommandBuffer* cmd, const PostProcessData& passData)
     {
         TonemapUniforms uniforms;
-        uniforms.sceneRT = passData.sceneTarget;
+        uniforms.sceneColor = passData.sceneColor;
         
         cmd->BindGraphicsPipeline(mPipeline);
         cmd->SetPushConstant(uniforms);

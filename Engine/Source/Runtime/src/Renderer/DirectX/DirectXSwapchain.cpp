@@ -78,12 +78,11 @@ void DirectXSwapchain::Configure(DirectXDevice* device, const RendererConfig& co
 
 	if (mHandle != nullptr)
 	{
-		// Destroy old context
-		for (uint32_t i = 0; i < mMaxFramesInFlight; i++)
+		for (auto& ctx : mContext)
 		{
-			ReleaseSwapchainBuffer(mDevice, mTextures[i]);
-			mContext[i].fence->Release();
+			ctx.fence->Release();
 		}
+
 		mHandle->Release();
 		mHandle = nullptr;
 	}
@@ -125,6 +124,7 @@ void DirectXSwapchain::Resize(GraphicsDevice* device, const Size& size)
 		swapchain1->Release();
 	}
 
+	mTextures.resize(mMaxFramesInFlight);
 	for (uint32_t i = 0; i < mMaxFramesInFlight; i++)
 	{
 		mTextures[i] = CreateSwapchainBuffer(device, i);

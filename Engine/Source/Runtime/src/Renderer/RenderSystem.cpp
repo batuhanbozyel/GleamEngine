@@ -63,23 +63,27 @@ void RenderSystem::Render(const World* world)
 {
 #ifdef USE_METAL_RENDERER
 	@autoreleasepool
-#endif
+	#endif
 	{
-		// TODO: Set backbuffer to swapchain image for game runtime
-		RenderTextureDescriptor backbufferDesc{};
-		backbufferDesc.name = "Scene Backbuffer";
-		backbufferDesc.size = mSwapchain->GetSize();
-		backbufferDesc.format = mSwapchain->GetFormat();
+		// TODO: Render scene per active camera
+		// Set sceneTarget to camera target
+		// Camera target default requires a special handle
+		// which maps to backbuffer for runtime and a temporary texture for editor scene view
+		// We may want to decide this on Editor side
+		RenderTextureDescriptor sceneTargetDesc{};
+		sceneTargetDesc.name = "Scene Target";
+		sceneTargetDesc.size = mSwapchain->GetSize();
+		sceneTargetDesc.format = mSwapchain->GetFormat();
 
-		auto backbuffer = mDevice->CreateTexture(backbufferDesc);
-		auto frameIdx = mSwapchain->GetFrameIndex();
-		mDevice->DestroyPooledObjects(frameIdx);
+		auto sceneTarget = mDevice->CreateTexture(sceneTargetDesc);
+		const auto& backbuffer = mSwapchain->GetCurrentDrawable();
 
-        RenderGraph graph(mDevice.get());
-        RenderGraphBlackboard blackboard;
+		RenderGraph graph(mContext);
+		RenderGraphBlackboard blackboard;
 
-		SceneRenderingData sceneData;
-		sceneData.backbuffer = graph.ImportBackbuffer(backbuffer, ImportResourceParams{ .clearColor = backbufferDesc.clearColor, .clearOnFirstUse = backbufferDesc.clearBuffer });
+		auto& sceneData = blackboard.Add<SceneRenderingData>();
+		sceneData.backbuffer = graph.ImportBackbuffer(backbuffer);
+		sceneData.sceneTarget = graph.ImportBackbuffer(sceneTarget);
 		sceneData.sceneProxy = world->GetSystem<RenderSceneProxy>();
 		sceneData.world = world;
 
@@ -105,7 +109,6 @@ void RenderSystem::Render(const World* world)
 			sceneData.camera.invViewProjectionMatrix = Math::Inverse(sceneData.camera.viewProjectionMatrix);
 			sceneData.camera.position = camera->GetWorldPosition();
 		}
-		blackboard.Add(sceneData);
 
         for (auto renderer : mRenderers)
         {
@@ -113,9 +116,14 @@ void RenderSystem::Render(const World* world)
         }
         graph.Compile();
 
+		auto frameIdx = mSwapchain->GetFrameIndex();
 		const auto cmd = mCommandBuffers[frameIdx].get();
+
+		cmd->WaitUntilCompleted();
+		mDevice->DestroyPooledObjects(frameIdx);
+
 		cmd->Begin();
-        graph.Execute(cmd);
+        graph.Execute(cmd, sceneData);
 		mSwapchain->Present(cmd);
     }
 }

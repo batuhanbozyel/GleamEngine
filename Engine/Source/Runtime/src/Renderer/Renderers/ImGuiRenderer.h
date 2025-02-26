@@ -6,6 +6,7 @@ namespace Gleam {
 struct ImGuiPassData
 {
 	TextureHandle sceneTarget;
+	TextureHandle backbuffer;
 };
 
 using ImGuiView = std::function<void(const ImGuiPassData&)>;

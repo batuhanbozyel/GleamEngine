@@ -34,6 +34,7 @@ struct SceneRenderingData
     const World* world = nullptr;
 	CameraUniforms camera;
     TextureHandle backbuffer;
+	TextureHandle sceneTarget;
 };
 
 class IRenderer

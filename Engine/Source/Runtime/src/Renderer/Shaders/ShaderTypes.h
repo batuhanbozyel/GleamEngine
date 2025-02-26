@@ -42,7 +42,7 @@ struct MeshPassResources
 
 struct TonemapUniforms
 {
-	Texture2DResourceView<float4> sceneRT;
+	Texture2DResourceView<float4> sceneColor;
 };
 
 struct SurfaceInput

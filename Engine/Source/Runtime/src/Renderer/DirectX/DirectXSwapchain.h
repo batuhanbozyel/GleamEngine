@@ -62,8 +62,6 @@ private:
 		uint64_t waitFenceValue = 0;
 		uint64_t fenceValue = 0;
 	};
-
-	TArray<Texture> mTextures;
 	TArray<FrameContext> mContext;
 
 };
