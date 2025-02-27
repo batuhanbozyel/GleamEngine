@@ -12,9 +12,11 @@
 #include "Core/Engine.h"
 #include "Core/Globals.h"
 #include "Core/Application.h"
-#include "Assets/AssetManager.h"
+
 #include "Renderer/Texture2D.h"
 #include "Renderer/RenderSystem.h"
+
+#include "Assets/AssetManager.h"
 
 using namespace Gleam;
 
@@ -63,15 +65,15 @@ Material::Material(const MaterialDescriptor& descriptor)
 	BufferDescriptor bufferDesc;
 	bufferDesc.name = "Buffer";
 	bufferDesc.size = heapDesc.size;
-	mBuffer = mHeap.CreateBuffer(bufferDesc);
+	mBuffer = mHeap.Allocate(bufferDesc);
 }
 
 void Material::Release()
 {
 	static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
 	auto device = renderSystem->GetDevice();
-	device->ReleaseBuffer(mBuffer);
-	device->ReleaseHeap(mHeap);
+	mHeap.Free(mBuffer);
+	device->Dispose(mHeap);
 }
 
 ShaderResourceIndex Material::CreateInstance(const TArray<MaterialPropertyValue>& values)

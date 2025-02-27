@@ -21,23 +21,18 @@ using namespace Gleam;
 
 void RenderSystem::Initialize(Engine* engine)
 {
+	mEngine = engine;
 	InitializeBackend();
 
-	mEngine = engine;
 	mContext.device = mDevice.get();
 	mContext.surface = mSwapchain.get();
-	mUploadManager = CreateScope<UploadManager>(mDevice.get());
+	mContext.releaseQueue = mReleaseQueue.get();
+	mContext.resourcePool = mResourcePool.get();
 
 	EventDispatcher<RendererResizeEvent>::Subscribe([this](RendererResizeEvent e)
 	{
-        const auto& cmd = mCommandBuffers[mSwapchain->GetFrameIndex()];
-        if (cmd)
-        {
-            cmd->WaitUntilCompleted();
-        }
-		mDevice->DestroyPooledObjects();
-        mDevice->DestroySizeDependentResources();
 		mSwapchain->Resize(mDevice.get(), e.GetSize());
+		mResourcePool->Clear();
 	});
 }
 
@@ -55,7 +50,8 @@ void RenderSystem::Shutdown()
     }
 	mRenderers.clear();
 
-    mDevice->DestroyResources();
+	mResourcePool.reset();
+	mReleaseQueue.reset();
     mDevice.reset();
 }
 
@@ -63,7 +59,7 @@ void RenderSystem::Render(const World* world)
 {
 #ifdef USE_METAL_RENDERER
 	@autoreleasepool
-	#endif
+#endif
 	{
 		// TODO: Render scene per active camera
 		// Set sceneTarget to camera target
@@ -75,7 +71,7 @@ void RenderSystem::Render(const World* world)
 		sceneTargetDesc.size = mSwapchain->GetSize();
 		sceneTargetDesc.format = mSwapchain->GetFormat();
 
-		auto sceneTarget = mDevice->CreateTexture(sceneTargetDesc);
+		auto sceneTarget = mResourcePool->Allocate(sceneTargetDesc);
 		const auto& backbuffer = mSwapchain->GetCurrentDrawable();
 
 		RenderGraph graph(mContext);
@@ -120,11 +116,14 @@ void RenderSystem::Render(const World* world)
 		const auto cmd = mCommandBuffers[frameIdx].get();
 
 		cmd->WaitUntilCompleted();
-		mDevice->DestroyPooledObjects(frameIdx);
+		mReleaseQueue->Flush(frameIdx);
+		mDevice->ResetCommandPools(frameIdx);
 
 		cmd->Begin();
         graph.Execute(cmd, sceneData);
 		mSwapchain->Present(cmd);
+
+		mResourcePool->Release(sceneTarget);
     }
 }
 

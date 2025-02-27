@@ -4,6 +4,7 @@
 #include "Renderer/Swapchain.h"
 #include "Renderer/CommandBuffer.h"
 #include "Renderer/GraphicsDevice.h"
+#include "Renderer/RenderResourcePool.h"
 
 #if defined(USE_METAL_RENDERER)
 #import <Metal/Metal.h>
@@ -30,6 +31,7 @@ static AttachmentStoreAction GetStoreActionForRenderTexture(const RenderGraphTex
 RenderGraph::RenderGraph(RenderContext& context)
     : mDevice(context.device)
 	, mSurface(context.surface)
+	, mResourcePool(context.resourcePool)
 {
     
 }
@@ -150,7 +152,7 @@ void RenderGraph::Execute(const CommandBuffer* cmd, SceneRenderingData& sceneDat
     Heap heap;
     if (mHeapSize > 0)
     {
-        heap = mDevice->CreateHeap({ .name = "RenderGraph", .memoryType = MemoryType::GPU, .size = mHeapSize });
+        heap = mResourcePool->Allocate({ .name = "RenderGraph", .memoryType = MemoryType::GPU, .size = mHeapSize });
     }
 
     for (auto pass : mPassNodes)
@@ -167,7 +169,7 @@ void RenderGraph::Execute(const CommandBuffer* cmd, SceneRenderingData& sceneDat
                                         : (name << pass->name << "::" << descriptor.name);
                 descriptor.name = name.str();
                 
-                resource.node->buffer = heap.CreateBuffer(descriptor);
+                resource.node->buffer = heap.Allocate(descriptor);
                 GLEAM_ASSERT(resource.node->buffer.IsValid());
             }
         }
@@ -184,7 +186,7 @@ void RenderGraph::Execute(const CommandBuffer* cmd, SceneRenderingData& sceneDat
                                         : (name << pass->name << "::" << descriptor.name);
                 descriptor.name = name.str();
                 
-                resource.node->texture = mDevice->CreateTexture(descriptor);
+                resource.node->texture = mResourcePool->Allocate(descriptor);
                 GLEAM_ASSERT(resource.node->texture.IsValid());
             }
         }
@@ -264,18 +266,18 @@ void RenderGraph::Execute(const CommandBuffer* cmd, SceneRenderingData& sceneDat
     {
         for (auto& resource : pass->bufferCreates)
         {
-            mDevice->ReleaseBuffer(resource.node->buffer);
+			heap.Free(resource.node->buffer);
         }
 
         for (auto& resource : pass->textureCreates)
         {
-            mDevice->ReleaseTexture(resource.node->texture);
+			mResourcePool->Release(resource.node->texture);
         }
     }
 
     if (heap.IsValid())
     {
-        mDevice->ReleaseHeap(heap);
+		mResourcePool->Release(heap);
     }
     
     for (auto pass : mPassNodes) { delete pass; }

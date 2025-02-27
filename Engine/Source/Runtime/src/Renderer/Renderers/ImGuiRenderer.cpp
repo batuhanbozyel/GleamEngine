@@ -22,7 +22,7 @@ void ImGuiRenderer::OnCreate(RenderContext& context)
     io.ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange;
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable | ImGuiConfigFlags_ViewportsEnable;
     
-	ImGuiBackend::Init(mDevice);
+	ImGuiBackend::Init(context);
     Globals::Engine->GetSubsystem<EventSystem>()->SetEventHandler([](const SDL_Event* e)
     {
         ImGui_ImplSDL3_ProcessEvent(e);

@@ -3,6 +3,7 @@
 
 #include "Core/Engine.h"
 #include "Core/Globals.h"
+
 #include "Renderer/RenderSystem.h"
 
 using namespace Gleam;
@@ -25,7 +26,7 @@ void Texture2D::Release()
 {
 	static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
 	auto device = renderSystem->GetDevice();
-	device->ReleaseTexture(mTexture);
+	device->Dispose(mTexture);
 }
 
 ShaderResourceIndex Texture2D::GetResourceView() const

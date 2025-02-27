@@ -1,6 +1,8 @@
 #pragma once
+#include "RenderSurface.h"
 #include "CommandBuffer.h"
 #include "RendererConfig.h"
+#include "ResourceReleaseQueue.h"
 #include "ResourceDescriptorHeap.h"
 
 namespace Gleam {
@@ -16,17 +18,9 @@ public:
 
     GLEAM_NONCOPYABLE(GraphicsDevice);
 
-    GraphicsDevice() = default;
+    GraphicsDevice(RenderSurface* surface, ResourceReleaseQueue* releaseQueue);
 
     virtual ~GraphicsDevice() = default;
-
-	void DestroyResources();
-
-	void DestroySizeDependentResources();
-
-	void DestroyPooledObjects();
-
-	void DestroyPooledObjects(uint32_t frameIndex);
 
     Heap CreateHeap(const HeapDescriptor& descriptor);
 
@@ -36,15 +30,7 @@ public:
 
 	GraphicsPipelineHandle CreateGraphicsPipeline(const GraphicsPipelineStateDescriptor& pipelineDesc);
 
-    void ReleaseHeap(const Heap& heap);
-
-	void ReleaseBuffer(const Buffer& buffer);
-
-    void ReleaseTexture(const Texture& texture);
-
     void Dispose(Heap& heap);
-
-    void Dispose(Buffer& buffer);
 
     void Dispose(Texture& texture);
 
@@ -55,34 +41,19 @@ public:
 	const GraphicsPipeline& GetGraphicsPipeline(GraphicsPipelineHandle handle) const;
     
     MemoryRequirements QueryMemoryRequirements(const HeapDescriptor& descriptor) const;
-
-	using ObjectDeallocator = std::function<void()>;
-	void AddPooledObject(ObjectDeallocator&& deallocator)
-	{
-		mPooledObjects[mCurrentFrameIndex].push_back(deallocator);
-	}
     
 protected:
 
 	// Implemented by the backend
 	virtual void Configure(const RendererConfig& config) = 0;
-
-	virtual void DestroyFrameObjects(uint32_t frameIndex) {}
     
     virtual ShaderResourceIndex CreateResourceView(const Buffer& buffer) = 0;
     
     virtual ShaderResourceIndex CreateResourceView(const Texture& texture) = 0;
-
-	virtual ShaderResourceIndex CreateRenderTargetView(const NativeGraphicsHandle texture) = 0;
     
     virtual void ReleaseResourceView(ShaderResourceIndex view) = 0;
 
-	using ObjectPool = TArray<ObjectDeallocator>;
-	TArray<ObjectPool> mPooledObjects;
-
-    Deque<Heap> mFreeHeaps;
-
-    Deque<Texture> mFreeTextures;
+	virtual void ResetCommandPools(uint32_t frameIdx) {};
 
     TArray<Shader> mShaderCache;
 
@@ -90,11 +61,11 @@ protected:
 
 	HashMap<GraphicsPipelineHandle, GraphicsPipeline> mGraphicsPipelineCache;
 
-private:
+	RenderSurface* mSurface = nullptr;
 
-    Heap AllocateHeap(const HeapDescriptor& descriptor);
-    
-    Texture AllocateTexture(const TextureDescriptor& descriptor);
+	ResourceReleaseQueue* mReleaseQueue = nullptr;
+
+private:
 
 	Shader CompileShader(const TString& entryPoint, ShaderStage stage);
 

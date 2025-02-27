@@ -27,7 +27,9 @@ public:
 
     }
 
-    Buffer CreateBuffer(const BufferDescriptor& descriptor);
+    Buffer Allocate(const BufferDescriptor& descriptor);
+
+	void Free(Buffer& buffer);
 
     void Reset()
     {

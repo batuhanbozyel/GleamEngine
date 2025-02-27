@@ -42,7 +42,11 @@ static void DirectXDebugCallback(D3D12_MESSAGE_CATEGORY Category,
 void RenderSystem::InitializeBackend()
 {
 	mSwapchain = CreateScope<DirectXSwapchain>();
-	mDevice = CreateScope<DirectXDevice>(mSwapchain.get());
+	mReleaseQueue = CreateScope<ResourceReleaseQueue>(mSwapchain->GetFramesInFlight());
+
+	mDevice = CreateScope<DirectXDevice>(mSwapchain.get(), mReleaseQueue.get());
+	mUploadManager = CreateScope<UploadManager>(mDevice.get());
+	mResourcePool = CreateScope<RenderResourcePool>(mDevice.get(), mSwapchain.get(), mReleaseQueue.get());
 }
 
 static D3D12_STATIC_SAMPLER_DESC CreateStaticSampler(const SamplerState& samplerState)
@@ -149,7 +153,7 @@ MemoryRequirements GraphicsDevice::QueryMemoryRequirements(const HeapDescriptor&
 	};
 }
 
-Heap GraphicsDevice::AllocateHeap(const HeapDescriptor& descriptor)
+Heap GraphicsDevice::CreateHeap(const HeapDescriptor& descriptor)
 {
 	Heap heap(descriptor);
 	heap.mDevice = this;
@@ -168,7 +172,7 @@ Heap GraphicsDevice::AllocateHeap(const HeapDescriptor& descriptor)
 	return heap;
 }
 
-Texture GraphicsDevice::AllocateTexture(const TextureDescriptor& descriptor)
+Texture GraphicsDevice::CreateTexture(const TextureDescriptor& descriptor)
 {
 	Texture texture(descriptor);
 
@@ -379,18 +383,12 @@ GraphicsPipeline GraphicsDevice::CompileGraphicsPipeline(const GraphicsPipelineS
 
 void GraphicsDevice::Dispose(Heap& heap)
 {
-	static_cast<ID3D12Heap*>(heap.mHandle)->Release();
+	ID3D12Heap* resource = static_cast<ID3D12Heap*>(heap.GetHandle());
+	mReleaseQueue->AddResource([resource]()
+	{
+		resource->Release();
+	}, static_cast<Swapchain*>(mSurface)->GetFrameIndex());
 	heap.mHandle = nullptr;
-}
-
-void GraphicsDevice::Dispose(Buffer& buffer)
-{
-	DirectXTransitionManager::RemoveResource(static_cast<ID3D12Resource*>(buffer.mHandle));
-	ReleaseResourceView(buffer.mResourceView);
-	static_cast<ID3D12Resource*>(buffer.mHandle)->Release();
-	buffer.mResourceView = InvalidResourceIndex;
-	buffer.mContents = nullptr;
-	buffer.mHandle = nullptr;
 }
 
 void GraphicsDevice::Dispose(Texture& texture)
@@ -410,8 +408,14 @@ void GraphicsDevice::Dispose(Texture& texture)
 		}
 	}
 
-	ReleaseResourceView(texture.mResourceView);
-	static_cast<ID3D12Resource*>(texture.mHandle)->Release();
+	ID3D12Resource* resource = static_cast<ID3D12Resource*>(texture.GetHandle());
+	ShaderResourceIndex view = texture.mResourceView;
+	mReleaseQueue->AddResource([this, resource, view]()
+	{
+		resource->Release();
+		ReleaseResourceView(view);
+	}, static_cast<Swapchain*>(mSurface)->GetFrameIndex());
+
 	texture.mResourceView = InvalidResourceIndex;
 	texture.mHandle = nullptr;
 }
@@ -419,19 +423,26 @@ void GraphicsDevice::Dispose(Texture& texture)
 void GraphicsDevice::Dispose(Shader& shader)
 {
 	auto bytecode = static_cast<D3D12_SHADER_BYTECODE*>(shader.mHandle);
-	delete bytecode->pShaderBytecode;
-	delete bytecode;
+	mReleaseQueue->AddResource([bytecode]()
+	{
+		delete bytecode->pShaderBytecode;
+		delete bytecode;
+	}, static_cast<Swapchain*>(mSurface)->GetFrameIndex());
 	shader.mHandle = nullptr;
 }
 
 void GraphicsDevice::Dispose(GraphicsPipeline& pipeline)
 {
-	static_cast<ID3D12PipelineState*>(pipeline.mHandle)->Release();
+	auto resource = static_cast<ID3D12PipelineState*>(pipeline.mHandle);
+	mReleaseQueue->AddResource([resource]()
+	{
+		resource->Release();
+	}, static_cast<Swapchain*>(mSurface)->GetFrameIndex());
 	pipeline.mHandle = nullptr;
 }
 
-DirectXDevice::DirectXDevice(RenderSurface* surface)
-	: mSwapchain(static_cast<DirectXSwapchain*>(surface))
+DirectXDevice::DirectXDevice(RenderSurface* surface, ResourceReleaseQueue* releaseQueue)
+	: GraphicsDevice(surface, releaseQueue)
 {
 #ifdef GDEBUG
 	if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&mD3D12Debug))))
@@ -440,13 +451,14 @@ DirectXDevice::DirectXDevice(RenderSurface* surface)
 		mD3D12Debug->SetEnableGPUBasedValidation(true);
 	}
 
-	if (SUCCEEDED(mSwapchain->mFactory->QueryInterface(IID_PPV_ARGS(&mInfoQueue))))
+	auto swapchain = static_cast<DirectXSwapchain*>(mSurface);
+	if (SUCCEEDED(swapchain->mFactory->QueryInterface(IID_PPV_ARGS(&mInfoQueue))))
 	{
 		static void* emitWarning = nullptr;
 		DX_CHECK(mInfoQueue->RegisterMessageCallback(DirectXDebugCallback, D3D12_MESSAGE_CALLBACK_FLAG_NONE, emitWarning, &mDebugCallbackCookie));
 	}
 #endif
-	DX_CHECK(D3D12CreateDevice(mSwapchain->mAdapter, D3D_FEATURE_LEVEL_12_0, __uuidof(ID3D12Device10), &mHandle));
+	DX_CHECK(D3D12CreateDevice(swapchain->mAdapter, D3D_FEATURE_LEVEL_12_0, __uuidof(ID3D12Device10), &mHandle));
 
 	mDirectQueue = CreateCommandQueue(D3D12_COMMAND_LIST_TYPE_DIRECT);
 	mComputeQueue = CreateCommandQueue(D3D12_COMMAND_LIST_TYPE_COMPUTE);
@@ -573,11 +585,11 @@ DirectXDevice::~DirectXDevice()
 
 void DirectXDevice::Configure(const RendererConfig& config)
 {
-	mSwapchain->Configure(this, config);
+	auto swapchain = static_cast<DirectXSwapchain*>(mSurface);
+	swapchain->Configure(this, config);
 
-	mFrameContext.resize(mSwapchain->mMaxFramesInFlight);
-    mPooledObjects.resize(mSwapchain->mMaxFramesInFlight);
-	for (uint32_t i = 0; i < mSwapchain->mMaxFramesInFlight; i++)
+	mFrameContext.resize(swapchain->mMaxFramesInFlight);
+	for (uint32_t i = 0; i < swapchain->mMaxFramesInFlight; i++)
 	{
 		auto& ctx = mFrameContext[i];
 		{
@@ -597,7 +609,7 @@ void DirectXDevice::Configure(const RendererConfig& config)
 	}
 }
 
-void DirectXDevice::DestroyFrameObjects(uint32_t frameIndex)
+void DirectXDevice::ResetCommandPools(uint32_t frameIndex)
 {
 	for (auto& pool : mFrameContext[frameIndex].commandPools)
 	{
@@ -607,10 +619,12 @@ void DirectXDevice::DestroyFrameObjects(uint32_t frameIndex)
 
 ID3D12GraphicsCommandList7* DirectXDevice::AllocateCommandList(D3D12_COMMAND_LIST_TYPE type)
 {
-	TStringStream cmdlistName;
-	cmdlistName << ID3D12CommandListTypeToString(type) << mSwapchain->mCurrentFrameIndex;
+	auto swapchain = static_cast<DirectXSwapchain*>(mSurface);
 
-	for (auto& pool : mFrameContext[mSwapchain->mCurrentFrameIndex].commandPools)
+	TStringStream cmdlistName;
+	cmdlistName << ID3D12CommandListTypeToString(type) << swapchain->mCurrentFrameIndex;
+
+	for (auto& pool : mFrameContext[swapchain->mCurrentFrameIndex].commandPools)
 	{
 		if (pool.type == type)
 		{
@@ -632,7 +646,7 @@ ID3D12GraphicsCommandList7* DirectXDevice::AllocateCommandList(D3D12_COMMAND_LIS
 		}
 	}
 
-	auto& pool = mFrameContext[mSwapchain->mCurrentFrameIndex].commandPools.emplace_back();
+	auto& pool = mFrameContext[swapchain->mCurrentFrameIndex].commandPools.emplace_back();
 	DX_CHECK(static_cast<ID3D12Device10*>(mHandle)->CreateCommandAllocator(type, IID_PPV_ARGS(&pool.allocator)));
 
 	ID3D12GraphicsCommandList7* commandList = nullptr;

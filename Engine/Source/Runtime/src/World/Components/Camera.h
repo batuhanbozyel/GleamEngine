@@ -1,4 +1,5 @@
 #pragma once
+#include "Renderer/RenderSurface.h"
 
 namespace Gleam {
 
@@ -22,6 +23,8 @@ struct Camera
 	float farPlane = 1000.0f;
 
 	ProjectionType projectionType = ProjectionType::Perspective;
+
+	RenderSurface* renderSurface = nullptr;
     
 	Camera() = default;
 

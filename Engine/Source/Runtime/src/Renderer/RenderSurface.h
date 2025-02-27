@@ -1,6 +1,10 @@
 #pragma once
+#include "TextureFormat.h"
 
 namespace Gleam {
+
+class GraphicsDevice;
+class CommandBuffer;
 
 class RenderSurface
 {

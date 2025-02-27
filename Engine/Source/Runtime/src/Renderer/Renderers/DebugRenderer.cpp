@@ -49,7 +49,7 @@ void DebugRenderer::OnCreate(RenderContext& context)
 
 void DebugRenderer::OnDestroy(RenderContext& context)
 {
-	context.device->Dispose(mVertexBuffer);
+	mVertexHeap.Free(mVertexBuffer);
 	context.device->Dispose(mVertexHeap);
 }
 
@@ -66,13 +66,13 @@ void DebugRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 	{
 		if (mVertexHeap.IsValid())
 		{
-			mDevice->Dispose(mVertexBuffer);
+			mVertexHeap.Free(mVertexBuffer);
 			mDevice->Dispose(mVertexHeap);
 		}
 
 		HeapDescriptor descriptor{ .name = "DebugVertex::Heap", .memoryType = MemoryType::CPU, .size = Math::RoundUpTo(bufferSize, (size_t)65536ull) };
 		mVertexHeap = mDevice->CreateHeap(descriptor);
-		mVertexBuffer = mVertexHeap.CreateBuffer({ .name = "DebugVertex::Buffer", .size = descriptor.size });
+		mVertexBuffer = mVertexHeap.Allocate({ .name = "DebugVertex::Buffer", .size = descriptor.size });
 	}
 
 	void* vertexBufferPtr = mVertexBuffer.GetContents();

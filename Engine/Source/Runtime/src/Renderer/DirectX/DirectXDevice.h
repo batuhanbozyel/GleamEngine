@@ -50,7 +50,7 @@ class DirectXDevice final : public GraphicsDevice
 
 public:
 
-	DirectXDevice(RenderSurface* surface);
+	DirectXDevice(RenderSurface* surface, ResourceReleaseQueue* releaseQueue);
 
     ~DirectXDevice();
 
@@ -80,31 +80,27 @@ public:
 
 	void WaitQueueIdle(ID3D12CommandQueue* queue) const;
 
+	virtual void Configure(const RendererConfig& config) override;
+
 	virtual ShaderResourceIndex CreateResourceView(const Buffer& buffer) override;
 
 	virtual ShaderResourceIndex CreateResourceView(const Texture& texture) override;
 
 	virtual void ReleaseResourceView(ShaderResourceIndex view) override;
 
+	virtual void ResetCommandPools(uint32_t frameIdx) override;
+
 private:
-
-	virtual void Configure(const RendererConfig& config) override;
-
-	virtual void DestroyFrameObjects(uint32_t frameIndex) override;
 
 	ID3D12CommandQueue* CreateCommandQueue(D3D12_COMMAND_LIST_TYPE type) const;
 
 	DirectXDescriptorHeap CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE type, D3D12_DESCRIPTOR_HEAP_FLAGS flags, UINT capacity) const;
-
-	DirectXSwapchain* mSwapchain = nullptr;
 
 #ifdef GDEBUG
 	DWORD mDebugCallbackCookie = 0;
 	ID3D12InfoQueue1* mInfoQueue = nullptr;
 	ID3D12Debug6* mD3D12Debug = nullptr;
 #endif
-
-	ID3D12Fence* mDirectFence = nullptr;
 
 	ID3D12CommandQueue* mDirectQueue = nullptr;
 

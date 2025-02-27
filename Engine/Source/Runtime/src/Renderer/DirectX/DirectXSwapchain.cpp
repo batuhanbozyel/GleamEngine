@@ -57,7 +57,7 @@ void DirectXSwapchain::Configure(DirectXDevice* device, const RendererConfig& co
 	auto windowSystem = Globals::Engine->GetSubsystem<WindowSystem>();
 	SDL_GetWindowSizeInPixels(windowSystem->GetSDLWindow(), &width, &height);
 
-	DXGI_SWAP_CHAIN_DESC1 mDesc =
+	mDesc =
 	{
 		.Width = (UINT)width,
 		.Height = (UINT)height,
@@ -96,11 +96,14 @@ void DirectXSwapchain::Configure(DirectXDevice* device, const RendererConfig& co
 			IID_PPV_ARGS(&ctx.fence)
 		));
 	}
-	Resize(mDevice, Size(width, height));
+	Resize(mDevice, Size((float)width, (float)height));
 }
 
 void DirectXSwapchain::Resize(GraphicsDevice* device, const Size& size)
 {
+	auto& ctx = mContext[mCurrentFrameIndex];
+	WaitForID3D12Fence(ctx.fence, ctx.waitFenceValue);
+
 	mDesc.Width = (UINT)size.width;
 	mDesc.Height = (UINT)size.height;
 
@@ -138,6 +141,7 @@ const Texture& DirectXSwapchain::AcquireNextDrawable()
 
 	auto& ctx = mContext[mCurrentFrameIndex];
 	WaitForID3D12Fence(ctx.fence, ctx.waitFenceValue);
+
 	return mTextures[mCurrentFrameIndex];
 }
 
@@ -163,6 +167,8 @@ void DirectXSwapchain::Present(const CommandBuffer* cmd)
 
 	ctx.waitFenceValue = ctx.fenceValue++;
 	mDevice->GetDirectQueue()->Signal(ctx.fence, ctx.fenceValue);
+
+	mCurrentFrameIndex = mHandle->GetCurrentBackBufferIndex();
 }
 
 TextureFormat DirectXSwapchain::GetFormat() const
@@ -197,7 +203,7 @@ Texture DirectXSwapchain::CreateSwapchainBuffer(GraphicsDevice* device, uint32_t
 	TextureDescriptor swapchainDesc;
 	swapchainDesc.name = resourceName.str();
 	swapchainDesc.dimension = TextureDimension::Texture2D;
-	swapchainDesc.size = Size(mDesc.Width, mDesc.Height);
+	swapchainDesc.size = Size((float)mDesc.Width, (float)mDesc.Height);
 	swapchainDesc.usage = TextureUsage_Attachment;
 	swapchainDesc.format = DXGI_FORMATtoTextureFormat(mDesc.Format);
 	return Texture(texture, rtv, swapchainDesc);

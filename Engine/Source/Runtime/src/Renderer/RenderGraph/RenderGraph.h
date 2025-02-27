@@ -6,6 +6,7 @@ namespace Gleam {
 class RenderSurface;
 class CommandBuffer;
 class GraphicsDevice;
+class RenderResourcePool;
 
 struct RenderContext;
 struct SceneRenderingData;
@@ -60,6 +61,8 @@ private:
 	RenderSurface* mSurface;
 
     GraphicsDevice* mDevice;
+
+	RenderResourcePool* mResourcePool;
 
     RenderGraphResourceRegistry mRegistry;
 

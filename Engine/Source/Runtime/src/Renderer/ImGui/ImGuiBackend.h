@@ -1,14 +1,16 @@
 #pragma once
-#include "../GraphicsDevice.h"
 #include <imgui.h>
 
 namespace Gleam {
+
+class RenderContext;
+class GraphicsDevice;
 
 class ImGuiBackend
 {
 public:
 
-	static void Init(GraphicsDevice* device);
+	static void Init(RenderContext& context);
 
 	static void Destroy();
 

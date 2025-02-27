@@ -21,6 +21,10 @@ set_target_properties (googletest PROPERTIES FOLDER Dependencies)
 set(INCLUDE_DIRS_UNIT_TEST
     src
     ${CMAKE_SOURCE_DIR}/Engine/Source/Runtime/src
+    ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/entt/src
+    ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/SDL/include
+    ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/fmt/include
+    ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/refl-cpp/include
     ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/googletest/googletest/include
 )
 

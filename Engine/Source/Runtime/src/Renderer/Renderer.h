@@ -21,9 +21,13 @@ class RenderSystem;
 class RenderSurface;
 class GraphicsDevice;
 class RenderSceneProxy;
+class RenderResourcePool;
+class ResourceReleaseQueue;
 
 struct RenderContext
 {
+	ResourceReleaseQueue* releaseQueue = nullptr;
+	RenderResourcePool* resourcePool = nullptr;
 	GraphicsDevice* device = nullptr;
 	RenderSurface* surface = nullptr;
 };
@@ -32,9 +36,9 @@ struct SceneRenderingData
 {
     const RenderSceneProxy* sceneProxy = nullptr;
     const World* world = nullptr;
-	CameraUniforms camera;
-    TextureHandle backbuffer;
-	TextureHandle sceneTarget;
+	CameraUniforms camera = {};
+    TextureHandle backbuffer = TextureHandle();
+	TextureHandle sceneTarget = TextureHandle();
 };
 
 class IRenderer

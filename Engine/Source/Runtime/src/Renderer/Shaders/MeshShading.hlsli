@@ -28,6 +28,15 @@ float4 meshShadingPassShader(MeshVertexOut IN) : SV_TARGET
 	
 	float3x3 TBN = transpose(float3x3(IN.tangent, IN.bitangent, IN.normal));
 	float3 worldNormal = normalize(mul(TBN, surface.normal));
+	
+	//return float4(IN.tangent * 0.5 + 0.5, 1.0f);
+	//return float4(IN.normal * 0.5 + 0.5, 1.0f);
+	//return float4(IN.bitangent * 0.5 + 0.5, 1.0f);
+	//return float4(worldNormal * 0.5 + 0.5, 1.0f);
+	//return float4(surface.normal * 0.5 + 0.5, 1.0f);
+	//return float4(surface.metallic, surface.roughness, 0.0f, 1.0f);
+	//return float4(surface.metallic.xxx, 1.0f);
+	//return float4(surface.roughness.xxx, 1.0f);
     
 	float3 color = EvaluateDirectLight(surface, lightDir, viewDir, worldNormal);
 	float3 ambient = surface.albedo.rgb * 0.1f;

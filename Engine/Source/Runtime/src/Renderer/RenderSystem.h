@@ -7,9 +7,12 @@
 
 #pragma once
 #include "Core/Subsystem.h"
-#include "CommandBuffer.h"
-#include "GraphicsDevice.h"
 #include "Swapchain.h"
+#include "CommandBuffer.h"
+#include "UploadManager.h"
+#include "GraphicsDevice.h"
+#include "RenderResourcePool.h"
+#include "ResourceReleaseQueue.h"
 
 namespace Gleam {
 
@@ -103,26 +106,6 @@ public:
         return std::distance(mRenderers.begin(), it);
     }
     
-    Container::iterator begin()
-    {
-        return mRenderers.begin();
-    }
-    
-    Container::iterator end()
-    {
-        return mRenderers.end();
-    }
-    
-    Container::const_iterator begin() const
-    {
-        return mRenderers.begin();
-    }
-    
-    Container::const_iterator end() const
-    {
-        return mRenderers.end();
-    }
-    
 private:
 
 	void InitializeBackend();
@@ -138,6 +121,10 @@ private:
 	Scope<GraphicsDevice> mDevice;
 
 	Scope<UploadManager> mUploadManager;
+
+	Scope<RenderResourcePool> mResourcePool;
+
+	Scope<ResourceReleaseQueue> mReleaseQueue;
     
     TArray<Scope<CommandBuffer>> mCommandBuffers;
     

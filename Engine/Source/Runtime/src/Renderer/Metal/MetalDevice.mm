@@ -14,9 +14,13 @@
 
 using namespace Gleam;
 
-Scope<GraphicsDevice> GraphicsDevice::Create()
+void RenderSystem::InitializeBackend()
 {
-    return CreateScope<MetalDevice>();
+	mSwapchain = CreateScope<DirectXSwapchain>();
+	mDevice = CreateScope<DirectXDevice>(mSwapchain.get());
+	mUploadManager = CreateScope<UploadManager>(mDevice.get());
+	mReleaseQueue = CreateScope<ResourceReleaseQueue>(mSwapchain->GetFramesInFlight());
+	mResourcePool = CreateScope<RenderResourcePool>(mDevice.get(), mSwapchain.get(), mReleaseQueue.get());
 }
 
 MemoryRequirements GraphicsDevice::QueryMemoryRequirements(const HeapDescriptor& descriptor) const
@@ -31,7 +35,7 @@ MemoryRequirements GraphicsDevice::QueryMemoryRequirements(const HeapDescriptor&
 	};
 }
 
-Heap GraphicsDevice::AllocateHeap(const HeapDescriptor& descriptor)
+Heap GraphicsDevice::CreateHeap(const HeapDescriptor& descriptor)
 {
     Heap heap(descriptor);
     heap.mDevice = this;
@@ -53,7 +57,7 @@ Heap GraphicsDevice::AllocateHeap(const HeapDescriptor& descriptor)
     return heap;
 }
 
-Texture GraphicsDevice::AllocateTexture(const TextureDescriptor& descriptor)
+Texture GraphicsDevice::CreateTexture(const TextureDescriptor& descriptor)
 {
     Texture texture(descriptor);
     
@@ -139,12 +143,6 @@ void GraphicsDevice::Dispose(Heap& heap)
 {
     [static_cast<MetalDevice*>(this)->GetResidencySet() removeAllocation:heap.mHandle];
     heap.mHandle = nil;
-}
-
-void GraphicsDevice::Dispose(Buffer& buffer)
-{
-	ReleaseResourceView(buffer.mResourceView);
-    buffer.mHandle = nil;
 }
 
 void GraphicsDevice::Dispose(Texture& texture)

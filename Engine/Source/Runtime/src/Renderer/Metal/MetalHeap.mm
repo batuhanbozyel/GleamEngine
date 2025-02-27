@@ -7,7 +7,7 @@
 
 using namespace Gleam;
 
-Buffer Heap::CreateBuffer(const BufferDescriptor& descriptor)
+Buffer Heap::Allocate(const BufferDescriptor& descriptor)
 {
     auto alignedStackPtr = Utils::AlignUp(mStackPtr, mAlignment);
     auto newStackPtr = alignedStackPtr + descriptor.size;
@@ -37,6 +37,12 @@ Buffer Heap::CreateBuffer(const BufferDescriptor& descriptor)
     buffer.mContents = contents;
     buffer.mResourceView = mDescriptor.memoryType == MemoryType::CPU ? InvalidResourceIndex : static_cast<MetalDevice*>(mDevice)->CreateResourceView(buffer);
     return buffer;
+}
+
+void Heap::Free(Buffer& buffer)
+{
+	static_cast<MetalDevice*>(mDevice)->ReleaseResourceView(buffer.mResourceView);
+    buffer.mHandle = nil;
 }
 
 #endif

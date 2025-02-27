@@ -9,7 +9,7 @@
 
 using namespace Gleam;
 
-Buffer Heap::CreateBuffer(const BufferDescriptor& descriptor)
+Buffer Heap::Allocate(const BufferDescriptor& descriptor)
 {
 	auto alignedStackPtr = Utils::AlignUp(mStackPtr, mAlignment);
 	auto newStackPtr = alignedStackPtr + descriptor.size;
@@ -67,6 +67,16 @@ Buffer Heap::CreateBuffer(const BufferDescriptor& descriptor)
     buffer.mContents = contents;
 	buffer.mResourceView = mDescriptor.memoryType == MemoryType::CPU ? InvalidResourceIndex : static_cast<DirectXDevice*>(mDevice)->CreateResourceView(buffer);
     return buffer;
+}
+
+void Heap::Free(Buffer& buffer)
+{
+	DirectXTransitionManager::RemoveResource(static_cast<ID3D12Resource*>(buffer.mHandle));
+	static_cast<DirectXDevice*>(mDevice)->ReleaseResourceView(buffer.mResourceView);
+	static_cast<ID3D12Resource*>(buffer.mHandle)->Release();
+	buffer.mResourceView = InvalidResourceIndex;
+	buffer.mContents = nullptr;
+	buffer.mHandle = nullptr;
 }
 
 #endif
