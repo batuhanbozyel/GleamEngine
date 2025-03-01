@@ -43,6 +43,10 @@ DirectXSwapchain::~DirectXSwapchain()
 	}
 	mContext.clear();
 
+	mFactory->Release();
+	mAdapter->Release();
+	mHandle->Release();
+
 #ifdef GDEBUG
 	if (mDXGIDebug)
 	{
@@ -54,9 +58,6 @@ DirectXSwapchain::~DirectXSwapchain()
 		mDXGIDebug->Release();
 	}
 #endif
-	mFactory->Release();
-	mAdapter->Release();
-	mHandle->Release();
 }
 
 void DirectXSwapchain::Configure(DirectXDevice* device, const RendererConfig& config)
