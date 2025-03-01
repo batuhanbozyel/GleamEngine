@@ -98,6 +98,4 @@ void WorldViewport::Resize(Gleam::EntityManager& entityManager, const Gleam::Siz
 
 	auto& camera = entityManager.GetComponent<Gleam::Camera>(mCamera);
 	camera.SetViewport(mViewportSize);
-
-	Gleam::EventDispatcher<Gleam::RendererResizeEvent>::Publish(Gleam::RendererResizeEvent(mViewportSize));
 }

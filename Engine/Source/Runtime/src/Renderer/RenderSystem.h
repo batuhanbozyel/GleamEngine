@@ -110,6 +110,10 @@ private:
 
 	void InitializeBackend();
 
+	bool mRendererResized = false;
+
+	Size mSwapchainSize = {};
+
 	Engine* mEngine;
     
     Container mRenderers;

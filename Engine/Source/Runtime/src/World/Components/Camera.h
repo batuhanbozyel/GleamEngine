@@ -35,6 +35,8 @@ struct Camera
     void SetViewport(const Size& size);
 
     void SetViewport(float width, float height);
+
+	Size GetViewport() const;
 };
 
 } // namespace Gleam

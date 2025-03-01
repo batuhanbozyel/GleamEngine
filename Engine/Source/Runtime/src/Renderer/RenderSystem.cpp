@@ -23,7 +23,6 @@ void RenderSystem::Initialize(Engine* engine)
 {
 	mEngine = engine;
 	InitializeBackend();
-
 	mContext.device = mDevice.get();
 	mContext.surface = mSwapchain.get();
 	mContext.releaseQueue = mReleaseQueue.get();
@@ -31,8 +30,11 @@ void RenderSystem::Initialize(Engine* engine)
 
 	EventDispatcher<RendererResizeEvent>::Subscribe([this](RendererResizeEvent e)
 	{
-		mSwapchain->Resize(mDevice.get(), e.GetSize());
-		mResourcePool->Clear();
+		if (mSwapchainSize != e.GetSize())
+		{
+			mRendererResized = true;
+			mSwapchainSize = e.GetSize();
+		}
 	});
 }
 
@@ -61,6 +63,14 @@ void RenderSystem::Render(const World* world)
 	@autoreleasepool
 #endif
 	{
+		auto sceneProxy = world->GetSystem<RenderSceneProxy>();
+		auto camera = sceneProxy->GetActiveCamera();
+		if (camera == nullptr)
+		{
+			return; // skip rendering this frame
+		}
+		const auto& cameraComponent = camera->GetComponent<Camera>();
+
 		// TODO: Render scene per active camera
 		// Set sceneTarget to camera target
 		// Camera target default requires a special handle
@@ -68,7 +78,7 @@ void RenderSystem::Render(const World* world)
 		// We may want to decide this on Editor side
 		RenderTextureDescriptor sceneTargetDesc{};
 		sceneTargetDesc.name = "Scene Target";
-		sceneTargetDesc.size = mSwapchain->GetSize();
+		sceneTargetDesc.size = cameraComponent.GetViewport();
 		sceneTargetDesc.format = mSwapchain->GetFormat();
 
 		auto sceneTarget = mResourcePool->Allocate(sceneTargetDesc);
@@ -80,31 +90,26 @@ void RenderSystem::Render(const World* world)
 		auto& sceneData = blackboard.Add<SceneRenderingData>();
 		sceneData.backbuffer = graph.ImportBackbuffer(backbuffer);
 		sceneData.sceneTarget = graph.ImportBackbuffer(sceneTarget);
-		sceneData.sceneProxy = world->GetSystem<RenderSceneProxy>();
+		sceneData.sceneProxy = sceneProxy;
 		sceneData.world = world;
+		sceneData.camera.viewMatrix = Float4x4::LookTo(camera->GetWorldPosition(), camera->ForwardVector(), camera->UpVector());
 
-		if (auto camera = sceneData.sceneProxy->GetActiveCamera(); camera)
+		if (cameraComponent.projectionType == ProjectionType::Perspective)
 		{
-			const auto& cameraComponent = camera->GetComponent<Camera>();
-			sceneData.camera.viewMatrix = Float4x4::LookTo(camera->GetWorldPosition(), camera->ForwardVector(), camera->UpVector());
-
-			if (cameraComponent.projectionType == ProjectionType::Perspective)
-			{
-				sceneData.camera.projectionMatrix = Float4x4::Perspective(cameraComponent.fov, cameraComponent.aspectRatio, cameraComponent.nearPlane, cameraComponent.farPlane);
-			}
-			else
-			{
-				float width = cameraComponent.orthographicSize * cameraComponent.aspectRatio;
-				float height = cameraComponent.orthographicSize;
-				sceneData.camera.projectionMatrix = Float4x4::Ortho(width, height, cameraComponent.nearPlane, cameraComponent.farPlane);
-			}
-
-			sceneData.camera.viewProjectionMatrix = sceneData.camera.projectionMatrix * sceneData.camera.viewMatrix;
-			sceneData.camera.invViewMatrix = Math::Inverse(sceneData.camera.viewMatrix);
-			sceneData.camera.invProjectionMatrix = Math::Inverse(sceneData.camera.projectionMatrix);
-			sceneData.camera.invViewProjectionMatrix = Math::Inverse(sceneData.camera.viewProjectionMatrix);
-			sceneData.camera.position = camera->GetWorldPosition();
+			sceneData.camera.projectionMatrix = Float4x4::Perspective(cameraComponent.fov, cameraComponent.aspectRatio, cameraComponent.nearPlane, cameraComponent.farPlane);
 		}
+		else
+		{
+			float width = cameraComponent.orthographicSize * cameraComponent.aspectRatio;
+			float height = cameraComponent.orthographicSize;
+			sceneData.camera.projectionMatrix = Float4x4::Ortho(width, height, cameraComponent.nearPlane, cameraComponent.farPlane);
+		}
+
+		sceneData.camera.viewProjectionMatrix = sceneData.camera.projectionMatrix * sceneData.camera.viewMatrix;
+		sceneData.camera.invViewMatrix = Math::Inverse(sceneData.camera.viewMatrix);
+		sceneData.camera.invProjectionMatrix = Math::Inverse(sceneData.camera.projectionMatrix);
+		sceneData.camera.invViewProjectionMatrix = Math::Inverse(sceneData.camera.viewProjectionMatrix);
+		sceneData.camera.position = camera->GetWorldPosition();
 
         for (auto renderer : mRenderers)
         {
@@ -116,6 +121,13 @@ void RenderSystem::Render(const World* world)
 		const auto cmd = mCommandBuffers[frameIdx].get();
 
 		cmd->WaitUntilCompleted();
+		if (mRendererResized)
+		{
+			mSwapchain->Resize(mDevice.get(), mSwapchainSize);
+			mResourcePool->Clear();
+			mRendererResized = false;
+		}
+
 		mReleaseQueue->Flush(frameIdx);
 		mDevice->ResetCommandPools(frameIdx);
 
@@ -137,6 +149,7 @@ void RenderSystem::Configure(const RendererConfig& config)
 	{
 		cmd = CreateScope<CommandBuffer>(mDevice.get());
 	}
+	mSwapchainSize = mSwapchain->GetCurrentDrawable().GetDescriptor().size;
 }
 
 UploadManager* RenderSystem::GetUploadManager()
