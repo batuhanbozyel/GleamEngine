@@ -12,7 +12,6 @@
 
 namespace Gleam {
 
-class RenderSurface;
 class DirectXSwapchain;
 
 class DirectXDescriptorHeap

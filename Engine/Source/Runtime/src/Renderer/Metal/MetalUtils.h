@@ -13,6 +13,8 @@
 
 namespace Gleam {
 
+static constexpr size_t TopLevelArgumentBufferSize = PUSH_CONSTANT_SLOT * sizeof(uint64_t) + PUSH_CONSTANT_SIZE;
+
 static constexpr TextureFormat MTLPixelFormatToTextureFormat(MTLPixelFormat format)
 {
     switch (format)

@@ -171,16 +171,6 @@ void DirectXSwapchain::Present(const CommandBuffer* cmd)
 	mCurrentFrameIndex = mHandle->GetCurrentBackBufferIndex();
 }
 
-TextureFormat DirectXSwapchain::GetFormat() const
-{
-	return mTextures[mCurrentFrameIndex].GetDescriptor().format;
-}
-
-const Size& DirectXSwapchain::GetSize() const
-{
-	return mTextures[mCurrentFrameIndex].GetDescriptor().size;
-}
-
 Texture DirectXSwapchain::CreateSwapchainBuffer(GraphicsDevice* device, uint32_t buffer)
 {
 	D3D12_RENDER_TARGET_VIEW_DESC rtvDesc =

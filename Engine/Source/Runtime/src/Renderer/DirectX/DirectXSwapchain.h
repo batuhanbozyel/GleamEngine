@@ -32,10 +32,6 @@ public:
 
 	virtual void Present(const CommandBuffer* cmd) override;
 
-	virtual TextureFormat GetFormat() const override;
-
-	virtual const Size& GetSize() const override;
-
 private:
 
 	Texture CreateSwapchainBuffer(GraphicsDevice* device, uint32_t buffer);

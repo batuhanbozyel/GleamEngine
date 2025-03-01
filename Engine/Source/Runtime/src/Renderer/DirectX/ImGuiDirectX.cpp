@@ -19,6 +19,7 @@ using namespace Gleam;
 void ImGuiBackend::Init(RenderContext& context)
 {
 	mDevice = context.device;
+	mSurface = context.surface;
 
 	auto& cbvSrvUavHeap = static_cast<DirectXDevice*>(mDevice)->GetCbvSrvUavHeap();
 	auto index = cbvSrvUavHeap.heap.Allocate();
@@ -28,7 +29,7 @@ void ImGuiBackend::Init(RenderContext& context)
 	D3D12_GPU_DESCRIPTOR_HANDLE fontSrvGPUdescriptor = cbvSrvUavHeap.handle->GetGPUDescriptorHandleForHeapStart();
 	fontSrvGPUdescriptor.ptr += (UINT64)(index.data * cbvSrvUavHeap.size);
 
-	auto surface = static_cast<Swapchain*>(context.surface);
+	auto surface = static_cast<Swapchain*>(mSurface);
 	ImGui_ImplSDL3_InitForD3D(Globals::Engine->GetSubsystem<WindowSystem>()->GetSDLWindow());
 	ImGui_ImplDX12_Init(static_cast<ID3D12Device*>(mDevice->GetHandle()),
 		surface->GetFramesInFlight(),

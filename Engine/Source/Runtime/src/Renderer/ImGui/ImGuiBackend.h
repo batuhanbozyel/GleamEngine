@@ -4,6 +4,7 @@
 namespace Gleam {
 
 class RenderContext;
+class RenderSurface;
 class GraphicsDevice;
 
 class ImGuiBackend
@@ -21,6 +22,8 @@ public:
 	static ImTextureID GetImTextureIDForTexture(const Texture& texture);
     
 private:
+	
+	static inline RenderSurface* mSurface = nullptr;
     
     static inline GraphicsDevice* mDevice = nullptr;
 
