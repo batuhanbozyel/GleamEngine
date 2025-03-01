@@ -25,11 +25,6 @@ MetalSwapchain::MetalSwapchain()
     mHandle.name = [NSString stringWithCString:Globals::ProjectName.c_str() encoding:NSASCIIStringEncoding];
     mHandle.framebufferOnly = NO;
     mHandle.opaque = YES;
-    
-    EventDispatcher<WindowResizeEvent>::Subscribe([this](const WindowResizeEvent& e)
-    {
-        EventDispatcher<RendererResizeEvent>::Publish(RendererResizeEvent(Size(e.GetWidth(), e.GetHeight())));
-    });
 }
 
 MetalSwapchain::~MetalSwapchain()

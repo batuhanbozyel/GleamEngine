@@ -31,6 +31,18 @@ DirectXSwapchain::~DirectXSwapchain()
 	auto& ctx = mContext[mCurrentFrameIndex];
 	WaitForID3D12Fence(ctx.fence, ctx.waitFenceValue);
 
+	for (auto& texture : mTextures)
+	{
+		static_cast<ID3D12Resource*>(texture.GetHandle())->Release();
+	}
+	mTextures.clear();
+
+	for (auto& ctx : mContext)
+	{
+		ctx.fence->Release();
+	}
+	mContext.clear();
+
 #ifdef GDEBUG
 	if (mDXGIDebug)
 	{

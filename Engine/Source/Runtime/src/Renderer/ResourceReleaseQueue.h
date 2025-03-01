@@ -10,6 +10,8 @@ public:
 
 	~ResourceReleaseQueue();
 
+	void Clear();
+
 	void Flush(uint32_t frameIndex);
 
 	using ObjectDeallocator = std::function<void()>;

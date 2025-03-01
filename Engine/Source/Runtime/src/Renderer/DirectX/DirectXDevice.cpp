@@ -547,13 +547,15 @@ DirectXDevice::~DirectXDevice()
 
 	for (auto& [_, pipeline] : mGraphicsPipelineCache)
 	{
-		Dispose(pipeline);
+		static_cast<ID3D12PipelineState*>(pipeline.GetHandle())->Release();
 	}
 	mGraphicsPipelineCache.clear();
 
 	for (auto& shader : mShaderCache)
 	{
-		Dispose(shader);
+		auto bytecode = static_cast<D3D12_SHADER_BYTECODE*>(shader.GetHandle());
+		delete bytecode->pShaderBytecode;
+		delete bytecode;
 	}
 	mShaderCache.clear();
 

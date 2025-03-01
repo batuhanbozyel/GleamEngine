@@ -11,11 +11,16 @@ ResourceReleaseQueue::ResourceReleaseQueue(uint32_t framesInFlight)
 
 ResourceReleaseQueue::~ResourceReleaseQueue()
 {
+	Clear();
+	mReleaseQueue.clear();
+}
+
+void ResourceReleaseQueue::Clear()
+{
 	for (uint32_t i = 0; i < mReleaseQueue.size(); ++i)
 	{
 		Flush(i);
 	}
-	mReleaseQueue.clear();
 }
 
 void ResourceReleaseQueue::Flush(uint32_t frameIndex)

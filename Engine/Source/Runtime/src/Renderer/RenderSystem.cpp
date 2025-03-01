@@ -28,13 +28,15 @@ void RenderSystem::Initialize(Engine* engine)
 	mContext.releaseQueue = mReleaseQueue.get();
 	mContext.resourcePool = mResourcePool.get();
 
-	EventDispatcher<RendererResizeEvent>::Subscribe([this](RendererResizeEvent e)
+	EventDispatcher<WindowResizeEvent>::Subscribe([this](const WindowResizeEvent& e)
 	{
-		if (mSwapchainSize != e.GetSize())
+		auto size = Size((float)e.GetWidth(), (float)e.GetHeight());
+		if (mSwapchainSize != size)
 		{
 			mRendererResized = true;
-			mSwapchainSize = e.GetSize();
+			mSwapchainSize = size;
 		}
+		EventDispatcher<RendererResizeEvent>::Publish(RendererResizeEvent(size));
 	});
 }
 
@@ -52,9 +54,13 @@ void RenderSystem::Shutdown()
     }
 	mRenderers.clear();
 
+	mReleaseQueue->Clear();
+	mResourcePool->Clear();
+
 	mResourcePool.reset();
 	mReleaseQueue.reset();
     mDevice.reset();
+	mSwapchain.reset();
 }
 
 void RenderSystem::Render(const World* world)
