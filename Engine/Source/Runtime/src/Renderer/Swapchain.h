@@ -17,6 +17,18 @@ public:
 		return mTextures[mCurrentFrameIndex];
 	}
 
+	virtual TextureFormat GetFormat() const override
+	{
+		GLEAM_ASSERT(mCurrentFrameIndex < mTextures.size(), "Swapchain is not configured properly.");
+		return mTextures[mCurrentFrameIndex].GetDescriptor().format;
+	}
+
+	virtual const Size& GetSize() const override
+	{
+		GLEAM_ASSERT(mCurrentFrameIndex < mTextures.size(), "Swapchain is not configured properly.");
+		return mTextures[mCurrentFrameIndex].GetDescriptor().size;
+	}
+
 	uint32_t GetFrameIndex() const
 	{
 		return mCurrentFrameIndex;

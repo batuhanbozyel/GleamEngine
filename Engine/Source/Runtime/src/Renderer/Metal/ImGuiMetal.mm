@@ -8,13 +8,17 @@
 #include "Core/Engine.h"
 #include "Core/Globals.h"
 #include "Core/WindowSystem.h"
+
+#include "Renderer/Swapchain.h"
 #include "Renderer/ImGui/imgui_impl_sdl3.h"
 
 using namespace Gleam;
 
-void ImGuiBackend::Init(GraphicsDevice* device)
+void ImGuiBackend::Init(RenderContext& context)
 {
-    mDevice = device;
+    mDevice = context.device;
+    mSurface = context.surface;
+    
     ImGui_ImplMetal_Init(static_cast<MetalDevice*>(mDevice)->GetHandle());
     ImGui_ImplSDL3_InitForMetal(Globals::Engine->GetSubsystem<WindowSystem>()->GetSDLWindow());
 }
@@ -27,12 +31,14 @@ void ImGuiBackend::Destroy()
 
 void ImGuiBackend::BeginFrame()
 {
+    id<CAMetalDrawable> drawable = static_cast<Swapchain*>(mSurface)->AcquireNextDrawable().GetHandle();
+    
     MTLRenderPassDescriptor* renderPassDesc = [MTLRenderPassDescriptor new];
     MTLRenderPassColorAttachmentDescriptor* colorAttachmentDesc = renderPassDesc.colorAttachments[0];
     colorAttachmentDesc.clearColor = { 0.0, 0.0, 0.0, 1.0 };
     colorAttachmentDesc.loadAction = MTLLoadActionLoad;
     colorAttachmentDesc.storeAction = MTLStoreActionStore;
-    colorAttachmentDesc.texture = static_cast<MetalDevice*>(mDevice)->AcquireNextDrawable().texture;
+    colorAttachmentDesc.texture = drawable.texture;
 
     ImGui_ImplMetal_NewFrame(renderPassDesc);
     ImGui_ImplSDL3_NewFrame();
