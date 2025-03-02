@@ -16,22 +16,39 @@ bool TextureSource::Import(const Gleam::Filesystem::Path& path, const ImportSett
 	{
 		texture.channels = 4;
 	}
-	texture.pixels = stbi_load(path.string().c_str(), &texture.width, &texture.height, nullptr, texture.channels);
 	
-	Gleam::TextureFormat format = [](int channels)
+	Gleam::TextureFormat format;
+	if (settings.linear)
 	{
-		switch (channels)
+		texture.pixels = stbi_load(path.string().c_str(), &texture.width, &texture.height, nullptr, texture.channels);
+		switch (texture.channels)
 		{
 			case 1:
-				return Gleam::TextureFormat::R8_UNorm;
+				format = Gleam::TextureFormat::R8_UNorm;
 			case 2:
-				return Gleam::TextureFormat::R8G8_UNorm;
+				format = Gleam::TextureFormat::R8G8_UNorm;
 			case 4:
-				return Gleam::TextureFormat::R8G8B8A8_UNorm;
+				format = Gleam::TextureFormat::R8G8B8A8_UNorm;
 			default:
-				return Gleam::TextureFormat::None;
+				format = Gleam::TextureFormat::None;
 		}
-	}(texture.channels);
+	}
+	else
+	{
+		// TODO: convert to half precision
+		texture.pixels = stbi_loadf(path.string().c_str(), &texture.width, &texture.height, nullptr, texture.channels);
+		switch (texture.channels)
+		{
+			case 1:
+				format = Gleam::TextureFormat::R32_SFloat;
+			case 2:
+				format = Gleam::TextureFormat::R32G32_SFloat;
+			case 4:
+				format = Gleam::TextureFormat::R32G32B32A32_SFloat;
+			default:
+				format = Gleam::TextureFormat::None;
+		}
+	}
 	
 	if (texture.pixels == nullptr)
 	{

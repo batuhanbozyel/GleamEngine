@@ -8,7 +8,7 @@ struct RawTexture
 {
 	Gleam::TString name;
 	int width, height, channels;
-	uint8_t* pixels;
+	void* pixels;
 };
 
 class TextureSource : public AssetPackage
@@ -18,7 +18,7 @@ public:
 
 	struct ImportSettings
 	{
-		
+		bool linear = false;
 	};
 
 	bool Import(const Gleam::Filesystem::Path& path, const ImportSettings& settings);

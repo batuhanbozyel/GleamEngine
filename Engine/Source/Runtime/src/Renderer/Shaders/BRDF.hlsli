@@ -24,12 +24,12 @@ float F90Dielectric(float VdotH, float perceptualRoughess)
     return 0.5 + 2.0 * perceptualRoughess * VdotH * VdotH;
 }
 
-float3 F_Schlick(float3 f0, float f90, float VdotH)
+float F_Schlick(float f0, float f90, float VdotH)
 {
     return f0 + (f90 - f0) * pow(1.0f - VdotH, 5.0f);
 }
 
-float F_Schlick(float f0, float f90, float VdotH)
+float3 F_Schlick(float3 f0, float f90, float VdotH)
 {
     return f0 + (f90 - f0) * pow(1.0f - VdotH, 5.0f);
 }
@@ -39,7 +39,7 @@ float Fr_DisneyDiffuse(float NdotV, float NdotL, float LdotH, float perceptualRo
     float energyBias = lerp(0.0f, 0.5f, perceptualRoughess);
     float energyFactor = lerp(1.0f, 1.0f / 1.51f, perceptualRoughess);
     float fd90 = energyBias + 2.0f * LdotH * LdotH * perceptualRoughess;
-    float3 f0 = float3 (1.0f, 1.0f, 1.0f);
+    float f0 = 1.0f;
     float lightScatter = F_Schlick(f0, fd90, NdotL);
     float viewScatter = F_Schlick(f0, fd90, NdotV);
 

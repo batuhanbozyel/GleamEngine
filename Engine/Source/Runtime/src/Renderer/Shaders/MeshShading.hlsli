@@ -22,7 +22,8 @@ Gleam::SurfaceOutput surf(MeshVertexOut IN);
 float4 meshShadingPassShader(MeshVertexOut IN) : SV_TARGET
 {
     Gleam::SurfaceOutput surface = surf(IN);
-	
+    surface.albedo.rgb = sRGBToLinear(surface.albedo.rgb);
+    
 	float3 viewDir = normalize(camera.position - IN.worldPosition);
 	float3 lightDir = normalize(float3(0.43f, 0.43f, 0.0f));
 	
@@ -39,6 +40,5 @@ float4 meshShadingPassShader(MeshVertexOut IN) : SV_TARGET
 	//return float4(surface.roughness.xxx, 1.0f);
     
 	float3 color = EvaluateDirectLight(surface, lightDir, viewDir, worldNormal);
-	float3 ambient = surface.albedo.rgb * 0.1f;
-	return float4(color + ambient, 1.0f);
+	return float4(color, 1.0f);
 }
