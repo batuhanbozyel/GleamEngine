@@ -31,14 +31,13 @@ void ImGuiBackend::Destroy()
 
 void ImGuiBackend::BeginFrame()
 {
-    id<CAMetalDrawable> drawable = static_cast<Swapchain*>(mSurface)->AcquireNextDrawable().GetHandle();
-    
+    const auto& drawable = static_cast<Swapchain*>(mSurface)->AcquireNextDrawable();
     MTLRenderPassDescriptor* renderPassDesc = [MTLRenderPassDescriptor new];
     MTLRenderPassColorAttachmentDescriptor* colorAttachmentDesc = renderPassDesc.colorAttachments[0];
     colorAttachmentDesc.clearColor = { 0.0, 0.0, 0.0, 1.0 };
     colorAttachmentDesc.loadAction = MTLLoadActionLoad;
     colorAttachmentDesc.storeAction = MTLStoreActionStore;
-    colorAttachmentDesc.texture = drawable.texture;
+    colorAttachmentDesc.texture = drawable.GetHandle();
 
     ImGui_ImplMetal_NewFrame(renderPassDesc);
     ImGui_ImplSDL3_NewFrame();

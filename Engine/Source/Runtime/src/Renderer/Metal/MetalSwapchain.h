@@ -36,6 +36,8 @@ private:
 	
 	CAMetalLayer* mHandle = nullptr;
 	
+	id<CAMetalDrawable> mCurrentDrawable = nil;
+	
 	dispatch_semaphore_t mImageAcquireSemaphore;
 
 };

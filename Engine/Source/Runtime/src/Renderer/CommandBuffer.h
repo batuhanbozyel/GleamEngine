@@ -48,7 +48,6 @@ public:
     template<typename T>
     void SetConstantBuffer(const T& t, uint32_t slot) const
     {
-		auto gpuAddress = mConstantBuffer.Write(t);
         SetConstantBuffer(&t, sizeof(T), slot);
     }
 

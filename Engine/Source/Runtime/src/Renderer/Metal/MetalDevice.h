@@ -5,22 +5,21 @@
 #include <Metal/Metal.h>
 #include <metal_irconverter/metal_irconverter.h>
 
+@protocol MetalPipeline <NSObject>
+@end
+
+@protocol MetalGraphicsPipeline <MetalPipeline>
+
+@property (nonatomic, strong) id<MTLRenderPipelineState> renderState;
+@property (nonatomic, strong) id<MTLDepthStencilState> depthStencilState;
+@property (nonatomic, assign) MTLPrimitiveType topology;
+
+@end
+
 namespace Gleam {
 
 struct Version;
 struct RendererConfig;
-
-struct MetalPipeline
-{
-	virtual ~MetalPipeline() = default;
-};
-
-struct MetalGraphicsPipeline : public MetalPipeline
-{
-	id<MTLRenderPipelineState> renderState = nil;
-	id<MTLDepthStencilState> depthStencilState = nil;
-	MTLPrimitiveType topology = MTLPrimitiveTypeTriangle;
-};
 
 struct MetalDescriptorHeap
 {

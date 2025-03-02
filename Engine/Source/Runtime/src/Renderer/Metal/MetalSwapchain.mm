@@ -73,6 +73,7 @@ void MetalSwapchain::Resize(GraphicsDevice* device, const Size& size)
     auto physicalSize = size * mHandle.contentsScale;
     mHandle.drawableSize = CGSizeMake(physicalSize.width, physicalSize.height);
     
+    mCurrentDrawable = nil;
     for (uint32_t i = 0; i < mMaxFramesInFlight; ++i)
     {
         mTextures[i] = CreateSwapchainBuffer(device, i);
@@ -85,8 +86,8 @@ const Texture& MetalSwapchain::AcquireNextDrawable()
     if (drawable.GetHandle() == nil)
     {
         dispatch_semaphore_wait(mImageAcquireSemaphore, DISPATCH_TIME_FOREVER);
-        id<CAMetalDrawable> texture = [mHandle nextDrawable];
-        drawable = Texture(texture, nil, drawable.GetDescriptor());
+        mCurrentDrawable = [mHandle nextDrawable];
+        drawable = Texture(mCurrentDrawable.texture, nil, drawable.GetDescriptor());
     }
     return drawable;
 }
@@ -99,13 +100,15 @@ void MetalSwapchain::Present(const CommandBuffer* cmd)
         dispatch_semaphore_signal(mImageAcquireSemaphore);
     }];
     
-    auto& drawable = mTextures[mCurrentFrameIndex];
-    [commandBuffer presentDrawable:drawable.GetHandle()];
+    [commandBuffer presentDrawable:mCurrentDrawable];
     cmd->End();
     cmd->Commit();
     
+    auto& texture = mTextures[mCurrentFrameIndex];
+    texture = Texture(texture.GetDescriptor());
+    mCurrentDrawable = nil;
+    
     mCurrentFrameIndex = (mCurrentFrameIndex + 1) % mMaxFramesInFlight;
-    drawable = Texture(drawable.GetDescriptor());
 }
 
 Texture MetalSwapchain::CreateSwapchainBuffer(GraphicsDevice* device, uint32_t buffer)

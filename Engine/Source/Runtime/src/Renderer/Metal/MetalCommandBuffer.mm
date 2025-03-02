@@ -16,9 +16,9 @@ struct CommandBuffer::Impl
     
     id<MTLCommandBuffer> commandBuffer = nil;
     id<MTLRenderCommandEncoder> renderCommandEncoder = nil;
-    const MetalPipeline* pipeline = nullptr;
+    id<MetalPipeline> pipeline = nil;
     
-    uint64_t* topLevelArgumentBuffer = nullptr;
+    uint64_t topLevelArgumentBuffer[TopLevelArgumentBufferSize / sizeof(uint64_t)] = {};
 };
 
 CommandBuffer::CommandBuffer(GraphicsDevice* device)
@@ -87,13 +87,13 @@ void CommandBuffer::EndRenderPass() const
 
 void CommandBuffer::BindGraphicsPipeline(const GraphicsPipeline& pipeline) const
 {
-    mHandle->pipeline = (__bridge const MetalPipeline*)(pipeline.GetHandle());
+    mHandle->pipeline = pipeline.GetHandle();
     
-    const auto renderPipeline = static_cast<const MetalGraphicsPipeline*>(mHandle->pipeline);
-    [mHandle->renderCommandEncoder setRenderPipelineState:renderPipeline->renderState];
-    if (renderPipeline->depthStencilState)
+    id<MetalGraphicsPipeline> renderPipeline = (id<MetalGraphicsPipeline>)mHandle->pipeline;
+    [mHandle->renderCommandEncoder setRenderPipelineState:renderPipeline.renderState];
+    if (renderPipeline.depthStencilState)
     {
-        [mHandle->renderCommandEncoder setDepthStencilState:renderPipeline->depthStencilState];
+        [mHandle->renderCommandEncoder setDepthStencilState:renderPipeline.depthStencilState];
     }
     
     [mHandle->renderCommandEncoder setCullMode:CullModeToMTLCullMode(pipeline.GetDescriptor().cullingMode)];
@@ -104,11 +104,7 @@ void CommandBuffer::BindGraphicsPipeline(const GraphicsPipeline& pipeline) const
     [mHandle->renderCommandEncoder setFragmentBuffer:mHandle->device->GetCbvSrvUavHeap() offset:0 atIndex:kIRDescriptorHeapBindPoint];
     
     // Top-level argument buffer
-    id<MTLBuffer> constantBuffer = mConstantBuffer.GetHandle();
-    size_t argumentBufferOffset = mConstantBuffer.Allocate(TopLevelArgumentBufferSize);
-    mHandle->topLevelArgumentBuffer = static_cast<uint64_t*>(OffsetPointer([constantBuffer contents], argumentBufferOffset));
-    [mHandle->renderCommandEncoder setVertexBuffer:constantBuffer offset:argumentBufferOffset atIndex:kIRArgumentBufferBindPoint];
-    [mHandle->renderCommandEncoder setFragmentBuffer:constantBuffer offset:argumentBufferOffset atIndex:kIRArgumentBufferBindPoint];
+    memset(mHandle->topLevelArgumentBuffer, 0, TopLevelArgumentBufferSize);
 }
 
 void CommandBuffer::SetViewport(const Size& size) const
@@ -136,13 +132,21 @@ void CommandBuffer::SetPushConstant(const void* data, uint32_t size) const
 
 void CommandBuffer::Draw(uint32_t vertexCount, uint32_t instanceCount) const
 {
-    IRRuntimeDrawPrimitives(mHandle->renderCommandEncoder, static_cast<const MetalGraphicsPipeline*>(mHandle->pipeline)->topology, 0, vertexCount, instanceCount, 0);
+    [mHandle->renderCommandEncoder setVertexBytes:mHandle->topLevelArgumentBuffer length:TopLevelArgumentBufferSize atIndex:kIRArgumentBufferBindPoint];
+    [mHandle->renderCommandEncoder setFragmentBytes:mHandle->topLevelArgumentBuffer length:TopLevelArgumentBufferSize atIndex:kIRArgumentBufferBindPoint];
+    
+    id<MetalGraphicsPipeline> pipeline = (id<MetalGraphicsPipeline>)mHandle->pipeline;
+    IRRuntimeDrawPrimitives(mHandle->renderCommandEncoder, pipeline.topology, 0, vertexCount, instanceCount, 0);
 }
 
 void CommandBuffer::DrawIndexed(const Buffer& indexBuffer, IndexType type, uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex) const
 {
+    [mHandle->renderCommandEncoder setVertexBytes:mHandle->topLevelArgumentBuffer length:TopLevelArgumentBufferSize atIndex:kIRArgumentBufferBindPoint];
+    [mHandle->renderCommandEncoder setFragmentBytes:mHandle->topLevelArgumentBuffer length:TopLevelArgumentBufferSize atIndex:kIRArgumentBufferBindPoint];
+    
+    id<MetalGraphicsPipeline> pipeline = (id<MetalGraphicsPipeline>)mHandle->pipeline;
     MTLIndexType indexType = static_cast<MTLIndexType>(type);
-    IRRuntimeDrawIndexedPrimitives(mHandle->renderCommandEncoder, static_cast<const MetalGraphicsPipeline*>(mHandle->pipeline)->topology, indexCount, indexType, indexBuffer.GetHandle(), firstIndex * SizeOfIndexType(type), instanceCount);
+    IRRuntimeDrawIndexedPrimitives(mHandle->renderCommandEncoder, pipeline.topology, indexCount, indexType, indexBuffer.GetHandle(), firstIndex * SizeOfIndexType(type), instanceCount);
 }
 
 void CommandBuffer::CopyBuffer(const NativeGraphicsHandle src, const NativeGraphicsHandle dst, size_t size, size_t srcOffset, size_t dstOffset) const

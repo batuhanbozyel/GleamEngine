@@ -15,6 +15,28 @@
 
 using namespace Gleam;
 
+@interface MetalGraphicsPipelineImpl : NSObject<MetalGraphicsPipeline>
+
+@property (nonatomic, strong) id<MTLRenderPipelineState> renderState;
+@property (nonatomic, strong) id<MTLDepthStencilState> depthStencilState;
+@property (nonatomic, assign) MTLPrimitiveType topology;
+
+@end
+
+@implementation MetalGraphicsPipelineImpl
+
+- (instancetype)init {
+    self = [super init];
+    if (self) {
+        _renderState = nil;
+        _depthStencilState = nil;
+        _topology = MTLPrimitiveTypeTriangle;
+    }
+    return self;
+}
+
+@end
+
 void RenderSystem::InitializeBackend()
 {
 	mSwapchain = CreateScope<MetalSwapchain>();
@@ -212,9 +234,9 @@ Shader GraphicsDevice::CompileShader(const TString& entryPoint, ShaderStage stag
 GraphicsPipeline GraphicsDevice::CompileGraphicsPipeline(const GraphicsPipelineStateDescriptor& pipelineDesc)
 {
     GraphicsPipeline pipeline(pipelineDesc);
-    pipeline.mHandle = (__bridge id)(new MetalGraphicsPipeline);
+    pipeline.mHandle = [[MetalGraphicsPipelineImpl alloc] init];
     
-    auto mtlPipeline = (__bridge MetalGraphicsPipeline*)(pipeline.mHandle);
+    id<MetalGraphicsPipeline> mtlPipeline = pipeline.mHandle;
     auto vertexShader = CreateShader(pipelineDesc.vertexEntry, ShaderStage::Vertex);
     auto fragmentShader = CreateShader(pipelineDesc.fragmentEntry, ShaderStage::Fragment);
     
@@ -261,14 +283,14 @@ GraphicsPipeline GraphicsDevice::CompileGraphicsPipeline(const GraphicsPipelineS
             depthStencilDesc.backFaceStencil = stencilDesc;
             depthStencilDesc.frontFaceStencil = stencilDesc;
         }
-        mtlPipeline->depthStencilState = [mHandle newDepthStencilStateWithDescriptor:depthStencilDesc];
-        GLEAM_ASSERT(mtlPipeline->depthStencilState, "Metal: Graphics Pipeline depth state creation failed.");
+        mtlPipeline.depthStencilState = [mHandle newDepthStencilStateWithDescriptor:depthStencilDesc];
+        GLEAM_ASSERT(mtlPipeline.depthStencilState, "Metal: Graphics Pipeline depth state creation failed.");
     }
     
     __autoreleasing NSError* error = nil;
-    mtlPipeline->renderState = [mHandle newRenderPipelineStateWithDescriptor:pipelineDescriptor error:&error];
-    mtlPipeline->topology = PrimitiveTopologyToMTLPrimitiveType(pipelineDesc.topology);
-    GLEAM_ASSERT(mtlPipeline->renderState, "Metal: Graphics Pipeline render state creation failed.");
+    mtlPipeline.renderState = [mHandle newRenderPipelineStateWithDescriptor:pipelineDescriptor error:&error];
+    mtlPipeline.topology = PrimitiveTopologyToMTLPrimitiveType(pipelineDesc.topology);
+    GLEAM_ASSERT(mtlPipeline.renderState, "Metal: Graphics Pipeline render state creation failed.");
     return pipeline;
 }
 
@@ -293,9 +315,7 @@ void GraphicsDevice::Dispose(Shader& shader)
 
 void GraphicsDevice::Dispose(GraphicsPipeline& pipeline)
 {
-    auto mtlPipeline = (__bridge MetalGraphicsPipeline*)(pipeline.mHandle);
-    delete mtlPipeline;
-    pipeline.mHandle = nullptr;
+    pipeline.mHandle = nil;
 }
 
 MetalDevice::MetalDevice(RenderSurface* surface, ResourceReleaseQueue* releaseQueue)
