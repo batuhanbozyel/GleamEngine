@@ -177,6 +177,7 @@ bool MeshSource::Import(const Gleam::Filesystem::Path& path, const ImportSetting
 		{
 			auto texturePath = directory / texture;
 			auto textureSettings = TextureSource::ImportSettings();
+			textureSettings.colorSpace = TextureColorSpace::sRGB;
 			if (ImportReference<TextureSource>(texturePath, textureSettings))
 			{
 				descriptor["BaseColorTexture"] = Registry()->GetAsset<Gleam::Texture2DDescriptor>(texture.stem()).reference;
@@ -207,6 +208,7 @@ bool MeshSource::Import(const Gleam::Filesystem::Path& path, const ImportSetting
 		{
 			auto texturePath = directory / texture;
 			auto textureSettings = TextureSource::ImportSettings();
+			textureSettings.colorSpace = TextureColorSpace::sRGB;
 			if (ImportReference<TextureSource>(texturePath, textureSettings))
 			{
 				descriptor["EmissiveTexture"] = Registry()->GetAsset<Gleam::Texture2DDescriptor>(texture.stem()).reference;

@@ -11,6 +11,12 @@ struct RawTexture
 	void* pixels;
 };
 
+enum class TextureColorSpace
+{
+	Linear,
+	sRGB
+};
+
 class TextureSource : public AssetPackage
 {
 public:
@@ -18,7 +24,8 @@ public:
 
 	struct ImportSettings
 	{
-		bool linear = false;
+		TextureColorSpace colorSpace = TextureColorSpace::Linear;
+		bool hdr = false;
 	};
 
 	bool Import(const Gleam::Filesystem::Path& path, const ImportSettings& settings);

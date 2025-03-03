@@ -18,22 +18,7 @@ bool TextureSource::Import(const Gleam::Filesystem::Path& path, const ImportSett
 	}
 	
 	Gleam::TextureFormat format;
-	if (settings.linear)
-	{
-		texture.pixels = stbi_load(path.string().c_str(), &texture.width, &texture.height, nullptr, texture.channels);
-		switch (texture.channels)
-		{
-			case 1:
-				format = Gleam::TextureFormat::R8_UNorm;
-			case 2:
-				format = Gleam::TextureFormat::R8G8_UNorm;
-			case 4:
-				format = Gleam::TextureFormat::R8G8B8A8_UNorm;
-			default:
-				format = Gleam::TextureFormat::None;
-		}
-	}
-	else
+	if (settings.hdr)
 	{
 		// TODO: convert to half precision
 		texture.pixels = stbi_loadf(path.string().c_str(), &texture.width, &texture.height, nullptr, texture.channels);
@@ -41,12 +26,35 @@ bool TextureSource::Import(const Gleam::Filesystem::Path& path, const ImportSett
 		{
 			case 1:
 				format = Gleam::TextureFormat::R32_SFloat;
+				break;
 			case 2:
 				format = Gleam::TextureFormat::R32G32_SFloat;
+				break;
 			case 4:
 				format = Gleam::TextureFormat::R32G32B32A32_SFloat;
+				break;
 			default:
 				format = Gleam::TextureFormat::None;
+				break;
+		}		
+	}
+	else
+	{
+		texture.pixels = stbi_load(path.string().c_str(), &texture.width, &texture.height, nullptr, texture.channels);
+		switch (texture.channels)
+		{
+			case 1:
+				format = Gleam::TextureFormat::R8_UNorm;
+				break;
+			case 2:
+				format = Gleam::TextureFormat::R8G8_UNorm;
+				break;
+			case 4:
+				format = settings.colorSpace == TextureColorSpace::sRGB ? Gleam::TextureFormat::R8G8B8A8_SRGB : Gleam::TextureFormat::R8G8B8A8_UNorm;
+				break;
+			default:
+				format = Gleam::TextureFormat::None;
+				break;
 		}
 	}
 	
