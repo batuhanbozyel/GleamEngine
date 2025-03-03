@@ -22,7 +22,6 @@ Gleam::SurfaceOutput surf(MeshVertexOut IN);
 float4 meshShadingPassShader(MeshVertexOut IN) : SV_TARGET
 {
     Gleam::SurfaceOutput surface = surf(IN);
-    surface.albedo.rgb = sRGBToLinear(surface.albedo.rgb);
     
 	float3 viewDir = normalize(camera.position - IN.worldPosition);
 	float3 lightDir = normalize(float3(0.43f, 0.43f, 0.0f));
