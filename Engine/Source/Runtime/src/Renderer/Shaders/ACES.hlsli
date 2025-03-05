@@ -1,4 +1,6 @@
 #pragma once
+#include "Common.hlsli"
+
 #define ACEScc_MAX      1.4679964
 #define ACEScc_MIDGRAY  0.4135884
 
@@ -10,6 +12,8 @@
 #define RRT_RED_HUE     0.0
 #define RRT_RED_WIDTH   135.0
 #define RRT_SAT_FACTOR  0.96
+
+#define ODT_SAT_FACTOR  0.93
 
 // Precomputed matrices (pre-transposed)
 // See https://github.com/ampas/aces-dev/blob/master/transforms/ctl/README-MATRIX.md
@@ -110,8 +114,8 @@ half3 ACES_to_ACEScg(half3 x)
 half RgbToSaturation(half3 rgb)
 {
     const half TINY = 1e-4;
-    half mi = Min3(rgb.r, rgb.g, rgb.b);
-    half ma = Max3(rgb.r, rgb.g, rgb.b);
+	half mi = min(rgb.r, min(rgb.g, rgb.b));
+	half ma = max(rgb.r, max(rgb.g, rgb.b));
     return (max(ma, TINY) - max(mi, TINY)) / max(ma, 1e-2);
 }
 
@@ -185,7 +189,21 @@ half GlowFwd(half ycIn, half glowGainIn, half glowMid)
     return glowGainOut;
 }
 
-#define DIM_SURROUND_GAMMA 0.9811;
+half3 XYZ_2_xyY(half3 XYZ)
+{
+	half divisor = max(dot(XYZ, (1.0).xxx), 1e-4);
+	return half3(XYZ.xy / divisor, XYZ.y);
+}
+
+half3 xyY_2_XYZ(half3 xyY)
+{
+	half m = xyY.z / max(xyY.y, 1e-4);
+	half3 XYZ = half3(xyY.xz, (1.0 - xyY.x - xyY.y));
+	XYZ.xz *= m;
+	return XYZ;
+}
+
+#define DIM_SURROUND_GAMMA 0.9811
 half3 DarkSurroundToDimSurround(half3 linearCV)
 {
     half3 XYZ = mul(AP1_2_XYZ_MAT, linearCV);

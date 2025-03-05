@@ -3,6 +3,20 @@
 
 namespace Gleam {
 
+enum class Tonemapping
+{
+	None,
+	ACES,
+	Neutral,
+	Filmic,
+	AgX
+};
+
+struct ColorGradingSettings
+{
+	Tonemapping tonemapping = Tonemapping::ACES;
+};
+
 enum class ProjectionType
 {
 	Ortho,
@@ -21,10 +35,10 @@ struct Camera
 	float aspectRatio = 1.0f;
 	float nearPlane = 0.1f;
 	float farPlane = 1000.0f;
-
 	ProjectionType projectionType = ProjectionType::Perspective;
 
-	RenderSurface* renderSurface = nullptr;
+	// Post-process settings
+	ColorGradingSettings colorGrading = {};
     
 	Camera() = default;
 
@@ -40,6 +54,12 @@ struct Camera
 };
 
 } // namespace Gleam
+
+GLEAM_ENUM(Gleam::Tonemapping, Guid("6B993432-E807-444D-AB3D-8B6F6BD8F84D"))
+GLEAM_TYPE(Gleam::ColorGradingSettings, Guid("CD1CEEDD-2481-4000-B165-BCC6A1953E00"), EntityComponent())
+	GLEAM_FIELD(tonemapping, Serializable())
+GLEAM_END
+
 
 GLEAM_ENUM(Gleam::ProjectionType, Guid("8A1A6FA3-4FD8-4FEB-9A60-0944996B5ABF"))
 

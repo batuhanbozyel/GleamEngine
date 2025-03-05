@@ -6,12 +6,12 @@
 
 float Fd_Lambert()
 {
-    return 1.0f / PI;
+    return 1.0f * INV_PI;
 }
 
 float3 Fd_Lambert(float3 albedo)
 {
-    return albedo / PI;
+    return albedo * INV_PI;
 }
 
 float F0Dielectric(float reflectance)

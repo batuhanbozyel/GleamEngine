@@ -2,7 +2,16 @@
 #include "ShaderInterop.h"
 #include "SharedTypes.h"
 
-#define PI 3.1415926535897932384626433832795
+#define EPSILON         1.0e-4
+#define PI              3.14159265359
+#define TWO_PI          6.28318530718
+#define INV_PI          0.31830988618
+#define HALF_PI         1.57079632679
+
+#define HALF_MAX        65504.0 // (2 - 2^-10) * 2^15
+#define FLT_EPSILON     1.192092896e-07 // Smallest positive number, such that 1.0 + FLT_EPSILON != 1.0
+#define FLT_MIN         1.175494351e-38 // Minimum representable positive floating-point number
+#define FLT_MAX         3.402823466e+38 // Maximum representable floating-point number
 
 #define CONSTANT_BUFFER(type, name, slot) ConstantBuffer<type> name : register(b##slot)
 #define PUSH_CONSTANT(type, name) CONSTANT_BUFFER(type, name, 999)
@@ -27,6 +36,28 @@ SamplerState Sampler_Trilinear_Repeat : register(s8);
 SamplerState Sampler_Trilinear_Clamp : register(s9);
 SamplerState Sampler_Trilinear_Mirror : register(s10);
 SamplerState Sampler_Trilinear_MirrorOnce : register(s11);
+
+// https://twitter.com/SebAaltonen/status/878250919879639040
+// madd_sat + madd
+float FastSign(float x)
+{
+	return saturate(x * FLT_MAX + 0.5) * 2.0 - 1.0;
+}
+
+float2 FastSign(float2 x)
+{
+	return saturate(x * FLT_MAX + 0.5) * 2.0 - 1.0;
+}
+
+float3 FastSign(float3 x)
+{
+	return saturate(x * FLT_MAX + 0.5) * 2.0 - 1.0;
+}
+
+float4 FastSign(float4 x)
+{
+	return saturate(x * FLT_MAX + 0.5) * 2.0 - 1.0;
+}
 
 float4 unpack_unorm4x8_to_float(uint packedVal)
 {
