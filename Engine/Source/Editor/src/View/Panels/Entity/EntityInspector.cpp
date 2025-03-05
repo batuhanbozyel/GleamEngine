@@ -12,8 +12,10 @@
 
 using namespace GEditor;
 
-static void DrawScalarControl(const Gleam::TStringView label, const Gleam::Reflection::PrimitiveField field, void* value, uint64_t resetValue = 0u, float columnWidth = 100.0f)
+static void DrawScalarControl(const Gleam::TStringView label, const Gleam::Reflection::PrimitiveType type, size_t size, void* value, const void* defaultValue, float columnWidth = 100.0f)
 {
+	GLEAM_ASSERT(value, "Value can not be null.");
+
 	ImGuiIO& io = ImGui::GetIO();
 	auto boldFont = io.Fonts->Fonts[0];
 
@@ -35,11 +37,14 @@ static void DrawScalarControl(const Gleam::TStringView label, const Gleam::Refle
 	ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4{ 0.8f, 0.1f, 0.15f, 1.0f });
 	ImGui::PushFont(boldFont);
 
-	if (field.primitive != Gleam::Reflection::PrimitiveType::Bool)
+	if (type != Gleam::Reflection::PrimitiveType::Bool)
 	{
 		if (ImGui::Button("X", buttonSize))
 		{
-			memcpy(value, &resetValue, field.size);
+			if (defaultValue)
+			{
+				memcpy(value, defaultValue, size);
+			}
 		}
 	}
 
@@ -47,8 +52,7 @@ static void DrawScalarControl(const Gleam::TStringView label, const Gleam::Refle
 	ImGui::PopStyleColor(3);
 	ImGui::SameLine();
 
-
-	switch (field.primitive)
+	switch (type)
 	{
 		case Gleam::Reflection::PrimitiveType::Bool:
 		{
@@ -124,58 +128,22 @@ static void DrawScalarControl(const Gleam::TStringView label, const Gleam::Refle
 	ImGui::PopID();
 }
 
-static void DrawFloatControl(const Gleam::TString& label, float& value, float resetValue = 0.0f, float columnWidth = 100.0f)
+template<typename T, std::enable_if_t<Gleam::Reflection::Traits::IsPrimitive<T>::value, bool> = true>
+static void DrawScalarControl(const Gleam::TStringView label, T& value, T defaultValue = T(), float columnWidth = 100.0f)
 {
-	ImGuiIO& io = ImGui::GetIO();
-	auto boldFont = io.Fonts->Fonts[0];
-
-	ImGui::PushID(label.c_str());
-
-	ImGui::Columns(2);
-	ImGui::SetColumnWidth(0, columnWidth);
-	ImGui::Text("%s", label.c_str());
-	ImGui::NextColumn();
-
-	ImGui::PushItemWidth(ImGui::CalcItemWidth());
-	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2{ 0, 0 });
-
-	float lineHeight = GImGui->Font->FontSize + GImGui->Style.FramePadding.y * 2.0f;
-	ImVec2 buttonSize = { lineHeight + 3.0f, lineHeight };
-
-	ImGui::PushStyleColor(ImGuiCol_Button, ImVec4{ 0.8f, 0.1f, 0.15f, 1.0f });
-	ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4{ 0.9f, 0.2f, 0.2f, 1.0f });
-	ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4{ 0.8f, 0.1f, 0.15f, 1.0f });
-	ImGui::PushFont(boldFont);
-
-	if (ImGui::Button("X", buttonSize))
-	{
-		value = resetValue;
-	}
-
-	ImGui::PopFont();
-	ImGui::PopStyleColor(3);
-
-	ImGui::SameLine();
-	ImGui::DragFloat("##X", &value, 0.05f, 0.0f, 0.0f, "%.2f");
-	ImGui::PopItemWidth();
-	ImGui::SameLine();
-
-	ImGui::PopStyleVar();
-	ImGui::Columns(1);
-
-	ImGui::PopID();
+	DrawScalarControl(label, Gleam::Reflection::GetPrimitiveType<T>(), sizeof(T), &value, &defaultValue, columnWidth);
 }
 
-static void DrawVec3Control(const Gleam::TString& label, Gleam::Float3& values, float resetValue = 0.0f, float columnWidth = 100.0f)
+static void DrawVec3Control(const Gleam::TStringView label, Gleam::Float3& values, float resetValue = 0.0f, float columnWidth = 100.0f)
 {
     ImGuiIO& io = ImGui::GetIO();
     auto boldFont = io.Fonts->Fonts[0];
 
-    ImGui::PushID(label.c_str());
+    ImGui::PushID(label.data());
 
     ImGui::Columns(2);
     ImGui::SetColumnWidth(0, columnWidth);
-    ImGui::Text("%s", label.c_str());
+    ImGui::Text("%s", label.data());
     ImGui::NextColumn();
 
     ImGui::PushMultiItemsWidths(3, ImGui::CalcItemWidth());
@@ -243,6 +211,51 @@ static void DrawVec3Control(const Gleam::TString& label, Gleam::Float3& values, 
     ImGui::PopID();
 }
 
+static void DrawEnumOptions(const Gleam::TStringView label, const Gleam::Reflection::EnumDescription& enumDesc, void* value, float columnWidth = 100.0f)
+{
+	ImGuiIO& io = ImGui::GetIO();
+	auto boldFont = io.Fonts->Fonts[0];
+
+	ImGui::PushID(label.data());
+
+	ImGui::Columns(2);
+	ImGui::SetColumnWidth(0, columnWidth);
+	ImGui::Text("%s", label.data());
+	ImGui::NextColumn();
+
+	float lineHeight = GImGui->Font->FontSize + GImGui->Style.FramePadding.y * 2.0f;
+	ImVec2 buttonSize = { lineHeight + 3.0f, lineHeight };
+
+	ImGui::PushItemWidth(ImGui::CalcItemWidth() + buttonSize.x);
+	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2{ 0, 0 });
+
+	if (ImGui::BeginCombo("##", nullptr))
+	{
+		/*for (const auto& entry : enumDesc.GetEntries())
+		{
+			bool isSelected = *static_cast<uint32_t*>(value) == entry.value;
+			if (ImGui::Selectable(entry.name.data(), isSelected))
+			{
+				*static_cast<uint32_t*>(value) = entry.value;
+			}
+
+			if (isSelected)
+			{
+				ImGui::SetItemDefaultFocus();
+			}
+		}*/
+		ImGui::EndCombo();
+	}
+	
+	ImGui::PopItemWidth();
+	ImGui::SameLine();
+
+	ImGui::PopStyleVar();
+	ImGui::Columns(1);
+
+	ImGui::PopID();
+}
+
 static void DrawClassFields(void* obj, const Gleam::Reflection::ClassDescription& classDesc, float columnWidth = 100.0f)
 {
 	for (const auto& baseClass : classDesc.ResolveBaseClasses())
@@ -268,14 +281,16 @@ static void DrawClassFields(void* obj, const Gleam::Reflection::ClassDescription
 			}
 			case Gleam::Reflection::FieldType::Enum:
 			{
-
+				const auto& enumField = field.GetField<Gleam::Reflection::EnumField>();
+				const auto& enumDesc = Gleam::Reflection::GetEnum(enumField.hash);
+				DrawEnumOptions(field.ResolveName(), enumDesc, Gleam::OffsetPointer(obj, enumField.offset), columnWidth);
 				break;
 			}
 			case Gleam::Reflection::FieldType::Primitive:
 			{
-				const auto& primitiveField = field.GetField<Gleam::Reflection::PrimitiveField>();
 				constexpr uint64_t defaultValue = 0;
-				DrawScalarControl(field.ResolveName(), primitiveField, Gleam::OffsetPointer(obj, primitiveField.offset), defaultValue, columnWidth);
+				const auto& primitiveField = field.GetField<Gleam::Reflection::PrimitiveField>();
+				DrawScalarControl(field.ResolveName(), primitiveField.primitive, primitiveField.size, Gleam::OffsetPointer(obj, primitiveField.offset), &defaultValue, columnWidth);
 				break;
 			}
 			default:
@@ -341,7 +356,7 @@ void EntityInspector::Render(Gleam::ImGuiRenderer* imgui)
 			entity.SetRotation(Gleam::Quaternion(Gleam::Math::Deg2Rad(localRotation)));
 
 			auto localScale = entity.GetLocalScale();
-			DrawFloatControl("Scale", localScale, 1.0f, labelWidth);
+			DrawScalarControl<float>("Scale",localScale, 1.0f, labelWidth);
 			entity.SetScale(localScale);
 		});
 

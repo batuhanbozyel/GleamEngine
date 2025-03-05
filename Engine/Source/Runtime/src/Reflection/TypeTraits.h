@@ -3,6 +3,10 @@
 
 namespace Gleam::Reflection::Traits {
 
+// is same
+template<typename T1, typename T2>
+using IsSame = std::is_same<T1, T2>;
+
 // is primitive
 template<typename T>
 using IsPrimitive = std::is_fundamental<T>;

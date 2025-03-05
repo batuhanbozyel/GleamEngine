@@ -50,8 +50,8 @@ struct FieldBase
 {
     static constexpr FieldType type = T;
     
-    size_t size;
-    size_t offset;
+    size_t size = 0;
+    size_t offset = 0;
 };
 
 struct NullField : FieldBase<FieldType::Invalid> {};
@@ -61,9 +61,56 @@ struct PrimitiveField : FieldBase<FieldType::Primitive>
     PrimitiveType primitive;
     
     explicit constexpr PrimitiveField(PrimitiveType primitive)
-        : primitive(primitive)
+        : FieldBase(), primitive(primitive)
     {
-        
+		switch (primitive)
+		{
+			case PrimitiveType::Bool:
+				size = sizeof(bool);
+				break;
+			case PrimitiveType::WChar:
+				size = sizeof(wchar_t);
+				break;
+			case PrimitiveType::Char:
+				size = sizeof(char);
+				break;
+			case PrimitiveType::Int8:
+				size = sizeof(int8_t);
+				break;
+			case PrimitiveType::Int16:
+				size = sizeof(int16_t);
+				break;
+			case PrimitiveType::Int32:
+				size = sizeof(int32_t);
+				break;
+			case PrimitiveType::Int64:
+				size = sizeof(int64_t);
+				break;
+			case PrimitiveType::UInt8:
+				size = sizeof(uint8_t);
+				break;
+			case PrimitiveType::UInt16:
+				size = sizeof(uint16_t);
+				break;
+			case PrimitiveType::UInt32:
+				size = sizeof(uint32_t);
+				break;
+			case PrimitiveType::UInt64:
+				size = sizeof(uint64_t);
+				break;
+			case PrimitiveType::Float:
+				size = sizeof(float);
+				break;
+			case PrimitiveType::Double:
+				size = sizeof(double);
+				break;
+			case PrimitiveType::Void:
+				size = 0;
+				break;
+			default:
+				GLEAM_ASSERT(false, "Invalid primitive type!");
+				break;
+		}
     }
 };
 

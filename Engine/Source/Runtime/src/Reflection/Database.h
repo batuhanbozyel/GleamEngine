@@ -23,7 +23,7 @@ public:
     
     static const TStringView GetPrimitiveName(PrimitiveType type);
     
-    template<typename T>
+    template<typename T, std::enable_if_t<Traits::IsClass<T>::value, bool> = true>
     static ClassDescription& CreateClassIfNotExist()
     {
         auto hash = entt::type_hash<T>::value();
@@ -76,7 +76,7 @@ public:
 
 private:
 
-	template<typename T>
+	template<typename T, std::enable_if_t<Traits::IsClass<T>::value, bool> = true>
 	static constexpr ClassDescription CreateClassDescription(const refl::type_descriptor<T>& type)
 	{
 		ClassDescription desc;

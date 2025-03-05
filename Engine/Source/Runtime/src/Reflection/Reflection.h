@@ -3,12 +3,19 @@
 
 namespace Gleam::Reflection {
 
+template<typename T, std::enable_if_t<Traits::IsPrimitive<T>::value, bool> = true>
+static constexpr PrimitiveType GetPrimitiveType()
+{
+	constexpr auto hash = entt::type_hash<T>::value();
+	return Database::GetPrimitiveType(hash);
+}
+
 static PrimitiveType GetPrimitiveType(size_t hash)
 {
 	return Database::GetPrimitiveType(hash);
 }
 
-template<typename T, typename = std::enable_if_t<Traits::IsClass<T>::value>>
+template<typename T, std::enable_if_t<Traits::IsClass<T>::value, bool> = true>
 static constexpr const ClassDescription& GetClass()
 {
     return Database::CreateClassIfNotExist<T>();
@@ -25,7 +32,7 @@ static const ClassDescription& GetClass(const TStringView name)
 	return GetClass(hash);
 }
 
-template<typename T, typename = std::enable_if_t<Traits::IsEnum<T>::value>>
+template<typename T, std::enable_if_t<Traits::IsEnum<T>::value, bool> = true>
 static constexpr const EnumDescription& GetEnum()
 {
     return Database::CreateEnumIfNotExist<T>();
@@ -42,7 +49,7 @@ static const EnumDescription& GetEnum(const TStringView name)
 	return GetEnum(hash);
 }
 
-template<typename T, typename = std::enable_if_t<Traits::IsArray<T>::value>>
+template<typename T, std::enable_if_t<Traits::IsArray<T>::value, bool> = true>
 static constexpr const ArrayDescription& GetArray()
 {
     return Database::CreateArrayIfNotExist<T>();
