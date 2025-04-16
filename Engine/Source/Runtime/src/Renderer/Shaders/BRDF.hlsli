@@ -6,7 +6,7 @@
 
 float Fd_Lambert()
 {
-    return 1.0f * INV_PI;
+    return INV_PI;
 }
 
 float3 Fd_Lambert(float3 albedo)
@@ -58,7 +58,7 @@ float D_GGX(float NdotH, float roughness)
 {
     float a2 = roughness * roughness;
     float denom = (NdotH * a2 - NdotH) * NdotH + 1.0f;
-    return a2 / (PI * denom * denom);
+    return a2 / (denom * denom);
 }
 
 float3 GetDiffuseDominantDir(float3 N, float3 V, float NdotV, float roughness)
@@ -79,8 +79,8 @@ float3 GetSpecularDominantDir(const float3 n, const float3 r, float roughness)
 float3 EvaluateDiffuseDirectLight(float3 albedo, float metallic, float perceptualRoughness, float NdotV, float NdotL, float LdotH)
 {
     float3 diffuseColor = albedo * (1.0 - metallic);
-    float fr = Fr_DisneyDiffuse(NdotV, NdotL, LdotH, perceptualRoughness);
-	return diffuseColor * fr;
+    float Fd = Fr_DisneyDiffuse(NdotV, NdotL, LdotH, perceptualRoughness);
+	return diffuseColor * (Fd * Fd_Lambert());
 }
 
 float3 EvaluateSpecularDirectLight(float3 albedo, float metallic, float perceptualRoughness, float NdotV, float NdotL, float LdotH, float NdotH)
@@ -94,7 +94,7 @@ float3 EvaluateSpecularDirectLight(float3 albedo, float metallic, float perceptu
     float D = D_GGX(NdotH, roughness);
     float V = V_SmithGGXCorrelated(NdotL, NdotV, roughness);
 
-	return F * (D * V);
+	return F * (D * V * Fd_Lambert());
 }
 
 float3 EvaluateDirectLight(Gleam::SurfaceOutput surface, float3 lightDir, float3 viewDir, float3 worldNormal)
@@ -109,5 +109,5 @@ float3 EvaluateDirectLight(Gleam::SurfaceOutput surface, float3 lightDir, float3
     float3 radiance = 0.0;
 	radiance += EvaluateDiffuseDirectLight(surface.albedo.rgb, surface.metallic, surface.roughness, NdotV, NdotL, LdotH);
 	radiance += EvaluateSpecularDirectLight(surface.albedo.rgb, surface.metallic, surface.roughness, NdotV, NdotL, LdotH, NdotH);
-	return radiance * NdotL * Fd_Lambert();
+	return radiance * NdotL;
 }
