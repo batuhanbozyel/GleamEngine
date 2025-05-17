@@ -12,7 +12,7 @@ static constexpr EntityHandle InvalidEntity = entt::null;
 template<typename ... Excludes>
 using Exclude = entt::exclude_t<Excludes...>;
 
-class Entity
+GCLASS(Entity, "9662B020-8A90-47FE-8C12-2D46316A6590", Serializable)
 {
 public:
 
@@ -218,6 +218,3 @@ private:
 };
 
 } // namespace Gleam
-
-GLEAM_TYPE(Gleam::Entity, Guid("9662B020-8A90-47FE-8C12-2D46316A6590"))
-GLEAM_END

@@ -1,10 +1,12 @@
 #pragma once
+#include "Reflection/Macro.h"
 
 namespace Gleam {
 
 struct Color32;
 
-struct Color : public Float4
+GSTRUCT(Color, "9C2ADB39-C783-4826-9FD4-DE1062A08094", Serializable)
+	: public Float4
 {
 	static const Color clear;
 	static const Color black;
@@ -135,9 +137,19 @@ struct Color : public Float4
 
 };
 
-struct Color32
+GSTRUCT(Color32, "88FA9547-6F5F-45C4-8AE1-135B27AD29F7", Serializable)
 {
-	uint8_t r = 0, g = 0, b = 0, a = 0;
+	GFIELD("5E2C315C-7202-4D4D-91D3-3B3B862C74F9", Serializable)
+	uint8_t r = 0;
+
+	GFIELD("6F2D1872-866A-4C4A-A4F6-714AB009CFA1", Serializable)
+	uint8_t g = 0;
+
+	GFIELD("85CF38CE-08B9-4A1C-AF93-FB1F2C20552A", Serializable)
+	uint8_t b = 0;
+
+	GFIELD("E53173D0-5D02-46B8-A902-BB4DD7DA4E77", Serializable)
+	uint8_t a = 0;
 
 	constexpr Color32() = default;
 	constexpr Color32(uint8_t r, uint8_t g, uint8_t b, uint8_t a)
@@ -223,13 +235,3 @@ NO_DISCARD FORCE_INLINE constexpr Color32 Mix(Color32 c0, Color32 c1, float a)
 }
 
 } // namespace Gleam
-
-GLEAM_TYPE(Gleam::Color, Guid("9C2ADB39-C783-4826-9FD4-DE1062A08094"))
-GLEAM_END
-
-GLEAM_TYPE(Gleam::Color32, Guid("88FA9547-6F5F-45C4-8AE1-135B27AD29F7"))
-    GLEAM_FIELD(r, Serializable())
-    GLEAM_FIELD(g, Serializable())
-    GLEAM_FIELD(b, Serializable())
-    GLEAM_FIELD(a, Serializable())
-GLEAM_END

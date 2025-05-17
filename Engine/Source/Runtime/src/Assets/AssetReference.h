@@ -7,11 +7,13 @@
 
 #pragma once
 #include "Core/GUID.h"
+#include "Reflection/Macro.h"
 
 namespace Gleam {
 
-struct AssetReference
+GSTRUCT(AssetReference, "7C59A995-BA05-4A2A-9F48-AD5170F05CF8", Serializable)
 {
+	GFIELD("E09BE041-51C4-4848-ACD9-50C1D8ED1872", Serializable)
 	Guid guid = Guid::InvalidGuid();
     
     bool operator==(const AssetReference &other) const
@@ -37,7 +39,3 @@ struct std::hash<Gleam::AssetReference>
         return hash;
     }
 };
-
-GLEAM_TYPE(Gleam::AssetReference, Guid("7C59A995-BA05-4A2A-9F48-AD5170F05CF8"))
-    GLEAM_FIELD(guid, Serializable())
-GLEAM_END

@@ -10,7 +10,7 @@ concept ComponentSystemType = std::is_base_of<ComponentSystem, T>::value;
 template <typename T>
 concept WorldSystemType = std::is_base_of<WorldSubsystem, T>::value;
 
-class World final
+GCLASS(World, "F2C18BDA-C06B-466F-B2E4-1DE905786688", Serializable) final
 {
 public:
 
@@ -110,7 +110,8 @@ public:
     {
         return mEntityManager;
     }
-	
+
+	GFIELD("DEAB687B-2A42-4E5F-9387-35B54889844A", Serializable)
 	TString name;
     
 private:
@@ -123,7 +124,3 @@ private:
 };
 
 } // namespace Gleam
-
-GLEAM_TYPE(Gleam::World, Guid("F2C18BDA-C06B-466F-B2E4-1DE905786688"))
-	GLEAM_FIELD(name, Serializable())
-GLEAM_END

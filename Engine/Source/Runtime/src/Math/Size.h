@@ -1,10 +1,14 @@
 #pragma once
+#include "Reflection/Macro.h"
 
 namespace Gleam {
-    
-struct Size
+
+GSTRUCT(Size, "6FAF00C4-631C-4F00-832B-6554DCFB3078", Serializable)
 {
+	GFIELD("9A2D96E6-31EF-4C2F-8763-788C0A385C26", Serializable)
     float width = 0.0f;
+
+	GFIELD("A5486918-7D7F-4B50-9250-E202F1DAC0B2", Serializable)
     float height = 0.0f;
     
     static const Size zero;
@@ -142,8 +146,3 @@ struct Size
 };
     
 } // namespace Gleam
-
-GLEAM_TYPE(Gleam::Size, Guid("6FAF00C4-631C-4F00-832B-6554DCFB3078"))
-	GLEAM_FIELD(width, Serializable())
-	GLEAM_FIELD(height, Serializable())
-GLEAM_END

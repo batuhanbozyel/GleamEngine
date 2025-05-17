@@ -1,10 +1,14 @@
 #pragma once
+#include "Reflection/Macro.h"
 
 namespace Gleam {
 
-struct BoundingBox
+GSTRUCT(BoundingBox, "AB9094D8-003E-4868-8C9D-20336D882EAD", Serializable)
 {
+	GFIELD("8D502EDA-7459-40E3-886B-E1F8A7CA6C32", Serializable)
     Float3 min{Math::NegativeInfinity, Math::NegativeInfinity, Math::NegativeInfinity};
+
+	GFIELD("15AC5B77-7DEF-4388-9A8A-3AFF72CC8F61", Serializable)
     Float3 max{Math::Infinity, Math::Infinity, Math::Infinity};
     
     constexpr BoundingBox() = default;
@@ -34,8 +38,3 @@ struct BoundingBox
 };
 
 } // namespace Gleam
-
-GLEAM_TYPE(Gleam::BoundingBox, Guid("AB9094D8-003E-4868-8C9D-20336D882EAD"))
-    GLEAM_FIELD(min, Serializable())
-    GLEAM_FIELD(max, Serializable())
-GLEAM_END

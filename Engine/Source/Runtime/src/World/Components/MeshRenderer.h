@@ -3,15 +3,13 @@
 
 namespace Gleam {
 
-struct MeshRenderer
+GSTRUCT(MeshRenderer, "71B269C7-DCF6-4E00-A914-62CE71321893", EntityComponent, Serializable)
 {
+	GFIELD("74C44005-75FD-4E1E-8DD9-A63D54A6E486", Serializable)
 	AssetReference mesh;
+
+	GFIELD("7ABC9B5E-CA6B-4E72-B14D-4546C4472C15", Serializable)
 	TArray<AssetReference> materials;
 };
 
 } // namespace Gleam
-
-GLEAM_TYPE(Gleam::MeshRenderer, Guid("71B269C7-DCF6-4E00-A914-62CE71321893"), EntityComponent())
-	GLEAM_FIELD(mesh, Serializable())
-	GLEAM_FIELD(materials, Serializable())
-GLEAM_END

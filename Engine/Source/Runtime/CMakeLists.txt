@@ -30,7 +30,6 @@ target_include_directories(imgui PRIVATE
     ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/SDL/include
     ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/DirectXAgilitySDK/build/native/include
 )
-
 set_target_properties (imgui PROPERTIES FOLDER Dependencies)
 
 # Setup link libraries
