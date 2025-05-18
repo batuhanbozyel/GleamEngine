@@ -1,8 +1,9 @@
 #pragma once
+#include "Reflection/Macro.h"
 
 namespace Gleam {
 
-struct Float4x4
+GSTRUCT(Float4x4, "770BABFC-E66A-4CE5-8453-A505EB3016BE", Serializable)
 {
     union
     {
@@ -365,7 +366,3 @@ FORCE_INLINE static void Decompose(const Float4x4& transform, Float3& translatio
 } // namespace Math
 
 } // namespace Gleam
-
-GLEAM_TYPE(Gleam::Float4x4, Guid("770BABFC-E66A-4CE5-8453-A505EB3016BE"))
-	GLEAM_FIELD(row, Serializable())
-GLEAM_END

@@ -1,8 +1,9 @@
 #pragma once
+#include "Reflection/Macro.h"
 
 namespace Gleam {
 	
-struct Float2x2
+GSTRUCT(Float2x2, "8C079A6F-245E-4692-837D-0B54D6810B81", Serializable)
 {
     union
     {
@@ -81,7 +82,3 @@ struct Float2x2
 };
 
 } // namespace Gleam
-
-GLEAM_TYPE(Gleam::Float2x2, Guid("8C079A6F-245E-4692-837D-0B54D6810B81"))
-	GLEAM_FIELD(row, Serializable())
-GLEAM_END

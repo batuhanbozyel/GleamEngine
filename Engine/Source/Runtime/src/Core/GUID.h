@@ -1,4 +1,5 @@
 #pragma once
+#include "Reflection/Macro.h"
 
 namespace Gleam {
 
@@ -61,7 +62,7 @@ static constexpr bool IsValidHexChar(char ch)
     return false;
 }
 
-class Guid
+GCLASS(Guid, "54539D64-BE9B-49AC-B31E-E90FF8967441", Serializable)
 {
     friend struct std::hash<Gleam::Guid>;
     

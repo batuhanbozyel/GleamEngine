@@ -3,13 +3,6 @@
 
 namespace Gleam {
 
-struct InterleavedMeshVertex
-{
-    float3 normal;
-	float4 tangent;
-    float2 texCoord;
-};
-
 struct DebugVertex
 {
     float3 position;

@@ -1,9 +1,10 @@
 #pragma once
+#include "Reflection/Macro.h"
 
 namespace Gleam {
 
 template<typename T>
-struct Vector4
+GSTRUCT(Vector4, "8CD15DAB-318D-439B-AF15-EB2F78F4CAAC", Serializable)
 {
     union
     {
@@ -415,10 +416,3 @@ template<typename T>
 const Vector4<T> Vector4<T>::one{T(1), T(1), T(1), T(1)};
 
 } // namespace Gleam
-
-GLEAM_TEMPLATE((typename T), (Gleam::Vector4<T>), Guid("8CD15DAB-318D-439B-AF15-EB2F78F4CAAC"))
-    GLEAM_FIELD(x, Serializable())
-    GLEAM_FIELD(y, Serializable())
-    GLEAM_FIELD(z, Serializable())
-    GLEAM_FIELD(w, Serializable())
-GLEAM_END
