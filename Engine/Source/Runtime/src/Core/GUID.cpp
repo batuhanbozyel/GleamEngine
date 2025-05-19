@@ -93,14 +93,13 @@ Guid::Guid(const TArray<uint8_t, 16>& bytes)
 }
 
 Guid::Guid(const Reflection::Attribute::Guid& guid)
-	: mBytes(guid.bytes)
 {
-    
+	memcpy(mBytes.data(), guid.mBytes, sizeof(guid.mBytes));
 }
 
 Guid& Guid::operator=(const Reflection::Attribute::Guid& guid)
 {
-    mBytes = guid.bytes;
+	memcpy(mBytes.data(), guid.mBytes, sizeof(guid.mBytes));
 	return *this;
 }
 
@@ -131,6 +130,16 @@ bool Guid::operator==(const Guid& other) const
 }
 
 bool Guid::operator!=(const Guid& other) const
+{
+	return !((*this) == other);
+}
+
+bool Guid::operator==(const Reflection::Attribute::Guid& other) const
+{
+	return memcmp(mBytes.data(), other.mBytes, sizeof(other.mBytes)) == 0;
+}
+
+bool Guid::operator!=(const Reflection::Attribute::Guid& other) const
 {
 	return !((*this) == other);
 }

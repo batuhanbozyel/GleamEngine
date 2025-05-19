@@ -7,7 +7,6 @@
 
 #pragma once
 #include "Core/GUID.h"
-#include "Reflection/Macro.h"
 
 namespace Gleam {
 

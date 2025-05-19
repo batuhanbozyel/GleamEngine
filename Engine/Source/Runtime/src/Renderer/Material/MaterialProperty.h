@@ -12,16 +12,16 @@
 
 namespace Gleam {
 
-enum class MaterialPropertyType
+GENUM(MaterialPropertyType, "C8CF1F83-7A80-4156-BA7B-947208CB69B6", Serializable)
 {
-    Scalar,
-    Float2,
-    Float3,
-    Float4,
-    Texture2D
+	GITEM(Scalar, "D14F5C28-A0E6-4B84-9E18-DF62A3E85C91"),
+	GITEM(Float2, "BD64E2F3-AC39-44F9-B87E-C92D62DB5E87"),
+	GITEM(Float3, "13F7E85B-6734-4C5F-A984-A0D5E7B9B354"),
+	GITEM(Float4, "5CF9AE01-5B85-4BDF-AC71-9BD6F4C8DB2E"),
+	GITEM(Texture2D, "A8E0D167-47CC-4D27-9B92-41E6850CFE5D")
 };
 
-struct MaterialPropertyValue
+GSTRUCT(MaterialPropertyValue, "FBEA0802-00F8-479F-9E59-2A157C8A8EF8", Serializable)
 {
 	union
 	{
@@ -30,6 +30,8 @@ struct MaterialPropertyValue
 		Float3 float3;
 		Float4 float4;
 		AssetReference texture;
+		
+		GFIELD("7C4BE305-9D93-482A-B1A5-6E39F24DA017", Serializable)
 		uint32_t value[4];
 	};
 
@@ -99,25 +101,18 @@ struct MaterialPropertyValue
 	}
 };
 
-struct MaterialProperty
+GSTRUCT(MaterialProperty, "A69E7110-6B1B-41B9-ACFB-AA363C9A0943", Serializable)
 {
+	GFIELD("F25D1E13-8C2A-4B46-8A97-1EDF61F75A34", Serializable)
 	TString name;
+	
+	GFIELD("0C3DB9A7-A283-4D5F-981E-5A4FCAEE3D62", Serializable)
 	MaterialPropertyType type;
+	
+	GFIELD("B729ED18-F647-4A65-95E2-E8B30D47FD2A", Serializable)
 	MaterialPropertyValue value;
 };
 
 static_assert(sizeof(MaterialPropertyValue) == sizeof(MaterialPropertyValue::value), "Material property value is greater than serialized value");
 
 } // namespace Gleam
-
-GLEAM_ENUM(Gleam::MaterialPropertyType, Guid("C8CF1F83-7A80-4156-BA7B-947208CB69B6"))
-
-GLEAM_TYPE(Gleam::MaterialPropertyValue, Guid("FBEA0802-00F8-479F-9E59-2A157C8A8EF8"))
-	GLEAM_FIELD(value, Serializable())
-GLEAM_END
-
-GLEAM_TYPE(Gleam::MaterialProperty, Guid("A69E7110-6B1B-41B9-ACFB-AA363C9A0943"))
-	GLEAM_FIELD(name, Serializable())
-	GLEAM_FIELD(type, Serializable())
-	GLEAM_FIELD(value, Serializable())
-GLEAM_END

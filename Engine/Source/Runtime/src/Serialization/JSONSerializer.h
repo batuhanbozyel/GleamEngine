@@ -10,7 +10,7 @@ namespace Gleam {
 
 struct JSONHeader
 {
-	Reflection::FieldType kind = Reflection::FieldType::Invalid;
+	Reflection::MetaType kind = Reflection::MetaType::Invalid;
 	TString name = "";
 	Guid guid = Guid::InvalidGuid();
 	uint32_t version = 0;

@@ -1,11 +1,8 @@
 #pragma once
 #include "Reflection/Macro.h"
+#include "Reflection/Attribute.h"
 
 namespace Gleam {
-
-namespace Reflection::Attribute {
-struct Guid;
-} // Reflection::Attribute
 
 static constexpr uint8_t HexDigitToByte(const char ch)
 {
@@ -91,6 +88,9 @@ public:
 
 	bool operator==(const Guid& other) const;
 	bool operator!=(const Guid& other) const;
+	
+	bool operator==(const Reflection::Attribute::Guid& other) const;
+	bool operator!=(const Reflection::Attribute::Guid& other) const;
     
     const TArray<uint8_t, 16>& GetBytes() const { return mBytes; }
 
@@ -109,6 +109,16 @@ private:
 	};
 
 };
+
+inline bool operator==(const Reflection::Attribute::Guid& lhs, const Guid& rhs)
+{
+	return rhs == lhs;
+}
+
+inline bool operator!=(const Reflection::Attribute::Guid& lhs, const Guid& rhs)
+{
+	return rhs != lhs;
+}
 
 } // namespace Gleam
 

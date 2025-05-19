@@ -1,5 +1,6 @@
 #pragma once
 #include "Core/Subsystem.h"
+#include "Reflection/Meta.h"
 
 namespace Gleam {
 
@@ -7,7 +8,7 @@ struct BinaryHeader
 {
 	TString name = "";
 	Guid guid = Guid::InvalidGuid();
-	Reflection::FieldType kind = Reflection::FieldType::Invalid;
+	Reflection::MetaType kind = Reflection::MetaType::Invalid;
 	uint32_t version = 0;
 	uint32_t size = 0;
 };
