@@ -8,6 +8,12 @@
 #pragma once
 #include "TextureFormat.h"
 
+#include "Math/Size.h"
+#include "Math/Color.h"
+
+#include "Container/String.h"
+#include "Container/Array.h"
+
 namespace Gleam {
 
 GENUM(TextureDimension, "7A1CDA2E-8B61-4558-9255-B919E70E92F7", Serializable)

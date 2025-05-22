@@ -1,6 +1,7 @@
 #pragma once
 #include "Subsystem.h"
 #include "EngineConfig.h"
+#include "Reflection/Database.h"
 
 namespace Gleam {
 
@@ -60,6 +61,7 @@ private:
 
 	EngineConfig mConfig;
 	PolyArray<EngineSubsystem> mSubsystems;
+	Reflection::Database mReflectionDatabase;
 
 };
 	

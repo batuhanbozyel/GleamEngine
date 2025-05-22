@@ -1,6 +1,6 @@
 #pragma once
 #include "Core/Subsystem.h"
-#include "Reflection/Meta.h"
+#include "Reflection/Reflection.h"
 
 namespace Gleam {
 

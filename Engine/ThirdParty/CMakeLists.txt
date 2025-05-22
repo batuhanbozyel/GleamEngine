@@ -20,6 +20,7 @@ add_subdirectory(fmt)
 add_subdirectory(entt)
 add_subdirectory(rapidjson)
 add_subdirectory(googletest)
+add_subdirectory(GleamReflect)
 add_subdirectory(SDL EXCLUDE_FROM_ALL)
 
 set_target_properties (
@@ -32,5 +33,6 @@ set_target_properties (
     travis_doc
     fmt
     EnTT
+    GleamReflect
     PROPERTIES FOLDER Dependencies
 )

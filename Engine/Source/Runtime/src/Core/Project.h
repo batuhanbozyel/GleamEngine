@@ -1,6 +1,8 @@
 #pragma once
 #include "EngineConfig.h"
 #include "World/WorldConfig.h"
+#include "Container/String.h"
+#include "IO/Filesystem.h"
 
 namespace Gleam {
 

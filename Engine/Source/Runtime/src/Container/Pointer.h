@@ -1,4 +1,6 @@
 #pragma once
+#include "Core/Macro.h"
+
 #include <memory>
 #include <optional>
 
@@ -55,10 +57,7 @@ public:
 
 	constexpr const_reference at(size_type pos) const
 	{
-		if (pos >= mSize)
-		{
-			throw std::out_of_range("MemoryView::at: pos out of range");
-		}
+		GLEAM_ASSERT(pos < mSize, "MemoryView::at: pos out of range");
 		return operator[](pos);
 	}
 

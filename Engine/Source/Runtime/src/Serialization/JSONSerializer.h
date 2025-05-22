@@ -1,5 +1,6 @@
 #pragma once
 #include "Core/Subsystem.h"
+#include "Reflection/Reflection.h"
 
 namespace rapidjson {
 struct Node;

@@ -5,15 +5,14 @@ find_package(Python COMPONENTS Interpreter REQUIRED)
 # Third-party libraries
 add_subdirectory(${CMAKE_SOURCE_DIR}/Engine/ThirdParty ${CMAKE_BINARY_DIR}/ThirdParty)
 
-# Runtime shader files
+# Runtime files
 file(GLOB_RECURSE SHADER_FILES ${CMAKE_CURRENT_SOURCE_DIR}/src/*.hlsl*)
-
-# Runtime source files
 file(GLOB_RECURSE SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/src/*.c*
     ${CMAKE_CURRENT_SOURCE_DIR}/src/*.m*
     ${CMAKE_CURRENT_SOURCE_DIR}/src/*.h*
 )
+list(FILTER SOURCE_FILES EXCLUDE REGEX ".*Reflection\\.generated\\.h$")
 
 # Add imgui as static library
 add_library(imgui STATIC
@@ -49,8 +48,8 @@ add_dependencies(Runtime SDL3-static imgui)
 # Include directories
 if (APPLE)
     set(INCLUDE_DIRS
-        src
         /usr/local/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/src
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/SDL/include
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/fmt/include
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/stb
@@ -64,7 +63,7 @@ if (APPLE)
     set_target_properties(Runtime PROPERTIES MACOSX_BUNDLE YES XCODE_ATTRIBUTE_CLANG_ENABLE_OBJC_ARC YES)
 else()
     set(INCLUDE_DIRS
-        src
+        ${CMAKE_CURRENT_SOURCE_DIR}/src
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/SDL/include
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/fmt/include
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/stb
@@ -109,6 +108,32 @@ DEPLOY_FILE(${CMAKE_SOURCE_DIR}/Engine/ThirdParty/DirectStorage/native/bin/x64/d
 
 DEPLOY_FILE_TO(${CMAKE_SOURCE_DIR}/Engine/ThirdParty/DirectXAgilitySDK/build/native/bin/x64/D3D12Core.dll D3D12)
 DEPLOY_FILE_TO(${CMAKE_SOURCE_DIR}/Engine/ThirdParty/DirectXAgilitySDK/build/native/bin/x64/d3d12SDKLayers.dll D3D12)
+
+# CppReflection
+set(REFLECTION_ARGS "--extra-arg=-working-directory=${CMAKE_SOURCE_DIR};--extra-arg=-std=c++20;--extra-arg=--no-warnings")
+list(APPEND REFLECTION_ARGS "--extra-arg=-D_DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR")
+list(APPEND REFLECTION_ARGS "--extra-arg=-D_CRT_SECURE_NO_WARNINGS")
+list(APPEND REFLECTION_ARGS "--extra-arg=-DWIN32_LEAN_AND_MEAN")
+list(APPEND REFLECTION_ARGS "--extra-arg=-DNOMINMAX")
+foreach(INCLUDE_DIR ${INCLUDE_DIRS})
+    list(APPEND REFLECTION_ARGS "--extra-arg=-I${INCLUDE_DIR}")
+endforeach()
+
+if(APPLE)
+    list(APPEND REFLECTION_ARGS "--extra-arg-before=-ObjC++")
+else()
+    list(APPEND REFLECTION_ARGS "--extra-arg-before=--language=c++")
+endif()
+
+add_custom_command(
+    TARGET Runtime
+    PRE_BUILD
+    COMMAND ${CMAKE_COMMAND} -E echo "Running CppReflection with arguments:"
+    COMMAND ${CMAKE_COMMAND} -E echo "${REFLECTION_ARGS}"
+    COMMAND ${CMAKE_COMMAND} -E echo "Source files:"
+    COMMAND ${CMAKE_COMMAND} -E echo "${SOURCE_FILES}"
+    COMMAND ${CMAKE_SOURCE_DIR}/Tools/GleamReflect "--module=Runtime" "--header-dir=${CMAKE_SOURCE_DIR}/Engine/Source/Runtime/src" "--binary-dir=${CMAKE_SOURCE_DIR}" ${REFLECTION_ARGS} ${SOURCE_FILES}
+)
 
 # Precompile shaders
 set(HLSL_FILE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/src/Renderer/Shaders)

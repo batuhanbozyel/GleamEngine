@@ -6,6 +6,8 @@
 //
 
 #pragma once
+#include "Pointer.h"
+
 #include <typeindex>
 
 namespace Gleam {

@@ -2,6 +2,10 @@
 #include "Reflection/Macro.h"
 #include "Reflection/Attribute.h"
 
+#include "Container/Hash.h"
+#include "Container/Array.h"
+#include "Container/String.h"
+
 namespace Gleam {
 
 static constexpr uint8_t HexDigitToByte(const char ch)

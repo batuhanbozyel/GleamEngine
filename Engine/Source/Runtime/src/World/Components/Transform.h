@@ -1,5 +1,6 @@
 #pragma once
-#include "Reflection/Macro.h"
+#include "Math/Quaternion.h"
+#include "Math/Float4x4.h"
 
 namespace Gleam {
 

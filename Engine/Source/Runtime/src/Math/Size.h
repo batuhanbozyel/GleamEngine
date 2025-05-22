@@ -1,5 +1,6 @@
 #pragma once
-#include "Reflection/Macro.h"
+#include "Vector2.h"
+#include "Common.h"
 
 namespace Gleam {
 

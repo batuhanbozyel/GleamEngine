@@ -6,9 +6,16 @@
 #include "Core/Subsystem.h"
 #include "Core/Application.h"
 
+#include "IO/Log.h"
+#include "IO/File.h"
+#include "IO/Filesystem.h"
+
 #include "Serialization/BinarySerializer.h"
 
 #include <mutex>
+#include <entt/core/type_info.hpp>
+#include <entt/meta/resolve.hpp>
+#include <entt/meta/factory.hpp>
 
 namespace Gleam {
 

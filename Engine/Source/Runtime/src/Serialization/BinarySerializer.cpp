@@ -374,7 +374,7 @@ bool BinarySerializer::TryCustomArrayDeserializer(FileStream& stream,
 #pragma region mark SerializeHeaders
 void SerializeHeader(const BinaryHeader& header, FileStream& stream)
 {
-	stream.write(reinterpret_cast<const char*>(&header.kind), sizeof(Reflection::FieldType));
+	stream.write(reinterpret_cast<const char*>(&header.kind), sizeof(Reflection::MetaType));
 
 	uint32_t len = static_cast<uint32_t>(header.name.length());
 	stream.write(reinterpret_cast<const char*>(&len), sizeof(uint32_t));
@@ -389,68 +389,25 @@ void SerializeHeader(const BinaryHeader& header, FileStream& stream)
 
 void SerializePrimitiveHeader(Reflection::PrimitiveType type, FileStream& stream)
 {
-	BinaryHeader header;
-	header.kind = Reflection::FieldType::Primitive;
-	header.name = Reflection::Database::GetPrimitiveName(type);
+	Reflection::PrimitiveDescription desc(type);
 
-	switch (type)
-	{
-		case Reflection::PrimitiveType::Bool:
-			header.size = sizeof(bool);
-			break;
-		case Reflection::PrimitiveType::Int8:
-			header.size = sizeof(int8_t);
-			break;
-		case Reflection::PrimitiveType::WChar:
-			header.size = sizeof(wchar_t);
-			break;
-		case Reflection::PrimitiveType::Char:
-			header.size = sizeof(char);
-			break;
-		case Reflection::PrimitiveType::Int16:
-			header.size = sizeof(int16_t);
-			break;
-		case Reflection::PrimitiveType::Int32:
-			header.size = sizeof(int32_t);
-			break;
-		case Reflection::PrimitiveType::Int64:
-			header.size = sizeof(int64_t);
-			break;
-		case Reflection::PrimitiveType::UInt8:
-			header.size = sizeof(uint8_t);
-			break;
-		case Reflection::PrimitiveType::UInt16:
-			header.size = sizeof(uint16_t);
-			break;
-		case Reflection::PrimitiveType::UInt32:
-			header.size = sizeof(uint32_t);
-			break;
-		case Reflection::PrimitiveType::UInt64:
-			header.size = sizeof(uint64_t);
-			break;
-		case Reflection::PrimitiveType::Float:
-			header.size = sizeof(float);
-			break;
-		case Reflection::PrimitiveType::Double:
-			header.size = sizeof(double);
-			break;
-		default:
-			GLEAM_ASSERT(false, "BinarySerializer: Unknown primitive type");
-			break;
-	}
+	BinaryHeader header;
+	header.kind = Reflection::MetaType::Primitive;
+	header.name = desc.ResolveName();
+	header.size = desc.GetSize();
 	SerializeHeader(header, stream);
 }
 
 void SerializeEnumHeader(const Reflection::EnumDescription& enumDesc, FileStream& stream)
 {
 	BinaryHeader header;
-	header.kind = Reflection::FieldType::Enum;
+	header.kind = Reflection::MetaType::Enum;
 	header.name = enumDesc.ResolveName();
 	header.guid = enumDesc.Guid();
 
 	if (enumDesc.HasAttribute<Reflection::Attribute::Version>())
 	{
-		header.version = enumDesc.GetAttribute<Reflection::Attribute::Version>().version;
+		header.version = enumDesc.GetAttribute<Reflection::Attribute::Version>()->version;
 	}
 	header.size = static_cast<uint32_t>(enumDesc.GetSize());
 	SerializeHeader(header, stream);
@@ -459,13 +416,13 @@ void SerializeEnumHeader(const Reflection::EnumDescription& enumDesc, FileStream
 void SerializeClassHeader(const Reflection::ClassDescription& classDesc, FileStream& stream)
 {
 	BinaryHeader header;
-	header.kind = Reflection::FieldType::Class;
+	header.kind = Reflection::MetaType::Class;
 	header.name = classDesc.ResolveName();
 	header.guid = classDesc.Guid();
 
 	if (classDesc.HasAttribute<Reflection::Attribute::Version>())
 	{
-		header.version = classDesc.GetAttribute<Reflection::Attribute::Version>().version;
+		header.version = classDesc.GetAttribute<Reflection::Attribute::Version>()->version;
 	}
 	header.size = static_cast<uint32_t>(classDesc.GetSize());
 	SerializeHeader(header, stream);
@@ -474,23 +431,23 @@ void SerializeClassHeader(const Reflection::ClassDescription& classDesc, FileStr
 void SerializeArrayHeader(const Reflection::ArrayDescription& arrayDesc, FileStream& stream)
 {
 	BinaryHeader header;
-	header.kind = Reflection::FieldType::Array;
+	header.kind = Reflection::MetaType::Array;
 	header.name = arrayDesc.ResolveName();
-	if (arrayDesc.ElementType() == Reflection::FieldType::Class)
+	if (arrayDesc.ElementType() == Reflection::MetaType::Class)
 	{
-		const auto& classDesc = Reflection::Database::GetClass(arrayDesc.ElementHash());
+		const auto& classDesc = Reflection::GetClass(arrayDesc.ElementHash());
 		if (classDesc.HasAttribute<Reflection::Attribute::Version>())
 		{
-			header.version = classDesc.GetAttribute<Reflection::Attribute::Version>().version;
+			header.version = classDesc.GetAttribute<Reflection::Attribute::Version>()->version;
 		}
 		header.guid = classDesc.Guid();
 	}
-	else if (arrayDesc.ElementType() == Reflection::FieldType::Enum)
+	else if (arrayDesc.ElementType() == Reflection::MetaType::Enum)
 	{
-		const auto& enumDesc = Reflection::Database::GetEnum(arrayDesc.ElementHash());
+		const auto& enumDesc = Reflection::GetEnum(arrayDesc.ElementHash());
 		if (enumDesc.HasAttribute<Reflection::Attribute::Version>())
 		{
-			header.version = enumDesc.GetAttribute<Reflection::Attribute::Version>().version;
+			header.version = enumDesc.GetAttribute<Reflection::Attribute::Version>()->version;
 		}
 		header.guid = enumDesc.Guid();
 	}
@@ -573,35 +530,31 @@ void SerializeClassFields(const void* obj,
 		{
 			switch (field.GetType())
 			{
-				case Reflection::FieldType::Class:
+				case Reflection::MetaType::Class:
 				{
-					const auto& classField = field.GetField<Reflection::ClassField>();
-					const auto& fieldDesc = Reflection::GetClass(classField.hash);
-					if (BinarySerializer::TryCustomSerializer(OffsetPointer(obj, classField.offset), fieldDesc, stream) == false)
+					const auto& fieldDesc = Reflection::GetClass(field.TypeHash());
+					if (BinarySerializer::TryCustomSerializer(OffsetPointer(obj, field.GetOffset()), fieldDesc, stream) == false)
 					{
-						SerializeClass(OffsetPointer(obj, classField.offset), fieldDesc, stream);
+						SerializeClass(OffsetPointer(obj, field.GetOffset()), fieldDesc, stream);
 					}
 					break;
 				}
-				case Reflection::FieldType::Array:
+				case Reflection::MetaType::Array:
 				{
-					const auto& arrayField = field.GetField<Reflection::ArrayField>();
-					const auto& arrayDesc = Reflection::GetArray(arrayField.hash);
-					SerializeArray(OffsetPointer(obj, arrayField.offset), arrayDesc, stream);
+					const auto& fieldDesc = Reflection::GetArray(field.TypeHash());
+					SerializeArray(OffsetPointer(obj, field.GetOffset()), fieldDesc, stream);
 					break;
 				}
-				case Reflection::FieldType::Enum:
+				case Reflection::MetaType::Enum:
 				{
-					const auto& enumField = field.GetField<Reflection::EnumField>();
-					const auto& enumDesc = Reflection::GetEnum(enumField.hash);
-					SerializeEnum(OffsetPointer(obj, enumField.offset), enumDesc, stream);
+					const auto& fieldDesc = Reflection::GetEnum(field.TypeHash());
+					SerializeEnum(OffsetPointer(obj, field.GetOffset()), fieldDesc, stream);
 					break;
 				}
-				case Reflection::FieldType::Primitive:
+				case Reflection::MetaType::Primitive:
 				{
-					const auto& primitiveField = field.GetField<Reflection::PrimitiveField>();
-					auto primitiveType = primitiveField.primitive;
-					SerializePrimitive(OffsetPointer(obj, primitiveField.offset), primitiveType, stream);
+					auto primitiveType = Reflection::GetPrimitiveType(field.TypeHash());
+					SerializePrimitive(OffsetPointer(obj, field.GetOffset()), primitiveType, stream);
 					break;
 				}
 				default:
@@ -615,11 +568,11 @@ void SerializeArrayElements(const void* obj,
 							const Reflection::ArrayDescription& arrayDesc,
 							FileStream& stream)
 {
-	if (arrayDesc.ElementType() == Reflection::FieldType::Primitive)
+	if (arrayDesc.ElementType() == Reflection::MetaType::Primitive)
 	{
 		stream.write(reinterpret_cast<const char*>(obj), arrayDesc.GetSize());
 	}
-	else if (arrayDesc.ElementType() == Reflection::FieldType::Array)
+	else if (arrayDesc.ElementType() == Reflection::MetaType::Array)
 	{
 		const auto& innerDesc = Reflection::GetArray(arrayDesc.ElementHash());
 		for (size_t elementOffset = 0; elementOffset < arrayDesc.GetSize(); elementOffset += arrayDesc.GetStride())
@@ -627,9 +580,9 @@ void SerializeArrayElements(const void* obj,
 			SerializeArrayElements(OffsetPointer(obj, elementOffset), innerDesc, stream);
 		}
 	}
-	else if (arrayDesc.ElementType() == Reflection::FieldType::Class)
+	else if (arrayDesc.ElementType() == Reflection::MetaType::Class)
 	{
-		const auto& innerDesc = Reflection::Database::GetClass(arrayDesc.ElementHash());
+		const auto& innerDesc = Reflection::GetClass(arrayDesc.ElementHash());
 		for (size_t elementOffset = 0; elementOffset < arrayDesc.GetSize(); elementOffset += arrayDesc.GetStride())
 		{
 			if (BinarySerializer::TryCustomArraySerializer(OffsetPointer(obj, elementOffset), innerDesc, stream) == false)
@@ -638,7 +591,7 @@ void SerializeArrayElements(const void* obj,
 			}
 		}
 	}
-	else if (arrayDesc.ElementType() == Reflection::FieldType::Enum)
+	else if (arrayDesc.ElementType() == Reflection::MetaType::Enum)
 	{
 		stream.write(reinterpret_cast<const char*>(obj), arrayDesc.GetSize());
 	}
@@ -764,31 +717,28 @@ void DeserializeClass(FileStream& stream,
 
 	for (const auto& fieldDesc : classDesc.ResolveFields())
 	{
-		if (fieldDesc.GetType() == Reflection::FieldType::Primitive)
+		if (fieldDesc.GetType() == Reflection::MetaType::Primitive)
 		{
-			const auto& primitiveField = fieldDesc.GetField<Reflection::PrimitiveField>();
-			DeserializePrimitive(stream, primitiveField.primitive, OffsetPointer(obj, primitiveField.offset));
+			auto primitiveType = Reflection::GetPrimitiveType(fieldDesc.TypeHash());
+			DeserializePrimitive(stream, primitiveType, OffsetPointer(obj, fieldDesc.GetOffset()));
 		}
-		else if (fieldDesc.GetType() == Reflection::FieldType::Array)
+		else if (fieldDesc.GetType() == Reflection::MetaType::Array)
 		{
-			const auto& arrayField = fieldDesc.GetField<Reflection::ArrayField>();
-			const auto& desc = Reflection::GetArray(arrayField.hash);
-			DeserializeArray(stream, desc, OffsetPointer(obj, arrayField.offset));
+			const auto& desc = Reflection::GetArray(fieldDesc.TypeHash());
+			DeserializeArray(stream, desc, OffsetPointer(obj, fieldDesc.GetOffset()));
 		}
-		else if (fieldDesc.GetType() == Reflection::FieldType::Class)
+		else if (fieldDesc.GetType() == Reflection::MetaType::Class)
 		{
-			const auto& classField = fieldDesc.GetField<Reflection::ClassField>();
-			const auto& desc = Reflection::GetClass(classField.hash);
-			if (BinarySerializer::TryCustomDeserializer(stream, desc, OffsetPointer(obj, classField.offset)) == false)
+			const auto& desc = Reflection::GetClass(fieldDesc.TypeHash());
+			if (BinarySerializer::TryCustomDeserializer(stream, desc, OffsetPointer(obj, fieldDesc.GetOffset())) == false)
 			{
-				DeserializeClass(stream, desc, OffsetPointer(obj, classField.offset));
+				DeserializeClass(stream, desc, OffsetPointer(obj, fieldDesc.GetOffset()));
 			}
 		}
-		else if (fieldDesc.GetType() == Reflection::FieldType::Enum)
+		else if (fieldDesc.GetType() == Reflection::MetaType::Enum)
 		{
-			const auto& enumField = fieldDesc.GetField<Reflection::EnumField>();
-			const auto& desc = Reflection::GetEnum(enumField.hash);
-			DeserializeEnum(stream, desc, OffsetPointer(obj, enumField.offset));
+			const auto& desc = Reflection::GetEnum(fieldDesc.TypeHash());
+			DeserializeEnum(stream, desc, OffsetPointer(obj, fieldDesc.GetOffset()));
 		}
 		else
 		{
@@ -813,12 +763,12 @@ void DeserializeArrayElements(FileStream& stream,
 {
 	switch (arrayDesc.ElementType())
 	{
-		case Reflection::FieldType::Primitive:
+		case Reflection::MetaType::Primitive:
 		{
 			stream.read(reinterpret_cast<char*>(obj), arrayDesc.GetSize());
 			return;
 		}
-		case Reflection::FieldType::Array:
+		case Reflection::MetaType::Array:
 		{
 			const auto& innerDesc = Reflection::GetArray(arrayDesc.ElementHash());
 			for (size_t elementOffset = 0; elementOffset < arrayDesc.GetSize(); elementOffset += arrayDesc.GetStride())
@@ -827,7 +777,7 @@ void DeserializeArrayElements(FileStream& stream,
 			}
 			return;
 		}
-		case Reflection::FieldType::Class:
+		case Reflection::MetaType::Class:
 		{
 			const auto& classDesc = Reflection::GetClass(arrayDesc.ElementHash());
 			for (size_t elementOffset = 0; elementOffset < arrayDesc.GetSize(); elementOffset += arrayDesc.GetStride())
@@ -839,7 +789,7 @@ void DeserializeArrayElements(FileStream& stream,
 			}
 			return;
 		}
-		case Reflection::FieldType::Enum:
+		case Reflection::MetaType::Enum:
 		{
 			stream.read(reinterpret_cast<char*>(obj), arrayDesc.GetSize());
 			return;
@@ -863,31 +813,28 @@ void DeserializeClassFields(FileStream& stream,
 
 	for (const auto& fieldDesc : classDesc.ResolveFields())
 	{
-		if (fieldDesc.GetType() == Reflection::FieldType::Primitive)
+		if (fieldDesc.GetType() == Reflection::MetaType::Primitive)
 		{
-			const auto& primitiveField = fieldDesc.GetField<Reflection::PrimitiveField>();
-			DeserializePrimitive(stream, primitiveField.primitive, OffsetPointer(obj, primitiveField.offset));
+			auto primitiveType = Reflection::GetPrimitiveType(fieldDesc.TypeHash());
+			DeserializePrimitive(stream, primitiveType, OffsetPointer(obj, fieldDesc.GetOffset()));
 		}
-		else if (fieldDesc.GetType() == Reflection::FieldType::Array)
+		else if (fieldDesc.GetType() == Reflection::MetaType::Array)
 		{
-			const auto& arrayField = fieldDesc.GetField<Reflection::ArrayField>();
-			const auto& desc = Reflection::GetArray(arrayField.hash);
-			DeserializeArray(stream, desc, OffsetPointer(obj, arrayField.offset));
+			const auto& desc = Reflection::GetArray(fieldDesc.TypeHash());
+			DeserializeArray(stream, desc, OffsetPointer(obj, fieldDesc.GetOffset()));
 		}
-		else if (fieldDesc.GetType() == Reflection::FieldType::Class)
+		else if (fieldDesc.GetType() == Reflection::MetaType::Class)
 		{
-			const auto& classField = fieldDesc.GetField<Reflection::ClassField>();
-			const auto& desc = Reflection::GetClass(classField.hash);
-			if (BinarySerializer::TryCustomDeserializer(stream, desc, OffsetPointer(obj, classField.offset)) == false)
+			const auto& desc = Reflection::GetClass(fieldDesc.TypeHash());
+			if (BinarySerializer::TryCustomDeserializer(stream, desc, OffsetPointer(obj, fieldDesc.GetOffset())) == false)
 			{
-				DeserializeClass(stream, desc, OffsetPointer(obj, classField.offset));
+				DeserializeClass(stream, desc, OffsetPointer(obj, fieldDesc.GetOffset()));
 			}
 		}
-		else if (fieldDesc.GetType() == Reflection::FieldType::Enum)
+		else if (fieldDesc.GetType() == Reflection::MetaType::Enum)
 		{
-			const auto& enumField = fieldDesc.GetField<Reflection::EnumField>();
-			const auto& desc = Reflection::GetEnum(enumField.hash);
-			DeserializeEnum(stream, desc, OffsetPointer(obj, enumField.offset));
+			const auto& desc = Reflection::GetEnum(fieldDesc.TypeHash());
+			DeserializeEnum(stream, desc, OffsetPointer(obj, fieldDesc.GetOffset()));
 		}
 		else
 		{
@@ -899,7 +846,7 @@ void DeserializeClassFields(FileStream& stream,
 
 void DeserializeHeader(FileStream& stream, BinaryHeader& header)
 {
-	stream.read(reinterpret_cast<char*>(&header.kind), sizeof(Reflection::FieldType));
+	stream.read(reinterpret_cast<char*>(&header.kind), sizeof(Reflection::MetaType));
 
 	uint32_t len = 0;
 	stream.read(reinterpret_cast<char*>(&len), sizeof(uint32_t));

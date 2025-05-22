@@ -1,6 +1,8 @@
 #pragma once
-#include "Core/GUID.h"
-#include "Reflection/Macro.h"
+#include "Math/Vector2.h"
+#include "Math/Vector3.h"
+#include "Math/Vector4.h"
+#include "Math/BoundingBox.h"
 
 namespace Gleam {
 
@@ -10,7 +12,7 @@ GSTRUCT(InterleavedMeshVertex, "4AFE936A-550F-419C-A7F0-5ED38D9D1642", Serializa
 	Float3 normal;
 
 	GFIELD("8C72F4E1-D5B9-4A63-93C7-E5D64F2B8A19", Serializable)
-	Float3 tangent;
+	Float4 tangent;
 
 	GFIELD("3B9D8E27-C6A5-4F91-B3D2-8A7C6F5E4D3B", Serializable)
 	Float2 texCoord;

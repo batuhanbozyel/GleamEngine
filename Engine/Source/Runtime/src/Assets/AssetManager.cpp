@@ -2,6 +2,8 @@
 #include "AssetManager.h"
 #include "Core/Engine.h"
 #include "Core/Globals.h"
+
+#include "IO/Log.h"
 #include "IO/FileWatcher.h"
 
 #include "World/World.h"

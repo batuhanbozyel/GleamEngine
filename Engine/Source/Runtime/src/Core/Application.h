@@ -1,5 +1,7 @@
 #pragma once
 #include "Project.h"
+#include "EngineDefines.h"
+#include "Container/PolyArray.h"
 
 namespace Gleam {
 

@@ -5,7 +5,6 @@
 #include "WindowSystem.h"
 #include "IO/FileWatcher.h"
 #include "Input/InputSystem.h"
-#include "Reflection/Database.h"
 #include "World/ScriptingSystem.h"
 #include "Renderer/RenderSystem.h"
 #include "Serialization/JSONSerializer.h"
@@ -16,7 +15,7 @@ using namespace Gleam;
 void Engine::Initialize()
 {
 	// init reflection & serialization
-	AddSubsystem<Reflection::Database>();
+	mReflectionDatabase.Initialize(Filesystem::WorkingDirectory()/"Runtime.Reflection.db");
 	AddSubsystem<BinarySerializer>();
 	AddSubsystem<JSONSerializer>();
 
@@ -61,6 +60,7 @@ void Engine::Shutdown()
 		system->Shutdown();
 	}
 	mSubsystems.clear();
+	mReflectionDatabase.Shutdown();
 }
 
 void Engine::SaveConfigToDisk() const
