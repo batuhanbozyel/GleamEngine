@@ -1,7 +1,9 @@
 #pragma once
 #include "Subsystem.h"
 #include "EngineConfig.h"
+#include "EngineDefines.h"
 #include "Reflection/Database.h"
+#include "Container/PolyArray.h"
 
 namespace Gleam {
 

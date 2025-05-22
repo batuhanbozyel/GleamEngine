@@ -4,6 +4,8 @@
 #include "WindowSystem.h"
 #include "Events/WindowEvent.h"
 
+#include <SDL3/SDL.h>
+
 using namespace Gleam;
 
 void WindowSystem::Initialize(Engine* engine)

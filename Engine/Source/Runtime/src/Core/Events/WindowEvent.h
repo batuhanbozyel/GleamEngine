@@ -1,6 +1,8 @@
 #pragma once
-#include <SDL3/SDL.h>
 #include "Event.h"
+#include "Math/Vector2.h"
+
+struct SDL_Window;
 
 namespace Gleam {
 

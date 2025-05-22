@@ -1,4 +1,6 @@
 #pragma once
+#include "Hash.h"
+
 #include <any>
 #include <typeindex>
 

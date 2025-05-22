@@ -3,6 +3,7 @@
 #ifdef PLATFORM_WINDOWS
 #include "IO/FileWatcher.h"
 
+#include <thread>
 #include <WinBase.h>
 
 using namespace Gleam;

@@ -1,6 +1,5 @@
 #pragma once
-#include "Core/Macro.h"
-#include "Reflection/Macro.h"
+#include "Size.h"
 
 namespace Gleam {
     

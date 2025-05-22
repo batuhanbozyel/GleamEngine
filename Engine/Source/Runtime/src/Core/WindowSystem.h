@@ -2,6 +2,9 @@
 #include "Subsystem.h"
 #include "WindowConfig.h"
 
+struct SDL_WindowEvent;
+struct SDL_Window;
+
 namespace Gleam {
 
 class EventSystem;

@@ -2,6 +2,8 @@
 #include "WindowConfig.h"
 #include "Renderer/RendererConfig.h"
 
+#include <ostream>
+
 namespace Gleam {
 
 GSTRUCT(Version, "C84FF047-5FB9-4DF1-A3E6-E6EE81258F52", Serializable)

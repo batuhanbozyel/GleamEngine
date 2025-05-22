@@ -1,4 +1,6 @@
 #pragma once
+#include "Container/Hash.h"
+
 #include <mutex>
 #include <fstream>
 #include <functional>

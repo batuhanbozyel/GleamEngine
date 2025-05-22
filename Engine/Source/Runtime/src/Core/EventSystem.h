@@ -1,8 +1,8 @@
 #pragma once
 #include "Subsystem.h"
 
-union SDL_Event;
-struct SDL_Window;
+#include <functional>
+#include <SDL3/SDL.h>
 
 namespace Gleam {
 

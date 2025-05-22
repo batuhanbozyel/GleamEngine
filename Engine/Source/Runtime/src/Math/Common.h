@@ -1,6 +1,9 @@
 #pragma once
 #include "Core/Macro.h"
 
+#include <cmath>
+#include <limits>
+
 namespace Gleam::Math {
 
 constexpr float PI = 3.14159265359f;

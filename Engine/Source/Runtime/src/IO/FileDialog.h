@@ -1,5 +1,7 @@
 #pragma once
 #include "Filesystem.h"
+#include "Container/String.h"
+#include "Container/Array.h"
 
 namespace Gleam {
 

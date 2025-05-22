@@ -1,5 +1,10 @@
 #pragma once
+#include "Container/String.h"
+#include "Container/Array.h"
+
 #include <functional>
+#include <ostream>
+
 #define EventHandlerFn(fn) [](auto&&... args) -> bool { return fn(); }
 
 namespace Gleam {

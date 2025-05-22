@@ -7,8 +7,7 @@
 
 #pragma once
 #include "Assets/AssetReference.h"
-
-#include <variant>
+#include "Math/Vector4.h"
 
 namespace Gleam {
 

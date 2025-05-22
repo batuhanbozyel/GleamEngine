@@ -6,6 +6,7 @@
 //
 
 #pragma once
+#include "Hash.h"
 #include "Pointer.h"
 
 #include <typeindex>

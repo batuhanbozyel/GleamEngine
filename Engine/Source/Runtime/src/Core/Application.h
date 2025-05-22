@@ -1,5 +1,6 @@
 #pragma once
 #include "Project.h"
+#include "Subsystem.h"
 #include "EngineDefines.h"
 #include "Container/PolyArray.h"
 

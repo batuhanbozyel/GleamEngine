@@ -1,5 +1,6 @@
 #pragma once
 #include "Event.h"
+#include "Math/Size.h"
 
 namespace Gleam {
 

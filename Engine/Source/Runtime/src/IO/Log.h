@@ -1,5 +1,7 @@
 #pragma once
 #include "Core/EngineDefines.h"
+#include "Container/Pointer.h"
+#include "Container/String.h"
 
 #define FMT_HEADER_ONLY
 #include <fmt/core.h>

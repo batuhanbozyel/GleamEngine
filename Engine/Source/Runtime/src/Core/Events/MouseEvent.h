@@ -1,5 +1,6 @@
 #pragma once
 #include "Event.h"
+#include "Math/Vector2.h"
 #include "Input/MouseButton.h"
 
 namespace Gleam {
