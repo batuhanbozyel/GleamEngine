@@ -6,6 +6,8 @@
 //
 
 #pragma once
+#include "Shaders/ShaderInterop.h"
+#include "Container/Array.h"
 
 namespace Gleam {
 

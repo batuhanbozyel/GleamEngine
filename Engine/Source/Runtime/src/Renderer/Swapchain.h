@@ -1,5 +1,6 @@
 #pragma once
 #include "RenderSurface.h"
+#include "Texture.h"
 
 namespace Gleam {
 

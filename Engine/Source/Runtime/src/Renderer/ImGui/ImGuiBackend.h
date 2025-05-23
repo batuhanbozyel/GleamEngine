@@ -1,8 +1,11 @@
 #pragma once
+#include "Core/EngineDefines.h"
+
 #include <imgui.h>
 
 namespace Gleam {
 
+class Texture;
 class RenderContext;
 class RenderSurface;
 class GraphicsDevice;

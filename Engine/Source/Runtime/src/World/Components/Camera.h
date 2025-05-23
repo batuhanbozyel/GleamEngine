@@ -1,5 +1,6 @@
 #pragma once
 #include "Reflection/Macro.h"
+#include "Math/Size.h"
 
 namespace Gleam {
 
@@ -24,7 +25,7 @@ GENUM(ProjectionType, "8A1A6FA3-4FD8-4FEB-9A60-0944996B5ABF", Serializable)
 	GITEM(Perspective, "A55A66DB-9000-41ED-866D-6019900F4D2D")
 };
 
-GSTRUCT(Camera, "CD1CEEDD-2481-4000-B165-BCC6A1953E00", EntityComponent, Serializable)
+GSTRUCT(Camera, "B37BA095-FFAB-49FD-ACA9-392835498015", EntityComponent, Serializable)
 {
 	// Perspective projection properties
 	GFIELD("A8FCFE99-7831-4104-AE5A-C344419D7A4D", Serializable)

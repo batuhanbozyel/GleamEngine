@@ -201,7 +201,7 @@ Texture GraphicsDevice::CreateTexture(const TextureDescriptor& descriptor)
 		.Dimension = TextureDimensionToD3D12_RESOURCE_DIMENSION(descriptor.dimension),
 		.Alignment = 0,
 		.Width = (UINT64)descriptor.size.width,
-		.Height = (UINT64)descriptor.size.height,
+		.Height = (UINT)descriptor.size.height,
 		.DepthOrArraySize = (UINT16)(descriptor.dimension == TextureDimension::TextureCube ? 6 : 1),
 		.MipLevels = (UINT16)texture.mMipMapLevels,
 		.Format = TextureFormatToDXGI_FORMAT(descriptor.format),
@@ -444,6 +444,7 @@ void GraphicsDevice::Dispose(GraphicsPipeline& pipeline)
 DirectXDevice::DirectXDevice(RenderSurface* surface, ResourceReleaseQueue* releaseQueue)
 	: GraphicsDevice(surface, releaseQueue)
 {
+	auto swapchain = static_cast<DirectXSwapchain*>(mSurface);
 #ifdef GDEBUG
 	if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&mD3D12Debug))))
 	{
@@ -451,7 +452,6 @@ DirectXDevice::DirectXDevice(RenderSurface* surface, ResourceReleaseQueue* relea
 		mD3D12Debug->SetEnableGPUBasedValidation(true);
 	}
 
-	auto swapchain = static_cast<DirectXSwapchain*>(mSurface);
 	if (SUCCEEDED(swapchain->mFactory->QueryInterface(IID_PPV_ARGS(&mInfoQueue))))
 	{
 		static void* emitWarning = nullptr;

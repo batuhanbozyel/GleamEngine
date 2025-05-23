@@ -3,6 +3,8 @@
 #include "Math/Vector3.h"
 #include "Math/Vector4.h"
 #include "Math/BoundingBox.h"
+#include "Container/String.h"
+#include "Container/Array.h"
 
 namespace Gleam {
 

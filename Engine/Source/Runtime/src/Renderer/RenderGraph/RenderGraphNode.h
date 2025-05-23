@@ -11,6 +11,7 @@
 #include "Renderer/Texture.h"
 
 #include <functional>
+#include <any>
 
 namespace Gleam {
 

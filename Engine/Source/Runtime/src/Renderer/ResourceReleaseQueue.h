@@ -1,4 +1,7 @@
 #pragma once
+#include "Container/Array.h"
+
+#include <functional>
 
 namespace Gleam {
 

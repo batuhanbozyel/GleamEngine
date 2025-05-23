@@ -13,6 +13,7 @@
 
 #include "Container/String.h"
 #include "Container/Array.h"
+#include "Container/Hash.h"
 
 namespace Gleam {
 

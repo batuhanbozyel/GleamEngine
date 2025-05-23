@@ -18,10 +18,6 @@
 #include "IO/File.h"
 #include "IO/FileDialog.h"
 
-#include "Reflection/Attribute.h"
-#include "Reflection/Meta.h"
-#include "Reflection/Reflection.h"
-
 #include "Math/Common.h"
 #include "Math/Vector2.h"
 #include "Math/Vector3.h"

@@ -1,5 +1,8 @@
 #pragma once
 #include "BlendState.h"
+#include "TextureFormat.h"
+#include "Container/Array.h"
+#include "Container/String.h"
 
 namespace Gleam {
 

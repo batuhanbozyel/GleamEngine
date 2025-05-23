@@ -7,6 +7,7 @@
 
 #pragma once
 #include "Core/Subsystem.h"
+#include "Renderer.h"
 #include "Swapchain.h"
 #include "CommandBuffer.h"
 #include "UploadManager.h"

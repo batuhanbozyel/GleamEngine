@@ -461,7 +461,7 @@ void SerializeClassHeader(const Reflection::ClassDescription& classDesc,
     {
         const auto& attr = classDesc.GetAttribute<Reflection::Attribute::Version>();
         const auto& desc = Reflection::Attribute::Version::description;
-        node.AddMember(rapidjson::StringRef(desc.tag), rapidjson::Value().SetUint(attr.version));
+        node.AddMember(rapidjson::StringRef(desc.tag), rapidjson::Value().SetUint(attr->version));
     }
 }
 

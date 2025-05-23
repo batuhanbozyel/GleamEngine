@@ -8,9 +8,11 @@ add_subdirectory(${CMAKE_SOURCE_DIR}/Engine/ThirdParty ${CMAKE_BINARY_DIR}/Third
 # Runtime files
 file(GLOB_RECURSE SHADER_FILES ${CMAKE_CURRENT_SOURCE_DIR}/src/*.hlsl*)
 file(GLOB_RECURSE SOURCE_FILES
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/*.c*
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/*.m*
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/*.h*
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/*.mm
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/*.m
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/*.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/*.hpp
 )
 list(FILTER SOURCE_FILES EXCLUDE REGEX ".*Reflection\\.generated\\.h$")
 
@@ -41,8 +43,7 @@ elseif (APPLE)
 endif()
 
 # Set Runtime as static library
-list(APPEND SOURCE_FILES ${SHADER_FILES})
-add_library(Runtime STATIC ${SOURCE_FILES})
+add_library(Runtime STATIC ${SOURCE_FILES} ${SHADER_FILES})
 add_dependencies(Runtime SDL3-static imgui)
 
 # Include directories
@@ -84,7 +85,7 @@ target_link_libraries(Runtime PUBLIC ${LIB_LINKS})
 target_precompile_headers(Runtime PUBLIC "src/gpch.h")
 
 # Setup souce grouping and working directory 
-source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${SOURCE_FILES})
+source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${SOURCE_FILES} ${SHADER_FILES})
 SET_WORKING_DIRECTORY(Runtime ${CMAKE_SOURCE_DIR})
 
 # 
@@ -110,29 +111,36 @@ DEPLOY_FILE_TO(${CMAKE_SOURCE_DIR}/Engine/ThirdParty/DirectXAgilitySDK/build/nat
 DEPLOY_FILE_TO(${CMAKE_SOURCE_DIR}/Engine/ThirdParty/DirectXAgilitySDK/build/native/bin/x64/d3d12SDKLayers.dll D3D12)
 
 # CppReflection
-set(REFLECTION_ARGS "--extra-arg=-working-directory=${CMAKE_SOURCE_DIR};--extra-arg=-std=c++20;--extra-arg=--no-warnings")
-list(APPEND REFLECTION_ARGS "--extra-arg=-D_DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR")
-list(APPEND REFLECTION_ARGS "--extra-arg=-D_CRT_SECURE_NO_WARNINGS")
-list(APPEND REFLECTION_ARGS "--extra-arg=-DWIN32_LEAN_AND_MEAN")
-list(APPEND REFLECTION_ARGS "--extra-arg=-DNOMINMAX")
+set(REFLECTION_COMPILER_ARGS "--extra-arg=-working-directory=${CMAKE_SOURCE_DIR}")
+if(APPLE)
+    list(APPEND REFLECTION_COMPILER_ARGS "--extra-arg-before=-ObjC++")
+else()
+    list(APPEND REFLECTION_COMPILER_ARGS "--extra-arg-before=--language=c++")
+endif()
+list(APPEND REFLECTION_COMPILER_ARGS "--extra-arg=-std=c++20")
+list(APPEND REFLECTINO_COMPILER_ARGS "--extra-arg=--no-warnings")
+list(APPEND REFLECTION_COMPILER_ARGS "--extra-arg=-D_DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR")
+list(APPEND REFLECTION_COMPILER_ARGS "--extra-arg=-D_CRT_SECURE_NO_WARNINGS")
+list(APPEND REFLECTION_COMPILER_ARGS "--extra-arg=-DWIN32_LEAN_AND_MEAN")
+list(APPEND REFLECTION_COMPILER_ARGS "--extra-arg=-DNOMINMAX")
+
 foreach(INCLUDE_DIR ${INCLUDE_DIRS})
-    list(APPEND REFLECTION_ARGS "--extra-arg=-I${INCLUDE_DIR}")
+    list(APPEND REFLECTION_COMPILER_ARGS "--extra-arg=-I${INCLUDE_DIR}")
 endforeach()
 
-if(APPLE)
-    list(APPEND REFLECTION_ARGS "--extra-arg-before=-ObjC++")
-else()
-    list(APPEND REFLECTION_ARGS "--extra-arg-before=--language=c++")
-endif()
+string(REPLACE ";" " " REFLECTION_FILES ${SOURCE_FILES})
+string(REPLACE ";" " " REFLECTION_ARGS ${REFLECTION_COMPILER_ARGS})
 
 add_custom_command(
     TARGET Runtime
     PRE_BUILD
-    COMMAND ${CMAKE_COMMAND} -E echo "Running CppReflection with arguments:"
-    COMMAND ${CMAKE_COMMAND} -E echo "${REFLECTION_ARGS}"
-    COMMAND ${CMAKE_COMMAND} -E echo "Source files:"
-    COMMAND ${CMAKE_COMMAND} -E echo "${SOURCE_FILES}"
-    COMMAND ${CMAKE_SOURCE_DIR}/Tools/GleamReflect "--module=Runtime" "--header-dir=${CMAKE_SOURCE_DIR}/Engine/Source/Runtime/src" "--binary-dir=${CMAKE_SOURCE_DIR}" ${REFLECTION_ARGS} ${SOURCE_FILES}
+    COMMAND ${CMAKE_SOURCE_DIR}/Tools/CppReflection
+        "--module=Runtime"
+        "--header-dir=${CMAKE_CURRENT_SOURCE_DIR}/src"
+        "--binary-dir=${CMAKE_SOURCE_DIR}"
+        ${REFLECTION_COMPILER_ARGS}
+        ${SOURCE_FILES}
+    COMMAND_EXPAND_LISTS
 )
 
 # Precompile shaders

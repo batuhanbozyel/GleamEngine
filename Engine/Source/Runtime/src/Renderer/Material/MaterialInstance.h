@@ -8,6 +8,7 @@
 #pragma once
 #include "IMaterial.h"
 #include "MaterialDescriptor.h"
+#include "Renderer/Shaders/ShaderInterop.h"
 
 namespace Gleam {
 

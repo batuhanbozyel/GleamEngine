@@ -1,15 +1,13 @@
 #pragma once
-#include "Heap.h"
-#include "Buffer.h"
 #include "Shader.h"
 #include "Texture.h"
+#include "Pipeline.h"
 #include "ConstantBuffer.h"
+#include "RenderPassDescriptor.h"
 #include "RenderGraph/RenderGraphResource.h"
+#include "Container/Pointer.h"
 
 namespace Gleam {
-
-struct RenderPassDescriptor;
-struct PipelineStateDescriptor;
 
 class GraphicsDevice;
 

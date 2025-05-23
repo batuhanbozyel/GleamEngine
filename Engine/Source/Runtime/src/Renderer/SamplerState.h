@@ -1,4 +1,5 @@
 #pragma once
+#include "Container/Array.h"
 
 namespace Gleam {
 

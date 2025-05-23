@@ -4,6 +4,7 @@
 #include "Container/String.h"
 
 #define FMT_HEADER_ONLY
+#define FMT_UNICODE 0
 #include <fmt/core.h>
 
 #include <fstream>

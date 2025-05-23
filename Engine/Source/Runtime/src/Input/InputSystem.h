@@ -3,6 +3,7 @@
 #include "KeyCode.h"
 #include "MouseButton.h"
 #include "JoystickButton.h"
+#include "Math/Vector2.h"
 
 struct SDL_Mouse;
 struct SDL_Keyboard;

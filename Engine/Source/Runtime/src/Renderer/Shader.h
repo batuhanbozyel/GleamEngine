@@ -1,5 +1,7 @@
 #pragma once
 #include "GraphicsObject.h"
+#include "Container/Hash.h"
+#include "Container/String.h"
 
 namespace Gleam {
 

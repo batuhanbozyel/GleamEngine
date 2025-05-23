@@ -1,5 +1,6 @@
 #pragma once
 #include "Vector4.h"
+#include "Quaternion.h"
 
 namespace Gleam {
 

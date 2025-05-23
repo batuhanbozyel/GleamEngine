@@ -1,4 +1,4 @@
-#include "../ImGui/ImGuiBackend.h"
+#include "Renderer/ImGui/ImGuiBackend.h"
 
 #ifdef USE_DIRECTX_RENDERER
 #include "DirectXUtils.h"
@@ -9,6 +9,7 @@
 #include "Core/Application.h"
 #include "Core/WindowSystem.h"
 
+#include "Renderer/Renderer.h"
 #include "Renderer/Swapchain.h"
 
 #include "imgui_impl_dx12.h"

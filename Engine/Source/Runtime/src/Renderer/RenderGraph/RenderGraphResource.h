@@ -1,7 +1,7 @@
 #pragma once
-#include "../Shaders/ShaderInterop.h"
-#include "../Texture.h"
-#include "../Buffer.h"
+#include "Renderer/Shaders/ShaderInterop.h"
+#include "Renderer/Texture.h"
+#include "Renderer/Buffer.h"
 
 namespace Gleam {
 
