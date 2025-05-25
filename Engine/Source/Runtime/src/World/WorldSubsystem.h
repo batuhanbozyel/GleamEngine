@@ -2,6 +2,8 @@
 
 namespace Gleam {
 
+class World;
+
 class WorldSubsystem
 {
 	friend class World;

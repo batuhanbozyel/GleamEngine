@@ -1,4 +1,6 @@
 #pragma once
+#include "Reflection/Macro.h"
+
 #include <array>
 #include <vector>
 

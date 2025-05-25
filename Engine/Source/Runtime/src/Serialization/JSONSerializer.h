@@ -1,6 +1,11 @@
 #pragma once
 #include "Core/Subsystem.h"
+#include "Core/GUID.h"
 #include "Reflection/Reflection.h"
+
+#include "Container/String.h"
+#include "Container/Hash.h"
+#include "IO/Filesystem.h"
 
 namespace rapidjson {
 struct Node;

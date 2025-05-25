@@ -3,7 +3,11 @@
 #include "Prefab.h"
 #include "EntityReference.h"
 
+#include <functional>
+
 namespace Gleam {
+
+struct AssetReference;
 
 class EntityManager final
 {

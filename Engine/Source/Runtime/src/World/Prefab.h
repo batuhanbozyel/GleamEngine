@@ -1,5 +1,6 @@
 #pragma once
 #include "Entity.h"
+#include "IO/Filesystem.h"
 
 namespace Gleam {
 

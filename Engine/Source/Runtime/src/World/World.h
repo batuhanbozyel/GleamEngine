@@ -1,6 +1,13 @@
 #pragma once
 #include "ComponentSystem.h"
 #include "WorldSubsystem.h"
+#include "EntityManager.h"
+
+#include "Container/String.h"
+#include "Container/Array.h"
+#include "Container/PolyArray.h"
+
+#include "IO/Filesystem.h"
 
 namespace Gleam {
 

@@ -1,8 +1,10 @@
 #pragma once
 #include "Core/Subsystem.h"
+#include "Container/Pointer.h"
 #include "Entity.h"
 
 #include <entt/meta/policy.hpp>
+#include <entt/meta/factory.hpp>
 
 namespace Gleam {
 

@@ -1,13 +1,18 @@
 #pragma once
 #include "World/ComponentSystem.h"
-#include "Renderer/Mesh.h"
-#include "Renderer/Material/Material.h"
-#include "Renderer/Material/MaterialInstance.h"
+#include "Renderer/MeshDescriptor.h"
+#include "Assets/AssetReference.h"
+#include "Container/Hash.h"
+#include "Math/Float4x4.h"
+
+#include <functional>
 
 namespace Gleam {
 
+class Mesh;
 class Entity;
 class Material;
+class MaterialInstance;
 
 struct MeshBatch
 {
