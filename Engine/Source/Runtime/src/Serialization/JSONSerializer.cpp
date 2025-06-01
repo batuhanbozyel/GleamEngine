@@ -163,7 +163,7 @@ void JSONSerializer::Initialize(Engine* engine)
 		{
 			const auto& arr = Reflection::Get<TArray<uint8_t>>(obj);
 			const auto& containerDesc = Reflection::GetArray(classDesc.ContainerHash());
-			auto arrDesc = Reflection::ArrayDescription(containerDesc.ResolveName(), containerDesc.ElementType(), containerDesc.ElementHash(), arr.size(), containerDesc.GetStride());
+			auto arrDesc = Reflection::ArrayDescription(containerDesc.ElementType(), containerDesc.ElementHash(), arr.size(), containerDesc.GetStride());
             SerializeArrayObject(arr.data(), fieldName, arrDesc, node);
 		};
 
@@ -173,7 +173,7 @@ void JSONSerializer::Initialize(Engine* engine)
 		{
 			const auto& arr = Reflection::Get<TArray<uint8_t>>(obj);
 			const auto& containerDesc = Reflection::GetArray(classDesc.ContainerHash());
-			auto arrDesc = Reflection::ArrayDescription(containerDesc.ResolveName(), containerDesc.ElementType(), containerDesc.ElementHash(), arr.size(), containerDesc.GetStride());
+			auto arrDesc = Reflection::ArrayDescription(containerDesc.ElementType(), containerDesc.ElementHash(), arr.size(), containerDesc.GetStride());
             SerializeArrayObjectElements(arr.data(), arrDesc, node);
 		};
 	}
@@ -240,7 +240,7 @@ void JSONSerializer::Initialize(Engine* engine)
 				const auto& elements = node.object["Elements"].GetArray();
 
 				const auto& containerDesc = Reflection::GetArray(classDesc.ContainerHash());
-				auto arrDesc = Reflection::ArrayDescription(containerDesc.ResolveName(), containerDesc.ElementType(), containerDesc.ElementHash(), elements.Size(), containerDesc.GetStride());
+				auto arrDesc = Reflection::ArrayDescription(containerDesc.ElementType(), containerDesc.ElementHash(), elements.Size(), containerDesc.GetStride());
 
 				auto& arr = Reflection::Get<TArray<uint8_t>>(obj);
 				arr.resize(elements.Size() * arrDesc.GetStride());
@@ -255,7 +255,7 @@ void JSONSerializer::Initialize(Engine* engine)
             void* obj)
         {
             const auto& containerDesc = Reflection::GetArray(classDesc.ContainerHash());
-            auto arrDesc = Reflection::ArrayDescription(containerDesc.ResolveName(), containerDesc.ElementType(), containerDesc.ElementHash(), node.object.Size(), containerDesc.GetStride());
+            auto arrDesc = Reflection::ArrayDescription(containerDesc.ElementType(), containerDesc.ElementHash(), node.object.Size(), containerDesc.GetStride());
 
             auto& arr = Reflection::Get<TArray<uint8_t>>(obj);
             arr.resize(node.object.Size() * arrDesc.GetStride());
@@ -469,18 +469,23 @@ void SerializeArrayHeader(const Reflection::ArrayDescription& arrayDesc,
                           const TStringView fieldName,
                           rapidjson::Node& node)
 {
+	node.AddMember("Kind", rapidjson::StringRef("Array"));
     if (arrayDesc.ElementType() == Reflection::MetaType::Primitive)
     {
-        node.AddMember("Kind", rapidjson::StringRef("Primitive"));
+		const auto& primitiveDesc = Reflection::GetPrimitive(arrayDesc.ElementHash());
+        node.AddMember("TypeName", rapidjson::StringRef(primitiveDesc.ResolveName()));
     }
     else if (arrayDesc.ElementType() == Reflection::MetaType::Array)
     {
-        node.AddMember("Kind", rapidjson::StringRef("Array"));
+		node.AddMember("TypeName", rapidjson::StringRef("NestedArray"));
+		node.AddMember("TypeGuid", Guid::InvalidGuid().ToString());
     }
     else if (arrayDesc.ElementType() == Reflection::MetaType::Class)
     {
 		const auto& classDesc = Reflection::GetClass(arrayDesc.ElementHash());
-        node.AddMember("Kind", rapidjson::StringRef("Class"));
+		auto name = classDesc.ResolveName();
+
+		node.AddMember("TypeName", rapidjson::StringRef(name.data(), name.size()));
         node.AddMember("TypeGuid", classDesc.Guid().ToString());
 
 		if (classDesc.HasAttribute<Reflection::Attribute::Version>())
@@ -493,7 +498,9 @@ void SerializeArrayHeader(const Reflection::ArrayDescription& arrayDesc,
     else if (arrayDesc.ElementType() == Reflection::MetaType::Enum)
     {
 		const auto& enumDesc = Reflection::GetEnum(arrayDesc.ElementHash());
-        node.AddMember("Kind", rapidjson::StringRef("Enum"));
+		auto name = enumDesc.ResolveName();
+
+		node.AddMember("TypeName", rapidjson::StringRef(name.data(), name.size()));
         node.AddMember("TypeGuid", enumDesc.Guid().ToString());
         
         if (enumDesc.HasAttribute<Reflection::Attribute::Version>())
@@ -503,7 +510,11 @@ void SerializeArrayHeader(const Reflection::ArrayDescription& arrayDesc,
             node.AddMember(rapidjson::StringRef(desc.tag), rapidjson::Value().SetUint(attr->version));
         }
     }
-    node.AddMember("TypeName", rapidjson::StringRef(arrayDesc.ResolveName().data()));
+	else
+	{
+		GLEAM_ASSERT(false, "JSONSerializer: Unknown object kind");
+	}
+
     if (not fieldName.empty())
     {
         node.AddMember("FieldName", rapidjson::StringRef(fieldName.data()));

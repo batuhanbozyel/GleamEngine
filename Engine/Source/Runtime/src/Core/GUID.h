@@ -7,110 +7,58 @@
 
 namespace Gleam {
 
-static constexpr uint8_t HexDigitToByte(const char ch)
+GCLASS(Guid, "54539D64-BE9B-49AC-B31E-E90FF8967441", Serializable) : public Reflection::Attribute::Guid
 {
-    // 0-9
-    if (ch >= '0' && ch <= '9')
-        return uint8_t(ch - '0');
-
-    // a-f
-    if (ch >= 'a' && ch <= 'f')
-        return uint8_t(10 + ch - 'a');
-
-    // A-F
-    if (ch >= 'A' && ch <= 'F')
-        return uint8_t(10 + ch - 'A');
-
-    return uint8_t(0);
-}
-
-template<typename T>
-static constexpr T ParseHexDigits(const char* (&str))
-{
-    constexpr uint32_t numBytes = sizeof(T) * 2;
-    constexpr uint32_t bitsPerByte = 4;
-
-    T bytes{};
-    for (uint32_t i = 1; i <= numBytes; ++i)
-    {
-        bytes |= HexDigitToByte(*str) << (bitsPerByte * (numBytes - i));
-        str++;
-    }
-
-    if (*str == '-')
-    {
-        str++;
-    }
-
-    return bytes;
-}
-
-static constexpr bool IsValidHexChar(char ch)
-{
-    // 0-9
-    if (ch > 47 && ch < 58)
-        return true;
-
-    // a-f
-    if (ch > 96 && ch < 103)
-        return true;
-
-    // A-F
-    if (ch > 64 && ch < 71)
-        return true;
-
-    return false;
-}
-
-GCLASS(Guid, "54539D64-BE9B-49AC-B31E-E90FF8967441", Serializable)
-{
-    friend struct std::hash<Gleam::Guid>;
-    
 public:
 
 	static Guid NewGuid();
-	static constexpr Guid InvalidGuid()
-	{
-		return Guid();
-	}
     static Guid Combine(const Guid& guid1, const Guid& guid2);
 
-	Guid() = default;
-	Guid(const TString& str);
-	Guid(const TArray<uint8_t, 16>& bytes);
-    Guid(const Reflection::Attribute::Guid& guid);
-    
-    Guid& operator=(const Guid&) = default;
-    Guid& operator=(const Reflection::Attribute::Guid& guid);
-
-    TString ToString() const;
-	operator TString() const
-    {
-        return ToString();
-    }
-
-	bool operator==(const Guid& other) const;
-	bool operator!=(const Guid& other) const;
-	
-	bool operator==(const Reflection::Attribute::Guid& other) const;
-	bool operator!=(const Reflection::Attribute::Guid& other) const;
-    
-    const TArray<uint8_t, 16>& GetBytes() const { return mBytes; }
-
-private:
-
-	union
+	constexpr Guid() = default;
+	constexpr Guid(const Reflection::Attribute::Guid& guid)
+		: Reflection::Attribute::Guid(guid)
 	{
-		struct
-		{
-			uint32_t mData1;
-			uint16_t mData2;
-			uint16_t mData3;
-			uint8_t mData4[8];
-		};
-		TArray<uint8_t, 16> mBytes{};
-	};
 
+	}
+	constexpr Guid(Reflection::Attribute::Guid&& guid)
+		: Reflection::Attribute::Guid(std::move(guid))
+	{
+
+	}
+
+	constexpr Guid& operator=(const Reflection::Attribute::Guid& guid)
+	{
+		Reflection::Attribute::Guid::operator=(guid);
+		return *this;
+	}
+	constexpr Guid& operator=(Reflection::Attribute::Guid&& guid)
+	{
+		Reflection::Attribute::Guid::operator=(std::move(guid));
+		return *this;
+	}
+
+	template<size_t N>
+	explicit constexpr Guid(const char(&str)[N])
+		: Reflection::Attribute::Guid(str)
+	{
+		static_assert(N == 37, "Guid string must be 36 characters long plus null terminator.");
+	}
+
+	explicit constexpr Guid(const char* str)
+		: Reflection::Attribute::Guid(str)
+	{
+	}
+
+	Guid(const TString& guid)
+		: Reflection::Attribute::Guid(guid)
+	{
+
+	}
+	Guid& operator=(const TString& guid)
+	{
+		*this = Guid(guid);
+		return *this;
+	}
 };
 
 inline bool operator==(const Reflection::Attribute::Guid& lhs, const Guid& rhs)
@@ -128,16 +76,8 @@ inline bool operator!=(const Reflection::Attribute::Guid& lhs, const Guid& rhs)
 template <>
 struct std::hash<Gleam::Guid>
 {
-    size_t operator()(const Gleam::Guid& guid) const
-    {
-        size_t hash = 0;
-        Gleam::hash_combine(hash, guid.mData1);
-        Gleam::hash_combine(hash, guid.mData2);
-        Gleam::hash_combine(hash, guid.mData3);
-        
-        uint64_t data4;
-        memcpy(&data4, guid.mData4, sizeof(uint64_t));
-        Gleam::hash_combine(hash, data4);
-        return hash;
-    }
+	size_t operator()(const Gleam::Guid& guid) const
+	{
+		return std::hash<Gleam::Reflection::Attribute::Guid>()(guid);
+	}
 };

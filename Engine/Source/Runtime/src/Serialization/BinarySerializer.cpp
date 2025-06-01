@@ -92,10 +92,9 @@ void BinarySerializer::Initialize(Engine* engine)
 																			FileStream& stream)
 		{
 			const auto& guid = Reflection::Get<Guid>(obj);
-			const auto& bytes = guid.GetBytes();
 
 			SerializeClassHeader(classDesc, stream);
-			stream.write(reinterpret_cast<const char*>(bytes.data()), bytes.size());
+			stream.write(reinterpret_cast<const char*>(guid.mBytes), sizeof(guid.mBytes));
 		};
 
 		mCustomArraySerializers[Reflection::GetClass<Guid>().ResolveName()] = [](const void* obj,
@@ -103,8 +102,7 @@ void BinarySerializer::Initialize(Engine* engine)
 																				 FileStream& stream)
 		{
 			const auto& guid = Reflection::Get<Guid>(obj);
-			const auto& bytes = guid.GetBytes();
-			stream.write(reinterpret_cast<const char*>(bytes.data()), bytes.size());
+			stream.write(reinterpret_cast<const char*>(guid.mBytes), sizeof(guid.mBytes));
 		};
 
 		mCustomSerializers[Reflection::GetClass<TString>().ResolveName()] = [](const void* obj,
@@ -186,18 +184,18 @@ void BinarySerializer::Initialize(Engine* engine)
 			BinaryHeader header;
 			DeserializeHeader(stream, header);
 
-			TArray<uint8_t, 16> bytes;
-			stream.read(reinterpret_cast<char*>(bytes.data()), bytes.size());
-			Reflection::Get<Guid>(obj) = Guid(bytes);
+			Guid guid;
+			stream.read(reinterpret_cast<char*>(guid.mBytes), sizeof(guid.mBytes));
+			Reflection::Get<Guid>(obj) = guid;
 		};
 
 		mCustomArrayDeserializers[Reflection::GetClass<Guid>().ResolveName()] = [](FileStream& stream,
 																				   const Reflection::ClassDescription& classDesc,
 																				   void* obj)
 		{
-			TArray<uint8_t, 16> bytes;
-			stream.read(reinterpret_cast<char*>(bytes.data()), bytes.size());
-			Reflection::Get<Guid>(obj) = Guid(bytes);
+			Guid guid;
+			stream.read(reinterpret_cast<char*>(guid.mBytes), sizeof(guid.mBytes));
+			Reflection::Get<Guid>(obj) = guid;
 		};
 		
 		mCustomDeserializers[Reflection::GetClass<TString>().ResolveName()] = [](FileStream& stream,
@@ -267,7 +265,7 @@ void BinarySerializer::Initialize(Engine* engine)
 			arr.resize(header.size);
 
 			const auto& containerDesc = Reflection::GetArray(classDesc.ContainerHash());
-			auto arrDesc = Reflection::ArrayDescription(containerDesc.ResolveName(), containerDesc.ElementType(), containerDesc.ElementHash(), arr.size(), containerDesc.GetStride());
+			auto arrDesc = Reflection::ArrayDescription(containerDesc.ElementType(), containerDesc.ElementHash(), arr.size(), containerDesc.GetStride());
 			DeserializeArrayElements(stream, arrDesc, arr.data());
 		};
 
@@ -282,7 +280,7 @@ void BinarySerializer::Initialize(Engine* engine)
 			arr.resize(size);
 
 			const auto& containerDesc = Reflection::GetArray(classDesc.ContainerHash());
-			auto arrDesc = Reflection::ArrayDescription(containerDesc.ResolveName(), containerDesc.ElementType(), containerDesc.ElementHash(), arr.size(), containerDesc.GetStride());
+			auto arrDesc = Reflection::ArrayDescription(containerDesc.ElementType(), containerDesc.ElementHash(), arr.size(), containerDesc.GetStride());
 			DeserializeArrayElements(stream, arrDesc, arr.data());
 		};
 	}
@@ -380,9 +378,7 @@ void SerializeHeader(const BinaryHeader& header, FileStream& stream)
 	stream.write(reinterpret_cast<const char*>(&len), sizeof(uint32_t));
 	stream.write(header.name.data(), len);
 
-	const auto& bytes = header.guid.GetBytes();
-	stream.write(reinterpret_cast<const char*>(bytes.data()), bytes.size());
-
+	stream.write(reinterpret_cast<const char*>(header.guid.mBytes), sizeof(header.guid.mBytes));
 	stream.write(reinterpret_cast<const char*>(&header.version), sizeof(uint32_t));
 	stream.write(reinterpret_cast<const char*>(&header.size), sizeof(uint32_t));
 }
@@ -432,7 +428,6 @@ void SerializeArrayHeader(const Reflection::ArrayDescription& arrayDesc, FileStr
 {
 	BinaryHeader header;
 	header.kind = Reflection::MetaType::Array;
-	header.name = arrayDesc.ResolveName();
 	if (arrayDesc.ElementType() == Reflection::MetaType::Class)
 	{
 		const auto& classDesc = Reflection::GetClass(arrayDesc.ElementHash());
@@ -441,6 +436,7 @@ void SerializeArrayHeader(const Reflection::ArrayDescription& arrayDesc, FileStr
 			header.version = classDesc.GetAttribute<Reflection::Attribute::Version>()->version;
 		}
 		header.guid = classDesc.Guid();
+		header.name = classDesc.ResolveName();
 	}
 	else if (arrayDesc.ElementType() == Reflection::MetaType::Enum)
 	{
@@ -450,6 +446,26 @@ void SerializeArrayHeader(const Reflection::ArrayDescription& arrayDesc, FileStr
 			header.version = enumDesc.GetAttribute<Reflection::Attribute::Version>()->version;
 		}
 		header.guid = enumDesc.Guid();
+		header.name = enumDesc.ResolveName();
+	}
+	else if (arrayDesc.ElementType() == Reflection::MetaType::Primitive)
+	{
+		const auto& primitiveDesc = Reflection::GetPrimitive(arrayDesc.ElementHash());
+		header.name = primitiveDesc.ResolveName();
+		header.version = 0;
+		header.guid = Guid();
+	}
+	else if (arrayDesc.ElementType() == Reflection::MetaType::Array)
+	{
+		const auto& innerDesc = Reflection::GetArray(arrayDesc.ElementHash());
+		header.name = "NestedArray";
+		header.version = 0;
+		header.guid = Guid();
+	}
+	else
+	{
+		GLEAM_ASSERT(false, "BinarySerializer: Unknown array element type");
+		return;
 	}
 	header.size = static_cast<uint32_t>(arrayDesc.GetSize());
 	SerializeHeader(header, stream);
@@ -853,10 +869,7 @@ void DeserializeHeader(FileStream& stream, BinaryHeader& header)
 	header.name.resize(len);
 	stream.read(header.name.data(), len);
 
-	TArray<uint8_t, 16> bytes;
-	stream.read(reinterpret_cast<char*>(bytes.data()), bytes.size());
-	header.guid = Guid(bytes);
-
+	stream.read(reinterpret_cast<char*>(header.guid.mBytes), sizeof(header.guid.mBytes));
 	stream.read(reinterpret_cast<char*>(&header.version), sizeof(uint32_t));
 	stream.read(reinterpret_cast<char*>(&header.size), sizeof(uint32_t));
 }
