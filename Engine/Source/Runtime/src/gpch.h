@@ -32,6 +32,11 @@
 #include <unordered_map>
 #include <unordered_set>
 
+#include <Reflection/TypeTraits.h>
+#include <Reflection/Attribute.h>
+#include <Reflection/Meta.h>
+#include <Reflection/Reflection.h>
+
 #include <entt/core/type_info.hpp>
 #include <entt/core/hashed_string.hpp>
 #include <entt/meta/meta.hpp>
@@ -58,11 +63,6 @@
 #include "IO/File.h"
 #include "IO/Filesystem.h"
 #include "IO/FileDialog.h"
-
-#include "Reflection/TypeTraits.h"
-#include "Reflection/Attribute.h"
-#include "Reflection/Meta.h"
-#include "Reflection/Reflection.h"
 
 #include "Math/Common.h"
 #include "Math/Vector2.h"
@@ -101,4 +101,8 @@
 
 #ifdef PLATFORM_WINDOWS
 #include <windows.h>
+#endif
+
+#if not defined(__GLEAM_REFLECTION__)
+#include "Runtime.Reflection.generated.h"
 #endif

@@ -65,6 +65,7 @@
 #include "Renderer/RenderSystem.h"
 #include "Renderer/CommandBuffer.h"
 #include "Renderer/GraphicsDevice.h"
+#include "Renderer/Material/Material.h"
 
 #include "Input/InputSystem.h"
 
@@ -78,3 +79,7 @@
 #include "Renderer/Renderers/WorldRenderer.h"
 #include "Renderer/Renderers/ImGuiRenderer.h"
 #include "Renderer/Renderers/PostProcessStack.h"
+
+#if not defined(__GLEAM_REFLECTION__)
+#include "Runtime.Reflection.generated.h"
+#endif

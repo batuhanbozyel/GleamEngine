@@ -155,9 +155,12 @@ void BinarySerializer::Initialize(Engine* engine)
 																					   const Reflection::ClassDescription& classDesc,
 																					   FileStream& stream)
 		{
+			auto templateParams = classDesc.ResolveTemplateParameters();
+			GLEAM_ASSERT(templateParams.size() == 1, "JSONSerializer: TArray must have exactly one template parameter for element type.");
+
+			const auto& element = templateParams[0];
 			const auto& arr = Reflection::Get<TArray<uint8_t>>(obj);
-			const auto& containerDesc = Reflection::GetArray(classDesc.ContainerHash());
-			auto arrDesc = Reflection::ArrayDescription(containerDesc.ResolveName(), containerDesc.ElementType(), containerDesc.ElementHash(), arr.size(), containerDesc.GetStride());
+			auto arrDesc = Reflection::ArrayDescription(element.GetType(), element.TypeHash(), arr.size());
 			SerializeArray(arr.data(), arrDesc, stream);
 		};
 
@@ -165,9 +168,12 @@ void BinarySerializer::Initialize(Engine* engine)
 																							const Reflection::ClassDescription& classDesc,
 																							FileStream& stream)
 		{
+			auto templateParams = classDesc.ResolveTemplateParameters();
+			GLEAM_ASSERT(templateParams.size() == 1, "JSONSerializer: TArray must have exactly one template parameter for element type.");
+
+			const auto& element = templateParams[0];
 			const auto& arr = Reflection::Get<TArray<uint8_t>>(obj);
-			const auto& containerDesc = Reflection::GetArray(classDesc.ContainerHash());
-			auto arrDesc = Reflection::ArrayDescription(containerDesc.ResolveName(), containerDesc.ElementType(), containerDesc.ElementHash(), arr.size(), containerDesc.GetStride());
+			auto arrDesc = Reflection::ArrayDescription(element.GetType(), element.TypeHash(), arr.size());
 
 			auto size = static_cast<uint32_t>(arr.size());
 			stream.write(reinterpret_cast<const char*>(&size), sizeof(uint32_t));
@@ -258,14 +264,17 @@ void BinarySerializer::Initialize(Engine* engine)
 																						 const Reflection::ClassDescription& classDesc,
 																						 void* obj)
 		{
+			auto templateParams = classDesc.ResolveTemplateParameters();
+			GLEAM_ASSERT(templateParams.size() == 1, "BinarySerializer: TArray must have exactly one template parameter for element type.");
+
 			BinaryHeader header;
 			DeserializeHeader(stream, header);
 
 			auto& arr = Reflection::Get<TArray<uint8_t>>(obj);
 			arr.resize(header.size);
 
-			const auto& containerDesc = Reflection::GetArray(classDesc.ContainerHash());
-			auto arrDesc = Reflection::ArrayDescription(containerDesc.ElementType(), containerDesc.ElementHash(), arr.size(), containerDesc.GetStride());
+			const auto& element = templateParams[0];
+			auto arrDesc = Reflection::ArrayDescription(element.GetType(), element.TypeHash(), arr.size());
 			DeserializeArrayElements(stream, arrDesc, arr.data());
 		};
 
@@ -273,14 +282,17 @@ void BinarySerializer::Initialize(Engine* engine)
 																							  const Reflection::ClassDescription& classDesc,
 																							  void* obj)
 		{
+			auto templateParams = classDesc.ResolveTemplateParameters();
+			GLEAM_ASSERT(templateParams.size() == 1, "BinarySerializer: TArray must have exactly one template parameter for element type.");
+
 			uint32_t size = 0;
 			stream.read(reinterpret_cast<char*>(&size), sizeof(uint32_t));
 
 			auto& arr = Reflection::Get<TArray<uint8_t>>(obj);
 			arr.resize(size);
 
-			const auto& containerDesc = Reflection::GetArray(classDesc.ContainerHash());
-			auto arrDesc = Reflection::ArrayDescription(containerDesc.ElementType(), containerDesc.ElementHash(), arr.size(), containerDesc.GetStride());
+			const auto& element = templateParams[0];
+			auto arrDesc = Reflection::ArrayDescription(element.GetType(), element.TypeHash(), arr.size());
 			DeserializeArrayElements(stream, arrDesc, arr.data());
 		};
 	}
@@ -390,7 +402,7 @@ void SerializePrimitiveHeader(Reflection::PrimitiveType type, FileStream& stream
 	BinaryHeader header;
 	header.kind = Reflection::MetaType::Primitive;
 	header.name = desc.ResolveName();
-	header.size = desc.GetSize();
+	header.size = (uint32_t)desc.GetSize();
 	SerializeHeader(header, stream);
 }
 
@@ -591,7 +603,7 @@ void SerializeArrayElements(const void* obj,
 	else if (arrayDesc.ElementType() == Reflection::MetaType::Array)
 	{
 		const auto& innerDesc = Reflection::GetArray(arrayDesc.ElementHash());
-		for (size_t elementOffset = 0; elementOffset < arrayDesc.GetSize(); elementOffset += arrayDesc.GetStride())
+		for (size_t elementOffset = 0; elementOffset < arrayDesc.GetSize(); elementOffset += innerDesc.GetSize())
 		{
 			SerializeArrayElements(OffsetPointer(obj, elementOffset), innerDesc, stream);
 		}
@@ -599,7 +611,7 @@ void SerializeArrayElements(const void* obj,
 	else if (arrayDesc.ElementType() == Reflection::MetaType::Class)
 	{
 		const auto& innerDesc = Reflection::GetClass(arrayDesc.ElementHash());
-		for (size_t elementOffset = 0; elementOffset < arrayDesc.GetSize(); elementOffset += arrayDesc.GetStride())
+		for (size_t elementOffset = 0; elementOffset < arrayDesc.GetSize(); elementOffset += innerDesc.GetSize())
 		{
 			if (BinarySerializer::TryCustomArraySerializer(OffsetPointer(obj, elementOffset), innerDesc, stream) == false)
 			{
@@ -787,7 +799,7 @@ void DeserializeArrayElements(FileStream& stream,
 		case Reflection::MetaType::Array:
 		{
 			const auto& innerDesc = Reflection::GetArray(arrayDesc.ElementHash());
-			for (size_t elementOffset = 0; elementOffset < arrayDesc.GetSize(); elementOffset += arrayDesc.GetStride())
+			for (size_t elementOffset = 0; elementOffset < arrayDesc.GetSize(); elementOffset += innerDesc.GetSize())
 			{
 				DeserializeArrayElements(stream, innerDesc, OffsetPointer(obj, elementOffset));
 			}
@@ -796,7 +808,7 @@ void DeserializeArrayElements(FileStream& stream,
 		case Reflection::MetaType::Class:
 		{
 			const auto& classDesc = Reflection::GetClass(arrayDesc.ElementHash());
-			for (size_t elementOffset = 0; elementOffset < arrayDesc.GetSize(); elementOffset += arrayDesc.GetStride())
+			for (size_t elementOffset = 0; elementOffset < arrayDesc.GetSize(); elementOffset += classDesc.GetSize())
 			{
 				if (BinarySerializer::TryCustomArrayDeserializer(stream, classDesc, OffsetPointer(obj, elementOffset)) == false)
 				{

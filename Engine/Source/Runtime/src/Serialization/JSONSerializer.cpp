@@ -161,9 +161,12 @@ void JSONSerializer::Initialize(Engine* engine)
 			const Reflection::ClassDescription& classDesc,
 			rapidjson::Node& node)
 		{
+			auto templateParams = classDesc.ResolveTemplateParameters();
+			GLEAM_ASSERT(templateParams.size() == 1, "JSONSerializer: TArray must have exactly one template parameter for element type.");
+
+			const auto& element = templateParams[0];
 			const auto& arr = Reflection::Get<TArray<uint8_t>>(obj);
-			const auto& containerDesc = Reflection::GetArray(classDesc.ContainerHash());
-			auto arrDesc = Reflection::ArrayDescription(containerDesc.ElementType(), containerDesc.ElementHash(), arr.size(), containerDesc.GetStride());
+			auto arrDesc = Reflection::ArrayDescription(element.GetType(), element.TypeHash(), arr.size());
             SerializeArrayObject(arr.data(), fieldName, arrDesc, node);
 		};
 
@@ -171,9 +174,12 @@ void JSONSerializer::Initialize(Engine* engine)
 			const Reflection::ClassDescription& classDesc,
 			rapidjson::Node& node)
 		{
+			auto templateParams = classDesc.ResolveTemplateParameters();
+			GLEAM_ASSERT(templateParams.size() == 1, "JSONSerializer: TArray must have exactly one template parameter for element type.");
+
+			const auto& element = templateParams[0];
 			const auto& arr = Reflection::Get<TArray<uint8_t>>(obj);
-			const auto& containerDesc = Reflection::GetArray(classDesc.ContainerHash());
-			auto arrDesc = Reflection::ArrayDescription(containerDesc.ElementType(), containerDesc.ElementHash(), arr.size(), containerDesc.GetStride());
+			auto arrDesc = Reflection::ArrayDescription(element.GetType(), element.TypeHash(), arr.size());
             SerializeArrayObjectElements(arr.data(), arrDesc, node);
 		};
 	}
@@ -239,13 +245,46 @@ void JSONSerializer::Initialize(Engine* engine)
 			{
 				const auto& elements = node.object["Elements"].GetArray();
 
-				const auto& containerDesc = Reflection::GetArray(classDesc.ContainerHash());
-				auto arrDesc = Reflection::ArrayDescription(containerDesc.ElementType(), containerDesc.ElementHash(), elements.Size(), containerDesc.GetStride());
+				auto templateParams = classDesc.ResolveTemplateParameters();
+				GLEAM_ASSERT(templateParams.size() == 1, "JSONSerializer: TArray must have exactly one template parameter for element type.");
 
 				auto& arr = Reflection::Get<TArray<uint8_t>>(obj);
-				arr.resize(elements.Size() * arrDesc.GetStride());
+				const auto& element = templateParams[0];
 
+				switch (element.GetType())
+				{
+					case Reflection::MetaType::Primitive:
+					{
+						auto primitiveDesc = Reflection::GetPrimitive(element.TypeHash());
+						arr.resize(elements.Size() * primitiveDesc.GetSize());
+						break;
+					}
+					case Reflection::MetaType::Enum:
+					{
+						const auto& enumDesc = Reflection::GetEnum(element.TypeHash());
+						arr.resize(elements.Size() * enumDesc.GetSize());
+						break;
+					}
+					case Reflection::MetaType::Class:
+					{
+						const auto& classDesc = Reflection::GetClass(element.TypeHash());
+						arr.resize(elements.Size() * classDesc.GetSize());
+						break;
+					}
+					case Reflection::MetaType::Array:
+					{
+						const auto& innerDesc = Reflection::GetArray(element.TypeHash());
+						arr.resize(elements.Size() * innerDesc.GetSize());
+						break;
+					}
+					default:
+					{
+						GLEAM_ASSERT(false, "JSONSerializer: Unknown object kind");
+						return;
+					}
+				}
 				rapidjson::ConstNode elementsNode(elements);
+				auto arrDesc = Reflection::ArrayDescription(element.GetType(), element.TypeHash(), arr.size());
 				DeserializeArrayElements(elementsNode, arrDesc, arr.data());
 			}
 		};
@@ -254,11 +293,45 @@ void JSONSerializer::Initialize(Engine* engine)
             const Reflection::ClassDescription& classDesc,
             void* obj)
         {
-            const auto& containerDesc = Reflection::GetArray(classDesc.ContainerHash());
-            auto arrDesc = Reflection::ArrayDescription(containerDesc.ElementType(), containerDesc.ElementHash(), node.object.Size(), containerDesc.GetStride());
+			auto templateParams = classDesc.ResolveTemplateParameters();
+			GLEAM_ASSERT(templateParams.size() == 1, "JSONSerializer: TArray must have exactly one template parameter for element type.");
 
             auto& arr = Reflection::Get<TArray<uint8_t>>(obj);
-            arr.resize(node.object.Size() * arrDesc.GetStride());
+			const auto& element = templateParams[0];
+
+			switch (element.GetType())
+			{
+				case Reflection::MetaType::Primitive:
+				{
+					auto primitiveDesc = Reflection::GetPrimitive(element.TypeHash());
+					arr.resize(node.object.Size() * primitiveDesc.GetSize());
+					break;
+				}
+				case Reflection::MetaType::Enum:
+				{
+					const auto& enumDesc = Reflection::GetEnum(element.TypeHash());
+					arr.resize(node.object.Size() * enumDesc.GetSize());
+					break;
+				}
+				case Reflection::MetaType::Class:
+				{
+					const auto& classDesc = Reflection::GetClass(element.TypeHash());
+					arr.resize(node.object.Size() * classDesc.GetSize());
+					break;
+				}
+				case Reflection::MetaType::Array:
+				{
+					const auto& innerDesc = Reflection::GetArray(element.TypeHash());
+					arr.resize(node.object.Size() * innerDesc.GetSize());
+					break;
+				}
+				default:
+				{
+					GLEAM_ASSERT(false, "JSONSerializer: Unknown object kind");
+					return;
+				}
+			}
+			auto arrDesc = Reflection::ArrayDescription(element.GetType(), element.TypeHash(), arr.size());
             DeserializeArrayElements(node, arrDesc, arr.data());
         };
 	}
@@ -760,16 +833,16 @@ void SerializeArrayObjectElements(const void* obj,
 {
     if (arrayDesc.ElementType() == Reflection::MetaType::Primitive)
     {
-        auto primitiveType = Reflection::GetPrimitiveType(arrayDesc.ElementHash());
-        for (size_t elementOffset = 0; elementOffset < arrayDesc.GetSize(); elementOffset += arrayDesc.GetStride())
+        auto primitiveDesc = Reflection::GetPrimitive(arrayDesc.ElementHash());
+        for (size_t elementOffset = 0; elementOffset < arrayDesc.GetSize(); elementOffset += primitiveDesc.GetSize())
         {
-            SerializePrimitiveArrayValue(OffsetPointer(obj, elementOffset), primitiveType, outElements);
+            SerializePrimitiveArrayValue(OffsetPointer(obj, elementOffset), primitiveDesc.Type(), outElements);
         }
     }
     else if (arrayDesc.ElementType() == Reflection::MetaType::Array)
     {
         const auto& innerDesc = Reflection::GetArray(arrayDesc.ElementHash());
-        for (size_t elementOffset = 0; elementOffset < arrayDesc.GetSize(); elementOffset += arrayDesc.GetStride())
+        for (size_t elementOffset = 0; elementOffset < arrayDesc.GetSize(); elementOffset += innerDesc.GetSize())
         {
             rapidjson::Value elements(rapidjson::kArrayType);
             rapidjson::Node elementsNode(elements, outElements.allocator);
@@ -780,7 +853,7 @@ void SerializeArrayObjectElements(const void* obj,
     else if (arrayDesc.ElementType() == Reflection::MetaType::Class)
     {
         const auto& classDesc = Reflection::GetClass(arrayDesc.ElementHash());
-        for (size_t elementOffset = 0; elementOffset < arrayDesc.GetSize(); elementOffset += arrayDesc.GetStride())
+        for (size_t elementOffset = 0; elementOffset < arrayDesc.GetSize(); elementOffset += classDesc.GetSize())
         {
             auto elements = rapidjson::Value(rapidjson::kArrayType);
             auto elementsNode = rapidjson::Node(elements, outElements.allocator);
@@ -794,7 +867,7 @@ void SerializeArrayObjectElements(const void* obj,
     else if (arrayDesc.ElementType() == Reflection::MetaType::Enum)
     {
         const auto& enumDesc = Reflection::GetEnum(arrayDesc.ElementHash());
-        for (size_t elementOffset = 0; elementOffset < arrayDesc.GetSize(); elementOffset += arrayDesc.GetStride())
+        for (size_t elementOffset = 0; elementOffset < arrayDesc.GetSize(); elementOffset += enumDesc.GetSize())
         {
             SerializeEnumArrayValue(OffsetPointer(obj, elementOffset), outElements, enumDesc.GetSize());
         }
@@ -994,14 +1067,14 @@ void DeserializeArrayObject(const rapidjson::ConstNode& node,
 	{
 		case Reflection::MetaType::Primitive:
 		{
-			auto primitiveType = Reflection::GetPrimitiveType(arrayDesc.ElementHash());
+			auto primitiveDesc = Reflection::GetPrimitive(arrayDesc.ElementHash());
 
 			size_t offset = 0;
 			for (auto& element : node.object["Elements"].GetArray())
 			{
 				rapidjson::ConstNode elementNode(element);
-				DeserializePrimitiveArrayValue(elementNode, primitiveType, OffsetPointer(obj, offset));
-				offset += arrayDesc.GetStride();
+				DeserializePrimitiveArrayValue(elementNode, primitiveDesc.Type(), OffsetPointer(obj, offset));
+				offset += primitiveDesc.GetSize();
 			}
 			return;
 		}
@@ -1014,7 +1087,7 @@ void DeserializeArrayObject(const rapidjson::ConstNode& node,
 			{
 				rapidjson::ConstNode elementNode(element);
 				DeserializeArrayObject(elementNode, innerDesc, OffsetPointer(obj, offset));
-				offset += arrayDesc.GetStride();
+				offset += innerDesc.GetSize();
 			}
 			return;
 		}
@@ -1030,7 +1103,7 @@ void DeserializeArrayObject(const rapidjson::ConstNode& node,
 				{
 					DeserializeClassArrayValue(elementNode, classDesc, OffsetPointer(obj, offset));
 				}
-				offset += arrayDesc.GetStride();
+				offset += classDesc.GetSize();
 			}
 			return;
 		}
@@ -1043,7 +1116,7 @@ void DeserializeArrayObject(const rapidjson::ConstNode& node,
 			{
 				rapidjson::ConstNode elementNode(element);
 				DeserializeEnumArrayValue(elementNode, enumDesc, OffsetPointer(obj, offset));
-				offset += arrayDesc.GetStride();
+				offset += enumDesc.GetSize();
 			}
 			return;
 		}
@@ -1167,14 +1240,14 @@ void DeserializeArrayElements(const rapidjson::ConstNode& node,
     {
         case Reflection::MetaType::Primitive:
         {
-            auto primitiveType = Reflection::GetPrimitiveType(arrayDesc.ElementHash());
+            auto primitiveDesc = Reflection::GetPrimitive(arrayDesc.ElementHash());
 
             size_t offset = 0;
             for (auto& element : node.object.GetArray())
             {
 				rapidjson::ConstNode elementNode(element);
-                DeserializePrimitiveArrayValue(elementNode, primitiveType, OffsetPointer(obj, offset));
-                offset += arrayDesc.GetStride();
+                DeserializePrimitiveArrayValue(elementNode, primitiveDesc.Type(), OffsetPointer(obj, offset));
+                offset += primitiveDesc.GetSize();
             }
             return;
         }
@@ -1187,7 +1260,7 @@ void DeserializeArrayElements(const rapidjson::ConstNode& node,
             {
 				rapidjson::ConstNode elementNode(element);
                 DeserializeArrayElements(elementNode, innerDesc, OffsetPointer(obj, offset));
-                offset += arrayDesc.GetStride();
+                offset += innerDesc.GetSize();
             }
             return;
         }
@@ -1203,7 +1276,7 @@ void DeserializeArrayElements(const rapidjson::ConstNode& node,
                 {
                     DeserializeClassArrayValue(elementNode, classDesc, OffsetPointer(obj, offset));
                 }
-                offset += arrayDesc.GetStride();
+                offset += classDesc.GetSize();
             }
             return;
         }
@@ -1216,7 +1289,7 @@ void DeserializeArrayElements(const rapidjson::ConstNode& node,
             {
 				rapidjson::ConstNode elementNode(element);
                 DeserializeEnumArrayValue(elementNode, enumDesc, OffsetPointer(obj, offset));
-                offset += arrayDesc.GetStride();
+                offset += enumDesc.GetSize();
             }
             return;
         }

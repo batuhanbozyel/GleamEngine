@@ -1,6 +1,7 @@
 #pragma once
+#include <Reflection/Macro.h>
+
 #include "Common.h"
-#include "Reflection/Macro.h"
 #include "Container/Array.h"
 
 namespace Gleam {

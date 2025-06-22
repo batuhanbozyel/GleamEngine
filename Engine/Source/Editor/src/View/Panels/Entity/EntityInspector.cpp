@@ -131,7 +131,8 @@ static void DrawScalarControl(const Gleam::TStringView label, const Gleam::Refle
 template<typename T, std::enable_if_t<Gleam::Reflection::Traits::IsPrimitive<T>::value, bool> = true>
 static void DrawScalarControl(const Gleam::TStringView label, T& value, T defaultValue = T(), float columnWidth = 100.0f)
 {
-	DrawScalarControl(label, Gleam::Reflection::GetPrimitiveType<T>(), sizeof(T), &value, &defaultValue, columnWidth);
+	auto primitiveDesc = Gleam::Reflection::GetPrimitive<T>();
+	DrawScalarControl(label, primitiveDesc.Type(), primitiveDesc.GetSize(), &value, &defaultValue, columnWidth);
 }
 
 static void DrawVec3Control(const Gleam::TStringView label, Gleam::Float3& values, float resetValue = 0.0f, float columnWidth = 100.0f)
@@ -267,30 +268,28 @@ static void DrawClassFields(void* obj, const Gleam::Reflection::ClassDescription
 	{
 		switch (field.GetType())
 		{
-			case Gleam::Reflection::FieldType::Class:
+			case Gleam::Reflection::MetaType::Class:
 			{
-				const auto& classField = field.GetField<Gleam::Reflection::ClassField>();
-				const auto& fieldDesc = Gleam::Reflection::GetClass(classField.hash);
-				DrawClassFields(Gleam::OffsetPointer(obj, classField.offset), fieldDesc, columnWidth);
+				const auto& fieldDesc = Gleam::Reflection::GetClass(field.TypeHash());
+				DrawClassFields(Gleam::OffsetPointer(obj, field.GetOffset()), fieldDesc, columnWidth);
 				break;
 			}
-			case Gleam::Reflection::FieldType::Array:
+			case Gleam::Reflection::MetaType::Array:
 			{
 
 				break;
 			}
-			case Gleam::Reflection::FieldType::Enum:
+			case Gleam::Reflection::MetaType::Enum:
 			{
-				const auto& enumField = field.GetField<Gleam::Reflection::EnumField>();
-				const auto& enumDesc = Gleam::Reflection::GetEnum(enumField.hash);
-				DrawEnumOptions(field.ResolveName(), enumDesc, Gleam::OffsetPointer(obj, enumField.offset), columnWidth);
+				const auto& enumDesc = Gleam::Reflection::GetEnum(field.TypeHash());
+				DrawEnumOptions(field.ResolveName(), enumDesc, Gleam::OffsetPointer(obj, field.GetOffset()), columnWidth);
 				break;
 			}
-			case Gleam::Reflection::FieldType::Primitive:
+			case Gleam::Reflection::MetaType::Primitive:
 			{
 				constexpr uint64_t defaultValue = 0;
-				const auto& primitiveField = field.GetField<Gleam::Reflection::PrimitiveField>();
-				DrawScalarControl(field.ResolveName(), primitiveField.primitive, primitiveField.size, Gleam::OffsetPointer(obj, primitiveField.offset), &defaultValue, columnWidth);
+				const auto& primitiveDesc = Gleam::Reflection::GetPrimitive(field.TypeHash());
+				DrawScalarControl(field.ResolveName(), primitiveDesc.Type(), primitiveDesc.GetSize(), Gleam::OffsetPointer(obj, field.GetOffset()), &defaultValue, columnWidth);
 				break;
 			}
 			default:
@@ -308,7 +307,7 @@ static void DrawComponent(const Gleam::TStringView label, void* component, const
     float lineHeight = GImGui->Font->FontSize + GImGui->Style.FramePadding.y * 2.0f;
     ImGui::Separator();
 
-	size_t hash = Gleam::Reflection::Database::GetTypeHash(classDesc.ResolveName());
+	size_t hash = classDesc.TypeHash();
     bool open = ImGui::TreeNodeEx((void*)hash, treeNodeFlags, "%s", label.data());
     ImGui::PopStyleVar();
 

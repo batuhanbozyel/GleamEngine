@@ -1,5 +1,5 @@
 #pragma once
-#include "Reflection/Reflection.h"
+#include <Reflection/Reflection.h>
 
 #include "Container/Hash.h"
 #include "Container/Array.h"
@@ -63,12 +63,12 @@ public:
 
 inline bool operator==(const Reflection::Attribute::Guid& lhs, const Guid& rhs)
 {
-	return rhs == lhs;
+	return (Reflection::Attribute::Guid)rhs == lhs;
 }
 
 inline bool operator!=(const Reflection::Attribute::Guid& lhs, const Guid& rhs)
 {
-	return rhs != lhs;
+	return (Reflection::Attribute::Guid)rhs != lhs;
 }
 
 } // namespace Gleam

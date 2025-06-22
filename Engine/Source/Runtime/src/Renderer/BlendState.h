@@ -1,6 +1,6 @@
 #pragma once
+#include <Reflection/Macro.h>
 #include "Core/GUID.h"
-#include "Reflection/Macro.h"
 
 namespace Gleam {
 
