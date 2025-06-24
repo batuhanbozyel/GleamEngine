@@ -1,4 +1,5 @@
 #pragma once
+#include <Reflection/Macro.h>
 #include "Container/Hash.h"
 
 #include <mutex>
