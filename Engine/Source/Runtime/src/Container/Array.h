@@ -45,3 +45,12 @@ static TArray<T>& Append(TArray<T>& m, const TArray<T>& n)
 } // namespace ArrayUtils
 
 } // namespace Gleam
+
+namespace Gleam::Reflection::External {
+
+GCLASS(TArray, "0413C2C5-88CB-49B8-A3EA-9AD7505E51E6", Serializable)
+{
+
+};
+
+} // namespace Gleam::Reflection::External

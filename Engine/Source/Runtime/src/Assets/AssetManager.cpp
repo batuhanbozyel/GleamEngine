@@ -34,7 +34,7 @@ void AssetManager::Initialize(Application* app)
 	}, true);
 
 	auto fileWatcher = Globals::Engine->GetSubsystem<FileWatcher>();
-	fileWatcher->AddWatch(Globals::ProjectContentDirectory, [this](const Filesystem::Path& path, FileWatchEvent event)
+	fileWatcher->AddWatch(Globals::ProjectContentDirectory, [this](const Path& path, FileWatchEvent event)
 	{
 		if (path.extension() != Asset::Extension() &&
 			path.extension() != Prefab::Extension() &&
@@ -93,7 +93,7 @@ void AssetManager::Shutdown()
 	mAssetPaths.clear();
 }
 
-void AssetManager::EmplaceAssetPath(const Filesystem::Path& path)
+void AssetManager::EmplaceAssetPath(const Path& path)
 {
 	Guid guid = path.stem().string();
 	auto relPath = path.is_relative() ? path : Filesystem::Relative(path, Globals::ProjectContentDirectory);
@@ -105,7 +105,7 @@ void AssetManager::EmplaceAssetPath(const Filesystem::Path& path)
 	}
 }
 
-const Filesystem::Path& AssetManager::GetAssetPath(const AssetReference& ref) const
+const Path& AssetManager::GetAssetPath(const AssetReference& ref) const
 {
 	auto it = mAssetPaths.find(ref);
 	if (it != mAssetPaths.end())
@@ -115,6 +115,6 @@ const Filesystem::Path& AssetManager::GetAssetPath(const AssetReference& ref) co
 
 	GLEAM_CORE_ERROR("Asset could not located for GUID: {0}", ref.guid.ToString());
 	GLEAM_ASSERT(false);
-	static Filesystem::Path invalidPath;
+	static Path invalidPath;
 	return invalidPath;
 }

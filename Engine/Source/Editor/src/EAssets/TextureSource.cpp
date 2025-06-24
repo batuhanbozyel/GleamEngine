@@ -7,7 +7,7 @@
 
 using namespace GEditor;
 
-bool TextureSource::Import(const Gleam::Filesystem::Path& path, const ImportSettings& settings)
+bool TextureSource::Import(const Gleam::Path& path, const ImportSettings& settings)
 {
 	RawTexture texture;
 	stbi_info(path.string().c_str(), &texture.width, &texture.height, &texture.channels);

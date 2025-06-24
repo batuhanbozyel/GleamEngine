@@ -9,18 +9,18 @@ class EAssetManager final : public Gleam::WorldSubsystem
 {
 public:
 
-	EAssetManager(const Gleam::Filesystem::Path& directory);
+	EAssetManager(const Gleam::Path& directory);
 
 	virtual void Initialize(Gleam::World* world) override;
 
 	virtual void Shutdown() override;
 
-	void Import(const Gleam::Filesystem::Path& directory, const AssetPackage& package);
+	void Import(const Gleam::Path& directory, const AssetPackage& package);
 
 	const AssetItem& GetAsset(const Gleam::Guid& guid) const;
 
 	template<typename T>
-	const AssetItem& GetAsset(const Gleam::Filesystem::Path& path) const
+	const AssetItem& GetAsset(const Gleam::Path& path) const
 	{
 		return mRegistry.GetAsset<T>(path);
 	}
@@ -29,7 +29,7 @@ private:
 
 	AssetRegistry mRegistry;
 
-	Gleam::Filesystem::Path mAssetDirectory;
+	Gleam::Path mAssetDirectory;
 
 };
 

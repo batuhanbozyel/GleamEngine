@@ -4,7 +4,7 @@
 
 using namespace GEditor;
 
-static Gleam::BinaryHeader ParseBinaryHeader(const Gleam::Filesystem::Path& asset)
+static Gleam::BinaryHeader ParseBinaryHeader(const Gleam::Path& asset)
 {
 	auto file = Gleam::Filesystem::Open(asset, Gleam::FileType::Binary);
 	auto accessor = Gleam::Filesystem::ReadAccessor(asset);
@@ -12,7 +12,7 @@ static Gleam::BinaryHeader ParseBinaryHeader(const Gleam::Filesystem::Path& asse
 	return serializer.ParseHeader(file.GetStream());
 }
 
-static Gleam::JSONHeader ParseJSONHeader(const Gleam::Filesystem::Path& asset)
+static Gleam::JSONHeader ParseJSONHeader(const Gleam::Path& asset)
 {
 	auto file = Gleam::Filesystem::Open(asset, Gleam::FileType::Text);
 	auto accessor = Gleam::Filesystem::ReadAccessor(asset);
@@ -20,7 +20,7 @@ static Gleam::JSONHeader ParseJSONHeader(const Gleam::Filesystem::Path& asset)
 	return serializer.ParseHeader(file.GetStream());
 }
 
-static Gleam::TString ParseAssetName(const Gleam::Filesystem::Path& asset, const Gleam::Guid& typeGuid)
+static Gleam::TString ParseAssetName(const Gleam::Path& asset, const Gleam::Guid& typeGuid)
 {
     if (typeGuid == Gleam::Reflection::GetClass<Gleam::MeshDescriptor>().Guid())
     {
@@ -85,7 +85,7 @@ static Gleam::TString ParseAssetName(const Gleam::Filesystem::Path& asset, const
     return "";
 }
 
-EAssetManager::EAssetManager(const Gleam::Filesystem::Path& directory)
+EAssetManager::EAssetManager(const Gleam::Path& directory)
 	: mRegistry(directory)
 	, mAssetDirectory(directory)
 {
@@ -180,7 +180,7 @@ void EAssetManager::Shutdown()
 	
 }
 
-void EAssetManager::Import(const Gleam::Filesystem::Path& directory, const AssetPackage& package)
+void EAssetManager::Import(const Gleam::Path& directory, const AssetPackage& package)
 {
 	for (const auto& baker : package.mBakers)
 	{

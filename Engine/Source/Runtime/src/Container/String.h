@@ -1,5 +1,6 @@
 #pragma once
 #include <Reflection/Macro.h>
+#include <Reflection/Utils.h>
 
 #include <string>
 #include <sstream>
@@ -7,11 +8,10 @@
 #include <codecvt>
 #include <bitset>
 #include <algorithm>
-#include <entt/core/hashed_string.hpp>
 
 static constexpr uint32_t operator"" _hs(const char* str, size_t size)
 {
-    return entt::hashed_string(str);
+    return Gleam::Reflection::Utils::HashString(str);
 }
 
 namespace Gleam {
@@ -32,7 +32,7 @@ namespace StringUtils {
 
 static constexpr uint32_t Hash(const char* str)
 {
-	return entt::hashed_string(str);
+	return Reflection::Utils::HashString(str);
 }
 
 static constexpr uint32_t Hash(const TStringView str)
@@ -127,3 +127,12 @@ static TString Deserialize(const TString& binary)
 } // namespace StringUtils
 
 } // namespace Gleam
+
+namespace Gleam::Reflection::External {
+
+GCLASS(TString, "CA5CFF7E-51A8-48B7-9315-1A1BF203E855", Serializable)
+{
+
+};
+
+} // namespace Gleam::Reflection::External

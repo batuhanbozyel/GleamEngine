@@ -105,9 +105,9 @@ void BinarySerializer::Initialize(Engine* engine)
 			stream.write(reinterpret_cast<const char*>(guid.mBytes), sizeof(guid.mBytes));
 		};
 
-		mCustomSerializers[Reflection::GetClass<TString>().ResolveName()] = [](const void* obj,
-																			   const Reflection::ClassDescription& classDesc,
-																			   FileStream& stream)
+		mCustomSerializers[Reflection::GetClass<Reflection::External::TString>().ResolveName()] = [](const void* obj,
+																									 const Reflection::ClassDescription& classDesc,
+																									 FileStream& stream)
 		{
 			const auto& str = Reflection::Get<TString>(obj);
 			auto len = static_cast<uint32_t>(str.length());
@@ -117,9 +117,9 @@ void BinarySerializer::Initialize(Engine* engine)
 			stream.write(str.data(), str.length());
 		};
 
-		mCustomArraySerializers[Reflection::GetClass<TString>().ResolveName()] = [](const void* obj,
-																					const Reflection::ClassDescription& classDesc,
-																					FileStream& stream)
+		mCustomArraySerializers[Reflection::GetClass<Reflection::External::TString>().ResolveName()] = [](const void* obj,
+																										  const Reflection::ClassDescription& classDesc,
+																										  FileStream& stream)
 		{
 			const auto& str = Reflection::Get<TString>(obj);
 			auto len = static_cast<uint32_t>(str.length());
@@ -127,11 +127,11 @@ void BinarySerializer::Initialize(Engine* engine)
 			stream.write(str.data(), str.length());
 		};
 		
-		mCustomSerializers[Reflection::GetClass<Filesystem::Path>().ResolveName()] = [](const void* obj,
-																						const Reflection::ClassDescription& classDesc,
-																						FileStream& stream)
+		mCustomSerializers[Reflection::GetClass<Reflection::External::Path>().ResolveName()] = [](const void* obj,
+																								  const Reflection::ClassDescription& classDesc,
+																								  FileStream& stream)
 		{
-			const auto& path = Reflection::Get<Filesystem::Path>(obj);
+			const auto& path = Reflection::Get<Path>(obj);
 			const auto& pathStr = path.string();
 			auto len = static_cast<uint32_t>(pathStr.length());
 
@@ -140,20 +140,20 @@ void BinarySerializer::Initialize(Engine* engine)
 			stream.write(pathStr.data(), pathStr.length());
 		};
 
-		mCustomArraySerializers[Reflection::GetClass<Filesystem::Path>().ResolveName()] = [](const void* obj,
-																							 const Reflection::ClassDescription& classDesc,
-																							 FileStream& stream)
+		mCustomArraySerializers[Reflection::GetClass<Reflection::External::Path>().ResolveName()] = [](const void* obj,
+																									   const Reflection::ClassDescription& classDesc,
+																									   FileStream& stream)
 		{
-			const auto& path = Reflection::Get<Filesystem::Path>(obj);
+			const auto& path = Reflection::Get<Path>(obj);
 			const auto& pathStr = path.string();
 			auto len = static_cast<uint32_t>(pathStr.length());
 			stream.write(reinterpret_cast<const char*>(&len), sizeof(uint32_t));
 			stream.write(pathStr.data(), pathStr.length());
 		};
 		
-		mCustomSerializers[Reflection::GetClass<TArray<uint8_t>>().ResolveName()] = [](const void* obj,
-																					   const Reflection::ClassDescription& classDesc,
-																					   FileStream& stream)
+		mCustomSerializers[Reflection::GetClass<Reflection::External::TArray>().ResolveName()] = [](const void* obj,
+																									const Reflection::ClassDescription& classDesc,
+																									FileStream& stream)
 		{
 			auto templateParams = classDesc.ResolveTemplateParameters();
 			GLEAM_ASSERT(templateParams.size() == 1, "JSONSerializer: TArray must have exactly one template parameter for element type.");
@@ -164,9 +164,9 @@ void BinarySerializer::Initialize(Engine* engine)
 			SerializeArray(arr.data(), arrDesc, stream);
 		};
 
-		mCustomArraySerializers[Reflection::GetClass<TArray<uint8_t>>().ResolveName()] = [](const void* obj,
-																							const Reflection::ClassDescription& classDesc,
-																							FileStream& stream)
+		mCustomArraySerializers[Reflection::GetClass<Reflection::External::TArray>().ResolveName()] = [](const void* obj,
+																										 const Reflection::ClassDescription& classDesc,
+																										 FileStream& stream)
 		{
 			auto templateParams = classDesc.ResolveTemplateParameters();
 			GLEAM_ASSERT(templateParams.size() == 1, "JSONSerializer: TArray must have exactly one template parameter for element type.");
@@ -204,9 +204,9 @@ void BinarySerializer::Initialize(Engine* engine)
 			Reflection::Get<Guid>(obj) = guid;
 		};
 		
-		mCustomDeserializers[Reflection::GetClass<TString>().ResolveName()] = [](FileStream& stream,
-																				 const Reflection::ClassDescription& classDesc,
-																				 void* obj)
+		mCustomDeserializers[Reflection::GetClass<Reflection::External::TString>().ResolveName()] = [](FileStream& stream,
+																									   const Reflection::ClassDescription& classDesc,
+																									   void* obj)
 		{
 			BinaryHeader header;
 			DeserializeHeader(stream, header);
@@ -219,22 +219,22 @@ void BinarySerializer::Initialize(Engine* engine)
 			stream.read(str.data(), len);
 		};
 
-		mCustomArrayDeserializers[Reflection::GetClass<TString>().ResolveName()] = [](FileStream& stream,
+		mCustomArrayDeserializers[Reflection::GetClass<Reflection::External::TString>().ResolveName()] = [](FileStream& stream,
+																											const Reflection::ClassDescription& classDesc,
+																											void* obj)
+		{
+			uint32_t len = 0;
+			stream.read(reinterpret_cast<char*>(&len), sizeof(uint32_t));
+
+			auto& str = Reflection::Get<TString>(obj);
+			str.resize(len);
+			stream.read(str.data(), len);
+		};
+		
+		mCustomDeserializers[Reflection::GetClass<Reflection::External::Path>().ResolveName()] = [](FileStream& stream,
 			const Reflection::ClassDescription& classDesc,
 			void* obj)
 		{
-			uint32_t len = 0;
-			stream.read(reinterpret_cast<char*>(&len), sizeof(uint32_t));
-
-			auto& str = Reflection::Get<TString>(obj);
-			str.resize(len);
-			stream.read(str.data(), len);
-		};
-		
-		mCustomDeserializers[Reflection::GetClass<Filesystem::Path>().ResolveName()] = [](FileStream& stream,
-																						  const Reflection::ClassDescription& classDesc,
-																						  void* obj)
-		{
 			BinaryHeader header;
 			DeserializeHeader(stream, header);
 
@@ -244,12 +244,12 @@ void BinarySerializer::Initialize(Engine* engine)
 			TString pathStr;
 			pathStr.resize(len);
 			stream.read(pathStr.data(), len);
-			Reflection::Get<Filesystem::Path>(obj) = Filesystem::Path(pathStr);
+			Reflection::Get<Path>(obj) = Path(pathStr);
 		};
 
-		mCustomArrayDeserializers[Reflection::GetClass<Filesystem::Path>().ResolveName()] = [](FileStream& stream,
-																							   const Reflection::ClassDescription& classDesc,
-																							   void* obj)
+		mCustomArrayDeserializers[Reflection::GetClass<Reflection::External::Path>().ResolveName()] = [](FileStream& stream,
+																										 const Reflection::ClassDescription& classDesc,
+																										 void* obj)
 		{
 			uint32_t len = 0;
 			stream.read(reinterpret_cast<char*>(&len), sizeof(uint32_t));
@@ -257,12 +257,12 @@ void BinarySerializer::Initialize(Engine* engine)
 			TString pathStr;
 			pathStr.resize(len);
 			stream.read(pathStr.data(), len);
-			Reflection::Get<Filesystem::Path>(obj) = Filesystem::Path(pathStr);
+			Reflection::Get<Path>(obj) = Path(pathStr);
 		};
 		
-		mCustomDeserializers[Reflection::GetClass<TArray<uint8_t>>().ResolveName()] = [](FileStream& stream,
-																						 const Reflection::ClassDescription& classDesc,
-																						 void* obj)
+		mCustomDeserializers[Reflection::GetClass<Reflection::External::TArray>().ResolveName()] = [](FileStream& stream,
+																									  const Reflection::ClassDescription& classDesc,
+																									  void* obj)
 		{
 			auto templateParams = classDesc.ResolveTemplateParameters();
 			GLEAM_ASSERT(templateParams.size() == 1, "BinarySerializer: TArray must have exactly one template parameter for element type.");
@@ -278,9 +278,9 @@ void BinarySerializer::Initialize(Engine* engine)
 			DeserializeArrayElements(stream, arrDesc, arr.data());
 		};
 
-		mCustomArrayDeserializers[Reflection::GetClass<TArray<uint8_t>>().ResolveName()] = [](FileStream& stream,
-																							  const Reflection::ClassDescription& classDesc,
-																							  void* obj)
+		mCustomArrayDeserializers[Reflection::GetClass<Reflection::External::TArray>().ResolveName()] = [](FileStream& stream,
+																										   const Reflection::ClassDescription& classDesc,
+																										   void* obj)
 		{
 			auto templateParams = classDesc.ResolveTemplateParameters();
 			GLEAM_ASSERT(templateParams.size() == 1, "BinarySerializer: TArray must have exactly one template parameter for element type.");

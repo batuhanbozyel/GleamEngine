@@ -118,7 +118,7 @@ void JSONSerializer::Initialize(Engine* engine)
             node.PushBack(rapidjson::Value(guid.ToString(), node.allocator));
         };
         
-		mCustomObjectSerializers[Reflection::GetClass<TString>().ResolveName()] = [](const void* obj,
+		mCustomObjectSerializers[Reflection::GetClass<Reflection::External::TString>().ResolveName()] = [](const void* obj,
 			const TStringView fieldName,
 			const Reflection::ClassDescription& classDesc,
 			rapidjson::Node& node)
@@ -128,7 +128,7 @@ void JSONSerializer::Initialize(Engine* engine)
 			node.AddMember("Value", rapidjson::StringRef(str.c_str(), str.length()));
 		};
 
-		mCustomArraySerializers[Reflection::GetClass<TString>().ResolveName()] = [](const void* obj,
+		mCustomArraySerializers[Reflection::GetClass<Reflection::External::TString>().ResolveName()] = [](const void* obj,
 			const Reflection::ClassDescription& classDesc,
 			rapidjson::Node& node)
 		{
@@ -136,27 +136,27 @@ void JSONSerializer::Initialize(Engine* engine)
 			node.PushBack(rapidjson::Value(rapidjson::StringRef(str.c_str(), str.length())));
 		};
         
-        mCustomObjectSerializers[Reflection::GetClass<Filesystem::Path>().ResolveName()] = [](const void* obj,
+        mCustomObjectSerializers[Reflection::GetClass<Reflection::External::Path>().ResolveName()] = [](const void* obj,
             const TStringView fieldName,
             const Reflection::ClassDescription& classDesc,
 			rapidjson::Node& node)
         {
-            const auto& path = Reflection::Get<Filesystem::Path>(obj);
+            const auto& path = Reflection::Get<Path>(obj);
             const auto& pathStr = path.string();
             SerializeClassHeader(classDesc, fieldName, node);
 			node.AddMember("Value", rapidjson::StringRef(pathStr.c_str(), pathStr.length()));
         };
 
-        mCustomArraySerializers[Reflection::GetClass<Filesystem::Path>().ResolveName()] = [](const void* obj,
+        mCustomArraySerializers[Reflection::GetClass<Reflection::External::Path>().ResolveName()] = [](const void* obj,
             const Reflection::ClassDescription& classDesc,
 			rapidjson::Node& node)
         {
-            const auto& path = Reflection::Get<Filesystem::Path>(obj);
+            const auto& path = Reflection::Get<Path>(obj);
             const auto& pathStr = path.string();
             node.PushBack(rapidjson::Value(rapidjson::StringRef(pathStr.c_str(), pathStr.length())));
         };
 
-		mCustomObjectSerializers[Reflection::GetClass<TArray<uint8_t>>().ResolveName()] = [](const void* obj,
+		mCustomObjectSerializers[Reflection::GetClass<Reflection::External::TArray>().ResolveName()] = [](const void* obj,
 			const TStringView fieldName,
 			const Reflection::ClassDescription& classDesc,
 			rapidjson::Node& node)
@@ -170,7 +170,7 @@ void JSONSerializer::Initialize(Engine* engine)
             SerializeArrayObject(arr.data(), fieldName, arrDesc, node);
 		};
 
-		mCustomArraySerializers[Reflection::GetClass<TArray<uint8_t>>().ResolveName()] = [](const void* obj,
+		mCustomArraySerializers[Reflection::GetClass<Reflection::External::TArray>().ResolveName()] = [](const void* obj,
 			const Reflection::ClassDescription& classDesc,
 			rapidjson::Node& node)
 		{
@@ -203,7 +203,7 @@ void JSONSerializer::Initialize(Engine* engine)
             Reflection::Get<Guid>(obj) = Guid(node.object.GetString());
         };
         
-		mCustomObjectDeserializers[Reflection::GetClass<TString>().ResolveName()] = [](const rapidjson::ConstNode& node,
+		mCustomObjectDeserializers[Reflection::GetClass<Reflection::External::TString>().ResolveName()] = [](const rapidjson::ConstNode& node,
 			const Reflection::ClassDescription& classDesc,
 			void* obj)
 		{
@@ -213,31 +213,31 @@ void JSONSerializer::Initialize(Engine* engine)
             }
 		};
         
-        mCustomArrayDeserializers[Reflection::GetClass<TString>().ResolveName()] = [](const rapidjson::ConstNode& node,
+        mCustomArrayDeserializers[Reflection::GetClass<Reflection::External::TString>().ResolveName()] = [](const rapidjson::ConstNode& node,
             const Reflection::ClassDescription& classDesc,
             void* obj)
         {
             Reflection::Get<TString>(obj) = TString(node.object.GetString());
         };
         
-        mCustomObjectDeserializers[Reflection::GetClass<Filesystem::Path>().ResolveName()] = [](const rapidjson::ConstNode& node,
+        mCustomObjectDeserializers[Reflection::GetClass<Reflection::External::Path>().ResolveName()] = [](const rapidjson::ConstNode& node,
             const Reflection::ClassDescription& classDesc,
             void* obj)
         {
             if (node.object.HasMember("Value"))
             {
-                Reflection::Get<Filesystem::Path>(obj) = TString(node.object["Value"].GetString());
+                Reflection::Get<Path>(obj) = TString(node.object["Value"].GetString());
             }
         };
         
-        mCustomArrayDeserializers[Reflection::GetClass<Filesystem::Path>().ResolveName()] = [](const rapidjson::ConstNode& node,
+        mCustomArrayDeserializers[Reflection::GetClass<Reflection::External::Path>().ResolveName()] = [](const rapidjson::ConstNode& node,
             const Reflection::ClassDescription& classDesc,
             void* obj)
         {
-            Reflection::Get<Filesystem::Path>(obj) = TString(node.object.GetString());
+            Reflection::Get<Path>(obj) = TString(node.object.GetString());
         };
 
-		mCustomObjectDeserializers[Reflection::GetClass<TArray<uint8_t>>().ResolveName()] = [](const rapidjson::ConstNode& node,
+		mCustomObjectDeserializers[Reflection::GetClass<Reflection::External::TArray>().ResolveName()] = [](const rapidjson::ConstNode& node,
 			const Reflection::ClassDescription& classDesc,
 			void* obj)
 		{
@@ -289,7 +289,7 @@ void JSONSerializer::Initialize(Engine* engine)
 			}
 		};
         
-        mCustomArrayDeserializers[Reflection::GetClass<TArray<uint8_t>>().ResolveName()] = [](const rapidjson::ConstNode& node,
+        mCustomArrayDeserializers[Reflection::GetClass<Reflection::External::TArray>().ResolveName()] = [](const rapidjson::ConstNode& node,
             const Reflection::ClassDescription& classDesc,
             void* obj)
         {

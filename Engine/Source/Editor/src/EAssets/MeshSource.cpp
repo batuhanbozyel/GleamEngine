@@ -45,7 +45,7 @@ static void setTSpaceBasic(const SMikkTSpaceContext* context, const float tangen
 
 } // namespace MikkT
 
-bool MeshSource::Import(const Gleam::Filesystem::Path& path, const ImportSettings& settings)
+bool MeshSource::Import(const Gleam::Path& path, const ImportSettings& settings)
 {
 	Gleam::TString gltfPath = path.string();
 	cgltf_options options = {};
@@ -403,13 +403,13 @@ RawMaterial ProcessMaterial(const cgltf_material& mat, const MeshSource::ImportS
         
         if (auto texture = pbr.base_color_texture.texture; texture != nullptr)
         {
-			Gleam::Filesystem::Path file = texture->image->uri;
+			Gleam::Path file = texture->image->uri;
             material.textures[PBRTexture::Albedo] = file;
         }
         
         if (auto texture = pbr.metallic_roughness_texture.texture; texture != nullptr)
         {
-			Gleam::Filesystem::Path file = texture->image->uri;
+			Gleam::Path file = texture->image->uri;
             material.textures[PBRTexture::MetallicRoughness] = file;
         }
     }
@@ -417,14 +417,14 @@ RawMaterial ProcessMaterial(const cgltf_material& mat, const MeshSource::ImportS
     // Normal
     if (auto texture = mat.normal_texture.texture; texture != nullptr)
     {
-		Gleam::Filesystem::Path file = texture->image->uri;
+		Gleam::Path file = texture->image->uri;
         material.textures[PBRTexture::Normal] = file;
     }
     
     // Emissive
     if (auto texture = mat.emissive_texture.texture; texture != nullptr)
     {
-		Gleam::Filesystem::Path file = texture->image->uri;
+		Gleam::Path file = texture->image->uri;
         material.textures[PBRTexture::Emissive] = file;
     }
     

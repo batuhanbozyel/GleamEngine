@@ -14,7 +14,7 @@ public:
 		
 	};
 
-	bool Import(const Gleam::Filesystem::Path& path, const ImportSettings& settings);
+	bool Import(const Gleam::Path& path, const ImportSettings& settings);
 };
 
 } // namespace GEditor

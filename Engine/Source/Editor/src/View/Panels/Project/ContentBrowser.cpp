@@ -41,7 +41,7 @@ void ContentBrowser::Render(Gleam::ImGuiRenderer* imgui)
 	});
 }
 
-bool ContentBrowser::ImportAsset(const Gleam::Filesystem::Path& path)
+bool ContentBrowser::ImportAsset(const Gleam::Path& path)
 {
 	if (path.extension() == ".gltf")
 	{
@@ -57,7 +57,7 @@ bool ContentBrowser::ImportAsset(const Gleam::Filesystem::Path& path)
 	return false;
 }
 
-void ContentBrowser::DrawDirectoryTreeView(const Gleam::Filesystem::Path& node)
+void ContentBrowser::DrawDirectoryTreeView(const Gleam::Path& node)
 {
     auto filename = node.filename().string();
     ImGui::PushID(filename.c_str());

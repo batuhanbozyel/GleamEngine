@@ -11,7 +11,7 @@ public:
 
 	virtual ~AssetBaker() = default;
 
-	virtual void Bake(const Gleam::Filesystem::Path& directory, const AssetItem& item) const = 0;
+	virtual void Bake(const Gleam::Path& directory, const AssetItem& item) const = 0;
 
     virtual Gleam::TString Filename() const = 0;
     

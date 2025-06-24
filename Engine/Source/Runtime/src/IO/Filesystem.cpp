@@ -19,7 +19,7 @@ void Filesystem::ForEach(const Path& path, const DirectoryFn& fn, bool recursive
     }
 }
 
-File Filesystem::Create(const Filesystem::Path& path, FileType type)
+File Filesystem::Create(const Path& path, FileType type)
 {
     auto flags = std::ios::out | std::ios::in | std::ios::trunc;
     if (type == FileType::Binary)
@@ -42,7 +42,7 @@ File Filesystem::Create(const Filesystem::Path& path, FileType type)
 	return File(std::move(handle), path, it->second);
 }
 
-File Filesystem::Open(const Filesystem::Path& path, FileType type)
+File Filesystem::Open(const Path& path, FileType type)
 {
 	auto flags = std::ios::out | std::ios::in;
 	if (type == FileType::Binary)
@@ -56,42 +56,42 @@ File Filesystem::Open(const Filesystem::Path& path, FileType type)
 	return File(std::move(handle), path, mFileAccessors[path]);
 }
 
-bool Filesystem::Remove(const Filesystem::Path& path)
+bool Filesystem::Remove(const Path& path)
 {
     return std::filesystem::remove(path);
 }
 
-FileAccessor& Filesystem::Accessor(const Filesystem::Path& path)
+FileAccessor& Filesystem::Accessor(const Path& path)
 {
 	return mFileAccessors[path];
 }
 
-FileAccessor::Read Filesystem::ReadAccessor(const Filesystem::Path& path)
+FileAccessor::Read Filesystem::ReadAccessor(const Path& path)
 {
 	return FileAccessor::Read(Accessor(path));
 }
 
-FileAccessor::Write Filesystem::WriteAccessor(const Filesystem::Path& path)
+FileAccessor::Write Filesystem::WriteAccessor(const Path& path)
 {
 	return FileAccessor::Write(Accessor(path));
 }
 
-Filesystem::Path Filesystem::WorkingDirectory()
+Path Filesystem::WorkingDirectory()
 {
 	return std::filesystem::current_path();
 }
 
-Filesystem::Path Filesystem::Relative(const Filesystem::Path& path, const Filesystem::Path& base)
+Path Filesystem::Relative(const Path& path, const Path& base)
 {
 	return std::filesystem::relative(path, base);
 }
 
-bool Filesystem::Exists(const Filesystem::Path& path)
+bool Filesystem::Exists(const Path& path)
 {
 	return std::filesystem::exists(path);
 }
 
-bool Filesystem::IsDirectory(const Filesystem::Path& path)
+bool Filesystem::IsDirectory(const Path& path)
 {
 	return std::filesystem::is_directory(path);
 }

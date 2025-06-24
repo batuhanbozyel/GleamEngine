@@ -2,13 +2,13 @@
 
 using namespace GEditor;
 
-AssetRegistry::AssetRegistry(const Gleam::Filesystem::Path& directory)
+AssetRegistry::AssetRegistry(const Gleam::Path& directory)
 	: mAssetDirectory(directory)
 {
 
 }
 
-const AssetItem& AssetRegistry::RegisterAsset(const Gleam::Filesystem::Path& path, const Gleam::Guid& type)
+const AssetItem& AssetRegistry::RegisterAsset(const Gleam::Path& path, const Gleam::Guid& type)
 {
 	const auto& item = GetAsset(path, type);
 	if (item.reference.guid == Gleam::Guid::InvalidGuid())
@@ -24,7 +24,7 @@ const AssetItem& AssetRegistry::RegisterAsset(const Gleam::Filesystem::Path& pat
 	return item;
 }
 
-const AssetItem& AssetRegistry::RegisterAsset(const Gleam::Filesystem::Path& path, const AssetItem& item)
+const AssetItem& AssetRegistry::RegisterAsset(const Gleam::Path& path, const AssetItem& item)
 {
 	auto relPath = path.is_relative() ? path : Gleam::Filesystem::Relative(path, mAssetDirectory);
 	auto& items = mAssets[relPath];
@@ -56,7 +56,7 @@ const AssetItem& AssetRegistry::GetAsset(const Gleam::Guid& guid) const
 	return invalidAsset;
 }
 
-const AssetItem& AssetRegistry::GetAsset(const Gleam::Filesystem::Path& path, const Gleam::Guid& type) const
+const AssetItem& AssetRegistry::GetAsset(const Gleam::Path& path, const Gleam::Guid& type) const
 {
 	auto relPath = path.is_relative() ? path : Gleam::Filesystem::Relative(path, mAssetDirectory);
 	auto it = mAssets.find(relPath);

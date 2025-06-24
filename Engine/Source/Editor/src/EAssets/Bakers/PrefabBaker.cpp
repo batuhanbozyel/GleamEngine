@@ -9,7 +9,7 @@ PrefabBaker::PrefabBaker(const Gleam::RefCounted<Gleam::World>& world)
 	
 }
 
-void PrefabBaker::Bake(const Gleam::Filesystem::Path& directory, const AssetItem& item) const
+void PrefabBaker::Bake(const Gleam::Path& directory, const AssetItem& item) const
 {
 	auto filename = item.reference.guid.ToString() + Gleam::Prefab::Extension().data();
 	auto file = Gleam::Filesystem::Create(directory / filename, Gleam::FileType::Text);

@@ -56,7 +56,7 @@ static Gleam::BlendMode BlendModeFromObject(const rapidjson::Value& object)
 	}
 }
 
-bool MaterialSource::Import(const Gleam::Filesystem::Path& path, const ImportSettings& settings)
+bool MaterialSource::Import(const Gleam::Path& path, const ImportSettings& settings)
 {
     auto file = Gleam::Filesystem::Open(path, Gleam::FileType::Text);
     if (file.Empty())
@@ -163,7 +163,7 @@ bool MaterialSource::Import(const Gleam::Filesystem::Path& path, const ImportSet
             }
         }
 
-		Gleam::Filesystem::Path dxilShader = Gleam::Globals::BuiltinAssetsDirectory / "Shaders" / descriptor.surfaceShader;
+		Gleam::Path dxilShader = Gleam::Globals::BuiltinAssetsDirectory / "Shaders" / descriptor.surfaceShader;
 		dxilShader.replace_extension("dxil");
 
 		if (Gleam::Filesystem::Exists(dxilShader))

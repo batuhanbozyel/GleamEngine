@@ -3,7 +3,7 @@
 
 using namespace Gleam;
 
-File::File(FileStream&& handle, const Filesystem::Path& path, FileAccessor& accessor)
+File::File(FileStream&& handle, const Path& path, FileAccessor& accessor)
 	: mName(path.filename().string())
     , mFullPath(path)
 	, mHandle(std::move(handle))

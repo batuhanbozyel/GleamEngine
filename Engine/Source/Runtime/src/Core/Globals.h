@@ -15,13 +15,13 @@ struct Globals final
 
 	static inline TString ProjectName;
 
-	static inline Filesystem::Path StartupDirectory;
+	static inline Path StartupDirectory;
 
-	static inline Filesystem::Path ProjectDirectory;
+	static inline Path ProjectDirectory;
 
-	static inline Filesystem::Path BuiltinAssetsDirectory;
+	static inline Path BuiltinAssetsDirectory;
 
-	static inline Filesystem::Path ProjectContentDirectory;
+	static inline Path ProjectContentDirectory;
 };
 
 } // namespace Gleam

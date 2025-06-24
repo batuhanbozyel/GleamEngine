@@ -22,15 +22,15 @@ public:
     
 private:
 
-	bool ImportAsset(const Gleam::Filesystem::Path& path);
+	bool ImportAsset(const Gleam::Path& path);
     
-    void DrawDirectoryTreeView(const Gleam::Filesystem::Path& directory);
+    void DrawDirectoryTreeView(const Gleam::Path& directory);
     
     EAssetManager* mAssetManager;
 
-    Gleam::Filesystem::Path mCurrentDirectory;
+    Gleam::Path mCurrentDirectory;
     
-	Gleam::Filesystem::Path mAssetDirectory;
+	Gleam::Path mAssetDirectory;
     
 };
 

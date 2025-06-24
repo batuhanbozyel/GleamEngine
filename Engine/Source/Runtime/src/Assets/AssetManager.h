@@ -87,7 +87,7 @@ public:
 			.template func<&CreateAsset<T, Desc>>("CreateAsset"_hs);
 	}
 	
-	const Filesystem::Path& GetAssetPath(const AssetReference& ref) const;
+	const Path& GetAssetPath(const AssetReference& ref) const;
 
 private:
 	
@@ -98,13 +98,13 @@ private:
 		return new T(instance->LoadDescriptor<Desc>(ref));
 	}
 
-	void EmplaceAssetPath(const Filesystem::Path& path);
+	void EmplaceAssetPath(const Path& path);
 
 	std::mutex mMutex;
 	
 	HashMap<AssetReference, Scope<Asset>> mAssetCache;
     
-    HashMap<AssetReference, Filesystem::Path> mAssetPaths;
+    HashMap<AssetReference, Path> mAssetPaths;
 
 };
 

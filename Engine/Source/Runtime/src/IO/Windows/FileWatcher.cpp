@@ -10,7 +10,7 @@ using namespace Gleam;
 
 struct FileWatcher::Handle
 {
-	Filesystem::Path path;
+	Path path;
 	FileWatchHandler handler;
 
 	BYTE buffer[8192];
@@ -20,7 +20,7 @@ struct FileWatcher::Handle
 	std::atomic<bool> running;
 	std::condition_variable condition;
 
-	Handle(const Filesystem::Path& path, FileWatchHandler&& handler, HANDLE dirHandle)
+	Handle(const Path& path, FileWatchHandler&& handler, HANDLE dirHandle)
 		: path(path), handler(std::move(handler)), win32Handle(dirHandle), running(true)
 	{
 		memset(&overlapped, 0, sizeof(OVERLAPPED));
@@ -78,7 +78,7 @@ struct FileWatcher::Handle
 		FILE_NOTIFY_INFORMATION* info = (FILE_NOTIFY_INFORMATION*)watcher->buffer;
 		while (true)
 		{
-			Filesystem::Path filepath = watcher->path / TWString(info->FileName, info->FileNameLength / sizeof(WCHAR));
+			Path filepath = watcher->path / TWString(info->FileName, info->FileNameLength / sizeof(WCHAR));
 			switch (info->Action)
 			{
 				case FILE_ACTION_ADDED:
@@ -137,7 +137,7 @@ void FileWatcher::Shutdown()
 	mWatchers.clear();
 }
 
-FileWatcher::Handle* FileWatcher::AddWatch(const Filesystem::Path& dir, FileWatchHandler&& handler)
+FileWatcher::Handle* FileWatcher::AddWatch(const Path& dir, FileWatchHandler&& handler)
 {
 	if (Filesystem::IsDirectory(dir) == false)
 	{

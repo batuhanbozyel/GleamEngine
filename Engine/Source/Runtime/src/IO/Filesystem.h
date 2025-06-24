@@ -11,6 +11,7 @@ namespace Gleam {
 class File;
 enum class FileType;
 using FileStream = std::fstream;
+using Path = std::filesystem::path;
 
 enum class FileStatus
 {
@@ -47,20 +48,19 @@ struct FileAccessor
 class Filesystem
 {
 public:
-	using Path = std::filesystem::path;
     using DirectoryFn = std::function<void(const Path& node)>;
     
     static void ForEach(const Path& path, const DirectoryFn& fn, bool recursive);
     
-	static File Create(const Filesystem::Path& path, FileType type);
+	static File Create(const Path& path, FileType type);
 
-	static File Open(const Filesystem::Path& path, FileType type);
+	static File Open(const Path& path, FileType type);
     
-    static bool Remove(const Filesystem::Path& path);
+    static bool Remove(const Path& path);
 
-	static FileAccessor::Read ReadAccessor(const Filesystem::Path& path);
+	static FileAccessor::Read ReadAccessor(const Path& path);
 
-	static FileAccessor::Write WriteAccessor(const Filesystem::Path& path);
+	static FileAccessor::Write WriteAccessor(const Path& path);
 
 	static Path WorkingDirectory();
 
@@ -72,12 +72,21 @@ public:
     
 private:
 
-	static FileAccessor& Accessor(const Filesystem::Path& path);
+	static FileAccessor& Accessor(const Path& path);
     
     static inline std::mutex mFileCreateMutex;
     
-    static inline HashMap<Filesystem::Path, FileAccessor> mFileAccessors;
+    static inline HashMap<Path, FileAccessor> mFileAccessors;
 
 };
 
 } // namespace Gleam
+
+namespace Gleam::Reflection::External {
+
+GCLASS(Path, "DA162505-C36B-4FF1-BCB7-FE8428606223", Serializable)
+{
+
+};
+
+} // namespace Gleam::Reflection::External
