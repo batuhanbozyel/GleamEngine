@@ -18,9 +18,3 @@ using DispatchSemaphore = dispatch_semaphore_t;
 #define GLEAM_ENGINE_MINOR_VERSION 0
 #define GLEAM_ENGINE_PATCH_VERSION 0
 #define GLEAM_ENGINE_VERSION constexpr Gleam::Version(GLEAM_ENGINE_MAJOR_VERSION, GLEAM_ENGINE_MINOR_VERSION, GLEAM_ENGINE_PATCH_VERSION)
-
-#define GLEAM_NONCOPYABLE(TypeName) \
-    TypeName(const TypeName&) = delete; \
-    TypeName& operator=(const TypeName&) = delete; \
-	TypeName(TypeName&&) = delete; \
-    TypeName& operator=(TypeName&&) = delete

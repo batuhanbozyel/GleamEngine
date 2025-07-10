@@ -1,5 +1,5 @@
 #pragma once
-#include "Core/EngineDefines.h"
+#include "Core/Macro.h"
 #include "Container/Pointer.h"
 #include "Container/String.h"
 
@@ -82,6 +82,13 @@ private:
 #define GLEAM_INFO(...) ::Gleam::Logger::GetClientLogger().Log(::Gleam::Logger::Level::Info, __VA_ARGS__)
 #define GLEAM_WARN(...) ::Gleam::Logger::GetClientLogger().Log(::Gleam::Logger::Level::Warn, __VA_ARGS__)
 #define GLEAM_ERROR(...) ::Gleam::Logger::GetClientLogger().Log(::Gleam::Logger::Level::Error, __VA_ARGS__)
+
+#ifdef ENABLE_ASSERTS
+#include <filesystem>
+#define GLEAM_ASSERT(x, ...) if (!(x)) { GLEAM_CORE_ERROR("Assertion failed at {0}:{1}", std::filesystem::path(__FILE__).filename().string(), __LINE__); DEBUGBREAK(); }
+#else
+#define GLEAM_ASSERT(...)
+#endif
 
 static bool ExecuteCommand(const Gleam::TString& cmd)
 {

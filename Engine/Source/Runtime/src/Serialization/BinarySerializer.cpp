@@ -87,7 +87,7 @@ void BinarySerializer::Initialize(Engine* engine)
 {
 	// Custom serializers
 	{
-		mCustomSerializers[Reflection::GetClass<Guid>().ResolveName()] = [](const void* obj,
+		mCustomSerializers[Reflection::GetClass<Guid>().ResolveQualifiedName()] = [](const void* obj,
 																			const Reflection::ClassDescription& classDesc,
 																			FileStream& stream)
 		{
@@ -97,7 +97,7 @@ void BinarySerializer::Initialize(Engine* engine)
 			stream.write(reinterpret_cast<const char*>(guid.mBytes), sizeof(guid.mBytes));
 		};
 
-		mCustomArraySerializers[Reflection::GetClass<Guid>().ResolveName()] = [](const void* obj,
+		mCustomArraySerializers[Reflection::GetClass<Guid>().ResolveQualifiedName()] = [](const void* obj,
 																				 const Reflection::ClassDescription& classDesc,
 																				 FileStream& stream)
 		{
@@ -105,7 +105,7 @@ void BinarySerializer::Initialize(Engine* engine)
 			stream.write(reinterpret_cast<const char*>(guid.mBytes), sizeof(guid.mBytes));
 		};
 
-		mCustomSerializers[Reflection::GetClass<Reflection::External::TString>().ResolveName()] = [](const void* obj,
+		mCustomSerializers[Reflection::GetClass<Reflection::External::TString>().ResolveQualifiedName()] = [](const void* obj,
 																									 const Reflection::ClassDescription& classDesc,
 																									 FileStream& stream)
 		{
@@ -117,7 +117,7 @@ void BinarySerializer::Initialize(Engine* engine)
 			stream.write(str.data(), str.length());
 		};
 
-		mCustomArraySerializers[Reflection::GetClass<Reflection::External::TString>().ResolveName()] = [](const void* obj,
+		mCustomArraySerializers[Reflection::GetClass<Reflection::External::TString>().ResolveQualifiedName()] = [](const void* obj,
 																										  const Reflection::ClassDescription& classDesc,
 																										  FileStream& stream)
 		{
@@ -127,7 +127,7 @@ void BinarySerializer::Initialize(Engine* engine)
 			stream.write(str.data(), str.length());
 		};
 		
-		mCustomSerializers[Reflection::GetClass<Reflection::External::Path>().ResolveName()] = [](const void* obj,
+		mCustomSerializers[Reflection::GetClass<Reflection::External::Path>().ResolveQualifiedName()] = [](const void* obj,
 																								  const Reflection::ClassDescription& classDesc,
 																								  FileStream& stream)
 		{
@@ -140,7 +140,7 @@ void BinarySerializer::Initialize(Engine* engine)
 			stream.write(pathStr.data(), pathStr.length());
 		};
 
-		mCustomArraySerializers[Reflection::GetClass<Reflection::External::Path>().ResolveName()] = [](const void* obj,
+		mCustomArraySerializers[Reflection::GetClass<Reflection::External::Path>().ResolveQualifiedName()] = [](const void* obj,
 																									   const Reflection::ClassDescription& classDesc,
 																									   FileStream& stream)
 		{
@@ -151,7 +151,7 @@ void BinarySerializer::Initialize(Engine* engine)
 			stream.write(pathStr.data(), pathStr.length());
 		};
 		
-		mCustomSerializers[Reflection::GetClass<Reflection::External::TArray>().ResolveName()] = [](const void* obj,
+		mCustomSerializers[Reflection::GetClass<Reflection::External::TArray>().ResolveQualifiedName()] = [](const void* obj,
 																									const Reflection::ClassDescription& classDesc,
 																									FileStream& stream)
 		{
@@ -164,7 +164,7 @@ void BinarySerializer::Initialize(Engine* engine)
 			SerializeArray(arr.data(), arrDesc, stream);
 		};
 
-		mCustomArraySerializers[Reflection::GetClass<Reflection::External::TArray>().ResolveName()] = [](const void* obj,
+		mCustomArraySerializers[Reflection::GetClass<Reflection::External::TArray>().ResolveQualifiedName()] = [](const void* obj,
 																										 const Reflection::ClassDescription& classDesc,
 																										 FileStream& stream)
 		{
@@ -183,7 +183,7 @@ void BinarySerializer::Initialize(Engine* engine)
 	
 	// Custom deserializers
 	{
-		mCustomDeserializers[Reflection::GetClass<Guid>().ResolveName()] = [](FileStream& stream,
+		mCustomDeserializers[Reflection::GetClass<Guid>().ResolveQualifiedName()] = [](FileStream& stream,
 																			  const Reflection::ClassDescription& classDesc,
 																			  void* obj)
 		{
@@ -195,7 +195,7 @@ void BinarySerializer::Initialize(Engine* engine)
 			Reflection::Get<Guid>(obj) = guid;
 		};
 
-		mCustomArrayDeserializers[Reflection::GetClass<Guid>().ResolveName()] = [](FileStream& stream,
+		mCustomArrayDeserializers[Reflection::GetClass<Guid>().ResolveQualifiedName()] = [](FileStream& stream,
 																				   const Reflection::ClassDescription& classDesc,
 																				   void* obj)
 		{
@@ -204,7 +204,7 @@ void BinarySerializer::Initialize(Engine* engine)
 			Reflection::Get<Guid>(obj) = guid;
 		};
 		
-		mCustomDeserializers[Reflection::GetClass<Reflection::External::TString>().ResolveName()] = [](FileStream& stream,
+		mCustomDeserializers[Reflection::GetClass<Reflection::External::TString>().ResolveQualifiedName()] = [](FileStream& stream,
 																									   const Reflection::ClassDescription& classDesc,
 																									   void* obj)
 		{
@@ -219,7 +219,7 @@ void BinarySerializer::Initialize(Engine* engine)
 			stream.read(str.data(), len);
 		};
 
-		mCustomArrayDeserializers[Reflection::GetClass<Reflection::External::TString>().ResolveName()] = [](FileStream& stream,
+		mCustomArrayDeserializers[Reflection::GetClass<Reflection::External::TString>().ResolveQualifiedName()] = [](FileStream& stream,
 																											const Reflection::ClassDescription& classDesc,
 																											void* obj)
 		{
@@ -231,7 +231,7 @@ void BinarySerializer::Initialize(Engine* engine)
 			stream.read(str.data(), len);
 		};
 		
-		mCustomDeserializers[Reflection::GetClass<Reflection::External::Path>().ResolveName()] = [](FileStream& stream,
+		mCustomDeserializers[Reflection::GetClass<Reflection::External::Path>().ResolveQualifiedName()] = [](FileStream& stream,
 			const Reflection::ClassDescription& classDesc,
 			void* obj)
 		{
@@ -247,7 +247,7 @@ void BinarySerializer::Initialize(Engine* engine)
 			Reflection::Get<Path>(obj) = Path(pathStr);
 		};
 
-		mCustomArrayDeserializers[Reflection::GetClass<Reflection::External::Path>().ResolveName()] = [](FileStream& stream,
+		mCustomArrayDeserializers[Reflection::GetClass<Reflection::External::Path>().ResolveQualifiedName()] = [](FileStream& stream,
 																										 const Reflection::ClassDescription& classDesc,
 																										 void* obj)
 		{
@@ -260,7 +260,7 @@ void BinarySerializer::Initialize(Engine* engine)
 			Reflection::Get<Path>(obj) = Path(pathStr);
 		};
 		
-		mCustomDeserializers[Reflection::GetClass<Reflection::External::TArray>().ResolveName()] = [](FileStream& stream,
+		mCustomDeserializers[Reflection::GetClass<Reflection::External::TArray>().ResolveQualifiedName()] = [](FileStream& stream,
 																									  const Reflection::ClassDescription& classDesc,
 																									  void* obj)
 		{
@@ -278,7 +278,7 @@ void BinarySerializer::Initialize(Engine* engine)
 			DeserializeArrayElements(stream, arrDesc, arr.data());
 		};
 
-		mCustomArrayDeserializers[Reflection::GetClass<Reflection::External::TArray>().ResolveName()] = [](FileStream& stream,
+		mCustomArrayDeserializers[Reflection::GetClass<Reflection::External::TArray>().ResolveQualifiedName()] = [](FileStream& stream,
 																										   const Reflection::ClassDescription& classDesc,
 																										   void* obj)
 		{
@@ -331,7 +331,7 @@ bool BinarySerializer::TryCustomSerializer(const void* obj,
 										   const Reflection::ClassDescription& classDesc,
 										   FileStream& stream)
 {
-	auto it = mCustomSerializers.find(classDesc.ResolveName());
+	auto it = mCustomSerializers.find(classDesc.ResolveQualifiedName());
 	if (it != mCustomSerializers.end())
 	{
 		it->second(obj, classDesc, stream);
@@ -344,7 +344,7 @@ bool BinarySerializer::TryCustomArraySerializer(const void* obj,
 												const Reflection::ClassDescription& classDesc,
 												FileStream& stream)
 {
-	auto it = mCustomArraySerializers.find(classDesc.ResolveName());
+	auto it = mCustomArraySerializers.find(classDesc.ResolveQualifiedName());
 	if (it != mCustomArraySerializers.end())
 	{
 		it->second(obj, classDesc, stream);
@@ -357,7 +357,7 @@ bool BinarySerializer::TryCustomDeserializer(FileStream& stream,
 											 const Reflection::ClassDescription& classDesc,
 											 void* obj)
 {
-	auto it = mCustomDeserializers.find(classDesc.ResolveName());
+	auto it = mCustomDeserializers.find(classDesc.ResolveQualifiedName());
 	if (it != mCustomDeserializers.end())
 	{
 		it->second(stream, classDesc, obj);
@@ -370,7 +370,7 @@ bool BinarySerializer::TryCustomArrayDeserializer(FileStream& stream,
 												  const Reflection::ClassDescription& classDesc,
 												  void* obj)
 {
-	auto it = mCustomArrayDeserializers.find(classDesc.ResolveName());
+	auto it = mCustomArrayDeserializers.find(classDesc.ResolveQualifiedName());
 	if (it != mCustomArrayDeserializers.end())
 	{
 		it->second(stream, classDesc, obj);
@@ -410,7 +410,7 @@ void SerializeEnumHeader(const Reflection::EnumDescription& enumDesc, FileStream
 {
 	BinaryHeader header;
 	header.kind = Reflection::MetaType::Enum;
-	header.name = enumDesc.ResolveName();
+	header.name = enumDesc.ResolveQualifiedName();
 	header.guid = enumDesc.Guid();
 
 	if (enumDesc.HasAttribute<Reflection::Attribute::Version>())
@@ -425,7 +425,7 @@ void SerializeClassHeader(const Reflection::ClassDescription& classDesc, FileStr
 {
 	BinaryHeader header;
 	header.kind = Reflection::MetaType::Class;
-	header.name = classDesc.ResolveName();
+	header.name = classDesc.ResolveQualifiedName();
 	header.guid = classDesc.Guid();
 
 	if (classDesc.HasAttribute<Reflection::Attribute::Version>())
@@ -442,23 +442,23 @@ void SerializeArrayHeader(const Reflection::ArrayDescription& arrayDesc, FileStr
 	header.kind = Reflection::MetaType::Array;
 	if (arrayDesc.ElementType() == Reflection::MetaType::Class)
 	{
-		const auto& classDesc = Reflection::GetClass(arrayDesc.ElementHash());
-		if (classDesc.HasAttribute<Reflection::Attribute::Version>())
+		const auto classDesc = Reflection::GetClass(arrayDesc.ElementHash());
+		if (classDesc->HasAttribute<Reflection::Attribute::Version>())
 		{
-			header.version = classDesc.GetAttribute<Reflection::Attribute::Version>()->version;
+			header.version = classDesc->GetAttribute<Reflection::Attribute::Version>()->version;
 		}
-		header.guid = classDesc.Guid();
-		header.name = classDesc.ResolveName();
+		header.guid = classDesc->Guid();
+		header.name = classDesc->ResolveQualifiedName();
 	}
 	else if (arrayDesc.ElementType() == Reflection::MetaType::Enum)
 	{
-		const auto& enumDesc = Reflection::GetEnum(arrayDesc.ElementHash());
-		if (enumDesc.HasAttribute<Reflection::Attribute::Version>())
+		const auto enumDesc = Reflection::GetEnum(arrayDesc.ElementHash());
+		if (enumDesc->HasAttribute<Reflection::Attribute::Version>())
 		{
-			header.version = enumDesc.GetAttribute<Reflection::Attribute::Version>()->version;
+			header.version = enumDesc->GetAttribute<Reflection::Attribute::Version>()->version;
 		}
-		header.guid = enumDesc.Guid();
-		header.name = enumDesc.ResolveName();
+		header.guid = enumDesc->Guid();
+		header.name = enumDesc->ResolveQualifiedName();
 	}
 	else if (arrayDesc.ElementType() == Reflection::MetaType::Primitive)
 	{
@@ -469,7 +469,7 @@ void SerializeArrayHeader(const Reflection::ArrayDescription& arrayDesc, FileStr
 	}
 	else if (arrayDesc.ElementType() == Reflection::MetaType::Array)
 	{
-		const auto& innerDesc = Reflection::GetArray(arrayDesc.ElementHash());
+		const auto innerDesc = Reflection::GetArray(arrayDesc.ElementHash());
 		header.name = "NestedArray";
 		header.version = 0;
 		header.guid = Guid();
@@ -560,23 +560,23 @@ void SerializeClassFields(const void* obj,
 			{
 				case Reflection::MetaType::Class:
 				{
-					const auto& fieldDesc = Reflection::GetClass(field.TypeHash());
-					if (BinarySerializer::TryCustomSerializer(OffsetPointer(obj, field.GetOffset()), fieldDesc, stream) == false)
+					const auto fieldDesc = Reflection::GetClass(field.TypeHash());
+					if (BinarySerializer::TryCustomSerializer(OffsetPointer(obj, field.GetOffset()), *fieldDesc, stream) == false)
 					{
-						SerializeClass(OffsetPointer(obj, field.GetOffset()), fieldDesc, stream);
+						SerializeClass(OffsetPointer(obj, field.GetOffset()), *fieldDesc, stream);
 					}
 					break;
 				}
 				case Reflection::MetaType::Array:
 				{
-					const auto& fieldDesc = Reflection::GetArray(field.TypeHash());
-					SerializeArray(OffsetPointer(obj, field.GetOffset()), fieldDesc, stream);
+					const auto fieldDesc = Reflection::GetArray(field.TypeHash());
+					SerializeArray(OffsetPointer(obj, field.GetOffset()), *fieldDesc, stream);
 					break;
 				}
 				case Reflection::MetaType::Enum:
 				{
-					const auto& fieldDesc = Reflection::GetEnum(field.TypeHash());
-					SerializeEnum(OffsetPointer(obj, field.GetOffset()), fieldDesc, stream);
+					const auto fieldDesc = Reflection::GetEnum(field.TypeHash());
+					SerializeEnum(OffsetPointer(obj, field.GetOffset()), *fieldDesc, stream);
 					break;
 				}
 				case Reflection::MetaType::Primitive:
@@ -602,20 +602,20 @@ void SerializeArrayElements(const void* obj,
 	}
 	else if (arrayDesc.ElementType() == Reflection::MetaType::Array)
 	{
-		const auto& innerDesc = Reflection::GetArray(arrayDesc.ElementHash());
-		for (size_t elementOffset = 0; elementOffset < arrayDesc.GetSize(); elementOffset += innerDesc.GetSize())
+		const auto innerDesc = Reflection::GetArray(arrayDesc.ElementHash());
+		for (size_t elementOffset = 0; elementOffset < arrayDesc.GetSize(); elementOffset += innerDesc->GetSize())
 		{
-			SerializeArrayElements(OffsetPointer(obj, elementOffset), innerDesc, stream);
+			SerializeArrayElements(OffsetPointer(obj, elementOffset), *innerDesc, stream);
 		}
 	}
 	else if (arrayDesc.ElementType() == Reflection::MetaType::Class)
 	{
 		const auto& innerDesc = Reflection::GetClass(arrayDesc.ElementHash());
-		for (size_t elementOffset = 0; elementOffset < arrayDesc.GetSize(); elementOffset += innerDesc.GetSize())
+		for (size_t elementOffset = 0; elementOffset < arrayDesc.GetSize(); elementOffset += innerDesc->GetSize())
 		{
-			if (BinarySerializer::TryCustomArraySerializer(OffsetPointer(obj, elementOffset), innerDesc, stream) == false)
+			if (BinarySerializer::TryCustomArraySerializer(OffsetPointer(obj, elementOffset), *innerDesc, stream) == false)
 			{
-				SerializeClassFields(OffsetPointer(obj, elementOffset), innerDesc, stream);
+				SerializeClassFields(OffsetPointer(obj, elementOffset), *innerDesc, stream);
 			}
 		}
 	}
@@ -752,21 +752,21 @@ void DeserializeClass(FileStream& stream,
 		}
 		else if (fieldDesc.GetType() == Reflection::MetaType::Array)
 		{
-			const auto& desc = Reflection::GetArray(fieldDesc.TypeHash());
-			DeserializeArray(stream, desc, OffsetPointer(obj, fieldDesc.GetOffset()));
+			const auto desc = Reflection::GetArray(fieldDesc.TypeHash());
+			DeserializeArray(stream, *desc, OffsetPointer(obj, fieldDesc.GetOffset()));
 		}
 		else if (fieldDesc.GetType() == Reflection::MetaType::Class)
 		{
-			const auto& desc = Reflection::GetClass(fieldDesc.TypeHash());
-			if (BinarySerializer::TryCustomDeserializer(stream, desc, OffsetPointer(obj, fieldDesc.GetOffset())) == false)
+			const auto desc = Reflection::GetClass(fieldDesc.TypeHash());
+			if (BinarySerializer::TryCustomDeserializer(stream, *desc, OffsetPointer(obj, fieldDesc.GetOffset())) == false)
 			{
-				DeserializeClass(stream, desc, OffsetPointer(obj, fieldDesc.GetOffset()));
+				DeserializeClass(stream, *desc, OffsetPointer(obj, fieldDesc.GetOffset()));
 			}
 		}
 		else if (fieldDesc.GetType() == Reflection::MetaType::Enum)
 		{
-			const auto& desc = Reflection::GetEnum(fieldDesc.TypeHash());
-			DeserializeEnum(stream, desc, OffsetPointer(obj, fieldDesc.GetOffset()));
+			const auto desc = Reflection::GetEnum(fieldDesc.TypeHash());
+			DeserializeEnum(stream, *desc, OffsetPointer(obj, fieldDesc.GetOffset()));
 		}
 		else
 		{
@@ -798,21 +798,21 @@ void DeserializeArrayElements(FileStream& stream,
 		}
 		case Reflection::MetaType::Array:
 		{
-			const auto& innerDesc = Reflection::GetArray(arrayDesc.ElementHash());
-			for (size_t elementOffset = 0; elementOffset < arrayDesc.GetSize(); elementOffset += innerDesc.GetSize())
+			const auto innerDesc = Reflection::GetArray(arrayDesc.ElementHash());
+			for (size_t elementOffset = 0; elementOffset < arrayDesc.GetSize(); elementOffset += innerDesc->GetSize())
 			{
-				DeserializeArrayElements(stream, innerDesc, OffsetPointer(obj, elementOffset));
+				DeserializeArrayElements(stream, *innerDesc, OffsetPointer(obj, elementOffset));
 			}
 			return;
 		}
 		case Reflection::MetaType::Class:
 		{
-			const auto& classDesc = Reflection::GetClass(arrayDesc.ElementHash());
-			for (size_t elementOffset = 0; elementOffset < arrayDesc.GetSize(); elementOffset += classDesc.GetSize())
+			const auto classDesc = Reflection::GetClass(arrayDesc.ElementHash());
+			for (size_t elementOffset = 0; elementOffset < arrayDesc.GetSize(); elementOffset += classDesc->GetSize())
 			{
-				if (BinarySerializer::TryCustomArrayDeserializer(stream, classDesc, OffsetPointer(obj, elementOffset)) == false)
+				if (BinarySerializer::TryCustomArrayDeserializer(stream, *classDesc, OffsetPointer(obj, elementOffset)) == false)
 				{
-					DeserializeClassFields(stream, classDesc, OffsetPointer(obj, elementOffset));
+					DeserializeClassFields(stream, *classDesc, OffsetPointer(obj, elementOffset));
 				}
 			}
 			return;
@@ -848,21 +848,21 @@ void DeserializeClassFields(FileStream& stream,
 		}
 		else if (fieldDesc.GetType() == Reflection::MetaType::Array)
 		{
-			const auto& desc = Reflection::GetArray(fieldDesc.TypeHash());
-			DeserializeArray(stream, desc, OffsetPointer(obj, fieldDesc.GetOffset()));
+			const auto desc = Reflection::GetArray(fieldDesc.TypeHash());
+			DeserializeArray(stream, *desc, OffsetPointer(obj, fieldDesc.GetOffset()));
 		}
 		else if (fieldDesc.GetType() == Reflection::MetaType::Class)
 		{
-			const auto& desc = Reflection::GetClass(fieldDesc.TypeHash());
-			if (BinarySerializer::TryCustomDeserializer(stream, desc, OffsetPointer(obj, fieldDesc.GetOffset())) == false)
+			const auto desc = Reflection::GetClass(fieldDesc.TypeHash());
+			if (BinarySerializer::TryCustomDeserializer(stream, *desc, OffsetPointer(obj, fieldDesc.GetOffset())) == false)
 			{
-				DeserializeClass(stream, desc, OffsetPointer(obj, fieldDesc.GetOffset()));
+				DeserializeClass(stream, *desc, OffsetPointer(obj, fieldDesc.GetOffset()));
 			}
 		}
 		else if (fieldDesc.GetType() == Reflection::MetaType::Enum)
 		{
-			const auto& desc = Reflection::GetEnum(fieldDesc.TypeHash());
-			DeserializeEnum(stream, desc, OffsetPointer(obj, fieldDesc.GetOffset()));
+			const auto desc = Reflection::GetEnum(fieldDesc.TypeHash());
+			DeserializeEnum(stream, *desc, OffsetPointer(obj, fieldDesc.GetOffset()));
 		}
 		else
 		{

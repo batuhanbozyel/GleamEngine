@@ -23,13 +23,6 @@
     #endif
 #endif
 
-#ifdef ENABLE_ASSERTS
-#include <filesystem>
-	#define GLEAM_ASSERT(x, ...) if (!(x)) { GLEAM_CORE_ERROR("Assertion failed at {0}:{1}", std::filesystem::path(__FILE__).filename().string(), __LINE__); DEBUGBREAK(); }
-#else
-	#define GLEAM_ASSERT(...)
-#endif
-
 #define BIT(x) (1 << (x))
 #define NO_DISCARD [[nodiscard]]
 
@@ -59,4 +52,10 @@
 #define GLEAM_FOREACH_7(M, x, ...) M(x) GLEAM_EXPAND(GLEAM_FOREACH_6(M, __VA_ARGS__))
 #define GLEAM_FOREACH_8(M, x, ...) M(x) GLEAM_EXPAND(GLEAM_FOREACH_7(M, __VA_ARGS__))
 #define GLEAM_FOREACH_9(M, x, ...) M(x) GLEAM_EXPAND(GLEAM_FOREACH_8(M, __VA_ARGS__))
+
+#define GLEAM_NONCOPYABLE(TypeName) \
+    TypeName(const TypeName&) = delete; \
+    TypeName& operator=(const TypeName&) = delete; \
+	TypeName(TypeName&&) = delete; \
+    TypeName& operator=(TypeName&&) = delete
 

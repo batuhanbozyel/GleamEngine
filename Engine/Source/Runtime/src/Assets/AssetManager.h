@@ -52,7 +52,7 @@ public:
 		
 		constexpr auto typeHash = entt::type_hash<T>::value();
 		auto meta = entt::resolve(static_cast<uint32_t>(typeHash));
-		auto asset = Reflection::Get<T*>(meta.func("CreateAsset"_hs).invoke({}, ref).data());
+		auto asset = Reflection::Get<T*>(meta.func("CreateAsset"_hs).invoke({}, ref).base().data());
 		auto it = mAssetCache.emplace_hint(mAssetCache.end(),
 										   std::piecewise_construct,
 										   std::forward_as_tuple(ref),
@@ -82,7 +82,7 @@ public:
 	static void RegisterMetaAsset()
 	{
 		[[maybe_unused]] const auto& classDesc = Reflection::GetClass<Desc>();
-		entt::meta<T>()
+		entt::meta_factory<T>()
 			.type(entt::type_hash<T>::value())
 			.template func<&CreateAsset<T, Desc>>("CreateAsset"_hs);
 	}

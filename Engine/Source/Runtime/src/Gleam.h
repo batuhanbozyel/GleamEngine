@@ -1,4 +1,7 @@
 #pragma once
+#if not defined(__GLEAM_REFLECTION__)
+#include "Runtime.Reflection.generated.h"
+#endif
 
 #include "Core/Macro.h"
 #include "Core/EngineDefines.h"
@@ -79,7 +82,3 @@
 #include "Renderer/Renderers/WorldRenderer.h"
 #include "Renderer/Renderers/ImGuiRenderer.h"
 #include "Renderer/Renderers/PostProcessStack.h"
-
-#if not defined(__GLEAM_REFLECTION__)
-#include "Runtime.Reflection.generated.h"
-#endif

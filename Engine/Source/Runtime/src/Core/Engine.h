@@ -3,7 +3,6 @@
 #include "EngineConfig.h"
 #include "EngineDefines.h"
 #include "Container/PolyArray.h"
-#include <Reflection/Database.h>
 
 namespace Gleam {
 
@@ -63,8 +62,6 @@ private:
 
 	EngineConfig mConfig;
 	PolyArray<EngineSubsystem> mSubsystems;
-	Reflection::Database mReflectionDatabase;
-
 };
 	
 } // namespace Gleam

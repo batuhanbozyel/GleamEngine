@@ -122,7 +122,7 @@ GSTRUCT(Color, "9C2ADB39-C783-4826-9FD4-DE1062A08094", Serializable)
 		return *this;
 	}
 
-	NO_DISCARD FORCE_INLINE constexpr operator Color32() const;
+	NO_DISCARD FORCE_INLINE constexpr Color32 ToColor32() const;
 	FORCE_INLINE constexpr Color& operator=(const Color32&);
     
     NO_DISCARD FORCE_INLINE constexpr bool operator==(const Color& other) const
@@ -163,7 +163,7 @@ GSTRUCT(Color32, "88FA9547-6F5F-45C4-8AE1-135B27AD29F7", Serializable)
         
     }
 
-	NO_DISCARD FORCE_INLINE constexpr operator Color() const;
+	NO_DISCARD FORCE_INLINE constexpr Color ToColor() const;
 	FORCE_INLINE constexpr Color32& operator=(const Color&);
     
     NO_DISCARD FORCE_INLINE constexpr operator uint32_t() const;
@@ -181,7 +181,7 @@ GSTRUCT(Color32, "88FA9547-6F5F-45C4-8AE1-135B27AD29F7", Serializable)
 
 };
 
-NO_DISCARD FORCE_INLINE constexpr Color::operator Color32() const
+NO_DISCARD FORCE_INLINE constexpr Color32 Color::ToColor32() const
 {
 	return Color32
 	{
@@ -194,10 +194,10 @@ NO_DISCARD FORCE_INLINE constexpr Color::operator Color32() const
 
 FORCE_INLINE constexpr Color& Color::operator=(const Color32& color)
 {
-	return *this = static_cast<Color>(color);
+	return *this = color.ToColor();
 }
 
-NO_DISCARD FORCE_INLINE constexpr Color32::operator Color() const
+NO_DISCARD FORCE_INLINE constexpr Color Color32::ToColor() const
 {
 	return Color
 	{
@@ -210,7 +210,7 @@ NO_DISCARD FORCE_INLINE constexpr Color32::operator Color() const
 
 FORCE_INLINE constexpr Color32& Color32::operator=(const Color& color)
 {
-	return *this = static_cast<Color32>(color);
+	return *this = color.ToColor32();
 }
 
 NO_DISCARD FORCE_INLINE constexpr Color32::operator uint32_t() const

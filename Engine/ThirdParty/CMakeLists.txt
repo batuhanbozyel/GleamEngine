@@ -16,6 +16,9 @@ set(RAPIDJSON_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(RAPIDJSON_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(RAPIDJSON_BUILD_CXX11 OFF CACHE BOOL "" FORCE)
 
+# Enable entt natvis
+set(ENTT_INCLUDE_NATVIS ON CACHE BOOL "" FORCE)
+
 add_subdirectory(fmt)
 add_subdirectory(entt)
 add_subdirectory(rapidjson)

@@ -22,7 +22,7 @@ public:
 		const auto& classDesc = Reflection::GetClass<T>();
 		if (classDesc.template HasAttribute<Reflection::Attribute::EntityComponent>())
 		{
-			entt::meta<T>()
+			entt::meta_factory<T>()
 				.type(classDesc.TypeHash())
 				.template func<&AddComponent<T>, entt::as_ref_t>("AddComponent"_hs)
 				.template func<&RemoveComponent<T>>("RemoveComponent"_hs)

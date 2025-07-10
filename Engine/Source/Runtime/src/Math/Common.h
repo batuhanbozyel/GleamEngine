@@ -1,5 +1,6 @@
 #pragma once
 #include "Core/Macro.h"
+#include "IO/Log.h"
 
 #include <cmath>
 #include <limits>

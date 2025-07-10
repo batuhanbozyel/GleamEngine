@@ -93,6 +93,7 @@
 #include "World/Components/MeshRenderer.h"
 #include "World/Components/Transform.h"
 #include "World/Components/Camera.h"
+#include "World/Entity.h"
 
 #include "Renderer/RenderGraph/RenderGraphResource.h"
 #include "Renderer/Renderer.h"
@@ -103,6 +104,6 @@
 #include <windows.h>
 #endif
 
-#if not defined(__GLEAM_REFLECTION__)
-#include "Runtime.Reflection.generated.h"
+#ifndef __GLEAM_REFLECTION__
+#include <Runtime.Reflection.generated.h>
 #endif

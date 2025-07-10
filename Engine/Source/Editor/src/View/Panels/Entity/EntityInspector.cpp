@@ -270,8 +270,8 @@ static void DrawClassFields(void* obj, const Gleam::Reflection::ClassDescription
 		{
 			case Gleam::Reflection::MetaType::Class:
 			{
-				const auto& fieldDesc = Gleam::Reflection::GetClass(field.TypeHash());
-				DrawClassFields(Gleam::OffsetPointer(obj, field.GetOffset()), fieldDesc, columnWidth);
+				const auto fieldDesc = Gleam::Reflection::GetClass(field.TypeHash());
+				DrawClassFields(Gleam::OffsetPointer(obj, field.GetOffset()), *fieldDesc, columnWidth);
 				break;
 			}
 			case Gleam::Reflection::MetaType::Array:
@@ -281,14 +281,14 @@ static void DrawClassFields(void* obj, const Gleam::Reflection::ClassDescription
 			}
 			case Gleam::Reflection::MetaType::Enum:
 			{
-				const auto& enumDesc = Gleam::Reflection::GetEnum(field.TypeHash());
-				DrawEnumOptions(field.ResolveName(), enumDesc, Gleam::OffsetPointer(obj, field.GetOffset()), columnWidth);
+				const auto enumDesc = Gleam::Reflection::GetEnum(field.TypeHash());
+				DrawEnumOptions(field.ResolveName(), *enumDesc, Gleam::OffsetPointer(obj, field.GetOffset()), columnWidth);
 				break;
 			}
 			case Gleam::Reflection::MetaType::Primitive:
 			{
 				constexpr uint64_t defaultValue = 0;
-				const auto& primitiveDesc = Gleam::Reflection::GetPrimitive(field.TypeHash());
+				const auto primitiveDesc = Gleam::Reflection::GetPrimitive(field.TypeHash());
 				DrawScalarControl(field.ResolveName(), primitiveDesc.Type(), primitiveDesc.GetSize(), Gleam::OffsetPointer(obj, field.GetOffset()), &defaultValue, columnWidth);
 				break;
 			}

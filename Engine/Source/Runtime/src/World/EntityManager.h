@@ -40,52 +40,24 @@ public:
     template<typename Func>
     void ForEach(Func&& fn)
     {
-        for (auto [entt] : mRegistry.storage<EntityHandle>().each())
+        for (auto [entity] : mRegistry.storage<EntityHandle>().each())
         {
-            fn(entt);
+            fn(entity);
         }
     }
     
     template<typename Func>
     void ForEach(Func&& fn) const
     {
-        for (const auto [entt] : mRegistry.storage<EntityHandle>()->each())
+        for (const auto [entity] : mRegistry.storage<EntityHandle>()->each())
         {
-            fn(entt);
+            fn(entity);
         }
     }
 
-	void Visit(EntityHandle entity, VisitFn&& fn)
-	{
-		for (const auto& [id, storage] : mRegistry.storage())
-		{
-			if (storage.contains(entity))
-			{
-				const auto& classDesc = Reflection::GetClass(id);
-				if (classDesc.Guid() != Guid::InvalidGuid())
-				{
-					void* component = storage.value(entity);
-					fn(component, classDesc);
-				}
-			}
-		}
-	}
+	void Visit(EntityHandle entity, VisitFn&& fn);
 
-	void Visit(EntityHandle entity, ConstVisitFn&& fn) const
-	{
-		for (const auto& [id, storage] : mRegistry.storage())
-		{
-			if (storage.contains(entity))
-			{
-				const auto& classDesc = Reflection::GetClass(id);
-				if (classDesc.Guid() != Guid::InvalidGuid())
-				{
-					const void* component = storage.value(entity);
-					fn(component, classDesc);
-				}
-			}
-		}
-	}
+	void Visit(EntityHandle entity, ConstVisitFn&& fn) const;
 
 	template<typename ... Types>
 	Entity& CreateEntity(const TString& name, const Guid& guid, Types&& ... components)
@@ -96,62 +68,138 @@ public:
 	}
     
     template<typename T, typename ... Args>
-    void SetSingletonComponent(Args&&... args)
+    T& SetSingletonComponent(Args&&... args)
     {
-        mRegistry.ctx().emplace<T>(std::forward<Args>(args)...);
+		if constexpr (Reflection::Traits::IsReflected<T>::value)
+		{
+			const auto& classDesc = Reflection::GetClass<T>();
+			return mRegistry.ctx().emplace_as<T>(classDesc.TypeHash(), std::forward<Args>(args)...);
+		}
+		else
+		{
+			return mRegistry.ctx().emplace<T>(std::forward<Args>(args)...);
+		}
     }
     
     template<typename T>
     T& GetSingletonComponent()
     {
-        return mRegistry.ctx().get<T>();
+		if constexpr (Reflection::Traits::IsReflected<T>::value)
+		{
+			const auto& classDesc = Reflection::GetClass<T>();
+			return mRegistry.ctx().get<T>(classDesc.TypeHash());
+		}
+		else
+		{
+			return mRegistry.ctx().get<T>();
+		}
     }
     
     template<typename T>
     const T& GetSingletonComponent() const
     {
-        return mRegistry.ctx().get<T>();
+		if constexpr (Reflection::Traits::IsReflected<T>::value)
+		{
+			const auto& classDesc = Reflection::GetClass<T>();
+			return mRegistry.ctx().get<T>(classDesc.TypeHash());
+		}
+		else
+		{
+			return mRegistry.ctx().get<T>();
+		}
     }
 
 	template<typename T, typename ... Args>
 	T& AddComponent(EntityHandle entity, Args&&... args)
 	{
 		GLEAM_ASSERT(!HasComponent<T>(entity), "Entity already has the component!");
-		return mRegistry.emplace<T>(entity, std::forward<Args>(args)...);
+		if constexpr (Reflection::Traits::IsReflected<T>::value)
+		{
+			const auto& classDesc = Reflection::GetClass<T>();
+			return mRegistry.storage<T>(classDesc.TypeHash()).emplace(entity, std::forward<Args>(args)...);
+		}
+		else
+		{
+			return mRegistry.emplace<T>(entity, std::forward<Args>(args)...);
+		}
 	}
     
     template<typename T, typename ... Args>
     void SetComponent(EntityHandle entity, Args&&... args)
     {
         GLEAM_ASSERT(!HasComponent<T>(entity), "Entity already has the component!");
-        mRegistry.emplace_or_replace<T>(entity, std::forward<Args>(args)...);
+		if constexpr (Reflection::Traits::IsReflected<T>::value)
+		{
+			const auto& classDesc = Reflection::GetClass<T>();
+			return mRegistry.storage<T>(classDesc.TypeHash()).emplace_or_replace(entity, std::forward<Args>(args)...);
+		}
+		else
+		{
+			return mRegistry.emplace_or_replace<T>(entity, std::forward<Args>(args)...);
+		}
     }
 
 	template<typename T>
 	void RemoveComponent(EntityHandle entity)
 	{
 		GLEAM_ASSERT(HasComponent<T>(entity), "Entity does not have the component!");
-		mRegistry.remove<T>(entity);
+		if constexpr (Reflection::Traits::IsReflected<T>::value)
+		{
+			const auto& classDesc = Reflection::GetClass<T>();
+			mRegistry.storage<T>(classDesc.TypeHash()).remove(entity);
+		}
+		else
+		{
+			mRegistry.remove<T>(entity);
+		}
 	}
 
 	template<typename T>
 	bool HasComponent(EntityHandle entity) const
 	{
-		return mRegistry.all_of<T>(entity);
+		if constexpr (Reflection::Traits::IsReflected<T>::value)
+		{
+			const auto& classDesc = Reflection::GetClass<T>();
+			if (auto storage = mRegistry.storage<T>(classDesc.TypeHash()))
+			{
+				return storage->contains(entity);
+			}
+			return false;
+		}
+		else
+		{
+			return mRegistry.all_of<T>(entity);
+		}
 	}
 
 	template<typename T>
 	T& GetComponent(EntityHandle entity)
 	{
 		GLEAM_ASSERT(HasComponent<T>(entity), "Entity does not have the component!");
-		return mRegistry.get<T>(entity);
+		if constexpr (Reflection::Traits::IsReflected<T>::value)
+		{
+			const auto& classDesc = Reflection::GetClass<T>();
+			return mRegistry.storage<T>(classDesc.TypeHash()).get(entity);
+		}
+		else
+		{
+			return mRegistry.get<T>(entity);
+		}
 	}
     
     template<typename T>
     const T& GetComponent(EntityHandle entity) const
     {
         GLEAM_ASSERT(HasComponent<T>(entity), "Entity does not have the component!");
-        return mRegistry.get<T>(entity);
+		if constexpr (Reflection::Traits::IsReflected<T>::value)
+		{
+			const auto& classDesc = Reflection::GetClass<T>();
+			return mRegistry.storage<T>(classDesc.TypeHash())->get(entity);
+		}
+		else
+		{
+			return mRegistry.get<T>(entity);
+		}
     }
 
 	uint32_t GetEntityCount() const;
@@ -159,8 +207,6 @@ public:
 	EntityHandle GetEntity(const EntityReference& ref) const;
 
 private:
-	
-	Entity& CopyEntity(EntityManager& from, const Entity& source);
 
 	entt::registry mRegistry;
 

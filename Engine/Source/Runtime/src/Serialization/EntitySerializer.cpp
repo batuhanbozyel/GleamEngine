@@ -90,15 +90,15 @@ TArray<EntityHandle> EntitySerializer::Deserialize(const rapidjson::ConstNode& r
 		for (const auto& componentObject : entityObject["Components"].GetArray())
 		{
 			auto typeName = componentObject["TypeName"].GetString();
-			const auto& classDesc = Reflection::GetClass(typeName);
+			const auto classDesc = Reflection::GetClass(typeName);
 
-			auto meta = entt::resolve(classDesc.TypeHash());
+			auto meta = entt::resolve(classDesc->TypeHash());
 			auto func = meta.func("AddComponent"_hs);
 			auto component = func.invoke({}, Ref<Entity>(entity));
 			GLEAM_ASSERT(component, "Entity component could not deserialize");
 
 			JSONSerializer serializer;
-			serializer.Deserialize(classDesc, component.data(), rapidjson::ConstNode(componentObject));
+			serializer.Deserialize(*classDesc, const_cast<void*>(component.base().data()), rapidjson::ConstNode(componentObject));
 		}
 
 		entities.emplace_back(entity);

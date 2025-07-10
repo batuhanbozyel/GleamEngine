@@ -1,6 +1,7 @@
 #pragma once
 #include "Gleam.h"
 #include <SDL3/SDL_main.h>
+#include <Reflection/Database.h>
 
 #if defined(PLATFORM_WINDOWS) || defined(PLATFORM_MACOS) || defined(PLATFORM_IOS)
 Gleam::Application* Gleam::CreateApplicationInstance(const Gleam::CommandLine& cli);
@@ -17,6 +18,9 @@ extern "C"
 
 int main(int argc, char* argv[])
 {
+	Gleam::Reflection::Database reflection;
+	reflection.Initialize(Gleam::Filesystem::WorkingDirectory() / "Runtime.Reflection.db");
+
     Gleam::Engine engine;
     Gleam::Globals::Engine = &engine;
     engine.Initialize();
@@ -27,6 +31,7 @@ int main(int argc, char* argv[])
 
 	delete Gleam::Globals::GameInstance;
     engine.Shutdown();
+	reflection.Shutdown();
 	return EXIT_SUCCESS;
 }
 #else

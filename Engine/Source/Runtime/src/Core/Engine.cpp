@@ -14,8 +14,7 @@ using namespace Gleam;
 
 void Engine::Initialize()
 {
-	// init reflection & serialization
-	mReflectionDatabase.Initialize(Filesystem::WorkingDirectory()/"Runtime.Reflection.db");
+	// init serialization
 	AddSubsystem<BinarySerializer>();
 	AddSubsystem<JSONSerializer>();
 
@@ -60,7 +59,6 @@ void Engine::Shutdown()
 		system->Shutdown();
 	}
 	mSubsystems.clear();
-	mReflectionDatabase.Shutdown();
 }
 
 void Engine::SaveConfigToDisk() const
