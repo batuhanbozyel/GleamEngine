@@ -83,7 +83,7 @@ private:
 
 } // namespace Gleam
 
-namespace Gleam::Reflection::External {
+namespace Gleam::Reflection::External::Gleam {
 
 GCLASS(Path, "DA162505-C36B-4FF1-BCB7-FE8428606223", Serializable)
 {

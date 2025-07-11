@@ -21,7 +21,6 @@ struct ArrayHelper<T, 0>
 template<typename T, size_t size = 0>
 using TArray = typename ArrayHelper<T, size>::Type;
 
-
 namespace ArrayUtils {
 
 template<typename T>
@@ -46,8 +45,9 @@ static TArray<T>& Append(TArray<T>& m, const TArray<T>& n)
 
 } // namespace Gleam
 
-namespace Gleam::Reflection::External {
+namespace Gleam::Reflection::External::Gleam {
 
+template<typename T>
 GCLASS(TArray, "0413C2C5-88CB-49B8-A3EA-9AD7505E51E6", Serializable)
 {
 

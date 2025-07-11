@@ -49,9 +49,9 @@ public:
 		{
 			return static_cast<T*>(it->second.get());
 		}
-		
-		constexpr auto typeHash = entt::type_hash<T>::value();
-		auto meta = entt::resolve(static_cast<uint32_t>(typeHash));
+
+		const auto& classDesc = Reflection::GetClass<T>();
+		auto meta = entt::resolve(classDesc.TypeHash());
 		auto asset = Reflection::Get<T*>(meta.func("CreateAsset"_hs).invoke({}, ref).base().data());
 		auto it = mAssetCache.emplace_hint(mAssetCache.end(),
 										   std::piecewise_construct,
@@ -81,9 +81,9 @@ public:
 	template<AssetType T, typename Desc>
 	static void RegisterMetaAsset()
 	{
-		[[maybe_unused]] const auto& classDesc = Reflection::GetClass<Desc>();
+		const auto& classDesc = Reflection::GetClass<T>();
 		entt::meta_factory<T>()
-			.type(entt::type_hash<T>::value())
+			.type(classDesc.TypeHash())
 			.template func<&CreateAsset<T, Desc>>("CreateAsset"_hs);
 	}
 	
