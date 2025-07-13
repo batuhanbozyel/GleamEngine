@@ -45,10 +45,13 @@ static TArray<T>& Append(TArray<T>& m, const TArray<T>& n)
 
 } // namespace Gleam
 
-namespace Gleam::Reflection::External::Gleam {
+namespace Gleam::Reflection::External::std {
 
-template<typename T>
-GCLASS(TArray, "0413C2C5-88CB-49B8-A3EA-9AD7505E51E6", Serializable)
+template<class T, class Alloactor = ::std::allocator<T>()>
+class vector {};
+
+template<>
+GCLASS(vector<uint8_t>, "0413C2C5-88CB-49B8-A3EA-9AD7505E51E6", Serializable)
 {
 
 };

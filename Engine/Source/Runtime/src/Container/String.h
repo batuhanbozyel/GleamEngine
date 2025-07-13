@@ -128,9 +128,13 @@ static TString Deserialize(const TString& binary)
 
 } // namespace Gleam
 
-namespace Gleam::Reflection::External::Gleam {
+namespace Gleam::Reflection::External::std {
 
-GCLASS(TString, "CA5CFF7E-51A8-48B7-9315-1A1BF203E855", Serializable)
+template<class T, class Traits = ::std::char_traits<T>(), class Alloactor = ::std::allocator<T>()>
+class basic_string {};
+
+template<>
+GCLASS(basic_string<char>, "CA5CFF7E-51A8-48B7-9315-1A1BF203E855", Serializable)
 {
 
 };

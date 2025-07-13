@@ -83,9 +83,9 @@ private:
 
 } // namespace Gleam
 
-namespace Gleam::Reflection::External::Gleam {
+namespace Gleam::Reflection::External::std::filesystem {
 
-GCLASS(Path, "DA162505-C36B-4FF1-BCB7-FE8428606223", Serializable)
+GCLASS(path, "DA162505-C36B-4FF1-BCB7-FE8428606223", Serializable)
 {
 
 };

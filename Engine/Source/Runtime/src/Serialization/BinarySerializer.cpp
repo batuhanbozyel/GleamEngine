@@ -107,13 +107,13 @@ void BinarySerializer::Initialize(Engine* engine)
 		};
 	}
 
-	if constexpr (Reflection::Traits::IsReflected<TString>())
+	if constexpr (Reflection::Traits::IsReflected<std::basic_string<char>>())
 	{
-		mCustomSerializers[Reflection::GetClass<TString>().ResolveQualifiedName()] = [](const void* obj,
+		mCustomSerializers[Reflection::GetClass<std::basic_string<char>>().ResolveQualifiedName()] = [](const void* obj,
 			const Reflection::ClassDescription& classDesc,
 			FileStream& stream)
 		{
-			const auto& str = Reflection::Get<TString>(obj);
+			const auto& str = Reflection::Get<std::string>(obj);
 			auto len = static_cast<uint32_t>(str.length());
 
 			SerializeClassHeader(classDesc, stream);
@@ -121,20 +121,20 @@ void BinarySerializer::Initialize(Engine* engine)
 			stream.write(str.data(), str.length());
 		};
 
-		mCustomArraySerializers[Reflection::GetClass<TString>().ResolveQualifiedName()] = [](const void* obj,
+		mCustomArraySerializers[Reflection::GetClass<std::basic_string<char>>().ResolveQualifiedName()] = [](const void* obj,
 			const Reflection::ClassDescription& classDesc,
 			FileStream& stream)
 		{
-			const auto& str = Reflection::Get<TString>(obj);
+			const auto& str = Reflection::Get<std::string>(obj);
 			auto len = static_cast<uint32_t>(str.length());
 			stream.write(reinterpret_cast<const char*>(&len), sizeof(uint32_t));
 			stream.write(str.data(), str.length());
 		};
 	}
 
-	if constexpr (Reflection::Traits::IsReflected<Path>())
+	if constexpr (Reflection::Traits::IsReflected<std::filesystem::path>())
 	{
-		mCustomSerializers[Reflection::GetClass<Path>().ResolveQualifiedName()] = [](const void* obj,
+		mCustomSerializers[Reflection::GetClass<std::filesystem::path>().ResolveQualifiedName()] = [](const void* obj,
 			const Reflection::ClassDescription& classDesc,
 			FileStream& stream)
 		{
@@ -147,7 +147,7 @@ void BinarySerializer::Initialize(Engine* engine)
 			stream.write(pathStr.data(), pathStr.length());
 		};
 
-		mCustomArraySerializers[Reflection::GetClass<Path>().ResolveQualifiedName()] = [](const void* obj,
+		mCustomArraySerializers[Reflection::GetClass<std::filesystem::path>().ResolveQualifiedName()] = [](const void* obj,
 			const Reflection::ClassDescription& classDesc,
 			FileStream& stream)
 		{
@@ -159,9 +159,9 @@ void BinarySerializer::Initialize(Engine* engine)
 		};
 	}
 
-	if constexpr (Reflection::Traits::IsReflected<TArray<uint8_t>>())
+	if constexpr (Reflection::Traits::IsReflected<std::vector<uint8_t>>())
 	{
-		mCustomSerializers[Reflection::GetClass<TArray<uint8_t>>().ResolveQualifiedName()] = [](const void* obj,
+		mCustomSerializers[Reflection::GetClass<std::vector<uint8_t>>().ResolveQualifiedName()] = [](const void* obj,
 																									const Reflection::ClassDescription& classDesc,
 																									FileStream& stream)
 		{
@@ -174,7 +174,7 @@ void BinarySerializer::Initialize(Engine* engine)
 			SerializeArray(arr.data(), arrDesc, stream);
 		};
 
-		mCustomArraySerializers[Reflection::GetClass<TArray<uint8_t>>().ResolveQualifiedName()] = [](const void* obj,
+		mCustomArraySerializers[Reflection::GetClass<std::vector<uint8_t>>().ResolveQualifiedName()] = [](const void* obj,
 																										 const Reflection::ClassDescription& classDesc,
 																										 FileStream& stream)
 		{
@@ -216,9 +216,9 @@ void BinarySerializer::Initialize(Engine* engine)
 		};
 	}
 
-	if constexpr (Reflection::Traits::IsReflected<TString>())
+	if constexpr (Reflection::Traits::IsReflected<std::basic_string<char>>())
 	{
-		mCustomDeserializers[Reflection::GetClass<TString>().ResolveQualifiedName()] = [](FileStream& stream,
+		mCustomDeserializers[Reflection::GetClass<std::basic_string<char>>().ResolveQualifiedName()] = [](FileStream& stream,
 			const Reflection::ClassDescription& classDesc,
 			void* obj)
 		{
@@ -228,27 +228,27 @@ void BinarySerializer::Initialize(Engine* engine)
 			uint32_t len = 0;
 			stream.read(reinterpret_cast<char*>(&len), sizeof(uint32_t));
 
-			auto& str = Reflection::Get<TString>(obj);
+			auto& str = Reflection::Get<std::string>(obj);
 			str.resize(len);
 			stream.read(str.data(), len);
 		};
 
-		mCustomArrayDeserializers[Reflection::GetClass<TString>().ResolveQualifiedName()] = [](FileStream& stream,
+		mCustomArrayDeserializers[Reflection::GetClass<std::basic_string<char>>().ResolveQualifiedName()] = [](FileStream& stream,
 			const Reflection::ClassDescription& classDesc,
 			void* obj)
 		{
 			uint32_t len = 0;
 			stream.read(reinterpret_cast<char*>(&len), sizeof(uint32_t));
 
-			auto& str = Reflection::Get<TString>(obj);
+			auto& str = Reflection::Get<std::string>(obj);
 			str.resize(len);
 			stream.read(str.data(), len);
 		};
 	}
 
-	if constexpr (Reflection::Traits::IsReflected<Path>())
+	if constexpr (Reflection::Traits::IsReflected<std::filesystem::path>())
 	{
-		mCustomDeserializers[Reflection::GetClass<Path>().ResolveQualifiedName()] = [](FileStream& stream,
+		mCustomDeserializers[Reflection::GetClass<std::filesystem::path>().ResolveQualifiedName()] = [](FileStream& stream,
 			const Reflection::ClassDescription& classDesc,
 			void* obj)
 		{
@@ -264,7 +264,7 @@ void BinarySerializer::Initialize(Engine* engine)
 			Reflection::Get<Path>(obj) = Path(pathStr);
 		};
 
-		mCustomArrayDeserializers[Reflection::GetClass<Path>().ResolveQualifiedName()] = [](FileStream& stream,
+		mCustomArrayDeserializers[Reflection::GetClass<std::filesystem::path>().ResolveQualifiedName()] = [](FileStream& stream,
 			const Reflection::ClassDescription& classDesc,
 			void* obj)
 		{
@@ -278,9 +278,9 @@ void BinarySerializer::Initialize(Engine* engine)
 		};
 	}
 
-	if constexpr (Reflection::Traits::IsReflected<TArray<uint8_t>>())
+	if constexpr (Reflection::Traits::IsReflected<std::vector<uint8_t>>())
 	{
-		mCustomDeserializers[Reflection::GetClass<TArray<uint8_t>>().ResolveQualifiedName()] = [](FileStream& stream,
+		mCustomDeserializers[Reflection::GetClass<std::vector<uint8_t>>().ResolveQualifiedName()] = [](FileStream& stream,
 																									  const Reflection::ClassDescription& classDesc,
 																									  void* obj)
 		{
@@ -298,7 +298,7 @@ void BinarySerializer::Initialize(Engine* engine)
 			DeserializeArrayElements(stream, arrDesc, arr.data());
 		};
 
-		mCustomArrayDeserializers[Reflection::GetClass<TArray<uint8_t>>().ResolveQualifiedName()] = [](FileStream& stream,
+		mCustomArrayDeserializers[Reflection::GetClass<std::vector<uint8_t>>().ResolveQualifiedName()] = [](FileStream& stream,
 																										   const Reflection::ClassDescription& classDesc,
 																										   void* obj)
 		{
