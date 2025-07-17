@@ -73,3 +73,12 @@ struct std::hash<Gleam::MaterialDescriptor>
 		return std::hash<Gleam::TString>()(descriptor.name);
 	}
 };
+
+template <>
+struct eastl::hash<Gleam::MaterialDescriptor>
+{
+	size_t operator()(const Gleam::MaterialDescriptor& descriptor) const
+	{
+		return std::hash<Gleam::MaterialDescriptor>()(descriptor);
+	}
+};

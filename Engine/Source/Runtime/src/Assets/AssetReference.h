@@ -38,3 +38,12 @@ struct std::hash<Gleam::AssetReference>
         return hash;
     }
 };
+
+template <>
+struct eastl::hash<Gleam::AssetReference>
+{
+	size_t operator()(const Gleam::AssetReference& asset) const
+	{
+		return std::hash<Gleam::AssetReference>()(asset);
+	}
+};

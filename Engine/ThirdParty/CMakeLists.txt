@@ -21,6 +21,7 @@ set(ENTT_INCLUDE_NATVIS ON CACHE BOOL "" FORCE)
 
 add_subdirectory(fmt)
 add_subdirectory(entt)
+add_subdirectory(EASTL)
 add_subdirectory(rapidjson)
 add_subdirectory(googletest)
 add_subdirectory(GleamReflect)
@@ -28,6 +29,7 @@ add_subdirectory(SDL EXCLUDE_FROM_ALL)
 
 set_target_properties (
     SDL3-static
+    EASTL
     gmock
     gmock_main
     gtest

@@ -20,7 +20,7 @@
 
 using namespace Gleam;
 
-static constexpr size_t ComputeMaterialInstanceSize(const TArray<MaterialProperty>& properties)
+static size_t ComputeMaterialInstanceSize(const TArray<MaterialProperty>& properties)
 {
 	size_t size = 0;
 	for (const auto& property : properties)

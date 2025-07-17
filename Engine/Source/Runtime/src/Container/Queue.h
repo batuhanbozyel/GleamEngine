@@ -6,15 +6,15 @@
 //
 
 #pragma once
-#include <queue>
-#include <deque>
+#include <EASTL/queue.h>
+#include <EASTL/deque.h>
 
 namespace Gleam {
 
-template<class T>
-using Queue = std::queue<T>;
+template<typename T, typename Container = eastl::deque<T, EASTLAllocatorType, DEQUE_DEFAULT_SUBARRAY_SIZE(T)>>
+using Queue = eastl::queue<T>;
 
-template<class T>
-using Deque = std::deque<T>;
+template<typename T, typename Allocator = EASTLAllocatorType, unsigned kDequeSubarraySize = DEQUE_DEFAULT_SUBARRAY_SIZE(T)>
+using Deque = eastl::deque<T>;
 
 } // namespace Gleam

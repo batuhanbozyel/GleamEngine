@@ -96,10 +96,10 @@ void EAssetManager::Initialize(Gleam::World* world)
 {
     Gleam::Filesystem::ForEach(mAssetDirectory, [this](const auto& entry)
     {
-        if (entry.extension() == Gleam::Asset::Extension())
+        if (entry.Extension() == Gleam::Asset::Extension())
         {
             auto header = ParseBinaryHeader(entry);
-            auto guid = Gleam::Guid(entry.stem().string());
+            auto guid = Gleam::Guid(entry.Stem().string());
             auto asset = Gleam::AssetReference{ .guid = guid };
             auto name = ParseAssetName(entry, header.guid);
             auto item = AssetItem{
@@ -107,13 +107,13 @@ void EAssetManager::Initialize(Gleam::World* world)
                 .type = header.guid,
                 .name = name
             };
-			auto path = entry.parent_path() / name;
+			auto path = entry.Parent() / name;
 			mRegistry.RegisterAsset(path, item);
         }
-		else if (entry.extension() == Gleam::Prefab::Extension())
+		else if (entry.Extension() == Gleam::Prefab::Extension())
 		{
 			auto typeGuid = Gleam::Reflection::GetClass<Gleam::Prefab>().Guid();
-			auto guid = Gleam::Guid(entry.stem().string());
+			auto guid = Gleam::Guid(entry.Stem().string());
 			auto asset = Gleam::AssetReference{ .guid = guid };
 			auto name = ParseAssetName(entry, typeGuid);
 			auto item = AssetItem{
@@ -121,13 +121,13 @@ void EAssetManager::Initialize(Gleam::World* world)
 				.type = typeGuid,
 				.name = name
 			};
-			auto path = entry.parent_path() / name;
+			auto path = entry.Parent() / name;
 			mRegistry.RegisterAsset(path, item);
 		}
-		else if (entry.extension() == Gleam::World::Extension())
+		else if (entry.Extension() == Gleam::World::Extension())
 		{
 			auto typeGuid = Gleam::Reflection::GetClass<Gleam::World>().Guid();
-			auto guid = Gleam::Guid(entry.stem().string());
+			auto guid = Gleam::Guid(entry.Stem().string());
 			auto asset = Gleam::AssetReference{ .guid = guid };
 			auto name = ParseAssetName(entry, typeGuid);
 			auto item = AssetItem{
@@ -135,20 +135,20 @@ void EAssetManager::Initialize(Gleam::World* world)
 				.type = typeGuid,
 				.name = name
 			};
-			auto path = entry.parent_path() / name;
+			auto path = entry.Parent() / name;
 			mRegistry.RegisterAsset(path, item);
 		}
     }, true);
     
     Gleam::Filesystem::ForEach(mAssetDirectory, [this](const auto& entry)
     {
-        if (entry.extension() == ".mat")
+        if (entry.Extension() == ".mat")
         {
-            auto path = entry.parent_path()/entry.stem();
+            auto path = entry.Parent()/entry.Stem();
 			const auto& item = mRegistry.GetAsset<Gleam::MaterialDescriptor>(path);
             if (item.reference.guid == Gleam::Guid::InvalidGuid())
             {
-				auto assetRegistry = AssetRegistry(entry.parent_path());
+				auto assetRegistry = AssetRegistry(entry.Parent());
                 auto materialSource = MaterialSource(this, &assetRegistry);
                 auto settings = MaterialSource::ImportSettings();
                 materialSource.Import(entry, settings);
@@ -157,8 +157,8 @@ void EAssetManager::Initialize(Gleam::World* world)
 			else
 			{
 				// TODO: reimport only if material/shader source changed since last compile
-				auto assetRegistry = AssetRegistry(entry.parent_path());
-				assetRegistry.RegisterAsset(entry.stem(), item);
+				auto assetRegistry = AssetRegistry(entry.Parent());
+				assetRegistry.RegisterAsset(entry.Stem(), item);
 
 				auto materialSource = MaterialSource(this, &assetRegistry);
 				auto settings = MaterialSource::ImportSettings();

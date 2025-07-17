@@ -25,9 +25,9 @@ void AssetManager::Initialize(Application* app)
 
 	Filesystem::ForEach(Globals::ProjectContentDirectory, [this](const auto& entry)
 	{
-		if (entry.extension() == Asset::Extension() ||
-			entry.extension() == Prefab::Extension() ||
-			entry.extension() == World::Extension())
+		if (entry.Extension() == Asset::Extension() ||
+			entry.Extension() == Prefab::Extension() ||
+			entry.Extension() == World::Extension())
 		{
 			EmplaceAssetPath(entry);
 		}
@@ -36,9 +36,9 @@ void AssetManager::Initialize(Application* app)
 	auto fileWatcher = Globals::Engine->GetSubsystem<FileWatcher>();
 	fileWatcher->AddWatch(Globals::ProjectContentDirectory, [this](const Path& path, FileWatchEvent event)
 	{
-		if (path.extension() != Asset::Extension() &&
-			path.extension() != Prefab::Extension() &&
-			path.extension() != World::Extension())
+		if (path.Extension() != Asset::Extension() &&
+			path.Extension() != Prefab::Extension() &&
+			path.Extension() != World::Extension())
 		{
 			return;
 		}

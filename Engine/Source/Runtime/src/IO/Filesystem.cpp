@@ -8,13 +8,14 @@ void Filesystem::ForEach(const Path& path, const DirectoryFn& fn, bool recursive
 {
     for (auto& node : std::filesystem::directory_iterator(path))
     {
-        if (recursive && IsDirectory(node))
+		Path nodePath = Path(node);
+        if (recursive && IsDirectory(nodePath))
         {
-            ForEach(node, fn, recursive);
+            ForEach(nodePath, fn, recursive);
         }
         else
         {
-            fn(node);
+            fn(nodePath);
         }
     }
 }
@@ -32,14 +33,14 @@ File Filesystem::Create(const Path& path, FileType type)
     std::lock_guard<std::mutex> lock(mFileCreateMutex);
     if (auto it = mFileAccessors.find(path); it != mFileAccessors.end())
     {
-        return File(std::move(handle), path, it->second);
+        return File(eastl::move(handle), path, it->second);
     }
     
     auto it = mFileAccessors.emplace_hint(mFileAccessors.end(),
-                                          std::piecewise_construct,
-                                          std::forward_as_tuple(path),
-                                          std::forward_as_tuple());
-	return File(std::move(handle), path, it->second);
+                                          eastl::piecewise_construct,
+                                          eastl::forward_as_tuple(path),
+                                          eastl::forward_as_tuple());
+	return File(eastl::move(handle), path, it->second);
 }
 
 File Filesystem::Open(const Path& path, FileType type)
@@ -53,7 +54,7 @@ File Filesystem::Open(const Path& path, FileType type)
 	handle.unsetf(std::ios::skipws);
     
     std::lock_guard<std::mutex> lock(mFileCreateMutex);
-	return File(std::move(handle), path, mFileAccessors[path]);
+	return File(eastl::move(handle), path, mFileAccessors[path]);
 }
 
 bool Filesystem::Remove(const Path& path)

@@ -35,16 +35,16 @@ set_target_properties (imgui PROPERTIES FOLDER Dependencies)
 
 # Setup link libraries
 if (WIN32)
-    set(LIB_LINKS SDL3::SDL3-static d3d12.lib dxgi.lib dxguid.lib dstorage.lib imgui.lib Ole32.lib)
+    set(LIB_LINKS SDL3::SDL3-static d3d12.lib dxgi.lib dxguid.lib dstorage.lib imgui.lib Ole32.lib EASTL)
     set_source_files_properties(${SHADER_FILES} PROPERTIES VS_TOOL_OVERRIDE "None")
 elseif (APPLE)
     find_library(METALIR_LIB libmetalirconverter.dylib)
-    set(LIB_LINKS SDL3::SDL3-static imgui ${METALIR_LIB} "-framework UniformTypeIdentifiers")
+    set(LIB_LINKS SDL3::SDL3-static imgui ${METALIR_LIB} "-framework UniformTypeIdentifiers" EASTL)
 endif()
 
 # Set Runtime as static library
 add_library(Runtime STATIC ${SOURCE_FILES} ${SHADER_FILES})
-add_dependencies(Runtime SDL3-static imgui)
+add_dependencies(Runtime SDL3-static imgui EASTL)
 
 # Include directories
 if (APPLE)
@@ -59,6 +59,7 @@ if (APPLE)
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/GleamReflect/include
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/ImGuizmo
+        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/EASTL/include
     )
     set_source_files_properties(${SOURCE_FILES} PROPERTIES COMPILE_FLAGS "-x objective-c++")
     set_target_properties(Runtime PROPERTIES MACOSX_BUNDLE YES XCODE_ATTRIBUTE_CLANG_ENABLE_OBJC_ARC YES)
@@ -75,6 +76,7 @@ else()
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/DirectXAgilitySDK/build/native/include
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/ImGuizmo
+        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/EASTL/include
     )
 endif()
 

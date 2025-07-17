@@ -1,38 +1,41 @@
 #pragma once
 #include "Core/Macro.h"
 
-#include <memory>
-#include <optional>
+#include <EASTL/memory.h>
+#include <EASTL/optional.h>
+#include <EASTL/unique_ptr.h>
+#include <EASTL/shared_ptr.h>
+#include <EASTL/weak_ptr.h>
 
 namespace Gleam {
 
-template<typename T>
-using Scope = std::unique_ptr<T>;
+template<typename T, typename Deleter = eastl::default_delete<T>>
+using Scope = eastl::unique_ptr<T>;
     
 template<typename T>
-using Ref = std::reference_wrapper<T>;
+using Ref = eastl::reference_wrapper<T>;
 
 template<typename T>
-using RefCounted = std::shared_ptr<T>;
+using RefCounted = eastl::shared_ptr<T>;
 
 template<typename T>
-using WeakPtr = std::weak_ptr<T>;
+using WeakPtr = eastl::weak_ptr<T>;
 
 template<typename T>
-using Optional = std::optional<T>;
+using Optional = eastl::optional<T>;
 
-static constexpr auto Null = std::nullopt;
+static constexpr auto Null = eastl::nullopt;
 
 template<typename T, typename ... Args>
 NO_DISCARD FORCE_INLINE static constexpr Scope<T> CreateScope(Args&& ... args) noexcept
 {
-	return std::make_unique<T>(std::forward<Args>(args)...);
+	return eastl::make_unique<T>(eastl::forward<Args>(args)...);
 }
 
 template<typename T, typename ... Args>
 NO_DISCARD FORCE_INLINE static constexpr  RefCounted<T> CreateRef(Args&& ... args) noexcept
 {
-	return std::make_shared<T>(std::forward<Args>(args)...);
+	return eastl::make_shared<T>(eastl::forward<Args>(args)...);
 }
 
 NO_DISCARD FORCE_INLINE static constexpr void* OffsetPointer(void* ptr, size_t offset)

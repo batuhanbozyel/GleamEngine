@@ -54,9 +54,9 @@ public:
 		auto meta = entt::resolve(classDesc.TypeHash());
 		auto asset = Reflection::Get<T*>(meta.func("CreateAsset"_hs).invoke({}, ref).base().data());
 		auto it = mAssetCache.emplace_hint(mAssetCache.end(),
-										   std::piecewise_construct,
-										   std::forward_as_tuple(ref),
-										   std::forward_as_tuple(asset));
+										   eastl::piecewise_construct,
+										   eastl::forward_as_tuple(ref),
+										   eastl::forward_as_tuple(asset));
 		return static_cast<T*>(it->second.get());
 	}
 	

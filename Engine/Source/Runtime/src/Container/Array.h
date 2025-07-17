@@ -1,21 +1,20 @@
 #pragma once
 #include <Reflection/Macro.h>
-
-#include <array>
-#include <vector>
+#include <EASTL/array.h>
+#include <EASTL/vector.h>
 
 namespace Gleam {
 
 template<typename T, size_t size>
 struct ArrayHelper
 {
-	typedef std::array<T, size> Type;
+	typedef eastl::array<T, size> Type;
 };
 
 template<typename T>
 struct ArrayHelper<T, 0>
 {
-	typedef std::vector<T> Type;
+	typedef eastl::vector<T> Type;
 };
 
 template<typename T, size_t size = 0>
@@ -45,9 +44,9 @@ static TArray<T>& Append(TArray<T>& m, const TArray<T>& n)
 
 } // namespace Gleam
 
-namespace Gleam::Reflection::External::std {
+namespace Gleam::Reflection::External::eastl {
 
-template<class T, class Alloactor = ::std::allocator<T>()>
+template<typename T, typename Allocator = ::eastl::allocator>
 class vector {};
 
 template<>

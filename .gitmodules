@@ -31,3 +31,6 @@
 [submodule "Engine/ThirdParty/GleamReflect"]
 	path = Engine/ThirdParty/GleamReflect
 	url = https://github.com/batuhanbozyel/GleamReflect
+[submodule "Engine/ThirdParty/EASTL"]
+	path = Engine/ThirdParty/EASTL
+	url = https://github.com/batuhanbozyel/EASTL

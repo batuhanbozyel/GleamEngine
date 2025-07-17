@@ -64,8 +64,8 @@ bool MeshSource::Import(const Gleam::Path& path, const ImportSettings& settings)
 		return false;
 	}
 
-	auto directory = path.parent_path();
-    auto filename = path.stem().string();
+	auto directory = path.Parent();
+    auto filename = path.Stem().String();
 	
     Gleam::TArray<RawMaterial> rawMaterials;
 	Gleam::HashMap<const cgltf_mesh*, Gleam::RefCounted<MeshBaker>> meshes;

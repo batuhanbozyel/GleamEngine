@@ -120,3 +120,12 @@ struct std::hash<Gleam::TextureDescriptor>
         return hash;
     }
 };
+
+template <>
+struct eastl::hash<Gleam::TextureDescriptor>
+{
+	size_t operator()(const Gleam::TextureDescriptor& descriptor) const
+	{
+		return std::hash<Gleam::TextureDescriptor>()(descriptor);
+	}
+};

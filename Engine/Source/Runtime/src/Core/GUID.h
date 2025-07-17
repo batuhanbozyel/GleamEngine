@@ -50,11 +50,21 @@ public:
 	}
 
 	Guid(const TString& guid)
-		: Reflection::Attribute::Guid(guid)
+		: Reflection::Attribute::Guid(guid.c_str())
+	{
+
+	}
+	Guid(const std::string& guid)
+		: Reflection::Attribute::Guid(guid.c_str())
 	{
 
 	}
 	Guid& operator=(const TString& guid)
+	{
+		*this = Guid(guid);
+		return *this;
+	}
+	Guid& operator=(const std::string& guid)
 	{
 		*this = Guid(guid);
 		return *this;
@@ -75,6 +85,15 @@ inline bool operator!=(const Reflection::Attribute::Guid& lhs, const Guid& rhs)
 
 template <>
 struct std::hash<Gleam::Guid>
+{
+	size_t operator()(const Gleam::Guid& guid) const
+	{
+		return std::hash<Gleam::Reflection::Attribute::Guid>()(guid);
+	}
+};
+
+template <>
+struct eastl::hash<Gleam::Guid>
 {
 	size_t operator()(const Gleam::Guid& guid) const
 	{

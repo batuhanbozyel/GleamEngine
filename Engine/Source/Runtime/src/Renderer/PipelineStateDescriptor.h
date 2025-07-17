@@ -231,3 +231,39 @@ struct std::hash<Gleam::GraphicsPipelineStateDescriptor>
 		return hash;
 	}
 };
+
+template <>
+struct eastl::hash<Gleam::DepthState>
+{
+	size_t operator()(const Gleam::DepthState& depthState) const
+	{
+		return std::hash<Gleam::DepthState>()(depthState);
+	}
+};
+
+template <>
+struct eastl::hash<Gleam::StencilState>
+{
+	size_t operator()(const Gleam::StencilState& stencilState) const
+	{
+		return std::hash<Gleam::StencilState>()(stencilState);
+	}
+};
+
+template <>
+struct eastl::hash<Gleam::PipelineStateDescriptor>
+{
+	size_t operator()(const Gleam::PipelineStateDescriptor& descriptor) const
+	{
+		return std::hash<Gleam::PipelineStateDescriptor>()(descriptor);
+	}
+};
+
+template <>
+struct eastl::hash<Gleam::GraphicsPipelineStateDescriptor>
+{
+	size_t operator()(const Gleam::GraphicsPipelineStateDescriptor& descriptor) const
+	{
+		return std::hash<Gleam::GraphicsPipelineStateDescriptor>()(descriptor);
+	}
+};

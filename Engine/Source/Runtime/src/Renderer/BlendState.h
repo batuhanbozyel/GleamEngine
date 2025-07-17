@@ -95,3 +95,12 @@ struct std::hash<Gleam::BlendState>
 		return hash;
 	}
 };
+
+template <>
+struct eastl::hash<Gleam::BlendState>
+{
+	size_t operator()(const Gleam::BlendState& blendState) const
+	{
+		return std::hash<Gleam::BlendState>()(blendState);
+	}
+};

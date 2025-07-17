@@ -23,7 +23,7 @@ Shader GraphicsDevice::CreateShader(const TString& entryPoint, ShaderStage stage
 
 GraphicsPipelineHandle GraphicsDevice::CreateGraphicsPipeline(const GraphicsPipelineStateDescriptor& pipelineDesc)
 {
-	GraphicsPipelineHandle handle{ std::hash<GraphicsPipelineStateDescriptor>()(pipelineDesc) };
+	GraphicsPipelineHandle handle{ eastl::hash<GraphicsPipelineStateDescriptor>()(pipelineDesc) };
 	auto it = mGraphicsPipelineCache.find(handle);
 	if (it != mGraphicsPipelineCache.end())
 	{

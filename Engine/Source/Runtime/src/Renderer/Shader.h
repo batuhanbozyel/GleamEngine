@@ -63,3 +63,12 @@ struct std::hash<Gleam::Shader>
         return hash;
     }
 };
+
+template <>
+struct eastl::hash<Gleam::Shader>
+{
+	size_t operator()(const Gleam::Shader& shader) const
+	{
+		return std::hash<Gleam::Shader>()(shader);
+	}
+};
