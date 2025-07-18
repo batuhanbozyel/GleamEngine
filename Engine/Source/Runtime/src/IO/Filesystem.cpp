@@ -33,14 +33,14 @@ File Filesystem::Create(const Path& path, FileType type)
     std::lock_guard<std::mutex> lock(mFileCreateMutex);
     if (auto it = mFileAccessors.find(path); it != mFileAccessors.end())
     {
-        return File(eastl::move(handle), path, it->second);
+        return File(std::move(handle), path, it->second);
     }
     
     auto it = mFileAccessors.emplace_hint(mFileAccessors.end(),
                                           eastl::piecewise_construct,
                                           eastl::forward_as_tuple(path),
                                           eastl::forward_as_tuple());
-	return File(eastl::move(handle), path, it->second);
+	return File(std::move(handle), path, it->second);
 }
 
 File Filesystem::Open(const Path& path, FileType type)

@@ -227,7 +227,7 @@ void JSONSerializer::Initialize(Engine* engine)
 			}
 		};
 
-		mCustomArrayDeserializers[Reflection::GetClass<eastl::basic_string<char>>().ResolveQualifiedName()] = [](const rapidjson::ConstNode& node,
+		mCustomArrayDeserializers[Reflection::GetClass<TString>().ResolveQualifiedName()] = [](const rapidjson::ConstNode& node,
 			const Reflection::ClassDescription& classDesc,
 			void* obj)
 		{

@@ -1,4 +1,7 @@
 #pragma once
+#define EA_DEBUG 0
+#define EASTL_DEBUG 0
+#define EASTL_NAME_ENABLED 0
 
 #include <cstdlib>
 #include <fstream>

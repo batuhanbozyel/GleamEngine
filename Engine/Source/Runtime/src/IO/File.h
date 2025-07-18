@@ -16,6 +16,8 @@ public:
 
     File(FileStream&& handle, const Path& path, FileAccessor& accessor);
 
+	~File();
+
 	TString Read() const;
 
 	void Write(const TString& contents);

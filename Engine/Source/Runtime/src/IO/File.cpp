@@ -12,6 +12,11 @@ File::File(FileStream&& handle, const Path& path, FileAccessor& accessor)
 	
 }
 
+File::~File()
+{
+
+}
+
 TString File::Read() const
 {
 	if (not mHandle.is_open())
