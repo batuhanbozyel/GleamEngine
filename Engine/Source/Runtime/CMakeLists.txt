@@ -16,23 +16,6 @@ file(GLOB_RECURSE SOURCE_FILES
 )
 list(FILTER SOURCE_FILES EXCLUDE REGEX ".*Reflection\\.generated\\.h$")
 
-# Add imgui as static library
-add_library(imgui STATIC
-    ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui/imgui.cpp
-    ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui/imgui_draw.cpp
-    ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui/imgui_widgets.cpp
-    ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui/imgui_demo.cpp
-    ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui/imgui_tables.cpp
-)
-
-# Configure imgui
-target_include_directories(imgui PRIVATE
-    ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui
-    ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/SDL/include
-    ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/DirectXAgilitySDK/build/native/include
-)
-set_target_properties (imgui PROPERTIES FOLDER Dependencies)
-
 # Setup link libraries
 if (WIN32)
     set(LIB_LINKS SDL3::SDL3-static d3d12.lib dxgi.lib dxguid.lib dstorage.lib imgui.lib Ole32.lib EASTL)
@@ -72,11 +55,11 @@ else()
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/entt/src
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/rapidjson/include
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/GleamReflect/include
-        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/DirectStorage/native/include
-        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/DirectXAgilitySDK/build/native/include
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/ImGuizmo
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/EASTL/include
+        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/DirectStorage/native/include
+        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/DirectXAgilitySDK/build/native/include
     )
 endif()
 
@@ -120,11 +103,21 @@ else()
     list(APPEND REFLECTION_COMPILER_ARGS "--extra-arg-before=--language=c++")
 endif()
 list(APPEND REFLECTION_COMPILER_ARGS "--extra-arg=-std=c++20")
-list(APPEND REFLECTINO_COMPILER_ARGS "--extra-arg=--no-warnings")
+list(APPEND REFLECTION_COMPILER_ARGS "--extra-arg=--no-warnings")
 list(APPEND REFLECTION_COMPILER_ARGS "--extra-arg=-D_DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR")
 list(APPEND REFLECTION_COMPILER_ARGS "--extra-arg=-D_CRT_SECURE_NO_WARNINGS")
 list(APPEND REFLECTION_COMPILER_ARGS "--extra-arg=-DWIN32_LEAN_AND_MEAN")
 list(APPEND REFLECTION_COMPILER_ARGS "--extra-arg=-DNOMINMAX")
+
+list(APPEND REFLECTION_COMPILER_ARGS 
+    "$<$<CONFIG:Debug>:--extra-arg=-DGDEBUG>"
+    "$<$<CONFIG:Debug>:--extra-arg=-O0>"
+    "$<$<CONFIG:Debug>:--extra-arg=-g>"
+    "$<$<CONFIG:Release>:--extra-arg=-O3>"
+    "$<$<CONFIG:Release>:--extra-arg=-DGRELEASE>"
+    "$<$<CONFIG:RelWithDebInfo>:--extra-arg=-O3>"
+    "$<$<CONFIG:RelWithDebInfo>:--extra-arg=-g>"
+)
 
 foreach(INCLUDE_DIR ${INCLUDE_DIRS})
     list(APPEND REFLECTION_COMPILER_ARGS "--extra-arg=-I${INCLUDE_DIR}")

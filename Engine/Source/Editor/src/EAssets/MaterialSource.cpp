@@ -120,7 +120,7 @@ bool MaterialSource::Import(const Gleam::Path& path, const ImportSettings& setti
                     descriptor.properties.emplace_back(Gleam::MaterialProperty{
                         .name = propertyName,
                         .type = Gleam::MaterialPropertyType::Texture2D,
-						.value = Gleam::AssetReference() });
+						.value = Gleam::AssetReference{} });
                 }
             }
         }
