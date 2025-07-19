@@ -139,7 +139,7 @@ void BinarySerializer::Initialize(Engine* engine)
 			FileStream& stream)
 		{
 			const auto& path = Reflection::Get<Path>(obj);
-			const auto& pathStr = path.string();
+			const auto& pathStr = path.String();
 			auto len = static_cast<uint32_t>(pathStr.length());
 
 			SerializeClassHeader(classDesc, stream);
@@ -152,7 +152,7 @@ void BinarySerializer::Initialize(Engine* engine)
 			FileStream& stream)
 		{
 			const auto& path = Reflection::Get<Path>(obj);
-			const auto& pathStr = path.string();
+			const auto& pathStr = path.String();
 			auto len = static_cast<uint32_t>(pathStr.length());
 			stream.write(reinterpret_cast<const char*>(&len), sizeof(uint32_t));
 			stream.write(pathStr.data(), pathStr.length());

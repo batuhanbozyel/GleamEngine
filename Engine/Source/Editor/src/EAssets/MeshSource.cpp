@@ -47,7 +47,7 @@ static void setTSpaceBasic(const SMikkTSpaceContext* context, const float tangen
 
 bool MeshSource::Import(const Gleam::Path& path, const ImportSettings& settings)
 {
-	Gleam::TString gltfPath = path.string();
+	Gleam::TString gltfPath = path.String();
 	cgltf_options options = {};
 	cgltf_data* data = nullptr;
 
@@ -64,8 +64,8 @@ bool MeshSource::Import(const Gleam::Path& path, const ImportSettings& settings)
 		return false;
 	}
 
-	auto directory = path.Parent();
-    auto filename = path.Stem().String();
+	Gleam::Path directory = path.Parent();
+    Gleam::TString filename = path.Stem().String();
 	
     Gleam::TArray<RawMaterial> rawMaterials;
 	Gleam::HashMap<const cgltf_mesh*, Gleam::RefCounted<MeshBaker>> meshes;
@@ -173,45 +173,45 @@ bool MeshSource::Import(const Gleam::Path& path, const ImportSettings& settings)
 		descriptor["Metallic"] = material.metallicFactor;
 		descriptor["Roughness"] = material.roughnessFactor;
 
-		if (const auto& texture = material.textures[PBRTexture::Albedo]; texture.empty() == false)
+		if (const auto& texture = material.textures[PBRTexture::Albedo]; texture.Empty() == false)
 		{
 			auto texturePath = directory / texture;
 			auto textureSettings = TextureSource::ImportSettings();
 			textureSettings.colorSpace = TextureColorSpace::sRGB;
 			if (ImportReference<TextureSource>(texturePath, textureSettings))
 			{
-				descriptor["BaseColorTexture"] = Registry()->GetAsset<Gleam::Texture2DDescriptor>(texture.stem()).reference;
+				descriptor["BaseColorTexture"] = Registry()->GetAsset<Gleam::Texture2DDescriptor>(texture.Stem()).reference;
 			}
 		}
 
-		if (const auto& texture = material.textures[PBRTexture::Normal]; texture.empty() == false)
+		if (const auto& texture = material.textures[PBRTexture::Normal]; texture.Empty() == false)
 		{
 			auto texturePath = directory / texture;
 			auto textureSettings = TextureSource::ImportSettings();
 			if (ImportReference<TextureSource>(texturePath, textureSettings))
 			{
-				descriptor["NormalTexture"] = Registry()->GetAsset<Gleam::Texture2DDescriptor>(texture.stem()).reference;
+				descriptor["NormalTexture"] = Registry()->GetAsset<Gleam::Texture2DDescriptor>(texture.Stem()).reference;
 			}
 		}
 
-		if (const auto& texture = material.textures[PBRTexture::MetallicRoughness]; texture.empty() == false)
+		if (const auto& texture = material.textures[PBRTexture::MetallicRoughness]; texture.Empty() == false)
 		{
 			auto texturePath = directory / texture;
 			auto textureSettings = TextureSource::ImportSettings();
 			if (ImportReference<TextureSource>(texturePath, textureSettings))
 			{
-				descriptor["MetallicRoughnessTexture"] = Registry()->GetAsset<Gleam::Texture2DDescriptor>(texture.stem()).reference;
+				descriptor["MetallicRoughnessTexture"] = Registry()->GetAsset<Gleam::Texture2DDescriptor>(texture.Stem()).reference;
 			}
 		}
 
-		if (const auto& texture = material.textures[PBRTexture::Emissive]; texture.empty() == false)
+		if (const auto& texture = material.textures[PBRTexture::Emissive]; texture.Empty() == false)
 		{
 			auto texturePath = directory / texture;
 			auto textureSettings = TextureSource::ImportSettings();
 			textureSettings.colorSpace = TextureColorSpace::sRGB;
 			if (ImportReference<TextureSource>(texturePath, textureSettings))
 			{
-				descriptor["EmissiveTexture"] = Registry()->GetAsset<Gleam::Texture2DDescriptor>(texture.stem()).reference;
+				descriptor["EmissiveTexture"] = Registry()->GetAsset<Gleam::Texture2DDescriptor>(texture.Stem()).reference;
 			}
 		}
 		materials.emplace_back(EmplaceBaker<MaterialInstanceBaker>(descriptor));

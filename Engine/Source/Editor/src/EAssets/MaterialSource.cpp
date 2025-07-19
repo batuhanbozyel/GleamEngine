@@ -69,7 +69,7 @@ bool MaterialSource::Import(const Gleam::Path& path, const ImportSettings& setti
     document.ParseStream(ss);
     
     Gleam::MaterialDescriptor descriptor;
-    descriptor.name = path.stem().string();
+    descriptor.name = path.Stem();
     
     Gleam::TStringStream generatedShader;
     generatedShader << "\n\nstruct MaterialProperties\n{\n";
@@ -131,17 +131,17 @@ bool MaterialSource::Import(const Gleam::Path& path, const ImportSettings& setti
     if (document.HasMember("SurfaceShader"))
     {
         auto shaderPath = path;
-        shaderPath.remove_filename();
+        shaderPath.RemoveFilename();
         shaderPath /= document["SurfaceShader"].GetString();
-        descriptor.surfaceShader = shaderPath.stem().string();
+        descriptor.surfaceShader = shaderPath.Stem();
         
-        if (shaderPath.has_extension() == false)
+        if (shaderPath.HasExtension() == false)
         {
-            shaderPath += ".shader";
+            shaderPath.Concat(".shader");
         }
         
         auto generatedPath = shaderPath;
-        generatedPath.concat(".gen.hlsl");
+        generatedPath.Concat(".gen.hlsl");
         {
             auto shaderFile = Gleam::Filesystem::Open(shaderPath, Gleam::FileType::Text);
             generatedShader << shaderFile.Read() << "\0";
@@ -164,7 +164,7 @@ bool MaterialSource::Import(const Gleam::Path& path, const ImportSettings& setti
         }
 
 		Gleam::Path dxilShader = Gleam::Globals::BuiltinAssetsDirectory / "Shaders" / descriptor.surfaceShader;
-		dxilShader.replace_extension("dxil");
+		dxilShader.Concat(".dxil");
 
 		if (Gleam::Filesystem::Exists(dxilShader))
 		{

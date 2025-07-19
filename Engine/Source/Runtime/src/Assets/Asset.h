@@ -17,9 +17,9 @@ public:
 
 	virtual void Release() = 0;
 	
-    static constexpr TStringView Extension()
+    static constexpr TWStringView Extension()
     {
-        return ".asset";
+        return L".asset";
     }
 };
 

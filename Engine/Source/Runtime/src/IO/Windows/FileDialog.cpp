@@ -31,7 +31,7 @@ TArray<Path> FileDialog::Open(const TWString& filterName, const TWString& filter
 	// Set the initial directory
 	IShellItem* pInitialDirItem = NULL;
 	const auto& assetPath = Filesystem::WorkingDirectory();
-	if (SUCCEEDED(SHCreateItemFromParsingName(assetPath.c_str(), NULL, IID_PPV_ARGS(&pInitialDirItem))))
+	if (SUCCEEDED(SHCreateItemFromParsingName(assetPath.Native().c_str(), NULL, IID_PPV_ARGS(&pInitialDirItem))))
 	{
 		pFileOpenDialog->SetDefaultFolder(pInitialDirItem);
 		pInitialDirItem->Release();

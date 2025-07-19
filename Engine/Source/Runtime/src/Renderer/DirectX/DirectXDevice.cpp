@@ -374,9 +374,11 @@ GraphicsPipeline GraphicsDevice::CompileGraphicsPipeline(const GraphicsPipelineS
 	}
 	DX_CHECK(static_cast<ID3D12Device10*>(mHandle)->CreateGraphicsPipelineState(&psoDesc, __uuidof(ID3D12PipelineState*), &pipeline.mHandle));
 
-	TStringStream pipelineName;
-	pipelineName << "GraphicsPipeline::" << vertexShader.GetEntryPoint() << "_" << fragmentShader.GetEntryPoint();
-	static_cast<ID3D12PipelineState*>(pipeline.mHandle)->SetName(StringUtils::Convert(pipelineName.str()).data());
+	TStringStream ss;
+	ss << "GraphicsPipeline::" << vertexShader.GetEntryPoint() << "_" << fragmentShader.GetEntryPoint();
+
+	TWString pipelineName = ss.str();
+	static_cast<ID3D12PipelineState*>(pipeline.mHandle)->SetName(pipelineName.c_str());
 
 	return pipeline;
 }
@@ -623,8 +625,9 @@ ID3D12GraphicsCommandList7* DirectXDevice::AllocateCommandList(D3D12_COMMAND_LIS
 {
 	auto swapchain = static_cast<DirectXSwapchain*>(mSurface);
 
-	TStringStream cmdlistName;
-	cmdlistName << ID3D12CommandListTypeToString(type) << swapchain->mCurrentFrameIndex;
+	TStringStream ss;
+	ss << ID3D12CommandListTypeToString(type) << swapchain->mCurrentFrameIndex;
+	TWString cmdlistName = ss.str();
 
 	for (auto& pool : mFrameContext[swapchain->mCurrentFrameIndex].commandPools)
 	{
@@ -643,7 +646,7 @@ ID3D12GraphicsCommandList7* DirectXDevice::AllocateCommandList(D3D12_COMMAND_LIS
 
 			pool.usedCommandLists.push_back(commandList);
 			commandList->Reset(pool.allocator, nullptr);
-			commandList->SetName(StringUtils::Convert(cmdlistName.str()).data());
+			commandList->SetName(cmdlistName.c_str());
 			return commandList;
 		}
 	}
@@ -655,7 +658,7 @@ ID3D12GraphicsCommandList7* DirectXDevice::AllocateCommandList(D3D12_COMMAND_LIS
 	DX_CHECK(static_cast<ID3D12Device10*>(mHandle)->CreateCommandList1(0, type, D3D12_COMMAND_LIST_FLAG_NONE, IID_PPV_ARGS(&commandList)));
 	pool.usedCommandLists.push_back(commandList);
 	commandList->Reset(pool.allocator, nullptr);
-	commandList->SetName(StringUtils::Convert(cmdlistName.str()).data());
+	commandList->SetName(cmdlistName.c_str());
 	return commandList;
 }
 

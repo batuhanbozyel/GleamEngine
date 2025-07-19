@@ -99,7 +99,7 @@ void EAssetManager::Initialize(Gleam::World* world)
         if (entry.Extension() == Gleam::Asset::Extension())
         {
             auto header = ParseBinaryHeader(entry);
-            auto guid = Gleam::Guid(entry.Stem().string());
+            auto guid = Gleam::Guid(entry.Stem());
             auto asset = Gleam::AssetReference{ .guid = guid };
             auto name = ParseAssetName(entry, header.guid);
             auto item = AssetItem{
@@ -113,7 +113,7 @@ void EAssetManager::Initialize(Gleam::World* world)
 		else if (entry.Extension() == Gleam::Prefab::Extension())
 		{
 			auto typeGuid = Gleam::Reflection::GetClass<Gleam::Prefab>().Guid();
-			auto guid = Gleam::Guid(entry.Stem().string());
+			auto guid = Gleam::Guid(entry.Stem());
 			auto asset = Gleam::AssetReference{ .guid = guid };
 			auto name = ParseAssetName(entry, typeGuid);
 			auto item = AssetItem{
@@ -127,7 +127,7 @@ void EAssetManager::Initialize(Gleam::World* world)
 		else if (entry.Extension() == Gleam::World::Extension())
 		{
 			auto typeGuid = Gleam::Reflection::GetClass<Gleam::World>().Guid();
-			auto guid = Gleam::Guid(entry.Stem().string());
+			auto guid = Gleam::Guid(entry.Stem());
 			auto asset = Gleam::AssetReference{ .guid = guid };
 			auto name = ParseAssetName(entry, typeGuid);
 			auto item = AssetItem{

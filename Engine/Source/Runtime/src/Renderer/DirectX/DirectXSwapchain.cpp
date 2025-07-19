@@ -202,8 +202,8 @@ Texture DirectXSwapchain::CreateSwapchainBuffer(GraphicsDevice* device, uint32_t
 	TStringStream ss;
 	ss << "Swapchain::Drawable_" << buffer;
 
-	TString resourceName = ss.str();
-	texture->SetName(StringUtils::Convert(resourceName).data());
+	TWString resourceName = ss.str();
+	texture->SetName(resourceName.c_str());
 
 	TextureDescriptor swapchainDesc;
 	swapchainDesc.name = resourceName;

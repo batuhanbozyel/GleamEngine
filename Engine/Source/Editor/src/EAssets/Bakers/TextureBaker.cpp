@@ -11,7 +11,7 @@ TextureBaker::TextureBaker(const Gleam::Texture2DDescriptor& descriptor)
 
 void TextureBaker::Bake(const Gleam::Path& directory, const AssetItem& item) const
 {
-	auto filename = item.reference.guid.ToString() + Gleam::Asset::Extension().data();
+	auto filename = Gleam::TWString(item.reference.guid.ToString()) + Gleam::Asset::Extension();
 	auto file = Gleam::Filesystem::Create(directory / filename, Gleam::FileType::Binary);
 	auto accessor = Gleam::Filesystem::WriteAccessor(directory / filename);
 

@@ -28,6 +28,27 @@ public:
 	TString(eastl::string&& str) : eastl::string(std::move(str)) {}
 
 	TString(const std::string& str) : eastl::string(str.c_str(), str.size()) {}
+	TString(const std::string_view& str) : eastl::string(str.data(), str.size()) {}
+
+	TString(const eastl::wstring& str)
+	{
+		append_convert(str);
+	}
+
+	TString(const eastl::wstring_view& str)
+	{
+		append_convert(str.data(), str.length());
+	}
+
+	TString(const std::wstring& str)
+	{
+		append_convert(str);
+	}
+
+	TString(const std::wstring_view& str)
+	{
+		append_convert(str.data(), str.length());
+	}
 
 	template<size_t N>
 	explicit TString(const char(&str)[N]) : eastl::string(str, N) {}
@@ -171,6 +192,27 @@ public:
 	TWString(eastl::wstring&& str) : eastl::wstring(std::move(str)) {}
 
 	TWString(const std::wstring& str) : eastl::wstring(str.c_str(), str.size()) {}
+	TWString(const std::wstring_view& str) : eastl::wstring(str.data(), str.size()) {}
+
+	TWString(const eastl::string& str)
+	{
+		append_convert(str);
+	}
+
+	TWString(const eastl::string_view& str)
+	{
+		append_convert(str.data(), str.length());
+	}
+
+	TWString(const std::string& str)
+	{
+		append_convert(str);
+	}
+
+	TWString(const std::string_view& str)
+	{
+		append_convert(str.data(), str.length());
+	}
 
 	template<size_t N>
 	explicit TWString(const wchar_t(&str)[N]) : eastl::wstring(str, N) {}
@@ -320,12 +362,14 @@ public:
 
 	constexpr TStringView(const char* str) : eastl::string_view(str) {}
 
+	constexpr TStringView(const char* str, size_t len) : eastl::string_view(str, len) {}
+
 	constexpr operator std::string_view() const
 	{
 		return std::string_view(this->data(), this->size());
 	}
 
-	constexpr std::string to_string() const
+	constexpr std::string String() const
 	{
 		return std::string(this->data(), this->size());
 	}
@@ -349,12 +393,14 @@ public:
 
 	constexpr TWStringView(const wchar_t* str) : eastl::wstring_view(str) {}
 
+	constexpr TWStringView(const wchar_t* str, size_t len) : eastl::wstring_view(str, len) {}
+
 	constexpr operator std::wstring_view() const
 	{
 		return std::wstring_view(this->data(), this->size());
 	}
 
-	constexpr std::wstring to_wstring() const
+	constexpr std::wstring String() const
 	{
 		return std::wstring(this->data(), this->size());
 	}
@@ -406,12 +452,30 @@ static TWString Convert(const TString& as)
 	return str;
 }
 
+static TWString Convert(const TStringView& as)
+{
+	if (as.empty()) return TWString();
+
+	TWString str;
+	str.append_convert(as.data(), as.length());
+	return str;
+}
+
 static TString Convert(const TWString& as)
 {
     if (as.empty()) return TString();
 
 	TString str;
 	str.append_convert(as);
+	return str;
+}
+
+static TString Convert(const TWStringView& as)
+{
+	if (as.empty()) return TString();
+
+	TString str;
+	str.append_convert(as.data(), as.length());
 	return str;
 }
 
@@ -785,70 +849,70 @@ inline bool operator>=(const TWStringView& lhs, const TWStringView& rhs) noexcep
 
 namespace std {
 
-inline std::ostream& operator<<(std::ostream& os, const Gleam::TString& str)
+inline ostream& operator<<(ostream& os, const Gleam::TString& str)
 {
 	return os << str.c_str();
 }
 
-inline std::ostream& operator<<(std::ostream& os, const Gleam::TStringView& sv)
+inline ostream& operator<<(ostream& os, const Gleam::TStringView& sv)
 {
 	return os.write(sv.data(), sv.size());
 }
 
-inline std::wostream& operator<<(std::wostream& os, const Gleam::TWString& str)
+inline wostream& operator<<(wostream& os, const Gleam::TWString& str)
 {
 	return os << str.c_str();
 }
 
-inline std::wostream& operator<<(std::wostream& os, const Gleam::TWStringView& sv)
+inline wostream& operator<<(wostream& os, const Gleam::TWStringView& sv)
 {
 	return os.write(sv.data(), sv.size());
 }
 
-inline std::istream& operator>>(std::istream& is, Gleam::TString& str)
+inline istream& operator>>(istream& is, Gleam::TString& str)
 {
-	std::string temp;
+	string temp;
 	is >> temp;
 	str = temp;
 	return is;
 }
 
-inline std::wistream& operator>>(std::wistream& is, Gleam::TWString& str)
+inline wistream& operator>>(wistream& is, Gleam::TWString& str)
 {
-	std::wstring temp;
+	wstring temp;
 	is >> temp;
 	str = temp;
 	return is;
 }
 
-inline std::istream& getline(std::istream& is, Gleam::TString& str)
+inline istream& getline(istream& is, Gleam::TString& str)
 {
-	std::string temp;
-	std::getline(is, temp);
+	string temp;
+	getline(is, temp);
 	str = temp;
 	return is;
 }
 
-inline std::istream& getline(std::istream& is, Gleam::TString& str, char delim)
+inline istream& getline(istream& is, Gleam::TString& str, char delim)
 {
-	std::string temp;
-	std::getline(is, temp, delim);
+	string temp;
+	getline(is, temp, delim);
 	str = temp;
 	return is;
 }
 
-inline std::wistream& getline(std::wistream& is, Gleam::TWString& str)
+inline wistream& getline(wistream& is, Gleam::TWString& str)
 {
-	std::wstring temp;
-	std::getline(is, temp);
+	wstring temp;
+	getline(is, temp);
 	str = temp;
 	return is;
 }
 
-inline std::wistream& getline(std::wistream& is, Gleam::TWString& str, wchar_t delim)
+inline wistream& getline(wistream& is, Gleam::TWString& str, wchar_t delim)
 {
-	std::wstring temp;
-	std::getline(is, temp, delim);
+	wstring temp;
+	getline(is, temp, delim);
 	str = temp;
 	return is;
 }
@@ -856,36 +920,36 @@ inline std::wistream& getline(std::wistream& is, Gleam::TWString& str, wchar_t d
 template<>
 struct hash<Gleam::TString>
 {
-    std::size_t operator()(const Gleam::TString& str) const noexcept
+    size_t operator()(const Gleam::TString& str) const noexcept
     {
-        return std::hash<std::string_view>{}(std::string_view(str.c_str(), str.size()));
+        return hash<string_view>{}(string_view(str.c_str(), str.size()));
     }
 };
 
 template<>
 struct hash<Gleam::TWString>
 {
-    std::size_t operator()(const Gleam::TWString& str) const noexcept
+    size_t operator()(const Gleam::TWString& str) const noexcept
     {
-        return std::hash<std::wstring_view>{}(std::wstring_view(str.c_str(), str.size()));
+        return hash<wstring_view>{}(wstring_view(str.c_str(), str.size()));
     }
 };
 
 template<>
 struct hash<Gleam::TStringView>
 {
-    std::size_t operator()(const Gleam::TStringView& sv) const noexcept
+    size_t operator()(const Gleam::TStringView& sv) const noexcept
     {
-        return std::hash<std::string_view>{}(std::string_view(sv.data(), sv.size()));
+        return hash<string_view>{}(string_view(sv.data(), sv.size()));
     }
 };
 
 template<>
 struct hash<Gleam::TWStringView>
 {
-    std::size_t operator()(const Gleam::TWStringView& sv) const noexcept
+    size_t operator()(const Gleam::TWStringView& sv) const noexcept
     {
-        return std::hash<std::wstring_view>{}(std::wstring_view(sv.data(), sv.size()));
+        return hash<wstring_view>{}(wstring_view(sv.data(), sv.size()));
     }
 };
 
@@ -896,18 +960,18 @@ namespace eastl {
 template<>
 struct hash<Gleam::TString>
 {
-	std::size_t operator()(const Gleam::TString& str) const
+	size_t operator()(const Gleam::TString& str) const
 	{
-		return eastl::hash<eastl::string_view>{}(eastl::string_view(str.c_str(), str.size()));
+		return hash<string_view>{}(string_view(str.c_str(), str.size()));
 	}
 };
 
 template<>
 struct hash<Gleam::TWString>
 {
-	std::size_t operator()(const Gleam::TWString& str) const
+	size_t operator()(const Gleam::TWString& str) const
 	{
-		return eastl::hash<eastl::wstring_view>{}(eastl::wstring_view(str.c_str(), str.size()));
+		return hash<wstring_view>{}(wstring_view(str.c_str(), str.size()));
 	}
 };
 
@@ -916,7 +980,7 @@ struct hash<Gleam::TStringView>
 {
 	std::size_t operator()(const Gleam::TStringView& sv) const
 	{
-		return eastl::hash<eastl::string_view>{}(eastl::string_view(sv.data(), sv.size()));
+		return hash<string_view>{}(string_view(sv.data(), sv.size()));
 	}
 };
 
@@ -925,7 +989,7 @@ struct hash<Gleam::TWStringView>
 {
 	std::size_t operator()(const Gleam::TWStringView& sv) const
 	{
-		return eastl::hash<eastl::wstring_view>{}(eastl::wstring_view(sv.data(), sv.size()));
+		return hash<wstring_view>{}(wstring_view(sv.data(), sv.size()));
 	}
 };
 

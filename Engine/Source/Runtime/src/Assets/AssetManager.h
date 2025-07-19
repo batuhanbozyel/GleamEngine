@@ -50,8 +50,7 @@ public:
 			return static_cast<T*>(it->second.get());
 		}
 
-		const auto& classDesc = Reflection::GetClass<T>();
-		auto meta = entt::resolve(classDesc.TypeHash());
+		auto meta = entt::resolve(entt::type_hash<T>().value());
 		auto asset = Reflection::Get<T*>(meta.func("CreateAsset"_hs).invoke({}, ref).base().data());
 		auto it = mAssetCache.emplace_hint(mAssetCache.end(),
 										   eastl::piecewise_construct,
@@ -81,10 +80,7 @@ public:
 	template<AssetType T, typename Desc>
 	static void RegisterMetaAsset()
 	{
-		const auto& classDesc = Reflection::GetClass<T>();
-		entt::meta_factory<T>()
-			.type(classDesc.TypeHash())
-			.template func<&CreateAsset<T, Desc>>("CreateAsset"_hs);
+		entt::meta_factory<T>().template func<&CreateAsset<T, Desc>>("CreateAsset"_hs);
 	}
 	
 	const Path& GetAssetPath(const AssetReference& ref) const;

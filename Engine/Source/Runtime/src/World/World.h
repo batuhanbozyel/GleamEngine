@@ -21,9 +21,9 @@ GCLASS(World, "F2C18BDA-C06B-466F-B2E4-1DE905786688", Serializable) final
 {
 public:
 
-	static constexpr TStringView Extension()
+	static constexpr TWStringView Extension()
 	{
-		return ".gworld";
+		return L".gworld";
 	}
 	
 	World(World&&) = default;

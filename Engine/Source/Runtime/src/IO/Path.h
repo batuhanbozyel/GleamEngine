@@ -5,686 +5,521 @@
 
 namespace Gleam {
 
-GCLASS(Path, "DA162505-C36B-4FF1-BCB7-FE8428606223", Serializable) 
-	: public std::filesystem::path
+GCLASS(Path, "DA162505-C36B-4FF1-BCB7-FE8428606223", Serializable)
 {
+	static inline constexpr wchar_t kPreferredSeparator = '/';
+	static inline constexpr wchar_t kAltSeparator = '\\';
 public:
-    using std::filesystem::path::path;
-    
-    Path() : std::filesystem::path() {}
-    
-    Path(const std::filesystem::path& p) : std::filesystem::path(p) {}
-    Path(std::filesystem::path&& p) : std::filesystem::path(std::move(p)) {}
-    
-    Path(const std::string& str) : std::filesystem::path(str) {}
-    Path(std::string&& str) : std::filesystem::path(std::move(str)) {}
-    Path(const std::string_view& sv) : std::filesystem::path(sv) {}
-    Path(const char* str) : std::filesystem::path(str) {}
 
-	Path(const std::wstring& wstr) : std::filesystem::path(wstr) {}
-	Path(std::wstring&& wstr) : std::filesystem::path(std::move(wstr)) {}
-    Path(const std::wstring_view& wsv) : std::filesystem::path(wsv) {}
-    Path(const wchar_t* wstr) : std::filesystem::path(wstr) {}
-    
-	Path(const TWString& str) : Path(std::move(std::wstring(str))) {}
-    Path(const TString& str) : Path(std::move(std::string(str))) {}
-    Path(const TStringView& sv) : Path(std::string_view(sv)) {}
-    
-    Path& operator=(const std::filesystem::path& p)
+	Path() = default;
+	Path(const Path&) = default;
+	Path(Path&&) noexcept = default;
+
+	Path(const std::filesystem::path & p) : mPath(p.native()) {}
+	Path(std::filesystem::path && p) : mPath(std::move(p.native())) {}
+
+	Path(const wchar_t* wstr) : mPath(wstr) {}
+
+	Path(const TWString & wstr) : mPath(wstr) {}
+	Path(TWString && wstr) : mPath(eastl::move(wstr)) {}
+	Path(const TWStringView & wsv) : mPath(wsv) {}
+
+	Path(const std::wstring & wstr) : mPath(wstr) {}
+	Path(std::wstring && wstr) : mPath(std::move(wstr)) {}
+	Path(const std::wstring_view & wsv) : mPath(wsv) {}
+
+	Path(const char* str)
 	{
-        std::filesystem::path::operator=(p);
-        return *this;
-    }
-    
-    Path& operator=(const std::string& str)
+		mPath.append_convert(str);
+	}
+
+	Path(const TString & str)
 	{
-        std::filesystem::path::operator=(str);
-        return *this;
-    }
-    
-    Path& operator=(const std::string_view& sv)
+		mPath.append_convert(str);
+	}
+	Path(const TStringView & str)
 	{
-        std::filesystem::path::operator=(sv);
-        return *this;
-    }
-    
-    Path& operator=(const char* str)
+		mPath.append_convert(str.data(), str.length());
+	}
+
+	Path(const std::string & str)
 	{
-        std::filesystem::path::operator=(str);
-        return *this;
-    }
-    
-    Path& operator=(const TString& str)
+		mPath.append_convert(str);
+	}
+	Path(const std::string_view & str)
 	{
-        std::filesystem::path::operator=(std::string(str));
-        return *this;
-    }
-    
-    Path& operator=(const TStringView& sv)
+		mPath.append_convert(str.data(), str.length());
+	}
+
+	Path& operator=(const Path&) = default;
+	Path& operator=(Path&&) noexcept = default;
+
+	Path& operator=(const std::filesystem::path& p)
 	{
-        std::filesystem::path::operator=(std::string_view(sv));
-        return *this;
-    }
-    
-    Path& operator/=(const Path& other)
+		mPath = p.wstring();
+		return *this;
+	}
+
+	Path& operator=(const std::string& str)
 	{
-        std::filesystem::path::operator/=(other);
-        return *this;
-    }
+		mPath.clear();
+		mPath.append_convert(str);
+		return *this;
+	}
+
+	Path& operator=(const std::string_view& sv)
+	{
+		mPath.clear();
+		mPath.append_convert(sv.data(), sv.length());
+		return *this;
+	}
+
+	Path& operator=(const char* str)
+	{
+		mPath.clear();
+		mPath.append_convert(str);
+		return *this;
+	}
+
+	Path& operator=(const TString& str)
+	{
+		mPath.clear();
+		mPath.append_convert(str);
+		return *this;
+	}
+
+	Path& operator=(const TStringView& sv)
+	{
+		mPath.clear();
+		mPath.append_convert(sv.data(), sv.length());
+		return *this;
+	}
+
+	Path& operator=(const TWString& str)
+	{
+		mPath = str;
+		return *this;
+	}
+
+	Path& operator=(const TWStringView& sv)
+	{
+		mPath = sv;
+		return *this;
+	}
+
+	Path& operator/=(const Path& other)
+	{
+		if (other.mPath.empty())
+		{
+			return *this;
+		}
+
+		if (mPath.empty())
+		{
+			mPath = other.mPath;
+		}
+		else
+		{
+			if (mPath.back() != kPreferredSeparator && mPath.back() != kAltSeparator)
+			{
+				mPath.push_back(kPreferredSeparator);
+			}
+			mPath += other.mPath;
+		}
+		return *this;
+	}
 
 	friend Path operator/(const Path& lhs, const Path& rhs)
 	{
-		return Path(std::filesystem::path(lhs) / std::filesystem::path(rhs));
+		Path result = lhs;
+		result /= rhs;
+		return result;
 	}
 
 	friend Path operator/(const Path& lhs, const char* rhs)
 	{
-		return Path(std::filesystem::path(lhs) / std::filesystem::path(rhs));
+		return lhs / Path(rhs);
 	}
 
-	friend Path operator/(const Path& lhs, const std::string_view& rhs)
+	friend Path operator/(const Path & lhs, const std::string_view& rhs)
 	{
-		return Path(std::filesystem::path(lhs) / std::filesystem::path(rhs));
+		return lhs / Path(rhs);
 	}
 
 	friend Path operator/(const Path& lhs, const std::string& rhs)
 	{
-		return Path(std::filesystem::path(lhs) / std::filesystem::path(rhs));
+		return lhs / Path(rhs);
 	}
 
 	friend Path operator/(const Path& lhs, const std::wstring_view& rhs)
 	{
-		return Path(std::filesystem::path(lhs) / std::filesystem::path(rhs));
+		return lhs / Path(rhs);
 	}
 
 	friend Path operator/(const Path& lhs, const std::wstring& rhs)
 	{
-		return Path(std::filesystem::path(lhs) / std::filesystem::path(rhs));
+		return lhs / Path(rhs);
 	}
 
 	friend Path operator/(const Path& lhs, const TStringView& rhs)
 	{
-		return Path(std::filesystem::path(lhs) / std::filesystem::path(std::string_view(rhs)));
+		return lhs / Path(rhs);
 	}
 
 	friend Path operator/(const Path& lhs, const TString& rhs)
 	{
-		return Path(std::filesystem::path(lhs) / std::filesystem::path(std::string(rhs)));
+		return lhs / Path(rhs);
 	}
 
 	friend Path operator/(const Path& lhs, const TWStringView& rhs)
 	{
-		return Path(std::filesystem::path(lhs) / std::filesystem::path(std::wstring_view(rhs)));
+		return lhs / Path(rhs);
 	}
 
 	friend Path operator/(const Path& lhs, const TWString& rhs)
 	{
-		return Path(std::filesystem::path(lhs) / std::filesystem::path(std::wstring(rhs)));
+		return lhs / Path(rhs);
 	}
 
-    TString String() const
+	const TWString& Native() const
 	{
-        return TString(this->string());
-    }
-    
-    operator TString() const
-	{
-        return String();
-    }
+		return mPath;
+	}
 
-	Path Extension() const
+	TString String() const
 	{
-		return extension();
+		TString str;
+		str.append_convert(mPath);
+		return str;
+	}
+
+	operator TWString() const
+	{
+		return Native();
+	}
+
+	operator std::filesystem::path() const
+	{
+		return std::filesystem::path(mPath);
+	}
+
+	bool HasExtension() const
+	{
+		if (mPath.empty())
+		{
+			return false;
+		}
+
+		auto lastDot = mPath.find_last_of(L'.');
+		auto lastSlash = mPath.find_last_of(L"/\\");
+		return (lastDot == TWString::npos || (lastSlash != TWString::npos && lastDot < lastSlash)) == false;
+	}
+
+	TWStringView Extension() const
+	{
+		if (mPath.empty())
+		{
+			return TWStringView{};
+		}
+
+		auto lastDot = mPath.find_last_of(L'.');
+		auto lastSlash = mPath.find_last_of(L"/\\");
+		if (lastDot == TWString::npos || (lastSlash != TWString::npos && lastDot < lastSlash))
+		{
+			return TWStringView{};
+		}
+
+		return TWStringView(mPath.data() + lastDot, mPath.size() - lastDot);
 	}
 
 	Path Parent() const
 	{
-		return parent_path();
+		if (mPath.empty())
+		{
+			return TWStringView{};
+		}
+
+		auto lastSlash = mPath.find_last_of(L"/\\");
+		if (lastSlash == TWString::npos)
+		{
+			return TWStringView{}; // No parent
+		}
+		return Path(TWStringView(mPath.data(), lastSlash));
 	}
 
-	Path Stem() const
+	TWStringView Filename() const
 	{
-		return stem();
+		if (mPath.empty())
+		{
+			return TWStringView{};
+		}
+
+		auto lastSlash = mPath.find_last_of(L"/\\");
+		if (lastSlash == TWString::npos)
+		{
+			return mPath; // No parent
+		}
+		auto start = lastSlash + 1;
+		return TWStringView(mPath.data() + start, mPath.size() - start);
 	}
 
-	template<size_t N>
-	Path& Append(const char(&str)[N])
+	TWStringView Stem() const
 	{
-		append(std::string_view(str, N));
+		if (mPath.empty())
+		{
+			return TWStringView{};
+		}
+
+		auto lastSlash = mPath.find_last_of(L"/\\");
+		auto start = (lastSlash == TWString::npos) ? 0 : lastSlash + 1;
+		auto lastDot = mPath.find_last_of(L'.');
+		auto end = mPath.size();
+
+		if (lastDot != TWString::npos && (lastSlash == TWString::npos || lastDot > lastSlash))
+		{
+			end = lastDot;
+		}
+
+		if (start >= end)
+		{
+			return TWStringView{};
+		}
+
+		return TWStringView(mPath.data() + start, end - start);
+	}
+
+	Path& RemoveFilename()
+	{
+		if (mPath.empty())
+		{
+			return *this;
+		}
+
+		auto lastSlash = mPath.find_last_of(L"/\\");
+		if (lastSlash != TWString::npos)
+		{
+			mPath = mPath.substr(0, lastSlash);
+		}
 		return *this;
 	}
 
 	Path& Append(const char* str)
 	{
-		append(str);
+		return operator/=(Path(str));
+	}
+
+	Path& Append(const wchar_t* str)
+	{
+		return operator/=(Path(str));
+	}
+
+	Path& Append(const TStringView & str)
+	{
+		return operator/=(Path(str));
+	}
+
+	Path& Append(const TString & str)
+	{
+		return operator/=(Path(str));
+	}
+
+	Path& Append(const TWStringView & str)
+	{
+		return operator/=(Path(str));
+	}
+
+	Path& Append(const TWString & str)
+	{
+		return operator/=(Path(str));
+	}
+
+	Path& Append(const std::string_view & str)
+	{
+		return operator/=(Path(str));
+	}
+
+	Path& Append(const std::string & str)
+	{
+		return operator/=(Path(str));
+	}
+
+	Path& Append(const std::wstring_view & str)
+	{
+		return operator/=(Path(str));
+	}
+
+	Path& Append(const std::wstring & str)
+	{
+		return operator/=(Path(str));
+	}
+
+	Path& Concat(const char* str)
+	{
+		mPath.append_convert(str);
 		return *this;
 	}
 
-	Path& Append(const TStringView& str)
+	Path& Concat(const wchar_t* str)
 	{
-		append(std::string_view(str));
+		mPath += str;
 		return *this;
 	}
 
-	Path& Append(const TString& str)
+	Path& Concat(const TStringView& str)
 	{
-		append(std::string(str));
+		mPath.append_convert(str.data(), str.length());
 		return *this;
 	}
+
+	Path& Concat(const TString& str)
+	{
+		mPath.append_convert(str);
+		return *this;
+	}
+
+	Path& Concat(const TWStringView& str)
+	{
+		mPath += str;
+		return *this;
+	}
+
+	Path& Concat(const TWString& str)
+	{
+		mPath += str;
+		return *this;
+	}
+
+	Path& Concat(const std::string_view& str)
+	{
+		mPath.append_convert(str.data(), str.length());
+		return *this;
+	}
+
+	Path& Concat(const std::string& str)
+	{
+		mPath.append_convert(str);
+		return *this;
+	}
+
+	Path& Concat(const std::wstring_view& str)
+	{
+		mPath += str;
+		return *this;
+	}
+
+	Path& Concat(const std::wstring& str)
+	{
+		mPath += str;
+		return *this;
+	}
+
+	void Clear()
+	{
+		mPath.clear();
+	}
+
+	bool Empty() const
+	{
+		return mPath.empty();
+	}
+
+	bool IsRelative() const
+	{
+		return std::filesystem::path(mPath).is_relative();
+	}
+
+	bool IsAbsolute() const
+	{
+		return std::filesystem::path(mPath).is_absolute();
+	}
+
+	Path& MakePreferred()
+	{
+		eastl::replace(mPath.begin(), mPath.end(), kAltSeparator, kPreferredSeparator);
+		return *this;
+	}
+
+private:
+
+	TWString mPath;
 };
 
-// == operators
 inline bool operator==(const Path& lhs, const Path& rhs) noexcept
 {
-	return static_cast<const std::filesystem::path&>(lhs) == static_cast<const std::filesystem::path&>(rhs);
+	return lhs.Native() == rhs.Native();
 }
 
-inline bool operator==(const Path& lhs, const std::filesystem::path& rhs) noexcept
-{
-	return static_cast<const std::filesystem::path&>(lhs) == rhs;
-}
-
-inline bool operator==(const std::filesystem::path& lhs, const Path& rhs) noexcept
-{
-	return lhs == static_cast<const std::filesystem::path&>(rhs);
-}
-
-inline bool operator==(const Path& lhs, const std::string& rhs) noexcept
-{
-	return static_cast<const std::filesystem::path&>(lhs) == std::filesystem::path(rhs);
-}
-
-inline bool operator==(const std::string& lhs, const Path& rhs) noexcept
-{
-	return std::filesystem::path(lhs) == static_cast<const std::filesystem::path&>(rhs);
-}
-
-inline bool operator==(const Path& lhs, const std::string_view& rhs) noexcept
-{
-	return static_cast<const std::filesystem::path&>(lhs) == std::filesystem::path(rhs);
-}
-
-inline bool operator==(const std::string_view& lhs, const Path& rhs) noexcept
-{
-	return std::filesystem::path(lhs) == static_cast<const std::filesystem::path&>(rhs);
-}
-
-inline bool operator==(const Path& lhs, const char* rhs) noexcept
-{
-	return static_cast<const std::filesystem::path&>(lhs) == std::filesystem::path(rhs);
-}
-
-inline bool operator==(const char* lhs, const Path& rhs) noexcept
-{
-	return std::filesystem::path(lhs) == static_cast<const std::filesystem::path&>(rhs);
-}
-
-inline bool operator==(const Path& lhs, const std::wstring& rhs) noexcept
-{
-	return static_cast<const std::filesystem::path&>(lhs) == std::filesystem::path(rhs);
-}
-
-inline bool operator==(const std::wstring& lhs, const Path& rhs) noexcept
-{
-	return std::filesystem::path(lhs) == static_cast<const std::filesystem::path&>(rhs);
-}
-
-inline bool operator==(const Path& lhs, const std::wstring_view& rhs) noexcept
-{
-	return static_cast<const std::filesystem::path&>(lhs) == std::filesystem::path(rhs);
-}
-
-inline bool operator==(const std::wstring_view& lhs, const Path& rhs) noexcept
-{
-	return std::filesystem::path(lhs) == static_cast<const std::filesystem::path&>(rhs);
-}
-
-inline bool operator==(const Path& lhs, const wchar_t* rhs) noexcept
-{
-	return static_cast<const std::filesystem::path&>(lhs) == std::filesystem::path(rhs);
-}
-
-inline bool operator==(const wchar_t* lhs, const Path& rhs) noexcept
-{
-	return std::filesystem::path(lhs) == static_cast<const std::filesystem::path&>(rhs);
-}
-
-inline bool operator==(const Path& lhs, const TString& rhs) noexcept
-{
-	return static_cast<const std::filesystem::path&>(lhs) == std::filesystem::path(std::string(rhs));
-}
-
-inline bool operator==(const TString& lhs, const Path& rhs) noexcept
-{
-	return std::filesystem::path(std::string(lhs)) == static_cast<const std::filesystem::path&>(rhs);
-}
-
-inline bool operator==(const Path& lhs, const TStringView& rhs) noexcept
-{
-	return static_cast<const std::filesystem::path&>(lhs) == std::filesystem::path(std::string_view(rhs));
-}
-
-inline bool operator==(const TStringView& lhs, const Path& rhs) noexcept
-{
-	return std::filesystem::path(std::string_view(lhs)) == static_cast<const std::filesystem::path&>(rhs);
-}
-
-inline bool operator==(const Path& lhs, const TWString& rhs) noexcept
-{
-	return static_cast<const std::filesystem::path&>(lhs) == std::filesystem::path(std::wstring(rhs));
-}
-
-inline bool operator==(const TWString& lhs, const Path& rhs) noexcept
-{
-	return std::filesystem::path(std::wstring(lhs)) == static_cast<const std::filesystem::path&>(rhs);
-}
-
-inline bool operator==(const Path& lhs, const TWStringView& rhs) noexcept
-{
-	return static_cast<const std::filesystem::path&>(lhs) == std::filesystem::path(std::wstring_view(rhs));
-}
-
-inline bool operator==(const TWStringView& lhs, const Path& rhs) noexcept
-{
-	return std::filesystem::path(std::wstring_view(lhs)) == static_cast<const std::filesystem::path&>(rhs);
-}
-
-// != operators
 inline bool operator!=(const Path& lhs, const Path& rhs) noexcept
 {
 	return !(lhs == rhs);
 }
 
-inline bool operator!=(const Path& lhs, const std::filesystem::path& rhs) noexcept
-{
-	return !(lhs == rhs);
-}
-
-inline bool operator!=(const std::filesystem::path& lhs, const Path& rhs) noexcept
-{
-	return !(lhs == rhs);
-}
-
-inline bool operator!=(const Path& lhs, const std::string& rhs) noexcept
-{
-	return !(lhs == rhs);
-}
-
-inline bool operator!=(const std::string& lhs, const Path& rhs) noexcept
-{
-	return !(lhs == rhs);
-}
-
-inline bool operator!=(const Path& lhs, const std::string_view& rhs) noexcept
-{
-	return !(lhs == rhs);
-}
-
-inline bool operator!=(const std::string_view& lhs, const Path& rhs) noexcept
-{
-	return !(lhs == rhs);
-}
-
-inline bool operator!=(const Path& lhs, const char* rhs) noexcept
-{
-	return !(lhs == rhs);
-}
-
-inline bool operator!=(const char* lhs, const Path& rhs) noexcept
-{
-	return !(lhs == rhs);
-}
-
-inline bool operator!=(const Path& lhs, const std::wstring& rhs) noexcept
-{
-	return !(lhs == rhs);
-}
-
-inline bool operator!=(const std::wstring& lhs, const Path& rhs) noexcept
-{
-	return !(lhs == rhs);
-}
-
-inline bool operator!=(const Path& lhs, const std::wstring_view& rhs) noexcept
-{
-	return !(lhs == rhs);
-}
-
-inline bool operator!=(const std::wstring_view& lhs, const Path& rhs) noexcept
-{
-	return !(lhs == rhs);
-}
-
-inline bool operator!=(const Path& lhs, const wchar_t* rhs) noexcept
-{
-	return !(lhs == rhs);
-}
-
-inline bool operator!=(const wchar_t* lhs, const Path& rhs) noexcept
-{
-	return !(lhs == rhs);
-}
-
-inline bool operator!=(const Path& lhs, const TString& rhs) noexcept
-{
-	return !(lhs == rhs);
-}
-
-inline bool operator!=(const TString& lhs, const Path& rhs) noexcept
-{
-	return !(lhs == rhs);
-}
-
-inline bool operator!=(const Path& lhs, const TStringView& rhs) noexcept
-{
-	return !(lhs == rhs);
-}
-
-inline bool operator!=(const TStringView& lhs, const Path& rhs) noexcept
-{
-	return !(lhs == rhs);
-}
-
-inline bool operator!=(const Path& lhs, const TWString& rhs) noexcept
-{
-	return !(lhs == rhs);
-}
-
-inline bool operator!=(const TWString& lhs, const Path& rhs) noexcept
-{
-	return !(lhs == rhs);
-}
-
-inline bool operator!=(const Path& lhs, const TWStringView& rhs) noexcept
-{
-	return !(lhs == rhs);
-}
-
-inline bool operator!=(const TWStringView& lhs, const Path& rhs) noexcept
-{
-	return !(lhs == rhs);
-}
-
-// < operators
 inline bool operator<(const Path& lhs, const Path& rhs) noexcept
 {
-	return static_cast<const std::filesystem::path&>(lhs) < static_cast<const std::filesystem::path&>(rhs);
+	return lhs.Native() < rhs.Native();
 }
 
-inline bool operator<(const Path& lhs, const std::filesystem::path& rhs) noexcept
-{
-	return static_cast<const std::filesystem::path&>(lhs) < rhs;
-}
-
-inline bool operator<(const std::filesystem::path& lhs, const Path& rhs) noexcept
-{
-	return lhs < static_cast<const std::filesystem::path&>(rhs);
-}
-
-inline bool operator<(const Path& lhs, const std::string& rhs) noexcept
-{
-	return static_cast<const std::filesystem::path&>(lhs) < std::filesystem::path(rhs);
-}
-
-inline bool operator<(const std::string& lhs, const Path& rhs) noexcept
-{
-	return std::filesystem::path(lhs) < static_cast<const std::filesystem::path&>(rhs);
-}
-
-inline bool operator<(const Path& lhs, const std::string_view& rhs) noexcept
-{
-	return static_cast<const std::filesystem::path&>(lhs) < std::filesystem::path(rhs);
-}
-
-inline bool operator<(const std::string_view& lhs, const Path& rhs) noexcept
-{
-	return std::filesystem::path(lhs) < static_cast<const std::filesystem::path&>(rhs);
-}
-
-inline bool operator<(const Path& lhs, const char* rhs) noexcept
-{
-	return static_cast<const std::filesystem::path&>(lhs) < std::filesystem::path(rhs);
-}
-
-inline bool operator<(const char* lhs, const Path& rhs) noexcept
-{
-	return std::filesystem::path(lhs) < static_cast<const std::filesystem::path&>(rhs);
-}
-
-inline bool operator<(const Path& lhs, const TString& rhs) noexcept
-{
-	return static_cast<const std::filesystem::path&>(lhs) < std::filesystem::path(std::string(rhs));
-}
-
-inline bool operator<(const TString& lhs, const Path& rhs) noexcept
-{
-	return std::filesystem::path(std::string(lhs)) < static_cast<const std::filesystem::path&>(rhs);
-}
-
-inline bool operator<(const Path& lhs, const TStringView& rhs) noexcept
-{
-	return static_cast<const std::filesystem::path&>(lhs) < std::filesystem::path(std::string_view(rhs));
-}
-
-inline bool operator<(const TStringView& lhs, const Path& rhs) noexcept
-{
-	return std::filesystem::path(std::string_view(lhs)) < static_cast<const std::filesystem::path&>(rhs);
-}
-
-// <= operators
 inline bool operator<=(const Path& lhs, const Path& rhs) noexcept
 {
 	return !(rhs < lhs);
 }
 
-inline bool operator<=(const Path& lhs, const std::filesystem::path& rhs) noexcept
-{
-	return !(rhs < lhs);
-}
-
-inline bool operator<=(const std::filesystem::path& lhs, const Path& rhs) noexcept
-{
-	return !(rhs < lhs);
-}
-
-inline bool operator<=(const Path& lhs, const std::string& rhs) noexcept
-{
-	return !(rhs < lhs);
-}
-
-inline bool operator<=(const std::string& lhs, const Path& rhs) noexcept
-{
-	return !(rhs < lhs);
-}
-
-inline bool operator<=(const Path& lhs, const std::string_view& rhs) noexcept
-{
-	return !(rhs < lhs);
-}
-
-inline bool operator<=(const std::string_view& lhs, const Path& rhs) noexcept
-{
-	return !(rhs < lhs);
-}
-
-inline bool operator<=(const Path& lhs, const char* rhs) noexcept
-{
-	return !(rhs < lhs);
-}
-
-inline bool operator<=(const char* lhs, const Path& rhs) noexcept
-{
-	return !(rhs < lhs);
-}
-
-inline bool operator<=(const Path& lhs, const TString& rhs) noexcept
-{
-	return !(rhs < lhs);
-}
-
-inline bool operator<=(const TString& lhs, const Path& rhs) noexcept
-{
-	return !(rhs < lhs);
-}
-
-inline bool operator<=(const Path& lhs, const TStringView& rhs) noexcept
-{
-	return !(rhs < lhs);
-}
-
-inline bool operator<=(const TStringView& lhs, const Path& rhs) noexcept
-{
-	return !(rhs < lhs);
-}
-
-// > operators
 inline bool operator>(const Path& lhs, const Path& rhs) noexcept
 {
 	return rhs < lhs;
 }
 
-inline bool operator>(const Path& lhs, const std::filesystem::path& rhs) noexcept
-{
-	return rhs < lhs;
-}
-
-inline bool operator>(const std::filesystem::path& lhs, const Path& rhs) noexcept
-{
-	return rhs < lhs;
-}
-
-inline bool operator>(const Path& lhs, const std::string& rhs) noexcept
-{
-	return rhs < lhs;
-}
-
-inline bool operator>(const std::string& lhs, const Path& rhs) noexcept
-{
-	return rhs < lhs;
-}
-
-inline bool operator>(const Path& lhs, const std::string_view& rhs) noexcept
-{
-	return rhs < lhs;
-}
-
-inline bool operator>(const std::string_view& lhs, const Path& rhs) noexcept
-{
-	return rhs < lhs;
-}
-
-inline bool operator>(const Path& lhs, const char* rhs) noexcept
-{
-	return rhs < lhs;
-}
-
-inline bool operator>(const char* lhs, const Path& rhs) noexcept
-{
-	return rhs < lhs;
-}
-
-inline bool operator>(const Path& lhs, const TString& rhs) noexcept
-{
-	return rhs < lhs;
-}
-
-inline bool operator>(const TString& lhs, const Path& rhs) noexcept
-{
-	return rhs < lhs;
-}
-
-inline bool operator>(const Path& lhs, const TStringView& rhs) noexcept
-{
-	return rhs < lhs;
-}
-
-inline bool operator>(const TStringView& lhs, const Path& rhs) noexcept
-{
-	return rhs < lhs;
-}
-
-// >= operators
 inline bool operator>=(const Path& lhs, const Path& rhs) noexcept
-{
-	return !(lhs < rhs);
-}
-
-inline bool operator>=(const Path& lhs, const std::filesystem::path& rhs) noexcept
-{
-	return !(lhs < rhs);
-}
-
-inline bool operator>=(const std::filesystem::path& lhs, const Path& rhs) noexcept
-{
-	return !(lhs < rhs);
-}
-
-inline bool operator>=(const Path& lhs, const std::string& rhs) noexcept
-{
-	return !(lhs < rhs);
-}
-
-inline bool operator>=(const std::string& lhs, const Path& rhs) noexcept
-{
-	return !(lhs < rhs);
-}
-
-inline bool operator>=(const Path& lhs, const std::string_view& rhs) noexcept
-{
-	return !(lhs < rhs);
-}
-
-inline bool operator>=(const std::string_view& lhs, const Path& rhs) noexcept
-{
-	return !(lhs < rhs);
-}
-
-inline bool operator>=(const Path& lhs, const char* rhs) noexcept
-{
-	return !(lhs < rhs);
-}
-
-inline bool operator>=(const char* lhs, const Path& rhs) noexcept
-{
-	return !(lhs < rhs);
-}
-
-inline bool operator>=(const Path& lhs, const TString& rhs) noexcept
-{
-	return !(lhs < rhs);
-}
-
-inline bool operator>=(const TString& lhs, const Path& rhs) noexcept
-{
-	return !(lhs < rhs);
-}
-
-inline bool operator>=(const Path& lhs, const TStringView& rhs) noexcept
-{
-	return !(lhs < rhs);
-}
-
-inline bool operator>=(const TStringView& lhs, const Path& rhs) noexcept
 {
 	return !(lhs < rhs);
 }
 
 } // namespace Gleam
 
+namespace std {
+
+inline ostream& operator<<(ostream& os, const Gleam::Path& path)
+{
+	return os << path.String();
+}
+
+inline wostream& operator<<(wostream& os, const Gleam::Path& path)
+{
+	return os << path.Native();
+}
+
+inline istream& operator>>(istream& is, Gleam::Path& path)
+{
+	Gleam::TString temp;
+	is >> temp;
+	path = temp;
+	return is;
+}
+
+inline wistream& operator>>(wistream& is, Gleam::Path& path)
+{
+	Gleam::TWString temp;
+	is >> temp;
+	path = temp;
+	return is;
+}
+
 template<>
-struct std::hash<Gleam::Path>
+struct hash<Gleam::Path>
 {
 	size_t operator()(const Gleam::Path& path) const noexcept
 	{
-		return std::hash<std::filesystem::path>()(static_cast<const std::filesystem::path&>(path));
+		return hash<Gleam::TWString>()(path.Native());
 	}
 };
+
+} // namespace std
 
 template<>
 struct eastl::hash<Gleam::Path>
 {
 	size_t operator()(const Gleam::Path& path) const noexcept
 	{
-		return std::hash<Gleam::Path>()(path);
+		return hash<Gleam::TWString>()(path.Native());
 	}
 };

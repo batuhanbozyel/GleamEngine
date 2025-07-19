@@ -12,7 +12,7 @@ MaterialBaker::MaterialBaker(const Gleam::MaterialDescriptor& descriptor)
 
 void MaterialBaker::Bake(const Gleam::Path& directory, const AssetItem& item) const
 {
-	auto filename = item.reference.guid.ToString() + Gleam::Asset::Extension().data();
+	auto filename = Gleam::TWString(item.reference.guid.ToString()) + Gleam::Asset::Extension();
 	auto file = Gleam::Filesystem::Create(directory / filename, Gleam::FileType::Binary);
 	auto accessor = Gleam::Filesystem::WriteAccessor(directory / filename);
 
@@ -44,7 +44,7 @@ MaterialInstanceBaker::MaterialInstanceBaker(const Gleam::MaterialInstanceDescri
 
 void MaterialInstanceBaker::Bake(const Gleam::Path& directory, const AssetItem& item) const
 {
-	auto filename = item.reference.guid.ToString() + Gleam::Asset::Extension().data();
+	auto filename = Gleam::TWString(item.reference.guid.ToString()) + Gleam::Asset::Extension();
 	auto file = Gleam::Filesystem::Create(directory / filename, Gleam::FileType::Binary);
 	auto accessor = Gleam::Filesystem::WriteAccessor(directory / filename);
 

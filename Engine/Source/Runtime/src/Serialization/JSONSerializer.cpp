@@ -149,7 +149,7 @@ void JSONSerializer::Initialize(Engine* engine)
 			rapidjson::Node& node)
 		{
 			const auto& path = Reflection::Get<Path>(obj);
-			const auto& pathStr = path.string();
+			const auto& pathStr = path.String();
 			SerializeClassHeader(classDesc, fieldName, node);
 			node.AddMember("Value", rapidjson::StringRef(pathStr.c_str(), pathStr.length()));
 		};
@@ -159,7 +159,7 @@ void JSONSerializer::Initialize(Engine* engine)
 			rapidjson::Node& node)
 		{
 			const auto& path = Reflection::Get<Path>(obj);
-			const auto& pathStr = path.string();
+			const auto& pathStr = path.String();
 			node.PushBack(rapidjson::Value(rapidjson::StringRef(pathStr.c_str(), pathStr.length())));
 		};
 	}
@@ -759,9 +759,9 @@ void SerializeClassObjectFields(const void* obj,
                 case Reflection::MetaType::Class:
                 {
 					const auto fieldDesc = Reflection::GetClass(field.TypeHash());
-                    if (JSONSerializer::TryCustomObjectSerializer(OffsetPointer(obj, field.GetOffset()), field.ResolveQualifiedName(), *fieldDesc, fieldNode) == false)
+                    if (JSONSerializer::TryCustomObjectSerializer(OffsetPointer(obj, field.GetOffset()), field.ResolveName(), *fieldDesc, fieldNode) == false)
                     {
-                        SerializeClassObject(OffsetPointer(obj, field.GetOffset()), field.ResolveQualifiedName(), *fieldDesc, fieldNode);
+                        SerializeClassObject(OffsetPointer(obj, field.GetOffset()), field.ResolveName(), *fieldDesc, fieldNode);
                     }
                     break;
                 }
@@ -774,13 +774,13 @@ void SerializeClassObjectFields(const void* obj,
                 case Reflection::MetaType::Enum:
                 {
                     const auto enumDesc = Reflection::GetEnum(field.TypeHash());
-                    SerializeEnumObject(OffsetPointer(obj, field.GetOffset()), field.ResolveQualifiedName(), *enumDesc, fieldNode);
+                    SerializeEnumObject(OffsetPointer(obj, field.GetOffset()), field.ResolveName(), *enumDesc, fieldNode);
                     break;
                 }
                 case Reflection::MetaType::Primitive:
                 {
                     auto primitiveType = Reflection::GetPrimitiveType(field.TypeHash());
-                    SerializePrimitiveObject(OffsetPointer(obj, field.GetOffset()), field.ResolveQualifiedName(), primitiveType, fieldNode);
+                    SerializePrimitiveObject(OffsetPointer(obj, field.GetOffset()), field.ResolveName(), primitiveType, fieldNode);
                     break;
                 }
                 default:

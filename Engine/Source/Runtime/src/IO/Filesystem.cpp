@@ -6,7 +6,8 @@ using namespace Gleam;
 
 void Filesystem::ForEach(const Path& path, const DirectoryFn& fn, bool recursive)
 {
-    for (auto& node : std::filesystem::directory_iterator(path))
+	std::filesystem::path stlPath = std::wstring_view(path.Native().c_str(), path.Native().length());
+    for (auto& node : std::filesystem::directory_iterator(stlPath))
     {
 		Path nodePath = Path(node);
         if (recursive && IsDirectory(nodePath))
@@ -27,7 +28,8 @@ File Filesystem::Create(const Path& path, FileType type)
     {
         flags |= std::ios::binary;
     }
-    FileStream handle(path, flags);
+	std::filesystem::path stlPath = std::wstring_view(path.Native().c_str(), path.Native().length());
+    FileStream handle(stlPath, flags);
     handle.unsetf(std::ios::skipws);
     
     std::lock_guard<std::mutex> lock(mFileCreateMutex);
@@ -50,7 +52,8 @@ File Filesystem::Open(const Path& path, FileType type)
 	{
 		flags |= std::ios::binary;
 	}
-	FileStream handle(path, flags);
+	std::filesystem::path stlPath = std::wstring_view(path.Native().c_str(), path.Native().length());
+	FileStream handle(stlPath, flags);
 	handle.unsetf(std::ios::skipws);
     
     std::lock_guard<std::mutex> lock(mFileCreateMutex);
@@ -59,7 +62,8 @@ File Filesystem::Open(const Path& path, FileType type)
 
 bool Filesystem::Remove(const Path& path)
 {
-    return std::filesystem::remove(path);
+	std::filesystem::path stlPath = std::wstring_view(path.Native().c_str(), path.Native().length());
+    return std::filesystem::remove(stlPath);
 }
 
 FileAccessor& Filesystem::Accessor(const Path& path)
@@ -84,17 +88,45 @@ Path Filesystem::WorkingDirectory()
 
 Path Filesystem::Relative(const Path& path, const Path& base)
 {
-	return std::filesystem::relative(path, base);
+	std::filesystem::path stlPath = std::wstring_view(path.Native().c_str(), path.Native().length());
+	std::filesystem::path stlBase = std::wstring_view(base.Native().c_str(), base.Native().length());
+	return Path(std::filesystem::relative(stlPath, stlBase));
 }
 
 bool Filesystem::Exists(const Path& path)
 {
-	return std::filesystem::exists(path);
+	if (path.Empty())
+	{
+		return false;
+	}
+
+#ifdef PLATFORM_WINDOWS
+	DWORD attrs = ::GetFileAttributesW(path.Native().c_str());
+	return attrs != INVALID_FILE_ATTRIBUTES;
+#else
+	TString utf8Path;
+	utf8Path.append_convert(path.Native());
+	struct stat statBuf;
+	return stat(utf8Path.c_str(), &statBuf) == 0;
+#endif
 }
 
 bool Filesystem::IsDirectory(const Path& path)
 {
-	return std::filesystem::is_directory(path);
+	if (path.Empty())
+	{
+		return false;
+	}
+
+#ifdef PLATFORM_WINDOWS
+	DWORD attrs = ::GetFileAttributesW(path.Native().c_str());
+	return (attrs != INVALID_FILE_ATTRIBUTES) && (attrs & FILE_ATTRIBUTE_DIRECTORY);
+#else
+	TString utf8Path;
+	utf8Path.append_convert(path.Native());
+	struct stat statBuf;
+	return (stat(utf8Path.c_str(), &statBuf) == 0) && S_ISDIR(statBuf.st_mode);
+#endif
 }
 
 // File::Accessors

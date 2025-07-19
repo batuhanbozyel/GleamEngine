@@ -40,6 +40,8 @@ project(GleamEngine)
         add_compile_options(/wd4251 /wd4275 /wd4099 /wd4204)
     endif()
 
+    add_compile_definitions(EA_DEBUG=0 EASTL_DEBUG=0 EASTL_NAME_ENABLED=0)
+
     if (ENABLE_ASAN)
         add_compile_options(-fsanitize=address)
         add_link_options(-fsanitize=address)

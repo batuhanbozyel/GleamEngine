@@ -16,9 +16,9 @@ GSTRUCT(Prefab, "CAFCF979-D525-48D5-81CD-76731218F4DA", Serializable)
 
 	EntityHandle Deserialize(EntityManager& entityManager, FileStream& stream);
 
-	static constexpr TStringView Extension()
+	static constexpr TWStringView Extension()
 	{
-		return ".prefab";
+		return L".prefab";
 	}
 };
 
