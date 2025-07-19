@@ -160,7 +160,7 @@ public:
 		if constexpr (Reflection::Traits::IsReflected<T>::value)
 		{
 			const auto& classDesc = Reflection::GetClass<T>();
-			if (auto storage = mRegistry.storage<T>(classDesc.TypeHash()))
+			if (const auto storage = mRegistry.storage<T>(classDesc.TypeHash()))
 			{
 				return storage->contains(entity);
 			}

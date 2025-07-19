@@ -79,7 +79,15 @@ public:
 	{
         GLEAM_ASSERT(IsValid(), "Entity is invalid!");
 		GLEAM_ASSERT(!HasComponent<T>(), "Entity already has the component!");
-		return mRegistry->emplace<T>(mHandle, std::forward<Args>(args)...);
+		if constexpr (Reflection::Traits::IsReflected<T>::value)
+		{
+			const auto& classDesc = Reflection::GetClass<T>();
+			return mRegistry->storage<T>(classDesc.TypeHash()).emplace(mHandle, std::forward<Args>(args)...);
+		}
+		else
+		{
+			return mRegistry->emplace<T>(mHandle, std::forward<Args>(args)...);
+		}
 	}
     
     template<typename T, typename ... Args>
@@ -87,7 +95,15 @@ public:
     {
         GLEAM_ASSERT(IsValid(), "Entity is invalid!");
         GLEAM_ASSERT(!HasComponent<T>(), "Entity already has the component!");
-        mRegistry->emplace_or_replace<T>(mHandle, std::forward<Args>(args)...);
+		if constexpr (Reflection::Traits::IsReflected<T>::value)
+		{
+			const auto& classDesc = Reflection::GetClass<T>();
+			return mRegistry->storage<T>(classDesc.TypeHash()).emplace_or_replace(mHandle, std::forward<Args>(args)...);
+		}
+		else
+		{
+			return mRegistry->emplace_or_replace<T>(mHandle, std::forward<Args>(args)...);
+		}
     }
 
 	template<typename T>
@@ -95,14 +111,34 @@ public:
 	{
         GLEAM_ASSERT(IsValid(), "Entity is invalid!");
 		GLEAM_ASSERT(HasComponent<T>(), "Entity does not have the component!");
-		mRegistry->remove<T>(mHandle);
+		if constexpr (Reflection::Traits::IsReflected<T>::value)
+		{
+			const auto& classDesc = Reflection::GetClass<T>();
+			mRegistry->storage<T>(classDesc.TypeHash()).remove(mHandle);
+		}
+		else
+		{
+			mRegistry->remove<T>(mHandle);
+		}
 	}
 
 	template<typename T>
 	bool HasComponent() const
 	{
         GLEAM_ASSERT(IsValid(), "Entity is invalid!");
-		return mRegistry->all_of<T>(mHandle);
+		if constexpr (Reflection::Traits::IsReflected<T>::value)
+		{
+			const auto& classDesc = Reflection::GetClass<T>();
+			if (const auto storage = ((const entt::registry*)mRegistry)->storage<T>(classDesc.TypeHash()))
+			{
+				return storage->contains(mHandle);
+			}
+			return false;
+		}
+		else
+		{
+			return mRegistry->all_of<T>(mHandle);
+		}
 	}
 
 	template<typename T>
@@ -110,7 +146,15 @@ public:
 	{
         GLEAM_ASSERT(IsValid(), "Entity is invalid!");
 		GLEAM_ASSERT(HasComponent<T>(), "Entity does not have the component!");
-		return mRegistry->get<T>(mHandle);
+		if constexpr (Reflection::Traits::IsReflected<T>::value)
+		{
+			const auto& classDesc = Reflection::GetClass<T>();
+			return mRegistry->storage<T>(classDesc.TypeHash()).get(mHandle);
+		}
+		else
+		{
+			return mRegistry->get<T>(mHandle);
+		}
 	}
     
     template<typename T>
@@ -118,7 +162,15 @@ public:
     {
         GLEAM_ASSERT(IsValid(), "Entity is invalid!");
         GLEAM_ASSERT(HasComponent<T>(), "Entity does not have the component!");
-        return mRegistry->get<T>(mHandle);
+		if constexpr (Reflection::Traits::IsReflected<T>::value)
+		{
+			const auto& classDesc = Reflection::GetClass<T>();
+			return mRegistry->storage<T>(classDesc.TypeHash()).get(mHandle);
+		}
+		else
+		{
+			return mRegistry->get<T>(mHandle);
+		}
     }
 
 	void Translate(const Float3& translation);
