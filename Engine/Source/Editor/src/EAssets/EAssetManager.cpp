@@ -142,7 +142,7 @@ void EAssetManager::Initialize(Gleam::World* world)
     
     Gleam::Filesystem::ForEach(mAssetDirectory, [this](const auto& entry)
     {
-        if (entry.Extension() == ".mat")
+        if (entry.Extension() == L".mat")
         {
             auto path = entry.Parent()/entry.Stem();
 			const auto& item = mRegistry.GetAsset<Gleam::MaterialDescriptor>(path);

@@ -3,6 +3,16 @@
 
 using namespace Gleam;
 
+static TStringView QualifiedNameWithoutTemplateDeclaration(const TStringView name)
+{
+	auto pos = name.find_first_of('<');
+	if (pos == TStringView::npos)
+	{
+		return name;
+	}
+	return name.substr(0, pos);
+}
+
 #pragma region mark SerializeForwardDecl
 
 #pragma region mark SerializeHeaders
@@ -161,12 +171,13 @@ void BinarySerializer::Initialize(Engine* engine)
 
 	if constexpr (Reflection::Traits::IsReflected<eastl::vector<uint8_t>>())
 	{
-		mCustomSerializers[Reflection::GetClass<eastl::vector<uint8_t>>().ResolveQualifiedName()] = [](const void* obj,
-																									const Reflection::ClassDescription& classDesc,
-																									FileStream& stream)
+		const auto qualifiedName = QualifiedNameWithoutTemplateDeclaration(Reflection::GetClass<eastl::vector<uint8_t>>().ResolveQualifiedName());
+		mCustomSerializers[qualifiedName] = [](const void* obj,
+											   const Reflection::ClassDescription& classDesc,
+											   FileStream& stream)
 		{
 			auto templateParams = classDesc.ResolveTemplateParameters();
-			GLEAM_ASSERT(templateParams.size() == 1, "JSONSerializer: TArray must have exactly one template parameter for element type.");
+			GLEAM_ASSERT(templateParams.size() == 1, "BinarySerializer: TArray must have exactly one template parameter for element type.");
 
 			const auto& element = templateParams[0];
 			const auto& arr = Reflection::Get<TArray<uint8_t>>(obj);
@@ -174,12 +185,12 @@ void BinarySerializer::Initialize(Engine* engine)
 			SerializeArray(arr.data(), arrDesc, stream);
 		};
 
-		mCustomArraySerializers[Reflection::GetClass<eastl::vector<uint8_t>>().ResolveQualifiedName()] = [](const void* obj,
-																										 const Reflection::ClassDescription& classDesc,
-																										 FileStream& stream)
+		mCustomArraySerializers[qualifiedName] = [](const void* obj,
+													const Reflection::ClassDescription& classDesc,
+													FileStream& stream)
 		{
 			auto templateParams = classDesc.ResolveTemplateParameters();
-			GLEAM_ASSERT(templateParams.size() == 1, "JSONSerializer: TArray must have exactly one template parameter for element type.");
+			GLEAM_ASSERT(templateParams.size() == 1, "BinarySerializer: TArray must have exactly one template parameter for element type.");
 
 			const auto& element = templateParams[0];
 			const auto& arr = Reflection::Get<TArray<uint8_t>>(obj);
@@ -280,9 +291,10 @@ void BinarySerializer::Initialize(Engine* engine)
 
 	if constexpr (Reflection::Traits::IsReflected<eastl::vector<uint8_t>>())
 	{
-		mCustomDeserializers[Reflection::GetClass<eastl::vector<uint8_t>>().ResolveQualifiedName()] = [](FileStream& stream,
-																									  const Reflection::ClassDescription& classDesc,
-																									  void* obj)
+		const auto qualifiedName = QualifiedNameWithoutTemplateDeclaration(Reflection::GetClass<eastl::vector<uint8_t>>().ResolveQualifiedName());
+		mCustomDeserializers[qualifiedName] = [](FileStream& stream,
+												 const Reflection::ClassDescription& classDesc,
+												 void* obj)
 		{
 			auto templateParams = classDesc.ResolveTemplateParameters();
 			GLEAM_ASSERT(templateParams.size() == 1, "BinarySerializer: TArray must have exactly one template parameter for element type.");
@@ -298,9 +310,9 @@ void BinarySerializer::Initialize(Engine* engine)
 			DeserializeArrayElements(stream, arrDesc, arr.data());
 		};
 
-		mCustomArrayDeserializers[Reflection::GetClass<eastl::vector<uint8_t>>().ResolveQualifiedName()] = [](FileStream& stream,
-																										   const Reflection::ClassDescription& classDesc,
-																										   void* obj)
+		mCustomArrayDeserializers[qualifiedName] = [](FileStream& stream,
+													  const Reflection::ClassDescription& classDesc,
+													  void* obj)
 		{
 			auto templateParams = classDesc.ResolveTemplateParameters();
 			GLEAM_ASSERT(templateParams.size() == 1, "BinarySerializer: TArray must have exactly one template parameter for element type.");
@@ -351,7 +363,8 @@ bool BinarySerializer::TryCustomSerializer(const void* obj,
 										   const Reflection::ClassDescription& classDesc,
 										   FileStream& stream)
 {
-	auto it = mCustomSerializers.find(classDesc.ResolveQualifiedName());
+	const auto qualifiedName = QualifiedNameWithoutTemplateDeclaration(classDesc.ResolveQualifiedName());
+	auto it = mCustomSerializers.find(qualifiedName);
 	if (it != mCustomSerializers.end())
 	{
 		it->second(obj, classDesc, stream);
@@ -364,7 +377,8 @@ bool BinarySerializer::TryCustomArraySerializer(const void* obj,
 												const Reflection::ClassDescription& classDesc,
 												FileStream& stream)
 {
-	auto it = mCustomArraySerializers.find(classDesc.ResolveQualifiedName());
+	const auto qualifiedName = QualifiedNameWithoutTemplateDeclaration(classDesc.ResolveQualifiedName());
+	auto it = mCustomArraySerializers.find(qualifiedName);
 	if (it != mCustomArraySerializers.end())
 	{
 		it->second(obj, classDesc, stream);
@@ -377,7 +391,8 @@ bool BinarySerializer::TryCustomDeserializer(FileStream& stream,
 											 const Reflection::ClassDescription& classDesc,
 											 void* obj)
 {
-	auto it = mCustomDeserializers.find(classDesc.ResolveQualifiedName());
+	const auto qualifiedName = QualifiedNameWithoutTemplateDeclaration(classDesc.ResolveQualifiedName());
+	auto it = mCustomDeserializers.find(qualifiedName);
 	if (it != mCustomDeserializers.end())
 	{
 		it->second(stream, classDesc, obj);
@@ -390,7 +405,8 @@ bool BinarySerializer::TryCustomArrayDeserializer(FileStream& stream,
 												  const Reflection::ClassDescription& classDesc,
 												  void* obj)
 {
-	auto it = mCustomArrayDeserializers.find(classDesc.ResolveQualifiedName());
+	const auto qualifiedName = QualifiedNameWithoutTemplateDeclaration(classDesc.ResolveQualifiedName());
+	auto it = mCustomArrayDeserializers.find(qualifiedName);
 	if (it != mCustomArrayDeserializers.end())
 	{
 		it->second(stream, classDesc, obj);

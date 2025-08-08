@@ -7,6 +7,7 @@ GSTRUCT(Float2x2, "8C079A6F-245E-4692-837D-0B54D6810B81", Serializable)
 {
     union
     {
+		GFIELD("452D0481-4765-44D0-9839-CE34684B1684", Serializable)
         TArray<float, 4> m;
         TArray<Float2, 2> row{};
     };

@@ -16,6 +16,7 @@ GSTRUCT(Vector3, "3978CBC8-A694-45FF-B056-DE21F69421AC", Serializable)
         {
             T r, g, b;
         };
+		GFIELD("A99DA482-B218-464D-B254-D40AA3F9E1C3", Serializable)
         TArray<T, 3> value{};
     };
 
