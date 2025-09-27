@@ -99,6 +99,31 @@ DEPLOY_FILE_TO(${CMAKE_SOURCE_DIR}/Engine/ThirdParty/DirectXAgilitySDK/build/nat
 set(REFLECTION_COMPILER_ARGS "--extra-arg=-working-directory=${CMAKE_SOURCE_DIR}")
 if(APPLE)
     list(APPEND REFLECTION_COMPILER_ARGS "--extra-arg-before=-ObjC++")
+    
+    # Find the SDK path
+    execute_process(
+        COMMAND xcrun --show-sdk-path
+        OUTPUT_VARIABLE MACOS_SDK_PATH
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+    list(APPEND REFLECTION_COMPILER_ARGS "--extra-arg=-isysroot")
+    list(APPEND REFLECTION_COMPILER_ARGS "--extra-arg=${MACOS_SDK_PATH}")
+
+    # Use Apple Clang instead of LLVM Clang
+    execute_process(
+        COMMAND xcrun --find clang
+        OUTPUT_VARIABLE APPLE_CLANG_PATH
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+    
+    # Find Clang resource directory
+    execute_process(
+        COMMAND ${APPLE_CLANG_PATH} --print-resource-dir
+        OUTPUT_VARIABLE CLANG_RESOURCE_DIR
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+    list(APPEND REFLECTION_COMPILER_ARGS "--extra-arg=-resource-dir")
+    list(APPEND REFLECTION_COMPILER_ARGS "--extra-arg=${CLANG_RESOURCE_DIR}")
 else()
     list(APPEND REFLECTION_COMPILER_ARGS "--extra-arg-before=--language=c++")
 endif()
@@ -126,10 +151,15 @@ endforeach()
 string(REPLACE ";" " " REFLECTION_FILES ${SOURCE_FILES})
 string(REPLACE ";" " " REFLECTION_ARGS ${REFLECTION_COMPILER_ARGS})
 
+set(REFLECTION_CLI "${CMAKE_SOURCE_DIR}/Tools/CppReflection")
+if (WIN32)
+    set(REFLECTION_CLI "${REFLECTION_CLI}.exe")
+endif()
+
 add_custom_command(
     TARGET Runtime
     PRE_BUILD
-    COMMAND ${CMAKE_SOURCE_DIR}/Tools/CppReflection
+    COMMAND ${REFLECTION_CLI}
         "--module=Runtime"
         "--header-dir=${CMAKE_CURRENT_SOURCE_DIR}/src"
         "--binary-dir=${CMAKE_SOURCE_DIR}"
