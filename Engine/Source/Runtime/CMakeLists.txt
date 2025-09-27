@@ -99,7 +99,7 @@ DEPLOY_FILE_TO(${CMAKE_SOURCE_DIR}/Engine/ThirdParty/DirectXAgilitySDK/build/nat
 set(REFLECTION_COMPILER_ARGS "--extra-arg=-working-directory=${CMAKE_SOURCE_DIR}")
 if(APPLE)
     list(APPEND REFLECTION_COMPILER_ARGS "--extra-arg-before=-ObjC++")
-    
+
     # Find the SDK path
     execute_process(
         COMMAND xcrun --show-sdk-path
@@ -108,17 +108,10 @@ if(APPLE)
     )
     list(APPEND REFLECTION_COMPILER_ARGS "--extra-arg=-isysroot")
     list(APPEND REFLECTION_COMPILER_ARGS "--extra-arg=${MACOS_SDK_PATH}")
-
-    # Use Apple Clang instead of LLVM Clang
-    execute_process(
-        COMMAND xcrun --find clang
-        OUTPUT_VARIABLE APPLE_CLANG_PATH
-        OUTPUT_STRIP_TRAILING_WHITESPACE
-    )
     
     # Find Clang resource directory
     execute_process(
-        COMMAND ${APPLE_CLANG_PATH} --print-resource-dir
+        COMMAND xcrun clang --print-resource-dir
         OUTPUT_VARIABLE CLANG_RESOURCE_DIR
         OUTPUT_STRIP_TRAILING_WHITESPACE
     )
