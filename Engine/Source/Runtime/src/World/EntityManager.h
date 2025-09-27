@@ -28,13 +28,15 @@ public:
     template<typename ... ComponentTypes, typename ... ExcludeComponents, typename Func, typename = std::enable_if_t<sizeof...(ComponentTypes) + sizeof...(ExcludeComponents) != 0>>
     void ForEach(Func&& fn, Exclude<ExcludeComponents...> = Exclude<ExcludeComponents...>{})
     {
-        mRegistry.view<ComponentTypes..., ExcludeComponents...>().each(fn);
+		auto view = CreateView<ComponentTypes..., ExcludeComponents...>();
+		view.each(fn);
     }
     
     template<typename ... ComponentTypes, typename ... ExcludeComponents, typename Func, typename = std::enable_if_t<sizeof...(ComponentTypes) + sizeof...(ExcludeComponents) != 0>>
     void ForEach(Func&& fn, Exclude<ExcludeComponents...> = Exclude<ExcludeComponents...>{}) const
     {
-        mRegistry.view<ComponentTypes..., ExcludeComponents...>().each(fn);
+		auto view = CreateView<ComponentTypes..., ExcludeComponents...>();
+		view.each(fn);
     }
     
     template<typename Func>
@@ -208,10 +210,68 @@ public:
 
 private:
 
+	template<typename ... ComponentTypes, typename ... ExcludeComponents, typename = std::enable_if_t<sizeof...(ComponentTypes) + sizeof...(ExcludeComponents) != 0>>
+	auto CreateView(Exclude<ExcludeComponents...> = Exclude<ExcludeComponents...>{})
+	{
+		if constexpr (sizeof...(ExcludeComponents) == 0)
+		{
+			auto includeTuple = std::make_tuple(std::ref(GetStorage<ComponentTypes>())...);
+			return entt::basic_view{ includeTuple };
+		}
+		else
+		{
+			auto includeTuple = std::make_tuple(std::ref(GetStorage<ComponentTypes>())...);
+			auto excludeTuple = std::make_tuple(std::ref(GetStorage<ExcludeComponents>())...);
+			return entt::basic_view{ includeTuple, excludeTuple };
+		}
+	}
+
+	template<typename ... ComponentTypes, typename ... ExcludeComponents, typename = std::enable_if_t<sizeof...(ComponentTypes) + sizeof...(ExcludeComponents) != 0>>
+	auto CreateView(Exclude<ExcludeComponents...> = Exclude<ExcludeComponents...>{}) const
+	{
+		if constexpr (sizeof...(ExcludeComponents) == 0)
+		{
+			auto includeTuple = std::make_tuple(std::ref(GetStorage<ComponentTypes>())...);
+			return entt::basic_view{ includeTuple };
+		}
+		else
+		{
+			auto includeTuple = std::make_tuple(std::ref(GetStorage<ComponentTypes>())...);
+			auto excludeTuple = std::make_tuple(std::ref(GetStorage<ExcludeComponents>())...);
+			return entt::basic_view{ includeTuple, excludeTuple };
+		}
+	}
+
+	template<typename T>
+	auto& GetStorage()
+	{
+		if constexpr (Reflection::Traits::IsReflected<T>::value)
+		{
+			const auto& classDesc = Reflection::GetClass<T>();
+			return mRegistry.storage<T>(classDesc.TypeHash());
+		}
+		else
+		{
+			return mRegistry.storage<T>();
+		}
+	}
+
+	template<typename T>
+	const auto& GetStorage() const
+	{
+		if constexpr (Reflection::Traits::IsReflected<T>::value)
+		{
+			const auto& classDesc = Reflection::GetClass<T>();
+			return mRegistry.storage<T>(classDesc.TypeHash());
+		}
+		else
+		{
+			return mRegistry.storage<T>();
+		}
+	}
+
 	entt::registry mRegistry;
-
 	HashMap<Guid, EntityHandle> mHandles;
-
 };
 
 } // namespace Gleam

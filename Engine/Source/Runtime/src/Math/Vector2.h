@@ -5,7 +5,7 @@
 #include "Container/Array.h"
 
 namespace Gleam {
-	
+
 template<typename T>
 GSTRUCT(Vector2, "84C176BA-4334-42D6-94B8-4BB3BE4421A1", Serializable)
 {
@@ -19,6 +19,7 @@ GSTRUCT(Vector2, "84C176BA-4334-42D6-94B8-4BB3BE4421A1", Serializable)
         {
             T r, g;
         };
+		GFIELD("84817DC9-5225-4798-83E2-9AC337B864C5", Serializable)
         TArray<T, 2> value{};
     };
 

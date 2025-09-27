@@ -19,11 +19,15 @@ static void DrawScalarControl(const Gleam::TStringView label, const Gleam::Refle
 	ImGuiIO& io = ImGui::GetIO();
 	auto boldFont = io.Fonts->Fonts[0];
 
-	ImGui::PushID(label.data());
+	char buffer[64];
+	std::memcpy(buffer, label.data(), label.size());
+	buffer[label.size()] = '\0';
+
+	ImGui::PushID(buffer);
 
 	ImGui::Columns(2);
 	ImGui::SetColumnWidth(0, columnWidth);
-	ImGui::Text("%s", label.data());
+	ImGui::Text("%s", buffer);
 	ImGui::NextColumn();
 
 	ImGui::PushItemWidth(ImGui::CalcItemWidth());
@@ -140,11 +144,15 @@ static void DrawVec3Control(const Gleam::TStringView label, Gleam::Float3& value
     ImGuiIO& io = ImGui::GetIO();
     auto boldFont = io.Fonts->Fonts[0];
 
-    ImGui::PushID(label.data());
+	char buffer[64];
+	std::memcpy(buffer, label.data(), label.size());
+	buffer[label.size()] = '\0';
+
+    ImGui::PushID(buffer);
 
     ImGui::Columns(2);
     ImGui::SetColumnWidth(0, columnWidth);
-    ImGui::Text("%s", label.data());
+    ImGui::Text("%s", buffer);
     ImGui::NextColumn();
 
     ImGui::PushMultiItemsWidths(3, ImGui::CalcItemWidth());
@@ -217,11 +225,15 @@ static void DrawEnumOptions(const Gleam::TStringView label, const Gleam::Reflect
 	ImGuiIO& io = ImGui::GetIO();
 	auto boldFont = io.Fonts->Fonts[0];
 
-	ImGui::PushID(label.data());
+	char buffer[64];
+	std::memcpy(buffer, label.data(), label.size());
+	buffer[label.size()] = '\0';
+
+	ImGui::PushID(buffer);
 
 	ImGui::Columns(2);
 	ImGui::SetColumnWidth(0, columnWidth);
-	ImGui::Text("%s", label.data());
+	ImGui::Text("%s", buffer);
 	ImGui::NextColumn();
 
 	float lineHeight = GImGui->Font->FontSize + GImGui->Style.FramePadding.y * 2.0f;
@@ -230,21 +242,41 @@ static void DrawEnumOptions(const Gleam::TStringView label, const Gleam::Reflect
 	ImGui::PushItemWidth(ImGui::CalcItemWidth() + buttonSize.x);
 	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2{ 0, 0 });
 
-	if (ImGui::BeginCombo("##", nullptr))
+	char previewBuffer[64] = {};
+	int currentValue = *static_cast<int*>(value);
+	for (const auto& item : enumDesc.Cases())
 	{
-		/*for (const auto& entry : enumDesc.GetEntries())
+		if (item.Value() == currentValue)
 		{
-			bool isSelected = *static_cast<uint32_t*>(value) == entry.value;
-			if (ImGui::Selectable(entry.name.data(), isSelected))
+			auto itemLabel = item.ResolveName();
+			std::memcpy(previewBuffer, itemLabel.data(), itemLabel.size());
+			previewBuffer[itemLabel.size()] = '\0';
+			break;
+		}
+	}
+
+	if (ImGui::BeginCombo("##", previewBuffer))
+	{
+		for (const auto& item : enumDesc.Cases())
+		{
+			bool isSelected = *static_cast<int*>(value) == item.Value();
+
+			auto itemLabel = item.ResolveName();
+
+			char itemBuffer[64];
+			std::memcpy(itemBuffer, itemLabel.data(), itemLabel.size());
+			itemBuffer[itemLabel.size()] = '\0';
+
+			if (ImGui::Selectable(itemBuffer, isSelected))
 			{
-				*static_cast<uint32_t*>(value) = entry.value;
+				*static_cast<int*>(value) = item.Value();
 			}
 
 			if (isSelected)
 			{
 				ImGui::SetItemDefaultFocus();
 			}
-		}*/
+		}
 		ImGui::EndCombo();
 	}
 	
@@ -276,7 +308,6 @@ static void DrawClassFields(void* obj, const Gleam::Reflection::ClassDescription
 			}
 			case Gleam::Reflection::MetaType::Array:
 			{
-
 				break;
 			}
 			case Gleam::Reflection::MetaType::Enum:
@@ -308,7 +339,12 @@ static void DrawComponent(const Gleam::TStringView label, void* component, const
     ImGui::Separator();
 
 	size_t hash = classDesc.TypeHash();
-    bool open = ImGui::TreeNodeEx((void*)hash, treeNodeFlags, "%s", label.data());
+
+	char buffer[64];
+	std::memcpy(buffer, label.data(), label.size());
+	buffer[label.size()] = '\0';
+
+    bool open = ImGui::TreeNodeEx((void*)hash, treeNodeFlags, "%s", buffer);
     ImGui::PopStyleVar();
 
     if (open)

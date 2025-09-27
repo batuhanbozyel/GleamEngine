@@ -3,7 +3,17 @@
 #include "JSONInternal.h"
 
 using namespace Gleam;
-    
+
+static TStringView QualifiedNameWithoutTemplateDeclaration(const TStringView name)
+{
+	auto pos = name.find_first_of('<');
+	if (pos == TStringView::npos)
+	{
+		return name;
+	}
+	return name.substr(0, pos);
+}
+
 #pragma region mark SerializeForwardDecl
 
 #pragma region mark SerializeHeaders
@@ -166,7 +176,8 @@ void JSONSerializer::Initialize(Engine* engine)
 
 	if constexpr (Reflection::Traits::IsReflected<eastl::vector<uint8_t>>())
 	{
-		mCustomObjectSerializers[Reflection::GetClass<eastl::vector<uint8_t>>().ResolveQualifiedName()] = [](const void* obj,
+		const auto qualifiedName = QualifiedNameWithoutTemplateDeclaration(Reflection::GetClass<eastl::vector<uint8_t>>().ResolveQualifiedName());
+		mCustomObjectSerializers[qualifiedName] = [](const void* obj,
 			const TStringView fieldName,
 			const Reflection::ClassDescription& classDesc,
 			rapidjson::Node& node)
@@ -180,7 +191,7 @@ void JSONSerializer::Initialize(Engine* engine)
             SerializeArrayObject(arr.data(), fieldName, arrDesc, node);
 		};
 
-		mCustomArraySerializers[Reflection::GetClass<eastl::vector<uint8_t>>().ResolveQualifiedName()] = [](const void* obj,
+		mCustomArraySerializers[qualifiedName] = [](const void* obj,
 			const Reflection::ClassDescription& classDesc,
 			rapidjson::Node& node)
 		{
@@ -257,7 +268,8 @@ void JSONSerializer::Initialize(Engine* engine)
 
 	if constexpr (Reflection::Traits::IsReflected<eastl::vector<uint8_t>>())
 	{
-		mCustomObjectDeserializers[Reflection::GetClass<eastl::vector<uint8_t>>().ResolveQualifiedName()] = [](const rapidjson::ConstNode& node,
+		const auto qualifiedName = QualifiedNameWithoutTemplateDeclaration(Reflection::GetClass<eastl::vector<uint8_t>>().ResolveQualifiedName());
+		mCustomObjectDeserializers[qualifiedName] = [](const rapidjson::ConstNode& node,
 			const Reflection::ClassDescription& classDesc,
 			void* obj)
 		{
@@ -309,7 +321,7 @@ void JSONSerializer::Initialize(Engine* engine)
 			}
 		};
         
-        mCustomArrayDeserializers[Reflection::GetClass<eastl::vector<uint8_t>>().ResolveQualifiedName()] = [](const rapidjson::ConstNode& node,
+        mCustomArrayDeserializers[qualifiedName] = [](const rapidjson::ConstNode& node,
             const Reflection::ClassDescription& classDesc,
             void* obj)
         {
@@ -451,7 +463,8 @@ bool JSONSerializer::TryCustomObjectSerializer(const void* obj,
 											   const Reflection::ClassDescription& classDesc,
 											   rapidjson::Node& node)
 {
-	auto it = mCustomObjectSerializers.find(classDesc.ResolveQualifiedName());
+	const auto qualifiedName = QualifiedNameWithoutTemplateDeclaration(classDesc.ResolveQualifiedName());
+	auto it = mCustomObjectSerializers.find(qualifiedName);
 	if (it != mCustomObjectSerializers.end())
 	{
 		it->second(obj, fieldName, classDesc, node);
@@ -464,7 +477,8 @@ bool JSONSerializer::TryCustomArraySerializer(const void* obj,
 											  const Reflection::ClassDescription& classDesc,
 											  rapidjson::Node& node)
 {
-	auto it = mCustomArraySerializers.find(classDesc.ResolveQualifiedName());
+	const auto qualifiedName = QualifiedNameWithoutTemplateDeclaration(classDesc.ResolveQualifiedName());
+	auto it = mCustomArraySerializers.find(qualifiedName);
 	if (it != mCustomArraySerializers.end())
 	{
 		it->second(obj, classDesc, node);
@@ -477,7 +491,8 @@ bool JSONSerializer::TryCustomObjectDeserializer(const rapidjson::ConstNode& nod
 												 const Reflection::ClassDescription& classDesc,
 												 void* obj)
 {
-	auto it = mCustomObjectDeserializers.find(classDesc.ResolveQualifiedName());
+	const auto qualifiedName = QualifiedNameWithoutTemplateDeclaration(classDesc.ResolveQualifiedName());
+	auto it = mCustomObjectDeserializers.find(qualifiedName);
 	if (it != mCustomObjectDeserializers.end())
 	{
 		it->second(node, classDesc, obj);
@@ -490,7 +505,8 @@ bool JSONSerializer::TryCustomArrayDeserializer(const rapidjson::ConstNode& node
                                                 const Reflection::ClassDescription& classDesc,
                                                 void* obj)
 {
-    auto it = mCustomArrayDeserializers.find(classDesc.ResolveQualifiedName());
+	const auto qualifiedName = QualifiedNameWithoutTemplateDeclaration(classDesc.ResolveQualifiedName());
+    auto it = mCustomArrayDeserializers.find(qualifiedName);
     if (it != mCustomArrayDeserializers.end())
     {
         it->second(node, classDesc, obj);
