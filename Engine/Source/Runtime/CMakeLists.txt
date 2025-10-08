@@ -99,6 +99,8 @@ DEPLOY_FILE_TO(${CMAKE_SOURCE_DIR}/Engine/ThirdParty/DirectXAgilitySDK/build/nat
 set(REFLECTION_COMPILER_ARGS "--extra-arg=-working-directory=${CMAKE_SOURCE_DIR}")
 if(APPLE)
     list(APPEND REFLECTION_COMPILER_ARGS "--extra-arg-before=-ObjC++")
+    list(APPEND REFLECTION_COMPILER_ARGS "--extra-arg=-DPLATFORM_MACOS")
+    list(APPEND REFLECTION_COMPILER_ARGS "--extra-arg=-DUSE_METAL_RENDERER")
 
     # Find the SDK path
     execute_process(
@@ -119,6 +121,8 @@ if(APPLE)
     list(APPEND REFLECTION_COMPILER_ARGS "--extra-arg=${CLANG_RESOURCE_DIR}")
 else()
     list(APPEND REFLECTION_COMPILER_ARGS "--extra-arg-before=--language=c++")
+    list(APPEND REFLECTION_COMPILER_ARGS "--extra-arg=-DPLATFORM_WINDOWS")
+    list(APPEND REFLECTION_COMPILER_ARGS "--extra-arg=-DUSE_DIRECTX_RENDERER")
 endif()
 list(APPEND REFLECTION_COMPILER_ARGS "--extra-arg=-std=c++20")
 list(APPEND REFLECTION_COMPILER_ARGS "--extra-arg=--no-warnings")

@@ -18,6 +18,8 @@
 // - Introduction, links and more at the top of imgui.cpp
 
 #pragma once
+#ifdef USE_DIRECTX_RENDERER
+
 #include "imgui.h"      // IMGUI_IMPL_API
 #ifndef IMGUI_DISABLE
 #include <dxgiformat.h> // DXGI_FORMAT
@@ -43,3 +45,5 @@ IMGUI_IMPL_API void     ImGui_ImplDX12_InvalidateDeviceObjects();
 IMGUI_IMPL_API bool     ImGui_ImplDX12_CreateDeviceObjects();
 
 #endif // #ifndef IMGUI_DISABLE
+
+#endif // #ifdef USE_DIRECTX_RENDERER

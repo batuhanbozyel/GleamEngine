@@ -14,6 +14,7 @@
 // - Documentation        https://dearimgui.com/docs (same as your local docs/ folder).
 // - Introduction, links and more at the top of imgui.cpp
 
+#ifdef USE_METAL_RENDERER
 #include "imgui.h"      // IMGUI_IMPL_API
 
 //-----------------------------------------------------------------------------
@@ -66,3 +67,5 @@ IMGUI_IMPL_API void ImGui_ImplMetal_DestroyDeviceObjects();
 
 #endif
 #endif
+
+#endif // #ifdef USE_METAL_RENDERER
