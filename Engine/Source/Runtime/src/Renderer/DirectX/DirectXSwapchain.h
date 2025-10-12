@@ -1,6 +1,7 @@
 #pragma once
 #ifdef USE_DIRECTX_RENDERER
 #include "Renderer/Swapchain.h"
+#include "Renderer/RendererConfig.h"
 
 #include <d3d12.h>
 #include <dxgi1_6.h>

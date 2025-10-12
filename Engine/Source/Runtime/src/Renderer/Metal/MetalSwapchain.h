@@ -1,6 +1,7 @@
 #pragma once
 #ifdef USE_METAL_RENDERER
 #include "Renderer/Swapchain.h"
+#include "Renderer/RendererConfig.h"
 
 #import <QuartzCore/CAMetalLayer.h>
 
