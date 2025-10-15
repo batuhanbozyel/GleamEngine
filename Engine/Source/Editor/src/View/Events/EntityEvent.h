@@ -1,5 +1,6 @@
 #pragma once
-#include "Gleam.h"
+#include "Core/Events/Event.h"
+#include "World/Entity.h"
 
 namespace GEditor {
 

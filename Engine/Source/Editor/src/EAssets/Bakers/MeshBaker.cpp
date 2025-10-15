@@ -1,6 +1,8 @@
 #include "MeshBaker.h"
 #include "EAssets/AssetRegistry.h"
 
+#include "Gleam.h"
+
 using namespace GEditor;
 
 MeshBaker::MeshBaker(const Gleam::MeshDescriptor& descriptor)

@@ -1,5 +1,7 @@
 #pragma once
-#include "Gleam.h"
+#include "Assets/AssetReference.h"
+#include "Core/GUID.h"
+#include "IO/Path.h"
 
 namespace GEditor {
 

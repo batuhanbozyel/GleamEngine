@@ -6,7 +6,6 @@
 //
 
 #pragma once
-#include "Gleam.h"
 #include "View/View.h"
 #include "EAssets/EAssetManager.h"
 

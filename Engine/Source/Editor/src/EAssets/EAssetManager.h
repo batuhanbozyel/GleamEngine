@@ -1,7 +1,9 @@
 #pragma once
-#include "Gleam.h"
 #include "AssetPackage.h"
 #include "AssetRegistry.h"
+
+#include "IO/Path.h"
+#include "World/WorldSubsystem.h"
 
 namespace GEditor {
 

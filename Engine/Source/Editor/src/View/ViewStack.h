@@ -7,7 +7,8 @@
 
 #pragma once
 #include "View.h"
-#include "Gleam.h"
+#include "World/WorldSubsystem.h"
+#include "Container/PolyArray.h"
 
 namespace GEditor {
 

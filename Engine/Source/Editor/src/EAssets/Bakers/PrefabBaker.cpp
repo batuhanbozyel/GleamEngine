@@ -1,6 +1,8 @@
 #include "PrefabBaker.h"
 #include "EAssets/AssetRegistry.h"
 
+#include "Gleam.h"
+
 using namespace GEditor;
 
 PrefabBaker::PrefabBaker(const Gleam::RefCounted<Gleam::World>& world)

@@ -6,9 +6,9 @@
 //
 
 #include "ContentBrowser.h"
-#include "Gleam.h"
-
 #include "EAssets/MeshSource.h"
+
+#include "Gleam.h"
 
 #include <imgui.h>
 

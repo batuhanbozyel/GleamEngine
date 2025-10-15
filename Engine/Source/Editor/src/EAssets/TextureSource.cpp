@@ -1,6 +1,7 @@
-#include "Gleam.h"
 #include "TextureSource.h"
 #include "Bakers/TextureBaker.h"
+
+#include "Gleam.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>

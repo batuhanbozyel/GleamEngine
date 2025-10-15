@@ -6,6 +6,7 @@
 //
 
 #include "EntityInspector.h"
+#include "Gleam.h"
 
 #include <imgui.h>
 #include <imgui_internal.h>

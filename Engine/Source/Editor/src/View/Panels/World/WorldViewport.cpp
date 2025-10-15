@@ -11,6 +11,8 @@
 #include "Renderer/ImGui/ImGuiBackend.h"
 #include "Renderers/InfiniteGridRenderer.h"
 
+#include "Gleam.h"
+
 using namespace GEditor;
 
 void WorldViewport::Init(Gleam::World* world)

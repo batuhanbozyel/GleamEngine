@@ -7,7 +7,11 @@
 
 #pragma once
 #include "View/View.h"
-#include "Gleam.h"
+#include "Math/Size.h"
+
+namespace Gleam {
+class EntityManager;
+} // namespace Gleam
 
 namespace GEditor {
 

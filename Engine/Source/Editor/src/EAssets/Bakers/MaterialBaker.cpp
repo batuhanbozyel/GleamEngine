@@ -1,6 +1,8 @@
 #include "MaterialBaker.h"
 #include "EAssets/AssetRegistry.h"
 
+#include "Gleam.h"
+
 using namespace GEditor;
 
 // MaterialBaker

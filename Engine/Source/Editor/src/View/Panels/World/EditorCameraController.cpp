@@ -7,6 +7,8 @@
 
 #include "EditorCameraController.h"
 
+#include "Gleam.h"
+
 using namespace GEditor;
 
 EditorCameraController::EditorCameraController(Gleam::EntityHandle cameraEntity)

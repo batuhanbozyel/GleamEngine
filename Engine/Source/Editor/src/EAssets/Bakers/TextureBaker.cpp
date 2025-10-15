@@ -1,6 +1,8 @@
 #include "TextureBaker.h"
 #include "EAssets/AssetRegistry.h"
 
+#include "Gleam.h"
+
 using namespace GEditor;
 
 TextureBaker::TextureBaker(const Gleam::Texture2DDescriptor& descriptor)

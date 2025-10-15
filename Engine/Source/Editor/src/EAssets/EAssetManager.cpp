@@ -2,6 +2,8 @@
 #include "AssetBaker.h"
 #include "MaterialSource.h"
 
+#include "Gleam.h"
+
 using namespace GEditor;
 
 static Gleam::BinaryHeader ParseBinaryHeader(const Gleam::Path& asset)

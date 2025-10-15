@@ -1,5 +1,6 @@
 #pragma once
 #include "EAssets/AssetBaker.h"
+#include "Renderer/Material/MaterialDescriptor.h"
 
 namespace GEditor {
 

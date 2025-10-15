@@ -1,5 +1,10 @@
 #pragma once
 #include "EAssets/AssetBaker.h"
+#include "Container/Pointer.h"
+
+namespace Gleam {
+class World;
+} // namespace Gleam
 
 namespace GEditor {
 

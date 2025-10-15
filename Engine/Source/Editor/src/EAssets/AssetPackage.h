@@ -1,7 +1,7 @@
 #pragma once
-#include "Gleam.h"
 #include "AssetBaker.h"
 #include "AssetRegistry.h"
+#include "Container/Pointer.h"
 
 namespace GEditor {
 

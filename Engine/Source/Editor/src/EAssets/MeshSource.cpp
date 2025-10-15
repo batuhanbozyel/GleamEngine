@@ -1,4 +1,3 @@
-#include "Gleam.h"
 #include "MeshSource.h"
 #include "TextureSource.h"
 #include "MaterialSource.h"
@@ -8,6 +7,8 @@
 #include "Bakers/PrefabBaker.h"
 #include "Bakers/TextureBaker.h"
 #include "Bakers/MaterialBaker.h"
+
+#include "Gleam.h"
 
 #define CGLTF_IMPLEMENTATION
 #include <cgltf.h>
