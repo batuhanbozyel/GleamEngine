@@ -12,9 +12,7 @@ public:
     
     Mesh(const MeshDescriptor& mesh);
 	
-	virtual ~Mesh() = default;
-    
-    virtual void Release() override;
+	~Mesh();
     
     const Buffer& GetPositionBuffer() const;
     

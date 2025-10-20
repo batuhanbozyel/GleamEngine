@@ -22,7 +22,7 @@ Texture2D::Texture2D(const Texture2DDescriptor& descriptor)
 	}
 }
 
-void Texture2D::Release()
+Texture2D::~Texture2D()
 {
 	static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
 	auto device = renderSystem->GetDevice();

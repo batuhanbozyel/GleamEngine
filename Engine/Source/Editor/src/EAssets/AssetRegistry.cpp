@@ -29,6 +29,8 @@ const AssetItem& AssetRegistry::RegisterAsset(const Gleam::Path& path, const Gle
 const AssetItem& AssetRegistry::RegisterAsset(const Gleam::Path& path, const AssetItem& item)
 {
 	auto relPath = path.IsRelative() ? path : Gleam::Filesystem::Relative(path, mAssetDirectory);
+	relPath.MakePreferred();
+
 	auto& items = mAssets[relPath];
 	auto it = std::find(items.begin(), items.end(), item);
 	if (it != items.end())

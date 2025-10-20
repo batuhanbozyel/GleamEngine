@@ -85,10 +85,6 @@ void AssetManager::Initialize(Application* app)
 
 void AssetManager::Shutdown()
 {
-	for (auto& [ref, asset] : mAssetCache)
-	{
-		asset->Release();
-	}
 	mAssetCache.clear();
 	mAssetPaths.clear();
 }

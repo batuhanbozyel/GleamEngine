@@ -51,7 +51,7 @@ Mesh::Mesh(const MeshDescriptor& mesh)
 	}
 }
 
-void Mesh::Release()
+Mesh::~Mesh()
 {
 	static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
 	auto device = renderSystem->GetDevice();

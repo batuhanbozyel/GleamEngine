@@ -10,7 +10,7 @@ public:
     
     Texture2D(const Texture2DDescriptor& descriptor);
 
-	virtual void Release() override;
+	~Texture2D();
 
 	ShaderResourceIndex GetResourceView() const;
     

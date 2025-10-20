@@ -23,17 +23,19 @@ public:
     
     Material(const MaterialDescriptor& descriptor);
 
+	~Material();
+
 	ShaderResourceIndex CreateInstance(const TArray<MaterialPropertyValue>& values);
 
 	void DestroyInstance(ShaderResourceIndex& instance);
-    
-	virtual void Release() override;
     
     const Buffer& GetBuffer() const;
     
     const TString& GetName() const;
 
 	uint32_t GetPipelineHash() const;
+
+	uint32_t GetInstanceCount() const;
     
 private:
     

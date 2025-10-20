@@ -54,6 +54,11 @@ public:
 		return mParent != InvalidEntity;
 	}
 
+	const TArray<EntityHandle>& GetChildren() const
+	{
+		return mChildren;
+	}
+
 	void SetActive(bool active)
 	{
 		mActive = active;
@@ -173,6 +178,10 @@ public:
 		}
     }
 
+	Entity& GetParentEntity() const;
+
+	Entity& GetChildEntity(EntityHandle child) const;
+
 	void Translate(const Float3& translation);
 
 	void Rotate(const Quaternion& rotation);
@@ -252,7 +261,7 @@ public:
 	}
 
 private:
-    
+
     bool mActive = true;
 
 	Transform mLocalTransform;

@@ -18,7 +18,7 @@ public:
 
     MaterialInstance(const MaterialInstanceDescriptor& descriptor);
 
-	virtual void Release() override;
+	~MaterialInstance();
     
 	void SetProperty(const TString& name, const MaterialPropertyValue& value);
 

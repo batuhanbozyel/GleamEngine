@@ -55,3 +55,18 @@ void ResourceDescriptorHeap::Reset()
     }
     mSize = 0;
 }
+
+uint32_t ResourceDescriptorHeap::GetSize() const
+{
+	return mSize;
+}
+
+uint32_t ResourceDescriptorHeap::GetCapacity() const
+{
+	return mCapacity;
+}
+
+bool ResourceDescriptorHeap::Empty() const
+{
+	return mSize == 0;
+}

@@ -45,9 +45,17 @@ public:
 	template<AssetType T>
 	T* Load(const AssetReference& ref)
 	{
+		if (ref.guid == Guid::InvalidGuid())
+		{
+			return nullptr;
+		}
+
 		if (auto it = mAssetCache.find(ref); it != mAssetCache.end())
 		{
-			return static_cast<T*>(it->second.get());
+			auto& asset = it->second;
+			++asset->mRefCount;
+
+			return static_cast<T*>(asset.get());
 		}
 
 		auto meta = entt::resolve(entt::type_hash<T>().value());
@@ -56,7 +64,26 @@ public:
 										   eastl::piecewise_construct,
 										   eastl::forward_as_tuple(ref),
 										   eastl::forward_as_tuple(asset));
+
+		++it->second->mRefCount;
 		return static_cast<T*>(it->second.get());
+	}
+
+	void Release(const AssetReference& ref)
+	{
+		if (ref.guid == Guid::InvalidGuid())
+		{
+			return;
+		}
+
+		if (auto it = mAssetCache.find(ref); it != mAssetCache.end())
+		{
+			auto& asset = it->second;
+			if (--asset->mRefCount == 0)
+			{
+				mAssetCache.erase(it);
+			}
+		}
 	}
 	
 	template<typename T>
@@ -76,7 +103,7 @@ public:
 		GLEAM_ASSERT(false);
 		return T();
 	}
-	
+
 	template<AssetType T, typename Desc>
 	static void RegisterMetaAsset()
 	{
