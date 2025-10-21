@@ -15,8 +15,8 @@ struct CommandBuffer::Impl
 
 	ID3D12GraphicsCommandList7* commandList = nullptr;
 	ID3D12Fence* fence = nullptr;
-	uint64_t fenceValue = 0;
-	uint64_t waitFenceValue = 0;
+	uint64_t fenceValue = 1;
+	uint64_t waitFenceValue = 1;
 };
 
 CommandBuffer::CommandBuffer(GraphicsDevice* device)
@@ -80,6 +80,11 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, 
 			depthAttachment.StencilBeginningAccess.Clear.ClearValue.DepthStencil.Depth = renderPassDesc.depthAttachment.clearDepth;
 			depthAttachment.StencilBeginningAccess.Clear.ClearValue.DepthStencil.Stencil = renderPassDesc.depthAttachment.clearStencil;
 			depthAttachment.StencilEndingAccess.Type = depthAttachment.DepthEndingAccess.Type;
+		}
+		else
+		{
+			depthAttachment.StencilBeginningAccess.Type = D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_NO_ACCESS;
+			depthAttachment.StencilEndingAccess.Type = D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_NO_ACCESS;
 		}
 		mHandle->commandList->BeginRenderPass((UINT)colorAttachments.size(), colorAttachments.data(), &depthAttachment, D3D12_RENDER_PASS_FLAG_NONE);
 	}

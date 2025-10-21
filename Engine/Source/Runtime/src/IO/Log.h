@@ -9,6 +9,7 @@
 
 #include <fstream>
 #include <chrono>
+#include <mutex>
 
 namespace Gleam {
 
@@ -44,8 +45,13 @@ public:
 		ss << '[' << formattedCurrentTime << "] ";
 		ss << LogLevelToString(lvl) << mName << fmt::format(fmt::runtime(frmt), std::forward<Args>(args)...) << '\n';
 
-		*mFileStream << ss.str();
-		std::flush(*mFileStream);
+		const auto& msg = ss.str();
+		{
+			std::lock_guard<std::mutex> lock(mLogMutex);
+			*mFileStream << msg;
+			std::flush(*mFileStream);
+			OutputToDebugger(msg.c_str());
+		}
 	}
     
 private:
@@ -61,11 +67,14 @@ private:
 			default: return "[undefined] ";
 		}
 	};
+
+	static void OutputToDebugger(const char* message);
     
     TString mName;
     
     static inline Scope<std::ofstream> mFileStream = nullptr;
     static inline uint32_t mInstanceCount = 0;
+	static inline std::mutex mLogMutex;
     
 };
 

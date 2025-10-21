@@ -34,7 +34,7 @@ void WorldViewport::Init(Gleam::World* world)
     
     Gleam::EventDispatcher<Gleam::MouseButtonPressedEvent>::Subscribe([&](Gleam::MouseButtonPressedEvent e)
     {
-        if (e.GetMouseButton() == Gleam::MouseButton::Right)
+        if (e.GetButton() == Gleam::MouseButton::Right)
         {
             if (mIsFocused)
             {

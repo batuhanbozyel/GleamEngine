@@ -9,7 +9,7 @@ class MouseButtonEvent : public Event
 {
 public:
 
-    MouseButton GetMouseButton() const { return mButton; }
+    MouseButton GetButton() const { return mButton; }
 
 protected:
 
