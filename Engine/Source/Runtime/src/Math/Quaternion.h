@@ -11,7 +11,6 @@ GSTRUCT(Quaternion, "69ACEBFE-7CFD-4876-9D4D-DF428E49A626", Serializable)
 		{
 			float w, x, y, z;
 		};
-		GFIELD("FEB626FD-0892-4D46-A115-44B980175355", Serializable)
 		TArray<float, 4> value{};
 	};
 

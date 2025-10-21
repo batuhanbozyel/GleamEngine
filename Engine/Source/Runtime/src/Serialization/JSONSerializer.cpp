@@ -2,6 +2,8 @@
 #include "JSONSerializer.h"
 #include "JSONInternal.h"
 
+#include "Renderer/Material/MaterialProperty.h"
+
 using namespace Gleam;
 
 static TStringView QualifiedNameWithoutTemplateDeclaration(const TStringView name)
@@ -108,6 +110,20 @@ static void DeserializeArrayElements(const rapidjson::ConstNode& array, const Re
 
 void JSONSerializer::Initialize(Engine* engine)
 {
+	REGISTER_VECTOR_TYPE_JSON_SERIALIZER(Float2, x, y);
+	REGISTER_VECTOR_TYPE_JSON_SERIALIZER(Float3, x, y, z);
+	REGISTER_VECTOR_TYPE_JSON_SERIALIZER(Float4, x, y, z, w);
+	REGISTER_VECTOR_TYPE_JSON_SERIALIZER(Color, x, y, z, w);
+	REGISTER_VECTOR_TYPE_JSON_SERIALIZER(Int2, x, y);
+	REGISTER_VECTOR_TYPE_JSON_SERIALIZER(Int3, x, y, z);
+	REGISTER_VECTOR_TYPE_JSON_SERIALIZER(Int4, x, y, z, w);
+	REGISTER_VECTOR_TYPE_JSON_SERIALIZER(Quaternion, w, x, y, z);
+
+	REGISTER_MATRIX_TYPE_JSON_SERIALIZER(Float2x2, 4);
+	REGISTER_MATRIX_TYPE_JSON_SERIALIZER(Float3x3, 9);
+	REGISTER_MATRIX_TYPE_JSON_SERIALIZER(Float4x4, 16);
+	REGISTER_MATRIX_TYPE_JSON_SERIALIZER(MaterialPropertyValue, 4);
+
 	// Custom serializers
 	if constexpr (Reflection::Traits::IsReflected<Guid>())
 	{

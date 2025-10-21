@@ -30,13 +30,12 @@ GSTRUCT(MaterialPropertyValue, "FBEA0802-00F8-479F-9E59-2A157C8A8EF8", Serializa
 		Float4 float4;
 		AssetReference texture;
 		
-		GFIELD("7C4BE305-9D93-482A-B1A5-6E39F24DA017", Serializable)
-		uint32_t value[4];
+		uint32_t m[4];
 	};
 
 	MaterialPropertyValue()
 	{
-		memset(value, 0, sizeof(value));
+		memset(m, 0, sizeof(m));
 	}
 
 	MaterialPropertyValue(float scalar)
@@ -66,35 +65,35 @@ GSTRUCT(MaterialPropertyValue, "FBEA0802-00F8-479F-9E59-2A157C8A8EF8", Serializa
 
 	MaterialPropertyValue& operator=(float v)
 	{
-		memset(value, 0, sizeof(value));
+		memset(m, 0, sizeof(m));
 		scalar = v;
 		return *this;
 	}
 
 	MaterialPropertyValue& operator=(const Float2& v)
 	{
-		memset(value, 0, sizeof(value));
+		memset(m, 0, sizeof(m));
 		float2 = v;
 		return *this;
 	}
 
 	MaterialPropertyValue& operator=(const Float3& v)
 	{
-		memset(value, 0, sizeof(value));
+		memset(m, 0, sizeof(m));
 		float3 = v;
 		return *this;
 	}
 
 	MaterialPropertyValue& operator=(const Float4& v)
 	{
-		memset(value, 0, sizeof(value));
+		memset(m, 0, sizeof(m));
 		float4 = v;
 		return *this;
 	}
 
 	MaterialPropertyValue& operator=(const AssetReference& v)
 	{
-		memset(value, 0, sizeof(value));
+		memset(m, 0, sizeof(m));
 		texture = v;
 		return *this;
 	}
@@ -112,6 +111,6 @@ GSTRUCT(MaterialProperty, "A69E7110-6B1B-41B9-ACFB-AA363C9A0943", Serializable)
 	MaterialPropertyValue value;
 };
 
-static_assert(sizeof(MaterialPropertyValue) == sizeof(MaterialPropertyValue::value), "Material property value is greater than serialized value");
+static_assert(sizeof(MaterialPropertyValue) == sizeof(MaterialPropertyValue::m), "Material property value is greater than serialized value");
 
 } // namespace Gleam

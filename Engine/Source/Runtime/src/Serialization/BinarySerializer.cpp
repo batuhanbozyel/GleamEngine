@@ -1,5 +1,6 @@
 #include "gpch.h"
 #include "BinarySerializer.h"
+#include "Renderer/Material/MaterialProperty.h"
 
 using namespace Gleam;
 
@@ -95,28 +96,21 @@ static void DeserializeArrayElements(FileStream& stream,
 
 void BinarySerializer::Initialize(Engine* engine)
 {
+	REGISTER_POD_TYPE_BINARY_SERIALIZER(Float2);
+	REGISTER_POD_TYPE_BINARY_SERIALIZER(Float3);
+	REGISTER_POD_TYPE_BINARY_SERIALIZER(Float4);
+	REGISTER_POD_TYPE_BINARY_SERIALIZER(Color);
+	REGISTER_POD_TYPE_BINARY_SERIALIZER(Int2);
+	REGISTER_POD_TYPE_BINARY_SERIALIZER(Int3);
+	REGISTER_POD_TYPE_BINARY_SERIALIZER(Int4);
+	REGISTER_POD_TYPE_BINARY_SERIALIZER(Float2x2);
+	REGISTER_POD_TYPE_BINARY_SERIALIZER(Float3x3);
+	REGISTER_POD_TYPE_BINARY_SERIALIZER(Float4x4);
+	REGISTER_POD_TYPE_BINARY_SERIALIZER(Quaternion);
+	REGISTER_POD_TYPE_BINARY_SERIALIZER(Guid);
+	REGISTER_POD_TYPE_BINARY_SERIALIZER(MaterialPropertyValue);
+
 	// Custom serializers
-	if constexpr (Reflection::Traits::IsReflected<Guid>())
-	{
-		mCustomSerializers[Reflection::GetClass<Guid>().ResolveQualifiedName()] = [](const void* obj,
-			const Reflection::ClassDescription& classDesc,
-			FileStream& stream)
-		{
-			const auto& guid = Reflection::Get<Guid>(obj);
-
-			SerializeClassHeader(classDesc, stream);
-			stream.write(reinterpret_cast<const char*>(guid.mBytes), sizeof(guid.mBytes));
-		};
-
-		mCustomArraySerializers[Reflection::GetClass<Guid>().ResolveQualifiedName()] = [](const void* obj,
-			const Reflection::ClassDescription& classDesc,
-			FileStream& stream)
-		{
-			const auto& guid = Reflection::Get<Guid>(obj);
-			stream.write(reinterpret_cast<const char*>(guid.mBytes), sizeof(guid.mBytes));
-		};
-	}
-
 	if constexpr (Reflection::Traits::IsReflected<TString>())
 	{
 		mCustomSerializers[Reflection::GetClass<TString>().ResolveQualifiedName()] = [](const void* obj,
@@ -203,30 +197,6 @@ void BinarySerializer::Initialize(Engine* engine)
 	}
 	
 	// Custom deserializers
-	if constexpr (Reflection::Traits::IsReflected<Guid>())
-	{
-		mCustomDeserializers[Reflection::GetClass<Guid>().ResolveQualifiedName()] = [](FileStream& stream,
-			const Reflection::ClassDescription& classDesc,
-			void* obj)
-		{
-			BinaryHeader header;
-			DeserializeHeader(stream, header);
-
-			Guid guid;
-			stream.read(reinterpret_cast<char*>(guid.mBytes), sizeof(guid.mBytes));
-			Reflection::Get<Guid>(obj) = guid;
-		};
-
-		mCustomArrayDeserializers[Reflection::GetClass<Guid>().ResolveQualifiedName()] = [](FileStream& stream,
-			const Reflection::ClassDescription& classDesc,
-			void* obj)
-		{
-			Guid guid;
-			stream.read(reinterpret_cast<char*>(guid.mBytes), sizeof(guid.mBytes));
-			Reflection::Get<Guid>(obj) = guid;
-		};
-	}
-
 	if constexpr (Reflection::Traits::IsReflected<TString>())
 	{
 		mCustomDeserializers[Reflection::GetClass<TString>().ResolveQualifiedName()] = [](FileStream& stream,
