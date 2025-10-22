@@ -168,7 +168,7 @@ void CommandBuffer::Blit(const Texture& source, const Texture& destination) cons
     [blitCommandEncoder endEncoding];
 }
 
-void CommandBuffer::Begin() const
+void CommandBuffer::Begin(const TStringView debugName) const
 {
     mHandle->commandBuffer = mHandle->device->AllocateCommandBuffer();
     mCommitted = false;

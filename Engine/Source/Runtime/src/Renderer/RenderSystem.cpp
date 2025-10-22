@@ -137,7 +137,10 @@ void RenderSystem::Render(const World* world)
 		mReleaseQueue->Flush(frameIdx);
 		mDevice->ResetCommandPools(frameIdx);
 
-		cmd->Begin();
+		TStringStream cmdBufferName;
+		cmdBufferName << "Scene CommandBuffer[" << frameIdx << "]";
+		cmd->Begin(cmdBufferName.str());
+
         graph.Execute(cmd, sceneData);
 		mSwapchain->Present(cmd);
 

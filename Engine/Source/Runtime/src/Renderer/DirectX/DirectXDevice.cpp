@@ -599,16 +599,31 @@ void DirectXDevice::Configure(const RendererConfig& config)
 		{
 			auto& pool = ctx.commandPools.emplace_back();
 			DX_CHECK(static_cast<ID3D12Device10*>(mHandle)->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&pool.allocator)));
+
+			TStringStream ss;
+			ss << ID3D12CommandListTypeToString(D3D12_COMMAND_LIST_TYPE_DIRECT) << swapchain->mCurrentFrameIndex;
+			TWString cmdAllocatorName = ss.str();
+			pool.allocator->SetName(cmdAllocatorName.c_str());
 		}
 
 		{
 			auto& pool = ctx.commandPools.emplace_back();
 			DX_CHECK(static_cast<ID3D12Device10*>(mHandle)->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_COMPUTE, IID_PPV_ARGS(&pool.allocator)));
+
+			TStringStream ss;
+			ss << ID3D12CommandListTypeToString(D3D12_COMMAND_LIST_TYPE_COMPUTE) << swapchain->mCurrentFrameIndex;
+			TWString cmdAllocatorName = ss.str();
+			pool.allocator->SetName(cmdAllocatorName.c_str());
 		}
 
 		{
 			auto& pool = ctx.commandPools.emplace_back();
 			DX_CHECK(static_cast<ID3D12Device10*>(mHandle)->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_COPY, IID_PPV_ARGS(&pool.allocator)));
+
+			TStringStream ss;
+			ss << ID3D12CommandListTypeToString(D3D12_COMMAND_LIST_TYPE_COPY) << swapchain->mCurrentFrameIndex;
+			TWString cmdAllocatorName = ss.str();
+			pool.allocator->SetName(cmdAllocatorName.c_str());
 		}
 	}
 }
@@ -621,13 +636,13 @@ void DirectXDevice::ResetCommandPools(uint32_t frameIndex)
 	}
 }
 
-ID3D12GraphicsCommandList7* DirectXDevice::AllocateCommandList(D3D12_COMMAND_LIST_TYPE type)
+ID3D12GraphicsCommandList7* DirectXDevice::AllocateCommandList(D3D12_COMMAND_LIST_TYPE type, const TWStringView debugName)
 {
 	auto swapchain = static_cast<DirectXSwapchain*>(mSurface);
 
 	TStringStream ss;
 	ss << ID3D12CommandListTypeToString(type) << swapchain->mCurrentFrameIndex;
-	TWString cmdlistName = ss.str();
+	TWString cmdAllocatorName = ss.str();
 
 	for (auto& pool : mFrameContext[swapchain->mCurrentFrameIndex].commandPools)
 	{
@@ -646,19 +661,20 @@ ID3D12GraphicsCommandList7* DirectXDevice::AllocateCommandList(D3D12_COMMAND_LIS
 
 			pool.usedCommandLists.push_back(commandList);
 			commandList->Reset(pool.allocator, nullptr);
-			commandList->SetName(cmdlistName.c_str());
+			commandList->SetName(debugName.data());
 			return commandList;
 		}
 	}
 
 	auto& pool = mFrameContext[swapchain->mCurrentFrameIndex].commandPools.emplace_back();
 	DX_CHECK(static_cast<ID3D12Device10*>(mHandle)->CreateCommandAllocator(type, IID_PPV_ARGS(&pool.allocator)));
+	pool.allocator->SetName(cmdAllocatorName.c_str());
 
 	ID3D12GraphicsCommandList7* commandList = nullptr;
 	DX_CHECK(static_cast<ID3D12Device10*>(mHandle)->CreateCommandList1(0, type, D3D12_COMMAND_LIST_FLAG_NONE, IID_PPV_ARGS(&commandList)));
 	pool.usedCommandLists.push_back(commandList);
 	commandList->Reset(pool.allocator, nullptr);
-	commandList->SetName(cmdlistName.c_str());
+	commandList->SetName(debugName.data());
 	return commandList;
 }
 

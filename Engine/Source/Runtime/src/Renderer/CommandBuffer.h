@@ -35,7 +35,7 @@ public:
 
     ~CommandBuffer();
 
-    void BeginRenderPass(const RenderPassDescriptor& renderPassDesc, const TStringView debugName = "") const;
+    void BeginRenderPass(const RenderPassDescriptor& renderPassDesc, const TStringView debugName) const;
 
     void EndRenderPass() const;
 
@@ -76,7 +76,7 @@ public:
 
     void Blit(const Texture& source, const Texture& destination) const;
 
-    void Begin() const;
+    void Begin(const TStringView debugName) const;
 
     void End() const;
 

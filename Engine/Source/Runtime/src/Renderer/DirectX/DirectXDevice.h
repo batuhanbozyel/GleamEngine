@@ -60,7 +60,7 @@ public:
 
 	DirectXDescriptorHeap& GetCbvSrvUavHeap();
 
-	ID3D12GraphicsCommandList7* AllocateCommandList(D3D12_COMMAND_LIST_TYPE type);
+	ID3D12GraphicsCommandList7* AllocateCommandList(D3D12_COMMAND_LIST_TYPE type, const TWStringView debugName);
 
 	const DirectXDescriptorHeap& GetRtvHeap() const;
 

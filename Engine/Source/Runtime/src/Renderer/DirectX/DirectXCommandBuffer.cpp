@@ -20,7 +20,8 @@ struct CommandBuffer::Impl
 };
 
 CommandBuffer::CommandBuffer(GraphicsDevice* device)
-	: mHandle(CreateScope<Impl>()), mDevice(device)
+	: mHandle(CreateScope<Impl>())
+	, mDevice(device)
 	, mConstantBuffer(device, 4194304) // 4 MB
 {
 	mHandle->device = static_cast<DirectXDevice*>(device);
@@ -193,9 +194,10 @@ void CommandBuffer::Blit(const Texture& source, const Texture& destination) cons
 	mHandle->commandList->CopyTextureRegion(&dst, 0, 0, 0, &src, nullptr);
 }
 
-void CommandBuffer::Begin() const
+void CommandBuffer::Begin(const TStringView debugName) const
 {
-	mHandle->commandList = mHandle->device->AllocateCommandList(D3D12_COMMAND_LIST_TYPE_DIRECT);
+	TWString debugNameW = StringUtils::Convert(debugName);
+	mHandle->commandList = mHandle->device->AllocateCommandList(D3D12_COMMAND_LIST_TYPE_DIRECT, debugNameW);
 	mCommitted = false;
 }
 
