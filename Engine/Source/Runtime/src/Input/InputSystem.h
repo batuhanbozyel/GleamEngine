@@ -54,7 +54,7 @@ private:
     
     uint32_t mMouseState = 0;
 
-	const uint8_t* mKeyboardState = nullptr;
+	const bool* mKeyboardState = nullptr;
 
 	mutable bool mCursorHidden = false;
 

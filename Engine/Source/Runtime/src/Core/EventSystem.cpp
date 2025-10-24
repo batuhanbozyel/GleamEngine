@@ -65,10 +65,15 @@ void EventSystem::Update()
 	SDL_Event event;
 	while (SDL_PollEvent(&event))
 	{
-		SDL_EventHandler(nullptr, &event);
+		bool emitted = false;
 		if (mEventHandler)
 		{
-			std::invoke(mEventHandler, &event);
+			emitted = std::invoke(mEventHandler, &event);
+		}
+
+		if (emitted == false)
+		{
+			SDL_EventHandler(nullptr, &event);
 		}
 	}
 }

@@ -10,6 +10,13 @@ public:
 
 	RendererDeviceLostEvent() = default;
 
+	virtual TString ToString() const override
+	{
+		TStringStream ss;
+		ss << "RendererDeviceLostEvent";
+		return ss.str();
+	}
+
 };
 
 class RendererResizeEvent : public Event
@@ -21,7 +28,7 @@ public:
 
     const Size& GetSize() const { return mSize; }
 
-	TString ToString() const override
+	virtual TString ToString() const override
 	{
 		TStringStream ss;
 		ss << "RendererResizeEvent: " << mSize.width << ", " << mSize.height;

@@ -99,6 +99,8 @@ private:
 #define GLEAM_ASSERT(...)
 #endif
 
+#define GLEAM_AFFIRM(x, ...) if (!(x)) { GLEAM_CORE_ERROR("Assertion failed at {0}:{1}", std::filesystem::path(__FILE__).filename().string(), __LINE__); DEBUGBREAK(); }
+
 static bool ExecuteCommand(const Gleam::TString& cmd)
 {
     int success = system((cmd + " > command.err 2>&1").c_str());

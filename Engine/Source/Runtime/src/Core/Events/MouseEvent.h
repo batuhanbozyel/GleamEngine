@@ -26,7 +26,7 @@ public:
 	MouseButtonPressedEvent(MouseButton button)
 		: MouseButtonEvent(button) {}
 
-	TString ToString() const override
+	virtual TString ToString() const override
 	{
 		TStringStream ss;
 		ss << "MouseButtonPressedEvent: " << Gleam::ToString(mButton);
@@ -41,7 +41,7 @@ public:
 	MouseButtonReleasedEvent(MouseButton button)
 		: MouseButtonEvent(button) {}
 
-	TString ToString() const override
+	virtual TString ToString() const override
 	{
 		TStringStream ss;
 		ss << "MouseButtonReleasedEvent: " << Gleam::ToString(mButton);
@@ -59,7 +59,7 @@ public:
 
 	const Float2& GetPosition() const { return mPosition; }
 
-	TString ToString() const override
+	virtual TString ToString() const override
 	{
 		TStringStream ss;
 		ss << "MouseMovedEvent: " << mPosition.x << ", " << mPosition.y;
@@ -80,7 +80,7 @@ public:
 
 	const Float2& GetOffset() const { return mScrollOffset; }
 
-	TString ToString() const override
+	virtual TString ToString() const override
 	{
 		TStringStream ss;
 		ss << "MouseScrolledEvent: " << mScrollOffset.x << ", " << mScrollOffset.y;

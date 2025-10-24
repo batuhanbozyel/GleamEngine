@@ -6,7 +6,7 @@
 
 namespace Gleam {
 
-using EventHandlerFn = std::function<void(const SDL_Event*)>;
+using EventHandlerFn = std::function<bool(const SDL_Event*)>;
 
 class EventSystem final : public EngineSubsystem
 {

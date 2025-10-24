@@ -16,6 +16,13 @@ public:
 		return mEntity;
 	}
 
+	virtual Gleam::TString ToString() const override
+	{
+		Gleam::TStringStream ss;
+		ss << "EntitySelectedEvent: " << (uint32_t)mEntity;
+		return ss.str();
+	}
+
 private:
 
 	Gleam::EntityHandle mEntity;
