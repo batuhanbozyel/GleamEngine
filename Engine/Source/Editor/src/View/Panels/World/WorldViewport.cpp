@@ -35,7 +35,6 @@ void WorldViewport::Init(Gleam::World* world)
 
 void WorldViewport::Update()
 {
-	mCameraController->Enabled = mIsFocused;
     if (mViewportSizeChanged)
     {
 		Resize(mEditWorld->GetEntityManager(), mViewportSize);
@@ -58,17 +57,16 @@ void WorldViewport::Render(Gleam::ImGuiRenderer* imgui)
 		}
 		
 		ImGui::Image(Gleam::ImGuiBackend::GetImTextureIDForTexture(passData.sceneTarget), ImVec2(sceneRTsize.width, sceneRTsize.height), ImVec2(0.0f, 0.0f), ImVec2(1.0f, 1.0f));
-		mIsFocused = ImGui::IsWindowFocused();
+
+		bool isFocused = ImGui::IsWindowFocused();
+		mCameraController->Enabled = isFocused;
 
 		auto ctx = ImGui::GetCurrentContext();
-		if (ctx->IO.MouseClicked[ImGuiMouseButton_Right])
+		if (isFocused && ctx->IO.MouseClicked[ImGuiMouseButton_Right])
 		{
-			if (mIsFocused)
-			{
-				auto inputSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::InputSystem>();
-				mCursorVisible ? inputSystem->HideCursor() : inputSystem->ShowCursor();
-				mCursorVisible = !mCursorVisible;
-			}
+			auto inputSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::InputSystem>();
+			mCursorVisible ? inputSystem->HideCursor() : inputSystem->ShowCursor();
+			mCursorVisible = !mCursorVisible;
 		}
 
 		if (ImGui::BeginDragDropTarget())

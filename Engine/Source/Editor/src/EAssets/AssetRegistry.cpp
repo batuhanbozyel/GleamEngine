@@ -63,6 +63,8 @@ const AssetItem& AssetRegistry::GetAsset(const Gleam::Guid& guid) const
 const AssetItem& AssetRegistry::GetAsset(const Gleam::Path& path, const Gleam::Guid& type) const
 {
 	auto relPath = path.IsRelative() ? path : Gleam::Filesystem::Relative(path, mAssetDirectory);
+	relPath.MakePreferred();
+
 	auto it = mAssets.find(relPath);
 	if (it != mAssets.end())
 	{

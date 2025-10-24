@@ -36,8 +36,6 @@ private:
 
 	void Resize(Gleam::EntityManager& entityManager, const Gleam::Size& size);
     
-    bool mIsFocused = false;
-    
     bool mCursorVisible = true;
 
 	bool mViewportSizeChanged = false;
