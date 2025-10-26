@@ -25,3 +25,8 @@ void Camera::SetViewport(float width, float height)
     aspectRatio = width / height;
     orthographicSize = height;
 }
+
+Size Camera::GetViewport() const
+{
+	return Size{ orthographicSize * aspectRatio, orthographicSize };
+}

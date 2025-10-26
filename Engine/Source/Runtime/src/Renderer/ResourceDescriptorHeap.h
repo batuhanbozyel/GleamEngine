@@ -6,6 +6,8 @@
 //
 
 #pragma once
+#include "Shaders/ShaderInterop.h"
+#include "Container/Array.h"
 
 namespace Gleam {
 
@@ -20,6 +22,12 @@ public:
 	ShaderResourceIndex Allocate();
 
 	void Release(ShaderResourceIndex index);
+
+	uint32_t GetSize() const;
+
+	uint32_t GetCapacity() const;
+
+	bool Empty() const;
     
     void Reset();
     

@@ -23,12 +23,12 @@ ConstantBuffer::ConstantBuffer(GraphicsDevice* device, size_t size)
 	BufferDescriptor bufferDesc;
 	bufferDesc.name = "Buffer";
 	bufferDesc.size = size;
-	mBuffer = mHeap.CreateBuffer(bufferDesc);
+	mBuffer = mHeap.Allocate(bufferDesc);
 }
 
 ConstantBuffer::~ConstantBuffer()
 {
-	mDevice->Dispose(mBuffer);
+	mHeap.Free(mBuffer);
 	mDevice->Dispose(mHeap);
 }
 

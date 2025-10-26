@@ -1,8 +1,10 @@
 #pragma once
+#include "Vector4.h"
+#include "Quaternion.h"
 
 namespace Gleam {
 
-struct Float4x4
+GSTRUCT(Float4x4, "770BABFC-E66A-4CE5-8453-A505EB3016BE", Serializable)
 {
     union
     {
@@ -19,10 +21,19 @@ struct Float4x4
     FORCE_INLINE constexpr Float4x4& operator=(Float4x4&&) noexcept = default;
     FORCE_INLINE constexpr Float4x4& operator=(const Float4x4&) = default;
 
+	constexpr Float4x4(float mat[16])
+		: m{mat[0], mat[1], mat[2], mat[3],
+			mat[4], mat[5], mat[6], mat[7],
+			mat[8], mat[9], mat[10], mat[11],
+			mat[12], mat[13], mat[14], mat[15]}
+	{
+
+	}
+
     constexpr Float4x4(float m00, float m01, float m02, float m03,
-                      float m10, float m11, float m12, float m13,
-                      float m20, float m21, float m22, float m23,
-                      float m30, float m31, float m32, float m33)
+                       float m10, float m11, float m12, float m13,
+                       float m20, float m21, float m22, float m23,
+                       float m30, float m31, float m32, float m33)
         : m{m00, m01, m02, m03,
             m10, m11, m12, m13,
             m20, m21, m22, m23,
@@ -46,10 +57,10 @@ struct Float4x4
 
     }
 
-    NO_DISCARD FORCE_INLINE constexpr Float4& operator[](size_t i)
-    {
-        return row[i];
-    }
+	NO_DISCARD FORCE_INLINE constexpr Float4& operator[](size_t i)
+	{
+		return row[i];
+	}
 
     NO_DISCARD FORCE_INLINE constexpr const Float4& operator[](size_t i) const
     {
@@ -80,28 +91,7 @@ struct Float4x4
 
     NO_DISCARD FORCE_INLINE constexpr Float4x4 operator*(const Float4x4& rhs) const
     {
-        return Float4x4
-        {
-            rhs.m[0] * m[0] + rhs.m[1] * m[4] + rhs.m[2] * m[8] + rhs.m[3] * m[12],
-            rhs.m[0] * m[1] + rhs.m[1] * m[5] + rhs.m[2] * m[9] + rhs.m[3] * m[13],
-            rhs.m[0] * m[2] + rhs.m[1] * m[6] + rhs.m[2] * m[10] + rhs.m[3] * m[14],
-            rhs.m[0] * m[3] + rhs.m[1] * m[7] + rhs.m[2] * m[11] + rhs.m[3] * m[15],
-
-            rhs.m[4] * m[0] + rhs.m[5] * m[4] + rhs.m[6] * m[8] + rhs.m[7] * m[12],
-            rhs.m[4] * m[1] + rhs.m[5] * m[5] + rhs.m[6] * m[9] + rhs.m[7] * m[13],
-            rhs.m[4] * m[2] + rhs.m[5] * m[6] + rhs.m[6] * m[10] + rhs.m[7] * m[14],
-            rhs.m[4] * m[3] + rhs.m[5] * m[7] + rhs.m[6] * m[11] + rhs.m[7] * m[15],
-
-            rhs.m[8] * m[0] + rhs.m[9] * m[4] + rhs.m[10] * m[8] + rhs.m[11] * m[12],
-            rhs.m[8] * m[1] + rhs.m[9] * m[5] + rhs.m[10] * m[9] + rhs.m[11] * m[13],
-            rhs.m[8] * m[2] + rhs.m[9] * m[6] + rhs.m[10] * m[10] + rhs.m[11] * m[14],
-            rhs.m[8] * m[3] + rhs.m[9] * m[7] + rhs.m[10] * m[11] + rhs.m[11] * m[15],
-
-            rhs.m[12] * m[0] + rhs.m[13] * m[4] + rhs.m[14] * m[8] + rhs.m[15] * m[12],
-            rhs.m[12] * m[1] + rhs.m[13] * m[5] + rhs.m[14] * m[9] + rhs.m[15] * m[13],
-            rhs.m[12] * m[2] + rhs.m[13] * m[6] + rhs.m[14] * m[10] + rhs.m[15] * m[14],
-            rhs.m[12] * m[3] + rhs.m[13] * m[7] + rhs.m[14] * m[11] + rhs.m[15] * m[15]
-        };
+        return Float4x4{ *this * rhs.row[0], *this * rhs.row[1], *this * rhs.row[2], *this * rhs.row[3] };
     }
     
     NO_DISCARD FORCE_INLINE constexpr Quaternion operator*(const Quaternion& quat)
@@ -259,7 +249,7 @@ struct Float4x4
         };
     }
 
-    NO_DISCARD FORCE_INLINE static constexpr Float4x4 TRS(const Float3& translation, const Quaternion& rotation, const Float3& scale)
+    NO_DISCARD FORCE_INLINE static constexpr Float4x4 TRS(const Float3& translation, const Quaternion& rotation, float scale)
     {
         float qxx = rotation.x * rotation.x;
         float qxy = rotation.x * rotation.y;
@@ -273,10 +263,10 @@ struct Float4x4
 
         return Float4x4
         {
-            scale.x - 2.0f * scale.x * (qyy + qzz),		2.0f * (qxy + qwz),							2.0f * (qxz - qwy),						0.0f,
-            2.0f * (qxy - qwz),							scale.y - 2.0f * scale.y * (qxx + qzz),		2.0f * (qyz + qwx),						0.0f,
-            2.0f * (qxz + qwy),							2.0f * (qyz - qwx),							scale.z - 2.0f * scale.z * (qxx + qyy),	0.0f,
-            translation.x,								translation.y,								translation.z,							1.0f
+			scale - 2.0f * scale * (qyy + qzz),		2.0f * scale * (qxy + qwz),				2.0f * scale * (qxz - qwy),			0.0f,
+			2.0f * scale * (qxy - qwz),				scale - 2.0f * scale * (qxx + qzz),		2.0f * scale * (qyz + qwx),			0.0f,
+			2.0f * scale * (qxz + qwy),				2.0f * scale * (qyz - qwx),				scale - 2.0f * scale * (qxx + qyy),	0.0f,
+			translation.x,							translation.y,							translation.z,						1.0f
         };
     }
 
@@ -356,42 +346,22 @@ NO_DISCARD FORCE_INLINE static constexpr Float4x4 Inverse(const Float4x4& m)
 	};
 }
 
-FORCE_INLINE static void Decompose(const Float4x4& transform, Float3& translation, Quaternion& rotation, Float3& scale)
+FORCE_INLINE static void Decompose(const Float4x4& transform, Float3& translation, Quaternion& rotation, float& scale)
 {
-	translation.x = transform.m[12];
-	translation.y = transform.m[13];
-	translation.z = transform.m[14];
+	translation = Float3(transform.m[12], transform.m[13], transform.m[14]);
 
-	scale.x = Length(Float3(transform.m[0], transform.m[1], transform.m[2]));
-	scale.y = Length(Float3(transform.m[4], transform.m[5], transform.m[6]));
-	scale.z = Length(Float3(transform.m[8], transform.m[9], transform.m[10]));
+	Float3 xAxis(transform.m[0], transform.m[1], transform.m[2]);
+	Float3 yAxis(transform.m[4], transform.m[5], transform.m[6]);
+	Float3 zAxis(transform.m[8], transform.m[9], transform.m[10]);
+	scale = (Length(xAxis) + Length(yAxis) + Length(zAxis)) / 3.0f;
 
-	auto rotationMatrix = transform;
-	rotationMatrix.m[12] = rotationMatrix.m[13] = rotationMatrix.m[14] = 0.0f;
-	rotationMatrix.m[0] /= scale.x;
-	rotationMatrix.m[1] /= scale.x;
-	rotationMatrix.m[2] /= scale.x;
-
-	rotationMatrix.m[4] /= scale.y;
-	rotationMatrix.m[5] /= scale.y;
-	rotationMatrix.m[6] /= scale.y;
-
-	rotationMatrix.m[8] /= scale.z;
-	rotationMatrix.m[9] /= scale.z;
-	rotationMatrix.m[10] /= scale.z;
-
-	Float3 eularAngles(
-		Atan2(rotationMatrix.m[6], rotationMatrix.m[8]),
-		Atan2(-rotationMatrix.m[2], Sqrt(rotationMatrix.m[6] * rotationMatrix.m[6] + rotationMatrix.m[10] * rotationMatrix.m[10])),
-		Atan2(rotationMatrix.m[1], rotationMatrix.m[0])
-	);
-	rotation = Quaternion(eularAngles);
+	Float3x3 rotMatrix;
+	rotMatrix[0] = xAxis / scale;
+	rotMatrix[1] = yAxis / scale;
+	rotMatrix[2] = zAxis / scale;
+	rotation = Quaternion(rotMatrix);
 }
 
 } // namespace Math
 
 } // namespace Gleam
-
-GLEAM_TYPE(Gleam::Float4x4, Guid("770BABFC-E66A-4CE5-8453-A505EB3016BE"))
-	GLEAM_FIELD(row, Serializable())
-GLEAM_END

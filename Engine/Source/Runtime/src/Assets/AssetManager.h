@@ -6,9 +6,16 @@
 #include "Core/Subsystem.h"
 #include "Core/Application.h"
 
+#include "IO/Log.h"
+#include "IO/File.h"
+#include "IO/Filesystem.h"
+
 #include "Serialization/BinarySerializer.h"
 
 #include <mutex>
+#include <entt/core/type_info.hpp>
+#include <entt/meta/resolve.hpp>
+#include <entt/meta/factory.hpp>
 
 namespace Gleam {
 
@@ -24,21 +31,59 @@ public:
     virtual void Shutdown() override;
 	
 	template<AssetType T>
-	const T* Load(const AssetReference& ref)
+	T* Get(const AssetReference& ref) const
 	{
 		if (auto it = mAssetCache.find(ref); it != mAssetCache.end())
 		{
-			return static_cast<const T*>(it->second.get());
+			return static_cast<T*>(it->second.get());
 		}
-		
-		constexpr auto typeHash = entt::type_hash<T>::value();
-		auto meta = entt::resolve(static_cast<uint32_t>(typeHash));
-		auto asset = Reflection::Get<T*>(meta.func("CreateAsset"_hs).invoke({}, ref).data());
+		GLEAM_CORE_ERROR("Asset is not loaded for GUID: {0}", ref.guid.ToString());
+		GLEAM_ASSERT(false);
+		return nullptr;
+	}
+	
+	template<AssetType T>
+	T* Load(const AssetReference& ref)
+	{
+		if (ref.guid == Guid::InvalidGuid())
+		{
+			return nullptr;
+		}
+
+		if (auto it = mAssetCache.find(ref); it != mAssetCache.end())
+		{
+			auto& asset = it->second;
+			++asset->mRefCount;
+
+			return static_cast<T*>(asset.get());
+		}
+
+		auto meta = entt::resolve(entt::type_hash<T>().value());
+		auto asset = Reflection::Get<T*>(meta.func("CreateAsset"_hs).invoke({}, ref).base().data());
 		auto it = mAssetCache.emplace_hint(mAssetCache.end(),
-										   std::piecewise_construct,
-										   std::forward_as_tuple(ref),
-										   std::forward_as_tuple(asset));
-		return static_cast<const T*>(it->second.get());
+										   eastl::piecewise_construct,
+										   eastl::forward_as_tuple(ref),
+										   eastl::forward_as_tuple(asset));
+
+		++it->second->mRefCount;
+		return static_cast<T*>(it->second.get());
+	}
+
+	void Release(const AssetReference& ref)
+	{
+		if (ref.guid == Guid::InvalidGuid())
+		{
+			return;
+		}
+
+		if (auto it = mAssetCache.find(ref); it != mAssetCache.end())
+		{
+			auto& asset = it->second;
+			if (--asset->mRefCount == 0)
+			{
+				mAssetCache.erase(it);
+			}
+		}
 	}
 	
 	template<typename T>
@@ -58,17 +103,14 @@ public:
 		GLEAM_ASSERT(false);
 		return T();
 	}
-	
+
 	template<AssetType T, typename Desc>
 	static void RegisterMetaAsset()
 	{
-		[[maybe_unused]] const auto& classDesc = Reflection::GetClass<Desc>();
-		entt::meta<T>()
-			.type(entt::type_hash<T>::value())
-			.template func<&CreateAsset<T, Desc>>("CreateAsset"_hs);
+		entt::meta_factory<T>().template func<&CreateAsset<T, Desc>>("CreateAsset"_hs);
 	}
 	
-	const Filesystem::Path& GetAssetPath(const AssetReference& ref) const;
+	const Path& GetAssetPath(const AssetReference& ref) const;
 
 private:
 	
@@ -79,13 +121,13 @@ private:
 		return new T(instance->LoadDescriptor<Desc>(ref));
 	}
 
-	void EmplaceAssetPath(const Filesystem::Path& path);
+	void EmplaceAssetPath(const Path& path);
 
 	std::mutex mMutex;
 	
 	HashMap<AssetReference, Scope<Asset>> mAssetCache;
     
-    HashMap<AssetReference, Filesystem::Path> mAssetPaths;
+    HashMap<AssetReference, Path> mAssetPaths;
 
 };
 

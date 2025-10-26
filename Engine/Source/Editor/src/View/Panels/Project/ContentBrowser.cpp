@@ -6,9 +6,9 @@
 //
 
 #include "ContentBrowser.h"
-#include "Gleam.h"
-
 #include "EAssets/MeshSource.h"
+
+#include "Gleam.h"
 
 #include <imgui.h>
 
@@ -41,11 +41,11 @@ void ContentBrowser::Render(Gleam::ImGuiRenderer* imgui)
 	});
 }
 
-bool ContentBrowser::ImportAsset(const Gleam::Filesystem::Path& path)
+bool ContentBrowser::ImportAsset(const Gleam::Path& path)
 {
-	if (path.extension() == ".gltf")
+	if (path.Extension() == L".gltf")
 	{
-		auto assetRegistry = AssetRegistry(path.parent_path());
+		auto assetRegistry = AssetRegistry(path.Parent());
 		auto meshSource = MeshSource(mAssetManager, &assetRegistry);
 		auto settings = MeshSource::ImportSettings();
 		if (meshSource.Import(path, settings))
@@ -57,9 +57,9 @@ bool ContentBrowser::ImportAsset(const Gleam::Filesystem::Path& path)
 	return false;
 }
 
-void ContentBrowser::DrawDirectoryTreeView(const Gleam::Filesystem::Path& node)
+void ContentBrowser::DrawDirectoryTreeView(const Gleam::Path& node)
 {
-    auto filename = node.filename().string();
+    Gleam::TString filename = node.Filename();
     ImGui::PushID(filename.c_str());
     if (Gleam::Filesystem::IsDirectory(node))
     {
@@ -80,7 +80,7 @@ void ContentBrowser::DrawDirectoryTreeView(const Gleam::Filesystem::Path& node)
         {
 			if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None))
 			{
-				auto guid = Gleam::Guid(node.stem().string());
+				auto guid = Gleam::Guid(node.Stem());
 				const auto& asset = mAssetManager->GetAsset(guid);
 				ImGui::SetDragDropPayload("EDITOR_ASSET", &asset, sizeof(AssetItem));
 				ImGui::Text("%s", filename.c_str());

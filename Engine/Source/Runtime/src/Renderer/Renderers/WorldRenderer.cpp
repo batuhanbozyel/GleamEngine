@@ -18,34 +18,30 @@
 #include "Renderer/Material/MaterialInstance.h"
 #include "World/Systems/RenderSceneProxy.h"
 
-#if defined(USE_METAL_RENDERER)
-#import <Metal/Metal.h>
-#elif defined(USE_DIRECTX_RENDERER)
-#include "../DirectX/DirectXTransitionManager.h"
-#endif
-
 using namespace Gleam;
 
-void WorldRenderer::OnCreate(GraphicsDevice* device)
+void WorldRenderer::OnCreate(RenderContext& context)
 {
-    // TODO: create material pipelines
-	mShadingPipelines[0] = {
-		.blendState = {},
-		.depthState = {
+	GraphicsPipelineStateDescriptor pipelineDesc = {
+		PipelineStateDescriptor {
+			.blendState = {},
+			.depthState = {
 			.compareFunction = CompareFunction::Less,
 			.writeEnabled = true},
-		.stencilState = {},
-		.cullingMode = CullMode::Back,
-		.topology = PrimitiveTopology::Triangles,
-		.bindPoint = PipelineBindPoint::Graphics,
-		.alphaToCoverage = false,
-		.wireframe = false
+			.stencilState = {},
+			.cullingMode = CullMode::Back,
+			.topology = PrimitiveTopology::Triangles,
+			.alphaToCoverage = false,
+			.wireframe = false
+		}
 	};
-    
-    // TODO: create material shaders
-    mMeshVertexShader = device->CreateShader("meshVertexShader", ShaderStage::Vertex);
-    mMeshShadingFragmentShaders["OpaqueLit"] = device->CreateShader("SurfaceLit", ShaderStage::Fragment);
-	mMeshShadingFragmentShaders["TransparentLit"] = device->CreateShader("SurfaceLit", ShaderStage::Fragment);
+	pipelineDesc.colorFormats = { TextureFormat::R16G16B16A16_SFloat };
+	pipelineDesc.depthFormat = TextureFormat::D16_UNorm;
+	pipelineDesc.vertexEntry = "meshVertexShader";
+	pipelineDesc.fragmentEntry = "SurfaceLit";
+
+    // TODO: create material pipelines
+	mShadingPipelines[0] = context.device->CreateGraphicsPipeline(pipelineDesc);
 }
 
 void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard)
@@ -54,12 +50,10 @@ void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
     {
         const auto& sceneData = blackboard.Get<SceneRenderingData>();
         const auto& backbufferDescriptor = graph.GetDescriptor(sceneData.backbuffer);
-        auto sampleCount = Globals::Engine->GetConfiguration().renderer.sampleCount;
         
         RenderTextureDescriptor textureDesc;
         textureDesc.name = "SceneColorRT";
         textureDesc.size = backbufferDescriptor.size;
-        textureDesc.sampleCount = sampleCount;
         textureDesc.format = TextureFormat::R16G16B16A16_SFloat;
         textureDesc.clearBuffer = true;
         passData.colorTarget = builder.CreateTexture(textureDesc);
@@ -75,35 +69,19 @@ void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
     [this, blackboard](const CommandBuffer* cmd, const WorldRenderingData& passData)
     {
         const auto& sceneData = blackboard.Get<SceneRenderingData>();
-        sceneData.sceneProxy->ForEach([this, cmd, passData, sceneData](const Material& material, const TArray<MeshBatch>& batches)
+        sceneData.sceneProxy->ForEach([this, cmd, passData, sceneData](const Material* material, const TArray<MeshBatch>& batches)
         {
-            const auto& materialBuffer = material.GetBuffer();
-            const auto& shader = mMeshShadingFragmentShaders[material.GetName()];
-            const auto& pipeline = mShadingPipelines[material.GetPipelineHash()];
-            cmd->BindGraphicsPipeline(pipeline, mMeshVertexShader, shader);
+            const auto& materialBuffer = material->GetBuffer();
+            const auto& pipeline = mShadingPipelines[material->GetPipelineHash()];
+
+            cmd->BindGraphicsPipeline(pipeline);
 			cmd->SetConstantBuffer(sceneData.camera, 1);
 
             for (const auto& batch : batches)
             {
                 const auto& positionBuffer = batch.mesh->GetPositionBuffer();
                 const auto& interleavedBuffer = batch.mesh->GetInterleavedBuffer();
-            #ifdef USE_METAL_RENDERER
-                [cmd->GetActiveRenderPass() useResource:positionBuffer.GetHandle() usage : MTLResourceUsageRead stages : MTLRenderStageVertex];
-                [cmd->GetActiveRenderPass() useResource:interleavedBuffer.GetHandle() usage : MTLResourceUsageRead stages : MTLRenderStageVertex] ;
-            #elif defined(USE_DIRECTX_RENDERER)
-                DirectXTransitionManager::TransitionLayout(
-                    static_cast<ID3D12GraphicsCommandList7*>(cmd->GetHandle()),
-                    static_cast<ID3D12Resource*>(positionBuffer.GetHandle()),
-                    D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE
-                );
-
-                DirectXTransitionManager::TransitionLayout(
-                    static_cast<ID3D12GraphicsCommandList7*>(cmd->GetHandle()),
-                    static_cast<ID3D12Resource*>(interleavedBuffer.GetHandle()),
-                    D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE
-                );
-            #endif
-
+				
                 MeshPassResources resources;
                 resources.positionBuffer = positionBuffer.GetResourceView();
                 resources.interleavedBuffer = interleavedBuffer.GetResourceView();

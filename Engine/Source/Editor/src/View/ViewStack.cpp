@@ -7,6 +7,8 @@
 
 #include "ViewStack.h"
 
+#include "Gleam.h"
+
 #include <imgui.h>
 
 using namespace GEditor;

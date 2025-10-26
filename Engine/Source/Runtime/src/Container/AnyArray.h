@@ -1,12 +1,14 @@
 #pragma once
-#include <any>
-#include <typeindex>
+#include "Hash.h"
+
+#include <entt/core/type_info.hpp>
+#include <EASTL/any.h>
 
 namespace Gleam {
 
 class AnyArray
 {
-	using Container = HashMap<std::type_index, std::any>;
+	using Container = HashMap<uint32_t, eastl::any>;
 
 public:
 
@@ -40,7 +42,7 @@ public:
 			return it != other.it;
 		}
 
-		std::any& operator*()
+		eastl::any& operator*()
 		{
 			return it->second;
 		}
@@ -81,7 +83,7 @@ public:
             return it != other.it;
         }
         
-        const std::any& operator*() const
+        const eastl::any& operator*() const
         {
             return it->second;
         }
@@ -115,13 +117,13 @@ public:
 	template<class T, class...Args>
 	T& emplace(Args&&... args) noexcept
 	{
-        return data[typeid(T)].emplace<T>(T{std::forward<Args>(args)...});
+        return data[entt::type_hash<T>().value()].emplace<T>(T{std::forward<Args>(args)...});
 	}
     
     template<class T>
     T& emplace(const T& obj)
     {
-        return data[typeid(T)].emplace<T>(obj);
+        return data[entt::type_hash<T>().value()].emplace<T>(obj);
     }
 
 	void clear()
@@ -132,35 +134,35 @@ public:
 	template<class T>
 	size_t erase()
 	{
-		return data.erase(typeid(T));
+		return data.erase(entt::type_hash<T>().value());
 	}
 
 	template<class T>
 	T* get()
 	{
-		auto it = data.find(typeid(T));
+		auto it = data.find(entt::type_hash<T>().value());
 		if (it == data.end()) return nullptr;
-		return &(std::any_cast<T&>(it->second));
+		return &(eastl::any_cast<T&>(it->second));
 	}
 
 	template<class T>
 	T& get_unsafe()
 	{
-		auto it = data.find(typeid(T));
-		return std::any_cast<T&>(it->second);
+		auto it = data.find(entt::type_hash<T>().value());
+		return eastl::any_cast<T&>(it->second);
 	}
     
     template<class T>
     const T& get_unsafe() const
     {
-        auto it = data.find(typeid(T));
-        return std::any_cast<const T&>(it->second);
+        auto it = data.find(entt::type_hash<T>().value());
+        return eastl::any_cast<const T&>(it->second);
     }
 	
 	template<class T>
 	bool contains() const
 	{
-		return data.contains(typeid(T));
+		return data.find(entt::type_hash<T>().value()) != data.end();
 	}
 
 	size_t size() const

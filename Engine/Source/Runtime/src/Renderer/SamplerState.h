@@ -1,4 +1,5 @@
 #pragma once
+#include "Container/Array.h"
 
 namespace Gleam {
 
@@ -29,7 +30,7 @@ struct SamplerState
         return filterMode == other.filterMode && wrapMode == other.wrapMode;
     }
     
-	static constexpr TArray<SamplerState, 12> GetStaticSamplers()
+	static constexpr auto GetStaticSamplers()
     {
 		return TArray<SamplerState, 12>{
 			// Sampler_Point_Repeat

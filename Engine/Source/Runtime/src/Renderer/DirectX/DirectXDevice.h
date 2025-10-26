@@ -1,6 +1,7 @@
 #pragma once
 #ifdef USE_DIRECTX_RENDERER
 #include "Renderer/GraphicsDevice.h"
+#include "Container/Queue.h"
 
 #include <d3d12.h>
 #include <dxgi1_6.h>
@@ -12,6 +13,8 @@
 
 namespace Gleam {
 
+class DirectXSwapchain;
+
 class DirectXDescriptorHeap
 {
 public:
@@ -22,6 +25,10 @@ public:
 	D3D12_DESCRIPTOR_HEAP_TYPE type;
 	UINT size;
 	UINT capacity;
+
+	D3D12_CPU_DESCRIPTOR_HANDLE Allocate();
+
+	void Release(D3D12_CPU_DESCRIPTOR_HANDLE handle);
 
 	ShaderResourceIndex GetResourceIndex(D3D12_CPU_DESCRIPTOR_HANDLE view);
 };
@@ -37,27 +44,27 @@ struct DirectXCommandPool
 	void Release();
 };
 
-struct DirectXDrawable
-{
-	ID3D12Resource* renderTarget;
-	D3D12_CPU_DESCRIPTOR_HANDLE view;
-};
-
 class DirectXDevice final : public GraphicsDevice
 {
 	friend class GraphicsDevice;
 
 public:
 
-	DirectXDevice();
+	DirectXDevice(RenderSurface* surface, ResourceReleaseQueue* releaseQueue);
 
     ~DirectXDevice();
 
-	DirectXDrawable AcquireNextDrawable();
+	DirectXDescriptorHeap& GetRtvHeap();
+
+	DirectXDescriptorHeap& GetDsvHeap();
 
 	DirectXDescriptorHeap& GetCbvSrvUavHeap();
 
-	ID3D12GraphicsCommandList7* AllocateCommandList(D3D12_COMMAND_LIST_TYPE type);
+	ID3D12GraphicsCommandList7* AllocateCommandList(D3D12_COMMAND_LIST_TYPE type, const TWStringView debugName);
+
+	const DirectXDescriptorHeap& GetRtvHeap() const;
+
+	const DirectXDescriptorHeap& GetDsvHeap() const;
 
 	const DirectXDescriptorHeap& GetCbvSrvUavHeap() const;
 
@@ -67,9 +74,13 @@ public:
 
 	ID3D12CommandQueue* GetCopyQueue() const;
 
+	ID3D12RootSignature* GetGlobalRootSignature() const;
+
 	void WaitDeviceIdle() const;
 
 	void WaitQueueIdle(ID3D12CommandQueue* queue) const;
+
+	virtual void Configure(const RendererConfig& config) override;
 
 	virtual ShaderResourceIndex CreateResourceView(const Buffer& buffer) override;
 
@@ -77,51 +88,31 @@ public:
 
 	virtual void ReleaseResourceView(ShaderResourceIndex view) override;
 
+	virtual void ResetCommandPools(uint32_t frameIdx) override;
+
 private:
-
-	virtual void Present(const CommandBuffer* cmd) override;
-
-	virtual void Configure(const RendererConfig& config) override;
-
-	virtual void DestroyFrameObjects(uint32_t frameIndex) override;
 
 	ID3D12CommandQueue* CreateCommandQueue(D3D12_COMMAND_LIST_TYPE type) const;
 
 	DirectXDescriptorHeap CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE type, D3D12_DESCRIPTOR_HEAP_FLAGS flags, UINT capacity) const;
 
-	DirectXDrawable GetSwapchainBuffer(uint32_t buffer);
-
-	void ReleaseSwapchainBuffer(DirectXDrawable& drawable);
-
 #ifdef GDEBUG
 	DWORD mDebugCallbackCookie = 0;
 	ID3D12InfoQueue1* mInfoQueue = nullptr;
-
 	ID3D12Debug6* mD3D12Debug = nullptr;
-	IDXGIDebug1* mDXGIDebug = nullptr;
 #endif
 
-	IDXGISwapChain4* mSwapchain = nullptr;
+	ID3D12CommandQueue* mDirectQueue = nullptr;
 
-	IDXGIAdapter4* mAdapter = nullptr;
+	ID3D12CommandQueue* mComputeQueue = nullptr;
 
-	IDXGIFactory7* mFactory = nullptr;
+	ID3D12CommandQueue* mCopyQueue = nullptr;
 
-	ID3D12Fence* mDirectFence = nullptr;
-
-	ID3D12CommandQueue* mDirectQueue;
-
-	ID3D12CommandQueue* mComputeQueue;
-
-	ID3D12CommandQueue* mCopyQueue;
+	ID3D12RootSignature* mRootSignature = nullptr;
 
 	struct Context
 	{
-		ID3D12Fence* fence;
-		DirectXDrawable drawable;
 		TArray<DirectXCommandPool> commandPools;
-		uint64_t waitFenceValue = 0;
-		uint64_t frameCount = 0;
 	};
 	TArray<Context> mFrameContext;
 

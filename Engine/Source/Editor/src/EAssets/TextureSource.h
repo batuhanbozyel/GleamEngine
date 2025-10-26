@@ -1,5 +1,4 @@
 #pragma once
-#include "Gleam.h"
 #include "AssetPackage.h"
 
 namespace GEditor {
@@ -8,7 +7,13 @@ struct RawTexture
 {
 	Gleam::TString name;
 	int width, height, channels;
-	uint8_t* pixels;
+	void* pixels;
+};
+
+enum class TextureColorSpace
+{
+	Linear,
+	sRGB
 };
 
 class TextureSource : public AssetPackage
@@ -18,10 +23,11 @@ public:
 
 	struct ImportSettings
 	{
-		
+		TextureColorSpace colorSpace = TextureColorSpace::Linear;
+		bool hdr = false;
 	};
 
-	bool Import(const Gleam::Filesystem::Path& path, const ImportSettings& settings);
+	bool Import(const Gleam::Path& path, const ImportSettings& settings);
 };
 
 } // namespace GEditor

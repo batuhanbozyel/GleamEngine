@@ -2,15 +2,22 @@ include (${CMAKE_SOURCE_DIR}/CMake/CMakeUtils.cmake)
 
 find_package(Python COMPONENTS Interpreter REQUIRED)
 
+# Add MikkTSpace as static library
+add_library(MikkTSpace STATIC ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/MikkTSpace/mikktspace.c)
+set_target_properties(MikkTSpace PROPERTIES FOLDER Dependencies)
+target_include_directories(MikkTSpace PRIVATE ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/MikkTSpace)
+
 set(INCLUDE_DIRS
     src
     ${CMAKE_SOURCE_DIR}/Engine/Source/Runtime/src
+    ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/EASTL/include
+    ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/GleamReflect/include
     ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/SDL/include
     ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/fmt/include
-    ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/refl-cpp/include
     ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/rapidjson/include
     ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/entt/src
     ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/cgltf
+    ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/MikkTSpace
     ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/stb
     ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui
     ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/ImGuizmo
@@ -44,12 +51,12 @@ SET_WORKING_DIRECTORY(Editor ${CMAKE_SOURCE_DIR})
 # Link Runtime
 get_target_property(GLEAM_RUNTIME_LIBS Runtime LINK_LIBRARIES)
 if (WIN32)
-    target_link_libraries(Editor PRIVATE Runtime.lib ${GLEAM_RUNTIME_LIBS})
+    target_link_libraries(Editor PRIVATE Runtime.lib MikkTSpace.lib ${GLEAM_RUNTIME_LIBS})
 else()
-    target_link_libraries(Editor PRIVATE Runtime.a ${GLEAM_RUNTIME_LIBS})
+    target_link_libraries(Editor PRIVATE Runtime.a MikkTSpace.a ${GLEAM_RUNTIME_LIBS})
 endif()
 
-add_dependencies(Editor Runtime)
+add_dependencies(Editor Runtime MikkTSpace)
 
 target_compile_definitions(
     Editor

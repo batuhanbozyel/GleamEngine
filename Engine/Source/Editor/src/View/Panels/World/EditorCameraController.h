@@ -6,7 +6,12 @@
 //
 
 #pragma once
-#include "Gleam.h"
+#include "World/Entity.h"
+#include "World/ComponentSystem.h"
+
+namespace Gleam {
+class EntityManager;
+} // namespace Gleam
 
 namespace GEditor {
 
@@ -27,7 +32,6 @@ private:
 	void ProcessCameraRotation(Gleam::Entity& camera);
 
 	bool mCursorVisible = true;
-    
     bool mViewportFocused = false;
     
     float mYaw = 0.0f;

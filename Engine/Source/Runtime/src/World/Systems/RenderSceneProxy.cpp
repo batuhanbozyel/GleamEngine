@@ -2,11 +2,18 @@
 #include "RenderSceneProxy.h"
 
 #include "Core/Globals.h"
+#include "Core/Engine.h"
 #include "Core/Application.h"
+#include "Assets/AssetManager.h"
 
 #include "World/World.h"
-#include "Assets/AssetManager.h"
-#include "Renderer/Material/MaterialSystem.h"
+#include "World/EntityManager.h"
+
+#include "Renderer/Mesh.h"
+#include "Renderer/RenderSystem.h"
+#include "Renderer/UploadManager.h"
+#include "Renderer/Material/Material.h"
+#include "Renderer/Material/MaterialInstance.h"
 
 using namespace Gleam;
 
@@ -34,6 +41,9 @@ void RenderSceneProxy::OnUpdate(EntityManager& entityManager)
 			mStaticBatches[batch.material->GetBaseMaterial()].emplace_back(batch);
 		}
 	});
+	auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
+	renderSystem->GetUploadManager()->Execute();
+	renderSystem->GetUploadManager()->WaitUntilCompleted();
     
     // update active camera
     mActiveCamera = nullptr;
@@ -48,10 +58,10 @@ void RenderSceneProxy::OnUpdate(EntityManager& entityManager)
 
 void RenderSceneProxy::ForEach(BatchFn&& fn) const
 {
-	auto materialSystem = Globals::GameInstance->GetSubsystem<MaterialSystem>();
+	auto assetManager = Globals::GameInstance->GetSubsystem<AssetManager>();
     for (const auto& [materialRef, batch] : mStaticBatches)
     {
-		const auto& material = materialSystem->GetMaterial(materialRef);
+		auto material = assetManager->Get<Material>(materialRef);
         fn(material, batch);
     }
 }

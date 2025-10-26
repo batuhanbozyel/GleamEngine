@@ -1,6 +1,7 @@
-#include "Gleam.h"
 #include "MaterialSource.h"
 #include "Bakers/MaterialBaker.h"
+
+#include "Gleam.h"
 
 #include <rapidjson/document.h>
 #include <rapidjson/istreamwrapper.h>
@@ -56,7 +57,7 @@ static Gleam::BlendMode BlendModeFromObject(const rapidjson::Value& object)
 	}
 }
 
-bool MaterialSource::Import(const Gleam::Filesystem::Path& path, const ImportSettings& settings)
+bool MaterialSource::Import(const Gleam::Path& path, const ImportSettings& settings)
 {
     auto file = Gleam::Filesystem::Open(path, Gleam::FileType::Text);
     if (file.Empty())
@@ -69,10 +70,10 @@ bool MaterialSource::Import(const Gleam::Filesystem::Path& path, const ImportSet
     document.ParseStream(ss);
     
     Gleam::MaterialDescriptor descriptor;
-    descriptor.name = path.stem().string();
+    descriptor.name = path.Stem();
     
     Gleam::TStringStream generatedShader;
-    generatedShader << "struct MaterialProperties\n{\n";
+    generatedShader << "\n\nstruct MaterialProperties\n{\n";
     if (document.HasMember("Properties") && document["Properties"].IsArray())
     {
         for (const auto& property : document["Properties"].GetArray())
@@ -120,7 +121,7 @@ bool MaterialSource::Import(const Gleam::Filesystem::Path& path, const ImportSet
                     descriptor.properties.emplace_back(Gleam::MaterialProperty{
                         .name = propertyName,
                         .type = Gleam::MaterialPropertyType::Texture2D,
-						.value = Gleam::AssetReference() });
+						.value = Gleam::AssetReference{} });
                 }
             }
         }
@@ -131,20 +132,20 @@ bool MaterialSource::Import(const Gleam::Filesystem::Path& path, const ImportSet
     if (document.HasMember("SurfaceShader"))
     {
         auto shaderPath = path;
-        shaderPath.remove_filename();
+        shaderPath.RemoveFilename();
         shaderPath /= document["SurfaceShader"].GetString();
-        descriptor.surfaceShader = shaderPath.stem().string();
+        descriptor.surfaceShader = shaderPath.Stem();
         
-        if (shaderPath.has_extension() == false)
+        if (shaderPath.HasExtension() == false)
         {
-            shaderPath += ".shader";
+            shaderPath.Concat(".shader");
         }
         
         auto generatedPath = shaderPath;
-        generatedPath.concat(".gen.hlsl");
+        generatedPath.Concat(".gen.hlsl");
         {
             auto shaderFile = Gleam::Filesystem::Open(shaderPath, Gleam::FileType::Text);
-            generatedShader << shaderFile.Read();
+            generatedShader << shaderFile.Read() << "\0";
             
             auto generatedFile = Gleam::Filesystem::Create(generatedPath, Gleam::FileType::Text);
             generatedFile.Write(generatedShader.str());
@@ -162,13 +163,24 @@ bool MaterialSource::Import(const Gleam::Filesystem::Path& path, const ImportSet
                 // TODO: generate unlit shader
             }
         }
-        
+
+		Gleam::Path dxilShader = Gleam::Globals::BuiltinAssetsDirectory / "Shaders" / descriptor.surfaceShader;
+		dxilShader.Concat(".dxil");
+
+		if (Gleam::Filesystem::Exists(dxilShader))
+		{
+			Gleam::Filesystem::Remove(dxilShader);
+		}
+
         Gleam::TStringStream cmd;
         cmd << PYTHON_INTERPRETER << " ";
         cmd << Gleam::Globals::StartupDirectory/"Tools/CompileShaders.py";
         cmd << " -f " << generatedPath;
         cmd << " -o " << descriptor.surfaceShader;
         cmd << " -i " << "MeshShading.hlsli";
+	#ifdef GDEBUG
+		cmd << " --debug";
+	#endif
         bool success = ExecuteCommand(cmd.str());
         Gleam::Filesystem::Remove(generatedPath);
 

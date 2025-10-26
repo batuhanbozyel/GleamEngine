@@ -7,9 +7,9 @@
 
 #pragma once
 #include "Shader.h"
+#include "Pipeline.h"
 #include "RendererConfig.h"
 #include "RenderPassDescriptor.h"
-#include "PipelineStateDescriptor.h"
 #include "Shaders/ShaderTypes.h"
 #include "RenderGraph/RenderGraph.h"
 #include "RenderGraph/RenderGraphBlackboard.h"
@@ -18,15 +18,27 @@ namespace Gleam {
 
 class World;
 class RenderSystem;
+class RenderSurface;
 class GraphicsDevice;
 class RenderSceneProxy;
+class RenderResourcePool;
+class ResourceReleaseQueue;
+
+struct RenderContext
+{
+	ResourceReleaseQueue* releaseQueue = nullptr;
+	RenderResourcePool* resourcePool = nullptr;
+	GraphicsDevice* device = nullptr;
+	RenderSurface* surface = nullptr;
+};
 
 struct SceneRenderingData
 {
     const RenderSceneProxy* sceneProxy = nullptr;
     const World* world = nullptr;
-	CameraUniforms camera;
-    TextureHandle backbuffer;
+	CameraUniforms camera = {};
+    TextureHandle backbuffer = TextureHandle();
+	TextureHandle sceneTarget = TextureHandle();
 };
 
 class IRenderer
@@ -40,9 +52,9 @@ public:
 
 protected:
 
-	virtual void OnCreate(GraphicsDevice* device) {}
+	virtual void OnCreate(RenderContext& context) {}
 
-	virtual void OnDestroy(GraphicsDevice* device) {}
+	virtual void OnDestroy(RenderContext& context) {}
 
 	virtual void AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard) = 0;
 

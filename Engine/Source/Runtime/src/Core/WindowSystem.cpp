@@ -4,13 +4,20 @@
 #include "WindowSystem.h"
 #include "Events/WindowEvent.h"
 
+#include <SDL3/SDL.h>
+
 using namespace Gleam;
+
+#if defined(USE_DIRECTX_RENDERER)
+#define GLEAM_WINDOW_RENDERER_API 0
+#else
+#define GLEAM_WINDOW_RENDERER_API SDL_WINDOW_METAL
+#endif 
 
 void WindowSystem::Initialize(Engine* engine)
 {
 	mEngine = engine;
-    int initSucess = SDL_Init(SDL_INIT_VIDEO | SDL_INIT_JOYSTICK | SDL_INIT_HAPTIC | SDL_INIT_GAMEPAD | SDL_INIT_EVENTS | SDL_INIT_SENSOR);
-    GLEAM_ASSERT(initSucess == 0, "Window subsystem initialization failed!");
+    GLEAM_AFFIRM(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_JOYSTICK | SDL_INIT_HAPTIC | SDL_INIT_GAMEPAD | SDL_INIT_EVENTS | SDL_INIT_SENSOR), "Window subsystem initialization failed!");
 }
 
 void WindowSystem::Shutdown()
@@ -35,10 +42,11 @@ void WindowSystem::Configure(const WindowConfig& config)
 		newConfig.size.height = static_cast<float>(display.height);
 	}
 
+	SDL_WindowFlags windowFlag = GLEAM_WINDOW_RENDERER_API | static_cast<SDL_WindowFlags>(config.windowFlag);
 	mWindow = SDL_CreateWindow(Globals::ProjectName.c_str(),
 							   static_cast<int>(newConfig.size.width),
 							   static_cast<int>(newConfig.size.height),
-                               static_cast<uint32_t>(config.windowFlag));
+							   windowFlag);
 
 	if (static_cast<int>(newConfig.size.width) != static_cast<int>(config.size.width) ||
 		static_cast<int>(newConfig.size.height) != static_cast<int>(config.size.height))

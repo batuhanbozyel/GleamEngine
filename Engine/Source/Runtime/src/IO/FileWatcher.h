@@ -1,7 +1,9 @@
 #pragma once
 #include "Core/Subsystem.h"
+#include "IO/Filesystem.h"
+#include "Container/Array.h"
 
-#include <thread>
+#include <functional>
 
 namespace Gleam {
 
@@ -13,7 +15,7 @@ enum class FileWatchEvent
     Modified
 };
 
-using FileWatchHandler = std::function<void(const Filesystem::Path&, FileWatchEvent)>;
+using FileWatchHandler = std::function<void(const Path&, FileWatchEvent)>;
 
 class FileWatcher final : public EngineSubsystem
 {
@@ -24,13 +26,13 @@ public:
     
     virtual void Shutdown() override;
     
-	Handle* AddWatch(const Filesystem::Path& dir, FileWatchHandler&& handler);
+	Handle* AddWatch(const Path& dir, FileWatchHandler&& handler);
     
     void RemoveWatch(Handle* watcher);
     
 private:
     
-    HashMap<Filesystem::Path, TArray<Handle*>> mWatchers;
+    HashMap<Path, TArray<Handle*>> mWatchers;
     
 };
 

@@ -27,7 +27,7 @@ void Prefab::Serialize(const EntityManager& entityManager, FileStream& stream) c
 	root.object.Accept(writer);
 }
 
-TArray<EntityHandle> Prefab::Deserialize(EntityManager& entityManager, FileStream& stream)
+EntityHandle Prefab::Deserialize(EntityManager& entityManager, FileStream& stream)
 {
 	rapidjson::Document root(rapidjson::kObjectType);
 	rapidjson::IStreamWrapper ss(stream);
@@ -37,5 +37,15 @@ TArray<EntityHandle> Prefab::Deserialize(EntityManager& entityManager, FileStrea
 	*this = jsonSerializer.Deserialize<Prefab>(rapidjson::ConstNode(root));
 
 	EntitySerializer entitySerializer;
-	return entitySerializer.Deserialize(rapidjson::ConstNode(root), entityManager);
+	auto entities = entitySerializer.Deserialize(rapidjson::ConstNode(root), entityManager);
+	for (auto entityHandle : entities)
+	{
+		auto& entity = entityManager.GetComponent<Entity>(entityHandle);
+		if (entity.HasParent() == false)
+		{
+			return entity;
+		}
+	}
+	GLEAM_ASSERT(false, "Root entity could not found.");
+	return entities[0];
 }

@@ -16,23 +16,43 @@ set(RAPIDJSON_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(RAPIDJSON_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(RAPIDJSON_BUILD_CXX11 OFF CACHE BOOL "" FORCE)
 
+# Enable entt natvis
+set(ENTT_INCLUDE_NATVIS ON CACHE BOOL "" FORCE)
+
+# Add imgui as static library
+add_library(imgui STATIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/imgui/imgui.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/imgui/imgui_draw.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/imgui/imgui_widgets.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/imgui/imgui_demo.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/imgui/imgui_tables.cpp
+)
+target_include_directories(imgui PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/imgui
+    ${CMAKE_CURRENT_SOURCE_DIR}/SDL/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/DirectXAgilitySDK/build/native/include
+)
+
 add_subdirectory(fmt)
 add_subdirectory(entt)
-add_subdirectory(refl-cpp)
+add_subdirectory(EASTL)
 add_subdirectory(rapidjson)
 add_subdirectory(googletest)
+add_subdirectory(GleamReflect)
 add_subdirectory(SDL EXCLUDE_FROM_ALL)
 
 set_target_properties (
     SDL3-static
+    EASTL
+    imgui
     gmock
     gmock_main
     gtest
     gtest_main
     RapidJSON
     travis_doc
-    refl-cpp
     fmt
     EnTT
+    GleamReflect
     PROPERTIES FOLDER Dependencies
 )

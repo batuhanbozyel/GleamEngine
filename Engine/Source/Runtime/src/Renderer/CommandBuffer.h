@@ -1,15 +1,13 @@
 #pragma once
-#include "Heap.h"
-#include "Buffer.h"
 #include "Shader.h"
 #include "Texture.h"
+#include "Pipeline.h"
 #include "ConstantBuffer.h"
+#include "RenderPassDescriptor.h"
 #include "RenderGraph/RenderGraphResource.h"
+#include "Container/Pointer.h"
 
 namespace Gleam {
-
-struct RenderPassDescriptor;
-struct PipelineStateDescriptor;
 
 class GraphicsDevice;
 
@@ -37,20 +35,17 @@ public:
 
     ~CommandBuffer();
 
-    void BeginRenderPass(const RenderPassDescriptor& renderPassDesc, const TStringView debugName = "") const;
+    void BeginRenderPass(const RenderPassDescriptor& renderPassDesc, const TStringView debugName) const;
 
     void EndRenderPass() const;
 
-    void BindGraphicsPipeline(const PipelineStateDescriptor& pipelineDesc,
-		const Shader& vertexShader,
-		const Shader& fragmentShader) const;
+    void BindGraphicsPipeline(const GraphicsPipeline& pipeline) const;
 
     void SetViewport(const Size& size) const;
     
     template<typename T>
     void SetConstantBuffer(const T& t, uint32_t slot) const
     {
-		auto gpuAddress = mConstantBuffer.Write(t);
         SetConstantBuffer(&t, sizeof(T), slot);
     }
 
@@ -81,7 +76,7 @@ public:
 
     void Blit(const Texture& source, const Texture& destination) const;
 
-    void Begin() const;
+    void Begin(const TStringView debugName) const;
 
     void End() const;
 

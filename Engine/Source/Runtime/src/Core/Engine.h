@@ -1,6 +1,8 @@
 #pragma once
 #include "Subsystem.h"
 #include "EngineConfig.h"
+#include "EngineDefines.h"
+#include "Container/PolyArray.h"
 
 namespace Gleam {
 
@@ -60,7 +62,6 @@ private:
 
 	EngineConfig mConfig;
 	PolyArray<EngineSubsystem> mSubsystems;
-
 };
 	
 } // namespace Gleam

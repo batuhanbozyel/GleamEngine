@@ -6,27 +6,30 @@ using namespace Gleam;
 
 void Filesystem::ForEach(const Path& path, const DirectoryFn& fn, bool recursive)
 {
-    for (auto& node : std::filesystem::directory_iterator(path))
+	std::filesystem::path stlPath = std::wstring_view(path.Native().c_str(), path.Native().length());
+    for (auto& node : std::filesystem::directory_iterator(stlPath))
     {
-        if (recursive && IsDirectory(node))
+		Path nodePath = Path(node);
+        if (recursive && IsDirectory(nodePath))
         {
-            ForEach(node, fn, recursive);
+            ForEach(nodePath, fn, recursive);
         }
         else
         {
-            fn(node);
+            fn(nodePath);
         }
     }
 }
 
-File Filesystem::Create(const Filesystem::Path& path, FileType type)
+File Filesystem::Create(const Path& path, FileType type)
 {
     auto flags = std::ios::out | std::ios::in | std::ios::trunc;
     if (type == FileType::Binary)
     {
         flags |= std::ios::binary;
     }
-    FileStream handle(path, flags);
+	std::filesystem::path stlPath = std::wstring_view(path.Native().c_str(), path.Native().length());
+    FileStream handle(stlPath, flags);
     handle.unsetf(std::ios::skipws);
     
     std::lock_guard<std::mutex> lock(mFileCreateMutex);
@@ -36,64 +39,94 @@ File Filesystem::Create(const Filesystem::Path& path, FileType type)
     }
     
     auto it = mFileAccessors.emplace_hint(mFileAccessors.end(),
-                                          std::piecewise_construct,
-                                          std::forward_as_tuple(path),
-                                          std::forward_as_tuple());
+                                          eastl::piecewise_construct,
+                                          eastl::forward_as_tuple(path),
+                                          eastl::forward_as_tuple());
 	return File(std::move(handle), path, it->second);
 }
 
-File Filesystem::Open(const Filesystem::Path& path, FileType type)
+File Filesystem::Open(const Path& path, FileType type)
 {
 	auto flags = std::ios::out | std::ios::in;
 	if (type == FileType::Binary)
 	{
 		flags |= std::ios::binary;
 	}
-	FileStream handle(path, flags);
+	std::filesystem::path stlPath = std::wstring_view(path.Native().c_str(), path.Native().length());
+	FileStream handle(stlPath, flags);
 	handle.unsetf(std::ios::skipws);
     
     std::lock_guard<std::mutex> lock(mFileCreateMutex);
-	return File(std::move(handle), path, mFileAccessors[path]);
+	return File(eastl::move(handle), path, mFileAccessors[path]);
 }
 
-bool Filesystem::Remove(const Filesystem::Path& path)
+bool Filesystem::Remove(const Path& path)
 {
-    return std::filesystem::remove(path);
+	std::filesystem::path stlPath = std::wstring_view(path.Native().c_str(), path.Native().length());
+    return std::filesystem::remove(stlPath);
 }
 
-FileAccessor& Filesystem::Accessor(const Filesystem::Path& path)
+FileAccessor& Filesystem::Accessor(const Path& path)
 {
 	return mFileAccessors[path];
 }
 
-FileAccessor::Read Filesystem::ReadAccessor(const Filesystem::Path& path)
+FileAccessor::Read Filesystem::ReadAccessor(const Path& path)
 {
 	return FileAccessor::Read(Accessor(path));
 }
 
-FileAccessor::Write Filesystem::WriteAccessor(const Filesystem::Path& path)
+FileAccessor::Write Filesystem::WriteAccessor(const Path& path)
 {
 	return FileAccessor::Write(Accessor(path));
 }
 
-Filesystem::Path Filesystem::WorkingDirectory()
+Path Filesystem::WorkingDirectory()
 {
 	return std::filesystem::current_path();
 }
 
-Filesystem::Path Filesystem::Relative(const Filesystem::Path& path, const Filesystem::Path& base)
+Path Filesystem::Relative(const Path& path, const Path& base)
 {
-	return std::filesystem::relative(path, base);
+	std::filesystem::path stlPath = std::wstring_view(path.Native().c_str(), path.Native().length());
+	std::filesystem::path stlBase = std::wstring_view(base.Native().c_str(), base.Native().length());
+	return Path(std::filesystem::relative(stlPath, stlBase));
 }
 
-bool Filesystem::Exists(const Filesystem::Path& path)
+bool Filesystem::Exists(const Path& path)
 {
-	return std::filesystem::exists(path);
+	if (path.Empty())
+	{
+		return false;
+	}
+
+#ifdef PLATFORM_WINDOWS
+	DWORD attrs = ::GetFileAttributesW(path.Native().c_str());
+	return attrs != INVALID_FILE_ATTRIBUTES;
+#else
+	TString utf8Path;
+	utf8Path.append_convert(path.Native());
+	struct stat statBuf;
+	return stat(utf8Path.c_str(), &statBuf) == 0;
+#endif
 }
 
-bool Filesystem::IsDirectory(const Filesystem::Path& path)
+bool Filesystem::IsDirectory(const Path& path)
 {
-	return std::filesystem::is_directory(path);
+	if (path.Empty())
+	{
+		return false;
+	}
+
+#ifdef PLATFORM_WINDOWS
+	DWORD attrs = ::GetFileAttributesW(path.Native().c_str());
+	return (attrs != INVALID_FILE_ATTRIBUTES) && (attrs & FILE_ATTRIBUTE_DIRECTORY);
+#else
+	TString utf8Path;
+	utf8Path.append_convert(path.Native());
+	struct stat statBuf;
+	return (stat(utf8Path.c_str(), &statBuf) == 0) && S_ISDIR(statBuf.st_mode);
+#endif
 }
 
 // File::Accessors

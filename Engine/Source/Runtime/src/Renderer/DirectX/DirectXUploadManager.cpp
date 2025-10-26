@@ -96,7 +96,7 @@ UploadManager::~UploadManager()
 	mHandle->factory->Release();
 }
 
-void UploadManager::Commit() const
+void UploadManager::Execute() const
 {
 	mHandle->waitFenceValue = mHandle->fenceValue++;
 
@@ -107,7 +107,7 @@ void UploadManager::Commit() const
 	mHandle->memoryQueue->Submit();
 }
 
-void UploadManager::Flush() const
+void UploadManager::WaitUntilCompleted() const
 {
 	mHandle->stagingBufferOffset = 0;
 	WaitForID3D12Fence(mHandle->memoryFence, mHandle->waitFenceValue);
@@ -119,7 +119,7 @@ void UploadManager::Flush() const
 	mHandle->tempBuffers.clear();
 }
 
-void UploadManager::CommitUpload(const Buffer& buffer, const void* data, size_t size, size_t offset) const
+void UploadManager::Commit(const Buffer& buffer, const void* data, size_t size, size_t offset) const
 {
 	auto bufferContents = buffer.GetContents();
 	if (bufferContents == nullptr)
@@ -171,7 +171,7 @@ void UploadManager::CommitUpload(const Buffer& buffer, const void* data, size_t 
 				&heapProperties,
 				D3D12_HEAP_FLAG_NONE,
 				&resourceDesc,
-				D3D12_RESOURCE_STATE_GENERIC_READ,
+				D3D12_RESOURCE_STATE_COPY_SOURCE,
 				nullptr,
 				IID_PPV_ARGS(&stagingBuffer)));
 			mHandle->tempBuffers.push_back(stagingBuffer);
@@ -202,7 +202,7 @@ void UploadManager::CommitUpload(const Buffer& buffer, const void* data, size_t 
 	}
 }
 
-void UploadManager::CommitUpload(const Texture& texture, const void* data, size_t size) const
+void UploadManager::Commit(const Texture& texture, const void* data, size_t size) const
 {
 	auto dstTexture = static_cast<ID3D12Resource*>(texture.GetHandle());
 	auto size32 = static_cast<uint32_t>(size);
@@ -252,7 +252,7 @@ void UploadManager::CommitUpload(const Texture& texture, const void* data, size_
 			&heapProperties,
 			D3D12_HEAP_FLAG_NONE,
 			&resourceDesc,
-			D3D12_RESOURCE_STATE_GENERIC_READ,
+			D3D12_RESOURCE_STATE_COPY_SOURCE,
 			nullptr,
 			IID_PPV_ARGS(&stagingBuffer)));
 		mHandle->tempBuffers.push_back(stagingBuffer);

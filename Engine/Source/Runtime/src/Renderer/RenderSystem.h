@@ -7,8 +7,13 @@
 
 #pragma once
 #include "Core/Subsystem.h"
+#include "Renderer.h"
+#include "Swapchain.h"
 #include "CommandBuffer.h"
+#include "UploadManager.h"
 #include "GraphicsDevice.h"
+#include "RenderResourcePool.h"
+#include "ResourceReleaseQueue.h"
 
 namespace Gleam {
 
@@ -37,21 +42,19 @@ public:
     GraphicsDevice* GetDevice();
     
     const GraphicsDevice* GetDevice() const;
-    
-    const Texture& GetRenderTarget() const;
-    
-    void SetBackbuffer(const TextureDescriptor& descriptor);
-    
-    void SetBackbuffer(const Texture& texture);
-    
-    void ResetRenderTarget();
+
+	RenderSurface* GetSurface();
+
+	const RenderSurface* GetSurface() const;
+
+	void RecompileShader(const TString& entryPoint);
     
     template<RendererType T, class...Args>
     T* AddRenderer(Args&&... args)
     {
         GLEAM_ASSERT(!HasRenderer<T>(), "Render pipeline already has the renderer!");
         auto renderer = mRenderers.emplace_back(new T(std::forward<Args>(args)...));
-        renderer->OnCreate(mDevice.get());
+        renderer->OnCreate(mContext);
         return static_cast<T*>(renderer);
     }
     
@@ -67,7 +70,7 @@ public:
         if (it != mRenderers.end())
         {
             auto renderer = *it;
-            renderer->OnDestroy(mDevice.get());
+            renderer->OnDestroy(mContext);
             delete renderer;
 			mRenderers.erase(it);
         }
@@ -104,37 +107,29 @@ public:
         return std::distance(mRenderers.begin(), it);
     }
     
-    Container::iterator begin()
-    {
-        return mRenderers.begin();
-    }
-    
-    Container::iterator end()
-    {
-        return mRenderers.end();
-    }
-    
-    Container::const_iterator begin() const
-    {
-        return mRenderers.begin();
-    }
-    
-    Container::const_iterator end() const
-    {
-        return mRenderers.end();
-    }
-    
 private:
+
+	void InitializeBackend();
+
+	bool mRendererResized = false;
+
+	Size mSwapchainSize = {};
 
 	Engine* mEngine;
     
     Container mRenderers;
-    
-    Texture mRenderTarget;
 
-    Scope<GraphicsDevice> mDevice;
+	RenderContext mContext;
+
+    Scope<Swapchain> mSwapchain;
+
+	Scope<GraphicsDevice> mDevice;
 
 	Scope<UploadManager> mUploadManager;
+
+	Scope<RenderResourcePool> mResourcePool;
+
+	Scope<ResourceReleaseQueue> mReleaseQueue;
     
     TArray<Scope<CommandBuffer>> mCommandBuffers;
     

@@ -11,6 +11,7 @@
 #include "Renderer/Texture.h"
 
 #include <functional>
+#include <any>
 
 namespace Gleam {
 
@@ -42,7 +43,7 @@ enum class RenderGraphPassType
 	Copy,
 	Raster,
 	Compute,
-	Custom
+	Native
 };
 
 struct RenderGraphPassNode : public RenderGraphNode

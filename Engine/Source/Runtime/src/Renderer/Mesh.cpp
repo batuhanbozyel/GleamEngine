@@ -3,6 +3,7 @@
 
 #include "Core/Engine.h"
 #include "Core/Globals.h"
+
 #include "Renderer/RenderSystem.h"
 
 using namespace Gleam;
@@ -32,32 +33,32 @@ Mesh::Mesh(const MeshDescriptor& mesh)
     BufferDescriptor bufferDesc;
     bufferDesc.name = "Positions";
     bufferDesc.size = positionBufferSize;
-    mPositionBuffer = mHeap.CreateBuffer(bufferDesc);
+    mPositionBuffer = mHeap.Allocate(bufferDesc);
     
     bufferDesc.name = "InterleavedData";
     bufferDesc.size = interleavedBufferSize;
-    mInterleavedBuffer = mHeap.CreateBuffer(bufferDesc);
+    mInterleavedBuffer = mHeap.Allocate(bufferDesc);
     
     bufferDesc.name = "Indices";
     bufferDesc.size = indexBufferSize;
-    mIndexBuffer = mHeap.CreateBuffer(bufferDesc);
+    mIndexBuffer = mHeap.Allocate(bufferDesc);
 
     // Send mesh data to buffers
 	{
-		renderSystem->GetUploadManager()->CommitUpload(mPositionBuffer, mesh.positions.data(), positionSize);
-		renderSystem->GetUploadManager()->CommitUpload(mInterleavedBuffer, mesh.interleavedVertices.data(), interleavedSize);
-		renderSystem->GetUploadManager()->CommitUpload(mIndexBuffer, mesh.indices.data(), indexSize);
+		renderSystem->GetUploadManager()->Commit(mPositionBuffer, mesh.positions.data(), positionSize);
+		renderSystem->GetUploadManager()->Commit(mInterleavedBuffer, mesh.interleavedVertices.data(), interleavedSize);
+		renderSystem->GetUploadManager()->Commit(mIndexBuffer, mesh.indices.data(), indexSize);
 	}
 }
 
-void Mesh::Release()
+Mesh::~Mesh()
 {
 	static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
 	auto device = renderSystem->GetDevice();
-	device->ReleaseBuffer(mPositionBuffer);
-	device->ReleaseBuffer(mInterleavedBuffer);
-	device->ReleaseBuffer(mIndexBuffer);
-	device->ReleaseHeap(mHeap);
+	mHeap.Free(mPositionBuffer);
+	mHeap.Free(mInterleavedBuffer);
+	mHeap.Free(mIndexBuffer);
+	device->Dispose(mHeap);
 }
 
 const Buffer& Mesh::GetPositionBuffer() const

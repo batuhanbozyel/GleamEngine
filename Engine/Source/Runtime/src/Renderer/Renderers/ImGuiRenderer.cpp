@@ -10,9 +10,10 @@
 
 using namespace Gleam;
 
-void ImGuiRenderer::OnCreate(GraphicsDevice* device)
+void ImGuiRenderer::OnCreate(RenderContext& context)
 {
-    mDevice = device;
+    mDevice = context.device;
+	mSurface = context.surface;
     
 	IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -21,14 +22,32 @@ void ImGuiRenderer::OnCreate(GraphicsDevice* device)
     io.ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange;
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable | ImGuiConfigFlags_ViewportsEnable;
     
-	ImGuiBackend::Init(device);
+	ImGuiBackend::Init(context);
     Globals::Engine->GetSubsystem<EventSystem>()->SetEventHandler([](const SDL_Event* e)
     {
-        ImGui_ImplSDL3_ProcessEvent(e);
+		ImGuiIO& io = ImGui::GetIO();
+		ImGui_ImplSDL3_ProcessEvent(e);
+
+		switch (e->type)
+		{
+			case SDL_EVENT_KEY_DOWN:
+			case SDL_EVENT_KEY_UP:
+			case SDL_EVENT_TEXT_INPUT:
+			case SDL_EVENT_TEXT_EDITING:
+			case SDL_EVENT_MOUSE_MOTION:
+			case SDL_EVENT_MOUSE_BUTTON_DOWN:
+			case SDL_EVENT_MOUSE_BUTTON_UP:
+			case SDL_EVENT_MOUSE_WHEEL:
+			{
+				return io.WantCaptureMouse || io.WantCaptureKeyboard || io.WantTextInput;
+			}
+		}
+
+		return false;
     });
 }
 
-void ImGuiRenderer::OnDestroy(GraphicsDevice* device)
+void ImGuiRenderer::OnDestroy(RenderContext& context)
 {
 	ImGuiBackend::Destroy();
     ImGui::DestroyContext();
@@ -39,36 +58,35 @@ void ImGuiRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 	graph.AddRenderPass<ImGuiPassData>("ImGuiPass", [&](RenderGraphBuilder& builder, ImGuiPassData& passData)
 	{
 		const auto& sceneData = blackboard.Get<Gleam::SceneRenderingData>();
-		auto swapchainTarget = graph.ImportBackbuffer(mDevice->GetRenderSurface());
-		passData.sceneTarget = builder.ReadTexture(sceneData.backbuffer);
-		passData.swapchainTarget = builder.UseColorBuffer(swapchainTarget);
+		passData.sceneTarget = builder.ReadTexture(sceneData.sceneTarget);
+		passData.backbuffer = builder.UseColorBuffer(sceneData.backbuffer);
 	},
     [this](const CommandBuffer* cmd, const ImGuiPassData& passData)
     {
         ImGuiIO& io = ImGui::GetIO();
-        auto drawableSize = Globals::Engine->GetSubsystem<RenderSystem>()->GetDevice()->GetDrawableSize();
+        const auto& drawableSize = mSurface->GetSize();
         io.DisplaySize = ImVec2(drawableSize.width, drawableSize.height);
         
 		ImGuiBackend::BeginFrame();
         ImGui::NewFrame();
         
-        ImGuiWindowFlags window_flags = ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoDocking;
+        ImGuiWindowFlags windowFlags = ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoDocking;
         ImGuiViewport* viewport = ImGui::GetMainViewport();
         ImGui::SetNextWindowPos(viewport->Pos);
         ImGui::SetNextWindowSize(viewport->Size);
         ImGui::SetNextWindowViewport(viewport->ID);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
-        window_flags |= ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove;
-        window_flags |= ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
+		windowFlags |= ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove;
+		windowFlags |= ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
 
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
-        ImGui::Begin("Editor Dockspace", nullptr, window_flags);
+        ImGui::Begin("Editor Dockspace", nullptr, windowFlags);
         ImGui::PopStyleVar();
         ImGui::PopStyleVar(2);
         
-        ImGuiID dockspace_id = ImGui::GetID("EditorDockSpace");
-        ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_None);
+        ImGuiID dockspaceID = ImGui::GetID("EditorDockSpace");
+        ImGui::DockSpace(dockspaceID, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_None);
         
         for (auto& view : mViews)
         {

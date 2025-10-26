@@ -6,11 +6,11 @@
 //
 
 #pragma once
-#include <list>
+#include <EASTL/list.h>
 
 namespace Gleam {
 
-template<class T>
-using List = std::list<T>;
+template<typename T, typename Allocator = eastl::allocator>
+using List = eastl::list<T>;
 
 } // namespace Gleam

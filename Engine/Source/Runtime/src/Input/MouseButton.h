@@ -1,4 +1,6 @@
 #pragma once
+#include "Container/String.h"
+
 #include <SDL3/SDL.h>
 
 namespace Gleam {

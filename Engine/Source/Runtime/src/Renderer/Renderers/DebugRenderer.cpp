@@ -2,24 +2,55 @@
 #include "DebugRenderer.h"
 #include "WorldRenderer.h"
 
+#include "Core/Engine.h"
+#include "Core/Globals.h"
+
 #include "Renderer/Mesh.h"
 #include "Renderer/CommandBuffer.h"
 #include "Renderer/GraphicsDevice.h"
 
 using namespace Gleam;
 
-void DebugRenderer::OnCreate(GraphicsDevice* device)
+void DebugRenderer::OnCreate(RenderContext& context)
 {
-	mDevice = device;
-	mPrimitiveVertexShader = device->CreateShader("debugVertexShader", ShaderStage::Vertex);
-	mMeshVertexShader = device->CreateShader("debugMeshVertexShader", ShaderStage::Vertex);
-	mFragmentShader = device->CreateShader("debugFragmentShader", ShaderStage::Fragment);
+	mDevice = context.device;
+	// Primitive pipelines
+	{
+		GraphicsPipelineStateDescriptor pipelineState;
+		pipelineState.topology = PrimitiveTopology::Lines;
+		pipelineState.depthState.compareFunction = CompareFunction::Always;
+		pipelineState.colorFormats = { TextureFormat::R16G16B16A16_SFloat };
+		pipelineState.vertexEntry = "debugVertexShader";
+		pipelineState.fragmentEntry = "debugFragmentShader";
+		mPrimitivePipeline = mDevice->CreateGraphicsPipeline(pipelineState);
+
+		pipelineState.depthState.writeEnabled = true;
+		pipelineState.depthFormat = TextureFormat::D16_UNorm;
+		pipelineState.depthState.compareFunction = CompareFunction::Less;
+		mPrimitiveDepthPipeline = mDevice->CreateGraphicsPipeline(pipelineState);
+	}
+
+	// Mesh pipelines
+	{
+		GraphicsPipelineStateDescriptor pipelineState;
+		pipelineState.topology = PrimitiveTopology::Triangles;
+		pipelineState.depthState.compareFunction = CompareFunction::Always;
+		pipelineState.colorFormats = { TextureFormat::R16G16B16A16_SFloat };
+		pipelineState.vertexEntry = "debugMeshVertexShader";
+		pipelineState.fragmentEntry = "debugFragmentShader";
+		mMeshPipeline = mDevice->CreateGraphicsPipeline(pipelineState);
+
+		pipelineState.depthState.writeEnabled = true;
+		pipelineState.depthFormat = TextureFormat::D16_UNorm;
+		pipelineState.depthState.compareFunction = CompareFunction::Less;
+		mMeshDepthPipeline = mDevice->CreateGraphicsPipeline(pipelineState);
+	}
 }
 
-void DebugRenderer::OnDestroy(GraphicsDevice* device)
+void DebugRenderer::OnDestroy(RenderContext& context)
 {
-	device->Dispose(mVertexBuffer);
-	device->Dispose(mVertexHeap);
+	mVertexHeap.Free(mVertexBuffer);
+	context.device->Dispose(mVertexHeap);
 }
 
 void DebugRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard)
@@ -35,13 +66,13 @@ void DebugRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 	{
 		if (mVertexHeap.IsValid())
 		{
-			mDevice->Dispose(mVertexBuffer);
+			mVertexHeap.Free(mVertexBuffer);
 			mDevice->Dispose(mVertexHeap);
 		}
 
-		HeapDescriptor descriptor{ .name = "DebugVertex::Heap", .memoryType = MemoryType::CPU, .size = Math::RoundUpTo(bufferSize, 65536ull) };
+		HeapDescriptor descriptor{ .name = "DebugVertex::Heap", .memoryType = MemoryType::CPU, .size = Math::RoundUpTo(bufferSize, (size_t)65536ull) };
 		mVertexHeap = mDevice->CreateHeap(descriptor);
-		mVertexBuffer = mVertexHeap.CreateBuffer({ .name = "DebugVertex::Buffer", .size = descriptor.size });
+		mVertexBuffer = mVertexHeap.Allocate({ .name = "DebugVertex::Buffer", .size = descriptor.size });
 	}
 
 	void* vertexBufferPtr = mVertexBuffer.GetContents();
@@ -73,14 +104,10 @@ void DebugRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
         
 		if (!mDepthLines.empty())
 		{
-			PipelineStateDescriptor pipelineState;
-			pipelineState.topology = PrimitiveTopology::Lines;
-			pipelineState.depthState.writeEnabled = true;
-			pipelineState.depthState.compareFunction = CompareFunction::Less;
-			cmd->BindGraphicsPipeline(pipelineState, mPrimitiveVertexShader, mFragmentShader);
+			cmd->BindGraphicsPipeline(mPrimitiveDepthPipeline);
 			cmd->SetConstantBuffer(resources, 0);
 			cmd->SetConstantBuffer(sceneData.camera, 1);
-			cmd->Draw(static_cast<uint32_t>(mDepthLines.size()) * Utils::PrimitiveTopologyVertexCount(pipelineState.topology));
+			cmd->Draw(static_cast<uint32_t>(mDepthLines.size()) * Utils::PrimitiveTopologyVertexCount(PrimitiveTopology::Lines));
 		}
 		
 		if (!mDepthDebugMeshes.empty())
@@ -90,13 +117,10 @@ void DebugRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 
 		if (!mLines.empty())
 		{
-			PipelineStateDescriptor pipelineState;
-			pipelineState.topology = PrimitiveTopology::Lines;
-			pipelineState.depthState.compareFunction = CompareFunction::Less;
-			cmd->BindGraphicsPipeline(pipelineState, mPrimitiveVertexShader, mFragmentShader);
+			cmd->BindGraphicsPipeline(mPrimitivePipeline);
 			cmd->SetConstantBuffer(resources, 0);
 			cmd->SetConstantBuffer(sceneData.camera, 1);
-			cmd->Draw(static_cast<uint32_t>(mLines.size()) * Utils::PrimitiveTopologyVertexCount(pipelineState.topology));
+			cmd->Draw(static_cast<uint32_t>(mLines.size()) * Utils::PrimitiveTopologyVertexCount(PrimitiveTopology::Lines));
 		}
 
 		if (!mDebugMeshes.empty())
@@ -114,11 +138,7 @@ void DebugRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 
 void DebugRenderer::RenderMeshes(const CommandBuffer* cmd, const CameraUniforms& cameraData, const TArray<DebugMesh>& debugMeshes, bool depthTest) const
 {
-	PipelineStateDescriptor pipelineState;
-	pipelineState.topology = PrimitiveTopology::Triangles;
-	pipelineState.depthState.writeEnabled = depthTest;
-	pipelineState.depthState.compareFunction = depthTest ? CompareFunction::Less : CompareFunction::Always;
-	cmd->BindGraphicsPipeline(pipelineState, mMeshVertexShader, mFragmentShader);
+	cmd->BindGraphicsPipeline(depthTest ? mMeshDepthPipeline : mMeshPipeline);
 	cmd->SetConstantBuffer(cameraData, 1);
 
 	for (const auto& debugMesh : debugMeshes)

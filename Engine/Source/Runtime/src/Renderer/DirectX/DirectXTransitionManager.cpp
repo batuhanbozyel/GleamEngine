@@ -34,7 +34,7 @@ void DirectXTransitionManager::SetLayout(ID3D12Resource* resource, D3D12_RESOURC
 
 D3D12_RESOURCE_STATES DirectXTransitionManager::GetLayout(ID3D12Resource* resource)
 {
-	D3D12_RESOURCE_STATES layout = D3D12_RESOURCE_STATE_COMMON;
+	D3D12_RESOURCE_STATES layout = D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE;
 	auto it = mResourceLayoutCache.find(resource);
 	if (it != mResourceLayoutCache.end())
 	{

@@ -29,9 +29,28 @@ static constexpr const char* HRESULTtoString(HRESULT result)
 	}
 }
 
+static constexpr const char* ID3D12CommandListTypeToString(D3D12_COMMAND_LIST_TYPE type)
+{
+	switch (type)
+	{
+		case D3D12_COMMAND_LIST_TYPE_DIRECT: return "CommandList::Direct";
+		case D3D12_COMMAND_LIST_TYPE_BUNDLE: return "CommandList::Bundle";
+		case D3D12_COMMAND_LIST_TYPE_COMPUTE: return "CommandList::Compute";
+		case D3D12_COMMAND_LIST_TYPE_COPY: return "CommandList::Copy";
+		case D3D12_COMMAND_LIST_TYPE_VIDEO_DECODE: return "CommandList::VideoDecode";
+		case D3D12_COMMAND_LIST_TYPE_VIDEO_PROCESS: return "CommandList::VideoProcess";
+		case D3D12_COMMAND_LIST_TYPE_VIDEO_ENCODE: return "CommandList::VideoEncode";
+		default:
+		{
+			GLEAM_ASSERT(false);
+			return "INVALID D3D12_COMMAND_LIST_TYPE";
+		}
+	}
+}
+
 static void WaitForID3D12Fence(ID3D12Fence* fence, uint64_t value)
 {
-	if (fence->GetCompletedValue() >= value)
+	if (fence->GetCompletedValue() <= value)
 	{
 		return;
 	}

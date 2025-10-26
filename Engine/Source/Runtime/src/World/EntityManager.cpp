@@ -15,20 +15,7 @@ Entity& EntityManager::CreateFromPrefab(const AssetReference& ref)
 	auto file = Filesystem::Open(Globals::ProjectContentDirectory / path, FileType::Text);
 
 	Prefab prefab;
-	auto entities = prefab.Deserialize(*this, file.GetStream());
-
-	if (entities.size() > 1)
-	{
-		auto& root = CreateEntity(prefab.name, ref.guid);
-		for (auto handle : entities)
-		{
-			auto& entity = GetComponent<Entity>(handle);
-			entity.SetParent(root);
-		}
-		return root;
-	}
-
-	auto root = entities.back();
+	auto root = prefab.Deserialize(*this, file.GetStream());
 	return GetComponent<Entity>(root);
 }
 
@@ -61,6 +48,38 @@ void EntityManager::DestroyEntity(const TArray<EntityHandle>& entities)
 		mHandles.erase(guid);
 	}
 	mRegistry.destroy(entities.begin(), entities.end());
+}
+
+void EntityManager::Visit(EntityHandle entity, VisitFn&& fn)
+{
+	for (const auto& [id, storage] : mRegistry.storage())
+	{
+		if (storage.contains(entity))
+		{
+			const auto classDesc = Reflection::GetClass(id);
+			if (classDesc && classDesc->Guid() != Guid::InvalidGuid())
+			{
+				void* component = storage.value(entity);
+				fn(component, *classDesc);
+			}
+		}
+	}
+}
+
+void EntityManager::Visit(EntityHandle entity, ConstVisitFn&& fn) const
+{
+	for (const auto& [id, storage] : mRegistry.storage())
+	{
+		if (storage.contains(entity))
+		{
+			const auto classDesc = Reflection::GetClass(id);
+			if (classDesc && classDesc->Guid() != Guid::InvalidGuid())
+			{
+				const void* component = storage.value(entity);
+				fn(component, *classDesc);
+			}
+		}
+	}
 }
 
 uint32_t EntityManager::GetEntityCount() const

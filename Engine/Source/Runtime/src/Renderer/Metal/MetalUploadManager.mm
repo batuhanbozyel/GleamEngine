@@ -9,7 +9,9 @@ using namespace Gleam;
 
 struct UploadManager::Impl
 {
-    id<MTLIOCommandQueue> fileCommandPool{ nil };
+    id<MTLIOCommandQueue> fileCommandQueue{ nil };
+    id<MTLCommandQueue> memoryCommandQueue{ nil };
+    
     id<MTLIOCommandBuffer> fileCommandBuffer{ nil };
     id<MTLCommandBuffer> memoryCommandBuffer{ nil };
     
@@ -19,15 +21,15 @@ struct UploadManager::Impl
     
     TArray<id<MTLBuffer>> tempBuffers;
     
-    id<MTLCommandBuffer> CreateMemoryCommandBuffer(GraphicsDevice* device)
+    void AllocateMemoryCommandBuffer()
     {
-#ifdef GDEBUG
+    #ifdef GDEBUG
         MTLCommandBufferDescriptor* descriptor = [MTLCommandBufferDescriptor new];
         descriptor.errorOptions = MTLCommandBufferErrorOptionEncoderExecutionStatus;
-        return [static_cast<MetalDevice*>(device)->GetCommandPool() commandBufferWithDescriptor:descriptor];
-#else
-        return [static_cast<MetalDevice*>(device)->GetCommandPool() commandBuffer];
-#endif
+        memoryCommandBuffer = [memoryCommandQueue commandBufferWithDescriptor:descriptor];
+    #else
+        memoryCommandBuffer = [memoryCommandQueue commandBuffer];
+    #endif
     }
 
     bool CopyUploadData(const void* data, size_t size)
@@ -48,63 +50,77 @@ UploadManager::UploadManager(GraphicsDevice* device)
     : mHandle(CreateScope<Impl>())
     , mDevice(device)
 {
+    // Create file queue
     MTLIOCommandQueueDescriptor* ioQueueDescriptor = [MTLIOCommandQueueDescriptor new];
     ioQueueDescriptor.type = MTLIOCommandQueueTypeConcurrent;
     ioQueueDescriptor.priority = MTLIOPriorityNormal;
     ioQueueDescriptor.maxCommandsInFlight = 0;
     
     __autoreleasing NSError* error = nil;
-    mHandle->fileCommandPool = [mDevice->GetHandle() newIOCommandQueueWithDescriptor:ioQueueDescriptor error:&error];
-    GLEAM_ASSERT(mHandle->fileCommandPool, "Metal: UploadManager command pool creation failed.");
+    mHandle->fileCommandQueue = [mDevice->GetHandle() newIOCommandQueueWithDescriptor:ioQueueDescriptor error:&error];
+    GLEAM_ASSERT(mHandle->fileCommandQueue, "Metal: UploadManager file command queue creation failed.");
     
-    mHandle->stagingBuffer = [mDevice->GetHandle() newBufferWithLength:UploadHeapSize * mDevice->GetFramesInFlight() options:MTLResourceStorageModeShared];
+    // Create memory queue
+    mHandle->memoryCommandQueue = [mDevice->GetHandle() newCommandQueue];
+    GLEAM_ASSERT(mHandle->memoryCommandQueue, "Metal: UploadManager memory command queue creation failed.");
+    
+    mHandle->stagingBuffer = [mDevice->GetHandle() newBufferWithLength:UploadHeapSize options:MTLResourceStorageModeShared];
     mHandle->stagingBufferPtr = [mHandle->stagingBuffer contents];
-    mHandle->tempBuffers.resize(mDevice->GetFramesInFlight());
 }
 
 UploadManager::~UploadManager()
 {
     mHandle->tempBuffers.clear();
     mHandle->stagingBuffer = nil;
-    mHandle->fileCommandPool = nil;
+    mHandle->fileCommandQueue = nil;
     mHandle->fileCommandBuffer = nil;
     mHandle->memoryCommandBuffer = nil;
 }
 
-void UploadManager::Commit() const
+void UploadManager::Execute() const
 {
     if (mHandle->fileCommandBuffer != nil)
     {
         [mHandle->fileCommandBuffer commit];
-        mHandle->fileCommandBuffer = nil;
     }
     
     if (mHandle->memoryCommandBuffer != nil)
     {
         [mHandle->memoryCommandBuffer commit];
-        mHandle->memoryCommandBuffer = nil;
     }
 }
 
-void UploadManager::Flush() const
+void UploadManager::WaitUntilCompleted() const
 {
+    if (mHandle->memoryCommandBuffer != nil)
+    {
+        [mHandle->memoryCommandBuffer waitUntilCompleted];
+        mHandle->memoryCommandBuffer = nil;
+    }
+    
+    if (mHandle->fileCommandBuffer != nil)
+    {
+        [mHandle->fileCommandBuffer waitUntilCompleted];
+        mHandle->fileCommandBuffer = nil;
+    }
+    
     mHandle->stagingBufferOffset = 0;
     mHandle->tempBuffers.clear();
 }
 
-void UploadManager::CommitUpload(const Buffer& buffer, const void* data, size_t size, size_t offset) const
+void UploadManager::Commit(const Buffer& buffer, const void* data, size_t size, size_t offset) const
 {
     auto bufferContents = buffer.GetContents();
     if (bufferContents == nullptr)
     {
         if (mHandle->memoryCommandBuffer == nil)
         {
-            mHandle->memoryCommandBuffer = mHandle->CreateMemoryCommandBuffer(mDevice);
+            mHandle->AllocateMemoryCommandBuffer();
         }
         
         id<MTLBuffer> dstBuffer = buffer.GetHandle();
         id<MTLBlitCommandEncoder> blitCommandEncoder = [mHandle->memoryCommandBuffer blitCommandEncoder];
-        [blitCommandEncoder setLabel:TO_NSSTRING("UploadManager::CommitUpload")];
+        [blitCommandEncoder setLabel:TO_NSSTRING("UploadManager::Commit")];
         
         size_t srcOffset = mHandle->stagingBufferOffset;
         if (mHandle->CopyUploadData(data, size))
@@ -126,16 +142,16 @@ void UploadManager::CommitUpload(const Buffer& buffer, const void* data, size_t 
     }
 }
 
-void UploadManager::CommitUpload(const Texture& texture, const void* data, size_t size) const
+void UploadManager::Commit(const Texture& texture, const void* data, size_t size) const
 {
     if (mHandle->memoryCommandBuffer == nil)
     {
-        mHandle->memoryCommandBuffer = mHandle->CreateMemoryCommandBuffer(mDevice);
+        mHandle->AllocateMemoryCommandBuffer();
     }
     
     id<MTLTexture> dstTexture = texture.GetHandle();
     id<MTLBlitCommandEncoder> blitCommandEncoder = [mHandle->memoryCommandBuffer blitCommandEncoder];
-    [blitCommandEncoder setLabel:TO_NSSTRING("UploadManager::CommitUpload")];
+    [blitCommandEncoder setLabel:TO_NSSTRING("UploadManager::Commit")];
     
     size_t sourceBytesPerRow = texture.GetDescriptor().size.width * Utils::GetTextureFormatSizeInBytes(texture.GetDescriptor().format);
     size_t sourceBytesPerImage = sourceBytesPerRow * texture.GetDescriptor().size.height;

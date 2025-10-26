@@ -26,7 +26,7 @@ public:
 
     uint8_t GetRepeatCount() const { return m_RepeatCount; }
 
-	TString ToString() const override
+	virtual TString ToString() const override
 	{
 		TStringStream ss;
 		ss << "KeyPressedEvent: " << char(mKeyCode);

@@ -20,15 +20,13 @@ class WorldRenderer : public IRenderer
 {
 public:
     
-    virtual void OnCreate(GraphicsDevice* device) override;
+    virtual void OnCreate(RenderContext& context) override;
     
     virtual void AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard) override;
 
 private:
     
-    Shader mMeshVertexShader;
-    HashMap<TString, Shader> mMeshShadingFragmentShaders;
-	HashMap<uint32_t, PipelineStateDescriptor> mShadingPipelines;
+	HashMap<uint32_t, GraphicsPipelineHandle> mShadingPipelines;
 
 };
 

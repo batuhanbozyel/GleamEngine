@@ -7,6 +7,7 @@
 
 #pragma once
 #include "RenderGraphNode.h"
+#include "Container/Queue.h"
 
 namespace Gleam {
 

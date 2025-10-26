@@ -1,5 +1,6 @@
 #pragma once
 #include "Filesystem.h"
+#include "Container/String.h"
 
 namespace Gleam {
 
@@ -13,7 +14,9 @@ class File final
 {
 public:
 
-    File(FileStream&& handle, const Filesystem::Path& path, FileAccessor& accessor);
+    File(FileStream&& handle, const Path& path, FileAccessor& accessor);
+
+	~File();
 
 	TString Read() const;
 
@@ -35,7 +38,7 @@ private:
 
 	TString mName;
     
-    Filesystem::Path mFullPath;
+    Path mFullPath;
     
     FileAccessor& mAccessor;
 

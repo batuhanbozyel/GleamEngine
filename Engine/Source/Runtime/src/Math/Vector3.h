@@ -1,9 +1,10 @@
 #pragma once
+#include "Vector2.h"
 
 namespace Gleam {
 
 template<typename T>
-struct Vector3
+GSTRUCT(Vector3, "3978CBC8-A694-45FF-B056-DE21F69421AC", Serializable)
 {
     union
     {
@@ -376,17 +377,26 @@ NO_DISCARD FORCE_INLINE constexpr T Dot(const Vector3<T>& vec1, const Vector3<T>
 {
     return vec1.x * vec2.x + vec1.y * vec2.y + vec1.z * vec2.z;
 }
+
+template<typename T>
+NO_DISCARD FORCE_INLINE constexpr T LengthSquared(const Vector3<T>& vec)
+{
+	return Dot(vec, vec);
+}
     
 template<typename T>
 NO_DISCARD FORCE_INLINE constexpr T Length(const Vector3<T>& vec)
 {
-	return Sqrt(Dot(vec, vec));
+	return Sqrt(LengthSquared(vec));
 }
     
 template<typename T>
 NO_DISCARD FORCE_INLINE constexpr Vector3<T> Normalize(const Vector3<T>& vec)
 {
-    return vec / Length(vec);
+	float length = Length(vec);
+	GLEAM_ASSERT(length > Math::Epsilon);
+
+	return vec / length;
 }
 
 template<typename T>
@@ -423,9 +433,3 @@ template<typename T>
 const Vector3<T> Vector3<T>::back{T(0), T(0), T(-1)};
 	
 } // namespace Gleam
-
-GLEAM_TEMPLATE((typename T), (Gleam::Vector3<T>), Guid("3978CBC8-A694-45FF-B056-DE21F69421AC"))
-    GLEAM_FIELD(x, Serializable())
-    GLEAM_FIELD(y, Serializable())
-    GLEAM_FIELD(z, Serializable())
-GLEAM_END

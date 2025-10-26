@@ -16,6 +16,11 @@ RenderGraphBuilder::RenderGraphBuilder(RenderGraphPassNode& node, RenderGraphRes
     
 }
 
+void RenderGraphBuilder::AllowPassCulling(bool enable)
+{
+	mPassNode.hasSideEffect = not enable;
+}
+
 NO_DISCARD TextureHandle RenderGraphBuilder::UseColorBuffer(const TextureHandle& attachment)
 {
     return mPassNode.colorAttachments.emplace_back(WriteTexture(attachment));

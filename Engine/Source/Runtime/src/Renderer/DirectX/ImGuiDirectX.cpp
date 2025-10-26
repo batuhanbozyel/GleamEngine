@@ -1,22 +1,27 @@
-#include "../ImGui/ImGuiBackend.h"
+#include "Renderer/ImGui/ImGuiBackend.h"
 
 #ifdef USE_DIRECTX_RENDERER
 #include "DirectXUtils.h"
 #include "DirectXDevice.h"
-#include "DirectXPipelineStateManager.h"
 
-#include "imgui_impl_dx12.h"
 #include "Core/Engine.h"
 #include "Core/Globals.h"
 #include "Core/Application.h"
 #include "Core/WindowSystem.h"
+
+#include "Renderer/Renderer.h"
+#include "Renderer/Swapchain.h"
+
+#include "imgui_impl_dx12.h"
 #include "Renderer/ImGui/imgui_impl_sdl3.h"
 
 using namespace Gleam;
 
-void ImGuiBackend::Init(GraphicsDevice* device)
+void ImGuiBackend::Init(RenderContext& context)
 {
-	mDevice = device;
+	mDevice = context.device;
+	mSurface = context.surface;
+
 	auto& cbvSrvUavHeap = static_cast<DirectXDevice*>(mDevice)->GetCbvSrvUavHeap();
 	auto index = cbvSrvUavHeap.heap.Allocate();
 
@@ -25,10 +30,11 @@ void ImGuiBackend::Init(GraphicsDevice* device)
 	D3D12_GPU_DESCRIPTOR_HANDLE fontSrvGPUdescriptor = cbvSrvUavHeap.handle->GetGPUDescriptorHandleForHeapStart();
 	fontSrvGPUdescriptor.ptr += (UINT64)(index.data * cbvSrvUavHeap.size);
 
+	auto surface = static_cast<Swapchain*>(mSurface);
 	ImGui_ImplSDL3_InitForD3D(Globals::Engine->GetSubsystem<WindowSystem>()->GetSDLWindow());
 	ImGui_ImplDX12_Init(static_cast<ID3D12Device*>(mDevice->GetHandle()),
-		mDevice->GetFramesInFlight(),
-		TextureFormatToDXGI_FORMAT(mDevice->GetFormat()),
+		surface->GetFramesInFlight(),
+		TextureFormatToDXGI_FORMAT(surface->GetFormat()),
 		cbvSrvUavHeap.handle,
 		fontSrvCPUdescriptor,
 		fontSrvGPUdescriptor);

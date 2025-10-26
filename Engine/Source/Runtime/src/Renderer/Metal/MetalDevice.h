@@ -3,7 +3,18 @@
 #include "Renderer/GraphicsDevice.h"
 
 #include <Metal/Metal.h>
-#import <QuartzCore/CAMetalLayer.h>
+#include <metal_irconverter/metal_irconverter.h>
+
+@protocol MetalPipeline <NSObject>
+@end
+
+@protocol MetalGraphicsPipeline <MetalPipeline>
+
+@property (nonatomic, strong) id<MTLRenderPipelineState> renderState;
+@property (nonatomic, strong) id<MTLDepthStencilState> depthStencilState;
+@property (nonatomic, assign) MTLPrimitiveType topology;
+
+@end
 
 namespace Gleam {
 
@@ -20,15 +31,19 @@ class MetalDevice final : public GraphicsDevice
 {
 public:
     
-    MetalDevice();
+    MetalDevice(RenderSurface* surface, ResourceReleaseQueue* releaseQueue);
     
     ~MetalDevice();
     
     id<MTLBuffer> GetCbvSrvUavHeap() const;
     
-    id<CAMetalDrawable> AcquireNextDrawable();
-    
     id<MTLCommandQueue> GetCommandPool() const;
+	
+	id<MTLResidencySet> GetResidencySet() const;
+	
+	id<MTLCommandBuffer> AllocateCommandBuffer() const;
+	
+	IRRootSignature* GetGlobalRootSignature() const;
     
     virtual ShaderResourceIndex CreateResourceView(const Buffer& buffer) override;
     
@@ -38,21 +53,15 @@ public:
     
 private:
 
-	virtual void Present(const CommandBuffer* cmd) override;
-
 	virtual void Configure(const RendererConfig& config) override;
     
     MetalDescriptorHeap CreateDescriptorHeap(uint32_t capacity) const;
-    
-	void* mSurface = nullptr;
 
-    dispatch_semaphore_t mImageAcquireSemaphore;
-
-    id<CAMetalDrawable> mDrawable{ nil };
-
-    CAMetalLayer* mSwapchain = nullptr;
+	IRRootSignature* mRootSignature = nullptr;
 
     id<MTLCommandQueue> mCommandPool{ nil };
+	
+	id<MTLResidencySet> mResidencySet{ nil };
     
     MetalDescriptorHeap mCbvSrvUavHeap;
 

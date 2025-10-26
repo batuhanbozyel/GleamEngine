@@ -3,13 +3,18 @@
 
 using namespace Gleam;
 
-File::File(FileStream&& handle, const Filesystem::Path& path, FileAccessor& accessor)
-	: mName(path.filename().string())
+File::File(FileStream&& handle, const Path& path, FileAccessor& accessor)
+	: mName(path.Filename().String())
     , mFullPath(path)
 	, mHandle(std::move(handle))
     , mAccessor(accessor)
 {
 	
+}
+
+File::~File()
+{
+
 }
 
 TString File::Read() const

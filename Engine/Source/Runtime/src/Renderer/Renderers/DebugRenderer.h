@@ -2,12 +2,15 @@
 #include "Renderer/Renderer.h"
 #include "Renderer/Buffer.h"
 #include "Renderer/Heap.h"
+#include "Renderer/Shaders/ShaderTypes.h"
+
+#include "Math/BoundingBox.h"
+#include "Math/Float4x4.h"
+#include "Math/Color.h"
 
 namespace Gleam {
 
 class Mesh;
-class Shader;
-enum class PrimitiveTopology;
 
 struct DebugLine
 {
@@ -26,9 +29,9 @@ class DebugRenderer final : public IRenderer
 {
 public:
 
-    virtual void OnCreate(GraphicsDevice* device) override;
+    virtual void OnCreate(RenderContext& context) override;
 
-	virtual void OnDestroy(GraphicsDevice* device) override;
+	virtual void OnDestroy(RenderContext& context) override;
     
     virtual void AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard) override;
     
@@ -57,9 +60,11 @@ private:
 	TArray<DebugMesh> mDebugMeshes;
     TArray<DebugMesh> mDepthDebugMeshes;
 
-	Shader mPrimitiveVertexShader;
-	Shader mMeshVertexShader;
-	Shader mFragmentShader;
+	GraphicsPipelineHandle mPrimitivePipeline;
+	GraphicsPipelineHandle mPrimitiveDepthPipeline;
+
+	GraphicsPipelineHandle mMeshPipeline;
+	GraphicsPipelineHandle mMeshDepthPipeline;
 
 	GraphicsDevice* mDevice = nullptr;
 

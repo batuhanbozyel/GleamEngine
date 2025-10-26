@@ -7,7 +7,6 @@
 
 #pragma once
 #include "View/View.h"
-#include "Gleam.h"
 
 namespace GEditor {
 

@@ -20,7 +20,7 @@ void InputSystem::ShowCursor() const
 {
 	static auto windowSystem = Globals::Engine->GetSubsystem<WindowSystem>();
 	SDL_WarpMouseInWindow(windowSystem->GetSDLWindow(), mCursorHidePosition.x, mCursorHidePosition.y);
-	SDL_SetWindowRelativeMouseMode(windowSystem->GetSDLWindow(), SDL_FALSE);
+	SDL_SetWindowRelativeMouseMode(windowSystem->GetSDLWindow(), false);
     SDL_ShowCursor();
 	mCursorHidden = false;
 }
@@ -29,7 +29,7 @@ void InputSystem::HideCursor() const
 {
 	static auto windowSystem = Globals::Engine->GetSubsystem<WindowSystem>();
     SDL_HideCursor();
-	SDL_SetWindowRelativeMouseMode(windowSystem->GetSDLWindow(), SDL_TRUE);
+	SDL_SetWindowRelativeMouseMode(windowSystem->GetSDLWindow(), true);
 	SDL_GetMouseState(&mCursorHidePosition.x, &mCursorHidePosition.y);
 	mCursorHidden = true;
 }
@@ -43,12 +43,12 @@ bool InputSystem::GetButtonDown(const KeyCode keycode) const
 {
 	SDL_Keymod modifier = SDL_KMOD_NONE;
 	auto scancode = SDL_GetScancodeFromKey(static_cast<SDL_Keycode>(keycode), &modifier);
-	return mKeyboardState[scancode] == SDL_PRESSED;
+	return mKeyboardState[scancode];
 }
 
 bool InputSystem::GetButtonDown(const MouseButton button) const
 {
-    return mMouseState & SDL_BUTTON(static_cast<uint8_t>(button));
+    return mMouseState & SDL_BUTTON_MASK(static_cast<uint8_t>(button));
 }
 
 const Float2& InputSystem::GetMousePosition() const
@@ -64,7 +64,7 @@ const Float2& InputSystem::GetAxis() const
 void InputSystem::KeyboardEventHandler(SDL_KeyboardEvent keyboardEvent) const
 {
     KeyCode keycode = static_cast<KeyCode>(keyboardEvent.key);
-    if (keyboardEvent.state == SDL_PRESSED)
+    if (keyboardEvent.down)
     {
         EventDispatcher<KeyPressedEvent>::Publish(KeyPressedEvent(keycode, keyboardEvent.repeat));
     }
@@ -87,7 +87,7 @@ void InputSystem::MouseScrollEventHandler(SDL_MouseWheelEvent wheelEvent) const
 void InputSystem::MouseButtonEventHandler(SDL_MouseButtonEvent buttonEvent) const
 {
     MouseButton button = static_cast<MouseButton>(buttonEvent.button);
-    if (buttonEvent.state == SDL_PRESSED)
+    if (buttonEvent.down)
     {
         EventDispatcher<MouseButtonPressedEvent>::Publish(MouseButtonPressedEvent(button));
     }

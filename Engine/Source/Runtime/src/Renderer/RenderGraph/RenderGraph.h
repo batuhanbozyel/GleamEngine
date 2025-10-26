@@ -3,8 +3,13 @@
 
 namespace Gleam {
 
+class RenderSurface;
 class CommandBuffer;
 class GraphicsDevice;
+class RenderResourcePool;
+
+struct RenderContext;
+struct SceneRenderingData;
 
 struct ImportResourceParams
 {
@@ -19,13 +24,13 @@ class RenderGraph final
     
 public:
     
-    RenderGraph(GraphicsDevice* device);
+    RenderGraph(RenderContext& context);
     
     ~RenderGraph();
     
     void Compile();
 
-	void Execute(const CommandBuffer* cmd);
+	void Execute(const CommandBuffer* cmd, SceneRenderingData& sceneData);
 	
 	template<typename PassData>
 	const PassData& AddRenderPass(const TStringView name, SetupFunc<PassData>&& setup, RenderFunc<PassData>&& execute)
@@ -53,7 +58,11 @@ private:
     
     size_t mHeapSize = 0;
     
+	RenderSurface* mSurface;
+
     GraphicsDevice* mDevice;
+
+	RenderResourcePool* mResourcePool;
 
     RenderGraphResourceRegistry mRegistry;
 

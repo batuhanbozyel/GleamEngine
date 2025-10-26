@@ -1,5 +1,6 @@
 #pragma once
 #include "EAssets/AssetBaker.h"
+#include "Renderer/TextureDescriptor.h"
 
 namespace GEditor {
 
@@ -9,7 +10,7 @@ public:
 
 	TextureBaker(const Gleam::Texture2DDescriptor& descriptor);
 
-	virtual void Bake(const Gleam::Filesystem::Path& directory, const AssetItem& item) const override;
+	virtual void Bake(const Gleam::Path& directory, const AssetItem& item) const override;
     
     virtual Gleam::TString Filename() const override;
     

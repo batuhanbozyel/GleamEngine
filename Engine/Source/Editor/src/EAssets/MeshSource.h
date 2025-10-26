@@ -1,6 +1,7 @@
 #pragma once
-#include "Gleam.h"
 #include "AssetPackage.h"
+#include "Math/Color.h"
+#include "World/Components/Transform.h"
 
 namespace GEditor {
 
@@ -22,7 +23,7 @@ struct PBRTexture
 struct RawMaterial
 {
     Gleam::TString name = "Default";
-    Gleam::TArray<Gleam::Filesystem::Path, PBRTexture::COUNT> textures;
+    Gleam::TArray<Gleam::Path, PBRTexture::COUNT> textures;
     Gleam::Color albedoColor = Gleam::Color::white;
     Gleam::Color emissiveColor = Gleam::Color::clear;
     float alphaCutoff = 0.5f;
@@ -56,6 +57,7 @@ struct RawMesh
     Gleam::TString name;
     Gleam::TArray<Gleam::Float3> positions;
     Gleam::TArray<Gleam::Float3> normals;
+	Gleam::TArray<Gleam::Float4> tangents;
     Gleam::TArray<Gleam::Float2> texCoords;
     Gleam::TArray<uint32_t> indices;
 	uint32_t material;
@@ -82,7 +84,7 @@ public:
 	*	- position, normal, uv attributes
 	*	- triangulated primitive type and indices
 	*/
-	bool Import(const Gleam::Filesystem::Path& path, const ImportSettings& settings);
+	bool Import(const Gleam::Path& path, const ImportSettings& settings);
     
 };
 

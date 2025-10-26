@@ -1,6 +1,8 @@
 #include "PrefabBaker.h"
 #include "EAssets/AssetRegistry.h"
 
+#include "Gleam.h"
+
 using namespace GEditor;
 
 PrefabBaker::PrefabBaker(const Gleam::RefCounted<Gleam::World>& world)
@@ -9,15 +11,14 @@ PrefabBaker::PrefabBaker(const Gleam::RefCounted<Gleam::World>& world)
 	
 }
 
-void PrefabBaker::Bake(const Gleam::Filesystem::Path& directory, const AssetItem& item) const
+void PrefabBaker::Bake(const Gleam::Path& directory, const AssetItem& item) const
 {
-	auto filename = item.reference.guid.ToString() + Gleam::Prefab::Extension().data();
+	auto filename = Gleam::TWString(item.reference.guid.ToString()) + Gleam::Prefab::Extension();
 	auto file = Gleam::Filesystem::Create(directory / filename, Gleam::FileType::Text);
 	auto accessor = Gleam::Filesystem::WriteAccessor(directory / filename);
 
 	Gleam::Prefab prefab;
 	prefab.name = mWorld->name;
-	prefab.entityCount = mWorld->GetEntityManager().GetEntityCount();
 	prefab.Serialize(mWorld->GetEntityManager(), file.GetStream());
 }
 

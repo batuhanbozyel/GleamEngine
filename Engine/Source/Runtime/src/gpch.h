@@ -1,11 +1,11 @@
 #pragma once
-
 #include <cstdlib>
 #include <fstream>
 #include <iostream>
 #include <filesystem>
 #include <memory>
 #include <optional>
+#include <regex>
 #include <mutex>
 #include <atomic>
 #include <utility>
@@ -30,6 +30,11 @@
 #include <set>
 #include <unordered_map>
 #include <unordered_set>
+
+#include <Reflection/TypeTraits.h>
+#include <Reflection/Attribute.h>
+#include <Reflection/Meta.h>
+#include <Reflection/Reflection.h>
 
 #include <entt/core/type_info.hpp>
 #include <entt/core/hashed_string.hpp>
@@ -58,19 +63,14 @@
 #include "IO/Filesystem.h"
 #include "IO/FileDialog.h"
 
-#include "Reflection/TypeTraits.h"
-#include "Reflection/Attribute.h"
-#include "Reflection/Meta.h"
-#include "Reflection/Reflection.h"
-
 #include "Math/Common.h"
 #include "Math/Vector2.h"
 #include "Math/Vector3.h"
 #include "Math/Vector4.h"
-#include "Math/Quaternion.h"
 #include "Math/Color.h"
 #include "Math/Float2x2.h"
 #include "Math/Float3x3.h"
+#include "Math/Quaternion.h"
 #include "Math/Float4x4.h"
 #include "Math/Size.h"
 #include "Math/Rect.h"
@@ -92,6 +92,7 @@
 #include "World/Components/MeshRenderer.h"
 #include "World/Components/Transform.h"
 #include "World/Components/Camera.h"
+#include "World/Entity.h"
 
 #include "Renderer/RenderGraph/RenderGraphResource.h"
 #include "Renderer/Renderer.h"
@@ -100,4 +101,8 @@
 
 #ifdef PLATFORM_WINDOWS
 #include <windows.h>
+#endif
+
+#ifndef __GLEAM_REFLECTION__
+#include <Runtime.Reflection.generated.h>
 #endif

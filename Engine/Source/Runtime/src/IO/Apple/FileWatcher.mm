@@ -10,11 +10,11 @@ using namespace Gleam;
 
 struct FileWatcher::Handle
 {
-    Filesystem::Path path;
+    Path path;
     FileWatchHandler handler;
     FSEventStreamRef _Nonnull stream;
  
-    Handle(const Filesystem::Path& path, FileWatchHandler&& handler)
+    Handle(const Path& path, FileWatchHandler&& handler)
         : path(path), handler(std::move(handler)), stream(nullptr)
     {
         
@@ -37,31 +37,36 @@ struct FileWatcher::Handle
         auto* watcher = static_cast<Handle*>(clientCallBackInfo);
         for (size_t i = 0; i < numEvents; ++i)
         {
-            Filesystem::Path path = ((const char**)eventPaths)[i];
+            Path path = ((const char**)eventPaths)[i];
             const FSEventStreamEventFlags flags = eventFlags[i];
             if (!(flags & kFSEventStreamEventFlagItemIsFile))
             {
                 // TODO: implement support for subdirectories
                 if (flags & kFSEventStreamEventFlagItemRemoved)
                 {
+                    GLEAM_CORE_INFO("FileWatcher file removed: {}", path.string());
                     watcher->handler(path, FileWatchEvent::Removed);
                     break;
                 }
             }
             else if (flags & kFSEventStreamEventFlagItemCreated)
             {
+                GLEAM_CORE_INFO("FileWatcher file added: {}", path.string());
                 watcher->handler(path, FileWatchEvent::Added);
             }
             else if (flags & kFSEventStreamEventFlagItemRemoved)
             {
+                GLEAM_CORE_INFO("FileWatcher file removed: {}", path.string());
                 watcher->handler(path, FileWatchEvent::Removed);
             }
             else if (flags & (kFSEventStreamEventFlagItemRenamed))
             {
+                GLEAM_CORE_INFO("FileWatcher file renamed: {}", path.string());
                 watcher->handler(path, FileWatchEvent::Renamed);
             }
             else if (flags & (kFSEventStreamEventFlagItemModified))
             {
+                GLEAM_CORE_INFO("FileWatcher file modified: {}", path.string());
                 watcher->handler(path, FileWatchEvent::Modified);
             }
             // default
@@ -90,7 +95,7 @@ void FileWatcher::Shutdown()
 	mWatchers.clear();
 }
 
-FileWatcher::Handle* FileWatcher::AddWatch(const Filesystem::Path& dir, FileWatchHandler&& handler)
+FileWatcher::Handle* FileWatcher::AddWatch(const Path& dir, FileWatchHandler&& handler)
 {
     if (Filesystem::IsDirectory(dir) == false)
 	{

@@ -11,6 +11,8 @@
 #include "Renderer/ImGui/ImGuiBackend.h"
 #include "Renderers/InfiniteGridRenderer.h"
 
+#include "Gleam.h"
+
 using namespace GEditor;
 
 void WorldViewport::Init(Gleam::World* world)
@@ -29,34 +31,14 @@ void WorldViewport::Init(Gleam::World* world)
 
 	mCameraController = mEditWorld->AddSystem<EditorCameraController>(mCamera);
     Resize(mEditWorld->GetEntityManager(), mViewportSize);
-    
-    Gleam::EventDispatcher<Gleam::MouseButtonPressedEvent>::Subscribe([&](Gleam::MouseButtonPressedEvent e)
-    {
-        if (e.GetMouseButton() == Gleam::MouseButton::Right)
-        {
-            if (mIsFocused)
-            {
-                auto inputSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::InputSystem>();
-                mCursorVisible ? inputSystem->HideCursor() : inputSystem->ShowCursor();
-                mCursorVisible = !mCursorVisible;
-            }
-        }
-    });
 }
 
 void WorldViewport::Update()
 {
-	mCameraController->Enabled = mIsFocused;
     if (mViewportSizeChanged)
     {
 		Resize(mEditWorld->GetEntityManager(), mViewportSize);
-    }
-    
-    Gleam::TextureDescriptor descriptor;
-    descriptor.name = "Editor::Backbuffer";
-    descriptor.size = mViewportSize;
-    descriptor.usage = Gleam::TextureUsage_Attachment | Gleam::TextureUsage_Sampled;
-    Gleam::Globals::Engine->GetSubsystem<Gleam::RenderSystem>()->SetBackbuffer(descriptor);
+	}
 }
 
 void WorldViewport::Render(Gleam::ImGuiRenderer* imgui)
@@ -75,7 +57,17 @@ void WorldViewport::Render(Gleam::ImGuiRenderer* imgui)
 		}
 		
 		ImGui::Image(Gleam::ImGuiBackend::GetImTextureIDForTexture(passData.sceneTarget), ImVec2(sceneRTsize.width, sceneRTsize.height), ImVec2(0.0f, 0.0f), ImVec2(1.0f, 1.0f));
-		mIsFocused = ImGui::IsWindowFocused();
+
+		bool isFocused = ImGui::IsWindowFocused();
+		mCameraController->Enabled = isFocused;
+
+		auto ctx = ImGui::GetCurrentContext();
+		if (isFocused && ctx->IO.MouseClicked[ImGuiMouseButton_Right])
+		{
+			auto inputSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::InputSystem>();
+			mCursorVisible ? inputSystem->HideCursor() : inputSystem->ShowCursor();
+			mCursorVisible = !mCursorVisible;
+		}
 
 		if (ImGui::BeginDragDropTarget())
 		{
@@ -104,6 +96,4 @@ void WorldViewport::Resize(Gleam::EntityManager& entityManager, const Gleam::Siz
 
 	auto& camera = entityManager.GetComponent<Gleam::Camera>(mCamera);
 	camera.SetViewport(mViewportSize);
-
-	Gleam::EventDispatcher<Gleam::RendererResizeEvent>::Publish(Gleam::RendererResizeEvent(mViewportSize));
 }

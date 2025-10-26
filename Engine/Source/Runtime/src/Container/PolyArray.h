@@ -6,14 +6,17 @@
 //
 
 #pragma once
-#include <typeindex>
+#include "Hash.h"
+#include "Pointer.h"
+
+#include <entt/core/type_info.hpp>
 
 namespace Gleam {
 
 template<class Base>
 class PolyArray
 {
-    using Container = HashMap<std::type_index, Scope<Base>>;
+    using Container = HashMap<uint32_t, Scope<Base>>;
     
 public:
     
@@ -131,7 +134,7 @@ public:
     template<class T, class...Args>
     T* emplace(Args&&... args) noexcept
     {
-        auto& ptr = data[typeid(T)] = CreateScope<T>(std::forward<Args>(args)...);
+        auto& ptr = data[entt::type_hash<T>().value()] = CreateScope<T>(std::forward<Args>(args)...);
         return static_cast<T*>(ptr.get());
     }
     
@@ -143,13 +146,13 @@ public:
     template<class T>
     size_t erase()
     {
-        return data.erase(typeid(T));
+        return data.erase(entt::type_hash<T>().value());
     }
     
     template<class T>
     T* get() const
     {
-        auto it = data.find(typeid(T));
+        auto it = data.find(entt::type_hash<T>().value());
         if (it == data.end()) return nullptr;
         return static_cast<T*>(it->second.get());
     }
@@ -157,7 +160,7 @@ public:
     template<class T>
     bool contains() const
     {
-        return data.contains(typeid(T));
+        return data.find(entt::type_hash<T>().value()) != data.end();
     }
     
     size_t size() const

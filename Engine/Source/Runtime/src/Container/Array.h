@@ -1,24 +1,24 @@
 #pragma once
-#include <array>
-#include <vector>
+#include <Reflection/Macro.h>
+#include <EASTL/array.h>
+#include <EASTL/vector.h>
 
 namespace Gleam {
 
 template<typename T, size_t size>
 struct ArrayHelper
 {
-	typedef std::array<T, size> Type;
+	typedef eastl::array<T, size> Type;
 };
 
 template<typename T>
 struct ArrayHelper<T, 0>
 {
-	typedef std::vector<T> Type;
+	typedef eastl::vector<T> Type;
 };
 
 template<typename T, size_t size = 0>
 using TArray = typename ArrayHelper<T, size>::Type;
-
 
 namespace ArrayUtils {
 
@@ -43,3 +43,16 @@ static TArray<T>& Append(TArray<T>& m, const TArray<T>& n)
 } // namespace ArrayUtils
 
 } // namespace Gleam
+
+namespace Gleam::Reflection::External::eastl {
+
+template<typename T, typename Allocator = ::eastl::allocator>
+class vector {};
+
+template<>
+GCLASS(vector<uint8_t>, "0413C2C5-88CB-49B8-A3EA-9AD7505E51E6", Serializable)
+{
+
+};
+
+} // namespace Gleam::Reflection::External

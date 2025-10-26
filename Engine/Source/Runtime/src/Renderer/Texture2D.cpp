@@ -3,6 +3,7 @@
 
 #include "Core/Engine.h"
 #include "Core/Globals.h"
+
 #include "Renderer/RenderSystem.h"
 
 using namespace Gleam;
@@ -17,15 +18,15 @@ Texture2D::Texture2D(const Texture2DDescriptor& descriptor)
 	// Send texture data to buffers
 	if (descriptor.pixels.empty() == false)
 	{
-		renderSystem->GetUploadManager()->CommitUpload(mTexture, descriptor.pixels.data(), descriptor.pixels.size());
+		renderSystem->GetUploadManager()->Commit(mTexture, descriptor.pixels.data(), descriptor.pixels.size());
 	}
 }
 
-void Texture2D::Release()
+Texture2D::~Texture2D()
 {
 	static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
 	auto device = renderSystem->GetDevice();
-	device->ReleaseTexture(mTexture);
+	device->Dispose(mTexture);
 }
 
 ShaderResourceIndex Texture2D::GetResourceView() const

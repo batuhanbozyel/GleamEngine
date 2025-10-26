@@ -1,7 +1,8 @@
 #pragma once
-#include "UploadManager.h"
+#include "RenderSurface.h"
 #include "CommandBuffer.h"
 #include "RendererConfig.h"
+#include "ResourceReleaseQueue.h"
 #include "ResourceDescriptorHeap.h"
 
 namespace Gleam {
@@ -17,19 +18,9 @@ public:
 
     GLEAM_NONCOPYABLE(GraphicsDevice);
 
-    static Scope<GraphicsDevice> Create();
-
-    GraphicsDevice() = default;
+    GraphicsDevice(RenderSurface* surface, ResourceReleaseQueue* releaseQueue);
 
     virtual ~GraphicsDevice() = default;
-
-	void DestroyResources();
-
-	void DestroySizeDependentResources();
-
-	void DestroyPooledObjects();
-
-	void DestroyPooledObjects(uint32_t frameIndex);
 
     Heap CreateHeap(const HeapDescriptor& descriptor);
 
@@ -37,46 +28,24 @@ public:
 
     Shader CreateShader(const TString& entryPoint, ShaderStage stage);
 
-    void ReleaseHeap(const Heap& heap);
-
-	void ReleaseBuffer(const Buffer& buffer);
-
-    void ReleaseTexture(const Texture& texture);
+	GraphicsPipelineHandle CreateGraphicsPipeline(const GraphicsPipelineStateDescriptor& pipelineDesc);
 
     void Dispose(Heap& heap);
 
-    void Dispose(Buffer& buffer);
-
     void Dispose(Texture& texture);
 
-	Texture GetRenderSurface() const;
+	void Dispose(Shader& shader);
 
-	TextureFormat GetFormat() const;
+	void Dispose(GraphicsPipeline& pipeline);
 
-	uint32_t GetLastFrameIndex() const;
-
-	uint32_t GetFrameIndex() const;
-
-	uint32_t GetFramesInFlight() const;
-
-	const Size& GetDrawableSize() const;
+	const GraphicsPipeline& GetGraphicsPipeline(GraphicsPipelineHandle handle) const;
     
     MemoryRequirements QueryMemoryRequirements(const HeapDescriptor& descriptor) const;
-
-	using ObjectDeallocator = std::function<void()>;
-	void AddPooledObject(ObjectDeallocator&& deallocator)
-	{
-		mPooledObjects[mCurrentFrameIndex].push_back(deallocator);
-	}
     
 protected:
 
 	// Implemented by the backend
-	virtual void Present(const CommandBuffer* cmd) = 0;
-
 	virtual void Configure(const RendererConfig& config) = 0;
-
-	virtual void DestroyFrameObjects(uint32_t frameIndex) {}
     
     virtual ShaderResourceIndex CreateResourceView(const Buffer& buffer) = 0;
     
@@ -84,30 +53,23 @@ protected:
     
     virtual void ReleaseResourceView(ShaderResourceIndex view) = 0;
 
-	using ObjectPool = TArray<ObjectDeallocator>;
-	TArray<ObjectPool> mPooledObjects;
-
-    Deque<Heap> mFreeHeaps;
-
-    Deque<Texture> mFreeTextures;
+	virtual void ResetCommandPools(uint32_t frameIdx) {};
 
     TArray<Shader> mShaderCache;
 
-	uint32_t mMaxFramesInFlight = 3;
+	HashMap<TString, HashSet<PipelineHandle>> mShaderPipelineReferences;
 
-	uint32_t mCurrentFrameIndex = 0;
+	HashMap<GraphicsPipelineHandle, GraphicsPipeline> mGraphicsPipelineCache;
 
-	Size mSize = Size::zero;
-	
-	TextureFormat mFormat = TextureFormat::None;
+	RenderSurface* mSurface = nullptr;
+
+	ResourceReleaseQueue* mReleaseQueue = nullptr;
 
 private:
 
-    Heap AllocateHeap(const HeapDescriptor& descriptor);
-    
-    Texture AllocateTexture(const TextureDescriptor& descriptor);
-    
-    Shader GenerateShader(const TString& entryPoint, ShaderStage stage);
+	Shader CompileShader(const TString& entryPoint, ShaderStage stage);
+
+	GraphicsPipeline CompileGraphicsPipeline(const GraphicsPipelineStateDescriptor& pipelineDesc);
 
 };
 

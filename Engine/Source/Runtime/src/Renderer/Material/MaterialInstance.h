@@ -8,6 +8,7 @@
 #pragma once
 #include "IMaterial.h"
 #include "MaterialDescriptor.h"
+#include "Renderer/Shaders/ShaderInterop.h"
 
 namespace Gleam {
 
@@ -17,7 +18,7 @@ public:
 
     MaterialInstance(const MaterialInstanceDescriptor& descriptor);
 
-	virtual void Release() override;
+	~MaterialInstance();
     
 	void SetProperty(const TString& name, const MaterialPropertyValue& value);
 

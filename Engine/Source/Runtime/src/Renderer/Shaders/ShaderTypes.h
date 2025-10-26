@@ -3,11 +3,14 @@
 
 namespace Gleam {
 
+#ifndef __cplusplus
 struct InterleavedMeshVertex
 {
-    float3 normal;
-    float2 texCoord;
+	float3 normal;
+	float4 tangent;
+	float2 texCoord;
 };
+#endif
 
 struct DebugVertex
 {
@@ -29,11 +32,11 @@ struct DebugShaderResources
 
 struct MeshPassResources
 {
+	float4x4 modelMatrix;
+
 	BufferResourceView positionBuffer;
 	BufferResourceView interleavedBuffer;
     BufferResourceView materialBuffer;
-
-	float4x4 modelMatrix;
 
 	uint32_t baseVertex;
 	uint32_t materialID;
@@ -41,7 +44,7 @@ struct MeshPassResources
 
 struct TonemapUniforms
 {
-	Texture2DResourceView<float4> sceneRT;
+	Texture2DResourceView<float4> sceneColor;
 };
 
 struct SurfaceInput

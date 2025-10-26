@@ -1,4 +1,10 @@
 #pragma once
+#include "Core/Macro.h"
+#include "IO/Log.h"
+
+#include <cmath>
+#include <limits>
+#include <algorithm>
 
 namespace Gleam::Math {
 

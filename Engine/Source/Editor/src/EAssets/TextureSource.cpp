@@ -1,37 +1,63 @@
-#include "Gleam.h"
 #include "TextureSource.h"
 #include "Bakers/TextureBaker.h"
+
+#include "Gleam.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
 using namespace GEditor;
 
-bool TextureSource::Import(const Gleam::Filesystem::Path& path, const ImportSettings& settings)
+bool TextureSource::Import(const Gleam::Path& path, const ImportSettings& settings)
 {
 	RawTexture texture;
-	stbi_info(path.string().c_str(), &texture.width, &texture.height, &texture.channels);
+	stbi_info(path.String().c_str(), &texture.width, &texture.height, &texture.channels);
 	
 	if (texture.channels == 3)
 	{
 		texture.channels = 4;
 	}
-	texture.pixels = stbi_load(path.string().c_str(), &texture.width, &texture.height, nullptr, texture.channels);
 	
-	Gleam::TextureFormat format = [](int channels)
+	Gleam::TextureFormat format;
+	if (settings.hdr)
 	{
-		switch (channels)
+		// TODO: convert to half precision
+		texture.pixels = stbi_loadf(path.String().c_str(), &texture.width, &texture.height, nullptr, texture.channels);
+		switch (texture.channels)
 		{
 			case 1:
-				return Gleam::TextureFormat::R8_UNorm;
+				format = Gleam::TextureFormat::R32_SFloat;
+				break;
 			case 2:
-				return Gleam::TextureFormat::R8G8_UNorm;
+				format = Gleam::TextureFormat::R32G32_SFloat;
+				break;
 			case 4:
-				return Gleam::TextureFormat::R8G8B8A8_UNorm;
+				format = Gleam::TextureFormat::R32G32B32A32_SFloat;
+				break;
 			default:
-				return Gleam::TextureFormat::None;
+				format = Gleam::TextureFormat::None;
+				break;
+		}		
+	}
+	else
+	{
+		texture.pixels = stbi_load(path.String().c_str(), &texture.width, &texture.height, nullptr, texture.channels);
+		switch (texture.channels)
+		{
+			case 1:
+				format = Gleam::TextureFormat::R8_UNorm;
+				break;
+			case 2:
+				format = Gleam::TextureFormat::R8G8_UNorm;
+				break;
+			case 4:
+				format = settings.colorSpace == TextureColorSpace::sRGB ? Gleam::TextureFormat::R8G8B8A8_SRGB : Gleam::TextureFormat::R8G8B8A8_UNorm;
+				break;
+			default:
+				format = Gleam::TextureFormat::None;
+				break;
 		}
-	}(texture.channels);
+	}
 	
 	if (texture.pixels == nullptr)
 	{
@@ -48,7 +74,7 @@ bool TextureSource::Import(const Gleam::Filesystem::Path& path, const ImportSett
 	
 	Gleam::Texture2DDescriptor descriptor;
 	descriptor.format = format;
-	descriptor.name = path.stem().string();
+	descriptor.name = path.Stem();
 	descriptor.size.width = static_cast<float>(texture.width);
 	descriptor.size.height = static_cast<float>(texture.height);
 	descriptor.dimension = Gleam::TextureDimension::Texture2D;

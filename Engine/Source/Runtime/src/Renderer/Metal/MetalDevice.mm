@@ -2,21 +2,117 @@
 
 #ifdef USE_METAL_RENDERER
 #include "MetalDevice.h"
-#include "MetalPipelineStateManager.h"
+#include "MetalUtils.h"
+#include "MetalSwapchain.h"
 
-#include "Core/Engine.h"
 #include "Core/Globals.h"
-#include "Core/WindowSystem.h"
-#include "Core/Events/RendererEvent.h"
+#include "Renderer/SamplerState.h"
+#include "Renderer/RenderSystem.h"
 
 #define IR_PRIVATE_IMPLEMENTATION
+#include <metal_irconverter/metal_irconverter.h>
 #include <metal_irconverter_runtime/metal_irconverter_runtime.h>
 
 using namespace Gleam;
 
-Scope<GraphicsDevice> GraphicsDevice::Create()
+@interface MetalGraphicsPipelineImpl : NSObject<MetalGraphicsPipeline>
+
+@property (nonatomic, strong) id<MTLRenderPipelineState> renderState;
+@property (nonatomic, strong) id<MTLDepthStencilState> depthStencilState;
+@property (nonatomic, assign) MTLPrimitiveType topology;
+
+@end
+
+@implementation MetalGraphicsPipelineImpl
+
+- (instancetype)init {
+    self = [super init];
+    if (self) {
+        _renderState = nil;
+        _depthStencilState = nil;
+        _topology = MTLPrimitiveTypeTriangle;
+    }
+    return self;
+}
+
+@end
+
+void RenderSystem::InitializeBackend()
 {
-    return CreateScope<MetalDevice>();
+	mSwapchain = CreateScope<MetalSwapchain>();
+    mReleaseQueue = CreateScope<ResourceReleaseQueue>(mSwapchain->GetFramesInFlight());
+    
+    mDevice = CreateScope<MetalDevice>(mSwapchain.get(), mReleaseQueue.get());
+	mUploadManager = CreateScope<UploadManager>(mDevice.get());
+	mResourcePool = CreateScope<RenderResourcePool>(mDevice.get(), mSwapchain.get(), mReleaseQueue.get());
+}
+
+static IRStaticSamplerDescriptor CreateStaticSampler(const SamplerState& samplerState)
+{
+    IRStaticSamplerDescriptor sampler{};
+    sampler.MipLODBias = 0;
+    sampler.MaxAnisotropy = 1;
+    sampler.MinLOD = 0.0f;
+    sampler.MaxLOD = 16.0f;
+    sampler.RegisterSpace = 0;
+    sampler.ShaderVisibility = IRShaderVisibilityAll;
+    sampler.ComparisonFunc = IRComparisonFunctionAlways;
+    sampler.BorderColor = IRStaticBorderColorOpaqueBlack;
+    
+    switch (samplerState.filterMode)
+    {
+        case FilterMode::Point:
+        {
+            sampler.Filter = IRFilterMinMagMipPoint;
+            break;
+        }
+        case FilterMode::Bilinear:
+        {
+            sampler.Filter = IRFilterMinMagLinearMipPoint;
+            break;
+        }
+        case FilterMode::Trilinear:
+        {
+            sampler.Filter = IRFilterMinMagMipLinear;
+            break;
+        }
+        default: GLEAM_ASSERT(false, "Metal: Filter mode is not supported!") break;
+    }
+
+    switch (samplerState.wrapMode)
+    {
+        case WrapMode::Repeat:
+        {
+            sampler.AddressU = IRTextureAddressModeWrap;
+            sampler.AddressV = IRTextureAddressModeWrap;
+            sampler.AddressW = IRTextureAddressModeWrap;
+            break;
+        }
+        case WrapMode::Clamp:
+        {
+            sampler.AddressU = IRTextureAddressModeClamp;
+            sampler.AddressV = IRTextureAddressModeClamp;
+            sampler.AddressW = IRTextureAddressModeClamp;
+            break;
+        }
+        case WrapMode::Mirror:
+        {
+            sampler.AddressU = IRTextureAddressModeMirror;
+            sampler.AddressV = IRTextureAddressModeMirror;
+            sampler.AddressW = IRTextureAddressModeMirror;
+            break;
+        }
+        case WrapMode::MirrorOnce:
+        {
+            sampler.AddressU = IRTextureAddressModeMirrorOnce;
+            sampler.AddressV = IRTextureAddressModeMirrorOnce;
+            sampler.AddressW = IRTextureAddressModeMirrorOnce;
+            break;
+        }
+        default: GLEAM_ASSERT(false, "Metal: Wrap mode is not supported!") break;
+    }
+
+    return sampler;
 }
 
 MemoryRequirements GraphicsDevice::QueryMemoryRequirements(const HeapDescriptor& descriptor) const
@@ -31,7 +127,7 @@ MemoryRequirements GraphicsDevice::QueryMemoryRequirements(const HeapDescriptor&
 	};
 }
 
-Heap GraphicsDevice::AllocateHeap(const HeapDescriptor& descriptor)
+Heap GraphicsDevice::CreateHeap(const HeapDescriptor& descriptor)
 {
     Heap heap(descriptor);
     heap.mDevice = this;
@@ -49,10 +145,11 @@ Heap GraphicsDevice::AllocateHeap(const HeapDescriptor& descriptor)
     heap.mAlignment = sizeAndAlign.align;
     
     [heap.mHandle setLabel:TO_NSSTRING(descriptor.name.c_str())];
+    [static_cast<MetalDevice*>(this)->GetResidencySet() addAllocation:heap.mHandle];
     return heap;
 }
 
-Texture GraphicsDevice::AllocateTexture(const TextureDescriptor& descriptor)
+Texture GraphicsDevice::CreateTexture(const TextureDescriptor& descriptor)
 {
     Texture texture(descriptor);
     
@@ -81,28 +178,12 @@ Texture GraphicsDevice::AllocateTexture(const TextureDescriptor& descriptor)
                                                         slices:NSMakeRange(0, 1)];
     [baseTexture setLabel:TO_NSSTRING(descriptor.name.c_str())];
     [texture.mView setLabel:TO_NSSTRING(descriptor.name.c_str())];
-    
-    if (descriptor.sampleCount > 1)
-    {
-        MTLTextureDescriptor* msaaTextureDesc = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:baseTexture.pixelFormat width:descriptor.size.width height:descriptor.size.height mipmapped:false];
-        msaaTextureDesc.textureType = MTLTextureType2DMultisample;
-        msaaTextureDesc.mipmapLevelCount = 1;
-        msaaTextureDesc.sampleCount = descriptor.sampleCount;
-        msaaTextureDesc.usage = MTLTextureUsageRenderTarget | MTLTextureUsageShaderWrite;
-        msaaTextureDesc.storageMode = MTLStorageModePrivate; // TODO: Switch to memoryless msaa render targets when Tile shading is supported
-        texture.mMultisampleHandle = [mHandle newTextureWithDescriptor:msaaTextureDesc];
-        texture.mMultisampleView = texture.mMultisampleHandle;
-        
-        TStringStream multisampleName;
-        multisampleName << descriptor.name << "::MSAA";
-        [texture.mMultisampleHandle setLabel:TO_NSSTRING(multisampleName.str().data())];
-        [texture.mMultisampleView setLabel:TO_NSSTRING(multisampleName.str().data())];
-    }
+    [static_cast<MetalDevice*>(this)->GetResidencySet() addAllocation:texture.mHandle];
     texture.mResourceView = Utils::IsDepthFormat(descriptor.format) ? InvalidResourceIndex : CreateResourceView(texture);
     return texture;
 }
 
-Shader GraphicsDevice::GenerateShader(const TString& entryPoint, ShaderStage stage)
+Shader GraphicsDevice::CompileShader(const TString& entryPoint, ShaderStage stage)
 {
     Shader shader(entryPoint, stage);
     auto shaderPath = Globals::BuiltinAssetsDirectory/"Shaders";
@@ -113,7 +194,7 @@ Shader GraphicsDevice::GenerateShader(const TString& entryPoint, ShaderStage sta
     auto compiler = IRCompilerCreate();
     IRCompilerSetEntryPointName(compiler, entryPoint.data());
     IRCompilerSetMinimumDeploymentTarget(compiler, IROperatingSystem_macOS, "14.0");
-    IRCompilerSetGlobalRootSignature(compiler, MetalPipelineStateManager::GetGlobalRootSignature());
+    IRCompilerSetGlobalRootSignature(compiler, static_cast<MetalDevice*>(this)->GetGlobalRootSignature());
     
     IRError* compileError = nullptr;
     auto metalIR = IRCompilerAllocCompileAndLink(compiler, entryPoint.c_str(), dxil, &compileError);
@@ -150,88 +231,184 @@ Shader GraphicsDevice::GenerateShader(const TString& entryPoint, ShaderStage sta
     return shader;
 }
 
-void GraphicsDevice::Dispose(Heap& heap)
+GraphicsPipeline GraphicsDevice::CompileGraphicsPipeline(const GraphicsPipelineStateDescriptor& pipelineDesc)
 {
-    heap.mHandle = nil;
+    GraphicsPipeline pipeline(pipelineDesc);
+    pipeline.mHandle = [[MetalGraphicsPipelineImpl alloc] init];
+    
+    id<MetalGraphicsPipeline> mtlPipeline = pipeline.mHandle;
+    auto vertexShader = CreateShader(pipelineDesc.vertexEntry, ShaderStage::Vertex);
+    auto fragmentShader = CreateShader(pipelineDesc.fragmentEntry, ShaderStage::Fragment);
+    
+    MTLRenderPipelineDescriptor* pipelineDescriptor = [MTLRenderPipelineDescriptor new];
+    pipelineDescriptor.rasterSampleCount = 1;
+    pipelineDescriptor.vertexFunction = vertexShader.GetHandle();
+    pipelineDescriptor.fragmentFunction = fragmentShader.GetHandle();
+    pipelineDescriptor.alphaToCoverageEnabled = pipelineDesc.alphaToCoverage;
+    pipelineDescriptor.inputPrimitiveTopology = PrimitiveTopologyToMTLPrimitiveTopologyClass(pipelineDesc.topology);
+    for (uint32_t i = 0; i < pipelineDesc.colorFormats.size(); i++)
+    {
+        pipelineDescriptor.colorAttachments[i].pixelFormat = TextureFormatToMTLPixelFormat(pipelineDesc.colorFormats[i]);
+        pipelineDescriptor.colorAttachments[i].blendingEnabled = pipelineDesc.blendState.enabled;
+        pipelineDescriptor.colorAttachments[i].sourceRGBBlendFactor = BlendModeToMTLBlendFactor(pipelineDesc.blendState.sourceColorBlendMode);
+        pipelineDescriptor.colorAttachments[i].destinationRGBBlendFactor = BlendModeToMTLBlendFactor(pipelineDesc.blendState.destinationColorBlendMode);
+        pipelineDescriptor.colorAttachments[i].sourceAlphaBlendFactor = BlendModeToMTLBlendFactor(pipelineDesc.blendState.sourceAlphaBlendMode);
+        pipelineDescriptor.colorAttachments[i].destinationAlphaBlendFactor = BlendModeToMTLBlendFactor(pipelineDesc.blendState.destinationAlphaBlendMode);
+        pipelineDescriptor.colorAttachments[i].rgbBlendOperation = BlendOpToMTLBlendOperation(pipelineDesc.blendState.colorBlendOperation);
+        pipelineDescriptor.colorAttachments[i].alphaBlendOperation = BlendOpToMTLBlendOperation(pipelineDesc.blendState.alphaBlendOperation);
+        pipelineDescriptor.colorAttachments[i].writeMask = ColorWriteMaskToMTLColorWriteMask(pipelineDesc.blendState.writeMask);
+    }
+
+    if (Utils::IsDepthFormat(pipelineDesc.depthFormat))
+    {
+        MTLPixelFormat format = TextureFormatToMTLPixelFormat(pipelineDesc.depthFormat);
+        pipelineDescriptor.depthAttachmentPixelFormat = format;
+        
+        MTLDepthStencilDescriptor* depthStencilDesc = [MTLDepthStencilDescriptor new];
+        depthStencilDesc.depthWriteEnabled = pipelineDesc.depthState.writeEnabled;
+        depthStencilDesc.depthCompareFunction = CompareFunctionToMTLCompareFunction(pipelineDesc.depthState.compareFunction);
+        
+        if (pipelineDesc.stencilState.enabled)
+        {
+            pipelineDescriptor.stencilAttachmentPixelFormat = format;
+            
+            MTLStencilDescriptor* stencilDesc = [MTLStencilDescriptor new];
+            stencilDesc.readMask = pipelineDesc.stencilState.readMask;
+            stencilDesc.writeMask = pipelineDesc.stencilState.writeMask;
+            stencilDesc.stencilCompareFunction = CompareFunctionToMTLCompareFunction(pipelineDesc.stencilState.compareFunction);
+            stencilDesc.depthFailureOperation = StencilOpToMTLStencilOperation(pipelineDesc.stencilState.depthFailOperation);
+            stencilDesc.stencilFailureOperation = StencilOpToMTLStencilOperation(pipelineDesc.stencilState.depthFailOperation);
+            stencilDesc.depthStencilPassOperation = StencilOpToMTLStencilOperation(pipelineDesc.stencilState.passOperation);
+            
+            depthStencilDesc.backFaceStencil = stencilDesc;
+            depthStencilDesc.frontFaceStencil = stencilDesc;
+        }
+        mtlPipeline.depthStencilState = [mHandle newDepthStencilStateWithDescriptor:depthStencilDesc];
+        GLEAM_ASSERT(mtlPipeline.depthStencilState, "Metal: Graphics Pipeline depth state creation failed.");
+    }
+    
+    __autoreleasing NSError* error = nil;
+    mtlPipeline.renderState = [mHandle newRenderPipelineStateWithDescriptor:pipelineDescriptor error:&error];
+    mtlPipeline.topology = PrimitiveTopologyToMTLPrimitiveType(pipelineDesc.topology);
+    GLEAM_ASSERT(mtlPipeline.renderState, "Metal: Graphics Pipeline render state creation failed.");
+    return pipeline;
 }
 
-void GraphicsDevice::Dispose(Buffer& buffer)
+void GraphicsDevice::Dispose(Heap& heap)
 {
-	ReleaseResourceView(buffer.mResourceView);
-    buffer.mHandle = nil;
+    [static_cast<MetalDevice*>(this)->GetResidencySet() removeAllocation:heap.mHandle];
+    heap.mHandle = nil;
 }
 
 void GraphicsDevice::Dispose(Texture& texture)
 {
+    [static_cast<MetalDevice*>(this)->GetResidencySet() removeAllocation:texture.mHandle];
     ReleaseResourceView(texture.mResourceView);
     texture.mHandle = nil;
     texture.mView = nil;
-    
-    if (texture.GetDescriptor().sampleCount > 1)
-    {
-        texture.mMultisampleHandle = nil;
-        texture.mMultisampleView = nil;
-    }
 }
 
-MetalDevice::MetalDevice()
+void GraphicsDevice::Dispose(Shader& shader)
+{
+	shader.mHandle = nil;
+}
+
+void GraphicsDevice::Dispose(GraphicsPipeline& pipeline)
+{
+    pipeline.mHandle = nil;
+}
+
+MetalDevice::MetalDevice(RenderSurface* surface, ResourceReleaseQueue* releaseQueue)
+    : GraphicsDevice(surface, releaseQueue)
 {
     // init MTLDevice
     mHandle = MTLCreateSystemDefaultDevice();
     GLEAM_ASSERT(mHandle);
-
-    // init CAMetalLayer
-    auto windowSystem = Globals::Engine->GetSubsystem<WindowSystem>();
     
-    // Create surface
-    mSurface = SDL_Metal_CreateView(windowSystem->GetSDLWindow());
-    GLEAM_ASSERT(mSurface, "Metal: Surface creation failed!");
+    // init MTLResidencySet
+    __autoreleasing NSError* error = nil;
+    MTLResidencySetDescriptor* residencySetDesc = [MTLResidencySetDescriptor new];
+    residencySetDesc.initialCapacity = 1024;
+    mResidencySet = [mHandle newResidencySetWithDescriptor:residencySetDesc error:&error];
+    GLEAM_ASSERT(mResidencySet, "Metal: Residency set creation failed.");
     
-    mSwapchain = (__bridge CAMetalLayer*)SDL_Metal_GetLayer(mSurface);
-    mSwapchain.name = [NSString stringWithCString:Globals::ProjectName.c_str() encoding:NSASCIIStringEncoding];
-    mSwapchain.device = mHandle;
-    mSwapchain.framebufferOnly = NO;
-    mSwapchain.opaque = YES;
-    
-    const auto& resolution = Globals::Engine->GetResolution();
-    mSize = resolution * mSwapchain.contentsScale;
-    mSwapchain.drawableSize = CGSizeMake(mSize.width, mSize.height);
-    mFormat = MTLPixelFormatToTextureFormat(mSwapchain.pixelFormat);
-    
-    EventDispatcher<WindowResizeEvent>::Subscribe([this](const WindowResizeEvent& e)
-    {
-        mSize.width = e.GetWidth() * mSwapchain.contentsScale;
-        mSize.height = e.GetHeight() * mSwapchain.contentsScale;
-        mSwapchain.drawableSize = CGSizeMake(mSize.width, mSize.height);
-        EventDispatcher<RendererResizeEvent>::Publish(RendererResizeEvent(mSize));
-    });
-    
-    mImageAcquireSemaphore = dispatch_semaphore_create(mMaxFramesInFlight);
-
     // init MTLCommandQueue
     mCommandPool = [mHandle newCommandQueue];
+    [mCommandPool addResidencySet:mResidencySet];
     
     // create descriptor heap
     mCbvSrvUavHeap = CreateDescriptorHeap(CBV_SRV_HEAP_SIZE);
 
-    MetalPipelineStateManager::Init(this);
+    auto samplerSates = SamplerState::GetStaticSamplers();
+    TArray<IRStaticSamplerDescriptor, samplerSates.size()> staticSamplerDescs{};
+    for (uint32_t i = 0; i < samplerSates.size(); i++)
+    {
+        staticSamplerDescs[i] = CreateStaticSampler(samplerSates[i]);
+        staticSamplerDescs[i].ShaderRegister = i;
+    }
+    
+    // root signature
+    constexpr uint32_t NumRootParams = PUSH_CONSTANT_SLOT + 1;
+    IRRootParameter1 rootSigParams[NumRootParams];
+    for (uint32_t i = 0; i < PUSH_CONSTANT_SLOT; i++)
+    {
+        rootSigParams[i] = {
+          .ParameterType = IRRootParameterTypeCBV,
+          .Descriptor = {
+              .ShaderRegister = i,
+              .RegisterSpace = 0,
+              .Flags = IRRootDescriptorFlagDataVolatile
+          },
+          .ShaderVisibility = IRShaderVisibilityAll
+        };
+    }
+    // Push constant
+    rootSigParams[PUSH_CONSTANT_SLOT] = {
+      .ParameterType = IRRootParameterType32BitConstants,
+      .Constants = {
+          .ShaderRegister = PUSH_CONSTANT_REGISTER,
+          .RegisterSpace = 0,
+          .Num32BitValues = PUSH_CONSTANT_SIZE / sizeof(uint32_t)
+      },
+      .ShaderVisibility = IRShaderVisibilityAll
+    };
+    
+    IRVersionedRootSignatureDescriptor rootSignature = {};
+    rootSignature.version = IRRootSignatureVersion_1_1;
+    rootSignature.desc_1_1.Flags = IRRootSignatureFlags(IRRootSignatureFlagDenyHullShaderRootAccess
+                                                        | IRRootSignatureFlagDenyDomainShaderRootAccess
+                                                        | IRRootSignatureFlagDenyGeometryShaderRootAccess
+                                                        | IRRootSignatureFlagCBVSRVUAVHeapDirectlyIndexed);
+
+    rootSignature.desc_1_1.NumStaticSamplers = staticSamplerDescs.size();
+    rootSignature.desc_1_1.pStaticSamplers = staticSamplerDescs.data();
+    rootSignature.desc_1_1.pParameters = rootSigParams;
+    rootSignature.desc_1_1.NumParameters = NumRootParams;
+    
+    IRError* pRootSigError = nullptr;
+    mRootSignature = IRRootSignatureCreateFromDescriptor(&rootSignature, &pRootSigError);
+    
+    if (pRootSigError)
+    {
+        char* error_msg = (char*)IRErrorGetPayload(pRootSigError);
+        GLEAM_CORE_ERROR("Metal: Root signature error: {0}\n", error_msg);
+        IRErrorDestroy(pRootSigError);
+    }
 
     GLEAM_CORE_INFO("Metal: Graphics device created.");
 }
 
 MetalDevice::~MetalDevice()
 {
-    // Destroy swapchain
-    mImageAcquireSemaphore = nil;
-    mDrawable = nil;
-    mHandle = nil;
-    mSurface = nil;
-
     mShaderCache.clear();
-    MetalPipelineStateManager::Destroy();
+    IRRootSignatureDestroy(mRootSignature);
     
     // Destroy descriptor heap
     mCbvSrvUavHeap.handle = nil;
+    
+    // Destroy residency set
+    [mCommandPool removeResidencySet:mResidencySet];
+    mResidencySet = nil;
 
     // Destroy command pool
     mCommandPool = nil;
@@ -244,59 +421,8 @@ MetalDevice::~MetalDevice()
 
 void MetalDevice::Configure(const RendererConfig& config)
 {
-#ifdef PLATFORM_MACOS
-    mSwapchain.displaySyncEnabled = config.vsync ? YES : NO;
-#endif
-    
-    auto oldFramesInFlight = mMaxFramesInFlight;
-    if (mSwapchain.maximumDrawableCount >= 3 && config.tripleBufferingEnabled)
-    {
-        mMaxFramesInFlight = 3;
-        GLEAM_CORE_TRACE("Metal: Triple buffering enabled.");
-    }
-    else if (mSwapchain.maximumDrawableCount >= 2)
-    {
-        mMaxFramesInFlight = 2;
-        GLEAM_CORE_TRACE("Metal: Double buffering enabled.");
-    }
-    else
-    {
-        mMaxFramesInFlight = 1;
-        GLEAM_ASSERT(false, "Metal: Neither triple nor double buffering is available!");
-    }
-    
-    if (oldFramesInFlight != mMaxFramesInFlight)
-    {
-        DestroyPooledObjects();
-    }
-    mPooledObjects.resize(mMaxFramesInFlight);
-}
-
-id<CAMetalDrawable> MetalDevice::AcquireNextDrawable()
-{
-    if (mDrawable == nil)
-    {
-        dispatch_semaphore_wait(mImageAcquireSemaphore, DISPATCH_TIME_FOREVER);
-        mDrawable = [mSwapchain nextDrawable];
-    }
-    return mDrawable;
-}
-
-void MetalDevice::Present(const CommandBuffer* cmd)
-{
-    id<MTLCommandBuffer> commandBuffer = cmd->GetHandle();
-    [commandBuffer addCompletedHandler:^(id<MTLCommandBuffer> commandBuffer)
-    {
-        dispatch_semaphore_signal(mImageAcquireSemaphore);
-    }];
-    
-    [commandBuffer presentDrawable:mDrawable];
-    cmd->End();
-	cmd->Commit();
-    
-    mCurrentFrameIndex = (mCurrentFrameIndex + 1) % mMaxFramesInFlight;
-    
-    mDrawable = nil;
+    auto swapchain = static_cast<MetalSwapchain*>(mSurface);
+    swapchain->Configure(this, config);
 }
 
 ShaderResourceIndex MetalDevice::CreateResourceView(const Buffer& buffer)
@@ -311,7 +437,7 @@ ShaderResourceIndex MetalDevice::CreateResourceView(const Texture& texture)
 {
     auto index = mCbvSrvUavHeap.heap.Allocate();
     auto descriptorTable = static_cast<IRDescriptorTableEntry*>([mCbvSrvUavHeap.handle contents]);
-    IRDescriptorTableSetTexture(descriptorTable + index.data, texture.GetView(), 0.0f, 0);
+    IRDescriptorTableSetTexture(descriptorTable + index.data, texture.GetRenderTargetView(), 0.0f, 0);
     return index;
 }
 
@@ -341,6 +467,28 @@ id<MTLBuffer> MetalDevice::GetCbvSrvUavHeap() const
 id<MTLCommandQueue> MetalDevice::GetCommandPool() const
 {
     return mCommandPool;
+}
+
+id<MTLResidencySet> MetalDevice::GetResidencySet() const
+{
+    return mResidencySet;
+}
+
+id<MTLCommandBuffer> MetalDevice::AllocateCommandBuffer() const
+{
+    [mResidencySet commit];
+#ifdef GDEBUG
+    MTLCommandBufferDescriptor* descriptor = [MTLCommandBufferDescriptor new];
+    descriptor.errorOptions = MTLCommandBufferErrorOptionEncoderExecutionStatus;
+    return [mCommandPool commandBufferWithDescriptor:descriptor];
+#else
+    return [mCommandPool commandBuffer];
+#endif
+}
+
+IRRootSignature* MetalDevice::GetGlobalRootSignature() const
+{
+    return mRootSignature;
 }
 
 #endif

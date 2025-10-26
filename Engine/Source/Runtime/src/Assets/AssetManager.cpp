@@ -2,6 +2,8 @@
 #include "AssetManager.h"
 #include "Core/Engine.h"
 #include "Core/Globals.h"
+
+#include "IO/Log.h"
 #include "IO/FileWatcher.h"
 
 #include "World/World.h"
@@ -20,49 +22,49 @@ void AssetManager::Initialize(Application* app)
 	RegisterMetaAsset<Material, MaterialDescriptor>();
 	RegisterMetaAsset<Texture2D, Texture2DDescriptor>();
 	RegisterMetaAsset<MaterialInstance, MaterialInstanceDescriptor>();
-	
+
 	Filesystem::ForEach(Globals::ProjectContentDirectory, [this](const auto& entry)
 	{
-		if (entry.extension() == Asset::Extension() ||
-			entry.extension() == Prefab::Extension() ||
-			entry.extension() == World::Extension())
+		if (entry.Extension() == Asset::Extension() ||
+			entry.Extension() == Prefab::Extension() ||
+			entry.Extension() == World::Extension())
 		{
 			EmplaceAssetPath(entry);
 		}
 	}, true);
 
-    auto fileWatcher = Globals::Engine->GetSubsystem<FileWatcher>();
-    fileWatcher->AddWatch(Globals::ProjectContentDirectory, [this](const Filesystem::Path& path, FileWatchEvent event)
-    {
-        if (path.extension() != Asset::Extension() ||
-			path.extension() != Prefab::Extension() ||
-			path.extension() != World::Extension())
-        {
-            return;
-        }
-        
+	auto fileWatcher = Globals::Engine->GetSubsystem<FileWatcher>();
+	fileWatcher->AddWatch(Globals::ProjectContentDirectory, [this](const Path& path, FileWatchEvent event)
+	{
+		if (path.Extension() != Asset::Extension() &&
+			path.Extension() != Prefab::Extension() &&
+			path.Extension() != World::Extension())
+		{
+			return;
+		}
+
 		auto relPath = Filesystem::Relative(path, Globals::ProjectContentDirectory);
 		std::lock_guard<std::mutex> lock(mMutex);
-        switch (event)
-        {
-            case FileWatchEvent::Added:
-            {
+		switch (event)
+		{
+			case FileWatchEvent::Added:
+			{
 				EmplaceAssetPath(relPath);
-                break;
-            }
-            case FileWatchEvent::Removed:
-            {
-                auto it = std::find_if(mAssetPaths.begin(), mAssetPaths.end(), [&](auto pair)
-                {
+				break;
+			}
+			case FileWatchEvent::Removed:
+			{
+				auto it = std::find_if(mAssetPaths.begin(), mAssetPaths.end(), [&](auto pair)
+				{
 					return pair.second == relPath;
-                });
-                
-                if (it != mAssetPaths.end())
-                {
+				});
+
+				if (it != mAssetPaths.end())
+				{
 					mAssetPaths.erase(it);
-                }
-                break;
-            }
+				}
+				break;
+			}
 			case FileWatchEvent::Modified:
 			{
 				auto it = std::find_if(mAssetPaths.begin(), mAssetPaths.end(), [&](auto pair)
@@ -76,26 +78,22 @@ void AssetManager::Initialize(Application* app)
 				}
 				break;
 			}
-            default: break;
-        }
-    });
+			default: break;
+		}
+	});
 }
 
 void AssetManager::Shutdown()
 {
-	for (auto& [ref, asset] : mAssetCache)
-	{
-		asset->Release();
-	}
 	mAssetCache.clear();
 	mAssetPaths.clear();
 }
 
-void AssetManager::EmplaceAssetPath(const Filesystem::Path& path)
+void AssetManager::EmplaceAssetPath(const Path& path)
 {
-	Guid guid = path.stem().string();
-	auto relPath = path.is_relative() ? path : Filesystem::Relative(path, Globals::ProjectContentDirectory);
-	
+	Guid guid = TString(path.Stem());
+	auto relPath = path.IsRelative() ? path : Filesystem::Relative(path, Globals::ProjectContentDirectory);
+
 	if (guid != Guid::InvalidGuid())
 	{
 		AssetReference assetRef = { .guid = guid };
@@ -103,7 +101,7 @@ void AssetManager::EmplaceAssetPath(const Filesystem::Path& path)
 	}
 }
 
-const Filesystem::Path& AssetManager::GetAssetPath(const AssetReference& ref) const
+const Path& AssetManager::GetAssetPath(const AssetReference& ref) const
 {
 	auto it = mAssetPaths.find(ref);
 	if (it != mAssetPaths.end())
@@ -113,6 +111,6 @@ const Filesystem::Path& AssetManager::GetAssetPath(const AssetReference& ref) co
 
 	GLEAM_CORE_ERROR("Asset could not located for GUID: {0}", ref.guid.ToString());
 	GLEAM_ASSERT(false);
-	static Filesystem::Path invalidPath;
+	static Path invalidPath;
 	return invalidPath;
 }

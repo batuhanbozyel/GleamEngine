@@ -1,5 +1,6 @@
 #pragma once
 #include "Event.h"
+#include "Math/Size.h"
 
 namespace Gleam {
 
@@ -8,6 +9,13 @@ class RendererDeviceLostEvent : public Event
 public:
 
 	RendererDeviceLostEvent() = default;
+
+	virtual TString ToString() const override
+	{
+		TStringStream ss;
+		ss << "RendererDeviceLostEvent";
+		return ss.str();
+	}
 
 };
 
@@ -20,7 +28,7 @@ public:
 
     const Size& GetSize() const { return mSize; }
 
-	TString ToString() const override
+	virtual TString ToString() const override
 	{
 		TStringStream ss;
 		ss << "RendererResizeEvent: " << mSize.width << ", " << mSize.height;

@@ -8,6 +8,9 @@
 #pragma once
 #include "IMaterial.h"
 #include "MaterialDescriptor.h"
+
+#include "Renderer/Heap.h"
+#include "Renderer/Buffer.h"
 #include "Renderer/ResourceDescriptorHeap.h"
 
 namespace Gleam {
@@ -20,21 +23,29 @@ public:
     
     Material(const MaterialDescriptor& descriptor);
 
+	~Material();
+
 	ShaderResourceIndex CreateInstance(const TArray<MaterialPropertyValue>& values);
-    
-	virtual void Release() override;
+
+	void DestroyInstance(ShaderResourceIndex& instance);
     
     const Buffer& GetBuffer() const;
     
     const TString& GetName() const;
 
 	uint32_t GetPipelineHash() const;
+
+	uint32_t GetInstanceCount() const;
     
 private:
     
     TString mName;
     
+	Heap mHeap;
+
     Buffer mBuffer;
+
+	size_t mInstanceSize = 0;
 
 	uint32_t mPipelineStateHash = 0;
 

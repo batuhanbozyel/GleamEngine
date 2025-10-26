@@ -12,7 +12,7 @@ float3 GetWorldNormal(MeshVertexOut IN)
 {
     if (Material.NormalTexture.IsValid())
     {
-        return normalize(2.0 * Material.NormalTexture.Sample(Sampler_Trilinear_Repeat, IN.uv).rgb - 1.0);
+        return normalize(Material.NormalTexture.Sample(Sampler_Trilinear_Repeat, IN.uv).rgb * 2.0 - 1.0);
     }
     return float3(0.0, 0.0, 1.0);
 }
@@ -32,7 +32,7 @@ float2 GetMetallicRoughness(MeshVertexOut IN)
     float2 metallicRoughness = float2(Material.Metallic, Material.Roughness);
     if (Material.MetallicRoughnessTexture.IsValid())
     {
-        metallicRoughness *= Material.MetallicRoughnessTexture.Sample(Sampler_Trilinear_Repeat, IN.uv).rg;
+        metallicRoughness *= Material.MetallicRoughnessTexture.Sample(Sampler_Trilinear_Repeat, IN.uv).bg;
     }
     return metallicRoughness;
 }

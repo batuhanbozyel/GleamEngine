@@ -24,21 +24,20 @@ public:
     {
         
     }
+
+	Texture(NativeGraphicsHandle handle, RenderTargetView rtv, const TextureDescriptor& descriptor)
+        : ShaderResource(handle)
+		, mView(rtv)
+		, mDescriptor(descriptor)
+		, mMipMapLevels(descriptor.useMipMap ? CalculateMipLevels(descriptor.size) : 1)
+    {
+        
+    }
     
-	NativeGraphicsResourceView GetView() const
+	RenderTargetView GetRenderTargetView() const
     {
         return mView;
     }
-
-	NativeGraphicsHandle GetMSAAHandle() const
-	{
-		return mMultisampleHandle;
-	}
-
-	NativeGraphicsResourceView GetMSAAView() const
-	{
-		return mMultisampleView;
-	}
     
     const TextureDescriptor& GetDescriptor() const
     {
@@ -58,12 +57,8 @@ public:
 private:
     
     uint32_t mMipMapLevels = 1;
+	RenderTargetView mView = {};
     TextureDescriptor mDescriptor;
-	NativeGraphicsResourceView mView = {};
-
-	// multisample
-	NativeGraphicsHandle mMultisampleHandle = nullptr;
-	NativeGraphicsResourceView mMultisampleView = {};
     
 };
 

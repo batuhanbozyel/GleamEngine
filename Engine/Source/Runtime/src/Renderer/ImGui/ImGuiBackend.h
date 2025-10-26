@@ -1,14 +1,21 @@
 #pragma once
-#include "../GraphicsDevice.h"
+#include "Core/EngineDefines.h"
+
 #include <imgui.h>
+#include <imgui_internal.h>
 
 namespace Gleam {
+
+class Texture;
+class RenderContext;
+class RenderSurface;
+class GraphicsDevice;
 
 class ImGuiBackend
 {
 public:
 
-	static void Init(GraphicsDevice* device);
+	static void Init(RenderContext& context);
 
 	static void Destroy();
 
@@ -19,6 +26,8 @@ public:
 	static ImTextureID GetImTextureIDForTexture(const Texture& texture);
     
 private:
+	
+	static inline RenderSurface* mSurface = nullptr;
     
     static inline GraphicsDevice* mDevice = nullptr;
 

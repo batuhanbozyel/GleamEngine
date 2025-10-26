@@ -1,4 +1,5 @@
 #pragma once
+#include "Core/EngineDefines.h"
 #include "Shaders/ShaderInterop.h"
 
 namespace Gleam {

@@ -1,22 +1,24 @@
 #pragma once
 #include "EngineConfig.h"
 #include "World/WorldConfig.h"
+#include "Container/String.h"
+#include "IO/Filesystem.h"
 
 namespace Gleam {
 
-struct Project
+GSTRUCT(Project, "13DAA9F7-712B-4D48-AB57-4F134F596D41", Serializable)
 {
+	GFIELD("5DECFB5F-1155-447B-A5E6-583A1E27D631", Serializable)
 	TString name;
+
+	GFIELD("D233B73D-A86B-468B-9011-B7C47B5C8E73", Serializable)
     Version version;
-	Filesystem::Path path;
+
+	GFIELD("73F7D807-9D15-4C0C-97C0-64CC0C1DB30A", Serializable)
+	Path path;
+
+	GFIELD("AD817DA9-4743-46D5-86A2-8F36FC82BBA6", Serializable)
 	WorldConfig worldConfig;
 };
 
 } // namespace Gleam
-
-GLEAM_TYPE(Gleam::Project, Guid("13DAA9F7-712B-4D48-AB57-4F134F596D41"))
-    GLEAM_FIELD(name, Serializable())
-    GLEAM_FIELD(version, Serializable())
-    GLEAM_FIELD(path, Serializable())
-    GLEAM_FIELD(worldConfig, Serializable())
-GLEAM_END

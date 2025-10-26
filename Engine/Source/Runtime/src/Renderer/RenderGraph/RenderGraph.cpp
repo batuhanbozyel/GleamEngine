@@ -1,12 +1,15 @@
 #include "gpch.h"
 #include "RenderGraph.h"
+#include "Renderer/Renderer.h"
+#include "Renderer/Swapchain.h"
 #include "Renderer/CommandBuffer.h"
 #include "Renderer/GraphicsDevice.h"
+#include "Renderer/RenderResourcePool.h"
 
 #if defined(USE_METAL_RENDERER)
 #import <Metal/Metal.h>
 #elif defined(USE_DIRECTX_RENDERER)
-#include "../DirectX/DirectXTransitionManager.h"
+#include "Renderer/DirectX/DirectXTransitionManager.h"
 #endif
 
 using namespace Gleam;
@@ -22,15 +25,13 @@ static AttachmentLoadAction GetLoadActionForRenderTexture(const RenderGraphTextu
 
 static AttachmentStoreAction GetStoreActionForRenderTexture(const RenderGraphTextureNode* node, RenderGraphPassNode* pass)
 {
-    if (node->texture.GetDescriptor().sampleCount > 1)
-    {
-        return node->lastModifier == pass ? AttachmentStoreAction::Resolve : AttachmentStoreAction::StoreAndResolve;
-    }
     return (node->lastReference == pass && !pass->hasSideEffect) ? AttachmentStoreAction::DontCare : AttachmentStoreAction::Store;
 }
 
-RenderGraph::RenderGraph(GraphicsDevice* device)
-    : mDevice(device)
+RenderGraph::RenderGraph(RenderContext& context)
+    : mDevice(context.device)
+	, mSurface(context.surface)
+	, mResourcePool(context.resourcePool)
 {
     
 }
@@ -146,12 +147,12 @@ void RenderGraph::Compile()
     }
 }
 
-void RenderGraph::Execute(const CommandBuffer* cmd)
+void RenderGraph::Execute(const CommandBuffer* cmd, SceneRenderingData& sceneData)
 {
     Heap heap;
     if (mHeapSize > 0)
     {
-        heap = mDevice->CreateHeap({ .name = "RenderGraph", .memoryType = MemoryType::GPU, .size = mHeapSize });
+        heap = mResourcePool->Allocate({ .name = "RenderGraph", .memoryType = MemoryType::GPU, .size = mHeapSize });
     }
 
     for (auto pass : mPassNodes)
@@ -168,7 +169,7 @@ void RenderGraph::Execute(const CommandBuffer* cmd)
                                         : (name << pass->name << "::" << descriptor.name);
                 descriptor.name = name.str();
                 
-                resource.node->buffer = heap.CreateBuffer(descriptor);
+                resource.node->buffer = heap.Allocate(descriptor);
                 GLEAM_ASSERT(resource.node->buffer.IsValid());
             }
         }
@@ -185,69 +186,78 @@ void RenderGraph::Execute(const CommandBuffer* cmd)
                                         : (name << pass->name << "::" << descriptor.name);
                 descriptor.name = name.str();
                 
-                resource.node->texture = mDevice->CreateTexture(descriptor);
+                resource.node->texture = mResourcePool->Allocate(descriptor);
                 GLEAM_ASSERT(resource.node->texture.IsValid());
             }
         }
-        
+
+		// Acquire backbuffer texture
+		for (uint32_t i = 0; i < pass->textureWrites.size(); i++)
+		{
+			auto& resource = pass->textureWrites[i];
+			if (resource == sceneData.backbuffer)
+			{
+				sceneData.backbuffer.node->texture = static_cast<Swapchain*>(mSurface)->AcquireNextDrawable();
+				resource.node->texture = sceneData.backbuffer.node->texture;
+			}
+		}
+
+	#if defined(USE_DIRECTX_RENDERER)
+		for (auto& resource : pass->textureReads)
+		{
+			DirectXTransitionManager::TransitionLayout(
+				static_cast<ID3D12GraphicsCommandList7*>(cmd->GetHandle()),
+				static_cast<ID3D12Resource*>(resource.node->texture.GetHandle()),
+				D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE
+			);
+		}
+	#endif
+
         // execute render pass
-		if (pass->GetType() == RenderGraphPassType::Custom)
+		if (pass->GetType() == RenderGraphPassType::Native)
         {
             std::invoke(pass->callback, cmd);
         }
         else if (pass->GetType() == RenderGraphPassType::Raster)
         {
-            RenderPassDescriptor renderPassDesc{};
-            renderPassDesc.colorAttachments.resize(pass->colorAttachments.size());
-            for (uint32_t i = 0; i < pass->colorAttachments.size(); i++)
-            {
-                const auto node = static_cast<const RenderGraphTextureNode*>(pass->colorAttachments[i].node);
-                renderPassDesc.colorAttachments[i].texture = node->texture;
-                renderPassDesc.colorAttachments[i].loadAction = GetLoadActionForRenderTexture(node, pass);
-                renderPassDesc.colorAttachments[i].storeAction = GetStoreActionForRenderTexture(node, pass);
-                renderPassDesc.colorAttachments[i].clearColor = node->clearColor;
-                
-                const auto& descriptor = renderPassDesc.colorAttachments[i].texture.GetDescriptor();
-                renderPassDesc.size = descriptor.size;
-                renderPassDesc.samples = descriptor.sampleCount;
-            }
-            
-            if (pass->depthAttachment.IsValid())
-            {
-                const auto node = static_cast<const RenderGraphTextureNode*>(pass->depthAttachment.node);
-                renderPassDesc.depthAttachment.texture = node->texture;
-                renderPassDesc.depthAttachment.loadAction = GetLoadActionForRenderTexture(node, pass);
-                renderPassDesc.depthAttachment.storeAction = GetStoreActionForRenderTexture(node, pass);
-                renderPassDesc.depthAttachment.clearDepth = node->clearDepth;
-                renderPassDesc.depthAttachment.clearStencil = node->clearStencil;
-                
-                const auto& descriptor = renderPassDesc.depthAttachment.texture.GetDescriptor();
-                renderPassDesc.size = descriptor.size;
-                renderPassDesc.samples = descriptor.sampleCount;
-            }
-            
-            cmd->BeginRenderPass(renderPassDesc, pass->name);
-            cmd->SetViewport(renderPassDesc.size);
-            
-		#if defined(USE_METAL_RENDERER)
-            [cmd->GetActiveRenderPass() useHeap:heap.GetHandle()];
-            
-            for (auto& resource : pass->textureReads)
-            {
-                [cmd->GetActiveRenderPass() useResource:resource.node->texture.GetView() usage:MTLResourceUsageRead stages:MTLRenderStageVertex | MTLRenderStageFragment];
-            }
-		#elif defined(USE_DIRECTX_RENDERER)
-			for (auto& resource : pass->textureReads)
+			if (pass->colorAttachments.empty() && pass->depthAttachment.IsValid() == false)
 			{
-				DirectXTransitionManager::TransitionLayout(
-					static_cast<ID3D12GraphicsCommandList7*>(cmd->GetHandle()),
-					static_cast<ID3D12Resource*>(resource.node->texture.GetHandle()),
-					D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE
-				);
+				std::invoke(pass->callback, cmd);
 			}
-		#endif
-            std::invoke(pass->callback, cmd);
-            cmd->EndRenderPass();
+			else
+			{
+				RenderPassDescriptor renderPassDesc{};
+				renderPassDesc.colorAttachments.resize(pass->colorAttachments.size());
+				for (uint32_t i = 0; i < pass->colorAttachments.size(); i++)
+				{
+					const auto node = static_cast<const RenderGraphTextureNode*>(pass->colorAttachments[i].node);
+					renderPassDesc.colorAttachments[i].texture = node->texture;
+					renderPassDesc.colorAttachments[i].loadAction = GetLoadActionForRenderTexture(node, pass);
+					renderPassDesc.colorAttachments[i].storeAction = GetStoreActionForRenderTexture(node, pass);
+					renderPassDesc.colorAttachments[i].clearColor = node->clearColor;
+
+					const auto& descriptor = renderPassDesc.colorAttachments[i].texture.GetDescriptor();
+					renderPassDesc.size = descriptor.size;
+				}
+
+				if (pass->depthAttachment.IsValid())
+				{
+					const auto node = static_cast<const RenderGraphTextureNode*>(pass->depthAttachment.node);
+					renderPassDesc.depthAttachment.texture = node->texture;
+					renderPassDesc.depthAttachment.loadAction = GetLoadActionForRenderTexture(node, pass);
+					renderPassDesc.depthAttachment.storeAction = GetStoreActionForRenderTexture(node, pass);
+					renderPassDesc.depthAttachment.clearDepth = node->clearDepth;
+					renderPassDesc.depthAttachment.clearStencil = node->clearStencil;
+
+					const auto& descriptor = renderPassDesc.depthAttachment.texture.GetDescriptor();
+					renderPassDesc.size = descriptor.size;
+				}
+
+				cmd->BeginRenderPass(renderPassDesc, pass->name);
+				cmd->SetViewport(renderPassDesc.size);
+				std::invoke(pass->callback, cmd);
+				cmd->EndRenderPass();
+			}
         }
     }
 
@@ -256,18 +266,18 @@ void RenderGraph::Execute(const CommandBuffer* cmd)
     {
         for (auto& resource : pass->bufferCreates)
         {
-            mDevice->ReleaseBuffer(resource.node->buffer);
+			heap.Free(resource.node->buffer);
         }
 
         for (auto& resource : pass->textureCreates)
         {
-            mDevice->ReleaseTexture(resource.node->texture);
+			mResourcePool->Release(resource.node->texture);
         }
     }
 
     if (heap.IsValid())
     {
-        mDevice->ReleaseHeap(heap);
+		mResourcePool->Release(heap);
     }
     
     for (auto pass : mPassNodes) { delete pass; }

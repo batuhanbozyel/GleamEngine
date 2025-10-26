@@ -3,13 +3,14 @@
 #ifdef PLATFORM_WINDOWS
 #include "IO/FileWatcher.h"
 
+#include <thread>
 #include <WinBase.h>
 
 using namespace Gleam;
 
 struct FileWatcher::Handle
 {
-	Filesystem::Path path;
+	Path path;
 	FileWatchHandler handler;
 
 	BYTE buffer[8192];
@@ -19,7 +20,7 @@ struct FileWatcher::Handle
 	std::atomic<bool> running;
 	std::condition_variable condition;
 
-	Handle(const Filesystem::Path& path, FileWatchHandler&& handler, HANDLE dirHandle)
+	Handle(const Path& path, FileWatchHandler&& handler, HANDLE dirHandle)
 		: path(path), handler(std::move(handler)), win32Handle(dirHandle), running(true)
 	{
 		memset(&overlapped, 0, sizeof(OVERLAPPED));
@@ -77,31 +78,31 @@ struct FileWatcher::Handle
 		FILE_NOTIFY_INFORMATION* info = (FILE_NOTIFY_INFORMATION*)watcher->buffer;
 		while (true)
 		{
-			Filesystem::Path filepath = watcher->path / TWString(info->FileName, info->FileNameLength / sizeof(WCHAR));
+			Path filepath = watcher->path / TWString(info->FileName, info->FileNameLength / sizeof(WCHAR));
 			switch (info->Action)
 			{
 				case FILE_ACTION_ADDED:
 				{
-					GLEAM_CORE_INFO("FileWatcher file added event: {}", filepath.string());
+					GLEAM_CORE_INFO("FileWatcher file added: {}", filepath.String());
 					watcher->handler(filepath, FileWatchEvent::Added);
 					break;
 				}
 				case FILE_ACTION_REMOVED:
 				{
-					GLEAM_CORE_INFO("FileWatcher file removed event: {}", filepath.string());
+					GLEAM_CORE_INFO("FileWatcher file removed: {}", filepath.String());
 					watcher->handler(filepath, FileWatchEvent::Removed);
 					break;
 				}
 				case FILE_ACTION_MODIFIED:
 				{
-					GLEAM_CORE_INFO("FileWatcher file modified event: {}", filepath.string());
+					GLEAM_CORE_INFO("FileWatcher file modified: {}", filepath.String());
 					watcher->handler(filepath, FileWatchEvent::Modified);
 					break;
 				}
 				case FILE_ACTION_RENAMED_OLD_NAME:
 				case FILE_ACTION_RENAMED_NEW_NAME:
 				{
-					GLEAM_CORE_INFO("FileWatcher file renamed event: {}", filepath.string());
+					GLEAM_CORE_INFO("FileWatcher file renamed: {}", filepath.String());
 					watcher->handler(filepath, FileWatchEvent::Renamed);
 					break;
 				}
@@ -136,15 +137,15 @@ void FileWatcher::Shutdown()
 	mWatchers.clear();
 }
 
-FileWatcher::Handle* FileWatcher::AddWatch(const Filesystem::Path& dir, FileWatchHandler&& handler)
+FileWatcher::Handle* FileWatcher::AddWatch(const Path& dir, FileWatchHandler&& handler)
 {
 	if (Filesystem::IsDirectory(dir) == false)
 	{
-		GLEAM_CORE_ERROR("FileWatcher requires directory: {0}", dir.string());
+		GLEAM_CORE_ERROR("FileWatcher requires directory: {0}", dir.String());
 		return nullptr;
 	}
 
-	HANDLE dirHandle = ::CreateFileA(dir.string().c_str(),
+	HANDLE dirHandle = ::CreateFileA(dir.String().c_str(),
 		FILE_LIST_DIRECTORY,
 		FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
 		nullptr,
@@ -154,7 +155,7 @@ FileWatcher::Handle* FileWatcher::AddWatch(const Filesystem::Path& dir, FileWatc
 
 	if (dirHandle == INVALID_HANDLE_VALUE)
 	{
-		GLEAM_CORE_ERROR("FileWatcher Win32 handle creation failed: {0}", dir.string());
+		GLEAM_CORE_ERROR("FileWatcher Win32 handle creation failed: {0}", dir.String());
 		return nullptr;
 	}
 

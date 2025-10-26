@@ -6,12 +6,20 @@
 //
 
 #pragma once
+#include "Container/AnyArray.h"
 
 namespace Gleam {
 
 class RenderGraphBlackboard final
 {
 public:
+
+	template<typename T, class...Args>
+	T& Add(Args&&... args)
+	{
+		GLEAM_ASSERT(!Has<T>(), "Render graph blackboard already contains the pass data!");
+		return mBlackboard.emplace<T>(std::forward<Args>(args)...);
+	}
     
     template<typename T>
     T& Add(const T& passData)
