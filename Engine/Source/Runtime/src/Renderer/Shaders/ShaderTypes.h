@@ -30,6 +30,14 @@ struct DebugShaderResources
 	BufferResourceView vertexBuffer;
 };
 
+struct ImGuiResources
+{
+	float4x4 projMatrix;
+	ShaderResourceIndex texture;
+	ShaderResourceIndex vertexBuffer;
+	uint32_t vertexOffset;
+};
+
 struct MeshPassResources
 {
 	float4x4 modelMatrix;

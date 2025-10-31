@@ -118,10 +118,15 @@ void CommandBuffer::SetViewport(const Size& size) const
 	viewport.Width = size.width;
 	viewport.Height = size.height;
 	mHandle->commandList->RSSetViewports(1, &viewport);
+}
 
+void CommandBuffer::SetScissorRect(const Rect& rect) const
+{
 	D3D12_RECT scissor{};
-	scissor.right = static_cast<uint32_t>(size.width);
-	scissor.bottom = static_cast<uint32_t>(size.height);
+	scissor.left = static_cast<uint32_t>(rect.offset.x);
+	scissor.top = static_cast<uint32_t>(rect.offset.y);
+	scissor.right = static_cast<uint32_t>(rect.size.width + rect.offset.x);
+	scissor.bottom = static_cast<uint32_t>(rect.size.height + rect.offset.y);
 	mHandle->commandList->RSSetScissorRects(1, &scissor);
 }
 
@@ -145,7 +150,8 @@ void CommandBuffer::Draw(uint32_t vertexCount, uint32_t instanceCount) const
 void CommandBuffer::DrawIndexed(const Buffer& indexBuffer, IndexType type,
 	uint32_t indexCount,
 	uint32_t instanceCount,
-	uint32_t firstIndex) const
+	uint32_t firstIndex,
+	uint32_t baseVertex) const
 {
 	D3D12_INDEX_BUFFER_VIEW indexBufferView = {};
 	indexBufferView.BufferLocation = static_cast<ID3D12Resource*>(indexBuffer.GetHandle())->GetGPUVirtualAddress();
@@ -153,7 +159,7 @@ void CommandBuffer::DrawIndexed(const Buffer& indexBuffer, IndexType type,
 	indexBufferView.SizeInBytes = (UINT)indexBuffer.GetSize();
 
 	mHandle->commandList->IASetIndexBuffer(&indexBufferView);
-	mHandle->commandList->DrawIndexedInstanced(indexCount, instanceCount, firstIndex, 0, 0);
+	mHandle->commandList->DrawIndexedInstanced(indexCount, instanceCount, firstIndex, baseVertex, 0);
 }
 
 void CommandBuffer::CopyBuffer(const NativeGraphicsHandle src, const NativeGraphicsHandle dst,

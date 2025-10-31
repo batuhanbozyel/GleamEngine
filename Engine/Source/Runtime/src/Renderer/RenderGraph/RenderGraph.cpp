@@ -255,6 +255,7 @@ void RenderGraph::Execute(const CommandBuffer* cmd, SceneRenderingData& sceneDat
 
 				cmd->BeginRenderPass(renderPassDesc, pass->name);
 				cmd->SetViewport(renderPassDesc.size);
+				cmd->SetScissorRect(renderPassDesc.size);
 				std::invoke(pass->callback, cmd);
 				cmd->EndRenderPass();
 			}

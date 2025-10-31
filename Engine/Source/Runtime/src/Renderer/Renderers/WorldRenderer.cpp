@@ -41,7 +41,7 @@ void WorldRenderer::OnCreate(RenderContext& context)
 	pipelineDesc.fragmentEntry = "SurfaceLit";
 
     // TODO: create material pipelines
-	mShadingPipelines[0] = context.device->CreateGraphicsPipeline(pipelineDesc);
+	//mShadingPipelines[0] = context.device->CreateGraphicsPipeline(pipelineDesc);
 }
 
 void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard)

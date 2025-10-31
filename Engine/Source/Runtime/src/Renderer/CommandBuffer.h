@@ -1,11 +1,13 @@
 #pragma once
+#include "Math/Rect.h"
+#include "Container/Pointer.h"
+
 #include "Shader.h"
 #include "Texture.h"
 #include "Pipeline.h"
 #include "ConstantBuffer.h"
 #include "RenderPassDescriptor.h"
 #include "RenderGraph/RenderGraphResource.h"
-#include "Container/Pointer.h"
 
 namespace Gleam {
 
@@ -42,6 +44,8 @@ public:
     void BindGraphicsPipeline(const GraphicsPipeline& pipeline) const;
 
     void SetViewport(const Size& size) const;
+
+	void SetScissorRect(const Rect& rect) const;
     
     template<typename T>
     void SetConstantBuffer(const T& t, uint32_t slot) const
@@ -61,7 +65,8 @@ public:
 	void DrawIndexed(const Buffer& indexBuffer, IndexType type,
 		uint32_t indexCount,
 		uint32_t instanceCount = 1,
-		uint32_t firstIndex = 0) const;
+		uint32_t firstIndex = 0,
+		uint32_t baseVertex = 0) const;
 
     void DrawIndexed(const Buffer& indexBuffer, IndexType type,
 		uint32_t instanceCount = 1,
