@@ -50,7 +50,7 @@ void ImGuiRenderer::OnCreate(RenderContext& context)
 	pipelineDesc.blendState.alphaBlendOperation = Gleam::BlendOp::Add;
 	pipelineDesc.blendState.sourceAlphaBlendMode = Gleam::BlendMode::One;
 	pipelineDesc.blendState.destinationAlphaBlendMode = Gleam::BlendMode::OneMinusSrcAlpha;
-	pipelineDesc.colorFormats = { Gleam::TextureFormat::R16G16B16A16_SFloat };
+	pipelineDesc.colorFormats = { Gleam::TextureFormat::B8G8R8A8_UNorm };
 	pipelineDesc.vertexEntry = "imguiVertexShader";
 	pipelineDesc.fragmentEntry = "imguiFragmentShader";
 	mPipeline = mDevice->CreateGraphicsPipeline(pipelineDesc);
@@ -170,6 +170,8 @@ void ImGuiRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 		renderPassDesc.colorAttachments[0].storeAction = AttachmentStoreAction::Store;
 		renderPassDesc.colorAttachments[0].clearColor = Color::clear;
 		cmd->BeginRenderPass(renderPassDesc, "ImGuiPass");
+		cmd->BindGraphicsPipeline(mPipeline);
+		cmd->SetViewport(renderPassDesc.size);
 
 		int globalVtxOffset = 0;
 		int globalIdxOffset = 0;
@@ -194,7 +196,7 @@ void ImGuiRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 
 				ImGuiResources passConstants;
 				passConstants.projMatrix = projMatrix;
-				passConstants.vertexOffset = static_cast<uint32_t>(vtxOffset + (globalVtxOffset * sizeof(ImDrawVert)));
+				passConstants.vertexOffset = kImGuiDataBufferSize * mSurface->GetFrameIndex() + static_cast<uint32_t>(vtxOffset + (globalVtxOffset * sizeof(ImDrawVert)));
 				passConstants.vertexBuffer = mBuffer.GetResourceView();
 				passConstants.texture = texture;
 

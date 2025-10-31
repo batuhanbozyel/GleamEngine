@@ -67,7 +67,7 @@ Buffer Heap::Allocate(const BufferDescriptor& descriptor)
     Buffer buffer(descriptor);
     buffer.mHandle = resource;
     buffer.mContents = contents;
-	buffer.mResourceView = mDescriptor.memoryType == MemoryType::CPU ? InvalidResourceIndex : static_cast<DirectXDevice*>(mDevice)->CreateResourceView(buffer);
+	buffer.mResourceView = static_cast<DirectXDevice*>(mDevice)->CreateResourceView(buffer);
     return buffer;
 }
 
