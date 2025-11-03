@@ -8,7 +8,6 @@
 #include "WorldViewport.h"
 #include "EditorCameraController.h"
 #include "EAssets/EAssetManager.h"
-#include "Renderer/ImGui/ImGuiBackend.h"
 #include "Renderers/InfiniteGridRenderer.h"
 
 #include "Gleam.h"
