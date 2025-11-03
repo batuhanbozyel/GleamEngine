@@ -21,6 +21,7 @@ void ImGuiRenderer::OnCreate(RenderContext& context)
 	IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO();
+	io.BackendFlags |= ImGuiBackendFlags_RendererHasVtxOffset;
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
     io.ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange;
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable | ImGuiConfigFlags_ViewportsEnable;
@@ -35,9 +36,12 @@ void ImGuiRenderer::OnCreate(RenderContext& context)
 	textureDesc.size.width = (float)width;
 	textureDesc.size.height = (float)height;
 	textureDesc.format = TextureFormat::R8G8B8A8_UNorm;
-	textureDesc.pixels.resize(width * height);
+	textureDesc.pixels.resize(width * height * 4);
 	memcpy(textureDesc.pixels.data(), pixels, textureDesc.pixels.size());
 	mFontTexture = new Texture2D(textureDesc);
+
+	static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
+	renderSystem->GetUploadManager()->WaitUntilCompleted();
 
 	uint64_t fontTextureId = static_cast<uint64_t>(mFontTexture->GetResourceView().data);
 	io.Fonts->SetTexID(reinterpret_cast<ImTextureID>(fontTextureId));
@@ -149,7 +153,7 @@ void ImGuiRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 			vtxOffset += drawList->IdxBuffer.Size * sizeof(ImDrawIdx);
 		}
 
-		vtxOffset = Utils::AlignUp(vtxOffset, (uint32_t)mHeap.GetAlignment());
+		vtxOffset = (uint32_t)Utils::AlignUp(vtxOffset, mHeap.GetAlignment());
 		ImDrawVert* vtxDest = (ImDrawVert*)((char*)bufferPtr + vtxOffset);
 		for (int n = 0; n < drawData->CmdListsCount; n++)
 		{
@@ -184,15 +188,15 @@ void ImGuiRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 				GLEAM_ASSERT(drawCmd->UserCallback == nullptr);
 
 				Rect rect;
-				rect.offset = { drawCmd->ClipRect.x - drawData->DisplayPos.x, drawCmd->ClipRect.y - drawData->DisplayPos.y };
-				rect.size = { drawCmd->ClipRect.z - drawCmd->ClipRect.x, drawCmd->ClipRect.w - drawCmd->ClipRect.y };
+				rect.offset = { (drawCmd->ClipRect.x - drawData->DisplayPos.x) * drawData->FramebufferScale.x, (drawCmd->ClipRect.y - drawData->DisplayPos.y) * drawData->FramebufferScale.y };
+				rect.size = { (drawCmd->ClipRect.z - drawCmd->ClipRect.x) * drawData->FramebufferScale.x, (drawCmd->ClipRect.w - drawCmd->ClipRect.y) * drawData->FramebufferScale.y };
 				if (rect.size.width <= Math::Epsilon || rect.size.height <= Math::Epsilon)
 				{
 					continue;
 				}
 
 				uint64_t texID = reinterpret_cast<uint64_t>(drawCmd->GetTexID());
-				ShaderResourceIndex texture = static_cast<ShaderResourceIndex>(texID);
+				ShaderResourceIndex texture = ShaderResourceIndex(static_cast<uint32_t>(texID));
 
 				ImGuiResources passConstants;
 				passConstants.projMatrix = projMatrix;
@@ -230,6 +234,7 @@ void ImGuiRenderer::AddFontTexture(const Path& fontPath, const Path& defaultPath
 	}
 	
 	ImGuiIO& io = ImGui::GetIO();
+	io.Fonts->Clear();
 	io.Fonts->AddFontFromFileTTF(fontPath.String().c_str(), fontSize);
 	io.FontDefault = io.Fonts->AddFontFromFileTTF(defaultPath.String().c_str(), fontSize);
 
@@ -242,9 +247,12 @@ void ImGuiRenderer::AddFontTexture(const Path& fontPath, const Path& defaultPath
 	textureDesc.size.width = (float)width;
 	textureDesc.size.height = (float)height;
 	textureDesc.format = TextureFormat::R8G8B8A8_UNorm;
-	textureDesc.pixels.resize(width * height);
+	textureDesc.pixels.resize(width * height * 4);
 	memcpy(textureDesc.pixels.data(), pixels, textureDesc.pixels.size());
 	mFontTexture = new Texture2D(textureDesc);
+
+	static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
+	renderSystem->GetUploadManager()->WaitUntilCompleted();
 
 	uint64_t fontTextureId = static_cast<uint64_t>(mFontTexture->GetResourceView().data);
 	io.Fonts->SetTexID(reinterpret_cast<ImTextureID>(fontTextureId));

@@ -29,5 +29,5 @@ VertexOut imguiVertexShader(uint vertexID : SV_VERTEXID)
 float4 imguiFragmentShader(VertexOut IN) : SV_Target
 {
 	Texture2D<float4> texture = ResourceDescriptorHeap[SRVIndex(constants.texture)];
-	return texture.SampleLevel(Sampler_Bilinear_Repeat, IN.uv, 0) * IN.color;
+	return texture.SampleLevel(Sampler_Trilinear_Repeat, IN.uv, 0) * IN.color;
 }

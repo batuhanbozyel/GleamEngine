@@ -270,7 +270,14 @@ static void DrawEnumOptions(const Gleam::TStringView label, const Gleam::Reflect
 
 			if (ImGui::Selectable(itemBuffer, isSelected))
 			{
-				*static_cast<int*>(value) = item.Value();
+				if (enumDesc.GetSize() == sizeof(int64_t))
+				{
+					*static_cast<int64_t*>(value) = item.Value();
+				}
+				else
+				{
+					*static_cast<int*>(value) = static_cast<int>(item.Value());
+				}
 			}
 
 			if (isSelected)

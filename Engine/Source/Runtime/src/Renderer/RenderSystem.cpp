@@ -142,9 +142,9 @@ void RenderSystem::Render(const World* world)
 		cmd->Begin(cmdBufferName.str());
 
         graph.Execute(cmd, sceneData);
-		mSwapchain->Present(cmd);
-
 		mResourcePool->Release(sceneTarget);
+
+		mSwapchain->Present(cmd);
     }
 }
 
