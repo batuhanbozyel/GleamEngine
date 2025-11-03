@@ -23,7 +23,7 @@ GSTRUCT(Rect, "CB0D2255-72B8-433A-A169-AE80581A0478", Serializable)
         
     }
     
-    constexpr Rect(const Size& size, const Float2& offset)
+	constexpr Rect(const Size& size, const Float2& offset = {})
         : size(size), offset(offset)
     {
         

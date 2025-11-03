@@ -8,7 +8,6 @@
 #include "WorldViewport.h"
 #include "EditorCameraController.h"
 #include "EAssets/EAssetManager.h"
-#include "Renderer/ImGui/ImGuiBackend.h"
 #include "Renderers/InfiniteGridRenderer.h"
 
 #include "Gleam.h"
@@ -43,7 +42,7 @@ void WorldViewport::Update()
 
 void WorldViewport::Render(Gleam::ImGuiRenderer* imgui)
 {
-	imgui->PushView([this](const Gleam::ImGuiPassData& passData)
+	imgui->PushView([=, this](const Gleam::ImGuiPassData& passData)
 	{
 		const auto& sceneRTsize = passData.sceneTarget.GetTexture().GetDescriptor().size;
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
@@ -56,7 +55,7 @@ void WorldViewport::Render(Gleam::ImGuiRenderer* imgui)
 			mViewportSizeChanged = true;
 		}
 		
-		ImGui::Image(Gleam::ImGuiBackend::GetImTextureIDForTexture(passData.sceneTarget), ImVec2(sceneRTsize.width, sceneRTsize.height), ImVec2(0.0f, 0.0f), ImVec2(1.0f, 1.0f));
+		ImGui::Image(imgui->GetImTextureIDForTexture(passData.sceneTarget), ImVec2(sceneRTsize.width, sceneRTsize.height), ImVec2(0.0f, 0.0f), ImVec2(1.0f, 1.0f));
 
 		bool isFocused = ImGui::IsWindowFocused();
 		mCameraController->Enabled = isFocused;
