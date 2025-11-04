@@ -55,13 +55,13 @@ static void WaitForID3D12Fence(ID3D12Fence* fence, uint64_t value)
 		return;
 	}
 
-	HANDLE fenceEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
+	HANDLE fenceEvent = ::CreateEvent(NULL, FALSE, FALSE, NULL);
 	DX_CHECK(fence->SetEventOnCompletion(value, fenceEvent));
 
 	if (fenceEvent != 0)
 	{
-		DWORD result = WaitForSingleObject(fenceEvent, INFINITE);
-		CloseHandle(fenceEvent);
+		DWORD result = ::WaitForSingleObject(fenceEvent, INFINITE);
+		::CloseHandle(fenceEvent);
 		GLEAM_ASSERT(result == WAIT_OBJECT_0);
 	}
 }
