@@ -1,16 +1,17 @@
-#include "Gleam.h"
 #include "TextureSource.h"
 #include "Bakers/TextureBaker.h"
+
+#include "Gleam.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
 using namespace GEditor;
 
-bool TextureSource::Import(const Gleam::Filesystem::Path& path, const ImportSettings& settings)
+bool TextureSource::Import(const Gleam::Path& path, const ImportSettings& settings)
 {
 	RawTexture texture;
-	stbi_info(path.string().c_str(), &texture.width, &texture.height, &texture.channels);
+	stbi_info(path.String().c_str(), &texture.width, &texture.height, &texture.channels);
 	
 	if (texture.channels == 3)
 	{
@@ -21,7 +22,7 @@ bool TextureSource::Import(const Gleam::Filesystem::Path& path, const ImportSett
 	if (settings.hdr)
 	{
 		// TODO: convert to half precision
-		texture.pixels = stbi_loadf(path.string().c_str(), &texture.width, &texture.height, nullptr, texture.channels);
+		texture.pixels = stbi_loadf(path.String().c_str(), &texture.width, &texture.height, nullptr, texture.channels);
 		switch (texture.channels)
 		{
 			case 1:
@@ -40,7 +41,7 @@ bool TextureSource::Import(const Gleam::Filesystem::Path& path, const ImportSett
 	}
 	else
 	{
-		texture.pixels = stbi_load(path.string().c_str(), &texture.width, &texture.height, nullptr, texture.channels);
+		texture.pixels = stbi_load(path.String().c_str(), &texture.width, &texture.height, nullptr, texture.channels);
 		switch (texture.channels)
 		{
 			case 1:
@@ -73,7 +74,7 @@ bool TextureSource::Import(const Gleam::Filesystem::Path& path, const ImportSett
 	
 	Gleam::Texture2DDescriptor descriptor;
 	descriptor.format = format;
-	descriptor.name = path.stem().string();
+	descriptor.name = path.Stem();
 	descriptor.size.width = static_cast<float>(texture.width);
 	descriptor.size.height = static_cast<float>(texture.height);
 	descriptor.dimension = Gleam::TextureDimension::Texture2D;

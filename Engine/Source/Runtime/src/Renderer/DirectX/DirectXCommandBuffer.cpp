@@ -15,12 +15,13 @@ struct CommandBuffer::Impl
 
 	ID3D12GraphicsCommandList7* commandList = nullptr;
 	ID3D12Fence* fence = nullptr;
-	uint64_t fenceValue = 0;
-	uint64_t waitFenceValue = 0;
+	uint64_t fenceValue = 1;
+	uint64_t waitFenceValue = 1;
 };
 
 CommandBuffer::CommandBuffer(GraphicsDevice* device)
-	: mHandle(CreateScope<Impl>()), mDevice(device)
+	: mHandle(CreateScope<Impl>())
+	, mDevice(device)
 	, mConstantBuffer(device, 4194304) // 4 MB
 {
 	mHandle->device = static_cast<DirectXDevice*>(device);
@@ -81,6 +82,11 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, 
 			depthAttachment.StencilBeginningAccess.Clear.ClearValue.DepthStencil.Stencil = renderPassDesc.depthAttachment.clearStencil;
 			depthAttachment.StencilEndingAccess.Type = depthAttachment.DepthEndingAccess.Type;
 		}
+		else
+		{
+			depthAttachment.StencilBeginningAccess.Type = D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_NO_ACCESS;
+			depthAttachment.StencilEndingAccess.Type = D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_NO_ACCESS;
+		}
 		mHandle->commandList->BeginRenderPass((UINT)colorAttachments.size(), colorAttachments.data(), &depthAttachment, D3D12_RENDER_PASS_FLAG_NONE);
 	}
 	else
@@ -112,10 +118,15 @@ void CommandBuffer::SetViewport(const Size& size) const
 	viewport.Width = size.width;
 	viewport.Height = size.height;
 	mHandle->commandList->RSSetViewports(1, &viewport);
+}
 
+void CommandBuffer::SetScissorRect(const Rect& rect) const
+{
 	D3D12_RECT scissor{};
-	scissor.right = static_cast<uint32_t>(size.width);
-	scissor.bottom = static_cast<uint32_t>(size.height);
+	scissor.left = static_cast<uint32_t>(rect.offset.x);
+	scissor.top = static_cast<uint32_t>(rect.offset.y);
+	scissor.right = static_cast<uint32_t>(rect.size.width + rect.offset.x);
+	scissor.bottom = static_cast<uint32_t>(rect.size.height + rect.offset.y);
 	mHandle->commandList->RSSetScissorRects(1, &scissor);
 }
 
@@ -139,7 +150,8 @@ void CommandBuffer::Draw(uint32_t vertexCount, uint32_t instanceCount) const
 void CommandBuffer::DrawIndexed(const Buffer& indexBuffer, IndexType type,
 	uint32_t indexCount,
 	uint32_t instanceCount,
-	uint32_t firstIndex) const
+	uint32_t firstIndex,
+	uint32_t baseVertex) const
 {
 	D3D12_INDEX_BUFFER_VIEW indexBufferView = {};
 	indexBufferView.BufferLocation = static_cast<ID3D12Resource*>(indexBuffer.GetHandle())->GetGPUVirtualAddress();
@@ -147,7 +159,7 @@ void CommandBuffer::DrawIndexed(const Buffer& indexBuffer, IndexType type,
 	indexBufferView.SizeInBytes = (UINT)indexBuffer.GetSize();
 
 	mHandle->commandList->IASetIndexBuffer(&indexBufferView);
-	mHandle->commandList->DrawIndexedInstanced(indexCount, instanceCount, firstIndex, 0, 0);
+	mHandle->commandList->DrawIndexedInstanced(indexCount, instanceCount, firstIndex, baseVertex, 0);
 }
 
 void CommandBuffer::CopyBuffer(const NativeGraphicsHandle src, const NativeGraphicsHandle dst,
@@ -188,9 +200,10 @@ void CommandBuffer::Blit(const Texture& source, const Texture& destination) cons
 	mHandle->commandList->CopyTextureRegion(&dst, 0, 0, 0, &src, nullptr);
 }
 
-void CommandBuffer::Begin() const
+void CommandBuffer::Begin(const TStringView debugName) const
 {
-	mHandle->commandList = mHandle->device->AllocateCommandList(D3D12_COMMAND_LIST_TYPE_DIRECT);
+	TWString debugNameW = StringUtils::Convert(debugName);
+	mHandle->commandList = mHandle->device->AllocateCommandList(D3D12_COMMAND_LIST_TYPE_DIRECT, debugNameW);
 	mCommitted = false;
 }
 

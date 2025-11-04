@@ -51,9 +51,11 @@ Buffer Heap::Allocate(const BufferDescriptor& descriptor)
 		IID_PPV_ARGS(&resource)
 	));
     
-    TStringStream resourceName;
-    resourceName << mDescriptor.name << "::" << descriptor.name;
-	resource->SetName(StringUtils::Convert(resourceName.str()).c_str());
+    TStringStream ss;
+	ss << mDescriptor.name << "::" << descriptor.name;
+	TWString resourceName = ss.str();
+
+	resource->SetName(resourceName.c_str());
 	DirectXTransitionManager::SetLayout(resource, initialState);
 
     void* contents = nullptr;
@@ -65,7 +67,7 @@ Buffer Heap::Allocate(const BufferDescriptor& descriptor)
     Buffer buffer(descriptor);
     buffer.mHandle = resource;
     buffer.mContents = contents;
-	buffer.mResourceView = mDescriptor.memoryType == MemoryType::CPU ? InvalidResourceIndex : static_cast<DirectXDevice*>(mDevice)->CreateResourceView(buffer);
+	buffer.mResourceView = static_cast<DirectXDevice*>(mDevice)->CreateResourceView(buffer);
     return buffer;
 }
 

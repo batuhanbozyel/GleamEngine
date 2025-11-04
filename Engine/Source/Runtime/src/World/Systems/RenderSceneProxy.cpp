@@ -4,11 +4,16 @@
 #include "Core/Globals.h"
 #include "Core/Engine.h"
 #include "Core/Application.h"
+#include "Assets/AssetManager.h"
 
 #include "World/World.h"
-#include "Assets/AssetManager.h"
+#include "World/EntityManager.h"
+
+#include "Renderer/Mesh.h"
 #include "Renderer/RenderSystem.h"
 #include "Renderer/UploadManager.h"
+#include "Renderer/Material/Material.h"
+#include "Renderer/Material/MaterialInstance.h"
 
 using namespace Gleam;
 

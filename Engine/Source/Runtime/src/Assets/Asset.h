@@ -6,20 +6,32 @@
 //
 
 #pragma once
+#include "AssetReference.h"
 
 namespace Gleam {
 
+class AssetManager;
+
 class Asset
 {
+	friend class AssetManager;
 public:
+
 	virtual ~Asset() = default;
 
-	virtual void Release() = 0;
-	
-    static constexpr TStringView Extension()
+	uint32_t ReferenceCount() const
+	{
+		return mRefCount;
+	}
+
+    static constexpr TWStringView Extension()
     {
-        return ".asset";
+        return L".asset";
     }
+
+private:
+
+	uint32_t mRefCount = 0;
 };
 
 } // Gleam

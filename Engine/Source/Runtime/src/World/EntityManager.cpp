@@ -50,6 +50,38 @@ void EntityManager::DestroyEntity(const TArray<EntityHandle>& entities)
 	mRegistry.destroy(entities.begin(), entities.end());
 }
 
+void EntityManager::Visit(EntityHandle entity, VisitFn&& fn)
+{
+	for (const auto& [id, storage] : mRegistry.storage())
+	{
+		if (storage.contains(entity))
+		{
+			const auto classDesc = Reflection::GetClass(id);
+			if (classDesc && classDesc->Guid() != Guid::InvalidGuid())
+			{
+				void* component = storage.value(entity);
+				fn(component, *classDesc);
+			}
+		}
+	}
+}
+
+void EntityManager::Visit(EntityHandle entity, ConstVisitFn&& fn) const
+{
+	for (const auto& [id, storage] : mRegistry.storage())
+	{
+		if (storage.contains(entity))
+		{
+			const auto classDesc = Reflection::GetClass(id);
+			if (classDesc && classDesc->Guid() != Guid::InvalidGuid())
+			{
+				const void* component = storage.value(entity);
+				fn(component, *classDesc);
+			}
+		}
+	}
+}
+
 uint32_t EntityManager::GetEntityCount() const
 {
 	return static_cast<uint32_t>(mRegistry.storage<EntityHandle>()->size());

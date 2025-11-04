@@ -1,6 +1,7 @@
 #pragma once
 #ifdef USE_DIRECTX_RENDERER
 #include "Renderer/GraphicsDevice.h"
+#include "Container/Queue.h"
 
 #include <d3d12.h>
 #include <dxgi1_6.h>
@@ -59,7 +60,7 @@ public:
 
 	DirectXDescriptorHeap& GetCbvSrvUavHeap();
 
-	ID3D12GraphicsCommandList7* AllocateCommandList(D3D12_COMMAND_LIST_TYPE type);
+	ID3D12GraphicsCommandList7* AllocateCommandList(D3D12_COMMAND_LIST_TYPE type, const TWStringView debugName);
 
 	const DirectXDescriptorHeap& GetRtvHeap() const;
 

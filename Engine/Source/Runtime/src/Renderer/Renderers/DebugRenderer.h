@@ -1,7 +1,10 @@
 #pragma once
 #include "Renderer/Renderer.h"
-#include "Renderer/Buffer.h"
-#include "Renderer/Heap.h"
+#include "Renderer/Shaders/ShaderTypes.h"
+
+#include "Math/BoundingBox.h"
+#include "Math/Float4x4.h"
+#include "Math/Color.h"
 
 namespace Gleam {
 

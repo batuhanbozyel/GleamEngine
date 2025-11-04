@@ -1,8 +1,10 @@
 #pragma once
+#include "Vector4.h"
+#include "Quaternion.h"
 
 namespace Gleam {
 
-struct Float4x4
+GSTRUCT(Float4x4, "770BABFC-E66A-4CE5-8453-A505EB3016BE", Serializable)
 {
     union
     {
@@ -351,9 +353,7 @@ FORCE_INLINE static void Decompose(const Float4x4& transform, Float3& translatio
 	Float3 xAxis(transform.m[0], transform.m[1], transform.m[2]);
 	Float3 yAxis(transform.m[4], transform.m[5], transform.m[6]);
 	Float3 zAxis(transform.m[8], transform.m[9], transform.m[10]);
-
 	scale = (Length(xAxis) + Length(yAxis) + Length(zAxis)) / 3.0f;
-	GLEAM_ASSERT(scale > Epsilon);
 
 	Float3x3 rotMatrix;
 	rotMatrix[0] = xAxis / scale;
@@ -365,7 +365,3 @@ FORCE_INLINE static void Decompose(const Float4x4& transform, Float3& translatio
 } // namespace Math
 
 } // namespace Gleam
-
-GLEAM_TYPE(Gleam::Float4x4, Guid("770BABFC-E66A-4CE5-8453-A505EB3016BE"))
-	GLEAM_FIELD(row, Serializable())
-GLEAM_END

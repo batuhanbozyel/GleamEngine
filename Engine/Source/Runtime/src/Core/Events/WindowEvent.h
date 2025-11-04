@@ -1,6 +1,8 @@
 #pragma once
-#include <SDL3/SDL.h>
 #include "Event.h"
+#include "Math/Vector2.h"
+
+struct SDL_Window;
 
 namespace Gleam {
 
@@ -27,7 +29,7 @@ public:
 	WindowCloseEvent(SDL_Window* window)
 		: WindowEvent(window) {}
 
-	TString ToString() const override
+	virtual TString ToString() const override
 	{
 		TStringStream ss;
 		ss << "WindowCloseEvent";
@@ -45,7 +47,7 @@ public:
 	uint32_t GetWidth() const { return mWidth; }
 	uint32_t GetHeight() const { return mHeight; }
 
-	TString ToString() const override
+	virtual TString ToString() const override
 	{
 		TStringStream ss;
 		ss << "WindowResizeEvent: " << mWidth << ", " << mHeight;
@@ -64,6 +66,13 @@ public:
 	WindowMaximizeEvent(SDL_Window* window)
 		: WindowEvent(window) {}
 
+	virtual TString ToString() const override
+	{
+		TStringStream ss;
+		ss << "WindowMaximizeEvent";
+		return ss.str();
+	}
+
 };
 
 class WindowMinimizeEvent : public WindowEvent
@@ -72,6 +81,13 @@ public:
 
 	WindowMinimizeEvent(SDL_Window* window)
 		: WindowEvent(window) {}
+
+	virtual TString ToString() const override
+	{
+		TStringStream ss;
+		ss << "WindowMinimizeEvent";
+		return ss.str();
+	}
 
 };
 
@@ -84,6 +100,13 @@ public:
 	{
 	}
 
+	virtual TString ToString() const override
+	{
+		TStringStream ss;
+		ss << "WindowRestoreEvent";
+		return ss.str();
+	}
+
 };
 
 class WindowFocusEvent : public WindowEvent
@@ -92,6 +115,13 @@ public:
 
 	WindowFocusEvent(SDL_Window* window)
 		: WindowEvent(window) {}
+
+	virtual TString ToString() const override
+	{
+		TStringStream ss;
+		ss << "WindowFocusEvent";
+		return ss.str();
+	}
 
 };
 
@@ -102,6 +132,13 @@ public:
 	WindowLostFocusEvent(SDL_Window* window)
 		: WindowEvent(window) {}
 
+	virtual TString ToString() const override
+	{
+		TStringStream ss;
+		ss << "WindowLostFocusEvent";
+		return ss.str();
+	}
+
 };
 
 class WindowMovedEvent : public WindowEvent
@@ -110,6 +147,13 @@ public:
 
 	WindowMovedEvent(SDL_Window* window, int xPos, int yPos)
 		: WindowEvent(window), mWindowPos(xPos, yPos) {}
+
+	virtual TString ToString() const override
+	{
+		TStringStream ss;
+		ss << "WindowMovedEvent: " << mWindowPos.x << ", " << mWindowPos.y;
+		return ss.str();
+	}
 
 private:
 
@@ -125,6 +169,13 @@ public:
 	{
 	}
 
+	virtual TString ToString() const override
+	{
+		TStringStream ss;
+		ss << "WindowMouseLeaveEvent";
+		return ss.str();
+	}
+
 };
 
 class WindowMouseEnterEvent : public WindowEvent
@@ -134,6 +185,13 @@ public:
 	WindowMouseEnterEvent(SDL_Window* window)
 		: WindowEvent(window)
 	{
+	}
+
+	virtual TString ToString() const override
+	{
+		TStringStream ss;
+		ss << "WindowMouseEnterEvent";
+		return ss.str();
 	}
 
 };

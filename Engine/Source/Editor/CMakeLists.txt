@@ -10,9 +10,10 @@ target_include_directories(MikkTSpace PRIVATE ${CMAKE_SOURCE_DIR}/Engine/ThirdPa
 set(INCLUDE_DIRS
     src
     ${CMAKE_SOURCE_DIR}/Engine/Source/Runtime/src
+    ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/EASTL/include
+    ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/GleamReflect/include
     ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/SDL/include
     ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/fmt/include
-    ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/refl-cpp/include
     ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/rapidjson/include
     ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/entt/src
     ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/cgltf

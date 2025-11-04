@@ -7,6 +7,8 @@
 
 #include "ViewStack.h"
 
+#include "Gleam.h"
+
 #include <imgui.h>
 
 using namespace GEditor;
@@ -122,7 +124,5 @@ void ViewStack::SetDarkTheme() const
       style.TabRounding                       = 4;
     
     float fontSize = 16.0f;
-    ImGuiIO& io = ImGui::GetIO();
-    io.Fonts->AddFontFromFileTTF("Resources/Fonts/OpenSans-Bold.ttf", fontSize);
-    io.FontDefault = io.Fonts->AddFontFromFileTTF("Resources/Fonts/OpenSans-Regular.ttf", fontSize);
+	mImgui->AddFontTexture("Resources/Fonts/OpenSans-Bold.ttf", "Resources/Fonts/OpenSans-Regular.ttf", fontSize);
 }

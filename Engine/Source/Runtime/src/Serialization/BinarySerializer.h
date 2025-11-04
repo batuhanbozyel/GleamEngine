@@ -1,5 +1,12 @@
 #pragma once
 #include "Core/Subsystem.h"
+#include "Core/GUID.h"
+
+#include "Container/String.h"
+#include "Container/Hash.h"
+#include "IO/Filesystem.h"
+
+#include <Reflection/Reflection.h>
 
 namespace Gleam {
 
@@ -7,7 +14,7 @@ struct BinaryHeader
 {
 	TString name = "";
 	Guid guid = Guid::InvalidGuid();
-	Reflection::FieldType kind = Reflection::FieldType::Invalid;
+	Reflection::MetaType kind = Reflection::MetaType::Invalid;
 	uint32_t version = 0;
 	uint32_t size = 0;
 };
@@ -51,7 +58,7 @@ public:
 	static bool TryCustomArrayDeserializer(FileStream& stream, const Reflection::ClassDescription& classDesc, void* obj);
 	
 private:
-	
+
 	using SerializerFn = std::function<void(const void* obj,
 											const Reflection::ClassDescription& classDesc,
 											FileStream& stream)>;
@@ -71,3 +78,42 @@ private:
 };
 
 } // namespace Gleam
+
+#define REGISTER_POD_TYPE_BINARY_SERIALIZER(T)\
+if constexpr (Reflection::Traits::IsReflected<T>())\
+{\
+	const auto qualifiedName = QualifiedNameWithoutTemplateDeclaration(Reflection::GetClass<T>().ResolveQualifiedName());\
+	mCustomSerializers[qualifiedName] = [](const void* obj,\
+		const Reflection::ClassDescription& classDesc,\
+		FileStream& stream)\
+	{\
+		const auto& pod = Reflection::Get<T>(obj);\
+		SerializeClassHeader(classDesc, stream);\
+		stream.write(reinterpret_cast<const char*>(&pod), sizeof(T));\
+	};\
+	mCustomArraySerializers[qualifiedName] = [](const void* obj,\
+		const Reflection::ClassDescription& classDesc,\
+		FileStream& stream)\
+	{\
+		const auto& pod = Reflection::Get<T>(obj);\
+		stream.write(reinterpret_cast<const char*>(&pod), sizeof(T));\
+	};\
+	mCustomDeserializers[qualifiedName] = [](FileStream& stream,\
+		const Reflection::ClassDescription& classDesc,\
+		void* obj)\
+	{\
+		BinaryHeader header;\
+		DeserializeHeader(stream, header);\
+		T pod;\
+		stream.read(reinterpret_cast<char*>(&pod), sizeof(T));\
+		Reflection::Get<T>(obj) = pod;\
+	};\
+	mCustomArrayDeserializers[qualifiedName] = [](FileStream& stream,\
+		const Reflection::ClassDescription& classDesc,\
+		void* obj)\
+	{\
+		T pod;\
+		stream.read(reinterpret_cast<char*>(&pod), sizeof(T));\
+		Reflection::Get<T>(obj) = pod;\
+	};\
+}

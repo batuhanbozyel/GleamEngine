@@ -1,8 +1,9 @@
 #pragma once
+#include "Float3x3.h"
 
 namespace Gleam {
-	
-struct Quaternion
+
+GSTRUCT(Quaternion, "69ACEBFE-7CFD-4876-9D4D-DF428E49A626", Serializable)
 {
 	union
 	{
@@ -217,10 +218,3 @@ NO_DISCARD FORCE_INLINE constexpr Quaternion Normalize(const Quaternion& q)
 } // namespace Math
 
 } // namespace Gleam
-
-GLEAM_TYPE(Gleam::Quaternion, Guid("69ACEBFE-7CFD-4876-9D4D-DF428E49A626"))
-    GLEAM_FIELD(w, Serializable())
-    GLEAM_FIELD(x, Serializable())
-    GLEAM_FIELD(y, Serializable())
-    GLEAM_FIELD(z, Serializable())
-GLEAM_END

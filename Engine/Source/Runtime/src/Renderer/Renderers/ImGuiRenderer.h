@@ -1,7 +1,14 @@
 #pragma once
+#include "IO/Path.h"
 #include "Renderer/Renderer.h"
+#include "Renderer/Texture2D.h"
+
+#include <imgui.h>
+#include <imgui_internal.h>
 
 namespace Gleam {
+
+class Swapchain;
 
 struct ImGuiPassData
 {
@@ -22,12 +29,24 @@ public:
 	virtual void AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard) override;
 
 	void PushView(ImGuiView&& view);
+
+	ImTextureID GetImTextureIDForTexture(const Texture& texture) const;
+
+	void AddFontTexture(const Path& fontPath, const Path& defaultPath, float fontSize);
     
 private:
 
-	RenderSurface* mSurface;
+	Swapchain* mSurface;
     
     GraphicsDevice* mDevice;
+
+	GraphicsPipelineHandle mPipeline;
+
+	Heap mHeap;
+
+	Buffer mBuffer;
+
+	Texture2D* mFontTexture = nullptr;
 
 	TArray<ImGuiView> mViews;
     

@@ -3,6 +3,7 @@
 #include "KeyCode.h"
 #include "MouseButton.h"
 #include "JoystickButton.h"
+#include "Math/Vector2.h"
 
 struct SDL_Mouse;
 struct SDL_Keyboard;
@@ -53,7 +54,7 @@ private:
     
     uint32_t mMouseState = 0;
 
-	const uint8_t* mKeyboardState = nullptr;
+	const bool* mKeyboardState = nullptr;
 
 	mutable bool mCursorHidden = false;
 

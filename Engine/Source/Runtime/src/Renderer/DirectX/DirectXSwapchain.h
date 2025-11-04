@@ -1,6 +1,7 @@
 #pragma once
 #ifdef USE_DIRECTX_RENDERER
 #include "Renderer/Swapchain.h"
+#include "Renderer/RendererConfig.h"
 
 #include <d3d12.h>
 #include <dxgi1_6.h>
@@ -55,8 +56,8 @@ private:
 	struct FrameContext
 	{
 		ID3D12Fence* fence;
-		uint64_t waitFenceValue = 0;
-		uint64_t fenceValue = 0;
+		uint64_t waitFenceValue = 1;
+		uint64_t fenceValue = 1;
 	};
 	TArray<FrameContext> mContext;
 

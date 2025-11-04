@@ -76,7 +76,7 @@ public:
 	GraphicsPipeline& operator=(const GraphicsPipeline& other) = default;
 
 	GraphicsPipeline(const GraphicsPipelineStateDescriptor& descriptor)
-		: Pipeline(PipelineHandle{ std::hash<GraphicsPipelineStateDescriptor>()(descriptor) })
+		: Pipeline(PipelineHandle{ eastl::hash<GraphicsPipelineStateDescriptor>()(descriptor) })
 		, mDescriptor(descriptor)
 	{
 
@@ -120,5 +120,23 @@ struct std::hash<Gleam::GraphicsPipelineHandle>
 	size_t operator()(Gleam::GraphicsPipelineHandle handle) const
 	{
 		return handle.data;
+	}
+};
+
+template <>
+struct eastl::hash<Gleam::PipelineHandle>
+{
+	size_t operator()(Gleam::PipelineHandle handle) const
+	{
+		return std::hash<Gleam::PipelineHandle>()(handle);
+	}
+};
+
+template <>
+struct eastl::hash<Gleam::GraphicsPipelineHandle>
+{
+	size_t operator()(Gleam::GraphicsPipelineHandle handle) const
+	{
+		return std::hash<Gleam::GraphicsPipelineHandle>()(handle);
 	}
 };

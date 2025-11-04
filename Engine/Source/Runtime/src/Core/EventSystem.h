@@ -1,12 +1,12 @@
 #pragma once
 #include "Subsystem.h"
 
-union SDL_Event;
-struct SDL_Window;
+#include <functional>
+#include <SDL3/SDL.h>
 
 namespace Gleam {
 
-using EventHandlerFn = std::function<void(const SDL_Event*)>;
+using EventHandlerFn = std::function<bool(const SDL_Event*)>;
 
 class EventSystem final : public EngineSubsystem
 {

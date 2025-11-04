@@ -1,5 +1,6 @@
 #pragma once
-#include "Gleam.h"
+#include "Core/Events/Event.h"
+#include "World/Entity.h"
 
 namespace GEditor {
 
@@ -13,6 +14,13 @@ public:
 	Gleam::EntityHandle GetEntity() const
 	{
 		return mEntity;
+	}
+
+	virtual Gleam::TString ToString() const override
+	{
+		Gleam::TStringStream ss;
+		ss << "EntitySelectedEvent: " << (uint32_t)mEntity;
+		return ss.str();
 	}
 
 private:

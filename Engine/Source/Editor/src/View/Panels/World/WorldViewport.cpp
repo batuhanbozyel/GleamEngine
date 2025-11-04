@@ -8,8 +8,9 @@
 #include "WorldViewport.h"
 #include "EditorCameraController.h"
 #include "EAssets/EAssetManager.h"
-#include "Renderer/ImGui/ImGuiBackend.h"
 #include "Renderers/InfiniteGridRenderer.h"
+
+#include "Gleam.h"
 
 using namespace GEditor;
 
@@ -29,24 +30,10 @@ void WorldViewport::Init(Gleam::World* world)
 
 	mCameraController = mEditWorld->AddSystem<EditorCameraController>(mCamera);
     Resize(mEditWorld->GetEntityManager(), mViewportSize);
-    
-    Gleam::EventDispatcher<Gleam::MouseButtonPressedEvent>::Subscribe([&](Gleam::MouseButtonPressedEvent e)
-    {
-        if (e.GetMouseButton() == Gleam::MouseButton::Right)
-        {
-            if (mIsFocused)
-            {
-                auto inputSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::InputSystem>();
-                mCursorVisible ? inputSystem->HideCursor() : inputSystem->ShowCursor();
-                mCursorVisible = !mCursorVisible;
-            }
-        }
-    });
 }
 
 void WorldViewport::Update()
 {
-	mCameraController->Enabled = mIsFocused;
     if (mViewportSizeChanged)
     {
 		Resize(mEditWorld->GetEntityManager(), mViewportSize);
@@ -55,7 +42,7 @@ void WorldViewport::Update()
 
 void WorldViewport::Render(Gleam::ImGuiRenderer* imgui)
 {
-	imgui->PushView([this](const Gleam::ImGuiPassData& passData)
+	imgui->PushView([=, this](const Gleam::ImGuiPassData& passData)
 	{
 		const auto& sceneRTsize = passData.sceneTarget.GetTexture().GetDescriptor().size;
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
@@ -68,8 +55,18 @@ void WorldViewport::Render(Gleam::ImGuiRenderer* imgui)
 			mViewportSizeChanged = true;
 		}
 		
-		ImGui::Image(Gleam::ImGuiBackend::GetImTextureIDForTexture(passData.sceneTarget), ImVec2(sceneRTsize.width, sceneRTsize.height), ImVec2(0.0f, 0.0f), ImVec2(1.0f, 1.0f));
-		mIsFocused = ImGui::IsWindowFocused();
+		ImGui::Image(imgui->GetImTextureIDForTexture(passData.sceneTarget), ImVec2(sceneRTsize.width, sceneRTsize.height), ImVec2(0.0f, 0.0f), ImVec2(1.0f, 1.0f));
+
+		bool isFocused = ImGui::IsWindowFocused();
+		mCameraController->Enabled = isFocused;
+
+		auto ctx = ImGui::GetCurrentContext();
+		if (isFocused && ctx->IO.MouseClicked[ImGuiMouseButton_Right])
+		{
+			auto inputSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::InputSystem>();
+			mCursorVisible ? inputSystem->HideCursor() : inputSystem->ShowCursor();
+			mCursorVisible = !mCursorVisible;
+		}
 
 		if (ImGui::BeginDragDropTarget())
 		{

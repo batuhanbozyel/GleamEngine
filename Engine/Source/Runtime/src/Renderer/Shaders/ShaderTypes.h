@@ -3,12 +3,14 @@
 
 namespace Gleam {
 
+#ifndef __cplusplus
 struct InterleavedMeshVertex
 {
-    float3 normal;
+	float3 normal;
 	float4 tangent;
-    float2 texCoord;
+	float2 texCoord;
 };
+#endif
 
 struct DebugVertex
 {
@@ -26,6 +28,14 @@ struct DebugMeshUniforms
 struct DebugShaderResources
 {
 	BufferResourceView vertexBuffer;
+};
+
+struct ImGuiResources
+{
+	float4x4 projMatrix;
+	ShaderResourceIndex texture;
+	ShaderResourceIndex vertexBuffer;
+	uint32_t vertexOffset;
 };
 
 struct MeshPassResources

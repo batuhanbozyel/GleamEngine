@@ -1,7 +1,10 @@
 #pragma once
 #include "Core/Subsystem.h"
+#include "Container/Pointer.h"
 #include "Entity.h"
-#include "Reflection/Reflection.h"
+
+#include <entt/meta/policy.hpp>
+#include <entt/meta/factory.hpp>
 
 namespace Gleam {
 
@@ -19,8 +22,8 @@ public:
 		const auto& classDesc = Reflection::GetClass<T>();
 		if (classDesc.template HasAttribute<Reflection::Attribute::EntityComponent>())
 		{
-			entt::meta<T>()
-				.type(entt::type_hash<T>::value())
+			entt::meta_factory<T>()
+				.type(classDesc.TypeHash())
 				.template func<&AddComponent<T>, entt::as_ref_t>("AddComponent"_hs)
 				.template func<&RemoveComponent<T>>("RemoveComponent"_hs)
 				.template func<&HasComponent<T>>("HasComponent"_hs);

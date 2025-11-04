@@ -201,7 +201,7 @@ Texture GraphicsDevice::CreateTexture(const TextureDescriptor& descriptor)
 		.Dimension = TextureDimensionToD3D12_RESOURCE_DIMENSION(descriptor.dimension),
 		.Alignment = 0,
 		.Width = (UINT64)descriptor.size.width,
-		.Height = (UINT64)descriptor.size.height,
+		.Height = (UINT)descriptor.size.height,
 		.DepthOrArraySize = (UINT16)(descriptor.dimension == TextureDimension::TextureCube ? 6 : 1),
 		.MipLevels = (UINT16)texture.mMipMapLevels,
 		.Format = TextureFormatToDXGI_FORMAT(descriptor.format),
@@ -281,7 +281,7 @@ Shader GraphicsDevice::CompileShader(const TString& entryPoint, ShaderStage stag
 {
 	Shader shader(entryPoint, stage);
 	auto shaderPath = Globals::BuiltinAssetsDirectory/"Shaders";
-	auto shaderFile = Filesystem::Open(shaderPath.append(entryPoint + ".dxil"), FileType::Binary);
+	auto shaderFile = Filesystem::Open(shaderPath.Append(entryPoint + ".dxil"), FileType::Binary);
 	auto shaderCode = shaderFile.Read();
 	auto bytecodeLength = shaderCode.size();
 	auto bytecode = new uint8_t[bytecodeLength];
@@ -374,9 +374,11 @@ GraphicsPipeline GraphicsDevice::CompileGraphicsPipeline(const GraphicsPipelineS
 	}
 	DX_CHECK(static_cast<ID3D12Device10*>(mHandle)->CreateGraphicsPipelineState(&psoDesc, __uuidof(ID3D12PipelineState*), &pipeline.mHandle));
 
-	TStringStream pipelineName;
-	pipelineName << "GraphicsPipeline::" << vertexShader.GetEntryPoint() << "_" << fragmentShader.GetEntryPoint();
-	static_cast<ID3D12PipelineState*>(pipeline.mHandle)->SetName(StringUtils::Convert(pipelineName.str()).data());
+	TStringStream ss;
+	ss << "GraphicsPipeline::" << vertexShader.GetEntryPoint() << "_" << fragmentShader.GetEntryPoint();
+
+	TWString pipelineName = ss.str();
+	static_cast<ID3D12PipelineState*>(pipeline.mHandle)->SetName(pipelineName.c_str());
 
 	return pipeline;
 }
@@ -444,6 +446,7 @@ void GraphicsDevice::Dispose(GraphicsPipeline& pipeline)
 DirectXDevice::DirectXDevice(RenderSurface* surface, ResourceReleaseQueue* releaseQueue)
 	: GraphicsDevice(surface, releaseQueue)
 {
+	auto swapchain = static_cast<DirectXSwapchain*>(mSurface);
 #ifdef GDEBUG
 	if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&mD3D12Debug))))
 	{
@@ -451,7 +454,6 @@ DirectXDevice::DirectXDevice(RenderSurface* surface, ResourceReleaseQueue* relea
 		mD3D12Debug->SetEnableGPUBasedValidation(true);
 	}
 
-	auto swapchain = static_cast<DirectXSwapchain*>(mSurface);
 	if (SUCCEEDED(swapchain->mFactory->QueryInterface(IID_PPV_ARGS(&mInfoQueue))))
 	{
 		static void* emitWarning = nullptr;
@@ -597,16 +599,31 @@ void DirectXDevice::Configure(const RendererConfig& config)
 		{
 			auto& pool = ctx.commandPools.emplace_back();
 			DX_CHECK(static_cast<ID3D12Device10*>(mHandle)->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&pool.allocator)));
+
+			TStringStream ss;
+			ss << ID3D12CommandListTypeToString(D3D12_COMMAND_LIST_TYPE_DIRECT) << swapchain->mCurrentFrameIndex;
+			TWString cmdAllocatorName = ss.str();
+			pool.allocator->SetName(cmdAllocatorName.c_str());
 		}
 
 		{
 			auto& pool = ctx.commandPools.emplace_back();
 			DX_CHECK(static_cast<ID3D12Device10*>(mHandle)->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_COMPUTE, IID_PPV_ARGS(&pool.allocator)));
+
+			TStringStream ss;
+			ss << ID3D12CommandListTypeToString(D3D12_COMMAND_LIST_TYPE_COMPUTE) << swapchain->mCurrentFrameIndex;
+			TWString cmdAllocatorName = ss.str();
+			pool.allocator->SetName(cmdAllocatorName.c_str());
 		}
 
 		{
 			auto& pool = ctx.commandPools.emplace_back();
 			DX_CHECK(static_cast<ID3D12Device10*>(mHandle)->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_COPY, IID_PPV_ARGS(&pool.allocator)));
+
+			TStringStream ss;
+			ss << ID3D12CommandListTypeToString(D3D12_COMMAND_LIST_TYPE_COPY) << swapchain->mCurrentFrameIndex;
+			TWString cmdAllocatorName = ss.str();
+			pool.allocator->SetName(cmdAllocatorName.c_str());
 		}
 	}
 }
@@ -619,12 +636,13 @@ void DirectXDevice::ResetCommandPools(uint32_t frameIndex)
 	}
 }
 
-ID3D12GraphicsCommandList7* DirectXDevice::AllocateCommandList(D3D12_COMMAND_LIST_TYPE type)
+ID3D12GraphicsCommandList7* DirectXDevice::AllocateCommandList(D3D12_COMMAND_LIST_TYPE type, const TWStringView debugName)
 {
 	auto swapchain = static_cast<DirectXSwapchain*>(mSurface);
 
-	TStringStream cmdlistName;
-	cmdlistName << ID3D12CommandListTypeToString(type) << swapchain->mCurrentFrameIndex;
+	TStringStream ss;
+	ss << ID3D12CommandListTypeToString(type) << swapchain->mCurrentFrameIndex;
+	TWString cmdAllocatorName = ss.str();
 
 	for (auto& pool : mFrameContext[swapchain->mCurrentFrameIndex].commandPools)
 	{
@@ -643,19 +661,20 @@ ID3D12GraphicsCommandList7* DirectXDevice::AllocateCommandList(D3D12_COMMAND_LIS
 
 			pool.usedCommandLists.push_back(commandList);
 			commandList->Reset(pool.allocator, nullptr);
-			commandList->SetName(StringUtils::Convert(cmdlistName.str()).data());
+			commandList->SetName(debugName.data());
 			return commandList;
 		}
 	}
 
 	auto& pool = mFrameContext[swapchain->mCurrentFrameIndex].commandPools.emplace_back();
 	DX_CHECK(static_cast<ID3D12Device10*>(mHandle)->CreateCommandAllocator(type, IID_PPV_ARGS(&pool.allocator)));
+	pool.allocator->SetName(cmdAllocatorName.c_str());
 
 	ID3D12GraphicsCommandList7* commandList = nullptr;
 	DX_CHECK(static_cast<ID3D12Device10*>(mHandle)->CreateCommandList1(0, type, D3D12_COMMAND_LIST_FLAG_NONE, IID_PPV_ARGS(&commandList)));
 	pool.usedCommandLists.push_back(commandList);
 	commandList->Reset(pool.allocator, nullptr);
-	commandList->SetName(StringUtils::Convert(cmdlistName.str()).data());
+	commandList->SetName(debugName.data());
 	return commandList;
 }
 
@@ -709,16 +728,18 @@ ShaderResourceIndex DirectXDevice::CreateResourceView(const Buffer& buffer)
 	handle.ptr += (UINT64)(mCbvSrvUavHeap.size * CBV_SRV_HEAP_SIZE);
 
 	// UAV
-	D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
-	uavDesc.Format = DXGI_FORMAT_R32_TYPELESS;
-	uavDesc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
-	uavDesc.Buffer.FirstElement = 0;
-	uavDesc.Buffer.NumElements = (UINT)buffer.GetSize() >> 2;
-	uavDesc.Buffer.StructureByteStride = 0;
-	uavDesc.Buffer.CounterOffsetInBytes = 0;
-	uavDesc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_RAW;
-	static_cast<ID3D12Device10*>(mHandle)->CreateUnorderedAccessView(static_cast<ID3D12Resource*>(buffer.GetHandle()), nullptr, &uavDesc, handle);
-
+	if (buffer.GetContents() == nullptr)
+	{
+		D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
+		uavDesc.Format = DXGI_FORMAT_R32_TYPELESS;
+		uavDesc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
+		uavDesc.Buffer.FirstElement = 0;
+		uavDesc.Buffer.NumElements = (UINT)buffer.GetSize() >> 2;
+		uavDesc.Buffer.StructureByteStride = 0;
+		uavDesc.Buffer.CounterOffsetInBytes = 0;
+		uavDesc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_RAW;
+		static_cast<ID3D12Device10*>(mHandle)->CreateUnorderedAccessView(static_cast<ID3D12Resource*>(buffer.GetHandle()), nullptr, &uavDesc, handle);
+	}
 	return index;
 }
 

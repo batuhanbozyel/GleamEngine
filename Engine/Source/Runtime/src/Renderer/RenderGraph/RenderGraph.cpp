@@ -9,7 +9,7 @@
 #if defined(USE_METAL_RENDERER)
 #import <Metal/Metal.h>
 #elif defined(USE_DIRECTX_RENDERER)
-#include "../DirectX/DirectXTransitionManager.h"
+#include "Renderer/DirectX/DirectXTransitionManager.h"
 #endif
 
 using namespace Gleam;
@@ -255,6 +255,7 @@ void RenderGraph::Execute(const CommandBuffer* cmd, SceneRenderingData& sceneDat
 
 				cmd->BeginRenderPass(renderPassDesc, pass->name);
 				cmd->SetViewport(renderPassDesc.size);
+				cmd->SetScissorRect(renderPassDesc.size);
 				std::invoke(pass->callback, cmd);
 				cmd->EndRenderPass();
 			}

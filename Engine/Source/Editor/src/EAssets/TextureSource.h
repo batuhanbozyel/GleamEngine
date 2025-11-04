@@ -1,5 +1,4 @@
 #pragma once
-#include "Gleam.h"
 #include "AssetPackage.h"
 
 namespace GEditor {
@@ -28,7 +27,7 @@ public:
 		bool hdr = false;
 	};
 
-	bool Import(const Gleam::Filesystem::Path& path, const ImportSettings& settings);
+	bool Import(const Gleam::Path& path, const ImportSettings& settings);
 };
 
 } // namespace GEditor

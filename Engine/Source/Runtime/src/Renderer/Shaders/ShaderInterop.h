@@ -1,6 +1,10 @@
 #pragma once
 
 #if defined(__cplusplus)
+#include "Math/Float2x2.h"
+#include "Math/Float3x3.h"
+#include "Math/Float4x4.h"
+
 using float2x2 = Gleam::Float2x2;
 using float3x3 = Gleam::Float3x3;
 using float4x4 = Gleam::Float4x4;

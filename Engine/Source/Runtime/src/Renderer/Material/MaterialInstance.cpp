@@ -30,11 +30,21 @@ MaterialInstance::MaterialInstance(const MaterialInstanceDescriptor& descriptor)
 	mResourceView = material->CreateInstance(mPropertyValues);
 }
 
-void MaterialInstance::Release()
+MaterialInstance::~MaterialInstance()
 {
 	auto assetManager = Globals::GameInstance->GetSubsystem<AssetManager>();
+
+	for (uint32_t i = 0; i < mProperties.size(); ++i)
+	{
+		if (mProperties[i].type == MaterialPropertyType::Texture2D)
+		{
+			assetManager->Release(mPropertyValues[i].texture);
+		}
+	}
+
 	auto material = assetManager->Get<Material>(mBaseMaterial);
 	material->DestroyInstance(mResourceView);
+	assetManager->Release(mBaseMaterial);
 }
 
 void MaterialInstance::SetProperty(const TString& name, const MaterialPropertyValue& value)

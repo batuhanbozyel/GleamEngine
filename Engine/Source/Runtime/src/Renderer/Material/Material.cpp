@@ -20,7 +20,7 @@
 
 using namespace Gleam;
 
-static constexpr size_t ComputeMaterialInstanceSize(const TArray<MaterialProperty>& properties)
+static size_t ComputeMaterialInstanceSize(const TArray<MaterialProperty>& properties)
 {
 	size_t size = 0;
 	for (const auto& property : properties)
@@ -68,7 +68,7 @@ Material::Material(const MaterialDescriptor& descriptor)
 	mBuffer = mHeap.Allocate(bufferDesc);
 }
 
-void Material::Release()
+Material::~Material()
 {
 	static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
 	auto device = renderSystem->GetDevice();
@@ -159,4 +159,9 @@ const TString& Material::GetName() const
 uint32_t Material::GetPipelineHash() const
 {
 	return mPipelineStateHash;
+}
+
+uint32_t Material::GetInstanceCount() const
+{
+	return mInstanceDescriptorHeap.GetSize();
 }

@@ -8,6 +8,8 @@
 #include "WorldOutliner.h"
 #include "WorldViewport.h"
 
+#include "Gleam.h"
+
 #include <imgui.h>
 
 using namespace GEditor;

@@ -6,8 +6,12 @@
 //
 
 #pragma once
-#include "Gleam.h"
 #include "Events/EntityEvent.h"
+
+namespace Gleam {
+class ImGuiRenderer;
+class World;
+} // namespace Gleam
 
 namespace GEditor {
 

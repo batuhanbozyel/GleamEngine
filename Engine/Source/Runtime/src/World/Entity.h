@@ -1,5 +1,8 @@
 #pragma once
+#include "Core/EngineDefines.h"
+#include "Core/GUID.h"
 #include "Components/Transform.h"
+#include "Container/String.h"
 
 #include <entt/entity/entity.hpp>
 #include <entt/entity/registry.hpp>
@@ -12,7 +15,7 @@ static constexpr EntityHandle InvalidEntity = entt::null;
 template<typename ... Excludes>
 using Exclude = entt::exclude_t<Excludes...>;
 
-class Entity
+GCLASS(Entity, "9662B020-8A90-47FE-8C12-2D46316A6590", Serializable)
 {
 public:
 
@@ -51,6 +54,11 @@ public:
 		return mParent != InvalidEntity;
 	}
 
+	const TArray<EntityHandle>& GetChildren() const
+	{
+		return mChildren;
+	}
+
 	void SetActive(bool active)
 	{
 		mActive = active;
@@ -76,7 +84,15 @@ public:
 	{
         GLEAM_ASSERT(IsValid(), "Entity is invalid!");
 		GLEAM_ASSERT(!HasComponent<T>(), "Entity already has the component!");
-		return mRegistry->emplace<T>(mHandle, std::forward<Args>(args)...);
+		if constexpr (Reflection::Traits::IsReflected<T>::value)
+		{
+			const auto& classDesc = Reflection::GetClass<T>();
+			return mRegistry->storage<T>(classDesc.TypeHash()).emplace(mHandle, std::forward<Args>(args)...);
+		}
+		else
+		{
+			return mRegistry->emplace<T>(mHandle, std::forward<Args>(args)...);
+		}
 	}
     
     template<typename T, typename ... Args>
@@ -84,7 +100,15 @@ public:
     {
         GLEAM_ASSERT(IsValid(), "Entity is invalid!");
         GLEAM_ASSERT(!HasComponent<T>(), "Entity already has the component!");
-        mRegistry->emplace_or_replace<T>(mHandle, std::forward<Args>(args)...);
+		if constexpr (Reflection::Traits::IsReflected<T>::value)
+		{
+			const auto& classDesc = Reflection::GetClass<T>();
+			return mRegistry->storage<T>(classDesc.TypeHash()).emplace_or_replace(mHandle, std::forward<Args>(args)...);
+		}
+		else
+		{
+			return mRegistry->emplace_or_replace<T>(mHandle, std::forward<Args>(args)...);
+		}
     }
 
 	template<typename T>
@@ -92,14 +116,34 @@ public:
 	{
         GLEAM_ASSERT(IsValid(), "Entity is invalid!");
 		GLEAM_ASSERT(HasComponent<T>(), "Entity does not have the component!");
-		mRegistry->remove<T>(mHandle);
+		if constexpr (Reflection::Traits::IsReflected<T>::value)
+		{
+			const auto& classDesc = Reflection::GetClass<T>();
+			mRegistry->storage<T>(classDesc.TypeHash()).remove(mHandle);
+		}
+		else
+		{
+			mRegistry->remove<T>(mHandle);
+		}
 	}
 
 	template<typename T>
 	bool HasComponent() const
 	{
         GLEAM_ASSERT(IsValid(), "Entity is invalid!");
-		return mRegistry->all_of<T>(mHandle);
+		if constexpr (Reflection::Traits::IsReflected<T>::value)
+		{
+			const auto& classDesc = Reflection::GetClass<T>();
+			if (const auto storage = ((const entt::registry*)mRegistry)->storage<T>(classDesc.TypeHash()))
+			{
+				return storage->contains(mHandle);
+			}
+			return false;
+		}
+		else
+		{
+			return mRegistry->all_of<T>(mHandle);
+		}
 	}
 
 	template<typename T>
@@ -107,7 +151,15 @@ public:
 	{
         GLEAM_ASSERT(IsValid(), "Entity is invalid!");
 		GLEAM_ASSERT(HasComponent<T>(), "Entity does not have the component!");
-		return mRegistry->get<T>(mHandle);
+		if constexpr (Reflection::Traits::IsReflected<T>::value)
+		{
+			const auto& classDesc = Reflection::GetClass<T>();
+			return mRegistry->storage<T>(classDesc.TypeHash()).get(mHandle);
+		}
+		else
+		{
+			return mRegistry->get<T>(mHandle);
+		}
 	}
     
     template<typename T>
@@ -115,8 +167,20 @@ public:
     {
         GLEAM_ASSERT(IsValid(), "Entity is invalid!");
         GLEAM_ASSERT(HasComponent<T>(), "Entity does not have the component!");
-        return mRegistry->get<T>(mHandle);
+		if constexpr (Reflection::Traits::IsReflected<T>::value)
+		{
+			const auto& classDesc = Reflection::GetClass<T>();
+			return mRegistry->storage<T>(classDesc.TypeHash()).get(mHandle);
+		}
+		else
+		{
+			return mRegistry->get<T>(mHandle);
+		}
     }
+
+	Entity& GetParentEntity() const;
+
+	Entity& GetChildEntity(EntityHandle child) const;
 
 	void Translate(const Float3& translation);
 
@@ -197,7 +261,7 @@ public:
 	}
 
 private:
-    
+
     bool mActive = true;
 
 	Transform mLocalTransform;
@@ -218,6 +282,3 @@ private:
 };
 
 } // namespace Gleam
-
-GLEAM_TYPE(Gleam::Entity, Guid("9662B020-8A90-47FE-8C12-2D46316A6590"))
-GLEAM_END

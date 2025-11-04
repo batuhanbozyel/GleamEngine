@@ -199,12 +199,14 @@ Texture DirectXSwapchain::CreateSwapchainBuffer(GraphicsDevice* device, uint32_t
 	static_cast<ID3D12Device10*>(device->GetHandle())->CreateRenderTargetView(texture, &rtvDesc, rtv);
 	DirectXTransitionManager::SetLayout(texture, D3D12_RESOURCE_STATE_PRESENT);
 
-	TStringStream resourceName;
-	resourceName << "Swapchain::Drawable_" << buffer;
-	texture->SetName(StringUtils::Convert(resourceName.str()).data());
+	TStringStream ss;
+	ss << "Swapchain::Drawable_" << buffer;
+
+	TWString resourceName = ss.str();
+	texture->SetName(resourceName.c_str());
 
 	TextureDescriptor swapchainDesc;
-	swapchainDesc.name = resourceName.str();
+	swapchainDesc.name = resourceName;
 	swapchainDesc.dimension = TextureDimension::Texture2D;
 	swapchainDesc.size = Size((float)mDesc.Width, (float)mDesc.Height);
 	swapchainDesc.usage = TextureUsage_Attachment;

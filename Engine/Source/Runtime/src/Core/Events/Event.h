@@ -1,5 +1,11 @@
 #pragma once
+#include "Container/String.h"
+#include "Container/Array.h"
+#include "IO/Log.h"
+
 #include <functional>
+#include <ostream>
+
 #define EventHandlerFn(fn) [](auto&&... args) -> bool { return fn(); }
 
 namespace Gleam {
@@ -17,12 +23,7 @@ public:
 
     virtual ~Event() = default;
     
-	virtual TString ToString() const
-	{
-		TStringStream ss;
-		ss << "Event";
-		return ss.str();
-	}
+	virtual TString ToString() const = 0;
     
 };
 
@@ -39,6 +40,7 @@ public:
 
 	static void Publish(EventType e)
 	{
+		GLEAM_CORE_TRACE("{}", e.ToString());
 		for (auto& handler : mSubscribers)
 		{
             handler(e);

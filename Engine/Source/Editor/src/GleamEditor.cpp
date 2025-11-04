@@ -59,7 +59,7 @@ Gleam::Application* Gleam::CreateApplicationInstance(const Gleam::CommandLine& c
 		project.version = Gleam::Version(1, 0, 0);
 
 		auto worldRef = Gleam::AssetReference{ .guid = Gleam::Guid::NewGuid() };
-		auto worldName = worldRef.guid.ToString() + Gleam::World::Extension().data();
+		auto worldName = Gleam::TWString(worldRef.guid.ToString()) + Gleam::World::Extension();
 		auto worldFile = Globals::StartupDirectory/project.path/"Assets"/worldName;
 		{
 			auto file = Gleam::Filesystem::Create(worldFile, Gleam::FileType::Text);

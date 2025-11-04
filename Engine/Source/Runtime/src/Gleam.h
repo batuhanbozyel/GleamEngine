@@ -1,4 +1,7 @@
 #pragma once
+#if not defined(__GLEAM_REFLECTION__)
+#include "Runtime.Reflection.generated.h"
+#endif
 
 #include "Core/Macro.h"
 #include "Core/EngineDefines.h"
@@ -17,10 +20,6 @@
 #include "IO/Log.h"
 #include "IO/File.h"
 #include "IO/FileDialog.h"
-
-#include "Reflection/Attribute.h"
-#include "Reflection/Meta.h"
-#include "Reflection/Reflection.h"
 
 #include "Math/Common.h"
 #include "Math/Vector2.h"
@@ -69,6 +68,7 @@
 #include "Renderer/RenderSystem.h"
 #include "Renderer/CommandBuffer.h"
 #include "Renderer/GraphicsDevice.h"
+#include "Renderer/Material/Material.h"
 
 #include "Input/InputSystem.h"
 

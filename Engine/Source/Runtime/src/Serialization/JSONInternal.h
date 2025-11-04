@@ -1,4 +1,5 @@
 #pragma once
+#include "Container/String.h"
 
 #ifndef RAPIDJSON_HAS_STDSTRING
 #define RAPIDJSON_HAS_STDSTRING 1
@@ -25,7 +26,7 @@ struct Node
         object.AddMember(n, value, allocator);
         return *this;
     }
-    
+
     Node& AddMember(Value::StringRefType name, Value& value)
     {
         Value n(name);
@@ -46,6 +47,16 @@ struct Node
         object.AddMember(n, value, allocator);
         return *this;
     }
+
+	Node& AddMember(Value::StringRefType name, const Gleam::TString& value)
+	{
+		return AddMember(name, static_cast<const std::string&>(value));
+	}
+
+	Node& AddMember(Value::StringRefType name, const Gleam::TStringView& value)
+	{
+		return AddMember(name, Value::StringRefType(value.data(), (SizeType)value.length()));
+	}
     
     Node& PushBack(Value&& value)
     {
@@ -86,17 +97,6 @@ struct ConstNode
 		return object[name];
 	}
 };
-
-static Gleam::TString Convert(const rapidjson::Value& value)
-{
-    StringBuffer buffer;
-    PrettyWriter<StringBuffer> writer(buffer);
-	writer.SetFormatOptions(PrettyFormatOptions::kFormatSingleLineArray);
-	writer.SetMaxDecimalPlaces(6);
-    writer.SetIndent('\t', 1);
-    value.Accept(writer);
-    return buffer.GetString();
-}
 
 namespace internal {
 

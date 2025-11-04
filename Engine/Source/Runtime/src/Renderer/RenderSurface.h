@@ -1,7 +1,9 @@
 #pragma once
-#include "TextureFormat.h"
 
 namespace Gleam {
+
+struct Size;
+enum class TextureFormat;
 
 class GraphicsDevice;
 class CommandBuffer;

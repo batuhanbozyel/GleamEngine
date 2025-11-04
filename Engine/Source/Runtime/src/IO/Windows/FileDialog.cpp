@@ -8,9 +8,9 @@
 
 using namespace Gleam;
 
-TArray<Filesystem::Path> FileDialog::Open(const TWString& filterName, const TWString& filterExtensions)
+TArray<Path> FileDialog::Open(const TWString& filterName, const TWString& filterExtensions)
 {
-	TArray<Filesystem::Path> selectedFiles;
+	TArray<Path> selectedFiles;
 
 	if (!SUCCEEDED(CoInitializeEx(NULL, COINIT_APARTMENTTHREADED))) return {};
 
@@ -31,7 +31,7 @@ TArray<Filesystem::Path> FileDialog::Open(const TWString& filterName, const TWSt
 	// Set the initial directory
 	IShellItem* pInitialDirItem = NULL;
 	const auto& assetPath = Filesystem::WorkingDirectory();
-	if (SUCCEEDED(SHCreateItemFromParsingName(assetPath.c_str(), NULL, IID_PPV_ARGS(&pInitialDirItem))))
+	if (SUCCEEDED(SHCreateItemFromParsingName(assetPath.Native().c_str(), NULL, IID_PPV_ARGS(&pInitialDirItem))))
 	{
 		pFileOpenDialog->SetDefaultFolder(pInitialDirItem);
 		pInitialDirItem->Release();
@@ -61,7 +61,7 @@ TArray<Filesystem::Path> FileDialog::Open(const TWString& filterName, const TWSt
 					PWSTR pszFilePath;
 					if (SUCCEEDED(pItem->GetDisplayName(SIGDN_FILESYSPATH, &pszFilePath)))
 					{
-						auto path = Filesystem::Path(pszFilePath);
+						auto path = Path(pszFilePath);
 						selectedFiles.push_back(path);
 						CoTaskMemFree(pszFilePath);
 					}

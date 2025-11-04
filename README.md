@@ -80,7 +80,7 @@ Here's a table outlining the recommended naming conventions for Gleam Engine:
 Gleam Engine adopts the following conventions for mathematical operations:
 
 * **Coordinate System:**
-    * **Right-handed:** Positive rotations follow the right-hand rule.
+    * **Left-handed:** Positive rotations follow the left-hand rule.
     * **X-right:** The positive X-axis points to the right of the screen in the viewport.
     * **Z-forward:** The positive Z-axis points forward (out of the screen) in the viewport.
     * **Y-up:** The positive Y-axis points up in the viewport.

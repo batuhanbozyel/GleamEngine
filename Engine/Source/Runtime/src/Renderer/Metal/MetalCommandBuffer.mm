@@ -116,6 +116,16 @@ void CommandBuffer::SetViewport(const Size& size) const
     [mHandle->renderCommandEncoder setViewport:viewport];
 }
 
+void CommandBuffer::SetScissorRect(const Rect& rect) const
+{
+	MTLScissorRect scissor{};
+	scissor.x = static_cast<uint32_t>(rect.offset.x);
+	scissor.y = static_cast<uint32_t>(rect.offset.y);
+	scissor.width = static_cast<uint32_t>(rect.size.width);
+	scissor.height = static_cast<uint32_t>(rect.size.height);
+    [mHandle->renderCommandEncoder setScissorRect:scissor];
+}
+
 void CommandBuffer::SetConstantBuffer(const void* data, uint32_t size, uint32_t slot) const
 {
     auto gpuAddress = [mConstantBuffer.GetHandle() gpuAddress]; 
@@ -139,7 +149,7 @@ void CommandBuffer::Draw(uint32_t vertexCount, uint32_t instanceCount) const
     IRRuntimeDrawPrimitives(mHandle->renderCommandEncoder, pipeline.topology, 0, vertexCount, instanceCount, 0);
 }
 
-void CommandBuffer::DrawIndexed(const Buffer& indexBuffer, IndexType type, uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex) const
+void CommandBuffer::DrawIndexed(const Buffer& indexBuffer, IndexType type, uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, uint32_t baseVertex) const
 {
     [mHandle->renderCommandEncoder setVertexBytes:mHandle->topLevelArgumentBuffer length:TopLevelArgumentBufferSize atIndex:kIRArgumentBufferBindPoint];
     [mHandle->renderCommandEncoder setFragmentBytes:mHandle->topLevelArgumentBuffer length:TopLevelArgumentBufferSize atIndex:kIRArgumentBufferBindPoint];
@@ -168,7 +178,7 @@ void CommandBuffer::Blit(const Texture& source, const Texture& destination) cons
     [blitCommandEncoder endEncoding];
 }
 
-void CommandBuffer::Begin() const
+void CommandBuffer::Begin(const TStringView debugName) const
 {
     mHandle->commandBuffer = mHandle->device->AllocateCommandBuffer();
     mCommitted = false;

@@ -3,6 +3,7 @@
 #include "WorldConfig.h"
 #include "Core/Subsystem.h"
 #include "Assets/AssetReference.h"
+#include "Container/Pointer.h"
 
 namespace Gleam {
 
@@ -25,8 +26,6 @@ public:
 	World* GetActiveWorld();
 
 private:
-
-	std::mutex mMutex;
 
 	uint32_t mActiveWorld = 0;
 

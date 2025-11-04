@@ -1,5 +1,7 @@
 #pragma once
 #include "GraphicsObject.h"
+#include "Container/Hash.h"
+#include "Container/String.h"
 
 namespace Gleam {
 
@@ -60,4 +62,13 @@ struct std::hash<Gleam::Shader>
         Gleam::hash_combine(hash, shader.GetStage());
         return hash;
     }
+};
+
+template <>
+struct eastl::hash<Gleam::Shader>
+{
+	size_t operator()(const Gleam::Shader& shader) const
+	{
+		return std::hash<Gleam::Shader>()(shader);
+	}
 };

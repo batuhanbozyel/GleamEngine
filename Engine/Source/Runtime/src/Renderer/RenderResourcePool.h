@@ -1,6 +1,7 @@
 #pragma once
 #include "Heap.h"
 #include "Texture.h"
+#include "Container/Queue.h"
 
 namespace Gleam {
 

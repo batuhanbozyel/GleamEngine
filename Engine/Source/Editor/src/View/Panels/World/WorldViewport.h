@@ -7,7 +7,11 @@
 
 #pragma once
 #include "View/View.h"
-#include "Gleam.h"
+#include "Math/Size.h"
+
+namespace Gleam {
+class EntityManager;
+} // namespace Gleam
 
 namespace GEditor {
 
@@ -31,8 +35,6 @@ public:
 private:
 
 	void Resize(Gleam::EntityManager& entityManager, const Gleam::Size& size);
-    
-    bool mIsFocused = false;
     
     bool mCursorVisible = true;
 

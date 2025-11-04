@@ -6,11 +6,11 @@
 //
 
 #pragma once
-#include <tuple>
+#include <EASTL/tuple.h>
 
 namespace Gleam {
 
 template<class ...Ts>
-using Tuple = std::tuple<Ts...>;
+using Tuple = eastl::tuple<Ts...>;
 
 } // namespace Gleam

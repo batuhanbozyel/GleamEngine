@@ -1,14 +1,16 @@
 #include "AssetRegistry.h"
 
+#include "Gleam.h"
+
 using namespace GEditor;
 
-AssetRegistry::AssetRegistry(const Gleam::Filesystem::Path& directory)
+AssetRegistry::AssetRegistry(const Gleam::Path& directory)
 	: mAssetDirectory(directory)
 {
 
 }
 
-const AssetItem& AssetRegistry::RegisterAsset(const Gleam::Filesystem::Path& path, const Gleam::Guid& type)
+const AssetItem& AssetRegistry::RegisterAsset(const Gleam::Path& path, const Gleam::Guid& type)
 {
 	const auto& item = GetAsset(path, type);
 	if (item.reference.guid == Gleam::Guid::InvalidGuid())
@@ -17,16 +19,18 @@ const AssetItem& AssetRegistry::RegisterAsset(const Gleam::Filesystem::Path& pat
 		auto item = AssetItem{
 			.reference = asset,
 			.type = type,
-			.name = path.stem().string()
+			.name = path.Stem()
 		};
 		return RegisterAsset(path, item);
 	}
 	return item;
 }
 
-const AssetItem& AssetRegistry::RegisterAsset(const Gleam::Filesystem::Path& path, const AssetItem& item)
+const AssetItem& AssetRegistry::RegisterAsset(const Gleam::Path& path, const AssetItem& item)
 {
-	auto relPath = path.is_relative() ? path : Gleam::Filesystem::Relative(path, mAssetDirectory);
+	auto relPath = path.IsRelative() ? path : Gleam::Filesystem::Relative(path, mAssetDirectory);
+	relPath.MakePreferred();
+
 	auto& items = mAssets[relPath];
 	auto it = std::find(items.begin(), items.end(), item);
 	if (it != items.end())
@@ -56,9 +60,11 @@ const AssetItem& AssetRegistry::GetAsset(const Gleam::Guid& guid) const
 	return invalidAsset;
 }
 
-const AssetItem& AssetRegistry::GetAsset(const Gleam::Filesystem::Path& path, const Gleam::Guid& type) const
+const AssetItem& AssetRegistry::GetAsset(const Gleam::Path& path, const Gleam::Guid& type) const
 {
-	auto relPath = path.is_relative() ? path : Gleam::Filesystem::Relative(path, mAssetDirectory);
+	auto relPath = path.IsRelative() ? path : Gleam::Filesystem::Relative(path, mAssetDirectory);
+	relPath.MakePreferred();
+
 	auto it = mAssets.find(relPath);
 	if (it != mAssets.end())
 	{
@@ -71,7 +77,7 @@ const AssetItem& AssetRegistry::GetAsset(const Gleam::Filesystem::Path& path, co
 		}
 	}
 
-	GLEAM_ERROR("Asset could not located for path: {0}", relPath.string());
+	GLEAM_ERROR("Asset could not located for path: {0}", relPath.String());
 	static AssetItem invalidAsset;
 	return invalidAsset;
 }

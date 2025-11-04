@@ -1,7 +1,10 @@
 #pragma once
+#include "Container/Pointer.h"
 
 namespace Gleam {
 
+class Buffer;
+class Texture;
 class GraphicsDevice;
 
 class UploadManager final

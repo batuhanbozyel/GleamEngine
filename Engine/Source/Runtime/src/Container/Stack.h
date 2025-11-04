@@ -6,11 +6,11 @@
 //
 
 #pragma once
-#include <stack>
+#include <EASTL/stack.h>
 
 namespace Gleam {
 
-template<class T>
-using Stack = std::stack<T>;
+template<typename T, typename Container = eastl::vector<T>>
+using Stack = eastl::stack<T>;
 
 } // namespace Gleam

@@ -1,12 +1,14 @@
 #pragma once
 #include "Entity.h"
+#include "IO/Filesystem.h"
 
 namespace Gleam {
 
 class EntityManager;
 
-struct Prefab
+GSTRUCT(Prefab, "CAFCF979-D525-48D5-81CD-76731218F4DA", Serializable)
 {
+	GFIELD("E1B84680-4E33-4C68-9DDD-AD88FBCD3E6C", Serializable)
 	TString name;
 	//AssetReference parent; // TODO: how to handle nested prefabs?
 
@@ -14,14 +16,10 @@ struct Prefab
 
 	EntityHandle Deserialize(EntityManager& entityManager, FileStream& stream);
 
-	static constexpr TStringView Extension()
+	static constexpr TWStringView Extension()
 	{
-		return ".prefab";
+		return L".prefab";
 	}
 };
 
 } // namespace Gleam
-
-GLEAM_TYPE(Gleam::Prefab, Guid("CAFCF979-D525-48D5-81CD-76731218F4DA"))
-	GLEAM_FIELD(name, Serializable())
-GLEAM_END
