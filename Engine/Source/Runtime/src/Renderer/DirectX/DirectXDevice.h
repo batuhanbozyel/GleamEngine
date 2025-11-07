@@ -72,8 +72,6 @@ public:
 
 	ID3D12CommandQueue* GetComputeQueue() const;
 
-	ID3D12CommandQueue* GetCopyQueue() const;
-
 	ID3D12RootSignature* GetGlobalRootSignature() const;
 
 	void WaitDeviceIdle() const;
@@ -105,8 +103,6 @@ private:
 	ID3D12CommandQueue* mDirectQueue = nullptr;
 
 	ID3D12CommandQueue* mComputeQueue = nullptr;
-
-	ID3D12CommandQueue* mCopyQueue = nullptr;
 
 	ID3D12RootSignature* mRootSignature = nullptr;
 

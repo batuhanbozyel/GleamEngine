@@ -237,6 +237,7 @@ bool MeshSource::Import(const Gleam::Path& path, const ImportSettings& settings)
 
 			if (node.has_scale)
 			{
+				GLEAM_WARN("Mesh source has non-uniform scaling. Using average for scale");
 				entity.SetScale((node.scale[0] + node.scale[1] + node.scale[2]) / 3.0f);
 			}
 
