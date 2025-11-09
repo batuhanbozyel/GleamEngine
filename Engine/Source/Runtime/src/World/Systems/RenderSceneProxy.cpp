@@ -14,13 +14,14 @@
 #include "Renderer/UploadManager.h"
 #include "Renderer/Material/Material.h"
 #include "Renderer/Material/MaterialInstance.h"
+#include "Renderer/Renderers/WorldRenderer.h"
 
 using namespace Gleam;
 
 void RenderSceneProxy::OnUpdate(EntityManager& entityManager)
 {
-	auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
-	auto assetManager = Globals::GameInstance->GetSubsystem<AssetManager>();
+	static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
+	static auto assetManager = Globals::GameInstance->GetSubsystem<AssetManager>();
 
 	for (auto& [_, batch] : mMeshBatches)
 	{
@@ -55,6 +56,10 @@ void RenderSceneProxy::OnUpdate(EntityManager& entityManager)
 				batch.instanceHeap = device->CreateHeap(heapDesc);
 				batch.instanceBuffer = batch.instanceHeap.Allocate(bufferDesc);
 				batch.material = assetManager->Get<Material>(material);
+
+				auto worldRenderer = renderSystem->GetRenderer<WorldRenderer>();
+				auto materialDescriptor = assetManager->LoadDescriptor<MaterialDescriptor>(material);
+				worldRenderer->RegisterShadingPipeline(materialDescriptor, batch.material->GetPipelineHash());
 			}
 
 			batch.meshes[batch.numInstances] = mesh;
@@ -87,6 +92,29 @@ void RenderSceneProxy::OnUpdate(EntityManager& entityManager)
             mActiveCamera = &entity;
         }
     });
+}
+
+void RenderSceneProxy::OnDestroy(EntityManager& entityManager)
+{
+	static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
+	static auto assetManager = Globals::GameInstance->GetSubsystem<AssetManager>();
+
+	entityManager.ForEach<Entity, MeshRenderer>([&](const Entity& entity, const MeshRenderer& meshRenderer)
+	{
+		assetManager->Release(meshRenderer.mesh);
+		for (const auto& material : meshRenderer.materials)
+		{
+			assetManager->Release(material);
+		}
+	});
+
+	auto device = renderSystem->GetDevice();
+	for (auto& [_, batch] : mMeshBatches)
+	{
+		batch.instanceHeap.Free(batch.instanceBuffer);
+		device->Dispose(batch.instanceHeap);
+	}
+	mMeshBatches.clear();
 }
 
 void RenderSceneProxy::ForEach(BatchFn&& fn) const

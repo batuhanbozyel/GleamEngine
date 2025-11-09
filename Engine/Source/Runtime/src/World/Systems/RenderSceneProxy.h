@@ -24,7 +24,9 @@ struct MeshBatch
 	Buffer instanceBuffer = {};
 	uint32_t numInstances = 0;
 
-	TArray<Mesh*, MaxMeshInstances> meshes;
+	// TODO: When switched to mesh shader pipeline,
+	// we likely dont need those arrays to persist after uploading to GPU
+	TArray<Mesh*, MaxMeshInstances> meshes = {};
 	TArray<MeshInstanceData, MaxMeshInstances> instances = {};
 };
 
@@ -34,6 +36,8 @@ class RenderSceneProxy : public ComponentSystem
 public:
     
     virtual void OnUpdate(EntityManager& entityManager) override;
+
+	virtual void OnDestroy(EntityManager& entityManager) override;
     
     void ForEach(BatchFn&& fn) const;
     
