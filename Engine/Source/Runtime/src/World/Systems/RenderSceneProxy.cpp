@@ -19,31 +19,64 @@ using namespace Gleam;
 
 void RenderSceneProxy::OnUpdate(EntityManager& entityManager)
 {
+	auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
 	auto assetManager = Globals::GameInstance->GetSubsystem<AssetManager>();
-	
-    // update static batches
-    mStaticBatches.clear();
+
+	for (auto& [_, batch] : mMeshBatches)
+	{
+		batch.numInstances = 0;
+	}
+
+	// update mesh batches
 	entityManager.ForEach<Entity, MeshRenderer>([&](const Entity& entity, const MeshRenderer& meshRenderer)
 	{
 		const auto mesh = assetManager->Load<Mesh>(meshRenderer.mesh);
 		const auto& submeshes = mesh->GetSubmeshes();
 
-		GLEAM_ASSERT(meshRenderer.materials.size() == submeshes.size());
-		for (uint32_t i = 0; i < submeshes.size(); ++i)
+		for (const auto& submesh : submeshes)
 		{
-			const auto material = assetManager->Load<MaterialInstance>(meshRenderer.materials[i]);
-			MeshBatch batch = {
-				.mesh = mesh,
-				.material = material,
-				.transform = entity.GetWorldTransform(),
-				.submesh = submeshes[i]
-			};
-			mStaticBatches[batch.material->GetBaseMaterial()].emplace_back(batch);
+			const auto materialInstance = assetManager->Load<MaterialInstance>(meshRenderer.materials[submesh.materialIndex]);
+			const auto& material = materialInstance->GetBaseMaterial();
+
+			auto& batch = mMeshBatches[material];
+			if (batch.instanceBuffer.IsValid() == false)
+			{
+				auto device = renderSystem->GetDevice();
+
+				HeapDescriptor heapDesc;
+				heapDesc.name = "MeshInstanceData";
+				heapDesc.memoryType = MemoryType::GPU;
+				heapDesc.size = sizeof(MeshInstanceData) * MeshBatch::MaxMeshInstances;
+
+				BufferDescriptor bufferDesc;
+				bufferDesc.name = "Buffer";
+				bufferDesc.size = heapDesc.size;
+
+				batch.instanceHeap = device->CreateHeap(heapDesc);
+				batch.instanceBuffer = batch.instanceHeap.Allocate(bufferDesc);
+				batch.material = assetManager->Get<Material>(material);
+			}
+
+			batch.meshes[batch.numInstances] = mesh;
+			batch.instances[batch.numInstances].positionBuffer = mesh->GetPositionBuffer().GetResourceView();
+			batch.instances[batch.numInstances].interleavedBuffer = mesh->GetInterleavedBuffer().GetResourceView();
+			batch.instances[batch.numInstances].indexBuffer = mesh->GetIndexBuffer().GetResourceView();
+			batch.instances[batch.numInstances].materialID = materialInstance->GetID();
+			batch.instances[batch.numInstances].transform = entity.GetWorldTransform();
+			batch.instances[batch.numInstances].baseVertex = submesh.baseVertex;
+			batch.instances[batch.numInstances].indexCount = submesh.indexCount;
+			batch.instances[batch.numInstances].firstIndex = submesh.firstIndex;
+			++batch.numInstances;
 		}
 	});
-	auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
-	renderSystem->GetUploadManager()->Execute();
-	renderSystem->GetUploadManager()->WaitUntilCompleted();
+
+	auto uploadManager = renderSystem->GetUploadManager();
+	for (const auto& [_, batch] : mMeshBatches)
+	{
+		uploadManager->Commit(batch.instanceBuffer, batch.instances.data(), sizeof(MeshInstanceData) * batch.numInstances);
+	}
+	uploadManager->Execute();
+	uploadManager->WaitUntilCompleted();
     
     // update active camera
     mActiveCamera = nullptr;
@@ -58,11 +91,9 @@ void RenderSceneProxy::OnUpdate(EntityManager& entityManager)
 
 void RenderSceneProxy::ForEach(BatchFn&& fn) const
 {
-	auto assetManager = Globals::GameInstance->GetSubsystem<AssetManager>();
-    for (const auto& [materialRef, batch] : mStaticBatches)
+    for (const auto& [_, batch] : mMeshBatches)
     {
-		auto material = assetManager->Get<Material>(materialRef);
-        fn(material, batch);
+        fn(batch);
     }
 }
 

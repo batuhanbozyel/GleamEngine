@@ -69,29 +69,25 @@ void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
     [this, blackboard](const CommandBuffer* cmd, const WorldRenderingData& passData)
     {
         const auto& sceneData = blackboard.Get<SceneRenderingData>();
-        sceneData.sceneProxy->ForEach([this, cmd, passData, sceneData](const Material* material, const TArray<MeshBatch>& batches)
+        sceneData.sceneProxy->ForEach([this, cmd, passData, sceneData](const MeshBatch& batch)
         {
-            const auto& materialBuffer = material->GetBuffer();
-            const auto& pipeline = mShadingPipelines[material->GetPipelineHash()];
+            const auto& materialBuffer = batch.material->GetBuffer();
+            const auto& pipeline = mShadingPipelines[0]; // TODO: use batch.material->GetPipelineHash()
 
-            cmd->BindGraphicsPipeline(pipeline);
+			MeshPassResources resources;
+			resources.instanceBuffer = batch.instanceBuffer.GetResourceView();
+			resources.materialBuffer = materialBuffer.GetResourceView();
+
+			cmd->BindGraphicsPipeline(pipeline);
+			cmd->SetConstantBuffer(resources, 0);
 			cmd->SetConstantBuffer(sceneData.camera, 1);
 
-            for (const auto& batch : batches)
-            {
-                const auto& positionBuffer = batch.mesh->GetPositionBuffer();
-                const auto& interleavedBuffer = batch.mesh->GetInterleavedBuffer();
-				
-                MeshPassResources resources;
-                resources.positionBuffer = positionBuffer.GetResourceView();
-                resources.interleavedBuffer = interleavedBuffer.GetResourceView();
-                resources.materialBuffer = materialBuffer.GetResourceView();
-				resources.materialID = batch.material->GetID();
-				resources.modelMatrix = batch.transform;
-				resources.baseVertex = batch.submesh.baseVertex;
-                cmd->SetConstantBuffer(resources, 0);
-				cmd->DrawIndexed(batch.mesh->GetIndexBuffer(), IndexType::UINT32, batch.submesh.indexCount, 1, batch.submesh.firstIndex);
-            }
+			for (uint32_t instanceID = 0; instanceID < batch.numInstances; ++instanceID)
+			{
+				const auto& instance = batch.instances[instanceID];
+				cmd->SetConstantBuffer(instance, 2);
+				cmd->DrawIndexed(batch.meshes[instanceID]->GetIndexBuffer(), IndexType::UINT32, instance.indexCount, 1, instance.firstIndex);
+			}
         });
     });
 }

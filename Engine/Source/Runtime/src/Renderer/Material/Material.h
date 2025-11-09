@@ -19,6 +19,7 @@ class MaterialInstance;
 
 class Material : public IMaterial
 {
+	static constexpr uint32_t MaxMaterialInstances = 1024;
 public:
     
     Material(const MaterialDescriptor& descriptor);
@@ -50,8 +51,6 @@ private:
 	uint32_t mPipelineStateHash = 0;
 
 	ResourceDescriptorHeap mInstanceDescriptorHeap;
-
-	static constexpr uint32_t MaxMaterialInstances = 1000;
     
 };
 

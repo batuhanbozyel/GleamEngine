@@ -150,7 +150,7 @@ void DebugRenderer::RenderMeshes(const CommandBuffer* cmd, const CameraUniforms&
 		for (const auto& submesh : debugMesh.mesh->GetSubmeshes())
 		{
 			DebugMeshUniforms uniforms;
-			uniforms.modelMatrix = debugMesh.transform;
+			uniforms.transform = debugMesh.transform;
 			uniforms.baseVertex = submesh.baseVertex;
 			uniforms.color = debugMesh.color;
 			cmd->SetPushConstant(uniforms);

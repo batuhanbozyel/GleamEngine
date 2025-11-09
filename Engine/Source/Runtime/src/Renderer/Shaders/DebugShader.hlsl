@@ -31,7 +31,7 @@ VertexOut debugMeshVertexShader(uint vertex_id: SV_VertexID)
     float3 position = resources.vertexBuffer.Load<float3>(vertexID);
     
     VertexOut OUT;
-    OUT.position = mul(camera.viewProjectionMatrix, mul(uniforms.modelMatrix, float4(position, 1.0f)));
+    OUT.position = mul(camera.viewProjectionMatrix, mul(uniforms.transform, float4(position, 1.0f)));
     OUT.color = unpack_unorm4x8_to_float(uniforms.color);
     return OUT;
 }

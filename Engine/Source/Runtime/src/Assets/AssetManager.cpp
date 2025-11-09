@@ -85,6 +85,9 @@ void AssetManager::Initialize(Application* app)
 
 void AssetManager::Shutdown()
 {
+	// TODO: Fix me!!!
+	// There are assets depending other assets such as MaterialInstance -> Material
+	// We need proper deallocation logic for such dependency
 	mAssetCache.clear();
 	mAssetPaths.clear();
 }

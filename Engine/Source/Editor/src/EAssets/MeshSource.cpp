@@ -254,10 +254,9 @@ bool MeshSource::Import(const Gleam::Path& path, const ImportSettings& settings)
 				const auto& meshItem = Registry()->GetAsset<Gleam::MeshDescriptor>(meshBaker->Filename());
 
 				Gleam::TArray<Gleam::AssetReference> materialRefs;
-				materialRefs.reserve(meshDesc.submeshes.size());
-				for (const auto& submesh : meshDesc.submeshes)
+				materialRefs.reserve(materials.size());
+				for (const auto& materialBaker : materials)
 				{
-					const auto& materialBaker = materials[submesh.materialIndex];
 					const auto& materialItem = Registry()->GetAsset<Gleam::MaterialInstanceDescriptor>(materialBaker->Filename());
 					materialRefs.push_back(materialItem.reference);
 				}
