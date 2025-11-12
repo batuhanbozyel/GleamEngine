@@ -33,7 +33,7 @@
 
 #define GLEAM_STRINGIFY(x) #x
 #define GLEAM_CONCAT(x, y) x##y
-#define GLEAM_EXPAND(X) X
+#define GLEAM_EXPAND(x) x
 
 #define GLEAM_FOREACH_ARG_N(_1, _2, _3, _4, _5, _6, _7, _8, _9, N, ...) N
 #define GLEAM_FOREACH_RSEQ_N() 9, 8, 7, 6, 5, 4, 3, 2, 1, 0

@@ -92,14 +92,36 @@ private:
 #define GLEAM_WARN(...) ::Gleam::Logger::GetClientLogger().Log(::Gleam::Logger::Level::Warn, __VA_ARGS__)
 #define GLEAM_ERROR(...) ::Gleam::Logger::GetClientLogger().Log(::Gleam::Logger::Level::Error, __VA_ARGS__)
 
-#ifdef ENABLE_ASSERTS
 #include <filesystem>
-#define GLEAM_ASSERT(x, ...) if (!(x)) { GLEAM_CORE_ERROR("Assertion failed at {0}:{1}", std::filesystem::path(__FILE__).filename().string(), __LINE__); DEBUGBREAK(); }
+#define GLEAM_ASSERT_IMPL(cond, msg, ...) \
+    if (!(cond)) { \
+        GLEAM_CORE_ERROR(msg, __VA_ARGS__); \
+        DEBUGBREAK(); \
+    }
+#define GLEAM_ASSERT_WITH_MSG(cond, ...) GLEAM_ASSERT_IMPL(cond, "Assertion failed at {0}:{1}\n{2}", std::filesystem::path(__FILE__).filename().string(),  __LINE__, __VA_ARGS__)
+#define GLEAM_ASSERT_NO_MSG(cond) GLEAM_ASSERT_IMPL(cond, "Assertion failed at {0}:{1}", std::filesystem::path(__FILE__).filename().string(),  __LINE__)
+
+#define GLEAM_ASSERT_GET_MACRO_NAME_(n) GLEAM_ASSERT_GET_MACRO_NAME_##n
+#define GLEAM_ASSERT_GET_MACRO_NAME(n) GLEAM_ASSERT_GET_MACRO_NAME_(n)
+
+#define GLEAM_ASSERT_GET_MACRO_NAME_1 GLEAM_ASSERT_NO_MSG
+#define GLEAM_ASSERT_GET_MACRO_NAME_2 GLEAM_ASSERT_WITH_MSG
+#define GLEAM_ASSERT_GET_MACRO_NAME_3 GLEAM_ASSERT_WITH_MSG
+#define GLEAM_ASSERT_GET_MACRO_NAME_4 GLEAM_ASSERT_WITH_MSG
+#define GLEAM_ASSERT_GET_MACRO_NAME_5 GLEAM_ASSERT_WITH_MSG
+#define GLEAM_ASSERT_GET_MACRO_NAME_6 GLEAM_ASSERT_WITH_MSG
+#define GLEAM_ASSERT_GET_MACRO_NAME_7 GLEAM_ASSERT_WITH_MSG
+#define GLEAM_ASSERT_GET_MACRO_NAME_8 GLEAM_ASSERT_WITH_MSG
+#define GLEAM_ASSERT_GET_MACRO_NAME_9 GLEAM_ASSERT_WITH_MSG
+#define GLEAM_ASSERT_GET_MACRO(...) GLEAM_EXPAND(GLEAM_ASSERT_GET_MACRO_NAME(GLEAM_FOREACH_NUM_ARGS(__VA_ARGS__)))
+
+#ifdef ENABLE_ASSERTS
+#define GLEAM_ASSERT(...) GLEAM_EXPAND(GLEAM_ASSERT_GET_MACRO(__VA_ARGS__)(__VA_ARGS__))
 #else
 #define GLEAM_ASSERT(...)
 #endif
 
-#define GLEAM_AFFIRM(x, ...) if (!(x)) { GLEAM_CORE_ERROR("Assertion failed at {0}:{1}", std::filesystem::path(__FILE__).filename().string(), __LINE__); DEBUGBREAK(); }
+#define GLEAM_AFFIRM(...) GLEAM_EXPAND(GLEAM_ASSERT_GET_MACRO(__VA_ARGS__)(__VA_ARGS__))
 
 static bool ExecuteCommand(const Gleam::TString& cmd)
 {

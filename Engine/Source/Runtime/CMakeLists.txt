@@ -18,7 +18,7 @@ list(FILTER SOURCE_FILES EXCLUDE REGEX ".*Reflection\\.generated\\.h$")
 
 # Setup link libraries
 if (WIN32)
-    set(LIB_LINKS SDL3::SDL3-static d3d12.lib dxgi.lib dxguid.lib dstorage.lib imgui.lib Ole32.lib EASTL)
+    set(LIB_LINKS SDL3::SDL3-static d3d12.lib dxgi.lib dxguid.lib dstorage.lib imgui.lib Ole32.lib WinPixEventRuntime.lib EASTL)
     set_source_files_properties(${SHADER_FILES} PROPERTIES VS_TOOL_OVERRIDE "None")
 elseif (APPLE)
     find_library(METALIR_LIB libmetalirconverter.dylib)
@@ -60,6 +60,7 @@ else()
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/EASTL/include
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/DirectStorage/native/include
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/DirectXAgilitySDK/build/native/include
+        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/WinPixEventRuntime/Include
     )
 endif()
 
@@ -82,6 +83,7 @@ target_compile_definitions(
     "_CRT_SECURE_NO_WARNINGS"
     "WIN32_LEAN_AND_MEAN"
     "NOMINMAX"
+    "USE_PIX"
 
     PUBLIC
     $<$<CONFIG:Debug>:GDEBUG>
@@ -91,6 +93,8 @@ target_compile_definitions(
 DEPLOY_FILE(${CMAKE_SOURCE_DIR}/Engine/ThirdParty/DirectStorage/native/lib/x64/dstorage.lib)
 DEPLOY_FILE(${CMAKE_SOURCE_DIR}/Engine/ThirdParty/DirectStorage/native/bin/x64/dstorage.dll)
 DEPLOY_FILE(${CMAKE_SOURCE_DIR}/Engine/ThirdParty/DirectStorage/native/bin/x64/dstoragecore.dll)
+DEPLOY_FILE(${CMAKE_SOURCE_DIR}/Engine/ThirdParty/WinPixEventRuntime/bin/x64/WinPixEventRuntime.dll)
+DEPLOY_FILE(${CMAKE_SOURCE_DIR}/Engine/ThirdParty/WinPixEventRuntime/bin/x64/WinPixEventRuntime.lib)
 
 DEPLOY_FILE_TO(${CMAKE_SOURCE_DIR}/Engine/ThirdParty/DirectXAgilitySDK/build/native/bin/x64/D3D12Core.dll D3D12)
 DEPLOY_FILE_TO(${CMAKE_SOURCE_DIR}/Engine/ThirdParty/DirectXAgilitySDK/build/native/bin/x64/d3d12SDKLayers.dll D3D12)
