@@ -1,6 +1,8 @@
 #pragma once
 #ifdef USE_DIRECTX_RENDERER
 #include <d3d12.h>
+#include <WinPixEventRuntime/pix3.h>
+
 #include "Renderer/TextureFormat.h"
 #include "Renderer/HeapDescriptor.h"
 #include "Renderer/RenderPassDescriptor.h"
