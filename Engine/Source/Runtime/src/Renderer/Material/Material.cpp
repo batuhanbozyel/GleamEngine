@@ -50,6 +50,7 @@ static size_t ComputeMaterialInstanceSize(const TArray<MaterialProperty>& proper
 Material::Material(const MaterialDescriptor& descriptor)
     : IMaterial(descriptor.properties)
     , mName(descriptor.name)
+	, mPipelineStateHash((uint32_t)eastl::hash<MaterialDescriptor>()(descriptor))
 	, mInstanceDescriptorHeap(MaxMaterialInstances)
 	, mInstanceSize(ComputeMaterialInstanceSize(descriptor.properties))
 {

@@ -7,8 +7,13 @@
 
 #pragma once
 #include "Renderer/Renderer.h"
+#include "Renderer/Mesh.h"
+#include "Renderer/Material/Material.h"
+#include "Renderer/Material/MaterialInstance.h"
 
 namespace Gleam {
+
+struct MaterialDescriptor;
 
 struct WorldRenderingData
 {
@@ -24,7 +29,11 @@ public:
     
     virtual void AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard) override;
 
+	void RegisterShadingPipeline(const MaterialDescriptor& material, uint32_t hash);
+
 private:
+
+	GraphicsDevice* mDevice = nullptr;
     
 	HashMap<uint32_t, GraphicsPipelineHandle> mShadingPipelines;
 

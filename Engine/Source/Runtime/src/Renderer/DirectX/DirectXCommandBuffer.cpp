@@ -15,8 +15,8 @@ struct CommandBuffer::Impl
 
 	ID3D12GraphicsCommandList7* commandList = nullptr;
 	ID3D12Fence* fence = nullptr;
-	uint64_t fenceValue = 1;
-	uint64_t waitFenceValue = 1;
+	uint64_t fenceValue = 0;
+	uint64_t waitFenceValue = 0;
 };
 
 CommandBuffer::CommandBuffer(GraphicsDevice* device)

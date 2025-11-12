@@ -14,6 +14,22 @@ World::World(const TString& name)
 	AddSystem<RenderSceneProxy>();
 }
 
+World::~World()
+{
+	for (auto system : mSystems)
+	{
+		system->OnDestroy(mEntityManager);
+	}
+	mSystems.clear();
+	mTickableSubsystems.clear();
+
+	for (auto system : mSubsystems)
+	{
+		system->Shutdown();
+	}
+	mSubsystems.clear();
+}
+
 void World::Update()
 {
 	Timestep::Step();

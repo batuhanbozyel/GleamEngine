@@ -237,6 +237,7 @@ bool MeshSource::Import(const Gleam::Path& path, const ImportSettings& settings)
 
 			if (node.has_scale)
 			{
+				GLEAM_WARN("Mesh source has non-uniform scaling. Using average for scale");
 				entity.SetScale((node.scale[0] + node.scale[1] + node.scale[2]) / 3.0f);
 			}
 
@@ -253,10 +254,9 @@ bool MeshSource::Import(const Gleam::Path& path, const ImportSettings& settings)
 				const auto& meshItem = Registry()->GetAsset<Gleam::MeshDescriptor>(meshBaker->Filename());
 
 				Gleam::TArray<Gleam::AssetReference> materialRefs;
-				materialRefs.reserve(meshDesc.submeshes.size());
-				for (const auto& submesh : meshDesc.submeshes)
+				materialRefs.reserve(materials.size());
+				for (const auto& materialBaker : materials)
 				{
-					const auto& materialBaker = materials[submesh.materialIndex];
 					const auto& materialItem = Registry()->GetAsset<Gleam::MaterialInstanceDescriptor>(materialBaker->Filename());
 					materialRefs.push_back(materialItem.reference);
 				}

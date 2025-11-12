@@ -50,18 +50,18 @@ static constexpr const char* ID3D12CommandListTypeToString(D3D12_COMMAND_LIST_TY
 
 static void WaitForID3D12Fence(ID3D12Fence* fence, uint64_t value)
 {
-	if (fence->GetCompletedValue() <= value)
+	if (fence->GetCompletedValue() >= value)
 	{
 		return;
 	}
 
-	HANDLE fenceEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
+	HANDLE fenceEvent = ::CreateEvent(NULL, FALSE, FALSE, NULL);
 	DX_CHECK(fence->SetEventOnCompletion(value, fenceEvent));
 
 	if (fenceEvent != 0)
 	{
-		DWORD result = WaitForSingleObject(fenceEvent, INFINITE);
-		CloseHandle(fenceEvent);
+		DWORD result = ::WaitForSingleObject(fenceEvent, INFINITE);
+		::CloseHandle(fenceEvent);
 		GLEAM_ASSERT(result == WAIT_OBJECT_0);
 	}
 }

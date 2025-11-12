@@ -14,34 +14,14 @@
 #include "Renderer/Mesh.h"
 #include "Renderer/CommandBuffer.h"
 #include "Renderer/GraphicsDevice.h"
-#include "Renderer/Material/Material.h"
-#include "Renderer/Material/MaterialInstance.h"
+
 #include "World/Systems/RenderSceneProxy.h"
 
 using namespace Gleam;
 
 void WorldRenderer::OnCreate(RenderContext& context)
 {
-	GraphicsPipelineStateDescriptor pipelineDesc = {
-		PipelineStateDescriptor {
-			.blendState = {},
-			.depthState = {
-			.compareFunction = CompareFunction::Less,
-			.writeEnabled = true},
-			.stencilState = {},
-			.cullingMode = CullMode::Back,
-			.topology = PrimitiveTopology::Triangles,
-			.alphaToCoverage = false,
-			.wireframe = false
-		}
-	};
-	pipelineDesc.colorFormats = { TextureFormat::R16G16B16A16_SFloat };
-	pipelineDesc.depthFormat = TextureFormat::D16_UNorm;
-	pipelineDesc.vertexEntry = "meshVertexShader";
-	pipelineDesc.fragmentEntry = "SurfaceLit";
-
-    // TODO: create material pipelines
-	mShadingPipelines[0] = context.device->CreateGraphicsPipeline(pipelineDesc);
+	mDevice = context.device;
 }
 
 void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard)
@@ -69,29 +49,53 @@ void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
     [this, blackboard](const CommandBuffer* cmd, const WorldRenderingData& passData)
     {
         const auto& sceneData = blackboard.Get<SceneRenderingData>();
-        sceneData.sceneProxy->ForEach([this, cmd, passData, sceneData](const Material* material, const TArray<MeshBatch>& batches)
+        sceneData.sceneProxy->ForEach([this, cmd, passData, sceneData](const MeshBatch& batch)
         {
-            const auto& materialBuffer = material->GetBuffer();
-            const auto& pipeline = mShadingPipelines[material->GetPipelineHash()];
+            const auto& materialBuffer = batch.material->GetBuffer();
+            const auto& pipeline = mShadingPipelines[batch.material->GetPipelineHash()];
 
-            cmd->BindGraphicsPipeline(pipeline);
+			MeshPassResources resources;
+			resources.instanceBuffer = batch.instanceBuffer.GetResourceView();
+			resources.materialBuffer = materialBuffer.GetResourceView();
+
+			cmd->BindGraphicsPipeline(pipeline);
+			cmd->SetConstantBuffer(resources, 0);
 			cmd->SetConstantBuffer(sceneData.camera, 1);
 
-            for (const auto& batch : batches)
-            {
-                const auto& positionBuffer = batch.mesh->GetPositionBuffer();
-                const auto& interleavedBuffer = batch.mesh->GetInterleavedBuffer();
-				
-                MeshPassResources resources;
-                resources.positionBuffer = positionBuffer.GetResourceView();
-                resources.interleavedBuffer = interleavedBuffer.GetResourceView();
-                resources.materialBuffer = materialBuffer.GetResourceView();
-				resources.materialID = batch.material->GetID();
-				resources.modelMatrix = batch.transform;
-				resources.baseVertex = batch.submesh.baseVertex;
-                cmd->SetConstantBuffer(resources, 0);
-				cmd->DrawIndexed(batch.mesh->GetIndexBuffer(), IndexType::UINT32, batch.submesh.indexCount, 1, batch.submesh.firstIndex);
-            }
+			for (uint32_t instanceID = 0; instanceID < batch.numInstances; ++instanceID)
+			{
+				const auto& instance = batch.instances[instanceID];
+				cmd->SetConstantBuffer(instance, 2);
+				cmd->DrawIndexed(batch.meshes[instanceID]->GetIndexBuffer(), IndexType::UINT32, instance.indexCount, 1, instance.firstIndex);
+			}
         });
     });
+}
+
+void WorldRenderer::RegisterShadingPipeline(const MaterialDescriptor& material, uint32_t hash)
+{
+	auto it = mShadingPipelines.find(hash);
+	if (it == mShadingPipelines.end())
+	{
+		GraphicsPipelineStateDescriptor pipelineDesc = {
+		PipelineStateDescriptor {
+			.blendState = material.blendState,
+			.depthState = material.depthState,
+			.stencilState = material.stencilState,
+			.cullingMode = material.cullingMode,
+			.topology = PrimitiveTopology::Triangles,
+			.alphaToCoverage = false,
+			.wireframe = false
+		}
+		};
+		pipelineDesc.colorFormats = { TextureFormat::R16G16B16A16_SFloat };
+		pipelineDesc.depthFormat = TextureFormat::D16_UNorm;
+		pipelineDesc.vertexEntry = "meshVertexShader";
+		pipelineDesc.fragmentEntry = material.surfaceShader;
+		auto pipeline = mDevice->CreateGraphicsPipeline(pipelineDesc);
+
+		mShadingPipelines.emplace_hint(it, eastl::piecewise_construct,
+										   eastl::forward_as_tuple(hash),
+										   eastl::forward_as_tuple(pipeline));
+	}
 }

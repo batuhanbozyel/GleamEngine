@@ -29,6 +29,8 @@ public:
 	World(World&&) = default;
     
 	World(const TString& name = "World");
+
+	~World();
     
     void Update();
 

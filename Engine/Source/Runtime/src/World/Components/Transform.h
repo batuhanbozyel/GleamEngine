@@ -22,12 +22,11 @@ GSTRUCT(Transform, "D534ACED-5A81-4183-BD5F-A7F61A8F47E7", Serializable)
 
 	Transform operator*(const Transform& rhs) const
 	{
-		auto nonUniformScale = Math::Inverse(rhs.rotation) * ((rhs.rotation * rhs.scale) * scale);
 		return Transform
 		{
 			.position = position + (rotation * (rhs.position * scale)),
 			.rotation = rotation * rhs.rotation,
-			.scale = (nonUniformScale.x + nonUniformScale.y + nonUniformScale.z) / 3.0f
+			.scale = scale * rhs.scale
 		};
 	}
 };

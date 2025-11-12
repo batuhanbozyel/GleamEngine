@@ -1,9 +1,10 @@
 #pragma once
 #include "World/ComponentSystem.h"
-#include "Renderer/MeshDescriptor.h"
+#include "Renderer/Heap.h"
+#include "Renderer/Buffer.h"
+#include "Renderer/Shaders/ShaderTypes.h"
 #include "Assets/AssetReference.h"
 #include "Container/Hash.h"
-#include "Math/Float4x4.h"
 
 #include <functional>
 
@@ -16,18 +17,27 @@ class MaterialInstance;
 
 struct MeshBatch
 {
-	const Mesh* mesh = nullptr;
-	const MaterialInstance* material = nullptr;
-    Float4x4 transform;
-	SubmeshDescriptor submesh;
+	static constexpr uint32_t MaxMeshInstances = 65536;
+
+	Material* material = nullptr;
+	Heap instanceHeap = {};
+	Buffer instanceBuffer = {};
+	uint32_t numInstances = 0;
+
+	// TODO: When switched to mesh shader pipeline,
+	// we likely dont need those arrays to persist after uploading to GPU
+	TArray<Mesh*, MaxMeshInstances> meshes = {};
+	TArray<MeshInstanceData, MaxMeshInstances> instances = {};
 };
 
 class RenderSceneProxy : public ComponentSystem
 {
-    using BatchFn = std::function<void(const Material*, const TArray<MeshBatch>&)>;
+    using BatchFn = std::function<void(const MeshBatch&)>;
 public:
     
     virtual void OnUpdate(EntityManager& entityManager) override;
+
+	virtual void OnDestroy(EntityManager& entityManager) override;
     
     void ForEach(BatchFn&& fn) const;
     
@@ -37,7 +47,7 @@ private:
     
     const Entity* mActiveCamera = nullptr;
 
-    HashMap<AssetReference, TArray<MeshBatch>> mStaticBatches;
+    HashMap<AssetReference, MeshBatch> mMeshBatches;
     
 };
 

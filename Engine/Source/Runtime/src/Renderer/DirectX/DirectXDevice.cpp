@@ -464,7 +464,6 @@ DirectXDevice::DirectXDevice(RenderSurface* surface, ResourceReleaseQueue* relea
 
 	mDirectQueue = CreateCommandQueue(D3D12_COMMAND_LIST_TYPE_DIRECT);
 	mComputeQueue = CreateCommandQueue(D3D12_COMMAND_LIST_TYPE_COMPUTE);
-	mCopyQueue = CreateCommandQueue(D3D12_COMMAND_LIST_TYPE_COPY);
 
 	mRtvHeap = CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_RTV, D3D12_DESCRIPTOR_HEAP_FLAG_NONE, 8192);
 	mDsvHeap = CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_DSV, D3D12_DESCRIPTOR_HEAP_FLAG_NONE, 8192);
@@ -519,7 +518,7 @@ DirectXDevice::DirectXDevice(RenderSurface* surface, ResourceReleaseQueue* relea
 
 	ID3DBlob* blob = nullptr;
 	ID3DBlob* error = nullptr;
-	D3D12SerializeVersionedRootSignature(&rootSignature, &blob, &error);
+	DX_CHECK(D3D12SerializeVersionedRootSignature(&rootSignature, &blob, &error));
 
 	if (error)
 	{
@@ -567,7 +566,6 @@ DirectXDevice::~DirectXDevice()
 
 	mDirectQueue->Release();
 	mComputeQueue->Release();
-	mCopyQueue->Release();
 
 	mRootSignature->Release();
 	static_cast<ID3D12Device10*>(mHandle)->Release();
@@ -828,7 +826,6 @@ void DirectXDevice::ReleaseResourceView(ShaderResourceIndex view)
 
 void DirectXDevice::WaitDeviceIdle() const
 {
-	WaitQueueIdle(mCopyQueue);
 	WaitQueueIdle(mComputeQueue);
 	WaitQueueIdle(mDirectQueue);
 }
@@ -882,11 +879,6 @@ ID3D12CommandQueue* DirectXDevice::GetDirectQueue() const
 ID3D12CommandQueue* DirectXDevice::GetComputeQueue() const
 {
 	return mComputeQueue;
-}
-
-ID3D12CommandQueue* DirectXDevice::GetCopyQueue() const
-{
-	return mCopyQueue;
 }
 
 ID3D12RootSignature* DirectXDevice::GetGlobalRootSignature() const

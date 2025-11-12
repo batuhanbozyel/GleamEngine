@@ -20,7 +20,7 @@ struct DebugVertex
 
 struct DebugMeshUniforms
 {
-	float4x4 modelMatrix;
+	float4x4 transform;
 	uint32_t baseVertex;
 	uint32_t color;
 };
@@ -38,16 +38,24 @@ struct ImGuiResources
 	uint32_t vertexOffset;
 };
 
-struct MeshPassResources
+struct MeshInstanceData
 {
-	float4x4 modelMatrix;
+	float4x4 transform;
 
 	BufferResourceView positionBuffer;
 	BufferResourceView interleavedBuffer;
-    BufferResourceView materialBuffer;
+	BufferResourceView indexBuffer;
 
 	uint32_t baseVertex;
+	uint32_t indexCount;
+	uint32_t firstIndex;
 	uint32_t materialID;
+};
+
+struct MeshPassResources
+{
+	BufferResourceView instanceBuffer;
+	BufferResourceView materialBuffer;
 };
 
 struct TonemapUniforms

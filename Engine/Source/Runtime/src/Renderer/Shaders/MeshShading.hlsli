@@ -3,6 +3,10 @@
 CONSTANT_BUFFER(Gleam::MeshPassResources, resources, 0);
 CONSTANT_BUFFER(Gleam::CameraUniforms, camera, 1);
 
+// We only need this for legacy vertex shader path
+// When switched to mesh shaders, we should be fetching instance data from instance buffer
+CONSTANT_BUFFER(Gleam::MeshInstanceData, instanceData, 2);
+
 struct MeshVertexOut
 {
 	float4 position : SV_POSITION;

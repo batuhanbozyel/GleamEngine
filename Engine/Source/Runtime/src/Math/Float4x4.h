@@ -353,7 +353,10 @@ FORCE_INLINE static void Decompose(const Float4x4& transform, Float3& translatio
 	Float3 xAxis(transform.m[0], transform.m[1], transform.m[2]);
 	Float3 yAxis(transform.m[4], transform.m[5], transform.m[6]);
 	Float3 zAxis(transform.m[8], transform.m[9], transform.m[10]);
-	scale = (Length(xAxis) + Length(yAxis) + Length(zAxis)) / 3.0f;
+	scale = Length(xAxis);
+
+	GLEAM_ASSERT(Abs(scale - Length(yAxis)) < Epsilon);
+	GLEAM_ASSERT(Abs(scale - Length(zAxis)) < Epsilon);
 
 	Float3x3 rotMatrix;
 	rotMatrix[0] = xAxis / scale;
