@@ -40,6 +40,7 @@ CommandBuffer::~CommandBuffer()
 
 void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, const TStringView debugName) const
 {
+	PIXBeginEvent(mHandle->commandList, PIX_COLOR(128, 255, 128), debugName.data());
 	TArray<D3D12_RENDER_PASS_RENDER_TARGET_DESC> colorAttachments(renderPassDesc.colorAttachments.size());
 	for (uint32_t i = 0; i < colorAttachments.size(); ++i)
 	{
@@ -98,6 +99,7 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, 
 void CommandBuffer::EndRenderPass() const
 {
 	mHandle->commandList->EndRenderPass();
+	PIXEndEvent(mHandle->commandList);
 }
 
 void CommandBuffer::BindGraphicsPipeline(const GraphicsPipeline& pipeline) const
