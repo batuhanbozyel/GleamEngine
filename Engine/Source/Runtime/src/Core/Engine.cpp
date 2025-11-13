@@ -7,6 +7,8 @@
 #include "Input/InputSystem.h"
 #include "World/ScriptingSystem.h"
 #include "Renderer/RenderSystem.h"
+#include "Renderer/Renderers/WorldRenderer.h"
+#include "Renderer/Renderers/PostProcessStack.h"
 #include "Serialization/JSONSerializer.h"
 #include "Serialization/BinarySerializer.h"
 
@@ -34,6 +36,8 @@ void Engine::Initialize()
 
 	// setup config
 	Globals::StartupDirectory = Filesystem::WorkingDirectory();
+	Globals::BuiltinAssetsDirectory = Globals::StartupDirectory / "Assets";
+
 	auto configFile = Globals::StartupDirectory/"Engine.config";
 	if (Filesystem::Exists(configFile))
 	{
@@ -50,6 +54,10 @@ void Engine::Initialize()
 	// init renderer backend
 	auto renderSubsystem = AddSubsystem<RenderSystem>();
 	renderSubsystem->Configure(mConfig.renderer);
+
+	// add default renderers
+	renderSubsystem->AddRenderer<WorldRenderer>();
+	renderSubsystem->AddRenderer<PostProcessStack>();
 }
 
 void Engine::Shutdown()

@@ -21,7 +21,9 @@ public:
 
 	void LoadWorld(uint32_t buildIndex);
 
-	void SaveWorld();
+	void SaveWorld(uint32_t buildIndex);
+
+	void SaveActiveWorld();
 
 	World* GetActiveWorld();
 

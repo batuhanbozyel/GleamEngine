@@ -6,6 +6,11 @@ using namespace Gleam;
 
 void Filesystem::ForEach(const Path& path, const DirectoryFn& fn, bool recursive)
 {
+	if (path.Empty())
+	{
+		return;
+	}
+
 	std::filesystem::path stlPath = std::wstring_view(path.Native().c_str(), path.Native().length());
     for (auto& node : std::filesystem::directory_iterator(stlPath))
     {

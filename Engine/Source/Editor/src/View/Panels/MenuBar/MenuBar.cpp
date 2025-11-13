@@ -28,7 +28,7 @@ void MenuBar::Render(Gleam::ImGuiRenderer* imgui)
 			if (ImGui::MenuItem("Save"))
 			{
 				auto worldManager = Gleam::Globals::GameInstance->GetSubsystem<Gleam::WorldManager>();
-				worldManager->SaveWorld();
+				worldManager->SaveActiveWorld();
 			}
 
 			if (ImGui::MenuItem("Exit"))

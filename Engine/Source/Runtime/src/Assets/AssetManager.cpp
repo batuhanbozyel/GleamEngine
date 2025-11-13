@@ -112,8 +112,7 @@ const Path& AssetManager::GetAssetPath(const AssetReference& ref) const
 		return it->second;
 	}
 
-	GLEAM_CORE_ERROR("Asset could not located for GUID: {0}", ref.guid.ToString());
-	GLEAM_ASSERT(false);
+	GLEAM_ASSERT(false, "Asset could not located for GUID: {0}", ref.guid.ToString());
 	static Path invalidPath;
 	return invalidPath;
 }

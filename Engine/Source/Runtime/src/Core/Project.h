@@ -14,11 +14,10 @@ GSTRUCT(Project, "13DAA9F7-712B-4D48-AB57-4F134F596D41", Serializable)
 	GFIELD("D233B73D-A86B-468B-9011-B7C47B5C8E73", Serializable)
     Version version;
 
-	GFIELD("73F7D807-9D15-4C0C-97C0-64CC0C1DB30A", Serializable)
-	Path path;
-
 	GFIELD("AD817DA9-4743-46D5-86A2-8F36FC82BBA6", Serializable)
 	WorldConfig worldConfig;
+
+	Path path = Filesystem::WorkingDirectory();
 };
 
 } // namespace Gleam

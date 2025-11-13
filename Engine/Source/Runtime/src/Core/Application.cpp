@@ -10,9 +10,6 @@
 #include "World/WorldManager.h"
 #include "Assets/AssetManager.h"
 
-#include "Renderer/Renderers/WorldRenderer.h"
-#include "Renderer/Renderers/PostProcessStack.h"
-
 using namespace Gleam;
 
 Application::Application(const Project& project)
@@ -21,26 +18,22 @@ Application::Application(const Project& project)
 	// setup globals
 	Globals::GameInstance = this;
 	Globals::ProjectName = project.name;
-	Globals::ProjectDirectory = Globals::StartupDirectory/project.path;
-	Globals::BuiltinAssetsDirectory = Globals::StartupDirectory/"Assets";
+	Globals::ProjectDirectory = project.path;
 	Globals::ProjectContentDirectory = Globals::ProjectDirectory/"Assets";
-	
+
 	// init game instance subsystems
-    auto assetManager = AddSubsystem<AssetManager>();
-	auto worldManager = AddSubsystem<WorldManager>();
-	worldManager->Configure(project.worldConfig);
-    
-    // add default renderers
-    auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
-    renderSystem->AddRenderer<WorldRenderer>();
-    renderSystem->AddRenderer<PostProcessStack>();
+	if (project.worldConfig.worlds.empty() == false)
+	{
+		auto assetManager = AddSubsystem<AssetManager>();
+		auto worldManager = AddSubsystem<WorldManager>();
+		worldManager->Configure(project.worldConfig);
+		worldManager->OpenWorld(project.worldConfig.startingWorldIndex);
+	}
 	
 	EventDispatcher<AppCloseEvent>::Subscribe([this](AppCloseEvent e)
 	{
 		mRunning = false;
 	});
-
-	worldManager->OpenWorld(project.worldConfig.startingWorldIndex);
 }
 
 void Application::Run()
