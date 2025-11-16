@@ -4,7 +4,6 @@
 #include "DirectXSwapchain.h"
 #include "DirectXDevice.h"
 #include "DirectXUtils.h"
-#include "DirectXTransitionManager.h"
 
 #include "Core/Engine.h"
 #include "Core/Globals.h"
@@ -161,11 +160,32 @@ const Texture& DirectXSwapchain::AcquireNextDrawable()
 void DirectXSwapchain::Present(const CommandBuffer* cmd)
 {
 	auto& ctx = mContext[mCurrentFrameIndex];
-	DirectXTransitionManager::TransitionLayout(
-		static_cast<ID3D12GraphicsCommandList7*>(cmd->GetHandle()),
-		static_cast<ID3D12Resource*>(mTextures[mCurrentFrameIndex].GetHandle()), D3D12_RESOURCE_STATE_PRESENT
-	);
+	D3D12_TEXTURE_BARRIER textureBarrier = {
+		.SyncBefore = D3D12_BARRIER_SYNC_RENDER_TARGET,
+		.SyncAfter = D3D12_BARRIER_SYNC_NONE,
+		.AccessBefore = D3D12_BARRIER_ACCESS_RENDER_TARGET,
+		.AccessAfter = D3D12_BARRIER_ACCESS_NO_ACCESS,
+		.LayoutBefore = D3D12_BARRIER_LAYOUT_RENDER_TARGET,
+		.LayoutAfter = D3D12_BARRIER_LAYOUT_PRESENT,
+		.pResource = static_cast<ID3D12Resource*>(mTextures[mCurrentFrameIndex].GetHandle()),
+		.Subresources = {
+			.IndexOrFirstMipLevel = 0xffffffff,
+			.NumMipLevels = 0,
+			.FirstArraySlice = 0,
+			.NumArraySlices = 0,
+			.FirstPlane = 0,
+			.NumPlanes = 0
+		},
+		.Flags = D3D12_TEXTURE_BARRIER_FLAG_NONE
+	};
 
+	D3D12_BARRIER_GROUP barrier = {
+		.Type = D3D12_BARRIER_TYPE_TEXTURE,
+		.NumBarriers = 1,
+		.pTextureBarriers = &textureBarrier
+	};
+	static_cast<ID3D12GraphicsCommandList7*>(cmd->GetHandle())->Barrier(1, &barrier);
+	
 	cmd->End();
 	cmd->Commit();
 
@@ -197,7 +217,6 @@ Texture DirectXSwapchain::CreateSwapchainBuffer(GraphicsDevice* device, uint32_t
 
 	DX_CHECK(mHandle->GetBuffer(buffer, IID_PPV_ARGS(&texture)));
 	static_cast<ID3D12Device10*>(device->GetHandle())->CreateRenderTargetView(texture, &rtvDesc, rtv);
-	DirectXTransitionManager::SetLayout(texture, D3D12_RESOURCE_STATE_PRESENT);
 
 	TStringStream ss;
 	ss << "Swapchain::Drawable_" << buffer;

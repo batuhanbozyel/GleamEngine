@@ -4,7 +4,6 @@
 #include "Renderer/UploadManager.h"
 #include "DirectXDevice.h"
 #include "DirectXUtils.h"
-#include "DirectXTransitionManager.h"
 
 #include <dstorage.h>
 
@@ -145,7 +144,7 @@ void UploadManager::Commit(const Buffer& buffer, const void* data, size_t size, 
 		}
 		else
 		{
-			D3D12_RESOURCE_DESC resourceDesc = {
+			D3D12_RESOURCE_DESC1 resourceDesc = {
 			.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER,
 			.Alignment = 0,
 			.Width = size,
@@ -167,11 +166,14 @@ void UploadManager::Commit(const Buffer& buffer, const void* data, size_t size, 
 			};
 
 			ID3D12Resource* stagingBuffer = nullptr;
-			DX_CHECK(static_cast<ID3D12Device*>(mDevice->GetHandle())->CreateCommittedResource(
+			DX_CHECK(static_cast<ID3D12Device10*>(mDevice->GetHandle())->CreateCommittedResource3(
 				&heapProperties,
 				D3D12_HEAP_FLAG_NONE,
 				&resourceDesc,
-				D3D12_RESOURCE_STATE_COPY_SOURCE,
+				D3D12_BARRIER_LAYOUT_COPY_SOURCE,
+				nullptr,
+				nullptr,
+				0,
 				nullptr,
 				IID_PPV_ARGS(&stagingBuffer)));
 			mHandle->tempBuffers.push_back(stagingBuffer);
@@ -179,6 +181,7 @@ void UploadManager::Commit(const Buffer& buffer, const void* data, size_t size, 
 			void* stagingBufferPtr = nullptr;
 			DX_CHECK(stagingBuffer->Map(0, nullptr, &stagingBufferPtr));
 			memcpy(stagingBufferPtr, data, size);
+			stagingBuffer->Unmap(0, nullptr);
 
 			DSTORAGE_REQUEST request = {};
 			request.Options.SourceType = DSTORAGE_REQUEST_SOURCE_MEMORY;
@@ -226,7 +229,7 @@ void UploadManager::Commit(const Texture& texture, const void* data, size_t size
 	}
 	else
 	{
-		D3D12_RESOURCE_DESC resourceDesc = {
+		D3D12_RESOURCE_DESC1 resourceDesc = {
 			.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER,
 			.Alignment = 0,
 			.Width = size,
@@ -248,11 +251,14 @@ void UploadManager::Commit(const Texture& texture, const void* data, size_t size
 		};
 
 		ID3D12Resource* stagingBuffer = nullptr;
-		DX_CHECK(static_cast<ID3D12Device*>(mDevice->GetHandle())->CreateCommittedResource(
+		DX_CHECK(static_cast<ID3D12Device10*>(mDevice->GetHandle())->CreateCommittedResource3(
 			&heapProperties,
 			D3D12_HEAP_FLAG_NONE,
 			&resourceDesc,
-			D3D12_RESOURCE_STATE_COPY_SOURCE,
+			D3D12_BARRIER_LAYOUT_COPY_SOURCE,
+			nullptr,
+			nullptr,
+			0,
 			nullptr,
 			IID_PPV_ARGS(&stagingBuffer)));
 		mHandle->tempBuffers.push_back(stagingBuffer);
@@ -260,6 +266,7 @@ void UploadManager::Commit(const Texture& texture, const void* data, size_t size
 		void* stagingBufferPtr = nullptr;
 		DX_CHECK(stagingBuffer->Map(0, nullptr, &stagingBufferPtr));
 		memcpy(stagingBufferPtr, data, size);
+		stagingBuffer->Unmap(0, nullptr);
 
 		DSTORAGE_REQUEST request = {};
 		request.Options.SourceType = DSTORAGE_REQUEST_SOURCE_MEMORY;

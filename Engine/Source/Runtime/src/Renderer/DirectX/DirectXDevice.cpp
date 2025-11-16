@@ -4,7 +4,6 @@
 #include "DirectXDevice.h"
 #include "DirectXUtils.h"
 #include "DirectXSwapchain.h"
-#include "DirectXTransitionManager.h"
 
 #include "Core/Engine.h"
 #include "Core/Globals.h"
@@ -177,18 +176,15 @@ Texture GraphicsDevice::CreateTexture(const TextureDescriptor& descriptor)
 	Texture texture(descriptor);
 
 	D3D12_RESOURCE_FLAGS flags = D3D12_RESOURCE_FLAG_NONE;
-	D3D12_RESOURCE_STATES initialState = D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE;
 	if (descriptor.usage & TextureUsage_Attachment)
 	{
 		if (Utils::IsColorFormat(descriptor.format))
 		{
 			flags |= D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
-			initialState = D3D12_RESOURCE_STATE_RENDER_TARGET;
 		}
 		else
 		{
 			flags |= D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
-			initialState = D3D12_RESOURCE_STATE_DEPTH_WRITE;
 		}
 	}
 
@@ -197,7 +193,7 @@ Texture GraphicsDevice::CreateTexture(const TextureDescriptor& descriptor)
 		flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
 	}
 
-	D3D12_RESOURCE_DESC resourceDesc = {
+	D3D12_RESOURCE_DESC1 resourceDesc = {
 		.Dimension = TextureDimensionToD3D12_RESOURCE_DIMENSION(descriptor.dimension),
 		.Alignment = 0,
 		.Width = (UINT64)descriptor.size.width,
@@ -219,17 +215,19 @@ Texture GraphicsDevice::CreateTexture(const TextureDescriptor& descriptor)
 	};
 
 	// TODO: Create MSAA texture	
-	DX_CHECK(static_cast<ID3D12Device10*>(mHandle)->CreateCommittedResource(
+	DX_CHECK(static_cast<ID3D12Device10*>(mHandle)->CreateCommittedResource3(
 		&heapProperties,
 		D3D12_HEAP_FLAG_NONE,
 		&resourceDesc,
-		initialState,
+		D3D12_BARRIER_LAYOUT_UNDEFINED,
+		nullptr,
+		nullptr,
+		0,
 		nullptr,
 		__uuidof(ID3D12Resource*),
 		&texture.mHandle
 	));
 	static_cast<ID3D12Resource*>(texture.mHandle)->SetName(StringUtils::Convert(descriptor.name).c_str());
-	DirectXTransitionManager::SetLayout(static_cast<ID3D12Resource*>(texture.mHandle), initialState);
 
 	// Create RTV or DSV for attachments
 	if (descriptor.usage & TextureUsage_Attachment)
@@ -395,7 +393,6 @@ void GraphicsDevice::Dispose(Heap& heap)
 
 void GraphicsDevice::Dispose(Texture& texture)
 {
-	DirectXTransitionManager::RemoveResource(static_cast<ID3D12Resource*>(texture.mHandle));
 	if (texture.GetDescriptor().usage & TextureUsage_Attachment)
 	{
 		if (Utils::IsDepthFormat(texture.GetDescriptor().format))

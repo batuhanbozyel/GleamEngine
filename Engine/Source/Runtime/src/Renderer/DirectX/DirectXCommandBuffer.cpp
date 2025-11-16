@@ -3,7 +3,6 @@
 #ifdef USE_DIRECTX_RENDERER
 #include "Renderer/CommandBuffer.h"
 
-#include "DirectXTransitionManager.h"
 #include "DirectXDevice.h"
 #include "DirectXUtils.h"
 
@@ -57,15 +56,12 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, 
 
 		auto resource = static_cast<ID3D12Resource*>(colorAttachmentDesc.texture.GetHandle());
 		colorAttachments[i].cpuDescriptor = colorAttachmentDesc.texture.GetRenderTargetView();
-		DirectXTransitionManager::TransitionLayout(mHandle->commandList,
-			resource, D3D12_RESOURCE_STATE_RENDER_TARGET);
 	}
 
 	if (renderPassDesc.depthAttachment.texture.IsValid())
 	{
 		auto format = renderPassDesc.depthAttachment.texture.GetDescriptor().format;
 		auto resource = static_cast<ID3D12Resource*>(renderPassDesc.depthAttachment.texture.GetHandle());
-		DirectXTransitionManager::TransitionLayout(mHandle->commandList, resource, D3D12_RESOURCE_STATE_DEPTH_WRITE);
 
 		D3D12_RENDER_PASS_DEPTH_STENCIL_DESC depthAttachment{};
 		depthAttachment.cpuDescriptor = renderPassDesc.depthAttachment.texture.GetRenderTargetView();
@@ -171,14 +167,7 @@ void CommandBuffer::CopyBuffer(const NativeGraphicsHandle src, const NativeGraph
 {
 	auto srcBuffer = static_cast<ID3D12Resource*>(src);
 	auto dstBuffer = static_cast<ID3D12Resource*>(dst);
-
-	DirectXTransitionManager::TransitionLayout(mHandle->commandList, dstBuffer, D3D12_RESOURCE_STATE_COPY_DEST);
-	DirectXTransitionManager::TransitionLayout(mHandle->commandList, srcBuffer, D3D12_RESOURCE_STATE_COPY_SOURCE);
-	
 	mHandle->commandList->CopyBufferRegion(dstBuffer, dstOffset, srcBuffer, srcOffset, size);
-	
-	DirectXTransitionManager::TransitionLayout(mHandle->commandList, srcBuffer, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
-	DirectXTransitionManager::TransitionLayout(mHandle->commandList, dstBuffer, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
 }
 
 void CommandBuffer::Blit(const Texture& source, const Texture& destination) const
@@ -186,9 +175,6 @@ void CommandBuffer::Blit(const Texture& source, const Texture& destination) cons
     auto swapchainTarget = destination.IsValid() == false;
 	auto srcTexture = static_cast<ID3D12Resource*>(source.GetHandle());
 	auto dstTexture = static_cast<ID3D12Resource*>(destination.GetHandle());
-
-	DirectXTransitionManager::TransitionLayout(mHandle->commandList, dstTexture, D3D12_RESOURCE_STATE_COPY_DEST);
-	DirectXTransitionManager::TransitionLayout(mHandle->commandList, srcTexture, D3D12_RESOURCE_STATE_COPY_SOURCE);
 
 	D3D12_TEXTURE_COPY_LOCATION dst{};
 	dst.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
@@ -200,6 +186,68 @@ void CommandBuffer::Blit(const Texture& source, const Texture& destination) cons
 	src.pResource = srcTexture;
 	src.SubresourceIndex = 0;
 	mHandle->commandList->CopyTextureRegion(&dst, 0, 0, 0, &src, nullptr);
+}
+
+void CommandBuffer::Barrier(const BarrierGroup& barrier) const
+{
+	TArray<D3D12_BUFFER_BARRIER> d3d12BufferBarriers;
+	TArray<D3D12_TEXTURE_BARRIER> d3d12TextureBarriers;
+
+	d3d12BufferBarriers.reserve(barrier.bufferBarriers.size());
+	d3d12TextureBarriers.reserve(barrier.textureBarriers.size());
+
+	for (const BufferBarrier& bufferBarrier : barrier.bufferBarriers)
+	{
+		D3D12_BUFFER_BARRIER d3d12Barrier = {};
+		d3d12Barrier.SyncBefore = BarrierStageToD3D12_BARRIER_SYNC(bufferBarrier.srcStage);
+		d3d12Barrier.SyncAfter = BarrierStageToD3D12_BARRIER_SYNC(bufferBarrier.dstStage);
+		d3d12Barrier.AccessBefore = BarrierAccessToD3D12_BARRIER_ACCESS(bufferBarrier.srcAccess);
+		d3d12Barrier.AccessAfter = BarrierAccessToD3D12_BARRIER_ACCESS(bufferBarrier.dstAccess);
+		d3d12Barrier.pResource = static_cast<ID3D12Resource*>(bufferBarrier.resource);
+		d3d12Barrier.Offset = 0;
+		d3d12Barrier.Size = UINT64_MAX;
+		d3d12BufferBarriers.emplace_back(d3d12Barrier);
+	}
+
+	for (const TextureBarrier& textureBarrier : barrier.textureBarriers)
+	{
+		D3D12_TEXTURE_BARRIER d3d12Barrier = {};
+		d3d12Barrier.SyncBefore = BarrierStageToD3D12_BARRIER_SYNC(textureBarrier.srcStage);
+		d3d12Barrier.SyncAfter = BarrierStageToD3D12_BARRIER_SYNC(textureBarrier.dstStage);
+		d3d12Barrier.AccessBefore = BarrierAccessToD3D12_BARRIER_ACCESS(textureBarrier.srcAccess);
+		d3d12Barrier.AccessAfter = BarrierAccessToD3D12_BARRIER_ACCESS(textureBarrier.dstAccess);
+		d3d12Barrier.LayoutBefore = BarrierLayoutToD3D12_BARRIER_LAYOUT(textureBarrier.oldLayout);
+		d3d12Barrier.LayoutAfter = BarrierLayoutToD3D12_BARRIER_LAYOUT(textureBarrier.newLayout);
+		d3d12Barrier.pResource = static_cast<ID3D12Resource*>(textureBarrier.resource);
+		d3d12Barrier.Subresources.IndexOrFirstMipLevel = 0xffffffff;
+		d3d12Barrier.Subresources.NumMipLevels = 0;
+		d3d12Barrier.Subresources.FirstArraySlice = 0;
+		d3d12Barrier.Subresources.NumArraySlices = 0;
+		d3d12Barrier.Subresources.FirstPlane = 0;
+		d3d12Barrier.Subresources.NumPlanes = 0;
+		d3d12Barrier.Flags = D3D12_TEXTURE_BARRIER_FLAG_NONE;
+		d3d12TextureBarriers.emplace_back(d3d12Barrier);
+	}
+
+	TArray<D3D12_BARRIER_GROUP> barrierGroups;
+	if (not d3d12BufferBarriers.empty())
+	{
+		D3D12_BARRIER_GROUP bufferGroup = {};
+		bufferGroup.Type = D3D12_BARRIER_TYPE_BUFFER;
+		bufferGroup.NumBarriers = static_cast<UINT32>(d3d12BufferBarriers.size());
+		bufferGroup.pBufferBarriers = d3d12BufferBarriers.data();
+		barrierGroups.emplace_back(bufferGroup);
+	}
+
+	if (not d3d12TextureBarriers.empty())
+	{
+		D3D12_BARRIER_GROUP textureGroup = {};
+		textureGroup.Type = D3D12_BARRIER_TYPE_TEXTURE;
+		textureGroup.NumBarriers = static_cast<UINT32>(d3d12TextureBarriers.size());
+		textureGroup.pTextureBarriers = d3d12TextureBarriers.data();
+		barrierGroups.emplace_back(textureGroup);
+	}
+	mHandle->commandList->Barrier(static_cast<UINT32>(barrierGroups.size()), barrierGroups.data());
 }
 
 void CommandBuffer::Begin(const TStringView debugName) const
