@@ -16,6 +16,7 @@ static constexpr size_t kImGuiDataBufferSize = 4 * 1024 * 1024;
 void ImGuiRenderer::OnCreate(RenderContext& context)
 {
     mDevice = context.device;
+	mReleaseQueue = context.releaseQueue;
 	mSurface = static_cast<Swapchain*>(context.surface);
     
 	IMGUI_CHECKVERSION();
@@ -226,7 +227,10 @@ void ImGuiRenderer::AddFontTexture(const Path& fontPath, const Path& defaultPath
 	// TODO: error handling
 	if (mFontTexture)
 	{
-		delete mFontTexture;
+		mReleaseQueue->AddResource([fontTexture = mFontTexture]()
+		{
+			delete fontTexture;
+		}, mSurface->GetFrameIndex());
 		mFontTexture = nullptr;
 	}
 	

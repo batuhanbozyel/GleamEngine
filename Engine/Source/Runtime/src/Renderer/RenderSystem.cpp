@@ -63,19 +63,38 @@ void RenderSystem::Shutdown()
 	mSwapchain.reset();
 }
 
+void RenderSystem::PreRender(const World* world)
+{
+	auto sceneProxy = world->GetSystem<RenderSceneProxy>();
+	sceneProxy->ForEach([&](const MeshBatch& batch)
+	{
+		mUploadManager->Commit(batch.instanceBuffer, batch.instances.data(), sizeof(MeshInstanceData) * batch.numInstances);
+	});
+
+	// update active camera
+	mActiveCamera = InvalidEntity;
+	world->GetEntityManager().ForEach<Entity, Camera>([&](const Entity& entity, const Camera& component)
+	{
+		if (entity.IsActive())
+		{
+			mActiveCamera = entity;
+		}
+	});
+}
+
 void RenderSystem::Render(const World* world)
 {
 #ifdef USE_METAL_RENDERER
 	@autoreleasepool
 #endif
 	{
-		auto sceneProxy = world->GetSystem<RenderSceneProxy>();
-		auto camera = sceneProxy->GetActiveCamera();
-		if (camera == nullptr)
+		if (mActiveCamera == InvalidEntity)
 		{
 			return; // skip rendering this frame
 		}
-		const auto& cameraComponent = camera->GetComponent<Camera>();
+
+		const auto& cameraComponent = world->GetEntityManager().GetComponent<Camera>(mActiveCamera);
+		const auto& cameraEntity = world->GetEntityManager().GetComponent<Entity>(mActiveCamera);
 
 		// TODO: Render scene per active camera
 		// Set sceneTarget to camera target
@@ -96,9 +115,9 @@ void RenderSystem::Render(const World* world)
 		auto& sceneData = blackboard.Add<SceneRenderingData>();
 		sceneData.backbuffer = graph.ImportBackbuffer(backbuffer);
 		sceneData.sceneTarget = graph.ImportBackbuffer(sceneTarget);
-		sceneData.sceneProxy = sceneProxy;
+		sceneData.sceneProxy = world->GetSystem<RenderSceneProxy>();
 		sceneData.world = world;
-		sceneData.camera.viewMatrix = Float4x4::LookTo(camera->GetWorldPosition(), camera->ForwardVector(), camera->UpVector());
+		sceneData.camera.viewMatrix = Float4x4::LookTo(cameraEntity.GetWorldPosition(), cameraEntity.ForwardVector(), cameraEntity.UpVector());
 
 		if (cameraComponent.projectionType == ProjectionType::Perspective)
 		{
@@ -115,7 +134,7 @@ void RenderSystem::Render(const World* world)
 		sceneData.camera.invViewMatrix = Math::Inverse(sceneData.camera.viewMatrix);
 		sceneData.camera.invProjectionMatrix = Math::Inverse(sceneData.camera.projectionMatrix);
 		sceneData.camera.invViewProjectionMatrix = Math::Inverse(sceneData.camera.viewProjectionMatrix);
-		sceneData.camera.position = camera->GetWorldPosition();
+		sceneData.camera.position = cameraEntity.GetWorldPosition();
 
         for (auto renderer : mRenderers)
         {
@@ -140,6 +159,10 @@ void RenderSystem::Render(const World* world)
 		TStringStream cmdBufferName;
 		cmdBufferName << "Scene CommandBuffer[" << frameIdx << "]";
 		cmd->Begin(cmdBufferName.str());
+
+		mUploadManager->Execute();
+		mUploadManager->WaitUntilCompleted();
+		mUploadManager->Barrier(cmd);
 
         graph.Execute(cmd, sceneData);
 		mResourcePool->Release(sceneTarget);

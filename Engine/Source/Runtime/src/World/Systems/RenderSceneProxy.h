@@ -40,12 +40,8 @@ public:
 	virtual void OnDestroy(EntityManager& entityManager) override;
     
     void ForEach(BatchFn&& fn) const;
-    
-    const Entity* GetActiveCamera() const;
 
 private:
-    
-    const Entity* mActiveCamera = nullptr;
 
     HashMap<AssetReference, MeshBatch> mMeshBatches;
     

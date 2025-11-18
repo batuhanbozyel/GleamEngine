@@ -6,6 +6,7 @@ namespace Gleam {
 class Buffer;
 class Texture;
 class GraphicsDevice;
+class CommandBuffer;
 
 class UploadManager final
 {
@@ -17,6 +18,8 @@ public:
     ~UploadManager();
 
 	void Execute() const;
+
+	void Barrier(const CommandBuffer* cmd) const;
 	
 	void WaitUntilCompleted() const;
 	

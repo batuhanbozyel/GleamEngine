@@ -262,11 +262,11 @@ private:
 		if constexpr (Reflection::Traits::IsReflected<T>::value)
 		{
 			const auto& classDesc = Reflection::GetClass<T>();
-			return mRegistry.storage<T>(classDesc.TypeHash());
+			return *mRegistry.storage<T>(classDesc.TypeHash());
 		}
 		else
 		{
-			return mRegistry.storage<T>();
+			return *mRegistry.storage<T>();
 		}
 	}
 

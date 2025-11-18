@@ -52,6 +52,7 @@ void Application::Run()
 		auto world = worldManager->GetActiveWorld();
         world->Update();
 
+		renderSystem->PreRender(world);
         renderSystem->Render(world);
 	}
 }

@@ -40,6 +40,8 @@ private:
     
     GraphicsDevice* mDevice;
 
+	ResourceReleaseQueue* mReleaseQueue;
+
 	GraphicsPipelineHandle mPipeline;
 
 	Heap mHeap;

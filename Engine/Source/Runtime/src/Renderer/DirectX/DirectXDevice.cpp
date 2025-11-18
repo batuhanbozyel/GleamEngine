@@ -219,7 +219,7 @@ Texture GraphicsDevice::CreateTexture(const TextureDescriptor& descriptor)
 		&heapProperties,
 		D3D12_HEAP_FLAG_NONE,
 		&resourceDesc,
-		D3D12_BARRIER_LAYOUT_UNDEFINED,
+		D3D12_BARRIER_LAYOUT_COMMON,
 		nullptr,
 		nullptr,
 		0,
