@@ -247,6 +247,12 @@ void UploadManager::Commit(const Buffer& buffer, const void* data, size_t size, 
 				0,
 				nullptr,
 				IID_PPV_ARGS(&stagingBuffer)));
+
+			TStringStream ss;
+			ss << buffer.GetDescriptor().name << "::UploadBuffer";
+			TWString resourceName = ss.str();
+			stagingBuffer->SetName(resourceName.c_str());
+
 			mHandle->tempBuffers.push_back(stagingBuffer);
 
 			void* stagingBufferPtr = nullptr;
@@ -333,6 +339,12 @@ void UploadManager::Commit(const Texture& texture, const void* data, size_t size
 			0,
 			nullptr,
 			IID_PPV_ARGS(&stagingBuffer)));
+
+		TStringStream ss;
+		ss << texture.GetDescriptor().name << "::UploadBuffer";
+		TWString resourceName = ss.str();
+		stagingBuffer->SetName(resourceName.c_str());
+
 		mHandle->tempBuffers.push_back(stagingBuffer);
 
 		void* stagingBufferPtr = nullptr;
