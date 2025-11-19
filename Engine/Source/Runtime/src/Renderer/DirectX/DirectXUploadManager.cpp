@@ -4,7 +4,6 @@
 #include "Renderer/UploadManager.h"
 #include "DirectXDevice.h"
 #include "DirectXUtils.h"
-#include "DirectXTransitionManager.h"
 
 #include <dstorage.h>
 
@@ -27,6 +26,8 @@ struct UploadManager::Impl
 	TArray<uint8_t> stagingBuffer;
 
 	TArray<ID3D12Resource*> tempBuffers;
+	TArray<Buffer> bufferCopies;
+	TArray<Texture> textureCopies;
 	
 	const void* CopyUploadData(const void* data, size_t size)
 	{
@@ -96,10 +97,79 @@ UploadManager::~UploadManager()
 	mHandle->factory->Release();
 }
 
+void UploadManager::Barrier(const CommandBuffer* cmd) const
+{
+	TArray<D3D12_BUFFER_BARRIER> bufferBarriers;
+	TArray<D3D12_TEXTURE_BARRIER> textureBarriers;
+
+	bufferBarriers.reserve(mHandle->bufferCopies.size());
+	textureBarriers.reserve(mHandle->textureCopies.size());
+
+	for (uint32_t i = 0; i < mHandle->bufferCopies.size(); ++i)
+	{
+		D3D12_BUFFER_BARRIER barrier = {};
+		barrier.SyncBefore = D3D12_BARRIER_SYNC_COPY;
+		barrier.SyncAfter = D3D12_BARRIER_SYNC_ALL_SHADING;
+		barrier.AccessBefore = D3D12_BARRIER_ACCESS_COPY_DEST;
+		barrier.AccessAfter = D3D12_BARRIER_ACCESS_SHADER_RESOURCE;
+		barrier.pResource = static_cast<ID3D12Resource*>(mHandle->bufferCopies[i].GetHandle());
+		barrier.Offset = 0;
+		barrier.Size = UINT64_MAX;
+		bufferBarriers.emplace_back(barrier);
+	}
+
+	for (uint32_t i = 0; i < mHandle->textureCopies.size(); ++i)
+	{
+		D3D12_TEXTURE_BARRIER barrier = {};
+		barrier.SyncBefore = D3D12_BARRIER_SYNC_COPY;
+		barrier.SyncAfter = D3D12_BARRIER_SYNC_ALL_SHADING;
+		barrier.AccessBefore = D3D12_BARRIER_ACCESS_COPY_DEST;
+		barrier.AccessAfter = D3D12_BARRIER_ACCESS_SHADER_RESOURCE;
+		barrier.LayoutBefore = D3D12_BARRIER_LAYOUT_COMMON;
+		barrier.LayoutAfter = D3D12_BARRIER_LAYOUT_SHADER_RESOURCE;
+		barrier.pResource = static_cast<ID3D12Resource*>(mHandle->textureCopies[i].GetHandle());
+		barrier.Subresources.IndexOrFirstMipLevel = 0xffffffff;
+		barrier.Subresources.NumMipLevels = 0;
+		barrier.Subresources.FirstArraySlice = 0;
+		barrier.Subresources.NumArraySlices = 0;
+		barrier.Subresources.FirstPlane = 0;
+		barrier.Subresources.NumPlanes = 0;
+		barrier.Flags = D3D12_TEXTURE_BARRIER_FLAG_NONE;
+		textureBarriers.emplace_back(barrier);
+	}
+
+	TArray<D3D12_BARRIER_GROUP> barrierGroups;
+	barrierGroups.reserve(2);
+	if (not bufferBarriers.empty())
+	{
+		D3D12_BARRIER_GROUP bufferGroup = {};
+		bufferGroup.Type = D3D12_BARRIER_TYPE_BUFFER;
+		bufferGroup.NumBarriers = static_cast<UINT32>(bufferBarriers.size());
+		bufferGroup.pBufferBarriers = bufferBarriers.data();
+		barrierGroups.emplace_back(bufferGroup);
+	}
+
+	if (not textureBarriers.empty())
+	{
+		D3D12_BARRIER_GROUP textureGroup = {};
+		textureGroup.Type = D3D12_BARRIER_TYPE_TEXTURE;
+		textureGroup.NumBarriers = static_cast<UINT32>(textureBarriers.size());
+		textureGroup.pTextureBarriers = textureBarriers.data();
+		barrierGroups.emplace_back(textureGroup);
+	}
+
+	if (not barrierGroups.empty())
+	{
+		static_cast<ID3D12GraphicsCommandList7*>(cmd->GetHandle())->Barrier(static_cast<UINT32>(barrierGroups.size()), barrierGroups.data());
+	}
+
+	mHandle->bufferCopies.clear();
+	mHandle->textureCopies.clear();
+}
+
 void UploadManager::Execute() const
 {
 	mHandle->waitFenceValue = mHandle->fenceValue++;
-
 	mHandle->fileQueue->EnqueueSignal(mHandle->fileFence, mHandle->fenceValue);
 	mHandle->fileQueue->Submit();
 
@@ -145,7 +215,7 @@ void UploadManager::Commit(const Buffer& buffer, const void* data, size_t size, 
 		}
 		else
 		{
-			D3D12_RESOURCE_DESC resourceDesc = {
+			D3D12_RESOURCE_DESC1 resourceDesc = {
 			.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER,
 			.Alignment = 0,
 			.Width = size,
@@ -167,18 +237,28 @@ void UploadManager::Commit(const Buffer& buffer, const void* data, size_t size, 
 			};
 
 			ID3D12Resource* stagingBuffer = nullptr;
-			DX_CHECK(static_cast<ID3D12Device*>(mDevice->GetHandle())->CreateCommittedResource(
+			DX_CHECK(static_cast<ID3D12Device10*>(mDevice->GetHandle())->CreateCommittedResource3(
 				&heapProperties,
 				D3D12_HEAP_FLAG_NONE,
 				&resourceDesc,
-				D3D12_RESOURCE_STATE_COPY_SOURCE,
+				D3D12_BARRIER_LAYOUT_UNDEFINED,
+				nullptr,
+				nullptr,
+				0,
 				nullptr,
 				IID_PPV_ARGS(&stagingBuffer)));
+
+			TStringStream ss;
+			ss << buffer.GetDescriptor().name << "::UploadBuffer";
+			TWString resourceName = ss.str();
+			stagingBuffer->SetName(resourceName.c_str());
+
 			mHandle->tempBuffers.push_back(stagingBuffer);
 
 			void* stagingBufferPtr = nullptr;
 			DX_CHECK(stagingBuffer->Map(0, nullptr, &stagingBufferPtr));
 			memcpy(stagingBufferPtr, data, size);
+			stagingBuffer->Unmap(0, nullptr);
 
 			DSTORAGE_REQUEST request = {};
 			request.Options.SourceType = DSTORAGE_REQUEST_SOURCE_MEMORY;
@@ -195,6 +275,7 @@ void UploadManager::Commit(const Buffer& buffer, const void* data, size_t size, 
 			request.UncompressedSize = 0;
 			mHandle->memoryQueue->EnqueueRequest(&request);
 		}
+		mHandle->bufferCopies.push_back(buffer);
 	}
 	else
 	{
@@ -226,7 +307,7 @@ void UploadManager::Commit(const Texture& texture, const void* data, size_t size
 	}
 	else
 	{
-		D3D12_RESOURCE_DESC resourceDesc = {
+		D3D12_RESOURCE_DESC1 resourceDesc = {
 			.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER,
 			.Alignment = 0,
 			.Width = size,
@@ -248,18 +329,28 @@ void UploadManager::Commit(const Texture& texture, const void* data, size_t size
 		};
 
 		ID3D12Resource* stagingBuffer = nullptr;
-		DX_CHECK(static_cast<ID3D12Device*>(mDevice->GetHandle())->CreateCommittedResource(
+		DX_CHECK(static_cast<ID3D12Device10*>(mDevice->GetHandle())->CreateCommittedResource3(
 			&heapProperties,
 			D3D12_HEAP_FLAG_NONE,
 			&resourceDesc,
-			D3D12_RESOURCE_STATE_COPY_SOURCE,
+			D3D12_BARRIER_LAYOUT_UNDEFINED,
+			nullptr,
+			nullptr,
+			0,
 			nullptr,
 			IID_PPV_ARGS(&stagingBuffer)));
+
+		TStringStream ss;
+		ss << texture.GetDescriptor().name << "::UploadBuffer";
+		TWString resourceName = ss.str();
+		stagingBuffer->SetName(resourceName.c_str());
+
 		mHandle->tempBuffers.push_back(stagingBuffer);
 
 		void* stagingBufferPtr = nullptr;
 		DX_CHECK(stagingBuffer->Map(0, nullptr, &stagingBufferPtr));
 		memcpy(stagingBufferPtr, data, size);
+		stagingBuffer->Unmap(0, nullptr);
 
 		DSTORAGE_REQUEST request = {};
 		request.Options.SourceType = DSTORAGE_REQUEST_SOURCE_MEMORY;
@@ -276,6 +367,7 @@ void UploadManager::Commit(const Texture& texture, const void* data, size_t size
 		request.UncompressedSize = 0;
 		mHandle->memoryQueue->EnqueueRequest(&request);
 	}
+	mHandle->textureCopies.push_back(texture);
 }
 
 #endif

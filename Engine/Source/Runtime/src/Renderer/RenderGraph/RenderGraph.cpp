@@ -6,12 +6,6 @@
 #include "Renderer/GraphicsDevice.h"
 #include "Renderer/RenderResourcePool.h"
 
-#if defined(USE_METAL_RENDERER)
-#import <Metal/Metal.h>
-#elif defined(USE_DIRECTX_RENDERER)
-#include "Renderer/DirectX/DirectXTransitionManager.h"
-#endif
-
 using namespace Gleam;
 
 static AttachmentLoadAction GetLoadActionForRenderTexture(const RenderGraphTextureNode* node, RenderGraphPassNode* pass)
@@ -199,19 +193,120 @@ void RenderGraph::Execute(const CommandBuffer* cmd, SceneRenderingData& sceneDat
 			{
 				sceneData.backbuffer.node->texture = static_cast<Swapchain*>(mSurface)->AcquireNextDrawable();
 				resource.node->texture = sceneData.backbuffer.node->texture;
+				resource.node->barrierState.layout = BarrierLayout::Common;
 			}
 		}
 
-	#if defined(USE_DIRECTX_RENDERER)
+		BarrierGroup barrier;
+		barrier.bufferBarriers.reserve(pass->bufferReads.size() + pass->bufferWrites.size());
+		for (auto& resource : pass->bufferReads)
+		{
+			if (resource.node->barrierState.access == BarrierAccess::ShaderResource)
+			{
+				continue;
+			}
+
+			BufferBarrier bufferBarrier;
+			bufferBarrier.resource = resource.node->buffer.GetHandle();
+			bufferBarrier.srcStage = resource.node->barrierState.stage;
+			bufferBarrier.dstStage = BarrierStage::AllShading;
+			bufferBarrier.srcAccess = resource.node->barrierState.access;
+			bufferBarrier.dstAccess = BarrierAccess::ShaderResource;
+			barrier.bufferBarriers.push_back(bufferBarrier);
+
+			resource.node->barrierState.stage = bufferBarrier.dstStage;
+			resource.node->barrierState.access = bufferBarrier.dstAccess;
+		}
+
+		for (auto& resource : pass->bufferWrites)
+		{
+			BufferBarrier bufferBarrier;
+			bufferBarrier.resource = resource.node->buffer.GetHandle();
+			bufferBarrier.srcStage = resource.node->barrierState.stage;
+			bufferBarrier.dstStage = BarrierStage::AllShading;
+			bufferBarrier.srcAccess = resource.node->barrierState.access;
+			bufferBarrier.dstAccess = BarrierAccess::UnorderedAccess;
+			barrier.bufferBarriers.push_back(bufferBarrier);
+
+			resource.node->barrierState.stage = bufferBarrier.dstStage;
+			resource.node->barrierState.access = bufferBarrier.dstAccess;
+		}
+
+		barrier.textureBarriers.reserve(pass->textureReads.size() + pass->textureWrites.size());
 		for (auto& resource : pass->textureReads)
 		{
-			DirectXTransitionManager::TransitionLayout(
-				static_cast<ID3D12GraphicsCommandList7*>(cmd->GetHandle()),
-				static_cast<ID3D12Resource*>(resource.node->texture.GetHandle()),
-				D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE
-			);
+			if (resource.node->barrierState.access == BarrierAccess::ShaderResource
+				|| resource.node->barrierState.access == BarrierAccess::DepthStencilRead)
+			{
+				continue;
+			}
+
+			BarrierAccess dstAccess = BarrierAccess::ShaderResource;
+			BarrierLayout newLayout = BarrierLayout::ShaderResource;
+
+			const auto& textureDesc = resource.node->texture.GetDescriptor();
+			if (textureDesc.usage & TextureUsage_Attachment)
+			{
+				if (pass->depthAttachment.node == resource.node)
+				{
+					dstAccess = BarrierAccess::DepthStencilRead;
+					newLayout = BarrierLayout::DepthStencilRead;
+				}
+			}
+
+			TextureBarrier textureBarrier;
+			textureBarrier.resource = resource.node->texture.GetHandle();
+			textureBarrier.srcStage = resource.node->barrierState.stage;
+			textureBarrier.dstStage = BarrierStage::AllShading;
+			textureBarrier.srcAccess = resource.node->barrierState.access;
+			textureBarrier.dstAccess = dstAccess;
+			textureBarrier.oldLayout = resource.node->barrierState.layout;
+			textureBarrier.newLayout = newLayout;
+			barrier.textureBarriers.push_back(textureBarrier);
+
+			resource.node->barrierState.stage = textureBarrier.dstStage;
+			resource.node->barrierState.access = textureBarrier.dstAccess;
+			resource.node->barrierState.layout = textureBarrier.newLayout;
 		}
-	#endif
+
+		for (auto& resource : pass->textureWrites)
+		{
+			BarrierStage dstStage = BarrierStage::AllShading;
+			BarrierAccess dstAccess = BarrierAccess::UnorderedAccess;
+			BarrierLayout newLayout = BarrierLayout::UnorderedAccess;
+
+			const auto& textureDesc = resource.node->texture.GetDescriptor();
+			if (textureDesc.usage & TextureUsage_Attachment)
+			{
+				if (pass->depthAttachment.node == resource.node)
+				{
+					dstStage = BarrierStage::DepthStencil;
+					dstAccess = BarrierAccess::DepthStencilWrite;
+					newLayout = BarrierLayout::DepthStencilWrite;
+				}
+				else
+				{
+					dstStage = BarrierStage::RenderTarget;
+					dstAccess = BarrierAccess::RenderTarget;
+					newLayout = BarrierLayout::RenderTarget;
+				}
+			}
+
+			TextureBarrier textureBarrier;
+			textureBarrier.resource = resource.node->texture.GetHandle();
+			textureBarrier.srcStage = resource.node->barrierState.stage;
+			textureBarrier.dstStage = dstStage;
+			textureBarrier.srcAccess = resource.node->barrierState.access;
+			textureBarrier.dstAccess = dstAccess;
+			textureBarrier.oldLayout = resource.node->barrierState.layout;
+			textureBarrier.newLayout = newLayout;
+			barrier.textureBarriers.push_back(textureBarrier);
+
+			resource.node->barrierState.stage = textureBarrier.dstStage;
+			resource.node->barrierState.access = textureBarrier.dstAccess;
+			resource.node->barrierState.layout = textureBarrier.newLayout;
+		}
+		cmd->Barrier(barrier);
 
         // execute render pass
 		if (pass->GetType() == RenderGraphPassType::Native)

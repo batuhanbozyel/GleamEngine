@@ -4,7 +4,7 @@
 #include "Renderer/Heap.h"
 #include "Renderer/Buffer.h"
 
-#include "DirectXTransitionManager.h"
+#include "DirectXDevice.h"
 #include "DirectXUtils.h"
 
 using namespace Gleam;
@@ -21,14 +21,13 @@ Buffer Heap::Allocate(const BufferDescriptor& descriptor)
 	}
 	mStackPtr = newStackPtr;
 
-	auto initialState = D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE;
 	auto flags = D3D12_RESOURCE_FLAG_NONE;
 	if (mDescriptor.memoryType != MemoryType::CPU)
 	{
 		flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
 	}
 
-	D3D12_RESOURCE_DESC resourceDesc = {
+	D3D12_RESOURCE_DESC1 resourceDesc = {
 		.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER,
 		.Alignment = mAlignment,
 		.Width = descriptor.size,
@@ -42,11 +41,13 @@ Buffer Heap::Allocate(const BufferDescriptor& descriptor)
 	};
 
 	ID3D12Resource* resource = nullptr;
-	DX_CHECK(static_cast<ID3D12Device10*>(mDevice->GetHandle())->CreatePlacedResource(
+	DX_CHECK(static_cast<ID3D12Device10*>(mDevice->GetHandle())->CreatePlacedResource2(
 		static_cast<ID3D12Heap*>(mHandle),
 		alignedStackPtr,
 		&resourceDesc,
-		initialState,
+		D3D12_BARRIER_LAYOUT_UNDEFINED,
+		nullptr,
+		0,
 		nullptr,
 		IID_PPV_ARGS(&resource)
 	));
@@ -56,7 +57,6 @@ Buffer Heap::Allocate(const BufferDescriptor& descriptor)
 	TWString resourceName = ss.str();
 
 	resource->SetName(resourceName.c_str());
-	DirectXTransitionManager::SetLayout(resource, initialState);
 
     void* contents = nullptr;
     if (mDescriptor.memoryType != MemoryType::GPU)
@@ -73,7 +73,6 @@ Buffer Heap::Allocate(const BufferDescriptor& descriptor)
 
 void Heap::Free(Buffer& buffer)
 {
-	DirectXTransitionManager::RemoveResource(static_cast<ID3D12Resource*>(buffer.mHandle));
 	static_cast<DirectXDevice*>(mDevice)->ReleaseResourceView(buffer.mResourceView);
 	static_cast<ID3D12Resource*>(buffer.mHandle)->Release();
 	buffer.mResourceView = InvalidResourceIndex;

@@ -14,6 +14,7 @@
 #include "GraphicsDevice.h"
 #include "RenderResourcePool.h"
 #include "ResourceReleaseQueue.h"
+#include "World/Entity.h"
 
 namespace Gleam {
 
@@ -32,6 +33,8 @@ public:
     virtual void Initialize(Engine* engine) override;
     
     virtual void Shutdown() override;
+
+	void PreRender(const World* world);
     
     void Render(const World* world);
     
@@ -114,6 +117,8 @@ private:
 	bool mRendererResized = false;
 
 	Size mSwapchainSize = {};
+
+	EntityHandle mActiveCamera = InvalidEntity;
 
 	Engine* mEngine;
     

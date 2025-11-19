@@ -16,6 +16,7 @@ static constexpr size_t kImGuiDataBufferSize = 4 * 1024 * 1024;
 void ImGuiRenderer::OnCreate(RenderContext& context)
 {
     mDevice = context.device;
+	mReleaseQueue = context.releaseQueue;
 	mSurface = static_cast<Swapchain*>(context.surface);
     
 	IMGUI_CHECKVERSION();
@@ -39,9 +40,6 @@ void ImGuiRenderer::OnCreate(RenderContext& context)
 	textureDesc.pixels.resize(width * height * 4);
 	memcpy(textureDesc.pixels.data(), pixels, textureDesc.pixels.size());
 	mFontTexture = new Texture2D(textureDesc);
-
-	static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
-	renderSystem->GetUploadManager()->WaitUntilCompleted();
 
 	uint64_t fontTextureId = static_cast<uint64_t>(mFontTexture->GetResourceView().data);
 	io.Fonts->SetTexID(reinterpret_cast<ImTextureID>(fontTextureId));
@@ -229,7 +227,10 @@ void ImGuiRenderer::AddFontTexture(const Path& fontPath, const Path& defaultPath
 	// TODO: error handling
 	if (mFontTexture)
 	{
-		delete mFontTexture;
+		mReleaseQueue->AddResource([fontTexture = mFontTexture]()
+		{
+			delete fontTexture;
+		}, mSurface->GetFrameIndex());
 		mFontTexture = nullptr;
 	}
 	
@@ -250,9 +251,6 @@ void ImGuiRenderer::AddFontTexture(const Path& fontPath, const Path& defaultPath
 	textureDesc.pixels.resize(width * height * 4);
 	memcpy(textureDesc.pixels.data(), pixels, textureDesc.pixels.size());
 	mFontTexture = new Texture2D(textureDesc);
-
-	static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
-	renderSystem->GetUploadManager()->WaitUntilCompleted();
 
 	uint64_t fontTextureId = static_cast<uint64_t>(mFontTexture->GetResourceView().data);
 	io.Fonts->SetTexID(reinterpret_cast<ImTextureID>(fontTextureId));

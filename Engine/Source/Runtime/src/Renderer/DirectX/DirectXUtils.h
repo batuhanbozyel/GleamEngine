@@ -3,6 +3,7 @@
 #include <d3d12.h>
 #include <WinPixEventRuntime/pix3.h>
 
+#include "Renderer/Barrier.h"
 #include "Renderer/TextureFormat.h"
 #include "Renderer/HeapDescriptor.h"
 #include "Renderer/RenderPassDescriptor.h"
@@ -386,6 +387,58 @@ static constexpr D3D12_DSV_DIMENSION TextureDimensionToD3D12_DSV_DIMENSION(Textu
 		case TextureDimension::Texture2D: return D3D12_DSV_DIMENSION_TEXTURE2D;
 		case TextureDimension::TextureCube: return D3D12_DSV_DIMENSION_TEXTURE2DARRAY;
 		default: return D3D12_DSV_DIMENSION_UNKNOWN;
+	}
+}
+
+static constexpr D3D12_BARRIER_SYNC BarrierStageToD3D12_BARRIER_SYNC(BarrierStage stage)
+{
+	switch (stage)
+	{
+		case BarrierStage::None: return D3D12_BARRIER_SYNC_NONE;
+		case BarrierStage::All: return D3D12_BARRIER_SYNC_ALL;
+		case BarrierStage::AllShading: return D3D12_BARRIER_SYNC_ALL_SHADING;
+		case BarrierStage::NonFragmentShading: return D3D12_BARRIER_SYNC_NON_PIXEL_SHADING;
+		case BarrierStage::VertexShading: return D3D12_BARRIER_SYNC_VERTEX_SHADING;
+		case BarrierStage::FragmentShading: return D3D12_BARRIER_SYNC_PIXEL_SHADING;
+		case BarrierStage::ComputeShading: return D3D12_BARRIER_SYNC_COMPUTE_SHADING;
+		case BarrierStage::RenderTarget: return D3D12_BARRIER_SYNC_RENDER_TARGET;
+		case BarrierStage::DepthStencil: return D3D12_BARRIER_SYNC_DEPTH_STENCIL;
+		case BarrierStage::Copy: return D3D12_BARRIER_SYNC_COPY;
+		default: return D3D12_BARRIER_SYNC_NONE;
+	}
+}
+
+static constexpr D3D12_BARRIER_ACCESS BarrierAccessToD3D12_BARRIER_ACCESS(BarrierAccess access)
+{
+	switch (access)
+	{
+		case BarrierAccess::None: return D3D12_BARRIER_ACCESS_NO_ACCESS;
+		case BarrierAccess::Common: return D3D12_BARRIER_ACCESS_COMMON;
+		case BarrierAccess::RenderTarget: return D3D12_BARRIER_ACCESS_RENDER_TARGET;
+		case BarrierAccess::ShaderResource: return D3D12_BARRIER_ACCESS_SHADER_RESOURCE;
+		case BarrierAccess::UnorderedAccess: return D3D12_BARRIER_ACCESS_UNORDERED_ACCESS;
+		case BarrierAccess::DepthStencilRead: return D3D12_BARRIER_ACCESS_DEPTH_STENCIL_READ;
+		case BarrierAccess::DepthStencilWrite: return D3D12_BARRIER_ACCESS_DEPTH_STENCIL_WRITE;
+		case BarrierAccess::CopySource: return D3D12_BARRIER_ACCESS_COPY_SOURCE;
+		case BarrierAccess::CopyDest: return D3D12_BARRIER_ACCESS_COPY_DEST;
+		default: return D3D12_BARRIER_ACCESS_NO_ACCESS;
+	}
+}
+
+static constexpr D3D12_BARRIER_LAYOUT BarrierLayoutToD3D12_BARRIER_LAYOUT(BarrierLayout layout)
+{
+	switch (layout)
+	{
+		case BarrierLayout::Undefined: return D3D12_BARRIER_LAYOUT_UNDEFINED;
+		case BarrierLayout::Common: return D3D12_BARRIER_LAYOUT_COMMON;
+		case BarrierLayout::RenderTarget: return D3D12_BARRIER_LAYOUT_RENDER_TARGET;
+		case BarrierLayout::ShaderResource: return D3D12_BARRIER_LAYOUT_SHADER_RESOURCE;
+		case BarrierLayout::UnorderedAccess: return D3D12_BARRIER_LAYOUT_UNORDERED_ACCESS;
+		case BarrierLayout::DepthStencilRead: return D3D12_BARRIER_LAYOUT_DEPTH_STENCIL_READ;
+		case BarrierLayout::DepthStencilWrite: return D3D12_BARRIER_LAYOUT_DEPTH_STENCIL_WRITE;
+		case BarrierLayout::CopySource: return D3D12_BARRIER_LAYOUT_COPY_SOURCE;
+		case BarrierLayout::CopyDest: return D3D12_BARRIER_LAYOUT_COPY_DEST;
+		default: return D3D12_BARRIER_LAYOUT_UNDEFINED;
 	}
 }
 

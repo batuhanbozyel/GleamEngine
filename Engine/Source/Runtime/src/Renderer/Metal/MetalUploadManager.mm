@@ -77,7 +77,7 @@ UploadManager::~UploadManager()
     mHandle->memoryCommandBuffer = nil;
 }
 
-void UploadManager::Execute() const
+void UploadManager::Execute(const CommandBuffer* cmd) const
 {
     if (mHandle->fileCommandBuffer != nil)
     {

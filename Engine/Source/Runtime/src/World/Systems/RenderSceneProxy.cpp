@@ -74,24 +74,6 @@ void RenderSceneProxy::OnUpdate(EntityManager& entityManager)
 			++batch.numInstances;
 		}
 	});
-
-	auto uploadManager = renderSystem->GetUploadManager();
-	for (const auto& [_, batch] : mMeshBatches)
-	{
-		uploadManager->Commit(batch.instanceBuffer, batch.instances.data(), sizeof(MeshInstanceData) * batch.numInstances);
-	}
-	uploadManager->Execute();
-	uploadManager->WaitUntilCompleted();
-    
-    // update active camera
-    mActiveCamera = nullptr;
-    entityManager.ForEach<Entity, Camera>([&](const Entity& entity, const Camera& component)
-    {
-        if (entity.IsActive())
-        {
-            mActiveCamera = &entity;
-        }
-    });
 }
 
 void RenderSceneProxy::OnDestroy(EntityManager& entityManager)
@@ -123,9 +105,4 @@ void RenderSceneProxy::ForEach(BatchFn&& fn) const
     {
         fn(batch);
     }
-}
-
-const Entity* RenderSceneProxy::GetActiveCamera() const
-{
-    return mActiveCamera;
 }

@@ -3,6 +3,7 @@
 #include "Container/Pointer.h"
 
 #include "Shader.h"
+#include "Barrier.h"
 #include "Texture.h"
 #include "Pipeline.h"
 #include "ConstantBuffer.h"
@@ -80,6 +81,8 @@ public:
     void CopyBuffer(const Buffer& src, const Buffer& dst) const;
 
     void Blit(const Texture& source, const Texture& destination) const;
+
+	void Barrier(const BarrierGroup& barrier) const;
 
     void Begin(const TStringView debugName) const;
 

@@ -178,6 +178,11 @@ void CommandBuffer::Blit(const Texture& source, const Texture& destination) cons
     [blitCommandEncoder endEncoding];
 }
 
+void CommandBuffer::Barrier(const BarrierGroup& barrier) const
+{
+    // TODO: Implement Metal barriers when needed
+}
+
 void CommandBuffer::Begin(const TStringView debugName) const
 {
     mHandle->commandBuffer = mHandle->device->AllocateCommandBuffer();
