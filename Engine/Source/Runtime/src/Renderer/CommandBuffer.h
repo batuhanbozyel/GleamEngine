@@ -8,7 +8,6 @@
 #include "Pipeline.h"
 #include "ConstantBuffer.h"
 #include "RenderPassDescriptor.h"
-#include "RenderGraph/RenderGraphResource.h"
 
 namespace Gleam {
 

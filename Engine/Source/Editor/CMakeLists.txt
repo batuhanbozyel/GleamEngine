@@ -74,10 +74,16 @@ target_compile_definitions(
 
 # Precompile shaders
 set(HLSL_FILE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/src/Renderers/Shaders)
+set(SHADER_STAMP_FILE "${CMAKE_BINARY_DIR}/editor_shader_compile.stamp")
 add_custom_command(
-    TARGET Editor
-    PRE_BUILD
+    OUTPUT ${SHADER_STAMP_FILE}
     COMMAND Python::Interpreter ${CMAKE_SOURCE_DIR}/Tools/CompileShaders.py
-        "-d" ${HLSL_FILE_PATH}
+        "-d" ${HLSL_FILE_PATH} 
         $<$<CONFIG:Debug>:--debug>
+    COMMAND ${CMAKE_COMMAND} -E touch ${SHADER_STAMP_FILE}
+    DEPENDS ${HEADER_FILES} ${SHADER_FILES}
+    COMMENT "Compiling editor shaders..."
+    VERBATIM
 )
+add_custom_target(EditorShaders DEPENDS ${SHADER_STAMP_FILE})
+add_dependencies(Editor EditorShaders)

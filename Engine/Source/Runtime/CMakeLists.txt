@@ -7,14 +7,19 @@ add_subdirectory(${CMAKE_SOURCE_DIR}/Engine/ThirdParty ${CMAKE_BINARY_DIR}/Third
 
 # Runtime files
 file(GLOB_RECURSE SHADER_FILES ${CMAKE_CURRENT_SOURCE_DIR}/src/*.hlsl*)
+
+file(GLOB_RECURSE HEADER_FILES
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/*.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/*.hpp
+)
+list(FILTER HEADER_FILES EXCLUDE REGEX ".*Reflection\\.generated\\.h$")
+
 file(GLOB_RECURSE SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/*.mm
     ${CMAKE_CURRENT_SOURCE_DIR}/src/*.m
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/*.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/*.hpp
 )
-list(FILTER SOURCE_FILES EXCLUDE REGEX ".*Reflection\\.generated\\.h$")
+
 
 # Setup link libraries
 if (WIN32)
@@ -26,7 +31,7 @@ elseif (APPLE)
 endif()
 
 # Set Runtime as static library
-add_library(Runtime STATIC ${SOURCE_FILES} ${SHADER_FILES})
+add_library(Runtime STATIC ${SOURCE_FILES} ${HEADER_FILES} ${SHADER_FILES})
 add_dependencies(Runtime SDL3-static imgui EASTL)
 
 # Include directories
@@ -44,7 +49,7 @@ if (APPLE)
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/ImGuizmo
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/EASTL/include
     )
-    set_source_files_properties(${SOURCE_FILES} PROPERTIES COMPILE_FLAGS "-x objective-c++")
+    set_source_files_properties(${SOURCE_FILES} ${HEADER_FILES} PROPERTIES COMPILE_FLAGS "-x objective-c++")
     set_target_properties(Runtime PROPERTIES MACOSX_BUNDLE YES XCODE_ATTRIBUTE_CLANG_ENABLE_OBJC_ARC YES)
 else()
     set(INCLUDE_DIRS
@@ -71,7 +76,7 @@ target_link_libraries(Runtime PUBLIC ${LIB_LINKS})
 target_precompile_headers(Runtime PUBLIC "src/gpch.h")
 
 # Setup souce grouping and working directory 
-source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${SOURCE_FILES} ${SHADER_FILES})
+source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${SOURCE_FILES} ${HEADER_FILES} ${SHADER_FILES})
 SET_WORKING_DIRECTORY(Runtime ${CMAKE_SOURCE_DIR})
 
 # 
@@ -149,32 +154,41 @@ foreach(INCLUDE_DIR ${INCLUDE_DIRS})
     list(APPEND REFLECTION_COMPILER_ARGS "--extra-arg=-I${INCLUDE_DIR}")
 endforeach()
 
-string(REPLACE ";" " " REFLECTION_FILES ${SOURCE_FILES})
-string(REPLACE ";" " " REFLECTION_ARGS ${REFLECTION_COMPILER_ARGS})
-
+set(REFLECTION_OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime.Reflection.generated.h")
 set(REFLECTION_CLI "${CMAKE_SOURCE_DIR}/Tools/CppReflection")
 if (WIN32)
     set(REFLECTION_CLI "${REFLECTION_CLI}.exe")
 endif()
 
 add_custom_command(
-    TARGET Runtime
-    PRE_BUILD
+    OUTPUT ${REFLECTION_OUTPUT}
     COMMAND ${REFLECTION_CLI}
         "--module=Runtime"
         "--header-dir=${CMAKE_CURRENT_SOURCE_DIR}/src"
         "--binary-dir=${CMAKE_SOURCE_DIR}"
         ${REFLECTION_COMPILER_ARGS}
-        ${SOURCE_FILES}
+        ${HEADER_FILES}
+    DEPENDS ${HEADER_FILES} ${REFLECTION_CLI}
+    COMMENT "Generating reflection data from header files..."
     COMMAND_EXPAND_LISTS
+    VERBATIM
 )
+
+add_custom_target(RuntimeReflection DEPENDS ${REFLECTION_OUTPUT})
+add_dependencies(Runtime RuntimeReflection)
 
 # Precompile shaders
 set(HLSL_FILE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/src/Renderer/Shaders)
+set(SHADER_STAMP_FILE "${CMAKE_BINARY_DIR}/runtime_shader_compile.stamp")
 add_custom_command(
-    TARGET Runtime
-    PRE_BUILD
+    OUTPUT ${SHADER_STAMP_FILE}
     COMMAND Python::Interpreter ${CMAKE_SOURCE_DIR}/Tools/CompileShaders.py
         "-d" ${HLSL_FILE_PATH} 
         $<$<CONFIG:Debug>:--debug>
+    COMMAND ${CMAKE_COMMAND} -E touch ${SHADER_STAMP_FILE}
+    DEPENDS ${HEADER_FILES} ${SHADER_FILES}
+    COMMENT "Compiling runtime shaders..."
+    VERBATIM
 )
+add_custom_target(RuntimeShaders DEPENDS ${SHADER_STAMP_FILE})
+add_dependencies(Runtime RuntimeShaders)

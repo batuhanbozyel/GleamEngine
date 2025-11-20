@@ -1,5 +1,6 @@
 #pragma once
 #include "Subsystem.h"
+#include "CommandLine.h"
 #include "EngineConfig.h"
 #include "EngineDefines.h"
 #include "Container/PolyArray.h"
@@ -14,7 +15,7 @@ public:
 
 	Engine() = default;
 
-	void Initialize();
+	void Initialize(const CommandLine& cli);
 
 	void Shutdown();
     
