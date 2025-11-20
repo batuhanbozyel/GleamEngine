@@ -1,5 +1,4 @@
 #pragma once
-#include "Core/Macro.h"
 #include "Container/Pointer.h"
 #include "Container/String.h"
 
@@ -37,6 +36,11 @@ public:
 	template<typename ... Args>
 	void Log(Level lvl, const TStringView frmt, Args&& ... args) const
 	{
+		if (static_cast<uint32_t>(lvl) < static_cast<uint32_t>(mLevel))
+		{
+			return;
+		}
+
 		auto currentTime = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
 		char formattedCurrentTime[32];
 		std::strftime(formattedCurrentTime, 32, "%X", std::localtime(&currentTime));
@@ -75,7 +79,7 @@ private:
     static inline Scope<std::ofstream> mFileStream = nullptr;
     static inline uint32_t mInstanceCount = 0;
 	static inline std::mutex mLogMutex;
-    
+	static inline Level mLevel = Level::Info;
 };
 
 } // namespace Gleam

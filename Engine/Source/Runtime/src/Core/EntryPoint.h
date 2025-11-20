@@ -29,15 +29,17 @@ void* __cdecl operator new[](unsigned __int64 size, unsigned __int64 alignment, 
 
 int main(int argc, char* argv[])
 {
+	Gleam::CommandLine cli(argc, argv);
+
 	Gleam::Reflection::Database reflection;
 	reflection.Initialize(Gleam::Filesystem::WorkingDirectory() / "Runtime.Reflection.db");
 
     Gleam::Engine engine;
     Gleam::Globals::Engine = &engine;
-    engine.Initialize();
+    engine.Initialize(cli);
 
 	// TODO: parse command line, check if project is provided, then launch Game, otherwise launch custom application instance
-	Gleam::Globals::GameInstance = Gleam::CreateApplicationInstance(Gleam::CommandLine(argc, argv));
+	Gleam::Globals::GameInstance = Gleam::CreateApplicationInstance(cli);
 	Gleam::Globals::GameInstance->Run();
 
 	delete Gleam::Globals::GameInstance;

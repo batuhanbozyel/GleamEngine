@@ -14,7 +14,7 @@
 
 using namespace Gleam;
 
-void Engine::Initialize()
+void Engine::Initialize(const CommandLine& cli)
 {
 	// init serialization
 	AddSubsystem<BinarySerializer>();
