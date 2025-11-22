@@ -87,3 +87,8 @@ add_custom_command(
 )
 add_custom_target(EditorShaders DEPENDS ${SHADER_STAMP_FILE})
 add_dependencies(Editor EditorShaders)
+
+set_target_properties(
+    EditorShaders
+    PROPERTIES FOLDER CMakeCustomRules
+)

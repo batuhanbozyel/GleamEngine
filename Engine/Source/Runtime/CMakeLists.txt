@@ -1,6 +1,7 @@
 include (${CMAKE_SOURCE_DIR}/CMake/CMakeUtils.cmake)
 
 find_package(Python COMPONENTS Interpreter REQUIRED)
+find_package(Vulkan REQUIRED)
 
 # Third-party libraries
 add_subdirectory(${CMAKE_SOURCE_DIR}/Engine/ThirdParty ${CMAKE_BINARY_DIR}/ThirdParty)
@@ -48,6 +49,8 @@ if (APPLE)
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/ImGuizmo
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/EASTL/include
+        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/VulkanMemoryAllocator/include
+        ${Vulkan_INCLUDE_DIRS}
     )
     set_source_files_properties(${SOURCE_FILES} ${HEADER_FILES} PROPERTIES COMPILE_FLAGS "-x objective-c++")
     set_target_properties(Runtime PROPERTIES MACOSX_BUNDLE YES XCODE_ATTRIBUTE_CLANG_ENABLE_OBJC_ARC YES)
@@ -66,6 +69,8 @@ else()
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/DirectStorage/native/include
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/DirectXAgilitySDK/build/native/include
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/WinPixEventRuntime/Include
+        ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/VulkanMemoryAllocator/include
+        ${Vulkan_INCLUDE_DIRS}
     )
 endif()
 
@@ -192,3 +197,9 @@ add_custom_command(
 )
 add_custom_target(RuntimeShaders DEPENDS ${SHADER_STAMP_FILE})
 add_dependencies(Runtime RuntimeShaders)
+
+set_target_properties (
+    RuntimeShaders
+    RuntimeReflection
+    PROPERTIES FOLDER CMakeCustomRules
+)

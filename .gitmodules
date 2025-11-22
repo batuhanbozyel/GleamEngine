@@ -34,3 +34,6 @@
 [submodule "Engine/ThirdParty/EASTL"]
 	path = Engine/ThirdParty/EASTL
 	url = https://github.com/batuhanbozyel/EASTL
+[submodule "Engine/ThirdParty/VulkanMemoryAllocator"]
+	path = Engine/ThirdParty/VulkanMemoryAllocator
+	url = https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator
