@@ -148,7 +148,8 @@ MemoryRequirements GraphicsDevice::QueryMemoryRequirements(const HeapDescriptor&
 	return MemoryRequirements
 	{
 		.size = allocationInfo.SizeInBytes,
-		.alignment = allocationInfo.Alignment
+		.alignment = allocationInfo.Alignment,
+		.type = descriptor.memoryType
 	};
 }
 
@@ -164,7 +165,7 @@ Heap GraphicsDevice::CreateHeap(const HeapDescriptor& descriptor)
 	D3D12_HEAP_DESC desc{};
 	desc.Alignment = heap.mAlignment;
 	desc.SizeInBytes = heap.mDescriptor.size;
-	desc.Flags = D3D12_HEAP_FLAG_ALLOW_ONLY_BUFFERS;
+	desc.Flags = D3D12_HEAP_FLAG_NONE;
 	desc.Properties.Type = descriptor.memoryType == MemoryType::CPU ? D3D12_HEAP_TYPE_UPLOAD : D3D12_HEAP_TYPE_DEFAULT;
 	DX_CHECK(static_cast<ID3D12Device10*>(mHandle)->CreateHeap(&desc, __uuidof(ID3D12Heap*), &heap.mHandle));
 	static_cast<ID3D12Resource*>(heap.mHandle)->SetName(StringUtils::Convert(descriptor.name).c_str());

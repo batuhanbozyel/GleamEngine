@@ -10,7 +10,6 @@ class ResourceReleaseQueue
 public:
 
 	ResourceReleaseQueue(uint32_t framesInFlight);
-
 	~ResourceReleaseQueue();
 
 	void Clear();

@@ -123,7 +123,8 @@ MemoryRequirements GraphicsDevice::QueryMemoryRequirements(const HeapDescriptor&
     return MemoryRequirements
 	{
 		.size = sizeAndAlign.size,
-		.alignment = sizeAndAlign.align
+		.alignment = sizeAndAlign.align,
+		.type = descriptor.memoryType
 	};
 }
 
@@ -132,7 +133,7 @@ Heap GraphicsDevice::CreateHeap(const HeapDescriptor& descriptor)
     Heap heap(descriptor);
     heap.mDevice = this;
     
-    MTLResourceOptions resourceOptions = MemoryTypeToMTLResourceOption(descriptor.memoryType) | MTLResourceHazardTrackingModeTracked; // TODO: Remove hazard tracking when async compute passes are implemented with proper resource synchronization
+    MTLResourceOptions resourceOptions = MemoryTypeToMTLResourceOption(descriptor.memoryType) | MTLResourceHazardTrackingModeTracked; // TODO: Remove hazard tracking when proper resource synchronization is implemented
     MTLSizeAndAlign sizeAndAlign = [mHandle heapBufferSizeAndAlignWithLength:descriptor.size options:resourceOptions];
     
     MTLHeapDescriptor* desc = [MTLHeapDescriptor new];
