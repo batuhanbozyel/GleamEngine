@@ -49,6 +49,12 @@ public:
     {
 
     }
+
+	ShaderResource(NativeGraphicsHandle handle, ShaderResourceIndex view)
+		: GraphicsObject(handle)
+	{
+		mResourceView = view;
+	}
     
     virtual ~ShaderResource() = default;
     

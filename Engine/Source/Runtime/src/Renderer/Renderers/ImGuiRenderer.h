@@ -44,8 +44,6 @@ private:
 
 	GraphicsPipelineHandle mPipeline;
 
-	Heap mHeap;
-
 	Buffer mBuffer;
 
 	Texture2D* mFontTexture = nullptr;

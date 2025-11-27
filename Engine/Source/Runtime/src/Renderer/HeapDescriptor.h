@@ -5,10 +5,8 @@ namespace Gleam {
 
 enum class MemoryType
 {
-    GPU,
-    Shared,
 	CPU,
-	Transient
+    GPU
 };
 
 struct HeapDescriptor
@@ -37,9 +35,7 @@ static constexpr const char* MemoryTypeToString(MemoryType type)
 	switch (type)
 	{
 		case MemoryType::CPU: return "CPU";
-		case MemoryType::Shared: return "Shared";
 		case MemoryType::GPU: return "GPU";
-		case MemoryType::Transient: return "Transient";
 		default: return "UNKNOWN";
 	}
 }

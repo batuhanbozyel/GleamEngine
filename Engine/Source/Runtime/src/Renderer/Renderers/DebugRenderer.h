@@ -49,7 +49,6 @@ private:
 
 	void RenderMeshes(const CommandBuffer* cmd, const CameraUniforms& cameraData, const TArray<DebugMesh>& debugMeshes, bool depthTest) const;
 
-	Heap mVertexHeap;
 	Buffer mVertexBuffer;
 
     TArray<DebugLine> mLines;
@@ -65,6 +64,7 @@ private:
 	GraphicsPipelineHandle mMeshDepthPipeline;
 
 	GraphicsDevice* mDevice = nullptr;
+	GPUAllocator* mAllocator = nullptr;
 
 };
 

@@ -26,7 +26,7 @@ void RenderSystem::Initialize(Engine* engine)
 	mContext.device = mDevice.get();
 	mContext.surface = mSwapchain.get();
 	mContext.releaseQueue = mReleaseQueue.get();
-	mContext.resourcePool = mResourcePool.get();
+	mContext.allocator = mPersistentAllocator.get();
 
 	EventDispatcher<WindowResizeEvent>::Subscribe([this](const WindowResizeEvent& e)
 	{
@@ -55,9 +55,6 @@ void RenderSystem::Shutdown()
 	mRenderers.clear();
 
 	mReleaseQueue->Clear();
-	mResourcePool->Clear();
-
-	mResourcePool.reset();
 	mReleaseQueue.reset();
     mDevice.reset();
 	mSwapchain.reset();
@@ -106,12 +103,16 @@ void RenderSystem::Render(const World* world)
 		sceneTargetDesc.size = cameraComponent.GetViewport();
 		sceneTargetDesc.format = mSwapchain->GetFormat();
 
-		auto sceneTarget = mResourcePool->Allocate(sceneTargetDesc);
+		RenderGraphContext renderGraphContext;
+		renderGraphContext.device = mDevice.get();
+		renderGraphContext.surface = mSwapchain.get();
+		renderGraphContext.allocator = mTransientAllocator.get();
+		RenderGraph graph(renderGraphContext);
+
+		auto sceneTarget = mDevice->CreateTexture(renderGraphContext.allocator, sceneTargetDesc);
 		const auto& backbuffer = mSwapchain->GetCurrentDrawable();
 
-		RenderGraph graph(mContext);
 		RenderGraphBlackboard blackboard;
-
 		auto& sceneData = blackboard.Add<SceneRenderingData>();
 		sceneData.backbuffer = graph.ImportBackbuffer(backbuffer);
 		sceneData.sceneTarget = graph.ImportBackbuffer(sceneTarget);
@@ -149,7 +150,6 @@ void RenderSystem::Render(const World* world)
 		if (mRendererResized)
 		{
 			mSwapchain->Resize(mDevice.get(), mSwapchainSize);
-			mResourcePool->Clear();
 			mRendererResized = false;
 		}
 
@@ -165,7 +165,7 @@ void RenderSystem::Render(const World* world)
 		mUploadManager->Barrier(cmd);
 
         graph.Execute(cmd, sceneData);
-		mResourcePool->Release(sceneTarget);
+		mDevice->Dispose(renderGraphContext.allocator, sceneTarget);
 
 		mSwapchain->Present(cmd);
     }
@@ -207,6 +207,16 @@ RenderSurface* RenderSystem::GetSurface()
 const RenderSurface* RenderSystem::GetSurface() const
 {
 	return mSwapchain.get();
+}
+
+GPUAllocator* RenderSystem::GetAllocator()
+{
+	return mPersistentAllocator.get();
+}
+
+const GPUAllocator* RenderSystem::GetAllocator() const
+{
+	return mPersistentAllocator.get();
 }
 
 void RenderSystem::RecompileShader(const TString& entryPoint)

@@ -4,6 +4,7 @@
 #include "RendererConfig.h"
 #include "ResourceReleaseQueue.h"
 #include "ResourceDescriptorHeap.h"
+#include "Allocator/GPUAllocator.h"
 
 namespace Gleam {
 
@@ -13,7 +14,6 @@ struct Version;
 class GraphicsDevice : public GraphicsObject
 {
     friend class RenderSystem;
-
 public:
 
     GLEAM_NONCOPYABLE(GraphicsDevice);
@@ -24,7 +24,9 @@ public:
 
     Heap CreateHeap(const HeapDescriptor& descriptor);
 
-    Texture CreateTexture(const TextureDescriptor& descriptor);
+	Texture CreateTexture(GPUAllocator* allocator, const TextureDescriptor& descriptor);
+
+	Buffer CreateBuffer(GPUAllocator* allocator, const BufferDescriptor& descriptor);
 
     Shader CreateShader(const TString& entryPoint, ShaderStage stage);
 
@@ -32,7 +34,9 @@ public:
 
     void Dispose(Heap& heap);
 
-    void Dispose(Texture& texture);
+	void Dispose(GPUAllocator* allocator, Texture& texture);
+
+	void Dispose(GPUAllocator* allocator, Buffer& buffer);
 
 	void Dispose(Shader& shader);
 
@@ -40,18 +44,10 @@ public:
 
 	const GraphicsPipeline& GetGraphicsPipeline(GraphicsPipelineHandle handle) const;
     
-    MemoryRequirements QueryMemoryRequirements(const HeapDescriptor& descriptor) const;
-    
 protected:
 
 	// Implemented by the backend
 	virtual void Configure(const RendererConfig& config) = 0;
-    
-    virtual ShaderResourceIndex CreateResourceView(const Buffer& buffer) = 0;
-    
-    virtual ShaderResourceIndex CreateResourceView(const Texture& texture) = 0;
-    
-    virtual void ReleaseResourceView(ShaderResourceIndex view) = 0;
 
 	virtual void ResetCommandPools(uint32_t frameIdx) {};
 

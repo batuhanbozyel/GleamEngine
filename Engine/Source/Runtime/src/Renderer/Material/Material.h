@@ -9,7 +9,6 @@
 #include "IMaterial.h"
 #include "MaterialDescriptor.h"
 
-#include "Renderer/Heap.h"
 #include "Renderer/Buffer.h"
 #include "Renderer/ResourceDescriptorHeap.h"
 
@@ -41,8 +40,6 @@ public:
 private:
     
     TString mName;
-    
-	Heap mHeap;
 
     Buffer mBuffer;
 

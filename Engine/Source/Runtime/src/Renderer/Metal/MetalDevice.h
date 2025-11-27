@@ -45,15 +45,15 @@ public:
 	
 	IRRootSignature* GetGlobalRootSignature() const;
     
-    virtual ShaderResourceIndex CreateResourceView(const Buffer& buffer) override;
-    
-    virtual ShaderResourceIndex CreateResourceView(const Texture& texture) override;
-    
-    virtual void ReleaseResourceView(ShaderResourceIndex view) override;
-    
 private:
 
 	virtual void Configure(const RendererConfig& config) override;
+
+	ShaderResourceIndex CreateResourceView(const Buffer& buffer);
+
+	ShaderResourceIndex CreateResourceView(const Texture& texture);
+
+	void ReleaseResourceView(ShaderResourceIndex view);
     
     MetalDescriptorHeap CreateDescriptorHeap(uint32_t capacity) const;
 

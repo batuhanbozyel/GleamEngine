@@ -1,6 +1,5 @@
 #pragma once
-#include "Heap.h"
-#include "Buffer.h"
+#include "GraphicsObject.h"
 
 namespace Gleam {
 
@@ -28,7 +27,7 @@ public:
 
 	NativeGraphicsHandle GetHandle() const
 	{
-		return mBuffer.GetHandle();
+		return mHandle;
 	}
 
 private:
@@ -37,11 +36,11 @@ private:
 
 	size_t mCapacity = 0;
 
-	Heap mHeap;
+	size_t mAlignment = 4;
 
-	Buffer mBuffer;
+	void* mContents = nullptr;
 
-	GraphicsDevice* mDevice;
+	NativeGraphicsHandle mHandle;
 
 };
 

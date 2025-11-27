@@ -57,24 +57,17 @@ Material::Material(const MaterialDescriptor& descriptor)
     static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
 	auto device = renderSystem->GetDevice();
 
-	HeapDescriptor heapDesc;
-	heapDesc.name = "Material::Heap";
-	heapDesc.memoryType = MemoryType::GPU;
-	heapDesc.size = mInstanceSize * MaxMaterialInstances;
-	mHeap = device->CreateHeap(heapDesc);
-
 	BufferDescriptor bufferDesc;
-	bufferDesc.name = "Buffer";
-	bufferDesc.size = heapDesc.size;
-	mBuffer = mHeap.Allocate(bufferDesc);
+	bufferDesc.name = "Material: " + mName;
+	bufferDesc.size = mInstanceSize * MaxMaterialInstances;
+	mBuffer = device->CreateBuffer(renderSystem->GetAllocator(), bufferDesc);
 }
 
 Material::~Material()
 {
 	static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
 	auto device = renderSystem->GetDevice();
-	mHeap.Free(mBuffer);
-	device->Dispose(mHeap);
+	device->Dispose(renderSystem->GetAllocator(), mBuffer);
 }
 
 ShaderResourceIndex Material::CreateInstance(const TArray<MaterialPropertyValue>& values)

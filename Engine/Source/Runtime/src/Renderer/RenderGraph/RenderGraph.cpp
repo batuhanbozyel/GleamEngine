@@ -4,7 +4,6 @@
 #include "Renderer/Swapchain.h"
 #include "Renderer/CommandBuffer.h"
 #include "Renderer/GraphicsDevice.h"
-#include "Renderer/RenderResourcePool.h"
 
 using namespace Gleam;
 
@@ -22,10 +21,8 @@ static AttachmentStoreAction GetStoreActionForRenderTexture(const RenderGraphTex
     return (node->lastReference == pass && !pass->hasSideEffect) ? AttachmentStoreAction::DontCare : AttachmentStoreAction::Store;
 }
 
-RenderGraph::RenderGraph(RenderContext& context)
-    : mDevice(context.device)
-	, mSurface(context.surface)
-	, mResourcePool(context.resourcePool)
+RenderGraph::RenderGraph(const RenderGraphContext& context)
+    : mContext(context)
 {
     
 }
@@ -112,12 +109,6 @@ void RenderGraph::Compile()
     for (auto pass : mPassNodes)
     {
 		// Buffer
-        for (auto& resource : pass->bufferCreates)
-        {
-            auto node = static_cast<RenderGraphBufferNode*>(resource.node);
-			auto memoryRequirements = mDevice->QueryMemoryRequirements({ .memoryType = MemoryType::GPU, .size = node->buffer.GetSize() });
-            mHeapSize += Utils::AlignUp(memoryRequirements.size, memoryRequirements.alignment);
-        }
         for (auto& resource : pass->bufferWrites)
         {
             resource.node->lastModifier = pass;
@@ -143,12 +134,6 @@ void RenderGraph::Compile()
 
 void RenderGraph::Execute(const CommandBuffer* cmd, SceneRenderingData& sceneData)
 {
-    Heap heap;
-    if (mHeapSize > 0)
-    {
-        heap = mResourcePool->Allocate({ .name = "RenderGraph", .memoryType = MemoryType::GPU, .size = mHeapSize });
-    }
-
     for (auto pass : mPassNodes)
     {
         // Allocate buffers
@@ -163,7 +148,7 @@ void RenderGraph::Execute(const CommandBuffer* cmd, SceneRenderingData& sceneDat
                                         : (name << pass->name << "::" << descriptor.name);
                 descriptor.name = name.str();
                 
-                resource.node->buffer = heap.Allocate(descriptor);
+                resource.node->buffer = mContext.device->CreateBuffer(mContext.allocator, descriptor);
                 GLEAM_ASSERT(resource.node->buffer.IsValid());
             }
         }
@@ -180,7 +165,7 @@ void RenderGraph::Execute(const CommandBuffer* cmd, SceneRenderingData& sceneDat
                                         : (name << pass->name << "::" << descriptor.name);
                 descriptor.name = name.str();
                 
-                resource.node->texture = mResourcePool->Allocate(descriptor);
+                resource.node->texture = mContext.device->CreateTexture(mContext.allocator, descriptor);
                 GLEAM_ASSERT(resource.node->texture.IsValid());
             }
         }
@@ -191,7 +176,7 @@ void RenderGraph::Execute(const CommandBuffer* cmd, SceneRenderingData& sceneDat
 			auto& resource = pass->textureWrites[i];
 			if (resource == sceneData.backbuffer)
 			{
-				sceneData.backbuffer.node->texture = static_cast<Swapchain*>(mSurface)->AcquireNextDrawable();
+				sceneData.backbuffer.node->texture = static_cast<Swapchain*>(mContext.surface)->AcquireNextDrawable();
 				resource.node->texture = sceneData.backbuffer.node->texture;
 				resource.node->barrierState.layout = BarrierLayout::Common;
 			}
@@ -362,18 +347,13 @@ void RenderGraph::Execute(const CommandBuffer* cmd, SceneRenderingData& sceneDat
     {
         for (auto& resource : pass->bufferCreates)
         {
-			heap.Free(resource.node->buffer);
+			mContext.device->Dispose(mContext.allocator, resource.node->buffer);
         }
 
         for (auto& resource : pass->textureCreates)
         {
-			mResourcePool->Release(resource.node->texture);
+			mContext.device->Dispose(mContext.allocator, resource.node->texture);
         }
-    }
-
-    if (heap.IsValid())
-    {
-		mResourcePool->Release(heap);
     }
     
     for (auto pass : mPassNodes) { delete pass; }

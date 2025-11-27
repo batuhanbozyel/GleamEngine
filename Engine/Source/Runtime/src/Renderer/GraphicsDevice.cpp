@@ -4,7 +4,8 @@
 using namespace Gleam;
 
 GraphicsDevice::GraphicsDevice(RenderSurface* surface, ResourceReleaseQueue* releaseQueue)
-	: mSurface(surface), mReleaseQueue(releaseQueue)
+	: mSurface(surface)
+	, mReleaseQueue(releaseQueue)
 {
 
 }

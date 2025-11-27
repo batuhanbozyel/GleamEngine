@@ -14,9 +14,7 @@ GPUAllocator::GPUAllocator(GraphicsDevice* device, const GPUAllocatorDescriptor&
 	, mName(descriptor.name)
 {
 	mBlockSizes[(uint32_t)MemoryType::CPU] = descriptor.cpuBlockSize;
-	mBlockSizes[(uint32_t)MemoryType::Shared] = descriptor.sharedBlockSize;
 	mBlockSizes[(uint32_t)MemoryType::GPU] = descriptor.gpuBlockSize;
-	mBlockSizes[(uint32_t)MemoryType::Transient] = descriptor.transientBlockSize;
 }
 
 GPUAllocator::~GPUAllocator()
@@ -37,8 +35,8 @@ GPUAllocation GPUAllocator::Allocate(const MemoryRequirements& memory)
 	createInfo.alignment = memory.alignment;
 	createInfo.flags = VmaVirtualAllocationCreateFlagBits::VMA_VIRTUAL_ALLOCATION_CREATE_STRATEGY_MIN_TIME_BIT;
 
-	VmaVirtualAllocation allocation;
-	uint64_t offset;
+	VmaVirtualAllocation allocation = VK_NULL_HANDLE;
+	uint64_t offset = 0;
 
 	auto& blocks = mBlocks[(uint32_t)memory.type];
 	for (auto block : blocks)
@@ -62,14 +60,16 @@ GPUAllocation GPUAllocator::Allocate(const MemoryRequirements& memory)
 	heapDesc.size = mBlockSizes[(uint32_t)memory.type];
 	heapDesc.name = mName + "::" + Utils::MemoryTypeToString(memory.type);
 	auto block = AllocateHeap(heapDesc);
-	GLEAM_AFFIRM(vmaVirtualAllocate(static_cast<VmaVirtualBlock>(block->handle), &createInfo, &allocation, &offset));
+	GLEAM_AFFIRM(vmaVirtualAllocate(static_cast<VmaVirtualBlock>(block->handle), &createInfo, &allocation, &offset) == VK_SUCCESS, "GPU allocator virtual allocation failed");
 	block->allocations.push_back(allocation);
 	return GPUAllocation
 	{
+		.resource = nullptr, // not registered yet
 		.block = block,
 		.handle = allocation,
 		.offset = offset,
-		.size = memory.size
+		.size = memory.size,
+		.alignment = memory.alignment
 	};
 }
 
@@ -77,17 +77,41 @@ void GPUAllocator::Free(const GPUAllocation& allocation)
 {
 	GLEAM_ASSERT(allocation.IsValid(), "Allocation is not valid");
 
-	auto& allocations = allocation.block->allocations;
-	auto it = eastl::find(allocations.begin(), allocations.end(), allocation.handle);
-	GLEAM_ASSERT(it != allocations.end(), "Allocation already freed");
-	allocations.erase(it);
-
-	vmaVirtualFree(static_cast<VmaVirtualBlock>(allocation.block->handle), static_cast<VmaVirtualAllocation>(allocation.handle));
-	if (allocations.empty())
+	// Free allocation
 	{
-		FreeHeap(allocation.block);
+		auto& allocations = allocation.block->allocations;
+		auto it = eastl::find(allocations.begin(), allocations.end(), allocation.handle);
+		GLEAM_ASSERT(it != allocations.end(), "Allocation already freed");
+		allocations.erase(it);
+
+		vmaVirtualFree(static_cast<VmaVirtualBlock>(allocation.block->handle), static_cast<VmaVirtualAllocation>(allocation.handle));
+		if (allocations.empty())
+		{
+			FreeHeap(allocation.block);
+		}
+		mCurrentAllocationInBytes -= allocation.size;
 	}
-	mCurrentAllocationInBytes -= allocation.size;
+
+	// Remove resource from allocations
+	{
+		auto it = mAllocations.find(allocation.resource);
+		GLEAM_ASSERT(it != mAllocations.end(), "Allocation is not registered");
+		mAllocations.erase(it);
+	}
+}
+
+void GPUAllocator::AddAllocation(NativeGraphicsHandle resource, const GPUAllocation& allocation)
+{
+	GLEAM_ASSERT(mAllocations.find(resource) == mAllocations.end(), "Allocation already registered");
+	auto it = mAllocations.emplace_hint(mAllocations.end(), resource, allocation);
+	it->second.resource = resource;
+}
+
+const GPUAllocation& GPUAllocator::GetAllocation(NativeGraphicsHandle resource) const
+{
+	auto it = mAllocations.find(resource);
+	GLEAM_ASSERT(it != mAllocations.end(), "Allocation is not registered");
+	return it->second;
 }
 
 GPUAllocationBlock* GPUAllocator::AllocateHeap(const HeapDescriptor& descriptor)

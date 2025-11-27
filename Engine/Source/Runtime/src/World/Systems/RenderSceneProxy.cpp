@@ -50,11 +50,12 @@ void RenderSceneProxy::OnUpdate(EntityManager& entityManager)
 				heapDesc.size = sizeof(MeshInstanceData) * MeshBatch::MaxMeshInstances;
 
 				BufferDescriptor bufferDesc;
-				bufferDesc.name = "Buffer";
-				bufferDesc.size = heapDesc.size;
+				bufferDesc.name = "MeshInstanceBuffer";
+				bufferDesc.size = sizeof(MeshInstanceData) * MeshBatch::MaxMeshInstances;
 
-				batch.instanceHeap = device->CreateHeap(heapDesc);
-				batch.instanceBuffer = batch.instanceHeap.Allocate(bufferDesc);
+				// TODO: Rework this:
+				// we should be using transient allocator here instead of persistent
+				batch.instanceBuffer = device->CreateBuffer(renderSystem->GetAllocator(), bufferDesc); 
 				batch.material = assetManager->Get<Material>(material);
 
 				auto worldRenderer = renderSystem->GetRenderer<WorldRenderer>();
@@ -93,8 +94,7 @@ void RenderSceneProxy::OnDestroy(EntityManager& entityManager)
 	auto device = renderSystem->GetDevice();
 	for (auto& [_, batch] : mMeshBatches)
 	{
-		batch.instanceHeap.Free(batch.instanceBuffer);
-		device->Dispose(batch.instanceHeap);
+		device->Dispose(renderSystem->GetAllocator(), batch.instanceBuffer);
 	}
 	mMeshBatches.clear();
 }

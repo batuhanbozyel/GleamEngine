@@ -56,9 +56,7 @@ void ImGuiRenderer::OnCreate(RenderContext& context)
 	pipelineDesc.vertexEntry = "imguiVertexShader";
 	pipelineDesc.fragmentEntry = "imguiFragmentShader";
 	mPipeline = mDevice->CreateGraphicsPipeline(pipelineDesc);
-
-	mHeap = mDevice->CreateHeap({ .name = "ImGuiHeap", .memoryType = MemoryType::CPU, .size = kImGuiDataBufferSize * mSurface->GetFramesInFlight() });
-	mBuffer = mHeap.Allocate({ .name = "RenderDrawData", .size = kImGuiDataBufferSize * mSurface->GetFramesInFlight() });
+	mBuffer = mDevice->CreateBuffer(context.allocator, { .name = "ImGui RenderDrawData", .memoryType = MemoryType::CPU, .size = kImGuiDataBufferSize * mSurface->GetFramesInFlight() });
 
     Globals::Engine->GetSubsystem<EventSystem>()->SetEventHandler([](const SDL_Event* e)
     {
@@ -90,8 +88,7 @@ void ImGuiRenderer::OnDestroy(RenderContext& context)
     ImGui::DestroyContext();
 
 	delete mFontTexture;
-	mHeap.Free(mBuffer);
-	mDevice->Dispose(mHeap);
+	mDevice->Dispose(context.allocator, mBuffer);
 }
 
 void ImGuiRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard)
@@ -151,7 +148,7 @@ void ImGuiRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 			vtxOffset += drawList->IdxBuffer.Size * sizeof(ImDrawIdx);
 		}
 
-		vtxOffset = (uint32_t)Utils::AlignUp(vtxOffset, mHeap.GetAlignment());
+		//vtxOffset = (uint32_t)Utils::AlignUp(vtxOffset, mBuffer.GetAlignment());
 		ImDrawVert* vtxDest = (ImDrawVert*)((char*)bufferPtr + vtxOffset);
 		for (int n = 0; n < drawData->CmdListsCount; n++)
 		{

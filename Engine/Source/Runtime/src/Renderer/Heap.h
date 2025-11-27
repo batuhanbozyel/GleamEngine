@@ -27,15 +27,6 @@ public:
 
     }
 
-    Buffer Allocate(const BufferDescriptor& descriptor);
-
-	void Free(Buffer& buffer);
-
-    void Reset()
-    {
-        mStackPtr = 0;
-    }
-
 	size_t GetAlignment() const
 	{
 		return mAlignment;
@@ -48,15 +39,9 @@ public:
 
 private:
 
-    size_t mStackPtr = 0;
-
     size_t mAlignment = 0;
 
-	void* mContents = nullptr;
-
     HeapDescriptor mDescriptor;
-
-    GraphicsDevice* mDevice = nullptr;
 
 };
 

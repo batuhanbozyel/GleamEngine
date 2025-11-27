@@ -14,6 +14,7 @@ using namespace Gleam;
 void DebugRenderer::OnCreate(RenderContext& context)
 {
 	mDevice = context.device;
+	mAllocator = context.allocator;
 	// Primitive pipelines
 	{
 		GraphicsPipelineStateDescriptor pipelineState;
@@ -49,8 +50,7 @@ void DebugRenderer::OnCreate(RenderContext& context)
 
 void DebugRenderer::OnDestroy(RenderContext& context)
 {
-	mVertexHeap.Free(mVertexBuffer);
-	context.device->Dispose(mVertexHeap);
+	context.device->Dispose(mAllocator, mVertexBuffer);
 }
 
 void DebugRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard)
@@ -62,17 +62,15 @@ void DebugRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 	if (vertexCount == 0 && mDebugMeshes.empty())
 		return;
 
-	if (mVertexHeap.GetDescriptor().size < bufferSize)
+	if (mVertexBuffer.GetDescriptor().size < bufferSize)
 	{
-		if (mVertexHeap.IsValid())
+		if (mVertexBuffer.IsValid())
 		{
-			mVertexHeap.Free(mVertexBuffer);
-			mDevice->Dispose(mVertexHeap);
+			mDevice->Dispose(mAllocator, mVertexBuffer);
 		}
 
-		HeapDescriptor descriptor{ .name = "DebugVertex::Heap", .memoryType = MemoryType::CPU, .size = Math::RoundUpTo(bufferSize, (size_t)65536ull) };
-		mVertexHeap = mDevice->CreateHeap(descriptor);
-		mVertexBuffer = mVertexHeap.Allocate({ .name = "DebugVertex::Buffer", .size = descriptor.size });
+		BufferDescriptor descriptor{ .name = "DebugVertexBuffer", .memoryType = MemoryType::CPU, .size = Math::RoundUpTo(bufferSize, (size_t)65536ull) };
+		mVertexBuffer = mDevice->CreateBuffer(mAllocator, descriptor);
 	}
 
 	void* vertexBufferPtr = mVertexBuffer.GetContents();

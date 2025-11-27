@@ -1,6 +1,5 @@
 #pragma once
 #include "World/ComponentSystem.h"
-#include "Renderer/Heap.h"
 #include "Renderer/Buffer.h"
 #include "Renderer/Shaders/ShaderTypes.h"
 #include "Assets/AssetReference.h"
@@ -20,7 +19,6 @@ struct MeshBatch
 	static constexpr uint32_t MaxMeshInstances = 65536;
 
 	Material* material = nullptr;
-	Heap instanceHeap = {};
 	Buffer instanceBuffer = {};
 	uint32_t numInstances = 0;
 

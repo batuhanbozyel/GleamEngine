@@ -6,7 +6,6 @@
 //
 
 #pragma once
-#include "Heap.h"
 #include "Buffer.h"
 #include "Shader.h"
 #include "Pipeline.h"
@@ -23,13 +22,12 @@ class RenderSystem;
 class RenderSurface;
 class GraphicsDevice;
 class RenderSceneProxy;
-class RenderResourcePool;
 class ResourceReleaseQueue;
 
 struct RenderContext
 {
 	ResourceReleaseQueue* releaseQueue = nullptr;
-	RenderResourcePool* resourcePool = nullptr;
+	GPUAllocator* allocator = nullptr;
 	GraphicsDevice* device = nullptr;
 	RenderSurface* surface = nullptr;
 };

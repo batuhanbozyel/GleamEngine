@@ -12,7 +12,6 @@
 #include "CommandBuffer.h"
 #include "UploadManager.h"
 #include "GraphicsDevice.h"
-#include "RenderResourcePool.h"
 #include "ResourceReleaseQueue.h"
 #include "World/Entity.h"
 
@@ -49,6 +48,10 @@ public:
 	RenderSurface* GetSurface();
 
 	const RenderSurface* GetSurface() const;
+
+	GPUAllocator* GetAllocator();
+
+	const GPUAllocator* GetAllocator() const;
 
 	void RecompileShader(const TString& entryPoint);
     
@@ -122,7 +125,7 @@ private:
 
 	Engine* mEngine;
     
-    Container mRenderers;
+	Container mRenderers;
 
 	RenderContext mContext;
 
@@ -132,9 +135,11 @@ private:
 
 	Scope<UploadManager> mUploadManager;
 
-	Scope<RenderResourcePool> mResourcePool;
-
 	Scope<ResourceReleaseQueue> mReleaseQueue;
+
+	Scope<GPUAllocator> mTransientAllocator;
+
+	Scope<GPUAllocator> mPersistentAllocator;
     
     TArray<Scope<CommandBuffer>> mCommandBuffers;
     
