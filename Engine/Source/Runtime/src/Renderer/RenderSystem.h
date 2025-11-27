@@ -10,7 +10,7 @@
 #include "Renderer.h"
 #include "Swapchain.h"
 #include "CommandBuffer.h"
-#include "UploadManager.h"
+#include "CopyCommandBuffer.h"
 #include "GraphicsDevice.h"
 #include "ResourceReleaseQueue.h"
 #include "World/Entity.h"
@@ -18,7 +18,7 @@
 namespace Gleam {
 
 class World;
-class UploadManager;
+class CopyCommandBuffer;
 
 template <typename T>
 concept RendererType = std::is_base_of<IRenderer, T>::value;
@@ -39,7 +39,7 @@ public:
     
     void Configure(const RendererConfig& config);
 
-	UploadManager* GetUploadManager();
+	CopyCommandBuffer* GetCopyCommandBuffer();
     
     GraphicsDevice* GetDevice();
     
@@ -133,7 +133,7 @@ private:
 
 	Scope<GraphicsDevice> mDevice;
 
-	Scope<UploadManager> mUploadManager;
+	Scope<CopyCommandBuffer> mCopyCommandBuffer;
 
 	Scope<ResourceReleaseQueue> mReleaseQueue;
 

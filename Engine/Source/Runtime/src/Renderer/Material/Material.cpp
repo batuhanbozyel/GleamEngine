@@ -127,10 +127,10 @@ ShaderResourceIndex Material::CreateInstance(const TArray<MaterialPropertyValue>
 		}
 	}
 	static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
-	auto uploadManager = renderSystem->GetUploadManager();
+	auto cmd = renderSystem->GetCopyCommandBuffer();
 
 	auto instance = mInstanceDescriptorHeap.Allocate();
-	uploadManager->Commit(mBuffer, instanceData.data(), mInstanceSize, mInstanceSize * instance.data);
+	cmd->Commit(mBuffer, instanceData.data(), mInstanceSize, mInstanceSize * instance.data);
 	return instance;
 }
 

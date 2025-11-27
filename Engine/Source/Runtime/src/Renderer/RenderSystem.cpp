@@ -42,7 +42,11 @@ void RenderSystem::Initialize(Engine* engine)
 
 void RenderSystem::Shutdown()
 {
-	mUploadManager.reset();
+	mCopyCommandBuffer->WaitUntilCompleted();
+	mCopyCommandBuffer.reset();
+
+	mTransientAllocator.reset();
+	mPersistentAllocator.reset();
 
     mCommandBuffers[mSwapchain->GetFrameIndex()]->WaitUntilCompleted();
     mCommandBuffers.clear();
@@ -54,7 +58,6 @@ void RenderSystem::Shutdown()
     }
 	mRenderers.clear();
 
-	mReleaseQueue->Clear();
 	mReleaseQueue.reset();
     mDevice.reset();
 	mSwapchain.reset();
@@ -65,7 +68,7 @@ void RenderSystem::PreRender(const World* world)
 	auto sceneProxy = world->GetSystem<RenderSceneProxy>();
 	sceneProxy->ForEach([&](const MeshBatch& batch)
 	{
-		mUploadManager->Commit(batch.instanceBuffer, batch.instances.data(), sizeof(MeshInstanceData) * batch.numInstances);
+		mCopyCommandBuffer->Commit(batch.instanceBuffer, batch.instances.data(), sizeof(MeshInstanceData) * batch.numInstances);
 	});
 
 	// update active camera
@@ -160,9 +163,9 @@ void RenderSystem::Render(const World* world)
 		cmdBufferName << "Scene CommandBuffer[" << frameIdx << "]";
 		cmd->Begin(cmdBufferName.str());
 
-		mUploadManager->Execute();
-		mUploadManager->WaitUntilCompleted();
-		mUploadManager->Barrier(cmd);
+		mCopyCommandBuffer->Execute();
+		mCopyCommandBuffer->WaitUntilCompleted();
+		mCopyCommandBuffer->Barrier(cmd);
 
         graph.Execute(cmd, sceneData);
 		mDevice->Dispose(renderGraphContext.allocator, sceneTarget);
@@ -184,9 +187,9 @@ void RenderSystem::Configure(const RendererConfig& config)
 	mSwapchainSize = mSwapchain->GetCurrentDrawable().GetDescriptor().size;
 }
 
-UploadManager* RenderSystem::GetUploadManager()
+CopyCommandBuffer* RenderSystem::GetCopyCommandBuffer()
 {
-	return mUploadManager.get();
+	return mCopyCommandBuffer.get();
 }
 
 GraphicsDevice* RenderSystem::GetDevice()

@@ -11,7 +11,7 @@
 
 #include "Renderer/Mesh.h"
 #include "Renderer/RenderSystem.h"
-#include "Renderer/UploadManager.h"
+#include "Renderer/CopyCommandBuffer.h"
 #include "Renderer/Material/Material.h"
 #include "Renderer/Material/MaterialInstance.h"
 #include "Renderer/Renderers/WorldRenderer.h"

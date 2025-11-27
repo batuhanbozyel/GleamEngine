@@ -8,14 +8,14 @@ class Texture;
 class GraphicsDevice;
 class CommandBuffer;
 
-class UploadManager final
+class CopyCommandBuffer final
 {
 	static constexpr size_t UploadHeapSize = 128 * 1024 * 1024;
 public:
 
-    UploadManager(GraphicsDevice* device);
+    CopyCommandBuffer(GraphicsDevice* device);
 
-    ~UploadManager();
+    ~CopyCommandBuffer();
 
 	void Execute() const;
 

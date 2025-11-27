@@ -44,7 +44,7 @@ void RenderSystem::InitializeBackend()
 	mReleaseQueue = CreateScope<ResourceReleaseQueue>(mSwapchain->GetFramesInFlight());
 
 	mDevice = CreateScope<DirectXDevice>(mSwapchain.get(), mReleaseQueue.get());
-	mUploadManager = CreateScope<UploadManager>(mDevice.get());
+	mCopyCommandBuffer = CreateScope<CopyCommandBuffer>(mDevice.get());
 
 	mPersistentAllocator = CreateScope<GPUAllocator>(mDevice.get(), GPUAllocatorDescriptor{ .name = "Persistent GPU Allocator" });
 	mTransientAllocator = CreateScope<GPUAllocator>(mDevice.get(), GPUAllocatorDescriptor{ .name = "Transient GPU Allocator" });

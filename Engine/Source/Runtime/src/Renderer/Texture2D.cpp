@@ -18,7 +18,8 @@ Texture2D::Texture2D(const Texture2DDescriptor& descriptor)
 	// Send texture data to buffers
 	if (descriptor.pixels.empty() == false)
 	{
-		renderSystem->GetUploadManager()->Commit(mTexture, descriptor.pixels.data(), descriptor.pixels.size());
+		auto cmd = renderSystem->GetCopyCommandBuffer();
+		cmd->Commit(mTexture, descriptor.pixels.data(), descriptor.pixels.size());
 	}
 }
 

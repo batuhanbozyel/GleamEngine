@@ -33,9 +33,10 @@ Mesh::Mesh(const MeshDescriptor& mesh)
 
     // Send mesh data to buffers
 	{
-		renderSystem->GetUploadManager()->Commit(mPositionBuffer, mesh.positions.data(), positionSize);
-		renderSystem->GetUploadManager()->Commit(mInterleavedBuffer, mesh.interleavedVertices.data(), interleavedSize);
-		renderSystem->GetUploadManager()->Commit(mIndexBuffer, mesh.indices.data(), indexSize);
+		auto cmd = renderSystem->GetCopyCommandBuffer();
+		cmd->Commit(mPositionBuffer, mesh.positions.data(), positionSize);
+		cmd->Commit(mInterleavedBuffer, mesh.interleavedVertices.data(), interleavedSize);
+		cmd->Commit(mIndexBuffer, mesh.indices.data(), indexSize);
 	}
 }
 
