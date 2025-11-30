@@ -275,6 +275,7 @@ Buffer GraphicsDevice::CreateBuffer(GPUAllocator* allocator, const BufferDescrip
 	Buffer buffer(descriptor);
 	buffer.mHandle = resource;
 	buffer.mContents = contents;
+	buffer.mAlignment = D3D12_RAW_UAV_SRV_BYTE_ALIGNMENT;
 	buffer.mResourceView = static_cast<DirectXDevice*>(this)->CreateResourceView(buffer);
 	return buffer;
 }

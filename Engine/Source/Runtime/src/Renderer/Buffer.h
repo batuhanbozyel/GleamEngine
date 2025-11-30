@@ -37,11 +37,13 @@ public:
         
     }
 
-	Buffer(const BufferDescriptor& descriptor, NativeGraphicsHandle handle, void* contents, ShaderResourceIndex view)
+	Buffer(const BufferDescriptor& descriptor, NativeGraphicsHandle handle, ShaderResourceIndex view, void* contents, size_t alignment)
 		: ShaderResource(handle, view)
+		, mDescriptor(descriptor)
+		, mAlignment(alignment)
+		, mContents(contents)
 	{
-		mDescriptor = descriptor;
-		mContents = contents;
+		
 	}
     
     void* GetContents() const
@@ -53,6 +55,11 @@ public:
     {
         return mDescriptor.size;
     }
+
+	size_t GetAlignment() const
+	{
+		return mAlignment;
+	}
     
     const BufferDescriptor& GetDescriptor() const
     {
@@ -60,6 +67,8 @@ public:
     }
     
 private:
+
+	size_t mAlignment = 0;
     
 	void* mContents = nullptr;
 

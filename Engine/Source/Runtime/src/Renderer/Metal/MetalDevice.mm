@@ -213,6 +213,7 @@ Buffer GraphicsDevice::CreateBuffer(GPUAllocator* allocator, const BufferDescrip
     Buffer buffer(descriptor);
     buffer.mHandle = mtlBuffer;
     buffer.mContents = contents;
+    buffer.mAlignment = 4;
     buffer.mResourceView = static_cast<MetalDevice*>(mDevice)->CreateResourceView(buffer);
     return buffer;
 }
