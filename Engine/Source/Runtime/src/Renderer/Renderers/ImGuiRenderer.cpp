@@ -33,14 +33,14 @@ void ImGuiRenderer::OnCreate(RenderContext& context)
 	io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
 
 	Texture2DDescriptor textureDesc;
-	textureDesc.name = "ImGui Font Texture";
+	textureDesc.name = "ImGui Default Font Texture";
 	textureDesc.size.width = (float)width;
 	textureDesc.size.height = (float)height;
 	textureDesc.format = TextureFormat::R8G8B8A8_UNorm;
 	textureDesc.pixels.resize(width * height * 4);
 	memcpy(textureDesc.pixels.data(), pixels, textureDesc.pixels.size());
 	mFontTexture = new Texture2D(textureDesc);
-
+	
 	uint64_t fontTextureId = static_cast<uint64_t>(mFontTexture->GetResourceView().data);
 	io.Fonts->SetTexID(reinterpret_cast<ImTextureID>(fontTextureId));
 	
@@ -224,10 +224,7 @@ void ImGuiRenderer::AddFontTexture(const Path& fontPath, const Path& defaultPath
 	// TODO: error handling
 	if (mFontTexture)
 	{
-		mReleaseQueue->AddResource([fontTexture = mFontTexture]()
-		{
-			delete fontTexture;
-		}, mSurface->GetFrameIndex());
+		delete mFontTexture;
 		mFontTexture = nullptr;
 	}
 	

@@ -155,8 +155,6 @@ void RenderSystem::Render(const World* world)
 			mSwapchain->Resize(mDevice.get(), mSwapchainSize);
 			mRendererResized = false;
 		}
-
-		mReleaseQueue->Flush(frameIdx);
 		mDevice->ResetCommandPools(frameIdx);
 
 		TStringStream cmdBufferName;
@@ -171,6 +169,7 @@ void RenderSystem::Render(const World* world)
 		mDevice->Dispose(renderGraphContext.allocator, sceneTarget);
 
 		mSwapchain->Present(cmd);
+		mReleaseQueue->Flush(frameIdx);
     }
 }
 

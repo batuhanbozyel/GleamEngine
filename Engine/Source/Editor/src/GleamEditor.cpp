@@ -21,10 +21,10 @@ public:
 		auto worldManager = GetSubsystem<Gleam::WorldManager>();
 		mEditWorld = worldManager->GetActiveWorld();
 
-        auto viewStack = mEditWorld->AddSubsystem<ViewStack>();
+		auto viewStack = mEditWorld->AddSubsystem<ViewStack>();
 		viewStack->AddView<MenuBar>();
-        viewStack->AddView<WorldViewport>();
-        viewStack->AddView<WorldOutliner>();
+		viewStack->AddView<WorldViewport>();
+		viewStack->AddView<WorldOutliner>();
 		viewStack->AddView<EntityInspector>();
 		viewStack->AddView<ContentBrowser>();
 	}
