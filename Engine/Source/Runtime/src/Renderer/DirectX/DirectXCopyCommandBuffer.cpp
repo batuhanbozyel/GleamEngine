@@ -81,12 +81,7 @@ CopyCommandBuffer::CopyCommandBuffer(GraphicsDevice* device)
 
 CopyCommandBuffer::~CopyCommandBuffer()
 {
-	WaitForID3D12Fence(mHandle->memoryFence, mHandle->waitFenceValue);
-	for (auto buffer : mHandle->tempBuffers)
-	{
-		buffer->Release();
-	}
-	mHandle->tempBuffers.clear();
+	WaitUntilCompleted();
 	
 	mHandle->fileFence->Release();
 	mHandle->fileQueue->Release();

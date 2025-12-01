@@ -45,18 +45,18 @@ void RenderSystem::Shutdown()
 	mCopyCommandBuffer->WaitUntilCompleted();
 	mCopyCommandBuffer.reset();
 
+	mCommandBuffers[mSwapchain->GetFrameIndex()]->WaitUntilCompleted();
+	mCommandBuffers.clear();
+
+	for (auto renderer : mRenderers)
+	{
+		renderer->OnDestroy(mContext);
+		delete renderer;
+	}
+	mRenderers.clear();
+
 	mTransientAllocator.reset();
 	mPersistentAllocator.reset();
-
-    mCommandBuffers[mSwapchain->GetFrameIndex()]->WaitUntilCompleted();
-    mCommandBuffers.clear();
-
-    for (auto renderer : mRenderers)
-    {
-        renderer->OnDestroy(mContext);
-        delete renderer;
-    }
-	mRenderers.clear();
 
 	mReleaseQueue.reset();
     mDevice.reset();
