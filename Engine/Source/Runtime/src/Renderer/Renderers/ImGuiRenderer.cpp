@@ -39,9 +39,9 @@ void ImGuiRenderer::OnCreate(RenderContext& context)
 	textureDesc.format = TextureFormat::R8G8B8A8_UNorm;
 	textureDesc.pixels.resize(width * height * 4);
 	memcpy(textureDesc.pixels.data(), pixels, textureDesc.pixels.size());
-	mFontTexture = new Texture2D(textureDesc);
+	mDefaultFontTexture = new Texture2D(textureDesc);
 	
-	uint64_t fontTextureId = static_cast<uint64_t>(mFontTexture->GetResourceView().data);
+	uint64_t fontTextureId = static_cast<uint64_t>(mDefaultFontTexture->GetResourceView().data);
 	io.Fonts->SetTexID(reinterpret_cast<ImTextureID>(fontTextureId));
 	
 	GraphicsPipelineStateDescriptor pipelineDesc;
@@ -88,6 +88,7 @@ void ImGuiRenderer::OnDestroy(RenderContext& context)
     ImGui::DestroyContext();
 
 	delete mFontTexture;
+	delete mDefaultFontTexture;
 	mDevice->Dispose(context.allocator, mBuffer);
 }
 

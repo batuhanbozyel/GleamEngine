@@ -48,6 +48,8 @@ private:
 
 	Texture2D* mFontTexture = nullptr;
 
+	Texture2D* mDefaultFontTexture = nullptr;
+
 	TArray<ImGuiView> mViews;
     
 };

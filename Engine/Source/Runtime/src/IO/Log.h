@@ -102,7 +102,7 @@ private:
         GLEAM_CORE_ERROR(msg, __VA_ARGS__); \
         DEBUGBREAK(); \
     }
-#define GLEAM_ASSERT_WITH_MSG(cond, ...) GLEAM_ASSERT_IMPL(cond, "Assertion failed at {0}:{1}\n{2}", std::filesystem::path(__FILE__).filename().string(),  __LINE__, __VA_ARGS__)
+#define GLEAM_ASSERT_WITH_MSG(cond, ...) GLEAM_ASSERT_IMPL(cond, "Assertion failed at {0}:{1}. Reason: {2}", std::filesystem::path(__FILE__).filename().string(),  __LINE__, __VA_ARGS__)
 #define GLEAM_ASSERT_NO_MSG(cond) GLEAM_ASSERT_IMPL(cond, "Assertion failed at {0}:{1}", std::filesystem::path(__FILE__).filename().string(),  __LINE__)
 
 #define GLEAM_ASSERT_GET_MACRO_NAME_(n) GLEAM_ASSERT_GET_MACRO_NAME_##n

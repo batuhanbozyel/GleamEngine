@@ -199,7 +199,7 @@ void DirectXSwapchain::Present(const CommandBuffer* cmd)
 	}
 
 	ctx.waitFenceValue = ctx.fenceValue++;
-	mDevice->GetDirectQueue()->Signal(ctx.fence, ctx.fenceValue);
+	DX_CHECK(mDevice->GetDirectQueue()->Signal(ctx.fence, ctx.fenceValue));
 
 	mCurrentFrameIndex = mHandle->GetCurrentBackBufferIndex();
 }

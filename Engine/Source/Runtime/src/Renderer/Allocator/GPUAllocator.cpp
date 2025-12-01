@@ -137,9 +137,11 @@ GPUAllocationBlock* GPUAllocator::AllocateHeap(const HeapDescriptor& descriptor)
 void GPUAllocator::FreeHeap(GPUAllocationBlock* block)
 {
 	GLEAM_ASSERT(block && block->IsValid(), "Allocation block is not valid");
+	GLEAM_ASSERT(block->allocations.empty(), "Allocation block is not empty");
 	auto& blocks = mBlocks[(uint32_t)block->memoryType];
 	blocks.erase(eastl::find(blocks.begin(), blocks.end(), block));
 
+	GLEAM_CORE_INFO("GPU block freed {}", block->heap.GetDescriptor().name);
 	vmaDestroyVirtualBlock(static_cast<VmaVirtualBlock>(block->handle));
 	mDevice->Dispose(block->heap);
 	block->handle = VK_NULL_HANDLE;
