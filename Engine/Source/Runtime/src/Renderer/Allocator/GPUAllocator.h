@@ -12,6 +12,7 @@ struct GPUAllocationBlock
 	void* handle = nullptr;
 	MemoryType memoryType = MemoryType::GPU;
 	TArray<void*> allocations;
+	uint32_t framesSinceLastUse = 0;
 
 	bool IsValid() const
 	{
@@ -50,6 +51,7 @@ public:
 
 	GPUAllocation Allocate(const MemoryRequirements& memory);
 	void Free(const GPUAllocation& allocation);
+	void CollectGarbage(uint32_t maxFramesEmpty);
 
 	void AddAllocation(NativeGraphicsHandle resource, const GPUAllocation& allocation);
 	const GPUAllocation& GetAllocation(NativeGraphicsHandle resource) const;
@@ -57,10 +59,10 @@ public:
 private:
 
 	GPUAllocationBlock* AllocateHeap(const HeapDescriptor& descriptor);
-	void FreeHeap(GPUAllocationBlock* block);
+	GPUAllocationBlock** FreeHeap(GPUAllocationBlock* block);
 
 	TString mName;
-	GraphicsDevice* mDevice;
+	GraphicsDevice* mDevice = nullptr;
 	uint64_t mCurrentAllocationInBytes = 0;
 	uint64_t mPeakAllocationInBytes = 0;
 	uint64_t mBlockSizes[(uint32_t)MemoryType::GPU + 1];

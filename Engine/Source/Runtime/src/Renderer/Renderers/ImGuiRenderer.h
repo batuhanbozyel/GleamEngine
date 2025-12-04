@@ -37,8 +37,6 @@ public:
 private:
 
 	Swapchain* mSurface;
-    
-    GraphicsDevice* mDevice;
 
 	ResourceReleaseQueue* mReleaseQueue;
 

@@ -15,7 +15,6 @@ static constexpr size_t kImGuiDataBufferSize = 4 * 1024 * 1024;
 
 void ImGuiRenderer::OnCreate(RenderContext& context)
 {
-    mDevice = context.device;
 	mReleaseQueue = context.releaseQueue;
 	mSurface = static_cast<Swapchain*>(context.surface);
     
@@ -55,8 +54,8 @@ void ImGuiRenderer::OnCreate(RenderContext& context)
 	pipelineDesc.colorFormats = { Gleam::TextureFormat::B8G8R8A8_UNorm };
 	pipelineDesc.vertexEntry = "imguiVertexShader";
 	pipelineDesc.fragmentEntry = "imguiFragmentShader";
-	mPipeline = mDevice->CreateGraphicsPipeline(pipelineDesc);
-	mBuffer = mDevice->CreateBuffer(context.allocator, { .name = "ImGui RenderDrawData", .memoryType = MemoryType::CPU, .size = kImGuiDataBufferSize * mSurface->GetFramesInFlight() });
+	mPipeline = context.device->CreateGraphicsPipeline(pipelineDesc);
+	mBuffer = context.device->CreateBuffer(context.allocator, { .name = "ImGui RenderDrawData", .memoryType = MemoryType::CPU, .size = kImGuiDataBufferSize * mSurface->GetFramesInFlight() });
 
     Globals::Engine->GetSubsystem<EventSystem>()->SetEventHandler([](const SDL_Event* e)
     {
@@ -89,7 +88,7 @@ void ImGuiRenderer::OnDestroy(RenderContext& context)
 
 	delete mFontTexture;
 	delete mDefaultFontTexture;
-	mDevice->Dispose(context.allocator, mBuffer);
+	context.device->Dispose(context.allocator, mBuffer);
 }
 
 void ImGuiRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard)

@@ -80,6 +80,21 @@ void RenderSystem::PreRender(const World* world)
 			mActiveCamera = entity;
 		}
 	});
+
+	auto frameIdx = mSwapchain->GetFrameIndex();
+	const auto cmd = mCommandBuffers[frameIdx].get();
+
+	cmd->WaitUntilCompleted();
+	if (mRendererResized)
+	{
+		mSwapchain->Resize(mDevice.get(), mSwapchainSize);
+		mRendererResized = false;
+	}
+	mDevice->ResetCommandPools(frameIdx);
+	mReleaseQueue->Flush(frameIdx);
+
+	mTransientAllocator->CollectGarbage(mSwapchain->GetFramesInFlight() + 1);
+	mPersistentAllocator->CollectGarbage(mSwapchain->GetFramesInFlight() + 1);
 }
 
 void RenderSystem::Render(const World* world)
@@ -148,15 +163,6 @@ void RenderSystem::Render(const World* world)
 
 		auto frameIdx = mSwapchain->GetFrameIndex();
 		const auto cmd = mCommandBuffers[frameIdx].get();
-
-		cmd->WaitUntilCompleted();
-		if (mRendererResized)
-		{
-			mSwapchain->Resize(mDevice.get(), mSwapchainSize);
-			mRendererResized = false;
-		}
-		mDevice->ResetCommandPools(frameIdx);
-		mReleaseQueue->Flush(frameIdx);
 
 		TStringStream cmdBufferName;
 		cmdBufferName << "Scene CommandBuffer[" << frameIdx << "]";

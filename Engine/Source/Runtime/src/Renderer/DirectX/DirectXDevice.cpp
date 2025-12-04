@@ -479,7 +479,7 @@ DirectXDevice::DirectXDevice(RenderSurface* surface, ResourceReleaseQueue* relea
 	if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&mD3D12Debug))))
 	{
 		mD3D12Debug->EnableDebugLayer();
-		mD3D12Debug->SetEnableGPUBasedValidation(true);
+		//mD3D12Debug->SetEnableGPUBasedValidation(true);
 	}
 
 	if (SUCCEEDED(swapchain->mFactory->QueryInterface(IID_PPV_ARGS(&mInfoQueue))))

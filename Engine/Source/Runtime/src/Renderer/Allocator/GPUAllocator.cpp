@@ -20,6 +20,13 @@ GPUAllocator::GPUAllocator(GraphicsDevice* device, const GPUAllocatorDescriptor&
 GPUAllocator::~GPUAllocator()
 {
 	GLEAM_ASSERT(mCurrentAllocationInBytes == 0, "GPU allocator must be empty, some resources are leaking");
+	for (const auto& blocks : mBlocks)
+	{
+		for (auto block : blocks)
+		{
+			FreeHeap(block);
+		}
+	}
 }
 
 GPUAllocation GPUAllocator::Allocate(const MemoryRequirements& memory)
@@ -87,7 +94,7 @@ void GPUAllocator::Free(const GPUAllocation& allocation)
 		vmaVirtualFree(static_cast<VmaVirtualBlock>(allocation.block->handle), static_cast<VmaVirtualAllocation>(allocation.handle));
 		if (allocations.empty())
 		{
-			FreeHeap(allocation.block);
+			allocation.block->framesSinceLastUse = 0;
 		}
 		mCurrentAllocationInBytes -= allocation.size;
 	}
@@ -97,6 +104,31 @@ void GPUAllocator::Free(const GPUAllocation& allocation)
 		auto it = mAllocations.find(allocation.resource);
 		GLEAM_ASSERT(it != mAllocations.end(), "Allocation is not registered");
 		mAllocations.erase(it);
+	}
+}
+
+void GPUAllocator::CollectGarbage(uint32_t maxFramesEmpty)
+{
+	for (auto& blocks : mBlocks)
+	{
+		for (auto it = blocks.begin(); it != blocks.end();)
+		{
+			auto block = *it;
+			if (block->allocations.empty())
+			{
+				block->framesSinceLastUse++;
+				if (block->framesSinceLastUse >= maxFramesEmpty)
+				{
+					it = FreeHeap(block);
+					continue;
+				}
+			}
+			else
+			{
+				block->framesSinceLastUse = 0;
+			}
+			++it;
+		}
 	}
 }
 
@@ -134,16 +166,17 @@ GPUAllocationBlock* GPUAllocator::AllocateHeap(const HeapDescriptor& descriptor)
 	return block;
 }
 
-void GPUAllocator::FreeHeap(GPUAllocationBlock* block)
+GPUAllocationBlock** GPUAllocator::FreeHeap(GPUAllocationBlock* block)
 {
 	GLEAM_ASSERT(block && block->IsValid(), "Allocation block is not valid");
 	GLEAM_ASSERT(block->allocations.empty(), "Allocation block is not empty");
 	auto& blocks = mBlocks[(uint32_t)block->memoryType];
-	blocks.erase(eastl::find(blocks.begin(), blocks.end(), block));
+	auto it = blocks.erase(eastl::find(blocks.begin(), blocks.end(), block));
 
 	GLEAM_CORE_INFO("GPU block freed {}", block->heap.GetDescriptor().name);
 	vmaDestroyVirtualBlock(static_cast<VmaVirtualBlock>(block->handle));
 	mDevice->Dispose(block->heap);
 	block->handle = VK_NULL_HANDLE;
 	delete block;
+	return it;
 }
