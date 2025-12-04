@@ -62,6 +62,11 @@ private:
 		setup(builder, passData);
 		return passData;
 	}
+
+	void AllocatePassResources(RenderGraphPassNode* pass, const CommandBuffer* cmd, SceneRenderingData& sceneData);
+	void FreePassResources(RenderGraphPassNode* pass, const CommandBuffer* cmd);
+	void SetupPassBarriers(RenderGraphPassNode* pass, const CommandBuffer* cmd);
+	void ExecutePass(RenderGraphPassNode* pass, const CommandBuffer* cmd);
     
 	RenderGraphContext mContext;
 

@@ -136,229 +136,263 @@ void RenderGraph::Execute(const CommandBuffer* cmd, SceneRenderingData& sceneDat
 {
     for (auto pass : mPassNodes)
     {
-        // Allocate buffers
-        for (uint32_t i = 0; i < pass->bufferCreates.size(); i++)
-        {
-            auto& resource = pass->bufferCreates[i];
-            if (HasResource(pass->bufferWrites, resource))
-            {
-                TStringStream name;
-                auto descriptor = resource.node->buffer.GetDescriptor();
-                descriptor.name.empty() ? (name << pass->name << "::Buffer[" << i << "]")
-                                        : (name << pass->name << "::" << descriptor.name);
-                descriptor.name = name.str();
-                
-                resource.node->buffer = mContext.device->CreateBuffer(mContext.allocator, descriptor);
-                GLEAM_ASSERT(resource.node->buffer.IsValid());
-            }
-        }
-
-        // Allocate textures
-        for (uint32_t i = 0; i < pass->textureCreates.size(); i++)
-        {
-            auto& resource = pass->textureCreates[i];
-            if (HasResource(pass->textureWrites, resource))
-            {
-                TStringStream name;
-                auto descriptor = resource.node->texture.GetDescriptor();
-                descriptor.name.empty() ? (name << pass->name << "::Texture[" << i << "]")
-                                        : (name << pass->name << "::" << descriptor.name);
-                descriptor.name = name.str();
-                
-                resource.node->texture = mContext.device->CreateTexture(mContext.allocator, descriptor);
-                GLEAM_ASSERT(resource.node->texture.IsValid());
-            }
-        }
-
-		// Acquire backbuffer texture
-		for (uint32_t i = 0; i < pass->textureWrites.size(); i++)
-		{
-			auto& resource = pass->textureWrites[i];
-			if (resource == sceneData.backbuffer)
-			{
-				sceneData.backbuffer.node->texture = static_cast<Swapchain*>(mContext.surface)->AcquireNextDrawable();
-				resource.node->texture = sceneData.backbuffer.node->texture;
-				resource.node->barrierState.layout = BarrierLayout::Common;
-			}
-		}
-
-		BarrierGroup barrier;
-		barrier.bufferBarriers.reserve(pass->bufferReads.size() + pass->bufferWrites.size());
-		for (auto& resource : pass->bufferReads)
-		{
-			if (resource.node->barrierState.access == BarrierAccess::ShaderResource)
-			{
-				continue;
-			}
-
-			BufferBarrier bufferBarrier;
-			bufferBarrier.resource = resource.node->buffer.GetHandle();
-			bufferBarrier.srcStage = resource.node->barrierState.stage;
-			bufferBarrier.dstStage = BarrierStage::AllShading;
-			bufferBarrier.srcAccess = resource.node->barrierState.access;
-			bufferBarrier.dstAccess = BarrierAccess::ShaderResource;
-			barrier.bufferBarriers.push_back(bufferBarrier);
-
-			resource.node->barrierState.stage = bufferBarrier.dstStage;
-			resource.node->barrierState.access = bufferBarrier.dstAccess;
-		}
-
-		for (auto& resource : pass->bufferWrites)
-		{
-			BufferBarrier bufferBarrier;
-			bufferBarrier.resource = resource.node->buffer.GetHandle();
-			bufferBarrier.srcStage = resource.node->barrierState.stage;
-			bufferBarrier.dstStage = BarrierStage::AllShading;
-			bufferBarrier.srcAccess = resource.node->barrierState.access;
-			bufferBarrier.dstAccess = BarrierAccess::UnorderedAccess;
-			barrier.bufferBarriers.push_back(bufferBarrier);
-
-			resource.node->barrierState.stage = bufferBarrier.dstStage;
-			resource.node->barrierState.access = bufferBarrier.dstAccess;
-		}
-
-		barrier.textureBarriers.reserve(pass->textureReads.size() + pass->textureWrites.size());
-		for (auto& resource : pass->textureReads)
-		{
-			if (resource.node->barrierState.access == BarrierAccess::ShaderResource
-				|| resource.node->barrierState.access == BarrierAccess::DepthStencilRead)
-			{
-				continue;
-			}
-
-			BarrierAccess dstAccess = BarrierAccess::ShaderResource;
-			BarrierLayout newLayout = BarrierLayout::ShaderResource;
-
-			const auto& textureDesc = resource.node->texture.GetDescriptor();
-			if (textureDesc.usage & TextureUsage_Attachment)
-			{
-				if (pass->depthAttachment.node == resource.node)
-				{
-					dstAccess = BarrierAccess::DepthStencilRead;
-					newLayout = BarrierLayout::DepthStencilRead;
-				}
-			}
-
-			TextureBarrier textureBarrier;
-			textureBarrier.resource = resource.node->texture.GetHandle();
-			textureBarrier.srcStage = resource.node->barrierState.stage;
-			textureBarrier.dstStage = BarrierStage::AllShading;
-			textureBarrier.srcAccess = resource.node->barrierState.access;
-			textureBarrier.dstAccess = dstAccess;
-			textureBarrier.oldLayout = resource.node->barrierState.layout;
-			textureBarrier.newLayout = newLayout;
-			barrier.textureBarriers.push_back(textureBarrier);
-
-			resource.node->barrierState.stage = textureBarrier.dstStage;
-			resource.node->barrierState.access = textureBarrier.dstAccess;
-			resource.node->barrierState.layout = textureBarrier.newLayout;
-		}
-
-		for (auto& resource : pass->textureWrites)
-		{
-			BarrierStage dstStage = BarrierStage::AllShading;
-			BarrierAccess dstAccess = BarrierAccess::UnorderedAccess;
-			BarrierLayout newLayout = BarrierLayout::UnorderedAccess;
-
-			const auto& textureDesc = resource.node->texture.GetDescriptor();
-			if (textureDesc.usage & TextureUsage_Attachment)
-			{
-				if (pass->depthAttachment.node == resource.node)
-				{
-					dstStage = BarrierStage::DepthStencil;
-					dstAccess = BarrierAccess::DepthStencilWrite;
-					newLayout = BarrierLayout::DepthStencilWrite;
-				}
-				else
-				{
-					dstStage = BarrierStage::RenderTarget;
-					dstAccess = BarrierAccess::RenderTarget;
-					newLayout = BarrierLayout::RenderTarget;
-				}
-			}
-
-			TextureBarrier textureBarrier;
-			textureBarrier.resource = resource.node->texture.GetHandle();
-			textureBarrier.srcStage = resource.node->barrierState.stage;
-			textureBarrier.dstStage = dstStage;
-			textureBarrier.srcAccess = resource.node->barrierState.access;
-			textureBarrier.dstAccess = dstAccess;
-			textureBarrier.oldLayout = resource.node->barrierState.layout;
-			textureBarrier.newLayout = newLayout;
-			barrier.textureBarriers.push_back(textureBarrier);
-
-			resource.node->barrierState.stage = textureBarrier.dstStage;
-			resource.node->barrierState.access = textureBarrier.dstAccess;
-			resource.node->barrierState.layout = textureBarrier.newLayout;
-		}
-		cmd->Barrier(barrier);
-
-        // execute render pass
-		if (pass->GetType() == RenderGraphPassType::Native)
-        {
-            std::invoke(pass->callback, cmd);
-        }
-        else if (pass->GetType() == RenderGraphPassType::Raster)
-        {
-			if (pass->colorAttachments.empty() && pass->depthAttachment.IsValid() == false)
-			{
-				std::invoke(pass->callback, cmd);
-			}
-			else
-			{
-				RenderPassDescriptor renderPassDesc{};
-				renderPassDesc.colorAttachments.resize(pass->colorAttachments.size());
-				for (uint32_t i = 0; i < pass->colorAttachments.size(); i++)
-				{
-					const auto node = static_cast<const RenderGraphTextureNode*>(pass->colorAttachments[i].node);
-					renderPassDesc.colorAttachments[i].texture = node->texture;
-					renderPassDesc.colorAttachments[i].loadAction = GetLoadActionForRenderTexture(node, pass);
-					renderPassDesc.colorAttachments[i].storeAction = GetStoreActionForRenderTexture(node, pass);
-					renderPassDesc.colorAttachments[i].clearColor = node->clearColor;
-
-					const auto& descriptor = renderPassDesc.colorAttachments[i].texture.GetDescriptor();
-					renderPassDesc.size = descriptor.size;
-				}
-
-				if (pass->depthAttachment.IsValid())
-				{
-					const auto node = static_cast<const RenderGraphTextureNode*>(pass->depthAttachment.node);
-					renderPassDesc.depthAttachment.texture = node->texture;
-					renderPassDesc.depthAttachment.loadAction = GetLoadActionForRenderTexture(node, pass);
-					renderPassDesc.depthAttachment.storeAction = GetStoreActionForRenderTexture(node, pass);
-					renderPassDesc.depthAttachment.clearDepth = node->clearDepth;
-					renderPassDesc.depthAttachment.clearStencil = node->clearStencil;
-
-					const auto& descriptor = renderPassDesc.depthAttachment.texture.GetDescriptor();
-					renderPassDesc.size = descriptor.size;
-				}
-
-				cmd->BeginRenderPass(renderPassDesc, pass->name);
-				cmd->SetViewport(renderPassDesc.size);
-				cmd->SetScissorRect(renderPassDesc.size);
-				std::invoke(pass->callback, cmd);
-				cmd->EndRenderPass();
-			}
-        }
-    }
-
-    // Release buffers & textures
-    for (auto& pass : mPassNodes)
-    {
-        for (auto& resource : pass->bufferCreates)
-        {
-			mContext.device->Dispose(mContext.allocator, resource.node->buffer);
-        }
-
-        for (auto& resource : pass->textureCreates)
-        {
-			mContext.device->Dispose(mContext.allocator, resource.node->texture);
-        }
+		AllocatePassResources(pass, cmd, sceneData);
+		SetupPassBarriers(pass, cmd);
+		ExecutePass(pass, cmd);
+		FreePassResources(pass, cmd);
     }
     
     for (auto pass : mPassNodes) { delete pass; }
     mPassNodes.clear();
     mRegistry.Clear();
+}
+
+void RenderGraph::AllocatePassResources(RenderGraphPassNode* pass, const CommandBuffer* cmd, SceneRenderingData& sceneData)
+{
+	// Allocate buffers
+	for (uint32_t i = 0; i < pass->bufferCreates.size(); i++)
+	{
+		auto& resource = pass->bufferCreates[i];
+		if (HasResource(pass->bufferWrites, resource))
+		{
+			TStringStream name;
+			auto descriptor = resource.node->buffer.GetDescriptor();
+			descriptor.name.empty() ? (name << pass->name << "::Buffer[" << i << "]")
+				: (name << pass->name << "::" << descriptor.name);
+			descriptor.name = name.str();
+
+			resource.node->buffer = mContext.device->CreateBuffer(mContext.allocator, descriptor);
+			GLEAM_ASSERT(resource.node->buffer.IsValid());
+		}
+	}
+
+	// Allocate textures
+	for (uint32_t i = 0; i < pass->textureCreates.size(); i++)
+	{
+		auto& resource = pass->textureCreates[i];
+		if (HasResource(pass->textureWrites, resource))
+		{
+			TStringStream name;
+			auto descriptor = resource.node->texture.GetDescriptor();
+			descriptor.name.empty() ? (name << pass->name << "::Texture[" << i << "]")
+				: (name << pass->name << "::" << descriptor.name);
+			descriptor.name = name.str();
+
+			resource.node->texture = mContext.device->CreateTexture(mContext.allocator, descriptor);
+			GLEAM_ASSERT(resource.node->texture.IsValid());
+		}
+	}
+
+	// Acquire backbuffer texture
+	for (uint32_t i = 0; i < pass->textureWrites.size(); i++)
+	{
+		auto& resource = pass->textureWrites[i];
+		if (resource == sceneData.backbuffer)
+		{
+			sceneData.backbuffer.node->texture = static_cast<Swapchain*>(mContext.surface)->AcquireNextDrawable();
+			resource.node->texture = sceneData.backbuffer.node->texture;
+			resource.node->barrierState.layout = BarrierLayout::Common;
+		}
+	}
+}
+
+void RenderGraph::FreePassResources(RenderGraphPassNode* pass, const CommandBuffer* cmd)
+{
+	for (auto& resource : pass->bufferReads)
+	{
+		if (resource.node->lastReference == pass && resource.node->transient)
+		{
+			mContext.device->Dispose(mContext.allocator, resource.node->buffer);
+		}
+	}
+
+	for (auto& resource : pass->textureReads)
+	{
+		if (resource.node->lastReference == pass && resource.node->transient)
+		{
+			mContext.device->Dispose(mContext.allocator, resource.node->texture);
+		}
+	}
+
+	for (auto& resource : pass->bufferWrites)
+	{
+		if (resource.node->lastReference == pass && resource.node->transient)
+		{
+			mContext.device->Dispose(mContext.allocator, resource.node->buffer);
+		}
+	}
+
+	for (auto& resource : pass->textureWrites)
+	{
+		if (resource.node->lastReference == pass && resource.node->transient)
+		{
+			mContext.device->Dispose(mContext.allocator, resource.node->texture);
+		}
+	}
+}
+
+void RenderGraph::SetupPassBarriers(RenderGraphPassNode* pass, const CommandBuffer* cmd)
+{
+	BarrierGroup barrier;
+	barrier.bufferBarriers.reserve(pass->bufferReads.size() + pass->bufferWrites.size());
+	for (auto& resource : pass->bufferReads)
+	{
+		if (resource.node->barrierState.access == BarrierAccess::ShaderResource)
+		{
+			continue;
+		}
+
+		BufferBarrier bufferBarrier;
+		bufferBarrier.resource = resource.node->buffer.GetHandle();
+		bufferBarrier.srcStage = resource.node->barrierState.stage;
+		bufferBarrier.dstStage = BarrierStage::AllShading;
+		bufferBarrier.srcAccess = resource.node->barrierState.access;
+		bufferBarrier.dstAccess = BarrierAccess::ShaderResource;
+		barrier.bufferBarriers.push_back(bufferBarrier);
+
+		resource.node->barrierState.stage = bufferBarrier.dstStage;
+		resource.node->barrierState.access = bufferBarrier.dstAccess;
+	}
+
+	for (auto& resource : pass->bufferWrites)
+	{
+		BufferBarrier bufferBarrier;
+		bufferBarrier.resource = resource.node->buffer.GetHandle();
+		bufferBarrier.srcStage = resource.node->barrierState.stage;
+		bufferBarrier.dstStage = BarrierStage::AllShading;
+		bufferBarrier.srcAccess = resource.node->barrierState.access;
+		bufferBarrier.dstAccess = BarrierAccess::UnorderedAccess;
+		barrier.bufferBarriers.push_back(bufferBarrier);
+
+		resource.node->barrierState.stage = bufferBarrier.dstStage;
+		resource.node->barrierState.access = bufferBarrier.dstAccess;
+	}
+
+	barrier.textureBarriers.reserve(pass->textureReads.size() + pass->textureWrites.size());
+	for (auto& resource : pass->textureReads)
+	{
+		if (resource.node->barrierState.access == BarrierAccess::ShaderResource
+			|| resource.node->barrierState.access == BarrierAccess::DepthStencilRead)
+		{
+			continue;
+		}
+
+		BarrierAccess dstAccess = BarrierAccess::ShaderResource;
+		BarrierLayout newLayout = BarrierLayout::ShaderResource;
+
+		const auto& textureDesc = resource.node->texture.GetDescriptor();
+		if (textureDesc.usage & TextureUsage_Attachment)
+		{
+			if (pass->depthAttachment.node == resource.node)
+			{
+				dstAccess = BarrierAccess::DepthStencilRead;
+				newLayout = BarrierLayout::DepthStencilRead;
+			}
+		}
+
+		TextureBarrier textureBarrier;
+		textureBarrier.resource = resource.node->texture.GetHandle();
+		textureBarrier.srcStage = resource.node->barrierState.stage;
+		textureBarrier.dstStage = BarrierStage::AllShading;
+		textureBarrier.srcAccess = resource.node->barrierState.access;
+		textureBarrier.dstAccess = dstAccess;
+		textureBarrier.oldLayout = resource.node->barrierState.layout;
+		textureBarrier.newLayout = newLayout;
+		barrier.textureBarriers.push_back(textureBarrier);
+
+		resource.node->barrierState.stage = textureBarrier.dstStage;
+		resource.node->barrierState.access = textureBarrier.dstAccess;
+		resource.node->barrierState.layout = textureBarrier.newLayout;
+	}
+
+	for (auto& resource : pass->textureWrites)
+	{
+		BarrierStage dstStage = BarrierStage::AllShading;
+		BarrierAccess dstAccess = BarrierAccess::UnorderedAccess;
+		BarrierLayout newLayout = BarrierLayout::UnorderedAccess;
+
+		const auto& textureDesc = resource.node->texture.GetDescriptor();
+		if (textureDesc.usage & TextureUsage_Attachment)
+		{
+			if (pass->depthAttachment.node == resource.node)
+			{
+				dstStage = BarrierStage::DepthStencil;
+				dstAccess = BarrierAccess::DepthStencilWrite;
+				newLayout = BarrierLayout::DepthStencilWrite;
+			}
+			else
+			{
+				dstStage = BarrierStage::RenderTarget;
+				dstAccess = BarrierAccess::RenderTarget;
+				newLayout = BarrierLayout::RenderTarget;
+			}
+		}
+
+		TextureBarrier textureBarrier;
+		textureBarrier.resource = resource.node->texture.GetHandle();
+		textureBarrier.srcStage = resource.node->barrierState.stage;
+		textureBarrier.dstStage = dstStage;
+		textureBarrier.srcAccess = resource.node->barrierState.access;
+		textureBarrier.dstAccess = dstAccess;
+		textureBarrier.oldLayout = resource.node->barrierState.layout;
+		textureBarrier.newLayout = newLayout;
+		barrier.textureBarriers.push_back(textureBarrier);
+
+		resource.node->barrierState.stage = textureBarrier.dstStage;
+		resource.node->barrierState.access = textureBarrier.dstAccess;
+		resource.node->barrierState.layout = textureBarrier.newLayout;
+	}
+	cmd->Barrier(barrier);
+}
+
+void RenderGraph::ExecutePass(RenderGraphPassNode* pass, const CommandBuffer* cmd)
+{
+	if (pass->GetType() == RenderGraphPassType::Native)
+	{
+		std::invoke(pass->callback, cmd);
+	}
+	else if (pass->GetType() == RenderGraphPassType::Raster)
+	{
+		if (pass->colorAttachments.empty() && pass->depthAttachment.IsValid() == false)
+		{
+			std::invoke(pass->callback, cmd);
+		}
+		else
+		{
+			RenderPassDescriptor renderPassDesc{};
+			renderPassDesc.colorAttachments.resize(pass->colorAttachments.size());
+			for (uint32_t i = 0; i < pass->colorAttachments.size(); i++)
+			{
+				const auto node = static_cast<const RenderGraphTextureNode*>(pass->colorAttachments[i].node);
+				renderPassDesc.colorAttachments[i].texture = node->texture;
+				renderPassDesc.colorAttachments[i].loadAction = GetLoadActionForRenderTexture(node, pass);
+				renderPassDesc.colorAttachments[i].storeAction = GetStoreActionForRenderTexture(node, pass);
+				renderPassDesc.colorAttachments[i].clearColor = node->clearColor;
+
+				const auto& descriptor = renderPassDesc.colorAttachments[i].texture.GetDescriptor();
+				renderPassDesc.size = descriptor.size;
+			}
+
+			if (pass->depthAttachment.IsValid())
+			{
+				const auto node = static_cast<const RenderGraphTextureNode*>(pass->depthAttachment.node);
+				renderPassDesc.depthAttachment.texture = node->texture;
+				renderPassDesc.depthAttachment.loadAction = GetLoadActionForRenderTexture(node, pass);
+				renderPassDesc.depthAttachment.storeAction = GetStoreActionForRenderTexture(node, pass);
+				renderPassDesc.depthAttachment.clearDepth = node->clearDepth;
+				renderPassDesc.depthAttachment.clearStencil = node->clearStencil;
+
+				const auto& descriptor = renderPassDesc.depthAttachment.texture.GetDescriptor();
+				renderPassDesc.size = descriptor.size;
+			}
+
+			cmd->BeginRenderPass(renderPassDesc, pass->name);
+			cmd->SetViewport(renderPassDesc.size);
+			cmd->SetScissorRect(renderPassDesc.size);
+			std::invoke(pass->callback, cmd);
+			cmd->EndRenderPass();
+		}
+	}
 }
 
 TextureHandle RenderGraph::ImportBackbuffer(const Texture& backbuffer, const ImportResourceParams& params)
