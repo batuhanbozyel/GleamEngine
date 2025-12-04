@@ -264,11 +264,11 @@ void CommandBuffer::End() const
 
 void CommandBuffer::Commit() const
 {
-	mHandle->waitFenceValue = mHandle->fenceValue++;
+	mHandle->waitFenceValue = mHandle->fenceValue;
 
 	ID3D12CommandList* commandList = mHandle->commandList;
 	mHandle->device->GetDirectQueue()->ExecuteCommandLists(1, &commandList);
-	mHandle->device->GetDirectQueue()->Signal(mHandle->fence, mHandle->fenceValue);
+	mHandle->device->GetDirectQueue()->Signal(mHandle->fence, mHandle->fenceValue++);
 	mConstantBuffer.Reset();
 	mCommitted = true;
 }

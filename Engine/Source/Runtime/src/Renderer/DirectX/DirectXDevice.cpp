@@ -703,7 +703,7 @@ ID3D12GraphicsCommandList7* DirectXDevice::AllocateCommandList(D3D12_COMMAND_LIS
 			}
 
 			pool.usedCommandLists.push_back(commandList);
-			commandList->Reset(pool.allocator, nullptr);
+			DX_CHECK(commandList->Reset(pool.allocator, nullptr));
 			commandList->SetName(debugName.data());
 			return commandList;
 		}
@@ -716,7 +716,7 @@ ID3D12GraphicsCommandList7* DirectXDevice::AllocateCommandList(D3D12_COMMAND_LIS
 	ID3D12GraphicsCommandList7* commandList = nullptr;
 	DX_CHECK(static_cast<ID3D12Device10*>(mHandle)->CreateCommandList1(0, type, D3D12_COMMAND_LIST_FLAG_NONE, IID_PPV_ARGS(&commandList)));
 	pool.usedCommandLists.push_back(commandList);
-	commandList->Reset(pool.allocator, nullptr);
+	DX_CHECK(commandList->Reset(pool.allocator, nullptr));
 	commandList->SetName(debugName.data());
 	return commandList;
 }
@@ -935,7 +935,7 @@ void DirectXCommandPool::Reset()
 {
 	freeCommandLists.insert(freeCommandLists.end(), usedCommandLists.begin(), usedCommandLists.end());
 	usedCommandLists.clear();
-	allocator->Reset();
+	DX_CHECK(allocator->Reset());
 }
 
 void DirectXCommandPool::Release()

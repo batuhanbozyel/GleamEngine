@@ -149,11 +149,8 @@ void DirectXSwapchain::Resize(GraphicsDevice* device, const Size& size)
 
 const Texture& DirectXSwapchain::AcquireNextDrawable()
 {
-	mCurrentFrameIndex = mHandle->GetCurrentBackBufferIndex();
-
 	auto& ctx = mContext[mCurrentFrameIndex];
 	WaitForID3D12Fence(ctx.fence, ctx.waitFenceValue);
-
 	return mTextures[mCurrentFrameIndex];
 }
 
@@ -198,8 +195,8 @@ void DirectXSwapchain::Present(const CommandBuffer* cmd)
 		mHandle->Present(1, 0);
 	}
 
-	ctx.waitFenceValue = ctx.fenceValue++;
-	DX_CHECK(mDevice->GetDirectQueue()->Signal(ctx.fence, ctx.fenceValue));
+	ctx.waitFenceValue = ctx.fenceValue;
+	DX_CHECK(mDevice->GetDirectQueue()->Signal(ctx.fence, ctx.fenceValue++));
 
 	mCurrentFrameIndex = mHandle->GetCurrentBackBufferIndex();
 }
