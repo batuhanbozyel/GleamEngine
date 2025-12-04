@@ -12,42 +12,31 @@ Mesh::Mesh(const MeshDescriptor& mesh)
     : mSubmeshes(mesh.submeshes)
 {
     static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
+	auto device = renderSystem->GetDevice();
     
     size_t positionSize = mesh.positions.size() * sizeof(Float3);
     size_t interleavedSize = mesh.interleavedVertices.size() * sizeof(InterleavedMeshVertex);
     size_t indexSize = mesh.indices.size() * sizeof(uint32_t);
 
-    HeapDescriptor heapDesc;
-    heapDesc.name = mesh.name;
-    heapDesc.memoryType = MemoryType::GPU;
-    heapDesc.size = positionSize + interleavedSize + indexSize;
-    auto memoryRequirements = renderSystem->GetDevice()->QueryMemoryRequirements(heapDesc);
-    
-    size_t positionBufferSize = Utils::AlignUp(positionSize, memoryRequirements.alignment);
-    size_t interleavedBufferSize = Utils::AlignUp(interleavedSize, memoryRequirements.alignment);
-    size_t indexBufferSize = Utils::AlignUp(indexSize, memoryRequirements.alignment);
-
-    heapDesc.size = positionBufferSize + interleavedBufferSize + indexBufferSize;
-    mHeap = renderSystem->GetDevice()->CreateHeap(heapDesc);
-
     BufferDescriptor bufferDesc;
-    bufferDesc.name = "Positions";
-    bufferDesc.size = positionBufferSize;
-    mPositionBuffer = mHeap.Allocate(bufferDesc);
+    bufferDesc.name = "Mesh: " + mesh.name + " Positions";
+    bufferDesc.size = positionSize;
+    mPositionBuffer = device->CreateBuffer(renderSystem->GetAllocator(), bufferDesc);
     
-    bufferDesc.name = "InterleavedData";
-    bufferDesc.size = interleavedBufferSize;
-    mInterleavedBuffer = mHeap.Allocate(bufferDesc);
+    bufferDesc.name = "Mesh: " + mesh.name + " InterleavedData";
+    bufferDesc.size = interleavedSize;
+    mInterleavedBuffer = device->CreateBuffer(renderSystem->GetAllocator(), bufferDesc);
     
-    bufferDesc.name = "Indices";
-    bufferDesc.size = indexBufferSize;
-    mIndexBuffer = mHeap.Allocate(bufferDesc);
+    bufferDesc.name = "Mesh: " + mesh.name + " Indices";
+    bufferDesc.size = indexSize;
+    mIndexBuffer = device->CreateBuffer(renderSystem->GetAllocator(), bufferDesc);
 
     // Send mesh data to buffers
 	{
-		renderSystem->GetUploadManager()->Commit(mPositionBuffer, mesh.positions.data(), positionSize);
-		renderSystem->GetUploadManager()->Commit(mInterleavedBuffer, mesh.interleavedVertices.data(), interleavedSize);
-		renderSystem->GetUploadManager()->Commit(mIndexBuffer, mesh.indices.data(), indexSize);
+		auto cmd = renderSystem->GetCopyCommandBuffer();
+		cmd->Commit(mPositionBuffer, mesh.positions.data(), positionSize);
+		cmd->Commit(mInterleavedBuffer, mesh.interleavedVertices.data(), interleavedSize);
+		cmd->Commit(mIndexBuffer, mesh.indices.data(), indexSize);
 	}
 }
 
@@ -55,10 +44,9 @@ Mesh::~Mesh()
 {
 	static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
 	auto device = renderSystem->GetDevice();
-	mHeap.Free(mPositionBuffer);
-	mHeap.Free(mInterleavedBuffer);
-	mHeap.Free(mIndexBuffer);
-	device->Dispose(mHeap);
+	device->Dispose(renderSystem->GetAllocator(), mPositionBuffer);
+	device->Dispose(renderSystem->GetAllocator(), mInterleavedBuffer);
+	device->Dispose(renderSystem->GetAllocator(), mIndexBuffer);
 }
 
 const Buffer& Mesh::GetPositionBuffer() const

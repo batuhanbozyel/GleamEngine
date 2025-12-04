@@ -15,7 +15,6 @@ static constexpr size_t kImGuiDataBufferSize = 4 * 1024 * 1024;
 
 void ImGuiRenderer::OnCreate(RenderContext& context)
 {
-    mDevice = context.device;
 	mReleaseQueue = context.releaseQueue;
 	mSurface = static_cast<Swapchain*>(context.surface);
     
@@ -33,15 +32,15 @@ void ImGuiRenderer::OnCreate(RenderContext& context)
 	io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
 
 	Texture2DDescriptor textureDesc;
-	textureDesc.name = "ImGui Font Texture";
+	textureDesc.name = "ImGui Default Font Texture";
 	textureDesc.size.width = (float)width;
 	textureDesc.size.height = (float)height;
 	textureDesc.format = TextureFormat::R8G8B8A8_UNorm;
 	textureDesc.pixels.resize(width * height * 4);
 	memcpy(textureDesc.pixels.data(), pixels, textureDesc.pixels.size());
-	mFontTexture = new Texture2D(textureDesc);
-
-	uint64_t fontTextureId = static_cast<uint64_t>(mFontTexture->GetResourceView().data);
+	mDefaultFontTexture = new Texture2D(textureDesc);
+	
+	uint64_t fontTextureId = static_cast<uint64_t>(mDefaultFontTexture->GetResourceView().data);
 	io.Fonts->SetTexID(reinterpret_cast<ImTextureID>(fontTextureId));
 	
 	GraphicsPipelineStateDescriptor pipelineDesc;
@@ -55,10 +54,8 @@ void ImGuiRenderer::OnCreate(RenderContext& context)
 	pipelineDesc.colorFormats = { Gleam::TextureFormat::B8G8R8A8_UNorm };
 	pipelineDesc.vertexEntry = "imguiVertexShader";
 	pipelineDesc.fragmentEntry = "imguiFragmentShader";
-	mPipeline = mDevice->CreateGraphicsPipeline(pipelineDesc);
-
-	mHeap = mDevice->CreateHeap({ .name = "ImGuiHeap", .memoryType = MemoryType::CPU, .size = kImGuiDataBufferSize * mSurface->GetFramesInFlight() });
-	mBuffer = mHeap.Allocate({ .name = "RenderDrawData", .size = kImGuiDataBufferSize * mSurface->GetFramesInFlight() });
+	mPipeline = context.device->CreateGraphicsPipeline(pipelineDesc);
+	mBuffer = context.device->CreateBuffer(context.allocator, { .name = "ImGui RenderDrawData", .memoryType = MemoryType::CPU, .size = kImGuiDataBufferSize * mSurface->GetFramesInFlight() });
 
     Globals::Engine->GetSubsystem<EventSystem>()->SetEventHandler([](const SDL_Event* e)
     {
@@ -90,8 +87,8 @@ void ImGuiRenderer::OnDestroy(RenderContext& context)
     ImGui::DestroyContext();
 
 	delete mFontTexture;
-	mHeap.Free(mBuffer);
-	mDevice->Dispose(mHeap);
+	delete mDefaultFontTexture;
+	context.device->Dispose(context.allocator, mBuffer);
 }
 
 void ImGuiRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard)
@@ -151,7 +148,7 @@ void ImGuiRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 			vtxOffset += drawList->IdxBuffer.Size * sizeof(ImDrawIdx);
 		}
 
-		vtxOffset = (uint32_t)Utils::AlignUp(vtxOffset, mHeap.GetAlignment());
+		vtxOffset = (uint32_t)Utils::AlignUp(vtxOffset, mBuffer.GetAlignment());
 		ImDrawVert* vtxDest = (ImDrawVert*)((char*)bufferPtr + vtxOffset);
 		for (int n = 0; n < drawData->CmdListsCount; n++)
 		{
@@ -227,10 +224,7 @@ void ImGuiRenderer::AddFontTexture(const Path& fontPath, const Path& defaultPath
 	// TODO: error handling
 	if (mFontTexture)
 	{
-		mReleaseQueue->AddResource([fontTexture = mFontTexture]()
-		{
-			delete fontTexture;
-		}, mSurface->GetFrameIndex());
+		delete mFontTexture;
 		mFontTexture = nullptr;
 	}
 	

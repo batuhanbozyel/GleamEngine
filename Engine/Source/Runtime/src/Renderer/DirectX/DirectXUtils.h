@@ -18,17 +18,42 @@ static constexpr const char* HRESULTtoString(HRESULT result)
 {
 	switch (result)
 	{
-		case E_ABORT:			return "Operation aborted";
-		case E_ACCESSDENIED:	return "General access denied error";
-		case E_FAIL:			return "Unspecified failure";
-		case E_HANDLE:			return "Handle that is not valid";
-		case E_INVALIDARG:		return "One or more arguments are not valid";
-		case E_NOINTERFACE:		return "No such interface supported";
-		case E_NOTIMPL:			return "Not implemented";
-		case E_OUTOFMEMORY:		return "Failed to allocate necessary memory";
-		case E_POINTER:			return "Pointer that is not valid";
-		case E_UNEXPECTED:		return "Unexpected failure";
-		default:				return "UNKNOWN DIRECTX ERROR";
+		case E_ABORT:									return "Operation aborted";
+		case E_ACCESSDENIED:							return "General access denied error";
+		case E_FAIL:									return "Unspecified failure";
+		case E_HANDLE:									return "Handle that is not valid";
+		case E_INVALIDARG:								return "One or more arguments are not valid";
+		case E_NOINTERFACE:								return "No such interface supported";
+		case E_NOTIMPL:									return "Not implemented";
+		case E_OUTOFMEMORY:								return "Failed to allocate necessary memory";
+		case E_POINTER:									return "Pointer that is not valid";
+		case E_UNEXPECTED:								return "Unexpected failure";
+
+		// DXGI error codes
+		case DXGI_ERROR_INVALID_CALL:					return "The method call is invalid";
+		case DXGI_ERROR_NOT_FOUND:						return "The requested item was not found";
+		case DXGI_ERROR_MORE_DATA:						return "The buffer supplied is too small";
+		case DXGI_ERROR_UNSUPPORTED:					return "The requested functionality is not supported";
+		case DXGI_ERROR_DEVICE_REMOVED:					return "GPU device has been removed";
+		case DXGI_ERROR_DEVICE_HUNG:					return "GPU device is hung";
+		case DXGI_ERROR_DEVICE_RESET:					return "GPU device has been reset";
+		case DXGI_ERROR_WAS_STILL_DRAWING:				return "Previous frame still rendering";
+		case DXGI_ERROR_FRAME_STATISTICS_DISJOINT:		return "Frame statistics are disjoint";
+		case DXGI_ERROR_GRAPHICS_VIDPN_SOURCE_IN_USE:	return "Video present source is in use";
+		case DXGI_ERROR_DRIVER_INTERNAL_ERROR:			return "Driver internal error";
+		case DXGI_ERROR_NONEXCLUSIVE:					return "Resource is not in exclusive mode";
+		case DXGI_ERROR_NOT_CURRENTLY_AVAILABLE:		return "Resource is not currently available";
+		case DXGI_ERROR_REMOTE_CLIENT_DISCONNECTED:		return "Remote client disconnected";
+		case DXGI_ERROR_REMOTE_OUTOFMEMORY:				return "Remote device out of memory";
+		case DXGI_ERROR_ACCESS_LOST:					return "Access to resource lost";
+		case DXGI_ERROR_WAIT_TIMEOUT:					return "Wait operation timed out";
+		case DXGI_ERROR_SESSION_DISCONNECTED:			return "Session disconnected";
+		case DXGI_ERROR_RESTRICT_TO_OUTPUT_STALE:		return "Output restriction is stale";
+		case DXGI_ERROR_CANNOT_PROTECT_CONTENT:			return "Cannot protect content";
+		case DXGI_ERROR_ACCESS_DENIED:					return "Access denied to resource";
+		case DXGI_ERROR_NAME_ALREADY_EXISTS:			return "Name already exists";
+		case DXGI_ERROR_SDK_COMPONENT_MISSING:			return "SDK component missing";
+		default:										return "UNKNOWN DIRECTX ERROR";
 	}
 }
 

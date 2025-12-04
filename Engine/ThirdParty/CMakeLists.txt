@@ -43,6 +43,7 @@ add_subdirectory(SDL EXCLUDE_FROM_ALL)
 
 set_target_properties (
     SDL3-static
+    SDL_uclibc
     EASTL
     imgui
     gmock

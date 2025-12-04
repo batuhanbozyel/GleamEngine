@@ -2,6 +2,7 @@
 #include "Math/Rect.h"
 #include "Container/Pointer.h"
 
+#include "Buffer.h"
 #include "Shader.h"
 #include "Barrier.h"
 #include "Texture.h"

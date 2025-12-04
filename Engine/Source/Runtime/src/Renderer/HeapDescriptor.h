@@ -5,10 +5,8 @@ namespace Gleam {
 
 enum class MemoryType
 {
-    GPU,
-    Shared,
-    CPU,
-    Transient
+	CPU,
+    GPU
 };
 
 struct HeapDescriptor
@@ -27,6 +25,21 @@ struct MemoryRequirements
 {
 	size_t size;
 	size_t alignment;
+	MemoryType type;
 };
+
+namespace Utils {
+
+static constexpr const char* MemoryTypeToString(MemoryType type)
+{
+	switch (type)
+	{
+		case MemoryType::CPU: return "CPU";
+		case MemoryType::GPU: return "GPU";
+		default: return "UNKNOWN";
+	}
+}
+
+} // namespace Utils
 
 } // namespace Gleam

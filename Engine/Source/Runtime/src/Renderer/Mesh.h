@@ -1,5 +1,4 @@
 #pragma once
-#include "Heap.h"
 #include "Buffer.h"
 #include "MeshDescriptor.h"
 #include "Assets/Asset.h"
@@ -24,7 +23,6 @@ public:
     
 protected:
     
-    Heap mHeap;
     Buffer mIndexBuffer;
     Buffer mPositionBuffer;
     Buffer mInterleavedBuffer;

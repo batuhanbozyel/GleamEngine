@@ -37,18 +37,16 @@ public:
 private:
 
 	Swapchain* mSurface;
-    
-    GraphicsDevice* mDevice;
 
 	ResourceReleaseQueue* mReleaseQueue;
 
 	GraphicsPipelineHandle mPipeline;
 
-	Heap mHeap;
-
 	Buffer mBuffer;
 
 	Texture2D* mFontTexture = nullptr;
+
+	Texture2D* mDefaultFontTexture = nullptr;
 
 	TArray<ImGuiView> mViews;
     

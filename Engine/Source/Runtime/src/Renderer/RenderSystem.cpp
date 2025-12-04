@@ -26,7 +26,7 @@ void RenderSystem::Initialize(Engine* engine)
 	mContext.device = mDevice.get();
 	mContext.surface = mSwapchain.get();
 	mContext.releaseQueue = mReleaseQueue.get();
-	mContext.resourcePool = mResourcePool.get();
+	mContext.allocator = mPersistentAllocator.get();
 
 	EventDispatcher<WindowResizeEvent>::Subscribe([this](const WindowResizeEvent& e)
 	{
@@ -42,22 +42,22 @@ void RenderSystem::Initialize(Engine* engine)
 
 void RenderSystem::Shutdown()
 {
-	mUploadManager.reset();
+	mCopyCommandBuffer->WaitUntilCompleted();
+	mCopyCommandBuffer.reset();
 
-    mCommandBuffers[mSwapchain->GetFrameIndex()]->WaitUntilCompleted();
-    mCommandBuffers.clear();
+	mCommandBuffers[mSwapchain->GetFrameIndex()]->WaitUntilCompleted();
+	mCommandBuffers.clear();
 
-    for (auto renderer : mRenderers)
-    {
-        renderer->OnDestroy(mContext);
-        delete renderer;
-    }
+	for (auto renderer : mRenderers)
+	{
+		renderer->OnDestroy(mContext);
+		delete renderer;
+	}
 	mRenderers.clear();
 
-	mReleaseQueue->Clear();
-	mResourcePool->Clear();
+	mTransientAllocator.reset();
+	mPersistentAllocator.reset();
 
-	mResourcePool.reset();
 	mReleaseQueue.reset();
     mDevice.reset();
 	mSwapchain.reset();
@@ -68,7 +68,7 @@ void RenderSystem::PreRender(const World* world)
 	auto sceneProxy = world->GetSystem<RenderSceneProxy>();
 	sceneProxy->ForEach([&](const MeshBatch& batch)
 	{
-		mUploadManager->Commit(batch.instanceBuffer, batch.instances.data(), sizeof(MeshInstanceData) * batch.numInstances);
+		mCopyCommandBuffer->Commit(batch.instanceBuffer, batch.instances.data(), sizeof(MeshInstanceData) * batch.numInstances);
 	});
 
 	// update active camera
@@ -80,6 +80,21 @@ void RenderSystem::PreRender(const World* world)
 			mActiveCamera = entity;
 		}
 	});
+
+	auto frameIdx = mSwapchain->GetFrameIndex();
+	const auto cmd = mCommandBuffers[frameIdx].get();
+
+	cmd->WaitUntilCompleted();
+	if (mRendererResized)
+	{
+		mSwapchain->Resize(mDevice.get(), mSwapchainSize);
+		mRendererResized = false;
+	}
+	mDevice->ResetCommandPools(frameIdx);
+	mReleaseQueue->Flush(frameIdx);
+
+	mTransientAllocator->CollectGarbage(mSwapchain->GetFramesInFlight() + 1);
+	mPersistentAllocator->CollectGarbage(mSwapchain->GetFramesInFlight() + 1);
 }
 
 void RenderSystem::Render(const World* world)
@@ -106,12 +121,16 @@ void RenderSystem::Render(const World* world)
 		sceneTargetDesc.size = cameraComponent.GetViewport();
 		sceneTargetDesc.format = mSwapchain->GetFormat();
 
-		auto sceneTarget = mResourcePool->Allocate(sceneTargetDesc);
+		RenderGraphContext renderGraphContext;
+		renderGraphContext.device = mDevice.get();
+		renderGraphContext.surface = mSwapchain.get();
+		renderGraphContext.allocator = mTransientAllocator.get();
+		RenderGraph graph(renderGraphContext);
+
+		auto sceneTarget = mDevice->CreateTexture(renderGraphContext.allocator, sceneTargetDesc);
 		const auto& backbuffer = mSwapchain->GetCurrentDrawable();
 
-		RenderGraph graph(mContext);
 		RenderGraphBlackboard blackboard;
-
 		auto& sceneData = blackboard.Add<SceneRenderingData>();
 		sceneData.backbuffer = graph.ImportBackbuffer(backbuffer);
 		sceneData.sceneTarget = graph.ImportBackbuffer(sceneTarget);
@@ -145,27 +164,16 @@ void RenderSystem::Render(const World* world)
 		auto frameIdx = mSwapchain->GetFrameIndex();
 		const auto cmd = mCommandBuffers[frameIdx].get();
 
-		cmd->WaitUntilCompleted();
-		if (mRendererResized)
-		{
-			mSwapchain->Resize(mDevice.get(), mSwapchainSize);
-			mResourcePool->Clear();
-			mRendererResized = false;
-		}
-
-		mReleaseQueue->Flush(frameIdx);
-		mDevice->ResetCommandPools(frameIdx);
-
 		TStringStream cmdBufferName;
 		cmdBufferName << "Scene CommandBuffer[" << frameIdx << "]";
 		cmd->Begin(cmdBufferName.str());
 
-		mUploadManager->Execute();
-		mUploadManager->WaitUntilCompleted();
-		mUploadManager->Barrier(cmd);
+		mCopyCommandBuffer->Execute();
+		mCopyCommandBuffer->WaitUntilCompleted();
+		mCopyCommandBuffer->Barrier(cmd);
 
         graph.Execute(cmd, sceneData);
-		mResourcePool->Release(sceneTarget);
+		mDevice->Dispose(renderGraphContext.allocator, sceneTarget);
 
 		mSwapchain->Present(cmd);
     }
@@ -184,9 +192,9 @@ void RenderSystem::Configure(const RendererConfig& config)
 	mSwapchainSize = mSwapchain->GetCurrentDrawable().GetDescriptor().size;
 }
 
-UploadManager* RenderSystem::GetUploadManager()
+CopyCommandBuffer* RenderSystem::GetCopyCommandBuffer()
 {
-	return mUploadManager.get();
+	return mCopyCommandBuffer.get();
 }
 
 GraphicsDevice* RenderSystem::GetDevice()
@@ -207,6 +215,16 @@ RenderSurface* RenderSystem::GetSurface()
 const RenderSurface* RenderSystem::GetSurface() const
 {
 	return mSwapchain.get();
+}
+
+GPUAllocator* RenderSystem::GetAllocator()
+{
+	return mPersistentAllocator.get();
+}
+
+const GPUAllocator* RenderSystem::GetAllocator() const
+{
+	return mPersistentAllocator.get();
 }
 
 void RenderSystem::RecompileShader(const TString& entryPoint)

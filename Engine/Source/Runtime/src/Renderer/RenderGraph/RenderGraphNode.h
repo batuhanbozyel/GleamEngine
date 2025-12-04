@@ -17,10 +17,10 @@
 namespace Gleam {
 
 class CommandBuffer;
-class UploadManager;
+class CopyCommandBuffer;
 
 template<typename PassData>
-using CopyFunc = std::function<void(const UploadManager* upload, const PassData& passData)>;
+using CopyFunc = std::function<void(const CopyCommandBuffer* cmd, const PassData& passData)>;
 
 template<typename PassData>
 using RenderFunc = std::function<void(const CommandBuffer* cmd, const PassData& passData)>;
@@ -93,7 +93,7 @@ struct RenderGraphCopyPassNode final : public RenderGraphPassNode
 		data = std::make_any<PassData>();
 		callback = [execute = std::move(execute), this](const void* userData)
 		{
-			std::invoke(execute, static_cast<const UploadManager*>(userData), std::any_cast<const PassData&>(data));
+			std::invoke(execute, static_cast<const CopyCommandBuffer*>(userData), std::any_cast<const PassData&>(data));
 		};
 	}
 	

@@ -80,15 +80,17 @@ public:
 
 	virtual void Configure(const RendererConfig& config) override;
 
-	virtual ShaderResourceIndex CreateResourceView(const Buffer& buffer) override;
-
-	virtual ShaderResourceIndex CreateResourceView(const Texture& texture) override;
-
-	virtual void ReleaseResourceView(ShaderResourceIndex view) override;
-
 	virtual void ResetCommandPools(uint32_t frameIdx) override;
 
 private:
+
+	ShaderResourceIndex CreateResourceView(const Buffer& buffer);
+
+	ShaderResourceIndex CreateResourceView(const Texture& texture);
+
+	void ReleaseResourceView(ShaderResourceIndex view);
+
+	ID3D12Resource* CreateResource(const GPUAllocation& allocation, const D3D12_RESOURCE_DESC1& desc, const TString& name) const;
 
 	ID3D12CommandQueue* CreateCommandQueue(D3D12_COMMAND_LIST_TYPE type) const;
 

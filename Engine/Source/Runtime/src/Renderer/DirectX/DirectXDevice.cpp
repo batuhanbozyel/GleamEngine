@@ -44,8 +44,10 @@ void RenderSystem::InitializeBackend()
 	mReleaseQueue = CreateScope<ResourceReleaseQueue>(mSwapchain->GetFramesInFlight());
 
 	mDevice = CreateScope<DirectXDevice>(mSwapchain.get(), mReleaseQueue.get());
-	mUploadManager = CreateScope<UploadManager>(mDevice.get());
-	mResourcePool = CreateScope<RenderResourcePool>(mDevice.get(), mSwapchain.get(), mReleaseQueue.get());
+	mCopyCommandBuffer = CreateScope<CopyCommandBuffer>(mDevice.get());
+
+	mPersistentAllocator = CreateScope<GPUAllocator>(mDevice.get(), GPUAllocatorDescriptor{ .name = "Persistent GPU Allocator" });
+	mTransientAllocator = CreateScope<GPUAllocator>(mDevice.get(), GPUAllocatorDescriptor{ .name = "Transient GPU Allocator" });
 }
 
 static D3D12_STATIC_SAMPLER_DESC CreateStaticSampler(const SamplerState& samplerState)
@@ -116,64 +118,33 @@ static D3D12_STATIC_SAMPLER_DESC CreateStaticSampler(const SamplerState& sampler
 	return sampler;
 }
 
-MemoryRequirements GraphicsDevice::QueryMemoryRequirements(const HeapDescriptor& descriptor) const
-{
-	D3D12_HEAP_PROPERTIES heapProperties = {
-		.Type = descriptor.memoryType == MemoryType::CPU ? D3D12_HEAP_TYPE_UPLOAD : D3D12_HEAP_TYPE_DEFAULT,
-		.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN,
-		.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN,
-		.CreationNodeMask = 0,
-		.VisibleNodeMask = 0
-	};
-
-	D3D12_RESOURCE_DESC resourceDesc = {
-		.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER,
-		.Alignment = 0,
-		.Width = descriptor.size,
-		.Height = 1,
-		.DepthOrArraySize = 1,
-		.MipLevels = 1,
-		.Format = DXGI_FORMAT_UNKNOWN,
-		.SampleDesc = { .Count = 1, .Quality = 0 },
-		.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR,
-		.Flags = D3D12_RESOURCE_FLAG_NONE
-	};
-
-	if (descriptor.memoryType == MemoryType::GPU)
-	{
-		resourceDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
-	}
-
-	D3D12_RESOURCE_ALLOCATION_INFO allocationInfo = static_cast<ID3D12Device10*>(mHandle)->GetResourceAllocationInfo(0, 1, &resourceDesc);
-	return MemoryRequirements
-	{
-		.size = allocationInfo.SizeInBytes,
-		.alignment = allocationInfo.Alignment
-	};
-}
-
 Heap GraphicsDevice::CreateHeap(const HeapDescriptor& descriptor)
 {
-	Heap heap(descriptor);
-	heap.mDevice = this;
-
-	auto memoryRequirements = QueryMemoryRequirements(descriptor);
-	heap.mDescriptor.size = memoryRequirements.size;
-	heap.mAlignment = memoryRequirements.alignment;
-
+	ID3D12Heap* handle = nullptr;
 	D3D12_HEAP_DESC desc{};
-	desc.Alignment = heap.mAlignment;
-	desc.SizeInBytes = heap.mDescriptor.size;
-	desc.Flags = D3D12_HEAP_FLAG_ALLOW_ONLY_BUFFERS;
+	desc.Alignment = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
+	desc.SizeInBytes = descriptor.size;
+	desc.Flags = D3D12_HEAP_FLAG_NONE;
 	desc.Properties.Type = descriptor.memoryType == MemoryType::CPU ? D3D12_HEAP_TYPE_UPLOAD : D3D12_HEAP_TYPE_DEFAULT;
-	DX_CHECK(static_cast<ID3D12Device10*>(mHandle)->CreateHeap(&desc, __uuidof(ID3D12Heap*), &heap.mHandle));
-	static_cast<ID3D12Resource*>(heap.mHandle)->SetName(StringUtils::Convert(descriptor.name).c_str());
+	DX_CHECK(static_cast<ID3D12Device10*>(mHandle)->CreateHeap(&desc, IID_PPV_ARGS(&handle)));
+	handle->SetName(StringUtils::Convert(descriptor.name).c_str());
+
+	Heap heap(descriptor);
+	heap.mHandle = handle;
+	heap.mDescriptor.size = descriptor.size;
+	heap.mAlignment = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
 	return heap;
 }
 
-Texture GraphicsDevice::CreateTexture(const TextureDescriptor& descriptor)
+Texture GraphicsDevice::CreateTexture(GPUAllocator* allocator, const TextureDescriptor& descriptor)
 {
 	Texture texture(descriptor);
+	if (descriptor.dimension == TextureDimension::TextureCube)
+	{
+		float size = Math::Min(descriptor.size.width, descriptor.size.height);
+		texture.mDescriptor.size.width = size;
+		texture.mDescriptor.size.height = size;
+	}
 
 	D3D12_RESOURCE_FLAGS flags = D3D12_RESOURCE_FLAG_NONE;
 	if (descriptor.usage & TextureUsage_Attachment)
@@ -206,28 +177,17 @@ Texture GraphicsDevice::CreateTexture(const TextureDescriptor& descriptor)
 		.Flags = flags
 	};
 
-	D3D12_HEAP_PROPERTIES heapProperties = {
-		.Type = D3D12_HEAP_TYPE_DEFAULT,
-		.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN,
-		.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN,
-		.CreationNodeMask = 0,
-		.VisibleNodeMask = 0
+	D3D12_RESOURCE_ALLOCATION_INFO allocationInfo = static_cast<ID3D12Device10*>(mHandle)->GetResourceAllocationInfo2(0, 1, &resourceDesc, nullptr);
+	MemoryRequirements memoryRequirements =
+	{
+		.size = allocationInfo.SizeInBytes,
+		.alignment = allocationInfo.Alignment,
+		.type = MemoryType::GPU
 	};
-
-	// TODO: Create MSAA texture	
-	DX_CHECK(static_cast<ID3D12Device10*>(mHandle)->CreateCommittedResource3(
-		&heapProperties,
-		D3D12_HEAP_FLAG_NONE,
-		&resourceDesc,
-		D3D12_BARRIER_LAYOUT_COMMON,
-		nullptr,
-		nullptr,
-		0,
-		nullptr,
-		__uuidof(ID3D12Resource*),
-		&texture.mHandle
-	));
-	static_cast<ID3D12Resource*>(texture.mHandle)->SetName(StringUtils::Convert(descriptor.name).c_str());
+	GPUAllocation allocation = allocator->Allocate(memoryRequirements);
+	ID3D12Resource* resource = static_cast<DirectXDevice*>(this)->CreateResource(allocation, resourceDesc, descriptor.name);
+	allocator->AddAllocation(resource, allocation);
+	texture.mHandle = resource;
 
 	// Create RTV or DSV for attachments
 	if (descriptor.usage & TextureUsage_Attachment)
@@ -271,8 +231,53 @@ Texture GraphicsDevice::CreateTexture(const TextureDescriptor& descriptor)
 		}
 	}
 	
-	texture.mResourceView = Utils::IsDepthFormat(descriptor.format) ? InvalidResourceIndex : CreateResourceView(texture);
+	texture.mResourceView = Utils::IsDepthFormat(descriptor.format) ? InvalidResourceIndex : static_cast<DirectXDevice*>(this)->CreateResourceView(texture);
 	return texture;
+}
+
+Buffer GraphicsDevice::CreateBuffer(GPUAllocator* allocator, const BufferDescriptor& descriptor)
+{
+	auto flags = D3D12_RESOURCE_FLAG_NONE;
+	if (descriptor.memoryType != MemoryType::CPU)
+	{
+		flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+	}
+
+	D3D12_RESOURCE_DESC1 resourceDesc = {
+		.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER,
+		.Alignment = 0,
+		.Width = descriptor.size,
+		.Height = 1,
+		.DepthOrArraySize = 1,
+		.MipLevels = 1,
+		.Format = DXGI_FORMAT_UNKNOWN,
+		.SampleDesc = {.Count = 1, .Quality = 0 },
+		.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR,
+		.Flags = flags
+	};
+	D3D12_RESOURCE_ALLOCATION_INFO allocationInfo = static_cast<ID3D12Device10*>(mHandle)->GetResourceAllocationInfo2(0, 1, &resourceDesc, nullptr);
+	MemoryRequirements memoryRequirements =
+	{
+		.size = allocationInfo.SizeInBytes,
+		.alignment = allocationInfo.Alignment,
+		.type = descriptor.memoryType
+	};
+	GPUAllocation allocation = allocator->Allocate(memoryRequirements);
+	ID3D12Resource* resource = static_cast<DirectXDevice*>(this)->CreateResource(allocation, resourceDesc, descriptor.name);
+	allocator->AddAllocation(resource, allocation);
+
+	void* contents = nullptr;
+	if (descriptor.memoryType != MemoryType::GPU)
+	{
+		DX_CHECK(resource->Map(0, nullptr, &contents));
+	}
+
+	Buffer buffer(descriptor);
+	buffer.mHandle = resource;
+	buffer.mContents = contents;
+	buffer.mAlignment = D3D12_RAW_UAV_SRV_BYTE_ALIGNMENT;
+	buffer.mResourceView = static_cast<DirectXDevice*>(this)->CreateResourceView(buffer);
+	return buffer;
 }
 
 Shader GraphicsDevice::CompileShader(const TString& entryPoint, ShaderStage stage)
@@ -391,32 +396,58 @@ void GraphicsDevice::Dispose(Heap& heap)
 	heap.mHandle = nullptr;
 }
 
-void GraphicsDevice::Dispose(Texture& texture)
+void GraphicsDevice::Dispose(GPUAllocator* allocator, Buffer& buffer)
 {
-	if (texture.GetDescriptor().usage & TextureUsage_Attachment)
-	{
-		if (Utils::IsDepthFormat(texture.GetDescriptor().format))
-		{
-			auto& dsvHeap = static_cast<DirectXDevice*>(this)->mDsvHeap;
-			dsvHeap.heap.Release(dsvHeap.GetResourceIndex(texture.GetRenderTargetView()));
-		}
-		else
-		{
-			auto& rtvHeap = static_cast<DirectXDevice*>(this)->mRtvHeap;
-			rtvHeap.heap.Release(rtvHeap.GetResourceIndex(texture.GetRenderTargetView()));
-		}
-	}
+	const auto& allocation = allocator->GetAllocation(buffer.GetHandle());
+	allocator->Free(allocation);
 
-	ID3D12Resource* resource = static_cast<ID3D12Resource*>(texture.GetHandle());
-	ShaderResourceIndex view = texture.mResourceView;
+	ID3D12Resource* resource = static_cast<ID3D12Resource*>(buffer.GetHandle());
+	ShaderResourceIndex view = buffer.mResourceView;
 	mReleaseQueue->AddResource([this, resource, view]()
 	{
 		resource->Release();
-		ReleaseResourceView(view);
+		static_cast<DirectXDevice*>(this)->ReleaseResourceView(view);
+	}, static_cast<Swapchain*>(mSurface)->GetFrameIndex());
+
+	buffer.mResourceView = InvalidResourceIndex;
+	buffer.mContents = nullptr;
+	buffer.mHandle = nullptr;
+}
+
+void GraphicsDevice::Dispose(GPUAllocator* allocator, Texture& texture)
+{
+	const auto& allocation = allocator->GetAllocation(texture.GetHandle());
+	allocator->Free(allocation);
+
+	TextureUsageFlagBits usage = texture.GetDescriptor().usage;
+	TextureFormat format = texture.GetDescriptor().format;
+
+	ID3D12Resource* resource = static_cast<ID3D12Resource*>(texture.GetHandle());
+	ShaderResourceIndex srv = texture.mResourceView;
+	RenderTargetView rtv = texture.GetRenderTargetView();
+	mReleaseQueue->AddResource([this, resource, srv, rtv, usage, format]()
+	{
+		resource->Release();
+		static_cast<DirectXDevice*>(this)->ReleaseResourceView(srv);
+
+		if (usage & TextureUsage_Attachment)
+		{
+			if (Utils::IsDepthFormat(format))
+			{
+				auto& dsvHeap = static_cast<DirectXDevice*>(this)->mDsvHeap;
+				dsvHeap.heap.Release(dsvHeap.GetResourceIndex(rtv));
+			}
+			else
+			{
+				auto& rtvHeap = static_cast<DirectXDevice*>(this)->mRtvHeap;
+				rtvHeap.heap.Release(rtvHeap.GetResourceIndex(rtv));
+			}
+		}
 	}, static_cast<Swapchain*>(mSurface)->GetFrameIndex());
 
 	texture.mResourceView = InvalidResourceIndex;
 	texture.mHandle = nullptr;
+	texture.mView = {};
 }
 
 void GraphicsDevice::Dispose(Shader& shader)
@@ -448,7 +479,7 @@ DirectXDevice::DirectXDevice(RenderSurface* surface, ResourceReleaseQueue* relea
 	if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&mD3D12Debug))))
 	{
 		mD3D12Debug->EnableDebugLayer();
-		mD3D12Debug->SetEnableGPUBasedValidation(true);
+		//mD3D12Debug->SetEnableGPUBasedValidation(true);
 	}
 
 	if (SUCCEEDED(swapchain->mFactory->QueryInterface(IID_PPV_ARGS(&mInfoQueue))))
@@ -631,6 +662,23 @@ void DirectXDevice::ResetCommandPools(uint32_t frameIndex)
 	}
 }
 
+ID3D12Resource* DirectXDevice::CreateResource(const GPUAllocation& allocation, const D3D12_RESOURCE_DESC1& desc, const TString& name) const
+{
+	ID3D12Resource* resource = nullptr;
+	DX_CHECK(static_cast<ID3D12Device10*>(mHandle)->CreatePlacedResource2(
+		static_cast<ID3D12Heap*>(allocation.block->heap.GetHandle()),
+		allocation.offset,
+		&desc,
+		D3D12_BARRIER_LAYOUT_UNDEFINED,
+		nullptr,
+		0,
+		nullptr,
+		IID_PPV_ARGS(&resource)
+	));
+	resource->SetName(StringUtils::Convert(name).c_str());
+	return resource;
+}
+
 ID3D12GraphicsCommandList7* DirectXDevice::AllocateCommandList(D3D12_COMMAND_LIST_TYPE type, const TWStringView debugName)
 {
 	auto swapchain = static_cast<DirectXSwapchain*>(mSurface);
@@ -655,7 +703,7 @@ ID3D12GraphicsCommandList7* DirectXDevice::AllocateCommandList(D3D12_COMMAND_LIS
 			}
 
 			pool.usedCommandLists.push_back(commandList);
-			commandList->Reset(pool.allocator, nullptr);
+			DX_CHECK(commandList->Reset(pool.allocator, nullptr));
 			commandList->SetName(debugName.data());
 			return commandList;
 		}
@@ -668,7 +716,7 @@ ID3D12GraphicsCommandList7* DirectXDevice::AllocateCommandList(D3D12_COMMAND_LIS
 	ID3D12GraphicsCommandList7* commandList = nullptr;
 	DX_CHECK(static_cast<ID3D12Device10*>(mHandle)->CreateCommandList1(0, type, D3D12_COMMAND_LIST_FLAG_NONE, IID_PPV_ARGS(&commandList)));
 	pool.usedCommandLists.push_back(commandList);
-	commandList->Reset(pool.allocator, nullptr);
+	DX_CHECK(commandList->Reset(pool.allocator, nullptr));
 	commandList->SetName(debugName.data());
 	return commandList;
 }
@@ -887,7 +935,7 @@ void DirectXCommandPool::Reset()
 {
 	freeCommandLists.insert(freeCommandLists.end(), usedCommandLists.begin(), usedCommandLists.end());
 	usedCommandLists.clear();
-	allocator->Reset();
+	DX_CHECK(allocator->Reset());
 }
 
 void DirectXCommandPool::Release()

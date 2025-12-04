@@ -6,7 +6,7 @@ namespace Gleam {
 class RenderSurface;
 class CommandBuffer;
 class GraphicsDevice;
-class RenderResourcePool;
+class GPUAllocator;
 
 struct RenderContext;
 struct SceneRenderingData;
@@ -17,6 +17,13 @@ struct ImportResourceParams
 	bool clearOnFirstUse = true;
 };
 
+struct RenderGraphContext
+{
+	GPUAllocator* allocator = nullptr;
+	GraphicsDevice* device = nullptr;
+	RenderSurface* surface = nullptr;
+};
+
 class RenderGraph final
 {
     template<typename PassData>
@@ -24,7 +31,7 @@ class RenderGraph final
     
 public:
     
-    RenderGraph(RenderContext& context);
+    RenderGraph(const RenderGraphContext& context);
     
     ~RenderGraph();
     
@@ -55,14 +62,13 @@ private:
 		setup(builder, passData);
 		return passData;
 	}
-    
-    size_t mHeapSize = 0;
-    
-	RenderSurface* mSurface;
 
-    GraphicsDevice* mDevice;
-
-	RenderResourcePool* mResourcePool;
+	void AllocatePassResources(RenderGraphPassNode* pass, const CommandBuffer* cmd, SceneRenderingData& sceneData);
+	void FreePassResources(RenderGraphPassNode* pass, const CommandBuffer* cmd);
+	void SetupPassBarriers(RenderGraphPassNode* pass, const CommandBuffer* cmd);
+	void ExecutePass(RenderGraphPassNode* pass, const CommandBuffer* cmd);
+    
+	RenderGraphContext mContext;
 
     RenderGraphResourceRegistry mRegistry;
 

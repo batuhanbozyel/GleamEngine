@@ -43,8 +43,10 @@ void RenderSystem::InitializeBackend()
     mReleaseQueue = CreateScope<ResourceReleaseQueue>(mSwapchain->GetFramesInFlight());
     
     mDevice = CreateScope<MetalDevice>(mSwapchain.get(), mReleaseQueue.get());
-	mUploadManager = CreateScope<UploadManager>(mDevice.get());
-	mResourcePool = CreateScope<RenderResourcePool>(mDevice.get(), mSwapchain.get(), mReleaseQueue.get());
+	mCopyCommandBuffer = CreateScope<CopyCommandBuffer>(mDevice.get());
+
+    mPersistentAllocator = CreateScope<GPUAllocator>(mDevice.get(), GPUAllocatorDescriptor{ .name = "Persistent GPU Allocator" });
+	mTransientAllocator = CreateScope<GPUAllocator>(mDevice.get(), GPUAllocatorDescriptor{ .name = "Transient GPU Allocator" });
 }
 
 static IRStaticSamplerDescriptor CreateStaticSampler(const SamplerState& samplerState)
@@ -115,24 +117,12 @@ static IRStaticSamplerDescriptor CreateStaticSampler(const SamplerState& sampler
     return sampler;
 }
 
-MemoryRequirements GraphicsDevice::QueryMemoryRequirements(const HeapDescriptor& descriptor) const
-{
-	MTLResourceOptions resourceOptions = MemoryTypeToMTLResourceOption(descriptor.memoryType);
-    MTLSizeAndAlign sizeAndAlign = [mHandle heapBufferSizeAndAlignWithLength:descriptor.size options:resourceOptions];
-
-    return MemoryRequirements
-	{
-		.size = sizeAndAlign.size,
-		.alignment = sizeAndAlign.align
-	};
-}
-
 Heap GraphicsDevice::CreateHeap(const HeapDescriptor& descriptor)
 {
     Heap heap(descriptor);
     heap.mDevice = this;
     
-    MTLResourceOptions resourceOptions = MemoryTypeToMTLResourceOption(descriptor.memoryType) | MTLResourceHazardTrackingModeTracked; // TODO: Remove hazard tracking when async compute passes are implemented with proper resource synchronization
+    MTLResourceOptions resourceOptions = MemoryTypeToMTLResourceOption(descriptor.memoryType) | MTLResourceHazardTrackingModeTracked; // TODO: Remove hazard tracking when proper resource synchronization is implemented
     MTLSizeAndAlign sizeAndAlign = [mHandle heapBufferSizeAndAlignWithLength:descriptor.size options:resourceOptions];
     
     MTLHeapDescriptor* desc = [MTLHeapDescriptor new];
@@ -149,10 +139,9 @@ Heap GraphicsDevice::CreateHeap(const HeapDescriptor& descriptor)
     return heap;
 }
 
-Texture GraphicsDevice::CreateTexture(const TextureDescriptor& descriptor)
+Texture GraphicsDevice::CreateTexture(GPUAllocator* allocator, const TextureDescriptor& descriptor)
 {
     Texture texture(descriptor);
-    
     MTLTextureDescriptor* textureDesc;
     if (descriptor.dimension == TextureDimension::TextureCube)
     {
@@ -168,19 +157,65 @@ Texture GraphicsDevice::CreateTexture(const TextureDescriptor& descriptor)
     textureDesc.mipmapLevelCount = texture.mMipMapLevels;
     textureDesc.sampleCount = 1;
     textureDesc.usage = TextureUsageToMTLTextureUsage(descriptor.usage);
-    textureDesc.storageMode = MTLStorageModePrivate;
-    texture.mHandle = [mHandle newTextureWithDescriptor:textureDesc];
-    
-    id<MTLTexture> baseTexture = texture.mHandle;
-    texture.mView = [baseTexture newTextureViewWithPixelFormat:baseTexture.pixelFormat
+    textureDesc.storageMode = MTLStorageModePrivate; // TODO: add support for cpu visible textures
+
+    MTLSizeAndAlign sizeAndAlign = [mHandle heapBufferSizeAndAlignWithLength:descriptor.size options:MTLResourceStorageModePrivate];
+    MemoryRequirements memoryRequirements =
+	{
+		.size = sizeAndAlign.size,
+		.alignment = sizeAndAlign.align,
+		.type = MemoryType::GPU
+	};
+    GPUAllocation allocation = allocator->Allocate(memoryRequirements);
+
+    id<MTLHeap> heap = allocation.block->heap.GetHandle();
+    id<MTLTexture> baseTexture = [heap newTextureWithDescriptor:textureDesc];
+    id<MTLTexture> textureView = [baseTexture newTextureViewWithPixelFormat:baseTexture.pixelFormat
                                                    textureType:descriptor.dimension == TextureDimension::TextureCube ? MTLTextureTypeCubeArray : MTLTextureType2DArray
                                                         levels:NSMakeRange(0, texture.mMipMapLevels)
                                                         slices:NSMakeRange(0, 1)];
     [baseTexture setLabel:TO_NSSTRING(descriptor.name.c_str())];
-    [texture.mView setLabel:TO_NSSTRING(descriptor.name.c_str())];
-    [static_cast<MetalDevice*>(this)->GetResidencySet() addAllocation:texture.mHandle];
+    [textureView setLabel:TO_NSSTRING(descriptor.name.c_str())];
+    [static_cast<MetalDevice*>(this)->GetResidencySet() addAllocation:textureView];
+    [static_cast<MetalDevice*>(this)->GetResidencySet() addAllocation:baseTexture];
+    allocator->AddAllocation(baseTexture, allocation);
+
+    texture.mHandle = baseTexture;
+    texture.mView = textureView;
     texture.mResourceView = Utils::IsDepthFormat(descriptor.format) ? InvalidResourceIndex : CreateResourceView(texture);
     return texture;
+}
+
+Buffer GraphicsDevice::CreateBuffer(GPUAllocator* allocator, const BufferDescriptor& descriptor)
+{
+    MTLResourceOptions resourceOptions = MemoryTypeToMTLResourceOption(descriptor.memoryType);
+    MTLSizeAndAlign sizeAndAlign = [mHandle heapBufferSizeAndAlignWithLength:descriptor.size options:resourceOptions];
+    MemoryRequirements memoryRequirements =
+	{
+		.size = sizeAndAlign.size,
+		.alignment = sizeAndAlign.align,
+		.type = descriptor.memoryType
+	};
+    GPUAllocation allocation = allocator->Allocate(memoryRequirements);
+
+    id<MTLHeap> heap = allocation.block->heap.GetHandle();
+    id<MTLBuffer> mtlBuffer = [heap newBufferWithLength:descriptor.size options:heap.resourceOptions offset:allocation.offset];
+    [mtlBuffer setLabel:TO_NSSTRING(descriptor.name.c_str())];
+    [static_cast<MetalDevice*>(this)->GetResidencySet() addAllocation:mtlBuffer];
+    allocator->AddAllocation(mtlBuffer, allocation);
+
+    void* contents = nullptr;
+    if (allocation.block->heap.GetDescriptor().memoryType != MemoryType::GPU)
+    {
+        contents = [mtlBuffer contents];
+    }
+    
+    Buffer buffer(descriptor);
+    buffer.mHandle = mtlBuffer;
+    buffer.mContents = contents;
+    buffer.mAlignment = 4;
+    buffer.mResourceView = static_cast<MetalDevice*>(mDevice)->CreateResourceView(buffer);
+    return buffer;
 }
 
 Shader GraphicsDevice::CompileShader(const TString& entryPoint, ShaderStage stage)
@@ -300,10 +335,24 @@ void GraphicsDevice::Dispose(Heap& heap)
     heap.mHandle = nil;
 }
 
-void GraphicsDevice::Dispose(Texture& texture)
+void GraphicsDevice::Dispose(GPUAllocator* allocator, Buffer& buffer)
 {
+    const auto& allocation = allocator->GetAllocation(buffer.GetHandle());
+	allocator->Free(allocation);
+
+	static_cast<MetalDevice*>(this)->ReleaseResourceView(buffer.mResourceView);
+	buffer.mResourceView = InvalidResourceIndex;
+	buffer.mContents = nullptr;
+	buffer.mHandle = nil;
+}
+
+void GraphicsDevice::Dispose(GPUAllocator* allocator, Texture& texture)
+{
+    const auto& allocation = allocator->GetAllocation(texture.GetHandle());
+	allocator->Free(allocation);
+
     [static_cast<MetalDevice*>(this)->GetResidencySet() removeAllocation:texture.mHandle];
-    ReleaseResourceView(texture.mResourceView);
+    static_cast<MetalDevice*>(this)->ReleaseResourceView(texture.mResourceView);
     texture.mHandle = nil;
     texture.mView = nil;
 }

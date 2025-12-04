@@ -1,13 +1,13 @@
 #include "gpch.h"
 
 #ifdef USE_METAL_RENDERER
-#include "Renderer/UploadManager.h"
+#include "Renderer/CopyCommandBuffer.h"
 #include "MetalDevice.h"
 #include "MetalUtils.h"
 
 using namespace Gleam;
 
-struct UploadManager::Impl
+struct CopyCommandBuffer::Impl
 {
     id<MTLIOCommandQueue> fileCommandQueue{ nil };
     id<MTLCommandQueue> memoryCommandQueue{ nil };
@@ -46,7 +46,7 @@ struct UploadManager::Impl
 	}
 };
 
-UploadManager::UploadManager(GraphicsDevice* device)
+CopyCommandBuffer::CopyCommandBuffer(GraphicsDevice* device)
     : mHandle(CreateScope<Impl>())
     , mDevice(device)
 {
@@ -58,17 +58,17 @@ UploadManager::UploadManager(GraphicsDevice* device)
     
     __autoreleasing NSError* error = nil;
     mHandle->fileCommandQueue = [mDevice->GetHandle() newIOCommandQueueWithDescriptor:ioQueueDescriptor error:&error];
-    GLEAM_ASSERT(mHandle->fileCommandQueue, "Metal: UploadManager file command queue creation failed.");
+    GLEAM_ASSERT(mHandle->fileCommandQueue, "Metal: CopyCommandBuffer file command queue creation failed.");
     
     // Create memory queue
     mHandle->memoryCommandQueue = [mDevice->GetHandle() newCommandQueue];
-    GLEAM_ASSERT(mHandle->memoryCommandQueue, "Metal: UploadManager memory command queue creation failed.");
+    GLEAM_ASSERT(mHandle->memoryCommandQueue, "Metal: CopyCommandBuffer memory command queue creation failed.");
     
     mHandle->stagingBuffer = [mDevice->GetHandle() newBufferWithLength:UploadHeapSize options:MTLResourceStorageModeShared];
     mHandle->stagingBufferPtr = [mHandle->stagingBuffer contents];
 }
 
-UploadManager::~UploadManager()
+CopyCommandBuffer::~CopyCommandBuffer()
 {
     mHandle->tempBuffers.clear();
     mHandle->stagingBuffer = nil;
@@ -77,7 +77,7 @@ UploadManager::~UploadManager()
     mHandle->memoryCommandBuffer = nil;
 }
 
-void UploadManager::Execute(const CommandBuffer* cmd) const
+void CopyCommandBuffer::Execute(const CommandBuffer* cmd) const
 {
     if (mHandle->fileCommandBuffer != nil)
     {
@@ -90,7 +90,7 @@ void UploadManager::Execute(const CommandBuffer* cmd) const
     }
 }
 
-void UploadManager::WaitUntilCompleted() const
+void CopyCommandBuffer::WaitUntilCompleted() const
 {
     if (mHandle->memoryCommandBuffer != nil)
     {
@@ -108,7 +108,7 @@ void UploadManager::WaitUntilCompleted() const
     mHandle->tempBuffers.clear();
 }
 
-void UploadManager::Commit(const Buffer& buffer, const void* data, size_t size, size_t offset) const
+void CopyCommandBuffer::Commit(const Buffer& buffer, const void* data, size_t size, size_t offset) const
 {
     auto bufferContents = buffer.GetContents();
     if (bufferContents == nullptr)
@@ -120,7 +120,7 @@ void UploadManager::Commit(const Buffer& buffer, const void* data, size_t size, 
         
         id<MTLBuffer> dstBuffer = buffer.GetHandle();
         id<MTLBlitCommandEncoder> blitCommandEncoder = [mHandle->memoryCommandBuffer blitCommandEncoder];
-        [blitCommandEncoder setLabel:TO_NSSTRING("UploadManager::Commit")];
+        [blitCommandEncoder setLabel:TO_NSSTRING("CopyCommandBuffer::Commit")];
         
         size_t srcOffset = mHandle->stagingBufferOffset;
         if (mHandle->CopyUploadData(data, size))
@@ -142,7 +142,7 @@ void UploadManager::Commit(const Buffer& buffer, const void* data, size_t size, 
     }
 }
 
-void UploadManager::Commit(const Texture& texture, const void* data, size_t size) const
+void CopyCommandBuffer::Commit(const Texture& texture, const void* data, size_t size) const
 {
     if (mHandle->memoryCommandBuffer == nil)
     {
@@ -151,7 +151,7 @@ void UploadManager::Commit(const Texture& texture, const void* data, size_t size
     
     id<MTLTexture> dstTexture = texture.GetHandle();
     id<MTLBlitCommandEncoder> blitCommandEncoder = [mHandle->memoryCommandBuffer blitCommandEncoder];
-    [blitCommandEncoder setLabel:TO_NSSTRING("UploadManager::Commit")];
+    [blitCommandEncoder setLabel:TO_NSSTRING("CopyCommandBuffer::Commit")];
     
     size_t sourceBytesPerRow = texture.GetDescriptor().size.width * Utils::GetTextureFormatSizeInBytes(texture.GetDescriptor().format);
     size_t sourceBytesPerImage = sourceBytesPerRow * texture.GetDescriptor().size.height;

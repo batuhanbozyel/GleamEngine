@@ -317,13 +317,6 @@ static constexpr MTLResourceOptions MemoryTypeToMTLResourceOption(MemoryType typ
     switch (type)
     {
         case MemoryType::GPU: return MTLResourceStorageModePrivate;
-#if defined(PLATFORM_MACOS) && defined(__arm64__)
-        case MemoryType::Shared: return MTLResourceStorageModeShared;
-#elif defined(PLATFORM_MACOS)
-        case MemoryType::Shared: return MTLResourceStorageModeManaged;
-#elif defined(PLATFORM_IOS)
-        case MemoryType::Shared: return MTLResourceStorageModeShared;
-#endif
         case MemoryType::CPU: return MTLResourceStorageModeShared;
         default: GLEAM_ASSERT(false, "Metal: Unknown memory type specified!"); return MTLResourceOptions(~0);
     }

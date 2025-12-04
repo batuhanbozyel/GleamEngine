@@ -25,7 +25,7 @@ public:
         
     }
 
-	Texture(NativeGraphicsHandle handle, RenderTargetView rtv, const TextureDescriptor& descriptor)
+	Texture(const TextureDescriptor& descriptor, NativeGraphicsHandle handle, RenderTargetView rtv)
         : ShaderResource(handle)
 		, mView(rtv)
 		, mDescriptor(descriptor)

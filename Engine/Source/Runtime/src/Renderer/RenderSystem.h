@@ -10,16 +10,15 @@
 #include "Renderer.h"
 #include "Swapchain.h"
 #include "CommandBuffer.h"
-#include "UploadManager.h"
+#include "CopyCommandBuffer.h"
 #include "GraphicsDevice.h"
-#include "RenderResourcePool.h"
 #include "ResourceReleaseQueue.h"
 #include "World/Entity.h"
 
 namespace Gleam {
 
 class World;
-class UploadManager;
+class CopyCommandBuffer;
 
 template <typename T>
 concept RendererType = std::is_base_of<IRenderer, T>::value;
@@ -40,7 +39,7 @@ public:
     
     void Configure(const RendererConfig& config);
 
-	UploadManager* GetUploadManager();
+	CopyCommandBuffer* GetCopyCommandBuffer();
     
     GraphicsDevice* GetDevice();
     
@@ -49,6 +48,10 @@ public:
 	RenderSurface* GetSurface();
 
 	const RenderSurface* GetSurface() const;
+
+	GPUAllocator* GetAllocator();
+
+	const GPUAllocator* GetAllocator() const;
 
 	void RecompileShader(const TString& entryPoint);
     
@@ -122,7 +125,7 @@ private:
 
 	Engine* mEngine;
     
-    Container mRenderers;
+	Container mRenderers;
 
 	RenderContext mContext;
 
@@ -130,11 +133,13 @@ private:
 
 	Scope<GraphicsDevice> mDevice;
 
-	Scope<UploadManager> mUploadManager;
-
-	Scope<RenderResourcePool> mResourcePool;
+	Scope<CopyCommandBuffer> mCopyCommandBuffer;
 
 	Scope<ResourceReleaseQueue> mReleaseQueue;
+
+	Scope<GPUAllocator> mTransientAllocator;
+
+	Scope<GPUAllocator> mPersistentAllocator;
     
     TArray<Scope<CommandBuffer>> mCommandBuffers;
     

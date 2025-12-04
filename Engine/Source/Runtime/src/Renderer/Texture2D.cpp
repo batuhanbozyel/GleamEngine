@@ -13,12 +13,13 @@ Texture2D::Texture2D(const Texture2DDescriptor& descriptor)
 	GLEAM_ASSERT(descriptor.dimension == TextureDimension::Texture2D, "Texture2D descriptor dimension mismatch.");
 
 	static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
-	mTexture = renderSystem->GetDevice()->CreateTexture(descriptor);
+	mTexture = renderSystem->GetDevice()->CreateTexture(renderSystem->GetAllocator(), descriptor);
 
 	// Send texture data to buffers
 	if (descriptor.pixels.empty() == false)
 	{
-		renderSystem->GetUploadManager()->Commit(mTexture, descriptor.pixels.data(), descriptor.pixels.size());
+		auto cmd = renderSystem->GetCopyCommandBuffer();
+		cmd->Commit(mTexture, descriptor.pixels.data(), descriptor.pixels.size());
 	}
 }
 
@@ -26,7 +27,7 @@ Texture2D::~Texture2D()
 {
 	static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
 	auto device = renderSystem->GetDevice();
-	device->Dispose(mTexture);
+	device->Dispose(renderSystem->GetAllocator(), mTexture);
 }
 
 ShaderResourceIndex Texture2D::GetResourceView() const

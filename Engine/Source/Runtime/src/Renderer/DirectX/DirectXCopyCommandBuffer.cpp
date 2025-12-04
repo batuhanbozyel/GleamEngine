@@ -1,7 +1,7 @@
 #include "gpch.h"
 
 #ifdef USE_DIRECTX_RENDERER
-#include "Renderer/UploadManager.h"
+#include "Renderer/CopyCommandBuffer.h"
 #include "DirectXDevice.h"
 #include "DirectXUtils.h"
 
@@ -9,7 +9,7 @@
 
 using namespace Gleam;
 
-struct UploadManager::Impl
+struct CopyCommandBuffer::Impl
 {
 	IDStorageFactory* factory = nullptr;
 
@@ -43,7 +43,7 @@ struct UploadManager::Impl
 	}
 };
 
-UploadManager::UploadManager(GraphicsDevice* device)
+CopyCommandBuffer::CopyCommandBuffer(GraphicsDevice* device)
 	: mHandle(CreateScope<Impl>())
 	, mDevice(device)
 {
@@ -79,14 +79,9 @@ UploadManager::UploadManager(GraphicsDevice* device)
 	));
 }
 
-UploadManager::~UploadManager()
+CopyCommandBuffer::~CopyCommandBuffer()
 {
-	WaitForID3D12Fence(mHandle->memoryFence, mHandle->waitFenceValue);
-	for (auto buffer : mHandle->tempBuffers)
-	{
-		buffer->Release();
-	}
-	mHandle->tempBuffers.clear();
+	WaitUntilCompleted();
 	
 	mHandle->fileFence->Release();
 	mHandle->fileQueue->Release();
@@ -97,7 +92,7 @@ UploadManager::~UploadManager()
 	mHandle->factory->Release();
 }
 
-void UploadManager::Barrier(const CommandBuffer* cmd) const
+void CopyCommandBuffer::Barrier(const CommandBuffer* cmd) const
 {
 	TArray<D3D12_BUFFER_BARRIER> bufferBarriers;
 	TArray<D3D12_TEXTURE_BARRIER> textureBarriers;
@@ -167,7 +162,7 @@ void UploadManager::Barrier(const CommandBuffer* cmd) const
 	mHandle->textureCopies.clear();
 }
 
-void UploadManager::Execute() const
+void CopyCommandBuffer::Execute() const
 {
 	mHandle->waitFenceValue = mHandle->fenceValue++;
 	mHandle->fileQueue->EnqueueSignal(mHandle->fileFence, mHandle->fenceValue);
@@ -177,7 +172,7 @@ void UploadManager::Execute() const
 	mHandle->memoryQueue->Submit();
 }
 
-void UploadManager::WaitUntilCompleted() const
+void CopyCommandBuffer::WaitUntilCompleted() const
 {
 	mHandle->stagingBufferOffset = 0;
 	WaitForID3D12Fence(mHandle->memoryFence, mHandle->waitFenceValue);
@@ -189,7 +184,7 @@ void UploadManager::WaitUntilCompleted() const
 	mHandle->tempBuffers.clear();
 }
 
-void UploadManager::Commit(const Buffer& buffer, const void* data, size_t size, size_t offset) const
+void CopyCommandBuffer::Commit(const Buffer& buffer, const void* data, size_t size, size_t offset) const
 {
 	auto bufferContents = buffer.GetContents();
 	if (bufferContents == nullptr)
@@ -283,7 +278,7 @@ void UploadManager::Commit(const Buffer& buffer, const void* data, size_t size, 
 	}
 }
 
-void UploadManager::Commit(const Texture& texture, const void* data, size_t size) const
+void CopyCommandBuffer::Commit(const Texture& texture, const void* data, size_t size) const
 {
 	auto dstTexture = static_cast<ID3D12Resource*>(texture.GetHandle());
 	auto size32 = static_cast<uint32_t>(size);

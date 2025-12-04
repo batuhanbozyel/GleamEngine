@@ -1,6 +1,5 @@
 #pragma once
-#include "GraphicsObject.h"
-#include "Container/String.h"
+#include "Heap.h"
 
 namespace Gleam {
 
@@ -10,6 +9,7 @@ class GraphicsDevice;
 struct BufferDescriptor
 {
     TString name;
+	MemoryType memoryType = MemoryType::GPU;
     size_t size = 0;
     
     bool operator==(const BufferDescriptor& other) const
@@ -36,6 +36,15 @@ public:
     {
         
     }
+
+	Buffer(const BufferDescriptor& descriptor, NativeGraphicsHandle handle, ShaderResourceIndex view, void* contents, size_t alignment)
+		: ShaderResource(handle, view)
+		, mDescriptor(descriptor)
+		, mAlignment(alignment)
+		, mContents(contents)
+	{
+		
+	}
     
     void* GetContents() const
     {
@@ -46,6 +55,11 @@ public:
     {
         return mDescriptor.size;
     }
+
+	size_t GetAlignment() const
+	{
+		return mAlignment;
+	}
     
     const BufferDescriptor& GetDescriptor() const
     {
@@ -53,6 +67,8 @@ public:
     }
     
 private:
+
+	size_t mAlignment = 0;
     
 	void* mContents = nullptr;
 
