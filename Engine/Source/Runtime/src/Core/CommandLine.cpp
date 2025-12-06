@@ -17,36 +17,30 @@ static bool IsFlag(const TStringView arg)
 	return not IsNumber(arg) && arg[0] == '-';
 }
 
-static TString NormalizeArg(const TString& arg)
+static TStringView NormalizeArg(const TStringView arg)
 {
 	auto pos = arg.find_first_not_of('-');
 	return arg.substr(pos);
 }
 
-CommandLine::CommandLine(int argc, char* argv[])
-{
-	Parse(argc, argv);
-}
-
 void CommandLine::Parse(int argc, char* argv[])
 {
 	// skip program name at argv[0]
+	TArray<TString> args;
 	for (int i = 1; i < argc; ++i)
 	{
-		mArgs.emplace_back(argv[i]);
+		args.emplace_back(argv[i]);
 	}
 
-	for (size_t i = 0; i < mArgs.size(); ++i)
+	for (size_t i = 0; i < args.size(); ++i)
 	{
-		const TString& arg = mArgs[i];
+		const TString& arg = args[i];
 		if (IsFlag(arg))
 		{
-			TString normalized = NormalizeArg(arg);
-
-			// Check if next argument is a value (not a flag)
-			if (i + 1 < mArgs.size() && !IsFlag(mArgs[i + 1]))
+			TStringView normalized = NormalizeArg(arg);
+			if (i + 1 < args.size() && not IsFlag(args[i + 1]))
 			{
-				mParams.emplace(normalized, mArgs[i + 1]);
+				mParams.emplace(TString(normalized), args[i + 1]);
 				++i; // Skip the value in next iteration
 			}
 			else
@@ -61,14 +55,20 @@ void CommandLine::Parse(int argc, char* argv[])
 	}
 }
 
-bool CommandLine::HasFlag(const TString& flag) const
+bool CommandLine::HasFlag(const TStringView flag) const
 {
-	return mFlags.find(NormalizeArg(flag)) != mFlags.end();
+	return eastl::find_if(mFlags.cbegin(), mFlags.cend(), [&](const auto& name)
+	{
+		return name == NormalizeArg(flag);
+	}) != mFlags.cend();
 }
 
-bool CommandLine::HasParam(const TString& param) const
+bool CommandLine::HasParam(const TStringView param) const
 {
-	return mParams.find(NormalizeArg(param)) != mParams.end();
+	return eastl::find_if(mParams.cbegin(), mParams.cend(), [&](const auto& pair)
+	{
+		return pair.first == NormalizeArg(param);
+	}) != mParams.cend();
 }
 
 const TString& CommandLine::GetPositionalArg(size_t index) const

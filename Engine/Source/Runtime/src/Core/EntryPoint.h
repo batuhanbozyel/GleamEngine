@@ -29,7 +29,8 @@ void* __cdecl operator new[](unsigned __int64 size, unsigned __int64 alignment, 
 
 int main(int argc, char* argv[])
 {
-	Gleam::CommandLine cli(argc, argv);
+	Gleam::CommandLine cli;
+	cli.Parse(argc, argv);
 
 	Gleam::Reflection::Database reflection;
 	reflection.Initialize(Gleam::Filesystem::WorkingDirectory() / "Runtime.Reflection.db");
