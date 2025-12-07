@@ -475,19 +475,23 @@ DirectXDevice::DirectXDevice(RenderSurface* surface, ResourceReleaseQueue* relea
 	: GraphicsDevice(surface, releaseQueue)
 {
 	auto swapchain = static_cast<DirectXSwapchain*>(mSurface);
-#ifdef GDEBUG
-	if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&mD3D12Debug))))
+	if (Globals::CLI->HasFlag("--debug-layer"))
 	{
-		mD3D12Debug->EnableDebugLayer();
-		//mD3D12Debug->SetEnableGPUBasedValidation(true);
-	}
+		if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&mD3D12Debug))))
+		{
+			mD3D12Debug->EnableDebugLayer();
+			if (Globals::CLI->HasFlag("--gpu-based-validation"))
+			{
+				mD3D12Debug->SetEnableGPUBasedValidation(true);
+			}
+		}
 
-	if (SUCCEEDED(swapchain->mFactory->QueryInterface(IID_PPV_ARGS(&mInfoQueue))))
-	{
-		static void* emitWarning = nullptr;
-		DX_CHECK(mInfoQueue->RegisterMessageCallback(DirectXDebugCallback, D3D12_MESSAGE_CALLBACK_FLAG_NONE, emitWarning, &mDebugCallbackCookie));
+		if (SUCCEEDED(swapchain->mFactory->QueryInterface(IID_PPV_ARGS(&mInfoQueue))))
+		{
+			static void* emitWarning = nullptr;
+			DX_CHECK(mInfoQueue->RegisterMessageCallback(DirectXDebugCallback, D3D12_MESSAGE_CALLBACK_FLAG_NONE, emitWarning, &mDebugCallbackCookie));
+		}
 	}
-#endif
 	DX_CHECK(D3D12CreateDevice(swapchain->mAdapter, D3D_FEATURE_LEVEL_12_0, __uuidof(ID3D12Device10), &mHandle));
 
 	mDirectQueue = CreateCommandQueue(D3D12_COMMAND_LIST_TYPE_DIRECT);
@@ -598,7 +602,6 @@ DirectXDevice::~DirectXDevice()
 	mRootSignature->Release();
 	static_cast<ID3D12Device10*>(mHandle)->Release();
 
-#ifdef GDEBUG
 	if (mInfoQueue)
 	{
 		mInfoQueue->UnregisterMessageCallback(mDebugCallbackCookie);
@@ -609,7 +612,6 @@ DirectXDevice::~DirectXDevice()
 	{
 		mD3D12Debug->Release();
 	}
-#endif
 	GLEAM_CORE_INFO("DirectX: Graphics device destroyed.");
 }
 
