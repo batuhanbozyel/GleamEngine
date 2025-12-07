@@ -6,12 +6,15 @@ namespace Gleam {
 
 class Engine;
 class Application;
+class CommandLine;
 
 struct Globals final
 {
 	static inline Engine* Engine;
 
 	static inline Application* GameInstance;
+
+	static inline CommandLine* CLI;
 
 	static inline TString ProjectName;
 

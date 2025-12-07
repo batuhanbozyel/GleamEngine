@@ -5,11 +5,8 @@
 
 #include <d3d12.h>
 #include <dxgi1_6.h>
-
-#ifdef GDEBUG
 #include <d3d12sdklayers.h>
 #include <dxgidebug.h>
-#endif
 
 namespace Gleam {
 
@@ -96,11 +93,9 @@ private:
 
 	DirectXDescriptorHeap CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE type, D3D12_DESCRIPTOR_HEAP_FLAGS flags, UINT capacity) const;
 
-#ifdef GDEBUG
 	DWORD mDebugCallbackCookie = 0;
 	ID3D12InfoQueue1* mInfoQueue = nullptr;
 	ID3D12Debug6* mD3D12Debug = nullptr;
-#endif
 
 	ID3D12CommandQueue* mDirectQueue = nullptr;
 

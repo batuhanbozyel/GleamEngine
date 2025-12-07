@@ -57,7 +57,12 @@ public:
 			OutputToDebugger(msg.c_str());
 		}
 	}
-    
+
+	static void SetLevel(Level lvl)
+	{
+		mLevel = lvl;
+	}
+
 private:
 
 	static constexpr TStringView LogLevelToString(Level lvl)

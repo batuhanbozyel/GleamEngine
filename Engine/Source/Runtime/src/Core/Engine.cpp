@@ -16,6 +16,9 @@ using namespace Gleam;
 
 void Engine::Initialize(const CommandLine& cli)
 {
+	int logLevel = cli("-log-level", static_cast<int>(Logger::Level::Info));
+	Logger::SetLevel(static_cast<Logger::Level>(logLevel));
+
 	// init serialization
 	AddSubsystem<BinarySerializer>();
 	AddSubsystem<JSONSerializer>();

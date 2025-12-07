@@ -3,26 +3,6 @@
 
 using namespace Gleam;
 
-static bool IsNumber(const TStringView arg)
-{
-	std::istringstream istr(arg.data(), arg.size());
-	double number;
-	istr >> number;
-	return !(istr.fail() || istr.bad());
-}
-
-static bool IsFlag(const TStringView arg)
-{
-	GLEAM_ASSERT(arg.empty() == false, "Command argument is empty");
-	return not IsNumber(arg) && arg[0] == '-';
-}
-
-static TStringView NormalizeArg(const TStringView arg)
-{
-	auto pos = arg.find_first_not_of('-');
-	return arg.substr(pos);
-}
-
 void CommandLine::Parse(int argc, char* argv[])
 {
 	// skip program name at argv[0]
@@ -38,10 +18,10 @@ void CommandLine::Parse(int argc, char* argv[])
 		if (IsFlag(arg))
 		{
 			TStringView normalized = NormalizeArg(arg);
-			if (i + 1 < args.size() && not IsFlag(args[i + 1]))
+			auto equalPos = normalized.find('=');
+			if (equalPos != eastl::string::npos)
 			{
-				mParams.emplace(TString(normalized), args[i + 1]);
-				++i; // Skip the value in next iteration
+				mParams.emplace(TString(normalized.substr(0, equalPos)), TString(normalized.substr(equalPos + 1)));
 			}
 			else
 			{
@@ -57,17 +37,19 @@ void CommandLine::Parse(int argc, char* argv[])
 
 bool CommandLine::HasFlag(const TStringView flag) const
 {
+	auto normalized = NormalizeArg(flag);
 	return eastl::find_if(mFlags.cbegin(), mFlags.cend(), [&](const auto& name)
 	{
-		return name == NormalizeArg(flag);
+		return name == normalized;
 	}) != mFlags.cend();
 }
 
 bool CommandLine::HasParam(const TStringView param) const
 {
+	auto normalized = NormalizeArg(param);
 	return eastl::find_if(mParams.cbegin(), mParams.cend(), [&](const auto& pair)
 	{
-		return pair.first == NormalizeArg(param);
+		return pair.first == normalized;
 	}) != mParams.cend();
 }
 
@@ -79,4 +61,24 @@ const TString& CommandLine::GetPositionalArg(size_t index) const
 	}
 	static TString empty;
 	return empty;
+}
+
+bool CommandLine::IsNumber(const TStringView arg)
+{
+	std::istringstream istr(arg.data(), arg.size());
+	double number;
+	istr >> number;
+	return !(istr.fail() || istr.bad());
+}
+
+bool CommandLine::IsFlag(const TStringView arg)
+{
+	GLEAM_ASSERT(arg.empty() == false, "Command argument is empty");
+	return not IsNumber(arg) && arg[0] == '-';
+}
+
+TStringView CommandLine::NormalizeArg(const TStringView arg)
+{
+	auto pos = arg.find_first_not_of('-');
+	return arg.substr(pos);
 }
