@@ -78,20 +78,18 @@ void WorldRenderer::RegisterShadingPipeline(const MaterialDescriptor& material, 
 	if (it == mShadingPipelines.end())
 	{
 		GraphicsPipelineStateDescriptor pipelineDesc = {
-		PipelineStateDescriptor {
 			.blendState = material.blendState,
 			.depthState = material.depthState,
 			.stencilState = material.stencilState,
 			.cullingMode = material.cullingMode,
 			.topology = PrimitiveTopology::Triangles,
 			.alphaToCoverage = false,
-			.wireframe = false
-		}
+			.wireframe = false,
+			.colorFormats = { TextureFormat::R16G16B16A16_SFloat },
+			.depthFormat = TextureFormat::D16_UNorm,
+			.vertexEntry = "meshVertexShader",
+			.fragmentEntry = material.surfaceShader
 		};
-		pipelineDesc.colorFormats = { TextureFormat::R16G16B16A16_SFloat };
-		pipelineDesc.depthFormat = TextureFormat::D16_UNorm;
-		pipelineDesc.vertexEntry = "meshVertexShader";
-		pipelineDesc.fragmentEntry = material.surfaceShader;
 		auto pipeline = mDevice->CreateGraphicsPipeline(pipelineDesc);
 
 		mShadingPipelines.emplace_hint(it, eastl::piecewise_construct,

@@ -93,6 +93,36 @@ private:
 
 };
 
+class ComputePipeline : public Pipeline
+{
+	friend class GraphicsDevice;
+
+public:
+
+	ComputePipeline() = default;
+
+	ComputePipeline(const ComputePipeline& other) = default;
+
+	ComputePipeline& operator=(const ComputePipeline& other) = default;
+
+	ComputePipeline(const ComputePipelineStateDescriptor& descriptor)
+		: Pipeline(PipelineHandle{ eastl::hash<ComputePipelineStateDescriptor>()(descriptor) })
+		, mDescriptor(descriptor)
+	{
+
+	}
+
+	const ComputePipelineStateDescriptor& GetDescriptor() const
+	{
+		return mDescriptor;
+	}
+
+private:
+
+	ComputePipelineStateDescriptor mDescriptor;
+
+};
+
 struct GraphicsPipelineHandle : PipelineHandle
 {
 	NO_DISCARD operator GraphicsPipeline() const
@@ -101,6 +131,16 @@ struct GraphicsPipelineHandle : PipelineHandle
 	}
 
 	NO_DISCARD const GraphicsPipeline& GetPipeline() const;
+};
+
+struct ComputePipelineHandle : PipelineHandle
+{
+	NO_DISCARD operator ComputePipeline() const
+	{
+		return GetPipeline();
+	}
+
+	NO_DISCARD const ComputePipeline& GetPipeline() const;
 };
 
 } // namespace Gleam
@@ -124,6 +164,15 @@ struct std::hash<Gleam::GraphicsPipelineHandle>
 };
 
 template <>
+struct std::hash<Gleam::ComputePipelineHandle>
+{
+	size_t operator()(Gleam::ComputePipelineHandle handle) const
+	{
+		return handle.data;
+	}
+};
+
+template <>
 struct eastl::hash<Gleam::PipelineHandle>
 {
 	size_t operator()(Gleam::PipelineHandle handle) const
@@ -138,5 +187,14 @@ struct eastl::hash<Gleam::GraphicsPipelineHandle>
 	size_t operator()(Gleam::GraphicsPipelineHandle handle) const
 	{
 		return std::hash<Gleam::GraphicsPipelineHandle>()(handle);
+	}
+};
+
+template <>
+struct eastl::hash<Gleam::ComputePipelineHandle>
+{
+	size_t operator()(Gleam::ComputePipelineHandle handle) const
+	{
+		return std::hash<Gleam::ComputePipelineHandle>()(handle);
 	}
 };

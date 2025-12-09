@@ -30,6 +30,8 @@ public:
 
     Shader CreateShader(const TString& entryPoint, ShaderStage stage);
 
+	ComputePipelineHandle CreateComputePipeline(const ComputePipelineStateDescriptor& pipelineDesc);
+
 	GraphicsPipelineHandle CreateGraphicsPipeline(const GraphicsPipelineStateDescriptor& pipelineDesc);
 
     void Dispose(Heap& heap);
@@ -40,7 +42,11 @@ public:
 
 	void Dispose(Shader& shader);
 
+	void Dispose(ComputePipeline& pipeline);
+
 	void Dispose(GraphicsPipeline& pipeline);
+
+	const ComputePipeline& GetComputePipeline(ComputePipelineHandle handle) const;
 
 	const GraphicsPipeline& GetGraphicsPipeline(GraphicsPipelineHandle handle) const;
     
@@ -55,6 +61,8 @@ protected:
 
 	HashMap<TString, HashSet<PipelineHandle>> mShaderPipelineReferences;
 
+	HashMap<ComputePipelineHandle, ComputePipeline> mComputePipelineCache;
+
 	HashMap<GraphicsPipelineHandle, GraphicsPipeline> mGraphicsPipelineCache;
 
 	RenderSurface* mSurface = nullptr;
@@ -64,6 +72,8 @@ protected:
 private:
 
 	Shader CompileShader(const TString& entryPoint, ShaderStage stage);
+
+	ComputePipeline CompileComputePipeline(const ComputePipelineStateDescriptor& pipelineDesc);
 
 	GraphicsPipeline CompileGraphicsPipeline(const GraphicsPipelineStateDescriptor& pipelineDesc);
 

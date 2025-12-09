@@ -243,17 +243,36 @@ void RenderSystem::RecompileShader(const TString& entryPoint)
 
 				for (auto pipelineHash : mDevice->mShaderPipelineReferences[entryPoint])
 				{
-					for (auto& [handle, pipeline] : mDevice->mGraphicsPipelineCache)
+					if (shader.GetStage() == ShaderStage::Compute)
 					{
-						if (handle == pipelineHash)
+						for (auto& [handle, pipeline] : mDevice->mComputePipelineCache)
 						{
-							auto newPipeline = mDevice->CompileGraphicsPipeline(pipeline.GetDescriptor());
-							if (newPipeline.IsValid())
+							if (handle == pipelineHash)
 							{
-								mDevice->Dispose(pipeline);
-								pipeline = newPipeline;
+								auto newPipeline = mDevice->CompileComputePipeline(pipeline.GetDescriptor());
+								if (newPipeline.IsValid())
+								{
+									mDevice->Dispose(pipeline);
+									pipeline = newPipeline;
+								}
+								break;
 							}
-							break;
+						}
+					}
+					else if (shader.GetStage() == ShaderStage::Vertex || shader.GetStage() == ShaderStage::Fragment)
+					{
+						for (auto& [handle, pipeline] : mDevice->mGraphicsPipelineCache)
+						{
+							if (handle == pipelineHash)
+							{
+								auto newPipeline = mDevice->CompileGraphicsPipeline(pipeline.GetDescriptor());
+								if (newPipeline.IsValid())
+								{
+									mDevice->Dispose(pipeline);
+									pipeline = newPipeline;
+								}
+								break;
+							}
 						}
 					}
 				}

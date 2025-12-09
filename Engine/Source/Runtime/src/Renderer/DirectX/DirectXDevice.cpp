@@ -297,6 +297,25 @@ Shader GraphicsDevice::CompileShader(const TString& entryPoint, ShaderStage stag
 	return shader;
 }
 
+ComputePipeline GraphicsDevice::CompileComputePipeline(const ComputePipelineStateDescriptor& pipelineDesc)
+{
+	ComputePipeline pipeline(pipelineDesc);
+	auto shader = CreateShader(pipelineDesc.entryPoint, ShaderStage::Compute);
+
+	D3D12_COMPUTE_PIPELINE_STATE_DESC psoDesc{};
+	psoDesc.pRootSignature = static_cast<DirectXDevice*>(this)->mRootSignature;
+	psoDesc.CS = *static_cast<D3D12_SHADER_BYTECODE*>(shader.GetHandle());
+	DX_CHECK(static_cast<ID3D12Device10*>(mHandle)->CreateComputePipelineState(&psoDesc, __uuidof(ID3D12PipelineState*), &pipeline.mHandle));
+
+	TStringStream ss;
+	ss << "ComputePipeline::" << shader.GetEntryPoint();
+
+	TWString pipelineName = ss.str();
+	static_cast<ID3D12PipelineState*>(pipeline.mHandle)->SetName(pipelineName.c_str());
+
+	return pipeline;
+}
+
 GraphicsPipeline GraphicsDevice::CompileGraphicsPipeline(const GraphicsPipelineStateDescriptor& pipelineDesc)
 {
 	GraphicsPipeline pipeline(pipelineDesc);
@@ -461,6 +480,16 @@ void GraphicsDevice::Dispose(Shader& shader)
 	shader.mHandle = nullptr;
 }
 
+void GraphicsDevice::Dispose(ComputePipeline& pipeline)
+{
+	auto resource = static_cast<ID3D12PipelineState*>(pipeline.mHandle);
+	mReleaseQueue->AddResource([resource]()
+	{
+		resource->Release();
+	}, static_cast<Swapchain*>(mSurface)->GetFrameIndex());
+	pipeline.mHandle = nullptr;
+}
+
 void GraphicsDevice::Dispose(GraphicsPipeline& pipeline)
 {
 	auto resource = static_cast<ID3D12PipelineState*>(pipeline.mHandle);
@@ -577,6 +606,12 @@ DirectXDevice::~DirectXDevice()
 		}
 	}
 	mFrameContext.clear();
+
+	for (auto& [_, pipeline] : mComputePipelineCache)
+	{
+		static_cast<ID3D12PipelineState*>(pipeline.GetHandle())->Release();
+	}
+	mComputePipelineCache.clear();
 
 	for (auto& [_, pipeline] : mGraphicsPipelineCache)
 	{

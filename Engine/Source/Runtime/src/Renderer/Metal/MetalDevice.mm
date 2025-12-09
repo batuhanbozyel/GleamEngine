@@ -266,6 +266,18 @@ Shader GraphicsDevice::CompileShader(const TString& entryPoint, ShaderStage stag
     return shader;
 }
 
+ComputePipeline GraphicsDevice::CompileComputePipeline(const ComputePipelineStateDescriptor& pipelineDesc)
+{
+    ComputePipeline pipeline(pipelineDesc);
+	auto shader = CreateShader(pipelineDesc.entryPoint, ShaderStage::Compute);
+
+    MTLComputePipelineDescriptor* pipelineDescriptor = [MTLComputePipelineDescriptor new];
+    pipelineDescriptor.computeFunction = shader.GetHandle();
+    pipeline.mHandle = [mHandle newComputePipelineStateWithDescriptor:pipelineDescriptor options:MTLPipelineOptionNone completionHandler:nil];
+    GLEAM_ASSERT(pipeline.mHandle, "Metal: Compute pipeline state creation failed.");
+    return pipeline;
+}
+
 GraphicsPipeline GraphicsDevice::CompileGraphicsPipeline(const GraphicsPipelineStateDescriptor& pipelineDesc)
 {
     GraphicsPipeline pipeline(pipelineDesc);
@@ -362,6 +374,11 @@ void GraphicsDevice::Dispose(Shader& shader)
 	shader.mHandle = nil;
 }
 
+void GraphicsDevice::Dispose(ComputePipeline& pipeline)
+{
+    pipeline.mHandle = nil;
+}
+
 void GraphicsDevice::Dispose(GraphicsPipeline& pipeline)
 {
     pipeline.mHandle = nil;
@@ -450,6 +467,8 @@ MetalDevice::MetalDevice(RenderSurface* surface, ResourceReleaseQueue* releaseQu
 MetalDevice::~MetalDevice()
 {
     mShaderCache.clear();
+    mComputePipelineCache.clear();
+    mGraphicsPipelineCache.clear();
     IRRootSignatureDestroy(mRootSignature);
     
     // Destroy descriptor heap
