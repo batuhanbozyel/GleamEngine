@@ -42,10 +42,7 @@ void RenderSystem::Initialize(Engine* engine)
 
 void RenderSystem::Shutdown()
 {
-	mCopyCommandBuffer->WaitUntilCompleted();
 	mCopyCommandBuffer.reset();
-
-	mCommandBuffers[mSwapchain->GetFrameIndex()]->WaitUntilCompleted();
 	mCommandBuffers.clear();
 
 	for (auto renderer : mRenderers)

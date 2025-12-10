@@ -29,8 +29,23 @@ MetalSwapchain::MetalSwapchain()
 
 MetalSwapchain::~MetalSwapchain()
 {
+    for (uint32_t i = 0; i < mMaxFramesInFlight; ++i)
+    {
+        dispatch_semaphore_wait(mImageAcquireSemaphore, DISPATCH_TIME_FOREVER);
+    }
+    
+    // we need to revert back to its initial value for some reason????
+    for (uint32_t i = 0; i < mMaxFramesInFlight; ++i)
+    {
+        dispatch_semaphore_signal(mImageAcquireSemaphore);
+    }
+    
     mImageAcquireSemaphore = nil;
     mHandle = nil;
+    mSurface = nil;
+    mTextures.clear();
+    
+    SDL_Metal_DestroyView(mSurface);
     mSurface = nil;
 }
 
@@ -38,7 +53,6 @@ void MetalSwapchain::Configure(MetalDevice* device, const RendererConfig& config
 {
     mHandle.device = device->GetHandle();
 	mCurrentFrameIndex = 0;
-	mDevice = device;
     
 #ifdef PLATFORM_MACOS
     mHandle.displaySyncEnabled = config.vsync ? YES : NO;
@@ -65,7 +79,7 @@ void MetalSwapchain::Configure(MetalDevice* device, const RendererConfig& config
     int width, height;
     auto windowSystem = Globals::Engine->GetSubsystem<WindowSystem>();
     SDL_GetWindowSizeInPixels(windowSystem->GetSDLWindow(), &width, &height);
-    Resize(mDevice, Size((float)width, (float)height));
+    Resize(device, Size((float)width, (float)height));
 }
 
 void MetalSwapchain::Resize(GraphicsDevice* device, const Size& size)
@@ -76,7 +90,7 @@ void MetalSwapchain::Resize(GraphicsDevice* device, const Size& size)
     mCurrentDrawable = nil;
     for (uint32_t i = 0; i < mMaxFramesInFlight; ++i)
     {
-        mTextures[i] = CreateSwapchainBuffer(device, i);
+        mTextures[i] = CreateSwapchainBuffer(i);
     }
 }
 
@@ -111,7 +125,7 @@ void MetalSwapchain::Present(const CommandBuffer* cmd)
     mCurrentFrameIndex = (mCurrentFrameIndex + 1) % mMaxFramesInFlight;
 }
 
-Texture MetalSwapchain::CreateSwapchainBuffer(GraphicsDevice* device, uint32_t buffer)
+Texture MetalSwapchain::CreateSwapchainBuffer(uint32_t buffer)
 {
     TStringStream resourceName;
     resourceName << "Swapchain::Drawable_" << buffer;

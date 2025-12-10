@@ -29,11 +29,9 @@ public:
 
 private:
 	
-	Texture CreateSwapchainBuffer(GraphicsDevice* device, uint32_t buffer);
+	Texture CreateSwapchainBuffer(uint32_t buffer);
 	
 	void* mSurface = nullptr;
-	
-	MetalDevice* mDevice = nullptr;
 	
 	CAMetalLayer* mHandle = nullptr;
 	

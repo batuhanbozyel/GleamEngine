@@ -70,6 +70,7 @@ CopyCommandBuffer::CopyCommandBuffer(GraphicsDevice* device)
 
 CopyCommandBuffer::~CopyCommandBuffer()
 {
+    WaitUntilCompleted();
     for (void* buffer : mHandle->tempBuffers)
     {
         CFRelease(buffer);
@@ -113,7 +114,6 @@ void CopyCommandBuffer::WaitUntilCompleted() const
         [mHandle->fileCommandBuffer waitUntilCompleted];
         mHandle->fileCommandBuffer = nil;
     }
-    
     mHandle->stagingBufferOffset = 0;
     
     for (void* buffer : mHandle->tempBuffers)

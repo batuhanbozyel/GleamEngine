@@ -30,7 +30,7 @@ CommandBuffer::CommandBuffer(GraphicsDevice* device)
 
 CommandBuffer::~CommandBuffer()
 {
-    
+    WaitUntilCompleted();
 }
 
 void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, const TStringView debugName) const
@@ -213,11 +213,6 @@ void CommandBuffer::WaitUntilCompleted() const
 NativeGraphicsHandle CommandBuffer::GetHandle() const
 {
     return mHandle->commandBuffer;
-}
-
-NativeGraphicsHandle CommandBuffer::GetActiveRenderPass() const
-{
-    return mHandle->renderCommandEncoder;
 }
 
 #endif
