@@ -140,6 +140,11 @@ void CommandBuffer::SetPushConstant(const void* data, uint32_t size) const
 	mHandle->commandList->SetGraphicsRoot32BitConstants(PUSH_CONSTANT_SLOT, size / sizeof(uint32_t), data, 0);
 }
 
+void CommandBuffer::Dispatch(uint32_t x, uint32_t y, uint32_t z) const
+{
+	mHandle->commandList->Dispatch(x, y, z);
+}
+
 void CommandBuffer::Draw(uint32_t vertexCount, uint32_t instanceCount) const
 {
 	mHandle->commandList->DrawInstanced(vertexCount, instanceCount, 0, 0);

@@ -61,6 +61,8 @@ public:
         SetPushConstant(&t, sizeof(T));
     }
 
+	void Dispatch(uint32_t x, uint32_t y, uint32_t z) const;
+
     void Draw(uint32_t vertexCount, uint32_t instanceCount = 1) const;
 
 	void DrawIndexed(const Buffer& indexBuffer, IndexType type,

@@ -96,3 +96,37 @@ float3 ClipSpaceToWorldSpace(float3 position, float4x4 invViewMatrix, float4x4 i
     float4 worldPosition = mul(invViewMatrix, viewPosition);
     return worldPosition.xyz;
 }
+
+// - r0: ray origin
+// - rd: normalized ray direction
+// - s0: sphere center
+// - sR: sphere radius
+// - Returns distance from r0 to first intersecion with sphere,
+//   or -1.0 if no intersection.
+float RaySphereIntersectNearest(float3 r0, float3 rd, float3 s0, float sR)
+{
+	float a = dot(rd, rd);
+	float3 s0_r0 = r0 - s0;
+	float b = 2.0 * dot(rd, s0_r0);
+	float c = dot(s0_r0, s0_r0) - (sR * sR);
+	float delta = b * b - 4.0 * a * c;
+	if (delta < 0.0 || a == 0.0)
+	{
+		return -1.0;
+	}
+	float sol0 = (-b - sqrt(delta)) / (2.0 * a);
+	float sol1 = (-b + sqrt(delta)) / (2.0 * a);
+	if (sol0 < 0.0 && sol1 < 0.0)
+	{
+		return -1.0;
+	}
+	if (sol0 < 0.0)
+	{
+		return max(0.0, sol1);
+	}
+	else if (sol1 < 0.0)
+	{
+		return max(0.0, sol0);
+	}
+	return max(0.0, min(sol0, sol1));
+}

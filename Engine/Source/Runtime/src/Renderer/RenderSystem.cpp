@@ -136,6 +136,7 @@ void RenderSystem::Render(const World* world)
 		sceneData.sceneTarget = graph.ImportBackbuffer(sceneTarget);
 		sceneData.sceneProxy = world->GetSystem<RenderSceneProxy>();
 		sceneData.world = world;
+		sceneData.camera.resolution = Float2(cameraComponent.orthographicSize * cameraComponent.aspectRatio, cameraComponent.orthographicSize);
 		sceneData.camera.viewMatrix = Float4x4::LookTo(cameraEntity.GetWorldPosition(), cameraEntity.ForwardVector(), cameraEntity.UpVector());
 
 		if (cameraComponent.projectionType == ProjectionType::Perspective)
@@ -144,9 +145,7 @@ void RenderSystem::Render(const World* world)
 		}
 		else
 		{
-			float width = cameraComponent.orthographicSize * cameraComponent.aspectRatio;
-			float height = cameraComponent.orthographicSize;
-			sceneData.camera.projectionMatrix = Float4x4::Ortho(width, height, cameraComponent.nearPlane, cameraComponent.farPlane);
+			sceneData.camera.projectionMatrix = Float4x4::Ortho(sceneData.camera.resolution.x, sceneData.camera.resolution.y, cameraComponent.nearPlane, cameraComponent.farPlane);
 		}
 
 		sceneData.camera.viewProjectionMatrix = sceneData.camera.projectionMatrix * sceneData.camera.viewMatrix;

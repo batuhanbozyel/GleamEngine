@@ -38,6 +38,11 @@ struct ImGuiResources
 	uint32_t vertexOffset;
 };
 
+struct TonemapUniforms
+{
+	Texture2DResourceView<float4> sceneColor;
+};
+
 struct MeshInstanceData
 {
 	float4x4 transform;
@@ -58,11 +63,6 @@ struct MeshPassResources
 	BufferResourceView materialBuffer;
 };
 
-struct TonemapUniforms
-{
-	Texture2DResourceView<float4> sceneColor;
-};
-
 struct SurfaceInput
 {
 	float4 position;
@@ -78,6 +78,47 @@ struct SurfaceOutput
 	float3 normal;
 	float metallic;
 	float roughness;
+};
+
+struct SkyAtmosphereParameters
+{
+	// Radius of the planet (center to ground)
+	float bottomRadius;
+	// Maximum considered atmosphere height (center to atmosphere top)
+	float topRadius;
+
+	// Rayleigh scattering exponential distribution scale in the atmosphere
+	float rayleighDensityExpScale;
+	// Rayleigh scattering coefficients
+	float3 rayleighScattering;
+
+	// Mie scattering exponential distribution scale in the atmosphere
+	float mieDensityExpScale;
+	// Mie scattering coefficients
+	float3 mieScattering;
+	// Mie extinction coefficients
+	float3 mieExtinction;
+	// Mie absorption coefficients
+	float3 mieAbsorption;
+	// Mie phase function excentricity
+	float miePhaseG;
+
+	// Another medium type in the atmosphere
+	float absorptionDensity0LayerWidth;
+	float absorptionDensity0ConstantTerm;
+	float absorptionDensity0LinearTerm;
+	float absorptionDensity1ConstantTerm;
+	float absorptionDensity1LinearTerm;
+	// This other medium only absorb light, e.g. useful to represent ozone in the earth atmosphere
+	float3 absorptionExtinction;
+
+	// The albedo of the ground.
+	float3 groundAlbedo;
+};
+
+struct SkyAtmosphereTransmittanceLutUniforms
+{
+	ShaderResourceIndex texture;
 };
 
 } // namespace Gleam
