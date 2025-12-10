@@ -1,6 +1,8 @@
 #pragma once
 #include <Reflection/Macro.h>
 
+#include <cstddef>
+
 namespace Gleam {
 
 GENUM(TextureFormat, "B87B25FD-841E-45C8-A2D4-27540B268A52", Serializable)

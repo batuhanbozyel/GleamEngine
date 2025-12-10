@@ -117,13 +117,13 @@ public:
 	template<class T, class...Args>
 	T& emplace(Args&&... args) noexcept
 	{
-        return data[entt::type_hash<T>().value()].emplace<T>(T{std::forward<Args>(args)...});
+        return data[entt::type_hash<T>().value()].template emplace<T>(T{std::forward<Args>(args)...});
 	}
     
     template<class T>
     T& emplace(const T& obj)
     {
-        return data[entt::type_hash<T>().value()].emplace<T>(obj);
+        return data[entt::type_hash<T>().value()].template emplace<T>(obj);
     }
 
 	void clear()

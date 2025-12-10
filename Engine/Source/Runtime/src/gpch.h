@@ -101,6 +101,8 @@
 
 #ifdef PLATFORM_WINDOWS
 #include <windows.h>
+#else
+#include <sys/stat.h>
 #endif
 
 #ifndef __GLEAM_REFLECTION__

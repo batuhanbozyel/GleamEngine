@@ -119,9 +119,6 @@ static IRStaticSamplerDescriptor CreateStaticSampler(const SamplerState& sampler
 
 Heap GraphicsDevice::CreateHeap(const HeapDescriptor& descriptor)
 {
-    Heap heap(descriptor);
-    heap.mDevice = this;
-    
     MTLResourceOptions resourceOptions = MemoryTypeToMTLResourceOption(descriptor.memoryType) | MTLResourceHazardTrackingModeTracked; // TODO: Remove hazard tracking when proper resource synchronization is implemented
     MTLSizeAndAlign sizeAndAlign = [mHandle heapBufferSizeAndAlignWithLength:descriptor.size options:resourceOptions];
     
@@ -130,6 +127,7 @@ Heap GraphicsDevice::CreateHeap(const HeapDescriptor& descriptor)
     desc.resourceOptions = resourceOptions;
     desc.size = Utils::AlignUp(sizeAndAlign.size, sizeAndAlign.align);
 
+    Heap heap(descriptor);
     heap.mHandle = [mHandle newHeapWithDescriptor:desc];
     heap.mDescriptor.size = sizeAndAlign.size;
     heap.mAlignment = sizeAndAlign.align;
@@ -159,7 +157,7 @@ Texture GraphicsDevice::CreateTexture(GPUAllocator* allocator, const TextureDesc
     textureDesc.usage = TextureUsageToMTLTextureUsage(descriptor.usage);
     textureDesc.storageMode = MTLStorageModePrivate; // TODO: add support for cpu visible textures
 
-    MTLSizeAndAlign sizeAndAlign = [mHandle heapBufferSizeAndAlignWithLength:descriptor.size options:MTLResourceStorageModePrivate];
+    MTLSizeAndAlign sizeAndAlign = [mHandle heapTextureSizeAndAlignWithDescriptor:textureDesc];
     MemoryRequirements memoryRequirements =
 	{
 		.size = sizeAndAlign.size,
@@ -169,7 +167,7 @@ Texture GraphicsDevice::CreateTexture(GPUAllocator* allocator, const TextureDesc
     GPUAllocation allocation = allocator->Allocate(memoryRequirements);
 
     id<MTLHeap> heap = allocation.block->heap.GetHandle();
-    id<MTLTexture> baseTexture = [heap newTextureWithDescriptor:textureDesc];
+    id<MTLTexture> baseTexture = [heap newTextureWithDescriptor:textureDesc offset:allocation.offset];
     id<MTLTexture> textureView = [baseTexture newTextureViewWithPixelFormat:baseTexture.pixelFormat
                                                    textureType:descriptor.dimension == TextureDimension::TextureCube ? MTLTextureTypeCubeArray : MTLTextureType2DArray
                                                         levels:NSMakeRange(0, texture.mMipMapLevels)
@@ -182,7 +180,7 @@ Texture GraphicsDevice::CreateTexture(GPUAllocator* allocator, const TextureDesc
 
     texture.mHandle = baseTexture;
     texture.mView = textureView;
-    texture.mResourceView = Utils::IsDepthFormat(descriptor.format) ? InvalidResourceIndex : CreateResourceView(texture);
+    texture.mResourceView = Utils::IsDepthFormat(descriptor.format) ? InvalidResourceIndex : static_cast<MetalDevice*>(this)->CreateResourceView(texture);
     return texture;
 }
 
@@ -214,7 +212,7 @@ Buffer GraphicsDevice::CreateBuffer(GPUAllocator* allocator, const BufferDescrip
     buffer.mHandle = mtlBuffer;
     buffer.mContents = contents;
     buffer.mAlignment = 4;
-    buffer.mResourceView = static_cast<MetalDevice*>(mDevice)->CreateResourceView(buffer);
+    buffer.mResourceView = static_cast<MetalDevice*>(this)->CreateResourceView(buffer);
     return buffer;
 }
 
@@ -222,7 +220,7 @@ Shader GraphicsDevice::CompileShader(const TString& entryPoint, ShaderStage stag
 {
     Shader shader(entryPoint, stage);
     auto shaderPath = Globals::BuiltinAssetsDirectory/"Shaders";
-    File shaderFile = Filesystem::Open(shaderPath.append(entryPoint + ".dxil"), FileType::Binary);
+    File shaderFile = Filesystem::Open(shaderPath.Append(entryPoint + ".dxil"), FileType::Binary);
     auto shaderCode = shaderFile.Read();
     auto dxil = IRObjectCreateFromDXIL((uint8_t*)shaderCode.data(), shaderCode.size(), IRBytecodeOwnershipNone);
     

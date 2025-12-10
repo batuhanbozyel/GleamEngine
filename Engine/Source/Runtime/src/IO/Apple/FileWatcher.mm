@@ -44,29 +44,29 @@ struct FileWatcher::Handle
                 // TODO: implement support for subdirectories
                 if (flags & kFSEventStreamEventFlagItemRemoved)
                 {
-                    GLEAM_CORE_INFO("FileWatcher file removed: {}", path.string());
+                    GLEAM_CORE_INFO("FileWatcher file removed: {}", path.String());
                     watcher->handler(path, FileWatchEvent::Removed);
                     break;
                 }
             }
             else if (flags & kFSEventStreamEventFlagItemCreated)
             {
-                GLEAM_CORE_INFO("FileWatcher file added: {}", path.string());
+                GLEAM_CORE_INFO("FileWatcher file added: {}", path.String());
                 watcher->handler(path, FileWatchEvent::Added);
             }
             else if (flags & kFSEventStreamEventFlagItemRemoved)
             {
-                GLEAM_CORE_INFO("FileWatcher file removed: {}", path.string());
+                GLEAM_CORE_INFO("FileWatcher file removed: {}", path.String());
                 watcher->handler(path, FileWatchEvent::Removed);
             }
             else if (flags & (kFSEventStreamEventFlagItemRenamed))
             {
-                GLEAM_CORE_INFO("FileWatcher file renamed: {}", path.string());
+                GLEAM_CORE_INFO("FileWatcher file renamed: {}", path.String());
                 watcher->handler(path, FileWatchEvent::Renamed);
             }
             else if (flags & (kFSEventStreamEventFlagItemModified))
             {
-                GLEAM_CORE_INFO("FileWatcher file modified: {}", path.string());
+                GLEAM_CORE_INFO("FileWatcher file modified: {}", path.String());
                 watcher->handler(path, FileWatchEvent::Modified);
             }
             // default
@@ -99,11 +99,11 @@ FileWatcher::Handle* FileWatcher::AddWatch(const Path& dir, FileWatchHandler&& h
 {
     if (Filesystem::IsDirectory(dir) == false)
 	{
-        GLEAM_CORE_ERROR("FileWatcher requires directory: {0}", dir.string());
+        GLEAM_CORE_ERROR("FileWatcher requires directory: {0}", dir.String());
 		return nullptr;
 	}
     
-    CFStringRef pathCF = CFStringCreateWithCString(NULL, dir.c_str(), kCFStringEncodingUTF8);
+    CFStringRef pathCF = CFStringCreateWithCString(NULL, dir.String().c_str(), kCFStringEncodingUTF8);
     CFArrayRef pathsCF = CFArrayCreate(NULL, (const void**)&pathCF, 1, NULL);
     
     Handle* watcher = new Handle(dir, std::forward<FileWatchHandler>(handler));

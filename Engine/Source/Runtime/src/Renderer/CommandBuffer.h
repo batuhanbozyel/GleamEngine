@@ -96,8 +96,6 @@ public:
 
     NativeGraphicsHandle GetHandle() const;
 
-    NativeGraphicsHandle GetActiveRenderPass() const;
-
 private:
     
     void SetConstantBuffer(const void* data, uint32_t size, uint32_t slot) const;
