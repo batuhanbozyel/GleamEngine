@@ -25,7 +25,7 @@ public:
 	virtual ~AssetPackage() = default;
 	
 	template<typename T>
-	bool ImportReference(const Gleam::Path& path, typename const T::ImportSettings& settings)
+	bool ImportReference(const Gleam::Path& path, const T::ImportSettings& settings)
 	{
 		auto package = T(mAssetManager, mRegistry);
 		if (package.Import(path, settings))

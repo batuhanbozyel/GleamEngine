@@ -200,7 +200,7 @@ public:
 
 	operator std::filesystem::path() const
 	{
-		return std::filesystem::path(mPath);
+		return std::filesystem::path(static_cast<const std::wstring&>(mPath));
 	}
 
 	bool HasExtension() const
@@ -425,12 +425,12 @@ public:
 
 	bool IsRelative() const
 	{
-		return std::filesystem::path(mPath).is_relative();
+		return std::filesystem::path(static_cast<const std::wstring&>(mPath)).is_relative();
 	}
 
 	bool IsAbsolute() const
 	{
-		return std::filesystem::path(mPath).is_absolute();
+		return std::filesystem::path(static_cast<const std::wstring&>(mPath)).is_absolute();
 	}
 
 	Path& MakePreferred()
