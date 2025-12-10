@@ -287,9 +287,4 @@ NativeGraphicsHandle CommandBuffer::GetHandle() const
 	return mHandle->commandList;
 }
 
-NativeGraphicsHandle CommandBuffer::GetActiveRenderPass() const
-{
-	return nullptr;
-}
-
 #endif

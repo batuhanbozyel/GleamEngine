@@ -19,7 +19,7 @@ struct CopyCommandBuffer::Impl
     void* stagingBufferPtr = nullptr;
     size_t stagingBufferOffset = 0;
     
-    TArray<id<MTLBuffer>> tempBuffers;
+    TArray<void*> tempBuffers;
     
     void AllocateMemoryCommandBuffer()
     {
@@ -70,14 +70,25 @@ CopyCommandBuffer::CopyCommandBuffer(GraphicsDevice* device)
 
 CopyCommandBuffer::~CopyCommandBuffer()
 {
+    WaitUntilCompleted();
+    for (void* buffer : mHandle->tempBuffers)
+    {
+        CFRelease(buffer);
+    }
     mHandle->tempBuffers.clear();
+    
     mHandle->stagingBuffer = nil;
     mHandle->fileCommandQueue = nil;
     mHandle->fileCommandBuffer = nil;
     mHandle->memoryCommandBuffer = nil;
 }
 
-void CopyCommandBuffer::Execute(const CommandBuffer* cmd) const
+void CopyCommandBuffer::Barrier(const CommandBuffer* cmd) const
+{
+    // noop
+}
+
+void CopyCommandBuffer::Execute() const
 {
     if (mHandle->fileCommandBuffer != nil)
     {
@@ -103,8 +114,12 @@ void CopyCommandBuffer::WaitUntilCompleted() const
         [mHandle->fileCommandBuffer waitUntilCompleted];
         mHandle->fileCommandBuffer = nil;
     }
-    
     mHandle->stagingBufferOffset = 0;
+    
+    for (void* buffer : mHandle->tempBuffers)
+    {
+        CFRelease(buffer);
+    }
     mHandle->tempBuffers.clear();
 }
 
@@ -130,7 +145,7 @@ void CopyCommandBuffer::Commit(const Buffer& buffer, const void* data, size_t si
         else
         {
             id<MTLBuffer> srcBuffer = [mDevice->GetHandle() newBufferWithBytes:data length:size options:MTLResourceStorageModeShared];
-            mHandle->tempBuffers.push_back(srcBuffer);
+            mHandle->tempBuffers.push_back((__bridge_retained void*)srcBuffer);
             
             [blitCommandEncoder copyFromBuffer:srcBuffer sourceOffset:0 toBuffer:dstBuffer destinationOffset:offset size:size];
         }
@@ -173,7 +188,7 @@ void CopyCommandBuffer::Commit(const Texture& texture, const void* data, size_t 
     else
     {
         id<MTLBuffer> srcBuffer = [mDevice->GetHandle() newBufferWithBytes:data length:size options:MTLResourceStorageModeShared];
-        mHandle->tempBuffers.push_back(srcBuffer);
+        mHandle->tempBuffers.push_back((__bridge_retained void*)srcBuffer);
         
         [blitCommandEncoder copyFromBuffer:srcBuffer
                               sourceOffset:0

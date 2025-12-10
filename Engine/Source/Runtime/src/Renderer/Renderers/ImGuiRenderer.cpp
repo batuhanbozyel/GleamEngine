@@ -157,8 +157,8 @@ void ImGuiRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 			vtxDest += drawList->VtxBuffer.Size;
 		}
 
-		Float4x4 projMatrix = Float4x4::Ortho(0, (float)mSurface->GetSize().width,
-											  (float)mSurface->GetSize().height, 0,
+		Float4x4 projMatrix = Float4x4::Ortho(0, (float)mSurface->GetSize().width / io.DisplayFramebufferScale.x,
+											  (float)mSurface->GetSize().height / io.DisplayFramebufferScale.y, 0,
 											  -1, 1);
 
 		RenderPassDescriptor renderPassDesc;

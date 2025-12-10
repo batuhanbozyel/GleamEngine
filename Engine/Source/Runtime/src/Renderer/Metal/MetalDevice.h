@@ -44,16 +44,16 @@ public:
 	id<MTLCommandBuffer> AllocateCommandBuffer() const;
 	
 	IRRootSignature* GetGlobalRootSignature() const;
-    
-private:
-
-	virtual void Configure(const RendererConfig& config) override;
-
+	
 	ShaderResourceIndex CreateResourceView(const Buffer& buffer);
 
 	ShaderResourceIndex CreateResourceView(const Texture& texture);
 
 	void ReleaseResourceView(ShaderResourceIndex view);
+    
+private:
+
+	virtual void Configure(const RendererConfig& config) override;
     
     MetalDescriptorHeap CreateDescriptorHeap(uint32_t capacity) const;
 
