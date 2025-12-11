@@ -1,15 +1,16 @@
-#include "Common.hlsli"
-#include "ShaderTypes.h"
+#define SKY_ATMOSPHERE_TRANSMITTANCE_LUT_PASS
 #include "SkyAtmosphereCommon.hlsli"
 
-PUSH_CONSTANT(Gleam::SkyAtmosphereTransmittanceLutUniforms, uniforms);
+#pragma compute skyAtmosphereTransmittanceLUTShader
 
-#pragma fragment skyAtmosphereTransmittanceLUTShader
-
-float4 skyAtmosphereTransmittanceLUTShader(FScreenVertexOutput IN) : SV_TARGET
+[numthreads(16, 16, 1)]
+void skyAtmosphereTransmittanceLUTShader(uint3 dispatchThreadId : SV_DispatchThreadID)
 {
+	float2 position = dispatchThreadId.xy + 0.5;
+	float2 uv = position / float2(SKY_ATMOSPHERE_TRANSMITTANCE_TEXTURE_WIDTH, SKY_ATMOSPHERE_TRANSMITTANCE_TEXTURE_HEIGHT);
+	
 	float viewHeight, viewZenithCosAngle;
-	UvToLutTransmittanceParams(atmosphereParams, IN.texCoord, viewHeight, viewZenithCosAngle);
+	UvToLutTransmittanceParams(uv, viewHeight, viewZenithCosAngle);
 
 	float3 rayOrigin = float3(0.0, 0.0, viewHeight);
 	float3 rayDirection = float3(0.0, sqrt(1.0 - viewZenithCosAngle * viewZenithCosAngle), viewZenithCosAngle);
@@ -19,8 +20,9 @@ float4 skyAtmosphereTransmittanceLUTShader(FScreenVertexOutput IN) : SV_TARGET
 	const float depthBufferValue = -1.0;
 	const bool variableSampleCount = false;
 	const bool mieRayPhase = false;
-	float3 transmittance = exp(-IntegrateScatteredLuminance(pixPos, rayOrigin, rayDirection, sun_direction, atmosphereParams, ground, sampleCountIni, depthBufferValue, variableSampleCount, mieRayPhase).OpticalDepth);
+	float3 transmittance = exp(-IntegrateScatteredLuminance(position, rayOrigin, rayDirection, ground, sampleCountIni, depthBufferValue, variableSampleCount, mieRayPhase).OpticalDepth);
 
 	// Optical depth to transmittance
-	return float4(transmittance, 1.0f);
+	RWTexture2D<float4> texture = ResourceDescriptorHeap[UAVIndex(atmosphereUniforms.transmittanceLutTexture)];
+	texture[dispatchThreadId.xy] = float4(transmittance, 1.0f);
 }

@@ -3,8 +3,14 @@
 #include "Common.hlsli"
 #include "ShaderTypes.h"
 
-CONSTANT_BUFFER(SkyAtmosphereParameters, atmosphereParams, SKY_ATMOSPHERE_PARAMS_BINDING_SLOT);
 CONSTANT_BUFFER(Gleam::CameraUniforms, cameraUniforms, SKY_ATMOSPHERE_CAMERA_UNIFORMS_BINDING_SLOT);
+CONSTANT_BUFFER(Gleam::SkyAtmosphereParameters, atmosphereParams, SKY_ATMOSPHERE_PARAMS_BINDING_SLOT);
+CONSTANT_BUFFER(Gleam::SkyAtmosphereCommonUniforms, atmosphereUniforms, SKY_ATMOSPHERE_COMMON_UNIFORMS_BINDING_SLOT);
+
+static Texture2D<float4> TransmittanceLutTexture = ResourceDescriptorHeap[SRVIndex(atmosphereUniforms.transmittanceLutTexture)];
+static Texture2D<float4> MultiScatterTexture = ResourceDescriptorHeap[SRVIndex(atmosphereUniforms.multiScatterTexture)];
+static Texture2D<float4> SkyViewLutTexture = ResourceDescriptorHeap[SRVIndex(atmosphereUniforms.skyViewLutTexture)];
+static Texture2D<float> DepthTexture = ResourceDescriptorHeap[SRVIndex(atmosphereUniforms.depthTexture)];
 
 float FromUnitToSubUvs(float u, float resolution) { return (u + 0.5f / resolution) * (resolution / (resolution + 1.0f)); }
 float FromSubUvsToUnit(float u, float resolution) { return (u - 0.5f / resolution) * (resolution / (resolution - 1.0f)); }
@@ -33,28 +39,28 @@ struct MediumSampleRGB
 	float3 albedo;
 };
 
-MediumSampleRGB SampleMediumRGB(in float3 WorldPos, in AtmosphereParameters Atmosphere)
+MediumSampleRGB SampleMediumRGB(in float3 WorldPos)
 {
-	const float viewHeight = length(WorldPos) - Atmosphere.BottomRadius;
+	const float viewHeight = length(WorldPos) - atmosphereParams.bottomRadius;
 
-	const float densityMie = exp(Atmosphere.MieDensityExpScale * viewHeight);
-	const float densityRay = exp(Atmosphere.RayleighDensityExpScale * viewHeight);
-	const float densityOzo = saturate(viewHeight < Atmosphere.AbsorptionDensity0LayerWidth ?
-		Atmosphere.AbsorptionDensity0LinearTerm * viewHeight + Atmosphere.AbsorptionDensity0ConstantTerm :
-		Atmosphere.AbsorptionDensity1LinearTerm * viewHeight + Atmosphere.AbsorptionDensity1ConstantTerm);
+	const float densityMie = exp(atmosphereParams.mieDensityExpScale * viewHeight);
+	const float densityRay = exp(atmosphereParams.rayleighDensityExpScale * viewHeight);
+	const float densityOzo = saturate(viewHeight < atmosphereParams.absorptionDensity0LayerWidth ?
+		atmosphereParams.absorptionDensity0LinearTerm * viewHeight + atmosphereParams.absorptionDensity0ConstantTerm :
+		atmosphereParams.absorptionDensity1LinearTerm * viewHeight + atmosphereParams.absorptionDensity1ConstantTerm);
 
 	MediumSampleRGB s;
 
-	s.scatteringMie = densityMie * Atmosphere.MieScattering;
-	s.absorptionMie = densityMie * Atmosphere.MieAbsorption;
-	s.extinctionMie = densityMie * Atmosphere.MieExtinction;
+	s.scatteringMie = densityMie * atmosphereParams.mieScattering;
+	s.absorptionMie = densityMie * atmosphereParams.mieAbsorption;
+	s.extinctionMie = densityMie * atmosphereParams.mieExtinction;
 
-	s.scatteringRay = densityRay * Atmosphere.RayleighScattering;
+	s.scatteringRay = densityRay * atmosphereParams.rayleighScattering;
 	s.absorptionRay = 0.0f;
 	s.extinctionRay = s.scatteringRay + s.absorptionRay;
 
 	s.scatteringOzo = 0.0;
-	s.absorptionOzo = densityOzo * Atmosphere.AbsorptionExtinction;
+	s.absorptionOzo = densityOzo * atmosphereParams.absorptionExtinction;
 	s.extinctionOzo = s.scatteringOzo + s.absorptionOzo;
 
 	s.scattering = s.scatteringMie + s.scatteringRay + s.scatteringOzo;
@@ -91,25 +97,42 @@ float hgPhase(float g, float cosTheta)
 #endif
 }
 
-void UvToLutTransmittanceParams(in SkyAtmosphereParameters Atmosphere, in float2 uv, out float viewHeight, out float viewZenithCosAngle)
+void UvToLutTransmittanceParams(in float2 uv, out float viewHeight, out float viewZenithCosAngle)
 {
 	float x_mu = uv.x;
 	float x_r = uv.y;
 
-	float H = sqrt(atmosphere.topRadius * atmosphere.topRadius - atmosphere.bottomRadius * atmosphere.bottomRadius);
+	float H = sqrt(atmosphereParams.topRadius * atmosphereParams.topRadius - atmosphereParams.bottomRadius * atmosphereParams.bottomRadius);
 	float rho = H * x_r;
-	viewHeight = sqrt(rho * rho + atmosphere.bottomRadius * atmosphere.bottomRadius);
+	viewHeight = sqrt(rho * rho + atmosphereParams.bottomRadius * atmosphereParams.bottomRadius);
 
-	float d_min = atmosphere.topRadius - viewHeight;
+	float d_min = atmosphereParams.topRadius - viewHeight;
 	float d_max = rho + H;
 	float d = d_min + x_mu * (d_max - d_min);
 	viewZenithCosAngle = d == 0.0 ? 1.0f : (H * H - rho * rho - d * d) / (2.0 * viewHeight * d);
 	viewZenithCosAngle = clamp(viewZenithCosAngle, -1.0, 1.0);
 }
 
+void LutTransmittanceParamsToUv(in float viewHeight, in float viewZenithCosAngle, out float2 uv)
+{
+	float H = sqrt(max(0.0f, atmosphereParams.topRadius * atmosphereParams.topRadius - atmosphereParams.bottomRadius * atmosphereParams.bottomRadius));
+	float rho = sqrt(max(0.0f, viewHeight * viewHeight - atmosphereParams.bottomRadius * atmosphereParams.bottomRadius));
+
+	float discriminant = viewHeight * viewHeight * (viewZenithCosAngle * viewZenithCosAngle - 1.0) + atmosphereParams.topRadius * atmosphereParams.topRadius;
+	float d = max(0.0, (-viewHeight * viewZenithCosAngle + sqrt(discriminant))); // Distance to atmosphere boundary
+
+	float d_min = atmosphereParams.topRadius - viewHeight;
+	float d_max = rho + H;
+	float x_mu = (d - d_min) / (d_max - d_min);
+	float x_r = rho / H;
+
+	uv = float2(x_mu, x_r);
+	//uv = float2(FromUnitToSubUvs(uv.x, TRANSMITTANCE_TEXTURE_WIDTH), fromUnitToSubUvs(uv.y, TRANSMITTANCE_TEXTURE_HEIGHT)); // No real impact so off
+}
+
 float3 GetSunLuminance(float3 WorldPos, float3 WorldDir, float PlanetRadius)
 {
-	if (dot(WorldDir, sun_direction) > cos(0.5*0.505*3.14159 / 180.0))
+	if (dot(WorldDir, atmosphereUniforms.sunDirection) > cos(0.5*0.505*3.14159 / 180.0))
 	{
 		float t = RaySphereIntersectNearest(WorldPos, WorldDir, float3(0.0f, 0.0f, 0.0f), PlanetRadius);
 		if (t < 0.0f) // no intersection
@@ -121,20 +144,20 @@ float3 GetSunLuminance(float3 WorldPos, float3 WorldDir, float PlanetRadius)
 	return 0;
 }
 
-float3 GetMultipleScattering(AtmosphereParameters Atmosphere, float3 scattering, float3 extinction, float3 worlPos, float viewZenithCosAngle)
+float3 GetMultipleScattering(float3 scattering, float3 extinction, float3 worlPos, float viewZenithCosAngle)
 {
-	float2 uv = saturate(float2(viewZenithCosAngle*0.5f + 0.5f, (length(worlPos) - Atmosphere.bottomRadius) / (Atmosphere.topRadius - Atmosphere.bottomRadius)));
+	float2 uv = saturate(float2(viewZenithCosAngle * 0.5f + 0.5f, (length(worlPos) - atmosphereParams.bottomRadius) / (atmosphereParams.topRadius - atmosphereParams.bottomRadius)));
 	uv = float2(FromUnitToSubUvs(uv.x, SKY_ATMOSPHERE_MULTISCATTERING_LUT_RES), FromUnitToSubUvs(uv.y, SKY_ATMOSPHERE_MULTISCATTERING_LUT_RES));
 
-	float3 multiScatteredLuminance = MultiScatTexture.SampleLevel(Sampler_Bilinear_Clamp, uv, 0).rgb;
+	float3 multiScatteredLuminance = MultiScatterTexture.SampleLevel(Sampler_Bilinear_Clamp, uv, 0).rgb;
 	return multiScatteredLuminance;
 }
 
-float GetShadow(in AtmosphereParameters Atmosphere, float3 P)
+float GetShadow(float3 P)
 {
 #if SKY_ATMOSPHERE_SHADOWMAP_ENABLED
 	// First evaluate opaque shadow
-	float4 shadowUv = mul(gShadowmapViewProjMat, float4(P + float3(0.0, 0.0, -Atmosphere.bottomRadius), 1.0));
+	float4 shadowUv = mul(gShadowmapViewProjMat, float4(P + float3(0.0, 0.0, -atmosphereParams.bottomRadius), 1.0));
 	//shadowUv /= shadowUv.w;	// not be needed as it is an ortho projection
 	shadowUv.x = shadowUv.x*0.5 + 0.5;
 	shadowUv.y = -shadowUv.y*0.5 + 0.5;
@@ -158,18 +181,18 @@ struct SingleScatteringResult
 };
 
 SingleScatteringResult IntegrateScatteredLuminance(
-	in float2 pixPos, in float3 WorldPos, in float3 WorldDir, in float3 SunDir, in SkyAtmosphereParameters Atmosphere,
+	in float2 pixPos, in float3 WorldPos, in float3 WorldDir,
 	in bool ground, in float SampleCountIni, in float DepthBufferValue, in bool VariableSampleCount,
 	in bool MieRayPhase, in float tMaxMax = 9000000.0f)
 {
 	SingleScatteringResult result = (SingleScatteringResult)0;
 
-	float3 ClipSpace = float3((pixPos / cameraUniforms.resolution)*float2(2.0, -2.0) - float2(1.0, -1.0), 1.0);
+	float3 ClipSpace = float3((pixPos / cameraUniforms.resolution) * float2(2.0, -2.0) - float2(1.0, -1.0), 1.0);
 
 	// Compute next intersection with atmosphere or ground 
 	float3 earthO = float3(0.0f, 0.0f, 0.0f);
-	float tBottom = RaySphereIntersectNearest(WorldPos, WorldDir, earthO, Atmosphere.bottomRadius);
-	float tTop = RaySphereIntersectNearest(WorldPos, WorldDir, earthO, Atmosphere.topRadius);
+	float tBottom = RaySphereIntersectNearest(WorldPos, WorldDir, earthO, atmosphereParams.bottomRadius);
+	float tTop = RaySphereIntersectNearest(WorldPos, WorldDir, earthO, atmosphereParams.topRadius);
 	float tMax = 0.0f;
 	if (tBottom < 0.0f)
 	{
@@ -199,7 +222,7 @@ SingleScatteringResult IntegrateScatteredLuminance(
 			float4 DepthBufferWorldPos = mul(cameraUniforms.invViewProjectionMatrix, float4(ClipSpace, 1.0));
 			DepthBufferWorldPos /= DepthBufferWorldPos.w;
 
-			float tDepth = length(DepthBufferWorldPos.xyz - (WorldPos + float3(0.0, 0.0, -Atmosphere.bottomRadius))); // apply earth offset to go back to origin as top of earth mode. 
+			float tDepth = length(DepthBufferWorldPos.xyz - (WorldPos + float3(0.0, 0.0, -atmosphereParams.bottomRadius))); // apply earth offset to go back to origin as top of earth mode. 
 			if (tDepth < tMax)
 			{
 				tMax = tDepth;
@@ -214,7 +237,7 @@ SingleScatteringResult IntegrateScatteredLuminance(
 	float tMaxFloor = tMax;
 	if (VariableSampleCount)
 	{
-		SampleCount = lerp(RayMarchMinMaxSPP.x, RayMarchMinMaxSPP.y, saturate(tMax*0.01));
+		SampleCount = lerp(atmosphereUniforms.rayMarchMinMaxSPP.x, atmosphereUniforms.rayMarchMinMaxSPP.y, saturate(tMax * 0.01));
 		SampleCountFloor = floor(SampleCount);
 		tMaxFloor = tMax * SampleCountFloor / SampleCount;	// rescale tMax to map to the last entire step segment.
 	}
@@ -222,10 +245,10 @@ SingleScatteringResult IntegrateScatteredLuminance(
 
 	// Phase functions
 	const float uniformPhase = 1.0 / (4.0 * PI);
-	const float3 wi = SunDir;
+	const float3 wi = atmosphereUniforms.sunDirection;
 	const float3 wo = WorldDir;
 	float cosTheta = dot(wi, wo);
-	float MiePhaseValue = hgPhase(Atmosphere.miePhaseG, -cosTheta);	// mnegate cosTheta because due to WorldDir being a "in" direction. 
+	float MiePhaseValue = hgPhase(atmosphereParams.miePhaseG, -cosTheta);	// mnegate cosTheta because due to WorldDir being a "in" direction. 
 	float RayleighPhaseValue = RayleighPhase(cosTheta);
 
 #ifdef SKY_ATMOSPHERE_ILLUMINANCE_IS_ONE
@@ -233,7 +256,7 @@ SingleScatteringResult IntegrateScatteredLuminance(
 	// This make the scattering factor independent of the light. It is now only linked to the atmosphere properties.
 	float3 globalL = 1.0f;
 #else
-	float3 globalL = gSunIlluminance; // TODO: update this when we have sun component
+	float3 globalL = atmosphereUniforms.sunIlluminance;
 #endif
 
 	// Ray march the atmosphere to integrate optical depth
@@ -278,16 +301,17 @@ SingleScatteringResult IntegrateScatteredLuminance(
 		}
 		float3 P = WorldPos + t * WorldDir;
 
-		MediumSampleRGB medium = SampleMediumRGB(P, Atmosphere);
+		MediumSampleRGB medium = SampleMediumRGB(P);
 		const float3 SampleOpticalDepth = medium.extinction * dt;
 		const float3 SampleTransmittance = exp(-SampleOpticalDepth);
 		OpticalDepth += SampleOpticalDepth;
 
+#ifndef SKY_ATMOSPHERE_TRANSMITTANCE_LUT_PASS
 		float pHeight = length(P);
 		const float3 UpVector = P / pHeight;
-		float SunZenithCosAngle = dot(SunDir, UpVector);
+		float SunZenithCosAngle = dot(atmosphereUniforms.sunDirection, UpVector);
 		float2 uv;
-		LutTransmittanceParamsToUv(Atmosphere, uv, pHeight, SunZenithCosAngle);
+		LutTransmittanceParamsToUv(pHeight, SunZenithCosAngle, uv);
 		float3 TransmittanceToSun = TransmittanceLutTexture.SampleLevel(Sampler_Bilinear_Clamp, uv, 0).rgb;
 
 		float3 PhaseTimesScattering;
@@ -301,19 +325,19 @@ SingleScatteringResult IntegrateScatteredLuminance(
 		}
 
 		// Earth shadow 
-		float tEarth = RaySphereIntersectNearest(P, SunDir, earthO + SKY_ATMOSPHERE_PLANET_RADIUS_OFFSET * UpVector, Atmosphere.bottomRadius);
+		float tEarth = RaySphereIntersectNearest(P, atmosphereUniforms.sunDirection, earthO + SKY_ATMOSPHERE_PLANET_RADIUS_OFFSET * UpVector, atmosphereParams.bottomRadius);
 		float earthShadow = tEarth >= 0.0f ? 0.0f : 1.0f;
 
 		// Dual scattering for multi scattering 
 		float3 multiScatteredLuminance = 0.0f;
 #if SKY_ATMOSPHERE_MULTISCATAPPROX_ENABLED
-		multiScatteredLuminance = GetMultipleScattering(Atmosphere, medium.scattering, medium.extinction, P, SunZenithCosAngle);
+		multiScatteredLuminance = GetMultipleScattering(medium.scattering, medium.extinction, P, SunZenithCosAngle);
 #endif
 
 		float shadow = 1.0f;
 #if SKY_ATMOSPHERE_SHADOWMAP_ENABLED
 		// First evaluate opaque shadow
-		shadow = GetShadow(Atmosphere, P);
+		shadow = GetShadow(P);
 #endif
 
 		float3 S = globalL * (earthShadow * shadow * TransmittanceToSun * PhaseTimesScattering + multiScatteredLuminance * medium.scattering);
@@ -347,10 +371,12 @@ SingleScatteringResult IntegrateScatteredLuminance(
 		float3 Sint = (S - S * SampleTransmittance) / medium.extinction;	// integrate along the current step segment 
 		L += throughput * Sint;														// accumulate and also take into account the transmittance from previous steps
 		throughput *= SampleTransmittance;
+#endif
 
 		tPrev = t;
 	}
 
+#ifndef SKY_ATMOSPHERE_TRANSMITTANCE_LUT_PASS
 	if (ground && tMax == tBottom && tBottom > 0.0)
 	{
 		// Account for bounced light off the earth
@@ -358,14 +384,15 @@ SingleScatteringResult IntegrateScatteredLuminance(
 		float pHeight = length(P);
 
 		const float3 UpVector = P / pHeight;
-		float SunZenithCosAngle = dot(SunDir, UpVector);
+		float SunZenithCosAngle = dot(atmosphereUniforms.sunDirection, UpVector);
 		float2 uv;
-		LutTransmittanceParamsToUv(Atmosphere, uv, pHeight, SunZenithCosAngle);
+		LutTransmittanceParamsToUv(pHeight, SunZenithCosAngle, uv);
 		float3 TransmittanceToSun = TransmittanceLutTexture.SampleLevel(Sampler_Bilinear_Clamp, uv, 0).rgb;
 
-		const float NdotL = saturate(dot(normalize(UpVector), normalize(SunDir)));
-		L += globalL * TransmittanceToSun * throughput * NdotL * Atmosphere.groundAlbedo / PI;
+		const float NdotL = saturate(dot(normalize(UpVector), normalize(atmosphereUniforms.sunDirection)));
+		L += globalL * TransmittanceToSun * throughput * NdotL * atmosphereParams.groundAlbedo / PI;
 	}
+#endif
 
 	result.L = L;
 	result.OpticalDepth = OpticalDepth;

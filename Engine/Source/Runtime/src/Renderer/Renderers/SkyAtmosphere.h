@@ -3,16 +3,19 @@
 
 namespace Gleam {
 
-class SkyAtmosphereRenderer : public IRenderer
+class SkyAtmosphere : public IRenderer
 {
 public:
 
 	virtual void OnCreate(RenderContext& context) override;
 
+	virtual void OnDestroy(RenderContext& context) override;
+
 	virtual void AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard) override;
 
 private:
 
+	Texture mTransmittanceLutTexture;
 	ComputePipelineHandle mTransmittanceLutPipeline;
 };
 

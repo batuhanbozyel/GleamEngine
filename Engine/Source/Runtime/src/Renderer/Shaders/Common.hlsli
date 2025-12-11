@@ -13,7 +13,8 @@
 #define FLT_MIN         1.175494351e-38 // Minimum representable positive floating-point number
 #define FLT_MAX         3.402823466e+38 // Maximum representable floating-point number
 
-#define CONSTANT_BUFFER(type, name, slot) ConstantBuffer<type> name : register(b##slot)
+#define CONSTANT_BUFFER_HELPER(type, name, slot) ConstantBuffer<type> name : register(b##slot, space0)
+#define CONSTANT_BUFFER(type, name, slot) CONSTANT_BUFFER_HELPER(type, name, slot)
 #define PUSH_CONSTANT(type, name) CONSTANT_BUFFER(type, name, 999)
 
 struct FScreenVertexOutput

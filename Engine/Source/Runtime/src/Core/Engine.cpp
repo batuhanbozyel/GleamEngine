@@ -8,6 +8,7 @@
 #include "World/ScriptingSystem.h"
 #include "Renderer/RenderSystem.h"
 #include "Renderer/Renderers/WorldRenderer.h"
+#include "Renderer/Renderers/SkyAtmosphere.h"
 #include "Renderer/Renderers/PostProcessStack.h"
 #include "Serialization/JSONSerializer.h"
 #include "Serialization/BinarySerializer.h"
@@ -60,6 +61,7 @@ void Engine::Initialize(const CommandLine& cli)
 
 	// add default renderers
 	renderSubsystem->AddRenderer<WorldRenderer>();
+	renderSubsystem->AddRenderer<SkyAtmosphere>();
 	renderSubsystem->AddRenderer<PostProcessStack>();
 }
 

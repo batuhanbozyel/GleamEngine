@@ -881,21 +881,22 @@ ShaderResourceIndex DirectXDevice::CreateResourceView(const Texture& texture)
 		}
 	}
 
-	auto handle = mCbvSrvUavHeap.Allocate();
+	auto srvHandle = mCbvSrvUavHeap.Allocate();
 
 	// SRV
 	if (texture.GetDescriptor().usage & TextureUsage_Sampled)
 	{
-		static_cast<ID3D12Device10*>(mHandle)->CreateShaderResourceView(static_cast<ID3D12Resource*>(texture.GetHandle()), &srvDesc, handle);
+		static_cast<ID3D12Device10*>(mHandle)->CreateShaderResourceView(static_cast<ID3D12Resource*>(texture.GetHandle()), &srvDesc, srvHandle);
 	}
 
 	// UAV
 	if (texture.GetDescriptor().usage & TextureUsage_Storage)
 	{
-		handle.ptr += (UINT64)(mCbvSrvUavHeap.size * CBV_SRV_HEAP_SIZE);
-		static_cast<ID3D12Device10*>(mHandle)->CreateUnorderedAccessView(static_cast<ID3D12Resource*>(texture.GetHandle()), nullptr, &uavDesc, handle);
+		auto uavHandle = srvHandle;
+		uavHandle.ptr += (UINT64)(mCbvSrvUavHeap.size * CBV_SRV_HEAP_SIZE);
+		static_cast<ID3D12Device10*>(mHandle)->CreateUnorderedAccessView(static_cast<ID3D12Resource*>(texture.GetHandle()), nullptr, &uavDesc, uavHandle);
 	}
-	return mCbvSrvUavHeap.GetResourceIndex(handle);
+	return mCbvSrvUavHeap.GetResourceIndex(srvHandle);
 }
 
 void DirectXDevice::ReleaseResourceView(ShaderResourceIndex view)
