@@ -7,9 +7,16 @@ namespace Gleam {
 
 class GraphicsDevice;
 
+enum class PipelineType
+{
+	Graphics,
+	Compute
+};
+
 struct PipelineHandle
 {
 	size_t data = 0;
+	PipelineType type = PipelineType::Graphics;
 
 	NO_DISCARD operator size_t() const
 	{
@@ -76,7 +83,7 @@ public:
 	GraphicsPipeline& operator=(const GraphicsPipeline& other) = default;
 
 	GraphicsPipeline(const GraphicsPipelineStateDescriptor& descriptor)
-		: Pipeline(PipelineHandle{ eastl::hash<GraphicsPipelineStateDescriptor>()(descriptor) })
+		: Pipeline(PipelineHandle{ eastl::hash<GraphicsPipelineStateDescriptor>()(descriptor), PipelineType::Graphics })
 		, mDescriptor(descriptor)
 	{
 
@@ -106,7 +113,7 @@ public:
 	ComputePipeline& operator=(const ComputePipeline& other) = default;
 
 	ComputePipeline(const ComputePipelineStateDescriptor& descriptor)
-		: Pipeline(PipelineHandle{ eastl::hash<ComputePipelineStateDescriptor>()(descriptor) })
+		: Pipeline(PipelineHandle{ eastl::hash<ComputePipelineStateDescriptor>()(descriptor), PipelineType::Compute })
 		, mDescriptor(descriptor)
 	{
 

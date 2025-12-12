@@ -12,9 +12,8 @@ namespace Gleam {
 
 class DirectXSwapchain;
 
-class DirectXDescriptorHeap
+struct DirectXDescriptorHeap
 {
-public:
 	ResourceDescriptorHeap heap;
 	ID3D12DescriptorHeap* handle = nullptr;
 	D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle;

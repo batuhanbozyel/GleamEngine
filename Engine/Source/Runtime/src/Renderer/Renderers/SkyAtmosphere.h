@@ -16,6 +16,8 @@ public:
 private:
 
 	bool mBakeLUTs = true;
+	SkyAtmosphereParameters mAtmosphereParams = {};
+
 	Texture mTransmittanceLutTexture;
 	ComputePipelineHandle mTransmittanceLutPipeline;
 };

@@ -16,6 +16,8 @@ struct CommandBuffer::Impl
 	ID3D12Fence* fence = nullptr;
 	uint64_t fenceValue = 0;
 	uint64_t waitFenceValue = 0;
+
+	PipelineHandle pipeline;
 };
 
 CommandBuffer::CommandBuffer(GraphicsDevice* device)
@@ -104,6 +106,7 @@ void CommandBuffer::BindComputePipeline(const ComputePipeline& pipeline) const
 	mHandle->commandList->SetDescriptorHeaps(1, &cbvSrvUavHeap.handle);
 	mHandle->commandList->SetComputeRootSignature(mHandle->device->GetGlobalRootSignature());
 	mHandle->commandList->SetPipelineState(static_cast<ID3D12PipelineState*>(pipeline.GetHandle()));
+	mHandle->pipeline = pipeline.GetHash();
 }
 
 void CommandBuffer::BindGraphicsPipeline(const GraphicsPipeline& pipeline) const
@@ -115,6 +118,7 @@ void CommandBuffer::BindGraphicsPipeline(const GraphicsPipeline& pipeline) const
 	mHandle->commandList->SetPipelineState(static_cast<ID3D12PipelineState*>(pipeline.GetHandle()));
 	mHandle->commandList->OMSetStencilRef(pipeline.GetDescriptor().stencilState.reference);
 	mHandle->commandList->IASetPrimitiveTopology(PrimitiveToplogyToD3D_PRIMITIVE_TOPOLOGY(pipeline.GetDescriptor().topology));
+	mHandle->pipeline = pipeline.GetHash();
 }
 
 void CommandBuffer::SetViewport(const Size& size) const
@@ -140,12 +144,28 @@ void CommandBuffer::SetConstantBuffer(const void* data, uint32_t size, uint32_t 
 {
 	auto gpuAddress = static_cast<ID3D12Resource*>(mConstantBuffer.GetHandle())->GetGPUVirtualAddress(); 
 	gpuAddress += mConstantBuffer.Write(data, size);
-    mHandle->commandList->SetGraphicsRootConstantBufferView(slot, gpuAddress);
+
+	if (mHandle->pipeline.type == PipelineType::Compute)
+	{
+		mHandle->commandList->SetComputeRootConstantBufferView(slot, gpuAddress);
+	}
+	else // if (mHandle->pipeline.type == PipelineType::Graphics)
+	{
+		mHandle->commandList->SetGraphicsRootConstantBufferView(slot, gpuAddress);
+	}
+    
 }
 
 void CommandBuffer::SetPushConstant(const void* data, uint32_t size) const
 {
-	mHandle->commandList->SetGraphicsRoot32BitConstants(PUSH_CONSTANT_SLOT, size / sizeof(uint32_t), data, 0);
+	if (mHandle->pipeline.type == PipelineType::Compute)
+	{
+		mHandle->commandList->SetComputeRoot32BitConstants(PUSH_CONSTANT_SLOT, size / sizeof(uint32_t), data, 0);
+	}
+	else // if (mHandle->pipeline.type == PipelineType::Graphics)
+	{
+		mHandle->commandList->SetGraphicsRoot32BitConstants(PUSH_CONSTANT_SLOT, size / sizeof(uint32_t), data, 0);
+	}
 }
 
 void CommandBuffer::Dispatch(uint32_t x, uint32_t y, uint32_t z) const
