@@ -395,7 +395,7 @@ void RenderGraph::ExecutePass(RenderGraphPassNode* pass, const CommandBuffer* cm
 	}
 }
 
-TextureHandle RenderGraph::ImportBackbuffer(const Texture& backbuffer, const ImportResourceParams& params)
+TextureHandle RenderGraph::ImportTexture(const Texture& backbuffer, const ImportResourceParams& params)
 {
 	RenderTextureDescriptor descriptor(backbuffer.GetDescriptor());
 	descriptor.clearBuffer = params.clearOnFirstUse;

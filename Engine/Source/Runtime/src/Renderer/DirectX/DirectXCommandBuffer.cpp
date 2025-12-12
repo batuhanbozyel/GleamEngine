@@ -98,6 +98,14 @@ void CommandBuffer::EndRenderPass() const
 	PIXEndEvent(mHandle->commandList);
 }
 
+void CommandBuffer::BindComputePipeline(const ComputePipeline& pipeline) const
+{
+	const auto& cbvSrvUavHeap = mHandle->device->GetCbvSrvUavHeap();
+	mHandle->commandList->SetDescriptorHeaps(1, &cbvSrvUavHeap.handle);
+	mHandle->commandList->SetComputeRootSignature(mHandle->device->GetGlobalRootSignature());
+	mHandle->commandList->SetPipelineState(static_cast<ID3D12PipelineState*>(pipeline.GetHandle()));
+}
+
 void CommandBuffer::BindGraphicsPipeline(const GraphicsPipeline& pipeline) const
 {
 	const auto& cbvSrvUavHeap = mHandle->device->GetCbvSrvUavHeap();

@@ -85,12 +85,27 @@ void CommandBuffer::EndRenderPass() const
     mHandle->renderCommandEncoder = nil;
 }
 
+void CommandBuffer::BindComputePipeline(const ComputePipeline& pipeline) const
+{
+    // TBD: when to start/finish recording mHandle->computeCommandEncoder ?
+    mHandle->pipeline = pipeline.GetHandle();
+
+    id<MetalComputePipeline> computePipeline = (id<MetalComputePipeline>)mHandle->pipeline;
+    [mHandle->computeCommandEncoder setComputePipelineState:computePipeline.pipelineState];
+
+    // Descriptor heap
+    [mHandle->computeCommandEncoder setBuffer:mHandle->device->GetCbvSrvUavHeap() offset:0 atIndex:kIRDescriptorHeapBindPoint];
+
+    // Top-level argument buffer
+    memset(mHandle->topLevelArgumentBuffer, 0, TopLevelArgumentBufferSize);
+}
+
 void CommandBuffer::BindGraphicsPipeline(const GraphicsPipeline& pipeline) const
 {
     mHandle->pipeline = pipeline.GetHandle();
     
     id<MetalGraphicsPipeline> renderPipeline = (id<MetalGraphicsPipeline>)mHandle->pipeline;
-    [mHandle->renderCommandEncoder setRenderPipelineState:renderPipeline.renderState];
+    [mHandle->renderCommandEncoder setRenderPipelineState:renderPipeline.pipelineState];
     if (renderPipeline.depthStencilState)
     {
         [mHandle->renderCommandEncoder setDepthStencilState:renderPipeline.depthStencilState];
@@ -138,6 +153,13 @@ void CommandBuffer::SetConstantBuffer(const void* data, uint32_t size, uint32_t 
 void CommandBuffer::SetPushConstant(const void* data, uint32_t size) const
 {
     memcpy(mHandle->topLevelArgumentBuffer + PUSH_CONSTANT_SLOT, data, size);
+}
+
+void CommandBuffer::Dispatch(uint32_t x, uint32_t y, uint32_t z) const
+{
+    MTLSize threadGroupSize = MTLSizeMake(x, y, z);
+    MTLSize threadsPerThreadgroup = MTLSizeMake(16, 16, 1); // TODO: query this from metal shader converter shader reflection api
+    [mHandle->computeCommandEncoder dispatchThreads:threadGroupSize threadsPerThreadgroup:threadsPerThreadgroup];
 }
 
 void CommandBuffer::Draw(uint32_t vertexCount, uint32_t instanceCount) const

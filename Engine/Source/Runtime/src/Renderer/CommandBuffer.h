@@ -42,6 +42,8 @@ public:
 
     void EndRenderPass() const;
 
+	void BindComputePipeline(const ComputePipeline& pipeline) const;
+
     void BindGraphicsPipeline(const GraphicsPipeline& pipeline) const;
 
     void SetViewport(const Size& size) const;

@@ -129,8 +129,8 @@ void RenderSystem::Render(const World* world)
 
 		RenderGraphBlackboard blackboard;
 		auto& sceneData = blackboard.Add<SceneRenderingData>();
-		sceneData.backbuffer = graph.ImportBackbuffer(backbuffer);
-		sceneData.sceneTarget = graph.ImportBackbuffer(sceneTarget);
+		sceneData.backbuffer = graph.ImportTexture(backbuffer);
+		sceneData.sceneTarget = graph.ImportTexture(sceneTarget);
 		sceneData.sceneProxy = world->GetSystem<RenderSceneProxy>();
 		sceneData.world = world;
 		sceneData.camera.resolution = Float2(cameraComponent.orthographicSize * cameraComponent.aspectRatio, cameraComponent.orthographicSize);

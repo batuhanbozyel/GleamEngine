@@ -47,7 +47,7 @@ public:
 		return AddPassNode<PassData>(node, std::forward<decltype(setup)>(setup));
 	}
     
-    TextureHandle ImportBackbuffer(const Texture& backbuffer, const ImportResourceParams& params = ImportResourceParams());
+    TextureHandle ImportTexture(const Texture& backbuffer, const ImportResourceParams& params = ImportResourceParams());
     
     const TextureDescriptor& GetDescriptor(TextureHandle handle) const;
 

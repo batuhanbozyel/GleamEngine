@@ -32,5 +32,23 @@ void SkyAtmosphere::OnDestroy(RenderContext& context)
 
 void SkyAtmosphere::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard)
 {
-	
+	auto transmittanceLut = graph.ImportTexture(mTransmittanceLutTexture);
+	if (mBakeLUTs)
+	{
+		struct SkyAtmosphereTransmittanceLutPassData
+		{
+			TextureHandle texture;
+		};
+		graph.AddRenderPass<SkyAtmosphereTransmittanceLutPassData>("SkyAtmosphere::TransmittanceLut", [&](RenderGraphBuilder& builder, SkyAtmosphereTransmittanceLutPassData& passData)
+		{
+			passData.texture = builder.WriteTexture(transmittanceLut);
+		},
+		[this](const CommandBuffer* cmd, const SkyAtmosphereTransmittanceLutPassData& passData)
+		{
+			cmd->BindComputePipeline(mTransmittanceLutPipeline);
+			cmd->Dispatch(SKY_ATMOSPHERE_TRANSMITTANCE_TEXTURE_WIDTH / 16, SKY_ATMOSPHERE_TRANSMITTANCE_TEXTURE_HEIGHT / 16, 1);
+		});
+
+		mBakeLUTs = false;
+	}
 }

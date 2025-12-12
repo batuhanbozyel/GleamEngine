@@ -15,6 +15,7 @@ public:
 
 private:
 
+	bool mBakeLUTs = true;
 	Texture mTransmittanceLutTexture;
 	ComputePipelineHandle mTransmittanceLutPipeline;
 };

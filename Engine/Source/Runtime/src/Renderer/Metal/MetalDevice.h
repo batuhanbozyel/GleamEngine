@@ -8,9 +8,17 @@
 @protocol MetalPipeline <NSObject>
 @end
 
+@protocol MetalComputePipeline <MetalPipeline>
+
+@property(nonatomic, strong) id<MTLComputePipelineState> pipelineState;
+@property(nonatomic, strong) id<MTLDepthStencilState> depthStencilState;
+@property(nonatomic, assign) MTLPrimitiveType topology;
+
+@end
+
 @protocol MetalGraphicsPipeline <MetalPipeline>
 
-@property (nonatomic, strong) id<MTLRenderPipelineState> renderState;
+@property (nonatomic, strong) id<MTLRenderPipelineState> pipelineState;
 @property (nonatomic, strong) id<MTLDepthStencilState> depthStencilState;
 @property (nonatomic, assign) MTLPrimitiveType topology;
 
