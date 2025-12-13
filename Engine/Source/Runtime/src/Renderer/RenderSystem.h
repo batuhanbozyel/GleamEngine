@@ -121,6 +121,7 @@ private:
 
 	Size mSwapchainSize = {};
 
+	EntityHandle mSun = InvalidEntity;
 	EntityHandle mActiveCamera = InvalidEntity;
 
 	Engine* mEngine;

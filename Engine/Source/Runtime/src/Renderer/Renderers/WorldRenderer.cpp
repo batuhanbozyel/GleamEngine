@@ -57,6 +57,7 @@ void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 			MeshPassResources resources;
 			resources.instanceBuffer = batch.instanceBuffer.GetResourceView();
 			resources.materialBuffer = materialBuffer.GetResourceView();
+			resources.sun = sceneData.sun;
 
 			cmd->BindGraphicsPipeline(pipeline);
 			cmd->SetConstantBuffer(resources, 0);

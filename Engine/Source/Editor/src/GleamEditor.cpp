@@ -65,6 +65,10 @@ public:
 
 			auto& camera = world.GetEntityManager().CreateEntity("Editor Camera", Gleam::Guid::NewGuid());
 			world.GetEntityManager().AddComponent<Gleam::Camera>(camera, Gleam::Size(1280.0f, 720.0f));
+
+			auto& atmosphere = world.GetEntityManager().CreateEntity("Atmosphere", Gleam::Guid::NewGuid());
+			world.GetEntityManager().AddComponent<Gleam::Sun>(atmosphere);
+
 			world.Serialize(file.GetStream());
 		}
 		project.worldConfig.worlds.emplace_back(worldRef);

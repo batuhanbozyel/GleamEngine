@@ -61,6 +61,7 @@ struct MeshPassResources
 {
 	BufferResourceView instanceBuffer;
 	BufferResourceView materialBuffer;
+	SunUniforms sun;
 };
 
 struct SurfaceInput

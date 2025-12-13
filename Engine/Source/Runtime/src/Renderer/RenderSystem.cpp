@@ -78,6 +78,15 @@ void RenderSystem::PreRender(const World* world)
 		}
 	});
 
+	mSun = InvalidEntity;
+	world->GetEntityManager().ForEach<Entity, Sun>([&](const Entity& entity, const Sun& component)
+	{
+		if (entity.IsActive())
+		{
+			mSun = entity;
+		}
+	});
+
 	auto frameIdx = mSwapchain->GetFrameIndex();
 	const auto cmd = mCommandBuffers[frameIdx].get();
 
@@ -100,13 +109,14 @@ void RenderSystem::Render(const World* world)
 	@autoreleasepool
 #endif
 	{
-		if (mActiveCamera == InvalidEntity)
+		if (mActiveCamera == InvalidEntity || mSun == InvalidEntity)
 		{
 			return; // skip rendering this frame
 		}
 
 		const auto& cameraComponent = world->GetEntityManager().GetComponent<Camera>(mActiveCamera);
 		const auto& cameraEntity = world->GetEntityManager().GetComponent<Entity>(mActiveCamera);
+		const auto& sunComponent = world->GetEntityManager().GetComponent<Sun>(mSun);
 
 		// TODO: Render scene per active camera
 		// Set sceneTarget to camera target
@@ -133,9 +143,20 @@ void RenderSystem::Render(const World* world)
 		sceneData.sceneTarget = graph.ImportTexture(sceneTarget);
 		sceneData.sceneProxy = world->GetSystem<RenderSceneProxy>();
 		sceneData.world = world;
+
+		// sun
+		const float halfAzimuth = Math::Deg2Rad(sunComponent.azimuthAngle) * 0.5f;
+		const float halfZenith = Math::Deg2Rad(sunComponent.zenithAngle) * 0.5f;
+
+		const Quaternion qAzimuth{ Math::Cos(halfAzimuth), 0.0f, Math::Sin(halfAzimuth), 0.0f };
+		const Quaternion qZenith { Math::Cos(halfZenith), Math::Sin(halfZenith), 0.0f, 0.0f };
+
+		sceneData.sun.illuminance = Float3(sunComponent.color.r, sunComponent.color.g, sunComponent.color.b) * sunComponent.intensity;
+		sceneData.sun.direction = (qAzimuth * qZenith) * Float3{ 0.0f, 1.0f, 0.0f };
+
+		// camera
 		sceneData.camera.resolution = Float2(cameraComponent.orthographicSize * cameraComponent.aspectRatio, cameraComponent.orthographicSize);
 		sceneData.camera.viewMatrix = Float4x4::LookTo(cameraEntity.GetWorldPosition(), cameraEntity.ForwardVector(), cameraEntity.UpVector());
-
 		if (cameraComponent.projectionType == ProjectionType::Perspective)
 		{
 			sceneData.camera.projectionMatrix = Float4x4::Perspective(cameraComponent.fov, cameraComponent.aspectRatio, cameraComponent.nearPlane, cameraComponent.farPlane);
@@ -144,7 +165,6 @@ void RenderSystem::Render(const World* world)
 		{
 			sceneData.camera.projectionMatrix = Float4x4::Ortho(sceneData.camera.resolution.x, sceneData.camera.resolution.y, cameraComponent.nearPlane, cameraComponent.farPlane);
 		}
-
 		sceneData.camera.viewProjectionMatrix = sceneData.camera.projectionMatrix * sceneData.camera.viewMatrix;
 		sceneData.camera.invViewMatrix = Math::Inverse(sceneData.camera.viewMatrix);
 		sceneData.camera.invProjectionMatrix = Math::Inverse(sceneData.camera.projectionMatrix);

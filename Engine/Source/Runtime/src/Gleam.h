@@ -62,6 +62,7 @@
 #include "World/Components/MeshRenderer.h"
 #include "World/Components/Transform.h"
 #include "World/Components/Camera.h"
+#include "World/Components/Sun.h"
 
 #include "Renderer/Mesh.h"
 #include "Renderer/Renderer.h"

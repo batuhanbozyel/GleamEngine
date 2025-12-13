@@ -4,6 +4,12 @@
 
 #define F90_Metal 1.0f
 
+struct DirectLight
+{
+	float3 illuminance;
+	float3 direction;
+};
+
 float Fd_Lambert()
 {
     return INV_PI;
@@ -97,17 +103,17 @@ float3 EvaluateSpecularDirectLight(float3 albedo, float metallic, float perceptu
 	return F * (D * V * Fd_Lambert());
 }
 
-float3 EvaluateDirectLight(Gleam::SurfaceOutput surface, float3 lightDir, float3 viewDir, float3 worldNormal)
+float3 EvaluateDirectLight(Gleam::SurfaceOutput surface, DirectLight light, float3 viewDir, float3 worldNormal)
 {
-    float3 H = normalize(viewDir + lightDir);
+	float3 H = normalize(viewDir + light.direction);
 	float NdotV = abs(dot(worldNormal, viewDir)) + 1e-5f;
-    float NdotL = saturate(dot(worldNormal, lightDir));
+	float NdotL = saturate(dot(worldNormal, light.direction));
 	float NdotH = saturate(dot(worldNormal, H));
     float VdotH = saturate(dot(viewDir, H));
-	float LdotH = saturate(dot(lightDir, H));
+	float LdotH = saturate(dot(light.direction, H));
 
     float3 radiance = 0.0;
 	radiance += EvaluateDiffuseDirectLight(surface.albedo.rgb, surface.metallic, surface.roughness, NdotV, NdotL, LdotH);
 	radiance += EvaluateSpecularDirectLight(surface.albedo.rgb, surface.metallic, surface.roughness, NdotV, NdotL, LdotH, NdotH);
-	return radiance * NdotL;
+	return light.illuminance * radiance * NdotL;
 }

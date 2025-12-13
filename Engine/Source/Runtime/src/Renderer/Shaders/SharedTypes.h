@@ -5,6 +5,15 @@
 
 namespace Gleam {
 
+struct SunUniforms
+{
+	float3 direction;
+	float pad0;
+
+	float3 illuminance;
+	float pad1;
+};
+
 struct CameraUniforms
 {
 	float4x4 viewMatrix;

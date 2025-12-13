@@ -65,14 +65,15 @@ void SkyAtmosphere::OnDestroy(RenderContext& context)
 void SkyAtmosphere::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard)
 {
 	const auto& worldRenderingData = blackboard.Get<WorldRenderingData>();
+	const auto& sceneData = blackboard.Get<SceneRenderingData>();
 
 	SkyAtmosphereCommonUniforms commonParams = {};
 	commonParams.transmittanceLutTexture = mTransmittanceLutTexture.GetResourceView();
 	commonParams.multiScatterTexture = InvalidResourceIndex;
 	commonParams.skyViewLutTexture = InvalidResourceIndex;
 	commonParams.depthTexture = InvalidResourceIndex;
-	commonParams.sunIlluminance = { 1.0f, 1.0f, 1.0f };
-	commonParams.sunDirection = Math::Normalize(Float3(0.43f, 0.43f, 0.0f));
+	commonParams.sunIlluminance = sceneData.sun.direction;
+	commonParams.sunDirection = sceneData.sun.illuminance;
 	commonParams.rayMarchMinMaxSPP = { 4, 14 };
 
 	auto transmittanceLut = graph.ImportTexture(mTransmittanceLutTexture);
