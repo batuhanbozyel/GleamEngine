@@ -127,7 +127,7 @@ struct SkyAtmosphereCommonUniforms
 	ShaderResourceIndex transmittanceLutTexture;
 
 	float3 sunDirection;
-	ShaderResourceIndex multiScatterTexture;
+	ShaderResourceIndex multiScatterLutTexture;
 
 	float2 rayMarchMinMaxSPP;
 	ShaderResourceIndex skyViewLutTexture;

@@ -19,7 +19,10 @@ private:
 	SkyAtmosphereParameters mAtmosphereParams = {};
 
 	Texture mTransmittanceLutTexture;
+	Texture mMultiScatterLutTexture;
+
 	ComputePipelineHandle mTransmittanceLutPipeline;
+	ComputePipelineHandle mMultiScatterLutPipeline;
 };
 
 } // namespace Gleam
