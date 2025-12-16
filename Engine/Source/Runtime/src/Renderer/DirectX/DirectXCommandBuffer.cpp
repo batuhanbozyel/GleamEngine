@@ -100,6 +100,16 @@ void CommandBuffer::EndRenderPass() const
 	PIXEndEvent(mHandle->commandList);
 }
 
+void CommandBuffer::BeginComputePass(const TStringView debugName) const
+{
+	PIXBeginEvent(mHandle->commandList, PIX_COLOR(255, 165, 0), debugName.data());
+}
+
+void CommandBuffer::EndComputePass() const
+{
+	PIXEndEvent(mHandle->commandList);
+}
+
 void CommandBuffer::BindComputePipeline(const ComputePipeline& pipeline) const
 {
 	const auto& cbvSrvUavHeap = mHandle->device->GetCbvSrvUavHeap();

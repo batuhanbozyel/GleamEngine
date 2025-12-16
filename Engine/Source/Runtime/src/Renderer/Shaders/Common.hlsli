@@ -98,6 +98,21 @@ float3 ClipSpaceToWorldSpace(float3 position, float4x4 invViewMatrix, float4x4 i
     return worldPosition.xyz;
 }
 
+float3 SphericalToCartesian(float theta, float phi)
+{
+	// theta: azimuthal angle (rotation around y-axis, from x toward z)
+    // phi: polar angle (from y-axis down)
+	float sinPhi = sin(phi);
+	float cosPhi = cos(phi);
+	float sinTheta = sin(theta);
+	float cosTheta = cos(theta);
+	return float3(
+        sinPhi * cosTheta,
+        cosPhi,
+        sinPhi * sinTheta
+    );
+}
+
 // - r0: ray origin
 // - rd: normalized ray direction
 // - s0: sphere center

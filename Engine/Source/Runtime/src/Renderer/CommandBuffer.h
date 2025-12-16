@@ -42,6 +42,10 @@ public:
 
     void EndRenderPass() const;
 
+	void BeginComputePass(const TStringView debugName) const;
+
+	void EndComputePass() const;
+
 	void BindComputePipeline(const ComputePipeline& pipeline) const;
 
     void BindGraphicsPipeline(const GraphicsPipeline& pipeline) const;

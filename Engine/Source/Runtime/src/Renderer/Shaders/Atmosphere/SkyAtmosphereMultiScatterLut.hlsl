@@ -131,12 +131,12 @@ void skyAtmosphereMultiScatterLUTShader(uint3 dispatchThreadId : SV_DispatchThre
 	uv = float2(FromSubUvsToUnit(uv.x, SKY_ATMOSPHERE_MULTISCATTERING_LUT_RES), FromSubUvsToUnit(uv.y, SKY_ATMOSPHERE_MULTISCATTERING_LUT_RES));
 	
 	float cosSunZenithAngle = uv.x * 2.0 - 1.0;
-	float3 SunDir = float3(0.0, sqrt(saturate(1.0 - cosSunZenithAngle * cosSunZenithAngle)), cosSunZenithAngle);
+	float3 SunDir = float3(0.0, cosSunZenithAngle, sqrt(saturate(1.0 - cosSunZenithAngle * cosSunZenithAngle)));
 	// We adjust again viewHeight according to PLANET_RADIUS_OFFSET to be in a valid range.
 	float viewHeight = atmosphereParams.bottomRadius + saturate(uv.y + SKY_ATMOSPHERE_PLANET_RADIUS_OFFSET) * (atmosphereParams.topRadius - atmosphereParams.bottomRadius - SKY_ATMOSPHERE_PLANET_RADIUS_OFFSET);
 
-	float3 WorldPos = float3(0.0f, 0.0f, viewHeight);
-	float3 WorldDir = float3(0.0f, 0.0f, 1.0f);
+	float3 WorldPos = float3(0.0f, viewHeight, 0.0f);
+	float3 WorldDir = float3(0.0f, 1.0f, 0.0f);
 	
 	const float SampleCountIni = 20; // a minimum set of step is required for accuracy unfortunately
 	const float SphereSolidAngle = 4.0 * PI;
@@ -153,13 +153,7 @@ void skyAtmosphereMultiScatterLUTShader(uint3 dispatchThreadId : SV_DispatchThre
 		float theta = 2.0f * PI * randA;
 		float phi = acos(1.0f - 2.0f * randB); // uniform distribution https://mathworld.wolfram.com/SpherePointPicking.html
 		//phi = PI * randB;						// bad non uniform
-		float cosPhi = cos(phi);
-		float sinPhi = sin(phi);
-		float cosTheta = cos(theta);
-		float sinTheta = sin(theta);
-		WorldDir.x = cosTheta * sinPhi;
-		WorldDir.y = sinTheta * sinPhi;
-		WorldDir.z = cosPhi;
+		WorldDir = SphericalToCartesian(theta, phi);
 		MultiScatteringResult result = IntegrateMultiScattering(WorldPos, WorldDir, SunDir, SampleCountIni);
 
 		MultiScatAs1SharedMem[dispatchThreadId.z] = result.MultiScatAs1 * SphereSolidAngle / (sqrtSample * sqrtSample);

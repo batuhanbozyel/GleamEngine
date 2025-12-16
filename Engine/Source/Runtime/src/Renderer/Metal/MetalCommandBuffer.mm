@@ -85,9 +85,20 @@ void CommandBuffer::EndRenderPass() const
     mHandle->renderCommandEncoder = nil;
 }
 
+void CommandBuffer::BeginComputePass(const TStringView debugName) const
+{
+    mHandle->computeCommandEncoder = [mHandle->commandBuffer computeCommandEncoder];
+    mHandle->computeCommandEncoder.label = TO_NSSTRING(debugName.data());
+}
+
+void CommandBuffer::EndComputePass() const
+{
+	[mHandle->computeCommandEncoder endEncoding];
+    mHandle->computeCommandEncoder = nil;
+}
+
 void CommandBuffer::BindComputePipeline(const ComputePipeline& pipeline) const
 {
-    // TBD: when to start/finish recording mHandle->computeCommandEncoder ?
     mHandle->pipeline = pipeline.GetHandle();
 
     id<MetalComputePipeline> computePipeline = (id<MetalComputePipeline>)mHandle->pipeline;

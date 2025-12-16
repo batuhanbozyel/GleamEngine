@@ -20,9 +20,11 @@ private:
 
 	Texture mTransmittanceLutTexture;
 	Texture mMultiScatterLutTexture;
+	Texture mSkyViewLutTexture;
 
 	ComputePipelineHandle mTransmittanceLutPipeline;
 	ComputePipelineHandle mMultiScatterLutPipeline;
+	ComputePipelineHandle mSkyViewLutPipeline;
 };
 
 } // namespace Gleam

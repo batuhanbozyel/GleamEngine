@@ -71,6 +71,9 @@ static constexpr TextureFormat MTLPixelFormatToTextureFormat(MTLPixelFormat form
 
         case MTLPixelFormatBGRA8Unorm_sRGB: return TextureFormat::B8G8R8A8_SRGB;
         case MTLPixelFormatBGRA8Unorm: return TextureFormat::B8G8R8A8_UNorm;
+
+		case MTLPixelFormatRGB9E5Float: return TextureFormat::R9G9B9E5_SFloat;
+		case MTLPixelFormatRG11B10Float: return TextureFormat::R11G11B10_SFloat;
             
         // Depth - Stencil formats
         case MTLPixelFormatDepth16Unorm: return TextureFormat::D16_UNorm;
@@ -140,6 +143,9 @@ static constexpr MTLPixelFormat TextureFormatToMTLPixelFormat(TextureFormat form
             
         case TextureFormat::B8G8R8A8_SRGB: return MTLPixelFormatBGRA8Unorm_sRGB;
         case TextureFormat::B8G8R8A8_UNorm: return MTLPixelFormatBGRA8Unorm;
+
+		case TextureFormat::R9G9B9E5_SFloat: return MTLPixelFormatRGB9E5Float;
+		case TextureFormat::R11G11B10_SFloat: return MTLPixelFormatRG11B10Float;
 
         // Depth - Stencil formats
         case TextureFormat::D16_UNorm: return MTLPixelFormatDepth16Unorm;
@@ -310,6 +316,16 @@ static constexpr MTLColorWriteMask ColorWriteMaskToMTLColorWriteMask(ColorWriteM
         case ColorWriteMask::All: return MTLColorWriteMaskAll;
         default: GLEAM_ASSERT(false, "Metal: Unknown color write mask specified!"); return MTLColorWriteMaskNone;
     }
+}
+
+static constexpr MTLTextureType TextureDimensionToMTLTextureType(TextureDimension dimension)
+{
+	switch (dimension)
+	{
+		case TextureDimension::Texture2D: return MTLTextureType2D;
+		case TextureDimension::Texture3D: return MTLTextureType3D;
+		default: GLEAM_ASSERT(false, "Metal: Unknown texture dimension specified!"); return MTLTextureType(~0);
+	}
 }
 
 static constexpr MTLResourceOptions MemoryTypeToMTLResourceOption(MemoryType type)

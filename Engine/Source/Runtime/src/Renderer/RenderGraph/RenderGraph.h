@@ -46,6 +46,14 @@ public:
         auto node = new RenderGraphRenderPassNode(uniqueId, name, std::forward<decltype(execute)>(execute));
 		return AddPassNode<PassData>(node, std::forward<decltype(setup)>(setup));
 	}
+
+	template<typename PassData>
+	const PassData& AddComputePass(const TStringView name, SetupFunc<PassData>&& setup, RenderFunc<PassData>&& execute)
+	{
+		auto uniqueId = static_cast<uint32_t>(mPassNodes.size());
+		auto node = new RenderGraphComputePassNode(uniqueId, name, std::forward<decltype(execute)>(execute));
+		return AddPassNode<PassData>(node, std::forward<decltype(setup)>(setup));
+	}
     
     TextureHandle ImportTexture(const Texture& backbuffer, const ImportResourceParams& params = ImportResourceParams());
     

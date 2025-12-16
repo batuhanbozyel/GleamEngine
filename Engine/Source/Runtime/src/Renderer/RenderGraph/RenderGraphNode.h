@@ -56,6 +56,7 @@ struct RenderGraphPassNode : public RenderGraphNode
     TString name;
 	std::any data;
     PassCallback callback;
+	RenderGraphPassType type = RenderGraphPassType::Native;
     
     bool hasSideEffect = false;
     
@@ -72,23 +73,22 @@ struct RenderGraphPassNode : public RenderGraphNode
     
     HashSet<RenderGraphPassNode*> dependents;
     
-    RenderGraphPassNode(uint32_t uniqueId, const TStringView name)
+    RenderGraphPassNode(RenderGraphPassType type, uint32_t uniqueId, const TStringView name)
         : RenderGraphNode(uniqueId)
 		, name(name)
+		, type(type)
     {
         
     }
 	
 	virtual ~RenderGraphPassNode() = default;
-    
-	virtual RenderGraphPassType GetType() const = 0;
 };
 
 struct RenderGraphCopyPassNode final : public RenderGraphPassNode
 {
 	template<typename PassData>
 	RenderGraphCopyPassNode(uint32_t uniqueId, const TStringView name, CopyFunc<PassData>&& execute)
-		: RenderGraphPassNode(uniqueId, name)
+		: RenderGraphPassNode(RenderGraphPassType::Copy, uniqueId, name)
 	{
 		data = std::make_any<PassData>();
 		callback = [execute = std::move(execute), this](const void* userData)
@@ -96,18 +96,13 @@ struct RenderGraphCopyPassNode final : public RenderGraphPassNode
 			std::invoke(execute, static_cast<const CopyCommandBuffer*>(userData), std::any_cast<const PassData&>(data));
 		};
 	}
-	
-	virtual RenderGraphPassType GetType() const override
-	{
-		return RenderGraphPassType::Copy;
-	}
 };
 
 struct RenderGraphRenderPassNode final : public RenderGraphPassNode
 {
 	template<typename PassData>
 	RenderGraphRenderPassNode(uint32_t uniqueId, const TStringView name, RenderFunc<PassData>&& execute)
-		: RenderGraphPassNode(uniqueId, name)
+		: RenderGraphPassNode(RenderGraphPassType::Raster, uniqueId, name)
 	{
 		data = std::make_any<PassData>();
 		callback = [execute = std::move(execute), this](const void* userData)
@@ -115,10 +110,19 @@ struct RenderGraphRenderPassNode final : public RenderGraphPassNode
 			std::invoke(execute, static_cast<const CommandBuffer*>(userData), std::any_cast<const PassData&>(data));
 		};
 	}
-	
-	virtual RenderGraphPassType GetType() const override
+};
+
+struct RenderGraphComputePassNode final : public RenderGraphPassNode
+{
+	template<typename PassData>
+	RenderGraphComputePassNode(uint32_t uniqueId, const TStringView name, RenderFunc<PassData>&& execute)
+		: RenderGraphPassNode(RenderGraphPassType::Compute, uniqueId, name)
 	{
-		return RenderGraphPassType::Raster;
+		data = std::make_any<PassData>();
+		callback = [execute = std::move(execute), this](const void* userData)
+		{
+			std::invoke(execute, static_cast<const CommandBuffer*>(userData), std::any_cast<const PassData&>(data));
+		};
 	}
 };
 

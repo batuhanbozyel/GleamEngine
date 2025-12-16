@@ -188,4 +188,17 @@ NO_DISCARD FORCE_INLINE size_t constexpr RoundUpTo(T value, T to)
 	}
 }
 
+template<typename T>
+NO_DISCARD FORCE_INLINE constexpr T DivideRoundingUp(T x, T y)
+{
+	if constexpr (std::is_floating_point_v<T>)
+	{
+		return Ceil(x / y);
+	}
+	else
+	{
+		return (x + (y - T{ 1 })) / y;
+	}
+}
+
 } // namespace Gleam::Math

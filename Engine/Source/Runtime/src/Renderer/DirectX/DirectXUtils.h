@@ -151,6 +151,9 @@ static constexpr TextureFormat DXGI_FORMATtoTextureFormat(DXGI_FORMAT format)
 		case DXGI_FORMAT_B8G8R8A8_UNORM_SRGB: return TextureFormat::B8G8R8A8_SRGB;
 		case DXGI_FORMAT_B8G8R8A8_UNORM: return TextureFormat::B8G8R8A8_UNorm;
 
+		case DXGI_FORMAT_R9G9B9E5_SHAREDEXP: return TextureFormat::R9G9B9E5_SFloat;
+		case DXGI_FORMAT_R11G11B10_FLOAT: return TextureFormat::R11G11B10_SFloat;
+
 		// Depth - Stencil formats
 		case DXGI_FORMAT_D16_UNORM: return TextureFormat::D16_UNorm;
 		case DXGI_FORMAT_D32_FLOAT: return TextureFormat::D32_SFloat;
@@ -217,6 +220,9 @@ static constexpr DXGI_FORMAT TextureFormatToDXGI_FORMAT(TextureFormat format)
 
 		case TextureFormat::B8G8R8A8_SRGB: return DXGI_FORMAT_B8G8R8A8_TYPELESS;
 		case TextureFormat::B8G8R8A8_UNorm: return DXGI_FORMAT_B8G8R8A8_UNORM;
+
+		case TextureFormat::R9G9B9E5_SFloat: return DXGI_FORMAT_R9G9B9E5_SHAREDEXP;
+		case TextureFormat::R11G11B10_SFloat: return DXGI_FORMAT_R11G11B10_FLOAT;
 
 		// Depth - Stencil formats
 		case TextureFormat::D16_UNorm: return DXGI_FORMAT_D16_UNORM;
@@ -370,7 +376,7 @@ static constexpr D3D12_RESOURCE_DIMENSION TextureDimensionToD3D12_RESOURCE_DIMEN
 	switch (dimension)
 	{
 		case TextureDimension::Texture2D: return D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-		case TextureDimension::TextureCube: return D3D12_RESOURCE_DIMENSION_TEXTURE3D;
+		case TextureDimension::Texture3D: return D3D12_RESOURCE_DIMENSION_TEXTURE3D;
 		default: return D3D12_RESOURCE_DIMENSION_UNKNOWN;
 	}
 }
@@ -380,7 +386,7 @@ static constexpr D3D12_SRV_DIMENSION TextureDimensionToD3D12_SRV_DIMENSION(Textu
 	switch (dimension)
 	{
 		case TextureDimension::Texture2D: return D3D12_SRV_DIMENSION_TEXTURE2D;
-		case TextureDimension::TextureCube: return D3D12_SRV_DIMENSION_TEXTURECUBE;
+		case TextureDimension::Texture3D: return D3D12_SRV_DIMENSION_TEXTURECUBE;
 		default: return D3D12_SRV_DIMENSION_UNKNOWN;
 	}
 }
@@ -390,7 +396,7 @@ static constexpr D3D12_UAV_DIMENSION TextureDimensionToD3D12_UAV_DIMENSION(Textu
 	switch (dimension)
 	{
 		case TextureDimension::Texture2D: return D3D12_UAV_DIMENSION_TEXTURE2D;
-		case TextureDimension::TextureCube: return D3D12_UAV_DIMENSION_TEXTURE2DARRAY;
+		case TextureDimension::Texture3D: return D3D12_UAV_DIMENSION_TEXTURE2DARRAY;
 		default: return D3D12_UAV_DIMENSION_UNKNOWN;
 	}
 }
@@ -400,7 +406,7 @@ static constexpr D3D12_RTV_DIMENSION TextureDimensionToD3D12_RTV_DIMENSION(Textu
 	switch (dimension)
 	{
 		case TextureDimension::Texture2D: return D3D12_RTV_DIMENSION_TEXTURE2D;
-		case TextureDimension::TextureCube: return D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
+		case TextureDimension::Texture3D: return D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
 		default: return D3D12_RTV_DIMENSION_UNKNOWN;
 	}
 }
@@ -410,7 +416,7 @@ static constexpr D3D12_DSV_DIMENSION TextureDimensionToD3D12_DSV_DIMENSION(Textu
 	switch (dimension)
 	{
 		case TextureDimension::Texture2D: return D3D12_DSV_DIMENSION_TEXTURE2D;
-		case TextureDimension::TextureCube: return D3D12_DSV_DIMENSION_TEXTURE2DARRAY;
+		case TextureDimension::Texture3D: return D3D12_DSV_DIMENSION_TEXTURE2DARRAY;
 		default: return D3D12_DSV_DIMENSION_UNKNOWN;
 	}
 }

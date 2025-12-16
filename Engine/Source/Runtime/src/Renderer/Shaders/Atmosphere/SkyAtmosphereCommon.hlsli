@@ -3,11 +3,12 @@
 #include "Common.hlsli"
 #include "ShaderTypes.h"
 
+CONSTANT_BUFFER(Gleam::CameraUniforms, camera, SKY_ATMOSPHERE_CAMERA_UNIFORMS_BINDING_SLOT);
 CONSTANT_BUFFER(Gleam::SkyAtmosphereParameters, atmosphereParams, SKY_ATMOSPHERE_PARAMS_BINDING_SLOT);
 CONSTANT_BUFFER(Gleam::SkyAtmosphereCommonUniforms, atmosphereUniforms, SKY_ATMOSPHERE_COMMON_UNIFORMS_BINDING_SLOT);
 
 static Texture2D<float4> TransmittanceLutTexture = ResourceDescriptorHeap[SRVIndex(atmosphereUniforms.transmittanceLutTexture)];
-static Texture2D<float4> MultiScatterTexture = ResourceDescriptorHeap[SRVIndex(atmosphereUniforms.multiScatterLutTexture)];
+static Texture2D<float3> MultiScatterTexture = ResourceDescriptorHeap[SRVIndex(atmosphereUniforms.multiScatterLutTexture)];
 static Texture2D<float4> SkyViewLutTexture = ResourceDescriptorHeap[SRVIndex(atmosphereUniforms.skyViewLutTexture)];
 static Texture2D<float> DepthTexture = ResourceDescriptorHeap[SRVIndex(atmosphereUniforms.depthTexture)];
 
@@ -129,6 +130,62 @@ void LutTransmittanceParamsToUv(in float viewHeight, in float viewZenithCosAngle
 	//uv = float2(FromUnitToSubUvs(uv.x, SKY_ATMOSPHERE_TRANSMITTANCE_TEXTURE_WIDTH), FromUnitToSubUvs(uv.y, SKY_ATMOSPHERE_TRANSMITTANCE_TEXTURE_HEIGHT));
 }
 
+#define NONLINEARSKYVIEWLUT 1
+void UvToSkyViewLutParams(in float2 uv, in float viewHeight, out float viewZenithCosAngle, out float lightViewCosAngle)
+{
+	// Constrain uvs to valid sub texel range (avoid zenith derivative issue making LUT usage visible)
+	uv = float2(FromSubUvsToUnit(uv.x, float(SKY_ATMOSPHERE_SKY_VIEW_TEXTURE_WIDTH)), FromSubUvsToUnit(uv.y, float(SKY_ATMOSPHERE_SKY_VIEW_TEXTURE_HEIGHT)));
+
+	float Vhorizon = sqrt(viewHeight * viewHeight - atmosphereParams.bottomRadius * atmosphereParams.bottomRadius);
+	float CosBeta = Vhorizon / viewHeight;				// GroundToHorizonCos
+	float Beta = acos(CosBeta);
+	float ZenithHorizonAngle = PI - Beta;
+
+	if (uv.y < 0.5f)
+	{
+		float coord = 2.0*uv.y;
+		coord = 1.0 - coord;
+#if NONLINEARSKYVIEWLUT
+		coord *= coord;
+#endif
+		coord = 1.0 - coord;
+		viewZenithCosAngle = cos(ZenithHorizonAngle * coord);
+	}
+	else
+	{
+		float coord = uv.y*2.0 - 1.0;
+#if NONLINEARSKYVIEWLUT
+		coord *= coord;
+#endif
+		viewZenithCosAngle = cos(ZenithHorizonAngle + Beta * coord);
+	}
+
+	float coord = uv.x;
+	coord *= coord;
+	lightViewCosAngle = -(coord*2.0 - 1.0);
+}
+
+bool MoveToTopAtmosphere(in float3 WorldDir, in float AtmosphereTopRadius, inout float3 WorldPos)
+{
+	float viewHeight = length(WorldPos);
+	if (viewHeight > AtmosphereTopRadius)
+	{
+		float tTop = RaySphereIntersectNearest(WorldPos, WorldDir, float3(0.0f, 0.0f, 0.0f), AtmosphereTopRadius);
+		if (tTop >= 0.0f)
+		{
+			float3 UpVector = WorldPos / viewHeight;
+			float3 UpOffset = UpVector * -SKY_ATMOSPHERE_PLANET_RADIUS_OFFSET;
+			WorldPos = WorldPos + WorldDir * tTop + UpOffset;
+		}
+		else
+		{
+			// Ray is not intersecting the atmosphere
+			return false;
+		}
+	}
+	return true; // ok to start tracing
+}
+
 float3 GetSunLuminance(float3 WorldPos, float3 WorldDir)
 {
 	if (dot(WorldDir, atmosphereUniforms.sunDirection) > cos(0.5*0.505*3.14159 / 180.0))
@@ -147,16 +204,14 @@ float3 GetMultipleScattering(float3 scattering, float3 extinction, float3 worlPo
 {
 	float2 uv = saturate(float2(viewZenithCosAngle * 0.5f + 0.5f, (length(worlPos) - atmosphereParams.bottomRadius) / (atmosphereParams.topRadius - atmosphereParams.bottomRadius)));
 	uv = float2(FromUnitToSubUvs(uv.x, SKY_ATMOSPHERE_MULTISCATTERING_LUT_RES), FromUnitToSubUvs(uv.y, SKY_ATMOSPHERE_MULTISCATTERING_LUT_RES));
-
-	float3 multiScatteredLuminance = MultiScatterTexture.SampleLevel(Sampler_Bilinear_Clamp, uv, 0).rgb;
-	return multiScatteredLuminance;
+	return MultiScatterTexture.SampleLevel(Sampler_Bilinear_Clamp, uv, 0);
 }
 
 float GetShadow(float3 P)
 {
 #if SKY_ATMOSPHERE_SHADOWMAP_ENABLED
 	// First evaluate opaque shadow
-	float4 shadowUv = mul(gShadowmapViewProjMat, float4(P + float3(0.0, 0.0, -atmosphereParams.bottomRadius), 1.0));
+	float4 shadowUv = mul(gShadowmapViewProjMat, float4(P + float3(0.0, -atmosphereParams.bottomRadiusm, 0.0), 1.0));
 	//shadowUv /= shadowUv.w;	// not be needed as it is an ortho projection
 	shadowUv.x = shadowUv.x*0.5 + 0.5;
 	shadowUv.y = -shadowUv.y*0.5 + 0.5;

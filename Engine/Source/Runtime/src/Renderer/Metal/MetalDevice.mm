@@ -154,18 +154,12 @@ Heap GraphicsDevice::CreateHeap(const HeapDescriptor& descriptor)
 Texture GraphicsDevice::CreateTexture(GPUAllocator* allocator, const TextureDescriptor& descriptor)
 {
     Texture texture(descriptor);
-    MTLTextureDescriptor* textureDesc;
-    if (descriptor.dimension == TextureDimension::TextureCube)
-    {
-        float size = Math::Min(descriptor.size.width, descriptor.size.height);
-        texture.mDescriptor.size.width = size;
-        texture.mDescriptor.size.height = size;
-        textureDesc = [MTLTextureDescriptor textureCubeDescriptorWithPixelFormat:TextureFormatToMTLPixelFormat(descriptor.format) size:size mipmapped:descriptor.useMipMap];
-    }
-    else
-    {
-        textureDesc = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:TextureFormatToMTLPixelFormat(descriptor.format) width:descriptor.size.width height:descriptor.size.height mipmapped:descriptor.useMipMap];
-    }
+    MTLTextureDescriptor* textureDesc = [MTLTextureDescriptor new];
+    textureDesc.textureType = TextureDimensionToMTLTextureType(descriptor.dimension);
+    textureDesc.pixelFormat = TextureFormatToMTLPixelFormat(descriptor.format);
+    textureDesc.width = descriptor.size.width;
+    textureDesc.height = descriptor.size.height;
+    textureDesc.depth = descriptor.depth;
     textureDesc.mipmapLevelCount = texture.mMipMapLevels;
     textureDesc.sampleCount = 1;
     textureDesc.usage = TextureUsageToMTLTextureUsage(descriptor.usage);
@@ -183,7 +177,7 @@ Texture GraphicsDevice::CreateTexture(GPUAllocator* allocator, const TextureDesc
     id<MTLHeap> heap = allocation.block->heap.GetHandle();
     id<MTLTexture> baseTexture = [heap newTextureWithDescriptor:textureDesc offset:allocation.offset];
     id<MTLTexture> textureView = [baseTexture newTextureViewWithPixelFormat:baseTexture.pixelFormat
-                                                   textureType:descriptor.dimension == TextureDimension::TextureCube ? MTLTextureTypeCubeArray : MTLTextureType2DArray
+                                                   textureType:textureDesc.textureType
                                                         levels:NSMakeRange(0, texture.mMipMapLevels)
                                                         slices:NSMakeRange(0, 1)];
     [baseTexture setLabel:TO_NSSTRING(descriptor.name.c_str())];

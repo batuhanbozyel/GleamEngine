@@ -41,6 +41,21 @@ void SkyAtmosphere::OnCreate(RenderContext& context)
 		mMultiScatterLutTexture = context.device->CreateTexture(context.allocator, textureDesc);
 	}
 
+	// Sky view LUT
+	{
+		ComputePipelineStateDescriptor pipelineState;
+		pipelineState.entryPoint = "skyAtmosphereSkyViewLUTShader";
+		mSkyViewLutPipeline = context.device->CreateComputePipeline(pipelineState);
+
+		TextureDescriptor textureDesc;
+		textureDesc.name = "SkyAtmosphereSkyViewLUT";
+		textureDesc.dimension = TextureDimension::Texture2D;
+		textureDesc.format = TextureFormat::R11G11B10_SFloat;
+		textureDesc.usage = TextureUsage_Storage | TextureUsage_Sampled;
+		textureDesc.size = { SKY_ATMOSPHERE_SKY_VIEW_TEXTURE_WIDTH, SKY_ATMOSPHERE_SKY_VIEW_TEXTURE_HEIGHT };
+		mSkyViewLutTexture = context.device->CreateTexture(context.allocator, textureDesc);
+	}
+
 	// Setup atmosphere params
 	{
 		// Rayleigh scattering coefficient (wavelength dependent, RGB for earth-like atmosphere)
@@ -77,6 +92,7 @@ void SkyAtmosphere::OnDestroy(RenderContext& context)
 {
 	context.device->Dispose(context.allocator, mTransmittanceLutTexture);
 	context.device->Dispose(context.allocator, mMultiScatterLutTexture);
+	context.device->Dispose(context.allocator, mSkyViewLutTexture);
 }
 
 void SkyAtmosphere::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard)
@@ -87,7 +103,7 @@ void SkyAtmosphere::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 	SkyAtmosphereCommonUniforms commonParams = {};
 	commonParams.transmittanceLutTexture = mTransmittanceLutTexture.GetResourceView();
 	commonParams.multiScatterLutTexture = mMultiScatterLutTexture.GetResourceView();
-	commonParams.skyViewLutTexture = InvalidResourceIndex;
+	commonParams.skyViewLutTexture = mSkyViewLutTexture.GetResourceView();
 	commonParams.depthTexture = InvalidResourceIndex;
 	commonParams.sunIlluminance = sceneData.sun.illuminance;
 	commonParams.sunDirection = sceneData.sun.direction;
@@ -95,6 +111,7 @@ void SkyAtmosphere::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 
 	auto transmittanceLut = graph.ImportTexture(mTransmittanceLutTexture);
 	auto multiScatterLut = graph.ImportTexture(mMultiScatterLutTexture);
+	auto skyViewLut = graph.ImportTexture(mSkyViewLutTexture);
 	if (mBakeLUTs)
 	{
 		// Transmittance LUT
@@ -102,7 +119,7 @@ void SkyAtmosphere::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 		{
 			TextureHandle texture;
 		};
-		graph.AddRenderPass<SkyAtmosphereTransmittanceLutPassData>("SkyAtmosphere::TransmittanceLut", [&](RenderGraphBuilder& builder, SkyAtmosphereTransmittanceLutPassData& passData)
+		graph.AddComputePass<SkyAtmosphereTransmittanceLutPassData>("SkyAtmosphere::TransmittanceLut", [&](RenderGraphBuilder& builder, SkyAtmosphereTransmittanceLutPassData& passData)
 		{
 			passData.texture = builder.WriteTexture(transmittanceLut);
 		},
@@ -111,7 +128,7 @@ void SkyAtmosphere::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 			cmd->BindComputePipeline(mTransmittanceLutPipeline);
 			cmd->SetConstantBuffer(mAtmosphereParams, SKY_ATMOSPHERE_PARAMS_BINDING_SLOT);
 			cmd->SetConstantBuffer(commonParams, SKY_ATMOSPHERE_COMMON_UNIFORMS_BINDING_SLOT);
-			cmd->Dispatch(SKY_ATMOSPHERE_TRANSMITTANCE_TEXTURE_WIDTH / 16, SKY_ATMOSPHERE_TRANSMITTANCE_TEXTURE_HEIGHT / 16, 1);
+			cmd->Dispatch(Math::DivideRoundingUp(SKY_ATMOSPHERE_TRANSMITTANCE_TEXTURE_WIDTH, 16), Math::DivideRoundingUp(SKY_ATMOSPHERE_TRANSMITTANCE_TEXTURE_HEIGHT, 16), 1);
 		});
 
 		// Multi scatter LUT
@@ -120,7 +137,7 @@ void SkyAtmosphere::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 			TextureHandle texture;
 			TextureHandle transmittanceLut;
 		};
-		graph.AddRenderPass<SkyAtmosphereMultiScatterLutPassData>("SkyAtmosphere::MultiScatterLut", [&](RenderGraphBuilder& builder, SkyAtmosphereMultiScatterLutPassData& passData)
+		graph.AddComputePass<SkyAtmosphereMultiScatterLutPassData>("SkyAtmosphere::MultiScatterLut", [&](RenderGraphBuilder& builder, SkyAtmosphereMultiScatterLutPassData& passData)
 		{
 			passData.texture = builder.WriteTexture(multiScatterLut);
 			passData.transmittanceLut = builder.ReadTexture(transmittanceLut);
@@ -132,7 +149,28 @@ void SkyAtmosphere::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 			cmd->SetConstantBuffer(commonParams, SKY_ATMOSPHERE_COMMON_UNIFORMS_BINDING_SLOT);
 			cmd->Dispatch(SKY_ATMOSPHERE_MULTISCATTERING_LUT_RES, SKY_ATMOSPHERE_MULTISCATTERING_LUT_RES, 1);
 		});
-
 		mBakeLUTs = false;
 	}
+
+	// Sky view LUT - updated every frame
+	struct SkyAtmosphereSkyViewLutPassData
+	{
+		TextureHandle texture;
+		TextureHandle transmittanceLut;
+		TextureHandle multiScatterLut;
+	};
+	graph.AddComputePass<SkyAtmosphereSkyViewLutPassData>("SkyAtmosphere::SkyViewLut", [&](RenderGraphBuilder& builder, SkyAtmosphereSkyViewLutPassData& passData)
+	{
+		passData.texture = builder.WriteTexture(skyViewLut);
+		passData.transmittanceLut = builder.ReadTexture(transmittanceLut);
+		passData.multiScatterLut = builder.ReadTexture(multiScatterLut);
+	},
+	[this, sceneData, commonParams = commonParams](const CommandBuffer* cmd, const SkyAtmosphereSkyViewLutPassData& passData)
+	{
+		cmd->BindComputePipeline(mSkyViewLutPipeline);
+		cmd->SetConstantBuffer(mAtmosphereParams, SKY_ATMOSPHERE_PARAMS_BINDING_SLOT);
+		cmd->SetConstantBuffer(commonParams, SKY_ATMOSPHERE_COMMON_UNIFORMS_BINDING_SLOT);
+		cmd->SetConstantBuffer(sceneData.camera, SKY_ATMOSPHERE_CAMERA_UNIFORMS_BINDING_SLOT);
+		cmd->Dispatch(Math::DivideRoundingUp(SKY_ATMOSPHERE_SKY_VIEW_TEXTURE_WIDTH, 16), Math::DivideRoundingUp(SKY_ATMOSPHERE_SKY_VIEW_TEXTURE_HEIGHT, 16), 1);
+	});
 }

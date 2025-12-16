@@ -65,8 +65,8 @@ void skyAtmosphereTransmittanceLUTShader(uint3 dispatchThreadId : SV_DispatchThr
 	float viewHeight, viewZenithCosAngle;
 	UvToLutTransmittanceParams(uv, viewHeight, viewZenithCosAngle);
 
-	float3 rayOrigin = float3(0.0, 0.0, viewHeight);
-	float3 rayDirection = float3(0.0, sqrt(1.0 - viewZenithCosAngle * viewZenithCosAngle), viewZenithCosAngle);
+	float3 rayOrigin = float3(0.0, viewHeight, 0.0);
+	float3 rayDirection = float3(0.0, viewZenithCosAngle, sqrt(1.0 - viewZenithCosAngle * viewZenithCosAngle));
 	
 	const float sampleCountIni = 40.0f;	// Can go a low as 10 sample but energy lost starts to be visible.
 	float3 transmittance = IntegrateTransmittance(rayOrigin, rayDirection, sampleCountIni);

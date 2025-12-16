@@ -347,11 +347,11 @@ void RenderGraph::SetupPassBarriers(RenderGraphPassNode* pass, const CommandBuff
 
 void RenderGraph::ExecutePass(RenderGraphPassNode* pass, const CommandBuffer* cmd)
 {
-	if (pass->GetType() == RenderGraphPassType::Native)
+	if (pass->type == RenderGraphPassType::Native)
 	{
 		std::invoke(pass->callback, cmd);
 	}
-	else if (pass->GetType() == RenderGraphPassType::Raster)
+	else if (pass->type == RenderGraphPassType::Raster)
 	{
 		if (pass->colorAttachments.empty() && pass->depthAttachment.IsValid() == false)
 		{
@@ -392,6 +392,12 @@ void RenderGraph::ExecutePass(RenderGraphPassNode* pass, const CommandBuffer* cm
 			std::invoke(pass->callback, cmd);
 			cmd->EndRenderPass();
 		}
+	}
+	else if (pass->type == RenderGraphPassType::Compute)
+	{
+		cmd->BeginComputePass(pass->name);
+		std::invoke(pass->callback, cmd);
+		cmd->EndComputePass();
 	}
 }
 

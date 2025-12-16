@@ -139,13 +139,6 @@ Heap GraphicsDevice::CreateHeap(const HeapDescriptor& descriptor)
 Texture GraphicsDevice::CreateTexture(GPUAllocator* allocator, const TextureDescriptor& descriptor)
 {
 	Texture texture(descriptor);
-	if (descriptor.dimension == TextureDimension::TextureCube)
-	{
-		float size = Math::Min(descriptor.size.width, descriptor.size.height);
-		texture.mDescriptor.size.width = size;
-		texture.mDescriptor.size.height = size;
-	}
-
 	D3D12_RESOURCE_FLAGS flags = D3D12_RESOURCE_FLAG_NONE;
 	if (descriptor.usage & TextureUsage_Attachment)
 	{
@@ -169,7 +162,7 @@ Texture GraphicsDevice::CreateTexture(GPUAllocator* allocator, const TextureDesc
 		.Alignment = 0,
 		.Width = (UINT64)descriptor.size.width,
 		.Height = (UINT)descriptor.size.height,
-		.DepthOrArraySize = (UINT16)(descriptor.dimension == TextureDimension::TextureCube ? 6 : 1),
+		.DepthOrArraySize = (UINT16)descriptor.depth,
 		.MipLevels = (UINT16)texture.mMipMapLevels,
 		.Format = TextureFormatToDXGI_FORMAT(descriptor.format),
 		.SampleDesc = {.Count = 1, .Quality = 0 },
@@ -217,7 +210,7 @@ Texture GraphicsDevice::CreateTexture(GPUAllocator* allocator, const TextureDesc
 			D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
 			rtvDesc.Format = resourceDesc.Format;
 			rtvDesc.ViewDimension = TextureDimensionToD3D12_RTV_DIMENSION(descriptor.dimension);
-			if (descriptor.dimension == TextureDimension::TextureCube)
+			if (descriptor.dimension == TextureDimension::Texture3D)
 			{
 				rtvDesc.Texture2DArray = {
 					.MipSlice = 0,
@@ -853,22 +846,21 @@ ShaderResourceIndex DirectXDevice::CreateResourceView(const Texture& texture)
 
 			break;
 		}
-		case TextureDimension::TextureCube:
+		case TextureDimension::Texture3D:
 		{
-			srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBE;
-			uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2DARRAY;
+			srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE3D;
+			uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE3D;
 
-			srvDesc.TextureCube = {
+			srvDesc.Texture3D = {
 				.MostDetailedMip = 0,
 				.MipLevels = texture.GetMipMapLevels(),
 				.ResourceMinLODClamp = 0,
 			};
 
-			uavDesc.Texture2DArray = {
+			uavDesc.Texture3D = {
 				.MipSlice = 0,
-				.FirstArraySlice = 0,
-				.ArraySize = 6,
-				.PlaneSlice = 0
+				.FirstWSlice = 0,
+				.WSize = texture.GetDescriptor().depth,
 			};
 
 			break;
