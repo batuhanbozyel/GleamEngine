@@ -56,6 +56,25 @@ void SkyAtmosphere::OnCreate(RenderContext& context)
 		mSkyViewLutTexture = context.device->CreateTexture(context.allocator, textureDesc);
 	}
 
+	// Aerial perspective LUT
+	{
+		ComputePipelineStateDescriptor pipelineState;
+		pipelineState.entryPoint = "skyAtmosphereAerialPerspectiveLUTShader";
+		mAerialPerspectiveLutPipeline = context.device->CreateComputePipeline(pipelineState);
+
+		TextureDescriptor textureDesc;
+		textureDesc.name = "SkyAtmosphereAerialPerspectiveLUT";
+		textureDesc.dimension = TextureDimension::Texture3D;
+		textureDesc.format = TextureFormat::R16G16B16A16_SFloat;
+		textureDesc.usage = TextureUsage_Storage | TextureUsage_Sampled;
+		textureDesc.size = { SKY_ATMOSPHERE_AERIAL_PERSPECTIVE_LUT_RES, SKY_ATMOSPHERE_AERIAL_PERSPECTIVE_LUT_RES };
+		textureDesc.depth = SKY_ATMOSPHERE_AERIAL_PERSPECTIVE_LUT_RES;
+		mAerialPerspectiveLutTexture = context.device->CreateTexture(context.allocator, textureDesc);
+	}
+	ComputePipelineStateDescriptor pipelineState;
+	pipelineState.entryPoint = "skyAtmosphereRenderShader";
+	mSkyRenderPipeline = context.device->CreateComputePipeline(pipelineState);
+
 	// Setup atmosphere params
 	{
 		// Rayleigh scattering coefficient (wavelength dependent, RGB for earth-like atmosphere)
@@ -93,6 +112,7 @@ void SkyAtmosphere::OnDestroy(RenderContext& context)
 	context.device->Dispose(context.allocator, mTransmittanceLutTexture);
 	context.device->Dispose(context.allocator, mMultiScatterLutTexture);
 	context.device->Dispose(context.allocator, mSkyViewLutTexture);
+	context.device->Dispose(context.allocator, mAerialPerspectiveLutTexture);
 }
 
 void SkyAtmosphere::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard)
@@ -104,7 +124,7 @@ void SkyAtmosphere::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 	commonParams.transmittanceLutTexture = mTransmittanceLutTexture.GetResourceView();
 	commonParams.multiScatterLutTexture = mMultiScatterLutTexture.GetResourceView();
 	commonParams.skyViewLutTexture = mSkyViewLutTexture.GetResourceView();
-	commonParams.depthTexture = InvalidResourceIndex;
+	commonParams.aerialPerspectiveLutTexture = mAerialPerspectiveLutTexture.GetResourceView();
 	commonParams.sunIlluminance = sceneData.sun.illuminance;
 	commonParams.sunDirection = sceneData.sun.direction;
 	commonParams.rayMarchMinMaxSPP = { 4, 14 };
@@ -112,6 +132,7 @@ void SkyAtmosphere::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 	auto transmittanceLut = graph.ImportTexture(mTransmittanceLutTexture);
 	auto multiScatterLut = graph.ImportTexture(mMultiScatterLutTexture);
 	auto skyViewLut = graph.ImportTexture(mSkyViewLutTexture);
+	auto aerialPerspectiveLut = graph.ImportTexture(mAerialPerspectiveLutTexture);
 	if (mBakeLUTs)
 	{
 		// Transmittance LUT
@@ -152,7 +173,7 @@ void SkyAtmosphere::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 		mBakeLUTs = false;
 	}
 
-	// Sky view LUT - updated every frame
+	// Sky view LUT
 	struct SkyAtmosphereSkyViewLutPassData
 	{
 		TextureHandle texture;
@@ -172,5 +193,50 @@ void SkyAtmosphere::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 		cmd->SetConstantBuffer(commonParams, SKY_ATMOSPHERE_COMMON_UNIFORMS_BINDING_SLOT);
 		cmd->SetConstantBuffer(sceneData.camera, SKY_ATMOSPHERE_CAMERA_UNIFORMS_BINDING_SLOT);
 		cmd->Dispatch(Math::DivideRoundingUp(SKY_ATMOSPHERE_SKY_VIEW_TEXTURE_WIDTH, 16), Math::DivideRoundingUp(SKY_ATMOSPHERE_SKY_VIEW_TEXTURE_HEIGHT, 16), 1);
+	});
+
+	// Aerial perspective LUT
+	struct SkyAtmosphereAerialPerspectiveLutPassData
+	{
+		TextureHandle texture;
+		TextureHandle transmittanceLut;
+		TextureHandle multiScatterLut;
+	};
+	graph.AddComputePass<SkyAtmosphereAerialPerspectiveLutPassData>("SkyAtmosphere::AerialPerspectiveLut", [&](RenderGraphBuilder& builder, SkyAtmosphereAerialPerspectiveLutPassData& passData)
+	{
+		passData.texture = builder.WriteTexture(aerialPerspectiveLut);
+		passData.transmittanceLut = builder.ReadTexture(transmittanceLut);
+		passData.multiScatterLut = builder.ReadTexture(multiScatterLut);
+	},
+	[this, sceneData, commonParams = commonParams](const CommandBuffer* cmd, const SkyAtmosphereAerialPerspectiveLutPassData& passData)
+	{
+		cmd->BindComputePipeline(mAerialPerspectiveLutPipeline);
+		cmd->SetConstantBuffer(mAtmosphereParams, SKY_ATMOSPHERE_PARAMS_BINDING_SLOT);
+		cmd->SetConstantBuffer(commonParams, SKY_ATMOSPHERE_COMMON_UNIFORMS_BINDING_SLOT);
+		cmd->SetConstantBuffer(sceneData.camera, SKY_ATMOSPHERE_CAMERA_UNIFORMS_BINDING_SLOT);
+		cmd->Dispatch(1, 1, SKY_ATMOSPHERE_AERIAL_PERSPECTIVE_LUT_RES);
+	});
+
+	// Render sky
+	graph.AddComputePass<SkyAtmospherePassData>("SkyAtmosphere::Render", [&](RenderGraphBuilder& builder, SkyAtmospherePassData& passData)
+	{
+		auto& worldData = blackboard.Get<WorldRenderingData>();
+		passData.sceneColor = builder.WriteTexture(worldData.colorTarget);
+		passData.sceneDepth = builder.ReadTexture(worldData.depthTarget);
+
+		worldData.colorTarget = passData.sceneColor;
+	},
+	[this, sceneData, commonParams = commonParams](const CommandBuffer* cmd, const SkyAtmospherePassData& passData)
+	{
+		SkyAtmosphereRenderConstants constants = {};
+		constants.targetTexture = passData.sceneColor.GetTexture().GetResourceView();
+		constants.depthTexture = passData.sceneDepth.GetTexture().GetResourceView();
+
+		cmd->BindComputePipeline(mSkyRenderPipeline);
+		cmd->SetConstantBuffer(mAtmosphereParams, SKY_ATMOSPHERE_PARAMS_BINDING_SLOT);
+		cmd->SetConstantBuffer(commonParams, SKY_ATMOSPHERE_COMMON_UNIFORMS_BINDING_SLOT);
+		cmd->SetConstantBuffer(sceneData.camera, SKY_ATMOSPHERE_CAMERA_UNIFORMS_BINDING_SLOT);
+		cmd->SetPushConstant(constants);
+		cmd->Dispatch(Math::DivideRoundingUp((int)sceneData.camera.resolution.x, 16), Math::DivideRoundingUp((int)sceneData.camera.resolution.y, 16), 1);
 	});
 }

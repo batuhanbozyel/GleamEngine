@@ -131,7 +131,15 @@ struct SkyAtmosphereCommonUniforms
 
 	float2 rayMarchMinMaxSPP;
 	ShaderResourceIndex skyViewLutTexture;
+	ShaderResourceIndex aerialPerspectiveLutTexture;
+};
+
+struct SkyAtmosphereRenderConstants
+{
+	ShaderResourceIndex targetTexture;
 	ShaderResourceIndex depthTexture;
+	float pad0;
+	float pad1;
 };
 
 } // namespace Gleam

@@ -10,7 +10,7 @@ CONSTANT_BUFFER(Gleam::SkyAtmosphereCommonUniforms, atmosphereUniforms, SKY_ATMO
 static Texture2D<float4> TransmittanceLutTexture = ResourceDescriptorHeap[SRVIndex(atmosphereUniforms.transmittanceLutTexture)];
 static Texture2D<float3> MultiScatterTexture = ResourceDescriptorHeap[SRVIndex(atmosphereUniforms.multiScatterLutTexture)];
 static Texture2D<float4> SkyViewLutTexture = ResourceDescriptorHeap[SRVIndex(atmosphereUniforms.skyViewLutTexture)];
-static Texture2D<float> DepthTexture = ResourceDescriptorHeap[SRVIndex(atmosphereUniforms.depthTexture)];
+static Texture3D<float4> AerialPerspectiveTexture = ResourceDescriptorHeap[SRVIndex(atmosphereUniforms.aerialPerspectiveLutTexture)];
 
 float FromUnitToSubUvs(float u, float resolution) { return (u + 0.5f / resolution) * (resolution / (resolution + 1.0f)); }
 float FromSubUvsToUnit(float u, float resolution) { return (u - 0.5f / resolution) * (resolution / (resolution - 1.0f)); }
@@ -184,6 +184,18 @@ bool MoveToTopAtmosphere(in float3 WorldDir, in float AtmosphereTopRadius, inout
 		}
 	}
 	return true; // ok to start tracing
+}
+
+#define AP_SLICE_COUNT float(SKY_ATMOSPHERE_AERIAL_PERSPECTIVE_LUT_RES)
+#define AP_KM_PER_SLICE 4.0f
+
+float AerialPerspectiveDepthToSlice(float depth)
+{
+	return depth * (1.0f / AP_KM_PER_SLICE);
+}
+float AerialPerspectiveSliceToDepth(float slice)
+{
+	return slice * AP_KM_PER_SLICE;
 }
 
 float3 GetSunLuminance(float3 WorldPos, float3 WorldDir)

@@ -281,13 +281,10 @@ void RenderGraph::SetupPassBarriers(RenderGraphPassNode* pass, const CommandBuff
 		BarrierLayout newLayout = BarrierLayout::ShaderResource;
 
 		const auto& textureDesc = resource.node->texture.GetDescriptor();
-		if (textureDesc.usage & TextureUsage_Attachment)
+		if (pass->depthAttachment.node == resource.node)
 		{
-			if (pass->depthAttachment.node == resource.node)
-			{
-				dstAccess = BarrierAccess::DepthStencilRead;
-				newLayout = BarrierLayout::DepthStencilRead;
-			}
+			dstAccess = BarrierAccess::DepthStencilRead;
+			newLayout = BarrierLayout::DepthStencilRead;
 		}
 
 		TextureBarrier textureBarrier;
@@ -312,7 +309,7 @@ void RenderGraph::SetupPassBarriers(RenderGraphPassNode* pass, const CommandBuff
 		BarrierLayout newLayout = BarrierLayout::UnorderedAccess;
 
 		const auto& textureDesc = resource.node->texture.GetDescriptor();
-		if (textureDesc.usage & TextureUsage_Attachment)
+		if (pass->type == RenderGraphPassType::Raster)
 		{
 			if (pass->depthAttachment.node == resource.node)
 			{
@@ -326,6 +323,10 @@ void RenderGraph::SetupPassBarriers(RenderGraphPassNode* pass, const CommandBuff
 				dstAccess = BarrierAccess::RenderTarget;
 				newLayout = BarrierLayout::RenderTarget;
 			}
+		}
+		else if (pass->type == RenderGraphPassType::Compute)
+		{
+			dstStage = BarrierStage::ComputeShading;
 		}
 
 		TextureBarrier textureBarrier;

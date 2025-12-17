@@ -29,11 +29,11 @@ void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
     graph.AddRenderPass<WorldRenderingData>("WorldRenderer::ForwardPass", [&](RenderGraphBuilder& builder, WorldRenderingData& passData)
     {
         const auto& sceneData = blackboard.Get<SceneRenderingData>();
-        const auto& backbufferDescriptor = graph.GetDescriptor(sceneData.backbuffer);
+        const auto& sceneTargetDescriptor = graph.GetDescriptor(sceneData.sceneTarget);
         
         RenderTextureDescriptor textureDesc;
         textureDesc.name = "SceneColorRT";
-        textureDesc.size = backbufferDescriptor.size;
+        textureDesc.size = sceneTargetDescriptor.size;
         textureDesc.format = TextureFormat::R16G16B16A16_SFloat;
         textureDesc.clearBuffer = true;
         passData.colorTarget = builder.CreateTexture(textureDesc);

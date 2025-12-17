@@ -3,6 +3,15 @@
 
 namespace Gleam {
 
+struct SkyAtmospherePassData
+{
+	TextureHandle sceneColor;
+	TextureHandle sceneDepth;
+	TextureHandle multiScatterLut;
+	TextureHandle skyViewLut;
+	TextureHandle aerialPerspectiveLut;
+};
+
 class SkyAtmosphere : public IRenderer
 {
 public:
@@ -21,10 +30,13 @@ private:
 	Texture mTransmittanceLutTexture;
 	Texture mMultiScatterLutTexture;
 	Texture mSkyViewLutTexture;
+	Texture mAerialPerspectiveLutTexture;
 
 	ComputePipelineHandle mTransmittanceLutPipeline;
 	ComputePipelineHandle mMultiScatterLutPipeline;
 	ComputePipelineHandle mSkyViewLutPipeline;
+	ComputePipelineHandle mAerialPerspectiveLutPipeline;
+	ComputePipelineHandle mSkyRenderPipeline;
 };
 
 } // namespace Gleam

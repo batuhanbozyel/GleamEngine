@@ -188,7 +188,7 @@ Texture GraphicsDevice::CreateTexture(GPUAllocator* allocator, const TextureDesc
 
     texture.mHandle = baseTexture;
     texture.mView = textureView;
-    texture.mResourceView = Utils::IsDepthFormat(descriptor.format) ? InvalidResourceIndex : static_cast<MetalDevice*>(this)->CreateResourceView(texture);
+    texture.mResourceView = static_cast<MetalDevice*>(this)->CreateResourceView(texture);
     return texture;
 }
 

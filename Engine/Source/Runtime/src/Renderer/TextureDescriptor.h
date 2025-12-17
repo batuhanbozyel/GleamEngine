@@ -97,13 +97,13 @@ GSTRUCT(RenderTextureDescriptor, "7B6A5D4C-3E2F-4180-9D8C-7B6A5D4C3E2F", Seriali
 	RenderTextureDescriptor()
 		: TextureDescriptor()
 	{
-		usage |= TextureUsage_Attachment;
+		usage |= TextureUsage_Attachment | TextureUsage_Storage;
 	}
 
 	RenderTextureDescriptor(const TextureDescriptor& descriptor)
 		: TextureDescriptor(descriptor)
 	{
-		usage |= TextureUsage_Attachment;
+		usage |= TextureUsage_Attachment | TextureUsage_Storage;
 	}
 };
 

@@ -152,7 +152,7 @@ Texture GraphicsDevice::CreateTexture(GPUAllocator* allocator, const TextureDesc
 		}
 	}
 
-	if (descriptor.usage & TextureUsage_Storage)
+	if (descriptor.usage & TextureUsage_Storage && Utils::IsColorFormat(descriptor.format))
 	{
 		flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
 	}
@@ -224,7 +224,7 @@ Texture GraphicsDevice::CreateTexture(GPUAllocator* allocator, const TextureDesc
 		}
 	}
 	
-	texture.mResourceView = Utils::IsDepthFormat(descriptor.format) ? InvalidResourceIndex : static_cast<DirectXDevice*>(this)->CreateResourceView(texture);
+	texture.mResourceView = static_cast<DirectXDevice*>(this)->CreateResourceView(texture);
 	return texture;
 }
 
@@ -820,7 +820,32 @@ ShaderResourceIndex DirectXDevice::CreateResourceView(const Texture& texture)
 {
 	// SRV
 	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
-	srvDesc.Format = TextureFormatToDXGI_FORMAT(texture.GetDescriptor().format);
+	if (Utils::IsDepthFormat(texture.GetDescriptor().format))
+	{
+		switch (texture.GetDescriptor().format)
+		{
+			case TextureFormat::D16_UNorm:
+			{
+				srvDesc.Format = DXGI_FORMAT_R16_UNORM;
+				break;
+			}
+			case TextureFormat::D32_SFloat:
+			{
+				srvDesc.Format = DXGI_FORMAT_R32_FLOAT;
+				break;
+			}
+			case TextureFormat::D24_UNorm_S8_UInt:
+			{
+				srvDesc.Format = DXGI_FORMAT_R24_UNORM_X8_TYPELESS;
+				break;
+			}
+			default: return InvalidResourceIndex;
+		}
+	}
+	else
+	{
+		srvDesc.Format = TextureFormatToDXGI_FORMAT(texture.GetDescriptor().format);
+	}
 	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 
 	// UAV
@@ -882,7 +907,7 @@ ShaderResourceIndex DirectXDevice::CreateResourceView(const Texture& texture)
 	}
 
 	// UAV
-	if (texture.GetDescriptor().usage & TextureUsage_Storage)
+	if (texture.GetDescriptor().usage & TextureUsage_Storage && Utils::IsColorFormat(texture.GetDescriptor().format))
 	{
 		auto uavHandle = srvHandle;
 		uavHandle.ptr += (UINT64)(mCbvSrvUavHeap.size * CBV_SRV_HEAP_SIZE);
