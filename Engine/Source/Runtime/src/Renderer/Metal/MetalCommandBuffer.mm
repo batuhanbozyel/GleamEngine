@@ -77,6 +77,7 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, 
     
     mHandle->renderCommandEncoder = [mHandle->commandBuffer renderCommandEncoderWithDescriptor:renderPass];
     mHandle->renderCommandEncoder.label = TO_NSSTRING(debugName.data());
+    [mHandle->renderCommandEncoder useResource:mConstantBuffer.GetHandle() usage:MTLResourceUsageRead stages:MTLRenderStageVertex | MTLRenderStageFragment];
 }
 
 void CommandBuffer::EndRenderPass() const
@@ -89,6 +90,7 @@ void CommandBuffer::BeginComputePass(const TStringView debugName) const
 {
     mHandle->computeCommandEncoder = [mHandle->commandBuffer computeCommandEncoder];
     mHandle->computeCommandEncoder.label = TO_NSSTRING(debugName.data());
+    [mHandle->computeCommandEncoder useResource:mConstantBuffer.GetHandle() usage:MTLResourceUsageRead];
 }
 
 void CommandBuffer::EndComputePass() const
@@ -157,8 +159,6 @@ void CommandBuffer::SetConstantBuffer(const void* data, uint32_t size, uint32_t 
     auto gpuAddress = [mConstantBuffer.GetHandle() gpuAddress]; 
 	gpuAddress += mConstantBuffer.Write(data, size);
     mHandle->topLevelArgumentBuffer[slot] = gpuAddress;
-    
-    [mHandle->renderCommandEncoder useResource:mConstantBuffer.GetHandle() usage:MTLResourceUsageRead stages:MTLRenderStageVertex | MTLRenderStageFragment];
 }
 
 void CommandBuffer::SetPushConstant(const void* data, uint32_t size) const
@@ -170,6 +170,8 @@ void CommandBuffer::Dispatch(uint32_t x, uint32_t y, uint32_t z) const
 {
     MTLSize threadGroupSize = MTLSizeMake(x, y, z);
     MTLSize threadsPerThreadgroup = MTLSizeMake(16, 16, 1); // TODO: query this from metal shader converter shader reflection api
+
+    [mHandle->computeCommandEncoder setBytes:mHandle->topLevelArgumentBuffer length:TopLevelArgumentBufferSize atIndex:kIRArgumentBufferBindPoint];
     [mHandle->computeCommandEncoder dispatchThreads:threadGroupSize threadsPerThreadgroup:threadsPerThreadgroup];
 }
 

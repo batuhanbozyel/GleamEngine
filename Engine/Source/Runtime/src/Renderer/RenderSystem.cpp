@@ -117,6 +117,7 @@ void RenderSystem::Render(const World* world)
 		const auto& cameraComponent = world->GetEntityManager().GetComponent<Camera>(mActiveCamera);
 		const auto& cameraEntity = world->GetEntityManager().GetComponent<Entity>(mActiveCamera);
 		const auto& sunComponent = world->GetEntityManager().GetComponent<Sun>(mSun);
+		const auto& sunEntity = world->GetEntityManager().GetComponent<Entity>(mSun);
 
 		// TODO: Render scene per active camera
 		// Set sceneTarget to camera target
@@ -145,14 +146,8 @@ void RenderSystem::Render(const World* world)
 		sceneData.world = world;
 
 		// sun
-		const float halfAzimuth = Math::Deg2Rad(sunComponent.azimuthAngle) * 0.5f;
-		const float halfZenith = Math::Deg2Rad(sunComponent.zenithAngle) * 0.5f;
-
-		const Quaternion qAzimuth{ Math::Cos(halfAzimuth), 0.0f, Math::Sin(halfAzimuth), 0.0f };
-		const Quaternion qZenith { Math::Cos(halfZenith), Math::Sin(halfZenith), 0.0f, 0.0f };
-
 		sceneData.sun.illuminance = Float3(sunComponent.color.r, sunComponent.color.g, sunComponent.color.b) * sunComponent.intensity;
-		sceneData.sun.direction = (qAzimuth * qZenith) * Float3{ 0.0f, 1.0f, 0.0f };
+		sceneData.sun.direction = sunEntity.ForwardVector();
 
 		// camera
 		sceneData.camera.resolution = Float2(cameraComponent.orthographicSize * cameraComponent.aspectRatio, cameraComponent.orthographicSize);

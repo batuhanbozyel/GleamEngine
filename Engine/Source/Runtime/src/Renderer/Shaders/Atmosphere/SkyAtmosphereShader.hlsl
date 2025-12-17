@@ -2,6 +2,9 @@
 
 #pragma compute skyAtmosphereRenderShader
 
+#define RAY_MARCH_MIN_SPP 4.0f
+#define RAY_MARCH_MAX_SPP 14.0f
+
 PUSH_CONSTANT(Gleam::SkyAtmosphereRenderConstants, constants);
 
 static RWTexture2D<float4> TargetTexture = ResourceDescriptorHeap[UAVIndex(constants.targetTexture)];
@@ -64,7 +67,7 @@ SingleScatteringResult IntegrateScatteredLuminance(
 	float SampleCountFloor = SampleCountIni;
 	float tMaxFloor = tMax;
 	{
-		SampleCount = lerp(atmosphereUniforms.rayMarchMinMaxSPP.x, atmosphereUniforms.rayMarchMinMaxSPP.y, saturate(tMax * 0.01));
+		SampleCount = lerp(RAY_MARCH_MIN_SPP, RAY_MARCH_MAX_SPP, saturate(tMax * 0.01));
 		SampleCountFloor = floor(SampleCount);
 		tMaxFloor = tMax * SampleCountFloor / SampleCount;	// rescale tMax to map to the last entire step segment.
 	}

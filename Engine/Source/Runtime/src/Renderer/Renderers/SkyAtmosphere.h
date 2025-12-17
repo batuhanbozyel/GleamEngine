@@ -8,8 +8,6 @@ struct SkyAtmospherePassData
 	TextureHandle sceneColor;
 	TextureHandle sceneDepth;
 	TextureHandle multiScatterLut;
-	TextureHandle skyViewLut;
-	TextureHandle aerialPerspectiveLut;
 };
 
 class SkyAtmosphere : public IRenderer
@@ -29,13 +27,9 @@ private:
 
 	Texture mTransmittanceLutTexture;
 	Texture mMultiScatterLutTexture;
-	Texture mSkyViewLutTexture;
-	Texture mAerialPerspectiveLutTexture;
 
 	ComputePipelineHandle mTransmittanceLutPipeline;
 	ComputePipelineHandle mMultiScatterLutPipeline;
-	ComputePipelineHandle mSkyViewLutPipeline;
-	ComputePipelineHandle mAerialPerspectiveLutPipeline;
 	ComputePipelineHandle mSkyRenderPipeline;
 };
 
