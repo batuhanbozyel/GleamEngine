@@ -10,19 +10,11 @@ PUSH_CONSTANT(Gleam::SkyAtmosphereRenderConstants, constants);
 static RWTexture2D<float4> TargetTexture = ResourceDescriptorHeap[UAVIndex(constants.targetTexture)];
 static Texture2D<float> DepthTexture = ResourceDescriptorHeap[SRVIndex(constants.depthTexture)];
 
-struct SingleScatteringResult
-{
-	float3 L;						// Scattered light (luminance)
-	float3 Transmittance;			// Transmittance in [0,1] (unitless)
-};
-
-SingleScatteringResult IntegrateScatteredLuminance(
+float3 IntegrateScatteredLuminance(
 	in float2 pixPos, in float3 WorldPos, in float3 WorldDir,
 	in float SampleCountIni, in float DepthBufferValue,
 	in float tMaxMax = 9000000.0f)
 {
-	SingleScatteringResult result = (SingleScatteringResult)0;
-	
 	// Compute next intersection with atmosphere or ground 
 	float3 earthO = float3(0.0f, 0.0f, 0.0f);
 	float tBottom = RaySphereIntersectNearest(WorldPos, WorldDir, earthO, atmosphereParams.bottomRadius);
@@ -33,7 +25,7 @@ SingleScatteringResult IntegrateScatteredLuminance(
 		if (tTop < 0.0f)
 		{
 			tMax = 0.0f; // No intersection with earth nor atmosphere: stop right away  
-			return result;
+			return 0.0f;
 		}
 		else
 		{
@@ -72,10 +64,11 @@ SingleScatteringResult IntegrateScatteredLuminance(
 		tMaxFloor = tMax * SampleCountFloor / SampleCount;	// rescale tMax to map to the last entire step segment.
 	}
 	float dt = tMax / SampleCount;
+	float3 sunDirection = normalize(atmosphereUniforms.sunDirection);
 
 	// Phase functions
 	const float uniformPhase = 1.0 / (4.0 * PI);
-	const float3 wi = atmosphereUniforms.sunDirection;
+	const float3 wi = sunDirection;
 	const float3 wo = WorldDir;
 	float cosTheta = dot(wi, wo);
 	float MiePhaseValue = hgPhase(atmosphereParams.miePhaseG, -cosTheta);	// mnegate cosTheta because due to WorldDir being a "in" direction. 
@@ -118,15 +111,13 @@ SingleScatteringResult IntegrateScatteredLuminance(
 
 		float pHeight = length(P);
 		const float3 UpVector = P / pHeight;
-		float SunZenithCosAngle = dot(atmosphereUniforms.sunDirection, UpVector);
-		float2 uv;
-		LutTransmittanceParamsToUv(pHeight, SunZenithCosAngle, uv);
-		float3 TransmittanceToSun = TransmittanceLutTexture.SampleLevel(Sampler_Bilinear_Clamp, uv, 0).rgb;
+		float SunZenithCosAngle = dot(sunDirection, UpVector);
+		float3 TransmittanceToSun = GetTransmittance(pHeight, SunZenithCosAngle);
 
 		float3 PhaseTimesScattering = medium.scatteringMie * MiePhaseValue + medium.scatteringRay * RayleighPhaseValue;
 
 		// Earth shadow 
-		float tEarth = RaySphereIntersectNearest(P, atmosphereUniforms.sunDirection, earthO + SKY_ATMOSPHERE_PLANET_RADIUS_OFFSET * UpVector, atmosphereParams.bottomRadius);
+		float tEarth = RaySphereIntersectNearest(P, sunDirection, earthO + SKY_ATMOSPHERE_PLANET_RADIUS_OFFSET * UpVector, atmosphereParams.bottomRadius);
 		float earthShadow = tEarth >= 0.0f ? 0.0f : 1.0f;
 
 		// Dual scattering for multi scattering 
@@ -145,10 +136,7 @@ SingleScatteringResult IntegrateScatteredLuminance(
 		L += throughput * Sint;														// accumulate and also take into account the transmittance from previous steps
 		throughput *= SampleTransmittance;
 	}
-
-	result.L = L;
-	result.Transmittance = throughput;
-	return result;
+	return L;
 }
 
 [numthreads(16, 16, 1)]
@@ -160,32 +148,28 @@ void skyAtmosphereRenderShader(uint3 dispatchThreadId : SV_DispatchThreadID)
 	float3 ClipSpace = float3(uv * float2(2.0, -2.0) - float2(1.0, -1.0), 1.0);
 	float4 HViewPos = mul(camera.invProjectionMatrix, float4(ClipSpace, 1.0));
 	float3 WorldDir = normalize(mul((float3x3)camera.invViewMatrix, HViewPos.xyz / HViewPos.w));
-	float3 WorldPos = camera.position + float3(0, atmosphereParams.bottomRadius, 0);
-
+	float3 WorldPos = GetCameraPlanetPos(camera.position);
+	float3 SunDir = normalize(atmosphereUniforms.sunDirection);
+	
 	float viewHeight = length(WorldPos);
-	float3 L = 0;
-	float DepthBufferValue = DepthTexture[dispatchThreadId.xy];
-	if (DepthBufferValue >= (1.0f - FLT_EPSILON))
-		L += GetSunLuminance(WorldPos, WorldDir);
-
-	// Move to top atmosphere as the starting point for ray marching.
-	// This is critical to be after the above to not disrupt above atmosphere tests and voxel selection.
 	if (!MoveToTopAtmosphere(WorldDir, atmosphereParams.topRadius, WorldPos))
 	{
 		// Ray is not intersecting the atmosphere		
 		float4 sceneColor = TargetTexture[dispatchThreadId.xy];
-		TargetTexture[dispatchThreadId.xy] = float4(sceneColor.rgb * sceneColor.a + GetSunLuminance(WorldPos, WorldDir) * (1.0 - sceneColor.a), 1.0);
+		//TargetTexture[dispatchThreadId.xy] = float4(sceneColor.rgb * sceneColor.a + GetSunLuminance(WorldPos, WorldDir, SunDir) * (1.0 - sceneColor.a), 1.0);
 		return;
 	}
-
+	
 	const float SampleCountIni = 0.0f;
-	SingleScatteringResult ss = IntegrateScatteredLuminance(position, WorldPos, WorldDir, SampleCountIni, DepthBufferValue);
-
-	L += ss.L;
-	float3 throughput = ss.Transmittance;
-
-	const float Transmittance = dot(throughput, 1.0f / 3.0f);
-	float3 Luminance = L * (1.0 - Transmittance);
+	float DepthBufferValue = DepthTexture[dispatchThreadId.xy];
+	float3 L = IntegrateScatteredLuminance(position, WorldPos, WorldDir, SampleCountIni, DepthBufferValue);
+	
+	if (DepthBufferValue >= (1.0f - FLT_EPSILON))
+	{
+		L += GetSunLuminance(WorldPos, WorldDir, SunDir);
+	}
+	
+	float3 Luminance = L;
 	float4 sceneColor = TargetTexture[dispatchThreadId.xy];
 	TargetTexture[dispatchThreadId.xy] = float4(sceneColor.rgb * sceneColor.a + Luminance.rgb * (1.0 - sceneColor.a), 1.0);
 }

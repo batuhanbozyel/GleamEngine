@@ -149,16 +149,73 @@ bool MoveToTopAtmosphere(in float3 WorldDir, in float AtmosphereTopRadius, inout
 	return true; // ok to start tracing
 }
 
-float3 GetSunLuminance(float3 WorldPos, float3 WorldDir)
+float3 GetSkyWorldCameraOrigin(float3 cameraPosition)
 {
-	if (dot(WorldDir, atmosphereUniforms.sunDirection) > cos(0.5*0.505*3.14159 / 180.0))
+	const float3 planetCenterWorld = float3(0.0f, -atmosphereParams.bottomRadius, 0.0f);
+	const float bottomRadiusWorldOffset = atmosphereParams.bottomRadius + SKY_ATMOSPHERE_PLANET_RADIUS_OFFSET;
+	
+	const float3 planetCenterToCameraWorld = cameraPosition - planetCenterWorld;
+	const float distanceToPlanetCenterWorld = length(planetCenterToCameraWorld);
+	const float3 planetCenterToCameraWorldNormalized = planetCenterToCameraWorld / distanceToPlanetCenterWorld;
+	
+	// If the camera is below the planet surface, we snap it back onto the surface.
+	// This is to make sure the sky is always visible even if the camera is inside the virtual planet.
+	return distanceToPlanetCenterWorld < bottomRadiusWorldOffset ?
+	planetCenterWorld + bottomRadiusWorldOffset * planetCenterToCameraWorldNormalized : cameraPosition;
+}
+
+float3 GetCameraPlanetPos(float3 cameraPosition)
+{
+	const float3 planetCenterWorld = float3(0.0f, -atmosphereParams.bottomRadius, 0.0f);
+	const float3 skyWorldCameraOrigin = GetSkyWorldCameraOrigin(cameraPosition);
+	return (skyWorldCameraOrigin - planetCenterWorld);
+}
+
+float3 GetTransmittance(float pHeight, float sunZenithCosAngle)
+{
+	float2 uv;
+	LutTransmittanceParamsToUv(pHeight, sunZenithCosAngle, uv);
+	return TransmittanceLutTexture.SampleLevel(Sampler_Bilinear_Clamp, uv, 0).rgb;
+}
+
+float3 GetAtmosphereTransmittance(float3 worldPosition, float3 worldDirection)
+{
+	// If the worldDirection is occluded from this virtual planet, then return.
+	// We do this due to the low resolution LUT, where the stored zenith to horizon never reaches black, to prevent linear interpolation artefacts.
+	// At the most shadowed point of the LUT, pure black with earth shadow is never reached.
+	float2 sol = RaySphereIntersect(worldPosition, worldDirection, 0, atmosphereParams.bottomRadius);
+	if (sol.x > 0 || sol.y > 0)
 	{
-		float t = RaySphereIntersectNearest(WorldPos, WorldDir, float3(0.0f, 0.0f, 0.0f), atmosphereParams.bottomRadius);
-		if (t < 0.0f) // no intersection
+		return 0;
+	}
+	
+	float pHeight = length(worldPosition);
+	const float3 UpVector = worldPosition / pHeight;
+	float SunZenithCosAngle = dot(worldDirection, UpVector);
+	return GetTransmittance(pHeight, SunZenithCosAngle);
+}
+
+float3 GetSunLuminance(float3 WorldPos, float3 WorldDir, float3 SunDir)
+{
+	const float sunApexAngleDegree = 0.53; // Angular diameter of sun to earth from sea level, see https://en.wikipedia.org/wiki/Solid_angle
+	const float sunHalfApexAngleRadian = 0.5 * sunApexAngleDegree * PI / 180.0;
+	const float sunCosHalfApexAngle = cos(sunHalfApexAngleRadian);
+	
+	float t = RaySphereIntersectNearest(WorldPos, WorldDir, float3(0.0f, 0.0f, 0.0f), atmosphereParams.bottomRadius);
+	if (t < 0.0f) // no intersection
+	{
+		float3 sunLuminance = atmosphereUniforms.sunIlluminance;
+		
+		float VdotL = dot(WorldDir, SunDir);
+		if (VdotL < sunCosHalfApexAngle) // outside sun disk
 		{
-			const float3 SunLuminance = 1000000.0; // arbitrary. But fine, not use when comparing the models
-			return SunLuminance;
+			float offset = sunCosHalfApexAngle - VdotL;
+			float gaussianBloom = exp(-offset * 50000.0) * 0.5;
+			float invBloom = 1.0 / (0.02 + offset * 300.0) * 0.01;
+			float bloomFactor = gaussianBloom + invBloom;
+			sunLuminance *= smoothstep(0.002, 1.0, bloomFactor);
 		}
+		return sunLuminance * GetAtmosphereTransmittance(WorldPos, WorldDir);
 	}
 	return 0;
 }

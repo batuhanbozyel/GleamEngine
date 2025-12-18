@@ -68,9 +68,7 @@ MultiScatteringResult IntegrateMultiScattering(
 		float pHeight = length(P);
 		const float3 UpVector = P / pHeight;
 		float SunZenithCosAngle = dot(SunDir, UpVector);
-		float2 uv;
-		LutTransmittanceParamsToUv(pHeight, SunZenithCosAngle, uv);
-		float3 TransmittanceToSun = TransmittanceLutTexture.SampleLevel(Sampler_Bilinear_Clamp, uv, 0).rgb;
+		float3 TransmittanceToSun = GetTransmittance(pHeight, SunZenithCosAngle);
 		float3 PhaseTimesScattering = medium.scattering * uniformPhase;
 
 		// Earth shadow 
@@ -110,9 +108,7 @@ MultiScatteringResult IntegrateMultiScattering(
 
 		const float3 UpVector = P / pHeight;
 		float SunZenithCosAngle = dot(SunDir, UpVector);
-		float2 uv;
-		LutTransmittanceParamsToUv(pHeight, SunZenithCosAngle, uv);
-		float3 TransmittanceToSun = TransmittanceLutTexture.SampleLevel(Sampler_Bilinear_Clamp, uv, 0).rgb;
+		float3 TransmittanceToSun = GetTransmittance(pHeight, SunZenithCosAngle);
 
 		const float NdotL = saturate(dot(normalize(UpVector), normalize(SunDir)));
 		result.L += TransmittanceToSun * throughput * NdotL * atmosphereParams.groundAlbedo / PI;

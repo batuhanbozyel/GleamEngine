@@ -113,25 +113,31 @@ float3 SphericalToCartesian(float theta, float phi)
     );
 }
 
-// - r0: ray origin
-// - rd: normalized ray direction
-// - s0: sphere center
-// - sR: sphere radius
-// - Returns distance from r0 to first intersecion with sphere,
-//   or -1.0 if no intersection.
-float RaySphereIntersectNearest(float3 r0, float3 rd, float3 s0, float sR)
+float2 RaySphereIntersect(float3 rayOrigin, float3 rayDirection, float3 sphereCenter, float sphereRadius)
 {
-	float a = dot(rd, rd);
-	float3 s0_r0 = r0 - s0;
-	float b = 2.0 * dot(rd, s0_r0);
-	float c = dot(s0_r0, s0_r0) - (sR * sR);
+	float3 s0_r0 = rayOrigin - sphereCenter;
+	float a = dot(rayDirection, rayDirection);
+	float b = 2.0 * dot(rayDirection, s0_r0);
+	float c = dot(s0_r0, s0_r0) - (sphereRadius * sphereRadius);
+    
 	float delta = b * b - 4.0 * a * c;
-	if (delta < 0.0 || a == 0.0)
+    
+	float2 sol = -1;
+    
+	if (delta >= 0.0)
 	{
-		return -1.0;
+		return (-b + float2(-1, 1) * sqrt(delta)) / (2.0 * a);
 	}
-	float sol0 = (-b - sqrt(delta)) / (2.0 * a);
-	float sol1 = (-b + sqrt(delta)) / (2.0 * a);
+    
+	return sol;
+}
+
+float RaySphereIntersectNearest(float3 rayOrigin, float3 rayDirection, float3 sphereCenter, float sphereRadius)
+{
+	float2 sol = RaySphereIntersect(rayOrigin, rayDirection, sphereCenter, sphereRadius);
+	float sol0 = sol.x;
+	float sol1 = sol.y;
+    
 	if (sol0 < 0.0 && sol1 < 0.0)
 	{
 		return -1.0;
