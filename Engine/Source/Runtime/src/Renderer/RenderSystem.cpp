@@ -147,7 +147,8 @@ void RenderSystem::Render(const World* world)
 
 		// sun
 		sceneData.sun.illuminance = Float3(sunComponent.color.r, sunComponent.color.g, sunComponent.color.b) * sunComponent.intensity;
-		sceneData.sun.direction = sunEntity.ForwardVector();
+		sceneData.sun.angularDiameter = sunComponent.angularDiameter;
+		sceneData.sun.direction = sunEntity.UpVector();
 
 		// camera
 		sceneData.camera.resolution = Float2(cameraComponent.orthographicSize * cameraComponent.aspectRatio, cameraComponent.orthographicSize);

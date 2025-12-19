@@ -197,8 +197,7 @@ float3 GetAtmosphereTransmittance(float3 worldPosition, float3 worldDirection)
 
 float3 GetSunLuminance(float3 WorldPos, float3 WorldDir, float3 SunDir)
 {
-	const float sunApexAngleDegree = 0.53; // Angular diameter of sun to earth from sea level, see https://en.wikipedia.org/wiki/Solid_angle
-	const float sunHalfApexAngleRadian = 0.5 * sunApexAngleDegree * PI / 180.0;
+	const float sunHalfApexAngleRadian = 0.5 * atmosphereUniforms.angularDiameter * PI / 180.0;
 	const float sunCosHalfApexAngle = cos(sunHalfApexAngleRadian);
 	
 	float t = RaySphereIntersectNearest(WorldPos, WorldDir, float3(0.0f, 0.0f, 0.0f), atmosphereParams.bottomRadius);
@@ -209,9 +208,16 @@ float3 GetSunLuminance(float3 WorldPos, float3 WorldDir, float3 SunDir)
 		float VdotL = dot(WorldDir, SunDir);
 		if (VdotL < sunCosHalfApexAngle) // outside sun disk
 		{
+			float cosZenithAngle = max(SunDir.y, 0.0);
+			float airMass = 1.0 / (cosZenithAngle + 0.025); // Kasten-Young formula approximation
+			airMass = min(airMass, 38.0);
+			
 			float offset = sunCosHalfApexAngle - VdotL;
-			float gaussianBloom = exp(-offset * 50000.0) * 0.5;
-			float invBloom = 1.0 / (0.02 + offset * 300.0) * 0.01;
+			float atmosphericScale = lerp(1.0, 3.0, (airMass - 1.0) / 37.0);
+			float angularScale = atmosphereUniforms.angularDiameter / 0.5357f; // scale bloom based on defualt angular diameter
+			
+			float gaussianBloom = exp(-offset * 50000.0 / (angularScale + atmosphericScale)) * 0.5 * atmosphericScale;
+			float invBloom = 1.0 / (0.02 + offset * 300.0 / (angularScale + atmosphericScale)) * 0.025 * atmosphericScale;
 			float bloomFactor = gaussianBloom + invBloom;
 			sunLuminance *= smoothstep(0.002, 1.0, bloomFactor);
 		}

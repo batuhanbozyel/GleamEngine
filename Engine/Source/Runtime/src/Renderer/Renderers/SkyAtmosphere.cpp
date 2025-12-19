@@ -93,6 +93,7 @@ void SkyAtmosphere::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 	commonParams.multiScatterLutTexture = mMultiScatterLutTexture.GetResourceView();
 	commonParams.sunIlluminance = sceneData.sun.illuminance;
 	commonParams.sunDirection = sceneData.sun.direction;
+	commonParams.angularDiameter = sceneData.sun.angularDiameter;
 
 	// Convert camera data from meters to kilometers for atmosphere rendering
 	CameraUniforms skyCamera = sceneData.camera;

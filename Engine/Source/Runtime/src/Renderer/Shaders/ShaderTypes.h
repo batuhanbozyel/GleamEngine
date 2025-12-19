@@ -124,10 +124,14 @@ struct SkyAtmosphereParameters
 struct SkyAtmosphereCommonUniforms
 {
 	float3 sunIlluminance;
-	ShaderResourceIndex transmittanceLutTexture;
+	float angularDiameter;
 
 	float3 sunDirection;
+	float pad0;
+
+	ShaderResourceIndex transmittanceLutTexture;
 	ShaderResourceIndex multiScatterLutTexture;
+	float2 pad1;
 };
 
 struct SkyAtmosphereRenderConstants
