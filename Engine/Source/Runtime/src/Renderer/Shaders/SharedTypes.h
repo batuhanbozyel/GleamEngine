@@ -5,13 +5,17 @@
 
 namespace Gleam {
 
-struct SunUniforms
+struct SkyAtmosphereUniforms
 {
-	float3 direction;
-	float angularDiameter;
+	float3 sunIlluminance;
+	float sunAngularDiameter;
 
-	float3 illuminance;
-	float pad1;
+	float3 sunDirection;
+	float pad0;
+
+	ShaderResourceIndex transmittanceLutTexture;
+	ShaderResourceIndex multiScatterLutTexture;
+	float2 pad1;
 };
 
 struct CameraUniforms

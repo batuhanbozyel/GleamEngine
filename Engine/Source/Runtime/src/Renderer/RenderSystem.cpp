@@ -9,6 +9,7 @@
 #include "RenderSystem.h"
 #include "RenderGraph/RenderGraph.h"
 #include "RenderGraph/RenderGraphBlackboard.h"
+#include "Renderers/SkyAtmosphere.h"
 
 #include "Core/Engine.h"
 #include "Core/Globals.h"
@@ -146,9 +147,12 @@ void RenderSystem::Render(const World* world)
 		sceneData.world = world;
 
 		// sun
-		sceneData.sun.illuminance = Float3(sunComponent.color.r, sunComponent.color.g, sunComponent.color.b) * sunComponent.intensity;
-		sceneData.sun.angularDiameter = sunComponent.angularDiameter;
-		sceneData.sun.direction = sunEntity.UpVector();
+		auto skyAtmosphere = GetRenderer<SkyAtmosphere>();
+		sceneData.atmosphere.transmittanceLutTexture = skyAtmosphere->GetTransmittanceLutTexture();
+		sceneData.atmosphere.multiScatterLutTexture = skyAtmosphere->GetMultiScatterLutTexture();
+		sceneData.atmosphere.sunIlluminance = Float3(sunComponent.color.r, sunComponent.color.g, sunComponent.color.b) * sunComponent.intensity;
+		sceneData.atmosphere.sunAngularDiameter = sunComponent.angularDiameter;
+		sceneData.atmosphere.sunDirection = sunEntity.UpVector();
 
 		// camera
 		sceneData.camera.resolution = Float2(cameraComponent.orthographicSize * cameraComponent.aspectRatio, cameraComponent.orthographicSize);

@@ -57,16 +57,17 @@ void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 			MeshPassResources resources;
 			resources.instanceBuffer = batch.instanceBuffer.GetResourceView();
 			resources.materialBuffer = materialBuffer.GetResourceView();
-			resources.sun = sceneData.sun;
+			resources.atmosphere = sceneData.atmosphere;
 
 			cmd->BindGraphicsPipeline(pipeline);
 			cmd->SetConstantBuffer(resources, 0);
 			cmd->SetConstantBuffer(sceneData.camera, 1);
+			cmd->SetConstantBuffer(sceneData.atmosphere, 2);
 
 			for (uint32_t instanceID = 0; instanceID < batch.numInstances; ++instanceID)
 			{
 				const auto& instance = batch.instances[instanceID];
-				cmd->SetConstantBuffer(instance, 2);
+				cmd->SetConstantBuffer(instance, 7);
 				cmd->DrawIndexed(batch.meshes[instanceID]->GetIndexBuffer(), IndexType::UINT32, instance.indexCount, 1, instance.firstIndex);
 			}
         });

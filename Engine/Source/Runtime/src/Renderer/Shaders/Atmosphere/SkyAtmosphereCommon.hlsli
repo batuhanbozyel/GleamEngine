@@ -5,7 +5,7 @@
 
 CONSTANT_BUFFER(Gleam::CameraUniforms, camera, SKY_ATMOSPHERE_CAMERA_UNIFORMS_BINDING_SLOT);
 CONSTANT_BUFFER(Gleam::SkyAtmosphereParameters, atmosphereParams, SKY_ATMOSPHERE_PARAMS_BINDING_SLOT);
-CONSTANT_BUFFER(Gleam::SkyAtmosphereCommonUniforms, atmosphereUniforms, SKY_ATMOSPHERE_COMMON_UNIFORMS_BINDING_SLOT);
+CONSTANT_BUFFER(Gleam::SkyAtmosphereUniforms, atmosphereUniforms, SKY_ATMOSPHERE_COMMON_UNIFORMS_BINDING_SLOT);
 
 static Texture2D<float4> TransmittanceLutTexture = ResourceDescriptorHeap[SRVIndex(atmosphereUniforms.transmittanceLutTexture)];
 static Texture2D<float3> MultiScatterTexture = ResourceDescriptorHeap[SRVIndex(atmosphereUniforms.multiScatterLutTexture)];
@@ -197,7 +197,7 @@ float3 GetAtmosphereTransmittance(float3 worldPosition, float3 worldDirection)
 
 float3 GetSunLuminance(float3 WorldPos, float3 WorldDir, float3 SunDir)
 {
-	const float sunHalfApexAngleRadian = 0.5 * atmosphereUniforms.angularDiameter * PI / 180.0;
+	const float sunHalfApexAngleRadian = 0.5 * atmosphereUniforms.sunAngularDiameter * PI / 180.0;
 	const float sunCosHalfApexAngle = cos(sunHalfApexAngleRadian);
 	
 	float t = RaySphereIntersectNearest(WorldPos, WorldDir, float3(0.0f, 0.0f, 0.0f), atmosphereParams.bottomRadius);
@@ -205,19 +205,19 @@ float3 GetSunLuminance(float3 WorldPos, float3 WorldDir, float3 SunDir)
 	{
 		float3 sunLuminance = atmosphereUniforms.sunIlluminance;
 		
+		float cosZenithAngle = max(SunDir.y, 0.0);
+		float airMass = 1.0 / (cosZenithAngle + 0.025); // Kasten-Young formula approximation
+		airMass = min(airMass, 38.0);
+		
 		float VdotL = dot(WorldDir, SunDir);
 		if (VdotL < sunCosHalfApexAngle) // outside sun disk
 		{
-			float cosZenithAngle = max(SunDir.y, 0.0);
-			float airMass = 1.0 / (cosZenithAngle + 0.025); // Kasten-Young formula approximation
-			airMass = min(airMass, 38.0);
-			
 			float offset = sunCosHalfApexAngle - VdotL;
 			float atmosphericScale = lerp(1.0, 3.0, (airMass - 1.0) / 37.0);
-			float angularScale = atmosphereUniforms.angularDiameter / 0.5357f; // scale bloom based on defualt angular diameter
+			float angularScale = atmosphereUniforms.sunAngularDiameter / 0.5357f; // scale bloom based on defualt angular diameter
 			
 			float gaussianBloom = exp(-offset * 50000.0 / (angularScale + atmosphericScale)) * 0.5 * atmosphericScale;
-			float invBloom = 1.0 / (0.02 + offset * 300.0 / (angularScale + atmosphericScale)) * 0.025 * atmosphericScale;
+			float invBloom = 1.0 / (0.02 + offset * 300.0 / (angularScale + atmosphericScale)) * 0.015 * atmosphericScale;
 			float bloomFactor = gaussianBloom + invBloom;
 			sunLuminance *= smoothstep(0.002, 1.0, bloomFactor);
 		}

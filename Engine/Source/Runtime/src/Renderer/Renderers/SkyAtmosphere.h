@@ -20,6 +20,16 @@ public:
 
 	virtual void AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard) override;
 
+	ShaderResourceIndex GetTransmittanceLutTexture() const
+	{
+		return mTransmittanceLutTexture.GetResourceView();
+	}
+
+	ShaderResourceIndex GetMultiScatterLutTexture() const
+	{
+		return mMultiScatterLutTexture.GetResourceView();
+	}
+
 private:
 
 	bool mBakeLUTs = true;

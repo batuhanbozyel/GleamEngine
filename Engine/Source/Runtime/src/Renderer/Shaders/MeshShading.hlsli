@@ -2,10 +2,11 @@
 
 CONSTANT_BUFFER(Gleam::MeshPassResources, resources, 0);
 CONSTANT_BUFFER(Gleam::CameraUniforms, camera, 1);
+CONSTANT_BUFFER(Gleam::SkyAtmosphereUniforms, atmosphere, 2);
 
 // We only need this for legacy vertex shader path
 // When switched to mesh shaders, we should be fetching instance data from instance buffer
-CONSTANT_BUFFER(Gleam::MeshInstanceData, instanceData, 2);
+CONSTANT_BUFFER(Gleam::MeshInstanceData, instanceData, 7);
 
 struct MeshVertexOut
 {
@@ -41,8 +42,8 @@ float4 meshShadingPassShader(MeshVertexOut IN) : SV_TARGET
 	//return float4(surface.roughness.xxx, 1.0f);
     
 	DirectLight light;
-	light.direction = resources.sun.direction;
-	light.illuminance = resources.sun.illuminance;
+	light.direction = atmosphere.sunDirection;
+	light.illuminance = atmosphere.sunIlluminance;
 	float3 color = EvaluateDirectLight(surface, light, viewDir, worldNormal);
 	return float4(color, 1.0f);
 }

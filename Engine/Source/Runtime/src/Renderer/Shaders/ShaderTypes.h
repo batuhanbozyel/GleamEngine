@@ -61,7 +61,7 @@ struct MeshPassResources
 {
 	BufferResourceView instanceBuffer;
 	BufferResourceView materialBuffer;
-	SunUniforms sun;
+	SkyAtmosphereUniforms atmosphere;
 };
 
 struct SurfaceInput
@@ -119,19 +119,6 @@ struct SkyAtmosphereParameters
 	float absorptionDensity0LinearTerm;
 	float absorptionDensity1ConstantTerm;
 	float absorptionDensity1LinearTerm;
-};
-
-struct SkyAtmosphereCommonUniforms
-{
-	float3 sunIlluminance;
-	float angularDiameter;
-
-	float3 sunDirection;
-	float pad0;
-
-	ShaderResourceIndex transmittanceLutTexture;
-	ShaderResourceIndex multiScatterLutTexture;
-	float2 pad1;
 };
 
 struct SkyAtmosphereRenderConstants

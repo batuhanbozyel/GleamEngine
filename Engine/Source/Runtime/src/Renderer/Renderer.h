@@ -36,8 +36,8 @@ struct SceneRenderingData
 {
     const RenderSceneProxy* sceneProxy = nullptr;
     const World* world = nullptr;
-	SunUniforms sun = {};
 	CameraUniforms camera = {};
+	SkyAtmosphereUniforms atmosphere = {};
     TextureHandle backbuffer = TextureHandle();
 	TextureHandle sceneTarget = TextureHandle();
 };
