@@ -67,7 +67,7 @@ public:
 			world.GetEntityManager().AddComponent<Gleam::Camera>(camera, Gleam::Size(1280.0f, 720.0f));
 
 			auto& atmosphere = world.GetEntityManager().CreateEntity("Atmosphere", Gleam::Guid::NewGuid());
-			world.GetEntityManager().AddComponent<Gleam::Sun>(atmosphere);
+			world.GetEntityManager().AddComponent<Gleam::SkyAtmosphere>(atmosphere);
 
 			world.Serialize(file.GetStream());
 		}

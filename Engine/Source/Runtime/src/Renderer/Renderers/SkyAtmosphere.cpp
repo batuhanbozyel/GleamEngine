@@ -7,9 +7,12 @@
 #include "Renderer/GraphicsDevice.h"
 #include "Renderer/Renderers/WorldRenderer.h"
 
+#include "World/World.h"
+#include "World/Components/SkyAtmosphere.h"
+
 using namespace Gleam;
 
-void SkyAtmosphere::OnCreate(RenderContext& context)
+void SkyAtmosphereRenderer::OnCreate(RenderContext& context)
 {
 	// Transmittance LUT
 	{
@@ -44,49 +47,21 @@ void SkyAtmosphere::OnCreate(RenderContext& context)
 	ComputePipelineStateDescriptor pipelineState;
 	pipelineState.entryPoint = "skyAtmosphereRenderShader";
 	mSkyRenderPipeline = context.device->CreateComputePipeline(pipelineState);
-
-	// Setup atmosphere params
-	{
-		// Rayleigh scattering coefficient (wavelength dependent, RGB for earth-like atmosphere)
-		mAtmosphereParams.rayleighScattering = { 0.005802f, 0.013558f, 0.033100f };
-		mAtmosphereParams.rayleighDensityExpScale = -0.125f; // Exponential distribution scale height (8km)
-
-		// Mie scattering coefficient (wavelength independent for aerosols)
-		mAtmosphereParams.mieScattering = { 0.003996f, 0.003996f, 0.003996f };
-		mAtmosphereParams.mieDensityExpScale = -0.833333f; // Exponential distribution scale height (1.2km)
-		mAtmosphereParams.mieExtinction = { 0.004440f, 0.004440f, 0.004440f };
-		mAtmosphereParams.miePhaseG = 0.8f; // Anisotropy factor (Henyey-Greenstein phase function)
-		mAtmosphereParams.mieAbsorption = mAtmosphereParams.mieExtinction - mAtmosphereParams.mieScattering;
-
-		// Planet radii (in km)
-		mAtmosphereParams.bottomRadius = 6360.0f; // Earth radius
-		mAtmosphereParams.topRadius = 6460.0f; // Atmosphere top (100km above surface)
-
-		// Ozone absorption (creates the blue sky effect by absorbing yellow/red)
-		mAtmosphereParams.absorptionExtinction = { 0.000650f, 0.001881f, 0.000085f };
-
-		// Ground albedo (surface reflectance)
-		mAtmosphereParams.groundAlbedo = { 0.0f, 0.0f, 0.0f };
-
-		// Ozone absorption density profile (tent/trapezoid function)
-		mAtmosphereParams.absorptionDensity0LayerWidth = 25.0f; // Width of absorption layer (km)
-		mAtmosphereParams.absorptionDensity0ConstantTerm = -0.6666667f;
-		mAtmosphereParams.absorptionDensity0LinearTerm = 0.0666667f;
-		mAtmosphereParams.absorptionDensity1ConstantTerm = 2.6666667f;
-		mAtmosphereParams.absorptionDensity1LinearTerm = -0.0666667f;
-	}
 }
 
-void SkyAtmosphere::OnDestroy(RenderContext& context)
+void SkyAtmosphereRenderer::OnDestroy(RenderContext& context)
 {
 	context.device->Dispose(context.allocator, mTransmittanceLutTexture);
 	context.device->Dispose(context.allocator, mMultiScatterLutTexture);
 }
 
-void SkyAtmosphere::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard)
+void SkyAtmosphereRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard)
 {
 	const auto& worldRenderingData = blackboard.Get<WorldRenderingData>();
 	const auto& sceneData = blackboard.Get<SceneRenderingData>();
+
+	const auto& skyAtmosphere = sceneData.world->GetEntityManager().GetComponent<SkyAtmosphere>(sceneData.atmospherEntity);
+	SkyAtmosphereParameters atmosphereParams = GetSkyAtmosphereParameters(skyAtmosphere.atmosphere);
 
 	// Convert camera data from meters to kilometers for atmosphere rendering
 	CameraUniforms skyCamera = sceneData.camera;
@@ -102,8 +77,11 @@ void SkyAtmosphere::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 	auto transmittanceLut = graph.ImportTexture(mTransmittanceLutTexture);
 	auto multiScatterLut = graph.ImportTexture(mMultiScatterLutTexture);
 
-	if (mBakeLUTs)
+	bool bakeLUTs = memcmp(&atmosphereParams, &mAtmosphereParams, sizeof(SkyAtmosphereParameters)) != 0;
+	if (bakeLUTs)
 	{
+		mAtmosphereParams = atmosphereParams;
+
 		// Transmittance LUT
 		struct SkyAtmosphereTransmittanceLutPassData
 		{
@@ -139,7 +117,6 @@ void SkyAtmosphere::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 			cmd->SetConstantBuffer(sceneData.atmosphere, SKY_ATMOSPHERE_COMMON_UNIFORMS_BINDING_SLOT);
 			cmd->Dispatch(SKY_ATMOSPHERE_MULTISCATTERING_LUT_RES, SKY_ATMOSPHERE_MULTISCATTERING_LUT_RES, 1);
 		});
-		mBakeLUTs = false;
 	}
 
 	// Render sky
@@ -164,4 +141,26 @@ void SkyAtmosphere::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 		cmd->SetPushConstant(constants);
 		cmd->Dispatch(Math::DivideRoundingUp((int)skyCamera.resolution.x, 16), Math::DivideRoundingUp((int)skyCamera.resolution.y, 16), 1);
 	});
+}
+
+SkyAtmosphereParameters SkyAtmosphereRenderer::GetSkyAtmosphereParameters(const Atmosphere& atmosphere) const
+{
+	SkyAtmosphereParameters params = {};
+	params.bottomRadius = atmosphere.planetRadius;
+	params.topRadius = atmosphere.planetRadius + atmosphere.atmosphereHeight;
+	params.rayleighScattering = float3(atmosphere.rayleighScattering.r * atmosphere.rayleighScatteringLength, atmosphere.rayleighScattering.g * atmosphere.rayleighScatteringLength, atmosphere.rayleighScattering.b * atmosphere.rayleighScatteringLength);
+	params.rayleighDensityExpScale = -1.0f / atmosphere.rayleighScaleHeight;
+	params.mieScattering = float3(atmosphere.mieScattering.r * atmosphere.mieScatteringLength, atmosphere.mieScattering.g * atmosphere.mieScatteringLength, atmosphere.mieScattering.b * atmosphere.mieScatteringLength);
+	params.mieAbsorption = float3(atmosphere.mieAbsorption.r * atmosphere.mieAbsorptionLength, atmosphere.mieAbsorption.g * atmosphere.mieAbsorptionLength, atmosphere.mieAbsorption.b * atmosphere.mieAbsorptionLength);
+	params.mieExtinction = params.mieScattering + params.mieAbsorption;
+	params.mieDensityExpScale = -1.0f / atmosphere.mieScaleHeight;
+	params.miePhaseG = atmosphere.miePhaseG;
+	params.absorptionExtinction = float3(atmosphere.absorption.r * atmosphere.absorptionLength, atmosphere.absorption.g * atmosphere.mieAbsorptionLength, atmosphere.absorption.b * atmosphere.absorptionLength);
+	params.groundAlbedo = float3(atmosphere.groundAlbedo.r, atmosphere.groundAlbedo.g, atmosphere.groundAlbedo.b);
+	params.absorptionDensity0LayerWidth = atmosphere.absorptionDensity0LayerWidth;
+	params.absorptionDensity0ConstantTerm = atmosphere.absorptionDensity0ConstantTerm;
+	params.absorptionDensity0LinearTerm = atmosphere.absorptionDensity0LinearTerm;
+	params.absorptionDensity1ConstantTerm = atmosphere.absorptionDensity1ConstantTerm;
+	params.absorptionDensity1LinearTerm = atmosphere.absorptionDensity1LinearTerm;
+	return params;
 }

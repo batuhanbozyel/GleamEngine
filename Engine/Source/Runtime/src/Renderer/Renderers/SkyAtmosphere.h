@@ -3,6 +3,8 @@
 
 namespace Gleam {
 
+struct Atmosphere;
+
 struct SkyAtmospherePassData
 {
 	TextureHandle sceneColor;
@@ -10,7 +12,7 @@ struct SkyAtmospherePassData
 	TextureHandle multiScatterLut;
 };
 
-class SkyAtmosphere : public IRenderer
+class SkyAtmosphereRenderer : public IRenderer
 {
 public:
 
@@ -32,7 +34,8 @@ public:
 
 private:
 
-	bool mBakeLUTs = true;
+	SkyAtmosphereParameters GetSkyAtmosphereParameters(const Atmosphere& atmosphere) const;
+
 	SkyAtmosphereParameters mAtmosphereParams = {};
 
 	Texture mTransmittanceLutTexture;

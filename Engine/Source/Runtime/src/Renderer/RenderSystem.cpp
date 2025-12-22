@@ -80,7 +80,7 @@ void RenderSystem::PreRender(const World* world)
 	});
 
 	mSun = InvalidEntity;
-	world->GetEntityManager().ForEach<Entity, Sun>([&](const Entity& entity, const Sun& component)
+	world->GetEntityManager().ForEach<Entity, SkyAtmosphere>([&](const Entity& entity, const SkyAtmosphere& component)
 	{
 		if (entity.IsActive())
 		{
@@ -117,8 +117,8 @@ void RenderSystem::Render(const World* world)
 
 		const auto& cameraComponent = world->GetEntityManager().GetComponent<Camera>(mActiveCamera);
 		const auto& cameraEntity = world->GetEntityManager().GetComponent<Entity>(mActiveCamera);
-		const auto& sunComponent = world->GetEntityManager().GetComponent<Sun>(mSun);
-		const auto& sunEntity = world->GetEntityManager().GetComponent<Entity>(mSun);
+		const auto& atmosphereComponent = world->GetEntityManager().GetComponent<SkyAtmosphere>(mSun);
+		const auto& atmosphereEntity = world->GetEntityManager().GetComponent<Entity>(mSun);
 
 		// TODO: Render scene per active camera
 		// Set sceneTarget to camera target
@@ -146,15 +146,17 @@ void RenderSystem::Render(const World* world)
 		sceneData.sceneProxy = world->GetSystem<RenderSceneProxy>();
 		sceneData.world = world;
 
-		// sun
-		auto skyAtmosphere = GetRenderer<SkyAtmosphere>();
-		sceneData.atmosphere.transmittanceLutTexture = skyAtmosphere->GetTransmittanceLutTexture();
-		sceneData.atmosphere.multiScatterLutTexture = skyAtmosphere->GetMultiScatterLutTexture();
-		sceneData.atmosphere.sunIlluminance = Float3(sunComponent.color.r, sunComponent.color.g, sunComponent.color.b) * sunComponent.intensity;
-		sceneData.atmosphere.sunAngularDiameter = sunComponent.angularDiameter;
-		sceneData.atmosphere.sunDirection = sunEntity.UpVector();
+		// sky atmosphere
+		auto skyAtmosphereRenderer = GetRenderer<SkyAtmosphereRenderer>();
+		sceneData.atmospherEntity = atmosphereEntity;
+		sceneData.atmosphere.transmittanceLutTexture = skyAtmosphereRenderer->GetTransmittanceLutTexture();
+		sceneData.atmosphere.multiScatterLutTexture = skyAtmosphereRenderer->GetMultiScatterLutTexture();
+		sceneData.atmosphere.sunIlluminance = Float3(atmosphereComponent.sun.color.r, atmosphereComponent.sun.color.g, atmosphereComponent.sun.color.b) * atmosphereComponent.sun.intensity;
+		sceneData.atmosphere.sunAngularDiameter = atmosphereComponent.sun.angularDiameter;
+		sceneData.atmosphere.sunDirection = atmosphereEntity.UpVector();
 
 		// camera
+		sceneData.cameraEntity = cameraEntity;
 		sceneData.camera.resolution = Float2(cameraComponent.orthographicSize * cameraComponent.aspectRatio, cameraComponent.orthographicSize);
 		sceneData.camera.viewMatrix = Float4x4::LookTo(cameraEntity.GetWorldPosition(), cameraEntity.ForwardVector(), cameraEntity.UpVector());
 		if (cameraComponent.projectionType == ProjectionType::Perspective)

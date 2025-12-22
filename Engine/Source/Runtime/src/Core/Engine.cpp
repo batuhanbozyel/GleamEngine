@@ -61,7 +61,7 @@ void Engine::Initialize(const CommandLine& cli)
 
 	// add default renderers
 	renderSubsystem->AddRenderer<WorldRenderer>();
-	renderSubsystem->AddRenderer<SkyAtmosphere>();
+	renderSubsystem->AddRenderer<SkyAtmosphereRenderer>();
 	renderSubsystem->AddRenderer<PostProcessStack>();
 }
 

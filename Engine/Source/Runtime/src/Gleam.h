@@ -59,10 +59,10 @@
 #include "Renderer/Shaders/ShaderInterop.h"
 #include "Renderer/Shaders/ShaderTypes.h"
 
+#include "World/Components/SkyAtmosphere.h"
 #include "World/Components/MeshRenderer.h"
 #include "World/Components/Transform.h"
 #include "World/Components/Camera.h"
-#include "World/Components/Sun.h"
 
 #include "Renderer/Mesh.h"
 #include "Renderer/Renderer.h"

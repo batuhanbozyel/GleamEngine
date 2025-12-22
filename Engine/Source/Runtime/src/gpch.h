@@ -89,10 +89,10 @@
 #include "Renderer/Shaders/ShaderTypes.h"
 #include "Renderer/GraphicsObject.h"
 
+#include "World/Components/SkyAtmosphere.h"
 #include "World/Components/MeshRenderer.h"
 #include "World/Components/Transform.h"
 #include "World/Components/Camera.h"
-#include "World/Components/Sun.h"
 #include "World/Entity.h"
 
 #include "Renderer/RenderGraph/RenderGraphResource.h"
