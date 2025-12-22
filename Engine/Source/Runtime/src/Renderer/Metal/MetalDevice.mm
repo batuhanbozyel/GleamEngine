@@ -16,7 +16,8 @@
 using namespace Gleam;
 
 @interface MetalComputePipelineImpl : NSObject<MetalComputePipeline>
-@property (nonatomic, strong) id<MTLRenderPipelineState> pipelineState;
+@property (nonatomic, strong) id<MTLComputePipelineState> pipelineState;
+@property(nonatomic, assign) MTLSize threadsPerThreadgroup;
 @end
 
 @implementation MetalComputePipelineImpl
@@ -25,6 +26,7 @@ using namespace Gleam;
     self = [super init];
     if (self) {
         _pipelineState = nil;
+        _threadsPerThreadgroup = MTLSizeMake(1, 1, 1);
     }
     return self;
 }
@@ -45,6 +47,38 @@ using namespace Gleam;
         _pipelineState = nil;
         _depthStencilState = nil;
         _topology = MTLPrimitiveTypeTriangle;
+    }
+    return self;
+}
+
+@end
+
+@interface MetalFunctionImpl : NSObject<MetalFunction>
+@property (nonatomic, strong) id<MTLFunction> function;
+@end
+
+@implementation MetalFunctionImpl
+
+- (instancetype)init {
+    self = [super init];
+    if (self) {
+        _function = nil;
+    }
+    return self;
+}
+
+@end
+
+@interface MetalComputeFunctionImpl : MetalFunctionImpl<MetalComputeFunction>
+@property (nonatomic, assign) MTLSize threadsPerThreadgroup;
+@end
+
+@implementation MetalComputeFunctionImpl
+
+- (instancetype)init {
+    self = [super init];
+    if (self) {
+        _threadsPerThreadgroup = MTLSizeMake(1, 1, 1);
     }
     return self;
 }
@@ -177,9 +211,9 @@ Texture GraphicsDevice::CreateTexture(GPUAllocator* allocator, const TextureDesc
     id<MTLHeap> heap = allocation.block->heap.GetHandle();
     id<MTLTexture> baseTexture = [heap newTextureWithDescriptor:textureDesc offset:allocation.offset];
     id<MTLTexture> textureView = [baseTexture newTextureViewWithPixelFormat:baseTexture.pixelFormat
-                                                   textureType:textureDesc.textureType
-                                                        levels:NSMakeRange(0, texture.mMipMapLevels)
-                                                        slices:NSMakeRange(0, 1)];
+                                                                textureType:TextureDimensionToMTLTextureViewType(descriptor.dimension)
+                                                                     levels:NSMakeRange(0, texture.mMipMapLevels)
+                                                                     slices:NSMakeRange(0, 1)];
     [baseTexture setLabel:TO_NSSTRING(descriptor.name.c_str())];
     [textureView setLabel:TO_NSSTRING(descriptor.name.c_str())];
     [static_cast<MetalDevice*>(this)->GetResidencySet() addAllocation:textureView];
@@ -261,7 +295,30 @@ Shader GraphicsDevice::CompileShader(const TString& entryPoint, ShaderStage stag
     }
     
     NSString* functionName = [NSString stringWithCString:entryPoint.c_str() encoding:NSASCIIStringEncoding];
-    shader.mHandle = [library newFunctionWithName:functionName];
+    id<MTLFunction> mtlFunction = [library newFunctionWithName:functionName];
+    
+    if (stage == ShaderStage::Compute)
+    {
+        MetalComputeFunctionImpl* computeFunction = [[MetalComputeFunctionImpl alloc] init];
+        computeFunction.function = mtlFunction;
+        
+        IRShaderReflection* reflection = IRShaderReflectionCreate();
+        IRObjectGetReflection(metalIR, IRShaderStageCompute, reflection);
+        
+        IRVersionedCSInfo csInfo;
+        IRShaderReflectionCopyComputeInfo(reflection, IRReflectionVersion_1_0, &csInfo);
+        computeFunction.threadsPerThreadgroup = MTLSizeMake(csInfo.info_1_0.tg_size[0], csInfo.info_1_0.tg_size[1], csInfo.info_1_0.tg_size[2]);
+        shader.mHandle = computeFunction;
+        
+        IRShaderReflectionReleaseComputeInfo(&csInfo);
+        IRShaderReflectionDestroy(reflection);
+    }
+    else
+    {
+        MetalFunctionImpl* baseFunction = [[MetalFunctionImpl alloc] init];
+        baseFunction.function = mtlFunction;
+        shader.mHandle = baseFunction;
+    }
     
     // Clean up
     IRMetalLibBinaryDestroy(metallibBinary);
@@ -276,13 +333,14 @@ ComputePipeline GraphicsDevice::CompileComputePipeline(const ComputePipelineStat
 {
     ComputePipeline pipeline(pipelineDesc);
     pipeline.mHandle = [[MetalComputePipelineImpl alloc] init];
-
-    id<MetalComputePipeline> mtlPipeline = pipeline.mHandle;
+    
 	auto shader = CreateShader(pipelineDesc.entryPoint, ShaderStage::Compute);
-
-    MTLComputePipelineDescriptor* pipelineDescriptor = [MTLComputePipelineDescriptor new];
-    pipelineDescriptor.computeFunction = shader.GetHandle();
-    mtlPipeline.pipelineState = [mHandle newComputePipelineStateWithDescriptor:pipelineDescriptor options:MTLPipelineOptionNone completionHandler:nil];
+    id<MetalComputeFunction> mtlFunction = shader.GetHandle();
+    id<MetalComputePipeline> mtlPipeline = pipeline.mHandle;
+    
+    __autoreleasing NSError* error = nil;
+    mtlPipeline.pipelineState = [mHandle newComputePipelineStateWithFunction:mtlFunction.function error:&error];
+    mtlPipeline.threadsPerThreadgroup = mtlFunction.threadsPerThreadgroup;
     GLEAM_ASSERT(mtlPipeline.pipelineState, "Metal: Compute pipeline state creation failed.");
     return pipeline;
 }
@@ -296,10 +354,13 @@ GraphicsPipeline GraphicsDevice::CompileGraphicsPipeline(const GraphicsPipelineS
     auto vertexShader = CreateShader(pipelineDesc.vertexEntry, ShaderStage::Vertex);
     auto fragmentShader = CreateShader(pipelineDesc.fragmentEntry, ShaderStage::Fragment);
     
+    id<MetalFunction> vertexFunction = vertexShader.GetHandle();
+    id<MetalFunction> fragmentFunction = fragmentShader.GetHandle();
+    
     MTLRenderPipelineDescriptor* pipelineDescriptor = [MTLRenderPipelineDescriptor new];
     pipelineDescriptor.rasterSampleCount = 1;
-    pipelineDescriptor.vertexFunction = vertexShader.GetHandle();
-    pipelineDescriptor.fragmentFunction = fragmentShader.GetHandle();
+    pipelineDescriptor.vertexFunction = vertexFunction.function;
+    pipelineDescriptor.fragmentFunction = fragmentFunction.function;
     pipelineDescriptor.alphaToCoverageEnabled = pipelineDesc.alphaToCoverage;
     pipelineDescriptor.inputPrimitiveTopology = PrimitiveTopologyToMTLPrimitiveTopologyClass(pipelineDesc.topology);
     for (uint32_t i = 0; i < pipelineDesc.colorFormats.size(); i++)

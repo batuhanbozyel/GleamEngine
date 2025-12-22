@@ -16,6 +16,7 @@ struct CommandBuffer::Impl
     
     id<MTLCommandBuffer> commandBuffer = nil;
     id<MTLRenderCommandEncoder> renderCommandEncoder = nil;
+    id<MTLComputeCommandEncoder> computeCommandEncoder = nil;
     id<MetalPipeline> pipeline = nil;
     
     uint64_t topLevelArgumentBuffer[TopLevelArgumentBufferSize / sizeof(uint64_t)] = {};
@@ -168,11 +169,11 @@ void CommandBuffer::SetPushConstant(const void* data, uint32_t size) const
 
 void CommandBuffer::Dispatch(uint32_t x, uint32_t y, uint32_t z) const
 {
+    id<MetalComputePipeline> pipeline = (id<MetalComputePipeline>)mHandle->pipeline;
+    
     MTLSize threadGroupSize = MTLSizeMake(x, y, z);
-    MTLSize threadsPerThreadgroup = MTLSizeMake(16, 16, 1); // TODO: query this from metal shader converter shader reflection api
-
     [mHandle->computeCommandEncoder setBytes:mHandle->topLevelArgumentBuffer length:TopLevelArgumentBufferSize atIndex:kIRArgumentBufferBindPoint];
-    [mHandle->computeCommandEncoder dispatchThreads:threadGroupSize threadsPerThreadgroup:threadsPerThreadgroup];
+    [mHandle->computeCommandEncoder dispatchThreads:threadGroupSize threadsPerThreadgroup:pipeline.threadsPerThreadgroup];
 }
 
 void CommandBuffer::Draw(uint32_t vertexCount, uint32_t instanceCount) const

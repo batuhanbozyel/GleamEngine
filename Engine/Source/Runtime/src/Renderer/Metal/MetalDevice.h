@@ -9,19 +9,22 @@
 @end
 
 @protocol MetalComputePipeline <MetalPipeline>
-
 @property(nonatomic, strong) id<MTLComputePipelineState> pipelineState;
-@property(nonatomic, strong) id<MTLDepthStencilState> depthStencilState;
-@property(nonatomic, assign) MTLPrimitiveType topology;
-
+@property(nonatomic, assign) MTLSize threadsPerThreadgroup;
 @end
 
 @protocol MetalGraphicsPipeline <MetalPipeline>
-
 @property (nonatomic, strong) id<MTLRenderPipelineState> pipelineState;
 @property (nonatomic, strong) id<MTLDepthStencilState> depthStencilState;
 @property (nonatomic, assign) MTLPrimitiveType topology;
+@end
 
+@protocol MetalFunction <NSObject>
+@property(nonatomic, strong) id<MTLFunction> function;
+@end
+
+@protocol MetalComputeFunction <MetalFunction>
+@property(nonatomic, assign) MTLSize threadsPerThreadgroup;
 @end
 
 namespace Gleam {

@@ -328,6 +328,16 @@ static constexpr MTLTextureType TextureDimensionToMTLTextureType(TextureDimensio
 	}
 }
 
+static constexpr MTLTextureType TextureDimensionToMTLTextureViewType(TextureDimension dimension)
+{
+	switch (dimension)
+	{
+		case TextureDimension::Texture2D: return MTLTextureType2DArray;
+		case TextureDimension::Texture3D: return MTLTextureType3D; // No change required
+		default: GLEAM_ASSERT(false, "Metal: Unknown texture dimension specified!"); return MTLTextureType(~0);
+	}
+}
+
 static constexpr MTLResourceOptions MemoryTypeToMTLResourceOption(MemoryType type)
 {
     switch (type)
@@ -335,16 +345,6 @@ static constexpr MTLResourceOptions MemoryTypeToMTLResourceOption(MemoryType typ
         case MemoryType::GPU: return MTLResourceStorageModePrivate;
         case MemoryType::CPU: return MTLResourceStorageModeShared;
         default: GLEAM_ASSERT(false, "Metal: Unknown memory type specified!"); return MTLResourceOptions(~0);
-    }
-}
-
-static constexpr MTLResourceUsage ResourceAccessToMTLResourceUsage(ResourceAccess access)
-{
-    switch (access)
-    {
-        case ResourceAccess::Read: return MTLResourceUsageRead;
-        case ResourceAccess::Write: return MTLResourceUsageWrite;
-        default: GLEAM_ASSERT(false, "Metal: Unknown access mode specified!"); return MTLResourceUsage(~0);
     }
 }
 
