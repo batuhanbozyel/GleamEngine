@@ -162,6 +162,11 @@ public:
     {
         return node != nullptr;
     }
+	
+	NO_DISCARD operator ShaderResourceIndex() const
+	{
+		return GetTexture().GetResourceView();
+	}
     
     template<TextureResourceViewType T>
     NO_DISCARD operator T() const

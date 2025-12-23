@@ -40,7 +40,7 @@ struct ImGuiResources
 
 struct TonemapUniforms
 {
-	Texture2DResourceView<float4> sceneColor;
+	ShaderResourceIndex sceneColor;
 };
 
 struct MeshInstanceData

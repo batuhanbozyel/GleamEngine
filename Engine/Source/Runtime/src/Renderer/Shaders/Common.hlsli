@@ -15,7 +15,7 @@
 
 #define CONSTANT_BUFFER_HELPER(type, name, slot) ConstantBuffer<type> name : register(b##slot, space0)
 #define CONSTANT_BUFFER(type, name, slot) CONSTANT_BUFFER_HELPER(type, name, slot)
-#define PUSH_CONSTANT(type, name) CONSTANT_BUFFER(type, name, 999)
+#define PUSH_CONSTANT(type, name) CONSTANT_BUFFER(type, name, PUSH_CONSTANT_REGISTER)
 
 struct FScreenVertexOutput
 {

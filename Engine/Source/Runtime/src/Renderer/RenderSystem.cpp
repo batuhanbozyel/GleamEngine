@@ -79,12 +79,12 @@ void RenderSystem::PreRender(const World* world)
 		}
 	});
 
-	mSun = InvalidEntity;
+	mSkyAtmosphereEntity = InvalidEntity;
 	world->GetEntityManager().ForEach<Entity, SkyAtmosphere>([&](const Entity& entity, const SkyAtmosphere& component)
 	{
 		if (entity.IsActive())
 		{
-			mSun = entity;
+			mSkyAtmosphereEntity = entity;
 		}
 	});
 
@@ -110,15 +110,13 @@ void RenderSystem::Render(const World* world)
 	@autoreleasepool
 #endif
 	{
-		if (mActiveCamera == InvalidEntity || mSun == InvalidEntity)
+		if (mActiveCamera == InvalidEntity)
 		{
 			return; // skip rendering this frame
 		}
 
 		const auto& cameraComponent = world->GetEntityManager().GetComponent<Camera>(mActiveCamera);
 		const auto& cameraEntity = world->GetEntityManager().GetComponent<Entity>(mActiveCamera);
-		const auto& atmosphereComponent = world->GetEntityManager().GetComponent<SkyAtmosphere>(mSun);
-		const auto& atmosphereEntity = world->GetEntityManager().GetComponent<Entity>(mSun);
 
 		// TODO: Render scene per active camera
 		// Set sceneTarget to camera target
@@ -148,12 +146,18 @@ void RenderSystem::Render(const World* world)
 
 		// sky atmosphere
 		auto skyAtmosphereRenderer = GetRenderer<SkyAtmosphereRenderer>();
-		sceneData.atmospherEntity = atmosphereEntity;
-		sceneData.atmosphere.transmittanceLutTexture = skyAtmosphereRenderer->GetTransmittanceLutTexture();
-		sceneData.atmosphere.multiScatterLutTexture = skyAtmosphereRenderer->GetMultiScatterLutTexture();
-		sceneData.atmosphere.sunIlluminance = Float3(atmosphereComponent.sun.color.r, atmosphereComponent.sun.color.g, atmosphereComponent.sun.color.b) * atmosphereComponent.sun.intensity;
-		sceneData.atmosphere.sunAngularDiameter = atmosphereComponent.sun.angularDiameter;
-		sceneData.atmosphere.sunDirection = atmosphereEntity.UpVector();
+		if (skyAtmosphereRenderer && mSkyAtmosphereEntity != InvalidEntity)
+		{
+			const auto& atmosphereComponent = world->GetEntityManager().GetComponent<SkyAtmosphere>(mSkyAtmosphereEntity);
+			const auto& atmosphereEntity = world->GetEntityManager().GetComponent<Entity>(mSkyAtmosphereEntity);
+			
+			sceneData.atmospherEntity = atmosphereEntity;
+			sceneData.atmosphere.transmittanceLutTexture = skyAtmosphereRenderer->GetTransmittanceLutTexture();
+			sceneData.atmosphere.multiScatterLutTexture = skyAtmosphereRenderer->GetMultiScatterLutTexture();
+			sceneData.atmosphere.sunIlluminance = Float3(atmosphereComponent.sun.color.r, atmosphereComponent.sun.color.g, atmosphereComponent.sun.color.b) * atmosphereComponent.sun.intensity;
+			sceneData.atmosphere.sunAngularDiameter = atmosphereComponent.sun.angularDiameter;
+			sceneData.atmosphere.sunDirection = atmosphereEntity.UpVector();
+		}
 
 		// camera
 		sceneData.cameraEntity = cameraEntity;

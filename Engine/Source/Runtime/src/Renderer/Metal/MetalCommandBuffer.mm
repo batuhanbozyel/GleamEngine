@@ -47,7 +47,7 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, 
             depthAttachmentDesc.clearDepth = renderPassDesc.depthAttachment.clearDepth;
             depthAttachmentDesc.loadAction = AttachmentLoadActionToMTLLoadAction(renderPassDesc.depthAttachment.loadAction);
             depthAttachmentDesc.storeAction = AttachmentStoreActionToMTLStoreAction(renderPassDesc.depthAttachment.storeAction);
-            depthAttachmentDesc.texture = renderPassDesc.depthAttachment.texture.GetHandle();
+            depthAttachmentDesc.texture = renderPassDesc.depthAttachment.texture.GetRenderTargetView();
         }
         
         if (Utils::IsDepthStencilFormat(depthAttachment.format))
@@ -73,12 +73,11 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, 
         };
         colorAttachmentDesc.loadAction = AttachmentLoadActionToMTLLoadAction(colorAttachment.loadAction);
         colorAttachmentDesc.storeAction = AttachmentStoreActionToMTLStoreAction(colorAttachment.storeAction);
-        colorAttachmentDesc.texture = colorAttachment.texture.GetHandle();
+        colorAttachmentDesc.texture = colorAttachment.texture.GetRenderTargetView();
     }
     
     mHandle->renderCommandEncoder = [mHandle->commandBuffer renderCommandEncoderWithDescriptor:renderPass];
     mHandle->renderCommandEncoder.label = TO_NSSTRING(debugName.data());
-    [mHandle->renderCommandEncoder useResource:mConstantBuffer.GetHandle() usage:MTLResourceUsageRead stages:MTLRenderStageVertex | MTLRenderStageFragment];
 }
 
 void CommandBuffer::EndRenderPass() const
@@ -91,7 +90,6 @@ void CommandBuffer::BeginComputePass(const TStringView debugName) const
 {
     mHandle->computeCommandEncoder = [mHandle->commandBuffer computeCommandEncoder];
     mHandle->computeCommandEncoder.label = TO_NSSTRING(debugName.data());
-    [mHandle->computeCommandEncoder useResource:mConstantBuffer.GetHandle() usage:MTLResourceUsageRead];
 }
 
 void CommandBuffer::EndComputePass() const

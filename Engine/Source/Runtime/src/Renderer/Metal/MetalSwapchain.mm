@@ -101,7 +101,7 @@ const Texture& MetalSwapchain::AcquireNextDrawable()
     {
         dispatch_semaphore_wait(mImageAcquireSemaphore, DISPATCH_TIME_FOREVER);
         mCurrentDrawable = [mHandle nextDrawable];
-        drawable = Texture(drawable.GetDescriptor(), mCurrentDrawable.texture, nil);
+        drawable = Texture(drawable.GetDescriptor(), mCurrentDrawable.texture, mCurrentDrawable.texture);
     }
     return drawable;
 }

@@ -464,7 +464,7 @@ MetalDevice::MetalDevice(RenderSurface* surface, ResourceReleaseQueue* releaseQu
     // init MTLResidencySet
     __autoreleasing NSError* error = nil;
     MTLResidencySetDescriptor* residencySetDesc = [MTLResidencySetDescriptor new];
-    residencySetDesc.initialCapacity = 1024;
+    residencySetDesc.initialCapacity = CBV_SRV_HEAP_SIZE;
     mResidencySet = [mHandle newResidencySetWithDescriptor:residencySetDesc error:&error];
     GLEAM_ASSERT(mResidencySet, "Metal: Residency set creation failed.");
     

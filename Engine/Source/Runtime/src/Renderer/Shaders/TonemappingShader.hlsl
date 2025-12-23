@@ -94,7 +94,8 @@ float3 AcesTonemap(float3 aces)
 
 float4 tonemappingFragmentShader(FScreenVertexOutput IN) : SV_TARGET
 {
-    float4 color = uniforms.sceneColor.Sample(Sampler_Point_Clamp, IN.texCoord);
+    Texture2D<float4> sceneTexture = ResourceDescriptorHeap[SRVIndex(uniforms.sceneColor)];
+    float4 color = sceneTexture.Sample(Sampler_Point_Clamp, IN.texCoord);
     color.rgb = LinearTosRGB(NeutralTonemap(color.rgb));
     return color;
 }

@@ -10,15 +10,19 @@ using namespace Gleam;
 ConstantBuffer::ConstantBuffer(GraphicsDevice* device, size_t size)
 	: mAlignment(4)
 	, mCapacity(Utils::AlignUp(size, 4))
+    , mDevice(device)
 {
 	id<MTLBuffer> mtlBuffer = [device->GetHandle() newBufferWithLength:size options:MTLResourceStorageModeShared];
     [mtlBuffer setLabel:TO_NSSTRING("ConstantBuffer")];
     mContents = [mtlBuffer contents];
 	mHandle = mtlBuffer;
+    
+    [static_cast<MetalDevice*>(mDevice)->GetResidencySet() addAllocation:mHandle];
 }
 
 ConstantBuffer::~ConstantBuffer()
 {
+    [static_cast<MetalDevice*>(mDevice)->GetResidencySet() removeAllocation:mHandle];
 	mHandle = nil;
 }
 #endif

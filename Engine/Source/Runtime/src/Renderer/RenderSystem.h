@@ -85,12 +85,16 @@ public:
     template<RendererType T>
     T* GetRenderer()
     {
-        GLEAM_ASSERT(HasRenderer<T>(), "Render pipeline does not have the renderer!");
         auto it = std::find_if(mRenderers.begin(), mRenderers.end(), [](const IRenderer* renderer)
         {
             return typeid(*renderer) == typeid(T);
         });
-        return static_cast<T*>(*it);
+		
+		if (it != mRenderers.end())
+		{
+			return static_cast<T*>(*it);
+		}
+		return nullptr;
     }
     
     template<RendererType T>
@@ -121,7 +125,7 @@ private:
 
 	Size mSwapchainSize = {};
 
-	EntityHandle mSun = InvalidEntity;
+	EntityHandle mSkyAtmosphereEntity = InvalidEntity;
 	EntityHandle mActiveCamera = InvalidEntity;
 
 	Engine* mEngine;
