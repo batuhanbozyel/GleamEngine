@@ -106,6 +106,7 @@ void CommandBuffer::BindComputePipeline(const ComputePipeline& pipeline) const
     [mHandle->computeCommandEncoder setComputePipelineState:computePipeline.pipelineState];
 
     // Descriptor heap
+    [mHandle->computeCommandEncoder setBuffer:mHandle->device->GetSamplerHeap() offset:0 atIndex:kIRSamplerHeapBindPoint];
     [mHandle->computeCommandEncoder setBuffer:mHandle->device->GetCbvSrvUavHeap() offset:0 atIndex:kIRDescriptorHeapBindPoint];
 
     // Top-level argument buffer
@@ -127,7 +128,9 @@ void CommandBuffer::BindGraphicsPipeline(const GraphicsPipeline& pipeline) const
     [mHandle->renderCommandEncoder setTriangleFillMode:pipeline.GetDescriptor().wireframe ? MTLTriangleFillModeLines : MTLTriangleFillModeFill];
     
     // Descriptor heap
+    [mHandle->renderCommandEncoder setVertexBuffer:mHandle->device->GetSamplerHeap() offset:0 atIndex:kIRSamplerHeapBindPoint];
     [mHandle->renderCommandEncoder setVertexBuffer:mHandle->device->GetCbvSrvUavHeap() offset:0 atIndex:kIRDescriptorHeapBindPoint];
+    [mHandle->renderCommandEncoder setFragmentBuffer:mHandle->device->GetSamplerHeap() offset:0 atIndex:kIRSamplerHeapBindPoint];
     [mHandle->renderCommandEncoder setFragmentBuffer:mHandle->device->GetCbvSrvUavHeap() offset:0 atIndex:kIRDescriptorHeapBindPoint];
     
     // Top-level argument buffer

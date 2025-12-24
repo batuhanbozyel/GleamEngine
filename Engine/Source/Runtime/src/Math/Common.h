@@ -133,6 +133,12 @@ NO_DISCARD FORCE_INLINE constexpr T Clamp(T value, T min, T max)
 }
 
 template<typename T>
+NO_DISCARD FORCE_INLINE constexpr T Saturate(T value)
+{
+	return Min(Max(value, T(0)), T(1));
+}
+
+template<typename T>
 NO_DISCARD FORCE_INLINE constexpr T Step(T edge, T x)
 {
     return static_cast<T>(x >= edge);

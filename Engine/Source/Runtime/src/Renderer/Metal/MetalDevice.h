@@ -31,6 +31,7 @@ namespace Gleam {
 
 struct Version;
 struct RendererConfig;
+struct SamplerState;
 
 struct MetalDescriptorHeap
 {
@@ -46,7 +47,9 @@ public:
     
     ~MetalDevice();
     
-    id<MTLBuffer> GetCbvSrvUavHeap() const;
+    id<MTLBuffer> GetSamplerHeap() const;
+	
+	id<MTLBuffer> GetCbvSrvUavHeap() const;
     
     id<MTLCommandQueue> GetCommandPool() const;
 	
@@ -65,15 +68,23 @@ public:
 private:
 
 	virtual void Configure(const RendererConfig& config) override;
+	
+	MetalDescriptorHeap CreateSamplerHeap(uint32_t capacity) const;
     
     MetalDescriptorHeap CreateDescriptorHeap(uint32_t capacity) const;
+	
+	IRStaticSamplerDescriptor CreateStaticSampler(const SamplerState& samplerState);
 
 	IRRootSignature* mRootSignature = nullptr;
 
     id<MTLCommandQueue> mCommandPool{ nil };
 	
 	id<MTLResidencySet> mResidencySet{ nil };
+	
+	TArray<void*> mStaticSamplers;
     
+	MetalDescriptorHeap mSamplerHeap;
+	
     MetalDescriptorHeap mCbvSrvUavHeap;
 
 };

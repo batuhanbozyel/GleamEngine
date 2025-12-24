@@ -97,7 +97,7 @@ void RenderSystem::InitializeBackend()
 	mTransientAllocator = CreateScope<GPUAllocator>(mDevice.get(), GPUAllocatorDescriptor{ .name = "Transient GPU Allocator" });
 }
 
-static IRStaticSamplerDescriptor CreateStaticSampler(const SamplerState& samplerState)
+static IRStaticSamplerDescriptor CreateIRStaticSampler(const SamplerState& samplerState)
 {
     IRStaticSamplerDescriptor sampler{};
     sampler.MipLODBias = 0;
@@ -161,8 +161,77 @@ static IRStaticSamplerDescriptor CreateStaticSampler(const SamplerState& sampler
         }
         default: GLEAM_ASSERT(false, "Metal: Wrap mode is not supported!") break;
     }
-
     return sampler;
+}
+
+static MTLSamplerDescriptor* CreateMTLSamplerState(const SamplerState& samplerState)
+{
+    MTLSamplerDescriptor* desc = [MTLSamplerDescriptor new];
+    desc.supportArgumentBuffers = true;
+    desc.maxAnisotropy = 1;
+    desc.lodMinClamp = 0.0f;
+    desc.lodMaxClamp = 16.0f;
+    desc.compareFunction = MTLCompareFunctionAlways;
+    
+    switch (samplerState.filterMode)
+    {
+        case FilterMode::Point:
+        {
+            desc.minFilter = MTLSamplerMinMagFilterNearest;
+            desc.magFilter = MTLSamplerMinMagFilterNearest;
+            desc.mipFilter = MTLSamplerMipFilterNearest;
+            break;
+        }
+        case FilterMode::Bilinear:
+        {
+            desc.minFilter = MTLSamplerMinMagFilterLinear;
+            desc.magFilter = MTLSamplerMinMagFilterLinear;
+            desc.mipFilter = MTLSamplerMipFilterNearest;
+            break;
+        }
+        case FilterMode::Trilinear:
+        {
+            desc.minFilter = MTLSamplerMinMagFilterLinear;
+            desc.magFilter = MTLSamplerMinMagFilterLinear;
+            desc.mipFilter = MTLSamplerMipFilterLinear;
+            break;
+        }
+        default: GLEAM_ASSERT(false, "Metal: Filter mode is not supported!") break;
+    }
+    
+    switch (samplerState.wrapMode)
+    {
+        case WrapMode::Repeat:
+        {
+            desc.sAddressMode = MTLSamplerAddressModeRepeat;
+            desc.tAddressMode = MTLSamplerAddressModeRepeat;
+            desc.rAddressMode = MTLSamplerAddressModeRepeat;
+            break;
+        }
+        case WrapMode::Clamp:
+        {
+            desc.sAddressMode = MTLSamplerAddressModeClampToEdge;
+            desc.tAddressMode = MTLSamplerAddressModeClampToEdge;
+            desc.rAddressMode = MTLSamplerAddressModeClampToEdge;
+            break;
+        }
+        case WrapMode::Mirror:
+        {
+            desc.sAddressMode = MTLSamplerAddressModeMirrorRepeat;
+            desc.tAddressMode = MTLSamplerAddressModeMirrorRepeat;
+            desc.rAddressMode = MTLSamplerAddressModeMirrorRepeat;
+            break;
+        }
+        case WrapMode::MirrorOnce:
+        {
+            desc.sAddressMode = MTLSamplerAddressModeMirrorClampToEdge;
+            desc.tAddressMode = MTLSamplerAddressModeMirrorClampToEdge;
+            desc.rAddressMode = MTLSamplerAddressModeMirrorClampToEdge;
+            break;
+        }
+        default: GLEAM_ASSERT(false, "Metal: Wrap mode is not supported!") break;
+    }
+    return desc;
 }
 
 Heap GraphicsDevice::CreateHeap(const HeapDescriptor& descriptor)
@@ -465,6 +534,7 @@ MetalDevice::MetalDevice(RenderSurface* surface, ResourceReleaseQueue* releaseQu
     __autoreleasing NSError* error = nil;
     MTLResidencySetDescriptor* residencySetDesc = [MTLResidencySetDescriptor new];
     residencySetDesc.initialCapacity = CBV_SRV_HEAP_SIZE;
+    residencySetDesc.label = @"ResidencySet";
     mResidencySet = [mHandle newResidencySetWithDescriptor:residencySetDesc error:&error];
     GLEAM_ASSERT(mResidencySet, "Metal: Residency set creation failed.");
     
@@ -473,9 +543,13 @@ MetalDevice::MetalDevice(RenderSurface* surface, ResourceReleaseQueue* releaseQu
     [mCommandPool addResidencySet:mResidencySet];
     
     // create descriptor heap
+    uint32_t maxSamplers = (uint32_t)[mHandle maxArgumentBufferSamplerCount];
+    mSamplerHeap = CreateSamplerHeap(Math::Clamp(0u, maxSamplers, 1024u));
     mCbvSrvUavHeap = CreateDescriptorHeap(CBV_SRV_HEAP_SIZE);
 
     auto samplerSates = SamplerState::GetStaticSamplers();
+    mStaticSamplers.resize(samplerSates.size());
+    
     TArray<IRStaticSamplerDescriptor, samplerSates.size()> staticSamplerDescs{};
     for (uint32_t i = 0; i < samplerSates.size(); i++)
     {
@@ -542,6 +616,12 @@ MetalDevice::~MetalDevice()
     IRRootSignatureDestroy(mRootSignature);
     
     // Destroy descriptor heap
+    for (void* sampler : mStaticSamplers)
+    {
+        CFRelease(sampler);
+    }
+    mStaticSamplers.clear();
+    mSamplerHeap.handle = nil;
     mCbvSrvUavHeap.handle = nil;
     
     // Destroy residency set
@@ -587,14 +667,40 @@ void MetalDevice::ReleaseResourceView(ShaderResourceIndex view)
     }
 }
 
+IRStaticSamplerDescriptor MetalDevice::CreateStaticSampler(const SamplerState& samplerState)
+{
+    IRStaticSamplerDescriptor irSamplerDesc = CreateIRStaticSampler(samplerState);
+    MTLSamplerDescriptor* mtlSamplerDesc = CreateMTLSamplerState(samplerState);
+    
+    auto index = mSamplerHeap.heap.Allocate();
+    mStaticSamplers[index.data] = (__bridge_retained void*)[mHandle newSamplerStateWithDescriptor:mtlSamplerDesc];
+    auto descriptorTable = static_cast<IRDescriptorTableEntry*>([mSamplerHeap.handle contents]);
+    IRDescriptorTableSetSampler(descriptorTable + index.data, (__bridge id<MTLSamplerState>)mStaticSamplers[index.data], irSamplerDesc.MipLODBias);
+    
+    return irSamplerDesc;
+}
+
+MetalDescriptorHeap MetalDevice::CreateSamplerHeap(uint32_t capacity) const
+{
+    MetalDescriptorHeap heap;
+    heap.handle = [mHandle newBufferWithLength:capacity * sizeof(IRDescriptorTableEntry) options:MTLResourceStorageModeShared];
+    heap.heap = ResourceDescriptorHeap(capacity);
+    [heap.handle setLabel:@"SamplerHeap"];
+    return heap;
+}
+
 MetalDescriptorHeap MetalDevice::CreateDescriptorHeap(uint32_t capacity) const
 {
     MetalDescriptorHeap heap;
     heap.handle = [mHandle newBufferWithLength:capacity * sizeof(IRDescriptorTableEntry) options:MTLResourceStorageModeShared];
     heap.heap = ResourceDescriptorHeap(capacity);
-    
     [heap.handle setLabel:@"DescriptorHeap"];
     return heap;
+}
+
+id<MTLBuffer> MetalDevice::GetSamplerHeap() const
+{
+    return mSamplerHeap.handle;
 }
 
 id<MTLBuffer> MetalDevice::GetCbvSrvUavHeap() const
