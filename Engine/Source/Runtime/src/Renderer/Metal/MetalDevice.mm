@@ -284,7 +284,7 @@ Texture GraphicsDevice::CreateTexture(GPUAllocator* allocator, const TextureDesc
                                                                      levels:NSMakeRange(0, texture.mMipMapLevels)
                                                                      slices:NSMakeRange(0, 1)];
     [baseTexture setLabel:TO_NSSTRING(descriptor.name.c_str())];
-    [textureView setLabel:TO_NSSTRING(descriptor.name.c_str())];
+    [textureView setLabel:TO_NSSTRING((descriptor.name + "_View").c_str())];
     [static_cast<MetalDevice*>(this)->GetResidencySet() addAllocation:textureView];
     [static_cast<MetalDevice*>(this)->GetResidencySet() addAllocation:baseTexture];
     allocator->AddAllocation(baseTexture, allocation);
@@ -502,8 +502,10 @@ void GraphicsDevice::Dispose(GPUAllocator* allocator, Texture& texture)
     const auto& allocation = allocator->GetAllocation(texture.GetHandle());
 	allocator->Free(allocation);
 
+    [static_cast<MetalDevice*>(this)->GetResidencySet() removeAllocation:texture.mView];
     [static_cast<MetalDevice*>(this)->GetResidencySet() removeAllocation:texture.mHandle];
     static_cast<MetalDevice*>(this)->ReleaseResourceView(texture.mResourceView);
+    texture.mResourceView = InvalidResourceIndex;
     texture.mHandle = nil;
     texture.mView = nil;
 }
