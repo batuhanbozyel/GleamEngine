@@ -13,7 +13,8 @@
 
 namespace Gleam {
 
-static constexpr size_t TopLevelArgumentBufferSize = PUSH_CONSTANT_SLOT * sizeof(uint64_t) + PUSH_CONSTANT_SIZE;
+#define STATIC_SAMPLER_SLOT ((TopLevelArgumentBufferSize / sizeof(uint64_t)) - 1)
+static constexpr size_t TopLevelArgumentBufferSize = PUSH_CONSTANT_SLOT * sizeof(uint64_t) + PUSH_CONSTANT_SIZE + sizeof(uint64_t);
 
 static constexpr TextureFormat MTLPixelFormatToTextureFormat(MTLPixelFormat format)
 {
@@ -163,7 +164,7 @@ static constexpr MTLPixelFormat TextureFormatToMTLPixelFormat(TextureFormat form
 
 static constexpr MTLTextureUsage TextureUsageToMTLTextureUsage(TextureUsageFlagBits flags)
 {
-    MTLTextureUsage usage = 0;
+	MTLTextureUsage usage = MTLTextureUsageUnknown;
     if (flags & TextureUsage_Sampled)
     {
         usage |= MTLTextureUsageShaderRead;
@@ -330,12 +331,16 @@ static constexpr MTLTextureType TextureDimensionToMTLTextureType(TextureDimensio
 
 static constexpr MTLTextureType TextureDimensionToMTLTextureViewType(TextureDimension dimension)
 {
+#if IR_VERSION_MAJOR < 3
 	switch (dimension)
 	{
 		case TextureDimension::Texture2D: return MTLTextureType2DArray;
 		case TextureDimension::Texture3D: return MTLTextureType3D; // No change required
 		default: GLEAM_ASSERT(false, "Metal: Unknown texture dimension specified!"); return MTLTextureType(~0);
 	}
+#else
+	return TextureDimensionToMTLTextureType(dimension);
+#endif
 }
 
 static constexpr MTLResourceOptions MemoryTypeToMTLResourceOption(MemoryType type)

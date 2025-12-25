@@ -111,6 +111,10 @@ void CommandBuffer::BindComputePipeline(const ComputePipeline& pipeline) const
 
     // Top-level argument buffer
     memset(mHandle->topLevelArgumentBuffer, 0, TopLevelArgumentBufferSize);
+    
+    // Sampler heap
+    id<MTLBuffer> staticSamplers = mHandle->device->GetSamplerHeap();
+    mHandle->topLevelArgumentBuffer[STATIC_SAMPLER_SLOT] = [staticSamplers gpuAddress];
 }
 
 void CommandBuffer::BindGraphicsPipeline(const GraphicsPipeline& pipeline) const
@@ -135,6 +139,10 @@ void CommandBuffer::BindGraphicsPipeline(const GraphicsPipeline& pipeline) const
     
     // Top-level argument buffer
     memset(mHandle->topLevelArgumentBuffer, 0, TopLevelArgumentBufferSize);
+    
+    // Sampler heap
+    id<MTLBuffer> staticSamplers = mHandle->device->GetSamplerHeap();
+    mHandle->topLevelArgumentBuffer[STATIC_SAMPLER_SLOT] = [staticSamplers gpuAddress];
 }
 
 void CommandBuffer::SetViewport(const Size& size) const

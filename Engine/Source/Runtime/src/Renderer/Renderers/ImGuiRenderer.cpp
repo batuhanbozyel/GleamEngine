@@ -167,7 +167,6 @@ void ImGuiRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 		renderPassDesc.colorAttachments[0].texture = passData.backbuffer;
 		renderPassDesc.colorAttachments[0].loadAction = AttachmentLoadAction::Load;
 		renderPassDesc.colorAttachments[0].storeAction = AttachmentStoreAction::Store;
-		renderPassDesc.colorAttachments[0].clearColor = Color::clear;
 		cmd->BeginRenderPass(renderPassDesc, "ImGuiPass");
 		cmd->BindGraphicsPipeline(mPipeline);
 		cmd->SetViewport(renderPassDesc.size);

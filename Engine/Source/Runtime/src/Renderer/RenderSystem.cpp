@@ -145,18 +145,26 @@ void RenderSystem::Render(const World* world)
 		sceneData.world = world;
 
 		// sky atmosphere
-		auto skyAtmosphereRenderer = GetRenderer<SkyAtmosphereRenderer>();
-		if (skyAtmosphereRenderer && mSkyAtmosphereEntity != InvalidEntity)
+		sceneData.atmospherEntity = mSkyAtmosphereEntity;
+		sceneData.atmosphere.transmittanceLutTexture = InvalidResourceIndex;
+		sceneData.atmosphere.multiScatterLutTexture = InvalidResourceIndex;
+		sceneData.atmosphere.sunIlluminance = 1.0f;
+		sceneData.atmosphere.sunDirection = Float3::up;
+		if (mSkyAtmosphereEntity != InvalidEntity)
 		{
 			const auto& atmosphereComponent = world->GetEntityManager().GetComponent<SkyAtmosphere>(mSkyAtmosphereEntity);
 			const auto& atmosphereEntity = world->GetEntityManager().GetComponent<Entity>(mSkyAtmosphereEntity);
 			
-			sceneData.atmospherEntity = atmosphereEntity;
-			sceneData.atmosphere.transmittanceLutTexture = skyAtmosphereRenderer->GetTransmittanceLutTexture();
-			sceneData.atmosphere.multiScatterLutTexture = skyAtmosphereRenderer->GetMultiScatterLutTexture();
 			sceneData.atmosphere.sunIlluminance = Float3(atmosphereComponent.sun.color.r, atmosphereComponent.sun.color.g, atmosphereComponent.sun.color.b) * atmosphereComponent.sun.intensity;
 			sceneData.atmosphere.sunAngularDiameter = atmosphereComponent.sun.angularDiameter;
 			sceneData.atmosphere.sunDirection = atmosphereEntity.UpVector();
+		}
+		
+		auto skyAtmosphereRenderer = GetRenderer<SkyAtmosphereRenderer>();
+		if (skyAtmosphereRenderer)
+		{
+			sceneData.atmosphere.transmittanceLutTexture = skyAtmosphereRenderer->GetTransmittanceLutTexture();
+			sceneData.atmosphere.multiScatterLutTexture = skyAtmosphereRenderer->GetMultiScatterLutTexture();
 		}
 
 		// camera

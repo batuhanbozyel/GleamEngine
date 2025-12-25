@@ -550,15 +550,13 @@ MetalDevice::MetalDevice(RenderSurface* surface, ResourceReleaseQueue* releaseQu
     auto samplerSates = SamplerState::GetStaticSamplers();
     mStaticSamplers.resize(samplerSates.size());
     
-    TArray<IRStaticSamplerDescriptor, samplerSates.size()> staticSamplerDescs{};
     for (uint32_t i = 0; i < samplerSates.size(); i++)
     {
-        staticSamplerDescs[i] = CreateStaticSampler(samplerSates[i]);
-        staticSamplerDescs[i].ShaderRegister = i;
+        mStaticSamplers[i] = (__bridge_retained void*)CreateSampler(samplerSates[i]);
     }
     
     // root signature
-    constexpr uint32_t NumRootParams = PUSH_CONSTANT_SLOT + 1;
+    constexpr uint32_t NumRootParams = PUSH_CONSTANT_SLOT + 2; // 1 for samplers descriptor table, 1 for push constants
     IRRootParameter1 rootSigParams[NumRootParams];
     for (uint32_t i = 0; i < PUSH_CONSTANT_SLOT; i++)
     {
@@ -583,6 +581,24 @@ MetalDevice::MetalDevice(RenderSurface* surface, ResourceReleaseQueue* releaseQu
       .ShaderVisibility = IRShaderVisibilityAll
     };
     
+    // Sampler descriptor table
+    IRDescriptorRange1 samplerRange = {
+        .RangeType = IRDescriptorRangeTypeSampler,
+        .NumDescriptors = (uint32_t)mStaticSamplers.size(),
+        .BaseShaderRegister = 0,
+        .RegisterSpace = 0,
+        .Flags = IRDescriptorRangeFlagNone,
+        .OffsetInDescriptorsFromTableStart = 0
+    };
+    rootSigParams[PUSH_CONSTANT_SLOT + 1] = {
+        .ParameterType = IRRootParameterTypeDescriptorTable,
+        .DescriptorTable = {
+            .NumDescriptorRanges = 1,
+            .pDescriptorRanges = &samplerRange
+        },
+        .ShaderVisibility = IRShaderVisibilityAll
+    };
+    
     IRVersionedRootSignatureDescriptor rootSignature = {};
     rootSignature.version = IRRootSignatureVersion_1_1;
     rootSignature.desc_1_1.Flags = IRRootSignatureFlags(IRRootSignatureFlagDenyHullShaderRootAccess
@@ -590,8 +606,8 @@ MetalDevice::MetalDevice(RenderSurface* surface, ResourceReleaseQueue* releaseQu
                                                         | IRRootSignatureFlagDenyGeometryShaderRootAccess
                                                         | IRRootSignatureFlagCBVSRVUAVHeapDirectlyIndexed);
 
-    rootSignature.desc_1_1.NumStaticSamplers = staticSamplerDescs.size();
-    rootSignature.desc_1_1.pStaticSamplers = staticSamplerDescs.data();
+    rootSignature.desc_1_1.NumStaticSamplers = 0;
+    rootSignature.desc_1_1.pStaticSamplers = nullptr;
     rootSignature.desc_1_1.pParameters = rootSigParams;
     rootSignature.desc_1_1.NumParameters = NumRootParams;
     
@@ -667,17 +683,16 @@ void MetalDevice::ReleaseResourceView(ShaderResourceIndex view)
     }
 }
 
-IRStaticSamplerDescriptor MetalDevice::CreateStaticSampler(const SamplerState& samplerState)
+id<MTLSamplerState> MetalDevice::CreateSampler(const SamplerState& samplerState)
 {
-    IRStaticSamplerDescriptor irSamplerDesc = CreateIRStaticSampler(samplerState);
     MTLSamplerDescriptor* mtlSamplerDesc = CreateMTLSamplerState(samplerState);
+    id<MTLSamplerState> mtlSampler = [mHandle newSamplerStateWithDescriptor:mtlSamplerDesc];
     
     auto index = mSamplerHeap.heap.Allocate();
-    mStaticSamplers[index.data] = (__bridge_retained void*)[mHandle newSamplerStateWithDescriptor:mtlSamplerDesc];
     auto descriptorTable = static_cast<IRDescriptorTableEntry*>([mSamplerHeap.handle contents]);
-    IRDescriptorTableSetSampler(descriptorTable + index.data, (__bridge id<MTLSamplerState>)mStaticSamplers[index.data], irSamplerDesc.MipLODBias);
+    IRDescriptorTableSetSampler(descriptorTable + index.data, mtlSampler, 0.0f);
     
-    return irSamplerDesc;
+    return mtlSampler;
 }
 
 MetalDescriptorHeap MetalDevice::CreateSamplerHeap(uint32_t capacity) const

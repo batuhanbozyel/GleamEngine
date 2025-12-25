@@ -73,7 +73,7 @@ private:
     
     MetalDescriptorHeap CreateDescriptorHeap(uint32_t capacity) const;
 	
-	IRStaticSamplerDescriptor CreateStaticSampler(const SamplerState& samplerState);
+	id<MTLSamplerState> CreateSampler(const SamplerState& samplerState);
 
 	IRRootSignature* mRootSignature = nullptr;
 
