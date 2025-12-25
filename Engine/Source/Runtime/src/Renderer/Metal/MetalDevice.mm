@@ -491,7 +491,14 @@ void GraphicsDevice::Dispose(GPUAllocator* allocator, Buffer& buffer)
     const auto& allocation = allocator->GetAllocation(buffer.GetHandle());
 	allocator->Free(allocation);
 
-	static_cast<MetalDevice*>(this)->ReleaseResourceView(buffer.mResourceView);
+    id<MTLBuffer> resource = buffer.GetHandle();
+    ShaderResourceIndex view = buffer.GetResourceView();
+    mReleaseQueue->AddResource([this, resource, view]()
+    {
+        [static_cast<MetalDevice*>(this)->GetResidencySet() removeAllocation:resource];
+        static_cast<MetalDevice*>(this)->ReleaseResourceView(view);
+    }, static_cast<Swapchain*>(mSurface)->GetFrameIndex());
+    
 	buffer.mResourceView = InvalidResourceIndex;
 	buffer.mContents = nullptr;
 	buffer.mHandle = nil;
@@ -501,10 +508,17 @@ void GraphicsDevice::Dispose(GPUAllocator* allocator, Texture& texture)
 {
     const auto& allocation = allocator->GetAllocation(texture.GetHandle());
 	allocator->Free(allocation);
-
-    [static_cast<MetalDevice*>(this)->GetResidencySet() removeAllocation:texture.mView];
-    [static_cast<MetalDevice*>(this)->GetResidencySet() removeAllocation:texture.mHandle];
-    static_cast<MetalDevice*>(this)->ReleaseResourceView(texture.mResourceView);
+    
+    id<MTLTexture> resource = texture.GetHandle();
+    id<MTLTexture> resourceView = texture.GetRenderTargetView();
+    ShaderResourceIndex view = texture.GetResourceView();
+    mReleaseQueue->AddResource([this, resource, resourceView, view]()
+    {
+        [static_cast<MetalDevice*>(this)->GetResidencySet() removeAllocation:resource];
+        [static_cast<MetalDevice*>(this)->GetResidencySet() removeAllocation:resourceView];
+        static_cast<MetalDevice*>(this)->ReleaseResourceView(view);
+    }, static_cast<Swapchain*>(mSurface)->GetFrameIndex());
+    
     texture.mResourceView = InvalidResourceIndex;
     texture.mHandle = nil;
     texture.mView = nil;
@@ -737,7 +751,6 @@ id<MTLResidencySet> MetalDevice::GetResidencySet() const
 
 id<MTLCommandBuffer> MetalDevice::AllocateCommandBuffer() const
 {
-    [mResidencySet commit];
 #ifdef GDEBUG
     MTLCommandBufferDescriptor* descriptor = [MTLCommandBufferDescriptor new];
     descriptor.errorOptions = MTLCommandBufferErrorOptionEncoderExecutionStatus;

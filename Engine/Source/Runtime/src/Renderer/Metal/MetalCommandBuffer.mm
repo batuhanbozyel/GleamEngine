@@ -36,8 +36,9 @@ CommandBuffer::~CommandBuffer()
 
 void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, const TStringView debugName) const
 {
-    MTLRenderPassDescriptor* renderPass = [MTLRenderPassDescriptor renderPassDescriptor];
+    [mHandle->device->GetResidencySet() commit];
     
+    MTLRenderPassDescriptor* renderPass = [MTLRenderPassDescriptor renderPassDescriptor];
     if (renderPassDesc.depthAttachment.texture.IsValid())
     {
         const auto& depthAttachment = renderPassDesc.depthAttachment.texture.GetDescriptor();
@@ -88,6 +89,8 @@ void CommandBuffer::EndRenderPass() const
 
 void CommandBuffer::BeginComputePass(const TStringView debugName) const
 {
+    [mHandle->device->GetResidencySet() commit];
+    
     mHandle->computeCommandEncoder = [mHandle->commandBuffer computeCommandEncoder];
     mHandle->computeCommandEncoder.label = TO_NSSTRING(debugName.data());
 }
@@ -182,7 +185,7 @@ void CommandBuffer::Dispatch(uint32_t x, uint32_t y, uint32_t z) const
     
     MTLSize threadGroupSize = MTLSizeMake(x, y, z);
     [mHandle->computeCommandEncoder setBytes:mHandle->topLevelArgumentBuffer length:TopLevelArgumentBufferSize atIndex:kIRArgumentBufferBindPoint];
-    [mHandle->computeCommandEncoder dispatchThreads:threadGroupSize threadsPerThreadgroup:pipeline.threadsPerThreadgroup];
+    [mHandle->computeCommandEncoder dispatchThreadgroups:threadGroupSize threadsPerThreadgroup:pipeline.threadsPerThreadgroup];
 }
 
 void CommandBuffer::Draw(uint32_t vertexCount, uint32_t instanceCount) const
