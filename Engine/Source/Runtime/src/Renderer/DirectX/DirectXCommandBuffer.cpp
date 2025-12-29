@@ -163,7 +163,6 @@ void CommandBuffer::SetConstantBuffer(const void* data, uint32_t size, uint32_t 
 	{
 		mHandle->commandList->SetGraphicsRootConstantBufferView(slot, gpuAddress);
 	}
-    
 }
 
 void CommandBuffer::SetPushConstant(const void* data, uint32_t size) const

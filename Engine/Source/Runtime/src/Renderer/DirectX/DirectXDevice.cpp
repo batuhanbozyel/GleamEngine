@@ -647,6 +647,15 @@ void DirectXDevice::Configure(const RendererConfig& config)
 {
 	auto swapchain = static_cast<DirectXSwapchain*>(mSurface);
 	swapchain->Configure(this, config);
+	
+	for (auto& ctx : mFrameContext)
+	{
+		for (auto& pool : ctx.commandPools)
+		{
+			pool.Release();
+		}
+	}
+	mFrameContext.clear();
 
 	mFrameContext.resize(swapchain->mMaxFramesInFlight);
 	for (uint32_t i = 0; i < swapchain->mMaxFramesInFlight; i++)

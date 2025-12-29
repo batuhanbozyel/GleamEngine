@@ -74,11 +74,11 @@ public:
 
 	void WaitQueueIdle(ID3D12CommandQueue* queue) const;
 
+private:
+	
 	virtual void Configure(const RendererConfig& config) override;
 
 	virtual void ResetCommandPools(uint32_t frameIdx) override;
-
-private:
 
 	ShaderResourceIndex CreateResourceView(const Buffer& buffer);
 
