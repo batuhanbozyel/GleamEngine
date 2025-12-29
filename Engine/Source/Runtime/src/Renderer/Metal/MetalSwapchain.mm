@@ -81,6 +81,8 @@ void MetalSwapchain::Configure(MetalDevice* device, const RendererConfig& config
     auto windowSystem = Globals::Engine->GetSubsystem<WindowSystem>();
     SDL_GetWindowSizeInPixels(windowSystem->GetSDLWindow(), &width, &height);
     Resize(device, Size((float)width, (float)height));
+    
+    [device->GetCommandQueue() addResidencySet:[mHandle residencySet]];
 }
 
 void MetalSwapchain::Resize(GraphicsDevice* device, const Size& size)
