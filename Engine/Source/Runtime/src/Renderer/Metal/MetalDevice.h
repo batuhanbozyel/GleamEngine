@@ -64,6 +64,8 @@ public:
 	
 	id<MTLResidencySet> GetResidencySet() const;
 	
+	id<MTL4ArgumentTable> GetArgumentTable() const;
+	
 	id<MTL4CommandQueue> GetCommandQueue() const;
 	
 	id<MTL4CommandBuffer> AllocateCommandBuffer();
@@ -93,6 +95,8 @@ private:
     id<MTL4CommandQueue> mCommandQueue{ nil };
 	
 	id<MTLResidencySet> mResidencySet{ nil };
+	
+	id<MTL4ArgumentTable> mArgumentTable = nil;
 	
 	TArray<MetalCommandPool> mCommandPools;
 	

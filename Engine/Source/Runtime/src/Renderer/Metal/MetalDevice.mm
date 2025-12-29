@@ -547,11 +547,11 @@ MetalDevice::MetalDevice(RenderSurface* surface, ResourceReleaseQueue* releaseQu
     GLEAM_ASSERT(mHandle);
     
     // init MTLResidencySet
-    __autoreleasing NSError* error = nil;
+    __autoreleasing NSError* residencySetError = nil;
     MTLResidencySetDescriptor* residencySetDesc = [MTLResidencySetDescriptor new];
     residencySetDesc.initialCapacity = CBV_SRV_HEAP_SIZE;
     residencySetDesc.label = @"ResidencySet";
-    mResidencySet = [mHandle newResidencySetWithDescriptor:residencySetDesc error:&error];
+    mResidencySet = [mHandle newResidencySetWithDescriptor:residencySetDesc error:&residencySetError];
     GLEAM_ASSERT(mResidencySet, "Metal: Residency set creation failed.");
     
     // init MTLCommandQueue
@@ -636,6 +636,15 @@ MetalDevice::MetalDevice(RenderSurface* surface, ResourceReleaseQueue* releaseQu
         GLEAM_CORE_ERROR("Metal: Root signature error: {0}\n", error_msg);
         IRErrorDestroy(pRootSigError);
     }
+    
+    MTL4ArgumentTableDescriptor* argumentTableDesc = [MTL4ArgumentTableDescriptor new];
+    argumentTableDesc.maxBufferBindCount = MaxArgumentTableBufferCount;
+    argumentTableDesc.label = @"ArgumentTable";
+    
+    __autoreleasing NSError* argumentTableError = nil;
+    mArgumentTable = [mHandle newArgumentTableWithDescriptor:argumentTableDesc error:&argumentTableError];
+    [mArgumentTable setAddress:[mCbvSrvUavHeap.handle gpuAddress] atIndex:kIRDescriptorHeapBindPoint];
+    [mArgumentTable setAddress:[mSamplerHeap.handle gpuAddress] atIndex:kIRSamplerHeapBindPoint];
 
     GLEAM_CORE_INFO("Metal: Graphics device created.");
 }
@@ -659,6 +668,7 @@ MetalDevice::~MetalDevice()
     // Destroy residency set
     [mCommandQueue removeResidencySet:mResidencySet];
     mResidencySet = nil;
+    mArgumentTable = nil;
 
     // Destroy command queue
     for (auto& pool : mCommandPools)
@@ -775,6 +785,11 @@ id<MTLBuffer> MetalDevice::GetCbvSrvUavHeap() const
 id<MTLResidencySet> MetalDevice::GetResidencySet() const
 {
     return mResidencySet;
+}
+
+id<MTL4ArgumentTable> MetalDevice::GetArgumentTable() const
+{
+    return mArgumentTable;
 }
 
 id<MTL4CommandQueue> MetalDevice::GetCommandQueue() const

@@ -22,14 +22,12 @@ struct CommandBuffer::Impl
     id<MTL4CommandBuffer> commandBuffer = nil;
     id<MTL4RenderCommandEncoder> renderCommandEncoder = nil;
     id<MTL4ComputeCommandEncoder> computeCommandEncoder = nil;
-    id<MTL4ArgumentTable> argumentTable = nil;
     id<MetalPipeline> pipeline = nil;
     
     id<MTLEvent> event = nil;
     uint64_t eventValue = 0;
     uint64_t waitEventValue = 0;
     
-    //
     MTLStages afterQueueStages = MTLStageAll;
     MTLStages beforeStages = MTLStageAll;
     
@@ -96,6 +94,7 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, 
     mHandle->renderCommandEncoder.label = TO_NSSTRING(debugName.data());
     
     [mHandle->renderCommandEncoder barrierAfterQueueStages:mHandle->afterQueueStages beforeStages:mHandle->beforeStages visibilityOptions:MTL4VisibilityOptionNone];
+    [mHandle->renderCommandEncoder setArgumentTable:mHandle->device->GetArgumentTable() atStages:MTLRenderStageVertex | MTLRenderStageFragment];
 }
 
 void CommandBuffer::EndRenderPass() const
@@ -112,6 +111,7 @@ void CommandBuffer::BeginComputePass(const TStringView debugName) const
     mHandle->computeCommandEncoder.label = TO_NSSTRING(debugName.data());
     
     [mHandle->computeCommandEncoder barrierAfterQueueStages:mHandle->afterQueueStages beforeStages:mHandle->beforeStages visibilityOptions:MTL4VisibilityOptionNone];
+    [mHandle->computeCommandEncoder setArgumentTable:mHandle->device->GetArgumentTable()];
 }
 
 void CommandBuffer::EndComputePass() const
@@ -126,16 +126,6 @@ void CommandBuffer::BindComputePipeline(const ComputePipeline& pipeline) const
 
     id<MetalComputePipeline> computePipeline = (id<MetalComputePipeline>)mHandle->pipeline;
     [mHandle->computeCommandEncoder setComputePipelineState:computePipeline.pipelineState];
-    
-    MTL4ArgumentTableDescriptor* argumentTableDesc = [MTL4ArgumentTableDescriptor new];
-    argumentTableDesc.maxBufferBindCount = MaxArgumentTableBufferCount;
-    
-    __autoreleasing NSError* error = nil;
-    mHandle->argumentTable = [mHandle->device->GetHandle() newArgumentTableWithDescriptor:argumentTableDesc error:&error];
-    [mHandle->computeCommandEncoder setArgumentTable:mHandle->argumentTable];
-    
-    [mHandle->argumentTable setAddress:[mHandle->device->GetCbvSrvUavHeap() gpuAddress] atIndex:kIRDescriptorHeapBindPoint];
-    [mHandle->argumentTable setAddress:[mHandle->device->GetSamplerHeap() gpuAddress] atIndex:kIRSamplerHeapBindPoint];
 
     // Top-level argument buffer
     memset(mHandle->topLevelArgumentBuffer, 0, TopLevelArgumentBufferSize);
@@ -155,19 +145,8 @@ void CommandBuffer::BindGraphicsPipeline(const GraphicsPipeline& pipeline) const
     {
         [mHandle->renderCommandEncoder setDepthStencilState:renderPipeline.depthStencilState];
     }
-    
     [mHandle->renderCommandEncoder setCullMode:CullModeToMTLCullMode(pipeline.GetDescriptor().cullingMode)];
     [mHandle->renderCommandEncoder setTriangleFillMode:pipeline.GetDescriptor().wireframe ? MTLTriangleFillModeLines : MTLTriangleFillModeFill];
-    
-    MTL4ArgumentTableDescriptor* argumentTableDesc = [MTL4ArgumentTableDescriptor new];
-    argumentTableDesc.maxBufferBindCount = MaxArgumentTableBufferCount;
-    
-    __autoreleasing NSError* error = nil;
-    mHandle->argumentTable = [mHandle->device->GetHandle() newArgumentTableWithDescriptor:argumentTableDesc error:&error];
-    [mHandle->renderCommandEncoder setArgumentTable:mHandle->argumentTable atStages:MTLRenderStageVertex | MTLRenderStageFragment];
-    
-    [mHandle->argumentTable setAddress:[mHandle->device->GetCbvSrvUavHeap() gpuAddress] atIndex:kIRDescriptorHeapBindPoint];
-    [mHandle->argumentTable setAddress:[mHandle->device->GetSamplerHeap() gpuAddress] atIndex:kIRSamplerHeapBindPoint];
     
     // Top-level argument buffer
     memset(mHandle->topLevelArgumentBuffer, 0, TopLevelArgumentBufferSize);
@@ -212,7 +191,7 @@ void CommandBuffer::Dispatch(uint32_t x, uint32_t y, uint32_t z) const
 {
     auto gpuAddress = [mConstantBuffer.GetHandle() gpuAddress];
     gpuAddress += mConstantBuffer.Write(mHandle->topLevelArgumentBuffer, TopLevelArgumentBufferSize);
-    [mHandle->argumentTable setAddress:gpuAddress atIndex:kIRArgumentBufferBindPoint];
+    [mHandle->device->GetArgumentTable() setAddress:gpuAddress atIndex:kIRArgumentBufferBindPoint];
     
     id<MetalComputePipeline> pipeline = (id<MetalComputePipeline>)mHandle->pipeline;
     MTLSize threadGroupSize = MTLSizeMake(x, y, z);
@@ -230,9 +209,10 @@ void CommandBuffer::Draw(uint32_t vertexCount, uint32_t instanceCount) const
     size_t nonIndexedDrawOffset = mConstantBuffer.Write(kIRNonIndexedDraw);
     size_t topLevelABOffset = mConstantBuffer.Write(mHandle->topLevelArgumentBuffer, TopLevelArgumentBufferSize);
     
-    [mHandle->argumentTable setAddress:(gpuAddress + drawOffset) atIndex:kIRArgumentBufferDrawArgumentsBindPoint];
-    [mHandle->argumentTable setAddress:(gpuAddress + nonIndexedDrawOffset) atIndex:kIRArgumentBufferUniformsBindPoint];
-    [mHandle->argumentTable setAddress:(gpuAddress + topLevelABOffset) atIndex:kIRArgumentBufferBindPoint];
+    id<MTL4ArgumentTable> argumentTable = mHandle->device->GetArgumentTable();
+    [argumentTable setAddress:(gpuAddress + drawOffset) atIndex:kIRArgumentBufferDrawArgumentsBindPoint];
+    [argumentTable setAddress:(gpuAddress + nonIndexedDrawOffset) atIndex:kIRArgumentBufferUniformsBindPoint];
+    [argumentTable setAddress:(gpuAddress + topLevelABOffset) atIndex:kIRArgumentBufferBindPoint];
     
     id<MetalGraphicsPipeline> pipeline = (id<MetalGraphicsPipeline>)mHandle->pipeline;
     [mHandle->renderCommandEncoder drawPrimitives:pipeline.topology vertexStart:0 vertexCount:vertexCount instanceCount:instanceCount baseInstance:0];
@@ -252,10 +232,10 @@ void CommandBuffer::DrawIndexed(const Buffer& indexBuffer, IndexType type, uint3
     size_t indexedDrawOffset = mConstantBuffer.Write(irIndexType);
     size_t topLevelABOffset = mConstantBuffer.Write(mHandle->topLevelArgumentBuffer, TopLevelArgumentBufferSize);
     
-    [mHandle->argumentTable setAddress:(gpuAddress + drawOffset) atIndex:kIRArgumentBufferDrawArgumentsBindPoint];
-    [mHandle->argumentTable setAddress:(gpuAddress + indexedDrawOffset) atIndex:kIRArgumentBufferUniformsBindPoint];
-    [mHandle->argumentTable setAddress:(gpuAddress + topLevelABOffset) atIndex:kIRArgumentBufferBindPoint];
-    [mHandle->renderCommandEncoder setArgumentTable:mHandle->argumentTable atStages:MTLRenderStageVertex | MTLRenderStageFragment];
+    id<MTL4ArgumentTable> argumentTable = mHandle->device->GetArgumentTable();
+    [argumentTable setAddress:(gpuAddress + drawOffset) atIndex:kIRArgumentBufferDrawArgumentsBindPoint];
+    [argumentTable setAddress:(gpuAddress + indexedDrawOffset) atIndex:kIRArgumentBufferUniformsBindPoint];
+    [argumentTable setAddress:(gpuAddress + topLevelABOffset) atIndex:kIRArgumentBufferBindPoint];
     
     MTLGPUAddress indexBufferGpuAddress = [indexBuffer.GetHandle() gpuAddress] + drawArgument.startIndexLocation;
     size_t indexBufferLength = indexCount * SizeOfIndexType(type);
