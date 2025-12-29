@@ -33,9 +33,9 @@ private:
 	
 	void* mSurface = nullptr;
 	
-	CAMetalLayer* mHandle = nullptr;
+	MetalDevice* mDevice = nullptr;
 	
-	id<CAMetalDrawable> mCurrentDrawable = nil;
+	CAMetalLayer* mHandle = nullptr;
 	
 	dispatch_semaphore_t mImageAcquireSemaphore;
 

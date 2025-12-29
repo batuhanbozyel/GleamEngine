@@ -53,6 +53,7 @@ void MetalSwapchain::Configure(MetalDevice* device, const RendererConfig& config
 {
     mHandle.device = device->GetHandle();
 	mCurrentFrameIndex = 0;
+    mDevice = device;
     
 #ifdef PLATFORM_MACOS
     mHandle.displaySyncEnabled = config.vsync ? YES : NO;
@@ -87,7 +88,6 @@ void MetalSwapchain::Resize(GraphicsDevice* device, const Size& size)
     auto physicalSize = size * mHandle.contentsScale;
     mHandle.drawableSize = CGSizeMake(physicalSize.width, physicalSize.height);
     
-    mCurrentDrawable = nil;
     for (uint32_t i = 0; i < mMaxFramesInFlight; ++i)
     {
         mTextures[i] = CreateSwapchainBuffer(i);
@@ -96,31 +96,29 @@ void MetalSwapchain::Resize(GraphicsDevice* device, const Size& size)
 
 const Texture& MetalSwapchain::AcquireNextDrawable()
 {
-    auto& drawable = mTextures[mCurrentFrameIndex];
-    if (drawable.GetHandle() == nil)
-    {
-        dispatch_semaphore_wait(mImageAcquireSemaphore, DISPATCH_TIME_FOREVER);
-        mCurrentDrawable = [mHandle nextDrawable];
-        drawable = Texture(drawable.GetDescriptor(), mCurrentDrawable.texture, mCurrentDrawable.texture);
-    }
-    return drawable;
+    auto& texture = mTextures[mCurrentFrameIndex];
+    dispatch_semaphore_wait(mImageAcquireSemaphore, DISPATCH_TIME_FOREVER);
+    id<CAMetalDrawable> drawable = [mHandle nextDrawable];
+    texture = Texture(texture.GetDescriptor(), drawable, drawable.texture);
+    return texture;
 }
 
 void MetalSwapchain::Present(const CommandBuffer* cmd)
 {
-    id<MTLCommandBuffer> commandBuffer = cmd->GetHandle();
-    [commandBuffer addCompletedHandler:^(id<MTLCommandBuffer> commandBuffer)
+    auto& texture = mTextures[mCurrentFrameIndex];
+    id<CAMetalDrawable> drawable = texture.GetHandle();
+    id<MTL4CommandQueue> commandQueue = mDevice->GetCommandQueue();
+    
+    cmd->End();
+    [commandQueue waitForDrawable:drawable];
+    cmd->Commit();
+    [commandQueue signalDrawable:drawable];
+    
+    [drawable addPresentedHandler:^(id<MTLDrawable> drawable)
     {
         dispatch_semaphore_signal(mImageAcquireSemaphore);
     }];
-    
-    [commandBuffer presentDrawable:mCurrentDrawable];
-    cmd->End();
-    cmd->Commit();
-    
-    auto& texture = mTextures[mCurrentFrameIndex];
-    texture = Texture(texture.GetDescriptor());
-    mCurrentDrawable = nil;
+    [drawable present];
     
     mCurrentFrameIndex = (mCurrentFrameIndex + 1) % mMaxFramesInFlight;
 }

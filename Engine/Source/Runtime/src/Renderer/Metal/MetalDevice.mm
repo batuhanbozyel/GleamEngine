@@ -126,7 +126,7 @@ static IRStaticSamplerDescriptor CreateIRStaticSampler(const SamplerState& sampl
             sampler.Filter = IRFilterMinMagMipLinear;
             break;
         }
-        default: GLEAM_ASSERT(false, "Metal: Filter mode is not supported!") break;
+        default: GLEAM_ASSERT(false, "Metal: Filter mode is not supported.") break;
     }
 
     switch (samplerState.wrapMode)
@@ -159,7 +159,7 @@ static IRStaticSamplerDescriptor CreateIRStaticSampler(const SamplerState& sampl
             sampler.AddressW = IRTextureAddressModeMirrorOnce;
             break;
         }
-        default: GLEAM_ASSERT(false, "Metal: Wrap mode is not supported!") break;
+        default: GLEAM_ASSERT(false, "Metal: Wrap mode is not supported.") break;
     }
     return sampler;
 }
@@ -196,7 +196,7 @@ static MTLSamplerDescriptor* CreateMTLSamplerState(const SamplerState& samplerSt
             desc.mipFilter = MTLSamplerMipFilterLinear;
             break;
         }
-        default: GLEAM_ASSERT(false, "Metal: Filter mode is not supported!") break;
+        default: GLEAM_ASSERT(false, "Metal: Filter mode is not supported.") break;
     }
     
     switch (samplerState.wrapMode)
@@ -229,14 +229,14 @@ static MTLSamplerDescriptor* CreateMTLSamplerState(const SamplerState& samplerSt
             desc.rAddressMode = MTLSamplerAddressModeMirrorClampToEdge;
             break;
         }
-        default: GLEAM_ASSERT(false, "Metal: Wrap mode is not supported!") break;
+        default: GLEAM_ASSERT(false, "Metal: Wrap mode is not supported.") break;
     }
     return desc;
 }
 
 Heap GraphicsDevice::CreateHeap(const HeapDescriptor& descriptor)
 {
-    MTLResourceOptions resourceOptions = MemoryTypeToMTLResourceOption(descriptor.memoryType) | MTLResourceHazardTrackingModeTracked; // TODO: Remove hazard tracking when proper resource synchronization is implemented
+    MTLResourceOptions resourceOptions = MemoryTypeToMTLResourceOption(descriptor.memoryType);
     MTLSizeAndAlign sizeAndAlign = [mHandle heapBufferSizeAndAlignWithLength:descriptor.size options:resourceOptions];
     
     MTLHeapDescriptor* desc = [MTLHeapDescriptor new];
@@ -354,7 +354,7 @@ Shader GraphicsDevice::CompileShader(const TString& entryPoint, ShaderStage stag
     IRObjectGetMetalLibBinary(metalIR, IRObjectGetMetalIRShaderStage(metalIR), metallibBinary);
     dispatch_data_t data = IRMetalLibGetBytecodeData(metallibBinary);
     
-    NSError* __autoreleasing libraryError = nil;
+    __autoreleasing NSError* libraryError = nil;
     id<MTLLibrary> library = [mHandle newLibraryWithData:data error:&libraryError];
     if (libraryError)
     {
@@ -555,8 +555,8 @@ MetalDevice::MetalDevice(RenderSurface* surface, ResourceReleaseQueue* releaseQu
     GLEAM_ASSERT(mResidencySet, "Metal: Residency set creation failed.");
     
     // init MTLCommandQueue
-    mCommandPool = [mHandle newCommandQueue];
-    [mCommandPool addResidencySet:mResidencySet];
+    mCommandQueue = [mHandle newMTL4CommandQueue];
+    [mCommandQueue addResidencySet:mResidencySet];
     
     // create descriptor heap
     uint32_t maxSamplers = (uint32_t)[mHandle maxArgumentBufferSamplerCount];
@@ -657,11 +657,16 @@ MetalDevice::~MetalDevice()
     mCbvSrvUavHeap.handle = nil;
     
     // Destroy residency set
-    [mCommandPool removeResidencySet:mResidencySet];
+    [mCommandQueue removeResidencySet:mResidencySet];
     mResidencySet = nil;
 
-    // Destroy command pool
-    mCommandPool = nil;
+    // Destroy command queue
+    for (auto& pool : mCommandPools)
+    {
+        pool.Release();
+    }
+    mCommandPools.clear();
+    mCommandQueue = nil;
 
     // Destroy device
     mHandle = nil;
@@ -673,6 +678,34 @@ void MetalDevice::Configure(const RendererConfig& config)
 {
     auto swapchain = static_cast<MetalSwapchain*>(mSurface);
     swapchain->Configure(this, config);
+    
+    for (auto& pool : mCommandPools)
+    {
+        pool.Release();
+    }
+    mCommandPools.clear();
+    
+    mCommandPools.resize(swapchain->mMaxFramesInFlight);
+    for (uint32_t i = 0; i < swapchain->mMaxFramesInFlight; i++)
+    {
+        auto& pool = mCommandPools[i];
+        
+        TStringStream ss;
+        ss << "CommandAllocator[" << swapchain->mCurrentFrameIndex << "]";
+        TString cmdAllocatorName = ss.str();
+        
+        MTL4CommandAllocatorDescriptor* descriptor = [MTL4CommandAllocatorDescriptor new];
+        descriptor.label = TO_NSSTRING(cmdAllocatorName.c_str());
+        
+        __autoreleasing NSError* error = nil;
+        pool.allocator = [mHandle newCommandAllocatorWithDescriptor:descriptor error:&error];
+        GLEAM_ASSERT(pool.allocator, "Metal: Command allocator creation failed.");
+    }
+}
+
+void MetalDevice::ResetCommandPools(uint32_t frameIndex)
+{
+    mCommandPools[frameIndex].Reset();
 }
 
 ShaderResourceIndex MetalDevice::CreateResourceView(const Buffer& buffer)
@@ -739,30 +772,62 @@ id<MTLBuffer> MetalDevice::GetCbvSrvUavHeap() const
     return mCbvSrvUavHeap.handle;
 }
 
-id<MTLCommandQueue> MetalDevice::GetCommandPool() const
-{
-    return mCommandPool;
-}
-
 id<MTLResidencySet> MetalDevice::GetResidencySet() const
 {
     return mResidencySet;
 }
 
-id<MTLCommandBuffer> MetalDevice::AllocateCommandBuffer() const
+id<MTL4CommandQueue> MetalDevice::GetCommandQueue() const
 {
-#ifdef GDEBUG
-    MTLCommandBufferDescriptor* descriptor = [MTLCommandBufferDescriptor new];
-    descriptor.errorOptions = MTLCommandBufferErrorOptionEncoderExecutionStatus;
-    return [mCommandPool commandBufferWithDescriptor:descriptor];
-#else
-    return [mCommandPool commandBuffer];
-#endif
+    return mCommandQueue;
+}
+
+id<MTL4CommandBuffer> MetalDevice::AllocateCommandBuffer()
+{
+    auto swapchain = static_cast<MetalSwapchain*>(mSurface);
+    auto& pool = mCommandPools[swapchain->mCurrentFrameIndex];
+    
+    id<MTL4CommandBuffer> commandBuffer = nil;
+    if (pool.freeCommandBuffers.empty())
+    {
+        commandBuffer = [mHandle newCommandBuffer];
+    }
+    else
+    {
+        commandBuffer = (id<MTL4CommandBuffer>)CFBridgingRelease(pool.freeCommandBuffers.front());
+        pool.freeCommandBuffers.pop_front();
+    }
+    pool.usedCommandBuffers.push_back((__bridge_retained void*)commandBuffer);
+    [commandBuffer beginCommandBufferWithAllocator:pool.allocator];
+    return commandBuffer;
 }
 
 IRRootSignature* MetalDevice::GetGlobalRootSignature() const
 {
     return mRootSignature;
+}
+
+void MetalCommandPool::Reset()
+{
+    freeCommandBuffers.insert(freeCommandBuffers.end(), usedCommandBuffers.begin(), usedCommandBuffers.end());
+    usedCommandBuffers.clear();
+    [allocator reset];
+}
+
+void MetalCommandPool::Release()
+{
+    for (auto cmdBuffer : usedCommandBuffers)
+    {
+        CFRelease(cmdBuffer);
+    }
+    usedCommandBuffers.clear();
+
+    for (auto cmdBuffer : freeCommandBuffers)
+    {
+        CFRelease(cmdBuffer);
+    }
+    freeCommandBuffers.clear();
+    allocator = nil;
 }
 
 #endif

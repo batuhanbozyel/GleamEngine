@@ -1,6 +1,7 @@
 #pragma once
 #ifdef USE_METAL_RENDERER
 #include "Renderer/GraphicsDevice.h"
+#include "Container/Queue.h"
 
 #include <Metal/Metal.h>
 #include <metal_irconverter/metal_irconverter.h>
@@ -39,6 +40,16 @@ struct MetalDescriptorHeap
     id<MTLBuffer> handle;
 };
 
+struct MetalCommandPool
+{
+	Deque<void*> usedCommandBuffers;
+	Deque<void*> freeCommandBuffers;
+	id<MTL4CommandAllocator> allocator;
+
+	void Reset();
+	void Release();
+};
+
 class MetalDevice final : public GraphicsDevice
 {
 public:
@@ -50,12 +61,12 @@ public:
     id<MTLBuffer> GetSamplerHeap() const;
 	
 	id<MTLBuffer> GetCbvSrvUavHeap() const;
-    
-    id<MTLCommandQueue> GetCommandPool() const;
 	
 	id<MTLResidencySet> GetResidencySet() const;
 	
-	id<MTLCommandBuffer> AllocateCommandBuffer() const;
+	id<MTL4CommandQueue> GetCommandQueue() const;
+	
+	id<MTL4CommandBuffer> AllocateCommandBuffer();
 	
 	IRRootSignature* GetGlobalRootSignature() const;
 	
@@ -69,6 +80,8 @@ private:
 
 	virtual void Configure(const RendererConfig& config) override;
 	
+	virtual void ResetCommandPools(uint32_t frameIdx) override;
+	
 	MetalDescriptorHeap CreateSamplerHeap(uint32_t capacity) const;
     
     MetalDescriptorHeap CreateDescriptorHeap(uint32_t capacity) const;
@@ -76,10 +89,12 @@ private:
 	id<MTLSamplerState> CreateSampler(const SamplerState& samplerState);
 
 	IRRootSignature* mRootSignature = nullptr;
-
-    id<MTLCommandQueue> mCommandPool{ nil };
+	
+    id<MTL4CommandQueue> mCommandQueue{ nil };
 	
 	id<MTLResidencySet> mResidencySet{ nil };
+	
+	TArray<MetalCommandPool> mCommandPools;
 	
 	TArray<void*> mStaticSamplers;
     
