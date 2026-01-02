@@ -43,13 +43,16 @@ struct TonemapUniforms
 	ShaderResourceIndex sceneColor;
 };
 
+#define MESH_PASS_RESOURCES_BINDING_SLOT 0
+#define MESH_INSTANCE_DATA_BINDING_SLOT 1
 struct MeshInstanceData
 {
 	float4x4 transform;
 
-	BufferResourceView positionBuffer;
-	BufferResourceView interleavedBuffer;
-	BufferResourceView indexBuffer;
+	ShaderResourceIndex positionBuffer;
+	ShaderResourceIndex interleavedBuffer;
+	ShaderResourceIndex indexBuffer;
+	float pad0;
 
 	uint32_t baseVertex;
 	uint32_t indexCount;
@@ -61,7 +64,6 @@ struct MeshPassResources
 {
 	BufferResourceView instanceBuffer;
 	BufferResourceView materialBuffer;
-	SkyAtmosphereUniforms atmosphere;
 };
 
 struct SurfaceInput

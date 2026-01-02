@@ -1,12 +1,11 @@
 #include "BRDF.hlsli"
+#include "Atmosphere/SkyAtmosphereCommon.hlsli"
 
-CONSTANT_BUFFER(Gleam::MeshPassResources, resources, 0);
-CONSTANT_BUFFER(Gleam::CameraUniforms, camera, 1);
-CONSTANT_BUFFER(Gleam::SkyAtmosphereUniforms, atmosphere, 2);
+CONSTANT_BUFFER(Gleam::MeshPassResources, resources, MESH_PASS_RESOURCES_BINDING_SLOT);
 
 // We only need this for legacy vertex shader path
 // When switched to mesh shaders, we should be fetching instance data from instance buffer
-CONSTANT_BUFFER(Gleam::MeshInstanceData, instanceData, 7);
+CONSTANT_BUFFER(Gleam::MeshInstanceData, instanceData, MESH_INSTANCE_DATA_BINDING_SLOT);
 
 struct MeshVertexOut
 {
@@ -42,8 +41,20 @@ float4 meshShadingPassShader(MeshVertexOut IN) : SV_TARGET
 	//return float4(surface.roughness.xxx, 1.0f);
     
 	DirectLight light;
-	light.direction = atmosphere.sunDirection;
-	light.illuminance = atmosphere.sunIlluminance;
+	if (atmosphereUniforms.transmittanceLutTexture != InvalidResourceIndex && atmosphereUniforms.multiScatterLutTexture != InvalidResourceIndex)
+	{
+		const float3 planetCenterWorld = float3(0.0f, -atmosphereParams.bottomRadius, 0.0f);
+		const float3 worldPositionInKM = IN.worldPosition * 0.001f; // meters to kilometers;
+		
+		light.direction = atmosphereUniforms.sunDirection;
+		//light.illuminance = GetSunLuminance(worldPositionInKM - planetCenterWorld, );
+		light.illuminance = atmosphereUniforms.sunIlluminance;
+	}
+	else
+	{
+		light.direction = atmosphereUniforms.sunDirection;
+		light.illuminance = atmosphereUniforms.sunIlluminance;
+	}
 	float3 color = EvaluateDirectLight(surface, light, viewDir, worldNormal);
 	return float4(color, 1.0f);
 }

@@ -20,6 +20,9 @@ namespace Gleam {
 class World;
 class CopyCommandBuffer;
 
+struct CameraRenderData;
+struct SkyAtmosphereRenderData;
+
 template <typename T>
 concept RendererType = std::is_base_of<IRenderer, T>::value;
 
@@ -83,7 +86,7 @@ public:
     }
     
     template<RendererType T>
-    T* GetRenderer()
+    T* GetRenderer() const
     {
         auto it = std::find_if(mRenderers.begin(), mRenderers.end(), [](const IRenderer* renderer)
         {
@@ -98,7 +101,7 @@ public:
     }
     
     template<RendererType T>
-    bool HasRenderer()
+    bool HasRenderer() const
     {
         auto it = std::find_if(mRenderers.begin(), mRenderers.end(), [](const IRenderer* renderer)
         {
@@ -118,6 +121,10 @@ public:
     }
     
 private:
+
+	CameraRenderData SetupCameraRenderData(RenderGraph& graph, const Entity& entity) const;
+
+	SkyAtmosphereRenderData SetupSkyAtmosphereRenderData(RenderGraph& graph, const Entity& entity) const;
 
 	void InitializeBackend();
 

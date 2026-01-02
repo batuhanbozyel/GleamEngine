@@ -10,10 +10,7 @@ PUSH_CONSTANT(Gleam::SkyAtmosphereRenderConstants, constants);
 static RWTexture2D<float4> TargetTexture = ResourceDescriptorHeap[UAVIndex(constants.targetTexture)];
 static Texture2D<float> DepthTexture = ResourceDescriptorHeap[SRVIndex(constants.depthTexture)];
 
-float3 IntegrateScatteredLuminance(
-	in float2 pixPos, in float3 WorldPos, in float3 WorldDir,
-	in float SampleCountIni, in float DepthBufferValue,
-	in float tMaxMax = 9000000.0f)
+float3 IntegrateScatteredLuminance(in float2 pixPos, in float3 WorldPos, in float3 WorldDir, in float DepthBufferValue, in float tMaxMax = 9000000.0f)
 {
 	// Compute next intersection with atmosphere or ground 
 	float3 earthO = float3(0.0f, 0.0f, 0.0f);
@@ -55,8 +52,8 @@ float3 IntegrateScatteredLuminance(
 	tMax = min(tMax, tMaxMax);
 
 	// Sample count 
-	float SampleCount = SampleCountIni;
-	float SampleCountFloor = SampleCountIni;
+	float SampleCount = 0.0f;
+	float SampleCountFloor = 0.0f;
 	float tMaxFloor = tMax;
 	{
 		SampleCount = lerp(RAY_MARCH_MIN_SPP, RAY_MARCH_MAX_SPP, saturate(tMax * 0.01));
@@ -149,24 +146,22 @@ void skyAtmosphereRenderShader(uint3 dispatchThreadId : SV_DispatchThreadID)
 	float4 HViewPos = mul(camera.invProjectionMatrix, float4(ClipSpace, 1.0));
 	float3 WorldDir = normalize(mul((float3x3)camera.invViewMatrix, HViewPos.xyz / HViewPos.w));
 	float3 WorldPos = GetCameraPlanetPos(camera.position);
-	float3 SunDir = normalize(atmosphereUniforms.sunDirection);
 	
 	float viewHeight = length(WorldPos);
 	if (!MoveToTopAtmosphere(WorldDir, atmosphereParams.topRadius, WorldPos))
 	{
 		// Ray is not intersecting the atmosphere		
 		float4 sceneColor = TargetTexture[dispatchThreadId.xy];
-		//TargetTexture[dispatchThreadId.xy] = float4(sceneColor.rgb * sceneColor.a + GetSunLuminance(WorldPos, WorldDir, SunDir) * (1.0 - sceneColor.a), 1.0);
+		//TargetTexture[dispatchThreadId.xy] = float4(sceneColor.rgb * sceneColor.a + GetSunLuminance(WorldPos, WorldDir) * (1.0 - sceneColor.a), 1.0);
 		return;
 	}
 	
-	const float SampleCountIni = 0.0f;
 	float DepthBufferValue = DepthTexture[dispatchThreadId.xy];
-	float3 L = IntegrateScatteredLuminance(position, WorldPos, WorldDir, SampleCountIni, DepthBufferValue);
+	float3 L = IntegrateScatteredLuminance(position, WorldPos, WorldDir, DepthBufferValue);
 	
 	if (DepthBufferValue >= (1.0f - FLT_EPSILON))
 	{
-		L += GetSunLuminance(WorldPos, WorldDir, SunDir);
+		L += GetSunLuminance(WorldPos, WorldDir);
 	}
 	
 	float3 Luminance = L;

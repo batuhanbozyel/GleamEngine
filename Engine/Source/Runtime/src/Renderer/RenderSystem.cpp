@@ -144,46 +144,10 @@ void RenderSystem::Render(const World* world)
 		sceneData.sceneProxy = world->GetSystem<RenderSceneProxy>();
 		sceneData.world = world;
 
-		// sky atmosphere
-		sceneData.atmospherEntity = mSkyAtmosphereEntity;
-		sceneData.atmosphere.transmittanceLutTexture = InvalidResourceIndex;
-		sceneData.atmosphere.multiScatterLutTexture = InvalidResourceIndex;
-		sceneData.atmosphere.sunIlluminance = 1.0f;
-		sceneData.atmosphere.sunDirection = Float3::up;
-		if (mSkyAtmosphereEntity != InvalidEntity)
-		{
-			const auto& atmosphereComponent = world->GetEntityManager().GetComponent<SkyAtmosphere>(mSkyAtmosphereEntity);
-			const auto& atmosphereEntity = world->GetEntityManager().GetComponent<Entity>(mSkyAtmosphereEntity);
-			
-			sceneData.atmosphere.sunIlluminance = Float3(atmosphereComponent.sun.color.r, atmosphereComponent.sun.color.g, atmosphereComponent.sun.color.b) * atmosphereComponent.sun.intensity;
-			sceneData.atmosphere.sunAngularDiameter = atmosphereComponent.sun.angularDiameter;
-			sceneData.atmosphere.sunDirection = atmosphereEntity.UpVector();
-		}
-		
-		auto skyAtmosphereRenderer = GetRenderer<SkyAtmosphereRenderer>();
-		if (skyAtmosphereRenderer)
-		{
-			sceneData.atmosphere.transmittanceLutTexture = skyAtmosphereRenderer->GetTransmittanceLutTexture();
-			sceneData.atmosphere.multiScatterLutTexture = skyAtmosphereRenderer->GetMultiScatterLutTexture();
-		}
-
-		// camera
-		sceneData.cameraEntity = cameraEntity;
-		sceneData.camera.resolution = Float2(cameraComponent.orthographicSize * cameraComponent.aspectRatio, cameraComponent.orthographicSize);
-		sceneData.camera.viewMatrix = Float4x4::LookTo(cameraEntity.GetWorldPosition(), cameraEntity.ForwardVector(), cameraEntity.UpVector());
-		if (cameraComponent.projectionType == ProjectionType::Perspective)
-		{
-			sceneData.camera.projectionMatrix = Float4x4::Perspective(cameraComponent.fov, cameraComponent.aspectRatio, cameraComponent.nearPlane, cameraComponent.farPlane);
-		}
-		else
-		{
-			sceneData.camera.projectionMatrix = Float4x4::Ortho(sceneData.camera.resolution.x, sceneData.camera.resolution.y, cameraComponent.nearPlane, cameraComponent.farPlane);
-		}
-		sceneData.camera.viewProjectionMatrix = sceneData.camera.projectionMatrix * sceneData.camera.viewMatrix;
-		sceneData.camera.invViewMatrix = Math::Inverse(sceneData.camera.viewMatrix);
-		sceneData.camera.invProjectionMatrix = Math::Inverse(sceneData.camera.projectionMatrix);
-		sceneData.camera.invViewProjectionMatrix = Math::Inverse(sceneData.camera.viewProjectionMatrix);
-		sceneData.camera.position = cameraEntity.GetWorldPosition();
+		// Setup camera & sky atmosphere
+		Entity atmosphereEntity = mSkyAtmosphereEntity != InvalidEntity ? world->GetEntityManager().GetComponent<Entity>(mSkyAtmosphereEntity) : Entity();
+		sceneData.atmosphere = SetupSkyAtmosphereRenderData(graph, atmosphereEntity);
+		sceneData.camera = SetupCameraRenderData(graph, cameraEntity);
 
         for (auto renderer : mRenderers)
         {
@@ -310,4 +274,55 @@ void RenderSystem::RecompileShader(const TString& entryPoint)
 			break;
 		}
 	}
+}
+
+CameraRenderData RenderSystem::SetupCameraRenderData(RenderGraph& graph, const Entity& entity) const
+{
+	CameraRenderData camera = {};
+	camera.entity = entity;
+
+	const auto& cameraComponent = entity.GetComponent<Camera>();
+	camera.uniforms.resolution = Float2(cameraComponent.orthographicSize * cameraComponent.aspectRatio, cameraComponent.orthographicSize);
+	camera.uniforms.viewMatrix = Float4x4::LookTo(entity.GetWorldPosition(), entity.ForwardVector(), entity.UpVector());
+	if (cameraComponent.projectionType == ProjectionType::Perspective)
+	{
+		camera.uniforms.projectionMatrix = Float4x4::Perspective(cameraComponent.fov, cameraComponent.aspectRatio, cameraComponent.nearPlane, cameraComponent.farPlane);
+	}
+	else
+	{
+		camera.uniforms.projectionMatrix = Float4x4::Ortho(camera.uniforms.resolution.x, camera.uniforms.resolution.y, cameraComponent.nearPlane, cameraComponent.farPlane);
+	}
+	camera.uniforms.viewProjectionMatrix = camera.uniforms.projectionMatrix * camera.uniforms.viewMatrix;
+	camera.uniforms.invViewMatrix = Math::Inverse(camera.uniforms.viewMatrix);
+	camera.uniforms.invProjectionMatrix = Math::Inverse(camera.uniforms.projectionMatrix);
+	camera.uniforms.invViewProjectionMatrix = Math::Inverse(camera.uniforms.viewProjectionMatrix);
+	camera.uniforms.position = entity.GetWorldPosition();
+	return camera;
+}
+
+SkyAtmosphereRenderData RenderSystem::SetupSkyAtmosphereRenderData(RenderGraph& graph, const Entity& entity) const
+{
+	SkyAtmosphereRenderData skyAtmosphere = {};
+	skyAtmosphere.entity = entity;
+
+	skyAtmosphere.uniforms.sunIlluminance = 1.0f;
+	skyAtmosphere.uniforms.sunDirection = Float3::up;
+	if (entity.IsValid())
+	{
+		const auto& atmosphereComponent = entity.GetComponent<SkyAtmosphere>();
+		skyAtmosphere.uniforms.sunIlluminance = Float3(atmosphereComponent.sun.color.r, atmosphereComponent.sun.color.g, atmosphereComponent.sun.color.b) * atmosphereComponent.sun.intensity;
+		skyAtmosphere.uniforms.sunAngularDiameter = atmosphereComponent.sun.angularDiameter;
+		skyAtmosphere.uniforms.sunDirection = entity.UpVector();
+
+		auto skyAtmosphereRenderer = GetRenderer<SkyAtmosphereRenderer>();
+		if (skyAtmosphereRenderer)
+		{
+			skyAtmosphere.transmittanceLut = graph.ImportTexture(skyAtmosphereRenderer->GetTransmittanceLutTexture());
+			skyAtmosphere.multiScatterLut = graph.ImportTexture(skyAtmosphereRenderer->GetMultiScatterLutTexture());
+			skyAtmosphere.params = skyAtmosphereRenderer->GetSkyAtmosphereParameters(atmosphereComponent.atmosphere);
+		}
+	}
+	skyAtmosphere.uniforms.transmittanceLutTexture = skyAtmosphere.transmittanceLut;
+	skyAtmosphere.uniforms.multiScatterLutTexture = skyAtmosphere.multiScatterLut;
+	return skyAtmosphere;
 }

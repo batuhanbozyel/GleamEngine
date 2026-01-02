@@ -3,6 +3,7 @@
 #include "Math/Vector3.h"
 #include "Container/String.h"
 #include "Reflection/Reflection.h"
+#include "Assets/AssetReference.h"
 
 namespace GEditor {
 
@@ -28,6 +29,8 @@ public:
 	static void DrawClassFields(void* obj, const Gleam::Reflection::ClassDescription& classDesc, float columnWidth = 100.0f);
 
 	static void DrawClass(const Gleam::TStringView label, void* component, const Gleam::Reflection::ClassDescription& classDesc);
+
+	static void DrawAsset(const Gleam::TStringView label, Gleam::AssetReference& assetRef, float columnWidth = 100.0f);
 
 	using UIFunction = std::function<void()>;
 	static void DrawCustom(const Gleam::TStringView label, size_t hash, UIFunction&& uiFunction);

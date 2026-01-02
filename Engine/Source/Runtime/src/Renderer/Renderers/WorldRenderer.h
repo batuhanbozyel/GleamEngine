@@ -19,6 +19,8 @@ struct WorldRenderingData
 {
     TextureHandle colorTarget;
     TextureHandle depthTarget;
+	TextureHandle transmittanceLut;
+	TextureHandle multiScatterLut;
 };
 
 class WorldRenderer : public IRenderer

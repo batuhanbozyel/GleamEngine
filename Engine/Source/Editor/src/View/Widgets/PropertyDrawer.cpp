@@ -2,6 +2,7 @@
 
 #include <imgui.h>
 #include <imgui_internal.h>
+#include <Runtime.Reflection.generated.h>
 
 using namespace GEditor;
 
@@ -324,9 +325,17 @@ void PropertyDrawer::DrawClassFields(void* obj, const Gleam::Reflection::ClassDe
 			case Gleam::Reflection::MetaType::Class:
 			{
 				const auto fieldDesc = Gleam::Reflection::GetClass(field.TypeHash());
-				if (fieldDesc->ResolveName() == "Color")
+				if (fieldDesc->ResolveQualifiedName() == Gleam::Reflection::GetClass<Gleam::Color>().ResolveQualifiedName())
 				{
 					DrawColorControl(field.ResolveName(), *static_cast<Gleam::Color*>(Gleam::OffsetPointer(obj, field.GetOffset())), columnWidth);
+				}
+				else if (fieldDesc->ResolveQualifiedName() == Gleam::Reflection::GetClass<Gleam::Float3>().ResolveQualifiedName())
+				{
+					DrawVec3Control(field.ResolveName(), *static_cast<Gleam::Float3*>(Gleam::OffsetPointer(obj, field.GetOffset())), columnWidth);
+				}
+				else if (fieldDesc->ResolveQualifiedName() == Gleam::Reflection::GetClass<Gleam::AssetReference>().ResolveQualifiedName())
+				{
+					DrawAsset(field.ResolveName(), *static_cast<Gleam::AssetReference*>(Gleam::OffsetPointer(obj, field.GetOffset())), columnWidth);
 				}
 				else
 				{
@@ -379,6 +388,36 @@ void PropertyDrawer::DrawClass(const Gleam::TStringView label, void* component, 
 		DrawClassFields(component, classDesc, labelWidth);
         ImGui::TreePop();
     }
+}
+
+void PropertyDrawer::DrawAsset(const Gleam::TStringView label, Gleam::AssetReference& assetRef, float columnWidth)
+{
+	ImGuiIO& io = ImGui::GetIO();
+	auto boldFont = io.Fonts->Fonts[0];
+
+	char buffer[64];
+	std::memcpy(buffer, label.data(), label.size());
+	buffer[label.size()] = '\0';
+
+	ImGui::PushID(buffer);
+
+	ImGui::Columns(2);
+	ImGui::SetColumnWidth(0, columnWidth);
+	ImGui::Text("%s", buffer);
+	ImGui::NextColumn();
+
+	ImGui::PushItemWidth(ImGui::CalcItemWidth());
+	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2{ 0, 0 });
+
+	ImGui::Text("%s", assetRef.guid.ToString().c_str());
+
+	ImGui::PopItemWidth();
+	ImGui::SameLine();
+
+	ImGui::PopStyleVar();
+	ImGui::Columns(1);
+
+	ImGui::PopID();
 }
 
 void PropertyDrawer::DrawCustom(const Gleam::TStringView label, size_t hash, UIFunction&& uiFunction)

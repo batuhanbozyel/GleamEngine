@@ -3,7 +3,7 @@
 #include "Common.hlsli"
 #include "ShaderTypes.h"
 
-CONSTANT_BUFFER(Gleam::CameraUniforms, camera, SKY_ATMOSPHERE_CAMERA_UNIFORMS_BINDING_SLOT);
+CONSTANT_BUFFER(Gleam::CameraUniforms, camera, CAMERA_UNIFORMS_BINDING_SLOT);
 CONSTANT_BUFFER(Gleam::SkyAtmosphereParameters, atmosphereParams, SKY_ATMOSPHERE_PARAMS_BINDING_SLOT);
 CONSTANT_BUFFER(Gleam::SkyAtmosphereUniforms, atmosphereUniforms, SKY_ATMOSPHERE_COMMON_UNIFORMS_BINDING_SLOT);
 
@@ -195,7 +195,7 @@ float3 GetAtmosphereTransmittance(float3 worldPosition, float3 worldDirection)
 	return GetTransmittance(pHeight, SunZenithCosAngle);
 }
 
-float3 GetSunLuminance(float3 WorldPos, float3 WorldDir, float3 SunDir)
+float3 GetSunLuminance(float3 WorldPos, float3 WorldDir)
 {
 	const float sunHalfApexAngleRadian = 0.5 * atmosphereUniforms.sunAngularDiameter * PI / 180.0;
 	const float sunCosHalfApexAngle = cos(sunHalfApexAngleRadian);
@@ -205,11 +205,11 @@ float3 GetSunLuminance(float3 WorldPos, float3 WorldDir, float3 SunDir)
 	{
 		float3 sunLuminance = atmosphereUniforms.sunIlluminance;
 		
-		float cosZenithAngle = max(SunDir.y, 0.0);
+		float cosZenithAngle = max(atmosphereUniforms.sunDirection.y, 0.0);
 		float airMass = 1.0 / (cosZenithAngle + 0.025); // Kasten-Young formula approximation
 		airMass = min(airMass, 38.0);
 		
-		float VdotL = dot(WorldDir, SunDir);
+		float VdotL = dot(WorldDir, atmosphereUniforms.sunDirection);
 		if (VdotL < sunCosHalfApexAngle) // outside sun disk
 		{
 			float offset = sunCosHalfApexAngle - VdotL;
