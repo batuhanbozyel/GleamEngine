@@ -1,4 +1,6 @@
-#pragma once
+#ifndef ACES_HLSL
+#define ACES_HLSL
+
 #include "Common.hlsli"
 
 #define ACEScc_MAX      1.4679964
@@ -215,3 +217,4 @@ half3 DarkSurroundToDimSurround(half3 linearCV)
 
     return mul(XYZ_2_AP1_MAT, XYZ);
 }
+#endif // ACES_HLSL

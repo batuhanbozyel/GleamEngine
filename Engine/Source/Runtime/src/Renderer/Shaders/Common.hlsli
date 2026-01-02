@@ -1,4 +1,6 @@
-#pragma once
+#ifndef COMMON_HLSL
+#define COMMON_HLSL
+
 #include "ShaderInterop.h"
 #include "SharedTypes.h"
 
@@ -152,3 +154,4 @@ float RaySphereIntersectNearest(float3 rayOrigin, float3 rayDirection, float3 sp
 	}
 	return max(0.0, min(sol0, sol1));
 }
+#endif

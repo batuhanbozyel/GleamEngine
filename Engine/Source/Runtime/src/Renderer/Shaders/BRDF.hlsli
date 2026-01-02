@@ -1,4 +1,6 @@
-#pragma once
+#ifndef BRDF_HLSL
+#define BRDF_HLSL
+
 #include "Common.hlsli"
 #include "ShaderTypes.h"
 
@@ -117,3 +119,4 @@ float3 EvaluateDirectLight(Gleam::SurfaceOutput surface, DirectLight light, floa
 	radiance += EvaluateSpecularDirectLight(surface.albedo.rgb, surface.metallic, surface.roughness, NdotV, NdotL, LdotH, NdotH);
 	return light.illuminance * radiance * NdotL;
 }
+#endif // BRDF_HLSL

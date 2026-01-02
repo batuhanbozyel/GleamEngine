@@ -1,4 +1,5 @@
-#pragma once
+#ifndef SHADER_INTEROP_H
+#define SHADER_INTEROP_H
 
 #if defined(__cplusplus)
 #include "Math/Float2x2.h"
@@ -161,3 +162,4 @@ struct Texture3DResourceView : TextureResourceView
 };
 
 } // namespace Gleam
+#endif // SHADER_INTEROP_H

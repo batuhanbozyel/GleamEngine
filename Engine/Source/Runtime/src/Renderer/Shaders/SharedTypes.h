@@ -1,4 +1,6 @@
-#pragma once
+#ifndef SHARED_TYPES_H
+#define SHARED_TYPES_H
+
 #if defined(__cplusplus)
 #include "Renderer/Shaders/ShaderInterop.h"
 #endif
@@ -39,3 +41,4 @@ struct CameraUniforms
 };
 
 } // namespace Gleam
+#endif // SHARED_TYPES_H

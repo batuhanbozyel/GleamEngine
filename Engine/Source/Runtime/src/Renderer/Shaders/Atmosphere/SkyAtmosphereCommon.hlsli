@@ -1,4 +1,6 @@
-#pragma once
+#ifndef SKY_ATMOSPHERE_COMMON_HLSL
+#define SKY_ATMOSPHERE_COMMON_HLSL
+
 #include "SkyAtmosphereDefinitions.h"
 #include "Common.hlsli"
 #include "ShaderTypes.h"
@@ -248,3 +250,4 @@ float GetShadow(float3 P)
 #endif
 	return 1.0f;
 }
+#endif // SKY_ATMOSPHERE_COMMON_HLSL

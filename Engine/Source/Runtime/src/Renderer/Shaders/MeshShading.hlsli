@@ -1,3 +1,6 @@
+#ifndef MESH_SHADING_HLSL
+#define MESH_SHADING_HLSL
+
 #include "BRDF.hlsli"
 #include "Atmosphere/SkyAtmosphereCommon.hlsli"
 
@@ -58,3 +61,4 @@ float4 meshShadingPassShader(MeshVertexOut IN) : SV_TARGET
 	float3 color = EvaluateDirectLight(surface, light, viewDir, worldNormal);
 	return float4(color, 1.0f);
 }
+#endif // MESH_SHADING_HLSL

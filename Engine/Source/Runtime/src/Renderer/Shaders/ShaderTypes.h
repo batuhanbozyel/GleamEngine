@@ -1,4 +1,6 @@
-#pragma once
+#ifndef SHADER_TYPES_H
+#define SHADER_TYPES_H
+
 #include "SharedTypes.h"
 
 namespace Gleam {
@@ -132,3 +134,4 @@ struct SkyAtmosphereRenderConstants
 };
 
 } // namespace Gleam
+#endif // SHADER_TYPES_H
