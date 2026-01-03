@@ -47,11 +47,10 @@ float4 meshShadingPassShader(MeshVertexOut IN) : SV_TARGET
 	if (atmosphereUniforms.transmittanceLutTexture != InvalidResourceIndex && atmosphereUniforms.multiScatterLutTexture != InvalidResourceIndex)
 	{
 		const float3 planetCenterWorld = float3(0.0f, -atmosphereParams.bottomRadius, 0.0f);
-		const float3 worldPositionInKM = IN.worldPosition * 0.001f; // meters to kilometers;
+		const float3 worldPositionInKM = IN.worldPosition * M_TO_KM;
 		
 		light.direction = atmosphereUniforms.sunDirection;
-		//light.illuminance = GetSunLuminance(worldPositionInKM - planetCenterWorld, );
-		light.illuminance = atmosphereUniforms.sunIlluminance;
+		light.illuminance = GetSunLuminance(worldPositionInKM - planetCenterWorld, atmosphereUniforms.sunDirection);
 	}
 	else
 	{

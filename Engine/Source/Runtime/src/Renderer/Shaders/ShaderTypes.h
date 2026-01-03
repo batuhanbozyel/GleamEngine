@@ -14,6 +14,12 @@ struct InterleavedMeshVertex
 };
 #endif
 
+#define BRDF_LUT_SIZE 256
+struct BRDFLutConstants
+{
+	ShaderResourceIndex targetTexture;
+};
+
 struct DebugVertex
 {
     float3 position;
