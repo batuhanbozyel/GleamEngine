@@ -2,11 +2,12 @@
 
 PUSH_CONSTANT(Gleam::BRDFLutConstants, constants);
 
-#pragma compute integrateBRDF
+#pragma compute integrateBRDFShader
 
-#define SAMPLE_COUNT 8192u * 4u
+#define SAMPLE_COUNT (8192u * 4u)
 float3 IntegrateDFG(in float NdotV, in float perceptualRoughness)
 {
+	float3 N = float3(0.0, 1.0, 0.0);
     float3 V = float3(sqrt(1.0 - NdotV * NdotV), NdotV, 0.0);
     float roughness = perceptualRoughness * perceptualRoughness;
 
@@ -15,26 +16,28 @@ float3 IntegrateDFG(in float NdotV, in float perceptualRoughness)
     {
         float2 Xi = Hammersley(i, SAMPLE_COUNT);
 
-        float pdf;
-        float3 H = ImportanceSampleGGX(Xi, perceptualRoughness, pdf);
+		float pdf; // The pdf is not used because it's canceled with other terms
+        float3 H = ImportanceSampleGGX(Xi, N, perceptualRoughness, pdf);
         float3 L = normalize(2.0f * dot(V, H) * H - V);
 
-        float NdotL = L.y;
-        float NdotH = H.y;
+        float NdotL = saturate(L.y);
+		float NdotH = saturate(H.y);
         float VdotH = saturate(dot(V, H));
-
+        
         if (NdotL > 0.0)
         {
+            float G = G_SmithGGXCorrelated(NdotL, NdotV, roughness);
+			float G_Vis = G * VdotH / (NdotH * NdotV);
+            
             float Fc = pow(1.0 - VdotH, 5.0);
-            float G_Vis = V_SmithGGXCorrelated(NdotL, NdotV, roughness);
             float f90 = F90Dielectric(VdotH, perceptualRoughness);
             
-            preDFG.x += (1.0 - Fc) * G_Vis;
-            preDFG.y += f90 * Fc * G_Vis;
-            preDFG.z += F90_Metal * Fc * G_Vis;
-        }
+			preDFG.x += (1.0 - Fc) * G_Vis;
+			preDFG.y += f90 * Fc * G_Vis;
+			preDFG.z += F90_Metal * Fc * G_Vis;
+		}
     }
-    return preDFG / SAMPLE_COUNT;
+	return preDFG / SAMPLE_COUNT;
 }
 
 float IntegrateDiffuse(in float NdotV, in float perceptualRoughness)
@@ -60,7 +63,7 @@ float IntegrateDiffuse(in float NdotV, in float perceptualRoughness)
     return irradiance / SAMPLE_COUNT;
 }
 
-[numthreads(16, 16, 1)] void integrateBRDF(uint3 dispatchThreadID : SV_DispatchThreadID)
+[numthreads(16, 16, 1)] void integrateBRDFShader(uint3 dispatchThreadID : SV_DispatchThreadID)
 {
     float NdotV = (dispatchThreadID.x + 0.5) / BRDF_LUT_SIZE;
     float perceptualRoughness = (dispatchThreadID.y + 0.5) / BRDF_LUT_SIZE;

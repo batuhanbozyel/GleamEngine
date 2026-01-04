@@ -55,12 +55,22 @@ float Fr_DisneyDiffuse(float NdotV, float NdotL, float LdotH, float perceptualRo
     return lightScatter * viewScatter * energyFactor;
 }
 
+// V = G / (4 * NdotL * NdotV)
 float V_SmithGGXCorrelated(float NdotL, float NdotV, float roughness)
 {
     float alphaG2 = roughness * roughness;
     float Lambda_GGXV = NdotL * sqrt((NdotV - NdotV * alphaG2) * NdotV + alphaG2);
     float Lambda_GGXL = NdotV * sqrt((NdotL - NdotL * alphaG2) * NdotL + alphaG2);
     return 0.5f / (Lambda_GGXV + Lambda_GGXL);
+}
+
+// G = V * (4 * NdotL * NdotV)
+float G_SmithGGXCorrelated(float NdotL, float NdotV, float roughness)
+{
+	float alphaG2 = roughness * roughness;
+	float Lambda_GGXV = NdotL * sqrt((NdotV - NdotV * alphaG2) * NdotV + alphaG2);
+	float Lambda_GGXL = NdotV * sqrt((NdotL - NdotL * alphaG2) * NdotL + alphaG2);
+	return (2.0f * NdotL * NdotV) / (Lambda_GGXV + Lambda_GGXL);
 }
 
 float D_GGX(float NdotH, float roughness)
@@ -95,7 +105,7 @@ float3 CosineSampleHemisphere(float2 u, out float pdf)
 	return float3(sinPhi * cos(theta), cosPhi, sinPhi * sin(theta));
 }
 
-float3 ImportanceSampleGGX(float2 u, float perceptualRoughness, out float pdf)
+float3 ImportanceSampleGGX(float2 u, float3 N, float perceptualRoughness, out float pdf)
 {
     float a = perceptualRoughness * perceptualRoughness;
     float a2 = a * a;
@@ -105,11 +115,17 @@ float3 ImportanceSampleGGX(float2 u, float perceptualRoughness, out float pdf)
     float cosPhi = sqrt(cosPhi2);
     float sinPhi = sqrt(1.0 - cosPhi2);
 	float3 H = float3(cos(theta) * sinPhi, cosPhi, sin(theta) * sinPhi);
-
+	
 	float d = (cosPhi * a2 - cosPhi) * cosPhi + 1.0;
 	float D = a2 / (PI * d * d);
 	pdf = D * cosPhi; // partial PDF (full PDF = D * NdotH / (4 * VdotH))
-    return H;
+	
+	float3 tangent;
+	float3 bitangent;
+	GetOrthonormalBasis(N, tangent, bitangent);
+	
+	float3 sampleVec = tangent * H.x + N * H.y + bitangent * H.z;
+	return normalize(sampleVec);
 }
 
 float PerceptualRoughnessToMipLevel(float perceptualRoughness, int maxMip)
@@ -173,16 +189,16 @@ float3 GetSpecularDominantDir(const float3 N, const float3 R, float perceptualRo
 	return lerp(N, R, lerpFactor);
 }
 
-float3 EvaluateDiffuseIndirectLight(Texture2D<float4> DFGTexture, TextureCube<float3> diffuseReflection, float3 albedo, float metallic, float perceptualRoughness, float3 viewDir, float3 worldNormal, float NdotV)
+float3 EvaluateDiffuseIndirectLight(Texture2D<float4> brdfTexture, TextureCube<float3> diffuseReflection, float3 albedo, float metallic, float perceptualRoughness, float3 viewDir, float3 worldNormal, float NdotV)
 {
 	float3 diffuseColor = albedo * (1.0 - metallic);
 	float3 diffuseDirection = GetDiffuseDominantDir(worldNormal, viewDir, NdotV, perceptualRoughness);
 	float3 diffuseLighting = diffuseReflection.Sample(Sampler_Bilinear_Repeat, diffuseDirection);
-	float diffF = DFGTexture.SampleLevel(Sampler_Bilinear_Clamp, float2(NdotV, perceptualRoughness), 0).w;
+	float diffF = brdfTexture.SampleLevel(Sampler_Bilinear_Clamp, float2(NdotV, perceptualRoughness), 0).w;
 	return diffuseColor * diffuseLighting * diffF;
 }
 
-float3 EvaluateSpecularIndirectLight(Texture2D<float4> DFGTexture, TextureCube<float3> specularReflection, float3 albedo, float metallic, float perceptualRoughness, float3 viewDir, float3 worldNormal, float NdotV)
+float3 EvaluateSpecularIndirectLight(Texture2D<float4> brdfTexture, TextureCube<float3> specularReflection, float3 albedo, float metallic, float perceptualRoughness, float3 viewDir, float3 worldNormal, float NdotV)
 {
 	float3 reflectionDir = normalize(reflect(-viewDir, worldNormal));
 	float3 specularDirection = GetSpecularDominantDir(worldNormal, reflectionDir, perceptualRoughness);
@@ -191,25 +207,25 @@ float3 EvaluateSpecularIndirectLight(Texture2D<float4> DFGTexture, TextureCube<f
 	float3 specularLighting = specularReflection.SampleLevel(Sampler_Trilinear_Repeat, specularDirection, mipLevel);
 
 	float3 f0 = albedo * metallic + F0Dielectric(0.5) * (1.0 - metallic);
-	float3 DFG = DFGTexture.SampleLevel(Sampler_Bilinear_Clamp, float2(NdotV, perceptualRoughness), 0).xyz;
+	float3 DFG = brdfTexture.SampleLevel(Sampler_Bilinear_Clamp, float2(NdotV, perceptualRoughness), 0).xyz;
 	return specularLighting * (f0 * DFG.x + lerp(DFG.y /* F90Dielectric(LdotH, perceptualRoughness) */, DFG.y /* F90_Metal */, metallic));
 }
 
 float3 EvaluateIndirectLight(Gleam::SurfaceOutput surface,
-							 Gleam::ShaderResourceIndex DFGTextureIndex,
+							 Gleam::ShaderResourceIndex brdfTextureIndex,
 							 Gleam::ShaderResourceIndex diffuseReflectionTextureIndex,
 							 Gleam::ShaderResourceIndex specularReflectionTextureIndex,
 							 float3 viewDir,
 							 float3 worldNormal)
 {
-	Texture2D<float4> DFGTexture = ResourceDescriptorHeap[SRVIndex(DFGTextureIndex)];
+	Texture2D<float4> brdfTexture = ResourceDescriptorHeap[SRVIndex(brdfTextureIndex)];
 	TextureCube<float3> diffuseReflectionTexture = ResourceDescriptorHeap[SRVIndex(diffuseReflectionTextureIndex)];
 	TextureCube<float3> specularReflectionTexture = ResourceDescriptorHeap[SRVIndex(specularReflectionTextureIndex)];
 	float NdotV = abs(dot(worldNormal, viewDir)) + FLT_EPSILON;
 	
 	float3 irradiance = 0.0;
-	irradiance += EvaluateDiffuseIndirectLight(DFGTexture, diffuseReflectionTexture, surface.albedo.rgb, surface.metallic, surface.roughness, viewDir, worldNormal, NdotV);
-	irradiance += EvaluateSpecularIndirectLight(DFGTexture, specularReflectionTexture, surface.albedo.rgb, surface.metallic, surface.roughness, viewDir, worldNormal, NdotV);
+	irradiance += EvaluateDiffuseIndirectLight(brdfTexture, diffuseReflectionTexture, surface.albedo.rgb, surface.metallic, surface.roughness, viewDir, worldNormal, NdotV);
+	irradiance += EvaluateSpecularIndirectLight(brdfTexture, specularReflectionTexture, surface.albedo.rgb, surface.metallic, surface.roughness, viewDir, worldNormal, NdotV);
 	return irradiance;
 }
 #endif // BRDF_HLSL

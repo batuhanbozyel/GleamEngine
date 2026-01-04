@@ -14,7 +14,7 @@ struct CommandBuffer::Impl
 
 	ID3D12GraphicsCommandList7* commandList = nullptr;
 	ID3D12Fence* fence = nullptr;
-	uint64_t fenceValue = 0;
+	uint64_t fenceValue = 1;
 	uint64_t waitFenceValue = 0;
 
 	PipelineHandle pipeline;
@@ -26,11 +26,7 @@ CommandBuffer::CommandBuffer(GraphicsDevice* device)
 	, mConstantBuffer(device, 4194304) // 4 MB
 {
 	mHandle->device = static_cast<DirectXDevice*>(device);
-	DX_CHECK(static_cast<ID3D12Device10*>(mHandle->device->GetHandle())->CreateFence(
-		mHandle->fenceValue,
-		D3D12_FENCE_FLAG_NONE,
-		IID_PPV_ARGS(&mHandle->fence)
-	));
+	DX_CHECK(static_cast<ID3D12Device10*>(mHandle->device->GetHandle())->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&mHandle->fence)));
 }
 
 CommandBuffer::~CommandBuffer()

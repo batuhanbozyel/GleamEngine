@@ -647,7 +647,7 @@ void ComputeSmoothNormals(RawMesh& mesh)
 		}
 		else
 		{
-			normal = Gleam::Float3(0.0f, 0.0f, 1.0f);
+			normal = Gleam::Float3(0.0f, 1.0f, 0.0f);
 		}
 	}
 }

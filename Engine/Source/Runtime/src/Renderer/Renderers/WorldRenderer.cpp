@@ -22,15 +22,55 @@ using namespace Gleam;
 void WorldRenderer::OnCreate(RenderContext& context)
 {
 	mDevice = context.device;
+
+	// BRDF Lut
+	{
+		ComputePipelineStateDescriptor pipelineState;
+		pipelineState.entryPoint = "integrateBRDFShader";
+		mBRDFLutPipeline = context.device->CreateComputePipeline(pipelineState);
+
+		TextureDescriptor textureDesc;
+		textureDesc.name = "BRDF LUT";
+		textureDesc.dimension = TextureDimension::Texture2D;
+		textureDesc.format = TextureFormat::R16G16B16A16_SFloat;
+		textureDesc.usage = TextureUsage_Storage | TextureUsage_Sampled;
+		textureDesc.size = { BRDF_LUT_SIZE, BRDF_LUT_SIZE };
+		mBRDFLutTexture = context.device->CreateTexture(context.allocator, textureDesc);
+	}
+}
+
+void WorldRenderer::OnDestroy(RenderContext& context)
+{
+	context.device->Dispose(context.allocator, mBRDFLutTexture);
 }
 
 void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard)
 {
+	const auto& sceneData = blackboard.Get<SceneRenderingData>();
+	const auto& sceneTargetDescriptor = graph.GetDescriptor(sceneData.sceneTarget);
+
+	static bool mBakeBRDFLut = true;
+	if (mBakeBRDFLut)
+	{
+		struct BRDFLutData
+		{
+			TextureHandle brdfLut;
+		};
+		graph.AddComputePass<BRDFLutData>("WorldRenderer::BRDFLut", [&](RenderGraphBuilder& builder, BRDFLutData& passData)
+		{
+			passData.brdfLut = builder.WriteTexture(sceneData.brdfLut);
+		},
+		[this, blackboard](const CommandBuffer* cmd, const BRDFLutData& passData)
+		{
+			cmd->BindComputePipeline(mBRDFLutPipeline);
+			cmd->SetPushConstant(BRDFLutConstants{ .targetTexture = passData.brdfLut });
+			cmd->Dispatch(Math::DivideRoundingUp(BRDF_LUT_SIZE, 16), Math::DivideRoundingUp(BRDF_LUT_SIZE, 16), 1);
+		});
+		mBakeBRDFLut = false;
+	}
+	
     graph.AddRenderPass<WorldRenderingData>("WorldRenderer::ForwardPass", [&](RenderGraphBuilder& builder, WorldRenderingData& passData)
     {
-        const auto& sceneData = blackboard.Get<SceneRenderingData>();
-        const auto& sceneTargetDescriptor = graph.GetDescriptor(sceneData.sceneTarget);
-        
         RenderTextureDescriptor textureDesc;
         textureDesc.name = "SceneColorRT";
         textureDesc.size = sceneTargetDescriptor.size;

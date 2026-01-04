@@ -9,7 +9,9 @@
 #include "RenderSystem.h"
 #include "RenderGraph/RenderGraph.h"
 #include "RenderGraph/RenderGraphBlackboard.h"
+
 #include "Renderers/SkyAtmosphere.h"
+#include "Renderers/WorldRenderer.h"
 
 #include "Core/Engine.h"
 #include "Core/Globals.h"
@@ -115,6 +117,7 @@ void RenderSystem::Render(const World* world)
 			return; // skip rendering this frame
 		}
 
+		const auto worldRenderer = GetRenderer<WorldRenderer>();
 		const auto& cameraComponent = world->GetEntityManager().GetComponent<Camera>(mActiveCamera);
 		const auto& cameraEntity = world->GetEntityManager().GetComponent<Entity>(mActiveCamera);
 
@@ -141,6 +144,7 @@ void RenderSystem::Render(const World* world)
 		auto& sceneData = blackboard.Add<SceneRenderingData>();
 		sceneData.backbuffer = graph.ImportTexture(backbuffer);
 		sceneData.sceneTarget = graph.ImportTexture(sceneTarget);
+		sceneData.brdfLut = graph.ImportTexture(worldRenderer->GetBRDFLutTexture());
 		sceneData.sceneProxy = world->GetSystem<RenderSceneProxy>();
 		sceneData.world = world;
 
