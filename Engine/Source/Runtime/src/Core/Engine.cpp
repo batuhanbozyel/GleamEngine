@@ -10,6 +10,7 @@
 #include "Renderer/Renderers/WorldRenderer.h"
 #include "Renderer/Renderers/SkyAtmosphere.h"
 #include "Renderer/Renderers/PostProcessStack.h"
+#include "Renderer/Renderers/ReflectionProbeRenderer.h"
 #include "Serialization/JSONSerializer.h"
 #include "Serialization/BinarySerializer.h"
 
@@ -62,6 +63,7 @@ void Engine::Initialize(const CommandLine& cli)
 	// add default renderers
 	renderSubsystem->AddRenderer<WorldRenderer>();
 	renderSubsystem->AddRenderer<SkyAtmosphereRenderer>();
+	renderSubsystem->AddRenderer<ReflectionProbeRenderer>();
 	renderSubsystem->AddRenderer<PostProcessStack>();
 }
 
