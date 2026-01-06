@@ -228,6 +228,11 @@ void CommandBuffer::Blit(const Texture& source, const Texture& destination) cons
 
 void CommandBuffer::Barrier(const BarrierGroup& barrier) const
 {
+	if (barrier.bufferBarriers.empty() && barrier.textureBarriers.empty())
+	{
+		return;
+	}
+
 	TArray<D3D12_BUFFER_BARRIER> d3d12BufferBarriers;
 	TArray<D3D12_TEXTURE_BARRIER> d3d12TextureBarriers;
 
