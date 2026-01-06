@@ -4,9 +4,6 @@
 
 PUSH_CONSTANT(Gleam::SkyAtmosphereRenderConstants, constants);
 
-static RWTexture2D<float4> TargetTexture = ResourceDescriptorHeap[UAVIndex(constants.targetTexture)];
-static Texture2D<float> DepthTexture = ResourceDescriptorHeap[SRVIndex(constants.depthTexture)];
-
 [numthreads(16, 16, 1)]
 void skyAtmosphereRenderShader(uint3 dispatchThreadId : SV_DispatchThreadID)
 {
@@ -25,14 +22,23 @@ void skyAtmosphereRenderShader(uint3 dispatchThreadId : SV_DispatchThreadID)
 		return;
 	}
 	
-	float3 Luminance = 0.0;
-	ClipSpace.z = DepthTexture[dispatchThreadId.xy];
-	if (ClipSpace.z >= (1.0f - FLT_EPSILON))
+	if (constants.depthTexture != InvalidResourceIndex)
 	{
-		Luminance += GetSkyLuminance(ClipSpace, WorldPos, WorldDir);
-		Luminance += GetSunLuminance(WorldPos, WorldDir);
-		
-		float4 sceneColor = TargetTexture[dispatchThreadId.xy];
-		TargetTexture[dispatchThreadId.xy] = float4(sceneColor.rgb * sceneColor.a + Luminance.rgb * (1.0 - sceneColor.a), 1.0);
+		Texture2D<float> DepthTexture = ResourceDescriptorHeap[SRVIndex(constants.depthTexture)];
+		float depth = DepthTexture[dispatchThreadId.xy];
+		if (depth < (1.0f - FLT_EPSILON))
+		{
+			return;
+		}
 	}
+
+	float3 Luminance = GetSkyLuminance(ClipSpace, WorldPos, WorldDir);
+	if (constants.renderSun)
+	{
+		Luminance += GetSunLuminance(WorldPos, WorldDir);
+	}
+	
+	RWTexture2D<float4> TargetTexture = ResourceDescriptorHeap[UAVIndex(constants.targetTexture)];
+	float4 sceneColor = TargetTexture[dispatchThreadId.xy];
+	TargetTexture[dispatchThreadId.xy] = float4(sceneColor.rgb * sceneColor.a + Luminance.rgb * (1.0 - sceneColor.a), 1.0);
 }

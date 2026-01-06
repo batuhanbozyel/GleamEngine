@@ -69,6 +69,9 @@ public:
 			auto& atmosphere = world.GetEntityManager().CreateEntity("Atmosphere", Gleam::Guid::NewGuid());
 			world.GetEntityManager().AddComponent<Gleam::SkyAtmosphere>(atmosphere);
 
+			// global probe
+			world.GetEntityManager().SetSingletonComponent<Gleam::ReflectionProbe>();
+
 			world.Serialize(file.GetStream());
 		}
 		project.worldConfig.worlds.emplace_back(worldRef);

@@ -153,6 +153,7 @@ static constexpr TextureFormat DXGI_FORMATtoTextureFormat(DXGI_FORMAT format)
 
 		case DXGI_FORMAT_R9G9B9E5_SHAREDEXP: return TextureFormat::R9G9B9E5_SFloat;
 		case DXGI_FORMAT_R11G11B10_FLOAT: return TextureFormat::R11G11B10_SFloat;
+		case DXGI_FORMAT_R10G10B10A2_UNORM: return TextureFormat::R10G10B10A2_Unorm;
 
 		// Depth - Stencil formats
 		case DXGI_FORMAT_D16_UNORM: return TextureFormat::D16_UNorm;
@@ -223,6 +224,7 @@ static constexpr DXGI_FORMAT TextureFormatToDXGI_FORMAT(TextureFormat format)
 
 		case TextureFormat::R9G9B9E5_SFloat: return DXGI_FORMAT_R9G9B9E5_SHAREDEXP;
 		case TextureFormat::R11G11B10_SFloat: return DXGI_FORMAT_R11G11B10_FLOAT;
+		case TextureFormat::R10G10B10A2_Unorm: return DXGI_FORMAT_R10G10B10A2_UNORM;
 
 		// Depth - Stencil formats
 		case TextureFormat::D16_UNorm: return DXGI_FORMAT_D16_UNORM;
@@ -376,48 +378,9 @@ static constexpr D3D12_RESOURCE_DIMENSION TextureDimensionToD3D12_RESOURCE_DIMEN
 	switch (dimension)
 	{
 		case TextureDimension::Texture2D: return D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+		case TextureDimension::TextureCube: return D3D12_RESOURCE_DIMENSION_TEXTURE2D;
 		case TextureDimension::Texture3D: return D3D12_RESOURCE_DIMENSION_TEXTURE3D;
 		default: return D3D12_RESOURCE_DIMENSION_UNKNOWN;
-	}
-}
-
-static constexpr D3D12_SRV_DIMENSION TextureDimensionToD3D12_SRV_DIMENSION(TextureDimension dimension)
-{
-	switch (dimension)
-	{
-		case TextureDimension::Texture2D: return D3D12_SRV_DIMENSION_TEXTURE2D;
-		case TextureDimension::Texture3D: return D3D12_SRV_DIMENSION_TEXTURECUBE;
-		default: return D3D12_SRV_DIMENSION_UNKNOWN;
-	}
-}
-
-static constexpr D3D12_UAV_DIMENSION TextureDimensionToD3D12_UAV_DIMENSION(TextureDimension dimension)
-{
-	switch (dimension)
-	{
-		case TextureDimension::Texture2D: return D3D12_UAV_DIMENSION_TEXTURE2D;
-		case TextureDimension::Texture3D: return D3D12_UAV_DIMENSION_TEXTURE2DARRAY;
-		default: return D3D12_UAV_DIMENSION_UNKNOWN;
-	}
-}
-
-static constexpr D3D12_RTV_DIMENSION TextureDimensionToD3D12_RTV_DIMENSION(TextureDimension dimension)
-{
-	switch (dimension)
-	{
-		case TextureDimension::Texture2D: return D3D12_RTV_DIMENSION_TEXTURE2D;
-		case TextureDimension::Texture3D: return D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
-		default: return D3D12_RTV_DIMENSION_UNKNOWN;
-	}
-}
-
-static constexpr D3D12_DSV_DIMENSION TextureDimensionToD3D12_DSV_DIMENSION(TextureDimension dimension)
-{
-	switch (dimension)
-	{
-		case TextureDimension::Texture2D: return D3D12_DSV_DIMENSION_TEXTURE2D;
-		case TextureDimension::Texture3D: return D3D12_DSV_DIMENSION_TEXTURE2DARRAY;
-		default: return D3D12_DSV_DIMENSION_UNKNOWN;
 	}
 }
 

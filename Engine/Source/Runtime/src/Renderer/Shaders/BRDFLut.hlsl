@@ -42,6 +42,7 @@ float3 IntegrateDFG(in float NdotV, in float perceptualRoughness)
 
 float IntegrateDiffuse(in float NdotV, in float perceptualRoughness)
 {
+    float3 N = float3(0.0, 1.0, 0.0);
     float3 V = float3(sqrt(1.0 - NdotV * NdotV), NdotV, 0.0);
 
     float irradiance = 0.0;
@@ -50,7 +51,7 @@ float IntegrateDiffuse(in float NdotV, in float perceptualRoughness)
         float2 Xi = Hammersley(i, SAMPLE_COUNT);
         
         float pdf; // The pdf is not used because it's canceled with other terms (The 1/PI from diffuse BRDF and the NdotL from Lambert's law).
-        float3 L = CosineSampleHemisphere(Xi, pdf);
+        float3 L = CosineSampleHemisphere(Xi, N, pdf);
 
         float NdotL = L.y;
         if (NdotL > 0.0)

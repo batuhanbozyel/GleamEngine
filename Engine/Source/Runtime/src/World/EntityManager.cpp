@@ -9,6 +9,11 @@
 
 using namespace Gleam;
 
+EntityManager::EntityManager()
+{
+	mSingletonEntity = CreateEntity("Singleton Entity", Guid::InvalidGuid());
+}
+
 Entity& EntityManager::CreateFromPrefab(const AssetReference& ref)
 {
 	const auto& path = Globals::GameInstance->GetSubsystem<AssetManager>()->GetAssetPath(ref);

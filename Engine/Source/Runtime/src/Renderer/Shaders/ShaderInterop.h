@@ -126,40 +126,5 @@ struct Texture2DResourceView : TextureResourceView
 	}
 };
 
-template<typename T>
-struct Texture3DResourceView : TextureResourceView
-{
-	ShaderResourceIndex index;
-	uint32_t padding0;
-	uint32_t padding1;
-	uint32_t padding2;
-
-#ifdef __HLSL_VERSION
-	T Load(uint3 pos)
-	{
-		Texture3D<T> texture = ResourceDescriptorHeap[SRVIndex(index)];
-		return texture.Load(uint4(pos, 0));
-	}
-
-	T Sample(SamplerState sampler, float3 uv, float mip = 0.0f)
-	{
-		Texture3D<T> texture = ResourceDescriptorHeap[SRVIndex(index)];
-		return texture.Sample(sampler, uv, mip);
-	}
-#else
-    Texture3DResourceView() = default;
-    Texture3DResourceView(ShaderResourceIndex index)
-        : index(index)
-    {
-        
-    }
-#endif
-
-	bool IsValid()
-	{
-		return index != InvalidResourceIndex;
-	}
-};
-
 } // namespace Gleam
 #endif // SHADER_INTEROP_H

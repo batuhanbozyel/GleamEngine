@@ -135,7 +135,7 @@ struct SkyAtmosphereRenderConstants
 {
 	ShaderResourceIndex targetTexture;
 	ShaderResourceIndex depthTexture;
-	float pad0;
+	uint32_t renderSun;
 	float pad1;
 };
 

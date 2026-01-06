@@ -15,7 +15,9 @@ public:
 
 private:
 
+	CameraUniforms CreateCubeFaceCamera(const float3& position, uint32_t resolution, uint32_t faceIndex);
 
+	ComputePipelineHandle mSkyRenderPipeline;
 };
 
 } // namespace Gleam

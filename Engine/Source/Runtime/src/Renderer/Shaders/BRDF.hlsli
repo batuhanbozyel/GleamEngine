@@ -95,14 +95,22 @@ float2 Hammersley(uint i, uint N)
 	return float2(float(i) / float(N), RadicalInverse_VdC(i));
 }
 
-float3 CosineSampleHemisphere(float2 u, out float pdf)
+float3 CosineSampleHemisphere(float2 u, float3 N, out float pdf)
 {
 	float theta = TWO_PI * u.x;
 	float cosPhi2 = 1.0 - u.y;
 	float cosPhi = sqrt(cosPhi2);
 	float sinPhi = sqrt(1.0f - cosPhi2);
+	float3 L = float3(sinPhi * cos(theta), cosPhi, sinPhi * sin(theta));
+
 	pdf = cosPhi * INV_PI;
-	return float3(sinPhi * cos(theta), cosPhi, sinPhi * sin(theta));
+
+	float3 tangent;
+	float3 bitangent;
+	GetOrthonormalBasis(N, tangent, bitangent);
+	
+	float3 sampleVec = tangent * L.x + N * L.y + bitangent * L.z;
+	return normalize(sampleVec);
 }
 
 float3 ImportanceSampleGGX(float2 u, float3 N, float perceptualRoughness, out float pdf)

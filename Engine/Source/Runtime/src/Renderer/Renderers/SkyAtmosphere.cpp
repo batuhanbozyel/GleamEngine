@@ -3,7 +3,6 @@
 #include "Renderer/Shaders/Atmosphere/SkyAtmosphereDefinitions.h"
 
 #include "Renderer/CommandBuffer.h"
-#include "Renderer/RenderSurface.h"
 #include "Renderer/GraphicsDevice.h"
 #include "Renderer/Renderers/WorldRenderer.h"
 
@@ -57,9 +56,7 @@ void SkyAtmosphereRenderer::OnDestroy(RenderContext& context)
 
 void SkyAtmosphereRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard)
 {
-	const auto& worldRenderingData = blackboard.Get<WorldRenderingData>();
 	const auto& sceneData = blackboard.Get<SceneRenderingData>();
-
 	bool bakeLUTs = memcmp(&sceneData.atmosphere.params, &mAtmosphereParams, sizeof(SkyAtmosphereParameters)) != 0;
 	if (bakeLUTs)
 	{
@@ -79,7 +76,7 @@ void SkyAtmosphereRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlack
 			cmd->BindComputePipeline(mTransmittanceLutPipeline);
 			cmd->SetConstantBuffer(mAtmosphereParams, SKY_ATMOSPHERE_PARAMS_BINDING_SLOT);
 			cmd->SetConstantBuffer(sceneData.atmosphere.uniforms, SKY_ATMOSPHERE_COMMON_UNIFORMS_BINDING_SLOT);
-			cmd->Dispatch(Math::DivideRoundingUp(SKY_ATMOSPHERE_TRANSMITTANCE_TEXTURE_WIDTH, 16), Math::DivideRoundingUp(SKY_ATMOSPHERE_TRANSMITTANCE_TEXTURE_HEIGHT, 16), 1);
+			cmd->Dispatch(Math::DivideRoundingUp(SKY_ATMOSPHERE_TRANSMITTANCE_TEXTURE_WIDTH, 16), Math::DivideRoundingUp(SKY_ATMOSPHERE_TRANSMITTANCE_TEXTURE_HEIGHT, 16), 1u);
 		});
 
 		// Multi scatter LUT
@@ -98,7 +95,7 @@ void SkyAtmosphereRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlack
 			cmd->BindComputePipeline(mMultiScatterLutPipeline);
 			cmd->SetConstantBuffer(mAtmosphereParams, SKY_ATMOSPHERE_PARAMS_BINDING_SLOT);
 			cmd->SetConstantBuffer(sceneData.atmosphere.uniforms, SKY_ATMOSPHERE_COMMON_UNIFORMS_BINDING_SLOT);
-			cmd->Dispatch(SKY_ATMOSPHERE_MULTISCATTERING_LUT_RES, SKY_ATMOSPHERE_MULTISCATTERING_LUT_RES, 1);
+			cmd->Dispatch(SKY_ATMOSPHERE_MULTISCATTERING_LUT_RES, SKY_ATMOSPHERE_MULTISCATTERING_LUT_RES, 1u);
 		});
 	}
 
@@ -126,13 +123,14 @@ void SkyAtmosphereRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlack
 		SkyAtmosphereRenderConstants constants = {};
 		constants.targetTexture = passData.sceneColor.GetTexture().GetResourceView();
 		constants.depthTexture = passData.sceneDepth.GetTexture().GetResourceView();
+		constants.renderSun = 1; // true
 
 		cmd->BindComputePipeline(mSkyRenderPipeline);
 		cmd->SetConstantBuffer(sceneData.camera.uniforms, CAMERA_UNIFORMS_BINDING_SLOT);
 		cmd->SetConstantBuffer(mAtmosphereParams, SKY_ATMOSPHERE_PARAMS_BINDING_SLOT);
 		cmd->SetConstantBuffer(sceneData.atmosphere.uniforms, SKY_ATMOSPHERE_COMMON_UNIFORMS_BINDING_SLOT);
 		cmd->SetPushConstant(constants);
-		cmd->Dispatch(Math::DivideRoundingUp((int)sceneData.camera.uniforms.resolution.x, 16), Math::DivideRoundingUp((int)sceneData.camera.uniforms.resolution.y, 16), 1);
+		cmd->Dispatch(Math::DivideRoundingUp((uint32_t)sceneData.camera.uniforms.resolution.x, 16u), Math::DivideRoundingUp((uint32_t)sceneData.camera.uniforms.resolution.y, 16u), 1u);
 	});
 }
 
