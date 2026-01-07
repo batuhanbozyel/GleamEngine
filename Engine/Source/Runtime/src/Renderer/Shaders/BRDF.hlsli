@@ -5,7 +5,6 @@
 #include "ShaderTypes.h"
 
 #define F90_Metal 1.0f
-#define SPECULAR_RADIANCE_MAX_MIP_LEVEL 4
 
 struct DirectLight
 {
@@ -211,7 +210,7 @@ float3 EvaluateSpecularIndirectLight(Texture2D<float4> brdfTexture, TextureCube<
 	float3 reflectionDir = normalize(reflect(-viewDir, worldNormal));
 	float3 specularDirection = GetSpecularDominantDir(worldNormal, reflectionDir, perceptualRoughness);
 	
-	float mipLevel = PerceptualRoughnessToMipLevel(perceptualRoughness, SPECULAR_RADIANCE_MAX_MIP_LEVEL);
+	float mipLevel = PerceptualRoughnessToMipLevel(perceptualRoughness, SPECULAR_RADIANCE_MAX_MIP_LEVEL - 1);
 	float3 specularLighting = specularReflection.SampleLevel(Sampler_Trilinear_Repeat, specularDirection, mipLevel);
 
 	float3 f0 = albedo * metallic + F0Dielectric(0.5) * (1.0 - metallic);

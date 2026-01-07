@@ -18,6 +18,9 @@ private:
 	CameraUniforms CreateCubeFaceCamera(const float3& position, uint32_t resolution, uint32_t faceIndex);
 
 	ComputePipelineHandle mSkyRenderPipeline;
+	ComputePipelineHandle mGenerateMipsPipeline;
+	ComputePipelineHandle mDiffuseConvolutionPipeline;
+	ComputePipelineHandle mSpecularConvolutionPipeline;
 };
 
 } // namespace Gleam

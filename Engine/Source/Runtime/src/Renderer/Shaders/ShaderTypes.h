@@ -20,6 +20,23 @@ struct BRDFLutConstants
 	ShaderResourceIndex targetTexture;
 };
 
+#define SPECULAR_RADIANCE_MAX_MIP_LEVEL 5
+struct ProbeConvolutionConstants
+{
+	ShaderResourceIndex sourceTexture;
+	ShaderResourceIndex targetTexture;
+	uint32_t resolution;
+	uint32_t level;
+};
+
+struct GenerateCubemapMipsConstants
+{
+	ShaderResourceIndex texture;
+	uint32_t resolution;
+	uint32_t level;
+	float pad0;
+};
+
 struct DebugVertex
 {
     float3 position;

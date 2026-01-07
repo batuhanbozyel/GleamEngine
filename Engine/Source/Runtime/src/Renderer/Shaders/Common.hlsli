@@ -164,4 +164,33 @@ void GetOrthonormalBasis(float3 N, out float3 T, out float3 B)
     T = normalize(cross(up, N));
     B = cross(N, T);
 }
+
+float3 GetCubemapDirection(float2 uv, uint faceIndex)
+{
+    float2 ndc = uv * 2.0 - 1.0;
+    
+    float3 direction;
+    switch (faceIndex)
+    {
+        case 0: // +X
+            direction = float3(1.0, ndc.y, -ndc.x);
+            break;
+        case 1: // -X
+            direction = float3(-1.0, ndc.y, ndc.x);
+            break;
+        case 2: // +Y
+            direction = float3(ndc.x, 1.0, -ndc.y);
+            break;
+        case 3: // -Y
+            direction = float3(ndc.x, -1.0, ndc.y);
+            break;
+        case 4: // +Z
+            direction = float3(ndc.x, ndc.y, 1.0);
+            break;
+        case 5: // -Z
+            direction = float3(-ndc.x, ndc.y, -1.0);
+            break;
+    }
+    return normalize(direction);
+}
 #endif

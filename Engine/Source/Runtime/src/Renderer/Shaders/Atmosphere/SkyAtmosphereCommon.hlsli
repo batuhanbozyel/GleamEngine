@@ -221,7 +221,7 @@ float GetShadow(float3 P)
 	return 1.0f;
 }
 
-float3 GetSkyLuminance(in float3 ClipSpace, in float3 WorldPos, in float3 WorldDir, in float tMaxMax = 9000000.0f)
+float3 GetSkyLuminance(in float3 WorldPos, in float3 WorldDir, in float tMaxMax = 9000000.0f)
 {
 	// Compute next intersection with atmosphere or ground 
 	float3 earthO = float3(0.0f, 0.0f, 0.0f);
@@ -245,19 +245,6 @@ float3 GetSkyLuminance(in float3 ClipSpace, in float3 WorldPos, in float3 WorldD
 		if (tTop > 0.0f)
 		{
 			tMax = min(tTop, tBottom);
-		}
-	}
-	
-	if (ClipSpace.z < (1.0f - FLT_EPSILON))
-	{
-		float4 DepthBufferWorldPos = mul(camera.invViewProjectionMatrix, float4(ClipSpace, 1.0));
-		DepthBufferWorldPos /= DepthBufferWorldPos.w;
-		DepthBufferWorldPos *= M_TO_KM;
-
-		float tDepth = length(DepthBufferWorldPos.xyz - (WorldPos + float3(0.0, -atmosphereParams.bottomRadius, 0.0))); // apply earth offset to go back to origin as top of earth mode. 
-		if (tDepth < tMax)
-		{
-			tMax = tDepth;
 		}
 	}
 	tMax = min(tMax, tMaxMax);

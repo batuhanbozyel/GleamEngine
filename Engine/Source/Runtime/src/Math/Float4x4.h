@@ -319,7 +319,7 @@ GSTRUCT(Float4x4, "770BABFC-E66A-4CE5-8453-A505EB3016BE", Serializable)
     NO_DISCARD FORCE_INLINE static constexpr Float4x4 Perspective(float fov, float aspect, float zNear, float zFar)
     {
         float fRange = zFar / (zFar - zNear);
-        float height = 1.0f / Math::Tan(Math::Deg2Rad(fov) / 2.0f);
+        float height = 1.0f / Math::Tan(fov / 2.0f);
         float width = height / aspect;
         return Float4x4
         {

@@ -290,7 +290,7 @@ CameraRenderData RenderSystem::SetupCameraRenderData(RenderGraph& graph, const E
 	camera.uniforms.viewMatrix = Float4x4::LookTo(entity.GetWorldPosition(), entity.ForwardVector(), entity.UpVector());
 	if (cameraComponent.projectionType == ProjectionType::Perspective)
 	{
-		camera.uniforms.projectionMatrix = Float4x4::Perspective(cameraComponent.fov, cameraComponent.aspectRatio, cameraComponent.nearPlane, cameraComponent.farPlane);
+		camera.uniforms.projectionMatrix = Float4x4::Perspective(Math::Deg2Rad(cameraComponent.fov), cameraComponent.aspectRatio, cameraComponent.nearPlane, cameraComponent.farPlane);
 	}
 	else
 	{

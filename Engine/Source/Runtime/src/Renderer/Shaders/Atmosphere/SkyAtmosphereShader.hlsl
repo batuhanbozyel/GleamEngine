@@ -7,6 +7,16 @@ PUSH_CONSTANT(Gleam::SkyAtmosphereRenderConstants, constants);
 [numthreads(16, 16, 1)]
 void skyAtmosphereRenderShader(uint3 dispatchThreadId : SV_DispatchThreadID)
 {
+	if (constants.depthTexture != InvalidResourceIndex)
+	{
+		Texture2D<float> DepthTexture = ResourceDescriptorHeap[SRVIndex(constants.depthTexture)];
+		float depth = DepthTexture[dispatchThreadId.xy];
+		if (depth < (1.0f - FLT_EPSILON))
+		{
+			return;
+		}
+	}
+	
 	float2 position = float2(dispatchThreadId.xy) + 0.5;
 	float2 uv = position / camera.resolution;
 	
@@ -22,17 +32,7 @@ void skyAtmosphereRenderShader(uint3 dispatchThreadId : SV_DispatchThreadID)
 		return;
 	}
 	
-	if (constants.depthTexture != InvalidResourceIndex)
-	{
-		Texture2D<float> DepthTexture = ResourceDescriptorHeap[SRVIndex(constants.depthTexture)];
-		float depth = DepthTexture[dispatchThreadId.xy];
-		if (depth < (1.0f - FLT_EPSILON))
-		{
-			return;
-		}
-	}
-
-	float3 Luminance = GetSkyLuminance(ClipSpace, WorldPos, WorldDir);
+	float3 Luminance = GetSkyLuminance(WorldPos, WorldDir);
 	if (constants.renderSun)
 	{
 		Luminance += GetSunLuminance(WorldPos, WorldDir);
