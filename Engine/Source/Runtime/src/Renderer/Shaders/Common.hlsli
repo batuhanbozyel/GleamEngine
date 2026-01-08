@@ -168,6 +168,7 @@ void GetOrthonormalBasis(float3 N, out float3 T, out float3 B)
 float3 GetCubemapDirection(float2 uv, uint faceIndex)
 {
     float2 ndc = uv * 2.0 - 1.0;
+	ndc.y = -ndc.y;
     
     float3 direction;
     switch (faceIndex)

@@ -84,8 +84,6 @@ private:
 
 	ShaderResourceIndex CreateResourceView(const Texture& texture);
 
-	ShaderResourceIndex CreateSliceView(const Texture& texture, uint32_t slice);
-
 	void ReleaseResourceView(ShaderResourceIndex view);
 
 	ID3D12Resource* CreateResource(const GPUAllocation& allocation, const D3D12_RESOURCE_DESC1& desc, const TString& name) const;

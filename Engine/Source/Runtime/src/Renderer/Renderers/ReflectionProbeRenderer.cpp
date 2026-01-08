@@ -62,12 +62,12 @@ void ReflectionProbeRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBla
 		cmd->SetConstantBuffer(sceneData.atmosphere.params, SKY_ATMOSPHERE_PARAMS_BINDING_SLOT);
 		cmd->SetConstantBuffer(sceneData.atmosphere.uniforms, SKY_ATMOSPHERE_COMMON_UNIFORMS_BINDING_SLOT);
 
-		for (uint32_t faceIndex = 0; faceIndex < 6; ++faceIndex)
+		for (uint32_t face = 0; face < 6; ++face)
 		{
-			CameraUniforms cubeFaceCamera = CreateCubeFaceCamera(sceneData.camera.uniforms.position, globalProbe.size, faceIndex);
+			CameraUniforms cubeFaceCamera = CreateCubeFaceCamera(sceneData.camera.uniforms.position, globalProbe.size, face);
 
 			SkyAtmosphereRenderConstants constants = {};
-			constants.targetTexture = passData.probe.GetTexture().GetResourceView(faceIndex);
+			constants.targetTexture = passData.probe.GetTexture().GetUnorderedAccessView(0, face);
 			constants.depthTexture = InvalidResourceIndex; // No depth test needed
 			constants.renderSun = 0; // Exclude sun for IBL
 			cmd->SetPushConstant(constants);
@@ -93,15 +93,19 @@ void ReflectionProbeRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBla
 		cmd->BindComputePipeline(mGenerateMipsPipeline);
 		for (uint32_t level = 1; level < probeTexture.GetMipMapLevels(); ++level)
 		{
+			// TODO: add barrier to wait for previous level generation
 			uint32_t resolution = globalProbe.size >> level;
-
-			GenerateCubemapMipsConstants constants = {};
-			constants.srcTexture = passData.probe;
-			constants.targetTexture = passData.probe; // TODO: assign mip UAV
-			constants.resolution = resolution;
-			constants.level = level;
-			cmd->SetPushConstant(constants);
-			cmd->Dispatch(Math::DivideRoundingUp(resolution, 16u), Math::DivideRoundingUp(resolution, 16u), 6u);
+			for (uint32_t face = 0; face < 6; ++face)
+			{
+				GenerateCubemapMipsConstants constants = {};
+				constants.srcTexture = passData.probe;
+				constants.targetTexture = probeTexture.GetUnorderedAccessView(level, face);
+				constants.resolution = resolution;
+				constants.level = level;
+				constants.face = face;
+				cmd->SetPushConstant(constants);
+				cmd->Dispatch(Math::DivideRoundingUp(resolution, 16u), Math::DivideRoundingUp(resolution, 16u), 1u);
+			}
 		}
 	});
 

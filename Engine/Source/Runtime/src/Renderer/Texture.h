@@ -9,7 +9,6 @@ class GraphicsDevice;
 class Texture final : public ShaderResource
 {
     friend class GraphicsDevice;
-    
 public:
     
     Texture() = default;
@@ -22,11 +21,15 @@ public:
         : mDescriptor(descriptor)
 		, mMipMapLevels(descriptor.useMipMap ? CalculateMipLevels(descriptor.size) : 1)
     {
-		uint32_t numSlices = descriptor.dimension == TextureDimension::TextureCube ? 6 * descriptor.depth : descriptor.depth;
+		uint32_t numSlices = mMipMapLevels * (descriptor.dimension == TextureDimension::TextureCube ? 6 * descriptor.depth : descriptor.depth);
 		if (numSlices > 1)
 		{
 			mSliceViews.resize(numSlices);
-			mSliceResourceViews.resize(numSlices);
+
+			if (mDescriptor.usage & TextureUsage_Storage && Utils::IsColorFormat(mDescriptor.format))
+			{
+				mSliceUnorderedAccessViews.resize(numSlices);
+			}
 		}
     }
 
@@ -36,11 +39,15 @@ public:
 		, mDescriptor(descriptor)
 		, mMipMapLevels(descriptor.useMipMap ? CalculateMipLevels(descriptor.size) : 1)
     {
-		uint32_t numSlices = descriptor.dimension == TextureDimension::TextureCube ? 6 * descriptor.depth : descriptor.depth;
+		uint32_t numSlices = mMipMapLevels * (descriptor.dimension == TextureDimension::TextureCube ? 6 * descriptor.depth : descriptor.depth);
 		if (numSlices > 1)
 		{
 			mSliceViews.resize(numSlices);
-			mSliceResourceViews.resize(numSlices);
+
+			if (mDescriptor.usage & TextureUsage_Storage && Utils::IsColorFormat(mDescriptor.format))
+			{
+				mSliceUnorderedAccessViews.resize(numSlices);
+			}
 		}
     }
     
@@ -49,19 +56,29 @@ public:
         return mView;
     }
 
-	RenderTargetView GetRenderTargetView(uint32_t slice) const
+	RenderTargetView GetRenderTargetView(uint32_t mip) const
 	{
-		return mSliceViews[slice];
+		return mSliceViews[mip];
 	}
 
-	ShaderResourceIndex GetResourceView() const
+	RenderTargetView GetRenderTargetView(uint32_t mip, uint32_t slice) const
 	{
-		return ShaderResource::GetResourceView();
+		return mSliceViews[slice * mMipMapLevels + mip];
 	}
 
-	ShaderResourceIndex GetResourceView(uint32_t slice) const
+	UnorderedAccessIndex GetUnorderedAccessView() const
 	{
-		return mSliceResourceViews[slice];
+		return mResourceView;
+	}
+
+	UnorderedAccessIndex GetUnorderedAccessView(uint32_t mip) const
+	{
+		return mSliceUnorderedAccessViews[mip];
+	}
+
+	UnorderedAccessIndex GetUnorderedAccessView(uint32_t mip, uint32_t slice) const
+	{
+		return mSliceUnorderedAccessViews[slice * mMipMapLevels + mip];
 	}
     
     const TextureDescriptor& GetDescriptor() const
@@ -86,7 +103,7 @@ private:
     TextureDescriptor mDescriptor;
 
 	TArray<RenderTargetView> mSliceViews;
-	TArray<ShaderResourceIndex> mSliceResourceViews;
+	TArray<ShaderResourceIndex> mSliceUnorderedAccessViews;
 };
 
 } // namespace Gleam

@@ -35,7 +35,7 @@ struct GenerateCubemapMipsConstants
 	UnorderedAccessIndex targetTexture;
 	uint32_t resolution;
 	uint32_t level;
-	float pad0;
+	uint32_t face;
 };
 
 struct DebugVertex
@@ -156,7 +156,7 @@ struct SkyAtmosphereParameters
 
 struct SkyAtmosphereRenderConstants
 {
-	ShaderResourceIndex targetTexture;
+	UnorderedAccessIndex targetTexture;
 	ShaderResourceIndex depthTexture;
 	uint32_t renderSun;
 	float pad1;

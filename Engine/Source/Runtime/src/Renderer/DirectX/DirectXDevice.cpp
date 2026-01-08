@@ -215,10 +215,13 @@ Texture GraphicsDevice::CreateTexture(GPUAllocator* allocator, const TextureDesc
 			}
 
 			// Create slice DSV
-			for (uint32_t slice = 0; slice < texture.mSliceViews.size(); slice++)
+			for (uint32_t i = 0; i < texture.mSliceViews.size(); i++)
 			{
 				auto& dsvHeap = static_cast<DirectXDevice*>(this)->mDsvHeap;
 				auto index = dsvHeap.heap.Allocate();
+
+				uint32_t slice = i / texture.GetMipMapLevels();
+				uint32_t mip = i % texture.GetMipMapLevels();
 
 				D3D12_CPU_DESCRIPTOR_HANDLE handle = dsvHeap.cpuHandle;
 				handle.ptr += (size_t)index.data * (size_t)dsvHeap.size;
@@ -226,11 +229,11 @@ Texture GraphicsDevice::CreateTexture(GPUAllocator* allocator, const TextureDesc
 				D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
 				dsvDesc.Format = resourceDesc.Format;
 				dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2DARRAY;
-				dsvDesc.Texture2DArray.MipSlice = 0;
+				dsvDesc.Texture2DArray.MipSlice = mip;
 				dsvDesc.Texture2DArray.FirstArraySlice = slice;
 				dsvDesc.Texture2DArray.ArraySize = 1;
 				static_cast<ID3D12Device10*>(mHandle)->CreateDepthStencilView(static_cast<ID3D12Resource*>(texture.mHandle), &dsvDesc, handle);
-				texture.mSliceViews[slice] = handle;
+				texture.mSliceViews[i] = handle;
 			}
 		}
 		else
@@ -288,10 +291,13 @@ Texture GraphicsDevice::CreateTexture(GPUAllocator* allocator, const TextureDesc
 			}
 
 			// Create slice RTV
-			for (uint32_t slice = 0; slice < texture.mSliceViews.size(); slice++)
+			for (uint32_t i = 0; i < texture.mSliceViews.size(); i++)
 			{
 				auto& rtvHeap = static_cast<DirectXDevice*>(this)->mRtvHeap;
 				auto index = rtvHeap.heap.Allocate();
+
+				uint32_t slice = i / texture.GetMipMapLevels();
+				uint32_t mip = i % texture.GetMipMapLevels();
 
 				D3D12_CPU_DESCRIPTOR_HANDLE handle = rtvHeap.cpuHandle;
 				handle.ptr += (size_t)index.data * (size_t)rtvHeap.size;
@@ -305,7 +311,7 @@ Texture GraphicsDevice::CreateTexture(GPUAllocator* allocator, const TextureDesc
 					case TextureDimension::TextureCube:
 					{
 						rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
-						rtvDesc.Texture2DArray.MipSlice = 0;
+						rtvDesc.Texture2DArray.MipSlice = mip;
 						rtvDesc.Texture2DArray.FirstArraySlice = slice;
 						rtvDesc.Texture2DArray.ArraySize = 1;
 						rtvDesc.Texture2DArray.PlaneSlice = 0;
@@ -314,21 +320,82 @@ Texture GraphicsDevice::CreateTexture(GPUAllocator* allocator, const TextureDesc
 					case TextureDimension::Texture3D:
 					{
 						rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE3D;
-						rtvDesc.Texture3D.MipSlice = 0;
+						rtvDesc.Texture3D.MipSlice = mip;
 						rtvDesc.Texture3D.FirstWSlice = slice;
 						rtvDesc.Texture3D.WSize = 1;
 						break;
 					}
 				}
 				static_cast<ID3D12Device10*>(mHandle)->CreateRenderTargetView(static_cast<ID3D12Resource*>(texture.mHandle), &rtvDesc, handle);
-				texture.mSliceViews[slice] = handle;
+				texture.mSliceViews[i] = handle;
 			}
 		}
 	}
 	texture.mResourceView = static_cast<DirectXDevice*>(this)->CreateResourceView(texture);
-	for (uint32_t slice = 0; slice < texture.mSliceResourceViews.size(); ++slice)
+	for (uint32_t i = 0; i < texture.mSliceUnorderedAccessViews.size(); ++i)
 	{
-		texture.mSliceResourceViews[slice] = static_cast<DirectXDevice*>(this)->CreateSliceView(texture, slice);
+		uint32_t slice = i / texture.GetMipMapLevels();
+		uint32_t mip = i % texture.GetMipMapLevels();
+
+		D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
+		if (Utils::IsDepthFormat(texture.GetDescriptor().format))
+		{
+			switch (texture.GetDescriptor().format)
+			{
+				case TextureFormat::D16_UNorm:
+				{
+					uavDesc.Format = DXGI_FORMAT_R16_UNORM;
+					break;
+				}
+				case TextureFormat::D32_SFloat:
+				{
+					uavDesc.Format = DXGI_FORMAT_R32_FLOAT;
+					break;
+				}
+				case TextureFormat::D24_UNorm_S8_UInt:
+				{
+					uavDesc.Format = DXGI_FORMAT_R24_UNORM_X8_TYPELESS;
+					break;
+				}
+			}
+		}
+		else
+		{
+			uavDesc.Format = TextureFormatToDXGI_FORMAT(texture.GetDescriptor().format);
+		}
+
+		switch (texture.GetDescriptor().dimension)
+		{
+			case TextureDimension::Texture2D:
+			case TextureDimension::TextureCube:
+			{
+				uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2DARRAY;
+				uavDesc.Texture2DArray = {
+					.MipSlice = mip,
+					.FirstArraySlice = slice,
+					.ArraySize = 1,
+					.PlaneSlice = 0,
+				};
+				break;
+			}
+			case TextureDimension::Texture3D:
+			{
+				uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE3D;
+				uavDesc.Texture3D = {
+					.MipSlice = mip,
+					.FirstWSlice = slice,
+					.WSize = 1,
+				};
+				break;
+			}
+		}
+
+		auto uavHandle = static_cast<DirectXDevice*>(this)->mCbvSrvUavHeap.Allocate();
+		auto index = static_cast<DirectXDevice*>(this)->mCbvSrvUavHeap.GetResourceIndex(uavHandle);
+
+		uavHandle.ptr += (UINT64)(static_cast<DirectXDevice*>(this)->mCbvSrvUavHeap.size * CBV_SRV_HEAP_SIZE);
+		static_cast<ID3D12Device10*>(mHandle)->CreateUnorderedAccessView(static_cast<ID3D12Resource*>(texture.GetHandle()), nullptr, &uavDesc, uavHandle);
+		texture.mSliceUnorderedAccessViews[i] = index;
 	}
 	return texture;
 }
@@ -542,7 +609,7 @@ void GraphicsDevice::Dispose(GPUAllocator* allocator, Texture& texture)
 		usage = texture.GetDescriptor().usage,
 		format = texture.GetDescriptor().format,
 		sliceViews = texture.mSliceViews,
-		sliceResourceViews = texture.mSliceResourceViews]()
+		sliceUnorderedViews = texture.mSliceUnorderedAccessViews]()
 	{
 		resource->Release();
 		static_cast<DirectXDevice*>(this)->ReleaseResourceView(srv);
@@ -581,9 +648,9 @@ void GraphicsDevice::Dispose(GPUAllocator* allocator, Texture& texture)
 		}
 
 		// Release slice resource views
-		for (const auto& sliceResourceView : sliceResourceViews)
+		for (const auto& unorderedView : sliceUnorderedViews)
 		{
-			static_cast<DirectXDevice*>(this)->ReleaseResourceView(sliceResourceView);
+			static_cast<DirectXDevice*>(this)->ReleaseResourceView(unorderedView);
 		}
 	}, static_cast<Swapchain*>(mSurface)->GetFrameIndex());
 
@@ -591,7 +658,7 @@ void GraphicsDevice::Dispose(GPUAllocator* allocator, Texture& texture)
 	texture.mHandle = nullptr;
 	texture.mView = {};
 	texture.mSliceViews.clear();
-	texture.mSliceResourceViews.clear();
+	texture.mSliceUnorderedAccessViews.clear();
 }
 
 void GraphicsDevice::Dispose(Shader& shader)
@@ -1084,105 +1151,6 @@ ShaderResourceIndex DirectXDevice::CreateResourceView(const Texture& texture)
 				.FirstArraySlice = 0,
 				.ArraySize = 6 * texture.GetDescriptor().depth,
 				.PlaneSlice = 0,
-			};
-			break;
-		}
-	}
-
-	auto srvHandle = mCbvSrvUavHeap.Allocate();
-
-	// SRV
-	if (texture.GetDescriptor().usage & TextureUsage_Sampled)
-	{
-		static_cast<ID3D12Device10*>(mHandle)->CreateShaderResourceView(static_cast<ID3D12Resource*>(texture.GetHandle()), &srvDesc, srvHandle);
-	}
-
-	// UAV
-	if (texture.GetDescriptor().usage & TextureUsage_Storage && Utils::IsColorFormat(texture.GetDescriptor().format))
-	{
-		auto uavHandle = srvHandle;
-		uavHandle.ptr += (UINT64)(mCbvSrvUavHeap.size * CBV_SRV_HEAP_SIZE);
-		static_cast<ID3D12Device10*>(mHandle)->CreateUnorderedAccessView(static_cast<ID3D12Resource*>(texture.GetHandle()), nullptr, &uavDesc, uavHandle);
-	}
-	return mCbvSrvUavHeap.GetResourceIndex(srvHandle);
-}
-
-ShaderResourceIndex DirectXDevice::CreateSliceView(const Texture& texture, uint32_t slice)
-{
-	// SRV
-	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
-	if (Utils::IsDepthFormat(texture.GetDescriptor().format))
-	{
-		switch (texture.GetDescriptor().format)
-		{
-			case TextureFormat::D16_UNorm:
-			{
-				srvDesc.Format = DXGI_FORMAT_R16_UNORM;
-				break;
-			}
-			case TextureFormat::D32_SFloat:
-			{
-				srvDesc.Format = DXGI_FORMAT_R32_FLOAT;
-				break;
-			}
-			case TextureFormat::D24_UNorm_S8_UInt:
-			{
-				srvDesc.Format = DXGI_FORMAT_R24_UNORM_X8_TYPELESS;
-				break;
-			}
-			default: return InvalidResourceIndex;
-		}
-	}
-	else
-	{
-		srvDesc.Format = TextureFormatToDXGI_FORMAT(texture.GetDescriptor().format);
-	}
-	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-
-	// UAV
-	D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
-	uavDesc.Format = srvDesc.Format;
-
-	switch (texture.GetDescriptor().dimension)
-	{
-		case TextureDimension::Texture2D:
-		case TextureDimension::TextureCube:
-		{
-			srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DARRAY;
-			uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2DARRAY;
-
-			srvDesc.Texture2DArray = {
-				.MostDetailedMip = 0,
-				.MipLevels = texture.GetMipMapLevels(),
-				.FirstArraySlice = slice,
-				.ArraySize = 1,
-				.PlaneSlice = 0,
-				.ResourceMinLODClamp = 0.0f
-			};
-
-			uavDesc.Texture2DArray = {
-				.MipSlice = 0,
-				.FirstArraySlice = slice,
-				.ArraySize = 1,
-				.PlaneSlice = 0,
-			};
-			break;
-		}
-		case TextureDimension::Texture3D:
-		{
-			srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE3D;
-			uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE3D;
-
-			srvDesc.Texture3D = {
-				.MostDetailedMip = 0,
-				.MipLevels = texture.GetMipMapLevels(),
-				.ResourceMinLODClamp = 0,
-			};
-
-			uavDesc.Texture3D = {
-				.MipSlice = 0,
-				.FirstWSlice = slice,
-				.WSize = 1,
 			};
 			break;
 		}
