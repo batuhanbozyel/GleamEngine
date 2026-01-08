@@ -93,7 +93,19 @@ void ReflectionProbeRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBla
 		cmd->BindComputePipeline(mGenerateMipsPipeline);
 		for (uint32_t level = 1; level < probeTexture.GetMipMapLevels(); ++level)
 		{
-			// TODO: add barrier to wait for previous level generation
+			TextureBarrier textureBarrier;
+			textureBarrier.resource = probeTexture.GetHandle();
+			textureBarrier.srcStage = BarrierStage::ComputeShading;
+			textureBarrier.dstStage = BarrierStage::ComputeShading;
+			textureBarrier.srcAccess = BarrierAccess::UnorderedAccess;
+			textureBarrier.dstAccess = BarrierAccess::UnorderedAccess;
+			textureBarrier.oldLayout = BarrierLayout::UnorderedAccess;
+			textureBarrier.newLayout = BarrierLayout::UnorderedAccess;
+
+			BarrierGroup barrier;
+			barrier.textureBarriers.push_back(textureBarrier);
+			cmd->Barrier(barrier);
+
 			uint32_t resolution = globalProbe.size >> level;
 			for (uint32_t face = 0; face < 6; ++face)
 			{

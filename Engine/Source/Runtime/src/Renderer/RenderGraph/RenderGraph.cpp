@@ -141,10 +141,6 @@ void RenderGraph::Execute(const CommandBuffer* cmd, SceneRenderingData& sceneDat
 		ExecutePass(pass, cmd);
 		FreePassResources(pass, cmd);
     }
-    
-    for (auto pass : mPassNodes) { delete pass; }
-    mPassNodes.clear();
-    mRegistry.Clear();
 }
 
 void RenderGraph::AllocatePassResources(RenderGraphPassNode* pass, const CommandBuffer* cmd, SceneRenderingData& sceneData)
