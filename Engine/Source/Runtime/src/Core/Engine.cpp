@@ -61,9 +61,9 @@ void Engine::Initialize(const CommandLine& cli)
 	renderSubsystem->Configure(mConfig.renderer);
 
 	// add default renderers
+	renderSubsystem->AddRenderer<ReflectionProbeRenderer>();
 	renderSubsystem->AddRenderer<WorldRenderer>();
 	renderSubsystem->AddRenderer<SkyAtmosphereRenderer>();
-	renderSubsystem->AddRenderer<ReflectionProbeRenderer>();
 	renderSubsystem->AddRenderer<PostProcessStack>();
 }
 

@@ -56,7 +56,6 @@ struct SceneRenderingData
 	SkyAtmosphereRenderData atmosphere = {};
     TextureHandle backbuffer = TextureHandle();
 	TextureHandle sceneTarget = TextureHandle();
-	TextureHandle brdfLut = TextureHandle();
 };
 
 class IRenderer

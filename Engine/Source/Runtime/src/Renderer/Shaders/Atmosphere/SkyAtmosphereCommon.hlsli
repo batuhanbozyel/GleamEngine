@@ -9,8 +9,8 @@ CONSTANT_BUFFER(Gleam::CameraUniforms, camera, CAMERA_UNIFORMS_BINDING_SLOT);
 CONSTANT_BUFFER(Gleam::SkyAtmosphereParameters, atmosphereParams, SKY_ATMOSPHERE_PARAMS_BINDING_SLOT);
 CONSTANT_BUFFER(Gleam::SkyAtmosphereUniforms, atmosphereUniforms, SKY_ATMOSPHERE_COMMON_UNIFORMS_BINDING_SLOT);
 
-static Texture2D<float4> TransmittanceLutTexture = ResourceDescriptorHeap[SRVIndex(atmosphereUniforms.transmittanceLutTexture)];
-static Texture2D<float3> MultiScatterTexture = ResourceDescriptorHeap[SRVIndex(atmosphereUniforms.multiScatterLutTexture)];
+static Texture2D<float4> TransmittanceLutTexture = ResourceDescriptorHeap[atmosphereUniforms.transmittanceLutTexture];
+static Texture2D<float3> MultiScatterTexture = ResourceDescriptorHeap[atmosphereUniforms.multiScatterLutTexture];
 
 float FromUnitToSubUvs(float u, float resolution) { return (u + 0.5f / resolution) * (resolution / (resolution + 1.0f)); }
 float FromSubUvsToUnit(float u, float resolution) { return (u - 0.5f / resolution) * (resolution / (resolution - 1.0f)); }

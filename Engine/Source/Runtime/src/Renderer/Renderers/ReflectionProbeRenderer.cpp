@@ -41,7 +41,7 @@ void ReflectionProbeRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBla
 		TextureHandle multiScatterLut;
 	};
 
-	const auto& captureData = graph.AddComputePass<CapturePassData>("ReflectionProbe::Capture", [&](RenderGraphBuilder& builder, CapturePassData& passData)
+	auto& captureData = graph.AddComputePass<CapturePassData>("ReflectionProbe::Capture", [&](RenderGraphBuilder& builder, CapturePassData& passData)
 	{
 		TextureDescriptor textureDesc;
 		textureDesc.name = "GlobalProbe";
@@ -51,8 +51,8 @@ void ReflectionProbeRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBla
 		textureDesc.format = TextureFormat::R16G16B16A16_SFloat;
 		textureDesc.useMipMap = true;
 		passData.probe = builder.CreateTexture(textureDesc);
-
 		passData.probe = builder.WriteTexture(passData.probe);
+
 		passData.transmittanceLut = builder.ReadTexture(sceneData.atmosphere.transmittanceLut);
 		passData.multiScatterLut = builder.ReadTexture(sceneData.atmosphere.multiScatterLut);
 	},
@@ -83,8 +83,8 @@ void ReflectionProbeRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBla
 
 	const auto& mipmapData = graph.AddComputePass<MipmapGenerationData>("ReflectionProbe::GenerateMipmaps", [&](RenderGraphBuilder& builder, MipmapGenerationData& passData)
 	{
-		passData.probe = builder.ReadTexture(captureData.probe);
-		passData.probe = builder.WriteTexture(passData.probe);
+		passData.probe = builder.WriteTexture(captureData.probe);
+		captureData.probe = passData.probe;
 	},
 	[this, sceneData, globalProbe](const CommandBuffer* cmd, const MipmapGenerationData& passData)
 	{
@@ -96,7 +96,8 @@ void ReflectionProbeRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBla
 			uint32_t resolution = globalProbe.size >> level;
 
 			GenerateCubemapMipsConstants constants = {};
-			constants.texture = passData.probe;
+			constants.srcTexture = passData.probe;
+			constants.targetTexture = passData.probe; // TODO: assign mip UAV
 			constants.resolution = resolution;
 			constants.level = level;
 			cmd->SetPushConstant(constants);
@@ -119,9 +120,8 @@ void ReflectionProbeRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBla
 		textureDesc.dimension = TextureDimension::TextureCube;
 		textureDesc.format = TextureFormat::R16G16B16A16_SFloat;
 		passData.targetTexture = builder.CreateTexture(textureDesc);
-
-		passData.probe = builder.ReadTexture(mipmapData.probe);
 		passData.targetTexture = builder.WriteTexture(passData.targetTexture);
+		passData.probe = builder.ReadTexture(mipmapData.probe);
 	},
 	[this, sceneData, globalProbe](const CommandBuffer* cmd, const DiffuseConvolutionData& passData)
 	{
@@ -155,9 +155,8 @@ void ReflectionProbeRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBla
 		textureDesc.format = TextureFormat::R16G16B16A16_SFloat;
 		textureDesc.useMipMap = true;
 		passData.targetTexture = builder.CreateTexture(textureDesc);
-
-		passData.probe = builder.ReadTexture(mipmapData.probe);
 		passData.targetTexture = builder.WriteTexture(passData.targetTexture);
+		passData.probe = builder.ReadTexture(mipmapData.probe);
 	},
 	[this, sceneData, globalProbe](const CommandBuffer* cmd, const SpecularConvolutionData& passData)
 	{
@@ -179,6 +178,11 @@ void ReflectionProbeRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBla
 			cmd->Dispatch(Math::DivideRoundingUp(resolution, 16u), Math::DivideRoundingUp(resolution, 16u), 6u);
 		}
 	});
+
+	ReflectionProbePassData passData;
+	passData.diffuseReflection = diffuseConvolutionData.targetTexture;
+	passData.specularReflection = specularConvolutionData.targetTexture;
+	blackboard.Add<ReflectionProbePassData>(passData);
 }
 
 CameraUniforms ReflectionProbeRenderer::CreateCubeFaceCamera(const float3& position, uint32_t resolution, uint32_t faceIndex)

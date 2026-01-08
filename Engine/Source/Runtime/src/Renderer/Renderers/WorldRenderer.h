@@ -17,10 +17,13 @@ struct MaterialDescriptor;
 
 struct WorldRenderingData
 {
-    TextureHandle colorTarget;
-    TextureHandle depthTarget;
-	TextureHandle transmittanceLut;
-	TextureHandle multiScatterLut;
+    TextureHandle colorTarget = TextureHandle();
+    TextureHandle depthTarget = TextureHandle();
+	TextureHandle transmittanceLut = TextureHandle();
+	TextureHandle multiScatterLut = TextureHandle();
+	TextureHandle brdfLut = TextureHandle();
+	TextureHandle specularReflection = TextureHandle();
+	TextureHandle diffuseReflection = TextureHandle();
 };
 
 class WorldRenderer : public IRenderer

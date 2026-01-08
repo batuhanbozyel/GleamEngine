@@ -5,8 +5,8 @@
 
 MeshVertexOut meshVertexShader(uint vertex_id : SV_VertexID)
 {
-	ByteAddressBuffer positionBuffer = ResourceDescriptorHeap[SRVIndex(instanceData.positionBuffer)];
-	ByteAddressBuffer interleavedBuffer = ResourceDescriptorHeap[SRVIndex(instanceData.interleavedBuffer)];
+	ByteAddressBuffer positionBuffer = ResourceDescriptorHeap[instanceData.positionBuffer];
+	ByteAddressBuffer interleavedBuffer = ResourceDescriptorHeap[instanceData.interleavedBuffer];
     
 	uint vertexID = vertex_id + instanceData.baseVertex;
     float3 position = positionBuffer.Load<float3>(vertexID * sizeof(float3));

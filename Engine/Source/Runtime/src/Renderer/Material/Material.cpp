@@ -117,7 +117,7 @@ ShaderResourceIndex Material::CreateInstance(const TArray<MaterialPropertyValue>
 				}
 				else
 				{
-					Texture2DResourceView<float4> view = InvalidResourceIndex;
+					Texture2DResourceView<float4> view = ShaderResourceIndex(InvalidResourceIndex);
 					memcpy(OffsetPointer(instanceData.data(), offset), &view, sizeof(Texture2DResourceView<float4>));
 				}
 				offset += sizeof(Texture2DResourceView<float4>);

@@ -51,15 +51,12 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, 
 		colorAttachments[i].BeginningAccess.Clear.ClearValue.Color[2] = colorAttachmentDesc.clearColor.b;
 		colorAttachments[i].BeginningAccess.Clear.ClearValue.Color[3] = colorAttachmentDesc.clearColor.a;
 		colorAttachments[i].EndingAccess.Type = AttachmentStoreActionToDX_TYPE(colorAttachmentDesc.storeAction);
-
-		auto resource = static_cast<ID3D12Resource*>(colorAttachmentDesc.texture.GetHandle());
 		colorAttachments[i].cpuDescriptor = colorAttachmentDesc.texture.GetRenderTargetView();
 	}
 
 	if (renderPassDesc.depthAttachment.texture.IsValid())
 	{
 		auto format = renderPassDesc.depthAttachment.texture.GetDescriptor().format;
-		auto resource = static_cast<ID3D12Resource*>(renderPassDesc.depthAttachment.texture.GetHandle());
 
 		D3D12_RENDER_PASS_DEPTH_STENCIL_DESC depthAttachment{};
 		depthAttachment.cpuDescriptor = renderPassDesc.depthAttachment.texture.GetRenderTargetView();

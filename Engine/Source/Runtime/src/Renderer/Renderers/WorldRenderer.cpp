@@ -14,6 +14,7 @@
 #include "Renderer/Mesh.h"
 #include "Renderer/CommandBuffer.h"
 #include "Renderer/GraphicsDevice.h"
+#include "Renderer/Renderers/ReflectionProbeRenderer.h"
 
 #include "World/Systems/RenderSceneProxy.h"
 
@@ -47,7 +48,9 @@ void WorldRenderer::OnDestroy(RenderContext& context)
 void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard)
 {
 	const auto& sceneData = blackboard.Get<SceneRenderingData>();
+	const auto& reflectionProbeData = blackboard.Get<ReflectionProbePassData>();
 	const auto& sceneTargetDescriptor = graph.GetDescriptor(sceneData.sceneTarget);
+	auto brdfLut = graph.ImportTexture(mBRDFLutTexture);
 
 	static bool mBakeBRDFLut = true;
 	if (mBakeBRDFLut)
@@ -58,12 +61,13 @@ void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 		};
 		graph.AddComputePass<BRDFLutData>("WorldRenderer::BRDFLut", [&](RenderGraphBuilder& builder, BRDFLutData& passData)
 		{
-			passData.brdfLut = builder.WriteTexture(sceneData.brdfLut);
+			passData.brdfLut = builder.WriteTexture(brdfLut);
+			brdfLut = passData.brdfLut;
 		},
 		[this, blackboard](const CommandBuffer* cmd, const BRDFLutData& passData)
 		{
 			cmd->BindComputePipeline(mBRDFLutPipeline);
-			cmd->SetPushConstant(BRDFLutConstants{ .targetTexture = passData.brdfLut });
+			cmd->SetPushConstant(BRDFLutConstants{ .targetTexture = mBRDFLutTexture.GetResourceView() });
 			cmd->Dispatch(Math::DivideRoundingUp(BRDF_LUT_SIZE, 16), Math::DivideRoundingUp(BRDF_LUT_SIZE, 16), 1);
 		});
 		mBakeBRDFLut = false;
@@ -87,6 +91,10 @@ void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 
 		passData.transmittanceLut = builder.ReadTexture(sceneData.atmosphere.transmittanceLut);
 		passData.multiScatterLut = builder.ReadTexture(sceneData.atmosphere.multiScatterLut);
+		passData.brdfLut = builder.ReadTexture(brdfLut);
+
+		passData.specularReflection = builder.ReadTexture(reflectionProbeData.specularReflection);
+		passData.diffuseReflection = builder.ReadTexture(reflectionProbeData.diffuseReflection);
         blackboard.Add(passData);
     },
     [this, blackboard](const CommandBuffer* cmd, const WorldRenderingData& passData)

@@ -225,9 +225,9 @@ float3 EvaluateIndirectLight(Gleam::SurfaceOutput surface,
 							 float3 viewDir,
 							 float3 worldNormal)
 {
-	Texture2D<float4> brdfTexture = ResourceDescriptorHeap[SRVIndex(brdfTextureIndex)];
-	TextureCube<float3> diffuseReflectionTexture = ResourceDescriptorHeap[SRVIndex(diffuseReflectionTextureIndex)];
-	TextureCube<float3> specularReflectionTexture = ResourceDescriptorHeap[SRVIndex(specularReflectionTextureIndex)];
+	Texture2D<float4> brdfTexture = ResourceDescriptorHeap[brdfTextureIndex];
+	TextureCube<float3> diffuseReflectionTexture = ResourceDescriptorHeap[diffuseReflectionTextureIndex];
+	TextureCube<float3> specularReflectionTexture = ResourceDescriptorHeap[specularReflectionTextureIndex];
 	float NdotV = abs(dot(worldNormal, viewDir)) + FLT_EPSILON;
 	
 	float3 irradiance = 0.0;

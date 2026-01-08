@@ -9,7 +9,7 @@ void skyAtmosphereRenderShader(uint3 dispatchThreadId : SV_DispatchThreadID)
 {
 	if (constants.depthTexture != InvalidResourceIndex)
 	{
-		Texture2D<float> DepthTexture = ResourceDescriptorHeap[SRVIndex(constants.depthTexture)];
+		Texture2D<float> DepthTexture = ResourceDescriptorHeap[constants.depthTexture];
 		float depth = DepthTexture[dispatchThreadId.xy];
 		if (depth < (1.0f - FLT_EPSILON))
 		{

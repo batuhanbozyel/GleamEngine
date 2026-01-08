@@ -144,7 +144,6 @@ void RenderSystem::Render(const World* world)
 		auto& sceneData = blackboard.Add<SceneRenderingData>();
 		sceneData.backbuffer = graph.ImportTexture(backbuffer);
 		sceneData.sceneTarget = graph.ImportTexture(sceneTarget);
-		sceneData.brdfLut = graph.ImportTexture(worldRenderer->GetBRDFLutTexture());
 		sceneData.sceneProxy = world->GetSystem<RenderSceneProxy>();
 		sceneData.world = world;
 

@@ -3,6 +3,12 @@
 
 namespace Gleam {
 
+struct ReflectionProbePassData
+{
+	TextureHandle specularReflection = TextureHandle();
+	TextureHandle diffuseReflection = TextureHandle();
+};
+
 class ReflectionProbeRenderer : public IRenderer
 {
 public:

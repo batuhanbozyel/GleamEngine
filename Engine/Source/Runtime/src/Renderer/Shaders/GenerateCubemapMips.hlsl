@@ -13,8 +13,8 @@ void generateCubemapMipsShader(uint3 dispatchThreadId : SV_DispatchThreadID)
         return;
     }
 
-    TextureCube<float4> srcTexture = ResourceDescriptorHeap[SRVIndex(constants.texture)];
-	RWTexture2DArray<float4> dstTexture = ResourceDescriptorHeap[UAVIndex(constants.texture)];
+    TextureCube<float4> srcTexture = ResourceDescriptorHeap[constants.srcTexture];
+	RWTexture2DArray<float4> dstTexture = ResourceDescriptorHeap[constants.targetTexture];
 
     float2 position = float2(dispatchThreadId.xy) + 0.5;
 	float2 uv = position / constants.resolution;

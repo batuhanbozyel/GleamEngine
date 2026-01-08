@@ -96,14 +96,6 @@ public:
 		return GetBuffer().GetResourceView();
 	}
     
-    NO_DISCARD operator BufferResourceView() const
-    {
-        GLEAM_ASSERT(access == ResourceAccess::Read);
-        GLEAM_ASSERT(GetBuffer().GetResourceView() != InvalidResourceIndex);
-        BufferResourceView srv = GetBuffer().GetResourceView();
-        return srv;
-    }
-    
     NO_DISCARD operator Buffer() const
     {
         return GetBuffer();

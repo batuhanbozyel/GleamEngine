@@ -17,21 +17,22 @@ struct InterleavedMeshVertex
 #define BRDF_LUT_SIZE 256
 struct BRDFLutConstants
 {
-	ShaderResourceIndex targetTexture;
+	UnorderedAccessIndex targetTexture;
 };
 
 #define SPECULAR_RADIANCE_MAX_MIP_LEVEL 5
 struct ProbeConvolutionConstants
 {
 	ShaderResourceIndex sourceTexture;
-	ShaderResourceIndex targetTexture;
+	UnorderedAccessIndex targetTexture;
 	uint32_t resolution;
 	uint32_t level;
 };
 
 struct GenerateCubemapMipsConstants
 {
-	ShaderResourceIndex texture;
+	ShaderResourceIndex srcTexture;
+	UnorderedAccessIndex targetTexture;
 	uint32_t resolution;
 	uint32_t level;
 	float pad0;
@@ -52,7 +53,10 @@ struct DebugMeshUniforms
 
 struct DebugShaderResources
 {
-	BufferResourceView vertexBuffer;
+	ShaderResourceIndex vertexBuffer;
+	float pad0;
+	float pad1;
+	float pad2;
 };
 
 struct ImGuiResources
@@ -87,8 +91,10 @@ struct MeshInstanceData
 
 struct MeshPassResources
 {
-	BufferResourceView instanceBuffer;
-	BufferResourceView materialBuffer;
+	ShaderResourceIndex instanceBuffer;
+	ShaderResourceIndex materialBuffer;
+	float pad0;
+	float pad1;
 };
 
 struct SurfaceInput

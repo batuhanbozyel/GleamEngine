@@ -19,7 +19,7 @@ using float4 = Gleam::Float4;
 #define PUSH_CONSTANT_REGISTER 999
 
 #define CBV_SRV_HEAP_SIZE (128 * 1024)
-#define InvalidResourceIndex Gleam::ShaderResourceIndex(-1)
+#define InvalidResourceIndex uint32_t(-1)
 #define SRVIndex(index) (index)
 
 #if defined(USE_DIRECTX_RENDERER)
@@ -36,14 +36,24 @@ struct ShaderResourceIndex
     uint32_t data;
 
     ShaderResourceIndex()
-        : data(InvalidResourceIndex.data)
+        : data(InvalidResourceIndex)
     {
     }
 
-    explicit ShaderResourceIndex(uint32_t index)
-        : data(index)
+    ShaderResourceIndex(uint32_t index)
+        : data(SRVIndex(index))
     {
     }
+
+	bool operator==(uint32_t index) const
+	{
+		return data == index;
+	}
+
+	bool operator!=(uint32_t index) const
+	{
+		return data != index;
+	}
 
     bool operator==(const ShaderResourceIndex& other) const
     {
@@ -55,39 +65,48 @@ struct ShaderResourceIndex
         return data != other.data;
     }
 };
-static_assert(sizeof(ShaderResourceIndex) == sizeof(uint32_t));
-#else
-typedef uint ShaderResourceIndex;
-#endif
 
-struct BufferResourceView
+struct UnorderedAccessIndex
 {
-	ShaderResourceIndex index;
-	uint32_t padding0;
-	uint32_t padding1;
-	uint32_t padding2;
+	uint32_t data;
 
-#ifdef __HLSL_VERSION
-	template<typename T>
-	T Load(uint id)
+	UnorderedAccessIndex()
+		: data(InvalidResourceIndex)
 	{
-		ByteAddressBuffer buffer = ResourceDescriptorHeap[SRVIndex(index)];
-		return buffer.Load<T>(sizeof(T) * id);
 	}
-#else
-    BufferResourceView() = default;
-    BufferResourceView(ShaderResourceIndex index)
-        : index(index)
-    {
-        
-    }
-#endif
 
-	bool IsValid()
+	UnorderedAccessIndex(uint32_t index)
+		: data(UAVIndex(index))
 	{
-		return index != InvalidResourceIndex;
+	}
+
+	UnorderedAccessIndex(ShaderResourceIndex index)
+		: data(UAVIndex(index.data))
+	{
+	}
+
+	UnorderedAccessIndex& operator=(ShaderResourceIndex index)
+	{
+		data = UAVIndex(index.data);
+		return *this;
+	}
+
+	bool operator==(const UnorderedAccessIndex& other) const
+	{
+		return data == other.data;
+	}
+
+	bool operator!=(const UnorderedAccessIndex& other) const
+	{
+		return data != other.data;
 	}
 };
+static_assert(sizeof(ShaderResourceIndex) == sizeof(uint32_t));
+static_assert(sizeof(UnorderedAccessIndex) == sizeof(uint32_t));
+#else
+typedef uint ShaderResourceIndex;
+typedef uint UnorderedAccessIndex;
+#endif
 
 struct TextureResourceView {};
 
