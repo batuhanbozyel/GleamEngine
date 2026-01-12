@@ -1,14 +1,16 @@
-#pragma once
+#ifndef SKY_ATMOSPHERE_COMMON_HLSL
+#define SKY_ATMOSPHERE_COMMON_HLSL
+
 #include "SkyAtmosphereDefinitions.h"
 #include "Common.hlsli"
 #include "ShaderTypes.h"
 
-CONSTANT_BUFFER(Gleam::CameraUniforms, camera, SKY_ATMOSPHERE_CAMERA_UNIFORMS_BINDING_SLOT);
+CONSTANT_BUFFER(Gleam::CameraUniforms, camera, CAMERA_UNIFORMS_BINDING_SLOT);
 CONSTANT_BUFFER(Gleam::SkyAtmosphereParameters, atmosphereParams, SKY_ATMOSPHERE_PARAMS_BINDING_SLOT);
 CONSTANT_BUFFER(Gleam::SkyAtmosphereUniforms, atmosphereUniforms, SKY_ATMOSPHERE_COMMON_UNIFORMS_BINDING_SLOT);
 
-static Texture2D<float4> TransmittanceLutTexture = ResourceDescriptorHeap[SRVIndex(atmosphereUniforms.transmittanceLutTexture)];
-static Texture2D<float3> MultiScatterTexture = ResourceDescriptorHeap[SRVIndex(atmosphereUniforms.multiScatterLutTexture)];
+static Texture2D<float4> TransmittanceLutTexture = ResourceDescriptorHeap[atmosphereUniforms.transmittanceLutTexture];
+static Texture2D<float3> MultiScatterTexture = ResourceDescriptorHeap[atmosphereUniforms.multiScatterLutTexture];
 
 float FromUnitToSubUvs(float u, float resolution) { return (u + 0.5f / resolution) * (resolution / (resolution + 1.0f)); }
 float FromSubUvsToUnit(float u, float resolution) { return (u - 0.5f / resolution) * (resolution / (resolution - 1.0f)); }
@@ -151,17 +153,18 @@ bool MoveToTopAtmosphere(in float3 WorldDir, in float AtmosphereTopRadius, inout
 
 float3 GetSkyWorldCameraOrigin(float3 cameraPosition)
 {
+	const float3 cameraPositionInKM = cameraPosition * M_TO_KM;
 	const float3 planetCenterWorld = float3(0.0f, -atmosphereParams.bottomRadius, 0.0f);
 	const float bottomRadiusWorldOffset = atmosphereParams.bottomRadius + SKY_ATMOSPHERE_PLANET_RADIUS_OFFSET;
 	
-	const float3 planetCenterToCameraWorld = cameraPosition - planetCenterWorld;
+	const float3 planetCenterToCameraWorld = cameraPositionInKM - planetCenterWorld;
 	const float distanceToPlanetCenterWorld = length(planetCenterToCameraWorld);
 	const float3 planetCenterToCameraWorldNormalized = planetCenterToCameraWorld / distanceToPlanetCenterWorld;
 	
 	// If the camera is below the planet surface, we snap it back onto the surface.
 	// This is to make sure the sky is always visible even if the camera is inside the virtual planet.
 	return distanceToPlanetCenterWorld < bottomRadiusWorldOffset ?
-	planetCenterWorld + bottomRadiusWorldOffset * planetCenterToCameraWorldNormalized : cameraPosition;
+	planetCenterWorld + bottomRadiusWorldOffset * planetCenterToCameraWorldNormalized : cameraPositionInKM;
 }
 
 float3 GetCameraPlanetPos(float3 cameraPosition)
@@ -195,37 +198,6 @@ float3 GetAtmosphereTransmittance(float3 worldPosition, float3 worldDirection)
 	return GetTransmittance(pHeight, SunZenithCosAngle);
 }
 
-float3 GetSunLuminance(float3 WorldPos, float3 WorldDir, float3 SunDir)
-{
-	const float sunHalfApexAngleRadian = 0.5 * atmosphereUniforms.sunAngularDiameter * PI / 180.0;
-	const float sunCosHalfApexAngle = cos(sunHalfApexAngleRadian);
-	
-	float t = RaySphereIntersectNearest(WorldPos, WorldDir, float3(0.0f, 0.0f, 0.0f), atmosphereParams.bottomRadius);
-	if (t < 0.0f) // no intersection
-	{
-		float3 sunLuminance = atmosphereUniforms.sunIlluminance;
-		
-		float cosZenithAngle = max(SunDir.y, 0.0);
-		float airMass = 1.0 / (cosZenithAngle + 0.025); // Kasten-Young formula approximation
-		airMass = min(airMass, 38.0);
-		
-		float VdotL = dot(WorldDir, SunDir);
-		if (VdotL < sunCosHalfApexAngle) // outside sun disk
-		{
-			float offset = sunCosHalfApexAngle - VdotL;
-			float atmosphericScale = lerp(1.0, 3.0, (airMass - 1.0) / 37.0);
-			float angularScale = atmosphereUniforms.sunAngularDiameter / 0.5357f; // scale bloom based on defualt angular diameter
-			
-			float gaussianBloom = exp(-offset * 50000.0 / (angularScale + atmosphericScale)) * 0.5 * atmosphericScale;
-			float invBloom = 1.0 / (0.02 + offset * 300.0 / (angularScale + atmosphericScale)) * 0.015 * atmosphericScale;
-			float bloomFactor = gaussianBloom + invBloom;
-			sunLuminance *= smoothstep(0.002, 1.0, bloomFactor);
-		}
-		return sunLuminance * GetAtmosphereTransmittance(WorldPos, WorldDir);
-	}
-	return 0;
-}
-
 float3 GetMultipleScattering(float3 scattering, float3 extinction, float3 worlPos, float viewZenithCosAngle)
 {
 	float2 uv = saturate(float2(viewZenithCosAngle * 0.5f + 0.5f, (length(worlPos) - atmosphereParams.bottomRadius) / (atmosphereParams.topRadius - atmosphereParams.bottomRadius)));
@@ -248,3 +220,149 @@ float GetShadow(float3 P)
 #endif
 	return 1.0f;
 }
+
+float3 GetSkyLuminance(in float3 WorldPos, in float3 WorldDir, in float tMaxMax = 9000000.0f)
+{
+	// Compute next intersection with atmosphere or ground 
+	float3 earthO = float3(0.0f, 0.0f, 0.0f);
+	float tBottom = RaySphereIntersectNearest(WorldPos, WorldDir, earthO, atmosphereParams.bottomRadius);
+	float tTop = RaySphereIntersectNearest(WorldPos, WorldDir, earthO, atmosphereParams.topRadius);
+	float tMax = 0.0f;
+	if (tBottom < 0.0f)
+	{
+		if (tTop < 0.0f)
+		{
+			tMax = 0.0f; // No intersection with earth nor atmosphere: stop right away  
+			return 0.0f;
+		}
+		else
+		{
+			tMax = tTop;
+		}
+	}
+	else
+	{
+		if (tTop > 0.0f)
+		{
+			tMax = min(tTop, tBottom);
+		}
+	}
+	tMax = min(tMax, tMaxMax);
+
+	// Sample count 
+	float SampleCount = 0.0f;
+	float SampleCountFloor = 0.0f;
+	float tMaxFloor = tMax;
+	{
+		SampleCount = lerp(SKY_ATMOSPHERE_RAY_MARCH_MIN_SPP, SKY_ATMOSPHERE_RAY_MARCH_MAX_SPP, saturate(tMax * 0.01));
+		SampleCountFloor = floor(SampleCount);
+		tMaxFloor = tMax * SampleCountFloor / SampleCount; // rescale tMax to map to the last entire step segment.
+	}
+	float dt = tMax / SampleCount;
+	float3 sunDirection = normalize(atmosphereUniforms.sunDirection);
+
+	// Phase functions
+	const float uniformPhase = 1.0 / (4.0 * PI);
+	const float3 wi = sunDirection;
+	const float3 wo = WorldDir;
+	float cosTheta = dot(wi, wo);
+	float MiePhaseValue = hgPhase(atmosphereParams.miePhaseG, -cosTheta); // mnegate cosTheta because due to WorldDir being a "in" direction. 
+	float RayleighPhaseValue = RayleighPhase(cosTheta);
+
+	float3 globalL = atmosphereUniforms.sunIlluminance;
+
+	// Ray march the atmosphere to integrate optical depth
+	float3 L = 0.0f;
+	float3 throughput = 1.0;
+	float t = 0.0f;
+	const float SampleSegmentT = 0.3f;
+	for (float s = 0.0f; s < SampleCount; s += 1.0f)
+	{
+        // More expenssive but artifact free
+		float t0 = (s) / SampleCountFloor;
+		float t1 = (s + 1.0f) / SampleCountFloor;
+        // Non linear distribution of sample within the range.
+		t0 = t0 * t0;
+		t1 = t1 * t1;
+        // Make t0 and t1 world space distances.
+		t0 = tMaxFloor * t0;
+		if (t1 > 1.0)
+		{
+			t1 = tMax;
+            //	t1 = tMaxFloor;	// this reveal depth slices
+		}
+		else
+		{
+			t1 = tMaxFloor * t1;
+		}
+        //t = t0 + (t1 - t0) * (whangHashNoise(pixPos.x, pixPos.y, gFrameId * 1920 * 1080)); // With dithering required to hide some sampling artifact relying on TAA later? This may even allow volumetric shadow?
+		t = t0 + (t1 - t0) * SampleSegmentT;
+		dt = t1 - t0;
+		float3 P = WorldPos + t * WorldDir;
+
+		MediumSampleRGB medium = SampleMediumRGB(P);
+		const float3 SampleOpticalDepth = medium.extinction * dt;
+		const float3 SampleTransmittance = exp(-SampleOpticalDepth);
+
+		float pHeight = length(P);
+		const float3 UpVector = P / pHeight;
+		float SunZenithCosAngle = dot(sunDirection, UpVector);
+		float3 TransmittanceToSun = GetTransmittance(pHeight, SunZenithCosAngle);
+
+		float3 PhaseTimesScattering = medium.scatteringMie * MiePhaseValue + medium.scatteringRay * RayleighPhaseValue;
+
+		// Earth shadow 
+		float tEarth = RaySphereIntersectNearest(P, sunDirection, earthO + SKY_ATMOSPHERE_PLANET_RADIUS_OFFSET * UpVector, atmosphereParams.bottomRadius);
+		float earthShadow = tEarth >= 0.0f ? 0.0f : 1.0f;
+
+		// Dual scattering for multi scattering 
+		float3 multiScatteredLuminance = GetMultipleScattering(medium.scattering, medium.extinction, P, SunZenithCosAngle);
+
+		float shadow = 1.0f;
+#if SKY_ATMOSPHERE_SHADOWMAP_ENABLED
+		// First evaluate opaque shadow
+		shadow = GetShadow(P);
+#endif
+
+		float3 S = globalL * (earthShadow * shadow * TransmittanceToSun * PhaseTimesScattering + multiScatteredLuminance * medium.scattering);
+
+		// See slide 28 at http://www.frostbite.com/2015/08/physically-based-unified-volumetric-rendering-in-frostbite/ 
+		float3 Sint = (S - S * SampleTransmittance) / medium.extinction; // integrate along the current step segment 
+		L += throughput * Sint; // accumulate and also take into account the transmittance from previous steps
+		throughput *= SampleTransmittance;
+	}
+	return L;
+}
+
+float3 GetSunLuminance(float3 WorldPos, float3 WorldDir)
+{
+	const float sunHalfApexAngleRadian = 0.5 * atmosphereUniforms.sunAngularDiameter * PI / 180.0;
+	const float sunCosHalfApexAngle = cos(sunHalfApexAngleRadian);
+	
+	float t = RaySphereIntersectNearest(WorldPos, WorldDir, float3(0.0f, 0.0f, 0.0f), atmosphereParams.bottomRadius);
+	if (t < 0.0f) // no intersection
+	{
+		float3 sunLuminance = atmosphereUniforms.sunIlluminance;
+		
+		float cosZenithAngle = max(atmosphereUniforms.sunDirection.y, 0.0);
+		float airMass = 1.0 / (cosZenithAngle + 0.025); // Kasten-Young formula approximation
+		airMass = min(airMass, 38.0);
+		
+		float VdotL = dot(WorldDir, atmosphereUniforms.sunDirection);
+		if (VdotL < sunCosHalfApexAngle) // outside sun disk
+		{
+			float offset = sunCosHalfApexAngle - VdotL;
+			float atmosphericScale = lerp(1.0, 3.0, (airMass - 1.0) / 37.0);
+			float angularScale = atmosphereUniforms.sunAngularDiameter / 0.5357f; // scale bloom based on defualt angular diameter
+			
+			float gaussianBloom = exp(-offset * 50000.0 / (angularScale + atmosphericScale)) * 0.5 * atmosphericScale;
+			float invBloom = 1.0 / (0.02 + offset * 300.0 / (angularScale + atmosphericScale)) * 0.015 * atmosphericScale;
+			float bloomFactor = gaussianBloom + invBloom;
+			sunLuminance *= smoothstep(0.002, 1.0, bloomFactor);
+		}
+		return sunLuminance * GetAtmosphereTransmittance(WorldPos, WorldDir);
+	}
+	return 0;
+}
+
+#endif // SKY_ATMOSPHERE_COMMON_HLSL

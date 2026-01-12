@@ -1,4 +1,5 @@
-#pragma once
+#ifndef COLORS_HLSL
+#define COLORS_HLSL
 
 half Luminance(half3 linearRgb)
 {
@@ -20,3 +21,4 @@ half3 sRGBToLinear(half3 color)
     color = max(6.10352e-5, color); // minimum positive non-denormal (fixes black problem on DX11 AMD and NV)
     return select(color > 0.04045, pow(color * (1.0 / 1.055) + 0.0521327, 2.4), color * (1.0 / 12.92));
 }
+#endif // COLORS_HLSL

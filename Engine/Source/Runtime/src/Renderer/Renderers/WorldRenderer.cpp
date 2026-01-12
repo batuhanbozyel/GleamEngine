@@ -14,6 +14,7 @@
 #include "Renderer/Mesh.h"
 #include "Renderer/CommandBuffer.h"
 #include "Renderer/GraphicsDevice.h"
+#include "Renderer/Renderers/ReflectionProbeRenderer.h"
 
 #include "World/Systems/RenderSceneProxy.h"
 
@@ -22,15 +23,58 @@ using namespace Gleam;
 void WorldRenderer::OnCreate(RenderContext& context)
 {
 	mDevice = context.device;
+
+	// BRDF Lut
+	{
+		ComputePipelineStateDescriptor pipelineState;
+		pipelineState.entryPoint = "integrateBRDFShader";
+		mBRDFLutPipeline = context.device->CreateComputePipeline(pipelineState);
+
+		TextureDescriptor textureDesc;
+		textureDesc.name = "BRDF LUT";
+		textureDesc.dimension = TextureDimension::Texture2D;
+		textureDesc.format = TextureFormat::R16G16B16A16_SFloat;
+		textureDesc.usage = TextureUsage_Storage | TextureUsage_Sampled;
+		textureDesc.size = { BRDF_LUT_SIZE, BRDF_LUT_SIZE };
+		mBRDFLutTexture = context.device->CreateTexture(context.allocator, textureDesc);
+	}
+}
+
+void WorldRenderer::OnDestroy(RenderContext& context)
+{
+	context.device->Dispose(context.allocator, mBRDFLutTexture);
 }
 
 void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard)
 {
+	const auto& sceneData = blackboard.Get<SceneRenderingData>();
+	const auto& reflectionProbeData = blackboard.Get<ReflectionProbePassData>();
+	const auto& sceneTargetDescriptor = graph.GetDescriptor(sceneData.sceneTarget);
+	auto brdfLut = graph.ImportTexture(mBRDFLutTexture);
+
+	static bool mBakeBRDFLut = true;
+	if (mBakeBRDFLut)
+	{
+		struct BRDFLutData
+		{
+			TextureHandle brdfLut;
+		};
+		graph.AddComputePass<BRDFLutData>("WorldRenderer::BRDFLut", [&](RenderGraphBuilder& builder, BRDFLutData& passData)
+		{
+			passData.brdfLut = builder.WriteTexture(brdfLut);
+			brdfLut = passData.brdfLut;
+		},
+		[this, blackboard](const CommandBuffer* cmd, const BRDFLutData& passData)
+		{
+			cmd->BindComputePipeline(mBRDFLutPipeline);
+			cmd->SetPushConstant(BRDFLutConstants{ .targetTexture = mBRDFLutTexture.GetResourceView() });
+			cmd->Dispatch(Math::DivideRoundingUp(BRDF_LUT_SIZE, 16), Math::DivideRoundingUp(BRDF_LUT_SIZE, 16), 1);
+		});
+		mBakeBRDFLut = false;
+	}
+	
     graph.AddRenderPass<WorldRenderingData>("WorldRenderer::ForwardPass", [&](RenderGraphBuilder& builder, WorldRenderingData& passData)
     {
-        const auto& sceneData = blackboard.Get<SceneRenderingData>();
-        const auto& sceneTargetDescriptor = graph.GetDescriptor(sceneData.sceneTarget);
-        
         RenderTextureDescriptor textureDesc;
         textureDesc.name = "SceneColorRT";
         textureDesc.size = sceneTargetDescriptor.size;
@@ -44,6 +88,13 @@ void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
         
         passData.colorTarget = builder.UseColorBuffer(passData.colorTarget);
         passData.depthTarget = builder.UseDepthBuffer(passData.depthTarget);
+
+		passData.transmittanceLut = builder.ReadTexture(sceneData.atmosphere.transmittanceLut);
+		passData.multiScatterLut = builder.ReadTexture(sceneData.atmosphere.multiScatterLut);
+		passData.brdfLut = builder.ReadTexture(brdfLut);
+
+		passData.specularReflection = builder.ReadTexture(reflectionProbeData.specularReflection);
+		passData.diffuseReflection = builder.ReadTexture(reflectionProbeData.diffuseReflection);
         blackboard.Add(passData);
     },
     [this, blackboard](const CommandBuffer* cmd, const WorldRenderingData& passData)
@@ -57,17 +108,17 @@ void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 			MeshPassResources resources;
 			resources.instanceBuffer = batch.instanceBuffer.GetResourceView();
 			resources.materialBuffer = materialBuffer.GetResourceView();
-			resources.atmosphere = sceneData.atmosphere;
 
 			cmd->BindGraphicsPipeline(pipeline);
-			cmd->SetConstantBuffer(resources, 0);
-			cmd->SetConstantBuffer(sceneData.camera, 1);
-			cmd->SetConstantBuffer(sceneData.atmosphere, 2);
+			cmd->SetConstantBuffer(resources, MESH_PASS_RESOURCES_BINDING_SLOT);
+			cmd->SetConstantBuffer(sceneData.camera.uniforms, CAMERA_UNIFORMS_BINDING_SLOT);
+			cmd->SetConstantBuffer(sceneData.atmosphere.params, SKY_ATMOSPHERE_PARAMS_BINDING_SLOT);
+			cmd->SetConstantBuffer(sceneData.atmosphere.uniforms, SKY_ATMOSPHERE_COMMON_UNIFORMS_BINDING_SLOT);
 
 			for (uint32_t instanceID = 0; instanceID < batch.numInstances; ++instanceID)
 			{
 				const auto& instance = batch.instances[instanceID];
-				cmd->SetConstantBuffer(instance, 7);
+				cmd->SetConstantBuffer(instance, MESH_INSTANCE_DATA_BINDING_SLOT);
 				cmd->DrawIndexed(batch.meshes[instanceID]->GetIndexBuffer(), IndexType::UINT32, instance.indexCount, 1, instance.firstIndex);
 			}
         });

@@ -19,8 +19,6 @@ GCLASS(Entity, "9662B020-8A90-47FE-8C12-2D46316A6590", Serializable)
 {
 public:
 
-	GLEAM_NONCOPYABLE(Entity);
-    
     Entity() = default;
     
     Entity(EntityHandle handle, entt::registry* registry, const TString& name, const Guid& guid)

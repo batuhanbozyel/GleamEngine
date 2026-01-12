@@ -49,8 +49,6 @@ CommandBuffer::~CommandBuffer()
 
 void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, const TStringView debugName) const
 {
-    [mHandle->device->GetResidencySet() commit];
-    
     MTL4RenderPassDescriptor* renderPass = [MTL4RenderPassDescriptor new];
     if (renderPassDesc.depthAttachment.texture.IsValid())
     {
@@ -105,8 +103,6 @@ void CommandBuffer::EndRenderPass() const
 
 void CommandBuffer::BeginComputePass(const TStringView debugName) const
 {
-    [mHandle->device->GetResidencySet() commit];
-    
     mHandle->computeCommandEncoder = [mHandle->commandBuffer computeCommandEncoder];
     mHandle->computeCommandEncoder.label = TO_NSSTRING(debugName.data());
     
@@ -283,8 +279,11 @@ void CommandBuffer::Commit() const
     mHandle->waitEventValue = mHandle->eventValue;
     
     id<MTL4CommandQueue> commandQueue = mHandle->device->GetCommandQueue();
+    
+    [mHandle->device->GetResidencySet() commit];
     [commandQueue commit:&mHandle->commandBuffer count:1u];
     [commandQueue signalEvent:mHandle->event value:mHandle->eventValue++];
+    
     mConstantBuffer.Reset();
     mCommitted = true;
 }

@@ -1,9 +1,15 @@
-#pragma once
+#ifndef SHARED_TYPES_H
+#define SHARED_TYPES_H
+
 #if defined(__cplusplus)
 #include "Renderer/Shaders/ShaderInterop.h"
 #endif
 
 namespace Gleam {
+
+#define CAMERA_UNIFORMS_BINDING_SLOT 5
+#define SKY_ATMOSPHERE_PARAMS_BINDING_SLOT 6
+#define SKY_ATMOSPHERE_COMMON_UNIFORMS_BINDING_SLOT 7
 
 struct SkyAtmosphereUniforms
 {
@@ -35,3 +41,4 @@ struct CameraUniforms
 };
 
 } // namespace Gleam
+#endif // SHARED_TYPES_H

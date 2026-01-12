@@ -110,7 +110,7 @@ void DebugRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 		
 		if (!mDepthDebugMeshes.empty())
         {
-            RenderMeshes(cmd, sceneData.camera, mDepthDebugMeshes, true);
+            RenderMeshes(cmd, sceneData.camera.uniforms, mDepthDebugMeshes, true);
         }
 
 		if (!mLines.empty())
@@ -123,7 +123,7 @@ void DebugRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 
 		if (!mDebugMeshes.empty())
         {
-            RenderMeshes(cmd, sceneData.camera, mDebugMeshes, false);
+            RenderMeshes(cmd, sceneData.camera.uniforms, mDebugMeshes, false);
         }
         
         // clear after rendering

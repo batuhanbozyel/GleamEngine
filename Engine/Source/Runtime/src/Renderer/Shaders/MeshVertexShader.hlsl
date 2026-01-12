@@ -5,9 +5,12 @@
 
 MeshVertexOut meshVertexShader(uint vertex_id : SV_VertexID)
 {
+	ByteAddressBuffer positionBuffer = ResourceDescriptorHeap[instanceData.positionBuffer];
+	ByteAddressBuffer interleavedBuffer = ResourceDescriptorHeap[instanceData.interleavedBuffer];
+    
 	uint vertexID = vertex_id + instanceData.baseVertex;
-	Gleam::InterleavedMeshVertex interleavedVert = instanceData.interleavedBuffer.Load<Gleam::InterleavedMeshVertex>(vertexID);
-    float3 position = instanceData.positionBuffer.Load<float3>(vertexID);
+    float3 position = positionBuffer.Load<float3>(vertexID * sizeof(float3));
+	Gleam::InterleavedMeshVertex interleavedVert = interleavedBuffer.Load<Gleam::InterleavedMeshVertex>(vertexID * sizeof(Gleam::InterleavedMeshVertex));
 	float4 worldPosition = mul(instanceData.transform, float4(position, 1.0f));
 
     MeshVertexOut OUT;

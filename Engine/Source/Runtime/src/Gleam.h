@@ -59,6 +59,7 @@
 #include "Renderer/Shaders/ShaderInterop.h"
 #include "Renderer/Shaders/ShaderTypes.h"
 
+#include "World/Components/ReflectionProbe.h"
 #include "World/Components/SkyAtmosphere.h"
 #include "World/Components/MeshRenderer.h"
 #include "World/Components/Transform.h"

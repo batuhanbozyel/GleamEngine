@@ -173,6 +173,12 @@ struct RenderGraphTextureNode final : public RenderGraphResourceNode
 		BarrierLayout layout = BarrierLayout::Undefined;
 	} barrierState;
 
+	RenderGraphTextureNode(uint32_t uniqueId, const TextureDescriptor& descriptor, bool transient)
+		: RenderGraphResourceNode(uniqueId, transient), texture(descriptor)
+	{
+
+	}
+
 	RenderGraphTextureNode(uint32_t uniqueId, const RenderTextureDescriptor& descriptor, bool transient)
 		: RenderGraphResourceNode(uniqueId, transient), texture(descriptor),
 		clearColor(descriptor.clearColor),

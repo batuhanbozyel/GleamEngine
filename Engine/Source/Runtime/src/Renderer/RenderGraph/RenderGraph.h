@@ -40,7 +40,7 @@ public:
 	void Execute(const CommandBuffer* cmd, SceneRenderingData& sceneData);
 	
 	template<typename PassData>
-	const PassData& AddRenderPass(const TStringView name, SetupFunc<PassData>&& setup, RenderFunc<PassData>&& execute)
+	PassData& AddRenderPass(const TStringView name, SetupFunc<PassData>&& setup, RenderFunc<PassData>&& execute)
 	{
         auto uniqueId = static_cast<uint32_t>(mPassNodes.size());
         auto node = new RenderGraphRenderPassNode(uniqueId, name, std::forward<decltype(execute)>(execute));
@@ -48,7 +48,7 @@ public:
 	}
 
 	template<typename PassData>
-	const PassData& AddComputePass(const TStringView name, SetupFunc<PassData>&& setup, RenderFunc<PassData>&& execute)
+	PassData& AddComputePass(const TStringView name, SetupFunc<PassData>&& setup, RenderFunc<PassData>&& execute)
 	{
 		auto uniqueId = static_cast<uint32_t>(mPassNodes.size());
 		auto node = new RenderGraphComputePassNode(uniqueId, name, std::forward<decltype(execute)>(execute));
@@ -62,7 +62,7 @@ public:
 private:
 	
 	template<typename PassData>
-	const PassData& AddPassNode(RenderGraphPassNode* node, SetupFunc<PassData>&& setup)
+	PassData& AddPassNode(RenderGraphPassNode* node, SetupFunc<PassData>&& setup)
 	{
 		mPassNodes.push_back(node);
 		auto& passData = std::any_cast<PassData&>(node->data);

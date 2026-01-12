@@ -5,13 +5,6 @@ namespace Gleam {
 
 struct Atmosphere;
 
-struct SkyAtmospherePassData
-{
-	TextureHandle sceneColor;
-	TextureHandle sceneDepth;
-	TextureHandle multiScatterLut;
-};
-
 class SkyAtmosphereRenderer : public IRenderer
 {
 public:
@@ -22,20 +15,21 @@ public:
 
 	virtual void AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard) override;
 
-	ShaderResourceIndex GetTransmittanceLutTexture() const
+	const Texture& GetTransmittanceLutTexture() const
 	{
-		return mTransmittanceLutTexture.GetResourceView();
+		return mTransmittanceLutTexture;
 	}
 
-	ShaderResourceIndex GetMultiScatterLutTexture() const
+	const Texture& GetMultiScatterLutTexture() const
 	{
-		return mMultiScatterLutTexture.GetResourceView();
+		return mMultiScatterLutTexture;
 	}
-
-private:
 
 	SkyAtmosphereParameters GetSkyAtmosphereParameters(const Atmosphere& atmosphere) const;
 
+private:
+
+	bool mBakeLuts = true;
 	SkyAtmosphereParameters mAtmosphereParams = {};
 
 	Texture mTransmittanceLutTexture;

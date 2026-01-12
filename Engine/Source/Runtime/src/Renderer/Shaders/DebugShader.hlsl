@@ -17,7 +17,8 @@ struct VertexOut
 
 VertexOut debugVertexShader(uint vertex_id: SV_VertexID)
 {
-    Gleam::DebugVertex vertex = resources.vertexBuffer.Load<Gleam::DebugVertex>(vertex_id);
+	ByteAddressBuffer vertexBuffer = ResourceDescriptorHeap[resources.vertexBuffer];
+    Gleam::DebugVertex vertex = vertexBuffer.Load<Gleam::DebugVertex>(vertex_id * sizeof(Gleam::DebugVertex));
     
     VertexOut OUT;
     OUT.position = mul(camera.viewProjectionMatrix, float4(vertex.position.xyz, 1.0f));
@@ -27,8 +28,9 @@ VertexOut debugVertexShader(uint vertex_id: SV_VertexID)
 
 VertexOut debugMeshVertexShader(uint vertex_id: SV_VertexID)
 {
+	ByteAddressBuffer vertexBuffer = ResourceDescriptorHeap[resources.vertexBuffer];
     uint vertexID = vertex_id + uniforms.baseVertex;
-    float3 position = resources.vertexBuffer.Load<float3>(vertexID);
+    float3 position = vertexBuffer.Load<float3>(vertexID * sizeof(float3));
     
     VertexOut OUT;
     OUT.position = mul(camera.viewProjectionMatrix, mul(uniforms.transform, float4(position, 1.0f)));

@@ -14,7 +14,7 @@ struct CommandBuffer::Impl
 
 	ID3D12GraphicsCommandList7* commandList = nullptr;
 	ID3D12Fence* fence = nullptr;
-	uint64_t fenceValue = 0;
+	uint64_t fenceValue = 1;
 	uint64_t waitFenceValue = 0;
 
 	PipelineHandle pipeline;
@@ -26,11 +26,7 @@ CommandBuffer::CommandBuffer(GraphicsDevice* device)
 	, mConstantBuffer(device, 4194304) // 4 MB
 {
 	mHandle->device = static_cast<DirectXDevice*>(device);
-	DX_CHECK(static_cast<ID3D12Device10*>(mHandle->device->GetHandle())->CreateFence(
-		mHandle->fenceValue,
-		D3D12_FENCE_FLAG_NONE,
-		IID_PPV_ARGS(&mHandle->fence)
-	));
+	DX_CHECK(static_cast<ID3D12Device10*>(mHandle->device->GetHandle())->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&mHandle->fence)));
 }
 
 CommandBuffer::~CommandBuffer()
@@ -55,15 +51,12 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, 
 		colorAttachments[i].BeginningAccess.Clear.ClearValue.Color[2] = colorAttachmentDesc.clearColor.b;
 		colorAttachments[i].BeginningAccess.Clear.ClearValue.Color[3] = colorAttachmentDesc.clearColor.a;
 		colorAttachments[i].EndingAccess.Type = AttachmentStoreActionToDX_TYPE(colorAttachmentDesc.storeAction);
-
-		auto resource = static_cast<ID3D12Resource*>(colorAttachmentDesc.texture.GetHandle());
 		colorAttachments[i].cpuDescriptor = colorAttachmentDesc.texture.GetRenderTargetView();
 	}
 
 	if (renderPassDesc.depthAttachment.texture.IsValid())
 	{
 		auto format = renderPassDesc.depthAttachment.texture.GetDescriptor().format;
-		auto resource = static_cast<ID3D12Resource*>(renderPassDesc.depthAttachment.texture.GetHandle());
 
 		D3D12_RENDER_PASS_DEPTH_STENCIL_DESC depthAttachment{};
 		depthAttachment.cpuDescriptor = renderPassDesc.depthAttachment.texture.GetRenderTargetView();
@@ -232,6 +225,11 @@ void CommandBuffer::Blit(const Texture& source, const Texture& destination) cons
 
 void CommandBuffer::Barrier(const BarrierGroup& barrier) const
 {
+	if (barrier.bufferBarriers.empty() && barrier.textureBarriers.empty())
+	{
+		return;
+	}
+
 	TArray<D3D12_BUFFER_BARRIER> d3d12BufferBarriers;
 	TArray<D3D12_TEXTURE_BARRIER> d3d12TextureBarriers;
 

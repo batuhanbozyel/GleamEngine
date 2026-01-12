@@ -76,6 +76,7 @@ static constexpr TextureFormat MTLPixelFormatToTextureFormat(MTLPixelFormat form
 
 		case MTLPixelFormatRGB9E5Float: return TextureFormat::R9G9B9E5_SFloat;
 		case MTLPixelFormatRG11B10Float: return TextureFormat::R11G11B10_SFloat;
+		case MTLPixelFormatRGB10A2Unorm: return TextureFormat::R10G10B10A2_Unorm;
             
         // Depth - Stencil formats
         case MTLPixelFormatDepth16Unorm: return TextureFormat::D16_UNorm;
@@ -148,6 +149,7 @@ static constexpr MTLPixelFormat TextureFormatToMTLPixelFormat(TextureFormat form
 
 		case TextureFormat::R9G9B9E5_SFloat: return MTLPixelFormatRGB9E5Float;
 		case TextureFormat::R11G11B10_SFloat: return MTLPixelFormatRG11B10Float;
+		case TextureFormat::R10G10B10A2_Unorm: return MTLPixelFormatRGB10A2Unorm;
 
         // Depth - Stencil formats
         case TextureFormat::D16_UNorm: return MTLPixelFormatDepth16Unorm;
@@ -318,30 +320,6 @@ static constexpr MTLColorWriteMask ColorWriteMaskToMTLColorWriteMask(ColorWriteM
         case ColorWriteMask::All: return MTLColorWriteMaskAll;
         default: GLEAM_ASSERT(false, "Metal: Unknown color write mask specified!"); return MTLColorWriteMaskNone;
     }
-}
-
-static constexpr MTLTextureType TextureDimensionToMTLTextureType(TextureDimension dimension)
-{
-	switch (dimension)
-	{
-		case TextureDimension::Texture2D: return MTLTextureType2D;
-		case TextureDimension::Texture3D: return MTLTextureType3D;
-		default: GLEAM_ASSERT(false, "Metal: Unknown texture dimension specified!"); return MTLTextureType(~0);
-	}
-}
-
-static constexpr MTLTextureType TextureDimensionToMTLTextureViewType(TextureDimension dimension)
-{
-#if IR_VERSION_MAJOR < 3
-	switch (dimension)
-	{
-		case TextureDimension::Texture2D: return MTLTextureType2DArray;
-		case TextureDimension::Texture3D: return MTLTextureType3D; // No change required
-		default: GLEAM_ASSERT(false, "Metal: Unknown texture dimension specified!"); return MTLTextureType(~0);
-	}
-#else
-	return TextureDimensionToMTLTextureType(dimension);
-#endif
 }
 
 static constexpr MTLResourceOptions MemoryTypeToMTLResourceOption(MemoryType type)

@@ -1,4 +1,6 @@
-#pragma once
+#ifndef SHADER_TYPES_H
+#define SHADER_TYPES_H
+
 #include "SharedTypes.h"
 
 namespace Gleam {
@@ -11,6 +13,30 @@ struct InterleavedMeshVertex
 	float2 texCoord;
 };
 #endif
+
+#define BRDF_LUT_SIZE 256
+struct BRDFLutConstants
+{
+	UnorderedAccessIndex targetTexture;
+};
+
+#define SPECULAR_RADIANCE_MAX_MIP_LEVEL 5
+struct ProbeConvolutionConstants
+{
+	ShaderResourceIndex sourceTexture;
+	UnorderedAccessIndex targetTexture;
+	uint32_t resolution;
+	uint32_t level;
+};
+
+struct GenerateCubemapMipsConstants
+{
+	ShaderResourceIndex srcTexture;
+	UnorderedAccessIndex targetTexture;
+	uint32_t resolution;
+	uint32_t level;
+	uint32_t face;
+};
 
 struct DebugVertex
 {
@@ -27,7 +53,10 @@ struct DebugMeshUniforms
 
 struct DebugShaderResources
 {
-	BufferResourceView vertexBuffer;
+	ShaderResourceIndex vertexBuffer;
+	float pad0;
+	float pad1;
+	float pad2;
 };
 
 struct ImGuiResources
@@ -43,13 +72,16 @@ struct TonemapUniforms
 	ShaderResourceIndex sceneColor;
 };
 
+#define MESH_PASS_RESOURCES_BINDING_SLOT 0
+#define MESH_INSTANCE_DATA_BINDING_SLOT 1
 struct MeshInstanceData
 {
 	float4x4 transform;
 
-	BufferResourceView positionBuffer;
-	BufferResourceView interleavedBuffer;
-	BufferResourceView indexBuffer;
+	ShaderResourceIndex positionBuffer;
+	ShaderResourceIndex interleavedBuffer;
+	ShaderResourceIndex indexBuffer;
+	float pad0;
 
 	uint32_t baseVertex;
 	uint32_t indexCount;
@@ -59,9 +91,10 @@ struct MeshInstanceData
 
 struct MeshPassResources
 {
-	BufferResourceView instanceBuffer;
-	BufferResourceView materialBuffer;
-	SkyAtmosphereUniforms atmosphere;
+	ShaderResourceIndex instanceBuffer;
+	ShaderResourceIndex materialBuffer;
+	float pad0;
+	float pad1;
 };
 
 struct SurfaceInput
@@ -123,10 +156,11 @@ struct SkyAtmosphereParameters
 
 struct SkyAtmosphereRenderConstants
 {
-	ShaderResourceIndex targetTexture;
+	UnorderedAccessIndex targetTexture;
 	ShaderResourceIndex depthTexture;
-	float pad0;
+	uint32_t renderSun;
 	float pad1;
 };
 
 } // namespace Gleam
+#endif // SHADER_TYPES_H

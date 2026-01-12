@@ -1,4 +1,6 @@
-#pragma once
+#ifndef COMMON_HLSL
+#define COMMON_HLSL
+
 #include "ShaderInterop.h"
 #include "SharedTypes.h"
 
@@ -12,6 +14,9 @@
 #define FLT_EPSILON     1.192092896e-07 // Smallest positive number, such that 1.0 + FLT_EPSILON != 1.0
 #define FLT_MIN         1.175494351e-38 // Minimum representable positive floating-point number
 #define FLT_MAX         3.402823466e+38 // Maximum representable floating-point number
+
+#define M_TO_KM			0.001
+#define KM_TO_M			1000.0
 
 #define CONSTANT_BUFFER_HELPER(type, name, slot) ConstantBuffer<type> name : register(b##slot, space0)
 #define CONSTANT_BUFFER(type, name, slot) CONSTANT_BUFFER_HELPER(type, name, slot)
@@ -152,3 +157,41 @@ float RaySphereIntersectNearest(float3 rayOrigin, float3 rayDirection, float3 sp
 	}
 	return max(0.0, min(sol0, sol1));
 }
+
+void GetOrthonormalBasis(float3 N, out float3 T, out float3 B)
+{
+    float3 up = abs(N.y) < 0.999 ? float3(0, 1, 0) : float3(1, 0, 0);
+    T = normalize(cross(up, N));
+    B = cross(N, T);
+}
+
+float3 GetCubemapDirection(float2 uv, uint faceIndex)
+{
+    float2 ndc = uv * 2.0 - 1.0;
+	ndc.y = -ndc.y;
+    
+    float3 direction;
+    switch (faceIndex)
+    {
+        case 0: // +X
+            direction = float3(1.0, ndc.y, -ndc.x);
+            break;
+        case 1: // -X
+            direction = float3(-1.0, ndc.y, ndc.x);
+            break;
+        case 2: // +Y
+            direction = float3(ndc.x, 1.0, -ndc.y);
+            break;
+        case 3: // -Y
+            direction = float3(ndc.x, -1.0, ndc.y);
+            break;
+        case 4: // +Z
+            direction = float3(ndc.x, ndc.y, 1.0);
+            break;
+        case 5: // -Z
+            direction = float3(-ndc.x, ndc.y, -1.0);
+            break;
+    }
+    return normalize(direction);
+}
+#endif

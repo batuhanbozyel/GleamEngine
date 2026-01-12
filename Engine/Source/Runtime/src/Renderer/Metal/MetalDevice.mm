@@ -258,15 +258,56 @@ Texture GraphicsDevice::CreateTexture(GPUAllocator* allocator, const TextureDesc
 {
     Texture texture(descriptor);
     MTLTextureDescriptor* textureDesc = [MTLTextureDescriptor new];
-    textureDesc.textureType = TextureDimensionToMTLTextureType(descriptor.dimension);
     textureDesc.pixelFormat = TextureFormatToMTLPixelFormat(descriptor.format);
     textureDesc.width = descriptor.size.width;
     textureDesc.height = descriptor.size.height;
-    textureDesc.depth = descriptor.depth;
     textureDesc.mipmapLevelCount = texture.mMipMapLevels;
+    textureDesc.arrayLength = 1;
     textureDesc.sampleCount = 1;
+    textureDesc.depth = 1;
     textureDesc.usage = TextureUsageToMTLTextureUsage(descriptor.usage);
     textureDesc.storageMode = MTLStorageModePrivate; // TODO: add support for cpu visible textures
+
+    NSUInteger sliceCount = 1;
+    switch (descriptor.dimension)
+    {
+        case TextureDimension::Texture2D:
+        {
+            if (descriptor.depth == 1)
+            {
+                textureDesc.textureType = MTLTextureType2D;
+            }
+            else
+            {
+                sliceCount = descriptor.depth;
+                textureDesc.arrayLength = descriptor.depth;
+                textureDesc.textureType = MTLTextureType2DArray;
+            }
+            break;
+        }
+        case TextureDimension::Texture3D:
+        {
+            textureDesc.textureType = MTLTextureType3D;
+            textureDesc.depth = descriptor.depth;
+            break;
+        }
+        case TextureDimension::TextureCube:
+        {
+            if (descriptor.depth == 1)
+            {
+                textureDesc.textureType = MTLTextureTypeCube;
+                textureDesc.arrayLength = 6;
+                sliceCount = 6;
+            }
+            else
+            {
+                sliceCount = 6 * descriptor.depth;
+                textureDesc.arrayLength = 6 * descriptor.depth;
+                textureDesc.textureType = MTLTextureTypeCubeArray;
+            }
+            break;
+        }
+    }
 
     MTLSizeAndAlign sizeAndAlign = [mHandle heapTextureSizeAndAlignWithDescriptor:textureDesc];
     MemoryRequirements memoryRequirements =
@@ -280,9 +321,9 @@ Texture GraphicsDevice::CreateTexture(GPUAllocator* allocator, const TextureDesc
     id<MTLHeap> heap = allocation.block->heap.GetHandle();
     id<MTLTexture> baseTexture = [heap newTextureWithDescriptor:textureDesc offset:allocation.offset];
     id<MTLTexture> textureView = [baseTexture newTextureViewWithPixelFormat:baseTexture.pixelFormat
-                                                                textureType:TextureDimensionToMTLTextureViewType(descriptor.dimension)
+                                                                textureType:textureDesc.textureType
                                                                      levels:NSMakeRange(0, texture.mMipMapLevels)
-                                                                     slices:NSMakeRange(0, 1)];
+                                                                     slices:NSMakeRange(0, sliceCount)];
     [baseTexture setLabel:TO_NSSTRING(descriptor.name.c_str())];
     [textureView setLabel:TO_NSSTRING((descriptor.name + "_View").c_str())];
     [static_cast<MetalDevice*>(this)->GetResidencySet() addAllocation:textureView];
