@@ -16,21 +16,6 @@ GSTRUCT(Quaternion, "69ACEBFE-7CFD-4876-9D4D-DF428E49A626", Serializable)
 
     static const Quaternion identity;
     
-	NO_DISCARD FORCE_INLINE constexpr Float3 EulerAngles() const
-	{
-		return Float3
-		{
-			Math::Atan2(2.0f * (w * x + y * z), 1.0f - 2.0f * (x * x + y * y)),
-			Math::Asin(Math::Clamp(2.0f * (w * y - z * x), -1.0f, 1.0f)),
-			Math::Atan2(2.0f * (w * z + x * y), 1.0f - 2.0f * (y * y + z * z))
-		};
-	}
-
-	NO_DISCARD FORCE_INLINE constexpr Quaternion Conjugate() const
-	{
-		return Quaternion{ w, -x, -y, -z };
-	}
-
 	constexpr Quaternion() = default;
 	constexpr Quaternion(Quaternion&&) noexcept = default;
 	constexpr Quaternion(const Quaternion&) = default;
@@ -182,6 +167,21 @@ NO_DISCARD FORCE_INLINE constexpr Float3 operator*(const Quaternion& quat, const
 }
 
 namespace Math {
+
+NO_DISCARD FORCE_INLINE constexpr Float3 EulerAngles(const Quaternion& q)
+{
+	return Float3
+	{
+		Math::Atan2(2.0f * (q.w * q.x + q.y * q.z), 1.0f - 2.0f * (q.x * q.x + q.y * q.y)),
+		Math::Asin(Math::Clamp(2.0f * (q.w * q.y - q.z * q.x), -1.0f, 1.0f)),
+		Math::Atan2(2.0f * (q.w * q.z + q.x * q.y), 1.0f - 2.0f * (q.y * q.y + q.z * q.z))
+	};
+}
+
+NO_DISCARD FORCE_INLINE constexpr Quaternion Conjugate(const Quaternion& q)
+{
+	return Quaternion{ q.w, -q.x, -q.y, -q.z };
+}
     
 NO_DISCARD FORCE_INLINE constexpr float Dot(const Quaternion& q1, const Quaternion& q2)
 {
@@ -190,7 +190,7 @@ NO_DISCARD FORCE_INLINE constexpr float Dot(const Quaternion& q1, const Quaterni
     
 NO_DISCARD FORCE_INLINE constexpr Quaternion Inverse(const Quaternion& q)
 {
-    return q.Conjugate() / Dot(q, q);
+    return Conjugate(q) / Dot(q, q);
 }
 
 NO_DISCARD FORCE_INLINE constexpr float LengthSquared(const Quaternion& q)
