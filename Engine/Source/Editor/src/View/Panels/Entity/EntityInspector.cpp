@@ -42,7 +42,7 @@ void EntityInspector::Render(Gleam::ImGuiRenderer* imgui)
 		auto localTransform = entity.GetLocalTransform();
 		PropertyDrawer::DrawCustom("Local Transform", Gleam::Reflection::GetClass<Gleam::Transform>().TypeHash(), [&]()
 		{
-			auto localRotation = Gleam::Math::Rad2Deg(localTransform.rotation.EulerAngles());
+			auto localRotation = Gleam::Math::Rad2Deg(Gleam::Math::EulerAngles(localTransform.rotation));
 			PropertyDrawer::DrawVec3Control("Translation", localTransform.position, 0.0f);
 			PropertyDrawer::DrawVec3Control("Rotation", localRotation, 0.0f);
 			PropertyDrawer::DrawScalarControl<float>("Scale", localTransform.scale, 1.0f);
