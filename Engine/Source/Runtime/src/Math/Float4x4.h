@@ -139,73 +139,6 @@ GSTRUCT(Float4x4, "770BABFC-E66A-4CE5-8453-A505EB3016BE", Serializable)
         return *this = *this * rhs;
     }
 
-	NO_DISCARD FORCE_INLINE constexpr Float4x4 Adjugate() const
-	{
-		return Float4x4
-		{
-			Float4
-			{
-				row[1].y * row[2].z * row[3].w + row[3].y * row[1].z * row[2].w + row[2].y * row[3].z * row[1].w - row[1].y * row[3].z * row[2].w
-						- row[2].y * row[1].z * row[3].w - row[3].y * row[2].z * row[1].w,
-				row[0].y * row[3].z * row[2].w + row[2].y * row[0].z * row[3].w + row[3].y * row[2].z * row[0].w - row[3].y * row[0].z * row[2].w
-						- row[2].y * row[3].z * row[0].w - row[0].y * row[2].z * row[3].w,
-				row[0].y * row[1].z * row[3].w + row[3].y * row[0].z * row[1].w + row[1].y * row[3].z * row[0].w - row[0].y * row[3].z * row[1].w
-						- row[1].y * row[0].z * row[3].w - row[3].y * row[1].z * row[0].w,
-				row[0].y * row[2].z * row[1].w + row[1].y * row[0].z * row[2].w + row[2].y * row[1].z * row[0].w - row[0].y * row[1].z * row[2].w
-						- row[2].y * row[0].z * row[1].w - row[1].y * row[2].z * row[0].w
-			},
-			Float4
-			{
-				row[1].z * row[3].w * row[2].x + row[2].z * row[1].w * row[3].x + row[3].z * row[2].w * row[1].x - row[1].z * row[2].w * row[3].x
-						- row[3].z * row[1].w * row[2].x - row[2].z * row[3].w * row[1].x,
-				row[0].z * row[2].w * row[3].x + row[3].z * row[0].w * row[2].x + row[2].z * row[3].w * row[0].x - row[0].z * row[3].w * row[2].x
-						- row[2].z * row[0].w * row[3].x - row[3].z * row[2].w * row[0].x,
-				row[0].z * row[3].w * row[1].x + row[1].z * row[0].w * row[3].x + row[3].z * row[1].w * row[0].x - row[0].z * row[1].w * row[3].x
-						- row[3].z * row[0].w * row[1].x - row[1].z * row[3].w * row[0].x,
-				row[0].z * row[1].w * row[2].x + row[2].z * row[0].w * row[1].x + row[1].z * row[2].w * row[0].x - row[0].z * row[2].w * row[1].x
-						- row[1].z * row[0].w * row[2].x - row[2].z * row[1].w * row[0].x
-			},
-			Float4
-			{
-				row[1].w * row[2].x * row[3].y + row[3].w * row[1].x * row[2].y + row[2].w * row[3].x * row[1].y - row[1].w * row[3].x * row[2].y
-						- row[2].w * row[1].x * row[3].y - row[3].w * row[2].x * row[1].y,
-				row[0].w * row[3].x * row[2].y + row[2].w * row[0].x * row[3].y + row[3].w * row[2].x * row[0].y - row[0].w * row[2].x * row[3].y
-						- row[3].w * row[0].x * row[2].y - row[2].w * row[3].x * row[0].y,
-				row[0].w * row[1].x * row[3].y + row[3].w * row[0].x * row[1].y + row[1].w * row[3].x * row[0].y - row[0].w * row[3].x * row[1].y
-						- row[1].w * row[0].x * row[3].y - row[3].w * row[1].x * row[0].y,
-				row[0].w * row[2].x * row[1].y + row[1].w * row[0].x * row[2].y + row[2].w * row[1].x * row[0].y - row[0].w * row[1].x * row[2].y
-						- row[2].w * row[0].x * row[1].y - row[1].w * row[2].x * row[0].y
-			},
-			Float4
-			{
-				row[1].x * row[3].y * row[2].z + row[2].x * row[1].y * row[3].z + row[3].x * row[2].y * row[1].z - row[1].x * row[2].y * row[3].z
-						- row[3].x * row[1].y * row[2].z - row[2].x * row[3].y * row[1].z,
-				row[0].x * row[2].y * row[3].z + row[3].x * row[0].y * row[2].z + row[2].x * row[3].y * row[0].z - row[0].x * row[3].y * row[2].z
-						- row[2].x * row[0].y * row[3].z - row[3].x * row[2].y * row[0].z,
-				row[0].x * row[3].y * row[1].z + row[1].x * row[0].y * row[3].z + row[3].x * row[1].y * row[0].z - row[0].x * row[1].y * row[3].z
-						- row[3].x * row[0].y * row[1].z - row[1].x * row[3].y * row[0].z,
-				row[0].x * row[1].y * row[2].z + row[2].x * row[0].y * row[1].z + row[1].x * row[2].y * row[0].z - row[0].x * row[2].y * row[1].z
-						- row[1].x * row[0].y * row[2].z - row[2].x * row[1].y * row[0].z
-			}
-		};
-	}
-
-	NO_DISCARD FORCE_INLINE constexpr float Determinant() const
-	{
-		return row[0].x
-			* (row[1].y * row[2].z * row[3].w + row[3].y * row[1].z * row[2].w + row[2].y * row[3].z * row[1].w - row[1].y * row[3].z * row[2].w
-				- row[2].y * row[1].z * row[3].w - row[3].y * row[2].z * row[1].w)
-			+ row[0].y
-			* (row[1].z * row[3].w * row[2].x + row[2].z * row[1].w * row[3].x + row[3].z * row[2].w * row[1].x - row[1].z * row[2].w * row[3].x
-				- row[3].z * row[1].w * row[2].x - row[2].z * row[3].w * row[1].x)
-			+ row[0].z
-			* (row[1].w * row[2].x * row[3].y + row[3].w * row[1].x * row[2].y + row[2].w * row[3].x * row[1].y - row[1].w * row[3].x * row[2].y
-				- row[2].w * row[1].x * row[3].y - row[3].w * row[2].x * row[1].y)
-			+ row[0].w
-			* (row[1].x * row[3].y * row[2].z + row[2].x * row[1].y * row[3].z + row[3].x * row[2].y * row[1].z - row[1].x * row[2].y * row[3].z
-				- row[3].x * row[1].y * row[2].z - row[2].x * row[3].y * row[1].z);
-	}
-
     NO_DISCARD FORCE_INLINE static constexpr Float4x4 Translate(const Float3& translation)
     {
         return Float4x4
@@ -333,10 +266,77 @@ GSTRUCT(Float4x4, "770BABFC-E66A-4CE5-8453-A505EB3016BE", Serializable)
 
 namespace Math {
 
-NO_DISCARD FORCE_INLINE static constexpr Float4x4 Inverse(const Float4x4& m)
+NO_DISCARD FORCE_INLINE constexpr Float4x4 Adjugate(const Float4x4& m)
 {
-	Float4x4 adjudate = m.Adjugate();
-	float invDet = 1.0f / m.Determinant();
+	return Float4x4
+	{
+		Float4
+		{
+			m.row[1].y * m.row[2].z * m.row[3].w + m.row[3].y * m.row[1].z * m.row[2].w + m.row[2].y * m.row[3].z * m.row[1].w - m.row[1].y * m.row[3].z * m.row[2].w
+					- m.row[2].y * m.row[1].z * m.row[3].w - m.row[3].y * m.row[2].z * m.row[1].w,
+			m.row[0].y * m.row[3].z * m.row[2].w + m.row[2].y * m.row[0].z * m.row[3].w + m.row[3].y * m.row[2].z * m.row[0].w - m.row[3].y * m.row[0].z * m.row[2].w
+					- m.row[2].y * m.row[3].z * m.row[0].w - m.row[0].y * m.row[2].z * m.row[3].w,
+			m.row[0].y * m.row[1].z * m.row[3].w + m.row[3].y * m.row[0].z * m.row[1].w + m.row[1].y * m.row[3].z * m.row[0].w - m.row[0].y * m.row[3].z * m.row[1].w
+					- m.row[1].y * m.row[0].z * m.row[3].w - m.row[3].y * m.row[1].z * m.row[0].w,
+			m.row[0].y * m.row[2].z * m.row[1].w + m.row[1].y * m.row[0].z * m.row[2].w + m.row[2].y * m.row[1].z * m.row[0].w - m.row[0].y * m.row[1].z * m.row[2].w
+					- m.row[2].y * m.row[0].z * m.row[1].w - m.row[1].y * m.row[2].z * m.row[0].w
+		},
+		Float4
+		{
+			m.row[1].z * m.row[3].w * m.row[2].x + m.row[2].z * m.row[1].w * m.row[3].x + m.row[3].z * m.row[2].w * m.row[1].x - m.row[1].z * m.row[2].w * m.row[3].x
+					- m.row[3].z * m.row[1].w * m.row[2].x - m.row[2].z * m.row[3].w * m.row[1].x,
+			m.row[0].z * m.row[2].w * m.row[3].x + m.row[3].z * m.row[0].w * m.row[2].x + m.row[2].z * m.row[3].w * m.row[0].x - m.row[0].z * m.row[3].w * m.row[2].x
+					- m.row[2].z * m.row[0].w * m.row[3].x - m.row[3].z * m.row[2].w * m.row[0].x,
+			m.row[0].z * m.row[3].w * m.row[1].x + m.row[1].z * m.row[0].w * m.row[3].x + m.row[3].z * m.row[1].w * m.row[0].x - m.row[0].z * m.row[1].w * m.row[3].x
+					- m.row[3].z * m.row[0].w * m.row[1].x - m.row[1].z * m.row[3].w * m.row[0].x,
+			m.row[0].z * m.row[1].w * m.row[2].x + m.row[2].z * m.row[0].w * m.row[1].x + m.row[1].z * m.row[2].w * m.row[0].x - m.row[0].z * m.row[2].w * m.row[1].x
+					- m.row[1].z * m.row[0].w * m.row[2].x - m.row[2].z * m.row[1].w * m.row[0].x
+		},
+		Float4
+		{
+			m.row[1].w * m.row[2].x * m.row[3].y + m.row[3].w * m.row[1].x * m.row[2].y + m.row[2].w * m.row[3].x * m.row[1].y - m.row[1].w * m.row[3].x * m.row[2].y
+					- m.row[2].w * m.row[1].x * m.row[3].y - m.row[3].w * m.row[2].x * m.row[1].y,
+			m.row[0].w * m.row[3].x * m.row[2].y + m.row[2].w * m.row[0].x * m.row[3].y + m.row[3].w * m.row[2].x * m.row[0].y - m.row[0].w * m.row[2].x * m.row[3].y
+					- m.row[3].w * m.row[0].x * m.row[2].y - m.row[2].w * m.row[3].x * m.row[0].y,
+			m.row[0].w * m.row[1].x * m.row[3].y + m.row[3].w * m.row[0].x * m.row[1].y + m.row[1].w * m.row[3].x * m.row[0].y - m.row[0].w * m.row[3].x * m.row[1].y
+					- m.row[1].w * m.row[0].x * m.row[3].y - m.row[3].w * m.row[1].x * m.row[0].y,
+			m.row[0].w * m.row[2].x * m.row[1].y + m.row[1].w * m.row[0].x * m.row[2].y + m.row[2].w * m.row[1].x * m.row[0].y - m.row[0].w * m.row[1].x * m.row[2].y
+					- m.row[2].w * m.row[0].x * m.row[1].y - m.row[1].w * m.row[2].x * m.row[0].y
+		},
+		Float4
+		{
+			m.row[1].x * m.row[3].y * m.row[2].z + m.row[2].x * m.row[1].y * m.row[3].z + m.row[3].x * m.row[2].y * m.row[1].z - m.row[1].x * m.row[2].y * m.row[3].z
+					- m.row[3].x * m.row[1].y * m.row[2].z - m.row[2].x * m.row[3].y * m.row[1].z,
+			m.row[0].x * m.row[2].y * m.row[3].z + m.row[3].x * m.row[0].y * m.row[2].z + m.row[2].x * m.row[3].y * m.row[0].z - m.row[0].x * m.row[3].y * m.row[2].z
+					- m.row[2].x * m.row[0].y * m.row[3].z - m.row[3].x * m.row[2].y * m.row[0].z,
+			m.row[0].x * m.row[3].y * m.row[1].z + m.row[1].x * m.row[0].y * m.row[3].z + m.row[3].x * m.row[1].y * m.row[0].z - m.row[0].x * m.row[1].y * m.row[3].z
+					- m.row[3].x * m.row[0].y * m.row[1].z - m.row[1].x * m.row[3].y * m.row[0].z,
+			m.row[0].x * m.row[1].y * m.row[2].z + m.row[2].x * m.row[0].y * m.row[1].z + m.row[1].x * m.row[2].y * m.row[0].z - m.row[0].x * m.row[2].y * m.row[1].z
+					- m.row[1].x * m.row[0].y * m.row[2].z - m.row[2].x * m.row[1].y * m.row[0].z
+		}
+	};
+}
+
+NO_DISCARD FORCE_INLINE constexpr float Determinant(const Float4x4& m)
+{
+	return m.row[0].x
+		* (m.row[1].y * m.row[2].z * m.row[3].w + m.row[3].y * m.row[1].z * m.row[2].w + m.row[2].y * m.row[3].z * m.row[1].w - m.row[1].y * m.row[3].z * m.row[2].w
+			- m.row[2].y * m.row[1].z * m.row[3].w - m.row[3].y * m.row[2].z * m.row[1].w)
+		+ m.row[0].y
+		* (m.row[1].z * m.row[3].w * m.row[2].x + m.row[2].z * m.row[1].w * m.row[3].x + m.row[3].z * m.row[2].w * m.row[1].x - m.row[1].z * m.row[2].w * m.row[3].x
+			- m.row[3].z * m.row[1].w * m.row[2].x - m.row[2].z * m.row[3].w * m.row[1].x)
+		+ m.row[0].z
+		* (m.row[1].w * m.row[2].x * m.row[3].y + m.row[3].w * m.row[1].x * m.row[2].y + m.row[2].w * m.row[3].x * m.row[1].y - m.row[1].w * m.row[3].x * m.row[2].y
+			- m.row[2].w * m.row[1].x * m.row[3].y - m.row[3].w * m.row[2].x * m.row[1].y)
+		+ m.row[0].w
+		* (m.row[1].x * m.row[3].y * m.row[2].z + m.row[2].x * m.row[1].y * m.row[3].z + m.row[3].x * m.row[2].y * m.row[1].z - m.row[1].x * m.row[2].y * m.row[3].z
+			- m.row[3].x * m.row[1].y * m.row[2].z - m.row[2].x * m.row[3].y * m.row[1].z);
+}
+
+NO_DISCARD FORCE_INLINE constexpr Float4x4 Inverse(const Float4x4& m)
+{
+	Float4x4 adjudate = Adjugate(m);
+	float invDet = 1.0f / Determinant(m);
 	return Float4x4
 	{
 		adjudate.row[0] * invDet,
@@ -346,7 +346,7 @@ NO_DISCARD FORCE_INLINE static constexpr Float4x4 Inverse(const Float4x4& m)
 	};
 }
 
-FORCE_INLINE static void Decompose(const Float4x4& transform, Float3& translation, Quaternion& rotation, float& scale)
+FORCE_INLINE void Decompose(const Float4x4& transform, Float3& translation, Quaternion& rotation, float& scale)
 {
 	translation = Float3(transform.m[12], transform.m[13], transform.m[14]);
 
