@@ -677,7 +677,7 @@ MetalDevice::MetalDevice(RenderSurface* surface, ResourceReleaseQueue* releaseQu
     }
     
     // root signature
-    constexpr uint32_t NumRootParams = PUSH_CONSTANT_SLOT + 2; // 1 for samplers descriptor table, 1 for push constants
+    constexpr uint32_t NumRootParams = PUSH_CONSTANT_SLOT + 2; // 1 for push constants, 1 for samplers descriptor table
     IRRootParameter1 rootSigParams[NumRootParams];
     for (uint32_t i = 0; i < PUSH_CONSTANT_SLOT; i++)
     {
@@ -702,7 +702,7 @@ MetalDevice::MetalDevice(RenderSurface* surface, ResourceReleaseQueue* releaseQu
       .ShaderVisibility = IRShaderVisibilityAll
     };
     
-    // Sampler descriptor table
+    // Static samplers
     IRDescriptorRange1 samplerRange = {
         .RangeType = IRDescriptorRangeTypeSampler,
         .NumDescriptors = (uint32_t)mStaticSamplers.size(),
@@ -725,7 +725,8 @@ MetalDevice::MetalDevice(RenderSurface* surface, ResourceReleaseQueue* releaseQu
     rootSignature.desc_1_1.Flags = IRRootSignatureFlags(IRRootSignatureFlagDenyHullShaderRootAccess
                                                         | IRRootSignatureFlagDenyDomainShaderRootAccess
                                                         | IRRootSignatureFlagDenyGeometryShaderRootAccess
-                                                        | IRRootSignatureFlagCBVSRVUAVHeapDirectlyIndexed);
+                                                        | IRRootSignatureFlagCBVSRVUAVHeapDirectlyIndexed
+                                                        | IRRootSignatureFlagSamplerHeapDirectlyIndexed);
 
     rootSignature.desc_1_1.NumStaticSamplers = 0;
     rootSignature.desc_1_1.pStaticSamplers = nullptr;
@@ -743,7 +744,11 @@ MetalDevice::MetalDevice(RenderSurface* surface, ResourceReleaseQueue* releaseQu
     }
     
     MTL4ArgumentTableDescriptor* argumentTableDesc = [MTL4ArgumentTableDescriptor new];
-    argumentTableDesc.maxBufferBindCount = MaxArgumentTableBufferCount;
+    argumentTableDesc.initializeBindings = false;
+    argumentTableDesc.supportAttributeStrides = true;
+    argumentTableDesc.maxSamplerStateBindCount = 0;
+    argumentTableDesc.maxTextureBindCount = 0;
+    argumentTableDesc.maxBufferBindCount = 15;
     argumentTableDesc.label = @"ArgumentTable";
     
     __autoreleasing NSError* argumentTableError = nil;
@@ -841,7 +846,7 @@ ShaderResourceIndex MetalDevice::CreateResourceView(const Texture& texture, MTLT
     auto entry = descriptorTable + index.data;
     
     entry->gpuVA = 0;
-    entry->textureViewID = texture.GetRenderTargetView()._impl;
+    entry->textureViewID = resourceID._impl;
     entry->metadata = 0;
     
     return index;
@@ -873,6 +878,7 @@ MetalDescriptorHeap MetalDevice::CreateSamplerHeap(uint32_t capacity) const
     heap.handle = [mHandle newBufferWithLength:capacity * sizeof(IRDescriptorTableEntry) options:MTLResourceStorageModeShared];
     heap.heap = ResourceDescriptorHeap(capacity);
     [heap.handle setLabel:@"SamplerHeap"];
+    [mResidencySet addAllocation:heap.handle];
     return heap;
 }
 
@@ -882,6 +888,7 @@ MetalDescriptorHeap MetalDevice::CreateDescriptorHeap(uint32_t capacity) const
     heap.handle = [mHandle newBufferWithLength:capacity * sizeof(IRDescriptorTableEntry) options:MTLResourceStorageModeShared];
     heap.heap = ResourceDescriptorHeap(capacity);
     [heap.handle setLabel:@"DescriptorHeap"];
+    [mResidencySet addAllocation:heap.handle];
     
     __autoreleasing NSError* error = nil;
     MTLResourceViewPoolDescriptor* desc = [MTLResourceViewPoolDescriptor new];

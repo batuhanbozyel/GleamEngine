@@ -13,10 +13,6 @@
 
 namespace Gleam {
 
-#define STATIC_SAMPLER_SLOT ((TopLevelArgumentBufferSize / sizeof(uint64_t)) - 1)
-static constexpr size_t TopLevelArgumentBufferSize = PUSH_CONSTANT_SLOT * sizeof(uint64_t) + PUSH_CONSTANT_SIZE + sizeof(uint64_t);
-static constexpr size_t MaxArgumentTableBufferCount = 8;
-
 static constexpr TextureFormat MTLPixelFormatToTextureFormat(MTLPixelFormat format)
 {
     switch (format)

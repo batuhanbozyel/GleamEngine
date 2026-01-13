@@ -15,6 +15,13 @@ static uint16_t IRMetalIndexToIRIndex(MTLIndexType indexType)
     return (uint16_t)(indexType+1);
 }
 
+struct TopLevelArgumentBuffer
+{
+    uint64_t constantBuffers[PUSH_CONSTANT_SLOT] = {};
+    uint32_t pushConstant[PUSH_CONSTANT_SIZE / sizeof(uint32_t)] = {};
+    uint64_t samplerDescriptorHeap = 0;
+};
+
 struct CommandBuffer::Impl
 {
     MetalDevice* device = nullptr;
@@ -31,7 +38,7 @@ struct CommandBuffer::Impl
     MTLStages afterQueueStages = MTLStageAll;
     MTLStages beforeStages = MTLStageAll;
     
-    uint64_t topLevelArgumentBuffer[TopLevelArgumentBufferSize / sizeof(uint64_t)] = {};
+    TopLevelArgumentBuffer topLevelArgumentBuffer = {};
 };
 
 CommandBuffer::CommandBuffer(GraphicsDevice* device)
@@ -124,11 +131,8 @@ void CommandBuffer::BindComputePipeline(const ComputePipeline& pipeline) const
     [mHandle->computeCommandEncoder setComputePipelineState:computePipeline.pipelineState];
 
     // Top-level argument buffer
-    memset(mHandle->topLevelArgumentBuffer, 0, TopLevelArgumentBufferSize);
-    
-    // Sampler heap
-    id<MTLBuffer> staticSamplers = mHandle->device->GetSamplerHeap();
-    mHandle->topLevelArgumentBuffer[STATIC_SAMPLER_SLOT] = [staticSamplers gpuAddress];
+    memset(&mHandle->topLevelArgumentBuffer, 0, sizeof(TopLevelArgumentBuffer));
+    mHandle->topLevelArgumentBuffer.samplerDescriptorHeap = [mHandle->device->GetSamplerHeap() gpuAddress];
 }
 
 void CommandBuffer::BindGraphicsPipeline(const GraphicsPipeline& pipeline) const
@@ -145,11 +149,8 @@ void CommandBuffer::BindGraphicsPipeline(const GraphicsPipeline& pipeline) const
     [mHandle->renderCommandEncoder setTriangleFillMode:pipeline.GetDescriptor().wireframe ? MTLTriangleFillModeLines : MTLTriangleFillModeFill];
     
     // Top-level argument buffer
-    memset(mHandle->topLevelArgumentBuffer, 0, TopLevelArgumentBufferSize);
-    
-    // Sampler heap
-    id<MTLBuffer> staticSamplers = mHandle->device->GetSamplerHeap();
-    mHandle->topLevelArgumentBuffer[STATIC_SAMPLER_SLOT] = [staticSamplers gpuAddress];
+    memset(&mHandle->topLevelArgumentBuffer, 0, sizeof(TopLevelArgumentBuffer));
+    mHandle->topLevelArgumentBuffer.samplerDescriptorHeap = [mHandle->device->GetSamplerHeap() gpuAddress];
 }
 
 void CommandBuffer::SetViewport(const Size& size) const
@@ -175,18 +176,18 @@ void CommandBuffer::SetConstantBuffer(const void* data, uint32_t size, uint32_t 
 {
     auto gpuAddress = [mConstantBuffer.GetHandle() gpuAddress]; 
 	gpuAddress += mConstantBuffer.Write(data, size);
-    mHandle->topLevelArgumentBuffer[slot] = gpuAddress;
+    mHandle->topLevelArgumentBuffer.constantBuffers[slot] = gpuAddress;
 }
 
 void CommandBuffer::SetPushConstant(const void* data, uint32_t size) const
 {
-    memcpy(mHandle->topLevelArgumentBuffer + PUSH_CONSTANT_SLOT, data, size);
+    memcpy(mHandle->topLevelArgumentBuffer.pushConstant, data, size);
 }
 
 void CommandBuffer::Dispatch(uint32_t x, uint32_t y, uint32_t z) const
 {
     auto gpuAddress = [mConstantBuffer.GetHandle() gpuAddress];
-    gpuAddress += mConstantBuffer.Write(mHandle->topLevelArgumentBuffer, TopLevelArgumentBufferSize);
+    gpuAddress += mConstantBuffer.Write(mHandle->topLevelArgumentBuffer);
     [mHandle->device->GetArgumentTable() setAddress:gpuAddress atIndex:kIRArgumentBufferBindPoint];
     
     id<MetalComputePipeline> pipeline = (id<MetalComputePipeline>)mHandle->pipeline;
@@ -203,7 +204,7 @@ void CommandBuffer::Draw(uint32_t vertexCount, uint32_t instanceCount) const
     
     size_t drawOffset = mConstantBuffer.Write(drawParams);
     size_t nonIndexedDrawOffset = mConstantBuffer.Write(kIRNonIndexedDraw);
-    size_t topLevelABOffset = mConstantBuffer.Write(mHandle->topLevelArgumentBuffer, TopLevelArgumentBufferSize);
+    size_t topLevelABOffset = mConstantBuffer.Write(mHandle->topLevelArgumentBuffer);
     
     id<MTL4ArgumentTable> argumentTable = mHandle->device->GetArgumentTable();
     [argumentTable setAddress:(gpuAddress + drawOffset) atIndex:kIRArgumentBufferDrawArgumentsBindPoint];
@@ -226,7 +227,7 @@ void CommandBuffer::DrawIndexed(const Buffer& indexBuffer, IndexType type, uint3
     
     size_t drawOffset = mConstantBuffer.Write(drawParams);
     size_t indexedDrawOffset = mConstantBuffer.Write(irIndexType);
-    size_t topLevelABOffset = mConstantBuffer.Write(mHandle->topLevelArgumentBuffer, TopLevelArgumentBufferSize);
+    size_t topLevelABOffset = mConstantBuffer.Write(mHandle->topLevelArgumentBuffer);
     
     id<MTL4ArgumentTable> argumentTable = mHandle->device->GetArgumentTable();
     [argumentTable setAddress:(gpuAddress + drawOffset) atIndex:kIRArgumentBufferDrawArgumentsBindPoint];
