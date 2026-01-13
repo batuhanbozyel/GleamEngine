@@ -57,7 +57,7 @@ private:
 	{
 		ID3D12Fence* fence;
 		uint64_t waitFenceValue = 0;
-		uint64_t fenceValue = 0;
+		uint64_t fenceValue = 1;
 	};
 	TArray<FrameContext> mContext;
 

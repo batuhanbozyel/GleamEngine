@@ -268,7 +268,7 @@ Texture GraphicsDevice::CreateTexture(GPUAllocator* allocator, const TextureDesc
     textureDesc.usage = TextureUsageToMTLTextureUsage(descriptor.usage);
     textureDesc.storageMode = MTLStorageModePrivate; // TODO: add support for cpu visible textures
 
-    NSUInteger sliceCount = 1;
+    NSUInteger sliceCount = descriptor.depth;
     switch (descriptor.dimension)
     {
         case TextureDimension::Texture2D:
@@ -279,7 +279,6 @@ Texture GraphicsDevice::CreateTexture(GPUAllocator* allocator, const TextureDesc
             }
             else
             {
-                sliceCount = descriptor.depth;
                 textureDesc.arrayLength = descriptor.depth;
                 textureDesc.textureType = MTLTextureType2DArray;
             }
@@ -293,16 +292,14 @@ Texture GraphicsDevice::CreateTexture(GPUAllocator* allocator, const TextureDesc
         }
         case TextureDimension::TextureCube:
         {
+            sliceCount = 6 * descriptor.depth;
+            textureDesc.arrayLength = descriptor.depth;
             if (descriptor.depth == 1)
             {
                 textureDesc.textureType = MTLTextureTypeCube;
-                textureDesc.arrayLength = 6;
-                sliceCount = 6;
             }
             else
             {
-                sliceCount = 6 * descriptor.depth;
-                textureDesc.arrayLength = 6 * descriptor.depth;
                 textureDesc.textureType = MTLTextureTypeCubeArray;
             }
             break;
@@ -320,19 +317,71 @@ Texture GraphicsDevice::CreateTexture(GPUAllocator* allocator, const TextureDesc
 
     id<MTLHeap> heap = allocation.block->heap.GetHandle();
     id<MTLTexture> baseTexture = [heap newTextureWithDescriptor:textureDesc offset:allocation.offset];
-    id<MTLTexture> textureView = [baseTexture newTextureViewWithPixelFormat:baseTexture.pixelFormat
-                                                                textureType:textureDesc.textureType
-                                                                     levels:NSMakeRange(0, texture.mMipMapLevels)
-                                                                     slices:NSMakeRange(0, sliceCount)];
     [baseTexture setLabel:TO_NSSTRING(descriptor.name.c_str())];
-    [textureView setLabel:TO_NSSTRING((descriptor.name + "_View").c_str())];
-    [static_cast<MetalDevice*>(this)->GetResidencySet() addAllocation:textureView];
     [static_cast<MetalDevice*>(this)->GetResidencySet() addAllocation:baseTexture];
     allocator->AddAllocation(baseTexture, allocation);
-
     texture.mHandle = baseTexture;
-    texture.mView = textureView;
-    texture.mResourceView = static_cast<MetalDevice*>(this)->CreateResourceView(texture);
+    
+    // Create main view
+    {
+        MTLTextureViewDescriptor* viewDesc = [MTLTextureViewDescriptor new];
+        viewDesc.pixelFormat = textureDesc.pixelFormat;
+        viewDesc.textureType = textureDesc.textureType;
+        viewDesc.levelRange = NSMakeRange(0, textureDesc.mipmapLevelCount);
+        viewDesc.sliceRange = NSMakeRange(0, sliceCount);
+        viewDesc.swizzle = textureDesc.swizzle;
+        texture.mResourceView = static_cast<MetalDevice*>(this)->CreateResourceView(texture, viewDesc);
+    }
+    
+    for (uint32_t i = 0; i < texture.mSliceUnorderedAccessViews.size(); ++i)
+    {
+        uint32_t slice = i / texture.GetMipMapLevels();
+        uint32_t mip = i % texture.GetMipMapLevels();
+        
+        MTLTextureViewDescriptor* viewDesc = [MTLTextureViewDescriptor new];
+        viewDesc.pixelFormat = textureDesc.pixelFormat;
+        
+        switch (descriptor.dimension)
+        {
+            case TextureDimension::Texture2D:
+            case TextureDimension::TextureCube:
+            {
+                viewDesc.textureType = MTLTextureType2DArray;
+                break;
+            }
+            case TextureDimension::Texture3D:
+            {
+                viewDesc.textureType = MTLTextureType3D;
+                break;
+            }
+        }
+        viewDesc.levelRange = NSMakeRange(mip, 1);
+        viewDesc.sliceRange = NSMakeRange(slice, 1);
+        viewDesc.swizzle = textureDesc.swizzle;
+        texture.mSliceUnorderedAccessViews[i] = static_cast<MetalDevice*>(this)->CreateResourceView(texture, viewDesc);
+    }
+    
+    // Create RTV for attachments
+    if (descriptor.usage & TextureUsage_Attachment)
+    {
+        auto descriptorTable = static_cast<IRDescriptorTableEntry*>([static_cast<MetalDevice*>(this)->GetCbvSrvUavHeap() contents]);
+        // Create main RTV
+        {
+            auto entry = descriptorTable + texture.mResourceView.data;
+            texture.mView._impl = entry->textureViewID;
+        }
+        
+        // Create slice RTV
+        for (uint32_t i = 0; i < texture.mSliceViews.size(); i++)
+        {
+            uint32_t slice = i / texture.GetMipMapLevels();
+            uint32_t mip = i % texture.GetMipMapLevels();
+            
+            auto uav = texture.GetUnorderedAccessView(mip, slice);
+            auto entry = descriptorTable + uav.data;
+            texture.mSliceViews[i]._impl = entry->textureViewID;
+        }
+    }
     return texture;
 }
 
@@ -550,19 +599,34 @@ void GraphicsDevice::Dispose(GPUAllocator* allocator, Texture& texture)
     const auto& allocation = allocator->GetAllocation(texture.GetHandle());
 	allocator->Free(allocation);
     
-    id<MTLTexture> resource = texture.GetHandle();
-    id<MTLTexture> resourceView = texture.GetRenderTargetView();
-    ShaderResourceIndex view = texture.GetResourceView();
-    mReleaseQueue->AddResource([this, resource, resourceView, view]()
+    mReleaseQueue->AddResource([this,
+                                resource = texture.GetHandle(),
+                                rtv = texture.GetRenderTargetView(),
+                                view = texture.GetResourceView(),
+                                usage = texture.GetDescriptor().usage,
+                                sliceUnorderedViews = texture.mSliceUnorderedAccessViews]()
     {
         [static_cast<MetalDevice*>(this)->GetResidencySet() removeAllocation:resource];
-        [static_cast<MetalDevice*>(this)->GetResidencySet() removeAllocation:resourceView];
         static_cast<MetalDevice*>(this)->ReleaseResourceView(view);
+        
+        // we dont need to release RTVs since they are identical with UAV
+        if (usage & TextureUsage_Attachment)
+        {
+            // noop
+        }
+        
+        // Release slice resource views
+        for (const auto& unorderedView : sliceUnorderedViews)
+        {
+            static_cast<MetalDevice*>(this)->ReleaseResourceView(unorderedView);
+        }
     }, static_cast<Swapchain*>(mSurface)->GetFrameIndex());
     
     texture.mResourceView = InvalidResourceIndex;
     texture.mHandle = nil;
-    texture.mView = nil;
+    texture.mView = {};
+    texture.mSliceViews.clear();
+    texture.mSliceUnorderedAccessViews.clear();
 }
 
 void GraphicsDevice::Dispose(Shader& shader)
@@ -704,6 +768,7 @@ MetalDevice::~MetalDevice()
     }
     mStaticSamplers.clear();
     mSamplerHeap.handle = nil;
+    mCbvSrvUavHeap.pool = nil;
     mCbvSrvUavHeap.handle = nil;
     
     // Destroy residency set
@@ -767,11 +832,18 @@ ShaderResourceIndex MetalDevice::CreateResourceView(const Buffer& buffer)
     return index;
 }
 
-ShaderResourceIndex MetalDevice::CreateResourceView(const Texture& texture)
+ShaderResourceIndex MetalDevice::CreateResourceView(const Texture& texture, MTLTextureViewDescriptor* viewDesc)
 {
     auto index = mCbvSrvUavHeap.heap.Allocate();
+    auto resourceID = [static_cast<MetalDevice*>(this)->GetRtvHeap() setTextureView:texture.GetHandle() descriptor:viewDesc atIndex:index.data];
+    
     auto descriptorTable = static_cast<IRDescriptorTableEntry*>([mCbvSrvUavHeap.handle contents]);
-    IRDescriptorTableSetTexture(descriptorTable + index.data, texture.GetRenderTargetView(), 0.0f, 0);
+    auto entry = descriptorTable + index.data;
+    
+    entry->gpuVA = 0;
+    entry->textureViewID = texture.GetRenderTargetView()._impl;
+    entry->metadata = 0;
+    
     return index;
 }
 
@@ -810,6 +882,12 @@ MetalDescriptorHeap MetalDevice::CreateDescriptorHeap(uint32_t capacity) const
     heap.handle = [mHandle newBufferWithLength:capacity * sizeof(IRDescriptorTableEntry) options:MTLResourceStorageModeShared];
     heap.heap = ResourceDescriptorHeap(capacity);
     [heap.handle setLabel:@"DescriptorHeap"];
+    
+    __autoreleasing NSError* error = nil;
+    MTLResourceViewPoolDescriptor* desc = [MTLResourceViewPoolDescriptor new];
+    desc.resourceViewCount = capacity;
+    desc.label = @"TextureViewPool";
+    heap.pool = [mHandle newTextureViewPoolWithDescriptor:desc error:&error];
     return heap;
 }
 
@@ -821,6 +899,11 @@ id<MTLBuffer> MetalDevice::GetSamplerHeap() const
 id<MTLBuffer> MetalDevice::GetCbvSrvUavHeap() const
 {
     return mCbvSrvUavHeap.handle;
+}
+
+id<MTLTextureViewPool> MetalDevice::GetRtvHeap() const
+{
+    return mCbvSrvUavHeap.pool;
 }
 
 id<MTLResidencySet> MetalDevice::GetResidencySet() const

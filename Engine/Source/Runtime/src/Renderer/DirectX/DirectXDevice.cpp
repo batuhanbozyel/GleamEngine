@@ -627,12 +627,9 @@ void GraphicsDevice::Dispose(GPUAllocator* allocator, Texture& texture)
 				auto& rtvHeap = static_cast<DirectXDevice*>(this)->mRtvHeap;
 				rtvHeap.heap.Release(rtvHeap.GetResourceIndex(rtv));
 			}
-		}
-
-		// Release slice views
-		for (const auto& sliceView : sliceViews)
-		{
-			if (usage & TextureUsage_Attachment)
+			
+			// Release slice views
+			for (const auto& sliceView : sliceViews)
 			{
 				if (Utils::IsDepthFormat(format))
 				{
@@ -646,7 +643,7 @@ void GraphicsDevice::Dispose(GPUAllocator* allocator, Texture& texture)
 				}
 			}
 		}
-
+		
 		// Release slice resource views
 		for (const auto& unorderedView : sliceUnorderedViews)
 		{

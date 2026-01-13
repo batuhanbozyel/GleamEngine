@@ -3,7 +3,7 @@
 #include "Renderer/GraphicsDevice.h"
 #include "Container/Queue.h"
 
-#include <Metal/Metal.h>
+#import <Metal/Metal.h>
 #include <metal_irconverter/metal_irconverter.h>
 
 @protocol MetalPipeline <NSObject>
@@ -37,6 +37,7 @@ struct SamplerState;
 struct MetalDescriptorHeap
 {
     ResourceDescriptorHeap heap;
+	id<MTLTextureViewPool> pool;
     id<MTLBuffer> handle;
 };
 
@@ -62,6 +63,8 @@ public:
 	
 	id<MTLBuffer> GetCbvSrvUavHeap() const;
 	
+	id<MTLTextureViewPool> GetRtvHeap() const;
+	
 	id<MTLResidencySet> GetResidencySet() const;
 	
 	id<MTL4ArgumentTable> GetArgumentTable() const;
@@ -74,7 +77,7 @@ public:
 	
 	ShaderResourceIndex CreateResourceView(const Buffer& buffer);
 
-	ShaderResourceIndex CreateResourceView(const Texture& texture);
+	ShaderResourceIndex CreateResourceView(const Texture& texture, MTLTextureViewDescriptor* viewDesc);
 
 	void ReleaseResourceView(ShaderResourceIndex view);
     
@@ -103,7 +106,6 @@ private:
 	TArray<void*> mStaticSamplers;
     
 	MetalDescriptorHeap mSamplerHeap;
-	
     MetalDescriptorHeap mCbvSrvUavHeap;
 
 };

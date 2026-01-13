@@ -1,7 +1,7 @@
 #include "gpch.h"
 #include "Camera.h"
 
-using namespace Gleam;
+namespace Gleam {
 
 Camera::Camera(float width, float height, ProjectionType type)
 	: Camera({width, height}, type)
@@ -22,11 +22,13 @@ void Camera::SetViewport(const Size& size)
 
 void Camera::SetViewport(float width, float height)
 {
-    aspectRatio = width / height;
-    orthographicSize = height;
+	aspectRatio = width / height;
+	orthographicSize = height;
 }
 
 Size Camera::GetViewport() const
 {
 	return Size{ orthographicSize * aspectRatio, orthographicSize };
 }
+
+} // namespace Gleam

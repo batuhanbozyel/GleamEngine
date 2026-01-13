@@ -25,7 +25,7 @@ struct CommandBuffer::Impl
     id<MetalPipeline> pipeline = nil;
     
     id<MTLEvent> event = nil;
-    uint64_t eventValue = 0;
+    uint64_t eventValue = 1;
     uint64_t waitEventValue = 0;
     
     MTLStages afterQueueStages = MTLStageAll;
@@ -59,7 +59,7 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, 
             depthAttachmentDesc.clearDepth = renderPassDesc.depthAttachment.clearDepth;
             depthAttachmentDesc.loadAction = AttachmentLoadActionToMTLLoadAction(renderPassDesc.depthAttachment.loadAction);
             depthAttachmentDesc.storeAction = AttachmentStoreActionToMTLStoreAction(renderPassDesc.depthAttachment.storeAction);
-            depthAttachmentDesc.texture = renderPassDesc.depthAttachment.texture.GetRenderTargetView();
+            depthAttachmentDesc.texture = renderPassDesc.depthAttachment.texture.GetHandle();
         }
         
         if (Utils::IsDepthStencilFormat(depthAttachment.format))
@@ -85,13 +85,13 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, 
         };
         colorAttachmentDesc.loadAction = AttachmentLoadActionToMTLLoadAction(colorAttachment.loadAction);
         colorAttachmentDesc.storeAction = AttachmentStoreActionToMTLStoreAction(colorAttachment.storeAction);
-        colorAttachmentDesc.texture = colorAttachment.texture.GetRenderTargetView();
+        colorAttachmentDesc.texture = colorAttachment.texture.GetHandle();
     }
     
     mHandle->renderCommandEncoder = [mHandle->commandBuffer renderCommandEncoderWithDescriptor:renderPass];
     mHandle->renderCommandEncoder.label = TO_NSSTRING(debugName.data());
     
-    [mHandle->renderCommandEncoder barrierAfterQueueStages:mHandle->afterQueueStages beforeStages:mHandle->beforeStages visibilityOptions:MTL4VisibilityOptionNone];
+    [mHandle->renderCommandEncoder barrierAfterQueueStages:mHandle->afterQueueStages beforeStages:mHandle->beforeStages visibilityOptions:MTL4VisibilityOptionResourceAlias];
     [mHandle->renderCommandEncoder setArgumentTable:mHandle->device->GetArgumentTable() atStages:MTLRenderStageVertex | MTLRenderStageFragment];
 }
 
@@ -106,7 +106,7 @@ void CommandBuffer::BeginComputePass(const TStringView debugName) const
     mHandle->computeCommandEncoder = [mHandle->commandBuffer computeCommandEncoder];
     mHandle->computeCommandEncoder.label = TO_NSSTRING(debugName.data());
     
-    [mHandle->computeCommandEncoder barrierAfterQueueStages:mHandle->afterQueueStages beforeStages:mHandle->beforeStages visibilityOptions:MTL4VisibilityOptionNone];
+    [mHandle->computeCommandEncoder barrierAfterQueueStages:mHandle->afterQueueStages beforeStages:mHandle->beforeStages visibilityOptions:MTL4VisibilityOptionResourceAlias];
     [mHandle->computeCommandEncoder setArgumentTable:mHandle->device->GetArgumentTable()];
 }
 

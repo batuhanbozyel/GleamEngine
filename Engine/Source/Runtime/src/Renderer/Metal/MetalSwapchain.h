@@ -3,6 +3,7 @@
 #include "Renderer/Swapchain.h"
 #include "Renderer/RendererConfig.h"
 
+#import <Metal/Metal.h>
 #import <QuartzCore/CAMetalLayer.h>
 
 namespace Gleam {
@@ -32,12 +33,17 @@ private:
 	Texture CreateSwapchainBuffer(uint32_t buffer);
 	
 	void* mSurface = nullptr;
-	
 	MetalDevice* mDevice = nullptr;
-	
 	CAMetalLayer* mHandle = nullptr;
+	id<CAMetalDrawable> mCurrentDrawable = nil;
 	
-	dispatch_semaphore_t mImageAcquireSemaphore;
+	struct FrameContext
+	{
+		id<MTLEvent> event = nil;
+		uint64_t waitEventValue = 0;
+		uint64_t eventValue = 1;
+	};
+	TArray<FrameContext> mContext;
 
 };
 

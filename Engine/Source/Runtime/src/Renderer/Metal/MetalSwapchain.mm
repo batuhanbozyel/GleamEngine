@@ -29,18 +29,10 @@ MetalSwapchain::MetalSwapchain()
 
 MetalSwapchain::~MetalSwapchain()
 {
-    for (uint32_t i = 0; i < mMaxFramesInFlight; ++i)
-    {
-        dispatch_semaphore_wait(mImageAcquireSemaphore, DISPATCH_TIME_FOREVER);
-    }
+    auto& ctx = mContext[mCurrentFrameIndex];
+    [mDevice->GetCommandQueue() waitForEvent:ctx.event value:ctx.waitEventValue];
     
-    // we need to revert back to its initial value for some reason????
-    for (uint32_t i = 0; i < mMaxFramesInFlight; ++i)
-    {
-        dispatch_semaphore_signal(mImageAcquireSemaphore);
-    }
-    
-    mImageAcquireSemaphore = nil;
+    mContext.clear();
     mHandle = nil;
     mSurface = nil;
     mTextures.clear();
@@ -51,6 +43,13 @@ MetalSwapchain::~MetalSwapchain()
 
 void MetalSwapchain::Configure(MetalDevice* device, const RendererConfig& config)
 {
+    if (mContext.size() > 0)
+    {
+        auto& ctx = mContext[mCurrentFrameIndex];
+        [mDevice->GetCommandQueue() waitForEvent:ctx.event value:ctx.waitEventValue];
+        mContext.clear();
+    }
+    
     mHandle.device = device->GetHandle();
 	mCurrentFrameIndex = 0;
     mDevice = device;
@@ -75,7 +74,12 @@ void MetalSwapchain::Configure(MetalDevice* device, const RendererConfig& config
         GLEAM_ASSERT(false, "Metal: Neither triple nor double buffering is available.");
     }
     mTextures.resize(mMaxFramesInFlight);
-    mImageAcquireSemaphore = dispatch_semaphore_create(mMaxFramesInFlight);
+    
+    mContext.resize(mMaxFramesInFlight);
+    for (auto& ctx : mContext)
+    {
+        ctx.event = [device->GetHandle() newEvent];
+    }
     
     int width, height;
     auto windowSystem = Globals::Engine->GetSubsystem<WindowSystem>();
@@ -98,29 +102,34 @@ void MetalSwapchain::Resize(GraphicsDevice* device, const Size& size)
 
 const Texture& MetalSwapchain::AcquireNextDrawable()
 {
+    auto& ctx = mContext[mCurrentFrameIndex];
+    [mDevice->GetCommandQueue() waitForEvent:ctx.event value:ctx.waitEventValue];
+    
+    mCurrentDrawable = [mHandle nextDrawable];
+    while (mCurrentDrawable == nil)
+    {
+        mCurrentDrawable = [mHandle nextDrawable];
+    }
+    
     auto& texture = mTextures[mCurrentFrameIndex];
-    dispatch_semaphore_wait(mImageAcquireSemaphore, DISPATCH_TIME_FOREVER);
-    id<CAMetalDrawable> drawable = [mHandle nextDrawable];
-    texture = Texture(texture.GetDescriptor(), drawable, drawable.texture);
+    texture = Texture(texture.GetDescriptor(), mCurrentDrawable.texture, MTLResourceID());
     return texture;
 }
 
 void MetalSwapchain::Present(const CommandBuffer* cmd)
 {
-    auto& texture = mTextures[mCurrentFrameIndex];
-    id<CAMetalDrawable> drawable = texture.GetHandle();
+    auto& ctx = mContext[mCurrentFrameIndex];
+    ctx.waitEventValue = ctx.eventValue;
+    
     id<MTL4CommandQueue> commandQueue = mDevice->GetCommandQueue();
     
     cmd->End();
-    [commandQueue waitForDrawable:drawable];
+    [commandQueue waitForDrawable:mCurrentDrawable];
     cmd->Commit();
-    [commandQueue signalDrawable:drawable];
     
-    [drawable addPresentedHandler:^(id<MTLDrawable> drawable)
-    {
-        dispatch_semaphore_signal(mImageAcquireSemaphore);
-    }];
-    [drawable present];
+    [commandQueue signalEvent:ctx.event value:ctx.eventValue++];
+    [commandQueue signalDrawable:mCurrentDrawable];
+    [mCurrentDrawable present];
     
     mCurrentFrameIndex = (mCurrentFrameIndex + 1) % mMaxFramesInFlight;
 }
