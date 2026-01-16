@@ -218,8 +218,9 @@ void CommandBuffer::Draw(uint32_t vertexCount, uint32_t instanceCount) const
 void CommandBuffer::DrawIndexed(const Buffer& indexBuffer, IndexType type, uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, uint32_t baseVertex) const
 {
     auto gpuAddress = [mConstantBuffer.GetHandle() gpuAddress];
+    auto indexBufferOffset = firstIndex * (uint32_t)SizeOfIndexType(type);
     
-    IRRuntimeDrawIndexedArgument drawArgument = { .indexCountPerInstance = indexCount, .instanceCount = instanceCount, .startIndexLocation = firstIndex * (uint32_t)SizeOfIndexType(type), .baseVertexLocation = (int)baseVertex, .startInstanceLocation = 0 };
+    IRRuntimeDrawIndexedArgument drawArgument = { .indexCountPerInstance = indexCount, .instanceCount = instanceCount, .startIndexLocation = indexBufferOffset, .baseVertexLocation = (int)baseVertex, .startInstanceLocation = 0 };
     IRRuntimeDrawParams drawParams = { .drawIndexed = drawArgument };
     
     MTLIndexType indexType = static_cast<MTLIndexType>(type);
@@ -234,8 +235,8 @@ void CommandBuffer::DrawIndexed(const Buffer& indexBuffer, IndexType type, uint3
     [argumentTable setAddress:(gpuAddress + indexedDrawOffset) atIndex:kIRArgumentBufferUniformsBindPoint];
     [argumentTable setAddress:(gpuAddress + topLevelABOffset) atIndex:kIRArgumentBufferBindPoint];
     
-    MTLGPUAddress indexBufferGpuAddress = [indexBuffer.GetHandle() gpuAddress] + drawArgument.startIndexLocation;
-    size_t indexBufferLength = indexCount * SizeOfIndexType(type);
+    MTLGPUAddress indexBufferGpuAddress = [indexBuffer.GetHandle() gpuAddress] + indexBufferOffset;
+    size_t indexBufferLength = indexBuffer.GetSize();
     
     id<MetalGraphicsPipeline> pipeline = (id<MetalGraphicsPipeline>)mHandle->pipeline;
     [mHandle->renderCommandEncoder drawIndexedPrimitives:pipeline.topology indexCount:indexCount indexType:indexType indexBuffer:indexBufferGpuAddress indexBufferLength:indexBufferLength instanceCount:instanceCount baseVertex:baseVertex baseInstance:0];

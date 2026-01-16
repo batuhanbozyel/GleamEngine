@@ -11,7 +11,8 @@
 
 using namespace Gleam;
 
-static constexpr size_t kImGuiDataBufferSize = 4 * 1024 * 1024;
+static constexpr uint32_t kImGuiDataBufferSize = 4 * 1024 * 1024;
+static_assert(sizeof(ImDrawIdx) == sizeof(uint16_t), "ImGui index type does not match index buffer");
 
 void ImGuiRenderer::OnCreate(RenderContext& context)
 {
@@ -135,21 +136,22 @@ void ImGuiRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
         ImGui::End();
         ImGui::Render();
 
-		void* bufferPtr = OffsetPointer(mBuffer.GetContents(), kImGuiDataBufferSize * mSurface->GetFrameIndex());
+		void* bufferPtr = mBuffer.GetContents();
 		ImDrawData* drawData = ImGui::GetDrawData();
 
-		uint32_t vtxOffset = 0;
-		ImDrawIdx* idxDest = (ImDrawIdx*)bufferPtr;
+		uint32_t vtxBufferOffset = kImGuiDataBufferSize * mSurface->GetFrameIndex();
+		uint32_t idxBufferOffset = kImGuiDataBufferSize * mSurface->GetFrameIndex();
+		ImDrawIdx* idxDest = (ImDrawIdx*)OffsetPointer(bufferPtr, idxBufferOffset);
 		for (int n = 0; n < drawData->CmdListsCount; n++)
 		{
 			const ImDrawList* drawList = drawData->CmdLists[n];
 			memcpy(idxDest, drawList->IdxBuffer.Data, drawList->IdxBuffer.Size * sizeof(ImDrawIdx));
 			idxDest += drawList->IdxBuffer.Size;
-			vtxOffset += drawList->IdxBuffer.Size * sizeof(ImDrawIdx);
+			vtxBufferOffset += drawList->IdxBuffer.Size * sizeof(ImDrawIdx);
 		}
 
-		vtxOffset = (uint32_t)Utils::AlignUp(vtxOffset, mBuffer.GetAlignment());
-		ImDrawVert* vtxDest = (ImDrawVert*)((char*)bufferPtr + vtxOffset);
+		vtxBufferOffset = (uint32_t)Utils::AlignUp(vtxBufferOffset, mBuffer.GetAlignment());
+		ImDrawVert* vtxDest = (ImDrawVert*)OffsetPointer(bufferPtr, vtxBufferOffset);
 		for (int n = 0; n < drawData->CmdListsCount; n++)
 		{
 			const ImDrawList* drawList = drawData->CmdLists[n];
@@ -171,8 +173,6 @@ void ImGuiRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 		cmd->BindGraphicsPipeline(mPipeline);
 		cmd->SetViewport(renderPassDesc.size);
 
-		int globalVtxOffset = 0;
-		int globalIdxOffset = 0;
 		for (int n = 0; n < drawData->CmdListsCount; n++)
 		{
 			const ImDrawList* drawList = drawData->CmdLists[n];
@@ -194,17 +194,16 @@ void ImGuiRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 
 				ImGuiResources passConstants;
 				passConstants.projMatrix = projMatrix;
-				passConstants.vertexOffset = kImGuiDataBufferSize * mSurface->GetFrameIndex() + static_cast<uint32_t>(vtxOffset + (globalVtxOffset * sizeof(ImDrawVert)));
+				passConstants.vertexOffset = vtxBufferOffset;
 				passConstants.vertexBuffer = mBuffer.GetResourceView();
 				passConstants.texture = texture;
 
 				cmd->SetScissorRect(rect);
 				cmd->SetPushConstant(passConstants);
-				cmd->DrawIndexed(mBuffer, IndexType::UINT16, drawCmd->ElemCount, 1, drawCmd->IdxOffset + globalIdxOffset, drawCmd->VtxOffset);
+				cmd->DrawIndexed(mBuffer, IndexType::UINT16, drawCmd->ElemCount, 1, drawCmd->IdxOffset + idxBufferOffset / sizeof(ImDrawIdx), drawCmd->VtxOffset);
 			}
-
-			globalIdxOffset += drawList->IdxBuffer.Size;
-			globalVtxOffset += drawList->VtxBuffer.Size;
+			idxBufferOffset += drawList->IdxBuffer.Size * sizeof(ImDrawIdx);
+			vtxBufferOffset += drawList->VtxBuffer.Size * sizeof(ImDrawVert);
 		}
 		cmd->EndRenderPass();
         
