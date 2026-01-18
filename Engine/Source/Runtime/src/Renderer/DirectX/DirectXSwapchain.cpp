@@ -90,6 +90,9 @@ void DirectXSwapchain::Configure(DirectXDevice* device, const RendererConfig& co
 
 	if (mHandle != nullptr)
 	{
+		auto& ctx = mContext[mCurrentFrameIndex];
+		WaitForID3D12Fence(ctx.fence, ctx.waitFenceValue);
+		
 		for (auto& ctx : mContext)
 		{
 			ctx.fence->Release();

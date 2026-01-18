@@ -126,7 +126,7 @@ static IRStaticSamplerDescriptor CreateIRStaticSampler(const SamplerState& sampl
             sampler.Filter = IRFilterMinMagMipLinear;
             break;
         }
-        default: GLEAM_ASSERT(false, "Metal: Filter mode is not supported!") break;
+        default: GLEAM_ASSERT(false, "Metal: Filter mode is not supported.") break;
     }
 
     switch (samplerState.wrapMode)
@@ -159,7 +159,7 @@ static IRStaticSamplerDescriptor CreateIRStaticSampler(const SamplerState& sampl
             sampler.AddressW = IRTextureAddressModeMirrorOnce;
             break;
         }
-        default: GLEAM_ASSERT(false, "Metal: Wrap mode is not supported!") break;
+        default: GLEAM_ASSERT(false, "Metal: Wrap mode is not supported.") break;
     }
     return sampler;
 }
@@ -196,7 +196,7 @@ static MTLSamplerDescriptor* CreateMTLSamplerState(const SamplerState& samplerSt
             desc.mipFilter = MTLSamplerMipFilterLinear;
             break;
         }
-        default: GLEAM_ASSERT(false, "Metal: Filter mode is not supported!") break;
+        default: GLEAM_ASSERT(false, "Metal: Filter mode is not supported.") break;
     }
     
     switch (samplerState.wrapMode)
@@ -229,14 +229,14 @@ static MTLSamplerDescriptor* CreateMTLSamplerState(const SamplerState& samplerSt
             desc.rAddressMode = MTLSamplerAddressModeMirrorClampToEdge;
             break;
         }
-        default: GLEAM_ASSERT(false, "Metal: Wrap mode is not supported!") break;
+        default: GLEAM_ASSERT(false, "Metal: Wrap mode is not supported.") break;
     }
     return desc;
 }
 
 Heap GraphicsDevice::CreateHeap(const HeapDescriptor& descriptor)
 {
-    MTLResourceOptions resourceOptions = MemoryTypeToMTLResourceOption(descriptor.memoryType) | MTLResourceHazardTrackingModeTracked; // TODO: Remove hazard tracking when proper resource synchronization is implemented
+    MTLResourceOptions resourceOptions = MemoryTypeToMTLResourceOption(descriptor.memoryType);
     MTLSizeAndAlign sizeAndAlign = [mHandle heapBufferSizeAndAlignWithLength:descriptor.size options:resourceOptions];
     
     MTLHeapDescriptor* desc = [MTLHeapDescriptor new];
@@ -268,7 +268,7 @@ Texture GraphicsDevice::CreateTexture(GPUAllocator* allocator, const TextureDesc
     textureDesc.usage = TextureUsageToMTLTextureUsage(descriptor.usage);
     textureDesc.storageMode = MTLStorageModePrivate; // TODO: add support for cpu visible textures
 
-    NSUInteger sliceCount = 1;
+    NSUInteger sliceCount = descriptor.depth;
     switch (descriptor.dimension)
     {
         case TextureDimension::Texture2D:
@@ -279,7 +279,6 @@ Texture GraphicsDevice::CreateTexture(GPUAllocator* allocator, const TextureDesc
             }
             else
             {
-                sliceCount = descriptor.depth;
                 textureDesc.arrayLength = descriptor.depth;
                 textureDesc.textureType = MTLTextureType2DArray;
             }
@@ -293,16 +292,14 @@ Texture GraphicsDevice::CreateTexture(GPUAllocator* allocator, const TextureDesc
         }
         case TextureDimension::TextureCube:
         {
+            sliceCount = 6 * descriptor.depth;
+            textureDesc.arrayLength = descriptor.depth;
             if (descriptor.depth == 1)
             {
                 textureDesc.textureType = MTLTextureTypeCube;
-                textureDesc.arrayLength = 6;
-                sliceCount = 6;
             }
             else
             {
-                sliceCount = 6 * descriptor.depth;
-                textureDesc.arrayLength = 6 * descriptor.depth;
                 textureDesc.textureType = MTLTextureTypeCubeArray;
             }
             break;
@@ -320,19 +317,71 @@ Texture GraphicsDevice::CreateTexture(GPUAllocator* allocator, const TextureDesc
 
     id<MTLHeap> heap = allocation.block->heap.GetHandle();
     id<MTLTexture> baseTexture = [heap newTextureWithDescriptor:textureDesc offset:allocation.offset];
-    id<MTLTexture> textureView = [baseTexture newTextureViewWithPixelFormat:baseTexture.pixelFormat
-                                                                textureType:textureDesc.textureType
-                                                                     levels:NSMakeRange(0, texture.mMipMapLevels)
-                                                                     slices:NSMakeRange(0, sliceCount)];
     [baseTexture setLabel:TO_NSSTRING(descriptor.name.c_str())];
-    [textureView setLabel:TO_NSSTRING((descriptor.name + "_View").c_str())];
-    [static_cast<MetalDevice*>(this)->GetResidencySet() addAllocation:textureView];
     [static_cast<MetalDevice*>(this)->GetResidencySet() addAllocation:baseTexture];
     allocator->AddAllocation(baseTexture, allocation);
-
     texture.mHandle = baseTexture;
-    texture.mView = textureView;
-    texture.mResourceView = static_cast<MetalDevice*>(this)->CreateResourceView(texture);
+    
+    // Create main view
+    {
+        MTLTextureViewDescriptor* viewDesc = [MTLTextureViewDescriptor new];
+        viewDesc.pixelFormat = textureDesc.pixelFormat;
+        viewDesc.textureType = textureDesc.textureType;
+        viewDesc.levelRange = NSMakeRange(0, textureDesc.mipmapLevelCount);
+        viewDesc.sliceRange = NSMakeRange(0, sliceCount);
+        viewDesc.swizzle = textureDesc.swizzle;
+        texture.mResourceView = static_cast<MetalDevice*>(this)->CreateResourceView(texture, viewDesc);
+    }
+    
+    for (uint32_t i = 0; i < texture.mSliceUnorderedAccessViews.size(); ++i)
+    {
+        uint32_t slice = i / texture.GetMipMapLevels();
+        uint32_t mip = i % texture.GetMipMapLevels();
+        
+        MTLTextureViewDescriptor* viewDesc = [MTLTextureViewDescriptor new];
+        viewDesc.pixelFormat = textureDesc.pixelFormat;
+        
+        switch (descriptor.dimension)
+        {
+            case TextureDimension::Texture2D:
+            case TextureDimension::TextureCube:
+            {
+                viewDesc.textureType = MTLTextureType2DArray;
+                break;
+            }
+            case TextureDimension::Texture3D:
+            {
+                viewDesc.textureType = MTLTextureType3D;
+                break;
+            }
+        }
+        viewDesc.levelRange = NSMakeRange(mip, 1);
+        viewDesc.sliceRange = NSMakeRange(slice, 1);
+        viewDesc.swizzle = textureDesc.swizzle;
+        texture.mSliceUnorderedAccessViews[i] = static_cast<MetalDevice*>(this)->CreateResourceView(texture, viewDesc);
+    }
+    
+    // Create RTV for attachments
+    if (descriptor.usage & TextureUsage_Attachment)
+    {
+        auto descriptorTable = static_cast<IRDescriptorTableEntry*>([static_cast<MetalDevice*>(this)->GetCbvSrvUavHeap() contents]);
+        // Create main RTV
+        {
+            auto entry = descriptorTable + texture.mResourceView.data;
+            texture.mView._impl = entry->textureViewID;
+        }
+        
+        // Create slice RTV
+        for (uint32_t i = 0; i < texture.mSliceViews.size(); i++)
+        {
+            uint32_t slice = i / texture.GetMipMapLevels();
+            uint32_t mip = i % texture.GetMipMapLevels();
+            
+            auto uav = texture.GetUnorderedAccessView(mip, slice);
+            auto entry = descriptorTable + uav.data;
+            texture.mSliceViews[i]._impl = entry->textureViewID;
+        }
+    }
     return texture;
 }
 
@@ -395,7 +444,7 @@ Shader GraphicsDevice::CompileShader(const TString& entryPoint, ShaderStage stag
     IRObjectGetMetalLibBinary(metalIR, IRObjectGetMetalIRShaderStage(metalIR), metallibBinary);
     dispatch_data_t data = IRMetalLibGetBytecodeData(metallibBinary);
     
-    NSError* __autoreleasing libraryError = nil;
+    __autoreleasing NSError* libraryError = nil;
     id<MTLLibrary> library = [mHandle newLibraryWithData:data error:&libraryError];
     if (libraryError)
     {
@@ -550,19 +599,34 @@ void GraphicsDevice::Dispose(GPUAllocator* allocator, Texture& texture)
     const auto& allocation = allocator->GetAllocation(texture.GetHandle());
 	allocator->Free(allocation);
     
-    id<MTLTexture> resource = texture.GetHandle();
-    id<MTLTexture> resourceView = texture.GetRenderTargetView();
-    ShaderResourceIndex view = texture.GetResourceView();
-    mReleaseQueue->AddResource([this, resource, resourceView, view]()
+    mReleaseQueue->AddResource([this,
+                                resource = texture.GetHandle(),
+                                rtv = texture.GetRenderTargetView(),
+                                view = texture.GetResourceView(),
+                                usage = texture.GetDescriptor().usage,
+                                sliceUnorderedViews = texture.mSliceUnorderedAccessViews]()
     {
         [static_cast<MetalDevice*>(this)->GetResidencySet() removeAllocation:resource];
-        [static_cast<MetalDevice*>(this)->GetResidencySet() removeAllocation:resourceView];
         static_cast<MetalDevice*>(this)->ReleaseResourceView(view);
+        
+        // we dont need to release RTVs since they are identical with UAV
+        if (usage & TextureUsage_Attachment)
+        {
+            // noop
+        }
+        
+        // Release slice resource views
+        for (const auto& unorderedView : sliceUnorderedViews)
+        {
+            static_cast<MetalDevice*>(this)->ReleaseResourceView(unorderedView);
+        }
     }, static_cast<Swapchain*>(mSurface)->GetFrameIndex());
     
     texture.mResourceView = InvalidResourceIndex;
     texture.mHandle = nil;
-    texture.mView = nil;
+    texture.mView = {};
+    texture.mSliceViews.clear();
+    texture.mSliceUnorderedAccessViews.clear();
 }
 
 void GraphicsDevice::Dispose(Shader& shader)
@@ -588,16 +652,16 @@ MetalDevice::MetalDevice(RenderSurface* surface, ResourceReleaseQueue* releaseQu
     GLEAM_ASSERT(mHandle);
     
     // init MTLResidencySet
-    __autoreleasing NSError* error = nil;
+    __autoreleasing NSError* residencySetError = nil;
     MTLResidencySetDescriptor* residencySetDesc = [MTLResidencySetDescriptor new];
     residencySetDesc.initialCapacity = CBV_SRV_HEAP_SIZE;
     residencySetDesc.label = @"ResidencySet";
-    mResidencySet = [mHandle newResidencySetWithDescriptor:residencySetDesc error:&error];
+    mResidencySet = [mHandle newResidencySetWithDescriptor:residencySetDesc error:&residencySetError];
     GLEAM_ASSERT(mResidencySet, "Metal: Residency set creation failed.");
     
     // init MTLCommandQueue
-    mCommandPool = [mHandle newCommandQueue];
-    [mCommandPool addResidencySet:mResidencySet];
+    mCommandQueue = [mHandle newMTL4CommandQueue];
+    [mCommandQueue addResidencySet:mResidencySet];
     
     // create descriptor heap
     uint32_t maxSamplers = (uint32_t)[mHandle maxArgumentBufferSamplerCount];
@@ -613,7 +677,7 @@ MetalDevice::MetalDevice(RenderSurface* surface, ResourceReleaseQueue* releaseQu
     }
     
     // root signature
-    constexpr uint32_t NumRootParams = PUSH_CONSTANT_SLOT + 2; // 1 for samplers descriptor table, 1 for push constants
+    constexpr uint32_t NumRootParams = PUSH_CONSTANT_SLOT + 2; // 1 for push constants, 1 for samplers descriptor table
     IRRootParameter1 rootSigParams[NumRootParams];
     for (uint32_t i = 0; i < PUSH_CONSTANT_SLOT; i++)
     {
@@ -638,7 +702,7 @@ MetalDevice::MetalDevice(RenderSurface* surface, ResourceReleaseQueue* releaseQu
       .ShaderVisibility = IRShaderVisibilityAll
     };
     
-    // Sampler descriptor table
+    // Static samplers
     IRDescriptorRange1 samplerRange = {
         .RangeType = IRDescriptorRangeTypeSampler,
         .NumDescriptors = (uint32_t)mStaticSamplers.size(),
@@ -661,7 +725,8 @@ MetalDevice::MetalDevice(RenderSurface* surface, ResourceReleaseQueue* releaseQu
     rootSignature.desc_1_1.Flags = IRRootSignatureFlags(IRRootSignatureFlagDenyHullShaderRootAccess
                                                         | IRRootSignatureFlagDenyDomainShaderRootAccess
                                                         | IRRootSignatureFlagDenyGeometryShaderRootAccess
-                                                        | IRRootSignatureFlagCBVSRVUAVHeapDirectlyIndexed);
+                                                        | IRRootSignatureFlagCBVSRVUAVHeapDirectlyIndexed
+                                                        | IRRootSignatureFlagSamplerHeapDirectlyIndexed);
 
     rootSignature.desc_1_1.NumStaticSamplers = 0;
     rootSignature.desc_1_1.pStaticSamplers = nullptr;
@@ -677,6 +742,19 @@ MetalDevice::MetalDevice(RenderSurface* surface, ResourceReleaseQueue* releaseQu
         GLEAM_CORE_ERROR("Metal: Root signature error: {0}\n", error_msg);
         IRErrorDestroy(pRootSigError);
     }
+    
+    MTL4ArgumentTableDescriptor* argumentTableDesc = [MTL4ArgumentTableDescriptor new];
+    argumentTableDesc.initializeBindings = false;
+    argumentTableDesc.supportAttributeStrides = true;
+    argumentTableDesc.maxSamplerStateBindCount = 0;
+    argumentTableDesc.maxTextureBindCount = 0;
+    argumentTableDesc.maxBufferBindCount = 15;
+    argumentTableDesc.label = @"ArgumentTable";
+    
+    __autoreleasing NSError* argumentTableError = nil;
+    mArgumentTable = [mHandle newArgumentTableWithDescriptor:argumentTableDesc error:&argumentTableError];
+    [mArgumentTable setAddress:[mCbvSrvUavHeap.handle gpuAddress] atIndex:kIRDescriptorHeapBindPoint];
+    [mArgumentTable setAddress:[mSamplerHeap.handle gpuAddress] atIndex:kIRSamplerHeapBindPoint];
 
     GLEAM_CORE_INFO("Metal: Graphics device created.");
 }
@@ -695,14 +773,21 @@ MetalDevice::~MetalDevice()
     }
     mStaticSamplers.clear();
     mSamplerHeap.handle = nil;
+    mCbvSrvUavHeap.pool = nil;
     mCbvSrvUavHeap.handle = nil;
     
     // Destroy residency set
-    [mCommandPool removeResidencySet:mResidencySet];
+    [mCommandQueue removeResidencySet:mResidencySet];
     mResidencySet = nil;
+    mArgumentTable = nil;
 
-    // Destroy command pool
-    mCommandPool = nil;
+    // Destroy command queue
+    for (auto& pool : mCommandPools)
+    {
+        pool.Release();
+    }
+    mCommandPools.clear();
+    mCommandQueue = nil;
 
     // Destroy device
     mHandle = nil;
@@ -714,6 +799,34 @@ void MetalDevice::Configure(const RendererConfig& config)
 {
     auto swapchain = static_cast<MetalSwapchain*>(mSurface);
     swapchain->Configure(this, config);
+    
+    for (auto& pool : mCommandPools)
+    {
+        pool.Release();
+    }
+    mCommandPools.clear();
+    
+    mCommandPools.resize(swapchain->mMaxFramesInFlight);
+    for (uint32_t i = 0; i < swapchain->mMaxFramesInFlight; i++)
+    {
+        auto& pool = mCommandPools[i];
+        
+        TStringStream ss;
+        ss << "CommandAllocator[" << swapchain->mCurrentFrameIndex << "]";
+        TString cmdAllocatorName = ss.str();
+        
+        MTL4CommandAllocatorDescriptor* descriptor = [MTL4CommandAllocatorDescriptor new];
+        descriptor.label = TO_NSSTRING(cmdAllocatorName.c_str());
+        
+        __autoreleasing NSError* error = nil;
+        pool.allocator = [mHandle newCommandAllocatorWithDescriptor:descriptor error:&error];
+        GLEAM_ASSERT(pool.allocator, "Metal: Command allocator creation failed.");
+    }
+}
+
+void MetalDevice::ResetCommandPools(uint32_t frameIndex)
+{
+    mCommandPools[frameIndex].Reset();
 }
 
 ShaderResourceIndex MetalDevice::CreateResourceView(const Buffer& buffer)
@@ -724,11 +837,18 @@ ShaderResourceIndex MetalDevice::CreateResourceView(const Buffer& buffer)
     return index;
 }
 
-ShaderResourceIndex MetalDevice::CreateResourceView(const Texture& texture)
+ShaderResourceIndex MetalDevice::CreateResourceView(const Texture& texture, MTLTextureViewDescriptor* viewDesc)
 {
     auto index = mCbvSrvUavHeap.heap.Allocate();
+    auto resourceID = [static_cast<MetalDevice*>(this)->GetRtvHeap() setTextureView:texture.GetHandle() descriptor:viewDesc atIndex:index.data];
+    
     auto descriptorTable = static_cast<IRDescriptorTableEntry*>([mCbvSrvUavHeap.handle contents]);
-    IRDescriptorTableSetTexture(descriptorTable + index.data, texture.GetRenderTargetView(), 0.0f, 0);
+    auto entry = descriptorTable + index.data;
+    
+    entry->gpuVA = 0;
+    entry->textureViewID = resourceID._impl;
+    entry->metadata = 0;
+    
     return index;
 }
 
@@ -758,6 +878,7 @@ MetalDescriptorHeap MetalDevice::CreateSamplerHeap(uint32_t capacity) const
     heap.handle = [mHandle newBufferWithLength:capacity * sizeof(IRDescriptorTableEntry) options:MTLResourceStorageModeShared];
     heap.heap = ResourceDescriptorHeap(capacity);
     [heap.handle setLabel:@"SamplerHeap"];
+    [mResidencySet addAllocation:heap.handle];
     return heap;
 }
 
@@ -767,6 +888,13 @@ MetalDescriptorHeap MetalDevice::CreateDescriptorHeap(uint32_t capacity) const
     heap.handle = [mHandle newBufferWithLength:capacity * sizeof(IRDescriptorTableEntry) options:MTLResourceStorageModeShared];
     heap.heap = ResourceDescriptorHeap(capacity);
     [heap.handle setLabel:@"DescriptorHeap"];
+    [mResidencySet addAllocation:heap.handle];
+    
+    __autoreleasing NSError* error = nil;
+    MTLResourceViewPoolDescriptor* desc = [MTLResourceViewPoolDescriptor new];
+    desc.resourceViewCount = capacity;
+    desc.label = @"TextureViewPool";
+    heap.pool = [mHandle newTextureViewPoolWithDescriptor:desc error:&error];
     return heap;
 }
 
@@ -780,9 +908,9 @@ id<MTLBuffer> MetalDevice::GetCbvSrvUavHeap() const
     return mCbvSrvUavHeap.handle;
 }
 
-id<MTLCommandQueue> MetalDevice::GetCommandPool() const
+id<MTLTextureViewPool> MetalDevice::GetRtvHeap() const
 {
-    return mCommandPool;
+    return mCbvSrvUavHeap.pool;
 }
 
 id<MTLResidencySet> MetalDevice::GetResidencySet() const
@@ -790,20 +918,62 @@ id<MTLResidencySet> MetalDevice::GetResidencySet() const
     return mResidencySet;
 }
 
-id<MTLCommandBuffer> MetalDevice::AllocateCommandBuffer() const
+id<MTL4ArgumentTable> MetalDevice::GetArgumentTable() const
 {
-#ifdef GDEBUG
-    MTLCommandBufferDescriptor* descriptor = [MTLCommandBufferDescriptor new];
-    descriptor.errorOptions = MTLCommandBufferErrorOptionEncoderExecutionStatus;
-    return [mCommandPool commandBufferWithDescriptor:descriptor];
-#else
-    return [mCommandPool commandBuffer];
-#endif
+    return mArgumentTable;
+}
+
+id<MTL4CommandQueue> MetalDevice::GetCommandQueue() const
+{
+    return mCommandQueue;
+}
+
+id<MTL4CommandBuffer> MetalDevice::AllocateCommandBuffer()
+{
+    auto swapchain = static_cast<MetalSwapchain*>(mSurface);
+    auto& pool = mCommandPools[swapchain->mCurrentFrameIndex];
+    
+    id<MTL4CommandBuffer> commandBuffer = nil;
+    if (pool.freeCommandBuffers.empty())
+    {
+        commandBuffer = [mHandle newCommandBuffer];
+    }
+    else
+    {
+        commandBuffer = (id<MTL4CommandBuffer>)CFBridgingRelease(pool.freeCommandBuffers.front());
+        pool.freeCommandBuffers.pop_front();
+    }
+    pool.usedCommandBuffers.push_back((__bridge_retained void*)commandBuffer);
+    [commandBuffer beginCommandBufferWithAllocator:pool.allocator];
+    return commandBuffer;
 }
 
 IRRootSignature* MetalDevice::GetGlobalRootSignature() const
 {
     return mRootSignature;
+}
+
+void MetalCommandPool::Reset()
+{
+    freeCommandBuffers.insert(freeCommandBuffers.end(), usedCommandBuffers.begin(), usedCommandBuffers.end());
+    usedCommandBuffers.clear();
+    [allocator reset];
+}
+
+void MetalCommandPool::Release()
+{
+    for (auto cmdBuffer : usedCommandBuffers)
+    {
+        CFRelease(cmdBuffer);
+    }
+    usedCommandBuffers.clear();
+
+    for (auto cmdBuffer : freeCommandBuffers)
+    {
+        CFRelease(cmdBuffer);
+    }
+    freeCommandBuffers.clear();
+    allocator = nil;
 }
 
 #endif

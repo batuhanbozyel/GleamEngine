@@ -5,13 +5,11 @@
 #include <d3d12.h>
 using NativeGraphicsHandle = void*;
 using RenderTargetView = D3D12_CPU_DESCRIPTOR_HANDLE;
-using DispatchSemaphore = NativeGraphicsHandle;
 #else
-#include <objc/objc-runtime.h>
-#include <dispatch/dispatch.h>
+#import <Metal/MTLTypes.h>
+#import <objc/objc-runtime.h>
 using NativeGraphicsHandle = id;
-using RenderTargetView = id;
-using DispatchSemaphore = dispatch_semaphore_t;
+using RenderTargetView = MTLResourceID;
 #endif
 
 #define GLEAM_ENGINE_MAJOR_VERSION 1

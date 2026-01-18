@@ -10,16 +10,35 @@
 
 using namespace Gleam;
 
+static uint16_t IRMetalIndexToIRIndex(MTLIndexType indexType)
+{
+    return (uint16_t)(indexType+1);
+}
+
+struct TopLevelArgumentBuffer
+{
+    uint64_t constantBuffers[PUSH_CONSTANT_SLOT] = {};
+    uint32_t pushConstant[PUSH_CONSTANT_SIZE / sizeof(uint32_t)] = {};
+    uint64_t samplerDescriptorHeap = 0;
+};
+
 struct CommandBuffer::Impl
 {
     MetalDevice* device = nullptr;
     
-    id<MTLCommandBuffer> commandBuffer = nil;
-    id<MTLRenderCommandEncoder> renderCommandEncoder = nil;
-    id<MTLComputeCommandEncoder> computeCommandEncoder = nil;
+    id<MTL4CommandBuffer> commandBuffer = nil;
+    id<MTL4RenderCommandEncoder> renderCommandEncoder = nil;
+    id<MTL4ComputeCommandEncoder> computeCommandEncoder = nil;
     id<MetalPipeline> pipeline = nil;
     
-    uint64_t topLevelArgumentBuffer[TopLevelArgumentBufferSize / sizeof(uint64_t)] = {};
+    id<MTLEvent> event = nil;
+    uint64_t eventValue = 1;
+    uint64_t waitEventValue = 0;
+    
+    MTLStages afterQueueStages = MTLStageAll;
+    MTLStages beforeStages = MTLStageAll;
+    
+    TopLevelArgumentBuffer topLevelArgumentBuffer = {};
 };
 
 CommandBuffer::CommandBuffer(GraphicsDevice* device)
@@ -27,6 +46,7 @@ CommandBuffer::CommandBuffer(GraphicsDevice* device)
     , mConstantBuffer(device, 4194304) // 4 MB
 {
     mHandle->device = static_cast<MetalDevice*>(device);
+    mHandle->event = [mHandle->device->GetHandle() newEvent];
 }
 
 CommandBuffer::~CommandBuffer()
@@ -36,7 +56,7 @@ CommandBuffer::~CommandBuffer()
 
 void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, const TStringView debugName) const
 {
-    MTLRenderPassDescriptor* renderPass = [MTLRenderPassDescriptor renderPassDescriptor];
+    MTL4RenderPassDescriptor* renderPass = [MTL4RenderPassDescriptor new];
     if (renderPassDesc.depthAttachment.texture.IsValid())
     {
         const auto& depthAttachment = renderPassDesc.depthAttachment.texture.GetDescriptor();
@@ -46,7 +66,7 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, 
             depthAttachmentDesc.clearDepth = renderPassDesc.depthAttachment.clearDepth;
             depthAttachmentDesc.loadAction = AttachmentLoadActionToMTLLoadAction(renderPassDesc.depthAttachment.loadAction);
             depthAttachmentDesc.storeAction = AttachmentStoreActionToMTLStoreAction(renderPassDesc.depthAttachment.storeAction);
-            depthAttachmentDesc.texture = renderPassDesc.depthAttachment.texture.GetRenderTargetView();
+            depthAttachmentDesc.texture = renderPassDesc.depthAttachment.texture.GetHandle();
         }
         
         if (Utils::IsDepthStencilFormat(depthAttachment.format))
@@ -72,11 +92,14 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, 
         };
         colorAttachmentDesc.loadAction = AttachmentLoadActionToMTLLoadAction(colorAttachment.loadAction);
         colorAttachmentDesc.storeAction = AttachmentStoreActionToMTLStoreAction(colorAttachment.storeAction);
-        colorAttachmentDesc.texture = colorAttachment.texture.GetRenderTargetView();
+        colorAttachmentDesc.texture = colorAttachment.texture.GetHandle();
     }
     
     mHandle->renderCommandEncoder = [mHandle->commandBuffer renderCommandEncoderWithDescriptor:renderPass];
     mHandle->renderCommandEncoder.label = TO_NSSTRING(debugName.data());
+    
+    [mHandle->renderCommandEncoder barrierAfterQueueStages:mHandle->afterQueueStages beforeStages:mHandle->beforeStages visibilityOptions:MTL4VisibilityOptionResourceAlias];
+    [mHandle->renderCommandEncoder setArgumentTable:mHandle->device->GetArgumentTable() atStages:MTLRenderStageVertex | MTLRenderStageFragment];
 }
 
 void CommandBuffer::EndRenderPass() const
@@ -89,6 +112,9 @@ void CommandBuffer::BeginComputePass(const TStringView debugName) const
 {
     mHandle->computeCommandEncoder = [mHandle->commandBuffer computeCommandEncoder];
     mHandle->computeCommandEncoder.label = TO_NSSTRING(debugName.data());
+    
+    [mHandle->computeCommandEncoder barrierAfterQueueStages:mHandle->afterQueueStages beforeStages:mHandle->beforeStages visibilityOptions:MTL4VisibilityOptionResourceAlias];
+    [mHandle->computeCommandEncoder setArgumentTable:mHandle->device->GetArgumentTable()];
 }
 
 void CommandBuffer::EndComputePass() const
@@ -104,16 +130,9 @@ void CommandBuffer::BindComputePipeline(const ComputePipeline& pipeline) const
     id<MetalComputePipeline> computePipeline = (id<MetalComputePipeline>)mHandle->pipeline;
     [mHandle->computeCommandEncoder setComputePipelineState:computePipeline.pipelineState];
 
-    // Descriptor heap
-    [mHandle->computeCommandEncoder setBuffer:mHandle->device->GetSamplerHeap() offset:0 atIndex:kIRSamplerHeapBindPoint];
-    [mHandle->computeCommandEncoder setBuffer:mHandle->device->GetCbvSrvUavHeap() offset:0 atIndex:kIRDescriptorHeapBindPoint];
-
     // Top-level argument buffer
-    memset(mHandle->topLevelArgumentBuffer, 0, TopLevelArgumentBufferSize);
-    
-    // Sampler heap
-    id<MTLBuffer> staticSamplers = mHandle->device->GetSamplerHeap();
-    mHandle->topLevelArgumentBuffer[STATIC_SAMPLER_SLOT] = [staticSamplers gpuAddress];
+    memset(&mHandle->topLevelArgumentBuffer, 0, sizeof(TopLevelArgumentBuffer));
+    mHandle->topLevelArgumentBuffer.samplerDescriptorHeap = [mHandle->device->GetSamplerHeap() gpuAddress];
 }
 
 void CommandBuffer::BindGraphicsPipeline(const GraphicsPipeline& pipeline) const
@@ -126,22 +145,12 @@ void CommandBuffer::BindGraphicsPipeline(const GraphicsPipeline& pipeline) const
     {
         [mHandle->renderCommandEncoder setDepthStencilState:renderPipeline.depthStencilState];
     }
-    
     [mHandle->renderCommandEncoder setCullMode:CullModeToMTLCullMode(pipeline.GetDescriptor().cullingMode)];
     [mHandle->renderCommandEncoder setTriangleFillMode:pipeline.GetDescriptor().wireframe ? MTLTriangleFillModeLines : MTLTriangleFillModeFill];
     
-    // Descriptor heap
-    [mHandle->renderCommandEncoder setVertexBuffer:mHandle->device->GetSamplerHeap() offset:0 atIndex:kIRSamplerHeapBindPoint];
-    [mHandle->renderCommandEncoder setVertexBuffer:mHandle->device->GetCbvSrvUavHeap() offset:0 atIndex:kIRDescriptorHeapBindPoint];
-    [mHandle->renderCommandEncoder setFragmentBuffer:mHandle->device->GetSamplerHeap() offset:0 atIndex:kIRSamplerHeapBindPoint];
-    [mHandle->renderCommandEncoder setFragmentBuffer:mHandle->device->GetCbvSrvUavHeap() offset:0 atIndex:kIRDescriptorHeapBindPoint];
-    
     // Top-level argument buffer
-    memset(mHandle->topLevelArgumentBuffer, 0, TopLevelArgumentBufferSize);
-    
-    // Sampler heap
-    id<MTLBuffer> staticSamplers = mHandle->device->GetSamplerHeap();
-    mHandle->topLevelArgumentBuffer[STATIC_SAMPLER_SLOT] = [staticSamplers gpuAddress];
+    memset(&mHandle->topLevelArgumentBuffer, 0, sizeof(TopLevelArgumentBuffer));
+    mHandle->topLevelArgumentBuffer.samplerDescriptorHeap = [mHandle->device->GetSamplerHeap() gpuAddress];
 }
 
 void CommandBuffer::SetViewport(const Size& size) const
@@ -167,48 +176,77 @@ void CommandBuffer::SetConstantBuffer(const void* data, uint32_t size, uint32_t 
 {
     auto gpuAddress = [mConstantBuffer.GetHandle() gpuAddress]; 
 	gpuAddress += mConstantBuffer.Write(data, size);
-    mHandle->topLevelArgumentBuffer[slot] = gpuAddress;
+    mHandle->topLevelArgumentBuffer.constantBuffers[slot] = gpuAddress;
 }
 
 void CommandBuffer::SetPushConstant(const void* data, uint32_t size) const
 {
-    memcpy(mHandle->topLevelArgumentBuffer + PUSH_CONSTANT_SLOT, data, size);
+    memcpy(mHandle->topLevelArgumentBuffer.pushConstant, data, size);
 }
 
 void CommandBuffer::Dispatch(uint32_t x, uint32_t y, uint32_t z) const
 {
-    id<MetalComputePipeline> pipeline = (id<MetalComputePipeline>)mHandle->pipeline;
+    auto gpuAddress = [mConstantBuffer.GetHandle() gpuAddress];
+    gpuAddress += mConstantBuffer.Write(mHandle->topLevelArgumentBuffer);
+    [mHandle->device->GetArgumentTable() setAddress:gpuAddress atIndex:kIRArgumentBufferBindPoint];
     
+    id<MetalComputePipeline> pipeline = (id<MetalComputePipeline>)mHandle->pipeline;
     MTLSize threadGroupSize = MTLSizeMake(x, y, z);
-    [mHandle->computeCommandEncoder setBytes:mHandle->topLevelArgumentBuffer length:TopLevelArgumentBufferSize atIndex:kIRArgumentBufferBindPoint];
     [mHandle->computeCommandEncoder dispatchThreadgroups:threadGroupSize threadsPerThreadgroup:pipeline.threadsPerThreadgroup];
 }
 
 void CommandBuffer::Draw(uint32_t vertexCount, uint32_t instanceCount) const
 {
-    [mHandle->renderCommandEncoder setVertexBytes:mHandle->topLevelArgumentBuffer length:TopLevelArgumentBufferSize atIndex:kIRArgumentBufferBindPoint];
-    [mHandle->renderCommandEncoder setFragmentBytes:mHandle->topLevelArgumentBuffer length:TopLevelArgumentBufferSize atIndex:kIRArgumentBufferBindPoint];
+    auto gpuAddress = [mConstantBuffer.GetHandle() gpuAddress];
+    
+    IRRuntimeDrawArgument drawArgument = { .vertexCountPerInstance = vertexCount, .instanceCount = instanceCount, .startVertexLocation = 0, .startInstanceLocation = 0 };
+    IRRuntimeDrawParams drawParams = { .draw = drawArgument };
+    
+    size_t drawOffset = mConstantBuffer.Write(drawParams);
+    size_t nonIndexedDrawOffset = mConstantBuffer.Write(kIRNonIndexedDraw);
+    size_t topLevelABOffset = mConstantBuffer.Write(mHandle->topLevelArgumentBuffer);
+    
+    id<MTL4ArgumentTable> argumentTable = mHandle->device->GetArgumentTable();
+    [argumentTable setAddress:(gpuAddress + drawOffset) atIndex:kIRArgumentBufferDrawArgumentsBindPoint];
+    [argumentTable setAddress:(gpuAddress + nonIndexedDrawOffset) atIndex:kIRArgumentBufferUniformsBindPoint];
+    [argumentTable setAddress:(gpuAddress + topLevelABOffset) atIndex:kIRArgumentBufferBindPoint];
     
     id<MetalGraphicsPipeline> pipeline = (id<MetalGraphicsPipeline>)mHandle->pipeline;
-    IRRuntimeDrawPrimitives(mHandle->renderCommandEncoder, pipeline.topology, 0, vertexCount, instanceCount, 0);
+    [mHandle->renderCommandEncoder drawPrimitives:pipeline.topology vertexStart:0 vertexCount:vertexCount instanceCount:instanceCount baseInstance:0];
 }
 
 void CommandBuffer::DrawIndexed(const Buffer& indexBuffer, IndexType type, uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, uint32_t baseVertex) const
 {
-    [mHandle->renderCommandEncoder setVertexBytes:mHandle->topLevelArgumentBuffer length:TopLevelArgumentBufferSize atIndex:kIRArgumentBufferBindPoint];
-    [mHandle->renderCommandEncoder setFragmentBytes:mHandle->topLevelArgumentBuffer length:TopLevelArgumentBufferSize atIndex:kIRArgumentBufferBindPoint];
+    auto gpuAddress = [mConstantBuffer.GetHandle() gpuAddress];
+    auto indexBufferOffset = firstIndex * (uint32_t)SizeOfIndexType(type);
+    
+    IRRuntimeDrawIndexedArgument drawArgument = { .indexCountPerInstance = indexCount, .instanceCount = instanceCount, .startIndexLocation = indexBufferOffset, .baseVertexLocation = (int)baseVertex, .startInstanceLocation = 0 };
+    IRRuntimeDrawParams drawParams = { .drawIndexed = drawArgument };
+    
+    MTLIndexType indexType = static_cast<MTLIndexType>(type);
+    uint16_t irIndexType = IRMetalIndexToIRIndex(indexType);
+    
+    size_t drawOffset = mConstantBuffer.Write(drawParams);
+    size_t indexedDrawOffset = mConstantBuffer.Write(irIndexType);
+    size_t topLevelABOffset = mConstantBuffer.Write(mHandle->topLevelArgumentBuffer);
+    
+    id<MTL4ArgumentTable> argumentTable = mHandle->device->GetArgumentTable();
+    [argumentTable setAddress:(gpuAddress + drawOffset) atIndex:kIRArgumentBufferDrawArgumentsBindPoint];
+    [argumentTable setAddress:(gpuAddress + indexedDrawOffset) atIndex:kIRArgumentBufferUniformsBindPoint];
+    [argumentTable setAddress:(gpuAddress + topLevelABOffset) atIndex:kIRArgumentBufferBindPoint];
+    
+    MTLGPUAddress indexBufferGpuAddress = [indexBuffer.GetHandle() gpuAddress] + indexBufferOffset;
+    size_t indexBufferLength = indexBuffer.GetSize();
     
     id<MetalGraphicsPipeline> pipeline = (id<MetalGraphicsPipeline>)mHandle->pipeline;
-    MTLIndexType indexType = static_cast<MTLIndexType>(type);
-    IRRuntimeDrawIndexedPrimitives(mHandle->renderCommandEncoder, pipeline.topology, indexCount, indexType, indexBuffer.GetHandle(), firstIndex * SizeOfIndexType(type), instanceCount);
+    [mHandle->renderCommandEncoder drawIndexedPrimitives:pipeline.topology indexCount:indexCount indexType:indexType indexBuffer:indexBufferGpuAddress indexBufferLength:indexBufferLength instanceCount:instanceCount baseVertex:baseVertex baseInstance:0];
 }
 
 void CommandBuffer::CopyBuffer(const NativeGraphicsHandle src, const NativeGraphicsHandle dst, size_t size, size_t srcOffset, size_t dstOffset) const
 {
-    id<MTLBlitCommandEncoder> blitCommandEncoder = [mHandle->commandBuffer blitCommandEncoder];
-    [blitCommandEncoder setLabel:TO_NSSTRING("CommandBuffer::CopyBuffer")];
-    [blitCommandEncoder copyFromBuffer:src sourceOffset:srcOffset toBuffer:dst destinationOffset:dstOffset size:size];
-    [blitCommandEncoder endEncoding];
+    [mHandle->computeCommandEncoder setLabel:TO_NSSTRING("CommandBuffer::CopyBuffer")];
+    [mHandle->computeCommandEncoder copyFromBuffer:src sourceOffset:srcOffset toBuffer:dst destinationOffset:dstOffset size:size];
+    [mHandle->computeCommandEncoder endEncoding];
 }
 
 void CommandBuffer::Blit(const Texture& source, const Texture& destination) const
@@ -216,10 +254,9 @@ void CommandBuffer::Blit(const Texture& source, const Texture& destination) cons
     id<MTLTexture> srcTexture = source.GetHandle();
     id<MTLTexture> dstTexture = destination.GetHandle();
 
-    id<MTLBlitCommandEncoder> blitCommandEncoder = [mHandle->commandBuffer blitCommandEncoder];
-    [blitCommandEncoder setLabel:TO_NSSTRING("CommandBuffer::Blit")];
-    [blitCommandEncoder copyFromTexture:srcTexture toTexture:dstTexture];
-    [blitCommandEncoder endEncoding];
+    [mHandle->computeCommandEncoder setLabel:TO_NSSTRING("CommandBuffer::Blit")];
+    [mHandle->computeCommandEncoder copyFromTexture:srcTexture toTexture:dstTexture];
+    [mHandle->computeCommandEncoder endEncoding];
 }
 
 void CommandBuffer::Barrier(const BarrierGroup& barrier) const
@@ -230,18 +267,25 @@ void CommandBuffer::Barrier(const BarrierGroup& barrier) const
 void CommandBuffer::Begin(const TStringView debugName) const
 {
     mHandle->commandBuffer = mHandle->device->AllocateCommandBuffer();
+    mHandle->commandBuffer.label = TO_NSSTRING(debugName.data());
     mCommitted = false;
 }
 
 void CommandBuffer::End() const
 {
-    [mHandle->commandBuffer enqueue];
+    [mHandle->commandBuffer endCommandBuffer];
 }
 
 void CommandBuffer::Commit() const
 {
+    mHandle->waitEventValue = mHandle->eventValue;
+    
+    id<MTL4CommandQueue> commandQueue = mHandle->device->GetCommandQueue();
+    
     [mHandle->device->GetResidencySet() commit];
-    [mHandle->commandBuffer commit];
+    [commandQueue commit:&mHandle->commandBuffer count:1u];
+    [commandQueue signalEvent:mHandle->event value:mHandle->eventValue++];
+    
     mConstantBuffer.Reset();
     mCommitted = true;
 }
@@ -250,7 +294,7 @@ void CommandBuffer::WaitUntilCompleted() const
 {
     if (mCommitted)
 	{
-		[mHandle->commandBuffer waitUntilCompleted];
+        [mHandle->device->GetCommandQueue() waitForEvent:mHandle->event value:mHandle->waitEventValue];
 	}
     mCommitted = false;
 }
