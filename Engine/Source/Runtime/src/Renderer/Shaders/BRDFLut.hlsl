@@ -18,7 +18,7 @@ float3 IntegrateDFG(in float NdotV, in float perceptualRoughness)
 
 		float pdf; // The pdf is not used because it's canceled with other terms
         float3 H = ImportanceSampleGGX(Xi, N, perceptualRoughness, pdf);
-        float3 L = normalize(2.0f * dot(V, H) * H - V);
+		float3 L = reflect(-V, H);
 
         float NdotL = saturate(L.y);
 		float NdotH = saturate(H.y);

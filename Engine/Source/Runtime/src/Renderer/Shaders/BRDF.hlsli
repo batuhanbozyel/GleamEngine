@@ -140,6 +140,11 @@ float PerceptualRoughnessToMipLevel(float perceptualRoughness, int maxMip)
 	return maxMip * perceptualRoughness * (2.0 - perceptualRoughness);
 }
 
+float MipLevelToPerceptualRoughness(float mipLevel, int maxMip)
+{
+	return 1.0 - sqrt(1.0 - mipLevel / float(maxMip));
+}
+
 float3 EvaluateDiffuseDirectLight(float3 albedo, float metallic, float perceptualRoughness, float NdotV, float NdotL, float LdotH)
 {
     float3 diffuseColor = albedo * (1.0 - metallic);
@@ -196,26 +201,27 @@ float3 GetSpecularDominantDir(const float3 N, const float3 R, float perceptualRo
 	return lerp(N, R, lerpFactor);
 }
 
-float3 EvaluateDiffuseIndirectLight(Texture2D<float4> brdfTexture, TextureCube<float3> diffuseReflection, float3 albedo, float metallic, float perceptualRoughness, float3 viewDir, float3 worldNormal, float NdotV)
+float3 EvaluateDiffuseIndirectLight(Texture2D<float4> brdfTexture, TextureCube<float4> diffuseReflection, float3 albedo, float metallic, float perceptualRoughness, float3 viewDir, float3 worldNormal, float NdotV)
 {
 	float3 diffuseColor = albedo * (1.0 - metallic);
 	float3 diffuseDirection = GetDiffuseDominantDir(worldNormal, viewDir, NdotV, perceptualRoughness);
-	float3 diffuseLighting = diffuseReflection.Sample(Sampler_Bilinear_Repeat, diffuseDirection);
+	float3 diffuseLighting = diffuseReflection.Sample(Sampler_Bilinear_Repeat, diffuseDirection).rgb;
+	
 	float diffF = brdfTexture.SampleLevel(Sampler_Bilinear_Clamp, float2(NdotV, perceptualRoughness), 0).w;
-	return diffuseColor * diffuseLighting * diffF;
+	return diffuseLighting * diffuseColor * diffF;
 }
 
-float3 EvaluateSpecularIndirectLight(Texture2D<float4> brdfTexture, TextureCube<float3> specularReflection, float3 albedo, float metallic, float perceptualRoughness, float3 viewDir, float3 worldNormal, float NdotV)
+float3 EvaluateSpecularIndirectLight(Texture2D<float4> brdfTexture, TextureCube<float4> specularReflection, float3 albedo, float metallic, float perceptualRoughness, float3 viewDir, float3 worldNormal, float NdotV)
 {
 	float3 reflectionDir = normalize(reflect(-viewDir, worldNormal));
 	float3 specularDirection = GetSpecularDominantDir(worldNormal, reflectionDir, perceptualRoughness);
-	
-	float mipLevel = PerceptualRoughnessToMipLevel(perceptualRoughness, SPECULAR_RADIANCE_MAX_MIP_LEVEL - 1);
-	float3 specularLighting = specularReflection.SampleLevel(Sampler_Trilinear_Repeat, specularDirection, mipLevel);
-
 	float3 f0 = albedo * metallic + F0Dielectric(0.5) * (1.0 - metallic);
+	
+	float mipLevel = PerceptualRoughnessToMipLevel(perceptualRoughness, SPECULAR_RADIANCE_MAX_MIP_COUNT - 1);
+	float3 specularLighting = specularReflection.SampleLevel(Sampler_Trilinear_Repeat, specularDirection, mipLevel).rgb;
+	
 	float3 DFG = brdfTexture.SampleLevel(Sampler_Bilinear_Clamp, float2(NdotV, perceptualRoughness), 0).xyz;
-	return specularLighting * (f0 * DFG.x + lerp(DFG.y /* F90Dielectric(LdotH, perceptualRoughness) */, DFG.y /* F90_Metal */, metallic));
+	return specularLighting * (f0 * DFG.x + lerp(DFG.y /* F90Dielectric(LdotH, perceptualRoughness) */, DFG.z /* F90_Metal */, metallic));
 }
 
 float3 EvaluateIndirectLight(Gleam::SurfaceOutput surface,
@@ -226,8 +232,8 @@ float3 EvaluateIndirectLight(Gleam::SurfaceOutput surface,
 							 float3 worldNormal)
 {
 	Texture2D<float4> brdfTexture = ResourceDescriptorHeap[brdfTextureIndex];
-	TextureCube<float3> diffuseReflectionTexture = ResourceDescriptorHeap[diffuseReflectionTextureIndex];
-	TextureCube<float3> specularReflectionTexture = ResourceDescriptorHeap[specularReflectionTextureIndex];
+	TextureCube<float4> diffuseReflectionTexture = ResourceDescriptorHeap[diffuseReflectionTextureIndex];
+	TextureCube<float4> specularReflectionTexture = ResourceDescriptorHeap[specularReflectionTextureIndex];
 	float NdotV = abs(dot(worldNormal, viewDir)) + FLT_EPSILON;
 	
 	float3 irradiance = 0.0;

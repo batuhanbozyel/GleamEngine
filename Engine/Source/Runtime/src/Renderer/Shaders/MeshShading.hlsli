@@ -57,7 +57,9 @@ float4 meshShadingPassShader(MeshVertexOut IN) : SV_TARGET
 		light.direction = atmosphereUniforms.sunDirection;
 		light.illuminance = atmosphereUniforms.sunIlluminance;
 	}
-	float3 color = EvaluateDirectLight(surface, light, viewDir, worldNormal);
+	float3 color = 0.0;
+	color += EvaluateDirectLight(surface, light, viewDir, worldNormal);
+	color += EvaluateIndirectLight(surface, resources.brdfTexture, resources.diffuseReflectionTexture, resources.specularReflectionTexture, viewDir, worldNormal);
 	return float4(color, 1.0f);
 }
 #endif // MESH_SHADING_HLSL

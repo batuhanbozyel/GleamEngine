@@ -20,22 +20,31 @@ struct BRDFLutConstants
 	UnorderedAccessIndex targetTexture;
 };
 
-#define SPECULAR_RADIANCE_MAX_MIP_LEVEL 5
+#define SPECULAR_RADIANCE_MAX_MIP_COUNT 5
 struct ProbeConvolutionConstants
 {
 	ShaderResourceIndex sourceTexture;
 	UnorderedAccessIndex targetTexture;
 	uint32_t resolution;
 	uint32_t level;
+
+	uint32_t probeResolution;
+	uint32_t face;
+	float pad1;
+	float pad2;
 };
 
 struct GenerateCubemapMipsConstants
 {
-	ShaderResourceIndex srcTexture;
+	ShaderResourceIndex sourceTexture;
 	UnorderedAccessIndex targetTexture;
 	uint32_t resolution;
 	uint32_t level;
+
 	uint32_t face;
+	float pad0;
+	float pad1;
+	float pad2;
 };
 
 struct DebugVertex
@@ -93,8 +102,13 @@ struct MeshPassResources
 {
 	ShaderResourceIndex instanceBuffer;
 	ShaderResourceIndex materialBuffer;
+	ShaderResourceIndex diffuseReflectionTexture;
+	ShaderResourceIndex specularReflectionTexture;
+
+	ShaderResourceIndex brdfTexture;
 	float pad0;
 	float pad1;
+	float pad2;
 };
 
 struct SurfaceInput

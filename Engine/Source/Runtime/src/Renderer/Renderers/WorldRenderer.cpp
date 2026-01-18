@@ -105,9 +105,12 @@ void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
             const auto& materialBuffer = batch.material->GetBuffer();
             const auto& pipeline = mShadingPipelines[batch.material->GetPipelineHash()];
 
-			MeshPassResources resources;
+			MeshPassResources resources = {};
 			resources.instanceBuffer = batch.instanceBuffer.GetResourceView();
 			resources.materialBuffer = materialBuffer.GetResourceView();
+			resources.brdfTexture = passData.brdfLut;
+			resources.diffuseReflectionTexture = passData.diffuseReflection;
+			resources.specularReflectionTexture = passData.specularReflection;
 
 			cmd->BindGraphicsPipeline(pipeline);
 			cmd->SetConstantBuffer(resources, MESH_PASS_RESOURCES_BINDING_SLOT);

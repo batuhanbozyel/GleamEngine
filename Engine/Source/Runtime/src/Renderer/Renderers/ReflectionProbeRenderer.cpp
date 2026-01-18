@@ -110,7 +110,7 @@ void ReflectionProbeRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBla
 			for (uint32_t face = 0; face < 6; ++face)
 			{
 				GenerateCubemapMipsConstants constants = {};
-				constants.srcTexture = passData.probe;
+				constants.sourceTexture = passData.probe;
 				constants.targetTexture = probeTexture.GetUnorderedAccessView(level, face);
 				constants.resolution = resolution;
 				constants.level = level;
@@ -141,18 +141,23 @@ void ReflectionProbeRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBla
 	},
 	[this, sceneData, globalProbe](const CommandBuffer* cmd, const DiffuseConvolutionData& passData)
 	{
+		const auto& targetTexture = passData.targetTexture.GetTexture();
 		uint32_t resolution = Math::DivideRoundingUp(globalProbe.size, 16u);
 
 		cmd->BindComputePipeline(mDiffuseConvolutionPipeline);
+		for (uint32_t face = 0; face < 6; ++face)
+		{
+			ProbeConvolutionConstants constants = {};
+			constants.sourceTexture = passData.probe;
+			constants.targetTexture = targetTexture.GetUnorderedAccessView(0, face);
+			constants.probeResolution = globalProbe.size;
+			constants.resolution = resolution;
+			constants.face = face;
+			constants.level = 0;
 
-		ProbeConvolutionConstants constants = {};
-		constants.sourceTexture = passData.probe;
-		constants.targetTexture = passData.targetTexture;
-		constants.resolution = resolution;
-		constants.level = 0;
-
-		cmd->SetPushConstant(constants);
-		cmd->Dispatch(Math::DivideRoundingUp(resolution, 16u), Math::DivideRoundingUp(resolution, 16u), 6u);
+			cmd->SetPushConstant(constants);
+			cmd->Dispatch(Math::DivideRoundingUp(resolution, 16u), Math::DivideRoundingUp(resolution, 16u), 1u);
+		}
 	});
 
 	struct SpecularConvolutionData
@@ -164,7 +169,7 @@ void ReflectionProbeRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBla
 	const auto& specularConvolutionData = graph.AddComputePass<SpecularConvolutionData>("ReflectionProbe::SpecularConvolution", [&](RenderGraphBuilder& builder, SpecularConvolutionData& passData)
 	{
 		TextureDescriptor textureDesc;
-		textureDesc.name = "SpecularIrradianceMap";
+		textureDesc.name = "SpecularRadianceMap";
 		textureDesc.size = (float)globalProbe.size;
 		textureDesc.usage |= TextureUsage_Storage;
 		textureDesc.dimension = TextureDimension::TextureCube;
@@ -177,21 +182,25 @@ void ReflectionProbeRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBla
 	[this, sceneData, globalProbe](const CommandBuffer* cmd, const SpecularConvolutionData& passData)
 	{
 		const auto& targetTexture = passData.targetTexture.GetTexture();
-		uint32_t maxMipLevel = Math::Min(targetTexture.GetMipMapLevels(), (uint32_t)SPECULAR_RADIANCE_MAX_MIP_LEVEL);
+		uint32_t maxMipLevel = Math::Min(targetTexture.GetMipMapLevels(), (uint32_t)SPECULAR_RADIANCE_MAX_MIP_COUNT);
 
 		cmd->BindComputePipeline(mSpecularConvolutionPipeline);
 		for (uint32_t level = 0; level < maxMipLevel; ++level)
 		{
 			uint32_t resolution = globalProbe.size >> level;
+			for (uint32_t face = 0; face < 6; ++face)
+			{
+				ProbeConvolutionConstants constants = {};
+				constants.sourceTexture = passData.probe;
+				constants.targetTexture = targetTexture.GetUnorderedAccessView(level, face);
+				constants.probeResolution = globalProbe.size;
+				constants.resolution = resolution;
+				constants.level = level;
+				constants.face = face;
 
-			ProbeConvolutionConstants constants = {};
-			constants.sourceTexture = passData.probe;
-			constants.targetTexture = passData.targetTexture;
-			constants.resolution = resolution;
-			constants.level = level;
-
-			cmd->SetPushConstant(constants);
-			cmd->Dispatch(Math::DivideRoundingUp(resolution, 16u), Math::DivideRoundingUp(resolution, 16u), 6u);
+				cmd->SetPushConstant(constants);
+				cmd->Dispatch(Math::DivideRoundingUp(resolution, 16u), Math::DivideRoundingUp(resolution, 16u), 1u);
+			}
 		}
 	});
 
