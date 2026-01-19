@@ -125,7 +125,7 @@ float3 ImportanceSampleGGX(float2 u, float3 N, float perceptualRoughness, out fl
 	
 	float d = (cosPhi * a2 - cosPhi) * cosPhi + 1.0;
 	float D = a2 / (PI * d * d);
-	pdf = D * cosPhi; // partial PDF (full PDF = D * NdotH / (4 * VdotH))
+	pdf = D; // partial PDF (full PDF = D * NdotH / (4 * VdotH))
 	
 	float3 tangent;
 	float3 bitangent;

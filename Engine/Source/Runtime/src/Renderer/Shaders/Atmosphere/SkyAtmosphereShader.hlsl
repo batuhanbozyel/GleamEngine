@@ -39,6 +39,5 @@ void skyAtmosphereRenderShader(uint3 dispatchThreadId : SV_DispatchThreadID)
 	}
 	
 	RWTexture2D<float4> TargetTexture = ResourceDescriptorHeap[constants.targetTexture];
-	float4 sceneColor = TargetTexture[dispatchThreadId.xy];
-	TargetTexture[dispatchThreadId.xy] = float4(sceneColor.rgb * sceneColor.a + Luminance.rgb * (1.0 - sceneColor.a), 1.0);
+	TargetTexture[dispatchThreadId.xy] = float4(Luminance, 1.0);
 }

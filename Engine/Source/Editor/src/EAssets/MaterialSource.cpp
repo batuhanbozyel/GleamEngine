@@ -182,10 +182,10 @@ bool MaterialSource::Import(const Gleam::Path& path, const ImportSettings& setti
 	#ifdef GDEBUG
 		cmd << " --debug";
 	#endif
-        bool success = ExecuteCommand(cmd.str());
+        int cmdExitCode = ExecuteCommand(cmd.str());
         Gleam::Filesystem::Remove(generatedPath);
 
-		if (success == false)
+		if (cmdExitCode != 0)
 		{
 			return false;
 		}
