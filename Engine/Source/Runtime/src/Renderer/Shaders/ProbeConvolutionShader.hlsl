@@ -62,7 +62,7 @@ void specularPrefilterConvolutionShader(uint3 dispatchThreadId : SV_DispatchThre
 	// The mipmap level is clamped to something lower than 8x8
 	// in order to avoid cubemap filtering issues
 	float maxMipLevel = floor(log2(float(constants.probeResolution))) - 3.0;
-	float omegaP = 4.0 * PI / (6.0 * float(constants.resolution * constants.resolution));
+	float omegaP = 4.0 * PI / (6.0 * float(constants.probeResolution * constants.probeResolution));
 	float perceptualRoughness = MipLevelToPerceptualRoughness(constants.level, SPECULAR_RADIANCE_MAX_MIP_COUNT - 1);
 	
 	float weight = 0.0;

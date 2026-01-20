@@ -25,7 +25,7 @@ public:
 
     NO_DISCARD TextureHandle UseColorBuffer(const TextureHandle& attachment);
     
-    NO_DISCARD TextureHandle UseDepthBuffer(const TextureHandle& attachment);
+    NO_DISCARD TextureHandle UseDepthBuffer(const TextureHandle& attachment, DepthAccess access);
     
     // RenderTexure
     NO_DISCARD TextureHandle CreateTexture(const RenderTextureDescriptor& descriptor);

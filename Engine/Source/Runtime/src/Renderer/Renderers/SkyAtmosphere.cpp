@@ -115,8 +115,6 @@ void SkyAtmosphereRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlack
 
 		passData.transmittanceLut = builder.ReadTexture(sceneData.atmosphere.transmittanceLut);
 		passData.multiScatterLut = builder.ReadTexture(sceneData.atmosphere.multiScatterLut);
-
-		worldData.colorTarget = passData.sceneColor;
 	},
 	[this, sceneData](const CommandBuffer* cmd, const SkyAtmospherePassData& passData)
 	{

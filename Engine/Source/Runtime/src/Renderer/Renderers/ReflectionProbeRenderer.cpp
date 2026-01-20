@@ -84,7 +84,6 @@ void ReflectionProbeRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBla
 	const auto& mipmapData = graph.AddComputePass<MipmapGenerationData>("ReflectionProbe::GenerateMipmaps", [&](RenderGraphBuilder& builder, MipmapGenerationData& passData)
 	{
 		passData.probe = builder.WriteTexture(captureData.probe);
-		captureData.probe = passData.probe;
 	},
 	[this, sceneData, globalProbe](const CommandBuffer* cmd, const MipmapGenerationData& passData)
 	{

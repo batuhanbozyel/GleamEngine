@@ -411,7 +411,7 @@ static constexpr D3D12_BARRIER_ACCESS BarrierAccessToD3D12_BARRIER_ACCESS(Barrie
 		case BarrierAccess::RenderTarget: return D3D12_BARRIER_ACCESS_RENDER_TARGET;
 		case BarrierAccess::ShaderResource: return D3D12_BARRIER_ACCESS_SHADER_RESOURCE;
 		case BarrierAccess::UnorderedAccess: return D3D12_BARRIER_ACCESS_UNORDERED_ACCESS;
-		case BarrierAccess::DepthStencilRead: return D3D12_BARRIER_ACCESS_DEPTH_STENCIL_READ;
+		case BarrierAccess::DepthStencilRead: return D3D12_BARRIER_ACCESS_DEPTH_STENCIL_WRITE; // HACK TO AVOID READONLY DSVs
 		case BarrierAccess::DepthStencilWrite: return D3D12_BARRIER_ACCESS_DEPTH_STENCIL_WRITE;
 		case BarrierAccess::CopySource: return D3D12_BARRIER_ACCESS_COPY_SOURCE;
 		case BarrierAccess::CopyDest: return D3D12_BARRIER_ACCESS_COPY_DEST;
@@ -428,7 +428,7 @@ static constexpr D3D12_BARRIER_LAYOUT BarrierLayoutToD3D12_BARRIER_LAYOUT(Barrie
 		case BarrierLayout::RenderTarget: return D3D12_BARRIER_LAYOUT_RENDER_TARGET;
 		case BarrierLayout::ShaderResource: return D3D12_BARRIER_LAYOUT_SHADER_RESOURCE;
 		case BarrierLayout::UnorderedAccess: return D3D12_BARRIER_LAYOUT_UNORDERED_ACCESS;
-		case BarrierLayout::DepthStencilRead: return D3D12_BARRIER_LAYOUT_DEPTH_STENCIL_READ;
+		case BarrierLayout::DepthStencilRead: return D3D12_BARRIER_LAYOUT_DEPTH_STENCIL_WRITE; // HACK TO AVOID READONLY DSVs
 		case BarrierLayout::DepthStencilWrite: return D3D12_BARRIER_LAYOUT_DEPTH_STENCIL_WRITE;
 		case BarrierLayout::CopySource: return D3D12_BARRIER_LAYOUT_COPY_SOURCE;
 		case BarrierLayout::CopyDest: return D3D12_BARRIER_LAYOUT_COPY_DEST;

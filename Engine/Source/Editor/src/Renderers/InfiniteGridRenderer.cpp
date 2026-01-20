@@ -40,10 +40,7 @@ void InfiniteGridRenderer::AddRenderPasses(Gleam::RenderGraph& graph, Gleam::Ren
     {
         auto& worldData = blackboard.Get<Gleam::WorldRenderingData>();
         passData.colorTarget = builder.UseColorBuffer(worldData.colorTarget);
-        passData.depthTarget = builder.UseDepthBuffer(worldData.depthTarget);
-        
-        worldData.colorTarget = passData.colorTarget;
-        worldData.depthTarget = passData.depthTarget;
+        passData.depthTarget = builder.UseDepthBuffer(worldData.depthTarget, Gleam::DepthAccess::Read);
     },
     [this, blackboard](const Gleam::CommandBuffer* cmd, const PassData& passData)
     {

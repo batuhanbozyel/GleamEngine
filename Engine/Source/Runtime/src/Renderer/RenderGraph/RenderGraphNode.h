@@ -47,6 +47,12 @@ enum class RenderGraphPassType
 	Native
 };
 
+enum class DepthAccess
+{
+	Read,
+	Write
+};
+
 struct RenderGraphPassNode : public RenderGraphNode
 {
     GLEAM_NONCOPYABLE(RenderGraphPassNode);
@@ -57,7 +63,7 @@ struct RenderGraphPassNode : public RenderGraphNode
 	std::any data;
     PassCallback callback;
 	RenderGraphPassType type = RenderGraphPassType::Native;
-    
+
     bool hasSideEffect = false;
     
 	TArray<BufferHandle> bufferReads;
@@ -70,6 +76,7 @@ struct RenderGraphPassNode : public RenderGraphNode
     
     TArray<TextureHandle> colorAttachments;
     TextureHandle depthAttachment;
+	DepthAccess depthAccess = DepthAccess::Write;
     
     HashSet<RenderGraphPassNode*> dependents;
     
@@ -133,6 +140,7 @@ struct RenderGraphResourceNode : public RenderGraphNode
     RenderGraphPassNode* lastModifier = nullptr;
     RenderGraphPassNode* lastReference = nullptr;
     TArray<RenderGraphPassNode*> producers;
+	uint32_t internalVersion = 0;
     
     RenderGraphResourceNode(uint32_t uniqueId, bool transient)
         : RenderGraphNode(uniqueId), transient(transient)

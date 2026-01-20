@@ -87,7 +87,7 @@ void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
         passData.depthTarget = builder.CreateTexture(textureDesc);
         
         passData.colorTarget = builder.UseColorBuffer(passData.colorTarget);
-        passData.depthTarget = builder.UseDepthBuffer(passData.depthTarget);
+        passData.depthTarget = builder.UseDepthBuffer(passData.depthTarget, DepthAccess::Write);
 
 		passData.transmittanceLut = builder.ReadTexture(sceneData.atmosphere.transmittanceLut);
 		passData.multiScatterLut = builder.ReadTexture(sceneData.atmosphere.multiScatterLut);
