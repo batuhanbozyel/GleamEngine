@@ -328,9 +328,7 @@ void CommandBuffer::Barrier(const BarrierGroup& barrier) const
         return;
     }
     
-    MTL4VisibilityOptions visibility = needsCacheFlush ?
-        MTL4VisibilityOptionDevice : MTL4VisibilityOptionNone;
-    
+    MTL4VisibilityOptions visibility = needsCacheFlush ? MTL4VisibilityOptionDevice : MTL4VisibilityOptionNone;
     if (mHandle->renderCommandEncoder)
     {
         MTLStages validRenderStages = MTLStageVertex | MTLStageFragment;
@@ -382,6 +380,7 @@ void CommandBuffer::Begin(const TStringView debugName) const
 {
     mHandle->commandBuffer = mHandle->device->AllocateCommandBuffer();
     mHandle->commandBuffer.label = TO_NSSTRING(debugName.data());
+    mHandle->event.label = mHandle->commandBuffer.label;
     mCommitted = false;
 }
 

@@ -19,7 +19,7 @@ struct CopyCommandBuffer::Impl
 	IDStorageQueue* fileQueue = nullptr;
 	ID3D12Fence* fileFence = nullptr;
 
-	uint64_t fenceValue = 0;
+	uint64_t fenceValue = 1;
 	uint64_t waitFenceValue = 0;
 	
 	size_t stagingBufferOffset = 0;
@@ -61,22 +61,12 @@ CopyCommandBuffer::CopyCommandBuffer(GraphicsDevice* device)
 	queueDesc.SourceType = DSTORAGE_REQUEST_SOURCE_FILE;
 	queueDesc.Name = "DStorage File Queue";
 	DX_CHECK(mHandle->factory->CreateQueue(&queueDesc, IID_PPV_ARGS(&mHandle->fileQueue)));
-
-	DX_CHECK(static_cast<ID3D12Device10*>(mDevice->GetHandle())->CreateFence(
-		mHandle->fenceValue,
-		D3D12_FENCE_FLAG_NONE,
-		IID_PPV_ARGS(&mHandle->fileFence)
-	));
+	DX_CHECK(static_cast<ID3D12Device10*>(mDevice->GetHandle())->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&mHandle->fileFence)));
 
 	queueDesc.SourceType = DSTORAGE_REQUEST_SOURCE_MEMORY;
 	queueDesc.Name = "DStorage Memory Queue";
 	DX_CHECK(mHandle->factory->CreateQueue(&queueDesc, IID_PPV_ARGS(&mHandle->memoryQueue)));
-
-	DX_CHECK(static_cast<ID3D12Device10*>(mDevice->GetHandle())->CreateFence(
-		mHandle->fenceValue,
-		D3D12_FENCE_FLAG_NONE,
-		IID_PPV_ARGS(&mHandle->memoryFence)
-	));
+	DX_CHECK(static_cast<ID3D12Device10*>(mDevice->GetHandle())->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&mHandle->memoryFence)));
 }
 
 CopyCommandBuffer::~CopyCommandBuffer()

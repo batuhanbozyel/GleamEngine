@@ -10,27 +10,21 @@ using namespace Gleam;
 struct CopyCommandBuffer::Impl
 {
     id<MTLIOCommandQueue> fileCommandQueue{ nil };
-    id<MTLCommandQueue> memoryCommandQueue{ nil };
-    
     id<MTLIOCommandBuffer> fileCommandBuffer{ nil };
-    id<MTLCommandBuffer> memoryCommandBuffer{ nil };
+    
+    id<MTL4CommandBuffer> memoryCommandBuffer{ nil };
+    id<MTL4CommandAllocator> memoryCommandAllocator{ nil };
+    id<MTL4ComputeCommandEncoder> memoryCommandEncoder{ nil };
+    
+    id<MTLEvent> memoryEvent = nil;
+    uint64_t memoryEventValue = 1;
+    uint64_t waitMemoryEventValue = 0;
     
     id<MTLBuffer> stagingBuffer{ nil };
     void* stagingBufferPtr = nullptr;
     size_t stagingBufferOffset = 0;
     
     TArray<void*> tempBuffers;
-    
-    void AllocateMemoryCommandBuffer()
-    {
-    #ifdef GDEBUG
-        MTLCommandBufferDescriptor* descriptor = [MTLCommandBufferDescriptor new];
-        descriptor.errorOptions = MTLCommandBufferErrorOptionEncoderExecutionStatus;
-        memoryCommandBuffer = [memoryCommandQueue commandBufferWithDescriptor:descriptor];
-    #else
-        memoryCommandBuffer = [memoryCommandQueue commandBuffer];
-    #endif
-    }
 
     bool CopyUploadData(const void* data, size_t size)
 	{
@@ -50,19 +44,28 @@ CopyCommandBuffer::CopyCommandBuffer(GraphicsDevice* device)
     : mHandle(CreateScope<Impl>())
     , mDevice(device)
 {
+    __autoreleasing NSError* error = nil;
+    
     // Create file queue
     MTLIOCommandQueueDescriptor* ioQueueDescriptor = [MTLIOCommandQueueDescriptor new];
     ioQueueDescriptor.type = MTLIOCommandQueueTypeConcurrent;
     ioQueueDescriptor.priority = MTLIOPriorityNormal;
     ioQueueDescriptor.maxCommandsInFlight = 0;
-    
-    __autoreleasing NSError* error = nil;
     mHandle->fileCommandQueue = [mDevice->GetHandle() newIOCommandQueueWithDescriptor:ioQueueDescriptor error:&error];
     GLEAM_ASSERT(mHandle->fileCommandQueue, "Metal: CopyCommandBuffer file command queue creation failed.");
     
-    // Create memory queue
-    mHandle->memoryCommandQueue = [mDevice->GetHandle() newCommandQueue];
-    GLEAM_ASSERT(mHandle->memoryCommandQueue, "Metal: CopyCommandBuffer memory command queue creation failed.");
+    // Create memory command allocator
+    MTL4CommandAllocatorDescriptor* allocatorDescriptor = [MTL4CommandAllocatorDescriptor new];
+    allocatorDescriptor.label = @"CopyCommandBuffer::MemoryCommandAllocator";
+    mHandle->memoryCommandAllocator = [mDevice->GetHandle() newCommandAllocatorWithDescriptor:allocatorDescriptor error:&error];
+    GLEAM_ASSERT(mHandle->memoryCommandAllocator, "Metal: CopyCommandBuffer command allocator creation failed.");
+    
+    // Create memory command buffer
+    mHandle->memoryCommandBuffer = [mDevice->GetHandle() newCommandBuffer];
+    mHandle->memoryCommandBuffer.label = @"CopyCommandBuffer";
+    
+    mHandle->memoryEvent = [mDevice->GetHandle() newEvent];
+    mHandle->memoryEvent.label = @"CopyCommandBuffer::MemoryEvent";
     
     mHandle->stagingBuffer = [mDevice->GetHandle() newBufferWithLength:UploadHeapSize options:MTLResourceStorageModeShared];
     mHandle->stagingBufferPtr = [mHandle->stagingBuffer contents];
@@ -78,14 +81,22 @@ CopyCommandBuffer::~CopyCommandBuffer()
     mHandle->tempBuffers.clear();
     
     mHandle->stagingBuffer = nil;
+    
     mHandle->fileCommandQueue = nil;
     mHandle->fileCommandBuffer = nil;
+    
     mHandle->memoryCommandBuffer = nil;
+    mHandle->memoryCommandAllocator = nil;
+    mHandle->memoryCommandEncoder = nil;
+    mHandle->memoryEvent = nil;
 }
 
 void CopyCommandBuffer::Barrier(const CommandBuffer* cmd) const
 {
-    // noop
+    if (mHandle->memoryCommandEncoder)
+    {
+        [mHandle->memoryCommandEncoder barrierAfterStages:MTLStageBlit beforeQueueStages:MTLStageAll visibilityOptions:MTL4VisibilityOptionDevice];
+    }
 }
 
 void CopyCommandBuffer::Execute() const
@@ -95,18 +106,27 @@ void CopyCommandBuffer::Execute() const
         [mHandle->fileCommandBuffer commit];
     }
     
-    if (mHandle->memoryCommandBuffer != nil)
+    if (mHandle->memoryCommandEncoder != nil)
     {
-        [mHandle->memoryCommandBuffer commit];
+        mHandle->waitMemoryEventValue = mHandle->memoryEventValue;
+        
+        [mHandle->memoryCommandEncoder endEncoding];
+        [mHandle->memoryCommandBuffer endCommandBuffer];
+        
+        id<MTL4CommandQueue> commandQueue = static_cast<MetalDevice*>(mDevice)->GetCommandQueue();
+        [commandQueue commit:&mHandle->memoryCommandBuffer count:1];
+        [commandQueue signalEvent:mHandle->memoryEvent value:mHandle->memoryEventValue++];
     }
 }
 
 void CopyCommandBuffer::WaitUntilCompleted() const
 {
-    if (mHandle->memoryCommandBuffer != nil)
+    mHandle->stagingBufferOffset = 0;
+    if (mHandle->memoryCommandEncoder != nil)
     {
-        [mHandle->memoryCommandBuffer waitUntilCompleted];
-        mHandle->memoryCommandBuffer = nil;
+        [static_cast<MetalDevice*>(mDevice)->GetCommandQueue() waitForEvent:mHandle->memoryEvent value:mHandle->waitMemoryEventValue];
+        [mHandle->memoryCommandAllocator reset];
+        mHandle->memoryCommandEncoder = nil;
     }
     
     if (mHandle->fileCommandBuffer != nil)
@@ -114,7 +134,6 @@ void CopyCommandBuffer::WaitUntilCompleted() const
         [mHandle->fileCommandBuffer waitUntilCompleted];
         mHandle->fileCommandBuffer = nil;
     }
-    mHandle->stagingBufferOffset = 0;
     
     for (void* buffer : mHandle->tempBuffers)
     {
@@ -128,28 +147,26 @@ void CopyCommandBuffer::Commit(const Buffer& buffer, const void* data, size_t si
     auto bufferContents = buffer.GetContents();
     if (bufferContents == nullptr)
     {
-        if (mHandle->memoryCommandBuffer == nil)
+        if (mHandle->memoryCommandEncoder == nil)
         {
-            mHandle->AllocateMemoryCommandBuffer();
+            [mHandle->memoryCommandBuffer beginCommandBufferWithAllocator:mHandle->memoryCommandAllocator];
+            mHandle->memoryCommandEncoder = [mHandle->memoryCommandBuffer computeCommandEncoder];
+            [mHandle->memoryCommandEncoder setLabel:TO_NSSTRING("CopyCommandBuffer::Commit")];
         }
         
         id<MTLBuffer> dstBuffer = buffer.GetHandle();
-        id<MTLBlitCommandEncoder> blitCommandEncoder = [mHandle->memoryCommandBuffer blitCommandEncoder];
-        [blitCommandEncoder setLabel:TO_NSSTRING("CopyCommandBuffer::Commit")];
-        
         size_t srcOffset = mHandle->stagingBufferOffset;
         if (mHandle->CopyUploadData(data, size))
         {
-            [blitCommandEncoder copyFromBuffer:mHandle->stagingBuffer sourceOffset:srcOffset toBuffer:dstBuffer destinationOffset:offset size:size];
+            [mHandle->memoryCommandEncoder copyFromBuffer:mHandle->stagingBuffer sourceOffset:srcOffset toBuffer:dstBuffer destinationOffset:offset size:size];
         }
         else
         {
             id<MTLBuffer> srcBuffer = [mDevice->GetHandle() newBufferWithBytes:data length:size options:MTLResourceStorageModeShared];
             mHandle->tempBuffers.push_back((__bridge_retained void*)srcBuffer);
             
-            [blitCommandEncoder copyFromBuffer:srcBuffer sourceOffset:0 toBuffer:dstBuffer destinationOffset:offset size:size];
+            [mHandle->memoryCommandEncoder copyFromBuffer:srcBuffer sourceOffset:0 toBuffer:dstBuffer destinationOffset:offset size:size];
         }
-        [blitCommandEncoder endEncoding];
     }
     else
     {
@@ -159,15 +176,14 @@ void CopyCommandBuffer::Commit(const Buffer& buffer, const void* data, size_t si
 
 void CopyCommandBuffer::Commit(const Texture& texture, const void* data, size_t size) const
 {
-    if (mHandle->memoryCommandBuffer == nil)
+    if (mHandle->memoryCommandEncoder == nil)
     {
-        mHandle->AllocateMemoryCommandBuffer();
+        [mHandle->memoryCommandBuffer beginCommandBufferWithAllocator:mHandle->memoryCommandAllocator];
+        mHandle->memoryCommandEncoder = [mHandle->memoryCommandBuffer computeCommandEncoder];
+        [mHandle->memoryCommandEncoder setLabel:TO_NSSTRING("CopyCommandBuffer::Commit")];
     }
     
     id<MTLTexture> dstTexture = texture.GetHandle();
-    id<MTLBlitCommandEncoder> blitCommandEncoder = [mHandle->memoryCommandBuffer blitCommandEncoder];
-    [blitCommandEncoder setLabel:TO_NSSTRING("CopyCommandBuffer::Commit")];
-    
     size_t sourceBytesPerRow = texture.GetDescriptor().size.width * Utils::GetTextureFormatSizeInBytes(texture.GetDescriptor().format);
     size_t sourceBytesPerImage = sourceBytesPerRow * texture.GetDescriptor().size.height;
     MTLSize sourceSize = MTLSizeMake(texture.GetDescriptor().size.width, texture.GetDescriptor().size.height, 1);
@@ -175,32 +191,31 @@ void CopyCommandBuffer::Commit(const Texture& texture, const void* data, size_t 
     size_t srcOffset = mHandle->stagingBufferOffset;
     if (mHandle->CopyUploadData(data, size))
     {
-        [blitCommandEncoder copyFromBuffer:mHandle->stagingBuffer
-                              sourceOffset:srcOffset
-                         sourceBytesPerRow:sourceBytesPerRow
-                       sourceBytesPerImage:sourceBytesPerImage
-                                sourceSize:sourceSize
-                                 toTexture:dstTexture
-                          destinationSlice:0
-                          destinationLevel:0
-                         destinationOrigin:MTLOriginMake(0, 0, 0)];
+        [mHandle->memoryCommandEncoder copyFromBuffer:mHandle->stagingBuffer
+                                         sourceOffset:srcOffset
+                                    sourceBytesPerRow:sourceBytesPerRow
+                                  sourceBytesPerImage:sourceBytesPerImage
+                                           sourceSize:sourceSize
+                                            toTexture:dstTexture
+                                     destinationSlice:0
+                                     destinationLevel:0
+                                    destinationOrigin:MTLOriginMake(0, 0, 0)];
     }
     else
     {
         id<MTLBuffer> srcBuffer = [mDevice->GetHandle() newBufferWithBytes:data length:size options:MTLResourceStorageModeShared];
         mHandle->tempBuffers.push_back((__bridge_retained void*)srcBuffer);
         
-        [blitCommandEncoder copyFromBuffer:srcBuffer
-                              sourceOffset:0
-                         sourceBytesPerRow:sourceBytesPerRow
-                       sourceBytesPerImage:sourceBytesPerImage
-                                sourceSize:sourceSize
-                                 toTexture:dstTexture
-                          destinationSlice:0
-                          destinationLevel:0
-                         destinationOrigin:MTLOriginMake(0, 0, 0)];
+        [mHandle->memoryCommandEncoder copyFromBuffer:srcBuffer
+                                         sourceOffset:0
+                                    sourceBytesPerRow:sourceBytesPerRow
+                                  sourceBytesPerImage:sourceBytesPerImage
+                                           sourceSize:sourceSize
+                                            toTexture:dstTexture
+                                     destinationSlice:0
+                                     destinationLevel:0
+                                    destinationOrigin:MTLOriginMake(0, 0, 0)];
     }
-    [blitCommandEncoder endEncoding];
 }
 
 #endif
