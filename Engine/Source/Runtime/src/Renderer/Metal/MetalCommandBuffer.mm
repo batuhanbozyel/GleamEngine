@@ -10,6 +10,19 @@
 
 using namespace Gleam;
 
+static bool BarrierRequiresCacheFlush(BarrierAccess srcAccess, BarrierAccess dstAccess)
+{
+    bool srcIsWrite = (srcAccess == BarrierAccess::RenderTarget ||
+                       srcAccess == BarrierAccess::UnorderedAccess ||
+                       srcAccess == BarrierAccess::DepthStencilWrite ||
+                       srcAccess == BarrierAccess::CopyDest);
+    
+    bool dstNeedsData = (dstAccess != BarrierAccess::None &&
+                         dstAccess != BarrierAccess::Common);
+    
+    return srcIsWrite && dstNeedsData;
+}
+
 static uint16_t IRMetalIndexToIRIndex(MTLIndexType indexType)
 {
     return (uint16_t)(indexType+1);
@@ -35,10 +48,26 @@ struct CommandBuffer::Impl
     uint64_t eventValue = 1;
     uint64_t waitEventValue = 0;
     
-    MTLStages afterQueueStages = MTLStageAll;
-    MTLStages beforeStages = MTLStageAll;
-    
     TopLevelArgumentBuffer topLevelArgumentBuffer = {};
+    
+    struct ConsumerBarrier
+    {
+        MTLStages srcStages;
+        MTLStages dstStages;
+        MTL4VisibilityOptions visibility;
+    };
+    TArray<ConsumerBarrier> consumerBarriers;
+    
+    void FlushConsumerBarriers(id<MTL4CommandEncoder> encoder)
+    {
+        for (const auto& barrier : consumerBarriers)
+        {
+            [encoder barrierAfterQueueStages:barrier.srcStages
+                                beforeStages:barrier.dstStages
+                           visibilityOptions:barrier.visibility];
+        }
+        consumerBarriers.clear();
+    }
 };
 
 CommandBuffer::CommandBuffer(GraphicsDevice* device)
@@ -97,9 +126,9 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, 
     
     mHandle->renderCommandEncoder = [mHandle->commandBuffer renderCommandEncoderWithDescriptor:renderPass];
     mHandle->renderCommandEncoder.label = TO_NSSTRING(debugName.data());
-    
-    [mHandle->renderCommandEncoder barrierAfterQueueStages:mHandle->afterQueueStages beforeStages:mHandle->beforeStages visibilityOptions:MTL4VisibilityOptionResourceAlias];
     [mHandle->renderCommandEncoder setArgumentTable:mHandle->device->GetArgumentTable() atStages:MTLRenderStageVertex | MTLRenderStageFragment];
+    
+    mHandle->FlushConsumerBarriers(mHandle->renderCommandEncoder);
 }
 
 void CommandBuffer::EndRenderPass() const
@@ -112,9 +141,9 @@ void CommandBuffer::BeginComputePass(const TStringView debugName) const
 {
     mHandle->computeCommandEncoder = [mHandle->commandBuffer computeCommandEncoder];
     mHandle->computeCommandEncoder.label = TO_NSSTRING(debugName.data());
-    
-    [mHandle->computeCommandEncoder barrierAfterQueueStages:mHandle->afterQueueStages beforeStages:mHandle->beforeStages visibilityOptions:MTL4VisibilityOptionResourceAlias];
     [mHandle->computeCommandEncoder setArgumentTable:mHandle->device->GetArgumentTable()];
+    
+    mHandle->FlushConsumerBarriers(mHandle->computeCommandEncoder);
 }
 
 void CommandBuffer::EndComputePass() const
@@ -261,7 +290,92 @@ void CommandBuffer::Blit(const Texture& source, const Texture& destination) cons
 
 void CommandBuffer::Barrier(const BarrierGroup& barrier) const
 {
-    // TODO: Implement Metal barriers when needed
+    if (barrier.bufferBarriers.empty() && barrier.textureBarriers.empty())
+    {
+        return;
+    }
+    
+    MTLStages allSrcStages = 0;
+    MTLStages allDstStages = 0;
+    bool needsCacheFlush = false;
+    
+    for (const auto& bufferBarrier : barrier.bufferBarriers)
+    {
+        if (bufferBarrier.srcStage == BarrierStage::None)
+        {
+            continue;
+        }
+        
+        allSrcStages |= BarrierStageToMTLStages(bufferBarrier.srcStage);
+        allDstStages |= BarrierStageToMTLStages(bufferBarrier.dstStage);
+        needsCacheFlush |= BarrierRequiresCacheFlush(bufferBarrier.srcAccess, bufferBarrier.dstAccess);
+    }
+    
+    for (const auto& textureBarrier : barrier.textureBarriers)
+    {
+        if (textureBarrier.srcStage == BarrierStage::None)
+        {
+            continue;
+        }
+        
+        allSrcStages |= BarrierStageToMTLStages(textureBarrier.srcStage);
+        allDstStages |= BarrierStageToMTLStages(textureBarrier.dstStage);
+        needsCacheFlush |= BarrierRequiresCacheFlush(textureBarrier.srcAccess, textureBarrier.dstAccess);
+    }
+    
+    if (allSrcStages == 0)
+    {
+        return;
+    }
+    
+    MTL4VisibilityOptions visibility = needsCacheFlush ?
+        MTL4VisibilityOptionDevice : MTL4VisibilityOptionNone;
+    
+    if (mHandle->renderCommandEncoder)
+    {
+        MTLStages validRenderStages = MTLStageVertex | MTLStageFragment;
+        MTLStages renderSrcStages = allSrcStages & validRenderStages;
+        MTLStages renderDstStages = allDstStages & validRenderStages;
+        
+        if (renderSrcStages != 0 && renderDstStages != 0)
+        {
+            [mHandle->renderCommandEncoder barrierAfterEncoderStages:renderSrcStages
+                                                  beforeEncoderStages:renderDstStages
+                                                    visibilityOptions:visibility];
+        }
+        
+        MTLStages nonRenderSrcStages = allSrcStages & ~validRenderStages;
+        MTLStages nonRenderDstStages = allDstStages & ~validRenderStages;
+        
+        if (nonRenderSrcStages != 0 || nonRenderDstStages != 0)
+        {
+            mHandle->consumerBarriers.push_back({allSrcStages, allDstStages, visibility });
+        }
+    }
+    else if (mHandle->computeCommandEncoder)
+    {
+        MTLStages validComputeStages = MTLStageDispatch | MTLStageBlit | MTLStageAccelerationStructure;
+        MTLStages computeSrcStages = allSrcStages & validComputeStages;
+        MTLStages computeDstStages = allDstStages & validComputeStages;
+        
+        if (computeSrcStages != 0 && computeDstStages != 0)
+        {
+            [mHandle->computeCommandEncoder barrierAfterEncoderStages:computeSrcStages
+                                                   beforeEncoderStages:computeDstStages
+                                                     visibilityOptions:visibility];
+        }
+        
+        MTLStages nonComputeSrcStages = allSrcStages & ~validComputeStages;
+        MTLStages nonComputeDstStages = allDstStages & ~validComputeStages;
+        if (nonComputeSrcStages != 0 || nonComputeDstStages != 0)
+        {
+            mHandle->consumerBarriers.push_back({ allSrcStages, allDstStages, visibility });
+        }
+    }
+    else
+    {
+        mHandle->consumerBarriers.push_back({ allSrcStages, allDstStages, visibility });
+    }
 }
 
 void CommandBuffer::Begin(const TStringView debugName) const

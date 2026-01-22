@@ -328,5 +328,23 @@ static constexpr MTLResourceOptions MemoryTypeToMTLResourceOption(MemoryType typ
     }
 }
 
+static constexpr MTLStages BarrierStageToMTLStages(BarrierStage stage)
+{
+	switch (stage)
+	{
+		case BarrierStage::None: return MTLStages(0);
+		case BarrierStage::All: return MTLStageVertex | MTLStageFragment | MTLStageDispatch | MTLStageBlit | MTLStageAccelerationStructure;
+		case BarrierStage::AllShading: return MTLStageVertex | MTLStageFragment | MTLStageDispatch;
+		case BarrierStage::NonFragmentShading: return MTLStageVertex | MTLStageDispatch;
+		case BarrierStage::VertexShading: return MTLStageVertex;
+		case BarrierStage::FragmentShading: return MTLStageFragment;
+		case BarrierStage::RenderTarget: return MTLStageFragment;
+		case BarrierStage::DepthStencil: return MTLStageFragment;
+		case BarrierStage::ComputeShading: return MTLStageDispatch;
+		case BarrierStage::Copy: return MTLStageBlit;
+		default: GLEAM_ASSERT(false, "Metal: Unknown barrier stage specified!"); return MTLStages(~0);
+	}
+}
+
 } // namespace Gleam
 #endif
