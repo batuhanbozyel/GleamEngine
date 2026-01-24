@@ -263,9 +263,18 @@ void PropertyDrawer::DrawEnumOptions(const Gleam::TStringView label, const Gleam
 	{
 		if (item.Value() == currentValue)
 		{
-			auto itemLabel = item.ResolveName();
-			std::memcpy(previewBuffer, itemLabel.data(), itemLabel.size());
-			previewBuffer[itemLabel.size()] = '\0';
+			if (item.HasAttribute<Gleam::Reflection::Attribute::PrettyName>())
+			{
+				auto prettyName = item.GetAttribute<Gleam::Reflection::Attribute::PrettyName>();
+				auto nameLength = strlen(prettyName->name);
+				std::memcpy(previewBuffer, prettyName->name, nameLength);
+			}
+			else
+			{
+				auto itemLabel = item.ResolveName();
+				std::memcpy(previewBuffer, itemLabel.data(), itemLabel.size());
+				previewBuffer[itemLabel.size()] = '\0';
+			}
 			break;
 		}
 	}
@@ -276,11 +285,19 @@ void PropertyDrawer::DrawEnumOptions(const Gleam::TStringView label, const Gleam
 		{
 			bool isSelected = *static_cast<int*>(value) == item.Value();
 
-			auto itemLabel = item.ResolveName();
-
 			char itemBuffer[64];
-			std::memcpy(itemBuffer, itemLabel.data(), itemLabel.size());
-			itemBuffer[itemLabel.size()] = '\0';
+			if (item.HasAttribute<Gleam::Reflection::Attribute::PrettyName>())
+			{
+				auto prettyName = item.GetAttribute<Gleam::Reflection::Attribute::PrettyName>();
+				auto nameLength = strlen(prettyName->name);
+				std::memcpy(itemBuffer, prettyName->name, nameLength);
+			}
+			else
+			{
+				auto itemLabel = item.ResolveName();
+				std::memcpy(itemBuffer, itemLabel.data(), itemLabel.size());
+				itemBuffer[itemLabel.size()] = '\0';
+			}
 
 			if (ImGui::Selectable(itemBuffer, isSelected))
 			{
@@ -320,6 +337,17 @@ void PropertyDrawer::DrawClassFields(void* obj, const Gleam::Reflection::ClassDe
 
 	for (const auto& field : classDesc.ResolveFields())
 	{
+		Gleam::TStringView fieldName;
+		if (field.HasAttribute<Gleam::Reflection::Attribute::PrettyName>())
+		{
+			auto prettyName = field.GetAttribute<Gleam::Reflection::Attribute::PrettyName>();
+			fieldName = prettyName->name;
+		}
+		else
+		{
+			fieldName = field.ResolveName();
+		}
+
 		switch (field.GetType())
 		{
 			case Gleam::Reflection::MetaType::Class:
@@ -327,19 +355,19 @@ void PropertyDrawer::DrawClassFields(void* obj, const Gleam::Reflection::ClassDe
 				const auto fieldDesc = Gleam::Reflection::GetClass(field.TypeHash());
 				if (fieldDesc->ResolveQualifiedName() == Gleam::Reflection::GetClass<Gleam::Color>().ResolveQualifiedName())
 				{
-					DrawColorControl(field.ResolveName(), *static_cast<Gleam::Color*>(Gleam::OffsetPointer(obj, field.GetOffset())), columnWidth);
+					DrawColorControl(fieldName, *static_cast<Gleam::Color*>(Gleam::OffsetPointer(obj, field.GetOffset())), columnWidth);
 				}
 				else if (fieldDesc->ResolveQualifiedName() == Gleam::Reflection::GetClass<Gleam::Float3>().ResolveQualifiedName())
 				{
-					DrawVec3Control(field.ResolveName(), *static_cast<Gleam::Float3*>(Gleam::OffsetPointer(obj, field.GetOffset())), columnWidth);
+					DrawVec3Control(fieldName, *static_cast<Gleam::Float3*>(Gleam::OffsetPointer(obj, field.GetOffset())), columnWidth);
 				}
 				else if (fieldDesc->ResolveQualifiedName() == Gleam::Reflection::GetClass<Gleam::AssetReference>().ResolveQualifiedName())
 				{
-					DrawAsset(field.ResolveName(), *static_cast<Gleam::AssetReference*>(Gleam::OffsetPointer(obj, field.GetOffset())), columnWidth);
+					DrawAsset(fieldName, *static_cast<Gleam::AssetReference*>(Gleam::OffsetPointer(obj, field.GetOffset())), columnWidth);
 				}
 				else
 				{
-					DrawClass(field.ResolveName(), Gleam::OffsetPointer(obj, field.GetOffset()), *fieldDesc);
+					DrawClass(fieldName, Gleam::OffsetPointer(obj, field.GetOffset()), *fieldDesc);
 				}
 				break;
 			}
@@ -350,14 +378,14 @@ void PropertyDrawer::DrawClassFields(void* obj, const Gleam::Reflection::ClassDe
 			case Gleam::Reflection::MetaType::Enum:
 			{
 				const auto enumDesc = Gleam::Reflection::GetEnum(field.TypeHash());
-				DrawEnumOptions(field.ResolveName(), *enumDesc, Gleam::OffsetPointer(obj, field.GetOffset()), columnWidth);
+				DrawEnumOptions(fieldName, *enumDesc, Gleam::OffsetPointer(obj, field.GetOffset()), columnWidth);
 				break;
 			}
 			case Gleam::Reflection::MetaType::Primitive:
 			{
 				constexpr uint64_t defaultValue = 0;
 				const auto primitiveDesc = Gleam::Reflection::GetPrimitive(field.TypeHash());
-				DrawScalarControl(field.ResolveName(), primitiveDesc.Type(), primitiveDesc.GetSize(), Gleam::OffsetPointer(obj, field.GetOffset()), &defaultValue, columnWidth);
+				DrawScalarControl(fieldName, primitiveDesc.Type(), primitiveDesc.GetSize(), Gleam::OffsetPointer(obj, field.GetOffset()), &defaultValue, columnWidth);
 				break;
 			}
 			default:

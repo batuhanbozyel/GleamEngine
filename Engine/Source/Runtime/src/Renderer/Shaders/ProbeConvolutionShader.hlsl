@@ -5,8 +5,8 @@
 
 PUSH_CONSTANT(Gleam::ProbeConvolutionConstants, constants);
 
-#define IRRADIANCE_SAMPLE_COUNT 1024u
-#define RADIANCE_SAMPLE_COUNT 512u
+#define IRRADIANCE_SAMPLE_COUNT 256u
+#define RADIANCE_SAMPLE_COUNT 128u
 
 static TextureCube<float4> srcTexture = ResourceDescriptorHeap[constants.sourceTexture];
 static RWTexture2D<float4> dstTexture = ResourceDescriptorHeap[constants.targetTexture];

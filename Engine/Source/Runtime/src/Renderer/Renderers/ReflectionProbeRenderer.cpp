@@ -45,7 +45,7 @@ void ReflectionProbeRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBla
 	{
 		TextureDescriptor textureDesc;
 		textureDesc.name = "GlobalProbe";
-		textureDesc.size = (float)globalProbe.size;
+		textureDesc.size = (float)globalProbe.resolution;
 		textureDesc.usage |= TextureUsage_Storage;
 		textureDesc.dimension = TextureDimension::TextureCube;
 		textureDesc.format = TextureFormat::R16G16B16A16_SFloat;
@@ -64,7 +64,7 @@ void ReflectionProbeRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBla
 
 		for (uint32_t face = 0; face < 6; ++face)
 		{
-			CameraUniforms cubeFaceCamera = CreateCubeFaceCamera(sceneData.camera.uniforms.position, globalProbe.size, face);
+			CameraUniforms cubeFaceCamera = CreateCubeFaceCamera(sceneData.camera.uniforms.position, (uint32_t)globalProbe.resolution, face);
 
 			SkyAtmosphereRenderConstants constants = {};
 			constants.targetTexture = passData.probe.GetTexture().GetUnorderedAccessView(0, face);
@@ -72,7 +72,7 @@ void ReflectionProbeRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBla
 			constants.renderSun = 0; // Exclude sun for IBL
 			cmd->SetPushConstant(constants);
 			cmd->SetConstantBuffer(cubeFaceCamera, CAMERA_UNIFORMS_BINDING_SLOT);
-			cmd->Dispatch(Math::DivideRoundingUp(globalProbe.size, 16u), Math::DivideRoundingUp(globalProbe.size, 16u), 1u);
+			cmd->Dispatch(Math::DivideRoundingUp((uint32_t)globalProbe.resolution, 16u), Math::DivideRoundingUp((uint32_t)globalProbe.resolution, 16u), 1u);
 		}
 	});
 
@@ -105,7 +105,7 @@ void ReflectionProbeRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBla
 			barrier.textureBarriers.push_back(textureBarrier);
 			cmd->Barrier(barrier);
 
-			uint32_t resolution = globalProbe.size >> level;
+			uint32_t resolution = (uint32_t)globalProbe.resolution >> level;
 			for (uint32_t face = 0; face < 6; ++face)
 			{
 				GenerateCubemapMipsConstants constants = {};
@@ -130,7 +130,7 @@ void ReflectionProbeRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBla
 	{
 		TextureDescriptor textureDesc;
 		textureDesc.name = "DiffuseIrradianceMap";
-		textureDesc.size = Math::DivideRoundingUp((float)globalProbe.size, 16.0f);
+		textureDesc.size = Math::DivideRoundingUp((float)globalProbe.resolution, 16.0f);
 		textureDesc.usage |= TextureUsage_Storage;
 		textureDesc.dimension = TextureDimension::TextureCube;
 		textureDesc.format = TextureFormat::R16G16B16A16_SFloat;
@@ -141,7 +141,7 @@ void ReflectionProbeRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBla
 	[this, sceneData, globalProbe](const CommandBuffer* cmd, const DiffuseConvolutionData& passData)
 	{
 		const auto& targetTexture = passData.targetTexture.GetTexture();
-		uint32_t resolution = Math::DivideRoundingUp(globalProbe.size, 16u);
+		uint32_t resolution = Math::DivideRoundingUp((uint32_t)globalProbe.resolution, 16u);
 
 		cmd->BindComputePipeline(mDiffuseConvolutionPipeline);
 		for (uint32_t face = 0; face < 6; ++face)
@@ -149,7 +149,7 @@ void ReflectionProbeRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBla
 			ProbeConvolutionConstants constants = {};
 			constants.sourceTexture = passData.probe;
 			constants.targetTexture = targetTexture.GetUnorderedAccessView(0, face);
-			constants.probeResolution = globalProbe.size;
+			constants.probeResolution = (uint32_t)globalProbe.resolution;
 			constants.resolution = resolution;
 			constants.face = face;
 			constants.level = 0;
@@ -169,7 +169,7 @@ void ReflectionProbeRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBla
 	{
 		TextureDescriptor textureDesc;
 		textureDesc.name = "SpecularRadianceMap";
-		textureDesc.size = (float)globalProbe.size;
+		textureDesc.size = (float)globalProbe.resolution;
 		textureDesc.usage |= TextureUsage_Storage;
 		textureDesc.dimension = TextureDimension::TextureCube;
 		textureDesc.format = TextureFormat::R16G16B16A16_SFloat;
@@ -186,13 +186,13 @@ void ReflectionProbeRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBla
 		cmd->BindComputePipeline(mSpecularConvolutionPipeline);
 		for (uint32_t level = 0; level < maxMipLevel; ++level)
 		{
-			uint32_t resolution = globalProbe.size >> level;
+			uint32_t resolution = (uint32_t)globalProbe.resolution >> level;
 			for (uint32_t face = 0; face < 6; ++face)
 			{
 				ProbeConvolutionConstants constants = {};
 				constants.sourceTexture = passData.probe;
 				constants.targetTexture = targetTexture.GetUnorderedAccessView(level, face);
-				constants.probeResolution = globalProbe.size;
+				constants.probeResolution = (uint32_t)globalProbe.resolution;
 				constants.resolution = resolution;
 				constants.level = level;
 				constants.face = face;
