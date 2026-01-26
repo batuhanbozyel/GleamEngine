@@ -26,6 +26,15 @@ void skyAtmosphereRenderShader(uint3 dispatchThreadId : SV_DispatchThreadID)
 	float3 WorldPos = GetCameraPlanetPos(camera.position);
 	
 	float viewHeight = length(WorldPos);
+	float3 UpVector = WorldPos / viewHeight;
+	
+	float horizonCos = ComputeHorizonCos(viewHeight);
+	float viewCos = dot(WorldDir, UpVector);
+	if (viewCos < horizonCos)
+	{
+		WorldDir = ClampToHorizon(WorldDir, UpVector, horizonCos);
+	}
+	
 	if (!MoveToTopAtmosphere(WorldDir, atmosphereParams.topRadius, WorldPos))
 	{
 		// Ray is not intersecting the atmosphere

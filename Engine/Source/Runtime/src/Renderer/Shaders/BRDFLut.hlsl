@@ -68,8 +68,6 @@ float IntegrateDiffuse(in float NdotV, in float perceptualRoughness)
 {
     float NdotV = (dispatchThreadID.x + 0.5) / BRDF_LUT_SIZE;
     float perceptualRoughness = (dispatchThreadID.y + 0.5) / BRDF_LUT_SIZE;
-    float4 brdf = float4(IntegrateDFG(NdotV, perceptualRoughness), IntegrateDiffuse(NdotV, perceptualRoughness));
-
     RWTexture2D<float4> targetTexture = ResourceDescriptorHeap[constants.targetTexture];
-    targetTexture[dispatchThreadID.xy] = brdf;
+	targetTexture[dispatchThreadID.xy] = float4(IntegrateDFG(NdotV, perceptualRoughness), IntegrateDiffuse(NdotV, perceptualRoughness));
 }

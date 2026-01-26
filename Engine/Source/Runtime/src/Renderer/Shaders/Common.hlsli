@@ -126,15 +126,11 @@ float2 RaySphereIntersect(float3 rayOrigin, float3 rayDirection, float3 sphereCe
 	float c = dot(s0_r0, s0_r0) - (sphereRadius * sphereRadius);
     
 	float delta = b * b - 4.0 * a * c;
-    
-	float2 sol = -1;
-    
 	if (delta >= 0.0)
 	{
 		return (-b + float2(-1, 1) * sqrt(delta)) / (2.0 * a);
 	}
-    
-	return sol;
+	return -1.0;
 }
 
 float RaySphereIntersectNearest(float3 rayOrigin, float3 rayDirection, float3 sphereCenter, float sphereRadius)
@@ -145,17 +141,18 @@ float RaySphereIntersectNearest(float3 rayOrigin, float3 rayDirection, float3 sp
     
 	if (sol0 < 0.0 && sol1 < 0.0)
 	{
-		return -1.0;
+		return -1.0; // no solution
 	}
+    
 	if (sol0 < 0.0)
 	{
-		return max(0.0, sol1);
+		return sol1;
 	}
 	else if (sol1 < 0.0)
 	{
-		return max(0.0, sol0);
+		return sol0;
 	}
-	return max(0.0, min(sol0, sol1));
+	return min(sol0, sol1);
 }
 
 void GetOrthonormalBasis(float3 N, out float3 T, out float3 B)

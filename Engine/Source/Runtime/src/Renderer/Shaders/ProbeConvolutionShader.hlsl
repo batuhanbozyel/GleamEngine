@@ -5,8 +5,8 @@
 
 PUSH_CONSTANT(Gleam::ProbeConvolutionConstants, constants);
 
-#define IRRADIANCE_SAMPLE_COUNT 256u
-#define RADIANCE_SAMPLE_COUNT 128u
+#define IRRADIANCE_SAMPLE_COUNT 128u
+#define RADIANCE_SAMPLE_COUNT 64u
 
 static TextureCube<float4> srcTexture = ResourceDescriptorHeap[constants.sourceTexture];
 static RWTexture2D<float4> dstTexture = ResourceDescriptorHeap[constants.targetTexture];
@@ -28,7 +28,7 @@ void diffuseIrradianceConvolutionShader(uint3 dispatchThreadId : SV_DispatchThre
 	// The mipmap level is clamped to something lower than 8x8
 	// in order to avoid cubemap filtering issues
 	float maxMipLevel = floor(log2(float(constants.probeResolution))) - 3.0;
-	float omegaP = 4.0 * PI / (6.0 * float(constants.resolution * constants.resolution));
+	float omegaP = 4.0 * PI / (6.0 * float(constants.probeResolution * constants.probeResolution));
 	
 	float3 irradiance = 0.0;
 	for (uint i = 0u; i < IRRADIANCE_SAMPLE_COUNT; ++i)

@@ -221,6 +221,20 @@ float GetShadow(float3 P)
 	return 1.0f;
 }
 
+float ComputeHorizonCos(float viewHeight)
+{
+	float h = max(viewHeight, atmosphereParams.bottomRadius + SKY_ATMOSPHERE_PLANET_RADIUS_OFFSET);
+	float r = atmosphereParams.bottomRadius;
+	return sqrt(saturate(1.0f - (r * r) / (h * h)));
+}
+
+float3 ClampToHorizon(float3 dir, float3 up, float horizonCos)
+{
+    float3 lateral = normalize(dir - dot(dir, up) * up);
+    float horizonSin = sqrt(saturate(1.0 - horizonCos * horizonCos));
+    return normalize(lateral * horizonSin + up * horizonCos);
+}
+
 float3 GetSkyLuminance(in float3 WorldPos, in float3 WorldDir, in float tMaxMax = 9000000.0f)
 {
 	// Compute next intersection with atmosphere or ground 
@@ -232,8 +246,7 @@ float3 GetSkyLuminance(in float3 WorldPos, in float3 WorldDir, in float tMaxMax 
 	{
 		if (tTop < 0.0f)
 		{
-			tMax = 0.0f; // No intersection with earth nor atmosphere: stop right away  
-			return 0.0f;
+			return 0.0f; // No intersection with earth nor atmosphere: stop right away 
 		}
 		else
 		{
@@ -266,7 +279,7 @@ float3 GetSkyLuminance(in float3 WorldPos, in float3 WorldDir, in float tMaxMax 
 	const float3 wi = sunDirection;
 	const float3 wo = WorldDir;
 	float cosTheta = dot(wi, wo);
-	float MiePhaseValue = hgPhase(atmosphereParams.miePhaseG, -cosTheta); // mnegate cosTheta because due to WorldDir being a "in" direction. 
+	float MiePhaseValue = hgPhase(atmosphereParams.miePhaseG, -cosTheta); // negate cosTheta because due to WorldDir being a "in" direction. 
 	float RayleighPhaseValue = RayleighPhase(cosTheta);
 
 	float3 globalL = atmosphereUniforms.sunIlluminance;
