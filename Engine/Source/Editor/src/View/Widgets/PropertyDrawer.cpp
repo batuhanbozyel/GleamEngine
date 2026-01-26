@@ -257,7 +257,7 @@ void PropertyDrawer::DrawEnumOptions(const Gleam::TStringView label, const Gleam
 	ImGui::PushItemWidth(ImGui::CalcItemWidth() + buttonSize.x);
 	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2{ 0, 0 });
 
-	char previewBuffer[64] = {};
+	char previewBuffer[64];
 	int currentValue = *static_cast<int*>(value);
 	for (const auto& item : enumDesc.Cases())
 	{
@@ -268,6 +268,7 @@ void PropertyDrawer::DrawEnumOptions(const Gleam::TStringView label, const Gleam
 				auto prettyName = item.GetAttribute<Gleam::Reflection::Attribute::PrettyName>();
 				auto nameLength = strlen(prettyName->name);
 				std::memcpy(previewBuffer, prettyName->name, nameLength);
+				previewBuffer[nameLength] = '\0';
 			}
 			else
 			{
@@ -291,6 +292,7 @@ void PropertyDrawer::DrawEnumOptions(const Gleam::TStringView label, const Gleam
 				auto prettyName = item.GetAttribute<Gleam::Reflection::Attribute::PrettyName>();
 				auto nameLength = strlen(prettyName->name);
 				std::memcpy(itemBuffer, prettyName->name, nameLength);
+				itemBuffer[nameLength] = '\0';
 			}
 			else
 			{
