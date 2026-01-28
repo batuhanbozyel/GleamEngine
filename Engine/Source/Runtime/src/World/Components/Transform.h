@@ -4,7 +4,7 @@
 
 namespace Gleam {
 
-GSTRUCT(Transform, "D534ACED-5A81-4183-BD5F-A7F61A8F47E7", Serializable)
+GSTRUCT(Transform, "D534ACED-5A81-4183-BD5F-A7F61A8F47E7", EntityComponent, Serializable)
 {
 	GFIELD("4A96F8C0-FB46-42EF-8791-2E7673A10210", Serializable)
 	Float3 position = Float3::zero;

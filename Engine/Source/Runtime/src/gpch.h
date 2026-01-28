@@ -31,6 +31,10 @@
 #include <unordered_map>
 #include <unordered_set>
 
+#ifndef __GLEAM_REFLECTION__
+#include <Runtime.Reflection.generated.h>
+#endif
+
 #include <Reflection/TypeTraits.h>
 #include <Reflection/Attribute.h>
 #include <Reflection/Meta.h>
@@ -105,8 +109,4 @@
 #include <windows.h>
 #else
 #include <sys/stat.h>
-#endif
-
-#ifndef __GLEAM_REFLECTION__
-#include <Runtime.Reflection.generated.h>
 #endif

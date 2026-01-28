@@ -85,6 +85,10 @@ public:
 	*	- triangulated primitive type and indices
 	*/
 	bool Import(const Gleam::Path& path, const ImportSettings& settings);
+
+private:
+
+	Gleam::TArray<Gleam::RefCounted<MaterialInstanceBaker>> ImportMaterials(const Gleam::TArray<RawMaterial>& rawMaterials, const Gleam::Path& path, const ImportSettings& settings);
     
 };
 

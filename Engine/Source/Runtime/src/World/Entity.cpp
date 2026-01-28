@@ -165,10 +165,9 @@ void Entity::SetScale(float scale)
 	}
 }
 
-void Entity::SetLocalTransform(const Float4x4& transform)
+void Entity::SetLocalTransform(const Transform& transform)
 {
-	Math::Decompose(transform, mLocalTransform.position, mLocalTransform.rotation, mLocalTransform.scale);
-
+	mLocalTransform = transform;
 	if (HasParent())
 	{
 		auto& parent = GetParentEntity();

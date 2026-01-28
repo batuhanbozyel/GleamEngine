@@ -33,7 +33,6 @@ MaterialInstance::MaterialInstance(const MaterialInstanceDescriptor& descriptor)
 MaterialInstance::~MaterialInstance()
 {
 	auto assetManager = Globals::GameInstance->GetSubsystem<AssetManager>();
-
 	for (uint32_t i = 0; i < mProperties.size(); ++i)
 	{
 		if (mProperties[i].type == MaterialPropertyType::Texture2D)

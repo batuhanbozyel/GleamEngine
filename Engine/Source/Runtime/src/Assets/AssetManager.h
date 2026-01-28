@@ -50,20 +50,16 @@ public:
 			return nullptr;
 		}
 
-		if (auto it = mAssetCache.find(ref); it != mAssetCache.end())
+		auto it = mAssetCache.find(ref);
+		if (it == mAssetCache.end())
 		{
-			auto& asset = it->second;
-			++asset->mRefCount;
-
-			return static_cast<T*>(asset.get());
+			auto meta = entt::resolve(entt::type_hash<T>().value());
+			auto asset = Reflection::Get<T*>(meta.func("CreateAsset"_hs).invoke({}, ref).base().data());
+			it = mAssetCache.emplace_hint(mAssetCache.end(),
+										  eastl::piecewise_construct,
+										  eastl::forward_as_tuple(ref),
+										  eastl::forward_as_tuple(asset));
 		}
-
-		auto meta = entt::resolve(entt::type_hash<T>().value());
-		auto asset = Reflection::Get<T*>(meta.func("CreateAsset"_hs).invoke({}, ref).base().data());
-		auto it = mAssetCache.emplace_hint(mAssetCache.end(),
-										   eastl::piecewise_construct,
-										   eastl::forward_as_tuple(ref),
-										   eastl::forward_as_tuple(asset));
 
 		++it->second->mRefCount;
 		return static_cast<T*>(it->second.get());

@@ -355,8 +355,14 @@ FORCE_INLINE void Decompose(const Float4x4& transform, Float3& translation, Quat
 	Float3 zAxis(transform.m[8], transform.m[9], transform.m[10]);
 	scale = Length(xAxis);
 
-	GLEAM_ASSERT(Abs(scale - Length(yAxis)) < Epsilon);
-	GLEAM_ASSERT(Abs(scale - Length(zAxis)) < Epsilon);
+	GLEAM_ASSERT(Abs(scale - Length(yAxis)) < Epsilon, "Transform has non-uniform scaling");
+	GLEAM_ASSERT(Abs(scale - Length(zAxis)) < Epsilon, "Transform has non-uniform scaling");
+
+	if (scale < Epsilon)
+	{
+		rotation = Quaternion::identity;
+		return;
+	}
 
 	Float3x3 rotMatrix;
 	rotMatrix[0] = xAxis / scale;

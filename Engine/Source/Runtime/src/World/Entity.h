@@ -196,7 +196,7 @@ public:
 
 	void SetScale(float scale);
 
-	void SetLocalTransform(const Float4x4& transform);
+	void SetLocalTransform(const Transform& transform);
 
 	NO_DISCARD FORCE_INLINE const Transform& GetWorldTransform() const
 	{
