@@ -3,6 +3,8 @@
 #include "Core/GUID.h"
 #include "IO/Path.h"
 
+#include <Runtime.Reflection.generated.h>
+
 namespace GEditor {
 
 struct AssetItem

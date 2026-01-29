@@ -31,14 +31,14 @@
 #include <unordered_map>
 #include <unordered_set>
 
-#ifndef __GLEAM_REFLECTION__
-#include <Runtime.Reflection.generated.h>
-#endif
-
 #include <Reflection/TypeTraits.h>
 #include <Reflection/Attribute.h>
 #include <Reflection/Meta.h>
 #include <Reflection/Reflection.h>
+
+#ifndef __GLEAM_REFLECTION__
+#include <Runtime.Reflection.generated.h>
+#endif
 
 #include <entt/core/type_info.hpp>
 #include <entt/core/hashed_string.hpp>

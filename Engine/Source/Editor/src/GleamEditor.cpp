@@ -1,5 +1,12 @@
 // EntryPoint
 #include "Core/EntryPoint.h"
+#include "Serialization/JSONSerializer.h"
+
+#include "World/WorldManager.h"
+#include "World/Components/Camera.h"
+#include "World/Components/SkyAtmosphere.h"
+#include "World/Components/ReflectionProbe.h"
+
 #include "View/ViewStack.h"
 #include "World/World.h"
 

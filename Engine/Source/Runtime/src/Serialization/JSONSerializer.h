@@ -1,8 +1,4 @@
 #pragma once
-#ifndef __GLEAM_REFLECTION__
-#include <Runtime.Reflection.generated.h>
-#endif
-
 #include "Core/Subsystem.h"
 #include "Core/Macro.h"
 #include "Core/GUID.h"
@@ -10,6 +6,11 @@
 #include "Container/String.h"
 #include "Container/Hash.h"
 #include "IO/Filesystem.h"
+
+#include <Reflection/Reflection.h>
+#ifndef __GLEAM_REFLECTION__
+#include <Runtime.Reflection.generated.h>
+#endif
 
 namespace rapidjson {
 struct Node;
