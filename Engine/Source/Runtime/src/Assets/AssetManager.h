@@ -29,7 +29,13 @@ public:
     virtual void Initialize(Application* app) override;
 
     virtual void Shutdown() override;
-	
+
+	template<AssetType T>
+	bool Has(const AssetReference& ref) const
+	{
+		return mAssetCache.find(ref) != mAssetCache.end();
+	}
+
 	template<AssetType T>
 	T* Get(const AssetReference& ref) const
 	{
