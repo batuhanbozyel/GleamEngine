@@ -177,7 +177,7 @@ void EAssetManager::Initialize(Gleam::World* world)
     }, true);
 }
 
-void EAssetManager::Shutdown()
+void EAssetManager::Shutdown(Gleam::World* world)
 {
 	
 }

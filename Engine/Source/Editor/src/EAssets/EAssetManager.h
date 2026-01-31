@@ -15,7 +15,7 @@ public:
 
 	virtual void Initialize(Gleam::World* world) override;
 
-	virtual void Shutdown() override;
+	virtual void Shutdown(Gleam::World* world) override;
 
 	void Import(const Gleam::Path& directory, const AssetPackage& package);
 

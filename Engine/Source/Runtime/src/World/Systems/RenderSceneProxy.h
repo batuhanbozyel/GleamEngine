@@ -1,5 +1,5 @@
 #pragma once
-#include "World/ComponentSystem.h"
+#include "World/WorldSubsystem.h"
 #include "Renderer/Buffer.h"
 #include "Renderer/Shaders/ShaderTypes.h"
 #include "Assets/AssetReference.h"
@@ -28,14 +28,14 @@ struct MeshBatch
 	TArray<MeshInstanceData, MaxMeshInstances> instances = {};
 };
 
-class RenderSceneProxy : public ComponentSystem
+class RenderSceneProxy : public TickableWorldSubsystem
 {
     using BatchFn = std::function<void(const MeshBatch&)>;
 public:
     
-    virtual void OnUpdate(EntityManager& entityManager) override;
+    virtual void Tick(World* world) override;
 
-	virtual void OnDestroy(EntityManager& entityManager) override;
+	virtual void Shutdown(World* world) override;
     
     void ForEach(BatchFn&& fn) const;
 

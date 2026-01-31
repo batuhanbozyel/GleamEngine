@@ -11,7 +11,7 @@ World::World(const TString& name)
 	: name(name)
 {
 	Timestep::Reset();
-	AddSystem<RenderSceneProxy>();
+	AddSubsystem<RenderSceneProxy>();
 }
 
 World::~World()
@@ -25,7 +25,7 @@ World::~World()
 
 	for (auto system : mSubsystems)
 	{
-		system->Shutdown();
+		system->Shutdown(this);
 	}
 	mSubsystems.clear();
 }
@@ -35,7 +35,7 @@ void World::Update()
 	Timestep::Step();
 	for (auto subsystem : mTickableSubsystems)
 	{
-		subsystem->Tick();
+		subsystem->Tick(this);
 	}
 
 	while (Timestep::InFixedTimeStep())
@@ -45,17 +45,49 @@ void World::Update()
 		{
 			if (system->Enabled)
 			{
+				system->OnPreFixedUpdate(mEntityManager);
+			}
+		}
+
+		for (auto system : mSystems)
+		{
+			if (system->Enabled)
+			{
 				system->OnFixedUpdate(mEntityManager);
+			}
+		}
+
+		for (auto system : mSystems)
+		{
+			if (system->Enabled)
+			{
+				system->OnPostFixedUpdate(mEntityManager);
 			}
 		}
 	}
 	Timestep::Update();
-	
+
+	for (auto system : mSystems)
+	{
+		if (system->Enabled)
+		{
+			system->OnPreUpdate(mEntityManager);
+		}
+	}
+
 	for (auto system : mSystems)
 	{
 		if (system->Enabled)
 		{
 			system->OnUpdate(mEntityManager);
+		}
+	}
+
+	for (auto system : mSystems)
+	{
+		if (system->Enabled)
+		{
+			system->OnPostUpdate(mEntityManager);
 		}
 	}
 }

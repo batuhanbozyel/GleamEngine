@@ -18,7 +18,7 @@
 
 using namespace Gleam;
 
-void RenderSceneProxy::OnUpdate(EntityManager& entityManager)
+void RenderSceneProxy::Tick(World* world)
 {
 	static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
 	static auto assetManager = Globals::GameInstance->GetSubsystem<AssetManager>();
@@ -29,7 +29,7 @@ void RenderSceneProxy::OnUpdate(EntityManager& entityManager)
 	}
 
 	// update mesh batches
-	entityManager.ForEach<Entity, MeshRenderer>([&](const Entity& entity, const MeshRenderer& meshRenderer)
+	world->GetEntityManager().ForEach<Entity, MeshRenderer>([&](const Entity& entity, const MeshRenderer& meshRenderer)
 	{
 		const auto mesh = assetManager->Load<Mesh>(meshRenderer.mesh);
 		const auto& submeshes = mesh->GetSubmeshes();
@@ -77,12 +77,12 @@ void RenderSceneProxy::OnUpdate(EntityManager& entityManager)
 	});
 }
 
-void RenderSceneProxy::OnDestroy(EntityManager& entityManager)
+void RenderSceneProxy::Shutdown(World* world)
 {
 	static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
 	static auto assetManager = Globals::GameInstance->GetSubsystem<AssetManager>();
 
-	entityManager.ForEach<Entity, MeshRenderer>([&](const Entity& entity, const MeshRenderer& meshRenderer)
+	world->GetEntityManager().ForEach<Entity, MeshRenderer>([&](const Entity& entity, const MeshRenderer& meshRenderer)
 	{
 		assetManager->Release(meshRenderer.mesh);
 		for (const auto& material : meshRenderer.materials)

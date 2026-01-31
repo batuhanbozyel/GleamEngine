@@ -65,7 +65,7 @@ void RenderSystem::Shutdown()
 
 void RenderSystem::PreRender(const World* world)
 {
-	auto sceneProxy = world->GetSystem<RenderSceneProxy>();
+	auto sceneProxy = world->GetSubsystem<RenderSceneProxy>();
 	sceneProxy->ForEach([&](const MeshBatch& batch)
 	{
 		mCopyCommandBuffer->Commit(batch.instanceBuffer, batch.instances.data(), sizeof(MeshInstanceData) * batch.numInstances);
@@ -144,7 +144,7 @@ void RenderSystem::Render(const World* world)
 		auto& sceneData = blackboard.Add<SceneRenderingData>();
 		sceneData.backbuffer = graph.ImportTexture(backbuffer);
 		sceneData.sceneTarget = graph.ImportTexture(sceneTarget);
-		sceneData.sceneProxy = world->GetSystem<RenderSceneProxy>();
+		sceneData.sceneProxy = world->GetSubsystem<RenderSceneProxy>();
 		sceneData.world = world;
 
 		// Setup camera & sky atmosphere

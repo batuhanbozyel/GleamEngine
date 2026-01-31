@@ -20,13 +20,13 @@ void ViewStack::Initialize(Gleam::World* world)
     SetDarkTheme();
 }
 
-void ViewStack::Shutdown()
+void ViewStack::Shutdown(Gleam::World* world)
 {
 	Gleam::Globals::Engine->GetSubsystem<Gleam::RenderSystem>()->RemoveRenderer<Gleam::ImGuiRenderer>();
 	mViews.clear();
 }
 
-void ViewStack::Tick()
+void ViewStack::Tick(Gleam::World* world)
 {
     for (auto view : mViews)
     {

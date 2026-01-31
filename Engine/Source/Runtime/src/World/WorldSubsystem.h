@@ -15,7 +15,7 @@ protected:
 
 	virtual void Initialize(World* world) {}
     
-	virtual void Shutdown() {}
+	virtual void Shutdown(World* world) {}
 
 };
 
@@ -30,9 +30,9 @@ protected:
 
 	virtual void Initialize(World* world) override {}
 
-	virtual void Shutdown() override {}
+	virtual void Shutdown(World* world) override {}
 
-	virtual void Tick() {}
+	virtual void Tick(World* world) {}
 
 };
 

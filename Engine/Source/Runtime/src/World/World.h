@@ -63,12 +63,12 @@ public:
 			mTickableSubsystems.erase(std::remove(mTickableSubsystems.begin(), mTickableSubsystems.end(), system));
 		}
 
-		system->Shutdown();
+		system->Shutdown(this);
 		mSubsystems.erase<T>();
 	}
 
 	template<WorldSystemType T>
-	T* GetSubsystem()
+	T* GetSubsystem() const
 	{
 		return mSubsystems.get<T>();
 	}
