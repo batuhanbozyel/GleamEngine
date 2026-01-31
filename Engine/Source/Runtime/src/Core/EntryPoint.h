@@ -1,5 +1,12 @@
 #pragma once
-#include "Gleam.h"
+#ifndef __GLEAM_REFLECTION__
+#include <Runtime.Reflection.generated.h>
+#endif
+
+#include "Application.h"
+#include "Engine.h"
+#include "Globals.h"
+
 #include <SDL3/SDL_main.h>
 #include <Reflection/Database.h>
 

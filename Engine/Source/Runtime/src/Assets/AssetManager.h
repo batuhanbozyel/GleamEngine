@@ -54,7 +54,8 @@ public:
 		if (it == mAssetCache.end())
 		{
 			auto meta = entt::resolve(entt::type_hash<T>().value());
-			auto asset = Reflection::Get<T*>(meta.func("CreateAsset"_hs).invoke({}, ref).base().data());
+			auto any = meta.func("CreateAsset"_hs).invoke({}, ref);
+			auto asset = any.template cast<T*>();
 			it = mAssetCache.emplace_hint(mAssetCache.end(),
 										  eastl::piecewise_construct,
 										  eastl::forward_as_tuple(ref),

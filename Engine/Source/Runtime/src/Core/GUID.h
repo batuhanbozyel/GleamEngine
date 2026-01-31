@@ -1,5 +1,6 @@
 #pragma once
-#include <Reflection/Reflection.h>
+#include <Reflection/Macro.h>
+#include <Reflection/Attribute.h>
 
 #include "Container/Hash.h"
 #include "Container/Array.h"

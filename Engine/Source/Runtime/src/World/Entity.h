@@ -2,10 +2,14 @@
 #include "Core/EngineDefines.h"
 #include "Core/GUID.h"
 #include "Components/Transform.h"
-#include "Container/String.h"
 
 #include <entt/entity/entity.hpp>
 #include <entt/entity/registry.hpp>
+
+#include <Reflection/Reflection.h>
+#ifndef __GLEAM_REFLECTION__
+#include <Runtime.Reflection.generated.h>
+#endif
 
 namespace Gleam {
 
