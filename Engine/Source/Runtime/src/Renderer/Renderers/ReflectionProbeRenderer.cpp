@@ -69,7 +69,6 @@ void ReflectionProbeRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBla
 			SkyAtmosphereRenderConstants constants = {};
 			constants.targetTexture = passData.probe.GetTexture().GetUnorderedAccessView(0, face);
 			constants.depthTexture = InvalidResourceIndex; // No depth test needed
-			constants.renderSun = 0; // Exclude sun for IBL
 			cmd->SetPushConstant(constants);
 			cmd->SetConstantBuffer(cubeFaceCamera, CAMERA_UNIFORMS_BINDING_SLOT);
 			cmd->Dispatch(Math::DivideRoundingUp((uint32_t)globalProbe.resolution, 16u), Math::DivideRoundingUp((uint32_t)globalProbe.resolution, 16u), 1u);

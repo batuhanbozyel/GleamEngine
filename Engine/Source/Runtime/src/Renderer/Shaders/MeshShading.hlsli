@@ -46,17 +46,15 @@ float4 meshShadingPassShader(MeshVertexOut IN) : SV_TARGET
 	DirectLight light;
 	if (atmosphereUniforms.transmittanceLutTexture != InvalidResourceIndex && atmosphereUniforms.multiScatterLutTexture != InvalidResourceIndex)
 	{
-		const float3 planetCenterWorld = float3(0.0f, -atmosphereParams.bottomRadius, 0.0f);
-		const float3 worldPositionInKM = IN.worldPosition * M_TO_KM;
-		
 		light.direction = atmosphereUniforms.sunDirection;
-		light.illuminance = GetSunLuminance(worldPositionInKM - planetCenterWorld, atmosphereUniforms.sunDirection);
+		light.illuminance = GetSunLuminance(GetSkyWorldPosition(IN.worldPosition), atmosphereUniforms.sunDirection);
 	}
 	else
 	{
 		light.direction = atmosphereUniforms.sunDirection;
 		light.illuminance = atmosphereUniforms.sunIlluminance;
 	}
+	
 	float3 color = 0.0;
 	color += EvaluateDirectLight(surface, light, viewDir, worldNormal);
 	color += EvaluateIndirectLight(surface, resources.brdfTexture, resources.diffuseReflectionTexture, resources.specularReflectionTexture, viewDir, worldNormal);

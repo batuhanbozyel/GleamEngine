@@ -34,7 +34,7 @@ public:
     
     virtual void Initialize(Engine* engine) override;
     
-    virtual void Shutdown() override;
+    virtual void Shutdown(Engine* engine) override;
 
 	void PreRender(const World* world);
     

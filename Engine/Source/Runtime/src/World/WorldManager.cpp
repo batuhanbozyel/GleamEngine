@@ -13,7 +13,7 @@ void WorldManager::Initialize(Application* app)
 	
 }
 
-void WorldManager::Shutdown()
+void WorldManager::Shutdown(Application* app)
 {
 	mLoadedWorlds.clear();
 	mWorldsInBuild.clear();

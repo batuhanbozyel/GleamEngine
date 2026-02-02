@@ -23,7 +23,15 @@ void skyAtmosphereRenderShader(uint3 dispatchThreadId : SV_DispatchThreadID)
 	float3 ClipSpace = float3(uv * float2(2.0, -2.0) - float2(1.0, -1.0), 1.0);
 	float4 HViewPos = mul(camera.invProjectionMatrix, float4(ClipSpace, 1.0));
 	float3 WorldDir = normalize(mul((float3x3)camera.invViewMatrix, HViewPos.xyz / HViewPos.w));
-	float3 WorldPos = GetCameraPlanetPos(camera.position);
+	float3 WorldPos = GetSkyWorldPosition(camera.position);
+	
+	if (!MoveToTopAtmosphere(WorldDir, atmosphereParams.topRadius, WorldPos))
+	{
+		// Ray is not intersecting the atmosphere
+		return;
+	}
+	
+	float3 Luminance = GetSunLuminance(WorldPos, WorldDir);
 	
 	float viewHeight = length(WorldPos);
 	float3 UpVector = WorldPos / viewHeight;
@@ -34,18 +42,7 @@ void skyAtmosphereRenderShader(uint3 dispatchThreadId : SV_DispatchThreadID)
 	{
 		WorldDir = ClampToHorizon(WorldDir, UpVector, horizonCos);
 	}
-	
-	if (!MoveToTopAtmosphere(WorldDir, atmosphereParams.topRadius, WorldPos))
-	{
-		// Ray is not intersecting the atmosphere
-		return;
-	}
-	
-	float3 Luminance = GetSkyLuminance(WorldPos, WorldDir);
-	if (constants.renderSun)
-	{
-		Luminance += GetSunLuminance(WorldPos, WorldDir);
-	}
+	Luminance += GetSkyLuminance(WorldPos, WorldDir);
 	
 	RWTexture2D<float4> TargetTexture = ResourceDescriptorHeap[constants.targetTexture];
 	TargetTexture[dispatchThreadId.xy] = float4(Luminance, 1.0);

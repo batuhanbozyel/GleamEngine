@@ -121,7 +121,6 @@ void SkyAtmosphereRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlack
 		SkyAtmosphereRenderConstants constants = {};
 		constants.targetTexture = passData.sceneColor.GetTexture().GetResourceView();
 		constants.depthTexture = passData.sceneDepth.GetTexture().GetResourceView();
-		constants.renderSun = 1; // true
 
 		cmd->BindComputePipeline(mSkyRenderPipeline);
 		cmd->SetConstantBuffer(sceneData.camera.uniforms, CAMERA_UNIFORMS_BINDING_SLOT);

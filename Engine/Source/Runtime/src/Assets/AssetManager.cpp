@@ -83,7 +83,7 @@ void AssetManager::Initialize(Application* app)
 	});
 }
 
-void AssetManager::Shutdown()
+void AssetManager::Shutdown(Application* app)
 {
 	// TODO: Fix me!!!
 	// There are assets depending other assets such as MaterialInstance -> Material

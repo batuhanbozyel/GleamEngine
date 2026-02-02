@@ -11,7 +11,7 @@ void ScriptingSystem::Initialize(Engine* engine)
 	RegisterMetaComponent<ReflectionProbe>();
 }
 
-void ScriptingSystem::Shutdown()
+void ScriptingSystem::Shutdown(Engine* engine)
 {
 
 }

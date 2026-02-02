@@ -43,7 +43,7 @@ void RenderSystem::Initialize(Engine* engine)
 	});
 }
 
-void RenderSystem::Shutdown()
+void RenderSystem::Shutdown(Engine* engine)
 {
 	mCopyCommandBuffer.reset();
 	mCommandBuffers.clear();

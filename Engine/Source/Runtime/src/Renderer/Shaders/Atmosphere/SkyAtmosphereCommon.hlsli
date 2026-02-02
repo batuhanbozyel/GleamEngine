@@ -151,27 +151,21 @@ bool MoveToTopAtmosphere(in float3 WorldDir, in float AtmosphereTopRadius, inout
 	return true; // ok to start tracing
 }
 
-float3 GetSkyWorldCameraOrigin(float3 cameraPosition)
+float3 GetSkyWorldPosition(float3 position)
 {
-	const float3 cameraPositionInKM = cameraPosition * M_TO_KM;
+	const float3 positionInKM = position * M_TO_KM;
 	const float3 planetCenterWorld = float3(0.0f, -atmosphereParams.bottomRadius, 0.0f);
 	const float bottomRadiusWorldOffset = atmosphereParams.bottomRadius + SKY_ATMOSPHERE_PLANET_RADIUS_OFFSET;
 	
-	const float3 planetCenterToCameraWorld = cameraPositionInKM - planetCenterWorld;
-	const float distanceToPlanetCenterWorld = length(planetCenterToCameraWorld);
-	const float3 planetCenterToCameraWorldNormalized = planetCenterToCameraWorld / distanceToPlanetCenterWorld;
+	const float3 planetCenterToPointWorld = positionInKM - planetCenterWorld;
+	const float distanceToPlanetCenterWorld = length(planetCenterToPointWorld);
+	const float3 planetCenterToPointWorldNormalized = planetCenterToPointWorld / distanceToPlanetCenterWorld;
 	
 	// If the camera is below the planet surface, we snap it back onto the surface.
 	// This is to make sure the sky is always visible even if the camera is inside the virtual planet.
-	return distanceToPlanetCenterWorld < bottomRadiusWorldOffset ?
-	planetCenterWorld + bottomRadiusWorldOffset * planetCenterToCameraWorldNormalized : cameraPositionInKM;
-}
-
-float3 GetCameraPlanetPos(float3 cameraPosition)
-{
-	const float3 planetCenterWorld = float3(0.0f, -atmosphereParams.bottomRadius, 0.0f);
-	const float3 skyWorldCameraOrigin = GetSkyWorldCameraOrigin(cameraPosition);
-	return (skyWorldCameraOrigin - planetCenterWorld);
+	const float3 skyWorldPosition = distanceToPlanetCenterWorld < bottomRadiusWorldOffset ?
+		planetCenterWorld + bottomRadiusWorldOffset * planetCenterToPointWorldNormalized : positionInKM;
+	return (skyWorldPosition - planetCenterWorld);
 }
 
 float3 GetTransmittance(float pHeight, float sunZenithCosAngle)

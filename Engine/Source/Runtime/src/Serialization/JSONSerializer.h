@@ -33,7 +33,7 @@ public:
     
     virtual void Initialize(Engine* engine) override;
     
-    virtual void Shutdown() override;
+    virtual void Shutdown(Engine* engine) override;
 
 	JSONHeader ParseHeader(FileStream& stream);
 

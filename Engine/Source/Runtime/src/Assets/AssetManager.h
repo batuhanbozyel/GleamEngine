@@ -28,7 +28,7 @@ public:
     
     virtual void Initialize(Application* app) override;
 
-    virtual void Shutdown() override;
+    virtual void Shutdown(Application* app) override;
 
 	template<AssetType T>
 	bool Has(const AssetReference& ref) const
@@ -43,8 +43,7 @@ public:
 		{
 			return static_cast<T*>(it->second.get());
 		}
-		GLEAM_CORE_ERROR("Asset is not loaded for GUID: {0}", ref.guid.ToString());
-		GLEAM_ASSERT(false);
+		GLEAM_ASSERT(false, "Asset is not loaded for GUID: {0}", ref.guid.ToString());
 		return nullptr;
 	}
 	

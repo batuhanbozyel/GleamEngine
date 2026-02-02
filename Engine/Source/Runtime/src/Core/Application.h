@@ -38,7 +38,7 @@ public:
         GLEAM_ASSERT(HasSubsystem<T>(), "Application does not have the subsystem!");
 
         T* system = mSubsystems.get<T>();
-        system->Shutdown();
+        system->Shutdown(this);
         mSubsystems.erase<T>();
 	}
     

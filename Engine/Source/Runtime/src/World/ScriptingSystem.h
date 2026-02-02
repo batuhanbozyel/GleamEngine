@@ -14,7 +14,7 @@ public:
 
 	virtual void Initialize(Engine* engine) override;
 
-	virtual void Shutdown() override;
+	virtual void Shutdown(Engine* engine) override;
 
 	template<typename T>
 	static void RegisterMetaComponent()

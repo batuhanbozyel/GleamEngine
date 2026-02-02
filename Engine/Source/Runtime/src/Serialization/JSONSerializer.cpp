@@ -385,7 +385,7 @@ void JSONSerializer::Initialize(Engine* engine)
 	}
 }
 
-void JSONSerializer::Shutdown()
+void JSONSerializer::Shutdown(Engine* engine)
 {
     mCustomObjectSerializers.clear();
     mCustomArraySerializers.clear();

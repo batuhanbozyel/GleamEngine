@@ -125,7 +125,7 @@ void FileWatcher::Initialize(Engine* engine)
     
 }
 
-void FileWatcher::Shutdown()
+void FileWatcher::Shutdown(Engine* engine)
 {
     for (auto& [_, watchers] : mWatchers)
     {
