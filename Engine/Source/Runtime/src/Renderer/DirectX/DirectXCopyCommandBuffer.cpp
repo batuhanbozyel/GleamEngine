@@ -275,9 +275,9 @@ void CopyCommandBuffer::Commit(const Texture& texture, const void* data, size_t 
 	const auto& texDesc = texture.GetDescriptor();
 	
 	D3D12_BOX region = {};
-	region.right = static_cast<UINT>(static_cast<UINT>(texDesc.size.width) >> mip);
-	region.bottom = static_cast<UINT>(static_cast<UINT>(texDesc.size.height) >> mip);
-	region.back = (texDesc.dimension == TextureDimension::Texture3D) ? static_cast<UINT>(texDesc.depth >> mip) : 1;
+	region.right = Math::Max(static_cast<uint32_t>(texDesc.size.width) >> mip, 1u);
+	region.bottom = Math::Max(static_cast<uint32_t>(texDesc.size.height) >> mip, 1u);
+	region.back = (texDesc.dimension == TextureDimension::Texture3D) ? Math::Max(texDesc.depth >> mip, 1u) : 1;
 
 	if (auto srcData = mHandle->CopyUploadData(data, size); srcData)
 	{

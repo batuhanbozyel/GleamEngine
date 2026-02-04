@@ -185,9 +185,9 @@ void CopyCommandBuffer::Commit(const Texture& texture, const void* data, size_t 
     const auto& texDesc = texture.GetDescriptor();
     
     id<MTLTexture> dstTexture = texture.GetHandle();
-    MTLSize sourceSize = MTLSizeMake(static_cast<UINT>(texDesc.size.width) >> mip, 
-                                     static_cast<UINT>(texDesc.size.height) >> mip, 
-                                    (texDesc.dimension == TextureDimension::Texture3D) ? static_cast<UINT>(texDesc.depth >> mip) : 1);
+    MTLSize sourceSize = MTLSizeMake(Math::Max(static_cast<uint32_t>(texDesc.size.width) >> mip, 1u),
+                                     Math::Max(static_cast<uint32_t>(texDesc.size.height) >> mip, 1u),
+                                    (texDesc.dimension == TextureDimension::Texture3D) ? Math::Max(texDesc.depth >> mip, 1u) : 1);
 
     size_t sourceBytesPerRow = sourceSize.width * Utils::GetTextureFormatSizeInBytes(texDesc.format);
     size_t sourceBytesPerImage = sourceBytesPerRow * sourceSize.height * sourceSize.depth;
