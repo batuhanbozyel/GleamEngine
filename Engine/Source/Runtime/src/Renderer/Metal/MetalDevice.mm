@@ -335,8 +335,8 @@ Texture GraphicsDevice::CreateTexture(GPUAllocator* allocator, const TextureDesc
     
     for (uint32_t i = 0; i < texture.mSliceUnorderedAccessViews.size(); ++i)
     {
-        uint32_t slice = i / texture.GetMipMapLevels();
-        uint32_t mip = i % texture.GetMipMapLevels();
+        uint32_t slice = texture.GetSlice(i);
+		uint32_t mip = texture.GetMip(i);
         
         MTLTextureViewDescriptor* viewDesc = [MTLTextureViewDescriptor new];
         viewDesc.pixelFormat = textureDesc.pixelFormat;
@@ -374,8 +374,8 @@ Texture GraphicsDevice::CreateTexture(GPUAllocator* allocator, const TextureDesc
         // Create slice RTV
         for (uint32_t i = 0; i < texture.mSliceViews.size(); i++)
         {
-            uint32_t slice = i / texture.GetMipMapLevels();
-            uint32_t mip = i % texture.GetMipMapLevels();
+            uint32_t slice = texture.GetSlice(i);
+            uint32_t mip = texture.GetMip(i);
             
             auto uav = texture.GetUnorderedAccessView(mip, slice);
             auto entry = descriptorTable + uav.data;

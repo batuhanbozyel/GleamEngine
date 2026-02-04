@@ -68,7 +68,7 @@ void RenderSystem::PreRender(const World* world)
 	auto sceneProxy = world->GetSubsystem<RenderSceneProxy>();
 	sceneProxy->ForEach([&](const MeshBatch& batch)
 	{
-		mCopyCommandBuffer->Commit(batch.instanceBuffer, batch.instances.data(), sizeof(MeshInstanceData) * batch.numInstances);
+		mCopyCommandBuffer->Commit(batch.instanceBuffer, batch.instances.data(), sizeof(MeshInstanceData) * batch.numInstances, 0);
 	});
 
 	// update active camera

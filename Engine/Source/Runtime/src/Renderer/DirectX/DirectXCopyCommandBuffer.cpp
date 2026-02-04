@@ -201,16 +201,16 @@ void CopyCommandBuffer::Commit(const Buffer& buffer, const void* data, size_t si
 		else
 		{
 			D3D12_RESOURCE_DESC1 resourceDesc = {
-			.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER,
-			.Alignment = 0,
-			.Width = size,
-			.Height = 1,
-			.DepthOrArraySize = 1,
-			.MipLevels = 1,
-			.Format = DXGI_FORMAT_UNKNOWN,
-			.SampleDesc = {.Count = 1, .Quality = 0 },
-			.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR,
-			.Flags = D3D12_RESOURCE_FLAG_NONE
+				.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER,
+				.Alignment = 0,
+				.Width = size,
+				.Height = 1,
+				.DepthOrArraySize = 1,
+				.MipLevels = 1,
+				.Format = DXGI_FORMAT_UNKNOWN,
+				.SampleDesc = {.Count = 1, .Quality = 0 },
+				.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR,
+				.Flags = D3D12_RESOURCE_FLAG_NONE
 			};
 
 			D3D12_HEAP_PROPERTIES heapProperties = {
@@ -268,24 +268,31 @@ void CopyCommandBuffer::Commit(const Buffer& buffer, const void* data, size_t si
 	}
 }
 
-void CopyCommandBuffer::Commit(const Texture& texture, const void* data, size_t size) const
+void CopyCommandBuffer::Commit(const Texture& texture, const void* data, size_t size, uint32_t mip, uint32_t slice) const
 {
 	auto dstTexture = static_cast<ID3D12Resource*>(texture.GetHandle());
 	auto size32 = static_cast<uint32_t>(size);
+	const auto& texDesc = texture.GetDescriptor();
+	
+	D3D12_BOX region = {};
+	region.right = static_cast<UINT>(static_cast<UINT>(texDesc.size.width) >> mip);
+	region.bottom = static_cast<UINT>(static_cast<UINT>(texDesc.size.height) >> mip);
+	region.back = (texDesc.dimension == TextureDimension::Texture3D) ? static_cast<UINT>(texDesc.depth >> mip) : 1;
 
 	if (auto srcData = mHandle->CopyUploadData(data, size); srcData)
 	{
 		DSTORAGE_REQUEST request = {};
 		request.Options.SourceType = DSTORAGE_REQUEST_SOURCE_MEMORY;
 
-		request.Options.DestinationType = DSTORAGE_REQUEST_DESTINATION_MULTIPLE_SUBRESOURCES;
+		request.Options.DestinationType = DSTORAGE_REQUEST_DESTINATION_TEXTURE_REGION;
 		request.Options.CompressionFormat = DSTORAGE_COMPRESSION_FORMAT_NONE;
 
 		request.Source.Memory.Source = srcData;
 		request.Source.Memory.Size = size32;
-
-		request.Destination.MultipleSubresources.Resource = dstTexture;
-		request.Destination.MultipleSubresources.FirstSubresource = 0;
+		
+		request.Destination.Texture.Resource = dstTexture;
+		request.Destination.Texture.SubresourceIndex = texture.GetSubresourceIndex(mip, slice);
+		request.Destination.Texture.Region = region;
 
 		request.UncompressedSize = 0;
 		mHandle->memoryQueue->EnqueueRequest(&request);
@@ -346,8 +353,9 @@ void CopyCommandBuffer::Commit(const Texture& texture, const void* data, size_t 
 		request.Source.Memory.Source = stagingBufferPtr;
 		request.Source.Memory.Size = size32;
 
-		request.Destination.MultipleSubresources.Resource = dstTexture;
-		request.Destination.MultipleSubresources.FirstSubresource = 0;
+		request.Destination.Texture.Resource = dstTexture;
+		request.Destination.Texture.SubresourceIndex = texture.GetSubresourceIndex(mip, slice);
+		request.Destination.Texture.Region = region;
 
 		request.UncompressedSize = 0;
 		mHandle->memoryQueue->EnqueueRequest(&request);

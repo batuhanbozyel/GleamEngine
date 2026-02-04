@@ -220,8 +220,8 @@ Texture GraphicsDevice::CreateTexture(GPUAllocator* allocator, const TextureDesc
 				auto& dsvHeap = static_cast<DirectXDevice*>(this)->mDsvHeap;
 				auto index = dsvHeap.heap.Allocate();
 
-				uint32_t slice = i / texture.GetMipMapLevels();
-				uint32_t mip = i % texture.GetMipMapLevels();
+				uint32_t slice = texture.GetSlice(i);
+				uint32_t mip = texture.GetMip(i);
 
 				D3D12_CPU_DESCRIPTOR_HANDLE handle = dsvHeap.cpuHandle;
 				handle.ptr += (size_t)index.data * (size_t)dsvHeap.size;
@@ -296,8 +296,8 @@ Texture GraphicsDevice::CreateTexture(GPUAllocator* allocator, const TextureDesc
 				auto& rtvHeap = static_cast<DirectXDevice*>(this)->mRtvHeap;
 				auto index = rtvHeap.heap.Allocate();
 
-				uint32_t slice = i / texture.GetMipMapLevels();
-				uint32_t mip = i % texture.GetMipMapLevels();
+				uint32_t slice = texture.GetSlice(i);
+				uint32_t mip = texture.GetMip(i);
 
 				D3D12_CPU_DESCRIPTOR_HANDLE handle = rtvHeap.cpuHandle;
 				handle.ptr += (size_t)index.data * (size_t)rtvHeap.size;
@@ -334,8 +334,8 @@ Texture GraphicsDevice::CreateTexture(GPUAllocator* allocator, const TextureDesc
 	texture.mResourceView = static_cast<DirectXDevice*>(this)->CreateResourceView(texture);
 	for (uint32_t i = 0; i < texture.mSliceUnorderedAccessViews.size(); ++i)
 	{
-		uint32_t slice = i / texture.GetMipMapLevels();
-		uint32_t mip = i % texture.GetMipMapLevels();
+		uint32_t slice = texture.GetSlice(i);
+		uint32_t mip = texture.GetMip(i);
 
 		D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
 		if (Utils::IsDepthFormat(texture.GetDescriptor().format))

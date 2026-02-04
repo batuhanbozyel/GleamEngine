@@ -174,7 +174,7 @@ void CopyCommandBuffer::Commit(const Buffer& buffer, const void* data, size_t si
     }
 }
 
-void CopyCommandBuffer::Commit(const Texture& texture, const void* data, size_t size) const
+void CopyCommandBuffer::Commit(const Texture& texture, const void* data, size_t size, uint32_t mip, uint32_t slice) const
 {
     if (mHandle->memoryCommandEncoder == nil)
     {
@@ -182,11 +182,15 @@ void CopyCommandBuffer::Commit(const Texture& texture, const void* data, size_t 
         mHandle->memoryCommandEncoder = [mHandle->memoryCommandBuffer computeCommandEncoder];
         [mHandle->memoryCommandEncoder setLabel:TO_NSSTRING("CopyCommandBuffer::Commit")];
     }
+    const auto& texDesc = texture.GetDescriptor();
     
     id<MTLTexture> dstTexture = texture.GetHandle();
-    size_t sourceBytesPerRow = texture.GetDescriptor().size.width * Utils::GetTextureFormatSizeInBytes(texture.GetDescriptor().format);
-    size_t sourceBytesPerImage = sourceBytesPerRow * texture.GetDescriptor().size.height;
-    MTLSize sourceSize = MTLSizeMake(texture.GetDescriptor().size.width, texture.GetDescriptor().size.height, 1);
+    MTLSize sourceSize = MTLSizeMake(static_cast<UINT>(texDesc.size.width) >> mip, 
+                                     static_cast<UINT>(texDesc.size.height) >> mip, 
+                                    (texDesc.dimension == TextureDimension::Texture3D) ? static_cast<UINT>(texDesc.depth >> mip) : 1);
+
+    size_t sourceBytesPerRow = sourceSize.width * Utils::GetTextureFormatSizeInBytes(texDesc.format);
+    size_t sourceBytesPerImage = sourceBytesPerRow * sourceSize.height * sourceSize.depth;
     
     size_t srcOffset = mHandle->stagingBufferOffset;
     if (mHandle->CopyUploadData(data, size))
@@ -197,8 +201,8 @@ void CopyCommandBuffer::Commit(const Texture& texture, const void* data, size_t 
                                   sourceBytesPerImage:sourceBytesPerImage
                                            sourceSize:sourceSize
                                             toTexture:dstTexture
-                                     destinationSlice:0
-                                     destinationLevel:0
+                                     destinationSlice:slice
+                                     destinationLevel:mip
                                     destinationOrigin:MTLOriginMake(0, 0, 0)];
     }
     else
@@ -212,8 +216,8 @@ void CopyCommandBuffer::Commit(const Texture& texture, const void* data, size_t 
                                   sourceBytesPerImage:sourceBytesPerImage
                                            sourceSize:sourceSize
                                             toTexture:dstTexture
-                                     destinationSlice:0
-                                     destinationLevel:0
+                                     destinationSlice:slice
+                                     destinationLevel:mip
                                     destinationOrigin:MTLOriginMake(0, 0, 0)];
     }
 }

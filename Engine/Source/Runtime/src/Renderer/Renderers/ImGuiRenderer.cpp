@@ -37,8 +37,11 @@ void ImGuiRenderer::OnCreate(RenderContext& context)
 	textureDesc.size.width = (float)width;
 	textureDesc.size.height = (float)height;
 	textureDesc.format = TextureFormat::R8G8B8A8_UNorm;
-	textureDesc.pixels.resize(width * height * 4);
-	memcpy(textureDesc.pixels.data(), pixels, textureDesc.pixels.size());
+	textureDesc.subresources.resize(1);
+
+	auto& subresource = textureDesc.subresources[0];
+	subresource.pixels.resize(width * height * 4);
+	memcpy(subresource.pixels.data(), pixels, subresource.pixels.size());
 	mDefaultFontTexture = new Texture2D(textureDesc);
 	
 	uint64_t fontTextureId = static_cast<uint64_t>(mDefaultFontTexture->GetResourceView().data);
@@ -240,8 +243,11 @@ void ImGuiRenderer::AddFontTexture(const Path& fontPath, const Path& defaultPath
 	textureDesc.size.width = (float)width;
 	textureDesc.size.height = (float)height;
 	textureDesc.format = TextureFormat::R8G8B8A8_UNorm;
-	textureDesc.pixels.resize(width * height * 4);
-	memcpy(textureDesc.pixels.data(), pixels, textureDesc.pixels.size());
+	textureDesc.subresources.resize(1);
+
+	auto& subresource = textureDesc.subresources[0];
+	subresource.pixels.resize(width * height * 4);
+	memcpy(subresource.pixels.data(), pixels, subresource.pixels.size());
 	mFontTexture = new Texture2D(textureDesc);
 
 	uint64_t fontTextureId = static_cast<uint64_t>(mFontTexture->GetResourceView().data);

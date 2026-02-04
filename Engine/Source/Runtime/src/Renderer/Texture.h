@@ -91,6 +91,21 @@ public:
         return mMipMapLevels;
     }
 
+	uint32_t GetSlice(uint32_t subresourceIndex) const
+	{
+		return subresourceIndex / mMipMapLevels;
+	}
+
+	uint32_t GetMip(uint32_t subresourceIndex) const
+	{
+		return subresourceIndex % mMipMapLevels;
+	}
+
+	uint32_t GetSubresourceIndex(uint32_t mip, uint32_t slice) const
+	{
+		return slice * mMipMapLevels + mip;
+	}
+
 	static constexpr uint32_t CalculateMipLevels(const Size& size)
 	{
 		return static_cast<uint32_t>(Math::Floor(Math::Log2(Math::Max(size.width, size.height)))) + 1;

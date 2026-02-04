@@ -78,8 +78,11 @@ bool TextureSource::Import(const Gleam::Path& path, const ImportSettings& settin
 	descriptor.size.width = static_cast<float>(texture.width);
 	descriptor.size.height = static_cast<float>(texture.height);
 	descriptor.dimension = Gleam::TextureDimension::Texture2D;
-	descriptor.pixels.resize(texture.width * texture.height * Gleam::Utils::GetTextureFormatSizeInBytes(format));
-	memcpy(descriptor.pixels.data(), texture.pixels, descriptor.pixels.size());
+	descriptor.subresources.resize(1);
+
+	auto& subresource = descriptor.subresources[0];
+	subresource.pixels.resize(texture.width * texture.height * Gleam::Utils::GetTextureFormatSizeInBytes(format));
+	memcpy(subresource.pixels.data(), texture.pixels, subresource.pixels.size());
 	EmplaceBaker<TextureBaker>(descriptor);
 	
 	stbi_image_free(texture.pixels);
