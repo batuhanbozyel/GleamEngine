@@ -17,8 +17,7 @@ struct CopyCommandBuffer::Impl
     id<MTL4ComputeCommandEncoder> memoryCommandEncoder{ nil };
     
     id<MTLEvent> memoryEvent = nil;
-    uint64_t memoryEventValue = 1;
-    uint64_t waitMemoryEventValue = 0;
+    uint64_t memoryEventValue = 0;
     
     id<MTLBuffer> stagingBuffer{ nil };
     void* stagingBufferPtr = nullptr;
@@ -67,8 +66,9 @@ CopyCommandBuffer::CopyCommandBuffer(GraphicsDevice* device)
     mHandle->memoryEvent = [mDevice->GetHandle() newEvent];
     mHandle->memoryEvent.label = @"CopyCommandBuffer::MemoryEvent";
     
-    mHandle->stagingBuffer = [mDevice->GetHandle() newBufferWithLength:UploadHeapSize options:MTLResourceStorageModeShared];
+    mHandle->stagingBuffer = [mDevice->GetHandle() newBufferWithLength:UploadHeapSize options:MTLResourceStorageModeShared | MTLResourceCPUCacheModeWriteCombined];
     mHandle->stagingBufferPtr = [mHandle->stagingBuffer contents];
+    [static_cast<MetalDevice*>(mDevice)->GetResidencySet() addAllocation:mHandle->stagingBuffer];
 }
 
 CopyCommandBuffer::~CopyCommandBuffer()
@@ -93,10 +93,7 @@ CopyCommandBuffer::~CopyCommandBuffer()
 
 void CopyCommandBuffer::Barrier(const CommandBuffer* cmd) const
 {
-    if (mHandle->memoryCommandEncoder)
-    {
-        [mHandle->memoryCommandEncoder barrierAfterStages:MTLStageBlit beforeQueueStages:MTLStageAll visibilityOptions:MTL4VisibilityOptionDevice];
-    }
+    
 }
 
 void CopyCommandBuffer::Execute() const
@@ -108,14 +105,14 @@ void CopyCommandBuffer::Execute() const
     
     if (mHandle->memoryCommandEncoder != nil)
     {
-        mHandle->waitMemoryEventValue = mHandle->memoryEventValue;
-        
+        [mHandle->memoryCommandEncoder barrierAfterStages:MTLStageBlit beforeQueueStages:MTLStageAll visibilityOptions:MTL4VisibilityOptionDevice];
         [mHandle->memoryCommandEncoder endEncoding];
         [mHandle->memoryCommandBuffer endCommandBuffer];
         
         id<MTL4CommandQueue> commandQueue = static_cast<MetalDevice*>(mDevice)->GetCommandQueue();
+        [static_cast<MetalDevice*>(mDevice)->GetResidencySet() commit];
         [commandQueue commit:&mHandle->memoryCommandBuffer count:1];
-        [commandQueue signalEvent:mHandle->memoryEvent value:mHandle->memoryEventValue++];
+        [commandQueue signalEvent:mHandle->memoryEvent value:++mHandle->memoryEventValue];
     }
 }
 
@@ -124,7 +121,7 @@ void CopyCommandBuffer::WaitUntilCompleted() const
     mHandle->stagingBufferOffset = 0;
     if (mHandle->memoryCommandEncoder != nil)
     {
-        [static_cast<MetalDevice*>(mDevice)->GetCommandQueue() waitForEvent:mHandle->memoryEvent value:mHandle->waitMemoryEventValue];
+        [static_cast<MetalDevice*>(mDevice)->GetCommandQueue() waitForEvent:mHandle->memoryEvent value:mHandle->memoryEventValue];
         [mHandle->memoryCommandAllocator reset];
         mHandle->memoryCommandEncoder = nil;
     }
@@ -137,7 +134,8 @@ void CopyCommandBuffer::WaitUntilCompleted() const
     
     for (void* buffer : mHandle->tempBuffers)
     {
-        CFRelease(buffer);
+        id<MTLBuffer> mtlBuffer = (id<MTLBuffer>)CFBridgingRelease(buffer);
+        [static_cast<MetalDevice*>(mDevice)->GetResidencySet() removeAllocation:mtlBuffer];
     }
     mHandle->tempBuffers.clear();
 }
@@ -163,6 +161,7 @@ void CopyCommandBuffer::Commit(const Buffer& buffer, const void* data, size_t si
         else
         {
             id<MTLBuffer> srcBuffer = [mDevice->GetHandle() newBufferWithBytes:data length:size options:MTLResourceStorageModeShared];
+            [static_cast<MetalDevice*>(mDevice)->GetResidencySet() addAllocation:srcBuffer];
             mHandle->tempBuffers.push_back((__bridge_retained void*)srcBuffer);
             
             [mHandle->memoryCommandEncoder copyFromBuffer:srcBuffer sourceOffset:0 toBuffer:dstBuffer destinationOffset:offset size:size];
@@ -190,7 +189,7 @@ void CopyCommandBuffer::Commit(const Texture& texture, const void* data, size_t 
                                     (texDesc.dimension == TextureDimension::Texture3D) ? Math::Max(texDesc.depth >> mip, 1u) : 1);
 
     size_t sourceBytesPerRow = sourceSize.width * Utils::GetTextureFormatSizeInBytes(texDesc.format);
-    size_t sourceBytesPerImage = sourceBytesPerRow * sourceSize.height * sourceSize.depth;
+    size_t sourceBytesPerImage = (texDesc.dimension == TextureDimension::Texture3D) ? sourceBytesPerRow * sourceSize.height : 0;
     
     size_t srcOffset = mHandle->stagingBufferOffset;
     if (mHandle->CopyUploadData(data, size))
@@ -208,6 +207,7 @@ void CopyCommandBuffer::Commit(const Texture& texture, const void* data, size_t 
     else
     {
         id<MTLBuffer> srcBuffer = [mDevice->GetHandle() newBufferWithBytes:data length:size options:MTLResourceStorageModeShared];
+        [static_cast<MetalDevice*>(mDevice)->GetResidencySet() addAllocation:srcBuffer];
         mHandle->tempBuffers.push_back((__bridge_retained void*)srcBuffer);
         
         [mHandle->memoryCommandEncoder copyFromBuffer:srcBuffer

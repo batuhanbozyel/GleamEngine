@@ -12,7 +12,7 @@ ConstantBuffer::ConstantBuffer(GraphicsDevice* device, size_t size)
 	, mCapacity(Utils::AlignUp(size, 4))
     , mDevice(device)
 {
-	id<MTLBuffer> mtlBuffer = [device->GetHandle() newBufferWithLength:size options:MTLResourceStorageModeShared];
+	id<MTLBuffer> mtlBuffer = [device->GetHandle() newBufferWithLength:size options:MTLResourceStorageModeShared | MTLResourceCPUCacheModeWriteCombined];
     [mtlBuffer setLabel:TO_NSSTRING("ConstantBuffer")];
     mContents = [mtlBuffer contents];
 	mHandle = mtlBuffer;
