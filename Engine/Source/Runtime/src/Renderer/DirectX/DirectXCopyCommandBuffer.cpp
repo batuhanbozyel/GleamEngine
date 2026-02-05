@@ -18,9 +18,7 @@ struct CopyCommandBuffer::Impl
 
 	IDStorageQueue* fileQueue = nullptr;
 	ID3D12Fence* fileFence = nullptr;
-
-	uint64_t fenceValue = 1;
-	uint64_t waitFenceValue = 0;
+	uint64_t fenceValue = 0;
 	
 	size_t stagingBufferOffset = 0;
 	TArray<uint8_t> stagingBuffer;
@@ -154,7 +152,7 @@ void CopyCommandBuffer::Barrier(const CommandBuffer* cmd) const
 
 void CopyCommandBuffer::Execute() const
 {
-	mHandle->waitFenceValue = mHandle->fenceValue++;
+	++mHandle->fenceValue;
 	mHandle->fileQueue->EnqueueSignal(mHandle->fileFence, mHandle->fenceValue);
 	mHandle->fileQueue->Submit();
 
@@ -165,7 +163,7 @@ void CopyCommandBuffer::Execute() const
 void CopyCommandBuffer::WaitUntilCompleted() const
 {
 	mHandle->stagingBufferOffset = 0;
-	WaitForID3D12Fence(mHandle->memoryFence, mHandle->waitFenceValue);
+	WaitForID3D12Fence(mHandle->memoryFence, mHandle->fenceValue);
 
 	for (auto buffer : mHandle->tempBuffers)
 	{

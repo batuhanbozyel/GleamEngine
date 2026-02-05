@@ -14,8 +14,7 @@ struct CommandBuffer::Impl
 
 	ID3D12GraphicsCommandList7* commandList = nullptr;
 	ID3D12Fence* fence = nullptr;
-	uint64_t fenceValue = 1;
-	uint64_t waitFenceValue = 0;
+	uint64_t fenceValue = 0;
 
 	PipelineHandle pipeline;
 };
@@ -304,11 +303,9 @@ void CommandBuffer::End() const
 
 void CommandBuffer::Commit() const
 {
-	mHandle->waitFenceValue = mHandle->fenceValue;
-
 	ID3D12CommandList* commandList = mHandle->commandList;
 	mHandle->device->GetDirectQueue()->ExecuteCommandLists(1, &commandList);
-	mHandle->device->GetDirectQueue()->Signal(mHandle->fence, mHandle->fenceValue++);
+	mHandle->device->GetDirectQueue()->Signal(mHandle->fence, ++mHandle->fenceValue);
 	mConstantBuffer.Reset();
 	mCommitted = true;
 }
@@ -317,7 +314,7 @@ void CommandBuffer::WaitUntilCompleted() const
 {
 	if (mCommitted)
 	{
-		WaitForID3D12Fence(mHandle->fence, mHandle->waitFenceValue);
+		WaitForID3D12Fence(mHandle->fence, mHandle->fenceValue);
 	}
 	mCommitted = false;
 }

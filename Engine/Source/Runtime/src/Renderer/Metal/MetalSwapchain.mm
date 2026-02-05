@@ -30,7 +30,7 @@ MetalSwapchain::MetalSwapchain()
 MetalSwapchain::~MetalSwapchain()
 {
     auto& ctx = mContext[mCurrentFrameIndex];
-    [mDevice->GetCommandQueue() waitForEvent:ctx.event value:ctx.waitEventValue];
+    [mDevice->GetCommandQueue() waitForEvent:ctx.event value:ctx.eventValue];
     
     mContext.clear();
     mHandle = nil;
@@ -46,7 +46,7 @@ void MetalSwapchain::Configure(MetalDevice* device, const RendererConfig& config
     if (mContext.size() > 0)
     {
         auto& ctx = mContext[mCurrentFrameIndex];
-        [mDevice->GetCommandQueue() waitForEvent:ctx.event value:ctx.waitEventValue];
+        [mDevice->GetCommandQueue() waitForEvent:ctx.event value:ctx.eventValue];
         mContext.clear();
     }
     
@@ -103,7 +103,7 @@ void MetalSwapchain::Resize(GraphicsDevice* device, const Size& size)
 const Texture& MetalSwapchain::AcquireNextDrawable()
 {
     auto& ctx = mContext[mCurrentFrameIndex];
-    [mDevice->GetCommandQueue() waitForEvent:ctx.event value:ctx.waitEventValue];
+    [mDevice->GetCommandQueue() waitForEvent:ctx.event value:ctx.eventValue];
     
     mCurrentDrawable = [mHandle nextDrawable];
     while (mCurrentDrawable == nil)
@@ -118,16 +118,14 @@ const Texture& MetalSwapchain::AcquireNextDrawable()
 
 void MetalSwapchain::Present(const CommandBuffer* cmd)
 {
-    auto& ctx = mContext[mCurrentFrameIndex];
-    ctx.waitEventValue = ctx.eventValue;
-    
     id<MTL4CommandQueue> commandQueue = mDevice->GetCommandQueue();
     
     cmd->End();
     [commandQueue waitForDrawable:mCurrentDrawable];
     cmd->Commit();
     
-    [commandQueue signalEvent:ctx.event value:ctx.eventValue++];
+    auto& ctx = mContext[mCurrentFrameIndex];
+    [commandQueue signalEvent:ctx.event value:++ctx.eventValue];
     [commandQueue signalDrawable:mCurrentDrawable];
     [mCurrentDrawable present];
     

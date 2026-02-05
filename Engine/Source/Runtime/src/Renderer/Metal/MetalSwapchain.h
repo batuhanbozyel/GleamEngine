@@ -40,8 +40,7 @@ private:
 	struct FrameContext
 	{
 		id<MTLEvent> event = nil;
-		uint64_t waitEventValue = 0;
-		uint64_t eventValue = 1;
+		uint64_t eventValue = 0;
 	};
 	TArray<FrameContext> mContext;
 
