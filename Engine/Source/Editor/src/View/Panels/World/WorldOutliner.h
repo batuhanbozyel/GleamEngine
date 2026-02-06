@@ -19,8 +19,8 @@ public:
     virtual void Render(Gleam::ImGuiRenderer* imgui) override;
     
 private:
-    
-    void DrawEntityPopupMenu();
+
+	void DrawEntityNode(Gleam::EntityHandle handle);
 
 	Gleam::World* mEditWorld;
     

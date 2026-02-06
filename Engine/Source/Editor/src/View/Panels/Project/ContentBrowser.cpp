@@ -187,7 +187,7 @@ void ContentBrowser::DrawAssetGrid()
 			{
 				iconText = "Material";
 				payloadType = "GLEAM_ASSET";
-				assetColor = ImVec4(0.4f, 0.85f, 0.3f, 1.0f); // Green
+				assetColor = ImVec4(0.15f, 0.65f, 0.1f, 1.0f); // Green
 			}
 			else if (asset.type == Gleam::Reflection::GetClass<Gleam::MaterialInstanceDescriptor>().Guid())
 			{
