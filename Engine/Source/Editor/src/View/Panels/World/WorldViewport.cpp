@@ -70,15 +70,11 @@ void WorldViewport::Render(Gleam::ImGuiRenderer* imgui)
 
 		if (ImGui::BeginDragDropTarget())
 		{
-			if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("EDITOR_ASSET"))
+			if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("GLEAM_PREFAB"))
 			{
 				IM_ASSERT(payload->DataSize == sizeof(AssetItem));
 				const auto& assetItem = *(const AssetItem*)payload->Data;
-
-				if (assetItem.type == Gleam::Reflection::GetClass<Gleam::Prefab>().Guid())
-				{
-					auto& entity = mEditWorld->GetEntityManager().CreateFromPrefab(assetItem.reference);
-				}
+				auto& entity = mEditWorld->GetEntityManager().CreateFromPrefab(assetItem.reference);
 			}
 			ImGui::EndDragDropTarget();
 		}

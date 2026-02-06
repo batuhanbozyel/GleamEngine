@@ -7,6 +7,7 @@
 
 #include "ContentBrowser.h"
 #include "EAssets/MeshSource.h"
+#include "EAssets/EAssetManager.h"
 
 #include "Gleam.h"
 
@@ -14,11 +15,16 @@
 
 using namespace GEditor;
 
+ContentBrowser::ContentBrowser(EAssetManager* assetManager)
+	: mAssetManager(assetManager)
+{
+
+}
+
 void ContentBrowser::Init(Gleam::World* world)
 {
 	mAssetDirectory = Gleam::Globals::ProjectContentDirectory;
     mCurrentDirectory = mAssetDirectory;
-    mAssetManager = world->AddSubsystem<EAssetManager>(mAssetDirectory);
 }
 
 void ContentBrowser::Render(Gleam::ImGuiRenderer* imgui)
@@ -75,18 +81,78 @@ void ContentBrowser::DrawDirectoryTreeView(const Gleam::Path& node)
     }
     else
     {
-        ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen | ImGuiTreeNodeFlags_SpanAvailWidth;
-        if (ImGui::TreeNodeEx(filename.c_str(), flags))
-        {
-			if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None))
+		if (node.Extension() == Gleam::Asset::Extension())
+		{
+			auto guid = Gleam::Guid(node.Stem());
+			const auto& asset = mAssetManager->GetAsset(guid);
+
+			auto label = asset.name;
+			if (asset.type == Gleam::Reflection::GetClass<Gleam::MeshDescriptor>().Guid())
 			{
-				auto guid = Gleam::Guid(node.Stem());
-				const auto& asset = mAssetManager->GetAsset(guid);
-				ImGui::SetDragDropPayload("EDITOR_ASSET", &asset, sizeof(AssetItem));
-				ImGui::Text("%s", filename.c_str());
-				ImGui::EndDragDropSource();
+				label += " (Mesh)";
 			}
-        }
+			else if (asset.type == Gleam::Reflection::GetClass<Gleam::Texture2DDescriptor>().Guid())
+			{
+				label += " (Texture)";
+			}
+			else if (asset.type == Gleam::Reflection::GetClass<Gleam::MaterialDescriptor>().Guid())
+			{
+				label += " (Material)";
+			}
+			else if (asset.type == Gleam::Reflection::GetClass<Gleam::MaterialInstanceDescriptor>().Guid())
+			{
+				label += " (MaterialInstance)";
+			}
+			else
+			{
+				label += " (UNKNOWN)";
+			}
+
+			ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen | ImGuiTreeNodeFlags_SpanAvailWidth;
+			if (ImGui::TreeNodeEx(label.c_str(), flags))
+			{
+				if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None))
+				{
+					ImGui::SetDragDropPayload("GLEAM_ASSET", &asset, sizeof(AssetItem));
+					ImGui::Text("%s", label.c_str());
+					ImGui::EndDragDropSource();
+				}
+			}
+		}
+		else if (node.Extension() == Gleam::Prefab::Extension())
+		{
+			auto guid = Gleam::Guid(node.Stem());
+			const auto& asset = mAssetManager->GetAsset(guid);
+			auto label = asset.name + " (Prefab)";
+
+			ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen | ImGuiTreeNodeFlags_SpanAvailWidth;
+			if (ImGui::TreeNodeEx(label.c_str(), flags))
+			{
+				if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None))
+				{
+					ImGui::SetDragDropPayload("GLEAM_PREFAB", &asset, sizeof(AssetItem));
+					ImGui::Text("%s", label.c_str());
+					ImGui::EndDragDropSource();
+				}
+			}
+		}
+		else if (node.Extension() == Gleam::World::Extension())
+		{
+			auto guid = Gleam::Guid(node.Stem());
+			const auto& asset = mAssetManager->GetAsset(guid);
+			auto label = asset.name + " (World)";
+
+			ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen | ImGuiTreeNodeFlags_SpanAvailWidth;
+			if (ImGui::TreeNodeEx(label.c_str(), flags))
+			{
+				if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None))
+				{
+					ImGui::SetDragDropPayload("GLEAM_WORLD", &asset, sizeof(AssetItem));
+					ImGui::Text("%s", label.c_str());
+					ImGui::EndDragDropSource();
+				}
+			}
+		}
     }
     ImGui::PopID();
 }

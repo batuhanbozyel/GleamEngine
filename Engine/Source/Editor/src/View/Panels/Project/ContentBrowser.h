@@ -7,13 +7,16 @@
 
 #pragma once
 #include "View/View.h"
-#include "EAssets/EAssetManager.h"
 
 namespace GEditor {
+
+class EAssetManager;
 
 class ContentBrowser final : public View
 {
 public:
+
+	ContentBrowser(EAssetManager* assetManager);
     
 	virtual void Init(Gleam::World* world) override;
     
@@ -24,8 +27,8 @@ private:
 	bool ImportAsset(const Gleam::Path& path);
     
     void DrawDirectoryTreeView(const Gleam::Path& directory);
-    
-    EAssetManager* mAssetManager;
+
+	EAssetManager* mAssetManager;
 
     Gleam::Path mCurrentDirectory;
     

@@ -7,6 +7,7 @@
 #include "World/Components/SkyAtmosphere.h"
 #include "World/Components/ReflectionProbe.h"
 
+#include "EAssets/EAssetManager.h"
 #include "View/ViewStack.h"
 #include "World/World.h"
 
@@ -25,6 +26,8 @@ public:
 	GleamEditor(const Gleam::Project& project)
         : Gleam::Application(project)
 	{
+		auto assetManager = AddSubsystem<EAssetManager>(project.path);
+
 		auto worldManager = GetSubsystem<Gleam::WorldManager>();
 		mEditWorld = worldManager->GetActiveWorld();
 
@@ -33,12 +36,13 @@ public:
 		viewStack->AddView<WorldViewport>();
 		viewStack->AddView<WorldOutliner>();
 		viewStack->AddView<EntityInspector>();
-		viewStack->AddView<ContentBrowser>();
+		viewStack->AddView<ContentBrowser>(assetManager);
 	}
     
 	~GleamEditor()
 	{
 		mEditWorld->RemoveSubsystem<ViewStack>();
+		RemoveSubsystem<EAssetManager>();
 	}
 
 private:
