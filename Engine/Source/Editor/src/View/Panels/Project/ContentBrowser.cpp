@@ -32,7 +32,7 @@ void ContentBrowser::Render(Gleam::ImGuiRenderer* imgui)
 	imgui->PushView([this](const Gleam::ImGuiPassData& passData)
 	{
 		ImGui::Begin("Content Browser");
-        
+
 		if (ImGui::Button("Import"))
 		{
 			auto files = Gleam::FileDialog::Open();
@@ -41,7 +41,38 @@ void ContentBrowser::Render(Gleam::ImGuiRenderer* imgui)
 				ImportAsset(path);
 			}
 		}
-        DrawDirectoryTreeView(mAssetDirectory);
+
+		ImGui::Separator();
+
+		static float leftPanelWidth = 250.0f;
+
+		ImGui::BeginChild("DirectoryTree", ImVec2(leftPanelWidth, 0), true);
+		ImGui::Text("Directories");
+		ImGui::Separator();
+		DrawDirectoryTree(mAssetDirectory);
+		ImGui::EndChild();
+
+		ImGui::SameLine();
+
+		ImGui::Button("##splitter", ImVec2(4.0f, -1));
+		if (ImGui::IsItemActive())
+		{
+			leftPanelWidth += ImGui::GetIO().MouseDelta.x;
+			leftPanelWidth = ImGui::GetIO().MousePos.x - ImGui::GetWindowPos().x;
+		}
+
+		if (ImGui::IsItemHovered())
+		{
+			ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeEW);
+		}
+
+		ImGui::SameLine();
+
+		ImGui::BeginChild("AssetGrid", ImVec2(0, 0), true);
+		ImGui::Text("Assets");
+		ImGui::Separator();
+		DrawAssetGrid();
+		ImGui::EndChild();
 
 		ImGui::End();
 	});
@@ -63,96 +94,181 @@ bool ContentBrowser::ImportAsset(const Gleam::Path& path)
 	return false;
 }
 
-void ContentBrowser::DrawDirectoryTreeView(const Gleam::Path& node)
+void ContentBrowser::DrawDirectoryTree(const Gleam::Path& node)
 {
-    Gleam::TString filename = node.Filename();
-    ImGui::PushID(filename.c_str());
-    if (Gleam::Filesystem::IsDirectory(node))
-    {
-        ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth;
-        if (ImGui::TreeNodeEx(filename.c_str(), flags))
-        {
-            Gleam::Filesystem::ForEach(node, [this](const auto& entry)
-            {
-                DrawDirectoryTreeView(entry);
-            }, false);
-            ImGui::TreePop();
-        }
-    }
-    else
-    {
-		if (node.Extension() == Gleam::Asset::Extension())
-		{
-			auto guid = Gleam::Guid(node.Stem());
-			const auto& asset = mAssetManager->GetAsset(guid);
+	if (not Gleam::Filesystem::IsDirectory(node))
+	{
+		return;
+	}
 
-			auto label = asset.name;
+	Gleam::TString filename = node.Filename();
+	ImGui::PushID(filename.c_str());
+
+	ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow |
+		ImGuiTreeNodeFlags_OpenOnDoubleClick |
+		ImGuiTreeNodeFlags_SpanAvailWidth;
+
+	if (node == mCurrentDirectory)
+	{
+		flags |= ImGuiTreeNodeFlags_Selected;
+	}
+
+	Gleam::Filesystem::ForEach(node, [&flags](const auto& entry)
+	{
+		if (Gleam::Filesystem::IsDirectory(entry))
+		{
+			flags |= ImGuiTreeNodeFlags_Leaf;
+		}
+	}, false);
+
+	bool opened = ImGui::TreeNodeEx(filename.c_str(), flags);
+
+	if (ImGui::IsItemClicked())
+	{
+		mCurrentDirectory = node;
+	}
+
+	if (opened)
+	{
+		Gleam::Filesystem::ForEach(node, [this](const auto& entry)
+		{
+			if (Gleam::Filesystem::IsDirectory(entry))
+			{
+				DrawDirectoryTree(entry);
+			}
+		}, false);
+		ImGui::TreePop();
+	}
+	ImGui::PopID();
+}
+
+void ContentBrowser::DrawAssetGrid()
+{
+	static float iconSize = 80.0f;
+	static float padding = 10.0f;
+
+	float cellSize = iconSize + padding;
+	float panelWidth = ImGui::GetContentRegionAvail().x;
+	uint32_t columnCount = Gleam::Math::Max((uint32_t)(panelWidth / cellSize), 1u);
+
+	uint32_t currentColumn = 0u;
+	Gleam::Filesystem::ForEach(mCurrentDirectory, [&](const auto& entry)
+	{
+		if (Gleam::Filesystem::IsDirectory(entry))
+		{
+			return; // Skip directories in asset grid
+		}
+
+		AssetItem asset;
+		Gleam::TString label;
+		const char* iconText = "?";
+		const char* payloadType = nullptr;
+		ImVec4 assetColor = ImVec4(0.5f, 0.5f, 0.5f, 1.0f);
+
+		if (entry.Extension() == Gleam::Asset::Extension())
+		{
+			auto guid = Gleam::Guid(entry.Stem());
+			asset = mAssetManager->GetAsset(guid);
+			label = asset.name;
+
 			if (asset.type == Gleam::Reflection::GetClass<Gleam::MeshDescriptor>().Guid())
 			{
-				label += " (Mesh)";
+				iconText = "Mesh";
+				payloadType = "GLEAM_ASSET";
+				assetColor = ImVec4(0.2f, 0.5f, 0.95f, 1.0f); // Blue
 			}
 			else if (asset.type == Gleam::Reflection::GetClass<Gleam::Texture2DDescriptor>().Guid())
 			{
-				label += " (Texture)";
+				iconText = "Texture";
+				payloadType = "GLEAM_ASSET";
+				assetColor = ImVec4(0.95f, 0.3f, 0.7f, 1.0f); // Pink/Magenta
 			}
 			else if (asset.type == Gleam::Reflection::GetClass<Gleam::MaterialDescriptor>().Guid())
 			{
-				label += " (Material)";
+				iconText = "Material";
+				payloadType = "GLEAM_ASSET";
+				assetColor = ImVec4(0.4f, 0.85f, 0.3f, 1.0f); // Green
 			}
 			else if (asset.type == Gleam::Reflection::GetClass<Gleam::MaterialInstanceDescriptor>().Guid())
 			{
-				label += " (MaterialInstance)";
+				iconText = "Material\nInstance";
+				payloadType = "GLEAM_ASSET";
+				assetColor = ImVec4(0.5f, 0.95f, 0.4f, 1.0f); // Light Green
 			}
 			else
 			{
-				label += " (UNKNOWN)";
-			}
-
-			ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen | ImGuiTreeNodeFlags_SpanAvailWidth;
-			if (ImGui::TreeNodeEx(label.c_str(), flags))
-			{
-				if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None))
-				{
-					ImGui::SetDragDropPayload("GLEAM_ASSET", &asset, sizeof(AssetItem));
-					ImGui::Text("%s", label.c_str());
-					ImGui::EndDragDropSource();
-				}
+				iconText = "?";
+				payloadType = "GLEAM_ASSET";
 			}
 		}
-		else if (node.Extension() == Gleam::Prefab::Extension())
+		else if (entry.Extension() == Gleam::Prefab::Extension())
 		{
-			auto guid = Gleam::Guid(node.Stem());
-			const auto& asset = mAssetManager->GetAsset(guid);
-			auto label = asset.name + " (Prefab)";
+			auto guid = Gleam::Guid(entry.Stem());
+			asset = mAssetManager->GetAsset(guid);
+			label = asset.name;
 
-			ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen | ImGuiTreeNodeFlags_SpanAvailWidth;
-			if (ImGui::TreeNodeEx(label.c_str(), flags))
-			{
-				if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None))
-				{
-					ImGui::SetDragDropPayload("GLEAM_PREFAB", &asset, sizeof(AssetItem));
-					ImGui::Text("%s", label.c_str());
-					ImGui::EndDragDropSource();
-				}
-			}
+			iconText = "Prefab";
+			payloadType = "GLEAM_PREFAB";
+			assetColor = ImVec4(0.9f, 0.55f, 0.2f, 1.0f); // Orange
 		}
-		else if (node.Extension() == Gleam::World::Extension())
+		else if (entry.Extension() == Gleam::World::Extension())
 		{
-			auto guid = Gleam::Guid(node.Stem());
-			const auto& asset = mAssetManager->GetAsset(guid);
-			auto label = asset.name + " (World)";
+			auto guid = Gleam::Guid(entry.Stem());
+			asset = mAssetManager->GetAsset(guid);
+			label = asset.name;
 
-			ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen | ImGuiTreeNodeFlags_SpanAvailWidth;
-			if (ImGui::TreeNodeEx(label.c_str(), flags))
-			{
-				if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None))
-				{
-					ImGui::SetDragDropPayload("GLEAM_WORLD", &asset, sizeof(AssetItem));
-					ImGui::Text("%s", label.c_str());
-					ImGui::EndDragDropSource();
-				}
-			}
+			iconText = "World";
+			payloadType = "GLEAM_WORLD";
+			assetColor = ImVec4(0.7f, 0.3f, 0.85f, 1.0f); // Purple
 		}
-    }
-    ImGui::PopID();
+		else
+		{
+			return; // Skip unknown file types
+		}
+
+		ImGui::PushID(label.c_str());
+
+		ImGui::BeginGroup();
+
+		ImVec4 hoverColor = ImVec4(assetColor.x * 1.3f, assetColor.y * 1.3f, assetColor.z * 1.3f, 1.0f);
+		ImVec4 activeColor = ImVec4(assetColor.x * 1.5f, assetColor.y * 1.5f, assetColor.z * 1.5f, 1.0f);
+
+		ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.2f, 0.2f, 1.0f));
+		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.3f, 0.3f, 0.3f, 1.0f));
+		ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.4f, 0.4f, 0.4f, 1.0f));
+
+		ImGui::Button(iconText, ImVec2(iconSize, iconSize));
+
+		ImGui::PopStyleColor(3);
+
+		if (payloadType && ImGui::BeginDragDropSource(ImGuiDragDropFlags_None))
+		{
+			ImGui::SetDragDropPayload(payloadType, &asset, sizeof(AssetItem));
+			ImGui::Text("%s", label.c_str());
+			ImGui::EndDragDropSource();
+		}
+
+		ImVec2 separatorStart = ImGui::GetCursorScreenPos();
+		ImVec2 separatorEnd = ImVec2(separatorStart.x + iconSize, separatorStart.y);
+		ImGui::GetWindowDrawList()->AddLine(separatorStart, separatorEnd, ImGui::ColorConvertFloat4ToU32(assetColor), 3.0f);
+		ImGui::Spacing();
+
+		ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + iconSize);
+		ImGui::TextWrapped("%s", label.c_str());
+		ImGui::PopTextWrapPos();
+
+		ImGui::EndGroup();
+
+		currentColumn++;
+		if (currentColumn < columnCount)
+		{
+			ImGui::SameLine();
+		}
+		else
+		{
+			currentColumn = 0u;
+		}
+
+		ImGui::PopID();
+	}, false);
 }

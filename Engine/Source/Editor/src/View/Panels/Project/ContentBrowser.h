@@ -25,8 +25,10 @@ public:
 private:
 
 	bool ImportAsset(const Gleam::Path& path);
-    
-    void DrawDirectoryTreeView(const Gleam::Path& directory);
+
+	void DrawDirectoryTree(const Gleam::Path& node);
+
+	void DrawAssetGrid();
 
 	EAssetManager* mAssetManager;
 
