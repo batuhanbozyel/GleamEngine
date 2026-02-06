@@ -19,9 +19,17 @@ protected:
 
 	virtual void OnCreate(EntityManager& entityManager) {};
 
+	virtual void OnPreUpdate(EntityManager& entityManager) {};
+
 	virtual void OnUpdate(EntityManager& entityManager) {};
 
+	virtual void OnPostUpdate(EntityManager& entityManager) {};
+
+	virtual void OnPreFixedUpdate(EntityManager& entityManager) {};
+
 	virtual void OnFixedUpdate(EntityManager& entityManager) {};
+
+	virtual void OnPostFixedUpdate(EntityManager& entityManager) {};
 
 	virtual void OnDestroy(EntityManager& entityManager) {};
 

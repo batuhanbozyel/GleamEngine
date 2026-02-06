@@ -29,18 +29,10 @@ MetalSwapchain::MetalSwapchain()
 
 MetalSwapchain::~MetalSwapchain()
 {
-    for (uint32_t i = 0; i < mMaxFramesInFlight; ++i)
-    {
-        dispatch_semaphore_wait(mImageAcquireSemaphore, DISPATCH_TIME_FOREVER);
-    }
+    auto& ctx = mContext[mCurrentFrameIndex];
+    [mDevice->GetCommandQueue() waitForEvent:ctx.event value:ctx.eventValue];
     
-    // we need to revert back to its initial value for some reason????
-    for (uint32_t i = 0; i < mMaxFramesInFlight; ++i)
-    {
-        dispatch_semaphore_signal(mImageAcquireSemaphore);
-    }
-    
-    mImageAcquireSemaphore = nil;
+    mContext.clear();
     mHandle = nil;
     mSurface = nil;
     mTextures.clear();
@@ -51,8 +43,16 @@ MetalSwapchain::~MetalSwapchain()
 
 void MetalSwapchain::Configure(MetalDevice* device, const RendererConfig& config)
 {
+    if (mContext.size() > 0)
+    {
+        auto& ctx = mContext[mCurrentFrameIndex];
+        [mDevice->GetCommandQueue() waitForEvent:ctx.event value:ctx.eventValue];
+        mContext.clear();
+    }
+    
     mHandle.device = device->GetHandle();
 	mCurrentFrameIndex = 0;
+    mDevice = device;
     
 #ifdef PLATFORM_MACOS
     mHandle.displaySyncEnabled = config.vsync ? YES : NO;
@@ -74,12 +74,19 @@ void MetalSwapchain::Configure(MetalDevice* device, const RendererConfig& config
         GLEAM_ASSERT(false, "Metal: Neither triple nor double buffering is available.");
     }
     mTextures.resize(mMaxFramesInFlight);
-    mImageAcquireSemaphore = dispatch_semaphore_create(mMaxFramesInFlight);
+    
+    mContext.resize(mMaxFramesInFlight);
+    for (auto& ctx : mContext)
+    {
+        ctx.event = [device->GetHandle() newEvent];
+    }
     
     int width, height;
     auto windowSystem = Globals::Engine->GetSubsystem<WindowSystem>();
     SDL_GetWindowSizeInPixels(windowSystem->GetSDLWindow(), &width, &height);
     Resize(device, Size((float)width, (float)height));
+    
+    [device->GetCommandQueue() addResidencySet:[mHandle residencySet]];
 }
 
 void MetalSwapchain::Resize(GraphicsDevice* device, const Size& size)
@@ -87,7 +94,6 @@ void MetalSwapchain::Resize(GraphicsDevice* device, const Size& size)
     auto physicalSize = size * mHandle.contentsScale;
     mHandle.drawableSize = CGSizeMake(physicalSize.width, physicalSize.height);
     
-    mCurrentDrawable = nil;
     for (uint32_t i = 0; i < mMaxFramesInFlight; ++i)
     {
         mTextures[i] = CreateSwapchainBuffer(i);
@@ -96,31 +102,32 @@ void MetalSwapchain::Resize(GraphicsDevice* device, const Size& size)
 
 const Texture& MetalSwapchain::AcquireNextDrawable()
 {
-    auto& drawable = mTextures[mCurrentFrameIndex];
-    if (drawable.GetHandle() == nil)
+    auto& ctx = mContext[mCurrentFrameIndex];
+    [mDevice->GetCommandQueue() waitForEvent:ctx.event value:ctx.eventValue];
+    
+    mCurrentDrawable = [mHandle nextDrawable];
+    while (mCurrentDrawable == nil)
     {
-        dispatch_semaphore_wait(mImageAcquireSemaphore, DISPATCH_TIME_FOREVER);
         mCurrentDrawable = [mHandle nextDrawable];
-        drawable = Texture(drawable.GetDescriptor(), mCurrentDrawable.texture, nil);
     }
-    return drawable;
+    
+    auto& texture = mTextures[mCurrentFrameIndex];
+    texture = Texture(texture.GetDescriptor(), mCurrentDrawable.texture, MTLResourceID());
+    return texture;
 }
 
 void MetalSwapchain::Present(const CommandBuffer* cmd)
 {
-    id<MTLCommandBuffer> commandBuffer = cmd->GetHandle();
-    [commandBuffer addCompletedHandler:^(id<MTLCommandBuffer> commandBuffer)
-    {
-        dispatch_semaphore_signal(mImageAcquireSemaphore);
-    }];
+    id<MTL4CommandQueue> commandQueue = mDevice->GetCommandQueue();
     
-    [commandBuffer presentDrawable:mCurrentDrawable];
     cmd->End();
+    [commandQueue waitForDrawable:mCurrentDrawable];
     cmd->Commit();
     
-    auto& texture = mTextures[mCurrentFrameIndex];
-    texture = Texture(texture.GetDescriptor());
-    mCurrentDrawable = nil;
+    auto& ctx = mContext[mCurrentFrameIndex];
+    [commandQueue signalEvent:ctx.event value:++ctx.eventValue];
+    [commandQueue signalDrawable:mCurrentDrawable];
+    [mCurrentDrawable present];
     
     mCurrentFrameIndex = (mCurrentFrameIndex + 1) % mMaxFramesInFlight;
 }

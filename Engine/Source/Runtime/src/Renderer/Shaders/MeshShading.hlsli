@@ -1,11 +1,14 @@
-#include "BRDF.hlsli"
+#ifndef MESH_SHADING_HLSL
+#define MESH_SHADING_HLSL
 
-CONSTANT_BUFFER(Gleam::MeshPassResources, resources, 0);
-CONSTANT_BUFFER(Gleam::CameraUniforms, camera, 1);
+#include "BRDF.hlsli"
+#include "Atmosphere/SkyAtmosphereCommon.hlsli"
+
+CONSTANT_BUFFER(Gleam::MeshPassResources, resources, MESH_PASS_RESOURCES_BINDING_SLOT);
 
 // We only need this for legacy vertex shader path
 // When switched to mesh shaders, we should be fetching instance data from instance buffer
-CONSTANT_BUFFER(Gleam::MeshInstanceData, instanceData, 2);
+CONSTANT_BUFFER(Gleam::MeshInstanceData, instanceData, MESH_INSTANCE_DATA_BINDING_SLOT);
 
 struct MeshVertexOut
 {
@@ -28,8 +31,6 @@ float4 meshShadingPassShader(MeshVertexOut IN) : SV_TARGET
     Gleam::SurfaceOutput surface = surf(IN);
     
 	float3 viewDir = normalize(camera.position - IN.worldPosition);
-	float3 lightDir = normalize(float3(0.43f, 0.43f, 0.0f));
-	
 	float3x3 TBN = transpose(float3x3(IN.tangent, IN.bitangent, IN.normal));
 	float3 worldNormal = normalize(mul(TBN, surface.normal));
 	
@@ -42,6 +43,21 @@ float4 meshShadingPassShader(MeshVertexOut IN) : SV_TARGET
 	//return float4(surface.metallic.xxx, 1.0f);
 	//return float4(surface.roughness.xxx, 1.0f);
     
-	float3 color = EvaluateDirectLight(surface, lightDir, viewDir, worldNormal);
+	DirectLight light;
+	if (atmosphereUniforms.transmittanceLutTexture != InvalidResourceIndex && atmosphereUniforms.multiScatterLutTexture != InvalidResourceIndex)
+	{
+		light.direction = atmosphereUniforms.sunDirection;
+		light.illuminance = GetSunLuminance(GetSkyWorldPosition(IN.worldPosition), atmosphereUniforms.sunDirection);
+	}
+	else
+	{
+		light.direction = atmosphereUniforms.sunDirection;
+		light.illuminance = atmosphereUniforms.sunIlluminance;
+	}
+	
+	float3 color = 0.0;
+	color += EvaluateDirectLight(surface, light, viewDir, worldNormal);
+	color += EvaluateIndirectLight(surface, resources.brdfTexture, resources.diffuseReflectionTexture, resources.specularReflectionTexture, viewDir, worldNormal);
 	return float4(color, 1.0f);
 }
+#endif // MESH_SHADING_HLSL

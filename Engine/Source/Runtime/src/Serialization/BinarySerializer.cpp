@@ -300,7 +300,7 @@ void BinarySerializer::Initialize(Engine* engine)
 	}
 }
 
-void BinarySerializer::Shutdown()
+void BinarySerializer::Shutdown(Engine* engine)
 {
 	mCustomSerializers.clear();
 	mCustomDeserializers.clear();

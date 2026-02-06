@@ -7,6 +7,9 @@
 #include "IO/Filesystem.h"
 
 #include <Reflection/Reflection.h>
+#ifndef __GLEAM_REFLECTION__
+#include <Runtime.Reflection.generated.h>
+#endif
 
 namespace Gleam {
 
@@ -25,7 +28,7 @@ public:
 	
 	virtual void Initialize(Engine* engine) override;
 	
-	virtual void Shutdown() override;
+	virtual void Shutdown(Engine* engine) override;
 
 	BinaryHeader ParseHeader(FileStream& stream);
     

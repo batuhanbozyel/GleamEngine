@@ -26,9 +26,17 @@ NO_DISCARD TextureHandle RenderGraphBuilder::UseColorBuffer(const TextureHandle&
     return mPassNode.colorAttachments.emplace_back(WriteTexture(attachment));
 }
 
-NO_DISCARD TextureHandle RenderGraphBuilder::UseDepthBuffer(const TextureHandle& attachment)
+NO_DISCARD TextureHandle RenderGraphBuilder::UseDepthBuffer(const TextureHandle& attachment, DepthAccess access)
 {
-    return mPassNode.depthAttachment = WriteTexture(attachment);
+	mPassNode.depthAccess = access;
+	if (access == DepthAccess::Read)
+	{
+		return mPassNode.depthAttachment = ReadTexture(attachment);
+	}
+	else
+	{
+		return mPassNode.depthAttachment = WriteTexture(attachment);
+	}
 }
 
 NO_DISCARD BufferHandle RenderGraphBuilder::CreateBuffer(const BufferDescriptor& descriptor)
@@ -54,7 +62,7 @@ NO_DISCARD BufferHandle RenderGraphBuilder::WriteBuffer(const BufferHandle& reso
 	if (resource.node->transient == false) { mPassNode.hasSideEffect = true; }
 	resource.node->producers.push_back(&mPassNode);
 
-	auto clone = BufferHandle(resource.node, resource.version + 1, ResourceAccess::Write);
+	auto clone = BufferHandle(resource.node, ++resource.node->internalVersion, ResourceAccess::Write);
 	mPassNode.bufferWrites.emplace_back(clone);
 	return clone;
 }
@@ -68,7 +76,7 @@ NO_DISCARD TextureHandle RenderGraphBuilder::WriteTexture(const TextureHandle& r
 	if (resource.node->transient == false) { mPassNode.hasSideEffect = true; }
 	resource.node->producers.push_back(&mPassNode);
 
-	auto clone = TextureHandle(resource.node, resource.version + 1, ResourceAccess::Write);
+	auto clone = TextureHandle(resource.node, ++resource.node->internalVersion, ResourceAccess::Write);
 	mPassNode.textureWrites.emplace_back(clone);
 	return clone;
 }
@@ -80,7 +88,7 @@ NO_DISCARD BufferHandle RenderGraphBuilder::ReadBuffer(const BufferHandle& resou
     
     if (HasResource(mPassNode.bufferReads, resource)) { return resource; }
     
-    auto clone = BufferHandle(resource.node, resource.version, ResourceAccess::Read);
+    auto clone = BufferHandle(resource.node, resource.node->internalVersion, ResourceAccess::Read);
     mPassNode.bufferReads.emplace_back(clone);
     return clone;
 }
@@ -92,7 +100,7 @@ NO_DISCARD TextureHandle RenderGraphBuilder::ReadTexture(const TextureHandle& re
     
     if (HasResource(mPassNode.textureReads, resource)) { return resource; }
     
-    auto clone = TextureHandle(resource.node, resource.version, ResourceAccess::Read);
+    auto clone = TextureHandle(resource.node, resource.node->internalVersion, ResourceAccess::Read);
     mPassNode.textureReads.emplace_back(clone);
     return clone;
 }

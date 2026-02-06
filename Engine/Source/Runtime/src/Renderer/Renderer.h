@@ -14,6 +14,7 @@
 #include "Shaders/ShaderTypes.h"
 #include "RenderGraph/RenderGraph.h"
 #include "RenderGraph/RenderGraphBlackboard.h"
+#include "World/Entity.h"
 
 namespace Gleam {
 
@@ -32,11 +33,27 @@ struct RenderContext
 	RenderSurface* surface = nullptr;
 };
 
+struct CameraRenderData
+{
+	CameraUniforms uniforms = {};
+	EntityHandle entity = InvalidEntity;
+};
+
+struct SkyAtmosphereRenderData
+{
+	SkyAtmosphereUniforms uniforms = {};
+	SkyAtmosphereParameters params = {};
+	TextureHandle transmittanceLut = TextureHandle();
+	TextureHandle multiScatterLut = TextureHandle();
+	EntityHandle entity = InvalidEntity;
+};
+
 struct SceneRenderingData
 {
     const RenderSceneProxy* sceneProxy = nullptr;
     const World* world = nullptr;
-	CameraUniforms camera = {};
+	CameraRenderData camera = {};
+	SkyAtmosphereRenderData atmosphere = {};
     TextureHandle backbuffer = TextureHandle();
 	TextureHandle sceneTarget = TextureHandle();
 };

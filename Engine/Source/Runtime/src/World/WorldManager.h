@@ -13,7 +13,7 @@ public:
 
 	virtual void Initialize(Application* app) override;
 
-	virtual void Shutdown() override;
+	virtual void Shutdown(Application* app) override;
 
 	void Configure(const WorldConfig& config);
 

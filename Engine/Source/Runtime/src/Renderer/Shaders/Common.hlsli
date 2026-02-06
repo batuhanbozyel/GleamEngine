@@ -1,4 +1,6 @@
-#pragma once
+#ifndef COMMON_HLSL
+#define COMMON_HLSL
+
 #include "ShaderInterop.h"
 #include "SharedTypes.h"
 
@@ -13,8 +15,12 @@
 #define FLT_MIN         1.175494351e-38 // Minimum representable positive floating-point number
 #define FLT_MAX         3.402823466e+38 // Maximum representable floating-point number
 
-#define CONSTANT_BUFFER(type, name, slot) ConstantBuffer<type> name : register(b##slot)
-#define PUSH_CONSTANT(type, name) CONSTANT_BUFFER(type, name, 999)
+#define M_TO_KM			0.001
+#define KM_TO_M			1000.0
+
+#define CONSTANT_BUFFER_HELPER(type, name, slot) ConstantBuffer<type> name : register(b##slot, space0)
+#define CONSTANT_BUFFER(type, name, slot) CONSTANT_BUFFER_HELPER(type, name, slot)
+#define PUSH_CONSTANT(type, name) CONSTANT_BUFFER(type, name, PUSH_CONSTANT_REGISTER)
 
 struct FScreenVertexOutput
 {
@@ -96,3 +102,93 @@ float3 ClipSpaceToWorldSpace(float3 position, float4x4 invViewMatrix, float4x4 i
     float4 worldPosition = mul(invViewMatrix, viewPosition);
     return worldPosition.xyz;
 }
+
+float3 SphericalToCartesian(float theta, float phi)
+{
+	// theta: azimuthal angle (rotation around y-axis, from x toward z)
+    // phi: polar angle (from y-axis down)
+	float sinPhi = sin(phi);
+	float cosPhi = cos(phi);
+	float sinTheta = sin(theta);
+	float cosTheta = cos(theta);
+	return float3(
+        sinPhi * cosTheta,
+        cosPhi,
+        sinPhi * sinTheta
+    );
+}
+
+float2 RaySphereIntersect(float3 rayOrigin, float3 rayDirection, float3 sphereCenter, float sphereRadius)
+{
+	float3 s0_r0 = rayOrigin - sphereCenter;
+	float a = dot(rayDirection, rayDirection);
+	float b = 2.0 * dot(rayDirection, s0_r0);
+	float c = dot(s0_r0, s0_r0) - (sphereRadius * sphereRadius);
+    
+	float delta = b * b - 4.0 * a * c;
+	if (delta >= 0.0)
+	{
+		return (-b + float2(-1, 1) * sqrt(delta)) / (2.0 * a);
+	}
+	return -1.0;
+}
+
+float RaySphereIntersectNearest(float3 rayOrigin, float3 rayDirection, float3 sphereCenter, float sphereRadius)
+{
+	float2 sol = RaySphereIntersect(rayOrigin, rayDirection, sphereCenter, sphereRadius);
+	float sol0 = sol.x;
+	float sol1 = sol.y;
+    
+	if (sol0 < 0.0 && sol1 < 0.0)
+	{
+		return -1.0; // no solution
+	}
+    
+	if (sol0 < 0.0)
+	{
+		return sol1;
+	}
+	else if (sol1 < 0.0)
+	{
+		return sol0;
+	}
+	return min(sol0, sol1);
+}
+
+void GetOrthonormalBasis(float3 N, out float3 T, out float3 B)
+{
+    float3 up = abs(N.y) < 0.999 ? float3(0, 1, 0) : float3(1, 0, 0);
+    T = normalize(cross(up, N));
+    B = cross(N, T);
+}
+
+float3 GetCubemapDirection(float2 uv, uint faceIndex)
+{
+    float2 ndc = uv * 2.0 - 1.0;
+	ndc.y = -ndc.y;
+    
+    float3 direction;
+    switch (faceIndex)
+    {
+        case 0: // +X
+            direction = float3(1.0, ndc.y, -ndc.x);
+            break;
+        case 1: // -X
+            direction = float3(-1.0, ndc.y, ndc.x);
+            break;
+        case 2: // +Y
+            direction = float3(ndc.x, 1.0, -ndc.y);
+            break;
+        case 3: // -Y
+            direction = float3(ndc.x, -1.0, ndc.y);
+            break;
+        case 4: // +Z
+            direction = float3(ndc.x, ndc.y, 1.0);
+            break;
+        case 5: // -Z
+            direction = float3(-ndc.x, ndc.y, -1.0);
+            break;
+    }
+    return normalize(direction);
+}
+#endif

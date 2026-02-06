@@ -10,6 +10,9 @@
 #include "RenderGraph/RenderGraph.h"
 #include "RenderGraph/RenderGraphBlackboard.h"
 
+#include "Renderers/SkyAtmosphere.h"
+#include "Renderers/WorldRenderer.h"
+
 #include "Core/Engine.h"
 #include "Core/Globals.h"
 #include "Core/Events/RendererEvent.h"
@@ -40,7 +43,7 @@ void RenderSystem::Initialize(Engine* engine)
 	});
 }
 
-void RenderSystem::Shutdown()
+void RenderSystem::Shutdown(Engine* engine)
 {
 	mCopyCommandBuffer.reset();
 	mCommandBuffers.clear();
@@ -62,10 +65,10 @@ void RenderSystem::Shutdown()
 
 void RenderSystem::PreRender(const World* world)
 {
-	auto sceneProxy = world->GetSystem<RenderSceneProxy>();
+	auto sceneProxy = world->GetSubsystem<RenderSceneProxy>();
 	sceneProxy->ForEach([&](const MeshBatch& batch)
 	{
-		mCopyCommandBuffer->Commit(batch.instanceBuffer, batch.instances.data(), sizeof(MeshInstanceData) * batch.numInstances);
+		mCopyCommandBuffer->Commit(batch.instanceBuffer, batch.instances.data(), sizeof(MeshInstanceData) * batch.numInstances, 0);
 	});
 
 	// update active camera
@@ -75,6 +78,15 @@ void RenderSystem::PreRender(const World* world)
 		if (entity.IsActive())
 		{
 			mActiveCamera = entity;
+		}
+	});
+
+	mSkyAtmosphereEntity = InvalidEntity;
+	world->GetEntityManager().ForEach<Entity, SkyAtmosphere>([&](const Entity& entity, const SkyAtmosphere& component)
+	{
+		if (entity.IsActive())
+		{
+			mSkyAtmosphereEntity = entity;
 		}
 	});
 
@@ -105,6 +117,7 @@ void RenderSystem::Render(const World* world)
 			return; // skip rendering this frame
 		}
 
+		const auto worldRenderer = GetRenderer<WorldRenderer>();
 		const auto& cameraComponent = world->GetEntityManager().GetComponent<Camera>(mActiveCamera);
 		const auto& cameraEntity = world->GetEntityManager().GetComponent<Entity>(mActiveCamera);
 
@@ -129,28 +142,15 @@ void RenderSystem::Render(const World* world)
 
 		RenderGraphBlackboard blackboard;
 		auto& sceneData = blackboard.Add<SceneRenderingData>();
-		sceneData.backbuffer = graph.ImportBackbuffer(backbuffer);
-		sceneData.sceneTarget = graph.ImportBackbuffer(sceneTarget);
-		sceneData.sceneProxy = world->GetSystem<RenderSceneProxy>();
+		sceneData.backbuffer = graph.ImportTexture(backbuffer);
+		sceneData.sceneTarget = graph.ImportTexture(sceneTarget);
+		sceneData.sceneProxy = world->GetSubsystem<RenderSceneProxy>();
 		sceneData.world = world;
-		sceneData.camera.viewMatrix = Float4x4::LookTo(cameraEntity.GetWorldPosition(), cameraEntity.ForwardVector(), cameraEntity.UpVector());
 
-		if (cameraComponent.projectionType == ProjectionType::Perspective)
-		{
-			sceneData.camera.projectionMatrix = Float4x4::Perspective(cameraComponent.fov, cameraComponent.aspectRatio, cameraComponent.nearPlane, cameraComponent.farPlane);
-		}
-		else
-		{
-			float width = cameraComponent.orthographicSize * cameraComponent.aspectRatio;
-			float height = cameraComponent.orthographicSize;
-			sceneData.camera.projectionMatrix = Float4x4::Ortho(width, height, cameraComponent.nearPlane, cameraComponent.farPlane);
-		}
-
-		sceneData.camera.viewProjectionMatrix = sceneData.camera.projectionMatrix * sceneData.camera.viewMatrix;
-		sceneData.camera.invViewMatrix = Math::Inverse(sceneData.camera.viewMatrix);
-		sceneData.camera.invProjectionMatrix = Math::Inverse(sceneData.camera.projectionMatrix);
-		sceneData.camera.invViewProjectionMatrix = Math::Inverse(sceneData.camera.viewProjectionMatrix);
-		sceneData.camera.position = cameraEntity.GetWorldPosition();
+		// Setup camera & sky atmosphere
+		Entity atmosphereEntity = mSkyAtmosphereEntity != InvalidEntity ? world->GetEntityManager().GetComponent<Entity>(mSkyAtmosphereEntity) : Entity();
+		sceneData.atmosphere = SetupSkyAtmosphereRenderData(graph, atmosphereEntity);
+		sceneData.camera = SetupCameraRenderData(graph, cameraEntity);
 
         for (auto renderer : mRenderers)
         {
@@ -240,17 +240,36 @@ void RenderSystem::RecompileShader(const TString& entryPoint)
 
 				for (auto pipelineHash : mDevice->mShaderPipelineReferences[entryPoint])
 				{
-					for (auto& [handle, pipeline] : mDevice->mGraphicsPipelineCache)
+					if (shader.GetStage() == ShaderStage::Compute)
 					{
-						if (handle == pipelineHash)
+						for (auto& [handle, pipeline] : mDevice->mComputePipelineCache)
 						{
-							auto newPipeline = mDevice->CompileGraphicsPipeline(pipeline.GetDescriptor());
-							if (newPipeline.IsValid())
+							if (handle == pipelineHash)
 							{
-								mDevice->Dispose(pipeline);
-								pipeline = newPipeline;
+								auto newPipeline = mDevice->CompileComputePipeline(pipeline.GetDescriptor());
+								if (newPipeline.IsValid())
+								{
+									mDevice->Dispose(pipeline);
+									pipeline = newPipeline;
+								}
+								break;
 							}
-							break;
+						}
+					}
+					else if (shader.GetStage() == ShaderStage::Vertex || shader.GetStage() == ShaderStage::Fragment)
+					{
+						for (auto& [handle, pipeline] : mDevice->mGraphicsPipelineCache)
+						{
+							if (handle == pipelineHash)
+							{
+								auto newPipeline = mDevice->CompileGraphicsPipeline(pipeline.GetDescriptor());
+								if (newPipeline.IsValid())
+								{
+									mDevice->Dispose(pipeline);
+									pipeline = newPipeline;
+								}
+								break;
+							}
 						}
 					}
 				}
@@ -258,4 +277,55 @@ void RenderSystem::RecompileShader(const TString& entryPoint)
 			break;
 		}
 	}
+}
+
+CameraRenderData RenderSystem::SetupCameraRenderData(RenderGraph& graph, const Entity& entity) const
+{
+	CameraRenderData camera = {};
+	camera.entity = entity;
+
+	const auto& cameraComponent = entity.GetComponent<Camera>();
+	camera.uniforms.resolution = Float2(cameraComponent.orthographicSize * cameraComponent.aspectRatio, cameraComponent.orthographicSize);
+	camera.uniforms.viewMatrix = Float4x4::LookTo(entity.GetWorldPosition(), entity.ForwardVector(), entity.UpVector());
+	if (cameraComponent.projectionType == ProjectionType::Perspective)
+	{
+		camera.uniforms.projectionMatrix = Float4x4::Perspective(Math::Deg2Rad(cameraComponent.fov), cameraComponent.aspectRatio, cameraComponent.nearPlane, cameraComponent.farPlane);
+	}
+	else
+	{
+		camera.uniforms.projectionMatrix = Float4x4::Ortho(camera.uniforms.resolution.x, camera.uniforms.resolution.y, cameraComponent.nearPlane, cameraComponent.farPlane);
+	}
+	camera.uniforms.viewProjectionMatrix = camera.uniforms.projectionMatrix * camera.uniforms.viewMatrix;
+	camera.uniforms.invViewMatrix = Math::Inverse(camera.uniforms.viewMatrix);
+	camera.uniforms.invProjectionMatrix = Math::Inverse(camera.uniforms.projectionMatrix);
+	camera.uniforms.invViewProjectionMatrix = Math::Inverse(camera.uniforms.viewProjectionMatrix);
+	camera.uniforms.position = entity.GetWorldPosition();
+	return camera;
+}
+
+SkyAtmosphereRenderData RenderSystem::SetupSkyAtmosphereRenderData(RenderGraph& graph, const Entity& entity) const
+{
+	SkyAtmosphereRenderData skyAtmosphere = {};
+	skyAtmosphere.entity = entity;
+
+	skyAtmosphere.uniforms.sunIlluminance = 1.0f;
+	skyAtmosphere.uniforms.sunDirection = Float3::up;
+	if (entity.IsValid())
+	{
+		const auto& atmosphereComponent = entity.GetComponent<SkyAtmosphere>();
+		skyAtmosphere.uniforms.sunIlluminance = Float3(atmosphereComponent.sun.color.r, atmosphereComponent.sun.color.g, atmosphereComponent.sun.color.b) * atmosphereComponent.sun.intensity;
+		skyAtmosphere.uniforms.sunAngularDiameter = atmosphereComponent.sun.angularDiameter;
+		skyAtmosphere.uniforms.sunDirection = entity.UpVector();
+
+		auto skyAtmosphereRenderer = GetRenderer<SkyAtmosphereRenderer>();
+		if (skyAtmosphereRenderer)
+		{
+			skyAtmosphere.transmittanceLut = graph.ImportTexture(skyAtmosphereRenderer->GetTransmittanceLutTexture());
+			skyAtmosphere.multiScatterLut = graph.ImportTexture(skyAtmosphereRenderer->GetMultiScatterLutTexture());
+			skyAtmosphere.params = skyAtmosphereRenderer->GetSkyAtmosphereParameters(atmosphereComponent.atmosphere);
+		}
+	}
+	skyAtmosphere.uniforms.transmittanceLutTexture = skyAtmosphere.transmittanceLut;
+	skyAtmosphere.uniforms.multiScatterLutTexture = skyAtmosphere.multiScatterLut;
+	return skyAtmosphere;
 }

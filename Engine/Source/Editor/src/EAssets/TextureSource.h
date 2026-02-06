@@ -24,6 +24,7 @@ public:
 	struct ImportSettings
 	{
 		TextureColorSpace colorSpace = TextureColorSpace::Linear;
+		bool generateMips = false;
 		bool hdr = false;
 	};
 

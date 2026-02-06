@@ -20,7 +20,13 @@ GSTRUCT(Size, "6FAF00C4-631C-4F00-832B-6554DCFB3078", Serializable)
     constexpr Size(const Size&) = default;
     FORCE_INLINE constexpr Size& operator=(Size&&) noexcept = default;
     FORCE_INLINE constexpr Size& operator=(const Size&) = default;
-    
+
+	constexpr Size(float size)
+		: width(size), height(size)
+	{
+
+	}
+
     constexpr Size(float width, float height)
         : width(width), height(height)
     {

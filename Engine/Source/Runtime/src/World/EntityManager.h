@@ -17,6 +17,8 @@ class EntityManager final
 	using ConstVisitFn = std::function<void(const void* component, const Reflection::ClassDescription& classDesc)>;
 public:
 
+	EntityManager();
+
 	Entity& CreateFromPrefab(const AssetReference& ref);
 
 	Entity& CreateEntity(const TString& name, const Guid& guid);
@@ -72,43 +74,19 @@ public:
     template<typename T, typename ... Args>
     T& SetSingletonComponent(Args&&... args)
     {
-		if constexpr (Reflection::Traits::IsReflected<T>::value)
-		{
-			const auto& classDesc = Reflection::GetClass<T>();
-			return mRegistry.ctx().emplace_as<T>(classDesc.TypeHash(), std::forward<Args>(args)...);
-		}
-		else
-		{
-			return mRegistry.ctx().emplace<T>(std::forward<Args>(args)...);
-		}
+		return AddComponent<T>(mSingletonEntity, std::forward<Args>(args)...);
     }
     
     template<typename T>
     T& GetSingletonComponent()
     {
-		if constexpr (Reflection::Traits::IsReflected<T>::value)
-		{
-			const auto& classDesc = Reflection::GetClass<T>();
-			return mRegistry.ctx().get<T>(classDesc.TypeHash());
-		}
-		else
-		{
-			return mRegistry.ctx().get<T>();
-		}
+		return GetComponent<T>(mSingletonEntity);
     }
     
     template<typename T>
     const T& GetSingletonComponent() const
     {
-		if constexpr (Reflection::Traits::IsReflected<T>::value)
-		{
-			const auto& classDesc = Reflection::GetClass<T>();
-			return mRegistry.ctx().get<T>(classDesc.TypeHash());
-		}
-		else
-		{
-			return mRegistry.ctx().get<T>();
-		}
+		return GetComponent<T>(mSingletonEntity);
     }
 
 	template<typename T, typename ... Args>
@@ -271,6 +249,7 @@ private:
 	}
 
 	entt::registry mRegistry;
+	EntityHandle mSingletonEntity;
 	HashMap<Guid, EntityHandle> mHandles;
 };
 

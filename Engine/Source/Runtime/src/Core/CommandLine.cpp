@@ -65,7 +65,7 @@ const TString& CommandLine::GetPositionalArg(size_t index) const
 
 bool CommandLine::IsNumber(const TStringView arg)
 {
-	std::istringstream istr(arg.data(), arg.size());
+	std::istringstream istr(std::move(TString(arg)));
 	double number;
 	istr >> number;
 	return !(istr.fail() || istr.bad());

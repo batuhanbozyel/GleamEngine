@@ -56,7 +56,6 @@ private:
 	struct FrameContext
 	{
 		ID3D12Fence* fence;
-		uint64_t waitFenceValue = 0;
 		uint64_t fenceValue = 0;
 	};
 	TArray<FrameContext> mContext;

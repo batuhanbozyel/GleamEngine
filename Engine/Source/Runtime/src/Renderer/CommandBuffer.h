@@ -42,6 +42,12 @@ public:
 
     void EndRenderPass() const;
 
+	void BeginComputePass(const TStringView debugName) const;
+
+	void EndComputePass() const;
+
+	void BindComputePipeline(const ComputePipeline& pipeline) const;
+
     void BindGraphicsPipeline(const GraphicsPipeline& pipeline) const;
 
     void SetViewport(const Size& size) const;
@@ -60,6 +66,8 @@ public:
         static_assert(sizeof(T) <= PUSH_CONSTANT_SIZE, "Push constant limit is 128 bytes.");
         SetPushConstant(&t, sizeof(T));
     }
+
+	void Dispatch(uint32_t x, uint32_t y, uint32_t z) const;
 
     void Draw(uint32_t vertexCount, uint32_t instanceCount = 1) const;
 

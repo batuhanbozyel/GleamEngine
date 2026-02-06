@@ -47,6 +47,12 @@ enum class RenderGraphPassType
 	Native
 };
 
+enum class DepthAccess
+{
+	Read,
+	Write
+};
+
 struct RenderGraphPassNode : public RenderGraphNode
 {
     GLEAM_NONCOPYABLE(RenderGraphPassNode);
@@ -56,7 +62,8 @@ struct RenderGraphPassNode : public RenderGraphNode
     TString name;
 	std::any data;
     PassCallback callback;
-    
+	RenderGraphPassType type = RenderGraphPassType::Native;
+
     bool hasSideEffect = false;
     
 	TArray<BufferHandle> bufferReads;
@@ -69,26 +76,26 @@ struct RenderGraphPassNode : public RenderGraphNode
     
     TArray<TextureHandle> colorAttachments;
     TextureHandle depthAttachment;
+	DepthAccess depthAccess = DepthAccess::Write;
     
     HashSet<RenderGraphPassNode*> dependents;
     
-    RenderGraphPassNode(uint32_t uniqueId, const TStringView name)
+    RenderGraphPassNode(RenderGraphPassType type, uint32_t uniqueId, const TStringView name)
         : RenderGraphNode(uniqueId)
 		, name(name)
+		, type(type)
     {
         
     }
 	
 	virtual ~RenderGraphPassNode() = default;
-    
-	virtual RenderGraphPassType GetType() const = 0;
 };
 
 struct RenderGraphCopyPassNode final : public RenderGraphPassNode
 {
 	template<typename PassData>
 	RenderGraphCopyPassNode(uint32_t uniqueId, const TStringView name, CopyFunc<PassData>&& execute)
-		: RenderGraphPassNode(uniqueId, name)
+		: RenderGraphPassNode(RenderGraphPassType::Copy, uniqueId, name)
 	{
 		data = std::make_any<PassData>();
 		callback = [execute = std::move(execute), this](const void* userData)
@@ -96,18 +103,13 @@ struct RenderGraphCopyPassNode final : public RenderGraphPassNode
 			std::invoke(execute, static_cast<const CopyCommandBuffer*>(userData), std::any_cast<const PassData&>(data));
 		};
 	}
-	
-	virtual RenderGraphPassType GetType() const override
-	{
-		return RenderGraphPassType::Copy;
-	}
 };
 
 struct RenderGraphRenderPassNode final : public RenderGraphPassNode
 {
 	template<typename PassData>
 	RenderGraphRenderPassNode(uint32_t uniqueId, const TStringView name, RenderFunc<PassData>&& execute)
-		: RenderGraphPassNode(uniqueId, name)
+		: RenderGraphPassNode(RenderGraphPassType::Raster, uniqueId, name)
 	{
 		data = std::make_any<PassData>();
 		callback = [execute = std::move(execute), this](const void* userData)
@@ -115,10 +117,19 @@ struct RenderGraphRenderPassNode final : public RenderGraphPassNode
 			std::invoke(execute, static_cast<const CommandBuffer*>(userData), std::any_cast<const PassData&>(data));
 		};
 	}
-	
-	virtual RenderGraphPassType GetType() const override
+};
+
+struct RenderGraphComputePassNode final : public RenderGraphPassNode
+{
+	template<typename PassData>
+	RenderGraphComputePassNode(uint32_t uniqueId, const TStringView name, RenderFunc<PassData>&& execute)
+		: RenderGraphPassNode(RenderGraphPassType::Compute, uniqueId, name)
 	{
-		return RenderGraphPassType::Raster;
+		data = std::make_any<PassData>();
+		callback = [execute = std::move(execute), this](const void* userData)
+		{
+			std::invoke(execute, static_cast<const CommandBuffer*>(userData), std::any_cast<const PassData&>(data));
+		};
 	}
 };
 
@@ -129,6 +140,7 @@ struct RenderGraphResourceNode : public RenderGraphNode
     RenderGraphPassNode* lastModifier = nullptr;
     RenderGraphPassNode* lastReference = nullptr;
     TArray<RenderGraphPassNode*> producers;
+	uint32_t internalVersion = 0;
     
     RenderGraphResourceNode(uint32_t uniqueId, bool transient)
         : RenderGraphNode(uniqueId), transient(transient)
@@ -168,6 +180,12 @@ struct RenderGraphTextureNode final : public RenderGraphResourceNode
 		BarrierAccess access = BarrierAccess::None;
 		BarrierLayout layout = BarrierLayout::Undefined;
 	} barrierState;
+
+	RenderGraphTextureNode(uint32_t uniqueId, const TextureDescriptor& descriptor, bool transient)
+		: RenderGraphResourceNode(uniqueId, transient), texture(descriptor)
+	{
+
+	}
 
 	RenderGraphTextureNode(uint32_t uniqueId, const RenderTextureDescriptor& descriptor, bool transient)
 		: RenderGraphResourceNode(uniqueId, transient), texture(descriptor),

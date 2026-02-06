@@ -1,9 +1,9 @@
 #pragma once
-#include "Heap.h"
+#include "GraphicsObject.h"
+#include "HeapDescriptor.h"
 
 namespace Gleam {
 
-class Heap;
 class GraphicsDevice;
 
 struct BufferDescriptor
@@ -20,9 +20,7 @@ struct BufferDescriptor
 
 class Buffer final : public ShaderResource
 {
-    friend class Heap;
     friend class GraphicsDevice;
-    
 public:
 
 	Buffer() = default;

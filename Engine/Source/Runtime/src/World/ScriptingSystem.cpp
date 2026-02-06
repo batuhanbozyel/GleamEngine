@@ -7,9 +7,11 @@ void ScriptingSystem::Initialize(Engine* engine)
 {
 	RegisterMetaComponent<Camera>();
 	RegisterMetaComponent<MeshRenderer>();
+	RegisterMetaComponent<SkyAtmosphere>();
+	RegisterMetaComponent<ReflectionProbe>();
 }
 
-void ScriptingSystem::Shutdown()
+void ScriptingSystem::Shutdown(Engine* engine)
 {
 
 }

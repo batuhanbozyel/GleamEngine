@@ -79,7 +79,11 @@ void RenderGraph::Compile()
     }
     
     // Perform topological sort
-    Queue<RenderGraphPassNode*> passQueue;
+	auto cmp = [](RenderGraphPassNode* a, RenderGraphPassNode* b)
+	{
+		return a->uniqueId > b->uniqueId;
+	};
+    PriorityQueue<RenderGraphPassNode*, TArray<RenderGraphPassNode*>, decltype(cmp)> passQueue(cmp);
     TArray<RenderGraphPassNode*> sortedPasses;
     for (auto pass : mPassNodes)
     {
@@ -91,7 +95,7 @@ void RenderGraph::Compile()
     
     while (!passQueue.empty())
     {
-        auto pass = passQueue.front();
+        auto pass = passQueue.top();
         passQueue.pop();
         
         sortedPasses.push_back(pass);
@@ -141,10 +145,6 @@ void RenderGraph::Execute(const CommandBuffer* cmd, SceneRenderingData& sceneDat
 		ExecutePass(pass, cmd);
 		FreePassResources(pass, cmd);
     }
-    
-    for (auto pass : mPassNodes) { delete pass; }
-    mPassNodes.clear();
-    mRegistry.Clear();
 }
 
 void RenderGraph::AllocatePassResources(RenderGraphPassNode* pass, const CommandBuffer* cmd, SceneRenderingData& sceneData)
@@ -277,23 +277,22 @@ void RenderGraph::SetupPassBarriers(RenderGraphPassNode* pass, const CommandBuff
 			continue;
 		}
 
+		BarrierStage dstStage = BarrierStage::AllShading;
 		BarrierAccess dstAccess = BarrierAccess::ShaderResource;
 		BarrierLayout newLayout = BarrierLayout::ShaderResource;
 
 		const auto& textureDesc = resource.node->texture.GetDescriptor();
-		if (textureDesc.usage & TextureUsage_Attachment)
+		if (Utils::IsDepthFormat(textureDesc.format))
 		{
-			if (pass->depthAttachment.node == resource.node)
-			{
-				dstAccess = BarrierAccess::DepthStencilRead;
-				newLayout = BarrierLayout::DepthStencilRead;
-			}
+			dstStage = BarrierStage::DepthStencil;
+			dstAccess = BarrierAccess::DepthStencilRead;
+			newLayout = BarrierLayout::DepthStencilRead;
 		}
 
 		TextureBarrier textureBarrier;
 		textureBarrier.resource = resource.node->texture.GetHandle();
 		textureBarrier.srcStage = resource.node->barrierState.stage;
-		textureBarrier.dstStage = BarrierStage::AllShading;
+		textureBarrier.dstStage = dstStage;
 		textureBarrier.srcAccess = resource.node->barrierState.access;
 		textureBarrier.dstAccess = dstAccess;
 		textureBarrier.oldLayout = resource.node->barrierState.layout;
@@ -312,7 +311,7 @@ void RenderGraph::SetupPassBarriers(RenderGraphPassNode* pass, const CommandBuff
 		BarrierLayout newLayout = BarrierLayout::UnorderedAccess;
 
 		const auto& textureDesc = resource.node->texture.GetDescriptor();
-		if (textureDesc.usage & TextureUsage_Attachment)
+		if (pass->type == RenderGraphPassType::Raster)
 		{
 			if (pass->depthAttachment.node == resource.node)
 			{
@@ -326,6 +325,10 @@ void RenderGraph::SetupPassBarriers(RenderGraphPassNode* pass, const CommandBuff
 				dstAccess = BarrierAccess::RenderTarget;
 				newLayout = BarrierLayout::RenderTarget;
 			}
+		}
+		else if (pass->type == RenderGraphPassType::Compute)
+		{
+			dstStage = BarrierStage::ComputeShading;
 		}
 
 		TextureBarrier textureBarrier;
@@ -347,11 +350,11 @@ void RenderGraph::SetupPassBarriers(RenderGraphPassNode* pass, const CommandBuff
 
 void RenderGraph::ExecutePass(RenderGraphPassNode* pass, const CommandBuffer* cmd)
 {
-	if (pass->GetType() == RenderGraphPassType::Native)
+	if (pass->type == RenderGraphPassType::Native)
 	{
 		std::invoke(pass->callback, cmd);
 	}
-	else if (pass->GetType() == RenderGraphPassType::Raster)
+	else if (pass->type == RenderGraphPassType::Raster)
 	{
 		if (pass->colorAttachments.empty() && pass->depthAttachment.IsValid() == false)
 		{
@@ -378,7 +381,7 @@ void RenderGraph::ExecutePass(RenderGraphPassNode* pass, const CommandBuffer* cm
 				const auto node = static_cast<const RenderGraphTextureNode*>(pass->depthAttachment.node);
 				renderPassDesc.depthAttachment.texture = node->texture;
 				renderPassDesc.depthAttachment.loadAction = GetLoadActionForRenderTexture(node, pass);
-				renderPassDesc.depthAttachment.storeAction = GetStoreActionForRenderTexture(node, pass);
+				renderPassDesc.depthAttachment.storeAction = pass->depthAccess == DepthAccess::Read ? AttachmentStoreAction::DontCare : GetStoreActionForRenderTexture(node, pass);
 				renderPassDesc.depthAttachment.clearDepth = node->clearDepth;
 				renderPassDesc.depthAttachment.clearStencil = node->clearStencil;
 
@@ -393,9 +396,15 @@ void RenderGraph::ExecutePass(RenderGraphPassNode* pass, const CommandBuffer* cm
 			cmd->EndRenderPass();
 		}
 	}
+	else if (pass->type == RenderGraphPassType::Compute)
+	{
+		cmd->BeginComputePass(pass->name);
+		std::invoke(pass->callback, cmd);
+		cmd->EndComputePass();
+	}
 }
 
-TextureHandle RenderGraph::ImportBackbuffer(const Texture& backbuffer, const ImportResourceParams& params)
+TextureHandle RenderGraph::ImportTexture(const Texture& backbuffer, const ImportResourceParams& params)
 {
 	RenderTextureDescriptor descriptor(backbuffer.GetDescriptor());
 	descriptor.clearBuffer = params.clearOnFirstUse;

@@ -13,8 +13,6 @@
 
 namespace Gleam {
 
-static constexpr size_t TopLevelArgumentBufferSize = PUSH_CONSTANT_SLOT * sizeof(uint64_t) + PUSH_CONSTANT_SIZE;
-
 static constexpr TextureFormat MTLPixelFormatToTextureFormat(MTLPixelFormat format)
 {
     switch (format)
@@ -71,6 +69,10 @@ static constexpr TextureFormat MTLPixelFormatToTextureFormat(MTLPixelFormat form
 
         case MTLPixelFormatBGRA8Unorm_sRGB: return TextureFormat::B8G8R8A8_SRGB;
         case MTLPixelFormatBGRA8Unorm: return TextureFormat::B8G8R8A8_UNorm;
+
+		case MTLPixelFormatRGB9E5Float: return TextureFormat::R9G9B9E5_SFloat;
+		case MTLPixelFormatRG11B10Float: return TextureFormat::R11G11B10_SFloat;
+		case MTLPixelFormatRGB10A2Unorm: return TextureFormat::R10G10B10A2_Unorm;
             
         // Depth - Stencil formats
         case MTLPixelFormatDepth16Unorm: return TextureFormat::D16_UNorm;
@@ -141,6 +143,10 @@ static constexpr MTLPixelFormat TextureFormatToMTLPixelFormat(TextureFormat form
         case TextureFormat::B8G8R8A8_SRGB: return MTLPixelFormatBGRA8Unorm_sRGB;
         case TextureFormat::B8G8R8A8_UNorm: return MTLPixelFormatBGRA8Unorm;
 
+		case TextureFormat::R9G9B9E5_SFloat: return MTLPixelFormatRGB9E5Float;
+		case TextureFormat::R11G11B10_SFloat: return MTLPixelFormatRG11B10Float;
+		case TextureFormat::R10G10B10A2_Unorm: return MTLPixelFormatRGB10A2Unorm;
+
         // Depth - Stencil formats
         case TextureFormat::D16_UNorm: return MTLPixelFormatDepth16Unorm;
         case TextureFormat::D32_SFloat: return MTLPixelFormatDepth32Float;
@@ -157,7 +163,7 @@ static constexpr MTLPixelFormat TextureFormatToMTLPixelFormat(TextureFormat form
 
 static constexpr MTLTextureUsage TextureUsageToMTLTextureUsage(TextureUsageFlagBits flags)
 {
-    MTLTextureUsage usage = 0;
+	MTLTextureUsage usage = MTLTextureUsageUnknown;
     if (flags & TextureUsage_Sampled)
     {
         usage |= MTLTextureUsageShaderRead;
@@ -322,14 +328,22 @@ static constexpr MTLResourceOptions MemoryTypeToMTLResourceOption(MemoryType typ
     }
 }
 
-static constexpr MTLResourceUsage ResourceAccessToMTLResourceUsage(ResourceAccess access)
+static constexpr MTLStages BarrierStageToMTLStages(BarrierStage stage)
 {
-    switch (access)
-    {
-        case ResourceAccess::Read: return MTLResourceUsageRead;
-        case ResourceAccess::Write: return MTLResourceUsageWrite;
-        default: GLEAM_ASSERT(false, "Metal: Unknown access mode specified!"); return MTLResourceUsage(~0);
-    }
+	switch (stage)
+	{
+		case BarrierStage::None: return MTLStages(0);
+		case BarrierStage::All: return MTLStageVertex | MTLStageFragment | MTLStageDispatch | MTLStageBlit | MTLStageAccelerationStructure;
+		case BarrierStage::AllShading: return MTLStageVertex | MTLStageFragment | MTLStageDispatch;
+		case BarrierStage::NonFragmentShading: return MTLStageVertex | MTLStageDispatch;
+		case BarrierStage::VertexShading: return MTLStageVertex;
+		case BarrierStage::FragmentShading: return MTLStageFragment;
+		case BarrierStage::RenderTarget: return MTLStageFragment;
+		case BarrierStage::DepthStencil: return MTLStageFragment;
+		case BarrierStage::ComputeShading: return MTLStageDispatch;
+		case BarrierStage::Copy: return MTLStageBlit;
+		default: GLEAM_ASSERT(false, "Metal: Unknown barrier stage specified!"); return MTLStages(~0);
+	}
 }
 
 } // namespace Gleam

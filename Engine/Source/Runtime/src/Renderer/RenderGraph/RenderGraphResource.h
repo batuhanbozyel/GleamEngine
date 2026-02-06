@@ -91,21 +91,10 @@ public:
         return node != nullptr;
     }
 
-    NO_DISCARD operator ConstantBufferView() const
-    {
-        GLEAM_ASSERT(access == ResourceAccess::Read);
-        GLEAM_ASSERT(GetBuffer().GetResourceView() != InvalidResourceIndex);
-        ConstantBufferView cbv = GetBuffer().GetResourceView();
-        return cbv;
-    }
-    
-    NO_DISCARD operator BufferResourceView() const
-    {
-        GLEAM_ASSERT(access == ResourceAccess::Read);
-        GLEAM_ASSERT(GetBuffer().GetResourceView() != InvalidResourceIndex);
-        BufferResourceView srv = GetBuffer().GetResourceView();
-        return srv;
-    }
+	NO_DISCARD operator ShaderResourceIndex() const
+	{
+		return GetBuffer().GetResourceView();
+	}
     
     NO_DISCARD operator Buffer() const
     {
@@ -162,6 +151,11 @@ public:
     {
         return node != nullptr;
     }
+	
+	NO_DISCARD operator ShaderResourceIndex() const
+	{
+		return GetTexture().GetResourceView();
+	}
     
     template<TextureResourceViewType T>
     NO_DISCARD operator T() const

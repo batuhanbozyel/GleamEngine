@@ -61,7 +61,7 @@ Application::~Application()
 {
     for (auto system : mSubsystems)
     {
-        system->Shutdown();
+        system->Shutdown(this);
     }
 	mSubsystems.clear();
 }

@@ -15,7 +15,7 @@ struct VertexOut
 
 VertexOut imguiVertexShader(uint vertexID : SV_VERTEXID)
 {
-	ByteAddressBuffer vertexBuffer = ResourceDescriptorHeap[SRVIndex(constants.vertexBuffer)];
+	ByteAddressBuffer vertexBuffer = ResourceDescriptorHeap[constants.vertexBuffer];
 	const uint vertexOffset = constants.vertexOffset + (vertexID * 20);
 	float2 position = asfloat(vertexBuffer.Load2(vertexOffset));
 
@@ -28,6 +28,6 @@ VertexOut imguiVertexShader(uint vertexID : SV_VERTEXID)
 
 float4 imguiFragmentShader(VertexOut IN) : SV_Target
 {
-	Texture2D<float4> texture = ResourceDescriptorHeap[SRVIndex(constants.texture)];
+	Texture2D<float4> texture = ResourceDescriptorHeap[constants.texture];
 	return texture.SampleLevel(Sampler_Trilinear_Repeat, IN.uv, 0) * IN.color;
 }

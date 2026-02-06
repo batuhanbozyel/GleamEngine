@@ -1,5 +1,13 @@
 // EntryPoint
 #include "Core/EntryPoint.h"
+#include "Serialization/JSONSerializer.h"
+
+#include "World/WorldManager.h"
+#include "World/Components/Camera.h"
+#include "World/Components/SkyAtmosphere.h"
+#include "World/Components/ReflectionProbe.h"
+
+#include "EAssets/EAssetManager.h"
 #include "View/ViewStack.h"
 #include "World/World.h"
 
@@ -18,6 +26,8 @@ public:
 	GleamEditor(const Gleam::Project& project)
         : Gleam::Application(project)
 	{
+		auto assetManager = AddSubsystem<EAssetManager>(project.path);
+
 		auto worldManager = GetSubsystem<Gleam::WorldManager>();
 		mEditWorld = worldManager->GetActiveWorld();
 
@@ -26,12 +36,13 @@ public:
 		viewStack->AddView<WorldViewport>();
 		viewStack->AddView<WorldOutliner>();
 		viewStack->AddView<EntityInspector>();
-		viewStack->AddView<ContentBrowser>();
+		viewStack->AddView<ContentBrowser>(assetManager);
 	}
     
 	~GleamEditor()
 	{
 		mEditWorld->RemoveSubsystem<ViewStack>();
+		RemoveSubsystem<EAssetManager>();
 	}
 
 private:
@@ -65,6 +76,13 @@ public:
 
 			auto& camera = world.GetEntityManager().CreateEntity("Editor Camera", Gleam::Guid::NewGuid());
 			world.GetEntityManager().AddComponent<Gleam::Camera>(camera, Gleam::Size(1280.0f, 720.0f));
+
+			auto& atmosphere = world.GetEntityManager().CreateEntity("Atmosphere", Gleam::Guid::NewGuid());
+			world.GetEntityManager().AddComponent<Gleam::SkyAtmosphere>(atmosphere);
+
+			// global probe
+			world.GetEntityManager().SetSingletonComponent<Gleam::ReflectionProbe>();
+
 			world.Serialize(file.GetStream());
 		}
 		project.worldConfig.worlds.emplace_back(worldRef);

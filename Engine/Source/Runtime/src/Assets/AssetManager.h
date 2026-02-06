@@ -28,8 +28,14 @@ public:
     
     virtual void Initialize(Application* app) override;
 
-    virtual void Shutdown() override;
-	
+    virtual void Shutdown(Application* app) override;
+
+	template<AssetType T>
+	bool Has(const AssetReference& ref) const
+	{
+		return mAssetCache.find(ref) != mAssetCache.end();
+	}
+
 	template<AssetType T>
 	T* Get(const AssetReference& ref) const
 	{
@@ -37,8 +43,7 @@ public:
 		{
 			return static_cast<T*>(it->second.get());
 		}
-		GLEAM_CORE_ERROR("Asset is not loaded for GUID: {0}", ref.guid.ToString());
-		GLEAM_ASSERT(false);
+		GLEAM_ASSERT(false, "Asset is not loaded for GUID: {0}", ref.guid.ToString());
 		return nullptr;
 	}
 	
@@ -50,20 +55,17 @@ public:
 			return nullptr;
 		}
 
-		if (auto it = mAssetCache.find(ref); it != mAssetCache.end())
+		auto it = mAssetCache.find(ref);
+		if (it == mAssetCache.end())
 		{
-			auto& asset = it->second;
-			++asset->mRefCount;
-
-			return static_cast<T*>(asset.get());
+			auto meta = entt::resolve(entt::type_hash<T>().value());
+			auto any = meta.func("CreateAsset"_hs).invoke({}, ref);
+			auto asset = any.template cast<T*>();
+			it = mAssetCache.emplace_hint(mAssetCache.end(),
+										  eastl::piecewise_construct,
+										  eastl::forward_as_tuple(ref),
+										  eastl::forward_as_tuple(asset));
 		}
-
-		auto meta = entt::resolve(entt::type_hash<T>().value());
-		auto asset = Reflection::Get<T*>(meta.func("CreateAsset"_hs).invoke({}, ref).base().data());
-		auto it = mAssetCache.emplace_hint(mAssetCache.end(),
-										   eastl::piecewise_construct,
-										   eastl::forward_as_tuple(ref),
-										   eastl::forward_as_tuple(asset));
 
 		++it->second->mRefCount;
 		return static_cast<T*>(it->second.get());

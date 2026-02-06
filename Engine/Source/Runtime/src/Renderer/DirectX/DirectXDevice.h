@@ -12,9 +12,8 @@ namespace Gleam {
 
 class DirectXSwapchain;
 
-class DirectXDescriptorHeap
+struct DirectXDescriptorHeap
 {
-public:
 	ResourceDescriptorHeap heap;
 	ID3D12DescriptorHeap* handle = nullptr;
 	D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle;
@@ -75,11 +74,11 @@ public:
 
 	void WaitQueueIdle(ID3D12CommandQueue* queue) const;
 
+private:
+	
 	virtual void Configure(const RendererConfig& config) override;
 
 	virtual void ResetCommandPools(uint32_t frameIdx) override;
-
-private:
 
 	ShaderResourceIndex CreateResourceView(const Buffer& buffer);
 

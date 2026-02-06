@@ -62,6 +62,10 @@ GENUM(TextureFormat, "B87B25FD-841E-45C8-A2D4-27540B268A52", Serializable)
 	GITEM(B8G8R8A8_SRGB, "7A8B9C0D-1E2F-41D3-9E4F-5A6B7C8D9E0F"),
 	GITEM(B8G8R8A8_UNorm, "3D4E5F6A-7B8C-42D9-9E0F-1A2B3C4D5E6F"),
 
+	GITEM(R9G9B9E5_SFloat, "ABF5A9CE-2F3B-4E70-B806-8B84DFEB3FAC"),
+	GITEM(R11G11B10_SFloat, "4D50C960-E388-4F2A-8592-88249F550138"),
+	GITEM(R10G10B10A2_Unorm, "BF1227EE-3D34-4650-9BC9-F04CCFBBB2F5"),
+
 	// Depth - Stencil formats
 	GITEM(D16_UNorm, "8A9B0C1D-2E3F-43D4-9E5F-6A7B8C9D0E1F"),
 	GITEM(D32_SFloat, "4D5E6F7A-8B9C-44D0-9E1F-2A3B4C5D6E7F"),
@@ -128,6 +132,10 @@ static constexpr size_t GetTextureFormatSizeInBytes(TextureFormat format)
 		case TextureFormat::B8G8R8A8_SRGB: return 4;
 		case TextureFormat::B8G8R8A8_UNorm: return 4;
 
+		case TextureFormat::R9G9B9E5_SFloat: return 4;
+		case TextureFormat::R11G11B10_SFloat: return 4;
+		case TextureFormat::R10G10B10A2_Unorm: return 4;
+
         // Depth - Stencil formats
 		case TextureFormat::D16_UNorm: return 2;
 		case TextureFormat::D32_SFloat: return 4;
@@ -192,7 +200,11 @@ static constexpr bool IsColorFormat(TextureFormat format)
 		case TextureFormat::R32G32B32A32_SFloat:
 
 		case TextureFormat::B8G8R8A8_SRGB:
-		case TextureFormat::B8G8R8A8_UNorm: return true;
+		case TextureFormat::B8G8R8A8_UNorm:
+
+		case TextureFormat::R9G9B9E5_SFloat:
+		case TextureFormat::R11G11B10_SFloat:
+		case TextureFormat::R10G10B10A2_Unorm: return true;
 		default: return false;
 	}
 }

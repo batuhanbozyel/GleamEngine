@@ -18,7 +18,7 @@
 
 using namespace Gleam;
 
-void RenderSceneProxy::OnUpdate(EntityManager& entityManager)
+void RenderSceneProxy::Tick(World* world)
 {
 	static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
 	static auto assetManager = Globals::GameInstance->GetSubsystem<AssetManager>();
@@ -29,14 +29,16 @@ void RenderSceneProxy::OnUpdate(EntityManager& entityManager)
 	}
 
 	// update mesh batches
-	entityManager.ForEach<Entity, MeshRenderer>([&](const Entity& entity, const MeshRenderer& meshRenderer)
+	world->GetEntityManager().ForEach<Entity, MeshRenderer>([&](const Entity& entity, const MeshRenderer& meshRenderer)
 	{
-		const auto mesh = assetManager->Load<Mesh>(meshRenderer.mesh);
+		const auto mesh = assetManager->Has<Mesh>(meshRenderer.mesh) ? assetManager->Get<Mesh>(meshRenderer.mesh): assetManager->Load<Mesh>(meshRenderer.mesh);
 		const auto& submeshes = mesh->GetSubmeshes();
 
 		for (const auto& submesh : submeshes)
 		{
-			const auto materialInstance = assetManager->Load<MaterialInstance>(meshRenderer.materials[submesh.materialIndex]);
+			const auto materialInstance = assetManager->Has<MaterialInstance>(meshRenderer.materials[submesh.materialIndex]) ?
+				assetManager->Get<MaterialInstance>(meshRenderer.materials[submesh.materialIndex]) :
+				assetManager->Load<MaterialInstance>(meshRenderer.materials[submesh.materialIndex]);
 			const auto& material = materialInstance->GetBaseMaterial();
 
 			auto& batch = mMeshBatches[material];
@@ -77,12 +79,12 @@ void RenderSceneProxy::OnUpdate(EntityManager& entityManager)
 	});
 }
 
-void RenderSceneProxy::OnDestroy(EntityManager& entityManager)
+void RenderSceneProxy::Shutdown(World* world)
 {
 	static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
 	static auto assetManager = Globals::GameInstance->GetSubsystem<AssetManager>();
 
-	entityManager.ForEach<Entity, MeshRenderer>([&](const Entity& entity, const MeshRenderer& meshRenderer)
+	world->GetEntityManager().ForEach<Entity, MeshRenderer>([&](const Entity& entity, const MeshRenderer& meshRenderer)
 	{
 		assetManager->Release(meshRenderer.mesh);
 		for (const auto& material : meshRenderer.materials)

@@ -20,6 +20,9 @@ namespace Gleam {
 class World;
 class CopyCommandBuffer;
 
+struct CameraRenderData;
+struct SkyAtmosphereRenderData;
+
 template <typename T>
 concept RendererType = std::is_base_of<IRenderer, T>::value;
 
@@ -31,7 +34,7 @@ public:
     
     virtual void Initialize(Engine* engine) override;
     
-    virtual void Shutdown() override;
+    virtual void Shutdown(Engine* engine) override;
 
 	void PreRender(const World* world);
     
@@ -83,18 +86,22 @@ public:
     }
     
     template<RendererType T>
-    T* GetRenderer()
+    T* GetRenderer() const
     {
-        GLEAM_ASSERT(HasRenderer<T>(), "Render pipeline does not have the renderer!");
         auto it = std::find_if(mRenderers.begin(), mRenderers.end(), [](const IRenderer* renderer)
         {
             return typeid(*renderer) == typeid(T);
         });
-        return static_cast<T*>(*it);
+		
+		if (it != mRenderers.end())
+		{
+			return static_cast<T*>(*it);
+		}
+		return nullptr;
     }
     
     template<RendererType T>
-    bool HasRenderer()
+    bool HasRenderer() const
     {
         auto it = std::find_if(mRenderers.begin(), mRenderers.end(), [](const IRenderer* renderer)
         {
@@ -115,12 +122,17 @@ public:
     
 private:
 
+	CameraRenderData SetupCameraRenderData(RenderGraph& graph, const Entity& entity) const;
+
+	SkyAtmosphereRenderData SetupSkyAtmosphereRenderData(RenderGraph& graph, const Entity& entity) const;
+
 	void InitializeBackend();
 
 	bool mRendererResized = false;
 
 	Size mSwapchainSize = {};
 
+	EntityHandle mSkyAtmosphereEntity = InvalidEntity;
 	EntityHandle mActiveCamera = InvalidEntity;
 
 	Engine* mEngine;

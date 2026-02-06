@@ -87,12 +87,9 @@ void DebugRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 
 	graph.AddRenderPass<DrawPassData>("DebugRenderer::DrawPass", [&](RenderGraphBuilder& builder, DrawPassData& passData)
 	{
-        auto& worldData = blackboard.Get<WorldRenderingData>();
+        const auto& worldData = blackboard.Get<WorldRenderingData>();
         passData.colorTarget = builder.UseColorBuffer(worldData.colorTarget);
-        passData.depthTarget = builder.UseDepthBuffer(worldData.depthTarget);
-        
-        worldData.colorTarget = passData.colorTarget;
-        worldData.depthTarget = passData.depthTarget;
+        passData.depthTarget = builder.UseDepthBuffer(worldData.depthTarget, DepthAccess::Write);
 	},
 	[this, blackboard](const CommandBuffer* cmd, const DrawPassData& passData)
 	{
@@ -110,7 +107,7 @@ void DebugRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 		
 		if (!mDepthDebugMeshes.empty())
         {
-            RenderMeshes(cmd, sceneData.camera, mDepthDebugMeshes, true);
+            RenderMeshes(cmd, sceneData.camera.uniforms, mDepthDebugMeshes, true);
         }
 
 		if (!mLines.empty())
@@ -123,7 +120,7 @@ void DebugRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 
 		if (!mDebugMeshes.empty())
         {
-            RenderMeshes(cmd, sceneData.camera, mDebugMeshes, false);
+            RenderMeshes(cmd, sceneData.camera.uniforms, mDebugMeshes, false);
         }
         
         // clear after rendering

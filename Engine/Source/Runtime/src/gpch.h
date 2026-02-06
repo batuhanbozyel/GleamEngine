@@ -36,6 +36,10 @@
 #include <Reflection/Meta.h>
 #include <Reflection/Reflection.h>
 
+#ifndef __GLEAM_REFLECTION__
+#include <Runtime.Reflection.generated.h>
+#endif
+
 #include <entt/core/type_info.hpp>
 #include <entt/core/hashed_string.hpp>
 #include <entt/meta/meta.hpp>
@@ -89,6 +93,8 @@
 #include "Renderer/Shaders/ShaderTypes.h"
 #include "Renderer/GraphicsObject.h"
 
+#include "World/Components/ReflectionProbe.h"
+#include "World/Components/SkyAtmosphere.h"
 #include "World/Components/MeshRenderer.h"
 #include "World/Components/Transform.h"
 #include "World/Components/Camera.h"
@@ -103,8 +109,4 @@
 #include <windows.h>
 #else
 #include <sys/stat.h>
-#endif
-
-#ifndef __GLEAM_REFLECTION__
-#include <Runtime.Reflection.generated.h>
 #endif

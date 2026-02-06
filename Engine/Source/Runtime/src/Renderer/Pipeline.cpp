@@ -12,3 +12,9 @@ const GraphicsPipeline& GraphicsPipelineHandle::GetPipeline() const
 	static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
 	return renderSystem->GetDevice()->GetGraphicsPipeline(*this);
 }
+
+const ComputePipeline& ComputePipelineHandle::GetPipeline() const
+{
+	static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
+	return renderSystem->GetDevice()->GetComputePipeline(*this);
+}

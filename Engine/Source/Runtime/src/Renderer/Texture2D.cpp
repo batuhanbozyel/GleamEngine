@@ -16,10 +16,11 @@ Texture2D::Texture2D(const Texture2DDescriptor& descriptor)
 	mTexture = renderSystem->GetDevice()->CreateTexture(renderSystem->GetAllocator(), descriptor);
 
 	// Send texture data to buffers
-	if (descriptor.pixels.empty() == false)
+	auto cmd = renderSystem->GetCopyCommandBuffer();
+	for (uint32_t i = 0; i < descriptor.subresources.size(); ++i)
 	{
-		auto cmd = renderSystem->GetCopyCommandBuffer();
-		cmd->Commit(mTexture, descriptor.pixels.data(), descriptor.pixels.size());
+		const auto& subresource = descriptor.subresources[i];
+		cmd->Commit(mTexture, subresource.pixels.data(), subresource.pixels.size(), mTexture.GetMip(i), mTexture.GetSlice(i));
 	}
 }
 

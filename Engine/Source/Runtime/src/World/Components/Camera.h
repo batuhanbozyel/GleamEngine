@@ -15,7 +15,7 @@ GENUM(Tonemapping, "6B993432-E807-444D-AB3D-8B6F6BD8F84D", Serializable)
 
 GSTRUCT(ColorGradingSettings, "CD1CEEDD-2481-4000-B165-BCC6A1953E00", Serializable)
 {
-	GFIELD("5A091DDA-A9E0-4832-B86E-22F5D5C0F07D", Serializable)
+	GFIELD("5A091DDA-A9E0-4832-B86E-22F5D5C0F07D", Serializable, PrettyName("Tonemapping"))
 	Tonemapping tonemapping = Tonemapping::ACES;
 };
 
@@ -28,28 +28,28 @@ GENUM(ProjectionType, "8A1A6FA3-4FD8-4FEB-9A60-0944996B5ABF", Serializable)
 GSTRUCT(Camera, "B37BA095-FFAB-49FD-ACA9-392835498015", EntityComponent, Serializable)
 {
 	// Perspective projection properties
-	GFIELD("A8FCFE99-7831-4104-AE5A-C344419D7A4D", Serializable)
+	GFIELD("A8FCFE99-7831-4104-AE5A-C344419D7A4D", Serializable, PrettyName("Field of View"))
 	float fov = 60.0f;
 
 	// Orthographic projection properties
-	GFIELD("1B6761D8-C039-44B0-9D78-A26DDA915D8B", Serializable)
+	GFIELD("1B6761D8-C039-44B0-9D78-A26DDA915D8B", Serializable, PrettyName("Orthographic Size"))
 	float orthographicSize = 5.0f;
 
 	// Common properties
-	GFIELD("FB484D81-6A77-4D1B-BBE3-63C7491D844B", Serializable)
+	GFIELD("FB484D81-6A77-4D1B-BBE3-63C7491D844B", Serializable, PrettyName("Aspect Ratio"))
 	float aspectRatio = 1.0f;
 
-	GFIELD("B2F2D34A-5485-4847-B27D-6BF0E3F54120", Serializable)
+	GFIELD("B2F2D34A-5485-4847-B27D-6BF0E3F54120", Serializable, PrettyName("Near Plane"))
 	float nearPlane = 0.1f;
 
-	GFIELD("6FC824A3-0746-433F-92BD-82767B80D3B6", Serializable)
+	GFIELD("6FC824A3-0746-433F-92BD-82767B80D3B6", Serializable, PrettyName("Far Plane"))
 	float farPlane = 1000.0f;
 
-	GFIELD("A3E08528-FB45-43C8-8D62-04584374D9C2", Serializable)
+	GFIELD("A3E08528-FB45-43C8-8D62-04584374D9C2", Serializable, PrettyName("Projection Type"))
 	ProjectionType projectionType = ProjectionType::Perspective;
 
 	// Post-process settings
-	GFIELD("881B9D1F-AB00-4B96-A0FB-31480CDCE38E", Serializable)
+	GFIELD("881B9D1F-AB00-4B96-A0FB-31480CDCE38E", Serializable, PrettyName("Color Grading"))
 	ColorGradingSettings colorGrading = {};
     
 	Camera() = default;

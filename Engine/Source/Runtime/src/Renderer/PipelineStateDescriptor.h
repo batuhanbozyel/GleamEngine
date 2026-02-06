@@ -99,44 +99,29 @@ GENUM(PrimitiveTopology, "EA2043A9-969A-4B45-ABBE-E29CECC2D193", Serializable)
 	GITEM(TriangleStrip, "0755D97F-372C-4A64-AE6F-B0C9F3431AFB")
 };
 
-GSTRUCT(PipelineStateDescriptor, "B7B4E150-285D-47CD-8116-DEE2CE7AAF9C", Serializable)
+GSTRUCT(GraphicsPipelineStateDescriptor, "413BE6F8-3433-4B3A-8ABF-31F89EE7AA1F", Serializable)
 {
 	GFIELD("A3FA2AC1-204D-407C-86C3-4EBF6121145A", Serializable)
-    BlendState blendState{};
+	BlendState blendState{};
 
 	GFIELD("E51436F3-FBF6-43C5-92C9-658FE1944C2C", Serializable)
-    DepthState depthState{};
+	DepthState depthState{};
 
 	GFIELD("96263BB0-EB92-468F-8A20-47CBE9A1D1FD", Serializable)
-    StencilState stencilState{};
+	StencilState stencilState{};
 
 	GFIELD("9D8AACB7-7011-4BA3-AF70-5A6286CCC013", Serializable)
-    CullMode cullingMode = CullMode::Off;
+	CullMode cullingMode = CullMode::Off;
 
 	GFIELD("E4DC430F-100B-4C5D-A3F3-201B53332C57", Serializable)
 	PrimitiveTopology topology = PrimitiveTopology::Triangles;
 
 	GFIELD("6CAECCC0-3CCF-42D9-9E59-05A865534544", Serializable)
-    bool alphaToCoverage = false;
+	bool alphaToCoverage = false;
 
 	GFIELD("28DA358E-239A-4784-9797-B6E89C30046A", Serializable)
 	bool wireframe = false;
 
-	bool operator==(const PipelineStateDescriptor& other) const
-    {
-        return  blendState == other.blendState &&
-                depthState == other.depthState &&
-                stencilState == other.stencilState &&
-                cullingMode == other.cullingMode &&
-                topology == other.topology &&
-                alphaToCoverage == other.alphaToCoverage &&
-				wireframe == other.wireframe;
-    }
-};
-
-GSTRUCT(GraphicsPipelineStateDescriptor, "413BE6F8-3433-4B3A-8ABF-31F89EE7AA1F", Serializable)
-	: PipelineStateDescriptor
-{
 	GFIELD("FD3AFFD7-AB6C-4BE0-B9DB-2DF0FE9C69D0", Serializable)
 	TArray<TextureFormat> colorFormats = {};
 
@@ -148,6 +133,32 @@ GSTRUCT(GraphicsPipelineStateDescriptor, "413BE6F8-3433-4B3A-8ABF-31F89EE7AA1F",
 
 	GFIELD("AD6505CC-90E8-4A24-873B-775568EE251C", Serializable)
 	TString fragmentEntry{};
+
+	bool operator==(const GraphicsPipelineStateDescriptor& other) const
+	{
+		return  blendState == other.blendState &&
+				depthState == other.depthState &&
+				stencilState == other.stencilState &&
+				cullingMode == other.cullingMode &&
+				topology == other.topology &&
+				alphaToCoverage == other.alphaToCoverage &&
+				wireframe == other.wireframe &&
+				colorFormats == other.colorFormats &&
+				depthFormat == other.depthFormat &&
+				vertexEntry == other.vertexEntry &&
+				fragmentEntry == other.fragmentEntry;
+	}
+};
+
+GSTRUCT(ComputePipelineStateDescriptor, "C07E515A-F254-4413-8C1E-13173BB82121", Serializable)
+{
+	GFIELD("C5600539-09EB-4633-90A1-58C38CC54B15", Serializable)
+	TString entryPoint{};
+
+	bool operator==(const ComputePipelineStateDescriptor& other) const
+	{
+		return entryPoint == other.entryPoint;
+	}
 };
 
 namespace Utils {
@@ -199,28 +210,18 @@ struct std::hash<Gleam::StencilState>
 };
 
 template <>
-struct std::hash<Gleam::PipelineStateDescriptor>
-{
-    size_t operator()(const Gleam::PipelineStateDescriptor& descriptor) const
-    {
-        std::size_t hash = 0;
-        Gleam::hash_combine(hash, descriptor.blendState);
-        Gleam::hash_combine(hash, descriptor.depthState);
-        Gleam::hash_combine(hash, descriptor.stencilState);
-        Gleam::hash_combine(hash, descriptor.cullingMode);
-        Gleam::hash_combine(hash, descriptor.topology);
-        Gleam::hash_combine(hash, descriptor.alphaToCoverage);
-		Gleam::hash_combine(hash, descriptor.wireframe);
-        return hash;
-    }
-};
-
-template <>
 struct std::hash<Gleam::GraphicsPipelineStateDescriptor>
 {
 	size_t operator()(const Gleam::GraphicsPipelineStateDescriptor& descriptor) const
 	{
-		std::size_t hash = std::hash<Gleam::PipelineStateDescriptor>()(descriptor);
+		std::size_t hash = 0;
+		Gleam::hash_combine(hash, descriptor.blendState);
+		Gleam::hash_combine(hash, descriptor.depthState);
+		Gleam::hash_combine(hash, descriptor.stencilState);
+		Gleam::hash_combine(hash, descriptor.cullingMode);
+		Gleam::hash_combine(hash, descriptor.topology);
+		Gleam::hash_combine(hash, descriptor.alphaToCoverage);
+		Gleam::hash_combine(hash, descriptor.wireframe);
 		Gleam::hash_combine(hash, descriptor.vertexEntry);
 		Gleam::hash_combine(hash, descriptor.fragmentEntry);
 		for (const auto colorFormat : descriptor.colorFormats)
@@ -228,6 +229,17 @@ struct std::hash<Gleam::GraphicsPipelineStateDescriptor>
 			Gleam::hash_combine(hash, colorFormat);
 		}
 		Gleam::hash_combine(hash, descriptor.depthFormat);
+		return hash;
+	}
+};
+
+template <>
+struct std::hash<Gleam::ComputePipelineStateDescriptor>
+{
+	size_t operator()(const Gleam::ComputePipelineStateDescriptor& descriptor) const
+	{
+		std::size_t hash = 0;
+		Gleam::hash_combine(hash, descriptor.entryPoint);
 		return hash;
 	}
 };
@@ -251,19 +263,19 @@ struct eastl::hash<Gleam::StencilState>
 };
 
 template <>
-struct eastl::hash<Gleam::PipelineStateDescriptor>
-{
-	size_t operator()(const Gleam::PipelineStateDescriptor& descriptor) const
-	{
-		return std::hash<Gleam::PipelineStateDescriptor>()(descriptor);
-	}
-};
-
-template <>
 struct eastl::hash<Gleam::GraphicsPipelineStateDescriptor>
 {
 	size_t operator()(const Gleam::GraphicsPipelineStateDescriptor& descriptor) const
 	{
 		return std::hash<Gleam::GraphicsPipelineStateDescriptor>()(descriptor);
+	}
+};
+
+template <>
+struct eastl::hash<Gleam::ComputePipelineStateDescriptor>
+{
+	size_t operator()(const Gleam::ComputePipelineStateDescriptor& descriptor) const
+	{
+		return std::hash<Gleam::ComputePipelineStateDescriptor>()(descriptor);
 	}
 };

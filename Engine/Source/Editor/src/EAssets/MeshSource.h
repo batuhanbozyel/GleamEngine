@@ -63,13 +63,6 @@ struct RawMesh
 	uint32_t material;
 };
 
-struct EntityRelation
-{
-	uint32_t mesh;
-	uint32_t material;
-	Gleam::Transform transform;
-};
-
 class MeshSource : public AssetPackage
 {
 public:
@@ -85,6 +78,10 @@ public:
 	*	- triangulated primitive type and indices
 	*/
 	bool Import(const Gleam::Path& path, const ImportSettings& settings);
+
+private:
+
+	Gleam::TArray<Gleam::RefCounted<MaterialInstanceBaker>> ImportMaterials(const Gleam::TArray<RawMaterial>& rawMaterials, const Gleam::Path& path, const ImportSettings& settings);
     
 };
 

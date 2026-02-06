@@ -55,7 +55,7 @@ private:
 	{
 		GLEAM_ASSERT(HasSubsystem<T>(), "Engine does not have the subsystem!");
 		T* system = mSubsystems.get<T>();
-		system->Shutdown();
+		system->Shutdown(this);
 		mSubsystems.erase<T>();
 	}
 

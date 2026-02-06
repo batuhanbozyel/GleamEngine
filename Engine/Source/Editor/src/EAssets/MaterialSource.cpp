@@ -126,7 +126,8 @@ bool MaterialSource::Import(const Gleam::Path& path, const ImportSettings& setti
             }
         }
 		generatedShader << "};\n\n";
-		generatedShader << "static MaterialProperties Material = resources.materialBuffer.Load<MaterialProperties>(instanceData.materialID);\n\n";
+		generatedShader << "static ByteAddressBuffer materialBuffer = ResourceDescriptorHeap[resources.materialBuffer];\n";
+		generatedShader << "static MaterialProperties Material = materialBuffer.Load<MaterialProperties>(instanceData.materialID * sizeof(MaterialProperties));\n\n";
     }
     
     if (document.HasMember("SurfaceShader"))
@@ -181,10 +182,10 @@ bool MaterialSource::Import(const Gleam::Path& path, const ImportSettings& setti
 	#ifdef GDEBUG
 		cmd << " --debug";
 	#endif
-        bool success = ExecuteCommand(cmd.str());
+        int cmdExitCode = ExecuteCommand(cmd.str());
         Gleam::Filesystem::Remove(generatedPath);
 
-		if (success == false)
+		if (cmdExitCode != 0)
 		{
 			return false;
 		}

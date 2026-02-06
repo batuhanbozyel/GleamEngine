@@ -2,10 +2,14 @@
 #include "Core/EngineDefines.h"
 #include "Core/GUID.h"
 #include "Components/Transform.h"
-#include "Container/String.h"
 
 #include <entt/entity/entity.hpp>
 #include <entt/entity/registry.hpp>
+
+#include <Reflection/Reflection.h>
+#ifndef __GLEAM_REFLECTION__
+#include <Runtime.Reflection.generated.h>
+#endif
 
 namespace Gleam {
 
@@ -19,8 +23,6 @@ GCLASS(Entity, "9662B020-8A90-47FE-8C12-2D46316A6590", Serializable)
 {
 public:
 
-	GLEAM_NONCOPYABLE(Entity);
-    
     Entity() = default;
     
     Entity(EntityHandle handle, entt::registry* registry, const TString& name, const Guid& guid)
@@ -198,7 +200,7 @@ public:
 
 	void SetScale(float scale);
 
-	void SetLocalTransform(const Float4x4& transform);
+	void SetLocalTransform(const Transform& transform);
 
 	NO_DISCARD FORCE_INLINE const Transform& GetWorldTransform() const
 	{

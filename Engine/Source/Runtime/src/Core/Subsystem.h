@@ -24,7 +24,7 @@ protected:
 
 	virtual void Initialize(Engine* engine) {}
     
-	virtual void Shutdown() {}
+	virtual void Shutdown(Engine* engine) {}
 
 };
 
@@ -39,7 +39,7 @@ protected:
 
 	virtual void Initialize(Application* app) {}
 
-	virtual void Shutdown() {}
+	virtual void Shutdown(Application* app) {}
 
 };
 

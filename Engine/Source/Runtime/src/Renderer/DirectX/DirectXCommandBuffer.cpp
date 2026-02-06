@@ -15,7 +15,8 @@ struct CommandBuffer::Impl
 	ID3D12GraphicsCommandList7* commandList = nullptr;
 	ID3D12Fence* fence = nullptr;
 	uint64_t fenceValue = 0;
-	uint64_t waitFenceValue = 0;
+
+	PipelineHandle pipeline;
 };
 
 CommandBuffer::CommandBuffer(GraphicsDevice* device)
@@ -24,11 +25,7 @@ CommandBuffer::CommandBuffer(GraphicsDevice* device)
 	, mConstantBuffer(device, 4194304) // 4 MB
 {
 	mHandle->device = static_cast<DirectXDevice*>(device);
-	DX_CHECK(static_cast<ID3D12Device10*>(mHandle->device->GetHandle())->CreateFence(
-		mHandle->fenceValue,
-		D3D12_FENCE_FLAG_NONE,
-		IID_PPV_ARGS(&mHandle->fence)
-	));
+	DX_CHECK(static_cast<ID3D12Device10*>(mHandle->device->GetHandle())->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&mHandle->fence)));
 }
 
 CommandBuffer::~CommandBuffer()
@@ -53,15 +50,12 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, 
 		colorAttachments[i].BeginningAccess.Clear.ClearValue.Color[2] = colorAttachmentDesc.clearColor.b;
 		colorAttachments[i].BeginningAccess.Clear.ClearValue.Color[3] = colorAttachmentDesc.clearColor.a;
 		colorAttachments[i].EndingAccess.Type = AttachmentStoreActionToDX_TYPE(colorAttachmentDesc.storeAction);
-
-		auto resource = static_cast<ID3D12Resource*>(colorAttachmentDesc.texture.GetHandle());
 		colorAttachments[i].cpuDescriptor = colorAttachmentDesc.texture.GetRenderTargetView();
 	}
 
 	if (renderPassDesc.depthAttachment.texture.IsValid())
 	{
 		auto format = renderPassDesc.depthAttachment.texture.GetDescriptor().format;
-		auto resource = static_cast<ID3D12Resource*>(renderPassDesc.depthAttachment.texture.GetHandle());
 
 		D3D12_RENDER_PASS_DEPTH_STENCIL_DESC depthAttachment{};
 		depthAttachment.cpuDescriptor = renderPassDesc.depthAttachment.texture.GetRenderTargetView();
@@ -98,6 +92,25 @@ void CommandBuffer::EndRenderPass() const
 	PIXEndEvent(mHandle->commandList);
 }
 
+void CommandBuffer::BeginComputePass(const TStringView debugName) const
+{
+	PIXBeginEvent(mHandle->commandList, PIX_COLOR(255, 165, 0), debugName.data());
+}
+
+void CommandBuffer::EndComputePass() const
+{
+	PIXEndEvent(mHandle->commandList);
+}
+
+void CommandBuffer::BindComputePipeline(const ComputePipeline& pipeline) const
+{
+	const auto& cbvSrvUavHeap = mHandle->device->GetCbvSrvUavHeap();
+	mHandle->commandList->SetDescriptorHeaps(1, &cbvSrvUavHeap.handle);
+	mHandle->commandList->SetComputeRootSignature(mHandle->device->GetGlobalRootSignature());
+	mHandle->commandList->SetPipelineState(static_cast<ID3D12PipelineState*>(pipeline.GetHandle()));
+	mHandle->pipeline = pipeline.GetHash();
+}
+
 void CommandBuffer::BindGraphicsPipeline(const GraphicsPipeline& pipeline) const
 {
 	const auto& cbvSrvUavHeap = mHandle->device->GetCbvSrvUavHeap();
@@ -107,6 +120,7 @@ void CommandBuffer::BindGraphicsPipeline(const GraphicsPipeline& pipeline) const
 	mHandle->commandList->SetPipelineState(static_cast<ID3D12PipelineState*>(pipeline.GetHandle()));
 	mHandle->commandList->OMSetStencilRef(pipeline.GetDescriptor().stencilState.reference);
 	mHandle->commandList->IASetPrimitiveTopology(PrimitiveToplogyToD3D_PRIMITIVE_TOPOLOGY(pipeline.GetDescriptor().topology));
+	mHandle->pipeline = pipeline.GetHash();
 }
 
 void CommandBuffer::SetViewport(const Size& size) const
@@ -132,12 +146,32 @@ void CommandBuffer::SetConstantBuffer(const void* data, uint32_t size, uint32_t 
 {
 	auto gpuAddress = static_cast<ID3D12Resource*>(mConstantBuffer.GetHandle())->GetGPUVirtualAddress(); 
 	gpuAddress += mConstantBuffer.Write(data, size);
-    mHandle->commandList->SetGraphicsRootConstantBufferView(slot, gpuAddress);
+
+	if (mHandle->pipeline.type == PipelineType::Compute)
+	{
+		mHandle->commandList->SetComputeRootConstantBufferView(slot, gpuAddress);
+	}
+	else // if (mHandle->pipeline.type == PipelineType::Graphics)
+	{
+		mHandle->commandList->SetGraphicsRootConstantBufferView(slot, gpuAddress);
+	}
 }
 
 void CommandBuffer::SetPushConstant(const void* data, uint32_t size) const
 {
-	mHandle->commandList->SetGraphicsRoot32BitConstants(PUSH_CONSTANT_SLOT, size / sizeof(uint32_t), data, 0);
+	if (mHandle->pipeline.type == PipelineType::Compute)
+	{
+		mHandle->commandList->SetComputeRoot32BitConstants(PUSH_CONSTANT_SLOT, size / sizeof(uint32_t), data, 0);
+	}
+	else // if (mHandle->pipeline.type == PipelineType::Graphics)
+	{
+		mHandle->commandList->SetGraphicsRoot32BitConstants(PUSH_CONSTANT_SLOT, size / sizeof(uint32_t), data, 0);
+	}
+}
+
+void CommandBuffer::Dispatch(uint32_t x, uint32_t y, uint32_t z) const
+{
+	mHandle->commandList->Dispatch(x, y, z);
 }
 
 void CommandBuffer::Draw(uint32_t vertexCount, uint32_t instanceCount) const
@@ -190,6 +224,11 @@ void CommandBuffer::Blit(const Texture& source, const Texture& destination) cons
 
 void CommandBuffer::Barrier(const BarrierGroup& barrier) const
 {
+	if (barrier.bufferBarriers.empty() && barrier.textureBarriers.empty())
+	{
+		return;
+	}
+
 	TArray<D3D12_BUFFER_BARRIER> d3d12BufferBarriers;
 	TArray<D3D12_TEXTURE_BARRIER> d3d12TextureBarriers;
 
@@ -264,11 +303,9 @@ void CommandBuffer::End() const
 
 void CommandBuffer::Commit() const
 {
-	mHandle->waitFenceValue = mHandle->fenceValue;
-
 	ID3D12CommandList* commandList = mHandle->commandList;
 	mHandle->device->GetDirectQueue()->ExecuteCommandLists(1, &commandList);
-	mHandle->device->GetDirectQueue()->Signal(mHandle->fence, mHandle->fenceValue++);
+	mHandle->device->GetDirectQueue()->Signal(mHandle->fence, ++mHandle->fenceValue);
 	mConstantBuffer.Reset();
 	mCommitted = true;
 }
@@ -277,7 +314,7 @@ void CommandBuffer::WaitUntilCompleted() const
 {
 	if (mCommitted)
 	{
-		WaitForID3D12Fence(mHandle->fence, mHandle->waitFenceValue);
+		WaitForID3D12Fence(mHandle->fence, mHandle->fenceValue);
 	}
 	mCommitted = false;
 }

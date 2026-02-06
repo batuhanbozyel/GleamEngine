@@ -1,6 +1,7 @@
 #pragma once
 #include "Container/Pointer.h"
 #include "Container/String.h"
+#include "File.h"
 
 #define FMT_HEADER_ONLY
 #define FMT_UNICODE 0
@@ -63,8 +64,6 @@ public:
 		mLevel = lvl;
 	}
 
-private:
-
 	static constexpr TStringView LogLevelToString(Level lvl)
 	{
 		switch (lvl)
@@ -78,7 +77,9 @@ private:
 	};
 
 	static void OutputToDebugger(const char* message);
-    
+
+private:
+
     TString mName;
     
     static inline Scope<std::ofstream> mFileStream = nullptr;
@@ -132,8 +133,20 @@ private:
 
 #define GLEAM_AFFIRM(...) GLEAM_EXPAND(GLEAM_ASSERT_GET_MACRO(__VA_ARGS__)(__VA_ARGS__))
 
-static bool ExecuteCommand(const Gleam::TString& cmd)
+static int ExecuteCommand(const Gleam::TString& cmd)
 {
-    int success = system((cmd + " > command.err 2>&1").c_str());
-    return success == 0;
+	int exitCode = system((cmd + " > command.err 2>&1").c_str());
+	auto file = Gleam::Filesystem::Open("command.err", Gleam::FileType::Text);
+	if (file.IsOpen())
+	{
+		auto currentTime = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+		char formattedCurrentTime[32];
+		std::strftime(formattedCurrentTime, 32, "%X", std::localtime(&currentTime));
+
+		std::ostringstream ss;
+		ss << '[' << formattedCurrentTime << "] ";
+		ss << "[command] " << file.Read() << '\n';
+		Gleam::Logger::OutputToDebugger(ss.str().c_str());
+	}
+	return exitCode;
 }

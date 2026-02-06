@@ -22,6 +22,21 @@ Shader GraphicsDevice::CreateShader(const TString& entryPoint, ShaderStage stage
     return mShaderCache.emplace_back(CompileShader(entryPoint, stage));
 }
 
+ComputePipelineHandle GraphicsDevice::CreateComputePipeline(const ComputePipelineStateDescriptor& pipelineDesc)
+{
+	ComputePipelineHandle handle{ eastl::hash<ComputePipelineStateDescriptor>()(pipelineDesc) };
+	auto it = mComputePipelineCache.find(handle);
+	if (it != mComputePipelineCache.end())
+	{
+		return handle;
+	}
+
+	auto pipeline = CompileComputePipeline(pipelineDesc);
+	mShaderPipelineReferences[pipelineDesc.entryPoint].insert(handle);
+	mComputePipelineCache.emplace_hint(mComputePipelineCache.end(), handle, pipeline);
+	return handle;
+}
+
 GraphicsPipelineHandle GraphicsDevice::CreateGraphicsPipeline(const GraphicsPipelineStateDescriptor& pipelineDesc)
 {
 	GraphicsPipelineHandle handle{ eastl::hash<GraphicsPipelineStateDescriptor>()(pipelineDesc) };
@@ -36,6 +51,19 @@ GraphicsPipelineHandle GraphicsDevice::CreateGraphicsPipeline(const GraphicsPipe
 	mShaderPipelineReferences[pipelineDesc.fragmentEntry].insert(handle);
 	mGraphicsPipelineCache.emplace_hint(mGraphicsPipelineCache.end(), handle, pipeline);
 	return handle;
+}
+
+const ComputePipeline& GraphicsDevice::GetComputePipeline(ComputePipelineHandle handle) const
+{
+	auto it = mComputePipelineCache.find(handle);
+	if (it != mComputePipelineCache.end())
+	{
+		return it->second;
+	}
+
+	GLEAM_ASSERT(false);
+	static ComputePipeline invalid;
+	return invalid;
 }
 
 const GraphicsPipeline& GraphicsDevice::GetGraphicsPipeline(GraphicsPipelineHandle handle) const

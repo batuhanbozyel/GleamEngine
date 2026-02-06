@@ -28,7 +28,7 @@ DirectXSwapchain::DirectXSwapchain()
 DirectXSwapchain::~DirectXSwapchain()
 {
 	auto& ctx = mContext[mCurrentFrameIndex];
-	WaitForID3D12Fence(ctx.fence, ctx.waitFenceValue);
+	WaitForID3D12Fence(ctx.fence, ctx.fenceValue);
 
 	for (auto& texture : mTextures)
 	{
@@ -90,6 +90,9 @@ void DirectXSwapchain::Configure(DirectXDevice* device, const RendererConfig& co
 
 	if (mHandle != nullptr)
 	{
+		auto& ctx = mContext[mCurrentFrameIndex];
+		WaitForID3D12Fence(ctx.fence, ctx.fenceValue);
+		
 		for (auto& ctx : mContext)
 		{
 			ctx.fence->Release();
@@ -114,7 +117,7 @@ void DirectXSwapchain::Configure(DirectXDevice* device, const RendererConfig& co
 void DirectXSwapchain::Resize(GraphicsDevice* device, const Size& size)
 {
 	auto& ctx = mContext[mCurrentFrameIndex];
-	WaitForID3D12Fence(ctx.fence, ctx.waitFenceValue);
+	WaitForID3D12Fence(ctx.fence, ctx.fenceValue);
 
 	mDesc.Width = (UINT)size.width;
 	mDesc.Height = (UINT)size.height;
@@ -150,7 +153,7 @@ void DirectXSwapchain::Resize(GraphicsDevice* device, const Size& size)
 const Texture& DirectXSwapchain::AcquireNextDrawable()
 {
 	auto& ctx = mContext[mCurrentFrameIndex];
-	WaitForID3D12Fence(ctx.fence, ctx.waitFenceValue);
+	WaitForID3D12Fence(ctx.fence, ctx.fenceValue);
 	return mTextures[mCurrentFrameIndex];
 }
 
@@ -195,8 +198,7 @@ void DirectXSwapchain::Present(const CommandBuffer* cmd)
 		mHandle->Present(1, 0);
 	}
 
-	ctx.waitFenceValue = ctx.fenceValue;
-	DX_CHECK(mDevice->GetDirectQueue()->Signal(ctx.fence, ctx.fenceValue++));
+	DX_CHECK(mDevice->GetDirectQueue()->Signal(ctx.fence, ++ctx.fenceValue));
 
 	mCurrentFrameIndex = mHandle->GetCurrentBackBufferIndex();
 }

@@ -151,6 +151,10 @@ static constexpr TextureFormat DXGI_FORMATtoTextureFormat(DXGI_FORMAT format)
 		case DXGI_FORMAT_B8G8R8A8_UNORM_SRGB: return TextureFormat::B8G8R8A8_SRGB;
 		case DXGI_FORMAT_B8G8R8A8_UNORM: return TextureFormat::B8G8R8A8_UNorm;
 
+		case DXGI_FORMAT_R9G9B9E5_SHAREDEXP: return TextureFormat::R9G9B9E5_SFloat;
+		case DXGI_FORMAT_R11G11B10_FLOAT: return TextureFormat::R11G11B10_SFloat;
+		case DXGI_FORMAT_R10G10B10A2_UNORM: return TextureFormat::R10G10B10A2_Unorm;
+
 		// Depth - Stencil formats
 		case DXGI_FORMAT_D16_UNORM: return TextureFormat::D16_UNorm;
 		case DXGI_FORMAT_D32_FLOAT: return TextureFormat::D32_SFloat;
@@ -217,6 +221,10 @@ static constexpr DXGI_FORMAT TextureFormatToDXGI_FORMAT(TextureFormat format)
 
 		case TextureFormat::B8G8R8A8_SRGB: return DXGI_FORMAT_B8G8R8A8_TYPELESS;
 		case TextureFormat::B8G8R8A8_UNorm: return DXGI_FORMAT_B8G8R8A8_UNORM;
+
+		case TextureFormat::R9G9B9E5_SFloat: return DXGI_FORMAT_R9G9B9E5_SHAREDEXP;
+		case TextureFormat::R11G11B10_SFloat: return DXGI_FORMAT_R11G11B10_FLOAT;
+		case TextureFormat::R10G10B10A2_Unorm: return DXGI_FORMAT_R10G10B10A2_UNORM;
 
 		// Depth - Stencil formats
 		case TextureFormat::D16_UNorm: return DXGI_FORMAT_D16_UNORM;
@@ -370,48 +378,9 @@ static constexpr D3D12_RESOURCE_DIMENSION TextureDimensionToD3D12_RESOURCE_DIMEN
 	switch (dimension)
 	{
 		case TextureDimension::Texture2D: return D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-		case TextureDimension::TextureCube: return D3D12_RESOURCE_DIMENSION_TEXTURE3D;
+		case TextureDimension::TextureCube: return D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+		case TextureDimension::Texture3D: return D3D12_RESOURCE_DIMENSION_TEXTURE3D;
 		default: return D3D12_RESOURCE_DIMENSION_UNKNOWN;
-	}
-}
-
-static constexpr D3D12_SRV_DIMENSION TextureDimensionToD3D12_SRV_DIMENSION(TextureDimension dimension)
-{
-	switch (dimension)
-	{
-		case TextureDimension::Texture2D: return D3D12_SRV_DIMENSION_TEXTURE2D;
-		case TextureDimension::TextureCube: return D3D12_SRV_DIMENSION_TEXTURECUBE;
-		default: return D3D12_SRV_DIMENSION_UNKNOWN;
-	}
-}
-
-static constexpr D3D12_UAV_DIMENSION TextureDimensionToD3D12_UAV_DIMENSION(TextureDimension dimension)
-{
-	switch (dimension)
-	{
-		case TextureDimension::Texture2D: return D3D12_UAV_DIMENSION_TEXTURE2D;
-		case TextureDimension::TextureCube: return D3D12_UAV_DIMENSION_TEXTURE2DARRAY;
-		default: return D3D12_UAV_DIMENSION_UNKNOWN;
-	}
-}
-
-static constexpr D3D12_RTV_DIMENSION TextureDimensionToD3D12_RTV_DIMENSION(TextureDimension dimension)
-{
-	switch (dimension)
-	{
-		case TextureDimension::Texture2D: return D3D12_RTV_DIMENSION_TEXTURE2D;
-		case TextureDimension::TextureCube: return D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
-		default: return D3D12_RTV_DIMENSION_UNKNOWN;
-	}
-}
-
-static constexpr D3D12_DSV_DIMENSION TextureDimensionToD3D12_DSV_DIMENSION(TextureDimension dimension)
-{
-	switch (dimension)
-	{
-		case TextureDimension::Texture2D: return D3D12_DSV_DIMENSION_TEXTURE2D;
-		case TextureDimension::TextureCube: return D3D12_DSV_DIMENSION_TEXTURE2DARRAY;
-		default: return D3D12_DSV_DIMENSION_UNKNOWN;
 	}
 }
 
@@ -442,7 +411,7 @@ static constexpr D3D12_BARRIER_ACCESS BarrierAccessToD3D12_BARRIER_ACCESS(Barrie
 		case BarrierAccess::RenderTarget: return D3D12_BARRIER_ACCESS_RENDER_TARGET;
 		case BarrierAccess::ShaderResource: return D3D12_BARRIER_ACCESS_SHADER_RESOURCE;
 		case BarrierAccess::UnorderedAccess: return D3D12_BARRIER_ACCESS_UNORDERED_ACCESS;
-		case BarrierAccess::DepthStencilRead: return D3D12_BARRIER_ACCESS_DEPTH_STENCIL_READ;
+		case BarrierAccess::DepthStencilRead: return D3D12_BARRIER_ACCESS_DEPTH_STENCIL_WRITE; // HACK TO AVOID READONLY DSVs
 		case BarrierAccess::DepthStencilWrite: return D3D12_BARRIER_ACCESS_DEPTH_STENCIL_WRITE;
 		case BarrierAccess::CopySource: return D3D12_BARRIER_ACCESS_COPY_SOURCE;
 		case BarrierAccess::CopyDest: return D3D12_BARRIER_ACCESS_COPY_DEST;
@@ -459,7 +428,7 @@ static constexpr D3D12_BARRIER_LAYOUT BarrierLayoutToD3D12_BARRIER_LAYOUT(Barrie
 		case BarrierLayout::RenderTarget: return D3D12_BARRIER_LAYOUT_RENDER_TARGET;
 		case BarrierLayout::ShaderResource: return D3D12_BARRIER_LAYOUT_SHADER_RESOURCE;
 		case BarrierLayout::UnorderedAccess: return D3D12_BARRIER_LAYOUT_UNORDERED_ACCESS;
-		case BarrierLayout::DepthStencilRead: return D3D12_BARRIER_LAYOUT_DEPTH_STENCIL_READ;
+		case BarrierLayout::DepthStencilRead: return D3D12_BARRIER_LAYOUT_DEPTH_STENCIL_WRITE; // HACK TO AVOID READONLY DSVs
 		case BarrierLayout::DepthStencilWrite: return D3D12_BARRIER_LAYOUT_DEPTH_STENCIL_WRITE;
 		case BarrierLayout::CopySource: return D3D12_BARRIER_LAYOUT_COPY_SOURCE;
 		case BarrierLayout::CopyDest: return D3D12_BARRIER_LAYOUT_COPY_DEST;

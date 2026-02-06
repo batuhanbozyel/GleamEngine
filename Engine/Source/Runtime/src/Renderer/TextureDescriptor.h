@@ -20,7 +20,8 @@ namespace Gleam {
 GENUM(TextureDimension, "7A1CDA2E-8B61-4558-9255-B919E70E92F7", Serializable)
 {
 	GITEM(Texture2D, "DE76EACC-A162-45BD-9F88-9C5F1A3B3EC7"),
-	GITEM(TextureCube, "E8541EC5-7B16-4FF5-BF9A-27C8AFF5CB83")
+	GITEM(TextureCube, "65E95475-EBB3-4441-94FC-E10E0B1691EB"),
+	GITEM(Texture3D, "E8541EC5-7B16-4FF5-BF9A-27C8AFF5CB83")
 };
 
 GENUM(TextureUsage, "7EFFFEDD-F5B2-443B-9888-49C88D41779B", Serializable)
@@ -46,6 +47,9 @@ GSTRUCT(TextureDescriptor, "5B36D630-8A7E-47BE-A9F0-1702AB9F9C8C", Serializable)
 	GFIELD("C3F6A7D1-9E23-48B7-A452-6D1F2E8C9A5B", Serializable)
 	Size size = Size::zero;
 
+	GFIELD("7ED6B38E-FD0C-4507-BFFF-7A81149F92E4", Serializable)
+	uint32_t depth = 1;
+
 	GFIELD("8B9D2F4C-E75A-4C63-8D91-F2B7A9E3D1C6", Serializable)
 	TextureFormat format = TextureFormat::R8G8B8A8_UNorm;
 
@@ -61,6 +65,7 @@ GSTRUCT(TextureDescriptor, "5B36D630-8A7E-47BE-A9F0-1702AB9F9C8C", Serializable)
 	bool operator==(const TextureDescriptor & other) const
 	{
 		return  size == other.size &&
+				depth == other.depth &&
 				format == other.format &&
 				usage == other.usage &&
 				dimension == other.dimension &&
@@ -68,11 +73,17 @@ GSTRUCT(TextureDescriptor, "5B36D630-8A7E-47BE-A9F0-1702AB9F9C8C", Serializable)
 	}
 };
 
+GSTRUCT(TextureSubresource, "2B1FCFA8-040B-4D45-AAA2-461C5EB67668", Serializable)
+{
+	GFIELD("B42AFDD4-90EE-4E06-8283-0A2804CDCEAD", Serializable)
+	TArray<uint8_t> pixels;
+};
+
 GSTRUCT(Texture2DDescriptor, "CC19ED9A-2B9F-4258-B0E5-1F0EB34373A1", Serializable)
 	: TextureDescriptor
 {
 	GFIELD("F1E2D3C4-B5A6-4789-B1C2-D3E4F5A6B7C8", Serializable)
-	TArray<uint8_t> pixels;
+	TArray<TextureSubresource> subresources;
 };
 
 GSTRUCT(RenderTextureDescriptor, "7B6A5D4C-3E2F-4180-9D8C-7B6A5D4C3E2F", Serializable)
@@ -93,13 +104,13 @@ GSTRUCT(RenderTextureDescriptor, "7B6A5D4C-3E2F-4180-9D8C-7B6A5D4C3E2F", Seriali
 	RenderTextureDescriptor()
 		: TextureDescriptor()
 	{
-		usage |= TextureUsage_Attachment;
+		usage |= TextureUsage_Attachment | TextureUsage_Storage;
 	}
 
 	RenderTextureDescriptor(const TextureDescriptor& descriptor)
 		: TextureDescriptor(descriptor)
 	{
-		usage |= TextureUsage_Attachment;
+		usage |= TextureUsage_Attachment | TextureUsage_Storage;
 	}
 };
 

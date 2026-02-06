@@ -1,4 +1,6 @@
-#pragma once
+#ifndef SHADER_TYPES_H
+#define SHADER_TYPES_H
+
 #include "SharedTypes.h"
 
 namespace Gleam {
@@ -11,6 +13,39 @@ struct InterleavedMeshVertex
 	float2 texCoord;
 };
 #endif
+
+#define BRDF_LUT_SIZE 256
+struct BRDFLutConstants
+{
+	UnorderedAccessIndex targetTexture;
+};
+
+#define SPECULAR_RADIANCE_MAX_MIP_COUNT 5
+struct ProbeConvolutionConstants
+{
+	ShaderResourceIndex sourceTexture;
+	UnorderedAccessIndex targetTexture;
+	uint32_t resolution;
+	uint32_t level;
+
+	uint32_t probeResolution;
+	uint32_t face;
+	float pad1;
+	float pad2;
+};
+
+struct GenerateCubemapMipsConstants
+{
+	ShaderResourceIndex sourceTexture;
+	UnorderedAccessIndex targetTexture;
+	uint32_t resolution;
+	uint32_t level;
+
+	uint32_t face;
+	float pad0;
+	float pad1;
+	float pad2;
+};
 
 struct DebugVertex
 {
@@ -27,7 +62,10 @@ struct DebugMeshUniforms
 
 struct DebugShaderResources
 {
-	BufferResourceView vertexBuffer;
+	ShaderResourceIndex vertexBuffer;
+	float pad0;
+	float pad1;
+	float pad2;
 };
 
 struct ImGuiResources
@@ -38,13 +76,21 @@ struct ImGuiResources
 	uint32_t vertexOffset;
 };
 
+struct TonemapUniforms
+{
+	ShaderResourceIndex sceneColor;
+};
+
+#define MESH_PASS_RESOURCES_BINDING_SLOT 0
+#define MESH_INSTANCE_DATA_BINDING_SLOT 1
 struct MeshInstanceData
 {
 	float4x4 transform;
 
-	BufferResourceView positionBuffer;
-	BufferResourceView interleavedBuffer;
-	BufferResourceView indexBuffer;
+	ShaderResourceIndex positionBuffer;
+	ShaderResourceIndex interleavedBuffer;
+	ShaderResourceIndex indexBuffer;
+	float pad0;
 
 	uint32_t baseVertex;
 	uint32_t indexCount;
@@ -54,13 +100,15 @@ struct MeshInstanceData
 
 struct MeshPassResources
 {
-	BufferResourceView instanceBuffer;
-	BufferResourceView materialBuffer;
-};
+	ShaderResourceIndex instanceBuffer;
+	ShaderResourceIndex materialBuffer;
+	ShaderResourceIndex diffuseReflectionTexture;
+	ShaderResourceIndex specularReflectionTexture;
 
-struct TonemapUniforms
-{
-	Texture2DResourceView<float4> sceneColor;
+	ShaderResourceIndex brdfTexture;
+	float pad0;
+	float pad1;
+	float pad2;
 };
 
 struct SurfaceInput
@@ -80,4 +128,53 @@ struct SurfaceOutput
 	float roughness;
 };
 
+struct SkyAtmosphereParameters
+{
+	// Rayleigh scattering coefficients
+	float3 rayleighScattering;
+	// Rayleigh scattering exponential distribution scale in the atmosphere
+	float rayleighDensityExpScale;
+
+	// Mie scattering coefficients
+	float3 mieScattering;
+	// Mie scattering exponential distribution scale in the atmosphere
+	float mieDensityExpScale;
+	
+	// Mie extinction coefficients
+	float3 mieExtinction;
+	// Mie phase function excentricity
+	float miePhaseG;
+
+	// Mie absorption coefficients
+	float3 mieAbsorption;
+
+	// Radius of the planet (center to ground)
+	float bottomRadius;
+
+	// This other medium only absorb light, e.g. useful to represent ozone in the earth atmosphere
+	float3 absorptionExtinction;
+
+	// Maximum considered atmosphere height (center to atmosphere top)
+	float topRadius;
+
+	// The albedo of the ground.
+	float3 groundAlbedo;
+
+	// Another medium type in the atmosphere
+	float absorptionDensity0LayerWidth;
+	float absorptionDensity0ConstantTerm;
+	float absorptionDensity0LinearTerm;
+	float absorptionDensity1ConstantTerm;
+	float absorptionDensity1LinearTerm;
+};
+
+struct SkyAtmosphereRenderConstants
+{
+	UnorderedAccessIndex targetTexture;
+	ShaderResourceIndex depthTexture;
+	float pad0;
+	float pad1;
+};
+
 } // namespace Gleam
+#endif // SHADER_TYPES_H

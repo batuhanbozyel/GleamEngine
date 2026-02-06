@@ -41,6 +41,8 @@ private:
 	void* mContents = nullptr;
 
 	NativeGraphicsHandle mHandle;
+	
+	GraphicsDevice* mDevice = nullptr;
 
 };
 

@@ -84,13 +84,15 @@ if __name__ == "__main__":
     elif args.files:
         hlsl_files = args.files
     else:
-        print("Error: You must specify either a directory or HLSL files to compile.")
+        sys.stderr.write("Error: You must specify either a directory or HLSL files to compile.\n")
         sys.exit(1)
     
     if not hlsl_files:
-        print("No HLSL files found.")
+        sys.stderr.write("No HLSL files found.\n")
         sys.exit(1)
 
+    compilation_failed = False
+    
     for hlsl_file in hlsl_files:
         filename = os.path.basename(hlsl_file)
         include_dirs = [os.path.dirname(hlsl_file), RUNTIME_INCLUDE_DIRECTORY]
@@ -110,7 +112,7 @@ if __name__ == "__main__":
         for shader_stage, entry_points in parsed_entry_points.items():
             for entry_point in entry_points:
                 try:
-                    print(f"Compiling HLSL file {filename} for {shader_stage} stage, entry point: {entry_point}")
+                    sys.stderr.write(f"Compiling HLSL file {filename} for {shader_stage} stage, entry point: {entry_point}\n")
                     if args.output:
                         renamed_hlsl_file = rename_entry_point(hlsl_file, entry_point, args.output)
                         os.remove(hlsl_file)
@@ -134,7 +136,10 @@ if __name__ == "__main__":
                     
                     cmd(compile_command, stderr=subprocess.PIPE, check=True)
                 except subprocess.CalledProcessError as e:
-                    print(f"Shader compilation failed for {filename}:\n {e.stderr.decode('utf-8')}")
+                    sys.stderr.write(f"Shader compilation failed for {filename}:\n{e.stderr.decode('utf-8')}\n")
+                    compilation_failed = True
                 finally:
                     if args.include or args.output:
                         os.remove(hlsl_file)
+    
+    sys.exit(1 if compilation_failed else 0)

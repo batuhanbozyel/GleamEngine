@@ -133,6 +133,12 @@ NO_DISCARD FORCE_INLINE constexpr T Clamp(T value, T min, T max)
 }
 
 template<typename T>
+NO_DISCARD FORCE_INLINE constexpr T Saturate(T value)
+{
+	return Min(Max(value, T(0)), T(1));
+}
+
+template<typename T>
 NO_DISCARD FORCE_INLINE constexpr T Step(T edge, T x)
 {
     return static_cast<T>(x >= edge);
@@ -185,6 +191,19 @@ NO_DISCARD FORCE_INLINE size_t constexpr RoundUpTo(T value, T to)
 		T div = value / to;
 		T roundedDiv = Ceil(div);
 		return roundedDiv * to;
+	}
+}
+
+template<typename T>
+NO_DISCARD FORCE_INLINE constexpr T DivideRoundingUp(T x, T y)
+{
+	if constexpr (std::is_floating_point_v<T>)
+	{
+		return Ceil(x / y);
+	}
+	else
+	{
+		return (x + (y - T{ 1 })) / y;
 	}
 }
 

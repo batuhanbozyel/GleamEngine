@@ -21,9 +21,9 @@ public:
     
     virtual void Initialize(Gleam::World* world) override;
 
-	virtual void Shutdown() override;
+	virtual void Shutdown(Gleam::World* world) override;
     
-    virtual void Tick() override;
+    virtual void Tick(Gleam::World* world) override;
 	
     template<ViewType T, class...Args>
     T* AddView(Args&&... args)

@@ -35,12 +35,10 @@ void PostProcessStack::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard
     
     graph.AddRenderPass<PostProcessData>("PostProcessStack::Tonemapping", [&](RenderGraphBuilder& builder, PostProcessData& passData)
     {
-        auto& sceneData = blackboard.Get<SceneRenderingData>();
+        const auto& sceneData = blackboard.Get<SceneRenderingData>();
         const auto& worldData = blackboard.Get<WorldRenderingData>();
         passData.renderTarget = builder.UseColorBuffer(sceneData.sceneTarget);
         passData.sceneColor = builder.ReadTexture(worldData.colorTarget);
-        
-        sceneData.sceneTarget = passData.renderTarget;
     },
     [this](const CommandBuffer* cmd, const PostProcessData& passData)
     {

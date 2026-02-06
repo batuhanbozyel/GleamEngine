@@ -23,9 +23,9 @@ public:
 	
 	void WaitUntilCompleted() const;
 	
-	void Commit(const Buffer& buffer, const void* data, size_t size, size_t offset = 0) const;
+	void Commit(const Buffer& buffer, const void* data, size_t size, size_t offset) const;
 
-	void Commit(const Texture& texture, const void* data, size_t size) const;
+	void Commit(const Texture& texture, const void* data, size_t size, uint32_t mip, uint32_t slice) const;
 
 private:
 

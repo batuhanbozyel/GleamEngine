@@ -8,11 +8,13 @@
 #include "World/ScriptingSystem.h"
 #include "Renderer/RenderSystem.h"
 #include "Renderer/Renderers/WorldRenderer.h"
+#include "Renderer/Renderers/SkyAtmosphere.h"
 #include "Renderer/Renderers/PostProcessStack.h"
+#include "Renderer/Renderers/ReflectionProbeRenderer.h"
 #include "Serialization/JSONSerializer.h"
 #include "Serialization/BinarySerializer.h"
 
-using namespace Gleam;
+namespace Gleam {
 
 void Engine::Initialize(const CommandLine& cli)
 {
@@ -26,7 +28,7 @@ void Engine::Initialize(const CommandLine& cli)
 	// init core subsystems
 	AddSubsystem<EventSystem>();
 	AddSubsystem<InputSystem>();
-    AddSubsystem<FileWatcher>();
+	AddSubsystem<FileWatcher>();
 	AddSubsystem<ScriptingSystem>();
 
 	// subscribe to window resize
@@ -46,7 +48,7 @@ void Engine::Initialize(const CommandLine& cli)
 	{
 		auto file = Filesystem::Open(configFile, FileType::Text);
 		auto accessor = Filesystem::ReadAccessor(configFile);
-        auto serializer = JSONSerializer();
+		auto serializer = JSONSerializer();
 		mConfig = serializer.Deserialize<EngineConfig>(file.GetStream());
 	}
 	
@@ -59,7 +61,9 @@ void Engine::Initialize(const CommandLine& cli)
 	renderSubsystem->Configure(mConfig.renderer);
 
 	// add default renderers
+	renderSubsystem->AddRenderer<ReflectionProbeRenderer>();
 	renderSubsystem->AddRenderer<WorldRenderer>();
+	renderSubsystem->AddRenderer<SkyAtmosphereRenderer>();
 	renderSubsystem->AddRenderer<PostProcessStack>();
 }
 
@@ -67,37 +71,40 @@ void Engine::Shutdown()
 {
 	for (auto system : mSubsystems)
 	{
-		system->Shutdown();
+		system->Shutdown(this);
 	}
 	mSubsystems.clear();
 }
 
 void Engine::SaveConfigToDisk() const
 {
-    auto file = Filesystem::Create(Globals::StartupDirectory/"Engine.config", FileType::Text);
+	auto file = Filesystem::Create(Globals::StartupDirectory/"Engine.config", FileType::Text);
 	auto accessor = Filesystem::WriteAccessor(Globals::StartupDirectory / "Engine.config");
-    auto serializer = JSONSerializer();
-    serializer.Serialize(mConfig, file.GetStream());
+	auto serializer = JSONSerializer();
+	serializer.Serialize(mConfig, file.GetStream());
 }
 
 void Engine::UpdateConfig(const WindowConfig& config)
 {
-    mConfig.window = config;
-    SaveConfigToDisk();
+	mConfig.window = config;
+	SaveConfigToDisk();
 }
 
 void Engine::UpdateConfig(const RendererConfig& config)
 {
-    mConfig.renderer = config;
-    SaveConfigToDisk();
+	mConfig.renderer = config;
+	SaveConfigToDisk();
 }
 
 Size Engine::GetResolution() const
 {
-    return mConfig.window.size;
+	return mConfig.window.size;
 }
 
 const EngineConfig& Engine::GetConfiguration() const
 {
-    return mConfig;
+	return mConfig;
 }
+
+} // namespace Gleam
+

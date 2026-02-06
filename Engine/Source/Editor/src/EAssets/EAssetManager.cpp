@@ -34,13 +34,13 @@ static Gleam::TString ParseAssetName(const Gleam::Path& asset, const Gleam::Guid
         return descriptor.name;
     }
     
-    if (typeGuid == Gleam::Reflection::GetClass<Gleam::TextureDescriptor>().Guid())
+    if (typeGuid == Gleam::Reflection::GetClass<Gleam::Texture2DDescriptor>().Guid())
     {
 		auto file = Gleam::Filesystem::Open(asset, Gleam::FileType::Binary);
 		auto accessor = Gleam::Filesystem::ReadAccessor(asset);
 		auto serializer = Gleam::BinarySerializer();
 		
-        auto descriptor = serializer.Deserialize<Gleam::TextureDescriptor>(file.GetStream());
+        auto descriptor = serializer.Deserialize<Gleam::Texture2DDescriptor>(file.GetStream());
         return descriptor.name;
     }
     
@@ -94,7 +94,7 @@ EAssetManager::EAssetManager(const Gleam::Path& directory)
 
 }
 
-void EAssetManager::Initialize(Gleam::World* world)
+void EAssetManager::Initialize(Gleam::Application* app)
 {
     Gleam::Filesystem::ForEach(mAssetDirectory, [this](const auto& entry)
     {
@@ -177,7 +177,7 @@ void EAssetManager::Initialize(Gleam::World* world)
     }, true);
 }
 
-void EAssetManager::Shutdown()
+void EAssetManager::Shutdown(Gleam::Application* app)
 {
 	
 }
