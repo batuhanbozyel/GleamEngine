@@ -26,7 +26,7 @@ public:
 	GleamEditor(const Gleam::Project& project)
         : Gleam::Application(project)
 	{
-		auto assetManager = AddSubsystem<EAssetManager>(project.path);
+		auto assetManager = AddSubsystem<EAssetManager>(Gleam::Globals::ProjectContentDirectory);
 
 		auto worldManager = GetSubsystem<Gleam::WorldManager>();
 		mEditWorld = worldManager->GetActiveWorld();

@@ -46,7 +46,7 @@ void ContentBrowser::Render(Gleam::ImGuiRenderer* imgui)
 
 		static float leftPanelWidth = 250.0f;
 
-		ImGui::BeginChild("DirectoryTree", ImVec2(leftPanelWidth, 0), true);
+		ImGui::BeginChild("DirectoryTree", ImVec2(leftPanelWidth, 0), ImGuiChildFlags_Border);
 		ImGui::Text("Directories");
 		ImGui::Separator();
 		DrawDirectoryTree(mAssetDirectory);
@@ -68,8 +68,35 @@ void ContentBrowser::Render(Gleam::ImGuiRenderer* imgui)
 
 		ImGui::SameLine();
 
-		ImGui::BeginChild("AssetGrid", ImVec2(0, 0), true);
-		ImGui::Text("Assets");
+		ImGui::BeginChild("AssetGrid", ImVec2(0, 0), ImGuiChildFlags_Border);
+
+		if (ImGui::Button(Gleam::TStringView(mAssetDirectory.Stem()).data()))
+		{
+			mCurrentDirectory = mAssetDirectory;
+		}
+
+		if (mCurrentDirectory != mAssetDirectory)
+		{
+			uint32_t directoryID = 0;
+			Gleam::Path breadcrumbPath = mAssetDirectory;
+			auto relativePath = Gleam::Filesystem::Relative(mCurrentDirectory, mAssetDirectory);
+			for (const auto& directory : relativePath.Split())
+			{
+				ImGui::SameLine();
+				ImGui::Text("/");
+				ImGui::SameLine();
+
+				breadcrumbPath = breadcrumbPath / directory;
+
+				ImGui::PushID(directoryID);
+				if (ImGui::Button(Gleam::TStringView(directory).data()))
+				{
+					mCurrentDirectory = breadcrumbPath;
+				}
+				ImGui::PopID();
+			}
+		}
+
 		ImGui::Separator();
 		DrawAssetGrid();
 		ImGui::EndChild();
@@ -154,18 +181,20 @@ void ContentBrowser::DrawAssetGrid()
 	uint32_t currentColumn = 0u;
 	Gleam::Filesystem::ForEach(mCurrentDirectory, [&](const auto& entry)
 	{
-		if (Gleam::Filesystem::IsDirectory(entry))
-		{
-			return; // Skip directories in asset grid
-		}
-
 		AssetItem asset;
 		Gleam::TString label;
 		const char* iconText = "?";
 		const char* payloadType = nullptr;
 		ImVec4 assetColor = ImVec4(0.5f, 0.5f, 0.5f, 1.0f);
+		bool isDirectory = Gleam::Filesystem::IsDirectory(entry);
 
-		if (entry.Extension() == Gleam::Asset::Extension())
+		if (isDirectory)
+		{
+			label = entry.Filename();
+			iconText = nullptr;
+			assetColor = ImVec4(0.9f, 0.75f, 0.3f, 1.0f); // Yellow/Gold
+		}
+		else if (entry.Extension() == Gleam::Asset::Extension())
 		{
 			auto guid = Gleam::Guid(entry.Stem());
 			asset = mAssetManager->GetAsset(guid);
@@ -230,16 +259,46 @@ void ContentBrowser::DrawAssetGrid()
 
 		ImGui::BeginGroup();
 
-		ImVec4 hoverColor = ImVec4(assetColor.x * 1.3f, assetColor.y * 1.3f, assetColor.z * 1.3f, 1.0f);
-		ImVec4 activeColor = ImVec4(assetColor.x * 1.5f, assetColor.y * 1.5f, assetColor.z * 1.5f, 1.0f);
-
 		ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.2f, 0.2f, 1.0f));
 		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.3f, 0.3f, 0.3f, 1.0f));
 		ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.4f, 0.4f, 0.4f, 1.0f));
 
-		ImGui::Button(iconText, ImVec2(iconSize, iconSize));
+		if (isDirectory)
+		{
+			ImVec4 hoverColor = ImVec4(assetColor.x * 1.1f, assetColor.y * 1.1f, assetColor.z * 1.1f, 1.0f);
+			ImVec4 activeColor = ImVec4(assetColor.x * 1.3f, assetColor.y * 1.3f, assetColor.z * 1.3f, 1.0f);
+
+			ImVec2 cursorPos = ImGui::GetCursorScreenPos();
+			ImGui::InvisibleButton("##folder", ImVec2(iconSize, iconSize));
+
+			ImVec4 currentColor = assetColor;
+			if (ImGui::IsItemActive())
+			{
+				currentColor = activeColor;
+			}
+			else if (ImGui::IsItemHovered())
+			{
+				currentColor = hoverColor;
+			}
+
+			ImGui::GetWindowDrawList()->AddRectFilled(
+				cursorPos,
+				ImVec2(cursorPos.x + iconSize, cursorPos.y + iconSize),
+				ImGui::ColorConvertFloat4ToU32(currentColor)
+			);
+		}
+		else
+		{
+			ImGui::Button(iconText, ImVec2(iconSize, iconSize));
+		}
+		
 
 		ImGui::PopStyleColor(3);
+
+		if (isDirectory && ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
+		{
+			mCurrentDirectory = entry;
+		}
 
 		if (payloadType && ImGui::BeginDragDropSource(ImGuiDragDropFlags_None))
 		{
@@ -248,9 +307,12 @@ void ContentBrowser::DrawAssetGrid()
 			ImGui::EndDragDropSource();
 		}
 
-		ImVec2 separatorStart = ImGui::GetCursorScreenPos();
-		ImVec2 separatorEnd = ImVec2(separatorStart.x + iconSize, separatorStart.y);
-		ImGui::GetWindowDrawList()->AddLine(separatorStart, separatorEnd, ImGui::ColorConvertFloat4ToU32(assetColor), 3.0f);
+		if (not isDirectory)
+		{
+			ImVec2 separatorStart = ImGui::GetCursorScreenPos();
+			ImVec2 separatorEnd = ImVec2(separatorStart.x + iconSize, separatorStart.y);
+			ImGui::GetWindowDrawList()->AddLine(separatorStart, separatorEnd, ImGui::ColorConvertFloat4ToU32(assetColor), 3.0f);
+		}
 		ImGui::Spacing();
 
 		ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + iconSize);

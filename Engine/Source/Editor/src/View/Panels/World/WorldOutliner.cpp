@@ -28,7 +28,7 @@ void WorldOutliner::Render(Gleam::ImGuiRenderer* imgui)
 		static float singletonsPanelHeight = 400.0f;
 		float availableHeight = ImGui::GetContentRegionAvail().y;
 
-		ImGui::BeginChild("EntityList", ImVec2(0, availableHeight - singletonsPanelHeight - 8.0f), false);
+		ImGui::BeginChild("EntityList", ImVec2(0, availableHeight - singletonsPanelHeight - 8.0f), ImGuiChildFlags_None);
 		{
 			if (ImGui::CollapsingHeader("Entities", ImGuiTreeNodeFlags_DefaultOpen))
 			{
@@ -57,7 +57,7 @@ void WorldOutliner::Render(Gleam::ImGuiRenderer* imgui)
 			ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeNS);
 		}
 
-		ImGui::BeginChild("SingletonsList", ImVec2(0, 0), false);
+		ImGui::BeginChild("SingletonsList", ImVec2(0, 0), ImGuiChildFlags_None);
 		{
 			if (ImGui::CollapsingHeader("Singletons", ImGuiTreeNodeFlags_DefaultOpen))
 			{

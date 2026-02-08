@@ -1,5 +1,6 @@
 #pragma once
 #include "Container/String.h"
+#include "Container/Array.h"
 
 #include <filesystem>
 
@@ -7,9 +8,9 @@ namespace Gleam {
 
 GCLASS(Path, "DA162505-C36B-4FF1-BCB7-FE8428606223", Serializable)
 {
+public:
 	static inline constexpr wchar_t kPreferredSeparator = '/';
 	static inline constexpr wchar_t kAltSeparator = '\\';
-public:
 
 	Path() = default;
 	Path(const Path&) = default;
@@ -439,6 +440,39 @@ public:
 		return *this;
 	}
 
+	TArray<TWStringView> Split() const
+	{
+		TArray<TWStringView> parts;
+		if (mPath.empty())
+		{
+			return parts;
+		}
+
+		size_t start = 0;
+		size_t end = 0;
+
+		while (end < mPath.size())
+		{
+			while (end < mPath.size() && mPath[end] != kPreferredSeparator && mPath[end] != kAltSeparator)
+			{
+				++end;
+			}
+
+			if (end > start)
+			{
+				parts.push_back(TWStringView(mPath.data() + start, end - start));
+			}
+
+			if (end < mPath.size())
+			{
+				++end;
+			}
+			start = end;
+		}
+
+		return parts;
+	}
+
 private:
 
 	TWString mPath;
@@ -446,7 +480,29 @@ private:
 
 inline bool operator==(const Path& lhs, const Path& rhs) noexcept
 {
-	return lhs.Native() == rhs.Native();
+	const auto& lhsNative = lhs.Native();
+	const auto& rhsNative = rhs.Native();
+
+	if (lhsNative.size() != rhsNative.size())
+	{
+		return false;
+	}
+
+	for (size_t i = 0; i < lhsNative.size(); ++i)
+	{
+		wchar_t lc = lhsNative[i];
+		wchar_t rc = rhsNative[i];
+
+		if (lc == Path::kAltSeparator) lc = Path::kPreferredSeparator;
+		if (rc == Path::kAltSeparator) rc = Path::kPreferredSeparator;
+
+		if (lc != rc)
+		{
+			return false;
+		}
+	}
+
+	return true;
 }
 
 inline bool operator!=(const Path& lhs, const Path& rhs) noexcept
@@ -456,7 +512,23 @@ inline bool operator!=(const Path& lhs, const Path& rhs) noexcept
 
 inline bool operator<(const Path& lhs, const Path& rhs) noexcept
 {
-	return lhs.Native() < rhs.Native();
+	const auto& lhsNative = lhs.Native();
+	const auto& rhsNative = rhs.Native();
+
+	size_t minSize = lhsNative.size() < rhsNative.size() ? lhsNative.size() : rhsNative.size();
+	for (size_t i = 0; i < minSize; ++i)
+	{
+		wchar_t lc = lhsNative[i];
+		wchar_t rc = rhsNative[i];
+
+		if (lc == Path::kAltSeparator) lc = Path::kPreferredSeparator;
+		if (rc == Path::kAltSeparator) rc = Path::kPreferredSeparator;
+
+		if (lc < rc) return true;
+		if (lc > rc) return false;
+	}
+
+	return lhsNative.size() < rhsNative.size();
 }
 
 inline bool operator<=(const Path& lhs, const Path& rhs) noexcept
@@ -509,7 +581,19 @@ struct hash<Gleam::Path>
 {
 	size_t operator()(const Gleam::Path& path) const noexcept
 	{
-		return hash<Gleam::TWString>()(path.Native());
+		const auto& native = path.Native();
+		size_t h = 0;
+
+		for (wchar_t c : native)
+		{
+			if (c == Gleam::Path::kAltSeparator)
+			{
+				c = Gleam::Path::kPreferredSeparator;
+			}
+			h = h * 31 + static_cast<size_t>(c);
+		}
+
+		return h;
 	}
 };
 
@@ -520,6 +604,18 @@ struct eastl::hash<Gleam::Path>
 {
 	size_t operator()(const Gleam::Path& path) const noexcept
 	{
-		return hash<Gleam::TWString>()(path.Native());
+		const auto& native = path.Native();
+		size_t h = 0;
+
+		for (wchar_t c : native)
+		{
+			if (c == Gleam::Path::kAltSeparator)
+			{
+				c = Gleam::Path::kPreferredSeparator;
+			}
+			h = h * 31 + static_cast<size_t>(c);
+		}
+
+		return h;
 	}
 };
