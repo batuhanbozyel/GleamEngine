@@ -11,7 +11,7 @@ using namespace Gleam;
 
 EntityManager::EntityManager()
 {
-	mSingletonEntity = CreateEntity("Singleton Entity", Guid::InvalidGuid());
+	mSingletonEntity = mRegistry.create();
 }
 
 Entity& EntityManager::CreateFromPrefab(const AssetReference& ref)

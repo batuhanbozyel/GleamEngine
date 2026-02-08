@@ -46,7 +46,10 @@ public:
     {
         for (auto [entity] : mRegistry.storage<EntityHandle>().each())
         {
-            fn(entity);
+			if (entity != mSingletonEntity)
+			{
+				fn(entity);
+			}
         }
     }
     
@@ -55,7 +58,10 @@ public:
     {
         for (const auto [entity] : mRegistry.storage<EntityHandle>()->each())
         {
-            fn(entity);
+			if (entity != mSingletonEntity)
+			{
+				fn(entity);
+			}
         }
     }
 
@@ -72,22 +78,32 @@ public:
 	}
     
     template<typename T, typename ... Args>
-    T& SetSingletonComponent(Args&&... args)
+    T& SetSingleton(Args&&... args)
     {
 		return AddComponent<T>(mSingletonEntity, std::forward<Args>(args)...);
     }
     
     template<typename T>
-    T& GetSingletonComponent()
+    T& GetSingleton()
     {
 		return GetComponent<T>(mSingletonEntity);
     }
     
     template<typename T>
-    const T& GetSingletonComponent() const
+    const T& GetSingleton() const
     {
 		return GetComponent<T>(mSingletonEntity);
     }
+
+	void VisitSingletons(VisitFn&& fn)
+	{
+		Visit(mSingletonEntity, eastl::move(fn));
+	}
+
+	void VisitSingletons(ConstVisitFn&& fn) const
+	{
+		Visit(mSingletonEntity, eastl::move(fn));
+	}
 
 	template<typename T, typename ... Args>
 	T& AddComponent(EntityHandle entity, Args&&... args)

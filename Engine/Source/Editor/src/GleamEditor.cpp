@@ -81,7 +81,7 @@ public:
 			world.GetEntityManager().AddComponent<Gleam::SkyAtmosphere>(atmosphere);
 
 			// global probe
-			world.GetEntityManager().SetSingletonComponent<Gleam::ReflectionProbe>();
+			world.GetEntityManager().SetSingleton<Gleam::ReflectionProbe>();
 
 			world.Serialize(file.GetStream());
 		}

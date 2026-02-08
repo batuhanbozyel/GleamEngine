@@ -56,6 +56,22 @@ void EntitySerializer::Serialize(const EntityManager& entityManager, rapidjson::
 		entitiesNode.PushBack(entityObject);
 	});
 	root.AddMember("Entities", entities);
+
+	rapidjson::Value singletonComponents(rapidjson::kArrayType);
+	rapidjson::Node singletonComponentsNode(singletonComponents, root.allocator);
+	entityManager.VisitSingletons([&](const void* component, const Gleam::Reflection::ClassDescription& classDesc)
+	{
+		if (classDesc.HasAttribute<Reflection::Attribute::EntityComponent>())
+		{
+			rapidjson::Value componentObject(rapidjson::kObjectType);
+			rapidjson::Node componentNode(componentObject, root.allocator);
+
+			JSONSerializer serializer;
+			serializer.Serialize(component, classDesc, componentNode);
+			singletonComponentsNode.PushBack(componentObject);
+		}
+	});
+	root.AddMember("Singletons", singletonComponents);
 }
 
 TArray<EntityHandle> EntitySerializer::Deserialize(const rapidjson::ConstNode& root, EntityManager& entityManager)
@@ -112,5 +128,20 @@ TArray<EntityHandle> EntitySerializer::Deserialize(const rapidjson::ConstNode& r
 			entity->SetParent(parent);
 		}
 	}
+
+	for (const auto& singletonObject : root["Singletons"].GetArray())
+	{
+		auto typeName = singletonObject["TypeName"].GetString();
+		const auto classDesc = Reflection::GetClass(typeName);
+
+		auto meta = entt::resolve(classDesc->TypeHash());
+		auto func = meta.func("SetSingleton"_hs);
+		auto component = func.invoke({}, Ref<EntityManager>(entityManager));
+		GLEAM_ASSERT(component, "Singleton component could not deserialize");
+
+		JSONSerializer serializer;
+		serializer.Deserialize(*classDesc, const_cast<void*>(component.base().data()), rapidjson::ConstNode(singletonObject));
+	}
+
 	return entities;
 }

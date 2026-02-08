@@ -22,7 +22,11 @@ private:
 
 	void DrawEntityNode(Gleam::EntityHandle handle);
 
+	void DrawSingletonComponents();
+
 	Gleam::World* mEditWorld;
+
+	uint32_t mSelectedSingletonID = 0;
     
     Gleam::EntityHandle mSelectedEntity = Gleam::InvalidEntity;
     

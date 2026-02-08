@@ -32,7 +32,7 @@ void ReflectionProbeRenderer::OnDestroy(RenderContext& context)
 void ReflectionProbeRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard)
 {
 	const auto& sceneData = blackboard.Get<SceneRenderingData>();
-	const auto& globalProbe = sceneData.world->GetEntityManager().GetSingletonComponent<ReflectionProbe>();
+	const auto& globalProbe = sceneData.world->GetEntityManager().GetSingleton<ReflectionProbe>();
 
 	struct CapturePassData
 	{

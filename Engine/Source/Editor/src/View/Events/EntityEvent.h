@@ -28,4 +28,30 @@ private:
 	Gleam::EntityHandle mEntity;
 };
 
+class SingletonSelectedEvent : public Gleam::Event
+{
+public:
+
+	SingletonSelectedEvent(uint32_t singleton)
+		: mSingleton(singleton)
+	{
+	}
+
+	uint32_t GetSingleton() const
+	{
+		return mSingleton;
+	}
+
+	virtual Gleam::TString ToString() const override
+	{
+		Gleam::TStringStream ss;
+		ss << "SingletonSelectedEvent: " << mSingleton;
+		return ss.str();
+	}
+
+private:
+
+	uint32_t mSingleton;
+};
+
 } // namespace Gleam

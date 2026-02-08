@@ -24,16 +24,47 @@ void WorldOutliner::Render(Gleam::ImGuiRenderer* imgui)
 	imgui->PushView([this](const Gleam::ImGuiPassData& passData)
 	{
 		if (!ImGui::Begin("World Outliner")) return;
-    
-		auto& entityManager = mEditWorld->GetEntityManager();
-		entityManager.ForEach([&](Gleam::EntityHandle handle)
+
+		static float singletonsPanelHeight = 400.0f;
+		float availableHeight = ImGui::GetContentRegionAvail().y;
+
+		ImGui::BeginChild("EntityList", ImVec2(0, availableHeight - singletonsPanelHeight - 8.0f), false);
 		{
-			const auto& entity = entityManager.GetComponent<Gleam::Entity>(handle);
-			if (entity.HasParent() == false)
+			if (ImGui::CollapsingHeader("Entities", ImGuiTreeNodeFlags_DefaultOpen))
 			{
-				DrawEntityNode(handle);
+				auto& entityManager = mEditWorld->GetEntityManager();
+				entityManager.ForEach([&](Gleam::EntityHandle handle)
+				{
+					const auto& entity = entityManager.GetComponent<Gleam::Entity>(handle);
+					if (entity.HasParent() == false)
+					{
+						DrawEntityNode(handle);
+					}
+				});
 			}
-		});
+		}
+		ImGui::EndChild();
+
+		ImGui::Button("##splitter", ImVec2(-1, 4.0f));
+		if (ImGui::IsItemActive())
+		{
+			float delta = ImGui::GetIO().MouseDelta.y;
+			singletonsPanelHeight -= delta;
+			singletonsPanelHeight = Gleam::Math::Clamp(singletonsPanelHeight, 50.0f, availableHeight - 50.0f);
+		}
+		if (ImGui::IsItemHovered())
+		{
+			ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeNS);
+		}
+
+		ImGui::BeginChild("SingletonsList", ImVec2(0, 0), false);
+		{
+			if (ImGui::CollapsingHeader("Singletons", ImGuiTreeNodeFlags_DefaultOpen))
+			{
+				DrawSingletonComponents();
+			}
+		}
+		ImGui::EndChild();
 		
 		ImGui::End();
 	});
@@ -67,7 +98,9 @@ void WorldOutliner::DrawEntityNode(Gleam::EntityHandle handle)
 	if (ImGui::IsItemClicked())
 	{
 		Gleam::EventDispatcher<EntitySelectedEvent>::Publish(EntitySelectedEvent(handle));
+		Gleam::EventDispatcher<SingletonSelectedEvent>::Publish(SingletonSelectedEvent(0));
 		mSelectedEntity = handle;
+		mSelectedSingletonID = 0;
 	}
 
 	if (ImGui::BeginPopupContextItem())
@@ -90,4 +123,40 @@ void WorldOutliner::DrawEntityNode(Gleam::EntityHandle handle)
 		}
 		ImGui::TreePop();
 	}
+}
+
+void WorldOutliner::DrawSingletonComponents()
+{
+	auto& entityManager = mEditWorld->GetEntityManager();
+	entityManager.VisitSingletons([this](const void* component, const Gleam::Reflection::ClassDescription& classDesc)
+	{
+		if (classDesc.Guid() != Gleam::Reflection::GetClass<Gleam::Entity>().Guid())
+		{
+			auto componentName = classDesc.ResolveName();
+			uint32_t componentID = classDesc.TypeHash();
+
+			ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_Leaf |
+				ImGuiTreeNodeFlags_NoTreePushOnOpen |
+				ImGuiTreeNodeFlags_SpanAvailWidth;
+
+			if (mSelectedEntity == Gleam::InvalidEntity && mSelectedSingletonID == componentID)
+			{
+				flags |= ImGuiTreeNodeFlags_Selected;
+			}
+
+			char label[64];
+			std::memcpy(label, componentName.data(), componentName.size());
+			label[componentName.size()] = '\0';
+
+			ImGui::TreeNodeEx((void*)(uint64_t)componentID, flags, "%s", label);
+
+			if (ImGui::IsItemClicked())
+			{
+				Gleam::EventDispatcher<EntitySelectedEvent>::Publish(EntitySelectedEvent(Gleam::InvalidEntity));
+				Gleam::EventDispatcher<SingletonSelectedEvent>::Publish(SingletonSelectedEvent(componentID));
+				mSelectedEntity = Gleam::InvalidEntity;
+				mSelectedSingletonID = componentID;
+			}
+		}
+	});
 }

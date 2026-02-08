@@ -2,6 +2,7 @@
 #include "Core/Subsystem.h"
 #include "Container/Pointer.h"
 #include "Entity.h"
+#include "EntityManager.h"
 
 #include <entt/meta/policy.hpp>
 #include <entt/meta/factory.hpp>
@@ -26,7 +27,8 @@ public:
 				.type(classDesc.TypeHash())
 				.template func<&AddComponent<T>, entt::as_ref_t>("AddComponent"_hs)
 				.template func<&RemoveComponent<T>>("RemoveComponent"_hs)
-				.template func<&HasComponent<T>>("HasComponent"_hs);
+				.template func<&HasComponent<T>>("HasComponent"_hs)
+				.template func<&SetSingleton<T>, entt::as_ref_t>("SetSingleton"_hs);
 		}
 	}
 
@@ -48,6 +50,12 @@ private:
 	static bool HasComponent(Ref<Entity> entity)
 	{
 		return entity.get().HasComponent<T>();
+	}
+
+	template<typename T>
+	static T& SetSingleton(Ref<EntityManager> entityManager)
+	{
+		return entityManager.get().SetSingleton<T>();
 	}
 
 };
