@@ -15,10 +15,9 @@ void TextureBaker::Bake(const Gleam::Path& directory, const AssetItem& item) con
 {
 	auto filename = Gleam::TWString(item.reference.guid.ToString()) + Gleam::Asset::Extension();
 	auto file = Gleam::Filesystem::Create(directory / filename, Gleam::FileType::Binary);
-	auto accessor = Gleam::Filesystem::WriteAccessor(directory / filename);
 
 	auto serializer = Gleam::BinarySerializer();
-	serializer.Serialize(mDescriptor, file.GetStream());
+	serializer.Serialize(mDescriptor, file->GetStream());
 }
 
 Gleam::TString TextureBaker::Filename() const

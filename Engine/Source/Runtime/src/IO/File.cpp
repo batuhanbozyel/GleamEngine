@@ -25,8 +25,6 @@ TString File::Read() const
 		return "";
 	}
 
-	FileAccessor::Read accessor(mAccessor);
-
 	size_t size = GetSize();
     TString contents;
 	contents.resize(size);
@@ -43,7 +41,6 @@ void File::Write(const TString& contents)
 		return;
 	}
 
-	FileAccessor::Write accessor(mAccessor);
     mHandle << contents;
 }
 
@@ -55,7 +52,6 @@ void File::Append(const TString& contents)
 		return;
 	}
     
-	FileAccessor::Write accessor(mAccessor);
     mHandle.seekg(0, std::ios::end);
     mHandle << contents;
 }
@@ -64,7 +60,6 @@ size_t File::GetSize() const
 {
     if (mHandle.is_open())
     {
-		FileAccessor::Read accessor(mAccessor);
         mHandle.seekg(0, std::ios::end);
         size_t size = mHandle.tellg();
         mHandle.seekg(0, std::ios::beg);
@@ -88,7 +83,7 @@ const TString& File::GetName() const
 	return mName;
 }
 
-FileStream& File::GetStream()
+FileStream& File::GetStream() const
 {
     return mHandle;
 }

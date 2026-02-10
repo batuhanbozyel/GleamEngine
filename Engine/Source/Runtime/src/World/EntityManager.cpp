@@ -17,10 +17,10 @@ EntityManager::EntityManager()
 Entity& EntityManager::CreateFromPrefab(const AssetReference& ref)
 {
 	const auto& path = Globals::GameInstance->GetSubsystem<AssetManager>()->GetAssetPath(ref);
-	auto file = Filesystem::Open(Globals::ProjectContentDirectory / path, FileType::Text);
+	auto file = Filesystem::OpenRead(Globals::ProjectContentDirectory / path, FileType::Text);
 
 	Prefab prefab;
-	auto root = prefab.Deserialize(*this, file.GetStream());
+	auto root = prefab.Deserialize(*this, file->GetStream());
 	return GetComponent<Entity>(root);
 }
 

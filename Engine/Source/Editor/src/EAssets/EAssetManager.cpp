@@ -8,79 +8,71 @@ using namespace GEditor;
 
 static Gleam::BinaryHeader ParseBinaryHeader(const Gleam::Path& asset)
 {
-	auto file = Gleam::Filesystem::Open(asset, Gleam::FileType::Binary);
-	auto accessor = Gleam::Filesystem::ReadAccessor(asset);
+	auto file = Gleam::Filesystem::OpenRead(asset, Gleam::FileType::Binary);
 	auto serializer = Gleam::BinarySerializer();
-	return serializer.ParseHeader(file.GetStream());
+	return serializer.ParseHeader(file->GetStream());
 }
 
 static Gleam::JSONHeader ParseJSONHeader(const Gleam::Path& asset)
 {
-	auto file = Gleam::Filesystem::Open(asset, Gleam::FileType::Text);
-	auto accessor = Gleam::Filesystem::ReadAccessor(asset);
+	auto file = Gleam::Filesystem::OpenRead(asset, Gleam::FileType::Text);
 	auto serializer = Gleam::JSONSerializer();
-	return serializer.ParseHeader(file.GetStream());
+	return serializer.ParseHeader(file->GetStream());
 }
 
 static Gleam::TString ParseAssetName(const Gleam::Path& asset, const Gleam::Guid& typeGuid)
 {
     if (typeGuid == Gleam::Reflection::GetClass<Gleam::MeshDescriptor>().Guid())
     {
-		auto file = Gleam::Filesystem::Open(asset, Gleam::FileType::Binary);
-		auto accessor = Gleam::Filesystem::ReadAccessor(asset);
+		auto file = Gleam::Filesystem::OpenRead(asset, Gleam::FileType::Binary);
 		auto serializer = Gleam::BinarySerializer();
 		
-        auto descriptor = serializer.Deserialize<Gleam::MeshDescriptor>(file.GetStream());
+        auto descriptor = serializer.Deserialize<Gleam::MeshDescriptor>(file->GetStream());
         return descriptor.name;
     }
     
     if (typeGuid == Gleam::Reflection::GetClass<Gleam::Texture2DDescriptor>().Guid())
     {
-		auto file = Gleam::Filesystem::Open(asset, Gleam::FileType::Binary);
-		auto accessor = Gleam::Filesystem::ReadAccessor(asset);
+		auto file = Gleam::Filesystem::OpenRead(asset, Gleam::FileType::Binary);
 		auto serializer = Gleam::BinarySerializer();
 		
-        auto descriptor = serializer.Deserialize<Gleam::Texture2DDescriptor>(file.GetStream());
+        auto descriptor = serializer.Deserialize<Gleam::Texture2DDescriptor>(file->GetStream());
         return descriptor.name;
     }
     
     if (typeGuid == Gleam::Reflection::GetClass<Gleam::MaterialDescriptor>().Guid())
     {
-		auto file = Gleam::Filesystem::Open(asset, Gleam::FileType::Binary);
-		auto accessor = Gleam::Filesystem::ReadAccessor(asset);
+		auto file = Gleam::Filesystem::OpenRead(asset, Gleam::FileType::Binary);
 		auto serializer = Gleam::BinarySerializer();
 		
-        auto descriptor = serializer.Deserialize<Gleam::MaterialDescriptor>(file.GetStream());
+        auto descriptor = serializer.Deserialize<Gleam::MaterialDescriptor>(file->GetStream());
         return descriptor.name;
     }
     
     if (typeGuid == Gleam::Reflection::GetClass<Gleam::MaterialInstanceDescriptor>().Guid())
     {
-		auto file = Gleam::Filesystem::Open(asset, Gleam::FileType::Binary);
-		auto accessor = Gleam::Filesystem::ReadAccessor(asset);
+		auto file = Gleam::Filesystem::OpenRead(asset, Gleam::FileType::Binary);
 		auto serializer = Gleam::BinarySerializer();
 		
-        auto descriptor = serializer.Deserialize<Gleam::MaterialInstanceDescriptor>(file.GetStream());
+        auto descriptor = serializer.Deserialize<Gleam::MaterialInstanceDescriptor>(file->GetStream());
         return descriptor.name;
     }
 
 	if (typeGuid == Gleam::Reflection::GetClass<Gleam::Prefab>().Guid())
 	{
-		auto file = Gleam::Filesystem::Open(asset, Gleam::FileType::Text);
-		auto accessor = Gleam::Filesystem::ReadAccessor(asset);
+		auto file = Gleam::Filesystem::OpenRead(asset, Gleam::FileType::Text);
 		auto serializer = Gleam::JSONSerializer();
 		
-		auto prefab = serializer.Deserialize<Gleam::Prefab>(file.GetStream());
+		auto prefab = serializer.Deserialize<Gleam::Prefab>(file->GetStream());
 		return prefab.name;
 	}
 	
 	if (typeGuid == Gleam::Reflection::GetClass<Gleam::World>().Guid())
 	{
-		auto file = Gleam::Filesystem::Open(asset, Gleam::FileType::Text);
-		auto accessor = Gleam::Filesystem::ReadAccessor(asset);
+		auto file = Gleam::Filesystem::OpenRead(asset, Gleam::FileType::Text);
 		auto serializer = Gleam::JSONSerializer();
 		
-		auto world = serializer.Deserialize<Gleam::World>(file.GetStream());
+		auto world = serializer.Deserialize<Gleam::World>(file->GetStream());
 		return world.name;
 	}
     

@@ -16,10 +16,9 @@ void MaterialBaker::Bake(const Gleam::Path& directory, const AssetItem& item) co
 {
 	auto filename = Gleam::TWString(item.reference.guid.ToString()) + Gleam::Asset::Extension();
 	auto file = Gleam::Filesystem::Create(directory / filename, Gleam::FileType::Binary);
-	auto accessor = Gleam::Filesystem::WriteAccessor(directory / filename);
 
 	auto serializer = Gleam::BinarySerializer();
-	serializer.Serialize(mDescriptor, file.GetStream());
+	serializer.Serialize(mDescriptor, file->GetStream());
 }
 
 Gleam::TString MaterialBaker::Filename() const
@@ -48,10 +47,9 @@ void MaterialInstanceBaker::Bake(const Gleam::Path& directory, const AssetItem& 
 {
 	auto filename = Gleam::TWString(item.reference.guid.ToString()) + Gleam::Asset::Extension();
 	auto file = Gleam::Filesystem::Create(directory / filename, Gleam::FileType::Binary);
-	auto accessor = Gleam::Filesystem::WriteAccessor(directory / filename);
 
 	auto serializer = Gleam::BinarySerializer();
-	serializer.Serialize(mDescriptor, file.GetStream());
+	serializer.Serialize(mDescriptor, file->GetStream());
 }
 
 Gleam::TString MaterialInstanceBaker::Filename() const

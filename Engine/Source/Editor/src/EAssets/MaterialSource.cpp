@@ -59,13 +59,13 @@ static Gleam::BlendMode BlendModeFromObject(const rapidjson::Value& object)
 
 bool MaterialSource::Import(const Gleam::Path& path, const ImportSettings& settings)
 {
-    auto file = Gleam::Filesystem::Open(path, Gleam::FileType::Text);
-    if (file.Empty())
+    auto file = Gleam::Filesystem::OpenRead(path, Gleam::FileType::Text);
+    if (file->Empty())
     {
         return false;
     }
     
-    rapidjson::IStreamWrapper ss(file.GetStream());
+    rapidjson::IStreamWrapper ss(file->GetStream());
     rapidjson::Document document;
     document.ParseStream(ss);
     
@@ -145,11 +145,11 @@ bool MaterialSource::Import(const Gleam::Path& path, const ImportSettings& setti
         auto generatedPath = shaderPath;
         generatedPath.Concat(".gen.hlsl");
         {
-            auto shaderFile = Gleam::Filesystem::Open(shaderPath, Gleam::FileType::Text);
-            generatedShader << shaderFile.Read() << "\0";
+            auto shaderFile = Gleam::Filesystem::OpenRead(shaderPath, Gleam::FileType::Text);
+            generatedShader << shaderFile->Read() << "\0";
             
             auto generatedFile = Gleam::Filesystem::Create(generatedPath, Gleam::FileType::Text);
-            generatedFile.Write(generatedShader.str());
+            generatedFile->Write(generatedShader.str());
         }
         
         if (document.HasMember("Lighting"))

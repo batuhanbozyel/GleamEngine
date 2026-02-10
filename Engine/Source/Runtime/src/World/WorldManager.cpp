@@ -36,10 +36,10 @@ void WorldManager::LoadWorld(uint32_t buildIndex)
 	const auto& worldRef = mWorldsInBuild[buildIndex];
 	const auto& worldPath = Globals::GameInstance->GetSubsystem<AssetManager>()->GetAssetPath(worldRef);
 
-	auto file = Filesystem::Open(Globals::ProjectContentDirectory / worldPath, FileType::Text);
+	auto file = Filesystem::OpenRead(Globals::ProjectContentDirectory / worldPath, FileType::Text);
 	auto world = CreateScope<World>();
 
-	world->Deserialize(file.GetStream());
+	world->Deserialize(file->GetStream());
 	mLoadedWorlds.emplace(worldRef, std::move(world));
 }
 
@@ -51,7 +51,7 @@ void WorldManager::SaveWorld(uint32_t buildIndex)
 	auto file = Filesystem::Create(Globals::ProjectContentDirectory / worldPath, FileType::Text);
 	auto world = mLoadedWorlds[worldRef].get();
 
-	world->Serialize(file.GetStream());
+	world->Serialize(file->GetStream());
 }
 
 void WorldManager::SaveActiveWorld()

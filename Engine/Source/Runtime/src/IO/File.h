@@ -4,6 +4,9 @@
 
 namespace Gleam {
 
+class JSONSerializer;
+class BinarySerializer;
+
 enum class FileType
 {
 	Binary,
@@ -12,11 +15,19 @@ enum class FileType
 
 class File final
 {
+	friend class JSONSerializer;
+	friend class BinarySerializer;
 public:
 
     File(FileStream&& handle, const Path& path, FileAccessor& accessor);
 
 	~File();
+
+	File(const File&) = delete;
+	File& operator=(const File&) = delete;
+
+	File(File&&) = default;
+	File& operator=(File&&) = default;
 
 	TString Read() const;
 
@@ -26,13 +37,14 @@ public:
 
 	const TString& GetName() const;
     
-	FileStream& GetStream();
-    
     size_t GetSize() const;
 
 	bool Empty() const;
 	
 	bool IsOpen() const;
+
+	// Unsafe
+	FileStream& GetStream() const;
 
 private:
 

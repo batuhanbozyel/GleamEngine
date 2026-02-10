@@ -83,7 +83,7 @@ public:
 			// global probe
 			world.GetEntityManager().SetSingleton<Gleam::ReflectionProbe>();
 
-			world.Serialize(file.GetStream());
+			world.Serialize(file->GetStream());
 		}
 		project.worldConfig.worlds.emplace_back(worldRef);
 
@@ -95,7 +95,7 @@ public:
 			auto projectFile = path / filename;
 			auto file = Gleam::Filesystem::Create(projectFile, Gleam::FileType::Text);
 			auto serializer = Gleam::JSONSerializer();
-			serializer.Serialize(project, file.GetStream());
+			serializer.Serialize(project, file->GetStream());
 		}
 		return project;
 	}
@@ -106,9 +106,9 @@ public:
 		project.path = path;
 		if (Gleam::Filesystem::Exists(path))
 		{
-			auto file = Gleam::Filesystem::Open(path, Gleam::FileType::Text);
+			auto file = Gleam::Filesystem::OpenRead(path, Gleam::FileType::Text);
 			auto serializer = Gleam::JSONSerializer();
-			project = serializer.Deserialize<Gleam::Project>(file.GetStream());
+			project = serializer.Deserialize<Gleam::Project>(file->GetStream());
 		}
 		return project;
 	}

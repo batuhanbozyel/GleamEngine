@@ -26,7 +26,7 @@ void Filesystem::ForEach(const Path& path, const DirectoryFn& fn, bool recursive
     }
 }
 
-File Filesystem::Create(const Path& path, FileType type)
+WriteAccessor<File> Filesystem::Create(const Path& path, FileType type)
 {
     auto flags = std::ios::out | std::ios::in | std::ios::trunc;
     if (type == FileType::Binary)
@@ -38,19 +38,18 @@ File Filesystem::Create(const Path& path, FileType type)
     handle.unsetf(std::ios::skipws);
     
     std::lock_guard<std::mutex> lock(mFileCreateMutex);
-    if (auto it = mFileAccessors.find(path); it != mFileAccessors.end())
+	auto it = mFileAccessors.find(path);
+    if (it == mFileAccessors.end())
     {
-        return File(std::move(handle), path, it->second);
+		it = mFileAccessors.emplace_hint(mFileAccessors.end(),
+										 eastl::piecewise_construct,
+										 eastl::forward_as_tuple(path),
+										 eastl::forward_as_tuple());
     }
-    
-    auto it = mFileAccessors.emplace_hint(mFileAccessors.end(),
-                                          eastl::piecewise_construct,
-                                          eastl::forward_as_tuple(path),
-                                          eastl::forward_as_tuple());
-	return File(std::move(handle), path, it->second);
+	return WriteAccessor<File>(File(std::move(handle), path, it->second), it->second);
 }
 
-File Filesystem::Open(const Path& path, FileType type)
+ReadAccessor<File> Filesystem::OpenRead(const Path& path, FileType type)
 {
 	auto flags = std::ios::out | std::ios::in;
 	if (type == FileType::Binary)
@@ -62,7 +61,38 @@ File Filesystem::Open(const Path& path, FileType type)
 	handle.unsetf(std::ios::skipws);
     
     std::lock_guard<std::mutex> lock(mFileCreateMutex);
-	return File(eastl::move(handle), path, mFileAccessors[path]);
+	auto it = mFileAccessors.find(path);
+    if (it == mFileAccessors.end())
+    {
+		it = mFileAccessors.emplace_hint(mFileAccessors.end(),
+										 eastl::piecewise_construct,
+										 eastl::forward_as_tuple(path),
+										 eastl::forward_as_tuple());
+    }
+	return ReadAccessor<File>(File(std::move(handle), path, it->second), it->second);
+}
+
+WriteAccessor<File> Filesystem::OpenWrite(const Path& path, FileType type)
+{
+    auto flags = std::ios::out | std::ios::in;
+    if (type == FileType::Binary)
+    {
+        flags |= std::ios::binary;
+    }
+    std::filesystem::path stlPath = std::wstring_view(path.Native().c_str(), path.Native().length());
+    FileStream handle(stlPath, flags);
+    handle.unsetf(std::ios::skipws);
+    
+    std::lock_guard<std::mutex> lock(mFileCreateMutex);
+	auto it = mFileAccessors.find(path);
+    if (it == mFileAccessors.end())
+    {
+        it = mFileAccessors.emplace_hint(mFileAccessors.end(),
+                                          eastl::piecewise_construct,
+                                          eastl::forward_as_tuple(path),
+                                          eastl::forward_as_tuple());
+    }
+    return WriteAccessor<File>(File(std::move(handle), path, it->second), it->second);
 }
 
 bool Filesystem::Remove(const Path& path)
@@ -74,16 +104,6 @@ bool Filesystem::Remove(const Path& path)
 FileAccessor& Filesystem::Accessor(const Path& path)
 {
 	return mFileAccessors[path];
-}
-
-FileAccessor::Read Filesystem::ReadAccessor(const Path& path)
-{
-	return FileAccessor::Read(Accessor(path));
-}
-
-FileAccessor::Write Filesystem::WriteAccessor(const Path& path)
-{
-	return FileAccessor::Write(Accessor(path));
 }
 
 Path Filesystem::WorkingDirectory()
@@ -132,47 +152,4 @@ bool Filesystem::IsDirectory(const Path& path)
 	struct stat statBuf;
 	return (stat(utf8Path.c_str(), &statBuf) == 0) && S_ISDIR(statBuf.st_mode);
 #endif
-}
-
-// File::Accessors
-
-FileAccessor::Write::Write(FileAccessor& accessor)
-	: mAccessor(accessor)
-{
-	std::unique_lock<std::mutex> lock(mAccessor.mutex);
-	mAccessor.condition.wait(lock, [this]
-	{
-		return mAccessor.status == FileStatus::Available;
-	});
-	mAccessor.status = FileStatus::Writing;
-}
-
-FileAccessor::Write::~Write()
-{
-	mAccessor.status = FileStatus::Available;
-	mAccessor.condition.notify_all();
-}
-
-FileAccessor::Read::Read(FileAccessor& accessor)
-	: mAccessor(accessor)
-	, mLock(accessor.mutex)
-{
-	mAccessor.condition.wait(mLock, [this]
-	{
-		return mAccessor.status != FileStatus::Writing;
-	});
-
-	++mAccessor.concurrentReaders;
-	mAccessor.status = FileStatus::Reading;
-	mLock.unlock();
-}
-
-FileAccessor::Read::~Read()
-{
-	mLock.lock();
-	if (--mAccessor.concurrentReaders == 0)
-	{
-		mAccessor.status = FileStatus::Available;
-		mAccessor.condition.notify_all();
-	}
 }

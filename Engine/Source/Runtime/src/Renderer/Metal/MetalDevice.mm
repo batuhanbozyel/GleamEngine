@@ -421,8 +421,8 @@ Shader GraphicsDevice::CompileShader(const TString& entryPoint, ShaderStage stag
 {
     Shader shader(entryPoint, stage);
     auto shaderPath = Globals::BuiltinAssetsDirectory/"Shaders";
-    File shaderFile = Filesystem::Open(shaderPath.Append(entryPoint + ".dxil"), FileType::Binary);
-    auto shaderCode = shaderFile.Read();
+    File shaderFile = Filesystem::OpenRead(shaderPath.Append(entryPoint + ".dxil"), FileType::Binary);
+    auto shaderCode = shaderFile->Read();
     auto dxil = IRObjectCreateFromDXIL((uint8_t*)shaderCode.data(), shaderCode.size(), IRBytecodeOwnershipNone);
     
     auto compiler = IRCompilerCreate();

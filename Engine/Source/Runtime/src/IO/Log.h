@@ -136,8 +136,8 @@ private:
 static int ExecuteCommand(const Gleam::TString& cmd)
 {
 	int exitCode = system((cmd + " > command.err 2>&1").c_str());
-	auto file = Gleam::Filesystem::Open("command.err", Gleam::FileType::Text);
-	if (file.IsOpen())
+	auto file = Gleam::Filesystem::OpenRead("command.err", Gleam::FileType::Text);
+	if (file->IsOpen())
 	{
 		auto currentTime = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
 		char formattedCurrentTime[32];
@@ -145,7 +145,7 @@ static int ExecuteCommand(const Gleam::TString& cmd)
 
 		std::ostringstream ss;
 		ss << '[' << formattedCurrentTime << "] ";
-		ss << "[command] " << file.Read() << '\n';
+		ss << "[command] " << file->Read() << '\n';
 		Gleam::Logger::OutputToDebugger(ss.str().c_str());
 	}
 	return exitCode;
