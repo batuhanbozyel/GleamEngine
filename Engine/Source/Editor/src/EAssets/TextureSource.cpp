@@ -1,7 +1,7 @@
 #include "TextureSource.h"
 #include "Bakers/TextureBaker.h"
 
-#include "Gleam.h"
+#include "Tools/TextureTools.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
@@ -18,7 +18,6 @@ bool TextureSource::Import(const Gleam::Path& path, const ImportSettings& settin
 		texture.channels = 4;
 	}
 	
-	Gleam::TextureFormat format;
 	if (settings.hdr)
 	{
 		// TODO: convert to half precision
@@ -26,16 +25,16 @@ bool TextureSource::Import(const Gleam::Path& path, const ImportSettings& settin
 		switch (texture.channels)
 		{
 			case 1:
-				format = Gleam::TextureFormat::R32_SFloat;
+				texture.format = Gleam::TextureFormat::R32_SFloat;
 				break;
 			case 2:
-				format = Gleam::TextureFormat::R32G32_SFloat;
+				texture.format = Gleam::TextureFormat::R32G32_SFloat;
 				break;
 			case 4:
-				format = Gleam::TextureFormat::R32G32B32A32_SFloat;
+				texture.format = Gleam::TextureFormat::R32G32B32A32_SFloat;
 				break;
 			default:
-				format = Gleam::TextureFormat::None;
+				texture.format = Gleam::TextureFormat::None;
 				break;
 		}		
 	}
@@ -45,16 +44,16 @@ bool TextureSource::Import(const Gleam::Path& path, const ImportSettings& settin
 		switch (texture.channels)
 		{
 			case 1:
-				format = Gleam::TextureFormat::R8_UNorm;
+				texture.format = Gleam::TextureFormat::R8_UNorm;
 				break;
 			case 2:
-				format = Gleam::TextureFormat::R8G8_UNorm;
+				texture.format = Gleam::TextureFormat::R8G8_UNorm;
 				break;
 			case 4:
-				format = settings.colorSpace == TextureColorSpace::sRGB ? Gleam::TextureFormat::R8G8B8A8_SRGB : Gleam::TextureFormat::R8G8B8A8_UNorm;
+				texture.format = settings.colorSpace == TextureColorSpace::sRGB ? Gleam::TextureFormat::R8G8B8A8_SRGB : Gleam::TextureFormat::R8G8B8A8_UNorm;
 				break;
 			default:
-				format = Gleam::TextureFormat::None;
+				texture.format = Gleam::TextureFormat::None;
 				break;
 		}
 	}
@@ -65,7 +64,7 @@ bool TextureSource::Import(const Gleam::Path& path, const ImportSettings& settin
 		return false;
 	}
 	
-	if (format == Gleam::TextureFormat::None)
+	if (texture.format == Gleam::TextureFormat::None)
 	{
 		GLEAM_ASSERT(false, "Unsupported number of texture components");
 		stbi_image_free(texture.pixels);
@@ -73,16 +72,24 @@ bool TextureSource::Import(const Gleam::Path& path, const ImportSettings& settin
 	}
 	
 	Gleam::Texture2DDescriptor descriptor;
-	descriptor.format = format;
+	descriptor.format = texture.format;
 	descriptor.name = path.Stem();
 	descriptor.size.width = static_cast<float>(texture.width);
 	descriptor.size.height = static_cast<float>(texture.height);
 	descriptor.dimension = Gleam::TextureDimension::Texture2D;
-	descriptor.subresources.resize(1);
+	descriptor.useMipMap = settings.generateMips;
 
-	auto& subresource = descriptor.subresources[0];
-	subresource.pixels.resize(texture.width * texture.height * Gleam::Utils::GetTextureFormatSizeInBytes(format));
-	memcpy(subresource.pixels.data(), texture.pixels, subresource.pixels.size());
+	if (settings.generateMips)
+	{
+		descriptor.subresources = TextureTools::GenerateMipmaps(texture);
+	}
+	else
+	{
+		descriptor.subresources.resize(1);
+		auto& subresource = descriptor.subresources[0];
+		subresource.pixels.resize(texture.width * texture.height * Gleam::Utils::GetTextureFormatSizeInBytes(texture.format));
+		memcpy(subresource.pixels.data(), texture.pixels, subresource.pixels.size());
+	}
 	EmplaceBaker<TextureBaker>(descriptor);
 	
 	stbi_image_free(texture.pixels);

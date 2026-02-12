@@ -39,6 +39,12 @@ enum TextureUsageFlag
 };
 typedef uint32_t TextureUsageFlagBits;
 
+GSTRUCT(TextureSubresource, "2B1FCFA8-040B-4D45-AAA2-461C5EB67668", Serializable)
+{
+	GFIELD("B42AFDD4-90EE-4E06-8283-0A2804CDCEAD", Serializable)
+	TArray<uint8_t> pixels;
+};
+
 GSTRUCT(TextureDescriptor, "5B36D630-8A7E-47BE-A9F0-1702AB9F9C8C", Serializable)
 {
 	GFIELD("A45F7E8C-D2B9-4D63-9BA3-1E7C24C5BF7A", Serializable)
@@ -62,7 +68,7 @@ GSTRUCT(TextureDescriptor, "5B36D630-8A7E-47BE-A9F0-1702AB9F9C8C", Serializable)
 	GFIELD("3C7B6A5D-E9F8-4A21-B7C6-D5E4F3A2C1B9", Serializable)
 	bool useMipMap = false;
 
-	bool operator==(const TextureDescriptor & other) const
+	bool operator==(const TextureDescriptor& other) const
 	{
 		return  size == other.size &&
 				depth == other.depth &&
@@ -71,12 +77,6 @@ GSTRUCT(TextureDescriptor, "5B36D630-8A7E-47BE-A9F0-1702AB9F9C8C", Serializable)
 				dimension == other.dimension &&
 				useMipMap == other.useMipMap;
 	}
-};
-
-GSTRUCT(TextureSubresource, "2B1FCFA8-040B-4D45-AAA2-461C5EB67668", Serializable)
-{
-	GFIELD("B42AFDD4-90EE-4E06-8283-0A2804CDCEAD", Serializable)
-	TArray<uint8_t> pixels;
 };
 
 GSTRUCT(Texture2DDescriptor, "CC19ED9A-2B9F-4258-B0E5-1F0EB34373A1", Serializable)

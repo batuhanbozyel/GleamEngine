@@ -1,19 +1,21 @@
 #pragma once
 #include "AssetPackage.h"
+#include "Renderer/TextureFormat.h"
 
 namespace GEditor {
-
-struct RawTexture
-{
-	Gleam::TString name;
-	int width, height, channels;
-	void* pixels;
-};
 
 enum class TextureColorSpace
 {
 	Linear,
 	sRGB
+};
+
+struct RawTexture
+{
+	Gleam::TString name;
+	Gleam::TextureFormat format;
+	int width, height, channels;
+	void* pixels;
 };
 
 class TextureSource : public AssetPackage

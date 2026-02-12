@@ -10,7 +10,10 @@
 
 #include "Tools/MeshTools.h"
 
-#include "Gleam.h"
+#include "World/World.h"
+#include "Core/Globals.h"
+#include "Assets/AssetManager.h"
+#include "World/Components/MeshRenderer.h"
 
 #define CGLTF_IMPLEMENTATION
 #include <cgltf.h>
@@ -256,6 +259,7 @@ Gleam::TArray<Gleam::RefCounted<MaterialInstanceBaker>> MeshSource::ImportMateri
 			auto texturePath = directory / texture;
 			auto textureSettings = TextureSource::ImportSettings();
 			textureSettings.colorSpace = TextureColorSpace::sRGB;
+			textureSettings.generateMips = true;
 			if (ImportReference<TextureSource>(texturePath, textureSettings))
 			{
 				descriptor["BaseColorTexture"] = Registry()->GetAsset<Gleam::Texture2DDescriptor>(texture.Stem()).reference;
@@ -266,6 +270,7 @@ Gleam::TArray<Gleam::RefCounted<MaterialInstanceBaker>> MeshSource::ImportMateri
 		{
 			auto texturePath = directory / texture;
 			auto textureSettings = TextureSource::ImportSettings();
+			textureSettings.generateMips = true;
 			if (ImportReference<TextureSource>(texturePath, textureSettings))
 			{
 				descriptor["NormalTexture"] = Registry()->GetAsset<Gleam::Texture2DDescriptor>(texture.Stem()).reference;
@@ -276,6 +281,7 @@ Gleam::TArray<Gleam::RefCounted<MaterialInstanceBaker>> MeshSource::ImportMateri
 		{
 			auto texturePath = directory / texture;
 			auto textureSettings = TextureSource::ImportSettings();
+			textureSettings.generateMips = true;
 			if (ImportReference<TextureSource>(texturePath, textureSettings))
 			{
 				descriptor["MetallicRoughnessTexture"] = Registry()->GetAsset<Gleam::Texture2DDescriptor>(texture.Stem()).reference;
@@ -287,6 +293,7 @@ Gleam::TArray<Gleam::RefCounted<MaterialInstanceBaker>> MeshSource::ImportMateri
 			auto texturePath = directory / texture;
 			auto textureSettings = TextureSource::ImportSettings();
 			textureSettings.colorSpace = TextureColorSpace::sRGB;
+			textureSettings.generateMips = true;
 			if (ImportReference<TextureSource>(texturePath, textureSettings))
 			{
 				descriptor["EmissiveTexture"] = Registry()->GetAsset<Gleam::Texture2DDescriptor>(texture.Stem()).reference;

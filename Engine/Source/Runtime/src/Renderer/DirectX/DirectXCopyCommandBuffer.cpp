@@ -345,7 +345,7 @@ void CopyCommandBuffer::Commit(const Texture& texture, const void* data, size_t 
 		DSTORAGE_REQUEST request = {};
 		request.Options.SourceType = DSTORAGE_REQUEST_SOURCE_MEMORY;
 
-		request.Options.DestinationType = DSTORAGE_REQUEST_DESTINATION_MULTIPLE_SUBRESOURCES;
+		request.Options.DestinationType = DSTORAGE_REQUEST_DESTINATION_TEXTURE_REGION;
 		request.Options.CompressionFormat = DSTORAGE_COMPRESSION_FORMAT_NONE;
 
 		request.Source.Memory.Source = stagingBufferPtr;

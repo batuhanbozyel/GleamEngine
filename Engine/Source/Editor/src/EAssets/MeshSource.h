@@ -1,7 +1,6 @@
 #pragma once
 #include "AssetPackage.h"
 #include "Math/Color.h"
-#include "World/Components/Transform.h"
 
 namespace GEditor {
 
