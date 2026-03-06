@@ -176,5 +176,13 @@ struct SkyAtmosphereRenderConstants
 	float pad1;
 };
 
+struct PathTracerConstants
+{
+	UnorderedAccessIndex colorTarget;
+	float pad0;
+	float pad1;
+	float pad2;
+};
+
 } // namespace Gleam
 #endif // SHADER_TYPES_H

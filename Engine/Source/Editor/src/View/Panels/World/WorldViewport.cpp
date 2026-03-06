@@ -17,8 +17,10 @@ using namespace GEditor;
 void WorldViewport::Init(Gleam::World* world)
 {
 	mEditWorld = world;
-    Gleam::Globals::Engine->GetSubsystem<Gleam::RenderSystem>()->AddRenderer<InfiniteGridRenderer>();
     mViewportSize = Gleam::Globals::Engine->GetResolution();
+	
+	auto renderSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::RenderSystem>();
+	renderSystem->GetRenderPipeline(Gleam::RenderPath::Default)->AddRenderer<InfiniteGridRenderer>();
 
 	mEditWorld->GetEntityManager().ForEach<Gleam::Entity, Gleam::Camera>([&](const Gleam::Entity& entity, const Gleam::Camera& camera)
 	{

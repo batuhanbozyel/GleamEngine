@@ -48,7 +48,6 @@ void WorldRenderer::OnDestroy(RenderContext& context)
 void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard)
 {
 	const auto& sceneData = blackboard.Get<SceneRenderingData>();
-	const auto& reflectionProbeData = blackboard.Get<ReflectionProbePassData>();
 	const auto& sceneTargetDescriptor = graph.GetDescriptor(sceneData.sceneTarget);
 	auto brdfLut = graph.ImportTexture(mBRDFLutTexture);
 
@@ -88,13 +87,18 @@ void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
         
         passData.colorTarget = builder.UseColorBuffer(passData.colorTarget);
         passData.depthTarget = builder.UseDepthBuffer(passData.depthTarget, DepthAccess::Write);
-
-		passData.transmittanceLut = builder.ReadTexture(sceneData.atmosphere.transmittanceLut);
-		passData.multiScatterLut = builder.ReadTexture(sceneData.atmosphere.multiScatterLut);
 		passData.brdfLut = builder.ReadTexture(brdfLut);
-
+		
+		if (sceneData.atmosphere.transmittanceLut.IsValid() && sceneData.atmosphere.multiScatterLut.IsValid())
+		{
+			passData.transmittanceLut = builder.ReadTexture(sceneData.atmosphere.transmittanceLut);
+			passData.multiScatterLut = builder.ReadTexture(sceneData.atmosphere.multiScatterLut);
+		}
+		
+		const auto& reflectionProbeData = blackboard.Get<ReflectionProbePassData>();
 		passData.specularReflection = builder.ReadTexture(reflectionProbeData.specularReflection);
 		passData.diffuseReflection = builder.ReadTexture(reflectionProbeData.diffuseReflection);
+		
         blackboard.Add(passData);
     },
     [this, blackboard](const CommandBuffer* cmd, const WorldRenderingData& passData)

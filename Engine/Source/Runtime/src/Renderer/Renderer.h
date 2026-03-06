@@ -21,6 +21,7 @@ namespace Gleam {
 class World;
 class RenderSystem;
 class RenderSurface;
+class RenderPipeline;
 class GraphicsDevice;
 class RenderSceneProxy;
 class ResourceReleaseQueue;
@@ -63,6 +64,7 @@ class IRenderer
 public:
     
     friend class RenderSystem;
+	friend class RenderPipeline;
     friend class GraphicsDevice;
     
     virtual ~IRenderer() = default;

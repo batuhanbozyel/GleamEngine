@@ -10,8 +10,11 @@
 #include "RenderGraph/RenderGraph.h"
 #include "RenderGraph/RenderGraphBlackboard.h"
 
+#include "Renderers/PathTracer.h"
 #include "Renderers/SkyAtmosphere.h"
 #include "Renderers/WorldRenderer.h"
+#include "Renderers/PostProcessStack.h"
+#include "Renderers/ReflectionProbeRenderer.h"
 
 #include "Core/Engine.h"
 #include "Core/Globals.h"
@@ -26,10 +29,23 @@ void RenderSystem::Initialize(Engine* engine)
 {
 	mEngine = engine;
 	InitializeBackend();
-	mContext.device = mDevice.get();
-	mContext.surface = mSwapchain.get();
-	mContext.releaseQueue = mReleaseQueue.get();
-	mContext.allocator = mPersistentAllocator.get();
+	Configure(engine->GetConfiguration().renderer);
+
+	RenderContext context;
+	context.device = mDevice.get();
+	context.surface = mSwapchain.get();
+	context.releaseQueue = mReleaseQueue.get();
+	context.allocator = mPersistentAllocator.get();
+	
+	mRenderPipelines[(uint32_t)RenderPath::Default] = CreateScope<RenderPipeline>(context);
+	mRenderPipelines[(uint32_t)RenderPath::Default]->AddRenderer<ReflectionProbeRenderer>();
+	mRenderPipelines[(uint32_t)RenderPath::Default]->AddRenderer<WorldRenderer>();
+	mRenderPipelines[(uint32_t)RenderPath::Default]->AddRenderer<SkyAtmosphereRenderer>();
+	mRenderPipelines[(uint32_t)RenderPath::Default]->AddRenderer<PostProcessStack>();
+	
+	mRenderPipelines[(uint32_t)RenderPath::PathTracing] = CreateScope<RenderPipeline>(context);
+	mRenderPipelines[(uint32_t)RenderPath::PathTracing]->AddRenderer<PathTracer>();
+	mRenderPipelines[(uint32_t)RenderPath::PathTracing]->AddRenderer<PostProcessStack>();
 
 	EventDispatcher<WindowResizeEvent>::Subscribe([this](const WindowResizeEvent& e)
 	{
@@ -41,6 +57,7 @@ void RenderSystem::Initialize(Engine* engine)
 		}
 		EventDispatcher<RendererResizeEvent>::Publish(RendererResizeEvent(size));
 	});
+	mRenderPath = RenderPath::Default;
 }
 
 void RenderSystem::Shutdown(Engine* engine)
@@ -48,12 +65,10 @@ void RenderSystem::Shutdown(Engine* engine)
 	mCopyCommandBuffer.reset();
 	mCommandBuffers.clear();
 
-	for (auto renderer : mRenderers)
+	for (auto& pipeline : mRenderPipelines)
 	{
-		renderer->OnDestroy(mContext);
-		delete renderer;
+		pipeline.reset();
 	}
-	mRenderers.clear();
 
 	mTransientAllocator.reset();
 	mPersistentAllocator.reset();
@@ -117,7 +132,6 @@ void RenderSystem::Render(const World* world)
 			return; // skip rendering this frame
 		}
 
-		const auto worldRenderer = GetRenderer<WorldRenderer>();
 		const auto& cameraComponent = world->GetEntityManager().GetComponent<Camera>(mActiveCamera);
 		const auto& cameraEntity = world->GetEntityManager().GetComponent<Entity>(mActiveCamera);
 
@@ -152,7 +166,8 @@ void RenderSystem::Render(const World* world)
 		sceneData.atmosphere = SetupSkyAtmosphereRenderData(graph, atmosphereEntity);
 		sceneData.camera = SetupCameraRenderData(graph, cameraEntity);
 
-        for (auto renderer : mRenderers)
+		auto pipeline = GetActiveRenderPipeline();
+        for (auto renderer : *pipeline)
         {
             renderer->AddRenderPasses(graph, blackboard);
         }
@@ -189,6 +204,11 @@ void RenderSystem::Configure(const RendererConfig& config)
 	mSwapchainSize = mSwapchain->GetCurrentDrawable().GetDescriptor().size;
 }
 
+void RenderSystem::SetRenderPath(RenderPath path)
+{
+	mRenderPath = path;
+}
+
 CopyCommandBuffer* RenderSystem::GetCopyCommandBuffer()
 {
 	return mCopyCommandBuffer.get();
@@ -212,6 +232,26 @@ RenderSurface* RenderSystem::GetSurface()
 const RenderSurface* RenderSystem::GetSurface() const
 {
 	return mSwapchain.get();
+}
+
+RenderPipeline* RenderSystem::GetRenderPipeline(RenderPath renderPath)
+{
+	return mRenderPipelines[(uint32_t)renderPath].get();
+}
+
+const RenderPipeline* RenderSystem::GetRenderPipeline(RenderPath renderPath) const
+{
+	return mRenderPipelines[(uint32_t)renderPath].get();
+}
+
+RenderPipeline* RenderSystem::GetActiveRenderPipeline()
+{
+	return mRenderPipelines[(uint32_t)mRenderPath].get();
+}
+
+const RenderPipeline* RenderSystem::GetActiveRenderPipeline() const
+{
+	return mRenderPipelines[(uint32_t)mRenderPath].get();
 }
 
 GPUAllocator* RenderSystem::GetAllocator()
@@ -317,7 +357,8 @@ SkyAtmosphereRenderData RenderSystem::SetupSkyAtmosphereRenderData(RenderGraph& 
 		skyAtmosphere.uniforms.sunAngularDiameter = atmosphereComponent.sun.angularDiameter;
 		skyAtmosphere.uniforms.sunDirection = entity.UpVector();
 
-		auto skyAtmosphereRenderer = GetRenderer<SkyAtmosphereRenderer>();
+		auto pipeline = GetActiveRenderPipeline();
+		auto skyAtmosphereRenderer = pipeline->GetRenderer<SkyAtmosphereRenderer>();
 		if (skyAtmosphereRenderer)
 		{
 			skyAtmosphere.transmittanceLut = graph.ImportTexture(skyAtmosphereRenderer->GetTransmittanceLutTexture());

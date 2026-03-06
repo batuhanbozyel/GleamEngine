@@ -60,7 +60,7 @@ void RenderSceneProxy::Tick(World* world)
 				batch.instanceBuffer = device->CreateBuffer(renderSystem->GetAllocator(), bufferDesc); 
 				batch.material = assetManager->Get<Material>(material);
 
-				auto worldRenderer = renderSystem->GetRenderer<WorldRenderer>();
+				auto worldRenderer = renderSystem->GetActiveRenderPipeline()->GetRenderer<WorldRenderer>();
 				auto materialDescriptor = assetManager->LoadDescriptor<MaterialDescriptor>(material);
 				worldRenderer->RegisterShadingPipeline(materialDescriptor, batch.material->GetPipelineHash());
 			}

@@ -16,13 +16,16 @@ using namespace GEditor;
 void ViewStack::Initialize(Gleam::World* world)
 {
 	mWorld = world;
-	mImgui = Gleam::Globals::Engine->GetSubsystem<Gleam::RenderSystem>()->AddRenderer<Gleam::ImGuiRenderer>();
+	
+	auto renderSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::RenderSystem>();
+	mImgui = renderSystem->GetActiveRenderPipeline()->AddRenderer<Gleam::ImGuiRenderer>();
     SetDarkTheme();
 }
 
 void ViewStack::Shutdown(Gleam::World* world)
 {
-	Gleam::Globals::Engine->GetSubsystem<Gleam::RenderSystem>()->RemoveRenderer<Gleam::ImGuiRenderer>();
+	auto renderSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::RenderSystem>();
+	renderSystem->GetActiveRenderPipeline()->RemoveRenderer<Gleam::ImGuiRenderer>();
 	mViews.clear();
 }
 

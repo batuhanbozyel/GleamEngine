@@ -7,10 +7,6 @@
 #include "Input/InputSystem.h"
 #include "World/ScriptingSystem.h"
 #include "Renderer/RenderSystem.h"
-#include "Renderer/Renderers/WorldRenderer.h"
-#include "Renderer/Renderers/SkyAtmosphere.h"
-#include "Renderer/Renderers/PostProcessStack.h"
-#include "Renderer/Renderers/ReflectionProbeRenderer.h"
 #include "Serialization/JSONSerializer.h"
 #include "Serialization/BinarySerializer.h"
 
@@ -51,19 +47,9 @@ void Engine::Initialize(const CommandLine& cli)
 		mConfig = serializer.Deserialize<EngineConfig>(file->GetStream());
 	}
 	
-	// init windowing subsystem
+	// init core subsystems
 	auto windowSubsystem = AddSubsystem<WindowSystem>();
-	windowSubsystem->Configure(mConfig.window);
-	
-	// init renderer backend
 	auto renderSubsystem = AddSubsystem<RenderSystem>();
-	renderSubsystem->Configure(mConfig.renderer);
-
-	// add default renderers
-	renderSubsystem->AddRenderer<ReflectionProbeRenderer>();
-	renderSubsystem->AddRenderer<WorldRenderer>();
-	renderSubsystem->AddRenderer<SkyAtmosphereRenderer>();
-	renderSubsystem->AddRenderer<PostProcessStack>();
 }
 
 void Engine::Shutdown()

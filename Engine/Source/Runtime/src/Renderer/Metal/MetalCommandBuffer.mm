@@ -216,8 +216,10 @@ void CommandBuffer::SetPushConstant(const void* data, uint32_t size) const
 void CommandBuffer::Dispatch(uint32_t x, uint32_t y, uint32_t z) const
 {
     auto gpuAddress = [mConstantBuffer.GetHandle() gpuAddress];
-    gpuAddress += mConstantBuffer.Write(mHandle->topLevelArgumentBuffer);
-    [mHandle->device->GetArgumentTable() setAddress:gpuAddress atIndex:kIRArgumentBufferBindPoint];
+    size_t topLevelABOffset = mConstantBuffer.Write(mHandle->topLevelArgumentBuffer);
+    
+    id<MTL4ArgumentTable> argumentTable = mHandle->device->GetArgumentTable();
+    [argumentTable setAddress:(gpuAddress + topLevelABOffset) atIndex:kIRArgumentBufferBindPoint];
     
     id<MetalComputePipeline> pipeline = (id<MetalComputePipeline>)mHandle->pipeline;
     MTLSize threadGroupSize = MTLSizeMake(x, y, z);

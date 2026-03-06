@@ -18,6 +18,7 @@ void WindowSystem::Initialize(Engine* engine)
 {
 	mEngine = engine;
     GLEAM_AFFIRM(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_JOYSTICK | SDL_INIT_HAPTIC | SDL_INIT_GAMEPAD | SDL_INIT_EVENTS | SDL_INIT_SENSOR), "Window subsystem initialization failed!");
+	Configure(engine->GetConfiguration().window);
 }
 
 void WindowSystem::Shutdown(Engine* engine)

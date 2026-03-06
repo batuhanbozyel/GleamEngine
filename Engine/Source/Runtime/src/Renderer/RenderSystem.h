@@ -1,18 +1,11 @@
-//
-//  RenderSystem.h
-//  Runtime
-//
-//  Created by Batuhan Bozyel on 24.06.2023.
-//
-
 #pragma once
 #include "Core/Subsystem.h"
-#include "Renderer.h"
 #include "Swapchain.h"
 #include "CommandBuffer.h"
 #include "CopyCommandBuffer.h"
 #include "GraphicsDevice.h"
 #include "ResourceReleaseQueue.h"
+#include "RenderPipeline.h"
 #include "World/Entity.h"
 
 namespace Gleam {
@@ -23,13 +16,14 @@ class CopyCommandBuffer;
 struct CameraRenderData;
 struct SkyAtmosphereRenderData;
 
-template <typename T>
-concept RendererType = std::is_base_of<IRenderer, T>::value;
+GENUM(RenderPath, "83FD8433-7D91-42AF-A237-CCF726E306E5", Serializable)
+{
+	GITEM(Default, "E77464D0-418E-48E9-87AA-2C7355C7C599"),
+	GITEM(PathTracing, "AF1EDBC0-9EA0-4C5B-9BDB-8258B6CCE31E")
+};
 
 class RenderSystem final : public EngineSubsystem
 {
-    using Container = TArray<IRenderer*>;
-    
 public:
     
     virtual void Initialize(Engine* engine) override;
@@ -42,6 +36,8 @@ public:
     
     void Configure(const RendererConfig& config);
 
+	void SetRenderPath(RenderPath path);
+
 	CopyCommandBuffer* GetCopyCommandBuffer();
     
     GraphicsDevice* GetDevice();
@@ -51,74 +47,20 @@ public:
 	RenderSurface* GetSurface();
 
 	const RenderSurface* GetSurface() const;
+	
+	RenderPipeline* GetRenderPipeline(RenderPath renderPath);
+	
+	const RenderPipeline* GetRenderPipeline(RenderPath renderPath) const;
+
+	RenderPipeline* GetActiveRenderPipeline();
+
+	const RenderPipeline* GetActiveRenderPipeline() const;
 
 	GPUAllocator* GetAllocator();
 
 	const GPUAllocator* GetAllocator() const;
 
 	void RecompileShader(const TString& entryPoint);
-    
-    template<RendererType T, class...Args>
-    T* AddRenderer(Args&&... args)
-    {
-        GLEAM_ASSERT(!HasRenderer<T>(), "Render pipeline already has the renderer!");
-        auto renderer = mRenderers.emplace_back(new T(std::forward<Args>(args)...));
-        renderer->OnCreate(mContext);
-        return static_cast<T*>(renderer);
-    }
-    
-    template<RendererType T>
-    void RemoveRenderer()
-    {
-        GLEAM_ASSERT(HasRenderer<T>(), "Render pipeline does not have the renderer!");
-        auto it = std::find_if(mRenderers.begin(), mRenderers.end(), [](const IRenderer* renderer)
-        {
-            return typeid(*renderer) == typeid(T);
-        });
-        
-        if (it != mRenderers.end())
-        {
-            auto renderer = *it;
-            renderer->OnDestroy(mContext);
-            delete renderer;
-			mRenderers.erase(it);
-        }
-    }
-    
-    template<RendererType T>
-    T* GetRenderer() const
-    {
-        auto it = std::find_if(mRenderers.begin(), mRenderers.end(), [](const IRenderer* renderer)
-        {
-            return typeid(*renderer) == typeid(T);
-        });
-		
-		if (it != mRenderers.end())
-		{
-			return static_cast<T*>(*it);
-		}
-		return nullptr;
-    }
-    
-    template<RendererType T>
-    bool HasRenderer() const
-    {
-        auto it = std::find_if(mRenderers.begin(), mRenderers.end(), [](const IRenderer* renderer)
-        {
-            return typeid(*renderer) == typeid(T);
-        });
-        return it != mRenderers.end();
-    }
-    
-    template<RendererType T>
-    uint32_t GetIndexOf() const
-    {
-        auto it = std::find_if(mRenderers.begin(), mRenderers.end(), [](const IRenderer* renderer)
-        {
-            return typeid(*renderer) == typeid(T);
-        });
-        return std::distance(mRenderers.begin(), it);
-    }
     
 private:
 
@@ -136,10 +78,9 @@ private:
 	EntityHandle mActiveCamera = InvalidEntity;
 
 	Engine* mEngine;
-    
-	Container mRenderers;
-
-	RenderContext mContext;
+	
+	RenderPath mRenderPath;
+	TArray<Scope<RenderPipeline>, 2> mRenderPipelines;
 
     Scope<Swapchain> mSwapchain;
 

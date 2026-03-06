@@ -103,6 +103,20 @@ float3 ClipSpaceToWorldSpace(float3 position, float4x4 invViewMatrix, float4x4 i
     return worldPosition.xyz;
 }
 
+float3 ScreenSpaceToWorldSpace(float2 uv, float depth, float4x4 invViewProjectionMatrix)
+{
+    float2 ndc = uv * 2.0 - 1.0;
+    ndc.y = -ndc.y;
+    return ClipSpaceToWorldSpace(float3(ndc, depth), invViewProjectionMatrix);
+}
+
+float3 ScreenSpaceToWorldSpace(float2 uv, float depth, float4x4 invViewMatrix, float4x4 invProjectionMatrix)
+{
+    float2 ndc = uv * 2.0 - 1.0;
+    ndc.y = -ndc.y;
+    return ClipSpaceToWorldSpace(float3(ndc, depth), invViewMatrix, invProjectionMatrix);
+}
+
 float3 SphericalToCartesian(float theta, float phi)
 {
 	// theta: azimuthal angle (rotation around y-axis, from x toward z)

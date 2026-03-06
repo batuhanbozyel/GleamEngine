@@ -93,6 +93,10 @@ public:
 
 	NO_DISCARD operator ShaderResourceIndex() const
 	{
+		if (node == nullptr)
+		{
+			return InvalidResourceIndex;
+		}
 		return GetBuffer().GetResourceView();
 	}
     
@@ -154,6 +158,10 @@ public:
 	
 	NO_DISCARD operator ShaderResourceIndex() const
 	{
+		if (node == nullptr)
+		{
+			return InvalidResourceIndex;
+		}
 		return GetTexture().GetResourceView();
 	}
     
