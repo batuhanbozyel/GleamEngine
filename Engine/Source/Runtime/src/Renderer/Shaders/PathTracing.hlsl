@@ -109,13 +109,30 @@ float softShadow(float3 ro, float3 rd, float mint, float maxt, float k)
     return res;
 }
 
-static const float3 SKY_COLOR    = float3(0.3, 0.55, 0.85);
-static const float3 HORIZON_COLOR= float3(0.7, 0.75, 0.8);
-
-float3 skyGradient(float3 rd)
+float3 skyAtmosphere(float3 rd, float3 worldPos)
 {
-    float t = saturate(rd.y * 0.5 + 0.5);
-    return lerp(HORIZON_COLOR, SKY_COLOR, t);
+	float3 skyWorldPos = GetSkyWorldPosition(worldPos);
+	float3 skyDir = rd;
+
+	if (!MoveToTopAtmosphere(skyDir, atmosphereParams.topRadius, skyWorldPos))
+	{
+		return 0.0;
+	}
+
+	float3 luminance = GetSunLuminance(skyWorldPos, skyDir);
+
+	float viewHeight = length(skyWorldPos);
+	float3 upVector = skyWorldPos / viewHeight;
+
+	float horizonCos = ComputeHorizonCos(viewHeight);
+	float viewCos = dot(skyDir, upVector);
+	if (viewCos < horizonCos)
+	{
+		skyDir = ClampToHorizon(skyDir, upVector, horizonCos);
+	}
+	luminance += GetSkyLuminance(skyWorldPos, skyDir);
+
+	return luminance;
 }
 
 Gleam::SurfaceOutput buildSurface(Payload payload, float3 worldPos)
@@ -174,11 +191,15 @@ void pathTraceShader(uint3 dispatchThreadID : SV_DispatchThreadID)
     
     Payload hit = rayMarch(rayOrigin, rayDir);
 
-    float3 color;
+    float3 color = 0.0;
     if (hit.t > 0.0)
-        color = shade(rayOrigin, rayDir, hit, light);
-    else
-        color = skyGradient(rayDir);
+	{
+		color = shade(rayOrigin, rayDir, hit, light);
+	} 
+	else if (atmosphereUniforms.transmittanceLutTexture != InvalidResourceIndex && atmosphereUniforms.multiScatterLutTexture != InvalidResourceIndex)
+	{
+		color = skyAtmosphere(rayDir, rayOrigin);
+	}
     
     RWTexture2D<float4> colorTarget = ResourceDescriptorHeap[constants.colorTarget];
     colorTarget[dispatchThreadID.xy] = float4(color, 1);

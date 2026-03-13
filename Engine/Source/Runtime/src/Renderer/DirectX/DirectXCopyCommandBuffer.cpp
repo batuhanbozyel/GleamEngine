@@ -269,38 +269,86 @@ void CopyCommandBuffer::Commit(const Buffer& buffer, const void* data, size_t si
 void CopyCommandBuffer::Commit(const Texture& texture, const void* data, size_t size, uint32_t mip, uint32_t slice) const
 {
 	auto dstTexture = static_cast<ID3D12Resource*>(texture.GetHandle());
-	auto size32 = static_cast<uint32_t>(size);
+	auto device = static_cast<ID3D12Device10*>(mDevice->GetHandle());
 	const auto& texDesc = texture.GetDescriptor();
+
+	const uint32_t subresourceIndex = texture.GetSubresourceIndex(mip, slice);
+	const auto dstDesc = dstTexture->GetDesc();
+	D3D12_PLACED_SUBRESOURCE_FOOTPRINT footprint = {};
+	UINT numRows = 0;
+	UINT64 rowSizeInBytes = 0;
+	UINT64 totalBytes = 0;
+	device->GetCopyableFootprints(&dstDesc, subresourceIndex, 1, 0, &footprint, &numRows, &rowSizeInBytes, &totalBytes);
 	
 	D3D12_BOX region = {};
 	region.right = Math::Max(static_cast<uint32_t>(texDesc.size.width) >> mip, 1u);
 	region.bottom = Math::Max(static_cast<uint32_t>(texDesc.size.height) >> mip, 1u);
 	region.back = (texDesc.dimension == TextureDimension::Texture3D) ? Math::Max(texDesc.depth >> mip, 1u) : 1;
 
-	if (auto srcData = mHandle->CopyUploadData(data, size); srcData)
+	const UINT srcRowPitch = static_cast<UINT>(rowSizeInBytes);
+	const UINT dstRowPitch = footprint.Footprint.RowPitch;
+
+	const void* srcData = nullptr;
+	if (srcRowPitch == dstRowPitch)
 	{
-		DSTORAGE_REQUEST request = {};
-		request.Options.SourceType = DSTORAGE_REQUEST_SOURCE_MEMORY;
+		if (auto stagingData = mHandle->CopyUploadData(data, size); stagingData)
+		{
+			srcData = stagingData;
+		}
+		else
+		{
+			D3D12_RESOURCE_DESC1 resourceDesc = {
+				.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER,
+				.Alignment = 0,
+				.Width = size,
+				.Height = 1,
+				.DepthOrArraySize = 1,
+				.MipLevels = 1,
+				.Format = DXGI_FORMAT_UNKNOWN,
+				.SampleDesc = {.Count = 1, .Quality = 0 },
+				.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR,
+				.Flags = D3D12_RESOURCE_FLAG_NONE
+			};
 
-		request.Options.DestinationType = DSTORAGE_REQUEST_DESTINATION_TEXTURE_REGION;
-		request.Options.CompressionFormat = DSTORAGE_COMPRESSION_FORMAT_NONE;
+			D3D12_HEAP_PROPERTIES heapProperties = {
+				.Type = D3D12_HEAP_TYPE_UPLOAD,
+				.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN,
+				.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN,
+				.CreationNodeMask = 0,
+				.VisibleNodeMask = 0
+			};
 
-		request.Source.Memory.Source = srcData;
-		request.Source.Memory.Size = size32;
-		
-		request.Destination.Texture.Resource = dstTexture;
-		request.Destination.Texture.SubresourceIndex = texture.GetSubresourceIndex(mip, slice);
-		request.Destination.Texture.Region = region;
+			ID3D12Resource* stagingBuffer = nullptr;
+			DX_CHECK(device->CreateCommittedResource3(
+				&heapProperties,
+				D3D12_HEAP_FLAG_NONE,
+				&resourceDesc,
+				D3D12_BARRIER_LAYOUT_UNDEFINED,
+				nullptr,
+				nullptr,
+				0,
+				nullptr,
+				IID_PPV_ARGS(&stagingBuffer)));
 
-		request.UncompressedSize = 0;
-		mHandle->memoryQueue->EnqueueRequest(&request);
+			TStringStream ss;
+			ss << texDesc.name << "::UploadBuffer";
+			TWString resourceName = ss.str();
+			stagingBuffer->SetName(resourceName.c_str());
+			mHandle->tempBuffers.push_back(stagingBuffer);
+
+			void* stagingBufferPtr = nullptr;
+			DX_CHECK(stagingBuffer->Map(0, nullptr, &stagingBufferPtr));
+			memcpy(stagingBufferPtr, data, size);
+			stagingBuffer->Unmap(0, nullptr);
+			srcData = stagingBufferPtr;
+		}
 	}
 	else
 	{
 		D3D12_RESOURCE_DESC1 resourceDesc = {
 			.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER,
 			.Alignment = 0,
-			.Width = size,
+			.Width = totalBytes,
 			.Height = 1,
 			.DepthOrArraySize = 1,
 			.MipLevels = 1,
@@ -319,45 +367,52 @@ void CopyCommandBuffer::Commit(const Texture& texture, const void* data, size_t 
 		};
 
 		ID3D12Resource* stagingBuffer = nullptr;
-		DX_CHECK(static_cast<ID3D12Device10*>(mDevice->GetHandle())->CreateCommittedResource3(
+		DX_CHECK(device->CreateCommittedResource3(
 			&heapProperties,
 			D3D12_HEAP_FLAG_NONE,
 			&resourceDesc,
 			D3D12_BARRIER_LAYOUT_UNDEFINED,
-			nullptr,
-			nullptr,
-			0,
-			nullptr,
+			nullptr, nullptr, 0, nullptr,
 			IID_PPV_ARGS(&stagingBuffer)));
 
 		TStringStream ss;
-		ss << texture.GetDescriptor().name << "::UploadBuffer";
+		ss << texDesc.name << "::UploadBuffer";
 		TWString resourceName = ss.str();
 		stagingBuffer->SetName(resourceName.c_str());
-
 		mHandle->tempBuffers.push_back(stagingBuffer);
 
 		void* stagingBufferPtr = nullptr;
 		DX_CHECK(stagingBuffer->Map(0, nullptr, &stagingBufferPtr));
-		memcpy(stagingBufferPtr, data, size);
+		for (UINT depth = 0; depth < region.back; ++depth)
+		{
+			for (UINT row = 0; row < numRows; ++row)
+			{
+				UINT srcOffset = (depth * numRows + row) * srcRowPitch;
+				UINT dstOffset = (depth * numRows + row) * dstRowPitch;
+				memcpy(
+					static_cast<uint8_t*>(stagingBufferPtr) + dstOffset,
+					static_cast<const uint8_t*>(data) + srcOffset,
+					srcRowPitch);
+			}
+		}
 		stagingBuffer->Unmap(0, nullptr);
-
-		DSTORAGE_REQUEST request = {};
-		request.Options.SourceType = DSTORAGE_REQUEST_SOURCE_MEMORY;
-
-		request.Options.DestinationType = DSTORAGE_REQUEST_DESTINATION_TEXTURE_REGION;
-		request.Options.CompressionFormat = DSTORAGE_COMPRESSION_FORMAT_NONE;
-
-		request.Source.Memory.Source = stagingBufferPtr;
-		request.Source.Memory.Size = size32;
-
-		request.Destination.Texture.Resource = dstTexture;
-		request.Destination.Texture.SubresourceIndex = texture.GetSubresourceIndex(mip, slice);
-		request.Destination.Texture.Region = region;
-
-		request.UncompressedSize = 0;
-		mHandle->memoryQueue->EnqueueRequest(&request);
+		srcData = stagingBufferPtr;
 	}
+
+	DSTORAGE_REQUEST request = {};
+	request.Options.SourceType = DSTORAGE_REQUEST_SOURCE_MEMORY;
+	request.Options.DestinationType = DSTORAGE_REQUEST_DESTINATION_TEXTURE_REGION;
+	request.Options.CompressionFormat = DSTORAGE_COMPRESSION_FORMAT_NONE;
+
+	request.Source.Memory.Source = srcData;
+	request.Source.Memory.Size = static_cast<uint32_t>(totalBytes);
+
+	request.Destination.Texture.Resource = dstTexture;
+	request.Destination.Texture.SubresourceIndex = texture.GetSubresourceIndex(mip, slice);
+	request.Destination.Texture.Region = region;
+
+	request.UncompressedSize = 0;
+	mHandle->memoryQueue->EnqueueRequest(&request);
 	mHandle->textureCopies.push_back(texture);
 }
 
