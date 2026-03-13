@@ -14,6 +14,7 @@
 #include "Renderer/Mesh.h"
 #include "Renderer/CommandBuffer.h"
 #include "Renderer/GraphicsDevice.h"
+#include "Renderer/Material/Material.h"
 #include "Renderer/Renderers/ReflectionProbeRenderer.h"
 
 #include "World/Systems/RenderSceneProxy.h"

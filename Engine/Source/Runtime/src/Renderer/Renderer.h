@@ -8,6 +8,7 @@
 #pragma once
 #include "Buffer.h"
 #include "Shader.h"
+#include "Texture.h"
 #include "Pipeline.h"
 #include "RendererConfig.h"
 #include "RenderPassDescriptor.h"

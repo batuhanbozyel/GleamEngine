@@ -7,9 +7,6 @@
 
 #pragma once
 #include "Renderer/Renderer.h"
-#include "Renderer/Mesh.h"
-#include "Renderer/Material/Material.h"
-#include "Renderer/Material/MaterialInstance.h"
 
 namespace Gleam {
 
