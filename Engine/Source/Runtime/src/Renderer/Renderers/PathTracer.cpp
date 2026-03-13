@@ -9,19 +9,9 @@ using namespace Gleam;
 
 void PathTracer::OnCreate(RenderContext& context)
 {
-	{
-		ComputePipelineStateDescriptor pipelineState;
-		pipelineState.entryPoint = "pathTraceShader";
-		mPathTracingPipeline = context.device->CreateComputePipeline(pipelineState);
-	}
-	
-	{
-		GraphicsPipelineStateDescriptor pipelineState;
-		pipelineState.colorFormats = { context.surface->GetFormat() };
-		pipelineState.vertexEntry = "fullscreenTriangleVertexShader";
-		pipelineState.fragmentEntry = "tonemappingFragmentShader";
-		mTonemappingPipeline = context.device->CreateGraphicsPipeline(pipelineState);
-	}
+	ComputePipelineStateDescriptor pipelineState;
+	pipelineState.entryPoint = "pathTraceShader";
+	mPathTracingPipeline = context.device->CreateComputePipeline(pipelineState);
 }
 
 void PathTracer::OnDestroy(RenderContext& context)
@@ -57,4 +47,9 @@ void PathTracer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blac
 		cmd->SetConstantBuffer(sceneData.atmosphere.uniforms, SKY_ATMOSPHERE_COMMON_UNIFORMS_BINDING_SLOT);
 		cmd->Dispatch(Math::DivideRoundingUp((uint32_t)sceneData.camera.uniforms.resolution.x, 16u), Math::DivideRoundingUp((uint32_t)sceneData.camera.uniforms.resolution.y, 16u), 1u);
 	});
+}
+
+void PathTracer::RegisterShadingPipeline(const MaterialDescriptor& material, uint32_t hash)
+{
+	// TODO: 
 }

@@ -26,6 +26,12 @@ Gleam::TArray<Gleam::TextureSubresource> TextureTools::GenerateMipmaps(const Raw
 			dataType = STBIR_TYPE_UINT8;
 			break;
 		}
+		case Gleam::TextureFormat::R16_UNorm:
+		{
+			pixelLayout = STBIR_1CHANNEL;
+			dataType = STBIR_TYPE_UINT16;
+			break;
+		}
 		case Gleam::TextureFormat::R8G8_UNorm:
 		{
 			pixelLayout = STBIR_2CHANNEL;
@@ -34,13 +40,13 @@ Gleam::TArray<Gleam::TextureSubresource> TextureTools::GenerateMipmaps(const Raw
 		}
 		case Gleam::TextureFormat::R8G8B8A8_UNorm:
 		{
-			pixelLayout = STBIR_RGBA;
+			pixelLayout = STBIR_4CHANNEL;
 			dataType = STBIR_TYPE_UINT8;
 			break;
 		}
 		case Gleam::TextureFormat::R8G8B8A8_SRGB:
 		{
-			pixelLayout = STBIR_RGBA;
+			pixelLayout = STBIR_4CHANNEL;
 			dataType = STBIR_TYPE_UINT8_SRGB;
 			break;
 		}
@@ -58,7 +64,7 @@ Gleam::TArray<Gleam::TextureSubresource> TextureTools::GenerateMipmaps(const Raw
 		}
 		case Gleam::TextureFormat::R32G32B32A32_SFloat:
 		{
-			pixelLayout = STBIR_RGBA;
+			pixelLayout = STBIR_4CHANNEL;
 			dataType = STBIR_TYPE_FLOAT;
 			break;
 		}
@@ -91,7 +97,7 @@ Gleam::TArray<Gleam::TextureSubresource> TextureTools::GenerateMipmaps(const Raw
 					 pixelLayout,
 					 dataType,
 					 STBIR_EDGE_CLAMP,
-					 STBIR_FILTER_DEFAULT);
+					 STBIR_FILTER_BOX);
 	}
 	return subresources;
 }

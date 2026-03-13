@@ -3,6 +3,8 @@
 
 namespace Gleam {
 
+struct MaterialDescriptor;
+
 class PathTracer : public IRenderer
 {
 public:
@@ -13,11 +15,11 @@ public:
     
     virtual void AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard) override;
 
+	void RegisterShadingPipeline(const MaterialDescriptor& material, uint32_t hash);
+
 private:
 
 	ComputePipelineHandle mPathTracingPipeline;
-	
-	GraphicsPipelineHandle mTonemappingPipeline;
 
 };
 

@@ -12,8 +12,11 @@
 #include "Renderer/Mesh.h"
 #include "Renderer/RenderSystem.h"
 #include "Renderer/CopyCommandBuffer.h"
+
 #include "Renderer/Material/Material.h"
 #include "Renderer/Material/MaterialInstance.h"
+
+#include "Renderer/Renderers/PathTracer.h"
 #include "Renderer/Renderers/WorldRenderer.h"
 
 using namespace Gleam;
@@ -44,25 +47,23 @@ void RenderSceneProxy::Tick(World* world)
 			auto& batch = mMeshBatches[material];
 			if (batch.instanceBuffer.IsValid() == false)
 			{
-				auto device = renderSystem->GetDevice();
-
-				HeapDescriptor heapDesc;
-				heapDesc.name = "MeshInstanceData";
-				heapDesc.memoryType = MemoryType::GPU;
-				heapDesc.size = sizeof(MeshInstanceData) * MeshBatch::MaxMeshInstances;
-
 				BufferDescriptor bufferDesc;
 				bufferDesc.name = "MeshInstanceBuffer";
 				bufferDesc.size = sizeof(MeshInstanceData) * MeshBatch::MaxMeshInstances;
 
 				// TODO: Rework this:
 				// we should be using transient allocator here instead of persistent
+				auto device = renderSystem->GetDevice();
 				batch.instanceBuffer = device->CreateBuffer(renderSystem->GetAllocator(), bufferDesc); 
 				batch.material = assetManager->Get<Material>(material);
 
-				auto worldRenderer = renderSystem->GetActiveRenderPipeline()->GetRenderer<WorldRenderer>();
 				auto materialDescriptor = assetManager->LoadDescriptor<MaterialDescriptor>(material);
+
+				auto worldRenderer = renderSystem->GetRenderPipeline(RenderPath::Default)->GetRenderer<WorldRenderer>();
 				worldRenderer->RegisterShadingPipeline(materialDescriptor, batch.material->GetPipelineHash());
+
+				auto pathTracer = renderSystem->GetRenderPipeline(RenderPath::PathTracing)->GetRenderer<PathTracer>();
+				pathTracer->RegisterShadingPipeline(materialDescriptor, batch.material->GetPipelineHash());
 			}
 
 			batch.meshes[batch.numInstances] = mesh;
