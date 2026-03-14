@@ -15,6 +15,8 @@ public:
 
 	virtual void AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard) override;
 
+	void UpdateSkyAtmosphere(RenderGraph& graph, RenderGraphBlackboard& blackboard);
+
 	const Texture& GetTransmittanceLutTexture() const
 	{
 		return mTransmittanceLutTexture;
@@ -28,9 +30,6 @@ public:
 	SkyAtmosphereParameters GetSkyAtmosphereParameters(const Atmosphere& atmosphere) const;
 
 private:
-
-	bool mBakeLuts = true;
-	SkyAtmosphereParameters mAtmosphereParams = {};
 
 	Texture mTransmittanceLutTexture;
 	Texture mMultiScatterLutTexture;

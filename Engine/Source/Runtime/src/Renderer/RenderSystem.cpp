@@ -166,6 +166,16 @@ void RenderSystem::Render(const World* world)
 		sceneData.atmosphere = SetupSkyAtmosphereRenderData(graph, atmosphereEntity);
 		sceneData.camera = SetupCameraRenderData(graph, cameraEntity);
 
+		auto defaultPipeline = GetRenderPipeline(RenderPath::Default);
+		if (auto skyAtmosphereRenderer = defaultPipeline->GetRenderer<SkyAtmosphereRenderer>(); skyAtmosphereRenderer)
+		{
+			if (memcmp(&mAtmosphereParams, &sceneData.atmosphere.params, sizeof(SkyAtmosphereParameters)) != 0)
+			{
+				mAtmosphereParams = sceneData.atmosphere.params;
+				skyAtmosphereRenderer->UpdateSkyAtmosphere(graph, blackboard);
+			}
+		}
+
 		auto pipeline = GetActiveRenderPipeline();
         for (auto renderer : *pipeline)
         {
@@ -357,7 +367,7 @@ SkyAtmosphereRenderData RenderSystem::SetupSkyAtmosphereRenderData(RenderGraph& 
 		skyAtmosphere.uniforms.sunAngularDiameter = atmosphereComponent.sun.angularDiameter;
 		skyAtmosphere.uniforms.sunDirection = entity.UpVector();
 
-		auto pipeline = GetActiveRenderPipeline();
+		auto pipeline = GetRenderPipeline(RenderPath::Default);
 		auto skyAtmosphereRenderer = pipeline->GetRenderer<SkyAtmosphereRenderer>();
 		if (skyAtmosphereRenderer)
 		{

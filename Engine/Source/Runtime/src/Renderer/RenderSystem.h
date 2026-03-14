@@ -74,6 +74,7 @@ private:
 
 	Size mSwapchainSize = {};
 
+	SkyAtmosphereParameters mAtmosphereParams = {};
 	EntityHandle mSkyAtmosphereEntity = InvalidEntity;
 	EntityHandle mActiveCamera = InvalidEntity;
 
