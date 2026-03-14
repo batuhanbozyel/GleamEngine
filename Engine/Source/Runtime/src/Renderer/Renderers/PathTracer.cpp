@@ -9,6 +9,9 @@ using namespace Gleam;
 
 void PathTracer::OnCreate(RenderContext& context)
 {
+	mDevice = context.device;
+	mAllocator = context.allocator;
+
 	ComputePipelineStateDescriptor pipelineState;
 	pipelineState.entryPoint = "pathTraceShader";
 	mPathTracingPipeline = context.device->CreateComputePipeline(pipelineState);
@@ -16,29 +19,49 @@ void PathTracer::OnCreate(RenderContext& context)
 
 void PathTracer::OnDestroy(RenderContext& context)
 {
+	if (mRenderTarget.IsValid())
+	{
+		mDevice->Dispose(mAllocator, mRenderTarget);
+	}
 }
 
 void PathTracer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard)
 {
 	const auto& sceneData = blackboard.Get<SceneRenderingData>();
 	const auto& sceneTargetDescriptor = graph.GetDescriptor(sceneData.sceneTarget);
-	
-	auto& pathTracerData = graph.AddComputePass<WorldRenderingData>("PathTracing::Render", [&](RenderGraphBuilder& builder, WorldRenderingData& passData)
+
+	if (mRenderTarget.GetDescriptor().size != sceneTargetDescriptor.size)
 	{
+		mFrameIndex = 0;
+		if (mRenderTarget.IsValid())
+		{
+			mDevice->Dispose(mAllocator, mRenderTarget);
+		}
+
 		RenderTextureDescriptor textureDesc;
 		textureDesc.size = sceneTargetDescriptor.size;
-		
 		textureDesc.name = "SceneColorRT";
 		textureDesc.format = TextureFormat::R16G16B16A16_SFloat;
-		passData.colorTarget = builder.CreateTexture(textureDesc);
-		passData.colorTarget = builder.WriteTexture(passData.colorTarget);
-		
+		mRenderTarget = mDevice->CreateTexture(mAllocator, textureDesc);
+	}
+
+	if (memcmp(&mCamera, &sceneData.camera.uniforms, sizeof(CameraUniforms)) != 0)
+	{
+		mCamera = sceneData.camera.uniforms;
+		mFrameIndex = 0;
+	}
+
+	auto rtHandle = graph.ImportTexture(mRenderTarget);
+	auto& pathTracerData = graph.AddComputePass<WorldRenderingData>("PathTracing::Render", [&](RenderGraphBuilder& builder, WorldRenderingData& passData)
+	{
+		passData.colorTarget = builder.WriteTexture(rtHandle);
 		blackboard.Add(passData);
 	},
 	[this, sceneData](const CommandBuffer* cmd, const WorldRenderingData& passData)
 	{
 		PathTracerConstants constants = {};
 		constants.colorTarget = passData.colorTarget;
+		constants.frameIndex = mFrameIndex++;
 		
 		cmd->BindComputePipeline(mPathTracingPipeline);
 		cmd->SetPushConstant(constants);

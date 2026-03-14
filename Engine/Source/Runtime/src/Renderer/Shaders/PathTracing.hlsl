@@ -30,6 +30,29 @@ static const Sphere spheres[NUM_SPHERES] =
     { float3( 0.0, -101.0,-5.0), 100.0,  float3(0.8, 0.8, 0.8),     0.8,       0.0 },  // ground
 };
 
+uint pcgHash(uint v)
+{
+	uint state = v * 747796405u + 2891336453u;
+	uint word = ((state >> ((state >> 28u) + 4u)) ^ state) * 277803737u;
+	return (word >> 22u) ^ word;
+}
+
+float randFloat(inout uint seed)
+{
+	seed = pcgHash(seed);
+	return float(seed) / float(0xFFFFFFFFu);
+}
+
+float2 randFloat2(inout uint seed)
+{
+	return float2(randFloat(seed), randFloat(seed));
+}
+
+uint initSeed(uint2 pixel, uint frameIndex)
+{
+	return pcgHash(pixel.x ^ pcgHash(pixel.y ^ pcgHash(frameIndex)));
+}
+
 float sdSphere(float3 p, float3 center, float radius)
 {
     return length(p - center) - radius;
@@ -92,49 +115,6 @@ float3 calcNormal(float3 p)
     ));
 }
 
-float softShadow(float3 ro, float3 rd, float mint, float maxt, float k)
-{
-    float res = 1.0;
-    float t   = mint;
-    for (int i = 0; i < 64 && t < maxt; i++)
-    {
-        float h = sceneSD(ro + rd * t).t;
-        if (h < SURF_DIST)
-        {
-            return 0.0;
-        }
-        res  = min(res, k * h / t);
-        t   += h;
-    }
-    return res;
-}
-
-float3 skyAtmosphere(float3 rd, float3 worldPos)
-{
-	float3 skyWorldPos = GetSkyWorldPosition(worldPos);
-	float3 skyDir = rd;
-
-	if (!MoveToTopAtmosphere(skyDir, atmosphereParams.topRadius, skyWorldPos))
-	{
-		return 0.0;
-	}
-
-	float3 luminance = GetSunLuminance(skyWorldPos, skyDir);
-
-	float viewHeight = length(skyWorldPos);
-	float3 upVector = skyWorldPos / viewHeight;
-
-	float horizonCos = ComputeHorizonCos(viewHeight);
-	float viewCos = dot(skyDir, upVector);
-	if (viewCos < horizonCos)
-	{
-		skyDir = ClampToHorizon(skyDir, upVector, horizonCos);
-	}
-	luminance += GetSkyLuminance(skyWorldPos, skyDir);
-
-	return luminance;
-}
-
 Gleam::SurfaceOutput buildSurface(Payload payload, float3 worldPos)
 {
     Gleam::SurfaceOutput surface;
@@ -146,21 +126,121 @@ Gleam::SurfaceOutput buildSurface(Payload payload, float3 worldPos)
     return surface;
 }
 
-float3 shade(float3 ro, float3 rd, Payload payload, DirectLight light)
+float specularLobeProbability(float3 albedo, float metallic, float perceptualRoughness, float NdotV)
 {
-    float3 worldPos = ro + rd * payload.t;
-    float3 worldNormal = calcNormal(worldPos);
-    float3 viewDir = -rd;
+	float3 f0 = albedo * metallic + F0Dielectric(0.5) * (1.0 - metallic);
+    // Use NdotV as a stand-in for VdotH at the sampling stage (H unknown yet)
+	float f90 = lerp(F90Dielectric(NdotV, perceptualRoughness), F90_Metal, metallic);
+	float3 F = F_Schlick(f0, f90, NdotV);
 
-    Gleam::SurfaceOutput surface = buildSurface(payload, worldPos);
+	float specLuma = dot(F, float3(0.2126, 0.7152, 0.0722));
+	float diffLuma = dot(albedo * (1.0 - metallic), float3(0.2126, 0.7152, 0.0722));
+	return specLuma / max(specLuma + diffLuma, 1e-4);
+}
 
-    float shadow = softShadow(worldPos + worldNormal * 0.002, light.direction, 0.01, 20.0, 16.0);
-    DirectLight shadowedLight = light;
-    shadowedLight.illuminance *= shadow;
+static const int MAX_BOUNCES = 4;
 
-    float3 color = 0.0;
-    color += EvaluateDirectLight(surface, shadowedLight, viewDir, worldNormal);
-    return color;
+float3 tracePath(float3 rayOrigin, float3 rayDir, DirectLight light, inout uint seed)
+{
+	float3 radiance = 0.0;
+	float3 throughput = 1.0;
+
+	for (int bounce = 0; bounce <= MAX_BOUNCES; bounce++)
+	{
+		Payload hit = rayMarch(rayOrigin, rayDir);
+		
+		if (hit.t <= 0.0)
+		{
+			if (atmosphereUniforms.transmittanceLutTexture != InvalidResourceIndex &&
+                atmosphereUniforms.multiScatterLutTexture != InvalidResourceIndex)
+			{
+				radiance += throughput * GetSunAndSkyIlluminance(rayOrigin, rayDir);
+			}
+			break;
+		}
+
+		float3 worldPos = rayOrigin + rayDir * hit.t;
+		float3 worldNormal = calcNormal(worldPos);
+		float3 viewDir = -rayDir;
+
+		Gleam::SurfaceOutput surface = buildSurface(hit, worldPos);
+		radiance += throughput * EvaluateDirectLight(surface, light, viewDir, worldNormal);
+
+		if (bounce == MAX_BOUNCES)
+		{
+			break;
+		}
+        
+		float3 albedo = surface.albedo.rgb;
+		float perceptualRough = surface.roughness;
+		float metallic = surface.metallic;
+		float NdotV = abs(dot(worldNormal, viewDir)) + FLT_EPSILON;
+
+		float pSpec = specularLobeProbability(albedo, metallic, perceptualRough, NdotV);
+		float2 xi = randFloat2(seed);
+		float3 nextDir;
+		float3 brdfWeight;
+
+		if (randFloat(seed) < pSpec)
+		{
+			float unusedPdf;
+			float3 H = ImportanceSampleGGX(xi, worldNormal, perceptualRough, unusedPdf);
+			nextDir = reflect(-viewDir, H);
+
+			if (dot(nextDir, worldNormal) <= 0.0)
+			{
+				break;
+			}
+
+			float NdotL = saturate(dot(worldNormal, nextDir));
+			float NdotH = saturate(dot(worldNormal, H));
+			float VdotH = saturate(dot(viewDir, H));
+			float LdotH = VdotH; // symmetric: LdotH == VdotH for reflect()
+
+			float roughness = perceptualRough * perceptualRough;
+			float3 f0 = albedo * metallic + F0Dielectric(0.5) * (1.0 - metallic);
+			float f90 = lerp(F90Dielectric(LdotH, perceptualRough), F90_Metal, metallic);
+			float3 F = F_Schlick(f0, f90, LdotH);
+			float V = V_SmithGGXCorrelated(NdotL, NdotV, roughness);
+			float G = V * (4.0 * NdotL * NdotV); // recover G from V_Smith
+
+            // Full weight:  F * D * V * NdotL / pdf
+            // pdf = D * NdotH / (4 * VdotH)
+            // => F * G * VdotH / (NdotH * pSpec)
+			brdfWeight = F * G * VdotH / max(NdotH * pSpec, 1e-4);
+		}
+		else
+		{
+			float unusedPdf;
+			nextDir = CosineSampleHemisphere(xi, worldNormal, unusedPdf);
+
+			float NdotL = saturate(dot(worldNormal, nextDir));
+			float3 H = normalize(viewDir + nextDir);
+			float LdotH = saturate(dot(nextDir, H));
+
+            // weight = Fr_DisneyDiffuse * Fd_Lambert() * NdotL / pdf
+            // CosineSampleHemisphere pdf = NdotL * INV_PI, so NdotL and INV_PI both cancel
+			float Fd = Fr_DisneyDiffuse(NdotV, NdotL, LdotH, perceptualRough);
+			brdfWeight = albedo * (1.0 - metallic) * Fd / max(1.0 - pSpec, 1e-4);
+		}
+
+		throughput *= brdfWeight;
+        
+		if (bounce >= 2)
+		{
+			float p = max(throughput.r, max(throughput.g, throughput.b));
+			if (randFloat(seed) > p)
+			{
+				break;
+			}
+			throughput /= p;
+		}
+
+		rayOrigin = worldPos + worldNormal * 0.002;
+		rayDir = nextDir;
+	}
+
+	return radiance;
 }
 
 [numthreads(16, 16, 1)]
@@ -189,18 +269,18 @@ void pathTraceShader(uint3 dispatchThreadID : SV_DispatchThreadID)
         light.illuminance = atmosphereUniforms.sunIlluminance;
     }
     
-    Payload hit = rayMarch(rayOrigin, rayDir);
-
-    float3 color = 0.0;
-    if (hit.t > 0.0)
-	{
-		color = shade(rayOrigin, rayDir, hit, light);
-	} 
-	else if (atmosphereUniforms.transmittanceLutTexture != InvalidResourceIndex && atmosphereUniforms.multiScatterLutTexture != InvalidResourceIndex)
-	{
-		color = skyAtmosphere(rayDir, rayOrigin);
-	}
+	uint seed = initSeed(dispatchThreadID.xy, constants.frameIndex);
+    float3 color = tracePath(rayOrigin, rayDir, light, seed);
     
-    RWTexture2D<float4> colorTarget = ResourceDescriptorHeap[constants.colorTarget];
-    colorTarget[dispatchThreadID.xy] = float4(color, 1);
+	RWTexture2D<float4> colorTarget = ResourceDescriptorHeap[constants.colorTarget];
+    if (constants.frameIndex == 0)
+	{
+		colorTarget[dispatchThreadID.xy] = float4(color, 1);
+	}
+	else
+	{
+		float3 prev = colorTarget[dispatchThreadID.xy].rgb;
+		float weight = 1.0 / float(constants.frameIndex + 1);
+		colorTarget[dispatchThreadID.xy] = float4(lerp(prev, color, weight), 1.0);
+	}
 }

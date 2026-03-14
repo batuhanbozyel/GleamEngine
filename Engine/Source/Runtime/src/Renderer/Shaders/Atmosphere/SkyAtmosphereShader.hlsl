@@ -23,26 +23,7 @@ void skyAtmosphereRenderShader(uint3 dispatchThreadId : SV_DispatchThreadID)
 	float3 ClipSpace = float3(uv * float2(2.0, -2.0) - float2(1.0, -1.0), 1.0);
 	float4 HViewPos = mul(camera.invProjectionMatrix, float4(ClipSpace, 1.0));
 	float3 WorldDir = normalize(mul((float3x3)camera.invViewMatrix, HViewPos.xyz / HViewPos.w));
-	float3 WorldPos = GetSkyWorldPosition(camera.position);
-	
-	if (!MoveToTopAtmosphere(WorldDir, atmosphereParams.topRadius, WorldPos))
-	{
-		// Ray is not intersecting the atmosphere
-		return;
-	}
-	
-	float3 Luminance = GetSunLuminance(WorldPos, WorldDir);
-	
-	float viewHeight = length(WorldPos);
-	float3 UpVector = WorldPos / viewHeight;
-	
-	float horizonCos = ComputeHorizonCos(viewHeight);
-	float viewCos = dot(WorldDir, UpVector);
-	if (viewCos < horizonCos)
-	{
-		WorldDir = ClampToHorizon(WorldDir, UpVector, horizonCos);
-	}
-	Luminance += GetSkyLuminance(WorldPos, WorldDir);
+	float3 Luminance = GetSunAndSkyIlluminance(camera.position, WorldDir);
 	
 	RWTexture2D<float4> TargetTexture = ResourceDescriptorHeap[constants.targetTexture];
 	TargetTexture[dispatchThreadId.xy] = float4(Luminance, 1.0);

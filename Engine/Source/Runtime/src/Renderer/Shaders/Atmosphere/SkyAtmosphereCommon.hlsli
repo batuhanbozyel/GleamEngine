@@ -372,4 +372,28 @@ float3 GetSunLuminance(float3 WorldPos, float3 WorldDir)
 	return 0;
 }
 
+float3 GetSunAndSkyIlluminance(float3 worldPos, float3 worldDir)
+{
+	float3 skyWorldPos = GetSkyWorldPosition(worldPos);
+	if (!MoveToTopAtmosphere(worldDir, atmosphereParams.topRadius, skyWorldPos))
+	{
+		return 0.0;
+	}
+
+	float3 luminance = GetSunLuminance(skyWorldPos, worldDir);
+
+	float viewHeight = length(skyWorldPos);
+	float3 upVector = skyWorldPos / viewHeight;
+
+	float horizonCos = ComputeHorizonCos(viewHeight);
+	float viewCos = dot(worldDir, upVector);
+	if (viewCos < horizonCos)
+	{
+		worldDir = ClampToHorizon(worldDir, upVector, horizonCos);
+	}
+	luminance += GetSkyLuminance(skyWorldPos, worldDir);
+
+	return luminance;
+}
+
 #endif // SKY_ATMOSPHERE_COMMON_HLSL

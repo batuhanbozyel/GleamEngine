@@ -59,6 +59,8 @@ public:
     
     const TextureDescriptor& GetDescriptor(TextureHandle handle) const;
 
+	GPUAllocator* GetAllocator() const;
+
 private:
 	
 	template<typename PassData>

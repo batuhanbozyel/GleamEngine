@@ -179,7 +179,7 @@ struct SkyAtmosphereRenderConstants
 struct PathTracerConstants
 {
 	UnorderedAccessIndex colorTarget;
-	float pad0;
+	uint32_t frameIndex;
 	float pad1;
 	float pad2;
 };

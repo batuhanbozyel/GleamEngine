@@ -420,3 +420,8 @@ const TextureDescriptor& RenderGraph::GetDescriptor(TextureHandle handle) const
 	auto node = static_cast<const RenderGraphTextureNode*>(handle.node);
 	return node->texture.GetDescriptor();
 }
+
+GPUAllocator* RenderGraph::GetAllocator() const
+{
+	return mContext.allocator;
+}
