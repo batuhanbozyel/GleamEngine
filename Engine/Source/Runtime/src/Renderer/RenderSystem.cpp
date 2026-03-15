@@ -74,7 +74,7 @@ void RenderSystem::Shutdown(Engine* engine)
 	mPersistentAllocator.reset();
 
 	mReleaseQueue.reset();
-    mDevice.reset();
+	mDevice.reset();
 	mSwapchain.reset();
 }
 

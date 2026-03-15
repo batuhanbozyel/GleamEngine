@@ -41,12 +41,16 @@ void PathTracer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blac
 		RenderTextureDescriptor textureDesc;
 		textureDesc.size = sceneTargetDescriptor.size;
 		textureDesc.name = "SceneColorRT";
-		textureDesc.format = TextureFormat::R16G16B16A16_SFloat;
+		textureDesc.format = TextureFormat::R32G32B32A32_SFloat;
 		mRenderTarget = mDevice->CreateTexture(mAllocator, textureDesc);
 	}
 
-	if (memcmp(&mCamera, &sceneData.camera.uniforms, sizeof(CameraUniforms)) != 0)
+	if (memcmp(&mCamera, &sceneData.camera.uniforms, sizeof(mCamera)) != 0 ||
+		memcmp(&mAtmosphereParams, &sceneData.atmosphere.params, sizeof(mAtmosphereParams)) != 0 ||
+		memcmp(&mAtmosphereUniforms, &sceneData.atmosphere.uniforms, sizeof(mAtmosphereUniforms)) != 0)
 	{
+		mAtmosphereUniforms = sceneData.atmosphere.uniforms;
+		mAtmosphereParams = sceneData.atmosphere.params;
 		mCamera = sceneData.camera.uniforms;
 		mFrameIndex = 0;
 	}

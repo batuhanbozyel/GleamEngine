@@ -22,6 +22,8 @@ private:
 	Texture mRenderTarget;
 	uint32_t mFrameIndex = 0;
 	CameraUniforms mCamera = {};
+	SkyAtmosphereUniforms mAtmosphereUniforms = {};
+	SkyAtmosphereParameters mAtmosphereParams = {};
 	GraphicsDevice* mDevice = nullptr;
 	GPUAllocator* mAllocator = nullptr;
 	ComputePipelineHandle mPathTracingPipeline;

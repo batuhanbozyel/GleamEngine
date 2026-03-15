@@ -5,6 +5,7 @@
 #include "ShaderTypes.h"
 
 #define F90_Metal 1.0f
+#define PERFECT_MIRROR_ROUGHNESS 0.0016
 
 struct DirectLight
 {
