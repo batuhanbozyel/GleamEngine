@@ -13,9 +13,7 @@ struct VertexOut
 PUSH_CONSTANT(GEditor::InfiniteGridUniforms, uniforms);
 CONSTANT_BUFFER(Gleam::CameraUniforms, camera, 0);
 
-#pragma vertex infiniteGridVertexShader
-#pragma fragment infiniteGridFragmentShader
-
+[shader("vertex")]
 VertexOut infiniteGridVertexShader(uint vertex_id: SV_VertexID)
 {
     static const float3 gridPlane[6] = {
@@ -65,6 +63,7 @@ float ComputeDepth(float3 pos, float4x4 viewProjectionMatrix)
     return clipPos.z / clipPos.w;
 }
 
+[shader("pixel")]
 FragmentOut infiniteGridFragmentShader(VertexOut IN)
 {
     static const float4 AXIS_X_COLOR = float4(1.0f, 0.0f, 0.0f, 1.0f);

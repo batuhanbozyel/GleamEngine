@@ -1,8 +1,6 @@
 #include "Common.hlsli"
 
-#pragma vertex fullscreenTriangleVertexShader
-#pragma fragment fullscreenTriangleFragmentShader
-
+[shader("vertex")]
 FScreenVertexOutput fullscreenTriangleVertexShader(uint vertex_id: SV_VertexID)
 {
     FScreenVertexOutput OUT;
@@ -12,6 +10,7 @@ FScreenVertexOutput fullscreenTriangleVertexShader(uint vertex_id: SV_VertexID)
     return OUT;
 }
 
+[shader("pixel")]
 float4 fullscreenTriangleFragmentShader(FScreenVertexOutput IN) : SV_TARGET
 {
     return float4(IN.texCoord, 0.0, 1.0);

@@ -21,7 +21,7 @@ private:
 
 	Texture mRenderTarget;
 	uint32_t mFrameIndex = 0;
-	CameraUniforms mCamera = {};
+	float4x4 mLastCameraView = {};
 	SkyAtmosphereUniforms mAtmosphereUniforms = {};
 	SkyAtmosphereParameters mAtmosphereParams = {};
 	GraphicsDevice* mDevice = nullptr;

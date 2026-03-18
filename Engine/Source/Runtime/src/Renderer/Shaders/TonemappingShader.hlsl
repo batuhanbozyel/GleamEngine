@@ -5,8 +5,6 @@
 
 PUSH_CONSTANT(Gleam::TonemapUniforms, uniforms);
 
-#pragma fragment tonemappingFragmentShader
-
 // Neutral tonemapping (Hable/Hejl/Frostbite)
 float3 NeutralCurve(float3 x, float a, float b, float c, float d, float e, float f)
 {
@@ -92,6 +90,7 @@ float3 AcesTonemap(float3 aces)
     return linearCV;
 }
 
+[shader("pixel")]
 float4 tonemappingFragmentShader(FScreenVertexOutput IN) : SV_TARGET
 {
     Texture2D<float4> sceneTexture = ResourceDescriptorHeap[uniforms.sceneColor];

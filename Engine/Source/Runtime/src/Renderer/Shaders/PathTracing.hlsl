@@ -1,8 +1,6 @@
 #include "PathTraceCommon.hlsli"
 #include "Atmosphere/SkyAtmosphereCommon.hlsli"
 
-#pragma compute pathTraceShader
-
 struct Payload
 {
     float t;
@@ -241,6 +239,7 @@ float3 TracePath(Ray ray, DirectLight light, inout uint seed)
 	return radiance;
 }
 
+[shader("compute")]
 [numthreads(16, 16, 1)]
 void pathTraceShader(uint3 dispatchThreadID : SV_DispatchThreadID)
 {

@@ -10,7 +10,8 @@ class GraphicsDevice;
 enum class PipelineType
 {
 	Graphics,
-	Compute
+	Compute,
+	RayTracing
 };
 
 struct PipelineHandle
@@ -130,6 +131,36 @@ private:
 
 };
 
+class RayTracingPipeline : public Pipeline
+{
+	friend class GraphicsDevice;
+
+public:
+
+	RayTracingPipeline() = default;
+
+	RayTracingPipeline(const RayTracingPipeline& other) = default;
+
+	RayTracingPipeline& operator=(const RayTracingPipeline& other) = default;
+
+	RayTracingPipeline(const RayTracingPipelineStateDescriptor& descriptor)
+		: Pipeline(PipelineHandle{ eastl::hash<RayTracingPipelineStateDescriptor>()(descriptor), PipelineType::RayTracing })
+		, mDescriptor(descriptor)
+	{
+
+	}
+
+	const RayTracingPipelineStateDescriptor& GetDescriptor() const
+	{
+		return mDescriptor;
+	}
+
+private:
+
+	RayTracingPipelineStateDescriptor mDescriptor;
+
+};
+
 struct GraphicsPipelineHandle : PipelineHandle
 {
 	NO_DISCARD operator GraphicsPipeline() const
@@ -148,6 +179,16 @@ struct ComputePipelineHandle : PipelineHandle
 	}
 
 	NO_DISCARD const ComputePipeline& GetPipeline() const;
+};
+
+struct RayTracingPipelineHandle : PipelineHandle
+{
+	NO_DISCARD operator RayTracingPipeline() const
+	{
+		return GetPipeline();
+	}
+
+	NO_DISCARD const RayTracingPipeline& GetPipeline() const;
 };
 
 } // namespace Gleam
@@ -180,6 +221,15 @@ struct std::hash<Gleam::ComputePipelineHandle>
 };
 
 template <>
+struct std::hash<Gleam::RayTracingPipelineHandle>
+{
+	size_t operator()(Gleam::RayTracingPipelineHandle handle) const
+	{
+		return handle.data;
+	}
+};
+
+template <>
 struct eastl::hash<Gleam::PipelineHandle>
 {
 	size_t operator()(Gleam::PipelineHandle handle) const
@@ -203,5 +253,14 @@ struct eastl::hash<Gleam::ComputePipelineHandle>
 	size_t operator()(Gleam::ComputePipelineHandle handle) const
 	{
 		return std::hash<Gleam::ComputePipelineHandle>()(handle);
+	}
+};
+
+template <>
+struct eastl::hash<Gleam::RayTracingPipelineHandle>
+{
+	size_t operator()(Gleam::RayTracingPipelineHandle handle) const
+	{
+		return std::hash<Gleam::RayTracingPipelineHandle>()(handle);
 	}
 };

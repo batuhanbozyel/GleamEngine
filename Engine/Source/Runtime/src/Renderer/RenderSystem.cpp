@@ -322,6 +322,26 @@ void RenderSystem::RecompileShader(const TString& entryPoint)
 							}
 						}
 					}
+					else if (shader.GetStage() == ShaderStage::RayGeneration ||
+							 shader.GetStage() == ShaderStage::Miss ||
+							 shader.GetStage() == ShaderStage::ClosestHit ||
+							 shader.GetStage() == ShaderStage::AnyHit ||
+							 shader.GetStage() == ShaderStage::Intersection)
+					{
+						for (auto& [handle, pipeline] : mDevice->mRayTracingPipelineCache)
+						{
+							if (handle == pipelineHash)
+							{
+								auto newPipeline = mDevice->CompileRayTracingPipeline(pipeline.GetDescriptor());
+								if (newPipeline.IsValid())
+								{
+									mDevice->Dispose(pipeline);
+									pipeline = newPipeline;
+								}
+								break;
+							}
+						}
+					}
 				}
 			}
 			break;

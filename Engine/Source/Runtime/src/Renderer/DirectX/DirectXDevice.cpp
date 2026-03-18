@@ -570,6 +570,115 @@ GraphicsPipeline GraphicsDevice::CompileGraphicsPipeline(const GraphicsPipelineS
 	return pipeline;
 }
 
+RayTracingPipeline GraphicsDevice::CompileRayTracingPipeline(const RayTracingPipelineStateDescriptor& pipelineDesc)
+{
+	RayTracingPipeline pipeline(pipelineDesc);
+
+	TArray<D3D12_DXIL_LIBRARY_DESC> shaders;
+	shaders.reserve(pipelineDesc.hitGroups.size() * 3 + 2);
+	{
+		D3D12_DXIL_LIBRARY_DESC library = {};
+		auto shader = CreateShader(pipelineDesc.rayGenerationEntry, ShaderStage::RayGeneration);
+		library.DXILLibrary = *static_cast<D3D12_SHADER_BYTECODE*>(shader.GetHandle());
+		shaders.emplace_back(library);
+	}
+
+	{
+		D3D12_DXIL_LIBRARY_DESC library = {};
+		auto shader = CreateShader(pipelineDesc.missEntry, ShaderStage::Miss);
+		library.DXILLibrary = *static_cast<D3D12_SHADER_BYTECODE*>(shader.GetHandle());
+		shaders.emplace_back(library);
+	}
+
+	TArray<D3D12_HIT_GROUP_DESC> hitGroups;
+	hitGroups.reserve(pipelineDesc.hitGroups.size());
+
+	TArray<TWString> hitShaderNames;
+	hitShaderNames.reserve(pipelineDesc.hitGroups.size() * 4);
+	for (const auto& hitGroup : pipelineDesc.hitGroups)
+	{
+		TWString& hitGroupName = hitShaderNames.emplace_back(TWString(hitGroup.name));
+
+		D3D12_HIT_GROUP_DESC d3d12HitGroup = {};
+		d3d12HitGroup.Type = D3D12_HIT_GROUP_TYPE_TRIANGLES;
+		d3d12HitGroup.HitGroupExport = hitGroupName.c_str();
+
+		if (not hitGroup.closestHitEntry.empty())
+		{
+			TWString& entryPoint = hitShaderNames.emplace_back(TWString(hitGroup.closestHitEntry));
+			d3d12HitGroup.ClosestHitShaderImport = entryPoint.c_str();
+
+			D3D12_DXIL_LIBRARY_DESC library = {};
+			auto shader = CreateShader(hitGroup.closestHitEntry, ShaderStage::ClosestHit);
+			library.DXILLibrary = *static_cast<D3D12_SHADER_BYTECODE*>(shader.GetHandle());
+			shaders.emplace_back(library);
+		}
+
+		if (not hitGroup.anyHitEntry.empty())
+		{
+			TWString& entryPoint = hitShaderNames.emplace_back(TWString(hitGroup.anyHitEntry));
+			d3d12HitGroup.AnyHitShaderImport = entryPoint.c_str();
+
+			D3D12_DXIL_LIBRARY_DESC library = {};
+			auto shader = CreateShader(hitGroup.anyHitEntry, ShaderStage::AnyHit);
+			library.DXILLibrary = *static_cast<D3D12_SHADER_BYTECODE*>(shader.GetHandle());
+			shaders.emplace_back(library);
+		}
+
+		if (not hitGroup.intersectionEntry.empty())
+		{
+			d3d12HitGroup.Type = D3D12_HIT_GROUP_TYPE_PROCEDURAL_PRIMITIVE;
+
+			TWString& entryPoint = hitShaderNames.emplace_back(TWString(hitGroup.intersectionEntry));
+			d3d12HitGroup.IntersectionShaderImport = entryPoint.c_str();
+
+			D3D12_DXIL_LIBRARY_DESC library = {};
+			auto shader = CreateShader(hitGroup.intersectionEntry, ShaderStage::Intersection);
+			library.DXILLibrary = *static_cast<D3D12_SHADER_BYTECODE*>(shader.GetHandle());
+			shaders.emplace_back(library);
+		}
+		hitGroups.emplace_back(d3d12HitGroup);
+	}
+
+	D3D12_NODE_MASK nodeMask = {};
+	nodeMask.NodeMask = 1;
+
+	D3D12_GLOBAL_ROOT_SIGNATURE globalRootSig = {};
+	globalRootSig.pGlobalRootSignature = static_cast<DirectXDevice*>(this)->GetGlobalRootSignature();
+
+	D3D12_RAYTRACING_PIPELINE_CONFIG pipelineConfig = {};
+	pipelineConfig.MaxTraceRecursionDepth = pipelineDesc.maxRecursionDepth;
+
+	D3D12_RAYTRACING_SHADER_CONFIG shaderConfig = {};
+	shaderConfig.MaxAttributeSizeInBytes = pipelineDesc.maxAttributeSize;
+	shaderConfig.MaxPayloadSizeInBytes = pipelineDesc.maxPayloadSize;
+
+	TArray<D3D12_STATE_SUBOBJECT> stateObjects;
+	stateObjects.reserve(hitGroups.size() + shaders.size() + 4);
+	stateObjects.emplace_back(D3D12_STATE_SUBOBJECT{ D3D12_STATE_SUBOBJECT_TYPE_NODE_MASK, &nodeMask });
+	stateObjects.emplace_back(D3D12_STATE_SUBOBJECT{ D3D12_STATE_SUBOBJECT_TYPE_GLOBAL_ROOT_SIGNATURE, &globalRootSig });
+	stateObjects.emplace_back(D3D12_STATE_SUBOBJECT{ D3D12_STATE_SUBOBJECT_TYPE_RAYTRACING_PIPELINE_CONFIG, &pipelineConfig });
+	stateObjects.emplace_back(D3D12_STATE_SUBOBJECT{ D3D12_STATE_SUBOBJECT_TYPE_RAYTRACING_SHADER_CONFIG, &shaderConfig });
+
+	for (const auto& library : shaders)
+	{
+		stateObjects.emplace_back(D3D12_STATE_SUBOBJECT{ D3D12_STATE_SUBOBJECT_TYPE_DXIL_LIBRARY, &library });
+	}
+
+	for (const auto& hitGroup : hitGroups)
+	{
+		stateObjects.emplace_back(D3D12_STATE_SUBOBJECT{ D3D12_STATE_SUBOBJECT_TYPE_HIT_GROUP, &hitGroup });
+	}
+
+	D3D12_STATE_OBJECT_DESC stateObjectDesc = {};
+	stateObjectDesc.Type = D3D12_STATE_OBJECT_TYPE_RAYTRACING_PIPELINE;
+	stateObjectDesc.pSubobjects = stateObjects.data();
+	stateObjectDesc.NumSubobjects = (UINT)stateObjects.size();
+	DX_CHECK(static_cast<ID3D12Device10*>(mHandle)->CreateStateObject(&stateObjectDesc, __uuidof(ID3D12StateObject*), &pipeline.mHandle));
+
+	return pipeline;
+}
+
 void GraphicsDevice::Dispose(Heap& heap)
 {
 	ID3D12Heap* resource = static_cast<ID3D12Heap*>(heap.GetHandle());
@@ -680,6 +789,16 @@ void GraphicsDevice::Dispose(ComputePipeline& pipeline)
 }
 
 void GraphicsDevice::Dispose(GraphicsPipeline& pipeline)
+{
+	auto resource = static_cast<ID3D12PipelineState*>(pipeline.mHandle);
+	mReleaseQueue->AddResource([resource]()
+	{
+		resource->Release();
+	}, static_cast<Swapchain*>(mSurface)->GetFrameIndex());
+	pipeline.mHandle = nullptr;
+}
+
+void GraphicsDevice::Dispose(RayTracingPipeline& pipeline)
 {
 	auto resource = static_cast<ID3D12PipelineState*>(pipeline.mHandle);
 	mReleaseQueue->AddResource([resource]()

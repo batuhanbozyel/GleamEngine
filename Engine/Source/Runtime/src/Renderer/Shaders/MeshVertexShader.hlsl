@@ -1,8 +1,7 @@
 #define MESH_VERTEX_SHADER 1
 #include "MeshShading.hlsli"
 
-#pragma vertex meshVertexShader
-
+[shader("vertex")]
 MeshVertexOut meshVertexShader(uint vertex_id : SV_VertexID)
 {
 	ByteAddressBuffer positionBuffer = ResourceDescriptorHeap[instanceData.positionBuffer];

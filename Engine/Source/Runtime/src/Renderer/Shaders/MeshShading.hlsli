@@ -21,11 +21,10 @@ struct MeshVertexOut
 	float2 uv : ATTRIB5;
 };
 
-#pragma fragment meshShadingPassShader
-
 // User defined
 Gleam::SurfaceOutput surf(MeshVertexOut IN);
 
+[shader("pixel")]
 float4 meshShadingPassShader(MeshVertexOut IN) : SV_TARGET
 {
     Gleam::SurfaceOutput surface = surf(IN);

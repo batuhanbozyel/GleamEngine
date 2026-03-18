@@ -34,6 +34,8 @@ public:
 
 	GraphicsPipelineHandle CreateGraphicsPipeline(const GraphicsPipelineStateDescriptor& pipelineDesc);
 
+	RayTracingPipelineHandle CreateRayTracingPipeline(const RayTracingPipelineStateDescriptor& pipelineDesc);
+
     void Dispose(Heap& heap);
 
 	void Dispose(GPUAllocator* allocator, Texture& texture);
@@ -46,9 +48,13 @@ public:
 
 	void Dispose(GraphicsPipeline& pipeline);
 
+	void Dispose(RayTracingPipeline& pipeline);
+
 	const ComputePipeline& GetComputePipeline(ComputePipelineHandle handle) const;
 
 	const GraphicsPipeline& GetGraphicsPipeline(GraphicsPipelineHandle handle) const;
+
+	const RayTracingPipeline& GetRayTracingPipeline(RayTracingPipelineHandle handle) const;
     
 protected:
 
@@ -65,6 +71,8 @@ protected:
 
 	HashMap<GraphicsPipelineHandle, GraphicsPipeline> mGraphicsPipelineCache;
 
+	HashMap<RayTracingPipelineHandle, RayTracingPipeline> mRayTracingPipelineCache;
+
 	RenderSurface* mSurface = nullptr;
 
 	ResourceReleaseQueue* mReleaseQueue = nullptr;
@@ -76,6 +84,8 @@ private:
 	ComputePipeline CompileComputePipeline(const ComputePipelineStateDescriptor& pipelineDesc);
 
 	GraphicsPipeline CompileGraphicsPipeline(const GraphicsPipelineStateDescriptor& pipelineDesc);
+
+	RayTracingPipeline CompileRayTracingPipeline(const RayTracingPipelineStateDescriptor& pipelineDesc);
 
 };
 

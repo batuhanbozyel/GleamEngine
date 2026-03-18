@@ -45,13 +45,13 @@ void PathTracer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blac
 		mRenderTarget = mDevice->CreateTexture(mAllocator, textureDesc);
 	}
 
-	if (memcmp(&mCamera, &sceneData.camera.uniforms, sizeof(mCamera)) != 0 ||
+	if (memcmp(&mLastCameraView, &sceneData.camera.uniforms.viewMatrix, sizeof(float4x4)) != 0 ||
 		memcmp(&mAtmosphereParams, &sceneData.atmosphere.params, sizeof(mAtmosphereParams)) != 0 ||
 		memcmp(&mAtmosphereUniforms, &sceneData.atmosphere.uniforms, sizeof(mAtmosphereUniforms)) != 0)
 	{
+		mLastCameraView = sceneData.camera.uniforms.viewMatrix;
 		mAtmosphereUniforms = sceneData.atmosphere.uniforms;
 		mAtmosphereParams = sceneData.atmosphere.params;
-		mCamera = sceneData.camera.uniforms;
 		mFrameIndex = 0;
 	}
 

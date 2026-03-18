@@ -1,10 +1,9 @@
 #include "Common.hlsli"
 #include "ShaderTypes.h"
 
-#pragma compute generateCubemapMipsShader
-
 PUSH_CONSTANT(Gleam::GenerateCubemapMipsConstants, constants);
 
+[shader("compute")]
 [numthreads(16, 16, 1)]
 void generateCubemapMipsShader(uint3 dispatchThreadId : SV_DispatchThreadID)
 {

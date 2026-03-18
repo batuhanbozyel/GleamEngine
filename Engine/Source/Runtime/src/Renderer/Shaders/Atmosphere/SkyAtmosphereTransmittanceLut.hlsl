@@ -1,7 +1,5 @@
 #include "SkyAtmosphereCommon.hlsli"
 
-#pragma compute skyAtmosphereTransmittanceLUTShader
-
 float3 IntegrateTransmittance(in float3 WorldPos, in float3 WorldDir, in float SampleCountIni, in float tMaxMax = 9000000.0f)
 {
 	// Compute next intersection with atmosphere or ground 
@@ -56,6 +54,7 @@ float3 IntegrateTransmittance(in float3 WorldPos, in float3 WorldDir, in float S
 	return exp(-OpticalDepth);
 }
 
+[shader("compute")]
 [numthreads(16, 16, 1)]
 void skyAtmosphereTransmittanceLUTShader(uint3 dispatchThreadId : SV_DispatchThreadID)
 {

@@ -11,10 +11,7 @@ struct VertexOut
     float4 color : ATTRIB0;
 };
 
-#pragma vertex debugVertexShader
-#pragma vertex debugMeshVertexShader
-#pragma fragment debugFragmentShader
-
+[shader("vertex")]
 VertexOut debugVertexShader(uint vertex_id: SV_VertexID)
 {
 	ByteAddressBuffer vertexBuffer = ResourceDescriptorHeap[resources.vertexBuffer];
@@ -26,6 +23,7 @@ VertexOut debugVertexShader(uint vertex_id: SV_VertexID)
     return OUT;
 }
 
+[shader("vertex")]
 VertexOut debugMeshVertexShader(uint vertex_id: SV_VertexID)
 {
 	ByteAddressBuffer vertexBuffer = ResourceDescriptorHeap[resources.vertexBuffer];
@@ -38,6 +36,7 @@ VertexOut debugMeshVertexShader(uint vertex_id: SV_VertexID)
     return OUT;
 }
 
+[shader("pixel")]
 float4 debugFragmentShader(VertexOut IN) : SV_TARGET
 {
     return IN.color;

@@ -2,8 +2,6 @@
 
 PUSH_CONSTANT(Gleam::BRDFLutConstants, constants);
 
-#pragma compute integrateBRDFShader
-
 #define SAMPLE_COUNT (8192u * 4u)
 float3 IntegrateDFG(in float NdotV, in float perceptualRoughness)
 {
@@ -64,7 +62,9 @@ float IntegrateDiffuse(in float NdotV, in float perceptualRoughness)
     return irradiance / SAMPLE_COUNT;
 }
 
-[numthreads(16, 16, 1)] void integrateBRDFShader(uint3 dispatchThreadID : SV_DispatchThreadID)
+[shader("compute")]
+[numthreads(16, 16, 1)]
+void integrateBRDFShader(uint3 dispatchThreadID : SV_DispatchThreadID)
 {
     float NdotV = (dispatchThreadID.x + 0.5) / BRDF_LUT_SIZE;
     float perceptualRoughness = (dispatchThreadID.y + 0.5) / BRDF_LUT_SIZE;
