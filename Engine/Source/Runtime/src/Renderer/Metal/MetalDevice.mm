@@ -53,6 +53,24 @@ using namespace Gleam;
 
 @end
 
+@interface MetalRayTracingPipelineImpl : NSObject<MetalRayTracingPipeline>
+@property (nonatomic, strong) id<MTLComputePipelineState> pipelineState;
+@property (nonatomic, strong) id<MTLIntersectionFunctionTable> intersectionFunctionTable;
+@end
+
+@implementation MetalRayTracingPipelineImpl
+
+- (instancetype)init {
+    self = [super init];
+    if (self) {
+        _pipelineState = nil;
+        _intersectionFunctionTable = nil;
+    }
+    return self;
+}
+
+@end
+
 @interface MetalFunctionImpl : NSObject<MetalFunction>
 @property (nonatomic, strong) id<MTLFunction> function;
 @end
@@ -62,10 +80,12 @@ using namespace Gleam;
 - (instancetype)init {
     self = [super init];
     if (self) {
-        _function = nil;
+        handle = nil;
     }
     return self;
 }
+
+@synthesize handle;
 
 @end
 
@@ -85,6 +105,22 @@ using namespace Gleam;
 
 @end
 
+@interface MetalRayTracingFunctionImpl : MetalFunctionImpl<MetalRayTracingFunction>
+@property (nonatomic, assign) IRObject* dxil;
+@end
+
+@implementation MetalRayTracingFunctionImpl
+
+- (instancetype)init {
+    self = [super init];
+    if (self) {
+        _dxil = nil;
+    }
+    return self;
+}
+
+@end
+
 void RenderSystem::InitializeBackend()
 {
 	mSwapchain = CreateScope<MetalSwapchain>();
@@ -95,6 +131,75 @@ void RenderSystem::InitializeBackend()
 
     mPersistentAllocator = CreateScope<GPUAllocator>(mDevice.get(), GPUAllocatorDescriptor{ .name = "Persistent GPU Allocator" });
 	mTransientAllocator = CreateScope<GPUAllocator>(mDevice.get(), GPUAllocatorDescriptor{ .name = "Transient GPU Allocator" });
+}
+
+static IRCompiler* CreateCompiler(const TString& entryPoint, IRRootSignature* globalRootSig)
+{
+    auto compiler = IRCompilerCreate();
+    IRCompilerSetEntryPointName(compiler, entryPoint.c_str());
+    IRCompilerSetMinimumDeploymentTarget(compiler, IROperatingSystem_macOS, "14.0");
+    IRCompilerSetGlobalRootSignature(compiler, globalRootSig);
+    return compiler;
+}
+
+static id<MetalFunction> CompileDXIL(id<MTLDevice> device, IRCompiler* compiler, IRObject* dxil, const TString& entryPoint, ShaderStage stage)
+{
+    IRError* compileError = nullptr;
+    auto metalIR = IRCompilerAllocCompileAndLink(compiler, entryPoint.c_str(), dxil, &compileError);
+    if (compileError)
+    {
+        auto errorCode = IRErrorGetCode(compileError);
+        GLEAM_CORE_ERROR("Metal IR generation failed with code: {0}", errorCode);
+        IRErrorDestroy(compileError);
+        compileError = nullptr;
+    }
+    
+    IRMetalLibBinary* metallibBinary = IRMetalLibBinaryCreate();
+    IRObjectGetMetalLibBinary(metalIR, IRObjectGetMetalIRShaderStage(metalIR), metallibBinary);
+    dispatch_data_t data = IRMetalLibGetBytecodeData(metallibBinary);
+    
+    __autoreleasing NSError* libraryError = nil;
+    id<MTLLibrary> library = [device newLibraryWithData:data error:&libraryError];
+    if (libraryError)
+    {
+        auto errorStr = TO_CPP_STRING([libraryError localizedDescription]);
+        GLEAM_CORE_ERROR("Metal library load failed: {0}", errorStr);
+        libraryError = nil;
+    }
+    
+    NSString* functionName = [NSString stringWithCString:entryPoint.c_str() encoding:NSASCIIStringEncoding];
+    id<MTLFunction> mtlFunction = [library newFunctionWithName:functionName];
+    
+    id<MetalFunction> function = nil;
+    if (stage == ShaderStage::Compute)
+    {
+        MetalComputeFunctionImpl* computeFunction = [[MetalComputeFunctionImpl alloc] init];
+        computeFunction.handle = mtlFunction;
+        
+        IRShaderReflection* reflection = IRShaderReflectionCreate();
+        IRObjectGetReflection(metalIR, IRShaderStageCompute, reflection);
+        
+        IRVersionedCSInfo csInfo;
+        IRShaderReflectionCopyComputeInfo(reflection, IRReflectionVersion_1_0, &csInfo);
+        computeFunction.threadsPerThreadgroup = MTLSizeMake(csInfo.info_1_0.tg_size[0], csInfo.info_1_0.tg_size[1], csInfo.info_1_0.tg_size[2]);
+        
+        IRShaderReflectionReleaseComputeInfo(&csInfo);
+        IRShaderReflectionDestroy(reflection);
+        
+        function = computeFunction;
+    }
+    else
+    {
+        MetalFunctionImpl* baseFunction = [[MetalFunctionImpl alloc] init];
+        baseFunction.handle = mtlFunction;
+        function = baseFunction;
+    }
+    
+    // Clean up
+    IRMetalLibBinaryDestroy(metallibBinary);
+    IRObjectDestroy(metalIR);
+    
+    return function;
 }
 
 static IRStaticSamplerDescriptor CreateIRStaticSampler(const SamplerState& samplerState)
@@ -425,67 +530,25 @@ Shader GraphicsDevice::CompileShader(const TString& entryPoint, ShaderStage stag
     auto shaderCode = shaderFile->Read();
     auto dxil = IRObjectCreateFromDXIL((uint8_t*)shaderCode.data(), shaderCode.size(), IRBytecodeOwnershipNone);
     
-    auto compiler = IRCompilerCreate();
-    IRCompilerSetEntryPointName(compiler, entryPoint.data());
-    IRCompilerSetMinimumDeploymentTarget(compiler, IROperatingSystem_macOS, "14.0");
-    IRCompilerSetGlobalRootSignature(compiler, static_cast<MetalDevice*>(this)->GetGlobalRootSignature());
-    
-    IRError* compileError = nullptr;
-    auto metalIR = IRCompilerAllocCompileAndLink(compiler, entryPoint.c_str(), dxil, &compileError);
-    if (compileError)
+    if (stage == ShaderStage::RayGeneration ||
+        stage == ShaderStage::Miss ||
+        stage == ShaderStage::ClosestHit ||
+        stage == ShaderStage::AnyHit ||
+        stage == ShaderStage::Intersection)
     {
-        auto errorCode = IRErrorGetCode(compileError);
-        GLEAM_CORE_ERROR("Metal IR generation failed with code: {0}", errorCode);
-        IRErrorDestroy(compileError);
-        compileError = nullptr;
-    }
-    
-    IRMetalLibBinary* metallibBinary = IRMetalLibBinaryCreate();
-    IRObjectGetMetalLibBinary(metalIR, IRObjectGetMetalIRShaderStage(metalIR), metallibBinary);
-    dispatch_data_t data = IRMetalLibGetBytecodeData(metallibBinary);
-    
-    __autoreleasing NSError* libraryError = nil;
-    id<MTLLibrary> library = [mHandle newLibraryWithData:data error:&libraryError];
-    if (libraryError)
-    {
-        auto errorStr = TO_CPP_STRING([libraryError localizedDescription]);
-        GLEAM_CORE_ERROR("Metal library load failed: {0}", errorStr);
-        libraryError = nil;
-    }
-    
-    NSString* functionName = [NSString stringWithCString:entryPoint.c_str() encoding:NSASCIIStringEncoding];
-    id<MTLFunction> mtlFunction = [library newFunctionWithName:functionName];
-    
-    if (stage == ShaderStage::Compute)
-    {
-        MetalComputeFunctionImpl* computeFunction = [[MetalComputeFunctionImpl alloc] init];
-        computeFunction.function = mtlFunction;
-        
-        IRShaderReflection* reflection = IRShaderReflectionCreate();
-        IRObjectGetReflection(metalIR, IRShaderStageCompute, reflection);
-        
-        IRVersionedCSInfo csInfo;
-        IRShaderReflectionCopyComputeInfo(reflection, IRReflectionVersion_1_0, &csInfo);
-        computeFunction.threadsPerThreadgroup = MTLSizeMake(csInfo.info_1_0.tg_size[0], csInfo.info_1_0.tg_size[1], csInfo.info_1_0.tg_size[2]);
-        shader.mHandle = computeFunction;
-        
-        IRShaderReflectionReleaseComputeInfo(&csInfo);
-        IRShaderReflectionDestroy(reflection);
+        MetalRayTracingFunctionImpl* rayTracingFunction = [[MetalRayTracingFunctionImpl alloc] init];
+        rayTracingFunction.dxil = dxil;
+        shader.mHandle = rayTracingFunction;
+        return shader;
     }
     else
     {
-        MetalFunctionImpl* baseFunction = [[MetalFunctionImpl alloc] init];
-        baseFunction.function = mtlFunction;
-        shader.mHandle = baseFunction;
+        auto compiler = CreateCompiler(entryPoint, static_cast<MetalDevice*>(this)->GetGlobalRootSignature());
+        shader.mHandle = CompileDXIL(mHandle, compiler, dxil, entryPoint, stage);
+        IRCompilerDestroy(compiler);
+        IRObjectDestroy(dxil);
+        return shader;
     }
-    
-    // Clean up
-    IRMetalLibBinaryDestroy(metallibBinary);
-    IRObjectDestroy(dxil);
-    IRObjectDestroy(metalIR);
-    IRCompilerDestroy(compiler);
-    
-    return shader;
 }
 
 ComputePipeline GraphicsDevice::CompileComputePipeline(const ComputePipelineStateDescriptor& pipelineDesc)
@@ -498,7 +561,7 @@ ComputePipeline GraphicsDevice::CompileComputePipeline(const ComputePipelineStat
     id<MetalComputePipeline> mtlPipeline = pipeline.mHandle;
     
     __autoreleasing NSError* error = nil;
-    mtlPipeline.pipelineState = [mHandle newComputePipelineStateWithFunction:mtlFunction.function error:&error];
+    mtlPipeline.pipelineState = [mHandle newComputePipelineStateWithFunction:mtlFunction.handle error:&error];
     mtlPipeline.threadsPerThreadgroup = mtlFunction.threadsPerThreadgroup;
     GLEAM_ASSERT(mtlPipeline.pipelineState, "Metal: Compute pipeline state creation failed.");
     return pipeline;
@@ -518,8 +581,8 @@ GraphicsPipeline GraphicsDevice::CompileGraphicsPipeline(const GraphicsPipelineS
     
     MTLRenderPipelineDescriptor* pipelineDescriptor = [MTLRenderPipelineDescriptor new];
     pipelineDescriptor.rasterSampleCount = 1;
-    pipelineDescriptor.vertexFunction = vertexFunction.function;
-    pipelineDescriptor.fragmentFunction = fragmentFunction.function;
+    pipelineDescriptor.vertexFunction = vertexFunction.handle;
+    pipelineDescriptor.fragmentFunction = fragmentFunction.handle;
     pipelineDescriptor.alphaToCoverageEnabled = pipelineDesc.alphaToCoverage;
     pipelineDescriptor.inputPrimitiveTopology = PrimitiveTopologyToMTLPrimitiveTopologyClass(pipelineDesc.topology);
     for (uint32_t i = 0; i < pipelineDesc.colorFormats.size(); i++)
@@ -567,6 +630,228 @@ GraphicsPipeline GraphicsDevice::CompileGraphicsPipeline(const GraphicsPipelineS
     mtlPipeline.pipelineState = [mHandle newRenderPipelineStateWithDescriptor:pipelineDescriptor error:&error];
     mtlPipeline.topology = PrimitiveTopologyToMTLPrimitiveType(pipelineDesc.topology);
     GLEAM_ASSERT(mtlPipeline.pipelineState, "Metal: Graphics Pipeline render state creation failed.");
+    return pipeline;
+}
+
+RayTracingPipeline GraphicsDevice::CompileRayTracingPipeline(const RayTracingPipelineStateDescriptor& pipelineDesc)
+{
+    RayTracingPipeline pipeline(pipelineDesc);
+    pipeline.mHandle = [[MetalRayTracingPipelineImpl alloc] init];
+    
+    MTLComputePipelineDescriptor* mtlPipelineDesc = [[MTLComputePipelineDescriptor alloc] init];
+    mtlPipelineDesc.maxCallStackDepth = pipelineDesc.maxRecursionDepth;
+    
+    auto rayGenShader = CreateShader(pipelineDesc.rayGenerationEntry, ShaderStage::RayGeneration);
+    auto missShader = CreateShader(pipelineDesc.missEntry, ShaderStage::Miss);
+    
+    MetalDevice* device = static_cast<MetalDevice*>(this);
+    id<MetalRayTracingPipeline> mtlPipeline = pipeline.mHandle;
+    id<MetalRayTracingFunction> rayGenFunction = rayGenShader.GetHandle();
+    id<MetalRayTracingFunction> missFunction   = missShader.GetHandle();
+    
+    uint64_t missMask = IRObjectGatherRaytracingIntrinsics(missFunction.dxil, pipelineDesc.missEntry.c_str());
+    uint64_t closestHitMask = 0;
+    uint64_t anyHitMask = 0;
+    
+    struct MetalHitGroup
+    {
+        id<MetalRayTracingFunction> closestHit = nil;
+        id<MetalRayTracingFunction> anyHit = nil;
+        id<MetalRayTracingFunction> intersection = nil;
+    };
+    TArray<MetalHitGroup> hitGroups;
+    hitGroups.reserve(pipelineDesc.hitGroups.size());
+    
+    for (const auto& hitGroup : pipelineDesc.hitGroups)
+    {
+        MetalHitGroup mtlHitGroup = {};
+        if (not hitGroup.closestHitEntry.empty())
+        {
+            auto shader = CreateShader(hitGroup.closestHitEntry, ShaderStage::ClosestHit);
+            mtlHitGroup.closestHit = shader.GetHandle();
+            
+            closestHitMask |= IRObjectGatherRaytracingIntrinsics(mtlHitGroup.closestHit.dxil, hitGroup.closestHitEntry.c_str());
+        }
+
+        if (not hitGroup.anyHitEntry.empty())
+        {
+            auto shader = CreateShader(hitGroup.anyHitEntry, ShaderStage::AnyHit);
+            mtlHitGroup.anyHit = shader.GetHandle();
+            
+            anyHitMask |= IRObjectGatherRaytracingIntrinsics(mtlHitGroup.anyHit.dxil, hitGroup.anyHitEntry.c_str());
+        }
+
+        if (not hitGroup.intersectionEntry.empty())
+        {
+            auto shader = CreateShader(hitGroup.intersectionEntry, ShaderStage::Intersection);
+            mtlHitGroup.intersection = shader.GetHandle();
+        }
+        hitGroups.emplace_back(mtlHitGroup);
+    }
+    
+    IRRayTracingPipelineConfiguration* rtConfig = IRRayTracingPipelineConfigurationCreate();
+    IRRayTracingPipelineConfigurationSetRayGenerationCompilationMode(rtConfig, IRRayGenerationCompilationKernel);
+    IRRayTracingPipelineConfigurationSetIntersectionFunctionCompilationMode(rtConfig, IRIntersectionFunctionCompilationIntersectionFunctionBufferFunction);
+    IRRayTracingPipelineConfigurationSetMaxAttributeSizeInBytes(rtConfig, pipelineDesc.maxAttributeSize);
+    IRRayTracingPipelineConfigurationSetMaxRecursiveDepth(rtConfig, pipelineDesc.maxRecursionDepth);
+    IRRayTracingPipelineConfigurationSetIntrinsicMasks(rtConfig, closestHitMask, missMask, anyHitMask, /*callable=*/0);
+    
+    // RayGeneration
+    {
+        auto compiler = CreateCompiler(pipelineDesc.rayGenerationEntry, device->GetGlobalRootSignature());
+        IRCompilerSetRayTracingPipelineConfiguration(compiler, rtConfig);
+        auto function = CompileDXIL(device->GetHandle(), compiler, rayGenFunction.dxil, pipelineDesc.rayGenerationEntry, ShaderStage::RayGeneration);
+        IRCompilerDestroy(compiler);
+        
+        mtlPipelineDesc.computeFunction = function.handle;
+    }
+    
+    NSMutableArray<id<MTLFunction>>* missGroup       = [NSMutableArray array];
+    NSMutableArray<id<MTLFunction>>* closestHitGroup = [NSMutableArray array];
+    
+    // Miss
+    {
+        auto compiler = CreateCompiler(pipelineDesc.missEntry, device->GetGlobalRootSignature());
+        IRCompilerSetRayTracingPipelineConfiguration(compiler, rtConfig);
+        auto function = CompileDXIL(device->GetHandle(), compiler, missFunction.dxil, pipelineDesc.missEntry, ShaderStage::Miss);
+        IRCompilerDestroy(compiler);
+        
+        [missGroup addObject:function.handle];
+    }
+    
+    // Intersection function buffer functions (custom intersection / any-hit)
+    NSMutableArray<id<MTLFunction>>* intersectionFunctions = [NSMutableArray array];
+ 
+    // Per-hit-group IFT slot: NSNotFound means opaque triangle (no custom intersection)
+    TArray<NSUInteger> intersectionFunctionSlots(hitGroups.size(), NSNotFound);
+ 
+    for (uint32_t i = 0; i < (uint32_t)hitGroups.size(); ++i)
+    {
+        const auto& hitGroup = hitGroups[i];
+        const auto& hitGroupDesc = pipelineDesc.hitGroups[i];
+        IRHitGroupType hitGroupType = hitGroup.intersection ? IRHitGroupTypeProceduralPrimitive: IRHitGroupTypeTriangles;
+        
+        if (hitGroup.closestHit)
+        {
+            auto compiler = CreateCompiler(hitGroupDesc.closestHitEntry, device->GetGlobalRootSignature());
+            IRCompilerSetRayTracingPipelineConfiguration(compiler, rtConfig);
+            IRCompilerSetHitgroupType(compiler, hitGroupType);
+            auto function = CompileDXIL(device->GetHandle(), compiler, hitGroup.closestHit.dxil, hitGroupDesc.closestHitEntry, ShaderStage::ClosestHit);
+            IRCompilerDestroy(compiler);
+            
+            [closestHitGroup addObject:function.handle];
+        }
+        
+        if (hitGroup.anyHit || hitGroup.intersection)
+        {
+            id<MTLFunction> intersectionFunction = nil;
+            if (hitGroup.anyHit && hitGroup.intersection)
+            {
+                // Fuse any-hit + custom intersection into a single IFB function (MSC 3.0 requirement)
+                IRCompiler* fuseCompiler = IRCompilerCreate();
+                IRCompilerSetRayTracingPipelineConfiguration(fuseCompiler, rtConfig);
+                IRCompilerSetHitgroupType(fuseCompiler, hitGroupType);
+ 
+                IRError* fuseError = nullptr;
+                IRObject* dxil = IRCompilerAllocCombineCompileAndLink(fuseCompiler,
+                                                                      hitGroupDesc.intersectionEntry.c_str(),
+                                                                      hitGroup.intersection.dxil,
+                                                                      hitGroupDesc.anyHitEntry.c_str(),
+                                                                      hitGroup.anyHit.dxil,
+                                                                      &fuseError);
+                if (fuseError)
+                {
+                    GLEAM_CORE_ERROR("Metal: Failed to fuse any-hit + intersection '{}': {}",
+                                     hitGroupDesc.name, IRErrorGetCode(fuseError));
+                    IRErrorDestroy(fuseError);
+                }
+                IRCompilerDestroy(fuseCompiler);
+                
+                // fused entry keeps intersection name
+                auto compiler = CreateCompiler(hitGroupDesc.intersectionEntry, device->GetGlobalRootSignature());
+                IRCompilerSetRayTracingPipelineConfiguration(compiler, rtConfig);
+                IRCompilerSetHitgroupType(compiler, hitGroupType);
+                auto function = CompileDXIL(device->GetHandle(), compiler, dxil, hitGroupDesc.intersectionEntry, ShaderStage::Intersection);
+                IRCompilerDestroy(compiler);
+                IRObjectDestroy(dxil);
+                
+                intersectionFunction = function.handle;
+            }
+            else if (hitGroup.intersection)
+            {
+                auto compiler = CreateCompiler(hitGroupDesc.intersectionEntry, device->GetGlobalRootSignature());
+                IRCompilerSetRayTracingPipelineConfiguration(compiler, rtConfig);
+                IRCompilerSetHitgroupType(compiler, hitGroupType);
+                auto function = CompileDXIL(device->GetHandle(), compiler, hitGroup.intersection.dxil, hitGroupDesc.intersectionEntry, ShaderStage::Intersection);
+                IRCompilerDestroy(compiler);
+                
+                intersectionFunction = function.handle;
+            }
+            else // any-hit only, no custom intersection
+            {
+                auto compiler = CreateCompiler(hitGroupDesc.anyHitEntry, device->GetGlobalRootSignature());
+                IRCompilerSetRayTracingPipelineConfiguration(compiler, rtConfig);
+                IRCompilerSetHitgroupType(compiler, hitGroupType);
+                auto function = CompileDXIL(device->GetHandle(), compiler, hitGroup.anyHit.dxil, hitGroupDesc.anyHitEntry, ShaderStage::AnyHit);
+                IRCompilerDestroy(compiler);
+                
+                intersectionFunction = function.handle;
+            }
+            intersectionFunctionSlots[i] = (NSUInteger)[intersectionFunctions count];
+            [intersectionFunctions addObject:intersectionFunction];
+        }
+    }
+    IRRayTracingPipelineConfigurationDestroy(rtConfig);
+    
+    MTLLinkedFunctions* linkedFunctions = [[MTLLinkedFunctions alloc] init];
+    NSMutableArray<id<MTLFunction>>* allVisible = [NSMutableArray array];
+    [allVisible addObjectsFromArray:missGroup];
+    [allVisible addObjectsFromArray:closestHitGroup];
+    linkedFunctions.functions = allVisible;
+    linkedFunctions.groups = @{
+        @(kIRFunctionGroupMiss)       : missGroup,
+        @(kIRFunctionGroupClosestHit) : closestHitGroup,
+    };
+ 
+    if ([intersectionFunctions count] > 0)
+    {
+        linkedFunctions.binaryFunctions = intersectionFunctions;
+    }
+    mtlPipelineDesc.linkedFunctions = linkedFunctions;
+
+    __autoreleasing NSError* error = nil;
+    mtlPipeline.pipelineState = [mHandle newComputePipelineStateWithDescriptor:mtlPipelineDesc
+                                                                       options:MTLPipelineOptionNone
+                                                                    reflection:nil
+                                                                         error:&error];
+    GLEAM_ASSERT(mtlPipeline.pipelineState, "Metal: Ray tracing pipeline state creation failed.");
+
+    if (pipelineDesc.hitGroups.size() > 0)
+    {
+        MTLIntersectionFunctionTableDescriptor* iftDesc = [[MTLIntersectionFunctionTableDescriptor alloc] init];
+        iftDesc.functionCount = (NSUInteger)pipelineDesc.hitGroups.size();
+ 
+        mtlPipeline.intersectionFunctionTable = [mtlPipeline.pipelineState newIntersectionFunctionTableWithDescriptor:iftDesc];
+        GLEAM_ASSERT(mtlPipeline.intersectionFunctionTable, "Metal: Intersection function table creation failed.");
+ 
+        for (uint32_t i = 0; i < (uint32_t)pipelineDesc.hitGroups.size(); ++i)
+        {
+            NSUInteger slot = intersectionFunctionSlots[i];
+            if (slot != NSNotFound)
+            {
+                id<MTLFunctionHandle> handle =
+                    [mtlPipeline.pipelineState functionHandleWithFunction:intersectionFunctions[slot]];
+                [mtlPipeline.intersectionFunctionTable setFunction:handle atIndex:(NSUInteger)i];
+            }
+            else
+            {
+                // Opaque triangle geometry: use the built-in triangle intersection
+                [mtlPipeline.intersectionFunctionTable setOpaqueTriangleIntersectionFunctionWithSignature:MTLIntersectionFunctionSignatureInstancing
+                                                                                                  atIndex:(NSUInteger)i];
+            }
+        }
+    }
+    
     return pipeline;
 }
 
@@ -631,6 +916,15 @@ void GraphicsDevice::Dispose(GPUAllocator* allocator, Texture& texture)
 
 void GraphicsDevice::Dispose(Shader& shader)
 {
+    if (shader.mStage == ShaderStage::RayGeneration ||
+        shader.mStage == ShaderStage::Miss ||
+        shader.mStage == ShaderStage::ClosestHit ||
+        shader.mStage == ShaderStage::AnyHit ||
+        shader.mStage == ShaderStage::Intersection)
+    {
+        id<MetalRayTracingFunction> function = shader.mHandle;
+        IRObjectDestroy(function.dxil);
+    }
 	shader.mHandle = nil;
 }
 
@@ -640,6 +934,11 @@ void GraphicsDevice::Dispose(ComputePipeline& pipeline)
 }
 
 void GraphicsDevice::Dispose(GraphicsPipeline& pipeline)
+{
+    pipeline.mHandle = nil;
+}
+
+void GraphicsDevice::Dispose(RayTracingPipeline& pipeline)
 {
     pipeline.mHandle = nil;
 }

@@ -20,12 +20,21 @@
 @property (nonatomic, assign) MTLPrimitiveType topology;
 @end
 
+@protocol MetalRayTracingPipeline <MetalPipeline>
+@property (nonatomic, strong) id<MTLComputePipelineState> pipelineState;
+@property (nonatomic, strong) id<MTLIntersectionFunctionTable> intersectionFunctionTable;
+@end
+
 @protocol MetalFunction <NSObject>
-@property(nonatomic, strong) id<MTLFunction> function;
+@property(nonatomic, strong) id<MTLFunction> handle;
 @end
 
 @protocol MetalComputeFunction <MetalFunction>
 @property(nonatomic, assign) MTLSize threadsPerThreadgroup;
+@end
+
+@protocol MetalRayTracingFunction <MetalFunction>
+@property(nonatomic, assign) IRObject* dxil;
 @end
 
 namespace Gleam {

@@ -188,13 +188,13 @@ GSTRUCT(RayTracingPipelineStateDescriptor, "C07E515A-F254-4413-8C1E-13173BB82121
 	TArray<HitGroupDescriptor> hitGroups{};
 
 	GFIELD("D12C58F4-D359-4DA8-9218-A8D6980CF09F", Serializable)
-	uint32_t    maxRecursionDepth = 1;
+	uint32_t maxRecursionDepth = 1;
 
 	GFIELD("379CF426-EB79-442C-B796-4450C8A6EED8", Serializable)
-	uint32_t    maxPayloadSize = 32;	// bytes, user-defined ray payload struct
+	uint32_t maxPayloadSize = 32;	// bytes, user-defined ray payload struct
 
 	GFIELD("0074EEE1-FBCD-44BE-98DA-22FE2384E3D7", Serializable)
-	uint32_t    maxAttributeSize = 8;	// bytes, default = float2 barycentrics
+	uint32_t maxAttributeSize = 8;	// bytes, default = float2 barycentrics
 };
 
 namespace Utils {
