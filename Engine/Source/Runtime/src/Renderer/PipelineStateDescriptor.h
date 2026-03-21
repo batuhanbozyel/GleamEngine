@@ -161,7 +161,7 @@ GSTRUCT(ComputePipelineStateDescriptor, "C07E515A-F254-4413-8C1E-13173BB82121", 
 	}
 };
 
-GSTRUCT(HitGroupDescriptor, "C07E515A-F254-4413-8C1E-13173BB82121", Serializable)
+GSTRUCT(HitGroupDescriptor, "3BF561EE-C997-46E7-8E29-0AC34AADE508", Serializable)
 {
 	GFIELD("B088C7AE-6068-42B3-AC5B-DA9D88F8CAF1", Serializable)
 	TString name{};
@@ -176,7 +176,7 @@ GSTRUCT(HitGroupDescriptor, "C07E515A-F254-4413-8C1E-13173BB82121", Serializable
 	TString intersectionEntry{};
 };
 
-GSTRUCT(RayTracingPipelineStateDescriptor, "C07E515A-F254-4413-8C1E-13173BB82121", Serializable)
+GSTRUCT(RayTracingPipelineStateDescriptor, "7DE7283B-C509-4B81-8B79-9D6AE400D78A", Serializable)
 {
 	GFIELD("E10C3850-CD11-4AD0-A0CF-E6D79F2F899F", Serializable)
 	TString rayGenerationEntry{};
