@@ -105,28 +105,28 @@ const Texture& MetalSwapchain::AcquireNextDrawable()
     auto& ctx = mContext[mCurrentFrameIndex];
     WaitForMTLSharedEvent(ctx.event, ctx.eventValue);
     
-    mCurrentDrawable = [mHandle nextDrawable];
-    while (mCurrentDrawable == nil)
+    ctx.drawable = [mHandle nextDrawable];
+    while (ctx.drawable == nil)
     {
-        mCurrentDrawable = [mHandle nextDrawable];
+        ctx.drawable = [mHandle nextDrawable];
     }
     
     auto& texture = mTextures[mCurrentFrameIndex];
-    texture = Texture(texture.GetDescriptor(), mCurrentDrawable.texture, MTLResourceID());
+    texture = Texture(texture.GetDescriptor(), ctx.drawable.texture, MTLResourceID());
     return texture;
 }
 
 void MetalSwapchain::Present(const CommandBuffer* cmd)
 {
+    auto& ctx = mContext[mCurrentFrameIndex];
     id<MTL4CommandQueue> commandQueue = mDevice->GetCommandQueue();
     
     cmd->End();
-    [commandQueue waitForDrawable:mCurrentDrawable];
+    [commandQueue waitForDrawable:ctx.drawable];
     cmd->Commit();
     
-    auto& ctx = mContext[mCurrentFrameIndex];
-    [commandQueue signalDrawable:mCurrentDrawable];
-    [mCurrentDrawable present];
+    [commandQueue signalDrawable:ctx.drawable];
+    [ctx.drawable present];
     
     [commandQueue signalEvent:ctx.event value:++ctx.eventValue];
     

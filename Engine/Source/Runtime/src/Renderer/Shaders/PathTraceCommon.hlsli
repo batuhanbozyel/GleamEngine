@@ -16,10 +16,10 @@ struct Ray
 	uint depth;
 };
 
-enum BRDFType
+enum class BRDFType
 {
-	SPECULAR_BRDF,
-	DIFFUSE_BRDF
+	Specular,
+	Diffuse
 };
 
 uint initSeed(uint2 pixel, uint frameIndex)

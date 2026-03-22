@@ -144,26 +144,26 @@ float3 TracePath(Ray ray, DirectLight light, inout uint seed)
 		BRDFType brdfType;
 		if (surface.metallic == 1.0 && surface.roughness < PERFECT_MIRROR_ROUGHNESS)
 		{
-			brdfType = SPECULAR_BRDF;
+			brdfType = BRDFType::Specular;
 		}
 		else
 		{
 			float pSpec = SpecularLobeProbability(surface, NdotV);
 			if (randFloat(seed) < pSpec)
 			{
-				brdfType = SPECULAR_BRDF;
+				brdfType = BRDFType::Specular;
 				throughput /= pSpec;
 			}
 			else
 			{
-				brdfType = DIFFUSE_BRDF;
+                brdfType = BRDFType::Diffuse;
 				throughput /= (1.0 - pSpec);
 			}
 		}
 		
 		float3 nextDir;
 		float2 xi = randFloat2(seed);
-		if (brdfType == SPECULAR_BRDF)
+		if (brdfType == BRDFType::Specular)
 		{
 			float partialPdf;
 			float3 H = ImportanceSampleGGX(xi, surface.normal, surface.roughness, partialPdf);
@@ -188,7 +188,7 @@ float3 TracePath(Ray ray, DirectLight light, inout uint seed)
 			// Full BRDF: F * D * G / (4 * NdotL * NdotV)
 			// Monte Carlo weight: brdf * NdotL / pdf
 			// pdf: D * NdotH / (4 * VdotH)
-#if EXPLICIT_SPECULAR_BRDF_FORMULA
+#if EXPLICIT_SPECULAR_BRDF
 			float pdf = partialPdf * NdotH / (4.0 * VdotH);
 			float3 brdf = F * partialPdf * G / max(4.0 * NdotL * NdotV, 1e-4);
 			throughput *= brdf * NdotL / max(pdf, 1e-4);
