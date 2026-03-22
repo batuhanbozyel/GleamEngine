@@ -58,6 +58,11 @@ float3 IntegrateTransmittance(in float3 WorldPos, in float3 WorldDir, in float S
 [numthreads(16, 16, 1)]
 void skyAtmosphereTransmittanceLUTShader(uint3 dispatchThreadId : SV_DispatchThreadID)
 {
+    if (any(dispatchThreadId.xy >= float2(SKY_ATMOSPHERE_TRANSMITTANCE_TEXTURE_WIDTH, SKY_ATMOSPHERE_TRANSMITTANCE_TEXTURE_HEIGHT)))
+    {
+        return;
+    }
+    
 	float2 position = float2(dispatchThreadId.xy) + 0.5;
 	float2 uv = position / float2(SKY_ATMOSPHERE_TRANSMITTANCE_TEXTURE_WIDTH, SKY_ATMOSPHERE_TRANSMITTANCE_TEXTURE_HEIGHT);
 	

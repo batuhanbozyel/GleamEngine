@@ -54,9 +54,9 @@ GSTRUCT(Camera, "B37BA095-FFAB-49FD-ACA9-392835498015", EntityComponent, Seriali
     
 	Camera() = default;
 
-    Camera(const Size& size, ProjectionType type = ProjectionType::Perspective);
+    Camera(const Size& size, ProjectionType type);
 
-    Camera(float width, float height, ProjectionType type = ProjectionType::Perspective);
+    Camera(float width, float height, ProjectionType type);
     
     void SetViewport(const Size& size);
 

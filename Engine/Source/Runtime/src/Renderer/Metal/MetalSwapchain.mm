@@ -78,7 +78,7 @@ void MetalSwapchain::Configure(MetalDevice* device, const RendererConfig& config
     mContext.resize(mMaxFramesInFlight);
     for (auto& ctx : mContext)
     {
-        ctx.event = [device->GetHandle() newEvent];
+        ctx.event = [device->GetHandle() newSharedEvent];
     }
     
     int width, height;
@@ -103,7 +103,7 @@ void MetalSwapchain::Resize(GraphicsDevice* device, const Size& size)
 const Texture& MetalSwapchain::AcquireNextDrawable()
 {
     auto& ctx = mContext[mCurrentFrameIndex];
-    [mDevice->GetCommandQueue() waitForEvent:ctx.event value:ctx.eventValue];
+    WaitForMTLSharedEvent(ctx.event, ctx.eventValue);
     
     mCurrentDrawable = [mHandle nextDrawable];
     while (mCurrentDrawable == nil)
@@ -125,9 +125,10 @@ void MetalSwapchain::Present(const CommandBuffer* cmd)
     cmd->Commit();
     
     auto& ctx = mContext[mCurrentFrameIndex];
-    [commandQueue signalEvent:ctx.event value:++ctx.eventValue];
     [commandQueue signalDrawable:mCurrentDrawable];
     [mCurrentDrawable present];
+    
+    [commandQueue signalEvent:ctx.event value:++ctx.eventValue];
     
     mCurrentFrameIndex = (mCurrentFrameIndex + 1) % mMaxFramesInFlight;
 }

@@ -857,7 +857,10 @@ RayTracingPipeline GraphicsDevice::CompileRayTracingPipeline(const RayTracingPip
 
 void GraphicsDevice::Dispose(Heap& heap)
 {
-    [static_cast<MetalDevice*>(this)->GetResidencySet() removeAllocation:heap.mHandle];
+    mReleaseQueue->AddResource([this, resource = heap.GetHandle()]()
+    {
+        [static_cast<MetalDevice*>(this)->GetResidencySet() removeAllocation:resource];
+    }, static_cast<Swapchain*>(mSurface)->GetFrameIndex());
     heap.mHandle = nil;
 }
 
@@ -866,9 +869,9 @@ void GraphicsDevice::Dispose(GPUAllocator* allocator, Buffer& buffer)
     const auto& allocation = allocator->GetAllocation(buffer.GetHandle());
 	allocator->Free(allocation);
 
-    id<MTLBuffer> resource = buffer.GetHandle();
-    ShaderResourceIndex view = buffer.GetResourceView();
-    mReleaseQueue->AddResource([this, resource, view]()
+    mReleaseQueue->AddResource([this,
+                                resource = buffer.GetHandle(),
+                                view = buffer.GetResourceView()]()
     {
         [static_cast<MetalDevice*>(this)->GetResidencySet() removeAllocation:resource];
         static_cast<MetalDevice*>(this)->ReleaseResourceView(view);
@@ -1254,9 +1257,9 @@ IRRootSignature* MetalDevice::GetGlobalRootSignature() const
 
 void MetalCommandPool::Reset()
 {
+    [allocator reset];
     freeCommandBuffers.insert(freeCommandBuffers.end(), usedCommandBuffers.begin(), usedCommandBuffers.end());
     usedCommandBuffers.clear();
-    [allocator reset];
 }
 
 void MetalCommandPool::Release()

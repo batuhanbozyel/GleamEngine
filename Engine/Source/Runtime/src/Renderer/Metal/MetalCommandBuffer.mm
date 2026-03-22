@@ -44,9 +44,8 @@ struct CommandBuffer::Impl
     id<MTL4ComputeCommandEncoder> computeCommandEncoder = nil;
     id<MetalPipeline> pipeline = nil;
     
-    id<MTLEvent> event = nil;
-    uint64_t eventValue = 1;
-    uint64_t waitEventValue = 0;
+    id<MTLSharedEvent> event = nil;
+    uint64_t eventValue = 0;
     
     TopLevelArgumentBuffer topLevelArgumentBuffer = {};
     
@@ -75,7 +74,7 @@ CommandBuffer::CommandBuffer(GraphicsDevice* device)
     , mConstantBuffer(device, 4194304) // 4 MB
 {
     mHandle->device = static_cast<MetalDevice*>(device);
-    mHandle->event = [mHandle->device->GetHandle() newEvent];
+    mHandle->event = [mHandle->device->GetHandle() newSharedEvent];
 }
 
 CommandBuffer::~CommandBuffer()
@@ -277,7 +276,6 @@ void CommandBuffer::CopyBuffer(const NativeGraphicsHandle src, const NativeGraph
 {
     [mHandle->computeCommandEncoder setLabel:TO_NSSTRING("CommandBuffer::CopyBuffer")];
     [mHandle->computeCommandEncoder copyFromBuffer:src sourceOffset:srcOffset toBuffer:dst destinationOffset:dstOffset size:size];
-    [mHandle->computeCommandEncoder endEncoding];
 }
 
 void CommandBuffer::Blit(const Texture& source, const Texture& destination) const
@@ -287,7 +285,6 @@ void CommandBuffer::Blit(const Texture& source, const Texture& destination) cons
 
     [mHandle->computeCommandEncoder setLabel:TO_NSSTRING("CommandBuffer::Blit")];
     [mHandle->computeCommandEncoder copyFromTexture:srcTexture toTexture:dstTexture];
-    [mHandle->computeCommandEncoder endEncoding];
 }
 
 void CommandBuffer::Barrier(const BarrierGroup& barrier) const
@@ -349,7 +346,7 @@ void CommandBuffer::Barrier(const BarrierGroup& barrier) const
         
         if (nonRenderSrcStages != 0 || nonRenderDstStages != 0)
         {
-            mHandle->consumerBarriers.push_back({allSrcStages, allDstStages, visibility });
+            mHandle->consumerBarriers.push_back({nonRenderSrcStages, nonRenderDstStages, visibility });
         }
     }
     else if (mHandle->computeCommandEncoder)
@@ -369,7 +366,7 @@ void CommandBuffer::Barrier(const BarrierGroup& barrier) const
         MTLStages nonComputeDstStages = allDstStages & ~validComputeStages;
         if (nonComputeSrcStages != 0 || nonComputeDstStages != 0)
         {
-            mHandle->consumerBarriers.push_back({ allSrcStages, allDstStages, visibility });
+            mHandle->consumerBarriers.push_back({ nonComputeSrcStages, nonComputeDstStages, visibility });
         }
     }
     else
@@ -393,13 +390,11 @@ void CommandBuffer::End() const
 
 void CommandBuffer::Commit() const
 {
-    mHandle->waitEventValue = mHandle->eventValue;
-    
     id<MTL4CommandQueue> commandQueue = mHandle->device->GetCommandQueue();
     
     [mHandle->device->GetResidencySet() commit];
     [commandQueue commit:&mHandle->commandBuffer count:1u];
-    [commandQueue signalEvent:mHandle->event value:mHandle->eventValue++];
+    [commandQueue signalEvent:mHandle->event value:++mHandle->eventValue];
     
     mConstantBuffer.Reset();
     mCommitted = true;
@@ -409,7 +404,7 @@ void CommandBuffer::WaitUntilCompleted() const
 {
     if (mCommitted)
 	{
-        [mHandle->device->GetCommandQueue() waitForEvent:mHandle->event value:mHandle->waitEventValue];
+        WaitForMTLSharedEvent(mHandle->event, mHandle->eventValue);
 	}
     mCommitted = false;
 }

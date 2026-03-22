@@ -39,7 +39,7 @@ private:
 	
 	struct FrameContext
 	{
-		id<MTLEvent> event = nil;
+		id<MTLSharedEvent> event = nil;
 		uint64_t eventValue = 0;
 	};
 	TArray<FrameContext> mContext;

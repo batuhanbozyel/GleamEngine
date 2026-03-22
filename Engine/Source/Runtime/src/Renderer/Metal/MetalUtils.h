@@ -13,6 +13,15 @@
 
 namespace Gleam {
 
+static void WaitForMTLSharedEvent(id<MTLSharedEvent> sharedEvent, uint64_t value)
+{
+	if ([sharedEvent signaledValue] >= value)
+	{
+		return;
+	}
+	[sharedEvent waitUntilSignaledValue:value timeoutMS:UINT64_MAX];
+}
+
 static constexpr TextureFormat MTLPixelFormatToTextureFormat(MTLPixelFormat format)
 {
     switch (format)

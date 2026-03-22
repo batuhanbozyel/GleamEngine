@@ -6,6 +6,11 @@ PUSH_CONSTANT(Gleam::SkyAtmosphereRenderConstants, constants);
 [numthreads(16, 16, 1)]
 void skyAtmosphereRenderShader(uint3 dispatchThreadId : SV_DispatchThreadID)
 {
+    if (any(dispatchThreadId.xy >= camera.resolution))
+    {
+        return;
+    }
+    
 	if (constants.depthTexture != InvalidResourceIndex)
 	{
 		Texture2D<float> DepthTexture = ResourceDescriptorHeap[constants.depthTexture];

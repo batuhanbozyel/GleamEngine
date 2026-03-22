@@ -64,10 +64,15 @@ float IntegrateDiffuse(in float NdotV, in float perceptualRoughness)
 
 [shader("compute")]
 [numthreads(16, 16, 1)]
-void integrateBRDFShader(uint3 dispatchThreadID : SV_DispatchThreadID)
+void integrateBRDFShader(uint3 dispatchThreadId : SV_DispatchThreadID)
 {
-    float NdotV = (dispatchThreadID.x + 0.5) / BRDF_LUT_SIZE;
-    float perceptualRoughness = (dispatchThreadID.y + 0.5) / BRDF_LUT_SIZE;
+    if (any(dispatchThreadId.xy >= BRDF_LUT_SIZE))
+    {
+        return;
+    }
+    
+    float NdotV = (dispatchThreadId.x + 0.5) / BRDF_LUT_SIZE;
+    float perceptualRoughness = (dispatchThreadId.y + 0.5) / BRDF_LUT_SIZE;
     RWTexture2D<float4> targetTexture = ResourceDescriptorHeap[constants.targetTexture];
-	targetTexture[dispatchThreadID.xy] = float4(IntegrateDFG(NdotV, perceptualRoughness), IntegrateDiffuse(NdotV, perceptualRoughness));
+	targetTexture[dispatchThreadId.xy] = float4(IntegrateDFG(NdotV, perceptualRoughness), IntegrateDiffuse(NdotV, perceptualRoughness));
 }

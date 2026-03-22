@@ -75,7 +75,7 @@ public:
 			auto world = Gleam::World("Starter World");
 
 			auto& camera = world.GetEntityManager().CreateEntity("Editor Camera", Gleam::Guid::NewGuid());
-			world.GetEntityManager().AddComponent<Gleam::Camera>(camera, Gleam::Size(1280.0f, 720.0f));
+			world.GetEntityManager().AddComponent<Gleam::Camera>(camera, Gleam::Size(1280.0f, 720.0f), Gleam::ProjectionType::Perspective);
 
 			auto& atmosphere = world.GetEntityManager().CreateEntity("Atmosphere", Gleam::Guid::NewGuid());
 			world.GetEntityManager().AddComponent<Gleam::SkyAtmosphere>(atmosphere);

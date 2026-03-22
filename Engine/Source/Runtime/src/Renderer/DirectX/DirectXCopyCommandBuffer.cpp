@@ -162,9 +162,9 @@ void CopyCommandBuffer::Execute() const
 
 void CopyCommandBuffer::WaitUntilCompleted() const
 {
-	mHandle->stagingBufferOffset = 0;
 	WaitForID3D12Fence(mHandle->memoryFence, mHandle->fenceValue);
 
+	mHandle->stagingBufferOffset = 0;
 	for (auto buffer : mHandle->tempBuffers)
 	{
 		buffer->Release();
