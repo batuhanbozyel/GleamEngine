@@ -1,5 +1,6 @@
 #include "gpch.h"
 #include "GraphicsDevice.h"
+#include "Swapchain.h"
 
 using namespace Gleam;
 
@@ -112,4 +113,9 @@ const RayTracingPipeline& GraphicsDevice::GetRayTracingPipeline(RayTracingPipeli
 	GLEAM_ASSERT(false);
 	static RayTracingPipeline invalid;
 	return invalid;
+}
+
+void GraphicsDevice::Dispose(ResourceReleaseQueue::ObjectDeallocator&& deallocator)
+{
+	mReleaseQueue->AddResource(eastl::move(deallocator), static_cast<Swapchain*>(mSurface)->GetFrameIndex());
 }

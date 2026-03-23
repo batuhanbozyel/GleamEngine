@@ -74,11 +74,7 @@ public:
 
 	void WaitQueueIdle(ID3D12CommandQueue* queue) const;
 
-private:
-	
-	virtual void Configure(const RendererConfig& config) override;
-
-	virtual void ResetCommandPools(uint32_t frameIdx) override;
+	ID3D12Resource* CreateResource(const GPUAllocation& allocation, const D3D12_RESOURCE_DESC1& desc, const TString& name) const;
 
 	ShaderResourceIndex CreateResourceView(const Buffer& buffer);
 
@@ -86,7 +82,11 @@ private:
 
 	void ReleaseResourceView(ShaderResourceIndex view);
 
-	ID3D12Resource* CreateResource(const GPUAllocation& allocation, const D3D12_RESOURCE_DESC1& desc, const TString& name) const;
+private:
+	
+	virtual void Configure(const RendererConfig& config) override;
+
+	virtual void ResetCommandPools(uint32_t frameIdx) override;
 
 	ID3D12CommandQueue* CreateCommandQueue(D3D12_COMMAND_LIST_TYPE type) const;
 

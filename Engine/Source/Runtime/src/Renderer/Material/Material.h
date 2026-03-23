@@ -33,6 +33,8 @@ public:
     
     const TString& GetName() const;
 
+	const MaterialDescriptor& GetDescriptor() const;
+
 	uint32_t GetPipelineHash() const;
 
 	uint32_t GetInstanceCount() const;
@@ -46,6 +48,8 @@ private:
 	size_t mInstanceSize = 0;
 
 	uint32_t mPipelineStateHash = 0;
+
+	MaterialDescriptor mDescriptor;
 
 	ResourceDescriptorHeap mInstanceDescriptorHeap;
     

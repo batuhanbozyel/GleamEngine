@@ -28,6 +28,10 @@ public:
 
 	Buffer CreateBuffer(GPUAllocator* allocator, const BufferDescriptor& descriptor);
 
+	BottomLevelAccelerationStructure CreateBLAS(GPUAllocator* allocator, const BLASDescriptor& descriptor);
+
+	TopLevelAccelerationStructure CreateTLAS(GPUAllocator* allocator, const TLASDescriptor& descriptor);
+
     Shader CreateShader(const TString& entryPoint, ShaderStage stage);
 
 	ComputePipelineHandle CreateComputePipeline(const ComputePipelineStateDescriptor& pipelineDesc);
@@ -42,6 +46,10 @@ public:
 
 	void Dispose(GPUAllocator* allocator, Buffer& buffer);
 
+	void Dispose(GPUAllocator* allocator, BottomLevelAccelerationStructure& blas);
+
+	void Dispose(GPUAllocator* allocator, TopLevelAccelerationStructure& tlas);
+
 	void Dispose(Shader& shader);
 
 	void Dispose(ComputePipeline& pipeline);
@@ -49,6 +57,8 @@ public:
 	void Dispose(GraphicsPipeline& pipeline);
 
 	void Dispose(RayTracingPipeline& pipeline);
+
+	void Dispose(ResourceReleaseQueue::ObjectDeallocator&& deallocator);
 
 	const ComputePipeline& GetComputePipeline(ComputePipelineHandle handle) const;
 

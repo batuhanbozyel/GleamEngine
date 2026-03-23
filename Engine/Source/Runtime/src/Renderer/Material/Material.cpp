@@ -50,6 +50,7 @@ static size_t ComputeMaterialInstanceSize(const TArray<MaterialProperty>& proper
 Material::Material(const MaterialDescriptor& descriptor)
     : IMaterial(descriptor.properties)
     , mName(descriptor.name)
+	, mDescriptor(descriptor)
 	, mPipelineStateHash((uint32_t)eastl::hash<MaterialDescriptor>()(descriptor))
 	, mInstanceDescriptorHeap(MaxMaterialInstances)
 	, mInstanceSize(ComputeMaterialInstanceSize(descriptor.properties))
@@ -148,6 +149,11 @@ const Buffer& Material::GetBuffer() const
 const TString& Material::GetName() const
 {
     return mName;
+}
+
+const MaterialDescriptor& Material::GetDescriptor() const
+{
+	return mDescriptor;
 }
 
 uint32_t Material::GetPipelineHash() const

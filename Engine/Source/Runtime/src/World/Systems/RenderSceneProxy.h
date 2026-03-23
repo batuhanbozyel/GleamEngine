@@ -22,8 +22,6 @@ struct MeshBatch
 	Buffer instanceBuffer = {};
 	uint32_t numInstances = 0;
 
-	// TODO: When switched to mesh shader pipeline,
-	// we likely dont need those arrays to persist after uploading to GPU
 	TArray<Mesh*, MaxMeshInstances> meshes = {};
 	TArray<MeshInstanceData, MaxMeshInstances> instances = {};
 };

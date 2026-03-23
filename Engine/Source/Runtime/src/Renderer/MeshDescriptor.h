@@ -28,6 +28,9 @@ GSTRUCT(SubmeshDescriptor, "DD7E3A74-ADF4-45A9-8DFD-CA252EDC49A6", Serializable)
 	GFIELD("7B6A5D4C-3E2F-41B0-A9D8-C7B6A5D4C3E2", Serializable)
 	uint32_t baseVertex = 0;
 
+	GFIELD("2EDAD211-496A-4A02-BFD7-00B1195EBBA0", Serializable)
+	uint32_t vertexCount = 0;
+
 	GFIELD("F1E2D3C4-B5A6-47B8-91C2-D3E4F5A6B7C8", Serializable)
 	uint32_t firstIndex = 0;
 

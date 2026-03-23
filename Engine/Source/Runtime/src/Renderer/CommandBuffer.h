@@ -9,6 +9,7 @@
 #include "Pipeline.h"
 #include "ConstantBuffer.h"
 #include "RenderPassDescriptor.h"
+#include "AccelerationStructure.h"
 
 namespace Gleam {
 

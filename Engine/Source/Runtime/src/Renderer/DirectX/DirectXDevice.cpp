@@ -445,6 +445,34 @@ Buffer GraphicsDevice::CreateBuffer(GPUAllocator* allocator, const BufferDescrip
 	return buffer;
 }
 
+BottomLevelAccelerationStructure GraphicsDevice::CreateBLAS(GPUAllocator* allocator, const BLASDescriptor& descriptor)
+{
+	D3D12_RESOURCE_DESC1 resourceDesc = {
+		.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER,
+		.Alignment = 0,
+		.Width = descriptor.size,
+		.Height = 1,
+		.DepthOrArraySize = 1,
+		.MipLevels = 1,
+		.Format = DXGI_FORMAT_UNKNOWN,
+		.SampleDesc = {.Count = 1, .Quality = 0 },
+		.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR,
+		.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS | D3D12_RESOURCE_FLAG_RAYTRACING_ACCELERATION_STRUCTURE
+	};
+	D3D12_RESOURCE_ALLOCATION_INFO allocationInfo = static_cast<ID3D12Device10*>(mHandle)->GetResourceAllocationInfo2(0, 1, &resourceDesc, nullptr);
+	MemoryRequirements memoryRequirements =
+	{
+		.size = allocationInfo.SizeInBytes,
+		.alignment = allocationInfo.Alignment,
+		.type = MemoryType::GPU
+	};
+	GPUAllocation allocation = allocator->Allocate(memoryRequirements);
+	ID3D12Resource* resource = static_cast<DirectXDevice*>(this)->CreateResource(allocation, resourceDesc, descriptor.name);
+	allocator->AddAllocation(resource, allocation);
+
+	return BottomLevelAccelerationStructure(descriptor, resource);
+}
+
 Shader GraphicsDevice::CompileShader(const TString& entryPoint, ShaderStage stage)
 {
 	Shader shader(entryPoint, stage);
@@ -765,6 +793,18 @@ void GraphicsDevice::Dispose(GPUAllocator* allocator, Texture& texture)
 	texture.mView = {};
 	texture.mSliceViews.clear();
 	texture.mSliceUnorderedAccessViews.clear();
+}
+
+void GraphicsDevice::Dispose(GPUAllocator* allocator, BottomLevelAccelerationStructure& blas)
+{
+	const auto& allocation = allocator->GetAllocation(blas.GetHandle());
+	allocator->Free(allocation);
+
+	mReleaseQueue->AddResource([this, resource = static_cast<ID3D12Resource*>(blas.GetHandle())]()
+	{
+		resource->Release();
+	}, static_cast<Swapchain*>(mSurface)->GetFrameIndex());
+	blas.mHandle = nullptr;
 }
 
 void GraphicsDevice::Dispose(Shader& shader)

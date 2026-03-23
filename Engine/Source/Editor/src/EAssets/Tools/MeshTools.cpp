@@ -68,6 +68,7 @@ Gleam::MeshDescriptor MeshTools::CombineMeshes(const Gleam::TArray<RawMesh>& mes
 		submesh.materialIndex = mesh.material;
         submesh.bounds = CalculateBounds(mesh.positions);
         submesh.indexCount = static_cast<uint32_t>(mesh.indices.size());
+		submesh.vertexCount = static_cast<uint32_t>(mesh.positions.size());
         combined.submeshes[i] = submesh;
         
         auto interleaved = InterleaveMeshVertices(mesh);

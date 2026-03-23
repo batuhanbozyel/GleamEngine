@@ -68,3 +68,8 @@ const TArray<SubmeshDescriptor>& Mesh::GetSubmeshes() const
 {
     return mSubmeshes;
 }
+
+const BottomLevelAccelerationStructure& Mesh::GetBLAS() const
+{
+	return mBLAS;
+}

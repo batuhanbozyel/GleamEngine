@@ -157,7 +157,6 @@ bool MeshSource::Import(const Gleam::Path& path, const ImportSettings& settings)
 			if (node.mesh)
 			{
 				const auto& meshBaker = meshes[node.mesh];
-				const auto& meshDesc = meshBaker->GetDescriptor();
 				const auto& meshItem = Registry()->GetAsset<Gleam::MeshDescriptor>(meshBaker->Filename());
 
 				Gleam::TArray<Gleam::AssetReference> materialRefs;
