@@ -88,7 +88,11 @@ public:
 
 	ShaderResourceIndex CreateResourceView(const Texture& texture, MTLTextureViewDescriptor* viewDesc);
 
+	AccelerationStructureView CreateResourceView(const TopLevelAccelerationStructure& tlas);
+
 	void ReleaseResourceView(ShaderResourceIndex view);
+
+	void ReleaseResourceView(AccelerationStructureView view);
     
 private:
 

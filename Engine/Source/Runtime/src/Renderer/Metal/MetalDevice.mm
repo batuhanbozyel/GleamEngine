@@ -1,4 +1,4 @@
-#include "gpch.h"
+﻿#include "gpch.h"
 
 #ifdef USE_METAL_RENDERER
 #include "MetalDevice.h"
@@ -125,12 +125,7 @@ void RenderSystem::InitializeBackend()
 {
 	mSwapchain = CreateScope<MetalSwapchain>();
     mReleaseQueue = CreateScope<ResourceReleaseQueue>(mSwapchain->GetFramesInFlight());
-    
     mDevice = CreateScope<MetalDevice>(mSwapchain.get(), mReleaseQueue.get());
-	mCopyCommandBuffer = CreateScope<CopyCommandBuffer>(mDevice.get());
-
-    mPersistentAllocator = CreateScope<GPUAllocator>(mDevice.get(), GPUAllocatorDescriptor{ .name = "Persistent GPU Allocator" });
-	mTransientAllocator = CreateScope<GPUAllocator>(mDevice.get(), GPUAllocatorDescriptor{ .name = "Transient GPU Allocator" });
 }
 
 static IRCompiler* CreateCompiler(const TString& entryPoint, IRRootSignature* globalRootSig)
@@ -520,6 +515,49 @@ Buffer GraphicsDevice::CreateBuffer(GPUAllocator* allocator, const BufferDescrip
     buffer.mAlignment = 4;
     buffer.mResourceView = static_cast<MetalDevice*>(this)->CreateResourceView(buffer);
     return buffer;
+}
+
+BottomLevelAccelerationStructure GraphicsDevice::CreateBLAS(GPUAllocator* allocator, const BLASDescriptor& descriptor)
+{
+    MTLSizeAndAlign sizeAndAlign = [mHandle heapAccelerationStructureSizeAndAlignWithSize:descriptor.size];
+	MemoryRequirements memoryRequirements =
+	{
+		.size = sizeAndAlign.size,
+		.alignment = sizeAndAlign.align,
+		.type = MemoryType::GPU
+	};
+	GPUAllocation allocation = allocator->Allocate(memoryRequirements);
+ 
+	id<MTLHeap> heap = allocation.block->heap.GetHandle();
+	id<MTLAccelerationStructure> accelStructure = [heap newAccelerationStructureWithSize:descriptor.size offset:allocation.offset];
+	[accelStructure setLabel:TO_NSSTRING(descriptor.name.c_str())];
+	[static_cast<MetalDevice*>(this)->GetResidencySet() addAllocation:accelStructure];
+    allocator->AddAllocation(accelStructure, allocation);
+ 
+	return BottomLevelAccelerationStructure(descriptor, accelStructure);
+}
+
+TopLevelAccelerationStructure GraphicsDevice::CreateTLAS(GPUAllocator* allocator, const TLASDescriptor& descriptor)
+{
+    MTLSizeAndAlign sizeAndAlign = [mHandle heapAccelerationStructureSizeAndAlignWithSize:descriptor.size];
+	MemoryRequirements memoryRequirements =
+	{
+		.size = sizeAndAlign.size,
+		.alignment = sizeAndAlign.align,
+		.type = MemoryType::GPU
+	};
+	GPUAllocation allocation = allocator->Allocate(memoryRequirements);
+ 
+	id<MTLHeap> heap = allocation.block->heap.GetHandle();
+	id<MTLAccelerationStructure> accelStructure = [heap newAccelerationStructureWithSize:descriptor.size offset:allocation.offset];
+	[accelStructure setLabel:TO_NSSTRING(descriptor.name.c_str())];
+	[static_cast<MetalDevice*>(this)->GetResidencySet() addAllocation:accelStructure];
+    allocator->AddAllocation(accelStructure, allocation);
+
+	TopLevelAccelerationStructure tlas(descriptor);
+	tlas.mHandle = accelStructure;
+	tlas.mResourceView = static_cast<MetalDevice*>(this)->CreateResourceView(tlas);
+	return tlas;
 }
 
 Shader GraphicsDevice::CompileShader(const TString& entryPoint, ShaderStage stage)
@@ -917,6 +955,35 @@ void GraphicsDevice::Dispose(GPUAllocator* allocator, Texture& texture)
     texture.mSliceUnorderedAccessViews.clear();
 }
 
+void GraphicsDevice::Dispose(GPUAllocator* allocator, BottomLevelAccelerationStructure& blas)
+{
+    const auto& allocation = allocator->GetAllocation(blas.GetHandle());
+	allocator->Free(allocation);
+
+	mReleaseQueue->AddResource([this, resource = blas.GetHandle()]()
+	{
+		[static_cast<MetalDevice*>(this)->GetResidencySet() removeAllocation:resource];
+	}, static_cast<Swapchain*>(mSurface)->GetFrameIndex());
+	blas.mHandle = nil;
+}
+ 
+void GraphicsDevice::Dispose(GPUAllocator* allocator, TopLevelAccelerationStructure& tlas)
+{
+    const auto& allocation = allocator->GetAllocation(tlas.GetHandle());
+	allocator->Free(allocation);
+
+	mReleaseQueue->AddResource([this,
+								resource = tlas.GetHandle(),
+								view = tlas.GetResourceView()]()
+	{
+		[static_cast<MetalDevice*>(this)->GetResidencySet() removeAllocation:resource];
+		static_cast<MetalDevice*>(this)->ReleaseResourceView(view);
+	}, static_cast<Swapchain*>(mSurface)->GetFrameIndex());
+ 
+	tlas.mResourceView = {};
+	tlas.mHandle = nil;
+}
+
 void GraphicsDevice::Dispose(Shader& shader)
 {
     if (shader.mStage == ShaderStage::RayGeneration ||
@@ -1154,11 +1221,41 @@ ShaderResourceIndex MetalDevice::CreateResourceView(const Texture& texture, MTLT
     return index;
 }
 
+AccelerationStructureView MetalDevice::CreateResourceView(const TopLevelAccelerationStructure& tlas)
+{
+    id<MTLBuffer> headerBuffer = [mHandle newBufferWithLength:sizeof(IRRuntimeAccelerationStructureGPUHeader)
+                                                      options:MTLResourceStorageModeShared];
+	[headerBuffer setLabel:@"TLAS GPU Header"];
+	[static_cast<MetalDevice*>(this)->GetResidencySet() addAllocation:headerBuffer];
+ 
+	IRRuntimeAccelerationStructureGPUHeader* header = static_cast<IRRuntimeAccelerationStructureGPUHeader*>([headerBuffer contents]);
+	header->accelerationStructureID = [tlas.GetHandle() gpuResourceID]._impl;
+	header->addressOfInstanceContributions = 0; // No per-instance hit group contributions
+
+    auto index = mCbvSrvUavHeap.heap.Allocate();
+	auto descriptorTable = static_cast<IRDescriptorTableEntry*>([mCbvSrvUavHeap.handle contents]);
+	IRDescriptorTableSetAccelerationStructure(descriptorTable + index.data, [headerBuffer gpuAddress]);
+ 
+	AccelerationStructureView view;
+	view.index = index;
+	view.header = headerBuffer;
+	return view;
+}
+
 void MetalDevice::ReleaseResourceView(ShaderResourceIndex view)
 {
     if (view != InvalidResourceIndex)
     {
         mCbvSrvUavHeap.heap.Release(view);
+    }
+}
+
+void MetalDevice::ReleaseResourceView(AccelerationStructureView view)
+{
+    if (view.index != InvalidResourceIndex)
+    {
+        [static_cast<MetalDevice*>(this)->GetResidencySet() removeAllocation:view.header];
+        mCbvSrvUavHeap.heap.Release(view.index);
     }
 }
 

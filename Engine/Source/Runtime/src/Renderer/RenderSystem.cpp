@@ -31,6 +31,10 @@ void RenderSystem::Initialize(Engine* engine)
 	InitializeBackend();
 	Configure(engine->GetConfiguration().renderer);
 
+	mPersistentAllocator = CreateScope<GPUAllocator>(mDevice.get(), GPUAllocatorDescriptor{ .name = "Persistent GPU Allocator" });
+	mTransientAllocator = CreateScope<GPUAllocator>(mDevice.get(), GPUAllocatorDescriptor{ .name = "Transient GPU Allocator" });
+	mCopyCommandBuffer = CreateScope<CopyCommandBuffer>(mDevice.get());
+
 	RenderContext context;
 	context.device = mDevice.get();
 	context.surface = mSwapchain.get();

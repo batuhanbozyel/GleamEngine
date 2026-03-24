@@ -3,6 +3,16 @@
 
 namespace Gleam {
 
+#if defined(USE_DIRECTX_RENDERER)
+using AccelerationStructureView = ShaderResourceIndex;
+#else
+struct AccelerationStructureView
+{
+	ShaderResourceIndex index = InvalidResourceIndex;
+	NativeGraphicsHandle header = nil;
+};
+#endif
+
 struct BLASDescriptor
 {
 	TString name;
@@ -50,7 +60,7 @@ struct TLASDescriptor
 	size_t size = 0;
 };
 
-class TopLevelAccelerationStructure final : public ShaderResource
+class TopLevelAccelerationStructure final : public GraphicsObject
 {
 	friend class GraphicsDevice;
 public:
@@ -67,9 +77,10 @@ public:
 
 	}
 
-	TopLevelAccelerationStructure(const TLASDescriptor& descriptor, NativeGraphicsHandle handle, ShaderResourceIndex view)
-		: ShaderResource(handle, view)
+	TopLevelAccelerationStructure(const TLASDescriptor& descriptor, NativeGraphicsHandle handle, AccelerationStructureView view)
+		: GraphicsObject(handle)
 		, mDescriptor(descriptor)
+		, mResourceView(view)
 	{
 
 	}
@@ -79,9 +90,16 @@ public:
 		return mDescriptor;
 	}
 
+	AccelerationStructureView GetResourceView() const
+	{
+		return mResourceView;
+	}
+
 private:
 
 	TLASDescriptor mDescriptor;
+
+	AccelerationStructureView mResourceView;
 
 };
 

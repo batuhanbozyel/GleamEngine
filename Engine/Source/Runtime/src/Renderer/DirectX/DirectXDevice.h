@@ -80,6 +80,8 @@ public:
 
 	ShaderResourceIndex CreateResourceView(const Texture& texture);
 
+	ShaderResourceIndex CreateResourceView(const TopLevelAccelerationStructure& tlas);
+
 	void ReleaseResourceView(ShaderResourceIndex view);
 
 private:

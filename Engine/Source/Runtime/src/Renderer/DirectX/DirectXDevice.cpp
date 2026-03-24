@@ -42,12 +42,7 @@ void RenderSystem::InitializeBackend()
 {
 	mSwapchain = CreateScope<DirectXSwapchain>();
 	mReleaseQueue = CreateScope<ResourceReleaseQueue>(mSwapchain->GetFramesInFlight());
-
 	mDevice = CreateScope<DirectXDevice>(mSwapchain.get(), mReleaseQueue.get());
-	mCopyCommandBuffer = CreateScope<CopyCommandBuffer>(mDevice.get());
-
-	mPersistentAllocator = CreateScope<GPUAllocator>(mDevice.get(), GPUAllocatorDescriptor{ .name = "Persistent GPU Allocator" });
-	mTransientAllocator = CreateScope<GPUAllocator>(mDevice.get(), GPUAllocatorDescriptor{ .name = "Transient GPU Allocator" });
 }
 
 static D3D12_STATIC_SAMPLER_DESC CreateStaticSampler(const SamplerState& samplerState)
@@ -473,6 +468,37 @@ BottomLevelAccelerationStructure GraphicsDevice::CreateBLAS(GPUAllocator* alloca
 	return BottomLevelAccelerationStructure(descriptor, resource);
 }
 
+TopLevelAccelerationStructure GraphicsDevice::CreateTLAS(GPUAllocator* allocator, const TLASDescriptor& descriptor)
+{
+	D3D12_RESOURCE_DESC1 resourceDesc = {
+		.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER,
+		.Alignment = 0,
+		.Width = descriptor.size,
+		.Height = 1,
+		.DepthOrArraySize = 1,
+		.MipLevels = 1,
+		.Format = DXGI_FORMAT_UNKNOWN,
+		.SampleDesc = {.Count = 1, .Quality = 0 },
+		.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR,
+		.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS | D3D12_RESOURCE_FLAG_RAYTRACING_ACCELERATION_STRUCTURE
+	};
+	D3D12_RESOURCE_ALLOCATION_INFO allocationInfo = static_cast<ID3D12Device10*>(mHandle)->GetResourceAllocationInfo2(0, 1, &resourceDesc, nullptr);
+	MemoryRequirements memoryRequirements =
+	{
+		.size = allocationInfo.SizeInBytes,
+		.alignment = allocationInfo.Alignment,
+		.type = MemoryType::GPU
+	};
+	GPUAllocation allocation = allocator->Allocate(memoryRequirements);
+	ID3D12Resource* resource = static_cast<DirectXDevice*>(this)->CreateResource(allocation, resourceDesc, descriptor.name);
+	allocator->AddAllocation(resource, allocation);
+
+	TopLevelAccelerationStructure tlas(descriptor);
+	tlas.mHandle = resource;
+	tlas.mResourceView = static_cast<DirectXDevice*>(this)->CreateResourceView(tlas);
+	return tlas;
+}
+
 Shader GraphicsDevice::CompileShader(const TString& entryPoint, ShaderStage stage)
 {
 	Shader shader(entryPoint, stage);
@@ -805,6 +831,23 @@ void GraphicsDevice::Dispose(GPUAllocator* allocator, BottomLevelAccelerationStr
 		resource->Release();
 	}, static_cast<Swapchain*>(mSurface)->GetFrameIndex());
 	blas.mHandle = nullptr;
+}
+
+void GraphicsDevice::Dispose(GPUAllocator* allocator, TopLevelAccelerationStructure& tlas)
+{
+	const auto& allocation = allocator->GetAllocation(tlas.GetHandle());
+	allocator->Free(allocation);
+
+	mReleaseQueue->AddResource([this,
+								resource = static_cast<ID3D12Resource*>(tlas.GetHandle()),
+								srv = tlas.mResourceView]()
+	{
+		resource->Release();
+		static_cast<DirectXDevice*>(this)->ReleaseResourceView(srv);
+	}, static_cast<Swapchain*>(mSurface)->GetFrameIndex());
+
+	tlas.mResourceView = InvalidResourceIndex;
+	tlas.mHandle = nullptr;
 }
 
 void GraphicsDevice::Dispose(Shader& shader)
@@ -1327,6 +1370,23 @@ ShaderResourceIndex DirectXDevice::CreateResourceView(const Texture& texture)
 		uavHandle.ptr += (UINT64)(mCbvSrvUavHeap.size * CBV_SRV_HEAP_SIZE);
 		static_cast<ID3D12Device10*>(mHandle)->CreateUnorderedAccessView(static_cast<ID3D12Resource*>(texture.GetHandle()), nullptr, &uavDesc, uavHandle);
 	}
+	return mCbvSrvUavHeap.GetResourceIndex(srvHandle);
+}
+
+ShaderResourceIndex DirectXDevice::CreateResourceView(const TopLevelAccelerationStructure& tlas)
+{
+	auto srvHandle = mCbvSrvUavHeap.Allocate();
+
+	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+	srvDesc.Format = DXGI_FORMAT_UNKNOWN;
+	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_RAYTRACING_ACCELERATION_STRUCTURE;
+	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+	srvDesc.RaytracingAccelerationStructure.Location = static_cast<ID3D12Resource*>(tlas.GetHandle())->GetGPUVirtualAddress();
+
+	// For AS SRVs the resource parameter must be nullptr;
+	// the GPU VA inside the desc is what D3D12 uses.
+	static_cast<ID3D12Device10*>(mHandle)->CreateShaderResourceView(nullptr, &srvDesc, srvHandle);
+
 	return mCbvSrvUavHeap.GetResourceIndex(srvHandle);
 }
 

@@ -47,6 +47,7 @@ Mesh::~Mesh()
 	device->Dispose(renderSystem->GetAllocator(), mPositionBuffer);
 	device->Dispose(renderSystem->GetAllocator(), mInterleavedBuffer);
 	device->Dispose(renderSystem->GetAllocator(), mIndexBuffer);
+	// TODO: dispose BLAS with same allocator
 }
 
 const Buffer& Mesh::GetPositionBuffer() const

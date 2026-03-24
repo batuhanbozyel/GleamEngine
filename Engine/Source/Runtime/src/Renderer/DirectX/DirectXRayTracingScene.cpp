@@ -128,6 +128,8 @@ void RayTracingScene::BuildAccelerationStructure(const CommandBuffer* cmd, const
 			}
 
 			const auto& materialDesc = batch.material->GetDescriptor();
+			const auto& instanceData = batch.instances[i];
+
 			UINT instanceFlags = D3D12_RAYTRACING_INSTANCE_FLAG_NONE;
 			if (materialDesc.cullingMode == CullMode::Off)
 			{
@@ -146,8 +148,6 @@ void RayTracingScene::BuildAccelerationStructure(const CommandBuffer* cmd, const
 			{
 				instanceFlags |= D3D12_RAYTRACING_INSTANCE_FLAG_FORCE_OPAQUE;
 			}
-
-			const auto& instanceData = batch.instances[i];
 
 			D3D12_RAYTRACING_INSTANCE_DESC& instanceDesc = instanceDescs[currentInstance];
 			instanceDesc.Transform[0][0] = instanceData.transform[0][0];
