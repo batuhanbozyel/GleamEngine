@@ -730,6 +730,7 @@ RayTracingPipeline GraphicsDevice::CompileRayTracingPipeline(const RayTracingPip
 	stateObjectDesc.NumSubobjects = (UINT)stateObjects.size();
 	DX_CHECK(static_cast<ID3D12Device10*>(mHandle)->CreateStateObject(&stateObjectDesc, __uuidof(ID3D12StateObject*), &pipeline.mHandle));
 
+	pipeline.mShaderBindingTable = static_cast<DirectXDevice*>(this)->CreateShaderBindingTable(pipeline);
 	return pipeline;
 }
 
@@ -884,11 +885,14 @@ void GraphicsDevice::Dispose(GraphicsPipeline& pipeline)
 void GraphicsDevice::Dispose(RayTracingPipeline& pipeline)
 {
 	auto resource = static_cast<ID3D12PipelineState*>(pipeline.mHandle);
-	mReleaseQueue->AddResource([resource]()
+	auto sbt = static_cast<ID3D12Resource*>(pipeline.GetShaderBindingTable().GetHandle());
+	mReleaseQueue->AddResource([resource, sbt]()
 	{
+		sbt->Release();
 		resource->Release();
 	}, static_cast<Swapchain*>(mSurface)->GetFrameIndex());
 	pipeline.mHandle = nullptr;
+	pipeline.mShaderBindingTable = {};
 }
 
 DirectXDevice::DirectXDevice(RenderSurface* surface, ResourceReleaseQueue* releaseQueue)
@@ -913,6 +917,20 @@ DirectXDevice::DirectXDevice(RenderSurface* surface, ResourceReleaseQueue* relea
 		}
 	}
 	DX_CHECK(D3D12CreateDevice(swapchain->mAdapter, D3D_FEATURE_LEVEL_12_0, __uuidof(ID3D12Device10), &mHandle));
+
+	ID3D12InfoQueue* infoQueue = nullptr;
+	if (SUCCEEDED(static_cast<ID3D12Device10*>(mHandle)->QueryInterface(&infoQueue)))
+	{
+		D3D12_MESSAGE_ID denyIds[] = {
+			D3D12_MESSAGE_ID_HEAP_ADDRESS_RANGE_INTERSECTS_MULTIPLE_BUFFERS,
+		};
+
+		D3D12_INFO_QUEUE_FILTER filter = {};
+		filter.DenyList.NumIDs = _countof(denyIds);
+		filter.DenyList.pIDList = denyIds;
+		DX_CHECK(infoQueue->AddStorageFilterEntries(&filter));
+		infoQueue->Release();
+	}
 
 	mDirectQueue = CreateCommandQueue(D3D12_COMMAND_LIST_TYPE_DIRECT);
 	mComputeQueue = CreateCommandQueue(D3D12_COMMAND_LIST_TYPE_COMPUTE);
@@ -1097,6 +1115,91 @@ void DirectXDevice::ResetCommandPools(uint32_t frameIndex)
 	{
 		pool.Reset();
 	}
+}
+
+ShaderBindingTable DirectXDevice::CreateShaderBindingTable(const RayTracingPipeline& pipeline)
+{
+	ID3D12StateObjectProperties* stateObjectProperties = nullptr;
+	DX_CHECK(static_cast<ID3D12StateObject*>(pipeline.GetHandle())->QueryInterface(IID_PPV_ARGS(&stateObjectProperties)));
+
+	constexpr uint32_t shaderRecordSize = Math::AlignUp(D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES, D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT);
+	constexpr uint32_t rayGenTableSize = Math::AlignUp(shaderRecordSize, (UINT)D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT);
+	constexpr uint32_t missTableSize = Math::AlignUp(shaderRecordSize, (UINT)D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT);
+
+	const auto& pipelineDesc = pipeline.GetDescriptor();
+	uint32_t hitGroupTableSize = Math::AlignUp(static_cast<uint32_t>(pipelineDesc.hitGroups.size()) * shaderRecordSize, (UINT)D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT);
+	uint32_t totalSize = rayGenTableSize + missTableSize + hitGroupTableSize;
+
+	D3D12_HEAP_PROPERTIES heapProps = {};
+	heapProps.Type = D3D12_HEAP_TYPE_UPLOAD;
+
+	D3D12_RESOURCE_DESC1 resourceDesc = {
+		.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER,
+		.Alignment = 0,
+		.Width = totalSize,
+		.Height = 1,
+		.DepthOrArraySize = 1,
+		.MipLevels = 1,
+		.Format = DXGI_FORMAT_UNKNOWN,
+		.SampleDesc = {.Count = 1, .Quality = 0 },
+		.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR,
+		.Flags = D3D12_RESOURCE_FLAG_NONE
+	};
+
+	ID3D12Resource* resource = nullptr;
+	DX_CHECK(static_cast<ID3D12Device10*>(mHandle)->CreateCommittedResource3(
+		&heapProps,
+		D3D12_HEAP_FLAG_NONE,
+		&resourceDesc,
+		D3D12_BARRIER_LAYOUT_UNDEFINED,
+		nullptr,
+		nullptr,
+		0,
+		nullptr,
+		IID_PPV_ARGS(&resource)));
+	resource->SetName(L"ShaderBindingTable");
+
+	void* sbtPtr = nullptr;
+	DX_CHECK(resource->Map(0, nullptr, &sbtPtr));
+
+	uint32_t offset = 0;
+
+	// Ray generation record
+	{
+		TWString entryPoint(pipelineDesc.rayGenerationEntry);
+		void* shaderId = stateObjectProperties->GetShaderIdentifier(entryPoint.c_str());
+		GLEAM_ASSERT(shaderId, "DirectX: Failed to get ray generation shader identifier.");
+		memcpy(OffsetPointer(sbtPtr, offset), shaderId, D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+	}
+	offset += rayGenTableSize;
+
+	// Miss record
+	{
+		TWString entryPoint(pipelineDesc.missEntry);
+		void* shaderId = stateObjectProperties->GetShaderIdentifier(entryPoint.c_str());
+		GLEAM_ASSERT(shaderId, "DirectX: Failed to get miss shader identifier.");
+		memcpy(OffsetPointer(sbtPtr, offset), shaderId, D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+	}
+	offset += missTableSize;
+
+	// Hit group records
+	for (const auto& hitGroup : pipelineDesc.hitGroups)
+	{
+		TWString hitGroupName(hitGroup.name);
+		void* shaderId = stateObjectProperties->GetShaderIdentifier(hitGroupName.c_str());
+		GLEAM_ASSERT(shaderId, "DirectX: Failed to get hit group shader identifier for: {0}", hitGroup.name);
+		memcpy(OffsetPointer(sbtPtr, offset), shaderId, D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+		offset += shaderRecordSize;
+	}
+
+	resource->Unmap(0, nullptr);
+	stateObjectProperties->Release();
+
+	uint64_t baseAddress = resource->GetGPUVirtualAddress();
+	GPUVirtualAddressRange rayGenRecord = { .startAddress = baseAddress, .sizeInBytes = rayGenTableSize };
+	GPUVirtualAddressRangeAndStride missRecord = { .startAddress = baseAddress + rayGenTableSize, .sizeInBytes = missTableSize, .strideInBytes = shaderRecordSize };
+	GPUVirtualAddressRangeAndStride hitGroupRecord = { .startAddress = baseAddress + rayGenTableSize + missTableSize, .sizeInBytes = hitGroupTableSize, .strideInBytes = shaderRecordSize };
+	return ShaderBindingTable(resource, rayGenRecord, missRecord, hitGroupRecord);
 }
 
 ID3D12Resource* DirectXDevice::CreateResource(const GPUAllocation& allocation, const D3D12_RESOURCE_DESC1& desc, const TString& name) const

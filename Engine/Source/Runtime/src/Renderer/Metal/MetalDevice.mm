@@ -56,6 +56,7 @@ using namespace Gleam;
 @interface MetalRayTracingPipelineImpl : NSObject<MetalRayTracingPipeline>
 @property (nonatomic, strong) id<MTLComputePipelineState> pipelineState;
 @property (nonatomic, strong) id<MTLIntersectionFunctionTable> intersectionFunctionTable;
+@property (nonatomic, strong) id<MTLVisibleFunctionTable> visibleFunctionTable;
 @end
 
 @implementation MetalRayTracingPipelineImpl
@@ -65,6 +66,7 @@ using namespace Gleam;
     if (self) {
         _pipelineState = nil;
         _intersectionFunctionTable = nil;
+        _visibleFunctionTable = nil;
     }
     return self;
 }
@@ -342,7 +344,7 @@ Heap GraphicsDevice::CreateHeap(const HeapDescriptor& descriptor)
     MTLHeapDescriptor* desc = [MTLHeapDescriptor new];
     desc.type = MTLHeapTypePlacement;
     desc.resourceOptions = resourceOptions;
-    desc.size = Utils::AlignUp(sizeAndAlign.size, sizeAndAlign.align);
+    desc.size = Math::AlignUp(sizeAndAlign.size, sizeAndAlign.align);
 
     Heap heap(descriptor);
     heap.mHandle = [mHandle newHeapWithDescriptor:desc];
@@ -889,7 +891,34 @@ RayTracingPipeline GraphicsDevice::CompileRayTracingPipeline(const RayTracingPip
             }
         }
     }
+
+    // Create visible function table
+    {
+        // VFT layout (index 0 is reserved as null):
+        //   1              : miss shader
+        //   2 .. 1+numCH   : closest-hit shaders (in hit group order, only those that exist)
+        NSUInteger vftSize = 1 + [missGroup count] + [closestHitGroup count];
+        MTLVisibleFunctionTableDescriptor* vftDesc = [[MTLVisibleFunctionTableDescriptor alloc] init];
+        vftDesc.functionCount = vftSize;
+
+        mtlPipeline.visibleFunctionTable = [mtlPipeline.pipelineState newVisibleFunctionTableWithDescriptor:vftDesc];
+        GLEAM_ASSERT(mtlPipeline.visibleFunctionTable, "Metal: Visible function table creation failed.");
+
+        NSUInteger vftIndex = 1;
+        for (id<MTLFunction> f in missGroup)
+        {
+            id<MTLFunctionHandle> handle = [mtlPipeline.pipelineState functionHandleWithFunction:f];
+            [mtlPipeline.visibleFunctionTable setFunction:handle atIndex:vftIndex++];
+        }
+
+        for (id<MTLFunction> f in closestHitGroup)
+        {
+            id<MTLFunctionHandle> handle = [mtlPipeline.pipelineState functionHandleWithFunction:f];
+            [mtlPipeline.visibleFunctionTable setFunction:handle atIndex:vftIndex++];
+        }
+    }
     
+    pipeline.mShaderBindingTable = static_cast<MetalDevice*>(this)->CreateShaderBindingTable(pipeline);
     return pipeline;
 }
 
@@ -1010,7 +1039,14 @@ void GraphicsDevice::Dispose(GraphicsPipeline& pipeline)
 
 void GraphicsDevice::Dispose(RayTracingPipeline& pipeline)
 {
+    mReleaseQueue->AddResource([this,
+								sbt = pipeline.GetShaderBindingTable().GetHandle()]()
+	{
+		[static_cast<MetalDevice*>(this)->GetResidencySet() removeAllocation:sbt];
+	}, static_cast<Swapchain*>(mSurface)->GetFrameIndex());
+
     pipeline.mHandle = nil;
+    pipeline.mShaderBindingTable = {};
 }
 
 MetalDevice::MetalDevice(RenderSurface* surface, ResourceReleaseQueue* releaseQueue)
@@ -1198,6 +1234,84 @@ void MetalDevice::ResetCommandPools(uint32_t frameIndex)
     mCommandPools[frameIndex].Reset();
 }
 
+ShaderBindingTable MetalDevice::CreateShaderBindingTable(const RayTracingPipeline& pipeline)
+{
+    constexpr uint32_t shaderRecordSize = sizeof(IRShaderIdentifier);
+    constexpr uint32_t rayGenTableSize = shaderRecordSize;
+    constexpr uint32_t missTableSize = shaderRecordSize;
+
+    const auto& pipelineDesc = pipeline.GetDescriptor();
+    uint32_t hitGroupTableSize = static_cast<uint32_t>(pipelineDesc.hitGroups.size()) * shaderRecordSize;
+    uint32_t totalSize = rayGenTableSize + missTableSize + hitGroupTableSize;
+
+    id<MTLBuffer> sbtBuffer = [mHandle newBufferWithLength:totalSize options:MTLResourceStorageModeShared];
+    [sbtBuffer setLabel:@"ShaderBindingTable"];
+    [mResidencySet addAllocation:sbtBuffer];
+
+    void* sbtPtr = [sbtBuffer contents];
+    uint32_t offset = 0;
+
+    // Ray generation record
+    // In kernel compilation mode, ray gen is the compute function itself.
+    // The SBT record exists for IRDispatchRaysDescriptor compatibility;
+    // shaderHandle 0 denotes "no VFT lookup needed".
+    {
+        IRShaderIdentifier* ident = static_cast<IRShaderIdentifier*>(OffsetPointer(sbtPtr, offset));
+        IRShaderIdentifierInit(ident, 0);
+    }
+    offset += rayGenTableSize;
+
+    // Miss record — VFT index 1 (first entry after reserved 0)
+    {
+        IRShaderIdentifier* ident = static_cast<IRShaderIdentifier*>(OffsetPointer(sbtPtr, offset));
+        IRShaderIdentifierInit(ident, 1);
+    }
+    offset += missTableSize;
+
+    // Hit group records
+    // VFT layout: index 1 = miss, index 2+ = closest-hit in order of hit groups that have one.
+    // closestHitVFTIndex tracks the next available VFT slot.
+    {
+        uint64_t closestHitVFTIndex = 2; // starts after reserved(0) + miss(1)
+
+        for (uint32_t i = 0; i < pipelineDesc.hitGroups.size(); i++)
+        {
+            IRShaderIdentifier* ident = static_cast<IRShaderIdentifier*>(OffsetPointer(sbtPtr, offset));
+            const auto& hitGroup = pipelineDesc.hitGroups[i];
+
+            if (not hitGroup.closestHitEntry.empty())
+            {
+                if (not hitGroup.intersectionEntry.empty())
+                {
+                    // Custom intersection is in the MTLIntersectionFunctionTable (IFB mode),
+                    // not the VFT. The IFT index is resolved by Metal during traversal via
+                    // geometry+instance intersection function offsets. Pass 0 for
+                    // intersectionShaderHandle since the IFT handles dispatch directly.
+                    IRShaderIdentifierInitWithCustomIntersection(ident, closestHitVFTIndex, 0);
+                }
+                else
+                {
+                    IRShaderIdentifierInit(ident, closestHitVFTIndex);
+                }
+                closestHitVFTIndex++;
+            }
+            else
+            {
+                // No closest-hit shader — null handle
+                IRShaderIdentifierInit(ident, 0);
+            }
+
+            offset += shaderRecordSize;
+        }
+    }
+
+    uint64_t baseAddress = [sbtBuffer gpuAddress];
+	GPUVirtualAddressRange rayGenRecord = { .startAddress = baseAddress, .sizeInBytes = rayGenTableSize };
+	GPUVirtualAddressRangeAndStride missRecord = { .startAddress = baseAddress + rayGenTableSize, .sizeInBytes = missTableSize, .strideInBytes = shaderRecordSize };
+	GPUVirtualAddressRangeAndStride hitGroupRecord = { .startAddress = baseAddress + rayGenTableSize + missTableSize, .sizeInBytes = hitGroupTableSize, .strideInBytes = shaderRecordSize };
+	return ShaderBindingTable(sbtBuffer, rayGenRecord, missRecord, hitGroupRecord);
+}
+
 ShaderResourceIndex MetalDevice::CreateResourceView(const Buffer& buffer)
 {
     auto index = mCbvSrvUavHeap.heap.Allocate();
@@ -1226,7 +1340,7 @@ AccelerationStructureView MetalDevice::CreateResourceView(const TopLevelAccelera
     id<MTLBuffer> headerBuffer = [mHandle newBufferWithLength:sizeof(IRRuntimeAccelerationStructureGPUHeader)
                                                       options:MTLResourceStorageModeShared];
 	[headerBuffer setLabel:@"TLAS GPU Header"];
-	[static_cast<MetalDevice*>(this)->GetResidencySet() addAllocation:headerBuffer];
+	[mResidencySet addAllocation:headerBuffer];
  
 	IRRuntimeAccelerationStructureGPUHeader* header = static_cast<IRRuntimeAccelerationStructureGPUHeader*>([headerBuffer contents]);
 	header->accelerationStructureID = [tlas.GetHandle() gpuResourceID]._impl;
@@ -1254,7 +1368,7 @@ void MetalDevice::ReleaseResourceView(AccelerationStructureView view)
 {
     if (view.index != InvalidResourceIndex)
     {
-        [static_cast<MetalDevice*>(this)->GetResidencySet() removeAllocation:view.header];
+        [mResidencySet removeAllocation:view.header];
         mCbvSrvUavHeap.heap.Release(view.index);
     }
 }

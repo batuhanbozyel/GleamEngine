@@ -45,13 +45,4 @@ private:
 
 };
 
-namespace Utils {
-
-static constexpr uint64_t AlignUp(const size_t offset, const size_t alignment)
-{
-    return (offset + alignment - 1) & ~(alignment - 1);
-}
-
-} // namespace Utils
-
 } // namespace Gleam

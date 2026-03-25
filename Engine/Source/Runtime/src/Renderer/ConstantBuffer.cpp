@@ -16,7 +16,7 @@ size_t ConstantBuffer::Write(const void* data, size_t size)
 
 size_t ConstantBuffer::Allocate(size_t size)
 {
-	auto alignedStackPtr = Utils::AlignUp(mStackPtr, mAlignment);
+	auto alignedStackPtr = Math::AlignUp(mStackPtr, mAlignment);
 	auto newStackPtr = alignedStackPtr + size;
 	GLEAM_ASSERT(mCapacity > newStackPtr, "ConstantBuffer has reached its capacity");
 

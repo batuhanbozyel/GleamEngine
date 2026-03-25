@@ -153,7 +153,7 @@ void ImGuiRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 			vtxBufferOffset += drawList->IdxBuffer.Size * sizeof(ImDrawIdx);
 		}
 
-		vtxBufferOffset = (uint32_t)Utils::AlignUp(vtxBufferOffset, mBuffer.GetAlignment());
+		vtxBufferOffset = (uint32_t)Math::AlignUp((size_t)vtxBufferOffset, mBuffer.GetAlignment());
 		ImDrawVert* vtxDest = (ImDrawVert*)OffsetPointer(bufferPtr, vtxBufferOffset);
 		for (int n = 0; n < drawData->CmdListsCount; n++)
 		{

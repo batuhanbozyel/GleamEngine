@@ -23,6 +23,7 @@
 @protocol MetalRayTracingPipeline <MetalPipeline>
 @property (nonatomic, strong) id<MTLComputePipelineState> pipelineState;
 @property (nonatomic, strong) id<MTLIntersectionFunctionTable> intersectionFunctionTable;
+@property (nonatomic, strong) id<MTLVisibleFunctionTable> visibleFunctionTable;
 @end
 
 @protocol MetalFunction <NSObject>
@@ -83,6 +84,8 @@ public:
 	id<MTL4CommandBuffer> AllocateCommandBuffer();
 	
 	IRRootSignature* GetGlobalRootSignature() const;
+
+	ShaderBindingTable CreateShaderBindingTable(const RayTracingPipeline& pipeline);
 	
 	ShaderResourceIndex CreateResourceView(const Buffer& buffer);
 

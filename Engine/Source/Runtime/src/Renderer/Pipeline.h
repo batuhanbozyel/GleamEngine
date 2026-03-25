@@ -1,6 +1,7 @@
 #pragma once
 #include "GraphicsObject.h"
 #include "TextureDescriptor.h"
+#include "ShaderBindingTable.h"
 #include "PipelineStateDescriptor.h"
 
 namespace Gleam {
@@ -98,7 +99,6 @@ public:
 private:
 
 	GraphicsPipelineStateDescriptor mDescriptor;
-
 };
 
 class ComputePipeline : public Pipeline
@@ -128,7 +128,6 @@ public:
 private:
 
 	ComputePipelineStateDescriptor mDescriptor;
-
 };
 
 class RayTracingPipeline : public Pipeline
@@ -150,6 +149,11 @@ public:
 
 	}
 
+	const ShaderBindingTable& GetShaderBindingTable() const
+	{
+		return mShaderBindingTable;
+	}
+
 	const RayTracingPipelineStateDescriptor& GetDescriptor() const
 	{
 		return mDescriptor;
@@ -157,8 +161,8 @@ public:
 
 private:
 
+	ShaderBindingTable mShaderBindingTable;
 	RayTracingPipelineStateDescriptor mDescriptor;
-
 };
 
 struct GraphicsPipelineHandle : PipelineHandle

@@ -9,7 +9,7 @@ using namespace Gleam;
 
 ConstantBuffer::ConstantBuffer(GraphicsDevice* device, size_t size)
 	: mAlignment(4)
-	, mCapacity(Utils::AlignUp(size, 4))
+	, mCapacity(Math::AlignUp(size, (size_t)4u))
     , mDevice(device)
 {
 	id<MTLBuffer> mtlBuffer = [device->GetHandle() newBufferWithLength:size options:MTLResourceStorageModeShared | MTLResourceCPUCacheModeWriteCombined];

@@ -183,7 +183,7 @@ void CopyCommandBuffer::Commit(const Buffer& buffer, const void* data, size_t si
             [mHandle->memoryCommandEncoder setLabel:TO_NSSTRING("CopyCommandBuffer::MemoryCommandEncoder")];
         }
         
-        mHandle->stagingBufferOffset = Utils::AlignUp(mHandle->stagingBufferOffset, 4u);
+        mHandle->stagingBufferOffset = Math::AlignUp(mHandle->stagingBufferOffset, (size_t)4u);
         size_t srcOffset = mHandle->stagingBufferOffset;
         
         id<MTLBuffer> dstBuffer = buffer.GetHandle();
@@ -223,10 +223,10 @@ void CopyCommandBuffer::Commit(const Texture& texture, const void* data, size_t 
                                     (texDesc.dimension == TextureDimension::Texture3D) ? Math::Max(texDesc.depth >> mip, 1u) : 1);
 
     size_t formatSize = Utils::GetTextureFormatSizeInBytes(texDesc.format);
-    size_t sourceBytesPerRow = Utils::AlignUp(sourceSize.width * formatSize, formatSize);
+    size_t sourceBytesPerRow = Math::AlignUp(sourceSize.width * formatSize, formatSize);
     size_t sourceBytesPerImage = (texDesc.dimension == TextureDimension::Texture3D) ? sourceBytesPerRow * sourceSize.height : 0;
     
-    mHandle->stagingBufferOffset = Utils::AlignUp(mHandle->stagingBufferOffset, formatSize);
+    mHandle->stagingBufferOffset = Math::AlignUp(mHandle->stagingBufferOffset, formatSize);
     size_t srcOffset = mHandle->stagingBufferOffset;
     if (mHandle->CopyUploadData(data, size))
     {

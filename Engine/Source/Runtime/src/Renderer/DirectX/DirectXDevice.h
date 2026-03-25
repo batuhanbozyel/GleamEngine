@@ -74,6 +74,8 @@ public:
 
 	void WaitQueueIdle(ID3D12CommandQueue* queue) const;
 
+	ShaderBindingTable CreateShaderBindingTable(const RayTracingPipeline& pipeline);
+
 	ID3D12Resource* CreateResource(const GPUAllocation& allocation, const D3D12_RESOURCE_DESC1& desc, const TString& name) const;
 
 	ShaderResourceIndex CreateResourceView(const Buffer& buffer);

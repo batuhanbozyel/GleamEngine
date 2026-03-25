@@ -5,9 +5,13 @@
 #include "DirectXDevice.h"
 #include "DirectXUtils.h"
 
+#include "Renderer/RenderSystem.h"
 #include "Renderer/Mesh.h"
 #include "Renderer/Material/Material.h"
 #include "World/Systems/RenderSceneProxy.h"
+
+#include "Core/Engine.h"
+#include "Core/Globals.h"
 
 using namespace Gleam;
 
@@ -63,8 +67,7 @@ void RayTracingScene::BuildAccelerationStructure(const CommandBuffer* cmd, const
 					desc.Triangles.Transform3x4 = 0;
 				}
 
-				D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC bottomLevelBuildDesc = {};
-				D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS& bottomLevelInputs = bottomLevelBuildDesc.Inputs;
+				D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS bottomLevelInputs = {};
 				bottomLevelInputs.Flags = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE;
 				bottomLevelInputs.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL;
 				bottomLevelInputs.DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY;
@@ -74,8 +77,9 @@ void RayTracingScene::BuildAccelerationStructure(const CommandBuffer* cmd, const
 				D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO prebuildInfo = {};
 				static_cast<ID3D12Device10*>(mDevice->GetHandle())->GetRaytracingAccelerationStructurePrebuildInfo(&bottomLevelInputs, &prebuildInfo);
 
+				static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>(); // Use persistent allocator for BLAS
 				Buffer scratchBuffer = mDevice->CreateBuffer(mAllocator, BufferDescriptor{ .name = "BLAS Scratch Buffer", .memoryType = MemoryType::GPU, .size = prebuildInfo.ScratchDataSizeInBytes });
-				BottomLevelAccelerationStructure blas = mDevice->CreateBLAS(mAllocator, BLASDescriptor{ .name = "BLAS", .size = prebuildInfo.ResultDataMaxSizeInBytes });
+				BottomLevelAccelerationStructure blas = mDevice->CreateBLAS(renderSystem->GetAllocator(), BLASDescriptor{.name = "BLAS", .size = prebuildInfo.ResultDataMaxSizeInBytes});
 
 				{
 					D3D12_BUFFER_BARRIER bufferBarrier[2] = {};
@@ -88,7 +92,7 @@ void RayTracingScene::BuildAccelerationStructure(const CommandBuffer* cmd, const
 					bufferBarrier[0].Size = UINT64_MAX;
 
 					bufferBarrier[1].SyncBefore = D3D12_BARRIER_SYNC_NONE;
-					bufferBarrier[1].SyncAfter = D3D12_BARRIER_SYNC_ALL;
+					bufferBarrier[1].SyncAfter = D3D12_BARRIER_SYNC_BUILD_RAYTRACING_ACCELERATION_STRUCTURE;
 					bufferBarrier[1].AccessBefore = D3D12_BARRIER_ACCESS_NO_ACCESS;
 					bufferBarrier[1].AccessAfter = D3D12_BARRIER_ACCESS_COMMON;
 					bufferBarrier[1].pResource = static_cast<ID3D12Resource*>(scratchBuffer.GetHandle());
@@ -102,24 +106,34 @@ void RayTracingScene::BuildAccelerationStructure(const CommandBuffer* cmd, const
 					commandList->Barrier(1, &barrierGroup);
 				}
 
+				D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC bottomLevelBuildDesc = {};
+				bottomLevelBuildDesc.Inputs = bottomLevelInputs;
 				bottomLevelBuildDesc.ScratchAccelerationStructureData = static_cast<ID3D12Resource*>(scratchBuffer.GetHandle())->GetGPUVirtualAddress();
 				bottomLevelBuildDesc.DestAccelerationStructureData = static_cast<ID3D12Resource*>(blas.GetHandle())->GetGPUVirtualAddress();
 				commandList->BuildRaytracingAccelerationStructure(&bottomLevelBuildDesc, 0, nullptr);
 
 				{
-					D3D12_BUFFER_BARRIER bufferBarrier = {};
-					bufferBarrier.SyncBefore = D3D12_BARRIER_SYNC_BUILD_RAYTRACING_ACCELERATION_STRUCTURE;
-					bufferBarrier.SyncAfter = D3D12_BARRIER_SYNC_BUILD_RAYTRACING_ACCELERATION_STRUCTURE;
-					bufferBarrier.AccessBefore = D3D12_BARRIER_ACCESS_RAYTRACING_ACCELERATION_STRUCTURE_WRITE;
-					bufferBarrier.AccessAfter = D3D12_BARRIER_ACCESS_RAYTRACING_ACCELERATION_STRUCTURE_READ;
-					bufferBarrier.pResource = static_cast<ID3D12Resource*>(blas.GetHandle());
-					bufferBarrier.Offset = 0;
-					bufferBarrier.Size = UINT64_MAX;
+					D3D12_BUFFER_BARRIER bufferBarrier[2] = {};
+					bufferBarrier[0].SyncBefore = D3D12_BARRIER_SYNC_BUILD_RAYTRACING_ACCELERATION_STRUCTURE;
+					bufferBarrier[0].SyncAfter = D3D12_BARRIER_SYNC_BUILD_RAYTRACING_ACCELERATION_STRUCTURE;
+					bufferBarrier[0].AccessBefore = D3D12_BARRIER_ACCESS_RAYTRACING_ACCELERATION_STRUCTURE_WRITE;
+					bufferBarrier[0].AccessAfter = D3D12_BARRIER_ACCESS_RAYTRACING_ACCELERATION_STRUCTURE_READ;
+					bufferBarrier[0].pResource = static_cast<ID3D12Resource*>(blas.GetHandle());
+					bufferBarrier[0].Offset = 0;
+					bufferBarrier[0].Size = UINT64_MAX;
+
+					bufferBarrier[1].SyncBefore = D3D12_BARRIER_SYNC_BUILD_RAYTRACING_ACCELERATION_STRUCTURE;
+					bufferBarrier[1].SyncAfter = D3D12_BARRIER_SYNC_NONE;
+					bufferBarrier[1].AccessBefore = D3D12_BARRIER_ACCESS_COMMON;
+					bufferBarrier[1].AccessAfter = D3D12_BARRIER_ACCESS_NO_ACCESS;
+					bufferBarrier[1].pResource = static_cast<ID3D12Resource*>(scratchBuffer.GetHandle());
+					bufferBarrier[1].Offset = 0;
+					bufferBarrier[1].Size = UINT64_MAX;
 
 					D3D12_BARRIER_GROUP barrierGroup = {};
 					barrierGroup.Type = D3D12_BARRIER_TYPE_BUFFER;
-					barrierGroup.NumBarriers = 1;
-					barrierGroup.pBufferBarriers = &bufferBarrier;
+					barrierGroup.NumBarriers = _countof(bufferBarrier);
+					barrierGroup.pBufferBarriers = bufferBarrier;
 					commandList->Barrier(1, &barrierGroup);
 				}
 
@@ -214,8 +228,7 @@ void RayTracingScene::BuildAccelerationStructure(const CommandBuffer* cmd, const
 		commandList->Barrier(1, &barrierGroup);
 	}
 
-	D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC topLevelBuildDesc = {};
-	D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS& topLevelInputs = topLevelBuildDesc.Inputs;
+	D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS topLevelInputs = {};
 	topLevelInputs.Flags = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE;
 	topLevelInputs.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL;
 	topLevelInputs.DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY;
@@ -239,7 +252,7 @@ void RayTracingScene::BuildAccelerationStructure(const CommandBuffer* cmd, const
 		bufferBarrier[0].Size = UINT64_MAX;
 
 		bufferBarrier[1].SyncBefore = D3D12_BARRIER_SYNC_NONE;
-		bufferBarrier[1].SyncAfter = D3D12_BARRIER_SYNC_ALL;
+		bufferBarrier[1].SyncAfter = D3D12_BARRIER_SYNC_BUILD_RAYTRACING_ACCELERATION_STRUCTURE;
 		bufferBarrier[1].AccessBefore = D3D12_BARRIER_ACCESS_NO_ACCESS;
 		bufferBarrier[1].AccessAfter = D3D12_BARRIER_ACCESS_COMMON;
 		bufferBarrier[1].pResource = static_cast<ID3D12Resource*>(scratchBuffer.GetHandle());
@@ -253,24 +266,34 @@ void RayTracingScene::BuildAccelerationStructure(const CommandBuffer* cmd, const
 		commandList->Barrier(1, &barrierGroup);
 	}
 
+	D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC topLevelBuildDesc = {};
+	topLevelBuildDesc.Inputs = topLevelInputs;
 	topLevelBuildDesc.ScratchAccelerationStructureData = static_cast<ID3D12Resource*>(scratchBuffer.GetHandle())->GetGPUVirtualAddress();
 	topLevelBuildDesc.DestAccelerationStructureData = static_cast<ID3D12Resource*>(tlas.GetHandle())->GetGPUVirtualAddress();
 	commandList->BuildRaytracingAccelerationStructure(&topLevelBuildDesc, 0, nullptr);
 
 	{
-		D3D12_BUFFER_BARRIER bufferBarrier = {};
-		bufferBarrier.SyncBefore = D3D12_BARRIER_SYNC_BUILD_RAYTRACING_ACCELERATION_STRUCTURE;
-		bufferBarrier.SyncAfter = D3D12_BARRIER_SYNC_ALL_SHADING;
-		bufferBarrier.AccessBefore = D3D12_BARRIER_ACCESS_RAYTRACING_ACCELERATION_STRUCTURE_WRITE;
-		bufferBarrier.AccessAfter = D3D12_BARRIER_ACCESS_RAYTRACING_ACCELERATION_STRUCTURE_READ;
-		bufferBarrier.pResource = static_cast<ID3D12Resource*>(tlas.GetHandle());
-		bufferBarrier.Offset = 0;
-		bufferBarrier.Size = UINT64_MAX;
+		D3D12_BUFFER_BARRIER bufferBarrier[2] = {};
+		bufferBarrier[0].SyncBefore = D3D12_BARRIER_SYNC_BUILD_RAYTRACING_ACCELERATION_STRUCTURE;
+		bufferBarrier[0].SyncAfter = D3D12_BARRIER_SYNC_ALL_SHADING;
+		bufferBarrier[0].AccessBefore = D3D12_BARRIER_ACCESS_RAYTRACING_ACCELERATION_STRUCTURE_WRITE;
+		bufferBarrier[0].AccessAfter = D3D12_BARRIER_ACCESS_RAYTRACING_ACCELERATION_STRUCTURE_READ;
+		bufferBarrier[0].pResource = static_cast<ID3D12Resource*>(tlas.GetHandle());
+		bufferBarrier[0].Offset = 0;
+		bufferBarrier[0].Size = UINT64_MAX;
+
+		bufferBarrier[1].SyncBefore = D3D12_BARRIER_SYNC_BUILD_RAYTRACING_ACCELERATION_STRUCTURE;
+		bufferBarrier[1].SyncAfter = D3D12_BARRIER_SYNC_NONE;
+		bufferBarrier[1].AccessBefore = D3D12_BARRIER_ACCESS_COMMON;
+		bufferBarrier[1].AccessAfter = D3D12_BARRIER_ACCESS_NO_ACCESS;
+		bufferBarrier[1].pResource = static_cast<ID3D12Resource*>(scratchBuffer.GetHandle());
+		bufferBarrier[1].Offset = 0;
+		bufferBarrier[1].Size = UINT64_MAX;
 
 		D3D12_BARRIER_GROUP barrierGroup = {};
 		barrierGroup.Type = D3D12_BARRIER_TYPE_BUFFER;
-		barrierGroup.NumBarriers = 1;
-		barrierGroup.pBufferBarriers = &bufferBarrier;
+		barrierGroup.NumBarriers = _countof(bufferBarrier);
+		barrierGroup.pBufferBarriers = bufferBarrier;
 		commandList->Barrier(1, &barrierGroup);
 	}
 

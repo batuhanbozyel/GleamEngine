@@ -5,9 +5,13 @@
 #include "MetalDevice.h"
 #include "MetalUtils.h"
 
+#include "Renderer/RenderSystem.h"
 #include "Renderer/Mesh.h"
 #include "Renderer/Material/Material.h"
 #include "World/Systems/RenderSceneProxy.h"
+
+#include "Core/Engine.h"
+#include "Core/Globals.h"
 
 #include <metal_irconverter_runtime/metal_irconverter_runtime.h>
 
@@ -77,11 +81,9 @@ void RayTracingScene::BuildAccelerationStructure(const CommandBuffer* cmd, const
 				MTL4PrimitiveAccelerationStructureDescriptor* blasDesc = [MTL4PrimitiveAccelerationStructureDescriptor descriptor];
 				blasDesc.geometryDescriptors = geometryDescs;
 
+				static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>(); // Use persistent allocator for BLAS
 				MTLAccelerationStructureSizes sizes = [device accelerationStructureSizesWithDescriptor:blasDesc];
-				BottomLevelAccelerationStructure blas = mDevice->CreateBLAS(mAllocator, BLASDescriptor{
-					.name = "BLAS",
-					.size = sizes.accelerationStructureSize
-				});
+				BottomLevelAccelerationStructure blas = mDevice->CreateBLAS(renderSystem->GetAllocator(), BLASDescriptor{ .name = "BLAS", .size = sizes.accelerationStructureSize });
 
 				Buffer scratchBuffer = mDevice->CreateBuffer(mAllocator, BufferDescriptor{
 					.name = "BLAS Scratch Buffer",
