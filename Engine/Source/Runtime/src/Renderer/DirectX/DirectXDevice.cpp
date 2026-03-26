@@ -458,7 +458,7 @@ BottomLevelAccelerationStructure GraphicsDevice::CreateBLAS(GPUAllocator* alloca
 	MemoryRequirements memoryRequirements =
 	{
 		.size = allocationInfo.SizeInBytes,
-		.alignment = allocationInfo.Alignment,
+		.alignment = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT,
 		.type = MemoryType::GPU
 	};
 	GPUAllocation allocation = allocator->Allocate(memoryRequirements);
@@ -486,7 +486,7 @@ TopLevelAccelerationStructure GraphicsDevice::CreateTLAS(GPUAllocator* allocator
 	MemoryRequirements memoryRequirements =
 	{
 		.size = allocationInfo.SizeInBytes,
-		.alignment = allocationInfo.Alignment,
+		.alignment = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT,
 		.type = MemoryType::GPU
 	};
 	GPUAllocation allocation = allocator->Allocate(memoryRequirements);
