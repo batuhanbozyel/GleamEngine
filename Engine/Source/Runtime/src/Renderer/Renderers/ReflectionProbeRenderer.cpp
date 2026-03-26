@@ -108,7 +108,7 @@ void ReflectionProbeRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBla
 			for (uint32_t face = 0; face < 6; ++face)
 			{
 				GenerateCubemapMipsConstants constants = {};
-				constants.sourceTexture = passData.probe;
+				constants.sourceTexture = probeTexture.GetUnorderedAccessView(level - 1, face);
 				constants.targetTexture = probeTexture.GetUnorderedAccessView(level, face);
 				constants.resolution = resolution;
 				constants.level = level;

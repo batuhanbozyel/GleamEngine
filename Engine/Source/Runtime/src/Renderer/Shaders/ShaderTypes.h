@@ -36,7 +36,7 @@ struct ProbeConvolutionConstants
 
 struct GenerateCubemapMipsConstants
 {
-	ShaderResourceIndex sourceTexture;
+	UnorderedAccessIndex sourceTexture;
 	UnorderedAccessIndex targetTexture;
 	uint32_t resolution;
 	uint32_t level;

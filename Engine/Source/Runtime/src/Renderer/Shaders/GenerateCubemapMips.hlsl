@@ -12,13 +12,16 @@ void generateCubemapMipsShader(uint3 dispatchThreadId : SV_DispatchThreadID)
         return;
     }
 
-	TextureCube<float4> srcTexture = ResourceDescriptorHeap[constants.sourceTexture];
-	RWTexture2D<float4> dstTexture = ResourceDescriptorHeap[constants.targetTexture];
+	RWTexture2DArray<float4> srcTexture = ResourceDescriptorHeap[constants.sourceTexture];
+	RWTexture2DArray<float4> dstTexture = ResourceDescriptorHeap[constants.targetTexture];
 
-    float2 position = float2(dispatchThreadId.xy) + 0.5;
-	float2 uv = position / constants.resolution;
+	uint srcResolution = constants.resolution << 1;
+	uint3 srcCoord = uint3(dispatchThreadId.xy << 1, constants.face);
 
-    float3 direction = GetCubemapDirection(uv, constants.face);
-    float4 color = srcTexture.SampleLevel(Sampler_Trilinear_Clamp, direction, constants.level - 1);
-    dstTexture[dispatchThreadId.xy] = color;
+	float4 c0 = srcTexture[min(srcCoord + uint3(0, 0, 0), srcResolution - 1)];
+	float4 c1 = srcTexture[min(srcCoord + uint3(1, 0, 0), srcResolution - 1)];
+	float4 c2 = srcTexture[min(srcCoord + uint3(0, 1, 0), srcResolution - 1)];
+	float4 c3 = srcTexture[min(srcCoord + uint3(1, 1, 0), srcResolution - 1)];
+
+	dstTexture[uint3(dispatchThreadId.xy, constants.face)] = (c0 + c1 + c2 + c3) * 0.25;
 }
