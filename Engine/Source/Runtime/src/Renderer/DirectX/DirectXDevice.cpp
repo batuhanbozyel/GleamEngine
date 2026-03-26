@@ -174,7 +174,7 @@ Texture GraphicsDevice::CreateTexture(GPUAllocator* allocator, const TextureDesc
 		.type = MemoryType::GPU
 	};
 	GPUAllocation allocation = allocator->Allocate(memoryRequirements);
-	ID3D12Resource* resource = static_cast<DirectXDevice*>(this)->CreateResource(allocation, resourceDesc, descriptor.name);
+	ID3D12Resource* resource = static_cast<DirectXDevice*>(this)->CreateResource(allocation, resourceDesc, D3D12_BARRIER_LAYOUT_COMMON, descriptor.name);
 	allocator->AddAllocation(resource, allocation);
 	texture.mHandle = resource;
 
@@ -423,7 +423,7 @@ Buffer GraphicsDevice::CreateBuffer(GPUAllocator* allocator, const BufferDescrip
 		.type = descriptor.memoryType
 	};
 	GPUAllocation allocation = allocator->Allocate(memoryRequirements);
-	ID3D12Resource* resource = static_cast<DirectXDevice*>(this)->CreateResource(allocation, resourceDesc, descriptor.name);
+	ID3D12Resource* resource = static_cast<DirectXDevice*>(this)->CreateResource(allocation, resourceDesc, D3D12_BARRIER_LAYOUT_UNDEFINED, descriptor.name);
 	allocator->AddAllocation(resource, allocation);
 
 	void* contents = nullptr;
@@ -462,7 +462,7 @@ BottomLevelAccelerationStructure GraphicsDevice::CreateBLAS(GPUAllocator* alloca
 		.type = MemoryType::GPU
 	};
 	GPUAllocation allocation = allocator->Allocate(memoryRequirements);
-	ID3D12Resource* resource = static_cast<DirectXDevice*>(this)->CreateResource(allocation, resourceDesc, descriptor.name);
+	ID3D12Resource* resource = static_cast<DirectXDevice*>(this)->CreateResource(allocation, resourceDesc, D3D12_BARRIER_LAYOUT_UNDEFINED, descriptor.name);
 	allocator->AddAllocation(resource, allocation);
 
 	return BottomLevelAccelerationStructure(descriptor, resource);
@@ -490,7 +490,7 @@ TopLevelAccelerationStructure GraphicsDevice::CreateTLAS(GPUAllocator* allocator
 		.type = MemoryType::GPU
 	};
 	GPUAllocation allocation = allocator->Allocate(memoryRequirements);
-	ID3D12Resource* resource = static_cast<DirectXDevice*>(this)->CreateResource(allocation, resourceDesc, descriptor.name);
+	ID3D12Resource* resource = static_cast<DirectXDevice*>(this)->CreateResource(allocation, resourceDesc, D3D12_BARRIER_LAYOUT_UNDEFINED, descriptor.name);
 	allocator->AddAllocation(resource, allocation);
 
 	TopLevelAccelerationStructure tlas(descriptor);
@@ -918,20 +918,6 @@ DirectXDevice::DirectXDevice(RenderSurface* surface, ResourceReleaseQueue* relea
 	}
 	DX_CHECK(D3D12CreateDevice(swapchain->mAdapter, D3D_FEATURE_LEVEL_12_0, __uuidof(ID3D12Device10), &mHandle));
 
-	ID3D12InfoQueue* infoQueue = nullptr;
-	if (SUCCEEDED(static_cast<ID3D12Device10*>(mHandle)->QueryInterface(&infoQueue)))
-	{
-		D3D12_MESSAGE_ID denyIds[] = {
-			D3D12_MESSAGE_ID_HEAP_ADDRESS_RANGE_INTERSECTS_MULTIPLE_BUFFERS,
-		};
-
-		D3D12_INFO_QUEUE_FILTER filter = {};
-		filter.DenyList.NumIDs = _countof(denyIds);
-		filter.DenyList.pIDList = denyIds;
-		DX_CHECK(infoQueue->AddStorageFilterEntries(&filter));
-		infoQueue->Release();
-	}
-
 	mDirectQueue = CreateCommandQueue(D3D12_COMMAND_LIST_TYPE_DIRECT);
 	mComputeQueue = CreateCommandQueue(D3D12_COMMAND_LIST_TYPE_COMPUTE);
 
@@ -1202,14 +1188,14 @@ ShaderBindingTable DirectXDevice::CreateShaderBindingTable(const RayTracingPipel
 	return ShaderBindingTable(resource, rayGenRecord, missRecord, hitGroupRecord);
 }
 
-ID3D12Resource* DirectXDevice::CreateResource(const GPUAllocation& allocation, const D3D12_RESOURCE_DESC1& desc, const TString& name) const
+ID3D12Resource* DirectXDevice::CreateResource(const GPUAllocation& allocation, const D3D12_RESOURCE_DESC1& desc, D3D12_BARRIER_LAYOUT initialLayout, const TString& name) const
 {
 	ID3D12Resource* resource = nullptr;
 	DX_CHECK(static_cast<ID3D12Device10*>(mHandle)->CreatePlacedResource2(
 		static_cast<ID3D12Heap*>(allocation.block->heap.GetHandle()),
 		allocation.offset,
 		&desc,
-		D3D12_BARRIER_LAYOUT_UNDEFINED,
+		initialLayout,
 		nullptr,
 		0,
 		nullptr,

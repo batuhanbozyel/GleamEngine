@@ -183,6 +183,7 @@ void RenderGraph::AllocatePassResources(RenderGraphPassNode* pass, const Command
 			descriptor.name = name.str();
 
 			resource.node->texture = mContext.device->CreateTexture(mContext.allocator, descriptor);
+			resource.node->barrierState.layout = BarrierLayout::Common;
 			GLEAM_ASSERT(resource.node->texture.IsValid());
 		}
 	}

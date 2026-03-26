@@ -258,7 +258,12 @@ void CopyCommandBuffer::Commit(const Buffer& buffer, const void* data, size_t si
 			request.UncompressedSize = 0;
 			mHandle->memoryQueue->EnqueueRequest(&request);
 		}
-		mHandle->bufferCopies.push_back(buffer);
+
+		auto it = eastl::find_if(mHandle->bufferCopies.begin(), mHandle->bufferCopies.end(), [&](const Buffer& b) { return b.GetHandle() == buffer.GetHandle(); });
+		if (it == mHandle->bufferCopies.end())
+		{
+			mHandle->bufferCopies.push_back(buffer);
+		}
 	}
 	else
 	{
@@ -413,7 +418,12 @@ void CopyCommandBuffer::Commit(const Texture& texture, const void* data, size_t 
 
 	request.UncompressedSize = 0;
 	mHandle->memoryQueue->EnqueueRequest(&request);
-	mHandle->textureCopies.push_back(texture);
+
+	auto it = eastl::find_if(mHandle->textureCopies.begin(), mHandle->textureCopies.end(), [&](const Texture& t) { return t.GetHandle() == texture.GetHandle(); });
+	if (it == mHandle->textureCopies.end())
+	{
+		mHandle->textureCopies.push_back(texture);
+	}
 }
 
 #endif

@@ -13,7 +13,7 @@ class Mesh : public Asset
 	friend class RayTracingScene;
 public:
     
-    Mesh(const MeshDescriptor& mesh);
+    Mesh(const MeshDescriptor& descriptor);
 	
 	~Mesh();
     
@@ -28,7 +28,7 @@ public:
 	const BottomLevelAccelerationStructure& GetBLAS() const;
     
 protected:
-    
+
     Buffer mIndexBuffer;
     Buffer mPositionBuffer;
     Buffer mInterleavedBuffer;

@@ -8,35 +8,36 @@
 
 using namespace Gleam;
 
-Mesh::Mesh(const MeshDescriptor& mesh)
-    : mSubmeshes(mesh.submeshes)
+Mesh::Mesh(const MeshDescriptor& descriptor)
+    : Asset(descriptor.name)
+	, mSubmeshes(descriptor.submeshes)
 {
     static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
 	auto device = renderSystem->GetDevice();
     
-    size_t positionSize = mesh.positions.size() * sizeof(Float3);
-    size_t interleavedSize = mesh.interleavedVertices.size() * sizeof(InterleavedMeshVertex);
-    size_t indexSize = mesh.indices.size() * sizeof(uint32_t);
+    size_t positionSize = descriptor.positions.size() * sizeof(Float3);
+    size_t interleavedSize = descriptor.interleavedVertices.size() * sizeof(InterleavedMeshVertex);
+    size_t indexSize = descriptor.indices.size() * sizeof(uint32_t);
 
     BufferDescriptor bufferDesc;
-    bufferDesc.name = "Mesh: " + mesh.name + " Positions";
+    bufferDesc.name = "Mesh: " + descriptor.name + " Positions";
     bufferDesc.size = positionSize;
     mPositionBuffer = device->CreateBuffer(renderSystem->GetAllocator(), bufferDesc);
     
-    bufferDesc.name = "Mesh: " + mesh.name + " InterleavedData";
+    bufferDesc.name = "Mesh: " + descriptor.name + " InterleavedData";
     bufferDesc.size = interleavedSize;
     mInterleavedBuffer = device->CreateBuffer(renderSystem->GetAllocator(), bufferDesc);
     
-    bufferDesc.name = "Mesh: " + mesh.name + " Indices";
+    bufferDesc.name = "Mesh: " + descriptor.name + " Indices";
     bufferDesc.size = indexSize;
     mIndexBuffer = device->CreateBuffer(renderSystem->GetAllocator(), bufferDesc);
 
     // Send mesh data to buffers
 	{
 		auto cmd = renderSystem->GetCopyCommandBuffer();
-		cmd->Commit(mPositionBuffer, mesh.positions.data(), positionSize, 0);
-		cmd->Commit(mInterleavedBuffer, mesh.interleavedVertices.data(), interleavedSize, 0);
-		cmd->Commit(mIndexBuffer, mesh.indices.data(), indexSize, 0);
+		cmd->Commit(mPositionBuffer, descriptor.positions.data(), positionSize, 0);
+		cmd->Commit(mInterleavedBuffer, descriptor.interleavedVertices.data(), interleavedSize, 0);
+		cmd->Commit(mIndexBuffer, descriptor.indices.data(), indexSize, 0);
 	}
 }
 

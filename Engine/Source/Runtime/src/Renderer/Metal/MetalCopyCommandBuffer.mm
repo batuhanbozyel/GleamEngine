@@ -199,7 +199,12 @@ void CopyCommandBuffer::Commit(const Buffer& buffer, const void* data, size_t si
             
             [mHandle->memoryCommandEncoder copyFromBuffer:srcBuffer sourceOffset:0 toBuffer:dstBuffer destinationOffset:offset size:size];
         }
-        mHandle->bufferCopies.push_back(buffer);
+
+        auto it = eastl::find_if(mHandle->bufferCopies.begin(), mHandle->bufferCopies.end(), [&](const Buffer& b) { return b.GetHandle() == buffer.GetHandle(); });
+		if (it == mHandle->bufferCopies.end())
+		{
+			mHandle->bufferCopies.push_back(buffer);
+		}
     }
     else
     {
@@ -256,7 +261,12 @@ void CopyCommandBuffer::Commit(const Texture& texture, const void* data, size_t 
                                      destinationLevel:mip
                                     destinationOrigin:MTLOriginMake(0, 0, 0)];
     }
-    mHandle->textureCopies.push_back(texture);
+    
+    auto it = eastl::find_if(mHandle->textureCopies.begin(), mHandle->textureCopies.end(), [&](const Texture& t) { return t.GetHandle() == texture.GetHandle(); });
+	if (it == mHandle->textureCopies.end())
+	{
+		mHandle->textureCopies.push_back(texture);
+	}
 }
 
 #endif

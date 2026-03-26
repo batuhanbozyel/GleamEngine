@@ -48,8 +48,7 @@ static size_t ComputeMaterialInstanceSize(const TArray<MaterialProperty>& proper
 }
 
 Material::Material(const MaterialDescriptor& descriptor)
-    : IMaterial(descriptor.properties)
-    , mName(descriptor.name)
+    : IMaterial(descriptor.name, descriptor.properties)
 	, mDescriptor(descriptor)
 	, mPipelineStateHash((uint32_t)eastl::hash<MaterialDescriptor>()(descriptor))
 	, mInstanceDescriptorHeap(MaxMaterialInstances)
@@ -59,7 +58,7 @@ Material::Material(const MaterialDescriptor& descriptor)
 	auto device = renderSystem->GetDevice();
 
 	BufferDescriptor bufferDesc;
-	bufferDesc.name = "Material: " + mName;
+	bufferDesc.name = "Material: " + descriptor.name;
 	bufferDesc.size = mInstanceSize * MaxMaterialInstances;
 	mBuffer = device->CreateBuffer(renderSystem->GetAllocator(), bufferDesc);
 }
@@ -144,11 +143,6 @@ void Material::DestroyInstance(ShaderResourceIndex& instance)
 const Buffer& Material::GetBuffer() const
 {
     return mBuffer;
-}
-
-const TString& Material::GetName() const
-{
-    return mName;
 }
 
 const MaterialDescriptor& Material::GetDescriptor() const

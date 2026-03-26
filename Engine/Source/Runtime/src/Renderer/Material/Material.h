@@ -30,8 +30,6 @@ public:
 	void DestroyInstance(ShaderResourceIndex& instance);
     
     const Buffer& GetBuffer() const;
-    
-    const TString& GetName() const;
 
 	const MaterialDescriptor& GetDescriptor() const;
 
@@ -40,8 +38,6 @@ public:
 	uint32_t GetInstanceCount() const;
     
 private:
-    
-    TString mName;
 
     Buffer mBuffer;
 
