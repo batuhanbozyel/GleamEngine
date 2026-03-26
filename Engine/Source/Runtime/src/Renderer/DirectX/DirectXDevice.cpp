@@ -1131,19 +1131,7 @@ ShaderBindingTable DirectXDevice::CreateShaderBindingTable(const RayTracingPipel
 		.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR,
 		.Flags = D3D12_RESOURCE_FLAG_NONE
 	};
-
-	ID3D12Resource* resource = nullptr;
-	DX_CHECK(static_cast<ID3D12Device10*>(mHandle)->CreateCommittedResource3(
-		&heapProps,
-		D3D12_HEAP_FLAG_NONE,
-		&resourceDesc,
-		D3D12_BARRIER_LAYOUT_UNDEFINED,
-		nullptr,
-		nullptr,
-		0,
-		nullptr,
-		IID_PPV_ARGS(&resource)));
-	resource->SetName(L"ShaderBindingTable");
+	ID3D12Resource* resource = CreateResource(resourceDesc, D3D12_HEAP_TYPE_UPLOAD, D3D12_BARRIER_LAYOUT_UNDEFINED, "ShaderBindingTable");
 
 	void* sbtPtr = nullptr;
 	DX_CHECK(resource->Map(0, nullptr, &sbtPtr));
@@ -1186,6 +1174,26 @@ ShaderBindingTable DirectXDevice::CreateShaderBindingTable(const RayTracingPipel
 	GPUVirtualAddressRangeAndStride missRecord = { .startAddress = baseAddress + rayGenTableSize, .sizeInBytes = missTableSize, .strideInBytes = shaderRecordSize };
 	GPUVirtualAddressRangeAndStride hitGroupRecord = { .startAddress = baseAddress + rayGenTableSize + missTableSize, .sizeInBytes = hitGroupTableSize, .strideInBytes = shaderRecordSize };
 	return ShaderBindingTable(resource, rayGenRecord, missRecord, hitGroupRecord);
+}
+
+ID3D12Resource* DirectXDevice::CreateResource(const D3D12_RESOURCE_DESC1& desc, D3D12_HEAP_TYPE heapType, D3D12_BARRIER_LAYOUT initialLayout, const TString& name) const
+{
+	D3D12_HEAP_PROPERTIES heapProps = {};
+	heapProps.Type = heapType;
+
+	ID3D12Resource* resource = nullptr;
+	DX_CHECK(static_cast<ID3D12Device10*>(mHandle)->CreateCommittedResource3(
+		&heapProps,
+		D3D12_HEAP_FLAG_NONE,
+		&desc,
+		initialLayout,
+		nullptr,
+		nullptr,
+		0,
+		nullptr,
+		IID_PPV_ARGS(&resource)));
+	resource->SetName(StringUtils::Convert(name).c_str());
+	return resource;
 }
 
 ID3D12Resource* DirectXDevice::CreateResource(const GPUAllocation& allocation, const D3D12_RESOURCE_DESC1& desc, D3D12_BARRIER_LAYOUT initialLayout, const TString& name) const

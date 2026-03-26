@@ -76,6 +76,8 @@ public:
 
 	ShaderBindingTable CreateShaderBindingTable(const RayTracingPipeline& pipeline);
 
+	ID3D12Resource* CreateResource(const D3D12_RESOURCE_DESC1& desc, D3D12_HEAP_TYPE heapType, D3D12_BARRIER_LAYOUT initialLayout, const TString& name) const;
+
 	ID3D12Resource* CreateResource(const GPUAllocation& allocation, const D3D12_RESOURCE_DESC1& desc, D3D12_BARRIER_LAYOUT initialLayout, const TString& name) const;
 
 	ShaderResourceIndex CreateResourceView(const Buffer& buffer);
