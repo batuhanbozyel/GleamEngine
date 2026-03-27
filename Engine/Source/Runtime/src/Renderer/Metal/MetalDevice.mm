@@ -1,4 +1,4 @@
-﻿#include "gpch.h"
+#include "gpch.h"
 
 #ifdef USE_METAL_RENDERER
 #include "MetalDevice.h"
@@ -12,6 +12,7 @@
 #define IR_PRIVATE_IMPLEMENTATION
 #include <metal_irconverter/metal_irconverter.h>
 #include <metal_irconverter_runtime/metal_irconverter_runtime.h>
+#include <metal_irconverter_runtime/ir_raytracing.h>
 
 using namespace Gleam;
 
@@ -1337,12 +1338,12 @@ ShaderResourceIndex MetalDevice::CreateResourceView(const Texture& texture, MTLT
 
 AccelerationStructureView MetalDevice::CreateResourceView(const TopLevelAccelerationStructure& tlas)
 {
-    id<MTLBuffer> headerBuffer = [mHandle newBufferWithLength:sizeof(IRRuntimeAccelerationStructureGPUHeader)
+    id<MTLBuffer> headerBuffer = [mHandle newBufferWithLength:sizeof(IRRaytracingAccelerationStructureGPUHeader)
                                                       options:MTLResourceStorageModeShared];
 	[headerBuffer setLabel:@"TLAS GPU Header"];
 	[mResidencySet addAllocation:headerBuffer];
  
-	IRRuntimeAccelerationStructureGPUHeader* header = static_cast<IRRuntimeAccelerationStructureGPUHeader*>([headerBuffer contents]);
+    IRRaytracingAccelerationStructureGPUHeader* header = static_cast<IRRaytracingAccelerationStructureGPUHeader*>([headerBuffer contents]);
 	header->accelerationStructureID = [tlas.GetHandle() gpuResourceID]._impl;
 	header->addressOfInstanceContributions = 0; // No per-instance hit group contributions
 

@@ -7,6 +7,7 @@
 #include "MetalUtils.h"
 
 #include <metal_irconverter_runtime/metal_irconverter_runtime.h>
+#include <metal_irconverter_runtime/ir_raytracing.h>
 
 using namespace Gleam;
 

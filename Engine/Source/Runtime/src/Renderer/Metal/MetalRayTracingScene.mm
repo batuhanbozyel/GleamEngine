@@ -14,6 +14,7 @@
 #include "Core/Globals.h"
 
 #include <metal_irconverter_runtime/metal_irconverter_runtime.h>
+#include <metal_irconverter_runtime/ir_raytracing.h>
 
 using namespace Gleam;
 
@@ -63,9 +64,7 @@ void RayTracingScene::BuildAccelerationStructure(const CommandBuffer* cmd, const
 
 				for (const auto& submesh : submeshes)
 				{
-					MTL4AccelerationStructureTriangleGeometryDescriptor* geomDesc =
-						[MTL4AccelerationStructureTriangleGeometryDescriptor descriptor];
-
+					MTL4AccelerationStructureTriangleGeometryDescriptor* geomDesc = [MTL4AccelerationStructureTriangleGeometryDescriptor new];
 					geomDesc.vertexBuffer = MTL4BufferRange([positionBuffer gpuAddress] + submesh.baseVertex * sizeof(float3), submesh.vertexCount * sizeof(float3));
 					geomDesc.vertexStride = sizeof(float3);
 					geomDesc.vertexFormat = MTLAttributeFormatFloat3;
@@ -78,7 +77,7 @@ void RayTracingScene::BuildAccelerationStructure(const CommandBuffer* cmd, const
 					[geometryDescs addObject:geomDesc];
 				}
 
-				MTL4PrimitiveAccelerationStructureDescriptor* blasDesc = [MTL4PrimitiveAccelerationStructureDescriptor descriptor];
+				MTL4PrimitiveAccelerationStructureDescriptor* blasDesc = [MTL4PrimitiveAccelerationStructureDescriptor new];
 				blasDesc.geometryDescriptors = geometryDescs;
 
 				static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>(); // Use persistent allocator for BLAS
@@ -155,11 +154,9 @@ void RayTracingScene::BuildAccelerationStructure(const CommandBuffer* cmd, const
 		}
 	});
 
-	MTL4InstanceAccelerationStructureDescriptor* tlasDesc = [MTL4InstanceAccelerationStructureDescriptor descriptor];
-
-	id<MTLBuffer> instanceBuffer = instanceDescBuffer.GetHandle();
+	MTL4InstanceAccelerationStructureDescriptor* tlasDesc = [MTL4InstanceAccelerationStructureDescriptor new];
 	tlasDesc.instanceCount = instanceCount;
-	tlasDesc.instanceDescriptorBuffer = MTL4BufferRange([instanceBuffer gpuAddress], sizeof(MTLIndirectAccelerationStructureInstanceDescriptor) * instanceCount);
+	tlasDesc.instanceDescriptorBuffer = MTL4BufferRange([instanceDescBuffer.GetHandle() gpuAddress], sizeof(MTLIndirectAccelerationStructureInstanceDescriptor) * instanceCount);
 	tlasDesc.instanceDescriptorStride = sizeof(MTLIndirectAccelerationStructureInstanceDescriptor);
 	tlasDesc.instanceDescriptorType = MTLAccelerationStructureInstanceDescriptorTypeIndirect;
 	tlasDesc.instanceTransformationMatrixLayout = MTLMatrixLayoutRowMajor;
@@ -176,9 +173,9 @@ void RayTracingScene::BuildAccelerationStructure(const CommandBuffer* cmd, const
 		.size = sizes.buildScratchBufferSize
 	});
 
-	MTL4BufferRange scratchRange([static_cast<id<MTLBuffer>>(scratchBuffer.GetHandle()) gpuAddress], sizes.buildScratchBufferSize);
+	MTL4BufferRange scratchRange([scratchBuffer.GetHandle() gpuAddress], sizes.buildScratchBufferSize);
 
-	[encoder buildAccelerationStructure:static_cast<id<MTLAccelerationStructure>>(tlas.GetHandle())
+	[encoder buildAccelerationStructure:tlas.GetHandle()
 							 descriptor:tlasDesc
 						  scratchBuffer:scratchRange];
 
