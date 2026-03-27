@@ -14,7 +14,7 @@
 
 using namespace GEditor;
 
-void WorldViewport::Init(Gleam::World* world)
+void WorldViewport::OnCreate(Gleam::World* world)
 {
 	mEditWorld = world;
     mViewportSize = Gleam::Globals::Engine->GetResolution();

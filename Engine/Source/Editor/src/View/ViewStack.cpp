@@ -26,6 +26,11 @@ void ViewStack::Shutdown(Gleam::World* world)
 {
 	auto renderSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::RenderSystem>();
 	renderSystem->GetActiveRenderPipeline()->RemoveRenderer<Gleam::ImGuiRenderer>();
+	
+	for (int i = (int)mViews.size() - 1; i >= 0; --i)
+	{
+		mViews[i]->OnDestroy(mWorld);
+	}
 	mViews.clear();
 }
 

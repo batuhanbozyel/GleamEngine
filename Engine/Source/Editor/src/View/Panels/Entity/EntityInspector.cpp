@@ -16,7 +16,7 @@
 
 using namespace GEditor;
 
-void EntityInspector::Init(Gleam::World* world)
+void EntityInspector::OnCreate(Gleam::World* world)
 {
 	mEditWorld = world;
     Gleam::EventDispatcher<EntitySelectedEvent>::Subscribe([this](EntitySelectedEvent e)

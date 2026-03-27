@@ -14,7 +14,7 @@
 
 using namespace GEditor;
 
-void WorldOutliner::Init(Gleam::World* world)
+void WorldOutliner::OnCreate(Gleam::World* world)
 {
 	mEditWorld = world;
 }

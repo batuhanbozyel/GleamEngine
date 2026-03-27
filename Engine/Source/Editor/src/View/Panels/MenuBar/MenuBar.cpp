@@ -12,7 +12,7 @@
 
 using namespace GEditor;
 
-void MenuBar::Init(Gleam::World* world)
+void MenuBar::OnCreate(Gleam::World* world)
 {
 	mWorld = world;
 }

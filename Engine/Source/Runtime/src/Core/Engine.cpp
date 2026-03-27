@@ -54,9 +54,9 @@ void Engine::Initialize(const CommandLine& cli)
 
 void Engine::Shutdown()
 {
-	for (auto system : mSubsystems)
+	for (int i = (int)mSubsystems.size() - 1; i >= 0; --i)
 	{
-		system->Shutdown(this);
+		mSubsystems[i]->Shutdown(this);
 	}
 	mSubsystems.clear();
 }

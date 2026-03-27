@@ -21,7 +21,7 @@ ContentBrowser::ContentBrowser(EAssetManager* assetManager)
 
 }
 
-void ContentBrowser::Init(Gleam::World* world)
+void ContentBrowser::OnCreate(Gleam::World* world)
 {
 	mAssetDirectory = Gleam::Globals::ProjectContentDirectory;
     mCurrentDirectory = mAssetDirectory;

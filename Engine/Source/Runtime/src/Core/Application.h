@@ -27,7 +27,7 @@ public:
 	{
 		GLEAM_ASSERT(!HasSubsystem<T>(), "Application already has the subsystem!");
 
-		T* system = mSubsystems.emplace<T>(std::forward<Args>(args)...);
+		T* system = mSubsystems.emplace_back<T>(std::forward<Args>(args)...);
         system->Initialize(this);
         return system;
 	}

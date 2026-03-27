@@ -16,16 +16,16 @@ World::World(const TString& name)
 
 World::~World()
 {
-	for (auto system : mSystems)
+	for (int i = (int)mSystems.size() - 1; i >= 0; --i)
 	{
-		system->OnDestroy(mEntityManager);
+		mSystems[i]->OnDestroy(mEntityManager);
 	}
 	mSystems.clear();
 	mTickableSubsystems.clear();
 
-	for (auto system : mSubsystems)
+	for (int i = (int)mSubsystems.size() - 1; i >= 0; --i)
 	{
-		system->Shutdown(this);
+		mSubsystems[i]->Shutdown(this);
 	}
 	mSubsystems.clear();
 }

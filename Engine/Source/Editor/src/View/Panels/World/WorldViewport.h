@@ -21,7 +21,7 @@ class WorldViewport final : public View
 {
 public:
     
-	virtual void Init(Gleam::World* world) override;
+	virtual void OnCreate(Gleam::World* world) override;
     
     virtual void Update() override;
     

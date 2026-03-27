@@ -14,7 +14,7 @@ class MenuBar final : public View
 {
 public:
 
-	virtual void Init(Gleam::World* world) override;
+	virtual void OnCreate(Gleam::World* world) override;
 
     virtual void Render(Gleam::ImGuiRenderer* imgui) override;
     
