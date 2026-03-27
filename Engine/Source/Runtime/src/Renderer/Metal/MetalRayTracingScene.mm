@@ -82,17 +82,17 @@ void RayTracingScene::BuildAccelerationStructure(const CommandBuffer* cmd, const
 
 				static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>(); // Use persistent allocator for BLAS
 				MTLAccelerationStructureSizes sizes = [device accelerationStructureSizesWithDescriptor:blasDesc];
-				BottomLevelAccelerationStructure blas = mDevice->CreateBLAS(renderSystem->GetAllocator(), BLASDescriptor{ .name = "BLAS", .size = sizes.accelerationStructureSize });
+				BottomLevelAccelerationStructure blas = mDevice->CreateBLAS(renderSystem->GetAllocator(), BLASDescriptor{ .name = mesh->GetName() + ": BLAS", .size = sizes.accelerationStructureSize });
 
 				Buffer scratchBuffer = mDevice->CreateBuffer(mAllocator, BufferDescriptor{
 					.name = "BLAS Scratch Buffer",
 					.memoryType = MemoryType::GPU,
 					.size = sizes.buildScratchBufferSize
 				});
+				MTL4BufferRange scratchRange([scratchBuffer.GetHandle() gpuAddress], sizes.buildScratchBufferSize);
 
-				MTL4BufferRange scratchRange([static_cast<id<MTLBuffer>>(scratchBuffer.GetHandle()) gpuAddress], sizes.buildScratchBufferSize);
-
-				[encoder buildAccelerationStructure:static_cast<id<MTLAccelerationStructure>>(blas.GetHandle())
+                [static_cast<MetalDevice*>(mDevice)->GetResidencySet() commit];
+				[encoder buildAccelerationStructure:blas.GetHandle()
 										 descriptor:blasDesc
 									  scratchBuffer:scratchRange];
 
@@ -172,9 +172,9 @@ void RayTracingScene::BuildAccelerationStructure(const CommandBuffer* cmd, const
 		.memoryType = MemoryType::GPU,
 		.size = sizes.buildScratchBufferSize
 	});
-
 	MTL4BufferRange scratchRange([scratchBuffer.GetHandle() gpuAddress], sizes.buildScratchBufferSize);
 
+    [static_cast<MetalDevice*>(mDevice)->GetResidencySet() commit];
 	[encoder buildAccelerationStructure:tlas.GetHandle()
 							 descriptor:tlasDesc
 						  scratchBuffer:scratchRange];
