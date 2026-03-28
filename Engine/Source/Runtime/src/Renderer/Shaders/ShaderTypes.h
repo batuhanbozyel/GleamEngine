@@ -34,7 +34,7 @@ struct ProbeConvolutionConstants
 	float pad2;
 };
 
-struct GenerateCubemapMipsConstants
+struct GenerateMipsConstants
 {
 	UnorderedAccessIndex sourceTexture;
 	UnorderedAccessIndex targetTexture;

@@ -14,7 +14,7 @@ void ReflectionProbeRenderer::OnCreate(RenderContext& context)
 	pipelineState.entryPoint = "skyAtmosphereRenderShader";
 	mSkyRenderPipeline = context.device->CreateComputePipeline(pipelineState);
 
-	pipelineState.entryPoint = "generateCubemapMipsShader";
+	pipelineState.entryPoint = "generateMipsShader";
 	mGenerateMipsPipeline = context.device->CreateComputePipeline(pipelineState);
 
 	pipelineState.entryPoint = "diffuseIrradianceConvolutionShader";
@@ -107,7 +107,7 @@ void ReflectionProbeRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBla
 			uint32_t resolution = (uint32_t)globalProbe.resolution >> level;
 			for (uint32_t face = 0; face < 6; ++face)
 			{
-				GenerateCubemapMipsConstants constants = {};
+				GenerateMipsConstants constants = {};
 				constants.sourceTexture = probeTexture.GetUnorderedAccessView(level - 1, face);
 				constants.targetTexture = probeTexture.GetUnorderedAccessView(level, face);
 				constants.resolution = resolution;
