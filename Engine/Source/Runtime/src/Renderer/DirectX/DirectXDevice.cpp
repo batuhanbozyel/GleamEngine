@@ -440,7 +440,7 @@ Buffer GraphicsDevice::CreateBuffer(GPUAllocator* allocator, const BufferDescrip
 	return buffer;
 }
 
-BottomLevelAccelerationStructure GraphicsDevice::CreateBLAS(GPUAllocator* allocator, const BLASDescriptor& descriptor)
+BottomLevelAccelerationStructure GraphicsDevice::CreateBLAS(const BLASDescriptor& descriptor)
 {
 	D3D12_RESOURCE_DESC1 resourceDesc = {
 		.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER,
@@ -454,21 +454,11 @@ BottomLevelAccelerationStructure GraphicsDevice::CreateBLAS(GPUAllocator* alloca
 		.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR,
 		.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS | D3D12_RESOURCE_FLAG_RAYTRACING_ACCELERATION_STRUCTURE
 	};
-	D3D12_RESOURCE_ALLOCATION_INFO allocationInfo = static_cast<ID3D12Device10*>(mHandle)->GetResourceAllocationInfo2(0, 1, &resourceDesc, nullptr);
-	MemoryRequirements memoryRequirements =
-	{
-		.size = allocationInfo.SizeInBytes,
-		.alignment = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT,
-		.type = MemoryType::GPU
-	};
-	GPUAllocation allocation = allocator->Allocate(memoryRequirements);
-	ID3D12Resource* resource = static_cast<DirectXDevice*>(this)->CreateResource(allocation, resourceDesc, D3D12_BARRIER_LAYOUT_UNDEFINED, descriptor.name);
-	allocator->AddAllocation(resource, allocation);
-
+	ID3D12Resource* resource = static_cast<DirectXDevice*>(this)->CreateResource(resourceDesc, D3D12_HEAP_TYPE_DEFAULT, D3D12_BARRIER_LAYOUT_UNDEFINED, descriptor.name);
 	return BottomLevelAccelerationStructure(descriptor, resource);
 }
 
-TopLevelAccelerationStructure GraphicsDevice::CreateTLAS(GPUAllocator* allocator, const TLASDescriptor& descriptor)
+TopLevelAccelerationStructure GraphicsDevice::CreateTLAS(const TLASDescriptor& descriptor)
 {
 	D3D12_RESOURCE_DESC1 resourceDesc = {
 		.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER,
@@ -482,16 +472,7 @@ TopLevelAccelerationStructure GraphicsDevice::CreateTLAS(GPUAllocator* allocator
 		.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR,
 		.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS | D3D12_RESOURCE_FLAG_RAYTRACING_ACCELERATION_STRUCTURE
 	};
-	D3D12_RESOURCE_ALLOCATION_INFO allocationInfo = static_cast<ID3D12Device10*>(mHandle)->GetResourceAllocationInfo2(0, 1, &resourceDesc, nullptr);
-	MemoryRequirements memoryRequirements =
-	{
-		.size = allocationInfo.SizeInBytes,
-		.alignment = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT,
-		.type = MemoryType::GPU
-	};
-	GPUAllocation allocation = allocator->Allocate(memoryRequirements);
-	ID3D12Resource* resource = static_cast<DirectXDevice*>(this)->CreateResource(allocation, resourceDesc, D3D12_BARRIER_LAYOUT_UNDEFINED, descriptor.name);
-	allocator->AddAllocation(resource, allocation);
+	ID3D12Resource* resource = static_cast<DirectXDevice*>(this)->CreateResource(resourceDesc, D3D12_HEAP_TYPE_DEFAULT, D3D12_BARRIER_LAYOUT_UNDEFINED, descriptor.name);
 
 	TopLevelAccelerationStructure tlas(descriptor);
 	tlas.mHandle = resource;
@@ -822,11 +803,8 @@ void GraphicsDevice::Dispose(GPUAllocator* allocator, Texture& texture)
 	texture.mSliceUnorderedAccessViews.clear();
 }
 
-void GraphicsDevice::Dispose(GPUAllocator* allocator, BottomLevelAccelerationStructure& blas)
+void GraphicsDevice::Dispose(BottomLevelAccelerationStructure& blas)
 {
-	const auto& allocation = allocator->GetAllocation(blas.GetHandle());
-	allocator->Free(allocation);
-
 	mReleaseQueue->AddResource([this, resource = static_cast<ID3D12Resource*>(blas.GetHandle())]()
 	{
 		resource->Release();
@@ -834,11 +812,8 @@ void GraphicsDevice::Dispose(GPUAllocator* allocator, BottomLevelAccelerationStr
 	blas.mHandle = nullptr;
 }
 
-void GraphicsDevice::Dispose(GPUAllocator* allocator, TopLevelAccelerationStructure& tlas)
+void GraphicsDevice::Dispose(TopLevelAccelerationStructure& tlas)
 {
-	const auto& allocation = allocator->GetAllocation(tlas.GetHandle());
-	allocator->Free(allocation);
-
 	mReleaseQueue->AddResource([this,
 								resource = static_cast<ID3D12Resource*>(tlas.GetHandle()),
 								srv = tlas.mResourceView]()
@@ -909,14 +884,26 @@ DirectXDevice::DirectXDevice(RenderSurface* surface, ResourceReleaseQueue* relea
 				mD3D12Debug->SetEnableGPUBasedValidation(true);
 			}
 		}
+	}
+	DX_CHECK(D3D12CreateDevice(swapchain->mAdapter, D3D_FEATURE_LEVEL_12_0, __uuidof(ID3D12Device10), &mHandle));
 
-		if (SUCCEEDED(swapchain->mFactory->QueryInterface(IID_PPV_ARGS(&mInfoQueue))))
+	if (Globals::CLI->HasFlag("--debug-layer"))
+	{
+		if (SUCCEEDED(static_cast<ID3D12Device10*>(mHandle)->QueryInterface(IID_PPV_ARGS(&mInfoQueue))))
 		{
+			D3D12_MESSAGE_ID denyIds[] = {
+					D3D12_MESSAGE_ID_HEAP_ADDRESS_RANGE_INTERSECTS_MULTIPLE_BUFFERS,
+			};
+
+			D3D12_INFO_QUEUE_FILTER filter = {};
+			filter.DenyList.NumIDs = _countof(denyIds);
+			filter.DenyList.pIDList = denyIds;
+			DX_CHECK(mInfoQueue->AddStorageFilterEntries(&filter));
+
 			static void* emitWarning = nullptr;
 			DX_CHECK(mInfoQueue->RegisterMessageCallback(DirectXDebugCallback, D3D12_MESSAGE_CALLBACK_FLAG_NONE, emitWarning, &mDebugCallbackCookie));
 		}
 	}
-	DX_CHECK(D3D12CreateDevice(swapchain->mAdapter, D3D_FEATURE_LEVEL_12_0, __uuidof(ID3D12Device10), &mHandle));
 
 	mDirectQueue = CreateCommandQueue(D3D12_COMMAND_LIST_TYPE_DIRECT);
 	mComputeQueue = CreateCommandQueue(D3D12_COMMAND_LIST_TYPE_COMPUTE);

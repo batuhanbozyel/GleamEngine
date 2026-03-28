@@ -28,9 +28,9 @@ public:
 
 	Buffer CreateBuffer(GPUAllocator* allocator, const BufferDescriptor& descriptor);
 
-	BottomLevelAccelerationStructure CreateBLAS(GPUAllocator* allocator, const BLASDescriptor& descriptor);
+	BottomLevelAccelerationStructure CreateBLAS(const BLASDescriptor& descriptor);
 
-	TopLevelAccelerationStructure CreateTLAS(GPUAllocator* allocator, const TLASDescriptor& descriptor);
+	TopLevelAccelerationStructure CreateTLAS(const TLASDescriptor& descriptor);
 
     Shader CreateShader(const TString& entryPoint, ShaderStage stage);
 
@@ -46,9 +46,9 @@ public:
 
 	void Dispose(GPUAllocator* allocator, Buffer& buffer);
 
-	void Dispose(GPUAllocator* allocator, BottomLevelAccelerationStructure& blas);
+	void Dispose(BottomLevelAccelerationStructure& blas);
 
-	void Dispose(GPUAllocator* allocator, TopLevelAccelerationStructure& tlas);
+	void Dispose(TopLevelAccelerationStructure& tlas);
 
 	void Dispose(Shader& shader);
 

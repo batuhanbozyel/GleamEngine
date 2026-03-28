@@ -520,42 +520,20 @@ Buffer GraphicsDevice::CreateBuffer(GPUAllocator* allocator, const BufferDescrip
     return buffer;
 }
 
-BottomLevelAccelerationStructure GraphicsDevice::CreateBLAS(GPUAllocator* allocator, const BLASDescriptor& descriptor)
+BottomLevelAccelerationStructure GraphicsDevice::CreateBLAS(const BLASDescriptor& descriptor)
 {
-    MTLSizeAndAlign sizeAndAlign = [mHandle heapAccelerationStructureSizeAndAlignWithSize:descriptor.size];
-	MemoryRequirements memoryRequirements =
-	{
-		.size = sizeAndAlign.size,
-		.alignment = sizeAndAlign.align,
-		.type = MemoryType::GPU
-	};
-	GPUAllocation allocation = allocator->Allocate(memoryRequirements);
- 
-	id<MTLHeap> heap = allocation.block->heap.GetHandle();
-	id<MTLAccelerationStructure> accelStructure = [heap newAccelerationStructureWithSize:descriptor.size offset:allocation.offset];
+	id<MTLAccelerationStructure> accelStructure = [mHandle newAccelerationStructureWithSize:descriptor.size];
 	[accelStructure setLabel:TO_NSSTRING(descriptor.name.c_str())];
 	[static_cast<MetalDevice*>(this)->GetResidencySet() addAllocation:accelStructure];
-    allocator->AddAllocation(accelStructure, allocation);
  
 	return BottomLevelAccelerationStructure(descriptor, accelStructure);
 }
 
-TopLevelAccelerationStructure GraphicsDevice::CreateTLAS(GPUAllocator* allocator, const TLASDescriptor& descriptor)
+TopLevelAccelerationStructure GraphicsDevice::CreateTLAS(const TLASDescriptor& descriptor)
 {
-    MTLSizeAndAlign sizeAndAlign = [mHandle heapAccelerationStructureSizeAndAlignWithSize:descriptor.size];
-	MemoryRequirements memoryRequirements =
-	{
-		.size = sizeAndAlign.size,
-		.alignment = sizeAndAlign.align,
-		.type = MemoryType::GPU
-	};
-	GPUAllocation allocation = allocator->Allocate(memoryRequirements);
- 
-	id<MTLHeap> heap = allocation.block->heap.GetHandle();
-	id<MTLAccelerationStructure> accelStructure = [heap newAccelerationStructureWithSize:descriptor.size offset:allocation.offset];
+	id<MTLAccelerationStructure> accelStructure = [mHandle newAccelerationStructureWithSize:descriptor.size];
 	[accelStructure setLabel:TO_NSSTRING(descriptor.name.c_str())];
 	[static_cast<MetalDevice*>(this)->GetResidencySet() addAllocation:accelStructure];
-    allocator->AddAllocation(accelStructure, allocation);
 
 	TopLevelAccelerationStructure tlas(descriptor);
 	tlas.mHandle = accelStructure;
@@ -985,11 +963,8 @@ void GraphicsDevice::Dispose(GPUAllocator* allocator, Texture& texture)
     texture.mSliceUnorderedAccessViews.clear();
 }
 
-void GraphicsDevice::Dispose(GPUAllocator* allocator, BottomLevelAccelerationStructure& blas)
+void GraphicsDevice::Dispose( BottomLevelAccelerationStructure& blas)
 {
-    const auto& allocation = allocator->GetAllocation(blas.GetHandle());
-	allocator->Free(allocation);
-
 	mReleaseQueue->AddResource([this, resource = blas.GetHandle()]()
 	{
 		[static_cast<MetalDevice*>(this)->GetResidencySet() removeAllocation:resource];
@@ -997,11 +972,8 @@ void GraphicsDevice::Dispose(GPUAllocator* allocator, BottomLevelAccelerationStr
 	blas.mHandle = nil;
 }
  
-void GraphicsDevice::Dispose(GPUAllocator* allocator, TopLevelAccelerationStructure& tlas)
+void GraphicsDevice::Dispose(TopLevelAccelerationStructure& tlas)
 {
-    const auto& allocation = allocator->GetAllocation(tlas.GetHandle());
-	allocator->Free(allocation);
-
 	mReleaseQueue->AddResource([this,
 								resource = tlas.GetHandle(),
 								view = tlas.GetResourceView()]()
