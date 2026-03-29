@@ -9,7 +9,7 @@
 #include <sstream>
 #include <string>
 
-static constexpr uint32_t operator"" _hs(const char* str, size_t size)
+static constexpr uint32_t operator""_hs(const char* str, size_t size)
 {
     return Gleam::Reflection::Utils::HashString(str);
 }
