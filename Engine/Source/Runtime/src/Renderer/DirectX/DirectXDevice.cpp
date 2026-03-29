@@ -19,22 +19,21 @@ static void DirectXDebugCallback(D3D12_MESSAGE_CATEGORY Category,
 								 LPCSTR pDescription,
 								 void* pContext)
 {
-	if (Severity & D3D12_MESSAGE_SEVERITY_ERROR)
+	if (Severity & D3D12_MESSAGE_SEVERITY_MESSAGE)
 	{
-		GLEAM_CORE_ERROR("DirectX: {0}", pDescription);
-		GLEAM_ASSERT(false);
-	}
-	else if (Severity & D3D12_MESSAGE_SEVERITY_WARNING)
-	{
-		GLEAM_CORE_WARN("DirectX: {0}", pDescription);
+		GLEAM_CORE_TRACE("DirectX: {0}", pDescription);
 	}
 	else if (Severity & D3D12_MESSAGE_SEVERITY_INFO)
 	{
 		GLEAM_CORE_INFO("DirectX: {0}", pDescription);
 	}
-	else
+	else if (Severity & D3D12_MESSAGE_SEVERITY_WARNING)
 	{
-		GLEAM_CORE_TRACE("DirectX: {0}", pDescription);
+		GLEAM_CORE_WARN("DirectX: {0}", pDescription);
+	}
+	else // if (Severity & D3D12_MESSAGE_SEVERITY_ERROR || Severity & D3D12_MESSAGE_SEVERITY_CORRUPTION)
+	{
+		GLEAM_ASSERT(false, "DirectX: {0}", pDescription);
 	}
 }
 

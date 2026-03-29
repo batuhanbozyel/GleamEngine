@@ -19,7 +19,7 @@ void RayTracingScene::BuildAccelerationStructure(const CommandBuffer* cmd, const
 {
 	if (mTLAS.IsValid())
 	{
-		mDevice->Dispose(mAllocator, mTLAS);
+		mDevice->Dispose(mTLAS);
 	}
 
 	uint32_t instanceCount = 0;
@@ -83,7 +83,7 @@ void RayTracingScene::BuildAccelerationStructure(const CommandBuffer* cmd, const
 
 					static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>(); // Use persistent allocator for BLAS
 					Buffer scratchBuffer = mDevice->CreateBuffer(mAllocator, BufferDescriptor{ .name = mesh->GetName() + ": BLAS Scratch Buffer", .memoryType = MemoryType::GPU, .size = prebuildInfo.ScratchDataSizeInBytes });
-					BottomLevelAccelerationStructure blas = mDevice->CreateBLAS(renderSystem->GetAllocator(), BLASDescriptor{ .name = mesh->GetName() + ": BLAS", .size = prebuildInfo.ResultDataMaxSizeInBytes });
+					BottomLevelAccelerationStructure blas = mDevice->CreateBLAS(BLASDescriptor{ .name = mesh->GetName() + ": BLAS", .size = prebuildInfo.ResultDataMaxSizeInBytes });
 
 					{
 						D3D12_BUFFER_BARRIER bufferBarrier[2] = {};
@@ -230,7 +230,7 @@ void RayTracingScene::BuildAccelerationStructure(const CommandBuffer* cmd, const
 		static_cast<ID3D12Device10*>(mDevice->GetHandle())->GetRaytracingAccelerationStructurePrebuildInfo(&topLevelInputs, &prebuildInfo);
 
 		Buffer scratchBuffer = mDevice->CreateBuffer(mAllocator, BufferDescriptor{ .name = "TLAS Scratch Buffer", .memoryType = MemoryType::GPU, .size = prebuildInfo.ScratchDataSizeInBytes });
-		TopLevelAccelerationStructure tlas = mDevice->CreateTLAS(mAllocator, TLASDescriptor{ .name = "TLAS", .size = prebuildInfo.ResultDataMaxSizeInBytes });
+		TopLevelAccelerationStructure tlas = mDevice->CreateTLAS(TLASDescriptor{ .name = "TLAS", .size = prebuildInfo.ResultDataMaxSizeInBytes });
 		{
 			D3D12_BUFFER_BARRIER bufferBarrier[4] = {};
 			bufferBarrier[0].SyncBefore = D3D12_BARRIER_SYNC_NONE;

@@ -22,7 +22,7 @@ void RayTracingScene::BuildAccelerationStructure(const CommandBuffer* cmd, const
 {
 	if (mTLAS.IsValid())
 	{
-		mDevice->Dispose(mAllocator, mTLAS);
+		mDevice->Dispose(mTLAS);
 	}
 
 	uint32_t instanceCount = 0;
@@ -80,9 +80,8 @@ void RayTracingScene::BuildAccelerationStructure(const CommandBuffer* cmd, const
 				MTL4PrimitiveAccelerationStructureDescriptor* blasDesc = [MTL4PrimitiveAccelerationStructureDescriptor new];
 				blasDesc.geometryDescriptors = geometryDescs;
 
-				static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>(); // Use persistent allocator for BLAS
 				MTLAccelerationStructureSizes sizes = [device accelerationStructureSizesWithDescriptor:blasDesc];
-				BottomLevelAccelerationStructure blas = mDevice->CreateBLAS(renderSystem->GetAllocator(), BLASDescriptor{ .name = mesh->GetName() + ": BLAS", .size = sizes.accelerationStructureSize });
+				BottomLevelAccelerationStructure blas = mDevice->CreateBLAS(BLASDescriptor{ .name = mesh->GetName() + ": BLAS", .size = sizes.accelerationStructureSize });
 
 				Buffer scratchBuffer = mDevice->CreateBuffer(mAllocator, BufferDescriptor{
 					.name = "BLAS Scratch Buffer",
@@ -162,7 +161,7 @@ void RayTracingScene::BuildAccelerationStructure(const CommandBuffer* cmd, const
 	tlasDesc.instanceTransformationMatrixLayout = MTLMatrixLayoutRowMajor;
 	MTLAccelerationStructureSizes sizes = [device accelerationStructureSizesWithDescriptor:tlasDesc];
 
-	TopLevelAccelerationStructure tlas = mDevice->CreateTLAS(mAllocator, TLASDescriptor{
+	TopLevelAccelerationStructure tlas = mDevice->CreateTLAS(TLASDescriptor{
 		.name = "TLAS",
 		.size = sizes.accelerationStructureSize
 	});

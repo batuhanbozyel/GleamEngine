@@ -14,6 +14,6 @@ RayTracingScene::~RayTracingScene()
 {
 	if (mTLAS.IsValid())
 	{
-		mDevice->Dispose(mAllocator, mTLAS);
+		mDevice->Dispose(mTLAS);
 	}
 }

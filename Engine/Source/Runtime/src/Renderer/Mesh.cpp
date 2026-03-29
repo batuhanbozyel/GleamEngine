@@ -51,7 +51,7 @@ Mesh::~Mesh()
 
 	if (mBLAS.IsValid())
 	{
-		device->Dispose(renderSystem->GetAllocator(), mBLAS);
+		device->Dispose(mBLAS);
 	}
 }
 
