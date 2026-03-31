@@ -4,7 +4,6 @@
 #include "Renderer/Swapchain.h"
 #include "Renderer/CommandBuffer.h"
 #include "Renderer/GraphicsDevice.h"
-#include "Renderer/RayTracingScene.h"
 
 using namespace Gleam;
 
@@ -139,9 +138,6 @@ void RenderGraph::Compile()
 
 void RenderGraph::Execute(const CommandBuffer* cmd, SceneRenderingData& sceneData)
 {
-	RayTracingScene rtScene(mContext.device, mContext.allocator);
-	rtScene.BuildAccelerationStructure(cmd, sceneData.sceneProxy);
-
     for (auto pass : mPassNodes)
     {
 		AllocatePassResources(pass, cmd, sceneData);

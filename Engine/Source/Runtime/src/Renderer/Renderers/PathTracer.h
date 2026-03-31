@@ -19,11 +19,15 @@ public:
 
 private:
 
+	struct State
+	{
+		float4x4 cameraView = {};
+		SkyAtmosphereUniforms atmosphereUniforms = {};
+		SkyAtmosphereParameters atmosphereParams = {};
+	} mState;
+
 	Texture mRenderTarget;
 	uint32_t mFrameIndex = 0;
-	float4x4 mLastCameraView = {};
-	SkyAtmosphereUniforms mAtmosphereUniforms = {};
-	SkyAtmosphereParameters mAtmosphereParams = {};
 	GraphicsDevice* mDevice = nullptr;
 	GPUAllocator* mAllocator = nullptr;
 	ComputePipelineHandle mPathTracingPipeline;

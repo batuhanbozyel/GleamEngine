@@ -6,7 +6,9 @@
 #include "Core/EventSystem.h"
 #include "Core/WindowSystem.h"
 
+#include "Renderer/Swapchain.h"
 #include "Renderer/RenderSystem.h"
+#include "Renderer/GraphicsDevice.h"
 #include "Renderer/ImGui/imgui_impl_sdl3.h"
 
 using namespace Gleam;

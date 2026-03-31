@@ -11,6 +11,9 @@
 
 #include "Renderer/Mesh.h"
 #include "Renderer/RenderSystem.h"
+#include "Renderer/GraphicsDevice.h"
+#include "Renderer/RenderPipeline.h"
+#include "Renderer/RayTracingScene.h"
 #include "Renderer/CopyCommandBuffer.h"
 
 #include "Renderer/Material/Material.h"
@@ -64,6 +67,9 @@ void RenderSceneProxy::Tick(World* world)
 
 				auto pathTracer = renderSystem->GetRenderPipeline(RenderPath::PathTracing)->GetRenderer<PathTracer>();
 				pathTracer->RegisterShadingPipeline(materialDescriptor, batch.material->GetPipelineHash());
+
+				auto rayTracingScene = renderSystem->GetRayTracingScene();
+				rayTracingScene->RegisterShadingPipeline(materialDescriptor, batch.material->GetPipelineHash());
 			}
 
 			batch.meshes[batch.numInstances] = mesh;

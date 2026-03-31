@@ -126,9 +126,9 @@ using namespace Gleam;
 
 void RenderSystem::InitializeBackend()
 {
-	mSwapchain = CreateScope<MetalSwapchain>();
-    mReleaseQueue = CreateScope<ResourceReleaseQueue>(mSwapchain->GetFramesInFlight());
-    mDevice = CreateScope<MetalDevice>(mSwapchain.get(), mReleaseQueue.get());
+	mSwapchain = new MetalSwapchain();
+    mReleaseQueue = new ResourceReleaseQueue(mSwapchain->GetFramesInFlight());
+    mDevice = new MetalDevice(mSwapchain, mReleaseQueue);
 }
 
 static IRCompiler* CreateCompiler(const TString& entryPoint, IRRootSignature* globalRootSig)

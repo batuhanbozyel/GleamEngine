@@ -39,9 +39,9 @@ static void DirectXDebugCallback(D3D12_MESSAGE_CATEGORY Category,
 
 void RenderSystem::InitializeBackend()
 {
-	mSwapchain = CreateScope<DirectXSwapchain>();
-	mReleaseQueue = CreateScope<ResourceReleaseQueue>(mSwapchain->GetFramesInFlight());
-	mDevice = CreateScope<DirectXDevice>(mSwapchain.get(), mReleaseQueue.get());
+	mSwapchain = new DirectXSwapchain();
+	mReleaseQueue = new ResourceReleaseQueue(mSwapchain->GetFramesInFlight());
+	mDevice = new DirectXDevice(mSwapchain, mReleaseQueue);
 }
 
 static D3D12_STATIC_SAMPLER_DESC CreateStaticSampler(const SamplerState& samplerState)

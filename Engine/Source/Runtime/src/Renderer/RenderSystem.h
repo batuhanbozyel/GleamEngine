@@ -1,18 +1,24 @@
 #pragma once
 #include "Core/Subsystem.h"
-#include "Swapchain.h"
-#include "CommandBuffer.h"
-#include "CopyCommandBuffer.h"
-#include "GraphicsDevice.h"
-#include "ResourceReleaseQueue.h"
-#include "RenderPipeline.h"
+#include "Math/Size.h"
 #include "World/Entity.h"
+#include "Shaders/ShaderTypes.h"
 
 namespace Gleam {
 
 class World;
+class Swapchain;
+class RenderGraph;
+class GPUAllocator;
+class CommandBuffer;
+class RenderSurface;
+class GraphicsDevice;
+class RenderPipeline;
+class RayTracingScene;
 class CopyCommandBuffer;
+class ResourceReleaseQueue;
 
+struct RendererConfig;
 struct CameraRenderData;
 struct SkyAtmosphereRenderData;
 
@@ -37,8 +43,6 @@ public:
     void Configure(const RendererConfig& config);
 
 	void SetRenderPath(RenderPath path);
-
-	CopyCommandBuffer* GetCopyCommandBuffer();
     
     GraphicsDevice* GetDevice();
     
@@ -47,6 +51,14 @@ public:
 	RenderSurface* GetSurface();
 
 	const RenderSurface* GetSurface() const;
+
+	CopyCommandBuffer* GetCopyCommandBuffer();
+
+	const CopyCommandBuffer* GetCopyCommandBuffer() const;
+
+	RayTracingScene* GetRayTracingScene();
+
+	const RayTracingScene* GetRayTracingScene() const;
 	
 	RenderPipeline* GetRenderPipeline(RenderPath renderPath);
 	
@@ -80,22 +92,24 @@ private:
 
 	Engine* mEngine;
 	
-	RenderPath mRenderPath;
-	TArray<Scope<RenderPipeline>, 2> mRenderPipelines;
+	RenderPath mRenderPath = RenderPath::Default;
+	TArray<RenderPipeline*, 2> mRenderPipelines = {};
 
-    Scope<Swapchain> mSwapchain;
+	RayTracingScene* mRayTracingScene = nullptr;
 
-	Scope<GraphicsDevice> mDevice;
+    Swapchain* mSwapchain;
 
-	Scope<CopyCommandBuffer> mCopyCommandBuffer;
+	GraphicsDevice* mDevice = nullptr;
 
-	Scope<ResourceReleaseQueue> mReleaseQueue;
+	CopyCommandBuffer* mCopyCommandBuffer = nullptr;
 
-	Scope<GPUAllocator> mTransientAllocator;
+	ResourceReleaseQueue* mReleaseQueue = nullptr;
 
-	Scope<GPUAllocator> mPersistentAllocator;
+	GPUAllocator* mTransientAllocator = nullptr;
+
+	GPUAllocator* mPersistentAllocator = nullptr;
     
-    TArray<Scope<CommandBuffer>> mCommandBuffers;
+	TArray<CommandBuffer*> mCommandBuffers = {};
     
 };
 

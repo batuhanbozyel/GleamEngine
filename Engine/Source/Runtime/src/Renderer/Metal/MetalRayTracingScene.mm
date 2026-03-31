@@ -146,7 +146,7 @@ void RayTracingScene::BuildAccelerationStructure(const CommandBuffer* cmd, const
 			desc.options = options;
 			desc.userID = i;
 			desc.mask = 1;
-			desc.intersectionFunctionTableOffset = batch.material->GetPipelineHash(); // TODO: set to appropriate value
+			desc.intersectionFunctionTableOffset = mHitGroupRegistry.GetIndex(pipelineHash); // TODO: check if this is valid
 			desc.accelerationStructureID = [mesh->GetBLAS().GetHandle() gpuResourceID];
 
 			++currentInstance;

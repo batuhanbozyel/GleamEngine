@@ -1,6 +1,7 @@
 #include "gpch.h"
 #include "Pipeline.h"
 #include "RenderSystem.h"
+#include "GraphicsDevice.h"
 
 #include "Core/Globals.h"
 #include "Core/Engine.h"

@@ -5,6 +5,8 @@
 #include "Core/Globals.h"
 
 #include "Renderer/RenderSystem.h"
+#include "Renderer/GraphicsDevice.h"
+#include "Renderer/CopyCommandBuffer.h"
 
 using namespace Gleam;
 

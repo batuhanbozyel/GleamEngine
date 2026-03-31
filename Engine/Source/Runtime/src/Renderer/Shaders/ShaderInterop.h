@@ -30,6 +30,13 @@ using float4 = Gleam::Float4;
 
 namespace Gleam {
 
+enum class DispatchRayType
+{
+	Shading = 0,
+	Shadow = 1,
+	COUNT
+};
+
 #ifdef __cplusplus
 struct ShaderResourceIndex
 {

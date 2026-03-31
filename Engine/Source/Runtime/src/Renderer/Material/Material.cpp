@@ -15,6 +15,8 @@
 
 #include "Renderer/Texture2D.h"
 #include "Renderer/RenderSystem.h"
+#include "Renderer/GraphicsDevice.h"
+#include "Renderer/CopyCommandBuffer.h"
 
 #include "Assets/AssetManager.h"
 
