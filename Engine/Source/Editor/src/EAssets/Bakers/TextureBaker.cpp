@@ -1,7 +1,8 @@
 #include "TextureBaker.h"
 #include "EAssets/AssetRegistry.h"
 
-#include "Gleam.h"
+#include "Assets/Asset.h"
+#include "Serialization/BinarySerializer.h"
 
 using namespace GEditor;
 

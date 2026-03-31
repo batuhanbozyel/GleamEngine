@@ -10,7 +10,17 @@
 #include "EAssets/EAssetManager.h"
 #include "Renderers/InfiniteGridRenderer.h"
 
-#include "Gleam.h"
+#include "Renderer/RenderSystem.h"
+#include "Renderer/RenderPipeline.h"
+#include "Renderer/Renderers/ImGuiRenderer.h"
+
+#include "Core/Globals.h"
+#include "Core/Engine.h"
+
+#include "Input/InputSystem.h"
+
+#include "World/World.h"
+#include "World/Components/Camera.h"
 
 using namespace GEditor;
 

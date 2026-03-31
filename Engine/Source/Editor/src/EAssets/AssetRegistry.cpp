@@ -1,7 +1,5 @@
 #include "AssetRegistry.h"
 
-#include "Gleam.h"
-
 using namespace GEditor;
 
 AssetRegistry::AssetRegistry(const Gleam::Path& directory)

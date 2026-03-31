@@ -1,7 +1,7 @@
 #include "MaterialSource.h"
 #include "Bakers/MaterialBaker.h"
 
-#include "Gleam.h"
+#include "Core/Globals.h"
 
 #include <rapidjson/document.h>
 #include <rapidjson/istreamwrapper.h>

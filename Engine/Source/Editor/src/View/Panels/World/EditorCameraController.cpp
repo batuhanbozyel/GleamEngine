@@ -7,7 +7,12 @@
 
 #include "EditorCameraController.h"
 
-#include "Gleam.h"
+#include "Core/Globals.h"
+#include "Core/Engine.h"
+#include "Core/Timestep.h"
+
+#include "World/EntityManager.h"
+#include "Input/InputSystem.h"
 
 using namespace GEditor;
 

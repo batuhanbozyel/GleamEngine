@@ -2,7 +2,23 @@
 #include "AssetBaker.h"
 #include "MaterialSource.h"
 
-#include "Gleam.h"
+#include "Core/Globals.h"
+#include "Core/Engine.h"
+#include "Core/Application.h"
+
+#include "Serialization/BinarySerializer.h"
+#include "Serialization/JSONSerializer.h"
+
+#include "Renderer/RenderSystem.h"
+#include "Renderer/MeshDescriptor.h"
+#include "Renderer/TextureDescriptor.h"
+#include "Renderer/Material/MaterialDescriptor.h"
+
+#include "Assets/Asset.h"
+#include "Assets/AssetManager.h"
+
+#include "World/Prefab.h"
+#include "World/World.h"
 
 using namespace GEditor;
 

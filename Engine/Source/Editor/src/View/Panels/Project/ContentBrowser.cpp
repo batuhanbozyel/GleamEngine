@@ -9,7 +9,15 @@
 #include "EAssets/MeshSource.h"
 #include "EAssets/EAssetManager.h"
 
-#include "Gleam.h"
+#include "Core/Globals.h"
+#include "Core/Engine.h"
+
+#include "Renderer/Renderers/ImGuiRenderer.h"
+
+#include "World/World.h"
+#include "World/Prefab.h"
+
+#include "IO/FileDialog.h"
 
 #include <imgui.h>
 

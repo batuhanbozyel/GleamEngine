@@ -7,7 +7,12 @@
 
 #include "ViewStack.h"
 
-#include "Gleam.h"
+#include "Renderer/RenderSystem.h"
+#include "Renderer/RenderPipeline.h"
+#include "Renderer/Renderers/ImGuiRenderer.h"
+
+#include "Core/Globals.h"
+#include "Core/Engine.h"
 
 #include <imgui.h>
 

@@ -8,7 +8,11 @@
 #include "WorldOutliner.h"
 #include "WorldViewport.h"
 
-#include "Gleam.h"
+#include "Core/Globals.h"
+#include "Core/Engine.h"
+
+#include "Renderer/Renderers/ImGuiRenderer.h"
+#include "World/World.h"
 
 #include <imgui.h>
 
