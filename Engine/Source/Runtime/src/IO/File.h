@@ -1,6 +1,7 @@
 #pragma once
 #include "Filesystem.h"
 #include "Container/String.h"
+#include "Container/Pointer.h"
 
 namespace Gleam {
 
@@ -27,7 +28,7 @@ public:
 	File& operator=(const File&) = delete;
 
 	File(File&&) = default;
-	File& operator=(File&&) = default;
+	File& operator=(File&& other) = default;
 
 	TString Read() const;
 
@@ -52,7 +53,7 @@ private:
     
     Path mFullPath;
     
-    FileAccessor& mAccessor;
+    Ref<FileAccessor> mAccessor;
 
 	mutable FileStream mHandle;
     
