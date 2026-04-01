@@ -2,27 +2,11 @@
 #define MESH_SHADING_HLSL
 
 #include "BRDF.hlsli"
+#include "SurfaceShading.hlsli"
 #include "Atmosphere/SkyAtmosphereCommon.hlsli"
 
 CONSTANT_BUFFER(Gleam::MeshPassResources, resources, MESH_PASS_RESOURCES_BINDING_SLOT);
 PUSH_CONSTANT(Gleam::MeshShadingConstants, constants);
-
-// Auto-generated inside material shader
-void LoadMaterialInstance(uint materialID);
-
-struct MeshVertexOut
-{
-	float4 position : SV_POSITION;
-	float3 worldPosition : ATTRIB0;
-	float3 normal : ATTRIB1;
-	float3 tangent : ATTRIB2;
-	float3 bitangent : ATTRIB3;
-	float4 color : ATTRIB4;
-	float2 uv : ATTRIB5;
-};
-
-// User defined
-Gleam::SurfaceOutput surf(MeshVertexOut IN);
 
 [shader("pixel")]
 float4 meshShadingPassShader(MeshVertexOut IN) : SV_TARGET
