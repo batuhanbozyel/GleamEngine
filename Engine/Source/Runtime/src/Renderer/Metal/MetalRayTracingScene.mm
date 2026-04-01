@@ -25,11 +25,9 @@ void RayTracingScene::BuildAccelerationStructure(const CommandBuffer* cmd, const
 		mDevice->Dispose(mTLAS);
 	}
 
-	uint32_t instanceCount = 0;
-	sceneProxy->ForEach([&](const MeshBatch& batch)
-	{
-		instanceCount += batch.numInstances;
-	});
+	const auto globalInstances = sceneProxy->GetGlobalInstances();
+	const auto globalMeshes = sceneProxy->GetGlobalMeshes();
+	uint32_t instanceCount = (uint32_t)globalInstances.size();
 
 	if (instanceCount == 0)
 	{
@@ -52,7 +50,7 @@ void RayTracingScene::BuildAccelerationStructure(const CommandBuffer* cmd, const
 	{
 		for (uint32_t i = 0; i < batch.numInstances; ++i)
 		{
-			auto mesh = batch.meshes[i];
+			auto mesh = globalMeshes[batch.instanceOffset + i];
 			if (not mesh->GetBLAS().IsValid())
 			{
 				const auto& submeshes = mesh->GetSubmeshes();
@@ -104,7 +102,7 @@ void RayTracingScene::BuildAccelerationStructure(const CommandBuffer* cmd, const
 			}
 
 			const auto& materialDesc = batch.material->GetDescriptor();
-			const auto& instanceData = batch.instances[i];
+			const auto& instanceData = globalInstances[batch.instanceOffset + i];
 
 			MTLAccelerationStructureInstanceOptions options = MTLAccelerationStructureInstanceOptionNone;
 			if (materialDesc.cullingMode == CullMode::Off)
@@ -144,7 +142,7 @@ void RayTracingScene::BuildAccelerationStructure(const CommandBuffer* cmd, const
 				instanceData.transform[3][2]);
 
 			desc.options = options;
-			desc.userID = i;
+			desc.userID = batch.instanceOffset + i;
 			desc.mask = 1;
 			desc.intersectionFunctionTableOffset = mHitGroupRegistry.GetIndex(pipelineHash); // TODO: check if this is valid
 			desc.accelerationStructureID = [mesh->GetBLAS().GetHandle() gpuResourceID];

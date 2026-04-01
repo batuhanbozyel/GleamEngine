@@ -107,16 +107,22 @@ void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
         const auto& sceneData = blackboard.Get<SceneRenderingData>();
         sceneData.sceneProxy->ForEach([this, cmd, passData, sceneData](const MeshBatch& batch)
         {
+			if (batch.numInstances == 0)
+			{
+				return;
+			}
+
             const auto& materialBuffer = batch.material->GetBuffer();
             const auto& pipeline = mShadingPipelines[batch.material->GetPipelineHash()];
+			const auto globalInstances = sceneData.sceneProxy->GetGlobalInstances();
+			const auto globalMeshes = sceneData.sceneProxy->GetGlobalMeshes();
 
 			MeshPassResources resources = {};
-			resources.instanceBuffer = batch.instanceBuffer.GetResourceView();
+			resources.instanceBuffer = sceneData.sceneProxy->GetGlobalInstanceBuffer().GetResourceView();
 			resources.materialBuffer = materialBuffer.GetResourceView();
 			resources.brdfTexture = passData.brdfLut;
 			resources.diffuseReflectionTexture = passData.diffuseReflection;
 			resources.specularReflectionTexture = passData.specularReflection;
-
 			cmd->BindGraphicsPipeline(pipeline);
 			cmd->SetConstantBuffer(resources, MESH_PASS_RESOURCES_BINDING_SLOT);
 			cmd->SetConstantBuffer(sceneData.camera.uniforms, CAMERA_UNIFORMS_BINDING_SLOT);
@@ -125,9 +131,10 @@ void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 
 			for (uint32_t instanceID = 0; instanceID < batch.numInstances; ++instanceID)
 			{
-				const auto& instance = batch.instances[instanceID];
-				cmd->SetConstantBuffer(instance, MESH_INSTANCE_DATA_BINDING_SLOT);
-				cmd->DrawIndexed(batch.meshes[instanceID]->GetIndexBuffer(), IndexType::UINT32, instance.indexCount, 1, instance.firstIndex);
+				uint32_t globalIndex = batch.instanceOffset + instanceID;
+				const auto& instance = globalInstances[globalIndex];
+				cmd->SetPushConstant(MeshShadingConstants{ .instanceID = globalIndex });
+				cmd->DrawIndexed(globalMeshes[globalIndex]->GetIndexBuffer(), IndexType::UINT32, instance.indexCount, 1, instance.firstIndex);
 			}
         });
     });

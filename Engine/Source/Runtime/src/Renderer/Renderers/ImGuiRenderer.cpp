@@ -205,7 +205,7 @@ void ImGuiRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 
 				cmd->SetScissorRect(rect);
 				cmd->SetPushConstant(passConstants);
-				cmd->DrawIndexed(mBuffer, IndexType::UINT16, drawCmd->ElemCount, 1, drawCmd->IdxOffset + idxBufferOffset / sizeof(ImDrawIdx), drawCmd->VtxOffset);
+				cmd->DrawIndexed(mBuffer, IndexType::UINT16, drawCmd->ElemCount, 1, drawCmd->IdxOffset + idxBufferOffset / sizeof(ImDrawIdx));
 			}
 			idxBufferOffset += drawList->IdxBuffer.Size * sizeof(ImDrawIdx);
 			vtxBufferOffset += drawList->VtxBuffer.Size * sizeof(ImDrawVert);

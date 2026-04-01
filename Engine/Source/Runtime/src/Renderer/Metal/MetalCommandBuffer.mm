@@ -246,12 +246,12 @@ void CommandBuffer::Draw(uint32_t vertexCount, uint32_t instanceCount) const
     [mHandle->renderCommandEncoder drawPrimitives:pipeline.topology vertexStart:0 vertexCount:vertexCount instanceCount:instanceCount baseInstance:0];
 }
 
-void CommandBuffer::DrawIndexed(const Buffer& indexBuffer, IndexType type, uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, uint32_t baseVertex) const
+void CommandBuffer::DrawIndexed(const Buffer& indexBuffer, IndexType type, uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex) const
 {
     auto gpuAddress = [mConstantBuffer.GetHandle() gpuAddress];
     auto indexBufferOffset = firstIndex * (uint32_t)SizeOfIndexType(type);
     
-    IRRuntimeDrawIndexedArgument drawArgument = { .indexCountPerInstance = indexCount, .instanceCount = instanceCount, .startIndexLocation = indexBufferOffset, .baseVertexLocation = (int)baseVertex, .startInstanceLocation = 0 };
+    IRRuntimeDrawIndexedArgument drawArgument = { .indexCountPerInstance = indexCount, .instanceCount = instanceCount, .startIndexLocation = indexBufferOffset, .baseVertexLocation = 0, .startInstanceLocation = 0 };
     IRRuntimeDrawParams drawParams = { .drawIndexed = drawArgument };
     
     MTLIndexType indexType = static_cast<MTLIndexType>(type);
@@ -270,7 +270,7 @@ void CommandBuffer::DrawIndexed(const Buffer& indexBuffer, IndexType type, uint3
     size_t indexBufferLength = indexBuffer.GetSize();
     
     id<MetalGraphicsPipeline> pipeline = (id<MetalGraphicsPipeline>)mHandle->pipeline;
-    [mHandle->renderCommandEncoder drawIndexedPrimitives:pipeline.topology indexCount:indexCount indexType:indexType indexBuffer:indexBufferGpuAddress indexBufferLength:indexBufferLength instanceCount:instanceCount baseVertex:baseVertex baseInstance:0];
+    [mHandle->renderCommandEncoder drawIndexedPrimitives:pipeline.topology indexCount:indexCount indexType:indexType indexBuffer:indexBufferGpuAddress indexBufferLength:indexBufferLength instanceCount:instanceCount baseVertex:0 baseInstance:0];
 }
 
 void CommandBuffer::CopyBuffer(const NativeGraphicsHandle src, const NativeGraphicsHandle dst, size_t size, size_t srcOffset, size_t dstOffset) const

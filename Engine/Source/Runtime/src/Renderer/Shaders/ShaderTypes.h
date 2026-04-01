@@ -82,7 +82,11 @@ struct TonemapUniforms
 };
 
 #define MESH_PASS_RESOURCES_BINDING_SLOT 0
-#define MESH_INSTANCE_DATA_BINDING_SLOT 1
+struct MeshShadingConstants
+{
+	uint32_t instanceID;
+};
+
 struct MeshInstanceData
 {
 	float4x4 transform;

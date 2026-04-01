@@ -5,10 +5,10 @@
 #include "Atmosphere/SkyAtmosphereCommon.hlsli"
 
 CONSTANT_BUFFER(Gleam::MeshPassResources, resources, MESH_PASS_RESOURCES_BINDING_SLOT);
+PUSH_CONSTANT(Gleam::MeshShadingConstants, constants);
 
-// We only need this for legacy vertex shader path
-// When switched to mesh shaders, we should be fetching instance data from instance buffer
-CONSTANT_BUFFER(Gleam::MeshInstanceData, instanceData, MESH_INSTANCE_DATA_BINDING_SLOT);
+// Auto-generated inside material shader
+void LoadMaterialInstance(uint materialID);
 
 struct MeshVertexOut
 {
@@ -27,6 +27,10 @@ Gleam::SurfaceOutput surf(MeshVertexOut IN);
 [shader("pixel")]
 float4 meshShadingPassShader(MeshVertexOut IN) : SV_TARGET
 {
+	ByteAddressBuffer globalInstanceBuffer = ResourceDescriptorHeap[resources.instanceBuffer];
+	Gleam::MeshInstanceData instanceData = globalInstanceBuffer.Load<Gleam::MeshInstanceData>(constants.instanceID * sizeof(Gleam::MeshInstanceData));
+	LoadMaterialInstance(instanceData.materialID);
+
     Gleam::SurfaceOutput surface = surf(IN);
     
 	float3 viewDir = normalize(camera.position - IN.worldPosition);

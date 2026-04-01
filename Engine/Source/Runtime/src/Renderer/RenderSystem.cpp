@@ -98,10 +98,11 @@ void RenderSystem::Shutdown(Engine* engine)
 void RenderSystem::PreRender(const World* world)
 {
 	auto sceneProxy = world->GetSubsystem<RenderSceneProxy>();
-	sceneProxy->ForEach([&](const MeshBatch& batch)
+	const auto& globalInstances = sceneProxy->GetGlobalInstances();
+	if (not globalInstances.empty())
 	{
-		mCopyCommandBuffer->Commit(batch.instanceBuffer, batch.instances.data(), sizeof(MeshInstanceData) * batch.numInstances, 0);
-	});
+		mCopyCommandBuffer->Commit(sceneProxy->GetGlobalInstanceBuffer(), globalInstances.data(), sizeof(MeshInstanceData) * globalInstances.size(), 0);
+	}
 
 	// update active camera
 	mActiveCamera = InvalidEntity;

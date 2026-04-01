@@ -73,16 +73,16 @@ bool MaterialSource::Import(const Gleam::Path& path, const ImportSettings& setti
     descriptor.name = path.Stem();
     
     Gleam::TStringStream generatedShader;
-    generatedShader << "\n\nstruct MaterialProperties\n{\n";
     if (document.HasMember("Properties") && document["Properties"].IsArray())
     {
+        generatedShader << "\n\nstruct MaterialProperties\n{\n";
         for (const auto& property : document["Properties"].GetArray())
         {
             for (auto it = property.MemberBegin(); it != property.MemberEnd(); ++it)
             {
                 Gleam::TString propertyName = it->name.GetString();
                 Gleam::TString propertyType = it->value.GetString();
-                
+
                 if (propertyType == "Float")
                 {
                     generatedShader << "\tfloat " << propertyName << ";\n";
@@ -125,9 +125,14 @@ bool MaterialSource::Import(const Gleam::Path& path, const ImportSettings& setti
                 }
             }
         }
-		generatedShader << "};\n\n";
-		generatedShader << "static ByteAddressBuffer materialBuffer = ResourceDescriptorHeap[resources.materialBuffer];\n";
-		generatedShader << "static MaterialProperties Material = materialBuffer.Load<MaterialProperties>(instanceData.materialID * sizeof(MaterialProperties));\n\n";
+        generatedShader << "};\n\n";
+        generatedShader << "static ByteAddressBuffer materialBuffer = ResourceDescriptorHeap[resources.materialBuffer];\n";
+        generatedShader << "static MaterialProperties Material;\n";
+        generatedShader << "void LoadMaterialInstance(uint materialID) { Material = materialBuffer.Load<MaterialProperties>(materialID * sizeof(MaterialProperties)); }\n\n";
+    }
+    else
+    {
+        generatedShader << "void LoadMaterialInstance(uint materialID) {}\n\n";
     }
     
     if (document.HasMember("SurfaceShader"))

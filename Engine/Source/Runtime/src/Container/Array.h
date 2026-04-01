@@ -2,6 +2,7 @@
 #include <Reflection/Macro.h>
 #include <EASTL/array.h>
 #include <EASTL/vector.h>
+#include <EASTL/span.h>
 
 namespace Gleam {
 
@@ -19,6 +20,9 @@ struct ArrayHelper<T, 0>
 
 template<typename T, size_t size = 0>
 using TArray = typename ArrayHelper<T, size>::Type;
+
+template<typename T>
+using TArrayView = eastl::span<T>;
 
 namespace ArrayUtils {
 

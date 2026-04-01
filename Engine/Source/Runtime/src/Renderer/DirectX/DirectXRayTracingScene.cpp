@@ -22,11 +22,9 @@ void RayTracingScene::BuildAccelerationStructure(const CommandBuffer* cmd, const
 		mDevice->Dispose(mTLAS);
 	}
 
-	uint32_t instanceCount = 0;
-	sceneProxy->ForEach([&](const MeshBatch& batch)
-	{
-		instanceCount += batch.numInstances;
-	});
+	const auto globalInstances = sceneProxy->GetGlobalInstances();
+	const auto globalMeshes = sceneProxy->GetGlobalMeshes();
+	uint32_t instanceCount = (uint32_t)globalInstances.size();
 
 	if (instanceCount == 0)
 	{
@@ -45,7 +43,7 @@ void RayTracingScene::BuildAccelerationStructure(const CommandBuffer* cmd, const
 		{
 			for (uint32_t i = 0; i < batch.numInstances; ++i)
 			{
-				auto mesh = batch.meshes[i];
+				auto mesh = globalMeshes[batch.instanceOffset + i];
 				if (not mesh->GetBLAS().IsValid())
 				{
 					PIXBeginEvent(commandList, PIX_COLOR(128, 0, 128), "BLAS");
@@ -148,7 +146,7 @@ void RayTracingScene::BuildAccelerationStructure(const CommandBuffer* cmd, const
 				}
 
 				const auto& materialDesc = batch.material->GetDescriptor();
-				const auto& instanceData = batch.instances[i];
+				const auto& instanceData = globalInstances[batch.instanceOffset + i];
 				auto pipelineHash = batch.material->GetPipelineHash();
 
 				UINT instanceFlags = D3D12_RAYTRACING_INSTANCE_FLAG_NONE;
@@ -184,7 +182,7 @@ void RayTracingScene::BuildAccelerationStructure(const CommandBuffer* cmd, const
 				instanceDesc.Transform[2][2] = instanceData.transform[2][2];
 				instanceDesc.Transform[2][3] = instanceData.transform[3][2];
 				instanceDesc.Flags = instanceFlags;
-				instanceDesc.InstanceID = i;
+				instanceDesc.InstanceID = batch.instanceOffset + i;
 				instanceDesc.InstanceMask = 1;
 				instanceDesc.InstanceContributionToHitGroupIndex = mHitGroupRegistry.GetIndex(pipelineHash);
 				instanceDesc.AccelerationStructure = static_cast<ID3D12Resource*>(mesh->GetBLAS().GetHandle())->GetGPUVirtualAddress();

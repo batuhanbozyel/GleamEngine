@@ -79,8 +79,7 @@ public:
 	void DrawIndexed(const Buffer& indexBuffer, IndexType type,
 		uint32_t indexCount,
 		uint32_t instanceCount = 1,
-		uint32_t firstIndex = 0,
-		uint32_t baseVertex = 0) const;
+		uint32_t firstIndex = 0) const;
 
     void DrawIndexed(const Buffer& indexBuffer, IndexType type,
 		uint32_t instanceCount = 1,

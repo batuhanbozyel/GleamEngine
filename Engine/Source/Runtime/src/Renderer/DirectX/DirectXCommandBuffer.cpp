@@ -212,8 +212,7 @@ void CommandBuffer::Draw(uint32_t vertexCount, uint32_t instanceCount) const
 void CommandBuffer::DrawIndexed(const Buffer& indexBuffer, IndexType type,
 	uint32_t indexCount,
 	uint32_t instanceCount,
-	uint32_t firstIndex,
-	uint32_t baseVertex) const
+	uint32_t firstIndex) const
 {
 	D3D12_INDEX_BUFFER_VIEW indexBufferView = {};
 	indexBufferView.BufferLocation = static_cast<ID3D12Resource*>(indexBuffer.GetHandle())->GetGPUVirtualAddress();
@@ -221,7 +220,7 @@ void CommandBuffer::DrawIndexed(const Buffer& indexBuffer, IndexType type,
 	indexBufferView.SizeInBytes = (UINT)indexBuffer.GetSize();
 
 	mHandle->commandList->IASetIndexBuffer(&indexBufferView);
-	mHandle->commandList->DrawIndexedInstanced(indexCount, instanceCount, firstIndex, baseVertex, 0);
+	mHandle->commandList->DrawIndexedInstanced(indexCount, instanceCount, firstIndex, 0, 0);
 }
 
 void CommandBuffer::CopyBuffer(const NativeGraphicsHandle src, const NativeGraphicsHandle dst,
