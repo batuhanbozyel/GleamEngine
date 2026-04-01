@@ -1,14 +1,23 @@
 #include "PathTraceCommon.hlsli"
 #include "Atmosphere/SkyAtmosphereCommon.hlsli"
 
+#define RAY_MARCHING_
+#ifdef RAY_MARCHING_
+
+struct Ray
+{
+	float3 origin;
+	float3 direction;
+	float tMin;
+	float tMax;
+	uint depth;
+};
+
 struct Payload
 {
     float t;
     int hit;
 };
-
-#define RAY_MARCHING_
-#ifdef RAY_MARCHING_
 
 static const int MAX_STEPS = 128;
 static const float SURF_DIST = 0.001;
@@ -106,7 +115,6 @@ Gleam::SurfaceOutput surf(Payload payload, float3 worldPos)
 	surface.metallic = spheres[payload.hit].metallic;
 	return surface;
 }
-#endif
 
 static const int MAX_BOUNCES = 10;
 
@@ -281,4 +289,69 @@ void pathTraceShader(uint3 dispatchThreadID : SV_DispatchThreadID)
 		float weight = 1.0 / float(constants.frameIndex + 1);
 		colorTarget[dispatchThreadID.xy] = float4(lerp(prev, color, weight), 1.0);
 	}
+}
+
+#endif
+
+[shader("raygeneration")]
+void pathTraceRayGen()
+{
+    uint2 pixelCoord = DispatchRaysIndex().xy;
+    if (any(pixelCoord >= (uint2)camera.resolution))
+    {
+        return;
+    }
+
+    float2 uv = (float2(pixelCoord) + 0.5) / camera.resolution;
+    float3 worldPos = ScreenSpaceToWorldSpace(uv, 0.0, camera.invViewProjectionMatrix);
+
+    RayPayload payload;
+    payload.radiance = 0.0;
+    payload.hitT     = -1.0;
+    payload.depth    = 0;
+
+    RayDesc ray;
+    ray.Origin    = camera.position;
+    ray.Direction = normalize(worldPos - camera.position);
+    ray.TMin      = 1e-3;
+    ray.TMax      = 1e6;
+
+    RaytracingAccelerationStructure accelerationStructure = ResourceDescriptorHeap[constants.accelerationStructure];
+    TraceRay(
+        accelerationStructure,
+        RAY_FLAG_NONE,
+        0xFF,
+        (uint)Gleam::DispatchRayType::Shading,
+        (uint)Gleam::DispatchRayType::COUNT,
+        (uint)Gleam::DispatchRayType::Shading,
+        ray,
+        payload
+    );
+
+    RWTexture2D<float4> colorTarget = ResourceDescriptorHeap[constants.colorTarget];
+    if (constants.frameIndex == 0)
+    {
+        colorTarget[pixelCoord] = float4(payload.radiance, 1.0);
+    }
+    else
+    {
+        float3 prev = colorTarget[pixelCoord].rgb;
+        float weight = 1.0 / float(constants.frameIndex + 1);
+        colorTarget[pixelCoord] = float4(lerp(prev, payload.radiance, weight), 1.0);
+    }
+}
+
+[shader("miss")]
+void pathTraceMiss(inout RayPayload payload)
+{
+    if (atmosphereUniforms.transmittanceLutTexture != InvalidResourceIndex &&
+        atmosphereUniforms.multiScatterLutTexture != InvalidResourceIndex)
+    {
+        payload.radiance = GetSunAndSkyIlluminance(WorldRayOrigin(), WorldRayDirection());
+    }
+    else
+    {
+        payload.radiance = atmosphereUniforms.sunIlluminance;
+    }
+    payload.hitT = -1.0;
 }

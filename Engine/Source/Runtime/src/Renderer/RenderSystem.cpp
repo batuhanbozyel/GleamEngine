@@ -212,7 +212,7 @@ void RenderSystem::Render(const World* world)
 		mCopyCommandBuffer->WaitUntilCompleted();
 		mCopyCommandBuffer->Barrier(cmd);
 
-		mRayTracingScene->BuildAccelerationStructure(cmd, sceneData.sceneProxy);
+		sceneData.accelerationStructure = mRayTracingScene->BuildAccelerationStructure(cmd, sceneData.sceneProxy);
 
         graph.Execute(cmd, sceneData);
 		mDevice->Dispose(renderGraphContext.allocator, sceneTarget);

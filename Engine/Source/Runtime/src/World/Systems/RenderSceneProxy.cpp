@@ -107,6 +107,7 @@ void RenderSceneProxy::Tick(World* world)
 			instance.positionBuffer = mesh->GetPositionBuffer().GetResourceView();
 			instance.interleavedBuffer = mesh->GetInterleavedBuffer().GetResourceView();
 			instance.indexBuffer = mesh->GetIndexBuffer().GetResourceView();
+			instance.materialBuffer = batch.material->GetBuffer().GetResourceView();
 			instance.materialID = materialInstance->GetID();
 			instance.transform = entity.GetWorldTransform();
 			instance.baseVertex = submesh.baseVertex;

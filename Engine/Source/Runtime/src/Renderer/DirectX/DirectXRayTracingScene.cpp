@@ -15,7 +15,7 @@
 
 using namespace Gleam;
 
-void RayTracingScene::BuildAccelerationStructure(const CommandBuffer* cmd, const RenderSceneProxy* sceneProxy)
+AccelerationStructureView RayTracingScene::BuildAccelerationStructure(const CommandBuffer* cmd, const RenderSceneProxy* sceneProxy)
 {
 	if (mTLAS.IsValid())
 	{
@@ -28,7 +28,7 @@ void RayTracingScene::BuildAccelerationStructure(const CommandBuffer* cmd, const
 
 	if (instanceCount == 0)
 	{
-		return;
+		return {};
 	}
 
 	ID3D12GraphicsCommandList7* commandList = static_cast<ID3D12GraphicsCommandList7*>(cmd->GetHandle());
@@ -317,5 +317,7 @@ void RayTracingScene::BuildAccelerationStructure(const CommandBuffer* cmd, const
 		PIXEndEvent(commandList);
 	}
 	PIXEndEvent(commandList);
+
+	return mTLAS.GetResourceView();
 }
 #endif // USE_DIRECTX_RENDERER

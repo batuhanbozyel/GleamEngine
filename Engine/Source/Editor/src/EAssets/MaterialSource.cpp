@@ -126,13 +126,12 @@ bool MaterialSource::Import(const Gleam::Path& path, const ImportSettings& setti
             }
         }
         generatedShader << "};\n\n";
-        generatedShader << "static ByteAddressBuffer materialBuffer = ResourceDescriptorHeap[resources.materialBuffer];\n";
         generatedShader << "static MaterialProperties Material;\n";
-        generatedShader << "void LoadMaterialInstance(uint materialID) { Material = materialBuffer.Load<MaterialProperties>(materialID * sizeof(MaterialProperties)); }\n\n";
+        generatedShader << "void LoadMaterialInstance(ByteAddressBuffer materialBuffer, uint materialID) { Material = materialBuffer.Load<MaterialProperties>(materialID * sizeof(MaterialProperties)); }\n\n";
     }
     else
     {
-        generatedShader << "void LoadMaterialInstance(uint materialID) {}\n\n";
+        generatedShader << "void LoadMaterialInstance(ByteAddressBuffer materialBuffer, uint materialID) {}\n\n";
     }
     
     if (document.HasMember("SurfaceShader"))

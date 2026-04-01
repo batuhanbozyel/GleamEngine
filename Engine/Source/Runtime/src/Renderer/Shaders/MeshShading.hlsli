@@ -8,13 +8,20 @@
 CONSTANT_BUFFER(Gleam::MeshPassResources, resources, MESH_PASS_RESOURCES_BINDING_SLOT);
 PUSH_CONSTANT(Gleam::MeshShadingConstants, constants);
 
-[shader("pixel")]
-float4 meshShadingPassShader(MeshVertexOut IN) : SV_TARGET
+Gleam::MeshInstanceData LoadInstanceData(uint instanceID)
 {
-	ByteAddressBuffer globalInstanceBuffer = ResourceDescriptorHeap[resources.instanceBuffer];
-	Gleam::MeshInstanceData instanceData = globalInstanceBuffer.Load<Gleam::MeshInstanceData>(constants.instanceID * sizeof(Gleam::MeshInstanceData));
-	LoadMaterialInstance(instanceData.materialID);
+	ByteAddressBuffer instanceBuffer = ResourceDescriptorHeap[resources.instanceBuffer];
+	Gleam::MeshInstanceData instance = instanceBuffer.Load<Gleam::MeshInstanceData>(instanceID * sizeof(Gleam::MeshInstanceData));
 
+	ByteAddressBuffer materialBuffer = ResourceDescriptorHeap[instance.materialBuffer];
+	LoadMaterialInstance(materialBuffer, instance.materialID);
+	return instance;
+}
+
+[shader("pixel")]
+float4 main(MeshVertexOut IN) : SV_TARGET
+{
+	Gleam::MeshInstanceData instance = LoadInstanceData(constants.instanceID);
     Gleam::SurfaceOutput surface = surf(IN);
     
 	float3 viewDir = normalize(camera.position - IN.worldPosition);

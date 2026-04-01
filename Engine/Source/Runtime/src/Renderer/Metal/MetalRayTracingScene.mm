@@ -18,7 +18,7 @@
 
 using namespace Gleam;
 
-void RayTracingScene::BuildAccelerationStructure(const CommandBuffer* cmd, const RenderSceneProxy* sceneProxy)
+AccelerationStructureView RayTracingScene::BuildAccelerationStructure(const CommandBuffer* cmd, const RenderSceneProxy* sceneProxy)
 {
 	if (mTLAS.IsValid())
 	{
@@ -31,7 +31,7 @@ void RayTracingScene::BuildAccelerationStructure(const CommandBuffer* cmd, const
 
 	if (instanceCount == 0)
 	{
-		return;
+		return {};
 	}
 
 	Buffer instanceDescBuffer = mDevice->CreateBuffer(mAllocator, BufferDescriptor{
@@ -186,6 +186,7 @@ void RayTracingScene::BuildAccelerationStructure(const CommandBuffer* cmd, const
 	mDevice->Dispose(mAllocator, scratchBuffer);
 
 	mTLAS = tlas;
+	return mTLAS.GetResourceView();
 }
 
 #endif // USE_METAL_RENDERER

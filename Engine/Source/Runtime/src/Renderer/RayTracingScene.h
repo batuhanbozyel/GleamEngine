@@ -38,7 +38,7 @@ public:
 	
 	~RayTracingScene();
 
-	void BuildAccelerationStructure(const CommandBuffer* cmd, const RenderSceneProxy* sceneProxy);
+	AccelerationStructureView BuildAccelerationStructure(const CommandBuffer* cmd, const RenderSceneProxy* sceneProxy);
 
 	void ReleaseAccelerationStructure();
 

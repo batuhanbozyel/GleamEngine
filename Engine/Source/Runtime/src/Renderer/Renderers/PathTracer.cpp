@@ -56,7 +56,7 @@ void PathTracer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blac
 	}
 
 	auto rtHandle = graph.ImportTexture(mRenderTarget);
-	auto& pathTracerData = graph.AddComputePass<WorldRenderingData>("PathTracing::Render", [&](RenderGraphBuilder& builder, WorldRenderingData& passData)
+	graph.AddComputePass<WorldRenderingData>("PathTracing::Render", [&](RenderGraphBuilder& builder, WorldRenderingData& passData)
 	{
 		passData.colorTarget = builder.WriteTexture(rtHandle);
 		blackboard.Add(passData);
@@ -64,6 +64,7 @@ void PathTracer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blac
 	[this, sceneData](const CommandBuffer* cmd, const WorldRenderingData& passData)
 	{
 		PathTracerConstants constants = {};
+		constants.accelerationStructure = sceneData.accelerationStructure;
 		constants.colorTarget = passData.colorTarget;
 		constants.frameIndex = mFrameIndex++;
 		

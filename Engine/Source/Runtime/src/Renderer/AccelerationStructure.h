@@ -10,6 +10,11 @@ struct AccelerationStructureView
 {
 	ShaderResourceIndex index = InvalidResourceIndex;
 	NativeGraphicsHandle header = nil;
+
+	NO_DISCARD operator ShaderResourceIndex() const
+	{
+		return index;
+	}
 };
 #endif
 
@@ -21,37 +26,37 @@ struct BLASDescriptor
 
 class BottomLevelAccelerationStructure final : public GraphicsObject
 {
-    friend class GraphicsDevice;
+	friend class GraphicsDevice;
 public:
 
 	BottomLevelAccelerationStructure() = default;
-    
-    BottomLevelAccelerationStructure(const BottomLevelAccelerationStructure& other) = default;
-    
-    BottomLevelAccelerationStructure& operator=(const BottomLevelAccelerationStructure& other) = default;
 
-    BottomLevelAccelerationStructure(const BLASDescriptor& descriptor)
-        : mDescriptor(descriptor)
-    {
-        
-    }
+	BottomLevelAccelerationStructure(const BottomLevelAccelerationStructure& other) = default;
+
+	BottomLevelAccelerationStructure& operator=(const BottomLevelAccelerationStructure& other) = default;
+
+	BottomLevelAccelerationStructure(const BLASDescriptor& descriptor)
+		: mDescriptor(descriptor)
+	{
+
+	}
 
 	BottomLevelAccelerationStructure(const BLASDescriptor& descriptor, NativeGraphicsHandle handle)
 		: GraphicsObject(handle)
 		, mDescriptor(descriptor)
 	{
-		
+
 	}
-    
-    const BLASDescriptor& GetDescriptor() const
-    {
-        return mDescriptor;
-    }
-    
+
+	const BLASDescriptor& GetDescriptor() const
+	{
+		return mDescriptor;
+	}
+
 private:
 
-    BLASDescriptor mDescriptor;
-    
+	BLASDescriptor mDescriptor;
+
 };
 
 struct TLASDescriptor

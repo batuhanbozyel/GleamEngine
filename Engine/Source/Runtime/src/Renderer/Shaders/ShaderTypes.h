@@ -94,7 +94,7 @@ struct MeshInstanceData
 	ShaderResourceIndex positionBuffer;
 	ShaderResourceIndex interleavedBuffer;
 	ShaderResourceIndex indexBuffer;
-	float pad0;
+	ShaderResourceIndex materialBuffer;
 
 	uint32_t baseVertex;
 	uint32_t indexCount;
@@ -105,14 +105,9 @@ struct MeshInstanceData
 struct MeshPassResources
 {
 	ShaderResourceIndex instanceBuffer;
-	ShaderResourceIndex materialBuffer;
 	ShaderResourceIndex diffuseReflectionTexture;
 	ShaderResourceIndex specularReflectionTexture;
-
 	ShaderResourceIndex brdfTexture;
-	float pad0;
-	float pad1;
-	float pad2;
 };
 
 struct SurfaceInput
@@ -182,9 +177,9 @@ struct SkyAtmosphereRenderConstants
 
 struct PathTracerConstants
 {
+	ShaderResourceIndex accelerationStructure;
 	UnorderedAccessIndex colorTarget;
 	uint32_t frameIndex;
-	float pad1;
 	float pad2;
 };
 

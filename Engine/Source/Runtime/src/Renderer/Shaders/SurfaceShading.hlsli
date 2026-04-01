@@ -1,8 +1,7 @@
 #ifndef SURFACE_SHADING_HLSL
 #define SURFACE_SHADING_HLSL
 
-// Auto-generated inside material shader — loads material instance data into Material
-void LoadMaterialInstance(uint materialID);
+#include "ShaderTypes.h"
 
 struct MeshVertexOut
 {
@@ -14,6 +13,9 @@ struct MeshVertexOut
 	float4 color : ATTRIB4;
 	float2 uv : ATTRIB5;
 };
+
+// Auto-generated inside material shader — loads material instance data into Material
+void LoadMaterialInstance(ByteAddressBuffer materialBuffer, uint materialID);
 
 // User defined — implemented in the material's .shader file
 Gleam::SurfaceOutput surf(MeshVertexOut IN);

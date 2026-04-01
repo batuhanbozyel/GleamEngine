@@ -112,14 +112,12 @@ void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 				return;
 			}
 
-            const auto& materialBuffer = batch.material->GetBuffer();
             const auto& pipeline = mShadingPipelines[batch.material->GetPipelineHash()];
 			const auto globalInstances = sceneData.sceneProxy->GetGlobalInstances();
 			const auto globalMeshes = sceneData.sceneProxy->GetGlobalMeshes();
 
 			MeshPassResources resources = {};
 			resources.instanceBuffer = sceneData.sceneProxy->GetGlobalInstanceBuffer().GetResourceView();
-			resources.materialBuffer = materialBuffer.GetResourceView();
 			resources.brdfTexture = passData.brdfLut;
 			resources.diffuseReflectionTexture = passData.diffuseReflection;
 			resources.specularReflectionTexture = passData.specularReflection;
