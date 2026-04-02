@@ -64,7 +64,7 @@ void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 			passData.brdfLut = builder.WriteTexture(brdfLut);
 			brdfLut = passData.brdfLut;
 		},
-		[this, blackboard](const CommandBuffer* cmd, const BRDFLutData& passData)
+		[this](const CommandBuffer* cmd, const BRDFLutData& passData)
 		{
 			cmd->BindComputePipeline(mBRDFLutPipeline);
 			cmd->SetPushConstant(BRDFLutConstants{ .targetTexture = mBRDFLutTexture.GetResourceView() });
@@ -102,9 +102,8 @@ void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 		
         blackboard.Add(passData);
     },
-    [this, blackboard](const CommandBuffer* cmd, const WorldRenderingData& passData)
+    [this, &sceneData](const CommandBuffer* cmd, const WorldRenderingData& passData)
     {
-        const auto& sceneData = blackboard.Get<SceneRenderingData>();
         sceneData.sceneProxy->ForEach([this, cmd, passData, sceneData](const MeshBatch& batch)
         {
 			if (batch.numInstances == 0)

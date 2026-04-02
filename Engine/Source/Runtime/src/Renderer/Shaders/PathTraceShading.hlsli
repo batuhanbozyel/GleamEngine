@@ -16,7 +16,7 @@ Gleam::MeshInstanceData LoadInstanceData(uint instanceID)
 }
 
 [shader("closesthit")]
-void ClosestHit(inout RayPayload payload, BuiltInTriangleIntersectionAttributes attribs)
+void ClosestHit(inout Gleam::RayPayload payload, BuiltInTriangleIntersectionAttributes attribs)
 {
     Gleam::MeshInstanceData instance = LoadInstanceData(InstanceID());
     MeshVertexOut vertex = InterpolateVertexAttributes(instance, PrimitiveIndex(), attribs.barycentrics);
@@ -83,7 +83,7 @@ void ClosestHit(inout RayPayload payload, BuiltInTriangleIntersectionAttributes 
         // Full BRDF: F * D * G / (4 * NdotL * NdotV)
 		// Monte Carlo weight: brdf * NdotL / pdf
 		// pdf: D * NdotH / (4 * VdotH)
-#if EXPLICIT_SPECULAR_BRDF
+#if EXPLICIT_SPECULAR_BRDF_FORMULA
 		float pdf = partialPdf * NdotH / (4.0 * VdotH);
 		float3 brdf = F * partialPdf * G / max(4.0 * NdotL * NdotV, 1e-4);
 		payload.throughput *= brdf * NdotL / max(pdf, 1e-4);
@@ -149,7 +149,7 @@ void ClosestHit(inout RayPayload payload, BuiltInTriangleIntersectionAttributes 
 }
 
 [shader("anyhit")]
-void AnyHit(inout RayPayload payload, BuiltInTriangleIntersectionAttributes attribs)
+void AnyHit(inout Gleam::RayPayload payload, BuiltInTriangleIntersectionAttributes attribs)
 {
     Gleam::MeshInstanceData instance = LoadInstanceData(InstanceID());
     MeshVertexOut vertex = InterpolateVertexAttributes(instance, PrimitiveIndex(), attribs.barycentrics);

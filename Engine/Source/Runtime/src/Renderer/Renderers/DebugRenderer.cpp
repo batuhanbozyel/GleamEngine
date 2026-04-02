@@ -91,7 +91,7 @@ void DebugRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
         passData.colorTarget = builder.UseColorBuffer(worldData.colorTarget);
         passData.depthTarget = builder.UseDepthBuffer(worldData.depthTarget, DepthAccess::Write);
 	},
-	[this, blackboard](const CommandBuffer* cmd, const DrawPassData& passData)
+	[this, &blackboard](const CommandBuffer* cmd, const DrawPassData& passData)
 	{
         DebugShaderResources resources;
         resources.vertexBuffer = mVertexBuffer.GetResourceView();

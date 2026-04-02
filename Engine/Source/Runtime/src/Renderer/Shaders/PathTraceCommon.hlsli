@@ -10,15 +10,6 @@ PUSH_CONSTANT(Gleam::PathTracerConstants, pathTraceConstants);
 
 static RaytracingAccelerationStructure accelerationStructure = ResourceDescriptorHeap[pathTraceConstants.accelerationStructure];
 
-struct RayPayload
-{
-    float3 radiance;
-    float3 throughput;
-    float  hitT;
-    uint   depth;
-    uint   seed;
-};
-
 enum class BRDFType
 {
 	Specular,

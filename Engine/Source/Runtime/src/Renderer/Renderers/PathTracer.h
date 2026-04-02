@@ -30,7 +30,7 @@ private:
 	uint32_t mFrameIndex = 0;
 	GraphicsDevice* mDevice = nullptr;
 	GPUAllocator* mAllocator = nullptr;
-	ComputePipelineHandle mPathTracingPipeline;
+	RayTracingPipelineHandle mPathTracingPipeline;
 
 };
 

@@ -13,9 +13,13 @@ void PathTracer::OnCreate(RenderContext& context)
 	mDevice = context.device;
 	mAllocator = context.allocator;
 
-	ComputePipelineStateDescriptor pipelineState;
-	pipelineState.entryPoint = "pathTraceShader";
-	mPathTracingPipeline = context.device->CreateComputePipeline(pipelineState);
+	RayTracingPipelineStateDescriptor pipelineState;
+	pipelineState.rayGenerationEntry = "pathTraceRayGen";
+	pipelineState.missEntry = "pathTraceMiss";
+	pipelineState.maxRecursionDepth = MAX_RAY_RECURSION_DEPTH;
+	pipelineState.maxPayloadSize = sizeof(RayPayload);
+	pipelineState.maxAttributeSize = sizeof(float2); // float2 barycentrics
+	mPathTracingPipeline = context.device->CreateRayTracingPipeline(pipelineState);
 }
 
 void PathTracer::OnDestroy(RenderContext& context)
@@ -62,7 +66,7 @@ void PathTracer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blac
 		passData.colorTarget = builder.WriteTexture(rtHandle);
 		blackboard.Add(passData);
 	},
-	[this, sceneData](const CommandBuffer* cmd, const WorldRenderingData& passData)
+	[this, &sceneData](const CommandBuffer* cmd, const WorldRenderingData& passData)
 	{
 		PathTracerConstants constants = {};
 		constants.instanceBuffer = sceneData.sceneProxy->GetGlobalInstanceBuffer().GetResourceView();
@@ -70,12 +74,12 @@ void PathTracer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blac
 		constants.colorTarget = passData.colorTarget;
 		constants.frameIndex = mFrameIndex++;
 		
-		cmd->BindComputePipeline(mPathTracingPipeline);
+		cmd->BindRayTracingPipeline(mPathTracingPipeline);
 		cmd->SetPushConstant(constants);
 		cmd->SetConstantBuffer(sceneData.camera.uniforms, CAMERA_UNIFORMS_BINDING_SLOT);
 		cmd->SetConstantBuffer(sceneData.atmosphere.params, SKY_ATMOSPHERE_PARAMS_BINDING_SLOT);
 		cmd->SetConstantBuffer(sceneData.atmosphere.uniforms, SKY_ATMOSPHERE_COMMON_UNIFORMS_BINDING_SLOT);
-		cmd->Dispatch(Math::DivideRoundingUp((uint32_t)sceneData.camera.uniforms.resolution.x, 16u), Math::DivideRoundingUp((uint32_t)sceneData.camera.uniforms.resolution.y, 16u), 1u);
+		cmd->DispatchRays((uint32_t)sceneData.camera.uniforms.resolution.x, (uint32_t)sceneData.camera.uniforms.resolution.y, 1u);
 	});
 }
 

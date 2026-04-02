@@ -1158,7 +1158,10 @@ ShaderBindingTable DirectXDevice::CreateShaderBindingTable(const RayTracingPipel
 	uint64_t baseAddress = resource->GetGPUVirtualAddress();
 	GPUVirtualAddressRange rayGenRecord = { .startAddress = baseAddress, .sizeInBytes = rayGenTableSize };
 	GPUVirtualAddressRangeAndStride missRecord = { .startAddress = baseAddress + rayGenTableSize, .sizeInBytes = missTableSize, .strideInBytes = shaderRecordSize };
-	GPUVirtualAddressRangeAndStride hitGroupRecord = { .startAddress = baseAddress + rayGenTableSize + missTableSize, .sizeInBytes = hitGroupTableSize, .strideInBytes = shaderRecordSize };
+	GPUVirtualAddressRangeAndStride hitGroupRecord =
+		hitGroupTableSize > 0
+		? GPUVirtualAddressRangeAndStride {.startAddress = baseAddress + rayGenTableSize + missTableSize, .sizeInBytes = hitGroupTableSize, .strideInBytes = shaderRecordSize }
+		: GPUVirtualAddressRangeAndStride{};
 	return ShaderBindingTable(resource, rayGenRecord, missRecord, hitGroupRecord);
 }
 
