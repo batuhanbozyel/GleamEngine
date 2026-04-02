@@ -133,6 +133,8 @@ struct Texture2DResourceView : TextureResourceView
 		return texture.Load(pos);
 	}
 
+	// Pick a better sampling method for real-time raytracing
+	// https://media.contentapi.ea.com/content/dam/ea/seed/presentations/2019-ray-tracing-gems-chapter-20-akenine-moller-et-al.pdf
 	T Sample(SamplerState sampler, float2 uv)
 	{
 		Texture2D<T> texture = ResourceDescriptorHeap[SRVIndex(index)];
