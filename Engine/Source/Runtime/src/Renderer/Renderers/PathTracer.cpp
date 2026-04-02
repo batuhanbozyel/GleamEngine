@@ -4,6 +4,7 @@
 #include "WorldRenderer.h"
 #include "Renderer/CommandBuffer.h"
 #include "Renderer/GraphicsDevice.h"
+#include "World/Systems/RenderSceneProxy.h"
 
 using namespace Gleam;
 
@@ -64,6 +65,7 @@ void PathTracer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blac
 	[this, sceneData](const CommandBuffer* cmd, const WorldRenderingData& passData)
 	{
 		PathTracerConstants constants = {};
+		constants.instanceBuffer = sceneData.sceneProxy->GetGlobalInstanceBuffer().GetResourceView();
 		constants.accelerationStructure = sceneData.accelerationStructure;
 		constants.colorTarget = passData.colorTarget;
 		constants.frameIndex = mFrameIndex++;

@@ -1,6 +1,7 @@
 #ifndef SURFACE_SHADING_HLSL
 #define SURFACE_SHADING_HLSL
 
+#include "ShaderInterop.h"
 #include "ShaderTypes.h"
 
 struct MeshVertexOut

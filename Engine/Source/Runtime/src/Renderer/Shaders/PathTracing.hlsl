@@ -100,7 +100,7 @@ float3 ComputeNormal(float3 p)
     ));
 }
 
-float3 OffsetRayAlongNormal(const float3 p, const float3 n)
+float3 OffsetRayAlongNormal2(const float3 p, const float3 n)
 {
 	return p + n * SURF_DIST;
 }
@@ -116,14 +116,12 @@ Gleam::SurfaceOutput surf(Payload payload, float3 worldPos)
 	return surface;
 }
 
-static const int MAX_BOUNCES = 10;
-
 float3 TracePath(Ray ray, DirectLight light, inout uint seed)
 {
 	float3 radiance = 0.0;
 	float3 throughput = 1.0;
 
-	for (; ray.depth < MAX_BOUNCES; ray.depth++)
+	for (; ray.depth < MAX_RAY_RECURSION_DEPTH; ray.depth++)
 	{
 		Payload hit = RayMarch(ray);
 		
@@ -240,7 +238,7 @@ float3 TracePath(Ray ray, DirectLight light, inout uint seed)
 			throughput /= p;
 		}
 
-		ray.origin = OffsetRayAlongNormal(worldPos, surface.normal);
+		ray.origin = OffsetRayAlongNormal2(worldPos, surface.normal);
 		ray.direction = nextDir;
 	}
 
@@ -275,18 +273,18 @@ void pathTraceShader(uint3 dispatchThreadID : SV_DispatchThreadID)
     }
     
 	Ray ray = { rayOrigin, rayDir, SURF_DIST, MAX_DIST, 0 };
-	uint seed = initSeed(dispatchThreadID.xy, constants.frameIndex);
+	uint seed = initSeed(dispatchThreadID.xy, pathTraceConstants.frameIndex);
 	float3 color = TracePath(ray, light, seed);
     
-	RWTexture2D<float4> colorTarget = ResourceDescriptorHeap[constants.colorTarget];
-    if (constants.frameIndex == 0)
+	RWTexture2D<float4> colorTarget = ResourceDescriptorHeap[pathTraceConstants.colorTarget];
+    if (pathTraceConstants.frameIndex == 0)
 	{
 		colorTarget[dispatchThreadID.xy] = float4(color, 1.0);
 	}
 	else
 	{
 		float3 prev = colorTarget[dispatchThreadID.xy].rgb;
-		float weight = 1.0 / float(constants.frameIndex + 1);
+		float weight = 1.0 / float(pathTraceConstants.frameIndex + 1);
 		colorTarget[dispatchThreadID.xy] = float4(lerp(prev, color, weight), 1.0);
 	}
 }
@@ -306,17 +304,18 @@ void pathTraceRayGen()
     float3 worldPos = ScreenSpaceToWorldSpace(uv, 0.0, camera.invViewProjectionMatrix);
 
     RayPayload payload;
-    payload.radiance = 0.0;
-    payload.hitT     = -1.0;
-    payload.depth    = 0;
+    payload.radiance   = 0.0;
+    payload.throughput = 1.0;
+    payload.hitT       = -1.0;
+    payload.depth      = 0;
+    payload.seed       = initSeed(pixelCoord, pathTraceConstants.frameIndex);
 
     RayDesc ray;
     ray.Origin    = camera.position;
     ray.Direction = normalize(worldPos - camera.position);
     ray.TMin      = 1e-3;
     ray.TMax      = 1e6;
-
-    RaytracingAccelerationStructure accelerationStructure = ResourceDescriptorHeap[constants.accelerationStructure];
+	
     TraceRay(
         accelerationStructure,
         RAY_FLAG_NONE,
@@ -328,15 +327,15 @@ void pathTraceRayGen()
         payload
     );
 
-    RWTexture2D<float4> colorTarget = ResourceDescriptorHeap[constants.colorTarget];
-    if (constants.frameIndex == 0)
+    RWTexture2D<float4> colorTarget = ResourceDescriptorHeap[pathTraceConstants.colorTarget];
+    if (pathTraceConstants.frameIndex == 0)
     {
         colorTarget[pixelCoord] = float4(payload.radiance, 1.0);
     }
     else
     {
         float3 prev = colorTarget[pixelCoord].rgb;
-        float weight = 1.0 / float(constants.frameIndex + 1);
+        float weight = 1.0 / float(pathTraceConstants.frameIndex + 1);
         colorTarget[pixelCoord] = float4(lerp(prev, payload.radiance, weight), 1.0);
     }
 }
@@ -347,11 +346,11 @@ void pathTraceMiss(inout RayPayload payload)
     if (atmosphereUniforms.transmittanceLutTexture != InvalidResourceIndex &&
         atmosphereUniforms.multiScatterLutTexture != InvalidResourceIndex)
     {
-        payload.radiance = GetSunAndSkyIlluminance(WorldRayOrigin(), WorldRayDirection());
+        payload.radiance += payload.throughput * GetSunAndSkyIlluminance(WorldRayOrigin(), WorldRayDirection());
     }
     else
     {
-        payload.radiance = atmosphereUniforms.sunIlluminance;
+        payload.radiance += payload.throughput * atmosphereUniforms.sunIlluminance;
     }
     payload.hitT = -1.0;
 }

@@ -36,6 +36,7 @@ enum class DispatchRayType
 	Shadow = 1,
 	COUNT
 };
+#define MAX_RAY_RECURSION_DEPTH 10
 
 #ifdef __cplusplus
 struct ShaderResourceIndex
@@ -126,16 +127,26 @@ struct Texture2DResourceView : TextureResourceView
 	uint32_t padding2;
 
 #ifdef __HLSL_VERSION
-	T Load(uint2 pos)
+	T Load(uint3 pos)
 	{
 		Texture2D<T> texture = ResourceDescriptorHeap[SRVIndex(index)];
-		return texture.Load(uint3(pos, 0));
+		return texture.Load(pos);
 	}
 
-	T Sample(SamplerState sampler, float2 uv, float mip = 0.0f)
+	T Sample(SamplerState sampler, float2 uv)
 	{
 		Texture2D<T> texture = ResourceDescriptorHeap[SRVIndex(index)];
-		return texture.Sample(sampler, uv, mip);
+	#ifdef SHADER_TARGET_PIXEL
+		return texture.Sample(sampler, uv);
+	#else
+		return texture.SampleLevel(sampler, uv, 0.0);
+	#endif
+	}
+
+	T SampleLevel(SamplerState sampler, float2 uv, float mip)
+	{
+		Texture2D<T> texture = ResourceDescriptorHeap[SRVIndex(index)];
+		return texture.SampleLevel(sampler, uv, mip);
 	}
 #else
     Texture2DResourceView() = default;

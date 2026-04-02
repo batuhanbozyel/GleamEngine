@@ -6,14 +6,17 @@
 #include "Random.hlsli"
 #include "SurfaceShading.hlsli"
 
-PUSH_CONSTANT(Gleam::PathTracerConstants, constants);
-CONSTANT_BUFFER(Gleam::MeshPassResources, resources, MESH_PASS_RESOURCES_BINDING_SLOT);
+PUSH_CONSTANT(Gleam::PathTracerConstants, pathTraceConstants);
+
+static RaytracingAccelerationStructure accelerationStructure = ResourceDescriptorHeap[pathTraceConstants.accelerationStructure];
 
 struct RayPayload
 {
     float3 radiance;
+    float3 throughput;
     float  hitT;
     uint   depth;
+    uint   seed;
 };
 
 enum class BRDFType
@@ -27,7 +30,6 @@ uint initSeed(uint2 pixel, uint frameIndex)
 	return pcgHash(pixel.x ^ pcgHash(pixel.y ^ pcgHash(frameIndex)));
 }
 
-#if 0 // Enable after ray-tracing support is added
 // https://www.realtimerendering.com/raytracinggems/unofficial_RayTracingGems_v1.2.pdf
 //  6.2.2.4 ADAPTIVE OFFSETTING ALONG THE GEOMETRIC NORMAL
 float3 OffsetRayAlongNormal(const float3 p, const float3 n)
@@ -35,7 +37,7 @@ float3 OffsetRayAlongNormal(const float3 p, const float3 n)
 	const float origin = 1.0 / 32.0;
 	const float floatScale = 1.0 / 65536.0;
 	const float intScale = 256.0;
-	
+
 	int3 of_i = int3(intScale * n.x, intScale * n.y, intScale * n.z);
 	float3 p_i = float3(asfloat(asint(p.x) + ((p.x < 0) ? -of_i.x : of_i.x)),
 						asfloat(asint(p.y) + ((p.y < 0) ? -of_i.y : of_i.y)),
@@ -45,11 +47,10 @@ float3 OffsetRayAlongNormal(const float3 p, const float3 n)
 				  abs(p.y) < origin ? p.y + floatScale * n.y : p_i.y,
 				  abs(p.z) < origin ? p.z + floatScale * n.z : p_i.z);
 }
-#endif
 
 float SpecularLobeProbability(Gleam::SurfaceOutput surface, float NdotV)
 {
-	float3 f0 = surface.albedo * surface.metallic + F0Dielectric(0.5) * (1.0 - surface.metallic);
+	float3 f0 = surface.albedo.rgb * surface.metallic + F0Dielectric(0.5) * (1.0 - surface.metallic);
     // Use NdotV as a stand-in for VdotH at the sampling stage (H unknown yet)
 	float f90 = lerp(F90Dielectric(NdotV, surface.roughness), F90_Metal, surface.metallic);
 	float3 F = F_Schlick(f0, f90, NdotV);

@@ -4,8 +4,8 @@
 [shader("vertex")]
 MeshVertexOut meshVertexShader(uint vertex_id : SV_VertexID)
 {
-	ByteAddressBuffer globalInstanceBuffer = ResourceDescriptorHeap[resources.instanceBuffer];
-	Gleam::MeshInstanceData instanceData = globalInstanceBuffer.Load<Gleam::MeshInstanceData>(constants.instanceID * sizeof(Gleam::MeshInstanceData));
+	ByteAddressBuffer globalInstanceBuffer = ResourceDescriptorHeap[meshShadingConstants.instanceBuffer];
+	Gleam::MeshInstanceData instanceData = globalInstanceBuffer.Load<Gleam::MeshInstanceData>(meshShadingConstants.instanceID * sizeof(Gleam::MeshInstanceData));
 
 	ByteAddressBuffer positionBuffer = ResourceDescriptorHeap[instanceData.positionBuffer];
 	ByteAddressBuffer interleavedBuffer = ResourceDescriptorHeap[instanceData.interleavedBuffer];

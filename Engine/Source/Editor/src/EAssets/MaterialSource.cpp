@@ -134,66 +134,127 @@ bool MaterialSource::Import(const Gleam::Path& path, const ImportSettings& setti
         generatedShader << "void LoadMaterialInstance(ByteAddressBuffer materialBuffer, uint materialID) {}\n\n";
     }
     
-    if (document.HasMember("SurfaceShader"))
-    {
-        auto shaderPath = path;
-        shaderPath.RemoveFilename();
-        shaderPath /= document["SurfaceShader"].GetString();
-        descriptor.surfaceShader = shaderPath.Stem();
-        
-        if (shaderPath.HasExtension() == false)
-        {
-            shaderPath.Concat(".shader");
-        }
-        
-        auto generatedPath = shaderPath;
-        generatedPath.Concat(".gen.hlsl");
-        {
-            auto shaderFile = Gleam::Filesystem::OpenRead(shaderPath, Gleam::FileType::Text);
-            generatedShader << shaderFile->Read() << "\0";
-            
-            auto generatedFile = Gleam::Filesystem::Create(generatedPath, Gleam::FileType::Text);
-            generatedFile->Write(generatedShader.str());
-        }
-        
-        if (document.HasMember("Lighting"))
-        {
-            Gleam::TString value = document["Lighting"].GetString();
-            if (value == "On")
-            {
-                // TODO: generate lit shader
-            }
-            else
-            {
-                // TODO: generate unlit shader
-            }
-        }
+	if (document.HasMember("SurfaceShader"))
+	{
+		auto shaderPath = path;
+		shaderPath.RemoveFilename();
+		shaderPath /= document["SurfaceShader"].GetString();
+		descriptor.surfaceShader = shaderPath.Stem();
 
-		Gleam::Path dxilShader = Gleam::Globals::BuiltinAssetsDirectory / "Shaders" / descriptor.surfaceShader;
-		dxilShader.Concat(".dxil");
-
-		if (Gleam::Filesystem::Exists(dxilShader))
+		if (shaderPath.HasExtension() == false)
 		{
-			Gleam::Filesystem::Remove(dxilShader);
+			shaderPath.Concat(".shader");
 		}
 
-        Gleam::TStringStream cmd;
-        cmd << PYTHON_INTERPRETER << " ";
-        cmd << Gleam::Globals::StartupDirectory/"Tools/CompileShaders.py";
-        cmd << " -f " << generatedPath;
-        cmd << " -o " << descriptor.surfaceShader;
-        cmd << " -i " << "MeshShading.hlsli";
-	#ifdef GDEBUG
-		cmd << " --debug";
-	#endif
-        int cmdExitCode = ExecuteCommand(cmd.str());
-        Gleam::Filesystem::Remove(generatedPath);
-
-		if (cmdExitCode != 0)
 		{
-			return false;
+			auto shaderFile = Gleam::Filesystem::OpenRead(shaderPath, Gleam::FileType::Text);
+			auto shaderContents = shaderFile->Read();
+			generatedShader << shaderContents << "\0";
 		}
-    }
+
+		// Compile material shader
+		{
+			auto generatedPath = shaderPath;
+			generatedPath.Concat(".gen.hlsl");
+			{
+				auto generatedFile = Gleam::Filesystem::Create(generatedPath, Gleam::FileType::Text);
+				generatedFile->Write(generatedShader.str());
+			}
+
+			if (document.HasMember("Lighting"))
+			{
+				Gleam::TString value = document["Lighting"].GetString();
+				if (value == "On")
+				{
+					// TODO: generate lit shader
+				}
+				else
+				{
+					// TODO: generate unlit shader
+				}
+			}
+
+			// Forward shader
+			{
+				Gleam::Path dxilShader = Gleam::Globals::BuiltinAssetsDirectory / "Shaders" / (descriptor.surfaceShader + "Forward");
+				dxilShader.Concat(".dxil");
+				if (Gleam::Filesystem::Exists(dxilShader))
+				{
+					Gleam::Filesystem::Remove(dxilShader);
+				}
+
+				Gleam::TStringStream cmd;
+				cmd << PYTHON_INTERPRETER << " ";
+				cmd << Gleam::Globals::StartupDirectory / "Tools/CompileShaders.py";
+				cmd << " -f " << generatedPath;
+				cmd << " -i " << "MeshShading.hlsli";
+				cmd << " --entry main=" << descriptor.surfaceShader << "Forward";
+			#ifdef GDEBUG
+				cmd << " --debug";
+			#endif
+
+				if (ExecuteCommand(cmd.str()) != 0)
+				{
+					Gleam::Filesystem::Remove(generatedPath);
+					return false;
+				}
+			}
+
+			// Closest hit
+			{
+				Gleam::Path dxilShader = Gleam::Globals::BuiltinAssetsDirectory / "Shaders" / (descriptor.surfaceShader + "ClosestHit");
+				dxilShader.Concat(".dxil");
+				if (Gleam::Filesystem::Exists(dxilShader))
+				{
+					Gleam::Filesystem::Remove(dxilShader);
+				}
+
+				Gleam::TStringStream cmd;
+				cmd << PYTHON_INTERPRETER << " ";
+				cmd << Gleam::Globals::StartupDirectory / "Tools/CompileShaders.py";
+				cmd << " -f " << generatedPath;
+				cmd << " -i " << "PathTraceShading.hlsli";
+				cmd << " --entry ClosestHit=" << descriptor.surfaceShader << "ClosestHit";
+			#ifdef GDEBUG
+				cmd << " --debug";
+			#endif
+
+				if (ExecuteCommand(cmd.str()) != 0)
+				{
+					Gleam::Filesystem::Remove(generatedPath);
+					return false;
+				}
+			}
+
+			// Any hit
+			{
+				Gleam::Path dxilShader = Gleam::Globals::BuiltinAssetsDirectory / "Shaders" / (descriptor.surfaceShader + "AnyHit");
+				dxilShader.Concat(".dxil");
+				if (Gleam::Filesystem::Exists(dxilShader))
+				{
+					Gleam::Filesystem::Remove(dxilShader);
+				}
+
+				Gleam::TStringStream cmd;
+				cmd << PYTHON_INTERPRETER << " ";
+				cmd << Gleam::Globals::StartupDirectory / "Tools/CompileShaders.py";
+				cmd << " -f " << generatedPath;
+				cmd << " -i " << "PathTraceShading.hlsli";
+				cmd << " --entry AnyHit=" << descriptor.surfaceShader << "AnyHit";
+			#ifdef GDEBUG
+				cmd << " --debug";
+			#endif
+
+				if (ExecuteCommand(cmd.str()) != 0)
+				{
+					Gleam::Filesystem::Remove(generatedPath);
+					return false;
+				}
+
+				Gleam::Filesystem::Remove(generatedPath);
+			}
+		}
+	}
     
     if (document.HasMember("ZWrite"))
     {

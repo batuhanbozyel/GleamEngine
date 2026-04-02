@@ -24,6 +24,8 @@ public:
 
 	bool Contains(uint32_t materialHash) const;
 
+	const TArray<HitGroupDescriptor>& GetHitGroups() const { return mHitGroups; }
+
 private:
 
 	TArray<HitGroupDescriptor> mHitGroups;
@@ -43,6 +45,8 @@ public:
 	void ReleaseAccelerationStructure();
 
 	void RegisterShadingPipeline(const MaterialDescriptor& material, uint32_t hash);
+
+	const HitGroupRegistry& GetHitGroupRegistry() const { return mHitGroupRegistry; }
 
 private:
 

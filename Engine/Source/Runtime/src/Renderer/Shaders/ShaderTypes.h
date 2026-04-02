@@ -81,10 +81,17 @@ struct TonemapUniforms
 	ShaderResourceIndex sceneColor;
 };
 
-#define MESH_PASS_RESOURCES_BINDING_SLOT 0
 struct MeshShadingConstants
 {
+	ShaderResourceIndex instanceBuffer;
+	ShaderResourceIndex diffuseReflectionTexture;
+	ShaderResourceIndex specularReflectionTexture;
+	ShaderResourceIndex brdfTexture;
+
 	uint32_t instanceID;
+	float pad0;
+	float pad1;
+	float pad2;
 };
 
 struct MeshInstanceData
@@ -100,14 +107,6 @@ struct MeshInstanceData
 	uint32_t indexCount;
 	uint32_t firstIndex;
 	uint32_t materialID;
-};
-
-struct MeshPassResources
-{
-	ShaderResourceIndex instanceBuffer;
-	ShaderResourceIndex diffuseReflectionTexture;
-	ShaderResourceIndex specularReflectionTexture;
-	ShaderResourceIndex brdfTexture;
 };
 
 struct SurfaceInput
@@ -178,9 +177,9 @@ struct SkyAtmosphereRenderConstants
 struct PathTracerConstants
 {
 	ShaderResourceIndex accelerationStructure;
+	ShaderResourceIndex instanceBuffer;
 	UnorderedAccessIndex colorTarget;
 	uint32_t frameIndex;
-	float pad2;
 };
 
 } // namespace Gleam

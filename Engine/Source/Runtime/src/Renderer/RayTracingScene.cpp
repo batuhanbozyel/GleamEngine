@@ -36,18 +36,12 @@ void RayTracingScene::RegisterShadingPipeline(const MaterialDescriptor& material
 
 		HitGroupDescriptor& shadingGroup = entry[(uint32_t)DispatchRayType::Shading];
 		shadingGroup.name = "HitGroup_" + material.name + "_Shading";
-		shadingGroup.closestHitEntry = material.surfaceShader + "_ClosestHit";
+		shadingGroup.closestHitEntry = material.surfaceShader + "ClosestHit";
 		if (material.blendState.enabled)
 		{
-			shadingGroup.anyHitEntry = material.surfaceShader + "_AnyHit";
+			shadingGroup.anyHitEntry = material.surfaceShader + "AnyHit";
 		}
 
-		HitGroupDescriptor& shadowGroup = entry[(uint32_t)DispatchRayType::Shadow];
-		shadowGroup.name = "HitGroup_" + material.name + "_Shadow";
-		if (material.blendState.enabled)
-		{
-			shadowGroup.anyHitEntry = material.surfaceShader + "_ShadowAnyHit";
-		}
 		mHitGroupRegistry.Register(hash, entry);
 	}
 }

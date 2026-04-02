@@ -117,8 +117,18 @@ if __name__ == "__main__":
     parser.add_argument("-f", "--files", type=str, nargs='+', help="Specific HLSL files to compile.")
     parser.add_argument("-i", "--include", type=str, help="Forced include file (.hlsli) to be used during compilation.")
     parser.add_argument("-o", "--output", type=str, help="Output DXIL filename.")
+    parser.add_argument("--entry", type=str, action="append", dest="entries", metavar="entry=export",
+                        help="Filter and rename a specific entry point (repeatable). "
+                             "Format: entry_name=export_name. "
+                             "When omitted, all discovered entry points are compiled.")
     parser.add_argument("--debug", action="store_true", help="Enable debug information.")
     args = parser.parse_args()
+
+    entry_map = {}
+    if args.entries:
+        for spec in args.entries:
+            src, _, dst = spec.partition("=")
+            entry_map[src.strip()] = dst.strip()
 
     output_dir = f"{SCRIPT_DIRECTORY}/../Assets/Shaders"
     if not os.path.exists(output_dir):
@@ -154,20 +164,30 @@ if __name__ == "__main__":
         parsed_entry_points = parse_entry_points(hlsl_file)
         for shader_stage, entry_points in parsed_entry_points.items():
             for entry_point in entry_points:
+                # When --entry filters are provided, skip entries not listed
+                if entry_map and entry_point not in entry_map:
+                    continue
+
+                export_name = entry_map[entry_point] if entry_map else None
                 try:
-                    sys.stderr.write(f"Compiling HLSL file {filename} for {shader_stage} stage, entry point: {entry_point}\n")
+                    output_label = export_name if export_name else entry_point
+                    sys.stderr.write(f"Compiling HLSL file {filename} for {shader_stage} stage, entry point: {entry_point} -> {output_label}\n")
 
                     current_hlsl = hlsl_file
                     current_entry = entry_point
 
-                    if args.output:
+                    if export_name:
+                        # Use DXC rename directly — no need to rewrite the source file
+                        output_file = f"{output_dir}/{export_name}.dxil"
+                    elif args.output:
                         current_hlsl = rename_entry_point(current_hlsl, current_entry, args.output)
                         if current_hlsl != hlsl_file:
                             os.remove(hlsl_file)
                             hlsl_file = current_hlsl
                         current_entry = args.output
-
-                    output_file = f"{output_dir}/{current_entry}.dxil"
+                        output_file = f"{output_dir}/{current_entry}.dxil"
+                    else:
+                        output_file = f"{output_dir}/{current_entry}.dxil"
 
                     compile_command = [DXC, current_hlsl,
                         "-HV", "2021",
@@ -176,8 +196,11 @@ if __name__ == "__main__":
                         "-T", HLSL_SHADER_STAGE[shader_stage]]
 
                     if shader_stage in RT_STAGES:
-                        # lib_6_6: restrict exported symbol to this single entry point
-                        compile_command.extend(["-exports", current_entry])
+                        # lib_6_6: DXC -exports format is ExportName=InternalName
+                        if export_name:
+                            compile_command.extend(["-exports", f"{export_name}={entry_point}"])
+                        else:
+                            compile_command.extend(["-exports", current_entry])
                     else:
                         # vs/ps/cs: traditional single entry point
                         compile_command.extend(["-E", current_entry])
@@ -195,7 +218,7 @@ if __name__ == "__main__":
                     sys.stderr.write(f"Shader compilation failed for {filename}:\n{e.stderr.decode('utf-8')}\n")
                     compilation_failed = True
                 finally:
-                    if args.include or args.output:
+                    if not export_name and (args.include or args.output):
                         os.remove(hlsl_file)
 
     sys.exit(1 if compilation_failed else 0)

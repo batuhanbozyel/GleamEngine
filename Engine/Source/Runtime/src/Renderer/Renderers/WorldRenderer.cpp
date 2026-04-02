@@ -116,23 +116,24 @@ void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 			const auto globalInstances = sceneData.sceneProxy->GetGlobalInstances();
 			const auto globalMeshes = sceneData.sceneProxy->GetGlobalMeshes();
 
-			MeshPassResources resources = {};
-			resources.instanceBuffer = sceneData.sceneProxy->GetGlobalInstanceBuffer().GetResourceView();
-			resources.brdfTexture = passData.brdfLut;
-			resources.diffuseReflectionTexture = passData.diffuseReflection;
-			resources.specularReflectionTexture = passData.specularReflection;
+			MeshShadingConstants constants = {};
+			constants.instanceBuffer = sceneData.sceneProxy->GetGlobalInstanceBuffer().GetResourceView();
+			constants.brdfTexture = passData.brdfLut;
+			constants.diffuseReflectionTexture = passData.diffuseReflection;
+			constants.specularReflectionTexture = passData.specularReflection;
+
 			cmd->BindGraphicsPipeline(pipeline);
-			cmd->SetConstantBuffer(resources, MESH_PASS_RESOURCES_BINDING_SLOT);
 			cmd->SetConstantBuffer(sceneData.camera.uniforms, CAMERA_UNIFORMS_BINDING_SLOT);
 			cmd->SetConstantBuffer(sceneData.atmosphere.params, SKY_ATMOSPHERE_PARAMS_BINDING_SLOT);
 			cmd->SetConstantBuffer(sceneData.atmosphere.uniforms, SKY_ATMOSPHERE_COMMON_UNIFORMS_BINDING_SLOT);
 
 			for (uint32_t instanceID = 0; instanceID < batch.numInstances; ++instanceID)
 			{
-				uint32_t globalIndex = batch.instanceOffset + instanceID;
-				const auto& instance = globalInstances[globalIndex];
-				cmd->SetPushConstant(MeshShadingConstants{ .instanceID = globalIndex });
-				cmd->DrawIndexed(globalMeshes[globalIndex]->GetIndexBuffer(), IndexType::UINT32, instance.indexCount, 1, instance.firstIndex);
+				constants.instanceID = batch.instanceOffset + instanceID;
+				const auto& instance = globalInstances[constants.instanceID];
+				
+				cmd->SetPushConstant(constants);
+				cmd->DrawIndexed(globalMeshes[constants.instanceID]->GetIndexBuffer(), IndexType::UINT32, instance.indexCount, 1, instance.firstIndex);
 			}
         });
     });
@@ -154,7 +155,7 @@ void WorldRenderer::RegisterShadingPipeline(const MaterialDescriptor& material, 
 			.colorFormats = { TextureFormat::R16G16B16A16_SFloat },
 			.depthFormat = TextureFormat::D16_UNorm,
 			.vertexEntry = "meshVertexShader",
-			.fragmentEntry = material.surfaceShader
+			.fragmentEntry = material.surfaceShader + "Forward"
 		};
 		auto pipeline = mDevice->CreateGraphicsPipeline(pipelineDesc);
 

@@ -5,12 +5,11 @@
 #include "SurfaceShading.hlsli"
 #include "Atmosphere/SkyAtmosphereCommon.hlsli"
 
-CONSTANT_BUFFER(Gleam::MeshPassResources, resources, MESH_PASS_RESOURCES_BINDING_SLOT);
-PUSH_CONSTANT(Gleam::MeshShadingConstants, constants);
+PUSH_CONSTANT(Gleam::MeshShadingConstants, meshShadingConstants);
 
 Gleam::MeshInstanceData LoadInstanceData(uint instanceID)
 {
-	ByteAddressBuffer instanceBuffer = ResourceDescriptorHeap[resources.instanceBuffer];
+	ByteAddressBuffer instanceBuffer = ResourceDescriptorHeap[meshShadingConstants.instanceBuffer];
 	Gleam::MeshInstanceData instance = instanceBuffer.Load<Gleam::MeshInstanceData>(instanceID * sizeof(Gleam::MeshInstanceData));
 
 	ByteAddressBuffer materialBuffer = ResourceDescriptorHeap[instance.materialBuffer];
@@ -21,7 +20,7 @@ Gleam::MeshInstanceData LoadInstanceData(uint instanceID)
 [shader("pixel")]
 float4 main(MeshVertexOut IN) : SV_TARGET
 {
-	Gleam::MeshInstanceData instance = LoadInstanceData(constants.instanceID);
+	Gleam::MeshInstanceData instance = LoadInstanceData(meshShadingConstants.instanceID);
     Gleam::SurfaceOutput surface = surf(IN);
     
 	float3 viewDir = normalize(camera.position - IN.worldPosition);
@@ -51,7 +50,7 @@ float4 main(MeshVertexOut IN) : SV_TARGET
 	
 	float3 color = 0.0;
 	color += EvaluateDirectLight(surface, light, viewDir, worldNormal);
-	color += EvaluateIndirectLight(surface, resources.brdfTexture, resources.diffuseReflectionTexture, resources.specularReflectionTexture, viewDir, worldNormal);
+	color += EvaluateIndirectLight(surface, meshShadingConstants.brdfTexture, meshShadingConstants.diffuseReflectionTexture, meshShadingConstants.specularReflectionTexture, viewDir, worldNormal);
 	return float4(color, 1.0f);
 }
 #endif // MESH_SHADING_HLSL
