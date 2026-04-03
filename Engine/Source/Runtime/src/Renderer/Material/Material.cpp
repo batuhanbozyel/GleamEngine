@@ -53,6 +53,7 @@ Material::Material(const MaterialDescriptor& descriptor)
     : IMaterial(descriptor.name, descriptor.properties)
 	, mDescriptor(descriptor)
 	, mPipelineStateHash((uint32_t)eastl::hash<MaterialDescriptor>()(descriptor))
+	, mSurfaceShaderHash((uint32_t)eastl::hash<TString>()(descriptor.surfaceShader))
 	, mInstanceDescriptorHeap(MaxMaterialInstances)
 	, mInstanceSize(ComputeMaterialInstanceSize(descriptor.properties))
 {
@@ -155,6 +156,11 @@ const MaterialDescriptor& Material::GetDescriptor() const
 uint32_t Material::GetPipelineHash() const
 {
 	return mPipelineStateHash;
+}
+
+uint32_t Material::GetSurfaceShaderHash() const
+{
+	return mSurfaceShaderHash;
 }
 
 uint32_t Material::GetInstanceCount() const

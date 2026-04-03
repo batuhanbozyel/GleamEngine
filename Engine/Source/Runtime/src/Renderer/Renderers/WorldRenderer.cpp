@@ -138,28 +138,30 @@ void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
     });
 }
 
-void WorldRenderer::RegisterShadingPipeline(const MaterialDescriptor& material, uint32_t hash)
+void WorldRenderer::RegisterShadingPipeline(const Material* material)
 {
-	auto it = mShadingPipelines.find(hash);
+	const auto& materialDesc = material->GetDescriptor();
+	auto pipelineHash = material->GetPipelineHash();
+	auto it = mShadingPipelines.find(pipelineHash);
 	if (it == mShadingPipelines.end())
 	{
 		GraphicsPipelineStateDescriptor pipelineDesc = {
-			.blendState = material.blendState,
-			.depthState = material.depthState,
-			.stencilState = material.stencilState,
-			.cullingMode = material.cullingMode,
+			.blendState = materialDesc.blendState,
+			.depthState = materialDesc.depthState,
+			.stencilState = materialDesc.stencilState,
+			.cullingMode = materialDesc.cullingMode,
 			.topology = PrimitiveTopology::Triangles,
 			.alphaToCoverage = false,
 			.wireframe = false,
 			.colorFormats = { TextureFormat::R16G16B16A16_SFloat },
 			.depthFormat = TextureFormat::D16_UNorm,
 			.vertexEntry = "meshVertexShader",
-			.fragmentEntry = material.surfaceShader + "Forward"
+			.fragmentEntry = materialDesc.surfaceShader + "Forward"
 		};
 		auto pipeline = mDevice->CreateGraphicsPipeline(pipelineDesc);
 
 		mShadingPipelines.emplace_hint(it, eastl::piecewise_construct,
-										   eastl::forward_as_tuple(hash),
+										   eastl::forward_as_tuple(pipelineHash),
 										   eastl::forward_as_tuple(pipeline));
 	}
 }

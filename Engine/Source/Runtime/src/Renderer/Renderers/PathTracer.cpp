@@ -2,9 +2,15 @@
 #include "PathTracer.h"
 
 #include "WorldRenderer.h"
+#include "Renderer/RenderSystem.h"
 #include "Renderer/CommandBuffer.h"
 #include "Renderer/GraphicsDevice.h"
+#include "Renderer/RayTracingScene.h"
+#include "Renderer/Material/Material.h"
 #include "World/Systems/RenderSceneProxy.h"
+
+#include "Core/Globals.h"
+#include "Core/Engine.h"
 
 using namespace Gleam;
 
@@ -12,14 +18,6 @@ void PathTracer::OnCreate(RenderContext& context)
 {
 	mDevice = context.device;
 	mAllocator = context.allocator;
-
-	RayTracingPipelineStateDescriptor pipelineState;
-	pipelineState.rayGenerationEntry = "pathTraceRayGen";
-	pipelineState.missEntry = "pathTraceMiss";
-	pipelineState.maxRecursionDepth = MAX_RAY_RECURSION_DEPTH;
-	pipelineState.maxPayloadSize = sizeof(RayPayload);
-	pipelineState.maxAttributeSize = sizeof(float2); // float2 barycentrics
-	mPathTracingPipeline = context.device->CreateRayTracingPipeline(pipelineState);
 }
 
 void PathTracer::OnDestroy(RenderContext& context)
@@ -60,6 +58,29 @@ void PathTracer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blac
 		mFrameIndex = 0;
 	}
 
+	if (mPipelineDirty)
+	{
+		RayTracingPipelineStateDescriptor pipelineState;
+		pipelineState.rayGenerationEntry = "pathTraceRayGen";
+		pipelineState.missEntry = "pathTraceMiss";
+		pipelineState.maxRecursionDepth = MAX_RAY_RECURSION_DEPTH;
+		pipelineState.maxPayloadSize = sizeof(RayPayload);
+		pipelineState.maxAttributeSize = sizeof(float2); // float2 barycentrics
+		pipelineState.hitGroups = mHitGroups;
+
+		auto handle = mDevice->CreateRayTracingPipeline(pipelineState);
+		if (handle.IsValid())
+		{
+			if (mPathTracingPipeline.IsValid())
+			{
+				RayTracingPipeline pipeline = mPathTracingPipeline;
+				mDevice->Dispose(pipeline);
+			}
+			mPathTracingPipeline = handle;
+		}
+		mPipelineDirty = false;
+	}
+
 	auto rtHandle = graph.ImportTexture(mRenderTarget);
 	graph.AddComputePass<WorldRenderingData>("PathTracing::Render", [&](RenderGraphBuilder& builder, WorldRenderingData& passData)
 	{
@@ -68,6 +89,11 @@ void PathTracer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blac
 	},
 	[this, &sceneData](const CommandBuffer* cmd, const WorldRenderingData& passData)
 	{
+		if (not mPathTracingPipeline.IsValid())
+		{
+			return;
+		}
+
 		PathTracerConstants constants = {};
 		constants.instanceBuffer = sceneData.sceneProxy->GetGlobalInstanceBuffer().GetResourceView();
 		constants.accelerationStructure = sceneData.accelerationStructure;
@@ -83,7 +109,27 @@ void PathTracer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blac
 	});
 }
 
-void PathTracer::RegisterShadingPipeline(const MaterialDescriptor& material, uint32_t hash)
+void PathTracer::RegisterShadingPipeline(const Material* material)
 {
-	// TODO: 
+	static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
+	auto rayTracingScene = renderSystem->GetRayTracingScene();
+
+	const auto& materialDesc = material->GetDescriptor();
+	auto hash = material->GetSurfaceShaderHash();
+
+	const auto& registry = rayTracingScene->GetRegistry();
+	uint32_t hitGroupIndex = registry.GetIndex(hash);
+	GLEAM_ASSERT(hitGroupIndex != ~0u, "Material is not registered to RayTracingScene.");
+
+	if (hitGroupIndex >= (uint32_t)mHitGroups.size())
+	{
+		mHitGroups.resize(hitGroupIndex + 1);
+
+		auto& hitGroup = mHitGroups[hitGroupIndex];
+		hitGroup.name = materialDesc.surfaceShader;
+		hitGroup.closestHitEntry = materialDesc.surfaceShader + "ClosestHit";
+		hitGroup.anyHitEntry = materialDesc.surfaceShader + "AnyHit";
+
+		mPipelineDirty = true;
+	}
 }

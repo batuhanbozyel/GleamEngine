@@ -147,7 +147,7 @@ AccelerationStructureView RayTracingScene::BuildAccelerationStructure(const Comm
 
 					const auto& materialDesc = batch.material->GetDescriptor();
 					const auto& instanceData = globalInstances[batch.instanceOffset + i];
-					auto pipelineHash = batch.material->GetPipelineHash();
+					auto materialHash = batch.material->GetSurfaceShaderHash();
 
 					UINT instanceFlags = D3D12_RAYTRACING_INSTANCE_FLAG_NONE;
 					if (materialDesc.cullingMode == CullMode::Off)
@@ -184,7 +184,7 @@ AccelerationStructureView RayTracingScene::BuildAccelerationStructure(const Comm
 					instanceDesc.Flags = instanceFlags;
 					instanceDesc.InstanceID = batch.instanceOffset + i;
 					instanceDesc.InstanceMask = 1;
-					instanceDesc.InstanceContributionToHitGroupIndex = mHitGroupRegistry.GetIndex(pipelineHash);
+					instanceDesc.InstanceContributionToHitGroupIndex = mHitGroupRegistry.GetIndex(materialHash);
 					instanceDesc.AccelerationStructure = static_cast<ID3D12Resource*>(mesh->GetBLAS().GetHandle())->GetGPUVirtualAddress();
 
 					++currentInstance;

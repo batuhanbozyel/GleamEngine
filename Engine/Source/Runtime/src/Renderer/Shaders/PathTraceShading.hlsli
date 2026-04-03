@@ -3,7 +3,6 @@
 
 #include "SurfaceShading.hlsli"
 #include "PathTraceCommon.hlsli"
-#include "Atmosphere/SkyAtmosphereCommon.hlsli"
 
 Gleam::MeshInstanceData LoadInstanceData(uint instanceID)
 {
@@ -139,9 +138,9 @@ void ClosestHit(inout Gleam::RayPayload payload, BuiltInTriangleIntersectionAttr
             accelerationStructure,
             RAY_FLAG_NONE,
             0xFF,
-            (uint) Gleam::DispatchRayType::Shading,
-            (uint) Gleam::DispatchRayType::COUNT,
-            (uint) Gleam::DispatchRayType::Shading,
+            0,
+            0,
+            0,
             ray,
             payload
         );

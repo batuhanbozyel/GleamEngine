@@ -28,15 +28,9 @@ using float4 = Gleam::Float4;
 #define UAVIndex(index) SRVIndex(index)
 #endif
 
-namespace Gleam {
-
-enum class DispatchRayType
-{
-	Shading = 0,
-	Shadow = 1,
-	COUNT
-};
 #define MAX_RAY_RECURSION_DEPTH 10
+
+namespace Gleam {
 
 #ifdef __cplusplus
 struct ShaderResourceIndex

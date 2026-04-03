@@ -102,6 +102,7 @@ AccelerationStructureView RayTracingScene::BuildAccelerationStructure(const Comm
 
 				const auto& materialDesc = batch.material->GetDescriptor();
 				const auto& instanceData = globalInstances[batch.instanceOffset + i];
+				auto materialHash = batch.material->GetSurfaceShaderHash();
 
 				MTLAccelerationStructureInstanceOptions options = MTLAccelerationStructureInstanceOptionNone;
 				if (materialDesc.cullingMode == CullMode::Off)
@@ -143,7 +144,7 @@ AccelerationStructureView RayTracingScene::BuildAccelerationStructure(const Comm
 				desc.options = options;
 				desc.userID = batch.instanceOffset + i;
 				desc.mask = 1;
-				desc.intersectionFunctionTableOffset = mHitGroupRegistry.GetIndex(pipelineHash);
+				desc.intersectionFunctionTableOffset = mHitGroupRegistry.GetIndex(materialHash);
 				desc.accelerationStructureID = [mesh->GetBLAS().GetHandle() gpuResourceID];
 
 				++currentInstance;

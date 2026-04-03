@@ -11,13 +11,14 @@ using namespace GEditor;
 static Gleam::BlendMode BlendModeFromObject(const rapidjson::Value& object)
 {
 	Gleam::TString value = object.GetString();
-	if (value == "One")
-	{
-		return Gleam::BlendMode::One;
-	}
-	else if (value == "Zero")
+
+	if (value == "Zero")
 	{
 		return Gleam::BlendMode::Zero;
+	}
+	else if (value == "One")
+	{
+		return Gleam::BlendMode::One;
 	}
 	else if (value == "DstColor")
 	{
@@ -30,6 +31,10 @@ static Gleam::BlendMode BlendModeFromObject(const rapidjson::Value& object)
 	else if (value == "OneMinusDstColor")
 	{
 		return Gleam::BlendMode::OneMinusDstColor;
+	}
+	else if (value == "SrcAlpha")
+	{
+		return Gleam::BlendMode::SrcAlpha;
 	}
 	else if (value == "OneMinusSrcColor")
 	{

@@ -8,28 +8,26 @@ class RenderSceneProxy;
 class CommandBuffer;
 class GraphicsDevice;
 class GPUAllocator;
+class Material;
 
 struct MaterialDescriptor;
 
-using HitGroupEntry = TArray<HitGroupDescriptor, (size_t)DispatchRayType::COUNT>;
 class HitGroupRegistry
 {
 public:
 
 	HitGroupRegistry();
 
-	uint32_t Register(uint32_t materialHash, const HitGroupEntry& entry);
+	uint32_t Register(uint32_t surfaceHash);
 
-	uint32_t GetIndex(uint32_t materialHash) const;
+	uint32_t GetIndex(uint32_t surfaceHash) const;
 
-	bool Contains(uint32_t materialHash) const;
-
-	const TArray<HitGroupDescriptor>& GetHitGroups() const { return mHitGroups; }
+	bool Contains(uint32_t surfaceHash) const;
 
 private:
 
-	TArray<HitGroupDescriptor> mHitGroups;
-	HashMap<uint32_t, uint32_t> mHashToIndex; // pipelineHash → hitGroupIndex
+	HashMap<uint32_t, uint32_t> mHashToIndex; // surfaceHash → hitGroupIndex
+
 };
 
 class RayTracingScene
@@ -44,9 +42,9 @@ public:
 
 	void ReleaseAccelerationStructure();
 
-	void RegisterShadingPipeline(const MaterialDescriptor& material, uint32_t hash);
+	void RegisterShadingPipeline(const Material* material);
 
-	const HitGroupRegistry& GetHitGroupRegistry() const { return mHitGroupRegistry; }
+	const HitGroupRegistry& GetRegistry() const;
 
 private:
 
@@ -54,6 +52,7 @@ private:
 	GPUAllocator* mAllocator = nullptr;
 	TopLevelAccelerationStructure mTLAS;
 	HitGroupRegistry mHitGroupRegistry;
+	
 };
 	
 } // namespace Gleam

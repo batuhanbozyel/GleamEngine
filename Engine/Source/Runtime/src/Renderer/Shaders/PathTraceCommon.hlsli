@@ -5,6 +5,7 @@
 #include "Colors.hlsli"
 #include "Random.hlsli"
 #include "SurfaceShading.hlsli"
+#include "Atmosphere/SkyAtmosphereCommon.hlsli"
 
 PUSH_CONSTANT(Gleam::PathTracerConstants, pathTraceConstants);
 
@@ -72,23 +73,20 @@ MeshVertexOut InterpolateVertexAttributes(Gleam::MeshInstanceData instance, uint
 
     float3 b = float3(1.0 - bary.x - bary.y, bary.x, bary.y);
 
-    float3 localPos   = b.x * p0             + b.y * p1             + b.z * p2;
+    float3 position   = b.x * p0             + b.y * p1             + b.z * p2;
     float3 normal     = b.x * v0.normal      + b.y * v1.normal      + b.z * v2.normal;
     float3 tangentXYZ = b.x * v0.tangent.xyz + b.y * v1.tangent.xyz + b.z * v2.tangent.xyz;
     float2 uv         = b.x * v0.texCoord    + b.y * v1.texCoord    + b.z * v2.texCoord;
     float  tangentW   = v0.tangent.w;
 
-    float3 worldPos   = mul(instance.transform, float4(localPos, 1.0)).xyz;
-    float3 worldNorm  = normalize(mul((float3x3)instance.transform, normalize(normal)));
-    float3 worldTan   = normalize(mul((float3x3)instance.transform, normalize(tangentXYZ)));
-    float3 worldBitan = cross(worldNorm, worldTan) * tangentW;
+    float4 worldPosition = mul(instance.transform, float4(position, 1.0));
 
     MeshVertexOut OUT;
-    OUT.position      = float4(worldPos, 1.0);
-    OUT.worldPosition = worldPos;
-    OUT.normal        = worldNorm;
-    OUT.tangent       = worldTan;
-    OUT.bitangent     = worldBitan;
+	OUT.position      = mul(camera.viewProjectionMatrix, worldPosition);
+	OUT.worldPosition = worldPosition.xyz;
+    OUT.normal        = normalize(mul(instance.transform, float4(normal, 0.0f)).xyz);
+    OUT.tangent       = normalize(mul(instance.transform, float4(tangentXYZ, 0.0f)).xyz);
+    OUT.bitangent     = normalize(cross(OUT.normal, OUT.tangent)) * tangentW;
     OUT.color         = float4(1, 1, 1, 1);
     OUT.uv            = uv;
     return OUT;

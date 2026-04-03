@@ -35,6 +35,8 @@ public:
 
 	uint32_t GetPipelineHash() const;
 
+	uint32_t GetSurfaceShaderHash() const;
+
 	uint32_t GetInstanceCount() const;
     
 private:
@@ -44,6 +46,8 @@ private:
 	size_t mInstanceSize = 0;
 
 	uint32_t mPipelineStateHash = 0;
+
+	uint32_t mSurfaceShaderHash = 0;
 
 	MaterialDescriptor mDescriptor;
 

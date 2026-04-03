@@ -51,6 +51,6 @@ float4 main(MeshVertexOut IN) : SV_TARGET
 	float3 color = 0.0;
 	color += EvaluateDirectLight(surface, light, viewDir, worldNormal);
 	color += EvaluateIndirectLight(surface, meshShadingConstants.brdfTexture, meshShadingConstants.diffuseReflectionTexture, meshShadingConstants.specularReflectionTexture, viewDir, worldNormal);
-	return float4(color, 1.0f);
+	return float4(color, surface.albedo.a);
 }
 #endif // MESH_SHADING_HLSL

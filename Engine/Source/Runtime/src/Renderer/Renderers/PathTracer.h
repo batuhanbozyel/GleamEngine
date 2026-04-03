@@ -1,9 +1,10 @@
 #pragma once
 #include "Renderer/Renderer.h"
+#include "Renderer/RayTracingScene.h"
 
 namespace Gleam {
 
-struct MaterialDescriptor;
+class Material;
 
 class PathTracer : public IRenderer
 {
@@ -15,7 +16,7 @@ public:
     
     virtual void AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard) override;
 
-	void RegisterShadingPipeline(const MaterialDescriptor& material, uint32_t hash);
+	void RegisterShadingPipeline(const Material* material);
 
 private:
 
@@ -25,6 +26,9 @@ private:
 		SkyAtmosphereUniforms atmosphereUniforms = {};
 		SkyAtmosphereParameters atmosphereParams = {};
 	} mState;
+
+	bool mPipelineDirty = true;
+	TArray<HitGroupDescriptor> mHitGroups;
 
 	Texture mRenderTarget;
 	uint32_t mFrameIndex = 0;

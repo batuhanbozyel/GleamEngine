@@ -20,7 +20,7 @@ MeshVertexOut meshVertexShader(uint vertex_id : SV_VertexID)
 	OUT.position = mul(camera.viewProjectionMatrix, worldPosition);
 	OUT.normal = normalize(mul(instanceData.transform, float4(interleavedVert.normal, 0.0f)).xyz);
 	OUT.tangent = normalize(mul(instanceData.transform, float4(interleavedVert.tangent.xyz, 0.0f)).xyz);
-	OUT.bitangent = normalize(cross(OUT.normal, OUT.tangent)) * sign(interleavedVert.tangent.w);
+	OUT.bitangent = normalize(cross(OUT.normal, OUT.tangent)) * interleavedVert.tangent.w;
 	OUT.color = float4(1.0f, 1.0f, 1.0f, 1.0f);
 	OUT.uv = interleavedVert.texCoord;
 	return OUT;

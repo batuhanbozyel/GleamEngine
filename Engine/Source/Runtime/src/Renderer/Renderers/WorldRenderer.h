@@ -10,7 +10,7 @@
 
 namespace Gleam {
 
-struct MaterialDescriptor;
+class Material;
 
 struct WorldRenderingData
 {
@@ -33,7 +33,7 @@ public:
     
     virtual void AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard) override;
 
-	void RegisterShadingPipeline(const MaterialDescriptor& material, uint32_t hash);
+	void RegisterShadingPipeline(const Material* material);
 
 	const Texture& GetBRDFLutTexture() const
 	{

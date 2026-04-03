@@ -30,9 +30,9 @@ void pathTraceRayGen()
         accelerationStructure,
         RAY_FLAG_NONE,
         0xFF,
-        (uint)Gleam::DispatchRayType::Shading,
-        (uint)Gleam::DispatchRayType::COUNT,
-        (uint)Gleam::DispatchRayType::Shading,
+        0,
+        0,
+        0,
         ray,
         payload
     );

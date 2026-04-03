@@ -1,7 +1,7 @@
 #include "gpch.h"
 #include "RayTracingScene.h"
 #include "GraphicsDevice.h"
-#include "Material/MaterialDescriptor.h"
+#include "Material/Material.h"
 
 using namespace Gleam;
 
@@ -28,22 +28,15 @@ void RayTracingScene::ReleaseAccelerationStructure()
 	}
 }
 
-void RayTracingScene::RegisterShadingPipeline(const MaterialDescriptor& material, uint32_t hash)
+void RayTracingScene::RegisterShadingPipeline(const Material* material)
 {
-	if (mHitGroupRegistry.Contains(hash) == false)
-	{
-		HitGroupEntry entry;
+	auto hash = material->GetSurfaceShaderHash();
+	mHitGroupRegistry.Register(hash);
+}
 
-		HitGroupDescriptor& shadingGroup = entry[(uint32_t)DispatchRayType::Shading];
-		shadingGroup.name = "HitGroup_" + material.name + "_Shading";
-		shadingGroup.closestHitEntry = material.surfaceShader + "ClosestHit";
-		if (material.blendState.enabled)
-		{
-			shadingGroup.anyHitEntry = material.surfaceShader + "AnyHit";
-		}
-
-		mHitGroupRegistry.Register(hash, entry);
-	}
+const HitGroupRegistry& RayTracingScene::GetRegistry() const
+{
+	return mHitGroupRegistry;
 }
 
 HitGroupRegistry::HitGroupRegistry()
@@ -51,26 +44,22 @@ HitGroupRegistry::HitGroupRegistry()
 
 }
 
-uint32_t HitGroupRegistry::Register(uint32_t materialHash, const HitGroupEntry& entry)
+uint32_t HitGroupRegistry::Register(uint32_t surfaceHash)
 {
-	auto it = mHashToIndex.find(materialHash);
+	auto it = mHashToIndex.find(surfaceHash);
 	if (it != mHashToIndex.end())
 	{
 		return it->second;
 	}
 
-	uint32_t hitGroupIndex = (uint32_t)mHitGroups.size() / (uint32_t)entry.size();
-	for (const auto& hitGroup : entry)
-	{
-		mHitGroups.push_back(hitGroup);
-	}
-	it = mHashToIndex.emplace_hint(mHashToIndex.end(), materialHash, hitGroupIndex);
-	return it->second;
+	uint32_t hitGroupIndex = (uint32_t)mHashToIndex.size();
+	it = mHashToIndex.emplace_hint(mHashToIndex.end(), surfaceHash, hitGroupIndex);
+	return hitGroupIndex;
 }
 
-uint32_t HitGroupRegistry::GetIndex(uint32_t materialHash) const
+uint32_t HitGroupRegistry::GetIndex(uint32_t surfaceHash) const
 {
-	auto it = mHashToIndex.find(materialHash);
+	auto it = mHashToIndex.find(surfaceHash);
 	if (it != mHashToIndex.end())
 	{
 		return it->second;
@@ -78,7 +67,7 @@ uint32_t HitGroupRegistry::GetIndex(uint32_t materialHash) const
 	return ~0u;
 }
 
-bool HitGroupRegistry::Contains(uint32_t materialHash) const
+bool HitGroupRegistry::Contains(uint32_t surfaceHash) const
 {
-	return mHashToIndex.find(materialHash) != mHashToIndex.end();
+	return mHashToIndex.find(surfaceHash) != mHashToIndex.end();
 }

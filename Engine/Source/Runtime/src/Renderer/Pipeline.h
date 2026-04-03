@@ -34,6 +34,11 @@ struct PipelineHandle
 	{
 		return !(*this == other);
 	}
+
+	FORCE_INLINE constexpr bool IsValid() const
+	{
+		return data != 0;
+	}
 };
 
 class Pipeline : public GraphicsObject

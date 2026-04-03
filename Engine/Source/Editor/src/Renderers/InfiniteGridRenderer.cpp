@@ -13,13 +13,13 @@ void InfiniteGridRenderer::OnCreate(Gleam::RenderContext& context)
 	pipelineDesc.depthState.compareFunction = Gleam::CompareFunction::Less;
 
 	pipelineDesc.blendState.enabled = true;
-	pipelineDesc.blendState.sourceColorBlendMode = Gleam::BlendMode::SrcAlpha;
-	pipelineDesc.blendState.destinationColorBlendMode = Gleam::BlendMode::OneMinusSrcAlpha;
 	pipelineDesc.blendState.colorBlendOperation = Gleam::BlendOp::Add;
 	pipelineDesc.blendState.alphaBlendOperation = Gleam::BlendOp::Add;
+	pipelineDesc.blendState.sourceColorBlendMode = Gleam::BlendMode::SrcAlpha;
 	pipelineDesc.blendState.sourceAlphaBlendMode = Gleam::BlendMode::One;
+	pipelineDesc.blendState.destinationColorBlendMode = Gleam::BlendMode::OneMinusSrcAlpha;
 	pipelineDesc.blendState.destinationAlphaBlendMode = Gleam::BlendMode::OneMinusSrcAlpha;
-
+	
 	pipelineDesc.colorFormats = { Gleam::TextureFormat::R16G16B16A16_SFloat };
 	pipelineDesc.depthFormat = Gleam::TextureFormat::D16_UNorm;
 

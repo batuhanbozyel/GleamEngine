@@ -63,13 +63,13 @@ void RenderSceneProxy::Tick(World* world)
 				auto materialDescriptor = assetManager->LoadDescriptor<MaterialDescriptor>(material);
 
 				auto worldRenderer = renderSystem->GetRenderPipeline(RenderPath::Default)->GetRenderer<WorldRenderer>();
-				worldRenderer->RegisterShadingPipeline(materialDescriptor, batch.material->GetPipelineHash());
-
-				auto pathTracer = renderSystem->GetRenderPipeline(RenderPath::PathTracing)->GetRenderer<PathTracer>();
-				pathTracer->RegisterShadingPipeline(materialDescriptor, batch.material->GetPipelineHash());
+				worldRenderer->RegisterShadingPipeline(batch.material);
 
 				auto rayTracingScene = renderSystem->GetRayTracingScene();
-				rayTracingScene->RegisterShadingPipeline(materialDescriptor, batch.material->GetPipelineHash());
+				rayTracingScene->RegisterShadingPipeline(batch.material);
+
+				auto pathTracer = renderSystem->GetRenderPipeline(RenderPath::PathTracing)->GetRenderer<PathTracer>();
+				pathTracer->RegisterShadingPipeline(batch.material);
 			}
 			++batch.numInstances;
 		}
