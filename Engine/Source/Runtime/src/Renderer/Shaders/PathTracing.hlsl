@@ -62,5 +62,4 @@ void pathTraceMiss(inout Gleam::RayPayload payload)
     {
         payload.radiance += payload.throughput * atmosphereUniforms.sunIlluminance;
     }
-    payload.hitT = -1.0;
 }

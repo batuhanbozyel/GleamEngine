@@ -28,8 +28,6 @@ using float4 = Gleam::Float4;
 #define UAVIndex(index) SRVIndex(index)
 #endif
 
-#define MAX_RAY_RECURSION_DEPTH 10
-
 namespace Gleam {
 
 #ifdef __cplusplus
@@ -123,7 +121,7 @@ struct Texture2DResourceView : TextureResourceView
 #ifdef __HLSL_VERSION
 	T Load(uint3 pos)
 	{
-		Texture2D<T> texture = ResourceDescriptorHeap[SRVIndex(index)];
+		Texture2D<T> texture = ResourceDescriptorHeap[index];
 		return texture.Load(pos);
 	}
 
@@ -131,17 +129,22 @@ struct Texture2DResourceView : TextureResourceView
 	// https://media.contentapi.ea.com/content/dam/ea/seed/presentations/2019-ray-tracing-gems-chapter-20-akenine-moller-et-al.pdf
 	T Sample(SamplerState sampler, float2 uv)
 	{
-		Texture2D<T> texture = ResourceDescriptorHeap[SRVIndex(index)];
 	#ifdef SHADER_TARGET_PIXEL
+		Texture2D<T> texture = ResourceDescriptorHeap[index];
 		return texture.Sample(sampler, uv);
 	#else
+		Texture2D<T> texture = ResourceDescriptorHeap[NonUniformResourceIndex(index)];
 		return texture.SampleLevel(sampler, uv, 0.0);
 	#endif
 	}
 
 	T SampleLevel(SamplerState sampler, float2 uv, float mip)
 	{
-		Texture2D<T> texture = ResourceDescriptorHeap[SRVIndex(index)];
+	#ifdef SHADER_TARGET_PIXEL
+		Texture2D<T> texture = ResourceDescriptorHeap[index];
+	#else
+		Texture2D<T> texture = ResourceDescriptorHeap[NonUniformResourceIndex(index)];
+	#endif
 		return texture.SampleLevel(sampler, uv, mip);
 	}
 #else

@@ -54,9 +54,9 @@ float SpecularLobeProbability(Gleam::SurfaceOutput surface, float NdotV)
 
 MeshVertexOut InterpolateVertexAttributes(Gleam::MeshInstanceData instance, uint primitiveIndex, float2 bary)
 {
-    ByteAddressBuffer indexBuffer       = ResourceDescriptorHeap[instance.indexBuffer];
-    ByteAddressBuffer positionBuffer    = ResourceDescriptorHeap[instance.positionBuffer];
-    ByteAddressBuffer interleavedBuffer = ResourceDescriptorHeap[instance.interleavedBuffer];
+    ByteAddressBuffer indexBuffer       = ResourceDescriptorHeap[NonUniformResourceIndex(instance.indexBuffer)];
+    ByteAddressBuffer positionBuffer    = ResourceDescriptorHeap[NonUniformResourceIndex(instance.positionBuffer)];
+	ByteAddressBuffer interleavedBuffer = ResourceDescriptorHeap[NonUniformResourceIndex(instance.interleavedBuffer)];
 
     uint baseIdx = instance.firstIndex + primitiveIndex * 3;
     uint i0 = instance.baseVertex + indexBuffer.Load<uint>(baseIdx       * sizeof(uint));

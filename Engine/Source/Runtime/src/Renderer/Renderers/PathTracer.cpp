@@ -63,7 +63,7 @@ void PathTracer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blac
 		RayTracingPipelineStateDescriptor pipelineState;
 		pipelineState.rayGenerationEntry = "pathTraceRayGen";
 		pipelineState.missEntry = "pathTraceMiss";
-		pipelineState.maxRecursionDepth = MAX_RAY_RECURSION_DEPTH;
+		pipelineState.maxRecursionDepth = mMaxRayRecursionDepth + 1;
 		pipelineState.maxPayloadSize = sizeof(RayPayload);
 		pipelineState.maxAttributeSize = sizeof(float2); // float2 barycentrics
 		pipelineState.hitGroups = mHitGroups;
@@ -78,6 +78,7 @@ void PathTracer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blac
 			}
 			mPathTracingPipeline = handle;
 		}
+		mFrameIndex = 0;
 		mPipelineDirty = false;
 	}
 
@@ -99,6 +100,7 @@ void PathTracer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blac
 		constants.accelerationStructure = sceneData.accelerationStructure;
 		constants.colorTarget = passData.colorTarget;
 		constants.frameIndex = mFrameIndex++;
+		constants.maxRayRecursionDepth = mMaxRayRecursionDepth;
 		
 		cmd->BindRayTracingPipeline(mPathTracingPipeline);
 		cmd->SetPushConstant(constants);

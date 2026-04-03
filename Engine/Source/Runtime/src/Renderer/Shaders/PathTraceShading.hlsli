@@ -62,13 +62,13 @@ void ClosestHit(inout Gleam::RayPayload payload, BuiltInTriangleIntersectionAttr
         float partialPdf;
         float3 H = ImportanceSampleGGX(xi, worldNormal, surface.roughness, partialPdf);
         nextDir = reflect(-viewDir, H);
-
-        if (dot(nextDir, worldNormal) <= 0.0)
-        {
-            return;
-        }
-
+        
         float NdotL = saturate(dot(worldNormal, nextDir));
+		if (NdotL <= 0.0)
+		{
+			return;
+		}
+        
         float NdotH = saturate(dot(worldNormal, H));
         float VdotH = saturate(dot(viewDir, H));
         float LdotH = VdotH; // symmetric: LdotH == VdotH for reflect()
@@ -125,7 +125,7 @@ void ClosestHit(inout Gleam::RayPayload payload, BuiltInTriangleIntersectionAttr
 		payload.throughput /= p;
 	}
     
-	if (payload.depth < MAX_RAY_RECURSION_DEPTH)
+	if (payload.depth < pathTraceConstants.maxRayRecursionDepth)
 	{
 		RayDesc ray;
 		ray.Origin = OffsetRayAlongNormal(vertex.worldPosition, vertex.normal);

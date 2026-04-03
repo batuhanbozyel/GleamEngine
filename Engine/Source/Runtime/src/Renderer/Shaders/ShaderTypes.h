@@ -189,6 +189,11 @@ struct PathTracerConstants
 	ShaderResourceIndex instanceBuffer;
 	UnorderedAccessIndex colorTarget;
 	uint32_t frameIndex;
+
+	uint32_t maxRayRecursionDepth;
+	float pad0;
+	float pad1;
+	float pad2;
 };
 
 } // namespace Gleam
