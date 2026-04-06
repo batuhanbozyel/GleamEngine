@@ -25,7 +25,7 @@ Shader GraphicsDevice::CreateShader(const TString& entryPoint, ShaderStage stage
 
 ComputePipelineHandle GraphicsDevice::CreateComputePipeline(const ComputePipelineStateDescriptor& pipelineDesc)
 {
-	ComputePipelineHandle handle{ eastl::hash<ComputePipelineStateDescriptor>()(pipelineDesc) };
+	ComputePipelineHandle handle{  eastl::hash<ComputePipelineStateDescriptor>()(pipelineDesc) };
 	auto it = mComputePipelineCache.find(handle);
 	if (it != mComputePipelineCache.end())
 	{
@@ -68,9 +68,20 @@ RayTracingPipelineHandle GraphicsDevice::CreateRayTracingPipeline(const RayTraci
 	mShaderPipelineReferences[pipelineDesc.missEntry].insert(handle);
 	for (const auto& hitGroup : pipelineDesc.hitGroups)
 	{
-		mShaderPipelineReferences[hitGroup.closestHitEntry].insert(handle);
-		mShaderPipelineReferences[hitGroup.anyHitEntry].insert(handle);
-		mShaderPipelineReferences[hitGroup.intersectionEntry].insert(handle);
+		if (not hitGroup.closestHitEntry.empty())
+		{
+			mShaderPipelineReferences[hitGroup.closestHitEntry].insert(handle);
+		}
+
+		if (not hitGroup.anyHitEntry.empty())
+		{
+			mShaderPipelineReferences[hitGroup.anyHitEntry].insert(handle);
+		}
+
+		if (not hitGroup.intersectionEntry.empty())
+		{
+			mShaderPipelineReferences[hitGroup.intersectionEntry].insert(handle);
+		}
 	}
 	mRayTracingPipelineCache.emplace_hint(mRayTracingPipelineCache.end(), handle, pipeline);
 	return handle;

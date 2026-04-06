@@ -13,6 +13,7 @@ using namespace Gleam;
 Mesh::Mesh(const MeshDescriptor& descriptor)
     : Asset(descriptor.name)
 	, mSubmeshes(descriptor.submeshes)
+	, mBLASes(descriptor.submeshes.size())
 {
     static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
 	auto device = renderSystem->GetDevice();
@@ -51,9 +52,12 @@ Mesh::~Mesh()
 	device->Dispose(renderSystem->GetAllocator(), mInterleavedBuffer);
 	device->Dispose(renderSystem->GetAllocator(), mIndexBuffer);
 
-	if (mBLAS.IsValid())
+	for (auto& blas : mBLASes)
 	{
-		device->Dispose(mBLAS);
+		if (blas.IsValid())
+		{
+			device->Dispose(blas);
+		}
 	}
 }
 
@@ -77,7 +81,12 @@ const TArray<SubmeshDescriptor>& Mesh::GetSubmeshes() const
     return mSubmeshes;
 }
 
-const BottomLevelAccelerationStructure& Mesh::GetBLAS() const
+const SubmeshDescriptor& Mesh::GetSubmesh(uint32_t index) const
 {
-	return mBLAS;
+	return mSubmeshes[index];
+}
+
+const BottomLevelAccelerationStructure& Mesh::GetBLAS(uint32_t submesh) const
+{
+	return mBLASes[submesh];
 }

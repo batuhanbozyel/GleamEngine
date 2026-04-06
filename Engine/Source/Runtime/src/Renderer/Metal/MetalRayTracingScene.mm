@@ -49,36 +49,27 @@ AccelerationStructureView RayTracingScene::BuildAccelerationStructure(const Comm
 		{
 			for (uint32_t i = 0; i < batch.numInstances; ++i)
 			{
-				auto mesh = globalMeshes[batch.instanceOffset + i];
-				if (not mesh->GetBLAS().IsValid())
+				const auto& instance = globalMeshes[batch.instanceOffset + i];
+				const auto& submesh = instance.mesh->GetSubmesh(instance.submeshIndex);
+				if (not instance.mesh->GetBLAS(instance.submeshIndex).IsValid())
 				{
-					const auto& submeshes = mesh->GetSubmeshes();
+					id<MTLBuffer> indexBuffer = instance.mesh->GetIndexBuffer().GetHandle();
+					id<MTLBuffer> positionBuffer = instance.mesh->GetPositionBuffer().GetHandle();
 
-					NSMutableArray<MTL4AccelerationStructureTriangleGeometryDescriptor*>* geometryDescs = [NSMutableArray arrayWithCapacity:submeshes.size()];
-
-					id<MTLBuffer> indexBuffer = mesh->GetIndexBuffer().GetHandle();
-					id<MTLBuffer> positionBuffer = mesh->GetPositionBuffer().GetHandle();
-
-					for (const auto& submesh : submeshes)
-					{
-						MTL4AccelerationStructureTriangleGeometryDescriptor* geomDesc = [MTL4AccelerationStructureTriangleGeometryDescriptor new];
-						geomDesc.vertexBuffer = MTL4BufferRange([positionBuffer gpuAddress] + submesh.baseVertex * sizeof(float3), submesh.vertexCount * sizeof(float3));
-						geomDesc.vertexStride = sizeof(float3);
-						geomDesc.vertexFormat = MTLAttributeFormatFloat3;
-						geomDesc.triangleCount = submesh.indexCount / 3;
-
-						geomDesc.indexBuffer = MTL4BufferRange([indexBuffer gpuAddress] + submesh.firstIndex * sizeof(uint32_t), submesh.indexCount * sizeof(uint32_t));
-						geomDesc.indexType = MTLIndexTypeUInt32;
-						geomDesc.opaque = YES;
-
-						[geometryDescs addObject:geomDesc];
-					}
+					MTL4AccelerationStructureTriangleGeometryDescriptor* geomDesc = [MTL4AccelerationStructureTriangleGeometryDescriptor new];
+					geomDesc.vertexBuffer = MTL4BufferRange([positionBuffer gpuAddress] + submesh.baseVertex * sizeof(float3), submesh.vertexCount * sizeof(float3));
+					geomDesc.vertexStride = sizeof(float3);
+					geomDesc.vertexFormat = MTLAttributeFormatFloat3;
+					geomDesc.triangleCount = submesh.indexCount / 3;
+					geomDesc.indexBuffer = MTL4BufferRange([indexBuffer gpuAddress] + submesh.firstIndex * sizeof(uint32_t), submesh.indexCount * sizeof(uint32_t));
+					geomDesc.indexType = MTLIndexTypeUInt32;
+					geomDesc.opaque = YES;
 
 					MTL4PrimitiveAccelerationStructureDescriptor* blasDesc = [MTL4PrimitiveAccelerationStructureDescriptor new];
-					blasDesc.geometryDescriptors = geometryDescs;
+					blasDesc.geometryDescriptors = [NSArray arrayWithObject:geomDesc];
 
 					MTLAccelerationStructureSizes sizes = [device accelerationStructureSizesWithDescriptor:blasDesc];
-					BottomLevelAccelerationStructure blas = mDevice->CreateBLAS(BLASDescriptor{ .name = mesh->GetName() + ": BLAS", .size = sizes.accelerationStructureSize });
+					BottomLevelAccelerationStructure blas = mDevice->CreateBLAS(BLASDescriptor{ .name = instance.mesh->GetName() + ": BLAS", .size = sizes.accelerationStructureSize });
 
 					Buffer scratchBuffer = mDevice->CreateBuffer(mAllocator, BufferDescriptor{
 						.name = "BLAS Scratch Buffer",
@@ -96,7 +87,7 @@ AccelerationStructureView RayTracingScene::BuildAccelerationStructure(const Comm
 									beforeEncoderStages:MTLStageAccelerationStructure
 									  visibilityOptions:MTL4VisibilityOptionNone];
 
-					mesh->mBLAS = blas;
+					instance.mesh->mBLASes[instance.submeshIndex] = blas;
 					mDevice->Dispose(mAllocator, scratchBuffer);
 				}
 
@@ -145,7 +136,7 @@ AccelerationStructureView RayTracingScene::BuildAccelerationStructure(const Comm
 				desc.userID = batch.instanceOffset + i;
 				desc.mask = 1;
 				desc.intersectionFunctionTableOffset = mHitGroupRegistry.GetIndex(materialHash);
-				desc.accelerationStructureID = [mesh->GetBLAS().GetHandle() gpuResourceID];
+				desc.accelerationStructureID = [instance.mesh->GetBLAS(instance.submeshIndex).GetHandle() gpuResourceID];
 
 				++currentInstance;
 			}

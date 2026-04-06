@@ -92,8 +92,9 @@ void RenderSceneProxy::Tick(World* world)
 		const auto mesh = assetManager->Has<Mesh>(meshRenderer.mesh) ? assetManager->Get<Mesh>(meshRenderer.mesh): assetManager->Load<Mesh>(meshRenderer.mesh);
 		const auto& submeshes = mesh->GetSubmeshes();
 
-		for (const auto& submesh : submeshes)
+		for (uint32_t submeshIndex = 0; submeshIndex < submeshes.size(); ++submeshIndex)
 		{
+			const auto& submesh = submeshes[submeshIndex];
 			const auto materialInstance = assetManager->Has<MaterialInstance>(meshRenderer.materials[submesh.materialIndex]) ?
 				assetManager->Get<MaterialInstance>(meshRenderer.materials[submesh.materialIndex]) :
 				assetManager->Load<MaterialInstance>(meshRenderer.materials[submesh.materialIndex]);
@@ -102,7 +103,9 @@ void RenderSceneProxy::Tick(World* world)
 			auto& batch = mMeshBatches[material];
 			uint32_t globalIndex = batch.instanceOffset + batch.numInstances++;
 
-			mGlobalMeshes[globalIndex] = mesh;
+			mGlobalMeshes[globalIndex].mesh = mesh;
+			mGlobalMeshes[globalIndex].submeshIndex = submeshIndex;
+
 			auto& instance = mGlobalInstances[globalIndex];
 			instance.positionBuffer = mesh->GetPositionBuffer().GetResourceView();
 			instance.interleavedBuffer = mesh->GetInterleavedBuffer().GetResourceView();

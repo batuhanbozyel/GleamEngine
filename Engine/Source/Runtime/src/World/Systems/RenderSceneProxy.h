@@ -21,6 +21,12 @@ struct MeshBatch
 	uint32_t numInstances = 0;
 };
 
+struct MeshInstance
+{
+	Mesh* mesh = nullptr;
+	uint32_t submeshIndex = 0;
+};
+
 class RenderSceneProxy : public TickableWorldSubsystem
 {
     using BatchFn = std::function<void(const MeshBatch&)>;
@@ -42,7 +48,7 @@ public:
 		return { mGlobalInstances.data(), mTotalInstances };
 	}
 
-	TArrayView<Mesh* const> GetGlobalMeshes() const
+	TArrayView<const MeshInstance> GetGlobalMeshes() const
 	{
 		return { mGlobalMeshes.data(), mTotalInstances };
 	}
@@ -54,7 +60,7 @@ private:
     HashMap<AssetReference, MeshBatch> mMeshBatches;
 
 	static constexpr uint32_t MaxMeshInstances = 65536;
-	TArray<Mesh*, MaxMeshInstances> mGlobalMeshes = {};
+	TArray<MeshInstance, MaxMeshInstances> mGlobalMeshes = {};
 	TArray<MeshInstanceData, MaxMeshInstances> mGlobalInstances = {};
 
 };

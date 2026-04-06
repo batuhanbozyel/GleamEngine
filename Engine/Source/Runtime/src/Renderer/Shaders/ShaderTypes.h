@@ -178,7 +178,6 @@ struct RayPayload
 {
 	float3 radiance;
 	float3 throughput;
-	float  hitT;
 	uint32_t depth;
 	uint32_t seed;
 };

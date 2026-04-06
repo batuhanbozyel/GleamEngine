@@ -15,7 +15,7 @@ Gleam::MeshInstanceData LoadInstanceData(uint instanceID)
 }
 
 [shader("closesthit")]
-void ClosestHit(inout Gleam::RayPayload payload, BuiltInTriangleIntersectionAttributes attribs)
+void ClosestHit(inout Gleam::RayPayload payload : SV_RayPayload, BuiltInTriangleIntersectionAttributes attribs : SV_IntersectionAttributes)
 {
     Gleam::MeshInstanceData instance = LoadInstanceData(InstanceID());
     MeshVertexOut vertex = InterpolateVertexAttributes(instance, PrimitiveIndex(), attribs.barycentrics);
@@ -24,14 +24,13 @@ void ClosestHit(inout Gleam::RayPayload payload, BuiltInTriangleIntersectionAttr
     float3 viewDir = -WorldRayDirection();
     float3x3 TBN   = transpose(float3x3(vertex.tangent, vertex.bitangent, vertex.normal));
     float3 worldNormal = normalize(mul(TBN, surface.normal));
-
-    payload.hitT = RayTCurrent();
-    payload.radiance += payload.throughput * surface.emission.rgb;
     
     DirectLight light;
     light.direction   = atmosphereUniforms.sunDirection;
     light.illuminance = GetSunLuminance(GetSkyWorldPosition(vertex.worldPosition), atmosphereUniforms.sunDirection);
+    
     payload.radiance += payload.throughput * EvaluateDirectLight(surface, light, viewDir, worldNormal);
+	payload.radiance += payload.throughput * surface.emission.rgb;
     
     float NdotV = abs(dot(worldNormal, viewDir)) + FLT_EPSILON;
     
@@ -134,21 +133,26 @@ void ClosestHit(inout Gleam::RayPayload payload, BuiltInTriangleIntersectionAttr
 		ray.TMax = 1e6;
 		payload.depth += 1;
     
+		Gleam::RayPayload reflection = payload;
+		reflection.depth += 1;
+        
 		TraceRay(
             accelerationStructure,
-            RAY_FLAG_NONE,
+            RAY_FLAG_CULL_BACK_FACING_TRIANGLES,
             0xFF,
             0,
             0,
             0,
             ray,
-            payload
+            reflection
         );
+        
+		payload.radiance += reflection.radiance;
 	}
 }
 
 [shader("anyhit")]
-void AnyHit(inout Gleam::RayPayload payload, BuiltInTriangleIntersectionAttributes attribs)
+void AnyHit(inout Gleam::RayPayload payload : SV_RayPayload, BuiltInTriangleIntersectionAttributes attribs : SV_IntersectionAttributes)
 {
     Gleam::MeshInstanceData instance = LoadInstanceData(InstanceID());
     MeshVertexOut vertex = InterpolateVertexAttributes(instance, PrimitiveIndex(), attribs.barycentrics);

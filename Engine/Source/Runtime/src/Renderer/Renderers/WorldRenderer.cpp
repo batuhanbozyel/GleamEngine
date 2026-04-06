@@ -132,7 +132,7 @@ void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 				const auto& instance = globalInstances[constants.instanceID];
 				
 				cmd->SetPushConstant(constants);
-				cmd->DrawIndexed(globalMeshes[constants.instanceID]->GetIndexBuffer(), IndexType::UINT32, instance.indexCount, 1, instance.firstIndex);
+				cmd->DrawIndexed(globalMeshes[constants.instanceID].mesh->GetIndexBuffer(), IndexType::UINT32, instance.indexCount, 1, instance.firstIndex);
 			}
         });
     });

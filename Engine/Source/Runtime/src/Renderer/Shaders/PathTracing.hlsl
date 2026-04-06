@@ -16,7 +16,6 @@ void pathTraceRayGen()
     Gleam::RayPayload payload;
     payload.radiance   = 0.0;
     payload.throughput = 1.0;
-    payload.hitT       = -1.0;
     payload.depth      = 0;
     payload.seed       = initSeed(pixelCoord, pathTraceConstants.frameIndex);
 
@@ -28,7 +27,7 @@ void pathTraceRayGen()
 	
     TraceRay(
         accelerationStructure,
-        RAY_FLAG_NONE,
+        RAY_FLAG_CULL_BACK_FACING_TRIANGLES,
         0xFF,
         0,
         0,
@@ -51,7 +50,7 @@ void pathTraceRayGen()
 }
 
 [shader("miss")]
-void pathTraceMiss(inout Gleam::RayPayload payload)
+void pathTraceMiss(inout Gleam::RayPayload payload : SV_RayPayload)
 {
     if (atmosphereUniforms.transmittanceLutTexture != InvalidResourceIndex &&
         atmosphereUniforms.multiScatterLutTexture != InvalidResourceIndex)

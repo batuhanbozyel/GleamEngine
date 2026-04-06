@@ -24,8 +24,10 @@ public:
     const Buffer& GetIndexBuffer() const;
 
     const TArray<SubmeshDescriptor>& GetSubmeshes() const;
+
+	const SubmeshDescriptor& GetSubmesh(uint32_t index) const;
     
-	const BottomLevelAccelerationStructure& GetBLAS() const;
+	const BottomLevelAccelerationStructure& GetBLAS(uint32_t submesh) const;
     
 protected:
 
@@ -33,7 +35,7 @@ protected:
     Buffer mPositionBuffer;
     Buffer mInterleavedBuffer;
     TArray<SubmeshDescriptor> mSubmeshes;
-	BottomLevelAccelerationStructure mBLAS;
+	TArray<BottomLevelAccelerationStructure> mBLASes;
 };
 
 } // namespace Gleam

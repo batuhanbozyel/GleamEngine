@@ -172,6 +172,18 @@ private:
 
 struct GraphicsPipelineHandle : PipelineHandle
 {
+	GraphicsPipelineHandle()
+		: PipelineHandle{ .data = 0, .type = PipelineType::Graphics }
+	{
+
+	}
+
+	GraphicsPipelineHandle(size_t hash)
+		: PipelineHandle{ .data = hash, .type = PipelineType::Graphics }
+	{
+
+	}
+
 	NO_DISCARD operator GraphicsPipeline() const
 	{
 		return GetPipeline();
@@ -182,6 +194,18 @@ struct GraphicsPipelineHandle : PipelineHandle
 
 struct ComputePipelineHandle : PipelineHandle
 {
+	ComputePipelineHandle()
+		: PipelineHandle{ .data = 0, .type = PipelineType::Compute }
+	{
+
+	}
+
+	ComputePipelineHandle(size_t hash)
+		: PipelineHandle{ .data = hash, .type = PipelineType::Compute }
+	{
+
+	}
+
 	NO_DISCARD operator ComputePipeline() const
 	{
 		return GetPipeline();
@@ -192,6 +216,18 @@ struct ComputePipelineHandle : PipelineHandle
 
 struct RayTracingPipelineHandle : PipelineHandle
 {
+	RayTracingPipelineHandle()
+		: PipelineHandle{ .data = 0, .type = PipelineType::RayTracing }
+	{
+
+	}
+
+	RayTracingPipelineHandle(size_t hash)
+		: PipelineHandle{ .data = hash, .type = PipelineType::RayTracing }
+	{
+
+	}
+
 	NO_DISCARD operator RayTracingPipeline() const
 	{
 		return GetPipeline();

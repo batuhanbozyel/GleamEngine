@@ -43,45 +43,40 @@ AccelerationStructureView RayTracingScene::BuildAccelerationStructure(const Comm
 			{
 				for (uint32_t i = 0; i < batch.numInstances; ++i)
 				{
-					auto mesh = globalMeshes[batch.instanceOffset + i];
-					if (not mesh->GetBLAS().IsValid())
+					const auto& instance = globalMeshes[batch.instanceOffset + i];
+					const auto& submesh = instance.mesh->GetSubmesh(instance.submeshIndex);
+					if (not instance.mesh->GetBLAS(instance.submeshIndex).IsValid())
 					{
 						PIXBeginEvent(commandList, PIX_COLOR(128, 0, 128), "BLAS");
 
-						const auto& submeshes = mesh->GetSubmeshes();
-						auto indexBufferGpuAddress = static_cast<ID3D12Resource*>(mesh->GetIndexBuffer().GetHandle())->GetGPUVirtualAddress();
-						auto positionBufferGpuAddress = static_cast<ID3D12Resource*>(mesh->GetPositionBuffer().GetHandle())->GetGPUVirtualAddress();
+						auto indexBufferGpuAddress = static_cast<ID3D12Resource*>(instance.mesh->GetIndexBuffer().GetHandle())->GetGPUVirtualAddress();
+						auto positionBufferGpuAddress = static_cast<ID3D12Resource*>(instance.mesh->GetPositionBuffer().GetHandle())->GetGPUVirtualAddress();
 
-						TArray<D3D12_RAYTRACING_GEOMETRY_DESC> geometryDescs;
-						geometryDescs.reserve(submeshes.size());
-						for (const auto& submesh : submeshes)
-						{
-							auto& desc = geometryDescs.emplace_back();
-							desc.Type = D3D12_RAYTRACING_GEOMETRY_TYPE_TRIANGLES;
-							desc.Flags = D3D12_RAYTRACING_GEOMETRY_FLAG_OPAQUE;
-							desc.Triangles.IndexBuffer = indexBufferGpuAddress + submesh.firstIndex * sizeof(uint32_t);
-							desc.Triangles.IndexCount = submesh.indexCount;
-							desc.Triangles.IndexFormat = DXGI_FORMAT_R32_UINT;
-							desc.Triangles.VertexFormat = DXGI_FORMAT_R32G32B32_FLOAT;
-							desc.Triangles.VertexCount = submesh.vertexCount;
-							desc.Triangles.VertexBuffer.StartAddress = positionBufferGpuAddress + submesh.baseVertex * sizeof(float3);
-							desc.Triangles.VertexBuffer.StrideInBytes = sizeof(float3);
-							desc.Triangles.Transform3x4 = 0;
-						}
+						D3D12_RAYTRACING_GEOMETRY_DESC geometryDesc = {};
+						geometryDesc.Type = D3D12_RAYTRACING_GEOMETRY_TYPE_TRIANGLES;
+						geometryDesc.Flags = D3D12_RAYTRACING_GEOMETRY_FLAG_OPAQUE;
+						geometryDesc.Triangles.IndexBuffer = indexBufferGpuAddress + submesh.firstIndex * sizeof(uint32_t);
+						geometryDesc.Triangles.IndexCount = submesh.indexCount;
+						geometryDesc.Triangles.IndexFormat = DXGI_FORMAT_R32_UINT;
+						geometryDesc.Triangles.VertexFormat = DXGI_FORMAT_R32G32B32_FLOAT;
+						geometryDesc.Triangles.VertexCount = submesh.vertexCount;
+						geometryDesc.Triangles.VertexBuffer.StartAddress = positionBufferGpuAddress + submesh.baseVertex * sizeof(float3);
+						geometryDesc.Triangles.VertexBuffer.StrideInBytes = sizeof(float3);
+						geometryDesc.Triangles.Transform3x4 = 0;
 
 						D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS bottomLevelInputs = {};
 						bottomLevelInputs.Flags = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE;
 						bottomLevelInputs.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL;
 						bottomLevelInputs.DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY;
-						bottomLevelInputs.NumDescs = (UINT)geometryDescs.size();
-						bottomLevelInputs.pGeometryDescs = geometryDescs.data();
+						bottomLevelInputs.NumDescs = 1;
+						bottomLevelInputs.pGeometryDescs = &geometryDesc;
 
 						D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO prebuildInfo = {};
 						static_cast<ID3D12Device10*>(mDevice->GetHandle())->GetRaytracingAccelerationStructurePrebuildInfo(&bottomLevelInputs, &prebuildInfo);
 
 						static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>(); // Use persistent allocator for BLAS
-						Buffer scratchBuffer = mDevice->CreateBuffer(mAllocator, BufferDescriptor{ .name = mesh->GetName() + ": BLAS Scratch Buffer", .memoryType = MemoryType::GPU, .size = prebuildInfo.ScratchDataSizeInBytes });
-						BottomLevelAccelerationStructure blas = mDevice->CreateBLAS(BLASDescriptor{ .name = mesh->GetName() + ": BLAS", .size = prebuildInfo.ResultDataMaxSizeInBytes });
+						Buffer scratchBuffer = mDevice->CreateBuffer(mAllocator, BufferDescriptor{ .name = instance.mesh->GetName() + ": BLAS Scratch Buffer", .memoryType = MemoryType::GPU, .size = prebuildInfo.ScratchDataSizeInBytes });
+						BottomLevelAccelerationStructure blas = mDevice->CreateBLAS(BLASDescriptor{ .name = instance.mesh->GetName() + ": BLAS", .size = prebuildInfo.ResultDataMaxSizeInBytes });
 
 						{
 							D3D12_BUFFER_BARRIER bufferBarrier[2] = {};
@@ -140,7 +135,7 @@ AccelerationStructureView RayTracingScene::BuildAccelerationStructure(const Comm
 						}
 
 						mDevice->Dispose(mAllocator, scratchBuffer);
-						mesh->mBLAS = blas;
+						instance.mesh->mBLASes[instance.submeshIndex] = blas;
 
 						PIXEndEvent(commandList);
 					}
@@ -185,7 +180,7 @@ AccelerationStructureView RayTracingScene::BuildAccelerationStructure(const Comm
 					instanceDesc.InstanceID = batch.instanceOffset + i;
 					instanceDesc.InstanceMask = 1;
 					instanceDesc.InstanceContributionToHitGroupIndex = mHitGroupRegistry.GetIndex(materialHash);
-					instanceDesc.AccelerationStructure = static_cast<ID3D12Resource*>(mesh->GetBLAS().GetHandle())->GetGPUVirtualAddress();
+					instanceDesc.AccelerationStructure = static_cast<ID3D12Resource*>(instance.mesh->GetBLAS(instance.submeshIndex).GetHandle())->GetGPUVirtualAddress();
 
 					++currentInstance;
 				}
