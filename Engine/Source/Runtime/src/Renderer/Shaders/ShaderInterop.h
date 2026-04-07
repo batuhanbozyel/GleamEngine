@@ -12,6 +12,14 @@ using float4x4 = Gleam::Float4x4;
 using float2 = Gleam::Float2;
 using float3 = Gleam::Float3;
 using float4 = Gleam::Float4;
+
+using int2 = Gleam::Int2;
+using int3 = Gleam::Int3;
+using int4 = Gleam::Int4;
+
+using uint2 = Gleam::UInt2;
+using uint3 = Gleam::UInt3;
+using uint4 = Gleam::UInt4;
 #endif
 
 #define PUSH_CONSTANT_SIZE 128

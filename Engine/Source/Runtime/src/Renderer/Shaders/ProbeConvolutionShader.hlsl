@@ -77,9 +77,6 @@ void specularPrefilterConvolutionShader(uint3 dispatchThreadId : SV_DispatchThre
 		float NdotL = dot(N, L);
 		if (NdotL > 0.0)
 		{
-			float LdotH = saturate(dot(L, H));
-			float VdotH = saturate(dot(V, H));
-			
 			// Since we pre-integrate the result for normal direction,
 			// N == V and then NdotH == LdotH. This is why the BRDF pdf
 			// can be simplifed from:

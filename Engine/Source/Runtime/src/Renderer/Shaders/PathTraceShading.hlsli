@@ -19,7 +19,9 @@ void ClosestHit(inout Gleam::RayPayload payload : SV_RayPayload, BuiltInTriangle
 {
     Gleam::MeshInstanceData instance = LoadInstanceData(InstanceID());
     MeshVertexOut vertex = InterpolateVertexAttributes(instance, PrimitiveIndex(), attribs.barycentrics);
+    
     Gleam::SurfaceOutput surface = surf(vertex);
+    surface.roughness = max(surface.roughness, 0.04);
 
     float3 viewDir = -WorldRayDirection();
     float3x3 TBN   = transpose(float3x3(vertex.tangent, vertex.bitangent, vertex.normal));
@@ -32,17 +34,21 @@ void ClosestHit(inout Gleam::RayPayload payload : SV_RayPayload, BuiltInTriangle
     payload.radiance += payload.throughput * EvaluateDirectLight(surface, light, viewDir, worldNormal);
 	payload.radiance += payload.throughput * surface.emission.rgb;
     
-    float NdotV = abs(dot(worldNormal, viewDir)) + FLT_EPSILON;
+    float NdotV = dot(worldNormal, viewDir);
+    if (NdotV <= 0.0)
+    {
+        return;
+    }
     
     BRDFType brdfType;
-    if (surface.metallic == 1.0 && surface.roughness < PERFECT_MIRROR_ROUGHNESS)
+    if (surface.metallic == 1.0 && surface.roughness <= PERFECT_MIRROR_ROUGHNESS)
     {
         brdfType = BRDFType::Specular;
     }
     else
     {
         float pSpec = SpecularLobeProbability(surface, NdotV);
-        if (randFloat(payload.seed) < pSpec)
+        if (rand(payload.seed) < pSpec)
         {
             brdfType = BRDFType::Specular;
             payload.throughput /= pSpec;
@@ -55,20 +61,20 @@ void ClosestHit(inout Gleam::RayPayload payload : SV_RayPayload, BuiltInTriangle
     }
 
     float3 nextDir;
-    float2 xi = randFloat2(payload.seed);
+    float2 xi = rand2(payload.seed);
     if (brdfType == BRDFType::Specular)
     {
         float partialPdf;
         float3 H = ImportanceSampleGGX(xi, worldNormal, surface.roughness, partialPdf);
         nextDir = reflect(-viewDir, H);
         
-        float NdotL = saturate(dot(worldNormal, nextDir));
+        float NdotL = dot(worldNormal, nextDir);
 		if (NdotL <= 0.0)
 		{
 			return;
 		}
         
-        float NdotH = saturate(dot(worldNormal, H));
+        float NdotH = dot(worldNormal, H);
         float VdotH = saturate(dot(viewDir, H));
         float LdotH = VdotH; // symmetric: LdotH == VdotH for reflect()
 
@@ -94,14 +100,14 @@ void ClosestHit(inout Gleam::RayPayload payload : SV_RayPayload, BuiltInTriangle
 		float pdf; // The pdf is not used because it's canceled with other terms (The 1/PI from diffuse BRDF and the NdotL from Lambert's law).
         nextDir = CosineSampleHemisphere(xi, worldNormal, pdf);
 
-        float NdotL = saturate(dot(worldNormal, nextDir));
+        float NdotL = dot(worldNormal, nextDir);
         if (NdotL <= 0.0)
         {
             return;
         }
 
         float3 H = normalize(viewDir + nextDir);
-        float LdotH = saturate(dot(nextDir, H));
+        float LdotH = dot(nextDir, H);
         float Fd = Fr_DisneyDiffuse(NdotV, NdotL, LdotH, surface.roughness);
         
         // weight = Fr_DisneyDiffuse * Fd_Lambert() * NdotL / pdf
@@ -114,10 +120,15 @@ void ClosestHit(inout Gleam::RayPayload payload : SV_RayPayload, BuiltInTriangle
 #endif
 	}
     
+    if (all(payload.throughput == 0.0))
+    {
+        return;
+    }
+    
 	if (payload.depth >= 5)
 	{
 		float p = max(payload.throughput.r, max(payload.throughput.g, payload.throughput.b));
-		if (randFloat(payload.seed) > p)
+		if (rand(payload.seed) > p)
 		{
 			return;
 		}

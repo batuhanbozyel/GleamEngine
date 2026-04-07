@@ -17,9 +17,10 @@ enum class BRDFType
 	Diffuse
 };
 
-uint initSeed(uint2 pixel, uint frameIndex)
+// Seed for PCG uses a sequential sample number in 4th channel, which increments on every RNG call and starts from 0
+PCGSeed initSeed(uint2 pixel, uint frameIndex)
 {
-	return pcgHash(pixel.x ^ pcgHash(pixel.y ^ pcgHash(frameIndex)));
+    return PCGSeed(pixel, frameIndex, 0);
 }
 
 // https://www.realtimerendering.com/raytracinggems/unofficial_RayTracingGems_v1.2.pdf

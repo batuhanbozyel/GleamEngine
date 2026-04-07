@@ -22,6 +22,7 @@ float4 main(MeshVertexOut IN) : SV_TARGET
 {
 	Gleam::MeshInstanceData instance = LoadInstanceData(meshShadingConstants.instanceID);
     Gleam::SurfaceOutput surface = surf(IN);
+    surface.roughness = max(surface.roughness, 0.04);
     
 	float3 viewDir = normalize(camera.position - IN.worldPosition);
 	float3x3 TBN = transpose(float3x3(IN.tangent, IN.bitangent, IN.normal));

@@ -121,7 +121,7 @@ float3 ImportanceSampleGGX(float2 u, float3 N, float perceptualRoughness, out fl
     float theta = TWO_PI * u.x;
 	float cosPhi2 = (1.0 - u.y) / (1.0 + (a2 - 1.0) * u.y);
     float cosPhi = sqrt(cosPhi2);
-    float sinPhi = sqrt(1.0 - cosPhi2);
+    float sinPhi = sqrt(max(0.0, 1.0 - cosPhi2));
 	float3 H = float3(cos(theta) * sinPhi, cosPhi, sin(theta) * sinPhi);
 	
 	float d = (cosPhi * a2 - cosPhi) * cosPhi + 1.0;

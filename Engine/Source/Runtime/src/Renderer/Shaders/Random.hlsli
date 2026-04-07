@@ -1,22 +1,40 @@
 #ifndef RANDOM_HLSL
 #define RANDOM_HLSL
 
-uint pcgHash(uint v)
+#include "Common.hlsli"
+
+#define PCGSeed uint4
+
+// PCG random numbers generator
+// Source: "Hash Functions for GPU Rendering" by Jarzynski & Olano
+PCGSeed pcg4d(PCGSeed v)
 {
-	uint state = v * 747796405u + 2891336453u;
-	uint word = ((state >> ((state >> 28u) + 4u)) ^ state) * 277803737u;
-	return (word >> 22u) ^ word;
+    v = v * 1664525u + 1013904223u;
+
+    v.x += v.y * v.w;
+    v.y += v.z * v.x;
+    v.z += v.x * v.y;
+    v.w += v.y * v.z;
+
+    v = v ^ (v >> 16u);
+
+    v.x += v.y * v.w;
+    v.y += v.z * v.x;
+    v.z += v.x * v.y;
+    v.w += v.y * v.z;
+
+    return v;
 }
 
-float randFloat(inout uint seed)
+float rand(inout PCGSeed seed)
 {
-	seed = pcgHash(seed);
-	return float(seed) / float(0xFFFFFFFFu);
+    seed.w++;
+    return UIntToFloat(pcg4d(seed).x);
 }
 
-float2 randFloat2(inout uint seed)
+float2 rand2(inout PCGSeed seed)
 {
-	return float2(randFloat(seed), randFloat(seed));
+	return float2(rand(seed), rand(seed));
 }
 
 #endif // RANDOM_HLSL

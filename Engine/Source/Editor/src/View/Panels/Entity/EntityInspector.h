@@ -24,8 +24,10 @@ private:
 
 	uint32_t mSelectedSingletonID = 0;
 
+	Gleam::Float3 mEntityEulerRotation = {};
+
 	Gleam::EntityHandle mSelectedEntity = Gleam::InvalidEntity;
-    
+
 };
 
 } // namespace GEditor

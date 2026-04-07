@@ -18,12 +18,12 @@ float3 IntegrateDFG(in float NdotV, in float perceptualRoughness)
         float3 H = ImportanceSampleGGX(Xi, N, perceptualRoughness, pdf);
 		float3 L = reflect(-V, H);
 
-        float NdotL = saturate(L.y);
-		float NdotH = saturate(H.y);
-        float VdotH = saturate(dot(V, H));
-        
+        float NdotL = L.y;
         if (NdotL > 0.0)
         {
+            float NdotH = H.y;
+            float VdotH = saturate(dot(V, H));
+            
             float G = G_SmithGGXCorrelated(NdotL, NdotV, roughness);
 			float G_Vis = G * VdotH / (NdotH * NdotV);
             
@@ -55,7 +55,7 @@ float IntegrateDiffuse(in float NdotV, in float perceptualRoughness)
         if (NdotL > 0.0)
         {
             float3 H = normalize(V + L);
-            float LdotH = saturate(dot(L, H));
+            float LdotH = dot(L, H);
             irradiance += Fr_DisneyDiffuse(NdotV, NdotL, LdotH, perceptualRoughness);
         }
     }

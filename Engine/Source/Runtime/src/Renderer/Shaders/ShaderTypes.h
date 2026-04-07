@@ -176,10 +176,10 @@ struct SkyAtmosphereRenderConstants
 
 struct RayPayload
 {
+	uint4 seed;
 	float3 radiance;
 	float3 throughput;
 	uint32_t depth;
-	uint32_t seed;
 };
 
 struct PathTracerConstants
