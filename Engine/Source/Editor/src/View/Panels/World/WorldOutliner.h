@@ -24,7 +24,7 @@ private:
 
 	void DrawSingletonComponents();
 
-	Gleam::World* mEditWorld;
+	Gleam::World* mEditWorld = nullptr;
 
 	uint32_t mSelectedSingletonID = 0;
     

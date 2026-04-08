@@ -150,7 +150,7 @@ public:
 	template<class T, class...Args>
 	T* emplace_back(Args&&... args) noexcept
 	{
-		uint32_t hash = entt::type_hash<T>().value();
+		constexpr uint32_t hash = entt::type_hash<T>().value();
 		auto it = eastl::find_if(mData.begin(), mData.end(), [hash](const auto& element)
 		{
 			return element.hash == hash;
@@ -172,7 +172,7 @@ public:
 	template<class T>
 	size_t erase()
 	{
-		uint32_t hash = entt::type_hash<T>().value();
+		constexpr uint32_t hash = entt::type_hash<T>().value();
 		auto it = eastl::find_if(mData.begin(), mData.end(), [hash](const auto& element)
 		{
 			return element.hash == hash;
@@ -188,7 +188,7 @@ public:
 	template<class T>
 	T* get() const
 	{
-		uint32_t hash = entt::type_hash<T>().value();
+		constexpr uint32_t hash = entt::type_hash<T>().value();
 		auto it = eastl::find_if(mData.begin(), mData.end(), [hash](const auto& element)
 		{
 			return element.hash == hash;
@@ -203,7 +203,7 @@ public:
 	template<class T>
 	bool contains() const
 	{
-		uint32_t hash = entt::type_hash<T>().value();
+		constexpr uint32_t hash = entt::type_hash<T>().value();
 		auto it = eastl::find_if(mData.begin(), mData.end(), [hash](const auto& element)
 		{
 			return element.hash == hash;

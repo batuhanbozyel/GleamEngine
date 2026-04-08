@@ -20,7 +20,7 @@ public:
     
 private:
 
-	Gleam::World* mWorld;
+	Gleam::World* mWorld = nullptr;
 
 };
 

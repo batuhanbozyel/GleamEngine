@@ -42,11 +42,11 @@ private:
     
     EditorCameraController* mCameraController = nullptr;
 
-	Gleam::EntityHandle mCamera;
+	Gleam::EntityHandle mCamera = Gleam::InvalidEntity;
     
-    Gleam::Size mViewportSize;
+    Gleam::Size mViewportSize = Gleam::Size::zero;
     
-    Gleam::World* mEditWorld;
+    Gleam::World* mEditWorld = nullptr;
     
 };
 
