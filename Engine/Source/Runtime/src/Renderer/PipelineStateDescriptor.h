@@ -182,7 +182,7 @@ GSTRUCT(RayTracingPipelineStateDescriptor, "7DE7283B-C509-4B81-8B79-9D6AE400D78A
 	TString rayGenerationEntry{};
 
 	GFIELD("9184222A-F745-4666-983E-0899A044FD3B", Serializable)
-	TString missEntry{};
+	TArray<TString> missEntries{};
 
 	GFIELD("5FE237D1-99D3-4C8A-AD20-8F528B7BF0B4", Serializable)
 	TArray<HitGroupDescriptor> hitGroups{};
@@ -300,7 +300,12 @@ struct std::hash<Gleam::RayTracingPipelineStateDescriptor>
     {
 		std::size_t hash = 0;
 		Gleam::hash_combine(hash, descriptor.rayGenerationEntry);
-		Gleam::hash_combine(hash, descriptor.missEntry);
+
+		for (const auto& missEntry : descriptor.missEntries)
+		{
+			Gleam::hash_combine(hash, missEntry);
+		}
+
 		for (const auto& hitGroup : descriptor.hitGroups)
 		{
 			Gleam::hash_combine(hash, hitGroup);

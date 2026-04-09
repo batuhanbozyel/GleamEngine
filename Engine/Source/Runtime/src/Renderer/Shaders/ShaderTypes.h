@@ -174,12 +174,25 @@ struct SkyAtmosphereRenderConstants
 	float pad1;
 };
 
+enum class RayType
+{
+	PrimaryRay = 0,
+	ShadowRay = 1,
+	COUNT = 2
+};
+typedef uint32_t RayTypeFlagBits;
+
 struct RayPayload
 {
 	uint4 seed;
 	float3 radiance;
 	float3 throughput;
 	uint32_t depth;
+};
+
+struct ShadowPayload
+{
+	float visibility;
 };
 
 struct PathTracerConstants

@@ -12,6 +12,8 @@ class Material;
 
 struct MaterialDescriptor;
 
+enum class RayType;
+
 class HitGroupRegistry
 {
 public:
@@ -53,6 +55,29 @@ private:
 	TopLevelAccelerationStructure mTLAS;
 	HitGroupRegistry mHitGroupRegistry;
 	
+};
+
+class HitGroupTable
+{
+public:
+
+	HitGroupTable(const RayTracingScene* rtScene);
+
+	HitGroupTable& AddPrimaryRay(uint32_t registryHash, HitGroupDescriptor&& descriptor);
+
+	HitGroupTable& AddShadowRay(uint32_t registryHash, HitGroupDescriptor&& descriptor);
+
+	bool Contains(uint32_t registryHash, RayType rayType) const;
+
+	const TArray<HitGroupDescriptor>& GetDescriptors() const;
+
+private:
+
+	void AddRay(uint32_t registryHash, HitGroupDescriptor&& descriptor, RayType rayType);
+
+	Ref<const HitGroupRegistry> mRegistry;
+	TArray<HitGroupDescriptor> mHitGroups;
+
 };
 	
 } // namespace Gleam

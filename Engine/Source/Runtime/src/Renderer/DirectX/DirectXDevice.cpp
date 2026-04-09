@@ -609,7 +609,7 @@ RayTracingPipeline GraphicsDevice::CompileRayTracingPipeline(const RayTracingPip
 	RayTracingPipeline pipeline(pipelineDesc);
 
 	TArray<D3D12_DXIL_LIBRARY_DESC> shaders;
-	shaders.reserve(pipelineDesc.hitGroups.size() * 3 + 2);
+	shaders.reserve(pipelineDesc.hitGroups.size() * 3 + pipelineDesc.missEntries.size() + 1 /* ray generation */);
 	{
 		D3D12_DXIL_LIBRARY_DESC library = {};
 		auto shader = CreateShader(pipelineDesc.rayGenerationEntry, ShaderStage::RayGeneration);
@@ -617,11 +617,15 @@ RayTracingPipeline GraphicsDevice::CompileRayTracingPipeline(const RayTracingPip
 		shaders.emplace_back(library);
 	}
 
+	for (const auto& missEntry : pipelineDesc.missEntries)
 	{
-		D3D12_DXIL_LIBRARY_DESC library = {};
-		auto shader = CreateShader(pipelineDesc.missEntry, ShaderStage::Miss);
-		library.DXILLibrary = *static_cast<D3D12_SHADER_BYTECODE*>(shader.GetHandle());
-		shaders.emplace_back(library);
+		if (not missEntry.empty())
+		{
+			D3D12_DXIL_LIBRARY_DESC library = {};
+			auto shader = CreateShader(missEntry, ShaderStage::Miss);
+			library.DXILLibrary = *static_cast<D3D12_SHADER_BYTECODE*>(shader.GetHandle());
+			shaders.emplace_back(library);
+		}
 	}
 
 	TArray<D3D12_HIT_GROUP_DESC> hitGroups;
@@ -631,6 +635,11 @@ RayTracingPipeline GraphicsDevice::CompileRayTracingPipeline(const RayTracingPip
 	hitShaderNames.reserve(pipelineDesc.hitGroups.size() * 4);
 	for (const auto& hitGroup : pipelineDesc.hitGroups)
 	{
+		if (hitGroup.name.empty())
+		{
+			continue;
+		}
+
 		TWString& hitGroupName = hitShaderNames.emplace_back(TWString(hitGroup.name));
 
 		D3D12_HIT_GROUP_DESC d3d12HitGroup = {};
@@ -1096,9 +1105,9 @@ ShaderBindingTable DirectXDevice::CreateShaderBindingTable(const RayTracingPipel
 
 	constexpr uint32_t shaderRecordSize = Math::AlignUp(D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES, D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT);
 	constexpr uint32_t rayGenTableSize = Math::AlignUp(shaderRecordSize, (UINT)D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT);
-	constexpr uint32_t missTableSize = Math::AlignUp(shaderRecordSize, (UINT)D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT);
 
 	const auto& pipelineDesc = pipeline.GetDescriptor();
+	uint32_t missTableSize = Math::AlignUp(static_cast<uint32_t>(pipelineDesc.missEntries.size()) * shaderRecordSize, (UINT)D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT);
 	uint32_t hitGroupTableSize = Math::AlignUp(static_cast<uint32_t>(pipelineDesc.hitGroups.size()) * shaderRecordSize, (UINT)D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT);
 	uint32_t totalSize = rayGenTableSize + missTableSize + hitGroupTableSize;
 
@@ -1133,22 +1142,30 @@ ShaderBindingTable DirectXDevice::CreateShaderBindingTable(const RayTracingPipel
 	}
 	offset += rayGenTableSize;
 
-	// Miss record
+	// Miss records
+	for (const auto& missEntry : pipelineDesc.missEntries)
 	{
-		TWString entryPoint(pipelineDesc.missEntry);
-		void* shaderId = stateObjectProperties->GetShaderIdentifier(entryPoint.c_str());
-		GLEAM_ASSERT(shaderId, "DirectX: Failed to get miss shader identifier.");
-		memcpy(OffsetPointer(sbtPtr, offset), shaderId, D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+		if (not missEntry.empty())
+		{
+			TWString entryPoint(missEntry);
+			void* shaderId = stateObjectProperties->GetShaderIdentifier(entryPoint.c_str());
+			GLEAM_ASSERT(shaderId, "DirectX: Failed to get miss shader identifier for: {0}", missEntry);
+			memcpy(OffsetPointer(sbtPtr, offset), shaderId, D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+		}
+		offset += shaderRecordSize;
 	}
-	offset += missTableSize;
+	offset = rayGenTableSize + missTableSize;
 
 	// Hit group records
 	for (const auto& hitGroup : pipelineDesc.hitGroups)
 	{
-		TWString hitGroupName(hitGroup.name);
-		void* shaderId = stateObjectProperties->GetShaderIdentifier(hitGroupName.c_str());
-		GLEAM_ASSERT(shaderId, "DirectX: Failed to get hit group shader identifier for: {0}", hitGroup.name);
-		memcpy(OffsetPointer(sbtPtr, offset), shaderId, D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+		if (not hitGroup.name.empty())
+		{
+			TWString hitGroupName(hitGroup.name);
+			void* shaderId = stateObjectProperties->GetShaderIdentifier(hitGroupName.c_str());
+			GLEAM_ASSERT(shaderId, "DirectX: Failed to get hit group shader identifier for: {0}", hitGroup.name);
+			memcpy(OffsetPointer(sbtPtr, offset), shaderId, D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+		}
 		offset += shaderRecordSize;
 	}
 

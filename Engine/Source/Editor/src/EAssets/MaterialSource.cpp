@@ -255,9 +255,35 @@ bool MaterialSource::Import(const Gleam::Path& path, const ImportSettings& setti
 					Gleam::Filesystem::Remove(generatedPath);
 					return false;
 				}
-
-				Gleam::Filesystem::Remove(generatedPath);
 			}
+
+			// Shadow any hit
+			{
+				Gleam::Path dxilShader = Gleam::Globals::BuiltinAssetsDirectory / "Shaders" / (descriptor.surfaceShader + "ShadowAnyHit");
+				dxilShader.Concat(".dxil");
+				if (Gleam::Filesystem::Exists(dxilShader))
+				{
+					Gleam::Filesystem::Remove(dxilShader);
+				}
+
+				Gleam::TStringStream cmd;
+				cmd << PYTHON_INTERPRETER << " ";
+				cmd << Gleam::Globals::StartupDirectory / "Tools/CompileShaders.py";
+				cmd << " -f " << generatedPath;
+				cmd << " -i " << "PathTraceShading.hlsli";
+				cmd << " --entry ShadowAnyHit=" << descriptor.surfaceShader << "ShadowAnyHit";
+			#ifdef GDEBUG
+				cmd << " --debug";
+			#endif
+
+				if (ExecuteCommand(cmd.str()) != 0)
+				{
+					Gleam::Filesystem::Remove(generatedPath);
+					return false;
+				}
+			}
+
+			Gleam::Filesystem::Remove(generatedPath);
 		}
 	}
     

@@ -9,6 +9,8 @@ class Material;
 class PathTracer : public IRenderer
 {
 public:
+
+	PathTracer();
     
     virtual void OnCreate(RenderContext& context) override;
 
@@ -28,11 +30,11 @@ private:
 	} mState;
 
 	bool mPipelineDirty = true;
-	TArray<HitGroupDescriptor> mHitGroups;
+	HitGroupTable mHitGroupTable;
 
 	Texture mRenderTarget;
 	uint32_t mFrameIndex = 0;
-	uint32_t mMaxRayRecursionDepth = 5;
+	uint32_t mMaxRayRecursionDepth = 10;
 	GraphicsDevice* mDevice = nullptr;
 	GPUAllocator* mAllocator = nullptr;
 	RayTracingPipelineHandle mPathTracingPipeline;

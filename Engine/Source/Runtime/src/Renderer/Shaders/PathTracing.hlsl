@@ -29,9 +29,9 @@ void pathTraceRayGen()
         accelerationStructure,
         RAY_FLAG_CULL_BACK_FACING_TRIANGLES,
         0xFF,
+        (uint)Gleam::RayType::PrimaryRay,
         0,
-        0,
-        0,
+        (uint)Gleam::RayType::PrimaryRay,
         ray,
         payload
     );
@@ -61,4 +61,10 @@ void pathTraceMiss(inout Gleam::RayPayload payload : SV_RayPayload)
     {
         payload.radiance += payload.throughput * atmosphereUniforms.sunIlluminance;
     }
+}
+
+[shader("miss")]
+void pathTraceShadowMiss(inout Gleam::ShadowPayload payload : SV_RayPayload)
+{
+    payload.visibility = 1.0;
 }

@@ -14,6 +14,14 @@
 
 using namespace Gleam;
 
+PathTracer::PathTracer()
+	: mHitGroupTable(nullptr)
+{
+	static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
+	auto rayTracingScene = renderSystem->GetRayTracingScene();
+	mHitGroupTable = HitGroupTable(rayTracingScene);
+}
+
 void PathTracer::OnCreate(RenderContext& context)
 {
 	mDevice = context.device;
@@ -62,11 +70,11 @@ void PathTracer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blac
 	{
 		RayTracingPipelineStateDescriptor pipelineState;
 		pipelineState.rayGenerationEntry = "pathTraceRayGen";
-		pipelineState.missEntry = "pathTraceMiss";
-		pipelineState.maxRecursionDepth = mMaxRayRecursionDepth + 1;
+		pipelineState.missEntries = {"pathTraceMiss", "pathTraceShadowMiss"};
+		pipelineState.maxRecursionDepth = mMaxRayRecursionDepth + 2; // +1 for shadow rays, +1 for ray generation
 		pipelineState.maxPayloadSize = sizeof(RayPayload);
 		pipelineState.maxAttributeSize = sizeof(float2); // float2 barycentrics
-		pipelineState.hitGroups = mHitGroups;
+		pipelineState.hitGroups = mHitGroupTable.GetDescriptors();
 
 		auto handle = mDevice->CreateRayTracingPipeline(pipelineState);
 		if (handle.IsValid())
@@ -113,25 +121,18 @@ void PathTracer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blac
 
 void PathTracer::RegisterShadingPipeline(const Material* material)
 {
-	static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
-	auto rayTracingScene = renderSystem->GetRayTracingScene();
-
 	const auto& materialDesc = material->GetDescriptor();
 	auto hash = material->GetSurfaceShaderHash();
 
-	const auto& registry = rayTracingScene->GetRegistry();
-	uint32_t hitGroupIndex = registry.GetIndex(hash);
-	GLEAM_ASSERT(hitGroupIndex != ~0u, "Material is not registered to RayTracingScene.");
-
-	if (hitGroupIndex >= (uint32_t)mHitGroups.size())
+	if (not mHitGroupTable.Contains(hash, RayType::PrimaryRay))
 	{
-		mHitGroups.resize(hitGroupIndex + 1);
+		mHitGroupTable.AddPrimaryRay(hash, { .name = materialDesc.surfaceShader, .closestHitEntry = materialDesc.surfaceShader + "ClosestHit", .anyHitEntry = materialDesc.surfaceShader + "AnyHit" });
+		mPipelineDirty = true;
+	}
 
-		auto& hitGroup = mHitGroups[hitGroupIndex];
-		hitGroup.name = materialDesc.surfaceShader;
-		hitGroup.closestHitEntry = materialDesc.surfaceShader + "ClosestHit";
-		hitGroup.anyHitEntry = materialDesc.surfaceShader + "AnyHit";
-
+	if (not mHitGroupTable.Contains(hash, RayType::ShadowRay))
+	{
+		mHitGroupTable.AddShadowRay(hash, { .name = materialDesc.surfaceShader, .closestHitEntry = {}, .anyHitEntry = materialDesc.surfaceShader + "ShadowAnyHit" });
 		mPipelineDirty = true;
 	}
 }
