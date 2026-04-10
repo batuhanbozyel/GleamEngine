@@ -348,13 +348,13 @@ RawMesh ProcessAttributes(const cgltf_primitive& primitive, const MeshSource::Im
             cgltf_accessor_unpack_floats(attribute.data, (cgltf_float*)mesh.texCoords.data(), mesh.texCoords.size() * 2);
         }
     }
+	MeshTools::RemoveDegenerateFaces(mesh);
 	
 	if (mesh.normals.empty())
 	{
 		MeshTools::ComputeSmoothNormals(mesh);
 	}
 
-	MeshTools::RemoveDegenerateFaces(mesh);
 	if (mesh.tangents.empty())
 	{
 		if (mesh.texCoords.empty())
@@ -366,6 +366,7 @@ RawMesh ProcessAttributes(const cgltf_primitive& primitive, const MeshSource::Im
 			MeshTools::ComputeTangents(mesh);
 		}
 	}
+	MeshTools::ValidateTangents(mesh);
 
 	if (mesh.texCoords.empty())
 	{

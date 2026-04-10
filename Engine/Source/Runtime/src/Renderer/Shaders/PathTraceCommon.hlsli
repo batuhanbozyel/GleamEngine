@@ -86,12 +86,12 @@ MeshVertexOut InterpolateVertexAttributes(Gleam::MeshInstanceData instance, uint
     float3 tangentXYZ = b.x * v0.tangent.xyz + b.y * v1.tangent.xyz + b.z * v2.tangent.xyz;
     float2 uv         = b.x * v0.texCoord    + b.y * v1.texCoord    + b.z * v2.texCoord;
     float  tangentW   = v0.tangent.w;
-
-    float4 worldPosition = mul(instance.transform, float4(position, 1.0));
-
+    
+    
+    
     MeshVertexOut OUT;
-	OUT.position      = mul(camera.viewProjectionMatrix, worldPosition);
-	OUT.worldPosition = worldPosition.xyz;
+    OUT.worldPosition = WorldRayOrigin() + WorldRayDirection() * RayTCurrent();
+	OUT.position      = mul(camera.viewProjectionMatrix, float4(OUT.worldPosition, 1.0));
     OUT.normal        = normalize(mul(instance.transform, float4(normal, 0.0f)).xyz);
     OUT.tangent       = normalize(mul(instance.transform, float4(tangentXYZ, 0.0f)).xyz);
     OUT.bitangent     = normalize(cross(OUT.normal, OUT.tangent)) * tangentW;

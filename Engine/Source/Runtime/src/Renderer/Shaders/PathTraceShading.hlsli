@@ -28,6 +28,12 @@ void ClosestHit(inout Gleam::RayPayload payload : SV_RayPayload, BuiltInTriangle
     float3 worldNormal = normalize(mul(TBN, surface.normal));
     float3 newOrigin = OffsetRayAlongNormal(vertex.worldPosition, vertex.normal);
     
+    float NdotV = dot(worldNormal, viewDir);
+    if (NdotV <= 0.0)
+    {
+        return;
+    }
+    
     DirectLight light;
     light.direction   = atmosphereUniforms.sunDirection;
     light.illuminance = GetSunLuminance(GetSkyWorldPosition(vertex.worldPosition), atmosphereUniforms.sunDirection);
@@ -59,12 +65,6 @@ void ClosestHit(inout Gleam::RayPayload payload : SV_RayPayload, BuiltInTriangle
     
     payload.radiance += payload.throughput * EvaluateDirectLight(surface, light, viewDir, worldNormal) * shadowPayload.visibility;
 	payload.radiance += payload.throughput * surface.emission.rgb;
-    
-    float NdotV = dot(worldNormal, viewDir);
-    if (NdotV <= 0.0)
-    {
-        return;
-    }
     
     BRDFType brdfType;
     if (surface.metallic == 1.0 && surface.roughness <= PERFECT_MIRROR_ROUGHNESS)
