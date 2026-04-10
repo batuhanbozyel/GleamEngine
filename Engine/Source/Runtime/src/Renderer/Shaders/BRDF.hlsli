@@ -136,6 +136,20 @@ float3 ImportanceSampleGGX(float2 u, float3 N, float perceptualRoughness, out fl
 	return normalize(sampleVec);
 }
 
+float3 UniformSampleCone(float2 u, float3 N, float cosHalfAngle, out float pdf)
+{
+    float cosTheta = 1.0 - u.y * (1.0 - cosHalfAngle);
+    float sinTheta = sqrt(max(0.0, 1.0 - cosTheta * cosTheta));
+    float phi = TWO_PI * u.x;
+
+    float3 tangent;
+    float3 bitangent;
+    GetOrthonormalBasis(N, tangent, bitangent);
+
+    pdf = 1.0 / (TWO_PI * (1.0 - cosHalfAngle));
+    return normalize(tangent * (sinTheta * cos(phi)) + N * cosTheta + bitangent * (sinTheta * sin(phi)));
+}
+
 float PerceptualRoughnessToMipLevel(float perceptualRoughness, int maxMip)
 {
 	return maxMip * perceptualRoughness * (2.0 - perceptualRoughness);

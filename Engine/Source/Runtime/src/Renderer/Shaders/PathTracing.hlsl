@@ -17,7 +17,7 @@ void pathTraceRayGen()
     payload.radiance   = 0.0;
     payload.throughput = 1.0;
     payload.depth      = 0;
-    payload.seed       = initSeed(pixelCoord, pathTraceConstants.frameIndex);
+    payload.seed       = PathTraceInitSeed(pixelCoord, pathTraceConstants.frameIndex);
 
     RayDesc ray;
     ray.Origin    = camera.position;

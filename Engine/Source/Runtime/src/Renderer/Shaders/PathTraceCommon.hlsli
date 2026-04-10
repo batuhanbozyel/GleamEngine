@@ -17,13 +17,20 @@ enum class BRDFType
 	Diffuse
 };
 
-// Seed for PCG uses a sequential sample number in 4th channel, which increments on every RNG call and starts from 0
-PCGSeed initSeed(uint2 pixel, uint frameIndex)
-{
-    return PCGSeed(pixel, frameIndex, 0);
-}
+//#define USE_PCG
+#ifdef USE_PCG
+    #define PathTraceSeed PCGSeed
+    #define PathTraceInitSeed PCGInitSeed
+    #define PathTraceRand PCGRand
+    #define PathTraceRand2 PCGRand2
+#else
+    #define PathTraceSeed SobolSeed
+    #define PathTraceInitSeed SobolInitSeed
+    #define PathTraceRand SobolRand
+    #define PathTraceRand2 SobolRand2
+#endif
 
-// https://www.realtimerendering.com/raytracinggems/unofficial_RayTracingGems_v1.2.pdf
+//https://www.realtimerendering.com/raytracinggems/unofficial_RayTracingGems_v1.2.pdf
 //  6.2.2.4 ADAPTIVE OFFSETTING ALONG THE GEOMETRIC NORMAL
 float3 OffsetRayAlongNormal(const float3 p, const float3 n)
 {

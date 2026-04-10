@@ -34,7 +34,7 @@ private:
 
 	Texture mRenderTarget;
 	uint32_t mFrameIndex = 0;
-	uint32_t mMaxRayRecursionDepth = 10;
+	uint32_t mMaxRayRecursionDepth = 16;
 	GraphicsDevice* mDevice = nullptr;
 	GPUAllocator* mAllocator = nullptr;
 	RayTracingPipelineHandle mPathTracingPipeline;

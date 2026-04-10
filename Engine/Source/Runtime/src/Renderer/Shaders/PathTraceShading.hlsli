@@ -35,9 +35,14 @@ void ClosestHit(inout Gleam::RayPayload payload : SV_RayPayload, BuiltInTriangle
     Gleam::ShadowPayload shadowPayload;
     shadowPayload.visibility = 0.0;
 
+    float shadowConePdf;
+    const float sunHalfAngle = 0.5 * atmosphereUniforms.sunAngularDiameter * (PI / 180.0);
+    const float cosSunHalfAngle = cos(sunHalfAngle);
+    float3 shadowDir = UniformSampleCone(PathTraceRand2(payload.seed), light.direction, cosSunHalfAngle, shadowConePdf);
+
     RayDesc shadowRay;
     shadowRay.Origin = newOrigin;
-    shadowRay.Direction = light.direction;
+    shadowRay.Direction = shadowDir;
     shadowRay.TMin = 1e-3;
     shadowRay.TMax = 1e6;
 
@@ -69,7 +74,7 @@ void ClosestHit(inout Gleam::RayPayload payload : SV_RayPayload, BuiltInTriangle
     else
     {
         float pSpec = SpecularLobeProbability(surface, NdotV);
-        if (rand(payload.seed) < pSpec)
+        if (PathTraceRand(payload.seed) < pSpec)
         {
             brdfType = BRDFType::Specular;
             payload.throughput /= pSpec;
@@ -82,7 +87,7 @@ void ClosestHit(inout Gleam::RayPayload payload : SV_RayPayload, BuiltInTriangle
     }
 
     float3 nextDir;
-    float2 xi = rand2(payload.seed);
+    float2 xi = PathTraceRand2(payload.seed);
     if (brdfType == BRDFType::Specular)
     {
         float partialPdf;
@@ -149,7 +154,7 @@ void ClosestHit(inout Gleam::RayPayload payload : SV_RayPayload, BuiltInTriangle
 	if (payload.depth >= 5)
 	{
 		float p = max(payload.throughput.r, max(payload.throughput.g, payload.throughput.b));
-		if (rand(payload.seed) > p)
+        if (PathTraceRand(payload.seed) > p)
 		{
 			return;
 		}
