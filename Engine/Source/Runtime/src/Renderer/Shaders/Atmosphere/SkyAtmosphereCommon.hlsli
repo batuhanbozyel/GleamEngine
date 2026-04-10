@@ -203,7 +203,7 @@ float GetShadow(float3 P)
 {
 #if SKY_ATMOSPHERE_SHADOWMAP_ENABLED
 	// First evaluate opaque shadow
-	float4 shadowUv = mul(gShadowmapViewProjMat, float4(P + float3(0.0, -atmosphereParams.bottomRadiusm, 0.0), 1.0));
+	float4 shadowUv = mul(gShadowmapViewProjMat, float4(P + float3(0.0, -atmosphereParams.bottomRadius, 0.0), 1.0));
 	//shadowUv /= shadowUv.w;	// not be needed as it is an ortho projection
 	shadowUv.x = shadowUv.x*0.5 + 0.5;
 	shadowUv.y = -shadowUv.y*0.5 + 0.5;
@@ -224,7 +224,16 @@ float ComputeHorizonCos(float viewHeight)
 
 float3 ClampToHorizon(float3 dir, float3 up, float horizonCos)
 {
-    float3 lateral = normalize(dir - dot(dir, up) * up);
+    float3 lateral = dir - dot(dir, up) * up;
+    float lateralLen = length(lateral);
+    if (lateralLen < FLT_EPSILON)
+    {
+        lateral = normalize(cross(up, abs(up.z) < 0.999f ? float3(0, 0, 1) : float3(1, 0, 0)));
+    }
+	else
+    {
+        lateral = lateral / lateralLen;
+    }
     float horizonSin = sqrt(saturate(1.0 - horizonCos * horizonCos));
     return normalize(lateral * horizonSin + up * horizonCos);
 }
@@ -380,20 +389,20 @@ float3 GetSunAndSkyIlluminance(float3 worldPos, float3 worldDir)
 		return 0.0;
 	}
 
-	float3 luminance = GetSunLuminance(skyWorldPos, worldDir);
+    float viewHeight = length(skyWorldPos);
+    float3 upVector = skyWorldPos / viewHeight;
 
-	float viewHeight = length(skyWorldPos);
-	float3 upVector = skyWorldPos / viewHeight;
-
-	float horizonCos = ComputeHorizonCos(viewHeight);
-	float viewCos = dot(worldDir, upVector);
-	if (viewCos < horizonCos)
-	{
-		worldDir = ClampToHorizon(worldDir, upVector, horizonCos);
-	}
-	luminance += GetSkyLuminance(skyWorldPos, worldDir);
-
-	return luminance;
+    float horizonCos = ComputeHorizonCos(viewHeight);
+    float viewCos = dot(worldDir, upVector);
+    if (viewCos < horizonCos)
+    {
+        worldDir = ClampToHorizon(worldDir, upVector, horizonCos);
+    }
+	
+    float3 illuminance = 0.0;
+    illuminance += GetSunLuminance(skyWorldPos, worldDir);
+	illuminance += GetSkyLuminance(skyWorldPos, worldDir);
+	return illuminance;
 }
 
 #endif // SKY_ATMOSPHERE_COMMON_HLSL

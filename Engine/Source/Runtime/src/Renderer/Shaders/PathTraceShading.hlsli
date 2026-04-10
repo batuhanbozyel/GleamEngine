@@ -146,7 +146,7 @@ void ClosestHit(inout Gleam::RayPayload payload : SV_RayPayload, BuiltInTriangle
 #endif
 	}
     
-    if (all(payload.throughput == 0.0))
+    if (all(payload.throughput < FLT_EPSILON))
     {
         return;
     }
@@ -168,7 +168,6 @@ void ClosestHit(inout Gleam::RayPayload payload : SV_RayPayload, BuiltInTriangle
 		ray.Direction = nextDir;
 		ray.TMin = 1e-3;
 		ray.TMax = 1e6;
-		payload.depth += 1;
     
 		Gleam::RayPayload reflection = payload;
 		reflection.depth += 1;

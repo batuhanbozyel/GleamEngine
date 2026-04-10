@@ -100,7 +100,7 @@ float3 CosineSampleHemisphere(float2 u, float3 N, out float pdf)
 	float theta = TWO_PI * u.x;
 	float cosPhi2 = 1.0 - u.y;
 	float cosPhi = sqrt(cosPhi2);
-	float sinPhi = sqrt(1.0f - cosPhi2);
+    float sinPhi = sqrt(max(0.0, 1.0 - cosPhi2));
 	float3 L = float3(sinPhi * cos(theta), cosPhi, sinPhi * sin(theta));
 
 	pdf = cosPhi * INV_PI;
