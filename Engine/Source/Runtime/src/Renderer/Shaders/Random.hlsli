@@ -155,7 +155,7 @@ SobolSeed SobolInitSeed(uint2 pixel, uint frameIndex)
     uint h = HilbertIndex(tilePixel, HILBERT_SIZE);
 
     SobolSeed seed;
-    seed.x = HashCombine(h, h >> 16);
+    seed.x = LKPermutation(h, 0xA9E3F1C7u);
     seed.y = frameIndex;
     seed.z = 0u;
     seed.w = 0u;
@@ -173,21 +173,14 @@ float SobolRand(inout SobolSeed seed)
 
     // Dimension 0 of each pair = Van der Corput (reversebits)
     // Dimension 1 of each pair = SOBOL_V1 direction vectors
+    uint valueSeed = LKPermutation(pairSeed, isOdd ? 0x9E3779B9u : 0x85EBCA6Bu);
     uint sobolValue = isOdd ? SobolUint(scrambledIndex) : reversebits(scrambledIndex);
-    return UIntToFloat(NestedUniformScramble(sobolValue, HashCombine(pairSeed, isOdd)));
+    return UIntToFloat(NestedUniformScramble(sobolValue, valueSeed));
 }
 
 float2 SobolRand2(inout SobolSeed seed)
 {
-    uint dimPair = seed.z >> 1u;
-    
-    float2 u = float2(SobolRand(seed), SobolRand(seed));
-    
-    // CP Rotation
-    uint cpSeed = HashCombine(seed.x, seed.y);
-    cpSeed = HashCombine(cpSeed, dimPair);
-    float2 shift = HashToFloat2(cpSeed);
-    return frac(u + shift);
+    return float2(SobolRand(seed), SobolRand(seed));
 }
 
 #endif // RANDOM_HLSL

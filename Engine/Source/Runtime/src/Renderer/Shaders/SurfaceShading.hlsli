@@ -13,6 +13,8 @@ struct MeshVertexOut
 	float3 bitangent : ATTRIB3;
 	float4 color : ATTRIB4;
 	float2 uv : ATTRIB5;
+	float2 ddxUV : ATTRIB6;
+	float2 ddyUV : ATTRIB7;
 };
 
 // Auto-generated inside material shader — loads material instance data into Material

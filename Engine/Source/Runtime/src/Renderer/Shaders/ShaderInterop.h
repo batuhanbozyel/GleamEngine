@@ -155,6 +155,16 @@ struct Texture2DResourceView : TextureResourceView
 	#endif
 		return texture.SampleLevel(sampler, uv, mip);
 	}
+
+	T SampleGrad(SamplerState sampler, float2 uv, float2 ddxUV, float2 ddyUV)
+	{
+	#ifdef SHADER_TARGET_PIXEL
+		Texture2D<T> texture = ResourceDescriptorHeap[index];
+	#else
+		Texture2D<T> texture = ResourceDescriptorHeap[NonUniformResourceIndex(index)];
+	#endif
+		return texture.SampleGrad(sampler, uv, ddxUV, ddyUV);
+	}
 #else
     Texture2DResourceView() = default;
     Texture2DResourceView(ShaderResourceIndex index)

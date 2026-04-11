@@ -97,6 +97,8 @@ MeshVertexOut InterpolateVertexAttributes(Gleam::MeshInstanceData instance, uint
     OUT.bitangent     = normalize(cross(OUT.normal, OUT.tangent)) * tangentW;
     OUT.color         = float4(1, 1, 1, 1);
     OUT.uv            = uv;
+    OUT.ddxUV         = float2(0.0f, 0.0f);
+    OUT.ddyUV         = float2(0.0f, 0.0f);
     return OUT;
 }
 

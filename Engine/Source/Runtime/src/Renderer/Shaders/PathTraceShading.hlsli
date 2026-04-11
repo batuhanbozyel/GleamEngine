@@ -169,8 +169,11 @@ void ClosestHit(inout Gleam::RayPayload payload : SV_RayPayload, BuiltInTriangle
 		ray.TMin = 1e-3;
 		ray.TMax = 1e6;
     
-		Gleam::RayPayload reflection = payload;
-		reflection.depth += 1;
+		Gleam::RayPayload reflection;
+        reflection.radiance = 0.0;
+        reflection.throughput = payload.throughput;
+        reflection.seed = payload.seed;
+		reflection.depth = payload.depth + 1;
         
 		TraceRay(
             accelerationStructure,
