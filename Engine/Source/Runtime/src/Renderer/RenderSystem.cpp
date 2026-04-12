@@ -241,6 +241,11 @@ void RenderSystem::SetRenderPath(RenderPath path)
 	mRenderPath = path;
 }
 
+RenderPath RenderSystem::GetRenderPath() const
+{
+	return mRenderPath;
+}
+
 GraphicsDevice* RenderSystem::GetDevice()
 {
     return mDevice;

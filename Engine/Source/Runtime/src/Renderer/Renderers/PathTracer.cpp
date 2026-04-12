@@ -71,7 +71,7 @@ void PathTracer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blac
 		RayTracingPipelineStateDescriptor pipelineState;
 		pipelineState.rayGenerationEntry = "pathTraceRayGen";
 		pipelineState.missEntries = {"pathTraceMiss", "pathTraceShadowMiss"};
-		pipelineState.maxRecursionDepth = mMaxRayRecursionDepth + 2; // +1 for shadow rays, +1 for ray generation
+		pipelineState.maxRecursionDepth = mSettings.maxRayRecursionDepth + 2; // +1 for shadow rays, +1 for ray generation
 		pipelineState.maxPayloadSize = sizeof(RayPayload);
 		pipelineState.maxAttributeSize = sizeof(float2); // float2 barycentrics
 		pipelineState.hitGroups = mHitGroupTable.GetDescriptors();
@@ -108,7 +108,8 @@ void PathTracer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blac
 		constants.accelerationStructure = sceneData.accelerationStructure;
 		constants.colorTarget = passData.colorTarget;
 		constants.frameIndex = mFrameIndex++;
-		constants.maxRayRecursionDepth = mMaxRayRecursionDepth;
+		constants.maxRayRecursionDepth = mSettings.maxRayRecursionDepth;
+		constants.samplesPerPixel = mSettings.samplesPerPixel;
 		
 		cmd->BindRayTracingPipeline(mPathTracingPipeline);
 		cmd->SetPushConstant(constants);
@@ -117,6 +118,15 @@ void PathTracer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blac
 		cmd->SetConstantBuffer(sceneData.atmosphere.uniforms, SKY_ATMOSPHERE_COMMON_UNIFORMS_BINDING_SLOT);
 		cmd->DispatchRays((uint32_t)sceneData.camera.uniforms.resolution.x, (uint32_t)sceneData.camera.uniforms.resolution.y, 1u);
 	});
+}
+
+void PathTracer::SetSettings(const PathTracerSettings& settings)
+{
+	if (memcmp(&mSettings, &settings, sizeof(PathTracerSettings)) != 0)
+	{
+		mPipelineDirty = true;
+	}
+	mSettings = settings;
 }
 
 void PathTracer::RegisterShadingPipeline(const Material* material)

@@ -203,7 +203,7 @@ struct PathTracerConstants
 	uint32_t frameIndex;
 
 	uint32_t maxRayRecursionDepth;
-	float pad0;
+	uint32_t samplesPerPixel;
 	float pad1;
 	float pad2;
 };
