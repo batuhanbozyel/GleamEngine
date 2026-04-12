@@ -8,7 +8,7 @@
 
 using namespace Gleam;
 
-void ReflectionProbeRenderer::OnCreate(RenderContext& context)
+void ReflectionProbeRenderer::OnCreate(const RenderContext& context)
 {
 	ComputePipelineStateDescriptor pipelineState;
 	pipelineState.entryPoint = "skyAtmosphereRenderShader";
@@ -24,7 +24,7 @@ void ReflectionProbeRenderer::OnCreate(RenderContext& context)
 	mSpecularConvolutionPipeline = context.device->CreateComputePipeline(pipelineState);
 }
 
-void ReflectionProbeRenderer::OnDestroy(RenderContext& context)
+void ReflectionProbeRenderer::OnDestroy(const RenderContext& context)
 {
 
 }

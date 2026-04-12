@@ -7,7 +7,7 @@
 
 using namespace GEditor;
 
-void InfiniteGridRenderer::OnCreate(Gleam::RenderContext& context)
+void InfiniteGridRenderer::OnCreate(const Gleam::RenderContext& context)
 {
 	Gleam::GraphicsPipelineStateDescriptor pipelineDesc;
 	pipelineDesc.depthState.compareFunction = Gleam::CompareFunction::Less;

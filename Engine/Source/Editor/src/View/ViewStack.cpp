@@ -21,16 +21,23 @@ using namespace GEditor;
 void ViewStack::Initialize(Gleam::World* world)
 {
 	mWorld = world;
-	
-	auto renderSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::RenderSystem>();
-	mImgui = renderSystem->GetActiveRenderPipeline()->AddRenderer<Gleam::ImGuiRenderer>();
+
+	static auto renderSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::RenderSystem>();
+	mImgui = new Gleam::ImGuiRenderer();
+	mImgui->OnCreate(renderSystem->GetRenderContext());
+
+	renderSystem->GetRenderPipeline(Gleam::RenderPath::Default)->AddSharedRenderer(mImgui);
+	renderSystem->GetRenderPipeline(Gleam::RenderPath::PathTracing)->AddSharedRenderer(mImgui);
     SetDarkTheme();
 }
 
 void ViewStack::Shutdown(Gleam::World* world)
 {
-	auto renderSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::RenderSystem>();
-	renderSystem->GetActiveRenderPipeline()->RemoveRenderer<Gleam::ImGuiRenderer>();
+	static auto renderSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::RenderSystem>();
+	renderSystem->GetRenderPipeline(Gleam::RenderPath::Default)->RemoveSharedRenderer(mImgui);
+	renderSystem->GetRenderPipeline(Gleam::RenderPath::PathTracing)->RemoveSharedRenderer(mImgui);
+	mImgui->OnDestroy(renderSystem->GetRenderContext());
+	delete mImgui;
 	
 	for (int i = (int)mViews.size() - 1; i >= 0; --i)
 	{
@@ -41,6 +48,8 @@ void ViewStack::Shutdown(Gleam::World* world)
 
 void ViewStack::Tick(Gleam::World* world)
 {
+	static auto renderSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::RenderSystem>();
+	auto imgui = renderSystem->GetActiveRenderPipeline()->GetRenderer<Gleam::ImGuiRenderer>();
     for (auto view : mViews)
     {
         view->Update();
@@ -48,7 +57,7 @@ void ViewStack::Tick(Gleam::World* world)
 
 	for (auto view : mViews)
     {
-        view->Render(mImgui);
+        view->Render(imgui);
     }
 }
 
@@ -136,6 +145,16 @@ void ViewStack::SetDarkTheme() const
       style.LogSliderDeadzone                 = 4;
       style.TabRounding                       = 4;
     
+
     float fontSize = 16.0f;
-	mImgui->AddFontTexture("Resources/Fonts/OpenSans-Bold.ttf", "Resources/Fonts/OpenSans-Regular.ttf", fontSize);
+	static auto renderSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::RenderSystem>();
+	{
+		auto imgui = renderSystem->GetRenderPipeline(Gleam::RenderPath::Default)->GetRenderer<Gleam::ImGuiRenderer>();
+		imgui->AddFontTexture("Resources/Fonts/OpenSans-Bold.ttf", "Resources/Fonts/OpenSans-Regular.ttf", fontSize);
+	}
+	{
+		auto imgui = renderSystem->GetRenderPipeline(Gleam::RenderPath::PathTracing)->GetRenderer<Gleam::ImGuiRenderer>();
+		imgui->AddFontTexture("Resources/Fonts/OpenSans-Bold.ttf", "Resources/Fonts/OpenSans-Regular.ttf", fontSize);
+	}
+	
 }

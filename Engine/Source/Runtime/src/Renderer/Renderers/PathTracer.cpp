@@ -22,13 +22,13 @@ PathTracer::PathTracer()
 	mHitGroupTable = HitGroupTable(rayTracingScene);
 }
 
-void PathTracer::OnCreate(RenderContext& context)
+void PathTracer::OnCreate(const RenderContext& context)
 {
 	mDevice = context.device;
 	mAllocator = context.allocator;
 }
 
-void PathTracer::OnDestroy(RenderContext& context)
+void PathTracer::OnDestroy(const RenderContext& context)
 {
 	if (mRenderTarget.IsValid())
 	{

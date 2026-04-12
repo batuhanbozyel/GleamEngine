@@ -11,7 +11,7 @@
 
 using namespace Gleam;
 
-void SkyAtmosphereRenderer::OnCreate(RenderContext& context)
+void SkyAtmosphereRenderer::OnCreate(const RenderContext& context)
 {
 	// Transmittance LUT
 	{
@@ -48,7 +48,7 @@ void SkyAtmosphereRenderer::OnCreate(RenderContext& context)
 	mSkyRenderPipeline = context.device->CreateComputePipeline(pipelineState);
 }
 
-void SkyAtmosphereRenderer::OnDestroy(RenderContext& context)
+void SkyAtmosphereRenderer::OnDestroy(const RenderContext& context)
 {
 	context.device->Dispose(context.allocator, mTransmittanceLutTexture);
 	context.device->Dispose(context.allocator, mMultiScatterLutTexture);

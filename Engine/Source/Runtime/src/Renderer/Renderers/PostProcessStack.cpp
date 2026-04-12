@@ -16,7 +16,7 @@
 
 using namespace Gleam;
 
-void PostProcessStack::OnCreate(RenderContext& context)
+void PostProcessStack::OnCreate(const RenderContext& context)
 {
 	GraphicsPipelineStateDescriptor pipelineState;
 	pipelineState.colorFormats = { context.surface->GetFormat() };

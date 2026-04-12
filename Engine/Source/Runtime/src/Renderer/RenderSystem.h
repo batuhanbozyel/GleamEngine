@@ -18,6 +18,7 @@ class RayTracingScene;
 class CopyCommandBuffer;
 class ResourceReleaseQueue;
 
+struct RenderContext;
 struct RendererConfig;
 struct CameraRenderData;
 struct SkyAtmosphereRenderData;
@@ -75,6 +76,8 @@ public:
 	const GPUAllocator* GetAllocator() const;
 
 	void RecompileShader(const TString& entryPoint);
+
+	RenderContext GetRenderContext() const;
     
 private:
 

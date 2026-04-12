@@ -27,9 +27,9 @@ class WorldRenderer : public IRenderer
 {
 public:
     
-    virtual void OnCreate(RenderContext& context) override;
+    virtual void OnCreate(const RenderContext& context) override;
 
-	virtual void OnDestroy(RenderContext& context) override;
+	virtual void OnDestroy(const RenderContext& context) override;
     
     virtual void AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard) override;
 
