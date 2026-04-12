@@ -96,7 +96,7 @@ void HitGroupTable::AddRay(uint32_t registryHash, HitGroupDescriptor&& descripto
 	GLEAM_ASSERT(hitGroupIndex != ~0u, "Material is not registered to RayTracingScene.");
 
 	uint32_t baseIndex = hitGroupIndex * (uint32_t)RayType::COUNT;
-	if (baseIndex + (uint32_t)RayType::COUNT >= mHitGroups.size())
+	if (baseIndex + (uint32_t)RayType::COUNT > mHitGroups.size())
 	{
 		mHitGroups.resize(baseIndex + (uint32_t)RayType::COUNT);
 	}
@@ -113,7 +113,7 @@ bool HitGroupTable::Contains(uint32_t registryHash, RayType rayType) const
 	}
 
 	uint32_t baseIndex = hitGroupIndex * (uint32_t)RayType::COUNT;
-	if (baseIndex + (uint32_t)RayType::COUNT >= mHitGroups.size())
+	if (baseIndex + (uint32_t)RayType::COUNT > mHitGroups.size())
 	{
 		return false;
 	}

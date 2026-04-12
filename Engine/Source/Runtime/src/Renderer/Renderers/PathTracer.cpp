@@ -122,9 +122,14 @@ void PathTracer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blac
 
 void PathTracer::SetSettings(const PathTracerSettings& settings)
 {
-	if (memcmp(&mSettings, &settings, sizeof(PathTracerSettings)) != 0)
+	if (mSettings.maxRayRecursionDepth != settings.maxRayRecursionDepth)
 	{
 		mPipelineDirty = true;
+	}
+
+	if (mSettings.samplesPerPixel != settings.samplesPerPixel)
+	{
+		mFrameIndex = 0;
 	}
 	mSettings = settings;
 }

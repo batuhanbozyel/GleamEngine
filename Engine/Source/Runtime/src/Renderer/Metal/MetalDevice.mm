@@ -1009,6 +1009,11 @@ void GraphicsDevice::Dispose(TopLevelAccelerationStructure& tlas)
 
 void GraphicsDevice::Dispose(Shader& shader)
 {
+    eastl::erase_if(mShaderCache, [&shader](const auto& cache) -> bool
+	{
+		return cache.GetHandle() == shader.GetHandle();
+	});
+
     if (shader.mStage == ShaderStage::RayGeneration ||
         shader.mStage == ShaderStage::Miss ||
         shader.mStage == ShaderStage::ClosestHit ||
@@ -1023,16 +1028,19 @@ void GraphicsDevice::Dispose(Shader& shader)
 
 void GraphicsDevice::Dispose(ComputePipeline& pipeline)
 {
+    mComputePipelineCache.erase(ComputePipelineHandle(pipeline.GetHash()));
     pipeline.mHandle = nil;
 }
 
 void GraphicsDevice::Dispose(GraphicsPipeline& pipeline)
 {
+    mGraphicsPipelineCache.erase(GraphicsPipelineHandle(pipeline.GetHash()));
     pipeline.mHandle = nil;
 }
 
 void GraphicsDevice::Dispose(RayTracingPipeline& pipeline)
 {
+    mRayTracingPipelineCache.erase(RayTracingPipelineHandle(pipeline.GetHash()));
     mReleaseQueue->AddResource([this,
 								sbt = pipeline.GetShaderBindingTable().GetHandle()]()
 	{
@@ -1163,6 +1171,7 @@ MetalDevice::~MetalDevice()
     mShaderCache.clear();
     mComputePipelineCache.clear();
     mGraphicsPipelineCache.clear();
+    mRayTracingPipelineCache.clear();
     IRRootSignatureDestroy(mRootSignature);
     
     // Destroy descriptor heap

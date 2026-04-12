@@ -299,6 +299,9 @@ struct std::hash<Gleam::RayTracingPipelineStateDescriptor>
     size_t operator()(const Gleam::RayTracingPipelineStateDescriptor& descriptor) const
     {
 		std::size_t hash = 0;
+		Gleam::hash_combine(hash, descriptor.maxRecursionDepth);
+		Gleam::hash_combine(hash, descriptor.maxPayloadSize);
+		Gleam::hash_combine(hash, descriptor.maxAttributeSize);
 		Gleam::hash_combine(hash, descriptor.rayGenerationEntry);
 
 		for (const auto& missEntry : descriptor.missEntries)

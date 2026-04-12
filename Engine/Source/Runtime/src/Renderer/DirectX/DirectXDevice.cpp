@@ -836,6 +836,11 @@ void GraphicsDevice::Dispose(TopLevelAccelerationStructure& tlas)
 
 void GraphicsDevice::Dispose(Shader& shader)
 {
+	eastl::erase_if(mShaderCache, [&shader](const auto& cache) -> bool
+	{
+		return cache.GetHandle() == shader.GetHandle();
+	});
+
 	auto bytecode = static_cast<D3D12_SHADER_BYTECODE*>(shader.mHandle);
 	mReleaseQueue->AddResource([bytecode]()
 	{
@@ -847,6 +852,8 @@ void GraphicsDevice::Dispose(Shader& shader)
 
 void GraphicsDevice::Dispose(ComputePipeline& pipeline)
 {
+	mComputePipelineCache.erase(ComputePipelineHandle(pipeline.GetHash()));
+
 	auto resource = static_cast<ID3D12PipelineState*>(pipeline.mHandle);
 	mReleaseQueue->AddResource([resource]()
 	{
@@ -857,6 +864,8 @@ void GraphicsDevice::Dispose(ComputePipeline& pipeline)
 
 void GraphicsDevice::Dispose(GraphicsPipeline& pipeline)
 {
+	mGraphicsPipelineCache.erase(GraphicsPipelineHandle(pipeline.GetHash()));
+
 	auto resource = static_cast<ID3D12PipelineState*>(pipeline.mHandle);
 	mReleaseQueue->AddResource([resource]()
 	{
@@ -867,7 +876,9 @@ void GraphicsDevice::Dispose(GraphicsPipeline& pipeline)
 
 void GraphicsDevice::Dispose(RayTracingPipeline& pipeline)
 {
-	auto resource = static_cast<ID3D12PipelineState*>(pipeline.mHandle);
+	mRayTracingPipelineCache.erase(RayTracingPipelineHandle(pipeline.GetHash()));
+
+	auto resource = static_cast<ID3D12StateObject*>(pipeline.mHandle);
 	auto sbt = static_cast<ID3D12Resource*>(pipeline.GetShaderBindingTable().GetHandle());
 	mReleaseQueue->AddResource([resource, sbt]()
 	{
@@ -1008,6 +1019,13 @@ DirectXDevice::~DirectXDevice()
 		static_cast<ID3D12PipelineState*>(pipeline.GetHandle())->Release();
 	}
 	mGraphicsPipelineCache.clear();
+
+	for (auto& [_, pipeline] : mRayTracingPipelineCache)
+	{
+		static_cast<ID3D12Resource*>(pipeline.GetShaderBindingTable().GetHandle())->Release();
+		static_cast<ID3D12StateObject*>(pipeline.GetHandle())->Release();
+	}
+	mRayTracingPipelineCache.clear();
 
 	for (auto& shader : mShaderCache)
 	{
