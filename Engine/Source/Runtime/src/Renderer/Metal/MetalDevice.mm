@@ -150,7 +150,8 @@ static IRCompiler* CreateCompiler(const TString& entryPoint, IRRootSignature* gl
 {
     auto compiler = IRCompilerCreate();
     IRCompilerSetEntryPointName(compiler, entryPoint.c_str());
-    IRCompilerSetMinimumDeploymentTarget(compiler, IROperatingSystem_macOS, "14.0");
+    IRCompilerSetMinimumDeploymentTarget(compiler, IROperatingSystem_macOS, "26.0");
+    IRCompilerSetMinimumGPUFamily(compiler, IRGPUFamilyApple9);
     IRCompilerSetGlobalRootSignature(compiler, globalRootSig);
     return compiler;
 }
@@ -562,7 +563,6 @@ Shader GraphicsDevice::CompileShader(const TString& entryPoint, ShaderStage stag
     auto shaderPath = Globals::BuiltinAssetsDirectory/"Shaders";
     auto shaderFile = Filesystem::OpenRead(shaderPath.Append(entryPoint + ".dxil"), FileType::Binary);
     auto shaderCode = shaderFile->Read();
-    auto dxil = IRObjectCreateFromDXIL((uint8_t*)shaderCode.data(), shaderCode.size(), IRBytecodeOwnershipNone);
     
     if (stage == ShaderStage::RayGeneration ||
         stage == ShaderStage::Miss ||
@@ -571,12 +571,13 @@ Shader GraphicsDevice::CompileShader(const TString& entryPoint, ShaderStage stag
         stage == ShaderStage::Intersection)
     {
         MetalRayTracingFunctionImpl* rayTracingFunction = [[MetalRayTracingFunctionImpl alloc] init];
-        rayTracingFunction.dxil = dxil;
+        rayTracingFunction.dxil = IRObjectCreateFromDXIL((uint8_t*)shaderCode.data(), shaderCode.size(), IRBytecodeOwnershipCopy);
         shader.mHandle = rayTracingFunction;
         return shader;
     }
     else
     {
+        auto dxil = IRObjectCreateFromDXIL((uint8_t*)shaderCode.data(), shaderCode.size(), IRBytecodeOwnershipNone);
         auto compiler = CreateCompiler(entryPoint, static_cast<MetalDevice*>(this)->GetGlobalRootSignature());
         shader.mHandle = CompileDXIL(mHandle, compiler, dxil, entryPoint, stage);
         IRCompilerDestroy(compiler);
