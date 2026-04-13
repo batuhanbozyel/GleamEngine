@@ -21,7 +21,7 @@
 
 using namespace Gleam;
 
-void WorldRenderer::OnCreate(RenderContext& context)
+void WorldRenderer::OnCreate(const RenderContext& context)
 {
 	mDevice = context.device;
 
@@ -41,7 +41,7 @@ void WorldRenderer::OnCreate(RenderContext& context)
 	}
 }
 
-void WorldRenderer::OnDestroy(RenderContext& context)
+void WorldRenderer::OnDestroy(const RenderContext& context)
 {
 	context.device->Dispose(context.allocator, mBRDFLutTexture);
 }

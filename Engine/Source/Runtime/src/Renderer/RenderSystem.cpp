@@ -42,12 +42,7 @@ void RenderSystem::Initialize(Engine* engine)
 	mCopyCommandBuffer = new CopyCommandBuffer(mDevice);
 	mRayTracingScene = new RayTracingScene(mDevice, mTransientAllocator);
 
-	RenderContext context;
-	context.device = mDevice;
-	context.surface = mSwapchain;
-	context.releaseQueue = mReleaseQueue;
-	context.allocator = mPersistentAllocator;
-	
+	RenderContext context = GetRenderContext();
 	mRenderPipelines[(uint32_t)RenderPath::Default] = new RenderPipeline(context);
 	mRenderPipelines[(uint32_t)RenderPath::Default]->AddRenderer<ReflectionProbeRenderer>();
 	mRenderPipelines[(uint32_t)RenderPath::Default]->AddRenderer<WorldRenderer>();
@@ -239,6 +234,11 @@ void RenderSystem::Configure(const RendererConfig& config)
 void RenderSystem::SetRenderPath(RenderPath path)
 {
 	mRenderPath = path;
+}
+
+RenderPath RenderSystem::GetRenderPath() const
+{
+	return mRenderPath;
 }
 
 GraphicsDevice* RenderSystem::GetDevice()
@@ -436,4 +436,14 @@ SkyAtmosphereRenderData RenderSystem::SetupSkyAtmosphereRenderData(RenderGraph& 
 	skyAtmosphere.uniforms.transmittanceLutTexture = skyAtmosphere.transmittanceLut;
 	skyAtmosphere.uniforms.multiScatterLutTexture = skyAtmosphere.multiScatterLut;
 	return skyAtmosphere;
+}
+
+RenderContext RenderSystem::GetRenderContext() const
+{
+	RenderContext context;
+	context.device = mDevice;
+	context.surface = mSwapchain;
+	context.releaseQueue = mReleaseQueue;
+	context.allocator = mPersistentAllocator;
+	return context;
 }

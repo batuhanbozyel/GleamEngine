@@ -11,6 +11,7 @@
 
 namespace Gleam {
 class EntityManager;
+struct ImGuiPassData;
 } // namespace Gleam
 
 namespace GEditor {
@@ -33,6 +34,10 @@ public:
     }
     
 private:
+
+	void DrawToolbar();
+
+	void DrawViewport(Gleam::ImGuiRenderer* imgui, const Gleam::ImGuiPassData& passData);
 
 	void Resize(Gleam::EntityManager& entityManager, const Gleam::Size& size);
     

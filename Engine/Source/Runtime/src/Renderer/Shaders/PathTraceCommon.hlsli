@@ -15,13 +15,20 @@ enum class BRDFType
 	Diffuse
 };
 
-// Seed for PCG uses a sequential sample number in 4th channel, which increments on every RNG call and starts from 0
-PCGSeed initSeed(uint2 pixel, uint frameIndex)
-{
-    return PCGSeed(pixel, frameIndex, 0);
-}
+//#define USE_PCG
+#ifdef USE_PCG
+    #define PathTraceSeed PCGSeed
+    #define PathTraceInitSeed PCGInitSeed
+    #define PathTraceRand PCGRand
+    #define PathTraceRand2 PCGRand2
+#else
+    #define PathTraceSeed SobolSeed
+    #define PathTraceInitSeed SobolInitSeed
+    #define PathTraceRand SobolRand
+    #define PathTraceRand2 SobolRand2
+#endif
 
-// https://www.realtimerendering.com/raytracinggems/unofficial_RayTracingGems_v1.2.pdf
+//https://www.realtimerendering.com/raytracinggems/unofficial_RayTracingGems_v1.2.pdf
 //  6.2.2.4 ADAPTIVE OFFSETTING ALONG THE GEOMETRIC NORMAL
 float3 OffsetRayAlongNormal(const float3 p, const float3 n)
 {
@@ -77,17 +84,19 @@ MeshVertexOut InterpolateVertexAttributes(Gleam::MeshInstanceData instance, uint
     float3 tangentXYZ = b.x * v0.tangent.xyz + b.y * v1.tangent.xyz + b.z * v2.tangent.xyz;
     float2 uv         = b.x * v0.texCoord    + b.y * v1.texCoord    + b.z * v2.texCoord;
     float  tangentW   = v0.tangent.w;
-
-    float4 worldPosition = mul(instance.transform, float4(position, 1.0));
-
+    
+    
+    
     MeshVertexOut OUT;
-	OUT.position      = mul(camera.viewProjectionMatrix, worldPosition);
-	OUT.worldPosition = worldPosition.xyz;
+    OUT.worldPosition = WorldRayOrigin() + WorldRayDirection() * RayTCurrent();
+	OUT.position      = mul(camera.viewProjectionMatrix, float4(OUT.worldPosition, 1.0));
     OUT.normal        = normalize(mul(instance.transform, float4(normal, 0.0f)).xyz);
     OUT.tangent       = normalize(mul(instance.transform, float4(tangentXYZ, 0.0f)).xyz);
     OUT.bitangent     = normalize(cross(OUT.normal, OUT.tangent)) * tangentW;
     OUT.color         = float4(1, 1, 1, 1);
     OUT.uv            = uv;
+    OUT.ddxUV         = float2(0.0f, 0.0f);
+    OUT.ddyUV         = float2(0.0f, 0.0f);
     return OUT;
 }
 

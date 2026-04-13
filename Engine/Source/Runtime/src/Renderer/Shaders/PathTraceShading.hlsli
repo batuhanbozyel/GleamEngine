@@ -26,19 +26,45 @@ void ClosestHit(inout Gleam::RayPayload payload : SV_RayPayload, BuiltInTriangle
     float3 viewDir = -WorldRayDirection();
     float3x3 TBN   = transpose(float3x3(vertex.tangent, vertex.bitangent, vertex.normal));
     float3 worldNormal = normalize(mul(TBN, surface.normal));
-    
-    DirectLight light;
-    light.direction   = atmosphereUniforms.sunDirection;
-    light.illuminance = GetSunLuminance(GetSkyWorldPosition(vertex.worldPosition), atmosphereUniforms.sunDirection);
-    
-    payload.radiance += payload.throughput * EvaluateDirectLight(surface, light, viewDir, worldNormal);
-	payload.radiance += payload.throughput * surface.emission.rgb;
+    float3 newOrigin = OffsetRayAlongNormal(vertex.worldPosition, vertex.normal);
     
     float NdotV = dot(worldNormal, viewDir);
     if (NdotV <= 0.0)
     {
         return;
     }
+    
+    DirectLight light;
+    light.direction   = atmosphereUniforms.sunDirection;
+    light.illuminance = GetSunLuminance(GetSkyWorldPosition(vertex.worldPosition), atmosphereUniforms.sunDirection);
+    
+    Gleam::ShadowPayload shadowPayload;
+    shadowPayload.visibility = 0.0;
+
+    float shadowConePdf;
+    const float sunHalfAngle = 0.5 * atmosphereUniforms.sunAngularDiameter * (PI / 180.0);
+    const float cosSunHalfAngle = cos(sunHalfAngle);
+    float3 shadowDir = UniformSampleCone(PathTraceRand2(payload.seed), light.direction, cosSunHalfAngle, shadowConePdf);
+
+    RayDesc shadowRay;
+    shadowRay.Origin = newOrigin;
+    shadowRay.Direction = shadowDir;
+    shadowRay.TMin = 1e-3;
+    shadowRay.TMax = 1e6;
+
+    TraceRay(
+        accelerationStructure,
+        RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER,
+        0xFF,
+        (uint)Gleam::RayType::ShadowRay,
+        0,
+        (uint)Gleam::RayType::ShadowRay,
+        shadowRay,
+        shadowPayload
+    );
+    
+    payload.radiance += payload.throughput * EvaluateDirectLight(surface, light, viewDir, worldNormal) * shadowPayload.visibility;
+	payload.radiance += payload.throughput * surface.emission.rgb;
     
     BRDFType brdfType;
     if (surface.metallic == 1.0 && surface.roughness <= PERFECT_MIRROR_ROUGHNESS)
@@ -48,7 +74,7 @@ void ClosestHit(inout Gleam::RayPayload payload : SV_RayPayload, BuiltInTriangle
     else
     {
         float pSpec = SpecularLobeProbability(surface, NdotV);
-        if (rand(payload.seed) < pSpec)
+        if (PathTraceRand(payload.seed) < pSpec)
         {
             brdfType = BRDFType::Specular;
             payload.throughput /= pSpec;
@@ -61,7 +87,7 @@ void ClosestHit(inout Gleam::RayPayload payload : SV_RayPayload, BuiltInTriangle
     }
 
     float3 nextDir;
-    float2 xi = rand2(payload.seed);
+    float2 xi = PathTraceRand2(payload.seed);
     if (brdfType == BRDFType::Specular)
     {
         float partialPdf;
@@ -120,7 +146,7 @@ void ClosestHit(inout Gleam::RayPayload payload : SV_RayPayload, BuiltInTriangle
 #endif
 	}
     
-    if (all(payload.throughput == 0.0))
+    if (all(payload.throughput < FLT_EPSILON))
     {
         return;
     }
@@ -128,7 +154,7 @@ void ClosestHit(inout Gleam::RayPayload payload : SV_RayPayload, BuiltInTriangle
 	if (payload.depth >= 5)
 	{
 		float p = max(payload.throughput.r, max(payload.throughput.g, payload.throughput.b));
-		if (rand(payload.seed) > p)
+        if (PathTraceRand(payload.seed) > p)
 		{
 			return;
 		}
@@ -138,23 +164,25 @@ void ClosestHit(inout Gleam::RayPayload payload : SV_RayPayload, BuiltInTriangle
 	if (payload.depth < pathTraceConstants.maxRayRecursionDepth)
 	{
 		RayDesc ray;
-		ray.Origin = OffsetRayAlongNormal(vertex.worldPosition, vertex.normal);
+        ray.Origin = newOrigin;
 		ray.Direction = nextDir;
 		ray.TMin = 1e-3;
 		ray.TMax = 1e6;
-		payload.depth += 1;
     
-		Gleam::RayPayload reflection = payload;
-		reflection.depth += 1;
+		Gleam::RayPayload reflection;
+        reflection.radiance = 0.0;
+        reflection.throughput = payload.throughput;
+        reflection.seed = payload.seed;
+		reflection.depth = payload.depth + 1;
         
         RaytracingAccelerationStructure accelerationStructure = ResourceDescriptorHeap[pathTraceConstants.accelerationStructure];
 		TraceRay(
             accelerationStructure,
             RAY_FLAG_CULL_BACK_FACING_TRIANGLES,
             0xFF,
+            (uint)Gleam::RayType::PrimaryRay,
             0,
-            0,
-            0,
+            (uint)Gleam::RayType::PrimaryRay,
             ray,
             reflection
         );
@@ -165,6 +193,18 @@ void ClosestHit(inout Gleam::RayPayload payload : SV_RayPayload, BuiltInTriangle
 
 [shader("anyhit")]
 void AnyHit(inout Gleam::RayPayload payload : SV_RayPayload, BuiltInTriangleIntersectionAttributes attribs : SV_IntersectionAttributes)
+{
+    Gleam::MeshInstanceData instance = LoadInstanceData(InstanceID());
+    MeshVertexOut vertex = InterpolateVertexAttributes(instance, PrimitiveIndex(), attribs.barycentrics);
+    Gleam::SurfaceOutput surface = surf(vertex);
+    if (surface.albedo.a < 0.5)
+    {
+        IgnoreHit();
+    }
+}
+
+[shader("anyhit")]
+void ShadowAnyHit(inout Gleam::ShadowPayload payload : SV_RayPayload, BuiltInTriangleIntersectionAttributes attribs : SV_IntersectionAttributes)
 {
     Gleam::MeshInstanceData instance = LoadInstanceData(InstanceID());
     MeshVertexOut vertex = InterpolateVertexAttributes(instance, PrimitiveIndex(), attribs.barycentrics);

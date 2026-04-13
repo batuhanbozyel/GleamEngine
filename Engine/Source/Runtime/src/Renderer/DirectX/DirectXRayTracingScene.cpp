@@ -179,7 +179,7 @@ AccelerationStructureView RayTracingScene::BuildAccelerationStructure(const Comm
 				instanceDesc.Flags = instanceFlags;
 				instanceDesc.InstanceID = batch.instanceOffset + i;
 				instanceDesc.InstanceMask = 1;
-				instanceDesc.InstanceContributionToHitGroupIndex = mHitGroupRegistry.GetIndex(materialHash);
+				instanceDesc.InstanceContributionToHitGroupIndex = mHitGroupRegistry.GetIndex(materialHash) * (uint32_t)RayType::COUNT;
 				instanceDesc.AccelerationStructure = static_cast<ID3D12Resource*>(instance.mesh->GetBLAS(instance.submeshIndex).GetHandle())->GetGPUVirtualAddress();
 
 				++currentInstance;

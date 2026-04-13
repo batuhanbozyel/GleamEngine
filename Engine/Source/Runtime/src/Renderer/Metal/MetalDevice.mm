@@ -661,14 +661,25 @@ RayTracingPipeline GraphicsDevice::CompileRayTracingPipeline(const RayTracingPip
     mtlPipelineDesc.maxCallStackDepth = pipelineDesc.maxRecursionDepth;
     
     auto rayGenShader = CreateShader(pipelineDesc.rayGenerationEntry, ShaderStage::RayGeneration);
-    auto missShader = CreateShader(pipelineDesc.missEntry, ShaderStage::Miss);
-    
     MetalDevice* device = static_cast<MetalDevice*>(this);
     id<MetalRayTracingPipeline> mtlPipeline = pipeline.mHandle;
     id<MetalRayTracingFunction> rayGenFunction = rayGenShader.GetHandle();
-    id<MetalRayTracingFunction> missFunction   = missShader.GetHandle();
-    
-    uint64_t missMask = IRObjectGatherRaytracingIntrinsics(missFunction.dxil, pipelineDesc.missEntry.c_str());
+
+    TArray<TString> missEntryNames;
+    TArray<id<MetalRayTracingFunction>> missFunctions;
+    uint64_t missMask = 0;
+    for (const auto& missEntry : pipelineDesc.missEntries)
+    {
+        if (not missEntry.empty())
+        {
+            auto shader = CreateShader(missEntry, ShaderStage::Miss);
+            id<MetalRayTracingFunction> fn = shader.GetHandle();
+            missMask |= IRObjectGatherRaytracingIntrinsics(fn.dxil, missEntry.c_str());
+            missEntryNames.emplace_back(missEntry);
+            missFunctions.emplace_back(fn);
+        }
+    }
+
     uint64_t closestHitMask = 0;
     uint64_t anyHitMask = 0;
     
@@ -683,6 +694,11 @@ RayTracingPipeline GraphicsDevice::CompileRayTracingPipeline(const RayTracingPip
     
     for (const auto& hitGroup : pipelineDesc.hitGroups)
     {
+        if (hitGroup.name.empty())
+        {
+            hitGroups.emplace_back(MetalHitGroup{});
+            continue;
+        }
         MetalHitGroup mtlHitGroup = {};
         if (not hitGroup.closestHitEntry.empty())
         {
@@ -729,12 +745,13 @@ RayTracingPipeline GraphicsDevice::CompileRayTracingPipeline(const RayTracingPip
     NSMutableArray<id<MTLFunction>>* closestHitGroup = [NSMutableArray array];
     
     // Miss
+    for (uint32_t i = 0; i < (uint32_t)missFunctions.size(); ++i)
     {
-        auto compiler = CreateCompiler(pipelineDesc.missEntry, device->GetGlobalRootSignature());
+        auto compiler = CreateCompiler(missEntryNames[i], device->GetGlobalRootSignature());
         IRCompilerSetRayTracingPipelineConfiguration(compiler, rtConfig);
-        auto function = CompileDXIL(device->GetHandle(), compiler, missFunction.dxil, pipelineDesc.missEntry, ShaderStage::Miss);
+        auto function = CompileDXIL(device->GetHandle(), compiler, missFunctions[i].dxil, missEntryNames[i], ShaderStage::Miss);
         IRCompilerDestroy(compiler);
-        
+
         [missGroup addObject:function.handle];
     }
     
@@ -855,6 +872,10 @@ RayTracingPipeline GraphicsDevice::CompileRayTracingPipeline(const RayTracingPip
  
         for (uint32_t i = 0; i < (uint32_t)pipelineDesc.hitGroups.size(); ++i)
         {
+            if (pipelineDesc.hitGroups[i].name.empty())
+            {
+                continue;
+            }
             NSUInteger slot = intersectionFunctionSlots[i];
             if (slot != NSNotFound)
             {
@@ -988,6 +1009,11 @@ void GraphicsDevice::Dispose(TopLevelAccelerationStructure& tlas)
 
 void GraphicsDevice::Dispose(Shader& shader)
 {
+    eastl::erase_if(mShaderCache, [&shader](const auto& cache) -> bool
+	{
+		return cache.GetHandle() == shader.GetHandle();
+	});
+
     if (shader.mStage == ShaderStage::RayGeneration ||
         shader.mStage == ShaderStage::Miss ||
         shader.mStage == ShaderStage::ClosestHit ||
@@ -1002,16 +1028,19 @@ void GraphicsDevice::Dispose(Shader& shader)
 
 void GraphicsDevice::Dispose(ComputePipeline& pipeline)
 {
+    mComputePipelineCache.erase(ComputePipelineHandle(pipeline.GetHash()));
     pipeline.mHandle = nil;
 }
 
 void GraphicsDevice::Dispose(GraphicsPipeline& pipeline)
 {
+    mGraphicsPipelineCache.erase(GraphicsPipelineHandle(pipeline.GetHash()));
     pipeline.mHandle = nil;
 }
 
 void GraphicsDevice::Dispose(RayTracingPipeline& pipeline)
 {
+    mRayTracingPipelineCache.erase(RayTracingPipelineHandle(pipeline.GetHash()));
     mReleaseQueue->AddResource([this,
 								sbt = pipeline.GetShaderBindingTable().GetHandle()]()
 	{
@@ -1142,6 +1171,7 @@ MetalDevice::~MetalDevice()
     mShaderCache.clear();
     mComputePipelineCache.clear();
     mGraphicsPipelineCache.clear();
+    mRayTracingPipelineCache.clear();
     IRRootSignatureDestroy(mRootSignature);
     
     // Destroy descriptor heap
@@ -1211,9 +1241,9 @@ ShaderBindingTable MetalDevice::CreateShaderBindingTable(const RayTracingPipelin
 {
     constexpr uint32_t shaderRecordSize = sizeof(IRShaderIdentifier);
     constexpr uint32_t rayGenTableSize = shaderRecordSize;
-    constexpr uint32_t missTableSize = shaderRecordSize;
 
     const auto& pipelineDesc = pipeline.GetDescriptor();
+    uint32_t missTableSize = static_cast<uint32_t>(pipelineDesc.missEntries.size()) * shaderRecordSize;
     uint32_t hitGroupTableSize = static_cast<uint32_t>(pipelineDesc.hitGroups.size()) * shaderRecordSize;
     uint32_t totalSize = rayGenTableSize + missTableSize + hitGroupTableSize;
 
@@ -1234,18 +1264,22 @@ ShaderBindingTable MetalDevice::CreateShaderBindingTable(const RayTracingPipelin
     }
     offset += rayGenTableSize;
 
-    // Miss record — VFT index 1 (first entry after reserved 0)
+    // Miss records — VFT indices starting at 1
+    for (uint32_t i = 0; i < static_cast<uint32_t>(pipelineDesc.missEntries.size()); ++i)
     {
-        IRShaderIdentifier* ident = static_cast<IRShaderIdentifier*>(OffsetPointer(sbtPtr, offset));
-        IRShaderIdentifierInit(ident, 1);
+        if (not pipelineDesc.missEntries[i].empty())
+        {
+            IRShaderIdentifier* ident = static_cast<IRShaderIdentifier*>(OffsetPointer(sbtPtr, offset));
+            IRShaderIdentifierInit(ident, 1 + i);
+        }
+        offset += shaderRecordSize;
     }
-    offset += missTableSize;
 
     // Hit group records
-    // VFT layout: index 1 = miss, index 2+ = closest-hit in order of hit groups that have one.
+    // VFT layout: index 1..N = miss shaders, index N+1+ = closest-hit in order of hit groups that have one.
     // closestHitVFTIndex tracks the next available VFT slot.
     {
-        uint64_t closestHitVFTIndex = 2; // starts after reserved(0) + miss(1)
+        uint64_t closestHitVFTIndex = 1 + static_cast<uint64_t>(pipelineDesc.missEntries.size()); // starts after reserved(0) + N miss shaders
 
         for (uint32_t i = 0; i < pipelineDesc.hitGroups.size(); i++)
         {

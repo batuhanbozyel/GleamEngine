@@ -65,7 +65,15 @@ RayTracingPipelineHandle GraphicsDevice::CreateRayTracingPipeline(const RayTraci
 
 	auto pipeline = CompileRayTracingPipeline(pipelineDesc);
 	mShaderPipelineReferences[pipelineDesc.rayGenerationEntry].insert(handle);
-	mShaderPipelineReferences[pipelineDesc.missEntry].insert(handle);
+
+	for (const auto& missEntry : pipelineDesc.missEntries)
+	{
+		if (not missEntry.empty())
+		{
+			mShaderPipelineReferences[missEntry].insert(handle);
+		}
+	}
+
 	for (const auto& hitGroup : pipelineDesc.hitGroups)
 	{
 		if (not hitGroup.closestHitEntry.empty())

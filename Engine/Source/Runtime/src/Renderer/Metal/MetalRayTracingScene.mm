@@ -139,9 +139,9 @@ AccelerationStructureView RayTracingScene::BuildAccelerationStructure(const Comm
             desc.options = options;
             desc.userID = batch.instanceOffset + i;
             desc.mask = 1;
-            desc.intersectionFunctionTableOffset = mHitGroupRegistry.GetIndex(materialHash);
+            desc.intersectionFunctionTableOffset = mHitGroupRegistry.GetIndex(materialHash) * (uint32_t)RayType::COUNT;
             desc.accelerationStructureID = [instance.mesh->GetBLAS(instance.submeshIndex).GetHandle() gpuResourceID];
-            
+
             instanceContributions.push_back(desc.intersectionFunctionTableOffset);
             ++currentInstance;
         }

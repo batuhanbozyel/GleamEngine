@@ -23,5 +23,7 @@ MeshVertexOut meshVertexShader(uint vertex_id : SV_VertexID)
 	OUT.bitangent = normalize(cross(OUT.normal, OUT.tangent)) * interleavedVert.tangent.w;
 	OUT.color = float4(1.0f, 1.0f, 1.0f, 1.0f);
 	OUT.uv = interleavedVert.texCoord;
+	OUT.ddxUV = float2(0.0f, 0.0f);
+	OUT.ddyUV = float2(0.0f, 0.0f);
 	return OUT;
 }

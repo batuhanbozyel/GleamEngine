@@ -20,6 +20,8 @@ Gleam::MeshInstanceData LoadInstanceData(uint instanceID)
 [shader("pixel")]
 float4 main(MeshVertexOut IN) : SV_TARGET
 {
+	IN.ddxUV = ddx(IN.uv);
+	IN.ddyUV = ddy(IN.uv);
 	Gleam::MeshInstanceData instance = LoadInstanceData(meshShadingConstants.instanceID);
     Gleam::SurfaceOutput surface = surf(IN);
     surface.roughness = max(surface.roughness, 0.04);

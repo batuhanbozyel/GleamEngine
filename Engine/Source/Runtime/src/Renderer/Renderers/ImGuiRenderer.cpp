@@ -16,7 +16,7 @@ using namespace Gleam;
 static constexpr uint32_t kImGuiDataBufferSize = 4 * 1024 * 1024;
 static_assert(sizeof(ImDrawIdx) == sizeof(uint16_t), "ImGui index type does not match index buffer");
 
-void ImGuiRenderer::OnCreate(RenderContext& context)
+void ImGuiRenderer::OnCreate(const RenderContext& context)
 {
 	mReleaseQueue = context.releaseQueue;
 	mSurface = static_cast<Swapchain*>(context.surface);
@@ -87,7 +87,7 @@ void ImGuiRenderer::OnCreate(RenderContext& context)
     });
 }
 
-void ImGuiRenderer::OnDestroy(RenderContext& context)
+void ImGuiRenderer::OnDestroy(const RenderContext& context)
 {
 	ImGui_ImplSDL3_Shutdown();
     ImGui::DestroyContext();
