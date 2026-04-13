@@ -181,8 +181,17 @@ static id<MetalFunction> CompileDXIL(id<MTLDevice> device, IRCompiler* compiler,
         libraryError = nil;
     }
     
-    NSString* functionName = [NSString stringWithCString:entryPoint.c_str() encoding:NSASCIIStringEncoding];
-    id<MTLFunction> mtlFunction = [library newFunctionWithName:functionName];
+    id<MTLFunction> mtlFunction = nil;
+    NSString* entryPointStr = [NSString stringWithCString:entryPoint.c_str() encoding:NSASCIIStringEncoding];
+    for (NSString* functionName in library.functionNames)
+    {
+        if ([functionName containsString:entryPointStr])
+        {
+            mtlFunction = [library newFunctionWithName:functionName];
+            break;
+        }
+    }
+    GLEAM_ASSERT(mtlFunction, "Metal: MTLFunction creation failed: {}", entryPoint);
     
     id<MetalFunction> function = nil;
     if (stage == ShaderStage::Compute)
@@ -705,7 +714,6 @@ RayTracingPipeline GraphicsDevice::CompileRayTracingPipeline(const RayTracingPip
         MetalHitGroupImpl* mtlHitGroup = [[MetalHitGroupImpl alloc] init];
         if (hitGroup.name.empty())
         {
-            [hitGroups addObject:mtlHitGroup];
             continue;
         }
 
@@ -770,76 +778,71 @@ RayTracingPipeline GraphicsDevice::CompileRayTracingPipeline(const RayTracingPip
     {
         MetalHitGroupImpl* hitGroup = hitGroups[i];
         const auto& hitGroupDesc = pipelineDesc.hitGroups[i];
-        IRHitGroupType hitGroupType = hitGroup.intersection ? IRHitGroupTypeProceduralPrimitive: IRHitGroupTypeTriangles;
         
         if (hitGroup.closestHit)
         {
             auto compiler = CreateCompiler(hitGroupDesc.closestHitEntry, device->GetGlobalRootSignature());
             IRCompilerSetRayTracingPipelineConfiguration(compiler, rtConfig);
-            IRCompilerSetHitgroupType(compiler, hitGroupType);
+            IRCompilerSetHitgroupType(compiler, IRHitGroupTypeTriangles);
             auto function = CompileDXIL(device->GetHandle(), compiler, hitGroup.closestHit.dxil, hitGroupDesc.closestHitEntry, ShaderStage::ClosestHit);
             IRCompilerDestroy(compiler);
             
             [closestHitGroup addObject:function.handle];
         }
         
-        if (hitGroup.anyHit || hitGroup.intersection)
+        if (hitGroup.intersection && hitGroup.anyHit)
         {
-            id<MTLFunction> intersectionFunction = nil;
-            if (hitGroup.anyHit && hitGroup.intersection)
+            IRCompiler* combineCompiler = IRCompilerCreate();
+            IRCompilerSetRayTracingPipelineConfiguration(combineCompiler, rtConfig);
+            IRCompilerSetHitgroupType(combineCompiler, IRHitGroupTypeProceduralPrimitive);
+
+            IRError* combineError = nullptr;
+            IRObject* combinedDxil = IRCompilerAllocCombineCompileAndLink(combineCompiler,
+                                                                          hitGroupDesc.intersectionEntry.c_str(),
+                                                                          hitGroup.intersection.dxil,
+                                                                          hitGroupDesc.anyHitEntry.c_str(),
+                                                                          hitGroup.anyHit.dxil,
+                                                                          &combineError);
+            if (combineError)
             {
-                // Fuse any-hit + custom intersection into a single IFB function (MSC 3.0 requirement)
-                IRCompiler* fuseCompiler = IRCompilerCreate();
-                IRCompilerSetRayTracingPipelineConfiguration(fuseCompiler, rtConfig);
-                IRCompilerSetHitgroupType(fuseCompiler, hitGroupType);
- 
-                IRError* fuseError = nullptr;
-                IRObject* dxil = IRCompilerAllocCombineCompileAndLink(fuseCompiler,
-                                                                      hitGroupDesc.intersectionEntry.c_str(),
-                                                                      hitGroup.intersection.dxil,
-                                                                      hitGroupDesc.anyHitEntry.c_str(),
-                                                                      hitGroup.anyHit.dxil,
-                                                                      &fuseError);
-                if (fuseError)
-                {
-                    GLEAM_CORE_ERROR("Metal: Failed to fuse any-hit + intersection '{}': {}",
-                                     hitGroupDesc.name, IRErrorGetCode(fuseError));
-                    IRErrorDestroy(fuseError);
-                }
-                IRCompilerDestroy(fuseCompiler);
-                
-                // fused entry keeps intersection name
-                auto compiler = CreateCompiler(hitGroupDesc.intersectionEntry, device->GetGlobalRootSignature());
-                IRCompilerSetRayTracingPipelineConfiguration(compiler, rtConfig);
-                IRCompilerSetHitgroupType(compiler, hitGroupType);
-                auto function = CompileDXIL(device->GetHandle(), compiler, dxil, hitGroupDesc.intersectionEntry, ShaderStage::Intersection);
-                IRCompilerDestroy(compiler);
-                IRObjectDestroy(dxil);
-                
-                intersectionFunction = function.handle;
+                GLEAM_CORE_ERROR("Metal: Failed to compile IFB function '{}': {}", hitGroupDesc.name, IRErrorGetCode(combineError));
+                IRErrorDestroy(combineError);
             }
-            else if (hitGroup.intersection)
-            {
-                auto compiler = CreateCompiler(hitGroupDesc.intersectionEntry, device->GetGlobalRootSignature());
-                IRCompilerSetRayTracingPipelineConfiguration(compiler, rtConfig);
-                IRCompilerSetHitgroupType(compiler, hitGroupType);
-                auto function = CompileDXIL(device->GetHandle(), compiler, hitGroup.intersection.dxil, hitGroupDesc.intersectionEntry, ShaderStage::Intersection);
-                IRCompilerDestroy(compiler);
-                
-                intersectionFunction = function.handle;
-            }
-            else // any-hit only, no custom intersection
-            {
-                auto compiler = CreateCompiler(hitGroupDesc.anyHitEntry, device->GetGlobalRootSignature());
-                IRCompilerSetRayTracingPipelineConfiguration(compiler, rtConfig);
-                IRCompilerSetHitgroupType(compiler, hitGroupType);
-                auto function = CompileDXIL(device->GetHandle(), compiler, hitGroup.anyHit.dxil, hitGroupDesc.anyHitEntry, ShaderStage::AnyHit);
-                IRCompilerDestroy(compiler);
-                
-                intersectionFunction = function.handle;
-            }
+            IRCompilerDestroy(combineCompiler);
+
+            auto compiler = CreateCompiler(hitGroupDesc.intersectionEntry, device->GetGlobalRootSignature());
+            IRCompilerSetRayTracingPipelineConfiguration(compiler, rtConfig);
+            IRCompilerSetHitgroupType(compiler, IRHitGroupTypeProceduralPrimitive);
+            auto function = CompileDXIL(device->GetHandle(),
+                                        compiler,
+                                        combinedDxil,
+                                        hitGroupDesc.intersectionEntry,
+                                        ShaderStage::Intersection);
+            IRCompilerDestroy(compiler);
+            IRObjectDestroy(combinedDxil);
+
             intersectionFunctionSlots[i] = (NSUInteger)[intersectionFunctions count];
-            [intersectionFunctions addObject:intersectionFunction];
+            [intersectionFunctions addObject:function.handle];
+        }
+        else if (hitGroup.anyHit)
+        {
+            auto compiler = CreateCompiler(hitGroupDesc.anyHitEntry, device->GetGlobalRootSignature());
+            IRCompilerSetRayTracingPipelineConfiguration(compiler, rtConfig);
+            IRCompilerSetHitgroupType(compiler, IRHitGroupTypeTriangles);
+            auto function = CompileDXIL(device->GetHandle(), compiler, hitGroup.anyHit.dxil, hitGroupDesc.anyHitEntry, ShaderStage::AnyHit);
+            IRCompilerDestroy(compiler);
+            
+            [intersectionFunctions addObject:function.handle];
+        }
+        else // if (hitGroup.intersection)
+        {
+            auto compiler = CreateCompiler(hitGroupDesc.intersectionEntry, device->GetGlobalRootSignature());
+            IRCompilerSetRayTracingPipelineConfiguration(compiler, rtConfig);
+            IRCompilerSetHitgroupType(compiler, IRHitGroupTypeProceduralPrimitive);
+            auto function = CompileDXIL(device->GetHandle(), compiler, hitGroup.intersection.dxil, hitGroupDesc.intersectionEntry, ShaderStage::Intersection);
+            IRCompilerDestroy(compiler);
+            
+            [intersectionFunctions addObject:function.handle];
         }
     }
     IRRayTracingPipelineConfigurationDestroy(rtConfig);
@@ -848,16 +851,12 @@ RayTracingPipeline GraphicsDevice::CompileRayTracingPipeline(const RayTracingPip
     NSMutableArray<id<MTLFunction>>* allVisible = [NSMutableArray array];
     [allVisible addObjectsFromArray:missGroup];
     [allVisible addObjectsFromArray:closestHitGroup];
+    [allVisible addObjectsFromArray:intersectionFunctions];
     linkedFunctions.functions = allVisible;
     linkedFunctions.groups = @{
         @(kIRFunctionGroupMiss)       : missGroup,
         @(kIRFunctionGroupClosestHit) : closestHitGroup,
     };
- 
-    if ([intersectionFunctions count] > 0)
-    {
-        linkedFunctions.binaryFunctions = intersectionFunctions;
-    }
     mtlPipelineDesc.linkedFunctions = linkedFunctions;
 
     __autoreleasing NSError* error = nil;

@@ -6,6 +6,7 @@ import tempfile
 import argparse
 import platform
 import subprocess
+
 cmd = subprocess.run
 
 SCRIPT_DIRECTORY = os.path.dirname(os.path.realpath(__file__))
@@ -20,35 +21,38 @@ else:
     DXC = f"{SCRIPT_DIRECTORY}/dxc/bin/dxc.exe"
     RENDERER_API = "USE_DIRECTX_RENDERER"
 
-HLSL_SHADER_STAGE = {}
-HLSL_SHADER_STAGE["vertex"]          = "vs_6_6"
-HLSL_SHADER_STAGE["pixel"]           = "ps_6_6"
-HLSL_SHADER_STAGE["compute"]         = "cs_6_6"
-# All RT stages compile as lib_6_6; -exports restricts each compilation to a
-# single exported entry point so the output .dxil mirrors vs/ps/cs binaries.
-HLSL_SHADER_STAGE["raygeneration"]   = "lib_6_6"
-HLSL_SHADER_STAGE["miss"]            = "lib_6_6"
-HLSL_SHADER_STAGE["closesthit"]      = "lib_6_6"
-HLSL_SHADER_STAGE["anyhit"]          = "lib_6_6"
-HLSL_SHADER_STAGE["intersection"]    = "lib_6_6"
-HLSL_SHADER_STAGE["callable"]        = "lib_6_6"
-HLSL_SHADER_STAGE["mesh"]            = "ms_6_6"
-HLSL_SHADER_STAGE["amplification"]   = "as_6_6"
+HLSL_SHADER_STAGE = {
+    "vertex": "vs_6_6",
+    "pixel": "ps_6_6",
+    "compute": "cs_6_6",
+    "raygeneration": "lib_6_6",
+    "miss": "lib_6_6",
+    "closesthit": "lib_6_6",
+    "anyhit": "lib_6_6",
+    "intersection": "lib_6_6",
+    "callable": "lib_6_6",
+    "mesh": "ms_6_6",
+    "amplification": "as_6_6",
+}
 
-SHADER_TARGET_DEFINE = {}
-SHADER_TARGET_DEFINE["vertex"]          = "SHADER_TARGET_VERTEX"
-SHADER_TARGET_DEFINE["pixel"]           = "SHADER_TARGET_PIXEL"
-SHADER_TARGET_DEFINE["compute"]         = "SHADER_TARGET_COMPUTE"
-SHADER_TARGET_DEFINE["raygeneration"]   = "SHADER_TARGET_RAYGENERATION"
-SHADER_TARGET_DEFINE["miss"]            = "SHADER_TARGET_MISS"
-SHADER_TARGET_DEFINE["closesthit"]      = "SHADER_TARGET_CLOSESTHIT"
-SHADER_TARGET_DEFINE["anyhit"]          = "SHADER_TARGET_ANYHIT"
-SHADER_TARGET_DEFINE["intersection"]    = "SHADER_TARGET_INTERSECTION"
-SHADER_TARGET_DEFINE["callable"]        = "SHADER_TARGET_CALLABLE"
-SHADER_TARGET_DEFINE["mesh"]            = "SHADER_TARGET_MESH"
-SHADER_TARGET_DEFINE["amplification"]   = "SHADER_TARGET_AMPLIFICATION"
+SHADER_TARGET_DEFINE = {
+    "vertex": "SHADER_TARGET_VERTEX",
+    "pixel": "SHADER_TARGET_PIXEL",
+    "compute": "SHADER_TARGET_COMPUTE",
+    "raygeneration": "SHADER_TARGET_RAYGENERATION",
+    "miss": "SHADER_TARGET_MISS",
+    "closesthit": "SHADER_TARGET_CLOSESTHIT",
+    "anyhit": "SHADER_TARGET_ANYHIT",
+    "intersection": "SHADER_TARGET_INTERSECTION",
+    "callable": "SHADER_TARGET_CALLABLE",
+    "mesh": "SHADER_TARGET_MESH",
+    "amplification": "SHADER_TARGET_AMPLIFICATION",
+}
 
-RT_STAGES = frozenset({"raygeneration", "miss", "closesthit", "anyhit", "intersection", "callable"})
+RT_STAGES = frozenset({
+    "raygeneration", "miss", "closesthit",
+    "anyhit", "intersection", "callable"
+})
 
 ALL_STAGES = "|".join(HLSL_SHADER_STAGE.keys())
 
@@ -95,9 +99,7 @@ def parse_entry_points(hlsl_file: str):
     for match in SHADER_ATTR_REGEX.finditer(content):
         stage = match.group(1)
         entry_point = match.group(2)
-        if stage not in entry_points:
-            entry_points[stage] = []
-        entry_points[stage].append(entry_point)
+        entry_points.setdefault(stage, []).append(entry_point)
 
     return entry_points
 
@@ -107,16 +109,16 @@ def rename_entry_point(hlsl_file: str, old_entry_point: str, new_entry_point: st
 
     content = content.replace(old_entry_point, new_entry_point)
 
-    with tempfile.NamedTemporaryFile(suffix=".hlsl", delete=False, mode='w') as temp_file:
-        temp_file.write(content)
-        return temp_file.name
+    temp_file = tempfile.NamedTemporaryFile(suffix=".hlsl", delete=False, mode='w')
+    temp_file.write(content)
+    temp_file.close()
+    return temp_file.name
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Compile HLSL shaders using DirectXShaderCompiler.")
     parser.add_argument("-d", "--directory", type=str, help="Directory to search for HLSL files.")
     parser.add_argument("-f", "--files", type=str, nargs='+', help="Specific HLSL files to compile.")
     parser.add_argument("-i", "--include", type=str, help="Forced include file (.hlsli) to be used during compilation.")
-    parser.add_argument("-o", "--output", type=str, help="Output DXIL filename.")
     parser.add_argument("--entry", type=str, action="append", dest="entries", metavar="entry=export",
                         help="Filter and rename a specific entry point (repeatable). "
                              "Format: entry_name=export_name. "
@@ -124,15 +126,15 @@ if __name__ == "__main__":
     parser.add_argument("--debug", action="store_true", help="Enable debug information.")
     args = parser.parse_args()
 
-    entry_map = {}
+    entry_map = None
     if args.entries:
+        entry_map = {}
         for spec in args.entries:
             src, _, dst = spec.partition("=")
             entry_map[src.strip()] = dst.strip()
 
     output_dir = f"{SCRIPT_DIRECTORY}/../Assets/Shaders"
-    if not os.path.exists(output_dir):
-        os.mkdir(output_dir)
+    os.makedirs(output_dir, exist_ok=True)
 
     hlsl_files = []
     if args.directory:
@@ -153,72 +155,69 @@ if __name__ == "__main__":
         filename = os.path.basename(hlsl_file)
         include_dirs = [os.path.dirname(hlsl_file), RUNTIME_INCLUDE_DIRECTORY]
 
+        base_file = hlsl_file
+        temp_files = []
+
         if args.include:
             include_dirs.append(os.path.dirname(args.include))
-            with tempfile.NamedTemporaryFile(suffix=".hlsl", delete=False, mode="w") as temp_file:
-                temp_file.write(read_include_file(args.include, include_dirs))
-                with open(hlsl_file, 'r') as original_file:
-                    temp_file.write(original_file.read())
-                hlsl_file = temp_file.name
+            temp = tempfile.NamedTemporaryFile(suffix=".hlsl", delete=False, mode="w")
+            temp.write(read_include_file(args.include, include_dirs))
+            with open(hlsl_file, 'r') as original:
+                temp.write(original.read())
+            temp.close()
+            base_file = temp.name
+            temp_files.append(base_file)
 
-        parsed_entry_points = parse_entry_points(hlsl_file)
+        parsed_entry_points = parse_entry_points(base_file)
         for shader_stage, entry_points in parsed_entry_points.items():
             for entry_point in entry_points:
                 # When --entry filters are provided, skip entries not listed
                 if entry_map and entry_point not in entry_map:
                     continue
 
-                export_name = entry_map[entry_point] if entry_map else None
+                export_name = entry_map[entry_point] if entry_map else entry_point
+                current_file = base_file
+
                 try:
-                    output_label = export_name if export_name else entry_point
-                    sys.stderr.write(f"Compiling HLSL file {filename} for {shader_stage} stage, entry point: {entry_point} -> {output_label}\n")
+                    if entry_map and shader_stage not in RT_STAGES:
+                        current_file = rename_entry_point(base_file, entry_point, export_name)
+                        temp_files.append(current_file)
 
-                    current_hlsl = hlsl_file
-                    current_entry = entry_point
+                    output_file = f"{output_dir}/{export_name}.dxil"
 
-                    if export_name:
-                        # Use DXC rename directly — no need to rewrite the source file
-                        output_file = f"{output_dir}/{export_name}.dxil"
-                    elif args.output:
-                        current_hlsl = rename_entry_point(current_hlsl, current_entry, args.output)
-                        if current_hlsl != hlsl_file:
-                            os.remove(hlsl_file)
-                            hlsl_file = current_hlsl
-                        current_entry = args.output
-                        output_file = f"{output_dir}/{current_entry}.dxil"
-                    else:
-                        output_file = f"{output_dir}/{current_entry}.dxil"
+                    sys.stderr.write(
+                        f"Compiling {filename} [{shader_stage}] {entry_point} -> {export_name}\n"
+                    )
 
-                    compile_command = [DXC, current_hlsl,
+                    cmdline = [
+                        DXC, current_file,
                         "-HV", "2021",
                         "-D", RENDERER_API,
                         "-D", SHADER_TARGET_DEFINE[shader_stage],
-                        "-T", HLSL_SHADER_STAGE[shader_stage]]
+                        "-T", HLSL_SHADER_STAGE[shader_stage]
+                    ]
 
                     if shader_stage in RT_STAGES:
-                        # lib_6_6: DXC -exports format is ExportName=InternalName
-                        if export_name:
-                            compile_command.extend(["-exports", f"{export_name}={entry_point}"])
-                        else:
-                            compile_command.extend(["-exports", current_entry])
+                        cmdline.extend(["-exports", f"{export_name}={entry_point}"])
                     else:
-                        # vs/ps/cs: traditional single entry point
-                        compile_command.extend(["-E", current_entry])
+                        cmdline.extend(["-E", export_name])
 
-                    compile_command.extend(["-Fo", output_file])
+                    cmdline.extend(["-Fo", output_file])
 
                     if args.debug:
-                        compile_command.extend(["-Zi", "-Qembed_debug"])
+                        cmdline.extend(["-Zi", "-Qembed_debug"])
 
-                    for directory in include_dirs:
-                        compile_command.extend(["-I", directory])
+                    for d in include_dirs:
+                        cmdline.extend(["-I", d])
 
-                    cmd(compile_command, stderr=subprocess.PIPE, check=True)
+                    cmd(cmdline, stderr=subprocess.PIPE, check=True)
+
                 except subprocess.CalledProcessError as e:
-                    sys.stderr.write(f"Shader compilation failed for {filename}:\n{e.stderr.decode('utf-8')}\n")
+                    sys.stderr.write(e.stderr.decode() + "\n")
                     compilation_failed = True
-                finally:
-                    if not export_name and (args.include or args.output):
-                        os.remove(hlsl_file)
+
+        for f in temp_files:
+            if os.path.exists(f):
+                os.remove(f)
 
     sys.exit(1 if compilation_failed else 0)

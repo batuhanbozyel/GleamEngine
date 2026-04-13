@@ -355,5 +355,21 @@ static constexpr MTLStages BarrierStageToMTLStages(BarrierStage stage)
 	}
 }
 
+static constexpr IRShaderStage ShaderStageToIRShaderStage(ShaderStage stage)
+{
+    switch (stage)
+    {
+        case ShaderStage::Vertex:        return IRShaderStageVertex;
+        case ShaderStage::Fragment:      return IRShaderStageFragment;
+        case ShaderStage::Compute:       return IRShaderStageCompute;
+        case ShaderStage::RayGeneration: return IRShaderStageCompute; // compiled as compute kernel
+        case ShaderStage::Miss:          return IRShaderStageMiss;
+        case ShaderStage::ClosestHit:    return IRShaderStageClosestHit;
+        case ShaderStage::AnyHit:        return IRShaderStageAnyHit;
+        case ShaderStage::Intersection:  return IRShaderStageIntersection;
+        default: GLEAM_ASSERT(false, "Metal: Unknown shader stage specified!"); return IRShaderStageInvalid;
+    }
+}
+
 } // namespace Gleam
 #endif
