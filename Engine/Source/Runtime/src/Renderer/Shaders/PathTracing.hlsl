@@ -1,6 +1,19 @@
 #include "PathTraceCommon.hlsli"
 #include "Atmosphere/SkyAtmosphereCommon.hlsli"
 
+void EvaluateMiss(inout Gleam::RayPayload payload, float3 origin, float3 direction)
+{
+    if (atmosphereUniforms.transmittanceLutTexture != InvalidResourceIndex &&
+        atmosphereUniforms.multiScatterLutTexture != InvalidResourceIndex)
+    {
+        payload.radiance += payload.throughput * GetSunAndSkyIlluminance(origin, direction);
+    }
+    else
+    {
+        payload.radiance += payload.throughput * atmosphereUniforms.sunIlluminance;
+    }
+}
+
 [shader("raygeneration")]
 void pathTraceRayGen()
 {
@@ -25,16 +38,24 @@ void pathTraceRayGen()
     ray.TMin      = 1e-3;
     ray.TMax      = 1e6;
 	
-    TraceRay(
-        accelerationStructure,
-        RAY_FLAG_CULL_BACK_FACING_TRIANGLES,
-        0xFF,
-        0,
-        0,
-        0,
-        ray,
-        payload
-    );
+    if (pathTraceConstants.accelerationStructure == InvalidResourceIndex)
+    {
+        EvaluateMiss(payload, ray.Origin, ray.Direction);
+    }
+    else
+    {
+        RaytracingAccelerationStructure accelerationStructure = ResourceDescriptorHeap[pathTraceConstants.accelerationStructure];
+        TraceRay(
+            accelerationStructure,
+            RAY_FLAG_CULL_BACK_FACING_TRIANGLES,
+            0xFF,
+            0,
+            0,
+            0,
+            ray,
+            payload
+        );
+    }
 
     RWTexture2D<float4> colorTarget = ResourceDescriptorHeap[pathTraceConstants.colorTarget];
     if (pathTraceConstants.frameIndex == 0)
@@ -52,13 +73,5 @@ void pathTraceRayGen()
 [shader("miss")]
 void pathTraceMiss(inout Gleam::RayPayload payload : SV_RayPayload)
 {
-    if (atmosphereUniforms.transmittanceLutTexture != InvalidResourceIndex &&
-        atmosphereUniforms.multiScatterLutTexture != InvalidResourceIndex)
-    {
-        payload.radiance += payload.throughput * GetSunAndSkyIlluminance(WorldRayOrigin(), WorldRayDirection());
-    }
-    else
-    {
-        payload.radiance += payload.throughput * atmosphereUniforms.sunIlluminance;
-    }
+    EvaluateMiss(payload, WorldRayOrigin(), WorldRayDirection());
 }

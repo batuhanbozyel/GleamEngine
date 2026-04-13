@@ -1311,13 +1311,10 @@ ShaderResourceIndex MetalDevice::CreateResourceView(const Texture& texture, MTLT
 AccelerationStructureView MetalDevice::CreateResourceView(const TopLevelAccelerationStructure& tlas)
 {
     id<MTLBuffer> headerBuffer = [mHandle newBufferWithLength:sizeof(IRRaytracingAccelerationStructureGPUHeader)
+                                                            + sizeof(uint32_t) * tlas.GetDescriptor().instanceCount
                                                       options:MTLResourceStorageModeShared];
 	[headerBuffer setLabel:@"TLAS GPU Header"];
 	[mResidencySet addAllocation:headerBuffer];
- 
-    IRRaytracingAccelerationStructureGPUHeader* header = static_cast<IRRaytracingAccelerationStructureGPUHeader*>([headerBuffer contents]);
-	header->accelerationStructureID = [tlas.GetHandle() gpuResourceID]._impl;
-	header->addressOfInstanceContributions = 0; // No per-instance hit group contributions
 
     auto index = mCbvSrvUavHeap.heap.Allocate();
 	auto descriptorTable = static_cast<IRDescriptorTableEntry*>([mCbvSrvUavHeap.handle contents]);

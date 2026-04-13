@@ -147,6 +147,7 @@ void ClosestHit(inout Gleam::RayPayload payload : SV_RayPayload, BuiltInTriangle
 		Gleam::RayPayload reflection = payload;
 		reflection.depth += 1;
         
+        RaytracingAccelerationStructure accelerationStructure = ResourceDescriptorHeap[pathTraceConstants.accelerationStructure];
 		TraceRay(
             accelerationStructure,
             RAY_FLAG_CULL_BACK_FACING_TRIANGLES,

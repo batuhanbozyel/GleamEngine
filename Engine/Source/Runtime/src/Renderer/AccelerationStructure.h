@@ -63,6 +63,7 @@ struct TLASDescriptor
 {
 	TString name;
 	size_t size = 0;
+	uint32_t instanceCount = 0;
 };
 
 class TopLevelAccelerationStructure final : public GraphicsObject
