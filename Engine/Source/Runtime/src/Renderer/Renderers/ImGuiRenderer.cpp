@@ -46,8 +46,8 @@ void ImGuiRenderer::OnCreate(const RenderContext& context)
 	memcpy(subresource.pixels.data(), pixels, subresource.pixels.size());
 	mDefaultFontTexture = new Texture2D(textureDesc);
 	
-	uint64_t fontTextureId = static_cast<uint64_t>(mDefaultFontTexture->GetResourceView().data);
-	io.Fonts->SetTexID(reinterpret_cast<ImTextureID>(fontTextureId));
+	ImTextureID fontTextureId = static_cast<ImTextureID>(mDefaultFontTexture->GetResourceView().data);
+	io.Fonts->SetTexID(fontTextureId);
 	
 	GraphicsPipelineStateDescriptor pipelineDesc;
 	pipelineDesc.blendState.enabled = true;
@@ -194,7 +194,7 @@ void ImGuiRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 					continue;
 				}
 
-				uint64_t texID = reinterpret_cast<uint64_t>(drawCmd->GetTexID());
+				ImTextureID texID = drawCmd->GetTexID();
 				ShaderResourceIndex texture = ShaderResourceIndex(static_cast<uint32_t>(texID));
 
 				ImGuiResources passConstants;
@@ -252,12 +252,11 @@ void ImGuiRenderer::AddFontTexture(const Path& fontPath, const Path& defaultPath
 	memcpy(subresource.pixels.data(), pixels, subresource.pixels.size());
 	mFontTexture = new Texture2D(textureDesc);
 
-	uint64_t fontTextureId = static_cast<uint64_t>(mFontTexture->GetResourceView().data);
-	io.Fonts->SetTexID(reinterpret_cast<ImTextureID>(fontTextureId));
+	ImTextureID fontTextureId = static_cast<ImTextureID>(mFontTexture->GetResourceView().data);
+	io.Fonts->SetTexID(fontTextureId);
 }
 
 ImTextureID ImGuiRenderer::GetImTextureIDForTexture(const Texture& texture) const
 {
-	uint64_t id = static_cast<uint64_t>(texture.GetResourceView().data);
-	return reinterpret_cast<ImTextureID>(id);
+	return static_cast<ImTextureID>(texture.GetResourceView().data);
 }

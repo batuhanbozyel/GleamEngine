@@ -54,7 +54,7 @@ void ContentBrowser::Render(Gleam::ImGuiRenderer* imgui)
 
 		static float leftPanelWidth = 250.0f;
 
-		ImGui::BeginChild("DirectoryTree", ImVec2(leftPanelWidth, 0), ImGuiChildFlags_Border);
+		ImGui::BeginChild("DirectoryTree", ImVec2(leftPanelWidth, 0), ImGuiChildFlags_Borders);
 		ImGui::Text("Directories");
 		ImGui::Separator();
 		DrawDirectoryTree(mAssetDirectory);
@@ -76,7 +76,7 @@ void ContentBrowser::Render(Gleam::ImGuiRenderer* imgui)
 
 		ImGui::SameLine();
 
-		ImGui::BeginChild("AssetGrid", ImVec2(0, 0), ImGuiChildFlags_Border);
+		ImGui::BeginChild("AssetGrid", ImVec2(0, 0), ImGuiChildFlags_Borders);
 
 		if (ImGui::Button(Gleam::TStringView(mAssetDirectory.Stem()).data()))
 		{
