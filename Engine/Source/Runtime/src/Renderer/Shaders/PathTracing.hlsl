@@ -47,8 +47,9 @@ void pathTraceRayGen()
     }
     else
     {
-        uint   spp       = pathTraceConstants.samplesPerPixel;
-        uint   baseIndex = pathTraceConstants.frameIndex * spp;
+        RaytracingAccelerationStructure accelerationStructure = ResourceDescriptorHeap[pathTraceConstants.accelerationStructure];
+        uint spp       = pathTraceConstants.samplesPerPixel;
+        uint baseIndex = pathTraceConstants.frameIndex * spp;
         for (uint s = 0; s < spp; s++)
         {
             Gleam::RayPayload payload;

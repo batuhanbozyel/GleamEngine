@@ -74,6 +74,21 @@ using namespace Gleam;
 
 @end
 
+@interface MetalHitGroupImpl : NSObject
+@property (nonatomic, strong) id<MetalRayTracingFunction> closestHit;
+@property (nonatomic, strong) id<MetalRayTracingFunction> anyHit;
+@property (nonatomic, strong) id<MetalRayTracingFunction> intersection;
+@end
+
+@implementation MetalHitGroupImpl
+
+- (instancetype)init {
+    self = [super init];
+    return self;
+}
+
+@end
+
 @interface MetalFunctionImpl : NSObject<MetalFunction>
 @property (nonatomic, strong) id<MTLFunction> function;
 @end
@@ -666,7 +681,7 @@ RayTracingPipeline GraphicsDevice::CompileRayTracingPipeline(const RayTracingPip
     id<MetalRayTracingFunction> rayGenFunction = rayGenShader.GetHandle();
 
     TArray<TString> missEntryNames;
-    TArray<id<MetalRayTracingFunction>> missFunctions;
+    NSMutableArray<id<MetalRayTracingFunction>>* missFunctions = [NSMutableArray array];
     uint64_t missMask = 0;
     for (const auto& missEntry : pipelineDesc.missEntries)
     {
@@ -676,52 +691,41 @@ RayTracingPipeline GraphicsDevice::CompileRayTracingPipeline(const RayTracingPip
             id<MetalRayTracingFunction> fn = shader.GetHandle();
             missMask |= IRObjectGatherRaytracingIntrinsics(fn.dxil, missEntry.c_str());
             missEntryNames.emplace_back(missEntry);
-            missFunctions.emplace_back(fn);
+            [missFunctions addObject:fn];
         }
     }
 
     uint64_t closestHitMask = 0;
     uint64_t anyHitMask = 0;
-    
-    struct MetalHitGroup
-    {
-        id<MetalRayTracingFunction> closestHit = nil;
-        id<MetalRayTracingFunction> anyHit = nil;
-        id<MetalRayTracingFunction> intersection = nil;
-    };
-    TArray<MetalHitGroup> hitGroups;
-    hitGroups.reserve(pipelineDesc.hitGroups.size());
-    
+
+    NSMutableArray<MetalHitGroupImpl*>* hitGroups = [NSMutableArray array];
     for (const auto& hitGroup : pipelineDesc.hitGroups)
     {
+        MetalHitGroupImpl* mtlHitGroup = [[MetalHitGroupImpl alloc] init];
         if (hitGroup.name.empty())
         {
-            hitGroups.emplace_back(MetalHitGroup{});
+            [hitGroups addObject:mtlHitGroup];
             continue;
         }
-        MetalHitGroup mtlHitGroup = {};
+
         if (not hitGroup.closestHitEntry.empty())
         {
             auto shader = CreateShader(hitGroup.closestHitEntry, ShaderStage::ClosestHit);
             mtlHitGroup.closestHit = shader.GetHandle();
-            
             closestHitMask |= IRObjectGatherRaytracingIntrinsics(mtlHitGroup.closestHit.dxil, hitGroup.closestHitEntry.c_str());
         }
-
         if (not hitGroup.anyHitEntry.empty())
         {
             auto shader = CreateShader(hitGroup.anyHitEntry, ShaderStage::AnyHit);
             mtlHitGroup.anyHit = shader.GetHandle();
-            
             anyHitMask |= IRObjectGatherRaytracingIntrinsics(mtlHitGroup.anyHit.dxil, hitGroup.anyHitEntry.c_str());
         }
-
         if (not hitGroup.intersectionEntry.empty())
         {
             auto shader = CreateShader(hitGroup.intersectionEntry, ShaderStage::Intersection);
             mtlHitGroup.intersection = shader.GetHandle();
         }
-        hitGroups.emplace_back(mtlHitGroup);
+        [hitGroups addObject:mtlHitGroup];
     }
     
     IRRayTracingPipelineConfiguration* rtConfig = IRRayTracingPipelineConfigurationCreate();
@@ -745,25 +749,25 @@ RayTracingPipeline GraphicsDevice::CompileRayTracingPipeline(const RayTracingPip
     NSMutableArray<id<MTLFunction>>* closestHitGroup = [NSMutableArray array];
     
     // Miss
-    for (uint32_t i = 0; i < (uint32_t)missFunctions.size(); ++i)
+    for (NSUInteger i = 0; i < missFunctions.count; ++i)
     {
+        id<MetalRayTracingFunction> fn = missFunctions[i];
         auto compiler = CreateCompiler(missEntryNames[i], device->GetGlobalRootSignature());
         IRCompilerSetRayTracingPipelineConfiguration(compiler, rtConfig);
-        auto function = CompileDXIL(device->GetHandle(), compiler, missFunctions[i].dxil, missEntryNames[i], ShaderStage::Miss);
+        auto function = CompileDXIL(device->GetHandle(), compiler, fn.dxil, missEntryNames[i], ShaderStage::Miss);
         IRCompilerDestroy(compiler);
-
         [missGroup addObject:function.handle];
     }
-    
+
     // Intersection function buffer functions (custom intersection / any-hit)
     NSMutableArray<id<MTLFunction>>* intersectionFunctions = [NSMutableArray array];
- 
+
     // Per-hit-group IFT slot: NSNotFound means opaque triangle (no custom intersection)
-    TArray<NSUInteger> intersectionFunctionSlots(hitGroups.size(), NSNotFound);
- 
-    for (uint32_t i = 0; i < (uint32_t)hitGroups.size(); ++i)
+    TArray<NSUInteger> intersectionFunctionSlots(hitGroups.count, NSNotFound);
+
+    for (NSUInteger i = 0; i < hitGroups.count; ++i)
     {
-        const auto& hitGroup = hitGroups[i];
+        MetalHitGroupImpl* hitGroup = hitGroups[i];
         const auto& hitGroupDesc = pipelineDesc.hitGroups[i];
         IRHitGroupType hitGroupType = hitGroup.intersection ? IRHitGroupTypeProceduralPrimitive: IRHitGroupTypeTriangles;
         

@@ -17,6 +17,7 @@ Gleam::MeshInstanceData LoadInstanceData(uint instanceID)
 [shader("closesthit")]
 void ClosestHit(inout Gleam::RayPayload payload : SV_RayPayload, BuiltInTriangleIntersectionAttributes attribs : SV_IntersectionAttributes)
 {
+    RaytracingAccelerationStructure accelerationStructure = ResourceDescriptorHeap[pathTraceConstants.accelerationStructure];
     Gleam::MeshInstanceData instance = LoadInstanceData(InstanceID());
     MeshVertexOut vertex = InterpolateVertexAttributes(instance, PrimitiveIndex(), attribs.barycentrics);
     
@@ -175,7 +176,6 @@ void ClosestHit(inout Gleam::RayPayload payload : SV_RayPayload, BuiltInTriangle
         reflection.seed = payload.seed;
 		reflection.depth = payload.depth + 1;
         
-        RaytracingAccelerationStructure accelerationStructure = ResourceDescriptorHeap[pathTraceConstants.accelerationStructure];
 		TraceRay(
             accelerationStructure,
             RAY_FLAG_CULL_BACK_FACING_TRIANGLES,
