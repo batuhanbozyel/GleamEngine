@@ -145,16 +145,6 @@ void ViewStack::SetDarkTheme() const
       style.LogSliderDeadzone                 = 4;
       style.TabRounding                       = 4;
     
-
     float fontSize = 16.0f;
-	static auto renderSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::RenderSystem>();
-	{
-		auto imgui = renderSystem->GetRenderPipeline(Gleam::RenderPath::Default)->GetRenderer<Gleam::ImGuiRenderer>();
-		imgui->AddFontTexture("Resources/Fonts/OpenSans-Bold.ttf", "Resources/Fonts/OpenSans-Regular.ttf", fontSize);
-	}
-	{
-		auto imgui = renderSystem->GetRenderPipeline(Gleam::RenderPath::PathTracing)->GetRenderer<Gleam::ImGuiRenderer>();
-		imgui->AddFontTexture("Resources/Fonts/OpenSans-Bold.ttf", "Resources/Fonts/OpenSans-Regular.ttf", fontSize);
-	}
-	
+	mImgui->AddFontTexture("Resources/Fonts/OpenSans-Bold.ttf", "Resources/Fonts/OpenSans-Regular.ttf", fontSize);	
 }

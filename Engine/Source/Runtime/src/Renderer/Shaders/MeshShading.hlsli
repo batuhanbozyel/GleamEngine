@@ -51,7 +51,7 @@ float4 main(MeshVertexOut IN) : SV_TARGET
 		light.illuminance = atmosphereUniforms.sunIlluminance;
 	}
 	
-	float3 color = 0.0;
+	float3 color = surface.emission.rgb;
 	color += EvaluateDirectLight(surface, light, viewDir, worldNormal);
 	color += EvaluateIndirectLight(surface, meshShadingConstants.brdfTexture, meshShadingConstants.diffuseReflectionTexture, meshShadingConstants.specularReflectionTexture, viewDir, worldNormal);
 	return float4(color, surface.albedo.a);
