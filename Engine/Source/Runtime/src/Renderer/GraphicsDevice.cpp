@@ -25,7 +25,7 @@ Shader GraphicsDevice::CreateShader(const TString& entryPoint, ShaderStage stage
 
 ComputePipelineHandle GraphicsDevice::CreateComputePipeline(const ComputePipelineStateDescriptor& pipelineDesc)
 {
-	ComputePipelineHandle handle{  eastl::hash<ComputePipelineStateDescriptor>()(pipelineDesc) };
+	ComputePipelineHandle handle{ eastl::hash<ComputePipelineStateDescriptor>()(pipelineDesc) };
 	auto it = mComputePipelineCache.find(handle);
 	if (it != mComputePipelineCache.end())
 	{

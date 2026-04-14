@@ -1185,7 +1185,11 @@ MetalDevice::~MetalDevice()
     }
     mStaticSamplers.clear();
     mSamplerHeap.handle = nil;
+#ifdef USE_TEXTURE_VIEW_POOL
     mCbvSrvUavHeap.pool = nil;
+#else
+    mCbvSrvUavHeap.textureViews = nil;
+#endif
     mCbvSrvUavHeap.handle = nil;
     
     // Destroy residency set
@@ -1334,15 +1338,25 @@ ShaderResourceIndex MetalDevice::CreateResourceView(const Buffer& buffer)
 ShaderResourceIndex MetalDevice::CreateResourceView(const Texture& texture, MTLTextureViewDescriptor* viewDesc)
 {
     auto index = mCbvSrvUavHeap.heap.Allocate();
-    auto resourceID = [static_cast<MetalDevice*>(this)->GetRtvHeap() setTextureView:texture.GetHandle() descriptor:viewDesc atIndex:index.data];
-    
     auto descriptorTable = static_cast<IRDescriptorTableEntry*>([mCbvSrvUavHeap.handle contents]);
     auto entry = descriptorTable + index.data;
-    
+
+#ifdef USE_TEXTURE_VIEW_POOL
+    auto resourceID = [mCbvSrvUavHeap.pool setTextureView:texture.GetHandle() descriptor:viewDesc atIndex:index.data];
     entry->gpuVA = 0;
     entry->textureViewID = resourceID._impl;
     entry->metadata = 0;
-    
+#else
+    id<MTLTexture> typedView = [texture.GetHandle()
+        newTextureViewWithPixelFormat:viewDesc.pixelFormat
+                         textureType:viewDesc.textureType
+                              levels:viewDesc.levelRange
+                              slices:viewDesc.sliceRange];
+    mCbvSrvUavHeap.textureViews[@(index.data)] = typedView;
+    [mResidencySet addAllocation:typedView];
+    IRDescriptorTableSetTexture(entry, typedView, 0.0f, 0);
+#endif
+
     return index;
 }
 
@@ -1368,6 +1382,15 @@ void MetalDevice::ReleaseResourceView(ShaderResourceIndex view)
 {
     if (view != InvalidResourceIndex)
     {
+#ifndef USE_TEXTURE_VIEW_POOL
+        NSNumber* key = @(view.data);
+        id<MTLTexture> typedView = mCbvSrvUavHeap.textureViews[key];
+        if (typedView)
+        {
+            [mResidencySet removeAllocation:typedView];
+            [mCbvSrvUavHeap.textureViews removeObjectForKey:key];
+        }
+#endif
         mCbvSrvUavHeap.heap.Release(view);
     }
 }
@@ -1410,12 +1433,17 @@ MetalDescriptorHeap MetalDevice::CreateDescriptorHeap(uint32_t capacity) const
     heap.heap = ResourceDescriptorHeap(capacity);
     [heap.handle setLabel:@"DescriptorHeap"];
     [mResidencySet addAllocation:heap.handle];
-    
+
+#ifdef USE_TEXTURE_VIEW_POOL
     __autoreleasing NSError* error = nil;
     MTLResourceViewPoolDescriptor* desc = [MTLResourceViewPoolDescriptor new];
     desc.resourceViewCount = capacity;
     desc.label = @"TextureViewPool";
     heap.pool = [mHandle newTextureViewPoolWithDescriptor:desc error:&error];
+#else
+    heap.textureViews = [NSMutableDictionary dictionary];
+#endif
+
     return heap;
 }
 
@@ -1429,10 +1457,12 @@ id<MTLBuffer> MetalDevice::GetCbvSrvUavHeap() const
     return mCbvSrvUavHeap.handle;
 }
 
+#ifdef USE_TEXTURE_VIEW_POOL
 id<MTLTextureViewPool> MetalDevice::GetRtvHeap() const
 {
     return mCbvSrvUavHeap.pool;
 }
+#endif
 
 id<MTLResidencySet> MetalDevice::GetResidencySet() const
 {

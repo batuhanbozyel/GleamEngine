@@ -129,7 +129,7 @@ void ReflectionProbeRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBla
 	{
 		TextureDescriptor textureDesc;
 		textureDesc.name = "DiffuseIrradianceMap";
-		textureDesc.size = Math::DivideRoundingUp((float)globalProbe.resolution, 16.0f);
+		textureDesc.size = (float)Math::DivideRoundingUp((uint32_t)globalProbe.resolution, 16u);
 		textureDesc.usage |= TextureUsage_Storage;
 		textureDesc.dimension = TextureDimension::TextureCube;
 		textureDesc.format = TextureFormat::R16G16B16A16_SFloat;

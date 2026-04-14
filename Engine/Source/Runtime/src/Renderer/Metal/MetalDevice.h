@@ -47,8 +47,12 @@ struct SamplerState;
 struct MetalDescriptorHeap
 {
     ResourceDescriptorHeap heap;
-	id<MTLTextureViewPool> pool;
     id<MTLBuffer> handle;
+#ifdef USE_TEXTURE_VIEW_POOL
+    id<MTLTextureViewPool> pool;
+#else
+    NSMutableDictionary<NSNumber*, id<MTLTexture>>* textureViews;
+#endif
 };
 
 struct MetalCommandPool
@@ -73,7 +77,9 @@ public:
 	
 	id<MTLBuffer> GetCbvSrvUavHeap() const;
 	
+#ifdef USE_TEXTURE_VIEW_POOL
 	id<MTLTextureViewPool> GetRtvHeap() const;
+#endif
 	
 	id<MTLResidencySet> GetResidencySet() const;
 	
