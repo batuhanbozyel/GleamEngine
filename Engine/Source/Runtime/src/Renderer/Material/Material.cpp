@@ -15,6 +15,8 @@
 
 #include "Renderer/Texture2D.h"
 #include "Renderer/RenderSystem.h"
+#include "Renderer/GraphicsDevice.h"
+#include "Renderer/CopyCommandBuffer.h"
 
 #include "Assets/AssetManager.h"
 
@@ -48,9 +50,10 @@ static size_t ComputeMaterialInstanceSize(const TArray<MaterialProperty>& proper
 }
 
 Material::Material(const MaterialDescriptor& descriptor)
-    : IMaterial(descriptor.properties)
-    , mName(descriptor.name)
+    : IMaterial(descriptor.name, descriptor.properties)
+	, mDescriptor(descriptor)
 	, mPipelineStateHash((uint32_t)eastl::hash<MaterialDescriptor>()(descriptor))
+	, mSurfaceShaderHash((uint32_t)eastl::hash<TString>()(descriptor.surfaceShader))
 	, mInstanceDescriptorHeap(MaxMaterialInstances)
 	, mInstanceSize(ComputeMaterialInstanceSize(descriptor.properties))
 {
@@ -58,7 +61,7 @@ Material::Material(const MaterialDescriptor& descriptor)
 	auto device = renderSystem->GetDevice();
 
 	BufferDescriptor bufferDesc;
-	bufferDesc.name = "Material: " + mName;
+	bufferDesc.name = "Material: " + descriptor.name;
 	bufferDesc.size = mInstanceSize * MaxMaterialInstances;
 	mBuffer = device->CreateBuffer(renderSystem->GetAllocator(), bufferDesc);
 }
@@ -145,14 +148,19 @@ const Buffer& Material::GetBuffer() const
     return mBuffer;
 }
 
-const TString& Material::GetName() const
+const MaterialDescriptor& Material::GetDescriptor() const
 {
-    return mName;
+	return mDescriptor;
 }
 
 uint32_t Material::GetPipelineHash() const
 {
 	return mPipelineStateHash;
+}
+
+uint32_t Material::GetSurfaceShaderHash() const
+{
+	return mSurfaceShaderHash;
 }
 
 uint32_t Material::GetInstanceCount() const

@@ -9,7 +9,7 @@ using namespace Gleam;
 
 ConstantBuffer::ConstantBuffer(GraphicsDevice* device, size_t size)
 	: mAlignment(D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT)
-	, mCapacity(Utils::AlignUp(size, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT))
+	, mCapacity(Math::AlignUp(size, (size_t)D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT))
 	, mDevice(device)
 {
 	D3D12_HEAP_PROPERTIES heapProperties = {

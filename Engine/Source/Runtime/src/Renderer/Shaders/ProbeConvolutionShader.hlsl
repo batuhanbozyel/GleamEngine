@@ -1,8 +1,5 @@
 #include "BRDF.hlsli"
 
-#pragma compute diffuseIrradianceConvolutionShader
-#pragma compute specularPrefilterConvolutionShader
-
 PUSH_CONSTANT(Gleam::ProbeConvolutionConstants, constants);
 
 #define IRRADIANCE_SAMPLE_COUNT 128u
@@ -11,6 +8,7 @@ PUSH_CONSTANT(Gleam::ProbeConvolutionConstants, constants);
 static TextureCube<float4> srcTexture = ResourceDescriptorHeap[constants.sourceTexture];
 static RWTexture2D<float4> dstTexture = ResourceDescriptorHeap[constants.targetTexture];
 
+[shader("compute")]
 [numthreads(16, 16, 1)]
 void diffuseIrradianceConvolutionShader(uint3 dispatchThreadId : SV_DispatchThreadID)
 {
@@ -45,6 +43,7 @@ void diffuseIrradianceConvolutionShader(uint3 dispatchThreadId : SV_DispatchThre
 	dstTexture[dispatchThreadId.xy] = float4(irradiance / IRRADIANCE_SAMPLE_COUNT, 1.0);
 }
 
+[shader("compute")]
 [numthreads(16, 16, 1)]
 void specularPrefilterConvolutionShader(uint3 dispatchThreadId : SV_DispatchThreadID)
 {
@@ -78,9 +77,6 @@ void specularPrefilterConvolutionShader(uint3 dispatchThreadId : SV_DispatchThre
 		float NdotL = dot(N, L);
 		if (NdotL > 0.0)
 		{
-			float LdotH = saturate(dot(L, H));
-			float VdotH = saturate(dot(V, H));
-			
 			// Since we pre-integrate the result for normal direction,
 			// N == V and then NdotH == LdotH. This is why the BRDF pdf
 			// can be simplifed from:

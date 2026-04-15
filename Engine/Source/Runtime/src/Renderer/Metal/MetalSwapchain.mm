@@ -78,7 +78,7 @@ void MetalSwapchain::Configure(MetalDevice* device, const RendererConfig& config
     mContext.resize(mMaxFramesInFlight);
     for (auto& ctx : mContext)
     {
-        ctx.event = [device->GetHandle() newEvent];
+        ctx.event = [device->GetHandle() newSharedEvent];
     }
     
     int width, height;
@@ -103,31 +103,32 @@ void MetalSwapchain::Resize(GraphicsDevice* device, const Size& size)
 const Texture& MetalSwapchain::AcquireNextDrawable()
 {
     auto& ctx = mContext[mCurrentFrameIndex];
-    [mDevice->GetCommandQueue() waitForEvent:ctx.event value:ctx.eventValue];
+    WaitForMTLSharedEvent(ctx.event, ctx.eventValue);
     
-    mCurrentDrawable = [mHandle nextDrawable];
-    while (mCurrentDrawable == nil)
+    ctx.drawable = [mHandle nextDrawable];
+    while (ctx.drawable == nil)
     {
-        mCurrentDrawable = [mHandle nextDrawable];
+        ctx.drawable = [mHandle nextDrawable];
     }
     
     auto& texture = mTextures[mCurrentFrameIndex];
-    texture = Texture(texture.GetDescriptor(), mCurrentDrawable.texture, MTLResourceID());
+    texture = Texture(texture.GetDescriptor(), ctx.drawable.texture, MTLResourceID());
     return texture;
 }
 
 void MetalSwapchain::Present(const CommandBuffer* cmd)
 {
+    auto& ctx = mContext[mCurrentFrameIndex];
     id<MTL4CommandQueue> commandQueue = mDevice->GetCommandQueue();
     
     cmd->End();
-    [commandQueue waitForDrawable:mCurrentDrawable];
+    [commandQueue waitForDrawable:ctx.drawable];
     cmd->Commit();
     
-    auto& ctx = mContext[mCurrentFrameIndex];
+    [commandQueue signalDrawable:ctx.drawable];
+    [ctx.drawable present];
+    
     [commandQueue signalEvent:ctx.event value:++ctx.eventValue];
-    [commandQueue signalDrawable:mCurrentDrawable];
-    [mCurrentDrawable present];
     
     mCurrentFrameIndex = (mCurrentFrameIndex + 1) % mMaxFramesInFlight;
 }

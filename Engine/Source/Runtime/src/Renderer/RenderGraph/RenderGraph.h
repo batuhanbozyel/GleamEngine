@@ -3,10 +3,10 @@
 
 namespace Gleam {
 
+class GPUAllocator;
 class RenderSurface;
 class CommandBuffer;
 class GraphicsDevice;
-class GPUAllocator;
 
 struct RenderContext;
 struct SceneRenderingData;

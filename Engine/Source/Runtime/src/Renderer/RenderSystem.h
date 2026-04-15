@@ -1,25 +1,32 @@
 #pragma once
 #include "Core/Subsystem.h"
-#include "Swapchain.h"
-#include "CommandBuffer.h"
-#include "CopyCommandBuffer.h"
-#include "GraphicsDevice.h"
-#include "ResourceReleaseQueue.h"
-#include "RenderPipeline.h"
+#include "Math/Size.h"
 #include "World/Entity.h"
+#include "Shaders/ShaderTypes.h"
 
 namespace Gleam {
 
 class World;
+class Swapchain;
+class RenderGraph;
+class GPUAllocator;
+class CommandBuffer;
+class RenderSurface;
+class GraphicsDevice;
+class RenderPipeline;
+class RayTracingScene;
 class CopyCommandBuffer;
+class ResourceReleaseQueue;
 
+struct RenderContext;
+struct RendererConfig;
 struct CameraRenderData;
 struct SkyAtmosphereRenderData;
 
-GENUM(RenderPath, "83FD8433-7D91-42AF-A237-CCF726E306E5", Serializable)
+GENUM(RenderPath, "83FD8433-7D91-42AF-A237-CCF726E306E5", Serializable, PrettyName("Render Path"))
 {
-	GITEM(Default, "E77464D0-418E-48E9-87AA-2C7355C7C599"),
-	GITEM(PathTracing, "AF1EDBC0-9EA0-4C5B-9BDB-8258B6CCE31E")
+	GITEM(Default, "E77464D0-418E-48E9-87AA-2C7355C7C599", PrettyName("Default")),
+	GITEM(PathTracing, "AF1EDBC0-9EA0-4C5B-9BDB-8258B6CCE31E", PrettyName("Path Tracing"))
 };
 
 class RenderSystem final : public EngineSubsystem
@@ -38,7 +45,7 @@ public:
 
 	void SetRenderPath(RenderPath path);
 
-	CopyCommandBuffer* GetCopyCommandBuffer();
+	RenderPath GetRenderPath() const;
     
     GraphicsDevice* GetDevice();
     
@@ -47,6 +54,14 @@ public:
 	RenderSurface* GetSurface();
 
 	const RenderSurface* GetSurface() const;
+
+	CopyCommandBuffer* GetCopyCommandBuffer();
+
+	const CopyCommandBuffer* GetCopyCommandBuffer() const;
+
+	RayTracingScene* GetRayTracingScene();
+
+	const RayTracingScene* GetRayTracingScene() const;
 	
 	RenderPipeline* GetRenderPipeline(RenderPath renderPath);
 	
@@ -61,6 +76,8 @@ public:
 	const GPUAllocator* GetAllocator() const;
 
 	void RecompileShader(const TString& entryPoint);
+
+	RenderContext GetRenderContext() const;
     
 private:
 
@@ -80,22 +97,24 @@ private:
 
 	Engine* mEngine;
 	
-	RenderPath mRenderPath;
-	TArray<Scope<RenderPipeline>, 2> mRenderPipelines;
+	RenderPath mRenderPath = RenderPath::Default;
+	TArray<RenderPipeline*, 2> mRenderPipelines = {};
 
-    Scope<Swapchain> mSwapchain;
+	RayTracingScene* mRayTracingScene = nullptr;
 
-	Scope<GraphicsDevice> mDevice;
+    Swapchain* mSwapchain;
 
-	Scope<CopyCommandBuffer> mCopyCommandBuffer;
+	GraphicsDevice* mDevice = nullptr;
 
-	Scope<ResourceReleaseQueue> mReleaseQueue;
+	CopyCommandBuffer* mCopyCommandBuffer = nullptr;
 
-	Scope<GPUAllocator> mTransientAllocator;
+	ResourceReleaseQueue* mReleaseQueue = nullptr;
 
-	Scope<GPUAllocator> mPersistentAllocator;
+	GPUAllocator* mTransientAllocator = nullptr;
+
+	GPUAllocator* mPersistentAllocator = nullptr;
     
-    TArray<Scope<CommandBuffer>> mCommandBuffers;
+	TArray<CommandBuffer*> mCommandBuffers = {};
     
 };
 

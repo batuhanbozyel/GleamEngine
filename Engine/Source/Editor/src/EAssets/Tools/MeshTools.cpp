@@ -68,6 +68,7 @@ Gleam::MeshDescriptor MeshTools::CombineMeshes(const Gleam::TArray<RawMesh>& mes
 		submesh.materialIndex = mesh.material;
         submesh.bounds = CalculateBounds(mesh.positions);
         submesh.indexCount = static_cast<uint32_t>(mesh.indices.size());
+		submesh.vertexCount = static_cast<uint32_t>(mesh.positions.size());
         combined.submeshes[i] = submesh;
         
         auto interleaved = InterleaveMeshVertices(mesh);
@@ -165,7 +166,11 @@ void MeshTools::RemoveDegenerateFaces(RawMesh& mesh)
 	Gleam::TArray<Gleam::Float2> newTexCoords;
 
 	newPositions.reserve(newVertexCount);
-	newNormals.reserve(newVertexCount);
+
+	if (not mesh.normals.empty())
+	{
+		newNormals.reserve(newVertexCount);
+	}
 
 	if (not mesh.tangents.empty())
 	{
@@ -182,7 +187,11 @@ void MeshTools::RemoveDegenerateFaces(RawMesh& mesh)
 		if (vertexUsed[i])
 		{
 			newPositions.push_back(mesh.positions[i]);
-			newNormals.push_back(mesh.normals[i]);
+
+			if (not mesh.normals.empty())
+			{
+				newNormals.push_back(mesh.normals[i]);
+			}
 
 			if (not mesh.tangents.empty())
 			{
@@ -198,7 +207,11 @@ void MeshTools::RemoveDegenerateFaces(RawMesh& mesh)
 
 	mesh.indices = std::move(newIndices);
 	mesh.positions = std::move(newPositions);
-	mesh.normals = std::move(newNormals);
+
+	if (not mesh.normals.empty())
+	{
+		mesh.normals = std::move(newNormals);
+	}
 
 	if (not mesh.tangents.empty())
 	{
@@ -242,6 +255,23 @@ void MeshTools::ComputeSmoothNormals(RawMesh& mesh)
 		else
 		{
 			normal = Gleam::Float3(0.0f, 1.0f, 0.0f);
+		}
+	}
+}
+
+void MeshTools::ValidateTangents(RawMesh& mesh)
+{
+	for (uint32_t i = 0; i < mesh.tangents.size(); ++i)
+	{
+		auto& tangent = mesh.tangents[i];
+		const auto& normal = mesh.normals[i];
+
+		Gleam::Float3 t(tangent.x, tangent.y, tangent.z);
+		if (Gleam::Math::LengthSquared(Gleam::Math::Cross(normal, t)) < Gleam::Math::Epsilon)
+		{
+			Gleam::Float3 up = Gleam::Math::Abs(normal.y) < 0.999f ? Gleam::Float3(0.0f, 1.0f, 0.0f) : Gleam::Float3(1.0f, 0.0f, 0.0f);
+			t = Gleam::Math::Normalize(Gleam::Math::Cross(up, normal));
+			tangent = Gleam::Float4(t.x, t.y, t.z, tangent.w != 0.0f ? tangent.w : 1.0f);
 		}
 	}
 }

@@ -34,9 +34,9 @@ struct ProbeConvolutionConstants
 	float pad2;
 };
 
-struct GenerateCubemapMipsConstants
+struct GenerateMipsConstants
 {
-	ShaderResourceIndex sourceTexture;
+	UnorderedAccessIndex sourceTexture;
 	UnorderedAccessIndex targetTexture;
 	uint32_t resolution;
 	uint32_t level;
@@ -81,8 +81,19 @@ struct TonemapUniforms
 	ShaderResourceIndex sceneColor;
 };
 
-#define MESH_PASS_RESOURCES_BINDING_SLOT 0
-#define MESH_INSTANCE_DATA_BINDING_SLOT 1
+struct MeshShadingConstants
+{
+	ShaderResourceIndex instanceBuffer;
+	ShaderResourceIndex diffuseReflectionTexture;
+	ShaderResourceIndex specularReflectionTexture;
+	ShaderResourceIndex brdfTexture;
+
+	uint32_t instanceID;
+	float pad0;
+	float pad1;
+	float pad2;
+};
+
 struct MeshInstanceData
 {
 	float4x4 transform;
@@ -90,42 +101,12 @@ struct MeshInstanceData
 	ShaderResourceIndex positionBuffer;
 	ShaderResourceIndex interleavedBuffer;
 	ShaderResourceIndex indexBuffer;
-	float pad0;
+	ShaderResourceIndex materialBuffer;
 
 	uint32_t baseVertex;
 	uint32_t indexCount;
 	uint32_t firstIndex;
 	uint32_t materialID;
-};
-
-struct MeshPassResources
-{
-	ShaderResourceIndex instanceBuffer;
-	ShaderResourceIndex materialBuffer;
-	ShaderResourceIndex diffuseReflectionTexture;
-	ShaderResourceIndex specularReflectionTexture;
-
-	ShaderResourceIndex brdfTexture;
-	float pad0;
-	float pad1;
-	float pad2;
-};
-
-struct SurfaceInput
-{
-	float4 position;
-	float3 worldNormal;
-	float3 color;
-	float2 uv;
-};
-
-struct SurfaceOutput
-{
-	float4 albedo;
-	float4 emission;
-	float3 normal;
-	float metallic;
-	float roughness;
 };
 
 struct SkyAtmosphereParameters
@@ -176,10 +157,36 @@ struct SkyAtmosphereRenderConstants
 	float pad1;
 };
 
+enum class RayType
+{
+	PrimaryRay = 0,
+	ShadowRay = 1,
+	COUNT = 2
+};
+typedef uint32_t RayTypeFlagBits;
+
+struct RayPayload
+{
+	uint4 seed;
+	float3 radiance;
+	float3 throughput;
+	uint32_t depth;
+};
+
+struct ShadowPayload
+{
+	float visibility;
+};
+
 struct PathTracerConstants
 {
+	ShaderResourceIndex accelerationStructure;
+	ShaderResourceIndex instanceBuffer;
 	UnorderedAccessIndex colorTarget;
 	uint32_t frameIndex;
+
+	uint32_t maxRayRecursionDepth;
+	uint32_t samplesPerPixel;
 	float pad1;
 	float pad2;
 };

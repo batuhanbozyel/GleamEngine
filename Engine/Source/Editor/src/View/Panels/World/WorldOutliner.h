@@ -14,7 +14,7 @@ class WorldOutliner final : public View
 {
 public:
     
-	virtual void Init(Gleam::World* world) override;
+	virtual void OnCreate(Gleam::World* world) override;
     
     virtual void Render(Gleam::ImGuiRenderer* imgui) override;
     
@@ -24,7 +24,7 @@ private:
 
 	void DrawSingletonComponents();
 
-	Gleam::World* mEditWorld;
+	Gleam::World* mEditWorld = nullptr;
 
 	uint32_t mSelectedSingletonID = 0;
     

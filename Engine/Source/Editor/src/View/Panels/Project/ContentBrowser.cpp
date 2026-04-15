@@ -9,7 +9,15 @@
 #include "EAssets/MeshSource.h"
 #include "EAssets/EAssetManager.h"
 
-#include "Gleam.h"
+#include "Core/Globals.h"
+#include "Core/Engine.h"
+
+#include "Renderer/Renderers/ImGuiRenderer.h"
+
+#include "World/World.h"
+#include "World/Prefab.h"
+
+#include "IO/FileDialog.h"
 
 #include <imgui.h>
 
@@ -21,7 +29,7 @@ ContentBrowser::ContentBrowser(EAssetManager* assetManager)
 
 }
 
-void ContentBrowser::Init(Gleam::World* world)
+void ContentBrowser::OnCreate(Gleam::World* world)
 {
 	mAssetDirectory = Gleam::Globals::ProjectContentDirectory;
     mCurrentDirectory = mAssetDirectory;
@@ -46,7 +54,7 @@ void ContentBrowser::Render(Gleam::ImGuiRenderer* imgui)
 
 		static float leftPanelWidth = 250.0f;
 
-		ImGui::BeginChild("DirectoryTree", ImVec2(leftPanelWidth, 0), ImGuiChildFlags_Border);
+		ImGui::BeginChild("DirectoryTree", ImVec2(leftPanelWidth, 0), ImGuiChildFlags_Borders);
 		ImGui::Text("Directories");
 		ImGui::Separator();
 		DrawDirectoryTree(mAssetDirectory);
@@ -68,7 +76,7 @@ void ContentBrowser::Render(Gleam::ImGuiRenderer* imgui)
 
 		ImGui::SameLine();
 
-		ImGui::BeginChild("AssetGrid", ImVec2(0, 0), ImGuiChildFlags_Border);
+		ImGui::BeginChild("AssetGrid", ImVec2(0, 0), ImGuiChildFlags_Borders);
 
 		if (ImGui::Button(Gleam::TStringView(mAssetDirectory.Stem()).data()))
 		{

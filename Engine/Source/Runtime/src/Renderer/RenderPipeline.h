@@ -19,23 +19,32 @@ public:
 
 	~RenderPipeline()
 	{
-		for (auto renderer : mRenderers)
+		for (auto* renderer : mOwnedRenderers)
 		{
 			renderer->OnDestroy(mContext);
 			delete renderer;
 		}
 		mRenderers.clear();
+		mOwnedRenderers.clear();
 	}
 
 	template<RendererType T, class...Args>
     T* AddRenderer(Args&&... args)
     {
         GLEAM_ASSERT(!HasRenderer<T>(), "Render pipeline already has the renderer!");
-        auto renderer = mRenderers.emplace_back(new T(std::forward<Args>(args)...));
+        auto renderer = static_cast<T*>(mRenderers.emplace_back(new T(std::forward<Args>(args)...)));
+        mOwnedRenderers.push_back(renderer);
         renderer->OnCreate(mContext);
-        return static_cast<T*>(renderer);
+        return renderer;
     }
-    
+
+    template<RendererType T>
+    void AddSharedRenderer(T* renderer)
+    {
+        GLEAM_ASSERT(!HasRenderer<T>(), "Render pipeline already has the renderer!");
+        mRenderers.push_back(renderer);
+    }
+
     template<RendererType T>
     void RemoveRenderer()
     {
@@ -44,15 +53,36 @@ public:
         {
             return typeid(*renderer) == typeid(T);
         });
-        
+
         if (it != mRenderers.end())
         {
             auto renderer = *it;
-            renderer->OnDestroy(mContext);
-            delete renderer;
+            auto ownedIt = std::find(mOwnedRenderers.begin(), mOwnedRenderers.end(), renderer);
+            if (ownedIt != mOwnedRenderers.end())
+            {
+                renderer->OnDestroy(mContext);
+                delete renderer;
+                mOwnedRenderers.erase(ownedIt);
+            }
 			mRenderers.erase(it);
         }
     }
+
+	template<RendererType T>
+	void RemoveSharedRenderer(T* renderer = nullptr)
+	{
+		auto it = renderer
+			? std::find(mRenderers.begin(), mRenderers.end(), static_cast<IRenderer*>(renderer))
+			: std::find_if(mRenderers.begin(), mRenderers.end(), [](const IRenderer* r)
+		{
+			return typeid(*r) == typeid(T);
+		});
+
+		GLEAM_ASSERT(it != mRenderers.end(), "Render pipeline does not have the renderer!");
+		GLEAM_ASSERT(std::find(mOwnedRenderers.begin(), mOwnedRenderers.end(), *it) == mOwnedRenderers.end(),
+			"Use RemoveRenderer() for owned renderers!");
+		mRenderers.erase(it);
+	}
     
     template<RendererType T>
     T* GetRenderer() const
@@ -112,6 +142,7 @@ public:
 private:
 
 	Container mRenderers;
+	Container mOwnedRenderers;
 	RenderContext mContext;
 
 };

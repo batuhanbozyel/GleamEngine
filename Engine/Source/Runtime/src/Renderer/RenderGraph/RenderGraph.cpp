@@ -179,6 +179,7 @@ void RenderGraph::AllocatePassResources(RenderGraphPassNode* pass, const Command
 			descriptor.name = name.str();
 
 			resource.node->texture = mContext.device->CreateTexture(mContext.allocator, descriptor);
+			resource.node->barrierState.layout = BarrierLayout::Common;
 			GLEAM_ASSERT(resource.node->texture.IsValid());
 		}
 	}
@@ -271,22 +272,28 @@ void RenderGraph::SetupPassBarriers(RenderGraphPassNode* pass, const CommandBuff
 	barrier.textureBarriers.reserve(pass->textureReads.size() + pass->textureWrites.size());
 	for (auto& resource : pass->textureReads)
 	{
-		if (resource.node->barrierState.access == BarrierAccess::ShaderResource
-			|| resource.node->barrierState.access == BarrierAccess::DepthStencilRead)
-		{
-			continue;
-		}
-
 		BarrierStage dstStage = BarrierStage::AllShading;
 		BarrierAccess dstAccess = BarrierAccess::ShaderResource;
 		BarrierLayout newLayout = BarrierLayout::ShaderResource;
 
 		const auto& textureDesc = resource.node->texture.GetDescriptor();
-		if (Utils::IsDepthFormat(textureDesc.format))
+		if (pass->type == RenderGraphPassType::Raster)
 		{
-			dstStage = BarrierStage::DepthStencil;
-			dstAccess = BarrierAccess::DepthStencilRead;
-			newLayout = BarrierLayout::DepthStencilRead;
+			if (Utils::IsDepthFormat(textureDesc.format))
+			{
+				dstStage = BarrierStage::DepthStencil;
+				dstAccess = BarrierAccess::DepthStencilRead;
+				newLayout = BarrierLayout::DepthStencilRead;
+			}
+		}
+		else
+		{
+			dstStage = BarrierStage::ComputeShading;
+		}
+
+		if (resource.node->barrierState.access == dstAccess)
+		{
+			continue;
 		}
 
 		TextureBarrier textureBarrier;

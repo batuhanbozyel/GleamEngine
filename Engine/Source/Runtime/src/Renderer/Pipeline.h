@@ -1,6 +1,7 @@
 #pragma once
 #include "GraphicsObject.h"
 #include "TextureDescriptor.h"
+#include "ShaderBindingTable.h"
 #include "PipelineStateDescriptor.h"
 
 namespace Gleam {
@@ -10,7 +11,8 @@ class GraphicsDevice;
 enum class PipelineType
 {
 	Graphics,
-	Compute
+	Compute,
+	RayTracing
 };
 
 struct PipelineHandle
@@ -31,6 +33,11 @@ struct PipelineHandle
 	FORCE_INLINE constexpr bool operator!=(const PipelineHandle& other) const
 	{
 		return !(*this == other);
+	}
+
+	FORCE_INLINE constexpr bool IsValid() const
+	{
+		return data != 0;
 	}
 };
 
@@ -97,7 +104,6 @@ public:
 private:
 
 	GraphicsPipelineStateDescriptor mDescriptor;
-
 };
 
 class ComputePipeline : public Pipeline
@@ -127,11 +133,57 @@ public:
 private:
 
 	ComputePipelineStateDescriptor mDescriptor;
+};
 
+class RayTracingPipeline : public Pipeline
+{
+	friend class GraphicsDevice;
+
+public:
+
+	RayTracingPipeline() = default;
+
+	RayTracingPipeline(const RayTracingPipeline& other) = default;
+
+	RayTracingPipeline& operator=(const RayTracingPipeline& other) = default;
+
+	RayTracingPipeline(const RayTracingPipelineStateDescriptor& descriptor)
+		: Pipeline(PipelineHandle{ eastl::hash<RayTracingPipelineStateDescriptor>()(descriptor), PipelineType::RayTracing })
+		, mDescriptor(descriptor)
+	{
+
+	}
+
+	const ShaderBindingTable& GetShaderBindingTable() const
+	{
+		return mShaderBindingTable;
+	}
+
+	const RayTracingPipelineStateDescriptor& GetDescriptor() const
+	{
+		return mDescriptor;
+	}
+
+private:
+
+	ShaderBindingTable mShaderBindingTable;
+	RayTracingPipelineStateDescriptor mDescriptor;
 };
 
 struct GraphicsPipelineHandle : PipelineHandle
 {
+	GraphicsPipelineHandle()
+		: PipelineHandle{ .data = 0, .type = PipelineType::Graphics }
+	{
+
+	}
+
+	GraphicsPipelineHandle(size_t hash)
+		: PipelineHandle{ .data = hash, .type = PipelineType::Graphics }
+	{
+
+	}
+
 	NO_DISCARD operator GraphicsPipeline() const
 	{
 		return GetPipeline();
@@ -142,12 +194,46 @@ struct GraphicsPipelineHandle : PipelineHandle
 
 struct ComputePipelineHandle : PipelineHandle
 {
+	ComputePipelineHandle()
+		: PipelineHandle{ .data = 0, .type = PipelineType::Compute }
+	{
+
+	}
+
+	ComputePipelineHandle(size_t hash)
+		: PipelineHandle{ .data = hash, .type = PipelineType::Compute }
+	{
+
+	}
+
 	NO_DISCARD operator ComputePipeline() const
 	{
 		return GetPipeline();
 	}
 
 	NO_DISCARD const ComputePipeline& GetPipeline() const;
+};
+
+struct RayTracingPipelineHandle : PipelineHandle
+{
+	RayTracingPipelineHandle()
+		: PipelineHandle{ .data = 0, .type = PipelineType::RayTracing }
+	{
+
+	}
+
+	RayTracingPipelineHandle(size_t hash)
+		: PipelineHandle{ .data = hash, .type = PipelineType::RayTracing }
+	{
+
+	}
+
+	NO_DISCARD operator RayTracingPipeline() const
+	{
+		return GetPipeline();
+	}
+
+	NO_DISCARD const RayTracingPipeline& GetPipeline() const;
 };
 
 } // namespace Gleam
@@ -180,6 +266,15 @@ struct std::hash<Gleam::ComputePipelineHandle>
 };
 
 template <>
+struct std::hash<Gleam::RayTracingPipelineHandle>
+{
+	size_t operator()(Gleam::RayTracingPipelineHandle handle) const
+	{
+		return handle.data;
+	}
+};
+
+template <>
 struct eastl::hash<Gleam::PipelineHandle>
 {
 	size_t operator()(Gleam::PipelineHandle handle) const
@@ -203,5 +298,14 @@ struct eastl::hash<Gleam::ComputePipelineHandle>
 	size_t operator()(Gleam::ComputePipelineHandle handle) const
 	{
 		return std::hash<Gleam::ComputePipelineHandle>()(handle);
+	}
+};
+
+template <>
+struct eastl::hash<Gleam::RayTracingPipelineHandle>
+{
+	size_t operator()(Gleam::RayTracingPipelineHandle handle) const
+	{
+		return std::hash<Gleam::RayTracingPipelineHandle>()(handle);
 	}
 };

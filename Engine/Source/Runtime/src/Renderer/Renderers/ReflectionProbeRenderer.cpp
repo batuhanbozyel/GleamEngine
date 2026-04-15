@@ -8,13 +8,13 @@
 
 using namespace Gleam;
 
-void ReflectionProbeRenderer::OnCreate(RenderContext& context)
+void ReflectionProbeRenderer::OnCreate(const RenderContext& context)
 {
 	ComputePipelineStateDescriptor pipelineState;
 	pipelineState.entryPoint = "skyAtmosphereRenderShader";
 	mSkyRenderPipeline = context.device->CreateComputePipeline(pipelineState);
 
-	pipelineState.entryPoint = "generateCubemapMipsShader";
+	pipelineState.entryPoint = "generateMipsShader";
 	mGenerateMipsPipeline = context.device->CreateComputePipeline(pipelineState);
 
 	pipelineState.entryPoint = "diffuseIrradianceConvolutionShader";
@@ -24,7 +24,7 @@ void ReflectionProbeRenderer::OnCreate(RenderContext& context)
 	mSpecularConvolutionPipeline = context.device->CreateComputePipeline(pipelineState);
 }
 
-void ReflectionProbeRenderer::OnDestroy(RenderContext& context)
+void ReflectionProbeRenderer::OnDestroy(const RenderContext& context)
 {
 
 }
@@ -56,7 +56,7 @@ void ReflectionProbeRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBla
 		passData.transmittanceLut = builder.ReadTexture(sceneData.atmosphere.transmittanceLut);
 		passData.multiScatterLut = builder.ReadTexture(sceneData.atmosphere.multiScatterLut);
 	},
-	[this, sceneData, globalProbe](const CommandBuffer* cmd, const CapturePassData& passData)
+	[this, &sceneData, globalProbe](const CommandBuffer* cmd, const CapturePassData& passData)
 	{
 		cmd->BindComputePipeline(mSkyRenderPipeline);
 		cmd->SetConstantBuffer(sceneData.atmosphere.params, SKY_ATMOSPHERE_PARAMS_BINDING_SLOT);
@@ -84,7 +84,7 @@ void ReflectionProbeRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBla
 	{
 		passData.probe = builder.WriteTexture(captureData.probe);
 	},
-	[this, sceneData, globalProbe](const CommandBuffer* cmd, const MipmapGenerationData& passData)
+	[this, &sceneData, globalProbe](const CommandBuffer* cmd, const MipmapGenerationData& passData)
 	{
 		const auto& probeTexture = passData.probe.GetTexture();
 
@@ -107,8 +107,8 @@ void ReflectionProbeRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBla
 			uint32_t resolution = (uint32_t)globalProbe.resolution >> level;
 			for (uint32_t face = 0; face < 6; ++face)
 			{
-				GenerateCubemapMipsConstants constants = {};
-				constants.sourceTexture = passData.probe;
+				GenerateMipsConstants constants = {};
+				constants.sourceTexture = probeTexture.GetUnorderedAccessView(level - 1, face);
 				constants.targetTexture = probeTexture.GetUnorderedAccessView(level, face);
 				constants.resolution = resolution;
 				constants.level = level;
@@ -129,7 +129,7 @@ void ReflectionProbeRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBla
 	{
 		TextureDescriptor textureDesc;
 		textureDesc.name = "DiffuseIrradianceMap";
-		textureDesc.size = Math::DivideRoundingUp((float)globalProbe.resolution, 16.0f);
+		textureDesc.size = (float)Math::DivideRoundingUp((uint32_t)globalProbe.resolution, 16u);
 		textureDesc.usage |= TextureUsage_Storage;
 		textureDesc.dimension = TextureDimension::TextureCube;
 		textureDesc.format = TextureFormat::R16G16B16A16_SFloat;
@@ -137,7 +137,7 @@ void ReflectionProbeRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBla
 		passData.targetTexture = builder.WriteTexture(passData.targetTexture);
 		passData.probe = builder.ReadTexture(mipmapData.probe);
 	},
-	[this, sceneData, globalProbe](const CommandBuffer* cmd, const DiffuseConvolutionData& passData)
+	[this, &sceneData, globalProbe](const CommandBuffer* cmd, const DiffuseConvolutionData& passData)
 	{
 		const auto& targetTexture = passData.targetTexture.GetTexture();
 		uint32_t resolution = Math::DivideRoundingUp((uint32_t)globalProbe.resolution, 16u);
@@ -177,7 +177,7 @@ void ReflectionProbeRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBla
 		passData.targetTexture = builder.WriteTexture(passData.targetTexture);
 		passData.probe = builder.ReadTexture(mipmapData.probe);
 	},
-	[this, sceneData, globalProbe](const CommandBuffer* cmd, const SpecularConvolutionData& passData)
+	[this, &sceneData, globalProbe](const CommandBuffer* cmd, const SpecularConvolutionData& passData)
 	{
 		const auto& targetTexture = passData.targetTexture.GetTexture();
 		uint32_t maxMipLevel = Math::Min(targetTexture.GetMipMapLevels(), (uint32_t)SPECULAR_RADIANCE_MAX_MIP_COUNT);

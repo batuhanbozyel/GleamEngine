@@ -16,7 +16,7 @@ struct CopyCommandBuffer::Impl
     id<MTL4CommandAllocator> memoryCommandAllocator{ nil };
     id<MTL4ComputeCommandEncoder> memoryCommandEncoder{ nil };
     
-    id<MTLEvent> memoryEvent = nil;
+    id<MTLSharedEvent> memoryEvent = nil;
     uint64_t memoryEventValue = 0;
     
     id<MTLBuffer> stagingBuffer{ nil };
@@ -24,6 +24,8 @@ struct CopyCommandBuffer::Impl
     size_t stagingBufferOffset = 0;
     
     TArray<void*> tempBuffers;
+    TArray<Buffer> bufferCopies;
+    TArray<Texture> textureCopies;
 
     bool CopyUploadData(const void* data, size_t size)
 	{
@@ -63,7 +65,7 @@ CopyCommandBuffer::CopyCommandBuffer(GraphicsDevice* device)
     mHandle->memoryCommandBuffer = [mDevice->GetHandle() newCommandBuffer];
     mHandle->memoryCommandBuffer.label = @"CopyCommandBuffer";
     
-    mHandle->memoryEvent = [mDevice->GetHandle() newEvent];
+    mHandle->memoryEvent = [mDevice->GetHandle() newSharedEvent];
     mHandle->memoryEvent.label = @"CopyCommandBuffer::MemoryEvent";
     
     mHandle->stagingBuffer = [mDevice->GetHandle() newBufferWithLength:UploadHeapSize options:MTLResourceStorageModeShared | MTLResourceCPUCacheModeWriteCombined];
@@ -74,11 +76,6 @@ CopyCommandBuffer::CopyCommandBuffer(GraphicsDevice* device)
 CopyCommandBuffer::~CopyCommandBuffer()
 {
     WaitUntilCompleted();
-    for (void* buffer : mHandle->tempBuffers)
-    {
-        CFRelease(buffer);
-    }
-    mHandle->tempBuffers.clear();
     
     mHandle->stagingBuffer = nil;
     
@@ -93,7 +90,42 @@ CopyCommandBuffer::~CopyCommandBuffer()
 
 void CopyCommandBuffer::Barrier(const CommandBuffer* cmd) const
 {
+    if (mHandle->bufferCopies.empty() && mHandle->textureCopies.empty())
+    {
+        return;
+    }
     
+    BarrierGroup barrier;
+    barrier.bufferBarriers.reserve(mHandle->bufferCopies.size());
+    barrier.textureBarriers.reserve(mHandle->textureCopies.size());
+
+    for (const auto& buffer : mHandle->bufferCopies)
+    {
+        BufferBarrier bufferBarrier;
+        bufferBarrier.resource = buffer.GetHandle();
+        bufferBarrier.srcStage = BarrierStage::Copy;
+        bufferBarrier.dstStage = BarrierStage::AllShading;
+        bufferBarrier.srcAccess = BarrierAccess::CopyDest;
+        bufferBarrier.dstAccess = BarrierAccess::ShaderResource;
+        barrier.bufferBarriers.push_back(bufferBarrier);
+    }
+
+    for (const auto& texture : mHandle->textureCopies)
+    {
+        TextureBarrier textureBarrier;
+        textureBarrier.resource = texture.GetHandle();
+        textureBarrier.srcStage = BarrierStage::Copy;
+        textureBarrier.dstStage = BarrierStage::AllShading;
+        textureBarrier.srcAccess = BarrierAccess::CopyDest;
+        textureBarrier.dstAccess = BarrierAccess::ShaderResource;
+        textureBarrier.oldLayout = BarrierLayout::Common;
+        textureBarrier.newLayout = BarrierLayout::ShaderResource;
+        barrier.textureBarriers.push_back(textureBarrier);
+    }
+    cmd->Barrier(barrier);
+
+    mHandle->bufferCopies.clear();
+    mHandle->textureCopies.clear();
 }
 
 void CopyCommandBuffer::Execute() const
@@ -105,7 +137,6 @@ void CopyCommandBuffer::Execute() const
     
     if (mHandle->memoryCommandEncoder != nil)
     {
-        [mHandle->memoryCommandEncoder barrierAfterStages:MTLStageBlit beforeQueueStages:MTLStageAll visibilityOptions:MTL4VisibilityOptionDevice];
         [mHandle->memoryCommandEncoder endEncoding];
         [mHandle->memoryCommandBuffer endCommandBuffer];
         
@@ -118,10 +149,9 @@ void CopyCommandBuffer::Execute() const
 
 void CopyCommandBuffer::WaitUntilCompleted() const
 {
-    mHandle->stagingBufferOffset = 0;
     if (mHandle->memoryCommandEncoder != nil)
     {
-        [static_cast<MetalDevice*>(mDevice)->GetCommandQueue() waitForEvent:mHandle->memoryEvent value:mHandle->memoryEventValue];
+        WaitForMTLSharedEvent(mHandle->memoryEvent, mHandle->memoryEventValue);
         [mHandle->memoryCommandAllocator reset];
         mHandle->memoryCommandEncoder = nil;
     }
@@ -132,6 +162,7 @@ void CopyCommandBuffer::WaitUntilCompleted() const
         mHandle->fileCommandBuffer = nil;
     }
     
+    mHandle->stagingBufferOffset = 0;
     for (void* buffer : mHandle->tempBuffers)
     {
         id<MTLBuffer> mtlBuffer = (id<MTLBuffer>)CFBridgingRelease(buffer);
@@ -149,11 +180,13 @@ void CopyCommandBuffer::Commit(const Buffer& buffer, const void* data, size_t si
         {
             [mHandle->memoryCommandBuffer beginCommandBufferWithAllocator:mHandle->memoryCommandAllocator];
             mHandle->memoryCommandEncoder = [mHandle->memoryCommandBuffer computeCommandEncoder];
-            [mHandle->memoryCommandEncoder setLabel:TO_NSSTRING("CopyCommandBuffer::Commit")];
+            [mHandle->memoryCommandEncoder setLabel:TO_NSSTRING("CopyCommandBuffer::MemoryCommandEncoder")];
         }
         
-        id<MTLBuffer> dstBuffer = buffer.GetHandle();
+        mHandle->stagingBufferOffset = Math::AlignUp(mHandle->stagingBufferOffset, (size_t)4u);
         size_t srcOffset = mHandle->stagingBufferOffset;
+        
+        id<MTLBuffer> dstBuffer = buffer.GetHandle();
         if (mHandle->CopyUploadData(data, size))
         {
             [mHandle->memoryCommandEncoder copyFromBuffer:mHandle->stagingBuffer sourceOffset:srcOffset toBuffer:dstBuffer destinationOffset:offset size:size];
@@ -166,6 +199,12 @@ void CopyCommandBuffer::Commit(const Buffer& buffer, const void* data, size_t si
             
             [mHandle->memoryCommandEncoder copyFromBuffer:srcBuffer sourceOffset:0 toBuffer:dstBuffer destinationOffset:offset size:size];
         }
+
+        auto it = eastl::find_if(mHandle->bufferCopies.begin(), mHandle->bufferCopies.end(), [&](const Buffer& b) { return b.GetHandle() == buffer.GetHandle(); });
+		if (it == mHandle->bufferCopies.end())
+		{
+			mHandle->bufferCopies.push_back(buffer);
+		}
     }
     else
     {
@@ -179,7 +218,7 @@ void CopyCommandBuffer::Commit(const Texture& texture, const void* data, size_t 
     {
         [mHandle->memoryCommandBuffer beginCommandBufferWithAllocator:mHandle->memoryCommandAllocator];
         mHandle->memoryCommandEncoder = [mHandle->memoryCommandBuffer computeCommandEncoder];
-        [mHandle->memoryCommandEncoder setLabel:TO_NSSTRING("CopyCommandBuffer::Commit")];
+        [mHandle->memoryCommandEncoder setLabel:TO_NSSTRING("CopyCommandBuffer::MemoryCommandEncoder")];
     }
     const auto& texDesc = texture.GetDescriptor();
     
@@ -188,9 +227,11 @@ void CopyCommandBuffer::Commit(const Texture& texture, const void* data, size_t 
                                      Math::Max(static_cast<uint32_t>(texDesc.size.height) >> mip, 1u),
                                     (texDesc.dimension == TextureDimension::Texture3D) ? Math::Max(texDesc.depth >> mip, 1u) : 1);
 
-    size_t sourceBytesPerRow = sourceSize.width * Utils::GetTextureFormatSizeInBytes(texDesc.format);
+    size_t formatSize = Utils::GetTextureFormatSizeInBytes(texDesc.format);
+    size_t sourceBytesPerRow = Math::AlignUp(sourceSize.width * formatSize, formatSize);
     size_t sourceBytesPerImage = (texDesc.dimension == TextureDimension::Texture3D) ? sourceBytesPerRow * sourceSize.height : 0;
     
+    mHandle->stagingBufferOffset = Math::AlignUp(mHandle->stagingBufferOffset, formatSize);
     size_t srcOffset = mHandle->stagingBufferOffset;
     if (mHandle->CopyUploadData(data, size))
     {
@@ -220,6 +261,12 @@ void CopyCommandBuffer::Commit(const Texture& texture, const void* data, size_t 
                                      destinationLevel:mip
                                     destinationOrigin:MTLOriginMake(0, 0, 0)];
     }
+    
+    auto it = eastl::find_if(mHandle->textureCopies.begin(), mHandle->textureCopies.end(), [&](const Texture& t) { return t.GetHandle() == texture.GetHandle(); });
+	if (it == mHandle->textureCopies.end())
+	{
+		mHandle->textureCopies.push_back(texture);
+	}
 }
 
 #endif

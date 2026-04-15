@@ -65,6 +65,11 @@ float4 FastSign(float4 x)
 	return saturate(x * FLT_MAX + 0.5) * 2.0 - 1.0;
 }
 
+float UIntToFloat(uint x)
+{
+    return asfloat(0x3f800000 | (x >> 9)) - 1.0f;
+}
+
 float4 unpack_unorm4x8_to_float(uint packedVal)
 {
     return float4

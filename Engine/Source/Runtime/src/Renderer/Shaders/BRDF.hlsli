@@ -2,7 +2,7 @@
 #define BRDF_HLSL
 
 #include "Common.hlsli"
-#include "ShaderTypes.h"
+#include "SurfaceShading.hlsli"
 
 #define F90_Metal 1.0f
 #define PERFECT_MIRROR_ROUGHNESS 0.0016
@@ -100,7 +100,7 @@ float3 CosineSampleHemisphere(float2 u, float3 N, out float pdf)
 	float theta = TWO_PI * u.x;
 	float cosPhi2 = 1.0 - u.y;
 	float cosPhi = sqrt(cosPhi2);
-	float sinPhi = sqrt(1.0f - cosPhi2);
+    float sinPhi = sqrt(max(0.0, 1.0 - cosPhi2));
 	float3 L = float3(sinPhi * cos(theta), cosPhi, sinPhi * sin(theta));
 
 	pdf = cosPhi * INV_PI;
@@ -121,7 +121,7 @@ float3 ImportanceSampleGGX(float2 u, float3 N, float perceptualRoughness, out fl
     float theta = TWO_PI * u.x;
 	float cosPhi2 = (1.0 - u.y) / (1.0 + (a2 - 1.0) * u.y);
     float cosPhi = sqrt(cosPhi2);
-    float sinPhi = sqrt(1.0 - cosPhi2);
+    float sinPhi = sqrt(max(0.0, 1.0 - cosPhi2));
 	float3 H = float3(cos(theta) * sinPhi, cosPhi, sin(theta) * sinPhi);
 	
 	float d = (cosPhi * a2 - cosPhi) * cosPhi + 1.0;
@@ -134,6 +134,20 @@ float3 ImportanceSampleGGX(float2 u, float3 N, float perceptualRoughness, out fl
 	
 	float3 sampleVec = tangent * H.x + N * H.y + bitangent * H.z;
 	return normalize(sampleVec);
+}
+
+float3 UniformSampleCone(float2 u, float3 N, float cosHalfAngle, out float pdf)
+{
+    float cosTheta = 1.0 - u.y * (1.0 - cosHalfAngle);
+    float sinTheta = sqrt(max(0.0, 1.0 - cosTheta * cosTheta));
+    float phi = TWO_PI * u.x;
+
+    float3 tangent;
+    float3 bitangent;
+    GetOrthonormalBasis(N, tangent, bitangent);
+
+    pdf = 1.0 / (TWO_PI * (1.0 - cosHalfAngle));
+    return normalize(tangent * (sinTheta * cos(phi)) + N * cosTheta + bitangent * (sinTheta * sin(phi)));
 }
 
 float PerceptualRoughnessToMipLevel(float perceptualRoughness, int maxMip)

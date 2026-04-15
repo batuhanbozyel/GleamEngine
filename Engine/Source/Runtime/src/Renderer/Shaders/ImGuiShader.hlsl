@@ -10,9 +10,7 @@ struct VertexOut
 	float4 color : ATTRIB1;
 };
 
-#pragma vertex imguiVertexShader
-#pragma fragment imguiFragmentShader
-
+[shader("vertex")]
 VertexOut imguiVertexShader(uint vertexID : SV_VERTEXID)
 {
 	ByteAddressBuffer vertexBuffer = ResourceDescriptorHeap[constants.vertexBuffer];
@@ -26,6 +24,7 @@ VertexOut imguiVertexShader(uint vertexID : SV_VERTEXID)
 	return OUT;
 }
 
+[shader("pixel")]
 float4 imguiFragmentShader(VertexOut IN) : SV_Target
 {
 	Texture2D<float4> texture = ResourceDescriptorHeap[constants.texture];

@@ -11,6 +11,7 @@
 
 namespace Gleam {
 class EntityManager;
+struct ImGuiPassData;
 } // namespace Gleam
 
 namespace GEditor {
@@ -21,7 +22,7 @@ class WorldViewport final : public View
 {
 public:
     
-	virtual void Init(Gleam::World* world) override;
+	virtual void OnCreate(Gleam::World* world) override;
     
     virtual void Update() override;
     
@@ -34,6 +35,10 @@ public:
     
 private:
 
+	void DrawToolbar();
+
+	void DrawViewport(Gleam::ImGuiRenderer* imgui, const Gleam::ImGuiPassData& passData);
+
 	void Resize(Gleam::EntityManager& entityManager, const Gleam::Size& size);
     
     bool mCursorVisible = true;
@@ -42,11 +47,11 @@ private:
     
     EditorCameraController* mCameraController = nullptr;
 
-	Gleam::EntityHandle mCamera;
+	Gleam::EntityHandle mCamera = Gleam::InvalidEntity;
     
-    Gleam::Size mViewportSize;
+    Gleam::Size mViewportSize = Gleam::Size::zero;
     
-    Gleam::World* mEditWorld;
+    Gleam::World* mEditWorld = nullptr;
     
 };
 

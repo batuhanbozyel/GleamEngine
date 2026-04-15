@@ -11,7 +11,14 @@ enum class ShaderStage
 {
     Vertex,
     Fragment,
-    Compute
+    Compute,
+	RayGeneration,
+	Miss,
+	ClosestHit,
+	AnyHit,
+	Intersection,
+	Mesh,
+	Amplification
 };
 
 class Shader final : public GraphicsObject

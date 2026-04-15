@@ -161,6 +161,42 @@ GSTRUCT(ComputePipelineStateDescriptor, "C07E515A-F254-4413-8C1E-13173BB82121", 
 	}
 };
 
+GSTRUCT(HitGroupDescriptor, "3BF561EE-C997-46E7-8E29-0AC34AADE508", Serializable)
+{
+	GFIELD("B088C7AE-6068-42B3-AC5B-DA9D88F8CAF1", Serializable)
+	TString name{};
+
+	GFIELD("E4AF9D00-FFB8-45DC-92A4-D49516C95CA1", Serializable)
+	TString closestHitEntry{};
+
+	GFIELD("4716A041-97B2-4EE4-9245-795B8709BC34", Serializable)
+	TString anyHitEntry{};
+
+	GFIELD("F42DAFF2-8F2E-4A1C-8AA4-EBAD1B860AE2", Serializable)
+	TString intersectionEntry{};
+};
+
+GSTRUCT(RayTracingPipelineStateDescriptor, "7DE7283B-C509-4B81-8B79-9D6AE400D78A", Serializable)
+{
+	GFIELD("E10C3850-CD11-4AD0-A0CF-E6D79F2F899F", Serializable)
+	TString rayGenerationEntry{};
+
+	GFIELD("9184222A-F745-4666-983E-0899A044FD3B", Serializable)
+	TArray<TString> missEntries{};
+
+	GFIELD("5FE237D1-99D3-4C8A-AD20-8F528B7BF0B4", Serializable)
+	TArray<HitGroupDescriptor> hitGroups{};
+
+	GFIELD("D12C58F4-D359-4DA8-9218-A8D6980CF09F", Serializable)
+	uint32_t maxRecursionDepth = 1;
+
+	GFIELD("379CF426-EB79-442C-B796-4450C8A6EED8", Serializable)
+	uint32_t maxPayloadSize = 32;	// bytes, user-defined ray payload struct
+
+	GFIELD("0074EEE1-FBCD-44BE-98DA-22FE2384E3D7", Serializable)
+	uint32_t maxAttributeSize = 8;	// bytes, default = float2 barycentrics
+};
+
 namespace Utils {
 
 static constexpr uint32_t PrimitiveTopologyVertexCount(PrimitiveTopology topology)
@@ -245,6 +281,43 @@ struct std::hash<Gleam::ComputePipelineStateDescriptor>
 };
 
 template <>
+struct std::hash<Gleam::HitGroupDescriptor>
+{
+	size_t operator()(const Gleam::HitGroupDescriptor& descriptor) const
+	{
+		std::size_t hash = 0;
+		Gleam::hash_combine(hash, descriptor.closestHitEntry);
+		Gleam::hash_combine(hash, descriptor.anyHitEntry);
+		Gleam::hash_combine(hash, descriptor.intersectionEntry);
+		return hash;
+	}
+};
+
+template <>
+struct std::hash<Gleam::RayTracingPipelineStateDescriptor>
+{
+    size_t operator()(const Gleam::RayTracingPipelineStateDescriptor& descriptor) const
+    {
+		std::size_t hash = 0;
+		Gleam::hash_combine(hash, descriptor.maxRecursionDepth);
+		Gleam::hash_combine(hash, descriptor.maxPayloadSize);
+		Gleam::hash_combine(hash, descriptor.maxAttributeSize);
+		Gleam::hash_combine(hash, descriptor.rayGenerationEntry);
+
+		for (const auto& missEntry : descriptor.missEntries)
+		{
+			Gleam::hash_combine(hash, missEntry);
+		}
+
+		for (const auto& hitGroup : descriptor.hitGroups)
+		{
+			Gleam::hash_combine(hash, hitGroup);
+		}
+		return hash;
+    }
+};
+
+template <>
 struct eastl::hash<Gleam::DepthState>
 {
 	size_t operator()(const Gleam::DepthState& depthState) const
@@ -277,5 +350,23 @@ struct eastl::hash<Gleam::ComputePipelineStateDescriptor>
 	size_t operator()(const Gleam::ComputePipelineStateDescriptor& descriptor) const
 	{
 		return std::hash<Gleam::ComputePipelineStateDescriptor>()(descriptor);
+	}
+};
+
+template <>
+struct eastl::hash<Gleam::HitGroupDescriptor>
+{
+	size_t operator()(const Gleam::HitGroupDescriptor& descriptor) const
+	{
+		return std::hash<Gleam::HitGroupDescriptor>()(descriptor);
+	}
+};
+
+template <>
+struct eastl::hash<Gleam::RayTracingPipelineStateDescriptor>
+{
+	size_t operator()(const Gleam::RayTracingPipelineStateDescriptor& descriptor) const
+	{
+		return std::hash<Gleam::RayTracingPipelineStateDescriptor>()(descriptor);
 	}
 };

@@ -5,10 +5,13 @@
 #include "Core/Globals.h"
 
 #include "Renderer/RenderSystem.h"
+#include "Renderer/GraphicsDevice.h"
+#include "Renderer/CopyCommandBuffer.h"
 
 using namespace Gleam;
 
 Texture2D::Texture2D(const Texture2DDescriptor& descriptor)
+	: Asset(descriptor.name)
 {
 	GLEAM_ASSERT(descriptor.dimension == TextureDimension::Texture2D, "Texture2D descriptor dimension mismatch.");
 

@@ -20,12 +20,22 @@
 @property (nonatomic, assign) MTLPrimitiveType topology;
 @end
 
+@protocol MetalRayTracingPipeline <MetalPipeline>
+@property (nonatomic, strong) id<MTLComputePipelineState> pipelineState;
+@property (nonatomic, strong) id<MTLIntersectionFunctionTable> intersectionFunctionTable;
+@property (nonatomic, strong) id<MTLVisibleFunctionTable> visibleFunctionTable;
+@end
+
 @protocol MetalFunction <NSObject>
-@property(nonatomic, strong) id<MTLFunction> function;
+@property(nonatomic, strong) id<MTLFunction> handle;
 @end
 
 @protocol MetalComputeFunction <MetalFunction>
 @property(nonatomic, assign) MTLSize threadsPerThreadgroup;
+@end
+
+@protocol MetalRayTracingFunction <MetalFunction>
+@property(nonatomic, assign) IRObject* dxil;
 @end
 
 namespace Gleam {
@@ -37,8 +47,12 @@ struct SamplerState;
 struct MetalDescriptorHeap
 {
     ResourceDescriptorHeap heap;
-	id<MTLTextureViewPool> pool;
     id<MTLBuffer> handle;
+#ifdef USE_TEXTURE_VIEW_POOL
+    id<MTLTextureViewPool> pool;
+#else
+    NSMutableDictionary<NSNumber*, id<MTLTexture>>* textureViews;
+#endif
 };
 
 struct MetalCommandPool
@@ -63,7 +77,9 @@ public:
 	
 	id<MTLBuffer> GetCbvSrvUavHeap() const;
 	
+#ifdef USE_TEXTURE_VIEW_POOL
 	id<MTLTextureViewPool> GetRtvHeap() const;
+#endif
 	
 	id<MTLResidencySet> GetResidencySet() const;
 	
@@ -74,12 +90,18 @@ public:
 	id<MTL4CommandBuffer> AllocateCommandBuffer();
 	
 	IRRootSignature* GetGlobalRootSignature() const;
+
+	ShaderBindingTable CreateShaderBindingTable(const RayTracingPipeline& pipeline);
 	
 	ShaderResourceIndex CreateResourceView(const Buffer& buffer);
 
 	ShaderResourceIndex CreateResourceView(const Texture& texture, MTLTextureViewDescriptor* viewDesc);
 
+	AccelerationStructureView CreateResourceView(const TopLevelAccelerationStructure& tlas);
+
 	void ReleaseResourceView(ShaderResourceIndex view);
+
+	void ReleaseResourceView(AccelerationStructureView view);
     
 private:
 

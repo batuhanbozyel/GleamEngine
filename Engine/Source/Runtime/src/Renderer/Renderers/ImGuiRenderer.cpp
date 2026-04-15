@@ -6,7 +6,9 @@
 #include "Core/EventSystem.h"
 #include "Core/WindowSystem.h"
 
+#include "Renderer/Swapchain.h"
 #include "Renderer/RenderSystem.h"
+#include "Renderer/GraphicsDevice.h"
 #include "Renderer/ImGui/imgui_impl_sdl3.h"
 
 using namespace Gleam;
@@ -14,7 +16,7 @@ using namespace Gleam;
 static constexpr uint32_t kImGuiDataBufferSize = 4 * 1024 * 1024;
 static_assert(sizeof(ImDrawIdx) == sizeof(uint16_t), "ImGui index type does not match index buffer");
 
-void ImGuiRenderer::OnCreate(RenderContext& context)
+void ImGuiRenderer::OnCreate(const RenderContext& context)
 {
 	mReleaseQueue = context.releaseQueue;
 	mSurface = static_cast<Swapchain*>(context.surface);
@@ -44,8 +46,8 @@ void ImGuiRenderer::OnCreate(RenderContext& context)
 	memcpy(subresource.pixels.data(), pixels, subresource.pixels.size());
 	mDefaultFontTexture = new Texture2D(textureDesc);
 	
-	uint64_t fontTextureId = static_cast<uint64_t>(mDefaultFontTexture->GetResourceView().data);
-	io.Fonts->SetTexID(reinterpret_cast<ImTextureID>(fontTextureId));
+	ImTextureID fontTextureId = static_cast<ImTextureID>(mDefaultFontTexture->GetResourceView().data);
+	io.Fonts->SetTexID(fontTextureId);
 	
 	GraphicsPipelineStateDescriptor pipelineDesc;
 	pipelineDesc.blendState.enabled = true;
@@ -85,7 +87,7 @@ void ImGuiRenderer::OnCreate(RenderContext& context)
     });
 }
 
-void ImGuiRenderer::OnDestroy(RenderContext& context)
+void ImGuiRenderer::OnDestroy(const RenderContext& context)
 {
 	ImGui_ImplSDL3_Shutdown();
     ImGui::DestroyContext();
@@ -153,7 +155,7 @@ void ImGuiRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 			vtxBufferOffset += drawList->IdxBuffer.Size * sizeof(ImDrawIdx);
 		}
 
-		vtxBufferOffset = (uint32_t)Utils::AlignUp(vtxBufferOffset, mBuffer.GetAlignment());
+		vtxBufferOffset = (uint32_t)Math::AlignUp((size_t)vtxBufferOffset, mBuffer.GetAlignment());
 		ImDrawVert* vtxDest = (ImDrawVert*)OffsetPointer(bufferPtr, vtxBufferOffset);
 		for (int n = 0; n < drawData->CmdListsCount; n++)
 		{
@@ -192,7 +194,7 @@ void ImGuiRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 					continue;
 				}
 
-				uint64_t texID = reinterpret_cast<uint64_t>(drawCmd->GetTexID());
+				ImTextureID texID = drawCmd->GetTexID();
 				ShaderResourceIndex texture = ShaderResourceIndex(static_cast<uint32_t>(texID));
 
 				ImGuiResources passConstants;
@@ -203,7 +205,7 @@ void ImGuiRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 
 				cmd->SetScissorRect(rect);
 				cmd->SetPushConstant(passConstants);
-				cmd->DrawIndexed(mBuffer, IndexType::UINT16, drawCmd->ElemCount, 1, drawCmd->IdxOffset + idxBufferOffset / sizeof(ImDrawIdx), drawCmd->VtxOffset);
+				cmd->DrawIndexed(mBuffer, IndexType::UINT16, drawCmd->ElemCount, 1, drawCmd->IdxOffset + idxBufferOffset / sizeof(ImDrawIdx));
 			}
 			idxBufferOffset += drawList->IdxBuffer.Size * sizeof(ImDrawIdx);
 			vtxBufferOffset += drawList->VtxBuffer.Size * sizeof(ImDrawVert);
@@ -250,12 +252,11 @@ void ImGuiRenderer::AddFontTexture(const Path& fontPath, const Path& defaultPath
 	memcpy(subresource.pixels.data(), pixels, subresource.pixels.size());
 	mFontTexture = new Texture2D(textureDesc);
 
-	uint64_t fontTextureId = static_cast<uint64_t>(mFontTexture->GetResourceView().data);
-	io.Fonts->SetTexID(reinterpret_cast<ImTextureID>(fontTextureId));
+	ImTextureID fontTextureId = static_cast<ImTextureID>(mFontTexture->GetResourceView().data);
+	io.Fonts->SetTexID(fontTextureId);
 }
 
 ImTextureID ImGuiRenderer::GetImTextureIDForTexture(const Texture& texture) const
 {
-	uint64_t id = static_cast<uint64_t>(texture.GetResourceView().data);
-	return reinterpret_cast<ImTextureID>(id);
+	return static_cast<ImTextureID>(texture.GetResourceView().data);
 }

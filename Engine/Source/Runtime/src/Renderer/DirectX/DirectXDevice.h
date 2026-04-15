@@ -74,19 +74,25 @@ public:
 
 	void WaitQueueIdle(ID3D12CommandQueue* queue) const;
 
-private:
-	
-	virtual void Configure(const RendererConfig& config) override;
+	ShaderBindingTable CreateShaderBindingTable(const RayTracingPipeline& pipeline);
 
-	virtual void ResetCommandPools(uint32_t frameIdx) override;
+	ID3D12Resource* CreateResource(const D3D12_RESOURCE_DESC1& desc, D3D12_HEAP_TYPE heapType, D3D12_BARRIER_LAYOUT initialLayout, const TString& name) const;
+
+	ID3D12Resource* CreateResource(const GPUAllocation& allocation, const D3D12_RESOURCE_DESC1& desc, D3D12_BARRIER_LAYOUT initialLayout, const TString& name) const;
 
 	ShaderResourceIndex CreateResourceView(const Buffer& buffer);
 
 	ShaderResourceIndex CreateResourceView(const Texture& texture);
 
+	ShaderResourceIndex CreateResourceView(const TopLevelAccelerationStructure& tlas);
+
 	void ReleaseResourceView(ShaderResourceIndex view);
 
-	ID3D12Resource* CreateResource(const GPUAllocation& allocation, const D3D12_RESOURCE_DESC1& desc, const TString& name) const;
+private:
+	
+	virtual void Configure(const RendererConfig& config) override;
+
+	virtual void ResetCommandPools(uint32_t frameIdx) override;
 
 	ID3D12CommandQueue* CreateCommandQueue(D3D12_COMMAND_LIST_TYPE type) const;
 

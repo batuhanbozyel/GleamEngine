@@ -10,7 +10,7 @@
 
 namespace Gleam {
 
-struct MaterialDescriptor;
+class Material;
 
 struct WorldRenderingData
 {
@@ -27,13 +27,13 @@ class WorldRenderer : public IRenderer
 {
 public:
     
-    virtual void OnCreate(RenderContext& context) override;
+    virtual void OnCreate(const RenderContext& context) override;
 
-	virtual void OnDestroy(RenderContext& context) override;
+	virtual void OnDestroy(const RenderContext& context) override;
     
     virtual void AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard) override;
 
-	void RegisterShadingPipeline(const MaterialDescriptor& material, uint32_t hash);
+	void RegisterShadingPipeline(const Material* material);
 
 	const Texture& GetBRDFLutTexture() const
 	{

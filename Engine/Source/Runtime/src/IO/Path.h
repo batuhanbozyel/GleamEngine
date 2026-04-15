@@ -17,7 +17,7 @@ public:
 	Path(Path&&) noexcept = default;
 
 	Path(const std::filesystem::path& p) : mPath(p.native()) {}
-	Path(std::filesystem::path&& p) : mPath(std::move(p.native())) {}
+	Path(std::filesystem::path&& p) : mPath(p.native()) {}
 
 	Path(const wchar_t* wstr) : mPath(wstr) {}
 
@@ -26,7 +26,7 @@ public:
 	Path(const TWStringView& wsv) : mPath(wsv) {}
 
 	Path(const std::wstring& wstr) : mPath(wstr) {}
-	Path(std::wstring&& wstr) : mPath(std::move(wstr)) {}
+	Path(std::wstring&& wstr) : mPath(wstr) {}
 	Path(const std::wstring_view& wsv) : mPath(wsv) {}
 
 	Path(const char* str)

@@ -9,6 +9,7 @@
 #include "Pipeline.h"
 #include "ConstantBuffer.h"
 #include "RenderPassDescriptor.h"
+#include "AccelerationStructure.h"
 
 namespace Gleam {
 
@@ -50,6 +51,8 @@ public:
 
     void BindGraphicsPipeline(const GraphicsPipeline& pipeline) const;
 
+	void BindRayTracingPipeline(const RayTracingPipeline& pipeline) const;
+
     void SetViewport(const Size& size) const;
 
 	void SetScissorRect(const Rect& rect) const;
@@ -67,6 +70,8 @@ public:
         SetPushConstant(&t, sizeof(T));
     }
 
+	void DispatchRays(uint32_t width, uint32_t height, uint32_t depth = 1) const;
+
 	void Dispatch(uint32_t x, uint32_t y, uint32_t z) const;
 
     void Draw(uint32_t vertexCount, uint32_t instanceCount = 1) const;
@@ -74,8 +79,7 @@ public:
 	void DrawIndexed(const Buffer& indexBuffer, IndexType type,
 		uint32_t indexCount,
 		uint32_t instanceCount = 1,
-		uint32_t firstIndex = 0,
-		uint32_t baseVertex = 0) const;
+		uint32_t firstIndex = 0) const;
 
     void DrawIndexed(const Buffer& indexBuffer, IndexType type,
 		uint32_t instanceCount = 1,

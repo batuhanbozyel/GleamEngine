@@ -1,7 +1,8 @@
 #include "PrefabBaker.h"
 #include "EAssets/AssetRegistry.h"
 
-#include "Gleam.h"
+#include "World/Prefab.h"
+#include "World/World.h"
 
 using namespace GEditor;
 

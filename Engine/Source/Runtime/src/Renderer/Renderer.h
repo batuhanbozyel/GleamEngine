@@ -11,6 +11,7 @@
 #include "Texture.h"
 #include "Pipeline.h"
 #include "RendererConfig.h"
+#include "AccelerationStructure.h"
 #include "RenderPassDescriptor.h"
 #include "Shaders/ShaderTypes.h"
 #include "RenderGraph/RenderGraph.h"
@@ -58,6 +59,7 @@ struct SceneRenderingData
 	SkyAtmosphereRenderData atmosphere = {};
     TextureHandle backbuffer = TextureHandle();
 	TextureHandle sceneTarget = TextureHandle();
+	AccelerationStructureView accelerationStructure = AccelerationStructureView();
 };
 
 class IRenderer
@@ -72,9 +74,9 @@ public:
 
 protected:
 
-	virtual void OnCreate(RenderContext& context) {}
+	virtual void OnCreate(const RenderContext& context) {}
 
-	virtual void OnDestroy(RenderContext& context) {}
+	virtual void OnDestroy(const RenderContext& context) {}
 
 	virtual void AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard) = 0;
 

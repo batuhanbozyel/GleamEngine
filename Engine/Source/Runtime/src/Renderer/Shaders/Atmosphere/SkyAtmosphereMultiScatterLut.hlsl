@@ -1,7 +1,5 @@
 #include "SkyAtmosphereCommon.hlsli"
 
-#pragma compute skyAtmosphereMultiScatterLUTShader
-
 struct MultiScatteringResult
 {
 	float3 L; // Scattered light (luminance)
@@ -119,9 +117,15 @@ MultiScatteringResult IntegrateMultiScattering(
 groupshared float3 MultiScatAs1SharedMem[64];
 groupshared float3 LSharedMem[64];
 
+[shader("compute")]
 [numthreads(1, 1, 64)]
 void skyAtmosphereMultiScatterLUTShader(uint3 dispatchThreadId : SV_DispatchThreadID)
 {
+    if (any(dispatchThreadId.xy >= SKY_ATMOSPHERE_MULTISCATTERING_LUT_RES))
+    {
+        return;
+    }
+    
 	float2 position = float2(dispatchThreadId.xy) + 0.5;
 	float2 uv = position / float(SKY_ATMOSPHERE_MULTISCATTERING_LUT_RES);
 	uv = float2(FromSubUvsToUnit(uv.x, SKY_ATMOSPHERE_MULTISCATTERING_LUT_RES), FromSubUvsToUnit(uv.y, SKY_ATMOSPHERE_MULTISCATTERING_LUT_RES));

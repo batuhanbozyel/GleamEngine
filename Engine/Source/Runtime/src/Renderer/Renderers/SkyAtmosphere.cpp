@@ -11,7 +11,7 @@
 
 using namespace Gleam;
 
-void SkyAtmosphereRenderer::OnCreate(RenderContext& context)
+void SkyAtmosphereRenderer::OnCreate(const RenderContext& context)
 {
 	// Transmittance LUT
 	{
@@ -48,7 +48,7 @@ void SkyAtmosphereRenderer::OnCreate(RenderContext& context)
 	mSkyRenderPipeline = context.device->CreateComputePipeline(pipelineState);
 }
 
-void SkyAtmosphereRenderer::OnDestroy(RenderContext& context)
+void SkyAtmosphereRenderer::OnDestroy(const RenderContext& context)
 {
 	context.device->Dispose(context.allocator, mTransmittanceLutTexture);
 	context.device->Dispose(context.allocator, mMultiScatterLutTexture);
@@ -75,7 +75,7 @@ void SkyAtmosphereRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlack
 		passData.transmittanceLut = builder.ReadTexture(sceneData.atmosphere.transmittanceLut);
 		passData.multiScatterLut = builder.ReadTexture(sceneData.atmosphere.multiScatterLut);
 	},
-	[this, sceneData](const CommandBuffer* cmd, const SkyAtmospherePassData& passData)
+	[this, &sceneData](const CommandBuffer* cmd, const SkyAtmospherePassData& passData)
 	{
 		SkyAtmosphereRenderConstants constants = {};
 		constants.targetTexture = passData.sceneColor.GetTexture().GetResourceView();
@@ -103,7 +103,7 @@ void SkyAtmosphereRenderer::UpdateSkyAtmosphere(RenderGraph& graph, RenderGraphB
 	{
 		passData.texture = builder.WriteTexture(sceneData.atmosphere.transmittanceLut);
 	},
-		[this, sceneData](const CommandBuffer* cmd, const SkyAtmosphereTransmittanceLutPassData& passData)
+		[this, &sceneData](const CommandBuffer* cmd, const SkyAtmosphereTransmittanceLutPassData& passData)
 	{
 		cmd->BindComputePipeline(mTransmittanceLutPipeline);
 		cmd->SetConstantBuffer(sceneData.atmosphere.params, SKY_ATMOSPHERE_PARAMS_BINDING_SLOT);
@@ -122,7 +122,7 @@ void SkyAtmosphereRenderer::UpdateSkyAtmosphere(RenderGraph& graph, RenderGraphB
 		passData.texture = builder.WriteTexture(sceneData.atmosphere.multiScatterLut);
 		passData.transmittanceLut = builder.ReadTexture(sceneData.atmosphere.transmittanceLut);
 	},
-		[this, sceneData](const CommandBuffer* cmd, const SkyAtmosphereMultiScatterLutPassData& passData)
+		[this, &sceneData](const CommandBuffer* cmd, const SkyAtmosphereMultiScatterLutPassData& passData)
 	{
 		cmd->BindComputePipeline(mMultiScatterLutPipeline);
 		cmd->SetConstantBuffer(sceneData.atmosphere.params, SKY_ATMOSPHERE_PARAMS_BINDING_SLOT);

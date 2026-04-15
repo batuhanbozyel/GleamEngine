@@ -13,6 +13,15 @@
 
 namespace Gleam {
 
+static void WaitForMTLSharedEvent(id<MTLSharedEvent> sharedEvent, uint64_t value)
+{
+	if ([sharedEvent signaledValue] >= value)
+	{
+		return;
+	}
+	[sharedEvent waitUntilSignaledValue:value timeoutMS:UINT64_MAX];
+}
+
 static constexpr TextureFormat MTLPixelFormatToTextureFormat(MTLPixelFormat format)
 {
     switch (format)
@@ -344,6 +353,22 @@ static constexpr MTLStages BarrierStageToMTLStages(BarrierStage stage)
 		case BarrierStage::Copy: return MTLStageBlit;
 		default: GLEAM_ASSERT(false, "Metal: Unknown barrier stage specified!"); return MTLStages(~0);
 	}
+}
+
+static constexpr IRShaderStage ShaderStageToIRShaderStage(ShaderStage stage)
+{
+    switch (stage)
+    {
+        case ShaderStage::Vertex:        return IRShaderStageVertex;
+        case ShaderStage::Fragment:      return IRShaderStageFragment;
+        case ShaderStage::Compute:       return IRShaderStageCompute;
+        case ShaderStage::RayGeneration: return IRShaderStageCompute; // compiled as compute kernel
+        case ShaderStage::Miss:          return IRShaderStageMiss;
+        case ShaderStage::ClosestHit:    return IRShaderStageClosestHit;
+        case ShaderStage::AnyHit:        return IRShaderStageAnyHit;
+        case ShaderStage::Intersection:  return IRShaderStageIntersection;
+        default: GLEAM_ASSERT(false, "Metal: Unknown shader stage specified!"); return IRShaderStageInvalid;
+    }
 }
 
 } // namespace Gleam

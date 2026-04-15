@@ -6,13 +6,21 @@
 //
 
 #include "MenuBar.h"
-#include "Gleam.h"
+
+#include "Core/Globals.h"
+#include "Core/Engine.h"
+#include "Core/Application.h"
+#include "Core/Events/Event.h"
+#include "Core/Events/ApplicationEvent.h"
+
+#include "Renderer/Renderers/ImGuiRenderer.h"
+#include "World/WorldManager.h"
 
 #include <imgui.h>
 
 using namespace GEditor;
 
-void MenuBar::Init(Gleam::World* world)
+void MenuBar::OnCreate(Gleam::World* world)
 {
 	mWorld = world;
 }

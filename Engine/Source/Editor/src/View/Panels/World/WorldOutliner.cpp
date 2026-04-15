@@ -8,13 +8,17 @@
 #include "WorldOutliner.h"
 #include "WorldViewport.h"
 
-#include "Gleam.h"
+#include "Core/Globals.h"
+#include "Core/Engine.h"
+
+#include "Renderer/Renderers/ImGuiRenderer.h"
+#include "World/World.h"
 
 #include <imgui.h>
 
 using namespace GEditor;
 
-void WorldOutliner::Init(Gleam::World* world)
+void WorldOutliner::OnCreate(Gleam::World* world)
 {
 	mEditWorld = world;
 }

@@ -7,6 +7,12 @@
 
 #include "gpch.h"
 #include "RenderSystem.h"
+#include "Swapchain.h"
+#include "CommandBuffer.h"
+#include "GraphicsDevice.h"
+#include "RayTracingScene.h"
+#include "CopyCommandBuffer.h"
+#include "RenderPipeline.h"
 #include "RenderGraph/RenderGraph.h"
 #include "RenderGraph/RenderGraphBlackboard.h"
 
@@ -31,19 +37,19 @@ void RenderSystem::Initialize(Engine* engine)
 	InitializeBackend();
 	Configure(engine->GetConfiguration().renderer);
 
-	RenderContext context;
-	context.device = mDevice.get();
-	context.surface = mSwapchain.get();
-	context.releaseQueue = mReleaseQueue.get();
-	context.allocator = mPersistentAllocator.get();
-	
-	mRenderPipelines[(uint32_t)RenderPath::Default] = CreateScope<RenderPipeline>(context);
+	mPersistentAllocator = new GPUAllocator(mDevice, GPUAllocatorDescriptor{ .name = "Persistent GPU Allocator" });
+	mTransientAllocator = new GPUAllocator(mDevice, GPUAllocatorDescriptor{ .name = "Transient GPU Allocator" });
+	mCopyCommandBuffer = new CopyCommandBuffer(mDevice);
+	mRayTracingScene = new RayTracingScene(mDevice, mTransientAllocator);
+
+	RenderContext context = GetRenderContext();
+	mRenderPipelines[(uint32_t)RenderPath::Default] = new RenderPipeline(context);
 	mRenderPipelines[(uint32_t)RenderPath::Default]->AddRenderer<ReflectionProbeRenderer>();
 	mRenderPipelines[(uint32_t)RenderPath::Default]->AddRenderer<WorldRenderer>();
 	mRenderPipelines[(uint32_t)RenderPath::Default]->AddRenderer<SkyAtmosphereRenderer>();
 	mRenderPipelines[(uint32_t)RenderPath::Default]->AddRenderer<PostProcessStack>();
 	
-	mRenderPipelines[(uint32_t)RenderPath::PathTracing] = CreateScope<RenderPipeline>(context);
+	mRenderPipelines[(uint32_t)RenderPath::PathTracing] = new RenderPipeline(context);
 	mRenderPipelines[(uint32_t)RenderPath::PathTracing]->AddRenderer<PathTracer>();
 	mRenderPipelines[(uint32_t)RenderPath::PathTracing]->AddRenderer<PostProcessStack>();
 
@@ -62,29 +68,36 @@ void RenderSystem::Initialize(Engine* engine)
 
 void RenderSystem::Shutdown(Engine* engine)
 {
-	mCopyCommandBuffer.reset();
+	delete mRayTracingScene;
+	delete mCopyCommandBuffer;
+
+	for (auto cmd : mCommandBuffers)
+	{
+		delete cmd;
+	}
 	mCommandBuffers.clear();
 
-	for (auto& pipeline : mRenderPipelines)
+	for (auto pipeline : mRenderPipelines)
 	{
-		pipeline.reset();
+		delete pipeline;
 	}
 
-	mTransientAllocator.reset();
-	mPersistentAllocator.reset();
+	delete mTransientAllocator;
+	delete mPersistentAllocator;
 
-	mReleaseQueue.reset();
-	mDevice.reset();
-	mSwapchain.reset();
+	delete mReleaseQueue;
+	delete mDevice;
+	delete mSwapchain;
 }
 
 void RenderSystem::PreRender(const World* world)
 {
 	auto sceneProxy = world->GetSubsystem<RenderSceneProxy>();
-	sceneProxy->ForEach([&](const MeshBatch& batch)
+	const auto& globalInstances = sceneProxy->GetGlobalInstances();
+	if (not globalInstances.empty())
 	{
-		mCopyCommandBuffer->Commit(batch.instanceBuffer, batch.instances.data(), sizeof(MeshInstanceData) * batch.numInstances, 0);
-	});
+		mCopyCommandBuffer->Commit(sceneProxy->GetGlobalInstanceBuffer(), globalInstances.data(), sizeof(MeshInstanceData) * globalInstances.size(), 0);
+	}
 
 	// update active camera
 	mActiveCamera = InvalidEntity;
@@ -106,12 +119,12 @@ void RenderSystem::PreRender(const World* world)
 	});
 
 	auto frameIdx = mSwapchain->GetFrameIndex();
-	const auto cmd = mCommandBuffers[frameIdx].get();
+	const auto cmd = mCommandBuffers[frameIdx];
 
 	cmd->WaitUntilCompleted();
 	if (mRendererResized)
 	{
-		mSwapchain->Resize(mDevice.get(), mSwapchainSize);
+		mSwapchain->Resize(mDevice, mSwapchainSize);
 		mRendererResized = false;
 	}
 	mDevice->ResetCommandPools(frameIdx);
@@ -146,9 +159,9 @@ void RenderSystem::Render(const World* world)
 		sceneTargetDesc.format = mSwapchain->GetFormat();
 
 		RenderGraphContext renderGraphContext;
-		renderGraphContext.device = mDevice.get();
-		renderGraphContext.surface = mSwapchain.get();
-		renderGraphContext.allocator = mTransientAllocator.get();
+		renderGraphContext.device = mDevice;
+		renderGraphContext.surface = mSwapchain;
+		renderGraphContext.allocator = mTransientAllocator;
 		RenderGraph graph(renderGraphContext);
 
 		auto sceneTarget = mDevice->CreateTexture(renderGraphContext.allocator, sceneTargetDesc);
@@ -184,7 +197,7 @@ void RenderSystem::Render(const World* world)
         graph.Compile();
 
 		auto frameIdx = mSwapchain->GetFrameIndex();
-		const auto cmd = mCommandBuffers[frameIdx].get();
+		const auto cmd = mCommandBuffers[frameIdx];
 
 		TStringStream cmdBufferName;
 		cmdBufferName << "Scene CommandBuffer[" << frameIdx << "]";
@@ -194,8 +207,12 @@ void RenderSystem::Render(const World* world)
 		mCopyCommandBuffer->WaitUntilCompleted();
 		mCopyCommandBuffer->Barrier(cmd);
 
+		sceneData.accelerationStructure = mRayTracingScene->BuildAccelerationStructure(cmd, sceneData.sceneProxy);
+
         graph.Execute(cmd, sceneData);
 		mDevice->Dispose(renderGraphContext.allocator, sceneTarget);
+
+		mRayTracingScene->ReleaseAccelerationStructure();
 
 		mSwapchain->Present(cmd);
     }
@@ -209,7 +226,7 @@ void RenderSystem::Configure(const RendererConfig& config)
     mCommandBuffers.resize(mSwapchain->GetFramesInFlight());
 	for (auto& cmd : mCommandBuffers)
 	{
-		cmd = CreateScope<CommandBuffer>(mDevice.get());
+		cmd = new CommandBuffer(mDevice);
 	}
 	mSwapchainSize = mSwapchain->GetCurrentDrawable().GetDescriptor().size;
 }
@@ -219,59 +236,79 @@ void RenderSystem::SetRenderPath(RenderPath path)
 	mRenderPath = path;
 }
 
-CopyCommandBuffer* RenderSystem::GetCopyCommandBuffer()
+RenderPath RenderSystem::GetRenderPath() const
 {
-	return mCopyCommandBuffer.get();
+	return mRenderPath;
 }
 
 GraphicsDevice* RenderSystem::GetDevice()
 {
-    return mDevice.get();
+    return mDevice;
 }
 
 const GraphicsDevice* RenderSystem::GetDevice() const
 {
-    return mDevice.get();
+    return mDevice;
 }
 
 RenderSurface* RenderSystem::GetSurface()
 {
-	return mSwapchain.get();
+	return mSwapchain;
 }
 
 const RenderSurface* RenderSystem::GetSurface() const
 {
-	return mSwapchain.get();
+	return mSwapchain;
+}
+
+CopyCommandBuffer* RenderSystem::GetCopyCommandBuffer()
+{
+	return mCopyCommandBuffer;
+}
+
+const CopyCommandBuffer* RenderSystem::GetCopyCommandBuffer() const
+{
+	return mCopyCommandBuffer;
+}
+
+RayTracingScene* RenderSystem::GetRayTracingScene()
+{
+	return mRayTracingScene;
+}
+
+const RayTracingScene* RenderSystem::GetRayTracingScene() const
+{
+	return mRayTracingScene;
 }
 
 RenderPipeline* RenderSystem::GetRenderPipeline(RenderPath renderPath)
 {
-	return mRenderPipelines[(uint32_t)renderPath].get();
+	return mRenderPipelines[(uint32_t)renderPath];
 }
 
 const RenderPipeline* RenderSystem::GetRenderPipeline(RenderPath renderPath) const
 {
-	return mRenderPipelines[(uint32_t)renderPath].get();
+	return mRenderPipelines[(uint32_t)renderPath];
 }
 
 RenderPipeline* RenderSystem::GetActiveRenderPipeline()
 {
-	return mRenderPipelines[(uint32_t)mRenderPath].get();
+	return mRenderPipelines[(uint32_t)mRenderPath];
 }
 
 const RenderPipeline* RenderSystem::GetActiveRenderPipeline() const
 {
-	return mRenderPipelines[(uint32_t)mRenderPath].get();
+	return mRenderPipelines[(uint32_t)mRenderPath];
 }
 
 GPUAllocator* RenderSystem::GetAllocator()
 {
-	return mPersistentAllocator.get();
+	return mPersistentAllocator;
 }
 
 const GPUAllocator* RenderSystem::GetAllocator() const
 {
-	return mPersistentAllocator.get();
+	return mPersistentAllocator;
 }
 
 void RenderSystem::RecompileShader(const TString& entryPoint)
@@ -313,6 +350,26 @@ void RenderSystem::RecompileShader(const TString& entryPoint)
 							if (handle == pipelineHash)
 							{
 								auto newPipeline = mDevice->CompileGraphicsPipeline(pipeline.GetDescriptor());
+								if (newPipeline.IsValid())
+								{
+									mDevice->Dispose(pipeline);
+									pipeline = newPipeline;
+								}
+								break;
+							}
+						}
+					}
+					else if (shader.GetStage() == ShaderStage::RayGeneration ||
+							 shader.GetStage() == ShaderStage::Miss ||
+							 shader.GetStage() == ShaderStage::ClosestHit ||
+							 shader.GetStage() == ShaderStage::AnyHit ||
+							 shader.GetStage() == ShaderStage::Intersection)
+					{
+						for (auto& [handle, pipeline] : mDevice->mRayTracingPipelineCache)
+						{
+							if (handle == pipelineHash)
+							{
+								auto newPipeline = mDevice->CompileRayTracingPipeline(pipeline.GetDescriptor());
 								if (newPipeline.IsValid())
 								{
 									mDevice->Dispose(pipeline);
@@ -379,4 +436,14 @@ SkyAtmosphereRenderData RenderSystem::SetupSkyAtmosphereRenderData(RenderGraph& 
 	skyAtmosphere.uniforms.transmittanceLutTexture = skyAtmosphere.transmittanceLut;
 	skyAtmosphere.uniforms.multiScatterLutTexture = skyAtmosphere.multiScatterLut;
 	return skyAtmosphere;
+}
+
+RenderContext RenderSystem::GetRenderContext() const
+{
+	RenderContext context;
+	context.device = mDevice;
+	context.surface = mSwapchain;
+	context.releaseQueue = mReleaseQueue;
+	context.allocator = mPersistentAllocator;
+	return context;
 }

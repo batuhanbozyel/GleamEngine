@@ -28,11 +28,17 @@ public:
 
 	Buffer CreateBuffer(GPUAllocator* allocator, const BufferDescriptor& descriptor);
 
+	BottomLevelAccelerationStructure CreateBLAS(const BLASDescriptor& descriptor);
+
+	TopLevelAccelerationStructure CreateTLAS(const TLASDescriptor& descriptor);
+
     Shader CreateShader(const TString& entryPoint, ShaderStage stage);
 
 	ComputePipelineHandle CreateComputePipeline(const ComputePipelineStateDescriptor& pipelineDesc);
 
 	GraphicsPipelineHandle CreateGraphicsPipeline(const GraphicsPipelineStateDescriptor& pipelineDesc);
+
+	RayTracingPipelineHandle CreateRayTracingPipeline(const RayTracingPipelineStateDescriptor& pipelineDesc);
 
     void Dispose(Heap& heap);
 
@@ -40,15 +46,25 @@ public:
 
 	void Dispose(GPUAllocator* allocator, Buffer& buffer);
 
+	void Dispose(BottomLevelAccelerationStructure& blas);
+
+	void Dispose(TopLevelAccelerationStructure& tlas);
+
 	void Dispose(Shader& shader);
 
 	void Dispose(ComputePipeline& pipeline);
 
 	void Dispose(GraphicsPipeline& pipeline);
 
+	void Dispose(RayTracingPipeline& pipeline);
+
+	void Dispose(ResourceReleaseQueue::ObjectDeallocator&& deallocator);
+
 	const ComputePipeline& GetComputePipeline(ComputePipelineHandle handle) const;
 
 	const GraphicsPipeline& GetGraphicsPipeline(GraphicsPipelineHandle handle) const;
+
+	const RayTracingPipeline& GetRayTracingPipeline(RayTracingPipelineHandle handle) const;
     
 protected:
 
@@ -65,6 +81,8 @@ protected:
 
 	HashMap<GraphicsPipelineHandle, GraphicsPipeline> mGraphicsPipelineCache;
 
+	HashMap<RayTracingPipelineHandle, RayTracingPipeline> mRayTracingPipelineCache;
+
 	RenderSurface* mSurface = nullptr;
 
 	ResourceReleaseQueue* mReleaseQueue = nullptr;
@@ -76,6 +94,8 @@ private:
 	ComputePipeline CompileComputePipeline(const ComputePipelineStateDescriptor& pipelineDesc);
 
 	GraphicsPipeline CompileGraphicsPipeline(const GraphicsPipelineStateDescriptor& pipelineDesc);
+
+	RayTracingPipeline CompileRayTracingPipeline(const RayTracingPipelineStateDescriptor& pipelineDesc);
 
 };
 

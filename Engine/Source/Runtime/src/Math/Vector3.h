@@ -414,6 +414,7 @@ NO_DISCARD FORCE_INLINE constexpr Vector3<T> Cross(const Vector3<T>& vec1, const
 
 using Float3 = Vector3<float>;
 using Int3 = Vector3<int>;
+using UInt3 = Vector3<uint32_t>;
     
 template<typename T>
 const Vector3<T> Vector3<T>::zero{T(0), T(0), T(0)};

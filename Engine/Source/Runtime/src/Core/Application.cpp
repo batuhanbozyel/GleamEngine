@@ -59,9 +59,9 @@ void Application::Run()
 
 Application::~Application()
 {
-    for (auto system : mSubsystems)
-    {
-        system->Shutdown(this);
-    }
+	for (int i = (int)mSubsystems.size() - 1; i >= 0; --i)
+	{
+		mSubsystems[i]->Shutdown(this);
+	}
 	mSubsystems.clear();
 }

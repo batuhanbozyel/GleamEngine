@@ -19,35 +19,29 @@ static void DirectXDebugCallback(D3D12_MESSAGE_CATEGORY Category,
 								 LPCSTR pDescription,
 								 void* pContext)
 {
-	if (Severity & D3D12_MESSAGE_SEVERITY_ERROR)
+	if (Severity & D3D12_MESSAGE_SEVERITY_MESSAGE)
 	{
-		GLEAM_CORE_ERROR("DirectX: {0}", pDescription);
-		GLEAM_ASSERT(false);
-	}
-	else if (Severity & D3D12_MESSAGE_SEVERITY_WARNING)
-	{
-		GLEAM_CORE_WARN("DirectX: {0}", pDescription);
+		GLEAM_CORE_TRACE("DirectX: {0}", pDescription);
 	}
 	else if (Severity & D3D12_MESSAGE_SEVERITY_INFO)
 	{
 		GLEAM_CORE_INFO("DirectX: {0}", pDescription);
 	}
-	else
+	else if (Severity & D3D12_MESSAGE_SEVERITY_WARNING)
 	{
-		GLEAM_CORE_TRACE("DirectX: {0}", pDescription);
+		GLEAM_CORE_WARN("DirectX: {0}", pDescription);
+	}
+	else // if (Severity & D3D12_MESSAGE_SEVERITY_ERROR || Severity & D3D12_MESSAGE_SEVERITY_CORRUPTION)
+	{
+		GLEAM_ASSERT(false, "DirectX: {0}", pDescription);
 	}
 }
 
 void RenderSystem::InitializeBackend()
 {
-	mSwapchain = CreateScope<DirectXSwapchain>();
-	mReleaseQueue = CreateScope<ResourceReleaseQueue>(mSwapchain->GetFramesInFlight());
-
-	mDevice = CreateScope<DirectXDevice>(mSwapchain.get(), mReleaseQueue.get());
-	mCopyCommandBuffer = CreateScope<CopyCommandBuffer>(mDevice.get());
-
-	mPersistentAllocator = CreateScope<GPUAllocator>(mDevice.get(), GPUAllocatorDescriptor{ .name = "Persistent GPU Allocator" });
-	mTransientAllocator = CreateScope<GPUAllocator>(mDevice.get(), GPUAllocatorDescriptor{ .name = "Transient GPU Allocator" });
+	mSwapchain = new DirectXSwapchain();
+	mReleaseQueue = new ResourceReleaseQueue(mSwapchain->GetFramesInFlight());
+	mDevice = new DirectXDevice(mSwapchain, mReleaseQueue);
 }
 
 static D3D12_STATIC_SAMPLER_DESC CreateStaticSampler(const SamplerState& samplerState)
@@ -179,7 +173,7 @@ Texture GraphicsDevice::CreateTexture(GPUAllocator* allocator, const TextureDesc
 		.type = MemoryType::GPU
 	};
 	GPUAllocation allocation = allocator->Allocate(memoryRequirements);
-	ID3D12Resource* resource = static_cast<DirectXDevice*>(this)->CreateResource(allocation, resourceDesc, descriptor.name);
+	ID3D12Resource* resource = static_cast<DirectXDevice*>(this)->CreateResource(allocation, resourceDesc, D3D12_BARRIER_LAYOUT_COMMON, descriptor.name);
 	allocator->AddAllocation(resource, allocation);
 	texture.mHandle = resource;
 
@@ -428,7 +422,7 @@ Buffer GraphicsDevice::CreateBuffer(GPUAllocator* allocator, const BufferDescrip
 		.type = descriptor.memoryType
 	};
 	GPUAllocation allocation = allocator->Allocate(memoryRequirements);
-	ID3D12Resource* resource = static_cast<DirectXDevice*>(this)->CreateResource(allocation, resourceDesc, descriptor.name);
+	ID3D12Resource* resource = static_cast<DirectXDevice*>(this)->CreateResource(allocation, resourceDesc, D3D12_BARRIER_LAYOUT_UNDEFINED, descriptor.name);
 	allocator->AddAllocation(resource, allocation);
 
 	void* contents = nullptr;
@@ -443,6 +437,46 @@ Buffer GraphicsDevice::CreateBuffer(GPUAllocator* allocator, const BufferDescrip
 	buffer.mAlignment = D3D12_RAW_UAV_SRV_BYTE_ALIGNMENT;
 	buffer.mResourceView = static_cast<DirectXDevice*>(this)->CreateResourceView(buffer);
 	return buffer;
+}
+
+BottomLevelAccelerationStructure GraphicsDevice::CreateBLAS(const BLASDescriptor& descriptor)
+{
+	D3D12_RESOURCE_DESC1 resourceDesc = {
+		.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER,
+		.Alignment = 0,
+		.Width = descriptor.size,
+		.Height = 1,
+		.DepthOrArraySize = 1,
+		.MipLevels = 1,
+		.Format = DXGI_FORMAT_UNKNOWN,
+		.SampleDesc = {.Count = 1, .Quality = 0 },
+		.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR,
+		.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS | D3D12_RESOURCE_FLAG_RAYTRACING_ACCELERATION_STRUCTURE
+	};
+	ID3D12Resource* resource = static_cast<DirectXDevice*>(this)->CreateResource(resourceDesc, D3D12_HEAP_TYPE_DEFAULT, D3D12_BARRIER_LAYOUT_UNDEFINED, descriptor.name);
+	return BottomLevelAccelerationStructure(descriptor, resource);
+}
+
+TopLevelAccelerationStructure GraphicsDevice::CreateTLAS(const TLASDescriptor& descriptor)
+{
+	D3D12_RESOURCE_DESC1 resourceDesc = {
+		.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER,
+		.Alignment = 0,
+		.Width = descriptor.size,
+		.Height = 1,
+		.DepthOrArraySize = 1,
+		.MipLevels = 1,
+		.Format = DXGI_FORMAT_UNKNOWN,
+		.SampleDesc = {.Count = 1, .Quality = 0 },
+		.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR,
+		.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS | D3D12_RESOURCE_FLAG_RAYTRACING_ACCELERATION_STRUCTURE
+	};
+	ID3D12Resource* resource = static_cast<DirectXDevice*>(this)->CreateResource(resourceDesc, D3D12_HEAP_TYPE_DEFAULT, D3D12_BARRIER_LAYOUT_UNDEFINED, descriptor.name);
+
+	TopLevelAccelerationStructure tlas(descriptor);
+	tlas.mHandle = resource;
+	tlas.mResourceView = static_cast<DirectXDevice*>(this)->CreateResourceView(tlas);
+	return tlas;
 }
 
 Shader GraphicsDevice::CompileShader(const TString& entryPoint, ShaderStage stage)
@@ -570,6 +604,125 @@ GraphicsPipeline GraphicsDevice::CompileGraphicsPipeline(const GraphicsPipelineS
 	return pipeline;
 }
 
+RayTracingPipeline GraphicsDevice::CompileRayTracingPipeline(const RayTracingPipelineStateDescriptor& pipelineDesc)
+{
+	RayTracingPipeline pipeline(pipelineDesc);
+
+	TArray<D3D12_DXIL_LIBRARY_DESC> shaders;
+	shaders.reserve(pipelineDesc.hitGroups.size() * 3 + pipelineDesc.missEntries.size() + 1 /* ray generation */);
+	{
+		D3D12_DXIL_LIBRARY_DESC library = {};
+		auto shader = CreateShader(pipelineDesc.rayGenerationEntry, ShaderStage::RayGeneration);
+		library.DXILLibrary = *static_cast<D3D12_SHADER_BYTECODE*>(shader.GetHandle());
+		shaders.emplace_back(library);
+	}
+
+	for (const auto& missEntry : pipelineDesc.missEntries)
+	{
+		if (not missEntry.empty())
+		{
+			D3D12_DXIL_LIBRARY_DESC library = {};
+			auto shader = CreateShader(missEntry, ShaderStage::Miss);
+			library.DXILLibrary = *static_cast<D3D12_SHADER_BYTECODE*>(shader.GetHandle());
+			shaders.emplace_back(library);
+		}
+	}
+
+	TArray<D3D12_HIT_GROUP_DESC> hitGroups;
+	hitGroups.reserve(pipelineDesc.hitGroups.size());
+
+	TArray<TWString> hitShaderNames;
+	hitShaderNames.reserve(pipelineDesc.hitGroups.size() * 4);
+	for (const auto& hitGroup : pipelineDesc.hitGroups)
+	{
+		if (hitGroup.name.empty())
+		{
+			continue;
+		}
+
+		TWString& hitGroupName = hitShaderNames.emplace_back(TWString(hitGroup.name));
+
+		D3D12_HIT_GROUP_DESC d3d12HitGroup = {};
+		d3d12HitGroup.Type = D3D12_HIT_GROUP_TYPE_TRIANGLES;
+		d3d12HitGroup.HitGroupExport = hitGroupName.c_str();
+
+		if (not hitGroup.closestHitEntry.empty())
+		{
+			TWString& entryPoint = hitShaderNames.emplace_back(TWString(hitGroup.closestHitEntry));
+			d3d12HitGroup.ClosestHitShaderImport = entryPoint.c_str();
+
+			D3D12_DXIL_LIBRARY_DESC library = {};
+			auto shader = CreateShader(hitGroup.closestHitEntry, ShaderStage::ClosestHit);
+			library.DXILLibrary = *static_cast<D3D12_SHADER_BYTECODE*>(shader.GetHandle());
+			shaders.emplace_back(library);
+		}
+
+		if (not hitGroup.anyHitEntry.empty())
+		{
+			TWString& entryPoint = hitShaderNames.emplace_back(TWString(hitGroup.anyHitEntry));
+			d3d12HitGroup.AnyHitShaderImport = entryPoint.c_str();
+
+			D3D12_DXIL_LIBRARY_DESC library = {};
+			auto shader = CreateShader(hitGroup.anyHitEntry, ShaderStage::AnyHit);
+			library.DXILLibrary = *static_cast<D3D12_SHADER_BYTECODE*>(shader.GetHandle());
+			shaders.emplace_back(library);
+		}
+
+		if (not hitGroup.intersectionEntry.empty())
+		{
+			d3d12HitGroup.Type = D3D12_HIT_GROUP_TYPE_PROCEDURAL_PRIMITIVE;
+
+			TWString& entryPoint = hitShaderNames.emplace_back(TWString(hitGroup.intersectionEntry));
+			d3d12HitGroup.IntersectionShaderImport = entryPoint.c_str();
+
+			D3D12_DXIL_LIBRARY_DESC library = {};
+			auto shader = CreateShader(hitGroup.intersectionEntry, ShaderStage::Intersection);
+			library.DXILLibrary = *static_cast<D3D12_SHADER_BYTECODE*>(shader.GetHandle());
+			shaders.emplace_back(library);
+		}
+		hitGroups.emplace_back(d3d12HitGroup);
+	}
+
+	D3D12_NODE_MASK nodeMask = {};
+	nodeMask.NodeMask = 1;
+
+	D3D12_GLOBAL_ROOT_SIGNATURE globalRootSig = {};
+	globalRootSig.pGlobalRootSignature = static_cast<DirectXDevice*>(this)->GetGlobalRootSignature();
+
+	D3D12_RAYTRACING_PIPELINE_CONFIG pipelineConfig = {};
+	pipelineConfig.MaxTraceRecursionDepth = pipelineDesc.maxRecursionDepth;
+
+	D3D12_RAYTRACING_SHADER_CONFIG shaderConfig = {};
+	shaderConfig.MaxAttributeSizeInBytes = pipelineDesc.maxAttributeSize;
+	shaderConfig.MaxPayloadSizeInBytes = pipelineDesc.maxPayloadSize;
+
+	TArray<D3D12_STATE_SUBOBJECT> stateObjects;
+	stateObjects.reserve(hitGroups.size() + shaders.size() + 4);
+	stateObjects.emplace_back(D3D12_STATE_SUBOBJECT{ D3D12_STATE_SUBOBJECT_TYPE_NODE_MASK, &nodeMask });
+	stateObjects.emplace_back(D3D12_STATE_SUBOBJECT{ D3D12_STATE_SUBOBJECT_TYPE_GLOBAL_ROOT_SIGNATURE, &globalRootSig });
+	stateObjects.emplace_back(D3D12_STATE_SUBOBJECT{ D3D12_STATE_SUBOBJECT_TYPE_RAYTRACING_PIPELINE_CONFIG, &pipelineConfig });
+	stateObjects.emplace_back(D3D12_STATE_SUBOBJECT{ D3D12_STATE_SUBOBJECT_TYPE_RAYTRACING_SHADER_CONFIG, &shaderConfig });
+
+	for (const auto& library : shaders)
+	{
+		stateObjects.emplace_back(D3D12_STATE_SUBOBJECT{ D3D12_STATE_SUBOBJECT_TYPE_DXIL_LIBRARY, &library });
+	}
+
+	for (const auto& hitGroup : hitGroups)
+	{
+		stateObjects.emplace_back(D3D12_STATE_SUBOBJECT{ D3D12_STATE_SUBOBJECT_TYPE_HIT_GROUP, &hitGroup });
+	}
+
+	D3D12_STATE_OBJECT_DESC stateObjectDesc = {};
+	stateObjectDesc.Type = D3D12_STATE_OBJECT_TYPE_RAYTRACING_PIPELINE;
+	stateObjectDesc.pSubobjects = stateObjects.data();
+	stateObjectDesc.NumSubobjects = (UINT)stateObjects.size();
+	DX_CHECK(static_cast<ID3D12Device10*>(mHandle)->CreateStateObject(&stateObjectDesc, __uuidof(ID3D12StateObject*), &pipeline.mHandle));
+
+	pipeline.mShaderBindingTable = static_cast<DirectXDevice*>(this)->CreateShaderBindingTable(pipeline);
+	return pipeline;
+}
+
 void GraphicsDevice::Dispose(Heap& heap)
 {
 	ID3D12Heap* resource = static_cast<ID3D12Heap*>(heap.GetHandle());
@@ -658,8 +811,36 @@ void GraphicsDevice::Dispose(GPUAllocator* allocator, Texture& texture)
 	texture.mSliceUnorderedAccessViews.clear();
 }
 
+void GraphicsDevice::Dispose(BottomLevelAccelerationStructure& blas)
+{
+	mReleaseQueue->AddResource([this, resource = static_cast<ID3D12Resource*>(blas.GetHandle())]()
+	{
+		resource->Release();
+	}, static_cast<Swapchain*>(mSurface)->GetFrameIndex());
+	blas.mHandle = nullptr;
+}
+
+void GraphicsDevice::Dispose(TopLevelAccelerationStructure& tlas)
+{
+	mReleaseQueue->AddResource([this,
+								resource = static_cast<ID3D12Resource*>(tlas.GetHandle()),
+								srv = tlas.mResourceView]()
+	{
+		resource->Release();
+		static_cast<DirectXDevice*>(this)->ReleaseResourceView(srv);
+	}, static_cast<Swapchain*>(mSurface)->GetFrameIndex());
+
+	tlas.mResourceView = InvalidResourceIndex;
+	tlas.mHandle = nullptr;
+}
+
 void GraphicsDevice::Dispose(Shader& shader)
 {
+	eastl::erase_if(mShaderCache, [&shader](const auto& cache) -> bool
+	{
+		return cache.GetHandle() == shader.GetHandle();
+	});
+
 	auto bytecode = static_cast<D3D12_SHADER_BYTECODE*>(shader.mHandle);
 	mReleaseQueue->AddResource([bytecode]()
 	{
@@ -671,6 +852,8 @@ void GraphicsDevice::Dispose(Shader& shader)
 
 void GraphicsDevice::Dispose(ComputePipeline& pipeline)
 {
+	mComputePipelineCache.erase(ComputePipelineHandle(pipeline.GetHash()));
+
 	auto resource = static_cast<ID3D12PipelineState*>(pipeline.mHandle);
 	mReleaseQueue->AddResource([resource]()
 	{
@@ -681,12 +864,29 @@ void GraphicsDevice::Dispose(ComputePipeline& pipeline)
 
 void GraphicsDevice::Dispose(GraphicsPipeline& pipeline)
 {
+	mGraphicsPipelineCache.erase(GraphicsPipelineHandle(pipeline.GetHash()));
+
 	auto resource = static_cast<ID3D12PipelineState*>(pipeline.mHandle);
 	mReleaseQueue->AddResource([resource]()
 	{
 		resource->Release();
 	}, static_cast<Swapchain*>(mSurface)->GetFrameIndex());
 	pipeline.mHandle = nullptr;
+}
+
+void GraphicsDevice::Dispose(RayTracingPipeline& pipeline)
+{
+	mRayTracingPipelineCache.erase(RayTracingPipelineHandle(pipeline.GetHash()));
+
+	auto resource = static_cast<ID3D12StateObject*>(pipeline.mHandle);
+	auto sbt = static_cast<ID3D12Resource*>(pipeline.GetShaderBindingTable().GetHandle());
+	mReleaseQueue->AddResource([resource, sbt]()
+	{
+		sbt->Release();
+		resource->Release();
+	}, static_cast<Swapchain*>(mSurface)->GetFrameIndex());
+	pipeline.mHandle = nullptr;
+	pipeline.mShaderBindingTable = {};
 }
 
 DirectXDevice::DirectXDevice(RenderSurface* surface, ResourceReleaseQueue* releaseQueue)
@@ -703,14 +903,26 @@ DirectXDevice::DirectXDevice(RenderSurface* surface, ResourceReleaseQueue* relea
 				mD3D12Debug->SetEnableGPUBasedValidation(true);
 			}
 		}
+	}
+	DX_CHECK(D3D12CreateDevice(swapchain->mAdapter, D3D_FEATURE_LEVEL_12_0, __uuidof(ID3D12Device10), &mHandle));
 
-		if (SUCCEEDED(swapchain->mFactory->QueryInterface(IID_PPV_ARGS(&mInfoQueue))))
+	if (Globals::CLI->HasFlag("--debug-layer"))
+	{
+		if (SUCCEEDED(static_cast<ID3D12Device10*>(mHandle)->QueryInterface(IID_PPV_ARGS(&mInfoQueue))))
 		{
+			D3D12_MESSAGE_ID denyIds[] = {
+					D3D12_MESSAGE_ID_HEAP_ADDRESS_RANGE_INTERSECTS_MULTIPLE_BUFFERS,
+			};
+
+			D3D12_INFO_QUEUE_FILTER filter = {};
+			filter.DenyList.NumIDs = _countof(denyIds);
+			filter.DenyList.pIDList = denyIds;
+			DX_CHECK(mInfoQueue->AddStorageFilterEntries(&filter));
+
 			static void* emitWarning = nullptr;
 			DX_CHECK(mInfoQueue->RegisterMessageCallback(DirectXDebugCallback, D3D12_MESSAGE_CALLBACK_FLAG_NONE, emitWarning, &mDebugCallbackCookie));
 		}
 	}
-	DX_CHECK(D3D12CreateDevice(swapchain->mAdapter, D3D_FEATURE_LEVEL_12_0, __uuidof(ID3D12Device10), &mHandle));
 
 	mDirectQueue = CreateCommandQueue(D3D12_COMMAND_LIST_TYPE_DIRECT);
 	mComputeQueue = CreateCommandQueue(D3D12_COMMAND_LIST_TYPE_COMPUTE);
@@ -808,6 +1020,13 @@ DirectXDevice::~DirectXDevice()
 	}
 	mGraphicsPipelineCache.clear();
 
+	for (auto& [_, pipeline] : mRayTracingPipelineCache)
+	{
+		static_cast<ID3D12Resource*>(pipeline.GetShaderBindingTable().GetHandle())->Release();
+		static_cast<ID3D12StateObject*>(pipeline.GetHandle())->Release();
+	}
+	mRayTracingPipelineCache.clear();
+
 	for (auto& shader : mShaderCache)
 	{
 		auto bytecode = static_cast<D3D12_SHADER_BYTECODE*>(shader.GetHandle());
@@ -897,14 +1116,118 @@ void DirectXDevice::ResetCommandPools(uint32_t frameIndex)
 	}
 }
 
-ID3D12Resource* DirectXDevice::CreateResource(const GPUAllocation& allocation, const D3D12_RESOURCE_DESC1& desc, const TString& name) const
+ShaderBindingTable DirectXDevice::CreateShaderBindingTable(const RayTracingPipeline& pipeline)
+{
+	ID3D12StateObjectProperties* stateObjectProperties = nullptr;
+	DX_CHECK(static_cast<ID3D12StateObject*>(pipeline.GetHandle())->QueryInterface(IID_PPV_ARGS(&stateObjectProperties)));
+
+	constexpr uint32_t shaderRecordSize = Math::AlignUp(D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES, D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT);
+	constexpr uint32_t rayGenTableSize = Math::AlignUp(shaderRecordSize, (UINT)D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT);
+
+	const auto& pipelineDesc = pipeline.GetDescriptor();
+	uint32_t missTableSize = Math::AlignUp(static_cast<uint32_t>(pipelineDesc.missEntries.size()) * shaderRecordSize, (UINT)D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT);
+	uint32_t hitGroupTableSize = Math::AlignUp(static_cast<uint32_t>(pipelineDesc.hitGroups.size()) * shaderRecordSize, (UINT)D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT);
+	uint32_t totalSize = rayGenTableSize + missTableSize + hitGroupTableSize;
+
+	D3D12_HEAP_PROPERTIES heapProps = {};
+	heapProps.Type = D3D12_HEAP_TYPE_UPLOAD;
+
+	D3D12_RESOURCE_DESC1 resourceDesc = {
+		.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER,
+		.Alignment = 0,
+		.Width = totalSize,
+		.Height = 1,
+		.DepthOrArraySize = 1,
+		.MipLevels = 1,
+		.Format = DXGI_FORMAT_UNKNOWN,
+		.SampleDesc = {.Count = 1, .Quality = 0 },
+		.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR,
+		.Flags = D3D12_RESOURCE_FLAG_NONE
+	};
+	ID3D12Resource* resource = CreateResource(resourceDesc, D3D12_HEAP_TYPE_UPLOAD, D3D12_BARRIER_LAYOUT_UNDEFINED, "ShaderBindingTable");
+
+	void* sbtPtr = nullptr;
+	DX_CHECK(resource->Map(0, nullptr, &sbtPtr));
+
+	uint32_t offset = 0;
+
+	// Ray generation record
+	{
+		TWString entryPoint(pipelineDesc.rayGenerationEntry);
+		void* shaderId = stateObjectProperties->GetShaderIdentifier(entryPoint.c_str());
+		GLEAM_ASSERT(shaderId, "DirectX: Failed to get ray generation shader identifier.");
+		memcpy(OffsetPointer(sbtPtr, offset), shaderId, D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+	}
+	offset += rayGenTableSize;
+
+	// Miss records
+	for (const auto& missEntry : pipelineDesc.missEntries)
+	{
+		if (not missEntry.empty())
+		{
+			TWString entryPoint(missEntry);
+			void* shaderId = stateObjectProperties->GetShaderIdentifier(entryPoint.c_str());
+			GLEAM_ASSERT(shaderId, "DirectX: Failed to get miss shader identifier for: {0}", missEntry);
+			memcpy(OffsetPointer(sbtPtr, offset), shaderId, D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+		}
+		offset += shaderRecordSize;
+	}
+	offset = rayGenTableSize + missTableSize;
+
+	// Hit group records
+	for (const auto& hitGroup : pipelineDesc.hitGroups)
+	{
+		if (not hitGroup.name.empty())
+		{
+			TWString hitGroupName(hitGroup.name);
+			void* shaderId = stateObjectProperties->GetShaderIdentifier(hitGroupName.c_str());
+			GLEAM_ASSERT(shaderId, "DirectX: Failed to get hit group shader identifier for: {0}", hitGroup.name);
+			memcpy(OffsetPointer(sbtPtr, offset), shaderId, D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+		}
+		offset += shaderRecordSize;
+	}
+
+	resource->Unmap(0, nullptr);
+	stateObjectProperties->Release();
+
+	uint64_t baseAddress = resource->GetGPUVirtualAddress();
+	GPUVirtualAddressRange rayGenRecord = { .startAddress = baseAddress, .sizeInBytes = rayGenTableSize };
+	GPUVirtualAddressRangeAndStride missRecord = { .startAddress = baseAddress + rayGenTableSize, .sizeInBytes = missTableSize, .strideInBytes = shaderRecordSize };
+	GPUVirtualAddressRangeAndStride hitGroupRecord =
+		hitGroupTableSize > 0
+		? GPUVirtualAddressRangeAndStride {.startAddress = baseAddress + rayGenTableSize + missTableSize, .sizeInBytes = hitGroupTableSize, .strideInBytes = shaderRecordSize }
+		: GPUVirtualAddressRangeAndStride{};
+	return ShaderBindingTable(resource, rayGenRecord, missRecord, hitGroupRecord);
+}
+
+ID3D12Resource* DirectXDevice::CreateResource(const D3D12_RESOURCE_DESC1& desc, D3D12_HEAP_TYPE heapType, D3D12_BARRIER_LAYOUT initialLayout, const TString& name) const
+{
+	D3D12_HEAP_PROPERTIES heapProps = {};
+	heapProps.Type = heapType;
+
+	ID3D12Resource* resource = nullptr;
+	DX_CHECK(static_cast<ID3D12Device10*>(mHandle)->CreateCommittedResource3(
+		&heapProps,
+		D3D12_HEAP_FLAG_NONE,
+		&desc,
+		initialLayout,
+		nullptr,
+		nullptr,
+		0,
+		nullptr,
+		IID_PPV_ARGS(&resource)));
+	resource->SetName(StringUtils::Convert(name).c_str());
+	return resource;
+}
+
+ID3D12Resource* DirectXDevice::CreateResource(const GPUAllocation& allocation, const D3D12_RESOURCE_DESC1& desc, D3D12_BARRIER_LAYOUT initialLayout, const TString& name) const
 {
 	ID3D12Resource* resource = nullptr;
 	DX_CHECK(static_cast<ID3D12Device10*>(mHandle)->CreatePlacedResource2(
 		static_cast<ID3D12Heap*>(allocation.block->heap.GetHandle()),
 		allocation.offset,
 		&desc,
-		D3D12_BARRIER_LAYOUT_UNDEFINED,
+		initialLayout,
 		nullptr,
 		0,
 		nullptr,
@@ -1168,6 +1491,23 @@ ShaderResourceIndex DirectXDevice::CreateResourceView(const Texture& texture)
 		uavHandle.ptr += (UINT64)(mCbvSrvUavHeap.size * CBV_SRV_HEAP_SIZE);
 		static_cast<ID3D12Device10*>(mHandle)->CreateUnorderedAccessView(static_cast<ID3D12Resource*>(texture.GetHandle()), nullptr, &uavDesc, uavHandle);
 	}
+	return mCbvSrvUavHeap.GetResourceIndex(srvHandle);
+}
+
+ShaderResourceIndex DirectXDevice::CreateResourceView(const TopLevelAccelerationStructure& tlas)
+{
+	auto srvHandle = mCbvSrvUavHeap.Allocate();
+
+	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+	srvDesc.Format = DXGI_FORMAT_UNKNOWN;
+	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_RAYTRACING_ACCELERATION_STRUCTURE;
+	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+	srvDesc.RaytracingAccelerationStructure.Location = static_cast<ID3D12Resource*>(tlas.GetHandle())->GetGPUVirtualAddress();
+
+	// For AS SRVs the resource parameter must be nullptr;
+	// the GPU VA inside the desc is what D3D12 uses.
+	static_cast<ID3D12Device10*>(mHandle)->CreateShaderResourceView(nullptr, &srvDesc, srvHandle);
+
 	return mCbvSrvUavHeap.GetResourceIndex(srvHandle);
 }
 

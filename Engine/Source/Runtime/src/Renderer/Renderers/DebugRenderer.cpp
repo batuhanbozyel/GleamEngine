@@ -11,7 +11,7 @@
 
 using namespace Gleam;
 
-void DebugRenderer::OnCreate(RenderContext& context)
+void DebugRenderer::OnCreate(const RenderContext& context)
 {
 	mDevice = context.device;
 	mAllocator = context.allocator;
@@ -48,7 +48,7 @@ void DebugRenderer::OnCreate(RenderContext& context)
 	}
 }
 
-void DebugRenderer::OnDestroy(RenderContext& context)
+void DebugRenderer::OnDestroy(const RenderContext& context)
 {
 	context.device->Dispose(mAllocator, mVertexBuffer);
 }
@@ -91,7 +91,7 @@ void DebugRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
         passData.colorTarget = builder.UseColorBuffer(worldData.colorTarget);
         passData.depthTarget = builder.UseDepthBuffer(worldData.depthTarget, DepthAccess::Write);
 	},
-	[this, blackboard](const CommandBuffer* cmd, const DrawPassData& passData)
+	[this, &blackboard](const CommandBuffer* cmd, const DrawPassData& passData)
 	{
         DebugShaderResources resources;
         resources.vertexBuffer = mVertexBuffer.GetResourceView();

@@ -43,7 +43,7 @@ public:
 	{
 		GLEAM_ASSERT(!HasSubsystem<T>(), "World already has the subsystem!");
 
-		T* system = mSubsystems.emplace<T>(std::forward<Args>(args)...);
+		T* system = mSubsystems.emplace_back<T>(std::forward<Args>(args)...);
 		if constexpr (std::is_base_of<TickableWorldSubsystem, T>::value)
 		{
 			mTickableSubsystems.push_back(system);
@@ -83,7 +83,7 @@ public:
     T* AddSystem(Args&&... args)
     {
         GLEAM_ASSERT(!HasSystem<T>(), "World already has the system!");
-        T* system = mSystems.emplace<T>(std::forward<Args>(args)...);
+        T* system = mSystems.emplace_back<T>(std::forward<Args>(args)...);
 		system->OnCreate(mEntityManager);
 		return system;
     }

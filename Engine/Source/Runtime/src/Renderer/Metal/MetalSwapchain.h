@@ -35,11 +35,11 @@ private:
 	void* mSurface = nullptr;
 	MetalDevice* mDevice = nullptr;
 	CAMetalLayer* mHandle = nullptr;
-	id<CAMetalDrawable> mCurrentDrawable = nil;
 	
 	struct FrameContext
 	{
-		id<MTLEvent> event = nil;
+		id<CAMetalDrawable> drawable = nil;
+		id<MTLSharedEvent> event = nil;
 		uint64_t eventValue = 0;
 	};
 	TArray<FrameContext> mContext;

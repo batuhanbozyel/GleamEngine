@@ -29,8 +29,8 @@ public:
     T* AddView(Args&&... args)
     {
         GLEAM_ASSERT(!HasView<T>(), "Editor already has the view!");
-        T* view = mViews.emplace<T>(std::forward<Args>(args)...);
-		view->Init(mWorld);
+        T* view = mViews.emplace_back<T>(std::forward<Args>(args)...);
+		view->OnCreate(mWorld);
         return view;
     }
     
@@ -39,6 +39,7 @@ public:
     {
         GLEAM_ASSERT(HasView<T>(), "Editor does not have the view!");
         T* view = mViews.get<T>();
+		view->OnDestroy(mWorld);
         mViews.erase<T>();
     }
     

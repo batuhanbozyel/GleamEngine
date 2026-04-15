@@ -16,12 +16,18 @@
 
 using namespace GEditor;
 
-void EntityInspector::Init(Gleam::World* world)
+void EntityInspector::OnCreate(Gleam::World* world)
 {
 	mEditWorld = world;
     Gleam::EventDispatcher<EntitySelectedEvent>::Subscribe([this](EntitySelectedEvent e)
     {
         mSelectedEntity = e.GetEntity();
+        if (mSelectedEntity != Gleam::InvalidEntity)
+        {
+            auto& entityManager = mEditWorld->GetEntityManager();
+            auto& entity = entityManager.GetComponent<Gleam::Entity>(mSelectedEntity);
+            mEntityEulerRotation = Gleam::Math::Rad2Deg(Gleam::Math::EulerAngles(entity.GetLocalTransform().rotation));
+        }
     });
 
 	Gleam::EventDispatcher<SingletonSelectedEvent>::Subscribe([this](SingletonSelectedEvent e)
@@ -43,11 +49,10 @@ void EntityInspector::Render(Gleam::ImGuiRenderer* imgui)
 			auto localTransform = entity.GetLocalTransform();
 			PropertyDrawer::DrawCustom("Local Transform", Gleam::Reflection::GetClass<Gleam::Transform>().TypeHash(), [&]()
 			{
-				auto localRotation = Gleam::Math::Rad2Deg(Gleam::Math::EulerAngles(localTransform.rotation));
 				PropertyDrawer::DrawVec3Control("Translation", localTransform.position, 0.0f);
-				PropertyDrawer::DrawVec3Control("Rotation", localRotation, 0.0f);
+				PropertyDrawer::DrawVec3Control("Rotation", mEntityEulerRotation, 0.0f);
 				PropertyDrawer::DrawScalarControl("Scale", localTransform.scale, 1.0f);
-				localTransform.rotation = Gleam::Quaternion(Gleam::Math::Deg2Rad(localRotation));
+				localTransform.rotation = Gleam::Quaternion(Gleam::Math::Deg2Rad(mEntityEulerRotation));
 			});
 			entity.SetLocalTransform(localTransform);
 

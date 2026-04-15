@@ -7,6 +7,7 @@
 #include "MetalUtils.h"
 
 #include <metal_irconverter_runtime/metal_irconverter_runtime.h>
+#include <metal_irconverter_runtime/ir_raytracing.h>
 
 using namespace Gleam;
 
@@ -42,13 +43,12 @@ struct CommandBuffer::Impl
     id<MTL4CommandBuffer> commandBuffer = nil;
     id<MTL4RenderCommandEncoder> renderCommandEncoder = nil;
     id<MTL4ComputeCommandEncoder> computeCommandEncoder = nil;
-    id<MetalPipeline> pipeline = nil;
     
-    id<MTLEvent> event = nil;
-    uint64_t eventValue = 1;
-    uint64_t waitEventValue = 0;
+    id<MTLSharedEvent> event = nil;
+    uint64_t eventValue = 0;
     
     TopLevelArgumentBuffer topLevelArgumentBuffer = {};
+    PipelineHandle pipeline;
     
     struct ConsumerBarrier
     {
@@ -75,7 +75,7 @@ CommandBuffer::CommandBuffer(GraphicsDevice* device)
     , mConstantBuffer(device, 4194304) // 4 MB
 {
     mHandle->device = static_cast<MetalDevice*>(device);
-    mHandle->event = [mHandle->device->GetHandle() newEvent];
+    mHandle->event = [mHandle->device->GetHandle() newSharedEvent];
 }
 
 CommandBuffer::~CommandBuffer()
@@ -154,9 +154,9 @@ void CommandBuffer::EndComputePass() const
 
 void CommandBuffer::BindComputePipeline(const ComputePipeline& pipeline) const
 {
-    mHandle->pipeline = pipeline.GetHandle();
+    mHandle->pipeline = pipeline.GetHash();
 
-    id<MetalComputePipeline> computePipeline = (id<MetalComputePipeline>)mHandle->pipeline;
+    id<MetalComputePipeline> computePipeline = (id<MetalComputePipeline>)pipeline.GetHandle();
     [mHandle->computeCommandEncoder setComputePipelineState:computePipeline.pipelineState];
 
     // Top-level argument buffer
@@ -166,9 +166,9 @@ void CommandBuffer::BindComputePipeline(const ComputePipeline& pipeline) const
 
 void CommandBuffer::BindGraphicsPipeline(const GraphicsPipeline& pipeline) const
 {
-    mHandle->pipeline = pipeline.GetHandle();
+    mHandle->pipeline = pipeline.GetHash();
     
-    id<MetalGraphicsPipeline> renderPipeline = (id<MetalGraphicsPipeline>)mHandle->pipeline;
+    id<MetalGraphicsPipeline> renderPipeline = (id<MetalGraphicsPipeline>)pipeline.GetHandle();
     [mHandle->renderCommandEncoder setRenderPipelineState:renderPipeline.pipelineState];
     if (renderPipeline.depthStencilState)
     {
@@ -176,6 +176,18 @@ void CommandBuffer::BindGraphicsPipeline(const GraphicsPipeline& pipeline) const
     }
     [mHandle->renderCommandEncoder setCullMode:CullModeToMTLCullMode(pipeline.GetDescriptor().cullingMode)];
     [mHandle->renderCommandEncoder setTriangleFillMode:pipeline.GetDescriptor().wireframe ? MTLTriangleFillModeLines : MTLTriangleFillModeFill];
+    
+    // Top-level argument buffer
+    memset(&mHandle->topLevelArgumentBuffer, 0, sizeof(TopLevelArgumentBuffer));
+    mHandle->topLevelArgumentBuffer.samplerDescriptorHeap = [mHandle->device->GetSamplerHeap() gpuAddress];
+}
+
+void CommandBuffer::BindRayTracingPipeline(const RayTracingPipeline& pipeline) const
+{
+    mHandle->pipeline = pipeline.GetHash();
+    
+    id<MetalRayTracingPipeline> rayTracingPipeline = (id<MetalRayTracingPipeline>)pipeline.GetHandle();
+    [mHandle->computeCommandEncoder setComputePipelineState:rayTracingPipeline.pipelineState];
     
     // Top-level argument buffer
     memset(&mHandle->topLevelArgumentBuffer, 0, sizeof(TopLevelArgumentBuffer));
@@ -213,21 +225,74 @@ void CommandBuffer::SetPushConstant(const void* data, uint32_t size) const
     memcpy(mHandle->topLevelArgumentBuffer.pushConstant, data, size);
 }
 
+void CommandBuffer::DispatchRays(uint32_t width, uint32_t height, uint32_t depth) const
+{
+    const auto& pipeline = static_cast<RayTracingPipelineHandle>(mHandle->pipeline).GetPipeline();
+    const auto& sbt = pipeline.GetShaderBindingTable();
+    
+    auto gpuAddress = [mConstantBuffer.GetHandle() gpuAddress];
+    size_t topLevelABOffset = mConstantBuffer.Write(mHandle->topLevelArgumentBuffer);
+    
+    IRDispatchRaysArgument dispatchArg = {};
+    dispatchArg.DispatchRaysDesc.RayGenerationShaderRecord.StartAddress = sbt.GetRayGenRecord().startAddress;
+    dispatchArg.DispatchRaysDesc.RayGenerationShaderRecord.SizeInBytes  = sbt.GetRayGenRecord().sizeInBytes;
+    
+    dispatchArg.DispatchRaysDesc.MissShaderTable.StartAddress  = sbt.GetMissRecord().startAddress;
+    dispatchArg.DispatchRaysDesc.MissShaderTable.SizeInBytes   = sbt.GetMissRecord().sizeInBytes;
+    dispatchArg.DispatchRaysDesc.MissShaderTable.StrideInBytes = sbt.GetMissRecord().strideInBytes;
+              
+    dispatchArg.DispatchRaysDesc.HitGroupTable.StartAddress  = sbt.GetHitGroupRecord().startAddress;
+    dispatchArg.DispatchRaysDesc.HitGroupTable.SizeInBytes   = sbt.GetHitGroupRecord().sizeInBytes;
+    dispatchArg.DispatchRaysDesc.HitGroupTable.StrideInBytes = sbt.GetHitGroupRecord().strideInBytes;
+    
+    dispatchArg.DispatchRaysDesc.Width  = width;
+    dispatchArg.DispatchRaysDesc.Height = height;
+    dispatchArg.DispatchRaysDesc.Depth  = depth;
+    
+    dispatchArg.GRS         = gpuAddress + topLevelABOffset;
+    dispatchArg.ResDescHeap = [mHandle->device->GetCbvSrvUavHeap() gpuAddress];
+    dispatchArg.SmpDescHeap = [mHandle->device->GetSamplerHeap() gpuAddress];
+    
+    id<MetalRayTracingPipeline> rayTracingPipeline = (id<MetalRayTracingPipeline>)pipeline.GetHandle();
+    dispatchArg.VisibleFunctionTable = [rayTracingPipeline.visibleFunctionTable gpuResourceID];
+    if (rayTracingPipeline.intersectionFunctionTable)
+    {
+      dispatchArg.IntersectionFunctionTable = [rayTracingPipeline.intersectionFunctionTable gpuResourceID];
+    }
+    size_t dispatchArgOffset = mConstantBuffer.Write(dispatchArg);
+    
+    id<MTL4ArgumentTable> argumentTable = mHandle->device->GetArgumentTable();
+    [argumentTable setAddress:(gpuAddress + topLevelABOffset) atIndex:kIRArgumentBufferBindPoint];
+    [argumentTable setAddress:(gpuAddress + dispatchArgOffset) atIndex:kIRRayDispatchArgumentsBindPoint];
+    
+    // Dispatch one thread per ray (width × height × depth)
+    // Rounded up to 8×8 threadgroups; the compiled kernel guards OOB via DispatchRaysIndex() bounds check
+    constexpr uint32_t tgX = 8, tgY = 8;
+    MTLSize threadgroups = MTLSizeMake((width + tgX - 1) / tgX, (height + tgY - 1) / tgY, depth);
+    MTLSize threadsPerGroup = MTLSizeMake(tgX, tgY, 1);
+    [mHandle->computeCommandEncoder dispatchThreadgroups:threadgroups threadsPerThreadgroup:threadsPerGroup];
+}
+
 void CommandBuffer::Dispatch(uint32_t x, uint32_t y, uint32_t z) const
 {
+    const auto& pipeline = static_cast<ComputePipelineHandle>(mHandle->pipeline).GetPipeline();
+    id<MetalComputePipeline> computePipeline = (id<MetalComputePipeline>)pipeline.GetHandle();
+    
     auto gpuAddress = [mConstantBuffer.GetHandle() gpuAddress];
     size_t topLevelABOffset = mConstantBuffer.Write(mHandle->topLevelArgumentBuffer);
     
     id<MTL4ArgumentTable> argumentTable = mHandle->device->GetArgumentTable();
     [argumentTable setAddress:(gpuAddress + topLevelABOffset) atIndex:kIRArgumentBufferBindPoint];
     
-    id<MetalComputePipeline> pipeline = (id<MetalComputePipeline>)mHandle->pipeline;
     MTLSize threadGroupSize = MTLSizeMake(x, y, z);
-    [mHandle->computeCommandEncoder dispatchThreadgroups:threadGroupSize threadsPerThreadgroup:pipeline.threadsPerThreadgroup];
+    [mHandle->computeCommandEncoder dispatchThreadgroups:threadGroupSize threadsPerThreadgroup:computePipeline.threadsPerThreadgroup];
 }
 
 void CommandBuffer::Draw(uint32_t vertexCount, uint32_t instanceCount) const
 {
+    const auto& pipeline = static_cast<GraphicsPipelineHandle>(mHandle->pipeline).GetPipeline();
+    id<MetalGraphicsPipeline> renderPipeline = (id<MetalGraphicsPipeline>)pipeline.GetHandle();
+    
     auto gpuAddress = [mConstantBuffer.GetHandle() gpuAddress];
     
     IRRuntimeDrawArgument drawArgument = { .vertexCountPerInstance = vertexCount, .instanceCount = instanceCount, .startVertexLocation = 0, .startInstanceLocation = 0 };
@@ -242,16 +307,18 @@ void CommandBuffer::Draw(uint32_t vertexCount, uint32_t instanceCount) const
     [argumentTable setAddress:(gpuAddress + nonIndexedDrawOffset) atIndex:kIRArgumentBufferUniformsBindPoint];
     [argumentTable setAddress:(gpuAddress + topLevelABOffset) atIndex:kIRArgumentBufferBindPoint];
     
-    id<MetalGraphicsPipeline> pipeline = (id<MetalGraphicsPipeline>)mHandle->pipeline;
-    [mHandle->renderCommandEncoder drawPrimitives:pipeline.topology vertexStart:0 vertexCount:vertexCount instanceCount:instanceCount baseInstance:0];
+    [mHandle->renderCommandEncoder drawPrimitives:renderPipeline.topology vertexStart:0 vertexCount:vertexCount instanceCount:instanceCount baseInstance:0];
 }
 
-void CommandBuffer::DrawIndexed(const Buffer& indexBuffer, IndexType type, uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, uint32_t baseVertex) const
+void CommandBuffer::DrawIndexed(const Buffer& indexBuffer, IndexType type, uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex) const
 {
+    const auto& pipeline = static_cast<GraphicsPipelineHandle>(mHandle->pipeline).GetPipeline();
+    id<MetalGraphicsPipeline> renderPipeline = (id<MetalGraphicsPipeline>)pipeline.GetHandle();
+    
     auto gpuAddress = [mConstantBuffer.GetHandle() gpuAddress];
     auto indexBufferOffset = firstIndex * (uint32_t)SizeOfIndexType(type);
     
-    IRRuntimeDrawIndexedArgument drawArgument = { .indexCountPerInstance = indexCount, .instanceCount = instanceCount, .startIndexLocation = indexBufferOffset, .baseVertexLocation = (int)baseVertex, .startInstanceLocation = 0 };
+    IRRuntimeDrawIndexedArgument drawArgument = { .indexCountPerInstance = indexCount, .instanceCount = instanceCount, .startIndexLocation = indexBufferOffset, .baseVertexLocation = 0, .startInstanceLocation = 0 };
     IRRuntimeDrawParams drawParams = { .drawIndexed = drawArgument };
     
     MTLIndexType indexType = static_cast<MTLIndexType>(type);
@@ -269,15 +336,13 @@ void CommandBuffer::DrawIndexed(const Buffer& indexBuffer, IndexType type, uint3
     MTLGPUAddress indexBufferGpuAddress = [indexBuffer.GetHandle() gpuAddress] + indexBufferOffset;
     size_t indexBufferLength = indexBuffer.GetSize();
     
-    id<MetalGraphicsPipeline> pipeline = (id<MetalGraphicsPipeline>)mHandle->pipeline;
-    [mHandle->renderCommandEncoder drawIndexedPrimitives:pipeline.topology indexCount:indexCount indexType:indexType indexBuffer:indexBufferGpuAddress indexBufferLength:indexBufferLength instanceCount:instanceCount baseVertex:baseVertex baseInstance:0];
+    [mHandle->renderCommandEncoder drawIndexedPrimitives:renderPipeline.topology indexCount:indexCount indexType:indexType indexBuffer:indexBufferGpuAddress indexBufferLength:indexBufferLength instanceCount:instanceCount baseVertex:0 baseInstance:0];
 }
 
 void CommandBuffer::CopyBuffer(const NativeGraphicsHandle src, const NativeGraphicsHandle dst, size_t size, size_t srcOffset, size_t dstOffset) const
 {
     [mHandle->computeCommandEncoder setLabel:TO_NSSTRING("CommandBuffer::CopyBuffer")];
     [mHandle->computeCommandEncoder copyFromBuffer:src sourceOffset:srcOffset toBuffer:dst destinationOffset:dstOffset size:size];
-    [mHandle->computeCommandEncoder endEncoding];
 }
 
 void CommandBuffer::Blit(const Texture& source, const Texture& destination) const
@@ -287,7 +352,6 @@ void CommandBuffer::Blit(const Texture& source, const Texture& destination) cons
 
     [mHandle->computeCommandEncoder setLabel:TO_NSSTRING("CommandBuffer::Blit")];
     [mHandle->computeCommandEncoder copyFromTexture:srcTexture toTexture:dstTexture];
-    [mHandle->computeCommandEncoder endEncoding];
 }
 
 void CommandBuffer::Barrier(const BarrierGroup& barrier) const
@@ -349,7 +413,7 @@ void CommandBuffer::Barrier(const BarrierGroup& barrier) const
         
         if (nonRenderSrcStages != 0 || nonRenderDstStages != 0)
         {
-            mHandle->consumerBarriers.push_back({allSrcStages, allDstStages, visibility });
+            mHandle->consumerBarriers.push_back({nonRenderSrcStages, nonRenderDstStages, visibility });
         }
     }
     else if (mHandle->computeCommandEncoder)
@@ -369,7 +433,7 @@ void CommandBuffer::Barrier(const BarrierGroup& barrier) const
         MTLStages nonComputeDstStages = allDstStages & ~validComputeStages;
         if (nonComputeSrcStages != 0 || nonComputeDstStages != 0)
         {
-            mHandle->consumerBarriers.push_back({ allSrcStages, allDstStages, visibility });
+            mHandle->consumerBarriers.push_back({ nonComputeSrcStages, nonComputeDstStages, visibility });
         }
     }
     else
@@ -393,13 +457,11 @@ void CommandBuffer::End() const
 
 void CommandBuffer::Commit() const
 {
-    mHandle->waitEventValue = mHandle->eventValue;
-    
     id<MTL4CommandQueue> commandQueue = mHandle->device->GetCommandQueue();
     
     [mHandle->device->GetResidencySet() commit];
     [commandQueue commit:&mHandle->commandBuffer count:1u];
-    [commandQueue signalEvent:mHandle->event value:mHandle->eventValue++];
+    [commandQueue signalEvent:mHandle->event value:++mHandle->eventValue];
     
     mConstantBuffer.Reset();
     mCommitted = true;
@@ -409,7 +471,7 @@ void CommandBuffer::WaitUntilCompleted() const
 {
     if (mCommitted)
 	{
-        [mHandle->device->GetCommandQueue() waitForEvent:mHandle->event value:mHandle->waitEventValue];
+        WaitForMTLSharedEvent(mHandle->event, mHandle->eventValue);
 	}
     mCommitted = false;
 }

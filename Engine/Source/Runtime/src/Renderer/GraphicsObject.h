@@ -4,6 +4,19 @@
 
 namespace Gleam {
 
+struct GPUVirtualAddressRange
+{
+	uint64_t startAddress = 0;
+	uint64_t sizeInBytes = 0;
+};
+
+struct GPUVirtualAddressRangeAndStride
+{
+	uint64_t startAddress = 0;
+	uint64_t sizeInBytes = 0;
+	uint64_t strideInBytes = 0;
+};
+
 class GraphicsObject
 {
 public:

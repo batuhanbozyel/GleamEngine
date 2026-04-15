@@ -157,7 +157,6 @@ bool MeshSource::Import(const Gleam::Path& path, const ImportSettings& settings)
 			if (node.mesh)
 			{
 				const auto& meshBaker = meshes[node.mesh];
-				const auto& meshDesc = meshBaker->GetDescriptor();
 				const auto& meshItem = Registry()->GetAsset<Gleam::MeshDescriptor>(meshBaker->Filename());
 
 				Gleam::TArray<Gleam::AssetReference> materialRefs;
@@ -253,6 +252,7 @@ Gleam::TArray<Gleam::RefCounted<MaterialInstanceBaker>> MeshSource::ImportMateri
 		descriptor["Emission"] = material.emissiveColor;
 		descriptor["Metallic"] = material.metallicFactor;
 		descriptor["Roughness"] = material.roughnessFactor;
+		descriptor["AlphaCutoff"] = material.alphaCutoff;
 
 		if (const auto& texture = material.textures[PBRTexture::Albedo]; texture.Empty() == false)
 		{
@@ -349,13 +349,13 @@ RawMesh ProcessAttributes(const cgltf_primitive& primitive, const MeshSource::Im
             cgltf_accessor_unpack_floats(attribute.data, (cgltf_float*)mesh.texCoords.data(), mesh.texCoords.size() * 2);
         }
     }
+	MeshTools::RemoveDegenerateFaces(mesh);
 	
 	if (mesh.normals.empty())
 	{
 		MeshTools::ComputeSmoothNormals(mesh);
 	}
 
-	MeshTools::RemoveDegenerateFaces(mesh);
 	if (mesh.tangents.empty())
 	{
 		if (mesh.texCoords.empty())
@@ -367,6 +367,7 @@ RawMesh ProcessAttributes(const cgltf_primitive& primitive, const MeshSource::Im
 			MeshTools::ComputeTangents(mesh);
 		}
 	}
+	MeshTools::ValidateTangents(mesh);
 
 	if (mesh.texCoords.empty())
 	{

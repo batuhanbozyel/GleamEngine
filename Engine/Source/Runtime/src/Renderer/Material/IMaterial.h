@@ -15,8 +15,9 @@ class IMaterial : public Asset
 {
 public:
 
-    IMaterial(const TArray<MaterialProperty>& properties)
-        : mProperties(properties)
+    IMaterial(const TString& name, const TArray<MaterialProperty>& properties)
+        : Asset(name)
+		, mProperties(properties)
     {
 
     }

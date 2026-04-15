@@ -21,7 +21,7 @@
 
 using namespace Gleam;
 
-void WorldRenderer::OnCreate(RenderContext& context)
+void WorldRenderer::OnCreate(const RenderContext& context)
 {
 	mDevice = context.device;
 
@@ -41,7 +41,7 @@ void WorldRenderer::OnCreate(RenderContext& context)
 	}
 }
 
-void WorldRenderer::OnDestroy(RenderContext& context)
+void WorldRenderer::OnDestroy(const RenderContext& context)
 {
 	context.device->Dispose(context.allocator, mBRDFLutTexture);
 }
@@ -64,7 +64,7 @@ void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 			passData.brdfLut = builder.WriteTexture(brdfLut);
 			brdfLut = passData.brdfLut;
 		},
-		[this, blackboard](const CommandBuffer* cmd, const BRDFLutData& passData)
+		[this](const CommandBuffer* cmd, const BRDFLutData& passData)
 		{
 			cmd->BindComputePipeline(mBRDFLutPipeline);
 			cmd->SetPushConstant(BRDFLutConstants{ .targetTexture = mBRDFLutTexture.GetResourceView() });
@@ -102,59 +102,66 @@ void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 		
         blackboard.Add(passData);
     },
-    [this, blackboard](const CommandBuffer* cmd, const WorldRenderingData& passData)
+    [this, &sceneData](const CommandBuffer* cmd, const WorldRenderingData& passData)
     {
-        const auto& sceneData = blackboard.Get<SceneRenderingData>();
         sceneData.sceneProxy->ForEach([this, cmd, passData, sceneData](const MeshBatch& batch)
         {
-            const auto& materialBuffer = batch.material->GetBuffer();
-            const auto& pipeline = mShadingPipelines[batch.material->GetPipelineHash()];
+			if (batch.numInstances == 0)
+			{
+				return;
+			}
 
-			MeshPassResources resources = {};
-			resources.instanceBuffer = batch.instanceBuffer.GetResourceView();
-			resources.materialBuffer = materialBuffer.GetResourceView();
-			resources.brdfTexture = passData.brdfLut;
-			resources.diffuseReflectionTexture = passData.diffuseReflection;
-			resources.specularReflectionTexture = passData.specularReflection;
+            const auto& pipeline = mShadingPipelines[batch.material->GetPipelineHash()];
+			const auto globalInstances = sceneData.sceneProxy->GetGlobalInstances();
+			const auto globalMeshes = sceneData.sceneProxy->GetGlobalMeshes();
+
+			MeshShadingConstants constants = {};
+			constants.instanceBuffer = sceneData.sceneProxy->GetGlobalInstanceBuffer().GetResourceView();
+			constants.brdfTexture = passData.brdfLut;
+			constants.diffuseReflectionTexture = passData.diffuseReflection;
+			constants.specularReflectionTexture = passData.specularReflection;
 
 			cmd->BindGraphicsPipeline(pipeline);
-			cmd->SetConstantBuffer(resources, MESH_PASS_RESOURCES_BINDING_SLOT);
 			cmd->SetConstantBuffer(sceneData.camera.uniforms, CAMERA_UNIFORMS_BINDING_SLOT);
 			cmd->SetConstantBuffer(sceneData.atmosphere.params, SKY_ATMOSPHERE_PARAMS_BINDING_SLOT);
 			cmd->SetConstantBuffer(sceneData.atmosphere.uniforms, SKY_ATMOSPHERE_COMMON_UNIFORMS_BINDING_SLOT);
 
 			for (uint32_t instanceID = 0; instanceID < batch.numInstances; ++instanceID)
 			{
-				const auto& instance = batch.instances[instanceID];
-				cmd->SetConstantBuffer(instance, MESH_INSTANCE_DATA_BINDING_SLOT);
-				cmd->DrawIndexed(batch.meshes[instanceID]->GetIndexBuffer(), IndexType::UINT32, instance.indexCount, 1, instance.firstIndex);
+				constants.instanceID = batch.instanceOffset + instanceID;
+				const auto& instance = globalInstances[constants.instanceID];
+				
+				cmd->SetPushConstant(constants);
+				cmd->DrawIndexed(globalMeshes[constants.instanceID].mesh->GetIndexBuffer(), IndexType::UINT32, instance.indexCount, 1, instance.firstIndex);
 			}
         });
     });
 }
 
-void WorldRenderer::RegisterShadingPipeline(const MaterialDescriptor& material, uint32_t hash)
+void WorldRenderer::RegisterShadingPipeline(const Material* material)
 {
-	auto it = mShadingPipelines.find(hash);
+	const auto& materialDesc = material->GetDescriptor();
+	auto pipelineHash = material->GetPipelineHash();
+	auto it = mShadingPipelines.find(pipelineHash);
 	if (it == mShadingPipelines.end())
 	{
 		GraphicsPipelineStateDescriptor pipelineDesc = {
-			.blendState = material.blendState,
-			.depthState = material.depthState,
-			.stencilState = material.stencilState,
-			.cullingMode = material.cullingMode,
+			.blendState = materialDesc.blendState,
+			.depthState = materialDesc.depthState,
+			.stencilState = materialDesc.stencilState,
+			.cullingMode = materialDesc.cullingMode,
 			.topology = PrimitiveTopology::Triangles,
 			.alphaToCoverage = false,
 			.wireframe = false,
 			.colorFormats = { TextureFormat::R16G16B16A16_SFloat },
 			.depthFormat = TextureFormat::D16_UNorm,
 			.vertexEntry = "meshVertexShader",
-			.fragmentEntry = material.surfaceShader
+			.fragmentEntry = materialDesc.surfaceShader + "Forward"
 		};
 		auto pipeline = mDevice->CreateGraphicsPipeline(pipelineDesc);
 
 		mShadingPipelines.emplace_hint(it, eastl::piecewise_construct,
-										   eastl::forward_as_tuple(hash),
+										   eastl::forward_as_tuple(pipelineHash),
 										   eastl::forward_as_tuple(pipeline));
 	}
 }

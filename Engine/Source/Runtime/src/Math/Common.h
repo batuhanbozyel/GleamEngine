@@ -170,7 +170,13 @@ NO_DISCARD FORCE_INLINE T constexpr Sqrt(T v)
 }
 
 template<typename T>
-NO_DISCARD FORCE_INLINE size_t constexpr RoundUpTo(T value, T to)
+NO_DISCARD FORCE_INLINE constexpr T AlignUp(T offset, T alignment)
+{
+	return (offset + alignment - 1) & ~(alignment - 1);
+}
+
+template<typename T>
+NO_DISCARD FORCE_INLINE T constexpr RoundUpTo(T value, T to)
 {
 	if (to == T{ 0 })
 	{

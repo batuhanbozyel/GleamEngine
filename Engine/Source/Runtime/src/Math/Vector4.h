@@ -409,6 +409,7 @@ NO_DISCARD FORCE_INLINE constexpr Vector4<T> Normalize(const Vector4<T>& vec)
 
 using Float4 = Vector4<float>;
 using Int4 = Vector4<int>;
+using UInt4 = Vector4<uint32_t>;
 
 template<typename T>
 const Vector4<T> Vector4<T>::zero{T(0), T(0), T(0), T(0)};

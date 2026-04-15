@@ -2,8 +2,6 @@
 
 PUSH_CONSTANT(Gleam::BRDFLutConstants, constants);
 
-#pragma compute integrateBRDFShader
-
 #define SAMPLE_COUNT (8192u * 4u)
 float3 IntegrateDFG(in float NdotV, in float perceptualRoughness)
 {
@@ -20,12 +18,12 @@ float3 IntegrateDFG(in float NdotV, in float perceptualRoughness)
         float3 H = ImportanceSampleGGX(Xi, N, perceptualRoughness, pdf);
 		float3 L = reflect(-V, H);
 
-        float NdotL = saturate(L.y);
-		float NdotH = saturate(H.y);
-        float VdotH = saturate(dot(V, H));
-        
+        float NdotL = L.y;
         if (NdotL > 0.0)
         {
+            float NdotH = H.y;
+            float VdotH = saturate(dot(V, H));
+            
             float G = G_SmithGGXCorrelated(NdotL, NdotV, roughness);
 			float G_Vis = G * VdotH / (NdotH * NdotV);
             
@@ -57,17 +55,24 @@ float IntegrateDiffuse(in float NdotV, in float perceptualRoughness)
         if (NdotL > 0.0)
         {
             float3 H = normalize(V + L);
-            float LdotH = saturate(dot(L, H));
+            float LdotH = dot(L, H);
             irradiance += Fr_DisneyDiffuse(NdotV, NdotL, LdotH, perceptualRoughness);
         }
     }
     return irradiance / SAMPLE_COUNT;
 }
 
-[numthreads(16, 16, 1)] void integrateBRDFShader(uint3 dispatchThreadID : SV_DispatchThreadID)
+[shader("compute")]
+[numthreads(16, 16, 1)]
+void integrateBRDFShader(uint3 dispatchThreadId : SV_DispatchThreadID)
 {
-    float NdotV = (dispatchThreadID.x + 0.5) / BRDF_LUT_SIZE;
-    float perceptualRoughness = (dispatchThreadID.y + 0.5) / BRDF_LUT_SIZE;
+    if (any(dispatchThreadId.xy >= BRDF_LUT_SIZE))
+    {
+        return;
+    }
+    
+    float NdotV = (dispatchThreadId.x + 0.5) / BRDF_LUT_SIZE;
+    float perceptualRoughness = (dispatchThreadId.y + 0.5) / BRDF_LUT_SIZE;
     RWTexture2D<float4> targetTexture = ResourceDescriptorHeap[constants.targetTexture];
-	targetTexture[dispatchThreadID.xy] = float4(IntegrateDFG(NdotV, perceptualRoughness), IntegrateDiffuse(NdotV, perceptualRoughness));
+	targetTexture[dispatchThreadId.xy] = float4(IntegrateDFG(NdotV, perceptualRoughness), IntegrateDiffuse(NdotV, perceptualRoughness));
 }

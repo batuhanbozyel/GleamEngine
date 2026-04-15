@@ -12,6 +12,14 @@ using float4x4 = Gleam::Float4x4;
 using float2 = Gleam::Float2;
 using float3 = Gleam::Float3;
 using float4 = Gleam::Float4;
+
+using int2 = Gleam::Int2;
+using int3 = Gleam::Int3;
+using int4 = Gleam::Int4;
+
+using uint2 = Gleam::UInt2;
+using uint3 = Gleam::UInt3;
+using uint4 = Gleam::UInt4;
 #endif
 
 #define PUSH_CONSTANT_SIZE 128
@@ -119,16 +127,43 @@ struct Texture2DResourceView : TextureResourceView
 	uint32_t padding2;
 
 #ifdef __HLSL_VERSION
-	T Load(uint2 pos)
+	T Load(uint3 pos)
 	{
-		Texture2D<T> texture = ResourceDescriptorHeap[SRVIndex(index)];
-		return texture.Load(uint3(pos, 0));
+		Texture2D<T> texture = ResourceDescriptorHeap[index];
+		return texture.Load(pos);
 	}
 
-	T Sample(SamplerState sampler, float2 uv, float mip = 0.0f)
+	// Pick a better sampling method for real-time raytracing
+	// https://media.contentapi.ea.com/content/dam/ea/seed/presentations/2019-ray-tracing-gems-chapter-20-akenine-moller-et-al.pdf
+	T Sample(SamplerState sampler, float2 uv)
 	{
-		Texture2D<T> texture = ResourceDescriptorHeap[SRVIndex(index)];
-		return texture.Sample(sampler, uv, mip);
+	#ifdef SHADER_TARGET_PIXEL
+		Texture2D<T> texture = ResourceDescriptorHeap[index];
+		return texture.Sample(sampler, uv);
+	#else
+		Texture2D<T> texture = ResourceDescriptorHeap[NonUniformResourceIndex(index)];
+		return texture.SampleLevel(sampler, uv, 0.0);
+	#endif
+	}
+
+	T SampleLevel(SamplerState sampler, float2 uv, float mip)
+	{
+	#ifdef SHADER_TARGET_PIXEL
+		Texture2D<T> texture = ResourceDescriptorHeap[index];
+	#else
+		Texture2D<T> texture = ResourceDescriptorHeap[NonUniformResourceIndex(index)];
+	#endif
+		return texture.SampleLevel(sampler, uv, mip);
+	}
+
+	T SampleGrad(SamplerState sampler, float2 uv, float2 ddxUV, float2 ddyUV)
+	{
+	#ifdef SHADER_TARGET_PIXEL
+		Texture2D<T> texture = ResourceDescriptorHeap[index];
+	#else
+		Texture2D<T> texture = ResourceDescriptorHeap[NonUniformResourceIndex(index)];
+	#endif
+		return texture.SampleGrad(sampler, uv, ddxUV, ddyUV);
 	}
 #else
     Texture2DResourceView() = default;

@@ -2,33 +2,29 @@
 #define MESH_SHADING_HLSL
 
 #include "BRDF.hlsli"
+#include "SurfaceShading.hlsli"
 #include "Atmosphere/SkyAtmosphereCommon.hlsli"
 
-CONSTANT_BUFFER(Gleam::MeshPassResources, resources, MESH_PASS_RESOURCES_BINDING_SLOT);
+PUSH_CONSTANT(Gleam::MeshShadingConstants, meshShadingConstants);
 
-// We only need this for legacy vertex shader path
-// When switched to mesh shaders, we should be fetching instance data from instance buffer
-CONSTANT_BUFFER(Gleam::MeshInstanceData, instanceData, MESH_INSTANCE_DATA_BINDING_SLOT);
-
-struct MeshVertexOut
+Gleam::MeshInstanceData LoadInstanceData(uint instanceID)
 {
-	float4 position : SV_POSITION;
-	float3 worldPosition : ATTRIB0;
-	float3 normal : ATTRIB1;
-	float3 tangent : ATTRIB2;
-	float3 bitangent : ATTRIB3;
-	float4 color : ATTRIB4;
-	float2 uv : ATTRIB5;
-};
+	ByteAddressBuffer instanceBuffer = ResourceDescriptorHeap[meshShadingConstants.instanceBuffer];
+	Gleam::MeshInstanceData instance = instanceBuffer.Load<Gleam::MeshInstanceData>(instanceID * sizeof(Gleam::MeshInstanceData));
 
-#pragma fragment meshShadingPassShader
+	ByteAddressBuffer materialBuffer = ResourceDescriptorHeap[instance.materialBuffer];
+	LoadMaterialInstance(materialBuffer, instance.materialID);
+	return instance;
+}
 
-// User defined
-Gleam::SurfaceOutput surf(MeshVertexOut IN);
-
-float4 meshShadingPassShader(MeshVertexOut IN) : SV_TARGET
+[shader("pixel")]
+float4 main(Gleam::MeshVertexOut IN) : SV_TARGET
 {
-    Gleam::SurfaceOutput surface = surf(IN);
+	IN.ddxUV = ddx(IN.uv);
+	IN.ddyUV = ddy(IN.uv);
+	Gleam::MeshInstanceData instance = LoadInstanceData(meshShadingConstants.instanceID);
+    Gleam::SurfaceOutput surface = SurfMain(IN);
+    surface.roughness = max(surface.roughness, 0.04);
     
 	float3 viewDir = normalize(camera.position - IN.worldPosition);
 	float3x3 TBN = transpose(float3x3(IN.tangent, IN.bitangent, IN.normal));
@@ -55,9 +51,9 @@ float4 meshShadingPassShader(MeshVertexOut IN) : SV_TARGET
 		light.illuminance = atmosphereUniforms.sunIlluminance;
 	}
 	
-	float3 color = 0.0;
+	float3 color = surface.emission.rgb;
 	color += EvaluateDirectLight(surface, light, viewDir, worldNormal);
-	color += EvaluateIndirectLight(surface, resources.brdfTexture, resources.diffuseReflectionTexture, resources.specularReflectionTexture, viewDir, worldNormal);
-	return float4(color, 1.0f);
+	color += EvaluateIndirectLight(surface, meshShadingConstants.brdfTexture, meshShadingConstants.diffuseReflectionTexture, meshShadingConstants.specularReflectionTexture, viewDir, worldNormal);
+	return float4(color, surface.albedo.a);
 }
 #endif // MESH_SHADING_HLSL
