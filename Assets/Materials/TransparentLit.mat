@@ -12,7 +12,8 @@
         {"BaseColorTexture": "Texture2D"},
         {"NormalTexture": "Texture2D"},
         {"MetallicRoughnessTexture": "Texture2D"},
-        {"EmissiveTexture": "Texture2D"}
+        {"EmissiveTexture": "Texture2D"},
+        {"AlphaCutoff": "Float"}
     ],
 
     "Lighting": "On",

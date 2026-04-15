@@ -252,6 +252,7 @@ Gleam::TArray<Gleam::RefCounted<MaterialInstanceBaker>> MeshSource::ImportMateri
 		descriptor["Emission"] = material.emissiveColor;
 		descriptor["Metallic"] = material.metallicFactor;
 		descriptor["Roughness"] = material.roughnessFactor;
+		descriptor["AlphaCutoff"] = material.alphaCutoff;
 
 		if (const auto& texture = material.textures[PBRTexture::Albedo]; texture.Empty() == false)
 		{

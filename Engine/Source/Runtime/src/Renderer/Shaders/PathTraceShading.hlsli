@@ -19,9 +19,9 @@ void ClosestHit(inout Gleam::RayPayload payload : SV_RayPayload, BuiltInTriangle
 {
     RaytracingAccelerationStructure accelerationStructure = ResourceDescriptorHeap[pathTraceConstants.accelerationStructure];
     Gleam::MeshInstanceData instance = LoadInstanceData(InstanceID());
-    MeshVertexOut vertex = InterpolateVertexAttributes(instance, PrimitiveIndex(), attribs.barycentrics);
+    Gleam::MeshVertexOut vertex = InterpolateVertexAttributes(instance, PrimitiveIndex(), attribs.barycentrics);
     
-    Gleam::SurfaceOutput surface = surf(vertex);
+    Gleam::SurfaceOutput surface = SurfMain(vertex);
     surface.roughness = max(surface.roughness, 0.04);
 
     float3 viewDir = -WorldRayDirection();
@@ -195,9 +195,9 @@ void ClosestHit(inout Gleam::RayPayload payload : SV_RayPayload, BuiltInTriangle
 void AnyHit(inout Gleam::RayPayload payload : SV_RayPayload, BuiltInTriangleIntersectionAttributes attribs : SV_IntersectionAttributes)
 {
     Gleam::MeshInstanceData instance = LoadInstanceData(InstanceID());
-    MeshVertexOut vertex = InterpolateVertexAttributes(instance, PrimitiveIndex(), attribs.barycentrics);
-    Gleam::SurfaceOutput surface = surf(vertex);
-    if (surface.albedo.a < 0.5)
+    Gleam::MeshVertexOut vertex = InterpolateVertexAttributes(instance, PrimitiveIndex(), attribs.barycentrics);
+    Gleam::SurfaceOutput surface = SurfMain(vertex);
+    if (surface.albedo.a < surface.alphaCutoff)
     {
         IgnoreHit();
     }
@@ -207,9 +207,9 @@ void AnyHit(inout Gleam::RayPayload payload : SV_RayPayload, BuiltInTriangleInte
 void ShadowAnyHit(inout Gleam::ShadowPayload payload : SV_RayPayload, BuiltInTriangleIntersectionAttributes attribs : SV_IntersectionAttributes)
 {
     Gleam::MeshInstanceData instance = LoadInstanceData(InstanceID());
-    MeshVertexOut vertex = InterpolateVertexAttributes(instance, PrimitiveIndex(), attribs.barycentrics);
-    Gleam::SurfaceOutput surface = surf(vertex);
-    if (surface.albedo.a < 0.5)
+    Gleam::MeshVertexOut vertex = InterpolateVertexAttributes(instance, PrimitiveIndex(), attribs.barycentrics);
+    Gleam::SurfaceOutput surface = SurfMain(vertex);
+    if (surface.albedo.a < surface.alphaCutoff)
     {
         IgnoreHit();
     }

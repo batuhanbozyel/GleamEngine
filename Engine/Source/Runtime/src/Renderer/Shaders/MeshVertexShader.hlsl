@@ -2,7 +2,7 @@
 #include "MeshShading.hlsli"
 
 [shader("vertex")]
-MeshVertexOut meshVertexShader(uint vertex_id : SV_VertexID)
+Gleam::MeshVertexOut meshVertexShader(uint vertex_id : SV_VertexID)
 {
 	ByteAddressBuffer globalInstanceBuffer = ResourceDescriptorHeap[meshShadingConstants.instanceBuffer];
 	Gleam::MeshInstanceData instanceData = globalInstanceBuffer.Load<Gleam::MeshInstanceData>(meshShadingConstants.instanceID * sizeof(Gleam::MeshInstanceData));
@@ -15,7 +15,7 @@ MeshVertexOut meshVertexShader(uint vertex_id : SV_VertexID)
 	Gleam::InterleavedMeshVertex interleavedVert = interleavedBuffer.Load<Gleam::InterleavedMeshVertex>(vertexID * sizeof(Gleam::InterleavedMeshVertex));
 	float4 worldPosition = mul(instanceData.transform, float4(position, 1.0f));
 
-	MeshVertexOut OUT;
+    Gleam::MeshVertexOut OUT;
 	OUT.worldPosition = worldPosition.xyz;
 	OUT.position = mul(camera.viewProjectionMatrix, worldPosition);
 	OUT.normal = normalize(mul(instanceData.transform, float4(interleavedVert.normal, 0.0f)).xyz);

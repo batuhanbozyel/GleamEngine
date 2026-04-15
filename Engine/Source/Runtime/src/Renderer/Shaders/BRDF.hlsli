@@ -2,7 +2,7 @@
 #define BRDF_HLSL
 
 #include "Common.hlsli"
-#include "ShaderTypes.h"
+#include "SurfaceShading.hlsli"
 
 #define F90_Metal 1.0f
 #define PERFECT_MIRROR_ROUGHNESS 0.0016

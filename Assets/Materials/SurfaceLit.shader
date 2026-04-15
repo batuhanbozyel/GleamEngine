@@ -1,4 +1,4 @@
-float4 GetBaseColor(MeshVertexOut IN)
+float4 GetBaseColor(Gleam::MeshVertexOut IN)
 {
     float4 baseColor = Material.BaseColor * IN.color;
     if (Material.BaseColorTexture.IsValid())
@@ -8,7 +8,7 @@ float4 GetBaseColor(MeshVertexOut IN)
     return baseColor;
 }
 
-float3 GetWorldNormal(MeshVertexOut IN)
+float3 GetWorldNormal(Gleam::MeshVertexOut IN)
 {
     if (Material.NormalTexture.IsValid())
     {
@@ -17,7 +17,7 @@ float3 GetWorldNormal(MeshVertexOut IN)
     return float3(0.0, 0.0, 1.0);
 }
 
-float4 GetEmission(MeshVertexOut IN)
+float4 GetEmission(Gleam::MeshVertexOut IN)
 {
     float4 emission = Material.Emission;
     if (Material.EmissiveTexture.IsValid())
@@ -27,7 +27,7 @@ float4 GetEmission(MeshVertexOut IN)
     return emission;
 }
 
-float2 GetMetallicRoughness(MeshVertexOut IN)
+float2 GetMetallicRoughness(Gleam::MeshVertexOut IN)
 {
     float2 metallicRoughness = float2(Material.Metallic, Material.Roughness);
     if (Material.MetallicRoughnessTexture.IsValid())
@@ -37,7 +37,7 @@ float2 GetMetallicRoughness(MeshVertexOut IN)
     return metallicRoughness;
 }
 
-Gleam::SurfaceOutput surf(MeshVertexOut IN)
+Gleam::SurfaceOutput SurfMain(Gleam::MeshVertexOut IN)
 {
     float2 metallicRoughness = GetMetallicRoughness(IN);
 
@@ -47,5 +47,6 @@ Gleam::SurfaceOutput surf(MeshVertexOut IN)
     OUT.normal = GetWorldNormal(IN);
     OUT.metallic = metallicRoughness.r;
     OUT.roughness = metallicRoughness.g;
+    OUT.alphaCutoff = Material.AlphaCutoff;
     return OUT;
 }

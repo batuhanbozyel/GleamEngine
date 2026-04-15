@@ -58,7 +58,7 @@ float SpecularLobeProbability(Gleam::SurfaceOutput surface, float NdotV)
 	return clamp(specLuma / max(specLuma + diffLuma, 1e-4), 0.1, 0.9);
 }
 
-MeshVertexOut InterpolateVertexAttributes(Gleam::MeshInstanceData instance, uint primitiveIndex, float2 bary)
+Gleam::MeshVertexOut InterpolateVertexAttributes(Gleam::MeshInstanceData instance, uint primitiveIndex, float2 bary)
 {
     ByteAddressBuffer indexBuffer       = ResourceDescriptorHeap[NonUniformResourceIndex(instance.indexBuffer)];
     ByteAddressBuffer positionBuffer    = ResourceDescriptorHeap[NonUniformResourceIndex(instance.positionBuffer)];
@@ -85,9 +85,7 @@ MeshVertexOut InterpolateVertexAttributes(Gleam::MeshInstanceData instance, uint
     float2 uv         = b.x * v0.texCoord    + b.y * v1.texCoord    + b.z * v2.texCoord;
     float  tangentW   = v0.tangent.w;
     
-    
-    
-    MeshVertexOut OUT;
+    Gleam::MeshVertexOut OUT;
     OUT.worldPosition = WorldRayOrigin() + WorldRayDirection() * RayTCurrent();
 	OUT.position      = mul(camera.viewProjectionMatrix, float4(OUT.worldPosition, 1.0));
     OUT.normal        = normalize(mul(instance.transform, float4(normal, 0.0f)).xyz);
