@@ -151,7 +151,7 @@ AccelerationStructureView RayTracingScene::BuildAccelerationStructure(const Comm
 	MTL4InstanceAccelerationStructureDescriptor* tlasDesc = [MTL4InstanceAccelerationStructureDescriptor new];
 	tlasDesc.instanceCount = instanceCount;
 	tlasDesc.instanceDescriptorType = MTLAccelerationStructureInstanceDescriptorTypeIndirect;
-	tlasDesc.instanceTransformationMatrixLayout = MTLMatrixLayoutRowMajor;
+	tlasDesc.instanceTransformationMatrixLayout = MTLMatrixLayoutColumnMajor;
     tlasDesc.instanceDescriptorBuffer = MTL4BufferRange([instanceDescBuffer.GetHandle() gpuAddress], sizeof(MTLIndirectAccelerationStructureInstanceDescriptor) * instanceCount);
     tlasDesc.instanceDescriptorStride = sizeof(MTLIndirectAccelerationStructureInstanceDescriptor);
 
