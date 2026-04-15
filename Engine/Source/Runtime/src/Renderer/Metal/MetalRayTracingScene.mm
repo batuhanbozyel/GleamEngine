@@ -37,6 +37,7 @@ AccelerationStructureView RayTracingScene::BuildAccelerationStructure(const Comm
 	id<MTLDevice> device = mDevice->GetHandle();
 	id<MTL4CommandBuffer> commandBuffer = cmd->GetHandle();
 	id<MTL4ComputeCommandEncoder> encoder = [commandBuffer computeCommandEncoder];
+    [encoder setLabel:@"RayTracingScene::BuildAccelerationStructure"];
 
     Buffer instanceDescBuffer = mDevice->CreateBuffer(mAllocator, BufferDescriptor{
         .name = "Instance Descriptors",

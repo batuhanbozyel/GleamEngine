@@ -474,7 +474,7 @@ Texture GraphicsDevice::CreateTexture(GPUAllocator* allocator, const TextureDesc
             case TextureDimension::Texture2D:
             case TextureDimension::TextureCube:
             {
-                viewDesc.textureType = MTLTextureType2DArray;
+                viewDesc.textureType = MTLTextureType2D;
                 break;
             }
             case TextureDimension::Texture3D:
