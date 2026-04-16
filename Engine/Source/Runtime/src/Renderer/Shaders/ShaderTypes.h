@@ -20,6 +20,12 @@ struct BRDFLutConstants
 	UnorderedAccessIndex targetTexture;
 };
 
+struct MSBRDFLutConstants
+{
+	UnorderedAccessIndex targetTexture;
+	ShaderResourceIndex essTexture;
+};
+
 #define SPECULAR_RADIANCE_MAX_MIP_COUNT 5
 struct ProbeConvolutionConstants
 {

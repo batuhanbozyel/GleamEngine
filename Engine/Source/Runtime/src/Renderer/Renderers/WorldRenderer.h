@@ -43,8 +43,12 @@ public:
 private:
 
 	Texture mBRDFLutTexture;
+	Texture mE_SSLutTexture;
+	Texture mE_AvgLutTexture;
 
 	ComputePipelineHandle mBRDFLutPipeline;
+	ComputePipelineHandle mE_SSLutPipeline;
+	ComputePipelineHandle mE_AvgLutPipeline;
 
 	GraphicsDevice* mDevice = nullptr;
 

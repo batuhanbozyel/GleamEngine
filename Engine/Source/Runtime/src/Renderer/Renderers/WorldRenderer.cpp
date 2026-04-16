@@ -39,18 +39,53 @@ void WorldRenderer::OnCreate(const RenderContext& context)
 		textureDesc.size = { BRDF_LUT_SIZE, BRDF_LUT_SIZE };
 		mBRDFLutTexture = context.device->CreateTexture(context.allocator, textureDesc);
 	}
+
+	// E_ss Lut
+	{
+		ComputePipelineStateDescriptor pipelineState;
+		pipelineState.entryPoint = "integrateEssShader";
+		mE_SSLutPipeline = context.device->CreateComputePipeline(pipelineState);
+
+		TextureDescriptor textureDesc;
+		textureDesc.name = "E_ss LUT";
+		textureDesc.dimension = TextureDimension::Texture2D;
+		textureDesc.format = TextureFormat::R16_SFloat;
+		textureDesc.usage = TextureUsage_Storage | TextureUsage_Sampled;
+		textureDesc.size = { BRDF_LUT_SIZE, BRDF_LUT_SIZE };
+		mE_SSLutTexture = context.device->CreateTexture(context.allocator, textureDesc);
+	}
+
+	// E_avg Lut
+	{
+		ComputePipelineStateDescriptor pipelineState;
+		pipelineState.entryPoint = "integrateEAvgShader";
+		mE_AvgLutPipeline = context.device->CreateComputePipeline(pipelineState);
+
+		TextureDescriptor textureDesc;
+		textureDesc.name = "E_avg LUT";
+		textureDesc.dimension = TextureDimension::Texture2D;
+		textureDesc.format = TextureFormat::R16_SFloat;
+		textureDesc.usage = TextureUsage_Storage | TextureUsage_Sampled;
+		textureDesc.size = { BRDF_LUT_SIZE, 1 };
+		mE_AvgLutTexture = context.device->CreateTexture(context.allocator, textureDesc);
+	}
 }
 
 void WorldRenderer::OnDestroy(const RenderContext& context)
 {
 	context.device->Dispose(context.allocator, mBRDFLutTexture);
+	context.device->Dispose(context.allocator, mE_SSLutTexture);
+	context.device->Dispose(context.allocator, mE_AvgLutTexture);
 }
 
 void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard)
 {
 	const auto& sceneData = blackboard.Get<SceneRenderingData>();
 	const auto& sceneTargetDescriptor = graph.GetDescriptor(sceneData.sceneTarget);
+
 	auto brdfLut = graph.ImportTexture(mBRDFLutTexture);
+	auto essLut = graph.ImportTexture(mE_SSLutTexture);
+	auto eAvgLut = graph.ImportTexture(mE_AvgLutTexture);
 
 	static bool mBakeBRDFLut = true;
 	if (mBakeBRDFLut)
@@ -70,6 +105,43 @@ void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 			cmd->SetPushConstant(BRDFLutConstants{ .targetTexture = mBRDFLutTexture.GetResourceView() });
 			cmd->Dispatch(Math::DivideRoundingUp(BRDF_LUT_SIZE, 16), Math::DivideRoundingUp(BRDF_LUT_SIZE, 16), 1);
 		});
+
+		struct EssData
+        {
+            TextureHandle essLut;
+        };
+        graph.AddComputePass<EssData>("WorldRenderer::E_ss LUT",
+        [&](RenderGraphBuilder& builder, EssData& passData)
+        {
+            passData.essLut = builder.WriteTexture(essLut);
+            essLut = passData.essLut;
+        },
+        [this](const CommandBuffer* cmd, const EssData&)
+        {
+            cmd->BindComputePipeline(mE_SSLutPipeline);
+            cmd->SetPushConstant(MSBRDFLutConstants{ .targetTexture = mE_SSLutTexture.GetResourceView()});
+            cmd->Dispatch(Math::DivideRoundingUp(BRDF_LUT_SIZE, 16), Math::DivideRoundingUp(BRDF_LUT_SIZE, 16), 1);
+        });
+
+		struct EAvgData
+		{
+			TextureHandle eAvgLut;
+			TextureHandle essLut;
+		};
+		graph.AddComputePass<EAvgData>("WorldRenderer::E_avg LUT",
+		[&](RenderGraphBuilder& builder, EAvgData& passData)
+		{
+			passData.eAvgLut = builder.WriteTexture(eAvgLut);
+			passData.essLut = builder.ReadTexture(essLut);
+			eAvgLut = passData.eAvgLut;
+		},
+		[this](const CommandBuffer* cmd, const EAvgData&)
+		{
+			cmd->BindComputePipeline(mE_AvgLutPipeline);
+			cmd->SetPushConstant(MSBRDFLutConstants{ .targetTexture = mE_AvgLutTexture.GetResourceView(), .essTexture = mE_SSLutTexture.GetResourceView() });
+			cmd->Dispatch(Math::DivideRoundingUp(BRDF_LUT_SIZE, 16), 1, 1);
+		});
+		
 		mBakeBRDFLut = false;
 	}
 	
