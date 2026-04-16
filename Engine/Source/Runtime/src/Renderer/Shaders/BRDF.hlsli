@@ -55,6 +55,13 @@ float Fr_DisneyDiffuse(float NdotV, float NdotL, float LdotH, float perceptualRo
     return lightScatter * viewScatter * energyFactor;
 }
 
+// Smith GGX one-directional masking (G1) term
+float G1_SmithGGX(float NdotV, float roughness)
+{
+    float a2 = roughness * roughness;
+    return 2.0 * NdotV / (NdotV + sqrt(a2 + (1.0 - a2) * NdotV * NdotV));
+}
+
 // V = G / (4 * NdotL * NdotV)
 float V_SmithGGXCorrelated(float NdotL, float NdotV, float roughness)
 {
@@ -134,6 +141,71 @@ float3 ImportanceSampleGGX(float2 u, float3 N, float perceptualRoughness, out fl
 	
 	float3 sampleVec = tangent * H.x + N * H.y + bitangent * H.z;
 	return normalize(sampleVec);
+}
+
+// Ve:        view direction in local y-up tangent space (normal = (0, 1, 0))
+// alpha2D:	  anisotropic GGX roughness
+// Returns:   sampled microfacet normal in local tangent space
+// Reference: Heitz, "Sampling the GGX Distribution of Visible Normals", JCGT 2018
+//            https://www.jcgt.org/published/0007/04/01/paper.pdf
+float3 SampleGGXVNDF(float3 Ve, float2 alpha2D, float2 u)
+{
+    // Section 3.2: transform view direction to hemisphere configuration
+    float3 Vh = normalize(float3(alpha2D.x * Ve.x, Ve.y, alpha2D.y * Ve.z));
+
+    // Section 4.1: orthonormal basis (special case when Vh is nearly vertical)
+    // T1 = cross((0,1,0), Vh) = (Vh.z, 0, -Vh.x)
+    float lensq = Vh.x * Vh.x + Vh.z * Vh.z;
+    float3 T1 = lensq > 0.0 ? float3(Vh.z, 0.0, -Vh.x) * rsqrt(lensq) : float3(1.0, 0.0, 0.0);
+    float3 T2 = cross(Vh, T1);
+
+    // Section 4.2: parameterize the projected area
+    float r     = sqrt(u.x);
+    float theta = TWO_PI * u.y;
+    float t1    = r * cos(theta);
+    float t2    = r * sin(theta);
+    float s   = 0.5 * (1.0 + Vh.y);
+    t2 = (1.0 - s) * sqrt(max(0.0, 1.0 - t1 * t1)) + s * t2;
+
+    // Section 4.3: reproject onto hemisphere
+    float3 Nh = t1 * T1 + t2 * T2 + sqrt(max(0.0, 1.0 - t1 * t1 - t2 * t2)) * Vh;
+
+    // Section 3.4: transform normal back to ellipsoid configuration
+    return normalize(float3(alpha2D.x * Nh.x, max(0.0, Nh.y), alpha2D.y * Nh.z));
+}
+
+// Importance samples the GGX VNDF — returns microfacet half-vector H in world space
+// V:    view direction in world space
+// N:    surface normal in world space
+// pdf:  PDF for the reflected direction L = reflect(-V, H)
+//       pdf = G1(V) * D(H) / (4 * NdotV)
+// Simplified Monte Carlo specular weight: F(V,H) * G2(V,L) / G1(V)
+// Reference: Heitz, "Sampling the GGX Distribution of Visible Normals", JCGT 2018
+//            https://www.jcgt.org/published/0007/04/01/paper.pdf
+float3 ImportanceSampleGGX_VNDF(float2 u, float3 V, float3 N, float perceptualRoughness, out float pdf)
+{
+    float roughness = perceptualRoughness * perceptualRoughness;
+
+    float3 tangent, bitangent;
+    GetOrthonormalBasis(N, tangent, bitangent);
+
+    // Transform view direction into tangent space
+    float3 Ve = float3(dot(V, tangent), dot(V, N), dot(V, bitangent));
+
+    // Sample microfacet normal in tangent space
+    float3 Nh = SampleGGXVNDF(Ve, float2(roughness, roughness), u);
+
+    // Transform sampled half-vector back to world space
+    float3 H = normalize(tangent * Nh.x + N * Nh.y + bitangent * Nh.z);
+
+    // pdf(L) = D_V(H) / (4 * VdotH) = G1(V) * D(H) / (4 * NdotV)
+    float NdotV = saturate(dot(N, V));
+    float NdotH = saturate(dot(N, H));
+    float D     = D_GGX(NdotH, roughness);
+    float G1V   = G1_SmithGGX(NdotV, roughness);
+    pdf = G1V * D / max(4.0 * NdotV, 1e-6);
+
+    return H;
 }
 
 float3 UniformSampleCone(float2 u, float3 N, float cosHalfAngle, out float pdf)

@@ -6,12 +6,12 @@
 
 Gleam::MeshInstanceData LoadInstanceData(uint instanceID)
 {
-	ByteAddressBuffer instanceBuffer = ResourceDescriptorHeap[pathTraceConstants.instanceBuffer];
-	Gleam::MeshInstanceData instance = instanceBuffer.Load<Gleam::MeshInstanceData>(instanceID * sizeof(Gleam::MeshInstanceData));
+    ByteAddressBuffer instanceBuffer = ResourceDescriptorHeap[pathTraceConstants.instanceBuffer];
+    Gleam::MeshInstanceData instance = instanceBuffer.Load<Gleam::MeshInstanceData>(instanceID * sizeof(Gleam::MeshInstanceData));
 
-	ByteAddressBuffer materialBuffer = ResourceDescriptorHeap[NonUniformResourceIndex(instance.materialBuffer)];
-	LoadMaterialInstance(materialBuffer, instance.materialID);
-	return instance;
+    ByteAddressBuffer materialBuffer = ResourceDescriptorHeap[NonUniformResourceIndex(instance.materialBuffer)];
+    LoadMaterialInstance(materialBuffer, instance.materialID);
+    return instance;
 }
 
 [shader("closesthit")]
@@ -25,7 +25,7 @@ void ClosestHit(inout Gleam::RayPayload payload : SV_RayPayload, BuiltInTriangle
     surface.roughness = max(surface.roughness, 0.04);
 
     float3 viewDir = -WorldRayDirection();
-    float3x3 TBN   = transpose(float3x3(vertex.tangent, vertex.bitangent, vertex.normal));
+    float3x3 TBN = transpose(float3x3(vertex.tangent, vertex.bitangent, vertex.normal));
     float3 worldNormal = normalize(mul(TBN, surface.normal));
     float3 newOrigin = OffsetRayAlongNormal(vertex.worldPosition, vertex.normal);
     
@@ -36,7 +36,7 @@ void ClosestHit(inout Gleam::RayPayload payload : SV_RayPayload, BuiltInTriangle
     }
     
     DirectLight light;
-    light.direction   = atmosphereUniforms.sunDirection;
+    light.direction = atmosphereUniforms.sunDirection;
     light.illuminance = GetSunLuminance(GetSkyWorldPosition(vertex.worldPosition), atmosphereUniforms.sunDirection);
     
     Gleam::ShadowPayload shadowPayload;
@@ -65,7 +65,7 @@ void ClosestHit(inout Gleam::RayPayload payload : SV_RayPayload, BuiltInTriangle
     );
     
     payload.radiance += payload.throughput * EvaluateDirectLight(surface, light, viewDir, worldNormal) * shadowPayload.visibility;
-	payload.radiance += payload.throughput * surface.emission.rgb;
+    payload.radiance += payload.throughput * surface.emission.rgb;
     
     BRDFType brdfType;
     if (surface.metallic == 1.0 && surface.roughness <= PERFECT_MIRROR_ROUGHNESS)
@@ -91,16 +91,16 @@ void ClosestHit(inout Gleam::RayPayload payload : SV_RayPayload, BuiltInTriangle
     float2 xi = PathTraceRand2(payload.seed);
     if (brdfType == BRDFType::Specular)
     {
-        float partialPdf;
-        float3 H = ImportanceSampleGGX(xi, worldNormal, surface.roughness, partialPdf);
+        float pdf;
+        float3 H = ImportanceSampleGGX_VNDF(xi, viewDir, worldNormal, surface.roughness, pdf);
         nextDir = reflect(-viewDir, H);
         
         float NdotL = dot(worldNormal, nextDir);
-		if (NdotL <= 0.0)
-		{
-			return;
-		}
-        
+        if (NdotL <= 0.0)
+        {
+            return;
+        }
+
         float NdotH = dot(worldNormal, H);
         float VdotH = saturate(dot(viewDir, H));
         float LdotH = VdotH; // symmetric: LdotH == VdotH for reflect()
@@ -109,22 +109,23 @@ void ClosestHit(inout Gleam::RayPayload payload : SV_RayPayload, BuiltInTriangle
         float3 f0 = surface.albedo.rgb * surface.metallic + F0Dielectric(0.5) * (1.0 - surface.metallic);
         float f90 = lerp(F90Dielectric(LdotH, surface.roughness), F90_Metal, surface.metallic);
         float3 F = F_Schlick(f0, f90, LdotH);
-        float G = G_SmithGGXCorrelated(NdotL, NdotV, roughness);
-        
-        // Full BRDF: F * D * G / (4 * NdotL * NdotV)
-		// Monte Carlo weight: brdf * NdotL / pdf
-		// pdf: D * NdotH / (4 * VdotH)
+        float G2 = G_SmithGGXCorrelated(NdotL, NdotV, roughness);
+        float G1V = G1_SmithGGX(NdotV, roughness);
+
+        // Full BRDF: F * D * G2 / (4 * NdotL * NdotV)
+        // VNDF pdf:  G1(V) * D(H) / (4 * NdotV)
+        // Monte Carlo weight: brdf * NdotL / pdf = F * G2 / G1
 #if EXPLICIT_SPECULAR_BRDF_FORMULA
-		float pdf = partialPdf * NdotH / (4.0 * VdotH);
-		float3 brdf = F * partialPdf * G / max(4.0 * NdotL * NdotV, 1e-4);
-		payload.throughput *= brdf * NdotL / max(pdf, 1e-4);
+        float D     = D_GGX(NdotH, roughness);
+        float3 brdf = F * D * G2 / max(4.0 * NdotL * NdotV, 1e-4);
+        payload.throughput *= brdf * NdotL / max(pdf, 1e-4);
 #else
-		payload.throughput *= F * G * VdotH / max(NdotV * NdotH, 1e-4);
+        payload.throughput *= F * G2 / max(G1V, 1e-4);
 #endif
-	}
+    }
     else
     {
-		float pdf; // The pdf is not used because it's canceled with other terms (The 1/PI from diffuse BRDF and the NdotL from Lambert's law).
+        float pdf; // The pdf is not used because it's canceled with other terms (The 1/PI from diffuse BRDF and the NdotL from Lambert's law).
         nextDir = CosineSampleHemisphere(xi, worldNormal, pdf);
 
         float NdotL = dot(worldNormal, nextDir);
@@ -143,40 +144,40 @@ void ClosestHit(inout Gleam::RayPayload payload : SV_RayPayload, BuiltInTriangle
 		payload.throughput *= brdf * NdotL / max(pdf, 1e-4);
 #else
         // CosineSampleHemisphere pdf = NdotL * INV_PI, so NdotL and INV_PI both cancel
-		payload.throughput *= surface.albedo.rgb * (1.0 - surface.metallic) * Fd;
+        payload.throughput *= surface.albedo.rgb * (1.0 - surface.metallic) * Fd;
 #endif
-	}
+    }
     
     if (all(payload.throughput < FLT_EPSILON))
     {
         return;
     }
     
-	if (payload.depth >= 5)
-	{
-		float p = max(payload.throughput.r, max(payload.throughput.g, payload.throughput.b));
+    if (payload.depth >= 5)
+    {
+        float p = max(payload.throughput.r, max(payload.throughput.g, payload.throughput.b));
         if (PathTraceRand(payload.seed) > p)
-		{
-			return;
-		}
-		payload.throughput /= p;
-	}
+        {
+            return;
+        }
+        payload.throughput /= p;
+    }
     
-	if (payload.depth < pathTraceConstants.maxRayRecursionDepth)
-	{
-		RayDesc ray;
+    if (payload.depth < pathTraceConstants.maxRayRecursionDepth)
+    {
+        RayDesc ray;
         ray.Origin = newOrigin;
-		ray.Direction = nextDir;
-		ray.TMin = 1e-3;
-		ray.TMax = 1e6;
-    
-		Gleam::RayPayload reflection;
+        ray.Direction = nextDir;
+        ray.TMin = 1e-3;
+        ray.TMax = 1e6;
+        
+        Gleam::RayPayload reflection;
         reflection.radiance = 0.0;
         reflection.throughput = payload.throughput;
         reflection.seed = payload.seed;
-		reflection.depth = payload.depth + 1;
+        reflection.depth = payload.depth + 1;
         
-		TraceRay(
+        TraceRay(
             accelerationStructure,
             RAY_FLAG_CULL_BACK_FACING_TRIANGLES,
             0xFF,
@@ -187,8 +188,8 @@ void ClosestHit(inout Gleam::RayPayload payload : SV_RayPayload, BuiltInTriangle
             reflection
         );
         
-		payload.radiance += reflection.radiance;
-	}
+        payload.radiance += reflection.radiance;
+    }
 }
 
 [shader("anyhit")]

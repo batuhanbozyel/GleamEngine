@@ -71,21 +71,13 @@ void specularPrefilterConvolutionShader(uint3 dispatchThreadId : SV_DispatchThre
 		float2 Xi = Hammersley(i, RADIANCE_SAMPLE_COUNT);
 
 		float pdf;
-		float3 H = ImportanceSampleGGX(Xi, N, perceptualRoughness, pdf);
+        float3 H = ImportanceSampleGGX_VNDF(Xi, V, N, perceptualRoughness, pdf);
 		float3 L = reflect(-V, H);
 
 		float NdotL = dot(N, L);
 		if (NdotL > 0.0)
 		{
-			// Since we pre-integrate the result for normal direction,
-			// N == V and then NdotH == LdotH. This is why the BRDF pdf
-			// can be simplifed from:
-			// pdf = D_GGX(NdotH, roughness) * NdotH / (4 * VdotH);
-			// to
-			// pdf = D_GGX(NdotH, roughness) / 4;
-			pdf /= 4.0;
-			
-			float omegaS = 1.0 / (RADIANCE_SAMPLE_COUNT * pdf);
+            float omegaS = 1.0 / (RADIANCE_SAMPLE_COUNT * pdf);
 			float mipLevel = clamp(0.5 * log2(omegaS / omegaP), 0.0f, maxMipLevel);
 			radiance += srcTexture.SampleLevel(Sampler_Trilinear_Repeat, L, mipLevel).rgb * NdotL;
 			weight += NdotL;

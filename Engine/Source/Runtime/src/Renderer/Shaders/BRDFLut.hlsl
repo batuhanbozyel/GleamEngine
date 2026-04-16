@@ -14,26 +14,26 @@ float3 IntegrateDFG(in float NdotV, in float perceptualRoughness)
     {
         float2 Xi = Hammersley(i, SAMPLE_COUNT);
 
-		float pdf; // The pdf is not used because it's canceled with other terms
-        float3 H = ImportanceSampleGGX(Xi, N, perceptualRoughness, pdf);
-		float3 L = reflect(-V, H);
+        float pdf; // The pdf is not used because it's canceled with other terms
+        float3 H = ImportanceSampleGGX_VNDF(Xi, V, N, perceptualRoughness, pdf);
+        float3 L = reflect(-V, H);
 
         float NdotL = L.y;
         if (NdotL > 0.0)
         {
-            float NdotH = H.y;
             float VdotH = saturate(dot(V, H));
-            
-            float G = G_SmithGGXCorrelated(NdotL, NdotV, roughness);
-			float G_Vis = G * VdotH / (NdotH * NdotV);
-            
-            float Fc = pow(1.0 - VdotH, 5.0);
+
+            float G2    = G_SmithGGXCorrelated(NdotL, NdotV, roughness);
+            float G1V   = G1_SmithGGX(NdotV, roughness);
+            float G_Vis = G2 / G1V;
+
+            float Fc  = pow(1.0 - VdotH, 5.0);
             float f90 = F90Dielectric(VdotH, perceptualRoughness);
-            
-			preDFG.x += (1.0 - Fc) * G_Vis;
-			preDFG.y += f90 * Fc * G_Vis;
-			preDFG.z += F90_Metal * Fc * G_Vis;
-		}
+
+            preDFG.x += (1.0 - Fc) * G_Vis;
+            preDFG.y += f90 * Fc * G_Vis;
+            preDFG.z += F90_Metal * Fc * G_Vis;
+        }
     }
 	return preDFG / SAMPLE_COUNT;
 }
