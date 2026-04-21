@@ -81,6 +81,7 @@ void RenderSystem::Shutdown(Engine* engine)
 	{
 		delete pipeline;
 	}
+	mReleaseQueue->Clear();
 
 	delete mTransientAllocator;
 	delete mPersistentAllocator;

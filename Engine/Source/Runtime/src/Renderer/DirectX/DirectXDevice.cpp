@@ -735,15 +735,30 @@ void GraphicsDevice::Dispose(Heap& heap)
 
 void GraphicsDevice::Dispose(GPUAllocator* allocator, Buffer& buffer)
 {
-	const auto& allocation = allocator->GetAllocation(buffer.GetHandle());
-	allocator->Free(allocation);
-
-	ID3D12Resource* resource = static_cast<ID3D12Resource*>(buffer.GetHandle());
-	mReleaseQueue->AddResource([this, resource, view = buffer.mResourceView]()
+	if (buffer.GetDescriptor().memoryType == MemoryType::CPU)
 	{
-		resource->Release();
-		static_cast<DirectXDevice*>(this)->ReleaseResourceView(view);
-	}, static_cast<Swapchain*>(mSurface)->GetFrameIndex());
+		ID3D12Resource* resource = static_cast<ID3D12Resource*>(buffer.GetHandle());
+		mReleaseQueue->AddResource([this, allocator, resource, view = buffer.mResourceView]()
+		{
+			const auto& allocation = allocator->GetAllocation(resource);
+			allocator->Free(allocation);
+			
+			resource->Release();
+			static_cast<DirectXDevice*>(this)->ReleaseResourceView(view);
+		}, static_cast<Swapchain*>(mSurface)->GetFrameIndex());
+	}
+	else // if (buffer.GetDescriptor().memoryType == MemoryType::GPU)
+	{
+		const auto& allocation = allocator->GetAllocation(buffer.GetHandle());
+		allocator->Free(allocation);
+
+		ID3D12Resource* resource = static_cast<ID3D12Resource*>(buffer.GetHandle());
+		mReleaseQueue->AddResource([this, resource, view = buffer.mResourceView]()
+		{
+			resource->Release();
+			static_cast<DirectXDevice*>(this)->ReleaseResourceView(view);
+		}, static_cast<Swapchain*>(mSurface)->GetFrameIndex());
+	}
 
 	buffer.mResourceView = InvalidResourceIndex;
 	buffer.mContents = nullptr;

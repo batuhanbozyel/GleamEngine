@@ -937,16 +937,34 @@ void GraphicsDevice::Dispose(Heap& heap)
 
 void GraphicsDevice::Dispose(GPUAllocator* allocator, Buffer& buffer)
 {
-    const auto& allocation = allocator->GetAllocation(buffer.GetHandle());
-	allocator->Free(allocation);
-
-    mReleaseQueue->AddResource([this,
-                                resource = buffer.GetHandle(),
-                                view = buffer.GetResourceView()]()
+    if (buffer.GetDescriptor().memoryType == MemoryType::CPU)
     {
-        [static_cast<MetalDevice*>(this)->GetResidencySet() removeAllocation:resource];
-        static_cast<MetalDevice*>(this)->ReleaseResourceView(view);
-    }, static_cast<Swapchain*>(mSurface)->GetFrameIndex());
+        mReleaseQueue->AddResource([this,
+                                    allocator = allocator,
+                                    resource = buffer.GetHandle(),
+                                    view = buffer.GetResourceView()]()
+        {
+            const auto& allocation = allocator->GetAllocation(resource);
+            allocator->Free(allocation);
+            
+            [static_cast<MetalDevice*>(this)->GetResidencySet() removeAllocation:resource];
+            static_cast<MetalDevice*>(this)->ReleaseResourceView(view);
+        }, static_cast<Swapchain*>(mSurface)->GetFrameIndex());
+    }
+    else // if (buffer.GetDescriptor().memoryType == MemoryType::GPU)
+    {
+        const auto& allocation = allocator->GetAllocation(buffer.GetHandle());
+        allocator->Free(allocation);
+        
+        mReleaseQueue->AddResource([this,
+                                    resource = buffer.GetHandle(),
+                                    view = buffer.GetResourceView()]()
+        {
+            [static_cast<MetalDevice*>(this)->GetResidencySet() removeAllocation:resource];
+            static_cast<MetalDevice*>(this)->ReleaseResourceView(view);
+        }, static_cast<Swapchain*>(mSurface)->GetFrameIndex());
+    }
+    
     
 	buffer.mResourceView = InvalidResourceIndex;
 	buffer.mContents = nullptr;
