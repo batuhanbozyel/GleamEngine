@@ -7,6 +7,7 @@
 
 #include "gpch.h"
 #include "WorldRenderer.h"
+#include "BRDFRenderer.h"
 
 #include "Core/Engine.h"
 #include "Core/Globals.h"
@@ -24,126 +25,18 @@ using namespace Gleam;
 void WorldRenderer::OnCreate(const RenderContext& context)
 {
 	mDevice = context.device;
-
-	// BRDF Lut
-	{
-		ComputePipelineStateDescriptor pipelineState;
-		pipelineState.entryPoint = "integrateBRDFShader";
-		mBRDFLutPipeline = context.device->CreateComputePipeline(pipelineState);
-
-		TextureDescriptor textureDesc;
-		textureDesc.name = "BRDF LUT";
-		textureDesc.dimension = TextureDimension::Texture2D;
-		textureDesc.format = TextureFormat::R16G16B16A16_SFloat;
-		textureDesc.usage = TextureUsage_Storage | TextureUsage_Sampled;
-		textureDesc.size = { BRDF_LUT_SIZE, BRDF_LUT_SIZE };
-		mBRDFLutTexture = context.device->CreateTexture(context.allocator, textureDesc);
-	}
-
-	// E_ss Lut
-	{
-		ComputePipelineStateDescriptor pipelineState;
-		pipelineState.entryPoint = "integrateEssShader";
-		mE_SSLutPipeline = context.device->CreateComputePipeline(pipelineState);
-
-		TextureDescriptor textureDesc;
-		textureDesc.name = "E_ss LUT";
-		textureDesc.dimension = TextureDimension::Texture2D;
-		textureDesc.format = TextureFormat::R16_SFloat;
-		textureDesc.usage = TextureUsage_Storage | TextureUsage_Sampled;
-		textureDesc.size = { BRDF_LUT_SIZE, BRDF_LUT_SIZE };
-		mE_SSLutTexture = context.device->CreateTexture(context.allocator, textureDesc);
-	}
-
-	// E_avg Lut
-	{
-		ComputePipelineStateDescriptor pipelineState;
-		pipelineState.entryPoint = "integrateEAvgShader";
-		mE_AvgLutPipeline = context.device->CreateComputePipeline(pipelineState);
-
-		TextureDescriptor textureDesc;
-		textureDesc.name = "E_avg LUT";
-		textureDesc.dimension = TextureDimension::Texture2D;
-		textureDesc.format = TextureFormat::R16_SFloat;
-		textureDesc.usage = TextureUsage_Storage | TextureUsage_Sampled;
-		textureDesc.size = { BRDF_LUT_SIZE, 1 };
-		mE_AvgLutTexture = context.device->CreateTexture(context.allocator, textureDesc);
-	}
 }
 
 void WorldRenderer::OnDestroy(const RenderContext& context)
 {
-	context.device->Dispose(context.allocator, mBRDFLutTexture);
-	context.device->Dispose(context.allocator, mE_SSLutTexture);
-	context.device->Dispose(context.allocator, mE_AvgLutTexture);
+
 }
 
 void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard)
 {
+	const auto& brdfData = blackboard.Get<BRDFData>();
 	const auto& sceneData = blackboard.Get<SceneRenderingData>();
 	const auto& sceneTargetDescriptor = graph.GetDescriptor(sceneData.sceneTarget);
-
-	auto brdfLut = graph.ImportTexture(mBRDFLutTexture);
-	auto essLut = graph.ImportTexture(mE_SSLutTexture);
-	auto eAvgLut = graph.ImportTexture(mE_AvgLutTexture);
-
-	static bool mBakeBRDFLut = true;
-	if (mBakeBRDFLut)
-	{
-		struct BRDFLutData
-		{
-			TextureHandle brdfLut;
-		};
-		graph.AddComputePass<BRDFLutData>("WorldRenderer::BRDFLut", [&](RenderGraphBuilder& builder, BRDFLutData& passData)
-		{
-			passData.brdfLut = builder.WriteTexture(brdfLut);
-			brdfLut = passData.brdfLut;
-		},
-		[this](const CommandBuffer* cmd, const BRDFLutData& passData)
-		{
-			cmd->BindComputePipeline(mBRDFLutPipeline);
-			cmd->SetPushConstant(BRDFLutConstants{ .targetTexture = mBRDFLutTexture.GetResourceView() });
-			cmd->Dispatch(Math::DivideRoundingUp(BRDF_LUT_SIZE, 16), Math::DivideRoundingUp(BRDF_LUT_SIZE, 16), 1);
-		});
-
-		struct EssData
-        {
-            TextureHandle essLut;
-        };
-        graph.AddComputePass<EssData>("WorldRenderer::E_ss LUT",
-        [&](RenderGraphBuilder& builder, EssData& passData)
-        {
-            passData.essLut = builder.WriteTexture(essLut);
-            essLut = passData.essLut;
-        },
-        [this](const CommandBuffer* cmd, const EssData&)
-        {
-            cmd->BindComputePipeline(mE_SSLutPipeline);
-            cmd->SetPushConstant(MSBRDFLutConstants{ .targetTexture = mE_SSLutTexture.GetResourceView()});
-            cmd->Dispatch(Math::DivideRoundingUp(BRDF_LUT_SIZE, 16), Math::DivideRoundingUp(BRDF_LUT_SIZE, 16), 1);
-        });
-
-		struct EAvgData
-		{
-			TextureHandle eAvgLut;
-			TextureHandle essLut;
-		};
-		graph.AddComputePass<EAvgData>("WorldRenderer::E_avg LUT",
-		[&](RenderGraphBuilder& builder, EAvgData& passData)
-		{
-			passData.eAvgLut = builder.WriteTexture(eAvgLut);
-			passData.essLut = builder.ReadTexture(essLut);
-			eAvgLut = passData.eAvgLut;
-		},
-		[this](const CommandBuffer* cmd, const EAvgData&)
-		{
-			cmd->BindComputePipeline(mE_AvgLutPipeline);
-			cmd->SetPushConstant(MSBRDFLutConstants{ .targetTexture = mE_AvgLutTexture.GetResourceView(), .essTexture = mE_SSLutTexture.GetResourceView() });
-			cmd->Dispatch(Math::DivideRoundingUp(BRDF_LUT_SIZE, 16), 1, 1);
-		});
-		
-		mBakeBRDFLut = false;
-	}
 	
     graph.AddRenderPass<WorldRenderingData>("WorldRenderer::ForwardPass", [&](RenderGraphBuilder& builder, WorldRenderingData& passData)
     {
@@ -160,7 +53,9 @@ void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
         
         passData.colorTarget = builder.UseColorBuffer(passData.colorTarget);
         passData.depthTarget = builder.UseDepthBuffer(passData.depthTarget, DepthAccess::Write);
-		passData.brdfLut = builder.ReadTexture(brdfLut);
+		passData.brdfLut = builder.ReadTexture(brdfData.brdfLut);
+		passData.ggxEssLut = builder.ReadTexture(brdfData.ggxEssLut);
+		passData.ggxEAvgLut = builder.ReadTexture(brdfData.ggxEAvgLut);
 		
 		if (sceneData.atmosphere.transmittanceLut.IsValid() && sceneData.atmosphere.multiScatterLut.IsValid())
 		{
@@ -190,6 +85,8 @@ void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 			MeshShadingConstants constants = {};
 			constants.instanceBuffer = sceneData.sceneProxy->GetGlobalInstanceBuffer().GetResourceView();
 			constants.brdfTexture = passData.brdfLut;
+			constants.ggxEssTexture = passData.ggxEssLut;
+			constants.ggxEAvgTexture = passData.ggxEAvgLut;
 			constants.diffuseReflectionTexture = passData.diffuseReflection;
 			constants.specularReflectionTexture = passData.specularReflection;
 

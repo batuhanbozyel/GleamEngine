@@ -20,7 +20,7 @@ struct BRDFLutConstants
 	UnorderedAccessIndex targetTexture;
 };
 
-struct MSBRDFLutConstants
+struct MultiscatterGGXLutConstants
 {
 	UnorderedAccessIndex targetTexture;
 	ShaderResourceIndex essTexture;
@@ -94,10 +94,10 @@ struct MeshShadingConstants
 	ShaderResourceIndex specularReflectionTexture;
 	ShaderResourceIndex brdfTexture;
 
+	ShaderResourceIndex ggxEssTexture;
+	ShaderResourceIndex ggxEAvgTexture;
 	uint32_t instanceID;
 	float pad0;
-	float pad1;
-	float pad2;
 };
 
 struct MeshInstanceData
@@ -191,10 +191,10 @@ struct PathTracerConstants
 	UnorderedAccessIndex colorTarget;
 	uint32_t frameIndex;
 
+	ShaderResourceIndex ggxEssTexture;
+	ShaderResourceIndex ggxEAvgTexture;
 	uint32_t maxRayRecursionDepth;
 	uint32_t samplesPerPixel;
-	float pad1;
-	float pad2;
 };
 
 } // namespace Gleam

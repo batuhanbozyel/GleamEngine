@@ -72,7 +72,7 @@ void integrateBRDFShader(uint3 dispatchThreadId : SV_DispatchThreadID)
     }
     
     float NdotV = (dispatchThreadId.x + 0.5) / BRDF_LUT_SIZE;
-    float perceptualRoughness = (dispatchThreadId.y + 0.5) / BRDF_LUT_SIZE;
+    float perceptualRoughness = max((dispatchThreadId.y + 0.5) / BRDF_LUT_SIZE, PERFECT_MIRROR_ROUGHNESS);
     RWTexture2D<float4> targetTexture = ResourceDescriptorHeap[constants.targetTexture];
 	targetTexture[dispatchThreadId.xy] = float4(IntegrateDFG(NdotV, perceptualRoughness), IntegrateDiffuse(NdotV, perceptualRoughness));
 }

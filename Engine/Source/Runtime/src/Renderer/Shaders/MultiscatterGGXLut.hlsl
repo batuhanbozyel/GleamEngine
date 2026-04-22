@@ -1,6 +1,6 @@
 #include "BRDF.hlsli"
 
-PUSH_CONSTANT(Gleam::MSBRDFLutConstants, constants);
+PUSH_CONSTANT(Gleam::MultiscatterGGXLutConstants, constants);
 
 #define SAMPLE_COUNT (8192u * 2u)
 float IntegrateEss(float NdotV, float perceptualRoughness)
@@ -42,7 +42,7 @@ void integrateEssShader(uint3 dispatchThreadId : SV_DispatchThreadID)
     }
     
     float NdotV = (dispatchThreadId.x + 0.5) / BRDF_LUT_SIZE;
-    float perceptualRoughness = (dispatchThreadId.y + 0.5) / BRDF_LUT_SIZE;
+    float perceptualRoughness = max((dispatchThreadId.y + 0.5) / BRDF_LUT_SIZE, PERFECT_MIRROR_ROUGHNESS);
 
     RWTexture2D<float> target = ResourceDescriptorHeap[constants.targetTexture];
     target[dispatchThreadId.xy] = IntegrateEss(NdotV, perceptualRoughness);
@@ -69,7 +69,7 @@ void integrateEAvgShader(uint3 dispatchThreadId : SV_DispatchThreadID)
         return;
     }
 
-    float perceptualRoughness = (dispatchThreadId.x + 0.5) / float(BRDF_LUT_SIZE);
+    float perceptualRoughness = max((dispatchThreadId.x + 0.5) / float(BRDF_LUT_SIZE), PERFECT_MIRROR_ROUGHNESS);
     Texture2D<float> essTexture = ResourceDescriptorHeap[constants.essTexture];
     RWTexture2D<float> targetTexture = ResourceDescriptorHeap[constants.targetTexture];
     targetTexture[uint2(dispatchThreadId.x, 0)] = IntegrateEAvg(perceptualRoughness, essTexture);

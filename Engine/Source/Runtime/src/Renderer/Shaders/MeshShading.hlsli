@@ -52,8 +52,20 @@ float4 main(Gleam::MeshVertexOut IN) : SV_TARGET
 	}
 	
 	float3 color = surface.emission.rgb;
-	color += EvaluateDirectLight(surface, light, viewDir, worldNormal);
-	color += EvaluateIndirectLight(surface, meshShadingConstants.brdfTexture, meshShadingConstants.diffuseReflectionTexture, meshShadingConstants.specularReflectionTexture, viewDir, worldNormal);
+	color += EvaluateDirectLight(surface,
+								 meshShadingConstants.ggxEssTexture,
+								 meshShadingConstants.ggxEAvgTexture,
+								 light,
+								 viewDir,
+								 worldNormal);
+	color += EvaluateIndirectLight(surface,
+								   meshShadingConstants.brdfTexture,
+								   meshShadingConstants.ggxEssTexture,
+								   meshShadingConstants.ggxEAvgTexture,
+								   meshShadingConstants.diffuseReflectionTexture,
+								   meshShadingConstants.specularReflectionTexture,
+								   viewDir,
+								   worldNormal);
 	return float4(color, surface.albedo.a);
 }
 #endif // MESH_SHADING_HLSL

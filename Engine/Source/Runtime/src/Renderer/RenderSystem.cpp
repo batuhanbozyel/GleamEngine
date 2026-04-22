@@ -17,6 +17,7 @@
 #include "RenderGraph/RenderGraphBlackboard.h"
 
 #include "Renderers/PathTracer.h"
+#include "Renderers/BRDFRenderer.h"
 #include "Renderers/SkyAtmosphere.h"
 #include "Renderers/WorldRenderer.h"
 #include "Renderers/PostProcessStack.h"
@@ -43,15 +44,27 @@ void RenderSystem::Initialize(Engine* engine)
 	mRayTracingScene = new RayTracingScene(mDevice, mTransientAllocator);
 
 	RenderContext context = GetRenderContext();
-	mRenderPipelines[(uint32_t)RenderPath::Default] = new RenderPipeline(context);
-	mRenderPipelines[(uint32_t)RenderPath::Default]->AddRenderer<ReflectionProbeRenderer>();
-	mRenderPipelines[(uint32_t)RenderPath::Default]->AddRenderer<WorldRenderer>();
-	mRenderPipelines[(uint32_t)RenderPath::Default]->AddRenderer<SkyAtmosphereRenderer>();
-	mRenderPipelines[(uint32_t)RenderPath::Default]->AddRenderer<PostProcessStack>();
-	
-	mRenderPipelines[(uint32_t)RenderPath::PathTracing] = new RenderPipeline(context);
-	mRenderPipelines[(uint32_t)RenderPath::PathTracing]->AddRenderer<PathTracer>();
-	mRenderPipelines[(uint32_t)RenderPath::PathTracing]->AddRenderer<PostProcessStack>();
+	{
+		auto brdfRenderer = new BRDFRenderer();
+		brdfRenderer->OnCreate(context);
+		mSharedRenderers.push_back(brdfRenderer);
+
+		auto postProcessStack = new PostProcessStack();
+		postProcessStack->OnCreate(context);
+		mSharedRenderers.push_back(postProcessStack);
+
+		mRenderPipelines[(uint32_t)RenderPath::Default] = new RenderPipeline(context);
+		mRenderPipelines[(uint32_t)RenderPath::Default]->AddSharedRenderer(brdfRenderer);
+		mRenderPipelines[(uint32_t)RenderPath::Default]->AddRenderer<ReflectionProbeRenderer>();
+		mRenderPipelines[(uint32_t)RenderPath::Default]->AddRenderer<WorldRenderer>();
+		mRenderPipelines[(uint32_t)RenderPath::Default]->AddRenderer<SkyAtmosphereRenderer>();
+		mRenderPipelines[(uint32_t)RenderPath::Default]->AddSharedRenderer(postProcessStack);
+		
+		mRenderPipelines[(uint32_t)RenderPath::PathTracing] = new RenderPipeline(context);
+		mRenderPipelines[(uint32_t)RenderPath::PathTracing]->AddSharedRenderer(brdfRenderer);
+		mRenderPipelines[(uint32_t)RenderPath::PathTracing]->AddRenderer<PathTracer>();
+		mRenderPipelines[(uint32_t)RenderPath::PathTracing]->AddSharedRenderer(postProcessStack);
+	}
 
 	EventDispatcher<WindowResizeEvent>::Subscribe([this](const WindowResizeEvent& e)
 	{
@@ -76,6 +89,13 @@ void RenderSystem::Shutdown(Engine* engine)
 		delete cmd;
 	}
 	mCommandBuffers.clear();
+
+	auto context = GetRenderContext();
+	for (auto renderer : mSharedRenderers)
+	{
+		renderer->OnDestroy(context);
+		delete renderer;
+	}
 
 	for (auto pipeline : mRenderPipelines)
 	{

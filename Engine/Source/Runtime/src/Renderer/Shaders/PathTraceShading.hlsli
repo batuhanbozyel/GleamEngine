@@ -4,6 +4,9 @@
 #include "SurfaceShading.hlsli"
 #include "PathTraceCommon.hlsli"
 
+static Texture2D<float> ggxEssTexture = ResourceDescriptorHeap[pathTraceConstants.ggxEssTexture];
+static Texture2D<float> ggxEAvgTexture = ResourceDescriptorHeap[pathTraceConstants.ggxEAvgTexture];
+
 Gleam::MeshInstanceData LoadInstanceData(uint instanceID)
 {
     ByteAddressBuffer instanceBuffer = ResourceDescriptorHeap[pathTraceConstants.instanceBuffer];
@@ -64,7 +67,12 @@ void ClosestHit(inout Gleam::RayPayload payload : SV_RayPayload, BuiltInTriangle
         shadowPayload
     );
     
-    payload.radiance += payload.throughput * EvaluateDirectLight(surface, light, viewDir, worldNormal) * shadowPayload.visibility;
+    payload.radiance += payload.throughput * EvaluateDirectLight(surface,
+                                                                 pathTraceConstants.ggxEssTexture,
+                                                                 pathTraceConstants.ggxEAvgTexture,
+                                                                 light,
+                                                                 viewDir,
+                                                                 worldNormal) * shadowPayload.visibility;
     payload.radiance += payload.throughput * surface.emission.rgb;
     
     BRDFType brdfType;
@@ -118,10 +126,11 @@ void ClosestHit(inout Gleam::RayPayload payload : SV_RayPayload, BuiltInTriangle
 #if EXPLICIT_SPECULAR_BRDF_FORMULA
         float D     = D_GGX(NdotH, roughness);
         float3 brdf = F * D * G2 / max(4.0 * NdotL * NdotV, 1e-4);
-        payload.throughput *= brdf * NdotL / max(pdf, 1e-4);
+        float3 brdfWeight = brdf * NdotL / max(pdf, 1e-4);
 #else
-        payload.throughput *= F * G2 / max(G1V, 1e-4);
+        float3 brdfWeight = F * G2 / max(G1V, 1e-4);
 #endif
+        payload.throughput *= brdfWeight * MultiscatteringGGX(ggxEssTexture, ggxEAvgTexture, f0, surface.roughness, NdotV);
     }
     else
     {

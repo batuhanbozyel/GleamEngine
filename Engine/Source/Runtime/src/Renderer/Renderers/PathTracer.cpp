@@ -1,6 +1,7 @@
 #include "gpch.h"
 #include "PathTracer.h"
 
+#include "BRDFRenderer.h"
 #include "WorldRenderer.h"
 #include "Renderer/RenderSystem.h"
 #include "Renderer/CommandBuffer.h"
@@ -38,6 +39,7 @@ void PathTracer::OnDestroy(const RenderContext& context)
 
 void PathTracer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard)
 {
+	const auto& brdfData = blackboard.Get<BRDFData>();
 	const auto& sceneData = blackboard.Get<SceneRenderingData>();
 	const auto& sceneTargetDescriptor = graph.GetDescriptor(sceneData.sceneTarget);
 
@@ -94,6 +96,8 @@ void PathTracer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blac
 	graph.AddComputePass<WorldRenderingData>("PathTracing::Render", [&](RenderGraphBuilder& builder, WorldRenderingData& passData)
 	{
 		passData.colorTarget = builder.WriteTexture(rtHandle);
+		passData.ggxEssLut = builder.ReadTexture(brdfData.ggxEssLut);
+		passData.ggxEAvgLut = builder.ReadTexture(brdfData.ggxEAvgLut);
 		blackboard.Add(passData);
 	},
 	[this, &sceneData](const CommandBuffer* cmd, const WorldRenderingData& passData)
@@ -108,6 +112,8 @@ void PathTracer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blac
 		constants.accelerationStructure = sceneData.accelerationStructure;
 		constants.colorTarget = passData.colorTarget;
 		constants.frameIndex = mFrameIndex++;
+		constants.ggxEssTexture = passData.ggxEssLut;
+		constants.ggxEAvgTexture = passData.ggxEAvgLut;
 		constants.maxRayRecursionDepth = mSettings.maxRayRecursionDepth;
 		constants.samplesPerPixel = mSettings.samplesPerPixel;
 		
