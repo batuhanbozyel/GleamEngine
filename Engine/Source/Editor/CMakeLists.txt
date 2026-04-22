@@ -86,6 +86,7 @@ add_custom_command(
     DEPENDS ${HEADER_FILES} ${SHADER_FILES}
     COMMENT "Compiling editor shaders..."
     VERBATIM
+    COMMAND_EXPAND_LISTS
 )
 add_custom_target(EditorShaders DEPENDS ${SHADER_STAMP_FILE})
 add_dependencies(Editor EditorShaders)
