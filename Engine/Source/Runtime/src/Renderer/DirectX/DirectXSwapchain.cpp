@@ -97,6 +97,7 @@ void DirectXSwapchain::Configure(DirectXDevice* device, const RendererConfig& co
 		{
 			ctx.fence->Release();
 		}
+		mContext.clear();
 
 		mHandle->Release();
 		mHandle = nullptr;
@@ -137,7 +138,7 @@ void DirectXSwapchain::Resize(GraphicsDevice* device, const Size& size)
 		HWND hwnd = (HWND)SDL_GetPointerProperty(SDL_GetWindowProperties(window), SDL_PROP_WINDOW_WIN32_HWND_POINTER, NULL);
 
 		IDXGISwapChain1* swapchain1 = nullptr;
-		DX_CHECK(mFactory->CreateSwapChainForHwnd(static_cast<DirectXDevice*>(device)->GetDirectQueue(), hwnd, &mDesc, nullptr, nullptr, &swapchain1));
+		DX_CHECK(mFactory->CreateSwapChainForHwnd(static_cast<DirectXDevice*>(device)->GetDirectQueue().GetHandle(), hwnd, &mDesc, nullptr, nullptr, &swapchain1));
 		DX_CHECK(swapchain1->QueryInterface(IID_PPV_ARGS(&mHandle)));
 		swapchain1->Release();
 	}
@@ -197,8 +198,7 @@ void DirectXSwapchain::Present(const CommandBuffer* cmd)
 	{
 		mHandle->Present(1, 0);
 	}
-
-	DX_CHECK(mDevice->GetDirectQueue()->Signal(ctx.fence, ++ctx.fenceValue));
+	mDevice->GetDirectQueue().Signal(ctx.fence, ++ctx.fenceValue);
 
 	mCurrentFrameIndex = mHandle->GetCurrentBackBufferIndex();
 }

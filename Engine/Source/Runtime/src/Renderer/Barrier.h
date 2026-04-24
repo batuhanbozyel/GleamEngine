@@ -62,6 +62,7 @@ struct TextureBarrier
 	BarrierAccess dstAccess = BarrierAccess::None;
 	BarrierLayout oldLayout = BarrierLayout::Undefined;
 	BarrierLayout newLayout = BarrierLayout::Undefined;
+	bool discard = false;
 };
 
 struct BarrierGroup

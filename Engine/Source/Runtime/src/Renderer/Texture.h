@@ -8,53 +8,35 @@ class GraphicsDevice;
 
 class Texture final : public ShaderResource
 {
-    friend class GraphicsDevice;
+	friend class GraphicsDevice;
 public:
-    
-    Texture() = default;
-    
-    Texture(const Texture& other) = default;
-    
-    Texture& operator=(const Texture& other) = default;
-    
-    Texture(const TextureDescriptor& descriptor)
-        : mDescriptor(descriptor)
-		, mMipMapLevels(descriptor.useMipMap ? CalculateMipLevels(descriptor.size) : 1)
-    {
-		uint32_t numSlices = mMipMapLevels * (descriptor.dimension == TextureDimension::TextureCube ? 6 * descriptor.depth : descriptor.depth);
-		if (numSlices > 1)
-		{
-			mSliceViews.resize(numSlices);
 
-			if (mDescriptor.usage & TextureUsage_Storage && Utils::IsColorFormat(mDescriptor.format))
-			{
-				mSliceUnorderedAccessViews.resize(numSlices);
-			}
-		}
-    }
+	Texture() = default;
+
+	Texture(const Texture& other) = default;
+
+	Texture& operator=(const Texture& other) = default;
+
+	Texture(const TextureDescriptor& descriptor)
+		: mDescriptor(descriptor)
+		, mMipMapLevels(descriptor.useMipMap ? CalculateMipLevels(descriptor.size) : 1)
+	{
+		
+	}
 
 	Texture(const TextureDescriptor& descriptor, NativeGraphicsHandle handle, RenderTargetView rtv)
-        : ShaderResource(handle)
+		: ShaderResource(handle)
 		, mView(rtv)
 		, mDescriptor(descriptor)
 		, mMipMapLevels(descriptor.useMipMap ? CalculateMipLevels(descriptor.size) : 1)
-    {
-		uint32_t numSlices = mMipMapLevels * (descriptor.dimension == TextureDimension::TextureCube ? 6 * descriptor.depth : descriptor.depth);
-		if (numSlices > 1)
-		{
-			mSliceViews.resize(numSlices);
+	{
+		
+	}
 
-			if (mDescriptor.usage & TextureUsage_Storage && Utils::IsColorFormat(mDescriptor.format))
-			{
-				mSliceUnorderedAccessViews.resize(numSlices);
-			}
-		}
-    }
-    
 	RenderTargetView GetRenderTargetView() const
-    {
-        return mView;
-    }
+	{
+		return mView;
+	}
 
 	RenderTargetView GetRenderTargetView(uint32_t mip) const
 	{
@@ -78,27 +60,27 @@ public:
 
 	UnorderedAccessIndex GetUnorderedAccessView(uint32_t mip, uint32_t slice) const
 	{
-		return mSliceUnorderedAccessViews[slice * mMipMapLevels + mip];
+		return mSliceUnorderedAccessViews[GetSubresourceIndex(mip, slice)];
 	}
-    
-    const TextureDescriptor& GetDescriptor() const
-    {
-        return mDescriptor;
-    }
-    
-    uint32_t GetMipMapLevels() const
-    {
-        return mMipMapLevels;
-    }
+
+	const TextureDescriptor& GetDescriptor() const
+	{
+		return mDescriptor;
+	}
+
+	uint32_t GetMipMapLevels() const
+	{
+		return mMipMapLevels;
+	}
 
 	uint32_t GetSlice(uint32_t subresourceIndex) const
 	{
-		return subresourceIndex / mMipMapLevels;
+		return GetSlice(subresourceIndex, mMipMapLevels);
 	}
 
 	uint32_t GetMip(uint32_t subresourceIndex) const
 	{
-		return subresourceIndex % mMipMapLevels;
+		return GetMip(subresourceIndex, mMipMapLevels);
 	}
 
 	uint32_t GetSubresourceIndex(uint32_t mip, uint32_t slice) const
@@ -110,12 +92,22 @@ public:
 	{
 		return static_cast<uint32_t>(Math::Floor(Math::Log2(Math::Max(size.width, size.height)))) + 1;
 	}
-    
+
+	static constexpr uint32_t GetSlice(uint32_t subresourceIndex, uint32_t mipMapLevels)
+	{
+		return subresourceIndex / mipMapLevels;
+	}
+
+	static constexpr uint32_t GetMip(uint32_t subresourceIndex, uint32_t mipMapLevels)
+	{
+		return subresourceIndex % mipMapLevels;
+	}
+
 private:
-    
-    uint32_t mMipMapLevels = 1;
+
+	uint32_t mMipMapLevels = 1;
 	RenderTargetView mView = {};
-    TextureDescriptor mDescriptor;
+	TextureDescriptor mDescriptor;
 
 	TArray<RenderTargetView> mSliceViews;
 	TArray<ShaderResourceIndex> mSliceUnorderedAccessViews;

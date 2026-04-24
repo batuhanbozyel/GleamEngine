@@ -71,8 +71,6 @@ protected:
 	// Implemented by the backend
 	virtual void Configure(const RendererConfig& config) = 0;
 
-	virtual void ResetCommandPools(uint32_t frameIdx) = 0;
-
     TArray<Shader> mShaderCache;
 
 	HashMap<TString, HashSet<PipelineHandle>> mShaderPipelineReferences;

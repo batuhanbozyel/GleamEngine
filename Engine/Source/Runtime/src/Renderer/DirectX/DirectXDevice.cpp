@@ -118,7 +118,7 @@ Heap GraphicsDevice::CreateHeap(const HeapDescriptor& descriptor)
 	D3D12_HEAP_DESC desc{};
 	desc.Alignment = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
 	desc.SizeInBytes = descriptor.size;
-	desc.Flags = D3D12_HEAP_FLAG_NONE;
+	desc.Flags = D3D12_HEAP_FLAG_CREATE_NOT_ZEROED;
 	desc.Properties.Type = descriptor.memoryType == MemoryType::CPU ? D3D12_HEAP_TYPE_UPLOAD : D3D12_HEAP_TYPE_DEFAULT;
 	DX_CHECK(static_cast<ID3D12Device10*>(mHandle)->CreateHeap(&desc, IID_PPV_ARGS(&handle)));
 	handle->SetName(StringUtils::Convert(descriptor.name).c_str());
@@ -133,264 +133,16 @@ Heap GraphicsDevice::CreateHeap(const HeapDescriptor& descriptor)
 Texture GraphicsDevice::CreateTexture(GPUAllocator* allocator, const TextureDescriptor& descriptor)
 {
 	Texture texture(descriptor);
-	D3D12_RESOURCE_FLAGS flags = D3D12_RESOURCE_FLAG_NONE;
+	texture.mHandle = static_cast<DirectXDevice*>(this)->CreateTexture(allocator, descriptor, D3D12_BARRIER_LAYOUT_UNDEFINED);
+
+	const auto& resourceDesc = static_cast<ID3D12Resource2*>(texture.mHandle)->GetDesc1();
 	if (descriptor.usage & TextureUsage_Attachment)
 	{
-		if (Utils::IsColorFormat(descriptor.format))
-		{
-			flags |= D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
-		}
-		else
-		{
-			flags |= D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
-		}
-	}
-
-	if (descriptor.usage & TextureUsage_Storage && Utils::IsColorFormat(descriptor.format))
-	{
-		flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
-	}
-
-	uint32_t numSlices = descriptor.dimension == TextureDimension::TextureCube ? 6 * descriptor.depth : descriptor.depth;
-	D3D12_RESOURCE_DESC1 resourceDesc = {
-		.Dimension = TextureDimensionToD3D12_RESOURCE_DIMENSION(descriptor.dimension),
-		.Alignment = 0,
-		.Width = (UINT64)descriptor.size.width,
-		.Height = (UINT)descriptor.size.height,
-		.DepthOrArraySize = (UINT16)numSlices,
-		.MipLevels = (UINT16)texture.mMipMapLevels,
-		.Format = TextureFormatToDXGI_FORMAT(descriptor.format),
-		.SampleDesc = {.Count = 1, .Quality = 0 },
-		.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN,
-		.Flags = flags
-	};
-
-	D3D12_RESOURCE_ALLOCATION_INFO allocationInfo = static_cast<ID3D12Device10*>(mHandle)->GetResourceAllocationInfo2(0, 1, &resourceDesc, nullptr);
-	MemoryRequirements memoryRequirements =
-	{
-		.size = allocationInfo.SizeInBytes,
-		.alignment = allocationInfo.Alignment,
-		.type = MemoryType::GPU
-	};
-	GPUAllocation allocation = allocator->Allocate(memoryRequirements);
-	ID3D12Resource* resource = static_cast<DirectXDevice*>(this)->CreateResource(allocation, resourceDesc, D3D12_BARRIER_LAYOUT_COMMON, descriptor.name);
-	allocator->AddAllocation(resource, allocation);
-	texture.mHandle = resource;
-
-	// Create RTV or DSV for attachments
-	if (descriptor.usage & TextureUsage_Attachment)
-	{
-		if (Utils::IsDepthFormat(descriptor.format))
-		{
-			// Create main DSV
-			{
-				auto& dsvHeap = static_cast<DirectXDevice*>(this)->mDsvHeap;
-				auto index = dsvHeap.heap.Allocate();
-
-				D3D12_CPU_DESCRIPTOR_HANDLE handle = dsvHeap.cpuHandle;
-				handle.ptr += (size_t)index.data * (size_t)dsvHeap.size;
-
-				D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
-				dsvDesc.Format = resourceDesc.Format;
-				if (descriptor.dimension == TextureDimension::Texture2D && descriptor.depth == 1)
-				{
-					dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
-					dsvDesc.Texture2D.MipSlice = 0;
-				}
-				else
-				{
-					dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2DARRAY;
-					dsvDesc.Texture2DArray.MipSlice = 0;
-					dsvDesc.Texture2DArray.FirstArraySlice = 0;
-					dsvDesc.Texture2DArray.ArraySize = numSlices;
-				}
-				static_cast<ID3D12Device10*>(mHandle)->CreateDepthStencilView(static_cast<ID3D12Resource*>(texture.mHandle), &dsvDesc, handle);
-				texture.mView = handle;
-			}
-
-			// Create slice DSV
-			for (uint32_t i = 0; i < texture.mSliceViews.size(); i++)
-			{
-				auto& dsvHeap = static_cast<DirectXDevice*>(this)->mDsvHeap;
-				auto index = dsvHeap.heap.Allocate();
-
-				uint32_t slice = texture.GetSlice(i);
-				uint32_t mip = texture.GetMip(i);
-
-				D3D12_CPU_DESCRIPTOR_HANDLE handle = dsvHeap.cpuHandle;
-				handle.ptr += (size_t)index.data * (size_t)dsvHeap.size;
-
-				D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
-				dsvDesc.Format = resourceDesc.Format;
-				dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2DARRAY;
-				dsvDesc.Texture2DArray.MipSlice = mip;
-				dsvDesc.Texture2DArray.FirstArraySlice = slice;
-				dsvDesc.Texture2DArray.ArraySize = 1;
-				static_cast<ID3D12Device10*>(mHandle)->CreateDepthStencilView(static_cast<ID3D12Resource*>(texture.mHandle), &dsvDesc, handle);
-				texture.mSliceViews[i] = handle;
-			}
-		}
-		else
-		{
-			// Create main RTV
-			{
-				auto& rtvHeap = static_cast<DirectXDevice*>(this)->mRtvHeap;
-				auto index = rtvHeap.heap.Allocate();
-
-				D3D12_CPU_DESCRIPTOR_HANDLE handle = rtvHeap.cpuHandle;
-				handle.ptr += (size_t)index.data * (size_t)rtvHeap.size;
-
-				D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
-				rtvDesc.Format = resourceDesc.Format;
-				switch (descriptor.dimension)
-				{
-					case TextureDimension::Texture2D:
-					{
-						if (descriptor.depth == 1)
-						{
-							rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
-							rtvDesc.Texture2D.MipSlice = 0;
-							rtvDesc.Texture2D.PlaneSlice = 0;
-						}
-						else
-						{
-							rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
-							rtvDesc.Texture2DArray.MipSlice = 0;
-							rtvDesc.Texture2DArray.FirstArraySlice = 0;
-							rtvDesc.Texture2DArray.ArraySize = numSlices;
-							rtvDesc.Texture2DArray.PlaneSlice = 0;
-						}
-						break;
-					}
-					case TextureDimension::Texture3D:
-					{
-						rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE3D;
-						rtvDesc.Texture3D.MipSlice = 0;
-						rtvDesc.Texture3D.FirstWSlice = 0;
-						rtvDesc.Texture3D.WSize = numSlices;
-						break;
-					}
-					case TextureDimension::TextureCube:
-					{
-						rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
-						rtvDesc.Texture2DArray.MipSlice = 0;
-						rtvDesc.Texture2DArray.FirstArraySlice = 0;
-						rtvDesc.Texture2DArray.ArraySize = numSlices;
-						rtvDesc.Texture2DArray.PlaneSlice = 0;
-						break;
-					}
-				}
-				static_cast<ID3D12Device10*>(mHandle)->CreateRenderTargetView(static_cast<ID3D12Resource*>(texture.mHandle), &rtvDesc, handle);
-				texture.mView = handle;
-			}
-
-			// Create slice RTV
-			for (uint32_t i = 0; i < texture.mSliceViews.size(); i++)
-			{
-				auto& rtvHeap = static_cast<DirectXDevice*>(this)->mRtvHeap;
-				auto index = rtvHeap.heap.Allocate();
-
-				uint32_t slice = texture.GetSlice(i);
-				uint32_t mip = texture.GetMip(i);
-
-				D3D12_CPU_DESCRIPTOR_HANDLE handle = rtvHeap.cpuHandle;
-				handle.ptr += (size_t)index.data * (size_t)rtvHeap.size;
-
-				D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
-				rtvDesc.Format = resourceDesc.Format;
-
-				switch (descriptor.dimension)
-				{
-					case TextureDimension::Texture2D:
-					case TextureDimension::TextureCube:
-					{
-						rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
-						rtvDesc.Texture2DArray.MipSlice = mip;
-						rtvDesc.Texture2DArray.FirstArraySlice = slice;
-						rtvDesc.Texture2DArray.ArraySize = 1;
-						rtvDesc.Texture2DArray.PlaneSlice = 0;
-						break;
-					}
-					case TextureDimension::Texture3D:
-					{
-						rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE3D;
-						rtvDesc.Texture3D.MipSlice = mip;
-						rtvDesc.Texture3D.FirstWSlice = slice;
-						rtvDesc.Texture3D.WSize = 1;
-						break;
-					}
-				}
-				static_cast<ID3D12Device10*>(mHandle)->CreateRenderTargetView(static_cast<ID3D12Resource*>(texture.mHandle), &rtvDesc, handle);
-				texture.mSliceViews[i] = handle;
-			}
-		}
+		texture.mView = static_cast<DirectXDevice*>(this)->CreateRenderTargetView(static_cast<ID3D12Resource*>(texture.mHandle), resourceDesc);
+		texture.mSliceViews = static_cast<DirectXDevice*>(this)->CreateRenderTargetViews(static_cast<ID3D12Resource*>(texture.mHandle), resourceDesc);
 	}
 	texture.mResourceView = static_cast<DirectXDevice*>(this)->CreateResourceView(texture);
-	for (uint32_t i = 0; i < texture.mSliceUnorderedAccessViews.size(); ++i)
-	{
-		uint32_t slice = texture.GetSlice(i);
-		uint32_t mip = texture.GetMip(i);
-
-		D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
-		if (Utils::IsDepthFormat(texture.GetDescriptor().format))
-		{
-			switch (texture.GetDescriptor().format)
-			{
-				case TextureFormat::D16_UNorm:
-				{
-					uavDesc.Format = DXGI_FORMAT_R16_UNORM;
-					break;
-				}
-				case TextureFormat::D32_SFloat:
-				{
-					uavDesc.Format = DXGI_FORMAT_R32_FLOAT;
-					break;
-				}
-				case TextureFormat::D24_UNorm_S8_UInt:
-				{
-					uavDesc.Format = DXGI_FORMAT_R24_UNORM_X8_TYPELESS;
-					break;
-				}
-			}
-		}
-		else
-		{
-			uavDesc.Format = TextureFormatToDXGI_FORMAT(texture.GetDescriptor().format);
-		}
-
-		switch (texture.GetDescriptor().dimension)
-		{
-			case TextureDimension::Texture2D:
-			case TextureDimension::TextureCube:
-			{
-				uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2DARRAY;
-				uavDesc.Texture2DArray = {
-					.MipSlice = mip,
-					.FirstArraySlice = slice,
-					.ArraySize = 1,
-					.PlaneSlice = 0,
-				};
-				break;
-			}
-			case TextureDimension::Texture3D:
-			{
-				uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE3D;
-				uavDesc.Texture3D = {
-					.MipSlice = mip,
-					.FirstWSlice = slice,
-					.WSize = 1,
-				};
-				break;
-			}
-		}
-
-		auto uavHandle = static_cast<DirectXDevice*>(this)->mCbvSrvUavHeap.Allocate();
-		auto index = static_cast<DirectXDevice*>(this)->mCbvSrvUavHeap.GetResourceIndex(uavHandle);
-
-		uavHandle.ptr += (UINT64)(static_cast<DirectXDevice*>(this)->mCbvSrvUavHeap.size * CBV_SRV_HEAP_SIZE);
-		static_cast<ID3D12Device10*>(mHandle)->CreateUnorderedAccessView(static_cast<ID3D12Resource*>(texture.GetHandle()), nullptr, &uavDesc, uavHandle);
-		texture.mSliceUnorderedAccessViews[i] = index;
-	}
+	texture.mSliceUnorderedAccessViews = static_cast<DirectXDevice*>(this)->CreateUnorderedAccessViews(static_cast<ID3D12Resource*>(texture.mHandle), resourceDesc);
 	return texture;
 }
 
@@ -941,6 +693,7 @@ DirectXDevice::DirectXDevice(RenderSurface* surface, ResourceReleaseQueue* relea
 
 	mDirectQueue = CreateCommandQueue(D3D12_COMMAND_LIST_TYPE_DIRECT);
 	mComputeQueue = CreateCommandQueue(D3D12_COMMAND_LIST_TYPE_COMPUTE);
+	mCopyQueue = CreateCommandQueue(D3D12_COMMAND_LIST_TYPE_COPY);
 
 	mRtvHeap = CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_RTV, D3D12_DESCRIPTOR_HEAP_FLAG_NONE, 8192);
 	mDsvHeap = CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_DSV, D3D12_DESCRIPTOR_HEAP_FLAG_NONE, 8192);
@@ -1012,17 +765,6 @@ DirectXDevice::DirectXDevice(RenderSurface* surface, ResourceReleaseQueue* relea
 
 DirectXDevice::~DirectXDevice()
 {
-	WaitDeviceIdle();
-
-	for (auto& ctx : mFrameContext)
-	{
-		for (auto& pool : ctx.commandPools)
-		{
-			pool.Release();
-		}
-	}
-	mFrameContext.clear();
-
 	for (auto& [_, pipeline] : mComputePipelineCache)
 	{
 		static_cast<ID3D12PipelineState*>(pipeline.GetHandle())->Release();
@@ -1054,8 +796,9 @@ DirectXDevice::~DirectXDevice()
 	mDsvHeap.handle->Release();
 	mCbvSrvUavHeap.handle->Release();
 
-	mDirectQueue->Release();
-	mComputeQueue->Release();
+	mDirectQueue.Release();
+	mComputeQueue.Release();
+	mCopyQueue.Release();
 
 	mRootSignature->Release();
 	static_cast<ID3D12Device10*>(mHandle)->Release();
@@ -1077,58 +820,6 @@ void DirectXDevice::Configure(const RendererConfig& config)
 {
 	auto swapchain = static_cast<DirectXSwapchain*>(mSurface);
 	swapchain->Configure(this, config);
-	
-	for (auto& ctx : mFrameContext)
-	{
-		for (auto& pool : ctx.commandPools)
-		{
-			pool.Release();
-		}
-	}
-	mFrameContext.clear();
-
-	mFrameContext.resize(swapchain->mMaxFramesInFlight);
-	for (uint32_t i = 0; i < swapchain->mMaxFramesInFlight; i++)
-	{
-		auto& ctx = mFrameContext[i];
-		{
-			auto& pool = ctx.commandPools.emplace_back();
-			DX_CHECK(static_cast<ID3D12Device10*>(mHandle)->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&pool.allocator)));
-
-			TStringStream ss;
-			ss << ID3D12CommandListTypeToString(D3D12_COMMAND_LIST_TYPE_DIRECT) << swapchain->mCurrentFrameIndex;
-			TWString cmdAllocatorName = ss.str();
-			pool.allocator->SetName(cmdAllocatorName.c_str());
-		}
-
-		{
-			auto& pool = ctx.commandPools.emplace_back();
-			DX_CHECK(static_cast<ID3D12Device10*>(mHandle)->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_COMPUTE, IID_PPV_ARGS(&pool.allocator)));
-
-			TStringStream ss;
-			ss << ID3D12CommandListTypeToString(D3D12_COMMAND_LIST_TYPE_COMPUTE) << swapchain->mCurrentFrameIndex;
-			TWString cmdAllocatorName = ss.str();
-			pool.allocator->SetName(cmdAllocatorName.c_str());
-		}
-
-		{
-			auto& pool = ctx.commandPools.emplace_back();
-			DX_CHECK(static_cast<ID3D12Device10*>(mHandle)->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_COPY, IID_PPV_ARGS(&pool.allocator)));
-
-			TStringStream ss;
-			ss << ID3D12CommandListTypeToString(D3D12_COMMAND_LIST_TYPE_COPY) << swapchain->mCurrentFrameIndex;
-			TWString cmdAllocatorName = ss.str();
-			pool.allocator->SetName(cmdAllocatorName.c_str());
-		}
-	}
-}
-
-void DirectXDevice::ResetCommandPools(uint32_t frameIndex)
-{
-	for (auto& pool : mFrameContext[frameIndex].commandPools)
-	{
-		pool.Reset();
-	}
 }
 
 ShaderBindingTable DirectXDevice::CreateShaderBindingTable(const RayTracingPipeline& pipeline)
@@ -1252,57 +943,32 @@ ID3D12Resource* DirectXDevice::CreateResource(const GPUAllocation& allocation, c
 	return resource;
 }
 
-ID3D12GraphicsCommandList7* DirectXDevice::AllocateCommandList(D3D12_COMMAND_LIST_TYPE type, const TWStringView debugName)
-{
-	auto swapchain = static_cast<DirectXSwapchain*>(mSurface);
-
-	TStringStream ss;
-	ss << ID3D12CommandListTypeToString(type) << swapchain->mCurrentFrameIndex;
-	TWString cmdAllocatorName = ss.str();
-
-	for (auto& pool : mFrameContext[swapchain->mCurrentFrameIndex].commandPools)
-	{
-		if (pool.type == type)
-		{
-			ID3D12GraphicsCommandList7* commandList = nullptr;
-			if (pool.freeCommandLists.empty())
-			{
-				DX_CHECK(static_cast<ID3D12Device10*>(mHandle)->CreateCommandList1(0, type, D3D12_COMMAND_LIST_FLAG_NONE, IID_PPV_ARGS(&commandList)));
-			}
-			else
-			{
-				commandList = pool.freeCommandLists.front();
-				pool.freeCommandLists.pop_front();
-			}
-
-			pool.usedCommandLists.push_back(commandList);
-			DX_CHECK(commandList->Reset(pool.allocator, nullptr));
-			commandList->SetName(debugName.data());
-			return commandList;
-		}
-	}
-
-	auto& pool = mFrameContext[swapchain->mCurrentFrameIndex].commandPools.emplace_back();
-	DX_CHECK(static_cast<ID3D12Device10*>(mHandle)->CreateCommandAllocator(type, IID_PPV_ARGS(&pool.allocator)));
-	pool.allocator->SetName(cmdAllocatorName.c_str());
-
-	ID3D12GraphicsCommandList7* commandList = nullptr;
-	DX_CHECK(static_cast<ID3D12Device10*>(mHandle)->CreateCommandList1(0, type, D3D12_COMMAND_LIST_FLAG_NONE, IID_PPV_ARGS(&commandList)));
-	pool.usedCommandLists.push_back(commandList);
-	DX_CHECK(commandList->Reset(pool.allocator, nullptr));
-	commandList->SetName(debugName.data());
-	return commandList;
-}
-
-ID3D12CommandQueue* DirectXDevice::CreateCommandQueue(D3D12_COMMAND_LIST_TYPE type) const
+DirectXCommandQueue DirectXDevice::CreateCommandQueue(D3D12_COMMAND_LIST_TYPE type) const
 {
 	D3D12_COMMAND_QUEUE_DESC desc{};
 	desc.Priority = D3D12_COMMAND_QUEUE_PRIORITY_NORMAL;
 	desc.Type = type;
 
-	ID3D12CommandQueue* queue = nullptr;
-	DX_CHECK(static_cast<ID3D12Device10*>(mHandle)->CreateCommandQueue(&desc, IID_PPV_ARGS(&queue)));
+	DirectXCommandQueue queue = {};
+	queue.mDevice = static_cast<ID3D12Device10*>(mHandle);
+	queue.mType = type;
+	DX_CHECK(static_cast<ID3D12Device10*>(mHandle)->CreateCommandQueue(&desc, IID_PPV_ARGS(&queue.mHandle)));
+	DX_CHECK(static_cast<ID3D12Device10*>(mHandle)->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&queue.mFence)));
 	return queue;
+}
+
+DirectXCommandPool DirectXDevice::CreateCommandPool(D3D12_COMMAND_LIST_TYPE type) const
+{
+	TWString cmdAllocatorName = TString(ID3D12CommandListTypeToString(type));
+
+	DirectXCommandPool pool = {};
+	pool.mDevice = static_cast<ID3D12Device10*>(mHandle);
+	pool.mType = type;
+
+	DX_CHECK(static_cast<ID3D12Device10*>(mHandle)->CreateCommandAllocator(type, IID_PPV_ARGS(&pool.mAllocator)));
+	pool.mAllocator->SetName(cmdAllocatorName.c_str());
+
+	return pool;
 }
 
 DirectXDescriptorHeap DirectXDevice::CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE type, D3D12_DESCRIPTOR_HEAP_FLAGS flags, UINT capacity) const
@@ -1322,6 +988,280 @@ DirectXDescriptorHeap DirectXDevice::CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_
 		heap.gpuHandle = heap.handle->GetGPUDescriptorHandleForHeapStart();
 	}
 	return heap;
+}
+
+ID3D12Resource* DirectXDevice::CreateTexture(GPUAllocator* allocator, const TextureDescriptor& descriptor, D3D12_BARRIER_LAYOUT initialLayout)
+{
+	D3D12_RESOURCE_FLAGS flags = D3D12_RESOURCE_FLAG_NONE;
+	if (descriptor.usage & TextureUsage_Attachment)
+	{
+		if (Utils::IsColorFormat(descriptor.format))
+		{
+			flags |= D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
+		}
+		else
+		{
+			flags |= D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
+		}
+	}
+
+	if (descriptor.usage & TextureUsage_Storage && Utils::IsColorFormat(descriptor.format))
+	{
+		flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+	}
+
+	uint32_t numSlices = descriptor.dimension == TextureDimension::TextureCube ? 6 * descriptor.depth : descriptor.depth;
+	D3D12_RESOURCE_DESC1 resourceDesc = {
+		.Dimension = TextureDimensionToD3D12_RESOURCE_DIMENSION(descriptor.dimension),
+		.Alignment = 0,
+		.Width = (UINT64)descriptor.size.width,
+		.Height = (UINT)descriptor.size.height,
+		.DepthOrArraySize = (UINT16)numSlices,
+		.MipLevels = (UINT16)(descriptor.useMipMap ? Texture::CalculateMipLevels(descriptor.size) : 1),
+		.Format = TextureFormatToDXGI_FORMAT(descriptor.format),
+		.SampleDesc = {.Count = 1, .Quality = 0 },
+		.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN,
+		.Flags = flags
+	};
+
+	D3D12_RESOURCE_ALLOCATION_INFO allocationInfo = static_cast<ID3D12Device10*>(mHandle)->GetResourceAllocationInfo2(0, 1, &resourceDesc, nullptr);
+	MemoryRequirements memoryRequirements =
+	{
+		.size = allocationInfo.SizeInBytes,
+		.alignment = allocationInfo.Alignment,
+		.type = MemoryType::GPU
+	};
+	GPUAllocation allocation = allocator->Allocate(memoryRequirements);
+	ID3D12Resource* resource = static_cast<DirectXDevice*>(this)->CreateResource(allocation, resourceDesc, initialLayout, descriptor.name);
+	allocator->AddAllocation(resource, allocation);
+	return resource;
+}
+
+RenderTargetView DirectXDevice::CreateRenderTargetView(ID3D12Resource* resource, const D3D12_RESOURCE_DESC1& descriptor)
+{
+	if (descriptor.Flags & D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL)
+	{
+		auto& dsvHeap = static_cast<DirectXDevice*>(this)->mDsvHeap;
+		auto index = dsvHeap.heap.Allocate();
+
+		D3D12_CPU_DESCRIPTOR_HANDLE handle = dsvHeap.cpuHandle;
+		handle.ptr += (size_t)index.data * (size_t)dsvHeap.size;
+
+		D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
+		dsvDesc.Format = descriptor.Format;
+		if (descriptor.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE2D && descriptor.DepthOrArraySize == 1)
+		{
+			dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
+			dsvDesc.Texture2D.MipSlice = 0;
+		}
+		else
+		{
+			dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2DARRAY;
+			dsvDesc.Texture2DArray.MipSlice = 0;
+			dsvDesc.Texture2DArray.FirstArraySlice = 0;
+			dsvDesc.Texture2DArray.ArraySize = descriptor.DepthOrArraySize;
+		}
+		static_cast<ID3D12Device10*>(mHandle)->CreateDepthStencilView(resource, &dsvDesc, handle);
+		return handle;
+	}
+
+	if (descriptor.Flags & D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET)
+	{
+		auto& rtvHeap = static_cast<DirectXDevice*>(this)->mRtvHeap;
+		auto index = rtvHeap.heap.Allocate();
+
+		D3D12_CPU_DESCRIPTOR_HANDLE handle = rtvHeap.cpuHandle;
+		handle.ptr += (size_t)index.data * (size_t)rtvHeap.size;
+
+		D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
+		rtvDesc.Format = descriptor.Format;
+		switch (descriptor.Dimension)
+		{
+			case D3D12_RESOURCE_DIMENSION_TEXTURE2D:
+			{
+				if (descriptor.DepthOrArraySize == 1)
+				{
+					rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
+					rtvDesc.Texture2D.MipSlice = 0;
+					rtvDesc.Texture2D.PlaneSlice = 0;
+				}
+				else
+				{
+					rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
+					rtvDesc.Texture2DArray.MipSlice = 0;
+					rtvDesc.Texture2DArray.FirstArraySlice = 0;
+					rtvDesc.Texture2DArray.ArraySize = descriptor.DepthOrArraySize;
+					rtvDesc.Texture2DArray.PlaneSlice = 0;
+				}
+				break;
+			}
+			case D3D12_RESOURCE_DIMENSION_TEXTURE3D:
+			{
+				rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE3D;
+				rtvDesc.Texture3D.MipSlice = 0;
+				rtvDesc.Texture3D.FirstWSlice = 0;
+				rtvDesc.Texture3D.WSize = descriptor.DepthOrArraySize;
+				break;
+			}
+		}
+		static_cast<ID3D12Device10*>(mHandle)->CreateRenderTargetView(resource, &rtvDesc, handle);
+		return handle;
+	}
+
+	return {};
+}
+
+TArray<RenderTargetView> DirectXDevice::CreateRenderTargetViews(ID3D12Resource* resource, const D3D12_RESOURCE_DESC1& descriptor)
+{
+	if (descriptor.Flags & D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL)
+	{
+		TArray<RenderTargetView> views;
+		views.resize(descriptor.DepthOrArraySize * descriptor.MipLevels);
+
+		for (uint32_t i = 0; i < views.size(); i++)
+		{
+			auto& dsvHeap = static_cast<DirectXDevice*>(this)->mDsvHeap;
+			auto index = dsvHeap.heap.Allocate();
+
+			uint32_t slice = Texture::GetSlice(i, descriptor.MipLevels);
+			uint32_t mip = Texture::GetMip(i, descriptor.MipLevels);
+
+			D3D12_CPU_DESCRIPTOR_HANDLE handle = dsvHeap.cpuHandle;
+			handle.ptr += (size_t)index.data * (size_t)dsvHeap.size;
+
+			D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
+			dsvDesc.Format = descriptor.Format;
+			dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2DARRAY;
+			dsvDesc.Texture2DArray.MipSlice = mip;
+			dsvDesc.Texture2DArray.FirstArraySlice = slice;
+			dsvDesc.Texture2DArray.ArraySize = 1;
+			static_cast<ID3D12Device10*>(mHandle)->CreateDepthStencilView(resource, &dsvDesc, handle);
+			views[i] = handle;
+		}
+		return views;
+	}
+
+	if (descriptor.Flags & D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET)
+	{
+		TArray<RenderTargetView> views;
+		views.resize(descriptor.DepthOrArraySize * descriptor.MipLevels);
+
+		for (uint32_t i = 0; i < views.size(); i++)
+		{
+			auto& rtvHeap = static_cast<DirectXDevice*>(this)->mRtvHeap;
+			auto index = rtvHeap.heap.Allocate();
+
+			uint32_t slice = Texture::GetSlice(i, descriptor.MipLevels);
+			uint32_t mip = Texture::GetMip(i, descriptor.MipLevels);
+
+			D3D12_CPU_DESCRIPTOR_HANDLE handle = rtvHeap.cpuHandle;
+			handle.ptr += (size_t)index.data * (size_t)rtvHeap.size;
+
+			D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
+			rtvDesc.Format = descriptor.Format;
+
+			switch (descriptor.Dimension)
+			{
+				case D3D12_RESOURCE_DIMENSION_TEXTURE2D:
+				{
+					rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
+					rtvDesc.Texture2DArray.MipSlice = mip;
+					rtvDesc.Texture2DArray.FirstArraySlice = slice;
+					rtvDesc.Texture2DArray.ArraySize = 1;
+					rtvDesc.Texture2DArray.PlaneSlice = 0;
+					break;
+				}
+				case D3D12_RESOURCE_DIMENSION_TEXTURE3D:
+				{
+					rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE3D;
+					rtvDesc.Texture3D.MipSlice = mip;
+					rtvDesc.Texture3D.FirstWSlice = slice;
+					rtvDesc.Texture3D.WSize = 1;
+					break;
+				}
+			}
+			static_cast<ID3D12Device10*>(mHandle)->CreateRenderTargetView(resource, &rtvDesc, handle);
+			views[i] = handle;
+		}
+		return views;
+	}
+
+	return {};
+}
+
+TArray<ShaderResourceIndex> DirectXDevice::CreateUnorderedAccessViews(ID3D12Resource* resource, const D3D12_RESOURCE_DESC1& descriptor)
+{
+	if (not (descriptor.Flags & D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS))
+	{
+		return {};
+	}
+
+	TArray<ShaderResourceIndex> views;
+	views.resize(descriptor.DepthOrArraySize * descriptor.MipLevels);
+
+	for (uint32_t i = 0; i < views.size(); ++i)
+	{
+		uint32_t slice = Texture::GetSlice(i, descriptor.MipLevels);
+		uint32_t mip = Texture::GetMip(i, descriptor.MipLevels);
+
+		D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
+		switch (descriptor.Format)
+		{
+			case DXGI_FORMAT_D16_UNORM:
+			{
+				uavDesc.Format = DXGI_FORMAT_R16_UNORM;
+				break;
+			}
+			case DXGI_FORMAT_D32_FLOAT:
+			{
+				uavDesc.Format = DXGI_FORMAT_R32_FLOAT;
+				break;
+			}
+			case DXGI_FORMAT_D24_UNORM_S8_UINT:
+			{
+				uavDesc.Format = DXGI_FORMAT_R24_UNORM_X8_TYPELESS;
+				break;
+			}
+			default:
+			{
+				uavDesc.Format = descriptor.Format;
+				break;
+			}
+		}
+
+		switch (descriptor.Dimension)
+		{
+			case D3D12_RESOURCE_DIMENSION_TEXTURE2D:
+			{
+				uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2DARRAY;
+				uavDesc.Texture2DArray = {
+					.MipSlice = mip,
+					.FirstArraySlice = slice,
+					.ArraySize = 1,
+					.PlaneSlice = 0,
+				};
+				break;
+			}
+			case D3D12_RESOURCE_DIMENSION_TEXTURE3D:
+			{
+				uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE3D;
+				uavDesc.Texture3D = {
+					.MipSlice = mip,
+					.FirstWSlice = slice,
+					.WSize = 1,
+				};
+				break;
+			}
+		}
+
+		auto uavHandle = static_cast<DirectXDevice*>(this)->mCbvSrvUavHeap.Allocate();
+		auto index = static_cast<DirectXDevice*>(this)->mCbvSrvUavHeap.GetResourceIndex(uavHandle);
+
+		uavHandle.ptr += (UINT64)(static_cast<DirectXDevice*>(this)->mCbvSrvUavHeap.size * CBV_SRV_HEAP_SIZE);
+		static_cast<ID3D12Device10*>(mHandle)->CreateUnorderedAccessView(resource, nullptr, &uavDesc, uavHandle);
+		views[i] = index;
+	}
+	return views;
 }
 
 ShaderResourceIndex DirectXDevice::CreateResourceView(const Buffer& buffer)
@@ -1534,23 +1474,6 @@ void DirectXDevice::ReleaseResourceView(ShaderResourceIndex view)
 	}
 }
 
-void DirectXDevice::WaitDeviceIdle() const
-{
-	WaitQueueIdle(mComputeQueue);
-	WaitQueueIdle(mDirectQueue);
-}
-
-void DirectXDevice::WaitQueueIdle(ID3D12CommandQueue* queue) const
-{
-	constexpr static uint64_t fenceValue = 1;
-
-	ID3D12Fence* fence = nullptr;
-	DX_CHECK(static_cast<ID3D12Device10*>(mHandle)->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&fence)));
-	DX_CHECK(queue->Signal(fence, fenceValue));
-	WaitForID3D12Fence(fence, fenceValue);
-	fence->Release();
-}
-
 DirectXDescriptorHeap& DirectXDevice::GetRtvHeap()
 {
 	return mRtvHeap;
@@ -1566,59 +1489,24 @@ DirectXDescriptorHeap& DirectXDevice::GetCbvSrvUavHeap()
 	return mCbvSrvUavHeap;
 }
 
-const DirectXDescriptorHeap& DirectXDevice::GetRtvHeap() const
-{
-	return mRtvHeap;
-}
-
-const DirectXDescriptorHeap& DirectXDevice::GetDsvHeap() const
-{
-	return mDsvHeap;
-}
-
-const DirectXDescriptorHeap& DirectXDevice::GetCbvSrvUavHeap() const
-{
-	return mCbvSrvUavHeap;
-}
-
-ID3D12CommandQueue* DirectXDevice::GetDirectQueue() const
+DirectXCommandQueue& DirectXDevice::GetDirectQueue()
 {
 	return mDirectQueue;
 }
 
-ID3D12CommandQueue* DirectXDevice::GetComputeQueue() const
+DirectXCommandQueue& DirectXDevice::GetComputeQueue()
 {
 	return mComputeQueue;
+}
+
+DirectXCommandQueue& DirectXDevice::GetCopyQueue()
+{
+	return mCopyQueue;
 }
 
 ID3D12RootSignature* DirectXDevice::GetGlobalRootSignature() const
 {
 	return mRootSignature;
-}
-
-void DirectXCommandPool::Reset()
-{
-	freeCommandLists.insert(freeCommandLists.end(), usedCommandLists.begin(), usedCommandLists.end());
-	usedCommandLists.clear();
-	DX_CHECK(allocator->Reset());
-}
-
-void DirectXCommandPool::Release()
-{
-	for (auto cmdList : usedCommandLists)
-	{
-		cmdList->Release();
-	}
-	usedCommandLists.clear();
-
-	for (auto cmdList : freeCommandLists)
-	{
-		cmdList->Release();
-	}
-	freeCommandLists.clear();
-
-	allocator->Release();
-	allocator = nullptr;
 }
 
 D3D12_CPU_DESCRIPTOR_HANDLE DirectXDescriptorHeap::Allocate()

@@ -148,9 +148,8 @@ void RenderSystem::PreRender(const World* world)
 		mSwapchain->Resize(mDevice, mSwapchainSize);
 		mRendererResized = false;
 	}
-	mDevice->ResetCommandPools(frameIdx);
-	mReleaseQueue->Flush(frameIdx);
 
+	mReleaseQueue->Flush(frameIdx);
 	mTransientAllocator->CollectGarbage(mSwapchain->GetFramesInFlight() + 1);
 	mPersistentAllocator->CollectGarbage(mSwapchain->GetFramesInFlight() + 1);
 }

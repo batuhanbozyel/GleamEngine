@@ -118,7 +118,7 @@ void CopyCommandBuffer::Barrier(const CommandBuffer* cmd) const
         textureBarrier.dstStage = BarrierStage::AllShading;
         textureBarrier.srcAccess = BarrierAccess::CopyDest;
         textureBarrier.dstAccess = BarrierAccess::ShaderResource;
-        textureBarrier.oldLayout = BarrierLayout::Common;
+        textureBarrier.oldLayout = BarrierLayout::Undefined;
         textureBarrier.newLayout = BarrierLayout::ShaderResource;
         barrier.textureBarriers.push_back(textureBarrier);
     }

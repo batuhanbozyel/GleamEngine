@@ -11,6 +11,7 @@ using namespace Gleam;
 
 struct CopyCommandBuffer::Impl
 {
+	DirectXCommandPool* commandPool = nullptr;
 	IDStorageFactory* factory = nullptr;
 
 	IDStorageQueue* memoryQueue = nullptr;
@@ -65,6 +66,8 @@ CopyCommandBuffer::CopyCommandBuffer(GraphicsDevice* device)
 	queueDesc.Name = "DStorage Memory Queue";
 	DX_CHECK(mHandle->factory->CreateQueue(&queueDesc, IID_PPV_ARGS(&mHandle->memoryQueue)));
 	DX_CHECK(static_cast<ID3D12Device10*>(mDevice->GetHandle())->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&mHandle->memoryFence)));
+
+	mHandle->commandPool = static_cast<DirectXDevice*>(mDevice)->GetCopyQueue().AcquirePool();
 }
 
 CopyCommandBuffer::~CopyCommandBuffer()
@@ -152,6 +155,42 @@ void CopyCommandBuffer::Barrier(const CommandBuffer* cmd) const
 
 void CopyCommandBuffer::Execute() const
 {
+	TArray<D3D12_TEXTURE_BARRIER> textureBarriers;
+	textureBarriers.reserve(mHandle->textureCopies.size());
+
+	for (uint32_t i = 0; i < mHandle->textureCopies.size(); ++i)
+	{
+		D3D12_TEXTURE_BARRIER barrier = {};
+		barrier.SyncBefore = D3D12_BARRIER_SYNC_NONE;
+		barrier.SyncAfter = D3D12_BARRIER_SYNC_NONE;
+		barrier.AccessBefore = D3D12_BARRIER_ACCESS_NO_ACCESS;
+		barrier.AccessAfter = D3D12_BARRIER_ACCESS_NO_ACCESS;
+		barrier.LayoutBefore = D3D12_BARRIER_LAYOUT_UNDEFINED;
+		barrier.LayoutAfter = D3D12_BARRIER_LAYOUT_COMMON;
+		barrier.pResource = static_cast<ID3D12Resource*>(mHandle->textureCopies[i].GetHandle());
+		barrier.Subresources.IndexOrFirstMipLevel = 0xffffffff;
+		barrier.Subresources.NumMipLevels = 0;
+		barrier.Subresources.FirstArraySlice = 0;
+		barrier.Subresources.NumArraySlices = 0;
+		barrier.Subresources.FirstPlane = 0;
+		barrier.Subresources.NumPlanes = 0;
+		barrier.Flags = D3D12_TEXTURE_BARRIER_FLAG_NONE;
+		textureBarriers.emplace_back(barrier);
+	}
+
+	if (not textureBarriers.empty())
+	{
+		D3D12_BARRIER_GROUP barrierGroup = {};
+		barrierGroup.Type = D3D12_BARRIER_TYPE_TEXTURE;
+		barrierGroup.NumBarriers = static_cast<UINT32>(textureBarriers.size());
+		barrierGroup.pTextureBarriers = textureBarriers.data();
+
+		auto cmd = mHandle->commandPool->AllocateCommandList(L"CopyCommandBuffer::PreCopyBarriers");
+		cmd->Barrier(1, &barrierGroup);
+		cmd->Close();
+		static_cast<DirectXDevice*>(mDevice)->GetCopyQueue().ExecuteCommandLists(1, &cmd);
+	}
+
 	++mHandle->fenceValue;
 	mHandle->fileQueue->EnqueueSignal(mHandle->fileFence, mHandle->fenceValue);
 	mHandle->fileQueue->Submit();
