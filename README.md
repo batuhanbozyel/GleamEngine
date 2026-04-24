@@ -23,7 +23,7 @@ Gleam Engine is a high quality modern 3D game engine written in C++ targeting de
 Follow the instructions below to compile and run the engine from source.
 
 ## Windows
-* Install Visual Studio 2022
+* Install Visual Studio 2026
 * Install Git with LFS
 * Install CMake
 * Clone repo recursively (with LFS)
@@ -33,10 +33,10 @@ Follow the instructions below to compile and run the engine from source.
 * Run Editor (hit F5 key)
 
 ## Mac
-* Install XCode 15 or newer
+* Install XCode 26 or newer
 * Install Git with LFS
 * Install CMake
-* Install [Metal Shader Converter 1.1](https://download.developer.apple.com/Developer_Tools/Metal_shader_converter_1.1/Metal_Shader_Converter_1.1.pkg)
+* Install [Metal Shader Converter 3.1](https://download.developer.apple.com/Developer_Tools/Metal_Shader_Converter_3.1_beta_1/Metal_Shader_Converter_3.1_beta_1.pkg)
 * Clone repo recursively (with LFS)
 * Run **Mac-GenerateProjects.command**
 * Open `build/GleamEngine.xcodeproj`
