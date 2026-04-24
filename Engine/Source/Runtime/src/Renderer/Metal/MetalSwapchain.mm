@@ -30,7 +30,7 @@ MetalSwapchain::MetalSwapchain()
 MetalSwapchain::~MetalSwapchain()
 {
     auto& ctx = mContext[mCurrentFrameIndex];
-    [mDevice->GetCommandQueue() waitForEvent:ctx.event value:ctx.eventValue];
+    WaitForMTLSharedEvent(ctx.event, ctx.eventValue);
     
     mContext.clear();
     mHandle = nil;
@@ -46,7 +46,7 @@ void MetalSwapchain::Configure(MetalDevice* device, const RendererConfig& config
     if (mContext.size() > 0)
     {
         auto& ctx = mContext[mCurrentFrameIndex];
-        [mDevice->GetCommandQueue() waitForEvent:ctx.event value:ctx.eventValue];
+        WaitForMTLSharedEvent(ctx.event, ctx.eventValue);
         mContext.clear();
     }
     
@@ -86,7 +86,7 @@ void MetalSwapchain::Configure(MetalDevice* device, const RendererConfig& config
     SDL_GetWindowSizeInPixels(windowSystem->GetSDLWindow(), &width, &height);
     Resize(device, Size((float)width, (float)height));
     
-    [device->GetCommandQueue() addResidencySet:[mHandle residencySet]];
+    [device->GetCommandQueue().GetHandle() addResidencySet:[mHandle residencySet]];
 }
 
 void MetalSwapchain::Resize(GraphicsDevice* device, const Size& size)
@@ -119,17 +119,17 @@ const Texture& MetalSwapchain::AcquireNextDrawable()
 void MetalSwapchain::Present(const CommandBuffer* cmd)
 {
     auto& ctx = mContext[mCurrentFrameIndex];
-    id<MTL4CommandQueue> commandQueue = mDevice->GetCommandQueue();
-    
+    id<MTL4CommandQueue> commandQueue = mDevice->GetCommandQueue().GetHandle();
+
     cmd->End();
     [commandQueue waitForDrawable:ctx.drawable];
     cmd->Commit();
-    
+
     [commandQueue signalDrawable:ctx.drawable];
     [ctx.drawable present];
-    
+
     [commandQueue signalEvent:ctx.event value:++ctx.eventValue];
-    
+
     mCurrentFrameIndex = (mCurrentFrameIndex + 1) % mMaxFramesInFlight;
 }
 

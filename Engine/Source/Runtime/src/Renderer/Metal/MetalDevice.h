@@ -1,7 +1,7 @@
 #pragma once
 #ifdef USE_METAL_RENDERER
+#include "MetalCommandQueue.h"
 #include "Renderer/GraphicsDevice.h"
-#include "Container/Queue.h"
 
 #import <Metal/Metal.h>
 #include <metal_irconverter/metal_irconverter.h>
@@ -55,16 +55,6 @@ struct MetalDescriptorHeap
 #endif
 };
 
-struct MetalCommandPool
-{
-	Deque<void*> usedCommandBuffers;
-	Deque<void*> freeCommandBuffers;
-	id<MTL4CommandAllocator> allocator;
-
-	void Reset();
-	void Release();
-};
-
 class MetalDevice final : public GraphicsDevice
 {
 public:
@@ -85,13 +75,19 @@ public:
 	
 	id<MTL4ArgumentTable> GetArgumentTable() const;
 	
-	id<MTL4CommandQueue> GetCommandQueue() const;
-	
-	id<MTL4CommandBuffer> AllocateCommandBuffer();
+	MetalCommandQueue& GetCommandQueue();
 	
 	IRRootSignature* GetGlobalRootSignature() const;
 
 	ShaderBindingTable CreateShaderBindingTable(const RayTracingPipeline& pipeline);
+	
+	id<MTLTexture> CreateTexture(GPUAllocator* allocator, const TextureDescriptor& descriptor);
+
+	RenderTargetView CreateRenderTargetView(const Texture& texture);
+
+	TArray<RenderTargetView> CreateRenderTargetViews(const Texture& texture);
+
+	TArray<ShaderResourceIndex> CreateUnorderedAccessViews(const Texture& texture);
 	
 	ShaderResourceIndex CreateResourceView(const Buffer& buffer);
 
@@ -106,9 +102,7 @@ public:
 private:
 
 	virtual void Configure(const RendererConfig& config) override;
-	
-	virtual void ResetCommandPools(uint32_t frameIdx) override;
-	
+
 	MetalDescriptorHeap CreateSamplerHeap(uint32_t capacity) const;
     
     MetalDescriptorHeap CreateDescriptorHeap(uint32_t capacity) const;
@@ -116,15 +110,13 @@ private:
 	id<MTLSamplerState> CreateSampler(const SamplerState& samplerState);
 
 	IRRootSignature* mRootSignature = nullptr;
-	
-    id<MTL4CommandQueue> mCommandQueue{ nil };
-	
+
+	MetalCommandQueue mCommandQueue;
+
 	id<MTLResidencySet> mResidencySet{ nil };
-	
+
 	id<MTL4ArgumentTable> mArgumentTable = nil;
-	
-	TArray<MetalCommandPool> mCommandPools;
-	
+
 	TArray<void*> mStaticSamplers;
     
 	MetalDescriptorHeap mSamplerHeap;
