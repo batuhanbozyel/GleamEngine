@@ -27,8 +27,6 @@ CommandBuffer::CommandBuffer(GraphicsDevice* device)
 {
 	mHandle->device = static_cast<DirectXDevice*>(device);
 	DX_CHECK(static_cast<ID3D12Device10*>(mHandle->device->GetHandle())->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&mHandle->fence)));
-
-	mHandle->commandPool = mHandle->device->GetDirectQueue().AcquirePool();
 }
 
 CommandBuffer::~CommandBuffer()
@@ -324,6 +322,7 @@ void CommandBuffer::Barrier(const BarrierGroup& barrier) const
 void CommandBuffer::Begin(const TStringView debugName) const
 {
 	TWString debugNameW = StringUtils::Convert(debugName);
+	mHandle->commandPool = mHandle->device->GetDirectQueue().AcquirePool();
 	mHandle->commandList = mHandle->commandPool->AllocateCommandList(debugNameW);
 	mCommitted = false;
 }

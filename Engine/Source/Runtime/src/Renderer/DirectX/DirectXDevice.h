@@ -82,8 +82,6 @@ private:
 
 	DirectXCommandQueue CreateCommandQueue(D3D12_COMMAND_LIST_TYPE type) const;
 
-	DirectXCommandPool CreateCommandPool(D3D12_COMMAND_LIST_TYPE type) const;
-
 	DirectXDescriptorHeap CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE type, D3D12_DESCRIPTOR_HEAP_FLAGS flags, UINT capacity) const;
 
 	DWORD mDebugCallbackCookie = 0;

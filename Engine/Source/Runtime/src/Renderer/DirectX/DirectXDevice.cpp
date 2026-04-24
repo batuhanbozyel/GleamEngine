@@ -957,20 +957,6 @@ DirectXCommandQueue DirectXDevice::CreateCommandQueue(D3D12_COMMAND_LIST_TYPE ty
 	return queue;
 }
 
-DirectXCommandPool DirectXDevice::CreateCommandPool(D3D12_COMMAND_LIST_TYPE type) const
-{
-	TWString cmdAllocatorName = TString(ID3D12CommandListTypeToString(type));
-
-	DirectXCommandPool pool = {};
-	pool.mDevice = static_cast<ID3D12Device10*>(mHandle);
-	pool.mType = type;
-
-	DX_CHECK(static_cast<ID3D12Device10*>(mHandle)->CreateCommandAllocator(type, IID_PPV_ARGS(&pool.mAllocator)));
-	pool.mAllocator->SetName(cmdAllocatorName.c_str());
-
-	return pool;
-}
-
 DirectXDescriptorHeap DirectXDevice::CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE type, D3D12_DESCRIPTOR_HEAP_FLAGS flags, UINT capacity) const
 {
 	D3D12_DESCRIPTOR_HEAP_DESC desc = {};

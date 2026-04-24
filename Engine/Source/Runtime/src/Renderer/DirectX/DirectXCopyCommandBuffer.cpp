@@ -66,8 +66,6 @@ CopyCommandBuffer::CopyCommandBuffer(GraphicsDevice* device)
 	queueDesc.Name = "DStorage Memory Queue";
 	DX_CHECK(mHandle->factory->CreateQueue(&queueDesc, IID_PPV_ARGS(&mHandle->memoryQueue)));
 	DX_CHECK(static_cast<ID3D12Device10*>(mDevice->GetHandle())->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&mHandle->memoryFence)));
-
-	mHandle->commandPool = static_cast<DirectXDevice*>(mDevice)->GetCopyQueue().AcquirePool();
 }
 
 CopyCommandBuffer::~CopyCommandBuffer()
@@ -185,6 +183,7 @@ void CopyCommandBuffer::Execute() const
 		barrierGroup.NumBarriers = static_cast<UINT32>(textureBarriers.size());
 		barrierGroup.pTextureBarriers = textureBarriers.data();
 
+		mHandle->commandPool = static_cast<DirectXDevice*>(mDevice)->GetCopyQueue().AcquirePool();
 		auto cmd = mHandle->commandPool->AllocateCommandList(L"CopyCommandBuffer::PreCopyBarriers");
 		cmd->Barrier(1, &barrierGroup);
 		cmd->Close();
