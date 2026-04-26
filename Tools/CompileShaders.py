@@ -71,7 +71,7 @@ SHADER_ATTR_REGEX = re.compile(
     r'\[shader\("(' + ALL_STAGES + r')"\)\]'   # [shader("stage")]
     r'(?:\s*\[[^\]]*\])*'                       # zero or more intervening [attrib(...)] blocks
     r'\s+'                                      # whitespace / newlines
-    r'(?:\w+\s+)*?'                             # optional qualifiers (e.g. export, inline)
+    r'(?:[\w:]+\s+)*?'                           # optional qualifiers (e.g. export, inline, Gleam::Type)
     r'(\w+)'                                    # function name
     r'\s*\(',                                   # opening paren of parameter list
     re.MULTILINE

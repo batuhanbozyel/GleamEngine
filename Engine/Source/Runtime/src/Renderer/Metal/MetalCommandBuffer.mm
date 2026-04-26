@@ -39,11 +39,12 @@ struct TopLevelArgumentBuffer
 struct CommandBuffer::Impl
 {
     MetalDevice* device = nullptr;
-    
+    MetalCommandPool* commandPool = nullptr;
+
     id<MTL4CommandBuffer> commandBuffer = nil;
     id<MTL4RenderCommandEncoder> renderCommandEncoder = nil;
     id<MTL4ComputeCommandEncoder> computeCommandEncoder = nil;
-    
+
     id<MTLSharedEvent> event = nil;
     uint64_t eventValue = 0;
     
@@ -389,7 +390,7 @@ void CommandBuffer::Barrier(const BarrierGroup& barrier) const
         needsCacheFlush |= BarrierRequiresCacheFlush(textureBarrier.srcAccess, textureBarrier.dstAccess);
     }
     
-    if (allSrcStages == 0)
+    if (allSrcStages == 0 || allDstStages == 0)
     {
         return;
     }
@@ -444,8 +445,8 @@ void CommandBuffer::Barrier(const BarrierGroup& barrier) const
 
 void CommandBuffer::Begin(const TStringView debugName) const
 {
-    mHandle->commandBuffer = mHandle->device->AllocateCommandBuffer();
-    mHandle->commandBuffer.label = TO_NSSTRING(debugName.data());
+    mHandle->commandPool = mHandle->device->GetCommandQueue().AcquirePool();
+    mHandle->commandBuffer = mHandle->commandPool->AllocateCommandBuffer(debugName);
     mHandle->event.label = mHandle->commandBuffer.label;
     mCommitted = false;
 }
@@ -457,12 +458,12 @@ void CommandBuffer::End() const
 
 void CommandBuffer::Commit() const
 {
-    id<MTL4CommandQueue> commandQueue = mHandle->device->GetCommandQueue();
+    id<MTL4CommandBuffer> commandBuffer = mHandle->commandBuffer;
     
     [mHandle->device->GetResidencySet() commit];
-    [commandQueue commit:&mHandle->commandBuffer count:1u];
-    [commandQueue signalEvent:mHandle->event value:++mHandle->eventValue];
-    
+    mHandle->device->GetCommandQueue().Commit(&commandBuffer, 1);
+    mHandle->device->GetCommandQueue().Signal(mHandle->event, ++mHandle->eventValue);
+
     mConstantBuffer.Reset();
     mCommitted = true;
 }

@@ -11,6 +11,7 @@ using namespace Gleam;
 struct CommandBuffer::Impl
 {
 	DirectXDevice* device = nullptr;
+	DirectXCommandPool* commandPool = nullptr;
 
 	ID3D12GraphicsCommandList7* commandList = nullptr;
 	ID3D12Fence* fence = nullptr;
@@ -293,7 +294,7 @@ void CommandBuffer::Barrier(const BarrierGroup& barrier) const
 		d3d12Barrier.Subresources.NumArraySlices = 0;
 		d3d12Barrier.Subresources.FirstPlane = 0;
 		d3d12Barrier.Subresources.NumPlanes = 0;
-		d3d12Barrier.Flags = D3D12_TEXTURE_BARRIER_FLAG_NONE;
+		d3d12Barrier.Flags = textureBarrier.discard ? D3D12_TEXTURE_BARRIER_FLAG_DISCARD : D3D12_TEXTURE_BARRIER_FLAG_NONE;
 		d3d12TextureBarriers.emplace_back(d3d12Barrier);
 	}
 
@@ -321,7 +322,8 @@ void CommandBuffer::Barrier(const BarrierGroup& barrier) const
 void CommandBuffer::Begin(const TStringView debugName) const
 {
 	TWString debugNameW = StringUtils::Convert(debugName);
-	mHandle->commandList = mHandle->device->AllocateCommandList(D3D12_COMMAND_LIST_TYPE_DIRECT, debugNameW);
+	mHandle->commandPool = mHandle->device->GetDirectQueue().AcquirePool();
+	mHandle->commandList = mHandle->commandPool->AllocateCommandList(debugNameW);
 	mCommitted = false;
 }
 
@@ -332,9 +334,8 @@ void CommandBuffer::End() const
 
 void CommandBuffer::Commit() const
 {
-	ID3D12CommandList* commandList = mHandle->commandList;
-	mHandle->device->GetDirectQueue()->ExecuteCommandLists(1, &commandList);
-	mHandle->device->GetDirectQueue()->Signal(mHandle->fence, ++mHandle->fenceValue);
+	mHandle->device->GetDirectQueue().ExecuteCommandLists(1, &mHandle->commandList);
+	mHandle->device->GetDirectQueue().Signal(mHandle->fence, ++mHandle->fenceValue);
 	mConstantBuffer.Reset();
 	mCommitted = true;
 }

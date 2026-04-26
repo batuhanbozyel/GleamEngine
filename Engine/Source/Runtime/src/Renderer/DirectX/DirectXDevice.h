@@ -1,5 +1,6 @@
 #pragma once
 #ifdef USE_DIRECTX_RENDERER
+#include "DirectXCommandQueue.h"
 #include "Renderer/GraphicsDevice.h"
 #include "Container/Queue.h"
 
@@ -29,17 +30,6 @@ struct DirectXDescriptorHeap
 	ShaderResourceIndex GetResourceIndex(D3D12_CPU_DESCRIPTOR_HANDLE view);
 };
 
-struct DirectXCommandPool
-{
-	Deque<ID3D12GraphicsCommandList7*> usedCommandLists;
-	Deque<ID3D12GraphicsCommandList7*> freeCommandLists;
-	ID3D12CommandAllocator* allocator;
-	D3D12_COMMAND_LIST_TYPE type;
-
-	void Reset();
-	void Release();
-};
-
 class DirectXDevice final : public GraphicsDevice
 {
 	friend class GraphicsDevice;
@@ -56,23 +46,13 @@ public:
 
 	DirectXDescriptorHeap& GetCbvSrvUavHeap();
 
-	ID3D12GraphicsCommandList7* AllocateCommandList(D3D12_COMMAND_LIST_TYPE type, const TWStringView debugName);
+	DirectXCommandQueue& GetDirectQueue();
 
-	const DirectXDescriptorHeap& GetRtvHeap() const;
+	DirectXCommandQueue& GetComputeQueue();
 
-	const DirectXDescriptorHeap& GetDsvHeap() const;
-
-	const DirectXDescriptorHeap& GetCbvSrvUavHeap() const;
-
-	ID3D12CommandQueue* GetDirectQueue() const;
-
-	ID3D12CommandQueue* GetComputeQueue() const;
+	DirectXCommandQueue& GetCopyQueue();
 
 	ID3D12RootSignature* GetGlobalRootSignature() const;
-
-	void WaitDeviceIdle() const;
-
-	void WaitQueueIdle(ID3D12CommandQueue* queue) const;
 
 	ShaderBindingTable CreateShaderBindingTable(const RayTracingPipeline& pipeline);
 
@@ -92,9 +72,15 @@ private:
 	
 	virtual void Configure(const RendererConfig& config) override;
 
-	virtual void ResetCommandPools(uint32_t frameIdx) override;
+	ID3D12Resource* CreateTexture(GPUAllocator* allocator, const TextureDescriptor& descriptor, D3D12_BARRIER_LAYOUT initialLayout);
 
-	ID3D12CommandQueue* CreateCommandQueue(D3D12_COMMAND_LIST_TYPE type) const;
+	RenderTargetView CreateRenderTargetView(ID3D12Resource* resource, const D3D12_RESOURCE_DESC1& descriptor);
+
+	TArray<RenderTargetView> CreateRenderTargetViews(ID3D12Resource* resource, const D3D12_RESOURCE_DESC1& descriptor);
+
+	TArray<ShaderResourceIndex> CreateUnorderedAccessViews(ID3D12Resource* resource, const D3D12_RESOURCE_DESC1& descriptor);
+
+	DirectXCommandQueue CreateCommandQueue(D3D12_COMMAND_LIST_TYPE type) const;
 
 	DirectXDescriptorHeap CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE type, D3D12_DESCRIPTOR_HEAP_FLAGS flags, UINT capacity) const;
 
@@ -102,17 +88,11 @@ private:
 	ID3D12InfoQueue1* mInfoQueue = nullptr;
 	ID3D12Debug6* mD3D12Debug = nullptr;
 
-	ID3D12CommandQueue* mDirectQueue = nullptr;
-
-	ID3D12CommandQueue* mComputeQueue = nullptr;
+	DirectXCommandQueue mDirectQueue;
+	DirectXCommandQueue mComputeQueue;
+	DirectXCommandQueue mCopyQueue;
 
 	ID3D12RootSignature* mRootSignature = nullptr;
-
-	struct Context
-	{
-		TArray<DirectXCommandPool> commandPools;
-	};
-	TArray<Context> mFrameContext;
 
 	DirectXDescriptorHeap mRtvHeap;
 	DirectXDescriptorHeap mDsvHeap;

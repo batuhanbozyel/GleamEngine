@@ -7,6 +7,7 @@
 
 #include "gpch.h"
 #include "WorldRenderer.h"
+#include "BRDFRenderer.h"
 
 #include "Core/Engine.h"
 #include "Core/Globals.h"
@@ -24,54 +25,17 @@ using namespace Gleam;
 void WorldRenderer::OnCreate(const RenderContext& context)
 {
 	mDevice = context.device;
-
-	// BRDF Lut
-	{
-		ComputePipelineStateDescriptor pipelineState;
-		pipelineState.entryPoint = "integrateBRDFShader";
-		mBRDFLutPipeline = context.device->CreateComputePipeline(pipelineState);
-
-		TextureDescriptor textureDesc;
-		textureDesc.name = "BRDF LUT";
-		textureDesc.dimension = TextureDimension::Texture2D;
-		textureDesc.format = TextureFormat::R16G16B16A16_SFloat;
-		textureDesc.usage = TextureUsage_Storage | TextureUsage_Sampled;
-		textureDesc.size = { BRDF_LUT_SIZE, BRDF_LUT_SIZE };
-		mBRDFLutTexture = context.device->CreateTexture(context.allocator, textureDesc);
-	}
 }
 
 void WorldRenderer::OnDestroy(const RenderContext& context)
 {
-	context.device->Dispose(context.allocator, mBRDFLutTexture);
+
 }
 
 void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard)
 {
 	const auto& sceneData = blackboard.Get<SceneRenderingData>();
 	const auto& sceneTargetDescriptor = graph.GetDescriptor(sceneData.sceneTarget);
-	auto brdfLut = graph.ImportTexture(mBRDFLutTexture);
-
-	static bool mBakeBRDFLut = true;
-	if (mBakeBRDFLut)
-	{
-		struct BRDFLutData
-		{
-			TextureHandle brdfLut;
-		};
-		graph.AddComputePass<BRDFLutData>("WorldRenderer::BRDFLut", [&](RenderGraphBuilder& builder, BRDFLutData& passData)
-		{
-			passData.brdfLut = builder.WriteTexture(brdfLut);
-			brdfLut = passData.brdfLut;
-		},
-		[this](const CommandBuffer* cmd, const BRDFLutData& passData)
-		{
-			cmd->BindComputePipeline(mBRDFLutPipeline);
-			cmd->SetPushConstant(BRDFLutConstants{ .targetTexture = mBRDFLutTexture.GetResourceView() });
-			cmd->Dispatch(Math::DivideRoundingUp(BRDF_LUT_SIZE, 16), Math::DivideRoundingUp(BRDF_LUT_SIZE, 16), 1);
-		});
-		mBakeBRDFLut = false;
-	}
 	
     graph.AddRenderPass<WorldRenderingData>("WorldRenderer::ForwardPass", [&](RenderGraphBuilder& builder, WorldRenderingData& passData)
     {
@@ -88,7 +52,11 @@ void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
         
         passData.colorTarget = builder.UseColorBuffer(passData.colorTarget);
         passData.depthTarget = builder.UseDepthBuffer(passData.depthTarget, DepthAccess::Write);
-		passData.brdfLut = builder.ReadTexture(brdfLut);
+
+		const auto& brdfData = blackboard.Get<BRDFData>();
+		passData.brdfLut = builder.ReadTexture(brdfData.brdfLut);
+		passData.ggxEssLut = builder.ReadTexture(brdfData.ggxEssLut);
+		passData.ggxEAvgLut = builder.ReadTexture(brdfData.ggxEAvgLut);
 		
 		if (sceneData.atmosphere.transmittanceLut.IsValid() && sceneData.atmosphere.multiScatterLut.IsValid())
 		{
@@ -118,6 +86,8 @@ void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 			MeshShadingConstants constants = {};
 			constants.instanceBuffer = sceneData.sceneProxy->GetGlobalInstanceBuffer().GetResourceView();
 			constants.brdfTexture = passData.brdfLut;
+			constants.ggxEssTexture = passData.ggxEssLut;
+			constants.ggxEAvgTexture = passData.ggxEAvgLut;
 			constants.diffuseReflectionTexture = passData.diffuseReflection;
 			constants.specularReflectionTexture = passData.specularReflection;
 

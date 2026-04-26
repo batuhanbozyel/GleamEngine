@@ -19,6 +19,8 @@ struct WorldRenderingData
 	TextureHandle transmittanceLut = TextureHandle();
 	TextureHandle multiScatterLut = TextureHandle();
 	TextureHandle brdfLut = TextureHandle();
+	TextureHandle ggxEssLut = TextureHandle();
+	TextureHandle ggxEAvgLut = TextureHandle();
 	TextureHandle specularReflection = TextureHandle();
 	TextureHandle diffuseReflection = TextureHandle();
 };
@@ -35,19 +37,9 @@ public:
 
 	void RegisterShadingPipeline(const Material* material);
 
-	const Texture& GetBRDFLutTexture() const
-	{
-		return mBRDFLutTexture;
-	}
-
 private:
 
-	Texture mBRDFLutTexture;
-
-	ComputePipelineHandle mBRDFLutPipeline;
-
 	GraphicsDevice* mDevice = nullptr;
-
 	HashMap<uint32_t, GraphicsPipelineHandle> mShadingPipelines;
 
 };

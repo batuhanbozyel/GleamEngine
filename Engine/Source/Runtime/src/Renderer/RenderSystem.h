@@ -8,6 +8,7 @@ namespace Gleam {
 
 class World;
 class Swapchain;
+class IRenderer;
 class RenderGraph;
 class GPUAllocator;
 class CommandBuffer;
@@ -99,6 +100,7 @@ private:
 	
 	RenderPath mRenderPath = RenderPath::Default;
 	TArray<RenderPipeline*, 2> mRenderPipelines = {};
+	TArray<IRenderer*> mSharedRenderers = {};
 
 	RayTracingScene* mRayTracingScene = nullptr;
 

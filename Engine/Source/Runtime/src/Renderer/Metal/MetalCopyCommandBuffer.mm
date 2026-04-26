@@ -118,7 +118,7 @@ void CopyCommandBuffer::Barrier(const CommandBuffer* cmd) const
         textureBarrier.dstStage = BarrierStage::AllShading;
         textureBarrier.srcAccess = BarrierAccess::CopyDest;
         textureBarrier.dstAccess = BarrierAccess::ShaderResource;
-        textureBarrier.oldLayout = BarrierLayout::Common;
+        textureBarrier.oldLayout = BarrierLayout::Undefined;
         textureBarrier.newLayout = BarrierLayout::ShaderResource;
         barrier.textureBarriers.push_back(textureBarrier);
     }
@@ -140,7 +140,7 @@ void CopyCommandBuffer::Execute() const
         [mHandle->memoryCommandEncoder endEncoding];
         [mHandle->memoryCommandBuffer endCommandBuffer];
         
-        id<MTL4CommandQueue> commandQueue = static_cast<MetalDevice*>(mDevice)->GetCommandQueue();
+        id<MTL4CommandQueue> commandQueue = static_cast<MetalDevice*>(mDevice)->GetCommandQueue().GetHandle();
         [static_cast<MetalDevice*>(mDevice)->GetResidencySet() commit];
         [commandQueue commit:&mHandle->memoryCommandBuffer count:1];
         [commandQueue signalEvent:mHandle->memoryEvent value:++mHandle->memoryEventValue];

@@ -3,6 +3,7 @@
 #include <EASTL/array.h>
 #include <EASTL/vector.h>
 #include <EASTL/span.h>
+#include <EASTL/fixed_vector.h>
 
 namespace Gleam {
 

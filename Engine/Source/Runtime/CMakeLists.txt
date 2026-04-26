@@ -194,6 +194,7 @@ add_custom_command(
     DEPENDS ${HEADER_FILES} ${SHADER_FILES}
     COMMENT "Compiling runtime shaders..."
     VERBATIM
+    COMMAND_EXPAND_LISTS
 )
 add_custom_target(RuntimeShaders DEPENDS ${SHADER_STAMP_FILE})
 add_dependencies(Runtime RuntimeShaders)

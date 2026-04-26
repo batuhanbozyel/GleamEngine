@@ -55,6 +55,13 @@ float Fr_DisneyDiffuse(float NdotV, float NdotL, float LdotH, float perceptualRo
     return lightScatter * viewScatter * energyFactor;
 }
 
+// Smith GGX one-directional masking (G1) term
+float G1_SmithGGX(float NdotV, float roughness)
+{
+    float a2 = roughness * roughness;
+    return 2.0 * NdotV / (NdotV + sqrt(a2 + (1.0 - a2) * NdotV * NdotV));
+}
+
 // V = G / (4 * NdotL * NdotV)
 float V_SmithGGXCorrelated(float NdotL, float NdotV, float roughness)
 {
@@ -136,6 +143,71 @@ float3 ImportanceSampleGGX(float2 u, float3 N, float perceptualRoughness, out fl
 	return normalize(sampleVec);
 }
 
+// Ve:        view direction in local y-up tangent space (normal = (0, 1, 0))
+// alpha2D:	  anisotropic GGX roughness
+// Returns:   sampled microfacet normal in local tangent space
+// Reference: Heitz, "Sampling the GGX Distribution of Visible Normals", JCGT 2018
+//            https://www.jcgt.org/published/0007/04/01/paper.pdf
+float3 SampleGGXVNDF(float3 Ve, float2 alpha2D, float2 u)
+{
+    // Section 3.2: transform view direction to hemisphere configuration
+    float3 Vh = normalize(float3(alpha2D.x * Ve.x, Ve.y, alpha2D.y * Ve.z));
+
+    // Section 4.1: orthonormal basis (special case when Vh is nearly vertical)
+    // T1 = cross((0,1,0), Vh) = (Vh.z, 0, -Vh.x)
+    float lensq = Vh.x * Vh.x + Vh.z * Vh.z;
+    float3 T1 = lensq > 0.0 ? float3(Vh.z, 0.0, -Vh.x) * rsqrt(lensq) : float3(1.0, 0.0, 0.0);
+    float3 T2 = cross(Vh, T1);
+
+    // Section 4.2: parameterize the projected area
+    float r     = sqrt(u.x);
+    float theta = TWO_PI * u.y;
+    float t1    = r * cos(theta);
+    float t2    = r * sin(theta);
+    float s   = 0.5 * (1.0 + Vh.y);
+    t2 = (1.0 - s) * sqrt(max(0.0, 1.0 - t1 * t1)) + s * t2;
+
+    // Section 4.3: reproject onto hemisphere
+    float3 Nh = t1 * T1 + t2 * T2 + sqrt(max(0.0, 1.0 - t1 * t1 - t2 * t2)) * Vh;
+
+    // Section 3.4: transform normal back to ellipsoid configuration
+    return normalize(float3(alpha2D.x * Nh.x, max(0.0, Nh.y), alpha2D.y * Nh.z));
+}
+
+// Importance samples the GGX VNDF — returns microfacet half-vector H in world space
+// V:    view direction in world space
+// N:    surface normal in world space
+// pdf:  PDF for the reflected direction L = reflect(-V, H)
+//       pdf = G1(V) * D(H) / (4 * NdotV)
+// Simplified Monte Carlo specular weight: F(V,H) * G2(V,L) / G1(V)
+// Reference: Heitz, "Sampling the GGX Distribution of Visible Normals", JCGT 2018
+//            https://www.jcgt.org/published/0007/04/01/paper.pdf
+float3 ImportanceSampleGGX_VNDF(float2 u, float3 V, float3 N, float perceptualRoughness, out float pdf)
+{
+    float roughness = perceptualRoughness * perceptualRoughness;
+
+    float3 tangent, bitangent;
+    GetOrthonormalBasis(N, tangent, bitangent);
+
+    // Transform view direction into tangent space
+    float3 Ve = float3(dot(V, tangent), dot(V, N), dot(V, bitangent));
+
+    // Sample microfacet normal in tangent space
+    float3 Nh = SampleGGXVNDF(Ve, float2(roughness, roughness), u);
+
+    // Transform sampled half-vector back to world space
+    float3 H = normalize(tangent * Nh.x + N * Nh.y + bitangent * Nh.z);
+
+    // pdf(L) = D_V(H) / (4 * VdotH) = G1(V) * D(H) / (4 * NdotV)
+    float NdotV = saturate(dot(N, V));
+    float NdotH = saturate(dot(N, H));
+    float D     = D_GGX(NdotH, roughness);
+    float G1V   = G1_SmithGGX(NdotV, roughness);
+    pdf = G1V * D / max(4.0 * NdotV, 1e-6);
+
+    return H;
+}
+
 float3 UniformSampleCone(float2 u, float3 N, float cosHalfAngle, out float pdf)
 {
     float cosTheta = 1.0 - u.y * (1.0 - cosHalfAngle);
@@ -160,6 +232,16 @@ float MipLevelToPerceptualRoughness(float mipLevel, int maxMip)
 	return 1.0 - sqrt(1.0 - mipLevel / float(maxMip));
 }
 
+float3 MultiscatteringGGX(Texture2D<float> ggxESSTexture, Texture2D<float> ggxEAvgTexture, float3 f0, float perceptualRoughness, float NdotV)
+{
+	float E_avg = ggxEAvgTexture.SampleLevel(Sampler_Bilinear_Clamp, float2(perceptualRoughness, 0), 0);
+	float Ess = ggxESSTexture.SampleLevel(Sampler_Bilinear_Clamp, float2(NdotV, perceptualRoughness), 0);
+	
+    float3 Fss = f0 + (1.0 - f0) / 21.0;
+    float3 Fms = E_avg / (1.0 - Fss * (1.0 - E_avg));
+    return 1.0 + Fms * (1.0 - Ess) / Ess;
+}
+
 float3 EvaluateDiffuseDirectLight(float3 albedo, float metallic, float perceptualRoughness, float NdotV, float NdotL, float LdotH)
 {
     float3 diffuseColor = albedo * (1.0 - metallic);
@@ -167,7 +249,7 @@ float3 EvaluateDiffuseDirectLight(float3 albedo, float metallic, float perceptua
 	return diffuseColor * (Fd * Fd_Lambert());
 }
 
-float3 EvaluateSpecularDirectLight(float3 albedo, float metallic, float perceptualRoughness, float NdotV, float NdotL, float LdotH, float NdotH)
+float3 EvaluateSpecularDirectLight(Texture2D<float> ggxESSTexture, Texture2D<float> ggxEAvgTexture, float3 albedo, float metallic, float perceptualRoughness, float NdotV, float NdotL, float LdotH, float NdotH)
 {
     float roughness = perceptualRoughness * perceptualRoughness;
 
@@ -178,13 +260,21 @@ float3 EvaluateSpecularDirectLight(float3 albedo, float metallic, float perceptu
     float D = D_GGX(NdotH, roughness);
     float V = V_SmithGGXCorrelated(NdotL, NdotV, roughness);
 
-	return F * (D * V * Fd_Lambert());
+	return MultiscatteringGGX(ggxESSTexture, ggxEAvgTexture, f0, perceptualRoughness, NdotV) * F * (D * V * Fd_Lambert());
 }
 
-float3 EvaluateDirectLight(Gleam::SurfaceOutput surface, DirectLight light, float3 viewDir, float3 worldNormal)
+float3 EvaluateDirectLight(Gleam::SurfaceOutput surface,
+						   Gleam::ShaderResourceIndex ggxESSTextureIndex,
+						   Gleam::ShaderResourceIndex ggxEAvgTextureIndex,
+						   DirectLight light,
+						   float3 viewDir,
+						   float3 worldNormal)
 {
+    Texture2D<float> ggxESSTexture = ResourceDescriptorHeap[ggxESSTextureIndex];
+    Texture2D<float> ggxEAvgTexture = ResourceDescriptorHeap[ggxEAvgTextureIndex];
+	
 	float3 H = normalize(viewDir + light.direction);
-	float NdotV = abs(dot(worldNormal, viewDir)) + FLT_EPSILON;
+    float NdotV = saturate(dot(worldNormal, viewDir));
 	float NdotL = saturate(dot(worldNormal, light.direction));
 	float NdotH = saturate(dot(worldNormal, H));
     float VdotH = saturate(dot(viewDir, H));
@@ -197,7 +287,7 @@ float3 EvaluateDirectLight(Gleam::SurfaceOutput surface, DirectLight light, floa
 
     float3 radiance = 0.0;
 	radiance += EvaluateDiffuseDirectLight(surface.albedo.rgb, surface.metallic, surface.roughness, NdotV, NdotL, LdotH);
-	radiance += EvaluateSpecularDirectLight(surface.albedo.rgb, surface.metallic, surface.roughness, NdotV, NdotL, LdotH, NdotH);
+    radiance += EvaluateSpecularDirectLight(ggxESSTexture, ggxEAvgTexture, surface.albedo.rgb, surface.metallic, surface.roughness, NdotV, NdotL, LdotH, NdotH);
 	return light.illuminance * radiance * NdotL;
 }
 
@@ -226,7 +316,16 @@ float3 EvaluateDiffuseIndirectLight(Texture2D<float4> brdfTexture, TextureCube<f
 	return diffuseLighting * diffuseColor * diffF;
 }
 
-float3 EvaluateSpecularIndirectLight(Texture2D<float4> brdfTexture, TextureCube<float4> specularReflection, float3 albedo, float metallic, float perceptualRoughness, float3 viewDir, float3 worldNormal, float NdotV)
+float3 EvaluateSpecularIndirectLight(Texture2D<float4> brdfTexture,
+									 Texture2D<float> ggxESSTexture,
+									 Texture2D<float> ggxEAvgTexture,
+									 TextureCube<float4> specularReflection,
+									 float3 albedo,
+									 float metallic,
+									 float perceptualRoughness,
+									 float3 viewDir,
+									 float3 worldNormal,
+									 float NdotV)
 {
 	float3 reflectionDir = normalize(reflect(-viewDir, worldNormal));
 	float3 specularDirection = GetSpecularDominantDir(worldNormal, reflectionDir, perceptualRoughness);
@@ -236,24 +335,28 @@ float3 EvaluateSpecularIndirectLight(Texture2D<float4> brdfTexture, TextureCube<
 	float3 specularLighting = specularReflection.SampleLevel(Sampler_Trilinear_Repeat, specularDirection, mipLevel).rgb;
 	
 	float3 DFG = brdfTexture.SampleLevel(Sampler_Bilinear_Clamp, float2(NdotV, perceptualRoughness), 0).xyz;
-	return specularLighting * (f0 * DFG.x + lerp(DFG.y /* F90Dielectric(LdotH, perceptualRoughness) */, DFG.z /* F90_Metal */, metallic));
+    return specularLighting * MultiscatteringGGX(ggxESSTexture, ggxEAvgTexture, f0, perceptualRoughness, NdotV) * (f0 * DFG.x + lerp(DFG.y /* F90Dielectric(LdotH, perceptualRoughness) */, DFG.z /* F90_Metal */, metallic));
 }
 
 float3 EvaluateIndirectLight(Gleam::SurfaceOutput surface,
 							 Gleam::ShaderResourceIndex brdfTextureIndex,
+							 Gleam::ShaderResourceIndex ggxESSTextureIndex,
+						     Gleam::ShaderResourceIndex ggxEAvgTextureIndex,
 							 Gleam::ShaderResourceIndex diffuseReflectionTextureIndex,
 							 Gleam::ShaderResourceIndex specularReflectionTextureIndex,
 							 float3 viewDir,
 							 float3 worldNormal)
 {
 	Texture2D<float4> brdfTexture = ResourceDescriptorHeap[brdfTextureIndex];
+    Texture2D<float> ggxESSTexture = ResourceDescriptorHeap[ggxESSTextureIndex];
+    Texture2D<float> ggxEAvgTexture = ResourceDescriptorHeap[ggxEAvgTextureIndex];
 	TextureCube<float4> diffuseReflectionTexture = ResourceDescriptorHeap[diffuseReflectionTextureIndex];
 	TextureCube<float4> specularReflectionTexture = ResourceDescriptorHeap[specularReflectionTextureIndex];
-	float NdotV = abs(dot(worldNormal, viewDir)) + FLT_EPSILON;
+    float NdotV = saturate(dot(worldNormal, viewDir));
 	
 	float3 irradiance = 0.0;
 	irradiance += EvaluateDiffuseIndirectLight(brdfTexture, diffuseReflectionTexture, surface.albedo.rgb, surface.metallic, surface.roughness, viewDir, worldNormal, NdotV);
-	irradiance += EvaluateSpecularIndirectLight(brdfTexture, specularReflectionTexture, surface.albedo.rgb, surface.metallic, surface.roughness, viewDir, worldNormal, NdotV);
+    irradiance += EvaluateSpecularIndirectLight(brdfTexture, ggxESSTexture, ggxEAvgTexture, specularReflectionTexture, surface.albedo.rgb, surface.metallic, surface.roughness, viewDir, worldNormal, NdotV);
 	return irradiance;
 }
 #endif // BRDF_HLSL
