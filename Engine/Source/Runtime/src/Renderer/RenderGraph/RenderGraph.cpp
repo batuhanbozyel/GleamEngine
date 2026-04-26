@@ -226,7 +226,7 @@ void RenderGraph::FreePassResources(RenderGraphPassNode* pass, const CommandBuff
 				.srcAccess = resource.node->barrierState.access,
 				.dstAccess = BarrierAccess::None,
 				.oldLayout = resource.node->barrierState.layout,
-				.newLayout = BarrierLayout::Undefined
+				.newLayout = BarrierLayout::Common
 			});
 			mContext.device->Dispose(mContext.allocator, resource.node->texture);
 		}
@@ -258,7 +258,7 @@ void RenderGraph::FreePassResources(RenderGraphPassNode* pass, const CommandBuff
 				.srcAccess = resource.node->barrierState.access,
 				.dstAccess = BarrierAccess::None,
 				.oldLayout = resource.node->barrierState.layout,
-				.newLayout = BarrierLayout::Undefined
+				.newLayout = BarrierLayout::Common
 			});
 			mContext.device->Dispose(mContext.allocator, resource.node->texture);
 		}

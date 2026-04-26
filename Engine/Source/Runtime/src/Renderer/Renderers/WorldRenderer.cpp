@@ -34,7 +34,6 @@ void WorldRenderer::OnDestroy(const RenderContext& context)
 
 void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard)
 {
-	const auto& brdfData = blackboard.Get<BRDFData>();
 	const auto& sceneData = blackboard.Get<SceneRenderingData>();
 	const auto& sceneTargetDescriptor = graph.GetDescriptor(sceneData.sceneTarget);
 	
@@ -53,6 +52,8 @@ void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
         
         passData.colorTarget = builder.UseColorBuffer(passData.colorTarget);
         passData.depthTarget = builder.UseDepthBuffer(passData.depthTarget, DepthAccess::Write);
+
+		const auto& brdfData = blackboard.Get<BRDFData>();
 		passData.brdfLut = builder.ReadTexture(brdfData.brdfLut);
 		passData.ggxEssLut = builder.ReadTexture(brdfData.ggxEssLut);
 		passData.ggxEAvgLut = builder.ReadTexture(brdfData.ggxEAvgLut);
