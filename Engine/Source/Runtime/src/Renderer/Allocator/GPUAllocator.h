@@ -14,7 +14,7 @@ struct GPUAllocationBlock
 	MemoryType memoryType = MemoryType::GPU;
 	TArray<void*> allocations;
 	uint32_t framesSinceLastUse = 0;
-	HashMap<uint64_t, BarrierState> aliasStates;
+	HashMap<uint64_t, BarrierStage> aliasStages;
 
 	bool IsValid() const
 	{
@@ -30,7 +30,7 @@ struct GPUAllocation
 	uint64_t offset = 0;
 	uint64_t size = 0;
 	uint64_t alignment = 0;
-	BarrierState aliasState;
+	BarrierStage aliasStage = BarrierStage::None;
 
 	bool IsValid() const
 	{
@@ -53,7 +53,7 @@ public:
 	~GPUAllocator();
 
 	GPUAllocation Allocate(const MemoryRequirements& memory);
-	void Free(const GPUAllocation& allocation, const BarrierState& state);
+	void Free(const GPUAllocation& allocation, const BarrierStage& stage);
 	void CollectGarbage(uint32_t maxFramesEmpty);
 
 	void AddAllocation(NativeGraphicsHandle resource, const GPUAllocation& allocation);

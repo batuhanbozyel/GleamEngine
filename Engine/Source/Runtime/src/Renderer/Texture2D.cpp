@@ -31,7 +31,7 @@ Texture2D::~Texture2D()
 {
 	static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
 	auto device = renderSystem->GetDevice();
-	device->Dispose(renderSystem->GetAllocator(), mTexture, BarrierState::NonAliased());
+	device->Dispose(renderSystem->GetAllocator(), mTexture, BarrierStage::None);
 }
 
 ShaderResourceIndex Texture2D::GetResourceView() const

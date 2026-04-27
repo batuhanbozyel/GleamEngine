@@ -50,8 +50,8 @@ void SkyAtmosphereRenderer::OnCreate(const RenderContext& context)
 
 void SkyAtmosphereRenderer::OnDestroy(const RenderContext& context)
 {
-	context.device->Dispose(context.allocator, mTransmittanceLutTexture, BarrierState::NonAliased());
-	context.device->Dispose(context.allocator, mMultiScatterLutTexture, BarrierState::NonAliased());
+	context.device->Dispose(context.allocator, mTransmittanceLutTexture, BarrierStage::None);
+	context.device->Dispose(context.allocator, mMultiScatterLutTexture, BarrierStage::None);
 }
 
 void SkyAtmosphereRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard)

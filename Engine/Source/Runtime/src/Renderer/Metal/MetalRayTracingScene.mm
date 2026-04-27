@@ -93,7 +93,7 @@ AccelerationStructureView RayTracingScene::BuildAccelerationStructure(const Comm
                                   visibilityOptions:MTL4VisibilityOptionNone];
 
                 instance.mesh->mBLASes[instance.submeshIndex] = blas;
-                mDevice->Dispose(mAllocator, scratchBuffer, { BarrierStage::BuildRayTracingAccelerationStructure, BarrierAccess::UnorderedAccess });
+                mDevice->Dispose(mAllocator, scratchBuffer, BarrierStage::BuildRayTracingAccelerationStructure);
             }
 
             const auto& materialDesc = batch.material->GetDescriptor();
@@ -195,8 +195,8 @@ AccelerationStructureView RayTracingScene::BuildAccelerationStructure(const Comm
                                          instanceContributions.data(),
                                          instanceContributions.size());
 
-    mDevice->Dispose(mAllocator, instanceDescBuffer, BarrierState::NonAliased());
-	mDevice->Dispose(mAllocator, scratchBuffer, { BarrierStage::BuildRayTracingAccelerationStructure, BarrierAccess::UnorderedAccess });
+    mDevice->Dispose(mAllocator, instanceDescBuffer, BarrierStage::None);
+	mDevice->Dispose(mAllocator, scratchBuffer, BarrierStage::BuildRayTracingAccelerationStructure);
 
 	mTLAS = tlas;
 	return mTLAS.GetResourceView();

@@ -50,7 +50,7 @@ void DebugRenderer::OnCreate(const RenderContext& context)
 
 void DebugRenderer::OnDestroy(const RenderContext& context)
 {
-	context.device->Dispose(mAllocator, mVertexBuffer, BarrierState::NonAliased());
+	context.device->Dispose(mAllocator, mVertexBuffer, BarrierStage::None);
 }
 
 void DebugRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard)
@@ -66,7 +66,7 @@ void DebugRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 	{
 		if (mVertexBuffer.IsValid())
 		{
-			mDevice->Dispose(mAllocator, mVertexBuffer, BarrierState::NonAliased());
+			mDevice->Dispose(mAllocator, mVertexBuffer, BarrierStage::None);
 		}
 
 		BufferDescriptor descriptor{ .name = "DebugVertexBuffer", .memoryType = MemoryType::CPU, .size = Math::RoundUpTo(bufferSize, (size_t)65536ull) };

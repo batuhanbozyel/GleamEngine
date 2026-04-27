@@ -485,7 +485,7 @@ void GraphicsDevice::Dispose(Heap& heap)
 	heap.mHandle = nullptr;
 }
 
-void GraphicsDevice::Dispose(GPUAllocator* allocator, Buffer& buffer, const BarrierState& aliasState)
+void GraphicsDevice::Dispose(GPUAllocator* allocator, Buffer& buffer, BarrierStage stage)
 {
 	if (buffer.GetDescriptor().memoryType == MemoryType::CPU)
 	{
@@ -493,7 +493,7 @@ void GraphicsDevice::Dispose(GPUAllocator* allocator, Buffer& buffer, const Barr
 		mReleaseQueue->AddResource([this, allocator, resource, view = buffer.mResourceView]()
 		{
 			const auto& allocation = allocator->GetAllocation(resource);
-			allocator->Free(allocation, BarrierState::NonAliased());
+			allocator->Free(allocation, BarrierStage::None);
 
 			resource->Release();
 			static_cast<DirectXDevice*>(this)->ReleaseResourceView(view);
@@ -502,7 +502,7 @@ void GraphicsDevice::Dispose(GPUAllocator* allocator, Buffer& buffer, const Barr
 	else // if (buffer.GetDescriptor().memoryType == MemoryType::GPU)
 	{
 		const auto& allocation = allocator->GetAllocation(buffer.GetHandle());
-		allocator->Free(allocation, aliasState);
+		allocator->Free(allocation, stage);
 
 		ID3D12Resource* resource = static_cast<ID3D12Resource*>(buffer.GetHandle());
 		mReleaseQueue->AddResource([this, resource, view = buffer.mResourceView]()
@@ -517,10 +517,10 @@ void GraphicsDevice::Dispose(GPUAllocator* allocator, Buffer& buffer, const Barr
 	buffer.mHandle = nullptr;
 }
 
-void GraphicsDevice::Dispose(GPUAllocator* allocator, Texture& texture, const BarrierState& aliasState)
+void GraphicsDevice::Dispose(GPUAllocator* allocator, Texture& texture, BarrierStage stage)
 {
 	const auto& allocation = allocator->GetAllocation(texture.GetHandle());
-	allocator->Free(allocation, aliasState);
+	allocator->Free(allocation, stage);
 
 	ID3D12Resource* resource = static_cast<ID3D12Resource*>(texture.GetHandle());
 	mReleaseQueue->AddResource([this, resource,

@@ -152,7 +152,12 @@ struct RenderGraphResourceNode : public RenderGraphNode
 struct RenderGraphBufferNode final : public RenderGraphResourceNode
 {
     Buffer buffer = Buffer();
-	BarrierState barrierState;
+
+	struct BarrierState
+	{
+		BarrierStage stage = BarrierStage::None;
+		BarrierAccess access = BarrierAccess::None;
+	} barrierState;
 
 	RenderGraphBufferNode(uint32_t uniqueId, const BufferDescriptor& descriptor, bool transient)
 		: RenderGraphResourceNode(uniqueId, transient), buffer(descriptor)
@@ -169,7 +174,12 @@ struct RenderGraphTextureNode final : public RenderGraphResourceNode
 	bool clearBuffer = false;
 	Texture texture = Texture();
 
-	BarrierState barrierState;
+	struct BarrierState
+	{
+		BarrierStage stage = BarrierStage::None;
+		BarrierAccess access = BarrierAccess::None;
+		BarrierLayout layout = BarrierLayout::Undefined;
+	} barrierState;
 
 	RenderGraphTextureNode(uint32_t uniqueId, const TextureDescriptor& descriptor, bool transient)
 		: RenderGraphResourceNode(uniqueId, transient), texture(descriptor)

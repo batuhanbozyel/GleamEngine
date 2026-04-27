@@ -70,7 +70,7 @@ Material::~Material()
 {
 	static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
 	auto device = renderSystem->GetDevice();
-	device->Dispose(renderSystem->GetAllocator(), mBuffer, BarrierState::NonAliased());
+	device->Dispose(renderSystem->GetAllocator(), mBuffer, BarrierStage::None);
 }
 
 ShaderResourceIndex Material::CreateInstance(const TArray<MaterialPropertyValue>& values)

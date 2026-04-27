@@ -55,9 +55,9 @@ void BRDFRenderer::OnCreate(const RenderContext& context)
 
 void BRDFRenderer::OnDestroy(const RenderContext& context)
 {
-	context.device->Dispose(context.allocator, mBRDFLutTexture, BarrierState::NonAliased());
-	context.device->Dispose(context.allocator, mGGXEssLutTexture, BarrierState::NonAliased());
-	context.device->Dispose(context.allocator, mGGXEAvgLutTexture, BarrierState::NonAliased());
+	context.device->Dispose(context.allocator, mBRDFLutTexture, BarrierStage::None);
+	context.device->Dispose(context.allocator, mGGXEssLutTexture, BarrierStage::None);
+	context.device->Dispose(context.allocator, mGGXEAvgLutTexture, BarrierStage::None);
 }
 
 void BRDFRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard)

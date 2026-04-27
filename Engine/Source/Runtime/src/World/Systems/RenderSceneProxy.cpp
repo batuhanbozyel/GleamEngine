@@ -137,7 +137,7 @@ void RenderSceneProxy::Shutdown(World* world)
 	auto device = renderSystem->GetDevice();
 	if (mGlobalInstanceBuffer.IsValid())
 	{
-		device->Dispose(renderSystem->GetAllocator(), mGlobalInstanceBuffer, BarrierState::NonAliased());
+		device->Dispose(renderSystem->GetAllocator(), mGlobalInstanceBuffer, BarrierStage::None);
 	}
 	mMeshBatches.clear();
 }

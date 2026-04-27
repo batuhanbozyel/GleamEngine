@@ -89,9 +89,9 @@ AccelerationStructureView RayTracingScene::BuildAccelerationStructure(const Comm
 						bufferBarrier[0].Offset = 0;
 						bufferBarrier[0].Size = UINT64_MAX;
 
-						bufferBarrier[1].SyncBefore = BarrierStageToD3D12_BARRIER_SYNC(scratchAlloc.aliasState.stage);
+						bufferBarrier[1].SyncBefore = BarrierStageToD3D12_BARRIER_SYNC(scratchAlloc.aliasStage);
 						bufferBarrier[1].SyncAfter = D3D12_BARRIER_SYNC_BUILD_RAYTRACING_ACCELERATION_STRUCTURE;
-						bufferBarrier[1].AccessBefore = BarrierAccessToD3D12_BARRIER_ACCESS(scratchAlloc.aliasState.access);
+						bufferBarrier[1].AccessBefore = D3D12_BARRIER_ACCESS_NO_ACCESS;
 						bufferBarrier[1].AccessAfter = D3D12_BARRIER_ACCESS_UNORDERED_ACCESS;
 						bufferBarrier[1].pResource = static_cast<ID3D12Resource*>(scratchBuffer.GetHandle());
 						bufferBarrier[1].Offset = 0;
@@ -135,7 +135,7 @@ AccelerationStructureView RayTracingScene::BuildAccelerationStructure(const Comm
 						commandList->Barrier(1, &barrierGroup);
 					}
 
-					mDevice->Dispose(mAllocator, scratchBuffer, { BarrierStage::BuildRayTracingAccelerationStructure, BarrierAccess::UnorderedAccess });
+					mDevice->Dispose(mAllocator, scratchBuffer, BarrierStage::BuildRayTracingAccelerationStructure);
 					instance.mesh->mBLASes[instance.submeshIndex] = blas;
 
 					PIXEndEvent(commandList);
@@ -198,9 +198,9 @@ AccelerationStructureView RayTracingScene::BuildAccelerationStructure(const Comm
 			bufferBarrier[0].Offset = 0;
 			bufferBarrier[0].Size = UINT64_MAX;
 
-			bufferBarrier[1].SyncBefore = BarrierStageToD3D12_BARRIER_SYNC(instanceDescsAlloc.aliasState.stage);
+			bufferBarrier[1].SyncBefore = BarrierStageToD3D12_BARRIER_SYNC(instanceDescsAlloc.aliasStage);
 			bufferBarrier[1].SyncAfter = D3D12_BARRIER_SYNC_COPY;
-			bufferBarrier[1].AccessBefore = BarrierAccessToD3D12_BARRIER_ACCESS(instanceDescsAlloc.aliasState.access);
+			bufferBarrier[1].AccessBefore = D3D12_BARRIER_ACCESS_NO_ACCESS;
 			bufferBarrier[1].AccessAfter = D3D12_BARRIER_ACCESS_COPY_DEST;
 			bufferBarrier[1].pResource = static_cast<ID3D12Resource*>(instanceDescsBuffer.GetHandle());
 			bufferBarrier[1].Offset = 0;
@@ -239,9 +239,9 @@ AccelerationStructureView RayTracingScene::BuildAccelerationStructure(const Comm
 			bufferBarrier[0].Offset = 0;
 			bufferBarrier[0].Size = UINT64_MAX;
 
-			bufferBarrier[1].SyncBefore = BarrierStageToD3D12_BARRIER_SYNC(scratchAlloc.aliasState.stage);
+			bufferBarrier[1].SyncBefore = BarrierStageToD3D12_BARRIER_SYNC(scratchAlloc.aliasStage);
 			bufferBarrier[1].SyncAfter = D3D12_BARRIER_SYNC_BUILD_RAYTRACING_ACCELERATION_STRUCTURE;
-			bufferBarrier[1].AccessBefore = BarrierAccessToD3D12_BARRIER_ACCESS(scratchAlloc.aliasState.access);
+			bufferBarrier[1].AccessBefore = D3D12_BARRIER_ACCESS_NO_ACCESS;
 			bufferBarrier[1].AccessAfter = D3D12_BARRIER_ACCESS_UNORDERED_ACCESS;
 			bufferBarrier[1].pResource = static_cast<ID3D12Resource*>(scratchBuffer.GetHandle());
 			bufferBarrier[1].Offset = 0;
@@ -269,7 +269,7 @@ AccelerationStructureView RayTracingScene::BuildAccelerationStructure(const Comm
 			barrierGroup.pBufferBarriers = bufferBarrier;
 			commandList->Barrier(1, &barrierGroup);
 		}
-		mDevice->Dispose(mAllocator, instanceDescStagingBuffer, BarrierState::NonAliased());
+		mDevice->Dispose(mAllocator, instanceDescStagingBuffer, BarrierStage::None);
 		
 		D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC topLevelBuildDesc = {};
 		topLevelBuildDesc.Inputs = topLevelInputs;
@@ -309,8 +309,8 @@ AccelerationStructureView RayTracingScene::BuildAccelerationStructure(const Comm
 			barrierGroup.pBufferBarriers = bufferBarrier;
 			commandList->Barrier(1, &barrierGroup);
 		}
-		mDevice->Dispose(mAllocator, scratchBuffer, { BarrierStage::BuildRayTracingAccelerationStructure, BarrierAccess::UnorderedAccess });
-		mDevice->Dispose(mAllocator, instanceDescsBuffer, { BarrierStage::BuildRayTracingAccelerationStructure, BarrierAccess::ShaderResource });
+		mDevice->Dispose(mAllocator, scratchBuffer, BarrierStage::BuildRayTracingAccelerationStructure);
+		mDevice->Dispose(mAllocator, instanceDescsBuffer, BarrierStage::BuildRayTracingAccelerationStructure);
 
 		mTLAS = tlas;
 		PIXEndEvent(commandList);
