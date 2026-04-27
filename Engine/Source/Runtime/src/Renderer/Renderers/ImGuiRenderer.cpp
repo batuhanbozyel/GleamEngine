@@ -94,7 +94,7 @@ void ImGuiRenderer::OnDestroy(const RenderContext& context)
 
 	delete mFontTexture;
 	delete mDefaultFontTexture;
-	context.device->Dispose(context.allocator, mBuffer);
+	context.device->Dispose(context.allocator, mBuffer, BarrierState::NonAliased());
 }
 
 void ImGuiRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard)

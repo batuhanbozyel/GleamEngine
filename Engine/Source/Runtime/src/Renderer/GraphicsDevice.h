@@ -42,9 +42,9 @@ public:
 
     void Dispose(Heap& heap);
 
-	void Dispose(GPUAllocator* allocator, Texture& texture);
+	void Dispose(GPUAllocator* allocator, Texture& texture, const BarrierState& aliasState);
 
-	void Dispose(GPUAllocator* allocator, Buffer& buffer);
+	void Dispose(GPUAllocator* allocator, Buffer& buffer, const BarrierState& aliasState);
 
 	void Dispose(BottomLevelAccelerationStructure& blas);
 

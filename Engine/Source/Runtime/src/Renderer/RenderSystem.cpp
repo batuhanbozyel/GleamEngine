@@ -230,7 +230,7 @@ void RenderSystem::Render(const World* world)
 		sceneData.accelerationStructure = mRayTracingScene->BuildAccelerationStructure(cmd, sceneData.sceneProxy);
 
         graph.Execute(cmd, sceneData);
-		mDevice->Dispose(renderGraphContext.allocator, sceneTarget);
+		mDevice->Dispose(renderGraphContext.allocator, sceneTarget, BarrierState::NonAliased());
 
 		mRayTracingScene->ReleaseAccelerationStructure();
 

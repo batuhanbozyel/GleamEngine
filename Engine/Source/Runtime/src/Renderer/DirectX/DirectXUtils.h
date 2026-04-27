@@ -398,6 +398,7 @@ static constexpr D3D12_BARRIER_SYNC BarrierStageToD3D12_BARRIER_SYNC(BarrierStag
 		case BarrierStage::RenderTarget: return D3D12_BARRIER_SYNC_RENDER_TARGET;
 		case BarrierStage::DepthStencil: return D3D12_BARRIER_SYNC_DEPTH_STENCIL;
 		case BarrierStage::Copy: return D3D12_BARRIER_SYNC_COPY;
+		case BarrierStage::BuildRayTracingAccelerationStructure: return D3D12_BARRIER_SYNC_BUILD_RAYTRACING_ACCELERATION_STRUCTURE;
 		default: return D3D12_BARRIER_SYNC_NONE;
 	}
 }
@@ -415,6 +416,8 @@ static constexpr D3D12_BARRIER_ACCESS BarrierAccessToD3D12_BARRIER_ACCESS(Barrie
 		case BarrierAccess::DepthStencilWrite: return D3D12_BARRIER_ACCESS_DEPTH_STENCIL_WRITE;
 		case BarrierAccess::CopySource: return D3D12_BARRIER_ACCESS_COPY_SOURCE;
 		case BarrierAccess::CopyDest: return D3D12_BARRIER_ACCESS_COPY_DEST;
+		case BarrierAccess::RayTracingAccelerationStructureRead: return D3D12_BARRIER_ACCESS_RAYTRACING_ACCELERATION_STRUCTURE_READ;
+		case BarrierAccess::RayTracingAccelerationStructureWrite: return D3D12_BARRIER_ACCESS_RAYTRACING_ACCELERATION_STRUCTURE_WRITE;
 		default: return D3D12_BARRIER_ACCESS_NO_ACCESS;
 	}
 }

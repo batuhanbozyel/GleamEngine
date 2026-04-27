@@ -48,9 +48,9 @@ Mesh::~Mesh()
 {
 	static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
 	auto device = renderSystem->GetDevice();
-	device->Dispose(renderSystem->GetAllocator(), mPositionBuffer);
-	device->Dispose(renderSystem->GetAllocator(), mInterleavedBuffer);
-	device->Dispose(renderSystem->GetAllocator(), mIndexBuffer);
+	device->Dispose(renderSystem->GetAllocator(), mPositionBuffer, BarrierState::NonAliased());
+	device->Dispose(renderSystem->GetAllocator(), mInterleavedBuffer, BarrierState::NonAliased());
+	device->Dispose(renderSystem->GetAllocator(), mIndexBuffer, BarrierState::NonAliased());
 
 	for (auto& blas : mBLASes)
 	{

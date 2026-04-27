@@ -33,7 +33,7 @@ void PathTracer::OnDestroy(const RenderContext& context)
 {
 	if (mRenderTarget.IsValid())
 	{
-		mDevice->Dispose(mAllocator, mRenderTarget);
+		mDevice->Dispose(mAllocator, mRenderTarget, BarrierState::NonAliased());
 	}
 }
 
@@ -48,7 +48,7 @@ void PathTracer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blac
 		mFrameIndex = 0;
 		if (mRenderTarget.IsValid())
 		{
-			mDevice->Dispose(mAllocator, mRenderTarget);
+			mDevice->Dispose(mAllocator, mRenderTarget, BarrierState::NonAliased());
 		}
 
 		RenderTextureDescriptor textureDesc;

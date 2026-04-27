@@ -351,6 +351,7 @@ static constexpr MTLStages BarrierStageToMTLStages(BarrierStage stage)
 		case BarrierStage::DepthStencil: return MTLStageFragment;
 		case BarrierStage::ComputeShading: return MTLStageDispatch;
 		case BarrierStage::Copy: return MTLStageBlit;
+		case BarrierStage::BuildRayTracingAccelerationStructure: return MTLStageAccelerationStructure;
 		default: GLEAM_ASSERT(false, "Metal: Unknown barrier stage specified!"); return MTLStages(~0);
 	}
 }

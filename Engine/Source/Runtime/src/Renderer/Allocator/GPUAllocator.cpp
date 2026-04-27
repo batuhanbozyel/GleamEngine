@@ -52,13 +52,14 @@ GPUAllocation GPUAllocator::Allocate(const MemoryRequirements& memory)
 		if (res == VK_SUCCESS)
 		{
 			block->allocations.push_back(allocation);
-			return GPUAllocation
+			GPUAllocation result{ .block = block, .handle = allocation, .offset = offset, .size = memory.size };
+			auto it = block->aliasStates.find(offset);
+			if (it != block->aliasStates.end())
 			{
-				.block = block,
-				.handle = allocation,
-				.offset = offset,
-				.size = memory.size
-			};
+				result.aliasState = it->second;
+				block->aliasStates.erase(it);
+			}
+			return result;
 		}
 	}
 
@@ -80,7 +81,7 @@ GPUAllocation GPUAllocator::Allocate(const MemoryRequirements& memory)
 	};
 }
 
-void GPUAllocator::Free(const GPUAllocation& allocation)
+void GPUAllocator::Free(const GPUAllocation& allocation, const BarrierState& state)
 {
 	GLEAM_ASSERT(allocation.IsValid(), "Allocation is not valid");
 
@@ -97,6 +98,11 @@ void GPUAllocator::Free(const GPUAllocation& allocation)
 			allocation.block->framesSinceLastUse = 0;
 		}
 		mCurrentAllocationInBytes -= allocation.size;
+	}
+
+	if (state.stage != BarrierStage::None || state.access != BarrierAccess::None)
+	{
+		allocation.block->aliasStates[allocation.offset] = state;
 	}
 
 	// Remove resource from allocations

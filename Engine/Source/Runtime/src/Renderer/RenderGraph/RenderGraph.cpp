@@ -163,6 +163,10 @@ void RenderGraph::AllocatePassResources(RenderGraphPassNode* pass, const Command
 
 			resource.node->buffer = mContext.device->CreateBuffer(mContext.allocator, descriptor);
 			GLEAM_ASSERT(resource.node->buffer.IsValid());
+
+			const auto& alloc = mContext.allocator->GetAllocation(resource.node->buffer.GetHandle());
+			resource.node->barrierState.stage = alloc.aliasState.stage;
+			resource.node->barrierState.access = alloc.aliasState.access;
 		}
 	}
 
@@ -179,8 +183,12 @@ void RenderGraph::AllocatePassResources(RenderGraphPassNode* pass, const Command
 			descriptor.name = name.str();
 
 			resource.node->texture = mContext.device->CreateTexture(mContext.allocator, descriptor);
-			resource.node->barrierState.layout = BarrierLayout::Undefined;
 			GLEAM_ASSERT(resource.node->texture.IsValid());
+
+			const auto& alloc = mContext.allocator->GetAllocation(resource.node->texture.GetHandle());
+			resource.node->barrierState.stage = alloc.aliasState.stage;
+			resource.node->barrierState.access = alloc.aliasState.access;
+			resource.node->barrierState.layout = BarrierLayout::Undefined;
 		}
 	}
 
@@ -211,7 +219,7 @@ void RenderGraph::FreePassResources(RenderGraphPassNode* pass, const CommandBuff
 				.srcAccess = resource.node->barrierState.access,
 				.dstAccess = BarrierAccess::None
 			});
-			mContext.device->Dispose(mContext.allocator, resource.node->buffer);
+			mContext.device->Dispose(mContext.allocator, resource.node->buffer, resource.node->barrierState);
 		}
 	}
 
@@ -226,9 +234,9 @@ void RenderGraph::FreePassResources(RenderGraphPassNode* pass, const CommandBuff
 				.srcAccess = resource.node->barrierState.access,
 				.dstAccess = BarrierAccess::None,
 				.oldLayout = resource.node->barrierState.layout,
-				.newLayout = BarrierLayout::Common
+				.newLayout = BarrierLayout::Undefined
 			});
-			mContext.device->Dispose(mContext.allocator, resource.node->texture);
+			mContext.device->Dispose(mContext.allocator, resource.node->texture, resource.node->barrierState);
 		}
 	}
 
@@ -243,7 +251,7 @@ void RenderGraph::FreePassResources(RenderGraphPassNode* pass, const CommandBuff
 				.srcAccess = resource.node->barrierState.access,
 				.dstAccess = BarrierAccess::None
 			});
-			mContext.device->Dispose(mContext.allocator, resource.node->buffer);
+			mContext.device->Dispose(mContext.allocator, resource.node->buffer, resource.node->barrierState);
 		}
 	}
 
@@ -258,9 +266,9 @@ void RenderGraph::FreePassResources(RenderGraphPassNode* pass, const CommandBuff
 				.srcAccess = resource.node->barrierState.access,
 				.dstAccess = BarrierAccess::None,
 				.oldLayout = resource.node->barrierState.layout,
-				.newLayout = BarrierLayout::Common
+				.newLayout = BarrierLayout::Undefined
 			});
-			mContext.device->Dispose(mContext.allocator, resource.node->texture);
+			mContext.device->Dispose(mContext.allocator, resource.node->texture, resource.node->barrierState);
 		}
 	}
 	cmd->Barrier(barrier);

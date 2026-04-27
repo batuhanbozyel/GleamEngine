@@ -15,7 +15,8 @@ enum class BarrierStage
 	ComputeShading,
 	RenderTarget,
 	DepthStencil,
-	Copy
+	Copy,
+	BuildRayTracingAccelerationStructure
 };
 
 enum class BarrierAccess
@@ -41,7 +42,9 @@ enum class BarrierLayout
 	DepthStencilRead,
 	DepthStencilWrite,
 	CopySource,
-	CopyDest
+	CopyDest,
+	RayTracingAccelerationStructureRead,
+	RayTracingAccelerationStructureWrite
 };
 
 struct BufferBarrier
@@ -69,6 +72,18 @@ struct BarrierGroup
 {
 	TArray<BufferBarrier> bufferBarriers;
 	TArray<TextureBarrier> textureBarriers;
+};
+
+struct BarrierState
+{
+	BarrierStage stage = BarrierStage::None;
+	BarrierAccess access = BarrierAccess::None;
+	BarrierLayout layout = BarrierLayout::Undefined;
+
+	static BarrierState NonAliased()
+	{
+		return {};
+	}
 };
 
 } // namespace Gleam
