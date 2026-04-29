@@ -271,7 +271,6 @@ GraphicsPipeline GraphicsDevice::CompileGraphicsPipeline(const GraphicsPipelineS
 {
 	GraphicsPipeline pipeline(pipelineDesc);
 	auto vertexShader = CreateShader(pipelineDesc.vertexEntry, ShaderStage::Vertex);
-	auto fragmentShader = CreateShader(pipelineDesc.fragmentEntry, ShaderStage::Fragment);
 
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc{};
 	psoDesc.pRootSignature = static_cast<DirectXDevice*>(this)->mRootSignature;
@@ -280,7 +279,11 @@ GraphicsPipeline GraphicsDevice::CompileGraphicsPipeline(const GraphicsPipelineS
 
 	// Shader stages
 	psoDesc.VS = *static_cast<D3D12_SHADER_BYTECODE*>(vertexShader.GetHandle());
-	psoDesc.PS = *static_cast<D3D12_SHADER_BYTECODE*>(fragmentShader.GetHandle());
+	if (not pipelineDesc.fragmentEntry.empty())
+	{
+		auto fragmentShader = CreateShader(pipelineDesc.fragmentEntry, ShaderStage::Fragment);
+		psoDesc.PS = *static_cast<D3D12_SHADER_BYTECODE*>(fragmentShader.GetHandle());
+	}
 
 	// Input assembly state
 	psoDesc.PrimitiveTopologyType = PrimitiveToplogyToD3D12_PRIMITIVE_TOPOLOGY_TYPE(pipelineDesc.topology);
@@ -348,7 +351,11 @@ GraphicsPipeline GraphicsDevice::CompileGraphicsPipeline(const GraphicsPipelineS
 	DX_CHECK(static_cast<ID3D12Device10*>(mHandle)->CreateGraphicsPipelineState(&psoDesc, __uuidof(ID3D12PipelineState*), &pipeline.mHandle));
 
 	TStringStream ss;
-	ss << "GraphicsPipeline::" << vertexShader.GetEntryPoint() << "_" << fragmentShader.GetEntryPoint();
+	ss << "GraphicsPipeline::" << pipelineDesc.vertexEntry;
+	if (not pipelineDesc.fragmentEntry.empty())
+	{
+		ss << "_" << pipelineDesc.fragmentEntry;
+	}
 
 	TWString pipelineName = ss.str();
 	static_cast<ID3D12PipelineState*>(pipeline.mHandle)->SetName(pipelineName.c_str());

@@ -5,11 +5,11 @@
 #include "SurfaceShading.hlsli"
 #include "Atmosphere/SkyAtmosphereCommon.hlsli"
 
-PUSH_CONSTANT(Gleam::MeshShadingConstants, meshShadingConstants);
+PUSH_CONSTANT(Gleam::MeshShadingConstants, constants);
 
 Gleam::MeshInstanceData LoadInstanceData(uint instanceID)
 {
-	ByteAddressBuffer instanceBuffer = ResourceDescriptorHeap[meshShadingConstants.instanceBuffer];
+	ByteAddressBuffer instanceBuffer = ResourceDescriptorHeap[constants.instanceBuffer];
 	Gleam::MeshInstanceData instance = instanceBuffer.Load<Gleam::MeshInstanceData>(instanceID * sizeof(Gleam::MeshInstanceData));
 
 	ByteAddressBuffer materialBuffer = ResourceDescriptorHeap[instance.materialBuffer];
@@ -22,7 +22,7 @@ float4 main(Gleam::MeshVertexOut IN) : SV_TARGET
 {
 	IN.ddxUV = ddx(IN.uv);
 	IN.ddyUV = ddy(IN.uv);
-	Gleam::MeshInstanceData instance = LoadInstanceData(meshShadingConstants.instanceID);
+	Gleam::MeshInstanceData instance = LoadInstanceData(constants.instanceID);
     Gleam::SurfaceOutput surface = SurfMain(IN);
     surface.roughness = max(surface.roughness, 0.04);
     
@@ -51,19 +51,27 @@ float4 main(Gleam::MeshVertexOut IN) : SV_TARGET
 		light.illuminance = atmosphereUniforms.sunIlluminance;
 	}
 	
+	float shadowVisibility = 1.0f;
+	if (constants.shadowTexture != InvalidResourceIndex)
+	{
+        Texture2D<float> shadowTex = ResourceDescriptorHeap[constants.shadowTexture];
+		uint2 pixelCoord = (uint2)IN.position.xy;
+		shadowVisibility = shadowTex[pixelCoord];
+	}
+
 	float3 color = surface.emission.rgb;
 	color += EvaluateDirectLight(surface,
-								 meshShadingConstants.ggxEssTexture,
-								 meshShadingConstants.ggxEAvgTexture,
+								 constants.ggxEssTexture,
+								 constants.ggxEAvgTexture,
 								 light,
 								 viewDir,
-								 worldNormal);
+								 worldNormal) * shadowVisibility;
 	color += EvaluateIndirectLight(surface,
-								   meshShadingConstants.brdfTexture,
-								   meshShadingConstants.ggxEssTexture,
-								   meshShadingConstants.ggxEAvgTexture,
-								   meshShadingConstants.diffuseReflectionTexture,
-								   meshShadingConstants.specularReflectionTexture,
+								   constants.brdfTexture,
+								   constants.ggxEssTexture,
+								   constants.ggxEAvgTexture,
+								   constants.diffuseReflectionTexture,
+								   constants.specularReflectionTexture,
 								   viewDir,
 								   worldNormal);
 	return float4(color, surface.albedo.a);

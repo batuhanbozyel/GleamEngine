@@ -18,8 +18,10 @@
 
 #include "Renderers/PathTracer.h"
 #include "Renderers/BRDFRenderer.h"
+#include "Renderers/DepthPrepass.h"
 #include "Renderers/SkyAtmosphere.h"
 #include "Renderers/WorldRenderer.h"
+#include "Renderers/SunShadowRenderer.h"
 #include "Renderers/PostProcessStack.h"
 #include "Renderers/ReflectionProbeRenderer.h"
 
@@ -56,6 +58,8 @@ void RenderSystem::Initialize(Engine* engine)
 		mRenderPipelines[(uint32_t)RenderPath::Default] = new RenderPipeline(context);
 		mRenderPipelines[(uint32_t)RenderPath::Default]->AddSharedRenderer(brdfRenderer);
 		mRenderPipelines[(uint32_t)RenderPath::Default]->AddRenderer<ReflectionProbeRenderer>();
+		mRenderPipelines[(uint32_t)RenderPath::Default]->AddRenderer<DepthPrepass>();
+		mRenderPipelines[(uint32_t)RenderPath::Default]->AddRenderer<SunShadowRenderer>();
 		mRenderPipelines[(uint32_t)RenderPath::Default]->AddRenderer<WorldRenderer>();
 		mRenderPipelines[(uint32_t)RenderPath::Default]->AddRenderer<SkyAtmosphereRenderer>();
 		mRenderPipelines[(uint32_t)RenderPath::Default]->AddSharedRenderer(postProcessStack);

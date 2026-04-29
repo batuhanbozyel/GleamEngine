@@ -49,7 +49,10 @@ GraphicsPipelineHandle GraphicsDevice::CreateGraphicsPipeline(const GraphicsPipe
 
 	auto pipeline = CompileGraphicsPipeline(pipelineDesc);
 	mShaderPipelineReferences[pipelineDesc.vertexEntry].insert(handle);
-	mShaderPipelineReferences[pipelineDesc.fragmentEntry].insert(handle);
+	if (not pipelineDesc.fragmentEntry.empty())
+	{
+		mShaderPipelineReferences[pipelineDesc.fragmentEntry].insert(handle);
+	}
 	mGraphicsPipelineCache.emplace_hint(mGraphicsPipelineCache.end(), handle, pipeline);
 	return handle;
 }

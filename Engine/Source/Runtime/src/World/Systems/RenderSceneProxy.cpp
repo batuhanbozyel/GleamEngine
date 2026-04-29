@@ -20,7 +20,9 @@
 #include "Renderer/Material/MaterialInstance.h"
 
 #include "Renderer/Renderers/PathTracer.h"
+#include "Renderer/Renderers/DepthPrepass.h"
 #include "Renderer/Renderers/WorldRenderer.h"
+#include "Renderer/Renderers/SunShadowRenderer.h"
 
 using namespace Gleam;
 
@@ -62,14 +64,20 @@ void RenderSceneProxy::Tick(World* world)
 
 				auto materialDescriptor = assetManager->LoadDescriptor<MaterialDescriptor>(material);
 
-				auto worldRenderer = renderSystem->GetRenderPipeline(RenderPath::Default)->GetRenderer<WorldRenderer>();
-				worldRenderer->RegisterShadingPipeline(batch.material);
-
 				auto rayTracingScene = renderSystem->GetRayTracingScene();
 				rayTracingScene->RegisterShadingPipeline(batch.material);
 
+				auto depthPrepass = renderSystem->GetRenderPipeline(RenderPath::Default)->GetRenderer<DepthPrepass>();
+				depthPrepass->RegisterShadingPipeline(batch.material);
+
+				auto worldRenderer = renderSystem->GetRenderPipeline(RenderPath::Default)->GetRenderer<WorldRenderer>();
+				worldRenderer->RegisterShadingPipeline(batch.material);
+
 				auto pathTracer = renderSystem->GetRenderPipeline(RenderPath::PathTracing)->GetRenderer<PathTracer>();
 				pathTracer->RegisterShadingPipeline(batch.material);
+
+				auto sunShadowRenderer = renderSystem->GetRenderPipeline(RenderPath::Default)->GetRenderer<SunShadowRenderer>();
+				sunShadowRenderer->RegisterShadingPipeline(batch.material);
 			}
 			++batch.numInstances;
 		}

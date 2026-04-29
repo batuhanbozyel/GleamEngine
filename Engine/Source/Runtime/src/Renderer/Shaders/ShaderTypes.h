@@ -87,6 +87,14 @@ struct TonemapUniforms
 	ShaderResourceIndex sceneColor;
 };
 
+struct DepthPrepassConstants
+{
+	ShaderResourceIndex instanceBuffer;
+	uint32_t instanceID;
+	float pad0;
+	float pad1;
+};
+
 struct MeshShadingConstants
 {
 	ShaderResourceIndex instanceBuffer;
@@ -96,8 +104,8 @@ struct MeshShadingConstants
 
 	ShaderResourceIndex ggxEssTexture;
 	ShaderResourceIndex ggxEAvgTexture;
+	ShaderResourceIndex shadowTexture;
 	uint32_t instanceID;
-	float pad0;
 };
 
 struct MeshInstanceData
@@ -182,6 +190,14 @@ struct RayPayload
 struct ShadowPayload
 {
 	float visibility;
+};
+
+struct RayTracedSunShadowConstants
+{
+	ShaderResourceIndex accelerationStructure;
+	ShaderResourceIndex depthTexture;
+	UnorderedAccessIndex shadowMask;
+	uint32_t frameIndex;
 };
 
 struct PathTracerConstants

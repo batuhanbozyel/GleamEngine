@@ -4,6 +4,7 @@
 
 #include "Renderer/CommandBuffer.h"
 #include "Renderer/GraphicsDevice.h"
+#include "Renderer/Renderers/DepthPrepass.h"
 #include "Renderer/Renderers/WorldRenderer.h"
 
 #include "World/World.h"
@@ -68,9 +69,10 @@ void SkyAtmosphereRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlack
 	};
 	graph.AddComputePass<SkyAtmospherePassData>("SkyAtmosphere::Render", [&](RenderGraphBuilder& builder, SkyAtmospherePassData& passData)
 	{
-		auto& worldData = blackboard.Get<WorldRenderingData>();
+		const auto& worldData = blackboard.Get<WorldRenderingData>();
+		const auto& depthPrepassData = blackboard.Get<DepthPrepassData>();
 		passData.sceneColor = builder.WriteTexture(worldData.colorTarget);
-		passData.sceneDepth = builder.ReadTexture(worldData.depthTarget);
+		passData.sceneDepth = builder.ReadTexture(depthPrepassData.depthTarget);
 
 		passData.transmittanceLut = builder.ReadTexture(sceneData.atmosphere.transmittanceLut);
 		passData.multiScatterLut = builder.ReadTexture(sceneData.atmosphere.multiScatterLut);

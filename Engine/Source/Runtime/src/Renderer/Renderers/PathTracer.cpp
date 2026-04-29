@@ -147,13 +147,21 @@ void PathTracer::RegisterShadingPipeline(const Material* material)
 
 	if (not mHitGroupTable.Contains(hash, RayType::PrimaryRay))
 	{
-		mHitGroupTable.AddPrimaryRay(hash, { .name = materialDesc.surfaceShader, .closestHitEntry = materialDesc.surfaceShader + "ClosestHit", .anyHitEntry = materialDesc.surfaceShader + "AnyHit" });
+		mHitGroupTable.AddPrimaryRay(hash, { 
+			.name = materialDesc.surfaceShader, 
+			.closestHitEntry = materialDesc.surfaceShader + "ClosestHit", 
+			.anyHitEntry = materialDesc.surfaceShader + "AnyHit" 
+		});
 		mPipelineDirty = true;
 	}
 
 	if (not mHitGroupTable.Contains(hash, RayType::ShadowRay))
 	{
-		mHitGroupTable.AddShadowRay(hash, { .name = materialDesc.surfaceShader, .closestHitEntry = {}, .anyHitEntry = materialDesc.surfaceShader + "ShadowAnyHit" });
+		mHitGroupTable.AddShadowRay(hash, { 
+			.name = materialDesc.surfaceShader, 
+			.closestHitEntry = "", 
+			.anyHitEntry = materialDesc.surfaceShader + "ShadowAnyHit"
+		});
 		mPipelineDirty = true;
 	}
 }

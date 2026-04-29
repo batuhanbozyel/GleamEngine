@@ -675,15 +675,17 @@ GraphicsPipeline GraphicsDevice::CompileGraphicsPipeline(const GraphicsPipelineS
     
     id<MetalGraphicsPipeline> mtlPipeline = pipeline.mHandle;
     auto vertexShader = CreateShader(pipelineDesc.vertexEntry, ShaderStage::Vertex);
-    auto fragmentShader = CreateShader(pipelineDesc.fragmentEntry, ShaderStage::Fragment);
-    
     id<MetalFunction> vertexFunction = vertexShader.GetHandle();
-    id<MetalFunction> fragmentFunction = fragmentShader.GetHandle();
-    
+
     MTLRenderPipelineDescriptor* pipelineDescriptor = [MTLRenderPipelineDescriptor new];
     pipelineDescriptor.rasterSampleCount = 1;
     pipelineDescriptor.vertexFunction = vertexFunction.handle;
-    pipelineDescriptor.fragmentFunction = fragmentFunction.handle;
+    if (not pipelineDesc.fragmentEntry.empty())
+    {
+        auto fragmentShader = CreateShader(pipelineDesc.fragmentEntry, ShaderStage::Fragment);
+        id<MetalFunction> fragmentFunction = fragmentShader.GetHandle();
+        pipelineDescriptor.fragmentFunction = fragmentFunction.handle;
+    }
     pipelineDescriptor.alphaToCoverageEnabled = pipelineDesc.alphaToCoverage;
     pipelineDescriptor.inputPrimitiveTopology = PrimitiveTopologyToMTLPrimitiveTopologyClass(pipelineDesc.topology);
     for (uint32_t i = 0; i < pipelineDesc.colorFormats.size(); i++)
@@ -765,15 +767,10 @@ RayTracingPipeline GraphicsDevice::CompileRayTracingPipeline(const RayTracingPip
     uint64_t closestHitMask = 0;
     uint64_t anyHitMask = 0;
 
-    NSMutableArray<MetalHitGroupImpl*>* hitGroups = [NSMutableArray array];
+    NSMutableArray<MetalHitGroupImpl*>* hitGroups = [NSMutableArray arrayWithCapacity:pipelineDesc.hitGroups.size()];
     for (const auto& hitGroup : pipelineDesc.hitGroups)
     {
         MetalHitGroupImpl* mtlHitGroup = [[MetalHitGroupImpl alloc] init];
-        if (hitGroup.name.empty())
-        {
-            continue;
-        }
-
         if (not hitGroup.closestHitEntry.empty())
         {
             auto shader = CreateShader(hitGroup.closestHitEntry, ShaderStage::ClosestHit);
@@ -829,7 +826,7 @@ RayTracingPipeline GraphicsDevice::CompileRayTracingPipeline(const RayTracingPip
     NSMutableArray<id<MTLFunction>>* intersectionFunctions = [NSMutableArray array];
 
     // Per-hit-group IFT slot: NSNotFound means opaque triangle (no custom intersection)
-    TArray<NSUInteger> intersectionFunctionSlots(hitGroups.count, NSNotFound);
+    TArray<NSUInteger> intersectionFunctionSlots(pipelineDesc.hitGroups.size(), NSNotFound);
 
     for (NSUInteger i = 0; i < hitGroups.count; ++i)
     {
@@ -891,7 +888,7 @@ RayTracingPipeline GraphicsDevice::CompileRayTracingPipeline(const RayTracingPip
             
             [intersectionFunctions addObject:function.handle];
         }
-        else // if (hitGroup.intersection)
+        else if (hitGroup.intersection)
         {
             auto compiler = CreateCompiler(hitGroupDesc.intersectionEntry, device->GetGlobalRootSignature());
             IRCompilerSetRayTracingPipelineConfiguration(compiler, rtConfig);

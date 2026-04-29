@@ -179,9 +179,26 @@ bool MaterialSource::Import(const Gleam::Path& path, const ImportSettings& setti
 				}
 			}
 
-			// Forward shader
+			// Depth prepass
 			{
-				Gleam::Path dxilShader = Gleam::Globals::BuiltinAssetsDirectory / "Shaders" / (descriptor.surfaceShader + "Forward");
+				Gleam::Path dxilShader = Gleam::Globals::BuiltinAssetsDirectory / "Shaders" / (descriptor.surfaceShader + "DepthPrepass");
+				dxilShader.Concat(".dxil");
+				if (Gleam::Filesystem::Exists(dxilShader))
+				{
+					Gleam::Filesystem::Remove(dxilShader);
+				}
+
+				Gleam::TStringStream cmd;
+				cmd << PYTHON_INTERPRETER << " ";
+				cmd << Gleam::Globals::StartupDirectory / "Tools/CompileShaders.py";
+				cmd << " -f " << generatedPath;
+				cmd << " -i " << "DepthPrepass.hlsli";
+				cmd << " --entry main=" << descriptor.surfaceShader + "DepthPrepass";
+			}
+
+			// Raster shading
+			{
+				Gleam::Path dxilShader = Gleam::Globals::BuiltinAssetsDirectory / "Shaders" / (descriptor.surfaceShader + "Shading");
 				dxilShader.Concat(".dxil");
 				if (Gleam::Filesystem::Exists(dxilShader))
 				{
@@ -193,7 +210,7 @@ bool MaterialSource::Import(const Gleam::Path& path, const ImportSettings& setti
 				cmd << Gleam::Globals::StartupDirectory / "Tools/CompileShaders.py";
 				cmd << " -f " << generatedPath;
 				cmd << " -i " << "MeshShading.hlsli";
-				cmd << " --entry main=" << descriptor.surfaceShader << "Forward";
+				cmd << " --entry main=" << descriptor.surfaceShader << "Shading";
 			#ifdef GDEBUG
 				cmd << " --debug";
 			#endif

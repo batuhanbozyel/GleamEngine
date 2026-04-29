@@ -23,6 +23,7 @@ struct WorldRenderingData
 	TextureHandle ggxEAvgLut = TextureHandle();
 	TextureHandle specularReflection = TextureHandle();
 	TextureHandle diffuseReflection = TextureHandle();
+	TextureHandle shadowTexture = TextureHandle();
 };
 
 class WorldRenderer : public IRenderer
