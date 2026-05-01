@@ -83,7 +83,7 @@ void DepthPrepass::RegisterShadingPipeline(const Material* material)
 	if (it == mPipelines.end())
 	{
 		GraphicsPipelineStateDescriptor pipelineDesc = {
-			.blendState = materialDesc.blendState,
+			.blendState = {},
 			.depthState = materialDesc.depthState,
 			.stencilState = materialDesc.stencilState,
 			.cullingMode = materialDesc.cullingMode,

@@ -54,9 +54,11 @@ float4 main(Gleam::MeshVertexOut IN) : SV_TARGET
 	float shadowVisibility = 1.0f;
 	if (constants.shadowTexture != InvalidResourceIndex)
 	{
-        Texture2D<float> shadowTex = ResourceDescriptorHeap[constants.shadowTexture];
+		Texture2D<uint> shadowTex = ResourceDescriptorHeap[constants.shadowTexture];
 		uint2 pixelCoord = (uint2)IN.position.xy;
-		shadowVisibility = shadowTex[pixelCoord];
+		uint2 tileCoord  = pixelCoord / uint2(SHADOW_TILE_WIDTH, SHADOW_TILE_HEIGHT);
+		uint  bitIndex   = (pixelCoord.y % SHADOW_TILE_HEIGHT) * SHADOW_TILE_WIDTH + (pixelCoord.x % SHADOW_TILE_WIDTH);
+		shadowVisibility = (float)((shadowTex[tileCoord] >> bitIndex) & 1u);
 	}
 
 	float3 color = surface.emission.rgb;

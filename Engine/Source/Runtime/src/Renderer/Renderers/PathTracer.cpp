@@ -118,7 +118,7 @@ void PathTracer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blac
 		constants.samplesPerPixel = mSettings.samplesPerPixel;
 		
 		cmd->BindRayTracingPipeline(mPathTracingPipeline);
-		cmd->SetPushConstant(constants);
+		cmd->SetConstantBuffer(constants, PATH_TRACER_CONSTANTS_BINDING_SLOT);
 		cmd->SetConstantBuffer(sceneData.camera.uniforms, CAMERA_UNIFORMS_BINDING_SLOT);
 		cmd->SetConstantBuffer(sceneData.atmosphere.params, SKY_ATMOSPHERE_PARAMS_BINDING_SLOT);
 		cmd->SetConstantBuffer(sceneData.atmosphere.uniforms, SKY_ATMOSPHERE_COMMON_UNIFORMS_BINDING_SLOT);

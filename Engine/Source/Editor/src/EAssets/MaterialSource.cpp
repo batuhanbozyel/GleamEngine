@@ -194,6 +194,12 @@ bool MaterialSource::Import(const Gleam::Path& path, const ImportSettings& setti
 				cmd << " -f " << generatedPath;
 				cmd << " -i " << "DepthPrepass.hlsli";
 				cmd << " --entry main=" << descriptor.surfaceShader + "DepthPrepass";
+
+				if (ExecuteCommand(cmd.str()) != 0)
+				{
+					Gleam::Filesystem::Remove(generatedPath);
+					return false;
+				}
 			}
 
 			// Raster shading

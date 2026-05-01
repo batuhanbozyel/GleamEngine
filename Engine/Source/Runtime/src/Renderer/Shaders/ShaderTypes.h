@@ -3,6 +3,9 @@
 
 #include "SharedTypes.h"
 
+#define SHADOW_TILE_WIDTH  8u
+#define SHADOW_TILE_HEIGHT 4u
+
 namespace Gleam {
 
 #ifndef __cplusplus
@@ -194,23 +197,10 @@ struct ShadowPayload
 
 struct RayTracedSunShadowConstants
 {
-	ShaderResourceIndex accelerationStructure;
 	ShaderResourceIndex depthTexture;
-	UnorderedAccessIndex shadowMask;
-	uint32_t frameIndex;
-};
-
-struct PathTracerConstants
-{
-	ShaderResourceIndex accelerationStructure;
-	ShaderResourceIndex instanceBuffer;
-	UnorderedAccessIndex colorTarget;
-	uint32_t frameIndex;
-
-	ShaderResourceIndex ggxEssTexture;
-	ShaderResourceIndex ggxEAvgTexture;
-	uint32_t maxRayRecursionDepth;
-	uint32_t samplesPerPixel;
+	float pad0;
+	float pad1;
+	float pad2;
 };
 
 } // namespace Gleam

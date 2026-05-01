@@ -119,10 +119,26 @@ void WorldRenderer::RegisterShadingPipeline(const Material* material)
 	auto it = mShadingPipelines.find(pipelineHash);
 	if (it == mShadingPipelines.end())
 	{
+		DepthState depthState;
+		StencilState stencilState;
+		if (materialDesc.depthState.writeEnabled)
+		{
+			// If depth writing is enabled,
+			// we assume this material is opaque and depth writing is done via depth prepass.
+			// Otherwise, we need to use the depth/stencil state specified in the material descriptor for correct rendering of transparent materials.
+			depthState = DepthState{ .compareFunction = CompareFunction::Equal, .writeEnabled = false };
+			stencilState = StencilState{ .enabled = false };
+		}
+		else
+		{
+			depthState = materialDesc.depthState;
+			stencilState = materialDesc.stencilState;
+		}
+
 		GraphicsPipelineStateDescriptor pipelineDesc = {
 			.blendState = materialDesc.blendState,
-			.depthState = { .compareFunction = CompareFunction::Equal, .writeEnabled = false },
-			.stencilState = { .enabled = false },
+			.depthState = depthState,
+			.stencilState = stencilState,
 			.cullingMode = materialDesc.cullingMode,
 			.topology = PrimitiveTopology::Triangles,
 			.alphaToCoverage = false,

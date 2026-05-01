@@ -66,8 +66,11 @@ void SunShadowRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboar
 	{
 		RenderTextureDescriptor shadowDesc;
 		shadowDesc.name = "SunShadowMask";
-		shadowDesc.size = sceneTargetDescriptor.size;
-		shadowDesc.format = TextureFormat::R16_SFloat;
+		shadowDesc.size = Size{
+			(float)Math::DivideRoundingUp((uint32_t)sceneTargetDescriptor.size.width,  SHADOW_TILE_WIDTH),
+			(float)Math::DivideRoundingUp((uint32_t)sceneTargetDescriptor.size.height, SHADOW_TILE_HEIGHT)
+		};
+		shadowDesc.format = TextureFormat::R32_UInt;
 		passData.shadowMask = builder.WriteTexture(builder.CreateTexture(shadowDesc));
 		passData.depthTarget = builder.ReadTexture(depthPrepassData.depthTarget);
 
@@ -80,14 +83,22 @@ void SunShadowRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboar
 			return;
 		}
 
+		PathTracerConstants pathTraceConstants = {};
+		pathTraceConstants.instanceBuffer = sceneData.sceneProxy->GetGlobalInstanceBuffer().GetResourceView();
+		pathTraceConstants.accelerationStructure = sceneData.accelerationStructure;
+		pathTraceConstants.colorTarget = passData.shadowMask;
+		pathTraceConstants.frameIndex = mFrameIndex++;
+		pathTraceConstants.ggxEssTexture = InvalidResourceIndex;
+		pathTraceConstants.ggxEAvgTexture = InvalidResourceIndex;
+		pathTraceConstants.maxRayRecursionDepth = 2;
+		pathTraceConstants.samplesPerPixel = 1;
+
 		RayTracedSunShadowConstants constants = {};
-		constants.accelerationStructure = sceneData.accelerationStructure;
 		constants.depthTexture = passData.depthTarget;
-		constants.shadowMask = passData.shadowMask;
-		constants.frameIndex = mFrameIndex++;
 
 		cmd->BindRayTracingPipeline(mRayTracedShadowPipeline);
 		cmd->SetPushConstant(constants);
+		cmd->SetConstantBuffer(pathTraceConstants, PATH_TRACER_CONSTANTS_BINDING_SLOT);
 		cmd->SetConstantBuffer(sceneData.camera.uniforms, CAMERA_UNIFORMS_BINDING_SLOT);
 		cmd->SetConstantBuffer(sceneData.atmosphere.uniforms, SKY_ATMOSPHERE_COMMON_UNIFORMS_BINDING_SLOT);
 		cmd->DispatchRays((uint32_t)sceneData.camera.uniforms.resolution.x, (uint32_t)sceneData.camera.uniforms.resolution.y, 1u);
@@ -99,7 +110,7 @@ void SunShadowRenderer::RegisterShadingPipeline(const Material* material)
 	const auto& materialDesc = material->GetDescriptor();
 	auto hash = material->GetSurfaceShaderHash();
 
-	if (not mHitGroupTable.Contains(hash, RayType::ShadowRay))
+	if (not mHitGroupTable.Contains(hash, RayType::PrimaryRay))
 	{
 		mHitGroupTable.AddPrimaryRay(hash, {
 			.name = materialDesc.surfaceShader,
