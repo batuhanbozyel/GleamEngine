@@ -16,6 +16,7 @@ struct ImGuiPassData;
 
 namespace GEditor {
 
+class InfiniteGridRenderer;
 class EditorCameraController;
 
 class WorldViewport final : public View
@@ -23,6 +24,8 @@ class WorldViewport final : public View
 public:
     
 	virtual void OnCreate(Gleam::World* world) override;
+
+	virtual void OnDestroy(Gleam::World* world) override;
     
     virtual void Update() override;
     
@@ -45,6 +48,8 @@ private:
 
 	bool mViewportSizeChanged = false;
     
+	InfiniteGridRenderer* mGridRenderer = nullptr;
+
     EditorCameraController* mCameraController = nullptr;
 
 	Gleam::EntityHandle mCamera = Gleam::InvalidEntity;

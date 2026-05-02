@@ -21,6 +21,7 @@
 namespace Gleam {
 
 class World;
+class Material;
 class RenderSystem;
 class RenderSurface;
 class RenderPipeline;
@@ -79,6 +80,8 @@ protected:
 	virtual void OnDestroy(const RenderContext& context) {}
 
 	virtual void AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard) = 0;
+
+	virtual void RegisterShadingPipeline(const Material* material) {}
 
 };
 

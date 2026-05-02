@@ -61,23 +61,7 @@ void RenderSceneProxy::Tick(World* world)
 			if (batch.material == nullptr)
 			{
 				batch.material = assetManager->Get<Material>(material);
-
-				auto materialDescriptor = assetManager->LoadDescriptor<MaterialDescriptor>(material);
-
-				auto rayTracingScene = renderSystem->GetRayTracingScene();
-				rayTracingScene->RegisterShadingPipeline(batch.material);
-
-				auto depthPrepass = renderSystem->GetRenderPipeline(RenderPath::Default)->GetRenderer<DepthPrepass>();
-				depthPrepass->RegisterShadingPipeline(batch.material);
-
-				auto worldRenderer = renderSystem->GetRenderPipeline(RenderPath::Default)->GetRenderer<WorldRenderer>();
-				worldRenderer->RegisterShadingPipeline(batch.material);
-
-				auto pathTracer = renderSystem->GetRenderPipeline(RenderPath::PathTracing)->GetRenderer<PathTracer>();
-				pathTracer->RegisterShadingPipeline(batch.material);
-
-				auto sunShadowRenderer = renderSystem->GetRenderPipeline(RenderPath::Default)->GetRenderer<SunShadowRenderer>();
-				sunShadowRenderer->RegisterShadingPipeline(batch.material);
+				renderSystem->RegisterShadingPipelines(batch.material);
 			}
 			++batch.numInstances;
 		}
@@ -121,6 +105,7 @@ void RenderSceneProxy::Tick(World* world)
 			instance.materialBuffer = batch.material->GetBuffer().GetResourceView();
 			instance.materialID = materialInstance->GetID();
 			instance.transform = entity.GetWorldTransform();
+			instance.previousTransform = instance.transform; // TODO: store previous transform
 			instance.baseVertex = submesh.baseVertex;
 			instance.indexCount = submesh.indexCount;
 			instance.firstIndex = submesh.firstIndex;

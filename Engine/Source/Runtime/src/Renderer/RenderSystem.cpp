@@ -19,6 +19,7 @@
 #include "Renderers/PathTracer.h"
 #include "Renderers/BRDFRenderer.h"
 #include "Renderers/DepthPrepass.h"
+#include "Renderers/MotionVectorRenderer.h"
 #include "Renderers/SkyAtmosphere.h"
 #include "Renderers/WorldRenderer.h"
 #include "Renderers/SunShadowRenderer.h"
@@ -51,6 +52,10 @@ void RenderSystem::Initialize(Engine* engine)
 		brdfRenderer->OnCreate(context);
 		mSharedRenderers.push_back(brdfRenderer);
 
+		auto depthPrepass = new DepthPrepass();
+		depthPrepass->OnCreate(context);
+		mSharedRenderers.push_back(depthPrepass);
+
 		auto postProcessStack = new PostProcessStack();
 		postProcessStack->OnCreate(context);
 		mSharedRenderers.push_back(postProcessStack);
@@ -58,7 +63,8 @@ void RenderSystem::Initialize(Engine* engine)
 		mRenderPipelines[(uint32_t)RenderPath::Default] = new RenderPipeline(context);
 		mRenderPipelines[(uint32_t)RenderPath::Default]->AddSharedRenderer(brdfRenderer);
 		mRenderPipelines[(uint32_t)RenderPath::Default]->AddRenderer<ReflectionProbeRenderer>();
-		mRenderPipelines[(uint32_t)RenderPath::Default]->AddRenderer<DepthPrepass>();
+		mRenderPipelines[(uint32_t)RenderPath::Default]->AddSharedRenderer(depthPrepass);
+		mRenderPipelines[(uint32_t)RenderPath::Default]->AddRenderer<MotionVectorRenderer>();
 		mRenderPipelines[(uint32_t)RenderPath::Default]->AddRenderer<SunShadowRenderer>();
 		mRenderPipelines[(uint32_t)RenderPath::Default]->AddRenderer<WorldRenderer>();
 		mRenderPipelines[(uint32_t)RenderPath::Default]->AddRenderer<SkyAtmosphereRenderer>();
@@ -66,6 +72,7 @@ void RenderSystem::Initialize(Engine* engine)
 		
 		mRenderPipelines[(uint32_t)RenderPath::PathTracing] = new RenderPipeline(context);
 		mRenderPipelines[(uint32_t)RenderPath::PathTracing]->AddSharedRenderer(brdfRenderer);
+		mRenderPipelines[(uint32_t)RenderPath::PathTracing]->AddSharedRenderer(depthPrepass);
 		mRenderPipelines[(uint32_t)RenderPath::PathTracing]->AddRenderer<PathTracer>();
 		mRenderPipelines[(uint32_t)RenderPath::PathTracing]->AddSharedRenderer(postProcessStack);
 	}
@@ -125,6 +132,7 @@ void RenderSystem::PreRender(const World* world)
 	}
 
 	// update active camera
+	mPrevCamera = mActiveCamera;
 	mActiveCamera = InvalidEntity;
 	world->GetEntityManager().ForEach<Entity, Camera>([&](const Entity& entity, const Camera& component)
 	{
@@ -202,6 +210,11 @@ void RenderSystem::Render(const World* world)
 		Entity atmosphereEntity = mSkyAtmosphereEntity != InvalidEntity ? world->GetEntityManager().GetComponent<Entity>(mSkyAtmosphereEntity) : Entity();
 		sceneData.atmosphere = SetupSkyAtmosphereRenderData(graph, atmosphereEntity);
 		sceneData.camera = SetupCameraRenderData(graph, cameraEntity);
+		if (mPrevCamera != mActiveCamera)
+		{
+			mPrevCameraViewProjection = sceneData.camera.uniforms.viewProjectionMatrix;
+			sceneData.camera.uniforms.prevViewProjectionMatrix = mPrevCameraViewProjection;
+		}
 
 		auto defaultPipeline = GetRenderPipeline(RenderPath::Default);
 		if (auto skyAtmosphereRenderer = defaultPipeline->GetRenderer<SkyAtmosphereRenderer>(); skyAtmosphereRenderer)
@@ -239,6 +252,8 @@ void RenderSystem::Render(const World* world)
 		mRayTracingScene->ReleaseAccelerationStructure();
 
 		mSwapchain->Present(cmd);
+
+		mPrevCameraViewProjection = sceneData.camera.uniforms.viewProjectionMatrix;
     }
 }
 
@@ -410,6 +425,18 @@ void RenderSystem::RecompileShader(const TString& entryPoint)
 	}
 }
 
+void RenderSystem::RegisterShadingPipelines(const Material* material)
+{
+	mRayTracingScene->RegisterShadingPipeline(material);
+	for (auto pipeline : mRenderPipelines)
+	{
+		for (auto renderer : *pipeline)
+		{
+			renderer->RegisterShadingPipeline(material);
+		}
+	}
+}
+
 CameraRenderData RenderSystem::SetupCameraRenderData(RenderGraph& graph, const Entity& entity) const
 {
 	CameraRenderData camera = {};
@@ -427,6 +454,7 @@ CameraRenderData RenderSystem::SetupCameraRenderData(RenderGraph& graph, const E
 		camera.uniforms.projectionMatrix = Float4x4::Ortho(camera.uniforms.resolution.x, camera.uniforms.resolution.y, cameraComponent.nearPlane, cameraComponent.farPlane);
 	}
 	camera.uniforms.viewProjectionMatrix = camera.uniforms.projectionMatrix * camera.uniforms.viewMatrix;
+	camera.uniforms.prevViewProjectionMatrix = mPrevCameraViewProjection;
 	camera.uniforms.invViewMatrix = Math::Inverse(camera.uniforms.viewMatrix);
 	camera.uniforms.invProjectionMatrix = Math::Inverse(camera.uniforms.projectionMatrix);
 	camera.uniforms.invViewProjectionMatrix = Math::Inverse(camera.uniforms.viewProjectionMatrix);

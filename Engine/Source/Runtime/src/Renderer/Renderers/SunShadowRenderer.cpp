@@ -88,6 +88,7 @@ void SunShadowRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboar
 		pathTraceConstants.accelerationStructure = sceneData.accelerationStructure;
 		pathTraceConstants.colorTarget = passData.shadowMask;
 		pathTraceConstants.frameIndex = mFrameIndex++;
+		pathTraceConstants.sceneTarget = InvalidResourceIndex;
 		pathTraceConstants.ggxEssTexture = InvalidResourceIndex;
 		pathTraceConstants.ggxEAvgTexture = InvalidResourceIndex;
 		pathTraceConstants.maxRayRecursionDepth = 2;

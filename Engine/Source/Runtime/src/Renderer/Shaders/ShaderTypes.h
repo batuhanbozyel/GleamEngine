@@ -98,6 +98,14 @@ struct DepthPrepassConstants
 	float pad1;
 };
 
+struct MotionVectorConstants
+{
+	ShaderResourceIndex instanceBuffer;
+	uint32_t instanceID;
+	float pad0;
+	float pad1;
+};
+
 struct MeshShadingConstants
 {
 	ShaderResourceIndex instanceBuffer;
@@ -114,6 +122,7 @@ struct MeshShadingConstants
 struct MeshInstanceData
 {
 	float4x4 transform;
+	float4x4 previousTransform;
 
 	ShaderResourceIndex positionBuffer;
 	ShaderResourceIndex interleavedBuffer;

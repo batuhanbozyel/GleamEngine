@@ -85,6 +85,9 @@ void pathTraceRayGen()
         float weight = 1.0 / float(pathTraceConstants.frameIndex + 1);
         colorTarget[pixelCoord] = float4(lerp(prev, accumRadiance, weight), 1.0);
     }
+    
+    RWTexture2D<float4> sceneTarget = ResourceDescriptorHeap[pathTraceConstants.sceneTarget];
+    sceneTarget[pixelCoord] = colorTarget[pixelCoord];
 }
 
 [shader("miss")]

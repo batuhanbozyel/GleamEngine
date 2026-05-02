@@ -7,6 +7,7 @@
 namespace Gleam {
 
 class World;
+class Material;
 class Swapchain;
 class IRenderer;
 class RenderGraph;
@@ -79,6 +80,8 @@ public:
 	void RecompileShader(const TString& entryPoint);
 
 	RenderContext GetRenderContext() const;
+
+	void RegisterShadingPipelines(const Material* material);
     
 private:
 
@@ -95,6 +98,8 @@ private:
 	SkyAtmosphereParameters mAtmosphereParams = {};
 	EntityHandle mSkyAtmosphereEntity = InvalidEntity;
 	EntityHandle mActiveCamera = InvalidEntity;
+	EntityHandle mPrevCamera = InvalidEntity;
+	float4x4 mPrevCameraViewProjection = {};
 
 	Engine* mEngine;
 	

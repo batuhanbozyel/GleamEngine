@@ -30,6 +30,7 @@ struct CameraUniforms
 	float4x4 viewMatrix;
 	float4x4 projectionMatrix;
 	float4x4 viewProjectionMatrix;
+	float4x4 prevViewProjectionMatrix;
 	float4x4 invViewMatrix;
 	float4x4 invProjectionMatrix;
 	float4x4 invViewProjectionMatrix;
@@ -46,12 +47,17 @@ struct PathTracerConstants
 	ShaderResourceIndex accelerationStructure;
 	ShaderResourceIndex instanceBuffer;
 	UnorderedAccessIndex colorTarget;
-	uint32_t frameIndex;
+	UnorderedAccessIndex sceneTarget;
 
 	ShaderResourceIndex ggxEssTexture;
 	ShaderResourceIndex ggxEAvgTexture;
 	uint32_t maxRayRecursionDepth;
 	uint32_t samplesPerPixel;
+
+	uint32_t frameIndex;
+	float pad0;
+	float pad1;
+	float pad2;
 };
 
 } // namespace Gleam

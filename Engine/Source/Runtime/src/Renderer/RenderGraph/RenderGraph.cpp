@@ -9,7 +9,9 @@ using namespace Gleam;
 
 static AttachmentLoadAction GetLoadActionForRenderTexture(const RenderGraphTextureNode* node, RenderGraphPassNode* pass)
 {
-    if (node->creator == pass || !node->transient)
+    bool isFirstUse = node->creator == pass ||
+                      (not node->transient && (node->producers.empty() || node->producers.front() == pass));
+    if (isFirstUse)
     {
         return node->clearBuffer ? AttachmentLoadAction::Clear : AttachmentLoadAction::DontCare;
     }

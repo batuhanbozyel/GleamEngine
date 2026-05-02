@@ -32,7 +32,11 @@ void WorldViewport::OnCreate(Gleam::World* world)
     mViewportSize = Gleam::Globals::Engine->GetResolution();
 	
 	auto renderSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::RenderSystem>();
-	renderSystem->GetRenderPipeline(Gleam::RenderPath::Default)->AddRenderer<InfiniteGridRenderer>();
+	mGridRenderer = new InfiniteGridRenderer();
+	mGridRenderer->OnCreate(renderSystem->GetRenderContext());
+
+	renderSystem->GetRenderPipeline(Gleam::RenderPath::Default)->AddSharedRenderer(mGridRenderer);
+	renderSystem->GetRenderPipeline(Gleam::RenderPath::PathTracing)->AddSharedRenderer(mGridRenderer);
 
 	mEditWorld->GetEntityManager().ForEach<Gleam::Entity, Gleam::Camera>([&](const Gleam::Entity& entity, const Gleam::Camera& camera)
 	{
@@ -44,6 +48,14 @@ void WorldViewport::OnCreate(Gleam::World* world)
 
 	mCameraController = mEditWorld->AddSystem<EditorCameraController>(mCamera);
     Resize(mEditWorld->GetEntityManager(), mViewportSize);
+}
+
+void WorldViewport::OnDestroy(Gleam::World* world)
+{
+	auto renderSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::RenderSystem>();
+	renderSystem->GetRenderPipeline(Gleam::RenderPath::Default)->RemoveSharedRenderer(mGridRenderer);
+	renderSystem->GetRenderPipeline(Gleam::RenderPath::PathTracing)->RemoveSharedRenderer(mGridRenderer);
+	delete mGridRenderer;
 }
 
 void WorldViewport::Update()

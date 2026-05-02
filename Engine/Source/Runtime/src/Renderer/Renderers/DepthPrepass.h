@@ -20,7 +20,7 @@ public:
     
     virtual void AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard) override;
 
-	void RegisterShadingPipeline(const Material* material);
+	virtual void RegisterShadingPipeline(const Material* material) override;
 
 private:
 
