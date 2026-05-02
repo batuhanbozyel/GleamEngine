@@ -45,8 +45,8 @@ void rayTracedSunShadowRayGen()
     RayDesc ray;
     ray.Origin    = worldPos + geometricNormal * 1e-2f;
     ray.Direction = shadowDir;
-    ray.TMin      = 1e-3f;
-    ray.TMax      = 1e6f;
+    ray.TMin      = 0.1;
+    ray.TMax      = 1000.0;
 
     Gleam::ShadowPayload payload;
     payload.visibility = 0.0f;

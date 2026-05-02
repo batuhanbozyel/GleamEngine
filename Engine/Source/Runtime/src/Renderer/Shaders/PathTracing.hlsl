@@ -31,8 +31,8 @@ void pathTraceRayGen()
     RayDesc ray;
     ray.Origin    = rayOrigin;
     ray.Direction = rayDir;
-    ray.TMin      = 1e-3;
-    ray.TMax      = 1e6;
+    ray.TMin      = 0.1;
+    ray.TMax      = 1000.0;
 
     float3 accumRadiance = 0.0;
     if (pathTraceConstants.accelerationStructure == InvalidResourceIndex)
