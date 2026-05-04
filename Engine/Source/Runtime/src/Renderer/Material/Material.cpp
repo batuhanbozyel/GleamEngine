@@ -77,7 +77,7 @@ ShaderResourceIndex Material::CreateInstance(const TArray<MaterialPropertyValue>
 {
 	GLEAM_ASSERT(values.size() == mProperties.size(), "Material properties do not match with instance properties.");
 
-	auto assetManager = Globals::GameInstance->GetSubsystem<AssetManager>();
+	static auto assetManager = Globals::GameInstance->GetSubsystem<AssetManager>();
 
 	size_t offset = 0;
 	TArray<uint8_t> instanceData(mInstanceSize);

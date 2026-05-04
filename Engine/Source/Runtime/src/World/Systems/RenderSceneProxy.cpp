@@ -115,18 +115,18 @@ void RenderSceneProxy::Tick(World* world)
 
 void RenderSceneProxy::Shutdown(World* world)
 {
-	static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
-	static auto assetManager = Globals::GameInstance->GetSubsystem<AssetManager>();
-
 	world->GetEntityManager().ForEach<Entity, MeshRenderer>([&](const Entity& entity, const MeshRenderer& meshRenderer)
 	{
+		static auto assetManager = Globals::GameInstance->GetSubsystem<AssetManager>();
 		assetManager->Release(meshRenderer.mesh);
+
 		for (const auto& material : meshRenderer.materials)
 		{
 			assetManager->Release(material);
 		}
 	});
 
+	static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
 	auto device = renderSystem->GetDevice();
 	if (mGlobalInstanceBuffer.IsValid())
 	{
