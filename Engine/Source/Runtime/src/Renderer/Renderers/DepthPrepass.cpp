@@ -36,6 +36,13 @@ void DepthPrepass::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& bl
 		textureDesc.format = TextureFormat::D16_UNorm;
 		textureDesc.clearBuffer = true;
 		passData.depthTarget = builder.UseDepthBuffer(builder.CreateTexture(textureDesc), DepthAccess::Write);
+
+		RenderTextureDescriptor textureDesc;
+		textureDesc.name = "MotionVectorRT";
+		textureDesc.size = sceneTargetDescriptor.size;
+		textureDesc.format = TextureFormat::R16G16_SFloat;
+		textureDesc.clearBuffer = true;
+		passData.motionVectorTarget = builder.UseColorBuffer(builder.CreateTexture(textureDesc));
 		
 		blackboard.Add(passData);
 	},

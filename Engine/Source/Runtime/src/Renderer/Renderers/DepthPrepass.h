@@ -8,6 +8,7 @@ class Material;
 struct DepthPrepassData
 {
 	TextureHandle depthTarget;
+	TextureHandle motionVectorTarget;
 };
 
 class DepthPrepass : public IRenderer
