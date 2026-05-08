@@ -31,17 +31,15 @@ void DepthPrepass::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& bl
 	graph.AddRenderPass<DepthPrepassData>("DepthPrepass", [&](RenderGraphBuilder& builder, DepthPrepassData& passData)
 	{
 		RenderTextureDescriptor textureDesc;
-		textureDesc.name = "SceneDepthRT";
 		textureDesc.size = sceneTargetDescriptor.size;
-		textureDesc.format = TextureFormat::D16_UNorm;
 		textureDesc.clearBuffer = true;
+
+		textureDesc.name = "SceneDepthRT";
+		textureDesc.format = TextureFormat::D16_UNorm;
 		passData.depthTarget = builder.UseDepthBuffer(builder.CreateTexture(textureDesc), DepthAccess::Write);
 
-		RenderTextureDescriptor textureDesc;
 		textureDesc.name = "MotionVectorRT";
-		textureDesc.size = sceneTargetDescriptor.size;
 		textureDesc.format = TextureFormat::R16G16_SFloat;
-		textureDesc.clearBuffer = true;
 		passData.motionVectorTarget = builder.UseColorBuffer(builder.CreateTexture(textureDesc));
 		
 		blackboard.Add(passData);
@@ -50,7 +48,7 @@ void DepthPrepass::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& bl
 	{
 		sceneData.sceneProxy->ForEach([this, cmd, passData, sceneData](const MeshBatch& batch)
 		{
-			if (batch.numInstances == 0 || batch.material->GetDescriptor().depthState.writeEnabled == false)
+			if (batch.numInstances == 0)
 			{
 				return;
 			}
@@ -80,19 +78,14 @@ void DepthPrepass::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& bl
 void DepthPrepass::RegisterShadingPipeline(const Material* material)
 {
 	const auto& materialDesc = material->GetDescriptor();
-	if (materialDesc.depthState.writeEnabled == false)
-	{
-		return;
-	}
-
 	auto pipelineHash = material->GetPipelineHash();
 	auto it = mPipelines.find(pipelineHash);
 	if (it == mPipelines.end())
 	{
 		GraphicsPipelineStateDescriptor pipelineDesc = {
 			.blendState = {},
-			.depthState = materialDesc.depthState,
-			.stencilState = materialDesc.stencilState,
+			.depthState = DepthState{ .compareFunction = CompareFunction::Less, .writeEnabled = true },
+			.stencilState = StencilState{ .enabled = false },
 			.cullingMode = materialDesc.cullingMode,
 			.topology = PrimitiveTopology::Triangles,
 			.alphaToCoverage = false,
@@ -100,10 +93,10 @@ void DepthPrepass::RegisterShadingPipeline(const Material* material)
 			.colorFormats = {},
 			.depthFormat = TextureFormat::D16_UNorm,
 			.vertexEntry = "depthPrepassVertexShader",
-			.fragmentEntry = materialDesc.blendState.enabled ? materialDesc.surfaceShader + "DepthPrepass" : ""
+			.fragmentEntry = materialDesc.alphaMode != AlphaMode::Opaque ? materialDesc.surfaceShader + "DepthPrepass" : "opaqueDepthPrepassFragmentShader"
 		};
-		auto pipeline = mDevice->CreateGraphicsPipeline(pipelineDesc);
 
+		auto pipeline = mDevice->CreateGraphicsPipeline(pipelineDesc);
 		mPipelines.emplace_hint(it, eastl::piecewise_construct,
 									eastl::forward_as_tuple(pipelineHash),
 									eastl::forward_as_tuple(pipeline));

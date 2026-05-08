@@ -110,7 +110,7 @@ AccelerationStructureView RayTracingScene::BuildAccelerationStructure(const Comm
                 options |= MTLAccelerationStructureInstanceOptionTriangleFrontFacingWindingCounterClockwise;
             }
 
-            if (materialDesc.blendState.enabled)
+            if (materialDesc.alphaMode != AlphaMode::Opaque)
             {
                 options |= MTLAccelerationStructureInstanceOptionNonOpaque;
             }

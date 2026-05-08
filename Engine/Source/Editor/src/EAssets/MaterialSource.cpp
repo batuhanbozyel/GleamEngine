@@ -8,60 +8,6 @@
 
 using namespace GEditor;
 
-static Gleam::BlendMode BlendModeFromObject(const rapidjson::Value& object)
-{
-	Gleam::TString value = object.GetString();
-
-	if (value == "Zero")
-	{
-		return Gleam::BlendMode::Zero;
-	}
-	else if (value == "One")
-	{
-		return Gleam::BlendMode::One;
-	}
-	else if (value == "DstColor")
-	{
-		return Gleam::BlendMode::DstColor;
-	}
-	else if (value == "SrcColor")
-	{
-		return Gleam::BlendMode::SrcColor;
-	}
-	else if (value == "OneMinusDstColor")
-	{
-		return Gleam::BlendMode::OneMinusDstColor;
-	}
-	else if (value == "SrcAlpha")
-	{
-		return Gleam::BlendMode::SrcAlpha;
-	}
-	else if (value == "OneMinusSrcColor")
-	{
-		return Gleam::BlendMode::OneMinusSrcColor;
-	}
-	else if (value == "DstAlpha")
-	{
-		return Gleam::BlendMode::DstAlpha;
-	}
-	else if (value == "OneMinusDstAlpha")
-	{
-		return Gleam::BlendMode::OneMinusDstAlpha;
-	}
-	else if (value == "SrcAlphaClamp")
-	{
-		return Gleam::BlendMode::SrcAlphaClamp;
-	}
-	else if (value == "OneMinusSrcAlpha")
-	{
-		return Gleam::BlendMode::OneMinusSrcAlpha;
-	}
-	else
-	{
-		return Gleam::BlendMode::One;
-	}
-}
-
 bool MaterialSource::Import(const Gleam::Path& path, const ImportSettings& settings)
 {
     auto file = Gleam::Filesystem::OpenRead(path, Gleam::FileType::Text);
@@ -310,129 +256,40 @@ bool MaterialSource::Import(const Gleam::Path& path, const ImportSettings& setti
 		}
 	}
     
-    if (document.HasMember("ZWrite"))
-    {
-        Gleam::TString value = document["ZWrite"].GetString();
-        descriptor.depthState.writeEnabled = value == "On";
-    }
-    
-    if (document.HasMember("ZTest"))
-    {
-        Gleam::TString value = document["ZTest"].GetString();
-        if (value == "Never")
-        {
-            descriptor.depthState.compareFunction = Gleam::CompareFunction::Never;
-        }
-        else if (value == "Less")
-        {
-            descriptor.depthState.compareFunction = Gleam::CompareFunction::Less;
-        }
-        else if (value == "Equal")
-        {
-            descriptor.depthState.compareFunction = Gleam::CompareFunction::Equal;
-        }
-        else if (value == "LessEqual")
-        {
-            descriptor.depthState.compareFunction = Gleam::CompareFunction::LessEqual;
-        }
-        else if (value == "Greater")
-        {
-            descriptor.depthState.compareFunction = Gleam::CompareFunction::Greater;
-        }
-        else if (value == "NotEqual")
-        {
-            descriptor.depthState.compareFunction = Gleam::CompareFunction::NotEqual;
-        }
-        else if (value == "GreaterEqual")
-        {
-            descriptor.depthState.compareFunction = Gleam::CompareFunction::GreaterEqual;
-        }
-        else if (value == "Always")
-        {
-            descriptor.depthState.compareFunction = Gleam::CompareFunction::Always;
-        }
-    }
-    
     if (document.HasMember("Cull"))
     {
         Gleam::TString value = document["Cull"].GetString();
-        if (value == "Off")
-        {
-            descriptor.cullingMode = Gleam::CullMode::Off;
-        }
-        else if (value == "Front")
-        {
-            descriptor.cullingMode = Gleam::CullMode::Front;
-        }
-        else if (value == "Back")
-        {
-            descriptor.cullingMode = Gleam::CullMode::Back;
-        }
+		if (value == "Back")
+		{
+			descriptor.cullingMode = Gleam::CullMode::Back;
+		}
+		else if (value == "Front")
+		{
+			descriptor.cullingMode = Gleam::CullMode::Front;
+		}
+		else
+		{
+			descriptor.cullingMode = Gleam::CullMode::Off;
+		}
     }
     
-	if (document.HasMember("Blend"))
+	if (document.HasMember("AlphaMode"))
 	{
-		auto array = document["Blend"].GetArray();
-		if (array.Size() == 2)
+		Gleam::TString value = document["AlphaMode"].GetString();
+		if (value == "Mask")
 		{
-			auto srcBlendMode = BlendModeFromObject(array[0]);
-			auto dstBlendMode = BlendModeFromObject(array[1]);
-
-			descriptor.blendState.enabled = true;
-
-			descriptor.blendState.sourceColorBlendMode = srcBlendMode;
-			descriptor.blendState.sourceAlphaBlendMode = srcBlendMode;
-
-			descriptor.blendState.destinationColorBlendMode = dstBlendMode;
-			descriptor.blendState.destinationAlphaBlendMode = dstBlendMode;
+			descriptor.alphaMode = Gleam::AlphaMode::Mask;
 		}
-		else if (array.Size() == 4)
+		else if (value == "Blend")
 		{
-			descriptor.blendState.enabled = true;
-
-			descriptor.blendState.sourceColorBlendMode = BlendModeFromObject(array[0]);
-			descriptor.blendState.sourceAlphaBlendMode = BlendModeFromObject(array[1]);
-
-			descriptor.blendState.destinationColorBlendMode = BlendModeFromObject(array[2]);
-			descriptor.blendState.destinationAlphaBlendMode = BlendModeFromObject(array[3]);
+			descriptor.alphaMode = Gleam::AlphaMode::Blend;
+		}
+		else
+		{
+			descriptor.alphaMode = Gleam::AlphaMode::Opaque;
 		}
 	}
 
-	if (document.HasMember("BlendOp"))
-	{
-		Gleam::TString value = document["BlendOp"].GetString();
-		if (value == "Add")
-		{
-			descriptor.blendState.enabled = true;
-			descriptor.blendState.colorBlendOperation = Gleam::BlendOp::Add;
-			descriptor.blendState.alphaBlendOperation = Gleam::BlendOp::Add;
-		}
-		else if (value == "Subtract")
-		{
-			descriptor.blendState.enabled = true;
-			descriptor.blendState.colorBlendOperation = Gleam::BlendOp::Subtract;
-			descriptor.blendState.alphaBlendOperation = Gleam::BlendOp::Subtract;
-		}
-		else if (value == "ReverseSubtract")
-		{
-			descriptor.blendState.enabled = true;
-			descriptor.blendState.colorBlendOperation = Gleam::BlendOp::ReverseSubtract;
-			descriptor.blendState.alphaBlendOperation = Gleam::BlendOp::ReverseSubtract;
-		}
-		else if (value == "Min")
-		{
-			descriptor.blendState.enabled = true;
-			descriptor.blendState.colorBlendOperation = Gleam::BlendOp::Min;
-			descriptor.blendState.alphaBlendOperation = Gleam::BlendOp::Min;
-		}
-		else if (value == "Max")
-		{
-			descriptor.blendState.enabled = true;
-			descriptor.blendState.colorBlendOperation = Gleam::BlendOp::Max;
-			descriptor.blendState.alphaBlendOperation = Gleam::BlendOp::Max;
-		}
-	}
-    
     EmplaceBaker<MaterialBaker>(descriptor);
     return true;
 }

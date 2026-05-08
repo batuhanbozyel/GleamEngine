@@ -18,6 +18,7 @@ Gleam::MeshInstanceData LoadInstanceData(uint instanceID)
 }
 
 [shader("pixel")]
+[earlydepthstencil]
 float4 main(Gleam::MeshVertexOut IN) : SV_TARGET
 {
 	IN.ddxUV = ddx(IN.uv);

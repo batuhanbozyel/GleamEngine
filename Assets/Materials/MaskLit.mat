@@ -1,6 +1,6 @@
 {
     "Cull" : "Back",
-    "AlphaMode" : "Opaque",
+    "AlphaMode" : "Mask",
 
     "Properties" : [
         {"BaseColor": "Float4"},
