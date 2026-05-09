@@ -90,7 +90,7 @@ void DepthPrepass::RegisterShadingPipeline(const Material* material)
 			.topology = PrimitiveTopology::Triangles,
 			.alphaToCoverage = false,
 			.wireframe = false,
-			.colorFormats = {},
+			.colorFormats = { TextureFormat::R16G16_SFloat },
 			.depthFormat = TextureFormat::D16_UNorm,
 			.vertexEntry = "depthPrepassVertexShader",
 			.fragmentEntry = materialDesc.alphaMode != AlphaMode::Opaque ? materialDesc.surfaceShader + "DepthPrepass" : "opaqueDepthPrepassFragmentShader"
