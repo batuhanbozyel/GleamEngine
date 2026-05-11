@@ -24,94 +24,16 @@
 #define FFX_DENOISER_SHADOWS_CALLBACKS_HLSL
 
 #include "Common.hlsli"
+#include "ShaderTypes.h"
+#include "FidelityFXCore.hlsli"
 
 CONSTANT_BUFFER(Gleam::CameraUniforms, camera, CAMERA_UNIFORMS_BINDING_SLOT);
 
-// ----------------------------------------------------------------
-// FidelityFX type aliases (replaces ffx_core.h)
-// ----------------------------------------------------------------
-#define FFX_GPU  1
-#define FFX_HALF 1
-
-typedef float      FfxFloat32;
-typedef float2     FfxFloat32x2;
-typedef float3     FfxFloat32x3;
-typedef float4     FfxFloat32x4;
-typedef float4x4   FfxFloat32Mat4;
-typedef int        FfxInt32;
-typedef int2       FfxInt32x2;
-typedef int3       FfxInt32x3;
-typedef uint       FfxUInt32;
-typedef uint2      FfxUInt32x2;
-typedef uint3      FfxUInt32x3;
-typedef bool       FfxBoolean;
-
-#if FFX_HALF
-typedef float16_t    FfxFloat16;
-typedef float16_t2   FfxFloat16x2;
-typedef float16_t3   FfxFloat16x3;
+#if defined(FFX_DNSR_SHADOWS_FILTER_PASS)
+PUSH_CONSTANT(Gleam::ShadowDenoiserFilterConstants, constants);
+#elif defined(FFX_DNSR_SHADOWS_TILECLASSIFICATION_PASS)
+PUSH_CONSTANT(Gleam::ShadowDenoiserTileClassificationConstants, constants);
 #endif
-
-#define FFX_TRUE  true
-#define FFX_FALSE false
-#define FFX_GROUPSHARED          groupshared
-#define FFX_GROUP_MEMORY_BARRIER GroupMemoryBarrierWithGroupSync()
-#define FFX_MATRIX_MULTIPLY(a,b) mul(a,b)
-
-#define ffxWaveLaneCount()   WaveGetLaneCount()
-#define ffxWaveAllTrue(x)    WaveActiveAllTrue(x)
-#define ffxQuadReadX(x)      QuadReadAcrossX(x)
-#define ffxQuadReadY(x)      QuadReadAcrossY(x)
-#define ffxLerp(a,b,t)       lerp(a,b,t)
-#define ffxPow(x,y)          pow(abs(x),y)
-#define ffxSaturate(x)       saturate(x)
-#define ffxReciprocal(x)     rcp(x)
-#define ffxPackHalf2x16(v)   (f32tof16((v).x) | (f32tof16((v).y) << 16))
-#define ffxUnpackF16(v)      float16_t2(f16tof32((v) & 0xFFFF), f16tof32(((v) >> 16) & 0xFFFF))
-#define FFX_GREATER_THAN(a,b) ((a) > (b))
-#define FFX_LESS_THAN(a,b)    ((a) < (b))
-#define FFX_EQUAL(a,b)        ((a) == (b))
-
-FfxUInt32 ffxBitfieldExtract(FfxUInt32 src, FfxUInt32 off, FfxUInt32 bits)
-{
-    FfxUInt32 mask = (1u << bits) - 1;
-    return (src >> off) & mask;
-}
-
-FfxUInt32 ffxBitfieldInsert(FfxUInt32 src, FfxUInt32 ins, FfxUInt32 mask)
-{
-    return (ins & mask) | (src & (~mask));
-}
-
-FfxUInt32 ffxBitfieldInsertMask(FfxUInt32 src, FfxUInt32 ins, FfxUInt32 bits)
-{
-    FfxUInt32 mask = (1u << bits) - 1;
-    return (ins & mask) | (src & (~mask));
-}
-
-/// A helper function performing a remap 64x1 to 8x8 remapping which is necessary for 2D wave reductions.
-///
-/// The 64-wide lane indices to 8x8 remapping is performed as follows:
-/// 
-///     00 01 08 09 10 11 18 19
-///     02 03 0a 0b 12 13 1a 1b
-///     04 05 0c 0d 14 15 1c 1d
-///     06 07 0e 0f 16 17 1e 1f
-///     20 21 28 29 30 31 38 39
-///     22 23 2a 2b 32 33 3a 3b
-///     24 25 2c 2d 34 35 3c 3d
-///     26 27 2e 2f 36 37 3e 3f
-///
-/// @param [in] a       The input 1D coordinate to remap.
-/// 
-/// @returns
-/// The remapped 2D coordinates.
-/// 
-/// @ingroup GPUCore
-FfxUInt32x2 ffxRemapForWaveReduction(FfxUInt32 a)
-{
-    return FfxUInt32x2(ffxBitfieldInsertMask(ffxBitfieldExtract(a, 2u, 3u), a, 1u), ffxBitfieldInsertMask(ffxBitfieldExtract(a, 3u, 3u), ffxBitfieldExtract(a, 1u, 2u), 2u));
-}
 
 FfxUInt32 LaneIdToBitShift(FfxUInt32x2 localID)
 {
@@ -155,7 +77,7 @@ FfxFloat32x3 Eye()
 
 FfxFloat32 LoadDepth(FfxInt32x2 p)
 {
-    Texture2D<float> tex = ResourceDescriptorHeap[dnsr.depth];
+    Texture2D<float> tex = ResourceDescriptorHeap[constants.depth];
     return tex.Load(int3(p, 0));
 }
 
@@ -195,8 +117,6 @@ FfxFloat32x3 LoadNormals(FfxInt32x2 p)
 }
 
 #if defined(FFX_DNSR_SHADOWS_FILTER_PASS)
-PUSH_CONSTANT(Gleam::ShadowDenoiserFilterConstants, dnsr);
-
 FfxFloat32 DepthSimilaritySigma()
 {
     return 1.0f;
@@ -205,85 +125,81 @@ FfxFloat32 DepthSimilaritySigma()
 #if FFX_HALF
 FfxFloat16x2 LoadFilterInput(FfxUInt32x2 p)
 {
-    Texture2D<float16_t2> tex = ResourceDescriptorHeap[dnsr.filterInput];
+    Texture2D<float16_t2> tex = ResourceDescriptorHeap[constants.filterInput];
     return (FfxFloat16x2)tex.Load(int3(p, 0));
 }
 #endif
 
 FfxUInt32 LoadTileMetaData(FfxUInt32 p)
 {
-    Texture2D<uint> tex = ResourceDescriptorHeap[dnsr.tileMetadata];
-    return tex[p];
+    ByteAddressBuffer buffer = ResourceDescriptorHeap[constants.tileMetadata];
+    return buffer.Load<uint>(p * sizeof(uint));
 }
 
 void StoreHistory(FfxUInt32x2 p, FfxFloat32x2 val)
 {
-    RWTexture2D<float2> tex = ResourceDescriptorHeap[dnsr.history];
+    RWTexture2D<float2> tex = ResourceDescriptorHeap[constants.history];
     tex[p] = val;
 }
 
 void StoreFilterOutput(FfxUInt32x2 p, FfxFloat32 val)
 {
-    RWTexture2D<unorm float> tex = ResourceDescriptorHeap[dnsr.shadowMaskOutput];
+    RWTexture2D<unorm float> tex = ResourceDescriptorHeap[constants.shadowMaskOutput];
     tex[p] = val;
 }
 #endif // FFX_DNSR_SHADOWS_FILTER_PASS
 
 #if defined(FFX_DNSR_SHADOWS_TILECLASSIFICATION_PASS)
-PUSH_CONSTANT(Gleam::ShadowDenoiserTileClassificationConstants, dnsr);
-
 FfxInt32 IsFirstFrame()
 {
-    return dnsr.isFirstFrame;
+    return constants.isFirstFrame;
 }
 
 FfxFloat32 LoadPreviousDepth(FfxInt32x2 p)
 {
-    Texture2D<float> tex = ResourceDescriptorHeap[dnsr.previousDepth];
+    Texture2D<float> tex = ResourceDescriptorHeap[constants.previousDepth];
     return tex.Load(int3(p, 0));
 }
 
 FfxFloat32x2 LoadVelocity(FfxInt32x2 p)
 {
-    Texture2D<float2> tex = ResourceDescriptorHeap[dnsr.velocity];
+    Texture2D<float2> tex = ResourceDescriptorHeap[constants.velocity];
     return tex.Load(int3(p, 0));
 }
 
 FfxFloat32 LoadHistory(FfxFloat32x2 uv)
 {
-    Texture2D<float2> tex = ResourceDescriptorHeap[dnsr.historyShadow];
+    Texture2D<float2> tex = ResourceDescriptorHeap[constants.historyShadow];
     return tex.SampleLevel(Sampler_Bilinear_Clamp, uv, 0).x;
 }
 
 FfxFloat32x3 LoadPreviousMomentsBuffer(FfxInt32x2 p)
 {
-    Texture2D<float4> tex = ResourceDescriptorHeap[dnsr.previousMoments];
-    return tex.Load(int3(p, 0)).xyz;
+    Texture2D<float3> tex = ResourceDescriptorHeap[constants.previousMoments];
+    return tex.Load(int3(p, 0));
 }
 
 FfxUInt32 LoadRaytracedShadowMask(FfxUInt32 linearIndex)
 {
-    uint tilesWide = (uint(BufferDimensions().x) + (SHADOW_TILE_WIDTH - 1u)) / SHADOW_TILE_WIDTH;
-    uint2 tileCoord = uint2(linearIndex % tilesWide, linearIndex / tilesWide);
-    Texture2D<uint> tex = ResourceDescriptorHeap[dnsr.hitMaskResults];
-    return tex.Load(int3(tileCoord, 0));
+    ByteAddressBuffer buffer = ResourceDescriptorHeap[constants.hitMaskResults];
+    return buffer.Load<uint>(linearIndex * sizeof(uint));
 }
 
 void StoreMetadata(FfxUInt32 p, FfxUInt32 val)
 {
-    RWTexture2D<uint> tex = ResourceDescriptorHeap[dnsr.tileMetadata];
-    tex[p] = val;
+    RWByteAddressBuffer buffer = ResourceDescriptorHeap[constants.tileMetadata];
+    buffer.Store<uint>(p * sizeof(uint), val);
 }
 
 void StoreMoments(FfxUInt32x2 p, FfxFloat32x3 val)
 {
-    RWTexture2D<float3> tex = ResourceDescriptorHeap[dnsr.currentMoments];
+    RWTexture2D<float3> tex = ResourceDescriptorHeap[constants.currentMoments];
     tex[p] = val;
 }
 
 void StoreReprojectionResults(FfxUInt32x2 p, FfxFloat32x2 val)
 {
-    RWTexture2D<float2> tex = ResourceDescriptorHeap[dnsr.reprojectionResults];
+    RWTexture2D<float2> tex = ResourceDescriptorHeap[constants.reprojectionResults];
     tex[p] = val;
 }
 #endif // FFX_DNSR_SHADOWS_TILECLASSIFICATION_PASS

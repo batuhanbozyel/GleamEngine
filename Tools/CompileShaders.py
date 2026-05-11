@@ -194,6 +194,7 @@ if __name__ == "__main__":
                     cmdline = [
                         DXC, current_file,
                         "-HV", "2021",
+                        "-enable-16bit-types",
                         "-D", RENDERER_API,
                         "-D", SHADER_TARGET_DEFINE[shader_stage],
                         "-T", HLSL_SHADER_STAGE[shader_stage]

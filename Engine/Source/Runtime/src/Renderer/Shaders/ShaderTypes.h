@@ -217,7 +217,7 @@ struct ShadowDenoiserTileClassificationConstants
 	UnorderedAccessIndex currentMoments;
 	
 	UnorderedAccessIndex reprojectionResults;
-	int32_t isFirstFrame;
+	uint32_t isFirstFrame;
 	float pad0;
 	float pad1;
 };

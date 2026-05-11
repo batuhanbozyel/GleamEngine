@@ -23,7 +23,7 @@
 #ifndef FFX_DNSR_SHADOWS_TILECLASSIFICATION_HLSL
 #define FFX_DNSR_SHADOWS_TILECLASSIFICATION_HLSL
 
-#include "ffx_denoiser_shadows_util.h"
+#include "ffx_denoiser_shadows_util.hlsli"
 
 FFX_GROUPSHARED FfxInt32 g_FFX_DNSR_Shadows_false_count;
 FfxBoolean FFX_DNSR_Shadows_ThreadGroupAllTrue(FfxBoolean val)

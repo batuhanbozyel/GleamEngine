@@ -23,7 +23,7 @@
 #ifndef FFX_DNSR_SHADOWS_FILTER_HLSL
 #define FFX_DNSR_SHADOWS_FILTER_HLSL
 
-#include "ffx_denoiser_shadows_util.h"
+#include "ffx_denoiser_shadows_util.hlsli"
 
 FFX_GROUPSHARED FfxUInt32 g_FFX_DNSR_Shadows_shared_input[16][16];
 FFX_GROUPSHARED FfxFloat32 g_FFX_DNSR_Shadows_shared_depth[16][16];

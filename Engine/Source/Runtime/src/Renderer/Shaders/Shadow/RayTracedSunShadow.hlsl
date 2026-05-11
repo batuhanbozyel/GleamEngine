@@ -1,5 +1,6 @@
 #define USE_PCG
 #include "PathTraceCommon.hlsli"
+#include "ffx_denoiser_shadows_util.hlsli"
 
 PUSH_CONSTANT(Gleam::RayTracedSunShadowConstants, constants);
 
@@ -14,16 +15,16 @@ void rayTracedSunShadowRayGen()
 
     RaytracingAccelerationStructure accelerationStructure = ResourceDescriptorHeap[pathTraceConstants.accelerationStructure];
     Texture2D<float> depthTex = ResourceDescriptorHeap[constants.depthTexture];
-    RWTexture2D<uint> shadowMask = ResourceDescriptorHeap[pathTraceConstants.colorTarget];
+    RWByteAddressBuffer shadowMask = ResourceDescriptorHeap[pathTraceConstants.colorTarget];
 
-    uint2 tileCoord = pixelCoord / uint2(SHADOW_TILE_WIDTH, SHADOW_TILE_HEIGHT);
-    uint  bitIndex  = (pixelCoord.y % SHADOW_TILE_HEIGHT) * SHADOW_TILE_WIDTH + (pixelCoord.x % SHADOW_TILE_WIDTH);
-    uint  bitMask   = 1u << bitIndex;
+    uint2 tileCoord = FFX_DNSR_Shadows_GetTileIndexFromPixelPosition(pixelCoord);
+    uint tileIndex = FFX_DNSR_Shadows_LinearTileIndex(tileCoord, camera.resolution.x);
+    uint bitMask = FFX_DNSR_Shadows_GetBitMaskFromPixelPosition(pixelCoord);
 
     float depth = depthTex[pixelCoord];
     if (depth >= (1.0f - FLT_EPSILON))
     {
-        InterlockedOr(shadowMask[tileCoord], bitMask);
+        shadowMask.InterlockedOr(tileIndex * sizeof(uint), bitMask);
         return;
     }
 
@@ -62,11 +63,11 @@ void rayTracedSunShadowRayGen()
 
     if (payload.visibility > 0.5f)
     {
-        InterlockedOr(shadowMask[tileCoord], bitMask);
+        shadowMask.InterlockedOr(tileIndex * sizeof(uint), bitMask);
     }
     else
     {
-        InterlockedAnd(shadowMask[tileCoord], ~bitMask);
+        shadowMask.InterlockedAnd(tileIndex * sizeof(uint), ~bitMask);
     }
 }
 

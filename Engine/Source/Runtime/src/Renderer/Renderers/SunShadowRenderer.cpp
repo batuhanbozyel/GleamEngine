@@ -49,7 +49,6 @@ void SunShadowRenderer::OnDestroy(const RenderContext& context)
 	context.device->Dispose(context.allocator, mHistoryShadow[0], BarrierStage::None);
 	context.device->Dispose(context.allocator, mHistoryShadow[1], BarrierStage::None);
 	context.device->Dispose(context.allocator, mPreviousDepth,    BarrierStage::None);
-	context.device->Dispose(context.allocator, mDenoisedShadow,   BarrierStage::None);
 }
 
 void SunShadowRenderer::CreateDenoiserTextures(const Size& size)
@@ -59,21 +58,35 @@ void SunShadowRenderer::CreateDenoiserTextures(const Size& size)
 		return;
 	}
 
-	mDevice->Dispose(mAllocator, mMoments[0],       BarrierStage::None);
-	mDevice->Dispose(mAllocator, mMoments[1],       BarrierStage::None);
-	mDevice->Dispose(mAllocator, mHistoryShadow[0], BarrierStage::None);
-	mDevice->Dispose(mAllocator, mHistoryShadow[1], BarrierStage::None);
-	mDevice->Dispose(mAllocator, mPreviousDepth,    BarrierStage::None);
-	mDevice->Dispose(mAllocator, mDenoisedShadow,   BarrierStage::None);
+	if (mMoments[0].IsValid())
+	{
+		mDevice->Dispose(mAllocator, mMoments[0], BarrierStage::None);
+	}
+	if (mMoments[1].IsValid())
+	{
+		mDevice->Dispose(mAllocator, mMoments[1], BarrierStage::None);
+	}
+	if (mHistoryShadow[0].IsValid())
+	{
+		mDevice->Dispose(mAllocator, mHistoryShadow[0], BarrierStage::None);
+	}
+	if (mHistoryShadow[1].IsValid())
+	{
+		mDevice->Dispose(mAllocator, mHistoryShadow[1], BarrierStage::None);
+	}
+	if (mPreviousDepth.IsValid())
+	{
+		mDevice->Dispose(mAllocator, mPreviousDepth, BarrierStage::None);
+	}
 
 	TextureDescriptor momentsDesc;
 	momentsDesc.dimension = TextureDimension::Texture2D;
 	momentsDesc.format    = TextureFormat::R16G16B16A16_SFloat;
 	momentsDesc.usage     = TextureUsage_Storage | TextureUsage_Sampled;
 	momentsDesc.size      = size;
-	momentsDesc.name      = "ShadowDenoiser Moments 0";
+	momentsDesc.name      = "SunShadowRenderer::ShadowDenoiser::Moments 0";
 	mMoments[0] = mDevice->CreateTexture(mAllocator, momentsDesc);
-	momentsDesc.name      = "ShadowDenoiser Moments 1";
+	momentsDesc.name      = "SunShadowRenderer::ShadowDenoiser::Moments 1";
 	mMoments[1] = mDevice->CreateTexture(mAllocator, momentsDesc);
 
 	TextureDescriptor historyDesc;
@@ -81,26 +94,18 @@ void SunShadowRenderer::CreateDenoiserTextures(const Size& size)
 	historyDesc.format    = TextureFormat::R16G16_SFloat;
 	historyDesc.usage     = TextureUsage_Storage | TextureUsage_Sampled;
 	historyDesc.size      = size;
-	historyDesc.name      = "ShadowDenoiser History 0";
+	historyDesc.name      = "SunShadowRenderer::ShadowDenoiser::History 0";
 	mHistoryShadow[0] = mDevice->CreateTexture(mAllocator, historyDesc);
-	historyDesc.name      = "ShadowDenoiser History 1";
+	historyDesc.name      = "SunShadowRenderer::ShadowDenoiser::History 1";
 	mHistoryShadow[1] = mDevice->CreateTexture(mAllocator, historyDesc);
 
 	TextureDescriptor depthDesc;
-	depthDesc.name      = "ShadowDenoiser PreviousDepth";
+	depthDesc.name      = "SunShadowRenderer::ShadowDenoiser::PreviousDepth";
 	depthDesc.dimension = TextureDimension::Texture2D;
 	depthDesc.format    = TextureFormat::R32_SFloat;
 	depthDesc.usage     = TextureUsage_Storage | TextureUsage_Sampled;
 	depthDesc.size      = size;
 	mPreviousDepth = mDevice->CreateTexture(mAllocator, depthDesc);
-
-	TextureDescriptor outputDesc;
-	outputDesc.name      = "ShadowDenoiser Output";
-	outputDesc.dimension = TextureDimension::Texture2D;
-	outputDesc.format    = TextureFormat::R8_UNorm;
-	outputDesc.usage     = TextureUsage_Storage | TextureUsage_Sampled;
-	outputDesc.size      = size;
-	mDenoisedShadow = mDevice->CreateTexture(mAllocator, outputDesc);
 
 	mDenoiserSize = size;
 	mFirstFrame = true;
@@ -114,6 +119,7 @@ void SunShadowRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboar
 
 	const uint32_t width  = (uint32_t)sceneTargetDescriptor.size.width;
 	const uint32_t height = (uint32_t)sceneTargetDescriptor.size.height;
+	const uint32_t numTiles = Math::DivideRoundingUp(width, SHADOW_TILE_WIDTH) * Math::DivideRoundingUp(height, SHADOW_TILE_HEIGHT);
 
 	if (mPipelineDirty)
 	{
@@ -136,39 +142,35 @@ void SunShadowRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboar
 			mRayTracedShadowPipeline = handle;
 		}
 		mPipelineDirty = false;
+		mFirstFrame = true;
 	}
 	CreateDenoiserTextures(sceneTargetDescriptor.size);
 
 	const uint32_t prevIndex = mFrameIndex & 1u;
 	const uint32_t currIndex = prevIndex ^ 1u;
 
-	auto importedPrevMoments    = graph.ImportTexture(mMoments[prevIndex]);
-	auto importedCurrMoments    = graph.ImportTexture(mMoments[currIndex]);
-	auto importedPrevHistory    = graph.ImportTexture(mHistoryShadow[prevIndex]);
-	auto importedCurrHistory    = graph.ImportTexture(mHistoryShadow[currIndex]);
-	auto importedPreviousDepth  = graph.ImportTexture(mPreviousDepth);
-	auto importedDenoisedShadow = graph.ImportTexture(mDenoisedShadow);
+	auto prevMoments    = graph.ImportTexture(mMoments[prevIndex]);
+	auto currMoments    = graph.ImportTexture(mMoments[currIndex]);
+	auto prevHistory    = graph.ImportTexture(mHistoryShadow[prevIndex]);
+	auto currHistory    = graph.ImportTexture(mHistoryShadow[currIndex]);
+	auto previousDepth  = graph.ImportTexture(mPreviousDepth);
 
 	// ----------------------------------------------------------------
 	// Pass 1 — Ray-traced shadow mask
 	// ----------------------------------------------------------------
 	struct RayTracingPassData
 	{
-		TextureHandle shadowMask;
+		BufferHandle  shadowMask;
 		TextureHandle depth;
 	};
 
 	auto& rayTracingData = graph.AddComputePass<RayTracingPassData>("SunShadowRenderer::RayTracing",
 	[&](RenderGraphBuilder& builder, RayTracingPassData& passData)
 	{
-		RenderTextureDescriptor shadowDesc;
-		shadowDesc.name   = "SunShadowMask";
-		shadowDesc.size   = Size{
-			(float)Math::DivideRoundingUp(width,  SHADOW_TILE_WIDTH),
-			(float)Math::DivideRoundingUp(height, SHADOW_TILE_HEIGHT)
-		};
-		shadowDesc.format = TextureFormat::R32_UInt;
-		passData.shadowMask = builder.WriteTexture(builder.CreateTexture(shadowDesc));
+		BufferDescriptor hitMaskDesc;
+		hitMaskDesc.name = "Shadow HitMask";
+		hitMaskDesc.size = numTiles * sizeof(uint32_t);
+		passData.shadowMask = builder.WriteBuffer(builder.CreateBuffer(hitMaskDesc));
 		passData.depth      = builder.ReadTexture(depthPrepassData.depthTarget);
 	},
 	[this, &sceneData](const CommandBuffer* cmd, const RayTracingPassData& passData)
@@ -206,44 +208,40 @@ void SunShadowRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboar
 	// ----------------------------------------------------------------
 	struct TileClassificationPassData
 	{
-		TextureHandle shadowMask;
+		BufferHandle  shadowMask;
 		TextureHandle depth;
 		TextureHandle velocity;
 		TextureHandle previousDepth;
 		TextureHandle previousMoments;
 		TextureHandle historyShadow;
-		TextureHandle tileMetadata;
+		BufferHandle  tileMetadata;
 		TextureHandle currentMoments;
 		TextureHandle reprojectionResults;
-		int32_t       isFirstFrame;
+		uint32_t      isFirstFrame;
 	};
 
 	auto& tileClassData = graph.AddComputePass<TileClassificationPassData>("SunShadowRenderer::TileClassification",
 	[&](RenderGraphBuilder& builder, TileClassificationPassData& passData)
 	{
-		passData.shadowMask     = builder.ReadTexture(rayTracingData.shadowMask);
-		passData.depth          = builder.ReadTexture(depthPrepassData.depthTarget);
-		passData.velocity       = builder.ReadTexture(depthPrepassData.motionVectorTarget);
-		passData.previousDepth  = builder.ReadTexture(importedPreviousDepth);
-		passData.previousMoments = builder.ReadTexture(importedPrevMoments);
-		passData.historyShadow  = builder.ReadTexture(importedPrevHistory);
-		passData.isFirstFrame   = mFirstFrame ? 1 : 0;
+		passData.shadowMask			= builder.ReadBuffer(rayTracingData.shadowMask);
+		passData.depth				= builder.ReadTexture(depthPrepassData.depthTarget);
+		passData.velocity			= builder.ReadTexture(depthPrepassData.motionVectorTarget);
+		passData.previousDepth		= builder.ReadTexture(previousDepth);
+		passData.previousMoments	= builder.ReadTexture(prevMoments);
+		passData.historyShadow		= builder.ReadTexture(prevHistory);
+		passData.isFirstFrame		= mFirstFrame ? 1 : 0;
 
-		RenderTextureDescriptor tileMetaDesc;
-		tileMetaDesc.name   = "ShadowDenoiser TileMetadata";
-		tileMetaDesc.size   = Size{
-			(float)(Math::DivideRoundingUp(width, 8u) * Math::DivideRoundingUp(height, 4u)),
-			1.0f
-		};
-		tileMetaDesc.format = TextureFormat::R32_UInt;
-		passData.tileMetadata = builder.WriteTexture(builder.CreateTexture(tileMetaDesc));
-		passData.currentMoments = builder.WriteTexture(importedCurrMoments);
+		BufferDescriptor tileMetaDesc;
+		tileMetaDesc.name   = "TileMetadata";
+		tileMetaDesc.size   = numTiles * sizeof(uint32_t);
+		passData.tileMetadata = builder.WriteBuffer(builder.CreateBuffer(tileMetaDesc));
+		passData.currentMoments = builder.WriteTexture(currMoments);
 
-		RenderTextureDescriptor reproDesc;
-		reproDesc.name   = "ShadowDenoiser ReprojectionResults";
-		reproDesc.size   = Size{ (float)width, (float)height };
-		reproDesc.format = TextureFormat::R16G16_SFloat;
-		passData.reprojectionResults = builder.WriteTexture(builder.CreateTexture(reproDesc));
+		RenderTextureDescriptor reprojectionDesc;
+		reprojectionDesc.name   = "ReprojectionResults";
+		reprojectionDesc.size   = sceneTargetDescriptor.size;
+		reprojectionDesc.format = TextureFormat::R16G16_SFloat;
+		passData.reprojectionResults = builder.WriteTexture(builder.CreateTexture(reprojectionDesc));
 	},
 	[this, &sceneData, width, height](const CommandBuffer* cmd, const TileClassificationPassData& passData)
 	{
@@ -272,7 +270,7 @@ void SunShadowRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboar
 	struct Filter0PassData
 	{
 		TextureHandle depth;
-		TextureHandle tileMetadata;
+		BufferHandle  tileMetadata;
 		TextureHandle filterInput;
 		TextureHandle history;
 	};
@@ -281,12 +279,12 @@ void SunShadowRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboar
 	[&](RenderGraphBuilder& builder, Filter0PassData& passData)
 	{
 		passData.depth        = builder.ReadTexture(depthPrepassData.depthTarget);
-		passData.tileMetadata = builder.ReadTexture(tileClassData.tileMetadata);
+		passData.tileMetadata = builder.ReadBuffer(tileClassData.tileMetadata);
 		passData.filterInput  = builder.ReadTexture(tileClassData.reprojectionResults);
 
 		RenderTextureDescriptor intermediateDesc;
-		intermediateDesc.name   = "ShadowDenoiser FilterIntermediate";
-		intermediateDesc.size   = Size{ (float)width, (float)height };
+		intermediateDesc.name   = "FilterIntermediate";
+		intermediateDesc.size   = sceneTargetDescriptor.size;
 		intermediateDesc.format = TextureFormat::R16G16_SFloat;
 		passData.history = builder.WriteTexture(builder.CreateTexture(intermediateDesc));
 	},
@@ -313,7 +311,7 @@ void SunShadowRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboar
 	struct Filter1PassData
 	{
 		TextureHandle depth;
-		TextureHandle tileMetadata;
+		BufferHandle  tileMetadata;
 		TextureHandle filterInput;
 		TextureHandle history;
 	};
@@ -322,9 +320,9 @@ void SunShadowRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboar
 	[&](RenderGraphBuilder& builder, Filter1PassData& passData)
 	{
 		passData.depth        = builder.ReadTexture(depthPrepassData.depthTarget);
-		passData.tileMetadata = builder.ReadTexture(filter0Data.tileMetadata);
+		passData.tileMetadata = builder.ReadBuffer(filter0Data.tileMetadata);
 		passData.filterInput  = builder.ReadTexture(filter0Data.history);
-		passData.history      = builder.WriteTexture(importedCurrHistory);
+		passData.history      = builder.WriteTexture(currHistory);
 	},
 	[this, &sceneData, width, height](const CommandBuffer* cmd, const Filter1PassData& passData)
 	{
@@ -349,7 +347,7 @@ void SunShadowRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboar
 	struct Filter2PassData
 	{
 		TextureHandle depth;
-		TextureHandle tileMetadata;
+		BufferHandle tileMetadata;
 		TextureHandle filterInput;
 		TextureHandle shadowMaskOutput;
 	};
@@ -358,9 +356,14 @@ void SunShadowRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboar
 	[&](RenderGraphBuilder& builder, Filter2PassData& passData)
 	{
 		passData.depth        = builder.ReadTexture(depthPrepassData.depthTarget);
-		passData.tileMetadata = builder.ReadTexture(filter1Data.tileMetadata);
+		passData.tileMetadata = builder.ReadBuffer(filter1Data.tileMetadata);
 		passData.filterInput  = builder.ReadTexture(filter1Data.history);
-		passData.shadowMaskOutput = builder.WriteTexture(importedDenoisedShadow);
+
+		RenderTextureDescriptor shadowMaskDesc;
+		shadowMaskDesc.name		= "ShadowMask";
+		shadowMaskDesc.size		= sceneTargetDescriptor.size;
+		shadowMaskDesc.format	= TextureFormat::R8_UNorm;
+		passData.shadowMaskOutput = builder.WriteTexture(builder.CreateTexture(shadowMaskDesc));
 	},
 	[this, &sceneData, width, height](const CommandBuffer* cmd, const Filter2PassData& passData)
 	{
@@ -392,7 +395,7 @@ void SunShadowRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboar
 	[&](RenderGraphBuilder& builder, DepthCopyPassData& passData)
 	{
 		passData.sourceDepth = builder.ReadTexture(depthPrepassData.depthTarget);
-		passData.destDepth   = builder.WriteTexture(importedPreviousDepth);
+		passData.destDepth   = builder.WriteTexture(previousDepth);
 	},
 	[this, width, height](const CommandBuffer* cmd, const DepthCopyPassData& passData)
 	{

@@ -6,7 +6,7 @@
 [numthreads(8, 8, 1)]
 void shadowDenoiserFilter(uint3 gid : SV_GroupID, uint3 gtid : SV_GroupThreadID, uint3 did : SV_DispatchThreadID)
 {
-    switch (dnsr.passIndex)
+    switch (constants.passIndex)
     {
         case 0:  DenoiserShadowsFilterPass0(gid.xy, gtid.xy, did.xy); break;
         case 1:  DenoiserShadowsFilterPass1(gid.xy, gtid.xy, did.xy); break;

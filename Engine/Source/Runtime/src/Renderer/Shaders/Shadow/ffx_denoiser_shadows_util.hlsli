@@ -24,6 +24,7 @@
 #define FFX_DNSR_SHADOWS_UTILS_HLSL
 
 #include "ShaderTypes.h"
+#include "FidelityFXCore.hlsli"
 
 FfxUInt32 FFX_DNSR_Shadows_RoundedDivide(FfxUInt32 value, FfxUInt32 divisor)
 {
