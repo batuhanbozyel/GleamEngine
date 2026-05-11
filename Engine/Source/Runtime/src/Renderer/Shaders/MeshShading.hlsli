@@ -55,7 +55,7 @@ float4 main(Gleam::MeshVertexOut IN) : SV_TARGET
 	float shadowVisibility = 1.0f;
 	if (constants.shadowTexture != InvalidResourceIndex)
 	{
-		Texture2D<uint> shadowTex = ResourceDescriptorHeap[constants.shadowTexture];
+        Texture2D<unorm float> shadowTex = ResourceDescriptorHeap[constants.shadowTexture];
 		shadowVisibility = shadowTex.Load(int3(IN.position.xy, 0));
 	}
 
