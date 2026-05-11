@@ -23,6 +23,8 @@
 #ifndef FFX_DNSR_SHADOWS_UTILS_HLSL
 #define FFX_DNSR_SHADOWS_UTILS_HLSL
 
+#include "ShaderTypes.h"
+
 FfxUInt32 FFX_DNSR_Shadows_RoundedDivide(FfxUInt32 value, FfxUInt32 divisor)
 {
     return (value + divisor - 1) / divisor;
@@ -30,17 +32,17 @@ FfxUInt32 FFX_DNSR_Shadows_RoundedDivide(FfxUInt32 value, FfxUInt32 divisor)
 
 FfxUInt32x2 FFX_DNSR_Shadows_GetTileIndexFromPixelPosition(FfxUInt32x2 pixel_pos)
 {
-    return FfxUInt32x2(pixel_pos.x / 8, pixel_pos.y / 4);
+    return FfxUInt32x2(pixel_pos.x / SHADOW_TILE_WIDTH, pixel_pos.y / SHADOW_TILE_HEIGHT);
 }
 
 FfxUInt32 FFX_DNSR_Shadows_LinearTileIndex(FfxUInt32x2 tile_index, FfxUInt32 screen_width)
 {
-    return tile_index.y * FFX_DNSR_Shadows_RoundedDivide(screen_width, 8) + tile_index.x;
+    return tile_index.y * FFX_DNSR_Shadows_RoundedDivide(screen_width, SHADOW_TILE_WIDTH) + tile_index.x;
 }
 
 FfxUInt32 FFX_DNSR_Shadows_GetBitMaskFromPixelPosition(FfxUInt32x2 pixel_pos)
 {
-    FfxUInt32 lane_index = (pixel_pos.y % 4) * 8 + (pixel_pos.x % 8);
+    FfxUInt32 lane_index = (pixel_pos.y % SHADOW_TILE_HEIGHT) * SHADOW_TILE_WIDTH + (pixel_pos.x % SHADOW_TILE_WIDTH);
     return (1u << lane_index);
 }
 

@@ -37,7 +37,6 @@ float2 ComputeMotionVector(Gleam::DepthPrepassVertexOut IN)
 }
 
 [shader("pixel")]
-[earlydepthstencil]
 float2 main(Gleam::DepthPrepassVertexOut IN) : SV_TARGET
 {
     Gleam::MeshInstanceData instance = LoadInstanceData(constants.instanceID);

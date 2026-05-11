@@ -98,14 +98,6 @@ struct DepthPrepassConstants
 	float pad1;
 };
 
-struct MotionVectorConstants
-{
-	ShaderResourceIndex instanceBuffer;
-	uint32_t instanceID;
-	float pad0;
-	float pad1;
-};
-
 struct MeshShadingConstants
 {
 	ShaderResourceIndex instanceBuffer;
@@ -210,6 +202,45 @@ struct RayTracedSunShadowConstants
 	float pad0;
 	float pad1;
 	float pad2;
+};
+
+struct ShadowDenoiserTileClassificationConstants
+{
+	ShaderResourceIndex hitMaskResults;
+	ShaderResourceIndex depth;
+	ShaderResourceIndex velocity;
+	ShaderResourceIndex previousDepth;
+	
+	ShaderResourceIndex previousMoments;
+	ShaderResourceIndex historyShadow;
+	UnorderedAccessIndex tileMetadata;
+	UnorderedAccessIndex currentMoments;
+	
+	UnorderedAccessIndex reprojectionResults;
+	int32_t isFirstFrame;
+	float pad0;
+	float pad1;
+};
+
+struct ShadowDenoiserDepthCopyConstants
+{
+	ShaderResourceIndex  sourceDepth;
+	UnorderedAccessIndex destDepth;
+	float pad0;
+	float pad1;
+};
+
+struct ShadowDenoiserFilterConstants
+{
+	ShaderResourceIndex depth;
+	ShaderResourceIndex tileMetadata;
+	ShaderResourceIndex filterInput;
+	UnorderedAccessIndex history;
+
+	UnorderedAccessIndex shadowMaskOutput;
+	uint32_t passIndex;
+	uint32_t stepSize;
+	float pad0;
 };
 
 } // namespace Gleam
