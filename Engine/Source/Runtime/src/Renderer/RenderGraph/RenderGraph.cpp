@@ -41,40 +41,72 @@ void RenderGraph::Compile()
     // Setup resource dependency
     for (auto pass : mPassNodes)
     {
-		// Buffer
+		// Buffer — Read after Write
         for (auto& resource : pass->bufferReads)
         {
             for (auto producer : resource.node->producers)
             {
+				if (producer == pass || producer->uniqueId >= pass->uniqueId)
+				{
+					continue;
+				}
                 auto [_, success] = producer->dependents.insert(pass);
                 pass->refCount += static_cast<uint32_t>(success);
             }
         }
-        
+
+		// Buffer — Write after Write + Write after Read
         for (auto& resource : pass->bufferWrites)
         {
-            if (resource.node->creator && resource.node->creator != pass)
+            for (auto producer : resource.node->producers)
             {
-                auto [_, success] = resource.node->creator->dependents.insert(pass);
+				if (producer == pass || producer->uniqueId >= pass->uniqueId)
+				{
+					continue;
+				}
+                auto [_, success] = producer->dependents.insert(pass);
+                pass->refCount += static_cast<uint32_t>(success);
+            }
+            for (auto consumer : resource.node->consumers)
+            {
+                if (consumer == pass) continue;
+                if (consumer->uniqueId >= pass->uniqueId) continue;
+                auto [_, success] = consumer->dependents.insert(pass);
                 pass->refCount += static_cast<uint32_t>(success);
             }
         }
 
-		// Texture
+		// Texture — Read after Write
 		for (auto& resource : pass->textureReads)
 		{
 			for (auto producer : resource.node->producers)
 			{
+				if (producer == pass || producer->uniqueId >= pass->uniqueId)
+				{
+					continue;
+				}
 				auto [_, success] = producer->dependents.insert(pass);
 				pass->refCount += static_cast<uint32_t>(success);
 			}
 		}
-        
+
+		// Texture — Write after Write + Write after Read
         for (auto& resource : pass->textureWrites)
         {
-            if (resource.node->creator && resource.node->creator != pass)
+            for (auto producer : resource.node->producers)
             {
-                auto [_, success] = resource.node->creator->dependents.insert(pass);
+				if (producer == pass || producer->uniqueId >= pass->uniqueId)
+				{
+					continue;
+				}
+                auto [_, success] = producer->dependents.insert(pass);
+                pass->refCount += static_cast<uint32_t>(success);
+            }
+            for (auto consumer : resource.node->consumers)
+            {
+                if (consumer == pass) continue;
+                if (consumer->uniqueId >= pass->uniqueId) continue;
+                auto [_, success] = consumer->dependents.insert(pass);
                 pass->refCount += static_cast<uint32_t>(success);
             }
         }

@@ -140,6 +140,7 @@ struct RenderGraphResourceNode : public RenderGraphNode
     RenderGraphPassNode* lastModifier = nullptr;
     RenderGraphPassNode* lastReference = nullptr;
     TArray<RenderGraphPassNode*> producers;
+    TArray<RenderGraphPassNode*> consumers;
 	uint32_t internalVersion = 0;
     
     RenderGraphResourceNode(uint32_t uniqueId, bool transient)

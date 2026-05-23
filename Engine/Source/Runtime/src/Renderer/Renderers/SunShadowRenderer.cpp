@@ -81,7 +81,7 @@ void SunShadowRenderer::CreateDenoiserTextures(const Size& size)
 
 	TextureDescriptor momentsDesc;
 	momentsDesc.dimension = TextureDimension::Texture2D;
-	momentsDesc.format    = TextureFormat::R16G16B16A16_SFloat;
+	momentsDesc.format    = mDevice->GetFeatures().rgb9e5UAVStores ? TextureFormat::R9G9B9E5_SFloat : TextureFormat::R11G11B10_SFloat;
 	momentsDesc.usage     = TextureUsage_Storage | TextureUsage_Sampled;
 	momentsDesc.size      = size;
 	momentsDesc.name      = "SunShadowRenderer::ShadowDenoiser::Moments 0";
@@ -102,7 +102,7 @@ void SunShadowRenderer::CreateDenoiserTextures(const Size& size)
 	TextureDescriptor depthDesc;
 	depthDesc.name      = "SunShadowRenderer::ShadowDenoiser::PreviousDepth";
 	depthDesc.dimension = TextureDimension::Texture2D;
-	depthDesc.format    = TextureFormat::R32_SFloat;
+	depthDesc.format    = TextureFormat::R16_UNorm;
 	depthDesc.usage     = TextureUsage_Storage | TextureUsage_Sampled;
 	depthDesc.size      = size;
 	mPreviousDepth = mDevice->CreateTexture(mAllocator, depthDesc);
@@ -246,6 +246,7 @@ void SunShadowRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboar
 	[this, &sceneData, width, height](const CommandBuffer* cmd, const TileClassificationPassData& passData)
 	{
 		ShadowDenoiserTileClassificationConstants constants = {};
+		constants.reprojectionMatrix  = sceneData.camera.uniforms.prevViewProjectionMatrix * sceneData.camera.uniforms.invViewProjectionMatrix;
 		constants.hitMaskResults      = passData.shadowMask;
 		constants.depth               = passData.depth;
 		constants.velocity            = passData.velocity;
@@ -394,8 +395,8 @@ void SunShadowRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboar
 	graph.AddComputePass<DepthCopyPassData>("SunShadowRenderer::DepthCopy",
 	[&](RenderGraphBuilder& builder, DepthCopyPassData& passData)
 	{
-		passData.sourceDepth = builder.ReadTexture(depthPrepassData.depthTarget);
-		passData.destDepth   = builder.WriteTexture(previousDepth);
+		passData.sourceDepth = builder.ReadTexture(filter2Data.depth);
+		passData.destDepth   = builder.WriteTexture(tileClassData.previousDepth);
 	},
 	[this, width, height](const CommandBuffer* cmd, const DepthCopyPassData& passData)
 	{

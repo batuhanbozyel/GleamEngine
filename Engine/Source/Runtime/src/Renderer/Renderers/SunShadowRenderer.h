@@ -43,9 +43,9 @@ private:
 	ComputePipelineHandle    mDepthCopyPipeline;
 
 	// Persistent temporal resources (ping-pong on mFrameIndex)
-	Texture mMoments[2];         // R16G16B16A16_SFloat — mean, variance, sample count
-	Texture mHistoryShadow[2];   // R16G16_SFloat       — denoised shadow history
-	Texture mPreviousDepth;      // R32_SFloat          — depth from previous frame
+	Texture mMoments[2];
+	Texture mHistoryShadow[2];
+	Texture mPreviousDepth;
 
 	Size mDenoiserSize;
 

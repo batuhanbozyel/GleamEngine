@@ -44,6 +44,31 @@ void RenderSystem::InitializeBackend()
 	mDevice = new DirectXDevice(mSwapchain, mReleaseQueue);
 }
 
+static DeviceFeatures QueryDeviceFeatures(ID3D12Device10* device)
+{
+	DeviceFeatures features;
+
+	D3D12_FEATURE_DATA_D3D12_OPTIONS5 options5 = {};
+	if (SUCCEEDED(device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS5, &options5, sizeof(options5))))
+	{
+		features.raytracing = options5.RaytracingTier >= D3D12_RAYTRACING_TIER_1_0;
+	}
+
+	D3D12_FEATURE_DATA_D3D12_OPTIONS7 options7 = {};
+	if (SUCCEEDED(device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS7, &options7, sizeof(options7))))
+	{
+		features.meshShaders = options7.MeshShaderTier >= D3D12_MESH_SHADER_TIER_1;
+	}
+
+	D3D12_FEATURE_DATA_FORMAT_SUPPORT formatSupport = { DXGI_FORMAT_R9G9B9E5_SHAREDEXP };
+	if (SUCCEEDED(device->CheckFeatureSupport(D3D12_FEATURE_FORMAT_SUPPORT, &formatSupport, sizeof(formatSupport))))
+	{
+		features.rgb9e5UAVStores = (formatSupport.Support2 & D3D12_FORMAT_SUPPORT2_UAV_TYPED_STORE) != 0;
+	}
+
+	return features;
+}
+
 static D3D12_STATIC_SAMPLER_DESC CreateStaticSampler(const SamplerState& samplerState)
 {
 	D3D12_STATIC_SAMPLER_DESC sampler{};
@@ -679,6 +704,8 @@ DirectXDevice::DirectXDevice(RenderSurface* surface, ResourceReleaseQueue* relea
 		}
 	}
 	DX_CHECK(D3D12CreateDevice(swapchain->mAdapter, D3D_FEATURE_LEVEL_12_0, __uuidof(ID3D12Device10), &mHandle));
+
+	mFeatures = QueryDeviceFeatures(static_cast<ID3D12Device10*>(mHandle));
 
 	if (Globals::CLI->HasFlag("--debug-layer"))
 	{

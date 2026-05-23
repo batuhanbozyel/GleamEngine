@@ -65,11 +65,6 @@ FfxFloat32Mat4 ViewProjectionInverse()
     return camera.invViewProjectionMatrix;
 }
 
-FfxFloat32Mat4 ReprojectionMatrix()
-{
-    return camera.prevViewProjectionMatrix;
-}
-
 FfxFloat32x3 Eye()
 {
     return camera.position;
@@ -89,31 +84,31 @@ FfxBoolean IsShadowReciever(FfxUInt32x2 p)
 
 FfxFloat32x3 LoadNormals(FfxInt32x2 p)
 {
-    int2 dims    = BufferDimensions();
-    float2 invD  = InvBufferDimensions();
+    int2 resolution   = BufferDimensions();
+    float2 pixelSize  = InvBufferDimensions();
 
-    int2 p1x = clamp(p + int2(1, 0), int2(0, 0), dims - 1);
-    int2 p1y = clamp(p + int2(0, 1), int2(0, 0), dims - 1);
+    int2 p1 = clamp(p + int2(1, 0), int2(0, 0), resolution - 1);
+    int2 p2 = clamp(p + int2(0, 1), int2(0, 0), resolution - 1);
 
-    float d0  = LoadDepth(p);
-    float d1x = LoadDepth(p1x);
-    float d1y = LoadDepth(p1y);
+    float depth0 = LoadDepth(p);
+    float depth1 = LoadDepth(p1);
+    float depth2 = LoadDepth(p2);
+    
+    float2 uv0 = (p  + 0.5f) * pixelSize;
+    float2 uv1 = (p1 + 0.5f) * pixelSize;
+    float2 uv2 = (p2 + 0.5f) * pixelSize;
 
-    // Reconstruct view-space positions from NDC depth (left-handed, Y-up).
-    float2 uv0  = (p   + 0.5f) * invD;
-    float2 uv1x = (p1x + 0.5f) * invD;
-    float2 uv1y = (p1y + 0.5f) * invD;
+    float4 c0 = mul(camera.invProjectionMatrix, float4(uv0.x  * 2.0f - 1.0f, 1.0f - uv0.y  * 2.0f, depth0,  1.0f));
+    float4 c1 = mul(camera.invProjectionMatrix, float4(uv1.x * 2.0f - 1.0f, 1.0f - uv1.y * 2.0f, depth1, 1.0f));
+    float4 c2 = mul(camera.invProjectionMatrix, float4(uv2.x * 2.0f - 1.0f, 1.0f - uv2.y * 2.0f, depth2, 1.0f));
 
-    float4 c0  = mul(camera.invProjectionMatrix, float4(uv0.x  * 2.0f - 1.0f, 1.0f - uv0.y  * 2.0f, d0,  1.0f));
-    float4 c1x = mul(camera.invProjectionMatrix, float4(uv1x.x * 2.0f - 1.0f, 1.0f - uv1x.y * 2.0f, d1x, 1.0f));
-    float4 c1y = mul(camera.invProjectionMatrix, float4(uv1y.x * 2.0f - 1.0f, 1.0f - uv1y.y * 2.0f, d1y, 1.0f));
+    float3 v0 = c0.xyz / c0.w;
+    float3 v1 = c1.xyz / c1.w;
+    float3 v2 = c2.xyz / c2.w;
 
-    float3 v0  = c0.xyz  / c0.w;
-    float3 v1x = c1x.xyz / c1x.w;
-    float3 v1y = c1y.xyz / c1y.w;
-
-    float3 normal = normalize(cross(v1x - v0, v1y - v0));
-    return normalize(mul((float3x3)camera.invViewMatrix, normal));
+    float3 normal = normalize(cross(v1 - v0, v2 - v0));
+    normal = mul(camera.invViewMatrix, float4(normal, 0)).xyz;
+    return normalize(normal);
 }
 
 #if defined(FFX_DNSR_SHADOWS_FILTER_PASS)
@@ -155,6 +150,11 @@ FfxInt32 IsFirstFrame()
     return constants.isFirstFrame;
 }
 
+FfxFloat32Mat4 ReprojectionMatrix()
+{
+    return constants.reprojectionMatrix;
+}
+
 FfxFloat32 LoadPreviousDepth(FfxInt32x2 p)
 {
     Texture2D<float> tex = ResourceDescriptorHeap[constants.previousDepth];
@@ -164,7 +164,7 @@ FfxFloat32 LoadPreviousDepth(FfxInt32x2 p)
 FfxFloat32x2 LoadVelocity(FfxInt32x2 p)
 {
     Texture2D<float2> tex = ResourceDescriptorHeap[constants.velocity];
-    return tex.Load(int3(p, 0));
+    return -tex.Load(int3(p, 0)) * InvBufferDimensions();
 }
 
 FfxFloat32 LoadHistory(FfxFloat32x2 uv)

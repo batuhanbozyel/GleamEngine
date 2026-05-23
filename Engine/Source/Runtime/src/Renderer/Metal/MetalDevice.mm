@@ -16,6 +16,15 @@
 
 using namespace Gleam;
 
+static DeviceFeatures QueryDeviceFeatures(id<MTLDevice> device)
+{
+    DeviceFeatures features;
+    features.raytracing = [device supportsRaytracing];
+    features.meshShaders = [device supportsFamily:MTLGPUFamilyMetal3];
+    features.rgb9e5UAVStores = [device supportsFamily:MTLGPUFamilyApple3] || [device supportsFamily:MTLGPUFamilyMac2];
+    return features;
+}
+
 @interface MetalComputePipelineImpl : NSObject<MetalComputePipeline>
 @property (nonatomic, strong) id<MTLComputePipelineState> pipelineState;
 @property(nonatomic, assign) MTLSize threadsPerThreadgroup;
@@ -1133,7 +1142,9 @@ MetalDevice::MetalDevice(RenderSurface* surface, ResourceReleaseQueue* releaseQu
     // init MTLDevice
     mHandle = MTLCreateSystemDefaultDevice();
     GLEAM_ASSERT(mHandle);
-    
+
+    mFeatures = QueryDeviceFeatures(mHandle);
+
     // init MTLResidencySet
     __autoreleasing NSError* residencySetError = nil;
     MTLResidencySetDescriptor* residencySetDesc = [MTLResidencySetDescriptor new];

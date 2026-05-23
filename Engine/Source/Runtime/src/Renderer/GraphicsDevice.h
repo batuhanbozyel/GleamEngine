@@ -11,6 +11,13 @@ namespace Gleam {
 class RenderSystem;
 struct Version;
 
+struct DeviceFeatures
+{
+    bool raytracing = false;
+    bool meshShaders = false;
+    bool rgb9e5UAVStores = false;
+};
+
 class GraphicsDevice : public GraphicsObject
 {
     friend class RenderSystem;
@@ -65,11 +72,18 @@ public:
 	const GraphicsPipeline& GetGraphicsPipeline(GraphicsPipelineHandle handle) const;
 
 	const RayTracingPipeline& GetRayTracingPipeline(RayTracingPipelineHandle handle) const;
-    
+
+	const DeviceFeatures& GetFeatures() const
+	{
+		return mFeatures;
+	}
+
 protected:
 
 	// Implemented by the backend
 	virtual void Configure(const RendererConfig& config) = 0;
+
+	DeviceFeatures mFeatures;
 
     TArray<Shader> mShaderCache;
 

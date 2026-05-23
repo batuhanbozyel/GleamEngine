@@ -14,13 +14,14 @@ using namespace Gleam;
 DirectXSwapchain::DirectXSwapchain()
 {
 	UINT dxgiFactoryFlags = 0;
-#ifdef GDEBUG
-	if (SUCCEEDED(DXGIGetDebugInterface1(0, IID_PPV_ARGS(&mDXGIDebug))))
+	if (Globals::CLI->HasFlag("--debug-layer"))
 	{
-		dxgiFactoryFlags |= DXGI_CREATE_FACTORY_DEBUG;
-		mDXGIDebug->EnableLeakTrackingForThread();
+		if (SUCCEEDED(DXGIGetDebugInterface1(0, IID_PPV_ARGS(&mDXGIDebug))))
+		{
+			dxgiFactoryFlags |= DXGI_CREATE_FACTORY_DEBUG;
+			mDXGIDebug->EnableLeakTrackingForThread();
+		}
 	}
-#endif
 	DX_CHECK(CreateDXGIFactory2(dxgiFactoryFlags, IID_PPV_ARGS(&mFactory)));
 	DX_CHECK(mFactory->EnumAdapterByGpuPreference(0, DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE, IID_PPV_ARGS(&mAdapter)));
 }
@@ -46,7 +47,6 @@ DirectXSwapchain::~DirectXSwapchain()
 	mAdapter->Release();
 	mHandle->Release();
 
-#ifdef GDEBUG
 	if (mDXGIDebug)
 	{
 		OutputDebugStringW(L"DXGI Reports living device objects:\n");
@@ -56,7 +56,6 @@ DirectXSwapchain::~DirectXSwapchain()
 
 		mDXGIDebug->Release();
 	}
-#endif
 }
 
 void DirectXSwapchain::Configure(DirectXDevice* device, const RendererConfig& config)

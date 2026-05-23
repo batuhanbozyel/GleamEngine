@@ -5,16 +5,16 @@
 #include "SurfaceShading.hlsli"
 
 PUSH_CONSTANT(Gleam::DepthPrepassConstants, constants);
+CONSTANT_BUFFER(Gleam::CameraUniforms, camera, CAMERA_UNIFORMS_BINDING_SLOT);
 
 namespace Gleam
 {
 struct DepthPrepassVertexOut
 {
     float4 position : SV_POSITION;
-    float4 currentClipPos : ATTRIB0;
-    float4 prevClipPos : ATTRIB1;
-    float4 color : ATTRIB4;
-    float2 uv : ATTRIB5;
+    float4 prevClipPos : ATTRIB0;
+    float4 color : ATTRIB1;
+    float2 uv : ATTRIB2;
 };
 
 } // namespace Gleam
@@ -29,11 +29,11 @@ Gleam::MeshInstanceData LoadInstanceData(uint instanceID)
 	return instance;
 }
 
-float2 ComputeMotionVector(Gleam::DepthPrepassVertexOut IN)
+float2 ComputeMotionVector(Gleam::DepthPrepassVertexOut IN, float2 resolution)
 {
-    float2 currentNDC = IN.currentClipPos.xy / IN.currentClipPos.w;
     float2 prevNDC = IN.prevClipPos.xy / IN.prevClipPos.w;
-    return (currentNDC - prevNDC) * float2(0.5f, -0.5f);
+    float2 prevViewport = (prevNDC * float2(0.5f, -0.5f) + 0.5f) * resolution;
+    return IN.position.xy - prevViewport;
 }
 
 [shader("pixel")]
@@ -49,6 +49,6 @@ float2 main(Gleam::DepthPrepassVertexOut IN) : SV_TARGET
     Gleam::SurfaceOutput surface = SurfMain(meshVertexOut);
     clip(surface.albedo.a - surface.alphaCutoff);
 
-    return ComputeMotionVector(IN);
+    return ComputeMotionVector(IN, camera.resolution);
 }
 #endif // DEPTH_PREPASS_HLSL

@@ -206,6 +206,8 @@ struct RayTracedSunShadowConstants
 
 struct ShadowDenoiserTileClassificationConstants
 {
+	float4x4 reprojectionMatrix;
+
 	ShaderResourceIndex hitMaskResults;
 	ShaderResourceIndex depth;
 	ShaderResourceIndex velocity;
