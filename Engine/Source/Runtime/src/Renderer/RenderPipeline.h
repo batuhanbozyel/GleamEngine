@@ -31,20 +31,21 @@ public:
 	template<RendererType T, class...Args>
     T* AddRenderer(Args&&... args)
     {
-        GLEAM_ASSERT(!HasRenderer<T>(), "Render pipeline already has the renderer!");
-        auto renderer = static_cast<T*>(mRenderers.emplace_back(new T(std::forward<Args>(args)...)));
+        GLEAM_ASSERT(not HasRenderer<T>(), "Render pipeline already has the renderer!");
+        auto renderer = new T(std::forward<Args>(args)...);
         mOwnedRenderers.push_back(renderer);
         renderer->OnCreate(mContext);
+        InsertRenderer(renderer);
         return renderer;
     }
 
     template<RendererType T>
     void AddSharedRenderer(T* renderer)
     {
-        GLEAM_ASSERT(!HasRenderer<T>(), "Render pipeline already has the renderer!");
-        mRenderers.push_back(renderer);
+        GLEAM_ASSERT(not HasRenderer<T>(), "Render pipeline already has the renderer!");
+        InsertRenderer(renderer);
     }
-
+	
     template<RendererType T>
     void RemoveRenderer()
     {
@@ -140,6 +141,17 @@ public:
 	}
 
 private:
+	
+	void InsertRenderer(IRenderer* renderer)
+	{
+		auto stage = renderer->GetStage();
+		auto it = mRenderers.begin();
+		while (it != mRenderers.end() && (*it)->GetStage() <= stage)
+		{
+			++it;
+		}
+		mRenderers.insert(it, renderer);
+	}
 
 	Container mRenderers;
 	Container mOwnedRenderers;

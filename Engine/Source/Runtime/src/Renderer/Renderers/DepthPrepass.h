@@ -23,6 +23,8 @@ public:
 
 	virtual void RegisterShadingPipeline(const Material* material) override;
 
+	virtual RenderStage GetStage() const override { return RenderStage::Prepass; }
+
 private:
 
 	GraphicsDevice* mDevice = nullptr;

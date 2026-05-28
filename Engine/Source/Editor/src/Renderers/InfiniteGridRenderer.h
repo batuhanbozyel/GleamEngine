@@ -11,6 +11,8 @@ public:
     
     virtual void AddRenderPasses(Gleam::RenderGraph& graph, Gleam::RenderGraphBlackboard& blackboard) override;
 
+    virtual Gleam::RenderStage GetStage() const override { return Gleam::RenderStage::Transparent; }
+
 private:
     
     Gleam::GraphicsPipelineHandle mPipeline;

@@ -17,7 +17,9 @@ public:
     virtual void OnCreate(const RenderContext& context) override;
     
     virtual void AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard) override;
-    
+
+	virtual RenderStage GetStage() const override { return RenderStage::PostProcess; }
+
 private:
     
 	GraphicsPipelineHandle mPipeline;

@@ -28,6 +28,8 @@ public:
 
 	virtual void AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard) override;
 
+	virtual RenderStage GetStage() const override { return RenderStage::AfterRendering; }
+
 	void PushView(ImGuiView&& view);
 
 	ImTextureID GetImTextureIDForTexture(const Texture& texture) const;

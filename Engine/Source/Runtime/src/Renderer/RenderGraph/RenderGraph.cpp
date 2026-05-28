@@ -38,92 +38,140 @@ RenderGraph::~RenderGraph()
 
 void RenderGraph::Compile()
 {
-    // Setup resource dependency
-    for (auto pass : mPassNodes)
-    {
-		// Buffer
-        for (auto& resource : pass->bufferReads)
-        {
-            for (auto producer : resource.node->producers)
-            {
-                auto [_, success] = producer->dependents.insert(pass);
-                pass->refCount += static_cast<uint32_t>(success);
-            }
-        }
-        
-        for (auto& resource : pass->bufferWrites)
-        {
-            if (resource.node->creator && resource.node->creator != pass)
-            {
-                auto [_, success] = resource.node->creator->dependents.insert(pass);
-                pass->refCount += static_cast<uint32_t>(success);
-            }
-        }
-
-		// Texture
-		for (auto& resource : pass->textureReads)
+	for (auto pass : mPassNodes)
+	{
+		// Buffer reads
+		for (const auto& resource : pass->bufferReads)
 		{
-			for (auto producer : resource.node->producers)
+			const auto& producers = resource.node->producers;
+
+			// Read-after-Write
+			if (resource.version > 0)
 			{
-				auto [_, success] = producer->dependents.insert(pass);
-				pass->refCount += static_cast<uint32_t>(success);
+				auto producer = producers[resource.version - 1];
+				if (producer != pass)
+				{
+					auto [_, inserted] = producer->dependents.insert(pass);
+					pass->refCount += static_cast<uint32_t>(inserted);
+				}
+			}
+
+			// Write-after-Read
+			if (resource.version < producers.size())
+			{
+				auto nextWriter = producers[resource.version];
+				if (nextWriter != pass)
+				{
+					auto [_, inserted] = pass->dependents.insert(nextWriter);
+					nextWriter->refCount += static_cast<uint32_t>(inserted);
+				}
 			}
 		}
-        
-        for (auto& resource : pass->textureWrites)
-        {
-            if (resource.node->creator && resource.node->creator != pass)
-            {
-                auto [_, success] = resource.node->creator->dependents.insert(pass);
-                pass->refCount += static_cast<uint32_t>(success);
-            }
-        }
-    }
-    
-    // Perform topological sort
-	auto cmp = [](RenderGraphPassNode* a, RenderGraphPassNode* b)
+
+		// Texture reads
+		for (const auto& resource : pass->textureReads)
+		{
+			const auto& producers = resource.node->producers;
+
+			// Read-after-Write
+			if (resource.version > 0)
+			{
+				auto producer = producers[resource.version - 1];
+				if (producer != pass)
+				{
+					auto [_, inserted] = producer->dependents.insert(pass);
+					pass->refCount += static_cast<uint32_t>(inserted);
+				}
+			}
+
+			// Write-after-Read
+			if (resource.version < producers.size())
+			{
+				auto nextWriter = producers[resource.version];
+				if (nextWriter != pass)
+				{
+					auto [_, inserted] = pass->dependents.insert(nextWriter);
+					nextWriter->refCount += static_cast<uint32_t>(inserted);
+				}
+			}
+		}
+
+		// Buffer writes — Write-after-Write
+		for (const auto& resource : pass->bufferWrites)
+		{
+			const auto& producers = resource.node->producers;
+			if (resource.version > 1)
+			{
+				auto prevWriter = producers[resource.version - 2];
+				if (prevWriter != pass)
+				{
+					auto [_, inserted] = prevWriter->dependents.insert(pass);
+					pass->refCount += static_cast<uint32_t>(inserted);
+				}
+			}
+		}
+
+		// Texture writes — Write-after-Write
+		for (const auto& resource : pass->textureWrites)
+		{
+			const auto& producers = resource.node->producers;
+			if (resource.version > 1)
+			{
+				auto prevWriter = producers[resource.version - 2];
+				if (prevWriter != pass)
+				{
+					auto [_, inserted] = prevWriter->dependents.insert(pass);
+					pass->refCount += static_cast<uint32_t>(inserted);
+				}
+			}
+		}
+	}
+	
+	auto cmp = [](RenderGraphPassNode* lhs, RenderGraphPassNode* rhs)
 	{
-		return a->uniqueId > b->uniqueId;
+		return lhs->uniqueId > rhs->uniqueId;
 	};
-    PriorityQueue<RenderGraphPassNode*, TArray<RenderGraphPassNode*>, decltype(cmp)> passQueue(cmp);
-    TArray<RenderGraphPassNode*> sortedPasses;
-    for (auto pass : mPassNodes)
-    {
-        if (pass->refCount == 0)
-        {
-            passQueue.push(pass);
-        }
-    }
-    
-    while (!passQueue.empty())
-    {
-        auto pass = passQueue.top();
-        passQueue.pop();
-        
-        sortedPasses.push_back(pass);
-        for (auto dependent : pass->dependents)
-        {
-            if (--dependent->refCount == 0)
-            {
-                passQueue.push(dependent);
-            }
-        }
-    }
-    mPassNodes = sortedPasses;
-    
-    // Calculate resource lifetimes
-    for (auto pass : mPassNodes)
-    {
+	PriorityQueue<RenderGraphPassNode*, TArray<RenderGraphPassNode*>, decltype(cmp)> readyQueue(cmp);
+	for (auto pass : mPassNodes)
+	{
+		if (pass->refCount == 0)
+		{
+			readyQueue.push(pass);
+		}
+	}
+
+	TArray<RenderGraphPassNode*> sortedPasses;
+	sortedPasses.reserve(mPassNodes.size());
+	while (not readyQueue.empty())
+	{
+		auto pass = readyQueue.top();
+		readyQueue.pop();
+
+		sortedPasses.push_back(pass);
+		for (auto dependent : pass->dependents)
+		{
+			if (--dependent->refCount == 0)
+			{
+				readyQueue.push(dependent);
+			}
+		}
+	}
+	GLEAM_ASSERT(sortedPasses.size() == mPassNodes.size(), "RenderGraph::Compile: cyclic pass dependency detected");
+	mPassNodes = sortedPasses;
+
+	// Calculate resource lifetimes in execution order
+	for (auto pass : mPassNodes)
+	{
 		// Buffer
-        for (auto& resource : pass->bufferWrites)
-        {
-            resource.node->lastModifier = pass;
-            resource.node->lastReference = pass;
-        }
-        for (auto& resource : pass->bufferReads)
-        {
+		for (auto& resource : pass->bufferWrites)
+		{
+			resource.node->lastModifier = pass;
 			resource.node->lastReference = pass;
-        }
+		}
+		for (auto& resource : pass->bufferReads)
+		{
+			resource.node->lastReference = pass;
+		}
 
 		// Texture
 		for (auto& resource : pass->textureWrites)
@@ -135,7 +183,7 @@ void RenderGraph::Compile()
 		{
 			resource.node->lastReference = pass;
 		}
-    }
+	}
 }
 
 void RenderGraph::Execute(const CommandBuffer* cmd, SceneRenderingData& sceneData)

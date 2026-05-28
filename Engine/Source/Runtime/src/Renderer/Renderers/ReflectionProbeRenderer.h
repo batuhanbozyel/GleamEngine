@@ -19,6 +19,8 @@ public:
 
 	virtual void AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard) override;
 
+	virtual RenderStage GetStage() const override { return RenderStage::BeforeRendering; }
+
 private:
 
 	CameraUniforms CreateCubeFaceCamera(const float3& position, uint32_t resolution, uint32_t faceIndex);

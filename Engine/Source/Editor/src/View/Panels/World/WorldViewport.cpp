@@ -14,6 +14,7 @@
 #include "Renderer/RenderPipeline.h"
 #include "Renderer/Renderers/ImGuiRenderer.h"
 #include "Renderer/Renderers/PathTracer.h"
+#include "Renderer/Renderers/PostProcessStack.h"
 #include "View/Widgets/PropertyDrawer.h"
 
 #include "Core/Globals.h"

@@ -22,6 +22,8 @@ public:
     
     virtual void AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard) override;
 
+	virtual RenderStage GetStage() const override { return RenderStage::BeforeRendering; }
+
 private:
 
 	Texture mBRDFLutTexture;

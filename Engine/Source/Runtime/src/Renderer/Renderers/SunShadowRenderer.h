@@ -26,6 +26,8 @@ public:
 
 	virtual void RegisterShadingPipeline(const Material* material) override;
 
+	virtual RenderStage GetStage() const override { return RenderStage::Shadows; }
+
 private:
 
 	void CreateDenoiserTextures(const Size& size);
