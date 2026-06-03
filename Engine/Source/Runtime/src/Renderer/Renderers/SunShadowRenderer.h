@@ -44,9 +44,8 @@ private:
 	ComputePipelineHandle    mFilterPipeline;
 	ComputePipelineHandle    mDepthCopyPipeline;
 
-	// Persistent temporal resources (ping-pong on mFrameIndex)
 	Texture mMoments[2];
-	Texture mHistoryShadow[2];
+	Texture mScratch[2];
 	Texture mPreviousDepth;
 
 	Size mDenoiserSize;

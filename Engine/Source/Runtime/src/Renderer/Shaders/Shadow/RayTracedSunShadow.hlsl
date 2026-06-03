@@ -61,13 +61,34 @@ void rayTracedSunShadowRayGen()
              ray,
              payload);
 
-    if (payload.visibility > 0.5f)
+    bool isLit = payload.visibility > 0.5f;
+    if (WaveActiveAllEqual(tileIndex))
     {
-        shadowMask.InterlockedOr(tileIndex * sizeof(uint), bitMask);
+        uint waveLitMask = WaveActiveBitOr(isLit ? bitMask : 0u);
+        uint waveShadowMask = WaveActiveBitOr(isLit ? 0u : bitMask);
+        if (WaveIsFirstLane())
+        {
+            if (waveLitMask != 0u)
+            {
+                shadowMask.InterlockedOr(tileIndex * sizeof(uint), waveLitMask);
+            }
+            
+            if (waveShadowMask != 0u)
+            {
+                shadowMask.InterlockedAnd(tileIndex * sizeof(uint), ~waveShadowMask);
+            }
+        }
     }
     else
     {
-        shadowMask.InterlockedAnd(tileIndex * sizeof(uint), ~bitMask);
+        if (isLit)
+        {
+            shadowMask.InterlockedOr(tileIndex * sizeof(uint), bitMask);
+        }
+        else
+        {
+            shadowMask.InterlockedAnd(tileIndex * sizeof(uint), ~bitMask);
+        }
     }
 }
 

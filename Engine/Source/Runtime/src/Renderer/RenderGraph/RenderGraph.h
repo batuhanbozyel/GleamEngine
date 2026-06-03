@@ -14,7 +14,7 @@ struct SceneRenderingData;
 struct ImportResourceParams
 {
 	Color clearColor = Color::clear;
-	bool clearOnFirstUse = true;
+	bool clearOnFirstUse = false;
 };
 
 struct RenderGraphContext
