@@ -241,8 +241,8 @@ struct ShadowDenoiserFilterConstants
 
 	UnorderedAccessIndex shadowMaskOutput;
 	uint32_t passIndex;
-	uint32_t stepSize;
 	float pad0;
+	float pad1;
 };
 
 } // namespace Gleam

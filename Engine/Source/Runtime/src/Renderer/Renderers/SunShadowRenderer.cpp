@@ -285,7 +285,6 @@ void SunShadowRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboar
 		constants.filterInput         = passData.filterInput;
 		constants.history             = passData.history;
 		constants.passIndex           = 0u;
-		constants.stepSize            = 1u;
 
 		cmd->BindComputePipeline(mFilterPipeline);
 		cmd->SetPushConstant(constants);
@@ -321,7 +320,6 @@ void SunShadowRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboar
 		constants.filterInput         = passData.filterInput;
 		constants.history             = passData.history;
 		constants.passIndex           = 1u;
-		constants.stepSize            = 2u;
 
 		cmd->BindComputePipeline(mFilterPipeline);
 		cmd->SetPushConstant(constants);
@@ -362,7 +360,6 @@ void SunShadowRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboar
 		constants.filterInput         = passData.filterInput;
 		constants.shadowMaskOutput    = passData.shadowMaskOutput;
 		constants.passIndex           = 2u;
-		constants.stepSize            = 4u;
 
 		cmd->BindComputePipeline(mFilterPipeline);
 		cmd->SetPushConstant(constants);
