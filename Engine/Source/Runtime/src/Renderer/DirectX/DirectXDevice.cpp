@@ -98,6 +98,12 @@ static D3D12_STATIC_SAMPLER_DESC CreateStaticSampler(const SamplerState& sampler
 			sampler.Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
 			break;
 		}
+		case FilterMode::Anisotropic:
+		{
+			sampler.Filter = D3D12_FILTER_ANISOTROPIC;
+			sampler.MaxAnisotropy = 16;
+			break;
+		}
 		default: GLEAM_ASSERT(false, "DirectX: Filter mode is not supported!") break;
 	}
 

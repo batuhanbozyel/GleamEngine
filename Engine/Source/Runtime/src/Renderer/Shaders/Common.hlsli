@@ -43,6 +43,11 @@ SamplerState Sampler_Trilinear_Clamp : register(s9);
 SamplerState Sampler_Trilinear_Mirror : register(s10);
 SamplerState Sampler_Trilinear_MirrorOnce : register(s11);
 
+SamplerState Sampler_Anisotropic_Repeat : register(s12);
+SamplerState Sampler_Anisotropic_Clamp : register(s13);
+SamplerState Sampler_Anisotropic_Mirror : register(s14);
+SamplerState Sampler_Anisotropic_MirrorOnce : register(s15);
+
 // https://twitter.com/SebAaltonen/status/878250919879639040
 // madd_sat + madd
 float FastSign(float x)

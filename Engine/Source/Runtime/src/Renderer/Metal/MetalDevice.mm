@@ -263,6 +263,12 @@ static IRStaticSamplerDescriptor CreateIRStaticSampler(const SamplerState& sampl
             sampler.Filter = IRFilterMinMagMipLinear;
             break;
         }
+        case FilterMode::Anisotropic:
+        {
+            sampler.Filter = IRFilterAnisotropic;
+            sampler.MaxAnisotropy = 16;
+            break;
+        }
         default: GLEAM_ASSERT(false, "Metal: Filter mode is not supported.") break;
     }
 
@@ -331,6 +337,14 @@ static MTLSamplerDescriptor* CreateMTLSamplerState(const SamplerState& samplerSt
             desc.minFilter = MTLSamplerMinMagFilterLinear;
             desc.magFilter = MTLSamplerMinMagFilterLinear;
             desc.mipFilter = MTLSamplerMipFilterLinear;
+            break;
+        }
+        case FilterMode::Anisotropic:
+        {
+            desc.minFilter = MTLSamplerMinMagFilterLinear;
+            desc.magFilter = MTLSamplerMinMagFilterLinear;
+            desc.mipFilter = MTLSamplerMipFilterLinear;
+            desc.maxAnisotropy = 16;
             break;
         }
         default: GLEAM_ASSERT(false, "Metal: Filter mode is not supported.") break;

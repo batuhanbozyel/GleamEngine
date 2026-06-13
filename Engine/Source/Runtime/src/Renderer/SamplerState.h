@@ -8,6 +8,7 @@ enum class FilterMode
 	Point,
 	Bilinear,
 	Trilinear,
+	Anisotropic,
     COUNT
 };
 
@@ -32,7 +33,7 @@ struct SamplerState
     
 	static constexpr auto GetStaticSamplers()
     {
-		return TArray<SamplerState, 12>{
+		return TArray<SamplerState, 16>{
 			// Sampler_Point_Repeat
 			SamplerState{
 				.filterMode = FilterMode::Point,
@@ -91,6 +92,26 @@ struct SamplerState
 			// Sampler_Trilinear_MirrorOnce
 			SamplerState{
 				.filterMode = FilterMode::Trilinear,
+				.wrapMode = WrapMode::MirrorOnce
+			},
+			// Sampler_Anisotropic_Repeat
+			SamplerState{
+				.filterMode = FilterMode::Anisotropic,
+				.wrapMode = WrapMode::Repeat
+			},
+			// Sampler_Anisotropic_Clamp
+			SamplerState{
+				.filterMode = FilterMode::Anisotropic,
+				.wrapMode = WrapMode::Clamp
+			},
+			// Sampler_Anisotropic_Mirror
+			SamplerState{
+				.filterMode = FilterMode::Anisotropic,
+				.wrapMode = WrapMode::Mirror
+			},
+			// Sampler_Anisotropic_MirrorOnce
+			SamplerState{
+				.filterMode = FilterMode::Anisotropic,
 				.wrapMode = WrapMode::MirrorOnce
 			}
 		};
