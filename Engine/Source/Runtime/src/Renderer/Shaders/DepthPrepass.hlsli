@@ -33,7 +33,7 @@ float2 ComputeMotionVector(Gleam::DepthPrepassVertexOut IN, float2 resolution)
 {
     float2 prevNDC = IN.prevClipPos.xy / IN.prevClipPos.w;
     float2 prevViewport = (prevNDC * float2(0.5f, -0.5f) + 0.5f) * resolution;
-    return IN.position.xy - prevViewport;
+    return prevViewport - IN.position.xy;
 }
 
 [shader("pixel")]

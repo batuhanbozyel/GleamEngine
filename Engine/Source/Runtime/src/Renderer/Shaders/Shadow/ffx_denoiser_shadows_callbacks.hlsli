@@ -98,7 +98,7 @@ FfxFloat32x3 LoadNormals(FfxInt32x2 p)
     float2 uv1 = (p1 + 0.5f) * pixelSize;
     float2 uv2 = (p2 + 0.5f) * pixelSize;
 
-    float4 c0 = mul(camera.invProjectionMatrix, float4(uv0.x  * 2.0f - 1.0f, 1.0f - uv0.y  * 2.0f, depth0,  1.0f));
+    float4 c0 = mul(camera.invProjectionMatrix, float4(uv0.x * 2.0f - 1.0f, 1.0f - uv0.y * 2.0f, depth0, 1.0f));
     float4 c1 = mul(camera.invProjectionMatrix, float4(uv1.x * 2.0f - 1.0f, 1.0f - uv1.y * 2.0f, depth1, 1.0f));
     float4 c2 = mul(camera.invProjectionMatrix, float4(uv2.x * 2.0f - 1.0f, 1.0f - uv2.y * 2.0f, depth2, 1.0f));
 
@@ -164,7 +164,7 @@ FfxFloat32 LoadPreviousDepth(FfxInt32x2 p)
 FfxFloat32x2 LoadVelocity(FfxInt32x2 p)
 {
     Texture2D<float2> tex = ResourceDescriptorHeap[constants.velocity];
-    return -tex.Load(int3(p, 0)) * InvBufferDimensions();
+    return tex.Load(int3(p, 0)) * InvBufferDimensions();
 }
 
 FfxFloat32 LoadHistory(FfxFloat32x2 uv)
