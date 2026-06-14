@@ -199,9 +199,9 @@ struct ShadowPayload
 struct RayTracedSunShadowConstants
 {
 	ShaderResourceIndex depthTexture;
+	ShaderResourceIndex normalTexture;
 	float pad0;
 	float pad1;
-	float pad2;
 };
 
 struct ShadowDenoiserTileClassificationConstants
@@ -219,9 +219,9 @@ struct ShadowDenoiserTileClassificationConstants
 	UnorderedAccessIndex currentMoments;
 	
 	UnorderedAccessIndex reprojectionResults;
+	ShaderResourceIndex normalTexture;
 	uint32_t isFirstFrame;
 	float pad0;
-	float pad1;
 };
 
 struct ShadowDenoiserDepthCopyConstants
@@ -240,9 +240,9 @@ struct ShadowDenoiserFilterConstants
 	UnorderedAccessIndex history;
 
 	UnorderedAccessIndex shadowMaskOutput;
+	ShaderResourceIndex normalTexture;
 	uint32_t passIndex;
 	float pad0;
-	float pad1;
 };
 
 } // namespace Gleam

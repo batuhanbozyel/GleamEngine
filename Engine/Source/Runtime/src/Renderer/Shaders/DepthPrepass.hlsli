@@ -15,6 +15,13 @@ struct DepthPrepassVertexOut
     float4 prevClipPos : ATTRIB0;
     float4 color : ATTRIB1;
     float2 uv : ATTRIB2;
+    float3 normal : ATTRIB3;
+};
+
+struct DepthPrepassFragmentOut
+{
+    float2 motionVector : SV_TARGET0;
+    float2 normal : SV_TARGET1;
 };
 
 } // namespace Gleam
@@ -36,8 +43,16 @@ float2 ComputeMotionVector(Gleam::DepthPrepassVertexOut IN, float2 resolution)
     return prevViewport - IN.position.xy;
 }
 
+Gleam::DepthPrepassFragmentOut BuildDepthPrepassOutput(Gleam::DepthPrepassVertexOut IN, float2 resolution)
+{
+    Gleam::DepthPrepassFragmentOut OUT;
+    OUT.motionVector = ComputeMotionVector(IN, resolution);
+    OUT.normal = OctEncode(normalize(IN.normal));
+    return OUT;
+}
+
 [shader("pixel")]
-float2 main(Gleam::DepthPrepassVertexOut IN) : SV_TARGET
+Gleam::DepthPrepassFragmentOut main(Gleam::DepthPrepassVertexOut IN)
 {
     Gleam::MeshInstanceData instance = LoadInstanceData(constants.instanceID);
     Gleam::MeshVertexOut meshVertexOut = (Gleam::MeshVertexOut)0;
@@ -49,6 +64,6 @@ float2 main(Gleam::DepthPrepassVertexOut IN) : SV_TARGET
     Gleam::SurfaceOutput surface = SurfMain(meshVertexOut);
     clip(surface.albedo.a - surface.alphaCutoff);
 
-    return ComputeMotionVector(IN, camera.resolution);
+    return BuildDepthPrepassOutput(IN, camera.resolution);
 }
 #endif // DEPTH_PREPASS_HLSL

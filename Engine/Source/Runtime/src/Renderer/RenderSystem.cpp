@@ -457,6 +457,8 @@ CameraRenderData RenderSystem::SetupCameraRenderData(RenderGraph& graph, const E
 	camera.uniforms.invProjectionMatrix = Math::Inverse(camera.uniforms.projectionMatrix);
 	camera.uniforms.invViewProjectionMatrix = Math::Inverse(camera.uniforms.viewProjectionMatrix);
 	camera.uniforms.position = entity.GetWorldPosition();
+	camera.uniforms.nearPlane = cameraComponent.nearPlane;
+	camera.uniforms.farPlane = cameraComponent.farPlane;
 	return camera;
 }
 

@@ -41,7 +41,11 @@ void DepthPrepass::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& bl
 		textureDesc.name = "MotionVectorRT";
 		textureDesc.format = TextureFormat::R16G16_SFloat;
 		passData.motionVectorTarget = builder.UseColorBuffer(builder.CreateTexture(textureDesc));
-		
+
+		textureDesc.name = "GeometryNormalRT";
+		textureDesc.format = TextureFormat::R16G16_SNorm;
+		passData.normalTarget = builder.UseColorBuffer(builder.CreateTexture(textureDesc));
+
 		blackboard.Add(passData);
 	},
 	[this, &sceneData](const CommandBuffer* cmd, const DepthPrepassData& passData)
@@ -90,7 +94,7 @@ void DepthPrepass::RegisterShadingPipeline(const Material* material)
 			.topology = PrimitiveTopology::Triangles,
 			.alphaToCoverage = false,
 			.wireframe = false,
-			.colorFormats = { TextureFormat::R16G16_SFloat },
+			.colorFormats = { TextureFormat::R16G16_SFloat, TextureFormat::R16G16_SNorm },
 			.depthFormat = TextureFormat::D16_UNorm,
 			.vertexEntry = "depthPrepassVertexShader",
 			.fragmentEntry = materialDesc.alphaMode != AlphaMode::Opaque ? materialDesc.surfaceShader + "DepthPrepass" : "opaqueDepthPrepassFragmentShader"

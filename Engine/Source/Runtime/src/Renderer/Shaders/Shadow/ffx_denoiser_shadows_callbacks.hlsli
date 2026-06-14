@@ -84,31 +84,8 @@ FfxBoolean IsShadowReciever(FfxUInt32x2 p)
 
 FfxFloat32x3 LoadNormals(FfxInt32x2 p)
 {
-    int2 resolution   = BufferDimensions();
-    float2 pixelSize  = InvBufferDimensions();
-
-    int2 p1 = clamp(p + int2(1, 0), int2(0, 0), resolution - 1);
-    int2 p2 = clamp(p + int2(0, 1), int2(0, 0), resolution - 1);
-
-    float depth0 = LoadDepth(p);
-    float depth1 = LoadDepth(p1);
-    float depth2 = LoadDepth(p2);
-    
-    float2 uv0 = (p  + 0.5f) * pixelSize;
-    float2 uv1 = (p1 + 0.5f) * pixelSize;
-    float2 uv2 = (p2 + 0.5f) * pixelSize;
-
-    float4 c0 = mul(camera.invProjectionMatrix, float4(uv0.x * 2.0f - 1.0f, 1.0f - uv0.y * 2.0f, depth0, 1.0f));
-    float4 c1 = mul(camera.invProjectionMatrix, float4(uv1.x * 2.0f - 1.0f, 1.0f - uv1.y * 2.0f, depth1, 1.0f));
-    float4 c2 = mul(camera.invProjectionMatrix, float4(uv2.x * 2.0f - 1.0f, 1.0f - uv2.y * 2.0f, depth2, 1.0f));
-
-    float3 v0 = c0.xyz / c0.w;
-    float3 v1 = c1.xyz / c1.w;
-    float3 v2 = c2.xyz / c2.w;
-
-    float3 normal = normalize(cross(v1 - v0, v2 - v0));
-    normal = mul(camera.invViewMatrix, float4(normal, 0)).xyz;
-    return normalize(normal);
+    Texture2D<float2> tex = ResourceDescriptorHeap[constants.normalTexture];
+    return OctDecode(tex.Load(int3(p, 0)));
 }
 
 #if defined(FFX_DNSR_SHADOWS_FILTER_PASS)

@@ -70,6 +70,29 @@ float4 FastSign(float4 x)
 	return saturate(x * FLT_MAX + 0.5) * 2.0 - 1.0;
 }
 
+// Octahedral normal encoding — Cigolle 2014 / Narkowicz 2014.
+// https://knarkowicz.wordpress.com/2014/04/16/octahedron-normal-vector-encoding/
+// Range kept in [-1, 1] for direct RG16_SNorm storage (no UNORM remap).
+float2 OctWrap(float2 v)
+{
+	return (1.0 - abs(v.yx)) * (select(v.xy >= 0.0, 1.0, -1.0));
+}
+
+float2 OctEncode(float3 n)
+{
+	n /= (abs(n.x) + abs(n.y) + abs(n.z));
+	return n.z >= 0.0 ? n.xy : OctWrap(n.xy);
+}
+
+float3 OctDecode(float2 f)
+{
+	// https://twitter.com/Stubbesaurus/status/937994790553227264
+	float3 n = float3(f.xy, 1.0 - abs(f.x) - abs(f.y));
+	float t = saturate(-n.z);
+	n.xy += select(n.xy >= 0.0, -t, t);
+	return normalize(n);
+}
+
 float UIntToFloat(uint x)
 {
     return asfloat(0x3f800000 | (x >> 9)) - 1.0f;

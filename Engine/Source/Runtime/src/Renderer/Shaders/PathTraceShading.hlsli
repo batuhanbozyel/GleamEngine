@@ -53,8 +53,8 @@ void ClosestHit(inout Gleam::RayPayload payload : SV_RayPayload, BuiltInTriangle
     RayDesc shadowRay;
     shadowRay.Origin = newOrigin;
     shadowRay.Direction = shadowDir;
-    shadowRay.TMin = 0.1;
-    shadowRay.TMax = 1000.0;
+    shadowRay.TMin = camera.nearPlane;
+    shadowRay.TMax = camera.farPlane;
 
     TraceRay(
         accelerationStructure,
@@ -177,8 +177,8 @@ void ClosestHit(inout Gleam::RayPayload payload : SV_RayPayload, BuiltInTriangle
         RayDesc ray;
         ray.Origin = newOrigin;
         ray.Direction = nextDir;
-        ray.TMin = 0.1;
-        ray.TMax = 1000.0;
+        ray.TMin = camera.nearPlane;
+        ray.TMax = camera.farPlane;
         
         Gleam::RayPayload reflection;
         reflection.radiance = 0.0;

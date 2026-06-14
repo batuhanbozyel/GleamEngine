@@ -39,7 +39,8 @@ struct CameraUniforms
 	float pad0;
 
 	float2 resolution;
-	float2 pad1;
+	float nearPlane;
+	float farPlane;
 };
 
 struct PathTracerConstants

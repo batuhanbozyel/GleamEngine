@@ -20,12 +20,13 @@ Gleam::DepthPrepassVertexOut depthPrepassVertexShader(uint vertexID : SV_VertexI
     OUT.position = mul(camera.viewProjectionMatrix, worldPosition);
 	OUT.color = float4(1.0f, 1.0f, 1.0f, 1.0f);
 	OUT.uv = interleavedVert.texCoord;
+	OUT.normal = normalize(mul(instanceData.transform, float4(interleavedVert.normal, 0.0f)).xyz);
 	return OUT;
 }
 
 [shader("pixel")]
 [earlydepthstencil]
-float2 opaqueDepthPrepassFragmentShader(Gleam::DepthPrepassVertexOut IN) : SV_TARGET
+Gleam::DepthPrepassFragmentOut opaqueDepthPrepassFragmentShader(Gleam::DepthPrepassVertexOut IN)
 {
-    return ComputeMotionVector(IN, camera.resolution);
+    return BuildDepthPrepassOutput(IN, camera.resolution);
 }

@@ -32,11 +32,8 @@ void rayTracedSunShadowRayGen()
     float3 worldPos = ScreenSpaceToWorldSpace(uv, depth, camera.invViewProjectionMatrix);
     uint4  seed     = PCGInitSeed(pixelCoord, pathTraceConstants.frameIndex);
 
-    uint2 pixelDx = min(pixelCoord + uint2(1, 0), (uint2)camera.resolution - 1u);
-    uint2 pixelDy = min(pixelCoord + uint2(0, 1), (uint2)camera.resolution - 1u);
-    float3 worldPosDx = ScreenSpaceToWorldSpace((float2(pixelDx) + 0.5f) / camera.resolution, depthTex[pixelDx], camera.invViewProjectionMatrix);
-    float3 worldPosDy = ScreenSpaceToWorldSpace((float2(pixelDy) + 0.5f) / camera.resolution, depthTex[pixelDy], camera.invViewProjectionMatrix);
-    float3 geometricNormal = normalize(cross(worldPosDx - worldPos, worldPosDy - worldPos));
+    Texture2D<float2> normalTex = ResourceDescriptorHeap[constants.normalTexture];
+    float3 geometricNormal = OctDecode(normalTex[pixelCoord]);
 
     float shadowConePdf;
     const float sunHalfAngle    = 0.5 * atmosphereUniforms.sunAngularDiameter * (PI / 180.0);
@@ -44,10 +41,10 @@ void rayTracedSunShadowRayGen()
     float3 shadowDir = UniformSampleCone(PCGRand2(seed), atmosphereUniforms.sunDirection, cosSunHalfAngle, shadowConePdf);
 
     RayDesc ray;
-    ray.Origin    = worldPos + geometricNormal * 1e-2f;
+    ray.Origin    = OffsetRayAlongNormal(worldPos, geometricNormal);
     ray.Direction = shadowDir;
-    ray.TMin      = 0.1;
-    ray.TMax      = 1000.0;
+    ray.TMin      = camera.nearPlane;
+    ray.TMax      = camera.farPlane;
 
     Gleam::ShadowPayload payload;
     payload.visibility = 0.0f;

@@ -153,6 +153,7 @@ void SunShadowRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboar
 	{
 		BufferHandle  shadowMask;
 		TextureHandle depth;
+		TextureHandle normalTexture;
 	};
 
 	auto& rayTracingData = graph.AddComputePass<RayTracingPassData>("SunShadowRenderer::RayTracing",
@@ -161,8 +162,9 @@ void SunShadowRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboar
 		BufferDescriptor hitMaskDesc;
 		hitMaskDesc.name	= "Shadow HitMask";
 		hitMaskDesc.size	= numTiles * sizeof(uint32_t);
-		passData.shadowMask = builder.WriteBuffer(builder.CreateBuffer(hitMaskDesc));
-		passData.depth      = builder.ReadTexture(depthPrepassData.depthTarget);
+		passData.shadowMask    = builder.WriteBuffer(builder.CreateBuffer(hitMaskDesc));
+		passData.depth         = builder.ReadTexture(depthPrepassData.depthTarget);
+		passData.normalTexture = builder.ReadTexture(depthPrepassData.normalTarget);
 	},
 	[this, &sceneData](const CommandBuffer* cmd, const RayTracingPassData& passData)
 	{
@@ -183,7 +185,8 @@ void SunShadowRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboar
 		pathTraceConstants.samplesPerPixel       = 1;
 
 		RayTracedSunShadowConstants constants = {};
-		constants.depthTexture = passData.depth;
+		constants.depthTexture  = passData.depth;
+		constants.normalTexture = passData.normalTexture;
 
 		cmd->BindRayTracingPipeline(mRayTracedShadowPipeline);
 		cmd->SetPushConstant(constants);
@@ -202,6 +205,7 @@ void SunShadowRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboar
 		BufferHandle  shadowMask;
 		TextureHandle depth;
 		TextureHandle velocity;
+		TextureHandle normalTexture;
 		TextureHandle previousDepth;
 		TextureHandle previousMoments;
 		TextureHandle historyShadow;
@@ -223,6 +227,7 @@ void SunShadowRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboar
 		passData.shadowMask				= builder.ReadBuffer(rayTracingData.shadowMask);
 		passData.depth					= builder.ReadTexture(depthPrepassData.depthTarget);
 		passData.velocity				= builder.ReadTexture(depthPrepassData.motionVectorTarget);
+		passData.normalTexture			= builder.ReadTexture(depthPrepassData.normalTarget);
 		passData.previousDepth			= builder.ReadTexture(graph.ImportTexture(mPreviousDepth, importParams));
 		passData.previousMoments		= builder.ReadTexture(graph.ImportTexture(mMoments[prevIndex], importParams));
 		passData.currentMoments			= builder.WriteTexture(graph.ImportTexture(mMoments[currIndex], importParams));
@@ -243,6 +248,7 @@ void SunShadowRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboar
 		constants.hitMaskResults      = passData.shadowMask;
 		constants.depth               = passData.depth;
 		constants.velocity            = passData.velocity;
+		constants.normalTexture       = passData.normalTexture;
 		constants.previousDepth       = passData.previousDepth;
 		constants.previousMoments     = passData.previousMoments;
 		constants.historyShadow       = passData.historyShadow;
@@ -264,6 +270,7 @@ void SunShadowRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboar
 	struct Filter0PassData
 	{
 		TextureHandle depth;
+		TextureHandle normalTexture;
 		BufferHandle  tileMetadata;
 		TextureHandle filterInput;
 		TextureHandle history;
@@ -273,6 +280,7 @@ void SunShadowRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboar
 	[&](RenderGraphBuilder& builder, Filter0PassData& passData)
 	{
 		passData.depth			= builder.ReadTexture(depthPrepassData.depthTarget);
+		passData.normalTexture	= builder.ReadTexture(depthPrepassData.normalTarget);
 		passData.tileMetadata	= builder.ReadBuffer(tileClassData.tileMetadata);
 		passData.filterInput	= builder.ReadTexture(tileClassData.reprojectionResults);
 		passData.history		= builder.WriteTexture(tileClassData.historyShadow);
@@ -281,6 +289,7 @@ void SunShadowRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboar
 	{
 		ShadowDenoiserFilterConstants constants = {};
 		constants.depth               = passData.depth;
+		constants.normalTexture       = passData.normalTexture;
 		constants.tileMetadata        = passData.tileMetadata;
 		constants.filterInput         = passData.filterInput;
 		constants.history             = passData.history;
@@ -299,6 +308,7 @@ void SunShadowRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboar
 	struct Filter1PassData
 	{
 		TextureHandle depth;
+		TextureHandle normalTexture;
 		BufferHandle  tileMetadata;
 		TextureHandle filterInput;
 		TextureHandle history;
@@ -308,6 +318,7 @@ void SunShadowRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboar
 	[&](RenderGraphBuilder& builder, Filter1PassData& passData)
 	{
 		passData.depth        = builder.ReadTexture(depthPrepassData.depthTarget);
+		passData.normalTexture = builder.ReadTexture(depthPrepassData.normalTarget);
 		passData.tileMetadata = builder.ReadBuffer(filter0Data.tileMetadata);
 		passData.filterInput  = builder.ReadTexture(filter0Data.history);
 		passData.history      = builder.WriteTexture(filter0Data.filterInput);
@@ -316,6 +327,7 @@ void SunShadowRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboar
 	{
 		ShadowDenoiserFilterConstants constants = {};
 		constants.depth               = passData.depth;
+		constants.normalTexture       = passData.normalTexture;
 		constants.tileMetadata        = passData.tileMetadata;
 		constants.filterInput         = passData.filterInput;
 		constants.history             = passData.history;
@@ -334,6 +346,7 @@ void SunShadowRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboar
 	struct Filter2PassData
 	{
 		TextureHandle depth;
+		TextureHandle normalTexture;
 		BufferHandle tileMetadata;
 		TextureHandle filterInput;
 		TextureHandle shadowMaskOutput;
@@ -343,6 +356,7 @@ void SunShadowRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboar
 	[&](RenderGraphBuilder& builder, Filter2PassData& passData)
 	{
 		passData.depth        = builder.ReadTexture(depthPrepassData.depthTarget);
+		passData.normalTexture = builder.ReadTexture(depthPrepassData.normalTarget);
 		passData.tileMetadata = builder.ReadBuffer(filter1Data.tileMetadata);
 		passData.filterInput  = builder.ReadTexture(filter1Data.history);
 
@@ -356,6 +370,7 @@ void SunShadowRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboar
 	{
 		ShadowDenoiserFilterConstants constants = {};
 		constants.depth               = passData.depth;
+		constants.normalTexture       = passData.normalTexture;
 		constants.tileMetadata        = passData.tileMetadata;
 		constants.filterInput         = passData.filterInput;
 		constants.shadowMaskOutput    = passData.shadowMaskOutput;
