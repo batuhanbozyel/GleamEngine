@@ -18,6 +18,7 @@ namespace GEditor {
 
 class InfiniteGridRenderer;
 class EditorCameraController;
+class ViewModeRenderer;
 
 class WorldViewport final : public View
 {

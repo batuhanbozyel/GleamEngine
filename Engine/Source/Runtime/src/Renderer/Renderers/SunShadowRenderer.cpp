@@ -81,7 +81,7 @@ void SunShadowRenderer::CreateDenoiserTextures(const Size& size)
 
 	TextureDescriptor momentsDesc;
 	momentsDesc.dimension = TextureDimension::Texture2D;
-	momentsDesc.format    = mDevice->GetFeatures().rgb9e5UAVStores ? TextureFormat::R9G9B9E5_SFloat : TextureFormat::R11G11B10_SFloat;
+	momentsDesc.format    = TextureFormat::R11G11B10_SFloat;
 	momentsDesc.usage     = TextureUsage_Storage | TextureUsage_Sampled;
 	momentsDesc.size      = size;
 	momentsDesc.name      = "SunShadowRenderer::ShadowDenoiser::Moments 0";
