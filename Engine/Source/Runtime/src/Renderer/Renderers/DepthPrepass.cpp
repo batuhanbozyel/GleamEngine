@@ -35,7 +35,7 @@ void DepthPrepass::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& bl
 		textureDesc.clearBuffer = true;
 
 		textureDesc.name = "SceneDepthRT";
-		textureDesc.format = TextureFormat::D16_UNorm;
+		textureDesc.format = TextureFormat::D32_SFloat;
 		passData.depthTarget = builder.UseDepthBuffer(builder.CreateTexture(textureDesc), DepthAccess::Write);
 
 		textureDesc.name = "MotionVectorRT";
@@ -95,7 +95,7 @@ void DepthPrepass::RegisterShadingPipeline(const Material* material)
 			.alphaToCoverage = false,
 			.wireframe = false,
 			.colorFormats = { TextureFormat::R16G16_SFloat, TextureFormat::R16G16_SNorm },
-			.depthFormat = TextureFormat::D16_UNorm,
+			.depthFormat = TextureFormat::D32_SFloat,
 			.vertexEntry = "depthPrepassVertexShader",
 			.fragmentEntry = materialDesc.alphaMode != AlphaMode::Opaque ? materialDesc.surfaceShader + "DepthPrepass" : "opaqueDepthPrepassFragmentShader"
 		};

@@ -128,7 +128,7 @@ void WorldRenderer::RegisterShadingPipeline(const Material* material)
 			.alphaToCoverage = false,
 			.wireframe = false,
 			.colorFormats = { TextureFormat::R16G16B16A16_SFloat },
-			.depthFormat = TextureFormat::D16_UNorm,
+			.depthFormat = TextureFormat::D32_SFloat,
 			.vertexEntry = "meshVertexShader",
 			.fragmentEntry = materialDesc.surfaceShader + "Shading"
 		};

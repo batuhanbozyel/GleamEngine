@@ -102,7 +102,7 @@ void SunShadowRenderer::CreateDenoiserTextures(const Size& size)
 	TextureDescriptor depthDesc;
 	depthDesc.name      = "SunShadowRenderer::ShadowDenoiser::PreviousDepth";
 	depthDesc.dimension = TextureDimension::Texture2D;
-	depthDesc.format    = TextureFormat::R16_UNorm;
+	depthDesc.format    = TextureFormat::R32_SFloat;
 	depthDesc.usage     = TextureUsage_Storage | TextureUsage_Sampled;
 	depthDesc.size      = size;
 	mPreviousDepth = mDevice->CreateTexture(mAllocator, depthDesc);
