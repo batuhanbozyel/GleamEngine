@@ -99,6 +99,8 @@ private:
 	EntityHandle mSkyAtmosphereEntity = InvalidEntity;
 	EntityHandle mActiveCamera = InvalidEntity;
 	EntityHandle mPrevCamera = InvalidEntity;
+
+	float4x4 mPrevCameraView = {};
 	float4x4 mPrevCameraViewProjection = {};
 
 	Engine* mEngine;

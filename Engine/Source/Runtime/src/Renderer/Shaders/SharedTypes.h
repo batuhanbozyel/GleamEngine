@@ -30,6 +30,7 @@ struct CameraUniforms
 	float4x4 viewMatrix;
 	float4x4 projectionMatrix;
 	float4x4 viewProjectionMatrix;
+	float4x4 prevViewMatrix;
 	float4x4 prevViewProjectionMatrix;
 	float4x4 invViewMatrix;
 	float4x4 invProjectionMatrix;

@@ -210,7 +210,10 @@ void RenderSystem::Render(const World* world)
 		sceneData.camera = SetupCameraRenderData(graph, cameraEntity);
 		if (mPrevCamera != mActiveCamera)
 		{
+			mPrevCameraView = sceneData.camera.uniforms.viewMatrix;
 			mPrevCameraViewProjection = sceneData.camera.uniforms.viewProjectionMatrix;
+
+			sceneData.camera.uniforms.prevViewMatrix = mPrevCameraView;
 			sceneData.camera.uniforms.prevViewProjectionMatrix = mPrevCameraViewProjection;
 		}
 
@@ -251,6 +254,7 @@ void RenderSystem::Render(const World* world)
 
 		mSwapchain->Present(cmd);
 
+		mPrevCameraView = sceneData.camera.uniforms.viewMatrix;
 		mPrevCameraViewProjection = sceneData.camera.uniforms.viewProjectionMatrix;
     }
 }
@@ -452,6 +456,7 @@ CameraRenderData RenderSystem::SetupCameraRenderData(RenderGraph& graph, const E
 		camera.uniforms.projectionMatrix = Float4x4::Ortho(camera.uniforms.resolution.x, camera.uniforms.resolution.y, cameraComponent.nearPlane, cameraComponent.farPlane);
 	}
 	camera.uniforms.viewProjectionMatrix = camera.uniforms.projectionMatrix * camera.uniforms.viewMatrix;
+	camera.uniforms.prevViewMatrix = mPrevCameraView;
 	camera.uniforms.prevViewProjectionMatrix = mPrevCameraViewProjection;
 	camera.uniforms.invViewMatrix = Math::Inverse(camera.uniforms.viewMatrix);
 	camera.uniforms.invProjectionMatrix = Math::Inverse(camera.uniforms.projectionMatrix);

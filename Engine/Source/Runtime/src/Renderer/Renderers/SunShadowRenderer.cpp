@@ -244,7 +244,7 @@ void SunShadowRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboar
 	[this, &sceneData, width, height](const CommandBuffer* cmd, const TileClassificationPassData& passData)
 	{
 		ShadowDenoiserTileClassificationConstants constants = {};
-		constants.reprojectionMatrix  = sceneData.camera.uniforms.prevViewProjectionMatrix * sceneData.camera.uniforms.invViewProjectionMatrix;
+		constants.reprojectionMatrix  = sceneData.camera.uniforms.projectionMatrix * (sceneData.camera.uniforms.prevViewMatrix * sceneData.camera.uniforms.invViewProjectionMatrix);
 		constants.hitMaskResults      = passData.shadowMask;
 		constants.depth               = passData.depth;
 		constants.velocity            = passData.velocity;
