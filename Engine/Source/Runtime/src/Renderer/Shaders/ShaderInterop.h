@@ -93,6 +93,12 @@ struct UnorderedAccessIndex
 	{
 	}
 
+	UnorderedAccessIndex& operator=(uint32_t index)
+	{
+		data = UAVIndex(index);
+		return *this;
+	}
+
 	UnorderedAccessIndex& operator=(ShaderResourceIndex index)
 	{
 		data = UAVIndex(index.data);

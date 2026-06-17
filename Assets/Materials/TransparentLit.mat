@@ -1,8 +1,6 @@
 {
-    "ZWrite" : "Off",
-    "ZTest" : "Less",
     "Cull" : "Back",
-    "Blend" : ["SrcAlpha", "One", "OneMinusSrcAlpha", "OneMinusSrcAlpha"],
+    "AlphaMode" : "Blend",
 
     "Properties" : [
         {"BaseColor": "Float4"},

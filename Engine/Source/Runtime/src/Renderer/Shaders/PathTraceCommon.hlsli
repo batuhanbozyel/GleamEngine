@@ -7,7 +7,7 @@
 #include "SurfaceShading.hlsli"
 #include "Atmosphere/SkyAtmosphereCommon.hlsli"
 
-PUSH_CONSTANT(Gleam::PathTracerConstants, pathTraceConstants);
+CONSTANT_BUFFER(Gleam::PathTracerConstants, pathTraceConstants, PATH_TRACER_CONSTANTS_BINDING_SLOT);
 
 enum class BRDFType
 {

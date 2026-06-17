@@ -21,6 +21,7 @@
 namespace Gleam {
 
 class World;
+class Material;
 class RenderSystem;
 class RenderSurface;
 class RenderPipeline;
@@ -62,6 +63,18 @@ struct SceneRenderingData
 	AccelerationStructureView accelerationStructure = AccelerationStructureView();
 };
 
+enum class RenderStage
+{
+	BeforeRendering,
+	Prepass,
+	Shadows,
+	Opaque,
+	Sky,
+	Transparent,
+	PostProcess,
+	AfterRendering
+};
+
 class IRenderer
 {
 public:
@@ -79,6 +92,10 @@ protected:
 	virtual void OnDestroy(const RenderContext& context) {}
 
 	virtual void AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard) = 0;
+
+	virtual void RegisterShadingPipeline(const Material* material) {}
+
+	virtual RenderStage GetStage() const { return RenderStage::Opaque; }
 
 };
 

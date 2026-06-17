@@ -5,6 +5,7 @@
 #include "ShaderTypes.h"
 
 namespace Gleam {
+
 struct MeshVertexOut
 {
     float4 position : SV_POSITION;

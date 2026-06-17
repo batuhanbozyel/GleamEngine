@@ -123,6 +123,8 @@ if __name__ == "__main__":
                         help="Filter and rename a specific entry point (repeatable). "
                              "Format: entry_name=export_name. "
                              "When omitted, all discovered entry points are compiled.")
+    parser.add_argument("-D", "--defines", type=str, action="append", default=[], metavar="NAME[=VALUE]",
+                        help="Preprocessor defines forwarded to dxc (repeatable).")
     parser.add_argument("--debug", action="store_true", help="Enable debug information.")
     args = parser.parse_args()
 
@@ -192,10 +194,14 @@ if __name__ == "__main__":
                     cmdline = [
                         DXC, current_file,
                         "-HV", "2021",
+                        "-enable-16bit-types",
                         "-D", RENDERER_API,
                         "-D", SHADER_TARGET_DEFINE[shader_stage],
                         "-T", HLSL_SHADER_STAGE[shader_stage]
                     ]
+
+                    for define in args.defines:
+                        cmdline.extend(["-D", define])
 
                     if shader_stage in RT_STAGES:
                         cmdline.extend(["-exports", f"{export_name}={entry_point}"])

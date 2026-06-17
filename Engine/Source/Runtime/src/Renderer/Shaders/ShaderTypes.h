@@ -3,6 +3,9 @@
 
 #include "SharedTypes.h"
 
+#define SHADOW_TILE_WIDTH  8u
+#define SHADOW_TILE_HEIGHT 4u
+
 namespace Gleam {
 
 #ifndef __cplusplus
@@ -87,6 +90,14 @@ struct TonemapUniforms
 	ShaderResourceIndex sceneColor;
 };
 
+struct DepthPrepassConstants
+{
+	ShaderResourceIndex instanceBuffer;
+	uint32_t instanceID;
+	float pad0;
+	float pad1;
+};
+
 struct MeshShadingConstants
 {
 	ShaderResourceIndex instanceBuffer;
@@ -96,13 +107,14 @@ struct MeshShadingConstants
 
 	ShaderResourceIndex ggxEssTexture;
 	ShaderResourceIndex ggxEAvgTexture;
+	ShaderResourceIndex shadowTexture;
 	uint32_t instanceID;
-	float pad0;
 };
 
 struct MeshInstanceData
 {
 	float4x4 transform;
+	float4x4 previousTransform;
 
 	ShaderResourceIndex positionBuffer;
 	ShaderResourceIndex interleavedBuffer;
@@ -184,17 +196,53 @@ struct ShadowPayload
 	float visibility;
 };
 
-struct PathTracerConstants
+struct RayTracedSunShadowConstants
 {
-	ShaderResourceIndex accelerationStructure;
-	ShaderResourceIndex instanceBuffer;
-	UnorderedAccessIndex colorTarget;
-	uint32_t frameIndex;
+	ShaderResourceIndex depthTexture;
+	ShaderResourceIndex normalTexture;
+	float pad0;
+	float pad1;
+};
 
-	ShaderResourceIndex ggxEssTexture;
-	ShaderResourceIndex ggxEAvgTexture;
-	uint32_t maxRayRecursionDepth;
-	uint32_t samplesPerPixel;
+struct ShadowDenoiserTileClassificationConstants
+{
+	float4x4 reprojectionMatrix;
+
+	ShaderResourceIndex hitMaskResults;
+	ShaderResourceIndex depth;
+	ShaderResourceIndex velocity;
+	ShaderResourceIndex previousDepth;
+	
+	ShaderResourceIndex previousMoments;
+	ShaderResourceIndex historyShadow;
+	UnorderedAccessIndex tileMetadata;
+	UnorderedAccessIndex currentMoments;
+	
+	UnorderedAccessIndex reprojectionResults;
+	ShaderResourceIndex normalTexture;
+	uint32_t isFirstFrame;
+	float pad0;
+};
+
+struct ShadowDenoiserDepthCopyConstants
+{
+	ShaderResourceIndex  sourceDepth;
+	UnorderedAccessIndex destDepth;
+	float pad0;
+	float pad1;
+};
+
+struct ShadowDenoiserFilterConstants
+{
+	ShaderResourceIndex depth;
+	ShaderResourceIndex tileMetadata;
+	ShaderResourceIndex filterInput;
+	UnorderedAccessIndex history;
+
+	UnorderedAccessIndex shadowMaskOutput;
+	ShaderResourceIndex normalTexture;
+	uint32_t passIndex;
+	float pad0;
 };
 
 } // namespace Gleam

@@ -20,7 +20,9 @@
 #include "Renderer/Material/MaterialInstance.h"
 
 #include "Renderer/Renderers/PathTracer.h"
+#include "Renderer/Renderers/DepthPrepass.h"
 #include "Renderer/Renderers/WorldRenderer.h"
+#include "Renderer/Renderers/SunShadowRenderer.h"
 
 using namespace Gleam;
 
@@ -59,17 +61,7 @@ void RenderSceneProxy::Tick(World* world)
 			if (batch.material == nullptr)
 			{
 				batch.material = assetManager->Get<Material>(material);
-
-				auto materialDescriptor = assetManager->LoadDescriptor<MaterialDescriptor>(material);
-
-				auto worldRenderer = renderSystem->GetRenderPipeline(RenderPath::Default)->GetRenderer<WorldRenderer>();
-				worldRenderer->RegisterShadingPipeline(batch.material);
-
-				auto rayTracingScene = renderSystem->GetRayTracingScene();
-				rayTracingScene->RegisterShadingPipeline(batch.material);
-
-				auto pathTracer = renderSystem->GetRenderPipeline(RenderPath::PathTracing)->GetRenderer<PathTracer>();
-				pathTracer->RegisterShadingPipeline(batch.material);
+				renderSystem->RegisterShadingPipelines(batch.material);
 			}
 			++batch.numInstances;
 		}
@@ -113,6 +105,7 @@ void RenderSceneProxy::Tick(World* world)
 			instance.materialBuffer = batch.material->GetBuffer().GetResourceView();
 			instance.materialID = materialInstance->GetID();
 			instance.transform = entity.GetWorldTransform();
+			instance.previousTransform = instance.transform; // TODO: store previous transform
 			instance.baseVertex = submesh.baseVertex;
 			instance.indexCount = submesh.indexCount;
 			instance.firstIndex = submesh.firstIndex;
@@ -122,18 +115,18 @@ void RenderSceneProxy::Tick(World* world)
 
 void RenderSceneProxy::Shutdown(World* world)
 {
-	static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
-	static auto assetManager = Globals::GameInstance->GetSubsystem<AssetManager>();
-
 	world->GetEntityManager().ForEach<Entity, MeshRenderer>([&](const Entity& entity, const MeshRenderer& meshRenderer)
 	{
+		static auto assetManager = Globals::GameInstance->GetSubsystem<AssetManager>();
 		assetManager->Release(meshRenderer.mesh);
+
 		for (const auto& material : meshRenderer.materials)
 		{
 			assetManager->Release(material);
 		}
 	});
 
+	static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
 	auto device = renderSystem->GetDevice();
 	if (mGlobalInstanceBuffer.IsValid())
 	{

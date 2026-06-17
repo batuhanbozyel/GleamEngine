@@ -155,7 +155,7 @@ AccelerationStructureView RayTracingScene::BuildAccelerationStructure(const Comm
 					instanceFlags |= D3D12_RAYTRACING_INSTANCE_FLAG_TRIANGLE_FRONT_COUNTERCLOCKWISE;
 				}
 
-				if (materialDesc.blendState.enabled)
+				if (materialDesc.alphaMode != AlphaMode::Opaque)
 				{
 					instanceFlags |= D3D12_RAYTRACING_INSTANCE_FLAG_FORCE_NON_OPAQUE;
 				}

@@ -31,8 +31,8 @@ void pathTraceRayGen()
     RayDesc ray;
     ray.Origin    = rayOrigin;
     ray.Direction = rayDir;
-    ray.TMin      = 1e-3;
-    ray.TMax      = 1e6;
+    ray.TMin      = camera.nearPlane;
+    ray.TMax      = camera.farPlane;
 
     float3 accumRadiance = 0.0;
     if (pathTraceConstants.accelerationStructure == InvalidResourceIndex)
@@ -85,6 +85,9 @@ void pathTraceRayGen()
         float weight = 1.0 / float(pathTraceConstants.frameIndex + 1);
         colorTarget[pixelCoord] = float4(lerp(prev, accumRadiance, weight), 1.0);
     }
+    
+    RWTexture2D<float4> sceneTarget = ResourceDescriptorHeap[pathTraceConstants.sceneTarget];
+    sceneTarget[pixelCoord] = colorTarget[pixelCoord];
 }
 
 [shader("miss")]

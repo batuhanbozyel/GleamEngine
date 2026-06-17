@@ -23,6 +23,7 @@ struct WorldRenderingData
 	TextureHandle ggxEAvgLut = TextureHandle();
 	TextureHandle specularReflection = TextureHandle();
 	TextureHandle diffuseReflection = TextureHandle();
+	TextureHandle shadowTexture = TextureHandle();
 };
 
 class WorldRenderer : public IRenderer
@@ -35,7 +36,7 @@ public:
     
     virtual void AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard) override;
 
-	void RegisterShadingPipeline(const Material* material);
+	virtual void RegisterShadingPipeline(const Material* material) override;
 
 private:
 

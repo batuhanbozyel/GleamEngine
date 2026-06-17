@@ -9,11 +9,13 @@
 #include "EditorCameraController.h"
 #include "EAssets/EAssetManager.h"
 #include "Renderers/InfiniteGridRenderer.h"
+#include "Renderers/ViewModeRenderer.h"
 
 #include "Renderer/RenderSystem.h"
 #include "Renderer/RenderPipeline.h"
 #include "Renderer/Renderers/ImGuiRenderer.h"
 #include "Renderer/Renderers/PathTracer.h"
+#include "Renderer/Renderers/PostProcessStack.h"
 #include "View/Widgets/PropertyDrawer.h"
 
 #include "Core/Globals.h"
@@ -32,7 +34,12 @@ void WorldViewport::OnCreate(Gleam::World* world)
     mViewportSize = Gleam::Globals::Engine->GetResolution();
 	
 	auto renderSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::RenderSystem>();
-	renderSystem->GetRenderPipeline(Gleam::RenderPath::Default)->AddRenderer<InfiniteGridRenderer>();
+	mGridRenderer = new InfiniteGridRenderer();
+	mGridRenderer->OnCreate(renderSystem->GetRenderContext());
+
+	renderSystem->GetRenderPipeline(Gleam::RenderPath::Default)->AddRenderer<ViewModeRenderer>();
+	renderSystem->GetRenderPipeline(Gleam::RenderPath::Default)->AddSharedRenderer(mGridRenderer);
+	renderSystem->GetRenderPipeline(Gleam::RenderPath::PathTracing)->AddSharedRenderer(mGridRenderer);
 
 	mEditWorld->GetEntityManager().ForEach<Gleam::Entity, Gleam::Camera>([&](const Gleam::Entity& entity, const Gleam::Camera& camera)
 	{
@@ -44,6 +51,15 @@ void WorldViewport::OnCreate(Gleam::World* world)
 
 	mCameraController = mEditWorld->AddSystem<EditorCameraController>(mCamera);
     Resize(mEditWorld->GetEntityManager(), mViewportSize);
+}
+
+void WorldViewport::OnDestroy(Gleam::World* world)
+{
+	auto renderSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::RenderSystem>();
+	renderSystem->GetRenderPipeline(Gleam::RenderPath::Default)->RemoveRenderer<ViewModeRenderer>();
+	renderSystem->GetRenderPipeline(Gleam::RenderPath::Default)->RemoveSharedRenderer(mGridRenderer);
+	renderSystem->GetRenderPipeline(Gleam::RenderPath::PathTracing)->RemoveSharedRenderer(mGridRenderer);
+	delete mGridRenderer;
 }
 
 void WorldViewport::Update()
@@ -111,15 +127,25 @@ void WorldViewport::DrawToolbar()
 				renderSystem->SetRenderPath(activePath);
 			}
 
-			if (activePath == Gleam::RenderPath::PathTracing)
+			if (activePath == Gleam::RenderPath::Default)
+			{
+				auto viewModeRenderer = renderSystem->GetRenderPipeline(Gleam::RenderPath::Default)->GetRenderer<ViewModeRenderer>();
+				auto activeViewMode = viewModeRenderer->GetViewMode();
+				const auto& viewModeEnumDesc = Gleam::Reflection::GetEnum<Gleam::ViewMode>();
+				
+				auto prevViewMode = activeViewMode;
+				PropertyDrawer::DrawEnumOptions("View Mode", viewModeEnumDesc, &activeViewMode, 80.0f);
+				if (activeViewMode != prevViewMode)
+				{
+					viewModeRenderer->SetViewMode(activeViewMode);
+				}
+			}
+			else if (activePath == Gleam::RenderPath::PathTracing)
 			{
 				auto pathTracer = renderSystem->GetRenderPipeline(Gleam::RenderPath::PathTracing)->GetRenderer<Gleam::PathTracer>();
-				if (pathTracer)
-				{
-					auto settings = pathTracer->GetSettings();
-					PropertyDrawer::DrawClassFields(&settings, Gleam::Reflection::GetClass<Gleam::PathTracerSettings>());
-					pathTracer->SetSettings(settings);
-				}
+				auto settings = pathTracer->GetSettings();
+				PropertyDrawer::DrawClassFields(&settings, Gleam::Reflection::GetClass<Gleam::PathTracerSettings>());
+				pathTracer->SetSettings(settings);
 			}
 			ImGui::EndPopup();
 		}

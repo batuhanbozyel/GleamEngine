@@ -15,6 +15,8 @@ public:
 
 	virtual void AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard) override;
 
+	virtual RenderStage GetStage() const override { return RenderStage::Sky; }
+
 	void UpdateSkyAtmosphere(RenderGraph& graph, RenderGraphBlackboard& blackboard);
 
 	const Texture& GetTransmittanceLutTexture() const

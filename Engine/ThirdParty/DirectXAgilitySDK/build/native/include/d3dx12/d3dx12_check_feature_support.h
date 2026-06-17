@@ -231,6 +231,24 @@ public: // Function declaration
     BOOL ComputeOnlyWriteWatchSupported() const noexcept;
 #endif
 
+#if defined(D3D12_SDK_VERSION) && (D3D12_SDK_VERSION >= 612)
+    D3D12_EXECUTE_INDIRECT_TIER ExecuteIndirectTier() const noexcept;
+    D3D12_WORK_GRAPHS_TIER WorkGraphsTier() const noexcept;
+#endif
+
+#if defined(D3D12_SDK_VERSION) && (D3D12_SDK_VERSION >= 617)
+    D3D12_TIGHT_ALIGNMENT_TIER TightAlignmentSupportTier() const noexcept;
+#endif
+
+#if defined(D3D12_SDK_VERSION) && (D3D12_SDK_VERSION >= 619)
+    // D3D12_OPTIONS22
+    BOOL ShaderExecutionReorderingActuallyReorders() const noexcept;
+    BOOL CreateByteOffsetViewsSupported() const noexcept;
+    UINT Max1DDispatchSize() const noexcept;
+    UINT Max1DDispatchMeshSize() const noexcept;
+#endif
+
+
 private: // Private structs and helpers declaration
     struct ProtectedResourceSessionTypesLocal : D3D12_FEATURE_DATA_PROTECTED_RESOURCE_SESSION_TYPES
     {
@@ -316,6 +334,15 @@ private: // Member data
 #endif
 #if defined(D3D12_SDK_VERSION) && (D3D12_SDK_VERSION >= 611)
     D3D12_FEATURE_DATA_D3D12_OPTIONS20 m_dOptions20;
+#endif
+#if defined(D3D12_SDK_VERSION) && (D3D12_SDK_VERSION >= 612)
+    D3D12_FEATURE_DATA_D3D12_OPTIONS21 m_dOptions21;
+#endif
+#if defined(D3D12_SDK_VERSION) && (D3D12_SDK_VERSION >= 619)
+    D3D12_FEATURE_DATA_D3D12_OPTIONS22 m_dOptions22;
+#endif
+#if defined(D3D12_SDK_VERSION) && (D3D12_SDK_VERSION >= 617)
+    D3D12_FEATURE_DATA_TIGHT_ALIGNMENT m_dTightAlignment;
 #endif
 };
 
@@ -407,6 +434,15 @@ inline CD3DX12FeatureSupport::CD3DX12FeatureSupport() noexcept
 #endif
 #if defined (D3D12_SDK_VERSION) && (D3D12_SDK_VERSION >= 611)
 , m_dOptions20{}
+#endif
+#if defined (D3D12_SDK_VERSION) && (D3D12_SDK_VERSION >= 612)
+, m_dOptions21{}
+#endif
+#if defined (D3D12_SDK_VERSION) && (D3D12_SDK_VERSION >= 619)
+, m_dOptions22{}
+#endif
+#if defined(D3D12_SDK_VERSION) && (D3D12_SDK_VERSION >= 617)
+, m_dTightAlignment{}
 #endif
 {}
 
@@ -573,6 +609,29 @@ inline HRESULT CD3DX12FeatureSupport::Init(ID3D12Device* pDevice)
     if (FAILED(m_pDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS20, &m_dOptions20, sizeof(m_dOptions20))))
     {
         m_dOptions20 = {};
+    }
+#endif
+
+#if defined(D3D12_SDK_VERSION) && (D3D12_SDK_VERSION >= 612)
+    if (FAILED(m_pDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS21, &m_dOptions21, sizeof(m_dOptions21))))
+    {
+        m_dOptions21 = {};
+    }
+#endif
+
+#if defined(D3D12_SDK_VERSION) && (D3D12_SDK_VERSION >= 619)
+    if (FAILED(m_pDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS22, &m_dOptions22, sizeof(m_dOptions22))))
+    {
+        m_dOptions22 = {};
+    }
+#endif
+
+
+
+#if defined(D3D12_SDK_VERSION) && (D3D12_SDK_VERSION >= 617)
+    if (FAILED(m_pDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_TIGHT_ALIGNMENT, &m_dTightAlignment, sizeof(m_dTightAlignment))))
+    {
+        m_dTightAlignment = {};
     }
 #endif
 
@@ -948,6 +1007,26 @@ FEATURE_SUPPORT_GET(UINT, m_dOptions19, MaxViewDescriptorHeapSize);
 FEATURE_SUPPORT_GET(BOOL, m_dOptions20, ComputeOnlyWriteWatchSupported);
 #endif
 
+#if defined(D3D12_SDK_VERSION) && (D3D12_SDK_VERSION >= 612)
+// 50: Options21
+FEATURE_SUPPORT_GET(D3D12_EXECUTE_INDIRECT_TIER, m_dOptions21, ExecuteIndirectTier);
+FEATURE_SUPPORT_GET(D3D12_WORK_GRAPHS_TIER, m_dOptions21, WorkGraphsTier);
+#endif
+
+#if defined(D3D12_SDK_VERSION) && (D3D12_SDK_VERSION >= 617)
+// 51: TightAlignment
+FEATURE_SUPPORT_GET_NAME(D3D12_TIGHT_ALIGNMENT_TIER, m_dTightAlignment, SupportTier, TightAlignmentSupportTier);
+#endif
+
+#if defined(D3D12_SDK_VERSION) && (D3D12_SDK_VERSION >= 619)
+// 52: Options22
+FEATURE_SUPPORT_GET(BOOL, m_dOptions22, ShaderExecutionReorderingActuallyReorders);
+FEATURE_SUPPORT_GET(BOOL, m_dOptions22, CreateByteOffsetViewsSupported);
+FEATURE_SUPPORT_GET(UINT, m_dOptions22, Max1DDispatchSize);
+FEATURE_SUPPORT_GET(UINT, m_dOptions22, Max1DDispatchMeshSize);
+#endif
+
+
 // Helper function to decide the highest shader model supported by the system
 // Stores the result in m_dShaderModel
 // Must be updated whenever a new shader model is added to the d3d12.h header
@@ -958,6 +1037,9 @@ inline HRESULT CD3DX12FeatureSupport::QueryHighestShaderModel()
 
     const D3D_SHADER_MODEL allModelVersions[] =
     {
+#if defined(D3D12_SDK_VERSION) && (D3D12_SDK_VERSION >= 612)
+        D3D_SHADER_MODEL_6_9,
+#endif
 #if defined(D3D12_SDK_VERSION) && (D3D12_SDK_VERSION >= 606)
         D3D_SHADER_MODEL_6_8,
 #endif
@@ -1054,8 +1136,12 @@ inline HRESULT CD3DX12FeatureSupport::QueryHighestFeatureLevel()
         D3D_FEATURE_LEVEL_9_3,
         D3D_FEATURE_LEVEL_9_2,
         D3D_FEATURE_LEVEL_9_1,
+#if defined(D3D12_SDK_VERSION) && (D3D12_SDK_VERSION >= 5)
         D3D_FEATURE_LEVEL_1_0_CORE,
+#endif
+#if defined(D3D12_SDK_VERSION) && (D3D12_SDK_VERSION >= 611)
         D3D_FEATURE_LEVEL_1_0_GENERIC
+#endif
     };
 
     D3D12_FEATURE_DATA_FEATURE_LEVELS dFeatureLevel;

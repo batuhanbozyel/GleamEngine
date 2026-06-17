@@ -1,7 +1,6 @@
 {
-    "ZWrite" : "On",
-    "ZTest" : "Less",
     "Cull" : "Back",
+    "AlphaMode" : "Opaque",
 
     "Properties" : [
         {"BaseColor": "Float4"},

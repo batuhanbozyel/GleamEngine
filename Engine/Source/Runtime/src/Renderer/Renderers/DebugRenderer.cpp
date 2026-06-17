@@ -26,7 +26,7 @@ void DebugRenderer::OnCreate(const RenderContext& context)
 		mPrimitivePipeline = mDevice->CreateGraphicsPipeline(pipelineState);
 
 		pipelineState.depthState.writeEnabled = true;
-		pipelineState.depthFormat = TextureFormat::D16_UNorm;
+		pipelineState.depthFormat = TextureFormat::D32_SFloat;
 		pipelineState.depthState.compareFunction = CompareFunction::Less;
 		mPrimitiveDepthPipeline = mDevice->CreateGraphicsPipeline(pipelineState);
 	}
@@ -42,7 +42,7 @@ void DebugRenderer::OnCreate(const RenderContext& context)
 		mMeshPipeline = mDevice->CreateGraphicsPipeline(pipelineState);
 
 		pipelineState.depthState.writeEnabled = true;
-		pipelineState.depthFormat = TextureFormat::D16_UNorm;
+		pipelineState.depthFormat = TextureFormat::D32_SFloat;
 		pipelineState.depthState.compareFunction = CompareFunction::Less;
 		mMeshDepthPipeline = mDevice->CreateGraphicsPipeline(pipelineState);
 	}

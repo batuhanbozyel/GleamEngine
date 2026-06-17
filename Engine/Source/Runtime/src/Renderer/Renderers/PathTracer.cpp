@@ -2,6 +2,7 @@
 #include "PathTracer.h"
 
 #include "BRDFRenderer.h"
+#include "DepthPrepass.h"
 #include "WorldRenderer.h"
 #include "Renderer/RenderSystem.h"
 #include "Renderer/CommandBuffer.h"
@@ -41,6 +42,7 @@ void PathTracer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blac
 {
 	const auto& brdfData = blackboard.Get<BRDFData>();
 	const auto& sceneData = blackboard.Get<SceneRenderingData>();
+	const auto& depthPrepassData = blackboard.Get<DepthPrepassData>();
 	const auto& sceneTargetDescriptor = graph.GetDescriptor(sceneData.sceneTarget);
 
 	if (mRenderTarget.GetDescriptor().size != sceneTargetDescriptor.size)
@@ -92,12 +94,17 @@ void PathTracer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blac
 		mPipelineDirty = false;
 	}
 
-	auto rtHandle = graph.ImportTexture(mRenderTarget);
 	graph.AddComputePass<WorldRenderingData>("PathTracing::Render", [&](RenderGraphBuilder& builder, WorldRenderingData& passData)
 	{
-		passData.colorTarget = builder.WriteTexture(rtHandle);
+		RenderTextureDescriptor textureDesc;
+		textureDesc.name = "SceneColorRT";
+		textureDesc.size = sceneTargetDescriptor.size;
+		textureDesc.format = TextureFormat::R16G16B16A16_SFloat;
+		textureDesc.clearBuffer = true;
+		passData.colorTarget = builder.UseColorBuffer(builder.CreateTexture(textureDesc));
 		passData.ggxEssLut = builder.ReadTexture(brdfData.ggxEssLut);
 		passData.ggxEAvgLut = builder.ReadTexture(brdfData.ggxEAvgLut);
+		passData.depthTarget = depthPrepassData.depthTarget;
 		blackboard.Add(passData);
 	},
 	[this, &sceneData](const CommandBuffer* cmd, const WorldRenderingData& passData)
@@ -110,7 +117,8 @@ void PathTracer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blac
 		PathTracerConstants constants = {};
 		constants.instanceBuffer = sceneData.sceneProxy->GetGlobalInstanceBuffer().GetResourceView();
 		constants.accelerationStructure = sceneData.accelerationStructure;
-		constants.colorTarget = passData.colorTarget;
+		constants.colorTarget = mRenderTarget.GetUnorderedAccessView();
+		constants.sceneTarget = passData.colorTarget;
 		constants.frameIndex = mFrameIndex++;
 		constants.ggxEssTexture = passData.ggxEssLut;
 		constants.ggxEAvgTexture = passData.ggxEAvgLut;
@@ -118,7 +126,7 @@ void PathTracer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blac
 		constants.samplesPerPixel = mSettings.samplesPerPixel;
 		
 		cmd->BindRayTracingPipeline(mPathTracingPipeline);
-		cmd->SetPushConstant(constants);
+		cmd->SetConstantBuffer(constants, PATH_TRACER_CONSTANTS_BINDING_SLOT);
 		cmd->SetConstantBuffer(sceneData.camera.uniforms, CAMERA_UNIFORMS_BINDING_SLOT);
 		cmd->SetConstantBuffer(sceneData.atmosphere.params, SKY_ATMOSPHERE_PARAMS_BINDING_SLOT);
 		cmd->SetConstantBuffer(sceneData.atmosphere.uniforms, SKY_ATMOSPHERE_COMMON_UNIFORMS_BINDING_SLOT);
@@ -147,13 +155,21 @@ void PathTracer::RegisterShadingPipeline(const Material* material)
 
 	if (not mHitGroupTable.Contains(hash, RayType::PrimaryRay))
 	{
-		mHitGroupTable.AddPrimaryRay(hash, { .name = materialDesc.surfaceShader, .closestHitEntry = materialDesc.surfaceShader + "ClosestHit", .anyHitEntry = materialDesc.surfaceShader + "AnyHit" });
+		mHitGroupTable.AddPrimaryRay(hash, { 
+			.name = materialDesc.surfaceShader, 
+			.closestHitEntry = materialDesc.surfaceShader + "ClosestHit", 
+			.anyHitEntry = materialDesc.surfaceShader + "AnyHit" 
+		});
 		mPipelineDirty = true;
 	}
 
 	if (not mHitGroupTable.Contains(hash, RayType::ShadowRay))
 	{
-		mHitGroupTable.AddShadowRay(hash, { .name = materialDesc.surfaceShader, .closestHitEntry = {}, .anyHitEntry = materialDesc.surfaceShader + "ShadowAnyHit" });
+		mHitGroupTable.AddShadowRay(hash, { 
+			.name = materialDesc.surfaceShader, 
+			.closestHitEntry = "", 
+			.anyHitEntry = materialDesc.surfaceShader + "ShadowAnyHit"
+		});
 		mPipelineDirty = true;
 	}
 }

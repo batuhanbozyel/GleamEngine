@@ -5,11 +5,8 @@
 
 #include <d3d12.h>
 #include <dxgi1_6.h>
-
-#ifdef GDEBUG
 #include <d3d12sdklayers.h>
 #include <dxgidebug.h>
-#endif
 
 namespace Gleam {
 
@@ -39,9 +36,7 @@ private:
 
 	void ReleaseSwapchainBuffer(GraphicsDevice* device, Texture& texture);
 
-#ifdef GDEBUG
 	IDXGIDebug1* mDXGIDebug = nullptr;
-#endif
 
 	DXGI_SWAP_CHAIN_DESC1 mDesc = {};
 

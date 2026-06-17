@@ -224,10 +224,12 @@ Gleam::TArray<Gleam::RefCounted<MaterialInstanceBaker>> MeshSource::ImportMateri
 {
 	auto directory = path.Parent();
 	auto opaqueLitMaterialAsset = AssetManager()->GetAsset<Gleam::MaterialDescriptor>("Materials/OpaqueLit").reference;
+	auto maskLitMaterialAsset = AssetManager()->GetAsset<Gleam::MaterialDescriptor>("Materials/MaskLit").reference;
 	auto transparentLitMaterialAsset = AssetManager()->GetAsset<Gleam::MaterialDescriptor>("Materials/TransparentLit").reference;
 
 	auto assetManager = Gleam::Globals::GameInstance->GetSubsystem<Gleam::AssetManager>();
 	auto opaqueLitMaterial = assetManager->LoadDescriptor<Gleam::MaterialDescriptor>(opaqueLitMaterialAsset);
+	auto maskLitMaterial = assetManager->LoadDescriptor<Gleam::MaterialDescriptor>(maskLitMaterialAsset);
 	auto transparentLitMaterial = assetManager->LoadDescriptor<Gleam::MaterialDescriptor>(transparentLitMaterialAsset);
 
 	Gleam::TArray<Gleam::RefCounted<MaterialInstanceBaker>> materials;
@@ -237,15 +239,27 @@ Gleam::TArray<Gleam::RefCounted<MaterialInstanceBaker>> MeshSource::ImportMateri
 		Gleam::MaterialInstanceDescriptor descriptor;
 		descriptor.name = material.name;
 
-		if (material.alphaBlend)
+		switch (material.alphaMode)
 		{
-			descriptor.material = transparentLitMaterialAsset;
-			descriptor.properties = transparentLitMaterial.properties;
-		}
-		else
-		{
-			descriptor.material = opaqueLitMaterialAsset;
-			descriptor.properties = opaqueLitMaterial.properties;
+			case Gleam::AlphaMode::Mask:
+			{
+				descriptor.material = maskLitMaterialAsset;
+				descriptor.properties = maskLitMaterial.properties;
+				break;
+			}
+			case Gleam::AlphaMode::Blend:
+			{
+				descriptor.material = transparentLitMaterialAsset;
+				descriptor.properties = transparentLitMaterial.properties;
+				break;
+			}
+			case Gleam::AlphaMode::Opaque:
+			default:
+			{
+				descriptor.material = opaqueLitMaterialAsset;
+				descriptor.properties = opaqueLitMaterial.properties;
+				break;
+			}
 		}
 
 		descriptor["BaseColor"] = material.albedoColor;
@@ -434,13 +448,17 @@ RawMaterial ProcessMaterial(const cgltf_material& mat, const MeshSource::ImportS
     {
         case cgltf_alpha_mode_opaque:
         {
-            material.alphaBlend = false;
+            material.alphaMode = Gleam::AlphaMode::Opaque;
+            break;
+        }
+        case cgltf_alpha_mode_mask:
+        {
+            material.alphaMode = Gleam::AlphaMode::Mask;
             break;
         }
         case cgltf_alpha_mode_blend:
-		case cgltf_alpha_mode_mask:
         {
-            material.alphaBlend = true;
+            material.alphaMode = Gleam::AlphaMode::Blend;
             break;
         }
         default:

@@ -21,7 +21,7 @@ void InfiniteGridRenderer::OnCreate(const Gleam::RenderContext& context)
 	pipelineDesc.blendState.destinationAlphaBlendMode = Gleam::BlendMode::OneMinusSrcAlpha;
 	
 	pipelineDesc.colorFormats = { Gleam::TextureFormat::R16G16B16A16_SFloat };
-	pipelineDesc.depthFormat = Gleam::TextureFormat::D16_UNorm;
+	pipelineDesc.depthFormat = Gleam::TextureFormat::D32_SFloat;
 
 	pipelineDesc.vertexEntry = "infiniteGridVertexShader";
 	pipelineDesc.fragmentEntry = "infiniteGridFragmentShader";

@@ -24,3 +24,7 @@
 # Engine generated files
 *.log
 *.err
+
+# Claude Code
+CLAUDE.md
+.claude/

@@ -1,19 +1,18 @@
-#define MESH_VERTEX_SHADER 1
 #include "MeshShading.hlsli"
 
 [shader("vertex")]
-Gleam::MeshVertexOut meshVertexShader(uint vertex_id : SV_VertexID)
+Gleam::MeshVertexOut meshVertexShader(uint vertexID : SV_VertexID)
 {
-	ByteAddressBuffer globalInstanceBuffer = ResourceDescriptorHeap[meshShadingConstants.instanceBuffer];
-	Gleam::MeshInstanceData instanceData = globalInstanceBuffer.Load<Gleam::MeshInstanceData>(meshShadingConstants.instanceID * sizeof(Gleam::MeshInstanceData));
+	ByteAddressBuffer globalInstanceBuffer = ResourceDescriptorHeap[constants.instanceBuffer];
+	Gleam::MeshInstanceData instanceData = globalInstanceBuffer.Load<Gleam::MeshInstanceData>(constants.instanceID * sizeof(Gleam::MeshInstanceData));
 
 	ByteAddressBuffer positionBuffer = ResourceDescriptorHeap[instanceData.positionBuffer];
-	ByteAddressBuffer interleavedBuffer = ResourceDescriptorHeap[instanceData.interleavedBuffer];
-
-	uint vertexID = vertex_id + instanceData.baseVertex;
-	float3 position = positionBuffer.Load<float3>(vertexID * sizeof(float3));
-	Gleam::InterleavedMeshVertex interleavedVert = interleavedBuffer.Load<Gleam::InterleavedMeshVertex>(vertexID * sizeof(Gleam::InterleavedMeshVertex));
+    uint baseVertexID = vertexID + instanceData.baseVertex;
+	float3 position = positionBuffer.Load<float3>(baseVertexID * sizeof(float3));
 	float4 worldPosition = mul(instanceData.transform, float4(position, 1.0f));
+
+	ByteAddressBuffer interleavedBuffer = ResourceDescriptorHeap[instanceData.interleavedBuffer];
+	Gleam::InterleavedMeshVertex interleavedVert = interleavedBuffer.Load<Gleam::InterleavedMeshVertex>(baseVertexID * sizeof(Gleam::InterleavedMeshVertex));
 
     Gleam::MeshVertexOut OUT;
 	OUT.worldPosition = worldPosition.xyz;

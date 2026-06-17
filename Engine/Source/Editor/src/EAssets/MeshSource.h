@@ -1,6 +1,7 @@
 #pragma once
 #include "AssetPackage.h"
 #include "Math/Color.h"
+#include "Renderer/Material/MaterialDescriptor.h"
 
 namespace GEditor {
 
@@ -29,9 +30,9 @@ struct RawMaterial
     float metallicFactor = 1.0f;
     float roughnessFactor = 1.0f;
     bool doubleSided = false;
-    bool alphaBlend = false;
+    Gleam::AlphaMode alphaMode = Gleam::AlphaMode::Opaque;
     bool unlit = false;
-    
+
     bool operator==(const RawMaterial& other) const
     {
         return textures == other.textures
@@ -41,7 +42,7 @@ struct RawMaterial
             && metallicFactor == other.metallicFactor
             && roughnessFactor == other.roughnessFactor
             && doubleSided == other.doubleSided
-            && alphaBlend == other.alphaBlend
+            && alphaMode == other.alphaMode
             && unlit == other.unlit;
     }
     

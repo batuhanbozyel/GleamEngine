@@ -8,6 +8,8 @@
 #include "gpch.h"
 #include "WorldRenderer.h"
 #include "BRDFRenderer.h"
+#include "DepthPrepass.h"
+#include "SunShadowRenderer.h"
 
 #include "Core/Engine.h"
 #include "Core/Globals.h"
@@ -35,6 +37,7 @@ void WorldRenderer::OnDestroy(const RenderContext& context)
 void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard)
 {
 	const auto& sceneData = blackboard.Get<SceneRenderingData>();
+	const auto& depthPrepassData = blackboard.Get<DepthPrepassData>();
 	const auto& sceneTargetDescriptor = graph.GetDescriptor(sceneData.sceneTarget);
 	
     graph.AddRenderPass<WorldRenderingData>("WorldRenderer::ForwardPass", [&](RenderGraphBuilder& builder, WorldRenderingData& passData)
@@ -44,14 +47,8 @@ void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
         textureDesc.size = sceneTargetDescriptor.size;
         textureDesc.format = TextureFormat::R16G16B16A16_SFloat;
         textureDesc.clearBuffer = true;
-        passData.colorTarget = builder.CreateTexture(textureDesc);
-        
-        textureDesc.name = "SceneDepthRT";
-        textureDesc.format = TextureFormat::D16_UNorm;
-        passData.depthTarget = builder.CreateTexture(textureDesc);
-        
-        passData.colorTarget = builder.UseColorBuffer(passData.colorTarget);
-        passData.depthTarget = builder.UseDepthBuffer(passData.depthTarget, DepthAccess::Write);
+        passData.colorTarget = builder.UseColorBuffer(builder.CreateTexture(textureDesc));
+        passData.depthTarget = builder.UseDepthBuffer(depthPrepassData.depthTarget, DepthAccess::Read);
 
 		const auto& brdfData = blackboard.Get<BRDFData>();
 		passData.brdfLut = builder.ReadTexture(brdfData.brdfLut);
@@ -67,7 +64,13 @@ void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 		const auto& reflectionProbeData = blackboard.Get<ReflectionProbePassData>();
 		passData.specularReflection = builder.ReadTexture(reflectionProbeData.specularReflection);
 		passData.diffuseReflection = builder.ReadTexture(reflectionProbeData.diffuseReflection);
-		
+
+		if (blackboard.Has<SunShadowData>())
+		{
+			const auto& sunShadowData = blackboard.Get<SunShadowData>();
+			passData.shadowTexture = builder.ReadTexture(sunShadowData.shadowMask);
+		}
+
         blackboard.Add(passData);
     },
     [this, &sceneData](const CommandBuffer* cmd, const WorldRenderingData& passData)
@@ -90,6 +93,7 @@ void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 			constants.ggxEAvgTexture = passData.ggxEAvgLut;
 			constants.diffuseReflectionTexture = passData.diffuseReflection;
 			constants.specularReflectionTexture = passData.specularReflection;
+			constants.shadowTexture = passData.shadowTexture;
 
 			cmd->BindGraphicsPipeline(pipeline);
 			cmd->SetConstantBuffer(sceneData.camera.uniforms, CAMERA_UNIFORMS_BINDING_SLOT);
@@ -116,20 +120,20 @@ void WorldRenderer::RegisterShadingPipeline(const Material* material)
 	if (it == mShadingPipelines.end())
 	{
 		GraphicsPipelineStateDescriptor pipelineDesc = {
-			.blendState = materialDesc.blendState,
-			.depthState = materialDesc.depthState,
-			.stencilState = materialDesc.stencilState,
+			.blendState = {},
+			.depthState = DepthState{ .compareFunction = CompareFunction::Equal, .writeEnabled = false },
+			.stencilState = StencilState{ .enabled = false },
 			.cullingMode = materialDesc.cullingMode,
 			.topology = PrimitiveTopology::Triangles,
 			.alphaToCoverage = false,
 			.wireframe = false,
 			.colorFormats = { TextureFormat::R16G16B16A16_SFloat },
-			.depthFormat = TextureFormat::D16_UNorm,
+			.depthFormat = TextureFormat::D32_SFloat,
 			.vertexEntry = "meshVertexShader",
-			.fragmentEntry = materialDesc.surfaceShader + "Forward"
+			.fragmentEntry = materialDesc.surfaceShader + "Shading"
 		};
-		auto pipeline = mDevice->CreateGraphicsPipeline(pipelineDesc);
 
+		auto pipeline = mDevice->CreateGraphicsPipeline(pipelineDesc);
 		mShadingPipelines.emplace_hint(it, eastl::piecewise_construct,
 										   eastl::forward_as_tuple(pipelineHash),
 										   eastl::forward_as_tuple(pipeline));

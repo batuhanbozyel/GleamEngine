@@ -87,6 +87,7 @@ NO_DISCARD BufferHandle RenderGraphBuilder::ReadBuffer(const BufferHandle& resou
     GLEAM_ASSERT(resource.IsValid());
     
     if (HasResource(mPassNode.bufferReads, resource)) { return resource; }
+    resource.node->consumers.push_back(&mPassNode);
     
     auto clone = BufferHandle(resource.node, resource.node->internalVersion, ResourceAccess::Read);
     mPassNode.bufferReads.emplace_back(clone);
@@ -97,9 +98,10 @@ NO_DISCARD TextureHandle RenderGraphBuilder::ReadTexture(const TextureHandle& re
 {
     GLEAM_ASSERT(!HasResource(mPassNode.textureCreates, resource) && !HasResource(mPassNode.textureWrites, resource));
     GLEAM_ASSERT(resource.IsValid());
-    
+
     if (HasResource(mPassNode.textureReads, resource)) { return resource; }
-    
+    resource.node->consumers.push_back(&mPassNode);
+
     auto clone = TextureHandle(resource.node, resource.node->internalVersion, ResourceAccess::Read);
     mPassNode.textureReads.emplace_back(clone);
     return clone;

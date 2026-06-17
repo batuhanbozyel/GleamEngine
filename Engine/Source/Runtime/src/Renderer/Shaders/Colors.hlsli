@@ -1,9 +1,19 @@
 #ifndef COLORS_HLSL
 #define COLORS_HLSL
 
-half Luminance(half3 linearRgb)
+float Luminance(float3 linearRgb)
 {
     return dot(linearRgb, float3(0.2126729, 0.7151522, 0.0721750));
+}
+
+float Luminance(float4 linearRgba)
+{
+    return Luminance(linearRgba.rgb);
+}
+
+half Luminance(half3 linearRgb)
+{
+    return dot(linearRgb, half3(0.2126729, 0.7151522, 0.0721750));
 }
 
 half Luminance(half4 linearRgba)

@@ -44,6 +44,31 @@ void RenderSystem::InitializeBackend()
 	mDevice = new DirectXDevice(mSwapchain, mReleaseQueue);
 }
 
+static DeviceFeatures QueryDeviceFeatures(ID3D12Device10* device)
+{
+	DeviceFeatures features;
+
+	D3D12_FEATURE_DATA_D3D12_OPTIONS5 options5 = {};
+	if (SUCCEEDED(device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS5, &options5, sizeof(options5))))
+	{
+		features.raytracing = options5.RaytracingTier >= D3D12_RAYTRACING_TIER_1_0;
+	}
+
+	D3D12_FEATURE_DATA_D3D12_OPTIONS7 options7 = {};
+	if (SUCCEEDED(device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS7, &options7, sizeof(options7))))
+	{
+		features.meshShaders = options7.MeshShaderTier >= D3D12_MESH_SHADER_TIER_1;
+	}
+
+	D3D12_FEATURE_DATA_FORMAT_SUPPORT formatSupport = { DXGI_FORMAT_R9G9B9E5_SHAREDEXP };
+	if (SUCCEEDED(device->CheckFeatureSupport(D3D12_FEATURE_FORMAT_SUPPORT, &formatSupport, sizeof(formatSupport))))
+	{
+		features.rgb9e5UAVStores = (formatSupport.Support2 & D3D12_FORMAT_SUPPORT2_UAV_TYPED_STORE) != 0;
+	}
+
+	return features;
+}
+
 static D3D12_STATIC_SAMPLER_DESC CreateStaticSampler(const SamplerState& samplerState)
 {
 	D3D12_STATIC_SAMPLER_DESC sampler{};
@@ -71,6 +96,12 @@ static D3D12_STATIC_SAMPLER_DESC CreateStaticSampler(const SamplerState& sampler
 		case FilterMode::Trilinear:
 		{
 			sampler.Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
+			break;
+		}
+		case FilterMode::Anisotropic:
+		{
+			sampler.Filter = D3D12_FILTER_ANISOTROPIC;
+			sampler.MaxAnisotropy = 16;
 			break;
 		}
 		default: GLEAM_ASSERT(false, "DirectX: Filter mode is not supported!") break;
@@ -271,7 +302,6 @@ GraphicsPipeline GraphicsDevice::CompileGraphicsPipeline(const GraphicsPipelineS
 {
 	GraphicsPipeline pipeline(pipelineDesc);
 	auto vertexShader = CreateShader(pipelineDesc.vertexEntry, ShaderStage::Vertex);
-	auto fragmentShader = CreateShader(pipelineDesc.fragmentEntry, ShaderStage::Fragment);
 
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc{};
 	psoDesc.pRootSignature = static_cast<DirectXDevice*>(this)->mRootSignature;
@@ -280,7 +310,11 @@ GraphicsPipeline GraphicsDevice::CompileGraphicsPipeline(const GraphicsPipelineS
 
 	// Shader stages
 	psoDesc.VS = *static_cast<D3D12_SHADER_BYTECODE*>(vertexShader.GetHandle());
-	psoDesc.PS = *static_cast<D3D12_SHADER_BYTECODE*>(fragmentShader.GetHandle());
+	if (not pipelineDesc.fragmentEntry.empty())
+	{
+		auto fragmentShader = CreateShader(pipelineDesc.fragmentEntry, ShaderStage::Fragment);
+		psoDesc.PS = *static_cast<D3D12_SHADER_BYTECODE*>(fragmentShader.GetHandle());
+	}
 
 	// Input assembly state
 	psoDesc.PrimitiveTopologyType = PrimitiveToplogyToD3D12_PRIMITIVE_TOPOLOGY_TYPE(pipelineDesc.topology);
@@ -348,7 +382,11 @@ GraphicsPipeline GraphicsDevice::CompileGraphicsPipeline(const GraphicsPipelineS
 	DX_CHECK(static_cast<ID3D12Device10*>(mHandle)->CreateGraphicsPipelineState(&psoDesc, __uuidof(ID3D12PipelineState*), &pipeline.mHandle));
 
 	TStringStream ss;
-	ss << "GraphicsPipeline::" << vertexShader.GetEntryPoint() << "_" << fragmentShader.GetEntryPoint();
+	ss << "GraphicsPipeline::" << pipelineDesc.vertexEntry;
+	if (not pipelineDesc.fragmentEntry.empty())
+	{
+		ss << "_" << pipelineDesc.fragmentEntry;
+	}
 
 	TWString pipelineName = ss.str();
 	static_cast<ID3D12PipelineState*>(pipeline.mHandle)->SetName(pipelineName.c_str());
@@ -672,6 +710,8 @@ DirectXDevice::DirectXDevice(RenderSurface* surface, ResourceReleaseQueue* relea
 		}
 	}
 	DX_CHECK(D3D12CreateDevice(swapchain->mAdapter, D3D_FEATURE_LEVEL_12_0, __uuidof(ID3D12Device10), &mHandle));
+
+	mFeatures = QueryDeviceFeatures(static_cast<ID3D12Device10*>(mHandle));
 
 	if (Globals::CLI->HasFlag("--debug-layer"))
 	{
