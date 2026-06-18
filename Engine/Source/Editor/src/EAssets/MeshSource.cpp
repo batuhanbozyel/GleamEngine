@@ -17,6 +17,7 @@
 
 #define CGLTF_IMPLEMENTATION
 #include <cgltf.h>
+#include <meshoptimizer.h>
 
 using namespace GEditor;
 
@@ -61,33 +62,29 @@ bool MeshSource::Import(const Gleam::Path& path, const ImportSettings& settings)
 		{
 			continue;
 		}
-		
+
+		Gleam::TString meshName;
+		if (mesh->name)
+		{
+			meshName = mesh->name;
+		}
+		else
+		{
+			Gleam::TStringStream ss;
+			ss << filename << nodeIdx;
+			meshName = ss.str();
+		}
+
 		Gleam::TArray<RawMesh> rawMeshes;
 		for(uint32_t meshIdx = 0; meshIdx < mesh->primitives_count; ++meshIdx)
 		{
 			auto rawMesh = ProcessAttributes(mesh->primitives[meshIdx], settings);
+			rawMesh.name = meshName;
 			
 			RawMaterial rawMaterial;
 			if (auto mat = mesh->primitives[meshIdx].material; mat != nullptr)
 			{
 				rawMaterial = ProcessMaterial(*mat, settings);
-				if (mat->name)
-				{
-					rawMaterial.name = mat->name;
-				}
-				else
-				{
-					if (mesh->name)
-					{
-						rawMaterial.name = mesh->name;
-					}
-					else
-					{
-						Gleam::TStringStream ss;
-						ss << filename << nodeIdx * data->nodes_count + meshIdx;
-						rawMaterial.name = ss.str();
-					}
-				}
 			}
 			
 			// insert unique material
@@ -95,6 +92,16 @@ bool MeshSource::Import(const Gleam::Path& path, const ImportSettings& settings)
 			if (materialIt == rawMaterials.end())
 			{
 				uint32_t materialIdx = static_cast<uint32_t>(rawMaterials.size());
+				if (auto mat = mesh->primitives[meshIdx].material; mat && mat->name)
+				{
+					rawMaterial.name = mat->name;
+				}
+				else
+				{
+					Gleam::TStringStream ss;
+					ss << rawMesh.name << "_Material" << materialIdx;
+					rawMaterial.name = ss.str();
+				}
 				rawMaterials.push_back(rawMaterial);
 				rawMesh.material = materialIdx;
 			}
@@ -105,19 +112,7 @@ bool MeshSource::Import(const Gleam::Path& path, const ImportSettings& settings)
 			}
 			rawMeshes.push_back(rawMesh);
 		}
-		
-		Gleam::MeshDescriptor descriptor = MeshTools::CombineMeshes(rawMeshes);
-		if (mesh->name)
-		{
-			descriptor.name = mesh->name;
-		}
-		else
-		{
-			Gleam::TStringStream ss;
-			ss << filename << nodeIdx;
-			descriptor.name = ss.str();
-		}
-		meshes[mesh] = EmplaceBaker<MeshBaker>(descriptor);
+		meshes[mesh] = ImportMesh(rawMeshes, path, settings);
 	}
 	
 	Gleam::TArray<Gleam::RefCounted<MaterialInstanceBaker>> materials = ImportMaterials(rawMaterials, path, settings);
@@ -218,6 +213,72 @@ bool MeshSource::Import(const Gleam::Path& path, const ImportSettings& settings)
 
 	cgltf_free(data);
     return true;
+}
+
+Gleam::RefCounted<MeshBaker> MeshSource::ImportMesh(const Gleam::TArray<RawMesh>& rawMeshes, const Gleam::Path& path, const ImportSettings& settings)
+{
+	Gleam::MeshDescriptor descriptor = MeshTools::CombineMeshes(rawMeshes);
+	for (auto& submesh : descriptor.submeshes)
+	{
+		Gleam::TArrayView<uint32_t> indices(descriptor.indices.data() + submesh.firstIndex, submesh.indexCount);
+		Gleam::TArrayView<Gleam::Float3> positions(descriptor.positions.data() + submesh.baseVertex, submesh.vertexCount);
+
+		meshopt_optimizeVertexCache(indices.data(), indices.data(), indices.size(), positions.size());
+
+		size_t maxMeshlets = meshopt_buildMeshletsBound(indices.size(), kMaxVerticesPerMeshlet, kMaxTrianglesPerMeshlet);
+		Gleam::TArray<meshopt_Meshlet> meshlets(maxMeshlets);
+		Gleam::TArray<uint32_t> meshletVertices(indices.size());
+		Gleam::TArray<uint8_t> meshletTriangleIndices(indices.size());
+		size_t meshletCount = meshopt_buildMeshlets(meshlets.data(),
+													meshletVertices.data(),
+													meshletTriangleIndices.data(),
+													indices.data(),
+													indices.size(),
+													(float*)positions.data(),
+													positions.size(),
+													sizeof(Gleam::Float3),
+													kMaxVerticesPerMeshlet,
+													kMaxTrianglesPerMeshlet,
+													kConeWeight);
+
+		const auto& last = meshlets[meshletCount - 1];
+		meshletVertices.resize(last.vertex_offset + last.vertex_count);
+		meshletTriangleIndices.resize(last.triangle_offset + last.triangle_count * 3);
+
+		submesh.meshlets.resize(meshletCount);
+		for (uint32_t i = 0; i < meshletCount; ++i)
+		{
+			const auto& meshlet = meshlets[i];
+			auto& meshletDesc = submesh.meshlets[i];
+
+			meshopt_optimizeMeshlet(meshletVertices.data() + meshlet.vertex_offset,
+									meshletTriangleIndices.data() + meshlet.triangle_offset,
+									meshlet.triangle_count,
+									meshlet.vertex_count);
+
+			meshletDesc.vertexOffset = static_cast<uint32_t>(descriptor.meshletVertices.size() + meshlet.vertex_offset);
+			meshletDesc.triangleOffset = static_cast<uint32_t>(descriptor.meshletTriangleIndices.size() + meshlet.triangle_offset);
+			meshletDesc.vertexCount = static_cast<uint32_t>(meshlet.vertex_count);
+			meshletDesc.triangleCount = static_cast<uint32_t>(meshlet.triangle_count);
+
+			meshopt_Bounds bounds = meshopt_computeMeshletBounds(meshletVertices.data() + meshlet.vertex_offset,
+																 meshletTriangleIndices.data() + meshlet.triangle_offset,
+																 meshlet.triangle_count,
+																 (float*)positions.data(),
+																 positions.size(),
+																 sizeof(Gleam::Float3));
+			meshletDesc.coneApex = Gleam::Float3(bounds.cone_apex[0], bounds.cone_apex[1], bounds.cone_apex[2]);
+			meshletDesc.coneAxis = Gleam::Float3(bounds.cone_axis[0], bounds.cone_axis[1], bounds.cone_axis[2]);
+			meshletDesc.coneCutoff = bounds.cone_cutoff;
+			meshletDesc.center = Gleam::Float3(bounds.center[0], bounds.center[1], bounds.center[2]);
+			meshletDesc.radius = bounds.radius;
+		}
+
+		descriptor.meshletVertices.insert(descriptor.meshletVertices.end(), meshletVertices.begin(), meshletVertices.end());
+		descriptor.meshletTriangleIndices.insert(descriptor.meshletTriangleIndices.end(), meshletTriangleIndices.begin(), meshletTriangleIndices.end());
+	}
+
+	return EmplaceBaker<MeshBaker>(descriptor);
 }
 
 Gleam::TArray<Gleam::RefCounted<MaterialInstanceBaker>> MeshSource::ImportMaterials(const Gleam::TArray<RawMaterial>& rawMaterials, const Gleam::Path& path, const ImportSettings& settings)

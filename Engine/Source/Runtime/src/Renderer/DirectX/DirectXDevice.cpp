@@ -875,9 +875,6 @@ ShaderBindingTable DirectXDevice::CreateShaderBindingTable(const RayTracingPipel
 	uint32_t hitGroupTableSize = Math::AlignUp(static_cast<uint32_t>(pipelineDesc.hitGroups.size()) * shaderRecordSize, (UINT)D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT);
 	uint32_t totalSize = rayGenTableSize + missTableSize + hitGroupTableSize;
 
-	D3D12_HEAP_PROPERTIES heapProps = {};
-	heapProps.Type = D3D12_HEAP_TYPE_UPLOAD;
-
 	D3D12_RESOURCE_DESC1 resourceDesc = {
 		.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER,
 		.Alignment = 0,

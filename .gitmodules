@@ -37,3 +37,6 @@
 [submodule "Engine/ThirdParty/VulkanMemoryAllocator"]
 	path = Engine/ThirdParty/VulkanMemoryAllocator
 	url = https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator
+[submodule "Engine/ThirdParty/meshoptimizer"]
+	path = Engine/ThirdParty/meshoptimizer
+	url = https://github.com/zeux/meshoptimizer

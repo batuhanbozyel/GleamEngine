@@ -65,6 +65,12 @@ struct RawMesh
 
 class MeshSource : public AssetPackage
 {
+	// NVIDIA recommended limits for meshlets
+	// see: https://developer.nvidia.com/blog/introduction-turing-mesh-shaders/
+	static constexpr uint32_t kMaxVerticesPerMeshlet = 64;
+	static constexpr uint32_t kMaxTrianglesPerMeshlet = 126;
+	static constexpr float kConeWeight = 0.25f;
+
 public:
 	AssetPackageType(MeshSource);
 
@@ -80,6 +86,8 @@ public:
 	bool Import(const Gleam::Path& path, const ImportSettings& settings);
 
 private:
+
+	Gleam::RefCounted<MeshBaker> ImportMesh(const Gleam::TArray<RawMesh>& rawMeshes, const Gleam::Path& path, const ImportSettings& settings);
 
 	Gleam::TArray<Gleam::RefCounted<MaterialInstanceBaker>> ImportMaterials(const Gleam::TArray<RawMaterial>& rawMaterials, const Gleam::Path& path, const ImportSettings& settings);
     

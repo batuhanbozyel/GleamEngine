@@ -20,6 +20,36 @@ GSTRUCT(InterleavedMeshVertex, "4AFE936A-550F-419C-A7F0-5ED38D9D1642", Serializa
 	Float2 texCoord;
 };
 
+GSTRUCT(MeshletDescriptor, "D3C237CF-8AEB-4735-A890-FCCFE51D69A9", Serializable)
+{
+	GFIELD("4D2C1B0A-9F8E-47D6-B5C4-A3F2E1D0C9B8", Serializable)
+	Float3 center;
+
+	GFIELD("1A0B9C8D-7E6F-45A4-B3C2-D1E0F9A8B7C6", Serializable)
+	float radius = 0.0f;
+
+	GFIELD("8E7D6C5B-4A3F-42E1-90D8-C7B6A5F4E3D2", Serializable)
+	Float3 coneApex;
+
+	GFIELD("3F2E1D0C-9B8A-4736-A5C4-B3D2E1F0A9B8", Serializable)
+	Float3 coneAxis;
+
+	GFIELD("B7A6F5E4-D3C2-41B0-A9F8-E7D6C5B4A3F2", Serializable)
+	float coneCutoff = 0.0f;
+
+	GFIELD("6C5B4A3F-2E1D-40C9-B8A7-F6E5D4C3B2A1", Serializable)
+	uint32_t vertexOffset = 0;
+
+	GFIELD("D0C9B8A7-F6E5-44D3-A2B1-C0F9E8D7C6B5", Serializable)
+	uint32_t triangleOffset = 0;
+
+	GFIELD("2B1A0F9E-8D7C-4B6A-95F4-E3D2C1B0A9F8", Serializable)
+	uint32_t vertexCount = 0;
+
+	GFIELD("9F8E7D6C-5B4A-43F2-A1D0-C9B8A7F6E5D4", Serializable)
+	uint32_t triangleCount = 0;
+};
+
 GSTRUCT(SubmeshDescriptor, "DD7E3A74-ADF4-45A9-8DFD-CA252EDC49A6", Serializable)
 {
 	GFIELD("E2D1C9B8-A7F6-4E5D-B3C2-A1F0E9D8C7B6", Serializable)
@@ -39,6 +69,9 @@ GSTRUCT(SubmeshDescriptor, "DD7E3A74-ADF4-45A9-8DFD-CA252EDC49A6", Serializable)
 
 	GFIELD("9A8B7C6D-5E4F-43D2-C1B0-A9F8E7D6C5B4", Serializable)
 	uint32_t materialIndex = 0;
+
+	GFIELD("1851E003-3E18-42EF-A431-419BD530C3CC", Serializable)
+	TArray<MeshletDescriptor> meshlets;
 };
 
 GSTRUCT(MeshDescriptor, "59E4007E-F7D4-4107-A05F-E1121067DCD3", Serializable)
@@ -57,6 +90,12 @@ GSTRUCT(MeshDescriptor, "59E4007E-F7D4-4107-A05F-E1121067DCD3", Serializable)
 
 	GFIELD("C5D4E3F2-A1B0-4B9C-8D7E-6F5A4B3C2D1E", Serializable)
 	TArray<SubmeshDescriptor> submeshes;
+
+	GFIELD("66E8168A-56E4-43FF-BF76-DD5DD3F1AD9B", Serializable)
+	TArray<uint32_t> meshletVertices;
+
+	GFIELD("A35FA938-983A-4903-99BA-C0C2F0800054", Serializable)
+	TArray<uint8_t> meshletTriangleIndices;
 };
 
 } // namespace Gleam
