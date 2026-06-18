@@ -47,6 +47,8 @@ public:
 
 	RayTracingPipelineHandle CreateRayTracingPipeline(const RayTracingPipelineStateDescriptor& pipelineDesc);
 
+	MeshPipelineHandle CreateMeshPipeline(const MeshPipelineStateDescriptor& pipelineDesc);
+
     void Dispose(Heap& heap);
 
 	void Dispose(GPUAllocator* allocator, Texture& texture, BarrierStage stage);
@@ -65,6 +67,8 @@ public:
 
 	void Dispose(RayTracingPipeline& pipeline);
 
+	void Dispose(MeshPipeline& pipeline);
+
 	void Dispose(ResourceReleaseQueue::ObjectDeallocator&& deallocator);
 
 	const ComputePipeline& GetComputePipeline(ComputePipelineHandle handle) const;
@@ -72,6 +76,8 @@ public:
 	const GraphicsPipeline& GetGraphicsPipeline(GraphicsPipelineHandle handle) const;
 
 	const RayTracingPipeline& GetRayTracingPipeline(RayTracingPipelineHandle handle) const;
+
+	const MeshPipeline& GetMeshPipeline(MeshPipelineHandle handle) const;
 
 	const DeviceFeatures& GetFeatures() const
 	{
@@ -95,6 +101,8 @@ protected:
 
 	HashMap<RayTracingPipelineHandle, RayTracingPipeline> mRayTracingPipelineCache;
 
+	HashMap<MeshPipelineHandle, MeshPipeline> mMeshPipelineCache;
+
 	RenderSurface* mSurface = nullptr;
 
 	ResourceReleaseQueue* mReleaseQueue = nullptr;
@@ -108,6 +116,8 @@ private:
 	GraphicsPipeline CompileGraphicsPipeline(const GraphicsPipelineStateDescriptor& pipelineDesc);
 
 	RayTracingPipeline CompileRayTracingPipeline(const RayTracingPipelineStateDescriptor& pipelineDesc);
+
+	MeshPipeline CompileMeshPipeline(const MeshPipelineStateDescriptor& pipelineDesc);
 
 };
 

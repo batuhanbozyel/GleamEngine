@@ -12,7 +12,8 @@ enum class PipelineType
 {
 	Graphics,
 	Compute,
-	RayTracing
+	RayTracing,
+	Mesh
 };
 
 struct PipelineHandle
@@ -170,6 +171,35 @@ private:
 	RayTracingPipelineStateDescriptor mDescriptor;
 };
 
+class MeshPipeline : public Pipeline
+{
+	friend class GraphicsDevice;
+
+public:
+
+	MeshPipeline() = default;
+
+	MeshPipeline(const MeshPipeline& other) = default;
+
+	MeshPipeline& operator=(const MeshPipeline& other) = default;
+
+	MeshPipeline(const MeshPipelineStateDescriptor& descriptor)
+		: Pipeline(PipelineHandle{ eastl::hash<MeshPipelineStateDescriptor>()(descriptor), PipelineType::Mesh })
+		, mDescriptor(descriptor)
+	{
+
+	}
+
+	const MeshPipelineStateDescriptor& GetDescriptor() const
+	{
+		return mDescriptor;
+	}
+
+private:
+
+	MeshPipelineStateDescriptor mDescriptor;
+};
+
 struct GraphicsPipelineHandle : PipelineHandle
 {
 	GraphicsPipelineHandle()
@@ -234,6 +264,28 @@ struct RayTracingPipelineHandle : PipelineHandle
 	}
 
 	NO_DISCARD const RayTracingPipeline& GetPipeline() const;
+};
+
+struct MeshPipelineHandle : PipelineHandle
+{
+	MeshPipelineHandle()
+		: PipelineHandle{ .data = 0, .type = PipelineType::Mesh }
+	{
+
+	}
+
+	MeshPipelineHandle(size_t hash)
+		: PipelineHandle{ .data = hash, .type = PipelineType::Mesh }
+	{
+
+	}
+
+	NO_DISCARD operator MeshPipeline() const
+	{
+		return GetPipeline();
+	}
+
+	NO_DISCARD const MeshPipeline& GetPipeline() const;
 };
 
 } // namespace Gleam
@@ -307,5 +359,23 @@ struct eastl::hash<Gleam::RayTracingPipelineHandle>
 	size_t operator()(Gleam::RayTracingPipelineHandle handle) const
 	{
 		return std::hash<Gleam::RayTracingPipelineHandle>()(handle);
+	}
+};
+
+template <>
+struct std::hash<Gleam::MeshPipelineHandle>
+{
+	size_t operator()(Gleam::MeshPipelineHandle handle) const
+	{
+		return handle.data;
+	}
+};
+
+template <>
+struct eastl::hash<Gleam::MeshPipelineHandle>
+{
+	size_t operator()(Gleam::MeshPipelineHandle handle) const
+	{
+		return std::hash<Gleam::MeshPipelineHandle>()(handle);
 	}
 };

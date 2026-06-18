@@ -26,6 +26,13 @@
 @property (nonatomic, strong) id<MTLVisibleFunctionTable> visibleFunctionTable;
 @end
 
+@protocol MetalMeshPipeline <MetalPipeline>
+@property (nonatomic, strong) id<MTLRenderPipelineState> pipelineState;
+@property (nonatomic, strong) id<MTLDepthStencilState> depthStencilState;
+@property (nonatomic, assign) MTLSize meshThreadsPerThreadgroup;
+@property (nonatomic, assign) MTLSize objectThreadsPerThreadgroup;
+@end
+
 @protocol MetalFunction <NSObject>
 @property(nonatomic, strong) id<MTLFunction> handle;
 @end
