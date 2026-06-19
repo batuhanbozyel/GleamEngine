@@ -57,23 +57,37 @@ void DepthPrepass::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& bl
 				return;
 			}
 
-			const auto& pipeline = mPipelines[batch.material->GetPipelineHash()];
 			const auto globalInstances = sceneData.sceneProxy->GetGlobalInstances();
 			const auto globalMeshes = sceneData.sceneProxy->GetGlobalMeshes();
 
 			DepthPrepassConstants constants = {};
 			constants.instanceBuffer = sceneData.sceneProxy->GetGlobalInstanceBuffer().GetResourceView();
 
-			cmd->BindGraphicsPipeline(pipeline);
-			cmd->SetConstantBuffer(sceneData.camera.uniforms, CAMERA_UNIFORMS_BINDING_SLOT);
-
-			for (uint32_t instanceID = 0; instanceID < batch.numInstances; ++instanceID)
+			if (mDevice->GetFeatures().meshShaders)
 			{
-				constants.instanceID = batch.instanceOffset + instanceID;
-				const auto& instance = globalInstances[constants.instanceID];
-				
-				cmd->SetPushConstant(constants);
-				cmd->DrawIndexed(globalMeshes[constants.instanceID].mesh->GetIndexBuffer(), IndexType::UINT32, instance.indexCount, 1, instance.firstIndex);
+				cmd->BindMeshPipeline(mMeshPipelines[batch.material->GetPipelineHash()]);
+				cmd->SetConstantBuffer(sceneData.camera.uniforms, CAMERA_UNIFORMS_BINDING_SLOT);
+
+				for (uint32_t instanceID = 0; instanceID < batch.numInstances; ++instanceID)
+				{
+					constants.instanceID = batch.instanceOffset + instanceID;
+					const auto& instance = globalInstances[constants.instanceID];
+					cmd->SetPushConstant(constants);
+					cmd->DispatchMesh((instance.meshletCount + MESH_AMPLIFICATION_THREADS - 1) / MESH_AMPLIFICATION_THREADS, 1, 1);
+				}
+			}
+			else
+			{
+				cmd->BindGraphicsPipeline(mGraphicsPipelines[batch.material->GetPipelineHash()]);
+				cmd->SetConstantBuffer(sceneData.camera.uniforms, CAMERA_UNIFORMS_BINDING_SLOT);
+
+				for (uint32_t instanceID = 0; instanceID < batch.numInstances; ++instanceID)
+				{
+					constants.instanceID = batch.instanceOffset + instanceID;
+					const auto& instance = globalInstances[constants.instanceID];
+					cmd->SetPushConstant(constants);
+					cmd->DrawIndexed(globalMeshes[constants.instanceID].mesh->GetIndexBuffer(), IndexType::UINT32, instance.indexCount, 1, instance.firstIndex);
+				}
 			}
 		});
 	});
@@ -83,8 +97,10 @@ void DepthPrepass::RegisterShadingPipeline(const Material* material)
 {
 	const auto& materialDesc = material->GetDescriptor();
 	auto pipelineHash = material->GetPipelineHash();
-	auto it = mPipelines.find(pipelineHash);
-	if (it == mPipelines.end())
+	const auto fragmentEntry = materialDesc.alphaMode != AlphaMode::Opaque ? materialDesc.surfaceShader + "DepthPrepass" : "opaqueDepthPrepassFragmentShader";
+
+	auto it = mGraphicsPipelines.find(pipelineHash);
+	if (it == mGraphicsPipelines.end())
 	{
 		GraphicsPipelineStateDescriptor pipelineDesc = {
 			.blendState = {},
@@ -97,12 +113,38 @@ void DepthPrepass::RegisterShadingPipeline(const Material* material)
 			.colorFormats = { TextureFormat::R16G16_SFloat, TextureFormat::R16G16_SNorm },
 			.depthFormat = TextureFormat::D32_SFloat,
 			.vertexEntry = "depthPrepassVertexShader",
-			.fragmentEntry = materialDesc.alphaMode != AlphaMode::Opaque ? materialDesc.surfaceShader + "DepthPrepass" : "opaqueDepthPrepassFragmentShader"
+			.fragmentEntry = fragmentEntry
 		};
 
 		auto pipeline = mDevice->CreateGraphicsPipeline(pipelineDesc);
-		mPipelines.emplace_hint(it, eastl::piecewise_construct,
+		mGraphicsPipelines.emplace_hint(it, eastl::piecewise_construct,
 									eastl::forward_as_tuple(pipelineHash),
 									eastl::forward_as_tuple(pipeline));
+	}
+
+	if (mDevice->GetFeatures().meshShaders)
+	{
+		auto meshIt = mMeshPipelines.find(pipelineHash);
+		if (meshIt == mMeshPipelines.end())
+		{
+			MeshPipelineStateDescriptor meshPipelineDesc = {
+				.blendState = {},
+				.depthState = DepthState{ .compareFunction = CompareFunction::Less, .writeEnabled = true },
+				.stencilState = StencilState{ .enabled = false },
+				.cullingMode = materialDesc.cullingMode,
+				.alphaToCoverage = false,
+				.wireframe = false,
+				.colorFormats = { TextureFormat::R16G16_SFloat, TextureFormat::R16G16_SNorm },
+				.depthFormat = TextureFormat::D32_SFloat,
+				.meshEntry = "depthPrepassMeshletShader",
+				.amplificationEntry = "depthPrepassAmplificationShader",
+				.fragmentEntry = fragmentEntry
+			};
+
+			auto meshPipeline = mDevice->CreateMeshPipeline(meshPipelineDesc);
+			mMeshPipelines.emplace_hint(meshIt, eastl::piecewise_construct,
+										eastl::forward_as_tuple(pipelineHash),
+										eastl::forward_as_tuple(meshPipeline));
+		}
 	}
 }

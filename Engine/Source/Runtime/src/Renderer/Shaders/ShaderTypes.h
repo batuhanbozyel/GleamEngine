@@ -6,6 +6,8 @@
 #define SHADOW_TILE_WIDTH  8u
 #define SHADOW_TILE_HEIGHT 4u
 
+#define MESH_AMPLIFICATION_THREADS 32u
+
 namespace Gleam {
 
 #ifndef __cplusplus
@@ -14,6 +16,19 @@ struct InterleavedMeshVertex
 	float3 normal;
 	float4 tangent;
 	float2 texCoord;
+};
+
+struct MeshletDescriptor
+{
+	float3 center;
+	float radius;
+	float3 coneApex;
+	float3 coneAxis;
+	float coneCutoff;
+	uint vertexOffset;
+	uint triangleOffset;
+	uint vertexCount;
+	uint triangleCount;
 };
 #endif
 
@@ -125,6 +140,16 @@ struct MeshInstanceData
 	uint32_t indexCount;
 	uint32_t firstIndex;
 	uint32_t materialID;
+
+	ShaderResourceIndex meshletsBuffer;
+	ShaderResourceIndex meshletVertexBuffer;
+	ShaderResourceIndex meshletTriangleBuffer;
+	uint32_t meshletOffset;
+
+	uint32_t meshletCount;
+	float pad0;
+	float pad1;
+	float pad2;
 };
 
 struct SkyAtmosphereParameters

@@ -420,6 +420,22 @@ void RenderSystem::RecompileShader(const TString& entryPoint)
 							}
 						}
 					}
+					else if (shader.GetStage() == ShaderStage::Mesh || shader.GetStage() == ShaderStage::Amplification)
+					{
+						for (auto& [handle, pipeline] : mDevice->mMeshPipelineCache)
+						{
+							if (handle == pipelineHash)
+							{
+								auto newPipeline = mDevice->CompileMeshPipeline(pipeline.GetDescriptor());
+								if (newPipeline.IsValid())
+								{
+									mDevice->Dispose(pipeline);
+									pipeline = newPipeline;
+								}
+								break;
+							}
+						}
+					}
 				}
 			}
 			break;
