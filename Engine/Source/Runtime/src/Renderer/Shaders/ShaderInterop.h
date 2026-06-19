@@ -5,6 +5,7 @@
 #include "Math/Float2x2.h"
 #include "Math/Float3x3.h"
 #include "Math/Float4x4.h"
+#include "Math/Plane.h"
 
 using float2x2 = Gleam::Float2x2;
 using float3x3 = Gleam::Float3x3;
@@ -120,6 +121,7 @@ static_assert(sizeof(UnorderedAccessIndex) == sizeof(uint32_t));
 #else
 typedef uint ShaderResourceIndex;
 typedef uint UnorderedAccessIndex;
+typedef float4 Plane;
 #endif
 
 struct TextureResourceView {};

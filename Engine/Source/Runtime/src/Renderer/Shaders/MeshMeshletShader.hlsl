@@ -8,12 +8,6 @@
 [numthreads(MESH_AMPLIFICATION_THREADS, 1, 1)]
 void meshAmplificationShader(uint threadID : SV_GroupThreadID, uint groupID : SV_GroupID)
 {
-    if (threadID == 0)
-    {
-        BuildFrustumPlanes(camera.viewProjectionMatrix);
-    }
-    GroupMemoryBarrierWithGroupSync();
-
     ByteAddressBuffer globalInstanceBuffer = ResourceDescriptorHeap[constants.instanceBuffer];
     Gleam::MeshInstanceData instanceData = globalInstanceBuffer.Load<Gleam::MeshInstanceData>(constants.instanceID * sizeof(Gleam::MeshInstanceData));
 
@@ -24,14 +18,7 @@ void meshAmplificationShader(uint threadID : SV_GroupThreadID, uint groupID : SV
     {
         ByteAddressBuffer meshletsBuffer = ResourceDescriptorHeap[instanceData.meshletsBuffer];
         Gleam::MeshletDescriptor meshlet = meshletsBuffer.Load<Gleam::MeshletDescriptor>(instanceData.meshletOffset + meshletID * sizeof(Gleam::MeshletDescriptor));
-
-        float3 worldCenter = mul(instanceData.transform, float4(meshlet.center, 1.0f)).xyz;
-        float3 worldConeApex = mul(instanceData.transform, float4(meshlet.coneApex, 1.0f)).xyz;
-        float3 worldConeAxis = normalize(mul(instanceData.transform, float4(meshlet.coneAxis, 0.0f)).xyz);
-        float scale = length(mul(instanceData.transform, float4(1.0f, 0.0f, 0.0f, 0.0f)).xyz);
-
-        visible = FrustumCullMeshlet(worldCenter, meshlet.radius * scale)
-               && !BackfaceCullMeshlet(worldConeApex, worldConeAxis, meshlet.coneCutoff, camera.position);
+        visible = MeshletIsVisible(instanceData, meshlet, camera);
     }
 
     uint slot = WavePrefixCountBits(visible);

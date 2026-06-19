@@ -11,6 +11,14 @@
 namespace Gleam {
 
 #ifndef __cplusplus
+// HLSL-side mirror of Gleam::CullMode (Renderer/PipelineStateDescriptor.h).
+enum class CullMode
+{
+	Off,
+	Front,
+	Back
+};
+
 struct InterleavedMeshVertex
 {
 	float3 normal;
@@ -147,7 +155,7 @@ struct MeshInstanceData
 	uint32_t meshletOffset;
 
 	uint32_t meshletCount;
-	float pad0;
+	uint32_t cullMode;
 	float pad1;
 	float pad2;
 };

@@ -1,12 +1,26 @@
-#include "DepthPrepass.hlsli"
+#include "Common.hlsli"
 #include "MeshletCommon.hlsli"
+#include "../ShaderTypes.h"
 
 #define MAX_MESHLET_VERTICES    64
 #define MAX_MESHLET_TRIANGLES   126
 
+PUSH_CONSTANT(GEditor::MeshletVisualizationConstants, constants);
+CONSTANT_BUFFER(Gleam::CameraUniforms, camera, CAMERA_UNIFORMS_BINDING_SLOT);
+
+struct MeshletVisVertexOut
+{
+    float4 position : SV_POSITION;
+};
+
+struct MeshletVisPrimOut
+{
+    nointerpolation uint packedID : ATTRIB0;
+};
+
 [shader("amplification")]
 [numthreads(MESH_AMPLIFICATION_THREADS, 1, 1)]
-void depthPrepassAmplificationShader(uint threadID : SV_GroupThreadID, uint groupID : SV_GroupID)
+void meshletVisAmplificationShader(uint threadID : SV_GroupThreadID, uint groupID : SV_GroupID)
 {
     ByteAddressBuffer globalInstanceBuffer = ResourceDescriptorHeap[constants.instanceBuffer];
     Gleam::MeshInstanceData instanceData = globalInstanceBuffer.Load<Gleam::MeshInstanceData>(constants.instanceID * sizeof(Gleam::MeshInstanceData));
@@ -35,12 +49,13 @@ void depthPrepassAmplificationShader(uint threadID : SV_GroupThreadID, uint grou
 [shader("mesh")]
 [numthreads(128, 1, 1)]
 [outputtopology("triangle")]
-void depthPrepassMeshletShader(
+void meshletVisMeshShader(
     uint groupThreadID : SV_GroupThreadID,
     uint meshletLocalID : SV_GroupID,
     in payload MeshletPayload meshletPayload,
     out indices uint3 outTriangles[MAX_MESHLET_TRIANGLES],
-    out vertices Gleam::DepthPrepassVertexOut outVertices[MAX_MESHLET_VERTICES])
+    out primitives MeshletVisPrimOut outPrims[MAX_MESHLET_TRIANGLES],
+    out vertices MeshletVisVertexOut outVertices[MAX_MESHLET_VERTICES])
 {
     ByteAddressBuffer globalInstanceBuffer = ResourceDescriptorHeap[constants.instanceBuffer];
     Gleam::MeshInstanceData instanceData = globalInstanceBuffer.Load<Gleam::MeshInstanceData>(constants.instanceID * sizeof(Gleam::MeshInstanceData));
@@ -61,22 +76,17 @@ void depthPrepassMeshletShader(
         ByteAddressBuffer positionBuffer = ResourceDescriptorHeap[instanceData.positionBuffer];
         float3 position = positionBuffer.Load<float3>(vertexID * sizeof(float3));
         float4 worldPosition = mul(instanceData.transform, float4(position, 1.0f));
-        float4 prevWorldPosition = mul(instanceData.previousTransform, float4(position, 1.0f));
 
-        ByteAddressBuffer interleavedBuffer = ResourceDescriptorHeap[instanceData.interleavedBuffer];
-        Gleam::InterleavedMeshVertex interleavedVert = interleavedBuffer.Load<Gleam::InterleavedMeshVertex>(vertexID * sizeof(Gleam::InterleavedMeshVertex));
-
-        Gleam::DepthPrepassVertexOut OUT;
-        OUT.prevClipPos = mul(camera.prevViewProjectionMatrix, prevWorldPosition);
+        MeshletVisVertexOut OUT;
         OUT.position = mul(camera.viewProjectionMatrix, worldPosition);
-        OUT.color = float4(1.0f, 1.0f, 1.0f, 1.0f);
-        OUT.uv = interleavedVert.texCoord;
-        OUT.normal = normalize(mul(instanceData.transform, float4(interleavedVert.normal, 0.0f)).xyz);
         outVertices[groupThreadID] = OUT;
     }
 
     if (groupThreadID < meshlet.triangleCount)
     {
+        // Pack instance + meshlet so every meshlet on every instance gets a distinct color.
+        outPrims[groupThreadID].packedID = (constants.instanceID << 16) | (meshletID & 0xFFFFu);
+
         ByteAddressBuffer meshletTriangleBuffer = ResourceDescriptorHeap[instanceData.meshletTriangleBuffer];
         uint triByteOffset = meshlet.triangleOffset + groupThreadID * 3u;
 
@@ -89,4 +99,17 @@ void depthPrepassMeshletShader(
             (dword1 >> (((triByteOffset + 1u) & 3u) * 8u)) & 0xFFu,
             (dword2 >> (((triByteOffset + 2u) & 3u) * 8u)) & 0xFFu);
     }
+}
+
+float3 HashIDToColor(uint id)
+{
+    uint h = id * 2654435761u;
+    h ^= h >> 15; h *= 2246822519u; h ^= h >> 13;
+    return float3((h & 0xFFu), ((h >> 8) & 0xFFu), ((h >> 16) & 0xFFu)) / 255.0f;
+}
+
+[shader("pixel")]
+float4 meshletVisFragmentShader(MeshletVisVertexOut IN, MeshletVisPrimOut prim) : SV_TARGET
+{
+    return float4(HashIDToColor(prim.packedID), 1.0f);
 }

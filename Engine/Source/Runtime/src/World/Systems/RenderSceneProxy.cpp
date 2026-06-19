@@ -114,6 +114,7 @@ void RenderSceneProxy::Tick(World* world)
 			instance.meshletTriangleBuffer = mesh->GetMeshletTriangleBuffer().GetResourceView();
 			instance.meshletOffset = mesh->GetMeshletOffset(submeshIndex);
 			instance.meshletCount = static_cast<uint32_t>(submesh.meshlets.size());
+			instance.cullMode = static_cast<uint32_t>(batch.material->GetDescriptor().cullingMode);
 		}
 	});
 }
