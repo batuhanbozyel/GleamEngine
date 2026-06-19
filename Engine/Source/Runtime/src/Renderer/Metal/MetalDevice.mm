@@ -867,14 +867,13 @@ MeshPipeline GraphicsDevice::CompileMeshPipeline(const MeshPipelineStateDescript
             IRShaderReflection* reflection = IRShaderReflectionCreate();
             IRObjectGetReflection(metalIR, IRShaderStageMesh, reflection);
 
-            IRVersionedCSInfo meshInfo;
-            IRShaderReflectionCopyComputeInfo(reflection, IRReflectionVersion_1_0, &meshInfo);
+            IRVersionedMSInfo meshInfo = {};
+            IRShaderReflectionCopyMeshInfo(reflection, IRReflectionVersion_1_0, &meshInfo);
             mtlPipeline.meshThreadsPerThreadgroup = MTLSizeMake(
-                meshInfo.info_1_0.tg_size[0],
-                meshInfo.info_1_0.tg_size[1],
-                meshInfo.info_1_0.tg_size[2]);
-
-            IRShaderReflectionReleaseComputeInfo(&meshInfo);
+                meshInfo.info_1_0.num_threads[0],
+                meshInfo.info_1_0.num_threads[1],
+                meshInfo.info_1_0.num_threads[2]);
+            IRShaderReflectionReleaseMeshInfo(&meshInfo);
             IRShaderReflectionDestroy(reflection);
         }
         else
@@ -901,14 +900,13 @@ MeshPipeline GraphicsDevice::CompileMeshPipeline(const MeshPipelineStateDescript
             IRShaderReflection* reflection = IRShaderReflectionCreate();
             IRObjectGetReflection(metalIR, IRShaderStageAmplification, reflection);
 
-            IRVersionedCSInfo amplificationInfo;
-            IRShaderReflectionCopyComputeInfo(reflection, IRReflectionVersion_1_0, &amplificationInfo);
+            IRVersionedASInfo amplificationInfo = {};
+            IRShaderReflectionCopyAmplificationInfo(reflection, IRReflectionVersion_1_0, &amplificationInfo);
             mtlPipeline.objectThreadsPerThreadgroup = MTLSizeMake(
-                amplificationInfo.info_1_0.tg_size[0],
-                amplificationInfo.info_1_0.tg_size[1],
-                amplificationInfo.info_1_0.tg_size[2]);
-
-            IRShaderReflectionReleaseComputeInfo(&amplificationInfo);
+                amplificationInfo.info_1_0.num_threads[0],
+                amplificationInfo.info_1_0.num_threads[1],
+                amplificationInfo.info_1_0.num_threads[2]);
+            IRShaderReflectionReleaseAmplificationInfo(&amplificationInfo);
             IRShaderReflectionDestroy(reflection);
         }
         else

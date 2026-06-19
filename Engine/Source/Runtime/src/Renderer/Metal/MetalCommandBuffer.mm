@@ -127,7 +127,7 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, 
     
     mHandle->renderCommandEncoder = [mHandle->commandBuffer renderCommandEncoderWithDescriptor:renderPass];
     mHandle->renderCommandEncoder.label = TO_NSSTRING(debugName.data());
-    [mHandle->renderCommandEncoder setArgumentTable:mHandle->device->GetArgumentTable() atStages:MTLRenderStageVertex | MTLRenderStageFragment];
+    [mHandle->renderCommandEncoder setArgumentTable:mHandle->device->GetArgumentTable() atStages:MTLRenderStageVertex | MTLRenderStageFragment | MTLRenderStageObject | MTLRenderStageMesh];
     
     mHandle->FlushConsumerBarriers(mHandle->renderCommandEncoder);
 }
