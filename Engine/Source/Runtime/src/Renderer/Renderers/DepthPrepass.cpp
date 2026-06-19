@@ -73,7 +73,7 @@ void DepthPrepass::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& bl
 					constants.instanceID = batch.instanceOffset + instanceID;
 					const auto& instance = globalInstances[constants.instanceID];
 					cmd->SetPushConstant(constants);
-					cmd->DispatchMesh((instance.meshletCount + MESH_AMPLIFICATION_THREADS - 1) / MESH_AMPLIFICATION_THREADS, 1, 1);
+					cmd->DispatchMesh(Math::DivideRoundingUp(instance.meshletCount, MESH_AMPLIFICATION_THREADS), 1, 1);
 				}
 			}
 			else

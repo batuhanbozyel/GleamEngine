@@ -1,9 +1,6 @@
 #include "MeshShading.hlsli"
 #include "MeshletCommon.hlsli"
 
-#define MAX_MESHLET_VERTICES    64
-#define MAX_MESHLET_TRIANGLES   126
-
 [shader("amplification")]
 [numthreads(MESH_AMPLIFICATION_THREADS, 1, 1)]
 void meshAmplificationShader(uint threadID : SV_GroupThreadID, uint groupID : SV_GroupID)
@@ -81,15 +78,7 @@ void meshMeshletShader(
     if (groupThreadID < meshlet.triangleCount)
     {
         ByteAddressBuffer meshletTriangleBuffer = ResourceDescriptorHeap[instanceData.meshletTriangleBuffer];
-        uint triByteOffset = meshlet.triangleOffset + groupThreadID * 3u;
-
-        uint dword0 = meshletTriangleBuffer.Load(triByteOffset & ~3u);
-        uint dword1 = meshletTriangleBuffer.Load((triByteOffset + 1u) & ~3u);
-        uint dword2 = meshletTriangleBuffer.Load((triByteOffset + 2u) & ~3u);
-
-        outTriangles[groupThreadID] = uint3(
-            (dword0 >> ((triByteOffset & 3u) * 8u)) & 0xFFu,
-            (dword1 >> (((triByteOffset + 1u) & 3u) * 8u)) & 0xFFu,
-            (dword2 >> (((triByteOffset + 2u) & 3u) * 8u)) & 0xFFu);
+        uint packedTriangle = meshletTriangleBuffer.Load((meshlet.triangleOffset + groupThreadID) * sizeof(uint));
+        outTriangles[groupThreadID] = UnpackMeshletTriangles(packedTriangle);
     }
 }

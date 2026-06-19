@@ -37,6 +37,12 @@ using uint4 = Gleam::UInt4;
 #define UAVIndex(index) SRVIndex(index)
 #endif
 
+// NVIDIA recommended limits for meshlets
+// see: https://developer.nvidia.com/blog/introduction-turing-mesh-shaders/
+#define MAX_MESHLET_VERTICES    64
+#define MAX_MESHLET_TRIANGLES   126
+#define MESH_AMPLIFICATION_THREADS 32u
+
 namespace Gleam {
 
 #ifdef __cplusplus

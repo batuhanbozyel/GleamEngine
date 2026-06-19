@@ -58,4 +58,11 @@ bool MeshletIsVisible(Gleam::MeshInstanceData instanceData, Gleam::MeshletDescri
     return true;
 }
 
+uint3 UnpackMeshletTriangles(uint packedTriangle)
+{
+    return uint3(packedTriangle & 0xFFu,
+                 (packedTriangle >> 8u) & 0xFFu,
+                 (packedTriangle >> 16u) & 0xFFu);
+}
+
 #endif // MESHLET_COMMON_HLSLI

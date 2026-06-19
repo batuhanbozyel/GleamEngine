@@ -6,8 +6,6 @@
 #define SHADOW_TILE_WIDTH  8u
 #define SHADOW_TILE_HEIGHT 4u
 
-#define MESH_AMPLIFICATION_THREADS 32u
-
 namespace Gleam {
 
 #ifndef __cplusplus

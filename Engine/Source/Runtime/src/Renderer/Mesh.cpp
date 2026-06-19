@@ -22,7 +22,7 @@ Mesh::Mesh(const MeshDescriptor& descriptor)
     size_t interleavedSize = descriptor.interleavedVertices.size() * sizeof(InterleavedMeshVertex);
     size_t indexSize = descriptor.indices.size() * sizeof(uint32_t);
 	size_t meshletVertexSize = descriptor.meshletVertices.size() * sizeof(uint32_t);
-	size_t meshletTriangleSize = descriptor.meshletTriangleIndices.size() * sizeof(uint8_t);
+	size_t meshletTriangleSize = descriptor.meshletTriangleIndices.size() * sizeof(uint32_t);
 
 	uint32_t totalMeshlets = 0;
 	for (const auto& submesh : descriptor.submeshes)

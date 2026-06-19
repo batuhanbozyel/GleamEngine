@@ -65,12 +65,6 @@ struct RawMesh
 
 class MeshSource : public AssetPackage
 {
-	// NVIDIA recommended limits for meshlets
-	// see: https://developer.nvidia.com/blog/introduction-turing-mesh-shaders/
-	static constexpr uint32_t kMaxVerticesPerMeshlet = 64;
-	static constexpr uint32_t kMaxTrianglesPerMeshlet = 126;
-	static constexpr float kConeWeight = 0.25f;
-
 public:
 	AssetPackageType(MeshSource);
 

@@ -95,7 +95,7 @@ GSTRUCT(MeshDescriptor, "59E4007E-F7D4-4107-A05F-E1121067DCD3", Serializable)
 	TArray<uint32_t> meshletVertices;
 
 	GFIELD("A35FA938-983A-4903-99BA-C0C2F0800054", Serializable)
-	TArray<uint8_t> meshletTriangleIndices;
+	TArray<uint32_t> meshletTriangleIndices;
 };
 
 } // namespace Gleam
