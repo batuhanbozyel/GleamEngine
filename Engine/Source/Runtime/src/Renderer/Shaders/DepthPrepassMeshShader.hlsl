@@ -30,7 +30,7 @@ void depthPrepassAmplificationShader(uint threadID : SV_GroupThreadID, uint grou
 }
 
 [shader("mesh")]
-[numthreads(128, 1, 1)]
+[numthreads(MESH_SHADER_THREADS, 1, 1)]
 [outputtopology("triangle")]
 void depthPrepassMeshletShader(
     uint groupThreadID : SV_GroupThreadID,

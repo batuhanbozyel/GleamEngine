@@ -44,7 +44,7 @@ void meshletVisAmplificationShader(uint threadID : SV_GroupThreadID, uint groupI
 }
 
 [shader("mesh")]
-[numthreads(128, 1, 1)]
+[numthreads(MESH_SHADER_THREADS, 1, 1)]
 [outputtopology("triangle")]
 void meshletVisMeshShader(
     uint groupThreadID : SV_GroupThreadID,

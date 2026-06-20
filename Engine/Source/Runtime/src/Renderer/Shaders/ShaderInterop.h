@@ -37,11 +37,12 @@ using uint4 = Gleam::UInt4;
 #define UAVIndex(index) SRVIndex(index)
 #endif
 
-// NVIDIA recommended limits for meshlets
-// see: https://developer.nvidia.com/blog/introduction-turing-mesh-shaders/
+// Meshlet limits: 64v / 124t is the common cross-platform sweet spot.
+// 124 (multiple of 4) packs micro-indices well and fits Apple's 128-thread mesh-threadgroup cap.
 #define MAX_MESHLET_VERTICES    64
-#define MAX_MESHLET_TRIANGLES   126
+#define MAX_MESHLET_TRIANGLES   124
 #define MESH_AMPLIFICATION_THREADS 32u
+#define MESH_SHADER_THREADS        128u
 
 namespace Gleam {
 
