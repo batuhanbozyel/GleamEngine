@@ -25,3 +25,9 @@ const RayTracingPipeline& RayTracingPipelineHandle::GetPipeline() const
 	static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
 	return renderSystem->GetDevice()->GetRayTracingPipeline(*this);
 }
+
+const MeshPipeline& MeshPipelineHandle::GetPipeline() const
+{
+	static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
+	return renderSystem->GetDevice()->GetMeshPipeline(*this);
+}

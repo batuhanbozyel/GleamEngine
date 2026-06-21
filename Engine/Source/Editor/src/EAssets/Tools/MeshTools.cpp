@@ -2,6 +2,7 @@
 #include "EAssets/MeshSource.h"
 
 #include <mikktspace.h>
+#include <meshoptimizer.h>
 
 using namespace GEditor;
 
@@ -64,6 +65,8 @@ Gleam::MeshDescriptor MeshTools::CombineMeshes(const Gleam::TArray<RawMesh>& mes
     Gleam::SubmeshDescriptor submesh;
     for (uint32_t i = 0; i < meshes.size(); ++i)
     {
+		combined.name = meshes[i].name;
+
         const auto& mesh = meshes[i];
 		submesh.materialIndex = mesh.material;
         submesh.bounds = CalculateBounds(mesh.positions);

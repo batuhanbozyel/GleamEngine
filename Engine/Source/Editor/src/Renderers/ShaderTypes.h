@@ -27,4 +27,12 @@ struct ViewModeUniforms
 	float pad1;
 };
 
+struct MeshletVisualizationConstants
+{
+	Gleam::ShaderResourceIndex instanceBuffer;
+	uint32_t instanceID;
+	float pad0;
+	float pad1;
+};
+
 } // namespace Gleam

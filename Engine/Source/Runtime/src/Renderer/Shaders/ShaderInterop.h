@@ -5,6 +5,7 @@
 #include "Math/Float2x2.h"
 #include "Math/Float3x3.h"
 #include "Math/Float4x4.h"
+#include "Math/Plane.h"
 
 using float2x2 = Gleam::Float2x2;
 using float3x3 = Gleam::Float3x3;
@@ -35,6 +36,13 @@ using uint4 = Gleam::UInt4;
 #else
 #define UAVIndex(index) SRVIndex(index)
 #endif
+
+// Meshlet limits: 64v / 124t is the common cross-platform sweet spot.
+// 124 (multiple of 4) packs micro-indices well and fits Apple's 128-thread mesh-threadgroup cap.
+#define MAX_MESHLET_VERTICES    64
+#define MAX_MESHLET_TRIANGLES   124
+#define MESH_AMPLIFICATION_THREADS 32u
+#define MESH_SHADER_THREADS        128u
 
 namespace Gleam {
 
@@ -120,6 +128,7 @@ static_assert(sizeof(UnorderedAccessIndex) == sizeof(uint32_t));
 #else
 typedef uint ShaderResourceIndex;
 typedef uint UnorderedAccessIndex;
+typedef float4 Plane;
 #endif
 
 struct TextureResourceView {};

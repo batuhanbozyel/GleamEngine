@@ -83,6 +83,28 @@ static DeviceFeatures QueryDeviceFeatures(id<MTLDevice> device)
 
 @end
 
+@interface MetalMeshPipelineImpl : NSObject<MetalMeshPipeline>
+@property (nonatomic, strong) id<MTLRenderPipelineState> pipelineState;
+@property (nonatomic, strong) id<MTLDepthStencilState> depthStencilState;
+@property (nonatomic, assign) MTLSize meshThreadsPerThreadgroup;
+@property (nonatomic, assign) MTLSize objectThreadsPerThreadgroup;
+@end
+
+@implementation MetalMeshPipelineImpl
+
+- (instancetype)init {
+    self = [super init];
+    if (self) {
+        _pipelineState = nil;
+        _depthStencilState = nil;
+        _meshThreadsPerThreadgroup = MTLSizeMake(32, 1, 1);
+        _objectThreadsPerThreadgroup = MTLSizeMake(1, 1, 1);
+    }
+    return self;
+}
+
+@end
+
 @interface MetalHitGroupImpl : NSObject
 @property (nonatomic, strong) id<MetalRayTracingFunction> closestHit;
 @property (nonatomic, strong) id<MetalRayTracingFunction> anyHit;
@@ -759,6 +781,149 @@ GraphicsPipeline GraphicsDevice::CompileGraphicsPipeline(const GraphicsPipelineS
     return pipeline;
 }
 
+MeshPipeline GraphicsDevice::CompileMeshPipeline(const MeshPipelineStateDescriptor& pipelineDesc)
+{
+    MeshPipeline pipeline(pipelineDesc);
+    pipeline.mHandle = [[MetalMeshPipelineImpl alloc] init];
+
+    id<MetalMeshPipeline> mtlPipeline = pipeline.mHandle;
+
+    auto meshShader = CreateShader(pipelineDesc.meshEntry, ShaderStage::Mesh);
+    id<MetalFunction> meshFunction = meshShader.GetHandle();
+
+    MTLMeshRenderPipelineDescriptor* pipelineDescriptor = [MTLMeshRenderPipelineDescriptor new];
+    pipelineDescriptor.meshFunction = meshFunction.handle;
+
+    if (not pipelineDesc.amplificationEntry.empty())
+    {
+        auto amplificationShader = CreateShader(pipelineDesc.amplificationEntry, ShaderStage::Amplification);
+        id<MetalFunction> amplificationFunction = amplificationShader.GetHandle();
+        pipelineDescriptor.objectFunction = amplificationFunction.handle;
+    }
+
+    if (not pipelineDesc.fragmentEntry.empty())
+    {
+        auto fragmentShader = CreateShader(pipelineDesc.fragmentEntry, ShaderStage::Fragment);
+        id<MetalFunction> fragmentFunction = fragmentShader.GetHandle();
+        pipelineDescriptor.fragmentFunction = fragmentFunction.handle;
+    }
+
+    pipelineDescriptor.rasterSampleCount = 1;
+    pipelineDescriptor.alphaToCoverageEnabled = pipelineDesc.alphaToCoverage;
+
+    for (uint32_t i = 0; i < pipelineDesc.colorFormats.size(); i++)
+    {
+        pipelineDescriptor.colorAttachments[i].pixelFormat = TextureFormatToMTLPixelFormat(pipelineDesc.colorFormats[i]);
+        pipelineDescriptor.colorAttachments[i].blendingEnabled = pipelineDesc.blendState.enabled;
+        pipelineDescriptor.colorAttachments[i].sourceRGBBlendFactor = BlendModeToMTLBlendFactor(pipelineDesc.blendState.sourceColorBlendMode);
+        pipelineDescriptor.colorAttachments[i].destinationRGBBlendFactor = BlendModeToMTLBlendFactor(pipelineDesc.blendState.destinationColorBlendMode);
+        pipelineDescriptor.colorAttachments[i].sourceAlphaBlendFactor = BlendModeToMTLBlendFactor(pipelineDesc.blendState.sourceAlphaBlendMode);
+        pipelineDescriptor.colorAttachments[i].destinationAlphaBlendFactor = BlendModeToMTLBlendFactor(pipelineDesc.blendState.destinationAlphaBlendMode);
+        pipelineDescriptor.colorAttachments[i].rgbBlendOperation = BlendOpToMTLBlendOperation(pipelineDesc.blendState.colorBlendOperation);
+        pipelineDescriptor.colorAttachments[i].alphaBlendOperation = BlendOpToMTLBlendOperation(pipelineDesc.blendState.alphaBlendOperation);
+        pipelineDescriptor.colorAttachments[i].writeMask = ColorWriteMaskToMTLColorWriteMask(pipelineDesc.blendState.writeMask);
+    }
+
+    if (Utils::IsDepthFormat(pipelineDesc.depthFormat))
+    {
+        MTLPixelFormat format = TextureFormatToMTLPixelFormat(pipelineDesc.depthFormat);
+        pipelineDescriptor.depthAttachmentPixelFormat = format;
+
+        MTLDepthStencilDescriptor* depthStencilDesc = [MTLDepthStencilDescriptor new];
+        depthStencilDesc.depthWriteEnabled = pipelineDesc.depthState.writeEnabled;
+        depthStencilDesc.depthCompareFunction = CompareFunctionToMTLCompareFunction(pipelineDesc.depthState.compareFunction);
+
+        if (pipelineDesc.stencilState.enabled)
+        {
+            pipelineDescriptor.stencilAttachmentPixelFormat = format;
+
+            MTLStencilDescriptor* stencilDesc = [MTLStencilDescriptor new];
+            stencilDesc.readMask = pipelineDesc.stencilState.readMask;
+            stencilDesc.writeMask = pipelineDesc.stencilState.writeMask;
+            stencilDesc.stencilCompareFunction = CompareFunctionToMTLCompareFunction(pipelineDesc.stencilState.compareFunction);
+            stencilDesc.depthFailureOperation = StencilOpToMTLStencilOperation(pipelineDesc.stencilState.depthFailOperation);
+            stencilDesc.stencilFailureOperation = StencilOpToMTLStencilOperation(pipelineDesc.stencilState.depthFailOperation);
+            stencilDesc.depthStencilPassOperation = StencilOpToMTLStencilOperation(pipelineDesc.stencilState.passOperation);
+
+            depthStencilDesc.backFaceStencil = stencilDesc;
+            depthStencilDesc.frontFaceStencil = stencilDesc;
+        }
+        mtlPipeline.depthStencilState = [mHandle newDepthStencilStateWithDescriptor:depthStencilDesc];
+        GLEAM_ASSERT(mtlPipeline.depthStencilState, "Metal: Mesh Pipeline depth state creation failed.");
+    }
+
+    // Get mesh shader thread group size from IR reflection
+    {
+        IRCompiler* compiler = CreateCompiler(pipelineDesc.meshEntry, static_cast<MetalDevice*>(this)->GetGlobalRootSignature());
+        auto shaderPath = Globals::BuiltinAssetsDirectory/"Shaders";
+        auto shaderFile = Filesystem::OpenRead(shaderPath.Append(pipelineDesc.meshEntry + ".dxil"), FileType::Binary);
+        auto shaderCode = shaderFile->Read();
+        IRObject* dxil = IRObjectCreateFromDXIL((uint8_t*)shaderCode.data(), shaderCode.size(), IRBytecodeOwnershipCopy);
+
+        IRError* compileError = nullptr;
+        auto metalIR = IRCompilerAllocCompileAndLink(compiler, pipelineDesc.meshEntry.c_str(), dxil, &compileError);
+        if (not compileError)
+        {
+            IRShaderReflection* reflection = IRShaderReflectionCreate();
+            IRObjectGetReflection(metalIR, IRShaderStageMesh, reflection);
+
+            IRVersionedMSInfo meshInfo = {};
+            IRShaderReflectionCopyMeshInfo(reflection, IRReflectionVersion_1_0, &meshInfo);
+            mtlPipeline.meshThreadsPerThreadgroup = MTLSizeMake(
+                meshInfo.info_1_0.num_threads[0],
+                meshInfo.info_1_0.num_threads[1],
+                meshInfo.info_1_0.num_threads[2]);
+            IRShaderReflectionReleaseMeshInfo(&meshInfo);
+            IRShaderReflectionDestroy(reflection);
+        }
+        else
+        {
+            IRErrorDestroy(compileError);
+        }
+
+        IRObjectDestroy(dxil);
+        IRCompilerDestroy(compiler);
+    }
+
+    if (not pipelineDesc.amplificationEntry.empty())
+    {
+        IRCompiler* compiler = CreateCompiler(pipelineDesc.amplificationEntry, static_cast<MetalDevice*>(this)->GetGlobalRootSignature());
+        auto shaderPath = Globals::BuiltinAssetsDirectory/"Shaders";
+        auto shaderFile = Filesystem::OpenRead(shaderPath.Append(pipelineDesc.amplificationEntry + ".dxil"), FileType::Binary);
+        auto shaderCode = shaderFile->Read();
+        IRObject* dxil = IRObjectCreateFromDXIL((uint8_t*)shaderCode.data(), shaderCode.size(), IRBytecodeOwnershipCopy);
+
+        IRError* compileError = nullptr;
+        auto metalIR = IRCompilerAllocCompileAndLink(compiler, pipelineDesc.amplificationEntry.c_str(), dxil, &compileError);
+        if (not compileError)
+        {
+            IRShaderReflection* reflection = IRShaderReflectionCreate();
+            IRObjectGetReflection(metalIR, IRShaderStageAmplification, reflection);
+
+            IRVersionedASInfo amplificationInfo = {};
+            IRShaderReflectionCopyAmplificationInfo(reflection, IRReflectionVersion_1_0, &amplificationInfo);
+            mtlPipeline.objectThreadsPerThreadgroup = MTLSizeMake(
+                amplificationInfo.info_1_0.num_threads[0],
+                amplificationInfo.info_1_0.num_threads[1],
+                amplificationInfo.info_1_0.num_threads[2]);
+            IRShaderReflectionReleaseAmplificationInfo(&amplificationInfo);
+            IRShaderReflectionDestroy(reflection);
+        }
+        else
+        {
+            IRErrorDestroy(compileError);
+        }
+
+        IRObjectDestroy(dxil);
+        IRCompilerDestroy(compiler);
+    }
+
+    __autoreleasing NSError* error = nil;
+    mtlPipeline.pipelineState = [mHandle newRenderPipelineStateWithMeshDescriptor:pipelineDescriptor options:0 reflection:nil error:&error];
+    GLEAM_ASSERT(mtlPipeline.pipelineState, "Metal: Mesh Pipeline render state creation failed.");
+    return pipeline;
+}
+
 RayTracingPipeline GraphicsDevice::CompileRayTracingPipeline(const RayTracingPipelineStateDescriptor& pipelineDesc)
 {
     RayTracingPipeline pipeline(pipelineDesc);
@@ -1083,7 +1248,7 @@ void GraphicsDevice::Dispose(GPUAllocator* allocator, Texture& texture, BarrierS
     texture.mSliceUnorderedAccessViews.clear();
 }
 
-void GraphicsDevice::Dispose( BottomLevelAccelerationStructure& blas)
+void GraphicsDevice::Dispose(BottomLevelAccelerationStructure& blas)
 {
 	mReleaseQueue->AddResource([this, resource = blas.GetHandle()]()
 	{
@@ -1148,6 +1313,12 @@ void GraphicsDevice::Dispose(RayTracingPipeline& pipeline)
 
     pipeline.mHandle = nil;
     pipeline.mShaderBindingTable = {};
+}
+
+void GraphicsDevice::Dispose(MeshPipeline& pipeline)
+{
+    mMeshPipelineCache.erase(MeshPipelineHandle(pipeline.GetHash()));
+    pipeline.mHandle = nil;
 }
 
 MetalDevice::MetalDevice(RenderSurface* surface, ResourceReleaseQueue* releaseQueue)
@@ -1275,6 +1446,7 @@ MetalDevice::~MetalDevice()
     mComputePipelineCache.clear();
     mGraphicsPipelineCache.clear();
     mRayTracingPipelineCache.clear();
+    mMeshPipelineCache.clear();
     IRRootSignatureDestroy(mRootSignature);
     
     // Destroy descriptor heap

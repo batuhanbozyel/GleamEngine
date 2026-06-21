@@ -81,6 +81,8 @@ public:
 
 private:
 
+	Gleam::RefCounted<MeshBaker> ImportMesh(const Gleam::TArray<RawMesh>& rawMeshes, const Gleam::Path& path, const ImportSettings& settings);
+
 	Gleam::TArray<Gleam::RefCounted<MaterialInstanceBaker>> ImportMaterials(const Gleam::TArray<RawMaterial>& rawMaterials, const Gleam::Path& path, const ImportSettings& settings);
     
 };

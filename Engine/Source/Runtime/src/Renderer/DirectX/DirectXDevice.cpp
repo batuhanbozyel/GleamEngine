@@ -4,6 +4,7 @@
 #include "DirectXDevice.h"
 #include "DirectXUtils.h"
 #include "DirectXSwapchain.h"
+#include <d3dx12/d3dx12_pipeline_state_stream.h>
 
 #include "Core/Engine.h"
 #include "Core/Globals.h"
@@ -513,6 +514,110 @@ RayTracingPipeline GraphicsDevice::CompileRayTracingPipeline(const RayTracingPip
 	return pipeline;
 }
 
+MeshPipeline GraphicsDevice::CompileMeshPipeline(const MeshPipelineStateDescriptor& pipelineDesc)
+{
+	MeshPipeline pipeline(pipelineDesc);
+
+	D3DX12_MESH_SHADER_PIPELINE_STATE_DESC psoDesc{};
+	psoDesc.pRootSignature = static_cast<DirectXDevice*>(this)->mRootSignature;
+	psoDesc.SampleMask = UINT_MAX;
+	psoDesc.SampleDesc.Count = 1;
+	psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+
+	auto meshShader = CreateShader(pipelineDesc.meshEntry, ShaderStage::Mesh);
+	psoDesc.MS = *static_cast<D3D12_SHADER_BYTECODE*>(meshShader.GetHandle());
+
+	if (not pipelineDesc.amplificationEntry.empty())
+	{
+		auto amplificationShader = CreateShader(pipelineDesc.amplificationEntry, ShaderStage::Amplification);
+		psoDesc.AS = *static_cast<D3D12_SHADER_BYTECODE*>(amplificationShader.GetHandle());
+	}
+
+	if (not pipelineDesc.fragmentEntry.empty())
+	{
+		auto fragmentShader = CreateShader(pipelineDesc.fragmentEntry, ShaderStage::Fragment);
+		psoDesc.PS = *static_cast<D3D12_SHADER_BYTECODE*>(fragmentShader.GetHandle());
+	}
+
+	// Rasterizer state
+	auto& rasterizerState = psoDesc.RasterizerState;
+	rasterizerState.FillMode = pipelineDesc.wireframe ? D3D12_FILL_MODE_WIREFRAME : D3D12_FILL_MODE_SOLID;
+	rasterizerState.FrontCounterClockwise = FALSE;
+	rasterizerState.DepthBias = D3D12_DEFAULT_DEPTH_BIAS;
+	rasterizerState.DepthBiasClamp = D3D12_DEFAULT_DEPTH_BIAS_CLAMP;
+	rasterizerState.SlopeScaledDepthBias = D3D12_DEFAULT_SLOPE_SCALED_DEPTH_BIAS;
+	rasterizerState.DepthClipEnable = FALSE;
+	rasterizerState.MultisampleEnable = FALSE;
+	rasterizerState.AntialiasedLineEnable = FALSE;
+	rasterizerState.ForcedSampleCount = 0;
+	rasterizerState.ConservativeRaster = D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF;
+	rasterizerState.CullMode = CullModeToD3D12_CULL_MODE(pipelineDesc.cullingMode);
+
+	// Depth-stencil state
+	if (Utils::IsDepthFormat(pipelineDesc.depthFormat))
+	{
+		psoDesc.DSVFormat = TextureFormatToDXGI_FORMAT(pipelineDesc.depthFormat);
+
+		auto& depthStencilState = psoDesc.DepthStencilState;
+		depthStencilState.DepthEnable = pipelineDesc.depthState.compareFunction != CompareFunction::Always;
+		depthStencilState.DepthFunc = CompareFunctionToD3D12_COMPARISON_FUNC(pipelineDesc.depthState.compareFunction);
+		depthStencilState.DepthWriteMask = pipelineDesc.depthState.writeEnabled ? D3D12_DEPTH_WRITE_MASK_ALL : D3D12_DEPTH_WRITE_MASK_ZERO;
+
+		if (Utils::IsDepthStencilFormat(pipelineDesc.depthFormat))
+		{
+			depthStencilState.StencilEnable = pipelineDesc.stencilState.enabled;
+			depthStencilState.StencilReadMask = pipelineDesc.stencilState.readMask;
+			depthStencilState.StencilWriteMask = pipelineDesc.stencilState.writeMask;
+
+			D3D12_DEPTH_STENCILOP_DESC stencilOp{};
+			stencilOp.StencilFailOp = StencilOpToD3D12_STENCIL_OP(pipelineDesc.stencilState.failOperation);
+			stencilOp.StencilPassOp = StencilOpToD3D12_STENCIL_OP(pipelineDesc.stencilState.passOperation);
+			stencilOp.StencilDepthFailOp = StencilOpToD3D12_STENCIL_OP(pipelineDesc.stencilState.depthFailOperation);
+			stencilOp.StencilFunc = CompareFunctionToD3D12_COMPARISON_FUNC(pipelineDesc.stencilState.compareFunction);
+
+			depthStencilState.BackFace = stencilOp;
+			depthStencilState.FrontFace = stencilOp;
+		}
+	}
+
+	// Blend state
+	auto& blendState = psoDesc.BlendState;
+	blendState.AlphaToCoverageEnable = pipelineDesc.alphaToCoverage;
+	blendState.IndependentBlendEnable = FALSE;
+
+	psoDesc.NumRenderTargets = (UINT)pipelineDesc.colorFormats.size();
+	for (uint32_t i = 0; i < pipelineDesc.colorFormats.size(); i++)
+	{
+		psoDesc.RTVFormats[i] = TextureFormatToDXGI_FORMAT(pipelineDesc.colorFormats[i]);
+		blendState.RenderTarget[i].BlendEnable = pipelineDesc.blendState.enabled;
+		blendState.RenderTarget[i].SrcBlend = BlendModeToD3D12_BLEND(pipelineDesc.blendState.sourceColorBlendMode);
+		blendState.RenderTarget[i].DestBlend = BlendModeToD3D12_BLEND(pipelineDesc.blendState.destinationColorBlendMode);
+		blendState.RenderTarget[i].SrcBlendAlpha = BlendModeToD3D12_BLEND(pipelineDesc.blendState.sourceAlphaBlendMode);
+		blendState.RenderTarget[i].DestBlendAlpha = BlendModeToD3D12_BLEND(pipelineDesc.blendState.destinationAlphaBlendMode);
+		blendState.RenderTarget[i].BlendOp = BlendOpToD3D12_BLEND_OP(pipelineDesc.blendState.colorBlendOperation);
+		blendState.RenderTarget[i].BlendOpAlpha = BlendOpToD3D12_BLEND_OP(pipelineDesc.blendState.alphaBlendOperation);
+		blendState.RenderTarget[i].RenderTargetWriteMask = ColorWriteMaskToD3D12_COLOR_WRITE_ENABLE(pipelineDesc.blendState.writeMask);
+	}
+
+	CD3DX12_PIPELINE_MESH_STATE_STREAM psoStream(psoDesc);
+	D3D12_PIPELINE_STATE_STREAM_DESC streamDesc{ sizeof(psoStream), &psoStream };
+	ID3D12PipelineState* pso = nullptr;
+	DX_CHECK(static_cast<ID3D12Device2*>(static_cast<ID3D12Device10*>(mHandle))->CreatePipelineState(&streamDesc, IID_PPV_ARGS(&pso)));
+	pipeline.mHandle = pso;
+
+	TStringStream ss;
+	ss << "MeshPipeline::" << pipelineDesc.meshEntry;
+	if (not pipelineDesc.fragmentEntry.empty())
+	{
+		ss << "_" << pipelineDesc.fragmentEntry;
+	}
+
+	TWString pipelineName = ss.str();
+	pso->SetName(pipelineName.c_str());
+
+	return pipeline;
+}
+
 void GraphicsDevice::Dispose(Heap& heap)
 {
 	ID3D12Heap* resource = static_cast<ID3D12Heap*>(heap.GetHandle());
@@ -694,6 +799,18 @@ void GraphicsDevice::Dispose(RayTracingPipeline& pipeline)
 	pipeline.mShaderBindingTable = {};
 }
 
+void GraphicsDevice::Dispose(MeshPipeline& pipeline)
+{
+	mMeshPipelineCache.erase(MeshPipelineHandle(pipeline.GetHash()));
+
+	auto resource = static_cast<ID3D12PipelineState*>(pipeline.mHandle);
+	mReleaseQueue->AddResource([resource]()
+	{
+		resource->Release();
+	}, static_cast<Swapchain*>(mSurface)->GetFrameIndex());
+	pipeline.mHandle = nullptr;
+}
+
 DirectXDevice::DirectXDevice(RenderSurface* surface, ResourceReleaseQueue* releaseQueue)
 	: GraphicsDevice(surface, releaseQueue)
 {
@@ -824,6 +941,12 @@ DirectXDevice::~DirectXDevice()
 	}
 	mRayTracingPipelineCache.clear();
 
+	for (auto& [_, pipeline] : mMeshPipelineCache)
+	{
+		static_cast<ID3D12PipelineState*>(pipeline.GetHandle())->Release();
+	}
+	mMeshPipelineCache.clear();
+
 	for (auto& shader : mShaderCache)
 	{
 		auto bytecode = static_cast<D3D12_SHADER_BYTECODE*>(shader.GetHandle());
@@ -874,9 +997,6 @@ ShaderBindingTable DirectXDevice::CreateShaderBindingTable(const RayTracingPipel
 	uint32_t missTableSize = Math::AlignUp(static_cast<uint32_t>(pipelineDesc.missEntries.size()) * shaderRecordSize, (UINT)D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT);
 	uint32_t hitGroupTableSize = Math::AlignUp(static_cast<uint32_t>(pipelineDesc.hitGroups.size()) * shaderRecordSize, (UINT)D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT);
 	uint32_t totalSize = rayGenTableSize + missTableSize + hitGroupTableSize;
-
-	D3D12_HEAP_PROPERTIES heapProps = {};
-	heapProps.Type = D3D12_HEAP_TYPE_UPLOAD;
 
 	D3D12_RESOURCE_DESC1 resourceDesc = {
 		.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER,

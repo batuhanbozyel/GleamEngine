@@ -9,11 +9,32 @@
 namespace Gleam {
 
 #ifndef __cplusplus
+// HLSL-side mirror of Gleam::CullMode (Renderer/PipelineStateDescriptor.h).
+enum class CullMode
+{
+	Off,
+	Front,
+	Back
+};
+
 struct InterleavedMeshVertex
 {
 	float3 normal;
 	float4 tangent;
 	float2 texCoord;
+};
+
+struct MeshletDescriptor
+{
+	float3 center;
+	float radius;
+	float3 coneApex;
+	float3 coneAxis;
+	float coneCutoff;
+	uint vertexOffset;
+	uint triangleOffset;
+	uint vertexCount;
+	uint triangleCount;
 };
 #endif
 
@@ -125,6 +146,16 @@ struct MeshInstanceData
 	uint32_t indexCount;
 	uint32_t firstIndex;
 	uint32_t materialID;
+
+	ShaderResourceIndex meshletsBuffer;
+	ShaderResourceIndex meshletVertexBuffer;
+	ShaderResourceIndex meshletTriangleBuffer;
+	uint32_t baseMeshlet;
+
+	uint32_t meshletCount;
+	uint32_t cullMode;
+	float pad1;
+	float pad2;
 };
 
 struct SkyAtmosphereParameters

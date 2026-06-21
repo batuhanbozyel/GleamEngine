@@ -25,6 +25,12 @@ struct SkyAtmosphereUniforms
 	float2 pad1;
 };
 
+struct Frustum
+{
+	// World-space planes in the order: left, right, bottom, top, near, far.
+	Plane planes[6];
+};
+
 struct CameraUniforms
 {
 	float4x4 viewMatrix;
@@ -42,6 +48,8 @@ struct CameraUniforms
 	float2 resolution;
 	float nearPlane;
 	float farPlane;
+
+	Frustum frustum;
 };
 
 struct PathTracerConstants

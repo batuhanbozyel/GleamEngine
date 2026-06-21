@@ -98,6 +98,29 @@ RayTracingPipelineHandle GraphicsDevice::CreateRayTracingPipeline(const RayTraci
 	return handle;
 }
 
+MeshPipelineHandle GraphicsDevice::CreateMeshPipeline(const MeshPipelineStateDescriptor& pipelineDesc)
+{
+	MeshPipelineHandle handle{ eastl::hash<MeshPipelineStateDescriptor>()(pipelineDesc) };
+	auto it = mMeshPipelineCache.find(handle);
+	if (it != mMeshPipelineCache.end())
+	{
+		return handle;
+	}
+
+	auto pipeline = CompileMeshPipeline(pipelineDesc);
+	mShaderPipelineReferences[pipelineDesc.meshEntry].insert(handle);
+	if (not pipelineDesc.amplificationEntry.empty())
+	{
+		mShaderPipelineReferences[pipelineDesc.amplificationEntry].insert(handle);
+	}
+	if (not pipelineDesc.fragmentEntry.empty())
+	{
+		mShaderPipelineReferences[pipelineDesc.fragmentEntry].insert(handle);
+	}
+	mMeshPipelineCache.emplace_hint(mMeshPipelineCache.end(), handle, pipeline);
+	return handle;
+}
+
 const ComputePipeline& GraphicsDevice::GetComputePipeline(ComputePipelineHandle handle) const
 {
 	auto it = mComputePipelineCache.find(handle);
@@ -134,6 +157,19 @@ const RayTracingPipeline& GraphicsDevice::GetRayTracingPipeline(RayTracingPipeli
 
 	GLEAM_ASSERT(false);
 	static RayTracingPipeline invalid;
+	return invalid;
+}
+
+const MeshPipeline& GraphicsDevice::GetMeshPipeline(MeshPipelineHandle handle) const
+{
+	auto it = mMeshPipelineCache.find(handle);
+	if (it != mMeshPipelineCache.end())
+	{
+		return it->second;
+	}
+
+	GLEAM_ASSERT(false);
+	static MeshPipeline invalid;
 	return invalid;
 }
 

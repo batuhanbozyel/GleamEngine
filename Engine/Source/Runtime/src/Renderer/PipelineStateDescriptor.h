@@ -161,6 +161,57 @@ GSTRUCT(ComputePipelineStateDescriptor, "C07E515A-F254-4413-8C1E-13173BB82121", 
 	}
 };
 
+GSTRUCT(MeshPipelineStateDescriptor, "5A3F8B21-7E4D-4A9C-B1E5-2F6C09D8A347", Serializable)
+{
+	GFIELD("8A3F21B7-4E9C-4D2A-B5C1-F6E079D8A312", Serializable)
+	BlendState blendState{};
+
+	GFIELD("1B7F3A8E-9C42-4E5D-A312-6C079DB8F542", Serializable)
+	DepthState depthState{};
+
+	GFIELD("3C4E9B21-7A8F-4D2E-B512-C6079DA8F371", Serializable)
+	StencilState stencilState{};
+
+	GFIELD("7D8E4B21-3A9C-4F2E-B512-D6079CA8F3B1", Serializable)
+	CullMode cullingMode = CullMode::Off;
+
+	GFIELD("2E7F4B31-8A9C-4D2E-B512-E6079CA8F3C1", Serializable)
+	bool alphaToCoverage = false;
+
+	GFIELD("4F8E7B21-3A9C-4D2E-B521-F6079CA8F3D1", Serializable)
+	bool wireframe = false;
+
+	GFIELD("6A9F7B21-3E4C-4D2E-B521-A7079CA8F3E1", Serializable)
+	TArray<TextureFormat> colorFormats = {};
+
+	GFIELD("9B4F7A21-3E8C-4D2E-B521-B7079CA8F3F1", Serializable)
+	TextureFormat depthFormat = TextureFormat::None;
+
+	GFIELD("1C4F7A21-3E8D-4E2E-B521-C7079CA8F301", Serializable)
+	TString meshEntry{};
+
+	GFIELD("3D4F7A21-3E8C-4F2E-B521-D7079CA8F311", Serializable)
+	TString amplificationEntry{};
+
+	GFIELD("5E4F7A21-3E8C-4D3E-B521-E7079CA8F321", Serializable)
+	TString fragmentEntry{};
+
+	bool operator==(const MeshPipelineStateDescriptor& other) const
+	{
+		return  blendState == other.blendState &&
+				depthState == other.depthState &&
+				stencilState == other.stencilState &&
+				cullingMode == other.cullingMode &&
+				alphaToCoverage == other.alphaToCoverage &&
+				wireframe == other.wireframe &&
+				colorFormats == other.colorFormats &&
+				depthFormat == other.depthFormat &&
+				meshEntry == other.meshEntry &&
+				amplificationEntry == other.amplificationEntry &&
+				fragmentEntry == other.fragmentEntry;
+	}
+};
+
 GSTRUCT(HitGroupDescriptor, "3BF561EE-C997-46E7-8E29-0AC34AADE508", Serializable)
 {
 	GFIELD("B088C7AE-6068-42B3-AC5B-DA9D88F8CAF1", Serializable)
@@ -281,6 +332,30 @@ struct std::hash<Gleam::ComputePipelineStateDescriptor>
 };
 
 template <>
+struct std::hash<Gleam::MeshPipelineStateDescriptor>
+{
+	size_t operator()(const Gleam::MeshPipelineStateDescriptor& descriptor) const
+	{
+		std::size_t hash = 0;
+		Gleam::hash_combine(hash, descriptor.blendState);
+		Gleam::hash_combine(hash, descriptor.depthState);
+		Gleam::hash_combine(hash, descriptor.stencilState);
+		Gleam::hash_combine(hash, descriptor.cullingMode);
+		Gleam::hash_combine(hash, descriptor.alphaToCoverage);
+		Gleam::hash_combine(hash, descriptor.wireframe);
+		Gleam::hash_combine(hash, descriptor.meshEntry);
+		Gleam::hash_combine(hash, descriptor.amplificationEntry);
+		Gleam::hash_combine(hash, descriptor.fragmentEntry);
+		for (const auto colorFormat : descriptor.colorFormats)
+		{
+			Gleam::hash_combine(hash, colorFormat);
+		}
+		Gleam::hash_combine(hash, descriptor.depthFormat);
+		return hash;
+	}
+};
+
+template <>
 struct std::hash<Gleam::HitGroupDescriptor>
 {
 	size_t operator()(const Gleam::HitGroupDescriptor& descriptor) const
@@ -350,6 +425,15 @@ struct eastl::hash<Gleam::ComputePipelineStateDescriptor>
 	size_t operator()(const Gleam::ComputePipelineStateDescriptor& descriptor) const
 	{
 		return std::hash<Gleam::ComputePipelineStateDescriptor>()(descriptor);
+	}
+};
+
+template <>
+struct eastl::hash<Gleam::MeshPipelineStateDescriptor>
+{
+	size_t operator()(const Gleam::MeshPipelineStateDescriptor& descriptor) const
+	{
+		return std::hash<Gleam::MeshPipelineStateDescriptor>()(descriptor);
 	}
 };
 

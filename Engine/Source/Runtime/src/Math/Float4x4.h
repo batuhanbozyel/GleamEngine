@@ -266,6 +266,17 @@ GSTRUCT(Float4x4, "770BABFC-E66A-4CE5-8453-A505EB3016BE", Serializable)
 
 namespace Math {
 
+NO_DISCARD FORCE_INLINE constexpr Float4x4 Transpose(const Float4x4& m)
+{
+	return Float4x4
+	{
+		Float4{ m.row[0].x, m.row[1].x, m.row[2].x, m.row[3].x },
+		Float4{ m.row[0].y, m.row[1].y, m.row[2].y, m.row[3].y },
+		Float4{ m.row[0].z, m.row[1].z, m.row[2].z, m.row[3].z },
+		Float4{ m.row[0].w, m.row[1].w, m.row[2].w, m.row[3].w }
+	};
+}
+
 NO_DISCARD FORCE_INLINE constexpr Float4x4 Adjugate(const Float4x4& m)
 {
 	return Float4x4

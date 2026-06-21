@@ -19,6 +19,7 @@ set(INCLUDE_DIRS
     ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/cgltf
     ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/MikkTSpace
     ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/stb
+    ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/meshoptimizer/src
     ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui
     ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/ImGuizmo
     ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/DirectXAgilitySDK/build/native/include
@@ -53,12 +54,12 @@ SET_WORKING_DIRECTORY(Editor ${CMAKE_SOURCE_DIR})
 # Link Runtime
 get_target_property(GLEAM_RUNTIME_LIBS Runtime LINK_LIBRARIES)
 if (WIN32)
-    target_link_libraries(Editor PRIVATE Runtime.lib MikkTSpace.lib ${GLEAM_RUNTIME_LIBS})
+    target_link_libraries(Editor PRIVATE Runtime.lib MikkTSpace.lib meshoptimizer ${GLEAM_RUNTIME_LIBS})
 else()
-    target_link_libraries(Editor PRIVATE Runtime.a MikkTSpace.a ${GLEAM_RUNTIME_LIBS})
+    target_link_libraries(Editor PRIVATE Runtime.a MikkTSpace.a meshoptimizer ${GLEAM_RUNTIME_LIBS})
 endif()
 
-add_dependencies(Editor Runtime MikkTSpace)
+add_dependencies(Editor Runtime MikkTSpace meshoptimizer)
 
 target_compile_definitions(
     Editor

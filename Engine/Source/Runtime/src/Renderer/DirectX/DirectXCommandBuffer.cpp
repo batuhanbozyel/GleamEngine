@@ -133,6 +133,16 @@ void CommandBuffer::BindRayTracingPipeline(const RayTracingPipeline& pipeline) c
 	mHandle->pipeline = pipeline.GetHash();
 }
 
+void CommandBuffer::BindMeshPipeline(const MeshPipeline& pipeline) const
+{
+	const auto& cbvSrvUavHeap = mHandle->device->GetCbvSrvUavHeap();
+	mHandle->commandList->SetDescriptorHeaps(1, &cbvSrvUavHeap.handle);
+	mHandle->commandList->SetGraphicsRootSignature(mHandle->device->GetGlobalRootSignature());
+	mHandle->commandList->SetPipelineState(static_cast<ID3D12PipelineState*>(pipeline.GetHandle()));
+	mHandle->commandList->OMSetStencilRef(pipeline.GetDescriptor().stencilState.reference);
+	mHandle->pipeline = pipeline.GetHash();
+}
+
 void CommandBuffer::SetViewport(const Size& size) const
 {
 	D3D12_VIEWPORT viewport{};
@@ -157,7 +167,7 @@ void CommandBuffer::SetConstantBuffer(const void* data, uint32_t size, uint32_t 
 	auto gpuAddress = static_cast<ID3D12Resource*>(mConstantBuffer.GetHandle())->GetGPUVirtualAddress(); 
 	gpuAddress += mConstantBuffer.Write(data, size);
 
-	if (mHandle->pipeline.type == PipelineType::Graphics)
+	if (mHandle->pipeline.type == PipelineType::Graphics || mHandle->pipeline.type == PipelineType::Mesh)
 	{
 		mHandle->commandList->SetGraphicsRootConstantBufferView(slot, gpuAddress);
 	}
@@ -169,7 +179,7 @@ void CommandBuffer::SetConstantBuffer(const void* data, uint32_t size, uint32_t 
 
 void CommandBuffer::SetPushConstant(const void* data, uint32_t size) const
 {
-	if (mHandle->pipeline.type == PipelineType::Graphics)
+	if (mHandle->pipeline.type == PipelineType::Graphics || mHandle->pipeline.type == PipelineType::Mesh)
 	{
 		mHandle->commandList->SetGraphicsRoot32BitConstants(PUSH_CONSTANT_SLOT, size / sizeof(uint32_t), data, 0);
 	}
@@ -203,6 +213,11 @@ void CommandBuffer::DispatchRays(uint32_t width, uint32_t height, uint32_t depth
 void CommandBuffer::Dispatch(uint32_t x, uint32_t y, uint32_t z) const
 {
 	mHandle->commandList->Dispatch(x, y, z);
+}
+
+void CommandBuffer::DispatchMesh(uint32_t x, uint32_t y, uint32_t z) const
+{
+	mHandle->commandList->DispatchMesh(x, y, z);
 }
 
 void CommandBuffer::Draw(uint32_t vertexCount, uint32_t instanceCount) const

@@ -19,6 +19,12 @@ set(RAPIDJSON_BUILD_CXX11 OFF CACHE BOOL "" FORCE)
 # Enable entt natvis
 set(ENTT_INCLUDE_NATVIS ON CACHE BOOL "" FORCE)
 
+# Disable meshoptimizer targets
+set(MESHOPT_BUILD_DEMO OFF CACHE BOOL "" FORCE)
+set(MESHOPT_BUILD_GLTFPACK OFF CACHE BOOL "" FORCE)
+set(MESHOPT_BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+set(MESHOPT_INSTALL OFF CACHE BOOL "" FORCE)
+
 # Add imgui as static library
 add_library(imgui STATIC
     ${CMAKE_CURRENT_SOURCE_DIR}/imgui/imgui.cpp
@@ -40,6 +46,7 @@ add_subdirectory(rapidjson)
 add_subdirectory(googletest)
 add_subdirectory(GleamReflect)
 add_subdirectory(SDL EXCLUDE_FROM_ALL)
+add_subdirectory(meshoptimizer)
 
 set_target_properties (
     SDL3-static
@@ -55,5 +62,6 @@ set_target_properties (
     fmt
     EnTT
     GleamReflect
+    meshoptimizer
     PROPERTIES FOLDER Dependencies
 )

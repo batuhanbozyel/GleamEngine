@@ -12,7 +12,6 @@ public:
 
     virtual void AddRenderPasses(Gleam::RenderGraph& graph, Gleam::RenderGraphBlackboard& blackboard) override;
 
-    // Runs after tonemapping (PostProcess) and before ImGui (AfterRendering) so it can overwrite the scene target.
     virtual Gleam::RenderStage GetStage() const override { return Gleam::RenderStage::PostProcess; }
 
     void SetViewMode(Gleam::ViewMode mode) { mMode = mode; }
@@ -21,7 +20,14 @@ public:
 
 private:
 
+    void AddMeshletVisualizationPass(Gleam::RenderGraph& graph, Gleam::RenderGraphBlackboard& blackboard);
+
+    Gleam::GraphicsDevice* mDevice = nullptr;
+
     Gleam::GraphicsPipelineHandle mPipeline;
+
+	// Meshlet visualization pipelines for each culling mode (None, Back, Front)
+    Gleam::TArray<Gleam::MeshPipelineHandle, 3> mMeshletVisPipelines;
 
     Gleam::ViewMode mMode = Gleam::ViewMode::Lit;
 

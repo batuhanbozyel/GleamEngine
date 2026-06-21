@@ -127,7 +127,7 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, 
     
     mHandle->renderCommandEncoder = [mHandle->commandBuffer renderCommandEncoderWithDescriptor:renderPass];
     mHandle->renderCommandEncoder.label = TO_NSSTRING(debugName.data());
-    [mHandle->renderCommandEncoder setArgumentTable:mHandle->device->GetArgumentTable() atStages:MTLRenderStageVertex | MTLRenderStageFragment];
+    [mHandle->renderCommandEncoder setArgumentTable:mHandle->device->GetArgumentTable() atStages:MTLRenderStageVertex | MTLRenderStageFragment | MTLRenderStageObject | MTLRenderStageMesh];
     
     mHandle->FlushConsumerBarriers(mHandle->renderCommandEncoder);
 }
@@ -186,10 +186,28 @@ void CommandBuffer::BindGraphicsPipeline(const GraphicsPipeline& pipeline) const
 void CommandBuffer::BindRayTracingPipeline(const RayTracingPipeline& pipeline) const
 {
     mHandle->pipeline = pipeline.GetHash();
-    
+
     id<MetalRayTracingPipeline> rayTracingPipeline = (id<MetalRayTracingPipeline>)pipeline.GetHandle();
     [mHandle->computeCommandEncoder setComputePipelineState:rayTracingPipeline.pipelineState];
-    
+
+    // Top-level argument buffer
+    memset(&mHandle->topLevelArgumentBuffer, 0, sizeof(TopLevelArgumentBuffer));
+    mHandle->topLevelArgumentBuffer.samplerDescriptorHeap = [mHandle->device->GetSamplerHeap() gpuAddress];
+}
+
+void CommandBuffer::BindMeshPipeline(const MeshPipeline& pipeline) const
+{
+    mHandle->pipeline = pipeline.GetHash();
+
+    id<MetalMeshPipeline> meshPipeline = (id<MetalMeshPipeline>)pipeline.GetHandle();
+    [mHandle->renderCommandEncoder setRenderPipelineState:meshPipeline.pipelineState];
+    if (meshPipeline.depthStencilState)
+    {
+        [mHandle->renderCommandEncoder setDepthStencilState:meshPipeline.depthStencilState];
+    }
+    [mHandle->renderCommandEncoder setCullMode:CullModeToMTLCullMode(pipeline.GetDescriptor().cullingMode)];
+    [mHandle->renderCommandEncoder setTriangleFillMode:pipeline.GetDescriptor().wireframe ? MTLTriangleFillModeLines : MTLTriangleFillModeFill];
+
     // Top-level argument buffer
     memset(&mHandle->topLevelArgumentBuffer, 0, sizeof(TopLevelArgumentBuffer));
     mHandle->topLevelArgumentBuffer.samplerDescriptorHeap = [mHandle->device->GetSamplerHeap() gpuAddress];
@@ -272,6 +290,22 @@ void CommandBuffer::DispatchRays(uint32_t width, uint32_t height, uint32_t depth
     MTLSize threadgroups = MTLSizeMake((width + tgX - 1) / tgX, (height + tgY - 1) / tgY, depth);
     MTLSize threadsPerGroup = MTLSizeMake(tgX, tgY, 1);
     [mHandle->computeCommandEncoder dispatchThreadgroups:threadgroups threadsPerThreadgroup:threadsPerGroup];
+}
+
+void CommandBuffer::DispatchMesh(uint32_t x, uint32_t y, uint32_t z) const
+{
+    const auto& pipeline = static_cast<MeshPipelineHandle>(mHandle->pipeline).GetPipeline();
+    id<MetalMeshPipeline> meshPipeline = (id<MetalMeshPipeline>)pipeline.GetHandle();
+
+    auto gpuAddress = [mConstantBuffer.GetHandle() gpuAddress];
+    size_t topLevelABOffset = mConstantBuffer.Write(mHandle->topLevelArgumentBuffer);
+
+    id<MTL4ArgumentTable> argumentTable = mHandle->device->GetArgumentTable();
+    [argumentTable setAddress:(gpuAddress + topLevelABOffset) atIndex:kIRArgumentBufferBindPoint];
+
+    [mHandle->renderCommandEncoder drawMeshThreadgroups:MTLSizeMake(x, y, z)
+                          threadsPerObjectThreadgroup:meshPipeline.objectThreadsPerThreadgroup
+                            threadsPerMeshThreadgroup:meshPipeline.meshThreadsPerThreadgroup];
 }
 
 void CommandBuffer::Dispatch(uint32_t x, uint32_t y, uint32_t z) const

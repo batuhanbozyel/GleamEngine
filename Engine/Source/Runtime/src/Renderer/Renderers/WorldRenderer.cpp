@@ -82,7 +82,6 @@ void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 				return;
 			}
 
-            const auto& pipeline = mShadingPipelines[batch.material->GetPipelineHash()];
 			const auto globalInstances = sceneData.sceneProxy->GetGlobalInstances();
 			const auto globalMeshes = sceneData.sceneProxy->GetGlobalMeshes();
 
@@ -95,18 +94,35 @@ void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 			constants.specularReflectionTexture = passData.specularReflection;
 			constants.shadowTexture = passData.shadowTexture;
 
-			cmd->BindGraphicsPipeline(pipeline);
-			cmd->SetConstantBuffer(sceneData.camera.uniforms, CAMERA_UNIFORMS_BINDING_SLOT);
-			cmd->SetConstantBuffer(sceneData.atmosphere.params, SKY_ATMOSPHERE_PARAMS_BINDING_SLOT);
-			cmd->SetConstantBuffer(sceneData.atmosphere.uniforms, SKY_ATMOSPHERE_COMMON_UNIFORMS_BINDING_SLOT);
-
-			for (uint32_t instanceID = 0; instanceID < batch.numInstances; ++instanceID)
+			if (mDevice->GetFeatures().meshShaders)
 			{
-				constants.instanceID = batch.instanceOffset + instanceID;
-				const auto& instance = globalInstances[constants.instanceID];
-				
-				cmd->SetPushConstant(constants);
-				cmd->DrawIndexed(globalMeshes[constants.instanceID].mesh->GetIndexBuffer(), IndexType::UINT32, instance.indexCount, 1, instance.firstIndex);
+				cmd->BindMeshPipeline(mMeshShadingPipelines[batch.material->GetPipelineHash()]);
+				cmd->SetConstantBuffer(sceneData.camera.uniforms, CAMERA_UNIFORMS_BINDING_SLOT);
+				cmd->SetConstantBuffer(sceneData.atmosphere.params, SKY_ATMOSPHERE_PARAMS_BINDING_SLOT);
+				cmd->SetConstantBuffer(sceneData.atmosphere.uniforms, SKY_ATMOSPHERE_COMMON_UNIFORMS_BINDING_SLOT);
+
+				for (uint32_t instanceID = 0; instanceID < batch.numInstances; ++instanceID)
+				{
+					constants.instanceID = batch.instanceOffset + instanceID;
+					const auto& instance = globalInstances[constants.instanceID];
+					cmd->SetPushConstant(constants);
+					cmd->DispatchMesh(Math::DivideRoundingUp(instance.meshletCount, MESH_AMPLIFICATION_THREADS), 1, 1);
+				}
+			}
+			else
+			{
+				cmd->BindGraphicsPipeline(mGraphicsShadingPipelines[batch.material->GetPipelineHash()]);
+				cmd->SetConstantBuffer(sceneData.camera.uniforms, CAMERA_UNIFORMS_BINDING_SLOT);
+				cmd->SetConstantBuffer(sceneData.atmosphere.params, SKY_ATMOSPHERE_PARAMS_BINDING_SLOT);
+				cmd->SetConstantBuffer(sceneData.atmosphere.uniforms, SKY_ATMOSPHERE_COMMON_UNIFORMS_BINDING_SLOT);
+
+				for (uint32_t instanceID = 0; instanceID < batch.numInstances; ++instanceID)
+				{
+					constants.instanceID = batch.instanceOffset + instanceID;
+					const auto& instance = globalInstances[constants.instanceID];
+					cmd->SetPushConstant(constants);
+					cmd->DrawIndexed(globalMeshes[constants.instanceID].mesh->GetIndexBuffer(), IndexType::UINT32, instance.indexCount, 1, instance.firstIndex);
+				}
 			}
         });
     });
@@ -116,8 +132,9 @@ void WorldRenderer::RegisterShadingPipeline(const Material* material)
 {
 	const auto& materialDesc = material->GetDescriptor();
 	auto pipelineHash = material->GetPipelineHash();
-	auto it = mShadingPipelines.find(pipelineHash);
-	if (it == mShadingPipelines.end())
+
+	auto it = mGraphicsShadingPipelines.find(pipelineHash);
+	if (it == mGraphicsShadingPipelines.end())
 	{
 		GraphicsPipelineStateDescriptor pipelineDesc = {
 			.blendState = {},
@@ -134,8 +151,34 @@ void WorldRenderer::RegisterShadingPipeline(const Material* material)
 		};
 
 		auto pipeline = mDevice->CreateGraphicsPipeline(pipelineDesc);
-		mShadingPipelines.emplace_hint(it, eastl::piecewise_construct,
+		mGraphicsShadingPipelines.emplace_hint(it, eastl::piecewise_construct,
 										   eastl::forward_as_tuple(pipelineHash),
 										   eastl::forward_as_tuple(pipeline));
+	}
+
+	if (mDevice->GetFeatures().meshShaders)
+	{
+		auto meshIt = mMeshShadingPipelines.find(pipelineHash);
+		if (meshIt == mMeshShadingPipelines.end())
+		{
+			MeshPipelineStateDescriptor meshPipelineDesc = {
+				.blendState = {},
+				.depthState = DepthState{ .compareFunction = CompareFunction::Equal, .writeEnabled = false },
+				.stencilState = StencilState{ .enabled = false },
+				.cullingMode = materialDesc.cullingMode,
+				.alphaToCoverage = false,
+				.wireframe = false,
+				.colorFormats = { TextureFormat::R16G16B16A16_SFloat },
+				.depthFormat = TextureFormat::D32_SFloat,
+				.meshEntry = "meshMeshletShader",
+				.amplificationEntry = "meshAmplificationShader",
+				.fragmentEntry = materialDesc.surfaceShader + "Shading"
+			};
+
+			auto meshPipeline = mDevice->CreateMeshPipeline(meshPipelineDesc);
+			mMeshShadingPipelines.emplace_hint(meshIt, eastl::piecewise_construct,
+											   eastl::forward_as_tuple(pipelineHash),
+											   eastl::forward_as_tuple(meshPipeline));
+		}
 	}
 }

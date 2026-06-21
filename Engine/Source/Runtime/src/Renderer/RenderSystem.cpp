@@ -420,6 +420,22 @@ void RenderSystem::RecompileShader(const TString& entryPoint)
 							}
 						}
 					}
+					else if (shader.GetStage() == ShaderStage::Mesh || shader.GetStage() == ShaderStage::Amplification)
+					{
+						for (auto& [handle, pipeline] : mDevice->mMeshPipelineCache)
+						{
+							if (handle == pipelineHash)
+							{
+								auto newPipeline = mDevice->CompileMeshPipeline(pipeline.GetDescriptor());
+								if (newPipeline.IsValid())
+								{
+									mDevice->Dispose(pipeline);
+									pipeline = newPipeline;
+								}
+								break;
+							}
+						}
+					}
 				}
 			}
 			break;
@@ -464,6 +480,17 @@ CameraRenderData RenderSystem::SetupCameraRenderData(RenderGraph& graph, const E
 	camera.uniforms.position = entity.GetWorldPosition();
 	camera.uniforms.nearPlane = cameraComponent.nearPlane;
 	camera.uniforms.farPlane = cameraComponent.farPlane;
+
+	// Gribb-Hartmann frustum plane extraction. Shaders see the view-projection matrix transposed
+	// (row-major CPU storage interpreted column-major by HLSL), so transpose here to match the rows
+	// the GPU would read.
+	const Float4x4 vp = Math::Transpose(camera.uniforms.viewProjectionMatrix);
+	camera.uniforms.frustum.planes[0] = Math::Normalize(Plane(vp.row[3] + vp.row[0])); // left
+	camera.uniforms.frustum.planes[1] = Math::Normalize(Plane(vp.row[3] - vp.row[0])); // right
+	camera.uniforms.frustum.planes[2] = Math::Normalize(Plane(vp.row[3] + vp.row[1])); // bottom
+	camera.uniforms.frustum.planes[3] = Math::Normalize(Plane(vp.row[3] - vp.row[1])); // top
+	camera.uniforms.frustum.planes[4] = Math::Normalize(Plane(vp.row[2]));             // near
+	camera.uniforms.frustum.planes[5] = Math::Normalize(Plane(vp.row[3] - vp.row[2])); // far
 	return camera;
 }
 

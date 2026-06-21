@@ -213,7 +213,6 @@ static constexpr bool IsDepthStencilFormat(TextureFormat format)
 {
 	switch (format)
 	{
-		case TextureFormat::D32_SFloat:
         case TextureFormat::D24_UNorm_S8_UInt:
 		case TextureFormat::D32_SFloat_S8_UInt: return true;
 		default: return false;
