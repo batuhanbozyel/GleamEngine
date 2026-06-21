@@ -70,8 +70,11 @@ GSTRUCT(SubmeshDescriptor, "DD7E3A74-ADF4-45A9-8DFD-CA252EDC49A6", Serializable)
 	GFIELD("9A8B7C6D-5E4F-43D2-C1B0-A9F8E7D6C5B4", Serializable)
 	uint32_t materialIndex = 0;
 
-	GFIELD("1851E003-3E18-42EF-A431-419BD530C3CC", Serializable)
-	TArray<MeshletDescriptor> meshlets;
+	GFIELD("56A02968-AC0B-4116-BD2B-BD8DE7C63F8C", Serializable)
+	uint32_t baseMeshlet = 0;
+
+	GFIELD("2794624D-9A05-4361-A7AF-A17762216925", Serializable)
+	uint32_t meshletCount = 0;
 };
 
 GSTRUCT(MeshDescriptor, "59E4007E-F7D4-4107-A05F-E1121067DCD3", Serializable)
@@ -90,6 +93,9 @@ GSTRUCT(MeshDescriptor, "59E4007E-F7D4-4107-A05F-E1121067DCD3", Serializable)
 
 	GFIELD("C5D4E3F2-A1B0-4B9C-8D7E-6F5A4B3C2D1E", Serializable)
 	TArray<SubmeshDescriptor> submeshes;
+
+	GFIELD("3F94F0FF-91BC-4CBA-9402-949E20D654B1", Serializable)
+	TArray<MeshletDescriptor> meshlets;
 
 	GFIELD("66E8168A-56E4-43FF-BF76-DD5DD3F1AD9B", Serializable)
 	TArray<uint32_t> meshletVertices;

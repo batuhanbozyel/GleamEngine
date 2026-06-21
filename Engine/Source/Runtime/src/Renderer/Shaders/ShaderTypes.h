@@ -150,7 +150,7 @@ struct MeshInstanceData
 	ShaderResourceIndex meshletsBuffer;
 	ShaderResourceIndex meshletVertexBuffer;
 	ShaderResourceIndex meshletTriangleBuffer;
-	uint32_t meshletOffset;
+	uint32_t baseMeshlet;
 
 	uint32_t meshletCount;
 	uint32_t cullMode;

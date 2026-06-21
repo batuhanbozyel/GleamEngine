@@ -250,11 +250,13 @@ Gleam::RefCounted<MeshBaker> MeshSource::ImportMesh(const Gleam::TArray<RawMesh>
 		meshletVertices.resize(last.vertex_offset + last.vertex_count);
 		meshletTriangleIndices.resize(last.triangle_offset + last.triangle_count * 3);
 
-		submesh.meshlets.resize(meshletCount);
+		submesh.baseMeshlet = static_cast<uint32_t>(descriptor.meshlets.size());
+		submesh.meshletCount = static_cast<uint32_t>(meshletCount);
+		descriptor.meshlets.resize(descriptor.meshlets.size() + meshletCount);
 		for (uint32_t i = 0; i < meshletCount; ++i)
 		{
 			const auto& meshlet = meshlets[i];
-			auto& meshletDesc = submesh.meshlets[i];
+			auto& meshletDesc = descriptor.meshlets[submesh.baseMeshlet + i];
 
 			auto meshletVerticesData = meshletVertices.data() + meshlet.vertex_offset;
 			auto meshletTriangleData = meshletTriangleIndices.data() + meshlet.triangle_offset;

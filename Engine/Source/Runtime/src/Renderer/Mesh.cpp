@@ -23,12 +23,7 @@ Mesh::Mesh(const MeshDescriptor& descriptor)
     size_t indexSize = descriptor.indices.size() * sizeof(uint32_t);
 	size_t meshletVertexSize = descriptor.meshletVertices.size() * sizeof(uint32_t);
 	size_t meshletTriangleSize = descriptor.meshletTriangleIndices.size() * sizeof(uint32_t);
-
-	uint32_t totalMeshlets = 0;
-	for (const auto& submesh : descriptor.submeshes)
-	{
-		totalMeshlets += static_cast<uint32_t>(submesh.meshlets.size());
-	}
+	size_t meshletsSize = descriptor.meshlets.size() * sizeof(MeshletDescriptor);
 
     BufferDescriptor bufferDesc;
     bufferDesc.name = "Mesh: " + descriptor.name + " Positions";
@@ -52,7 +47,7 @@ Mesh::Mesh(const MeshDescriptor& descriptor)
 	mMeshletTriangleBuffer = device->CreateBuffer(renderSystem->GetAllocator(), bufferDesc);
 
 	bufferDesc.name = "Mesh: " + descriptor.name + " Meshlets";
-	bufferDesc.size = totalMeshlets * sizeof(MeshletDescriptor);
+	bufferDesc.size = meshletsSize;
 	mMeshletsBuffer = device->CreateBuffer(renderSystem->GetAllocator(), bufferDesc);
 
     // Send mesh data to buffers
@@ -63,17 +58,7 @@ Mesh::Mesh(const MeshDescriptor& descriptor)
 		cmd->Commit(mIndexBuffer, descriptor.indices.data(), indexSize, 0);
 		cmd->Commit(mMeshletVertexBuffer, descriptor.meshletVertices.data(), meshletVertexSize, 0);
 		cmd->Commit(mMeshletTriangleBuffer, descriptor.meshletTriangleIndices.data(), meshletTriangleSize, 0);
-
-		mMeshletOffsets.resize(descriptor.submeshes.size());
-		size_t meshletWriteOffset = 0;
-		for (uint32_t i = 0; i < descriptor.submeshes.size(); ++i)
-		{
-			const auto& submesh = descriptor.submeshes[i];
-			size_t submeshMeshletSize = submesh.meshlets.size() * sizeof(MeshletDescriptor);
-			mMeshletOffsets[i] = static_cast<uint32_t>(meshletWriteOffset);
-			cmd->Commit(mMeshletsBuffer, submesh.meshlets.data(), submeshMeshletSize, meshletWriteOffset);
-			meshletWriteOffset += submeshMeshletSize;
-		}
+		cmd->Commit(mMeshletsBuffer, descriptor.meshlets.data(), meshletsSize, 0);
 	}
 }
 
@@ -125,11 +110,6 @@ const Buffer& Mesh::GetMeshletTriangleBuffer() const
 const Buffer& Mesh::GetMeshletsBuffer() const
 {
 	return mMeshletsBuffer;
-}
-
-uint32_t Mesh::GetMeshletOffset(uint32_t submeshIndex) const
-{
-	return mMeshletOffsets[submeshIndex];
 }
 
 const TArray<SubmeshDescriptor>& Mesh::GetSubmeshes() const

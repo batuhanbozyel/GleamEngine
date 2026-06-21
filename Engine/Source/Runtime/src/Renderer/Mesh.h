@@ -29,8 +29,6 @@ public:
 
     const Buffer& GetMeshletsBuffer() const;
 
-    uint32_t GetMeshletOffset(uint32_t submeshIndex) const;
-
     const TArray<SubmeshDescriptor>& GetSubmeshes() const;
 
 	const SubmeshDescriptor& GetSubmesh(uint32_t index) const;
@@ -45,7 +43,6 @@ protected:
     Buffer mMeshletVertexBuffer;
     Buffer mMeshletTriangleBuffer;
     Buffer mMeshletsBuffer;
-    TArray<uint32_t> mMeshletOffsets;
     TArray<SubmeshDescriptor> mSubmeshes;
 	TArray<BottomLevelAccelerationStructure> mBLASes;
 };

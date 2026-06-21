@@ -14,7 +14,7 @@ void depthPrepassAmplificationShader(uint threadID : SV_GroupThreadID, uint grou
     if (meshletID < instanceData.meshletCount)
     {
         ByteAddressBuffer meshletsBuffer = ResourceDescriptorHeap[instanceData.meshletsBuffer];
-        Gleam::MeshletDescriptor meshlet = meshletsBuffer.Load<Gleam::MeshletDescriptor>(instanceData.meshletOffset + meshletID * sizeof(Gleam::MeshletDescriptor));
+        Gleam::MeshletDescriptor meshlet = meshletsBuffer.Load<Gleam::MeshletDescriptor>((instanceData.baseMeshlet + meshletID) * sizeof(Gleam::MeshletDescriptor));
         visible = MeshletIsVisible(instanceData, meshlet, camera);
     }
 
@@ -45,7 +45,7 @@ void depthPrepassMeshletShader(
     uint meshletID = meshletPayload.meshletIDs[meshletLocalID];
 
     ByteAddressBuffer meshletsBuffer = ResourceDescriptorHeap[instanceData.meshletsBuffer];
-    Gleam::MeshletDescriptor meshlet = meshletsBuffer.Load<Gleam::MeshletDescriptor>(instanceData.meshletOffset + meshletID * sizeof(Gleam::MeshletDescriptor));
+    Gleam::MeshletDescriptor meshlet = meshletsBuffer.Load<Gleam::MeshletDescriptor>((instanceData.baseMeshlet + meshletID) * sizeof(Gleam::MeshletDescriptor));
 
     SetMeshOutputCounts(meshlet.vertexCount, meshlet.triangleCount);
 
