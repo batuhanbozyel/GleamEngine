@@ -312,11 +312,11 @@ void CommandBuffer::DispatchRaysIndirect(const Buffer& argsBuffer, size_t offset
     struct { uint32_t x, y; } groupSize = { tgX, tgY };
     size_t groupSizeOffset = mConstantBuffer.Write(groupSize);
 
-    id<MTLComputePipelineState> transformPipeline = mHandle->device->CompileNativeComputePipeline("transformRayDispatchDimensionsToThreadgroups");
+    id<MTLComputePipelineState> transformPipeline = mHandle->device->CompileNativeComputePipeline("transformDispatchRaysIndirectArgs");
     [mHandle->computeCommandEncoder setComputePipelineState:transformPipeline];
-    [argumentTable setAddress:([argsBuffer.GetHandle() gpuAddress] + offset) atIndex:16];
-    [argumentTable setAddress:[scratch.GetHandle() gpuAddress] atIndex:17];
-    [argumentTable setAddress:(gpuAddress + groupSizeOffset) atIndex:18];
+    [argumentTable setAddress:([argsBuffer.GetHandle() gpuAddress] + offset) atIndex:13];
+    [argumentTable setAddress:[scratch.GetHandle() gpuAddress] atIndex:14];
+    [argumentTable setAddress:(gpuAddress + groupSizeOffset) atIndex:15];
     [mHandle->computeCommandEncoder dispatchThreadgroups:MTLSizeMake(1, 1, 1) threadsPerThreadgroup:MTLSizeMake(1, 1, 1)];
 
     [mHandle->computeCommandEncoder barrierAfterEncoderStages:MTLStageDispatch
@@ -593,7 +593,7 @@ void CommandBuffer::Barrier(const BarrierGroup& barrier) const
         MTLStages nonRenderSrcStages = allSrcStages & ~validRenderStages;
         MTLStages nonRenderDstStages = allDstStages & ~validRenderStages;
         
-        if (nonRenderSrcStages != 0 || nonRenderDstStages != 0)
+        if (nonRenderSrcStages != 0 && nonRenderDstStages != 0)
         {
             mHandle->consumerBarriers.push_back({nonRenderSrcStages, nonRenderDstStages, visibility });
         }
@@ -613,7 +613,7 @@ void CommandBuffer::Barrier(const BarrierGroup& barrier) const
         
         MTLStages nonComputeSrcStages = allSrcStages & ~validComputeStages;
         MTLStages nonComputeDstStages = allDstStages & ~validComputeStages;
-        if (nonComputeSrcStages != 0 || nonComputeDstStages != 0)
+        if (nonComputeSrcStages != 0 && nonComputeDstStages != 0)
         {
             mHandle->consumerBarriers.push_back({ nonComputeSrcStages, nonComputeDstStages, visibility });
         }

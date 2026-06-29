@@ -1464,7 +1464,7 @@ MetalDevice::MetalDevice(RenderSurface* surface, ResourceReleaseQueue* releaseQu
     argumentTableDesc.supportAttributeStrides = true;
     argumentTableDesc.maxSamplerStateBindCount = 0;
     argumentTableDesc.maxTextureBindCount = 0;
-    argumentTableDesc.maxBufferBindCount = 15;
+    argumentTableDesc.maxBufferBindCount = 16;
     argumentTableDesc.label = @"ArgumentTable";
     
     __autoreleasing NSError* argumentTableError = nil;
