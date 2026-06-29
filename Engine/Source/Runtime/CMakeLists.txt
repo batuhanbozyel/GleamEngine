@@ -199,6 +199,47 @@ add_custom_command(
 add_custom_target(RuntimeShaders DEPENDS ${SHADER_STAMP_FILE})
 add_dependencies(Runtime RuntimeShaders)
 
+# Precompile native (backend-specific) shaders, gated to the matching target platform.
+if (APPLE)
+    file(GLOB_RECURSE METAL_NATIVE_SHADER_FILES ${HLSL_FILE_PATH}/Metal/*.metal)
+    if (METAL_NATIVE_SHADER_FILES)
+        file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/Assets/Shaders/Native)
+        set(NATIVE_SHADER_OUTPUTS "")
+        foreach(METAL_SHADER ${METAL_NATIVE_SHADER_FILES})
+            get_filename_component(METAL_SHADER_NAME ${METAL_SHADER} NAME_WE)
+            set(METAL_SHADER_OUTPUT ${CMAKE_SOURCE_DIR}/Assets/Shaders/Native/${METAL_SHADER_NAME}.metallib)
+            add_custom_command(
+                OUTPUT ${METAL_SHADER_OUTPUT}
+                COMMAND xcrun -sdk macosx metal ${METAL_SHADER} -o ${METAL_SHADER_OUTPUT}
+                DEPENDS ${METAL_SHADER}
+                COMMENT "Compiling native Metal shader ${METAL_SHADER_NAME}"
+                VERBATIM
+            )
+            list(APPEND NATIVE_SHADER_OUTPUTS ${METAL_SHADER_OUTPUT})
+        endforeach()
+        add_custom_target(RuntimeNativeShaders DEPENDS ${NATIVE_SHADER_OUTPUTS})
+        add_dependencies(Runtime RuntimeNativeShaders)
+    endif()
+elseif (WIN32)
+    file(GLOB_RECURSE DIRECTX_NATIVE_SHADER_FILES ${HLSL_FILE_PATH}/DirectX/*.hlsl)
+    if (DIRECTX_NATIVE_SHADER_FILES)
+        set(NATIVE_SHADER_STAMP_FILE "${CMAKE_BINARY_DIR}/runtime_native_shader_compile.stamp")
+        add_custom_command(
+            OUTPUT ${NATIVE_SHADER_STAMP_FILE}
+            COMMAND Python::Interpreter ${CMAKE_SOURCE_DIR}/Tools/CompileShaders.py
+                "-f" ${DIRECTX_NATIVE_SHADER_FILES}
+                $<$<CONFIG:Debug>:--debug>
+            COMMAND ${CMAKE_COMMAND} -E touch ${NATIVE_SHADER_STAMP_FILE}
+            DEPENDS ${HEADER_FILES} ${DIRECTX_NATIVE_SHADER_FILES}
+            COMMENT "Compiling native DirectX shaders..."
+            VERBATIM
+            COMMAND_EXPAND_LISTS
+        )
+        add_custom_target(RuntimeNativeShaders DEPENDS ${NATIVE_SHADER_STAMP_FILE})
+        add_dependencies(Runtime RuntimeNativeShaders)
+    endif()
+endif()
+
 set_target_properties (
     RuntimeShaders
     RuntimeReflection

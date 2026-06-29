@@ -399,6 +399,8 @@ static constexpr D3D12_BARRIER_SYNC BarrierStageToD3D12_BARRIER_SYNC(BarrierStag
 		case BarrierStage::DepthStencil: return D3D12_BARRIER_SYNC_DEPTH_STENCIL;
 		case BarrierStage::Copy: return D3D12_BARRIER_SYNC_COPY;
 		case BarrierStage::BuildRayTracingAccelerationStructure: return D3D12_BARRIER_SYNC_BUILD_RAYTRACING_ACCELERATION_STRUCTURE;
+		case BarrierStage::ExecuteIndirect: return D3D12_BARRIER_SYNC_EXECUTE_INDIRECT;
+		case BarrierStage::ClearUnorderedAccess: return D3D12_BARRIER_SYNC_CLEAR_UNORDERED_ACCESS_VIEW;
 		default: return D3D12_BARRIER_SYNC_NONE;
 	}
 }

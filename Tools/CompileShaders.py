@@ -136,11 +136,14 @@ if __name__ == "__main__":
             entry_map[src.strip()] = dst.strip()
 
     output_dir = f"{SCRIPT_DIRECTORY}/../Assets/Shaders"
+    native_output_dir = os.path.join(output_dir, "Native")
+    native_subdirs = (os.path.join("Shaders", "Metal"), os.path.join("Shaders", "DirectX"))
     os.makedirs(output_dir, exist_ok=True)
 
     hlsl_files = []
     if args.directory:
         hlsl_files = glob.glob(os.path.join(args.directory, '**/*.hlsl'), recursive=True)
+        hlsl_files = [f for f in hlsl_files if not any(sub in os.path.normpath(f) for sub in native_subdirs)]
     elif args.files:
         hlsl_files = args.files
     else:
@@ -156,6 +159,10 @@ if __name__ == "__main__":
     for hlsl_file in hlsl_files:
         filename = os.path.basename(hlsl_file)
         include_dirs = [os.path.dirname(hlsl_file), RUNTIME_INCLUDE_DIRECTORY]
+
+        is_native = any(sub in os.path.normpath(hlsl_file) for sub in native_subdirs)
+        file_output_dir = native_output_dir if is_native else output_dir
+        os.makedirs(file_output_dir, exist_ok=True)
 
         base_file = hlsl_file
         temp_files = []
@@ -185,7 +192,7 @@ if __name__ == "__main__":
                         current_file = rename_entry_point(base_file, entry_point, export_name)
                         temp_files.append(current_file)
 
-                    output_file = f"{output_dir}/{export_name}.dxil"
+                    output_file = f"{file_output_dir}/{export_name}.dxil"
 
                     sys.stderr.write(
                         f"Compiling {filename} [{shader_stage}] {entry_point} -> {export_name}\n"

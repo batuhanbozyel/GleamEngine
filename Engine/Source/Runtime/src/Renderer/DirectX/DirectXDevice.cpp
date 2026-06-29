@@ -11,6 +11,8 @@
 #include "Core/WindowSystem.h"
 #include "Renderer/SamplerState.h"
 #include "Renderer/RenderSystem.h"
+#include "Renderer/RayTracingScene.h"
+#include "Renderer/CopyCommandBuffer.h"
 
 using namespace Gleam;
 
@@ -43,6 +45,10 @@ void RenderSystem::InitializeBackend()
 	mSwapchain = new DirectXSwapchain();
 	mReleaseQueue = new ResourceReleaseQueue(mSwapchain->GetFramesInFlight());
 	mDevice = new DirectXDevice(mSwapchain, mReleaseQueue);
+	mPersistentAllocator = new GPUAllocator(mDevice, GPUAllocatorDescriptor{ .name = "Persistent GPU Allocator" });
+	mTransientAllocator = new GPUAllocator(mDevice, GPUAllocatorDescriptor{ .name = "Transient GPU Allocator" });
+	mCopyCommandBuffer = new CopyCommandBuffer(mDevice);
+	mRayTracingScene = new RayTracingScene(mDevice, mTransientAllocator);
 }
 
 static DeviceFeatures QueryDeviceFeatures(ID3D12Device10* device)
@@ -296,6 +302,30 @@ ComputePipeline GraphicsDevice::CompileComputePipeline(const ComputePipelineStat
 	TWString pipelineName = ss.str();
 	static_cast<ID3D12PipelineState*>(pipeline.mHandle)->SetName(pipelineName.c_str());
 
+	return pipeline;
+}
+
+ID3D12PipelineState* DirectXDevice::CompileNativeComputePipeline(const TString& shaderName)
+{
+	auto it = mNativeComputePipelineCache.find(shaderName);
+	if (it != mNativeComputePipelineCache.end())
+	{
+		return it->second;
+	}
+
+	auto shaderPath = Globals::BuiltinAssetsDirectory/"Shaders"/"Native";
+	auto shaderFile = Filesystem::OpenRead(shaderPath.Append(shaderName + ".dxil"), FileType::Binary);
+	auto shaderCode = shaderFile->Read();
+
+	D3D12_COMPUTE_PIPELINE_STATE_DESC psoDesc{};
+	psoDesc.pRootSignature = mRootSignature;
+	psoDesc.CS.pShaderBytecode = shaderCode.data();
+	psoDesc.CS.BytecodeLength = shaderCode.size();
+
+	ID3D12PipelineState* pipeline = nullptr;
+	DX_CHECK(static_cast<ID3D12Device10*>(mHandle)->CreateComputePipelineState(&psoDesc, IID_PPV_ARGS(&pipeline)));
+
+	mNativeComputePipelineCache.emplace(shaderName, pipeline);
 	return pipeline;
 }
 
@@ -855,6 +885,7 @@ DirectXDevice::DirectXDevice(RenderSurface* surface, ResourceReleaseQueue* relea
 	mRtvHeap = CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_RTV, D3D12_DESCRIPTOR_HEAP_FLAG_NONE, 8192);
 	mDsvHeap = CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_DSV, D3D12_DESCRIPTOR_HEAP_FLAG_NONE, 8192);
 	mCbvSrvUavHeap = CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE, CBV_SRV_HEAP_SIZE);
+	mClearUavHeap = CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, D3D12_DESCRIPTOR_HEAP_FLAG_NONE, CBV_SRV_HEAP_SIZE);
 
 	// Static samplers
 	auto samplerSates = SamplerState::GetStaticSamplers();
@@ -917,6 +948,12 @@ DirectXDevice::DirectXDevice(RenderSurface* surface, ResourceReleaseQueue* relea
 	blob->Release();
 	mRootSignature->SetName(L"GlobalRootSignature");
 
+	mDrawIndirectCommandSignature = CreateIndirectCommandSignature(D3D12_INDIRECT_ARGUMENT_TYPE_DRAW, sizeof(D3D12_DRAW_ARGUMENTS), L"DrawIndirectCommandSignature");
+	mDrawIndexedIndirectCommandSignature = CreateIndirectCommandSignature(D3D12_INDIRECT_ARGUMENT_TYPE_DRAW_INDEXED, sizeof(D3D12_DRAW_INDEXED_ARGUMENTS), L"DrawIndexedIndirectCommandSignature");
+	mDispatchIndirectCommandSignature = CreateIndirectCommandSignature(D3D12_INDIRECT_ARGUMENT_TYPE_DISPATCH, sizeof(D3D12_DISPATCH_ARGUMENTS), L"DispatchIndirectCommandSignature");
+	mDispatchMeshIndirectCommandSignature = CreateIndirectCommandSignature(D3D12_INDIRECT_ARGUMENT_TYPE_DISPATCH_MESH, sizeof(D3D12_DISPATCH_MESH_ARGUMENTS), L"DispatchMeshIndirectCommandSignature");
+	mDispatchRaysIndirectCommandSignature = CreateIndirectCommandSignature(D3D12_INDIRECT_ARGUMENT_TYPE_DISPATCH_RAYS, sizeof(D3D12_DISPATCH_RAYS_DESC), L"DispatchRaysIndirectCommandSignature");
+
 	GLEAM_CORE_INFO("DirectX: Graphics device created.");
 }
 
@@ -947,6 +984,12 @@ DirectXDevice::~DirectXDevice()
 	}
 	mMeshPipelineCache.clear();
 
+	for (auto& [_, pipeline] : mNativeComputePipelineCache)
+	{
+		pipeline->Release();
+	}
+	mNativeComputePipelineCache.clear();
+
 	for (auto& shader : mShaderCache)
 	{
 		auto bytecode = static_cast<D3D12_SHADER_BYTECODE*>(shader.GetHandle());
@@ -958,10 +1001,17 @@ DirectXDevice::~DirectXDevice()
 	mRtvHeap.handle->Release();
 	mDsvHeap.handle->Release();
 	mCbvSrvUavHeap.handle->Release();
+	mClearUavHeap.handle->Release();
 
 	mDirectQueue.Release();
 	mComputeQueue.Release();
 	mCopyQueue.Release();
+
+	mDrawIndirectCommandSignature->Release();
+	mDrawIndexedIndirectCommandSignature->Release();
+	mDispatchIndirectCommandSignature->Release();
+	mDispatchMeshIndirectCommandSignature->Release();
+	mDispatchRaysIndirectCommandSignature->Release();
 
 	mRootSignature->Release();
 	static_cast<ID3D12Device10*>(mHandle)->Release();
@@ -1134,6 +1184,22 @@ DirectXDescriptorHeap DirectXDevice::CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_
 		heap.gpuHandle = heap.handle->GetGPUDescriptorHandleForHeapStart();
 	}
 	return heap;
+}
+
+ID3D12CommandSignature* DirectXDevice::CreateIndirectCommandSignature(D3D12_INDIRECT_ARGUMENT_TYPE type, UINT byteStride, const wchar_t* name) const
+{
+	D3D12_INDIRECT_ARGUMENT_DESC argumentDesc = {};
+	argumentDesc.Type = type;
+
+	D3D12_COMMAND_SIGNATURE_DESC commandSignatureDesc = {};
+	commandSignatureDesc.ByteStride = byteStride;
+	commandSignatureDesc.NumArgumentDescs = 1;
+	commandSignatureDesc.pArgumentDescs = &argumentDesc;
+
+	ID3D12CommandSignature* commandSignature = nullptr;
+	DX_CHECK(static_cast<ID3D12Device10*>(mHandle)->CreateCommandSignature(&commandSignatureDesc, nullptr, IID_PPV_ARGS(&commandSignature)));
+	commandSignature->SetName(name);
+	return commandSignature;
 }
 
 ID3D12Resource* DirectXDevice::CreateTexture(GPUAllocator* allocator, const TextureDescriptor& descriptor, D3D12_BARRIER_LAYOUT initialLayout)
@@ -1441,6 +1507,10 @@ ShaderResourceIndex DirectXDevice::CreateResourceView(const Buffer& buffer)
 		uavDesc.Buffer.CounterOffsetInBytes = 0;
 		uavDesc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_RAW;
 		static_cast<ID3D12Device10*>(mHandle)->CreateUnorderedAccessView(static_cast<ID3D12Resource*>(buffer.GetHandle()), nullptr, &uavDesc, handle);
+
+		D3D12_CPU_DESCRIPTOR_HANDLE clearHandle = mClearUavHeap.cpuHandle;
+		clearHandle.ptr += (size_t)index.data * (size_t)mClearUavHeap.size;
+		static_cast<ID3D12Device10*>(mHandle)->CreateUnorderedAccessView(static_cast<ID3D12Resource*>(buffer.GetHandle()), nullptr, &uavDesc, clearHandle);
 	}
 	return index;
 }
@@ -1635,6 +1705,11 @@ DirectXDescriptorHeap& DirectXDevice::GetCbvSrvUavHeap()
 	return mCbvSrvUavHeap;
 }
 
+DirectXDescriptorHeap& DirectXDevice::GetClearUavHeap()
+{
+	return mClearUavHeap;
+}
+
 DirectXCommandQueue& DirectXDevice::GetDirectQueue()
 {
 	return mDirectQueue;
@@ -1653,6 +1728,31 @@ DirectXCommandQueue& DirectXDevice::GetCopyQueue()
 ID3D12RootSignature* DirectXDevice::GetGlobalRootSignature() const
 {
 	return mRootSignature;
+}
+
+ID3D12CommandSignature* DirectXDevice::GetDrawIndirectCommandSignature() const
+{
+	return mDrawIndirectCommandSignature;
+}
+
+ID3D12CommandSignature* DirectXDevice::GetDrawIndexedIndirectCommandSignature() const
+{
+	return mDrawIndexedIndirectCommandSignature;
+}
+
+ID3D12CommandSignature* DirectXDevice::GetDispatchIndirectCommandSignature() const
+{
+	return mDispatchIndirectCommandSignature;
+}
+
+ID3D12CommandSignature* DirectXDevice::GetDispatchMeshIndirectCommandSignature() const
+{
+	return mDispatchMeshIndirectCommandSignature;
+}
+
+ID3D12CommandSignature* DirectXDevice::GetDispatchRaysIndirectCommandSignature() const
+{
+	return mDispatchRaysIndirectCommandSignature;
 }
 
 D3D12_CPU_DESCRIPTOR_HANDLE DirectXDescriptorHeap::Allocate()

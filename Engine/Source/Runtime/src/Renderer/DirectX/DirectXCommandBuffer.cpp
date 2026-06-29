@@ -8,6 +8,10 @@
 
 using namespace Gleam;
 
+static_assert(sizeof(DrawIndirectArguments) == sizeof(D3D12_DRAW_ARGUMENTS));
+static_assert(sizeof(DrawIndexedIndirectArguments) == sizeof(D3D12_DRAW_INDEXED_ARGUMENTS));
+static_assert(sizeof(DispatchIndirectArguments) == sizeof(D3D12_DISPATCH_ARGUMENTS));
+
 struct CommandBuffer::Impl
 {
 	DirectXDevice* device = nullptr;
@@ -20,9 +24,10 @@ struct CommandBuffer::Impl
 	PipelineHandle pipeline;
 };
 
-CommandBuffer::CommandBuffer(GraphicsDevice* device)
+CommandBuffer::CommandBuffer(GraphicsDevice* device, GPUAllocator* transientAllocator)
 	: mHandle(CreateScope<Impl>())
 	, mDevice(device)
+	, mTransientAllocator(transientAllocator)
 	, mConstantBuffer(device, 4194304) // 4 MB
 {
 	mHandle->device = static_cast<DirectXDevice*>(device);
@@ -239,6 +244,102 @@ void CommandBuffer::DrawIndexed(const Buffer& indexBuffer, IndexType type,
 	mHandle->commandList->DrawIndexedInstanced(indexCount, instanceCount, firstIndex, 0, 0);
 }
 
+void CommandBuffer::DrawIndirect(const Buffer& argsBuffer, size_t offset) const
+{
+	auto commandSignature = mHandle->device->GetDrawIndirectCommandSignature();
+	auto args = static_cast<ID3D12Resource*>(argsBuffer.GetHandle());
+	mHandle->commandList->ExecuteIndirect(commandSignature, 1, args, offset, nullptr, 0);
+}
+
+void CommandBuffer::DrawIndexedIndirect(const Buffer& indexBuffer, IndexType type,
+	const Buffer& argsBuffer, size_t offset) const
+{
+	D3D12_INDEX_BUFFER_VIEW indexBufferView = {};
+	indexBufferView.BufferLocation = static_cast<ID3D12Resource*>(indexBuffer.GetHandle())->GetGPUVirtualAddress();
+	indexBufferView.Format = type == IndexType::UINT16 ? DXGI_FORMAT_R16_UINT : DXGI_FORMAT_R32_UINT;
+	indexBufferView.SizeInBytes = (UINT)indexBuffer.GetSize();
+	mHandle->commandList->IASetIndexBuffer(&indexBufferView);
+
+	auto commandSignature = mHandle->device->GetDrawIndexedIndirectCommandSignature();
+	auto args = static_cast<ID3D12Resource*>(argsBuffer.GetHandle());
+	mHandle->commandList->ExecuteIndirect(commandSignature, 1, args, offset, nullptr, 0);
+}
+
+void CommandBuffer::DispatchIndirect(const Buffer& argsBuffer, size_t offset) const
+{
+	auto commandSignature = mHandle->device->GetDispatchIndirectCommandSignature();
+	auto args = static_cast<ID3D12Resource*>(argsBuffer.GetHandle());
+	mHandle->commandList->ExecuteIndirect(commandSignature, 1, args, offset, nullptr, 0);
+}
+
+void CommandBuffer::DispatchMeshIndirect(const Buffer& argsBuffer, size_t offset) const
+{
+	auto commandSignature = mHandle->device->GetDispatchMeshIndirectCommandSignature();
+	auto args = static_cast<ID3D12Resource*>(argsBuffer.GetHandle());
+	mHandle->commandList->ExecuteIndirect(commandSignature, 1, args, offset, nullptr, 0);
+}
+
+void CommandBuffer::DispatchRaysIndirect(const Buffer& argsBuffer, size_t offset) const
+{
+	const auto& pipeline = static_cast<RayTracingPipelineHandle>(mHandle->pipeline).GetPipeline();
+	const auto& sbt = pipeline.GetShaderBindingTable();
+
+	D3D12_DISPATCH_RAYS_DESC desc = {};
+	desc.RayGenerationShaderRecord = { sbt.GetRayGenRecord().startAddress, sbt.GetRayGenRecord().sizeInBytes };
+	desc.MissShaderTable = { sbt.GetMissRecord().startAddress, sbt.GetMissRecord().sizeInBytes, sbt.GetMissRecord().strideInBytes };
+	desc.HitGroupTable = { sbt.GetHitGroupRecord().startAddress, sbt.GetHitGroupRecord().sizeInBytes, sbt.GetHitGroupRecord().strideInBytes };
+	// Width/Height/Depth are overwritten by the copy from argsBuffer below.
+
+	BufferDescriptor scratchDesc;
+	scratchDesc.name = "DispatchRaysIndirect Scratch";
+	scratchDesc.size = sizeof(D3D12_DISPATCH_RAYS_DESC);
+	Buffer scratch = mDevice->CreateBuffer(mTransientAllocator, scratchDesc);
+
+	auto scratchResource = static_cast<ID3D12Resource*>(scratch.GetHandle());
+	auto argsResource = static_cast<ID3D12Resource*>(argsBuffer.GetHandle());
+	auto sbtSource = static_cast<ID3D12Resource*>(mConstantBuffer.GetHandle());
+	size_t sbtSourceOffset = mConstantBuffer.Write(desc);
+
+	D3D12_BUFFER_BARRIER argsBarrier = {};
+	argsBarrier.SyncBefore = D3D12_BARRIER_SYNC_COMPUTE_SHADING;
+	argsBarrier.SyncAfter = D3D12_BARRIER_SYNC_COPY;
+	argsBarrier.AccessBefore = D3D12_BARRIER_ACCESS_COMMON;
+	argsBarrier.AccessAfter = D3D12_BARRIER_ACCESS_COPY_SOURCE;
+	argsBarrier.pResource = argsResource;
+	argsBarrier.Offset = 0;
+	argsBarrier.Size = UINT64_MAX;
+
+	D3D12_BARRIER_GROUP argsBarrierGroup = {};
+	argsBarrierGroup.Type = D3D12_BARRIER_TYPE_BUFFER;
+	argsBarrierGroup.NumBarriers = 1;
+	argsBarrierGroup.pBufferBarriers = &argsBarrier;
+	mHandle->commandList->Barrier(1, &argsBarrierGroup);
+
+	constexpr UINT sbtBytes = offsetof(D3D12_DISPATCH_RAYS_DESC, Width);
+	mHandle->commandList->CopyBufferRegion(scratchResource, 0, sbtSource, sbtSourceOffset, sbtBytes);
+	mHandle->commandList->CopyBufferRegion(scratchResource, sbtBytes, argsResource, offset, 3 * sizeof(uint32_t));
+
+	D3D12_BUFFER_BARRIER bufferBarrier = {};
+	bufferBarrier.SyncBefore = D3D12_BARRIER_SYNC_COPY;
+	bufferBarrier.SyncAfter = D3D12_BARRIER_SYNC_EXECUTE_INDIRECT;
+	bufferBarrier.AccessBefore = D3D12_BARRIER_ACCESS_COPY_DEST;
+	bufferBarrier.AccessAfter = D3D12_BARRIER_ACCESS_INDIRECT_ARGUMENT;
+	bufferBarrier.pResource = scratchResource;
+	bufferBarrier.Offset = 0;
+	bufferBarrier.Size = UINT64_MAX;
+
+	D3D12_BARRIER_GROUP barrierGroup = {};
+	barrierGroup.Type = D3D12_BARRIER_TYPE_BUFFER;
+	barrierGroup.NumBarriers = 1;
+	barrierGroup.pBufferBarriers = &bufferBarrier;
+	mHandle->commandList->Barrier(1, &barrierGroup);
+
+	auto commandSignature = mHandle->device->GetDispatchRaysIndirectCommandSignature();
+	mHandle->commandList->ExecuteIndirect(commandSignature, 1, scratchResource, 0, nullptr, 0);
+
+	mDevice->Dispose(mTransientAllocator, scratch, BarrierStage::ExecuteIndirect);
+}
+
 void CommandBuffer::CopyBuffer(const NativeGraphicsHandle src, const NativeGraphicsHandle dst,
 	size_t size,
 	size_t srcOffset,
@@ -247,6 +348,23 @@ void CommandBuffer::CopyBuffer(const NativeGraphicsHandle src, const NativeGraph
 	auto srcBuffer = static_cast<ID3D12Resource*>(src);
 	auto dstBuffer = static_cast<ID3D12Resource*>(dst);
 	mHandle->commandList->CopyBufferRegion(dstBuffer, dstOffset, srcBuffer, srcOffset, size);
+}
+
+void CommandBuffer::ClearBuffer(const Buffer& buffer, uint8_t value) const
+{
+	auto& cbvSrvUavHeap = mHandle->device->GetCbvSrvUavHeap();
+	auto& clearUavHeap = mHandle->device->GetClearUavHeap();
+	uint32_t index = buffer.GetResourceView().data;
+
+	D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle = cbvSrvUavHeap.gpuHandle;
+	gpuHandle.ptr += (UINT64)(index + CBV_SRV_HEAP_SIZE) * cbvSrvUavHeap.size;
+
+	D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle = clearUavHeap.cpuHandle;
+	cpuHandle.ptr += (size_t)index * clearUavHeap.size;
+
+	mHandle->commandList->SetDescriptorHeaps(1, &cbvSrvUavHeap.handle);
+	const UINT values[4] = { (UINT)value, (UINT)value, (UINT)value, (UINT)value };
+	mHandle->commandList->ClearUnorderedAccessViewUint(gpuHandle, cpuHandle, static_cast<ID3D12Resource*>(buffer.GetHandle()), values, 0, nullptr);
 }
 
 void CommandBuffer::Blit(const Texture& source, const Texture& destination) const

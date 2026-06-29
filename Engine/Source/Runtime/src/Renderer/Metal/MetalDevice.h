@@ -87,7 +87,9 @@ public:
 	IRRootSignature* GetGlobalRootSignature() const;
 
 	ShaderBindingTable CreateShaderBindingTable(const RayTracingPipeline& pipeline);
-	
+
+	id<MTLComputePipelineState> CompileNativeComputePipeline(const TString& shaderName);
+
 	id<MTLTexture> CreateTexture(GPUAllocator* allocator, const TextureDescriptor& descriptor);
 
 	RenderTargetView CreateRenderTargetView(const Texture& texture);
@@ -128,6 +130,8 @@ private:
     
 	MetalDescriptorHeap mSamplerHeap;
     MetalDescriptorHeap mCbvSrvUavHeap;
+
+	HashMap<TString, id<MTLComputePipelineState>> mNativeComputePipelineCache;
 
 };
 

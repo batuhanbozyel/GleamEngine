@@ -8,6 +8,8 @@
 #include "Core/Globals.h"
 #include "Renderer/SamplerState.h"
 #include "Renderer/RenderSystem.h"
+#include "Renderer/RayTracingScene.h"
+#include "Renderer/CopyCommandBuffer.h"
 
 #define IR_PRIVATE_IMPLEMENTATION
 #include <metal_irconverter/metal_irconverter.h>
@@ -175,6 +177,10 @@ void RenderSystem::InitializeBackend()
 	mSwapchain = new MetalSwapchain();
     mReleaseQueue = new ResourceReleaseQueue(mSwapchain->GetFramesInFlight());
     mDevice = new MetalDevice(mSwapchain, mReleaseQueue);
+    mPersistentAllocator = new GPUAllocator(mDevice, GPUAllocatorDescriptor{ .name = "Persistent GPU Allocator" });
+	mTransientAllocator = new GPUAllocator(mDevice, GPUAllocatorDescriptor{ .name = "Transient GPU Allocator" });
+	mCopyCommandBuffer = new CopyCommandBuffer(mDevice);
+	mRayTracingScene = new RayTracingScene(mDevice, mTransientAllocator);
 }
 
 static IRCompiler* CreateCompiler(const TString& entryPoint, IRRootSignature* globalRootSig)
@@ -710,6 +716,35 @@ ComputePipeline GraphicsDevice::CompileComputePipeline(const ComputePipelineStat
     mtlPipeline.pipelineState = [mHandle newComputePipelineStateWithFunction:mtlFunction.handle error:&error];
     mtlPipeline.threadsPerThreadgroup = mtlFunction.threadsPerThreadgroup;
     GLEAM_ASSERT(mtlPipeline.pipelineState, "Metal: Compute pipeline state creation failed.");
+    return pipeline;
+}
+
+id<MTLComputePipelineState> MetalDevice::CompileNativeComputePipeline(const TString& shaderName)
+{
+    auto it = mNativeComputePipelineCache.find(shaderName);
+    if (it != mNativeComputePipelineCache.end())
+    {
+        return it->second;
+    }
+
+    auto shaderPath = Globals::BuiltinAssetsDirectory/"Shaders"/"Native";
+    auto shaderFile = Filesystem::OpenRead(shaderPath.Append(shaderName + ".metallib"), FileType::Binary);
+    auto shaderCode = shaderFile->Read();
+
+    dispatch_data_t data = dispatch_data_create(shaderCode.data(), shaderCode.size(), dispatch_get_main_queue(), DISPATCH_DATA_DESTRUCTOR_DEFAULT);
+
+    __autoreleasing NSError* error = nil;
+    id<MTLLibrary> library = [mHandle newLibraryWithData:data error:&error];
+    GLEAM_ASSERT(library, "Metal: native shader library load failed: {}", shaderName);
+
+    NSString* functionName = [NSString stringWithCString:shaderName.c_str() encoding:NSASCIIStringEncoding];
+    id<MTLFunction> function = [library newFunctionWithName:functionName];
+    GLEAM_ASSERT(function, "Metal: native shader function not found: {}", shaderName);
+
+    id<MTLComputePipelineState> pipeline = [mHandle newComputePipelineStateWithFunction:function error:&error];
+    GLEAM_ASSERT(pipeline, "Metal: native compute pipeline state creation failed: {}", shaderName);
+
+    mNativeComputePipelineCache.emplace(shaderName, pipeline);
     return pipeline;
 }
 

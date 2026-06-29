@@ -40,11 +40,6 @@ void RenderSystem::Initialize(Engine* engine)
 	InitializeBackend();
 	Configure(engine->GetConfiguration().renderer);
 
-	mPersistentAllocator = new GPUAllocator(mDevice, GPUAllocatorDescriptor{ .name = "Persistent GPU Allocator" });
-	mTransientAllocator = new GPUAllocator(mDevice, GPUAllocatorDescriptor{ .name = "Transient GPU Allocator" });
-	mCopyCommandBuffer = new CopyCommandBuffer(mDevice);
-	mRayTracingScene = new RayTracingScene(mDevice, mTransientAllocator);
-
 	RenderContext context = GetRenderContext();
 	{
 		auto brdfRenderer = new BRDFRenderer();
@@ -267,7 +262,7 @@ void RenderSystem::Configure(const RendererConfig& config)
     mCommandBuffers.resize(mSwapchain->GetFramesInFlight());
 	for (auto& cmd : mCommandBuffers)
 	{
-		cmd = new CommandBuffer(mDevice);
+		cmd = new CommandBuffer(mDevice, mTransientAllocator);
 	}
 	mSwapchainSize = mSwapchain->GetCurrentDrawable().GetDescriptor().size;
 }

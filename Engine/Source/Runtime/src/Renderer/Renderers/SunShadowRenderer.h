@@ -40,6 +40,8 @@ private:
 	GraphicsDevice* mDevice = nullptr;
 	GPUAllocator*   mAllocator = nullptr;
 	RayTracingPipelineHandle mRayTracedShadowPipeline;
+	ComputePipelineHandle    mClassificationPipeline;
+	ComputePipelineHandle    mPrepareDispatchArgsPipeline;
 	ComputePipelineHandle    mTileClassificationPipeline;
 	ComputePipelineHandle    mFilterPipeline;
 	ComputePipelineHandle    mDepthCopyPipeline;

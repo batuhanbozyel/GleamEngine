@@ -231,6 +231,27 @@ struct RayTracedSunShadowConstants
 {
 	ShaderResourceIndex depthTexture;
 	ShaderResourceIndex normalTexture;
+	ShaderResourceIndex tileBuffer;
+	ShaderResourceIndex tileCountBuffer;
+};
+
+struct RayTracedSunShadowClassificationConstants
+{
+	ShaderResourceIndex  depthTexture;
+	ShaderResourceIndex  normalTexture;
+	UnorderedAccessIndex tileBuffer;
+	UnorderedAccessIndex tileCountBuffer;
+
+	UnorderedAccessIndex rayHitTexture;
+	uint32_t tileTolerance;
+	float pad0;
+	float pad1;
+};
+
+struct PrepareShadowRayDispatchArgsConstants
+{
+	ShaderResourceIndex  tileCountBuffer;
+	UnorderedAccessIndex dispatchArgsBuffer;
 	float pad0;
 	float pad1;
 };
@@ -274,6 +295,30 @@ struct ShadowDenoiserFilterConstants
 	ShaderResourceIndex normalTexture;
 	uint32_t passIndex;
 	float pad0;
+};
+
+struct DrawIndirectArguments
+{
+	uint32_t vertexCountPerInstance;
+	uint32_t instanceCount;
+	uint32_t startVertexLocation;
+	uint32_t startInstanceLocation;
+};
+
+struct DrawIndexedIndirectArguments
+{
+	uint32_t indexCountPerInstance;
+	uint32_t instanceCount;
+	uint32_t startIndexLocation;
+	int32_t  baseVertexLocation;
+	uint32_t startInstanceLocation;
+};
+
+struct DispatchIndirectArguments
+{
+	uint32_t threadGroupCountX;
+	uint32_t threadGroupCountY;
+	uint32_t threadGroupCountZ;
 };
 
 } // namespace Gleam
