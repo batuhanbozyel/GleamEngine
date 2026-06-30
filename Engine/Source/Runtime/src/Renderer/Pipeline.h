@@ -16,6 +16,8 @@ enum class PipelineType
 	Mesh
 };
 
+using NativePipelineHandle = size_t;
+
 struct PipelineHandle
 {
 	size_t data = 0;

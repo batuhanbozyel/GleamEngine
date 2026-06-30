@@ -305,12 +305,13 @@ ComputePipeline GraphicsDevice::CompileComputePipeline(const ComputePipelineStat
 	return pipeline;
 }
 
-ID3D12PipelineState* DirectXDevice::CompileNativeComputePipeline(const TString& shaderName)
+NativePipelineHandle DirectXDevice::CompileNativeComputePipeline(const TString& shaderName)
 {
-	auto it = mNativeComputePipelineCache.find(shaderName);
+	auto handle = eastl::hash<TString>()(shaderName);
+	auto it = mNativeComputePipelineCache.find(handle);
 	if (it != mNativeComputePipelineCache.end())
 	{
-		return it->second;
+		return handle;
 	}
 
 	auto shaderPath = Globals::BuiltinAssetsDirectory/"Shaders"/"Native";
@@ -325,8 +326,35 @@ ID3D12PipelineState* DirectXDevice::CompileNativeComputePipeline(const TString& 
 	ID3D12PipelineState* pipeline = nullptr;
 	DX_CHECK(static_cast<ID3D12Device10*>(mHandle)->CreateComputePipelineState(&psoDesc, IID_PPV_ARGS(&pipeline)));
 
-	mNativeComputePipelineCache.emplace(shaderName, pipeline);
-	return pipeline;
+	mNativeComputePipelineCache.emplace(handle, pipeline);
+	return handle;
+}
+
+ID3D12PipelineState* DirectXDevice::GetNativeComputePipeline(NativePipelineHandle handle) const
+{
+	auto it = mNativeComputePipelineCache.find(handle);
+	if (it != mNativeComputePipelineCache.end())
+	{
+		return it->second;
+	}
+
+	GLEAM_ASSERT(false);
+	return nullptr;
+}
+
+bool GraphicsDevice::RecompileNativeShader(const TString& entryPoint)
+{
+	auto device = static_cast<DirectXDevice*>(this);
+	auto it = device->mNativeComputePipelineCache.find(eastl::hash<TString>()(entryPoint));
+	if (it == device->mNativeComputePipelineCache.end())
+	{
+		return false;
+	}
+
+	it->second->Release();
+	device->mNativeComputePipelineCache.erase(it);
+	device->CompileNativeComputePipeline(entryPoint);
+	return true;
 }
 
 GraphicsPipeline GraphicsDevice::CompileGraphicsPipeline(const GraphicsPipelineStateDescriptor& pipelineDesc)

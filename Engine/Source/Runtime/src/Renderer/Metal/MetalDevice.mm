@@ -719,12 +719,13 @@ ComputePipeline GraphicsDevice::CompileComputePipeline(const ComputePipelineStat
     return pipeline;
 }
 
-id<MTLComputePipelineState> MetalDevice::CompileNativeComputePipeline(const TString& shaderName)
+NativePipelineHandle MetalDevice::CompileNativeComputePipeline(const TString& shaderName)
 {
-    auto it = mNativeComputePipelineCache.find(shaderName);
+    auto handle = eastl::hash<TString>()(shaderName);
+    auto it = mNativeComputePipelineCache.find(handle);
     if (it != mNativeComputePipelineCache.end())
     {
-        return it->second;
+        return handle;
     }
 
     auto shaderPath = Globals::BuiltinAssetsDirectory/"Shaders"/"Native";
@@ -744,8 +745,34 @@ id<MTLComputePipelineState> MetalDevice::CompileNativeComputePipeline(const TStr
     id<MTLComputePipelineState> pipeline = [mHandle newComputePipelineStateWithFunction:function error:&error];
     GLEAM_ASSERT(pipeline, "Metal: native compute pipeline state creation failed: {}", shaderName);
 
-    mNativeComputePipelineCache.emplace(shaderName, pipeline);
-    return pipeline;
+    mNativeComputePipelineCache.emplace(handle, pipeline);
+    return handle;
+}
+
+id<MTLComputePipelineState> MetalDevice::GetNativeComputePipeline(NativePipelineHandle handle) const
+{
+    auto it = mNativeComputePipelineCache.find(handle);
+    if (it != mNativeComputePipelineCache.end())
+    {
+        return it->second;
+    }
+
+    GLEAM_ASSERT(false);
+    return nil;
+}
+
+bool GraphicsDevice::RecompileNativeShader(const TString& entryPoint)
+{
+    auto device = static_cast<MetalDevice*>(this);
+    auto it = device->mNativeComputePipelineCache.find(eastl::hash<TString>()(entryPoint));
+    if (it == device->mNativeComputePipelineCache.end())
+    {
+        return false;
+    }
+
+    device->mNativeComputePipelineCache.erase(it);
+    device->CompileNativeComputePipeline(entryPoint);
+    return true;
 }
 
 GraphicsPipeline GraphicsDevice::CompileGraphicsPipeline(const GraphicsPipelineStateDescriptor& pipelineDesc)

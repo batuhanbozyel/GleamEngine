@@ -54,7 +54,9 @@ struct CommandBuffer::Impl
     
     TopLevelArgumentBuffer topLevelArgumentBuffer = {};
     PipelineHandle pipeline;
-    
+
+    NativePipelineHandle transformDispatchRaysIndirectArgsPipeline = 0;
+
     struct ConsumerBarrier
     {
         MTLStages srcStages;
@@ -82,6 +84,7 @@ CommandBuffer::CommandBuffer(GraphicsDevice* device, GPUAllocator* transientAllo
 {
     mHandle->device = static_cast<MetalDevice*>(device);
     mHandle->event = [mHandle->device->GetHandle() newSharedEvent];
+    mHandle->transformDispatchRaysIndirectArgsPipeline = mHandle->device->CompileNativeComputePipeline("transformDispatchRaysIndirectArgs");
 }
 
 CommandBuffer::~CommandBuffer()
@@ -312,7 +315,7 @@ void CommandBuffer::DispatchRaysIndirect(const Buffer& argsBuffer, size_t offset
     struct { uint32_t x, y; } groupSize = { tgX, tgY };
     size_t groupSizeOffset = mConstantBuffer.Write(groupSize);
 
-    id<MTLComputePipelineState> transformPipeline = mHandle->device->CompileNativeComputePipeline("transformDispatchRaysIndirectArgs");
+    id<MTLComputePipelineState> transformPipeline = mHandle->device->GetNativeComputePipeline(mHandle->transformDispatchRaysIndirectArgsPipeline);
     [mHandle->computeCommandEncoder setComputePipelineState:transformPipeline];
     [argumentTable setAddress:([argsBuffer.GetHandle() gpuAddress] + offset) atIndex:13];
     [argumentTable setAddress:[scratch.GetHandle() gpuAddress] atIndex:14];

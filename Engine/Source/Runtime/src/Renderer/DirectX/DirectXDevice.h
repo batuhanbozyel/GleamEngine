@@ -68,7 +68,9 @@ public:
 
 	ShaderBindingTable CreateShaderBindingTable(const RayTracingPipeline& pipeline);
 
-	ID3D12PipelineState* CompileNativeComputePipeline(const TString& shaderName);
+	NativePipelineHandle CompileNativeComputePipeline(const TString& shaderName);
+
+	ID3D12PipelineState* GetNativeComputePipeline(NativePipelineHandle handle) const;
 
 	ID3D12Resource* CreateResource(const D3D12_RESOURCE_DESC1& desc, D3D12_HEAP_TYPE heapType, D3D12_BARRIER_LAYOUT initialLayout, const TString& name) const;
 
@@ -116,7 +118,7 @@ private:
 	ID3D12CommandSignature* mDispatchMeshIndirectCommandSignature = nullptr;
 	ID3D12CommandSignature* mDispatchRaysIndirectCommandSignature = nullptr;
 
-	HashMap<TString, ID3D12PipelineState*> mNativeComputePipelineCache;
+	HashMap<NativePipelineHandle, ID3D12PipelineState*> mNativeComputePipelineCache;
 
 	DirectXDescriptorHeap mRtvHeap;
 	DirectXDescriptorHeap mDsvHeap;

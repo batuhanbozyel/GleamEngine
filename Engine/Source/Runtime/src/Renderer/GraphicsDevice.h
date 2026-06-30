@@ -79,6 +79,8 @@ public:
 
 	const MeshPipeline& GetMeshPipeline(MeshPipelineHandle handle) const;
 
+	bool RecompileNativeShader(const TString& entryPoint);
+
 	const DeviceFeatures& GetFeatures() const
 	{
 		return mFeatures;

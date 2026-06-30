@@ -351,6 +351,11 @@ void RenderSystem::RecompileShader(const TString& entryPoint)
 {
 	mCommandBuffers[mSwapchain->GetFrameIndex()]->WaitUntilCompleted();
 
+	if (mDevice->RecompileNativeShader(entryPoint))
+	{
+		return;
+	}
+
 	for (auto& shader : mDevice->mShaderCache)
 	{
 		if (shader.GetEntryPoint() == entryPoint)
