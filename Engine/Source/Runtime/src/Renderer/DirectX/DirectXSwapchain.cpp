@@ -23,7 +23,34 @@ DirectXSwapchain::DirectXSwapchain()
 		}
 	}
 	DX_CHECK(CreateDXGIFactory2(dxgiFactoryFlags, IID_PPV_ARGS(&mFactory)));
-	DX_CHECK(mFactory->EnumAdapterByGpuPreference(0, DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE, IID_PPV_ARGS(&mAdapter)));
+
+	const uint32_t preferredVendorID = GPUVendorIDFromName(Globals::CLI->GetParam("--gpu-vendor", TString()));
+	if (preferredVendorID != 0)
+	{
+		for (uint32_t i = 0; SUCCEEDED(mFactory->EnumAdapterByGpuPreference(i, DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE, IID_PPV_ARGS(&mAdapter))); ++i)
+		{
+			DXGI_ADAPTER_DESC1 desc = {};
+			mAdapter->GetDesc1(&desc);
+			if (desc.VendorId == preferredVendorID)
+			{
+				break;
+			}
+			mAdapter->Release();
+			mAdapter = nullptr;
+		}
+	}
+
+	if (mAdapter == nullptr)
+	{
+		DX_CHECK(mFactory->EnumAdapterByGpuPreference(0, DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE, IID_PPV_ARGS(&mAdapter)));
+	}
+
+	DXGI_ADAPTER_DESC1 adapterDesc = {};
+	mAdapter->GetDesc1(&adapterDesc);
+	GLEAM_CORE_INFO("DirectX: Selected GPU adapter: {0} (Vendor ID: {1:#06x})", TString(TWStringView(adapterDesc.Description)), adapterDesc.VendorId);
+	GLEAM_CORE_INFO("DirectX:		  Video memory: {0} MB", adapterDesc.DedicatedVideoMemory / (1024 * 1024));
+	GLEAM_CORE_INFO("DirectX:		 System memory: {0} MB", adapterDesc.DedicatedSystemMemory / (1024 * 1024));
+	GLEAM_CORE_INFO("DirectX:		 Shared memory: {0} MB", adapterDesc.SharedSystemMemory / (1024 * 1024));
 }
 
 DirectXSwapchain::~DirectXSwapchain()

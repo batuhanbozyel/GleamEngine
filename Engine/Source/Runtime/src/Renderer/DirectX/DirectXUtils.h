@@ -3,6 +3,7 @@
 #include <d3d12.h>
 #include <WinPixEventRuntime/pix3.h>
 
+#include "Container/String.h"
 #include "Renderer/Barrier.h"
 #include "Renderer/TextureFormat.h"
 #include "Renderer/HeapDescriptor.h"
@@ -13,6 +14,31 @@ namespace Gleam {
 
 #define DX_CHECK(x) {HRESULT result = (x);\
 					GLEAM_ASSERT(SUCCEEDED(result), HRESULTtoString(x));}
+
+#define GPU_VENDOR_ID_NVIDIA	0x10DE
+#define GPU_VENDOR_ID_AMD		0x1002
+#define GPU_VENDOR_ID_INTEL		0x8086
+
+static uint32_t GPUVendorIDFromName(const TStringView vendor)
+{
+	const TString name = StringUtils::ToLower(TString(vendor));
+	if (name == "nvidia")
+	{
+		return GPU_VENDOR_ID_NVIDIA;
+	}
+	else if (name == "amd")
+	{
+		return GPU_VENDOR_ID_AMD;
+	}
+	else if (name == "intel")
+	{
+		return GPU_VENDOR_ID_INTEL;
+	}
+	else
+	{
+		return 0;
+	}
+}
 
 static constexpr const char* HRESULTtoString(HRESULT result)
 {
