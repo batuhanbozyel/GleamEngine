@@ -154,6 +154,50 @@ struct MeshInstanceData
 
 	uint32_t meshletCount;
 	uint32_t cullMode;
+	uint32_t batchIndex;
+	float pad0;
+};
+
+struct VisibilityClassifyConstants
+{
+	ShaderResourceIndex visBuffer;
+	ShaderResourceIndex instanceBuffer;
+	UnorderedAccessIndex countsBuffer;
+	UnorderedAccessIndex cursorsBuffer;
+
+	UnorderedAccessIndex pixelListBuffer;
+	ShaderResourceIndex offsetsBuffer;
+	uint32_t numBatches;
+	float pad0;
+};
+
+struct VisibilityAllocateConstants
+{
+	ShaderResourceIndex countsBuffer;
+	UnorderedAccessIndex offsetsBuffer;
+	UnorderedAccessIndex dispatchArgsBuffer;
+	uint32_t numBatches;
+};
+
+struct VisibilityResolveConstants
+{
+	ShaderResourceIndex instanceBuffer;
+	ShaderResourceIndex visBuffer;
+	ShaderResourceIndex pixelListBuffer;
+	ShaderResourceIndex offsetsBuffer;
+
+	ShaderResourceIndex countsBuffer;
+	UnorderedAccessIndex colorTarget;
+	ShaderResourceIndex brdfTexture;
+	ShaderResourceIndex ggxEssTexture;
+
+	ShaderResourceIndex ggxEAvgTexture;
+	ShaderResourceIndex diffuseReflectionTexture;
+	ShaderResourceIndex specularReflectionTexture;
+	ShaderResourceIndex shadowTexture;
+
+	uint32_t batchIndex;
+	float pad0;
 	float pad1;
 	float pad2;
 };

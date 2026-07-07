@@ -67,6 +67,7 @@ void RenderSceneProxy::Tick(World* world)
 		}
 	});
 
+	mNumBatches = 0;
 	mTotalInstances = 0;
 	for (auto& [_, batch] : mMeshBatches)
 	{
@@ -74,6 +75,7 @@ void RenderSceneProxy::Tick(World* world)
 		{
 			continue;
 		}
+		batch.batchIndex = mNumBatches++;
 		batch.instanceOffset = mTotalInstances;
 		mTotalInstances += batch.numInstances;
 		batch.numInstances = 0; // reset to use as write counter in pass 2
@@ -115,6 +117,7 @@ void RenderSceneProxy::Tick(World* world)
 			instance.baseMeshlet = submesh.baseMeshlet;
 			instance.meshletCount = submesh.meshletCount;
 			instance.cullMode = static_cast<uint32_t>(batch.material->GetDescriptor().cullingMode);
+			instance.batchIndex = batch.batchIndex;
 		}
 	});
 }

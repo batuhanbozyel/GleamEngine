@@ -20,14 +20,9 @@ public:
 
 private:
 
-    void AddMeshletVisualizationPass(Gleam::RenderGraph& graph, Gleam::RenderGraphBlackboard& blackboard);
-
     Gleam::GraphicsDevice* mDevice = nullptr;
 
     Gleam::GraphicsPipelineHandle mPipeline;
-
-	// Meshlet visualization pipelines for each culling mode (None, Back, Front)
-    Gleam::TArray<Gleam::MeshPipelineHandle, 3> mMeshletVisPipelines;
 
     Gleam::ViewMode mMode = Gleam::ViewMode::Lit;
 

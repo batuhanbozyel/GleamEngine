@@ -5,6 +5,7 @@
 #include "Core/Globals.h"
 
 #include "Renderer/Mesh.h"
+#include "Renderer/RenderSystem.h"
 #include "Renderer/CommandBuffer.h"
 #include "Renderer/GraphicsDevice.h"
 #include "Renderer/Material/Material.h"
@@ -27,6 +28,9 @@ void DepthPrepass::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& bl
 {
 	const auto& sceneData = blackboard.Get<SceneRenderingData>();
 	const auto& sceneTargetDescriptor = graph.GetDescriptor(sceneData.sceneTarget);
+
+	auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
+	auto meshShadingPath = renderSystem->GetMeshShadingPath();
 	
 	graph.AddRenderPass<DepthPrepassData>("DepthPrepass", [&](RenderGraphBuilder& builder, DepthPrepassData& passData)
 	{
@@ -46,11 +50,18 @@ void DepthPrepass::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& bl
 		textureDesc.format = TextureFormat::R16G16_SNorm;
 		passData.normalTarget = builder.UseColorBuffer(builder.CreateTexture(textureDesc));
 
+		if (meshShadingPath == MeshShadingPath::Visibility)
+		{
+			textureDesc.name = "VisibilityBuffer";
+			textureDesc.format = TextureFormat::R32G32_UInt;
+			passData.visibilityBuffer = builder.UseColorBuffer(builder.CreateTexture(textureDesc));
+		}
+
 		blackboard.Add(passData);
 	},
-	[this, &sceneData](const CommandBuffer* cmd, const DepthPrepassData& passData)
+	[this, &sceneData, meshShadingPath](const CommandBuffer* cmd, const DepthPrepassData& passData)
 	{
-		sceneData.sceneProxy->ForEach([this, cmd, passData, sceneData](const MeshBatch& batch)
+		sceneData.sceneProxy->ForEach([this, cmd, passData, sceneData, meshShadingPath](const MeshBatch& batch)
 		{
 			if (batch.numInstances == 0)
 			{
@@ -65,7 +76,7 @@ void DepthPrepass::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& bl
 
 			if (mDevice->GetFeatures().meshShaders)
 			{
-				cmd->BindMeshPipeline(mMeshPipelines[batch.material->GetPipelineHash()]);
+				meshShadingPath == MeshShadingPath::Visibility ? cmd->BindMeshPipeline(mMeshVisibilityPipelines[batch.material->GetPipelineHash()]) : cmd->BindMeshPipeline(mMeshPipelines[batch.material->GetPipelineHash()]);
 				cmd->SetConstantBuffer(sceneData.camera.uniforms, CAMERA_UNIFORMS_BINDING_SLOT);
 
 				for (uint32_t instanceID = 0; instanceID < batch.numInstances; ++instanceID)
@@ -145,6 +156,28 @@ void DepthPrepass::RegisterShadingPipeline(const Material* material)
 			mMeshPipelines.emplace_hint(meshIt, eastl::piecewise_construct,
 										eastl::forward_as_tuple(pipelineHash),
 										eastl::forward_as_tuple(meshPipeline));
+		}
+
+		auto visIt = mMeshVisibilityPipelines.find(pipelineHash);
+		if (visIt == mMeshVisibilityPipelines.end())
+		{
+			MeshPipelineStateDescriptor meshPipelineDesc = {
+				.blendState = {},
+				.depthState = DepthState{ .compareFunction = CompareFunction::Less, .writeEnabled = true },
+				.stencilState = StencilState{ .enabled = false },
+				.cullingMode = materialDesc.cullingMode,
+				.alphaToCoverage = false,
+				.wireframe = false,
+				.colorFormats = { TextureFormat::R16G16_SFloat, TextureFormat::R16G16_SNorm, TextureFormat::R32G32_UInt },
+				.depthFormat = TextureFormat::D32_SFloat,
+				.meshEntry = "depthPrepassVisibilityMeshletShader",
+				.amplificationEntry = "depthPrepassAmplificationShader",
+				.fragmentEntry = materialDesc.alphaMode != AlphaMode::Opaque ? materialDesc.surfaceShader + "DepthPrepassVisibility" : "opaqueDepthPrepassVisibilityFragmentShader"
+			};
+			auto meshPipeline = mDevice->CreateMeshPipeline(meshPipelineDesc);
+			mMeshVisibilityPipelines.emplace_hint(visIt, eastl::piecewise_construct,
+												  eastl::forward_as_tuple(pipelineHash),
+												  eastl::forward_as_tuple(meshPipeline));
 		}
 	}
 }

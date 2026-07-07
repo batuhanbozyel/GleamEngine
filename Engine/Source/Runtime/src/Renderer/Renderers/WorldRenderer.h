@@ -40,9 +40,12 @@ public:
 
 private:
 
+	void AddForwardPass(RenderGraph& graph, RenderGraphBlackboard& blackboard);
+
 	GraphicsDevice* mDevice = nullptr;
 	HashMap<uint32_t, GraphicsPipelineHandle> mGraphicsShadingPipelines;
 	HashMap<uint32_t, MeshPipelineHandle> mMeshShadingPipelines;
+	HashMap<uint32_t, ComputePipelineHandle> mVisibilityShadingPipelines;
 
 };
 

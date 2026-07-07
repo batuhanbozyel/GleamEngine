@@ -85,6 +85,23 @@ bool MaterialSource::Import(const Gleam::Path& path, const ImportSettings& setti
         generatedShader << "void LoadMaterialInstance(ByteAddressBuffer materialBuffer, uint materialID) {}\n\n";
     }
     
+	if (document.HasMember("AlphaMode"))
+	{
+		Gleam::TString value = document["AlphaMode"].GetString();
+		if (value == "Mask")
+		{
+			descriptor.alphaMode = Gleam::AlphaMode::Mask;
+		}
+		else if (value == "Blend")
+		{
+			descriptor.alphaMode = Gleam::AlphaMode::Blend;
+		}
+		else
+		{
+			descriptor.alphaMode = Gleam::AlphaMode::Opaque;
+		}
+	}
+
 	if (document.HasMember("SurfaceShader"))
 	{
 		auto shaderPath = path;
@@ -140,6 +157,33 @@ bool MaterialSource::Import(const Gleam::Path& path, const ImportSettings& setti
 				cmd << " -f " << generatedPath;
 				cmd << " -i " << "DepthPrepass.hlsli";
 				cmd << " --entry main=" << descriptor.surfaceShader + "DepthPrepass";
+
+				if (ExecuteCommand(cmd.str()) != 0)
+				{
+					Gleam::Filesystem::Remove(generatedPath);
+					return false;
+				}
+			}
+
+			// Depth prepass visibility
+			{
+				Gleam::Path dxilShader = Gleam::Globals::BuiltinAssetsDirectory / "Shaders" / (descriptor.surfaceShader + "DepthPrepassVisibility");
+				dxilShader.Concat(".dxil");
+				if (Gleam::Filesystem::Exists(dxilShader))
+				{
+					Gleam::Filesystem::Remove(dxilShader);
+				}
+
+				Gleam::TStringStream cmd;
+				cmd << PYTHON_INTERPRETER << " ";
+				cmd << Gleam::Globals::StartupDirectory / "Tools/CompileShaders.py";
+				cmd << " -f " << generatedPath;
+				cmd << " -i " << "DepthPrepass.hlsli";
+				cmd << " -D " << "VISIBILITY_SHADING_PATH";
+				cmd << " --entry main=" << descriptor.surfaceShader << "DepthPrepassVisibility";
+			#ifdef GDEBUG
+				cmd << " --debug";
+			#endif
 
 				if (ExecuteCommand(cmd.str()) != 0)
 				{
@@ -252,6 +296,31 @@ bool MaterialSource::Import(const Gleam::Path& path, const ImportSettings& setti
 				}
 			}
 
+			// Visibility shading
+			{
+				Gleam::Path dxilShader = Gleam::Globals::BuiltinAssetsDirectory / "Shaders" / (descriptor.surfaceShader + "VisibilityShading");
+				dxilShader.Concat(".dxil");
+				if (Gleam::Filesystem::Exists(dxilShader))
+				{
+					Gleam::Filesystem::Remove(dxilShader);
+				}
+
+				Gleam::TStringStream cmd;
+				cmd << PYTHON_INTERPRETER << " ";
+				cmd << Gleam::Globals::StartupDirectory / "Tools/CompileShaders.py";
+				cmd << " -f " << generatedPath;
+				cmd << " -i " << "VisibilityShading.hlsli";
+				cmd << " --entry main=" << descriptor.surfaceShader << "VisibilityShading";
+			#ifdef GDEBUG
+				cmd << " --debug";
+			#endif
+
+				if (ExecuteCommand(cmd.str()) != 0)
+				{
+					Gleam::Filesystem::Remove(generatedPath);
+					return false;
+				}
+			}
 			Gleam::Filesystem::Remove(generatedPath);
 		}
 	}
@@ -272,23 +341,6 @@ bool MaterialSource::Import(const Gleam::Path& path, const ImportSettings& setti
 			descriptor.cullingMode = Gleam::CullMode::Off;
 		}
     }
-    
-	if (document.HasMember("AlphaMode"))
-	{
-		Gleam::TString value = document["AlphaMode"].GetString();
-		if (value == "Mask")
-		{
-			descriptor.alphaMode = Gleam::AlphaMode::Mask;
-		}
-		else if (value == "Blend")
-		{
-			descriptor.alphaMode = Gleam::AlphaMode::Blend;
-		}
-		else
-		{
-			descriptor.alphaMode = Gleam::AlphaMode::Opaque;
-		}
-	}
 
     EmplaceBaker<MaterialBaker>(descriptor);
     return true;

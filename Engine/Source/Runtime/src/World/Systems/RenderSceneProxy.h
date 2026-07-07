@@ -19,6 +19,7 @@ struct MeshBatch
 	Material* material = nullptr;
 	uint32_t instanceOffset = 0;
 	uint32_t numInstances = 0;
+	uint32_t batchIndex = 0;
 };
 
 struct MeshInstance
@@ -53,8 +54,14 @@ public:
 		return { mGlobalMeshes.data(), mTotalInstances };
 	}
 
+	uint32_t GetBatchCount() const
+	{
+		return mNumBatches;
+	}
+
 private:
 
+	uint32_t mNumBatches = 0;
 	uint32_t mTotalInstances = 0;
 	Buffer mGlobalInstanceBuffer = {};
     HashMap<AssetReference, MeshBatch> mMeshBatches;

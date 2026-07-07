@@ -36,31 +36,36 @@ void WorldRenderer::OnDestroy(const RenderContext& context)
 
 void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard)
 {
+	AddForwardPass(graph, blackboard);
+}
+
+void WorldRenderer::AddForwardPass(RenderGraph& graph, RenderGraphBlackboard& blackboard)
+{
 	const auto& sceneData = blackboard.Get<SceneRenderingData>();
 	const auto& depthPrepassData = blackboard.Get<DepthPrepassData>();
 	const auto& sceneTargetDescriptor = graph.GetDescriptor(sceneData.sceneTarget);
-	
-    graph.AddRenderPass<WorldRenderingData>("WorldRenderer::ForwardPass", [&](RenderGraphBuilder& builder, WorldRenderingData& passData)
-    {
-        RenderTextureDescriptor textureDesc;
-        textureDesc.name = "SceneColorRT";
-        textureDesc.size = sceneTargetDescriptor.size;
-        textureDesc.format = TextureFormat::R16G16B16A16_SFloat;
-        textureDesc.clearBuffer = true;
-        passData.colorTarget = builder.UseColorBuffer(builder.CreateTexture(textureDesc));
-        passData.depthTarget = builder.UseDepthBuffer(depthPrepassData.depthTarget, DepthAccess::Read);
+
+	graph.AddRenderPass<WorldRenderingData>("WorldRenderer::ForwardPass", [&](RenderGraphBuilder& builder, WorldRenderingData& passData)
+	{
+		RenderTextureDescriptor textureDesc;
+		textureDesc.name = "SceneColorRT";
+		textureDesc.size = sceneTargetDescriptor.size;
+		textureDesc.format = TextureFormat::R16G16B16A16_SFloat;
+		textureDesc.clearBuffer = true;
+		passData.colorTarget = builder.UseColorBuffer(builder.CreateTexture(textureDesc));
+		passData.depthTarget = builder.UseDepthBuffer(depthPrepassData.depthTarget, DepthAccess::Read);
 
 		const auto& brdfData = blackboard.Get<BRDFData>();
 		passData.brdfLut = builder.ReadTexture(brdfData.brdfLut);
 		passData.ggxEssLut = builder.ReadTexture(brdfData.ggxEssLut);
 		passData.ggxEAvgLut = builder.ReadTexture(brdfData.ggxEAvgLut);
-		
+
 		if (sceneData.atmosphere.transmittanceLut.IsValid() && sceneData.atmosphere.multiScatterLut.IsValid())
 		{
 			passData.transmittanceLut = builder.ReadTexture(sceneData.atmosphere.transmittanceLut);
 			passData.multiScatterLut = builder.ReadTexture(sceneData.atmosphere.multiScatterLut);
 		}
-		
+
 		const auto& reflectionProbeData = blackboard.Get<ReflectionProbePassData>();
 		passData.specularReflection = builder.ReadTexture(reflectionProbeData.specularReflection);
 		passData.diffuseReflection = builder.ReadTexture(reflectionProbeData.diffuseReflection);
@@ -71,12 +76,12 @@ void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 			passData.shadowTexture = builder.ReadTexture(sunShadowData.shadowMask);
 		}
 
-        blackboard.Add(passData);
-    },
-    [this, &sceneData](const CommandBuffer* cmd, const WorldRenderingData& passData)
-    {
-        sceneData.sceneProxy->ForEach([this, cmd, passData, sceneData](const MeshBatch& batch)
-        {
+		blackboard.Add(passData);
+	},
+		[this, &sceneData](const CommandBuffer* cmd, const WorldRenderingData& passData)
+	{
+		sceneData.sceneProxy->ForEach([this, cmd, passData, sceneData](const MeshBatch& batch)
+		{
 			if (batch.numInstances == 0)
 			{
 				return;
@@ -124,8 +129,8 @@ void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 					cmd->DrawIndexed(globalMeshes[constants.instanceID].mesh->GetIndexBuffer(), IndexType::UINT32, instance.indexCount, 1, instance.firstIndex);
 				}
 			}
-        });
-    });
+		});
+	});
 }
 
 void WorldRenderer::RegisterShadingPipeline(const Material* material)
@@ -152,8 +157,8 @@ void WorldRenderer::RegisterShadingPipeline(const Material* material)
 
 		auto pipeline = mDevice->CreateGraphicsPipeline(pipelineDesc);
 		mGraphicsShadingPipelines.emplace_hint(it, eastl::piecewise_construct,
-										   eastl::forward_as_tuple(pipelineHash),
-										   eastl::forward_as_tuple(pipeline));
+											   eastl::forward_as_tuple(pipelineHash),
+											   eastl::forward_as_tuple(pipeline));
 	}
 
 	if (mDevice->GetFeatures().meshShaders)
@@ -179,6 +184,19 @@ void WorldRenderer::RegisterShadingPipeline(const Material* material)
 			mMeshShadingPipelines.emplace_hint(meshIt, eastl::piecewise_construct,
 											   eastl::forward_as_tuple(pipelineHash),
 											   eastl::forward_as_tuple(meshPipeline));
+		}
+
+		auto visibilityIt = mVisibilityShadingPipelines.find(pipelineHash);
+		if (visibilityIt == mVisibilityShadingPipelines.end())
+		{
+			ComputePipelineStateDescriptor visibilityPipelineDesc = {
+				.entryPoint = materialDesc.surfaceShader + "VisibilityShading"
+			};
+
+			auto visibilityPipeline = mDevice->CreateComputePipeline(visibilityPipelineDesc);
+			mVisibilityShadingPipelines.emplace_hint(visibilityIt, eastl::piecewise_construct,
+													 eastl::forward_as_tuple(pipelineHash),
+													 eastl::forward_as_tuple(visibilityPipeline));
 		}
 	}
 }

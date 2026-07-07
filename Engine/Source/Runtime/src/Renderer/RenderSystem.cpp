@@ -40,6 +40,11 @@ void RenderSystem::Initialize(Engine* engine)
 	InitializeBackend();
 	Configure(engine->GetConfiguration().renderer);
 
+	if (mDevice->GetFeatures().meshShaders == false)
+	{
+		mMeshShadingPath = MeshShadingPath::Forward;
+	}
+
 	RenderContext context = GetRenderContext();
 	{
 		auto brdfRenderer = new BRDFRenderer();
@@ -275,6 +280,11 @@ void RenderSystem::SetRenderPath(RenderPath path)
 RenderPath RenderSystem::GetRenderPath() const
 {
 	return mRenderPath;
+}
+
+MeshShadingPath RenderSystem::GetMeshShadingPath() const
+{
+	return mMeshShadingPath;
 }
 
 GraphicsDevice* RenderSystem::GetDevice()

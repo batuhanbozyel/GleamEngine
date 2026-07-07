@@ -1,9 +1,7 @@
 #ifndef MESH_SHADING_HLSL
 #define MESH_SHADING_HLSL
 
-#include "BRDF.hlsli"
-#include "SurfaceShading.hlsli"
-#include "Atmosphere/SkyAtmosphereCommon.hlsli"
+#include "MeshLighting.hlsli"
 
 PUSH_CONSTANT(Gleam::MeshShadingConstants, constants);
 
@@ -40,40 +38,17 @@ float4 main(Gleam::MeshVertexOut IN) : SV_TARGET
 	//return float4(surface.metallic.xxx, 1.0f);
 	//return float4(surface.roughness.xxx, 1.0f);
     
-	DirectLight light;
-	if (atmosphereUniforms.transmittanceLutTexture != InvalidResourceIndex && atmosphereUniforms.multiScatterLutTexture != InvalidResourceIndex)
-	{
-		light.direction = atmosphereUniforms.sunDirection;
-		light.illuminance = GetSunLuminance(GetSkyWorldPosition(IN.worldPosition), atmosphereUniforms.sunDirection);
-	}
-	else
-	{
-		light.direction = atmosphereUniforms.sunDirection;
-		light.illuminance = atmosphereUniforms.sunIlluminance;
-	}
-	
-	float shadowVisibility = 1.0f;
-	if (constants.shadowTexture != InvalidResourceIndex)
-	{
-        Texture2D<unorm float> shadowTex = ResourceDescriptorHeap[constants.shadowTexture];
-		shadowVisibility = shadowTex.Load(int3(IN.position.xy, 0));
-	}
-
-	float3 color = surface.emission.rgb;
-	color += EvaluateDirectLight(surface,
-								 constants.ggxEssTexture,
-								 constants.ggxEAvgTexture,
-								 light,
-								 viewDir,
-								 worldNormal) * shadowVisibility;
-	color += EvaluateIndirectLight(surface,
-								   constants.brdfTexture,
-								   constants.ggxEssTexture,
-								   constants.ggxEAvgTexture,
-								   constants.diffuseReflectionTexture,
-								   constants.specularReflectionTexture,
-								   viewDir,
-								   worldNormal);
+	float3 color = EvaluateMeshLighting(surface,
+										IN.worldPosition,
+										worldNormal,
+										viewDir,
+										uint2(IN.position.xy),
+										constants.brdfTexture,
+										constants.ggxEssTexture,
+										constants.ggxEAvgTexture,
+										constants.diffuseReflectionTexture,
+										constants.specularReflectionTexture,
+										constants.shadowTexture);
 	return float4(color, surface.albedo.a);
 }
 #endif // MESH_SHADING_HLSL

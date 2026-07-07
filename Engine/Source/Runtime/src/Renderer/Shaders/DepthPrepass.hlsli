@@ -3,12 +3,12 @@
 
 #include "Common.hlsli"
 #include "SurfaceShading.hlsli"
+#include "VisibilityBufferCommon.hlsli"
 
 PUSH_CONSTANT(Gleam::DepthPrepassConstants, constants);
-CONSTANT_BUFFER(Gleam::CameraUniforms, camera, CAMERA_UNIFORMS_BINDING_SLOT);
 
-namespace Gleam
-{
+namespace Gleam {
+
 struct DepthPrepassVertexOut
 {
     float4 position : SV_POSITION;
@@ -22,6 +22,9 @@ struct DepthPrepassFragmentOut
 {
     float2 motionVector : SV_TARGET0;
     float2 normal : SV_TARGET1;
+#ifdef VISIBILITY_SHADING_PATH
+    PackedVisibilityID visID : SV_TARGET2;
+#endif // VISIBILITY_SHADING_PATH
 };
 
 } // namespace Gleam
@@ -43,6 +46,32 @@ float2 ComputeMotionVector(Gleam::DepthPrepassVertexOut IN, float2 resolution)
     return prevViewport - IN.position.xy;
 }
 
+#ifdef VISIBILITY_SHADING_PATH
+Gleam::DepthPrepassFragmentOut BuildDepthPrepassOutput(Gleam::DepthPrepassVertexOut IN, float2 resolution, PackedVisibilityID visID)
+{
+    Gleam::DepthPrepassFragmentOut OUT;
+    OUT.motionVector = ComputeMotionVector(IN, resolution);
+    OUT.normal = OctEncode(normalize(IN.normal));
+    OUT.visID = visID;
+    return OUT;
+}
+
+[shader("pixel")]
+Gleam::DepthPrepassFragmentOut main(Gleam::DepthPrepassVertexOut IN, Gleam::VisibilityPrimOut prim)
+{
+    Gleam::MeshInstanceData instance = LoadInstanceData(constants.instanceID);
+    Gleam::MeshVertexOut meshVertexOut = (Gleam::MeshVertexOut)0;
+    meshVertexOut.color = IN.color;
+    meshVertexOut.uv = IN.uv;
+    meshVertexOut.ddxUV = ddx(IN.uv);
+    meshVertexOut.ddyUV = ddy(IN.uv);
+
+    Gleam::SurfaceOutput surface = SurfMain(meshVertexOut);
+    clip(surface.albedo.a - surface.alphaCutoff);
+
+    return BuildDepthPrepassOutput(IN, camera.resolution, prim.visID);
+}
+#else
 Gleam::DepthPrepassFragmentOut BuildDepthPrepassOutput(Gleam::DepthPrepassVertexOut IN, float2 resolution)
 {
     Gleam::DepthPrepassFragmentOut OUT;
@@ -66,4 +95,6 @@ Gleam::DepthPrepassFragmentOut main(Gleam::DepthPrepassVertexOut IN)
 
     return BuildDepthPrepassOutput(IN, camera.resolution);
 }
+#endif // VISIBILITY_SHADING_PATH
+
 #endif // DEPTH_PREPASS_HLSL

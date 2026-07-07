@@ -1,23 +1,9 @@
-#include "Common.hlsli"
+#include "DepthPrepass.hlsli"
 #include "MeshletCommon.hlsli"
-#include "../ShaderTypes.h"
-
-PUSH_CONSTANT(GEditor::MeshletVisualizationConstants, constants);
-CONSTANT_BUFFER(Gleam::CameraUniforms, camera, CAMERA_UNIFORMS_BINDING_SLOT);
-
-struct MeshletVisVertexOut
-{
-    float4 position : SV_POSITION;
-};
-
-struct MeshletVisPrimOut
-{
-    nointerpolation uint packedID : ATTRIB0;
-};
 
 [shader("amplification")]
 [numthreads(MESH_AMPLIFICATION_THREADS, 1, 1)]
-void meshletVisAmplificationShader(uint threadID : SV_GroupThreadID, uint groupID : SV_GroupID)
+void depthPrepassAmplificationShader(uint threadID : SV_GroupThreadID, uint groupID : SV_GroupID)
 {
     ByteAddressBuffer globalInstanceBuffer = ResourceDescriptorHeap[constants.instanceBuffer];
     Gleam::MeshInstanceData instanceData = globalInstanceBuffer.Load<Gleam::MeshInstanceData>(constants.instanceID * sizeof(Gleam::MeshInstanceData));
@@ -46,13 +32,12 @@ void meshletVisAmplificationShader(uint threadID : SV_GroupThreadID, uint groupI
 [shader("mesh")]
 [numthreads(MESH_SHADER_THREADS, 1, 1)]
 [outputtopology("triangle")]
-void meshletVisMeshShader(
+void depthPrepassMeshletShader(
     uint groupThreadID : SV_GroupThreadID,
     uint meshletLocalID : SV_GroupID,
     in payload MeshletPayload meshletPayload,
     out indices uint3 outTriangles[MAX_MESHLET_TRIANGLES],
-    out primitives MeshletVisPrimOut outPrims[MAX_MESHLET_TRIANGLES],
-    out vertices MeshletVisVertexOut outVertices[MAX_MESHLET_VERTICES])
+    out vertices Gleam::DepthPrepassVertexOut outVertices[MAX_MESHLET_VERTICES])
 {
     ByteAddressBuffer globalInstanceBuffer = ResourceDescriptorHeap[constants.instanceBuffer];
     Gleam::MeshInstanceData instanceData = globalInstanceBuffer.Load<Gleam::MeshInstanceData>(constants.instanceID * sizeof(Gleam::MeshInstanceData));
@@ -73,9 +58,17 @@ void meshletVisMeshShader(
         ByteAddressBuffer positionBuffer = ResourceDescriptorHeap[instanceData.positionBuffer];
         float3 position = positionBuffer.Load<float3>(vertexID * sizeof(float3));
         float4 worldPosition = mul(instanceData.transform, float4(position, 1.0f));
+        float4 prevWorldPosition = mul(instanceData.previousTransform, float4(position, 1.0f));
 
-        MeshletVisVertexOut OUT;
+        ByteAddressBuffer interleavedBuffer = ResourceDescriptorHeap[instanceData.interleavedBuffer];
+        Gleam::InterleavedMeshVertex interleavedVert = interleavedBuffer.Load<Gleam::InterleavedMeshVertex>(vertexID * sizeof(Gleam::InterleavedMeshVertex));
+
+        Gleam::DepthPrepassVertexOut OUT;
+        OUT.prevClipPos = mul(camera.prevViewProjectionMatrix, prevWorldPosition);
         OUT.position = mul(camera.viewProjectionMatrix, worldPosition);
+        OUT.color = float4(1.0f, 1.0f, 1.0f, 1.0f);
+        OUT.uv = interleavedVert.texCoord;
+        OUT.normal = normalize(mul(instanceData.transform, float4(interleavedVert.normal, 0.0f)).xyz);
         outVertices[groupThreadID] = OUT;
     }
 
@@ -84,19 +77,36 @@ void meshletVisMeshShader(
         ByteAddressBuffer meshletTriangleBuffer = ResourceDescriptorHeap[instanceData.meshletTriangleBuffer];
         uint packedTriangle = meshletTriangleBuffer.Load((meshlet.triangleOffset + groupThreadID) * sizeof(uint));
         outTriangles[groupThreadID] = UnpackMeshletTriangles(packedTriangle);
-        outPrims[groupThreadID].packedID = (constants.instanceID << 16) | (meshletID & 0xFFFFu);
     }
 }
 
-float3 HashIDToColor(uint id)
+[shader("vertex")]
+Gleam::DepthPrepassVertexOut depthPrepassVertexShader(uint vertexID : SV_VertexID)
 {
-    uint h = id * 2654435761u;
-    h ^= h >> 15; h *= 2246822519u; h ^= h >> 13;
-    return float3((h & 0xFFu), ((h >> 8) & 0xFFu), ((h >> 16) & 0xFFu)) / 255.0f;
+	ByteAddressBuffer globalInstanceBuffer = ResourceDescriptorHeap[constants.instanceBuffer];
+	Gleam::MeshInstanceData instanceData = globalInstanceBuffer.Load<Gleam::MeshInstanceData>(constants.instanceID * sizeof(Gleam::MeshInstanceData));
+
+	ByteAddressBuffer positionBuffer = ResourceDescriptorHeap[instanceData.positionBuffer];
+    uint baseVertexID = vertexID + instanceData.baseVertex;
+	float3 position = positionBuffer.Load<float3>(baseVertexID * sizeof(float3));
+	float4 worldPosition = mul(instanceData.transform, float4(position, 1.0f));
+    float4 prevWorldPosition = mul(instanceData.previousTransform, float4(position, 1.0f));
+	
+	ByteAddressBuffer interleavedBuffer = ResourceDescriptorHeap[instanceData.interleavedBuffer];
+	Gleam::InterleavedMeshVertex interleavedVert = interleavedBuffer.Load<Gleam::InterleavedMeshVertex>(baseVertexID * sizeof(Gleam::InterleavedMeshVertex));
+
+    Gleam::DepthPrepassVertexOut OUT;
+    OUT.prevClipPos = mul(camera.prevViewProjectionMatrix, prevWorldPosition);
+    OUT.position = mul(camera.viewProjectionMatrix, worldPosition);
+	OUT.color = float4(1.0f, 1.0f, 1.0f, 1.0f);
+	OUT.uv = interleavedVert.texCoord;
+	OUT.normal = normalize(mul(instanceData.transform, float4(interleavedVert.normal, 0.0f)).xyz);
+	return OUT;
 }
 
 [shader("pixel")]
-float4 meshletVisFragmentShader(MeshletVisVertexOut IN, MeshletVisPrimOut prim) : SV_TARGET
+[earlydepthstencil]
+Gleam::DepthPrepassFragmentOut opaqueDepthPrepassFragmentShader(Gleam::DepthPrepassVertexOut IN)
 {
-    return float4(HashIDToColor(prim.packedID), 1.0f);
+    return BuildDepthPrepassOutput(IN, camera.resolution);
 }

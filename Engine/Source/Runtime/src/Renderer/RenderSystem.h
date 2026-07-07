@@ -31,6 +31,12 @@ GENUM(RenderPath, "83FD8433-7D91-42AF-A237-CCF726E306E5", Serializable, PrettyNa
 	GITEM(PathTracing, "AF1EDBC0-9EA0-4C5B-9BDB-8258B6CCE31E", PrettyName("Path Tracing"))
 };
 
+GENUM(MeshShadingPath, "1CBD20EB-4FAC-4B6C-B45A-191788F36D5E", Serializable, PrettyName("Mesh Shading Path"))
+{
+	GITEM(Visibility, "4EF1BFFE-62FC-43A8-9782-6356D7EC1D07", PrettyName("Visibility")),
+	GITEM(Forward, "0BE8FE10-807D-47B3-B91F-CEE44E01BCCC", PrettyName("Forward"))
+};
+
 class RenderSystem final : public EngineSubsystem
 {
 public:
@@ -48,6 +54,8 @@ public:
 	void SetRenderPath(RenderPath path);
 
 	RenderPath GetRenderPath() const;
+
+	MeshShadingPath GetMeshShadingPath() const;
     
     GraphicsDevice* GetDevice();
     
@@ -106,6 +114,8 @@ private:
 	Engine* mEngine;
 	
 	RenderPath mRenderPath = RenderPath::Default;
+	MeshShadingPath mMeshShadingPath = MeshShadingPath::Visibility;
+
 	TArray<RenderPipeline*, 2> mRenderPipelines = {};
 	TArray<IRenderer*> mSharedRenderers = {};
 
