@@ -52,7 +52,7 @@ void depthPrepassVisibilityMeshletShader(
         ByteAddressBuffer meshletTriangleBuffer = ResourceDescriptorHeap[instanceData.meshletTriangleBuffer];
         uint packedTriangle = meshletTriangleBuffer.Load((meshlet.triangleOffset + groupThreadID) * sizeof(uint));
         outTriangles[groupThreadID] = UnpackMeshletTriangles(packedTriangle);
-        outPrims[groupThreadID].visID = PackVisibilityID(constants.instanceID, meshletID, groupThreadID);
+        outPrims[groupThreadID].visID = PackVisibilityID(instanceData.batchIndex, constants.instanceID, meshletID, groupThreadID);
     }
 }
 

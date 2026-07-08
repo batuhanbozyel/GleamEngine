@@ -55,6 +55,7 @@ void ViewModeRenderer::AddRenderPasses(Gleam::RenderGraph& graph, Gleam::RenderG
 		}
 		case Gleam::ViewMode::VisibilityIDs:
 		case Gleam::ViewMode::MeshletVisualization:
+		case Gleam::ViewMode::BatchIDs:
 		{
 			source = blackboard.Get<Gleam::DepthPrepassData>().visibilityBuffer;
 			break;

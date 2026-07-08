@@ -46,6 +46,15 @@ using uint4 = Gleam::UInt4;
 
 #define VISIBILITY_RESOLVE_GROUP_SIZE 64u
 
+// Visibility buffer bit budget (see VisibilityBufferCommon.hlsli for the full encoding):
+// R channel packs (batchIndex << 17) | (instanceID + 1); instanceID + 1 fits 17 bits
+// since MaxMeshInstances = 65536, leaving 15 bits for the material batch index.
+#define VISIBILITY_TRIANGLE_BITS 7u
+#define VISIBILITY_TRIANGLE_MASK 0x7Fu
+#define VISIBILITY_INSTANCE_BITS 17u
+#define VISIBILITY_INSTANCE_MASK 0x1FFFFu
+#define VISIBILITY_MAX_BATCHES (1u << (32u - VISIBILITY_INSTANCE_BITS))
+
 namespace Gleam {
 
 #ifdef __cplusplus

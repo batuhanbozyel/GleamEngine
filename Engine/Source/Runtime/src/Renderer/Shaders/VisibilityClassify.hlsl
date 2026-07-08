@@ -19,14 +19,25 @@ void visibilityCountShader(uint3 dispatchThreadID : SV_DispatchThreadID)
     {
         return;
     }
-    Gleam::VisibilityID visibility = UnpackVisibilityID(packedID);
-    
-    ByteAddressBuffer instanceBuffer = ResourceDescriptorHeap[constants.instanceBuffer];
-    Gleam::MeshInstanceData instance = instanceBuffer.Load<Gleam::MeshInstanceData>(visibility.instanceID * sizeof(Gleam::MeshInstanceData));
+    uint batchIndex = UnpackVisibilityBatchIndex(packedID);
 
     RWByteAddressBuffer countsBuffer = ResourceDescriptorHeap[constants.countsBuffer];
-    uint original;
-    countsBuffer.InterlockedAdd(instance.batchIndex * sizeof(uint), 1u, original);
+    
+    bool pending = true;
+    while (pending)
+    {
+        uint uniformBatch = WaveReadLaneFirst(batchIndex);
+        if (batchIndex == uniformBatch)
+        {
+            uint waveTotal = WaveActiveCountBits(true);
+            if (WaveIsFirstLane())
+            {
+                uint original;
+                countsBuffer.InterlockedAdd(uniformBatch * sizeof(uint), waveTotal, original);
+            }
+            pending = false;
+        }
+    }
 }
 
 [shader("compute")]
@@ -45,18 +56,28 @@ void visibilityScatterShader(uint3 dispatchThreadID : SV_DispatchThreadID)
     {
         return;
     }
-
-    Gleam::VisibilityID visibility = UnpackVisibilityID(packedID);
-    ByteAddressBuffer instanceBuffer = ResourceDescriptorHeap[constants.instanceBuffer];
-    Gleam::MeshInstanceData instance = instanceBuffer.Load<Gleam::MeshInstanceData>(visibility.instanceID * sizeof(Gleam::MeshInstanceData));
+    uint batchIndex = UnpackVisibilityBatchIndex(packedID);
 
     RWByteAddressBuffer cursorsBuffer = ResourceDescriptorHeap[constants.cursorsBuffer];
-    uint slot;
-    cursorsBuffer.InterlockedAdd(instance.batchIndex * sizeof(uint), 1u, slot);
-
-    ByteAddressBuffer offsetsBuffer = ResourceDescriptorHeap[constants.offsetsBuffer];
-    uint offset = offsetsBuffer.Load(instance.batchIndex * sizeof(uint));
-
     RWByteAddressBuffer pixelListBuffer = ResourceDescriptorHeap[constants.pixelListBuffer];
-    pixelListBuffer.Store((offset + slot) * sizeof(uint), (pixelCoord.y << 16u) | pixelCoord.x);
+    
+    bool pending = true;
+    while (pending)
+    {
+        uint uniformBatch = WaveReadLaneFirst(batchIndex);
+        if (batchIndex == uniformBatch)
+        {
+            uint laneOffset = WavePrefixCountBits(true);
+            uint waveTotal = WaveActiveCountBits(true);
+            uint waveBase = 0u;
+            if (laneOffset == 0u)
+            {
+                cursorsBuffer.InterlockedAdd(uniformBatch * sizeof(uint), waveTotal, waveBase);
+            }
+            waveBase = WaveReadLaneFirst(waveBase);
+
+            pixelListBuffer.Store((waveBase + laneOffset) * sizeof(uint), (pixelCoord.y << 16u) | pixelCoord.x);
+            pending = false;
+        }
+    }
 }

@@ -80,6 +80,8 @@ void RenderSceneProxy::Tick(World* world)
 		mTotalInstances += batch.numInstances;
 		batch.numInstances = 0; // reset to use as write counter in pass 2
 	}
+	GLEAM_ASSERT(mTotalInstances <= MaxMeshInstances, "Instance count exceeds the maximum allowed.");
+	GLEAM_ASSERT(mNumBatches <= VISIBILITY_MAX_BATCHES, "Batch count exceeds the visibility buffer batch index bit budget.");
 
 	world->GetEntityManager().ForEach<Entity, MeshRenderer>([&](const Entity& entity, const MeshRenderer& meshRenderer)
 	{

@@ -9,6 +9,7 @@ void visibilityAllocateShader()
 {
     ByteAddressBuffer countsBuffer = ResourceDescriptorHeap[constants.countsBuffer];
     RWByteAddressBuffer offsetsBuffer = ResourceDescriptorHeap[constants.offsetsBuffer];
+    RWByteAddressBuffer cursorsBuffer = ResourceDescriptorHeap[constants.cursorsBuffer];
     RWByteAddressBuffer dispatchArgsBuffer = ResourceDescriptorHeap[constants.dispatchArgsBuffer];
 
     uint offset = 0u;
@@ -16,6 +17,7 @@ void visibilityAllocateShader()
     {
         uint count = countsBuffer.Load(batchIndex * sizeof(uint));
         offsetsBuffer.Store(batchIndex * sizeof(uint), offset);
+        cursorsBuffer.Store(batchIndex * sizeof(uint), offset); // seed scatter cursors
         offset += count;
 
         uint groupCount = (count + VISIBILITY_RESOLVE_GROUP_SIZE - 1u) / VISIBILITY_RESOLVE_GROUP_SIZE;

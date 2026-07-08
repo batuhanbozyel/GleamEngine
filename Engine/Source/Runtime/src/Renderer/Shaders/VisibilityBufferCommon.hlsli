@@ -5,11 +5,10 @@
 #include "SurfaceShading.hlsli"
 #include "Atmosphere/SkyAtmosphereCommon.hlsli"
 
-// Visibility buffer encoding (R32G32_UInt):
-//   R = instanceID + 1 (0 = background, matches zero clear)
+// Visibility buffer encoding (R32G32_UInt), bit budget defined in ShaderInterop.h:
+//   R = (batchIndex << 17) | (instanceID + 1) (0 = background, matches zero clear;
+//       instanceID + 1 fits 17 bits since MaxMeshInstances = 65536, leaving 15 bits for batchIndex)
 //   G = (meshletID << 7) | triangleID (meshletID is instance-relative, triangleID < MAX_MESHLET_TRIANGLES fits 7 bits)
-#define VISIBILITY_TRIANGLE_BITS 7u
-#define VISIBILITY_TRIANGLE_MASK 0x7Fu
 #define PackedVisibilityID uint2
 
 namespace Gleam {
@@ -37,20 +36,25 @@ struct BarycentricDeriv
 
 } // namespace Gleam
 
-PackedVisibilityID PackVisibilityID(uint instanceID, uint meshletID, uint triangleID)
+PackedVisibilityID PackVisibilityID(uint batchIndex, uint instanceID, uint meshletID, uint triangleID)
 {
-    return PackedVisibilityID(instanceID + 1u, (meshletID << VISIBILITY_TRIANGLE_BITS) | (triangleID & VISIBILITY_TRIANGLE_MASK));
+    return PackedVisibilityID((batchIndex << VISIBILITY_INSTANCE_BITS) | (instanceID + 1u), (meshletID << VISIBILITY_TRIANGLE_BITS) | (triangleID & VISIBILITY_TRIANGLE_MASK));
 }
 
 bool IsValidVisibilityID(PackedVisibilityID packedID)
 {
-    return packedID.x != 0u;
+    return (packedID.x & VISIBILITY_INSTANCE_MASK) != 0u;
+}
+
+uint UnpackVisibilityBatchIndex(PackedVisibilityID packedID)
+{
+    return packedID.x >> VISIBILITY_INSTANCE_BITS;
 }
 
 Gleam::VisibilityID UnpackVisibilityID(PackedVisibilityID packedID)
 {
     Gleam::VisibilityID id;
-    id.instanceID = packedID.x - 1u;
+    id.instanceID = (packedID.x & VISIBILITY_INSTANCE_MASK) - 1u;
     id.meshletID = packedID.y >> VISIBILITY_TRIANGLE_BITS;
     id.triangleID = packedID.y & VISIBILITY_TRIANGLE_MASK;
     return id;

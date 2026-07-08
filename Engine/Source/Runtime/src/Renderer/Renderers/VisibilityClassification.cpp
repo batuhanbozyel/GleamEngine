@@ -54,7 +54,7 @@ void VisibilityClassificationRenderer::AddRenderPasses(RenderGraph& graph, Rende
 		BufferHandle countsBuffer;
 	};
 
-	const auto& countData = graph.AddComputePass<CountPassData>("VisibilityResolve::Count",
+	const auto& countData = graph.AddComputePass<CountPassData>("VisibilityClassification::Count",
 	[&](RenderGraphBuilder& builder, CountPassData& passData)
 	{
 		BufferDescriptor countsDesc;
@@ -81,7 +81,6 @@ void VisibilityClassificationRenderer::AddRenderPasses(RenderGraph& graph, Rende
 
 		VisibilityClassifyConstants constants = {};
 		constants.visibilityBuffer = passData.visibilityBuffer;
-		constants.instanceBuffer = sceneData.sceneProxy->GetGlobalInstanceBuffer().GetResourceView();
 		constants.countsBuffer = passData.countsBuffer;
 
 		cmd->BindComputePipeline(mCountPipeline);
@@ -97,16 +96,22 @@ void VisibilityClassificationRenderer::AddRenderPasses(RenderGraph& graph, Rende
 	{
 		BufferHandle countsBuffer;
 		BufferHandle offsetsBuffer;
+		BufferHandle cursorsBuffer;
 		BufferHandle dispatchArgsBuffer;
 	};
 
-	const auto& allocateData = graph.AddComputePass<AllocatePassData>("VisibilityResolve::Allocate",
+	const auto& allocateData = graph.AddComputePass<AllocatePassData>("VisibilityClassification::Allocate",
 	[&](RenderGraphBuilder& builder, AllocatePassData& passData)
 	{
 		BufferDescriptor offsetsDesc;
 		offsetsDesc.name = "Visibility Batch Offsets";
 		offsetsDesc.size = numBatches * sizeof(uint32_t);
 		passData.offsetsBuffer = builder.WriteBuffer(builder.CreateBuffer(offsetsDesc));
+
+		BufferDescriptor cursorsDesc;
+		cursorsDesc.name = "Visibility Batch Cursors";
+		cursorsDesc.size = numBatches * sizeof(uint32_t);
+		passData.cursorsBuffer = builder.WriteBuffer(builder.CreateBuffer(cursorsDesc));
 
 		BufferDescriptor dispatchArgsDesc;
 		dispatchArgsDesc.name = "Visibility Dispatch Args";
@@ -120,6 +125,7 @@ void VisibilityClassificationRenderer::AddRenderPasses(RenderGraph& graph, Rende
 		VisibilityAllocateConstants constants = {};
 		constants.countsBuffer = passData.countsBuffer;
 		constants.offsetsBuffer = passData.offsetsBuffer;
+		constants.cursorsBuffer = passData.cursorsBuffer;
 		constants.dispatchArgsBuffer = passData.dispatchArgsBuffer;
 		constants.numBatches = numBatches;
 
@@ -134,48 +140,27 @@ void VisibilityClassificationRenderer::AddRenderPasses(RenderGraph& graph, Rende
 	struct ScatterPassData
 	{
 		TextureHandle visibilityBuffer;
-		BufferHandle offsetsBuffer;
 		BufferHandle cursorsBuffer;
 		BufferHandle pixelListBuffer;
 	};
 
-	const auto& scatterData = graph.AddComputePass<ScatterPassData>("VisibilityResolve::Scatter",
+	const auto& scatterData = graph.AddComputePass<ScatterPassData>("VisibilityClassification::Scatter",
 	[&](RenderGraphBuilder& builder, ScatterPassData& passData)
 	{
-		BufferDescriptor cursorsDesc;
-		cursorsDesc.name = "Visibility Batch Cursors";
-		cursorsDesc.size = numBatches * sizeof(uint32_t);
-		passData.cursorsBuffer = builder.WriteBuffer(builder.CreateBuffer(cursorsDesc));
-
 		BufferDescriptor pixelListDesc;
 		pixelListDesc.name = "Visibility Pixel List";
 		pixelListDesc.size = width * height * sizeof(uint32_t);
 		passData.pixelListBuffer = builder.WriteBuffer(builder.CreateBuffer(pixelListDesc));
 
-		passData.offsetsBuffer = builder.ReadBuffer(allocateData.offsetsBuffer);
+		passData.cursorsBuffer = builder.WriteBuffer(allocateData.cursorsBuffer);
 		passData.visibilityBuffer = builder.ReadTexture(depthPrepassData.visibilityBuffer);
 	},
 	[this, &sceneData, width, height](const CommandBuffer* cmd, const ScatterPassData& passData)
 	{
-		cmd->ClearBuffer(passData.cursorsBuffer);
-
-		Buffer cursorsBuffer = passData.cursorsBuffer;
-		BarrierGroup clearBarrier;
-		clearBarrier.bufferBarriers.push_back({
-			.resource  = cursorsBuffer.GetHandle(),
-			.srcStage  = BarrierStage::ClearUnorderedAccess,
-			.dstStage  = BarrierStage::ComputeShading,
-			.srcAccess = BarrierAccess::UnorderedAccess,
-			.dstAccess = BarrierAccess::UnorderedAccess,
-		});
-		cmd->Barrier(clearBarrier);
-
 		VisibilityClassifyConstants constants = {};
 		constants.visibilityBuffer = passData.visibilityBuffer;
-		constants.instanceBuffer = sceneData.sceneProxy->GetGlobalInstanceBuffer().GetResourceView();
 		constants.cursorsBuffer = passData.cursorsBuffer;
 		constants.pixelListBuffer = passData.pixelListBuffer;
-		constants.offsetsBuffer = passData.offsetsBuffer;
 
 		cmd->BindComputePipeline(mScatterPipeline);
 		cmd->SetPushConstant(constants);
@@ -185,7 +170,7 @@ void VisibilityClassificationRenderer::AddRenderPasses(RenderGraph& graph, Rende
 
 	VisibilityClassificationData visibilityClassificationData;
 	visibilityClassificationData.pixelListBuffer = scatterData.pixelListBuffer;
-	visibilityClassificationData.offsetsBuffer = scatterData.offsetsBuffer;
+	visibilityClassificationData.offsetsBuffer = allocateData.offsetsBuffer;
 	visibilityClassificationData.countsBuffer = countData.countsBuffer;
 	visibilityClassificationData.dispatchArgsBuffer = allocateData.dispatchArgsBuffer;
 	blackboard.Add(visibilityClassificationData);
