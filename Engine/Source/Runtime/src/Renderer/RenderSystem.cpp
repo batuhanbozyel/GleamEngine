@@ -24,6 +24,7 @@
 #include "Renderers/SunShadowRenderer.h"
 #include "Renderers/PostProcessStack.h"
 #include "Renderers/ReflectionProbeRenderer.h"
+#include "Renderers/VisibilityClassification.h"
 
 #include "Core/Engine.h"
 #include "Core/Globals.h"
@@ -63,6 +64,7 @@ void RenderSystem::Initialize(Engine* engine)
 		mRenderPipelines[(uint32_t)RenderPath::Default]->AddSharedRenderer(brdfRenderer);
 		mRenderPipelines[(uint32_t)RenderPath::Default]->AddRenderer<ReflectionProbeRenderer>();
 		mRenderPipelines[(uint32_t)RenderPath::Default]->AddSharedRenderer(depthPrepass);
+		mRenderPipelines[(uint32_t)RenderPath::Default]->AddRenderer<VisibilityClassificationRenderer>();
 		mRenderPipelines[(uint32_t)RenderPath::Default]->AddRenderer<SunShadowRenderer>();
 		mRenderPipelines[(uint32_t)RenderPath::Default]->AddRenderer<WorldRenderer>();
 		mRenderPipelines[(uint32_t)RenderPath::Default]->AddRenderer<SkyAtmosphereRenderer>();

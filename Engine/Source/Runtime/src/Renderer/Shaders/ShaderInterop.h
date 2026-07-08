@@ -44,6 +44,8 @@ using uint4 = Gleam::UInt4;
 #define MESH_AMPLIFICATION_THREADS 32u
 #define MESH_SHADER_THREADS        128u
 
+#define VISIBILITY_RESOLVE_GROUP_SIZE 64u
+
 namespace Gleam {
 
 #ifdef __cplusplus

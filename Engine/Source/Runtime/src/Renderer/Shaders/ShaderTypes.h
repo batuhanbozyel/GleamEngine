@@ -160,7 +160,7 @@ struct MeshInstanceData
 
 struct VisibilityClassifyConstants
 {
-	ShaderResourceIndex visBuffer;
+	ShaderResourceIndex visibilityBuffer;
 	ShaderResourceIndex instanceBuffer;
 	UnorderedAccessIndex countsBuffer;
 	UnorderedAccessIndex cursorsBuffer;
@@ -179,10 +179,10 @@ struct VisibilityAllocateConstants
 	uint32_t numBatches;
 };
 
-struct VisibilityResolveConstants
+struct VisibilityShadingConstants
 {
 	ShaderResourceIndex instanceBuffer;
-	ShaderResourceIndex visBuffer;
+	ShaderResourceIndex visibilityBuffer;
 	ShaderResourceIndex pixelListBuffer;
 	ShaderResourceIndex offsetsBuffer;
 

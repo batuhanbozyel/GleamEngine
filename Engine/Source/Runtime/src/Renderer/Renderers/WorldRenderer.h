@@ -40,7 +40,11 @@ public:
 
 private:
 
+	void AddVisibilityPass(RenderGraph& graph, RenderGraphBlackboard& blackboard);
+
 	void AddForwardPass(RenderGraph& graph, RenderGraphBlackboard& blackboard);
+
+	void MakeWorldRenderingData(const RenderGraph& graph, RenderGraphBlackboard& blackboard, RenderGraphBuilder& builder, WorldRenderingData& passData);
 
 	GraphicsDevice* mDevice = nullptr;
 	HashMap<uint32_t, GraphicsPipelineHandle> mGraphicsShadingPipelines;

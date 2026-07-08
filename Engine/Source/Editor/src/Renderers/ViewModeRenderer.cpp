@@ -93,7 +93,7 @@ void ViewModeRenderer::AddRenderPasses(Gleam::RenderGraph& graph, Gleam::RenderG
 		uniforms.mode = static_cast<uint32_t>(passData.mode);
 
 		cmd->BindGraphicsPipeline(mPipeline);
-		cmd->SetConstantBuffer(sceneData.camera.uniforms, 0);
+		cmd->SetConstantBuffer(sceneData.camera.uniforms, CAMERA_UNIFORMS_BINDING_SLOT);
 		cmd->SetPushConstant(uniforms);
 		cmd->Draw(3);
 	});

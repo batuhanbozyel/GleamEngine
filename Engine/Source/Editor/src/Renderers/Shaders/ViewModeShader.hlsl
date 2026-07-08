@@ -4,7 +4,6 @@
 #include "../ShaderTypes.h"
 
 PUSH_CONSTANT(GEditor::ViewModeUniforms, uniforms);
-CONSTANT_BUFFER(Gleam::CameraUniforms, camera, 0);
 
 // Reconstruct view-space Z from device depth using the inverse projection.
 float LinearizeViewZ(float deviceDepth, float4x4 invProjectionMatrix)
@@ -113,8 +112,8 @@ float4 viewModeFragmentShader(FScreenVertexOutput IN) : SV_TARGET
         }
         case Gleam::ViewMode::MeshletVisualization:
         {
-            Texture2D<PackedVisibilityID> visTexture = ResourceDescriptorHeap[uniforms.sourceTexture];
-            PackedVisibilityID packedID = visTexture.Load(int3(IN.texCoord * camera.resolution, 0));
+            Texture2D<PackedVisibilityID> visibilityBuffer = ResourceDescriptorHeap[uniforms.sourceTexture];
+            PackedVisibilityID packedID = visibilityBuffer.Load(int3(IN.texCoord * camera.resolution, 0));
             if (IsValidVisibilityID(packedID))
             {
                 Gleam::VisibilityID visibility = UnpackVisibilityID(packedID);
@@ -124,8 +123,8 @@ float4 viewModeFragmentShader(FScreenVertexOutput IN) : SV_TARGET
         }
         case Gleam::ViewMode::VisibilityIDs:
         {
-            Texture2D<PackedVisibilityID> visTexture = ResourceDescriptorHeap[uniforms.sourceTexture];
-            PackedVisibilityID packedID = visTexture.Load(int3(IN.texCoord * camera.resolution, 0));
+            Texture2D<PackedVisibilityID> visibilityBuffer = ResourceDescriptorHeap[uniforms.sourceTexture];
+            PackedVisibilityID packedID = visibilityBuffer.Load(int3(IN.texCoord * camera.resolution, 0));
             if (IsValidVisibilityID(packedID))
             {
                 color = HashIDToColor(packedID.x * 2654435761u + packedID.y);
