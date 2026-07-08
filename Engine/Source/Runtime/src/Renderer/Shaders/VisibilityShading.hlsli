@@ -26,10 +26,6 @@ void main(uint dispatchThreadID : SV_DispatchThreadID)
 
     Texture2D<PackedVisibilityID> visibilityBuffer = ResourceDescriptorHeap[constants.visibilityBuffer];
     PackedVisibilityID packedID = visibilityBuffer.Load(int3(pixel, 0));
-    if (IsValidVisibilityID(packedID) == false)
-    {
-        return;
-    }
     Gleam::VisibilityID visID = UnpackVisibilityID(packedID);
 
     ByteAddressBuffer instanceBuffer = ResourceDescriptorHeap[constants.instanceBuffer];

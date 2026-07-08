@@ -173,22 +173,18 @@ Gleam::MeshVertexOut InterpolateVertexAttributes(Gleam::MeshInstanceData instanc
     Gleam::InterleavedMeshVertex v1 = interleavedBuffer.Load<Gleam::InterleavedMeshVertex>(vertexIDs.y * sizeof(Gleam::InterleavedMeshVertex));
     Gleam::InterleavedMeshVertex v2 = interleavedBuffer.Load<Gleam::InterleavedMeshVertex>(vertexIDs.z * sizeof(Gleam::InterleavedMeshVertex));
     
-    float3 n0 = normalize(mul(instance.transform, float4(v0.normal, 0.0f)).xyz);
-    float3 n1 = normalize(mul(instance.transform, float4(v1.normal, 0.0f)).xyz);
-    float3 n2 = normalize(mul(instance.transform, float4(v2.normal, 0.0f)).xyz);
-    float3 t0 = normalize(mul(instance.transform, float4(v0.tangent.xyz, 0.0f)).xyz);
-    float3 t1 = normalize(mul(instance.transform, float4(v1.tangent.xyz, 0.0f)).xyz);
-    float3 t2 = normalize(mul(instance.transform, float4(v2.tangent.xyz, 0.0f)).xyz);
-    float3 b0 = normalize(cross(n0, t0)) * v0.tangent.w;
-    float3 b1 = normalize(cross(n1, t1)) * v1.tangent.w;
-    float3 b2 = normalize(cross(n2, t2)) * v2.tangent.w;
+    float3 objectNormal = InterpolateBary(deriv, v0.normal, v1.normal, v2.normal);
+    float3 objectTangent = InterpolateBary(deriv, v0.tangent.xyz, v1.tangent.xyz, v2.tangent.xyz);
+    float3 normal = normalize(mul(instance.transform, float4(objectNormal, 0.0f)).xyz);
+    float3 tangent = normalize(mul(instance.transform, float4(objectTangent, 0.0f)).xyz);
+    float3 bitangent = normalize(cross(normal, tangent)) * v0.tangent.w;
 
     Gleam::MeshVertexOut OUT = (Gleam::MeshVertexOut)0;
     OUT.position = float4(float2(pixelCoords) + 0.5f, 0.0f, 1.0f);
     OUT.worldPosition = InterpolateBary(deriv, w0, w1, w2);
-    OUT.normal = InterpolateBary(deriv, n0, n1, n2);
-    OUT.tangent = InterpolateBary(deriv, t0, t1, t2);
-    OUT.bitangent = InterpolateBary(deriv, b0, b1, b2);
+    OUT.normal = normal;
+    OUT.tangent = tangent;
+    OUT.bitangent = bitangent;
     OUT.color = float4(1.0f, 1.0f, 1.0f, 1.0f);
     InterpolateUV(deriv, v0.texCoord, v1.texCoord, v2.texCoord, OUT.uv, OUT.ddxUV, OUT.ddyUV);
     return OUT;

@@ -42,8 +42,11 @@ void VisibilityClassificationRenderer::AddRenderPasses(RenderGraph& graph, Rende
 	const uint32_t width = (uint32_t)sceneTargetDescriptor.size.width;
 	const uint32_t height = (uint32_t)sceneTargetDescriptor.size.height;
 
-	const uint32_t batchCount = sceneData.sceneProxy->GetBatchCount();
-	const uint32_t numBatches = batchCount > 0 ? batchCount : 1u;
+	const uint32_t numBatches = sceneData.sceneProxy->GetBatchCount();
+	if (numBatches == 0)
+	{
+		return;
+	}
 
 	// ----------------------------------------------------------------
 	// Pass 0 — Count pixels per material batch

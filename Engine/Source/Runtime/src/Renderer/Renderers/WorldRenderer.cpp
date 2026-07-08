@@ -55,7 +55,7 @@ void WorldRenderer::AddVisibilityPass(RenderGraph& graph, RenderGraphBlackboard&
 {
 	const auto& sceneData = blackboard.Get<SceneRenderingData>();
 	const auto& depthPrepassData = blackboard.Get<DepthPrepassData>();
-	const auto& visibilityClassificationData = blackboard.Get<VisibilityClassificationData>();
+	const bool hasClassificationData = blackboard.Has<VisibilityClassificationData>();
 
 	struct VisibilityShadingPassData
 	{
@@ -72,34 +72,44 @@ void WorldRenderer::AddVisibilityPass(RenderGraph& graph, RenderGraphBlackboard&
 	{
 		MakeWorldRenderingData(graph, blackboard, builder, passData.world);
 
-		passData.visibilityBuffer = builder.ReadTexture(depthPrepassData.visibilityBuffer);
-		passData.pixelListBuffer = builder.ReadBuffer(visibilityClassificationData.pixelListBuffer);
-		passData.offsetsBuffer = builder.ReadBuffer(visibilityClassificationData.offsetsBuffer);
-		passData.countsBuffer = builder.ReadBuffer(visibilityClassificationData.countsBuffer);
-		passData.dispatchArgsBuffer = builder.ReadBuffer(visibilityClassificationData.dispatchArgsBuffer);
+		if (hasClassificationData)
+		{
+			const auto& visibilityClassificationData = blackboard.Get<VisibilityClassificationData>();
+			passData.visibilityBuffer = builder.ReadTexture(depthPrepassData.visibilityBuffer);
+			passData.pixelListBuffer = builder.ReadBuffer(visibilityClassificationData.pixelListBuffer);
+			passData.offsetsBuffer = builder.ReadBuffer(visibilityClassificationData.offsetsBuffer);
+			passData.countsBuffer = builder.ReadBuffer(visibilityClassificationData.countsBuffer);
+			passData.dispatchArgsBuffer = builder.ReadBuffer(visibilityClassificationData.dispatchArgsBuffer);
+		}
 	},
 	[this, &sceneData](const CommandBuffer* cmd, const VisibilityShadingPassData& passData)
 	{
-		sceneData.sceneProxy->ForEach([this, cmd, &passData, &sceneData](const MeshBatch& batch)
+		if (passData.pixelListBuffer.IsValid() == false)
+		{
+			return;
+		}
+
+		VisibilityShadingConstants constants = {};
+		constants.instanceBuffer = sceneData.sceneProxy->GetGlobalInstanceBuffer().GetResourceView();
+		constants.visibilityBuffer = passData.visibilityBuffer;
+		constants.pixelListBuffer = passData.pixelListBuffer;
+		constants.offsetsBuffer = passData.offsetsBuffer;
+		constants.countsBuffer = passData.countsBuffer;
+		constants.colorTarget = passData.world.colorTarget;
+		constants.brdfTexture = passData.world.brdfLut;
+		constants.ggxEssTexture = passData.world.ggxEssLut;
+		constants.ggxEAvgTexture = passData.world.ggxEAvgLut;
+		constants.diffuseReflectionTexture = passData.world.diffuseReflection;
+		constants.specularReflectionTexture = passData.world.specularReflection;
+		constants.shadowTexture = passData.world.shadowTexture;
+
+		sceneData.sceneProxy->ForEach([this, cmd, &passData, &sceneData, &constants](const MeshBatch& batch)
 		{
 			if (batch.numInstances == 0)
 			{
 				return;
 			}
 
-			VisibilityShadingConstants constants = {};
-			constants.instanceBuffer = sceneData.sceneProxy->GetGlobalInstanceBuffer().GetResourceView();
-			constants.visibilityBuffer = passData.visibilityBuffer;
-			constants.pixelListBuffer = passData.pixelListBuffer;
-			constants.offsetsBuffer = passData.offsetsBuffer;
-			constants.countsBuffer = passData.countsBuffer;
-			constants.colorTarget = passData.world.colorTarget;
-			constants.brdfTexture = passData.world.brdfLut;
-			constants.ggxEssTexture = passData.world.ggxEssLut;
-			constants.ggxEAvgTexture = passData.world.ggxEAvgLut;
-			constants.diffuseReflectionTexture = passData.world.diffuseReflection;
-			constants.specularReflectionTexture = passData.world.specularReflection;
-			constants.shadowTexture = passData.world.shadowTexture;
 			constants.batchIndex = batch.batchIndex;
 
 			cmd->BindComputePipeline(mVisibilityShadingPipelines[batch.material->GetPipelineHash()]);
