@@ -202,6 +202,24 @@ struct VisibilityShadingConstants
 	float pad2;
 };
 
+struct GBufferResolveConstants
+{
+	ShaderResourceIndex instanceBuffer;
+	ShaderResourceIndex visibilityBuffer;
+	ShaderResourceIndex pixelListBuffer;
+	ShaderResourceIndex offsetsBuffer;
+
+	ShaderResourceIndex countsBuffer;
+	uint32_t batchIndex;
+	float pad0;
+	float pad1;
+
+	UnorderedAccessIndex motionVectorTarget;
+	UnorderedAccessIndex geometryNormalTarget;
+	UnorderedAccessIndex shadingNormalTarget;
+	UnorderedAccessIndex roughnessTarget;
+};
+
 struct SkyAtmosphereParameters
 {
 	// Rayleigh scattering coefficients

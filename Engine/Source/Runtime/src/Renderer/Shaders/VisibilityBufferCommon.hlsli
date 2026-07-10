@@ -33,6 +33,14 @@ struct BarycentricDeriv
     float3 ddxLambda;
     float3 ddyLambda;
 };
+    
+struct VertexAttributes
+{
+    float3 positions[3];
+    float3 normals[3];
+    float4 tangents[3];
+    float2 texCoords[3];
+};
 
 } // namespace Gleam
 
@@ -77,10 +85,34 @@ uint3 LoadTriangleVertexIDs(Gleam::MeshInstanceData instance, uint meshletID, ui
     return vertexIDs;
 }
 
-float2 PixelToNdc(uint2 pixel, float2 resolution)
+Gleam::VertexAttributes LoadVertexAttributes(Gleam::MeshInstanceData instance, uint meshletID, uint triangleID)
 {
-    float2 uv = (float2(pixel) + 0.5f) / resolution;
-    return float2(uv.x * 2.0f - 1.0f, 1.0f - uv.y * 2.0f);
+    uint3 vertexIDs = LoadTriangleVertexIDs(instance, meshletID, triangleID);
+    ByteAddressBuffer positionBuffer = ResourceDescriptorHeap[instance.positionBuffer];
+    
+    Gleam::VertexAttributes attribs;
+    attribs.positions[0] = positionBuffer.Load<float3>(vertexIDs.x * sizeof(float3));
+    attribs.positions[1] = positionBuffer.Load<float3>(vertexIDs.y * sizeof(float3));
+    attribs.positions[2] = positionBuffer.Load<float3>(vertexIDs.z * sizeof(float3));
+    
+    ByteAddressBuffer interleavedBuffer = ResourceDescriptorHeap[instance.interleavedBuffer];
+    Gleam::InterleavedMeshVertex v0 = interleavedBuffer.Load<Gleam::InterleavedMeshVertex>(vertexIDs.x * sizeof(Gleam::InterleavedMeshVertex));
+    Gleam::InterleavedMeshVertex v1 = interleavedBuffer.Load<Gleam::InterleavedMeshVertex>(vertexIDs.y * sizeof(Gleam::InterleavedMeshVertex));
+    Gleam::InterleavedMeshVertex v2 = interleavedBuffer.Load<Gleam::InterleavedMeshVertex>(vertexIDs.z * sizeof(Gleam::InterleavedMeshVertex));
+    
+    attribs.normals[0] = v0.normal;
+    attribs.normals[1] = v1.normal;
+    attribs.normals[2] = v2.normal;
+    
+    attribs.tangents[0] = v0.tangent;
+    attribs.tangents[1] = v1.tangent;
+    attribs.tangents[2] = v2.tangent;
+    
+    attribs.texCoords[0] = v0.texCoord;
+    attribs.texCoords[1] = v1.texCoord;
+    attribs.texCoords[2] = v2.texCoord;
+    
+    return attribs;
 }
 
 Gleam::BarycentricDeriv CalculateScreenSpaceBarycentrics(float4 clip0, float4 clip1, float4 clip2, float2 pixelNdc, float2 resolution)
@@ -155,40 +187,45 @@ void InterpolateUV(Gleam::BarycentricDeriv deriv, float2 uv0, float2 uv1, float2
 
 Gleam::MeshVertexOut InterpolateVertexAttributes(Gleam::MeshInstanceData instance, Gleam::VisibilityID visID, uint2 pixelCoords)
 {
-    uint3 vertexIDs = LoadTriangleVertexIDs(instance, visID.meshletID, visID.triangleID);
+    Gleam::VertexAttributes attribs = LoadVertexAttributes(instance, visID.meshletID, visID.triangleID);
+    float3 worldPos0 = mul(instance.transform, attribs.positions[0]).xyz;
+    float3 worldPos1 = mul(instance.transform, attribs.positions[1]).xyz;
+    float3 worldPos2 = mul(instance.transform, attribs.positions[2]).xyz;
 
-    ByteAddressBuffer positionBuffer = ResourceDescriptorHeap[instance.positionBuffer];
-    float3 w0 = mul(instance.transform, float4(positionBuffer.Load<float3>(vertexIDs.x * sizeof(float3)), 1.0f)).xyz;
-    float3 w1 = mul(instance.transform, float4(positionBuffer.Load<float3>(vertexIDs.y * sizeof(float3)), 1.0f)).xyz;
-    float3 w2 = mul(instance.transform, float4(positionBuffer.Load<float3>(vertexIDs.z * sizeof(float3)), 1.0f)).xyz;
+    float4 clipPos0 = mul(camera.viewProjectionMatrix, float4(worldPos0, 1.0f));
+    float4 clipPos1 = mul(camera.viewProjectionMatrix, float4(worldPos1, 1.0f));
+    float4 clipPos2 = mul(camera.viewProjectionMatrix, float4(worldPos2, 1.0f));
 
-    float4 clip0 = mul(camera.viewProjectionMatrix, float4(w0, 1.0f));
-    float4 clip1 = mul(camera.viewProjectionMatrix, float4(w1, 1.0f));
-    float4 clip2 = mul(camera.viewProjectionMatrix, float4(w2, 1.0f));
-
-    Gleam::BarycentricDeriv deriv = CalculateScreenSpaceBarycentrics(clip0, clip1, clip2, PixelToNdc(pixelCoords, camera.resolution), camera.resolution);
-
-    ByteAddressBuffer interleavedBuffer = ResourceDescriptorHeap[instance.interleavedBuffer];
-    Gleam::InterleavedMeshVertex v0 = interleavedBuffer.Load<Gleam::InterleavedMeshVertex>(vertexIDs.x * sizeof(Gleam::InterleavedMeshVertex));
-    Gleam::InterleavedMeshVertex v1 = interleavedBuffer.Load<Gleam::InterleavedMeshVertex>(vertexIDs.y * sizeof(Gleam::InterleavedMeshVertex));
-    Gleam::InterleavedMeshVertex v2 = interleavedBuffer.Load<Gleam::InterleavedMeshVertex>(vertexIDs.z * sizeof(Gleam::InterleavedMeshVertex));
+    Gleam::BarycentricDeriv deriv = CalculateScreenSpaceBarycentrics(clipPos0, clipPos1, clipPos2, PixelSpaceToNDC(pixelCoords, camera.resolution), camera.resolution);
     
-    float3 objectNormal = InterpolateBary(deriv, v0.normal, v1.normal, v2.normal);
-    float3 objectTangent = InterpolateBary(deriv, v0.tangent.xyz, v1.tangent.xyz, v2.tangent.xyz);
+    float3 objectNormal = InterpolateBary(deriv, attribs.normals[0], attribs.normals[1], attribs.normals[2]);
+    float3 objectTangent = InterpolateBary(deriv, attribs.tangents[0].xyz, attribs.tangents[1].xyz, attribs.tangents[2].xyz);
     float3 normal = normalize(mul(instance.transform, float4(objectNormal, 0.0f)).xyz);
     float3 tangent = normalize(mul(instance.transform, float4(objectTangent, 0.0f)).xyz);
-    float3 bitangent = normalize(cross(normal, tangent)) * v0.tangent.w;
+    float3 bitangent = normalize(cross(normal, tangent)) * attribs.tangents[0].w;
 
     Gleam::MeshVertexOut OUT = (Gleam::MeshVertexOut)0;
     OUT.position = float4(float2(pixelCoords) + 0.5f, 0.0f, 1.0f);
-    OUT.worldPosition = InterpolateBary(deriv, w0, w1, w2);
+    OUT.worldPosition = InterpolateBary(deriv, worldPos0, worldPos1, worldPos2);
     OUT.normal = normal;
     OUT.tangent = tangent;
     OUT.bitangent = bitangent;
     OUT.color = float4(1.0f, 1.0f, 1.0f, 1.0f);
-    InterpolateUV(deriv, v0.texCoord, v1.texCoord, v2.texCoord, OUT.uv, OUT.ddxUV, OUT.ddyUV);
+    InterpolateUV(deriv, attribs.texCoords[0], attribs.texCoords[1], attribs.texCoords[2], OUT.uv, OUT.ddxUV, OUT.ddyUV);
     return OUT;
+}
 
+float2 ComputeVisibilityMotionVector(Gleam::MeshInstanceData instance, Gleam::VertexAttributes attribs, Gleam::BarycentricDeriv deriv, uint2 pixelCoords)
+{
+    float3 prevWorldPos0 = mul(instance.previousTransform, float4(attribs.positions[0], 1.0f)).xyz;
+    float3 prevWorldPos1 = mul(instance.previousTransform, float4(attribs.positions[1], 1.0f)).xyz;
+    float3 prevWorldPos2 = mul(instance.previousTransform, float4(attribs.positions[2], 1.0f)).xyz;
+    float3 prevWorldPosition = InterpolateBary(deriv, prevWorldPos0, prevWorldPos1, prevWorldPos2);
+
+    float4 prevClip = mul(camera.prevViewProjectionMatrix, float4(prevWorldPosition, 1.0f));
+    float2 prevNdc = prevClip.xy / prevClip.w;
+    float2 prevViewport = (prevNdc * float2(0.5f, -0.5f) + 0.5f) * camera.resolution;
+    return prevViewport - (float2(pixelCoords) + 0.5f);
 }
 
 #endif // VISIBILITY_BUFFER_COMMON_HLSLI

@@ -42,14 +42,6 @@ void DepthPrepass::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& bl
 		textureDesc.format = TextureFormat::D32_SFloat;
 		passData.depthTarget = builder.UseDepthBuffer(builder.CreateTexture(textureDesc), DepthAccess::Write);
 
-		textureDesc.name = "MotionVectorRT";
-		textureDesc.format = TextureFormat::R16G16_SFloat;
-		passData.motionVectorTarget = builder.UseColorBuffer(builder.CreateTexture(textureDesc));
-
-		textureDesc.name = "GeometryNormalRT";
-		textureDesc.format = TextureFormat::R16G16_SNorm;
-		passData.normalTarget = builder.UseColorBuffer(builder.CreateTexture(textureDesc));
-
 		if (meshShadingPath == MeshShadingPath::Visibility)
 		{
 			textureDesc.name = "VisibilityBuffer";
@@ -108,7 +100,7 @@ void DepthPrepass::RegisterShadingPipeline(const Material* material)
 {
 	const auto& materialDesc = material->GetDescriptor();
 	auto pipelineHash = material->GetPipelineHash();
-	const auto fragmentEntry = materialDesc.alphaMode != AlphaMode::Opaque ? materialDesc.surfaceShader + "DepthPrepass" : "opaqueDepthPrepassFragmentShader";
+	const auto fragmentEntry = materialDesc.alphaMode != AlphaMode::Opaque ? materialDesc.surfaceShader + "DepthPrepass" : "";
 
 	auto it = mGraphicsPipelines.find(pipelineHash);
 	if (it == mGraphicsPipelines.end())

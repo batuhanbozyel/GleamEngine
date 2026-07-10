@@ -1,6 +1,7 @@
 #include "gpch.h"
 #include "SunShadowRenderer.h"
 #include "DepthPrepass.h"
+#include "GBufferResolveRenderer.h"
 
 #include "Renderer/Mesh.h"
 #include "Renderer/CommandBuffer.h"
@@ -123,6 +124,7 @@ void SunShadowRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboar
 {
 	const auto& sceneData             = blackboard.Get<SceneRenderingData>();
 	const auto& depthPrepassData      = blackboard.Get<DepthPrepassData>();
+	const auto& gBufferData			  = blackboard.Get<GBufferData>();
 	const auto& sceneTargetDescriptor = graph.GetDescriptor(sceneData.sceneTarget);
 
 	const uint32_t width  = (uint32_t)sceneTargetDescriptor.size.width;
@@ -189,7 +191,7 @@ void SunShadowRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboar
 		passData.rayHitTexture = builder.WriteTexture(builder.CreateTexture(rayHitDesc));
 
 		passData.depth         = builder.ReadTexture(depthPrepassData.depthTarget);
-		passData.normalTexture = builder.ReadTexture(depthPrepassData.normalTarget);
+		passData.normalTexture = builder.ReadTexture(gBufferData.geometryNormalTarget);
 	},
 	[this, &sceneData, numTilesX, numTilesY](const CommandBuffer* cmd, const ClassificationPassData& passData)
 	{
@@ -275,7 +277,7 @@ void SunShadowRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboar
 		passData.tileCount     = builder.ReadBuffer(classificationData.tileCount);
 		passData.dispatchArgs  = builder.ReadBuffer(prepareArgsData.dispatchArgs);
 		passData.depth         = builder.ReadTexture(depthPrepassData.depthTarget);
-		passData.normalTexture = builder.ReadTexture(depthPrepassData.normalTarget);
+		passData.normalTexture = builder.ReadTexture(gBufferData.geometryNormalTarget);
 	},
 	[this, &sceneData](const CommandBuffer* cmd, const RayTracingPassData& passData)
 	{
@@ -351,8 +353,8 @@ void SunShadowRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboar
 
 		passData.shadowMask				= builder.ReadBuffer(rayTracingData.shadowMask);
 		passData.depth					= builder.ReadTexture(depthPrepassData.depthTarget);
-		passData.velocity				= builder.ReadTexture(depthPrepassData.motionVectorTarget);
-		passData.normalTexture			= builder.ReadTexture(depthPrepassData.normalTarget);
+		passData.velocity				= builder.ReadTexture(gBufferData.motionVectorTarget);
+		passData.normalTexture			= builder.ReadTexture(gBufferData.shadingNormalTarget);
 		passData.previousDepth			= builder.ReadTexture(graph.ImportTexture(mPreviousDepth, importParams));
 		passData.previousMoments		= builder.ReadTexture(graph.ImportTexture(mMoments[prevIndex], importParams));
 		passData.currentMoments			= builder.WriteTexture(graph.ImportTexture(mMoments[currIndex], importParams));
@@ -404,7 +406,7 @@ void SunShadowRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboar
 	[&](RenderGraphBuilder& builder, Filter0PassData& passData)
 	{
 		passData.depth			= builder.ReadTexture(depthPrepassData.depthTarget);
-		passData.normalTexture	= builder.ReadTexture(depthPrepassData.normalTarget);
+		passData.normalTexture	= builder.ReadTexture(gBufferData.shadingNormalTarget);
 		passData.tileMetadata	= builder.ReadBuffer(tileClassData.tileMetadata);
 		passData.filterInput	= builder.ReadTexture(tileClassData.reprojectionResults);
 		passData.history		= builder.WriteTexture(tileClassData.historyShadow);
@@ -441,7 +443,7 @@ void SunShadowRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboar
 	[&](RenderGraphBuilder& builder, Filter1PassData& passData)
 	{
 		passData.depth        = builder.ReadTexture(depthPrepassData.depthTarget);
-		passData.normalTexture = builder.ReadTexture(depthPrepassData.normalTarget);
+		passData.normalTexture = builder.ReadTexture(gBufferData.shadingNormalTarget);
 		passData.tileMetadata = builder.ReadBuffer(filter0Data.tileMetadata);
 		passData.filterInput  = builder.ReadTexture(filter0Data.history);
 		passData.history      = builder.WriteTexture(filter0Data.filterInput);
@@ -478,7 +480,7 @@ void SunShadowRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboar
 	[&](RenderGraphBuilder& builder, Filter2PassData& passData)
 	{
 		passData.depth        = builder.ReadTexture(depthPrepassData.depthTarget);
-		passData.normalTexture = builder.ReadTexture(depthPrepassData.normalTarget);
+		passData.normalTexture = builder.ReadTexture(gBufferData.shadingNormalTarget);
 		passData.tileMetadata = builder.ReadBuffer(filter1Data.tileMetadata);
 		passData.filterInput  = builder.ReadTexture(filter1Data.history);
 

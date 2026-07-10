@@ -8,8 +8,6 @@ class Material;
 struct DepthPrepassData
 {
 	TextureHandle depthTarget;
-	TextureHandle motionVectorTarget;
-	TextureHandle normalTarget;
 	TextureHandle visibilityBuffer;
 };
 
