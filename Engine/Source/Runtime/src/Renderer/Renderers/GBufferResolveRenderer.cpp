@@ -27,11 +27,6 @@ void GBufferResolveRenderer::OnDestroy(const RenderContext& context)
 
 void GBufferResolveRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard)
 {
-	if (blackboard.Has<VisibilityClassificationData>() == false)
-	{
-		return;
-	}
-
 	const auto& sceneData = blackboard.Get<SceneRenderingData>();
 	const auto& depthPrepassData = blackboard.Get<DepthPrepassData>();
 	const auto& visibilityClassificationData = blackboard.Get<VisibilityClassificationData>();
@@ -109,7 +104,6 @@ void GBufferResolveRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlac
 
 void GBufferResolveRenderer::RegisterShadingPipeline(const Material* material)
 {
-	// The GBuffer resolve only runs on the visibility path, which requires mesh shaders.
 	if (mDevice->GetFeatures().meshShaders == false)
 	{
 		return;

@@ -212,20 +212,15 @@ Gleam::MeshVertexOut InterpolateVertexAttributes(Gleam::MeshInstanceData instanc
     OUT.bitangent = bitangent;
     OUT.color = float4(1.0f, 1.0f, 1.0f, 1.0f);
     InterpolateUV(deriv, attribs.texCoords[0], attribs.texCoords[1], attribs.texCoords[2], OUT.uv, OUT.ddxUV, OUT.ddyUV);
+    
+#ifdef MOTION_VECTOR_PASS
+    float3 prevWorldPos0  = mul(instance.previousTransform, float4(attribs.positions[0], 1.0f)).xyz;
+    float3 prevWorldPos1  = mul(instance.previousTransform, float4(attribs.positions[1], 1.0f)).xyz;
+    float3 prevWorldPos2  = mul(instance.previousTransform, float4(attribs.positions[2], 1.0f)).xyz;
+    OUT.prevWorldPosition = InterpolateBary(deriv, prevWorldPos0, prevWorldPos1, prevWorldPos2);
+#endif // MOTION_VECTOR_PASS
+    
     return OUT;
-}
-
-float2 ComputeVisibilityMotionVector(Gleam::MeshInstanceData instance, Gleam::VertexAttributes attribs, Gleam::BarycentricDeriv deriv, uint2 pixelCoords)
-{
-    float3 prevWorldPos0 = mul(instance.previousTransform, float4(attribs.positions[0], 1.0f)).xyz;
-    float3 prevWorldPos1 = mul(instance.previousTransform, float4(attribs.positions[1], 1.0f)).xyz;
-    float3 prevWorldPos2 = mul(instance.previousTransform, float4(attribs.positions[2], 1.0f)).xyz;
-    float3 prevWorldPosition = InterpolateBary(deriv, prevWorldPos0, prevWorldPos1, prevWorldPos2);
-
-    float4 prevClip = mul(camera.prevViewProjectionMatrix, float4(prevWorldPosition, 1.0f));
-    float2 prevNdc = prevClip.xy / prevClip.w;
-    float2 prevViewport = (prevNdc * float2(0.5f, -0.5f) + 0.5f) * camera.resolution;
-    return prevViewport - (float2(pixelCoords) + 0.5f);
 }
 
 #endif // VISIBILITY_BUFFER_COMMON_HLSLI

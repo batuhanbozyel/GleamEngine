@@ -7,6 +7,7 @@
 #include "Renderer/Material/Material.h"
 #include "Renderer/Renderers/DepthPrepass.h"
 #include "Renderer/Renderers/SunShadowRenderer.h"
+#include "Renderer/Renderers/GBufferResolveRenderer.h"
 
 #include "World/Systems/RenderSceneProxy.h"
 
@@ -33,9 +34,14 @@ void ViewModeRenderer::AddRenderPasses(Gleam::RenderGraph& graph, Gleam::RenderG
 	Gleam::TextureHandle source;
 	switch (mMode)
 	{
-		case Gleam::ViewMode::WorldNormal:
+		case Gleam::ViewMode::ShadingNormal:
 		{
-			source = blackboard.Get<Gleam::DepthPrepassData>().normalTarget;
+			source = blackboard.Get<Gleam::GBufferData>().shadingNormalTarget;
+			break;
+		}
+		case Gleam::ViewMode::GeometryNormal:
+		{
+			source = blackboard.Get<Gleam::GBufferData>().geometryNormalTarget;
 			break;
 		}
 		case Gleam::ViewMode::Depth:
@@ -45,7 +51,12 @@ void ViewModeRenderer::AddRenderPasses(Gleam::RenderGraph& graph, Gleam::RenderG
 		}
 		case Gleam::ViewMode::MotionVectors:
 		{
-			source = blackboard.Get<Gleam::DepthPrepassData>().motionVectorTarget;
+			source = blackboard.Get<Gleam::GBufferData>().motionVectorTarget;
+			break;
+		}
+		case Gleam::ViewMode::Roughness:
+		{
+			source = blackboard.Get<Gleam::GBufferData>().roughnessTarget;
 			break;
 		}
 		case Gleam::ViewMode::ShadowMask:

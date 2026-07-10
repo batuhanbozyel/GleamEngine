@@ -39,14 +39,10 @@ void VisibilityClassificationRenderer::AddRenderPasses(RenderGraph& graph, Rende
 	const auto& sceneData = blackboard.Get<SceneRenderingData>();
 	const auto& depthPrepassData = blackboard.Get<DepthPrepassData>();
 	const auto& sceneTargetDescriptor = graph.GetDescriptor(sceneData.sceneTarget);
+
 	const uint32_t width = (uint32_t)sceneTargetDescriptor.size.width;
 	const uint32_t height = (uint32_t)sceneTargetDescriptor.size.height;
-
-	const uint32_t numBatches = sceneData.sceneProxy->GetBatchCount();
-	if (numBatches == 0)
-	{
-		return;
-	}
+	const uint32_t numBatches = sceneData.sceneProxy->GetBatchCount() == 0 ? 1 : sceneData.sceneProxy->GetBatchCount();
 
 	// ----------------------------------------------------------------
 	// Pass 0 — Count pixels per material batch

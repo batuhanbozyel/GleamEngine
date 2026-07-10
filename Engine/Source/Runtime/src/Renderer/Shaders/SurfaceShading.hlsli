@@ -17,6 +17,9 @@ struct MeshVertexOut
     float2 uv : ATTRIB5;
     float2 ddxUV : ATTRIB6;
     float2 ddyUV : ATTRIB7;
+#ifdef MOTION_VECTOR_PASS
+    float3 prevWorldPosition : ATTRIB8;
+#endif // MOTION_VECTOR_PASS
 };
 
 struct SurfaceOutput

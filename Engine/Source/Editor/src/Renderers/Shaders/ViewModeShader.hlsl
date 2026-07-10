@@ -26,7 +26,8 @@ float4 viewModeFragmentShader(FScreenVertexOutput IN) : SV_TARGET
 
     switch ((Gleam::ViewMode)uniforms.mode)
     {
-        case Gleam::ViewMode::WorldNormal:
+        case Gleam::ViewMode::ShadingNormal:
+        case Gleam::ViewMode::GeometryNormal:
         {
             Texture2D<float2> normalTexture = ResourceDescriptorHeap[uniforms.sourceTexture];
             float2 encoded = normalTexture.Sample(Sampler_Point_Clamp, IN.texCoord);
@@ -102,6 +103,12 @@ float4 viewModeFragmentShader(FScreenVertexOutput IN) : SV_TARGET
             float3 bgColor  = saturate(bgHsvP - K.xxx) * saturate(length(bgMotion * speedScale)) * 0.25;
 
             color = lerp(bgColor, arrowColor, arrowMask);
+            break;
+        }
+        case Gleam::ViewMode::Roughness:
+        {
+            Texture2D<float> roughnessTexture = ResourceDescriptorHeap[uniforms.sourceTexture];
+            color = roughnessTexture.Sample(Sampler_Point_Clamp, IN.texCoord).xxx;
             break;
         }
         case Gleam::ViewMode::ShadowMask:

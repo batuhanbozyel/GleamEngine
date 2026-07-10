@@ -66,7 +66,6 @@ void depthPrepassMeshletShader(
         OUT.position = mul(camera.viewProjectionMatrix, worldPosition);
         OUT.color = float4(1.0f, 1.0f, 1.0f, 1.0f);
         OUT.uv = interleavedVert.texCoord;
-        OUT.normal = normalize(mul(instanceData.transform, float4(interleavedVert.normal, 0.0f)).xyz);
         outVertices[groupThreadID] = OUT;
     }
 
@@ -96,6 +95,5 @@ Gleam::DepthPrepassVertexOut depthPrepassVertexShader(uint vertexID : SV_VertexI
     OUT.position = mul(camera.viewProjectionMatrix, worldPosition);
 	OUT.color = float4(1.0f, 1.0f, 1.0f, 1.0f);
 	OUT.uv = interleavedVert.texCoord;
-	OUT.normal = normalize(mul(instanceData.transform, float4(interleavedVert.normal, 0.0f)).xyz);
 	return OUT;
 }

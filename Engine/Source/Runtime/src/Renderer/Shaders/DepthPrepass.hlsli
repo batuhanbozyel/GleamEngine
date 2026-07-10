@@ -12,9 +12,10 @@ namespace Gleam {
 struct DepthPrepassVertexOut
 {
     float4 position : SV_POSITION;
+#ifndef OPAQUE_DEPTH_PREPASS
     float4 color : ATTRIB0;
     float2 uv : ATTRIB1;
-    float3 normal : ATTRIB2;
+#endif // OPAQUE_DEPTH_PREPASS
 };
 
 } // namespace Gleam

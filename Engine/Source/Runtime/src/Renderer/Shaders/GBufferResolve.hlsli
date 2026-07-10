@@ -1,6 +1,8 @@
 #ifndef GBUFFER_RESOLVE_HLSL
 #define GBUFFER_RESOLVE_HLSL
 
+#define MOTION_VECTOR_PASS
+
 #include "Common.hlsli"
 #include "VisibilityBufferCommon.hlsli"
 
@@ -38,7 +40,7 @@ void main(uint dispatchThreadID : SV_DispatchThreadID)
     Gleam::SurfaceOutput surface = SurfMain(IN);
     surface.roughness = max(surface.roughness, 0.04);
     
-    float4 prevClip = mul(camera.prevViewProjectionMatrix, float4(prevWorldPosition, 1.0f));
+    float4 prevClip = mul(camera.prevViewProjectionMatrix, float4(IN.prevWorldPosition, 1.0f));
     float2 prevNdc = prevClip.xy / prevClip.w;
     float2 prevViewport = (prevNdc * float2(0.5f, -0.5f) + 0.5f) * camera.resolution;
     float2 motionVector = prevViewport - IN.position.xy;
