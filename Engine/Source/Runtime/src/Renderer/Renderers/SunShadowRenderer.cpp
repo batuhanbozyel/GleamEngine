@@ -238,6 +238,7 @@ void SunShadowRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboar
 		BufferDescriptor dispatchArgsDesc;
 		dispatchArgsDesc.name = "Shadow Ray Dispatch Args";
 		dispatchArgsDesc.size = sizeof(DispatchIndirectArguments);
+		dispatchArgsDesc.usage = BufferUsage::IndirectArgument;
 		passData.dispatchArgs = builder.WriteBuffer(builder.CreateBuffer(dispatchArgsDesc));
 
 		passData.tileCount = builder.ReadBuffer(classificationData.tileCount);

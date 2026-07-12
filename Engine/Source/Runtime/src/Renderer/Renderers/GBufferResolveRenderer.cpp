@@ -80,6 +80,7 @@ void GBufferResolveRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlac
 		constants.countsBuffer = passData.countsBuffer;
 		constants.motionVectorTarget = passData.gbuffer.motionVectorTarget;
 		constants.geometryNormalTarget = passData.gbuffer.geometryNormalTarget;
+		constants.shadingNormalTarget = passData.gbuffer.shadingNormalTarget;
 		constants.roughnessTarget = passData.gbuffer.roughnessTarget;
 
 		sceneData.sceneProxy->ForEach([this, cmd, &passData, &sceneData, &constants](const MeshBatch& batch)

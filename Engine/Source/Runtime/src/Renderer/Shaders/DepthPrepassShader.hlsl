@@ -1,5 +1,6 @@
 #include "DepthPrepass.hlsli"
 #include "MeshletCommon.hlsli"
+#include "VisibilityBufferCommon.hlsli"
 
 [shader("amplification")]
 [numthreads(MESH_AMPLIFICATION_THREADS, 1, 1)]
@@ -37,6 +38,7 @@ void depthPrepassMeshletShader(
     uint meshletLocalID : SV_GroupID,
     in payload MeshletPayload meshletPayload,
     out indices uint3 outTriangles[MAX_MESHLET_TRIANGLES],
+    out primitives Gleam::VisibilityPrimOut outPrims[MAX_MESHLET_TRIANGLES],
     out vertices Gleam::DepthPrepassVertexOut outVertices[MAX_MESHLET_VERTICES])
 {
     ByteAddressBuffer globalInstanceBuffer = ResourceDescriptorHeap[constants.instanceBuffer];
@@ -74,26 +76,13 @@ void depthPrepassMeshletShader(
         ByteAddressBuffer meshletTriangleBuffer = ResourceDescriptorHeap[instanceData.meshletTriangleBuffer];
         uint packedTriangle = meshletTriangleBuffer.Load((meshlet.triangleOffset + groupThreadID) * sizeof(uint));
         outTriangles[groupThreadID] = UnpackMeshletTriangles(packedTriangle);
+        outPrims[groupThreadID].visID = PackVisibilityID(instanceData.batchIndex, constants.instanceID, meshletID, groupThreadID);
     }
 }
 
-[shader("vertex")]
-Gleam::DepthPrepassVertexOut depthPrepassVertexShader(uint vertexID : SV_VertexID)
+[shader("pixel")]
+[earlydepthstencil]
+PackedVisibilityID opaqueDepthPrepassFragmentShader(Gleam::DepthPrepassVertexOut IN, Gleam::VisibilityPrimOut prim) : SV_Target0
 {
-	ByteAddressBuffer globalInstanceBuffer = ResourceDescriptorHeap[constants.instanceBuffer];
-	Gleam::MeshInstanceData instanceData = globalInstanceBuffer.Load<Gleam::MeshInstanceData>(constants.instanceID * sizeof(Gleam::MeshInstanceData));
-
-	ByteAddressBuffer positionBuffer = ResourceDescriptorHeap[instanceData.positionBuffer];
-    uint baseVertexID = vertexID + instanceData.baseVertex;
-	float3 position = positionBuffer.Load<float3>(baseVertexID * sizeof(float3));
-	float4 worldPosition = mul(instanceData.transform, float4(position, 1.0f));
-	
-	ByteAddressBuffer interleavedBuffer = ResourceDescriptorHeap[instanceData.interleavedBuffer];
-	Gleam::InterleavedMeshVertex interleavedVert = interleavedBuffer.Load<Gleam::InterleavedMeshVertex>(baseVertexID * sizeof(Gleam::InterleavedMeshVertex));
-
-    Gleam::DepthPrepassVertexOut OUT;
-    OUT.position = mul(camera.viewProjectionMatrix, worldPosition);
-	OUT.color = float4(1.0f, 1.0f, 1.0f, 1.0f);
-	OUT.uv = interleavedVert.texCoord;
-	return OUT;
+    return prim.visID;
 }

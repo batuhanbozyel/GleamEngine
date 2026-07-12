@@ -30,7 +30,6 @@ Gleam::MeshInstanceData LoadInstanceData(uint instanceID)
 	return instance;
 }
 
-#ifdef VISIBILITY_SHADING_PATH
 [shader("pixel")]
 PackedVisibilityID main(Gleam::DepthPrepassVertexOut IN, Gleam::VisibilityPrimOut prim) : SV_Target0
 {
@@ -46,20 +45,5 @@ PackedVisibilityID main(Gleam::DepthPrepassVertexOut IN, Gleam::VisibilityPrimOu
 
     return prim.visID;
 }
-#else
-[shader("pixel")]
-void main(Gleam::DepthPrepassVertexOut IN)
-{
-    Gleam::MeshInstanceData instance = LoadInstanceData(constants.instanceID);
-    Gleam::MeshVertexOut meshVertexOut = (Gleam::MeshVertexOut)0;
-    meshVertexOut.color = IN.color;
-    meshVertexOut.uv = IN.uv;
-    meshVertexOut.ddxUV = ddx(IN.uv);
-    meshVertexOut.ddyUV = ddy(IN.uv);
-
-    Gleam::SurfaceOutput surface = SurfMain(meshVertexOut);
-    clip(surface.albedo.a - surface.alphaCutoff);
-}
-#endif // VISIBILITY_SHADING_PATH
 
 #endif // DEPTH_PREPASS_HLSL

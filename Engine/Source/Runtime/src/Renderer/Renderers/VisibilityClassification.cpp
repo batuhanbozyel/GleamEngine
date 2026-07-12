@@ -115,6 +115,7 @@ void VisibilityClassificationRenderer::AddRenderPasses(RenderGraph& graph, Rende
 		BufferDescriptor dispatchArgsDesc;
 		dispatchArgsDesc.name = "Visibility Dispatch Args";
 		dispatchArgsDesc.size = numBatches * sizeof(DispatchIndirectArguments);
+		dispatchArgsDesc.usage = BufferUsage::IndirectArgument;
 		passData.dispatchArgsBuffer = builder.WriteBuffer(builder.CreateBuffer(dispatchArgsDesc));
 
 		passData.countsBuffer = builder.ReadBuffer(countData.countsBuffer);

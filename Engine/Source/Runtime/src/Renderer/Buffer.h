@@ -6,15 +6,24 @@ namespace Gleam {
 
 class GraphicsDevice;
 
+enum class BufferUsage
+{
+	Storage,
+	IndirectArgument
+};
+
 struct BufferDescriptor
 {
     TString name;
 	MemoryType memoryType = MemoryType::GPU;
     size_t size = 0;
-    
+	BufferUsage usage = BufferUsage::Storage;
+
     bool operator==(const BufferDescriptor& other) const
     {
-        return size == other.size;
+        return memoryType == other.memoryType
+			&& size == other.size
+			&& usage == other.usage;
     }
 };
 

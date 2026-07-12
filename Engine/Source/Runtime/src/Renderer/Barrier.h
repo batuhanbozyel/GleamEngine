@@ -28,6 +28,7 @@ enum class BarrierAccess
 	RenderTarget,
 	ShaderResource,
 	UnorderedAccess,
+	IndirectArgument,
 	DepthStencilRead,
 	DepthStencilWrite,
 	CopySource,

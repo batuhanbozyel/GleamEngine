@@ -28,9 +28,7 @@ public:
 private:
 
 	GraphicsDevice* mDevice = nullptr;
-	HashMap<uint32_t, GraphicsPipelineHandle> mGraphicsPipelines;
-	HashMap<uint32_t, MeshPipelineHandle> mMeshPipelines;
-	HashMap<uint32_t, MeshPipelineHandle> mMeshVisibilityPipelines;
+	HashMap<uint32_t, MeshPipelineHandle> mPipelines;
 
 };
 

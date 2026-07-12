@@ -246,6 +246,7 @@ void CommandBuffer::DrawIndexed(const Buffer& indexBuffer, IndexType type,
 
 void CommandBuffer::DrawIndirect(const Buffer& argsBuffer, size_t offset) const
 {
+	GLEAM_ASSERT(argsBuffer.GetDescriptor().usage == BufferUsage::IndirectArgument, "DrawIndirect: args buffer must be created with BufferUsage::IndirectArgument");
 	auto commandSignature = mHandle->device->GetDrawIndirectCommandSignature();
 	auto args = static_cast<ID3D12Resource*>(argsBuffer.GetHandle());
 	mHandle->commandList->ExecuteIndirect(commandSignature, 1, args, offset, nullptr, 0);
@@ -260,6 +261,7 @@ void CommandBuffer::DrawIndexedIndirect(const Buffer& indexBuffer, IndexType typ
 	indexBufferView.SizeInBytes = (UINT)indexBuffer.GetSize();
 	mHandle->commandList->IASetIndexBuffer(&indexBufferView);
 
+	GLEAM_ASSERT(argsBuffer.GetDescriptor().usage == BufferUsage::IndirectArgument, "DrawIndexedIndirect: args buffer must be created with BufferUsage::IndirectArgument");
 	auto commandSignature = mHandle->device->GetDrawIndexedIndirectCommandSignature();
 	auto args = static_cast<ID3D12Resource*>(argsBuffer.GetHandle());
 	mHandle->commandList->ExecuteIndirect(commandSignature, 1, args, offset, nullptr, 0);
@@ -267,6 +269,7 @@ void CommandBuffer::DrawIndexedIndirect(const Buffer& indexBuffer, IndexType typ
 
 void CommandBuffer::DispatchIndirect(const Buffer& argsBuffer, size_t offset) const
 {
+	GLEAM_ASSERT(argsBuffer.GetDescriptor().usage == BufferUsage::IndirectArgument, "DispatchIndirect: args buffer must be created with BufferUsage::IndirectArgument");
 	auto commandSignature = mHandle->device->GetDispatchIndirectCommandSignature();
 	auto args = static_cast<ID3D12Resource*>(argsBuffer.GetHandle());
 	mHandle->commandList->ExecuteIndirect(commandSignature, 1, args, offset, nullptr, 0);
@@ -274,6 +277,7 @@ void CommandBuffer::DispatchIndirect(const Buffer& argsBuffer, size_t offset) co
 
 void CommandBuffer::DispatchMeshIndirect(const Buffer& argsBuffer, size_t offset) const
 {
+	GLEAM_ASSERT(argsBuffer.GetDescriptor().usage == BufferUsage::IndirectArgument, "DispatchMeshIndirect: args buffer must be created with BufferUsage::IndirectArgument");
 	auto commandSignature = mHandle->device->GetDispatchMeshIndirectCommandSignature();
 	auto args = static_cast<ID3D12Resource*>(argsBuffer.GetHandle());
 	mHandle->commandList->ExecuteIndirect(commandSignature, 1, args, offset, nullptr, 0);
@@ -281,6 +285,7 @@ void CommandBuffer::DispatchMeshIndirect(const Buffer& argsBuffer, size_t offset
 
 void CommandBuffer::DispatchRaysIndirect(const Buffer& argsBuffer, size_t offset) const
 {
+	GLEAM_ASSERT(argsBuffer.GetDescriptor().usage == BufferUsage::IndirectArgument, "DispatchRaysIndirect: args buffer must be created with BufferUsage::IndirectArgument");
 	const auto& pipeline = static_cast<RayTracingPipelineHandle>(mHandle->pipeline).GetPipeline();
 	const auto& sbt = pipeline.GetShaderBindingTable();
 
@@ -301,9 +306,9 @@ void CommandBuffer::DispatchRaysIndirect(const Buffer& argsBuffer, size_t offset
 	size_t sbtSourceOffset = mConstantBuffer.Write(desc);
 
 	D3D12_BUFFER_BARRIER argsBarrier = {};
-	argsBarrier.SyncBefore = D3D12_BARRIER_SYNC_COMPUTE_SHADING;
+	argsBarrier.SyncBefore = D3D12_BARRIER_SYNC_EXECUTE_INDIRECT;
 	argsBarrier.SyncAfter = D3D12_BARRIER_SYNC_COPY;
-	argsBarrier.AccessBefore = D3D12_BARRIER_ACCESS_COMMON;
+	argsBarrier.AccessBefore = D3D12_BARRIER_ACCESS_INDIRECT_ARGUMENT;
 	argsBarrier.AccessAfter = D3D12_BARRIER_ACCESS_COPY_SOURCE;
 	argsBarrier.pResource = argsResource;
 	argsBarrier.Offset = 0;

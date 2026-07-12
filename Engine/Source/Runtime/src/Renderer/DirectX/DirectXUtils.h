@@ -440,6 +440,7 @@ static constexpr D3D12_BARRIER_ACCESS BarrierAccessToD3D12_BARRIER_ACCESS(Barrie
 		case BarrierAccess::RenderTarget: return D3D12_BARRIER_ACCESS_RENDER_TARGET;
 		case BarrierAccess::ShaderResource: return D3D12_BARRIER_ACCESS_SHADER_RESOURCE;
 		case BarrierAccess::UnorderedAccess: return D3D12_BARRIER_ACCESS_UNORDERED_ACCESS;
+		case BarrierAccess::IndirectArgument: return D3D12_BARRIER_ACCESS_INDIRECT_ARGUMENT;
 		case BarrierAccess::DepthStencilRead: return D3D12_BARRIER_ACCESS_DEPTH_STENCIL_WRITE; // HACK TO AVOID READONLY DSVs
 		case BarrierAccess::DepthStencilWrite: return D3D12_BARRIER_ACCESS_DEPTH_STENCIL_WRITE;
 		case BarrierAccess::CopySource: return D3D12_BARRIER_ACCESS_COPY_SOURCE;

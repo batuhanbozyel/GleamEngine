@@ -42,10 +42,7 @@ void RenderSystem::Initialize(Engine* engine)
 	InitializeBackend();
 	Configure(engine->GetConfiguration().renderer);
 
-	if (mDevice->GetFeatures().meshShaders == false)
-	{
-		mMeshShadingPath = MeshShadingPath::Forward;
-	}
+	GLEAM_ASSERT(mDevice->GetFeatures().meshShaders, "Mesh shaders is not supported");
 
 	RenderContext context = GetRenderContext();
 	{
@@ -284,11 +281,6 @@ void RenderSystem::SetRenderPath(RenderPath path)
 RenderPath RenderSystem::GetRenderPath() const
 {
 	return mRenderPath;
-}
-
-MeshShadingPath RenderSystem::GetMeshShadingPath() const
-{
-	return mMeshShadingPath;
 }
 
 GraphicsDevice* RenderSystem::GetDevice()
