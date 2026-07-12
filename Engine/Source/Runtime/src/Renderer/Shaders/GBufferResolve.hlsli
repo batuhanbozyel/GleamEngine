@@ -40,6 +40,9 @@ void main(uint dispatchThreadID : SV_DispatchThreadID)
     Gleam::SurfaceOutput surface = SurfMain(IN);
     surface.roughness = max(surface.roughness, 0.04);
     
+    float3x3 TBN = transpose(float3x3(IN.tangent, IN.bitangent, IN.normal));
+    float3 shadingNormal = mul(TBN, surface.normal);
+    
     float4 prevClip = mul(camera.prevViewProjectionMatrix, float4(IN.prevWorldPosition, 1.0f));
     float2 prevNdc = prevClip.xy / prevClip.w;
     float2 prevViewport = (prevNdc * float2(0.5f, -0.5f) + 0.5f) * camera.resolution;
@@ -52,7 +55,7 @@ void main(uint dispatchThreadID : SV_DispatchThreadID)
 
     motionVectorTarget[pixelCoords] = motionVector;
     geometryNormalTarget[pixelCoords] = OctEncode(normalize(IN.normal));
-    shadingNormalTarget[pixelCoords] = OctEncode(normalize(surface.normal));
+    shadingNormalTarget[pixelCoords] = OctEncode(normalize(shadingNormal));
     roughnessTarget[pixelCoords] = surface.roughness;
 }
 #endif // GBUFFER_RESOLVE_HLSL
