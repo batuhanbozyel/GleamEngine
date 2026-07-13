@@ -79,11 +79,11 @@ void WorldRenderer::AddVisibilityPass(RenderGraph& graph, RenderGraphBlackboard&
 		}
 
 		VisibilityShadingConstants constants = {};
-		constants.instanceBuffer = sceneData.sceneProxy->GetGlobalInstanceBuffer().GetResourceView();
-		constants.visibilityBuffer = passData.visibilityBuffer;
-		constants.pixelListBuffer = passData.pixelListBuffer;
-		constants.offsetsBuffer = passData.offsetsBuffer;
-		constants.countsBuffer = passData.countsBuffer;
+		constants.resolve.instanceBuffer = sceneData.sceneProxy->GetGlobalInstanceBuffer().GetResourceView();
+		constants.resolve.visibilityBuffer = passData.visibilityBuffer;
+		constants.resolve.pixelListBuffer = passData.pixelListBuffer;
+		constants.resolve.offsetsBuffer = passData.offsetsBuffer;
+		constants.resolve.countsBuffer = passData.countsBuffer;
 		constants.colorTarget = passData.world.colorTarget;
 		constants.brdfTexture = passData.world.brdfLut;
 		constants.ggxEssTexture = passData.world.ggxEssLut;
@@ -99,7 +99,7 @@ void WorldRenderer::AddVisibilityPass(RenderGraph& graph, RenderGraphBlackboard&
 				return;
 			}
 
-			constants.batchIndex = batch.batchIndex;
+			constants.resolve.batchIndex = batch.batchIndex;
 
 			cmd->BindComputePipeline(mVisibilityShadingPipelines[batch.material->GetPipelineHash()]);
 			cmd->SetPushConstant(constants);

@@ -73,11 +73,11 @@ void GBufferResolveRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlac
 	[this, &sceneData](const CommandBuffer* cmd, const GBufferResolvePassData& passData)
 	{
 		GBufferResolveConstants constants = {};
-		constants.instanceBuffer = sceneData.sceneProxy->GetGlobalInstanceBuffer().GetResourceView();
-		constants.visibilityBuffer = passData.visibilityBuffer;
-		constants.pixelListBuffer = passData.pixelListBuffer;
-		constants.offsetsBuffer = passData.offsetsBuffer;
-		constants.countsBuffer = passData.countsBuffer;
+		constants.resolve.instanceBuffer = sceneData.sceneProxy->GetGlobalInstanceBuffer().GetResourceView();
+		constants.resolve.visibilityBuffer = passData.visibilityBuffer;
+		constants.resolve.pixelListBuffer = passData.pixelListBuffer;
+		constants.resolve.offsetsBuffer = passData.offsetsBuffer;
+		constants.resolve.countsBuffer = passData.countsBuffer;
 		constants.motionVectorTarget = passData.gbuffer.motionVectorTarget;
 		constants.geometryNormalTarget = passData.gbuffer.geometryNormalTarget;
 		constants.shadingNormalTarget = passData.gbuffer.shadingNormalTarget;
@@ -90,7 +90,7 @@ void GBufferResolveRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlac
 				return;
 			}
 
-			constants.batchIndex = batch.batchIndex;
+			constants.resolve.batchIndex = batch.batchIndex;
 
 			cmd->BindComputePipeline(mResolvePipelines[batch.material->GetPipelineHash()]);
 			cmd->SetPushConstant(constants);

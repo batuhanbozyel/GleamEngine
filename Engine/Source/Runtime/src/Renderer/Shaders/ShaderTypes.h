@@ -179,7 +179,7 @@ struct VisibilityAllocateConstants
 	float pad2;
 };
 
-struct VisibilityShadingConstants
+struct VisibilityResolveConstants
 {
 	ShaderResourceIndex instanceBuffer;
 	ShaderResourceIndex visibilityBuffer;
@@ -187,32 +187,29 @@ struct VisibilityShadingConstants
 	ShaderResourceIndex offsetsBuffer;
 
 	ShaderResourceIndex countsBuffer;
+	uint32_t batchIndex;
+	uint32_t pad0;
+	uint32_t pad1;
+};
+
+struct VisibilityShadingConstants
+{
+	VisibilityResolveConstants resolve;
+
 	UnorderedAccessIndex colorTarget;
 	ShaderResourceIndex brdfTexture;
 	ShaderResourceIndex ggxEssTexture;
-
 	ShaderResourceIndex ggxEAvgTexture;
+
 	ShaderResourceIndex diffuseReflectionTexture;
 	ShaderResourceIndex specularReflectionTexture;
 	ShaderResourceIndex shadowTexture;
-
-	uint32_t batchIndex;
-	float pad0;
-	float pad1;
-	float pad2;
+	uint32_t pad0;
 };
 
 struct GBufferResolveConstants
 {
-	ShaderResourceIndex instanceBuffer;
-	ShaderResourceIndex visibilityBuffer;
-	ShaderResourceIndex pixelListBuffer;
-	ShaderResourceIndex offsetsBuffer;
-
-	ShaderResourceIndex countsBuffer;
-	uint32_t batchIndex;
-	float pad0;
-	float pad1;
+	VisibilityResolveConstants resolve;
 
 	UnorderedAccessIndex motionVectorTarget;
 	UnorderedAccessIndex geometryNormalTarget;

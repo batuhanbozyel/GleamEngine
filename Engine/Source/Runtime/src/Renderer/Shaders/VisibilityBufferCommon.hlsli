@@ -223,4 +223,40 @@ Gleam::MeshVertexOut InterpolateVertexAttributes(Gleam::MeshInstanceData instanc
     return OUT;
 }
 
+bool UnpackVisibilityShading(Gleam::VisibilityResolveConstants constants, uint threadID,
+    out Gleam::MeshVertexOut vertex, out Gleam::SurfaceOutput surface, out uint2 pixelCoords)
+{
+    vertex = (Gleam::MeshVertexOut)0;
+    surface = (Gleam::SurfaceOutput)0;
+    pixelCoords = uint2(0u, 0u);
+
+    ByteAddressBuffer countsBuffer = ResourceDescriptorHeap[constants.countsBuffer];
+    uint pixelCount = countsBuffer.Load(constants.batchIndex * sizeof(uint));
+    if (threadID >= pixelCount)
+    {
+        return false;
+    }
+
+    ByteAddressBuffer offsetsBuffer = ResourceDescriptorHeap[constants.offsetsBuffer];
+    uint offset = offsetsBuffer.Load(constants.batchIndex * sizeof(uint));
+
+    ByteAddressBuffer pixelListBuffer = ResourceDescriptorHeap[constants.pixelListBuffer];
+    uint packedPixel = pixelListBuffer.Load((offset + threadID) * sizeof(uint));
+    pixelCoords = uint2(packedPixel & 0xFFFFu, packedPixel >> 16u);
+
+    Texture2D<PackedVisibilityID> visibilityBuffer = ResourceDescriptorHeap[constants.visibilityBuffer];
+    Gleam::VisibilityID visID = UnpackVisibilityID(visibilityBuffer.Load(int3(pixelCoords, 0)));
+
+    ByteAddressBuffer instanceBuffer = ResourceDescriptorHeap[constants.instanceBuffer];
+    Gleam::MeshInstanceData instance = instanceBuffer.Load<Gleam::MeshInstanceData>(visID.instanceID * sizeof(Gleam::MeshInstanceData));
+
+    ByteAddressBuffer materialBuffer = ResourceDescriptorHeap[instance.materialBuffer];
+    LoadMaterialInstance(materialBuffer, instance.materialID);
+
+    vertex = InterpolateVertexAttributes(instance, visID, pixelCoords);
+    surface = SurfMain(vertex);
+    surface.roughness = max(surface.roughness, 0.04);
+    return true;
+}
+
 #endif // VISIBILITY_BUFFER_COMMON_HLSLI
