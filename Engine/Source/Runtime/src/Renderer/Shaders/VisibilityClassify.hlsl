@@ -19,25 +19,11 @@ void visibilityCountShader(uint3 dispatchThreadID : SV_DispatchThreadID)
     {
         return;
     }
-    uint batchIndex = UnpackVisibilityBatchIndex(packedID);
-
     RWByteAddressBuffer countsBuffer = ResourceDescriptorHeap[constants.countsBuffer];
-    
-    bool pending = true;
-    while (pending)
-    {
-        uint uniformBatch = WaveReadLaneFirst(batchIndex);
-        if (batchIndex == uniformBatch)
-        {
-            uint waveTotal = WaveActiveCountBits(true);
-            if (WaveIsFirstLane())
-            {
-                uint original;
-                countsBuffer.InterlockedAdd(uniformBatch * sizeof(uint), waveTotal, original);
-            }
-            pending = false;
-        }
-    }
+
+    uint original;
+    uint batchIndex = UnpackVisibilityBatchIndex(packedID);
+    countsBuffer.InterlockedAdd(batchIndex * sizeof(uint), 1u, original);
 }
 
 [shader("compute")]
@@ -56,28 +42,12 @@ void visibilityScatterShader(uint3 dispatchThreadID : SV_DispatchThreadID)
     {
         return;
     }
-    uint batchIndex = UnpackVisibilityBatchIndex(packedID);
 
     RWByteAddressBuffer cursorsBuffer = ResourceDescriptorHeap[constants.cursorsBuffer];
     RWByteAddressBuffer pixelListBuffer = ResourceDescriptorHeap[constants.pixelListBuffer];
-    
-    bool pending = true;
-    while (pending)
-    {
-        uint uniformBatch = WaveReadLaneFirst(batchIndex);
-        if (batchIndex == uniformBatch)
-        {
-            uint laneOffset = WavePrefixCountBits(true);
-            uint waveTotal = WaveActiveCountBits(true);
-            uint waveBase = 0u;
-            if (laneOffset == 0u)
-            {
-                cursorsBuffer.InterlockedAdd(uniformBatch * sizeof(uint), waveTotal, waveBase);
-            }
-            waveBase = WaveReadLaneFirst(waveBase);
 
-            pixelListBuffer.Store((waveBase + laneOffset) * sizeof(uint), (pixelCoord.y << 16u) | pixelCoord.x);
-            pending = false;
-        }
-    }
+    uint slot;
+    uint batchIndex = UnpackVisibilityBatchIndex(packedID);
+    cursorsBuffer.InterlockedAdd(batchIndex * sizeof(uint), 1u, slot);
+    pixelListBuffer.Store(slot * sizeof(uint), (pixelCoord.y << 16u) | pixelCoord.x);
 }

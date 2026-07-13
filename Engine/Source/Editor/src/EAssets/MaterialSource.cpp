@@ -23,68 +23,6 @@ bool MaterialSource::Import(const Gleam::Path& path, const ImportSettings& setti
     Gleam::MaterialDescriptor descriptor;
     descriptor.name = path.Stem();
     
-    Gleam::TStringStream generatedShader;
-    if (document.HasMember("Properties") && document["Properties"].IsArray())
-    {
-        generatedShader << "\n\nstruct MaterialProperties\n{\n";
-        for (const auto& property : document["Properties"].GetArray())
-        {
-            for (auto it = property.MemberBegin(); it != property.MemberEnd(); ++it)
-            {
-                Gleam::TString propertyName = it->name.GetString();
-                Gleam::TString propertyType = it->value.GetString();
-
-                if (propertyType == "Float")
-                {
-                    generatedShader << "\tfloat " << propertyName << ";\n";
-                    descriptor.properties.emplace_back(Gleam::MaterialProperty{
-                        .name = propertyName,
-                        .type = Gleam::MaterialPropertyType::Scalar,
-						.value = 0.0f });
-                }
-                else if (propertyType == "Float2")
-                {
-                    generatedShader << "\tfloat2 " << propertyName << ";\n";
-                    descriptor.properties.emplace_back(Gleam::MaterialProperty{
-                        .name = propertyName,
-                        .type = Gleam::MaterialPropertyType::Float2,
-						.value = Gleam::Float2() });
-                }
-                else if (propertyType == "Float3")
-                {
-                    generatedShader << "\tfloat3 " << propertyName << ";\n";
-                    descriptor.properties.emplace_back(Gleam::MaterialProperty{
-                        .name = propertyName,
-                        .type = Gleam::MaterialPropertyType::Float3,
-						.value = Gleam::Float3() });
-                }
-                else if (propertyType == "Float4")
-                {
-                    generatedShader << "\tfloat4 " << propertyName << ";\n";
-                    descriptor.properties.emplace_back(Gleam::MaterialProperty{
-                        .name = propertyName,
-                        .type = Gleam::MaterialPropertyType::Float4,
-						.value = Gleam::Float4() });
-                }
-                else if (propertyType == "Texture2D")
-                {
-                    generatedShader << "\tGleam::Texture2DResourceView<float4> " << propertyName << ";\n";
-                    descriptor.properties.emplace_back(Gleam::MaterialProperty{
-                        .name = propertyName,
-                        .type = Gleam::MaterialPropertyType::Texture2D,
-						.value = Gleam::AssetReference{} });
-                }
-            }
-        }
-        generatedShader << "};\n\n";
-        generatedShader << "static MaterialProperties Material;\n";
-        generatedShader << "void LoadMaterialInstance(ByteAddressBuffer materialBuffer, uint materialID) { Material = materialBuffer.Load<MaterialProperties>(materialID * sizeof(MaterialProperties)); }\n\n";
-    }
-    else
-    {
-        generatedShader << "void LoadMaterialInstance(ByteAddressBuffer materialBuffer, uint materialID) {}\n\n";
-    }
-    
 	if (document.HasMember("AlphaMode"))
 	{
 		Gleam::TString value = document["AlphaMode"].GetString();
@@ -104,6 +42,68 @@ bool MaterialSource::Import(const Gleam::Path& path, const ImportSettings& setti
 
 	if (document.HasMember("SurfaceShader"))
 	{
+		Gleam::TStringStream generatedShader;
+		if (document.HasMember("Properties") && document["Properties"].IsArray())
+		{
+			generatedShader << "\n\nstruct MaterialProperties\n{\n";
+			for (const auto& property : document["Properties"].GetArray())
+			{
+				for (auto it = property.MemberBegin(); it != property.MemberEnd(); ++it)
+				{
+					Gleam::TString propertyName = it->name.GetString();
+					Gleam::TString propertyType = it->value.GetString();
+
+					if (propertyType == "Float")
+					{
+						generatedShader << "\tfloat " << propertyName << ";\n";
+						descriptor.properties.emplace_back(Gleam::MaterialProperty{
+							.name = propertyName,
+							.type = Gleam::MaterialPropertyType::Scalar,
+							.value = 0.0f });
+					}
+					else if (propertyType == "Float2")
+					{
+						generatedShader << "\tfloat2 " << propertyName << ";\n";
+						descriptor.properties.emplace_back(Gleam::MaterialProperty{
+							.name = propertyName,
+							.type = Gleam::MaterialPropertyType::Float2,
+							.value = Gleam::Float2() });
+					}
+					else if (propertyType == "Float3")
+					{
+						generatedShader << "\tfloat3 " << propertyName << ";\n";
+						descriptor.properties.emplace_back(Gleam::MaterialProperty{
+							.name = propertyName,
+							.type = Gleam::MaterialPropertyType::Float3,
+							.value = Gleam::Float3() });
+					}
+					else if (propertyType == "Float4")
+					{
+						generatedShader << "\tfloat4 " << propertyName << ";\n";
+						descriptor.properties.emplace_back(Gleam::MaterialProperty{
+							.name = propertyName,
+							.type = Gleam::MaterialPropertyType::Float4,
+							.value = Gleam::Float4() });
+					}
+					else if (propertyType == "Texture2D")
+					{
+						generatedShader << "\tGleam::Texture2DResourceView<float4> " << propertyName << ";\n";
+						descriptor.properties.emplace_back(Gleam::MaterialProperty{
+							.name = propertyName,
+							.type = Gleam::MaterialPropertyType::Texture2D,
+							.value = Gleam::AssetReference{} });
+					}
+				}
+			}
+			generatedShader << "};\n\n";
+			generatedShader << "static MaterialProperties Material;\n";
+			generatedShader << "void LoadMaterialInstance(ByteAddressBuffer materialBuffer, uint materialID) { Material = materialBuffer.Load<MaterialProperties>(materialID * sizeof(MaterialProperties)); }\n\n";
+		}
+		else
+		{
+			generatedShader << "void LoadMaterialInstance(ByteAddressBuffer materialBuffer, uint materialID) {}\n\n";
+		}
+
 		auto shaderPath = path;
 		shaderPath.RemoveFilename();
 		shaderPath /= document["SurfaceShader"].GetString();
@@ -143,186 +143,82 @@ bool MaterialSource::Import(const Gleam::Path& path, const ImportSettings& setti
 			}
 
 			// Depth prepass
+			if (CompileShaderVariant(generatedPath, descriptor.surfaceShader, {
+					.name = "DepthPrepass",
+					.entryPoint = "main",
+					.defines = {},
+					.includes = { "DepthPrepass.hlsli" }
+				}) == false)
 			{
-				Gleam::Path dxilShader = Gleam::Globals::BuiltinAssetsDirectory / "Shaders" / (descriptor.surfaceShader + "DepthPrepass");
-				dxilShader.Concat(".dxil");
-				if (Gleam::Filesystem::Exists(dxilShader))
-				{
-					Gleam::Filesystem::Remove(dxilShader);
-				}
-
-				Gleam::TStringStream cmd;
-				cmd << PYTHON_INTERPRETER << " ";
-				cmd << Gleam::Globals::StartupDirectory / "Tools/CompileShaders.py";
-				cmd << " -f " << generatedPath;
-				cmd << " -i " << "DepthPrepass.hlsli";
-				cmd << " --entry main=" << descriptor.surfaceShader << "DepthPrepass";
-			#ifdef GDEBUG
-				cmd << " --debug";
-			#endif
-
-				if (ExecuteCommand(cmd.str()) != 0)
-				{
-					Gleam::Filesystem::Remove(generatedPath);
-					return false;
-				}
+				return false;
 			}
 
 			// Raster shading
+			if (CompileShaderVariant(generatedPath, descriptor.surfaceShader, {
+					.name = "Shading",
+					.entryPoint = "main",
+					.defines = {},
+					.includes = { "MeshShading.hlsli" }
+				}) == false)
 			{
-				Gleam::Path dxilShader = Gleam::Globals::BuiltinAssetsDirectory / "Shaders" / (descriptor.surfaceShader + "Shading");
-				dxilShader.Concat(".dxil");
-				if (Gleam::Filesystem::Exists(dxilShader))
-				{
-					Gleam::Filesystem::Remove(dxilShader);
-				}
-
-				Gleam::TStringStream cmd;
-				cmd << PYTHON_INTERPRETER << " ";
-				cmd << Gleam::Globals::StartupDirectory / "Tools/CompileShaders.py";
-				cmd << " -f " << generatedPath;
-				cmd << " -i " << "MeshShading.hlsli";
-				cmd << " --entry main=" << descriptor.surfaceShader << "Shading";
-			#ifdef GDEBUG
-				cmd << " --debug";
-			#endif
-
-				if (ExecuteCommand(cmd.str()) != 0)
-				{
-					Gleam::Filesystem::Remove(generatedPath);
-					return false;
-				}
+				return false;
 			}
 
 			// Closest hit
+			if (CompileShaderVariant(generatedPath, descriptor.surfaceShader, {
+					.name = "ClosestHit",
+					.entryPoint = "ClosestHit",
+					.defines = {},
+					.includes = { "PathTraceShading.hlsli" }
+				}) == false)
 			{
-				Gleam::Path dxilShader = Gleam::Globals::BuiltinAssetsDirectory / "Shaders" / (descriptor.surfaceShader + "ClosestHit");
-				dxilShader.Concat(".dxil");
-				if (Gleam::Filesystem::Exists(dxilShader))
-				{
-					Gleam::Filesystem::Remove(dxilShader);
-				}
-
-				Gleam::TStringStream cmd;
-				cmd << PYTHON_INTERPRETER << " ";
-				cmd << Gleam::Globals::StartupDirectory / "Tools/CompileShaders.py";
-				cmd << " -f " << generatedPath;
-				cmd << " -i " << "PathTraceShading.hlsli";
-				cmd << " --entry ClosestHit=" << descriptor.surfaceShader << "ClosestHit";
-			#ifdef GDEBUG
-				cmd << " --debug";
-			#endif
-
-				if (ExecuteCommand(cmd.str()) != 0)
-				{
-					Gleam::Filesystem::Remove(generatedPath);
-					return false;
-				}
+				return false;
 			}
 
 			// Any hit
+			if (CompileShaderVariant(generatedPath, descriptor.surfaceShader, {
+					.name = "AnyHit",
+					.entryPoint = "AnyHit",
+					.defines = {},
+					.includes = { "PathTraceShading.hlsli" }
+				}) == false)
 			{
-				Gleam::Path dxilShader = Gleam::Globals::BuiltinAssetsDirectory / "Shaders" / (descriptor.surfaceShader + "AnyHit");
-				dxilShader.Concat(".dxil");
-				if (Gleam::Filesystem::Exists(dxilShader))
-				{
-					Gleam::Filesystem::Remove(dxilShader);
-				}
-
-				Gleam::TStringStream cmd;
-				cmd << PYTHON_INTERPRETER << " ";
-				cmd << Gleam::Globals::StartupDirectory / "Tools/CompileShaders.py";
-				cmd << " -f " << generatedPath;
-				cmd << " -i " << "PathTraceShading.hlsli";
-				cmd << " --entry AnyHit=" << descriptor.surfaceShader << "AnyHit";
-			#ifdef GDEBUG
-				cmd << " --debug";
-			#endif
-
-				if (ExecuteCommand(cmd.str()) != 0)
-				{
-					Gleam::Filesystem::Remove(generatedPath);
-					return false;
-				}
+				return false;
 			}
 
 			// Shadow any hit
+			if (CompileShaderVariant(generatedPath, descriptor.surfaceShader, {
+					.name = "ShadowAnyHit",
+					.entryPoint = "ShadowAnyHit",
+					.defines = {},
+					.includes = { "PathTraceShading.hlsli" }
+				}) == false)
 			{
-				Gleam::Path dxilShader = Gleam::Globals::BuiltinAssetsDirectory / "Shaders" / (descriptor.surfaceShader + "ShadowAnyHit");
-				dxilShader.Concat(".dxil");
-				if (Gleam::Filesystem::Exists(dxilShader))
-				{
-					Gleam::Filesystem::Remove(dxilShader);
-				}
-
-				Gleam::TStringStream cmd;
-				cmd << PYTHON_INTERPRETER << " ";
-				cmd << Gleam::Globals::StartupDirectory / "Tools/CompileShaders.py";
-				cmd << " -f " << generatedPath;
-				cmd << " -i " << "PathTraceShading.hlsli";
-				cmd << " --entry ShadowAnyHit=" << descriptor.surfaceShader << "ShadowAnyHit";
-			#ifdef GDEBUG
-				cmd << " --debug";
-			#endif
-
-				if (ExecuteCommand(cmd.str()) != 0)
-				{
-					Gleam::Filesystem::Remove(generatedPath);
-					return false;
-				}
+				return false;
 			}
 
 			// Visibility shading
+			if (CompileShaderVariant(generatedPath, descriptor.surfaceShader, {
+					.name = "VisibilityShading",
+					.entryPoint = "main",
+					.defines = {},
+					.includes = { "VisibilityShading.hlsli" }
+				}) == false)
 			{
-				Gleam::Path dxilShader = Gleam::Globals::BuiltinAssetsDirectory / "Shaders" / (descriptor.surfaceShader + "VisibilityShading");
-				dxilShader.Concat(".dxil");
-				if (Gleam::Filesystem::Exists(dxilShader))
-				{
-					Gleam::Filesystem::Remove(dxilShader);
-				}
-
-				Gleam::TStringStream cmd;
-				cmd << PYTHON_INTERPRETER << " ";
-				cmd << Gleam::Globals::StartupDirectory / "Tools/CompileShaders.py";
-				cmd << " -f " << generatedPath;
-				cmd << " -i " << "VisibilityShading.hlsli";
-				cmd << " --entry main=" << descriptor.surfaceShader << "VisibilityShading";
-			#ifdef GDEBUG
-				cmd << " --debug";
-			#endif
-
-				if (ExecuteCommand(cmd.str()) != 0)
-				{
-					Gleam::Filesystem::Remove(generatedPath);
-					return false;
-				}
+				return false;
 			}
 
 			// GBuffer resolve
+			if (CompileShaderVariant(generatedPath, descriptor.surfaceShader, {
+					.name = "GBufferResolve",
+					.entryPoint = "main",
+					.defines = {},
+					.includes = { "GBufferResolve.hlsli" }
+				}) == false)
 			{
-				Gleam::Path dxilShader = Gleam::Globals::BuiltinAssetsDirectory / "Shaders" / (descriptor.surfaceShader + "GBufferResolve");
-				dxilShader.Concat(".dxil");
-				if (Gleam::Filesystem::Exists(dxilShader))
-				{
-					Gleam::Filesystem::Remove(dxilShader);
-				}
-
-				Gleam::TStringStream cmd;
-				cmd << PYTHON_INTERPRETER << " ";
-				cmd << Gleam::Globals::StartupDirectory / "Tools/CompileShaders.py";
-				cmd << " -f " << generatedPath;
-				cmd << " -i " << "GBufferResolve.hlsli";
-				cmd << " --entry main=" << descriptor.surfaceShader << "GBufferResolve";
-			#ifdef GDEBUG
-				cmd << " --debug";
-			#endif
-
-				if (ExecuteCommand(cmd.str()) != 0)
-				{
-					Gleam::Filesystem::Remove(generatedPath);
-					return false;
-				}
+				return false;
 			}
+
 			Gleam::Filesystem::Remove(generatedPath);
 		}
 	}
@@ -346,4 +242,41 @@ bool MaterialSource::Import(const Gleam::Path& path, const ImportSettings& setti
 
     EmplaceBaker<MaterialBaker>(descriptor);
     return true;
+}
+
+bool MaterialSource::CompileShaderVariant(const Gleam::Path& path, const Gleam::TString& surfaceShader, const MaterialShaderVariant& variant)
+{
+	Gleam::Path dxilShader = Gleam::Globals::BuiltinAssetsDirectory / "Shaders" / (surfaceShader + variant.name);
+	dxilShader.Concat(".dxil");
+	if (Gleam::Filesystem::Exists(dxilShader))
+	{
+		Gleam::Filesystem::Remove(dxilShader);
+	}
+
+	Gleam::TStringStream cmd;
+	cmd << PYTHON_INTERPRETER << " ";
+	cmd << Gleam::Globals::StartupDirectory / "Tools/CompileShaders.py";
+	cmd << " -f " << path;
+
+	for (auto define : variant.defines)
+	{
+		cmd << " -D " << define;
+	}
+
+	for (auto include : variant.includes)
+	{
+		cmd << " -i " << include;
+	}
+
+	cmd << " --entry " << variant.entryPoint << "=" << surfaceShader << variant.name;
+#ifdef GDEBUG
+	cmd << " --debug";
+#endif
+
+	if (ExecuteCommand(cmd.str()) != 0)
+	{
+		Gleam::Filesystem::Remove(path);
+		return false;
+	}
+	return true;
 }

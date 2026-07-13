@@ -155,7 +155,11 @@ struct Texture2DResourceView : TextureResourceView
 #ifdef __HLSL_VERSION
 	T Load(uint3 pos)
 	{
+	#ifdef SHADER_TARGET_PIXEL
 		Texture2D<T> texture = ResourceDescriptorHeap[index];
+	#else
+		Texture2D<T> texture = ResourceDescriptorHeap[NonUniformResourceIndex(index)];
+	#endif
 		return texture.Load(pos);
 	}
 

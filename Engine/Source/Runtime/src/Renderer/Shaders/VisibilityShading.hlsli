@@ -10,23 +10,22 @@ PUSH_CONSTANT(Gleam::VisibilityShadingConstants, constants);
 [numthreads(VISIBILITY_RESOLVE_GROUP_SIZE, 1, 1)]
 void main(uint dispatchThreadID : SV_DispatchThreadID)
 {
-    uint2 pixel;
+    uint2 pixelCoords;
     Gleam::MeshVertexOut IN;
     Gleam::SurfaceOutput surface;
-    if (!UnpackVisibilityShading(constants.resolve, dispatchThreadID, IN, surface, pixel))
+    
+    [branch]
+    if (UnpackVisibilityShading(constants.resolve, dispatchThreadID, IN, surface, pixelCoords))
     {
-        return;
-    }
+        float3 viewDir = normalize(camera.position - IN.worldPosition);
+        float3x3 TBN = transpose(float3x3(IN.tangent, IN.bitangent, IN.normal));
+        float3 worldNormal = normalize(mul(TBN, surface.normal));
 
-    float3 viewDir = normalize(camera.position - IN.worldPosition);
-    float3x3 TBN = transpose(float3x3(IN.tangent, IN.bitangent, IN.normal));
-    float3 worldNormal = normalize(mul(TBN, surface.normal));
-
-    float3 color = EvaluateMeshLighting(surface,
+        float3 color = EvaluateMeshLighting(surface,
                                         IN.worldPosition,
                                         worldNormal,
                                         viewDir,
-                                        pixel,
+                                        pixelCoords,
                                         constants.brdfTexture,
                                         constants.ggxEssTexture,
                                         constants.ggxEAvgTexture,
@@ -34,7 +33,8 @@ void main(uint dispatchThreadID : SV_DispatchThreadID)
                                         constants.specularReflectionTexture,
                                         constants.shadowTexture);
 
-    RWTexture2D<float4> colorTarget = ResourceDescriptorHeap[constants.colorTarget];
-    colorTarget[pixel] = float4(color, surface.albedo.a);
+        RWTexture2D<float4> colorTarget = ResourceDescriptorHeap[constants.colorTarget];
+        colorTarget[pixelCoords] = float4(color, surface.albedo.a);
+    }
 }
 #endif // VISIBILITY_SHADING_HLSL
