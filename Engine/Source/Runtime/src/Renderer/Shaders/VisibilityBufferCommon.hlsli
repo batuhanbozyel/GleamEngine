@@ -15,7 +15,7 @@ namespace Gleam {
 
 struct VisibilityPrimOut
 {
-    nointerpolation PackedVisibilityID visID : ATTRIB4;
+    nointerpolation PackedVisibilityID visID : ATTRIB2;
 };
 
 struct VisibilityID

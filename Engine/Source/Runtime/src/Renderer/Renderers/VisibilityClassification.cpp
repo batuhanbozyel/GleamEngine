@@ -85,7 +85,7 @@ void VisibilityClassificationRenderer::AddRenderPasses(RenderGraph& graph, Rende
 		cmd->BindComputePipeline(mCountPipeline);
 		cmd->SetPushConstant(constants);
 		cmd->SetConstantBuffer(sceneData.camera.uniforms, CAMERA_UNIFORMS_BINDING_SLOT);
-		cmd->Dispatch(Math::DivideRoundingUp(width, 8u), Math::DivideRoundingUp(height, 8u), 1);
+		cmd->Dispatch(Math::DivideRoundingUp(width, VISIBILITY_CLASSIFY_GROUP_SIZE_X), Math::DivideRoundingUp(height, VISIBILITY_CLASSIFY_GROUP_SIZE_Y), 1);
 	});
 
 	// ----------------------------------------------------------------
@@ -165,7 +165,7 @@ void VisibilityClassificationRenderer::AddRenderPasses(RenderGraph& graph, Rende
 		cmd->BindComputePipeline(mScatterPipeline);
 		cmd->SetPushConstant(constants);
 		cmd->SetConstantBuffer(sceneData.camera.uniforms, CAMERA_UNIFORMS_BINDING_SLOT);
-		cmd->Dispatch(Math::DivideRoundingUp(width, 8u), Math::DivideRoundingUp(height, 8u), 1);
+		cmd->Dispatch(Math::DivideRoundingUp(width, VISIBILITY_CLASSIFY_GROUP_SIZE_X), Math::DivideRoundingUp(height, VISIBILITY_CLASSIFY_GROUP_SIZE_Y), 1);
 	});
 
 	VisibilityClassificationData visibilityClassificationData;

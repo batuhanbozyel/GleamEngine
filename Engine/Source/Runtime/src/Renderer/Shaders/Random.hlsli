@@ -183,4 +183,9 @@ float2 SobolRand2(inout SobolSeed seed)
     return float2(SobolRand(seed), SobolRand(seed));
 }
 
+uint KnuthHash(uint index, uint bits)
+{
+    return (index * 2654435769u) >> (32u - bits);
+}
+
 #endif // RANDOM_HLSL
