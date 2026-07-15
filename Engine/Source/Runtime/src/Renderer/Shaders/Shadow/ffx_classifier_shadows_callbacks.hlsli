@@ -22,7 +22,7 @@ FfxFloat32x3 LightDir()
 
 FfxUInt32 TileTolerance()
 {
-    return constants.tileTolerance;
+    return 0u;
 }
 
 FfxFloat32 FfxClassifierSampleDepth(FfxUInt32x2 pixelCoord)
@@ -52,10 +52,9 @@ void FfxClassifierStoreTile(FfxUInt32x4 tile)
     tileBuffer.Store4(index * sizeof(uint4), tile);
 }
 
+// No-op: light mask pre-seeding is only meaningful in classifier mode 1 (cascade blocking)
 void FfxClassifierStoreLightMask(FfxUInt32x2 tileCoord, FfxUInt32 lightMask)
 {
-    RWTexture2D<uint> rayHitTexture = ResourceDescriptorHeap[constants.rayHitTexture];
-    rayHitTexture[tileCoord] = ~lightMask;
 }
 
 FfxFloat32 SkyHeight()

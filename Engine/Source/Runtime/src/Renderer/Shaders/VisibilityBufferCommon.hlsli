@@ -188,9 +188,9 @@ void InterpolateUV(Gleam::BarycentricDeriv deriv, float2 uv0, float2 uv1, float2
 Gleam::MeshVertexOut InterpolateVertexAttributes(Gleam::MeshInstanceData instance, Gleam::VisibilityID visID, uint2 pixelCoords)
 {
     Gleam::VertexAttributes attribs = LoadVertexAttributes(instance, visID.meshletID, visID.triangleID);
-    float3 worldPos0 = mul(instance.transform, attribs.positions[0]).xyz;
-    float3 worldPos1 = mul(instance.transform, attribs.positions[1]).xyz;
-    float3 worldPos2 = mul(instance.transform, attribs.positions[2]).xyz;
+    float3 worldPos0 = mul(instance.transform, float4(attribs.positions[0], 1.0)).xyz;
+    float3 worldPos1 = mul(instance.transform, float4(attribs.positions[1], 1.0)).xyz;
+    float3 worldPos2 = mul(instance.transform, float4(attribs.positions[2], 1.0)).xyz;
 
     float4 clipPos0 = mul(camera.viewProjectionMatrix, float4(worldPos0, 1.0f));
     float4 clipPos1 = mul(camera.viewProjectionMatrix, float4(worldPos1, 1.0f));

@@ -67,6 +67,8 @@ private:
     HashMap<AssetReference, MeshBatch> mMeshBatches;
 
 	static constexpr uint32_t MaxMeshInstances = 65536;
+	static_assert(MaxMeshInstances <= VISIBILITY_INSTANCE_MASK, "MaxMeshInstances exceeds the visibility buffer instance ID bit budget.");
+
 	TArray<MeshInstance, MaxMeshInstances> mGlobalMeshes = {};
 	TArray<MeshInstanceData, MaxMeshInstances> mGlobalInstances = {};
 

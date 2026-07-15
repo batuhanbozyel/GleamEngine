@@ -384,7 +384,7 @@ void CommandBuffer::Blit(const Texture& source, const Texture& destination) cons
 	dst.SubresourceIndex = 0;
 
 	D3D12_TEXTURE_COPY_LOCATION src{};
-	dst.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+	src.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
 	src.pResource = srcTexture;
 	src.SubresourceIndex = 0;
 	mHandle->commandList->CopyTextureRegion(&dst, 0, 0, 0, &src, nullptr);

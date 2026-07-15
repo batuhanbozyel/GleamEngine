@@ -88,31 +88,28 @@ void SunShadowRenderer::CreateDenoiserTextures(const Size& size)
 		mDevice->Dispose(mAllocator, mPreviousDepth, BarrierStage::None);
 	}
 
-	TextureDescriptor momentsDesc;
+	RenderTextureDescriptor momentsDesc;
 	momentsDesc.dimension = TextureDimension::Texture2D;
 	momentsDesc.format    = TextureFormat::R11G11B10_SFloat;
-	momentsDesc.usage     = TextureUsage_Storage | TextureUsage_Sampled;
 	momentsDesc.size      = size;
 	momentsDesc.name      = "SunShadowRenderer::ShadowDenoiser::Moments 0";
 	mMoments[0] = mDevice->CreateTexture(mAllocator, momentsDesc);
 	momentsDesc.name      = "SunShadowRenderer::ShadowDenoiser::Moments 1";
 	mMoments[1] = mDevice->CreateTexture(mAllocator, momentsDesc);
 
-	TextureDescriptor scratchDesc;
+	RenderTextureDescriptor scratchDesc;
 	scratchDesc.dimension = TextureDimension::Texture2D;
 	scratchDesc.format    = TextureFormat::R16G16_SFloat;
-	scratchDesc.usage     = TextureUsage_Storage | TextureUsage_Sampled;
 	scratchDesc.size      = size;
 	scratchDesc.name      = "SunShadowRenderer::ShadowDenoiser::Scratch 0";
 	mScratch[0] = mDevice->CreateTexture(mAllocator, scratchDesc);
 	scratchDesc.name      = "SunShadowRenderer::ShadowDenoiser::Scratch 1";
 	mScratch[1] = mDevice->CreateTexture(mAllocator, scratchDesc);
 
-	TextureDescriptor depthDesc;
+	RenderTextureDescriptor depthDesc;
 	depthDesc.name      = "SunShadowRenderer::ShadowDenoiser::PreviousDepth";
 	depthDesc.dimension = TextureDimension::Texture2D;
 	depthDesc.format    = TextureFormat::R32_SFloat;
-	depthDesc.usage     = TextureUsage_Storage | TextureUsage_Sampled;
 	depthDesc.size      = size;
 	mPreviousDepth = mDevice->CreateTexture(mAllocator, depthDesc);
 
@@ -129,14 +126,20 @@ void SunShadowRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboar
 
 	const uint32_t width  = (uint32_t)sceneTargetDescriptor.size.width;
 	const uint32_t height = (uint32_t)sceneTargetDescriptor.size.height;
-	const uint32_t numTiles = Math::DivideRoundingUp(width, SHADOW_TILE_WIDTH) * Math::DivideRoundingUp(height, SHADOW_TILE_HEIGHT);
+
+	const uint32_t numClassifierTilesX = Math::DivideRoundingUp(width, SHADOW_TILE_WIDTH);
+	const uint32_t numClassifierTilesY = Math::DivideRoundingUp(height, SHADOW_TILE_HEIGHT);
+	const uint32_t numTiles = numClassifierTilesX * numClassifierTilesY;
+
+	const uint32_t numDenoiserTilesX = Math::DivideRoundingUp(width, 8u);
+	const uint32_t numDenoiserTilesY = Math::DivideRoundingUp(height, 8u);
 
 	if (mPipelineDirty)
 	{
 		RayTracingPipelineStateDescriptor pipelineState;
 		pipelineState.rayGenerationEntry = "rayTracedSunShadowRayGen";
 		pipelineState.missEntries        = { "rayTracedSunShadowMiss" };
-		pipelineState.maxRecursionDepth  = 2;
+		pipelineState.maxRecursionDepth  = 1;
 		pipelineState.maxPayloadSize     = sizeof(ShadowPayload);
 		pipelineState.maxAttributeSize   = sizeof(float2);
 		pipelineState.hitGroups          = mHitGroupTable.GetDescriptors();
@@ -156,9 +159,6 @@ void SunShadowRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboar
 	}
 	CreateDenoiserTextures(sceneTargetDescriptor.size);
 
-	const uint32_t numTilesX = Math::DivideRoundingUp(width, SHADOW_TILE_WIDTH);
-	const uint32_t numTilesY = Math::DivideRoundingUp(height, SHADOW_TILE_HEIGHT);
-
 	// ----------------------------------------------------------------
 	// Pass 0 — Ray classification
 	// ----------------------------------------------------------------
@@ -168,7 +168,6 @@ void SunShadowRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboar
 		TextureHandle normalTexture;
 		BufferHandle  tileBuffer;
 		BufferHandle  tileCount;
-		TextureHandle rayHitTexture;
 	};
 
 	auto& classificationData = graph.AddComputePass<ClassificationPassData>("SunShadowRenderer::Classification",
@@ -184,16 +183,10 @@ void SunShadowRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboar
 		tileCountDesc.size = sizeof(uint32_t);
 		passData.tileCount = builder.WriteBuffer(builder.CreateBuffer(tileCountDesc));
 
-		RenderTextureDescriptor rayHitDesc;
-		rayHitDesc.name   = "Shadow Classification RayHit";
-		rayHitDesc.size   = Size((float)numTilesX, (float)numTilesY);
-		rayHitDesc.format = TextureFormat::R32_UInt;
-		passData.rayHitTexture = builder.WriteTexture(builder.CreateTexture(rayHitDesc));
-
 		passData.depth         = builder.ReadTexture(depthPrepassData.depthTarget);
 		passData.normalTexture = builder.ReadTexture(gBufferData.geometryNormalTarget);
 	},
-	[this, &sceneData, numTilesX, numTilesY](const CommandBuffer* cmd, const ClassificationPassData& passData)
+	[this, &sceneData, numClassifierTilesX, numClassifierTilesY](const CommandBuffer* cmd, const ClassificationPassData& passData)
 	{
 		cmd->ClearBuffer(passData.tileCount);
 
@@ -213,14 +206,12 @@ void SunShadowRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboar
 		constants.normalTexture   = passData.normalTexture;
 		constants.tileBuffer      = passData.tileBuffer;
 		constants.tileCountBuffer = passData.tileCount;
-		constants.rayHitTexture   = passData.rayHitTexture;
-		constants.tileTolerance   = 0;
 
 		cmd->BindComputePipeline(mClassificationPipeline);
 		cmd->SetPushConstant(constants);
 		cmd->SetConstantBuffer(sceneData.camera.uniforms, CAMERA_UNIFORMS_BINDING_SLOT);
 		cmd->SetConstantBuffer(sceneData.atmosphere.uniforms, SKY_ATMOSPHERE_COMMON_UNIFORMS_BINDING_SLOT);
-		cmd->Dispatch(numTilesX, numTilesY, 1);
+		cmd->Dispatch(numClassifierTilesX, numClassifierTilesY, 1);
 	});
 
 	// ----------------------------------------------------------------
@@ -287,7 +278,7 @@ void SunShadowRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboar
 			return;
 		}
 
-		cmd->ClearBuffer(passData.shadowMask, 0xff);
+		cmd->ClearBuffer(passData.shadowMask);
 
 		Buffer shadowMask = passData.shadowMask;
 		BarrierGroup clearBarrier;
@@ -326,6 +317,42 @@ void SunShadowRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboar
 	});
 
 	// ----------------------------------------------------------------
+	// Import persistent denoiser textures + first frame history clear
+	// ----------------------------------------------------------------
+	const uint32_t prevIndex = mFrameIndex & 1u;
+	const uint32_t currIndex = prevIndex ^ 1u;
+
+	ImportResourceParams importParams;
+	importParams.clearOnFirstUse = mFirstFrame;
+
+	TextureHandle previousDepth       = graph.ImportTexture(mPreviousDepth, importParams);
+	TextureHandle previousMoments     = graph.ImportTexture(mMoments[prevIndex], importParams);
+	TextureHandle currentMoments      = graph.ImportTexture(mMoments[currIndex], importParams);
+	TextureHandle historyShadow       = graph.ImportTexture(mScratch[1], importParams);
+	TextureHandle reprojectionResults = graph.ImportTexture(mScratch[0], importParams);
+
+	if (mFirstFrame)
+	{
+		struct ClearHistoryPassData
+		{
+		};
+
+		graph.AddRenderPass<ClearHistoryPassData>("SunShadowRenderer::ClearHistory",
+		[&](RenderGraphBuilder& builder, ClearHistoryPassData& passData)
+		{
+			previousDepth       = builder.UseColorBuffer(previousDepth);
+			previousMoments     = builder.UseColorBuffer(previousMoments);
+			currentMoments      = builder.UseColorBuffer(currentMoments);
+			historyShadow       = builder.UseColorBuffer(historyShadow);
+			reprojectionResults = builder.UseColorBuffer(reprojectionResults);
+		},
+		[](const CommandBuffer* cmd, const ClearHistoryPassData& passData)
+		{
+			// Attachments are cleared by the load action on render pass begin
+		});
+	}
+
+	// ----------------------------------------------------------------
 	// Pass 3 — Tile classification
 	// ----------------------------------------------------------------
 	struct TileClassificationPassData
@@ -346,30 +373,24 @@ void SunShadowRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboar
 	auto& tileClassData = graph.AddComputePass<TileClassificationPassData>("SunShadowRenderer::TileClassification",
 	[&](RenderGraphBuilder& builder, TileClassificationPassData& passData)
 	{
-		const uint32_t prevIndex = mFrameIndex & 1u;
-		const uint32_t currIndex = prevIndex ^ 1u;
-
-		ImportResourceParams importParams;
-		importParams.clearOnFirstUse = mFirstFrame;
-
 		passData.shadowMask				= builder.ReadBuffer(rayTracingData.shadowMask);
 		passData.depth					= builder.ReadTexture(depthPrepassData.depthTarget);
 		passData.velocity				= builder.ReadTexture(gBufferData.motionVectorTarget);
 		passData.normalTexture			= builder.ReadTexture(gBufferData.shadingNormalTarget);
-		passData.previousDepth			= builder.ReadTexture(graph.ImportTexture(mPreviousDepth, importParams));
-		passData.previousMoments		= builder.ReadTexture(graph.ImportTexture(mMoments[prevIndex], importParams));
-		passData.currentMoments			= builder.WriteTexture(graph.ImportTexture(mMoments[currIndex], importParams));
-		passData.historyShadow			= builder.ReadTexture(graph.ImportTexture(mScratch[1], importParams));
-		passData.reprojectionResults	= builder.WriteTexture(graph.ImportTexture(mScratch[0], importParams));
+		passData.previousDepth			= builder.ReadTexture(previousDepth);
+		passData.previousMoments		= builder.ReadTexture(previousMoments);
+		passData.currentMoments			= builder.WriteTexture(currentMoments);
+		passData.historyShadow			= builder.ReadTexture(historyShadow);
+		passData.reprojectionResults	= builder.WriteTexture(reprojectionResults);
 		passData.isFirstFrame			= mFirstFrame ? 1 : 0;
 
 		BufferDescriptor tileMetaDesc;
 		tileMetaDesc.name = "TileMetadata";
-		tileMetaDesc.size = numTiles * sizeof(uint32_t);
+		tileMetaDesc.size = numDenoiserTilesX * numDenoiserTilesY * sizeof(uint32_t);
 		passData.tileMetadata = builder.WriteBuffer(builder.CreateBuffer(tileMetaDesc));
 		
 	},
-	[this, &sceneData, numTilesX, numTilesY](const CommandBuffer* cmd, const TileClassificationPassData& passData)
+	[this, &sceneData, numDenoiserTilesX, numDenoiserTilesY](const CommandBuffer* cmd, const TileClassificationPassData& passData)
 	{
 		ShadowDenoiserTileClassificationConstants constants = {};
 		constants.reprojectionMatrix  = sceneData.camera.uniforms.projectionMatrix * (sceneData.camera.uniforms.prevViewMatrix * sceneData.camera.uniforms.invViewProjectionMatrix);
@@ -388,7 +409,7 @@ void SunShadowRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboar
 		cmd->BindComputePipeline(mTileClassificationPipeline);
 		cmd->SetPushConstant(constants);
 		cmd->SetConstantBuffer(sceneData.camera.uniforms, CAMERA_UNIFORMS_BINDING_SLOT);
-		cmd->Dispatch(numTilesX, numTilesY, 1u);
+		cmd->Dispatch(numDenoiserTilesX, numDenoiserTilesY, 1u);
 	});
 
 	// ----------------------------------------------------------------
@@ -412,7 +433,7 @@ void SunShadowRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboar
 		passData.filterInput	= builder.ReadTexture(tileClassData.reprojectionResults);
 		passData.history		= builder.WriteTexture(tileClassData.historyShadow);
 	},
-	[this, &sceneData, numTilesX, numTilesY](const CommandBuffer* cmd, const Filter0PassData& passData)
+	[this, &sceneData, numDenoiserTilesX, numDenoiserTilesY](const CommandBuffer* cmd, const Filter0PassData& passData)
 	{
 		ShadowDenoiserFilterConstants constants = {};
 		constants.depth               = passData.depth;
@@ -425,7 +446,7 @@ void SunShadowRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboar
 		cmd->BindComputePipeline(mFilterPipeline);
 		cmd->SetPushConstant(constants);
 		cmd->SetConstantBuffer(sceneData.camera.uniforms, CAMERA_UNIFORMS_BINDING_SLOT);
-		cmd->Dispatch(numTilesX, numTilesY, 1u);
+		cmd->Dispatch(numDenoiserTilesX, numDenoiserTilesY, 1u);
 	});
 
 	// ----------------------------------------------------------------
@@ -449,7 +470,7 @@ void SunShadowRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboar
 		passData.filterInput  = builder.ReadTexture(filter0Data.history);
 		passData.history      = builder.WriteTexture(filter0Data.filterInput);
 	},
-	[this, &sceneData, numTilesX, numTilesY](const CommandBuffer* cmd, const Filter1PassData& passData)
+	[this, &sceneData, numDenoiserTilesX, numDenoiserTilesY](const CommandBuffer* cmd, const Filter1PassData& passData)
 	{
 		ShadowDenoiserFilterConstants constants = {};
 		constants.depth               = passData.depth;
@@ -462,7 +483,7 @@ void SunShadowRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboar
 		cmd->BindComputePipeline(mFilterPipeline);
 		cmd->SetPushConstant(constants);
 		cmd->SetConstantBuffer(sceneData.camera.uniforms, CAMERA_UNIFORMS_BINDING_SLOT);
-		cmd->Dispatch(numTilesX, numTilesY, 1u);
+		cmd->Dispatch(numDenoiserTilesX, numDenoiserTilesY, 1u);
 	});
 
 	// ----------------------------------------------------------------
@@ -491,7 +512,7 @@ void SunShadowRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboar
 		shadowMaskDesc.format	= TextureFormat::R8_UNorm;
 		passData.shadowMaskOutput = builder.WriteTexture(builder.CreateTexture(shadowMaskDesc));
 	},
-	[this, &sceneData, numTilesX, numTilesY](const CommandBuffer* cmd, const Filter2PassData& passData)
+	[this, &sceneData, numDenoiserTilesX, numDenoiserTilesY](const CommandBuffer* cmd, const Filter2PassData& passData)
 	{
 		ShadowDenoiserFilterConstants constants = {};
 		constants.depth               = passData.depth;
@@ -504,7 +525,7 @@ void SunShadowRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboar
 		cmd->BindComputePipeline(mFilterPipeline);
 		cmd->SetPushConstant(constants);
 		cmd->SetConstantBuffer(sceneData.camera.uniforms, CAMERA_UNIFORMS_BINDING_SLOT);
-		cmd->Dispatch(numTilesX, numTilesY, 1u);
+		cmd->Dispatch(numDenoiserTilesX, numDenoiserTilesY, 1u);
 	});
 
 	// ----------------------------------------------------------------

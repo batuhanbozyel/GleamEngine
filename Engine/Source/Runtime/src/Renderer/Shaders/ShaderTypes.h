@@ -300,11 +300,6 @@ struct RayTracedSunShadowClassificationConstants
 	ShaderResourceIndex  normalTexture;
 	UnorderedAccessIndex tileBuffer;
 	UnorderedAccessIndex tileCountBuffer;
-
-	UnorderedAccessIndex rayHitTexture;
-	uint32_t tileTolerance;
-	float pad0;
-	float pad1;
 };
 
 struct PrepareShadowRayDispatchArgsConstants

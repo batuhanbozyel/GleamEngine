@@ -14,7 +14,7 @@ float LinearizeViewZ(float deviceDepth, float4x4 invProjectionMatrix)
 
 float3 HashIDToColor(uint id)
 {
-    uint h = id * 2654435761u;
+    uint h = id * 2654435769u;
     h ^= h >> 15; h *= 2246822519u; h ^= h >> 13;
     return float3((h & 0xFFu), ((h >> 8) & 0xFFu), ((h >> 16) & 0xFFu)) / 255.0f;
 }
@@ -134,7 +134,7 @@ float4 viewModeFragmentShader(FScreenVertexOutput IN) : SV_TARGET
             PackedVisibilityID packedID = visibilityBuffer.Load(int3(IN.texCoord * camera.resolution, 0));
             if (IsValidVisibilityID(packedID))
             {
-                color = HashIDToColor(packedID.x * 2654435761u + packedID.y);
+                    color = HashIDToColor(packedID.x * 2654435769u + packedID.y);
             }
             break;
         }
