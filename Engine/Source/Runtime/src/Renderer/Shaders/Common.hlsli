@@ -150,6 +150,14 @@ float3 ScreenSpaceToWorldSpace(float2 uv, float depth, float4x4 invViewMatrix, f
     return ClipSpaceToWorldSpace(float3(ndc, depth), invViewMatrix, invProjectionMatrix);
 }
 
+float2 PixelSpaceToNDC(uint2 pixelCoords, uint2 resolution)
+{
+    float2 uv = (float2(pixelCoords) + 0.5f) / float2(resolution);
+    float2 ndc = uv * 2.0 - 1.0;
+    ndc.y = -ndc.y;
+    return ndc;
+}
+
 float3 SphericalToCartesian(float theta, float phi)
 {
 	// theta: azimuthal angle (rotation around y-axis, from x toward z)

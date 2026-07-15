@@ -154,8 +154,67 @@ struct MeshInstanceData
 
 	uint32_t meshletCount;
 	uint32_t cullMode;
+	uint32_t batchIndex;
+	float pad0;
+};
+
+struct VisibilityClassifyConstants
+{
+	ShaderResourceIndex visibilityBuffer;
+	UnorderedAccessIndex countsBuffer;
+	UnorderedAccessIndex cursorsBuffer;
+	UnorderedAccessIndex pixelListBuffer;
+};
+
+struct VisibilityAllocateConstants
+{
+	ShaderResourceIndex countsBuffer;
+	UnorderedAccessIndex offsetsBuffer;
+	UnorderedAccessIndex cursorsBuffer;
+	UnorderedAccessIndex dispatchArgsBuffer;
+
+	uint32_t numBatches;
+	float pad0;
 	float pad1;
 	float pad2;
+};
+
+struct VisibilityResolveConstants
+{
+	ShaderResourceIndex instanceBuffer;
+	ShaderResourceIndex visibilityBuffer;
+	ShaderResourceIndex pixelListBuffer;
+	ShaderResourceIndex offsetsBuffer;
+
+	ShaderResourceIndex countsBuffer;
+	uint32_t batchIndex;
+	uint32_t pad0;
+	uint32_t pad1;
+};
+
+struct VisibilityShadingConstants
+{
+	VisibilityResolveConstants resolve;
+
+	UnorderedAccessIndex colorTarget;
+	ShaderResourceIndex brdfTexture;
+	ShaderResourceIndex ggxEssTexture;
+	ShaderResourceIndex ggxEAvgTexture;
+
+	ShaderResourceIndex diffuseReflectionTexture;
+	ShaderResourceIndex specularReflectionTexture;
+	ShaderResourceIndex shadowTexture;
+	uint32_t pad0;
+};
+
+struct GBufferResolveConstants
+{
+	VisibilityResolveConstants resolve;
+
+	UnorderedAccessIndex motionVectorTarget;
+	UnorderedAccessIndex geometryNormalTarget;
+	UnorderedAccessIndex shadingNormalTarget;
+	UnorderedAccessIndex roughnessTarget;
 };
 
 struct SkyAtmosphereParameters
@@ -231,6 +290,22 @@ struct RayTracedSunShadowConstants
 {
 	ShaderResourceIndex depthTexture;
 	ShaderResourceIndex normalTexture;
+	ShaderResourceIndex tileBuffer;
+	ShaderResourceIndex tileCountBuffer;
+};
+
+struct RayTracedSunShadowClassificationConstants
+{
+	ShaderResourceIndex  depthTexture;
+	ShaderResourceIndex  normalTexture;
+	UnorderedAccessIndex tileBuffer;
+	UnorderedAccessIndex tileCountBuffer;
+};
+
+struct PrepareShadowRayDispatchArgsConstants
+{
+	ShaderResourceIndex  tileCountBuffer;
+	UnorderedAccessIndex dispatchArgsBuffer;
 	float pad0;
 	float pad1;
 };
@@ -274,6 +349,30 @@ struct ShadowDenoiserFilterConstants
 	ShaderResourceIndex normalTexture;
 	uint32_t passIndex;
 	float pad0;
+};
+
+struct DrawIndirectArguments
+{
+	uint32_t vertexCountPerInstance;
+	uint32_t instanceCount;
+	uint32_t startVertexLocation;
+	uint32_t startInstanceLocation;
+};
+
+struct DrawIndexedIndirectArguments
+{
+	uint32_t indexCountPerInstance;
+	uint32_t instanceCount;
+	uint32_t startIndexLocation;
+	int32_t  baseVertexLocation;
+	uint32_t startInstanceLocation;
+};
+
+struct DispatchIndirectArguments
+{
+	uint32_t threadGroupCountX;
+	uint32_t threadGroupCountY;
+	uint32_t threadGroupCountZ;
 };
 
 } // namespace Gleam

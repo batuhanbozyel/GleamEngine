@@ -64,6 +64,7 @@ struct MetalDescriptorHeap
 
 class MetalDevice final : public GraphicsDevice
 {
+	friend class GraphicsDevice;
 public:
     
     MetalDevice(RenderSurface* surface, ResourceReleaseQueue* releaseQueue);
@@ -87,7 +88,11 @@ public:
 	IRRootSignature* GetGlobalRootSignature() const;
 
 	ShaderBindingTable CreateShaderBindingTable(const RayTracingPipeline& pipeline);
-	
+
+	NativePipelineHandle CompileNativeComputePipeline(const TString& shaderName);
+
+	id<MTLComputePipelineState> GetNativeComputePipeline(NativePipelineHandle handle) const;
+
 	id<MTLTexture> CreateTexture(GPUAllocator* allocator, const TextureDescriptor& descriptor);
 
 	RenderTargetView CreateRenderTargetView(const Texture& texture);
@@ -128,6 +133,8 @@ private:
     
 	MetalDescriptorHeap mSamplerHeap;
     MetalDescriptorHeap mCbvSrvUavHeap;
+
+	HashMap<NativePipelineHandle, id<MTLComputePipelineState>> mNativeComputePipelineCache;
 
 };
 

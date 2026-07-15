@@ -14,6 +14,7 @@
 namespace Gleam {
 
 class GraphicsDevice;
+class GPUAllocator;
 
 enum class IndexType
 {
@@ -35,7 +36,7 @@ class CommandBuffer final
 {
 public:
 
-    CommandBuffer(GraphicsDevice* device);
+    CommandBuffer(GraphicsDevice* device, GPUAllocator* transientAllocator);
 
     ~CommandBuffer();
 
@@ -74,6 +75,8 @@ public:
 
 	void DispatchRays(uint32_t width, uint32_t height, uint32_t depth = 1) const;
 
+	void DispatchRaysIndirect(const Buffer& argsBuffer, size_t offset = 0) const;
+
 	void Dispatch(uint32_t x, uint32_t y, uint32_t z) const;
 
 	void DispatchMesh(uint32_t x, uint32_t y, uint32_t z) const;
@@ -89,12 +92,23 @@ public:
 		uint32_t instanceCount = 1,
 		uint32_t firstIndex = 0) const;
 
+	void DrawIndirect(const Buffer& argsBuffer, size_t offset = 0) const;
+
+	void DrawIndexedIndirect(const Buffer& indexBuffer, IndexType type,
+		const Buffer& argsBuffer, size_t offset = 0) const;
+
+	void DispatchIndirect(const Buffer& argsBuffer, size_t offset = 0) const;
+
+	void DispatchMeshIndirect(const Buffer& argsBuffer, size_t offset = 0) const;
+
 	void CopyBuffer(const Buffer& src, const Buffer& dst,
 		size_t size,
 		size_t srcOffset = 0,
 		size_t dstOffset = 0) const;
 
     void CopyBuffer(const Buffer& src, const Buffer& dst) const;
+
+	void ClearBuffer(const Buffer& buffer, uint8_t value = 0) const;
 
     void Blit(const Texture& source, const Texture& destination) const;
 
@@ -125,6 +139,8 @@ private:
     Scope<Impl> mHandle;
 
     GraphicsDevice* mDevice;
+
+	GPUAllocator* mTransientAllocator;
 
 	mutable ConstantBuffer mConstantBuffer;
 

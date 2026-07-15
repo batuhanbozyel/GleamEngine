@@ -330,7 +330,16 @@ void RenderGraph::SetupPassBarriers(RenderGraphPassNode* pass, const CommandBuff
 	barrier.bufferBarriers.reserve(pass->bufferReads.size() + pass->bufferWrites.size());
 	for (auto& resource : pass->bufferReads)
 	{
-		if (resource.node->barrierState.access == BarrierAccess::ShaderResource)
+		BarrierStage dstStage = BarrierStage::AllShading;
+		BarrierAccess dstAccess= BarrierAccess::ShaderResource;
+
+		if (resource.node->buffer.GetDescriptor().usage == BufferUsage::IndirectArgument)
+		{
+			dstStage = BarrierStage::ExecuteIndirect;
+			dstAccess = BarrierAccess::IndirectArgument;
+		}
+
+		if (resource.node->barrierState.access == dstAccess)
 		{
 			continue;
 		}
@@ -338,9 +347,9 @@ void RenderGraph::SetupPassBarriers(RenderGraphPassNode* pass, const CommandBuff
 		BufferBarrier bufferBarrier;
 		bufferBarrier.resource = resource.node->buffer.GetHandle();
 		bufferBarrier.srcStage = resource.node->barrierState.stage;
-		bufferBarrier.dstStage = BarrierStage::AllShading;
+		bufferBarrier.dstStage = dstStage;
 		bufferBarrier.srcAccess = resource.node->barrierState.access;
-		bufferBarrier.dstAccess = BarrierAccess::ShaderResource;
+		bufferBarrier.dstAccess = dstAccess;
 		barrier.bufferBarriers.push_back(bufferBarrier);
 
 		resource.node->barrierState.stage = bufferBarrier.dstStage;

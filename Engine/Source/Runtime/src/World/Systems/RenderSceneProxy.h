@@ -19,6 +19,7 @@ struct MeshBatch
 	Material* material = nullptr;
 	uint32_t instanceOffset = 0;
 	uint32_t numInstances = 0;
+	uint32_t batchIndex = 0;
 };
 
 struct MeshInstance
@@ -53,13 +54,21 @@ public:
 		return { mGlobalMeshes.data(), mTotalInstances };
 	}
 
+	uint32_t GetBatchCount() const
+	{
+		return mNumBatches;
+	}
+
 private:
 
+	uint32_t mNumBatches = 0;
 	uint32_t mTotalInstances = 0;
 	Buffer mGlobalInstanceBuffer = {};
     HashMap<AssetReference, MeshBatch> mMeshBatches;
 
 	static constexpr uint32_t MaxMeshInstances = 65536;
+	static_assert(MaxMeshInstances <= VISIBILITY_INSTANCE_MASK, "MaxMeshInstances exceeds the visibility buffer instance ID bit budget.");
+
 	TArray<MeshInstance, MaxMeshInstances> mGlobalMeshes = {};
 	TArray<MeshInstanceData, MaxMeshInstances> mGlobalInstances = {};
 

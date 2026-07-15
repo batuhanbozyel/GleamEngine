@@ -104,8 +104,8 @@ private:
 	float4x4 mPrevCameraViewProjection = {};
 
 	Engine* mEngine;
-	
 	RenderPath mRenderPath = RenderPath::Default;
+
 	TArray<RenderPipeline*, 2> mRenderPipelines = {};
 	TArray<IRenderer*> mSharedRenderers = {};
 

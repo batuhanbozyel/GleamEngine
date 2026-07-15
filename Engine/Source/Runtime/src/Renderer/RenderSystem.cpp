@@ -24,6 +24,8 @@
 #include "Renderers/SunShadowRenderer.h"
 #include "Renderers/PostProcessStack.h"
 #include "Renderers/ReflectionProbeRenderer.h"
+#include "Renderers/VisibilityClassification.h"
+#include "Renderers/GBufferResolveRenderer.h"
 
 #include "Core/Engine.h"
 #include "Core/Globals.h"
@@ -40,10 +42,7 @@ void RenderSystem::Initialize(Engine* engine)
 	InitializeBackend();
 	Configure(engine->GetConfiguration().renderer);
 
-	mPersistentAllocator = new GPUAllocator(mDevice, GPUAllocatorDescriptor{ .name = "Persistent GPU Allocator" });
-	mTransientAllocator = new GPUAllocator(mDevice, GPUAllocatorDescriptor{ .name = "Transient GPU Allocator" });
-	mCopyCommandBuffer = new CopyCommandBuffer(mDevice);
-	mRayTracingScene = new RayTracingScene(mDevice, mTransientAllocator);
+	GLEAM_ASSERT(mDevice->GetFeatures().meshShaders, "Mesh shaders is not supported");
 
 	RenderContext context = GetRenderContext();
 	{
@@ -63,6 +62,8 @@ void RenderSystem::Initialize(Engine* engine)
 		mRenderPipelines[(uint32_t)RenderPath::Default]->AddSharedRenderer(brdfRenderer);
 		mRenderPipelines[(uint32_t)RenderPath::Default]->AddRenderer<ReflectionProbeRenderer>();
 		mRenderPipelines[(uint32_t)RenderPath::Default]->AddSharedRenderer(depthPrepass);
+		mRenderPipelines[(uint32_t)RenderPath::Default]->AddRenderer<VisibilityClassificationRenderer>();
+		mRenderPipelines[(uint32_t)RenderPath::Default]->AddRenderer<GBufferResolveRenderer>();
 		mRenderPipelines[(uint32_t)RenderPath::Default]->AddRenderer<SunShadowRenderer>();
 		mRenderPipelines[(uint32_t)RenderPath::Default]->AddRenderer<WorldRenderer>();
 		mRenderPipelines[(uint32_t)RenderPath::Default]->AddRenderer<SkyAtmosphereRenderer>();
@@ -267,7 +268,7 @@ void RenderSystem::Configure(const RendererConfig& config)
     mCommandBuffers.resize(mSwapchain->GetFramesInFlight());
 	for (auto& cmd : mCommandBuffers)
 	{
-		cmd = new CommandBuffer(mDevice);
+		cmd = new CommandBuffer(mDevice, mTransientAllocator);
 	}
 	mSwapchainSize = mSwapchain->GetCurrentDrawable().GetDescriptor().size;
 }
@@ -355,6 +356,11 @@ const GPUAllocator* RenderSystem::GetAllocator() const
 void RenderSystem::RecompileShader(const TString& entryPoint)
 {
 	mCommandBuffers[mSwapchain->GetFrameIndex()]->WaitUntilCompleted();
+
+	if (mDevice->RecompileNativeShader(entryPoint))
+	{
+		return;
+	}
 
 	for (auto& shader : mDevice->mShaderCache)
 	{

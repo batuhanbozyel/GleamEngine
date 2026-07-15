@@ -1,17 +1,35 @@
 #define USE_PCG
 #include "PathTraceCommon.hlsli"
 #include "ffx_denoiser_shadows_util.hlsli"
+#include "ffx_classifier_common.hlsli"
 
 PUSH_CONSTANT(Gleam::RayTracedSunShadowConstants, constants);
 
 [shader("raygeneration")]
 void rayTracedSunShadowRayGen()
 {
-    uint2 pixelCoord = DispatchRaysIndex().xy;
-    if (any(pixelCoord >= (uint2)camera.resolution))
+    const uint tileSlot     = DispatchRaysIndex().x;
+    const uint laneThreadId = DispatchRaysIndex().y;
+
+    ByteAddressBuffer tileCountBuffer = ResourceDescriptorHeap[constants.tileCountBuffer];
+    if (tileSlot >= tileCountBuffer.Load(0))
     {
         return;
     }
+
+    ByteAddressBuffer tileBuffer = ResourceDescriptorHeap[constants.tileBuffer];
+    const uint4 packedTile = tileBuffer.Load4(tileSlot * sizeof(uint4));
+
+    const uint2 tile = uint2(packedTile.x & 0xffffu, (packedTile.x >> 16) & 0xffffu);
+    const uint  tileMask  = packedTile.y;
+
+    const uint2 localID = ffxRemapForWaveReduction(laneThreadId);
+    if ((tileMask & (1u << LaneIdToBitShift(localID))) == 0u)
+    {
+        return;
+    }
+
+    const uint2 pixelCoord = tile * k_tileSize + localID;
 
     RaytracingAccelerationStructure accelerationStructure = ResourceDescriptorHeap[pathTraceConstants.accelerationStructure];
     Texture2D<float> depthTex = ResourceDescriptorHeap[constants.depthTexture];

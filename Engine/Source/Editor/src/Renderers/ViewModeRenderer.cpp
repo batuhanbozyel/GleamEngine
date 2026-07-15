@@ -7,6 +7,7 @@
 #include "Renderer/Material/Material.h"
 #include "Renderer/Renderers/DepthPrepass.h"
 #include "Renderer/Renderers/SunShadowRenderer.h"
+#include "Renderer/Renderers/GBufferResolveRenderer.h"
 
 #include "World/Systems/RenderSceneProxy.h"
 
@@ -21,27 +22,6 @@ void ViewModeRenderer::OnCreate(const Gleam::RenderContext& context)
     pipelineState.vertexEntry = "fullscreenTriangleVertexShader";
     pipelineState.fragmentEntry = "viewModeFragmentShader";
     mPipeline = context.device->CreateGraphicsPipeline(pipelineState);
-
-    if (context.device->GetFeatures().meshShaders)
-    {
-		for (uint32_t cullingMode = 0; cullingMode < 3; ++cullingMode)
-		{
-			Gleam::MeshPipelineStateDescriptor meshPipelineState = {
-				.blendState = {},
-				.depthState = Gleam::DepthState{.compareFunction = Gleam::CompareFunction::LessEqual, .writeEnabled = false },
-				.stencilState = Gleam::StencilState{.enabled = false },
-				.cullingMode = (Gleam::CullMode)cullingMode,
-				.alphaToCoverage = false,
-				.wireframe = false,
-				.colorFormats = { context.surface->GetFormat() },
-				.depthFormat = Gleam::TextureFormat::D32_SFloat,
-				.meshEntry = "meshletVisMeshShader",
-				.amplificationEntry = "meshletVisAmplificationShader",
-				.fragmentEntry = "meshletVisFragmentShader"
-			};
-			mMeshletVisPipelines[cullingMode] = context.device->CreateMeshPipeline(meshPipelineState);
-		}
-    }
 }
 
 void ViewModeRenderer::AddRenderPasses(Gleam::RenderGraph& graph, Gleam::RenderGraphBlackboard& blackboard)
@@ -51,116 +31,82 @@ void ViewModeRenderer::AddRenderPasses(Gleam::RenderGraph& graph, Gleam::RenderG
         return;
     }
 
-    if (mMode == Gleam::ViewMode::MeshletVisualization)
-    {
-        AddMeshletVisualizationPass(graph, blackboard);
-    }
-    else
-    {
-        Gleam::TextureHandle source;
-        switch (mMode)
-        {
-            case Gleam::ViewMode::WorldNormal:
-            {
-                source = blackboard.Get<Gleam::DepthPrepassData>().normalTarget;
-                break;
-            }
-            case Gleam::ViewMode::Depth:
-            {
-                source = blackboard.Get<Gleam::DepthPrepassData>().depthTarget;
-                break;
-            }
-            case Gleam::ViewMode::MotionVectors:
-            {
-                source = blackboard.Get<Gleam::DepthPrepassData>().motionVectorTarget;
-                break;
-            }
-            case Gleam::ViewMode::ShadowMask:
-            {
-                source = blackboard.Get<Gleam::SunShadowData>().shadowMask;
-                break;
-            }
-            default:
-            {
-                return;
-            }
-        }
+	Gleam::TextureHandle source;
+	switch (mMode)
+	{
+		case Gleam::ViewMode::ShadingNormal:
+		{
+			source = blackboard.Get<Gleam::GBufferData>().shadingNormalTarget;
+			break;
+		}
+		case Gleam::ViewMode::GeometryNormal:
+		{
+			source = blackboard.Get<Gleam::GBufferData>().geometryNormalTarget;
+			break;
+		}
+		case Gleam::ViewMode::Depth:
+		{
+			source = blackboard.Get<Gleam::DepthPrepassData>().depthTarget;
+			break;
+		}
+		case Gleam::ViewMode::MotionVectors:
+		{
+			source = blackboard.Get<Gleam::GBufferData>().motionVectorTarget;
+			break;
+		}
+		case Gleam::ViewMode::Roughness:
+		{
+			source = blackboard.Get<Gleam::GBufferData>().roughnessTarget;
+			break;
+		}
+		case Gleam::ViewMode::ShadowMask:
+		{
+			source = blackboard.Get<Gleam::SunShadowData>().shadowMask;
+			break;
+		}
+		case Gleam::ViewMode::VisibilityIDs:
+		case Gleam::ViewMode::MeshletVisualization:
+		case Gleam::ViewMode::BatchIDs:
+		{
+			source = blackboard.Get<Gleam::DepthPrepassData>().visibilityBuffer;
+			break;
+		}
+		default:
+		{
+			return;
+		}
+	}
 
-        struct PassData
-        {
-            Gleam::TextureHandle target;
-            Gleam::TextureHandle source;
-            Gleam::ViewMode mode;
-        };
+	if (not source.IsValid())
+	{
+		return;
+	}
 
-        graph.AddRenderPass<PassData>("ViewModeRenderer::Visualize", [&](Gleam::RenderGraphBuilder& builder, PassData& passData)
-        {
-            const auto& sceneData = blackboard.Get<Gleam::SceneRenderingData>();
-            passData.target = builder.UseColorBuffer(sceneData.sceneTarget);
-            passData.source = builder.ReadTexture(source);
-            passData.mode = mMode;
-        },
-        [this, &blackboard](const Gleam::CommandBuffer* cmd, const PassData& passData)
-        {
-            const auto& sceneData = blackboard.Get<Gleam::SceneRenderingData>();
+	struct PassData
+	{
+		Gleam::TextureHandle target;
+		Gleam::TextureHandle source;
+		Gleam::ViewMode mode;
+	};
 
-            ViewModeUniforms uniforms;
-            uniforms.sourceTexture = passData.source;
-            uniforms.mode = static_cast<uint32_t>(passData.mode);
+	graph.AddRenderPass<PassData>("ViewModeRenderer::Visualize", [&](Gleam::RenderGraphBuilder& builder, PassData& passData)
+	{
+		const auto& sceneData = blackboard.Get<Gleam::SceneRenderingData>();
+		passData.target = builder.UseColorBuffer(sceneData.sceneTarget);
+		passData.source = builder.ReadTexture(source);
+		passData.mode = mMode;
+	},
+		[this, &blackboard](const Gleam::CommandBuffer* cmd, const PassData& passData)
+	{
+		const auto& sceneData = blackboard.Get<Gleam::SceneRenderingData>();
 
-            cmd->BindGraphicsPipeline(mPipeline);
-            cmd->SetConstantBuffer(sceneData.camera.uniforms, 0);
-            cmd->SetPushConstant(uniforms);
-            cmd->Draw(3);
-        });
-    }
-}
+		ViewModeUniforms uniforms;
+		uniforms.sourceTexture = passData.source;
+		uniforms.mode = static_cast<uint32_t>(passData.mode);
 
-void ViewModeRenderer::AddMeshletVisualizationPass(Gleam::RenderGraph& graph, Gleam::RenderGraphBlackboard& blackboard)
-{
-    if (not mDevice->GetFeatures().meshShaders)
-    {
-        return;
-    }
-
-    struct PassData
-    {
-        Gleam::TextureHandle target;
-        Gleam::TextureHandle depth;
-    };
-
-    graph.AddRenderPass<PassData>("ViewModeRenderer::MeshletVisualization", [&](Gleam::RenderGraphBuilder& builder, PassData& passData)
-    {
-        const auto& sceneData = blackboard.Get<Gleam::SceneRenderingData>();
-        const auto& depthData = blackboard.Get<Gleam::DepthPrepassData>();
-        passData.target = builder.UseColorBuffer(sceneData.sceneTarget);
-        passData.depth = builder.UseDepthBuffer(depthData.depthTarget, Gleam::DepthAccess::Read);
-    },
-    [this, &blackboard](const Gleam::CommandBuffer* cmd, const PassData& passData)
-    {
-        const auto& sceneData = blackboard.Get<Gleam::SceneRenderingData>();
-        sceneData.sceneProxy->ForEach([cmd, &sceneData, this](const Gleam::MeshBatch& batch)
-        {
-            if (batch.numInstances == 0)
-            {
-                return;
-            }
-
-			cmd->BindMeshPipeline(mMeshletVisPipelines[(uint32_t)batch.material->GetDescriptor().cullingMode]);
-			cmd->SetConstantBuffer(sceneData.camera.uniforms, CAMERA_UNIFORMS_BINDING_SLOT);
-
-            const auto globalInstances = sceneData.sceneProxy->GetGlobalInstances();
-
-            MeshletVisualizationConstants constants = {};
-            constants.instanceBuffer = sceneData.sceneProxy->GetGlobalInstanceBuffer().GetResourceView();
-
-            for (uint32_t instanceID = 0; instanceID < batch.numInstances; ++instanceID)
-            {
-                constants.instanceID = batch.instanceOffset + instanceID;
-                const auto& instance = globalInstances[constants.instanceID];
-                cmd->SetPushConstant(constants);
-                cmd->DispatchMesh(Gleam::Math::DivideRoundingUp(instance.meshletCount, MESH_AMPLIFICATION_THREADS), 1, 1);
-            }
-        });
-    });
+		cmd->BindGraphicsPipeline(mPipeline);
+		cmd->SetConstantBuffer(sceneData.camera.uniforms, CAMERA_UNIFORMS_BINDING_SLOT);
+		cmd->SetPushConstant(uniforms);
+		cmd->Draw(3);
+	});
 }

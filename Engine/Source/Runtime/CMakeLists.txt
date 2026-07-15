@@ -199,6 +199,45 @@ add_custom_command(
 add_custom_target(RuntimeShaders DEPENDS ${SHADER_STAMP_FILE})
 add_dependencies(Runtime RuntimeShaders)
 
+# Precompile native (backend-specific) shaders, gated to the matching target platform.
+if (APPLE)
+    file(GLOB_RECURSE METAL_NATIVE_SHADER_FILES ${HLSL_FILE_PATH}/Metal/*.metal)
+    if (METAL_NATIVE_SHADER_FILES)
+        set(NATIVE_SHADER_STAMP_FILE "${CMAKE_BINARY_DIR}/runtime_native_shader_compile.stamp")
+        add_custom_command(
+            OUTPUT ${NATIVE_SHADER_STAMP_FILE}
+            COMMAND Python::Interpreter ${CMAKE_SOURCE_DIR}/Tools/CompileMetalShaders.py
+                "-f" ${METAL_NATIVE_SHADER_FILES}
+                $<$<CONFIG:Debug>:--debug>
+            COMMAND ${CMAKE_COMMAND} -E touch ${NATIVE_SHADER_STAMP_FILE}
+            DEPENDS ${METAL_NATIVE_SHADER_FILES}
+            COMMENT "Compiling native Metal shaders..."
+            VERBATIM
+            COMMAND_EXPAND_LISTS
+        )
+        add_custom_target(RuntimeNativeShaders DEPENDS ${NATIVE_SHADER_STAMP_FILE})
+        add_dependencies(Runtime RuntimeNativeShaders)
+    endif()
+elseif (WIN32)
+    file(GLOB_RECURSE DIRECTX_NATIVE_SHADER_FILES ${HLSL_FILE_PATH}/DirectX/*.hlsl)
+    if (DIRECTX_NATIVE_SHADER_FILES)
+        set(NATIVE_SHADER_STAMP_FILE "${CMAKE_BINARY_DIR}/runtime_native_shader_compile.stamp")
+        add_custom_command(
+            OUTPUT ${NATIVE_SHADER_STAMP_FILE}
+            COMMAND Python::Interpreter ${CMAKE_SOURCE_DIR}/Tools/CompileShaders.py
+                "-f" ${DIRECTX_NATIVE_SHADER_FILES}
+                $<$<CONFIG:Debug>:--debug>
+            COMMAND ${CMAKE_COMMAND} -E touch ${NATIVE_SHADER_STAMP_FILE}
+            DEPENDS ${HEADER_FILES} ${DIRECTX_NATIVE_SHADER_FILES}
+            COMMENT "Compiling native DirectX shaders..."
+            VERBATIM
+            COMMAND_EXPAND_LISTS
+        )
+        add_custom_target(RuntimeNativeShaders DEPENDS ${NATIVE_SHADER_STAMP_FILE})
+        add_dependencies(Runtime RuntimeNativeShaders)
+    endif()
+endif()
+
 set_target_properties (
     RuntimeShaders
     RuntimeReflection

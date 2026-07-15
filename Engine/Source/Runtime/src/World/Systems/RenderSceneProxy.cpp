@@ -67,6 +67,7 @@ void RenderSceneProxy::Tick(World* world)
 		}
 	});
 
+	mNumBatches = 0;
 	mTotalInstances = 0;
 	for (auto& [_, batch] : mMeshBatches)
 	{
@@ -74,10 +75,13 @@ void RenderSceneProxy::Tick(World* world)
 		{
 			continue;
 		}
+		batch.batchIndex = mNumBatches++;
 		batch.instanceOffset = mTotalInstances;
 		mTotalInstances += batch.numInstances;
 		batch.numInstances = 0; // reset to use as write counter in pass 2
 	}
+	GLEAM_ASSERT(mTotalInstances <= MaxMeshInstances, "Instance count exceeds the maximum allowed.");
+	GLEAM_ASSERT(mNumBatches <= VISIBILITY_MAX_BATCHES, "Batch count exceeds the visibility buffer batch index bit budget.");
 
 	world->GetEntityManager().ForEach<Entity, MeshRenderer>([&](const Entity& entity, const MeshRenderer& meshRenderer)
 	{
@@ -115,6 +119,7 @@ void RenderSceneProxy::Tick(World* world)
 			instance.baseMeshlet = submesh.baseMeshlet;
 			instance.meshletCount = submesh.meshletCount;
 			instance.cullMode = static_cast<uint32_t>(batch.material->GetDescriptor().cullingMode);
+			instance.batchIndex = batch.batchIndex;
 		}
 	});
 }

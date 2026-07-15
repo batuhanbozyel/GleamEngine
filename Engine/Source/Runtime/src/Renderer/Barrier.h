@@ -16,7 +16,9 @@ enum class BarrierStage
 	RenderTarget,
 	DepthStencil,
 	Copy,
-	BuildRayTracingAccelerationStructure
+	BuildRayTracingAccelerationStructure,
+	ExecuteIndirect,
+	ClearUnorderedAccess
 };
 
 enum class BarrierAccess
@@ -26,6 +28,7 @@ enum class BarrierAccess
 	RenderTarget,
 	ShaderResource,
 	UnorderedAccess,
+	IndirectArgument,
 	DepthStencilRead,
 	DepthStencilWrite,
 	CopySource,

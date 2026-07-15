@@ -46,6 +46,8 @@ public:
 
 	DirectXDescriptorHeap& GetCbvSrvUavHeap();
 
+	DirectXDescriptorHeap& GetClearUavHeap();
+
 	DirectXCommandQueue& GetDirectQueue();
 
 	DirectXCommandQueue& GetComputeQueue();
@@ -54,7 +56,21 @@ public:
 
 	ID3D12RootSignature* GetGlobalRootSignature() const;
 
+	ID3D12CommandSignature* GetDrawIndirectCommandSignature() const;
+
+	ID3D12CommandSignature* GetDrawIndexedIndirectCommandSignature() const;
+
+	ID3D12CommandSignature* GetDispatchIndirectCommandSignature() const;
+
+	ID3D12CommandSignature* GetDispatchMeshIndirectCommandSignature() const;
+
+	ID3D12CommandSignature* GetDispatchRaysIndirectCommandSignature() const;
+
 	ShaderBindingTable CreateShaderBindingTable(const RayTracingPipeline& pipeline);
+
+	NativePipelineHandle CompileNativeComputePipeline(const TString& shaderName);
+
+	ID3D12PipelineState* GetNativeComputePipeline(NativePipelineHandle handle) const;
 
 	ID3D12Resource* CreateResource(const D3D12_RESOURCE_DESC1& desc, D3D12_HEAP_TYPE heapType, D3D12_BARRIER_LAYOUT initialLayout, const TString& name) const;
 
@@ -84,6 +100,8 @@ private:
 
 	DirectXDescriptorHeap CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE type, D3D12_DESCRIPTOR_HEAP_FLAGS flags, UINT capacity) const;
 
+	ID3D12CommandSignature* CreateIndirectCommandSignature(D3D12_INDIRECT_ARGUMENT_TYPE type, UINT byteStride, const wchar_t* name) const;
+
 	DWORD mDebugCallbackCookie = 0;
 	ID3D12InfoQueue1* mInfoQueue = nullptr;
 	ID3D12Debug6* mD3D12Debug = nullptr;
@@ -94,9 +112,18 @@ private:
 
 	ID3D12RootSignature* mRootSignature = nullptr;
 
+	ID3D12CommandSignature* mDrawIndirectCommandSignature = nullptr;
+	ID3D12CommandSignature* mDrawIndexedIndirectCommandSignature = nullptr;
+	ID3D12CommandSignature* mDispatchIndirectCommandSignature = nullptr;
+	ID3D12CommandSignature* mDispatchMeshIndirectCommandSignature = nullptr;
+	ID3D12CommandSignature* mDispatchRaysIndirectCommandSignature = nullptr;
+
+	HashMap<NativePipelineHandle, ID3D12PipelineState*> mNativeComputePipelineCache;
+
 	DirectXDescriptorHeap mRtvHeap;
 	DirectXDescriptorHeap mDsvHeap;
 	DirectXDescriptorHeap mCbvSrvUavHeap;
+	DirectXDescriptorHeap mClearUavHeap;
 
 };
 

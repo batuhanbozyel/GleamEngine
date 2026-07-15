@@ -3,6 +3,7 @@
 #include <d3d12.h>
 #include <WinPixEventRuntime/pix3.h>
 
+#include "Container/String.h"
 #include "Renderer/Barrier.h"
 #include "Renderer/TextureFormat.h"
 #include "Renderer/HeapDescriptor.h"
@@ -13,6 +14,31 @@ namespace Gleam {
 
 #define DX_CHECK(x) {HRESULT result = (x);\
 					GLEAM_ASSERT(SUCCEEDED(result), HRESULTtoString(x));}
+
+#define GPU_VENDOR_ID_NVIDIA	0x10DE
+#define GPU_VENDOR_ID_AMD		0x1002
+#define GPU_VENDOR_ID_INTEL		0x8086
+
+static uint32_t GPUVendorIDFromName(const TStringView vendor)
+{
+	const TString name = StringUtils::ToLower(TString(vendor));
+	if (name == "nvidia")
+	{
+		return GPU_VENDOR_ID_NVIDIA;
+	}
+	else if (name == "amd")
+	{
+		return GPU_VENDOR_ID_AMD;
+	}
+	else if (name == "intel")
+	{
+		return GPU_VENDOR_ID_INTEL;
+	}
+	else
+	{
+		return 0;
+	}
+}
 
 static constexpr const char* HRESULTtoString(HRESULT result)
 {
@@ -399,6 +425,8 @@ static constexpr D3D12_BARRIER_SYNC BarrierStageToD3D12_BARRIER_SYNC(BarrierStag
 		case BarrierStage::DepthStencil: return D3D12_BARRIER_SYNC_DEPTH_STENCIL;
 		case BarrierStage::Copy: return D3D12_BARRIER_SYNC_COPY;
 		case BarrierStage::BuildRayTracingAccelerationStructure: return D3D12_BARRIER_SYNC_BUILD_RAYTRACING_ACCELERATION_STRUCTURE;
+		case BarrierStage::ExecuteIndirect: return D3D12_BARRIER_SYNC_EXECUTE_INDIRECT;
+		case BarrierStage::ClearUnorderedAccess: return D3D12_BARRIER_SYNC_CLEAR_UNORDERED_ACCESS_VIEW;
 		default: return D3D12_BARRIER_SYNC_NONE;
 	}
 }
@@ -412,6 +440,7 @@ static constexpr D3D12_BARRIER_ACCESS BarrierAccessToD3D12_BARRIER_ACCESS(Barrie
 		case BarrierAccess::RenderTarget: return D3D12_BARRIER_ACCESS_RENDER_TARGET;
 		case BarrierAccess::ShaderResource: return D3D12_BARRIER_ACCESS_SHADER_RESOURCE;
 		case BarrierAccess::UnorderedAccess: return D3D12_BARRIER_ACCESS_UNORDERED_ACCESS;
+		case BarrierAccess::IndirectArgument: return D3D12_BARRIER_ACCESS_INDIRECT_ARGUMENT;
 		case BarrierAccess::DepthStencilRead: return D3D12_BARRIER_ACCESS_DEPTH_STENCIL_WRITE; // HACK TO AVOID READONLY DSVs
 		case BarrierAccess::DepthStencilWrite: return D3D12_BARRIER_ACCESS_DEPTH_STENCIL_WRITE;
 		case BarrierAccess::CopySource: return D3D12_BARRIER_ACCESS_COPY_SOURCE;

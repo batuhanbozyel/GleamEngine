@@ -1,15 +1,22 @@
 #include "Common.hlsli"
+#include "VisibilityBufferCommon.hlsli"
 #include "../ViewMode.h"
 #include "../ShaderTypes.h"
 
 PUSH_CONSTANT(GEditor::ViewModeUniforms, uniforms);
-CONSTANT_BUFFER(Gleam::CameraUniforms, camera, 0);
 
 // Reconstruct view-space Z from device depth using the inverse projection.
 float LinearizeViewZ(float deviceDepth, float4x4 invProjectionMatrix)
 {
     float4 viewPos = mul(invProjectionMatrix, float4(0.0, 0.0, deviceDepth, 1.0));
     return viewPos.z / viewPos.w;
+}
+
+float3 HashIDToColor(uint id)
+{
+    uint h = id * 2654435769u;
+    h ^= h >> 15; h *= 2246822519u; h ^= h >> 13;
+    return float3((h & 0xFFu), ((h >> 8) & 0xFFu), ((h >> 16) & 0xFFu)) / 255.0f;
 }
 
 [shader("pixel")]
@@ -19,7 +26,8 @@ float4 viewModeFragmentShader(FScreenVertexOutput IN) : SV_TARGET
 
     switch ((Gleam::ViewMode)uniforms.mode)
     {
-        case Gleam::ViewMode::WorldNormal:
+        case Gleam::ViewMode::ShadingNormal:
+        case Gleam::ViewMode::GeometryNormal:
         {
             Texture2D<float2> normalTexture = ResourceDescriptorHeap[uniforms.sourceTexture];
             float2 encoded = normalTexture.Sample(Sampler_Point_Clamp, IN.texCoord);
@@ -97,10 +105,47 @@ float4 viewModeFragmentShader(FScreenVertexOutput IN) : SV_TARGET
             color = lerp(bgColor, arrowColor, arrowMask);
             break;
         }
+        case Gleam::ViewMode::Roughness:
+        {
+            Texture2D<float> roughnessTexture = ResourceDescriptorHeap[uniforms.sourceTexture];
+            color = roughnessTexture.Sample(Sampler_Point_Clamp, IN.texCoord).xxx;
+            break;
+        }
         case Gleam::ViewMode::ShadowMask:
         {
             Texture2D<float> shadowTexture = ResourceDescriptorHeap[uniforms.sourceTexture];
             color = shadowTexture.Sample(Sampler_Point_Clamp, IN.texCoord).xxx;
+            break;
+        }
+        case Gleam::ViewMode::MeshletVisualization:
+        {
+            Texture2D<PackedVisibilityID> visibilityBuffer = ResourceDescriptorHeap[uniforms.sourceTexture];
+            PackedVisibilityID packedID = visibilityBuffer.Load(int3(IN.texCoord * camera.resolution, 0));
+            if (IsValidVisibilityID(packedID))
+            {
+                Gleam::VisibilityID visibility = UnpackVisibilityID(packedID);
+                color = HashIDToColor((visibility.instanceID << 16) | (visibility.meshletID & 0xFFFFu));
+            }
+            break;
+        }
+        case Gleam::ViewMode::VisibilityIDs:
+        {
+            Texture2D<PackedVisibilityID> visibilityBuffer = ResourceDescriptorHeap[uniforms.sourceTexture];
+            PackedVisibilityID packedID = visibilityBuffer.Load(int3(IN.texCoord * camera.resolution, 0));
+            if (IsValidVisibilityID(packedID))
+            {
+                    color = HashIDToColor(packedID.x * 2654435769u + packedID.y);
+            }
+            break;
+        }
+        case Gleam::ViewMode::BatchIDs:
+        {
+            Texture2D<PackedVisibilityID> visibilityBuffer = ResourceDescriptorHeap[uniforms.sourceTexture];
+            PackedVisibilityID packedID = visibilityBuffer.Load(int3(IN.texCoord * camera.resolution, 0));
+            if (IsValidVisibilityID(packedID))
+            {
+                color = HashIDToColor(UnpackVisibilityBatchIndex(packedID) + 1u);
+            }
             break;
         }
         default:

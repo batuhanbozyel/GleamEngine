@@ -8,8 +8,7 @@ class Material;
 struct DepthPrepassData
 {
 	TextureHandle depthTarget;
-	TextureHandle motionVectorTarget;
-	TextureHandle normalTarget;
+	TextureHandle visibilityBuffer;
 };
 
 class DepthPrepass : public IRenderer
@@ -29,8 +28,7 @@ public:
 private:
 
 	GraphicsDevice* mDevice = nullptr;
-	HashMap<uint32_t, GraphicsPipelineHandle> mGraphicsPipelines;
-	HashMap<uint32_t, MeshPipelineHandle> mMeshPipelines;
+	HashMap<uint32_t, MeshPipelineHandle> mPipelines;
 
 };
 

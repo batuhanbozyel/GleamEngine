@@ -44,6 +44,25 @@ using uint4 = Gleam::UInt4;
 #define MESH_AMPLIFICATION_THREADS 32u
 #define MESH_SHADER_THREADS        128u
 
+#define VISIBILITY_RESOLVE_GROUP_SIZE 64u
+
+#define VISIBILITY_CLASSIFY_GROUP_SIZE_X 8u
+#define VISIBILITY_CLASSIFY_GROUP_SIZE_Y 8u
+#define VISIBILITY_CLASSIFY_GROUP_SIZE (VISIBILITY_CLASSIFY_GROUP_SIZE_X * VISIBILITY_CLASSIFY_GROUP_SIZE_Y)
+
+// Visibility buffer bit budget (see VisibilityBufferCommon.hlsli for the full encoding):
+// R channel packs (batchIndex << 17) | (instanceID + 1); instanceID + 1 fits 17 bits
+// since MaxMeshInstances = 65536, leaving 15 bits for the material batch index.
+#define VISIBILITY_TRIANGLE_BITS 7u
+#define VISIBILITY_TRIANGLE_MASK 0x7Fu
+#define VISIBILITY_INSTANCE_BITS 17u
+#define VISIBILITY_INSTANCE_MASK 0x1FFFFu
+#define VISIBILITY_MAX_BATCHES (1u << (32u - VISIBILITY_INSTANCE_BITS))
+
+#ifdef __cplusplus
+static_assert(MAX_MESHLET_TRIANGLES <= VISIBILITY_TRIANGLE_MASK + 1, "MAX_MESHLET_TRIANGLES exceeds the visibility buffer triangle ID bit budget.");
+#endif
+
 namespace Gleam {
 
 #ifdef __cplusplus
@@ -144,7 +163,11 @@ struct Texture2DResourceView : TextureResourceView
 #ifdef __HLSL_VERSION
 	T Load(uint3 pos)
 	{
+	#ifdef SHADER_TARGET_PIXEL
 		Texture2D<T> texture = ResourceDescriptorHeap[index];
+	#else
+		Texture2D<T> texture = ResourceDescriptorHeap[NonUniformResourceIndex(index)];
+	#endif
 		return texture.Load(pos);
 	}
 
