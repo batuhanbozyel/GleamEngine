@@ -11,7 +11,7 @@ Gleam::TArray<Gleam::BufferRange> TextureTools::CalculateSubresourceRanges(const
 {
 	Gleam::TArray<Gleam::BufferRange> subresources(mipLevels);
 
-	uint32_t offset = 0;
+	uint64_t offset = 0;
 	for (uint32_t mip = 0; mip < mipLevels; ++mip)
 	{
 		uint32_t mipWidth = Gleam::Math::Max(texture.width >> mip, 1);
@@ -19,7 +19,7 @@ Gleam::TArray<Gleam::BufferRange> TextureTools::CalculateSubresourceRanges(const
 
 		auto& subresource = subresources[mip];
 		subresource.offset = offset;
-		subresource.size = mipWidth * mipHeight * Gleam::Utils::GetTextureFormatSizeInBytes(texture.format);
+		subresource.size = (uint64_t)mipWidth * mipHeight * Gleam::Utils::GetTextureFormatSizeInBytes(texture.format);
 		offset += subresource.size;
 	}
 	return subresources;
@@ -104,11 +104,11 @@ Gleam::BinaryBuffer TextureTools::GenerateMipmaps(const RawTexture& texture)
 		uint32_t srcMipWidth = Gleam::Math::Max(texture.width >> (mip - 1), 1);
 		uint32_t srcMipHeight = Gleam::Math::Max(texture.height >> (mip - 1), 1);
 
-		stbir_resize(Gleam::OffsetPointer(pixels.data, (size_t)subresources[mip - 1].offset),
+		stbir_resize(Gleam::OffsetPointer(pixels.data, subresources[mip - 1].offset),
 					 srcMipWidth,
 					 srcMipHeight,
 					 0,
-					 Gleam::OffsetPointer(pixels.data, (size_t)subresources[mip].offset),
+					 Gleam::OffsetPointer(pixels.data, subresources[mip].offset),
 					 dstMipWidth,
 					 dstMipHeight,
 					 0,

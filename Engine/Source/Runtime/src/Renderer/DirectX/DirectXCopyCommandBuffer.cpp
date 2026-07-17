@@ -2,6 +2,8 @@
 
 #ifdef USE_DIRECTX_RENDERER
 #include "Renderer/CopyCommandBuffer.h"
+#include "Renderer/RenderSystem.h"
+#include "Core/Engine.h"
 #include "DirectXDevice.h"
 #include "DirectXUtils.h"
 
@@ -24,7 +26,7 @@ struct CopyCommandBuffer::Impl
 	size_t stagingBufferOffset = 0;
 	TArray<uint8_t> stagingBuffer;
 
-	TArray<ID3D12Resource*> tempBuffers;
+	TArray<Buffer> stagingBuffers;
 	TArray<Buffer> bufferCopies;
 	TArray<Texture> textureCopies;
 	
@@ -203,11 +205,15 @@ void CopyCommandBuffer::WaitUntilCompleted() const
 	WaitForID3D12Fence(mHandle->memoryFence, mHandle->fenceValue);
 
 	mHandle->stagingBufferOffset = 0;
-	for (auto buffer : mHandle->tempBuffers)
+	if (not mHandle->stagingBuffers.empty())
 	{
-		buffer->Release();
+		static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
+		for (auto& stagingBuffer : mHandle->stagingBuffers)
+		{
+			mDevice->Dispose(renderSystem->GetAllocator(), stagingBuffer, BarrierStage::None);
+		}
+		mHandle->stagingBuffers.clear();
 	}
-	mHandle->tempBuffers.clear();
 }
 
 void CopyCommandBuffer::Commit(const Buffer& buffer, const void* data, size_t size, size_t offset) const
@@ -236,57 +242,21 @@ void CopyCommandBuffer::Commit(const Buffer& buffer, const void* data, size_t si
 		}
 		else
 		{
-			D3D12_RESOURCE_DESC1 resourceDesc = {
-				.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER,
-				.Alignment = 0,
-				.Width = size,
-				.Height = 1,
-				.DepthOrArraySize = 1,
-				.MipLevels = 1,
-				.Format = DXGI_FORMAT_UNKNOWN,
-				.SampleDesc = {.Count = 1, .Quality = 0 },
-				.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR,
-				.Flags = D3D12_RESOURCE_FLAG_NONE
-			};
-
-			D3D12_HEAP_PROPERTIES heapProperties = {
-				.Type = D3D12_HEAP_TYPE_UPLOAD,
-				.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN,
-				.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN,
-				.CreationNodeMask = 0,
-				.VisibleNodeMask = 0
-			};
-
-			ID3D12Resource* stagingBuffer = nullptr;
-			DX_CHECK(static_cast<ID3D12Device10*>(mDevice->GetHandle())->CreateCommittedResource3(
-				&heapProperties,
-				D3D12_HEAP_FLAG_NONE,
-				&resourceDesc,
-				D3D12_BARRIER_LAYOUT_UNDEFINED,
-				nullptr,
-				nullptr,
-				0,
-				nullptr,
-				IID_PPV_ARGS(&stagingBuffer)));
-
-			TStringStream ss;
-			ss << buffer.GetDescriptor().name << "::UploadBuffer";
-			TWString resourceName = ss.str();
-			stagingBuffer->SetName(resourceName.c_str());
-
-			mHandle->tempBuffers.push_back(stagingBuffer);
-
-			void* stagingBufferPtr = nullptr;
-			DX_CHECK(stagingBuffer->Map(0, nullptr, &stagingBufferPtr));
-			memcpy(stagingBufferPtr, data, size);
-			stagingBuffer->Unmap(0, nullptr);
+			static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
+			BufferDescriptor stagingDesc;
+			stagingDesc.name = "CopyCommandBuffer::StagingBuffer";
+			stagingDesc.memoryType = MemoryType::CPU;
+			stagingDesc.size = size;
+			auto uploadBuffer = mDevice->CreateBuffer(renderSystem->GetAllocator(), stagingDesc);
+			memcpy(uploadBuffer.GetContents(), data, size);
+			mHandle->stagingBuffers.push_back(uploadBuffer);
 
 			DSTORAGE_REQUEST request = {};
 			request.Options.SourceType = DSTORAGE_REQUEST_SOURCE_MEMORY;
 			request.Options.DestinationType = DSTORAGE_REQUEST_DESTINATION_BUFFER;
 			request.Options.CompressionFormat = DSTORAGE_COMPRESSION_FORMAT_NONE;
 
-			request.Source.Memory.Source = stagingBufferPtr;
+			request.Source.Memory.Source = uploadBuffer.GetContents();
 			request.Source.Memory.Size = size32;
 
 			request.Destination.Buffer.Resource = dstBuffer;
@@ -340,92 +310,28 @@ void CopyCommandBuffer::Commit(const Texture& texture, const void* data, size_t 
 		}
 		else
 		{
-			D3D12_RESOURCE_DESC1 resourceDesc = {
-				.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER,
-				.Alignment = 0,
-				.Width = size,
-				.Height = 1,
-				.DepthOrArraySize = 1,
-				.MipLevels = 1,
-				.Format = DXGI_FORMAT_UNKNOWN,
-				.SampleDesc = {.Count = 1, .Quality = 0 },
-				.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR,
-				.Flags = D3D12_RESOURCE_FLAG_NONE
-			};
-
-			D3D12_HEAP_PROPERTIES heapProperties = {
-				.Type = D3D12_HEAP_TYPE_UPLOAD,
-				.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN,
-				.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN,
-				.CreationNodeMask = 0,
-				.VisibleNodeMask = 0
-			};
-
-			ID3D12Resource* stagingBuffer = nullptr;
-			DX_CHECK(device->CreateCommittedResource3(
-				&heapProperties,
-				D3D12_HEAP_FLAG_NONE,
-				&resourceDesc,
-				D3D12_BARRIER_LAYOUT_UNDEFINED,
-				nullptr,
-				nullptr,
-				0,
-				nullptr,
-				IID_PPV_ARGS(&stagingBuffer)));
-
-			TStringStream ss;
-			ss << texDesc.name << "::UploadBuffer";
-			TWString resourceName = ss.str();
-			stagingBuffer->SetName(resourceName.c_str());
-			mHandle->tempBuffers.push_back(stagingBuffer);
-
-			void* stagingBufferPtr = nullptr;
-			DX_CHECK(stagingBuffer->Map(0, nullptr, &stagingBufferPtr));
-			memcpy(stagingBufferPtr, data, size);
-			stagingBuffer->Unmap(0, nullptr);
-			srcData = stagingBufferPtr;
+			static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
+			BufferDescriptor stagingDesc;
+			stagingDesc.name = "CopyCommandBuffer::StagingBuffer";
+			stagingDesc.memoryType = MemoryType::CPU;
+			stagingDesc.size = size;
+			auto uploadBuffer = mDevice->CreateBuffer(renderSystem->GetAllocator(), stagingDesc);
+			memcpy(uploadBuffer.GetContents(), data, size);
+			mHandle->stagingBuffers.push_back(uploadBuffer);
+			srcData = uploadBuffer.GetContents();
 		}
 	}
 	else
 	{
-		D3D12_RESOURCE_DESC1 resourceDesc = {
-			.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER,
-			.Alignment = 0,
-			.Width = totalBytes,
-			.Height = 1,
-			.DepthOrArraySize = 1,
-			.MipLevels = 1,
-			.Format = DXGI_FORMAT_UNKNOWN,
-			.SampleDesc = {.Count = 1, .Quality = 0 },
-			.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR,
-			.Flags = D3D12_RESOURCE_FLAG_NONE
-		};
+		static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
+		BufferDescriptor stagingDesc;
+		stagingDesc.name = "CopyCommandBuffer::StagingBuffer";
+		stagingDesc.memoryType = MemoryType::CPU;
+		stagingDesc.size = totalBytes;
+		auto uploadBuffer = mDevice->CreateBuffer(renderSystem->GetAllocator(), stagingDesc);
+		mHandle->stagingBuffers.push_back(uploadBuffer);
 
-		D3D12_HEAP_PROPERTIES heapProperties = {
-			.Type = D3D12_HEAP_TYPE_UPLOAD,
-			.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN,
-			.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN,
-			.CreationNodeMask = 0,
-			.VisibleNodeMask = 0
-		};
-
-		ID3D12Resource* stagingBuffer = nullptr;
-		DX_CHECK(device->CreateCommittedResource3(
-			&heapProperties,
-			D3D12_HEAP_FLAG_NONE,
-			&resourceDesc,
-			D3D12_BARRIER_LAYOUT_UNDEFINED,
-			nullptr, nullptr, 0, nullptr,
-			IID_PPV_ARGS(&stagingBuffer)));
-
-		TStringStream ss;
-		ss << texDesc.name << "::UploadBuffer";
-		TWString resourceName = ss.str();
-		stagingBuffer->SetName(resourceName.c_str());
-		mHandle->tempBuffers.push_back(stagingBuffer);
-
-		void* stagingBufferPtr = nullptr;
-		DX_CHECK(stagingBuffer->Map(0, nullptr, &stagingBufferPtr));
+		auto stagingBufferPtr = uploadBuffer.GetContents();
 		for (UINT depth = 0; depth < region.back; ++depth)
 		{
 			for (UINT row = 0; row < numRows; ++row)
@@ -438,7 +344,6 @@ void CopyCommandBuffer::Commit(const Texture& texture, const void* data, size_t 
 					srcRowPitch);
 			}
 		}
-		stagingBuffer->Unmap(0, nullptr);
 		srcData = stagingBufferPtr;
 	}
 

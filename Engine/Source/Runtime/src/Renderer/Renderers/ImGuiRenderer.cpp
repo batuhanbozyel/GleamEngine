@@ -44,7 +44,7 @@ void ImGuiRenderer::OnCreate(const RenderContext& context)
 
 	auto& subresource = textureDesc.subresources[0];
 	subresource.offset = 0;
-	subresource.size = (uint32_t)textureDesc.pixels.size;
+	subresource.size = textureDesc.pixels.size;
 	mDefaultFontTexture = new Texture2D(textureDesc);
 	
 	ImTextureID fontTextureId = static_cast<ImTextureID>(mDefaultFontTexture->GetResourceView().data);
@@ -251,7 +251,7 @@ void ImGuiRenderer::AddFontTexture(const Path& fontPath, const Path& defaultPath
 
 	auto& subresource = textureDesc.subresources[0];
 	subresource.offset = 0;
-	subresource.size = (uint32_t)textureDesc.pixels.size;
+	subresource.size = textureDesc.pixels.size;
 	mFontTexture = new Texture2D(textureDesc);
 
 	ImTextureID fontTextureId = static_cast<ImTextureID>(mFontTexture->GetResourceView().data);

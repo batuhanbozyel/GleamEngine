@@ -227,6 +227,14 @@ Gleam::RefCounted<MeshBaker> MeshSource::ImportMesh(const Gleam::TArray<RawMesh>
 	Gleam::TArray<uint32_t> combinedMeshletVertices;
 	Gleam::TArray<uint32_t> combinedMeshletTriangles;
 
+	size_t totalIndexCount = 0;
+	for (const auto& submesh : descriptor.submeshes)
+	{
+		totalIndexCount += submesh.indexCount;
+	}
+	combinedMeshletTriangles.reserve(totalIndexCount / 3);
+	combinedMeshletVertices.reserve(totalIndexCount);
+
 	auto combinedIndices = static_cast<uint32_t*>(Gleam::OffsetPointer(descriptor.buffer.data, descriptor.indices.offset));
 	auto combinedPositions = static_cast<Gleam::Float3*>(Gleam::OffsetPointer(descriptor.buffer.data, descriptor.positions.offset));
 	for (auto& submesh : descriptor.submeshes)
@@ -277,7 +285,6 @@ Gleam::RefCounted<MeshBaker> MeshSource::ImportMesh(const Gleam::TArray<RawMesh>
 			meshletDesc.vertexCount = static_cast<uint32_t>(meshlet.vertex_count);
 			meshletDesc.triangleCount = static_cast<uint32_t>(meshlet.triangle_count);
 
-			combinedMeshletTriangles.reserve(combinedMeshletTriangles.size() + meshlet.triangle_count);
 			for (uint32_t t = 0; t < meshlet.triangle_count; ++t)
 			{
 				uint32_t packedTriangle = static_cast<uint32_t>(meshletTriangleData[t * 3 + 0])

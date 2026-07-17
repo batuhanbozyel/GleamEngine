@@ -62,20 +62,20 @@ Gleam::MeshDescriptor MeshTools::CombineMeshes(const Gleam::TArray<RawMesh>& mes
     Gleam::MeshDescriptor combined;
     combined.submeshes.resize(meshes.size());
 
-	uint32_t totalIndexCount = 0;
-	uint32_t totalVertexCount = 0;
+	uint64_t totalIndexCount = 0;
+	uint64_t totalVertexCount = 0;
 	for (const auto& mesh : meshes)
 	{
-		totalIndexCount += (uint32_t)mesh.indices.size();
-		totalVertexCount += (uint32_t)mesh.positions.size();
+		totalIndexCount += mesh.indices.size();
+		totalVertexCount += mesh.positions.size();
 	}
 
 	combined.indices.offset = 0;
-	combined.indices.size = (uint32_t)(totalIndexCount * sizeof(uint32_t));
+	combined.indices.size = totalIndexCount * sizeof(uint32_t);
 	combined.positions.offset = combined.indices.offset + combined.indices.size;
-	combined.positions.size = (uint32_t)(totalVertexCount * sizeof(Gleam::Float3));
+	combined.positions.size = totalVertexCount * sizeof(Gleam::Float3);
 	combined.interleavedVertices.offset = combined.positions.offset + combined.positions.size;
-	combined.interleavedVertices.size = (uint32_t)(totalVertexCount * sizeof(Gleam::InterleavedMeshVertex));
+	combined.interleavedVertices.size = totalVertexCount * sizeof(Gleam::InterleavedMeshVertex);
 	combined.buffer = Gleam::BinaryBuffer(combined.interleavedVertices.offset + combined.interleavedVertices.size);
 
 	auto combinedIndices = static_cast<uint32_t*>(Gleam::OffsetPointer(combined.buffer.data, (size_t)combined.indices.offset));
