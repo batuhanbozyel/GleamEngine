@@ -1,5 +1,6 @@
 #include "gpch.h"
 #include "BinarySerializer.h"
+#include "Container/BinaryBuffer.h"
 #include "Renderer/Material/MaterialProperty.h"
 
 using namespace Gleam;
@@ -108,6 +109,7 @@ void BinarySerializer::Initialize(Engine* engine)
 	REGISTER_POD_TYPE_BINARY_SERIALIZER(Float4x4);
 	REGISTER_POD_TYPE_BINARY_SERIALIZER(Quaternion);
 	REGISTER_POD_TYPE_BINARY_SERIALIZER(Guid);
+	REGISTER_POD_TYPE_BINARY_SERIALIZER(BufferRange);
 	REGISTER_POD_TYPE_BINARY_SERIALIZER(MaterialPropertyValue);
 
 	// Custom serializers
@@ -160,6 +162,31 @@ void BinarySerializer::Initialize(Engine* engine)
 			auto len = static_cast<uint32_t>(pathStr.length());
 			stream.write(reinterpret_cast<const char*>(&len), sizeof(uint32_t));
 			stream.write(pathStr.data(), pathStr.length());
+		};
+	}
+
+	if constexpr (Reflection::Traits::IsReflected<BinaryBuffer>())
+	{
+		mCustomSerializers[Reflection::GetClass<BinaryBuffer>().ResolveQualifiedName()] = [](const void* obj,
+			const Reflection::ClassDescription& classDesc,
+			FileStream& stream)
+		{
+			const auto& buffer = Reflection::Get<BinaryBuffer>(obj);
+			auto size = static_cast<uint64_t>(buffer.size);
+
+			SerializeClassHeader(classDesc, stream);
+			stream.write(reinterpret_cast<const char*>(&size), sizeof(uint64_t));
+			stream.write(static_cast<const char*>(buffer.data), size);
+		};
+
+		mCustomArraySerializers[Reflection::GetClass<BinaryBuffer>().ResolveQualifiedName()] = [](const void* obj,
+			const Reflection::ClassDescription& classDesc,
+			FileStream& stream)
+		{
+			const auto& buffer = Reflection::Get<BinaryBuffer>(obj);
+			auto size = static_cast<uint64_t>(buffer.size);
+			stream.write(reinterpret_cast<const char*>(&size), sizeof(uint64_t));
+			stream.write(static_cast<const char*>(buffer.data), size);
 		};
 	}
 
@@ -256,6 +283,36 @@ void BinarySerializer::Initialize(Engine* engine)
 			pathStr.resize(len);
 			stream.read(pathStr.data(), len);
 			Reflection::Get<Path>(obj) = Path(pathStr);
+		};
+	}
+
+	if constexpr (Reflection::Traits::IsReflected<BinaryBuffer>())
+	{
+		mCustomDeserializers[Reflection::GetClass<BinaryBuffer>().ResolveQualifiedName()] = [](FileStream& stream,
+			const Reflection::ClassDescription& classDesc,
+			void* obj)
+		{
+			BinaryHeader header;
+			DeserializeHeader(stream, header);
+
+			uint64_t size = 0;
+			stream.read(reinterpret_cast<char*>(&size), sizeof(uint64_t));
+
+			auto& buffer = Reflection::Get<BinaryBuffer>(obj);
+			buffer.Resize(size);
+			stream.read(static_cast<char*>(buffer.data), size);
+		};
+
+		mCustomArrayDeserializers[Reflection::GetClass<BinaryBuffer>().ResolveQualifiedName()] = [](FileStream& stream,
+			const Reflection::ClassDescription& classDesc,
+			void* obj)
+		{
+			uint64_t size = 0;
+			stream.read(reinterpret_cast<char*>(&size), sizeof(uint64_t));
+
+			auto& buffer = Reflection::Get<BinaryBuffer>(obj);
+			buffer.Resize(size);
+			stream.read(static_cast<char*>(buffer.data), size);
 		};
 	}
 

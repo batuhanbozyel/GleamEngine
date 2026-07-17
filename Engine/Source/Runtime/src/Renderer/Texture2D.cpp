@@ -23,7 +23,7 @@ Texture2D::Texture2D(const Texture2DDescriptor& descriptor)
 	for (uint32_t i = 0; i < descriptor.subresources.size(); ++i)
 	{
 		const auto& subresource = descriptor.subresources[i];
-		cmd->Commit(mTexture, subresource.pixels.data(), subresource.pixels.size(), mTexture.GetMip(i), mTexture.GetSlice(i));
+		cmd->Commit(mTexture, OffsetPointer(descriptor.pixels.data, subresource.offset), subresource.size, mTexture.GetMip(i), mTexture.GetSlice(i));
 	}
 }
 

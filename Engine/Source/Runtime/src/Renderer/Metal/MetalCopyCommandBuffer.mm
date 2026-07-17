@@ -227,7 +227,7 @@ void CopyCommandBuffer::Commit(const Texture& texture, const void* data, size_t 
                                      Math::Max(static_cast<uint32_t>(texDesc.size.height) >> mip, 1u),
                                     (texDesc.dimension == TextureDimension::Texture3D) ? Math::Max(texDesc.depth >> mip, 1u) : 1);
 
-    size_t formatSize = Utils::GetTextureFormatSizeInBytes(texDesc.format);
+    size_t formatSize = (size_t)Utils::GetTextureFormatSizeInBytes(texDesc.format);
     size_t sourceBytesPerRow = Math::AlignUp(sourceSize.width * formatSize, formatSize);
     size_t sourceBytesPerImage = (texDesc.dimension == TextureDimension::Texture3D) ? sourceBytesPerRow * sourceSize.height : 0;
     

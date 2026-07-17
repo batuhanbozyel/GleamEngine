@@ -18,12 +18,12 @@ Mesh::Mesh(const MeshDescriptor& descriptor)
     static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
 	auto device = renderSystem->GetDevice();
 
-    size_t positionSize = descriptor.positions.size() * sizeof(Float3);
-    size_t interleavedSize = descriptor.interleavedVertices.size() * sizeof(InterleavedMeshVertex);
-    size_t indexSize = descriptor.indices.size() * sizeof(uint32_t);
-	size_t meshletVertexSize = descriptor.meshletVertices.size() * sizeof(uint32_t);
-	size_t meshletTriangleSize = descriptor.meshletTriangleIndices.size() * sizeof(uint32_t);
-	size_t meshletsSize = descriptor.meshlets.size() * sizeof(MeshletDescriptor);
+    size_t positionSize = descriptor.positions.size;
+    size_t interleavedSize = descriptor.interleavedVertices.size;
+    size_t indexSize = descriptor.indices.size;
+	size_t meshletVertexSize = descriptor.meshletVertices.size;
+	size_t meshletTriangleSize = descriptor.meshletTriangleIndices.size;
+	size_t meshletsSize = descriptor.meshlets.size;
 
     BufferDescriptor bufferDesc;
     bufferDesc.name = "Mesh: " + descriptor.name + " Positions";
@@ -53,12 +53,12 @@ Mesh::Mesh(const MeshDescriptor& descriptor)
     // Send mesh data to buffers
 	{
 		auto cmd = renderSystem->GetCopyCommandBuffer();
-		cmd->Commit(mPositionBuffer, descriptor.positions.data(), positionSize, 0);
-		cmd->Commit(mInterleavedBuffer, descriptor.interleavedVertices.data(), interleavedSize, 0);
-		cmd->Commit(mIndexBuffer, descriptor.indices.data(), indexSize, 0);
-		cmd->Commit(mMeshletVertexBuffer, descriptor.meshletVertices.data(), meshletVertexSize, 0);
-		cmd->Commit(mMeshletTriangleBuffer, descriptor.meshletTriangleIndices.data(), meshletTriangleSize, 0);
-		cmd->Commit(mMeshletsBuffer, descriptor.meshlets.data(), meshletsSize, 0);
+		cmd->Commit(mPositionBuffer, OffsetPointer(descriptor.buffer.data, descriptor.positions.offset), positionSize, 0);
+		cmd->Commit(mInterleavedBuffer, OffsetPointer(descriptor.buffer.data, descriptor.interleavedVertices.offset), interleavedSize, 0);
+		cmd->Commit(mIndexBuffer, OffsetPointer(descriptor.buffer.data, descriptor.indices.offset), indexSize, 0);
+		cmd->Commit(mMeshletVertexBuffer, OffsetPointer(descriptor.buffer.data, descriptor.meshletVertices.offset), meshletVertexSize, 0);
+		cmd->Commit(mMeshletTriangleBuffer, OffsetPointer(descriptor.buffer.data, descriptor.meshletTriangleIndices.offset), meshletTriangleSize, 0);
+		cmd->Commit(mMeshletsBuffer, OffsetPointer(descriptor.buffer.data, descriptor.meshlets.offset), meshletsSize, 0);
 	}
 }
 

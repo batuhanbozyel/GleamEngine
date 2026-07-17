@@ -1,7 +1,7 @@
 #pragma once
 #include <Reflection/Macro.h>
 
-#include <cstddef>
+#include <cstdint>
 
 namespace Gleam {
 
@@ -75,72 +75,72 @@ GENUM(TextureFormat, "B87B25FD-841E-45C8-A2D4-27540B268A52", Serializable)
 
 namespace Utils {
 
-static constexpr size_t GetTextureFormatSizeInBytes(TextureFormat format)
+static constexpr uint32_t GetTextureFormatSizeInBytes(TextureFormat format)
 {
 	switch (format)
 	{
-		case TextureFormat::R8G8B8A8_SRGB: return 4;
+		case TextureFormat::R8G8B8A8_SRGB: return 4u;
 
-		case TextureFormat::R8_UNorm: return 1;
-		case TextureFormat::R8G8_UNorm: return 2;
-		case TextureFormat::R8G8B8A8_UNorm: return 4;
+		case TextureFormat::R8_UNorm: return 1u;
+		case TextureFormat::R8G8_UNorm: return 2u;
+		case TextureFormat::R8G8B8A8_UNorm: return 4u;
 
-		case TextureFormat::R8_SNorm: return 1;
-		case TextureFormat::R8G8_SNorm: return 2;
-		case TextureFormat::R8G8B8A8_SNorm: return 4;
+		case TextureFormat::R8_SNorm: return 1u;
+		case TextureFormat::R8G8_SNorm: return 2u;
+		case TextureFormat::R8G8B8A8_SNorm: return 4u;
 
-		case TextureFormat::R8_UInt: return 1;
-		case TextureFormat::R8G8_UInt: return 2;
-		case TextureFormat::R8G8B8A8_UInt: return 4;
+		case TextureFormat::R8_UInt: return 1u;
+		case TextureFormat::R8G8_UInt: return 2u;
+		case TextureFormat::R8G8B8A8_UInt: return 4u;
 
-		case TextureFormat::R8_SInt: return 1;
-		case TextureFormat::R8G8_SInt: return 2;
-		case TextureFormat::R8G8B8A8_SInt: return 4;
+		case TextureFormat::R8_SInt: return 1u;
+		case TextureFormat::R8G8_SInt: return 2u;
+		case TextureFormat::R8G8B8A8_SInt: return 4u;
 
-		case TextureFormat::R16_UNorm: return 2;
-		case TextureFormat::R16G16_UNorm: return 4;
-		case TextureFormat::R16G16B16A16_UNorm: return 8;
+		case TextureFormat::R16_UNorm: return 2u;
+		case TextureFormat::R16G16_UNorm: return 4u;
+		case TextureFormat::R16G16B16A16_UNorm: return 8u;
 
-		case TextureFormat::R16_SNorm: return 2;
-		case TextureFormat::R16G16_SNorm: return 4;
-		case TextureFormat::R16G16B16A16_SNorm: return 8;
+		case TextureFormat::R16_SNorm: return 2u;
+		case TextureFormat::R16G16_SNorm: return 4u;
+		case TextureFormat::R16G16B16A16_SNorm: return 8u;
 
-		case TextureFormat::R16_UInt: return 2;
-		case TextureFormat::R16G16_UInt: return 4;
-		case TextureFormat::R16G16B16A16_UInt: return 8;
+		case TextureFormat::R16_UInt: return 2u;
+		case TextureFormat::R16G16_UInt: return 4u;
+		case TextureFormat::R16G16B16A16_UInt: return 8u;
 
-		case TextureFormat::R16_SInt: return 2;
-		case TextureFormat::R16G16_SInt: return 4;
-		case TextureFormat::R16G16B16A16_SInt: return 8;
+		case TextureFormat::R16_SInt: return 2u;
+		case TextureFormat::R16G16_SInt: return 4u;
+		case TextureFormat::R16G16B16A16_SInt: return 8u;
 
-		case TextureFormat::R16_SFloat: return 2;
-		case TextureFormat::R16G16_SFloat: return 4;
-		case TextureFormat::R16G16B16A16_SFloat: return 8;
+		case TextureFormat::R16_SFloat: return 2u;
+		case TextureFormat::R16G16_SFloat: return 4u;
+		case TextureFormat::R16G16B16A16_SFloat: return 8u;
 
-		case TextureFormat::R32_UInt: return 4;
-		case TextureFormat::R32G32_UInt: return 8;
-		case TextureFormat::R32G32B32A32_UInt: return 16;
+		case TextureFormat::R32_UInt: return 4u;
+		case TextureFormat::R32G32_UInt: return 8u;
+		case TextureFormat::R32G32B32A32_UInt: return 16u;
 
-		case TextureFormat::R32_SInt: return 4;
-		case TextureFormat::R32G32_SInt: return 8;
-		case TextureFormat::R32G32B32A32_SInt: return 16;
+		case TextureFormat::R32_SInt: return 4u;
+		case TextureFormat::R32G32_SInt: return 8u;
+		case TextureFormat::R32G32B32A32_SInt: return 16u;
 
-		case TextureFormat::R32_SFloat: return 4;
-		case TextureFormat::R32G32_SFloat: return 8;
-		case TextureFormat::R32G32B32A32_SFloat: return 16;
+		case TextureFormat::R32_SFloat: return 4u;
+		case TextureFormat::R32G32_SFloat: return 8u;
+		case TextureFormat::R32G32B32A32_SFloat: return 16u;
 
-		case TextureFormat::B8G8R8A8_SRGB: return 4;
-		case TextureFormat::B8G8R8A8_UNorm: return 4;
+		case TextureFormat::B8G8R8A8_SRGB: return 4u;
+		case TextureFormat::B8G8R8A8_UNorm: return 4u;
 
-		case TextureFormat::R9G9B9E5_SFloat: return 4;
-		case TextureFormat::R11G11B10_SFloat: return 4;
-		case TextureFormat::R10G10B10A2_Unorm: return 4;
+		case TextureFormat::R9G9B9E5_SFloat: return 4u;
+		case TextureFormat::R11G11B10_SFloat: return 4u;
+		case TextureFormat::R10G10B10A2_Unorm: return 4u;
 
         // Depth - Stencil formats
-		case TextureFormat::D16_UNorm: return 2;
-		case TextureFormat::D32_SFloat: return 4;
-        case TextureFormat::D24_UNorm_S8_UInt: return 4;
-		case TextureFormat::D32_SFloat_S8_UInt: return 5;
+		case TextureFormat::D16_UNorm: return 2u;
+		case TextureFormat::D32_SFloat: return 4u;
+        case TextureFormat::D24_UNorm_S8_UInt: return 4u;
+		case TextureFormat::D32_SFloat_S8_UInt: return 5u;
 
 		default: return 0;
 	}

@@ -5,6 +5,7 @@
 #include "Math/BoundingBox.h"
 #include "Container/String.h"
 #include "Container/Array.h"
+#include "Container/BinaryBuffer.h"
 
 namespace Gleam {
 
@@ -82,26 +83,29 @@ GSTRUCT(MeshDescriptor, "59E4007E-F7D4-4107-A05F-E1121067DCD3", Serializable)
 	GFIELD("B1A2C3D4-E5F6-47A8-B9C0-D1E2F3A4B5C6", Serializable)
 	TString name;
 
+	GFIELD("5E19C7A3-D42B-4680-B7F1-3A86D5E90C42", Serializable)
+	BinaryBuffer buffer;
+
 	GFIELD("D4C3B2A1-F5E6-48B9-C0A9-F3E2D1C0B9A8", Serializable)
-	TArray<uint32_t> indices;
+	BufferRange indices;
 
 	GFIELD("7F8E9D0C-1B2A-49C8-D7E6-5F4E3D2C1B0A", Serializable)
-	TArray<Float3> positions;
+	BufferRange positions;
 
 	GFIELD("A9B8C7D6-E5F4-4A3B-2C1D-0E9F8A7B6C5D", Serializable)
-	TArray<InterleavedMeshVertex> interleavedVertices;
+	BufferRange interleavedVertices;
 
 	GFIELD("C5D4E3F2-A1B0-4B9C-8D7E-6F5A4B3C2D1E", Serializable)
 	TArray<SubmeshDescriptor> submeshes;
 
 	GFIELD("3F94F0FF-91BC-4CBA-9402-949E20D654B1", Serializable)
-	TArray<MeshletDescriptor> meshlets;
+	BufferRange meshlets;
 
 	GFIELD("66E8168A-56E4-43FF-BF76-DD5DD3F1AD9B", Serializable)
-	TArray<uint32_t> meshletVertices;
+	BufferRange meshletVertices;
 
 	GFIELD("A35FA938-983A-4903-99BA-C0C2F0800054", Serializable)
-	TArray<uint32_t> meshletTriangleIndices;
+	BufferRange meshletTriangleIndices;
 };
 
 } // namespace Gleam

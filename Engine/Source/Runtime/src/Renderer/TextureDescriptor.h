@@ -13,6 +13,7 @@
 
 #include "Container/String.h"
 #include "Container/Array.h"
+#include "Container/BinaryBuffer.h"
 #include "Container/Hash.h"
 
 namespace Gleam {
@@ -38,12 +39,6 @@ enum TextureUsageFlag
 	TextureUsage_Attachment = BIT(static_cast<uint32_t>(TextureUsage::Attachment))
 };
 typedef uint32_t TextureUsageFlagBits;
-
-GSTRUCT(TextureSubresource, "2B1FCFA8-040B-4D45-AAA2-461C5EB67668", Serializable)
-{
-	GFIELD("B42AFDD4-90EE-4E06-8283-0A2804CDCEAD", Serializable)
-	TArray<uint8_t> pixels;
-};
 
 GSTRUCT(TextureDescriptor, "5B36D630-8A7E-47BE-A9F0-1702AB9F9C8C", Serializable)
 {
@@ -82,8 +77,11 @@ GSTRUCT(TextureDescriptor, "5B36D630-8A7E-47BE-A9F0-1702AB9F9C8C", Serializable)
 GSTRUCT(Texture2DDescriptor, "CC19ED9A-2B9F-4258-B0E5-1F0EB34373A1", Serializable)
 	: TextureDescriptor
 {
+	GFIELD("1B7D4E92-8A35-4C61-9F20-6C43B8A1E57D", Serializable)
+	BinaryBuffer pixels;
+
 	GFIELD("F1E2D3C4-B5A6-4789-B1C2-D3E4F5A6B7C8", Serializable)
-	TArray<TextureSubresource> subresources;
+	TArray<BufferRange> subresources;
 };
 
 GSTRUCT(RenderTextureDescriptor, "7B6A5D4C-3E2F-4180-9D8C-7B6A5D4C3E2F", Serializable)

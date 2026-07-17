@@ -2,6 +2,7 @@
 #include "JSONSerializer.h"
 #include "JSONInternal.h"
 
+#include "Container/BinaryBuffer.h"
 #include "Renderer/Material/MaterialProperty.h"
 
 using namespace Gleam;
@@ -190,6 +191,32 @@ void JSONSerializer::Initialize(Engine* engine)
 		};
 	}
 
+	if constexpr (Reflection::Traits::IsReflected<BinaryBuffer>())
+	{
+		mCustomObjectSerializers[Reflection::GetClass<BinaryBuffer>().ResolveQualifiedName()] = [](const void* obj,
+			const TStringView fieldName,
+			const Reflection::ClassDescription& classDesc,
+			rapidjson::Node& node)
+		{
+			const auto& buffer = Reflection::Get<BinaryBuffer>(obj);
+			auto arrDesc = Reflection::ArrayDescription(Reflection::MetaType::Primitive,
+														static_cast<uint32_t>(Reflection::PrimitiveType::UInt8),
+														buffer.size);
+			SerializeArrayObject(buffer.data, fieldName, arrDesc, node);
+		};
+
+		mCustomArraySerializers[Reflection::GetClass<BinaryBuffer>().ResolveQualifiedName()] = [](const void* obj,
+			const Reflection::ClassDescription& classDesc,
+			rapidjson::Node& node)
+		{
+			const auto& buffer = Reflection::Get<BinaryBuffer>(obj);
+			auto arrDesc = Reflection::ArrayDescription(Reflection::MetaType::Primitive,
+														static_cast<uint32_t>(Reflection::PrimitiveType::UInt8),
+														buffer.size);
+			SerializeArrayObjectElements(buffer.data, arrDesc, node);
+		};
+	}
+
 	if constexpr (Reflection::Traits::IsReflected<eastl::vector<uint8_t>>())
 	{
 		const auto qualifiedName = QualifiedNameWithoutTemplateDeclaration(Reflection::GetClass<eastl::vector<uint8_t>>().ResolveQualifiedName());
@@ -279,6 +306,41 @@ void JSONSerializer::Initialize(Engine* engine)
 			void* obj)
 		{
 			Reflection::Get<Path>(obj) = TString(node.object.GetString());
+		};
+	}
+
+	if constexpr (Reflection::Traits::IsReflected<BinaryBuffer>())
+	{
+		mCustomObjectDeserializers[Reflection::GetClass<BinaryBuffer>().ResolveQualifiedName()] = [](const rapidjson::ConstNode& node,
+			const Reflection::ClassDescription& classDesc,
+			void* obj)
+		{
+			if (node.object.HasMember("Elements"))
+			{
+				const auto& elements = node.object["Elements"].GetArray();
+
+				auto& buffer = Reflection::Get<BinaryBuffer>(obj);
+				buffer.Resize(elements.Size());
+
+				rapidjson::ConstNode elementsNode(elements);
+				auto arrDesc = Reflection::ArrayDescription(Reflection::MetaType::Primitive,
+															static_cast<uint32_t>(Reflection::PrimitiveType::UInt8),
+															buffer.size);
+				DeserializeArrayElements(elementsNode, arrDesc, buffer.data);
+			}
+		};
+
+		mCustomArrayDeserializers[Reflection::GetClass<BinaryBuffer>().ResolveQualifiedName()] = [](const rapidjson::ConstNode& node,
+			const Reflection::ClassDescription& classDesc,
+			void* obj)
+		{
+			auto& buffer = Reflection::Get<BinaryBuffer>(obj);
+			buffer.Resize(node.object.Size());
+
+			auto arrDesc = Reflection::ArrayDescription(Reflection::MetaType::Primitive,
+														static_cast<uint32_t>(Reflection::PrimitiveType::UInt8),
+														buffer.size);
+			DeserializeArrayElements(node, arrDesc, buffer.data);
 		};
 	}
 
