@@ -10,31 +10,29 @@ PUSH_CONSTANT(Gleam::VisibilityShadingConstants, constants);
 [numthreads(VISIBILITY_RESOLVE_GROUP_SIZE, 1, 1)]
 void main(uint dispatchThreadID : SV_DispatchThreadID)
 {
-    uint2 pixelCoords;
-    Gleam::MeshVertexOut IN;
-    Gleam::SurfaceOutput surface;
+    Gleam::VisibilitySample visSample;
     
     [branch]
-    if (UnpackVisibilityShading(constants.resolve, dispatchThreadID, IN, surface, pixelCoords))
+    if (UnpackVisibilityShading(constants.resolve, dispatchThreadID, constants.barycentricCoords, constants.barycentricDerivatives, visSample))
     {
-        float3 viewDir = normalize(camera.position - IN.worldPosition);
-        float3x3 TBN = transpose(float3x3(IN.tangent, IN.bitangent, IN.normal));
-        float3 worldNormal = normalize(mul(TBN, surface.normal));
+        float3 viewDir = normalize(camera.position - visSample.vertex.worldPosition);
+        float3x3 TBN = transpose(float3x3(visSample.vertex.tangent, visSample.vertex.bitangent, visSample.vertex.normal));
+        float3 worldNormal = normalize(mul(TBN, visSample.surface.normal));
 
-        float3 color = EvaluateMeshLighting(surface,
-                                        IN.worldPosition,
-                                        worldNormal,
-                                        viewDir,
-                                        pixelCoords,
-                                        constants.brdfTexture,
-                                        constants.ggxEssTexture,
-                                        constants.ggxEAvgTexture,
-                                        constants.diffuseReflectionTexture,
-                                        constants.specularReflectionTexture,
-                                        constants.shadowTexture);
+        float3 color = EvaluateMeshLighting(visSample.surface,
+                                            visSample.vertex.worldPosition,
+                                            worldNormal,
+                                            viewDir,
+                                            visSample.pixelCoords,
+                                            constants.brdfTexture,
+                                            constants.ggxEssTexture,
+                                            constants.ggxEAvgTexture,
+                                            constants.diffuseReflectionTexture,
+                                            constants.specularReflectionTexture,
+                                            constants.shadowTexture);
 
         RWTexture2D<float4> colorTarget = ResourceDescriptorHeap[constants.colorTarget];
-        colorTarget[pixelCoords] = float4(color, surface.albedo.a);
+        colorTarget[visSample.pixelCoords] = float4(color, visSample.surface.albedo.a);
     }
 }
 #endif // VISIBILITY_SHADING_HLSL

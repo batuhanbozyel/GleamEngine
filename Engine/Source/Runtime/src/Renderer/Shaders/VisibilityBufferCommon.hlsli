@@ -41,6 +41,13 @@ struct VertexAttributes
     float4 tangents[3];
     float2 texCoords[3];
 };
+    
+struct VisibilitySample
+{
+    MeshVertexOut vertex;
+    SurfaceOutput surface;
+    uint2 pixelCoords;
+};
 
 } // namespace Gleam
 
@@ -115,6 +122,25 @@ Gleam::VertexAttributes LoadVertexAttributes(Gleam::MeshInstanceData instance, u
     return attribs;
 }
 
+uint4 PackBarycentricDerivatives(Gleam::BarycentricDeriv deriv)
+{
+    return uint4(f32tof16(deriv.ddxLambda.x), f32tof16(deriv.ddxLambda.y),
+                 f32tof16(deriv.ddyLambda.x), f32tof16(deriv.ddyLambda.y));
+}
+
+Gleam::BarycentricDeriv UnpackBarycentricDerivatives(float2 lambda, uint4 packedDerivs)
+{
+    Gleam::BarycentricDeriv deriv = (Gleam::BarycentricDeriv)0;
+    deriv.lambda = float3(lambda, 1.0f - lambda.x - lambda.y);
+    deriv.ddxLambda.x = f16tof32(packedDerivs.x);
+    deriv.ddxLambda.y = f16tof32(packedDerivs.y);
+    deriv.ddxLambda.z = -(deriv.ddxLambda.x + deriv.ddxLambda.y);
+    deriv.ddyLambda.x = f16tof32(packedDerivs.z);
+    deriv.ddyLambda.y = f16tof32(packedDerivs.w);
+    deriv.ddyLambda.z = -(deriv.ddyLambda.x + deriv.ddyLambda.y);
+    return deriv;
+}
+
 Gleam::BarycentricDeriv CalculateScreenSpaceBarycentrics(float4 clip0, float4 clip1, float4 clip2, float2 pixelNdc, float2 resolution)
 {
     Gleam::BarycentricDeriv ret = (Gleam::BarycentricDeriv)0;
@@ -185,19 +211,12 @@ void InterpolateUV(Gleam::BarycentricDeriv deriv, float2 uv0, float2 uv1, float2
     ddyUV = float2(interpU.z, interpV.z);
 }
 
-Gleam::MeshVertexOut InterpolateVertexAttributes(Gleam::MeshInstanceData instance, Gleam::VisibilityID visID, uint2 pixelCoords)
+Gleam::MeshVertexOut InterpolateVertexAttributes(Gleam::MeshInstanceData instance, Gleam::VertexAttributes attribs, Gleam::BarycentricDeriv deriv, uint2 pixelCoords)
 {
-    Gleam::VertexAttributes attribs = LoadVertexAttributes(instance, visID.meshletID, visID.triangleID);
     float3 worldPos0 = mul(instance.transform, float4(attribs.positions[0], 1.0)).xyz;
     float3 worldPos1 = mul(instance.transform, float4(attribs.positions[1], 1.0)).xyz;
     float3 worldPos2 = mul(instance.transform, float4(attribs.positions[2], 1.0)).xyz;
 
-    float4 clipPos0 = mul(camera.viewProjectionMatrix, float4(worldPos0, 1.0f));
-    float4 clipPos1 = mul(camera.viewProjectionMatrix, float4(worldPos1, 1.0f));
-    float4 clipPos2 = mul(camera.viewProjectionMatrix, float4(worldPos2, 1.0f));
-
-    Gleam::BarycentricDeriv deriv = CalculateScreenSpaceBarycentrics(clipPos0, clipPos1, clipPos2, PixelSpaceToNDC(pixelCoords, camera.resolution), camera.resolution);
-    
     float3 objectNormal = InterpolateBary(deriv, attribs.normals[0], attribs.normals[1], attribs.normals[2]);
     float3 objectTangent = InterpolateBary(deriv, attribs.tangents[0].xyz, attribs.tangents[1].xyz, attribs.tangents[2].xyz);
     float3 normal = normalize(mul(instance.transform, float4(objectNormal, 0.0f)).xyz);
@@ -219,15 +238,15 @@ Gleam::MeshVertexOut InterpolateVertexAttributes(Gleam::MeshInstanceData instanc
     float3 prevWorldPos2  = mul(instance.previousTransform, float4(attribs.positions[2], 1.0f)).xyz;
     OUT.prevWorldPosition = InterpolateBary(deriv, prevWorldPos0, prevWorldPos1, prevWorldPos2);
 #endif // MOTION_VECTOR_PASS
-    
+
     return OUT;
 }
 
-bool UnpackVisibilityShading(Gleam::VisibilityResolveConstants constants, uint threadID,
-    out Gleam::MeshVertexOut vertex, out Gleam::SurfaceOutput surface, out uint2 pixelCoords)
+bool UnpackVisibilityPixel(Gleam::VisibilityResolveConstants constants, uint threadID,
+    out Gleam::MeshInstanceData instance, out Gleam::VisibilityID visID, out uint2 pixelCoords)
 {
-    vertex = (Gleam::MeshVertexOut)0;
-    surface = (Gleam::SurfaceOutput)0;
+    instance = (Gleam::MeshInstanceData)0;
+    visID = (Gleam::VisibilityID)0;
     pixelCoords = uint2(0u, 0u);
 
     ByteAddressBuffer countsBuffer = ResourceDescriptorHeap[constants.countsBuffer];
@@ -245,17 +264,38 @@ bool UnpackVisibilityShading(Gleam::VisibilityResolveConstants constants, uint t
     pixelCoords = uint2(packedPixel & 0xFFFFu, packedPixel >> 16u);
 
     Texture2D<PackedVisibilityID> visibilityBuffer = ResourceDescriptorHeap[constants.visibilityBuffer];
-    Gleam::VisibilityID visID = UnpackVisibilityID(visibilityBuffer.Load(int3(pixelCoords, 0)));
+    visID = UnpackVisibilityID(visibilityBuffer.Load(int3(pixelCoords, 0)));
 
     ByteAddressBuffer instanceBuffer = ResourceDescriptorHeap[constants.instanceBuffer];
-    Gleam::MeshInstanceData instance = instanceBuffer.Load<Gleam::MeshInstanceData>(visID.instanceID * sizeof(Gleam::MeshInstanceData));
+    instance = instanceBuffer.Load<Gleam::MeshInstanceData>(visID.instanceID * sizeof(Gleam::MeshInstanceData));
 
     ByteAddressBuffer materialBuffer = ResourceDescriptorHeap[instance.materialBuffer];
     LoadMaterialInstance(materialBuffer, instance.materialID);
+    return true;
+}
 
-    vertex = InterpolateVertexAttributes(instance, visID, pixelCoords);
-    surface = SurfMain(vertex);
-    surface.roughness = max(surface.roughness, 0.04);
+bool UnpackVisibilityShading(Gleam::VisibilityResolveConstants constants, uint threadID,
+    Gleam::ShaderResourceIndex barycentricCoords, Gleam::ShaderResourceIndex barycentricDerivatives,
+    out Gleam::VisibilitySample visSample)
+{
+    visSample = (Gleam::VisibilitySample)0;
+
+    Gleam::MeshInstanceData instance;
+    Gleam::VisibilityID visID;
+    if (UnpackVisibilityPixel(constants, threadID, instance, visID, visSample.pixelCoords) == false)
+    {
+        return false;
+    }
+
+    Texture2D<float2> barycentricCoordsTexture = ResourceDescriptorHeap[barycentricCoords];
+    Texture2D<uint4> barycentricDerivsTexture = ResourceDescriptorHeap[barycentricDerivatives];
+    Gleam::VertexAttributes attribs = LoadVertexAttributes(instance, visID.meshletID, visID.triangleID);
+    Gleam::BarycentricDeriv deriv = UnpackBarycentricDerivatives(barycentricCoordsTexture.Load(int3(visSample.pixelCoords, 0)),
+                                                                 barycentricDerivsTexture.Load(int3(visSample.pixelCoords, 0)));
+    
+    visSample.vertex = InterpolateVertexAttributes(instance, attribs, deriv, visSample.pixelCoords);
+    visSample.surface = SurfMain(visSample.vertex);
+    visSample.surface.roughness = max(visSample.surface.roughness, 0.04);
     return true;
 }
 

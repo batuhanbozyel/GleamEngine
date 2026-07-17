@@ -188,8 +188,8 @@ struct VisibilityResolveConstants
 
 	ShaderResourceIndex countsBuffer;
 	uint32_t batchIndex;
-	uint32_t pad0;
-	uint32_t pad1;
+	float pad0;
+	float pad1;
 };
 
 struct VisibilityShadingConstants
@@ -204,7 +204,12 @@ struct VisibilityShadingConstants
 	ShaderResourceIndex diffuseReflectionTexture;
 	ShaderResourceIndex specularReflectionTexture;
 	ShaderResourceIndex shadowTexture;
-	uint32_t pad0;
+	ShaderResourceIndex barycentricCoords;
+
+	ShaderResourceIndex barycentricDerivatives;
+	float pad0;
+	float pad1;
+	float pad2;
 };
 
 struct GBufferResolveConstants
@@ -215,6 +220,11 @@ struct GBufferResolveConstants
 	UnorderedAccessIndex geometryNormalTarget;
 	UnorderedAccessIndex shadingNormalTarget;
 	UnorderedAccessIndex roughnessTarget;
+
+	UnorderedAccessIndex barycentricCoords;
+	UnorderedAccessIndex barycentricDerivatives;
+	float pad0;
+	float pad1;	
 };
 
 struct SkyAtmosphereParameters

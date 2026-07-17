@@ -11,6 +11,8 @@ struct GBufferData
 	TextureHandle geometryNormalTarget = TextureHandle();
 	TextureHandle shadingNormalTarget = TextureHandle();
 	TextureHandle roughnessTarget = TextureHandle();
+	TextureHandle barycentricCoordsTarget = TextureHandle();
+	TextureHandle barycentricDerivsTarget = TextureHandle();
 };
 
 class GBufferResolveRenderer : public IRenderer

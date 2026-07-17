@@ -64,6 +64,14 @@ void GBufferResolveRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlac
 		textureDesc.format = TextureFormat::R8_UNorm;
 		passData.gbuffer.roughnessTarget = builder.WriteTexture(builder.CreateTexture(textureDesc));
 
+		textureDesc.name = "GBufferBarycentricCoords";
+		textureDesc.format = TextureFormat::R16G16_SFloat;
+		passData.gbuffer.barycentricCoordsTarget = builder.WriteTexture(builder.CreateTexture(textureDesc));
+
+		textureDesc.name = "GBufferBarycentricDerivatives";
+		textureDesc.format = TextureFormat::R16G16B16A16_UInt;
+		passData.gbuffer.barycentricDerivsTarget = builder.WriteTexture(builder.CreateTexture(textureDesc));
+
 		passData.visibilityBuffer = builder.ReadTexture(depthPrepassData.visibilityBuffer);
 		passData.pixelListBuffer = builder.ReadBuffer(visibilityClassificationData.pixelListBuffer);
 		passData.offsetsBuffer = builder.ReadBuffer(visibilityClassificationData.offsetsBuffer);
@@ -82,6 +90,8 @@ void GBufferResolveRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlac
 		constants.geometryNormalTarget = passData.gbuffer.geometryNormalTarget;
 		constants.shadingNormalTarget = passData.gbuffer.shadingNormalTarget;
 		constants.roughnessTarget = passData.gbuffer.roughnessTarget;
+		constants.barycentricCoords = passData.gbuffer.barycentricCoordsTarget;
+		constants.barycentricDerivatives = passData.gbuffer.barycentricDerivsTarget;
 
 		sceneData.sceneProxy->ForEach([this, cmd, &passData, &sceneData, &constants](const MeshBatch& batch)
 		{

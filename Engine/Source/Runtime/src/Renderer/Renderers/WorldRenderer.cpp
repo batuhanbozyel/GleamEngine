@@ -10,6 +10,7 @@
 #include "BRDFRenderer.h"
 #include "DepthPrepass.h"
 #include "SunShadowRenderer.h"
+#include "GBufferResolveRenderer.h"
 #include "VisibilityClassification.h"
 
 #include "Core/Engine.h"
@@ -50,6 +51,8 @@ void WorldRenderer::AddVisibilityPass(RenderGraph& graph, RenderGraphBlackboard&
 	{
 		WorldRenderingData world;
 		TextureHandle visibilityBuffer;
+		TextureHandle barycentricCoords;
+		TextureHandle barycentricDerivs;
 		BufferHandle pixelListBuffer;
 		BufferHandle offsetsBuffer;
 		BufferHandle countsBuffer;
@@ -64,7 +67,10 @@ void WorldRenderer::AddVisibilityPass(RenderGraph& graph, RenderGraphBlackboard&
 		if (blackboard.Has<VisibilityClassificationData>())
 		{
 			const auto& visibilityClassificationData = blackboard.Get<VisibilityClassificationData>();
+			const auto& gbufferData = blackboard.Get<GBufferData>();
 			passData.visibilityBuffer = builder.ReadTexture(depthPrepassData.visibilityBuffer);
+			passData.barycentricCoords = builder.ReadTexture(gbufferData.barycentricCoordsTarget);
+			passData.barycentricDerivs = builder.ReadTexture(gbufferData.barycentricDerivsTarget);
 			passData.pixelListBuffer = builder.ReadBuffer(visibilityClassificationData.pixelListBuffer);
 			passData.offsetsBuffer = builder.ReadBuffer(visibilityClassificationData.offsetsBuffer);
 			passData.countsBuffer = builder.ReadBuffer(visibilityClassificationData.countsBuffer);
@@ -91,6 +97,8 @@ void WorldRenderer::AddVisibilityPass(RenderGraph& graph, RenderGraphBlackboard&
 		constants.diffuseReflectionTexture = passData.world.diffuseReflection;
 		constants.specularReflectionTexture = passData.world.specularReflection;
 		constants.shadowTexture = passData.world.shadowTexture;
+		constants.barycentricCoords = passData.barycentricCoords;
+		constants.barycentricDerivatives = passData.barycentricDerivs;
 
 		sceneData.sceneProxy->ForEach([this, cmd, &passData, &sceneData, &constants](const MeshBatch& batch)
 		{
