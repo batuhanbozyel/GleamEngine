@@ -7,7 +7,8 @@ struct RawTexture;
 
 namespace TextureTools {
 
-Gleam::TArray<Gleam::TextureSubresource> GenerateMipmaps(const RawTexture& texture);
+Gleam::TArray<Gleam::BufferRange> CalculateSubresourceRanges(const RawTexture& texture, uint32_t mipLevels);
+Gleam::BinaryBuffer GenerateMipmaps(const RawTexture& texture);
 
 } // namespace TextureTools
 

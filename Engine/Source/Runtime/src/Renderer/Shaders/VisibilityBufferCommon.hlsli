@@ -77,35 +77,32 @@ Gleam::VisibilityID UnpackVisibilityID(PackedVisibilityID packedID)
 
 uint3 LoadTriangleVertexIDs(Gleam::MeshInstanceData instance, uint meshletID, uint triangleID)
 {
-    ByteAddressBuffer meshletsBuffer = ResourceDescriptorHeap[NonUniformResourceIndex(instance.meshletsBuffer)];
-    Gleam::MeshletDescriptor meshlet = meshletsBuffer.Load<Gleam::MeshletDescriptor>((instance.baseMeshlet + meshletID) * sizeof(Gleam::MeshletDescriptor));
+    ByteAddressBuffer meshBuffer = ResourceDescriptorHeap[NonUniformResourceIndex(instance.meshBuffer)];
+    Gleam::MeshletDescriptor meshlet = meshBuffer.Load<Gleam::MeshletDescriptor>(instance.meshletsOffset + (instance.baseMeshlet + meshletID) * sizeof(Gleam::MeshletDescriptor));
 
-    ByteAddressBuffer meshletTriangleBuffer = ResourceDescriptorHeap[NonUniformResourceIndex(instance.meshletTriangleBuffer)];
-    uint packedTriangle = meshletTriangleBuffer.Load((meshlet.triangleOffset + triangleID) * sizeof(uint));
+    uint packedTriangle = meshBuffer.Load(instance.meshletTriangleOffset + (meshlet.triangleOffset + triangleID) * sizeof(uint));
     uint3 tri = UnpackMeshletTriangles(packedTriangle);
 
-    ByteAddressBuffer meshletVertexBuffer = ResourceDescriptorHeap[NonUniformResourceIndex(instance.meshletVertexBuffer)];
     uint3 vertexIDs;
-    vertexIDs.x = meshletVertexBuffer.Load<uint>((meshlet.vertexOffset + tri.x) * sizeof(uint)) + instance.baseVertex;
-    vertexIDs.y = meshletVertexBuffer.Load<uint>((meshlet.vertexOffset + tri.y) * sizeof(uint)) + instance.baseVertex;
-    vertexIDs.z = meshletVertexBuffer.Load<uint>((meshlet.vertexOffset + tri.z) * sizeof(uint)) + instance.baseVertex;
+    vertexIDs.x = meshBuffer.Load<uint>(instance.meshletVertexOffset + (meshlet.vertexOffset + tri.x) * sizeof(uint)) + instance.baseVertex;
+    vertexIDs.y = meshBuffer.Load<uint>(instance.meshletVertexOffset + (meshlet.vertexOffset + tri.y) * sizeof(uint)) + instance.baseVertex;
+    vertexIDs.z = meshBuffer.Load<uint>(instance.meshletVertexOffset + (meshlet.vertexOffset + tri.z) * sizeof(uint)) + instance.baseVertex;
     return vertexIDs;
 }
 
 Gleam::VertexAttributes LoadVertexAttributes(Gleam::MeshInstanceData instance, uint meshletID, uint triangleID)
 {
     uint3 vertexIDs = LoadTriangleVertexIDs(instance, meshletID, triangleID);
-    ByteAddressBuffer positionBuffer = ResourceDescriptorHeap[NonUniformResourceIndex(instance.positionBuffer)];
-    
+    ByteAddressBuffer meshBuffer = ResourceDescriptorHeap[NonUniformResourceIndex(instance.meshBuffer)];
+
     Gleam::VertexAttributes attribs;
-    attribs.positions[0] = positionBuffer.Load<float3>(vertexIDs.x * sizeof(float3));
-    attribs.positions[1] = positionBuffer.Load<float3>(vertexIDs.y * sizeof(float3));
-    attribs.positions[2] = positionBuffer.Load<float3>(vertexIDs.z * sizeof(float3));
-    
-    ByteAddressBuffer interleavedBuffer = ResourceDescriptorHeap[NonUniformResourceIndex(instance.interleavedBuffer)];
-    Gleam::InterleavedMeshVertex v0 = interleavedBuffer.Load<Gleam::InterleavedMeshVertex>(vertexIDs.x * sizeof(Gleam::InterleavedMeshVertex));
-    Gleam::InterleavedMeshVertex v1 = interleavedBuffer.Load<Gleam::InterleavedMeshVertex>(vertexIDs.y * sizeof(Gleam::InterleavedMeshVertex));
-    Gleam::InterleavedMeshVertex v2 = interleavedBuffer.Load<Gleam::InterleavedMeshVertex>(vertexIDs.z * sizeof(Gleam::InterleavedMeshVertex));
+    attribs.positions[0] = meshBuffer.Load<float3>(instance.positionsOffset + vertexIDs.x * sizeof(float3));
+    attribs.positions[1] = meshBuffer.Load<float3>(instance.positionsOffset + vertexIDs.y * sizeof(float3));
+    attribs.positions[2] = meshBuffer.Load<float3>(instance.positionsOffset + vertexIDs.z * sizeof(float3));
+
+    Gleam::InterleavedMeshVertex v0 = meshBuffer.Load<Gleam::InterleavedMeshVertex>(instance.interleavedOffset + vertexIDs.x * sizeof(Gleam::InterleavedMeshVertex));
+    Gleam::InterleavedMeshVertex v1 = meshBuffer.Load<Gleam::InterleavedMeshVertex>(instance.interleavedOffset + vertexIDs.y * sizeof(Gleam::InterleavedMeshVertex));
+    Gleam::InterleavedMeshVertex v2 = meshBuffer.Load<Gleam::InterleavedMeshVertex>(instance.interleavedOffset + vertexIDs.z * sizeof(Gleam::InterleavedMeshVertex));
     
     attribs.normals[0] = v0.normal;
     attribs.normals[1] = v1.normal;

@@ -2,6 +2,7 @@
 #include "Bakers/TextureBaker.h"
 
 #include "Tools/TextureTools.h"
+#include "Renderer/Texture.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
@@ -81,14 +82,14 @@ bool TextureSource::Import(const Gleam::Path& path, const ImportSettings& settin
 
 	if (settings.generateMips)
 	{
-		descriptor.subresources = TextureTools::GenerateMipmaps(texture);
+		uint32_t mipLevels = Gleam::Texture::CalculateMipLevels(descriptor.size);
+		descriptor.subresources = TextureTools::CalculateSubresourceRanges(texture, mipLevels);
+		descriptor.pixels = TextureTools::GenerateMipmaps(texture);
 	}
 	else
 	{
-		descriptor.subresources.resize(1);
-		auto& subresource = descriptor.subresources[0];
-		subresource.pixels.resize(texture.width * texture.height * Gleam::Utils::GetTextureFormatSizeInBytes(texture.format));
-		memcpy(subresource.pixels.data(), texture.pixels, subresource.pixels.size());
+		descriptor.subresources = TextureTools::CalculateSubresourceRanges(texture, 1);
+		descriptor.pixels = Gleam::BinaryBuffer(texture.pixels, descriptor.subresources[0].size);
 	}
 	EmplaceBaker<TextureBaker>(descriptor);
 	

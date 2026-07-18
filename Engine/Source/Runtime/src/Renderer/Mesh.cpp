@@ -14,64 +14,30 @@ Mesh::Mesh(const MeshDescriptor& descriptor)
     : Asset(descriptor.name)
 	, mSubmeshes(descriptor.submeshes)
 	, mBLASes(descriptor.submeshes.size())
+	, mPositions(descriptor.positions)
+	, mInterleavedVertices(descriptor.interleavedVertices)
+	, mIndices(descriptor.indices)
+	, mMeshlets(descriptor.meshlets)
+	, mMeshletVertices(descriptor.meshletVertices)
+	, mMeshletTriangleIndices(descriptor.meshletTriangleIndices)
 {
     static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
 	auto device = renderSystem->GetDevice();
 
-    size_t positionSize = descriptor.positions.size() * sizeof(Float3);
-    size_t interleavedSize = descriptor.interleavedVertices.size() * sizeof(InterleavedMeshVertex);
-    size_t indexSize = descriptor.indices.size() * sizeof(uint32_t);
-	size_t meshletVertexSize = descriptor.meshletVertices.size() * sizeof(uint32_t);
-	size_t meshletTriangleSize = descriptor.meshletTriangleIndices.size() * sizeof(uint32_t);
-	size_t meshletsSize = descriptor.meshlets.size() * sizeof(MeshletDescriptor);
-
     BufferDescriptor bufferDesc;
-    bufferDesc.name = "Mesh: " + descriptor.name + " Positions";
-    bufferDesc.size = positionSize;
-    mPositionBuffer = device->CreateBuffer(renderSystem->GetAllocator(), bufferDesc);
+    bufferDesc.name = "Mesh: " + descriptor.name;
+    bufferDesc.size = descriptor.buffer.size;
+    mBuffer = device->CreateBuffer(renderSystem->GetAllocator(), bufferDesc);
 
-    bufferDesc.name = "Mesh: " + descriptor.name + " InterleavedData";
-    bufferDesc.size = interleavedSize;
-    mInterleavedBuffer = device->CreateBuffer(renderSystem->GetAllocator(), bufferDesc);
-
-    bufferDesc.name = "Mesh: " + descriptor.name + " Indices";
-    bufferDesc.size = indexSize;
-    mIndexBuffer = device->CreateBuffer(renderSystem->GetAllocator(), bufferDesc);
-
-	bufferDesc.name = "Mesh: " + descriptor.name + " MeshletVertices";
-	bufferDesc.size = meshletVertexSize;
-	mMeshletVertexBuffer = device->CreateBuffer(renderSystem->GetAllocator(), bufferDesc);
-
-	bufferDesc.name = "Mesh: " + descriptor.name + " MeshletTriangles";
-	bufferDesc.size = meshletTriangleSize;
-	mMeshletTriangleBuffer = device->CreateBuffer(renderSystem->GetAllocator(), bufferDesc);
-
-	bufferDesc.name = "Mesh: " + descriptor.name + " Meshlets";
-	bufferDesc.size = meshletsSize;
-	mMeshletsBuffer = device->CreateBuffer(renderSystem->GetAllocator(), bufferDesc);
-
-    // Send mesh data to buffers
-	{
-		auto cmd = renderSystem->GetCopyCommandBuffer();
-		cmd->Commit(mPositionBuffer, descriptor.positions.data(), positionSize, 0);
-		cmd->Commit(mInterleavedBuffer, descriptor.interleavedVertices.data(), interleavedSize, 0);
-		cmd->Commit(mIndexBuffer, descriptor.indices.data(), indexSize, 0);
-		cmd->Commit(mMeshletVertexBuffer, descriptor.meshletVertices.data(), meshletVertexSize, 0);
-		cmd->Commit(mMeshletTriangleBuffer, descriptor.meshletTriangleIndices.data(), meshletTriangleSize, 0);
-		cmd->Commit(mMeshletsBuffer, descriptor.meshlets.data(), meshletsSize, 0);
-	}
+	auto cmd = renderSystem->GetCopyCommandBuffer();
+	cmd->Commit(mBuffer, descriptor.buffer.data, descriptor.buffer.size, 0);
 }
 
 Mesh::~Mesh()
 {
 	static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
 	auto device = renderSystem->GetDevice();
-	device->Dispose(renderSystem->GetAllocator(), mPositionBuffer, BarrierStage::None);
-	device->Dispose(renderSystem->GetAllocator(), mInterleavedBuffer, BarrierStage::None);
-	device->Dispose(renderSystem->GetAllocator(), mIndexBuffer, BarrierStage::None);
-	device->Dispose(renderSystem->GetAllocator(), mMeshletVertexBuffer, BarrierStage::None);
-	device->Dispose(renderSystem->GetAllocator(), mMeshletTriangleBuffer, BarrierStage::None);
-	device->Dispose(renderSystem->GetAllocator(), mMeshletsBuffer, BarrierStage::None);
+	device->Dispose(renderSystem->GetAllocator(), mBuffer, BarrierStage::None);
 
 	for (auto& blas : mBLASes)
 	{
@@ -82,34 +48,39 @@ Mesh::~Mesh()
 	}
 }
 
-const Buffer& Mesh::GetPositionBuffer() const
+const Buffer& Mesh::GetBuffer() const
 {
-    return mPositionBuffer;
+    return mBuffer;
 }
 
-const Buffer& Mesh::GetInterleavedBuffer() const
+const BufferRange& Mesh::GetPositions() const
 {
-    return mInterleavedBuffer;
+    return mPositions;
 }
 
-const Buffer& Mesh::GetIndexBuffer() const
+const BufferRange& Mesh::GetInterleavedVertices() const
 {
-    return mIndexBuffer;
+    return mInterleavedVertices;
 }
 
-const Buffer& Mesh::GetMeshletVertexBuffer() const
+const BufferRange& Mesh::GetIndices() const
 {
-	return mMeshletVertexBuffer;
+    return mIndices;
 }
 
-const Buffer& Mesh::GetMeshletTriangleBuffer() const
+const BufferRange& Mesh::GetMeshlets() const
 {
-	return mMeshletTriangleBuffer;
+	return mMeshlets;
 }
 
-const Buffer& Mesh::GetMeshletsBuffer() const
+const BufferRange& Mesh::GetMeshletVertices() const
 {
-	return mMeshletsBuffer;
+	return mMeshletVertices;
+}
+
+const BufferRange& Mesh::GetMeshletTriangleIndices() const
+{
+	return mMeshletTriangleIndices;
 }
 
 const TArray<SubmeshDescriptor>& Mesh::GetSubmeshes() const

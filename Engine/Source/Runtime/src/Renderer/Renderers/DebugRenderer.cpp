@@ -95,6 +95,7 @@ void DebugRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 	{
         DebugShaderResources resources;
         resources.vertexBuffer = mVertexBuffer.GetResourceView();
+        resources.positionOffset = 0;
 		const auto& sceneData = blackboard.Get<SceneRenderingData>();
         
 		if (!mDepthLines.empty())
@@ -139,9 +140,11 @@ void DebugRenderer::RenderMeshes(const CommandBuffer* cmd, const CameraUniforms&
 	for (const auto& debugMesh : debugMeshes)
 	{
         DebugShaderResources resources;
-        resources.vertexBuffer = debugMesh.mesh->GetPositionBuffer().GetResourceView();
+        resources.vertexBuffer = debugMesh.mesh->GetBuffer().GetResourceView();
+        resources.positionOffset = static_cast<uint32_t>(debugMesh.mesh->GetPositions().offset);
         cmd->SetConstantBuffer(resources, 0);
-	
+
+		const uint32_t baseIndex = static_cast<uint32_t>(debugMesh.mesh->GetIndices().offset / sizeof(uint32_t));
 		for (const auto& submesh : debugMesh.mesh->GetSubmeshes())
 		{
 			DebugMeshUniforms uniforms;
@@ -149,7 +152,7 @@ void DebugRenderer::RenderMeshes(const CommandBuffer* cmd, const CameraUniforms&
 			uniforms.baseVertex = submesh.baseVertex;
 			uniforms.color = debugMesh.color;
 			cmd->SetPushConstant(uniforms);
-			cmd->DrawIndexed(debugMesh.mesh->GetIndexBuffer(), IndexType::UINT32, submesh.indexCount, 1, submesh.firstIndex);
+			cmd->DrawIndexed(debugMesh.mesh->GetBuffer(), IndexType::UINT32, submesh.indexCount, 1, baseIndex + submesh.firstIndex);
 		}
 	}
 }

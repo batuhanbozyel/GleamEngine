@@ -12,22 +12,24 @@ class Mesh : public Asset
 {
 	friend class RayTracingScene;
 public:
-    
+
     Mesh(const MeshDescriptor& descriptor);
-	
+
 	~Mesh();
-    
-    const Buffer& GetPositionBuffer() const;
 
-    const Buffer& GetInterleavedBuffer() const;
+    const Buffer& GetBuffer() const;
 
-    const Buffer& GetIndexBuffer() const;
+    const BufferRange& GetPositions() const;
 
-    const Buffer& GetMeshletVertexBuffer() const;
+    const BufferRange& GetInterleavedVertices() const;
 
-    const Buffer& GetMeshletTriangleBuffer() const;
+    const BufferRange& GetIndices() const;
 
-    const Buffer& GetMeshletsBuffer() const;
+    const BufferRange& GetMeshlets() const;
+
+    const BufferRange& GetMeshletVertices() const;
+
+    const BufferRange& GetMeshletTriangleIndices() const;
 
     const TArray<SubmeshDescriptor>& GetSubmeshes() const;
 
@@ -37,12 +39,13 @@ public:
 
 protected:
 
-    Buffer mIndexBuffer;
-    Buffer mPositionBuffer;
-    Buffer mInterleavedBuffer;
-    Buffer mMeshletVertexBuffer;
-    Buffer mMeshletTriangleBuffer;
-    Buffer mMeshletsBuffer;
+    Buffer mBuffer;
+    BufferRange mPositions;
+    BufferRange mInterleavedVertices;
+    BufferRange mIndices;
+    BufferRange mMeshlets;
+    BufferRange mMeshletVertices;
+    BufferRange mMeshletTriangleIndices;
     TArray<SubmeshDescriptor> mSubmeshes;
 	TArray<BottomLevelAccelerationStructure> mBLASes;
 };

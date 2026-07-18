@@ -28,7 +28,7 @@ VertexOut debugMeshVertexShader(uint vertex_id: SV_VertexID)
 {
 	ByteAddressBuffer vertexBuffer = ResourceDescriptorHeap[resources.vertexBuffer];
     uint vertexID = vertex_id + uniforms.baseVertex;
-    float3 position = vertexBuffer.Load<float3>(vertexID * sizeof(float3));
+    float3 position = vertexBuffer.Load<float3>(resources.positionOffset + vertexID * sizeof(float3));
     
     VertexOut OUT;
     OUT.position = mul(camera.viewProjectionMatrix, mul(uniforms.transform, float4(position, 1.0f)));

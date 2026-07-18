@@ -39,11 +39,12 @@ void ImGuiRenderer::OnCreate(const RenderContext& context)
 	textureDesc.size.width = (float)width;
 	textureDesc.size.height = (float)height;
 	textureDesc.format = TextureFormat::R8G8B8A8_UNorm;
+	textureDesc.pixels = BinaryBuffer(pixels, static_cast<size_t>(width) * height * 4);
 	textureDesc.subresources.resize(1);
 
 	auto& subresource = textureDesc.subresources[0];
-	subresource.pixels.resize(width * height * 4);
-	memcpy(subresource.pixels.data(), pixels, subresource.pixels.size());
+	subresource.offset = 0;
+	subresource.size = textureDesc.pixels.size;
 	mDefaultFontTexture = new Texture2D(textureDesc);
 	
 	ImTextureID fontTextureId = static_cast<ImTextureID>(mDefaultFontTexture->GetResourceView().data);
@@ -245,11 +246,12 @@ void ImGuiRenderer::AddFontTexture(const Path& fontPath, const Path& defaultPath
 	textureDesc.size.width = (float)width;
 	textureDesc.size.height = (float)height;
 	textureDesc.format = TextureFormat::R8G8B8A8_UNorm;
+	textureDesc.pixels = BinaryBuffer(pixels, static_cast<size_t>(width) * height * 4);
 	textureDesc.subresources.resize(1);
 
 	auto& subresource = textureDesc.subresources[0];
-	subresource.pixels.resize(width * height * 4);
-	memcpy(subresource.pixels.data(), pixels, subresource.pixels.size());
+	subresource.offset = 0;
+	subresource.size = textureDesc.pixels.size;
 	mFontTexture = new Texture2D(textureDesc);
 
 	ImTextureID fontTextureId = static_cast<ImTextureID>(mFontTexture->GetResourceView().data);

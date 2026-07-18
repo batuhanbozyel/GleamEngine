@@ -61,7 +61,27 @@ Gleam::MeshDescriptor MeshTools::CombineMeshes(const Gleam::TArray<RawMesh>& mes
 {
     Gleam::MeshDescriptor combined;
     combined.submeshes.resize(meshes.size());
-    
+
+	uint64_t totalIndexCount = 0;
+	uint64_t totalVertexCount = 0;
+	for (const auto& mesh : meshes)
+	{
+		totalIndexCount += mesh.indices.size();
+		totalVertexCount += mesh.positions.size();
+	}
+
+	combined.indices.offset = 0;
+	combined.indices.size = totalIndexCount * sizeof(uint32_t);
+	combined.positions.offset = combined.indices.offset + combined.indices.size;
+	combined.positions.size = totalVertexCount * sizeof(Gleam::Float3);
+	combined.interleavedVertices.offset = combined.positions.offset + combined.positions.size;
+	combined.interleavedVertices.size = totalVertexCount * sizeof(Gleam::InterleavedMeshVertex);
+	combined.buffer = Gleam::BinaryBuffer(combined.interleavedVertices.offset + combined.interleavedVertices.size);
+
+	auto combinedIndices = static_cast<uint32_t*>(Gleam::OffsetPointer(combined.buffer.data, (size_t)combined.indices.offset));
+	auto combinedPositions = static_cast<Gleam::Float3*>(Gleam::OffsetPointer(combined.buffer.data, (size_t)combined.positions.offset));
+	auto combinedInterleaved = static_cast<Gleam::InterleavedMeshVertex*>(Gleam::OffsetPointer(combined.buffer.data, (size_t)combined.interleavedVertices.offset));
+
     Gleam::SubmeshDescriptor submesh;
     for (uint32_t i = 0; i < meshes.size(); ++i)
     {
@@ -73,12 +93,12 @@ Gleam::MeshDescriptor MeshTools::CombineMeshes(const Gleam::TArray<RawMesh>& mes
         submesh.indexCount = static_cast<uint32_t>(mesh.indices.size());
 		submesh.vertexCount = static_cast<uint32_t>(mesh.positions.size());
         combined.submeshes[i] = submesh;
-        
+
         auto interleaved = InterleaveMeshVertices(mesh);
-        combined.indices.insert(combined.indices.end(), mesh.indices.begin(), mesh.indices.end());
-        combined.positions.insert(combined.positions.end(), mesh.positions.begin(), mesh.positions.end());
-        combined.interleavedVertices.insert(combined.interleavedVertices.end(), interleaved.begin(), interleaved.end());
-        
+        memcpy(combinedIndices + submesh.firstIndex, mesh.indices.data(), mesh.indices.size() * sizeof(uint32_t));
+        memcpy(combinedPositions + submesh.baseVertex, mesh.positions.data(), mesh.positions.size() * sizeof(Gleam::Float3));
+        memcpy(combinedInterleaved + submesh.baseVertex, interleaved.data(), interleaved.size() * sizeof(Gleam::InterleavedMeshVertex));
+
         submesh.baseVertex += static_cast<uint32_t>(mesh.positions.size());
         submesh.firstIndex += static_cast<uint32_t>(mesh.indices.size());
     }

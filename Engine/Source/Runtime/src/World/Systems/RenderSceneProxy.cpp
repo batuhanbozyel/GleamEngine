@@ -103,19 +103,20 @@ void RenderSceneProxy::Tick(World* world)
 			mGlobalMeshes[globalIndex].submeshIndex = submeshIndex;
 
 			auto& instance = mGlobalInstances[globalIndex];
-			instance.positionBuffer = mesh->GetPositionBuffer().GetResourceView();
-			instance.interleavedBuffer = mesh->GetInterleavedBuffer().GetResourceView();
-			instance.indexBuffer = mesh->GetIndexBuffer().GetResourceView();
+			instance.meshBuffer = mesh->GetBuffer().GetResourceView();
 			instance.materialBuffer = batch.material->GetBuffer().GetResourceView();
+			instance.positionsOffset = static_cast<uint32_t>(mesh->GetPositions().offset);
+			instance.interleavedOffset = static_cast<uint32_t>(mesh->GetInterleavedVertices().offset);
+			instance.indexOffset = static_cast<uint32_t>(mesh->GetIndices().offset);
+			instance.meshletsOffset = static_cast<uint32_t>(mesh->GetMeshlets().offset);
+			instance.meshletVertexOffset = static_cast<uint32_t>(mesh->GetMeshletVertices().offset);
+			instance.meshletTriangleOffset = static_cast<uint32_t>(mesh->GetMeshletTriangleIndices().offset);
 			instance.materialID = materialInstance->GetID();
 			instance.transform = entity.GetWorldTransform();
 			instance.previousTransform = instance.transform; // TODO: store previous transform
 			instance.baseVertex = submesh.baseVertex;
 			instance.indexCount = submesh.indexCount;
 			instance.firstIndex = submesh.firstIndex;
-			instance.meshletsBuffer = mesh->GetMeshletsBuffer().GetResourceView();
-			instance.meshletVertexBuffer = mesh->GetMeshletVertexBuffer().GetResourceView();
-			instance.meshletTriangleBuffer = mesh->GetMeshletTriangleBuffer().GetResourceView();
 			instance.baseMeshlet = submesh.baseMeshlet;
 			instance.meshletCount = submesh.meshletCount;
 			instance.cullMode = static_cast<uint32_t>(batch.material->GetDescriptor().cullingMode);

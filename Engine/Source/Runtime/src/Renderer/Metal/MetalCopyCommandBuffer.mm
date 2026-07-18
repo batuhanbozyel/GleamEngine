@@ -2,6 +2,8 @@
 
 #ifdef USE_METAL_RENDERER
 #include "Renderer/CopyCommandBuffer.h"
+#include "Renderer/RenderSystem.h"
+#include "Core/Engine.h"
 #include "MetalDevice.h"
 #include "MetalUtils.h"
 
@@ -23,7 +25,7 @@ struct CopyCommandBuffer::Impl
     void* stagingBufferPtr = nullptr;
     size_t stagingBufferOffset = 0;
     
-    TArray<void*> tempBuffers;
+    TArray<Buffer> stagingBuffers;
     TArray<Buffer> bufferCopies;
     TArray<Texture> textureCopies;
 
@@ -163,12 +165,15 @@ void CopyCommandBuffer::WaitUntilCompleted() const
     }
     
     mHandle->stagingBufferOffset = 0;
-    for (void* buffer : mHandle->tempBuffers)
+    if (not mHandle->stagingBuffers.empty())
     {
-        id<MTLBuffer> mtlBuffer = (id<MTLBuffer>)CFBridgingRelease(buffer);
-        [static_cast<MetalDevice*>(mDevice)->GetResidencySet() removeAllocation:mtlBuffer];
+        static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
+        for (auto& stagingBuffer : mHandle->stagingBuffers)
+        {
+            mDevice->Dispose(renderSystem->GetAllocator(), stagingBuffer, BarrierStage::None);
+        }
+        mHandle->stagingBuffers.clear();
     }
-    mHandle->tempBuffers.clear();
 }
 
 void CopyCommandBuffer::Commit(const Buffer& buffer, const void* data, size_t size, size_t offset) const
@@ -193,10 +198,16 @@ void CopyCommandBuffer::Commit(const Buffer& buffer, const void* data, size_t si
         }
         else
         {
-            id<MTLBuffer> srcBuffer = [mDevice->GetHandle() newBufferWithBytes:data length:size options:MTLResourceStorageModeShared];
-            [static_cast<MetalDevice*>(mDevice)->GetResidencySet() addAllocation:srcBuffer];
-            mHandle->tempBuffers.push_back((__bridge_retained void*)srcBuffer);
-            
+            static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
+            BufferDescriptor stagingDesc;
+            stagingDesc.name = "CopyCommandBuffer::StagingBuffer";
+            stagingDesc.memoryType = MemoryType::CPU;
+            stagingDesc.size = size;
+            auto uploadBuffer = mDevice->CreateBuffer(renderSystem->GetAllocator(), stagingDesc);
+            memcpy(uploadBuffer.GetContents(), data, size);
+            mHandle->stagingBuffers.push_back(uploadBuffer);
+
+            id<MTLBuffer> srcBuffer = uploadBuffer.GetHandle();
             [mHandle->memoryCommandEncoder copyFromBuffer:srcBuffer sourceOffset:0 toBuffer:dstBuffer destinationOffset:offset size:size];
         }
 
@@ -227,7 +238,7 @@ void CopyCommandBuffer::Commit(const Texture& texture, const void* data, size_t 
                                      Math::Max(static_cast<uint32_t>(texDesc.size.height) >> mip, 1u),
                                     (texDesc.dimension == TextureDimension::Texture3D) ? Math::Max(texDesc.depth >> mip, 1u) : 1);
 
-    size_t formatSize = Utils::GetTextureFormatSizeInBytes(texDesc.format);
+    size_t formatSize = (size_t)Utils::GetTextureFormatSizeInBytes(texDesc.format);
     size_t sourceBytesPerRow = Math::AlignUp(sourceSize.width * formatSize, formatSize);
     size_t sourceBytesPerImage = (texDesc.dimension == TextureDimension::Texture3D) ? sourceBytesPerRow * sourceSize.height : 0;
     
@@ -247,10 +258,16 @@ void CopyCommandBuffer::Commit(const Texture& texture, const void* data, size_t 
     }
     else
     {
-        id<MTLBuffer> srcBuffer = [mDevice->GetHandle() newBufferWithBytes:data length:size options:MTLResourceStorageModeShared];
-        [static_cast<MetalDevice*>(mDevice)->GetResidencySet() addAllocation:srcBuffer];
-        mHandle->tempBuffers.push_back((__bridge_retained void*)srcBuffer);
-        
+        static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
+        BufferDescriptor stagingDesc;
+        stagingDesc.name = "CopyCommandBuffer::StagingBuffer";
+        stagingDesc.memoryType = MemoryType::CPU;
+        stagingDesc.size = size;
+        auto uploadBuffer = mDevice->CreateBuffer(renderSystem->GetAllocator(), stagingDesc);
+        memcpy(uploadBuffer.GetContents(), data, size);
+        mHandle->stagingBuffers.push_back(uploadBuffer);
+
+        id<MTLBuffer> srcBuffer = uploadBuffer.GetHandle();
         [mHandle->memoryCommandEncoder copyFromBuffer:srcBuffer
                                          sourceOffset:0
                                     sourceBytesPerRow:sourceBytesPerRow

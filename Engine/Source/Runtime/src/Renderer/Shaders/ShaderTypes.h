@@ -93,7 +93,7 @@ struct DebugMeshUniforms
 struct DebugShaderResources
 {
 	ShaderResourceIndex vertexBuffer;
-	float pad0;
+	uint32_t positionOffset;
 	float pad1;
 	float pad2;
 };
@@ -137,25 +137,25 @@ struct MeshInstanceData
 	float4x4 transform;
 	float4x4 previousTransform;
 
-	ShaderResourceIndex positionBuffer;
-	ShaderResourceIndex interleavedBuffer;
-	ShaderResourceIndex indexBuffer;
+	ShaderResourceIndex meshBuffer;
 	ShaderResourceIndex materialBuffer;
+	uint32_t positionsOffset;
+	uint32_t interleavedOffset;
+
+	uint32_t indexOffset;
+	uint32_t meshletsOffset;
+	uint32_t meshletVertexOffset;
+	uint32_t meshletTriangleOffset;
 
 	uint32_t baseVertex;
 	uint32_t indexCount;
 	uint32_t firstIndex;
 	uint32_t materialID;
 
-	ShaderResourceIndex meshletsBuffer;
-	ShaderResourceIndex meshletVertexBuffer;
-	ShaderResourceIndex meshletTriangleBuffer;
 	uint32_t baseMeshlet;
-
 	uint32_t meshletCount;
 	uint32_t cullMode;
 	uint32_t batchIndex;
-	float pad0;
 };
 
 struct VisibilityClassifyConstants
