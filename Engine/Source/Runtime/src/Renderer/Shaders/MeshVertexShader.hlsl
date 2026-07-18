@@ -13,8 +13,8 @@ void meshAmplificationShader(uint threadID : SV_GroupThreadID, uint groupID : SV
 
     if (meshletID < instanceData.meshletCount)
     {
-        ByteAddressBuffer meshletsBuffer = ResourceDescriptorHeap[instanceData.meshletsBuffer];
-        Gleam::MeshletDescriptor meshlet = meshletsBuffer.Load<Gleam::MeshletDescriptor>((instanceData.baseMeshlet + meshletID) * sizeof(Gleam::MeshletDescriptor));
+        ByteAddressBuffer meshBuffer = ResourceDescriptorHeap[instanceData.meshBuffer];
+        Gleam::MeshletDescriptor meshlet = meshBuffer.Load<Gleam::MeshletDescriptor>(instanceData.meshletsOffset + (instanceData.baseMeshlet + meshletID) * sizeof(Gleam::MeshletDescriptor));
         visible = MeshletIsVisible(instanceData, meshlet, camera);
     }
 
@@ -44,23 +44,20 @@ void meshMeshletShader(
 
     uint meshletID = meshletPayload.meshletIDs[meshletLocalID];
 
-    ByteAddressBuffer meshletsBuffer = ResourceDescriptorHeap[instanceData.meshletsBuffer];
-    Gleam::MeshletDescriptor meshlet = meshletsBuffer.Load<Gleam::MeshletDescriptor>((instanceData.baseMeshlet + meshletID) * sizeof(Gleam::MeshletDescriptor));
+    ByteAddressBuffer meshBuffer = ResourceDescriptorHeap[instanceData.meshBuffer];
+    Gleam::MeshletDescriptor meshlet = meshBuffer.Load<Gleam::MeshletDescriptor>(instanceData.meshletsOffset + (instanceData.baseMeshlet + meshletID) * sizeof(Gleam::MeshletDescriptor));
 
     SetMeshOutputCounts(meshlet.vertexCount, meshlet.triangleCount);
 
     if (groupThreadID < meshlet.vertexCount)
     {
-        ByteAddressBuffer meshletVertexBuffer = ResourceDescriptorHeap[instanceData.meshletVertexBuffer];
-        uint localVertexIndex = meshletVertexBuffer.Load<uint>((meshlet.vertexOffset + groupThreadID) * sizeof(uint));
+        uint localVertexIndex = meshBuffer.Load<uint>(instanceData.meshletVertexOffset + (meshlet.vertexOffset + groupThreadID) * sizeof(uint));
         uint vertexID = localVertexIndex + instanceData.baseVertex;
 
-        ByteAddressBuffer positionBuffer = ResourceDescriptorHeap[instanceData.positionBuffer];
-        float3 position = positionBuffer.Load<float3>(vertexID * sizeof(float3));
+        float3 position = meshBuffer.Load<float3>(instanceData.positionsOffset + vertexID * sizeof(float3));
         float4 worldPosition = mul(instanceData.transform, float4(position, 1.0f));
 
-        ByteAddressBuffer interleavedBuffer = ResourceDescriptorHeap[instanceData.interleavedBuffer];
-        Gleam::InterleavedMeshVertex interleavedVert = interleavedBuffer.Load<Gleam::InterleavedMeshVertex>(vertexID * sizeof(Gleam::InterleavedMeshVertex));
+        Gleam::InterleavedMeshVertex interleavedVert = meshBuffer.Load<Gleam::InterleavedMeshVertex>(instanceData.interleavedOffset + vertexID * sizeof(Gleam::InterleavedMeshVertex));
 
         Gleam::MeshVertexOut OUT;
         OUT.worldPosition = worldPosition.xyz;
@@ -77,8 +74,7 @@ void meshMeshletShader(
 
     if (groupThreadID < meshlet.triangleCount)
     {
-        ByteAddressBuffer meshletTriangleBuffer = ResourceDescriptorHeap[instanceData.meshletTriangleBuffer];
-        uint packedTriangle = meshletTriangleBuffer.Load((meshlet.triangleOffset + groupThreadID) * sizeof(uint));
+        uint packedTriangle = meshBuffer.Load(instanceData.meshletTriangleOffset + (meshlet.triangleOffset + groupThreadID) * sizeof(uint));
         outTriangles[groupThreadID] = UnpackMeshletTriangles(packedTriangle);
     }
 }

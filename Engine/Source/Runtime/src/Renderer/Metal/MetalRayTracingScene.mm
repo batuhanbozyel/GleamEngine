@@ -58,15 +58,14 @@ AccelerationStructureView RayTracingScene::BuildAccelerationStructure(const Comm
             const auto& submesh = instance.mesh->GetSubmesh(instance.submeshIndex);
             if (not instance.mesh->GetBLAS(instance.submeshIndex).IsValid())
             {
-                id<MTLBuffer> indexBuffer = instance.mesh->GetIndexBuffer().GetHandle();
-                id<MTLBuffer> positionBuffer = instance.mesh->GetPositionBuffer().GetHandle();
+                id<MTLBuffer> meshBuffer = instance.mesh->GetBuffer().GetHandle();
 
                 MTL4AccelerationStructureTriangleGeometryDescriptor* geomDesc = [MTL4AccelerationStructureTriangleGeometryDescriptor new];
-                geomDesc.vertexBuffer = MTL4BufferRange([positionBuffer gpuAddress] + submesh.baseVertex * sizeof(float3), submesh.vertexCount * sizeof(float3));
+                geomDesc.vertexBuffer = MTL4BufferRange([meshBuffer gpuAddress] + instance.mesh->GetPositions().offset + submesh.baseVertex * sizeof(float3), submesh.vertexCount * sizeof(float3));
                 geomDesc.vertexStride = sizeof(float3);
                 geomDesc.vertexFormat = MTLAttributeFormatFloat3;
                 geomDesc.triangleCount = submesh.indexCount / 3;
-                geomDesc.indexBuffer = MTL4BufferRange([indexBuffer gpuAddress] + submesh.firstIndex * sizeof(uint32_t), submesh.indexCount * sizeof(uint32_t));
+                geomDesc.indexBuffer = MTL4BufferRange([meshBuffer gpuAddress] + instance.mesh->GetIndices().offset + submesh.firstIndex * sizeof(uint32_t), submesh.indexCount * sizeof(uint32_t));
                 geomDesc.indexType = MTLIndexTypeUInt32;
                 geomDesc.opaque = YES;
 

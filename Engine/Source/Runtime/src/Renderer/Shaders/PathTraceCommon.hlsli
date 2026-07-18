@@ -60,22 +60,20 @@ float SpecularLobeProbability(Gleam::SurfaceOutput surface, float NdotV)
 
 Gleam::MeshVertexOut InterpolateVertexAttributes(Gleam::MeshInstanceData instance, uint primitiveIndex, float2 bary)
 {
-    ByteAddressBuffer indexBuffer       = ResourceDescriptorHeap[NonUniformResourceIndex(instance.indexBuffer)];
-    ByteAddressBuffer positionBuffer    = ResourceDescriptorHeap[NonUniformResourceIndex(instance.positionBuffer)];
-	ByteAddressBuffer interleavedBuffer = ResourceDescriptorHeap[NonUniformResourceIndex(instance.interleavedBuffer)];
+    ByteAddressBuffer meshBuffer = ResourceDescriptorHeap[NonUniformResourceIndex(instance.meshBuffer)];
 
     uint baseIdx = instance.firstIndex + primitiveIndex * 3;
-    uint i0 = instance.baseVertex + indexBuffer.Load<uint>(baseIdx       * sizeof(uint));
-    uint i1 = instance.baseVertex + indexBuffer.Load<uint>((baseIdx + 1) * sizeof(uint));
-    uint i2 = instance.baseVertex + indexBuffer.Load<uint>((baseIdx + 2) * sizeof(uint));
+    uint i0 = instance.baseVertex + meshBuffer.Load<uint>(instance.indexOffset + baseIdx       * sizeof(uint));
+    uint i1 = instance.baseVertex + meshBuffer.Load<uint>(instance.indexOffset + (baseIdx + 1) * sizeof(uint));
+    uint i2 = instance.baseVertex + meshBuffer.Load<uint>(instance.indexOffset + (baseIdx + 2) * sizeof(uint));
 
-    float3 p0 = positionBuffer.Load<float3>(i0 * sizeof(float3));
-    float3 p1 = positionBuffer.Load<float3>(i1 * sizeof(float3));
-    float3 p2 = positionBuffer.Load<float3>(i2 * sizeof(float3));
+    float3 p0 = meshBuffer.Load<float3>(instance.positionsOffset + i0 * sizeof(float3));
+    float3 p1 = meshBuffer.Load<float3>(instance.positionsOffset + i1 * sizeof(float3));
+    float3 p2 = meshBuffer.Load<float3>(instance.positionsOffset + i2 * sizeof(float3));
 
-    Gleam::InterleavedMeshVertex v0 = interleavedBuffer.Load<Gleam::InterleavedMeshVertex>(i0 * sizeof(Gleam::InterleavedMeshVertex));
-    Gleam::InterleavedMeshVertex v1 = interleavedBuffer.Load<Gleam::InterleavedMeshVertex>(i1 * sizeof(Gleam::InterleavedMeshVertex));
-    Gleam::InterleavedMeshVertex v2 = interleavedBuffer.Load<Gleam::InterleavedMeshVertex>(i2 * sizeof(Gleam::InterleavedMeshVertex));
+    Gleam::InterleavedMeshVertex v0 = meshBuffer.Load<Gleam::InterleavedMeshVertex>(instance.interleavedOffset + i0 * sizeof(Gleam::InterleavedMeshVertex));
+    Gleam::InterleavedMeshVertex v1 = meshBuffer.Load<Gleam::InterleavedMeshVertex>(instance.interleavedOffset + i1 * sizeof(Gleam::InterleavedMeshVertex));
+    Gleam::InterleavedMeshVertex v2 = meshBuffer.Load<Gleam::InterleavedMeshVertex>(instance.interleavedOffset + i2 * sizeof(Gleam::InterleavedMeshVertex));
 
     float3 b = float3(1.0 - bary.x - bary.y, bary.x, bary.y);
 

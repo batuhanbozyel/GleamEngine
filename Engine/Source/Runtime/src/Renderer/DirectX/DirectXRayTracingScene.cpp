@@ -49,18 +49,17 @@ AccelerationStructureView RayTracingScene::BuildAccelerationStructure(const Comm
 				{
 					PIXBeginEvent(commandList, PIX_COLOR(128, 0, 128), "BLAS");
 
-					auto indexBufferGpuAddress = static_cast<ID3D12Resource*>(instance.mesh->GetIndexBuffer().GetHandle())->GetGPUVirtualAddress();
-					auto positionBufferGpuAddress = static_cast<ID3D12Resource*>(instance.mesh->GetPositionBuffer().GetHandle())->GetGPUVirtualAddress();
+					auto meshBufferGpuAddress = static_cast<ID3D12Resource*>(instance.mesh->GetBuffer().GetHandle())->GetGPUVirtualAddress();
 
 					D3D12_RAYTRACING_GEOMETRY_DESC geometryDesc = {};
 					geometryDesc.Type = D3D12_RAYTRACING_GEOMETRY_TYPE_TRIANGLES;
 					geometryDesc.Flags = D3D12_RAYTRACING_GEOMETRY_FLAG_OPAQUE;
-					geometryDesc.Triangles.IndexBuffer = indexBufferGpuAddress + submesh.firstIndex * sizeof(uint32_t);
+					geometryDesc.Triangles.IndexBuffer = meshBufferGpuAddress + instance.mesh->GetIndices().offset + submesh.firstIndex * sizeof(uint32_t);
 					geometryDesc.Triangles.IndexCount = submesh.indexCount;
 					geometryDesc.Triangles.IndexFormat = DXGI_FORMAT_R32_UINT;
 					geometryDesc.Triangles.VertexFormat = DXGI_FORMAT_R32G32B32_FLOAT;
 					geometryDesc.Triangles.VertexCount = submesh.vertexCount;
-					geometryDesc.Triangles.VertexBuffer.StartAddress = positionBufferGpuAddress + submesh.baseVertex * sizeof(float3);
+					geometryDesc.Triangles.VertexBuffer.StartAddress = meshBufferGpuAddress + instance.mesh->GetPositions().offset + submesh.baseVertex * sizeof(float3);
 					geometryDesc.Triangles.VertexBuffer.StrideInBytes = sizeof(float3);
 					geometryDesc.Triangles.Transform3x4 = 0;
 
