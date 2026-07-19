@@ -203,7 +203,7 @@ void WorldRenderer::MakeWorldRenderingData(const RenderGraph& graph, RenderGraph
 	if (blackboard.Has<AmbientOcclusionData>())
 	{
 		const auto& ambientOcclusionData = blackboard.Get<AmbientOcclusionData>();
-		passData.aoTexture = builder.ReadTexture(ambientOcclusionData.ambientOcclusionTexture);
+		passData.aoTexture = builder.ReadTexture(ambientOcclusionData.aoTarget);
 	}
 	blackboard.Add(passData);
 }

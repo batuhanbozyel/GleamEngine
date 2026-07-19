@@ -8,6 +8,7 @@
 #include "Renderer/Renderers/DepthPrepass.h"
 #include "Renderer/Renderers/SunShadowRenderer.h"
 #include "Renderer/Renderers/GBufferResolveRenderer.h"
+#include "Renderer/Renderers/AmbientOcclusionRenderer.h"
 
 #include "World/Systems/RenderSceneProxy.h"
 
@@ -62,6 +63,11 @@ void ViewModeRenderer::AddRenderPasses(Gleam::RenderGraph& graph, Gleam::RenderG
 		case Gleam::ViewMode::ShadowMask:
 		{
 			source = blackboard.Get<Gleam::SunShadowData>().shadowMask;
+			break;
+		}
+		case Gleam::ViewMode::AmbientOcclusion:
+		{
+			source = blackboard.Get<Gleam::AmbientOcclusionData>().aoTarget;
 			break;
 		}
 		case Gleam::ViewMode::VisibilityIDs:

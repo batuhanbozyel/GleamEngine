@@ -37,7 +37,6 @@ float3 EvaluateMeshLighting(Gleam::SurfaceOutput surface,
         shadowVisibility = shadowTex.Load(int3(pixelCoord, 0));
     }
 
-    // XeGTAO packs the visibility term into an 8-bit UINT; ambient occlusion modulates indirect light.
     float ambientOcclusion = 1.0f;
     if (aoTexture != InvalidResourceIndex)
     {

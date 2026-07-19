@@ -23,6 +23,7 @@ GENUM(ViewMode, "984C1E2A-2798-4A6A-97A7-517BCE9E77D0", PrettyName("View Mode"))
 	GITEM(Roughness, "45D58C71-9BFB-45E4-80C1-4A82961F186C", PrettyName("Roughness")),
 	GITEM(MotionVectors, "FF60C785-5918-47DD-AC7C-06E39DF27A0C", PrettyName("Motion Vectors")),
 	GITEM(ShadowMask, "42865A07-40E0-460C-862B-BC717ED692E5", PrettyName("Shadow Mask")),
+	GITEM(AmbientOcclusion, "FB2F9437-1E38-4999-B584-A9F3C9B512CB", PrettyName("Ambient Occlusion")),
 	GITEM(MeshletVisualization, "C7E4A8D2-3F19-4B6A-8E2D-5A9C1B0F7E34", PrettyName("Meshlet Visualization")),
 	GITEM(VisibilityIDs, "838BE469-77E5-4874-B145-9D333EB400E1", PrettyName("Visibility IDs")),
 	GITEM(BatchIDs, "808B9D44-FE18-439D-9730-25CEBFA3870D", PrettyName("Batch IDs"))

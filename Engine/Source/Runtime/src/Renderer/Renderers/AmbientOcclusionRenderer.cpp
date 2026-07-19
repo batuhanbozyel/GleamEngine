@@ -150,7 +150,7 @@ void AmbientOcclusionRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBl
 		passData.edges = builder.WriteTexture(builder.CreateTexture(edgesDesc));
 
 		passData.workingDepth  = builder.ReadTexture(prefilterData.workingDepth);
-		passData.normalTexture = builder.ReadTexture(gBufferData.geometryNormalTarget);
+		passData.normalTexture = builder.ReadTexture(gBufferData.shadingNormalTarget);
 	},
 	[this, gtaoConstants, width, height, &sceneData](const CommandBuffer* cmd, const MainPassData& passData)
 	{
@@ -204,7 +204,7 @@ void AmbientOcclusionRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBl
 	});
 
 	AmbientOcclusionData output;
-	output.ambientOcclusionTexture = denoiseData.finalAO;
+	output.aoTarget = denoiseData.finalAO;
 	blackboard.Add(output);
 
 	mFrameIndex++;

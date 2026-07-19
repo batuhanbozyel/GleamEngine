@@ -5,7 +5,7 @@ namespace Gleam {
 
 struct AmbientOcclusionData
 {
-	TextureHandle ambientOcclusionTexture = TextureHandle();
+	TextureHandle aoTarget = TextureHandle();
 };
 
 class AmbientOcclusionRenderer : public IRenderer
