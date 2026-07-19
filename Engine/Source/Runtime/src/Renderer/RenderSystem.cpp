@@ -26,6 +26,7 @@
 #include "Renderers/ReflectionProbeRenderer.h"
 #include "Renderers/VisibilityClassification.h"
 #include "Renderers/GBufferResolveRenderer.h"
+#include "Renderers/AmbientOcclusionRenderer.h"
 
 #include "Core/Engine.h"
 #include "Core/Globals.h"
@@ -64,6 +65,7 @@ void RenderSystem::Initialize(Engine* engine)
 		mRenderPipelines[(uint32_t)RenderPath::Default]->AddSharedRenderer(depthPrepass);
 		mRenderPipelines[(uint32_t)RenderPath::Default]->AddRenderer<VisibilityClassificationRenderer>();
 		mRenderPipelines[(uint32_t)RenderPath::Default]->AddRenderer<GBufferResolveRenderer>();
+		mRenderPipelines[(uint32_t)RenderPath::Default]->AddRenderer<AmbientOcclusionRenderer>();
 		mRenderPipelines[(uint32_t)RenderPath::Default]->AddRenderer<SunShadowRenderer>();
 		mRenderPipelines[(uint32_t)RenderPath::Default]->AddRenderer<WorldRenderer>();
 		mRenderPipelines[(uint32_t)RenderPath::Default]->AddRenderer<SkyAtmosphereRenderer>();

@@ -48,7 +48,8 @@ float4 main(Gleam::MeshVertexOut IN) : SV_TARGET
 										constants.ggxEAvgTexture,
 										constants.diffuseReflectionTexture,
 										constants.specularReflectionTexture,
-										constants.shadowTexture);
+										constants.shadowTexture,
+										constants.aoTexture);
 	return float4(color, surface.albedo.a);
 }
 #endif // MESH_SHADING_HLSL

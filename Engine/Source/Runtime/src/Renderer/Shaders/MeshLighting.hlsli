@@ -15,7 +15,8 @@ float3 EvaluateMeshLighting(Gleam::SurfaceOutput surface,
                             Gleam::ShaderResourceIndex ggxEAvgTexture,
                             Gleam::ShaderResourceIndex diffuseReflectionTexture,
                             Gleam::ShaderResourceIndex specularReflectionTexture,
-                            Gleam::ShaderResourceIndex shadowTexture)
+                            Gleam::ShaderResourceIndex shadowTexture,
+                            Gleam::ShaderResourceIndex aoTexture)
 {
     DirectLight light;
     if (atmosphereUniforms.transmittanceLutTexture != InvalidResourceIndex && atmosphereUniforms.multiScatterLutTexture != InvalidResourceIndex)
@@ -36,6 +37,14 @@ float3 EvaluateMeshLighting(Gleam::SurfaceOutput surface,
         shadowVisibility = shadowTex.Load(int3(pixelCoord, 0));
     }
 
+    // XeGTAO packs the visibility term into an 8-bit UINT; ambient occlusion modulates indirect light.
+    float ambientOcclusion = 1.0f;
+    if (aoTexture != InvalidResourceIndex)
+    {
+        Texture2D<uint> aoTex = ResourceDescriptorHeap[aoTexture];
+        ambientOcclusion = aoTex.Load(int3(pixelCoord, 0)) / 255.0f;
+    }
+
     float3 color = surface.emission.rgb;
     color += EvaluateDirectLight(surface,
                                  ggxEssTexture,
@@ -50,7 +59,7 @@ float3 EvaluateMeshLighting(Gleam::SurfaceOutput surface,
                                    diffuseReflectionTexture,
                                    specularReflectionTexture,
                                    viewDir,
-                                   worldNormal);
+                                   worldNormal) * ambientOcclusion;
     return color;
 }
 

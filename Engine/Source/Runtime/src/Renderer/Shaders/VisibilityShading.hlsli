@@ -29,7 +29,8 @@ void main(uint dispatchThreadID : SV_DispatchThreadID)
                                             constants.ggxEAvgTexture,
                                             constants.diffuseReflectionTexture,
                                             constants.specularReflectionTexture,
-                                            constants.shadowTexture);
+                                            constants.shadowTexture,
+                                            constants.aoTexture);
 
         RWTexture2D<float4> colorTarget = ResourceDescriptorHeap[constants.colorTarget];
         colorTarget[visSample.pixelCoords] = float4(color, visSample.surface.albedo.a);
