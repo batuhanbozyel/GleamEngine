@@ -19,6 +19,8 @@ public:
 	virtual RenderStage GetStage() const override { return RenderStage::Shadows; }
 
 private:
+	
+	GTAOConstants SetupGTAOConstants(const CameraUniforms& camera, uint32_t frameIndex) const;
 
 	GraphicsDevice* mDevice = nullptr;
 	uint32_t mFrameIndex = 0;

@@ -469,7 +469,7 @@ CameraRenderData RenderSystem::SetupCameraRenderData(RenderGraph& graph, const E
 	camera.entity = entity;
 
 	const auto& cameraComponent = entity.GetComponent<Camera>();
-	camera.uniforms.resolution = Float2(cameraComponent.orthographicSize * cameraComponent.aspectRatio, cameraComponent.orthographicSize);
+	camera.uniforms.resolution = cameraComponent.GetViewport();
 	camera.uniforms.viewMatrix = Float4x4::LookTo(entity.GetWorldPosition(), entity.ForwardVector(), entity.UpVector());
 	if (cameraComponent.projectionType == ProjectionType::Perspective)
 	{
