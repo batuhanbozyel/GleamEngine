@@ -1,15 +1,17 @@
 #ifndef XE_GTAO_CALLBACKS_HLSL
 #define XE_GTAO_CALLBACKS_HLSL
 
+#ifndef __cplusplus
 #include "../Common.hlsli"
 #include "../ShaderTypes.h"
 
 // The vendored algorithm refers to the constants block unqualified at global scope.
 typedef Gleam::GTAOConstants GTAOConstants;
+#endif // !__cplusplus
 
 #define XE_GTAO_DEPTH_MIP_LEVELS 4
-#define XE_GTAO_NUMTHREADS_X 8
-#define XE_GTAO_NUMTHREADS_Y 8
+#define XE_GTAO_NUMTHREADS_X 8u
+#define XE_GTAO_NUMTHREADS_Y 8u
 
 #define XE_GTAO_FP32_DEPTHS 1
 #define XE_GTAO_USE_HALF_FLOAT_PRECISION 0
@@ -26,6 +28,9 @@ typedef Gleam::GTAOConstants GTAOConstants;
 #define XE_GTAO_DEFAULT_THIN_OCCLUDER_COMPENSATION      (0.0f    )  // the new 'thickness heuristic' approach
 #define XE_GTAO_DEFAULT_FINAL_VALUE_POWER               (2.2f    )  // modifies the final ambient occlusion value using power function - this allows some of the above heuristics to do different things
 #define XE_GTAO_DEFAULT_DEPTH_MIP_SAMPLING_OFFSET       (3.30f   )  // main trade-off between performance (memory bandwidth) and quality (temporal stability is the first affected, thin objects next)
+
+#define XE_GTAO_DEFAULT_DENOISE_BLUR_BETA				(1.2f    )  // high value disables denoise - more elegant & correct way would be do set all edges to 0
+#define XE_GTAO_DEFAULT_DENOISE_BLUR_RADIUS				(0.5f    )  // [0.0,  ~ ]   World (view) space size of the occlusion sphere.
 
 #define XE_GTAO_OCCLUSION_TERM_SCALE                    (1.5f)      // for packing in UNORM (because raw, pre-denoised occlusion term can overshoot 1 but will later average out to 1)
 

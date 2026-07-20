@@ -5,8 +5,25 @@
 
 #include "Renderer/CommandBuffer.h"
 #include "Renderer/GraphicsDevice.h"
+#include "Renderer/Shaders/AmbientOcclusion/XeGTAO.h"
 
 using namespace Gleam;
+
+static constexpr TStringView GetPipelineEntryPointForQuality(AmbientOcclusionQuality quality)
+{
+	switch (quality)
+	{
+		case AmbientOcclusionQuality::Low:    return "gtaoLowMainPass";
+		case AmbientOcclusionQuality::Medium: return "gtaoMediumMainPass";
+		case AmbientOcclusionQuality::High:   return "gtaoHighMainPass";
+		case AmbientOcclusionQuality::Ultra:  return "gtaoUltraMainPass";
+		default:
+		{
+			GLEAM_ASSERT(false, "Invalid ambient occlusion quality level");
+			return nullptr;
+		}
+	}
+}
 
 void AmbientOcclusionRenderer::OnCreate(const RenderContext& context)
 {
@@ -16,10 +33,13 @@ void AmbientOcclusionRenderer::OnCreate(const RenderContext& context)
 	prefilterDesc.entryPoint = "gtaoDepthPrefilter";
 	mDepthPrefilterPipeline = context.device->CreateComputePipeline(prefilterDesc);
 	
-	ComputePipelineStateDescriptor mainPassDesc;
-	mainPassDesc.entryPoint = "gtaoUltraMainPass";
-	mMainPassPipeline = context.device->CreateComputePipeline(mainPassDesc);
-	
+	for (uint32_t i = 0; i <= static_cast<uint32_t>(AmbientOcclusionQuality::Ultra); ++i)
+	{
+		ComputePipelineStateDescriptor mainPassDesc;
+		mainPassDesc.entryPoint = GetPipelineEntryPointForQuality(static_cast<AmbientOcclusionQuality>(i));
+		mMainPassPipelines[i] = context.device->CreateComputePipeline(mainPassDesc);
+	}
+
 	ComputePipelineStateDescriptor denoiseDesc;
 	denoiseDesc.entryPoint = "gtaoDenoise";
 	mDenoisePipeline = context.device->CreateComputePipeline(denoiseDesc);
@@ -27,6 +47,11 @@ void AmbientOcclusionRenderer::OnCreate(const RenderContext& context)
 
 void AmbientOcclusionRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard)
 {
+	if (mSettings.enable == false)
+	{
+		return;
+	}
+
 	const auto& sceneData        = blackboard.Get<SceneRenderingData>();
 	const auto& depthPrepassData = blackboard.Get<DepthPrepassData>();
 	const auto& gBufferData      = blackboard.Get<GBufferData>();
@@ -111,10 +136,10 @@ void AmbientOcclusionRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBl
 		constants.outWorkingAOTerm = passData.aoTerm;
 		constants.outWorkingEdges  = passData.edges;
 		
-		cmd->BindComputePipeline(mMainPassPipeline);
+		cmd->BindComputePipeline(mMainPassPipelines[(uint32_t)mSettings.quality]);
 		cmd->SetPushConstant(constants);
 		cmd->SetConstantBuffer(sceneData.camera.uniforms, CAMERA_UNIFORMS_BINDING_SLOT);
-		cmd->Dispatch(Math::DivideRoundingUp(width, 8u), Math::DivideRoundingUp(height, 8u), 1u);
+		cmd->Dispatch(Math::DivideRoundingUp(width, XE_GTAO_NUMTHREADS_X), Math::DivideRoundingUp(height, XE_GTAO_NUMTHREADS_Y), 1u);
 	});
 	
 	// ----------------------------------------------------------------
@@ -149,7 +174,7 @@ void AmbientOcclusionRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBl
 		
 		cmd->BindComputePipeline(mDenoisePipeline);
 		cmd->SetPushConstant(constants);
-		cmd->Dispatch(Math::DivideRoundingUp(width, 16u), Math::DivideRoundingUp(height, 8u), 1u);
+		cmd->Dispatch(Math::DivideRoundingUp(width, XE_GTAO_NUMTHREADS_X * 2u), Math::DivideRoundingUp(height, XE_GTAO_NUMTHREADS_Y), 1u);
 	});
 	
 	AmbientOcclusionData output;
@@ -185,17 +210,13 @@ GTAOConstants AmbientOcclusionRenderer::SetupGTAOConstants(const CameraUniforms&
 	consts.NDCToViewMul_x_PixelSize = float2(consts.NDCToViewMul.x * consts.ViewportPixelSize.x,
 											 consts.NDCToViewMul.y * consts.ViewportPixelSize.y);
 
-	// XeGTAO default tuning (Medium quality preset; single sharp denoise pass).
-	consts.EffectRadius             = 0.5f;
-	consts.EffectFalloffRange       = 0.615f;
-	consts.RadiusMultiplier         = 1.457f;
-	consts.FinalValuePower          = 2.2f;
-	consts.DenoiseBlurBeta          = 1.2f;   // DenoisePasses > 0
-	consts.SampleDistributionPower  = 2.0f;
-	consts.ThinOccluderCompensation = 0.0f;
-	consts.DepthMIPSamplingOffset   = 3.30f;
-	consts.Padding0                 = 0.0f;
 	consts.NoiseIndex               = (int)(frameIndex % 64u);
 
 	return consts;
+}
+
+void AmbientOcclusionRenderer::SetSettings(const AmbientOcclusionSettings& settings)
+{
+	mSettings = settings;
+	mFrameIndex = 0;
 }

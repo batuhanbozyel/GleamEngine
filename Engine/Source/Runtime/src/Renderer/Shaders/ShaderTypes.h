@@ -367,9 +367,7 @@ struct ShadowDenoiserFilterConstants
 };
 
 // Intel XeGTAO shared constants — field names and layout mirror the vendored algorithm
-// (Shaders/AmbientOcclusion/XeGTAO.hlsli), which accesses these members by name. The struct is
-// laid out so every 16-byte row is fully packed (no member straddles a boundary), keeping the
-// CPU and HLSL constant-buffer layouts identical.
+// (Shaders/AmbientOcclusion/XeGTAO.hlsli), which accesses these members by name
 struct GTAOConstants
 {
 	int2   ViewportSize;
@@ -382,18 +380,8 @@ struct GTAOConstants
 	float2 NDCToViewAdd;
 
 	float2 NDCToViewMul_x_PixelSize;
-	float  EffectRadius;
-	float  EffectFalloffRange;
-
-	float  RadiusMultiplier;
-	float  Padding0;
-	float  FinalValuePower;
-	float  DenoiseBlurBeta;
-
-	float  SampleDistributionPower;
-	float  ThinOccluderCompensation;
-	float  DepthMIPSamplingOffset;
 	int    NoiseIndex;
+	float  pad0;
 };
 
 struct GTAODepthPrefilterConstants

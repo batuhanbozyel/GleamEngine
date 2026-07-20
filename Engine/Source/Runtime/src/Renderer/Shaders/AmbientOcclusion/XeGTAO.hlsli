@@ -14,7 +14,7 @@
 // Version history: see XeGTAO.h
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-#include "XeGTAOUtils.hlsli"
+#include "XeGTAO.h"
 
 #define XE_GTAO_PI               	(3.1415926535897932384626433832795)
 #define XE_GTAO_PI_HALF             (1.5707963267948966192313216916398)
@@ -280,18 +280,22 @@ void XeGTAO_MainPass( const uint2 pixCoord, lpfloat sliceCount, lpfloat stepsPer
 #endif
 
 #if XE_GTAO_USE_DEFAULT_CONSTANTS != 0
-    const lpfloat effectRadius              = (lpfloat)consts.EffectRadius * (lpfloat)XE_GTAO_DEFAULT_RADIUS_MULTIPLIER;
+    const lpfloat effectRadius              = (lpfloat)XE_GTAO_DEFAULT_DENOISE_BLUR_RADIUS * (lpfloat)XE_GTAO_DEFAULT_RADIUS_MULTIPLIER;
     const lpfloat sampleDistributionPower   = (lpfloat)XE_GTAO_DEFAULT_SAMPLE_DISTRIBUTION_POWER;
     const lpfloat thinOccluderCompensation  = (lpfloat)XE_GTAO_DEFAULT_THIN_OCCLUDER_COMPENSATION;
     const lpfloat falloffRange              = (lpfloat)XE_GTAO_DEFAULT_FALLOFF_RANGE * effectRadius;
+    const lpfloat falloffFrom               = effectRadius * ((lpfloat)1-(lpfloat)XE_GTAO_DEFAULT_FALLOFF_RANGE);
+    const lpfloat finalValuePower           = (lpfloat)XE_GTAO_DEFAULT_FINAL_VALUE_POWER;
+    const lpfloat depthMIPSamplingOffset    = (lpfloat)XE_GTAO_DEFAULT_DEPTH_MIP_SAMPLING_OFFSET;
 #else
     const lpfloat effectRadius              = (lpfloat)consts.EffectRadius * (lpfloat)consts.RadiusMultiplier;
     const lpfloat sampleDistributionPower   = (lpfloat)consts.SampleDistributionPower;
     const lpfloat thinOccluderCompensation  = (lpfloat)consts.ThinOccluderCompensation;
     const lpfloat falloffRange              = (lpfloat)consts.EffectFalloffRange * effectRadius;
+    const lpfloat falloffFrom               = effectRadius * ((lpfloat)1-(lpfloat)consts.EffectFalloffRange);
+    const lpfloat finalValuePower           = (lpfloat)consts.FinalValuePower;
+    const lpfloat depthMIPSamplingOffset    = (lpfloat)consts.DepthMIPSamplingOffset;
 #endif
-
-    const lpfloat falloffFrom       = effectRadius * ((lpfloat)1-(lpfloat)consts.EffectFalloffRange);
 
     // fadeout precompute optimisation
     const lpfloat falloffMul        = (lpfloat)-1.0 / ( falloffRange );
@@ -417,7 +421,7 @@ void XeGTAO_MainPass( const uint2 pixCoord, lpfloat sliceCount, lpfloat stepsPer
                 lpfloat sampleOffsetLength = length( sampleOffset );
 
                 // note: when sampling, using point_point_point or point_point_linear sampler works, but linear_linear_linear will cause unwanted interpolation between neighbouring depth values on the same MIP level!
-                const lpfloat mipLevel    = (lpfloat)clamp( log2( sampleOffsetLength ) - consts.DepthMIPSamplingOffset, 0, XE_GTAO_DEPTH_MIP_LEVELS );
+                const lpfloat mipLevel    = (lpfloat)clamp( log2( sampleOffsetLength ) - depthMIPSamplingOffset, 0, XE_GTAO_DEPTH_MIP_LEVELS );
 
                 // Snap to pixel center (more correct direction math, avoids artifacts due to sampling pos not matching depth texel center - messes up slope - but adds other 
                 // artifacts due to them being pushed off the slice). Also use full precision for high res cases.
@@ -536,7 +540,7 @@ void XeGTAO_MainPass( const uint2 pixCoord, lpfloat sliceCount, lpfloat stepsPer
 #endif
         }
         visibility /= (lpfloat)sliceCount;
-        visibility = pow( visibility, (lpfloat)consts.FinalValuePower );
+        visibility = pow( visibility, finalValuePower );
         visibility = max( (lpfloat)0.03, visibility ); // disallow total occlusion (which wouldn't make any sense anyhow since pixel is visible but also helps with packing bent normals)
 
 #ifdef XE_GTAO_COMPUTE_BENT_NORMALS
@@ -564,13 +568,14 @@ lpfloat XeGTAO_DepthMIPFilter( lpfloat depth0, lpfloat depth1, lpfloat depth2, l
 
     const lpfloat depthRangeScaleFactor = 0.75; // found empirically :)
 #if XE_GTAO_USE_DEFAULT_CONSTANTS != 0
-    const lpfloat effectRadius              = depthRangeScaleFactor * (lpfloat)consts.EffectRadius * (lpfloat)XE_GTAO_DEFAULT_RADIUS_MULTIPLIER;
+    const lpfloat effectRadius              = depthRangeScaleFactor * (lpfloat)XE_GTAO_DEFAULT_DENOISE_BLUR_RADIUS * (lpfloat)XE_GTAO_DEFAULT_RADIUS_MULTIPLIER;
     const lpfloat falloffRange              = (lpfloat)XE_GTAO_DEFAULT_FALLOFF_RANGE * effectRadius;
+    const lpfloat falloffFrom               = effectRadius * ((lpfloat)1-(lpfloat)XE_GTAO_DEFAULT_FALLOFF_RANGE);
 #else
     const lpfloat effectRadius              = depthRangeScaleFactor * (lpfloat)consts.EffectRadius * (lpfloat)consts.RadiusMultiplier;
     const lpfloat falloffRange              = (lpfloat)consts.EffectFalloffRange * effectRadius;
+    const lpfloat falloffFrom               = effectRadius * ((lpfloat)1-(lpfloat)consts.EffectFalloffRange);
 #endif
-    const lpfloat falloffFrom       = effectRadius * ((lpfloat)1-(lpfloat)consts.EffectFalloffRange);
     // fadeout precompute optimisation
     const lpfloat falloffMul        = (lpfloat)-1.0 / ( falloffRange );
     const lpfloat falloffAdd        = falloffFrom / ( falloffRange ) + (lpfloat)1.0;
@@ -715,7 +720,11 @@ void XeGTAO_DecodeGatherPartial( const uint4 packedValue, out AOTermType outDeco
 
 void XeGTAO_Denoise( const uint2 pixCoordBase, const GTAOConstants consts, Texture2D<uint> sourceAOTerm, Texture2D<lpfloat> sourceEdges, SamplerState texSampler, RWTexture2D<uint> outputTexture, const uniform bool finalApply )
 {
+#if XE_GTAO_USE_DEFAULT_CONSTANTS != 0
+    const lpfloat blurAmount = (finalApply)?((lpfloat)XE_GTAO_DEFAULT_DENOISE_BLUR_BETA):((lpfloat)XE_GTAO_DEFAULT_DENOISE_BLUR_BETA/(lpfloat)5.0);
+#else
     const lpfloat blurAmount = (finalApply)?((lpfloat)consts.DenoiseBlurBeta):((lpfloat)consts.DenoiseBlurBeta/(lpfloat)5.0);
+#endif
     const lpfloat diagWeight = 0.85 * 0.5;
 
     AOTermType aoTerm[2];   // pixel pixCoordBase and pixel pixCoordBase + int2( 1, 0 )
