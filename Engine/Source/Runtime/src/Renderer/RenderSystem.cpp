@@ -30,6 +30,7 @@
 
 #include "Core/Engine.h"
 #include "Core/Globals.h"
+#include "Core/ConfigSystem.h"
 #include "Core/Events/RendererEvent.h"
 
 #include "World/World.h"
@@ -41,7 +42,14 @@ void RenderSystem::Initialize(Engine* engine)
 {
 	mEngine = engine;
 	InitializeBackend();
-	Configure(engine->GetConfiguration().renderer);
+
+	auto configSystem = engine->GetSubsystem<ConfigSystem>();
+	const auto& renderConfig = configSystem->Register<RendererConfig>();
+	configSystem->Subscribe<RendererConfig>([this](const RendererConfig& config)
+	{
+		Configure(config);
+	});
+	Configure(renderConfig);
 
 	GLEAM_ASSERT(mDevice->GetFeatures().meshShaders, "Mesh shaders is not supported");
 
@@ -264,7 +272,6 @@ void RenderSystem::Render(const World* world)
 
 void RenderSystem::Configure(const RendererConfig& config)
 {
-	mEngine->UpdateConfig(config);
     mDevice->Configure(config);
 
     mCommandBuffers.resize(mSwapchain->GetFramesInFlight());

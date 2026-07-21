@@ -2,6 +2,7 @@
 #include "Engine.h"
 #include "Globals.h"
 #include "WindowSystem.h"
+#include "ConfigSystem.h"
 #include "Events/WindowEvent.h"
 
 #include <SDL3/SDL.h>
@@ -18,7 +19,22 @@ void WindowSystem::Initialize(Engine* engine)
 {
 	mEngine = engine;
     GLEAM_AFFIRM(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_JOYSTICK | SDL_INIT_HAPTIC | SDL_INIT_GAMEPAD | SDL_INIT_EVENTS | SDL_INIT_SENSOR), "Window subsystem initialization failed!");
-	Configure(engine->GetConfiguration().window);
+
+	auto configSystem = engine->GetSubsystem<ConfigSystem>();
+	const auto& windowConfig = configSystem->Register<WindowConfig>();
+	configSystem->Subscribe<WindowConfig>([this](const WindowConfig& config)
+	{
+		ApplyConfig(config);
+	});
+	Configure(windowConfig);
+
+	EventDispatcher<WindowResizeEvent>::Subscribe([this](const WindowResizeEvent& e)
+	{
+		auto configSystem = mEngine->GetSubsystem<ConfigSystem>();
+		auto window = configSystem->Get<WindowConfig>();
+		window.size = Size(static_cast<float>(e.GetWidth()), static_cast<float>(e.GetHeight()));
+		configSystem->Set<WindowConfig>(window);
+	});
 }
 
 void WindowSystem::Shutdown(Engine* engine)
@@ -80,8 +96,36 @@ void WindowSystem::Configure(const WindowConfig& config)
 		}
 	}
 
-	mEngine->UpdateConfig(newConfig);
 	GLEAM_ASSERT(mWindow, "Window creation failed!");
+}
+
+void WindowSystem::ApplyConfig(const WindowConfig& config)
+{
+	if (mWindow == nullptr)
+	{
+		return;
+	}
+
+	// apply via SDL setters (never destroy the window) so the renderer's
+	// surface/swapchain stays valid; the size guard breaks the resize->persist loop
+	bool wantsFullscreen = (static_cast<SDL_WindowFlags>(config.windowFlag) & SDL_WINDOW_FULLSCREEN) != 0;
+	bool isFullscreen = (SDL_GetWindowFlags(mWindow) & SDL_WINDOW_FULLSCREEN) != 0;
+	if (wantsFullscreen != isFullscreen)
+	{
+		SDL_SetWindowFullscreen(mWindow, wantsFullscreen);
+	}
+
+	int targetWidth = static_cast<int>(config.size.width);
+	int targetHeight = static_cast<int>(config.size.height);
+	if (targetWidth > 0 && targetHeight > 0)
+	{
+		int currentWidth = 0, currentHeight = 0;
+		SDL_GetWindowSize(mWindow, &currentWidth, &currentHeight);
+		if (currentWidth != targetWidth || currentHeight != targetHeight)
+		{
+			SDL_SetWindowSize(mWindow, targetWidth, targetHeight);
+		}
+	}
 }
 
 void WindowSystem::SetDisplayMode(uint32_t mode) const

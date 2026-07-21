@@ -37,6 +37,8 @@ public:
 
 private:
 
+	void ApplyConfig(const WindowConfig& config);
+
 	void EventHandler(SDL_WindowEvent windowEvent);
 
 	Engine* mEngine;
