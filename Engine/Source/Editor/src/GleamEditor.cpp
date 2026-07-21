@@ -16,6 +16,7 @@
 #include "View/Panels/World/WorldOutliner.h"
 #include "View/Panels/Entity/EntityInspector.h"
 #include "View/Panels/Project/ContentBrowser.h"
+#include "View/Panels/Project/ProjectSettings.h"
 
 namespace GEditor {
 
@@ -37,6 +38,7 @@ public:
 		viewStack->AddView<WorldOutliner>();
 		viewStack->AddView<EntityInspector>();
 		viewStack->AddView<ContentBrowser>(assetManager);
+		viewStack->AddView<ProjectSettings>();
 	}
     
 	~GleamEditor()

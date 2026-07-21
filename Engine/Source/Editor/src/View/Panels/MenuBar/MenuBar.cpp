@@ -15,6 +15,10 @@
 
 #include "Renderer/Renderers/ImGuiRenderer.h"
 #include "World/WorldManager.h"
+#include "World/World.h"
+
+#include "View/ViewStack.h"
+#include "View/Panels/Project/ProjectSettings.h"
 
 #include <imgui.h>
 
@@ -46,7 +50,19 @@ void MenuBar::Render(Gleam::ImGuiRenderer* imgui)
 
 			ImGui::EndMenu();
 		}
-		
+
+		if (ImGui::BeginMenu("Edit"))
+		{
+			if (ImGui::MenuItem("Project Settings"))
+			{
+				auto viewStack = mWorld->GetSubsystem<ViewStack>();
+				auto projectSettings = viewStack->GetView<ProjectSettings>();
+				projectSettings->Open();
+			}
+
+			ImGui::EndMenu();
+		}
+
 		ImGui::EndMenuBar();
 	});
 }
