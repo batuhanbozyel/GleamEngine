@@ -90,7 +90,14 @@ public:
 
 	static constexpr uint32_t CalculateMipLevels(const Size& size)
 	{
-		return static_cast<uint32_t>(Math::Floor(Math::Log2(Math::Max(size.width, size.height)))) + 1;
+		uint32_t extent = static_cast<uint32_t>(Math::Max(size.width, size.height));
+		uint32_t levels = 1;
+		while (extent > 1)
+		{
+			extent >>= 1;
+			++levels;
+		}
+		return levels;
 	}
 
 	static constexpr uint32_t GetSlice(uint32_t subresourceIndex, uint32_t mipMapLevels)

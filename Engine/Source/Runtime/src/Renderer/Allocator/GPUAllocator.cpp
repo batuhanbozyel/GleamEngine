@@ -165,6 +165,7 @@ GPUAllocationBlock* GPUAllocator::AllocateHeap(const HeapDescriptor& descriptor)
 		.handle = virtualBlock,
 		.memoryType = descriptor.memoryType
 	};
+	GLEAM_CORE_INFO("{}: block allocated", block->heap.GetDescriptor().name);
 	mBlocks[(uint32_t)descriptor.memoryType].push_back(block);
 	return block;
 }
@@ -176,7 +177,7 @@ GPUAllocationBlock** GPUAllocator::FreeHeap(GPUAllocationBlock* block)
 	auto& blocks = mBlocks[(uint32_t)block->memoryType];
 	auto it = blocks.erase(eastl::find(blocks.begin(), blocks.end(), block));
 
-	GLEAM_CORE_INFO("GPU block freed {}", block->heap.GetDescriptor().name);
+	GLEAM_CORE_INFO("{}: block freed", block->heap.GetDescriptor().name);
 	vmaDestroyVirtualBlock(static_cast<VmaVirtualBlock>(block->handle));
 	mDevice->Dispose(block->heap);
 	block->handle = VK_NULL_HANDLE;

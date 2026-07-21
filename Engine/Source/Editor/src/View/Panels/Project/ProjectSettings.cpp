@@ -17,6 +17,15 @@
 
 using namespace GEditor;
 
+static Gleam::TStringView ResolveConfigName(const Gleam::Reflection::ClassDescription& desc)
+{
+	if (desc.HasAttribute<Gleam::Reflection::Attribute::PrettyName>())
+	{
+		return desc.GetAttribute<Gleam::Reflection::Attribute::PrettyName>()->name;
+	}
+	return desc.ResolveName();
+}
+
 void ProjectSettings::Render(Gleam::ImGuiRenderer* imgui)
 {
 	if (mIsOpen)
@@ -53,7 +62,7 @@ void ProjectSettings::DrawCategoryList()
 			mSelectedConfig = typeHash;
 		}
 
-		auto name = config.desc.ResolveName();
+		auto name = ResolveConfigName(config.desc);
 		char label[128];
 		std::memcpy(label, name.data(), name.size());
 		label[name.size()] = '\0';
@@ -72,7 +81,7 @@ void ProjectSettings::DrawSettingsContent()
 	{
 		if (mSelectedConfig == config.desc.TypeHash())
 		{
-			auto name = config.desc.ResolveName();
+			auto name = ResolveConfigName(config.desc);
 			char title[128];
 			std::memcpy(title, name.data(), name.size());
 			title[name.size()] = '\0';
