@@ -381,7 +381,7 @@ struct GTAOConstants
 
 	float2 NDCToViewMul_x_PixelSize;
 	int    NoiseIndex;
-	float  pad0;
+	float  DenoiseBlurBeta;
 };
 
 struct GTAODepthPrefilterConstants

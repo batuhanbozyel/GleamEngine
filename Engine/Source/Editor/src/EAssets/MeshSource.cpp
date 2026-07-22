@@ -370,6 +370,7 @@ Gleam::TArray<Gleam::RefCounted<MaterialInstanceBaker>> MeshSource::ImportMateri
 		descriptor["Emission"] = material.emissiveColor;
 		descriptor["Metallic"] = material.metallicFactor;
 		descriptor["Roughness"] = material.roughnessFactor;
+		descriptor["OcclusionStrength"] = material.occlusionStrength;
 		descriptor["AlphaCutoff"] = material.alphaCutoff;
 
 		if (const auto& texture = material.textures[PBRTexture::Albedo]; texture.Empty() == false)
@@ -403,6 +404,17 @@ Gleam::TArray<Gleam::RefCounted<MaterialInstanceBaker>> MeshSource::ImportMateri
 			if (ImportReference<TextureSource>(texturePath, textureSettings))
 			{
 				descriptor["MetallicRoughnessTexture"] = Registry()->GetAsset<Gleam::Texture2DDescriptor>(texture.Stem()).reference;
+			}
+		}
+
+		if (const auto& texture = material.textures[PBRTexture::Occlusion]; texture.Empty() == false)
+		{
+			auto texturePath = directory / texture;
+			auto textureSettings = TextureSource::ImportSettings();
+			textureSettings.generateMips = true;
+			if ((texture == material.textures[PBRTexture::MetallicRoughness]) or ImportReference<TextureSource>(texturePath, textureSettings))
+			{
+				descriptor["OcclusionTexture"] = Registry()->GetAsset<Gleam::Texture2DDescriptor>(texture.Stem()).reference;
 			}
 		}
 
@@ -531,6 +543,14 @@ RawMaterial ProcessMaterial(const cgltf_material& mat, const MeshSource::ImportS
         material.textures[PBRTexture::Normal] = file;
     }
     
+    // Occlusion
+    if (auto texture = mat.occlusion_texture.texture; texture != nullptr)
+    {
+		Gleam::Path file = texture->image->uri;
+        material.textures[PBRTexture::Occlusion] = file;
+        material.occlusionStrength = mat.occlusion_texture.scale;
+    }
+
     // Emissive
     if (auto texture = mat.emissive_texture.texture; texture != nullptr)
     {

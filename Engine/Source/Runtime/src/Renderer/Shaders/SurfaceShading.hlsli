@@ -29,6 +29,7 @@ struct SurfaceOutput
     float3 normal;
     float metallic;
     float roughness;
+    float occlusion;
     float alphaCutoff;
 };
 

@@ -37,11 +37,11 @@ float3 EvaluateMeshLighting(Gleam::SurfaceOutput surface,
         shadowVisibility = shadowTex.Load(int3(pixelCoord, 0));
     }
 
-    float ambientOcclusion = 1.0f;
+    float ambientOcclusion = surface.occlusion;
     if (aoTexture != InvalidResourceIndex)
     {
         Texture2D<uint> aoTex = ResourceDescriptorHeap[aoTexture];
-        ambientOcclusion = aoTex.Load(int3(pixelCoord, 0)) / 255.0f;
+        ambientOcclusion *= aoTex.Load(int3(pixelCoord, 0)) / 255.0f;
     }
 
     float3 color = surface.emission.rgb;

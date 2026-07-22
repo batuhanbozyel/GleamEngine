@@ -15,6 +15,7 @@ struct PBRTexture
         Albedo,
         Normal,
         MetallicRoughness,
+        Occlusion,
         Emissive,
         COUNT
     };
@@ -29,6 +30,7 @@ struct RawMaterial
     float alphaCutoff = 0.5f;
     float metallicFactor = 1.0f;
     float roughnessFactor = 1.0f;
+    float occlusionStrength = 1.0f;
     bool doubleSided = false;
     Gleam::AlphaMode alphaMode = Gleam::AlphaMode::Opaque;
     bool unlit = false;
@@ -41,6 +43,7 @@ struct RawMaterial
             && alphaCutoff == other.alphaCutoff
             && metallicFactor == other.metallicFactor
             && roughnessFactor == other.roughnessFactor
+            && occlusionStrength == other.occlusionStrength
             && doubleSided == other.doubleSided
             && alphaMode == other.alphaMode
             && unlit == other.unlit;

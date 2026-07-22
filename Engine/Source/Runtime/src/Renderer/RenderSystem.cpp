@@ -32,6 +32,7 @@
 #include "Core/Globals.h"
 #include "Core/ConfigSystem.h"
 #include "Core/Events/RendererEvent.h"
+#include "GraphicsSettings.h"
 
 #include "World/World.h"
 #include "World/Systems/RenderSceneProxy.h"
@@ -86,6 +87,13 @@ void RenderSystem::Initialize(Engine* engine)
 		mRenderPipelines[(uint32_t)RenderPath::PathTracing]->AddSharedRenderer(postProcessStack);
 	}
 
+	const auto& graphicsSettings = configSystem->Register<GraphicsSettings>();
+	configSystem->Subscribe<GraphicsSettings>([this](const GraphicsSettings& settings)
+	{
+		ApplyGraphicsSettings(settings);
+	});
+	ApplyGraphicsSettings(graphicsSettings);
+
 	EventDispatcher<WindowResizeEvent>::Subscribe([this](const WindowResizeEvent& e)
 	{
 		auto size = Size((float)e.GetWidth(), (float)e.GetHeight());
@@ -93,8 +101,8 @@ void RenderSystem::Initialize(Engine* engine)
 		{
 			mRendererResized = true;
 			mSwapchainSize = size;
+			EventDispatcher<RendererResizeEvent>::Publish(RendererResizeEvent(size));
 		}
-		EventDispatcher<RendererResizeEvent>::Publish(RendererResizeEvent(size));
 	});
 	mRenderPath = RenderPath::Default;
 }
@@ -280,6 +288,14 @@ void RenderSystem::Configure(const RendererConfig& config)
 		cmd = new CommandBuffer(mDevice, mTransientAllocator);
 	}
 	mSwapchainSize = mSwapchain->GetCurrentDrawable().GetDescriptor().size;
+}
+
+void RenderSystem::ApplyGraphicsSettings(const GraphicsSettings& settings)
+{
+	auto defaultPipeline = GetRenderPipeline(RenderPath::Default);
+
+	auto ambientOcclusionRenderer = defaultPipeline->GetRenderer<AmbientOcclusionRenderer>();
+	ambientOcclusionRenderer->SetSettings(settings.ambientOcclusion);
 }
 
 void RenderSystem::SetRenderPath(RenderPath path)

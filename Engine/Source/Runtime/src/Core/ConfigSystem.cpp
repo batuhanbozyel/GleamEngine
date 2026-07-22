@@ -92,7 +92,7 @@ ConfigSystem::ConfigBlock& ConfigSystem::RegisterBlock(const Reflection::ClassDe
 {
 	if (HasBlock(classDesc))
 	{
-		return;
+		return *mBlocks.at(classDesc.TypeHash());
 	}
 	
 	auto block = new ConfigBlock(classDesc);

@@ -25,6 +25,33 @@ static constexpr TStringView GetPipelineEntryPointForQuality(AmbientOcclusionQua
 	}
 }
 
+static constexpr uint32_t GetDenoisePassCountForMode(AmbientOcclusionMode mode)
+{
+	switch (mode)
+	{
+		case AmbientOcclusionMode::None:   return 0u;
+		case AmbientOcclusionMode::Sharp:  return 1u;
+		case AmbientOcclusionMode::Medium: return 2u;
+		case AmbientOcclusionMode::Soft:   return 3u;
+		default:
+		{
+			GLEAM_ASSERT(false, "Invalid ambient occlusion mode");
+			return 1u;
+		}
+	}
+}
+
+static constexpr TStringView GetDenoisePassName(uint32_t passIndex)
+{
+	switch (passIndex)
+	{
+		case 0:  return "AmbientOcclusion::Denoise Pass 0";
+		case 1:  return "AmbientOcclusion::Denoise Pass 1";
+		case 2:  return "AmbientOcclusion::Denoise Pass 2";
+		default: return "AmbientOcclusion::Denoise";
+	}
+}
+
 void AmbientOcclusionRenderer::OnCreate(const RenderContext& context)
 {
 	mDevice = context.device;
@@ -147,38 +174,68 @@ void AmbientOcclusionRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBl
 	// ----------------------------------------------------------------
 	struct DenoisePassData
 	{
-		TextureHandle aoTerm;
+		TextureHandle sourceAOTerm;
 		TextureHandle edges;
-		TextureHandle finalAO;
+		TextureHandle outputAOTerm;
 	};
-	
-	auto& denoiseData = graph.AddComputePass<DenoisePassData>("AmbientOcclusion::Denoise", [&](RenderGraphBuilder& builder, DenoisePassData& passData)
+
+	const uint32_t denoisePassCount = Math::Max(1u, GetDenoisePassCountForMode(mSettings.mode));
+
+	TextureHandle finalAOTerm   = mainData.aoTerm;
+	TextureHandle denoiseSource = mainData.aoTerm;
+	TextureHandle denoiseTarget = TextureHandle();
+
+	for (uint32_t passIndex = 0; passIndex < denoisePassCount; ++passIndex)
 	{
-		RenderTextureDescriptor finalDesc;
-		finalDesc.name   = "AmbientOcclusion";
-		finalDesc.size   = sceneTargetDescriptor.size;
-		finalDesc.format = TextureFormat::R8_UInt;
-		passData.finalAO = builder.WriteTexture(builder.CreateTexture(finalDesc));
-		
-		passData.aoTerm = builder.ReadTexture(mainData.aoTerm);
-		passData.edges  = builder.ReadTexture(mainData.edges);
-	},
-	[this, gtaoConstants, width, height](const CommandBuffer* cmd, const DenoisePassData& passData)
-	{
-		GTAODenoiseConstants constants = {};
-		constants.gtao           = gtaoConstants;
-		constants.sourceAOTerm   = passData.aoTerm;
-		constants.sourceEdges    = passData.edges;
-		constants.outFinalAOTerm = passData.finalAO;
-		constants.finalApply     = 1u;
-		
-		cmd->BindComputePipeline(mDenoisePipeline);
-		cmd->SetPushConstant(constants);
-		cmd->Dispatch(Math::DivideRoundingUp(width, XE_GTAO_NUMTHREADS_X * 2u), Math::DivideRoundingUp(height, XE_GTAO_NUMTHREADS_Y), 1u);
-	});
-	
+		const bool lastPass = (passIndex == denoisePassCount - 1u);
+
+		auto& denoiseData = graph.AddComputePass<DenoisePassData>(GetDenoisePassName(passIndex), [&](RenderGraphBuilder& builder, DenoisePassData& passData)
+		{
+			if (lastPass)
+			{
+				RenderTextureDescriptor finalDesc;
+				finalDesc.name   = "AmbientOcclusion";
+				finalDesc.size   = sceneTargetDescriptor.size;
+				finalDesc.format = TextureFormat::R8_UInt;
+				passData.outputAOTerm = builder.WriteTexture(builder.CreateTexture(finalDesc));
+			}
+			else
+			{
+				if (denoiseTarget.IsValid() == false)
+				{
+					RenderTextureDescriptor pingPongDesc;
+					pingPongDesc.name   = "GTAO Working AO Term Pong";
+					pingPongDesc.size   = sceneTargetDescriptor.size;
+					pingPongDesc.format = TextureFormat::R8_UInt;
+					denoiseTarget = builder.CreateTexture(pingPongDesc);
+				}
+				passData.outputAOTerm = builder.WriteTexture(denoiseTarget);
+			}
+
+			passData.sourceAOTerm = builder.ReadTexture(denoiseSource);
+			passData.edges        = builder.ReadTexture(mainData.edges);
+		},
+		[this, gtaoConstants, width, height, lastPass](const CommandBuffer* cmd, const DenoisePassData& passData)
+		{
+			GTAODenoiseConstants constants = {};
+			constants.gtao           = gtaoConstants;
+			constants.sourceAOTerm   = passData.sourceAOTerm;
+			constants.sourceEdges    = passData.edges;
+			constants.outFinalAOTerm = passData.outputAOTerm;
+			constants.finalApply     = lastPass ? 1u : 0u;
+
+			cmd->BindComputePipeline(mDenoisePipeline);
+			cmd->SetPushConstant(constants);
+			cmd->Dispatch(Math::DivideRoundingUp(width, XE_GTAO_NUMTHREADS_X * 2u), Math::DivideRoundingUp(height, XE_GTAO_NUMTHREADS_Y), 1u);
+		});
+
+		denoiseTarget = denoiseData.sourceAOTerm;
+		denoiseSource = denoiseData.outputAOTerm;
+		finalAOTerm   = denoiseData.outputAOTerm;
+	}
+
 	AmbientOcclusionData output;
-	output.aoTarget = denoiseData.finalAO;
+	output.aoTarget = finalAOTerm;
 	blackboard.Add(output);
 	
 	mFrameIndex++;
@@ -210,13 +267,17 @@ GTAOConstants AmbientOcclusionRenderer::SetupGTAOConstants(const CameraUniforms&
 	consts.NDCToViewMul_x_PixelSize = float2(consts.NDCToViewMul.x * consts.ViewportPixelSize.x,
 											 consts.NDCToViewMul.y * consts.ViewportPixelSize.y);
 
-	consts.NoiseIndex               = (int)(frameIndex % 64u);
+	consts.NoiseIndex		= (int)(frameIndex % 64u);
+	consts.DenoiseBlurBeta	= (mSettings.mode == AmbientOcclusionMode::None) ? 1e4f : XE_GTAO_DEFAULT_DENOISE_BLUR_BETA;
 
 	return consts;
 }
 
 void AmbientOcclusionRenderer::SetSettings(const AmbientOcclusionSettings& settings)
 {
-	mSettings = settings;
-	mFrameIndex = 0;
+	if (memcmp(&mSettings, &settings, sizeof(AmbientOcclusionSettings)) != 0)
+	{
+		mSettings = settings;
+		mFrameIndex = 0;
+	}
 }

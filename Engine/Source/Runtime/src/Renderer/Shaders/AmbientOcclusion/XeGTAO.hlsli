@@ -720,11 +720,7 @@ void XeGTAO_DecodeGatherPartial( const uint4 packedValue, out AOTermType outDeco
 
 void XeGTAO_Denoise( const uint2 pixCoordBase, const GTAOConstants consts, Texture2D<uint> sourceAOTerm, Texture2D<lpfloat> sourceEdges, SamplerState texSampler, RWTexture2D<uint> outputTexture, const uniform bool finalApply )
 {
-#if XE_GTAO_USE_DEFAULT_CONSTANTS != 0
-    const lpfloat blurAmount = (finalApply)?((lpfloat)XE_GTAO_DEFAULT_DENOISE_BLUR_BETA):((lpfloat)XE_GTAO_DEFAULT_DENOISE_BLUR_BETA/(lpfloat)5.0);
-#else
     const lpfloat blurAmount = (finalApply)?((lpfloat)consts.DenoiseBlurBeta):((lpfloat)consts.DenoiseBlurBeta/(lpfloat)5.0);
-#endif
     const lpfloat diagWeight = 0.85 * 0.5;
 
     AOTermType aoTerm[2];   // pixel pixCoordBase and pixel pixCoordBase + int2( 1, 0 )

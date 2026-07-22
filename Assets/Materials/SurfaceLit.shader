@@ -37,6 +37,16 @@ float2 GetMetallicRoughness(Gleam::MeshVertexOut IN)
     return metallicRoughness;
 }
 
+float GetOcclusion(Gleam::MeshVertexOut IN)
+{
+    if (Material.OcclusionTexture.IsValid())
+    {
+        float occlusion = Material.OcclusionTexture.SampleGrad(Sampler_Anisotropic_Repeat, IN.uv, IN.ddxUV, IN.ddyUV).r;
+        return lerp(1.0, occlusion, Material.OcclusionStrength);
+    }
+    return 1.0;
+}
+
 Gleam::SurfaceOutput SurfMain(Gleam::MeshVertexOut IN)
 {
     float2 metallicRoughness = GetMetallicRoughness(IN);
@@ -47,6 +57,7 @@ Gleam::SurfaceOutput SurfMain(Gleam::MeshVertexOut IN)
     OUT.normal = GetWorldNormal(IN);
     OUT.metallic = metallicRoughness.r;
     OUT.roughness = metallicRoughness.g;
+    OUT.occlusion = GetOcclusion(IN);
     OUT.alphaCutoff = Material.AlphaCutoff;
     return OUT;
 }
