@@ -83,7 +83,7 @@ void MetalSwapchain::Configure(MetalDevice* device, const RendererConfig& config
     
     int width, height;
     auto windowSystem = Globals::Engine->GetSubsystem<WindowSystem>();
-    SDL_GetWindowSizeInPixels(windowSystem->GetSDLWindow(), &width, &height);
+    SDL_GetWindowSize(windowSystem->GetSDLWindow(), &width, &height);
     Resize(device, Size((float)width, (float)height));
     
     [device->GetCommandQueue().GetHandle() addResidencySet:[mHandle residencySet]];

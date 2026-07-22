@@ -35,6 +35,8 @@ public:
 		return mWindow;
 	}
 
+	float GetDisplayScale() const;
+
 private:
 
 	void ApplyConfig(const WindowConfig& config);

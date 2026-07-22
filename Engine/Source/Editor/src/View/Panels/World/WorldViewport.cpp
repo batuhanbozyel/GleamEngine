@@ -20,6 +20,7 @@
 
 #include "Core/Globals.h"
 #include "Core/Engine.h"
+#include "Core/WindowSystem.h"
 
 #include "Input/InputSystem.h"
 
@@ -158,6 +159,7 @@ void WorldViewport::DrawToolbar()
 void WorldViewport::DrawViewport(Gleam::ImGuiRenderer* imgui, const Gleam::ImGuiPassData& passData)
 {
 	const auto& sceneRTsize = passData.sceneTarget.GetTexture().GetDescriptor().size;
+	float displayScale = Gleam::Globals::Engine->GetSubsystem<Gleam::WindowSystem>()->GetDisplayScale();
 	ImVec2 viewportSize = ImGui::GetContentRegionAvail();
 	if (mViewportSize != Gleam::Size(viewportSize.x, viewportSize.y))
 	{
@@ -166,7 +168,7 @@ void WorldViewport::DrawViewport(Gleam::ImGuiRenderer* imgui, const Gleam::ImGui
 		mViewportSizeChanged = true;
 	}
 
-	ImGui::Image(imgui->GetImTextureIDForTexture(passData.sceneTarget), ImVec2(sceneRTsize.width, sceneRTsize.height), ImVec2(0.0f, 0.0f), ImVec2(1.0f, 1.0f));
+	ImGui::Image(imgui->GetImTextureIDForTexture(passData.sceneTarget), ImVec2(sceneRTsize.width / displayScale, sceneRTsize.height / displayScale), ImVec2(0.0f, 0.0f), ImVec2(1.0f, 1.0f));
 
 	bool isFocused = ImGui::IsWindowFocused();
 	mCameraController->Enabled = isFocused;
@@ -196,6 +198,7 @@ void WorldViewport::Resize(Gleam::EntityManager& entityManager, const Gleam::Siz
 	mViewportSize = size;
 	mViewportSizeChanged = false;
 
+	float displayScale = Gleam::Globals::Engine->GetSubsystem<Gleam::WindowSystem>()->GetDisplayScale();
 	auto& camera = entityManager.GetComponent<Gleam::Camera>(mCamera);
-	camera.SetViewport(mViewportSize);
+	camera.SetViewport(mViewportSize * displayScale);
 }

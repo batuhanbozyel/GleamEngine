@@ -43,6 +43,19 @@ void WindowSystem::Shutdown(Engine* engine)
     SDL_Quit();
 }
 
+float WindowSystem::GetDisplayScale() const
+{
+#if defined(__APPLE__)
+	float scale = SDL_GetWindowDisplayScale(mWindow);
+#else
+	int w, h, pw, ph;
+	SDL_GetWindowSize(mWindow, &w, &h);
+	SDL_GetWindowSizeInPixels(mWindow, &pw, &ph);
+	float scale = (w > 0) ? (float)pw / (float)w : 1.0f;
+#endif
+	return scale > 0.0f ? scale : 1.0f;
+}
+
 void WindowSystem::Configure(const WindowConfig& config)
 {
     // destroy old window if exists

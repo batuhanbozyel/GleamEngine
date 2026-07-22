@@ -234,8 +234,13 @@ void ImGuiRenderer::AddFontTexture(const Path& fontPath, const Path& defaultPath
 	
 	ImGuiIO& io = ImGui::GetIO();
 	io.Fonts->Clear();
-	io.Fonts->AddFontFromFileTTF(fontPath.String().c_str(), fontSize);
-	io.FontDefault = io.Fonts->AddFontFromFileTTF(defaultPath.String().c_str(), fontSize);
+
+	float displayScale = Globals::Engine->GetSubsystem<WindowSystem>()->GetDisplayScale();
+	ImFontConfig fontConfig;
+	fontConfig.RasterizerDensity = displayScale;
+
+	io.Fonts->AddFontFromFileTTF(fontPath.String().c_str(), fontSize, &fontConfig);
+	io.FontDefault = io.Fonts->AddFontFromFileTTF(defaultPath.String().c_str(), fontSize, &fontConfig);
 
 	unsigned char* pixels;
 	int width, height;
