@@ -22,6 +22,7 @@ struct InterleavedMeshVertex
 	float3 normal;
 	float4 tangent;
 	float2 texCoord;
+	float4 color;
 };
 
 struct MeshletDescriptor

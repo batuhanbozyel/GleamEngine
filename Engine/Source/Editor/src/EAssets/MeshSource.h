@@ -62,6 +62,7 @@ struct RawMesh
     Gleam::TArray<Gleam::Float3> normals;
 	Gleam::TArray<Gleam::Float4> tangents;
     Gleam::TArray<Gleam::Float2> texCoords;
+    Gleam::TArray<Gleam::Float4> colors;
     Gleam::TArray<uint32_t> indices;
 	uint32_t material;
 };

@@ -113,6 +113,7 @@ Gleam::TArray<Gleam::InterleavedMeshVertex> MeshTools::InterleaveMeshVertices(co
 		interleaved[i].normal = mesh.normals[i];
 		interleaved[i].tangent = mesh.tangents[i];
 		interleaved[i].texCoord = mesh.texCoords[i];
+		interleaved[i].color = mesh.colors[i];
 	}
 	return interleaved;
 }
@@ -187,6 +188,7 @@ void MeshTools::RemoveDegenerateFaces(RawMesh& mesh)
 	Gleam::TArray<Gleam::Float3> newNormals;
 	Gleam::TArray<Gleam::Float4> newTangents;
 	Gleam::TArray<Gleam::Float2> newTexCoords;
+	Gleam::TArray<Gleam::Float4> newColors;
 
 	newPositions.reserve(newVertexCount);
 
@@ -203,6 +205,11 @@ void MeshTools::RemoveDegenerateFaces(RawMesh& mesh)
 	if (not mesh.texCoords.empty())
 	{
 		newTexCoords.reserve(newVertexCount);
+	}
+
+	if (not mesh.colors.empty())
+	{
+		newColors.reserve(newVertexCount);
 	}
 
 	for (size_t i = 0; i < vertexUsed.size(); ++i)
@@ -225,6 +232,11 @@ void MeshTools::RemoveDegenerateFaces(RawMesh& mesh)
 			{
 				newTexCoords.push_back(mesh.texCoords[i]);
 			}
+
+			if (not mesh.colors.empty())
+			{
+				newColors.push_back(mesh.colors[i]);
+			}
 		}
 	}
 
@@ -244,6 +256,11 @@ void MeshTools::RemoveDegenerateFaces(RawMesh& mesh)
 	if (not mesh.texCoords.empty())
 	{
 		mesh.texCoords = std::move(newTexCoords);
+	}
+
+	if (not mesh.colors.empty())
+	{
+		mesh.colors = std::move(newColors);
 	}
 }
 

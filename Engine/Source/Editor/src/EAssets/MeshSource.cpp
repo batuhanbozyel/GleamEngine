@@ -473,10 +473,27 @@ RawMesh ProcessAttributes(const cgltf_primitive& primitive, const MeshSource::Im
 			mesh.tangents.resize(vertexCount);
 			cgltf_accessor_unpack_floats(attribute.data, (cgltf_float*)mesh.tangents.data(), mesh.tangents.size() * 4);
 		}
-        else if (attribute.type == cgltf_attribute_type_texcoord)
+        else if (attribute.type == cgltf_attribute_type_texcoord && attribute.index == 0) // TEXCOORD_0
         {
             mesh.texCoords.resize(vertexCount);
             cgltf_accessor_unpack_floats(attribute.data, (cgltf_float*)mesh.texCoords.data(), mesh.texCoords.size() * 2);
+        }
+        else if (attribute.type == cgltf_attribute_type_color && attribute.index == 0) // COLOR_0
+        {
+            mesh.colors.resize(vertexCount, Gleam::Float4::one);
+            if (cgltf_num_components(attribute.data->type) == cgltf_type_vec4)
+            {
+                cgltf_accessor_unpack_floats(attribute.data, (cgltf_float*)mesh.colors.data(), mesh.colors.size() * 4);
+            }
+            else
+            {
+                Gleam::TArray<Gleam::Float3> rgb(vertexCount);
+                cgltf_accessor_unpack_floats(attribute.data, (cgltf_float*)rgb.data(), rgb.size() * 3);
+                for (uint32_t i = 0; i < vertexCount; ++i)
+                {
+                    mesh.colors[i] = Gleam::Float4(rgb[i].x, rgb[i].y, rgb[i].z, 1.0f);
+                }
+            }
         }
     }
 	MeshTools::RemoveDegenerateFaces(mesh);
@@ -502,6 +519,11 @@ RawMesh ProcessAttributes(const cgltf_primitive& primitive, const MeshSource::Im
 	if (mesh.texCoords.empty())
 	{
 		mesh.texCoords.resize(mesh.positions.size(), Gleam::Float2::zero);
+	}
+
+	if (mesh.colors.empty())
+	{
+		mesh.colors.resize(mesh.positions.size(), Gleam::Float4::one);
 	}
 
     return mesh;
