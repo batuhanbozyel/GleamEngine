@@ -40,6 +40,7 @@ struct VertexAttributes
     float3 normals[3];
     float4 tangents[3];
     float2 texCoords[3];
+    float4 colors[3];
 };
     
 struct VisibilitySample
@@ -115,7 +116,11 @@ Gleam::VertexAttributes LoadVertexAttributes(Gleam::MeshInstanceData instance, u
     attribs.texCoords[0] = v0.texCoord;
     attribs.texCoords[1] = v1.texCoord;
     attribs.texCoords[2] = v2.texCoord;
-    
+
+    attribs.colors[0] = v0.color;
+    attribs.colors[1] = v1.color;
+    attribs.colors[2] = v2.color;
+
     return attribs;
 }
 
@@ -226,7 +231,7 @@ Gleam::MeshVertexOut InterpolateVertexAttributes(Gleam::MeshInstanceData instanc
     OUT.normal = normal;
     OUT.tangent = tangent;
     OUT.bitangent = bitangent;
-    OUT.color = float4(1.0f, 1.0f, 1.0f, 1.0f);
+    OUT.color = InterpolateBary(deriv, attribs.colors[0], attribs.colors[1], attribs.colors[2]);
     InterpolateUV(deriv, attribs.texCoords[0], attribs.texCoords[1], attribs.texCoords[2], OUT.uv, OUT.ddxUV, OUT.ddyUV);
     
 #ifdef MOTION_VECTOR_PASS

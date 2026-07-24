@@ -26,10 +26,13 @@
 #include "Renderers/ReflectionProbeRenderer.h"
 #include "Renderers/VisibilityClassification.h"
 #include "Renderers/GBufferResolveRenderer.h"
+#include "Renderers/AmbientOcclusionRenderer.h"
 
 #include "Core/Engine.h"
 #include "Core/Globals.h"
+#include "Core/ConfigSystem.h"
 #include "Core/Events/RendererEvent.h"
+#include "GraphicsSettings.h"
 
 #include "World/World.h"
 #include "World/Systems/RenderSceneProxy.h"
@@ -40,7 +43,14 @@ void RenderSystem::Initialize(Engine* engine)
 {
 	mEngine = engine;
 	InitializeBackend();
-	Configure(engine->GetConfiguration().renderer);
+
+	auto configSystem = engine->GetSubsystem<ConfigSystem>();
+	const auto& renderConfig = configSystem->Register<RendererConfig>();
+	configSystem->Subscribe<RendererConfig>([this](const RendererConfig& config)
+	{
+		Configure(config);
+	});
+	Configure(renderConfig);
 
 	GLEAM_ASSERT(mDevice->GetFeatures().meshShaders, "Mesh shaders is not supported");
 
@@ -64,6 +74,7 @@ void RenderSystem::Initialize(Engine* engine)
 		mRenderPipelines[(uint32_t)RenderPath::Default]->AddSharedRenderer(depthPrepass);
 		mRenderPipelines[(uint32_t)RenderPath::Default]->AddRenderer<VisibilityClassificationRenderer>();
 		mRenderPipelines[(uint32_t)RenderPath::Default]->AddRenderer<GBufferResolveRenderer>();
+		mRenderPipelines[(uint32_t)RenderPath::Default]->AddRenderer<AmbientOcclusionRenderer>();
 		mRenderPipelines[(uint32_t)RenderPath::Default]->AddRenderer<SunShadowRenderer>();
 		mRenderPipelines[(uint32_t)RenderPath::Default]->AddRenderer<WorldRenderer>();
 		mRenderPipelines[(uint32_t)RenderPath::Default]->AddRenderer<SkyAtmosphereRenderer>();
@@ -76,6 +87,13 @@ void RenderSystem::Initialize(Engine* engine)
 		mRenderPipelines[(uint32_t)RenderPath::PathTracing]->AddSharedRenderer(postProcessStack);
 	}
 
+	const auto& graphicsSettings = configSystem->Register<GraphicsSettings>();
+	configSystem->Subscribe<GraphicsSettings>([this](const GraphicsSettings& settings)
+	{
+		ApplyGraphicsSettings(settings);
+	});
+	ApplyGraphicsSettings(graphicsSettings);
+
 	EventDispatcher<WindowResizeEvent>::Subscribe([this](const WindowResizeEvent& e)
 	{
 		auto size = Size((float)e.GetWidth(), (float)e.GetHeight());
@@ -83,8 +101,8 @@ void RenderSystem::Initialize(Engine* engine)
 		{
 			mRendererResized = true;
 			mSwapchainSize = size;
+			EventDispatcher<RendererResizeEvent>::Publish(RendererResizeEvent(size));
 		}
-		EventDispatcher<RendererResizeEvent>::Publish(RendererResizeEvent(size));
 	});
 	mRenderPath = RenderPath::Default;
 }
@@ -262,7 +280,6 @@ void RenderSystem::Render(const World* world)
 
 void RenderSystem::Configure(const RendererConfig& config)
 {
-	mEngine->UpdateConfig(config);
     mDevice->Configure(config);
 
     mCommandBuffers.resize(mSwapchain->GetFramesInFlight());
@@ -271,6 +288,14 @@ void RenderSystem::Configure(const RendererConfig& config)
 		cmd = new CommandBuffer(mDevice, mTransientAllocator);
 	}
 	mSwapchainSize = mSwapchain->GetCurrentDrawable().GetDescriptor().size;
+}
+
+void RenderSystem::ApplyGraphicsSettings(const GraphicsSettings& settings)
+{
+	auto defaultPipeline = GetRenderPipeline(RenderPath::Default);
+
+	auto ambientOcclusionRenderer = defaultPipeline->GetRenderer<AmbientOcclusionRenderer>();
+	ambientOcclusionRenderer->SetSettings(settings.ambientOcclusion);
 }
 
 void RenderSystem::SetRenderPath(RenderPath path)
@@ -467,7 +492,7 @@ CameraRenderData RenderSystem::SetupCameraRenderData(RenderGraph& graph, const E
 	camera.entity = entity;
 
 	const auto& cameraComponent = entity.GetComponent<Camera>();
-	camera.uniforms.resolution = Float2(cameraComponent.orthographicSize * cameraComponent.aspectRatio, cameraComponent.orthographicSize);
+	camera.uniforms.resolution = cameraComponent.GetViewport();
 	camera.uniforms.viewMatrix = Float4x4::LookTo(entity.GetWorldPosition(), entity.ForwardVector(), entity.UpVector());
 	if (cameraComponent.projectionType == ProjectionType::Perspective)
 	{

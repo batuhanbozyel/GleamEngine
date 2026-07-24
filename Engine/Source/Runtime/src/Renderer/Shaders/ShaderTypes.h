@@ -22,6 +22,7 @@ struct InterleavedMeshVertex
 	float3 normal;
 	float4 tangent;
 	float2 texCoord;
+	float4 color;
 };
 
 struct MeshletDescriptor
@@ -129,7 +130,12 @@ struct MeshShadingConstants
 	ShaderResourceIndex ggxEssTexture;
 	ShaderResourceIndex ggxEAvgTexture;
 	ShaderResourceIndex shadowTexture;
+	ShaderResourceIndex aoTexture;
+
 	uint32_t instanceID;
+	float pad0;
+	float pad1;
+	float pad2;
 };
 
 struct MeshInstanceData
@@ -207,9 +213,9 @@ struct VisibilityShadingConstants
 	ShaderResourceIndex barycentricCoords;
 
 	ShaderResourceIndex barycentricDerivatives;
+	ShaderResourceIndex aoTexture;
 	float pad0;
 	float pad1;
-	float pad2;
 };
 
 struct GBufferResolveConstants
@@ -359,6 +365,59 @@ struct ShadowDenoiserFilterConstants
 	ShaderResourceIndex normalTexture;
 	uint32_t passIndex;
 	float pad0;
+};
+
+// Intel XeGTAO shared constants — field names and layout mirror the vendored algorithm
+// (Shaders/AmbientOcclusion/XeGTAO.hlsli), which accesses these members by name
+struct GTAOConstants
+{
+	int2   ViewportSize;
+	float2 ViewportPixelSize;
+
+	float2 DepthUnpackConsts;
+	float2 CameraTanHalfFOV;
+
+	float2 NDCToViewMul;
+	float2 NDCToViewAdd;
+
+	float2 NDCToViewMul_x_PixelSize;
+	int    NoiseIndex;
+	float  DenoiseBlurBeta;
+};
+
+struct GTAODepthPrefilterConstants
+{
+	GTAOConstants gtao;
+
+	ShaderResourceIndex  sourceDepth;
+	UnorderedAccessIndex outDepthMip0;
+	UnorderedAccessIndex outDepthMip1;
+	UnorderedAccessIndex outDepthMip2;
+
+	UnorderedAccessIndex outDepthMip3;
+	UnorderedAccessIndex outDepthMip4;
+	float pad0;
+	float pad1;
+};
+
+struct GTAOMainPassConstants
+{
+	GTAOConstants gtao;
+
+	ShaderResourceIndex  workingDepth;
+	ShaderResourceIndex  normalTexture;
+	UnorderedAccessIndex outWorkingAOTerm;
+	UnorderedAccessIndex outWorkingEdges;
+};
+
+struct GTAODenoiseConstants
+{
+	GTAOConstants gtao;
+
+	ShaderResourceIndex  sourceAOTerm;
+	ShaderResourceIndex  sourceEdges;
+	UnorderedAccessIndex outFinalAOTerm;
+	uint32_t finalApply;
 };
 
 struct DrawIndirectArguments

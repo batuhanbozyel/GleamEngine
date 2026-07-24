@@ -264,6 +264,10 @@ public:
 
 private:
 
+	void UpdateTransformHierarchy();
+
+	void UpdateChildTransforms();
+
     bool mActive = true;
 
 	Transform mLocalTransform;

@@ -18,6 +18,15 @@
 
 using namespace GEditor;
 
+static Gleam::TStringView ResolveDisplayName(const Gleam::Reflection::ClassDescription& desc)
+{
+	if (desc.HasAttribute<Gleam::Reflection::Attribute::PrettyName>())
+	{
+		return desc.GetAttribute<Gleam::Reflection::Attribute::PrettyName>()->name;
+	}
+	return desc.ResolveName();
+}
+
 void WorldOutliner::OnCreate(Gleam::World* world)
 {
 	mEditWorld = world;
@@ -136,7 +145,7 @@ void WorldOutliner::DrawSingletonComponents()
 	{
 		if (classDesc.Guid() != Gleam::Reflection::GetClass<Gleam::Entity>().Guid())
 		{
-			auto componentName = classDesc.ResolveName();
+			auto componentName = ResolveDisplayName(classDesc);
 			uint32_t componentID = classDesc.TypeHash();
 
 			ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_Leaf |

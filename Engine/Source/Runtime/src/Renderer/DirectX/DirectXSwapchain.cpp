@@ -146,8 +146,11 @@ void DirectXSwapchain::Resize(GraphicsDevice* device, const Size& size)
 	auto& ctx = mContext[mCurrentFrameIndex];
 	WaitForID3D12Fence(ctx.fence, ctx.fenceValue);
 
-	mDesc.Width = (UINT)size.width;
-	mDesc.Height = (UINT)size.height;
+	int width, height;
+	SDL_Window* window = Globals::Engine->GetSubsystem<WindowSystem>()->GetSDLWindow();
+	SDL_GetWindowSizeInPixels(window, &width, &height);
+	mDesc.Width = (UINT)width;
+	mDesc.Height = (UINT)height;
 
 	if (mHandle != nullptr)
 	{

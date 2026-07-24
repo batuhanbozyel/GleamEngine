@@ -203,6 +203,27 @@ GSTRUCT(Float4x4, "770BABFC-E66A-4CE5-8453-A505EB3016BE", Serializable)
         };
     }
 
+	NO_DISCARD FORCE_INLINE static constexpr Float4x4 TRS(const Float3& translation, const Quaternion& rotation, const Float3& scale)
+	{
+		float qxx = rotation.x * rotation.x;
+		float qxy = rotation.x * rotation.y;
+		float qxz = rotation.x * rotation.z;
+		float qyy = rotation.y * rotation.y;
+		float qyz = rotation.y * rotation.z;
+		float qzz = rotation.z * rotation.z;
+		float qwx = rotation.w * rotation.x;
+		float qwy = rotation.w * rotation.y;
+		float qwz = rotation.w * rotation.z;
+
+		return Float4x4
+		{
+			scale.x - 2.0f * scale.x * (qyy + qzz),		2.0f * scale.x * (qxy + qwz),				2.0f * scale.x * (qxz - qwy),			0.0f,
+			2.0f * scale.y * (qxy - qwz),				scale.y - 2.0f * scale.y * (qxx + qzz),		2.0f * scale.y * (qyz + qwx),			0.0f,
+			2.0f * scale.z * (qxz + qwy),				2.0f * scale.z * (qyz - qwx),				scale.z - 2.0f * scale.z * (qxx + qyy),	0.0f,
+			translation.x,								translation.y,								translation.z,							1.0f
+		};
+	}
+
     NO_DISCARD FORCE_INLINE static constexpr Float4x4 LookTo(const Float3& eye, const Float3& to, const Float3& up)
     {
         Float3 front = Math::Normalize(to);
@@ -379,6 +400,33 @@ FORCE_INLINE void Decompose(const Float4x4& transform, Float3& translation, Quat
 	rotMatrix[0] = xAxis / scale;
 	rotMatrix[1] = yAxis / scale;
 	rotMatrix[2] = zAxis / scale;
+	rotation = Quaternion(rotMatrix);
+}
+
+FORCE_INLINE void Decompose(const Float4x4& transform, Float3& translation, Quaternion& rotation, Float3& scale)
+{
+	translation = Float3(transform.m[12], transform.m[13], transform.m[14]);
+
+	Float3 xAxis(transform.m[0], transform.m[1], transform.m[2]);
+	Float3 yAxis(transform.m[4], transform.m[5], transform.m[6]);
+	Float3 zAxis(transform.m[8], transform.m[9], transform.m[10]);
+
+	scale.x = Length(xAxis);
+	scale.y = Length(yAxis);
+	scale.z = Length(zAxis);
+
+	if (scale.x < Gleam::Math::Epsilon ||
+		scale.y < Gleam::Math::Epsilon ||
+		scale.z < Gleam::Math::Epsilon)
+	{
+		rotation = Gleam::Quaternion::identity;
+		return;
+	}
+
+	Float3x3 rotMatrix;
+	rotMatrix[0] = xAxis / scale.x;
+	rotMatrix[1] = yAxis / scale.y;
+	rotMatrix[2] = zAxis / scale.z;
 	rotation = Quaternion(rotMatrix);
 }
 

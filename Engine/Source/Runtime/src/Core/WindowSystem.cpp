@@ -2,35 +2,71 @@
 #include "Engine.h"
 #include "Globals.h"
 #include "WindowSystem.h"
+#include "ConfigSystem.h"
 #include "Events/WindowEvent.h"
 
 #include <SDL3/SDL.h>
-
-using namespace Gleam;
 
 #if defined(USE_DIRECTX_RENDERER)
 #define GLEAM_WINDOW_RENDERER_API 0
 #else
 #define GLEAM_WINDOW_RENDERER_API SDL_WINDOW_METAL
-#endif 
+#endif
+
+namespace Gleam {
 
 void WindowSystem::Initialize(Engine* engine)
 {
 	mEngine = engine;
-    GLEAM_AFFIRM(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_JOYSTICK | SDL_INIT_HAPTIC | SDL_INIT_GAMEPAD | SDL_INIT_EVENTS | SDL_INIT_SENSOR), "Window subsystem initialization failed!");
-	Configure(engine->GetConfiguration().window);
+	GLEAM_AFFIRM(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_JOYSTICK | SDL_INIT_HAPTIC | SDL_INIT_GAMEPAD | SDL_INIT_EVENTS | SDL_INIT_SENSOR), "Window subsystem initialization failed!");
+
+	auto configSystem = engine->GetSubsystem<ConfigSystem>();
+	const auto& windowConfig = configSystem->Register<WindowConfig>();
+	configSystem->Subscribe<WindowConfig>([this](const WindowConfig& config)
+	{
+		ApplyConfig(config);
+	});
+	Configure(windowConfig);
+
+	EventDispatcher<WindowResizeEvent>::Subscribe([this](const WindowResizeEvent& e)
+	{
+		auto configSystem = mEngine->GetSubsystem<ConfigSystem>();
+		auto window = configSystem->Get<WindowConfig>();
+		window.size = Size(static_cast<float>(e.GetWidth()), static_cast<float>(e.GetHeight()));
+		configSystem->Set<WindowConfig>(window);
+	});
 }
 
 void WindowSystem::Shutdown(Engine* engine)
 {
-    if (mWindow) { SDL_DestroyWindow(mWindow); }
-    SDL_Quit();
+	if (mWindow) { SDL_DestroyWindow(mWindow); }
+	SDL_Quit();
+}
+
+float WindowSystem::GetDisplayScale() const
+{
+#if defined(__APPLE__)
+	float scale = SDL_GetWindowDisplayScale(mWindow);
+#else
+	int w, h, pw, ph;
+	SDL_GetWindowSize(mWindow, &w, &h);
+	SDL_GetWindowSizeInPixels(mWindow, &pw, &ph);
+	float scale = (w > 0) ? (float)pw / (float)w : 1.0f;
+#endif
+	return scale > 0.0f ? scale : 1.0f;
+}
+
+Size WindowSystem::GetResolution() const
+{
+	int width = 0, height = 0;
+	SDL_GetWindowSize(mWindow, &width, &height);
+	return Size((uint32_t)width, (uint32_t)height);
 }
 
 void WindowSystem::Configure(const WindowConfig& config)
 {
-    // destroy old window if exists
-    if (mWindow) { SDL_DestroyWindow(mWindow); }
+	// destroy old window if exists
+	if (mWindow) { SDL_DestroyWindow(mWindow); }
 
 	// create window
 	auto newConfig = config;
@@ -80,8 +116,36 @@ void WindowSystem::Configure(const WindowConfig& config)
 		}
 	}
 
-	mEngine->UpdateConfig(newConfig);
 	GLEAM_ASSERT(mWindow, "Window creation failed!");
+}
+
+void WindowSystem::ApplyConfig(const WindowConfig& config)
+{
+	if (mWindow == nullptr)
+	{
+		return;
+	}
+
+	// apply via SDL setters (never destroy the window) so the renderer's
+	// surface/swapchain stays valid; the size guard breaks the resize->persist loop
+	bool wantsFullscreen = (static_cast<SDL_WindowFlags>(config.windowFlag) & SDL_WINDOW_FULLSCREEN) != 0;
+	bool isFullscreen = (SDL_GetWindowFlags(mWindow) & SDL_WINDOW_FULLSCREEN) != 0;
+	if (wantsFullscreen != isFullscreen)
+	{
+		SDL_SetWindowFullscreen(mWindow, wantsFullscreen);
+	}
+
+	int targetWidth = static_cast<int>(config.size.width);
+	int targetHeight = static_cast<int>(config.size.height);
+	if (targetWidth > 0 && targetHeight > 0)
+	{
+		int currentWidth = 0, currentHeight = 0;
+		SDL_GetWindowSize(mWindow, &currentWidth, &currentHeight);
+		if (currentWidth != targetWidth || currentHeight != targetHeight)
+		{
+			SDL_SetWindowSize(mWindow, targetWidth, targetHeight);
+		}
+	}
 }
 
 void WindowSystem::SetDisplayMode(uint32_t mode) const
@@ -103,43 +167,43 @@ DisplayMode WindowSystem::GetCurrentDisplayMode() const
 
 DisplayMode WindowSystem::GetDisplayMode(uint32_t monitor) const
 {
-    auto currDisplay = SDL_GetCurrentDisplayMode(monitor);
-    return DisplayMode
-    {
-        static_cast<SDL_PixelFormat>(currDisplay->format),
-        static_cast<uint32_t>(currDisplay->w),
-        static_cast<uint32_t>(currDisplay->h),
-        static_cast<uint32_t>(currDisplay->refresh_rate),
-        monitor
-    };
+	auto currDisplay = SDL_GetCurrentDisplayMode(monitor);
+	return DisplayMode
+	{
+		static_cast<SDL_PixelFormat>(currDisplay->format),
+		static_cast<uint32_t>(currDisplay->w),
+		static_cast<uint32_t>(currDisplay->h),
+		static_cast<uint32_t>(currDisplay->refresh_rate),
+		monitor
+	};
 }
 
 TArray<DisplayMode> WindowSystem::GetAvailableDisplayModes() const
 {
-    TArray<DisplayMode> displayModes;
-    
-    int numDisplays = 0;
-    auto displays = SDL_GetFullscreenDisplayModes(SDL_GetDisplayForWindow(mWindow), &numDisplays);
-    if (displays)
-    {
-        displayModes.resize(numDisplays);
-        uint32_t monitor = SDL_GetDisplayForWindow(mWindow);
-        
-        for (int i = 0; i < numDisplays; ++i)
-        {
-            auto display = displays[i];
-            displayModes[i] = DisplayMode
-            {
-                static_cast<SDL_PixelFormat>(display->format),
-                static_cast<uint32_t>(display->w),
-                static_cast<uint32_t>(display->h),
-                static_cast<uint32_t>(display->refresh_rate),
-                monitor
-            };
-        }
-        SDL_free(displays);
-    }
-    return displayModes;
+	TArray<DisplayMode> displayModes;
+	
+	int numDisplays = 0;
+	auto displays = SDL_GetFullscreenDisplayModes(SDL_GetDisplayForWindow(mWindow), &numDisplays);
+	if (displays)
+	{
+		displayModes.resize(numDisplays);
+		uint32_t monitor = SDL_GetDisplayForWindow(mWindow);
+		
+		for (int i = 0; i < numDisplays; ++i)
+		{
+			auto display = displays[i];
+			displayModes[i] = DisplayMode
+			{
+				static_cast<SDL_PixelFormat>(display->format),
+				static_cast<uint32_t>(display->w),
+				static_cast<uint32_t>(display->h),
+				static_cast<uint32_t>(display->refresh_rate),
+				monitor
+			};
+		}
+		SDL_free(displays);
+	}
+	return displayModes;
 }
 
 void WindowSystem::EventHandler(SDL_WindowEvent windowEvent)
@@ -198,3 +262,6 @@ void WindowSystem::EventHandler(SDL_WindowEvent windowEvent)
 		}
 	}
 }
+
+} // namespace Gleam
+

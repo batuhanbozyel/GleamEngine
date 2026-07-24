@@ -113,6 +113,7 @@ Gleam::TArray<Gleam::InterleavedMeshVertex> MeshTools::InterleaveMeshVertices(co
 		interleaved[i].normal = mesh.normals[i];
 		interleaved[i].tangent = mesh.tangents[i];
 		interleaved[i].texCoord = mesh.texCoords[i];
+		interleaved[i].color = mesh.colors[i];
 	}
 	return interleaved;
 }
@@ -187,6 +188,7 @@ void MeshTools::RemoveDegenerateFaces(RawMesh& mesh)
 	Gleam::TArray<Gleam::Float3> newNormals;
 	Gleam::TArray<Gleam::Float4> newTangents;
 	Gleam::TArray<Gleam::Float2> newTexCoords;
+	Gleam::TArray<Gleam::Float4> newColors;
 
 	newPositions.reserve(newVertexCount);
 
@@ -203,6 +205,11 @@ void MeshTools::RemoveDegenerateFaces(RawMesh& mesh)
 	if (not mesh.texCoords.empty())
 	{
 		newTexCoords.reserve(newVertexCount);
+	}
+
+	if (not mesh.colors.empty())
+	{
+		newColors.reserve(newVertexCount);
 	}
 
 	for (size_t i = 0; i < vertexUsed.size(); ++i)
@@ -225,6 +232,11 @@ void MeshTools::RemoveDegenerateFaces(RawMesh& mesh)
 			{
 				newTexCoords.push_back(mesh.texCoords[i]);
 			}
+
+			if (not mesh.colors.empty())
+			{
+				newColors.push_back(mesh.colors[i]);
+			}
 		}
 	}
 
@@ -244,6 +256,11 @@ void MeshTools::RemoveDegenerateFaces(RawMesh& mesh)
 	if (not mesh.texCoords.empty())
 	{
 		mesh.texCoords = std::move(newTexCoords);
+	}
+
+	if (not mesh.colors.empty())
+	{
+		mesh.colors = std::move(newColors);
 	}
 }
 
@@ -317,5 +334,42 @@ void MeshTools::ComputeTangents(RawMesh& mesh)
 	{
 		mesh.tangents.clear();
 		mesh.tangents.resize(mesh.normals.size(), Gleam::Float4(1.0f, 0.0f, 0.0f, 1.0f));
+	}
+}
+
+void MeshTools::ApplyTransform(RawMesh& mesh, const Gleam::Float4x4& transform)
+{
+	const Gleam::Float3 xAxis(transform.m[0], transform.m[1], transform.m[2]);
+	const Gleam::Float3 yAxis(transform.m[4], transform.m[5], transform.m[6]);
+	const Gleam::Float3 zAxis(transform.m[8], transform.m[9], transform.m[10]);
+
+	const bool mirrored = Gleam::Math::Dot(Gleam::Math::Cross(xAxis, yAxis), zAxis) < 0.0f;
+	const float cofactorSign = mirrored ? -1.0f : 1.0f;
+	const Gleam::Float3 normalX = Gleam::Math::Cross(yAxis, zAxis) * cofactorSign;
+	const Gleam::Float3 normalY = Gleam::Math::Cross(zAxis, xAxis) * cofactorSign;
+	const Gleam::Float3 normalZ = Gleam::Math::Cross(xAxis, yAxis) * cofactorSign;
+
+	for (auto& position : mesh.positions)
+	{
+		position = transform * position;
+	}
+
+	for (auto& normal : mesh.normals)
+	{
+		normal = Gleam::Math::Normalize(normalX * normal.x + normalY * normal.y + normalZ * normal.z);
+	}
+
+	for (auto& tangent : mesh.tangents)
+	{
+		Gleam::Float3 t = Gleam::Math::Normalize(xAxis * tangent.x + yAxis * tangent.y + zAxis * tangent.z);
+		tangent = Gleam::Float4(t.x, t.y, t.z, mirrored ? -tangent.w : tangent.w);
+	}
+
+	if (mirrored)
+	{
+		for (size_t i = 0; i + 2 < mesh.indices.size(); i += 3)
+		{
+			std::swap(mesh.indices[i + 1], mesh.indices[i + 2]);
+		}
 	}
 }

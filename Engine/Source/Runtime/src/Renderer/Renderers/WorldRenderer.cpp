@@ -12,6 +12,7 @@
 #include "SunShadowRenderer.h"
 #include "GBufferResolveRenderer.h"
 #include "VisibilityClassification.h"
+#include "AmbientOcclusionRenderer.h"
 
 #include "Core/Engine.h"
 #include "Core/Globals.h"
@@ -97,6 +98,7 @@ void WorldRenderer::AddVisibilityPass(RenderGraph& graph, RenderGraphBlackboard&
 		constants.diffuseReflectionTexture = passData.world.diffuseReflection;
 		constants.specularReflectionTexture = passData.world.specularReflection;
 		constants.shadowTexture = passData.world.shadowTexture;
+		constants.aoTexture = passData.world.aoTexture;
 		constants.barycentricCoords = passData.barycentricCoords;
 		constants.barycentricDerivatives = passData.barycentricDerivs;
 
@@ -146,6 +148,7 @@ void WorldRenderer::AddForwardPass(RenderGraph& graph, RenderGraphBlackboard& bl
 			constants.diffuseReflectionTexture = passData.diffuseReflection;
 			constants.specularReflectionTexture = passData.specularReflection;
 			constants.shadowTexture = passData.shadowTexture;
+			constants.aoTexture = passData.aoTexture;
 
 			cmd->BindMeshPipeline(mMeshShadingPipelines[batch.material->GetPipelineHash()]);
 			cmd->SetConstantBuffer(sceneData.camera.uniforms, CAMERA_UNIFORMS_BINDING_SLOT);
@@ -196,6 +199,11 @@ void WorldRenderer::MakeWorldRenderingData(const RenderGraph& graph, RenderGraph
 	{
 		const auto& sunShadowData = blackboard.Get<SunShadowData>();
 		passData.shadowTexture = builder.ReadTexture(sunShadowData.shadowMask);
+	}
+	if (blackboard.Has<AmbientOcclusionData>())
+	{
+		const auto& ambientOcclusionData = blackboard.Get<AmbientOcclusionData>();
+		passData.aoTexture = builder.ReadTexture(ambientOcclusionData.aoTarget);
 	}
 	blackboard.Add(passData);
 }

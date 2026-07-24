@@ -63,7 +63,7 @@ void depthPrepassMeshletShader(
 
         Gleam::DepthPrepassVertexOut OUT;
         OUT.position = mul(camera.viewProjectionMatrix, worldPosition);
-        OUT.color = float4(1.0f, 1.0f, 1.0f, 1.0f);
+        OUT.color = interleavedVert.color;
         OUT.uv = interleavedVert.texCoord;
         outVertices[groupThreadID] = OUT;
     }

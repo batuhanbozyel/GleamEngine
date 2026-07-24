@@ -20,6 +20,7 @@
 
 #include "Core/Globals.h"
 #include "Core/Engine.h"
+#include "Core/WindowSystem.h"
 
 #include "Input/InputSystem.h"
 
@@ -31,7 +32,6 @@ using namespace GEditor;
 void WorldViewport::OnCreate(Gleam::World* world)
 {
 	mEditWorld = world;
-    mViewportSize = Gleam::Globals::Engine->GetResolution();
 	
 	auto renderSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::RenderSystem>();
 	mGridRenderer = new InfiniteGridRenderer();
@@ -50,7 +50,9 @@ void WorldViewport::OnCreate(Gleam::World* world)
 	});
 
 	mCameraController = mEditWorld->AddSystem<EditorCameraController>(mCamera);
-    Resize(mEditWorld->GetEntityManager(), mViewportSize);
+	
+	auto windowSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::WindowSystem>();
+	Resize(mEditWorld->GetEntityManager(), windowSystem->GetResolution());
 }
 
 void WorldViewport::OnDestroy(Gleam::World* world)
@@ -158,6 +160,7 @@ void WorldViewport::DrawToolbar()
 void WorldViewport::DrawViewport(Gleam::ImGuiRenderer* imgui, const Gleam::ImGuiPassData& passData)
 {
 	const auto& sceneRTsize = passData.sceneTarget.GetTexture().GetDescriptor().size;
+	float displayScale = Gleam::Globals::Engine->GetSubsystem<Gleam::WindowSystem>()->GetDisplayScale();
 	ImVec2 viewportSize = ImGui::GetContentRegionAvail();
 	if (mViewportSize != Gleam::Size(viewportSize.x, viewportSize.y))
 	{
@@ -166,7 +169,7 @@ void WorldViewport::DrawViewport(Gleam::ImGuiRenderer* imgui, const Gleam::ImGui
 		mViewportSizeChanged = true;
 	}
 
-	ImGui::Image(imgui->GetImTextureIDForTexture(passData.sceneTarget), ImVec2(sceneRTsize.width, sceneRTsize.height), ImVec2(0.0f, 0.0f), ImVec2(1.0f, 1.0f));
+	ImGui::Image(imgui->GetImTextureIDForTexture(passData.sceneTarget), ImVec2(sceneRTsize.width / displayScale, sceneRTsize.height / displayScale), ImVec2(0.0f, 0.0f), ImVec2(1.0f, 1.0f));
 
 	bool isFocused = ImGui::IsWindowFocused();
 	mCameraController->Enabled = isFocused;
@@ -196,6 +199,8 @@ void WorldViewport::Resize(Gleam::EntityManager& entityManager, const Gleam::Siz
 	mViewportSize = size;
 	mViewportSizeChanged = false;
 
+	auto windowSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::WindowSystem>();
+	float displayScale = windowSystem->GetDisplayScale();
 	auto& camera = entityManager.GetComponent<Gleam::Camera>(mCamera);
-	camera.SetViewport(mViewportSize);
+	camera.SetViewport(mViewportSize * displayScale);
 }

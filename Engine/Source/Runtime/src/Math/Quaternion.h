@@ -156,6 +156,16 @@ GSTRUCT(Quaternion, "69ACEBFE-7CFD-4876-9D4D-DF428E49A626", Serializable)
         z /= s;
         return *this;
     }
+
+    NO_DISCARD FORCE_INLINE constexpr bool operator==(const Quaternion& rhs) const
+    {
+        return w == rhs.w && x == rhs.x && y == rhs.y && z == rhs.z;
+    }
+
+    NO_DISCARD FORCE_INLINE constexpr bool operator!=(const Quaternion& rhs) const
+    {
+        return !(*this == rhs);
+    }
 };
 
 NO_DISCARD FORCE_INLINE constexpr Float3 operator*(const Quaternion& quat, const Float3& vec)

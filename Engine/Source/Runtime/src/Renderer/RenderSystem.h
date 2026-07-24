@@ -22,6 +22,7 @@ class ResourceReleaseQueue;
 
 struct RenderContext;
 struct RendererConfig;
+struct GraphicsSettings;
 struct CameraRenderData;
 struct SkyAtmosphereRenderData;
 
@@ -44,6 +45,8 @@ public:
     void Render(const World* world);
     
     void Configure(const RendererConfig& config);
+
+	void ApplyGraphicsSettings(const GraphicsSettings& settings);
 
 	void SetRenderPath(RenderPath path);
 

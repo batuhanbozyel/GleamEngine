@@ -35,7 +35,13 @@ public:
 		return mWindow;
 	}
 
+	float GetDisplayScale() const;
+	
+	Size GetResolution() const;
+
 private:
+
+	void ApplyConfig(const WindowConfig& config);
 
 	void EventHandler(SDL_WindowEvent windowEvent);
 

@@ -75,6 +75,11 @@ GSTRUCT(Vector3, "3978CBC8-A694-45FF-B056-DE21F69421AC", Serializable)
         return x == vec.x && y == vec.y && z == vec.z;
     }
 
+	NO_DISCARD FORCE_INLINE constexpr bool operator!=(const Vector3& rhs) const
+	{
+		return !(*this == rhs);
+	}
+
     NO_DISCARD FORCE_INLINE constexpr T& operator[](size_t i)
     {
         return value[i];

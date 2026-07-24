@@ -22,19 +22,23 @@ static void DirectXDebugCallback(D3D12_MESSAGE_CATEGORY Category,
 								 LPCSTR pDescription,
 								 void* pContext)
 {
-	if (Severity & D3D12_MESSAGE_SEVERITY_MESSAGE)
+	if (Severity & D3D12_MESSAGE_SEVERITY_ERROR)
 	{
-		GLEAM_CORE_TRACE("DirectX: {0}", pDescription);
-	}
-	else if (Severity & D3D12_MESSAGE_SEVERITY_INFO)
-	{
-		GLEAM_CORE_INFO("DirectX: {0}", pDescription);
+		GLEAM_CORE_ERROR("DirectX: {0}", pDescription);
 	}
 	else if (Severity & D3D12_MESSAGE_SEVERITY_WARNING)
 	{
 		GLEAM_CORE_WARN("DirectX: {0}", pDescription);
 	}
-	else // if (Severity & D3D12_MESSAGE_SEVERITY_ERROR || Severity & D3D12_MESSAGE_SEVERITY_CORRUPTION)
+	else if (Severity & D3D12_MESSAGE_SEVERITY_INFO)
+	{
+		GLEAM_CORE_INFO("DirectX: {0}", pDescription);
+	}
+	if (Severity & D3D12_MESSAGE_SEVERITY_MESSAGE)
+	{
+		GLEAM_CORE_TRACE("DirectX: {0}", pDescription);
+	}
+	else // if (Severity & D3D12_MESSAGE_SEVERITY_CORRUPTION)
 	{
 		GLEAM_ASSERT(false, "DirectX: {0}", pDescription);
 	}
@@ -195,7 +199,7 @@ Buffer GraphicsDevice::CreateBuffer(GPUAllocator* allocator, const BufferDescrip
 	D3D12_RESOURCE_DESC1 resourceDesc = {
 		.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER,
 		.Alignment = 0,
-		.Width = descriptor.size,
+		.Width = Math::AlignUp(descriptor.size, (size_t)D3D12_RAW_UAV_SRV_BYTE_ALIGNMENT),
 		.Height = 1,
 		.DepthOrArraySize = 1,
 		.MipLevels = 1,
@@ -1510,13 +1514,15 @@ ShaderResourceIndex DirectXDevice::CreateResourceView(const Buffer& buffer)
 	D3D12_CPU_DESCRIPTOR_HANDLE handle = mCbvSrvUavHeap.cpuHandle;
 	handle.ptr += (size_t)index.data * (size_t)mCbvSrvUavHeap.size;
 
+	UINT numElements = (UINT)(Math::AlignUp(buffer.GetSize(), buffer.GetAlignment()) >> 2);
+
 	// SRV
 	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
 	srvDesc.Format = DXGI_FORMAT_R32_TYPELESS;
 	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
 	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 	srvDesc.Buffer.FirstElement = 0;
-	srvDesc.Buffer.NumElements = (UINT)buffer.GetSize() >> 2;
+	srvDesc.Buffer.NumElements = numElements;
 	srvDesc.Buffer.StructureByteStride = 0;
 	srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_RAW;
 	static_cast<ID3D12Device10*>(mHandle)->CreateShaderResourceView(static_cast<ID3D12Resource*>(buffer.GetHandle()), &srvDesc, handle);
@@ -1530,7 +1536,7 @@ ShaderResourceIndex DirectXDevice::CreateResourceView(const Buffer& buffer)
 		uavDesc.Format = DXGI_FORMAT_R32_TYPELESS;
 		uavDesc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
 		uavDesc.Buffer.FirstElement = 0;
-		uavDesc.Buffer.NumElements = (UINT)buffer.GetSize() >> 2;
+		uavDesc.Buffer.NumElements = numElements;
 		uavDesc.Buffer.StructureByteStride = 0;
 		uavDesc.Buffer.CounterOffsetInBytes = 0;
 		uavDesc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_RAW;

@@ -12,16 +12,18 @@ void Filesystem::ForEach(const Path& path, const DirectoryFn& fn, bool recursive
 	}
 
 	std::filesystem::path stlPath = std::wstring_view(path.Native().c_str(), path.Native().length());
-    for (auto& node : std::filesystem::directory_iterator(stlPath))
+
+	std::error_code error;
+    for (const auto& node : std::filesystem::directory_iterator(stlPath, error))
     {
-		Path nodePath = Path(node);
-        if (recursive && IsDirectory(nodePath))
+		auto entry = DirectoryEntry(Path(node), node.is_directory(error));
+        if (recursive && entry.IsDirectory())
         {
-            ForEach(nodePath, fn, recursive);
+            ForEach(entry, fn, recursive);
         }
         else
         {
-            fn(nodePath);
+            fn(entry);
         }
     }
 }

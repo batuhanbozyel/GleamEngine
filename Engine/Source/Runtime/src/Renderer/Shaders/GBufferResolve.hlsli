@@ -41,7 +41,7 @@ bool UnpackVisibilityShading(uint threadID, out Gleam::VisibilitySample visSampl
     visSample.vertex.normal = normal;
     visSample.vertex.tangent = tangent;
     visSample.vertex.bitangent = bitangent;
-    visSample.vertex.color = float4(1.0f, 1.0f, 1.0f, 1.0f);
+    visSample.vertex.color = InterpolateBary(deriv, attribs.colors[0], attribs.colors[1], attribs.colors[2]);
     InterpolateUV(deriv, attribs.texCoords[0], attribs.texCoords[1], attribs.texCoords[2], visSample.vertex.uv, visSample.vertex.ddxUV, visSample.vertex.ddyUV);
    
     float3 prevWorldPos0 = mul(instance.previousTransform, float4(attribs.positions[0], 1.0f)).xyz;

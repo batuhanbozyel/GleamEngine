@@ -19,9 +19,10 @@ using FileWatchHandler = std::function<void(const Path&, FileWatchEvent)>;
 
 class FileWatcher final : public EngineSubsystem
 {
-	struct Handle;
 public:
-    
+
+	struct Handle;
+
     virtual void Initialize(Engine* engine) override;
     
     virtual void Shutdown(Engine* engine) override;

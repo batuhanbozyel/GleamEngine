@@ -19,6 +19,9 @@ GSTRUCT(InterleavedMeshVertex, "4AFE936A-550F-419C-A7F0-5ED38D9D1642", Serializa
 
 	GFIELD("3B9D8E27-C6A5-4F91-B3D2-8A7C6F5E4D3B", Serializable)
 	Float2 texCoord;
+
+	GFIELD("6B5341FE-5469-4B25-8875-75D0987DA953", Serializable)
+	Float4 color;
 };
 
 GSTRUCT(MeshletDescriptor, "D3C237CF-8AEB-4735-A890-FCCFE51D69A9", Serializable)

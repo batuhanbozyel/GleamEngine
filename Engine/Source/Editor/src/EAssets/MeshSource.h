@@ -1,6 +1,8 @@
 #pragma once
 #include "AssetPackage.h"
 #include "Math/Color.h"
+#include "Math/Quaternion.h"
+#include "Math/Float4x4.h"
 #include "Renderer/Material/MaterialDescriptor.h"
 
 namespace GEditor {
@@ -15,6 +17,7 @@ struct PBRTexture
         Albedo,
         Normal,
         MetallicRoughness,
+        Occlusion,
         Emissive,
         COUNT
     };
@@ -29,6 +32,7 @@ struct RawMaterial
     float alphaCutoff = 0.5f;
     float metallicFactor = 1.0f;
     float roughnessFactor = 1.0f;
+    float occlusionStrength = 1.0f;
     bool doubleSided = false;
     Gleam::AlphaMode alphaMode = Gleam::AlphaMode::Opaque;
     bool unlit = false;
@@ -41,6 +45,7 @@ struct RawMaterial
             && alphaCutoff == other.alphaCutoff
             && metallicFactor == other.metallicFactor
             && roughnessFactor == other.roughnessFactor
+            && occlusionStrength == other.occlusionStrength
             && doubleSided == other.doubleSided
             && alphaMode == other.alphaMode
             && unlit == other.unlit;
@@ -59,6 +64,7 @@ struct RawMesh
     Gleam::TArray<Gleam::Float3> normals;
 	Gleam::TArray<Gleam::Float4> tangents;
     Gleam::TArray<Gleam::Float2> texCoords;
+    Gleam::TArray<Gleam::Float4> colors;
     Gleam::TArray<uint32_t> indices;
 	uint32_t material;
 };

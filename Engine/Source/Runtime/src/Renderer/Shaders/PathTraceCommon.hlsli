@@ -81,6 +81,7 @@ Gleam::MeshVertexOut InterpolateVertexAttributes(Gleam::MeshInstanceData instanc
     float3 normal     = b.x * v0.normal      + b.y * v1.normal      + b.z * v2.normal;
     float3 tangentXYZ = b.x * v0.tangent.xyz + b.y * v1.tangent.xyz + b.z * v2.tangent.xyz;
     float2 uv         = b.x * v0.texCoord    + b.y * v1.texCoord    + b.z * v2.texCoord;
+    float4 color      = b.x * v0.color       + b.y * v1.color       + b.z * v2.color;
     float  tangentW   = v0.tangent.w;
     
     Gleam::MeshVertexOut OUT;
@@ -89,7 +90,7 @@ Gleam::MeshVertexOut InterpolateVertexAttributes(Gleam::MeshInstanceData instanc
     OUT.normal        = normalize(mul(instance.transform, float4(normal, 0.0f)).xyz);
     OUT.tangent       = normalize(mul(instance.transform, float4(tangentXYZ, 0.0f)).xyz);
     OUT.bitangent     = normalize(cross(OUT.normal, OUT.tangent)) * tangentW;
-    OUT.color         = float4(1, 1, 1, 1);
+    OUT.color         = color;
     OUT.uv            = uv;
     OUT.ddxUV         = float2(0.0f, 0.0f);
     OUT.ddyUV         = float2(0.0f, 0.0f);

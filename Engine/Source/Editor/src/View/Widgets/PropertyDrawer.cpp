@@ -48,7 +48,11 @@ void PropertyDrawer::DrawScalarControl(const Gleam::TStringView label, const Gle
 
 	ImGui::PopFont();
 	ImGui::PopStyleColor(3);
-	ImGui::SameLine();
+
+	if (type != Gleam::Reflection::PrimitiveType::Bool)
+	{
+		ImGui::SameLine();
+	}
 
 	switch (type)
 	{
@@ -334,7 +338,7 @@ void PropertyDrawer::DrawClassFields(void* obj, const Gleam::Reflection::ClassDe
 {
 	for (const auto& baseClass : classDesc.ResolveBaseClasses())
 	{
-		DrawClassFields(obj, baseClass);
+		DrawClassFields(obj, baseClass, columnWidth);
 	}
 
 	for (const auto& field : classDesc.ResolveFields())
@@ -361,7 +365,7 @@ void PropertyDrawer::DrawClassFields(void* obj, const Gleam::Reflection::ClassDe
 				}
 				else if (fieldDesc->ResolveQualifiedName() == Gleam::Reflection::GetClass<Gleam::Float3>().ResolveQualifiedName())
 				{
-					DrawVec3Control(fieldName, *static_cast<Gleam::Float3*>(Gleam::OffsetPointer(obj, field.GetOffset())), columnWidth);
+					DrawVec3Control(fieldName, *static_cast<Gleam::Float3*>(Gleam::OffsetPointer(obj, field.GetOffset())), 0.0f, columnWidth);
 				}
 				else if (fieldDesc->ResolveQualifiedName() == Gleam::Reflection::GetClass<Gleam::AssetReference>().ResolveQualifiedName())
 				{
@@ -369,7 +373,7 @@ void PropertyDrawer::DrawClassFields(void* obj, const Gleam::Reflection::ClassDe
 				}
 				else
 				{
-					DrawClass(fieldName, Gleam::OffsetPointer(obj, field.GetOffset()), *fieldDesc);
+					DrawClass(fieldName, Gleam::OffsetPointer(obj, field.GetOffset()), *fieldDesc, columnWidth);
 				}
 				break;
 			}
@@ -396,7 +400,7 @@ void PropertyDrawer::DrawClassFields(void* obj, const Gleam::Reflection::ClassDe
 	}
 }
 
-void PropertyDrawer::DrawClass(const Gleam::TStringView label, void* component, const Gleam::Reflection::ClassDescription& classDesc)
+void PropertyDrawer::DrawClass(const Gleam::TStringView label, void* component, const Gleam::Reflection::ClassDescription& classDesc, float columnWidth)
 {
     const ImGuiTreeNodeFlags treeNodeFlags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_AllowOverlap | ImGuiTreeNodeFlags_FramePadding;
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2{ 4, 4 });
@@ -408,14 +412,16 @@ void PropertyDrawer::DrawClass(const Gleam::TStringView label, void* component, 
 	std::memcpy(buffer, label.data(), label.size());
 	buffer[label.size()] = '\0';
 
+	float outerWidth = ImGui::GetContentRegionAvail().x;
     bool open = ImGui::TreeNodeEx((void*)hash, treeNodeFlags, "%s", buffer);
     ImGui::PopStyleVar();
 
     if (open)
     {
-		auto panelWidth = ImGui::GetContentRegionAvail().x;
-		auto labelWidth = panelWidth * 0.3f;
-		DrawClassFields(component, classDesc, labelWidth);
+		float innerWidth = ImGui::GetContentRegionAvail().x;
+		// Subtract the tree node indent so nested value columns line up with the parent's.
+		float fieldsWidth = columnWidth > 0.0f ? columnWidth - (outerWidth - innerWidth) : innerWidth * 0.3f;
+		DrawClassFields(component, classDesc, fieldsWidth);
         ImGui::TreePop();
     }
 }

@@ -18,17 +18,15 @@ public:
 	void Initialize(const CommandLine& cli);
 
 	void Shutdown();
-    
-    void UpdateConfig(const WindowConfig& config);
-    
-    void UpdateConfig(const RendererConfig& config);
 
-	Size GetResolution() const;
-
-	const EngineConfig& GetConfiguration() const;
-    
     template<EngineSystemType T>
     T* GetSubsystem()
+    {
+        return mSubsystems.get<T>();
+    }
+
+    template<EngineSystemType T>
+    const T* GetSubsystem() const
     {
         return mSubsystems.get<T>();
     }
@@ -59,9 +57,6 @@ private:
 		mSubsystems.erase<T>();
 	}
 
-    void SaveConfigToDisk() const;
-
-	EngineConfig mConfig;
 	PolyArray<EngineSubsystem> mSubsystems;
 };
 	

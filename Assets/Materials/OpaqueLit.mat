@@ -7,9 +7,11 @@
         {"Emission": "Float4"},
         {"Metallic": "Float"},
         {"Roughness": "Float"},
+        {"OcclusionStrength": "Float"},
         {"BaseColorTexture": "Texture2D"},
         {"NormalTexture": "Texture2D"},
         {"MetallicRoughnessTexture": "Texture2D"},
+        {"OcclusionTexture": "Texture2D"},
         {"EmissiveTexture": "Texture2D"},
         {"AlphaCutoff": "Float"}
     ],

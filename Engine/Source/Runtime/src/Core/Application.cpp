@@ -4,6 +4,7 @@
 #include "Application.h"
 
 #include "EventSystem.h"
+#include "ConfigSystem.h"
 #include "Input/InputSystem.h"
 #include "Renderer/RenderSystem.h"
 

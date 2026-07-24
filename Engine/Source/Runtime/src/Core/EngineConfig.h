@@ -25,15 +25,6 @@ GSTRUCT(Version, "C84FF047-5FB9-4DF1-A3E6-E6EE81258F52", Serializable)
     }
 };
 
-GSTRUCT(EngineConfig, "858441CE-4849-44D3-94B8-213F9E6D83C5", Serializable)
-{
-	GFIELD("3E72FD33-B62F-4304-8D06-C6A7933D27D3", Serializable)
-	WindowConfig window;
-
-	GFIELD("ECE2D0A3-96EE-45CB-A47C-4715F6B7CD24", Serializable)
-	RendererConfig renderer;
-};
-
 inline std::ostream& operator<<(std::ostream& os, const Version& version)
 {
 	return os << version.major << "." << version.minor << "." << version.patch;

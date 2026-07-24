@@ -116,11 +116,30 @@ private:
 };
 
 
+class DirectoryEntry : public Path
+{
+public:
+
+	DirectoryEntry(Path&& path, bool isDirectory)
+		: Path(eastl::move(path))
+		, mIsDirectory(isDirectory)
+	{
+
+	}
+
+	bool IsDirectory() const { return mIsDirectory; }
+
+private:
+
+	bool mIsDirectory = false;
+
+};
+
 class Filesystem
 {
 public:
-    using DirectoryFn = std::function<void(const Path& node)>;
-    
+    using DirectoryFn = std::function<void(const DirectoryEntry& node)>;
+
     static void ForEach(const Path& path, const DirectoryFn& fn, bool recursive);
     
 	static WriteAccessor<File> Create(const Path& path, FileType type);

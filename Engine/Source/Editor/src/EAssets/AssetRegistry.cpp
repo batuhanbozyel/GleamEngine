@@ -37,19 +37,23 @@ const AssetItem& AssetRegistry::RegisterAsset(const Gleam::Path& path, const Ass
 	}
 
 	GLEAM_INFO("Asset imported: {0} GUID: {1}", item.name, item.reference.guid.ToString());
-	return items.emplace_back(item);
+	const auto& registered = items.emplace_back(item);
+	mAssetsByGuid[registered.reference.guid] = AssetLocation{
+		.path = relPath,
+		.index = static_cast<uint32_t>(items.size() - 1u)
+	};
+	return registered;
 }
 
 const AssetItem& AssetRegistry::GetAsset(const Gleam::Guid& guid) const
 {
-	for (const auto& [path, items] : mAssets)
+	auto it = mAssetsByGuid.find(guid);
+	if (it != mAssetsByGuid.end())
 	{
-		for (const auto& item : items)
+		auto pathIt = mAssets.find(it->second.path);
+		if (pathIt != mAssets.end())
 		{
-			if (item.reference.guid == guid)
-			{
-				return item;
-			}
+			return pathIt->second[it->second.index];
 		}
 	}
 

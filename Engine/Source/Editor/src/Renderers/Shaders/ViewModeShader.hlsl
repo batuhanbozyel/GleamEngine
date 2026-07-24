@@ -23,6 +23,7 @@ float3 HashIDToColor(uint id)
 float4 viewModeFragmentShader(FScreenVertexOutput IN) : SV_TARGET
 {
     float3 color = float3(0.0, 0.0, 0.0);
+    int2 pixelCoord = IN.texCoord * camera.resolution;
 
     switch ((Gleam::ViewMode)uniforms.mode)
     {
@@ -114,13 +115,19 @@ float4 viewModeFragmentShader(FScreenVertexOutput IN) : SV_TARGET
         case Gleam::ViewMode::ShadowMask:
         {
             Texture2D<float> shadowTexture = ResourceDescriptorHeap[uniforms.sourceTexture];
-            color = shadowTexture.Sample(Sampler_Point_Clamp, IN.texCoord).xxx;
+            color = shadowTexture.Load(int3(pixelCoord, 0)).xxx;
+            break;
+        }
+        case Gleam::ViewMode::AmbientOcclusion:
+        {
+            Texture2D<uint> aoTexture = ResourceDescriptorHeap[uniforms.sourceTexture];
+            color = (aoTexture.Load(int3(pixelCoord, 0)) / 255.0f).xxx;
             break;
         }
         case Gleam::ViewMode::MeshletVisualization:
         {
             Texture2D<PackedVisibilityID> visibilityBuffer = ResourceDescriptorHeap[uniforms.sourceTexture];
-            PackedVisibilityID packedID = visibilityBuffer.Load(int3(IN.texCoord * camera.resolution, 0));
+            PackedVisibilityID packedID = visibilityBuffer.Load(int3(pixelCoord, 0));
             if (IsValidVisibilityID(packedID))
             {
                 Gleam::VisibilityID visibility = UnpackVisibilityID(packedID);
@@ -131,7 +138,7 @@ float4 viewModeFragmentShader(FScreenVertexOutput IN) : SV_TARGET
         case Gleam::ViewMode::VisibilityIDs:
         {
             Texture2D<PackedVisibilityID> visibilityBuffer = ResourceDescriptorHeap[uniforms.sourceTexture];
-            PackedVisibilityID packedID = visibilityBuffer.Load(int3(IN.texCoord * camera.resolution, 0));
+            PackedVisibilityID packedID = visibilityBuffer.Load(int3(pixelCoord, 0));
             if (IsValidVisibilityID(packedID))
             {
                     color = HashIDToColor(packedID.x * 2654435769u + packedID.y);
@@ -141,7 +148,7 @@ float4 viewModeFragmentShader(FScreenVertexOutput IN) : SV_TARGET
         case Gleam::ViewMode::BatchIDs:
         {
             Texture2D<PackedVisibilityID> visibilityBuffer = ResourceDescriptorHeap[uniforms.sourceTexture];
-            PackedVisibilityID packedID = visibilityBuffer.Load(int3(IN.texCoord * camera.resolution, 0));
+            PackedVisibilityID packedID = visibilityBuffer.Load(int3(pixelCoord, 0));
             if (IsValidVisibilityID(packedID))
             {
                 color = HashIDToColor(UnpackVisibilityBatchIndex(packedID) + 1u);
