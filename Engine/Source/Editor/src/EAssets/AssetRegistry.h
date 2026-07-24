@@ -51,9 +51,17 @@ public:
 
 private:
 
+	struct AssetLocation
+	{
+		Gleam::Path path;
+		uint32_t index = 0u;
+	};
+
 	Gleam::Path mAssetDirectory;
 
 	Gleam::HashMap<Gleam::Path, Gleam::TArray<AssetItem>> mAssets;
+
+	Gleam::HashMap<Gleam::Guid, AssetLocation> mAssetsByGuid;
 };
 
 } // namespace GEditor

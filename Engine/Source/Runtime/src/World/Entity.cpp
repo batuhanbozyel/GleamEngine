@@ -33,6 +33,30 @@ Entity& Entity::GetChildEntity(EntityHandle child) const
 	}
 }
 
+void Entity::UpdateTransformHierarchy()
+{
+	if (HasParent())
+	{
+		mGlobalTransform = GetParentEntity().GetWorldTransform() * mLocalTransform;
+	}
+	else
+	{
+		mGlobalTransform = mLocalTransform;
+	}
+
+	UpdateChildTransforms();
+}
+
+void Entity::UpdateChildTransforms()
+{
+	for (auto child : mChildren)
+	{
+		auto& childEntity = GetChildEntity(child);
+		childEntity.mGlobalTransform = mGlobalTransform * childEntity.mLocalTransform;
+		childEntity.UpdateChildTransforms();
+	}
+}
+
 void Entity::SetParent(const EntityHandle parent)
 {
 	// Remove entity from old parent's children
@@ -48,45 +72,22 @@ void Entity::SetParent(const EntityHandle parent)
 	// Add entity to the parent's children
 	if (parent != InvalidEntity)
 	{
-		auto& parentEntity = GetParentEntity();
-		parentEntity.mChildren.push_back(mHandle);
-
-		mGlobalTransform = parentEntity.GetWorldTransform() * mLocalTransform;
-	}
-	else
-	{
-		mGlobalTransform = mLocalTransform;
+		GetParentEntity().mChildren.push_back(mHandle);
 	}
 
-	for (auto child : mChildren)
-	{
-		auto& childEntity = GetChildEntity(child);
-		childEntity.mGlobalTransform = mGlobalTransform * childEntity.mLocalTransform;
-	}
+	UpdateTransformHierarchy();
 }
 
 void Entity::Translate(const Float3& translation)
 {
 	mLocalTransform.position += translation;
-	mGlobalTransform.position += translation;
-
-	for (auto child : mChildren)
-	{
-		auto& childEntity = GetChildEntity(child);
-		childEntity.mGlobalTransform.position += translation;
-	}
+	UpdateTransformHierarchy();
 }
 
 void Entity::Rotate(const Quaternion& rotation)
 {
 	mLocalTransform.rotation *= rotation;
-	mGlobalTransform.rotation *= rotation;
-
-	for (auto child : mChildren)
-	{
-		auto& childEntity = GetChildEntity(child);
-		childEntity.mGlobalTransform.rotation *= rotation;
-	}
+	UpdateTransformHierarchy();
 }
 
 void Entity::Rotate(const Float3& eulers)
@@ -102,85 +103,29 @@ void Entity::Rotate(float xAngle, float yAngle, float zAngle)
 void Entity::Scale(float scale)
 {
 	mLocalTransform.scale *= scale;
-	mGlobalTransform.scale *= scale;
-
-	for (auto child : mChildren)
-	{
-		auto& childEntity = GetChildEntity(child);
-		childEntity.mGlobalTransform.scale *= scale;
-	}
+	UpdateTransformHierarchy();
 }
 
 void Entity::SetTranslation(const Float3& translation)
 {
-	mGlobalTransform.position = mGlobalTransform.position - mLocalTransform.position + translation;
 	mLocalTransform.position = translation;
-
-	for (auto child : mChildren)
-	{
-		auto& childEntity = GetChildEntity(child);
-		childEntity.mGlobalTransform.position = childEntity.mLocalTransform.position + mGlobalTransform.position;
-	}
+	UpdateTransformHierarchy();
 }
 
 void Entity::SetRotation(const Quaternion& rotation)
 {
 	mLocalTransform.rotation = rotation;
-
-	if (HasParent())
-	{
-		auto& parent = GetParentEntity();
-		mGlobalTransform.rotation = parent.GetWorldRotation() * mLocalTransform.rotation;
-	}
-	else
-	{
-		mGlobalTransform.rotation = mLocalTransform.rotation;
-	}
-
-	for (auto child : mChildren)
-	{
-		auto& childEntity = GetChildEntity(child);
-		childEntity.mGlobalTransform.rotation = GetWorldRotation() * childEntity.mLocalTransform.rotation;
-	}
+	UpdateTransformHierarchy();
 }
 
 void Entity::SetScale(float scale)
 {
 	mLocalTransform.scale = scale;
-
-	if (HasParent())
-	{
-		auto& parent = GetParentEntity();
-		mGlobalTransform.scale = parent.GetWorldScale() * mLocalTransform.scale;
-	}
-	else
-	{
-		mGlobalTransform.scale = mLocalTransform.scale;
-	}
-
-	for (auto child : mChildren)
-	{
-		auto& childEntity = GetChildEntity(child);
-		childEntity.mGlobalTransform.scale = GetWorldScale() * childEntity.mLocalTransform.scale;
-	}
+	UpdateTransformHierarchy();
 }
 
 void Entity::SetLocalTransform(const Transform& transform)
 {
 	mLocalTransform = transform;
-	if (HasParent())
-	{
-		auto& parent = GetParentEntity();
-		mGlobalTransform = parent.GetWorldTransform() * mLocalTransform;
-	}
-	else
-	{
-		mGlobalTransform = mLocalTransform;
-	}
-
-	for (auto child : mChildren)
-	{
-		auto& childEntity = GetChildEntity(child);
-		childEntity.mGlobalTransform = mGlobalTransform * childEntity.mLocalTransform;
-	}
+	UpdateTransformHierarchy();
 }

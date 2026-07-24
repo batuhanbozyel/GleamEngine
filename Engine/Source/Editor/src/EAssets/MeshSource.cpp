@@ -28,6 +28,8 @@ static Gleam::TString GetNodeName(const cgltf_node& node, const Gleam::TString& 
 static Gleam::Float4x4 GetNodeTransform(const cgltf_node& node);
 static bool IsSameTransform(const Gleam::Float4x4& lhs, const Gleam::Float4x4& rhs);
 static bool IsNonUniformScale(const Gleam::Float4x4& transform);
+static Gleam::Float4x4 ConvertRHtoLH(const Gleam::Float4x4& transform);
+static void ConvertRHtoLH(RawMesh& mesh);
 
 bool MeshSource::Import(const Gleam::Path& path, const ImportSettings& settings)
 {
@@ -84,6 +86,7 @@ bool MeshSource::Import(const Gleam::Path& path, const ImportSettings& settings)
 		for(uint32_t meshIdx = 0; meshIdx < mesh->primitives_count; ++meshIdx)
 		{
 			auto rawMesh = ProcessAttributes(mesh->primitives[meshIdx], settings);
+			ConvertRHtoLH(rawMesh);
 			rawMesh.name = meshName;
 			
 			RawMaterial rawMaterial;
@@ -684,11 +687,23 @@ RawMaterial ProcessMaterial(const cgltf_material& mat, const MeshSource::ImportS
     return material;
 }
 
+Gleam::Float4x4 ConvertRHtoLH(const Gleam::Float4x4& transform)
+{
+	// glTF is right-handed with +Z toward the viewer, the engine is left-handed with +Z forward
+	const auto flipZ = Gleam::Float4x4::Scale(Gleam::Float3(1.0f, 1.0f, -1.0f));
+	return flipZ * transform * flipZ;
+}
+
+void ConvertRHtoLH(RawMesh& mesh)
+{
+	MeshTools::ApplyTransform(mesh, Gleam::Float4x4::Scale(Gleam::Float3(1.0f, 1.0f, -1.0f)));
+}
+
 Gleam::Float4x4 GetNodeTransform(const cgltf_node& node)
 {
 	if (node.has_matrix)
 	{
-		return Gleam::Float4x4((float*)node.matrix);
+		return ConvertRHtoLH(Gleam::Float4x4((float*)node.matrix));
 	}
 
 	Gleam::Float3 position = Gleam::Float3::zero;
@@ -709,7 +724,7 @@ Gleam::Float4x4 GetNodeTransform(const cgltf_node& node)
 	{
 		scale = Gleam::Float3(node.scale[0], node.scale[1], node.scale[2]);
 	}
-	return Gleam::Float4x4::TRS(position, rotation, scale);
+	return ConvertRHtoLH(Gleam::Float4x4::TRS(position, rotation, scale));
 }
 
 Gleam::TString GetNodeName(const cgltf_node& node, const Gleam::TString& fallback)
