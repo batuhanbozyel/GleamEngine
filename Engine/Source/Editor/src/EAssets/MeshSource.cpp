@@ -25,6 +25,9 @@ using namespace GEditor;
 static RawMesh ProcessAttributes(const cgltf_primitive& primitive, const MeshSource::ImportSettings& settings);
 static RawMaterial ProcessMaterial(const cgltf_material& material, const MeshSource::ImportSettings& settings);
 static Gleam::TString GetNodeName(const cgltf_node& node, const Gleam::TString& fallback);
+static Gleam::Float4x4 GetNodeTransform(const cgltf_node& node);
+static bool IsSameTransform(const Gleam::Float4x4& lhs, const Gleam::Float4x4& rhs);
+static bool IsNonUniformScale(const Gleam::Float4x4& transform);
 
 bool MeshSource::Import(const Gleam::Path& path, const ImportSettings& settings)
 {
@@ -47,7 +50,7 @@ bool MeshSource::Import(const Gleam::Path& path, const ImportSettings& settings)
 
     Gleam::TString filename = path.Stem().String();
     Gleam::TArray<RawMaterial> rawMaterials;
-	Gleam::HashMap<const cgltf_mesh*, Gleam::RefCounted<MeshBaker>> meshes;
+	Gleam::HashMap<const cgltf_mesh*, Gleam::TArray<RawMesh>> rawMeshes;
 	for (uint32_t nodeIdx = 0; nodeIdx < data->nodes_count; ++nodeIdx)
 	{
 		const auto& node = data->nodes[nodeIdx];
@@ -56,10 +59,10 @@ bool MeshSource::Import(const Gleam::Path& path, const ImportSettings& settings)
 		{
 			continue;
 		}
-		
-		// mesh already imported
-		auto meshIt = meshes.find(mesh);
-		if (meshIt != meshes.end())
+
+		// mesh already processed
+		auto it = rawMeshes.find(mesh);
+		if (it != rawMeshes.end())
 		{
 			continue;
 		}
@@ -76,7 +79,8 @@ bool MeshSource::Import(const Gleam::Path& path, const ImportSettings& settings)
 			meshName = ss.str();
 		}
 
-		Gleam::TArray<RawMesh> rawMeshes;
+		it = rawMeshes.emplace_hint(rawMeshes.end(), mesh, Gleam::TArray<RawMesh>{});
+		Gleam::TArray<RawMesh>& primitives = it->second;
 		for(uint32_t meshIdx = 0; meshIdx < mesh->primitives_count; ++meshIdx)
 		{
 			auto rawMesh = ProcessAttributes(mesh->primitives[meshIdx], settings);
@@ -111,53 +115,114 @@ bool MeshSource::Import(const Gleam::Path& path, const ImportSettings& settings)
 				uint32_t materialIdx = static_cast<uint32_t>(std::distance(rawMaterials.begin(), materialIt));
 				rawMesh.material = materialIdx;
 			}
-			rawMeshes.push_back(rawMesh);
+			primitives.push_back(rawMesh);
 		}
-		meshes[mesh] = ImportMesh(rawMeshes, path, settings);
 	}
 	
-	Gleam::TArray<Gleam::RefCounted<MaterialInstanceBaker>> materials = ImportMaterials(rawMaterials, path, settings);
+	Gleam::TArray<Gleam::RefCounted<MaterialInstanceBaker>> importedMaterials = ImportMaterials(rawMaterials, path, settings);
 
 	// Create prefab
 	if (data->nodes_count > 0)
 	{
+		struct MeshVariant
+		{
+			Gleam::RefCounted<MeshBaker> baker;
+			Gleam::Float4x4 transform = Gleam::Float4x4::identity;
+		};
+		Gleam::HashMap<const cgltf_mesh*, Gleam::TArray<MeshVariant>> importedMeshVariants;
+
+		auto GetOrCreateMesh = [&, this](const cgltf_mesh* mesh, const Gleam::Float4x4& transform, bool hierarchyHasNonUniformScaling) -> Gleam::RefCounted<MeshBaker>
+		{
+			auto& variants = importedMeshVariants[mesh];
+			if (hierarchyHasNonUniformScaling)
+			{
+				for (auto& variant : variants)
+				{
+					if (IsSameTransform(variant.transform, transform))
+					{
+						return variant.baker;
+					}
+				}
+
+				Gleam::TArray<RawMesh> meshes = rawMeshes.at(mesh);
+				for (auto& rawMesh : meshes)
+				{
+					MeshTools::ApplyTransform(rawMesh, transform);
+					rawMesh.name += "_Variant" + std::to_string(variants.size());
+				}
+
+				MeshVariant newVariant;
+				newVariant.baker = ImportMesh(meshes, path, settings);
+				newVariant.transform = transform;
+				variants.push_back(newVariant);
+				return newVariant.baker;
+			}
+
+			// Import default variant for uniform scaled meshes
+			for (auto& variant : variants)
+			{
+				if (IsSameTransform(variant.transform, Gleam::Float4x4::identity))
+				{
+					return variant.baker;
+				}
+			}
+
+			MeshVariant newVariant;
+			newVariant.baker = ImportMesh(rawMeshes.at(mesh), path, settings);
+			newVariant.transform = Gleam::Float4x4::identity;
+			variants.push_back(newVariant);
+			return newVariant.baker;
+		};
+
+		auto HierarchyContainsNonUniformScaling = [&](auto self, const cgltf_node& node) -> bool
+		{
+			if (IsNonUniformScale(GetNodeTransform(node)))
+			{
+				return true;
+			}
+
+			for (uint32_t childIdx = 0; childIdx < node.children_count; ++childIdx)
+			{
+				const auto& childNode = node.children[childIdx];
+				if (self(self, *childNode))
+				{
+					return true;
+				}
+			}
+			return false;
+		};
+
 		auto world = Gleam::CreateRef<Gleam::World>(filename);
-		auto ProcessNode = [&](auto self, const cgltf_node& node, const Gleam::TString& name) -> Gleam::EntityHandle
+		auto ProcessNode = [&](auto self, const cgltf_node& node, const Gleam::TString& name,
+			const Gleam::Float4x4& parentTransform, bool hierarchyHasNonUniformScaling) -> Gleam::EntityHandle
 		{
 			auto& entity = world->GetEntityManager().CreateEntity(name, Gleam::Guid::NewGuid());
-			if (node.has_translation)
+			Gleam::Float4x4 nodeTransform = GetNodeTransform(node);
+			Gleam::Float4x4 worldTransform = parentTransform * nodeTransform;
+
+			if (hierarchyHasNonUniformScaling)
 			{
-				entity.SetTranslation(Gleam::Float3(node.translation[0], node.translation[1], node.translation[2]));
+				GLEAM_WARN("Node has non-uniform scaling. Baking transforms into geometry for its subtree: {0}", name);
 			}
-
-			if (node.has_rotation)
+			else
 			{
-				entity.SetRotation(Gleam::Quaternion(node.rotation[3], node.rotation[0], node.rotation[1], node.rotation[2]));
+				Gleam::Float3 position;
+				Gleam::Quaternion rotation;
+				float scale;
+				Gleam::Math::Decompose(nodeTransform, position, rotation, scale);
+				entity.SetTranslation(position);
+				entity.SetRotation(rotation);
+				entity.SetScale(scale);
 			}
-
-			if (node.has_scale)
-			{
-				GLEAM_WARN("Mesh source has non-uniform scaling. Using average for scale");
-				entity.SetScale((node.scale[0] + node.scale[1] + node.scale[2]) / 3.0f);
-			}
-
-			if (node.has_matrix)
-			{
-				Gleam::Transform transform;
-
-				// TODO: check for non-uniform scaling, then bake if there is
-				Gleam::Math::Decompose(Gleam::Float4x4((float*)node.matrix), transform.position, transform.rotation, transform.scale);
-				entity.SetLocalTransform(transform);
-			}
-
+			
 			if (node.mesh)
 			{
-				const auto& meshBaker = meshes[node.mesh];
+				auto meshBaker = GetOrCreateMesh(node.mesh, worldTransform, hierarchyHasNonUniformScaling);
 				const auto& meshItem = Registry()->GetAsset<Gleam::MeshDescriptor>(meshBaker->Filename());
 
 				Gleam::TArray<Gleam::AssetReference> materialRefs;
-				materialRefs.reserve(materials.size());
-				for (const auto& materialBaker : materials)
+				materialRefs.reserve(importedMaterials.size());
+				for (const auto& materialBaker : importedMaterials)
 				{
 					const auto& materialItem = Registry()->GetAsset<Gleam::MaterialInstanceDescriptor>(materialBaker->Filename());
 					materialRefs.push_back(materialItem.reference);
@@ -171,7 +236,7 @@ bool MeshSource::Import(const Gleam::Path& path, const ImportSettings& settings)
 				{
 					const auto& childNode = node.children[childIdx];
 					auto childName = GetNodeName(*childNode, filename + std::to_string(childIdx));
-					auto childHandle = self(self, *childNode, childName);
+					auto childHandle = self(self, *childNode, childName, worldTransform, hierarchyHasNonUniformScaling);
 					auto& childEntity = world->GetEntityManager().GetComponent<Gleam::Entity>(childHandle);
 					childEntity.SetParent(entity);
 				}
@@ -193,7 +258,8 @@ bool MeshSource::Import(const Gleam::Path& path, const ImportSettings& settings)
 		{
 			const auto root = *rootNodes.begin();
 			auto entityName = GetNodeName(*root, filename);
-			auto entity = ProcessNode(ProcessNode , *root, entityName);
+			bool hierarchyContainsNonUniformScaling = HierarchyContainsNonUniformScaling(HierarchyContainsNonUniformScaling, *root);
+			auto entity = ProcessNode(ProcessNode, *root, entityName, Gleam::Float4x4::identity, hierarchyContainsNonUniformScaling);
 		}
 		else
 		{
@@ -202,8 +268,9 @@ bool MeshSource::Import(const Gleam::Path& path, const ImportSettings& settings)
 			uint32_t nodeIdx = 1;
 			for (auto node : rootNodes)
 			{
+				bool hierarchyContainsNonUniformScaling = HierarchyContainsNonUniformScaling(HierarchyContainsNonUniformScaling, *node);
 				auto entityName = GetNodeName(*node, filename + std::to_string(nodeIdx));
-				auto entityHandle = ProcessNode(ProcessNode, *node, entityName);
+				auto entityHandle = ProcessNode(ProcessNode, *node, entityName, Gleam::Float4x4::identity, hierarchyContainsNonUniformScaling);
 				auto& entity = world->GetEntityManager().GetComponent<Gleam::Entity>(entityHandle);
 				entity.SetParent(rootEntity);
 				nodeIdx++;
@@ -617,6 +684,34 @@ RawMaterial ProcessMaterial(const cgltf_material& mat, const MeshSource::ImportS
     return material;
 }
 
+Gleam::Float4x4 GetNodeTransform(const cgltf_node& node)
+{
+	if (node.has_matrix)
+	{
+		return Gleam::Float4x4((float*)node.matrix);
+	}
+
+	Gleam::Float3 position = Gleam::Float3::zero;
+	Gleam::Quaternion rotation = Gleam::Quaternion::identity;
+	Gleam::Float3 scale = Gleam::Float3::one;
+
+	if (node.has_translation)
+	{
+		position = Gleam::Float3(node.translation[0], node.translation[1], node.translation[2]);
+	}
+
+	if (node.has_rotation)
+	{
+		rotation = Gleam::Quaternion(node.rotation[3], node.rotation[0], node.rotation[1], node.rotation[2]);
+	}
+
+	if (node.has_scale)
+	{
+		scale = Gleam::Float3(node.scale[0], node.scale[1], node.scale[2]);
+	}
+	return Gleam::Float4x4::TRS(position, rotation, scale);
+}
+
 Gleam::TString GetNodeName(const cgltf_node& node, const Gleam::TString& fallback)
 {
 	if (node.name)
@@ -630,4 +725,31 @@ Gleam::TString GetNodeName(const cgltf_node& node, const Gleam::TString& fallbac
 	}
 
 	return fallback;
+}
+
+bool IsSameTransform(const Gleam::Float4x4& lhs, const Gleam::Float4x4& rhs)
+{
+	for (uint32_t i = 0; i < 16; ++i)
+	{
+		if (Gleam::Math::Abs(lhs.m[i] - rhs.m[i]) >= Gleam::Math::Epsilon)
+		{
+			return false;
+		}
+	}
+	return true;
+}
+
+bool IsNonUniformScale(const Gleam::Float4x4& transform)
+{
+	const Gleam::Float3 xAxis(transform.m[0], transform.m[1], transform.m[2]);
+	const Gleam::Float3 yAxis(transform.m[4], transform.m[5], transform.m[6]);
+	const Gleam::Float3 zAxis(transform.m[8], transform.m[9], transform.m[10]);
+
+	const float lengthX = Gleam::Math::Length(xAxis);
+	const float lengthY = Gleam::Math::Length(yAxis);
+	const float lengthZ = Gleam::Math::Length(zAxis);
+	const float determinant = Gleam::Math::Dot(Gleam::Math::Cross(xAxis, yAxis), zAxis);
+	return determinant < 0.0f
+		|| Gleam::Math::Abs(lengthX - lengthY) >= Gleam::Math::Epsilon
+		|| Gleam::Math::Abs(lengthX - lengthZ) >= Gleam::Math::Epsilon;
 }

@@ -55,6 +55,11 @@ GSTRUCT(Vector4, "8CD15DAB-318D-439B-AF15-EB2F78F4CAAC", Serializable)
         return x == vec.x && y == vec.y && z == vec.z && w == vec.w;
     }
 
+	NO_DISCARD FORCE_INLINE constexpr bool operator!=(const Vector4& rhs) const
+	{
+		return !(*this == rhs);
+	}
+
     NO_DISCARD FORCE_INLINE constexpr T& operator[](size_t i)
     {
         return value[i];

@@ -1,6 +1,8 @@
 #pragma once
 #include "AssetPackage.h"
 #include "Math/Color.h"
+#include "Math/Quaternion.h"
+#include "Math/Float4x4.h"
 #include "Renderer/Material/MaterialDescriptor.h"
 
 namespace GEditor {

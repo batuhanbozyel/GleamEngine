@@ -1,5 +1,6 @@
 #pragma once
 #include "Renderer/MeshDescriptor.h"
+#include "Math/Float4x4.h"
 
 namespace GEditor {
 
@@ -15,6 +16,7 @@ void RemoveDegenerateFaces(RawMesh& mesh);
 void ComputeSmoothNormals(RawMesh& mesh);
 void ComputeTangents(RawMesh& mesh);
 void ValidateTangents(RawMesh& mesh);
+void ApplyTransform(RawMesh& mesh, const Gleam::Float4x4& transform);
 
 } // namespace MeshTools
 
