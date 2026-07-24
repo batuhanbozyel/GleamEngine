@@ -45,10 +45,5 @@ void Engine::Shutdown()
 	mSubsystems.clear();
 }
 
-Size Engine::GetResolution() const
-{
-	return GetSubsystem<ConfigSystem>()->Get<WindowConfig>().size;
-}
-
 } // namespace Gleam
 

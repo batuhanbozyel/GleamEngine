@@ -32,7 +32,6 @@ using namespace GEditor;
 void WorldViewport::OnCreate(Gleam::World* world)
 {
 	mEditWorld = world;
-    mViewportSize = Gleam::Globals::Engine->GetResolution();
 	
 	auto renderSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::RenderSystem>();
 	mGridRenderer = new InfiniteGridRenderer();
@@ -51,7 +50,9 @@ void WorldViewport::OnCreate(Gleam::World* world)
 	});
 
 	mCameraController = mEditWorld->AddSystem<EditorCameraController>(mCamera);
-    Resize(mEditWorld->GetEntityManager(), mViewportSize);
+	
+	auto windowSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::WindowSystem>();
+	Resize(mEditWorld->GetEntityManager(), windowSystem->GetResolution());
 }
 
 void WorldViewport::OnDestroy(Gleam::World* world)
@@ -198,7 +199,8 @@ void WorldViewport::Resize(Gleam::EntityManager& entityManager, const Gleam::Siz
 	mViewportSize = size;
 	mViewportSizeChanged = false;
 
-	float displayScale = Gleam::Globals::Engine->GetSubsystem<Gleam::WindowSystem>()->GetDisplayScale();
+	auto windowSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::WindowSystem>();
+	float displayScale = windowSystem->GetDisplayScale();
 	auto& camera = entityManager.GetComponent<Gleam::Camera>(mCamera);
 	camera.SetViewport(mViewportSize * displayScale);
 }

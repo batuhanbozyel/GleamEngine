@@ -19,8 +19,6 @@ public:
 
 	void Shutdown();
 
-	Size GetResolution() const;
-
     template<EngineSystemType T>
     T* GetSubsystem()
     {

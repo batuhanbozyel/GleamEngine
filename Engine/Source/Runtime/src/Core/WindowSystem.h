@@ -36,6 +36,8 @@ public:
 	}
 
 	float GetDisplayScale() const;
+	
+	Size GetResolution() const;
 
 private:
 

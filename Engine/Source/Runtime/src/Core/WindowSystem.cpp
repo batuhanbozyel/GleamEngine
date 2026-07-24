@@ -7,18 +7,18 @@
 
 #include <SDL3/SDL.h>
 
-using namespace Gleam;
-
 #if defined(USE_DIRECTX_RENDERER)
 #define GLEAM_WINDOW_RENDERER_API 0
 #else
 #define GLEAM_WINDOW_RENDERER_API SDL_WINDOW_METAL
-#endif 
+#endif
+
+namespace Gleam {
 
 void WindowSystem::Initialize(Engine* engine)
 {
 	mEngine = engine;
-    GLEAM_AFFIRM(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_JOYSTICK | SDL_INIT_HAPTIC | SDL_INIT_GAMEPAD | SDL_INIT_EVENTS | SDL_INIT_SENSOR), "Window subsystem initialization failed!");
+	GLEAM_AFFIRM(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_JOYSTICK | SDL_INIT_HAPTIC | SDL_INIT_GAMEPAD | SDL_INIT_EVENTS | SDL_INIT_SENSOR), "Window subsystem initialization failed!");
 
 	auto configSystem = engine->GetSubsystem<ConfigSystem>();
 	const auto& windowConfig = configSystem->Register<WindowConfig>();
@@ -39,8 +39,8 @@ void WindowSystem::Initialize(Engine* engine)
 
 void WindowSystem::Shutdown(Engine* engine)
 {
-    if (mWindow) { SDL_DestroyWindow(mWindow); }
-    SDL_Quit();
+	if (mWindow) { SDL_DestroyWindow(mWindow); }
+	SDL_Quit();
 }
 
 float WindowSystem::GetDisplayScale() const
@@ -56,10 +56,17 @@ float WindowSystem::GetDisplayScale() const
 	return scale > 0.0f ? scale : 1.0f;
 }
 
+Size WindowSystem::GetResolution() const
+{
+	int width = 0, height = 0;
+	SDL_GetWindowSize(mWindow, &width, &height);
+	return Size((uint32_t)width, (uint32_t)height);
+}
+
 void WindowSystem::Configure(const WindowConfig& config)
 {
-    // destroy old window if exists
-    if (mWindow) { SDL_DestroyWindow(mWindow); }
+	// destroy old window if exists
+	if (mWindow) { SDL_DestroyWindow(mWindow); }
 
 	// create window
 	auto newConfig = config;
@@ -160,43 +167,43 @@ DisplayMode WindowSystem::GetCurrentDisplayMode() const
 
 DisplayMode WindowSystem::GetDisplayMode(uint32_t monitor) const
 {
-    auto currDisplay = SDL_GetCurrentDisplayMode(monitor);
-    return DisplayMode
-    {
-        static_cast<SDL_PixelFormat>(currDisplay->format),
-        static_cast<uint32_t>(currDisplay->w),
-        static_cast<uint32_t>(currDisplay->h),
-        static_cast<uint32_t>(currDisplay->refresh_rate),
-        monitor
-    };
+	auto currDisplay = SDL_GetCurrentDisplayMode(monitor);
+	return DisplayMode
+	{
+		static_cast<SDL_PixelFormat>(currDisplay->format),
+		static_cast<uint32_t>(currDisplay->w),
+		static_cast<uint32_t>(currDisplay->h),
+		static_cast<uint32_t>(currDisplay->refresh_rate),
+		monitor
+	};
 }
 
 TArray<DisplayMode> WindowSystem::GetAvailableDisplayModes() const
 {
-    TArray<DisplayMode> displayModes;
-    
-    int numDisplays = 0;
-    auto displays = SDL_GetFullscreenDisplayModes(SDL_GetDisplayForWindow(mWindow), &numDisplays);
-    if (displays)
-    {
-        displayModes.resize(numDisplays);
-        uint32_t monitor = SDL_GetDisplayForWindow(mWindow);
-        
-        for (int i = 0; i < numDisplays; ++i)
-        {
-            auto display = displays[i];
-            displayModes[i] = DisplayMode
-            {
-                static_cast<SDL_PixelFormat>(display->format),
-                static_cast<uint32_t>(display->w),
-                static_cast<uint32_t>(display->h),
-                static_cast<uint32_t>(display->refresh_rate),
-                monitor
-            };
-        }
-        SDL_free(displays);
-    }
-    return displayModes;
+	TArray<DisplayMode> displayModes;
+	
+	int numDisplays = 0;
+	auto displays = SDL_GetFullscreenDisplayModes(SDL_GetDisplayForWindow(mWindow), &numDisplays);
+	if (displays)
+	{
+		displayModes.resize(numDisplays);
+		uint32_t monitor = SDL_GetDisplayForWindow(mWindow);
+		
+		for (int i = 0; i < numDisplays; ++i)
+		{
+			auto display = displays[i];
+			displayModes[i] = DisplayMode
+			{
+				static_cast<SDL_PixelFormat>(display->format),
+				static_cast<uint32_t>(display->w),
+				static_cast<uint32_t>(display->h),
+				static_cast<uint32_t>(display->refresh_rate),
+				monitor
+			};
+		}
+		SDL_free(displays);
+	}
+	return displayModes;
 }
 
 void WindowSystem::EventHandler(SDL_WindowEvent windowEvent)
@@ -255,3 +262,6 @@ void WindowSystem::EventHandler(SDL_WindowEvent windowEvent)
 		}
 	}
 }
+
+} // namespace Gleam
+
