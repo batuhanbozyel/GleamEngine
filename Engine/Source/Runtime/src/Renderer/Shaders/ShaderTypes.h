@@ -308,6 +308,11 @@ struct RayTracedSunShadowConstants
 	ShaderResourceIndex normalTexture;
 	ShaderResourceIndex tileBuffer;
 	ShaderResourceIndex tileCountBuffer;
+
+	float maxRayDistance;
+	float pad0;
+	float pad1;
+	float pad2;
 };
 
 struct RayTracedSunShadowClassificationConstants

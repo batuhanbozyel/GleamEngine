@@ -296,6 +296,9 @@ void RenderSystem::ApplyGraphicsSettings(const GraphicsSettings& settings)
 {
 	auto defaultPipeline = GetRenderPipeline(RenderPath::Default);
 
+	auto sunShadowRenderer = defaultPipeline->GetRenderer<SunShadowRenderer>();
+	sunShadowRenderer->SetSettings(settings.shadows);
+
 	auto ambientOcclusionRenderer = defaultPipeline->GetRenderer<AmbientOcclusionRenderer>();
 	ambientOcclusionRenderer->SetSettings(settings.ambientOcclusion);
 

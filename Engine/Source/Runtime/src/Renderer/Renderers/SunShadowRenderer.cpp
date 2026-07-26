@@ -119,6 +119,11 @@ void SunShadowRenderer::CreateDenoiserTextures(const Size& size)
 
 void SunShadowRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard)
 {
+	if (mSettings.enable == false || mDevice->GetFeatures().raytracing == false)
+	{
+		return;
+	}
+
 	const auto& sceneData             = blackboard.Get<SceneRenderingData>();
 	const auto& depthPrepassData      = blackboard.Get<DepthPrepassData>();
 	const auto& gBufferData			  = blackboard.Get<GBufferData>();
@@ -307,6 +312,7 @@ void SunShadowRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboar
 		constants.normalTexture   = passData.normalTexture;
 		constants.tileBuffer      = passData.tileBuffer;
 		constants.tileCountBuffer = passData.tileCount;
+		constants.maxRayDistance  = mSettings.maxRayDistance > 0.0f ? mSettings.maxRayDistance : sceneData.camera.uniforms.farPlane;
 
 		cmd->BindRayTracingPipeline(mRayTracedShadowPipeline);
 		cmd->SetPushConstant(constants);
@@ -556,12 +562,19 @@ void SunShadowRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboar
 	});
 
 	SunShadowData output;
-	output.depthTarget = depthPrepassData.depthTarget;
 	output.shadowMask = filter2Data.shadowMaskOutput;
 	blackboard.Add(output);
 
 	mFrameIndex++;
 	mFirstFrame = false;
+}
+
+void SunShadowRenderer::SetSettings(const ShadowSettings& settings)
+{
+	if (memcmp(&mSettings, &settings, sizeof(ShadowSettings)) != 0)
+	{
+		mSettings = settings;
+	}
 }
 
 void SunShadowRenderer::RegisterShadingPipeline(const Material* material)
