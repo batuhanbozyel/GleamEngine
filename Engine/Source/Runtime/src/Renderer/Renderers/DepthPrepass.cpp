@@ -16,11 +16,41 @@ using namespace Gleam;
 void DepthPrepass::OnCreate(const RenderContext& context)
 {
 	mDevice = context.device;
+	mAllocator = context.allocator;
 }
 
 void DepthPrepass::OnDestroy(const RenderContext& context)
 {
+	context.device->Dispose(context.allocator, mDepthBuffers[0], BarrierStage::None);
+	context.device->Dispose(context.allocator, mDepthBuffers[1], BarrierStage::None);
+}
 
+void DepthPrepass::CreateDepthBuffers(const Size& size)
+{
+	if (mDepthBufferSize == size)
+	{
+		return;
+	}
+
+	for (auto& depthBuffer : mDepthBuffers)
+	{
+		if (depthBuffer.IsValid())
+		{
+			mDevice->Dispose(mAllocator, depthBuffer, BarrierStage::None);
+		}
+	}
+
+	RenderTextureDescriptor depthDesc;
+	depthDesc.dimension = TextureDimension::Texture2D;
+	depthDesc.format    = TextureFormat::D32_SFloat;
+	depthDesc.size      = size;
+	depthDesc.name      = "SceneDepthRT 0";
+	mDepthBuffers[0] = mDevice->CreateTexture(mAllocator, depthDesc);
+	depthDesc.name      = "SceneDepthRT 1";
+	mDepthBuffers[1] = mDevice->CreateTexture(mAllocator, depthDesc);
+
+	mDepthBufferSize = size;
+	mFirstFrame = true;
 }
 
 void DepthPrepass::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard)
@@ -28,15 +58,47 @@ void DepthPrepass::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& bl
 	const auto& sceneData = blackboard.Get<SceneRenderingData>();
 	const auto& sceneTargetDescriptor = graph.GetDescriptor(sceneData.sceneTarget);
 
+	CreateDepthBuffers(sceneTargetDescriptor.size);
+
+	// Depth is ping-ponged so last frame's buffer survives as the depth history temporal consumers
+	// read: this frame renders into one slot while they sample the other, so no copy is needed
+	const uint32_t prevIndex = mFrameIndex & 1u;
+	const uint32_t currIndex = prevIndex ^ 1u;
+
+	ImportResourceParams currentParams;
+	currentParams.clearOnFirstUse = true;
+
+	ImportResourceParams previousParams;
+	previousParams.clearOnFirstUse = mFirstFrame;
+
+	TextureHandle currentDepth  = graph.ImportTexture(mDepthBuffers[currIndex], currentParams);
+	TextureHandle previousDepth = graph.ImportTexture(mDepthBuffers[prevIndex], previousParams);
+
+	if (mFirstFrame)
+	{
+		struct ClearDepthHistoryPassData
+		{
+		};
+
+		graph.AddRenderPass<ClearDepthHistoryPassData>("DepthPrepass::ClearDepthHistory",
+		[&](RenderGraphBuilder& builder, ClearDepthHistoryPassData& passData)
+		{
+			previousDepth = builder.UseDepthBuffer(previousDepth, DepthAccess::Write);
+		},
+		[](const CommandBuffer* cmd, const ClearDepthHistoryPassData& passData)
+		{
+			// Attachment is cleared by the load action on render pass begin
+		});
+	}
+
 	graph.AddRenderPass<DepthPrepassData>("DepthPrepass", [&](RenderGraphBuilder& builder, DepthPrepassData& passData)
 	{
 		RenderTextureDescriptor textureDesc;
 		textureDesc.size = sceneTargetDescriptor.size;
 		textureDesc.clearBuffer = true;
 
-		textureDesc.name = "SceneDepthRT";
-		textureDesc.format = TextureFormat::D32_SFloat;
-		passData.depthTarget = builder.UseDepthBuffer(builder.CreateTexture(textureDesc), DepthAccess::Write);
+		passData.depthTarget = builder.UseDepthBuffer(currentDepth, DepthAccess::Write);
+		passData.previousDepth = previousDepth;
 
 		textureDesc.name = "VisibilityBuffer";
 		textureDesc.format = TextureFormat::R32G32_UInt;
@@ -70,6 +132,9 @@ void DepthPrepass::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& bl
 			}
 		});
 	});
+
+	mFrameIndex++;
+	mFirstFrame = false;
 }
 
 void DepthPrepass::RegisterShadingPipeline(const Material* material)

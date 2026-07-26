@@ -46,9 +46,6 @@ void SunShadowRenderer::OnCreate(const RenderContext& context)
 	filterDesc.entryPoint = "shadowDenoiserFilter";
 	mFilterPipeline = context.device->CreateComputePipeline(filterDesc);
 
-	ComputePipelineStateDescriptor depthCopyDesc;
-	depthCopyDesc.entryPoint = "shadowDenoiserDepthCopy";
-	mDepthCopyPipeline = context.device->CreateComputePipeline(depthCopyDesc);
 }
 
 void SunShadowRenderer::OnDestroy(const RenderContext& context)
@@ -57,7 +54,6 @@ void SunShadowRenderer::OnDestroy(const RenderContext& context)
 	context.device->Dispose(context.allocator, mMoments[1], BarrierStage::None);
 	context.device->Dispose(context.allocator, mScratch[0],	BarrierStage::None);
 	context.device->Dispose(context.allocator, mScratch[1], BarrierStage::None);
-	context.device->Dispose(context.allocator, mPreviousDepth, BarrierStage::None);
 }
 
 void SunShadowRenderer::CreateDenoiserTextures(const Size& size)
@@ -83,11 +79,6 @@ void SunShadowRenderer::CreateDenoiserTextures(const Size& size)
 	{
 		mDevice->Dispose(mAllocator, mScratch[1], BarrierStage::None);
 	}
-	if (mPreviousDepth.IsValid())
-	{
-		mDevice->Dispose(mAllocator, mPreviousDepth, BarrierStage::None);
-	}
-
 	RenderTextureDescriptor momentsDesc;
 	momentsDesc.dimension = TextureDimension::Texture2D;
 	momentsDesc.format    = TextureFormat::R11G11B10_SFloat;
@@ -105,13 +96,6 @@ void SunShadowRenderer::CreateDenoiserTextures(const Size& size)
 	mScratch[0] = mDevice->CreateTexture(mAllocator, scratchDesc);
 	scratchDesc.name      = "SunShadowRenderer::ShadowDenoiser::Scratch 1";
 	mScratch[1] = mDevice->CreateTexture(mAllocator, scratchDesc);
-
-	RenderTextureDescriptor depthDesc;
-	depthDesc.name      = "SunShadowRenderer::ShadowDenoiser::PreviousDepth";
-	depthDesc.dimension = TextureDimension::Texture2D;
-	depthDesc.format    = TextureFormat::R32_SFloat;
-	depthDesc.size      = size;
-	mPreviousDepth = mDevice->CreateTexture(mAllocator, depthDesc);
 
 	mDenoiserSize = size;
 	mFirstFrame = true;
@@ -331,7 +315,6 @@ void SunShadowRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboar
 	ImportResourceParams importParams;
 	importParams.clearOnFirstUse = mFirstFrame;
 
-	TextureHandle previousDepth       = graph.ImportTexture(mPreviousDepth, importParams);
 	TextureHandle previousMoments     = graph.ImportTexture(mMoments[prevIndex], importParams);
 	TextureHandle currentMoments      = graph.ImportTexture(mMoments[currIndex], importParams);
 	TextureHandle historyShadow       = graph.ImportTexture(mScratch[1], importParams);
@@ -346,7 +329,6 @@ void SunShadowRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboar
 		graph.AddRenderPass<ClearHistoryPassData>("SunShadowRenderer::ClearHistory",
 		[&](RenderGraphBuilder& builder, ClearHistoryPassData& passData)
 		{
-			previousDepth       = builder.UseColorBuffer(previousDepth);
 			previousMoments     = builder.UseColorBuffer(previousMoments);
 			currentMoments      = builder.UseColorBuffer(currentMoments);
 			historyShadow       = builder.UseColorBuffer(historyShadow);
@@ -383,7 +365,7 @@ void SunShadowRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboar
 		passData.depth					= builder.ReadTexture(depthPrepassData.depthTarget);
 		passData.velocity				= builder.ReadTexture(gBufferData.motionVectorTarget);
 		passData.normalTexture			= builder.ReadTexture(gBufferData.shadingNormalTarget);
-		passData.previousDepth			= builder.ReadTexture(previousDepth);
+		passData.previousDepth			= builder.ReadTexture(depthPrepassData.previousDepth);
 		passData.previousMoments		= builder.ReadTexture(previousMoments);
 		passData.currentMoments			= builder.WriteTexture(currentMoments);
 		passData.historyShadow			= builder.ReadTexture(historyShadow);
@@ -532,33 +514,6 @@ void SunShadowRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboar
 		cmd->SetPushConstant(constants);
 		cmd->SetConstantBuffer(sceneData.camera.uniforms, CAMERA_UNIFORMS_BINDING_SLOT);
 		cmd->Dispatch(numDenoiserTilesX, numDenoiserTilesY, 1u);
-	});
-
-	// ----------------------------------------------------------------
-	// Pass 5 — Copy current depth to previousDepth for next frame
-	// ----------------------------------------------------------------
-	struct DepthCopyPassData
-	{
-		TextureHandle sourceDepth;
-		TextureHandle destDepth;
-	};
-
-	graph.AddComputePass<DepthCopyPassData>("SunShadowRenderer::DepthCopy",
-	[&](RenderGraphBuilder& builder, DepthCopyPassData& passData)
-	{
-		passData.sourceDepth = builder.ReadTexture(filter2Data.depth);
-		passData.destDepth   = builder.WriteTexture(tileClassData.previousDepth);
-	},
-	[this, width, height](const CommandBuffer* cmd, const DepthCopyPassData& passData)
-	{
-		ShadowDenoiserDepthCopyConstants constants = {};
-		constants.sourceDepth = passData.sourceDepth;
-		constants.destDepth   = passData.destDepth;
-
-		cmd->BindComputePipeline(mDepthCopyPipeline);
-		cmd->SetPushConstant(constants);
-		cmd->Dispatch(Math::DivideRoundingUp(width, 8u),
-		              Math::DivideRoundingUp(height, 8u), 1u);
 	});
 
 	SunShadowData output;

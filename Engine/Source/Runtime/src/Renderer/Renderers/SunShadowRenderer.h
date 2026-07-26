@@ -59,11 +59,9 @@ private:
 	ComputePipelineHandle    mPrepareDispatchArgsPipeline;
 	ComputePipelineHandle    mTileClassificationPipeline;
 	ComputePipelineHandle    mFilterPipeline;
-	ComputePipelineHandle    mDepthCopyPipeline;
 
 	Texture mMoments[2];
 	Texture mScratch[2];
-	Texture mPreviousDepth;
 
 	Size mDenoiserSize;
 

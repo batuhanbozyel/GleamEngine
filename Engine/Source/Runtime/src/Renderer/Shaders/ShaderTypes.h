@@ -351,14 +351,6 @@ struct ShadowDenoiserTileClassificationConstants
 	float pad0;
 };
 
-struct ShadowDenoiserDepthCopyConstants
-{
-	ShaderResourceIndex  sourceDepth;
-	UnorderedAccessIndex destDepth;
-	float pad0;
-	float pad1;
-};
-
 struct ShadowDenoiserFilterConstants
 {
 	ShaderResourceIndex depth;
