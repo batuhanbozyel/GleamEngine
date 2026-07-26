@@ -27,6 +27,7 @@
 #include "Renderers/VisibilityClassification.h"
 #include "Renderers/GBufferResolveRenderer.h"
 #include "Renderers/AmbientOcclusionRenderer.h"
+#include "Renderers/RayTracedReflectionRenderer.h"
 
 #include "Core/Engine.h"
 #include "Core/Globals.h"
@@ -76,6 +77,7 @@ void RenderSystem::Initialize(Engine* engine)
 		mRenderPipelines[(uint32_t)RenderPath::Default]->AddRenderer<GBufferResolveRenderer>();
 		mRenderPipelines[(uint32_t)RenderPath::Default]->AddRenderer<AmbientOcclusionRenderer>();
 		mRenderPipelines[(uint32_t)RenderPath::Default]->AddRenderer<SunShadowRenderer>();
+		mRenderPipelines[(uint32_t)RenderPath::Default]->AddRenderer<RayTracedReflectionRenderer>();
 		mRenderPipelines[(uint32_t)RenderPath::Default]->AddRenderer<WorldRenderer>();
 		mRenderPipelines[(uint32_t)RenderPath::Default]->AddRenderer<SkyAtmosphereRenderer>();
 		mRenderPipelines[(uint32_t)RenderPath::Default]->AddSharedRenderer(postProcessStack);
@@ -296,6 +298,9 @@ void RenderSystem::ApplyGraphicsSettings(const GraphicsSettings& settings)
 
 	auto ambientOcclusionRenderer = defaultPipeline->GetRenderer<AmbientOcclusionRenderer>();
 	ambientOcclusionRenderer->SetSettings(settings.ambientOcclusion);
+
+	auto rayTracedReflectionRenderer = defaultPipeline->GetRenderer<RayTracedReflectionRenderer>();
+	rayTracedReflectionRenderer->SetSettings(settings.rayTracedReflections);
 }
 
 void RenderSystem::SetRenderPath(RenderPath path)

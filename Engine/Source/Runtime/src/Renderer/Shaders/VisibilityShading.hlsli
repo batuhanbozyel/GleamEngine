@@ -29,6 +29,7 @@ void main(uint dispatchThreadID : SV_DispatchThreadID)
                                             constants.ggxEAvgTexture,
                                             constants.diffuseReflectionTexture,
                                             constants.specularReflectionTexture,
+                                            constants.reflectionTexture,
                                             constants.shadowTexture,
                                             constants.aoTexture);
 

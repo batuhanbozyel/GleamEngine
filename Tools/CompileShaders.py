@@ -78,14 +78,14 @@ SHADER_ATTR_REGEX = re.compile(
 )
 
 def read_include_file(include_file: str, include_dirs: list[str]):
-    contents = ""
     for directory in include_dirs:
-        include_file_path = os.path.join(directory, os.path.basename(include_file))
-        if os.path.exists(include_file_path):
-            with open(include_file_path, 'r') as f:
-                contents = f.read()
-            break
-    return contents
+        # Path as given first so forced includes can live in subdirectories
+        for candidate in (include_file, os.path.basename(include_file)):
+            include_file_path = os.path.join(directory, candidate)
+            if os.path.exists(include_file_path):
+                with open(include_file_path, 'r') as f:
+                    return f.read()
+    return ""
 
 def parse_entry_points(hlsl_file: str):
     """

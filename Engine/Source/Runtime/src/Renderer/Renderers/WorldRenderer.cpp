@@ -13,6 +13,7 @@
 #include "GBufferResolveRenderer.h"
 #include "VisibilityClassification.h"
 #include "AmbientOcclusionRenderer.h"
+#include "RayTracedReflectionRenderer.h"
 
 #include "Core/Engine.h"
 #include "Core/Globals.h"
@@ -99,6 +100,7 @@ void WorldRenderer::AddVisibilityPass(RenderGraph& graph, RenderGraphBlackboard&
 		constants.specularReflectionTexture = passData.world.specularReflection;
 		constants.shadowTexture = passData.world.shadowTexture;
 		constants.aoTexture = passData.world.aoTexture;
+		constants.reflectionTexture = passData.world.reflectionTexture;
 		constants.barycentricCoords = passData.barycentricCoords;
 		constants.barycentricDerivatives = passData.barycentricDerivs;
 
@@ -149,6 +151,7 @@ void WorldRenderer::AddForwardPass(RenderGraph& graph, RenderGraphBlackboard& bl
 			constants.specularReflectionTexture = passData.specularReflection;
 			constants.shadowTexture = passData.shadowTexture;
 			constants.aoTexture = passData.aoTexture;
+			constants.reflectionTexture = passData.reflectionTexture;
 
 			cmd->BindMeshPipeline(mMeshShadingPipelines[batch.material->GetPipelineHash()]);
 			cmd->SetConstantBuffer(sceneData.camera.uniforms, CAMERA_UNIFORMS_BINDING_SLOT);
@@ -204,6 +207,11 @@ void WorldRenderer::MakeWorldRenderingData(const RenderGraph& graph, RenderGraph
 	{
 		const auto& ambientOcclusionData = blackboard.Get<AmbientOcclusionData>();
 		passData.aoTexture = builder.ReadTexture(ambientOcclusionData.aoTarget);
+	}
+	if (blackboard.Has<RayTracedReflectionData>())
+	{
+		const auto& reflectionData = blackboard.Get<RayTracedReflectionData>();
+		passData.reflectionTexture = builder.ReadTexture(reflectionData.reflectionTarget);
 	}
 	blackboard.Add(passData);
 }

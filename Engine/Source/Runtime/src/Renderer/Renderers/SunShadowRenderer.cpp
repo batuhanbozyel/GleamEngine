@@ -20,7 +20,7 @@ using namespace Gleam;
 SunShadowRenderer::SunShadowRenderer()
 	: mHitGroupTable(nullptr)
 {
-	static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
+	auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
 	auto rayTracingScene = renderSystem->GetRayTracingScene();
 	mHitGroupTable = HitGroupTable(rayTracingScene);
 }
@@ -299,7 +299,7 @@ void SunShadowRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboar
 		pathTraceConstants.sceneTarget           = InvalidResourceIndex;
 		pathTraceConstants.ggxEssTexture         = InvalidResourceIndex;
 		pathTraceConstants.ggxEAvgTexture        = InvalidResourceIndex;
-		pathTraceConstants.maxRayRecursionDepth  = 2;
+		pathTraceConstants.maxRayRecursionDepth  = 1;
 		pathTraceConstants.samplesPerPixel       = 1;
 
 		RayTracedSunShadowConstants constants = {};

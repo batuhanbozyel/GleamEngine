@@ -132,10 +132,10 @@ struct MeshShadingConstants
 	ShaderResourceIndex shadowTexture;
 	ShaderResourceIndex aoTexture;
 
+	ShaderResourceIndex reflectionTexture;
 	uint32_t instanceID;
 	float pad0;
 	float pad1;
-	float pad2;
 };
 
 struct MeshInstanceData
@@ -214,8 +214,8 @@ struct VisibilityShadingConstants
 
 	ShaderResourceIndex barycentricDerivatives;
 	ShaderResourceIndex aoTexture;
+	ShaderResourceIndex reflectionTexture;
 	float pad0;
-	float pad1;
 };
 
 struct GBufferResolveConstants
@@ -365,6 +365,19 @@ struct ShadowDenoiserFilterConstants
 	ShaderResourceIndex normalTexture;
 	uint32_t passIndex;
 	float pad0;
+};
+
+struct RayTracedReflectionConstants
+{
+	ShaderResourceIndex depthTexture;
+	ShaderResourceIndex geometryNormalTexture;
+	ShaderResourceIndex shadingNormalTexture;
+	ShaderResourceIndex roughnessTexture;
+
+	ShaderResourceIndex diffuseReflectionTexture;
+	ShaderResourceIndex specularReflectionTexture;
+	ShaderResourceIndex brdfTexture;
+	float roughnessCutoff;
 };
 
 // Intel XeGTAO shared constants — field names and layout mirror the vendored algorithm
