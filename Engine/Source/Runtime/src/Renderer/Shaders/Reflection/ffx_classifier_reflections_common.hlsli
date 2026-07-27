@@ -96,6 +96,10 @@ FfxBoolean IsGlossyReflection(FfxFloat32 roughness) {
     return roughness < RoughnessThreshold();
 }
 
+FfxBoolean IsMirrorReflection(FfxFloat32 roughness) {
+    return roughness <= PERFECT_MIRROR_ALPHA;
+}
+
 FfxFloat32x3 ScreenSpaceToViewSpace(FfxFloat32x3 screen_uv_coord) {
     return InvProjectPosition(screen_uv_coord, InvProjection());
 }

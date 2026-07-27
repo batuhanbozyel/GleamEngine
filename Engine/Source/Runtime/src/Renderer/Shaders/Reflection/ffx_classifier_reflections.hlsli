@@ -238,6 +238,7 @@ void ClassifyTiles(FfxUInt32x2  dispatch_thread_id,
     FfxBoolean needs_ray            = is_on_screen && is_glossy_reflection;
 
     // Decide which ray to keep
+    FfxBoolean is_mirror    = IsMirrorReflection(roughness);
     FfxBoolean is_base_ray  = IsBaseRay(dispatch_thread_id, samples_per_quad);
     FfxBoolean is_converged = true;
     if (enable_temporal_variance_guided_tracing)
@@ -246,7 +247,7 @@ void ClassifyTiles(FfxUInt32x2  dispatch_thread_id,
         is_converged    = IsConverged(dispatch_thread_id, uv);
     }
 
-    needs_ray = needs_ray && (is_base_ray || !is_converged);
+    needs_ray = needs_ray && (is_mirror || is_base_ray || !is_converged);
 
     // Extra check for back-facing rays, fresnel, mirror etc.
     if (abs(view_space_surface_normal.z) > ReflectionsBackfacingThreshold())
