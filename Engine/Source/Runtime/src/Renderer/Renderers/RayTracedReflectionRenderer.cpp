@@ -312,9 +312,7 @@ void RayTracedReflectionRenderer::AddRenderPasses(RenderGraph& graph, RenderGrap
 		constants.denoiserTileListBuffer       = passData.denoiserTileList;
 		constants.rayCounterBuffer             = passData.rayCounter;
 		constants.roughnessThreshold           = roughnessThreshold;
-		constants.backfacingThreshold          = 1.0f;
 		constants.varianceThreshold            = mSettings.varianceThreshold;
-		constants.iblFactor                    = 1.0f;
 		constants.samplesPerQuad               = mSettings.samplesPerQuad;
 		constants.frameIndex                   = mFrameIndex;
 		constants.temporalVarianceGuidedTracing = mSettings.temporalVarianceGuidedTracing ? 1u : 0u;

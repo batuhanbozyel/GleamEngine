@@ -27,6 +27,4 @@ void reflectionClassification(uint groupIndex : SV_GroupIndex, uint3 groupId : S
                   /* enable_hitcounter */ false,
                   /* enable_screen_space_tracing */ false,
                   /* enable_hw_ray_tracing */ true);
-
-    StoreExtractedRoughness(dispatchThreadId, roughness);
 }

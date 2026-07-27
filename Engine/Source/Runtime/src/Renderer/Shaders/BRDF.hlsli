@@ -5,7 +5,10 @@
 #include "SurfaceShading.hlsli"
 
 #define F90_Metal 1.0f
-#define PERFECT_MIRROR_ROUGHNESS 0.0016
+
+// Perceptual roughness (r)
+#define PERFECT_MIRROR_ROUGHNESS 0.04
+#define PERFECT_MIRROR_ALPHA (PERFECT_MIRROR_ROUGHNESS * PERFECT_MIRROR_ROUGHNESS)
 
 struct DirectLight
 {

@@ -405,17 +405,12 @@ struct ReflectionClassificationConstants
 	UnorderedAccessIndex denoiserTileListBuffer;
 	UnorderedAccessIndex rayCounterBuffer;
 	float roughnessThreshold;
-	float backfacingThreshold;
-
-	float    varianceThreshold;
-	float    iblFactor;
-	uint32_t samplesPerQuad;
-	uint32_t frameIndex;
+	float varianceThreshold;
 
 	uint32_t temporalVarianceGuidedTracing;
-	float    pad0;
-	float    pad1;
-	float    pad2;
+	uint32_t samplesPerQuad;
+	uint32_t frameIndex;
+	float pad0;
 };
 
 struct PrepareReflectionDispatchArgsConstants

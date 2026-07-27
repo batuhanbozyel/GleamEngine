@@ -24,13 +24,14 @@
 #define FFX_DNSR_REFLECTIONS_COMMON
 
 #include "ffx_denoiser_reflections_config.hlsli"
+#include "../BRDF.hlsli"
 
 FfxBoolean FFX_DNSR_Reflections_IsGlossyReflection(FfxFloat32 roughness) {
     return roughness < RoughnessThreshold();
 }
 
 FfxBoolean FFX_DNSR_Reflections_IsMirrorReflection(FfxFloat32 roughness) {
-    return roughness < 0.0001;
+    return roughness <= PERFECT_MIRROR_ALPHA;
 }
 
 // Transforms origin to uv space

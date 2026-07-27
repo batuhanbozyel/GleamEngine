@@ -71,9 +71,18 @@ void rayTracedReflectionRayGen()
     payload.depth = 0;
     payload.hitDistance = min(camera.farPlane, 65504.0);
 
-    float pdf;
-    float3 H = ImportanceSampleGGX_VNDF(PCGRand2(payload.seed), viewDir, shadingNormal, roughness, pdf);
-    float3 rayDir = reflect(-viewDir, H);
+    float3 rayDir;
+    if (roughness <= PERFECT_MIRROR_ROUGHNESS)
+    {
+        rayDir = reflect(-viewDir, shadingNormal);
+    }
+    else
+    {
+        float pdf;
+        float3 H = ImportanceSampleGGX_VNDF(PCGRand2(payload.seed), viewDir, shadingNormal, roughness, pdf);
+        rayDir = reflect(-viewDir, H);
+    }
+
     if (dot(rayDir, geometryNormal) <= 0.0f)
     {
         StoreReflectionQuad(pixelCoord, copyHorizontal, copyVertical, copyDiagonal,

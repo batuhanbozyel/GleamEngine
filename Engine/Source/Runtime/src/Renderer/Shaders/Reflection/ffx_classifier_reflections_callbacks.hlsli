@@ -84,7 +84,7 @@ FfxUInt32 ReflectionHeight()
 
 FfxFloat32 IBLFactor()
 {
-    return constants.iblFactor;
+    return 1.0;
 }
 
 FfxFloat32 RoughnessThreshold()
@@ -99,7 +99,7 @@ FfxFloat32 RTRoughnessThreshold()
 
 FfxFloat32 ReflectionsBackfacingThreshold()
 {
-    return constants.backfacingThreshold;
+    return 1.0;
 }
 
 FfxFloat32 VRTVarianceThreshold()
@@ -176,12 +176,6 @@ void StoreRadiance(FfxUInt32x2 coordinate, FfxFloat32x4 radiance)
     tex[coordinate] = radiance;
 }
 
-void StoreExtractedRoughness(FfxUInt32x2 coordinate, FfxFloat32 roughness)
-{
-    // The G-Buffer roughness target is consumed directly by the ray generation
-    // and denoiser passes, so there is no separate extracted roughness surface
-}
-
 void IncrementRayCounterHW(FfxUInt32 value, FFX_PARAMETER_OUT FfxUInt32 original_value)
 {
     RWByteAddressBuffer buffer = ResourceDescriptorHeap[constants.rayCounterBuffer];
@@ -206,9 +200,6 @@ void StoreDenoiserTile(FfxInt32 index, FfxUInt32x2 tile_coord)
     buffer.Store<uint>(index * sizeof(uint), ((tile_coord.y & 0xffffu) << 16) | ((tile_coord.x & 0xffffu) << 0));
 }
 
-// Software tracing and hit counter feedback are only reachable on the hybrid
-// screen space path, which this integration does not use. They are still
-// referenced by the vendored classifier so they must resolve.
 void IncrementRayCounterSW(FfxUInt32 value, FFX_PARAMETER_OUT FfxUInt32 original_value)
 {
     original_value = 0u;
