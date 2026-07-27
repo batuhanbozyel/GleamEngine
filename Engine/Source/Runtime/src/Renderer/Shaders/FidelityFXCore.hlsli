@@ -26,6 +26,7 @@
 #define FFX_GPU  1
 #define FFX_HALF 1
 #define FFX_WAVE 1
+#define FFX_HLSL 1
 
 #define FfxFloat32Mat4 matrix <float, 4, 4>
 #define FfxFloat32Mat3 matrix <float, 3, 3>
@@ -270,6 +271,11 @@ typedef FfxUInt32x4     Prefix##_U4;
 ///
 /// @ingroup HLSLCore
 #define FFX_STATIC static
+
+/// A define for abstracting an output function parameter between shading languages.
+///
+/// @ingroup HLSLCore
+#define FFX_PARAMETER_OUT out
 
 /// A define for abstracting loop unrolling between shading languages.
 ///

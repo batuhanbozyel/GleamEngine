@@ -18,6 +18,8 @@ Gleam::MeshInstanceData LoadInstanceData(uint instanceID)
 [shader("closesthit")]
 void ClosestHit(inout Gleam::RayPayload payload : SV_RayPayload, BuiltInTriangleIntersectionAttributes attribs : SV_IntersectionAttributes)
 {
+    payload.hitDistance = RayTCurrent();
+
     Gleam::MeshInstanceData instance = LoadInstanceData(InstanceID());
     Gleam::MeshVertexOut vertex = InterpolateVertexAttributes(instance, PrimitiveIndex(), attribs.barycentrics);
 

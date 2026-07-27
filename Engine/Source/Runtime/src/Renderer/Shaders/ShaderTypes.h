@@ -6,6 +6,18 @@
 #define SHADOW_TILE_WIDTH  8u
 #define SHADOW_TILE_HEIGHT 4u
 
+#define REFLECTION_DENOISER_TILE_SIZE 8u
+
+// Ray counter slot layout, mirrors the FidelityFX classifier callbacks which
+// index rw_ray_counter at 0 (software), 2 (denoiser tiles) and 4 (hardware)
+#define REFLECTION_RAY_COUNTER_SW              0u
+#define REFLECTION_RAY_COUNTER_SW_HISTORY      1u
+#define REFLECTION_RAY_COUNTER_DENOISE         2u
+#define REFLECTION_RAY_COUNTER_DENOISE_HISTORY 3u
+#define REFLECTION_RAY_COUNTER_HW              4u
+#define REFLECTION_RAY_COUNTER_HW_HISTORY      5u
+#define REFLECTION_RAY_COUNTER_SLOTS           8u
+
 namespace Gleam {
 
 #ifndef __cplusplus
@@ -295,6 +307,7 @@ struct RayPayload
 	float3 radiance;
 	float3 throughput;
 	uint32_t depth;
+	float hitDistance;
 };
 
 struct ShadowPayload
@@ -374,7 +387,115 @@ struct RayTracedReflectionConstants
 	ShaderResourceIndex diffuseReflectionTexture;
 	ShaderResourceIndex specularReflectionTexture;
 	ShaderResourceIndex brdfTexture;
-	float roughnessCutoff;
+	ShaderResourceIndex rayListBuffer;
+};
+
+struct ReflectionClassificationConstants
+{
+	ShaderResourceIndex depthTexture;
+	ShaderResourceIndex normalTexture;
+	ShaderResourceIndex roughnessTexture;
+	ShaderResourceIndex motionVectorTexture;
+
+	ShaderResourceIndex  varianceHistoryTexture;
+	ShaderResourceIndex  specularReflectionTexture;
+	UnorderedAccessIndex radianceTexture;
+	UnorderedAccessIndex rayListBuffer;
+
+	UnorderedAccessIndex denoiserTileListBuffer;
+	UnorderedAccessIndex rayCounterBuffer;
+	float roughnessThreshold;
+	float backfacingThreshold;
+
+	float    varianceThreshold;
+	float    iblFactor;
+	uint32_t samplesPerQuad;
+	uint32_t frameIndex;
+
+	uint32_t temporalVarianceGuidedTracing;
+	float    pad0;
+	float    pad1;
+	float    pad2;
+};
+
+struct PrepareReflectionDispatchArgsConstants
+{
+	UnorderedAccessIndex rayCounterBuffer;
+	UnorderedAccessIndex rayDispatchArgsBuffer;
+	UnorderedAccessIndex denoiserDispatchArgsBuffer;
+	float pad0;
+};
+
+struct ReflectionDenoiserReprojectConstants
+{
+	ShaderResourceIndex depthTexture;
+	ShaderResourceIndex normalTexture;
+	ShaderResourceIndex roughnessTexture;
+	ShaderResourceIndex motionVectorTexture;
+
+	ShaderResourceIndex previousDepthTexture;
+	ShaderResourceIndex previousNormalTexture;
+	ShaderResourceIndex previousRoughnessTexture;
+	ShaderResourceIndex radianceTexture;
+
+	ShaderResourceIndex radianceHistoryTexture;
+	ShaderResourceIndex varianceTexture;
+	ShaderResourceIndex sampleCountTexture;
+	ShaderResourceIndex tileListBuffer;
+
+	UnorderedAccessIndex varianceOutputTexture;
+	UnorderedAccessIndex sampleCountOutputTexture;
+	UnorderedAccessIndex averageRadianceOutputTexture;
+	UnorderedAccessIndex reprojectedRadianceTexture;
+
+	float roughnessThreshold;
+	float temporalStabilityFactor;
+	float pad0;
+	float pad1;
+};
+
+struct ReflectionDenoiserPrefilterConstants
+{
+	ShaderResourceIndex depthTexture;
+	ShaderResourceIndex normalTexture;
+	ShaderResourceIndex roughnessTexture;
+	ShaderResourceIndex radianceTexture;
+
+	ShaderResourceIndex  varianceTexture;
+	ShaderResourceIndex  averageRadianceTexture;
+	ShaderResourceIndex  tileListBuffer;
+	UnorderedAccessIndex radianceOutputTexture;
+
+	UnorderedAccessIndex varianceOutputTexture;
+	float roughnessThreshold;
+	float pad0;
+	float pad1;
+};
+
+struct ReflectionDenoiserResolveTemporalConstants
+{
+	ShaderResourceIndex roughnessTexture;
+	ShaderResourceIndex radianceTexture;
+	ShaderResourceIndex varianceTexture;
+	ShaderResourceIndex sampleCountTexture;
+
+	ShaderResourceIndex  averageRadianceTexture;
+	ShaderResourceIndex  reprojectedRadianceTexture;
+	ShaderResourceIndex  tileListBuffer;
+	UnorderedAccessIndex radianceOutputTexture;
+
+	UnorderedAccessIndex varianceOutputTexture;
+	float roughnessThreshold;
+	float temporalStabilityFactor;
+	float pad0;
+};
+
+struct ReflectionDenoiserStoreHistoryConstants
+{
+	ShaderResourceIndex  normalTexture;
+	ShaderResourceIndex  roughnessTexture;
+	UnorderedAccessIndex normalHistoryTexture;
+	UnorderedAccessIndex roughnessHistoryTexture;
 };
 
 // Intel XeGTAO shared constants — field names and layout mirror the vendored algorithm
