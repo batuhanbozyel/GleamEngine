@@ -21,6 +21,8 @@ public:
 
 	const AssetItem& GetAsset(const Gleam::Guid& guid) const;
 
+	const AssetItem* FindAsset(const Gleam::Guid& guid) const;
+
 	template<typename T>
 	const AssetItem& GetAsset(const Gleam::Path& path) const
 	{

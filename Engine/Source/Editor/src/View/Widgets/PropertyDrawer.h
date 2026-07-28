@@ -1,6 +1,7 @@
 #pragma once
 #include "Math/Color.h"
 #include "Math/Vector3.h"
+#include "Container/Hash.h"
 #include "Container/String.h"
 #include "Reflection/Reflection.h"
 #include "Assets/AssetReference.h"
@@ -24,16 +25,38 @@ public:
 
 	static void DrawColorControl(const Gleam::TStringView label, Gleam::Color& color, float columnWidth = 100.0f);
 
+	static void DrawStringControl(const Gleam::TStringView label, Gleam::TString& value, float columnWidth = 100.0f);
+
+	static void DrawTextControl(const Gleam::TStringView label, const Gleam::TStringView value, float columnWidth = 100.0f);
+
 	static void DrawEnumOptions(const Gleam::TStringView label, const Gleam::Reflection::EnumDescription& enumDesc, void* value, float columnWidth = 100.0f);
 
 	static void DrawClassFields(void* obj, const Gleam::Reflection::ClassDescription& classDesc, float columnWidth = 100.0f);
 
 	static void DrawClass(const Gleam::TStringView label, void* component, const Gleam::Reflection::ClassDescription& classDesc, float columnWidth = 0.0f);
 
+	static void DrawArrayElements(void* obj, const Gleam::Reflection::ArrayDescription& arrayDesc, float columnWidth = 100.0f);
+
+	static void DrawArray(const Gleam::TStringView label, void* obj, const Gleam::Reflection::ArrayDescription& arrayDesc, float columnWidth = 0.0f);
+
 	static void DrawAsset(const Gleam::TStringView label, Gleam::AssetReference& assetRef, float columnWidth = 100.0f);
 
 	using UIFunction = std::function<void()>;
 	static void DrawCustom(const Gleam::TStringView label, size_t hash, UIFunction&& uiFunction);
+
+private:
+
+	using DrawFunction = std::function<void(const Gleam::TStringView label,
+											void* obj,
+											const Gleam::Reflection::ClassDescription& classDesc,
+											float columnWidth)>;
+
+	static const Gleam::HashMap<Gleam::TStringView, DrawFunction>& GetCustomDrawers();
+
+	static bool TryCustomDrawer(const Gleam::TStringView label,
+								void* obj,
+								const Gleam::Reflection::ClassDescription& classDesc,
+								float columnWidth);
 };
 
 

@@ -47,19 +47,28 @@ const AssetItem& AssetRegistry::RegisterAsset(const Gleam::Path& path, const Ass
 
 const AssetItem& AssetRegistry::GetAsset(const Gleam::Guid& guid) const
 {
+	const auto item = FindAsset(guid);
+	if (item == nullptr)
+	{
+		GLEAM_CORE_ERROR("Asset could not located for GUID: {0}", guid.ToString());
+		static AssetItem invalidAsset;
+		return invalidAsset;
+	}
+	return *item;
+}
+
+const AssetItem* AssetRegistry::FindAsset(const Gleam::Guid& guid) const
+{
 	auto it = mAssetsByGuid.find(guid);
 	if (it != mAssetsByGuid.end())
 	{
 		auto pathIt = mAssets.find(it->second.path);
 		if (pathIt != mAssets.end())
 		{
-			return pathIt->second[it->second.index];
+			return &pathIt->second[it->second.index];
 		}
 	}
-
-	GLEAM_CORE_ERROR("Asset could not located for GUID: {0}", guid.ToString());
-	static AssetItem invalidAsset;
-	return invalidAsset;
+	return nullptr;
 }
 
 const AssetItem& AssetRegistry::GetAsset(const Gleam::Path& path, const Gleam::Guid& type) const
