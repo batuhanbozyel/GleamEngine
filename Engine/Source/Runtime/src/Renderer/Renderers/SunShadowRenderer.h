@@ -47,6 +47,8 @@ private:
 
 	void CreateDenoiserTextures(const Size& size);
 
+	void ReleaseDenoiserTextures();
+
 	uint32_t mFrameIndex = 0;
 	bool mPipelineDirty = true;
 	bool mFirstFrame = true;
@@ -61,7 +63,7 @@ private:
 	ComputePipelineHandle    mFilterPipeline;
 
 	Texture mMoments[2];
-	Texture mScratch[2];
+	Texture mShadowHistory;
 
 	Size mDenoiserSize;
 

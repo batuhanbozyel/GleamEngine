@@ -60,8 +60,6 @@ void DepthPrepass::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& bl
 
 	CreateDepthBuffers(sceneTargetDescriptor.size);
 
-	// Depth is ping-ponged so last frame's buffer survives as the depth history temporal consumers
-	// read: this frame renders into one slot while they sample the other, so no copy is needed
 	const uint32_t prevIndex = mFrameIndex & 1u;
 	const uint32_t currIndex = prevIndex ^ 1u;
 

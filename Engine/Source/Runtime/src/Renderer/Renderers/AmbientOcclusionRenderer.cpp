@@ -179,7 +179,7 @@ void AmbientOcclusionRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBl
 		TextureHandle outputAOTerm;
 	};
 
-	const uint32_t denoisePassCount = Math::Max(1u, GetDenoisePassCountForMode(mSettings.mode));
+	uint32_t denoisePassCount = Math::Max(1u, GetDenoisePassCountForMode(mSettings.mode));
 
 	TextureHandle finalAOTerm   = mainData.aoTerm;
 	TextureHandle denoiseSource = mainData.aoTerm;
@@ -187,8 +187,7 @@ void AmbientOcclusionRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBl
 
 	for (uint32_t passIndex = 0; passIndex < denoisePassCount; ++passIndex)
 	{
-		const bool lastPass = (passIndex == denoisePassCount - 1u);
-
+		bool lastPass = (passIndex == denoisePassCount - 1u);
 		auto& denoiseData = graph.AddComputePass<DenoisePassData>(GetDenoisePassName(passIndex), [&](RenderGraphBuilder& builder, DenoisePassData& passData)
 		{
 			if (lastPass)

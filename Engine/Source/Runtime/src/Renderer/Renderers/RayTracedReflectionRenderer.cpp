@@ -58,15 +58,44 @@ void RayTracedReflectionRenderer::OnCreate(const RenderContext& context)
 
 void RayTracedReflectionRenderer::OnDestroy(const RenderContext& context)
 {
+	ReleaseDenoiserTextures();
+}
+
+void RayTracedReflectionRenderer::ReleaseDenoiserTextures()
+{
 	for (uint32_t i = 0; i < 2; ++i)
 	{
-		context.device->Dispose(context.allocator, mRadiance[i], BarrierStage::None);
-		context.device->Dispose(context.allocator, mVariance[i], BarrierStage::None);
-		context.device->Dispose(context.allocator, mSampleCount[i], BarrierStage::None);
-		context.device->Dispose(context.allocator, mAverageRadiance[i], BarrierStage::None);
-		context.device->Dispose(context.allocator, mNormalHistory[i], BarrierStage::None);
-		context.device->Dispose(context.allocator, mRoughnessHistory[i], BarrierStage::None);
+		if (mRadiance[i].IsValid())
+		{
+			mDevice->Dispose(mAllocator, mRadiance[i], BarrierStage::None);
+		}
+
+		if (mVariance[i].IsValid())
+		{
+			mDevice->Dispose(mAllocator, mVariance[i], BarrierStage::None);
+		}
+
+		if (mSampleCount[i].IsValid())
+		{
+			mDevice->Dispose(mAllocator, mSampleCount[i], BarrierStage::None);
+		}
+
+		if (mAverageRadiance[i].IsValid())
+		{
+			mDevice->Dispose(mAllocator, mAverageRadiance[i], BarrierStage::None);
+		}
+
+		if (mNormalHistory[i].IsValid())
+		{
+			mDevice->Dispose(mAllocator, mNormalHistory[i], BarrierStage::None);
+		}
+
+		if (mRoughnessHistory[i].IsValid())
+		{
+			mDevice->Dispose(mAllocator, mRoughnessHistory[i], BarrierStage::None);
+		}
 	}
+	mDenoiserSize = Size::zero;
 }
 
 void RayTracedReflectionRenderer::CreateDenoiserTextures(const Size& size)
@@ -75,38 +104,7 @@ void RayTracedReflectionRenderer::CreateDenoiserTextures(const Size& size)
 	{
 		return;
 	}
-
-	for (uint32_t i = 0; i < 2; ++i)
-	{
-		if (mRadiance[i].IsValid())
-		{
-			mDevice->Dispose(mAllocator, mRadiance[i], BarrierStage::None);
-		}
-		if (mVariance[i].IsValid())
-		{
-			mDevice->Dispose(mAllocator, mVariance[i], BarrierStage::None);
-		}
-		if (mSampleCount[i].IsValid())
-		{
-			mDevice->Dispose(mAllocator, mSampleCount[i], BarrierStage::None);
-		}
-		if (mAverageRadiance[i].IsValid())
-		{
-			mDevice->Dispose(mAllocator, mAverageRadiance[i], BarrierStage::None);
-		}
-		if (mNormalHistory[i].IsValid())
-		{
-			mDevice->Dispose(mAllocator, mNormalHistory[i], BarrierStage::None);
-		}
-		if (mRoughnessHistory[i].IsValid())
-		{
-			mDevice->Dispose(mAllocator, mRoughnessHistory[i], BarrierStage::None);
-		}
-	}
-
-	const Size averageRadianceSize = Size(
-		float(Math::DivideRoundingUp((uint32_t)size.width, REFLECTION_DENOISER_TILE_SIZE)),
-		float(Math::DivideRoundingUp((uint32_t)size.height, REFLECTION_DENOISER_TILE_SIZE)));
+	ReleaseDenoiserTextures();
 
 	RenderTextureDescriptor textureDesc;
 	textureDesc.dimension = TextureDimension::Texture2D;
@@ -124,29 +122,35 @@ void RayTracedReflectionRenderer::CreateDenoiserTextures(const Size& size)
 	textureDesc.name   = "RayTracedReflectionRenderer::ReflectionDenoiser::Variance 1";
 	mVariance[1] = mDevice->CreateTexture(mAllocator, textureDesc);
 
-	textureDesc.name   = "RayTracedReflectionRenderer::ReflectionDenoiser::SampleCount 0";
-	mSampleCount[0] = mDevice->CreateTexture(mAllocator, textureDesc);
-	textureDesc.name   = "RayTracedReflectionRenderer::ReflectionDenoiser::SampleCount 1";
-	mSampleCount[1] = mDevice->CreateTexture(mAllocator, textureDesc);
+	if (mSettings.denoise)
+	{
+		textureDesc.format = TextureFormat::R16_SFloat;
+		textureDesc.name   = "RayTracedReflectionRenderer::ReflectionDenoiser::SampleCount 0";
+		mSampleCount[0] = mDevice->CreateTexture(mAllocator, textureDesc);
+		textureDesc.name   = "RayTracedReflectionRenderer::ReflectionDenoiser::SampleCount 1";
+		mSampleCount[1] = mDevice->CreateTexture(mAllocator, textureDesc);
 
-	textureDesc.format = TextureFormat::R16G16_SNorm;
-	textureDesc.name   = "RayTracedReflectionRenderer::ReflectionDenoiser::NormalHistory 0";
-	mNormalHistory[0] = mDevice->CreateTexture(mAllocator, textureDesc);
-	textureDesc.name   = "RayTracedReflectionRenderer::ReflectionDenoiser::NormalHistory 1";
-	mNormalHistory[1] = mDevice->CreateTexture(mAllocator, textureDesc);
+		textureDesc.format = TextureFormat::R16G16_SNorm;
+		textureDesc.name   = "RayTracedReflectionRenderer::ReflectionDenoiser::NormalHistory 0";
+		mNormalHistory[0] = mDevice->CreateTexture(mAllocator, textureDesc);
+		textureDesc.name   = "RayTracedReflectionRenderer::ReflectionDenoiser::NormalHistory 1";
+		mNormalHistory[1] = mDevice->CreateTexture(mAllocator, textureDesc);
 
-	textureDesc.format = TextureFormat::R8_UNorm;
-	textureDesc.name   = "RayTracedReflectionRenderer::ReflectionDenoiser::RoughnessHistory 0";
-	mRoughnessHistory[0] = mDevice->CreateTexture(mAllocator, textureDesc);
-	textureDesc.name   = "RayTracedReflectionRenderer::ReflectionDenoiser::RoughnessHistory 1";
-	mRoughnessHistory[1] = mDevice->CreateTexture(mAllocator, textureDesc);
+		textureDesc.format = TextureFormat::R8_UNorm;
+		textureDesc.name   = "RayTracedReflectionRenderer::ReflectionDenoiser::RoughnessHistory 0";
+		mRoughnessHistory[0] = mDevice->CreateTexture(mAllocator, textureDesc);
+		textureDesc.name   = "RayTracedReflectionRenderer::ReflectionDenoiser::RoughnessHistory 1";
+		mRoughnessHistory[1] = mDevice->CreateTexture(mAllocator, textureDesc);
 
-	textureDesc.format = TextureFormat::R11G11B10_SFloat;
-	textureDesc.size   = averageRadianceSize;
-	textureDesc.name   = "RayTracedReflectionRenderer::ReflectionDenoiser::AverageRadiance 0";
-	mAverageRadiance[0] = mDevice->CreateTexture(mAllocator, textureDesc);
-	textureDesc.name   = "RayTracedReflectionRenderer::ReflectionDenoiser::AverageRadiance 1";
-	mAverageRadiance[1] = mDevice->CreateTexture(mAllocator, textureDesc);
+		textureDesc.format = TextureFormat::R11G11B10_SFloat;
+		textureDesc.size = Size(
+			float(Math::DivideRoundingUp((uint32_t)size.width, REFLECTION_DENOISER_TILE_SIZE)),
+			float(Math::DivideRoundingUp((uint32_t)size.height, REFLECTION_DENOISER_TILE_SIZE)));
+		textureDesc.name   = "RayTracedReflectionRenderer::ReflectionDenoiser::AverageRadiance 0";
+		mAverageRadiance[0] = mDevice->CreateTexture(mAllocator, textureDesc);
+		textureDesc.name   = "RayTracedReflectionRenderer::ReflectionDenoiser::AverageRadiance 1";
+		mAverageRadiance[1] = mDevice->CreateTexture(mAllocator, textureDesc);
+	}
 
 	mDenoiserSize = size;
 	mFirstFrame = true;
@@ -156,6 +160,7 @@ void RayTracedReflectionRenderer::AddRenderPasses(RenderGraph& graph, RenderGrap
 {
 	if (mSettings.enable == false || mDevice->GetFeatures().raytracing == false)
 	{
+		ReleaseDenoiserTextures();
 		return;
 	}
 
@@ -213,33 +218,46 @@ void RayTracedReflectionRenderer::AddRenderPasses(RenderGraph& graph, RenderGrap
 	TextureHandle radianceHistory        = graph.ImportTexture(mRadiance[prevIndex], importParams);
 	TextureHandle variance               = graph.ImportTexture(mVariance[currIndex], importParams);
 	TextureHandle varianceHistory        = graph.ImportTexture(mVariance[prevIndex], importParams);
-	TextureHandle sampleCount            = graph.ImportTexture(mSampleCount[prevIndex], importParams);
-	TextureHandle sampleCountHistory     = graph.ImportTexture(mSampleCount[currIndex], importParams);
-	TextureHandle averageRadiance        = graph.ImportTexture(mAverageRadiance[prevIndex], importParams);
-	TextureHandle averageRadianceHistory = graph.ImportTexture(mAverageRadiance[currIndex], importParams);
-	TextureHandle normalHistory          = graph.ImportTexture(mNormalHistory[currIndex], importParams);
-	TextureHandle previousNormal         = graph.ImportTexture(mNormalHistory[prevIndex], importParams);
-	TextureHandle roughnessHistory       = graph.ImportTexture(mRoughnessHistory[currIndex], importParams);
-	TextureHandle previousRoughness      = graph.ImportTexture(mRoughnessHistory[prevIndex], importParams);
 
-	if (mFirstFrame)
+	TextureHandle sampleCount;
+	TextureHandle sampleCountHistory;
+	TextureHandle averageRadiance;
+	TextureHandle averageRadianceHistory;
+	TextureHandle normalHistory;
+	TextureHandle previousNormal;
+	TextureHandle roughnessHistory;
+	TextureHandle previousRoughness;
+
+	if (mSettings.denoise)
 	{
-		struct ClearHistoryPassData
-		{
-		};
+		sampleCount            = graph.ImportTexture(mSampleCount[prevIndex], importParams);
+		sampleCountHistory     = graph.ImportTexture(mSampleCount[currIndex], importParams);
+		averageRadiance        = graph.ImportTexture(mAverageRadiance[prevIndex], importParams);
+		averageRadianceHistory = graph.ImportTexture(mAverageRadiance[currIndex], importParams);
+		normalHistory          = graph.ImportTexture(mNormalHistory[currIndex], importParams);
+		previousNormal         = graph.ImportTexture(mNormalHistory[prevIndex], importParams);
+		roughnessHistory       = graph.ImportTexture(mRoughnessHistory[currIndex], importParams);
+		previousRoughness      = graph.ImportTexture(mRoughnessHistory[prevIndex], importParams);
 
-		graph.AddRenderPass<ClearHistoryPassData>("RayTracedReflectionRenderer::ClearHistory",
-		[&](RenderGraphBuilder& builder, ClearHistoryPassData& passData)
+		if (mFirstFrame)
 		{
-			sampleCount            = builder.UseColorBuffer(sampleCount);
-			sampleCountHistory     = builder.UseColorBuffer(sampleCountHistory);
-			averageRadiance        = builder.UseColorBuffer(averageRadiance);
-			averageRadianceHistory = builder.UseColorBuffer(averageRadianceHistory);
-		},
-		[](const CommandBuffer* cmd, const ClearHistoryPassData& passData)
-		{
-			// Attachments are cleared by the load action on render pass begin
-		});
+			struct ClearHistoryPassData
+			{
+			};
+
+			graph.AddRenderPass<ClearHistoryPassData>("RayTracedReflectionRenderer::ClearHistory",
+			[&](RenderGraphBuilder& builder, ClearHistoryPassData& passData)
+			{
+				sampleCount            = builder.UseColorBuffer(sampleCount);
+				sampleCountHistory     = builder.UseColorBuffer(sampleCountHistory);
+				averageRadiance        = builder.UseColorBuffer(averageRadiance);
+				averageRadianceHistory = builder.UseColorBuffer(averageRadianceHistory);
+			},
+			[](const CommandBuffer* cmd, const ClearHistoryPassData& passData)
+			{
+				// Attachments are cleared by the load action on render pass begin
+			});
+		}
 	}
 
 	// ----------------------------------------------------------------

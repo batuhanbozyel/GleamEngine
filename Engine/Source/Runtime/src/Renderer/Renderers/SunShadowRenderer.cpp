@@ -50,10 +50,25 @@ void SunShadowRenderer::OnCreate(const RenderContext& context)
 
 void SunShadowRenderer::OnDestroy(const RenderContext& context)
 {
-	context.device->Dispose(context.allocator, mMoments[0], BarrierStage::None);
-	context.device->Dispose(context.allocator, mMoments[1], BarrierStage::None);
-	context.device->Dispose(context.allocator, mScratch[0],	BarrierStage::None);
-	context.device->Dispose(context.allocator, mScratch[1], BarrierStage::None);
+	ReleaseDenoiserTextures();
+}
+
+void SunShadowRenderer::ReleaseDenoiserTextures()
+{
+	for (auto& moments : mMoments)
+	{
+		if (moments.IsValid())
+		{
+			mDevice->Dispose(mAllocator, moments, BarrierStage::None);
+		}
+	}
+
+	if (mShadowHistory.IsValid())
+	{
+		mDevice->Dispose(mAllocator, mShadowHistory, BarrierStage::None);
+	}
+
+	mDenoiserSize = Size::zero;
 }
 
 void SunShadowRenderer::CreateDenoiserTextures(const Size& size)
@@ -62,23 +77,8 @@ void SunShadowRenderer::CreateDenoiserTextures(const Size& size)
 	{
 		return;
 	}
+	ReleaseDenoiserTextures();
 
-	if (mMoments[0].IsValid())
-	{
-		mDevice->Dispose(mAllocator, mMoments[0], BarrierStage::None);
-	}
-	if (mMoments[1].IsValid())
-	{
-		mDevice->Dispose(mAllocator, mMoments[1], BarrierStage::None);
-	}
-	if (mScratch[0].IsValid())
-	{
-		mDevice->Dispose(mAllocator, mScratch[0], BarrierStage::None);
-	}
-	if (mScratch[1].IsValid())
-	{
-		mDevice->Dispose(mAllocator, mScratch[1], BarrierStage::None);
-	}
 	RenderTextureDescriptor momentsDesc;
 	momentsDesc.dimension = TextureDimension::Texture2D;
 	momentsDesc.format    = TextureFormat::R11G11B10_SFloat;
@@ -88,14 +88,12 @@ void SunShadowRenderer::CreateDenoiserTextures(const Size& size)
 	momentsDesc.name      = "SunShadowRenderer::ShadowDenoiser::Moments 1";
 	mMoments[1] = mDevice->CreateTexture(mAllocator, momentsDesc);
 
-	RenderTextureDescriptor scratchDesc;
-	scratchDesc.dimension = TextureDimension::Texture2D;
-	scratchDesc.format    = TextureFormat::R16G16_SFloat;
-	scratchDesc.size      = size;
-	scratchDesc.name      = "SunShadowRenderer::ShadowDenoiser::Scratch 0";
-	mScratch[0] = mDevice->CreateTexture(mAllocator, scratchDesc);
-	scratchDesc.name      = "SunShadowRenderer::ShadowDenoiser::Scratch 1";
-	mScratch[1] = mDevice->CreateTexture(mAllocator, scratchDesc);
+	RenderTextureDescriptor historyDesc;
+	historyDesc.dimension = TextureDimension::Texture2D;
+	historyDesc.format    = TextureFormat::R16G16_SFloat;
+	historyDesc.size      = size;
+	historyDesc.name      = "SunShadowRenderer::ShadowDenoiser::ShadowHistory";
+	mShadowHistory = mDevice->CreateTexture(mAllocator, historyDesc);
 
 	mDenoiserSize = size;
 	mFirstFrame = true;
@@ -105,6 +103,7 @@ void SunShadowRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboar
 {
 	if (mSettings.enable == false || mDevice->GetFeatures().raytracing == false)
 	{
+		ReleaseDenoiserTextures();
 		return;
 	}
 
@@ -317,8 +316,7 @@ void SunShadowRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboar
 
 	TextureHandle previousMoments     = graph.ImportTexture(mMoments[prevIndex], importParams);
 	TextureHandle currentMoments      = graph.ImportTexture(mMoments[currIndex], importParams);
-	TextureHandle historyShadow       = graph.ImportTexture(mScratch[1], importParams);
-	TextureHandle reprojectionResults = graph.ImportTexture(mScratch[0], importParams);
+	TextureHandle historyShadow       = graph.ImportTexture(mShadowHistory, importParams);
 
 	if (mFirstFrame)
 	{
@@ -332,7 +330,6 @@ void SunShadowRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboar
 			previousMoments     = builder.UseColorBuffer(previousMoments);
 			currentMoments      = builder.UseColorBuffer(currentMoments);
 			historyShadow       = builder.UseColorBuffer(historyShadow);
-			reprojectionResults = builder.UseColorBuffer(reprojectionResults);
 		},
 		[](const CommandBuffer* cmd, const ClearHistoryPassData& passData)
 		{
@@ -361,6 +358,11 @@ void SunShadowRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboar
 	auto& tileClassData = graph.AddComputePass<TileClassificationPassData>("SunShadowRenderer::TileClassification",
 	[&](RenderGraphBuilder& builder, TileClassificationPassData& passData)
 	{
+		RenderTextureDescriptor reprojectionDesc;
+		reprojectionDesc.name   = "Shadow Reprojection Results";
+		reprojectionDesc.size   = sceneTargetDescriptor.size;
+		reprojectionDesc.format = TextureFormat::R16G16_SFloat;
+
 		passData.shadowMask				= builder.ReadBuffer(rayTracingData.shadowMask);
 		passData.depth					= builder.ReadTexture(depthPrepassData.depthTarget);
 		passData.velocity				= builder.ReadTexture(gBufferData.motionVectorTarget);
@@ -369,7 +371,7 @@ void SunShadowRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboar
 		passData.previousMoments		= builder.ReadTexture(previousMoments);
 		passData.currentMoments			= builder.WriteTexture(currentMoments);
 		passData.historyShadow			= builder.ReadTexture(historyShadow);
-		passData.reprojectionResults	= builder.WriteTexture(reprojectionResults);
+		passData.reprojectionResults	= builder.WriteTexture(builder.CreateTexture(reprojectionDesc));
 		passData.isFirstFrame			= mFirstFrame ? 1 : 0;
 
 		BufferDescriptor tileMetaDesc;

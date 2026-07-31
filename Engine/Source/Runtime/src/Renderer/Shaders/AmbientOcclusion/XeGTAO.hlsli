@@ -224,6 +224,14 @@ lpfloat3x3 XeGTAO_RotFromToMatrix( lpfloat3 from, lpfloat3 to )
     return mtx;
 }
 
+lpfloat XeGTAO_LoadDepthMIP( Texture2D<lpfloat> sourceViewspaceDepth, int2 pixCoord, uint mipLevel, const GTAOConstants consts )
+{
+    const int2 baseCoord = clamp( pixCoord, 0, consts.ViewportSize - 1 );
+    const int2 mipSize   = max( consts.ViewportSize >> (int)mipLevel, 1 );
+    const int2 mipCoord  = min( baseCoord >> (int)mipLevel, mipSize - 1 );
+    return sourceViewspaceDepth.Load( int3( mipCoord, mipLevel ) );
+}
+
 void XeGTAO_MainPass( const uint2 pixCoord, lpfloat sliceCount, lpfloat stepsPerSlice, const lpfloat2 localNoise, lpfloat3 viewspaceNormal, const GTAOConstants consts, 
     Texture2D<lpfloat> sourceViewspaceDepth, SamplerState depthSampler, RWTexture2D<uint> outWorkingAOTerm, RWTexture2D<unorm float> outWorkingEdges )
 {                                                                       
@@ -422,10 +430,12 @@ void XeGTAO_MainPass( const uint2 pixCoord, lpfloat sliceCount, lpfloat stepsPer
 
                 // note: when sampling, using point_point_point or point_point_linear sampler works, but linear_linear_linear will cause unwanted interpolation between neighbouring depth values on the same MIP level!
                 const lpfloat mipLevel    = (lpfloat)clamp( log2( sampleOffsetLength ) - depthMIPSamplingOffset, 0, XE_GTAO_DEPTH_MIP_LEVELS );
+                const uint mipLevelInt    = (uint)( (float)mipLevel + 0.5 );
 
                 // Snap to pixel center (more correct direction math, avoids artifacts due to sampling pos not matching depth texel center - messes up slope - but adds other 
                 // artifacts due to them being pushed off the slice). Also use full precision for high res cases.
-                sampleOffset = round(sampleOffset) * (lpfloat2)consts.ViewportPixelSize;
+                const int2 sampleOffsetPix = int2( round( sampleOffset ) );
+                sampleOffset = (lpfloat2)sampleOffsetPix * (lpfloat2)consts.ViewportPixelSize;
 
 #ifdef XE_GTAO_SHOW_DEBUG_VIZ
                 int mipLevelU = (int)round(mipLevel);
@@ -442,11 +452,11 @@ void XeGTAO_MainPass( const uint2 pixCoord, lpfloat sliceCount, lpfloat stepsPer
 #endif
 
                 float2 sampleScreenPos0 = normalizedScreenPos + sampleOffset;
-                float  SZ0 = sourceViewspaceDepth.SampleLevel( depthSampler, sampleScreenPos0, mipLevel ).x;
+                float  SZ0 = XeGTAO_LoadDepthMIP( sourceViewspaceDepth, int2( pixCoord ) + sampleOffsetPix, mipLevelInt, consts );
                 float3 samplePos0 = XeGTAO_ComputeViewspacePosition( sampleScreenPos0, SZ0, consts );
 
                 float2 sampleScreenPos1 = normalizedScreenPos - sampleOffset;
-                float  SZ1 = sourceViewspaceDepth.SampleLevel( depthSampler, sampleScreenPos1, mipLevel ).x;
+                float  SZ1 = XeGTAO_LoadDepthMIP( sourceViewspaceDepth, int2( pixCoord ) - sampleOffsetPix, mipLevelInt, consts );
                 float3 samplePos1 = XeGTAO_ComputeViewspacePosition( sampleScreenPos1, SZ1, consts );
 
                 float3 sampleDelta0     = (samplePos0 - float3(pixCenterPos)); // using lpfloat for sampleDelta causes precision issues
