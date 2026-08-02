@@ -78,14 +78,11 @@ private:
 	ComputePipelineHandle    mReprojectPipeline;
 	ComputePipelineHandle    mPrefilterPipeline;
 	ComputePipelineHandle    mResolveTemporalPipeline;
-	ComputePipelineHandle    mStoreHistoryPipeline;
 
 	Texture mRadiance[2];
 	Texture mVariance[2];
 	Texture mSampleCount[2];
 	Texture mAverageRadiance[2];
-	Texture mNormalHistory[2];
-	Texture mRoughnessHistory[2];
 
 	Size mDenoiserSize;
 };

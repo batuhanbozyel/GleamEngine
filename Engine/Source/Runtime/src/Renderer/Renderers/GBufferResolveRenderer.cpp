@@ -18,11 +18,66 @@ using namespace Gleam;
 void GBufferResolveRenderer::OnCreate(const RenderContext& context)
 {
 	mDevice = context.device;
+	mAllocator = context.allocator;
 }
 
 void GBufferResolveRenderer::OnDestroy(const RenderContext& context)
 {
+	ReleaseGBufferTargets();
+}
 
+void GBufferResolveRenderer::ReleaseGBufferTargets()
+{
+	for (uint32_t i = 0; i < 2; ++i)
+	{
+		if (mGeometryNormalTargets[i].IsValid())
+		{
+			mDevice->Dispose(mAllocator, mGeometryNormalTargets[i], BarrierStage::None);
+		}
+
+		if (mShadingNormalTargets[i].IsValid())
+		{
+			mDevice->Dispose(mAllocator, mShadingNormalTargets[i], BarrierStage::None);
+		}
+
+		if (mRoughnessTargets[i].IsValid())
+		{
+			mDevice->Dispose(mAllocator, mRoughnessTargets[i], BarrierStage::None);
+		}
+	}
+	mGBufferSize = Size::zero;
+}
+
+void GBufferResolveRenderer::CreateGBufferTargets(const Size& size)
+{
+	if (mGBufferSize == size)
+	{
+		return;
+	}
+	ReleaseGBufferTargets();
+
+	RenderTextureDescriptor textureDesc;
+	textureDesc.dimension = TextureDimension::Texture2D;
+	textureDesc.size = size;
+
+	textureDesc.format = TextureFormat::R16G16_SNorm;
+	textureDesc.name = "GBufferGeometryNormal 0";
+	mGeometryNormalTargets[0] = mDevice->CreateTexture(mAllocator, textureDesc);
+	textureDesc.name = "GBufferGeometryNormal 1";
+	mGeometryNormalTargets[1] = mDevice->CreateTexture(mAllocator, textureDesc);
+
+	textureDesc.name = "GBufferShadingNormal 0";
+	mShadingNormalTargets[0] = mDevice->CreateTexture(mAllocator, textureDesc);
+	textureDesc.name = "GBufferShadingNormal 1";
+	mShadingNormalTargets[1] = mDevice->CreateTexture(mAllocator, textureDesc);
+
+	textureDesc.format = TextureFormat::R8_UNorm;
+	textureDesc.name = "GBufferRoughness 0";
+	mRoughnessTargets[0] = mDevice->CreateTexture(mAllocator, textureDesc);
+	textureDesc.name = "GBufferRoughness 1";
+	mRoughnessTargets[1] = mDevice->CreateTexture(mAllocator, textureDesc);
+
+	mGBufferSize = size;
 }
 
 void GBufferResolveRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard)
@@ -31,6 +86,18 @@ void GBufferResolveRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlac
 	const auto& depthPrepassData = blackboard.Get<DepthPrepassData>();
 	const auto& visibilityClassificationData = blackboard.Get<VisibilityClassificationData>();
 	const auto& sceneTargetDescriptor = graph.GetDescriptor(sceneData.sceneTarget);
+
+	CreateGBufferTargets(sceneTargetDescriptor.size);
+
+	const uint32_t prevIndex = mFrameIndex & 1u;
+	const uint32_t currIndex = prevIndex ^ 1u;
+
+	TextureHandle geometryNormal = graph.ImportTexture(mGeometryNormalTargets[currIndex]);
+	TextureHandle shadingNormal = graph.ImportTexture(mShadingNormalTargets[currIndex]);
+	TextureHandle roughness = graph.ImportTexture(mRoughnessTargets[currIndex]);
+	TextureHandle previousGeometryNormal = graph.ImportTexture(mGeometryNormalTargets[prevIndex]);
+	TextureHandle previousShadingNormal = graph.ImportTexture(mShadingNormalTargets[prevIndex]);
+	TextureHandle previousRoughness = graph.ImportTexture(mRoughnessTargets[prevIndex]);
 
 	struct GBufferResolvePassData
 	{
@@ -52,18 +119,6 @@ void GBufferResolveRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlac
 		textureDesc.format = TextureFormat::R16G16_SFloat;
 		passData.gbuffer.motionVectorTarget = builder.WriteTexture(builder.CreateTexture(textureDesc));
 
-		textureDesc.name = "GBufferGeometryNormal";
-		textureDesc.format = TextureFormat::R16G16_SNorm;
-		passData.gbuffer.geometryNormalTarget = builder.WriteTexture(builder.CreateTexture(textureDesc));
-
-		textureDesc.name = "GBufferShadingNormal";
-		textureDesc.format = TextureFormat::R16G16_SNorm;
-		passData.gbuffer.shadingNormalTarget = builder.WriteTexture(builder.CreateTexture(textureDesc));
-
-		textureDesc.name = "GBufferRoughness";
-		textureDesc.format = TextureFormat::R8_UNorm;
-		passData.gbuffer.roughnessTarget = builder.WriteTexture(builder.CreateTexture(textureDesc));
-
 		textureDesc.name = "GBufferBarycentricCoords";
 		textureDesc.format = TextureFormat::R16G16_SFloat;
 		passData.gbuffer.barycentricCoordsTarget = builder.WriteTexture(builder.CreateTexture(textureDesc));
@@ -71,6 +126,10 @@ void GBufferResolveRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlac
 		textureDesc.name = "GBufferBarycentricDerivatives";
 		textureDesc.format = TextureFormat::R16G16B16A16_UInt;
 		passData.gbuffer.barycentricDerivsTarget = builder.WriteTexture(builder.CreateTexture(textureDesc));
+
+		passData.gbuffer.geometryNormalTarget = builder.WriteTexture(geometryNormal);
+		passData.gbuffer.shadingNormalTarget = builder.WriteTexture(shadingNormal);
+		passData.gbuffer.roughnessTarget = builder.WriteTexture(roughness);
 
 		passData.visibilityBuffer = builder.ReadTexture(depthPrepassData.visibilityBuffer);
 		passData.pixelListBuffer = builder.ReadBuffer(visibilityClassificationData.pixelListBuffer);
@@ -110,7 +169,12 @@ void GBufferResolveRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlac
 	});
 
 	GBufferData gbufferData = resolveData.gbuffer;
+	gbufferData.previousGeometryNormalTarget = previousGeometryNormal;
+	gbufferData.previousShadingNormalTarget = previousShadingNormal;
+	gbufferData.previousRoughnessTarget = previousRoughness;
 	blackboard.Add(gbufferData);
+
+	mFrameIndex++;
 }
 
 void GBufferResolveRenderer::RegisterShadingPipeline(const Material* material)

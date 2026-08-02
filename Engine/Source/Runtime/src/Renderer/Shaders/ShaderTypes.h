@@ -485,14 +485,6 @@ struct ReflectionDenoiserResolveTemporalConstants
 	float pad0;
 };
 
-struct ReflectionDenoiserStoreHistoryConstants
-{
-	ShaderResourceIndex  normalTexture;
-	ShaderResourceIndex  roughnessTexture;
-	UnorderedAccessIndex normalHistoryTexture;
-	UnorderedAccessIndex roughnessHistoryTexture;
-};
-
 // Intel XeGTAO shared constants — field names and layout mirror the vendored algorithm
 // (Shaders/AmbientOcclusion/XeGTAO.hlsli), which accesses these members by name
 struct GTAOConstants

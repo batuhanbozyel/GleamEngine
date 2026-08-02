@@ -50,10 +50,6 @@ void RayTracedReflectionRenderer::OnCreate(const RenderContext& context)
 	ComputePipelineStateDescriptor resolveTemporalDesc;
 	resolveTemporalDesc.entryPoint = "reflectionDenoiserResolveTemporal";
 	mResolveTemporalPipeline = context.device->CreateComputePipeline(resolveTemporalDesc);
-
-	ComputePipelineStateDescriptor storeHistoryDesc;
-	storeHistoryDesc.entryPoint = "reflectionDenoiserStoreHistory";
-	mStoreHistoryPipeline = context.device->CreateComputePipeline(storeHistoryDesc);
 }
 
 void RayTracedReflectionRenderer::OnDestroy(const RenderContext& context)
@@ -83,16 +79,6 @@ void RayTracedReflectionRenderer::ReleaseDenoiserTextures()
 		if (mAverageRadiance[i].IsValid())
 		{
 			mDevice->Dispose(mAllocator, mAverageRadiance[i], BarrierStage::None);
-		}
-
-		if (mNormalHistory[i].IsValid())
-		{
-			mDevice->Dispose(mAllocator, mNormalHistory[i], BarrierStage::None);
-		}
-
-		if (mRoughnessHistory[i].IsValid())
-		{
-			mDevice->Dispose(mAllocator, mRoughnessHistory[i], BarrierStage::None);
 		}
 	}
 	mDenoiserSize = Size::zero;
@@ -129,18 +115,6 @@ void RayTracedReflectionRenderer::CreateDenoiserTextures(const Size& size)
 		mSampleCount[0] = mDevice->CreateTexture(mAllocator, textureDesc);
 		textureDesc.name   = "RayTracedReflectionRenderer::ReflectionDenoiser::SampleCount 1";
 		mSampleCount[1] = mDevice->CreateTexture(mAllocator, textureDesc);
-
-		textureDesc.format = TextureFormat::R16G16_SNorm;
-		textureDesc.name   = "RayTracedReflectionRenderer::ReflectionDenoiser::NormalHistory 0";
-		mNormalHistory[0] = mDevice->CreateTexture(mAllocator, textureDesc);
-		textureDesc.name   = "RayTracedReflectionRenderer::ReflectionDenoiser::NormalHistory 1";
-		mNormalHistory[1] = mDevice->CreateTexture(mAllocator, textureDesc);
-
-		textureDesc.format = TextureFormat::R8_UNorm;
-		textureDesc.name   = "RayTracedReflectionRenderer::ReflectionDenoiser::RoughnessHistory 0";
-		mRoughnessHistory[0] = mDevice->CreateTexture(mAllocator, textureDesc);
-		textureDesc.name   = "RayTracedReflectionRenderer::ReflectionDenoiser::RoughnessHistory 1";
-		mRoughnessHistory[1] = mDevice->CreateTexture(mAllocator, textureDesc);
 
 		textureDesc.format = TextureFormat::R11G11B10_SFloat;
 		textureDesc.size = Size(
@@ -218,47 +192,6 @@ void RayTracedReflectionRenderer::AddRenderPasses(RenderGraph& graph, RenderGrap
 	TextureHandle radianceHistory        = graph.ImportTexture(mRadiance[prevIndex], importParams);
 	TextureHandle variance               = graph.ImportTexture(mVariance[currIndex], importParams);
 	TextureHandle varianceHistory        = graph.ImportTexture(mVariance[prevIndex], importParams);
-
-	TextureHandle sampleCount;
-	TextureHandle sampleCountHistory;
-	TextureHandle averageRadiance;
-	TextureHandle averageRadianceHistory;
-	TextureHandle normalHistory;
-	TextureHandle previousNormal;
-	TextureHandle roughnessHistory;
-	TextureHandle previousRoughness;
-
-	if (mSettings.denoise)
-	{
-		sampleCount            = graph.ImportTexture(mSampleCount[prevIndex], importParams);
-		sampleCountHistory     = graph.ImportTexture(mSampleCount[currIndex], importParams);
-		averageRadiance        = graph.ImportTexture(mAverageRadiance[prevIndex], importParams);
-		averageRadianceHistory = graph.ImportTexture(mAverageRadiance[currIndex], importParams);
-		normalHistory          = graph.ImportTexture(mNormalHistory[currIndex], importParams);
-		previousNormal         = graph.ImportTexture(mNormalHistory[prevIndex], importParams);
-		roughnessHistory       = graph.ImportTexture(mRoughnessHistory[currIndex], importParams);
-		previousRoughness      = graph.ImportTexture(mRoughnessHistory[prevIndex], importParams);
-
-		if (mFirstFrame)
-		{
-			struct ClearHistoryPassData
-			{
-			};
-
-			graph.AddRenderPass<ClearHistoryPassData>("RayTracedReflectionRenderer::ClearHistory",
-			[&](RenderGraphBuilder& builder, ClearHistoryPassData& passData)
-			{
-				sampleCount            = builder.UseColorBuffer(sampleCount);
-				sampleCountHistory     = builder.UseColorBuffer(sampleCountHistory);
-				averageRadiance        = builder.UseColorBuffer(averageRadiance);
-				averageRadianceHistory = builder.UseColorBuffer(averageRadianceHistory);
-			},
-			[](const CommandBuffer* cmd, const ClearHistoryPassData& passData)
-			{
-				// Attachments are cleared by the load action on render pass begin
-			});
-		}
-	}
 
 	// ----------------------------------------------------------------
 	// Pass 0 — Ray classification
@@ -454,6 +387,31 @@ void RayTracedReflectionRenderer::AddRenderPasses(RenderGraph& graph, RenderGrap
 
 	if (mSettings.denoise)
 	{
+		TextureHandle sampleCount            = graph.ImportTexture(mSampleCount[prevIndex], importParams);
+		TextureHandle sampleCountHistory     = graph.ImportTexture(mSampleCount[currIndex], importParams);
+		TextureHandle averageRadiance        = graph.ImportTexture(mAverageRadiance[prevIndex], importParams);
+		TextureHandle averageRadianceHistory = graph.ImportTexture(mAverageRadiance[currIndex], importParams);
+
+		if (mFirstFrame)
+		{
+			struct ClearHistoryPassData
+			{
+			};
+
+			graph.AddRenderPass<ClearHistoryPassData>("RayTracedReflectionRenderer::ClearHistory",
+			[&](RenderGraphBuilder& builder, ClearHistoryPassData& passData)
+			{
+				sampleCount            = builder.UseColorBuffer(sampleCount);
+				sampleCountHistory     = builder.UseColorBuffer(sampleCountHistory);
+				averageRadiance        = builder.UseColorBuffer(averageRadiance);
+				averageRadianceHistory = builder.UseColorBuffer(averageRadianceHistory);
+			},
+			[](const CommandBuffer* cmd, const ClearHistoryPassData& passData)
+			{
+				// Attachments are cleared by the load action on render pass begin
+			});
+		}
+		
 		// ----------------------------------------------------------------
 		// Pass 3 — Reproject
 		// ----------------------------------------------------------------
@@ -492,8 +450,8 @@ void RayTracedReflectionRenderer::AddRenderPasses(RenderGraph& graph, RenderGrap
 			passData.roughness             = builder.ReadTexture(gBufferData.roughnessTarget);
 			passData.motionVector          = builder.ReadTexture(gBufferData.motionVectorTarget);
 			passData.previousDepth         = builder.ReadTexture(depthPrepassData.previousDepth);
-			passData.previousNormal        = builder.ReadTexture(previousNormal);
-			passData.previousRoughness     = builder.ReadTexture(previousRoughness);
+			passData.previousNormal        = builder.ReadTexture(gBufferData.previousShadingNormalTarget);
+			passData.previousRoughness     = builder.ReadTexture(gBufferData.previousRoughnessTarget);
 			passData.radiance              = builder.ReadTexture(reflectionTarget);
 			passData.radianceHistory       = builder.ReadTexture(radianceHistory);
 			passData.variance              = builder.ReadTexture(varianceHistory);
@@ -633,39 +591,6 @@ void RayTracedReflectionRenderer::AddRenderPasses(RenderGraph& graph, RenderGrap
 			cmd->SetPushConstant(constants);
 			cmd->SetConstantBuffer(sceneData.camera.uniforms, CAMERA_UNIFORMS_BINDING_SLOT);
 			cmd->DispatchIndirect(passData.dispatchArgs);
-		});
-
-		// ----------------------------------------------------------------
-		// Pass 6 — Store normal and roughness history for the next frame
-		// ----------------------------------------------------------------
-		struct StoreHistoryPassData
-		{
-			TextureHandle normal;
-			TextureHandle roughness;
-			TextureHandle normalHistory;
-			TextureHandle roughnessHistory;
-		};
-
-		graph.AddComputePass<StoreHistoryPassData>("RayTracedReflectionRenderer::StoreHistory",
-		[&](RenderGraphBuilder& builder, StoreHistoryPassData& passData)
-		{
-			passData.normal           = builder.ReadTexture(gBufferData.shadingNormalTarget);
-			passData.roughness        = builder.ReadTexture(gBufferData.roughnessTarget);
-			passData.normalHistory    = builder.WriteTexture(normalHistory);
-			passData.roughnessHistory = builder.WriteTexture(roughnessHistory);
-		},
-		[this, &sceneData, numTilesX, numTilesY](const CommandBuffer* cmd, const StoreHistoryPassData& passData)
-		{
-			ReflectionDenoiserStoreHistoryConstants constants = {};
-			constants.normalTexture           = passData.normal;
-			constants.roughnessTexture        = passData.roughness;
-			constants.normalHistoryTexture    = passData.normalHistory;
-			constants.roughnessHistoryTexture = passData.roughnessHistory;
-
-			cmd->BindComputePipeline(mStoreHistoryPipeline);
-			cmd->SetPushConstant(constants);
-			cmd->SetConstantBuffer(sceneData.camera.uniforms, CAMERA_UNIFORMS_BINDING_SLOT);
-			cmd->Dispatch(numTilesX, numTilesY, 1u);
 		});
 
 		reflectionTarget = resolveData.radianceOutput;
