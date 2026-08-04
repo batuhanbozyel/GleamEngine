@@ -333,6 +333,7 @@ static constexpr MTLResourceOptions MemoryTypeToMTLResourceOption(MemoryType typ
     {
         case MemoryType::GPU: return MTLResourceStorageModePrivate;
         case MemoryType::CPU: return MTLResourceStorageModeShared;
+        case MemoryType::Readback: return MTLResourceStorageModeShared;
         default: GLEAM_ASSERT(false, "Metal: Unknown memory type specified!"); return MTLResourceOptions(~0);
     }
 }

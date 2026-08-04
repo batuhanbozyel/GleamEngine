@@ -649,7 +649,11 @@ Buffer GraphicsDevice::CreateBuffer(GPUAllocator* allocator, const BufferDescrip
     buffer.mHandle = mtlBuffer;
     buffer.mContents = contents;
     buffer.mAlignment = 4;
-    buffer.mResourceView = static_cast<MetalDevice*>(this)->CreateResourceView(buffer);
+    
+    if (descriptor.memoryType != MemoryType::Readback)
+    {
+        buffer.mResourceView = static_cast<MetalDevice*>(this)->CreateResourceView(buffer);
+    }
     return buffer;
 }
 
@@ -1241,7 +1245,7 @@ void GraphicsDevice::Dispose(Heap& heap)
 
 void GraphicsDevice::Dispose(GPUAllocator* allocator, Buffer& buffer, BarrierStage stage)
 {
-    if (buffer.GetDescriptor().memoryType == MemoryType::CPU)
+    if (buffer.GetDescriptor().memoryType != MemoryType::GPU)
     {
         mReleaseQueue->AddResource([this,
                                     allocator = allocator,

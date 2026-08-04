@@ -7,8 +7,11 @@
 
 #pragma once
 #include "View/View.h"
+#include "World/Entity.h"
 
 namespace GEditor {
+
+class SelectionSystem;
 
 class WorldOutliner final : public View
 {
@@ -26,10 +29,8 @@ private:
 
 	Gleam::World* mEditWorld = nullptr;
 
-	uint32_t mSelectedSingletonID = 0;
-    
-    Gleam::EntityHandle mSelectedEntity = Gleam::InvalidEntity;
-    
+	SelectionSystem* mSelection = nullptr;
+
 };
 
 } // namespace GEditor

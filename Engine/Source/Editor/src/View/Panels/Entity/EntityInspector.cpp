@@ -7,6 +7,7 @@
 
 #include "EntityInspector.h"
 #include "View/Widgets/PropertyDrawer.h"
+#include "Selection/SelectionSystem.h"
 
 #include "World/World.h"
 #include "Renderer/Renderers/ImGuiRenderer.h"
@@ -19,21 +20,7 @@ using namespace GEditor;
 void EntityInspector::OnCreate(Gleam::World* world)
 {
 	mEditWorld = world;
-    Gleam::EventDispatcher<EntitySelectedEvent>::Subscribe([this](EntitySelectedEvent e)
-    {
-        mSelectedEntity = e.GetEntity();
-        if (mSelectedEntity != Gleam::InvalidEntity)
-        {
-            auto& entityManager = mEditWorld->GetEntityManager();
-            auto& entity = entityManager.GetComponent<Gleam::Entity>(mSelectedEntity);
-            mEntityEulerRotation = Gleam::Math::Rad2Deg(Gleam::Math::EulerAngles(entity.GetLocalTransform().rotation));
-        }
-    });
-
-	Gleam::EventDispatcher<SingletonSelectedEvent>::Subscribe([this](SingletonSelectedEvent e)
-	{
-		mSelectedSingletonID = e.GetSingleton();
-	});
+	mSelection = world->GetSubsystem<SelectionSystem>();
 }
 
 void EntityInspector::Render(Gleam::ImGuiRenderer* imgui)
@@ -43,15 +30,17 @@ void EntityInspector::Render(Gleam::ImGuiRenderer* imgui)
 		if (!ImGui::Begin("Entity Inspector")) return;
 
 		auto& entityManager = mEditWorld->GetEntityManager();
-        if (mSelectedEntity != Gleam::InvalidEntity)
+		auto selectedEntity = mSelection->GetSelectedEntity();
+        if (selectedEntity != Gleam::InvalidEntity)
         {
-			auto& entity = entityManager.GetComponent<Gleam::Entity>(mSelectedEntity);
+			auto& entity = entityManager.GetComponent<Gleam::Entity>(selectedEntity);
 			auto localTransform = entity.GetLocalTransform();
 
 			// Rotation is edited as euler angles, so the cache has to follow the transform gizmo
-			if (localTransform.rotation != mEntityRotation)
+			if (selectedEntity != mCachedEntity || localTransform.rotation != mEntityRotation)
 			{
 				mEntityEulerRotation = Gleam::Math::Rad2Deg(Gleam::Math::EulerAngles(localTransform.rotation));
+				mCachedEntity = selectedEntity;
 			}
 
 			PropertyDrawer::DrawCustom("Local Transform", Gleam::Reflection::GetClass<Gleam::Transform>().TypeHash(), [&]()
@@ -64,7 +53,7 @@ void EntityInspector::Render(Gleam::ImGuiRenderer* imgui)
 			entity.SetLocalTransform(localTransform);
 			mEntityRotation = localTransform.rotation;
 
-			entityManager.Visit(mSelectedEntity, [](void* component, const Gleam::Reflection::ClassDescription& classDesc)
+			entityManager.Visit(selectedEntity, [](void* component, const Gleam::Reflection::ClassDescription& classDesc)
 			{
 				if (classDesc.HasAttribute<Gleam::Reflection::Attribute::EntityComponent>())
 				{
@@ -72,11 +61,12 @@ void EntityInspector::Render(Gleam::ImGuiRenderer* imgui)
 				}
 			});
         }
-		else if (mSelectedSingletonID != 0)
+		else if (mSelection->GetSelectedSingleton() != 0)
 		{
-			entityManager.VisitSingletons([this](void* component, const Gleam::Reflection::ClassDescription& classDesc)
+			auto selectedSingleton = mSelection->GetSelectedSingleton();
+			entityManager.VisitSingletons([selectedSingleton](void* component, const Gleam::Reflection::ClassDescription& classDesc)
 			{
-				if (classDesc.TypeHash() == mSelectedSingletonID)
+				if (classDesc.TypeHash() == selectedSingleton)
 				{
 					PropertyDrawer::DrawClass(classDesc.ResolveName(), component, classDesc);
 				}

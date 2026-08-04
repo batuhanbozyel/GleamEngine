@@ -7,6 +7,7 @@
 
 #include "WorldOutliner.h"
 #include "WorldViewport.h"
+#include "Selection/SelectionSystem.h"
 
 #include "Core/Globals.h"
 #include "Core/Engine.h"
@@ -30,6 +31,7 @@ static Gleam::TStringView ResolveDisplayName(const Gleam::Reflection::ClassDescr
 void WorldOutliner::OnCreate(Gleam::World* world)
 {
 	mEditWorld = world;
+	mSelection = world->GetSubsystem<SelectionSystem>();
 }
 
 void WorldOutliner::Render(Gleam::ImGuiRenderer* imgui)
@@ -101,7 +103,7 @@ void WorldOutliner::DrawEntityNode(Gleam::EntityHandle handle)
 		flags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
 	}
 
-	if (handle == mSelectedEntity)
+	if (handle == mSelection->GetSelectedEntity())
 	{
 		flags |= ImGuiTreeNodeFlags_Selected;
 	}
@@ -110,10 +112,7 @@ void WorldOutliner::DrawEntityNode(Gleam::EntityHandle handle)
 
 	if (ImGui::IsItemClicked())
 	{
-		Gleam::EventDispatcher<EntitySelectedEvent>::Publish(EntitySelectedEvent(handle));
-		Gleam::EventDispatcher<SingletonSelectedEvent>::Publish(SingletonSelectedEvent(0));
-		mSelectedEntity = handle;
-		mSelectedSingletonID = 0;
+		mSelection->SelectEntity(handle);
 	}
 
 	if (ImGui::BeginPopupContextItem())
@@ -152,7 +151,7 @@ void WorldOutliner::DrawSingletonComponents()
 				ImGuiTreeNodeFlags_NoTreePushOnOpen |
 				ImGuiTreeNodeFlags_SpanAvailWidth;
 
-			if (mSelectedEntity == Gleam::InvalidEntity && mSelectedSingletonID == componentID)
+			if (mSelection->GetSelectedSingleton() == componentID)
 			{
 				flags |= ImGuiTreeNodeFlags_Selected;
 			}
@@ -165,10 +164,7 @@ void WorldOutliner::DrawSingletonComponents()
 
 			if (ImGui::IsItemClicked())
 			{
-				Gleam::EventDispatcher<EntitySelectedEvent>::Publish(EntitySelectedEvent(Gleam::InvalidEntity));
-				Gleam::EventDispatcher<SingletonSelectedEvent>::Publish(SingletonSelectedEvent(componentID));
-				mSelectedEntity = Gleam::InvalidEntity;
-				mSelectedSingletonID = componentID;
+				mSelection->SelectSingleton(componentID);
 			}
 		}
 	});

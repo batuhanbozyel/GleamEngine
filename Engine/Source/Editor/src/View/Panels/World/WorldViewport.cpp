@@ -8,6 +8,7 @@
 #include "WorldViewport.h"
 #include "EditorCameraController.h"
 #include "EAssets/EAssetManager.h"
+#include "Selection/SelectionSystem.h"
 #include "Renderers/InfiniteGridRenderer.h"
 #include "Renderers/ViewModeRenderer.h"
 
@@ -55,11 +56,7 @@ static void SetEntityWorldTransform(Gleam::Entity& entity, const Gleam::Transfor
 void WorldViewport::OnCreate(Gleam::World* world)
 {
 	mEditWorld = world;
-
-	Gleam::EventDispatcher<EntitySelectedEvent>::Subscribe([this](EntitySelectedEvent e)
-	{
-		mSelectedEntity = e.GetEntity();
-	});
+	mSelection = world->GetSubsystem<SelectionSystem>();
 
 	auto renderSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::RenderSystem>();
 	mGridRenderer = new InfiniteGridRenderer();
@@ -106,7 +103,6 @@ void WorldViewport::Render(Gleam::ImGuiRenderer* imgui)
 	{
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
 
-		// Grabbing a handle must not drag the panel itself when it is floating instead of docked
 		const bool gizmoActive = mGizmo.IsHovered() || mGizmo.IsDragging();
 		ImGui::Begin("Viewport", nullptr, gizmoActive ? ImGuiWindowFlags_NoMove : ImGuiWindowFlags_None);
 
@@ -234,8 +230,8 @@ void WorldViewport::DrawViewport(Gleam::ImGuiRenderer* imgui, const Gleam::ImGui
 
 	ImGui::Image(imgui->GetImTextureIDForTexture(passData.sceneTarget), ImVec2(sceneRTsize.width / displayScale, sceneRTsize.height / displayScale), ImVec2(0.0f, 0.0f), ImVec2(1.0f, 1.0f));
 
-	const ImVec2 imageMin = ImGui::GetItemRectMin();
-	const ImVec2 imageSize = ImGui::GetItemRectSize();
+	ImVec2 imageMin = ImGui::GetItemRectMin();
+	ImVec2 imageSize = ImGui::GetItemRectSize();
 	DrawGizmo(Gleam::Float2(imageMin.x, imageMin.y), Gleam::Float2(imageSize.x, imageSize.y));
 
 	bool isFocused = ImGui::IsWindowFocused();
@@ -248,8 +244,7 @@ void WorldViewport::DrawViewport(Gleam::ImGuiRenderer* imgui, const Gleam::ImGui
 		mCursorVisible ? inputSystem->HideCursor() : inputSystem->ShowCursor();
 		mCursorVisible = !mCursorVisible;
 	}
-
-	// Camera movement takes over the same keys while looking around with the cursor captured
+	
 	if (isFocused && mCursorVisible)
 	{
 		if (ImGui::IsKeyPressed(ImGuiKey_W, false))
@@ -281,7 +276,8 @@ void WorldViewport::DrawViewport(Gleam::ImGuiRenderer* imgui, const Gleam::ImGui
 void WorldViewport::DrawGizmo(const Gleam::Float2& imageMin, const Gleam::Float2& imageSize)
 {
 	auto& entityManager = mEditWorld->GetEntityManager();
-	if (mSelectedEntity == Gleam::InvalidEntity || entityManager.HasComponent<Gleam::Entity>(mSelectedEntity) == false)
+	auto selectedEntity = mSelection->GetSelectedEntity();
+	if (selectedEntity == Gleam::InvalidEntity || entityManager.HasComponent<Gleam::Entity>(selectedEntity) == false)
 	{
 		return;
 	}
@@ -289,8 +285,7 @@ void WorldViewport::DrawGizmo(const Gleam::Float2& imageMin, const Gleam::Float2
 	const auto& cameraEntity = entityManager.GetComponent<Gleam::Entity>(mCamera);
 	const auto& cameraComponent = entityManager.GetComponent<Gleam::Camera>(mCamera);
 
-	// Matches the matrices RenderSystem builds for this camera, so the handles land on the rendered pixels
-	const auto view = Gleam::Float4x4::LookTo(cameraEntity.GetWorldPosition(), cameraEntity.ForwardVector(), cameraEntity.UpVector());
+	Gleam::Float4x4 view = Gleam::Float4x4::LookTo(cameraEntity.GetWorldPosition(), cameraEntity.ForwardVector(), cameraEntity.UpVector());
 	Gleam::Float4x4 projection;
 	if (cameraComponent.projectionType == Gleam::ProjectionType::Perspective)
 	{
@@ -310,7 +305,7 @@ void WorldViewport::DrawGizmo(const Gleam::Float2& imageMin, const Gleam::Float2
 	viewport.rectMin = imageMin;
 	viewport.rectSize = imageSize;
 
-	auto& entity = entityManager.GetComponent<Gleam::Entity>(mSelectedEntity);
+	auto& entity = entityManager.GetComponent<Gleam::Entity>(selectedEntity);
 	auto transform = entity.GetWorldTransform();
 
 	const bool inputEnabled = ImGui::IsWindowHovered() && mCursorVisible;

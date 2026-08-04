@@ -9,6 +9,7 @@
 #include "View/View.h"
 #include "View/Widgets/TransformGizmo.h"
 #include "Math/Size.h"
+#include "World/Entity.h"
 
 namespace Gleam {
 class EntityManager;
@@ -20,6 +21,7 @@ namespace GEditor {
 class InfiniteGridRenderer;
 class EditorCameraController;
 class ViewModeRenderer;
+class SelectionSystem;
 
 class WorldViewport final : public View
 {
@@ -58,7 +60,7 @@ private:
 
 	Gleam::EntityHandle mCamera = Gleam::InvalidEntity;
 
-	Gleam::EntityHandle mSelectedEntity = Gleam::InvalidEntity;
+	SelectionSystem* mSelection = nullptr;
 
 	TransformGizmo mGizmo;
     

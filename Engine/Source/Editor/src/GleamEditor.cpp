@@ -8,6 +8,7 @@
 #include "World/Components/ReflectionProbe.h"
 
 #include "EAssets/EAssetManager.h"
+#include "Selection/SelectionSystem.h"
 #include "View/ViewStack.h"
 #include "World/World.h"
 
@@ -31,6 +32,7 @@ public:
 
 		auto worldManager = GetSubsystem<Gleam::WorldManager>();
 		mEditWorld = worldManager->GetActiveWorld();
+		mEditWorld->AddSubsystem<SelectionSystem>();
 
 		auto viewStack = mEditWorld->AddSubsystem<ViewStack>();
 		viewStack->AddView<MenuBar>();
@@ -44,6 +46,7 @@ public:
 	~GleamEditor()
 	{
 		mEditWorld->RemoveSubsystem<ViewStack>();
+		mEditWorld->RemoveSubsystem<SelectionSystem>();
 		RemoveSubsystem<EAssetManager>();
 	}
 
