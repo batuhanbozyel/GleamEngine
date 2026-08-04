@@ -26,6 +26,9 @@ private:
 
 	Gleam::Float3 mEntityEulerRotation = {};
 
+	// Rotation this panel last wrote, anything else means the entity was rotated elsewhere
+	Gleam::Quaternion mEntityRotation = Gleam::Quaternion::identity;
+
 	Gleam::EntityHandle mSelectedEntity = Gleam::InvalidEntity;
 
 };

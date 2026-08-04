@@ -7,6 +7,7 @@
 
 #pragma once
 #include "View/View.h"
+#include "View/Widgets/TransformGizmo.h"
 #include "Math/Size.h"
 
 namespace Gleam {
@@ -43,8 +44,10 @@ private:
 
 	void DrawViewport(Gleam::ImGuiRenderer* imgui, const Gleam::ImGuiPassData& passData);
 
+	void DrawGizmo(const Gleam::Float2& imageMin, const Gleam::Float2& imageSize);
+
 	void Resize(Gleam::EntityManager& entityManager, const Gleam::Size& size);
-    
+
     bool mCursorVisible = true;
 
 	bool mViewportSizeChanged = false;
@@ -54,6 +57,10 @@ private:
     EditorCameraController* mCameraController = nullptr;
 
 	Gleam::EntityHandle mCamera = Gleam::InvalidEntity;
+
+	Gleam::EntityHandle mSelectedEntity = Gleam::InvalidEntity;
+
+	TransformGizmo mGizmo;
     
     Gleam::Size mViewportSize = Gleam::Size::zero;
     

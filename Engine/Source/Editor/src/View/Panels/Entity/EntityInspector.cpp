@@ -47,6 +47,13 @@ void EntityInspector::Render(Gleam::ImGuiRenderer* imgui)
         {
 			auto& entity = entityManager.GetComponent<Gleam::Entity>(mSelectedEntity);
 			auto localTransform = entity.GetLocalTransform();
+
+			// Rotation is edited as euler angles, so the cache has to follow the transform gizmo
+			if (localTransform.rotation != mEntityRotation)
+			{
+				mEntityEulerRotation = Gleam::Math::Rad2Deg(Gleam::Math::EulerAngles(localTransform.rotation));
+			}
+
 			PropertyDrawer::DrawCustom("Local Transform", Gleam::Reflection::GetClass<Gleam::Transform>().TypeHash(), [&]()
 			{
 				PropertyDrawer::DrawVec3Control("Translation", localTransform.position, 0.0f);
@@ -55,6 +62,7 @@ void EntityInspector::Render(Gleam::ImGuiRenderer* imgui)
 				localTransform.rotation = Gleam::Quaternion(Gleam::Math::Deg2Rad(mEntityEulerRotation));
 			});
 			entity.SetLocalTransform(localTransform);
+			mEntityRotation = localTransform.rotation;
 
 			entityManager.Visit(mSelectedEntity, [](void* component, const Gleam::Reflection::ClassDescription& classDesc)
 			{

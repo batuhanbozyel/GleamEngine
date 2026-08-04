@@ -53,6 +53,12 @@ void EditorCameraController::ProcessCameraMovement(Gleam::Entity& camera)
     constexpr float cameraSpeed = 5.0f;
     auto deltaTime = static_cast<float>(Gleam::Timestep::deltaTime);
     auto inputSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::InputSystem>();
+	// Flying is bound to the same keys the viewport uses for the gizmo, so it only applies while looking around
+	if (inputSystem->CursorVisible())
+	{
+		return;
+	}
+
     if (inputSystem->GetButtonDown(Gleam::KeyCode::A))
     {
 		camera.Translate(-camera.RightVector() * cameraSpeed * deltaTime);
