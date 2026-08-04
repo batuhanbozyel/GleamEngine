@@ -8,6 +8,7 @@
 #include "ContentBrowser.h"
 #include "EAssets/MeshSource.h"
 #include "EAssets/EAssetManager.h"
+#include "View/Widgets/AssetIcon.h"
 
 #include "Core/Globals.h"
 #include "Core/Engine.h"
@@ -161,11 +162,6 @@ void ContentBrowser::SetCurrentDirectory(const Gleam::Path& directory)
 
 void ContentBrowser::RefreshAssetGrid()
 {
-	static const auto meshType = Gleam::Reflection::GetClass<Gleam::MeshDescriptor>().Guid();
-	static const auto textureType = Gleam::Reflection::GetClass<Gleam::Texture2DDescriptor>().Guid();
-	static const auto materialType = Gleam::Reflection::GetClass<Gleam::MaterialDescriptor>().Guid();
-	static const auto materialInstanceType = Gleam::Reflection::GetClass<Gleam::MaterialInstanceDescriptor>().Guid();
-
 	mGridEntries.clear();
 	Gleam::Filesystem::ForEach(mCurrentDirectory, [&](const auto& node)
 	{
@@ -185,46 +181,29 @@ void ContentBrowser::RefreshAssetGrid()
 			entry.label = entry.asset.name;
 			entry.payloadType = "GLEAM_ASSET";
 
-			if (entry.asset.type == meshType)
-			{
-				entry.iconText = "Mesh";
-				entry.color = Gleam::Color(0.2f, 0.5f, 0.95f, 1.0f); // Blue
-			}
-			else if (entry.asset.type == textureType)
-			{
-				entry.iconText = "Texture";
-				entry.color = Gleam::Color(0.95f, 0.3f, 0.7f, 1.0f); // Pink/Magenta
-			}
-			else if (entry.asset.type == materialType)
-			{
-				entry.iconText = "Material";
-				entry.color = Gleam::Color(0.15f, 0.65f, 0.1f, 1.0f); // Green
-			}
-			else if (entry.asset.type == materialInstanceType)
-			{
-				entry.iconText = "Material\nInstance";
-				entry.color = Gleam::Color(0.5f, 0.95f, 0.4f, 1.0f); // Light Green
-			}
-			else
-			{
-				entry.iconText = "?";
-			}
+			const auto icon = GetAssetIcon(entry.asset.type);
+			entry.iconText = icon.text;
+			entry.color = icon.color;
 		}
 		else if (node.Extension() == Gleam::Prefab::Extension())
 		{
 			entry.asset = mAssetManager->GetAsset(Gleam::Guid(node.Stem()));
 			entry.label = entry.asset.name;
-			entry.iconText = "Prefab";
 			entry.payloadType = "GLEAM_PREFAB";
-			entry.color = Gleam::Color(0.9f, 0.55f, 0.2f, 1.0f); // Orange
+
+			const auto icon = GetAssetIcon(entry.asset.type);
+			entry.iconText = icon.text;
+			entry.color = icon.color;
 		}
 		else if (node.Extension() == Gleam::World::Extension())
 		{
 			entry.asset = mAssetManager->GetAsset(Gleam::Guid(node.Stem()));
 			entry.label = entry.asset.name;
-			entry.iconText = "World";
 			entry.payloadType = "GLEAM_WORLD";
-			entry.color = Gleam::Color(0.7f, 0.3f, 0.85f, 1.0f); // Purple
+
+			const auto icon = GetAssetIcon(entry.asset.type);
+			entry.iconText = icon.text;
+			entry.color = icon.color;
 		}
 		else
 		{

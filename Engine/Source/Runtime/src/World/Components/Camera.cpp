@@ -28,7 +28,7 @@ void Camera::SetViewport(float width, float height)
 
 Size Camera::GetViewport() const
 {
-	return Size{ orthographicSize * aspectRatio, orthographicSize };
+	return Size{ Math::Round(orthographicSize * aspectRatio), Math::Round(orthographicSize) };
 }
 
 } // namespace Gleam

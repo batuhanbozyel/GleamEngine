@@ -1,10 +1,110 @@
 #include "PropertyDrawer.h"
+#include "AssetIcon.h"
+
+#include "EAssets/EAssetManager.h"
+
+#include "Core/Globals.h"
+#include "Core/Application.h"
 
 #include <imgui.h>
 #include <imgui_internal.h>
 #include <Runtime.Reflection.generated.h>
 
 using namespace GEditor;
+
+static Gleam::TStringView QualifiedNameWithoutTemplateDeclaration(const Gleam::TStringView name)
+{
+	auto pos = name.find_first_of('<');
+	if (pos == Gleam::TStringView::npos)
+	{
+		return name;
+	}
+	return name.substr(0, pos);
+}
+
+static size_t ArrayElementSize(const Gleam::Reflection::ArrayDescription& arrayDesc)
+{
+	switch (arrayDesc.ElementType())
+	{
+		case Gleam::Reflection::MetaType::Primitive:
+			return Gleam::Reflection::GetPrimitive(arrayDesc.ElementHash()).GetSize();
+		case Gleam::Reflection::MetaType::Enum:
+			return Gleam::Reflection::GetEnum(arrayDesc.ElementHash())->GetSize();
+		case Gleam::Reflection::MetaType::Class:
+			return Gleam::Reflection::GetClass(arrayDesc.ElementHash())->GetSize();
+		case Gleam::Reflection::MetaType::Array:
+			return Gleam::Reflection::GetArray(arrayDesc.ElementHash())->GetSize();
+		default:
+			return 0;
+	}
+}
+
+const Gleam::HashMap<Gleam::TStringView, PropertyDrawer::DrawFunction>& PropertyDrawer::GetCustomDrawers()
+{
+	static const auto drawers = []()
+	{
+		Gleam::HashMap<Gleam::TStringView, DrawFunction> customDrawers;
+
+		customDrawers[Gleam::Reflection::GetClass<Gleam::Color>().ResolveQualifiedName()] =
+			[](const Gleam::TStringView label, void* obj, const Gleam::Reflection::ClassDescription& classDesc, float columnWidth)
+		{
+			DrawColorControl(label, Gleam::Reflection::Get<Gleam::Color>(obj), columnWidth);
+		};
+
+		customDrawers[Gleam::Reflection::GetClass<Gleam::Float3>().ResolveQualifiedName()] =
+			[](const Gleam::TStringView label, void* obj, const Gleam::Reflection::ClassDescription& classDesc, float columnWidth)
+		{
+			DrawVec3Control(label, Gleam::Reflection::Get<Gleam::Float3>(obj), 0.0f, columnWidth);
+		};
+
+		customDrawers[Gleam::Reflection::GetClass<Gleam::AssetReference>().ResolveQualifiedName()] =
+			[](const Gleam::TStringView label, void* obj, const Gleam::Reflection::ClassDescription& classDesc, float columnWidth)
+		{
+			DrawAsset(label, Gleam::Reflection::Get<Gleam::AssetReference>(obj), columnWidth);
+		};
+
+		customDrawers[Gleam::Reflection::GetClass<Gleam::TString>().ResolveQualifiedName()] =
+			[](const Gleam::TStringView label, void* obj, const Gleam::Reflection::ClassDescription& classDesc, float columnWidth)
+		{
+			DrawStringControl(label, Gleam::Reflection::Get<Gleam::TString>(obj), columnWidth);
+		};
+
+		customDrawers[Gleam::Reflection::GetClass<Gleam::Guid>().ResolveQualifiedName()] =
+			[](const Gleam::TStringView label, void* obj, const Gleam::Reflection::ClassDescription& classDesc, float columnWidth)
+		{
+			DrawTextControl(label, Gleam::Reflection::Get<Gleam::Guid>(obj).ToString(), columnWidth);
+		};
+
+		const auto arrayName = QualifiedNameWithoutTemplateDeclaration(Gleam::Reflection::GetClass<Gleam::TArray<uint8_t>>().ResolveQualifiedName());
+		customDrawers[arrayName] =
+			[](const Gleam::TStringView label, void* obj, const Gleam::Reflection::ClassDescription& classDesc, float columnWidth)
+		{
+			auto templateParams = classDesc.ResolveTemplateParameters();
+			GLEAM_ASSERT(templateParams.size() == 1, "PropertyDrawer: TArray must have exactly one template parameter for element type.");
+
+			const auto& element = templateParams[0];
+			auto& arr = Gleam::Reflection::Get<Gleam::TArray<uint8_t>>(obj);
+			auto arrayDesc = Gleam::Reflection::ArrayDescription(element.GetType(), element.TypeHash(), arr.size());
+			DrawArray(label, arr.data(), arrayDesc, columnWidth);
+		};
+
+		return customDrawers;
+	}();
+	return drawers;
+}
+
+bool PropertyDrawer::TryCustomDrawer(const Gleam::TStringView label, void* obj, const Gleam::Reflection::ClassDescription& classDesc, float columnWidth)
+{
+	const auto qualifiedName = QualifiedNameWithoutTemplateDeclaration(classDesc.ResolveQualifiedName());
+	const auto& drawers = GetCustomDrawers();
+	auto it = drawers.find(qualifiedName);
+	if (it != drawers.end())
+	{
+		it->second(label, obj, classDesc, columnWidth);
+		return true;
+	}
+	return false;
+}
 
 void PropertyDrawer::DrawScalarControl(const Gleam::TStringView label, const Gleam::Reflection::PrimitiveType type, size_t size, void* value, const void* defaultValue, float columnWidth)
 {
@@ -239,6 +339,61 @@ void PropertyDrawer::DrawColorControl(const Gleam::TStringView label, Gleam::Col
 	ImGui::PopID();
 }
 
+void PropertyDrawer::DrawStringControl(const Gleam::TStringView label, Gleam::TString& value, float columnWidth)
+{
+	char buffer[64];
+	std::memcpy(buffer, label.data(), label.size());
+	buffer[label.size()] = '\0';
+
+	ImGui::PushID(buffer);
+
+	ImGui::Columns(2);
+	ImGui::SetColumnWidth(0, columnWidth);
+	ImGui::Text("%s", buffer);
+	ImGui::NextColumn();
+
+	ImGui::PushItemWidth(ImGui::CalcItemWidth());
+	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2{ 0, 0 });
+
+	char valueBuffer[256];
+	auto length = Gleam::Math::Min(value.length(), sizeof(valueBuffer) - 1);
+	std::memcpy(valueBuffer, value.c_str(), length);
+	valueBuffer[length] = '\0';
+
+	if (ImGui::InputText("##X", valueBuffer, sizeof(valueBuffer)))
+	{
+		value.assign(valueBuffer);
+	}
+
+	ImGui::PopItemWidth();
+	ImGui::SameLine();
+
+	ImGui::PopStyleVar();
+	ImGui::Columns(1);
+
+	ImGui::PopID();
+}
+
+void PropertyDrawer::DrawTextControl(const Gleam::TStringView label, const Gleam::TStringView value, float columnWidth)
+{
+	char buffer[64];
+	std::memcpy(buffer, label.data(), label.size());
+	buffer[label.size()] = '\0';
+
+	ImGui::PushID(buffer);
+
+	ImGui::Columns(2);
+	ImGui::SetColumnWidth(0, columnWidth);
+	ImGui::Text("%s", buffer);
+	ImGui::NextColumn();
+
+	ImGui::Text("%.*s", static_cast<int>(value.size()), value.data());
+
+	ImGui::Columns(1);
+
+	ImGui::PopID();
+}
+
 void PropertyDrawer::DrawEnumOptions(const Gleam::TStringView label, const Gleam::Reflection::EnumDescription& enumDesc, void* value, float columnWidth)
 {
 	ImGuiIO& io = ImGui::GetIO();
@@ -359,26 +514,17 @@ void PropertyDrawer::DrawClassFields(void* obj, const Gleam::Reflection::ClassDe
 			case Gleam::Reflection::MetaType::Class:
 			{
 				const auto fieldDesc = Gleam::Reflection::GetClass(field.TypeHash());
-				if (fieldDesc->ResolveQualifiedName() == Gleam::Reflection::GetClass<Gleam::Color>().ResolveQualifiedName())
+				auto fieldPtr = Gleam::OffsetPointer(obj, field.GetOffset());
+				if (TryCustomDrawer(fieldName, fieldPtr, *fieldDesc, columnWidth) == false)
 				{
-					DrawColorControl(fieldName, *static_cast<Gleam::Color*>(Gleam::OffsetPointer(obj, field.GetOffset())), columnWidth);
-				}
-				else if (fieldDesc->ResolveQualifiedName() == Gleam::Reflection::GetClass<Gleam::Float3>().ResolveQualifiedName())
-				{
-					DrawVec3Control(fieldName, *static_cast<Gleam::Float3*>(Gleam::OffsetPointer(obj, field.GetOffset())), 0.0f, columnWidth);
-				}
-				else if (fieldDesc->ResolveQualifiedName() == Gleam::Reflection::GetClass<Gleam::AssetReference>().ResolveQualifiedName())
-				{
-					DrawAsset(fieldName, *static_cast<Gleam::AssetReference*>(Gleam::OffsetPointer(obj, field.GetOffset())), columnWidth);
-				}
-				else
-				{
-					DrawClass(fieldName, Gleam::OffsetPointer(obj, field.GetOffset()), *fieldDesc, columnWidth);
+					DrawClass(fieldName, fieldPtr, *fieldDesc, columnWidth);
 				}
 				break;
 			}
 			case Gleam::Reflection::MetaType::Array:
 			{
+				const auto arrayDesc = Gleam::Reflection::GetArray(field.TypeHash());
+				DrawArray(fieldName, Gleam::OffsetPointer(obj, field.GetOffset()), *arrayDesc, columnWidth);
 				break;
 			}
 			case Gleam::Reflection::MetaType::Enum:
@@ -412,6 +558,8 @@ void PropertyDrawer::DrawClass(const Gleam::TStringView label, void* component, 
 	std::memcpy(buffer, label.data(), label.size());
 	buffer[label.size()] = '\0';
 
+	ImGui::PushID(buffer);
+
 	float outerWidth = ImGui::GetContentRegionAvail().x;
     bool open = ImGui::TreeNodeEx((void*)hash, treeNodeFlags, "%s", buffer);
     ImGui::PopStyleVar();
@@ -424,12 +572,69 @@ void PropertyDrawer::DrawClass(const Gleam::TStringView label, void* component, 
 		DrawClassFields(component, classDesc, fieldsWidth);
         ImGui::TreePop();
     }
+
+	ImGui::PopID();
 }
 
-void PropertyDrawer::DrawAsset(const Gleam::TStringView label, Gleam::AssetReference& assetRef, float columnWidth)
+void PropertyDrawer::DrawArrayElements(void* obj, const Gleam::Reflection::ArrayDescription& arrayDesc, float columnWidth)
 {
-	ImGuiIO& io = ImGui::GetIO();
-	auto boldFont = io.Fonts->Fonts[0];
+	size_t elementSize = ArrayElementSize(arrayDesc);
+	if (elementSize == 0)
+	{
+		return;
+	}
+
+	uint32_t index = 0;
+	for (size_t offset = 0; offset < arrayDesc.GetSize(); offset += elementSize, ++index)
+	{
+		char elementLabel[24];
+		snprintf(elementLabel, sizeof(elementLabel), "Element %u", index);
+
+		auto element = Gleam::OffsetPointer(obj, offset);
+
+		ImGui::PushID(static_cast<int>(index));
+		switch (arrayDesc.ElementType())
+		{
+			case Gleam::Reflection::MetaType::Primitive:
+			{
+				constexpr uint64_t defaultValue = 0;
+				const auto primitiveDesc = Gleam::Reflection::GetPrimitive(arrayDesc.ElementHash());
+				DrawScalarControl(elementLabel, primitiveDesc.Type(), primitiveDesc.GetSize(), element, &defaultValue, columnWidth);
+				break;
+			}
+			case Gleam::Reflection::MetaType::Enum:
+			{
+				const auto enumDesc = Gleam::Reflection::GetEnum(arrayDesc.ElementHash());
+				DrawEnumOptions(elementLabel, *enumDesc, element, columnWidth);
+				break;
+			}
+			case Gleam::Reflection::MetaType::Class:
+			{
+				const auto classDesc = Gleam::Reflection::GetClass(arrayDesc.ElementHash());
+				if (TryCustomDrawer(elementLabel, element, *classDesc, columnWidth) == false)
+				{
+					DrawClass(elementLabel, element, *classDesc, columnWidth);
+				}
+				break;
+			}
+			case Gleam::Reflection::MetaType::Array:
+			{
+				const auto innerDesc = Gleam::Reflection::GetArray(arrayDesc.ElementHash());
+				DrawArray(elementLabel, element, *innerDesc, columnWidth);
+				break;
+			}
+			default:
+				break;
+		}
+		ImGui::PopID();
+	}
+}
+
+void PropertyDrawer::DrawArray(const Gleam::TStringView label, void* obj, const Gleam::Reflection::ArrayDescription& arrayDesc, float columnWidth)
+{
+	const ImGuiTreeNodeFlags treeNodeFlags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_AllowOverlap | ImGuiTreeNodeFlags_FramePadding;
+	ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2{ 4, 4 });
+	ImGui::Separator();
 
 	char buffer[64];
 	std::memcpy(buffer, label.data(), label.size());
@@ -437,20 +642,73 @@ void PropertyDrawer::DrawAsset(const Gleam::TStringView label, Gleam::AssetRefer
 
 	ImGui::PushID(buffer);
 
+	size_t elementSize = ArrayElementSize(arrayDesc);
+	uint32_t elementCount = elementSize > 0 ? static_cast<uint32_t>(arrayDesc.GetSize() / elementSize) : 0u;
+
+	float outerWidth = ImGui::GetContentRegionAvail().x;
+	bool open = ImGui::TreeNodeEx(buffer, treeNodeFlags, "%s", buffer);
+	ImGui::PopStyleVar();
+
+	if (open)
+	{
+		float innerWidth = ImGui::GetContentRegionAvail().x;
+		float fieldsWidth = columnWidth > 0.0f ? columnWidth - (outerWidth - innerWidth) : innerWidth * 0.3f;
+		DrawArrayElements(obj, arrayDesc, fieldsWidth);
+		ImGui::TreePop();
+	}
+
+	ImGui::PopID();
+}
+
+void PropertyDrawer::DrawAsset(const Gleam::TStringView label, Gleam::AssetReference& assetRef, float columnWidth)
+{
+	char buffer[64];
+	std::memcpy(buffer, label.data(), label.size());
+	buffer[label.size()] = '\0';
+
+	ImGui::PushID(buffer);
+
+	const AssetItem* item = nullptr;
+	if (assetRef.guid != Gleam::Guid::InvalidGuid())
+	{
+		auto assetManager = Gleam::Globals::GameInstance->GetSubsystem<EAssetManager>();
+		item = assetManager->FindAsset(assetRef.guid);
+	}
+
+	auto assetType = item ? item->type : Gleam::Guid(Gleam::Guid::InvalidGuid());
+	const auto icon = GetAssetIcon(assetType);
+
+	float lineHeight = GImGui->FontSize + GImGui->Style.FramePadding.y * 2.0f;
+	float iconSize = lineHeight * 3.0f;
+	float textOffset = (iconSize - ImGui::GetTextLineHeight()) * 0.5f;
+
 	ImGui::Columns(2);
 	ImGui::SetColumnWidth(0, columnWidth);
+	ImGui::SetCursorPosY(ImGui::GetCursorPosY() + textOffset);
 	ImGui::Text("%s", buffer);
 	ImGui::NextColumn();
 
-	ImGui::PushItemWidth(ImGui::CalcItemWidth());
-	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2{ 0, 0 });
+	ImVec2 iconPos = ImGui::GetCursorScreenPos();
 
-	ImGui::Text("%s", assetRef.guid.ToString().c_str());
+	ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.2f, 0.2f, 1.0f));
+	ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.3f, 0.3f, 0.3f, 1.0f));
+	ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.4f, 0.4f, 0.4f, 1.0f));
+	ImGui::Button(icon.text, ImVec2(iconSize, iconSize));
+	ImGui::PopStyleColor(3);
 
-	ImGui::PopItemWidth();
+	if (assetRef.guid != Gleam::Guid::InvalidGuid() && ImGui::IsItemHovered())
+	{
+		ImGui::SetTooltip("%s", assetRef.guid.ToString().c_str());
+	}
+
+	ImVec2 barStart = ImVec2(iconPos.x, iconPos.y + iconSize + 1.5f);
+	auto barColor = ImGui::ColorConvertFloat4ToU32(ImVec4(icon.color.r, icon.color.g, icon.color.b, icon.color.a));
+	ImGui::GetWindowDrawList()->AddLine(barStart, ImVec2(barStart.x + iconSize, barStart.y), barColor, 3.0f);
+
 	ImGui::SameLine();
+	ImGui::SetCursorPosY(ImGui::GetCursorPosY() + textOffset);
+	ImGui::Text("%s", item ? item->name.c_str() : "None");
 
-	ImGui::PopStyleVar();
 	ImGui::Columns(1);
 
 	ImGui::PopID();

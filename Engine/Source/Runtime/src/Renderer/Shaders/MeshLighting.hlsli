@@ -15,6 +15,7 @@ float3 EvaluateMeshLighting(Gleam::SurfaceOutput surface,
                             Gleam::ShaderResourceIndex ggxEAvgTexture,
                             Gleam::ShaderResourceIndex diffuseReflectionTexture,
                             Gleam::ShaderResourceIndex specularReflectionTexture,
+                            Gleam::ShaderResourceIndex reflectionTexture,
                             Gleam::ShaderResourceIndex shadowTexture,
                             Gleam::ShaderResourceIndex aoTexture)
 {
@@ -57,6 +58,8 @@ float3 EvaluateMeshLighting(Gleam::SurfaceOutput surface,
                                    ggxEAvgTexture,
                                    diffuseReflectionTexture,
                                    specularReflectionTexture,
+                                   reflectionTexture,
+                                   pixelCoord,
                                    viewDir,
                                    worldNormal) * ambientOcclusion;
     return color;

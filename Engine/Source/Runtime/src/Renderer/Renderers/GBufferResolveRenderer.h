@@ -13,6 +13,9 @@ struct GBufferData
 	TextureHandle roughnessTarget = TextureHandle();
 	TextureHandle barycentricCoordsTarget = TextureHandle();
 	TextureHandle barycentricDerivsTarget = TextureHandle();
+	TextureHandle previousGeometryNormalTarget = TextureHandle();
+	TextureHandle previousShadingNormalTarget = TextureHandle();
+	TextureHandle previousRoughnessTarget = TextureHandle();
 };
 
 class GBufferResolveRenderer : public IRenderer
@@ -31,8 +34,19 @@ public:
 
 private:
 
+	void CreateGBufferTargets(const Size& size);
+
+	void ReleaseGBufferTargets();
+
 	GraphicsDevice* mDevice = nullptr;
+	GPUAllocator*   mAllocator = nullptr;
 	HashMap<uint32_t, ComputePipelineHandle> mResolvePipelines;
+
+	Texture mGeometryNormalTargets[2];
+	Texture mShadingNormalTargets[2];
+	Texture mRoughnessTargets[2];
+	Size mGBufferSize;
+	uint32_t mFrameIndex = 0;
 };
 
 } // namespace Gleam

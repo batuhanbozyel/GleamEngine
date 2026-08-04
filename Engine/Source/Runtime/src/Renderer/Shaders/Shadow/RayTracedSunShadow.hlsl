@@ -62,7 +62,7 @@ void rayTracedSunShadowRayGen()
     ray.Origin    = OffsetRayAlongNormal(worldPos, geometricNormal);
     ray.Direction = shadowDir;
     ray.TMin      = camera.nearPlane;
-    ray.TMax      = camera.farPlane;
+    ray.TMax      = constants.maxRayDistance;
 
     Gleam::ShadowPayload payload;
     payload.visibility = 0.0f;

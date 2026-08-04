@@ -9,6 +9,7 @@ struct DepthPrepassData
 {
 	TextureHandle depthTarget;
 	TextureHandle visibilityBuffer;
+	TextureHandle previousDepth;
 };
 
 class DepthPrepass : public IRenderer
@@ -27,8 +28,16 @@ public:
 
 private:
 
+	void CreateDepthBuffers(const Size& size);
+
 	GraphicsDevice* mDevice = nullptr;
+	GPUAllocator*   mAllocator = nullptr;
 	HashMap<uint32_t, MeshPipelineHandle> mPipelines;
+
+	Texture mDepthBuffers[2];
+	Size mDepthBufferSize;
+	uint32_t mFrameIndex = 0;
+	bool mFirstFrame = true;
 
 };
 

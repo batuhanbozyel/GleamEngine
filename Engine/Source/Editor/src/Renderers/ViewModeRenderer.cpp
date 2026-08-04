@@ -62,7 +62,10 @@ void ViewModeRenderer::AddRenderPasses(Gleam::RenderGraph& graph, Gleam::RenderG
 		}
 		case Gleam::ViewMode::ShadowMask:
 		{
-			source = blackboard.Get<Gleam::SunShadowData>().shadowMask;
+			if (blackboard.Has<Gleam::SunShadowData>())
+			{
+				source = blackboard.Get<Gleam::SunShadowData>().shadowMask;
+			}
 			break;
 		}
 		case Gleam::ViewMode::AmbientOcclusion:

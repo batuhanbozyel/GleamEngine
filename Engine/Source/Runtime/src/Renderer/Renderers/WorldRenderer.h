@@ -25,6 +25,7 @@ struct WorldRenderingData
 	TextureHandle diffuseReflection = TextureHandle();
 	TextureHandle shadowTexture = TextureHandle();
 	TextureHandle aoTexture = TextureHandle();
+	TextureHandle reflectionTexture = TextureHandle();
 };
 
 class WorldRenderer : public IRenderer

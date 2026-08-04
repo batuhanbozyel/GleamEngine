@@ -60,7 +60,7 @@ Size WindowSystem::GetResolution() const
 {
 	int width = 0, height = 0;
 	SDL_GetWindowSize(mWindow, &width, &height);
-	return Size((uint32_t)width, (uint32_t)height);
+	return Size(static_cast<float>(width), static_cast<float>(height));
 }
 
 void WindowSystem::Configure(const WindowConfig& config)

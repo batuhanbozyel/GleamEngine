@@ -45,8 +45,8 @@ uint HilbertIndex(uint posX, uint posY)
 // R2 low-discrepancy sequence over the Hilbert index. temporalIndex is 0 when not using TAA.
 lpfloat2 SpatioTemporalNoise(uint2 pixCoord, uint temporalIndex)
 {
-    uint index = HilbertIndex(pixCoord.x, pixCoord.y);
-    index += 288U * (temporalIndex & 63U);
+    uint index = HilbertIndex(pixCoord.x & (XE_HILBERT_WIDTH - 1U), pixCoord.y & (XE_HILBERT_WIDTH - 1U));
+    index += 288U * (temporalIndex & (XE_HILBERT_WIDTH - 1U));
     return lpfloat2(frac(0.5 + index * float2(0.75487766624669276005f, 0.5698402909980532659114f)));
 }
 

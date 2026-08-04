@@ -38,10 +38,11 @@ void pathTraceRayGen()
     if (pathTraceConstants.accelerationStructure == InvalidResourceIndex)
     {
         Gleam::RayPayload payload;
-        payload.radiance   = 0.0;
-        payload.throughput = 1.0;
-        payload.depth      = 0;
-        payload.seed       = 0;
+        payload.radiance    = 0.0;
+        payload.throughput  = 1.0;
+        payload.depth       = 0;
+        payload.seed        = 0;
+        payload.hitDistance = camera.farPlane;
         EvaluateMiss(payload, ray.Origin, ray.Direction);
         accumRadiance = payload.radiance;
     }
@@ -53,10 +54,11 @@ void pathTraceRayGen()
         for (uint s = 0; s < spp; s++)
         {
             Gleam::RayPayload payload;
-            payload.radiance   = 0.0;
-            payload.throughput = 1.0;
-            payload.depth      = 0;
-            payload.seed       = PathTraceInitSeed(pixelCoord, baseIndex + s);
+            payload.radiance    = 0.0;
+            payload.throughput  = 1.0;
+            payload.depth       = 0;
+            payload.seed        = PathTraceInitSeed(pixelCoord, baseIndex + s);
+            payload.hitDistance = camera.farPlane;
 
             TraceRay(
                 accelerationStructure,

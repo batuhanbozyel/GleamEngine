@@ -205,3 +205,8 @@ const AssetItem& EAssetManager::GetAsset(const Gleam::Guid& guid) const
 {
 	return mRegistry.GetAsset(guid);
 }
+
+const AssetItem* EAssetManager::FindAsset(const Gleam::Guid& guid) const
+{
+	return mRegistry.FindAsset(guid);
+}

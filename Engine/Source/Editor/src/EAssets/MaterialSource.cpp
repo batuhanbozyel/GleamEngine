@@ -197,6 +197,28 @@ bool MaterialSource::Import(const Gleam::Path& path, const ImportSettings& setti
 				return false;
 			}
 
+			// Reflection closest hit
+			if (CompileShaderVariant(generatedPath, descriptor.surfaceShader, {
+					.name = "ReflectionClosestHit",
+					.entryPoint = "ClosestHit",
+					.defines = {},
+					.includes = { "Reflection/RayTracedReflectionShading.hlsli" }
+				}) == false)
+			{
+				return false;
+			}
+
+			// Reflection any hit
+			if (CompileShaderVariant(generatedPath, descriptor.surfaceShader, {
+					.name = "ReflectionAnyHit",
+					.entryPoint = "AnyHit",
+					.defines = {},
+					.includes = { "Reflection/RayTracedReflectionShading.hlsli" }
+				}) == false)
+			{
+				return false;
+			}
+
 			// Visibility shading
 			if (CompileShaderVariant(generatedPath, descriptor.surfaceShader, {
 					.name = "VisibilityShading",
