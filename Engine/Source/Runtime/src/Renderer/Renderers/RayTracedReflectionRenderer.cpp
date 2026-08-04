@@ -54,10 +54,11 @@ void RayTracedReflectionRenderer::OnCreate(const RenderContext& context)
 
 void RayTracedReflectionRenderer::OnDestroy(const RenderContext& context)
 {
+	ReleasePersistentTextures();
 	ReleaseDenoiserTextures();
 }
 
-void RayTracedReflectionRenderer::ReleaseDenoiserTextures()
+void RayTracedReflectionRenderer::ReleasePersistentTextures()
 {
 	for (uint32_t i = 0; i < 2; ++i)
 	{
@@ -70,27 +71,34 @@ void RayTracedReflectionRenderer::ReleaseDenoiserTextures()
 		{
 			mDevice->Dispose(mAllocator, mVariance[i], BarrierStage::None);
 		}
+	}
+	mRenderSize = Size::zero;
+}
 
+void RayTracedReflectionRenderer::ReleaseDenoiserTextures()
+{
+	for (uint32_t i = 0; i < 2; ++i)
+	{
 		if (mSampleCount[i].IsValid())
 		{
 			mDevice->Dispose(mAllocator, mSampleCount[i], BarrierStage::None);
 		}
-
-		if (mAverageRadiance[i].IsValid())
-		{
-			mDevice->Dispose(mAllocator, mAverageRadiance[i], BarrierStage::None);
-		}
+	}
+	
+	if (mAverageRadiance.IsValid())
+	{
+		mDevice->Dispose(mAllocator, mAverageRadiance, BarrierStage::None);
 	}
 	mDenoiserSize = Size::zero;
 }
 
-void RayTracedReflectionRenderer::CreateDenoiserTextures(const Size& size)
+void RayTracedReflectionRenderer::CreatePersistentTextures(const Size& size)
 {
-	if (mDenoiserSize == size)
+	if (mRenderSize == size)
 	{
 		return;
 	}
-	ReleaseDenoiserTextures();
+	ReleasePersistentTextures();
 
 	RenderTextureDescriptor textureDesc;
 	textureDesc.dimension = TextureDimension::Texture2D;
@@ -108,24 +116,35 @@ void RayTracedReflectionRenderer::CreateDenoiserTextures(const Size& size)
 	textureDesc.name   = "RayTracedReflectionRenderer::ReflectionDenoiser::Variance 1";
 	mVariance[1] = mDevice->CreateTexture(mAllocator, textureDesc);
 
-	if (mSettings.denoise)
+	mRenderSize = size;
+	mFirstFrame = true;
+}
+
+void RayTracedReflectionRenderer::CreateDenoiserTextures(const Size& size)
+{
+	if (mDenoiserSize == size)
 	{
-		textureDesc.format = TextureFormat::R16_SFloat;
-		textureDesc.name   = "RayTracedReflectionRenderer::ReflectionDenoiser::SampleCount 0";
-		mSampleCount[0] = mDevice->CreateTexture(mAllocator, textureDesc);
-		textureDesc.name   = "RayTracedReflectionRenderer::ReflectionDenoiser::SampleCount 1";
-		mSampleCount[1] = mDevice->CreateTexture(mAllocator, textureDesc);
-
-		textureDesc.format = TextureFormat::R11G11B10_SFloat;
-		textureDesc.size = Size(
-			float(Math::DivideRoundingUp((uint32_t)size.width, REFLECTION_DENOISER_TILE_SIZE)),
-			float(Math::DivideRoundingUp((uint32_t)size.height, REFLECTION_DENOISER_TILE_SIZE)));
-		textureDesc.name   = "RayTracedReflectionRenderer::ReflectionDenoiser::AverageRadiance 0";
-		mAverageRadiance[0] = mDevice->CreateTexture(mAllocator, textureDesc);
-		textureDesc.name   = "RayTracedReflectionRenderer::ReflectionDenoiser::AverageRadiance 1";
-		mAverageRadiance[1] = mDevice->CreateTexture(mAllocator, textureDesc);
+		return;
 	}
+	ReleaseDenoiserTextures();
+	
+	RenderTextureDescriptor textureDesc;
+	textureDesc.dimension = TextureDimension::Texture2D;
+	textureDesc.size      = size;
+	
+	textureDesc.format = TextureFormat::R16_SFloat;
+	textureDesc.name   = "RayTracedReflectionRenderer::ReflectionDenoiser::SampleCount 0";
+	mSampleCount[0] = mDevice->CreateTexture(mAllocator, textureDesc);
+	textureDesc.name   = "RayTracedReflectionRenderer::ReflectionDenoiser::SampleCount 1";
+	mSampleCount[1] = mDevice->CreateTexture(mAllocator, textureDesc);
 
+	textureDesc.format 	= TextureFormat::R11G11B10_SFloat;
+	textureDesc.name  	= "RayTracedReflectionRenderer::ReflectionDenoiser::AverageRadiance";
+	textureDesc.size 	= Size(
+		float(Math::DivideRoundingUp((uint32_t)size.width, REFLECTION_DENOISER_TILE_SIZE)),
+		float(Math::DivideRoundingUp((uint32_t)size.height, REFLECTION_DENOISER_TILE_SIZE)));
+	mAverageRadiance = mDevice->CreateTexture(mAllocator, textureDesc);
+	
 	mDenoiserSize = size;
 	mFirstFrame = true;
 }
@@ -134,6 +153,7 @@ void RayTracedReflectionRenderer::AddRenderPasses(RenderGraph& graph, RenderGrap
 {
 	if (mSettings.enable == false || mDevice->GetFeatures().raytracing == false)
 	{
+		ReleasePersistentTextures();
 		ReleaseDenoiserTextures();
 		return;
 	}
@@ -177,7 +197,7 @@ void RayTracedReflectionRenderer::AddRenderPasses(RenderGraph& graph, RenderGrap
 		mPipelineDirty = false;
 		mFirstFrame = true;
 	}
-	CreateDenoiserTextures(sceneTargetDescriptor.size);
+	CreatePersistentTextures(sceneTargetDescriptor.size);
 
 	// ----------------------------------------------------------------
 	// Import persistent denoiser textures + first frame history clear
@@ -387,10 +407,12 @@ void RayTracedReflectionRenderer::AddRenderPasses(RenderGraph& graph, RenderGrap
 
 	if (mSettings.denoise)
 	{
-		TextureHandle sampleCount            = graph.ImportTexture(mSampleCount[prevIndex], importParams);
-		TextureHandle sampleCountHistory     = graph.ImportTexture(mSampleCount[currIndex], importParams);
-		TextureHandle averageRadiance        = graph.ImportTexture(mAverageRadiance[prevIndex], importParams);
-		TextureHandle averageRadianceHistory = graph.ImportTexture(mAverageRadiance[currIndex], importParams);
+		CreateDenoiserTextures(sceneTargetDescriptor.size);
+		importParams.clearOnFirstUse = mFirstFrame;
+		
+		TextureHandle sampleCount            = graph.ImportTexture(mSampleCount[currIndex], importParams);
+		TextureHandle sampleCountHistory     = graph.ImportTexture(mSampleCount[prevIndex], importParams);
+		TextureHandle averageRadiance		 = graph.ImportTexture(mAverageRadiance, importParams);
 
 		if (mFirstFrame)
 		{
@@ -403,8 +425,7 @@ void RayTracedReflectionRenderer::AddRenderPasses(RenderGraph& graph, RenderGrap
 			{
 				sampleCount            = builder.UseColorBuffer(sampleCount);
 				sampleCountHistory     = builder.UseColorBuffer(sampleCountHistory);
-				averageRadiance        = builder.UseColorBuffer(averageRadiance);
-				averageRadianceHistory = builder.UseColorBuffer(averageRadianceHistory);
+				averageRadiance		   = builder.UseColorBuffer(averageRadiance);
 			},
 			[](const CommandBuffer* cmd, const ClearHistoryPassData& passData)
 			{
@@ -515,7 +536,7 @@ void RayTracedReflectionRenderer::AddRenderPasses(RenderGraph& graph, RenderGrap
 			passData.roughness       = builder.ReadTexture(gBufferData.roughnessTarget);
 			passData.radiance        = builder.ReadTexture(reflectionTarget);
 			passData.variance        = builder.ReadTexture(reprojectData.varianceOutput);
-			passData.averageRadiance = builder.ReadTexture(averageRadianceHistory);
+			passData.averageRadiance = builder.ReadTexture(reprojectData.averageRadianceOutput);
 			passData.radianceOutput  = builder.WriteTexture(reprojectData.radianceHistory);
 			passData.varianceOutput  = builder.WriteTexture(reprojectData.variance);
 			passData.tileList        = builder.ReadBuffer(reprojectData.tileList);
@@ -608,6 +629,11 @@ void RayTracedReflectionRenderer::SetSettings(const RayTracedReflectionSettings&
 {
 	if (memcmp(&mSettings, &settings, sizeof(RayTracedReflectionSettings)) != 0)
 	{
+		if (mSettings.denoise != settings.denoise)
+		{
+			ReleaseDenoiserTextures();
+		}
+		
 		mSettings = settings;
 		mFrameIndex = 0;
 		mFirstFrame = true;

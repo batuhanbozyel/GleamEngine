@@ -46,6 +46,10 @@ void SunShadowRenderer::OnCreate(const RenderContext& context)
 	filterDesc.entryPoint = "shadowDenoiserFilter";
 	mFilterPipeline = context.device->CreateComputePipeline(filterDesc);
 
+	ComputePipelineStateDescriptor resolveDesc;
+	resolveDesc.entryPoint = "rayTracedSunShadowResolve";
+	mResolvePipeline = context.device->CreateComputePipeline(resolveDesc);
+
 }
 
 void SunShadowRenderer::OnDestroy(const RenderContext& context)
@@ -145,7 +149,10 @@ void SunShadowRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboar
 		mPipelineDirty = false;
 		mFirstFrame = true;
 	}
-	CreateDenoiserTextures(sceneTargetDescriptor.size);
+	if (mSettings.denoise)
+	{
+		CreateDenoiserTextures(sceneTargetDescriptor.size);
+	}
 
 	// ----------------------------------------------------------------
 	// Pass 0 — Ray classification
@@ -305,221 +312,263 @@ void SunShadowRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboar
 		cmd->DispatchRaysIndirect(passData.dispatchArgs);
 	});
 
-	// ----------------------------------------------------------------
-	// Import persistent denoiser textures + first frame history clear
-	// ----------------------------------------------------------------
-	const uint32_t prevIndex = mFrameIndex & 1u;
-	const uint32_t currIndex = prevIndex ^ 1u;
-
-	ImportResourceParams importParams;
-	importParams.clearOnFirstUse = mFirstFrame;
-
-	TextureHandle previousMoments     = graph.ImportTexture(mMoments[prevIndex], importParams);
-	TextureHandle currentMoments      = graph.ImportTexture(mMoments[currIndex], importParams);
-	TextureHandle historyShadow       = graph.ImportTexture(mShadowHistory, importParams);
-
-	if (mFirstFrame)
+	TextureHandle shadowMask;
+	if (mSettings.denoise)
 	{
-		struct ClearHistoryPassData
+		// ----------------------------------------------------------------
+		// Import persistent denoiser textures + first frame history clear
+		// ----------------------------------------------------------------
+		const uint32_t prevIndex = mFrameIndex & 1u;
+		const uint32_t currIndex = prevIndex ^ 1u;
+
+		ImportResourceParams importParams;
+		importParams.clearOnFirstUse = mFirstFrame;
+
+		TextureHandle previousMoments     = graph.ImportTexture(mMoments[prevIndex], importParams);
+		TextureHandle currentMoments      = graph.ImportTexture(mMoments[currIndex], importParams);
+		TextureHandle historyShadow       = graph.ImportTexture(mShadowHistory, importParams);
+
+		if (mFirstFrame)
 		{
+			struct ClearHistoryPassData
+			{
+			};
+
+			graph.AddRenderPass<ClearHistoryPassData>("SunShadowRenderer::ClearHistory",
+			[&](RenderGraphBuilder& builder, ClearHistoryPassData& passData)
+			{
+				previousMoments     = builder.UseColorBuffer(previousMoments);
+				currentMoments      = builder.UseColorBuffer(currentMoments);
+				historyShadow       = builder.UseColorBuffer(historyShadow);
+			},
+			[](const CommandBuffer* cmd, const ClearHistoryPassData& passData)
+			{
+				// Attachments are cleared by the load action on render pass begin
+			});
+		}
+
+		// ----------------------------------------------------------------
+		// Pass 3 — Tile classification
+		// ----------------------------------------------------------------
+		struct TileClassificationPassData
+		{
+			BufferHandle  shadowMask;
+			TextureHandle depth;
+			TextureHandle velocity;
+			TextureHandle normalTexture;
+			TextureHandle previousDepth;
+			TextureHandle previousMoments;
+			TextureHandle historyShadow;
+			BufferHandle  tileMetadata;
+			TextureHandle currentMoments;
+			TextureHandle reprojectionResults;
+			uint32_t      isFirstFrame;
 		};
 
-		graph.AddRenderPass<ClearHistoryPassData>("SunShadowRenderer::ClearHistory",
-		[&](RenderGraphBuilder& builder, ClearHistoryPassData& passData)
+		auto& tileClassData = graph.AddComputePass<TileClassificationPassData>("SunShadowRenderer::TileClassification",
+		[&](RenderGraphBuilder& builder, TileClassificationPassData& passData)
 		{
-			previousMoments     = builder.UseColorBuffer(previousMoments);
-			currentMoments      = builder.UseColorBuffer(currentMoments);
-			historyShadow       = builder.UseColorBuffer(historyShadow);
+			RenderTextureDescriptor reprojectionDesc;
+			reprojectionDesc.name   = "Shadow Reprojection Results";
+			reprojectionDesc.size   = sceneTargetDescriptor.size;
+			reprojectionDesc.format = TextureFormat::R16G16_SFloat;
+
+			passData.shadowMask				= builder.ReadBuffer(rayTracingData.shadowMask);
+			passData.depth					= builder.ReadTexture(depthPrepassData.depthTarget);
+			passData.velocity				= builder.ReadTexture(gBufferData.motionVectorTarget);
+			passData.normalTexture			= builder.ReadTexture(gBufferData.shadingNormalTarget);
+			passData.previousDepth			= builder.ReadTexture(depthPrepassData.previousDepth);
+			passData.previousMoments		= builder.ReadTexture(previousMoments);
+			passData.currentMoments			= builder.WriteTexture(currentMoments);
+			passData.historyShadow			= builder.ReadTexture(historyShadow);
+			passData.reprojectionResults	= builder.WriteTexture(builder.CreateTexture(reprojectionDesc));
+			passData.isFirstFrame			= mFirstFrame ? 1 : 0;
+
+			BufferDescriptor tileMetaDesc;
+			tileMetaDesc.name = "TileMetadata";
+			tileMetaDesc.size = numDenoiserTilesX * numDenoiserTilesY * sizeof(uint32_t);
+			passData.tileMetadata = builder.WriteBuffer(builder.CreateBuffer(tileMetaDesc));
+		
 		},
-		[](const CommandBuffer* cmd, const ClearHistoryPassData& passData)
+		[this, &sceneData, numDenoiserTilesX, numDenoiserTilesY](const CommandBuffer* cmd, const TileClassificationPassData& passData)
 		{
-			// Attachments are cleared by the load action on render pass begin
+			ShadowDenoiserTileClassificationConstants constants = {};
+			constants.reprojectionMatrix  = sceneData.camera.uniforms.projectionMatrix * (sceneData.camera.uniforms.prevViewMatrix * sceneData.camera.uniforms.invViewProjectionMatrix);
+			constants.hitMaskResults      = passData.shadowMask;
+			constants.depth               = passData.depth;
+			constants.velocity            = passData.velocity;
+			constants.normalTexture       = passData.normalTexture;
+			constants.previousDepth       = passData.previousDepth;
+			constants.previousMoments     = passData.previousMoments;
+			constants.historyShadow       = passData.historyShadow;
+			constants.tileMetadata        = passData.tileMetadata;
+			constants.currentMoments      = passData.currentMoments;
+			constants.reprojectionResults = passData.reprojectionResults;
+			constants.isFirstFrame        = passData.isFirstFrame;
+
+			cmd->BindComputePipeline(mTileClassificationPipeline);
+			cmd->SetPushConstant(constants);
+			cmd->SetConstantBuffer(sceneData.camera.uniforms, CAMERA_UNIFORMS_BINDING_SLOT);
+			cmd->Dispatch(numDenoiserTilesX, numDenoiserTilesY, 1u);
 		});
+
+		// ----------------------------------------------------------------
+		// Pass 4a — Filter pass 0
+		// ----------------------------------------------------------------
+		struct Filter0PassData
+		{
+			TextureHandle depth;
+			TextureHandle normalTexture;
+			BufferHandle  tileMetadata;
+			TextureHandle filterInput;
+			TextureHandle history;
+		};
+
+		auto& filter0Data = graph.AddComputePass<Filter0PassData>("SunShadowRenderer::Filter Pass 0",
+		[&](RenderGraphBuilder& builder, Filter0PassData& passData)
+		{
+			passData.depth			= builder.ReadTexture(depthPrepassData.depthTarget);
+			passData.normalTexture	= builder.ReadTexture(gBufferData.shadingNormalTarget);
+			passData.tileMetadata	= builder.ReadBuffer(tileClassData.tileMetadata);
+			passData.filterInput	= builder.ReadTexture(tileClassData.reprojectionResults);
+			passData.history		= builder.WriteTexture(tileClassData.historyShadow);
+		},
+		[this, &sceneData, numDenoiserTilesX, numDenoiserTilesY](const CommandBuffer* cmd, const Filter0PassData& passData)
+		{
+			ShadowDenoiserFilterConstants constants = {};
+			constants.depth               = passData.depth;
+			constants.normalTexture       = passData.normalTexture;
+			constants.tileMetadata        = passData.tileMetadata;
+			constants.filterInput         = passData.filterInput;
+			constants.history             = passData.history;
+			constants.passIndex           = 0u;
+
+			cmd->BindComputePipeline(mFilterPipeline);
+			cmd->SetPushConstant(constants);
+			cmd->SetConstantBuffer(sceneData.camera.uniforms, CAMERA_UNIFORMS_BINDING_SLOT);
+			cmd->Dispatch(numDenoiserTilesX, numDenoiserTilesY, 1u);
+		});
+
+		// ----------------------------------------------------------------
+		// Pass 4b — Filter pass 1
+		// ----------------------------------------------------------------
+		struct Filter1PassData
+		{
+			TextureHandle depth;
+			TextureHandle normalTexture;
+			BufferHandle  tileMetadata;
+			TextureHandle filterInput;
+			TextureHandle history;
+		};
+
+		auto& filter1Data = graph.AddComputePass<Filter1PassData>("SunShadowRenderer::Filter Pass 1",
+		[&](RenderGraphBuilder& builder, Filter1PassData& passData)
+		{
+			passData.depth        = builder.ReadTexture(depthPrepassData.depthTarget);
+			passData.normalTexture = builder.ReadTexture(gBufferData.shadingNormalTarget);
+			passData.tileMetadata = builder.ReadBuffer(filter0Data.tileMetadata);
+			passData.filterInput  = builder.ReadTexture(filter0Data.history);
+			passData.history      = builder.WriteTexture(filter0Data.filterInput);
+		},
+		[this, &sceneData, numDenoiserTilesX, numDenoiserTilesY](const CommandBuffer* cmd, const Filter1PassData& passData)
+		{
+			ShadowDenoiserFilterConstants constants = {};
+			constants.depth               = passData.depth;
+			constants.normalTexture       = passData.normalTexture;
+			constants.tileMetadata        = passData.tileMetadata;
+			constants.filterInput         = passData.filterInput;
+			constants.history             = passData.history;
+			constants.passIndex           = 1u;
+
+			cmd->BindComputePipeline(mFilterPipeline);
+			cmd->SetPushConstant(constants);
+			cmd->SetConstantBuffer(sceneData.camera.uniforms, CAMERA_UNIFORMS_BINDING_SLOT);
+			cmd->Dispatch(numDenoiserTilesX, numDenoiserTilesY, 1u);
+		});
+
+		// ----------------------------------------------------------------
+		// Pass 4c — Filter pass 2
+		// ----------------------------------------------------------------
+		struct Filter2PassData
+		{
+			TextureHandle depth;
+			TextureHandle normalTexture;
+			BufferHandle tileMetadata;
+			TextureHandle filterInput;
+			TextureHandle shadowMaskOutput;
+		};
+
+		auto& filter2Data = graph.AddComputePass<Filter2PassData>("SunShadowRenderer::Filter Pass 2",
+		[&](RenderGraphBuilder& builder, Filter2PassData& passData)
+		{
+			passData.depth        = builder.ReadTexture(depthPrepassData.depthTarget);
+			passData.normalTexture = builder.ReadTexture(gBufferData.shadingNormalTarget);
+			passData.tileMetadata = builder.ReadBuffer(filter1Data.tileMetadata);
+			passData.filterInput  = builder.ReadTexture(filter1Data.history);
+
+			RenderTextureDescriptor shadowMaskDesc;
+			shadowMaskDesc.name		= "ShadowMask";
+			shadowMaskDesc.size		= sceneTargetDescriptor.size;
+			shadowMaskDesc.format	= TextureFormat::R8_UNorm;
+			passData.shadowMaskOutput = builder.WriteTexture(builder.CreateTexture(shadowMaskDesc));
+		},
+		[this, &sceneData, numDenoiserTilesX, numDenoiserTilesY](const CommandBuffer* cmd, const Filter2PassData& passData)
+		{
+			ShadowDenoiserFilterConstants constants = {};
+			constants.depth               = passData.depth;
+			constants.normalTexture       = passData.normalTexture;
+			constants.tileMetadata        = passData.tileMetadata;
+			constants.filterInput         = passData.filterInput;
+			constants.shadowMaskOutput    = passData.shadowMaskOutput;
+			constants.passIndex           = 2u;
+
+			cmd->BindComputePipeline(mFilterPipeline);
+			cmd->SetPushConstant(constants);
+			cmd->SetConstantBuffer(sceneData.camera.uniforms, CAMERA_UNIFORMS_BINDING_SLOT);
+			cmd->Dispatch(numDenoiserTilesX, numDenoiserTilesY, 1u);
+		});
+
+		shadowMask = filter2Data.shadowMaskOutput;
+	}
+	else
+	{
+		// ----------------------------------------------------------------
+		// Pass 3 — Resolve raw shadow mask
+		// ----------------------------------------------------------------
+		struct ResolvePassData
+		{
+			BufferHandle  shadowMask;
+			TextureHandle shadowMaskOutput;
+		};
+
+		auto& resolveData = graph.AddComputePass<ResolvePassData>("SunShadowRenderer::Resolve",
+		[&](RenderGraphBuilder& builder, ResolvePassData& passData)
+		{
+			RenderTextureDescriptor shadowMaskDesc;
+			shadowMaskDesc.name   = "ShadowMask";
+			shadowMaskDesc.size   = sceneTargetDescriptor.size;
+			shadowMaskDesc.format = TextureFormat::R8_UNorm;
+
+			passData.shadowMask       = builder.ReadBuffer(rayTracingData.shadowMask);
+			passData.shadowMaskOutput = builder.WriteTexture(builder.CreateTexture(shadowMaskDesc));
+		},
+		[this, &sceneData, numDenoiserTilesX, numDenoiserTilesY](const CommandBuffer* cmd, const ResolvePassData& passData)
+		{
+			RayTracedSunShadowResolveConstants constants = {};
+			constants.hitMaskResults   = passData.shadowMask;
+			constants.shadowMaskOutput = passData.shadowMaskOutput;
+
+			cmd->BindComputePipeline(mResolvePipeline);
+			cmd->SetPushConstant(constants);
+			cmd->SetConstantBuffer(sceneData.camera.uniforms, CAMERA_UNIFORMS_BINDING_SLOT);
+			cmd->Dispatch(numDenoiserTilesX, numDenoiserTilesY, 1u);
+		});
+
+		shadowMask = resolveData.shadowMaskOutput;
 	}
 
-	// ----------------------------------------------------------------
-	// Pass 3 — Tile classification
-	// ----------------------------------------------------------------
-	struct TileClassificationPassData
-	{
-		BufferHandle  shadowMask;
-		TextureHandle depth;
-		TextureHandle velocity;
-		TextureHandle normalTexture;
-		TextureHandle previousDepth;
-		TextureHandle previousMoments;
-		TextureHandle historyShadow;
-		BufferHandle  tileMetadata;
-		TextureHandle currentMoments;
-		TextureHandle reprojectionResults;
-		uint32_t      isFirstFrame;
-	};
-
-	auto& tileClassData = graph.AddComputePass<TileClassificationPassData>("SunShadowRenderer::TileClassification",
-	[&](RenderGraphBuilder& builder, TileClassificationPassData& passData)
-	{
-		RenderTextureDescriptor reprojectionDesc;
-		reprojectionDesc.name   = "Shadow Reprojection Results";
-		reprojectionDesc.size   = sceneTargetDescriptor.size;
-		reprojectionDesc.format = TextureFormat::R16G16_SFloat;
-
-		passData.shadowMask				= builder.ReadBuffer(rayTracingData.shadowMask);
-		passData.depth					= builder.ReadTexture(depthPrepassData.depthTarget);
-		passData.velocity				= builder.ReadTexture(gBufferData.motionVectorTarget);
-		passData.normalTexture			= builder.ReadTexture(gBufferData.shadingNormalTarget);
-		passData.previousDepth			= builder.ReadTexture(depthPrepassData.previousDepth);
-		passData.previousMoments		= builder.ReadTexture(previousMoments);
-		passData.currentMoments			= builder.WriteTexture(currentMoments);
-		passData.historyShadow			= builder.ReadTexture(historyShadow);
-		passData.reprojectionResults	= builder.WriteTexture(builder.CreateTexture(reprojectionDesc));
-		passData.isFirstFrame			= mFirstFrame ? 1 : 0;
-
-		BufferDescriptor tileMetaDesc;
-		tileMetaDesc.name = "TileMetadata";
-		tileMetaDesc.size = numDenoiserTilesX * numDenoiserTilesY * sizeof(uint32_t);
-		passData.tileMetadata = builder.WriteBuffer(builder.CreateBuffer(tileMetaDesc));
-		
-	},
-	[this, &sceneData, numDenoiserTilesX, numDenoiserTilesY](const CommandBuffer* cmd, const TileClassificationPassData& passData)
-	{
-		ShadowDenoiserTileClassificationConstants constants = {};
-		constants.reprojectionMatrix  = sceneData.camera.uniforms.projectionMatrix * (sceneData.camera.uniforms.prevViewMatrix * sceneData.camera.uniforms.invViewProjectionMatrix);
-		constants.hitMaskResults      = passData.shadowMask;
-		constants.depth               = passData.depth;
-		constants.velocity            = passData.velocity;
-		constants.normalTexture       = passData.normalTexture;
-		constants.previousDepth       = passData.previousDepth;
-		constants.previousMoments     = passData.previousMoments;
-		constants.historyShadow       = passData.historyShadow;
-		constants.tileMetadata        = passData.tileMetadata;
-		constants.currentMoments      = passData.currentMoments;
-		constants.reprojectionResults = passData.reprojectionResults;
-		constants.isFirstFrame        = passData.isFirstFrame;
-
-		cmd->BindComputePipeline(mTileClassificationPipeline);
-		cmd->SetPushConstant(constants);
-		cmd->SetConstantBuffer(sceneData.camera.uniforms, CAMERA_UNIFORMS_BINDING_SLOT);
-		cmd->Dispatch(numDenoiserTilesX, numDenoiserTilesY, 1u);
-	});
-
-	// ----------------------------------------------------------------
-	// Pass 4a — Filter pass 0
-	// ----------------------------------------------------------------
-	struct Filter0PassData
-	{
-		TextureHandle depth;
-		TextureHandle normalTexture;
-		BufferHandle  tileMetadata;
-		TextureHandle filterInput;
-		TextureHandle history;
-	};
-
-	auto& filter0Data = graph.AddComputePass<Filter0PassData>("SunShadowRenderer::Filter Pass 0",
-	[&](RenderGraphBuilder& builder, Filter0PassData& passData)
-	{
-		passData.depth			= builder.ReadTexture(depthPrepassData.depthTarget);
-		passData.normalTexture	= builder.ReadTexture(gBufferData.shadingNormalTarget);
-		passData.tileMetadata	= builder.ReadBuffer(tileClassData.tileMetadata);
-		passData.filterInput	= builder.ReadTexture(tileClassData.reprojectionResults);
-		passData.history		= builder.WriteTexture(tileClassData.historyShadow);
-	},
-	[this, &sceneData, numDenoiserTilesX, numDenoiserTilesY](const CommandBuffer* cmd, const Filter0PassData& passData)
-	{
-		ShadowDenoiserFilterConstants constants = {};
-		constants.depth               = passData.depth;
-		constants.normalTexture       = passData.normalTexture;
-		constants.tileMetadata        = passData.tileMetadata;
-		constants.filterInput         = passData.filterInput;
-		constants.history             = passData.history;
-		constants.passIndex           = 0u;
-
-		cmd->BindComputePipeline(mFilterPipeline);
-		cmd->SetPushConstant(constants);
-		cmd->SetConstantBuffer(sceneData.camera.uniforms, CAMERA_UNIFORMS_BINDING_SLOT);
-		cmd->Dispatch(numDenoiserTilesX, numDenoiserTilesY, 1u);
-	});
-
-	// ----------------------------------------------------------------
-	// Pass 4b — Filter pass 1
-	// ----------------------------------------------------------------
-	struct Filter1PassData
-	{
-		TextureHandle depth;
-		TextureHandle normalTexture;
-		BufferHandle  tileMetadata;
-		TextureHandle filterInput;
-		TextureHandle history;
-	};
-
-	auto& filter1Data = graph.AddComputePass<Filter1PassData>("SunShadowRenderer::Filter Pass 1",
-	[&](RenderGraphBuilder& builder, Filter1PassData& passData)
-	{
-		passData.depth        = builder.ReadTexture(depthPrepassData.depthTarget);
-		passData.normalTexture = builder.ReadTexture(gBufferData.shadingNormalTarget);
-		passData.tileMetadata = builder.ReadBuffer(filter0Data.tileMetadata);
-		passData.filterInput  = builder.ReadTexture(filter0Data.history);
-		passData.history      = builder.WriteTexture(filter0Data.filterInput);
-	},
-	[this, &sceneData, numDenoiserTilesX, numDenoiserTilesY](const CommandBuffer* cmd, const Filter1PassData& passData)
-	{
-		ShadowDenoiserFilterConstants constants = {};
-		constants.depth               = passData.depth;
-		constants.normalTexture       = passData.normalTexture;
-		constants.tileMetadata        = passData.tileMetadata;
-		constants.filterInput         = passData.filterInput;
-		constants.history             = passData.history;
-		constants.passIndex           = 1u;
-
-		cmd->BindComputePipeline(mFilterPipeline);
-		cmd->SetPushConstant(constants);
-		cmd->SetConstantBuffer(sceneData.camera.uniforms, CAMERA_UNIFORMS_BINDING_SLOT);
-		cmd->Dispatch(numDenoiserTilesX, numDenoiserTilesY, 1u);
-	});
-
-	// ----------------------------------------------------------------
-	// Pass 4c — Filter pass 2
-	// ----------------------------------------------------------------
-	struct Filter2PassData
-	{
-		TextureHandle depth;
-		TextureHandle normalTexture;
-		BufferHandle tileMetadata;
-		TextureHandle filterInput;
-		TextureHandle shadowMaskOutput;
-	};
-
-	auto& filter2Data = graph.AddComputePass<Filter2PassData>("SunShadowRenderer::Filter Pass 2",
-	[&](RenderGraphBuilder& builder, Filter2PassData& passData)
-	{
-		passData.depth        = builder.ReadTexture(depthPrepassData.depthTarget);
-		passData.normalTexture = builder.ReadTexture(gBufferData.shadingNormalTarget);
-		passData.tileMetadata = builder.ReadBuffer(filter1Data.tileMetadata);
-		passData.filterInput  = builder.ReadTexture(filter1Data.history);
-
-		RenderTextureDescriptor shadowMaskDesc;
-		shadowMaskDesc.name		= "ShadowMask";
-		shadowMaskDesc.size		= sceneTargetDescriptor.size;
-		shadowMaskDesc.format	= TextureFormat::R8_UNorm;
-		passData.shadowMaskOutput = builder.WriteTexture(builder.CreateTexture(shadowMaskDesc));
-	},
-	[this, &sceneData, numDenoiserTilesX, numDenoiserTilesY](const CommandBuffer* cmd, const Filter2PassData& passData)
-	{
-		ShadowDenoiserFilterConstants constants = {};
-		constants.depth               = passData.depth;
-		constants.normalTexture       = passData.normalTexture;
-		constants.tileMetadata        = passData.tileMetadata;
-		constants.filterInput         = passData.filterInput;
-		constants.shadowMaskOutput    = passData.shadowMaskOutput;
-		constants.passIndex           = 2u;
-
-		cmd->BindComputePipeline(mFilterPipeline);
-		cmd->SetPushConstant(constants);
-		cmd->SetConstantBuffer(sceneData.camera.uniforms, CAMERA_UNIFORMS_BINDING_SLOT);
-		cmd->Dispatch(numDenoiserTilesX, numDenoiserTilesY, 1u);
-	});
-
 	SunShadowData output;
-	output.shadowMask = filter2Data.shadowMaskOutput;
+	output.shadowMask = shadowMask;
 	blackboard.Add(output);
 
 	mFrameIndex++;
@@ -530,6 +579,11 @@ void SunShadowRenderer::SetSettings(const ShadowSettings& settings)
 {
 	if (memcmp(&mSettings, &settings, sizeof(ShadowSettings)) != 0)
 	{
+		if (mSettings.denoise != settings.denoise)
+		{
+			ReleaseDenoiserTextures();
+		}
+
 		mSettings = settings;
 	}
 }

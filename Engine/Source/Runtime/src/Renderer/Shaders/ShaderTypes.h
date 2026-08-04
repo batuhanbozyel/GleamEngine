@@ -344,6 +344,14 @@ struct PrepareShadowRayDispatchArgsConstants
 	float pad1;
 };
 
+struct RayTracedSunShadowResolveConstants
+{
+	ShaderResourceIndex  hitMaskResults;
+	UnorderedAccessIndex shadowMaskOutput;
+	float pad0;
+	float pad1;
+};
+
 struct ShadowDenoiserTileClassificationConstants
 {
 	float4x4 reprojectionMatrix;

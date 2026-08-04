@@ -14,6 +14,9 @@ GSTRUCT(ShadowSettings, "6F702E03-FBAE-4C02-9FB5-B37E6FB6659D", Serializable, Pr
 	// 0 = unbounded, clamped to the camera far plane
 	GFIELD("53F5BC97-EF9D-41F2-BD22-C7DFDD0ABD42", Serializable, PrettyName("Max Ray Distance"))
 	float maxRayDistance = 0.0f;
+
+	GFIELD("20C9DB3A-A905-4EC3-A480-90348612B776", Serializable, PrettyName("Denoise"))
+	bool denoise = true;
 };
 
 struct SunShadowData
@@ -61,6 +64,7 @@ private:
 	ComputePipelineHandle    mPrepareDispatchArgsPipeline;
 	ComputePipelineHandle    mTileClassificationPipeline;
 	ComputePipelineHandle    mFilterPipeline;
+	ComputePipelineHandle    mResolvePipeline;
 
 	Texture mMoments[2];
 	Texture mShadowHistory;
