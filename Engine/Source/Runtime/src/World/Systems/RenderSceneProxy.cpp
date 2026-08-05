@@ -101,6 +101,7 @@ void RenderSceneProxy::Tick(World* world)
 
 			mGlobalMeshes[globalIndex].mesh = mesh;
 			mGlobalMeshes[globalIndex].submeshIndex = submeshIndex;
+			mGlobalMeshes[globalIndex].entity = entity;
 
 			auto& instance = mGlobalInstances[globalIndex];
 			instance.meshBuffer = mesh->GetBuffer().GetResourceView();

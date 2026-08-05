@@ -27,12 +27,12 @@
 
 #include "World/World.h"
 #include "World/Components/Camera.h"
+#include "World/Systems/PickingSystem.h"
 
 #include <imgui.h>
 
 using namespace GEditor;
 
-// The gizmo edits world space, the entity stores its transform relative to its parent
 static void SetEntityWorldTransform(Gleam::Entity& entity, const Gleam::Transform& world)
 {
 	if (entity.HasParent() == false)
@@ -45,8 +45,7 @@ static void SetEntityWorldTransform(Gleam::Entity& entity, const Gleam::Transfor
 	const auto invParentRotation = Gleam::Math::Inverse(parent.rotation);
 	const float invParentScale = 1.0f / parent.scale;
 
-	entity.SetLocalTransform(Gleam::Transform
-	{
+	entity.SetLocalTransform({
 		.position = (invParentRotation * (world.position - parent.position)) * invParentScale,
 		.rotation = invParentRotation * world.rotation,
 		.scale    = world.scale * invParentScale
@@ -103,7 +102,7 @@ void WorldViewport::Render(Gleam::ImGuiRenderer* imgui)
 	{
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
 
-		const bool gizmoActive = mGizmo.IsHovered() || mGizmo.IsDragging();
+		const bool gizmoActive = mTransformGizmo.IsHovered() || mTransformGizmo.IsDragging();
 		ImGui::Begin("Viewport", nullptr, gizmoActive ? ImGuiWindowFlags_NoMove : ImGuiWindowFlags_None);
 
 		DrawToolbar();
@@ -124,14 +123,14 @@ void WorldViewport::DrawToolbar()
 	{
 		auto drawOperationButton = [this](const char* label, GizmoOperation operation)
 		{
-			const bool selected = mGizmo.GetOperation() == operation;
+			const bool selected = mTransformGizmo.GetOperation() == operation;
 			if (selected)
 			{
 				ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.26f, 0.45f, 0.72f, 1.0f));
 			}
 			if (ImGui::Button(label))
 			{
-				mGizmo.SetOperation(operation);
+				mTransformGizmo.SetOperation(operation);
 			}
 			if (selected)
 			{
@@ -148,10 +147,10 @@ void WorldViewport::DrawToolbar()
 		drawOperationButton("Scale", GizmoOperation::Scale);
 
 		ImGui::SameLine(0.0f, 8.0f);
-		const bool localSpace = mGizmo.GetSpace() == GizmoSpace::Local;
+		const bool localSpace = mTransformGizmo.GetSpace() == GizmoSpace::Local;
 		if (ImGui::Button(localSpace ? "Local" : "World"))
 		{
-			mGizmo.SetSpace(localSpace ? GizmoSpace::World : GizmoSpace::Local);
+			mTransformGizmo.SetSpace(localSpace ? GizmoSpace::World : GizmoSpace::Local);
 		}
 
 		constexpr const char* kRenderSettingsLabel = "Render Settings";
@@ -232,12 +231,22 @@ void WorldViewport::DrawViewport(Gleam::ImGuiRenderer* imgui, const Gleam::ImGui
 
 	ImVec2 imageMin = ImGui::GetItemRectMin();
 	ImVec2 imageSize = ImGui::GetItemRectSize();
-	DrawGizmo(Gleam::Float2(imageMin.x, imageMin.y), Gleam::Float2(imageSize.x, imageSize.y));
+	bool viewportHovered = ImGui::IsItemHovered();
+	
+	DrawTransformGizmo(Gleam::Float2(imageMin.x, imageMin.y), Gleam::Float2(imageSize.x, imageSize.y));
 
 	bool isFocused = ImGui::IsWindowFocused();
-	mCameraController->Enabled = isFocused && mGizmo.IsDragging() == false;
+	mCameraController->Enabled = isFocused && mTransformGizmo.IsDragging() == false;
 
 	auto ctx = ImGui::GetCurrentContext();
+	if (viewportHovered && mCursorVisible && mTransformGizmo.IsHovered() == false && mTransformGizmo.IsDragging() == false
+		&& ctx->IO.MouseClicked[ImGuiMouseButton_Left])
+	{
+		const auto px = static_cast<uint32_t>((ctx->IO.MousePos.x - imageMin.x) / imageSize.x * sceneRTsize.width);
+		const auto py = static_cast<uint32_t>((ctx->IO.MousePos.y - imageMin.y) / imageSize.y * sceneRTsize.height);
+		mEditWorld->GetSubsystem<Gleam::PickingSystem>()->RequestPick({ .x = px, .y = py });
+	}
+
 	if (isFocused && ctx->IO.MouseClicked[ImGuiMouseButton_Right])
 	{
 		auto inputSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::InputSystem>();
@@ -249,15 +258,15 @@ void WorldViewport::DrawViewport(Gleam::ImGuiRenderer* imgui, const Gleam::ImGui
 	{
 		if (ImGui::IsKeyPressed(ImGuiKey_W, false))
 		{
-			mGizmo.SetOperation(GizmoOperation::Translate);
+			mTransformGizmo.SetOperation(GizmoOperation::Translate);
 		}
 		if (ImGui::IsKeyPressed(ImGuiKey_E, false))
 		{
-			mGizmo.SetOperation(GizmoOperation::Rotate);
+			mTransformGizmo.SetOperation(GizmoOperation::Rotate);
 		}
 		if (ImGui::IsKeyPressed(ImGuiKey_R, false))
 		{
-			mGizmo.SetOperation(GizmoOperation::Scale);
+			mTransformGizmo.SetOperation(GizmoOperation::Scale);
 		}
 	}
 
@@ -273,7 +282,7 @@ void WorldViewport::DrawViewport(Gleam::ImGuiRenderer* imgui, const Gleam::ImGui
 	}
 }
 
-void WorldViewport::DrawGizmo(const Gleam::Float2& imageMin, const Gleam::Float2& imageSize)
+void WorldViewport::DrawTransformGizmo(const Gleam::Float2& imageMin, const Gleam::Float2& imageSize)
 {
 	auto& entityManager = mEditWorld->GetEntityManager();
 	auto selectedEntity = mSelection->GetSelectedEntity();
@@ -309,7 +318,7 @@ void WorldViewport::DrawGizmo(const Gleam::Float2& imageMin, const Gleam::Float2
 	auto transform = entity.GetWorldTransform();
 
 	const bool inputEnabled = ImGui::IsWindowHovered() && mCursorVisible;
-	if (mGizmo.Manipulate(viewport, inputEnabled, transform))
+	if (mTransformGizmo.Manipulate(viewport, inputEnabled, transform))
 	{
 		SetEntityWorldTransform(entity, transform);
 	}

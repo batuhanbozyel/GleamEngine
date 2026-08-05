@@ -36,6 +36,7 @@
 #include "GraphicsSettings.h"
 
 #include "World/World.h"
+#include "World/Systems/PickingSystem.h"
 #include "World/Systems/RenderSceneProxy.h"
 
 using namespace Gleam;
@@ -183,6 +184,11 @@ void RenderSystem::PreRender(const World* world)
 	mReleaseQueue->Flush(frameIdx);
 	mTransientAllocator->CollectGarbage(mSwapchain->GetFramesInFlight() + 1);
 	mPersistentAllocator->CollectGarbage(mSwapchain->GetFramesInFlight() + 1);
+
+	if (world->HasSubsystem<PickingSystem>())
+	{
+		world->GetSubsystem<PickingSystem>()->ResolveReadback(frameIdx);
+	}
 }
 
 void RenderSystem::Render(const World* world)

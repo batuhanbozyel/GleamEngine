@@ -59,6 +59,11 @@ using uint4 = Gleam::UInt4;
 #define VISIBILITY_INSTANCE_MASK 0x1FFFFu
 #define VISIBILITY_MAX_BATCHES (1u << (32u - VISIBILITY_INSTANCE_BITS))
 
+#define MAX_MESH_INSTANCES   65536u
+#define PICKING_MASK_UINTS   (MAX_MESH_INSTANCES / 32u)
+#define PICKING_GROUP_SIZE_X 8u
+#define PICKING_GROUP_SIZE_Y 8u
+
 #ifdef __cplusplus
 static_assert(MAX_MESHLET_TRIANGLES <= VISIBILITY_TRIANGLE_MASK + 1, "MAX_MESHLET_TRIANGLES exceeds the visibility buffer triangle ID bit budget.");
 #endif

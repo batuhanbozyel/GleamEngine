@@ -31,6 +31,9 @@
 #include <unordered_map>
 #include <unordered_set>
 
+#include <EASTL/sort.h>
+#include <EASTL/algorithm.h>
+
 #include <Reflection/TypeTraits.h>
 #include <Reflection/Attribute.h>
 #include <Reflection/Meta.h>

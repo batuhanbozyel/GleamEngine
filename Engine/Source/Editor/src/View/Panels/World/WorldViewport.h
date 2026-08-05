@@ -46,7 +46,7 @@ private:
 
 	void DrawViewport(Gleam::ImGuiRenderer* imgui, const Gleam::ImGuiPassData& passData);
 
-	void DrawGizmo(const Gleam::Float2& imageMin, const Gleam::Float2& imageSize);
+	void DrawTransformGizmo(const Gleam::Float2& imageMin, const Gleam::Float2& imageSize);
 
 	void Resize(Gleam::EntityManager& entityManager, const Gleam::Size& size);
 
@@ -62,7 +62,7 @@ private:
 
 	SelectionSystem* mSelection = nullptr;
 
-	TransformGizmo mGizmo;
+	TransformGizmo mTransformGizmo;
     
     Gleam::Size mViewportSize = Gleam::Size::zero;
     
