@@ -11,10 +11,17 @@ using namespace GEditor;
 
 void SelectionSystem::Initialize(Gleam::World* world)
 {
-	auto picking = world->AddSubsystem<Gleam::PickingSystem>();
-	mPickingCallback = picking->AddCallback([this](const Gleam::PickingResult& result)
+	mPickingSystem = world->AddSubsystem<Gleam::PickingSystem>();
+	mPickingCallback = mPickingSystem->AddCallback([this](const Gleam::PickingResult& result)
 	{
-		SelectEntities(result.entities);
+		auto mode = SelectionMode::Replace;
+		auto it = mPendingPickModes.find(result.requestID);
+		if (it != mPendingPickModes.end())
+		{
+			mode = it->second;
+			mPendingPickModes.erase(it);
+		}
+		SelectEntities(result.entities, mode);
 	});
 }
 
@@ -22,6 +29,7 @@ void SelectionSystem::Shutdown(Gleam::World* world)
 {
 	world->GetSubsystem<Gleam::PickingSystem>()->RemoveCallback(mPickingCallback);
 	world->RemoveSubsystem<Gleam::PickingSystem>();
+	mPickingSystem = nullptr;
 }
 
 void SelectionSystem::Tick(Gleam::World* world)
@@ -52,35 +60,94 @@ void SelectionSystem::Tick(Gleam::World* world)
 	}
 }
 
-void SelectionSystem::SelectEntity(Gleam::EntityHandle entity)
+Gleam::PickingRequestID SelectionSystem::RequestPick(const Gleam::PickingRequest& request, SelectionMode mode)
 {
-	mSelectedEntities.clear();
-	if (entity != Gleam::InvalidEntity)
+	auto requestID = mPickingSystem->RequestPick(request);
+	mPendingPickModes[requestID] = mode;
+	return requestID;
+}
+
+void SelectionSystem::SelectEntity(Gleam::EntityHandle entity, SelectionMode mode)
+{
+	if (mode == SelectionMode::Replace)
 	{
-		mSelectedEntities.push_back(entity);
+		mSelectedEntities.clear();
 	}
+
+	ApplyEntity(entity, mode);
+	ResolveActiveEntity();
 	mSelectedSingleton = 0;
 }
 
-void SelectionSystem::SelectEntities(const Gleam::TArray<Gleam::EntityHandle>& entities)
+void SelectionSystem::SelectEntities(const Gleam::TArray<Gleam::EntityHandle>& entities, SelectionMode mode)
 {
-	mSelectedEntities = entities;
+	if (mode == SelectionMode::Replace)
+	{
+		mSelectedEntities.clear();
+	}
+
+	for (auto entity : entities)
+	{
+		ApplyEntity(entity, mode);
+	}
+	ResolveActiveEntity();
 	mSelectedSingleton = 0;
+}
+
+void SelectionSystem::SetActiveEntity(Gleam::EntityHandle entity)
+{
+	if (IsSelected(entity))
+	{
+		mActiveEntity = entity;
+	}
 }
 
 void SelectionSystem::SelectSingleton(uint32_t typeHash)
 {
 	mSelectedSingleton = typeHash;
 	mSelectedEntities.clear();
+	mActiveEntity = Gleam::InvalidEntity;
 }
 
 void SelectionSystem::ClearSelection()
 {
 	mSelectedEntities.clear();
+	mActiveEntity = Gleam::InvalidEntity;
 	mSelectedSingleton = 0;
 }
 
 bool SelectionSystem::IsSelected(Gleam::EntityHandle entity) const
 {
 	return eastl::find(mSelectedEntities.begin(), mSelectedEntities.end(), entity) != mSelectedEntities.end();
+}
+
+void SelectionSystem::ApplyEntity(Gleam::EntityHandle entity, SelectionMode mode)
+{
+	if (entity == Gleam::InvalidEntity)
+	{
+		return;
+	}
+
+	auto it = eastl::find(mSelectedEntities.begin(), mSelectedEntities.end(), entity);
+	if (it != mSelectedEntities.end())
+	{
+		if (mode == SelectionMode::Toggle)
+		{
+			mSelectedEntities.erase(it);
+			return;
+		}
+	}
+	else
+	{
+		mSelectedEntities.push_back(entity);
+	}
+	mActiveEntity = entity;
+}
+
+void SelectionSystem::ResolveActiveEntity()
+{
+	if (IsSelected(mActiveEntity) == false)
+	{
+		mActiveEntity = mSelectedEntities.empty() ? Gleam::InvalidEntity : mSelectedEntities.back();
+	}
 }

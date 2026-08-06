@@ -39,6 +39,128 @@ static size_t ArrayElementSize(const Gleam::Reflection::ArrayDescription& arrayD
 	}
 }
 
+static bool IsMultiEditable(Gleam::Reflection::MetaType type, uint32_t typeHash);
+
+static bool IsMultiEditableClass(const Gleam::Reflection::ClassDescription& classDesc)
+{
+	// TArray and TString own heap storage, mirroring them onto another instance needs a real copy
+	if (classDesc.IsTemplate())
+	{
+		return false;
+	}
+
+	for (const auto& baseClass : classDesc.ResolveBaseClasses())
+	{
+		if (IsMultiEditableClass(baseClass) == false)
+		{
+			return false;
+		}
+	}
+
+	for (const auto& field : classDesc.ResolveFields())
+	{
+		if (IsMultiEditable(field.GetType(), field.TypeHash()) == false)
+		{
+			return false;
+		}
+	}
+	return true;
+}
+
+static bool IsMultiEditable(Gleam::Reflection::MetaType type, uint32_t typeHash)
+{
+	switch (type)
+	{
+		case Gleam::Reflection::MetaType::Primitive:
+		case Gleam::Reflection::MetaType::Enum:
+			return true;
+		case Gleam::Reflection::MetaType::Array:
+		{
+			const auto arrayDesc = Gleam::Reflection::GetArray(typeHash);
+			return IsMultiEditable(arrayDesc->ElementType(), arrayDesc->ElementHash());
+		}
+		case Gleam::Reflection::MetaType::Class:
+			return IsMultiEditableClass(*Gleam::Reflection::GetClass(typeHash));
+		default:
+			return false;
+	}
+}
+
+static bool HasReflectedFields(const Gleam::Reflection::ClassDescription& classDesc)
+{
+	if (classDesc.ResolveFields().size() > 0)
+	{
+		return true;
+	}
+
+	for (const auto& baseClass : classDesc.ResolveBaseClasses())
+	{
+		if (HasReflectedFields(baseClass))
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+static bool AreValuesEqual(Gleam::Reflection::MetaType type, uint32_t typeHash, size_t size, const void* lhs, const void* rhs);
+
+static bool AreClassValuesEqual(const Gleam::Reflection::ClassDescription& classDesc, const void* lhs, const void* rhs)
+{
+	for (const auto& baseClass : classDesc.ResolveBaseClasses())
+	{
+		if (AreClassValuesEqual(baseClass, lhs, rhs) == false)
+		{
+			return false;
+		}
+	}
+
+	for (const auto& field : classDesc.ResolveFields())
+	{
+		if (AreValuesEqual(field.GetType(), field.TypeHash(), field.GetSize(),
+						   Gleam::OffsetPointer(lhs, field.GetOffset()),
+						   Gleam::OffsetPointer(rhs, field.GetOffset())) == false)
+		{
+			return false;
+		}
+	}
+	return true;
+}
+
+static bool AreValuesEqual(Gleam::Reflection::MetaType type, uint32_t typeHash, size_t size, const void* lhs, const void* rhs)
+{
+	// Walking the reflected fields keeps struct padding out of the comparison, types whose
+	// storage reflection does not describe fall back to a raw compare of the whole value
+	if (type == Gleam::Reflection::MetaType::Class)
+	{
+		const auto classDesc = Gleam::Reflection::GetClass(typeHash);
+		if (HasReflectedFields(*classDesc))
+		{
+			return AreClassValuesEqual(*classDesc, lhs, rhs);
+		}
+	}
+	return std::memcmp(lhs, rhs, size) == 0;
+}
+
+static bool IsFieldMixed(const Gleam::Reflection::FieldDescription& field, Gleam::TArrayView<void*> instances)
+{
+	const auto lhs = Gleam::OffsetPointer(instances[0], field.GetOffset());
+	for (size_t i = 1; i < instances.size(); ++i)
+	{
+		const auto rhs = Gleam::OffsetPointer(instances[i], field.GetOffset());
+		if (AreValuesEqual(field.GetType(), field.TypeHash(), field.GetSize(), lhs, rhs) == false)
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+static bool IsMixedValue()
+{
+	return (GImGui->CurrentItemFlags & ImGuiItemFlags_MixedValue) != 0;
+}
+
 const Gleam::HashMap<Gleam::TStringView, PropertyDrawer::DrawFunction>& PropertyDrawer::GetCustomDrawers()
 {
 	static const auto drawers = []()
@@ -91,6 +213,13 @@ const Gleam::HashMap<Gleam::TStringView, PropertyDrawer::DrawFunction>& Property
 		return customDrawers;
 	}();
 	return drawers;
+}
+
+bool PropertyDrawer::HasCustomDrawer(const Gleam::Reflection::ClassDescription& classDesc)
+{
+	const auto qualifiedName = QualifiedNameWithoutTemplateDeclaration(classDesc.ResolveQualifiedName());
+	const auto& drawers = GetCustomDrawers();
+	return drawers.find(qualifiedName) != drawers.end();
 }
 
 bool PropertyDrawer::TryCustomDrawer(const Gleam::TStringView label, void* obj, const Gleam::Reflection::ClassDescription& classDesc, float columnWidth)
@@ -154,6 +283,9 @@ void PropertyDrawer::DrawScalarControl(const Gleam::TStringView label, const Gle
 		ImGui::SameLine();
 	}
 
+	// Checkbox draws its own dash for a mixed value, the drags need a format without a conversion
+	const char* mixedFormat = IsMixedValue() ? "-" : nullptr;
+
 	switch (type)
 	{
 		case Gleam::Reflection::PrimitiveType::Bool:
@@ -163,42 +295,42 @@ void PropertyDrawer::DrawScalarControl(const Gleam::TStringView label, const Gle
 		}
 		case Gleam::Reflection::PrimitiveType::Int8:
 		{
-			ImGui::DragScalar("##X", ImGuiDataType_S8, value);
+			ImGui::DragScalar("##X", ImGuiDataType_S8, value, 1.0f, nullptr, nullptr, mixedFormat);
 			break;
 		}
 		case Gleam::Reflection::PrimitiveType::UInt8:
 		{
-			ImGui::DragScalar("##X", ImGuiDataType_U8, value);
+			ImGui::DragScalar("##X", ImGuiDataType_U8, value, 1.0f, nullptr, nullptr, mixedFormat);
 			break;
 		}
 		case Gleam::Reflection::PrimitiveType::Int16:
 		{
-			ImGui::DragScalar("##X", ImGuiDataType_S16, value);
+			ImGui::DragScalar("##X", ImGuiDataType_S16, value, 1.0f, nullptr, nullptr, mixedFormat);
 			break;
 		}
 		case Gleam::Reflection::PrimitiveType::UInt16:
 		{
-			ImGui::DragScalar("##X", ImGuiDataType_U16, value);
+			ImGui::DragScalar("##X", ImGuiDataType_U16, value, 1.0f, nullptr, nullptr, mixedFormat);
 			break;
 		}
 		case Gleam::Reflection::PrimitiveType::Int32:
 		{
-			ImGui::DragScalar("##X", ImGuiDataType_S32, value);
+			ImGui::DragScalar("##X", ImGuiDataType_S32, value, 1.0f, nullptr, nullptr, mixedFormat);
 			break;
 		}
 		case Gleam::Reflection::PrimitiveType::UInt32:
 		{
-			ImGui::DragScalar("##X", ImGuiDataType_U32, value);
+			ImGui::DragScalar("##X", ImGuiDataType_U32, value, 1.0f, nullptr, nullptr, mixedFormat);
 			break;
 		}
 		case Gleam::Reflection::PrimitiveType::Int64:
 		{
-			ImGui::DragScalar("##X", ImGuiDataType_S64, value);
+			ImGui::DragScalar("##X", ImGuiDataType_S64, value, 1.0f, nullptr, nullptr, mixedFormat);
 			break;
 		}
 		case Gleam::Reflection::PrimitiveType::UInt64:
 		{
-			ImGui::DragScalar("##X", ImGuiDataType_U64, value);
+			ImGui::DragScalar("##X", ImGuiDataType_U64, value, 1.0f, nullptr, nullptr, mixedFormat);
 			break;
 		}
 		case Gleam::Reflection::PrimitiveType::Float:
@@ -206,7 +338,7 @@ void PropertyDrawer::DrawScalarControl(const Gleam::TStringView label, const Gle
 			// TODO: use Range attribute from reflection
 			constexpr float min = 0.0f;
 			constexpr float max = 0.0f;
-			ImGui::DragScalar("##X", ImGuiDataType_Float, value, 0.05f, &min, &max, "%.2f");
+			ImGui::DragScalar("##X", ImGuiDataType_Float, value, 0.05f, &min, &max, mixedFormat ? mixedFormat : "%.2f");
 			break;
 		}
 		case Gleam::Reflection::PrimitiveType::Double:
@@ -214,7 +346,7 @@ void PropertyDrawer::DrawScalarControl(const Gleam::TStringView label, const Gle
 			// TODO: use Range attribute from reflection
 			constexpr double min = 0.0;
 			constexpr double max = 0.0;
-			ImGui::DragScalar("##X", ImGuiDataType_Double, value, 0.05f, &min, &max, "%.2f");
+			ImGui::DragScalar("##X", ImGuiDataType_Double, value, 0.05f, &min, &max, mixedFormat ? mixedFormat : "%.2f");
 			break;
 		}
 		default:
@@ -249,6 +381,8 @@ void PropertyDrawer::DrawVec3Control(const Gleam::TStringView label, Gleam::Floa
     ImGui::PushMultiItemsWidths(3, ImGui::CalcItemWidth());
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2{ 0, 0 });
 
+	const char* format = IsMixedValue() ? "-" : "%.2f";
+
     float lineHeight = GImGui->FontSize + GImGui->Style.FramePadding.y * 2.0f;
     ImVec2 buttonSize = { lineHeight + 3.0f, lineHeight };
 
@@ -266,7 +400,7 @@ void PropertyDrawer::DrawVec3Control(const Gleam::TStringView label, Gleam::Floa
     ImGui::PopStyleColor(3);
 
     ImGui::SameLine();
-    ImGui::DragFloat("##X", &values.x, 0.05f, 0.0f, 0.0f, "%.2f");
+    ImGui::DragFloat("##X", &values.x, 0.05f, 0.0f, 0.0f, format);
     ImGui::PopItemWidth();
     ImGui::SameLine();
 
@@ -284,7 +418,7 @@ void PropertyDrawer::DrawVec3Control(const Gleam::TStringView label, Gleam::Floa
     ImGui::PopStyleColor(3);
 
     ImGui::SameLine();
-    ImGui::DragFloat("##Y", &values.y, 0.05f, 0.0f, 0.0f, "%.2f");
+    ImGui::DragFloat("##Y", &values.y, 0.05f, 0.0f, 0.0f, format);
     ImGui::PopItemWidth();
     ImGui::SameLine();
 
@@ -302,7 +436,7 @@ void PropertyDrawer::DrawVec3Control(const Gleam::TStringView label, Gleam::Floa
     ImGui::PopStyleColor(3);
 
     ImGui::SameLine();
-    ImGui::DragFloat("##Z", &values.z, 0.05f, 0.0f, 0.0f, "%.2f");
+    ImGui::DragFloat("##Z", &values.z, 0.05f, 0.0f, 0.0f, format);
     ImGui::PopItemWidth();
 
     ImGui::PopStyleVar();
@@ -416,26 +550,29 @@ void PropertyDrawer::DrawEnumOptions(const Gleam::TStringView label, const Gleam
 	ImGui::PushItemWidth(ImGui::CalcItemWidth() + buttonSize.x);
 	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2{ 0, 0 });
 
-	char previewBuffer[64];
-	int currentValue = *static_cast<int*>(value);
-	for (const auto& item : enumDesc.Cases())
+	char previewBuffer[64] = "-";
+	if (IsMixedValue() == false)
 	{
-		if (item.Value() == currentValue)
+		int currentValue = *static_cast<int*>(value);
+		for (const auto& item : enumDesc.Cases())
 		{
-			if (item.HasAttribute<Gleam::Reflection::Attribute::PrettyName>())
+			if (item.Value() == currentValue)
 			{
-				auto prettyName = item.GetAttribute<Gleam::Reflection::Attribute::PrettyName>();
-				auto nameLength = strlen(prettyName->name);
-				std::memcpy(previewBuffer, prettyName->name, nameLength);
-				previewBuffer[nameLength] = '\0';
+				if (item.HasAttribute<Gleam::Reflection::Attribute::PrettyName>())
+				{
+					auto prettyName = item.GetAttribute<Gleam::Reflection::Attribute::PrettyName>();
+					auto nameLength = strlen(prettyName->name);
+					std::memcpy(previewBuffer, prettyName->name, nameLength);
+					previewBuffer[nameLength] = '\0';
+				}
+				else
+				{
+					auto itemLabel = item.ResolveName();
+					std::memcpy(previewBuffer, itemLabel.data(), itemLabel.size());
+					previewBuffer[itemLabel.size()] = '\0';
+				}
+				break;
 			}
-			else
-			{
-				auto itemLabel = item.ResolveName();
-				std::memcpy(previewBuffer, itemLabel.data(), itemLabel.size());
-				previewBuffer[itemLabel.size()] = '\0';
-			}
-			break;
 		}
 	}
 
@@ -491,62 +628,116 @@ void PropertyDrawer::DrawEnumOptions(const Gleam::TStringView label, const Gleam
 
 void PropertyDrawer::DrawClassFields(void* obj, const Gleam::Reflection::ClassDescription& classDesc, float columnWidth)
 {
+	DrawClassFields(Gleam::TArrayView<void*>(&obj, 1), classDesc, columnWidth);
+}
+
+void PropertyDrawer::DrawClassFields(Gleam::TArrayView<void*> instances, const Gleam::Reflection::ClassDescription& classDesc, float columnWidth)
+{
 	for (const auto& baseClass : classDesc.ResolveBaseClasses())
 	{
-		DrawClassFields(obj, baseClass, columnWidth);
+		DrawClassFields(instances, baseClass, columnWidth);
 	}
 
+	Gleam::TArray<uint8_t> scratch;
 	for (const auto& field : classDesc.ResolveFields())
 	{
-		Gleam::TStringView fieldName;
-		if (field.HasAttribute<Gleam::Reflection::Attribute::PrettyName>())
-		{
-			auto prettyName = field.GetAttribute<Gleam::Reflection::Attribute::PrettyName>();
-			fieldName = prettyName->name;
-		}
-		else
-		{
-			fieldName = field.ResolveName();
-		}
+		DrawField(field, instances, columnWidth, scratch);
+	}
+}
 
-		switch (field.GetType())
+void PropertyDrawer::DrawField(const Gleam::Reflection::FieldDescription& field, Gleam::TArrayView<void*> instances, float columnWidth, Gleam::TArray<uint8_t>& scratch)
+{
+	Gleam::TStringView fieldName;
+	if (field.HasAttribute<Gleam::Reflection::Attribute::PrettyName>())
+	{
+		auto prettyName = field.GetAttribute<Gleam::Reflection::Attribute::PrettyName>();
+		fieldName = prettyName->name;
+	}
+	else
+	{
+		fieldName = field.ResolveName();
+	}
+
+	// Nested structs recurse with every instance so the mixed state stays per leaf field
+	if (field.GetType() == Gleam::Reflection::MetaType::Class)
+	{
+		const auto fieldDesc = Gleam::Reflection::GetClass(field.TypeHash());
+		if (HasCustomDrawer(*fieldDesc) == false)
 		{
-			case Gleam::Reflection::MetaType::Class:
+			Gleam::TArray<void*> nested(instances.size());
+			for (size_t i = 0; i < instances.size(); ++i)
 			{
-				const auto fieldDesc = Gleam::Reflection::GetClass(field.TypeHash());
-				auto fieldPtr = Gleam::OffsetPointer(obj, field.GetOffset());
-				if (TryCustomDrawer(fieldName, fieldPtr, *fieldDesc, columnWidth) == false)
-				{
-					DrawClass(fieldName, fieldPtr, *fieldDesc, columnWidth);
-				}
-				break;
+				nested[i] = Gleam::OffsetPointer(instances[i], field.GetOffset());
 			}
-			case Gleam::Reflection::MetaType::Array:
+			DrawClass(fieldName, nested, *fieldDesc, columnWidth);
+			return;
+		}
+	}
+
+	const bool multiEdit = instances.size() > 1;
+	const bool editable = multiEdit == false || IsMultiEditable(field.GetType(), field.TypeHash());
+	auto fieldPtr = Gleam::OffsetPointer(instances[0], field.GetOffset());
+
+	if (multiEdit)
+	{
+		scratch.resize(field.GetSize());
+		std::memcpy(scratch.data(), fieldPtr, field.GetSize());
+		ImGui::PushItemFlag(ImGuiItemFlags_MixedValue, IsFieldMixed(field, instances));
+		ImGui::BeginDisabled(editable == false);
+	}
+
+	switch (field.GetType())
+	{
+		case Gleam::Reflection::MetaType::Class:
+		{
+			const auto fieldDesc = Gleam::Reflection::GetClass(field.TypeHash());
+			TryCustomDrawer(fieldName, fieldPtr, *fieldDesc, columnWidth);
+			break;
+		}
+		case Gleam::Reflection::MetaType::Array:
+		{
+			const auto arrayDesc = Gleam::Reflection::GetArray(field.TypeHash());
+			DrawArray(fieldName, fieldPtr, *arrayDesc, columnWidth);
+			break;
+		}
+		case Gleam::Reflection::MetaType::Enum:
+		{
+			const auto enumDesc = Gleam::Reflection::GetEnum(field.TypeHash());
+			DrawEnumOptions(fieldName, *enumDesc, fieldPtr, columnWidth);
+			break;
+		}
+		case Gleam::Reflection::MetaType::Primitive:
+		{
+			constexpr uint64_t defaultValue = 0;
+			const auto primitiveDesc = Gleam::Reflection::GetPrimitive(field.TypeHash());
+			DrawScalarControl(fieldName, primitiveDesc.Type(), primitiveDesc.GetSize(), fieldPtr, &defaultValue, columnWidth);
+			break;
+		}
+		default:
+			break;
+	}
+
+	if (multiEdit)
+	{
+		ImGui::EndDisabled();
+		ImGui::PopItemFlag();
+
+		if (editable && std::memcmp(scratch.data(), fieldPtr, field.GetSize()) != 0)
+		{
+			for (size_t i = 1; i < instances.size(); ++i)
 			{
-				const auto arrayDesc = Gleam::Reflection::GetArray(field.TypeHash());
-				DrawArray(fieldName, Gleam::OffsetPointer(obj, field.GetOffset()), *arrayDesc, columnWidth);
-				break;
+				std::memcpy(Gleam::OffsetPointer(instances[i], field.GetOffset()), fieldPtr, field.GetSize());
 			}
-			case Gleam::Reflection::MetaType::Enum:
-			{
-				const auto enumDesc = Gleam::Reflection::GetEnum(field.TypeHash());
-				DrawEnumOptions(fieldName, *enumDesc, Gleam::OffsetPointer(obj, field.GetOffset()), columnWidth);
-				break;
-			}
-			case Gleam::Reflection::MetaType::Primitive:
-			{
-				constexpr uint64_t defaultValue = 0;
-				const auto primitiveDesc = Gleam::Reflection::GetPrimitive(field.TypeHash());
-				DrawScalarControl(fieldName, primitiveDesc.Type(), primitiveDesc.GetSize(), Gleam::OffsetPointer(obj, field.GetOffset()), &defaultValue, columnWidth);
-				break;
-			}
-			default:
-				continue;
 		}
 	}
 }
 
 void PropertyDrawer::DrawClass(const Gleam::TStringView label, void* component, const Gleam::Reflection::ClassDescription& classDesc, float columnWidth)
+{
+	DrawClass(label, Gleam::TArrayView<void*>(&component, 1), classDesc, columnWidth);
+}
+
+void PropertyDrawer::DrawClass(const Gleam::TStringView label, Gleam::TArrayView<void*> instances, const Gleam::Reflection::ClassDescription& classDesc, float columnWidth)
 {
     const ImGuiTreeNodeFlags treeNodeFlags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_AllowOverlap | ImGuiTreeNodeFlags_FramePadding;
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2{ 4, 4 });
@@ -569,7 +760,7 @@ void PropertyDrawer::DrawClass(const Gleam::TStringView label, void* component, 
 		float innerWidth = ImGui::GetContentRegionAvail().x;
 		// Subtract the tree node indent so nested value columns line up with the parent's.
 		float fieldsWidth = columnWidth > 0.0f ? columnWidth - (outerWidth - innerWidth) : innerWidth * 0.3f;
-		DrawClassFields(component, classDesc, fieldsWidth);
+		DrawClassFields(instances, classDesc, fieldsWidth);
         ImGui::TreePop();
     }
 
@@ -668,6 +859,8 @@ void PropertyDrawer::DrawAsset(const Gleam::TStringView label, Gleam::AssetRefer
 
 	ImGui::PushID(buffer);
 
+	const bool mixed = IsMixedValue();
+
 	const AssetItem* item = nullptr;
 	if (assetRef.guid != Gleam::Guid::InvalidGuid())
 	{
@@ -707,7 +900,7 @@ void PropertyDrawer::DrawAsset(const Gleam::TStringView label, Gleam::AssetRefer
 
 	ImGui::SameLine();
 	ImGui::SetCursorPosY(ImGui::GetCursorPosY() + textOffset);
-	ImGui::Text("%s", item ? item->name.c_str() : "None");
+	ImGui::Text("%s", mixed ? "-" : (item ? item->name.c_str() : "None"));
 
 	ImGui::Columns(1);
 

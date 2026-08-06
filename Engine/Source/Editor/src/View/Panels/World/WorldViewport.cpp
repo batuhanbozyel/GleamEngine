@@ -53,6 +53,62 @@ static void SetEntityWorldTransform(Gleam::Entity& entity, const Gleam::Transfor
 	});
 }
 
+struct TargetPixel
+{
+	uint32_t x = 0;
+	uint32_t y = 0;
+};
+
+// Clamped because a marquee can be dragged past the edges of the viewport image
+static TargetPixel ToTargetPixel(const Gleam::Float2& screen, const Gleam::Float2& imageMin, const Gleam::Float2& imageSize, const Gleam::Size& targetSize)
+{
+	const float u = Gleam::Math::Clamp((screen.x - imageMin.x) / imageSize.x, 0.0f, 1.0f);
+	const float v = Gleam::Math::Clamp((screen.y - imageMin.y) / imageSize.y, 0.0f, 1.0f);
+	return {
+		.x = static_cast<uint32_t>(u * (targetSize.width - 1.0f)),
+		.y = static_cast<uint32_t>(v * (targetSize.height - 1.0f))
+	};
+}
+
+// Rotation and scale come from the active entity, the handles sit at the middle of the selection
+static Gleam::Transform GetPivotTransform(Gleam::EntityManager& entityManager, const Gleam::TArray<Gleam::EntityHandle>& targets, Gleam::EntityHandle active)
+{
+	const auto reference = eastl::find(targets.begin(), targets.end(), active) != targets.end() ? active : targets.front();
+	auto pivot = entityManager.GetComponent<Gleam::Entity>(reference).GetWorldTransform();
+
+	if (targets.size() > 1)
+	{
+		auto center = Gleam::Float3::zero;
+		for (auto handle : targets)
+		{
+			center += entityManager.GetComponent<Gleam::Entity>(handle).GetWorldPosition();
+		}
+		pivot.position = center / static_cast<float>(targets.size());
+	}
+	return pivot;
+}
+
+// Re-anchors every target against the moved pivot, which reduces to a plain assignment for one entity
+static void ApplyPivotDelta(Gleam::EntityManager& entityManager, const Gleam::TArray<Gleam::EntityHandle>& targets, const Gleam::Transform& from, const Gleam::Transform& to)
+{
+	const auto invFromRotation = Gleam::Math::Inverse(from.rotation);
+	const auto deltaRotation = to.rotation * invFromRotation;
+	const float scaleRatio = to.scale / from.scale;
+
+	for (auto handle : targets)
+	{
+		auto& entity = entityManager.GetComponent<Gleam::Entity>(handle);
+		auto world = entity.GetWorldTransform();
+
+		const auto offset = invFromRotation * (world.position - from.position);
+		world.position = to.position + (to.rotation * (offset * scaleRatio));
+		world.rotation = deltaRotation * world.rotation;
+		world.scale = world.scale * scaleRatio;
+
+		SetEntityWorldTransform(entity, world);
+	}
+}
+
 void WorldViewport::OnCreate(Gleam::World* world)
 {
 	mEditWorld = world;
@@ -113,8 +169,9 @@ void WorldViewport::Render(Gleam::ImGuiRenderer* imgui)
 	{
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
 
-		const bool gizmoActive = mTransformGizmo.IsHovered() || mTransformGizmo.IsDragging();
-		ImGui::Begin("Viewport", nullptr, gizmoActive ? ImGuiWindowFlags_NoMove : ImGuiWindowFlags_None);
+		// The image is a drag surface for the gizmo and the selection marquee, so the panel
+		// itself only moves from its dock tab
+		ImGui::Begin("Viewport", nullptr, ImGuiWindowFlags_NoMove);
 
 		DrawToolbar();
 		DrawViewport(imgui, passData);
@@ -243,21 +300,18 @@ void WorldViewport::DrawViewport(Gleam::ImGuiRenderer* imgui, const Gleam::ImGui
 	ImVec2 imageMin = ImGui::GetItemRectMin();
 	ImVec2 imageSize = ImGui::GetItemRectSize();
 	bool viewportHovered = ImGui::IsItemHovered();
-	
-	DrawTransformGizmo(Gleam::Float2(imageMin.x, imageMin.y), Gleam::Float2(imageSize.x, imageSize.y));
+
+	const Gleam::Float2 rectMin(imageMin.x, imageMin.y);
+	const Gleam::Float2 rectSize(imageSize.x, imageSize.y);
+
+	DrawTransformGizmo(rectMin, rectSize);
 
 	bool isFocused = ImGui::IsWindowFocused();
 	mCameraController->Enabled = isFocused && mTransformGizmo.IsDragging() == false;
 
-	auto ctx = ImGui::GetCurrentContext();
-	if (viewportHovered && mCursorVisible && mTransformGizmo.IsHovered() == false && mTransformGizmo.IsDragging() == false
-		&& ctx->IO.MouseClicked[ImGuiMouseButton_Left])
-	{
-		const auto px = static_cast<uint32_t>((ctx->IO.MousePos.x - imageMin.x) / imageSize.x * sceneRTsize.width);
-		const auto py = static_cast<uint32_t>((ctx->IO.MousePos.y - imageMin.y) / imageSize.y * sceneRTsize.height);
-		mEditWorld->GetSubsystem<Gleam::PickingSystem>()->RequestPick({ .x = px, .y = py });
-	}
+	UpdateSelectionMarquee(rectMin, rectSize, sceneRTsize, viewportHovered);
 
+	auto ctx = ImGui::GetCurrentContext();
 	if (isFocused && ctx->IO.MouseClicked[ImGuiMouseButton_Right])
 	{
 		auto inputSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::InputSystem>();
@@ -293,11 +347,95 @@ void WorldViewport::DrawViewport(Gleam::ImGuiRenderer* imgui, const Gleam::ImGui
 	}
 }
 
+void WorldViewport::UpdateSelectionMarquee(const Gleam::Float2& imageMin, const Gleam::Float2& imageSize, const Gleam::Size& targetSize, bool viewportHovered)
+{
+	// Below this the drag is still a click, so a small wobble does not turn into a rectangle
+	constexpr float kMarqueeThreshold = 4.0f;
+
+	const auto& io = ImGui::GetIO();
+	const Gleam::Float2 mouse(io.MousePos.x, io.MousePos.y);
+
+	if (mMarqueeDragging == false)
+	{
+		const bool gizmoBusy = mTransformGizmo.IsHovered() || mTransformGizmo.IsDragging();
+		if (viewportHovered && mCursorVisible && gizmoBusy == false && io.MouseClicked[ImGuiMouseButton_Left])
+		{
+			mMarqueeDragging = true;
+			mMarqueeMoved = false;
+			mMarqueeStart = mouse;
+		}
+		return;
+	}
+
+	if (io.MouseDown[ImGuiMouseButton_Left])
+	{
+		mMarqueeMoved |= Gleam::Math::Abs(mouse.x - mMarqueeStart.x) > kMarqueeThreshold
+					  || Gleam::Math::Abs(mouse.y - mMarqueeStart.y) > kMarqueeThreshold;
+
+		if (mMarqueeMoved)
+		{
+			const ImVec2 min(Gleam::Math::Min(mMarqueeStart.x, mouse.x), Gleam::Math::Min(mMarqueeStart.y, mouse.y));
+			const ImVec2 max(Gleam::Math::Max(mMarqueeStart.x, mouse.x), Gleam::Math::Max(mMarqueeStart.y, mouse.y));
+
+			auto drawList = ImGui::GetWindowDrawList();
+			drawList->AddRectFilled(min, max, IM_COL32(66, 115, 184, 64));
+			drawList->AddRect(min, max, IM_COL32(120, 170, 235, 255));
+		}
+		return;
+	}
+
+	// A marquee resolves as a region, a plain click stays the single pixel under the cursor
+	const auto from = ToTargetPixel(mMarqueeMoved ? mMarqueeStart : mouse, imageMin, imageSize, targetSize);
+	const auto to = ToTargetPixel(mouse, imageMin, imageSize, targetSize);
+
+	Gleam::PickingRequest request;
+	request.x = Gleam::Math::Min(from.x, to.x);
+	request.y = Gleam::Math::Min(from.y, to.y);
+	request.width = Gleam::Math::Max(from.x, to.x) - request.x + 1;
+	request.height = Gleam::Math::Max(from.y, to.y) - request.y + 1;
+
+	const bool additive = io.KeyCtrl || io.KeySuper;
+	mSelection->RequestPick(request, additive ? SelectionMode::Toggle : SelectionMode::Replace);
+
+	mMarqueeDragging = false;
+	mMarqueeMoved = false;
+}
+
+void WorldViewport::GatherGizmoTargets(Gleam::EntityManager& entityManager)
+{
+	mGizmoTargets.clear();
+	for (auto handle : mSelection->GetSelectedEntities())
+	{
+		if (entityManager.HasComponent<Gleam::Entity>(handle) == false)
+		{
+			continue;
+		}
+
+		// A child already inherits its parent's delta, applying it again would move it twice
+		bool ancestorSelected = false;
+		auto parent = entityManager.GetComponent<Gleam::Entity>(handle).GetParent();
+		while (parent != Gleam::InvalidEntity)
+		{
+			if (mSelection->IsSelected(parent))
+			{
+				ancestorSelected = true;
+				break;
+			}
+			parent = entityManager.GetComponent<Gleam::Entity>(parent).GetParent();
+		}
+
+		if (ancestorSelected == false)
+		{
+			mGizmoTargets.push_back(handle);
+		}
+	}
+}
+
 void WorldViewport::DrawTransformGizmo(const Gleam::Float2& imageMin, const Gleam::Float2& imageSize)
 {
 	auto& entityManager = mEditWorld->GetEntityManager();
-	auto selectedEntity = mSelection->GetSelectedEntity();
-	if (selectedEntity == Gleam::InvalidEntity || entityManager.HasComponent<Gleam::Entity>(selectedEntity) == false)
+	GatherGizmoTargets(entityManager);
+	if (mGizmoTargets.empty())
 	{
 		return;
 	}
@@ -325,13 +463,13 @@ void WorldViewport::DrawTransformGizmo(const Gleam::Float2& imageMin, const Glea
 	viewport.rectMin = imageMin;
 	viewport.rectSize = imageSize;
 
-	auto& entity = entityManager.GetComponent<Gleam::Entity>(selectedEntity);
-	auto transform = entity.GetWorldTransform();
+	auto pivot = GetPivotTransform(entityManager, mGizmoTargets, mSelection->GetActiveEntity());
+	const auto startPivot = pivot;
 
 	const bool inputEnabled = ImGui::IsWindowHovered() && mCursorVisible;
-	if (mTransformGizmo.Manipulate(viewport, inputEnabled, transform))
+	if (mTransformGizmo.Manipulate(viewport, inputEnabled, pivot))
 	{
-		SetEntityWorldTransform(entity, transform);
+		ApplyPivotDelta(entityManager, mGizmoTargets, startPivot, pivot);
 	}
 }
 

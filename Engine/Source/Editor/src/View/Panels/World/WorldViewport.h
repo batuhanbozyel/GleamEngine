@@ -49,11 +49,22 @@ private:
 
 	void DrawTransformGizmo(const Gleam::Float2& imageMin, const Gleam::Float2& imageSize);
 
+	void UpdateSelectionMarquee(const Gleam::Float2& imageMin, const Gleam::Float2& imageSize, const Gleam::Size& targetSize, bool viewportHovered);
+
+	void GatherGizmoTargets(Gleam::EntityManager& entityManager);
+
 	void Resize(Gleam::EntityManager& entityManager, const Gleam::Size& size);
 
     bool mCursorVisible = true;
 
 	bool mViewportSizeChanged = false;
+
+	// A left drag over the viewport image is a rectangle select until it is released
+	bool mMarqueeDragging = false;
+
+	bool mMarqueeMoved = false;
+
+	Gleam::Float2 mMarqueeStart = Gleam::Float2::zero;
     
 	InfiniteGridRenderer* mGridRenderer = nullptr;
 
@@ -64,6 +75,8 @@ private:
 	Gleam::EntityHandle mCamera = Gleam::InvalidEntity;
 
 	SelectionSystem* mSelection = nullptr;
+
+	Gleam::TArray<Gleam::EntityHandle> mGizmoTargets;
 
 	TransformGizmo mTransformGizmo;
     

@@ -8,6 +8,7 @@
 #pragma once
 #include "View/View.h"
 #include "World/Entity.h"
+#include "Container/Hash.h"
 
 namespace GEditor {
 
@@ -23,9 +24,31 @@ public:
 
 private:
 
+	struct SharedComponent
+	{
+		const Gleam::Reflection::ClassDescription* classDesc = nullptr;
+		Gleam::TArray<void*> instances;
+	};
+
+	void DrawEntities(const Gleam::TArray<Gleam::EntityHandle>& entities);
+
+	void DrawTransform(const Gleam::TArray<Gleam::EntityHandle>& entities);
+
+	void DrawComponents(const Gleam::TArray<Gleam::EntityHandle>& entities);
+
+	void DrawSingleton(uint32_t typeHash);
+
 	Gleam::World* mEditWorld = nullptr;
 
 	SelectionSystem* mSelection = nullptr;
+
+	// Selection with the active entity first, everything else follows its edits
+	Gleam::TArray<Gleam::EntityHandle> mSelectionOrder;
+
+	// Component types every selected entity has in common
+	Gleam::TArray<SharedComponent> mSharedComponents;
+
+	Gleam::HashMap<uint32_t, void*> mComponentLookup;
 
 	Gleam::Float3 mEntityEulerRotation = {};
 

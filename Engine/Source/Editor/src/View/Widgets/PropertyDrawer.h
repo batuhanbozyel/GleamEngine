@@ -1,6 +1,7 @@
 #pragma once
 #include "Math/Color.h"
 #include "Math/Vector3.h"
+#include "Container/Array.h"
 #include "Container/Hash.h"
 #include "Container/String.h"
 #include "Reflection/Reflection.h"
@@ -33,7 +34,11 @@ public:
 
 	static void DrawClassFields(void* obj, const Gleam::Reflection::ClassDescription& classDesc, float columnWidth = 100.0f);
 
+	static void DrawClassFields(Gleam::TArrayView<void*> instances, const Gleam::Reflection::ClassDescription& classDesc, float columnWidth = 100.0f);
+
 	static void DrawClass(const Gleam::TStringView label, void* component, const Gleam::Reflection::ClassDescription& classDesc, float columnWidth = 0.0f);
+
+	static void DrawClass(const Gleam::TStringView label, Gleam::TArrayView<void*> instances, const Gleam::Reflection::ClassDescription& classDesc, float columnWidth = 0.0f);
 
 	static void DrawArrayElements(void* obj, const Gleam::Reflection::ArrayDescription& arrayDesc, float columnWidth = 100.0f);
 
@@ -53,10 +58,17 @@ private:
 
 	static const Gleam::HashMap<Gleam::TStringView, DrawFunction>& GetCustomDrawers();
 
+	static bool HasCustomDrawer(const Gleam::Reflection::ClassDescription& classDesc);
+
 	static bool TryCustomDrawer(const Gleam::TStringView label,
 								void* obj,
 								const Gleam::Reflection::ClassDescription& classDesc,
 								float columnWidth);
+
+	static void DrawField(const Gleam::Reflection::FieldDescription& field,
+						  Gleam::TArrayView<void*> instances,
+						  float columnWidth,
+						  Gleam::TArray<uint8_t>& scratch);
 };
 
 
