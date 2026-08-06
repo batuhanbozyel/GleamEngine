@@ -72,7 +72,7 @@ private:
 		PickingCallback callback;
 	};
 
-	static constexpr size_t MaskBytes = PICKING_MASK_UINTS * sizeof(uint32_t);
+	static constexpr size_t MaskBytes = INSTANCE_MASK_UINTS * sizeof(uint32_t);
 
 	void ResolveReadback(uint32_t frameIndex);
 

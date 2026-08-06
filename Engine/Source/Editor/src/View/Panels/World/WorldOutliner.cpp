@@ -103,7 +103,7 @@ void WorldOutliner::DrawEntityNode(Gleam::EntityHandle handle)
 		flags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
 	}
 
-	if (handle == mSelection->GetSelectedEntity())
+	if (mSelection->IsSelected(handle))
 	{
 		flags |= ImGuiTreeNodeFlags_Selected;
 	}

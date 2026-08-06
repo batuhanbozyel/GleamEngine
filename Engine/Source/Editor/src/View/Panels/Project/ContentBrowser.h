@@ -52,7 +52,7 @@ private:
 
 	bool ImportAsset(const Gleam::Path& path);
 
-	void SetCurrentDirectory(const Gleam::Path& directory);
+	void SetCurrentDir(const Gleam::Path& directory);
 
 	void RefreshAssetGrid();
 

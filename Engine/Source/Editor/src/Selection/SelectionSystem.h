@@ -10,7 +10,7 @@
 
 namespace GEditor {
 
-class SelectionSystem final : public Gleam::WorldSubsystem
+class SelectionSystem final : public Gleam::TickableWorldSubsystem
 {
 public:
 
@@ -18,13 +18,31 @@ public:
 
 	virtual void Shutdown(Gleam::World* world) override;
 
+	virtual void Tick(Gleam::World* world) override;
+
 	void SelectEntity(Gleam::EntityHandle entity);
+
+	void SelectEntities(const Gleam::TArray<Gleam::EntityHandle>& entities);
 
 	void SelectSingleton(uint32_t typeHash);
 
+	void ClearSelection();
+
+	bool IsSelected(Gleam::EntityHandle entity) const;
+
 	Gleam::EntityHandle GetSelectedEntity() const
 	{
-		return mSelectedEntity;
+		return mSelectedEntities.empty() ? Gleam::InvalidEntity : mSelectedEntities.front();
+	}
+
+	const Gleam::TArray<Gleam::EntityHandle>& GetSelectedEntities() const
+	{
+		return mSelectedEntities;
+	}
+
+	const Gleam::TArray<uint32_t>& GetInstanceMask() const
+	{
+		return mInstanceMask;
 	}
 
 	uint32_t GetSelectedSingleton() const
@@ -34,7 +52,9 @@ public:
 
 private:
 
-	Gleam::EntityHandle mSelectedEntity = Gleam::InvalidEntity;
+	Gleam::TArray<Gleam::EntityHandle> mSelectedEntities;
+
+	Gleam::TArray<uint32_t> mInstanceMask;
 
 	uint32_t mSelectedSingleton = 0;
 

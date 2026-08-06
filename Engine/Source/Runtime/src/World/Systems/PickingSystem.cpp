@@ -152,7 +152,7 @@ void PickingSystem::Resolve(uint32_t frameIndex)
 
 	auto instanceCount = static_cast<uint32_t>(pending.instanceToEntity.size());
 	uint32_t wordCount = Math::DivideRoundingUp(instanceCount, 32u);
-	auto mask = static_cast<const uint32_t*>(mReadbackBuffer.GetContents()) + frameIndex * PICKING_MASK_UINTS;
+	auto mask = static_cast<const uint32_t*>(mReadbackBuffer.GetContents()) + frameIndex * INSTANCE_MASK_UINTS;
 
 	for (uint32_t word = 0; word < wordCount; ++word)
 	{

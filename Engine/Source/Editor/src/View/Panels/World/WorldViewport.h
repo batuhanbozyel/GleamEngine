@@ -22,6 +22,7 @@ class InfiniteGridRenderer;
 class EditorCameraController;
 class ViewModeRenderer;
 class SelectionSystem;
+class SelectionOutlineRenderer;
 
 class WorldViewport final : public View
 {
@@ -55,6 +56,8 @@ private:
 	bool mViewportSizeChanged = false;
     
 	InfiniteGridRenderer* mGridRenderer = nullptr;
+
+	SelectionOutlineRenderer* mSelectionOutlineRenderer = nullptr;
 
     EditorCameraController* mCameraController = nullptr;
 

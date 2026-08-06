@@ -34,7 +34,7 @@ void ContentBrowser::OnCreate(Gleam::World* world)
 {
 	mAssetDirectory = Gleam::Globals::ProjectContentDirectory;
 
-	SetCurrentDirectory(mAssetDirectory);
+	SetCurrentDir(mAssetDirectory);
 	RefreshDirectoryTree();
 
 	auto fileWatcher = Gleam::Globals::Engine->GetSubsystem<Gleam::FileWatcher>();
@@ -105,7 +105,7 @@ void ContentBrowser::Render(Gleam::ImGuiRenderer* imgui)
 
 		if (ImGui::Button(Gleam::TStringView(mAssetDirectory.Stem()).data()))
 		{
-			SetCurrentDirectory(mAssetDirectory);
+			SetCurrentDir(mAssetDirectory);
 		}
 
 		if (mCurrentDirectory != mAssetDirectory)
@@ -124,7 +124,7 @@ void ContentBrowser::Render(Gleam::ImGuiRenderer* imgui)
 				ImGui::PushID(directoryID);
 				if (ImGui::Button(Gleam::TStringView(directory).data()))
 				{
-					SetCurrentDirectory(breadcrumbPath);
+					SetCurrentDir(breadcrumbPath);
 				}
 				ImGui::PopID();
 			}
@@ -154,7 +154,7 @@ bool ContentBrowser::ImportAsset(const Gleam::Path& path)
 	return false;
 }
 
-void ContentBrowser::SetCurrentDirectory(const Gleam::Path& directory)
+void ContentBrowser::SetCurrentDir(const Gleam::Path& directory)
 {
 	mCurrentDirectory = directory;
 	RefreshAssetGrid();
@@ -286,7 +286,7 @@ uint32_t ContentBrowser::DrawDirectoryNode(uint32_t index)
 
 	if (ImGui::IsItemClicked())
 	{
-		SetCurrentDirectory(entry.path);
+		SetCurrentDir(entry.path);
 	}
 
 	if (opened)
@@ -343,7 +343,7 @@ void ContentBrowser::DrawAssetGrid()
 
 	if (not mPendingDirectory.Empty())
 	{
-		SetCurrentDirectory(mPendingDirectory);
+		SetCurrentDir(mPendingDirectory);
 		mPendingDirectory.Clear();
 	}
 }

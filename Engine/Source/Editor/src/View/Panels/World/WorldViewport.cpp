@@ -11,6 +11,7 @@
 #include "Selection/SelectionSystem.h"
 #include "Renderers/InfiniteGridRenderer.h"
 #include "Renderers/ViewModeRenderer.h"
+#include "Renderers/SelectionOutlineRenderer.h"
 
 #include "Renderer/RenderSystem.h"
 #include "Renderer/RenderPipeline.h"
@@ -65,6 +66,11 @@ void WorldViewport::OnCreate(Gleam::World* world)
 	renderSystem->GetRenderPipeline(Gleam::RenderPath::Default)->AddSharedRenderer(mGridRenderer);
 	renderSystem->GetRenderPipeline(Gleam::RenderPath::PathTracing)->AddSharedRenderer(mGridRenderer);
 
+	mSelectionOutlineRenderer = new SelectionOutlineRenderer(mSelection);
+	mSelectionOutlineRenderer->OnCreate(renderSystem->GetRenderContext());
+	renderSystem->GetRenderPipeline(Gleam::RenderPath::Default)->AddSharedRenderer(mSelectionOutlineRenderer);
+	renderSystem->GetRenderPipeline(Gleam::RenderPath::PathTracing)->AddSharedRenderer(mSelectionOutlineRenderer);
+
 	mEditWorld->GetEntityManager().ForEach<Gleam::Entity, Gleam::Camera>([&](const Gleam::Entity& entity, const Gleam::Camera& camera)
 	{
 		if (entity.IsActive())
@@ -86,6 +92,11 @@ void WorldViewport::OnDestroy(Gleam::World* world)
 	renderSystem->GetRenderPipeline(Gleam::RenderPath::Default)->RemoveSharedRenderer(mGridRenderer);
 	renderSystem->GetRenderPipeline(Gleam::RenderPath::PathTracing)->RemoveSharedRenderer(mGridRenderer);
 	delete mGridRenderer;
+
+	renderSystem->GetRenderPipeline(Gleam::RenderPath::Default)->RemoveSharedRenderer(mSelectionOutlineRenderer);
+	renderSystem->GetRenderPipeline(Gleam::RenderPath::PathTracing)->RemoveSharedRenderer(mSelectionOutlineRenderer);
+	mSelectionOutlineRenderer->OnDestroy(renderSystem->GetRenderContext());
+	delete mSelectionOutlineRenderer;
 }
 
 void WorldViewport::Update()
