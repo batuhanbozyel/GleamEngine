@@ -161,7 +161,7 @@ Heap GraphicsDevice::CreateHeap(const HeapDescriptor& descriptor)
 	desc.Alignment = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
 	desc.SizeInBytes = descriptor.size;
 	desc.Flags = D3D12_HEAP_FLAG_CREATE_NOT_ZEROED;
-	desc.Properties.Type = descriptor.memoryType == MemoryType::CPU ? D3D12_HEAP_TYPE_UPLOAD : D3D12_HEAP_TYPE_DEFAULT;
+	desc.Properties.Type = MemoryTypeToD3D12_HEAP_TYPE(descriptor.memoryType);
 	DX_CHECK(static_cast<ID3D12Device10*>(mHandle)->CreateHeap(&desc, IID_PPV_ARGS(&handle)));
 	handle->SetName(StringUtils::Convert(descriptor.name).c_str());
 
@@ -191,7 +191,7 @@ Texture GraphicsDevice::CreateTexture(GPUAllocator* allocator, const TextureDesc
 Buffer GraphicsDevice::CreateBuffer(GPUAllocator* allocator, const BufferDescriptor& descriptor)
 {
 	auto flags = D3D12_RESOURCE_FLAG_NONE;
-	if (descriptor.memoryType != MemoryType::CPU)
+	if (descriptor.memoryType == MemoryType::GPU)
 	{
 		flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
 	}
@@ -229,7 +229,11 @@ Buffer GraphicsDevice::CreateBuffer(GPUAllocator* allocator, const BufferDescrip
 	buffer.mHandle = resource;
 	buffer.mContents = contents;
 	buffer.mAlignment = D3D12_RAW_UAV_SRV_BYTE_ALIGNMENT;
-	buffer.mResourceView = static_cast<DirectXDevice*>(this)->CreateResourceView(buffer);
+
+	if (descriptor.memoryType != MemoryType::Readback)
+	{
+		buffer.mResourceView = static_cast<DirectXDevice*>(this)->CreateResourceView(buffer);
+	}
 	return buffer;
 }
 
@@ -692,7 +696,7 @@ void GraphicsDevice::Dispose(Heap& heap)
 
 void GraphicsDevice::Dispose(GPUAllocator* allocator, Buffer& buffer, BarrierStage stage)
 {
-	if (buffer.GetDescriptor().memoryType == MemoryType::CPU)
+	if (buffer.GetDescriptor().memoryType != MemoryType::GPU)
 	{
 		ID3D12Resource* resource = static_cast<ID3D12Resource*>(buffer.GetHandle());
 		mReleaseQueue->AddResource([this, allocator, resource, view = buffer.mResourceView]()

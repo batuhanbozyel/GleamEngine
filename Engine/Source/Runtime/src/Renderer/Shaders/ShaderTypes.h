@@ -184,6 +184,19 @@ struct VisibilityClassifyConstants
 	UnorderedAccessIndex pixelListBuffer;
 };
 
+struct PickingConstants
+{
+	ShaderResourceIndex visibilityBuffer;
+	UnorderedAccessIndex maskBuffer;
+	uint32_t rectOffsetX;
+	uint32_t rectOffsetY;
+
+	uint32_t rectWidth;
+	uint32_t rectHeight;
+	float pad0;
+	float pad1;
+};
+
 struct VisibilityAllocateConstants
 {
 	ShaderResourceIndex countsBuffer;

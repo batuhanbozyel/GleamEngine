@@ -22,6 +22,9 @@ struct ArrayHelper<T, 0>
 template<typename T, size_t size = 0>
 using TArray = typename ArrayHelper<T, size>::Type;
 
+template<typename T, size_t size, bool enableOverflow = false>
+using TFixedArray = eastl::fixed_vector<T, size, enableOverflow>;
+
 template<typename T>
 using TArrayView = eastl::span<T>;
 

@@ -6,7 +6,6 @@
 //
 
 #pragma once
-#include "Events/EntityEvent.h"
 
 namespace Gleam {
 class ImGuiRenderer;

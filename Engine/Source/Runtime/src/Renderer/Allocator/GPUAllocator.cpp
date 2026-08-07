@@ -15,6 +15,7 @@ GPUAllocator::GPUAllocator(GraphicsDevice* device, const GPUAllocatorDescriptor&
 {
 	mBlockSizes[(uint32_t)MemoryType::CPU] = descriptor.cpuBlockSize;
 	mBlockSizes[(uint32_t)MemoryType::GPU] = descriptor.gpuBlockSize;
+	mBlockSizes[(uint32_t)MemoryType::Readback] = descriptor.readbackBlockSize;
 }
 
 GPUAllocator::~GPUAllocator()

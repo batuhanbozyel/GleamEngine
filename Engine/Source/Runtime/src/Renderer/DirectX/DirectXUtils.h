@@ -410,6 +410,17 @@ static constexpr D3D12_RESOURCE_DIMENSION TextureDimensionToD3D12_RESOURCE_DIMEN
 	}
 }
 
+static constexpr D3D12_HEAP_TYPE MemoryTypeToD3D12_HEAP_TYPE(MemoryType type)
+{
+	switch (type)
+	{
+		case MemoryType::CPU: return D3D12_HEAP_TYPE_UPLOAD;
+		case MemoryType::GPU: return D3D12_HEAP_TYPE_DEFAULT;
+		case MemoryType::Readback: return D3D12_HEAP_TYPE_READBACK;
+		default: return D3D12_HEAP_TYPE_DEFAULT;
+	}
+}
+
 static constexpr D3D12_BARRIER_SYNC BarrierStageToD3D12_BARRIER_SYNC(BarrierStage stage)
 {
 	switch (stage)

@@ -6,7 +6,8 @@ namespace Gleam {
 enum class MemoryType
 {
 	CPU,
-    GPU
+    GPU,
+	Readback
 };
 
 struct HeapDescriptor
@@ -36,6 +37,7 @@ static constexpr const char* MemoryTypeToString(MemoryType type)
 	{
 		case MemoryType::CPU: return "CPU";
 		case MemoryType::GPU: return "GPU";
+		case MemoryType::Readback: return "Readback";
 		default: return "UNKNOWN";
 	}
 }

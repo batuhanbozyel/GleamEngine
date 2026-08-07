@@ -41,10 +41,8 @@ class TransformGizmo
 {
 public:
 
-	// Draws the gizmo for a world space transform and applies the active drag to it.
-	// Returns true when the transform was modified this frame.
 	bool Manipulate(const GizmoViewport& viewport, bool inputEnabled, Gleam::Transform& transform);
-
+	
 	bool IsHovered() const
 	{
 		return mHoveredHandle != Handle::None;
@@ -117,7 +115,6 @@ private:
 
 	void DrawRotate(const GizmoViewport& viewport, const Frame& frame) const;
 
-	// Screen space points of the quarter arc facing the camera, zero when it cannot be projected
 	uint32_t BuildRingArc(const GizmoViewport& viewport, const Frame& frame, uint32_t axisIndex, Gleam::Float2* screenPoints) const;
 
 	void DrawRotationPlane(const GizmoViewport& viewport, const Frame& frame, uint32_t axisIndex, bool highlighted, float opacity) const;
@@ -144,7 +141,6 @@ private:
 
 	Gleam::Float3 mDragOffset = Gleam::Float3::zero;
 
-	// Rotation accumulates per frame so dragging past half a turn keeps tracking
 	Gleam::Float3 mDragPrevDirection = Gleam::Float3::zero;
 
 	float mDragStartDistance = 0.0f;

@@ -6,6 +6,8 @@
 #pragma once
 #include "View/View.h"
 
+#include <cstdint>
+
 namespace GEditor {
 
 class ProjectSettings final : public View

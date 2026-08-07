@@ -43,6 +43,7 @@ struct GPUAllocatorDescriptor
 	TString name;
 	uint64_t cpuBlockSize = 128 * 1024 * 1024;        // 128 MB
 	uint64_t gpuBlockSize = 512 * 1024 * 1024;        // 512 MB
+	uint64_t readbackBlockSize = 4 * 1024 * 1024;     // 4 MB
 };
 
 class GPUAllocator
@@ -68,8 +69,8 @@ private:
 	GraphicsDevice* mDevice = nullptr;
 	uint64_t mCurrentAllocationInBytes = 0;
 	uint64_t mPeakAllocationInBytes = 0;
-	uint64_t mBlockSizes[(uint32_t)MemoryType::GPU + 1];
-	TArray<GPUAllocationBlock*> mBlocks[(uint32_t)MemoryType::GPU + 1];
+	uint64_t mBlockSizes[(uint32_t)MemoryType::Readback + 1];
+	TArray<GPUAllocationBlock*> mBlocks[(uint32_t)MemoryType::Readback + 1];
 	HashMap<NativeGraphicsHandle, GPUAllocation> mAllocations;
 };
 
