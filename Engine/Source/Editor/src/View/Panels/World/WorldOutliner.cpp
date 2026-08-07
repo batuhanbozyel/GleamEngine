@@ -31,7 +31,7 @@ static Gleam::TStringView ResolveDisplayName(const Gleam::Reflection::ClassDescr
 void WorldOutliner::OnCreate(Gleam::World* world)
 {
 	mEditWorld = world;
-	mSelection = world->GetSubsystem<SelectionSystem>();
+	mSelectionSystem = world->GetSubsystem<SelectionSystem>();
 }
 
 void WorldOutliner::Render(Gleam::ImGuiRenderer* imgui)
@@ -59,7 +59,6 @@ void WorldOutliner::Render(Gleam::ImGuiRenderer* imgui)
 					});
 				}
 
-				// A shift click reaches rows below it, so the range waits for the whole tree
 				if (mPendingRangeSelect != Gleam::InvalidEntity)
 				{
 					SelectRange(mRangeAnchor, mPendingRangeSelect, mPendingRangeAdditive ? SelectionMode::Add : SelectionMode::Replace);
@@ -68,7 +67,7 @@ void WorldOutliner::Render(Gleam::ImGuiRenderer* imgui)
 
 				if (ImGui::IsWindowHovered() && ImGui::IsAnyItemHovered() == false && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
 				{
-					mSelection->ClearSelection();
+					mSelectionSystem->ClearSelection();
 					mRangeAnchor = Gleam::InvalidEntity;
 				}
 			}
@@ -117,7 +116,7 @@ void WorldOutliner::DrawEntityNode(Gleam::EntityHandle handle)
 		flags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
 	}
 
-	if (mSelection->IsSelected(handle))
+	if (mSelectionSystem->IsSelected(handle))
 	{
 		flags |= ImGuiTreeNodeFlags_Selected;
 	}
@@ -165,7 +164,7 @@ void WorldOutliner::HandleSelectionInput(Gleam::EntityHandle handle)
 		return;
 	}
 
-	mSelection->SelectEntity(handle, additive ? SelectionMode::Toggle : SelectionMode::Replace);
+	mSelectionSystem->SelectEntity(handle, additive ? SelectionMode::Toggle : SelectionMode::Replace);
 	mRangeAnchor = handle;
 }
 
@@ -187,8 +186,8 @@ void WorldOutliner::SelectRange(Gleam::EntityHandle anchor, Gleam::EntityHandle 
 		eastl::swap(first, last);
 	}
 
-	mSelection->SelectEntities(Gleam::TArray<Gleam::EntityHandle>(first, last + 1), mode);
-	mSelection->SetActiveEntity(target);
+	mSelectionSystem->SelectEntities(Gleam::TArray<Gleam::EntityHandle>(first, last + 1), mode);
+	mSelectionSystem->SetActiveEntity(target);
 }
 
 void WorldOutliner::DrawSingletonComponents()
@@ -205,7 +204,7 @@ void WorldOutliner::DrawSingletonComponents()
 				ImGuiTreeNodeFlags_NoTreePushOnOpen |
 				ImGuiTreeNodeFlags_SpanAvailWidth;
 
-			if (mSelection->GetSelectedSingleton() == componentID)
+			if (mSelectionSystem->GetSelectedSingleton() == componentID)
 			{
 				flags |= ImGuiTreeNodeFlags_Selected;
 			}
@@ -218,7 +217,7 @@ void WorldOutliner::DrawSingletonComponents()
 
 			if (ImGui::IsItemClicked())
 			{
-				mSelection->SelectSingleton(componentID);
+				mSelectionSystem->SelectSingleton(componentID);
 			}
 		}
 	});

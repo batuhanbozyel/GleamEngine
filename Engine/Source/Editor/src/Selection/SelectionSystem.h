@@ -52,7 +52,7 @@ public:
 		return mSelectedEntities;
 	}
 
-	const Gleam::TArray<uint32_t>& GetInstanceMask() const
+	const Gleam::TFixedArray<uint32_t, INSTANCE_MASK_UINTS>& GetInstanceMask() const
 	{
 		return mInstanceMask;
 	}
@@ -72,7 +72,7 @@ private:
 
 	Gleam::EntityHandle mActiveEntity = Gleam::InvalidEntity;
 
-	Gleam::TArray<uint32_t> mInstanceMask;
+	Gleam::TFixedArray<uint32_t, INSTANCE_MASK_UINTS> mInstanceMask;
 
 	uint32_t mSelectedSingleton = 0;
 

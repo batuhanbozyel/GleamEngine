@@ -34,9 +34,8 @@ private:
 
 	Gleam::World* mEditWorld = nullptr;
 
-	SelectionSystem* mSelection = nullptr;
+	SelectionSystem* mSelectionSystem = nullptr;
 
-	// Rows drawn this frame in tree order, a shift click range is resolved against it
 	Gleam::TArray<Gleam::EntityHandle> mVisibleEntities;
 
 	Gleam::EntityHandle mRangeAnchor = Gleam::InvalidEntity;

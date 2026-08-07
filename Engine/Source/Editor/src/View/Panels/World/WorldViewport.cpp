@@ -70,7 +70,6 @@ static TargetPixel ToTargetPixel(const Gleam::Float2& screen, const Gleam::Float
 	};
 }
 
-// Rotation and scale come from the active entity, the handles sit at the middle of the selection
 static Gleam::Transform GetPivotTransform(Gleam::EntityManager& entityManager, const Gleam::TArray<Gleam::EntityHandle>& targets, Gleam::EntityHandle active)
 {
 	const auto reference = eastl::find(targets.begin(), targets.end(), active) != targets.end() ? active : targets.front();
@@ -88,7 +87,6 @@ static Gleam::Transform GetPivotTransform(Gleam::EntityManager& entityManager, c
 	return pivot;
 }
 
-// Re-anchors every target against the moved pivot, which reduces to a plain assignment for one entity
 static void ApplyPivotDelta(Gleam::EntityManager& entityManager, const Gleam::TArray<Gleam::EntityHandle>& targets, const Gleam::Transform& from, const Gleam::Transform& to)
 {
 	const auto invFromRotation = Gleam::Math::Inverse(from.rotation);
@@ -112,7 +110,7 @@ static void ApplyPivotDelta(Gleam::EntityManager& entityManager, const Gleam::TA
 void WorldViewport::OnCreate(Gleam::World* world)
 {
 	mEditWorld = world;
-	mSelection = world->GetSubsystem<SelectionSystem>();
+	mSelectionSystem = world->GetSubsystem<SelectionSystem>();
 
 	auto renderSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::RenderSystem>();
 	mGridRenderer = new InfiniteGridRenderer();
@@ -122,7 +120,7 @@ void WorldViewport::OnCreate(Gleam::World* world)
 	renderSystem->GetRenderPipeline(Gleam::RenderPath::Default)->AddSharedRenderer(mGridRenderer);
 	renderSystem->GetRenderPipeline(Gleam::RenderPath::PathTracing)->AddSharedRenderer(mGridRenderer);
 
-	mSelectionOutlineRenderer = new SelectionOutlineRenderer(mSelection);
+	mSelectionOutlineRenderer = new SelectionOutlineRenderer(mSelectionSystem);
 	mSelectionOutlineRenderer->OnCreate(renderSystem->GetRenderContext());
 	renderSystem->GetRenderPipeline(Gleam::RenderPath::Default)->AddSharedRenderer(mSelectionOutlineRenderer);
 	renderSystem->GetRenderPipeline(Gleam::RenderPath::PathTracing)->AddSharedRenderer(mSelectionOutlineRenderer);
@@ -168,9 +166,6 @@ void WorldViewport::Render(Gleam::ImGuiRenderer* imgui)
 	imgui->PushView([=, this](const Gleam::ImGuiPassData& passData)
 	{
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
-
-		// The image is a drag surface for the gizmo and the selection marquee, so the panel
-		// itself only moves from its dock tab
 		ImGui::Begin("Viewport", nullptr, ImGuiWindowFlags_NoMove);
 
 		DrawToolbar();
@@ -349,9 +344,6 @@ void WorldViewport::DrawViewport(Gleam::ImGuiRenderer* imgui, const Gleam::ImGui
 
 void WorldViewport::UpdateSelectionMarquee(const Gleam::Float2& imageMin, const Gleam::Float2& imageSize, const Gleam::Size& targetSize, bool viewportHovered)
 {
-	// Below this the drag is still a click, so a small wobble does not turn into a rectangle
-	constexpr float kMarqueeThreshold = 4.0f;
-
 	const auto& io = ImGui::GetIO();
 	const Gleam::Float2 mouse(io.MousePos.x, io.MousePos.y);
 
@@ -369,6 +361,8 @@ void WorldViewport::UpdateSelectionMarquee(const Gleam::Float2& imageMin, const 
 
 	if (io.MouseDown[ImGuiMouseButton_Left])
 	{
+		// Below this the drag is still a click, so a small wobble does not turn into a rectangle
+		constexpr float kMarqueeThreshold = 4.0f;
 		mMarqueeMoved |= Gleam::Math::Abs(mouse.x - mMarqueeStart.x) > kMarqueeThreshold
 					  || Gleam::Math::Abs(mouse.y - mMarqueeStart.y) > kMarqueeThreshold;
 
@@ -395,16 +389,16 @@ void WorldViewport::UpdateSelectionMarquee(const Gleam::Float2& imageMin, const 
 	request.height = Gleam::Math::Max(from.y, to.y) - request.y + 1;
 
 	const bool additive = io.KeyCtrl || io.KeySuper;
-	mSelection->RequestPick(request, additive ? SelectionMode::Toggle : SelectionMode::Replace);
+	mSelectionSystem->RequestPick(request, additive ? SelectionMode::Toggle : SelectionMode::Replace);
 
 	mMarqueeDragging = false;
 	mMarqueeMoved = false;
 }
 
-void WorldViewport::GatherGizmoTargets(Gleam::EntityManager& entityManager)
+Gleam::TArray<Gleam::EntityHandle> WorldViewport::GatherGizmoTargets(const Gleam::EntityManager& entityManager) const
 {
-	mGizmoTargets.clear();
-	for (auto handle : mSelection->GetSelectedEntities())
+	Gleam::TArray<Gleam::EntityHandle> gizmoTargets;
+	for (auto handle : mSelectionSystem->GetSelectedEntities())
 	{
 		if (entityManager.HasComponent<Gleam::Entity>(handle) == false)
 		{
@@ -416,7 +410,7 @@ void WorldViewport::GatherGizmoTargets(Gleam::EntityManager& entityManager)
 		auto parent = entityManager.GetComponent<Gleam::Entity>(handle).GetParent();
 		while (parent != Gleam::InvalidEntity)
 		{
-			if (mSelection->IsSelected(parent))
+			if (mSelectionSystem->IsSelected(parent))
 			{
 				ancestorSelected = true;
 				break;
@@ -426,16 +420,17 @@ void WorldViewport::GatherGizmoTargets(Gleam::EntityManager& entityManager)
 
 		if (ancestorSelected == false)
 		{
-			mGizmoTargets.push_back(handle);
+			gizmoTargets.push_back(handle);
 		}
 	}
+	return gizmoTargets;
 }
 
 void WorldViewport::DrawTransformGizmo(const Gleam::Float2& imageMin, const Gleam::Float2& imageSize)
 {
 	auto& entityManager = mEditWorld->GetEntityManager();
-	GatherGizmoTargets(entityManager);
-	if (mGizmoTargets.empty())
+	auto gizmoTargets = GatherGizmoTargets(entityManager);
+	if (gizmoTargets.empty())
 	{
 		return;
 	}
@@ -463,13 +458,13 @@ void WorldViewport::DrawTransformGizmo(const Gleam::Float2& imageMin, const Glea
 	viewport.rectMin = imageMin;
 	viewport.rectSize = imageSize;
 
-	auto pivot = GetPivotTransform(entityManager, mGizmoTargets, mSelection->GetActiveEntity());
+	auto pivot = GetPivotTransform(entityManager, gizmoTargets, mSelectionSystem->GetActiveEntity());
 	const auto startPivot = pivot;
 
 	const bool inputEnabled = ImGui::IsWindowHovered() && mCursorVisible;
 	if (mTransformGizmo.Manipulate(viewport, inputEnabled, pivot))
 	{
-		ApplyPivotDelta(entityManager, mGizmoTargets, startPivot, pivot);
+		ApplyPivotDelta(entityManager, gizmoTargets, startPivot, pivot);
 	}
 }
 

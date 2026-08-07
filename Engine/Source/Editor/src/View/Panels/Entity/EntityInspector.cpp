@@ -20,7 +20,7 @@ using namespace GEditor;
 void EntityInspector::OnCreate(Gleam::World* world)
 {
 	mEditWorld = world;
-	mSelection = world->GetSubsystem<SelectionSystem>();
+	mSelectionSystem = world->GetSubsystem<SelectionSystem>();
 }
 
 void EntityInspector::Render(Gleam::ImGuiRenderer* imgui)
@@ -29,14 +29,14 @@ void EntityInspector::Render(Gleam::ImGuiRenderer* imgui)
 	{
 		if (ImGui::Begin("Entity Inspector"))
 		{
-			const auto& selectedEntities = mSelection->GetSelectedEntities();
+			const auto& selectedEntities = mSelectionSystem->GetSelectedEntities();
 			if (selectedEntities.empty() == false)
 			{
 				DrawEntities(selectedEntities);
 			}
-			else if (mSelection->GetSelectedSingleton() != 0)
+			else if (mSelectionSystem->GetSelectedSingleton() != 0)
 			{
-				DrawSingleton(mSelection->GetSelectedSingleton());
+				DrawSingleton(mSelectionSystem->GetSelectedSingleton());
 			}
 		}
 		ImGui::End();
@@ -45,25 +45,25 @@ void EntityInspector::Render(Gleam::ImGuiRenderer* imgui)
 
 void EntityInspector::DrawEntities(const Gleam::TArray<Gleam::EntityHandle>& entities)
 {
-	auto activeEntity = mSelection->GetActiveEntity();
+	auto activeEntity = mSelectionSystem->GetActiveEntity();
 
-	mSelectionOrder.clear();
-	mSelectionOrder.push_back(activeEntity);
+	Gleam::TArray<Gleam::EntityHandle> selectionOrder;
+	selectionOrder.push_back(activeEntity);
 	for (auto handle : entities)
 	{
 		if (handle != activeEntity)
 		{
-			mSelectionOrder.push_back(handle);
+			selectionOrder.push_back(handle);
 		}
 	}
 
-	if (mSelectionOrder.size() > 1)
+	if (selectionOrder.size() > 1)
 	{
-		ImGui::TextDisabled("%u Entities Selected", static_cast<uint32_t>(mSelectionOrder.size()));
+		ImGui::TextDisabled("%u Entities Selected", static_cast<uint32_t>(selectionOrder.size()));
 	}
 
-	DrawTransform(mSelectionOrder);
-	DrawComponents(mSelectionOrder);
+	DrawTransform(selectionOrder);
+	DrawComponents(selectionOrder);
 }
 
 void EntityInspector::DrawTransform(const Gleam::TArray<Gleam::EntityHandle>& entities)
@@ -84,7 +84,7 @@ void EntityInspector::DrawTransform(const Gleam::TArray<Gleam::EntityHandle>& en
 	bool scaleMixed = false;
 	for (size_t i = 1; i < entities.size(); ++i)
 	{
-		const auto other = entityManager.GetComponent<Gleam::Entity>(entities[i]).GetLocalTransform();
+		const auto& other = entityManager.GetComponent<Gleam::Entity>(entities[i]).GetLocalTransform();
 		positionMixed |= other.position != localTransform.position;
 		rotationMixed |= other.rotation != localTransform.rotation;
 		scaleMixed |= other.scale != localTransform.scale;
@@ -113,7 +113,6 @@ void EntityInspector::DrawTransform(const Gleam::TArray<Gleam::EntityHandle>& en
 	activeEntity.SetLocalTransform(localTransform);
 	mEntityRotation = localTransform.rotation;
 
-	// Only the parts the user actually touched are mirrored onto the rest of the selection
 	const bool positionEdited = localTransform.position != previousTransform.position;
 	const bool rotationEdited = mEntityEulerRotation != previousEulerRotation;
 	const bool scaleEdited = localTransform.scale != previousTransform.scale;
@@ -142,32 +141,37 @@ void EntityInspector::DrawTransform(const Gleam::TArray<Gleam::EntityHandle>& en
 
 void EntityInspector::DrawComponents(const Gleam::TArray<Gleam::EntityHandle>& entities)
 {
-	auto& entityManager = mEditWorld->GetEntityManager();
+	struct SharedComponent
+	{
+		const Gleam::Reflection::ClassDescription* classDesc = nullptr;
+		Gleam::TArray<void*> instances;
+	};
+	Gleam::TArray<SharedComponent> sharedComponents;
 
-	mSharedComponents.clear();
-	entityManager.Visit(entities[0], [this](void* component, const Gleam::Reflection::ClassDescription& classDesc)
+	auto& entityManager = mEditWorld->GetEntityManager();
+	entityManager.Visit(entities[0], [&](void* component, const Gleam::Reflection::ClassDescription& classDesc)
 	{
 		if (classDesc.HasAttribute<Gleam::Reflection::Attribute::EntityComponent>())
 		{
-			mSharedComponents.push_back({ .classDesc = &classDesc, .instances = { component } });
+			sharedComponents.push_back({ .classDesc = &classDesc, .instances = { component } });
 		}
 	});
 
 	// Only the component types the whole selection has in common can be edited together
 	for (size_t i = 1; i < entities.size(); ++i)
 	{
-		mComponentLookup.clear();
-		entityManager.Visit(entities[i], [this](void* component, const Gleam::Reflection::ClassDescription& classDesc)
+		Gleam::HashMap<uint32_t, void*> componentLookup;
+		entityManager.Visit(entities[i], [&](void* component, const Gleam::Reflection::ClassDescription& classDesc)
 		{
-			mComponentLookup[classDesc.TypeHash()] = component;
+			componentLookup[classDesc.TypeHash()] = component;
 		});
 
-		for (auto it = mSharedComponents.begin(); it != mSharedComponents.end();)
+		for (auto it = sharedComponents.begin(); it != sharedComponents.end();)
 		{
-			auto found = mComponentLookup.find(it->classDesc->TypeHash());
-			if (found == mComponentLookup.end())
+			auto found = componentLookup.find(it->classDesc->TypeHash());
+			if (found == componentLookup.end())
 			{
-				it = mSharedComponents.erase(it);
+				it = sharedComponents.erase(it);
 			}
 			else
 			{
@@ -177,7 +181,7 @@ void EntityInspector::DrawComponents(const Gleam::TArray<Gleam::EntityHandle>& e
 		}
 	}
 
-	for (auto& shared : mSharedComponents)
+	for (auto& shared : sharedComponents)
 	{
 		PropertyDrawer::DrawClass(shared.classDesc->ResolveName(), shared.instances, *shared.classDesc);
 	}

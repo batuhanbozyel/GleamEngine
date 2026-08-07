@@ -16,7 +16,7 @@ class SelectionOutlineRenderer final : public Gleam::IRenderer
 public:
 
 	SelectionOutlineRenderer(SelectionSystem* selection)
-		: mSelection(selection)
+		: mSelectionSystem(selection)
 	{
 	}
 
@@ -38,7 +38,7 @@ public:
 
 private:
 
-	SelectionSystem* mSelection = nullptr;
+	SelectionSystem* mSelectionSystem = nullptr;
 
 	Gleam::CopyCommandBuffer* mCopyCommandBuffer = nullptr;
 

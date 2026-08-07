@@ -48,7 +48,7 @@ void SelectionOutlineRenderer::OnDestroy(const Gleam::RenderContext& context)
 
 void SelectionOutlineRenderer::AddRenderPasses(Gleam::RenderGraph& graph, Gleam::RenderGraphBlackboard& blackboard)
 {
-	const auto& instanceMask = mSelection->GetInstanceMask();
+	const auto& instanceMask = mSelectionSystem->GetInstanceMask();
 	if (instanceMask.empty())
 	{
 		return;
