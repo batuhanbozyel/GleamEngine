@@ -40,19 +40,29 @@ Entity& EntityManager::CreateEntity(const TString& name, const Guid& guid)
 
 void EntityManager::DestroyEntity(EntityHandle entity)
 {
-	const auto& guid = GetComponent<Entity>(entity).GetGuid();
-	mHandles.erase(guid);
-	mRegistry.destroy(entity);
+	auto& entityComponent = GetComponent<Entity>(entity);
+	if (entityComponent.HasParent())
+	{
+		auto& parentEntity = entityComponent.GetParentEntity();
+		auto it = eastl::remove(parentEntity.mChildren.begin(), parentEntity.mChildren.end(), entity);
+		parentEntity.mChildren.erase(it);
+	}
+	DestroyHierarchy(entity);
 }
 
-void EntityManager::DestroyEntity(const TArray<EntityHandle>& entities)
+void EntityManager::DestroyHierarchy(EntityHandle entity)
 {
-	for (auto entity : entities)
+	const auto& entityComponent = GetComponent<Entity>(entity);
+	auto children = entityComponent.GetChildren();
+	auto guid = entityComponent.GetGuid();
+	
+	for (auto child : children)
 	{
-		const auto& guid = GetComponent<Entity>(entity).GetGuid();
-		mHandles.erase(guid);
+		DestroyHierarchy(child);
 	}
-	mRegistry.destroy(entities.begin(), entities.end());
+	
+	mHandles.erase(guid);
+	mRegistry.destroy(entity);
 }
 
 void EntityManager::Visit(EntityHandle entity, VisitFn&& fn)
@@ -85,6 +95,26 @@ void EntityManager::Visit(EntityHandle entity, ConstVisitFn&& fn) const
 			}
 		}
 	}
+}
+
+void* EntityManager::FindComponent(EntityHandle entity, uint32_t typeHash)
+{
+	auto storage = mRegistry.storage(typeHash);
+	if (storage && storage->contains(entity))
+	{
+		return storage->value(entity);
+	}
+	return nullptr;
+}
+
+void* EntityManager::FindSingleton(uint32_t typeHash)
+{
+	return FindComponent(mSingletonEntity, typeHash);
+}
+
+bool EntityManager::IsValid(EntityHandle entity) const
+{
+	return mRegistry.valid(entity);
 }
 
 uint32_t EntityManager::GetEntityCount() const

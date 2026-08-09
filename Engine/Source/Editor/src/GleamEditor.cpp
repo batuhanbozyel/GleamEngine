@@ -9,6 +9,7 @@
 
 #include "EAssets/EAssetManager.h"
 #include "Selection/SelectionSystem.h"
+#include "Undo/UndoSystem.h"
 #include "View/ViewStack.h"
 #include "World/World.h"
 
@@ -32,6 +33,7 @@ public:
 
 		auto worldManager = GetSubsystem<Gleam::WorldManager>();
 		mEditWorld = worldManager->GetActiveWorld();
+		mEditWorld->AddSubsystem<UndoSystem>();
 		mEditWorld->AddSubsystem<SelectionSystem>();
 
 		auto viewStack = mEditWorld->AddSubsystem<ViewStack>();
@@ -47,6 +49,7 @@ public:
 	{
 		mEditWorld->RemoveSubsystem<ViewStack>();
 		mEditWorld->RemoveSubsystem<SelectionSystem>();
+		mEditWorld->RemoveSubsystem<UndoSystem>();
 		RemoveSubsystem<EAssetManager>();
 	}
 

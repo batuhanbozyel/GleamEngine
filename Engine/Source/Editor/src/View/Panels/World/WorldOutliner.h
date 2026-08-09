@@ -12,6 +12,7 @@
 namespace GEditor {
 
 class SelectionSystem;
+class UndoSystem;
 enum class SelectionMode;
 
 class WorldOutliner final : public View
@@ -36,11 +37,15 @@ private:
 
 	SelectionSystem* mSelectionSystem = nullptr;
 
+	UndoSystem* mUndoSystem = nullptr;
+
 	Gleam::TArray<Gleam::EntityHandle> mVisibleEntities;
 
 	Gleam::EntityHandle mRangeAnchor = Gleam::InvalidEntity;
 
 	Gleam::EntityHandle mPendingRangeSelect = Gleam::InvalidEntity;
+
+	Gleam::EntityHandle mPendingDestroy = Gleam::InvalidEntity;
 
 	bool mPendingRangeAdditive = false;
 

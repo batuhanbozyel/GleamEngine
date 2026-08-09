@@ -76,7 +76,11 @@ public:
 	void Deserialize(FileStream& stream, const Reflection::ClassDescription& classDesc, void* obj);
 
 	void Deserialize(const Reflection::ClassDescription& classDesc, void* obj, const rapidjson::ConstNode& root);
-    
+
+	TString Serialize(const void* obj, const Reflection::ClassDescription& classDesc);
+
+	void Deserialize(const Reflection::ClassDescription& classDesc, void* obj, const TString& data);
+
     static bool TryCustomObjectSerializer(const void* obj,
                                           const TStringView fieldName,
                                           const Reflection::ClassDescription& classDesc,

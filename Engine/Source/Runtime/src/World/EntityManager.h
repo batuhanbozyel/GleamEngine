@@ -24,8 +24,6 @@ public:
 	Entity& CreateEntity(const TString& name, const Guid& guid);
 
 	void DestroyEntity(EntityHandle entity);
-
-	void DestroyEntity(const TArray<EntityHandle>& entities);
     
     template<typename ... ComponentTypes, typename ... ExcludeComponents, typename Func, typename = std::enable_if_t<sizeof...(ComponentTypes) + sizeof...(ExcludeComponents) != 0>>
     void ForEach(Func&& fn, Exclude<ExcludeComponents...> = Exclude<ExcludeComponents...>{})
@@ -68,6 +66,10 @@ public:
 	void Visit(EntityHandle entity, VisitFn&& fn);
 
 	void Visit(EntityHandle entity, ConstVisitFn&& fn) const;
+
+	void* FindComponent(EntityHandle entity, uint32_t typeHash);
+
+	void* FindSingleton(uint32_t typeHash);
 
 	template<typename ... Types>
 	Entity& CreateEntity(const TString& name, const Guid& guid, Types&& ... components)
@@ -197,12 +199,16 @@ public:
 			return mRegistry.get<T>(entity);
 		}
     }
+	
+	bool IsValid(EntityHandle entity) const;
 
 	uint32_t GetEntityCount() const;
 
 	EntityHandle GetEntity(const EntityReference& ref) const;
 
 private:
+	
+	void DestroyHierarchy(EntityHandle entity);
 
 	template<typename ... ComponentTypes, typename ... ExcludeComponents, typename = std::enable_if_t<sizeof...(ComponentTypes) + sizeof...(ExcludeComponents) != 0>>
 	auto CreateView(Exclude<ExcludeComponents...> = Exclude<ExcludeComponents...>{})
