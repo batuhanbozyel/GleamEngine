@@ -518,6 +518,19 @@ void JSONSerializer::Serialize(const void* obj, const Reflection::ClassDescripti
 	}
 }
 
+TString JSONSerializer::Serialize(const void* obj, const Reflection::ClassDescription& classDesc)
+{
+	rapidjson::Document document(rapidjson::kObjectType);
+	rapidjson::Node root(document, document.GetAllocator());
+	Serialize(obj, classDesc, root);
+
+	rapidjson::StringBuffer buffer;
+	rapidjson::Writer writer(buffer);
+	writer.SetMaxDecimalPlaces(6);
+	document.Accept(writer);
+	return buffer.GetString();
+}
+
 void JSONSerializer::Deserialize(FileStream& stream, const Reflection::ClassDescription& classDesc, void* obj)
 {
 	rapidjson::Document document(rapidjson::kObjectType);
@@ -534,6 +547,13 @@ void JSONSerializer::Deserialize(const Reflection::ClassDescription& classDesc, 
 	{
 		DeserializeClassObject(root, classDesc, obj);
 	}
+}
+
+void JSONSerializer::Deserialize(const Reflection::ClassDescription& classDesc, void* obj, const TString& data)
+{
+	rapidjson::Document document;
+	document.Parse(data.c_str());
+	Deserialize(classDesc, obj, rapidjson::ConstNode(document));
 }
 
 bool JSONSerializer::TryCustomObjectSerializer(const void* obj,

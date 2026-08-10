@@ -8,6 +8,7 @@
 #include "EntityInspector.h"
 #include "View/Widgets/PropertyDrawer.h"
 #include "Selection/SelectionSystem.h"
+#include "Undo/UndoSystem.h"
 
 #include "World/World.h"
 #include "Renderer/Renderers/ImGuiRenderer.h"
@@ -21,6 +22,7 @@ void EntityInspector::OnCreate(Gleam::World* world)
 {
 	mEditWorld = world;
 	mSelectionSystem = world->GetSubsystem<SelectionSystem>();
+	mUndoSystem = world->GetSubsystem<UndoSystem>();
 }
 
 void EntityInspector::Render(Gleam::ImGuiRenderer* imgui)
@@ -29,14 +31,32 @@ void EntityInspector::Render(Gleam::ImGuiRenderer* imgui)
 	{
 		if (ImGui::Begin("Entity Inspector"))
 		{
+			PropertyDrawer::BeginEditTracking();
+
 			const auto& selectedEntities = mSelectionSystem->GetSelectedEntities();
+			const auto selectedSingleton = mSelectionSystem->GetSelectedSingleton();
 			if (selectedEntities.empty() == false)
 			{
 				DrawEntities(selectedEntities);
+				
+				if (PropertyDrawer::EditStarted())
+				{
+					mUndoSystem->BeginEntityTransaction(selectedEntities);
+				}
 			}
-			else if (mSelectionSystem->GetSelectedSingleton() != 0)
+			else if (selectedSingleton != 0)
 			{
-				DrawSingleton(mSelectionSystem->GetSelectedSingleton());
+				DrawSingleton(selectedSingleton);
+
+				if (PropertyDrawer::EditStarted())
+				{
+					mUndoSystem->BeginSingletonTransaction(selectedSingleton);
+				}
+			}
+
+			if (PropertyDrawer::EditCommitted())
+			{
+				mUndoSystem->EndTransaction();
 			}
 		}
 		ImGui::End();

@@ -13,6 +13,7 @@
 namespace GEditor {
 
 class SelectionSystem;
+class UndoSystem;
 
 class EntityInspector final : public View
 {
@@ -35,6 +36,8 @@ private:
 	Gleam::World* mEditWorld = nullptr;
 
 	SelectionSystem* mSelectionSystem = nullptr;
+
+	UndoSystem* mUndoSystem = nullptr;
 
 	Gleam::Float3 mEntityEulerRotation = {};
 

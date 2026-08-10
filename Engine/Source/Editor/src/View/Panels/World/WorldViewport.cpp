@@ -9,6 +9,7 @@
 #include "EditorCameraController.h"
 #include "EAssets/EAssetManager.h"
 #include "Selection/SelectionSystem.h"
+#include "Undo/UndoSystem.h"
 #include "Renderers/InfiniteGridRenderer.h"
 #include "Renderers/ViewModeRenderer.h"
 #include "Renderers/SelectionOutlineRenderer.h"
@@ -59,7 +60,6 @@ struct TargetPixel
 	uint32_t y = 0;
 };
 
-// Clamped because a marquee can be dragged past the edges of the viewport image
 static TargetPixel ToTargetPixel(const Gleam::Float2& screen, const Gleam::Float2& imageMin, const Gleam::Float2& imageSize, const Gleam::Size& targetSize)
 {
 	const float u = Gleam::Math::Clamp((screen.x - imageMin.x) / imageSize.x, 0.0f, 1.0f);
@@ -111,6 +111,7 @@ void WorldViewport::OnCreate(Gleam::World* world)
 {
 	mEditWorld = world;
 	mSelectionSystem = world->GetSubsystem<SelectionSystem>();
+	mUndoSystem = world->GetSubsystem<UndoSystem>();
 
 	auto renderSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::RenderSystem>();
 	mGridRenderer = new InfiniteGridRenderer();
@@ -337,6 +338,7 @@ void WorldViewport::DrawViewport(Gleam::ImGuiRenderer* imgui, const Gleam::ImGui
 			IM_ASSERT(payload->DataSize == sizeof(AssetItem));
 			const auto& assetItem = *(const AssetItem*)payload->Data;
 			auto& entity = mEditWorld->GetEntityManager().CreateFromPrefab(assetItem.reference);
+			mUndoSystem->RecordEntityCreation(entity);
 		}
 		ImGui::EndDragDropTarget();
 	}
@@ -461,10 +463,20 @@ void WorldViewport::DrawTransformGizmo(const Gleam::Float2& imageMin, const Glea
 	auto pivot = GetPivotTransform(entityManager, gizmoTargets, mSelectionSystem->GetActiveEntity());
 	const auto startPivot = pivot;
 
+	const bool wasDragging = mTransformGizmo.IsDragging();
 	const bool inputEnabled = ImGui::IsWindowHovered() && mCursorVisible;
 	if (mTransformGizmo.Manipulate(viewport, inputEnabled, pivot))
 	{
 		ApplyPivotDelta(entityManager, gizmoTargets, startPivot, pivot);
+	}
+
+	if (wasDragging == false && mTransformGizmo.IsDragging())
+	{
+		mUndoSystem->BeginTransformTransaction(gizmoTargets);
+	}
+	else if (wasDragging && mTransformGizmo.IsDragging() == false)
+	{
+		mUndoSystem->EndTransaction();
 	}
 }
 

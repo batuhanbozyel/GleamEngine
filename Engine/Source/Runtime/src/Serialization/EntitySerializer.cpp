@@ -5,57 +5,74 @@
 
 using namespace Gleam;
 
+static void SerializeEntity(const EntityManager& entityManager, EntityHandle handle, rapidjson::Node& entitiesNode)
+{
+	const auto& entity = entityManager.GetComponent<Entity>(handle);
+	auto entityGuid = entity.GetGuid().ToString();
+
+	rapidjson::Value entityObject(rapidjson::kObjectType);
+	rapidjson::Node entityNode(entityObject, entitiesNode.allocator);
+
+	entityNode.AddMember("Entity", entityGuid);
+	entityNode.AddMember("Active", entity.IsActive());
+	entityNode.AddMember("Name", entity.GetName());
+
+	if (entity.HasParent())
+	{
+		const auto& parent = entityManager.GetComponent<Entity>(entity.GetParent());
+		auto parentGuid = parent.GetGuid().ToString();
+		entityNode.AddMember("Parent", parentGuid);
+	}
+
+	rapidjson::Value transformObject(rapidjson::kObjectType);
+	rapidjson::Node transformNode(transformObject, entitiesNode.allocator);
+	{
+		JSONSerializer serializer;
+		serializer.Serialize<Transform>(entity.GetLocalTransform(), transformNode);
+	}
+	entityNode.AddMember("Transform", transformObject);
+
+	rapidjson::Value componentsArrayObject(rapidjson::kArrayType);
+	rapidjson::Node componentsArrayNode(componentsArrayObject, entitiesNode.allocator);
+	entityManager.Visit(handle, [&](const void* component, const Reflection::ClassDescription& classDesc)
+	{
+		if (classDesc.HasAttribute<Reflection::Attribute::EntityComponent>())
+		{
+			rapidjson::Value componentObject(rapidjson::kObjectType);
+			rapidjson::Node componentNode(componentObject, entitiesNode.allocator);
+
+			JSONSerializer serializer;
+			serializer.Serialize(component, classDesc, componentNode);
+
+			componentsArrayNode.PushBack(componentObject);
+		}
+	});
+	entityNode.AddMember("Components", componentsArrayObject);
+	entitiesNode.PushBack(entityObject);
+}
+
+void EntitySerializer::SerializeEntities(const EntityManager& entityManager, TArrayView<const EntityHandle> entities, rapidjson::Node& root)
+{
+	rapidjson::Value entitiesObject(rapidjson::kArrayType);
+	rapidjson::Node entitiesNode(entitiesObject, root.allocator);
+
+	for (auto handle : entities)
+	{
+		SerializeEntity(entityManager, handle, entitiesNode);
+	}
+	root.AddMember("Entities", entitiesObject);
+}
+
 void EntitySerializer::Serialize(const EntityManager& entityManager, rapidjson::Node& root)
 {
-	rapidjson::Value entities(rapidjson::kArrayType);
-	rapidjson::Node entitiesNode(entities, root.allocator);
+	rapidjson::Value entitiesObject(rapidjson::kArrayType);
+	rapidjson::Node entitiesNode(entitiesObject, root.allocator);
 
 	entityManager.ForEach([&](EntityHandle handle)
 	{
-		const auto& entity = entityManager.GetComponent<Entity>(handle);
-		auto entityGuid = entity.GetGuid().ToString();
-
-		rapidjson::Value entityObject(rapidjson::kObjectType);
-		rapidjson::Node entityNode(entityObject, root.allocator);
-
-		entityNode.AddMember("Entity", entityGuid);
-		entityNode.AddMember("Active", entity.IsActive());
-		entityNode.AddMember("Name", entity.GetName());
-
-		if (entity.HasParent())
-		{
-			const auto& parent = entityManager.GetComponent<Entity>(entity.GetParent());
-			auto parentGuid = parent.GetGuid().ToString();
-			entityNode.AddMember("Parent", parentGuid);
-		}
-
-		rapidjson::Value transformObject(rapidjson::kObjectType);
-		rapidjson::Node transformNode(transformObject, root.allocator);
-		{
-			JSONSerializer serializer;
-			serializer.Serialize<Transform>(entity.GetLocalTransform(), transformNode);
-		}
-		entityNode.AddMember("Transform", transformObject);
-
-		rapidjson::Value componentsArrayObject(rapidjson::kArrayType);
-		rapidjson::Node componentsArrayNode(componentsArrayObject, root.allocator);
-		entityManager.Visit(handle, [&](const void* component, const Reflection::ClassDescription& classDesc)
-		{
-			if (classDesc.HasAttribute<Reflection::Attribute::EntityComponent>())
-			{
-				rapidjson::Value componentObject(rapidjson::kObjectType);
-				rapidjson::Node componentNode(componentObject, root.allocator);
-
-				JSONSerializer serializer;
-				serializer.Serialize(component, classDesc, componentNode);
-
-				componentsArrayNode.PushBack(componentObject);
-			}
-		});
-		entityNode.AddMember("Components", componentsArrayObject);
-		entitiesNode.PushBack(entityObject);
+		SerializeEntity(entityManager, handle, entitiesNode);
 	});
-	root.AddMember("Entities", entities);
+	root.AddMember("Entities", entitiesObject);
 
 	rapidjson::Value singletonComponents(rapidjson::kArrayType);
 	rapidjson::Node singletonComponentsNode(singletonComponents, root.allocator);
@@ -74,7 +91,7 @@ void EntitySerializer::Serialize(const EntityManager& entityManager, rapidjson::
 	root.AddMember("Singletons", singletonComponents);
 }
 
-TArray<EntityHandle> EntitySerializer::Deserialize(const rapidjson::ConstNode& root, EntityManager& entityManager)
+TArray<EntityHandle> EntitySerializer::DeserializeEntities(const rapidjson::ConstNode& root, EntityManager& entityManager)
 {
 	TArray<EntityHandle> entities;
 	HashMap<Guid, TArray<Entity*>> entityParentRelation;
@@ -128,6 +145,12 @@ TArray<EntityHandle> EntitySerializer::Deserialize(const rapidjson::ConstNode& r
 			entity->SetParent(parent);
 		}
 	}
+	return entities;
+}
+
+TArray<EntityHandle> EntitySerializer::Deserialize(const rapidjson::ConstNode& root, EntityManager& entityManager)
+{
+	auto entities = DeserializeEntities(root, entityManager);
 
 	for (const auto& singletonObject : root["Singletons"].GetArray())
 	{

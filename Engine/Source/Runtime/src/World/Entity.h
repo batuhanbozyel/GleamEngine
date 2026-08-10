@@ -13,6 +13,8 @@
 
 namespace Gleam {
 
+class EntityManager;
+
 using EntityHandle = entt::entity;
 static constexpr EntityHandle InvalidEntity = entt::null;
 
@@ -21,6 +23,8 @@ using Exclude = entt::exclude_t<Excludes...>;
 
 GCLASS(Entity, "9662B020-8A90-47FE-8C12-2D46316A6590", Serializable)
 {
+	friend class EntityManager;
+	
 public:
 
     Entity() = default;

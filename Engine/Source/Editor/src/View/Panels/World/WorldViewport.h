@@ -23,6 +23,7 @@ class EditorCameraController;
 class ViewModeRenderer;
 class SelectionSystem;
 class SelectionOutlineRenderer;
+class UndoSystem;
 
 class WorldViewport final : public View
 {
@@ -74,6 +75,8 @@ private:
 	Gleam::EntityHandle mCamera = Gleam::InvalidEntity;
 
 	SelectionSystem* mSelectionSystem = nullptr;
+
+	UndoSystem* mUndoSystem = nullptr;
 
 	TransformGizmo mTransformGizmo;
     

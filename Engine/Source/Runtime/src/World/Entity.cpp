@@ -63,7 +63,7 @@ void Entity::SetParent(const EntityHandle parent)
 	if (HasParent())
 	{
 		auto& parentEntity = GetParentEntity();
-		auto it = std::remove(parentEntity.mChildren.begin(), parentEntity.mChildren.end(), mHandle);
+		auto it = eastl::remove(parentEntity.mChildren.begin(), parentEntity.mChildren.end(), mHandle);
 		parentEntity.mChildren.erase(it);
 	}
 

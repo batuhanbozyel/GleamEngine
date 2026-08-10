@@ -235,6 +235,33 @@ bool PropertyDrawer::TryCustomDrawer(const Gleam::TStringView label, void* obj, 
 	return false;
 }
 
+void PropertyDrawer::BeginEditTracking()
+{
+	mEditStarted = false;
+	mEditCommitted = false;
+}
+
+bool PropertyDrawer::EditStarted()
+{
+	return mEditStarted;
+}
+
+bool PropertyDrawer::EditCommitted()
+{
+	return mEditCommitted;
+}
+
+void PropertyDrawer::TrackEdit()
+{
+	mEditStarted |= ImGui::IsItemActivated();
+	mEditCommitted |= ImGui::IsItemDeactivatedAfterEdit();
+}
+
+void PropertyDrawer::MarkEditCommitted()
+{
+	mEditCommitted = true;
+}
+
 void PropertyDrawer::DrawScalarControl(const Gleam::TStringView label, const Gleam::Reflection::PrimitiveType type, size_t size, void* value, const void* defaultValue, float columnWidth)
 {
 	GLEAM_ASSERT(value, "Value can not be null.");
@@ -271,8 +298,10 @@ void PropertyDrawer::DrawScalarControl(const Gleam::TStringView label, const Gle
 			if (defaultValue)
 			{
 				memcpy(value, defaultValue, size);
+				MarkEditCommitted();
 			}
 		}
+		TrackEdit();
 	}
 
 	ImGui::PopFont();
@@ -290,7 +319,10 @@ void PropertyDrawer::DrawScalarControl(const Gleam::TStringView label, const Gle
 	{
 		case Gleam::Reflection::PrimitiveType::Bool:
 		{
-			ImGui::Checkbox("##X", static_cast<bool*>(value));
+			if (ImGui::Checkbox("##X", static_cast<bool*>(value)))
+			{
+				MarkEditCommitted();
+			}
 			break;
 		}
 		case Gleam::Reflection::PrimitiveType::Int8:
@@ -352,7 +384,8 @@ void PropertyDrawer::DrawScalarControl(const Gleam::TStringView label, const Gle
 		default:
 			break;
 	}
-	
+	TrackEdit();
+
 	ImGui::PopItemWidth();
 	ImGui::SameLine();
 
@@ -394,13 +427,16 @@ void PropertyDrawer::DrawVec3Control(const Gleam::TStringView label, Gleam::Floa
 	if (ImGui::Button("X", buttonSize))
 	{
 		values.x = resetValue;
+		MarkEditCommitted();
 	}
+	TrackEdit();
 
     ImGui::PopFont();
     ImGui::PopStyleColor(3);
 
     ImGui::SameLine();
     ImGui::DragFloat("##X", &values.x, 0.05f, 0.0f, 0.0f, format);
+	TrackEdit();
     ImGui::PopItemWidth();
     ImGui::SameLine();
 
@@ -412,13 +448,16 @@ void PropertyDrawer::DrawVec3Control(const Gleam::TStringView label, Gleam::Floa
     if (ImGui::Button("Y", buttonSize))
     {
 		values.y = resetValue;
+		MarkEditCommitted();
 	}
+	TrackEdit();
 
     ImGui::PopFont();
     ImGui::PopStyleColor(3);
 
     ImGui::SameLine();
     ImGui::DragFloat("##Y", &values.y, 0.05f, 0.0f, 0.0f, format);
+	TrackEdit();
     ImGui::PopItemWidth();
     ImGui::SameLine();
 
@@ -430,13 +469,16 @@ void PropertyDrawer::DrawVec3Control(const Gleam::TStringView label, Gleam::Floa
 	if (ImGui::Button("Z", buttonSize))
 	{
 		values.z = resetValue;
+		MarkEditCommitted();
 	}
+	TrackEdit();
 
     ImGui::PopFont();
     ImGui::PopStyleColor(3);
 
     ImGui::SameLine();
     ImGui::DragFloat("##Z", &values.z, 0.05f, 0.0f, 0.0f, format);
+	TrackEdit();
     ImGui::PopItemWidth();
 
     ImGui::PopStyleVar();
@@ -463,6 +505,7 @@ void PropertyDrawer::DrawColorControl(const Gleam::TStringView label, Gleam::Col
 
 	ImGuiColorEditFlags flags = ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_AlphaBar | ImGuiColorEditFlags_AlphaPreview;
 	ImGui::ColorEdit4("##Color", &color.r, flags);
+	TrackEdit();
 
 	ImGui::PopItemWidth();
 	ImGui::SameLine();
@@ -498,6 +541,7 @@ void PropertyDrawer::DrawStringControl(const Gleam::TStringView label, Gleam::TS
 	{
 		value.assign(valueBuffer);
 	}
+	TrackEdit();
 
 	ImGui::PopItemWidth();
 	ImGui::SameLine();
@@ -607,7 +651,9 @@ void PropertyDrawer::DrawEnumOptions(const Gleam::TStringView label, const Gleam
 				{
 					*static_cast<int*>(value) = static_cast<int>(item.Value());
 				}
+				MarkEditCommitted();
 			}
+			TrackEdit();
 
 			if (isSelected)
 			{

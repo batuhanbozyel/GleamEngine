@@ -59,6 +59,7 @@
 #include "Container/Array.h"
 #include "Container/Stack.h"
 #include "Container/Queue.h"
+#include "Container/RingBuffer.h"
 #include "Container/List.h"
 #include "Container/Hash.h"
 #include "Container/Tuple.h"

@@ -8,6 +8,7 @@
 #include "WorldOutliner.h"
 #include "WorldViewport.h"
 #include "Selection/SelectionSystem.h"
+#include "Undo/UndoSystem.h"
 
 #include "Core/Globals.h"
 #include "Core/Engine.h"
@@ -32,6 +33,7 @@ void WorldOutliner::OnCreate(Gleam::World* world)
 {
 	mEditWorld = world;
 	mSelectionSystem = world->GetSubsystem<SelectionSystem>();
+	mUndoSystem = world->GetSubsystem<UndoSystem>();
 }
 
 void WorldOutliner::Render(Gleam::ImGuiRenderer* imgui)
@@ -63,6 +65,23 @@ void WorldOutliner::Render(Gleam::ImGuiRenderer* imgui)
 				{
 					SelectRange(mRangeAnchor, mPendingRangeSelect, mPendingRangeAdditive ? SelectionMode::Add : SelectionMode::Replace);
 					mPendingRangeSelect = Gleam::InvalidEntity;
+				}
+
+				if (mPendingDestroy != Gleam::InvalidEntity)
+				{
+					Gleam::TArray<Gleam::EntityHandle> entities;
+					if (mSelectionSystem->IsSelected(mPendingDestroy))
+					{
+						entities = mSelectionSystem->GetSelectedEntities();
+					}
+					else
+					{
+						entities.push_back(mPendingDestroy);
+					}
+
+					mUndoSystem->DestroyEntities(entities);
+					mPendingDestroy = Gleam::InvalidEntity;
+					mRangeAnchor = Gleam::InvalidEntity;
 				}
 
 				if (ImGui::IsWindowHovered() && ImGui::IsAnyItemHovered() == false && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
@@ -134,7 +153,7 @@ void WorldOutliner::DrawEntityNode(Gleam::EntityHandle handle)
 	{
 		if (ImGui::MenuItem("Destroy Entity"))
 		{
-			// TODO:
+			mPendingDestroy = handle;
 		}
 		ImGui::EndPopup();
 	}

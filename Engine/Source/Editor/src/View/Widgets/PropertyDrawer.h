@@ -49,7 +49,22 @@ public:
 	using UIFunction = std::function<void()>;
 	static void DrawCustom(const Gleam::TStringView label, size_t hash, UIFunction&& uiFunction);
 
+	// Edit tracking, covering the controls drawn since the last BeginEditTracking call
+	static void BeginEditTracking();
+
+	static bool EditStarted();
+
+	static bool EditCommitted();
+
 private:
+
+	static void TrackEdit();
+
+	static void MarkEditCommitted();
+
+	static inline bool mEditStarted = false;
+
+	static inline bool mEditCommitted = false;
 
 	using DrawFunction = std::function<void(const Gleam::TStringView label,
 											void* obj,
