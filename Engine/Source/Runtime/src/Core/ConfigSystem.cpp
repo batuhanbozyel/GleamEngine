@@ -23,7 +23,13 @@ void ConfigSystem::Initialize(Engine* engine)
 		for (auto it = document.MemberBegin(); it != document.MemberEnd(); ++it)
 		{
 			const auto& element = it->value;
-			const auto classDesc = Reflection::GetClass(element["TypeName"].GetString());
+			const auto typeGuid = Guid(element["TypeGuid"].GetString());
+			const auto classDesc = Reflection::IDatabase::GetInstance()->GetClass(typeGuid);
+			if (classDesc == nullptr)
+			{
+				continue;
+			}
+
 			auto& block = RegisterBlock(*classDesc);
 			mSerializer->Deserialize(*classDesc, block.data, rapidjson::ConstNode(element));
 			block.Notify();

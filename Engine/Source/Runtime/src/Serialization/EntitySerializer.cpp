@@ -122,8 +122,12 @@ TArray<EntityHandle> EntitySerializer::DeserializeEntities(const rapidjson::Cons
 
 		for (const auto& componentObject : entityObject["Components"].GetArray())
 		{
-			auto typeName = componentObject["TypeName"].GetString();
-			const auto classDesc = Reflection::GetClass(typeName);
+			auto typeGuid = Guid(componentObject["TypeGuid"].GetString());
+			const auto classDesc = Reflection::IDatabase::GetInstance()->GetClass(typeGuid);
+			if (classDesc == nullptr)
+			{
+				continue;
+			}
 
 			auto meta = entt::resolve(classDesc->TypeHash());
 			auto func = meta.func("AddComponent"_hs);
@@ -154,8 +158,12 @@ TArray<EntityHandle> EntitySerializer::Deserialize(const rapidjson::ConstNode& r
 
 	for (const auto& singletonObject : root["Singletons"].GetArray())
 	{
-		auto typeName = singletonObject["TypeName"].GetString();
-		const auto classDesc = Reflection::GetClass(typeName);
+		auto typeGuid = Guid(singletonObject["TypeGuid"].GetString());
+		const auto classDesc = Reflection::IDatabase::GetInstance()->GetClass(typeGuid);
+		if (classDesc == nullptr)
+		{
+			continue;
+		}
 
 		auto meta = entt::resolve(classDesc->TypeHash());
 		auto func = meta.func("SetSingleton"_hs);

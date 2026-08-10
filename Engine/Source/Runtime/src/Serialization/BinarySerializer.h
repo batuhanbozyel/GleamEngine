@@ -15,9 +15,9 @@ namespace Gleam {
 
 struct BinaryHeader
 {
-	TString name = "";
 	Guid guid = Guid::InvalidGuid();
 	Reflection::MetaType kind = Reflection::MetaType::Invalid;
+	Reflection::PrimitiveType primitiveType = Reflection::PrimitiveType::Invalid;
 	uint32_t version = 0;
 	uint32_t size = 0;
 };
