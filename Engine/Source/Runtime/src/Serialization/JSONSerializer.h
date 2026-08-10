@@ -72,12 +72,12 @@ public:
     void Serialize(const void* obj, const Reflection::ClassDescription& classDesc, FileStream& stream);
 
 	void Serialize(const void* obj, const Reflection::ClassDescription& classDesc, rapidjson::Node& root);
+
+	TString Serialize(const void* obj, const Reflection::ClassDescription& classDesc);
     
 	void Deserialize(FileStream& stream, const Reflection::ClassDescription& classDesc, void* obj);
 
 	void Deserialize(const Reflection::ClassDescription& classDesc, void* obj, const rapidjson::ConstNode& root);
-
-	TString Serialize(const void* obj, const Reflection::ClassDescription& classDesc);
 
 	void Deserialize(const Reflection::ClassDescription& classDesc, void* obj, const TString& data);
 

@@ -65,12 +65,14 @@ void EntitySerializer::SerializeEntities(const EntityManager& entityManager, TAr
 
 void EntitySerializer::Serialize(const EntityManager& entityManager, rapidjson::Node& root)
 {
-	TArray<EntityHandle> entities;
+	rapidjson::Value entitiesObject(rapidjson::kArrayType);
+	rapidjson::Node entitiesNode(entitiesObject, root.allocator);
+
 	entityManager.ForEach([&](EntityHandle handle)
 	{
-		entities.push_back(handle);
+		SerializeEntity(entityManager, handle, entitiesNode);
 	});
-	SerializeEntities(entityManager, entities, root);
+	root.AddMember("Entities", entitiesObject);
 
 	rapidjson::Value singletonComponents(rapidjson::kArrayType);
 	rapidjson::Node singletonComponentsNode(singletonComponents, root.allocator);
