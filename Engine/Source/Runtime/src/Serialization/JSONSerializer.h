@@ -22,7 +22,6 @@ namespace Gleam {
 struct JSONHeader
 {
 	Reflection::MetaType kind = Reflection::MetaType::Invalid;
-	TString name = "";
 	Guid guid = Guid::InvalidGuid();
 	uint32_t version = 0;
 };
@@ -82,7 +81,6 @@ public:
 	void Deserialize(const Reflection::ClassDescription& classDesc, void* obj, const TString& data);
 
     static bool TryCustomObjectSerializer(const void* obj,
-                                          const TStringView fieldName,
                                           const Reflection::ClassDescription& classDesc,
                                           rapidjson::Node& node);
     
@@ -101,7 +99,6 @@ public:
 private:
     
     using ObjectSerializerFn = std::function<void(const void* obj,
-                                                  const TStringView fieldName,
                                                   const Reflection::ClassDescription& classDesc,
 												  rapidjson::Node& node)>;
     
@@ -134,14 +131,13 @@ if constexpr (Reflection::Traits::IsReflected<Type>()) \
 { \
     const auto qualifiedName = QualifiedNameWithoutTemplateDeclaration(Reflection::GetClass<Type>().ResolveQualifiedName()); \
     mCustomObjectSerializers[qualifiedName] = [](const void* obj, \
-        const TStringView fieldName, \
         const Reflection::ClassDescription& classDesc, \
         rapidjson::Node& node) \
     { \
         const auto& val = Reflection::Get<Type>(obj); \
         rapidjson::Value value(rapidjson::kObjectType); \
         GLEAM_FOREACH(SERIALIZE_MEMBER, __VA_ARGS__) \
-        SerializeClassHeader(classDesc, fieldName, node); \
+        SerializeClassHeader(classDesc, node); \
         node.AddMember("Value", value); \
     }; \
     mCustomArraySerializers[qualifiedName] = [](const void* obj, \
@@ -190,7 +186,6 @@ if constexpr (Reflection::Traits::IsReflected<Type>()) \
 { \
     const auto qualifiedName = Reflection::GetClass<Type>().ResolveQualifiedName(); \
     mCustomObjectSerializers[qualifiedName] = [](const void* obj, \
-        const TStringView fieldName, \
         const Reflection::ClassDescription& classDesc, \
         rapidjson::Node& node) \
     { \
@@ -200,7 +195,7 @@ if constexpr (Reflection::Traits::IsReflected<Type>()) \
         { \
             value.PushBack(mat.m[i], node.allocator); \
         } \
-        SerializeClassHeader(classDesc, fieldName, node); \
+        SerializeClassHeader(classDesc, node); \
         node.AddMember("Value", value); \
     }; \
     mCustomArraySerializers[qualifiedName] = [](const void* obj, \
