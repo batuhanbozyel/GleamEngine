@@ -18,7 +18,7 @@ GSTRUCT(Sun, "C418E66E-3D0A-47A8-965A-6E39BB4799A8", Serializable)
 	GFIELD("EC8A7F1A-3430-428A-BB44-4BD07F297638", Serializable)
 	float intensity = 10.0f;
 
-	GFIELD("EC8A7F1A-3430-428A-BB44-4BD07F297638", Serializable)
+	GFIELD("8E7961D8-59C5-4A1A-9E5B-7C193B78E825", Serializable)
 	float angularDiameter = 0.5357f; // Angular diameter of sun to earth from sea level, see https://en.wikipedia.org/wiki/Solid_angle
 };
 

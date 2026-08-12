@@ -15,11 +15,11 @@ namespace Gleam {
 
 struct BinaryHeader
 {
-	Guid guid = Guid::InvalidGuid();
 	Reflection::MetaType kind = Reflection::MetaType::Invalid;
-	Reflection::PrimitiveType primitiveType = Reflection::PrimitiveType::Invalid;
+	uint32_t typeHash = 0;
+	Guid guid = Guid::InvalidGuid();
 	uint32_t version = 0;
-	uint32_t size = 0;
+	uint32_t payloadSize = 0;
 };
 
 class BinarySerializer final : public EngineSubsystem
@@ -54,12 +54,8 @@ public:
 	
 	static bool TryCustomSerializer(const void* obj, const Reflection::ClassDescription& classDesc, FileStream& stream);
 
-	static bool TryCustomArraySerializer(const void* obj, const Reflection::ClassDescription& classDesc, FileStream& stream);
-	
 	static bool TryCustomDeserializer(FileStream& stream, const Reflection::ClassDescription& classDesc, void* obj);
 
-	static bool TryCustomArrayDeserializer(FileStream& stream, const Reflection::ClassDescription& classDesc, void* obj);
-	
 private:
 
 	using SerializerFn = std::function<void(const void* obj,
@@ -72,12 +68,8 @@ private:
 	
 	static inline HashMap<TStringView, SerializerFn> mCustomSerializers;
 
-	static inline HashMap<TStringView, SerializerFn> mCustomArraySerializers;
-
 	static inline HashMap<TStringView, DeserializerFn> mCustomDeserializers;
 
-	static inline HashMap<TStringView, DeserializerFn> mCustomArrayDeserializers;
-    
 };
 
 } // namespace Gleam
@@ -91,27 +83,9 @@ if constexpr (Reflection::Traits::IsReflected<T>())\
 		FileStream& stream)\
 	{\
 		const auto& pod = Reflection::Get<T>(obj);\
-		SerializeClassHeader(classDesc, stream);\
-		stream.write(reinterpret_cast<const char*>(&pod), sizeof(T));\
-	};\
-	mCustomArraySerializers[qualifiedName] = [](const void* obj,\
-		const Reflection::ClassDescription& classDesc,\
-		FileStream& stream)\
-	{\
-		const auto& pod = Reflection::Get<T>(obj);\
 		stream.write(reinterpret_cast<const char*>(&pod), sizeof(T));\
 	};\
 	mCustomDeserializers[qualifiedName] = [](FileStream& stream,\
-		const Reflection::ClassDescription& classDesc,\
-		void* obj)\
-	{\
-		BinaryHeader header;\
-		DeserializeHeader(stream, header);\
-		T pod;\
-		stream.read(reinterpret_cast<char*>(&pod), sizeof(T));\
-		Reflection::Get<T>(obj) = pod;\
-	};\
-	mCustomArrayDeserializers[qualifiedName] = [](FileStream& stream,\
 		const Reflection::ClassDescription& classDesc,\
 		void* obj)\
 	{\
