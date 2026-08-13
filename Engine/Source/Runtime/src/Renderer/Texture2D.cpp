@@ -10,8 +10,8 @@
 
 using namespace Gleam;
 
-Texture2D::Texture2D(const Texture2DDescriptor& descriptor)
-	: Asset(descriptor.name)
+Texture2D::Texture2D(const AssetReference& reference, const Texture2DDescriptor& descriptor)
+	: Asset(reference, descriptor.name)
 {
 	GLEAM_ASSERT(descriptor.dimension == TextureDimension::Texture2D, "Texture2D descriptor dimension mismatch.");
 

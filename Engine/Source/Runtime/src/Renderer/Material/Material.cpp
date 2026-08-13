@@ -49,8 +49,8 @@ static size_t ComputeMaterialInstanceSize(const TArray<MaterialProperty>& proper
 	return size;
 }
 
-Material::Material(const MaterialDescriptor& descriptor)
-    : IMaterial(descriptor.name, descriptor.properties)
+Material::Material(const AssetReference& reference, const MaterialDescriptor& descriptor)
+    : IMaterial(reference, descriptor.name, descriptor.properties)
 	, mDescriptor(descriptor)
 	, mPipelineStateHash((uint32_t)eastl::hash<MaterialDescriptor>()(descriptor))
 	, mSurfaceShaderHash((uint32_t)eastl::hash<TString>()(descriptor.surfaceShader))

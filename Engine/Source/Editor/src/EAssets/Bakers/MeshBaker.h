@@ -1,5 +1,6 @@
 #pragma once
 #include "EAssets/AssetBaker.h"
+#include "EAssets/Tools/MeshTools.h"
 #include "Renderer/MeshDescriptor.h"
 
 namespace GEditor {
@@ -8,19 +9,17 @@ class MeshBaker final : public AssetBaker
 {
 public:
 
-	MeshBaker(const Gleam::MeshDescriptor& descriptor);
+	MeshBaker(MeshLodData&& lod);
 
 	virtual void Bake(const Gleam::Path& directory, const AssetItem& item) const override;
-    
-    virtual Gleam::TString Filename() const override;
-    
-    virtual Gleam::Guid TypeGuid() const override;
 
-	const Gleam::MeshDescriptor& GetDescriptor() const;
+	virtual Gleam::TString Filename() const override;
+
+	virtual Gleam::Guid TypeGuid() const override;
 
 private:
 
-	Gleam::MeshDescriptor mDescriptor;
+	Gleam::TArray<MeshLodData> mLods;
 
 };
 

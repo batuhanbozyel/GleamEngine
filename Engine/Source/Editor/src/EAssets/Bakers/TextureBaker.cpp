@@ -1,24 +1,23 @@
 #include "TextureBaker.h"
 #include "EAssets/AssetRegistry.h"
+#include "EAssets/AssetContainerWriter.h"
 
 #include "Assets/Asset.h"
-#include "Serialization/BinarySerializer.h"
 
 using namespace GEditor;
 
 TextureBaker::TextureBaker(const Gleam::Texture2DDescriptor& descriptor)
 	: mDescriptor(descriptor)
 {
-	
+
 }
 
 void TextureBaker::Bake(const Gleam::Path& directory, const AssetItem& item) const
 {
 	auto filename = Gleam::TWString(item.reference.guid.ToString()) + Gleam::Asset::Extension();
-	auto file = Gleam::Filesystem::Create(directory / filename, Gleam::FileType::Binary);
 
-	auto serializer = Gleam::BinarySerializer();
-	serializer.Serialize(mDescriptor, file->GetStream());
+	auto writer = AssetContainerWriter(TypeGuid(), mDescriptor.name);
+	writer.Write(directory / filename, mDescriptor);
 }
 
 Gleam::TString TextureBaker::Filename() const

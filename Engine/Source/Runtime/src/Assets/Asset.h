@@ -17,8 +17,9 @@ class Asset
 	friend class AssetManager;
 public:
 
-	Asset(const TString& name)
-		: mName(name)
+	Asset(const AssetReference& reference, const TString& name)
+		: mReference(reference)
+		, mName(name)
 	{
 
 	}
@@ -28,6 +29,11 @@ public:
 	uint32_t ReferenceCount() const
 	{
 		return mRefCount;
+	}
+
+	const AssetReference& GetReference() const
+	{
+		return mReference;
 	}
 
 	const TString& GetName() const
@@ -41,6 +47,8 @@ public:
     }
 
 private:
+
+	AssetReference mReference;
 
 	TString mName;
 

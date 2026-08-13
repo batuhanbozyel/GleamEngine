@@ -51,6 +51,8 @@ public:
 
 	const AssetItem& GetAsset(const Gleam::Path& path, const Gleam::Guid& type) const;
 
+	const AssetItem* FindAsset(const Gleam::Path& path, const Gleam::Guid& type) const;
+
 private:
 
 	struct AssetLocation

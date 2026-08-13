@@ -8,7 +8,13 @@ class Texture2D final : public Asset
 {
 public:
     
-    Texture2D(const Texture2DDescriptor& descriptor);
+    Texture2D(const AssetReference& reference, const Texture2DDescriptor& descriptor);
+
+    Texture2D(const Texture2DDescriptor& descriptor)
+        : Texture2D(AssetReference(), descriptor)
+    {
+
+    }
 
 	~Texture2D();
 

@@ -21,7 +21,7 @@ class Material : public IMaterial
 	static constexpr uint32_t MaxMaterialInstances = 1024;
 public:
     
-    Material(const MaterialDescriptor& descriptor);
+    Material(const AssetReference& reference, const MaterialDescriptor& descriptor);
 
 	~Material();
 

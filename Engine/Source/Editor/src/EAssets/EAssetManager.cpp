@@ -16,64 +16,39 @@
 
 #include "Assets/Asset.h"
 #include "Assets/AssetManager.h"
+#include "Assets/AssetContainer.h"
 
 #include "World/Prefab.h"
 #include "World/World.h"
 
 using namespace GEditor;
 
-static Gleam::BinaryHeader ParseBinaryHeader(const Gleam::Path& asset)
+struct AssetContainerInfo
 {
-	auto file = Gleam::Filesystem::OpenRead(asset, Gleam::FileType::Binary);
-	auto serializer = Gleam::BinarySerializer();
-	return serializer.ParseHeader(file->GetStream());
-}
+	Gleam::AssetFileHeader header;
+	Gleam::TString name;
+	bool valid = false;
+};
 
-static Gleam::JSONHeader ParseJSONHeader(const Gleam::Path& asset)
+static AssetContainerInfo ParseAssetContainer(const Gleam::Path& asset)
 {
-	auto file = Gleam::Filesystem::OpenRead(asset, Gleam::FileType::Text);
-	auto serializer = Gleam::JSONSerializer();
-	return serializer.ParseHeader(file->GetStream());
+	AssetContainerInfo info;
+
+	auto file = Gleam::Filesystem::OpenRead(asset, Gleam::FileType::Binary);
+	auto& stream = file->GetStream();
+
+	if (Gleam::ReadAssetFileHeader(stream, info.header))
+	{
+		info.name.resize(static_cast<size_t>(info.header.nameSize));
+		stream.seekg(static_cast<std::streamoff>(info.header.nameOffset));
+		stream.read(info.name.data(), static_cast<std::streamsize>(info.header.nameSize));
+		info.valid = true;
+	}
+	return info;
 }
 
 static Gleam::TString ParseAssetName(const Gleam::Path& asset, const Gleam::Guid& typeGuid)
 {
-    if (typeGuid == Gleam::Reflection::GetClass<Gleam::MeshDescriptor>().Guid())
-    {
-		auto file = Gleam::Filesystem::OpenRead(asset, Gleam::FileType::Binary);
-		auto serializer = Gleam::BinarySerializer();
-		
-        auto descriptor = serializer.Deserialize<Gleam::MeshDescriptor>(file->GetStream());
-        return descriptor.name;
-    }
-    
-    if (typeGuid == Gleam::Reflection::GetClass<Gleam::Texture2DDescriptor>().Guid())
-    {
-		auto file = Gleam::Filesystem::OpenRead(asset, Gleam::FileType::Binary);
-		auto serializer = Gleam::BinarySerializer();
-		
-        auto descriptor = serializer.Deserialize<Gleam::Texture2DDescriptor>(file->GetStream());
-        return descriptor.name;
-    }
-    
-    if (typeGuid == Gleam::Reflection::GetClass<Gleam::MaterialDescriptor>().Guid())
-    {
-		auto file = Gleam::Filesystem::OpenRead(asset, Gleam::FileType::Binary);
-		auto serializer = Gleam::BinarySerializer();
-		
-        auto descriptor = serializer.Deserialize<Gleam::MaterialDescriptor>(file->GetStream());
-        return descriptor.name;
-    }
-    
-    if (typeGuid == Gleam::Reflection::GetClass<Gleam::MaterialInstanceDescriptor>().Guid())
-    {
-		auto file = Gleam::Filesystem::OpenRead(asset, Gleam::FileType::Binary);
-		auto serializer = Gleam::BinarySerializer();
-		
-        auto descriptor = serializer.Deserialize<Gleam::MaterialInstanceDescriptor>(file->GetStream());
-        return descriptor.name;
-    }
-
 	if (typeGuid == Gleam::Reflection::GetClass<Gleam::Prefab>().Guid())
 	{
 		auto file = Gleam::Filesystem::OpenRead(asset, Gleam::FileType::Text);
@@ -108,17 +83,23 @@ void EAssetManager::Initialize(Gleam::Application* app)
     {
         if (entry.Extension() == Gleam::Asset::Extension())
         {
-            auto header = ParseBinaryHeader(entry);
-            auto guid = Gleam::Guid(entry.Stem());
-            auto asset = Gleam::AssetReference{ .guid = guid };
-            auto name = ParseAssetName(entry, header.guid);
-            auto item = AssetItem{
-                .reference = asset,
-                .type = header.guid,
-                .name = name
-            };
-			auto path = entry.Parent() / name;
-			mRegistry.RegisterAsset(path, item);
+            auto info = ParseAssetContainer(entry);
+            if (info.valid)
+            {
+                auto guid = Gleam::Guid(entry.Stem());
+                auto asset = Gleam::AssetReference{ .guid = guid };
+                auto item = AssetItem{
+                    .reference = asset,
+                    .type = info.header.typeGuid,
+                    .name = info.name
+                };
+                auto path = entry.Parent() / info.name;
+                mRegistry.RegisterAsset(path, item);
+            }
+            else
+            {
+                GLEAM_ERROR("Asset uses an unsupported container format and needs to be reimported: {0}", entry.String());
+            }
         }
 		else if (entry.Extension() == Gleam::Prefab::Extension())
 		{
@@ -195,7 +176,11 @@ void EAssetManager::Import(const Gleam::Path& directory, const AssetPackage& pac
 	for (const auto& baker : package.mBakers)
 	{
 		auto path = directory / baker->Filename();
-		const auto& item = package.mRegistry->GetAsset(baker->Filename(), baker->TypeGuid());
+
+		const auto existing = mRegistry.FindAsset(path, baker->TypeGuid());
+		auto item = (existing != nullptr) ? *existing
+										  : package.mRegistry->GetAsset(baker->Filename(), baker->TypeGuid());
+
 		const auto& asset = mRegistry.RegisterAsset(path, item);
 		baker->Bake(directory, asset);
 	}

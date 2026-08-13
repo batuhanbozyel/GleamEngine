@@ -23,13 +23,15 @@ void AssetManager::Initialize(Application* app)
 	RegisterMetaAsset<Texture2D, Texture2DDescriptor>();
 	RegisterMetaAsset<MaterialInstance, MaterialInstanceDescriptor>();
 
+	mStorage = CreateScope<AssetStorage>(Globals::ProjectContentDirectory);
+
 	Filesystem::ForEach(Globals::ProjectContentDirectory, [this](const auto& entry)
 	{
 		if (entry.Extension() == Asset::Extension() ||
 			entry.Extension() == Prefab::Extension() ||
 			entry.Extension() == World::Extension())
 		{
-			EmplaceAssetPath(entry);
+			mStorage->EmplaceAssetPath(entry);
 		}
 	}, true);
 
@@ -43,39 +45,17 @@ void AssetManager::Initialize(Application* app)
 			return;
 		}
 
-		auto relPath = Filesystem::Relative(path, Globals::ProjectContentDirectory);
-		std::lock_guard<std::mutex> lock(mMutex);
 		switch (event)
 		{
 			case FileWatchEvent::Added:
+			case FileWatchEvent::Modified:
 			{
-				EmplaceAssetPath(relPath);
+				mStorage->EmplaceAssetPath(path);
 				break;
 			}
 			case FileWatchEvent::Removed:
 			{
-				auto it = std::find_if(mAssetPaths.begin(), mAssetPaths.end(), [&](auto pair)
-				{
-					return pair.second == relPath;
-				});
-
-				if (it != mAssetPaths.end())
-				{
-					mAssetPaths.erase(it);
-				}
-				break;
-			}
-			case FileWatchEvent::Modified:
-			{
-				auto it = std::find_if(mAssetPaths.begin(), mAssetPaths.end(), [&](auto pair)
-				{
-					return pair.second == relPath;
-				});
-
-				if (it == mAssetPaths.end())
-				{
-					EmplaceAssetPath(relPath);
-				}
+				mStorage->RemoveAssetPath(path);
 				break;
 			}
 			default: break;
@@ -89,30 +69,10 @@ void AssetManager::Shutdown(Application* app)
 	// There are assets depending other assets such as MaterialInstance -> Material
 	// We need proper deallocation logic for such dependency
 	mAssetCache.clear();
-	mAssetPaths.clear();
-}
-
-void AssetManager::EmplaceAssetPath(const Path& path)
-{
-	Guid guid = TString(path.Stem());
-	auto relPath = path.IsRelative() ? path : Filesystem::Relative(path, Globals::ProjectContentDirectory);
-
-	if (guid != Guid::InvalidGuid())
-	{
-		AssetReference assetRef = { .guid = guid };
-		mAssetPaths[assetRef] = relPath;
-	}
+	mStorage.reset();
 }
 
 const Path& AssetManager::GetAssetPath(const AssetReference& ref) const
 {
-	auto it = mAssetPaths.find(ref);
-	if (it != mAssetPaths.end())
-	{
-		return it->second;
-	}
-
-	GLEAM_ASSERT(false, "Asset could not located for GUID: {0}", ref.guid.ToString());
-	static Path invalidPath;
-	return invalidPath;
+	return mStorage->GetAssetPath(ref);
 }
