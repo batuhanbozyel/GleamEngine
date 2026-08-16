@@ -15,7 +15,7 @@ public:
 
 	AssetContainerWriter(const Gleam::Guid& typeGuid, const Gleam::TString& name);
 
-	uint32_t AddChunk(const void* data, uint64_t size);
+	uint32_t AddBlob(const void* data, uint64_t size);
 
 	template<typename T>
 	void Write(const Gleam::Path& path, const T& metadata) const
@@ -37,7 +37,7 @@ private:
 
 	Gleam::TString mName;
 
-	Gleam::TArray<ChunkSource> mChunks;
+	Gleam::TArray<ChunkSource> mBlobs;
 
 };
 

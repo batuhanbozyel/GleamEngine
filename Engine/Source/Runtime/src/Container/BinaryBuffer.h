@@ -1,4 +1,6 @@
 #pragma once
+#include "Pointer.h"
+
 #include <Reflection/Macro.h>
 #include <cstdlib>
 #include <cstring>
@@ -97,6 +99,62 @@ GSTRUCT(BinaryBuffer, "D9C1A4E7-3B58-4F02-A6D9-71E8C5B2F4A3", Serializable)
 			size = newSize;
 		}
 	}
+};
+
+class BinaryWriter
+{
+public:
+
+	BinaryWriter(size_t capacity)
+		: mBuffer(capacity)
+	{
+		
+	}
+
+	~BinaryWriter()
+	{
+		
+	}
+
+	BufferRange Write(const void* data, size_t size)
+	{
+		if (size == 0 || data == nullptr)
+		{
+			return {};
+		}
+
+		size_t requiredSize = mCursor + size;
+		if (mBuffer.size < requiredSize)
+		{
+			mBuffer.Resize(requiredSize);
+		}
+
+		BufferRange range = { mCursor, size };
+		memcpy(OffsetPointer(mBuffer.data, mCursor), data, size);
+		mCursor += size;
+		return range;
+	}
+
+	template<typename T>
+	BufferRange Write(const T& data)
+	{
+		return Write(&data, sizeof(T));
+	}
+
+	size_t GetCursor() const
+	{
+		return mCursor;
+	}
+
+	const BinaryBuffer& GetBuffer() const
+	{
+		return mBuffer;
+	}
+
+private:
+
+	size_t mCursor = 0;
+	BinaryBuffer mBuffer = {};
 };
 
 } // namespace Gleam

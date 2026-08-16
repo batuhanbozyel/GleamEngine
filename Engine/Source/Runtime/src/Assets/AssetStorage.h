@@ -46,12 +46,10 @@ struct ChunkDestination
 	};
 };
 
-struct ChunkReadRequest
+struct AssetDataReadRequest
 {
 	AssetReference asset;
-	uint32_t chunkIndex = 0;
-
-	
+	uint32_t blob = 0;
 	ChunkDestination destination;
 };
 
@@ -79,9 +77,9 @@ public:
 
 	void ReadMetadata(const AssetReference& ref, const Reflection::ClassDescription& classDesc, void* obj);
 
-	const AssetChunkTable& ReadChunkTable(const AssetReference& ref);
+	const AssetDataTable& ReadDataTable(const AssetReference& ref);
 
-	void Enqueue(const ChunkReadRequest& request);
+	void Enqueue(const AssetDataReadRequest& request);
 
 	AssetStreamFence Submit();
 
@@ -100,17 +98,17 @@ private:
 		Path path;
 		AssetFileHeader header;
 		TString name;
-		AssetChunkTable chunkTable;
+		AssetDataTable dataTable;
 		bool headerLoaded = false;
-		bool chunkTableLoaded = false;
+		bool dataTableLoaded = false;
 	};
 
 	AssetEntry& LoadEntryHeader(const AssetReference& ref);
 
-	void ReadChunk(FileStream& stream,
+	void ReadData(FileStream& stream,
 				   const AssetFileHeader& header,
-				   const AssetChunkTable& chunkTable,
-				   const ChunkReadRequest& request) const;
+				   const AssetDataTable& dataTable,
+				   const AssetDataReadRequest& request) const;
 
 	Path mDirectory;
 
@@ -118,7 +116,7 @@ private:
 
 	HashMap<AssetReference, AssetEntry> mEntries;
 
-	TArray<ChunkReadRequest> mPendingRequests;
+	TArray<AssetDataReadRequest> mPendingRequests;
 
 	uint64_t mFenceValue = 0;
 

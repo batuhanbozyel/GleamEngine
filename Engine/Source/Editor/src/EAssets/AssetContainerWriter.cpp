@@ -16,10 +16,10 @@ AssetContainerWriter::AssetContainerWriter(const Gleam::Guid& typeGuid, const Gl
 
 }
 
-uint32_t AssetContainerWriter::AddChunk(const void* data, uint64_t size)
+uint32_t AssetContainerWriter::AddBlob(const void* data, uint64_t size)
 {
-	mChunks.emplace_back(ChunkSource{ .data = data, .size = size });
-	return static_cast<uint32_t>(mChunks.size() - 1u);
+	mBlobs.emplace_back(ChunkSource{ .data = data, .size = size });
+	return static_cast<uint32_t>(mBlobs.size() - 1u);
 }
 
 void AssetContainerWriter::Write(const Gleam::Path& path, const void* metadata, const Gleam::Reflection::ClassDescription& classDesc) const
@@ -29,31 +29,30 @@ void AssetContainerWriter::Write(const Gleam::Path& path, const void* metadata, 
 
 	auto header = Gleam::AssetFileHeader();
 	header.typeGuid = mTypeGuid;
-	header.chunkCount = static_cast<uint32_t>(mChunks.size());
+	header.blobCount = static_cast<uint32_t>(mBlobs.size());
 	Gleam::WriteAssetFileHeader(stream, header);
 
 	header.nameOffset = static_cast<uint64_t>(stream.tellp());
 	header.nameSize = mName.size();
 	stream.write(mName.data(), static_cast<std::streamsize>(mName.size()));
 
-	auto serializer = Gleam::BinarySerializer();
-
-	if (not mChunks.empty())
+	Gleam::BinarySerializer serializer;
+	if (not mBlobs.empty())
 	{
-		auto chunkTable = Gleam::AssetChunkTable();
-		chunkTable.chunks.resize(mChunks.size());
+		auto dataTable = Gleam::AssetDataTable();
+		dataTable.blobs.resize(mBlobs.size());
 
-		uint64_t chunkOffset = 0;
-		for (uint32_t i = 0; i < mChunks.size(); ++i)
+		uint64_t blobOffset = 0;
+		for (uint32_t i = 0; i < mBlobs.size(); ++i)
 		{
-			chunkTable.chunks[i].offset = chunkOffset;
-			chunkTable.chunks[i].size = mChunks[i].size;
-			chunkOffset += mChunks[i].size;
+			dataTable.blobs[i].offset = blobOffset;
+			dataTable.blobs[i].size = mBlobs[i].size;
+			blobOffset += mBlobs[i].size;
 		}
 
-		header.chunkTableOffset = static_cast<uint64_t>(stream.tellp());
-		serializer.Serialize(chunkTable, stream);
-		header.chunkTableSize = static_cast<uint64_t>(stream.tellp()) - header.chunkTableOffset;
+		header.dataTableOffset = static_cast<uint64_t>(stream.tellp());
+		serializer.Serialize(dataTable, stream);
+		header.dataTableSize = static_cast<uint64_t>(stream.tellp()) - header.dataTableOffset;
 	}
 
 	header.metadataOffset = static_cast<uint64_t>(stream.tellp());
@@ -61,7 +60,7 @@ void AssetContainerWriter::Write(const Gleam::Path& path, const void* metadata, 
 	header.metadataSize = static_cast<uint64_t>(stream.tellp()) - header.metadataOffset;
 
 	header.bulkDataOffset = static_cast<uint64_t>(stream.tellp());
-	for (const auto& chunk : mChunks)
+	for (const auto& chunk : mBlobs)
 	{
 		stream.write(static_cast<const char*>(chunk.data), static_cast<std::streamsize>(chunk.size));
 	}

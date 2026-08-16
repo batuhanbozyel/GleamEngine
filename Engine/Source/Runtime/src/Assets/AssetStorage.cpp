@@ -84,58 +84,57 @@ void AssetStorage::ReadMetadata(const AssetReference& ref, const Reflection::Cla
 	}
 }
 
-const AssetChunkTable& AssetStorage::ReadChunkTable(const AssetReference& ref)
+const AssetDataTable& AssetStorage::ReadDataTable(const AssetReference& ref)
 {
 	auto& entry = LoadEntryHeader(ref);
-	if (entry.headerLoaded and not entry.chunkTableLoaded)
+	if (entry.headerLoaded and not entry.dataTableLoaded)
 	{
-		if (entry.header.chunkCount > 0)
+		if (entry.header.blobCount > 0)
 		{
 			auto file = Filesystem::OpenRead(mDirectory / entry.path, FileType::Binary);
 			auto& stream = file->GetStream();
-			stream.seekg(static_cast<std::streamoff>(entry.header.chunkTableOffset));
+			stream.seekg(static_cast<std::streamoff>(entry.header.dataTableOffset));
 
 			auto serializer = BinarySerializer();
-			entry.chunkTable = serializer.Deserialize<AssetChunkTable>(stream);
+			entry.dataTable = serializer.Deserialize<AssetDataTable>(stream);
 		}
-		entry.chunkTableLoaded = true;
+		entry.dataTableLoaded = true;
 	}
-	return entry.chunkTable;
+	return entry.dataTable;
 }
 
-void AssetStorage::Enqueue(const ChunkReadRequest& request)
+void AssetStorage::Enqueue(const AssetDataReadRequest& request)
 {
 	mPendingRequests.push_back(request);
 }
 
-void AssetStorage::ReadChunk(FileStream& stream,
+void AssetStorage::ReadData(FileStream& stream,
 							 const AssetFileHeader& header,
-							 const AssetChunkTable& chunkTable,
-							 const ChunkReadRequest& request) const
+							 const AssetDataTable& dataTable,
+							 const AssetDataReadRequest& request) const
 {
-	if (request.chunkIndex >= chunkTable.chunks.size())
+	if (request.blob >= dataTable.blobs.size())
 	{
-		GLEAM_CORE_ERROR("Chunk index {0} is out of range for GUID: {1}", request.chunkIndex, request.asset.guid.ToString());
-		GLEAM_ASSERT(false);
+		GLEAM_ASSERT(false, "Asset data blob {0} is out of range for GUID: {1}", request.blob, request.asset.guid.ToString());
 		return;
 	}
 
-	const auto& chunk = chunkTable.chunks[request.chunkIndex];
-	stream.seekg(static_cast<std::streamoff>(header.bulkDataOffset + chunk.offset));
+	const auto& blob = dataTable.blobs[request.blob];
+	stream.seekg(static_cast<std::streamoff>(header.bulkDataOffset + blob.offset));
 
 	if (request.destination.kind == ChunkDestination::Kind::Memory)
 	{
-		GLEAM_ASSERT(request.destination.memory.size >= chunk.size, "Chunk read destination is too small.");
-		stream.read(static_cast<char*>(request.destination.memory.buffer), static_cast<std::streamsize>(chunk.size));
+		GLEAM_ASSERT(request.destination.memory.size >= blob.size, "Data read destination is too small.");
+		stream.read(static_cast<char*>(request.destination.memory.buffer), static_cast<std::streamsize>(blob.size));
 	}
 	else
 	{
-		BinaryBuffer staging(chunk.size);
-		stream.read(static_cast<char*>(staging.data), static_cast<std::streamsize>(chunk.size));
+		BinaryBuffer staging(blob.size);
+		stream.read(static_cast<char*>(staging.data), static_cast<std::streamsize>(blob.size));
 
 		static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
 		auto cmd = renderSystem->GetCopyCommandBuffer();
-		cmd->Commit(*request.destination.buffer.resource, staging.data, chunk.size, request.destination.buffer.offset);
+		cmd->Commit(*request.destination.buffer.resource, staging.data, blob.size, request.destination.buffer.offset);
 	}
 }
 
@@ -145,7 +144,7 @@ AssetStreamFence AssetStorage::Submit()
 	{
 		const auto asset = mPendingRequests.front().asset;
 		const auto& entry = LoadEntryHeader(asset);
-		const auto& chunkTable = ReadChunkTable(asset);
+		const auto& dataTable = ReadDataTable(asset);
 
 		auto file = Filesystem::OpenRead(mDirectory / entry.path, FileType::Binary);
 		auto& stream = file->GetStream();
@@ -154,7 +153,7 @@ AssetStreamFence AssetStorage::Submit()
 		{
 			if (it->asset == asset)
 			{
-				ReadChunk(stream, entry.header, chunkTable, *it);
+				ReadData(stream, entry.header, dataTable, *it);
 				it = mPendingRequests.erase(it);
 			}
 			else
@@ -187,7 +186,7 @@ void AssetStorage::EmplaceAssetPath(const Path& path)
 	auto& entry = mEntries[AssetReference{ .guid = guid }];
 	entry.path = relPath;
 	entry.headerLoaded = false;
-	entry.chunkTableLoaded = false;
+	entry.dataTableLoaded = false;
 }
 
 void AssetStorage::RemoveAssetPath(const Path& path)

@@ -49,21 +49,8 @@ public:
 
 protected:
 
-	struct MeshLod
-	{
-		Buffer buffer;
-		BufferRange indices;
-		BufferRange positions;
-		BufferRange interleavedVertices;
-		BufferRange meshlets;
-		BufferRange meshletVertices;
-		BufferRange meshletTriangleIndices;
-	};
-
-	const MeshLod& GetActiveLodData() const;
-
 	MeshDescriptor mDescriptor;
-	TArray<MeshLod> mLods;
+	TArray<Buffer> mLods;
 	uint32_t mActiveLod = 0;
 	TArray<BottomLevelAccelerationStructure> mBLASes;
 };

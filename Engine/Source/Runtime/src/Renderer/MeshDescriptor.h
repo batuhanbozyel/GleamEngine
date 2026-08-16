@@ -84,28 +84,28 @@ GSTRUCT(SubmeshDescriptor, "DD7E3A74-ADF4-45A9-8DFD-CA252EDC49A6", Serializable)
 GSTRUCT(MeshLodDescriptor, "CBA27D05-FEDE-4D7D-A717-117D6A601D64", Serializable)
 {
 	GFIELD("7DE83D75-1D94-4FCE-99A2-4B23908EE5FC", Serializable)
-	uint32_t indicesChunk = 0;
-
-	GFIELD("77027AF4-FAEE-43A5-ACF7-D5296F50E939", Serializable)
-	uint32_t positionsChunk = 0;
-
-	GFIELD("39AF813D-5AF2-4A93-970A-E34FB3D8B396", Serializable)
-	uint32_t interleavedChunk = 0;
-
-	GFIELD("ADACC5E4-A2F1-4643-BA38-643A4988F8D3", Serializable)
-	uint32_t meshletsChunk = 0;
-
-	GFIELD("244EEC15-0A85-415F-B8E7-9BC8562C1BB8", Serializable)
-	uint32_t meshletVerticesChunk = 0;
-
-	GFIELD("47C8E328-6164-4C97-B051-4142B01DE32A", Serializable)
-	uint32_t meshletTrianglesChunk = 0;
+	uint32_t blob = 0;
+	
+	GFIELD("AE9C95A3-0E12-4E90-977C-2BE0EAA97CEA", Serializable)
+	BufferRange indices;
+	
+	GFIELD("42041BCD-8318-44DE-86C7-E9051136FF5E", Serializable)
+	BufferRange positions;
+	
+	GFIELD("DB62909E-F4D2-46A3-BE24-B85854261DCE", Serializable)
+	BufferRange interleavedVertices;
+	
+	GFIELD("C28C5A14-919A-4DE9-87F1-F4F64D988484", Serializable)
+	BufferRange meshlets;
+	
+	GFIELD("C14ABA2B-FF43-470A-9E9B-215C3FE623B8", Serializable)
+	BufferRange meshletVertices;
+	
+	GFIELD("8E9B1109-EEA8-4D9B-BE1B-9405F5927BCF", Serializable)
+	BufferRange meshletTriangleIndices;
 
 	GFIELD("B390D5FA-24B2-4F18-A45D-7BC7612F18BA", Serializable)
 	TArray<SubmeshDescriptor> submeshes;
-
-	GFIELD("F2B7014B-F94F-4CD6-B44A-78FC19A3D55E", Serializable)
-	float screenSizeThreshold = 0.0f;
 };
 
 GSTRUCT(MeshDescriptor, "59E4007E-F7D4-4107-A05F-E1121067DCD3", Serializable)

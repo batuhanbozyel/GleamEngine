@@ -17,13 +17,7 @@ Mesh::Mesh(const AssetReference& reference, const MeshDescriptor& descriptor)
 	, mDescriptor(descriptor)
 	, mLods(descriptor.lods.size())
 {
-	if (mDescriptor.lods.empty())
-	{
-		GLEAM_CORE_ERROR("Mesh has no LODs: {0}", descriptor.name);
-		GLEAM_ASSERT(false);
-		return;
-	}
-
+	GLEAM_ASSERT(mDescriptor.lods.size() > 0, "Mesh has no LODs: {0}", descriptor.name);
 	mBLASes.resize(mDescriptor.lods[0].submeshes.size());
 	RequestLod(0);
 }
@@ -35,9 +29,9 @@ Mesh::~Mesh()
 
 	for (auto& lod : mLods)
 	{
-		if (lod.buffer.IsValid())
+		if (lod.IsValid())
 		{
-			device->Dispose(renderSystem->GetAllocator(), lod.buffer, BarrierStage::None);
+			device->Dispose(renderSystem->GetAllocator(), lod, BarrierStage::None);
 		}
 	}
 
@@ -52,83 +46,38 @@ Mesh::~Mesh()
 
 void Mesh::RequestLod(uint32_t lod)
 {
-	if (lod >= mLods.size())
-	{
-		GLEAM_CORE_ERROR("Mesh LOD {0} is out of range for: {1}", lod, GetName());
-		GLEAM_ASSERT(false);
-		return;
-	}
-
-	const auto& lodDesc = mDescriptor.lods[lod];
+	GLEAM_ASSERT(lod < mLods.size(), "Mesh LOD {0} is out of range for: {1}", lod, GetName());
+	
 	auto& lodData = mLods[lod];
-
-	static auto assetManager = Globals::GameInstance->GetSubsystem<AssetManager>();
-	auto storage = assetManager->GetStorage();
-	const auto& chunkTable = storage->ReadChunkTable(GetReference());
-
-	const uint32_t chunkIndices[] = {
-		lodDesc.indicesChunk,
-		lodDesc.positionsChunk,
-		lodDesc.interleavedChunk,
-		lodDesc.meshletsChunk,
-		lodDesc.meshletVerticesChunk,
-		lodDesc.meshletTrianglesChunk
-	};
-
-	BufferRange* ranges[] = {
-		&lodData.indices,
-		&lodData.positions,
-		&lodData.interleavedVertices,
-		&lodData.meshlets,
-		&lodData.meshletVertices,
-		&lodData.meshletTriangleIndices
-	};
-
-	constexpr uint32_t streamCount = 6;
-
-	uint64_t offset = 0;
-	for (uint32_t i = 0; i < streamCount; ++i)
-	{
-		if (chunkIndices[i] >= chunkTable.chunks.size())
-		{
-			GLEAM_CORE_ERROR("Mesh chunk {0} is out of range for: {1}", chunkIndices[i], GetName());
-			GLEAM_ASSERT(false);
-			return;
-		}
-
-		ranges[i]->offset = offset;
-		ranges[i]->size = chunkTable.chunks[chunkIndices[i]].size;
-		offset += ranges[i]->size;
-	}
-
-	if (not lodData.buffer.IsValid())
+	if (not lodData.IsValid())
 	{
 		static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
+		static auto assetManager = Globals::GameInstance->GetSubsystem<AssetManager>();
+		
+		auto storage = assetManager->GetStorage();
+		const auto& dataTable = storage->ReadDataTable(GetReference());
+		const auto& lodDesc = mDescriptor.lods[lod];
+		const auto& blob = dataTable.blobs[lodDesc.blob];
 
 		BufferDescriptor bufferDesc;
 		bufferDesc.name = "Mesh: " + mDescriptor.name;
-		bufferDesc.size = offset;
-		lodData.buffer = renderSystem->GetDevice()->CreateBuffer(renderSystem->GetAllocator(), bufferDesc);
-	}
-
-	for (uint32_t i = 0; i < streamCount; ++i)
-	{
-		storage->Enqueue(ChunkReadRequest{
+		bufferDesc.size = blob.size;
+		lodData = renderSystem->GetDevice()->CreateBuffer(renderSystem->GetAllocator(), bufferDesc);
+		
+		storage->Enqueue(AssetDataReadRequest{
 			.asset = GetReference(),
-			.chunkIndex = chunkIndices[i],
-			.destination = MakeBufferDestination(lodData.buffer, ranges[i]->offset)
+			.blob = lodDesc.blob,
+			.destination = MakeBufferDestination(lodData, blob.offset)
 		});
+		storage->Wait(storage->Submit());
 	}
-
-	storage->Wait(storage->Submit());
 }
 
 void Mesh::SetActiveLod(uint32_t lod)
 {
 	if (lod >= mLods.size())
 	{
-		GLEAM_CORE_ERROR("Mesh LOD {0} is out of range for: {1}", lod, GetName());
-		GLEAM_ASSERT(false);
+		GLEAM_ASSERT(false, "Mesh LOD {0} is out of range for: {1}", lod, GetName());
 		return;
 	}
 	mActiveLod = lod;
@@ -150,47 +99,42 @@ bool Mesh::IsLodResident(uint32_t lod) const
 	{
 		return false;
 	}
-	return mLods[lod].buffer.IsValid();
-}
-
-const Mesh::MeshLod& Mesh::GetActiveLodData() const
-{
-	return mLods[mActiveLod];
+	return mLods[lod].IsValid();
 }
 
 const Buffer& Mesh::GetBuffer() const
 {
-	return GetActiveLodData().buffer;
+	return mLods[mActiveLod];
 }
 
 const BufferRange& Mesh::GetPositions() const
 {
-	return GetActiveLodData().positions;
+	return mDescriptor.lods[mActiveLod].positions;
 }
 
 const BufferRange& Mesh::GetInterleavedVertices() const
 {
-	return GetActiveLodData().interleavedVertices;
+	return mDescriptor.lods[mActiveLod].interleavedVertices;
 }
 
 const BufferRange& Mesh::GetIndices() const
 {
-	return GetActiveLodData().indices;
+	return mDescriptor.lods[mActiveLod].indices;
 }
 
 const BufferRange& Mesh::GetMeshlets() const
 {
-	return GetActiveLodData().meshlets;
+	return mDescriptor.lods[mActiveLod].meshlets;
 }
 
 const BufferRange& Mesh::GetMeshletVertices() const
 {
-	return GetActiveLodData().meshletVertices;
+	return mDescriptor.lods[mActiveLod].meshletVertices;
 }
 
 const BufferRange& Mesh::GetMeshletTriangleIndices() const
 {
-	return GetActiveLodData().meshletTriangleIndices;
+	return mDescriptor.lods[mActiveLod].meshletTriangleIndices;
 }
 
 const TArray<SubmeshDescriptor>& Mesh::GetSubmeshes() const

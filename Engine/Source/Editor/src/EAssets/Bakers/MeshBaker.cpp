@@ -24,14 +24,25 @@ void MeshBaker::Bake(const Gleam::Path& directory, const AssetItem& item) const
 	{
 		const auto& lod = mLods[i];
 		auto& lodDesc = descriptor.lods[i];
+		
+		uint64_t totalSize = lod.indices.size() * sizeof(uint32_t)
+							+ lod.positions.size() * sizeof(Gleam::Float3)
+							+ lod.interleavedVertices.size() * sizeof(Gleam::InterleavedMeshVertex)
+							+ lod.meshlets.size() * sizeof(Gleam::MeshletDescriptor)
+							+ lod.meshletVertices.size() * sizeof(uint32_t)
+							+ lod.meshletTriangleIndices.size() * sizeof(uint32_t);
+		
+		Gleam::BinaryWriter binaryWriter(totalSize);
+		lodDesc.indices = binaryWriter.Write(lod.indices.data(), lod.indices.size() * sizeof(uint32_t));
+		lodDesc.positions = binaryWriter.Write(lod.positions.data(), lod.positions.size() * sizeof(Gleam::Float3));
+		lodDesc.interleavedVertices = binaryWriter.Write(lod.interleavedVertices.data(), lod.interleavedVertices.size() * sizeof(Gleam::InterleavedMeshVertex));
+		lodDesc.meshlets = binaryWriter.Write(lod.meshlets.data(), lod.meshlets.size() * sizeof(Gleam::MeshletDescriptor));
+		lodDesc.meshletVertices = binaryWriter.Write(lod.meshletVertices.data(), lod.meshletVertices.size() * sizeof(uint32_t));
+		lodDesc.meshletTriangleIndices = binaryWriter.Write(lod.meshletTriangleIndices.data(), lod.meshletTriangleIndices.size() * sizeof(uint32_t));
 
-		lodDesc.indicesChunk = writer.AddChunk(lod.indices.data(), lod.indices.size() * sizeof(uint32_t));
-		lodDesc.positionsChunk = writer.AddChunk(lod.positions.data(), lod.positions.size() * sizeof(Gleam::Float3));
-		lodDesc.interleavedChunk = writer.AddChunk(lod.interleavedVertices.data(), lod.interleavedVertices.size() * sizeof(Gleam::InterleavedMeshVertex));
-		lodDesc.meshletsChunk = writer.AddChunk(lod.meshlets.data(), lod.meshlets.size() * sizeof(Gleam::MeshletDescriptor));
-		lodDesc.meshletVerticesChunk = writer.AddChunk(lod.meshletVertices.data(), lod.meshletVertices.size() * sizeof(uint32_t));
-		lodDesc.meshletTrianglesChunk = writer.AddChunk(lod.meshletTriangleIndices.data(), lod.meshletTriangleIndices.size() * sizeof(uint32_t));
-
+		const auto& buffer = binaryWriter.GetBuffer();
+		lodDesc.blob = writer.AddBlob(buffer.data, buffer.size);
+		
 		lodDesc.submeshes = lod.submeshes;
 	}
 
