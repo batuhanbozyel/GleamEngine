@@ -45,22 +45,18 @@ AssetStorage::AssetEntry& AssetStorage::LoadEntryHeader(const AssetReference& re
 		auto file = Filesystem::OpenRead(mDirectory / entry.path, FileType::Binary);
 		auto& stream = file->GetStream();
 
-		if (ReadAssetFileHeader(stream, entry.header))
-		{
-			entry.name.resize(static_cast<size_t>(entry.header.nameSize));
-			stream.seekg(static_cast<std::streamoff>(entry.header.nameOffset));
-			stream.read(entry.name.data(), static_cast<std::streamsize>(entry.header.nameSize));
-			entry.headerLoaded = true;
-		}
-		else
-		{
-			GLEAM_CORE_ERROR("Asset is not a valid container: {0}", entry.path.String());
-		}
+		auto serializer = BinarySerializer();
+		entry.header = serializer.Deserialize<AssetHeader>(stream);
+
+		entry.name.resize(static_cast<size_t>(entry.header.nameSize));
+		stream.seekg(static_cast<std::streamoff>(entry.header.nameOffset));
+		stream.read(entry.name.data(), static_cast<std::streamsize>(entry.header.nameSize));
+		entry.headerLoaded = true;
 	}
 	return entry;
 }
 
-const AssetFileHeader& AssetStorage::ReadHeader(const AssetReference& ref)
+const AssetHeader& AssetStorage::ReadHeader(const AssetReference& ref)
 {
 	return LoadEntryHeader(ref).header;
 }
@@ -109,7 +105,7 @@ void AssetStorage::Enqueue(const AssetDataReadRequest& request)
 }
 
 void AssetStorage::ReadData(FileStream& stream,
-							 const AssetFileHeader& header,
+							 const AssetHeader& header,
 							 const AssetDataTable& dataTable,
 							 const AssetDataReadRequest& request) const
 {

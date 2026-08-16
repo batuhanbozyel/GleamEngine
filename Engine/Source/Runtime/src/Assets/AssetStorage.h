@@ -1,9 +1,11 @@
 #pragma once
 #include "AssetContainer.h"
+#include "AssetHeader.h"
 #include "AssetReference.h"
 
 #include "Core/Macro.h"
 #include "IO/Path.h"
+#include "IO/Filesystem.h"
 #include "Container/Hash.h"
 #include "Container/String.h"
 
@@ -71,7 +73,7 @@ public:
 
 	bool Contains(const AssetReference& ref) const;
 
-	const AssetFileHeader& ReadHeader(const AssetReference& ref);
+	const AssetHeader& ReadHeader(const AssetReference& ref);
 
 	const TString& ReadName(const AssetReference& ref);
 
@@ -96,7 +98,7 @@ private:
 	struct AssetEntry
 	{
 		Path path;
-		AssetFileHeader header;
+		AssetHeader header;
 		TString name;
 		AssetDataTable dataTable;
 		bool headerLoaded = false;
@@ -106,9 +108,9 @@ private:
 	AssetEntry& LoadEntryHeader(const AssetReference& ref);
 
 	void ReadData(FileStream& stream,
-				   const AssetFileHeader& header,
-				   const AssetDataTable& dataTable,
-				   const AssetDataReadRequest& request) const;
+				  const AssetHeader& header,
+				  const AssetDataTable& dataTable,
+				  const AssetDataReadRequest& request) const;
 
 	Path mDirectory;
 

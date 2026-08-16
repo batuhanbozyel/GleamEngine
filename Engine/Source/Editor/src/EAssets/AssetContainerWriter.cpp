@@ -1,6 +1,7 @@
 #include "AssetContainerWriter.h"
 
 #include "Assets/AssetContainer.h"
+#include "Assets/AssetHeader.h"
 
 #include "IO/File.h"
 #include "IO/Filesystem.h"
@@ -27,16 +28,17 @@ void AssetContainerWriter::Write(const Gleam::Path& path, const void* metadata, 
 	auto file = Gleam::Filesystem::Create(path, Gleam::FileType::Binary);
 	auto& stream = file->GetStream();
 
-	auto header = Gleam::AssetFileHeader();
+	Gleam::BinarySerializer serializer;
+
+	auto header = Gleam::AssetHeader();
 	header.typeGuid = mTypeGuid;
 	header.blobCount = static_cast<uint32_t>(mBlobs.size());
-	Gleam::WriteAssetFileHeader(stream, header);
+	serializer.Serialize(header, stream);
 
 	header.nameOffset = static_cast<uint64_t>(stream.tellp());
 	header.nameSize = mName.size();
 	stream.write(mName.data(), static_cast<std::streamsize>(mName.size()));
 
-	Gleam::BinarySerializer serializer;
 	if (not mBlobs.empty())
 	{
 		auto dataTable = Gleam::AssetDataTable();
@@ -60,11 +62,11 @@ void AssetContainerWriter::Write(const Gleam::Path& path, const void* metadata, 
 	header.metadataSize = static_cast<uint64_t>(stream.tellp()) - header.metadataOffset;
 
 	header.bulkDataOffset = static_cast<uint64_t>(stream.tellp());
-	for (const auto& chunk : mBlobs)
+	for (const auto& blob : mBlobs)
 	{
-		stream.write(static_cast<const char*>(chunk.data), static_cast<std::streamsize>(chunk.size));
+		stream.write(static_cast<const char*>(blob.data), static_cast<std::streamsize>(blob.size));
 	}
 
 	stream.seekp(0);
-	Gleam::WriteAssetFileHeader(stream, header);
+	serializer.Serialize(header, stream);
 }

@@ -16,7 +16,7 @@
 
 #include "Assets/Asset.h"
 #include "Assets/AssetManager.h"
-#include "Assets/AssetContainer.h"
+#include "Assets/AssetHeader.h"
 
 #include "World/Prefab.h"
 #include "World/World.h"
@@ -25,9 +25,8 @@ using namespace GEditor;
 
 struct AssetContainerInfo
 {
-	Gleam::AssetFileHeader header;
+	Gleam::AssetHeader header;
 	Gleam::TString name;
-	bool valid = false;
 };
 
 static AssetContainerInfo ParseAssetContainer(const Gleam::Path& asset)
@@ -37,13 +36,12 @@ static AssetContainerInfo ParseAssetContainer(const Gleam::Path& asset)
 	auto file = Gleam::Filesystem::OpenRead(asset, Gleam::FileType::Binary);
 	auto& stream = file->GetStream();
 
-	if (Gleam::ReadAssetFileHeader(stream, info.header))
-	{
-		info.name.resize(static_cast<size_t>(info.header.nameSize));
-		stream.seekg(static_cast<std::streamoff>(info.header.nameOffset));
-		stream.read(info.name.data(), static_cast<std::streamsize>(info.header.nameSize));
-		info.valid = true;
-	}
+	auto serializer = Gleam::BinarySerializer();
+	info.header = serializer.Deserialize<Gleam::AssetHeader>(stream);
+
+	info.name.resize(static_cast<size_t>(info.header.nameSize));
+	stream.seekg(static_cast<std::streamoff>(info.header.nameOffset));
+	stream.read(info.name.data(), static_cast<std::streamsize>(info.header.nameSize));
 	return info;
 }
 
@@ -84,22 +82,15 @@ void EAssetManager::Initialize(Gleam::Application* app)
         if (entry.Extension() == Gleam::Asset::Extension())
         {
             auto info = ParseAssetContainer(entry);
-            if (info.valid)
-            {
-                auto guid = Gleam::Guid(entry.Stem());
-                auto asset = Gleam::AssetReference{ .guid = guid };
-                auto item = AssetItem{
-                    .reference = asset,
-                    .type = info.header.typeGuid,
-                    .name = info.name
-                };
-                auto path = entry.Parent() / info.name;
-                mRegistry.RegisterAsset(path, item);
-            }
-            else
-            {
-                GLEAM_ERROR("Asset uses an unsupported container format and needs to be reimported: {0}", entry.String());
-            }
+            auto guid = Gleam::Guid(entry.Stem());
+            auto asset = Gleam::AssetReference{ .guid = guid };
+            auto item = AssetItem{
+                .reference = asset,
+                .type = info.header.typeGuid,
+                .name = info.name
+            };
+            auto path = entry.Parent() / info.name;
+            mRegistry.RegisterAsset(path, item);
         }
 		else if (entry.Extension() == Gleam::Prefab::Extension())
 		{
