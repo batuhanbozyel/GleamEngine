@@ -169,7 +169,7 @@ void EAssetManager::Import(const Gleam::Path& directory, const AssetPackage& pac
 		auto path = directory / baker->Filename();
 
 		const auto existing = mRegistry.FindAsset(path, baker->TypeGuid());
-		auto item = (existing != nullptr) ? *existing
+		const auto& item = (existing != nullptr) ? *existing
 										  : package.mRegistry->GetAsset(baker->Filename(), baker->TypeGuid());
 
 		const auto& asset = mRegistry.RegisterAsset(path, item);

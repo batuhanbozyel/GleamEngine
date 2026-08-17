@@ -1,11 +1,6 @@
 #pragma once
 #include "Core/GUID.h"
 
-#include <Reflection/Reflection.h>
-#ifndef __GLEAM_REFLECTION__
-#include <Runtime.Reflection.generated.h>
-#endif
-
 namespace Gleam {
 
 GSTRUCT(AssetHeader, "ADBF5512-90F9-4F59-B4B4-E2834DA8C731", Serializable, Version(1))
