@@ -221,13 +221,13 @@ bool MeshSource::Import(const Gleam::Path& path, const ImportSettings& settings)
 			if (node.mesh)
 			{
 				auto meshBaker = GetOrCreateMesh(node.mesh, worldTransform, hierarchyHasNonUniformScaling);
-				const auto& meshItem = Registry()->GetAsset<Gleam::MeshDescriptor>(meshBaker->Filename());
+				const auto& meshItem = Registry()->GetAsset<Gleam::MeshDescriptor>(meshBaker->Name());
 
 				Gleam::TArray<Gleam::AssetReference> materialRefs;
 				materialRefs.reserve(importedMaterials.size());
 				for (const auto& materialBaker : importedMaterials)
 				{
-					const auto& materialItem = Registry()->GetAsset<Gleam::MaterialInstanceDescriptor>(materialBaker->Filename());
+					const auto& materialItem = Registry()->GetAsset<Gleam::MaterialInstanceDescriptor>(materialBaker->Name());
 					materialRefs.push_back(materialItem.reference);
 				}
 				entity.AddComponent<Gleam::MeshRenderer>(meshItem.reference, materialRefs);

@@ -449,12 +449,18 @@ BinaryHeader BinarySerializer::ParseHeader(FileStream& stream)
 	return header;
 }
 
-void BinarySerializer::Serialize(const void* obj, const Reflection::ClassDescription& classDesc, FileStream& stream)
+BufferRange BinarySerializer::Serialize(const void* obj, const Reflection::ClassDescription& classDesc, FileStream& stream)
 {
+	BufferRange range;
+	range.offset = static_cast<uint64_t>(stream.tellp());
+
 	stream.write(reinterpret_cast<const char*>(&BinaryFormatMagic), sizeof(uint32_t));
 	stream.write(reinterpret_cast<const char*>(&BinaryFormatVersion), sizeof(uint32_t));
 
 	SerializeClass(obj, classDesc, stream);
+
+	range.size = static_cast<uint64_t>(stream.tellp()) - range.offset;
+	return range;
 }
 
 void BinarySerializer::Deserialize(FileStream& stream, const Reflection::ClassDescription& classDesc, void* obj)

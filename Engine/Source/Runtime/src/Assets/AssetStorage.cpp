@@ -48,9 +48,9 @@ AssetStorage::AssetEntry& AssetStorage::LoadEntryHeader(const AssetReference& re
 		auto serializer = BinarySerializer();
 		entry.header = serializer.Deserialize<AssetHeader>(stream);
 
-		entry.name.resize(static_cast<size_t>(entry.header.nameSize));
-		stream.seekg(static_cast<std::streamoff>(entry.header.nameOffset));
-		stream.read(entry.name.data(), static_cast<std::streamsize>(entry.header.nameSize));
+		entry.name.resize(static_cast<size_t>(entry.header.name.size));
+		stream.seekg(static_cast<std::streamoff>(entry.header.name.offset));
+		stream.read(entry.name.data(), static_cast<std::streamsize>(entry.header.name.size));
 		entry.headerLoaded = true;
 	}
 	return entry;
@@ -73,7 +73,7 @@ void AssetStorage::ReadMetadata(const AssetReference& ref, const Reflection::Cla
 	{
 		auto file = Filesystem::OpenRead(mDirectory / entry.path, FileType::Binary);
 		auto& stream = file->GetStream();
-		stream.seekg(static_cast<std::streamoff>(entry.header.metadataOffset));
+		stream.seekg(static_cast<std::streamoff>(entry.header.metadata.offset));
 
 		auto serializer = BinarySerializer();
 		serializer.Deserialize(stream, classDesc, obj);
@@ -89,7 +89,7 @@ const AssetDataTable& AssetStorage::ReadDataTable(const AssetReference& ref)
 		{
 			auto file = Filesystem::OpenRead(mDirectory / entry.path, FileType::Binary);
 			auto& stream = file->GetStream();
-			stream.seekg(static_cast<std::streamoff>(entry.header.dataTableOffset));
+			stream.seekg(static_cast<std::streamoff>(entry.header.dataTable.offset));
 
 			auto serializer = BinarySerializer();
 			entry.dataTable = serializer.Deserialize<AssetDataTable>(stream);
@@ -116,7 +116,7 @@ void AssetStorage::ReadData(FileStream& stream,
 	}
 
 	const auto& blob = dataTable.blobs[request.blob];
-	stream.seekg(static_cast<std::streamoff>(header.bulkDataOffset + blob.offset));
+	stream.seekg(static_cast<std::streamoff>(header.bulkData.offset + blob.offset));
 
 	if (request.destination.kind == ChunkDestination::Kind::Memory)
 	{

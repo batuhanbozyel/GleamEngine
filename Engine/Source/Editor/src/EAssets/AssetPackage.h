@@ -41,7 +41,7 @@ public:
 	{
 		auto baker = Gleam::CreateRef<T>(std::forward<Args>(args)...);
 		mBakers.emplace_back(baker);
-		mRegistry->RegisterAsset(baker->Filename(), baker->TypeGuid());
+		mRegistry->RegisterAsset(baker->Name(), baker->TypeGuid());
 		return baker;
 	}
 	

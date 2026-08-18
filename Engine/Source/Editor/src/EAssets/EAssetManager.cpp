@@ -39,9 +39,9 @@ static AssetContainerInfo ParseAssetContainer(const Gleam::Path& asset)
 	auto serializer = Gleam::BinarySerializer();
 	info.header = serializer.Deserialize<Gleam::AssetHeader>(stream);
 
-	info.name.resize(static_cast<size_t>(info.header.nameSize));
-	stream.seekg(static_cast<std::streamoff>(info.header.nameOffset));
-	stream.read(info.name.data(), static_cast<std::streamsize>(info.header.nameSize));
+	info.name.resize(static_cast<size_t>(info.header.name.size));
+	stream.seekg(static_cast<std::streamoff>(info.header.name.offset));
+	stream.read(info.name.data(), static_cast<std::streamsize>(info.header.name.size));
 	return info;
 }
 
@@ -166,11 +166,11 @@ void EAssetManager::Import(const Gleam::Path& directory, const AssetPackage& pac
 {
 	for (const auto& baker : package.mBakers)
 	{
-		auto path = directory / baker->Filename();
+		auto path = directory / baker->Name();
 
 		const auto existing = mRegistry.FindAsset(path, baker->TypeGuid());
 		const auto& item = (existing != nullptr) ? *existing
-										  : package.mRegistry->GetAsset(baker->Filename(), baker->TypeGuid());
+										  : package.mRegistry->GetAsset(baker->Name(), baker->TypeGuid());
 
 		const auto& asset = mRegistry.RegisterAsset(path, item);
 		baker->Bake(directory, asset);

@@ -15,6 +15,10 @@
 #include <entt/meta/resolve.hpp>
 #include <entt/meta/factory.hpp>
 
+#ifndef __GLEAM_REFLECTION__
+#include <Runtime.Reflection.generated.h>
+#endif
+
 namespace Gleam {
 
 template <typename T>

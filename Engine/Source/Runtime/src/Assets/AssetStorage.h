@@ -1,5 +1,4 @@
 #pragma once
-#include "AssetContainer.h"
 #include "AssetHeader.h"
 #include "AssetReference.h"
 
@@ -8,6 +7,8 @@
 #include "IO/Filesystem.h"
 #include "Container/Hash.h"
 #include "Container/String.h"
+
+#include <Reflection/Reflection.h>
 
 #include <mutex>
 

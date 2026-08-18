@@ -1,6 +1,6 @@
 #include "MaterialBaker.h"
 #include "EAssets/AssetRegistry.h"
-#include "EAssets/AssetContainerWriter.h"
+#include "EAssets/AssetWriter.h"
 
 #include "Assets/Asset.h"
 
@@ -15,13 +15,11 @@ MaterialBaker::MaterialBaker(const Gleam::MaterialDescriptor& descriptor)
 
 void MaterialBaker::Bake(const Gleam::Path& directory, const AssetItem& item) const
 {
-	auto filename = Gleam::TWString(item.reference.guid.ToString()) + Gleam::Asset::Extension();
-
-	auto writer = AssetContainerWriter(TypeGuid(), mDescriptor.name);
-	writer.Write(directory / filename, mDescriptor);
+	BinaryAssetWriter writer;
+	writer.Write(directory, item, mDescriptor);
 }
 
-Gleam::TString MaterialBaker::Filename() const
+Gleam::TString MaterialBaker::Name() const
 {
     return mDescriptor.name;
 }
@@ -45,13 +43,11 @@ MaterialInstanceBaker::MaterialInstanceBaker(const Gleam::MaterialInstanceDescri
 
 void MaterialInstanceBaker::Bake(const Gleam::Path& directory, const AssetItem& item) const
 {
-	auto filename = Gleam::TWString(item.reference.guid.ToString()) + Gleam::Asset::Extension();
-
-	auto writer = AssetContainerWriter(TypeGuid(), mDescriptor.name);
-	writer.Write(directory / filename, mDescriptor);
+	BinaryAssetWriter writer;
+	writer.Write(directory, item, mDescriptor);
 }
 
-Gleam::TString MaterialInstanceBaker::Filename() const
+Gleam::TString MaterialInstanceBaker::Name() const
 {
 	return mDescriptor.name;
 }

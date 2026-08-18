@@ -2,6 +2,7 @@
 #include "Core/Subsystem.h"
 #include "Core/GUID.h"
 
+#include "Container/BinaryBuffer.h"
 #include "Container/String.h"
 #include "Container/Hash.h"
 #include "IO/Filesystem.h"
@@ -33,13 +34,13 @@ public:
 	BinaryHeader ParseHeader(FileStream& stream);
     
 	template<typename T>
-	void Serialize(const T& object, FileStream& stream)
+	BufferRange Serialize(const T& object, FileStream& stream)
 	{
 		const auto& classDesc = Reflection::GetClass<T>();
-		Serialize(&object, classDesc, stream);
+		return Serialize(&object, classDesc, stream);
 	}
 	
-	void Serialize(const void* obj, const Reflection::ClassDescription& classDesc, FileStream& stream);
+	BufferRange Serialize(const void* obj, const Reflection::ClassDescription& classDesc, FileStream& stream);
     
 	template<typename T>
 	T Deserialize(FileStream& stream)

@@ -1,6 +1,6 @@
 #include "TextureBaker.h"
 #include "EAssets/AssetRegistry.h"
-#include "EAssets/AssetContainerWriter.h"
+#include "EAssets/AssetWriter.h"
 
 #include "Assets/Asset.h"
 
@@ -14,13 +14,11 @@ TextureBaker::TextureBaker(const Gleam::Texture2DDescriptor& descriptor)
 
 void TextureBaker::Bake(const Gleam::Path& directory, const AssetItem& item) const
 {
-	auto filename = Gleam::TWString(item.reference.guid.ToString()) + Gleam::Asset::Extension();
-
-	auto writer = AssetContainerWriter(TypeGuid(), mDescriptor.name);
-	writer.Write(directory / filename, mDescriptor);
+	BinaryAssetWriter writer;
+	writer.Write(directory, item, mDescriptor);
 }
 
-Gleam::TString TextureBaker::Filename() const
+Gleam::TString TextureBaker::Name() const
 {
 	return mDescriptor.name;
 }

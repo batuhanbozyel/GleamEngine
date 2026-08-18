@@ -1,6 +1,6 @@
 #include "MeshBaker.h"
 #include "EAssets/AssetRegistry.h"
-#include "EAssets/AssetContainerWriter.h"
+#include "EAssets/AssetWriter.h"
 
 #include "Assets/Asset.h"
 
@@ -13,13 +13,11 @@ MeshBaker::MeshBaker(MeshLodData&& lod)
 
 void MeshBaker::Bake(const Gleam::Path& directory, const AssetItem& item) const
 {
-	auto filename = Gleam::TWString(item.reference.guid.ToString()) + Gleam::Asset::Extension();
-
 	Gleam::MeshDescriptor descriptor;
-	descriptor.name = Filename();
+	descriptor.name = Name();
 	descriptor.lods.resize(mLods.size());
 
-	auto writer = AssetContainerWriter(TypeGuid(), descriptor.name);
+	BinaryAssetWriter writer;
 	for (uint32_t i = 0; i < mLods.size(); ++i)
 	{
 		const auto& lod = mLods[i];
@@ -45,11 +43,10 @@ void MeshBaker::Bake(const Gleam::Path& directory, const AssetItem& item) const
 		
 		lodDesc.submeshes = lod.submeshes;
 	}
-
-	writer.Write(directory / filename, descriptor);
+	writer.Write(directory, item, descriptor);
 }
 
-Gleam::TString MeshBaker::Filename() const
+Gleam::TString MeshBaker::Name() const
 {
 	return mLods.empty() ? Gleam::TString() : mLods[0].name;
 }
