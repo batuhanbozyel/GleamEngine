@@ -52,9 +52,9 @@ struct ChunkDestination
 struct AssetDataReadRequest
 {
 	AssetReference asset;
+	AssetBlobType type;
 	uint32_t slot = 0;
 	AssetBackend backend = AssetBackend::Common;
-	uint64_t layoutHash = 0;
 	ChunkDestination destination;
 };
 
@@ -78,13 +78,15 @@ public:
 
 	const AssetHeader& ReadHeader(const AssetReference& ref);
 
-	const TString& ReadName(const AssetReference& ref);
-
 	void ReadMetadata(const AssetReference& ref, const Reflection::ClassDescription& classDesc, void* obj);
 
-	const AssetDataTable& ReadDataTable(const AssetReference& ref);
+	const AssetBlobDescriptor* FindBlob(const AssetReference& ref, const AssetBlobType& blobType, uint32_t slot, AssetBackend backend);
 
-	const AssetBlobDescriptor* FindBlob(const AssetReference& ref, uint32_t slot, AssetBackend backend);
+	template<typename T>
+	const AssetBlobDescriptor* FindBlob(const AssetReference& ref, uint32_t slot, AssetBackend backend)
+	{
+		return FindBlob(ref, AssetUtils::BlobType<T>(), slot, backend);
+	}
 
 	void Enqueue(const AssetDataReadRequest& request);
 
@@ -104,18 +106,12 @@ private:
 	{
 		Path path;
 		AssetHeader header;
-		TString name;
-		AssetDataTable dataTable;
 		bool headerLoaded = false;
-		bool dataTableLoaded = false;
 	};
 
 	AssetEntry& LoadEntryHeader(const AssetReference& ref);
 
-	void ReadData(FileStream& stream,
-				  const AssetHeader& header,
-				  const AssetDataTable& dataTable,
-				  const AssetDataReadRequest& request) const;
+	void ReadData(FileStream& stream, const AssetHeader& header, const AssetDataReadRequest& request) const;
 
 	Path mDirectory;
 

@@ -23,51 +23,6 @@
 
 using namespace GEditor;
 
-struct AssetContainerInfo
-{
-	Gleam::AssetHeader header;
-	Gleam::TString name;
-};
-
-static AssetContainerInfo ParseAssetContainer(const Gleam::Path& asset)
-{
-	AssetContainerInfo info;
-
-	auto file = Gleam::Filesystem::OpenRead(asset, Gleam::FileType::Binary);
-	auto& stream = file->GetStream();
-
-	auto serializer = Gleam::BinarySerializer();
-	info.header = serializer.Deserialize<Gleam::AssetHeader>(stream);
-
-	info.name.resize(static_cast<size_t>(info.header.name.size));
-	stream.seekg(static_cast<std::streamoff>(info.header.name.offset));
-	stream.read(info.name.data(), static_cast<std::streamsize>(info.header.name.size));
-	return info;
-}
-
-static Gleam::TString ParseAssetName(const Gleam::Path& asset, const Gleam::Guid& typeGuid)
-{
-	if (typeGuid == Gleam::Reflection::GetClass<Gleam::Prefab>().Guid())
-	{
-		auto file = Gleam::Filesystem::OpenRead(asset, Gleam::FileType::Text);
-		auto serializer = Gleam::JSONSerializer();
-		
-		auto prefab = serializer.Deserialize<Gleam::Prefab>(file->GetStream());
-		return prefab.name;
-	}
-	
-	if (typeGuid == Gleam::Reflection::GetClass<Gleam::World>().Guid())
-	{
-		auto file = Gleam::Filesystem::OpenRead(asset, Gleam::FileType::Text);
-		auto serializer = Gleam::JSONSerializer();
-		
-		auto world = serializer.Deserialize<Gleam::World>(file->GetStream());
-		return world.name;
-	}
-    
-    return "";
-}
-
 EAssetManager::EAssetManager(const Gleam::Path& directory)
 	: mRegistry(directory)
 	, mAssetDirectory(directory)
@@ -81,43 +36,50 @@ void EAssetManager::Initialize(Gleam::Application* app)
     {
         if (entry.Extension() == Gleam::Asset::Extension())
         {
-            auto info = ParseAssetContainer(entry);
+			auto file = Gleam::Filesystem::OpenRead(entry, Gleam::FileType::Binary);
+			auto serializer = Gleam::BinarySerializer();
+
+			auto header = serializer.Deserialize<Gleam::AssetHeader>(file->GetStream());
             auto guid = Gleam::Guid(entry.Stem());
             auto asset = Gleam::AssetReference{ .guid = guid };
             auto item = AssetItem{
                 .reference = asset,
-                .type = info.header.typeGuid,
-                .name = info.name
+                .type = header.typeGuid,
+                .name = header.name
             };
-            auto path = entry.Parent() / info.name;
+            auto path = entry.Parent() / header.name;
             mRegistry.RegisterAsset(path, item);
         }
 		else if (entry.Extension() == Gleam::Prefab::Extension())
 		{
-			auto typeGuid = Gleam::Reflection::GetClass<Gleam::Prefab>().Guid();
+			auto file = Gleam::Filesystem::OpenRead(entry, Gleam::FileType::Text);
+			auto serializer = Gleam::JSONSerializer();
+
+			auto prefab = serializer.Deserialize<Gleam::Prefab>(file->GetStream());
 			auto guid = Gleam::Guid(entry.Stem());
 			auto asset = Gleam::AssetReference{ .guid = guid };
-			auto name = ParseAssetName(entry, typeGuid);
 			auto item = AssetItem{
 				.reference = asset,
-				.type = typeGuid,
-				.name = name
+				.type = Gleam::Reflection::GetClass<Gleam::Prefab>().Guid(),
+				.name = prefab.name
 			};
-			auto path = entry.Parent() / name;
+			auto path = entry.Parent() / prefab.name;
 			mRegistry.RegisterAsset(path, item);
 		}
 		else if (entry.Extension() == Gleam::World::Extension())
 		{
-			auto typeGuid = Gleam::Reflection::GetClass<Gleam::World>().Guid();
+			auto file = Gleam::Filesystem::OpenRead(entry, Gleam::FileType::Text);
+			auto serializer = Gleam::JSONSerializer();
+
+			auto world = serializer.Deserialize<Gleam::World>(file->GetStream());
 			auto guid = Gleam::Guid(entry.Stem());
 			auto asset = Gleam::AssetReference{ .guid = guid };
-			auto name = ParseAssetName(entry, typeGuid);
 			auto item = AssetItem{
 				.reference = asset,
-				.type = typeGuid,
-				.name = name
+				.type = Gleam::Reflection::GetClass<Gleam::World>().Guid(),
+				.name = world.name
 			};
-			auto path = entry.Parent() / name;
+			auto path = entry.Parent() / world.name;
 			mRegistry.RegisterAsset(path, item);
 		}
     }, true);

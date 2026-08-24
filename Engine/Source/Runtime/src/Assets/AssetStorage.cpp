@@ -17,6 +17,30 @@
 
 using namespace Gleam;
 
+static const AssetBlobDescriptor* ResolveBlob(const AssetDataTable& dataTable, const AssetBlobType& blobType, uint32_t slot, AssetPlatform platform, AssetBackend backend)
+{
+	for (const auto& blob : dataTable.blobs)
+	{
+		if (blob.platform != AssetPlatform::Common && blob.platform != platform)
+		{
+			continue;
+		}
+
+		if (blob.backend != AssetBackend::Common && blob.backend != backend)
+		{
+			continue;
+		}
+
+		if (blob.type.guid != blobType.guid || blob.type.version != blobType.version || blob.slot != slot)
+		{
+			continue;
+		}
+
+		return &blob;
+	}
+	return nullptr;
+}
+
 AssetStorage::AssetStorage(const Path& directory)
 	: mDirectory(directory)
 {
@@ -33,8 +57,7 @@ AssetStorage::AssetEntry& AssetStorage::LoadEntryHeader(const AssetReference& re
 	auto it = mEntries.find(ref);
 	if (it == mEntries.end())
 	{
-		GLEAM_CORE_ERROR("Asset could not located for GUID: {0}", ref.guid.ToString());
-		GLEAM_ASSERT(false);
+		GLEAM_ASSERT(false, "Asset could not located for GUID: {0}", ref.guid.ToString());
 		static AssetEntry invalidEntry;
 		return invalidEntry;
 	}
@@ -47,10 +70,6 @@ AssetStorage::AssetEntry& AssetStorage::LoadEntryHeader(const AssetReference& re
 
 		auto serializer = BinarySerializer();
 		entry.header = serializer.Deserialize<AssetHeader>(stream);
-
-		entry.name.resize(static_cast<size_t>(entry.header.name.size));
-		stream.seekg(static_cast<std::streamoff>(entry.header.name.offset));
-		stream.read(entry.name.data(), static_cast<std::streamsize>(entry.header.name.size));
 		entry.headerLoaded = true;
 	}
 	return entry;
@@ -61,11 +80,6 @@ const AssetHeader& AssetStorage::ReadHeader(const AssetReference& ref)
 	return LoadEntryHeader(ref).header;
 }
 
-const TString& AssetStorage::ReadName(const AssetReference& ref)
-{
-	return LoadEntryHeader(ref).name;
-}
-
 void AssetStorage::ReadMetadata(const AssetReference& ref, const Reflection::ClassDescription& classDesc, void* obj)
 {
 	const auto& entry = LoadEntryHeader(ref);
@@ -73,68 +87,20 @@ void AssetStorage::ReadMetadata(const AssetReference& ref, const Reflection::Cla
 	{
 		auto file = Filesystem::OpenRead(mDirectory / entry.path, FileType::Binary);
 		auto& stream = file->GetStream();
-		stream.seekg(static_cast<std::streamoff>(entry.header.metadata.offset));
+		stream.seekg(entry.header.metadata.offset);
 
 		auto serializer = BinarySerializer();
 		serializer.Deserialize(stream, classDesc, obj);
 	}
 }
 
-const AssetDataTable& AssetStorage::ReadDataTable(const AssetReference& ref)
+const AssetBlobDescriptor* AssetStorage::FindBlob(const AssetReference& ref, const AssetBlobType& blobType, uint32_t slot, AssetBackend backend)
 {
-	auto& entry = LoadEntryHeader(ref);
-	if (entry.headerLoaded and not entry.dataTableLoaded)
-	{
-		if (entry.header.blobCount > 0)
-		{
-			auto file = Filesystem::OpenRead(mDirectory / entry.path, FileType::Binary);
-			auto& stream = file->GetStream();
-			stream.seekg(static_cast<std::streamoff>(entry.header.dataTable.offset));
-
-			auto serializer = BinarySerializer();
-			entry.dataTable = serializer.Deserialize<AssetDataTable>(stream);
-		}
-		entry.dataTableLoaded = true;
-	}
-	return entry.dataTable;
-}
-
-static const AssetBlobDescriptor* ResolveBlob(const AssetDataTable& dataTable, uint32_t slot, AssetBackend backend)
-{
-	const AssetBlobDescriptor* match = nullptr;
-	uint32_t matchScore = 0;
-
-	for (const auto& blob : dataTable.blobs)
-	{
-		if (blob.slot != slot)
-		{
-			continue;
-		}
-
-		bool platformMatch = blob.platform == AssetUtils::Platform();
-		bool backendMatch = blob.backend == backend;
-		if ((blob.platform != AssetPlatform::Common and not platformMatch)
-			or (blob.backend != AssetBackend::Common and not backendMatch))
-		{
-			continue;
-		}
-
-		const uint32_t score = (platformMatch ? 2u : 0u) + (backendMatch ? 1u : 0u);
-		if (match == nullptr or score > matchScore)
-		{
-			match = &blob;
-			matchScore = score;
-		}
-	}
-	return match;
-}
-
-const AssetBlobDescriptor* AssetStorage::FindBlob(const AssetReference& ref, uint32_t slot, AssetBackend backend)
-{
-	const auto blob = ResolveBlob(ReadDataTable(ref), slot, backend);
+	const auto& header = ReadHeader(ref);
+	const auto blob = ResolveBlob(header.dataTable, blobType, slot, AssetUtils::Platform(), backend);
 	if (blob == nullptr)
 	{
-		GLEAM_ASSERT(false, "Asset data blob slot {0} has no variant for this target, GUID: {1}", slot, ref.guid.ToString());
+		GLEAM_ASSERT(false, "Asset data blob {0}[{1}] has no variant for this target, GUID: {2} Version: {3}", blobType.guid.ToString(), slot, ref.guid.ToString(), blobType.version);
 	}
 	return blob;
 }
@@ -144,21 +110,18 @@ void AssetStorage::Enqueue(const AssetDataReadRequest& request)
 	mPendingRequests.push_back(request);
 }
 
-void AssetStorage::ReadData(FileStream& stream,
-							 const AssetHeader& header,
-							 const AssetDataTable& dataTable,
-							 const AssetDataReadRequest& request) const
+void AssetStorage::ReadData(FileStream& stream, const AssetHeader& header, const AssetDataReadRequest& request) const
 {
-	const auto blob = ResolveBlob(dataTable, request.slot, request.backend);
+	const auto blob = ResolveBlob(header.dataTable, request.type, request.slot, AssetUtils::Platform(), request.backend);
 	if (blob == nullptr)
 	{
-		GLEAM_ASSERT(false, "Asset data blob slot {0} has no variant for this target, GUID: {1}", request.slot, request.asset.guid.ToString());
+		GLEAM_ASSERT(false, "Asset data blob {0}[{1}] has no variant for this target, GUID: {2}", request.type.guid.ToString(), request.slot, request.asset.guid.ToString());
 		return;
 	}
 
-	if (blob->layoutHash != request.layoutHash)
+	if (blob->type.version != request.type.version)
 	{
-		GLEAM_ASSERT(false, "Asset data blob slot {0} layout mismatch for GUID: {1}, asset must be re-baked.", request.slot, request.asset.guid.ToString());
+		GLEAM_ASSERT(false, "Asset data blob {0}[{1}] version mismatch for GUID: {2}, asset must be re-baked.", request.type.guid.ToString(), request.slot, request.asset.guid.ToString());
 		return;
 	}
 
@@ -186,7 +149,6 @@ AssetStreamFence AssetStorage::Submit()
 	{
 		const auto asset = mPendingRequests.front().asset;
 		const auto& entry = LoadEntryHeader(asset);
-		const auto& dataTable = ReadDataTable(asset);
 
 		auto file = Filesystem::OpenRead(mDirectory / entry.path, FileType::Binary);
 		auto& stream = file->GetStream();
@@ -195,7 +157,7 @@ AssetStreamFence AssetStorage::Submit()
 		{
 			if (it->asset == asset)
 			{
-				ReadData(stream, entry.header, dataTable, *it);
+				ReadData(stream, entry.header, *it);
 				it = mPendingRequests.erase(it);
 			}
 			else
@@ -228,7 +190,6 @@ void AssetStorage::EmplaceAssetPath(const Path& path)
 	auto& entry = mEntries[AssetReference{ .guid = guid }];
 	entry.path = relPath;
 	entry.headerLoaded = false;
-	entry.dataTableLoaded = false;
 }
 
 void AssetStorage::RemoveAssetPath(const Path& path)

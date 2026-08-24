@@ -56,7 +56,7 @@ void Mesh::RequestLod(uint32_t lod)
 		
 		auto storage = assetManager->GetStorage();
 		const auto& lodDesc = mDescriptor.lods[lod];
-		const auto blob = storage->FindBlob(GetReference(), lodDesc.blobSlot, AssetUtils::RenderBackend());
+		const auto blob = storage->FindBlob<MeshLodDescriptor>(GetReference(), lodDesc.blobSlot, AssetBackend::Common);
 		if (blob == nullptr)
 		{
 			return;
@@ -69,23 +69,13 @@ void Mesh::RequestLod(uint32_t lod)
 
 		storage->Enqueue(AssetDataReadRequest{
 			.asset = GetReference(),
+			.type = AssetUtils::BlobType<MeshLodDescriptor>(),
 			.slot = lodDesc.blobSlot,
-			.backend = AssetUtils::RenderBackend(),
-			.layoutHash = MeshLodAssetLayout::Hash(),
+			.backend = AssetBackend::Common,
 			.destination = MakeBufferDestination(lodData, 0)
 		});
 		storage->Wait(storage->Submit());
 	}
-}
-
-void Mesh::SetActiveLod(uint32_t lod)
-{
-	if (lod >= mLods.size())
-	{
-		GLEAM_ASSERT(false, "Mesh LOD {0} is out of range for: {1}", lod, GetName());
-		return;
-	}
-	mActiveLod = lod;
 }
 
 uint32_t Mesh::GetActiveLod() const

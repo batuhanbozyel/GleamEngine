@@ -19,8 +19,6 @@ public:
 
 	void RequestLod(uint32_t lod);
 
-	void SetActiveLod(uint32_t lod);
-
 	uint32_t GetActiveLod() const;
 
 	uint32_t GetLodCount() const;
