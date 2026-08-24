@@ -99,6 +99,46 @@ const AssetDataTable& AssetStorage::ReadDataTable(const AssetReference& ref)
 	return entry.dataTable;
 }
 
+static const AssetBlobDescriptor* ResolveBlob(const AssetDataTable& dataTable, uint32_t slot, AssetBackend backend)
+{
+	const AssetBlobDescriptor* match = nullptr;
+	uint32_t matchScore = 0;
+
+	for (const auto& blob : dataTable.blobs)
+	{
+		if (blob.slot != slot)
+		{
+			continue;
+		}
+
+		bool platformMatch = blob.platform == AssetUtils::Platform();
+		bool backendMatch = blob.backend == backend;
+		if ((blob.platform != AssetPlatform::Common and not platformMatch)
+			or (blob.backend != AssetBackend::Common and not backendMatch))
+		{
+			continue;
+		}
+
+		const uint32_t score = (platformMatch ? 2u : 0u) + (backendMatch ? 1u : 0u);
+		if (match == nullptr or score > matchScore)
+		{
+			match = &blob;
+			matchScore = score;
+		}
+	}
+	return match;
+}
+
+const AssetBlobDescriptor* AssetStorage::FindBlob(const AssetReference& ref, uint32_t slot, AssetBackend backend)
+{
+	const auto blob = ResolveBlob(ReadDataTable(ref), slot, backend);
+	if (blob == nullptr)
+	{
+		GLEAM_ASSERT(false, "Asset data blob slot {0} has no variant for this target, GUID: {1}", slot, ref.guid.ToString());
+	}
+	return blob;
+}
+
 void AssetStorage::Enqueue(const AssetDataReadRequest& request)
 {
 	mPendingRequests.push_back(request);
@@ -109,28 +149,34 @@ void AssetStorage::ReadData(FileStream& stream,
 							 const AssetDataTable& dataTable,
 							 const AssetDataReadRequest& request) const
 {
-	if (request.blob >= dataTable.blobs.size())
+	const auto blob = ResolveBlob(dataTable, request.slot, request.backend);
+	if (blob == nullptr)
 	{
-		GLEAM_ASSERT(false, "Asset data blob {0} is out of range for GUID: {1}", request.blob, request.asset.guid.ToString());
+		GLEAM_ASSERT(false, "Asset data blob slot {0} has no variant for this target, GUID: {1}", request.slot, request.asset.guid.ToString());
 		return;
 	}
 
-	const auto& blob = dataTable.blobs[request.blob];
-	stream.seekg(static_cast<std::streamoff>(header.bulkData.offset + blob.offset));
+	if (blob->layoutHash != request.layoutHash)
+	{
+		GLEAM_ASSERT(false, "Asset data blob slot {0} layout mismatch for GUID: {1}, asset must be re-baked.", request.slot, request.asset.guid.ToString());
+		return;
+	}
+
+	stream.seekg(static_cast<std::streamoff>(header.bulkData.offset + blob->range.offset));
 
 	if (request.destination.kind == ChunkDestination::Kind::Memory)
 	{
-		GLEAM_ASSERT(request.destination.memory.size >= blob.size, "Data read destination is too small.");
-		stream.read(static_cast<char*>(request.destination.memory.buffer), static_cast<std::streamsize>(blob.size));
+		GLEAM_ASSERT(request.destination.memory.size >= blob->range.size, "Data read destination is too small.");
+		stream.read(static_cast<char*>(request.destination.memory.buffer), static_cast<std::streamsize>(blob->range.size));
 	}
 	else
 	{
-		BinaryBuffer staging(blob.size);
-		stream.read(static_cast<char*>(staging.data), static_cast<std::streamsize>(blob.size));
+		BinaryBuffer staging(blob->range.size);
+		stream.read(static_cast<char*>(staging.data), static_cast<std::streamsize>(blob->range.size));
 
 		static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
 		auto cmd = renderSystem->GetCopyCommandBuffer();
-		cmd->Commit(*request.destination.buffer.resource, staging.data, blob.size, request.destination.buffer.offset);
+		cmd->Commit(*request.destination.buffer.resource, staging.data, blob->range.size, request.destination.buffer.offset);
 	}
 }
 

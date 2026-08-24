@@ -52,7 +52,9 @@ struct ChunkDestination
 struct AssetDataReadRequest
 {
 	AssetReference asset;
-	uint32_t blob = 0;
+	uint32_t slot = 0;
+	AssetBackend backend = AssetBackend::Common;
+	uint64_t layoutHash = 0;
 	ChunkDestination destination;
 };
 
@@ -81,6 +83,8 @@ public:
 	void ReadMetadata(const AssetReference& ref, const Reflection::ClassDescription& classDesc, void* obj);
 
 	const AssetDataTable& ReadDataTable(const AssetReference& ref);
+
+	const AssetBlobDescriptor* FindBlob(const AssetReference& ref, uint32_t slot, AssetBackend backend);
 
 	void Enqueue(const AssetDataReadRequest& request);
 

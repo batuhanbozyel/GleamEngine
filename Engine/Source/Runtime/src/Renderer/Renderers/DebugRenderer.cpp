@@ -103,7 +103,7 @@ void DebugRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 			cmd->BindGraphicsPipeline(mPrimitiveDepthPipeline);
 			cmd->SetConstantBuffer(resources, 0);
 			cmd->SetConstantBuffer(sceneData.camera, 1);
-			cmd->Draw(static_cast<uint32_t>(mDepthLines.size()) * Utils::PrimitiveTopologyVertexCount(PrimitiveTopology::Lines));
+			cmd->Draw(static_cast<uint32_t>(mDepthLines.size()) * RenderUtils::PrimitiveTopologyVertexCount(PrimitiveTopology::Lines));
 		}
 		
 		if (!mDepthDebugMeshes.empty())
@@ -116,7 +116,7 @@ void DebugRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 			cmd->BindGraphicsPipeline(mPrimitivePipeline);
 			cmd->SetConstantBuffer(resources, 0);
 			cmd->SetConstantBuffer(sceneData.camera, 1);
-			cmd->Draw(static_cast<uint32_t>(mLines.size()) * Utils::PrimitiveTopologyVertexCount(PrimitiveTopology::Lines));
+			cmd->Draw(static_cast<uint32_t>(mLines.size()) * RenderUtils::PrimitiveTopologyVertexCount(PrimitiveTopology::Lines));
 		}
 
 		if (!mDebugMeshes.empty())

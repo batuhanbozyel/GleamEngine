@@ -6,6 +6,7 @@
 #include "Container/String.h"
 #include "Container/Array.h"
 #include "Container/BinaryBuffer.h"
+#include "Assets/AssetDataLayout.h"
 
 namespace Gleam {
 
@@ -84,7 +85,7 @@ GSTRUCT(SubmeshDescriptor, "DD7E3A74-ADF4-45A9-8DFD-CA252EDC49A6", Serializable)
 GSTRUCT(MeshLodDescriptor, "CBA27D05-FEDE-4D7D-A717-117D6A601D64", Serializable)
 {
 	GFIELD("7DE83D75-1D94-4FCE-99A2-4B23908EE5FC", Serializable)
-	uint32_t blob = 0;
+	uint32_t blobSlot = 0;
 	
 	GFIELD("AE9C95A3-0E12-4E90-977C-2BE0EAA97CEA", Serializable)
 	BufferRange indices;
@@ -116,5 +117,12 @@ GSTRUCT(MeshDescriptor, "59E4007E-F7D4-4107-A05F-E1121067DCD3", Serializable)
 	GFIELD("B0D80579-01F6-43B9-8576-90ACE1B245D1", Serializable)
 	TArray<MeshLodDescriptor> lods;
 };
+
+using MeshLodAssetLayout = AssetDataLayout<uint32_t,              // indices
+										   Float3,                // positions
+										   InterleavedMeshVertex, // interleavedVertices
+										   MeshletDescriptor,     // meshlets
+										   uint32_t,              // meshletVertices
+										   uint32_t>;             // meshletTriangleIndices
 
 } // namespace Gleam

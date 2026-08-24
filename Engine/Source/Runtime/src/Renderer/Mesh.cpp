@@ -55,19 +55,24 @@ void Mesh::RequestLod(uint32_t lod)
 		static auto assetManager = Globals::GameInstance->GetSubsystem<AssetManager>();
 		
 		auto storage = assetManager->GetStorage();
-		const auto& dataTable = storage->ReadDataTable(GetReference());
 		const auto& lodDesc = mDescriptor.lods[lod];
-		const auto& blob = dataTable.blobs[lodDesc.blob];
+		const auto blob = storage->FindBlob(GetReference(), lodDesc.blobSlot, AssetUtils::RenderBackend());
+		if (blob == nullptr)
+		{
+			return;
+		}
 
 		BufferDescriptor bufferDesc;
 		bufferDesc.name = "Mesh: " + mDescriptor.name;
-		bufferDesc.size = blob.size;
+		bufferDesc.size = blob->range.size;
 		lodData = renderSystem->GetDevice()->CreateBuffer(renderSystem->GetAllocator(), bufferDesc);
-		
+
 		storage->Enqueue(AssetDataReadRequest{
 			.asset = GetReference(),
-			.blob = lodDesc.blob,
-			.destination = MakeBufferDestination(lodData, blob.offset)
+			.slot = lodDesc.blobSlot,
+			.backend = AssetUtils::RenderBackend(),
+			.layoutHash = MeshLodAssetLayout::Hash(),
+			.destination = MakeBufferDestination(lodData, 0)
 		});
 		storage->Wait(storage->Submit());
 	}

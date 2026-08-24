@@ -35,8 +35,13 @@ void BinaryAssetWriter::Write(const Gleam::Path& directory, const AssetItem& ite
 		uint64_t blobOffset = 0;
 		for (uint32_t i = 0; i < mBlobs.size(); ++i)
 		{
-			dataTable.blobs[i].offset = blobOffset;
-			dataTable.blobs[i].size = mBlobs[i].size;
+			auto& blob = dataTable.blobs[i];
+			blob.slot = mBlobs[i].slot;
+			blob.platform = mBlobs[i].platform;
+			blob.backend = mBlobs[i].backend;
+			blob.layoutHash = mBlobs[i].layoutHash;
+			blob.range.offset = blobOffset;
+			blob.range.size = mBlobs[i].size;
 			blobOffset += mBlobs[i].size;
 		}
 		header.dataTable = serializer.Serialize(dataTable, stream);
@@ -54,8 +59,30 @@ void BinaryAssetWriter::Write(const Gleam::Path& directory, const AssetItem& ite
 	serializer.Serialize(header, stream);
 }
 
-uint32_t BinaryAssetWriter::AddBlob(const void* data, uint64_t size)
+uint32_t BinaryAssetWriter::AddBlob(const void* data,
+									uint64_t size,
+									uint64_t layoutHash,
+									Gleam::AssetPlatform platform,
+									Gleam::AssetBackend backend)
 {
-	mBlobs.emplace_back(DataBlob{ .data = data, .size = size });
-	return static_cast<uint32_t>(mBlobs.size() - 1u);
+	uint32_t slot = mSlotCount++;
+	AddBlobVariant(slot, data, size, layoutHash, platform, backend);
+	return slot;
+}
+
+void BinaryAssetWriter::AddBlobVariant(uint32_t slot,
+									   const void* data,
+									   uint64_t size,
+									   uint64_t layoutHash,
+									   Gleam::AssetPlatform platform,
+									   Gleam::AssetBackend backend)
+{
+	mBlobs.emplace_back(DataBlob{
+		.data = data,
+		.size = size,
+		.layoutHash = layoutHash,
+		.slot = slot,
+		.platform = platform,
+		.backend = backend
+	});
 }

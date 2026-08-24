@@ -39,7 +39,11 @@ void MeshBaker::Bake(const Gleam::Path& directory, const AssetItem& item) const
 		lodDesc.meshletTriangleIndices = binaryWriter.Write(lod.meshletTriangleIndices.data(), lod.meshletTriangleIndices.size() * sizeof(uint32_t));
 
 		const auto& buffer = binaryWriter.GetBuffer();
-		lodDesc.blob = writer.AddBlob(buffer.data, buffer.size);
+		lodDesc.blobSlot = writer.AddBlob(buffer.data,
+										  buffer.size,
+										  Gleam::MeshLodAssetLayout::Hash(),
+										  Gleam::AssetPlatform::Common,
+										  Gleam::AssetBackend::Common);
 		
 		lodDesc.submeshes = lod.submeshes;
 	}
