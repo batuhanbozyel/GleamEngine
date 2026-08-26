@@ -88,9 +88,9 @@ NO_DISCARD AssetBlobType BlobType()
 	const auto& classDesc = Reflection::GetClass<T>();
 
 	uint32_t version = 0;
-	if (classDesc.HasAttribute<Reflection::Attribute::Version>())
+	if (classDesc.template HasAttribute<Reflection::Attribute::Version>())
 	{
-		version = classDesc.GetAttribute<Reflection::Attribute::Version>()->version;
+		version = classDesc.template GetAttribute<Reflection::Attribute::Version>()->version;
 	}
 	return AssetBlobType{ .guid = Guid(classDesc.Guid()), .version = version };
 }

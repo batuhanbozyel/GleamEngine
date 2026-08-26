@@ -52,55 +52,25 @@ bool AssetStorage::Contains(const AssetReference& ref) const
 	return mEntries.find(ref) != mEntries.end();
 }
 
-AssetStorage::AssetEntry& AssetStorage::LoadEntryHeader(const AssetReference& ref)
+AssetHeader AssetStorage::ReadAsset(const AssetReference& ref, const Reflection::ClassDescription& classDesc, void* metadata) const
 {
-	auto it = mEntries.find(ref);
-	if (it == mEntries.end())
-	{
-		GLEAM_ASSERT(false, "Asset could not located for GUID: {0}", ref.guid.ToString());
-		static AssetEntry invalidEntry;
-		return invalidEntry;
-	}
+	auto file = Filesystem::OpenRead(mDirectory / GetAssetPath(ref), FileType::Binary);
+	auto& stream = file->GetStream();
 
-	auto& entry = it->second;
-	if (not entry.headerLoaded)
-	{
-		auto file = Filesystem::OpenRead(mDirectory / entry.path, FileType::Binary);
-		auto& stream = file->GetStream();
+	auto serializer = BinarySerializer();
+	auto header = serializer.Deserialize<AssetHeader>(stream);
 
-		auto serializer = BinarySerializer();
-		entry.header = serializer.Deserialize<AssetHeader>(stream);
-		entry.headerLoaded = true;
-	}
-	return entry;
+	stream.seekg(static_cast<std::streamoff>(header.metadata.offset));
+	serializer.Deserialize(stream, classDesc, metadata);
+	return header;
 }
 
-const AssetHeader& AssetStorage::ReadHeader(const AssetReference& ref)
+const AssetBlobDescriptor* AssetStorage::FindBlob(const AssetHeader& header, const AssetBlobType& blobType, uint32_t slot, AssetBackend backend) const
 {
-	return LoadEntryHeader(ref).header;
-}
-
-void AssetStorage::ReadMetadata(const AssetReference& ref, const Reflection::ClassDescription& classDesc, void* obj)
-{
-	const auto& entry = LoadEntryHeader(ref);
-	if (entry.headerLoaded)
-	{
-		auto file = Filesystem::OpenRead(mDirectory / entry.path, FileType::Binary);
-		auto& stream = file->GetStream();
-		stream.seekg(entry.header.metadata.offset);
-
-		auto serializer = BinarySerializer();
-		serializer.Deserialize(stream, classDesc, obj);
-	}
-}
-
-const AssetBlobDescriptor* AssetStorage::FindBlob(const AssetReference& ref, const AssetBlobType& blobType, uint32_t slot, AssetBackend backend)
-{
-	const auto& header = ReadHeader(ref);
 	const auto blob = ResolveBlob(header.dataTable, blobType, slot, AssetUtils::Platform(), backend);
 	if (blob == nullptr)
 	{
-		GLEAM_ASSERT(false, "Asset data blob {0}[{1}] has no variant for this target, GUID: {2} Version: {3}", blobType.guid.ToString(), slot, ref.guid.ToString(), blobType.version);
+		GLEAM_ASSERT(false, "Asset data blob {0}[{1}] has no variant for this target, Asset: {2} Version: {3}", blobType.guid.ToString(), slot, header.name, blobType.version);
 	}
 	return blob;
 }
@@ -110,36 +80,23 @@ void AssetStorage::Enqueue(const AssetDataReadRequest& request)
 	mPendingRequests.push_back(request);
 }
 
-void AssetStorage::ReadData(FileStream& stream, const AssetHeader& header, const AssetDataReadRequest& request) const
+void AssetStorage::ReadData(FileStream& stream, const AssetDataReadRequest& request) const
 {
-	const auto blob = ResolveBlob(header.dataTable, request.type, request.slot, AssetUtils::Platform(), request.backend);
-	if (blob == nullptr)
-	{
-		GLEAM_ASSERT(false, "Asset data blob {0}[{1}] has no variant for this target, GUID: {2}", request.type.guid.ToString(), request.slot, request.asset.guid.ToString());
-		return;
-	}
-
-	if (blob->type.version != request.type.version)
-	{
-		GLEAM_ASSERT(false, "Asset data blob {0}[{1}] version mismatch for GUID: {2}, asset must be re-baked.", request.type.guid.ToString(), request.slot, request.asset.guid.ToString());
-		return;
-	}
-
-	stream.seekg(static_cast<std::streamoff>(header.bulkData.offset + blob->range.offset));
+	stream.seekg(static_cast<std::streamoff>(request.range.offset));
 
 	if (request.destination.kind == ChunkDestination::Kind::Memory)
 	{
-		GLEAM_ASSERT(request.destination.memory.size >= blob->range.size, "Data read destination is too small.");
-		stream.read(static_cast<char*>(request.destination.memory.buffer), static_cast<std::streamsize>(blob->range.size));
+		GLEAM_ASSERT(request.destination.memory.size >= request.range.size, "Data read destination is too small.");
+		stream.read(static_cast<char*>(request.destination.memory.buffer), static_cast<std::streamsize>(request.range.size));
 	}
 	else
 	{
-		BinaryBuffer staging(blob->range.size);
-		stream.read(static_cast<char*>(staging.data), static_cast<std::streamsize>(blob->range.size));
+		BinaryBuffer staging(request.range.size);
+		stream.read(static_cast<char*>(staging.data), static_cast<std::streamsize>(request.range.size));
 
 		static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
 		auto cmd = renderSystem->GetCopyCommandBuffer();
-		cmd->Commit(*request.destination.buffer.resource, staging.data, blob->range.size, request.destination.buffer.offset);
+		cmd->Commit(*request.destination.buffer.resource, staging.data, request.range.size, request.destination.buffer.offset);
 	}
 }
 
@@ -148,16 +105,15 @@ AssetStreamFence AssetStorage::Submit()
 	while (not mPendingRequests.empty())
 	{
 		const auto asset = mPendingRequests.front().asset;
-		const auto& entry = LoadEntryHeader(asset);
 
-		auto file = Filesystem::OpenRead(mDirectory / entry.path, FileType::Binary);
+		auto file = Filesystem::OpenRead(mDirectory / GetAssetPath(asset), FileType::Binary);
 		auto& stream = file->GetStream();
 
 		for (auto it = mPendingRequests.begin(); it != mPendingRequests.end();)
 		{
 			if (it->asset == asset)
 			{
-				ReadData(stream, entry.header, *it);
+				ReadData(stream, *it);
 				it = mPendingRequests.erase(it);
 			}
 			else
@@ -187,9 +143,7 @@ void AssetStorage::EmplaceAssetPath(const Path& path)
 	auto relPath = path.IsRelative() ? path : Filesystem::Relative(path, mDirectory);
 
 	std::lock_guard<std::mutex> lock(mMutex);
-	auto& entry = mEntries[AssetReference{ .guid = guid }];
-	entry.path = relPath;
-	entry.headerLoaded = false;
+	mEntries[AssetReference{ .guid = guid }] = relPath;
 }
 
 void AssetStorage::RemoveAssetPath(const Path& path)
@@ -199,7 +153,7 @@ void AssetStorage::RemoveAssetPath(const Path& path)
 	std::lock_guard<std::mutex> lock(mMutex);
 	auto it = std::find_if(mEntries.begin(), mEntries.end(), [&](const auto& pair)
 	{
-		return pair.second.path == relPath;
+		return pair.second == relPath;
 	});
 
 	if (it != mEntries.end())
@@ -213,7 +167,7 @@ const Path& AssetStorage::GetAssetPath(const AssetReference& ref) const
 	auto it = mEntries.find(ref);
 	if (it != mEntries.end())
 	{
-		return it->second.path;
+		return it->second;
 	}
 
 	GLEAM_ASSERT(false, "Asset could not located for GUID: {0}", ref.guid.ToString());

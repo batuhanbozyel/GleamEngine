@@ -52,9 +52,7 @@ struct ChunkDestination
 struct AssetDataReadRequest
 {
 	AssetReference asset;
-	AssetBlobType type;
-	uint32_t slot = 0;
-	AssetBackend backend = AssetBackend::Common;
+	BufferRange range;
 	ChunkDestination destination;
 };
 
@@ -68,6 +66,11 @@ NO_DISCARD FORCE_INLINE ChunkDestination MakeBufferDestination(const Buffer& buf
 	return ChunkDestination{ .kind = ChunkDestination::Kind::Buffer, .buffer = { .resource = &buffer, .offset = offset } };
 }
 
+NO_DISCARD FORCE_INLINE BufferRange MakeBlobRange(const AssetHeader& header, const AssetBlobDescriptor& blob)
+{
+	return BufferRange{ .offset = header.bulkData.offset + blob.range.offset, .size = blob.range.size };
+}
+
 class AssetStorage final
 {
 public:
@@ -76,16 +79,14 @@ public:
 
 	bool Contains(const AssetReference& ref) const;
 
-	const AssetHeader& ReadHeader(const AssetReference& ref);
+	AssetHeader ReadAsset(const AssetReference& ref, const Reflection::ClassDescription& classDesc, void* metadata) const;
 
-	void ReadMetadata(const AssetReference& ref, const Reflection::ClassDescription& classDesc, void* obj);
-
-	const AssetBlobDescriptor* FindBlob(const AssetReference& ref, const AssetBlobType& blobType, uint32_t slot, AssetBackend backend);
+	const AssetBlobDescriptor* FindBlob(const AssetHeader& header, const AssetBlobType& blobType, uint32_t slot, AssetBackend backend) const;
 
 	template<typename T>
-	const AssetBlobDescriptor* FindBlob(const AssetReference& ref, uint32_t slot, AssetBackend backend)
+	const AssetBlobDescriptor* FindBlob(const AssetHeader& header, uint32_t slot, AssetBackend backend) const
 	{
-		return FindBlob(ref, AssetUtils::BlobType<T>(), slot, backend);
+		return FindBlob(header, AssetUtils::BlobType<T>(), slot, backend);
 	}
 
 	void Enqueue(const AssetDataReadRequest& request);
@@ -102,22 +103,13 @@ public:
 
 private:
 
-	struct AssetEntry
-	{
-		Path path;
-		AssetHeader header;
-		bool headerLoaded = false;
-	};
-
-	AssetEntry& LoadEntryHeader(const AssetReference& ref);
-
-	void ReadData(FileStream& stream, const AssetHeader& header, const AssetDataReadRequest& request) const;
+	void ReadData(FileStream& stream, const AssetDataReadRequest& request) const;
 
 	Path mDirectory;
 
 	std::mutex mMutex;
 
-	HashMap<AssetReference, AssetEntry> mEntries;
+	HashMap<AssetReference, Path> mEntries;
 
 	TArray<AssetDataReadRequest> mPendingRequests;
 

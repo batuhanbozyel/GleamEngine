@@ -15,8 +15,8 @@
 
 using namespace Gleam;
 
-MaterialInstance::MaterialInstance(const AssetReference& reference, const MaterialInstanceDescriptor& descriptor)
-    : IMaterial(reference, descriptor.name, descriptor.properties)
+MaterialInstance::MaterialInstance(const AssetReference& reference, const AssetHeader& header, const MaterialInstanceDescriptor& descriptor)
+    : IMaterial(reference, header, descriptor.properties)
 	, mBaseMaterial(descriptor.material)
 {
 	mPropertyValues.reserve(descriptor.properties.size());

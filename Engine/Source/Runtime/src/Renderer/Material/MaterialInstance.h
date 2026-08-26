@@ -16,7 +16,7 @@ class MaterialInstance : public IMaterial
 {
 public:
 
-    MaterialInstance(const AssetReference& reference, const MaterialInstanceDescriptor& descriptor);
+    MaterialInstance(const AssetReference& reference, const AssetHeader& header, const MaterialInstanceDescriptor& descriptor);
 
 	~MaterialInstance();
     

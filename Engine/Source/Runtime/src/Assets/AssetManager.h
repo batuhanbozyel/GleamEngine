@@ -94,7 +94,7 @@ public:
 	T LoadDescriptor(const AssetReference& ref) const
 	{
 		T descriptor{};
-		mStorage->ReadMetadata(ref, Reflection::GetClass<T>(), &descriptor);
+		mStorage->ReadAsset(ref, Reflection::GetClass<T>(), &descriptor);
 		return descriptor;
 	}
 
@@ -117,7 +117,10 @@ private:
 	static T* CreateAsset(const AssetReference& ref)
 	{
 		static auto instance = Globals::GameInstance->GetSubsystem<AssetManager>();
-		return new T(ref, instance->LoadDescriptor<Desc>(ref));
+
+		Desc descriptor{};
+		const auto header = instance->mStorage->ReadAsset(ref, Reflection::GetClass<Desc>(), &descriptor);
+		return new T(ref, header, descriptor);
 	}
 
 	HashMap<AssetReference, Scope<Asset>> mAssetCache;

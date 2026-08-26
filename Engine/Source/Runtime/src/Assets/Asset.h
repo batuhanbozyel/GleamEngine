@@ -6,6 +6,7 @@
 //
 
 #pragma once
+#include "AssetHeader.h"
 #include "AssetReference.h"
 
 namespace Gleam {
@@ -17,9 +18,9 @@ class Asset
 	friend class AssetManager;
 public:
 
-	Asset(const AssetReference& reference, const TString& name)
+	Asset(const AssetReference& reference, const AssetHeader& header)
 		: mReference(reference)
-		, mName(name)
+		, mHeader(header)
 	{
 
 	}
@@ -36,9 +37,14 @@ public:
 		return mReference;
 	}
 
+	const AssetHeader& GetHeader() const
+	{
+		return mHeader;
+	}
+
 	const TString& GetName() const
 	{
-		return mName;
+		return mHeader.name;
 	}
 
     static constexpr TWStringView Extension()
@@ -50,7 +56,7 @@ private:
 
 	AssetReference mReference;
 
-	TString mName;
+	AssetHeader mHeader;
 
 	uint32_t mRefCount = 0;
 };

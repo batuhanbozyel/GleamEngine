@@ -13,7 +13,7 @@ class Mesh : public Asset
 	friend class RayTracingScene;
 public:
 
-	Mesh(const AssetReference& reference, const MeshDescriptor& descriptor);
+	Mesh(const AssetReference& reference, const AssetHeader& header, const MeshDescriptor& descriptor);
 
 	~Mesh();
 
