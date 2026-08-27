@@ -51,12 +51,11 @@ void WorldOutliner::Render(Gleam::ImGuiRenderer* imgui)
 				if (ImGui::CollapsingHeader("Entities", ImGuiTreeNodeFlags_DefaultOpen))
 				{
 					auto& entityManager = mEditWorld->GetEntityManager();
-					entityManager.ForEach([&](Gleam::EntityHandle handle)
+					entityManager.ForEach<Gleam::Entity>([&](Gleam::Entity& entity)
 					{
-						const auto& entity = entityManager.GetComponent<Gleam::Entity>(handle);
 						if (entity.HasParent() == false)
 						{
-							DrawEntityNode(handle);
+							DrawEntityNode(entity);
 						}
 					});
 				}
@@ -117,12 +116,12 @@ void WorldOutliner::Render(Gleam::ImGuiRenderer* imgui)
 	});
 }
 
-void WorldOutliner::DrawEntityNode(Gleam::EntityHandle handle)
+void WorldOutliner::DrawEntityNode(const Gleam::Entity& entity)
 {
 	auto& entityManager = mEditWorld->GetEntityManager();
+	auto handle = entity.GetHandle();
 	uint32_t id = static_cast<uint32_t>(handle);
 
-	const auto& entity = entityManager.GetComponent<Gleam::Entity>(handle);
 	const auto& children = entity.GetChildren();
 	bool hasChildren = children.size() > 0;
 
@@ -164,7 +163,7 @@ void WorldOutliner::DrawEntityNode(Gleam::EntityHandle handle)
 		{
 			if (childHandle != Gleam::InvalidEntity)
 			{
-				DrawEntityNode(childHandle);
+				DrawEntityNode(entity.GetChildEntity(childHandle));
 			}
 		}
 		ImGui::TreePop();

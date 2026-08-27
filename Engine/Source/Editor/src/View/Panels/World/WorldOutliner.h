@@ -25,7 +25,7 @@ public:
 
 private:
 
-	void DrawEntityNode(Gleam::EntityHandle handle);
+	void DrawEntityNode(const Gleam::Entity& entity);
 
 	void DrawSingletonComponents();
 

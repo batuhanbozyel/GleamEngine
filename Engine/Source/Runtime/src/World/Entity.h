@@ -266,6 +266,11 @@ public:
 		return mHandle;
 	}
 
+	EntityHandle GetHandle() const
+	{
+		return mHandle;
+	}
+
 private:
 
 	void UpdateTransformHierarchy();

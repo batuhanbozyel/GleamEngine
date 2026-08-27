@@ -41,6 +41,10 @@ bool UnpackVisibilityShading(uint threadID, out Gleam::VisibilitySample visSampl
     visSample.vertex.normal = normal;
     visSample.vertex.tangent = tangent;
     visSample.vertex.bitangent = bitangent;
+
+    float3 faceNormal = normalize(cross(worldPos1 - worldPos0, worldPos2 - worldPos0));
+    visSample.faceNormal = dot(faceNormal, normal) < 0.0f ? -faceNormal : faceNormal;
+
     visSample.vertex.color = InterpolateBary(deriv, attribs.colors[0], attribs.colors[1], attribs.colors[2]);
     InterpolateUV(deriv, attribs.texCoords[0], attribs.texCoords[1], attribs.texCoords[2], visSample.vertex.uv, visSample.vertex.ddxUV, visSample.vertex.ddyUV);
    
@@ -80,7 +84,7 @@ void main(uint dispatchThreadID : SV_DispatchThreadID)
         RWTexture2D<uint4> barycentricDerivsTarget = ResourceDescriptorHeap[constants.barycentricDerivatives];
 
         motionVectorTarget[visSample.pixelCoords] = motionVector;
-        geometryNormalTarget[visSample.pixelCoords] = OctEncode(normalize(visSample.vertex.normal));
+        geometryNormalTarget[visSample.pixelCoords] = OctEncode(visSample.faceNormal);
         shadingNormalTarget[visSample.pixelCoords] = OctEncode(normalize(shadingNormal));
         roughnessTarget[visSample.pixelCoords] = visSample.surface.roughness;
         barycentricCoordsTarget[visSample.pixelCoords] = deriv.lambda.xy;

@@ -47,6 +47,7 @@ struct VisibilitySample
 {
     MeshVertexOut vertex;
     SurfaceOutput surface;
+    float3 faceNormal;
     uint2 pixelCoords;
 };
 
