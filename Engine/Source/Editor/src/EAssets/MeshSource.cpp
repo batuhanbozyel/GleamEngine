@@ -292,22 +292,22 @@ Gleam::RefCounted<MeshBaker> MeshSource::ImportMesh(const Gleam::TArray<RawMesh>
 	static constexpr uint32_t kMaxTrianglesPerMeshlet = MAX_MESHLET_TRIANGLES;
 	static constexpr float kConeWeight = 0.25f;
 	
-	MeshLodData lodData = MeshTools::CombineMeshes(rawMeshes);
+	MeshData meshData = MeshTools::CombineMeshes(rawMeshes);
 	Gleam::TArray<Gleam::MeshletDescriptor> combinedMeshlets;
 	Gleam::TArray<uint32_t> combinedMeshletVertices;
 	Gleam::TArray<uint32_t> combinedMeshletTriangles;
 
 	size_t totalIndexCount = 0;
-	for (const auto& submesh : lodData.submeshes)
+	for (const auto& submesh : meshData.submeshes)
 	{
 		totalIndexCount += submesh.indexCount;
 	}
 	combinedMeshletTriangles.reserve(totalIndexCount / 3);
 	combinedMeshletVertices.reserve(totalIndexCount);
 
-	auto combinedIndices = lodData.indices.data();
-	auto combinedPositions = lodData.positions.data();
-	for (auto& submesh : lodData.submeshes)
+	auto combinedIndices = static_cast<uint32_t*>(Gleam::OffsetPointer(meshData.buffer.data, meshData.indices.offset));
+	auto combinedPositions = static_cast<Gleam::Float3*>(Gleam::OffsetPointer(meshData.buffer.data, meshData.positions.offset));
+	for (auto& submesh : meshData.submeshes)
 	{
 		Gleam::TArrayView<uint32_t> indices(combinedIndices + submesh.firstIndex, submesh.indexCount);
 		Gleam::TArrayView<Gleam::Float3> positions(combinedPositions + submesh.baseVertex, submesh.vertexCount);
@@ -379,11 +379,22 @@ Gleam::RefCounted<MeshBaker> MeshSource::ImportMesh(const Gleam::TArray<RawMesh>
 		combinedMeshletVertices.insert(combinedMeshletVertices.end(), meshletVertices.begin(), meshletVertices.end());
 	}
 
-	lodData.meshlets = std::move(combinedMeshlets);
-	lodData.meshletVertices = std::move(combinedMeshletVertices);
-	lodData.meshletTriangleIndices = std::move(combinedMeshletTriangles);
+	const uint64_t meshletBufferSize = combinedMeshlets.size() * sizeof(Gleam::MeshletDescriptor);
+	const uint64_t meshletVertexBufferSize = combinedMeshletVertices.size() * sizeof(uint32_t);
+	const uint64_t meshletTriangleBufferSize = combinedMeshletTriangles.size() * sizeof(uint32_t);
 
-	return EmplaceBaker<MeshBaker>(std::move(lodData));
+	const uint64_t meshletBufferOffset = meshData.buffer.size;
+	meshData.buffer.Resize(meshletBufferOffset + meshletBufferSize + meshletVertexBufferSize + meshletTriangleBufferSize);
+
+	meshData.meshlets = { meshletBufferOffset, meshletBufferSize };
+	meshData.meshletVertices = { meshData.meshlets.offset + meshData.meshlets.size, meshletVertexBufferSize };
+	meshData.meshletTriangleIndices = { meshData.meshletVertices.offset + meshData.meshletVertices.size, meshletTriangleBufferSize };
+
+	memcpy(Gleam::OffsetPointer(meshData.buffer.data, meshData.meshlets.offset), combinedMeshlets.data(), meshletBufferSize);
+	memcpy(Gleam::OffsetPointer(meshData.buffer.data, meshData.meshletVertices.offset), combinedMeshletVertices.data(), meshletVertexBufferSize);
+	memcpy(Gleam::OffsetPointer(meshData.buffer.data, meshData.meshletTriangleIndices.offset), combinedMeshletTriangles.data(), meshletTriangleBufferSize);
+
+	return EmplaceBaker<MeshBaker>(std::move(meshData));
 }
 
 Gleam::TArray<Gleam::RefCounted<MaterialInstanceBaker>> MeshSource::ImportMaterials(const Gleam::TArray<RawMaterial>& rawMaterials, const Gleam::Path& path, const ImportSettings& settings)

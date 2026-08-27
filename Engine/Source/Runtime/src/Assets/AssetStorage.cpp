@@ -37,7 +37,7 @@ AssetHeader AssetStorage::ReadAsset(const AssetReference& ref, const Reflection:
 	auto serializer = BinarySerializer();
 	auto header = serializer.Deserialize<AssetHeader>(stream);
 
-	stream.seekg(static_cast<std::streamoff>(header.metadata.offset));
+	stream.seekg(header.metadata.offset);
 	serializer.Deserialize(stream, classDesc, metadata);
 	return header;
 }
@@ -143,7 +143,7 @@ const Path& AssetStorage::GetAssetPath(const AssetReference& ref) const
 		return it->second;
 	}
 
-	GLEAM_ASSERT(false, "Asset could not located for GUID: {0}", ref.guid.ToString());
+	GLEAM_ASSERT(false, "Asset could not located for GUID: {}", ref.guid.ToString());
 	static Path invalidPath;
 	return invalidPath;
 }

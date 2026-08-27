@@ -57,9 +57,9 @@ static void setTSpaceBasic(const SMikkTSpaceContext* context, const float inTang
 
 } // namespace MikkT
 
-MeshLodData MeshTools::CombineMeshes(const Gleam::TArray<RawMesh>& meshes)
+MeshData MeshTools::CombineMeshes(const Gleam::TArray<RawMesh>& meshes)
 {
-    MeshLodData combined;
+    MeshData combined;
     combined.submeshes.resize(meshes.size());
 
 	uint64_t totalIndexCount = 0;
@@ -70,9 +70,18 @@ MeshLodData MeshTools::CombineMeshes(const Gleam::TArray<RawMesh>& meshes)
 		totalVertexCount += mesh.positions.size();
 	}
 
-	combined.indices.resize(totalIndexCount);
-	combined.positions.resize(totalVertexCount);
-	combined.interleavedVertices.resize(totalVertexCount);
+	const uint64_t indexBufferSize = totalIndexCount * sizeof(uint32_t);
+	const uint64_t positionBufferSize = totalVertexCount * sizeof(Gleam::Float3);
+	const uint64_t interleavedBufferSize = totalVertexCount * sizeof(Gleam::InterleavedMeshVertex);
+
+	combined.buffer = Gleam::BinaryBuffer(indexBufferSize + positionBufferSize + interleavedBufferSize);
+	combined.indices = { 0, indexBufferSize };
+	combined.positions = { indexBufferSize, positionBufferSize };
+	combined.interleavedVertices = { indexBufferSize + positionBufferSize, interleavedBufferSize };
+
+	auto indices = static_cast<uint32_t*>(Gleam::OffsetPointer(combined.buffer.data, combined.indices.offset));
+	auto positions = static_cast<Gleam::Float3*>(Gleam::OffsetPointer(combined.buffer.data, combined.positions.offset));
+	auto interleavedVertices = static_cast<Gleam::InterleavedMeshVertex*>(Gleam::OffsetPointer(combined.buffer.data, combined.interleavedVertices.offset));
 
     Gleam::SubmeshDescriptor submesh;
     for (uint32_t i = 0; i < meshes.size(); ++i)
@@ -87,9 +96,9 @@ MeshLodData MeshTools::CombineMeshes(const Gleam::TArray<RawMesh>& meshes)
         combined.submeshes[i] = submesh;
 
         auto interleaved = InterleaveMeshVertices(mesh);
-        memcpy(combined.indices.data() + submesh.firstIndex, mesh.indices.data(), mesh.indices.size() * sizeof(uint32_t));
-        memcpy(combined.positions.data() + submesh.baseVertex, mesh.positions.data(), mesh.positions.size() * sizeof(Gleam::Float3));
-        memcpy(combined.interleavedVertices.data() + submesh.baseVertex, interleaved.data(), interleaved.size() * sizeof(Gleam::InterleavedMeshVertex));
+        memcpy(indices + submesh.firstIndex, mesh.indices.data(), mesh.indices.size() * sizeof(uint32_t));
+        memcpy(positions + submesh.baseVertex, mesh.positions.data(), mesh.positions.size() * sizeof(Gleam::Float3));
+        memcpy(interleavedVertices + submesh.baseVertex, interleaved.data(), interleaved.size() * sizeof(Gleam::InterleavedMeshVertex));
 
         submesh.baseVertex += static_cast<uint32_t>(mesh.positions.size());
         submesh.firstIndex += static_cast<uint32_t>(mesh.indices.size());

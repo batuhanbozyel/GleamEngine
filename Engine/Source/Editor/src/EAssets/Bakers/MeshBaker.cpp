@@ -6,7 +6,7 @@
 
 using namespace GEditor;
 
-MeshBaker::MeshBaker(MeshLodData&& lod)
+MeshBaker::MeshBaker(MeshData&& lod)
 {
 	mLods.emplace_back(std::move(lod));
 }
@@ -22,29 +22,19 @@ void MeshBaker::Bake(const Gleam::Path& directory, const AssetItem& item) const
 	{
 		const auto& lod = mLods[i];
 		auto& lodDesc = descriptor.lods[i];
-		
-		uint64_t totalSize = lod.indices.size() * sizeof(uint32_t)
-							+ lod.positions.size() * sizeof(Gleam::Float3)
-							+ lod.interleavedVertices.size() * sizeof(Gleam::InterleavedMeshVertex)
-							+ lod.meshlets.size() * sizeof(Gleam::MeshletDescriptor)
-							+ lod.meshletVertices.size() * sizeof(uint32_t)
-							+ lod.meshletTriangleIndices.size() * sizeof(uint32_t);
-		
-		Gleam::BinaryWriter binaryWriter(totalSize);
-		lodDesc.indices = binaryWriter.Write(lod.indices.data(), lod.indices.size() * sizeof(uint32_t));
-		lodDesc.positions = binaryWriter.Write(lod.positions.data(), lod.positions.size() * sizeof(Gleam::Float3));
-		lodDesc.interleavedVertices = binaryWriter.Write(lod.interleavedVertices.data(), lod.interleavedVertices.size() * sizeof(Gleam::InterleavedMeshVertex));
-		lodDesc.meshlets = binaryWriter.Write(lod.meshlets.data(), lod.meshlets.size() * sizeof(Gleam::MeshletDescriptor));
-		lodDesc.meshletVertices = binaryWriter.Write(lod.meshletVertices.data(), lod.meshletVertices.size() * sizeof(uint32_t));
-		lodDesc.meshletTriangleIndices = binaryWriter.Write(lod.meshletTriangleIndices.data(), lod.meshletTriangleIndices.size() * sizeof(uint32_t));
 
-		const auto& buffer = binaryWriter.GetBuffer();
-		lodDesc.blobSlot = writer.AddBlob<Gleam::MeshLodDescriptor>(buffer.data,
-																	buffer.size,
+		lodDesc.indices = lod.indices;
+		lodDesc.positions = lod.positions;
+		lodDesc.interleavedVertices = lod.interleavedVertices;
+		lodDesc.meshlets = lod.meshlets;
+		lodDesc.meshletVertices = lod.meshletVertices;
+		lodDesc.meshletTriangleIndices = lod.meshletTriangleIndices;
+		lodDesc.submeshes = lod.submeshes;
+
+		lodDesc.blobSlot = writer.AddBlob<Gleam::MeshLodDescriptor>(lod.buffer.data,
+																	lod.buffer.size,
 																	Gleam::AssetPlatform::Common,
 																	Gleam::AssetBackend::Common);
-		
-		lodDesc.submeshes = lod.submeshes;
 	}
 	writer.Write(directory, item, descriptor);
 }

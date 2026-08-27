@@ -9,7 +9,7 @@ class MeshBaker final : public AssetBaker
 {
 public:
 
-	MeshBaker(MeshLodData&& lod);
+	MeshBaker(MeshData&& lod);
 
 	virtual void Bake(const Gleam::Path& directory, const AssetItem& item) const override;
 
@@ -19,7 +19,7 @@ public:
 
 private:
 
-	Gleam::TArray<MeshLodData> mLods;
+	Gleam::TArray<MeshData> mLods;
 
 };
 
