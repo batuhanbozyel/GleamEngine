@@ -15,6 +15,7 @@
 namespace Gleam {
 
 class Buffer;
+class Texture;
 
 struct AssetStreamFence
 {
@@ -33,12 +34,20 @@ struct ChunkDestinationBuffer
 	uint64_t offset = 0;
 };
 
+struct ChunkDestinationTexture
+{
+	const Texture* resource = nullptr;
+	uint32_t mip = 0;
+	uint32_t slice = 0;
+};
+
 struct ChunkDestination
 {
 	enum class Kind : uint8_t
 	{
 		Memory,
-		Buffer
+		Buffer,
+		Texture
 	};
 	Kind kind = Kind::Memory;
 
@@ -46,6 +55,7 @@ struct ChunkDestination
 	{
 		ChunkDestinationMemory memory;
 		ChunkDestinationBuffer buffer;
+		ChunkDestinationTexture texture;
 	};
 };
 
@@ -66,9 +76,9 @@ NO_DISCARD FORCE_INLINE ChunkDestination MakeBufferDestination(const Buffer& buf
 	return ChunkDestination{ .kind = ChunkDestination::Kind::Buffer, .buffer = { .resource = &buffer, .offset = offset } };
 }
 
-NO_DISCARD FORCE_INLINE BufferRange MakeBlobRange(const AssetHeader& header, const AssetBlobDescriptor& blob)
+NO_DISCARD FORCE_INLINE ChunkDestination MakeTextureDestination(const Texture& texture, uint32_t mip, uint32_t slice)
 {
-	return BufferRange{ .offset = header.bulkData.offset + blob.range.offset, .size = blob.range.size };
+	return ChunkDestination{ .kind = ChunkDestination::Kind::Texture, .texture = { .resource = &texture, .mip = mip, .slice = slice } };
 }
 
 class AssetStorage final
@@ -80,14 +90,6 @@ public:
 	bool Contains(const AssetReference& ref) const;
 
 	AssetHeader ReadAsset(const AssetReference& ref, const Reflection::ClassDescription& classDesc, void* metadata) const;
-
-	const AssetBlobDescriptor* FindBlob(const AssetHeader& header, const AssetBlobType& blobType, uint32_t slot, AssetBackend backend) const;
-
-	template<typename T>
-	const AssetBlobDescriptor* FindBlob(const AssetHeader& header, uint32_t slot, AssetBackend backend) const
-	{
-		return FindBlob(header, AssetUtils::BlobType<T>(), slot, backend);
-	}
 
 	void Enqueue(const AssetDataReadRequest& request);
 

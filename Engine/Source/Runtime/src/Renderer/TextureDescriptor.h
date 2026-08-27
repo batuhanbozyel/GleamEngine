@@ -74,14 +74,17 @@ GSTRUCT(TextureDescriptor, "5B36D630-8A7E-47BE-A9F0-1702AB9F9C8C", Serializable)
 	}
 };
 
+GSTRUCT(TextureSubresourceDescriptor, "68681A89-F448-47D1-814B-192D5D02EC25", Serializable, Version(1))
+{
+	GFIELD("F40803E1-B08D-47FA-B671-8D80AB86F76F", Serializable)
+	uint32_t blobSlot = 0;
+};
+
 GSTRUCT(Texture2DDescriptor, "CC19ED9A-2B9F-4258-B0E5-1F0EB34373A1", Serializable)
 	: TextureDescriptor
 {
-	GFIELD("1B7D4E92-8A35-4C61-9F20-6C43B8A1E57D", Serializable)
-	BinaryBuffer pixels;
-
-	GFIELD("F1E2D3C4-B5A6-4789-B1C2-D3E4F5A6B7C8", Serializable)
-	TArray<BufferRange> subresources;
+	GFIELD("6249AAAA-68B3-4F80-9400-33ECB6455F98", Serializable)
+	TArray<TextureSubresourceDescriptor> subresources;
 };
 
 GSTRUCT(RenderTextureDescriptor, "7B6A5D4C-3E2F-4180-9D8C-7B6A5D4C3E2F", Serializable)

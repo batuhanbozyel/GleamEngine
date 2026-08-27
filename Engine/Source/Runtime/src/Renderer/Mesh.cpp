@@ -55,9 +55,8 @@ void Mesh::RequestLod(uint32_t lod)
 		static auto assetManager = Globals::GameInstance->GetSubsystem<AssetManager>();
 		
 		auto storage = assetManager->GetStorage();
-		const auto& header = GetHeader();
 		const auto& lodDesc = mDescriptor.lods[lod];
-		const auto blob = storage->FindBlob<MeshLodDescriptor>(header, lodDesc.blobSlot, AssetBackend::Common);
+		const auto blob = FindBlob<MeshLodDescriptor>(lodDesc.blobSlot, AssetPlatform::Common, AssetBackend::Common);
 		if (blob == nullptr)
 		{
 			return;
@@ -70,7 +69,7 @@ void Mesh::RequestLod(uint32_t lod)
 
 		storage->Enqueue(AssetDataReadRequest{
 			.asset = GetReference(),
-			.range = MakeBlobRange(header, *blob),
+			.range = GetBlobRange(*blob),
 			.destination = MakeBufferDestination(lodData, 0)
 		});
 		storage->Wait(storage->Submit());

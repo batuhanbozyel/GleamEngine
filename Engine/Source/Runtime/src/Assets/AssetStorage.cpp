@@ -10,36 +10,13 @@
 #include "Container/BinaryBuffer.h"
 
 #include "Renderer/Buffer.h"
+#include "Renderer/Texture.h"
 #include "Renderer/RenderSystem.h"
 #include "Renderer/CopyCommandBuffer.h"
 
 #include "Serialization/BinarySerializer.h"
 
 using namespace Gleam;
-
-static const AssetBlobDescriptor* ResolveBlob(const AssetDataTable& dataTable, const AssetBlobType& blobType, uint32_t slot, AssetPlatform platform, AssetBackend backend)
-{
-	for (const auto& blob : dataTable.blobs)
-	{
-		if (blob.platform != AssetPlatform::Common && blob.platform != platform)
-		{
-			continue;
-		}
-
-		if (blob.backend != AssetBackend::Common && blob.backend != backend)
-		{
-			continue;
-		}
-
-		if (blob.type.guid != blobType.guid || blob.type.version != blobType.version || blob.slot != slot)
-		{
-			continue;
-		}
-
-		return &blob;
-	}
-	return nullptr;
-}
 
 AssetStorage::AssetStorage(const Path& directory)
 	: mDirectory(directory)
@@ -65,16 +42,6 @@ AssetHeader AssetStorage::ReadAsset(const AssetReference& ref, const Reflection:
 	return header;
 }
 
-const AssetBlobDescriptor* AssetStorage::FindBlob(const AssetHeader& header, const AssetBlobType& blobType, uint32_t slot, AssetBackend backend) const
-{
-	const auto blob = ResolveBlob(header.dataTable, blobType, slot, AssetUtils::Platform(), backend);
-	if (blob == nullptr)
-	{
-		GLEAM_ASSERT(false, "Asset data blob {0}[{1}] has no variant for this target, Asset: {2} Version: {3}", blobType.guid.ToString(), slot, header.name, blobType.version);
-	}
-	return blob;
-}
-
 void AssetStorage::Enqueue(const AssetDataReadRequest& request)
 {
 	mPendingRequests.push_back(request);
@@ -88,15 +55,21 @@ void AssetStorage::ReadData(FileStream& stream, const AssetDataReadRequest& requ
 	{
 		GLEAM_ASSERT(request.destination.memory.size >= request.range.size, "Data read destination is too small.");
 		stream.read(static_cast<char*>(request.destination.memory.buffer), static_cast<std::streamsize>(request.range.size));
+		return;
+	}
+
+	BinaryBuffer staging(request.range.size);
+	stream.read(static_cast<char*>(staging.data), static_cast<std::streamsize>(request.range.size));
+
+	static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
+	auto cmd = renderSystem->GetCopyCommandBuffer();
+	if (request.destination.kind == ChunkDestination::Kind::Buffer)
+	{
+		cmd->Commit(*request.destination.buffer.resource, staging.data, request.range.size, request.destination.buffer.offset);
 	}
 	else
 	{
-		BinaryBuffer staging(request.range.size);
-		stream.read(static_cast<char*>(staging.data), static_cast<std::streamsize>(request.range.size));
-
-		static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
-		auto cmd = renderSystem->GetCopyCommandBuffer();
-		cmd->Commit(*request.destination.buffer.resource, staging.data, request.range.size, request.destination.buffer.offset);
+		cmd->Commit(*request.destination.texture.resource, staging.data, request.range.size, request.destination.texture.mip, request.destination.texture.slice);
 	}
 }
 
