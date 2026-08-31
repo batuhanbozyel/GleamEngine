@@ -176,6 +176,21 @@ void CopyCommandBuffer::WaitUntilCompleted() const
     }
 }
 
+StorageFile CopyCommandBuffer::OpenFile(const Path& path) const
+{
+    __autoreleasing NSError* error = nil;
+    NSURL* url = [NSURL fileURLWithPath:TO_NSSTRING(path.String().c_str())];
+
+    id<MTLIOFileHandle> handle = [mDevice->GetHandle() newIOFileHandleWithURL:url error:&error];
+    GLEAM_ASSERT(handle, "Metal: CopyCommandBuffer file handle creation failed.");
+    return StorageFile(handle);
+}
+
+void CopyCommandBuffer::CloseFile(StorageFile& file) const
+{
+    file = StorageFile();
+}
+
 void CopyCommandBuffer::Commit(const Buffer& buffer, const void* data, size_t size, size_t offset) const
 {
     auto bufferContents = buffer.GetContents();
@@ -283,6 +298,30 @@ void CopyCommandBuffer::Commit(const Texture& texture, const void* data, size_t 
 	if (it == mHandle->textureCopies.end())
 	{
 		mHandle->textureCopies.push_back(texture);
+	}
+}
+
+void CopyCommandBuffer::Commit(const Buffer& buffer, const StorageFile& file, const BufferRange& range, size_t offset) const
+{
+    GLEAM_ASSERT(buffer.GetContents() == nullptr, "CopyCommandBuffer: file upload destination must be a GPU buffer.");
+
+    if (mHandle->fileCommandBuffer == nil)
+    {
+        mHandle->fileCommandBuffer = [mHandle->fileCommandQueue commandBuffer];
+    }
+
+    id<MTLBuffer> dstBuffer = buffer.GetHandle();
+    id<MTLIOFileHandle> srcFile = file.GetHandle();
+    [mHandle->fileCommandBuffer loadBuffer:dstBuffer
+                                    offset:offset
+                                      size:range.size
+                              sourceHandle:srcFile
+                        sourceHandleOffset:range.offset];
+
+    auto it = eastl::find_if(mHandle->bufferCopies.begin(), mHandle->bufferCopies.end(), [&](const Buffer& b) { return b.GetHandle() == buffer.GetHandle(); });
+	if (it == mHandle->bufferCopies.end())
+	{
+		mHandle->bufferCopies.push_back(buffer);
 	}
 }
 

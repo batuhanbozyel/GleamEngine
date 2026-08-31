@@ -202,6 +202,7 @@ void CopyCommandBuffer::Execute() const
 
 void CopyCommandBuffer::WaitUntilCompleted() const
 {
+	WaitForID3D12Fence(mHandle->fileFence, mHandle->fenceValue);
 	WaitForID3D12Fence(mHandle->memoryFence, mHandle->fenceValue);
 
 	mHandle->stagingBufferOffset = 0;
@@ -214,6 +215,26 @@ void CopyCommandBuffer::WaitUntilCompleted() const
 		}
 		mHandle->stagingBuffers.clear();
 	}
+}
+
+StorageFile CopyCommandBuffer::OpenFile(const Path& path) const
+{
+	IDStorageFile* file = nullptr;
+	DX_CHECK(mHandle->factory->OpenFile(path.Native().c_str(), IID_PPV_ARGS(&file)));
+	return StorageFile(file);
+}
+
+void CopyCommandBuffer::CloseFile(StorageFile& file) const
+{
+	if (not file.IsValid())
+	{
+		return;
+	}
+
+	auto handle = static_cast<IDStorageFile*>(file.GetHandle());
+	handle->Close();
+	handle->Release();
+	file = StorageFile();
 }
 
 void CopyCommandBuffer::Commit(const Buffer& buffer, const void* data, size_t size, size_t offset) const
@@ -366,6 +387,33 @@ void CopyCommandBuffer::Commit(const Texture& texture, const void* data, size_t 
 	if (it == mHandle->textureCopies.end())
 	{
 		mHandle->textureCopies.push_back(texture);
+	}
+}
+
+void CopyCommandBuffer::Commit(const Buffer& buffer, const StorageFile& file, const BufferRange& range, size_t offset) const
+{
+	GLEAM_ASSERT(buffer.GetContents() == nullptr, "CopyCommandBuffer: file upload destination must be a GPU buffer.");
+
+	DSTORAGE_REQUEST request = {};
+	request.Options.SourceType = DSTORAGE_REQUEST_SOURCE_FILE;
+	request.Options.DestinationType = DSTORAGE_REQUEST_DESTINATION_BUFFER;
+	request.Options.CompressionFormat = DSTORAGE_COMPRESSION_FORMAT_NONE;
+
+	request.Source.File.Source = static_cast<IDStorageFile*>(file.GetHandle());
+	request.Source.File.Offset = range.offset;
+	request.Source.File.Size = static_cast<uint32_t>(range.size);
+
+	request.Destination.Buffer.Resource = static_cast<ID3D12Resource*>(buffer.GetHandle());
+	request.Destination.Buffer.Offset = offset;
+	request.Destination.Buffer.Size = static_cast<uint32_t>(range.size);
+
+	request.UncompressedSize = 0;
+	mHandle->fileQueue->EnqueueRequest(&request);
+
+	auto it = eastl::find_if(mHandle->bufferCopies.begin(), mHandle->bufferCopies.end(), [&](const Buffer& b) { return b.GetHandle() == buffer.GetHandle(); });
+	if (it == mHandle->bufferCopies.end())
+	{
+		mHandle->bufferCopies.push_back(buffer);
 	}
 }
 

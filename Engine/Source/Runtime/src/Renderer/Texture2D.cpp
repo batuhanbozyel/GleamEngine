@@ -4,7 +4,12 @@
 #include "Core/Engine.h"
 #include "Core/Globals.h"
 
+#include "IO/File.h"
+#include "IO/Filesystem.h"
+
 #include "Assets/AssetManager.h"
+
+#include "Container/BinaryBuffer.h"
 
 #include "Renderer/RenderSystem.h"
 #include "Renderer/GraphicsDevice.h"
@@ -23,6 +28,12 @@ Texture2D::Texture2D(const AssetReference& reference, const AssetHeader& header,
 	mTexture = renderSystem->GetDevice()->CreateTexture(renderSystem->GetAllocator(), descriptor);
 
 	auto storage = assetManager->GetStorage();
+	auto cmd = renderSystem->GetCopyCommandBuffer();
+
+	auto file = Filesystem::OpenRead(storage->GetAssetFilePath(GetReference()), FileType::Binary);
+	auto& stream = file->GetStream();
+
+	BinaryBuffer blobData;
 	for (uint32_t i = 0; i < descriptor.subresources.size(); ++i)
 	{
 		const auto blob = FindBlob<TextureSubresourceDescriptor>(descriptor.subresources[i].blobSlot, AssetPlatform::Common, AssetBackend::Common);
@@ -31,13 +42,14 @@ Texture2D::Texture2D(const AssetReference& reference, const AssetHeader& header,
 			continue;
 		}
 
-		storage->Enqueue(AssetDataReadRequest{
-			.asset = GetReference(),
-			.range = GetBlobRange(*blob),
-			.destination = MakeTextureDestination(mTexture, mTexture.GetMip(i), mTexture.GetSlice(i))
-		});
+		const auto range = GetBlobRange(*blob);
+		blobData.Resize(range.size);
+
+		stream.seekg(static_cast<std::streamoff>(range.offset));
+		stream.read(static_cast<char*>(blobData.data), static_cast<std::streamsize>(range.size));
+
+		cmd->Commit(mTexture, blobData.data, blobData.size, mTexture.GetMip(i), mTexture.GetSlice(i));
 	}
-	storage->Wait(storage->Submit());
 }
 
 Texture2D::Texture2D(const TextureDescriptor& descriptor, const void* pixels, size_t size)

@@ -67,12 +67,8 @@ void Mesh::RequestLod(uint32_t lod)
 		bufferDesc.size = blob->range.size;
 		lodData = renderSystem->GetDevice()->CreateBuffer(renderSystem->GetAllocator(), bufferDesc);
 
-		storage->Enqueue(AssetDataReadRequest{
-			.asset = GetReference(),
-			.range = GetBlobRange(*blob),
-			.destination = MakeBufferDestination(lodData, 0)
-		});
-		storage->Wait(storage->Submit());
+		auto cmd = renderSystem->GetCopyCommandBuffer();
+		cmd->Commit(lodData, storage->GetAssetFile(GetReference()), GetBlobRange(*blob), 0);
 	}
 }
 

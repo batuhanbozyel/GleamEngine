@@ -7,10 +7,6 @@
 #include "IO/Log.h"
 #include "IO/File.h"
 
-#include "Container/BinaryBuffer.h"
-
-#include "Renderer/Buffer.h"
-#include "Renderer/Texture.h"
 #include "Renderer/RenderSystem.h"
 #include "Renderer/CopyCommandBuffer.h"
 
@@ -24,6 +20,18 @@ AssetStorage::AssetStorage(const Path& directory)
 
 }
 
+AssetStorage::~AssetStorage()
+{
+	static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
+	auto cmd = renderSystem->GetCopyCommandBuffer();
+
+	for (auto& entry : mEntries)
+	{
+		cmd->CloseFile(entry.second.file);
+	}
+	mEntries.clear();
+}
+
 bool AssetStorage::Contains(const AssetReference& ref) const
 {
 	return mEntries.find(ref) != mEntries.end();
@@ -31,7 +39,7 @@ bool AssetStorage::Contains(const AssetReference& ref) const
 
 AssetHeader AssetStorage::ReadAsset(const AssetReference& ref, const Reflection::ClassDescription& classDesc, void* metadata) const
 {
-	auto file = Filesystem::OpenRead(mDirectory / GetAssetPath(ref), FileType::Binary);
+	auto file = Filesystem::OpenRead(GetAssetFilePath(ref), FileType::Binary);
 	auto& stream = file->GetStream();
 
 	auto serializer = BinarySerializer();
@@ -40,69 +48,6 @@ AssetHeader AssetStorage::ReadAsset(const AssetReference& ref, const Reflection:
 	stream.seekg(header.metadata.offset);
 	serializer.Deserialize(stream, classDesc, metadata);
 	return header;
-}
-
-void AssetStorage::Enqueue(const AssetDataReadRequest& request)
-{
-	mPendingRequests.push_back(request);
-}
-
-void AssetStorage::ReadData(FileStream& stream, const AssetDataReadRequest& request) const
-{
-	stream.seekg(static_cast<std::streamoff>(request.range.offset));
-
-	if (request.destination.kind == ChunkDestination::Kind::Memory)
-	{
-		GLEAM_ASSERT(request.destination.memory.size >= request.range.size, "Data read destination is too small.");
-		stream.read(static_cast<char*>(request.destination.memory.buffer), static_cast<std::streamsize>(request.range.size));
-		return;
-	}
-
-	BinaryBuffer staging(request.range.size);
-	stream.read(static_cast<char*>(staging.data), static_cast<std::streamsize>(request.range.size));
-
-	static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
-	auto cmd = renderSystem->GetCopyCommandBuffer();
-	if (request.destination.kind == ChunkDestination::Kind::Buffer)
-	{
-		cmd->Commit(*request.destination.buffer.resource, staging.data, request.range.size, request.destination.buffer.offset);
-	}
-	else
-	{
-		cmd->Commit(*request.destination.texture.resource, staging.data, request.range.size, request.destination.texture.mip, request.destination.texture.slice);
-	}
-}
-
-AssetStreamFence AssetStorage::Submit()
-{
-	while (not mPendingRequests.empty())
-	{
-		const auto asset = mPendingRequests.front().asset;
-
-		auto file = Filesystem::OpenRead(mDirectory / GetAssetPath(asset), FileType::Binary);
-		auto& stream = file->GetStream();
-
-		for (auto it = mPendingRequests.begin(); it != mPendingRequests.end();)
-		{
-			if (it->asset == asset)
-			{
-				ReadData(stream, *it);
-				it = mPendingRequests.erase(it);
-			}
-			else
-			{
-				++it;
-			}
-		}
-	}
-
-	++mFenceValue;
-	return AssetStreamFence{ .value = mFenceValue };
-}
-
-void AssetStorage::Wait(AssetStreamFence fence)
-{
-
 }
 
 void AssetStorage::EmplaceAssetPath(const Path& path)
@@ -116,7 +61,14 @@ void AssetStorage::EmplaceAssetPath(const Path& path)
 	auto relPath = path.IsRelative() ? path : Filesystem::Relative(path, mDirectory);
 
 	std::lock_guard<std::mutex> lock(mMutex);
-	mEntries[AssetReference{ .guid = guid }] = relPath;
+	auto& entry = mEntries[AssetReference{ .guid = guid }];
+	entry.path = relPath;
+
+	if (entry.file.IsValid())
+	{
+		static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
+		renderSystem->GetCopyCommandBuffer()->CloseFile(entry.file);
+	}
 }
 
 void AssetStorage::RemoveAssetPath(const Path& path)
@@ -126,11 +78,13 @@ void AssetStorage::RemoveAssetPath(const Path& path)
 	std::lock_guard<std::mutex> lock(mMutex);
 	auto it = std::find_if(mEntries.begin(), mEntries.end(), [&](const auto& pair)
 	{
-		return pair.second == relPath;
+		return pair.second.path == relPath;
 	});
 
 	if (it != mEntries.end())
 	{
+		static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
+		renderSystem->GetCopyCommandBuffer()->CloseFile(it->second.file);
 		mEntries.erase(it);
 	}
 }
@@ -140,10 +94,36 @@ const Path& AssetStorage::GetAssetPath(const AssetReference& ref) const
 	auto it = mEntries.find(ref);
 	if (it != mEntries.end())
 	{
-		return it->second;
+		return it->second.path;
 	}
 
 	GLEAM_ASSERT(false, "Asset could not located for GUID: {}", ref.guid.ToString());
 	static Path invalidPath;
 	return invalidPath;
+}
+
+Path AssetStorage::GetAssetFilePath(const AssetReference& ref) const
+{
+	return mDirectory / GetAssetPath(ref);
+}
+
+const StorageFile& AssetStorage::GetAssetFile(const AssetReference& ref) const
+{
+	std::lock_guard<std::mutex> lock(mMutex);
+
+	auto it = mEntries.find(ref);
+	if (it == mEntries.end())
+	{
+		GLEAM_ASSERT(false, "Asset could not located for GUID: {}", ref.guid.ToString());
+		static StorageFile invalidFile;
+		return invalidFile;
+	}
+
+	auto& entry = it->second;
+	if (not entry.file.IsValid())
+	{
+		static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
+		entry.file = renderSystem->GetCopyCommandBuffer()->OpenFile(mDirectory / entry.path);
+	}
+	return entry.file;
 }

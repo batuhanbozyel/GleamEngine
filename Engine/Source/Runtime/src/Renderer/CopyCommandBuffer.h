@@ -1,5 +1,10 @@
 #pragma once
+#include "StorageFile.h"
+
+#include "Core/Macro.h"
+#include "IO/Path.h"
 #include "Container/Pointer.h"
+#include "Container/BinaryBuffer.h"
 
 namespace Gleam {
 
@@ -20,12 +25,18 @@ public:
 	void Execute() const;
 
 	void Barrier(const CommandBuffer* cmd) const;
-	
+
 	void WaitUntilCompleted() const;
-	
+
+	NO_DISCARD StorageFile OpenFile(const Path& path) const;
+
+	void CloseFile(StorageFile& file) const;
+
 	void Commit(const Buffer& buffer, const void* data, size_t size, size_t offset) const;
 
 	void Commit(const Texture& texture, const void* data, size_t size, uint32_t mip, uint32_t slice) const;
+
+	void Commit(const Buffer& buffer, const StorageFile& file, const BufferRange& range, size_t offset) const;
 
 private:
 
