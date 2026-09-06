@@ -13,14 +13,15 @@ struct CopyCommandBuffer::Impl
 {
     id<MTLIOCommandQueue> fileCommandQueue{ nil };
     id<MTLIOCommandBuffer> fileCommandBuffer{ nil };
-    
+    id<MTLSharedEvent> fileEvent = nil;
+
     id<MTL4CommandBuffer> memoryCommandBuffer{ nil };
     id<MTL4CommandAllocator> memoryCommandAllocator{ nil };
     id<MTL4ComputeCommandEncoder> memoryCommandEncoder{ nil };
-    
     id<MTLSharedEvent> memoryEvent = nil;
-    uint64_t memoryEventValue = 0;
-    
+
+    uint64_t eventValue = 0;
+
     id<MTLBuffer> stagingBuffer{ nil };
     void* stagingBufferPtr = nullptr;
     size_t stagingBufferOffset = 0;
@@ -56,7 +57,10 @@ CopyCommandBuffer::CopyCommandBuffer(GraphicsDevice* device)
     ioQueueDescriptor.maxCommandsInFlight = 0;
     mHandle->fileCommandQueue = [mDevice->GetHandle() newIOCommandQueueWithDescriptor:ioQueueDescriptor error:&error];
     GLEAM_ASSERT(mHandle->fileCommandQueue, "Metal: CopyCommandBuffer file command queue creation failed.");
-    
+
+    mHandle->fileEvent = [mDevice->GetHandle() newSharedEvent];
+    mHandle->fileEvent.label = @"CopyCommandBuffer::FileEvent";
+
     // Create memory command allocator
     MTL4CommandAllocatorDescriptor* allocatorDescriptor = [MTL4CommandAllocatorDescriptor new];
     allocatorDescriptor.label = @"CopyCommandBuffer::MemoryCommandAllocator";
@@ -83,7 +87,8 @@ CopyCommandBuffer::~CopyCommandBuffer()
     
     mHandle->fileCommandQueue = nil;
     mHandle->fileCommandBuffer = nil;
-    
+    mHandle->fileEvent = nil;
+
     mHandle->memoryCommandBuffer = nil;
     mHandle->memoryCommandAllocator = nil;
     mHandle->memoryCommandEncoder = nil;
@@ -132,11 +137,14 @@ void CopyCommandBuffer::Barrier(const CommandBuffer* cmd) const
 
 void CopyCommandBuffer::Execute() const
 {
+    ++mHandle->eventValue;
+
     if (mHandle->fileCommandBuffer != nil)
     {
+        [mHandle->fileCommandBuffer signalEvent:mHandle->fileEvent value:mHandle->eventValue];
         [mHandle->fileCommandBuffer commit];
     }
-    
+
     if (mHandle->memoryCommandEncoder != nil)
     {
         [mHandle->memoryCommandEncoder endEncoding];
@@ -145,7 +153,7 @@ void CopyCommandBuffer::Execute() const
         id<MTL4CommandQueue> commandQueue = static_cast<MetalDevice*>(mDevice)->GetCommandQueue().GetHandle();
         [static_cast<MetalDevice*>(mDevice)->GetResidencySet() commit];
         [commandQueue commit:&mHandle->memoryCommandBuffer count:1];
-        [commandQueue signalEvent:mHandle->memoryEvent value:++mHandle->memoryEventValue];
+        [commandQueue signalEvent:mHandle->memoryEvent value:mHandle->eventValue];
     }
 }
 
@@ -153,14 +161,14 @@ void CopyCommandBuffer::WaitUntilCompleted() const
 {
     if (mHandle->memoryCommandEncoder != nil)
     {
-        WaitForMTLSharedEvent(mHandle->memoryEvent, mHandle->memoryEventValue);
+        WaitForMTLSharedEvent(mHandle->memoryEvent, mHandle->eventValue);
         [mHandle->memoryCommandAllocator reset];
         mHandle->memoryCommandEncoder = nil;
     }
-    
+
     if (mHandle->fileCommandBuffer != nil)
     {
-        [mHandle->fileCommandBuffer waitUntilCompleted];
+        WaitForMTLSharedEvent(mHandle->fileEvent, mHandle->eventValue);
         mHandle->fileCommandBuffer = nil;
     }
     

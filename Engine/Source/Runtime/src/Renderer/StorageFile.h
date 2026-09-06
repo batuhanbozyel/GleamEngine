@@ -13,9 +13,7 @@ public:
 	StorageFile(const StorageFile& other) = default;
 
 	StorageFile& operator=(const StorageFile& other) = default;
-
-private:
-
+	
 	StorageFile(NativeGraphicsHandle handle)
 		: GraphicsObject(handle)
 	{
