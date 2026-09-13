@@ -14,6 +14,7 @@
 #include "Container/String.h"
 #include "Container/Array.h"
 #include "Container/BinaryBuffer.h"
+#include "Container/EnumFlag.h"
 #include "Container/Hash.h"
 
 namespace Gleam {
@@ -27,18 +28,10 @@ GENUM(TextureDimension, "7A1CDA2E-8B61-4558-9255-B919E70E92F7", Serializable)
 
 GENUM(TextureUsage, "7EFFFEDD-F5B2-443B-9888-49C88D41779B", Serializable)
 {
-	GITEM(Sampled, "3D7FA6A5-D83A-4CAB-A5E7-43D38A768D70"),
-	GITEM(Storage, "6CAA9FB4-89FE-4D2F-9CE4-E3F0A2E9F6A2"),
-	GITEM(Attachment, "CA74DE24-9E22-4DB9-84AE-67E72F02D1E6")
+	GITEM(Sampled, "3D7FA6A5-D83A-4CAB-A5E7-43D38A768D70") = BIT(0),
+	GITEM(Storage, "6CAA9FB4-89FE-4D2F-9CE4-E3F0A2E9F6A2") = BIT(1),
+	GITEM(Attachment, "CA74DE24-9E22-4DB9-84AE-67E72F02D1E6") = BIT(2)
 };
-
-enum TextureUsageFlag
-{
-	TextureUsage_Sampled = BIT(static_cast<uint32_t>(TextureUsage::Sampled)),
-	TextureUsage_Storage = BIT(static_cast<uint32_t>(TextureUsage::Storage)),
-	TextureUsage_Attachment = BIT(static_cast<uint32_t>(TextureUsage::Attachment))
-};
-typedef uint32_t TextureUsageFlagBits;
 
 GSTRUCT(TextureDescriptor, "5B36D630-8A7E-47BE-A9F0-1702AB9F9C8C", Serializable)
 {
@@ -55,7 +48,7 @@ GSTRUCT(TextureDescriptor, "5B36D630-8A7E-47BE-A9F0-1702AB9F9C8C", Serializable)
 	TextureFormat format = TextureFormat::R8G8B8A8_UNorm;
 
 	GFIELD("E6D2C8B5-A793-4F61-B8E2-D7A9C5F4E3B1", Serializable)
-	TextureUsageFlagBits usage = TextureUsage_Sampled;
+	EnumFlag<TextureUsage> usage = TextureUsage::Sampled;
 
 	GFIELD("1F8E7D6C-B5A4-4F32-9E1D-C8B7A6F5E4D3", Serializable)
 	TextureDimension dimension = TextureDimension::Texture2D;
@@ -105,13 +98,13 @@ GSTRUCT(RenderTextureDescriptor, "7B6A5D4C-3E2F-4180-9D8C-7B6A5D4C3E2F", Seriali
 	RenderTextureDescriptor()
 		: TextureDescriptor()
 	{
-		usage |= TextureUsage_Attachment | TextureUsage_Storage;
+		usage |= TextureUsage::Attachment | TextureUsage::Storage;
 	}
 
 	RenderTextureDescriptor(const TextureDescriptor& descriptor)
 		: TextureDescriptor(descriptor)
 	{
-		usage |= TextureUsage_Attachment | TextureUsage_Storage;
+		usage |= TextureUsage::Attachment | TextureUsage::Storage;
 	}
 };
 

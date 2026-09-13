@@ -4,6 +4,7 @@
 #include "ReflectionUtils.h"
 
 #include "Container/BinaryBuffer.h"
+#include "Container/EnumFlag.h"
 #include "Renderer/Material/MaterialProperty.h"
 
 using namespace Gleam;
@@ -234,6 +235,37 @@ static void DeserializeArrayElements(const rapidjson::ConstNode& array, const Re
 
 #pragma endregion DeserializeForwardDecl
 
+static void SerializeEnumFlagValue(const void* obj,
+                                   const Reflection::ClassDescription& classDesc,
+                                   rapidjson::Node& outFlags)
+{
+	const auto enumDesc = ReflectionUtils::ResolveFlagEnum(classDesc);
+	const auto mask = ReflectionUtils::ReadFlagMask(obj, classDesc.GetSize());
+
+	ReflectionUtils::ForEachSetCase(mask, *enumDesc, [&](const Reflection::EnumCaseDescription& enumCase)
+	{
+		outFlags.PushBack(rapidjson::Value(enumCase.Guid().ToString(), outFlags.allocator));
+	});
+}
+
+static void DeserializeEnumFlagValue(const rapidjson::Value& flags,
+                                     const Reflection::ClassDescription& classDesc,
+                                     void* obj)
+{
+	const auto enumDesc = ReflectionUtils::ResolveFlagEnum(classDesc);
+
+	uint64_t mask = 0;
+	for (const auto& flag : flags.GetArray())
+	{
+		const auto enumCase = ReflectionUtils::FindCase(*enumDesc, Guid(flag.GetString()));
+		if (enumCase != nullptr)
+		{
+			mask |= ReflectionUtils::TruncateToSize(enumCase->Value(), enumDesc->GetSize());
+		}
+	}
+	ReflectionUtils::WriteFlagMask(obj, classDesc.GetSize(), mask);
+}
+
 void JSONSerializer::Initialize(Engine* engine)
 {
 	REGISTER_VECTOR_TYPE_JSON_SERIALIZER(Float2, x, y);
@@ -371,6 +403,32 @@ void JSONSerializer::Initialize(Engine* engine)
 			auto elementsNode = rapidjson::Node(elements, node.allocator);
 			SerializeArrayObjectElements(arr.data(), arrDesc, elementsNode);
 			node.PushBack(elements);
+		};
+	}
+
+	if constexpr (Reflection::Traits::IsReflected<EnumFlag<EnumFlagPlaceholder>>())
+	{
+		const auto qualifiedName = QualifiedNameWithoutTemplateDeclaration(Reflection::GetClass<EnumFlag<EnumFlagPlaceholder>>().ResolveQualifiedName());
+		mCustomObjectSerializers[qualifiedName] = [](const void* obj,
+			const Reflection::ClassDescription& classDesc,
+			rapidjson::Node& node)
+		{
+			rapidjson::Value flags(rapidjson::kArrayType);
+			rapidjson::Node flagsNode(flags, node.allocator);
+			SerializeEnumFlagValue(obj, classDesc, flagsNode);
+
+			SerializeClassHeader(classDesc, node);
+			node.AddMember("Value", flags);
+		};
+
+		mCustomArraySerializers[qualifiedName] = [](const void* obj,
+			const Reflection::ClassDescription& classDesc,
+			rapidjson::Node& node)
+		{
+			rapidjson::Value flags(rapidjson::kArrayType);
+			rapidjson::Node flagsNode(flags, node.allocator);
+			SerializeEnumFlagValue(obj, classDesc, flagsNode);
+			node.PushBack(flags);
 		};
 	}
 
@@ -570,6 +628,27 @@ void JSONSerializer::Initialize(Engine* engine)
 			auto arrDesc = Reflection::ArrayDescription(element.GetType(), element.TypeHash(), arr.size());
             DeserializeArrayElements(node, arrDesc, arr.data());
         };
+	}
+
+	if constexpr (Reflection::Traits::IsReflected<EnumFlag<EnumFlagPlaceholder>>())
+	{
+		const auto qualifiedName = QualifiedNameWithoutTemplateDeclaration(Reflection::GetClass<EnumFlag<EnumFlagPlaceholder>>().ResolveQualifiedName());
+		mCustomObjectDeserializers[qualifiedName] = [](const rapidjson::ConstNode& node,
+			const Reflection::ClassDescription& classDesc,
+			void* obj)
+		{
+			if (node.object.HasMember("Value"))
+			{
+				DeserializeEnumFlagValue(node.object["Value"], classDesc, obj);
+			}
+		};
+
+		mCustomArrayDeserializers[qualifiedName] = [](const rapidjson::ConstNode& node,
+			const Reflection::ClassDescription& classDesc,
+			void* obj)
+		{
+			DeserializeEnumFlagValue(node.object, classDesc, obj);
+		};
 	}
 }
 

@@ -256,7 +256,7 @@ Texture DirectXSwapchain::CreateSwapchainBuffer(GraphicsDevice* device, uint32_t
 	swapchainDesc.name = resourceName;
 	swapchainDesc.dimension = TextureDimension::Texture2D;
 	swapchainDesc.size = Size((float)mDesc.Width, (float)mDesc.Height);
-	swapchainDesc.usage = TextureUsage_Attachment;
+	swapchainDesc.usage = TextureUsage::Attachment;
 	swapchainDesc.format = DXGI_FORMATtoTextureFormat(mDesc.Format);
 	return Texture(swapchainDesc, texture, rtv);
 }

@@ -59,7 +59,7 @@ uint32_t BinaryAssetWriter::AddBlob(const Gleam::AssetBlobType& type,
 									const void* data,
 									uint64_t size,
 									Gleam::AssetPlatform platform,
-									Gleam::AssetBackend backend)
+									Gleam::EnumFlag<Gleam::AssetBackend> backend)
 {
 	uint32_t slot = mSlotCounts[type.guid]++;
 	AddBlobVariant(type, slot, data, size, platform, backend);
@@ -71,7 +71,7 @@ void BinaryAssetWriter::AddBlobVariant(const Gleam::AssetBlobType& type,
 									   const void* data,
 									   uint64_t size,
 									   Gleam::AssetPlatform platform,
-									   Gleam::AssetBackend backend)
+									   Gleam::EnumFlag<Gleam::AssetBackend> backend)
 {
 	mBlobs.emplace_back(DataBlob{
 		.data = data,

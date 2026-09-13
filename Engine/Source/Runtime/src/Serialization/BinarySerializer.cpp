@@ -2,6 +2,7 @@
 #include "BinarySerializer.h"
 #include "ReflectionUtils.h"
 #include "Container/BinaryBuffer.h"
+#include "Container/EnumFlag.h"
 #include "Renderer/Material/MaterialProperty.h"
 
 using namespace Gleam;
@@ -339,6 +340,30 @@ void BinarySerializer::Initialize(Engine* engine)
 		};
 	}
 
+	if constexpr (Reflection::Traits::IsReflected<EnumFlag<EnumFlagPlaceholder>>())
+	{
+		const auto qualifiedName = QualifiedNameWithoutTemplateDeclaration(Reflection::GetClass<EnumFlag<EnumFlagPlaceholder>>().ResolveQualifiedName());
+		mCustomSerializers[qualifiedName] = [](const void* obj,
+											   const Reflection::ClassDescription& classDesc,
+											   FileStream& stream)
+		{
+			const auto enumDesc = ReflectionUtils::ResolveFlagEnum(classDesc);
+			const auto mask = ReflectionUtils::ReadFlagMask(obj, classDesc.GetSize());
+
+			uint32_t caseCount = 0;
+			ReflectionUtils::ForEachSetCase(mask, *enumDesc, [&](const Reflection::EnumCaseDescription& enumCase)
+			{
+				++caseCount;
+			});
+			stream.write(reinterpret_cast<const char*>(&caseCount), sizeof(uint32_t));
+
+			ReflectionUtils::ForEachSetCase(mask, *enumDesc, [&](const Reflection::EnumCaseDescription& enumCase)
+			{
+				SerializeMemberGuid(enumCase.Guid(), stream);
+			});
+		};
+	}
+
 	// Custom deserializers
 	if constexpr (Reflection::Traits::IsReflected<TString>())
 	{
@@ -414,6 +439,34 @@ void BinarySerializer::Initialize(Engine* engine)
 			DeserializeArrayValues(stream, elementCount, arrDesc, arr.data());
 
 			stream.seekg(payloadEnd);
+		};
+	}
+
+	if constexpr (Reflection::Traits::IsReflected<EnumFlag<EnumFlagPlaceholder>>())
+	{
+		const auto qualifiedName = QualifiedNameWithoutTemplateDeclaration(Reflection::GetClass<EnumFlag<EnumFlagPlaceholder>>().ResolveQualifiedName());
+		mCustomDeserializers[qualifiedName] = [](FileStream& stream,
+												 const Reflection::ClassDescription& classDesc,
+												 void* obj)
+		{
+			const auto enumDesc = ReflectionUtils::ResolveFlagEnum(classDesc);
+
+			uint32_t caseCount = 0;
+			stream.read(reinterpret_cast<char*>(&caseCount), sizeof(uint32_t));
+
+			uint64_t mask = 0;
+			for (uint32_t index = 0; index < caseCount; ++index)
+			{
+				Reflection::Attribute::Guid caseGuid;
+				DeserializeMemberGuid(stream, caseGuid);
+
+				const auto enumCase = ReflectionUtils::FindCase(*enumDesc, caseGuid);
+				if (enumCase != nullptr)
+				{
+					mask |= ReflectionUtils::TruncateToSize(enumCase->Value(), enumDesc->GetSize());
+				}
+			}
+			ReflectionUtils::WriteFlagMask(obj, classDesc.GetSize(), mask);
 		};
 	}
 }

@@ -32,10 +32,10 @@ public:
 
 	const TString& GetName() const;
 
-	const AssetBlobDescriptor* FindBlob(const AssetBlobType& type, uint32_t slot, AssetPlatform platform, AssetBackend backend) const;
+	const AssetBlobDescriptor* FindBlob(const AssetBlobType& type, uint32_t slot, AssetPlatform platform, EnumFlag<AssetBackend> backend) const;
 
 	template<typename T>
-	const AssetBlobDescriptor* FindBlob(uint32_t slot, AssetPlatform platform, AssetBackend backend) const
+	const AssetBlobDescriptor* FindBlob(uint32_t slot, AssetPlatform platform, EnumFlag<AssetBackend> backend) const
 	{
 		return FindBlob(AssetUtils::BlobType<T>(), slot, platform, backend);
 	}
@@ -53,7 +53,7 @@ private:
 
 	void BuildBlobTable();
 
-	const AssetBlobDescriptor* ResolveBlob(const AssetBlobType& type, uint32_t slot, AssetPlatform platform, AssetBackend backend) const;
+	const AssetBlobDescriptor* ResolveBlob(const AssetBlobType& type, uint32_t slot, AssetPlatform platform, EnumFlag<AssetBackend> backend) const;
 
 	AssetReference mReference;
 

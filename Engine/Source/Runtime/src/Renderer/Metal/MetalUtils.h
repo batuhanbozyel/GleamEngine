@@ -170,20 +170,20 @@ static constexpr MTLPixelFormat TextureFormatToMTLPixelFormat(TextureFormat form
     }
 }
 
-static constexpr MTLTextureUsage TextureUsageToMTLTextureUsage(TextureUsageFlagBits flags)
+static constexpr MTLTextureUsage TextureUsageToMTLTextureUsage(EnumFlag<TextureUsage> flags)
 {
 	MTLTextureUsage usage = MTLTextureUsageUnknown;
-    if (flags & TextureUsage_Sampled)
+    if (flags.Has(TextureUsage::Sampled))
     {
         usage |= MTLTextureUsageShaderRead;
     }
     
-    if (flags & TextureUsage_Storage)
+    if (flags.Has(TextureUsage::Storage))
     {
         usage |= MTLTextureUsageShaderWrite;
     }
     
-    if (flags & TextureUsage_Attachment)
+    if (flags.Has(TextureUsage::Attachment))
     {
         usage |= MTLTextureUsageRenderTarget;
     }

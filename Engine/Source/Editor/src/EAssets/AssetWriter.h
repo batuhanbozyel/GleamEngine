@@ -20,7 +20,7 @@ public:
 	uint32_t AddBlob(const void* data,
 					 uint64_t size,
 					 Gleam::AssetPlatform platform,
-					 Gleam::AssetBackend backend)
+					 Gleam::EnumFlag<Gleam::AssetBackend> backend)
 	{
 		return AddBlob(Gleam::AssetUtils::BlobType<T>(), data, size, platform, backend);
 	}
@@ -30,7 +30,7 @@ public:
 						const void* data,
 						uint64_t size,
 						Gleam::AssetPlatform platform,
-						Gleam::AssetBackend backend)
+						Gleam::EnumFlag<Gleam::AssetBackend> backend)
 	{
 		AddBlobVariant(Gleam::AssetUtils::BlobType<T>(), slot, data, size, platform, backend);
 	}
@@ -39,14 +39,14 @@ public:
 					 const void* data,
 					 uint64_t size,
 					 Gleam::AssetPlatform platform,
-					 Gleam::AssetBackend backend);
+					 Gleam::EnumFlag<Gleam::AssetBackend> backend);
 
 	void AddBlobVariant(const Gleam::AssetBlobType& type,
 						uint32_t slot,
 						const void* data,
 						uint64_t size,
 						Gleam::AssetPlatform platform,
-						Gleam::AssetBackend backend);
+						Gleam::EnumFlag<Gleam::AssetBackend> backend);
 
 	template<typename T>
 	void Write(const Gleam::Path& directory, const AssetItem& item, const T& metadata) const
@@ -65,7 +65,7 @@ private:
 		Gleam::AssetBlobType type;
 		uint32_t slot = 0;
 		Gleam::AssetPlatform platform = Gleam::AssetPlatform::Common;
-		Gleam::AssetBackend backend = Gleam::AssetBackend::Common;
+		Gleam::EnumFlag<Gleam::AssetBackend> backend = Gleam::AssetBackend::Common;
 	};
 	Gleam::TArray<DataBlob> mBlobs;
 

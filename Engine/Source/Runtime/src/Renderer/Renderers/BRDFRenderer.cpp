@@ -17,7 +17,7 @@ void BRDFRenderer::OnCreate(const RenderContext& context)
 		textureDesc.name = "BRDF LUT";
 		textureDesc.dimension = TextureDimension::Texture2D;
 		textureDesc.format = TextureFormat::R16G16B16A16_SFloat;
-		textureDesc.usage = TextureUsage_Storage | TextureUsage_Sampled;
+		textureDesc.usage = TextureUsage::Storage | TextureUsage::Sampled;
 		textureDesc.size = { BRDF_LUT_SIZE, BRDF_LUT_SIZE };
 		mBRDFLutTexture = context.device->CreateTexture(context.allocator, textureDesc);
 	}
@@ -32,7 +32,7 @@ void BRDFRenderer::OnCreate(const RenderContext& context)
 		textureDesc.name = "Multiscatter GGX Ess LUT";
 		textureDesc.dimension = TextureDimension::Texture2D;
 		textureDesc.format = TextureFormat::R16_SFloat;
-		textureDesc.usage = TextureUsage_Storage | TextureUsage_Sampled;
+		textureDesc.usage = TextureUsage::Storage | TextureUsage::Sampled;
 		textureDesc.size = { BRDF_LUT_SIZE, BRDF_LUT_SIZE };
 		mGGXEssLutTexture = context.device->CreateTexture(context.allocator, textureDesc);
 	}
@@ -47,7 +47,7 @@ void BRDFRenderer::OnCreate(const RenderContext& context)
 		textureDesc.name = "Multiscatter GGX EAvg LUT";
 		textureDesc.dimension = TextureDimension::Texture2D;
 		textureDesc.format = TextureFormat::R16_SFloat;
-		textureDesc.usage = TextureUsage_Storage | TextureUsage_Sampled;
+		textureDesc.usage = TextureUsage::Storage | TextureUsage::Sampled;
 		textureDesc.size = { BRDF_LUT_SIZE, 1 };
 		mGGXEAvgLutTexture = context.device->CreateTexture(context.allocator, textureDesc);
 	}

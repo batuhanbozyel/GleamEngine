@@ -57,6 +57,7 @@
 #include "Container/Pointer.h"
 #include "Container/String.h"
 #include "Container/Array.h"
+#include "Container/EnumFlag.h"
 #include "Container/Stack.h"
 #include "Container/Queue.h"
 #include "Container/RingBuffer.h"

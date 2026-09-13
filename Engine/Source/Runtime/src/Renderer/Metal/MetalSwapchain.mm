@@ -142,7 +142,7 @@ Texture MetalSwapchain::CreateSwapchainBuffer(uint32_t buffer)
     swapchainDesc.name = resourceName.str();
     swapchainDesc.dimension = TextureDimension::Texture2D;
     swapchainDesc.size = Size(mHandle.drawableSize.width, mHandle.drawableSize.height);
-    swapchainDesc.usage = TextureUsage_Attachment;
+    swapchainDesc.usage = TextureUsage::Attachment;
     swapchainDesc.format = MTLPixelFormatToTextureFormat(mHandle.pixelFormat);
     return Texture(swapchainDesc);
 }

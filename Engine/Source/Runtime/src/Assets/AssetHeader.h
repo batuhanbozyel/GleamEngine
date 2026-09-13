@@ -3,6 +3,7 @@
 #include "Core/Macro.h"
 #include "Container/Array.h"
 #include "Container/BinaryBuffer.h"
+#include "Container/EnumFlag.h"
 
 #include <Reflection/Reflection.h>
 
@@ -22,11 +23,11 @@ GENUM(AssetPlatform, "44595E67-4DF5-4CC2-A855-E618A7C6FD95", Serializable)
 	GITEM(Linux, "708BF6C3-6075-4EC2-AB4D-4CDCCC70763A")
 };
 
-GENUM(AssetBackend, "5DB6AC17-7C19-46F5-8FCB-73823F81A1D6", Serializable)
+GENUM(AssetBackend, "5DB6AC17-7C19-46F5-8FCB-73823F81A1D6", Serializable) : uint32_t
 {
-	GITEM(Common, "DEAB3C73-4459-482C-A816-EF221CE82F97"),
-	GITEM(DirectX, "5700379E-4363-4755-89AB-0B354F59D062"),
-	GITEM(Metal, "7F1C2BB5-41DF-4B90-BC85-8C74CBF23EB0")
+	GITEM(DirectX, "5700379E-4363-4755-89AB-0B354F59D062") = BIT(0),
+	GITEM(Metal, "7F1C2BB5-41DF-4B90-BC85-8C74CBF23EB0") = BIT(1),
+	GITEM(Common, "DEAB3C73-4459-482C-A816-EF221CE82F97") = 0xFFFFFFFF
 };
 
 GSTRUCT(AssetBlobType, "3E71C6A9-5D24-4B18-9C0F-8A6E2D53B417", Serializable, Version(1))
@@ -50,7 +51,7 @@ GSTRUCT(AssetBlobDescriptor, "F6A13231-A72D-4E98-9A04-86F068EBECB7", Serializabl
 	AssetPlatform platform = AssetPlatform::Common;
 
 	GFIELD("A005297D-78A2-40C5-BE40-521B138DEE74", Serializable)
-	AssetBackend backend = AssetBackend::Common;
+	EnumFlag<AssetBackend> backend = AssetBackend::Common;
 
 	GFIELD("E56AC771-131C-4189-B9CB-C7819F33F73C", Serializable)
 	BufferRange range;

@@ -30,7 +30,7 @@ const TString& Asset::GetName() const
 	return mHeader.name;
 }
 
-const AssetBlobDescriptor* Asset::FindBlob(const AssetBlobType& type, uint32_t slot, AssetPlatform platform, AssetBackend backend) const
+const AssetBlobDescriptor* Asset::FindBlob(const AssetBlobType& type, uint32_t slot, AssetPlatform platform, EnumFlag<AssetBackend> backend) const
 {
 	const auto blob = ResolveBlob(type, slot, platform, backend);
 	GLEAM_ASSERT(blob != nullptr, "Asset data blob {0}[{1}] has no variant for this target, Asset: {2} Version: {3}", type.guid.ToString(), slot, mHeader.name, type.version);
@@ -58,7 +58,7 @@ void Asset::BuildBlobTable()
 	}
 }
 
-const AssetBlobDescriptor* Asset::ResolveBlob(const AssetBlobType& type, uint32_t slot, AssetPlatform platform, AssetBackend backend) const
+const AssetBlobDescriptor* Asset::ResolveBlob(const AssetBlobType& type, uint32_t slot, AssetPlatform platform, EnumFlag<AssetBackend> backend) const
 {
 	auto it = mBlobTable.find(type.guid);
 	if (it == mBlobTable.end() || slot >= it->second.size())
@@ -69,7 +69,7 @@ const AssetBlobDescriptor* Asset::ResolveBlob(const AssetBlobType& type, uint32_
 	for (auto index : it->second[slot])
 	{
 		const auto& blob = mHeader.dataTable.blobs[index];
-		if (blob.type.version == type.version && blob.platform == platform && blob.backend == backend)
+		if (blob.type.version == type.version && blob.platform == platform && blob.backend.Has(backend))
 		{
 			return &blob;
 		}
