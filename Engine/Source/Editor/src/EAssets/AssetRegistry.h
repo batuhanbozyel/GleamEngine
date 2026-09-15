@@ -3,7 +3,10 @@
 #include "Core/GUID.h"
 #include "IO/Path.h"
 
+#include <Reflection/Reflection.h>
+#ifndef __GLEAM_REFLECTION__
 #include <Runtime.Reflection.generated.h>
+#endif
 
 namespace GEditor {
 

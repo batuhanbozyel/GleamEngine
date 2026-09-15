@@ -1,6 +1,6 @@
 #pragma once
 #include "Renderer/Renderer.h"
-#include "Renderer/ViewMode.h"
+#include "ViewMode.h"
 
 namespace GEditor {
 

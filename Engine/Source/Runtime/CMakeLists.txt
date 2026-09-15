@@ -159,27 +159,18 @@ foreach(INCLUDE_DIR ${INCLUDE_DIRS})
     list(APPEND REFLECTION_COMPILER_ARGS "--extra-arg=-I${INCLUDE_DIR}")
 endforeach()
 
-set(REFLECTION_OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime.Reflection.generated.h")
-set(REFLECTION_CLI "${CMAKE_SOURCE_DIR}/Tools/CppReflection")
-if (WIN32)
-    set(REFLECTION_CLI "${REFLECTION_CLI}.exe")
-endif()
+# Reflection compiler arguments and database directory are shared with the other modules
+set(GLEAM_REFLECTION_COMPILER_ARGS ${REFLECTION_COMPILER_ARGS} CACHE INTERNAL "Reflection compiler arguments shared by every module")
+set(GLEAM_REFLECTION_BINARY_DIR ${CMAKE_BINARY_DIR}/Reflection CACHE INTERNAL "Directory holding the per module reflection databases")
+file(MAKE_DIRECTORY ${GLEAM_REFLECTION_BINARY_DIR})
 
-add_custom_command(
-    OUTPUT ${REFLECTION_OUTPUT}
-    COMMAND ${REFLECTION_CLI}
-        "--module=Runtime"
-        "--header-dir=${CMAKE_CURRENT_SOURCE_DIR}/src"
-        "--binary-dir=${CMAKE_SOURCE_DIR}"
-        ${REFLECTION_COMPILER_ARGS}
-        ${HEADER_FILES}
-    DEPENDS ${HEADER_FILES} ${REFLECTION_CLI}
-    COMMENT "Generating reflection data from header files..."
-    COMMAND_EXPAND_LISTS
-    VERBATIM
+GLEAM_ADD_REFLECTION_MODULE(
+    NAME Runtime
+    SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src
+    BINARY_DIR ${GLEAM_REFLECTION_BINARY_DIR}
+    HEADERS ${HEADER_FILES}
+    COMPILER_ARGS ${REFLECTION_COMPILER_ARGS}
 )
-
-add_custom_target(RuntimeReflection DEPENDS ${REFLECTION_OUTPUT})
 add_dependencies(Runtime RuntimeReflection)
 
 # Precompile shaders
@@ -240,6 +231,12 @@ endif()
 
 set_target_properties (
     RuntimeShaders
-    RuntimeReflection
     PROPERTIES FOLDER CMakeCustomRules
 )
+
+if (TARGET RuntimeNativeShaders)
+    set_target_properties (
+        RuntimeNativeShaders
+        PROPERTIES FOLDER CMakeCustomRules
+    )
+endif()

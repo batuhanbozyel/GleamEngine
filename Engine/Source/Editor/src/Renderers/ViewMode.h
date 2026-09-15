@@ -9,11 +9,6 @@
 
 namespace Gleam {
 
-// TODO: Move ViewMode to the Editor project — it is an editor-only debug visualization concept.
-// It lives in Runtime for now only because reflection is single-module/Runtime-only (one global
-// IDatabase + index-based generated accessors, like RenderPath in Renderer/RenderSystem.h). Once
-// the reflection system is refactored to replace the binary database with baked headers
-// (hash-based, multi-module), relocate this enum to the Editor alongside ViewModeRenderer.
 GENUM(ViewMode, "984C1E2A-2798-4A6A-97A7-517BCE9E77D0", PrettyName("View Mode"))
 {
 	GITEM(Lit, "1B47DE32-C98D-4B62-A568-BB0FB57CD2E0", PrettyName("Lit")),
