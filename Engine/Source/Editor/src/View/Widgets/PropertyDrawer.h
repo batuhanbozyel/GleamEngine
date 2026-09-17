@@ -32,6 +32,8 @@ public:
 
 	static void DrawEnumOptions(const Gleam::TStringView label, const Gleam::Reflection::EnumDescription& enumDesc, void* value, float columnWidth = 100.0f);
 
+	static void DrawEnumFlagOptions(const Gleam::TStringView label, const Gleam::Reflection::ClassDescription& classDesc, void* value, float columnWidth = 100.0f);
+
 	static void DrawClassFields(void* obj, const Gleam::Reflection::ClassDescription& classDesc, float columnWidth = 100.0f);
 
 	static void DrawClassFields(Gleam::TArrayView<void*> instances, const Gleam::Reflection::ClassDescription& classDesc, float columnWidth = 100.0f);

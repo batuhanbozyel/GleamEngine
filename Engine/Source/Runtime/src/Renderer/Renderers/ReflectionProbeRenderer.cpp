@@ -46,7 +46,7 @@ void ReflectionProbeRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBla
 		TextureDescriptor textureDesc;
 		textureDesc.name = "GlobalProbe";
 		textureDesc.size = (float)globalProbe.resolution;
-		textureDesc.usage |= TextureUsage_Storage;
+		textureDesc.usage |= TextureUsage::Storage;
 		textureDesc.dimension = TextureDimension::TextureCube;
 		textureDesc.format = TextureFormat::R16G16B16A16_SFloat;
 		textureDesc.useMipMap = true;
@@ -130,7 +130,7 @@ void ReflectionProbeRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBla
 		TextureDescriptor textureDesc;
 		textureDesc.name = "DiffuseIrradianceMap";
 		textureDesc.size = (float)Math::DivideRoundingUp((uint32_t)globalProbe.resolution, 16u);
-		textureDesc.usage |= TextureUsage_Storage;
+		textureDesc.usage |= TextureUsage::Storage;
 		textureDesc.dimension = TextureDimension::TextureCube;
 		textureDesc.format = TextureFormat::R16G16B16A16_SFloat;
 		passData.targetTexture = builder.CreateTexture(textureDesc);
@@ -169,7 +169,7 @@ void ReflectionProbeRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBla
 		TextureDescriptor textureDesc;
 		textureDesc.name = "SpecularRadianceMap";
 		textureDesc.size = (float)globalProbe.resolution;
-		textureDesc.usage |= TextureUsage_Storage;
+		textureDesc.usage |= TextureUsage::Storage;
 		textureDesc.dimension = TextureDimension::TextureCube;
 		textureDesc.format = TextureFormat::R16G16B16A16_SFloat;
 		textureDesc.useMipMap = true;

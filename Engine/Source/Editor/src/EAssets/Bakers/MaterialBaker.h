@@ -12,7 +12,7 @@ public:
 
 	virtual void Bake(const Gleam::Path& directory, const AssetItem& item) const override;
     
-    virtual Gleam::TString Filename() const override;
+    virtual Gleam::TString Name() const override;
     
     virtual Gleam::Guid TypeGuid() const override;
 
@@ -32,7 +32,7 @@ public:
 
 	virtual void Bake(const Gleam::Path& directory, const AssetItem& item) const override;
 
-	virtual Gleam::TString Filename() const override;
+	virtual Gleam::TString Name() const override;
     
     virtual Gleam::Guid TypeGuid() const override;
 

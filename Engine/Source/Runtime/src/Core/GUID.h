@@ -70,6 +70,16 @@ public:
 		*this = Guid(guid);
 		return *this;
 	}
+
+	bool operator==(const Guid& rhs) const noexcept
+	{
+		return Reflection::Attribute::Guid::operator==(rhs);
+	}
+
+	bool operator!=(const Guid& rhs) const noexcept
+	{
+		return !(*this == rhs);
+	}
 };
 
 inline bool operator==(const Reflection::Attribute::Guid& lhs, const Guid& rhs)

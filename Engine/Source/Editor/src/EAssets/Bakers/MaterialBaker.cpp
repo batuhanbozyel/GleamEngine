@@ -1,8 +1,8 @@
 #include "MaterialBaker.h"
 #include "EAssets/AssetRegistry.h"
+#include "EAssets/AssetWriter.h"
 
 #include "Assets/Asset.h"
-#include "Serialization/BinarySerializer.h"
 
 using namespace GEditor;
 
@@ -10,19 +10,16 @@ using namespace GEditor;
 MaterialBaker::MaterialBaker(const Gleam::MaterialDescriptor& descriptor)
 	: mDescriptor(descriptor)
 {
-	
+
 }
 
 void MaterialBaker::Bake(const Gleam::Path& directory, const AssetItem& item) const
 {
-	auto filename = Gleam::TWString(item.reference.guid.ToString()) + Gleam::Asset::Extension();
-	auto file = Gleam::Filesystem::Create(directory / filename, Gleam::FileType::Binary);
-
-	auto serializer = Gleam::BinarySerializer();
-	serializer.Serialize(mDescriptor, file->GetStream());
+	BinaryAssetWriter writer;
+	writer.Write(directory, item, mDescriptor);
 }
 
-Gleam::TString MaterialBaker::Filename() const
+Gleam::TString MaterialBaker::Name() const
 {
     return mDescriptor.name;
 }
@@ -46,14 +43,11 @@ MaterialInstanceBaker::MaterialInstanceBaker(const Gleam::MaterialInstanceDescri
 
 void MaterialInstanceBaker::Bake(const Gleam::Path& directory, const AssetItem& item) const
 {
-	auto filename = Gleam::TWString(item.reference.guid.ToString()) + Gleam::Asset::Extension();
-	auto file = Gleam::Filesystem::Create(directory / filename, Gleam::FileType::Binary);
-
-	auto serializer = Gleam::BinarySerializer();
-	serializer.Serialize(mDescriptor, file->GetStream());
+	BinaryAssetWriter writer;
+	writer.Write(directory, item, mDescriptor);
 }
 
-Gleam::TString MaterialInstanceBaker::Filename() const
+Gleam::TString MaterialInstanceBaker::Name() const
 {
 	return mDescriptor.name;
 }

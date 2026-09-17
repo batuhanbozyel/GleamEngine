@@ -2,7 +2,6 @@
 #include "Bakers/TextureBaker.h"
 
 #include "Tools/TextureTools.h"
-#include "Renderer/Texture.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
@@ -72,26 +71,23 @@ bool TextureSource::Import(const Gleam::Path& path, const ImportSettings& settin
 		return false;
 	}
 	
-	Gleam::Texture2DDescriptor descriptor;
-	descriptor.format = texture.format;
-	descriptor.name = path.Stem();
-	descriptor.size.width = static_cast<float>(texture.width);
-	descriptor.size.height = static_cast<float>(texture.height);
-	descriptor.dimension = Gleam::TextureDimension::Texture2D;
-	descriptor.useMipMap = settings.generateMips;
-
+	TextureData textureData;
 	if (settings.generateMips)
 	{
-		uint32_t mipLevels = Gleam::Texture::CalculateMipLevels(descriptor.size);
-		descriptor.subresources = TextureTools::CalculateSubresourceRanges(texture, mipLevels);
-		descriptor.pixels = TextureTools::GenerateMipmaps(texture);
+		textureData = TextureTools::GenerateMipmaps(texture);
 	}
 	else
 	{
-		descriptor.subresources = TextureTools::CalculateSubresourceRanges(texture, 1);
-		descriptor.pixels = Gleam::BinaryBuffer(texture.pixels, descriptor.subresources[0].size);
+		textureData.subresources = TextureTools::CalculateSubresourceRanges(texture, 1);
+		textureData.pixels = Gleam::BinaryBuffer(texture.pixels, textureData.subresources[0].size);
 	}
-	EmplaceBaker<TextureBaker>(descriptor);
+
+	textureData.name = path.Stem();
+	textureData.format = texture.format;
+	textureData.size.width = static_cast<float>(texture.width);
+	textureData.size.height = static_cast<float>(texture.height);
+
+	EmplaceBaker<TextureBaker>(std::move(textureData));
 	
 	stbi_image_free(texture.pixels);
 	return true;

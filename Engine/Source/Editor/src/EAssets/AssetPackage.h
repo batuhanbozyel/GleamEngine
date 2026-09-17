@@ -39,9 +39,9 @@ public:
 	template<BakerType T, typename ... Args>
 	Gleam::RefCounted<T> EmplaceBaker(Args&& ... args)
 	{
-		auto baker = CreateRef<T>(std::forward<Args>(args)...);
+		auto baker = Gleam::CreateRef<T>(std::forward<Args>(args)...);
 		mBakers.emplace_back(baker);
-		mRegistry->RegisterAsset(baker->Filename(), baker->TypeGuid());
+		mRegistry->RegisterAsset(baker->Name(), baker->TypeGuid());
 		return baker;
 	}
 	

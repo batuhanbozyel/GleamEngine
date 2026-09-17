@@ -248,7 +248,7 @@ GSTRUCT(RayTracingPipelineStateDescriptor, "7DE7283B-C509-4B81-8B79-9D6AE400D78A
 	uint32_t maxAttributeSize = 8;	// bytes, default = float2 barycentrics
 };
 
-namespace Utils {
+namespace RenderUtils {
 
 static constexpr uint32_t PrimitiveTopologyVertexCount(PrimitiveTopology topology)
 {
@@ -262,7 +262,7 @@ static constexpr uint32_t PrimitiveTopologyVertexCount(PrimitiveTopology topolog
     }
 }
 
-} // namespace Utils
+} // namespace RenderUtils
 
 } // namespace Gleam
 

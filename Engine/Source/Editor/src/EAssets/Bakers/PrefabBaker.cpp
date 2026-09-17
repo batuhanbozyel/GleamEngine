@@ -22,7 +22,7 @@ void PrefabBaker::Bake(const Gleam::Path& directory, const AssetItem& item) cons
 	prefab.Serialize(mWorld->GetEntityManager(), file->GetStream());
 }
 
-Gleam::TString PrefabBaker::Filename() const
+Gleam::TString PrefabBaker::Name() const
 {
 	return mWorld->name;
 }

@@ -1,6 +1,7 @@
 #pragma once
 #include "Asset.h"
 #include "AssetReference.h"
+#include "AssetStorage.h"
 
 #include "Core/Globals.h"
 #include "Core/Subsystem.h"
@@ -10,12 +11,13 @@
 #include "IO/File.h"
 #include "IO/Filesystem.h"
 
-#include "Serialization/BinarySerializer.h"
-
-#include <mutex>
 #include <entt/core/type_info.hpp>
 #include <entt/meta/resolve.hpp>
 #include <entt/meta/factory.hpp>
+
+#ifndef __GLEAM_REFLECTION__
+#include <Runtime.Reflection.generated.h>
+#endif
 
 namespace Gleam {
 
@@ -91,19 +93,9 @@ public:
 	template<typename T>
 	T LoadDescriptor(const AssetReference& ref) const
 	{
-		auto it = mAssetPaths.find(ref);
-		if (it != mAssetPaths.end())
-		{
-			auto fullpath = Globals::ProjectContentDirectory / it->second;
-			auto file = Filesystem::OpenRead(fullpath, FileType::Binary);
-			auto serializer = BinarySerializer();
-			auto asset = serializer.Deserialize<T>(file->GetStream());
-			return asset;
-		}
-
-		GLEAM_CORE_ERROR("Asset could not located for GUID: {0}", ref.guid.ToString());
-		GLEAM_ASSERT(false);
-		return T();
+		T descriptor{};
+		mStorage->ReadAsset(ref, Reflection::GetClass<T>(), &descriptor);
+		return descriptor;
 	}
 
 	template<AssetType T, typename Desc>
@@ -114,22 +106,26 @@ public:
 	
 	const Path& GetAssetPath(const AssetReference& ref) const;
 
+	AssetStorage* GetStorage() const
+	{
+		return mStorage.get();
+	}
+
 private:
-	
+
 	template<AssetType T, typename Desc>
 	static T* CreateAsset(const AssetReference& ref)
 	{
 		static auto instance = Globals::GameInstance->GetSubsystem<AssetManager>();
-		return new T(instance->LoadDescriptor<Desc>(ref));
+
+		Desc descriptor{};
+		const auto header = instance->mStorage->ReadAsset(ref, Reflection::GetClass<Desc>(), &descriptor);
+		return new T(ref, header, descriptor);
 	}
 
-	void EmplaceAssetPath(const Path& path);
-
-	std::mutex mMutex;
-	
 	HashMap<AssetReference, Scope<Asset>> mAssetCache;
-    
-    HashMap<AssetReference, Path> mAssetPaths;
+
+	Scope<AssetStorage> mStorage;
 
 };
 

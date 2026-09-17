@@ -178,7 +178,7 @@ Texture GraphicsDevice::CreateTexture(GPUAllocator* allocator, const TextureDesc
 	texture.mHandle = static_cast<DirectXDevice*>(this)->CreateTexture(allocator, descriptor, D3D12_BARRIER_LAYOUT_UNDEFINED);
 
 	const auto& resourceDesc = static_cast<ID3D12Resource2*>(texture.mHandle)->GetDesc1();
-	if (descriptor.usage & TextureUsage_Attachment)
+	if (descriptor.usage.Has(TextureUsage::Attachment))
 	{
 		texture.mView = static_cast<DirectXDevice*>(this)->CreateRenderTargetView(static_cast<ID3D12Resource*>(texture.mHandle), resourceDesc);
 		texture.mSliceViews = static_cast<DirectXDevice*>(this)->CreateRenderTargetViews(static_cast<ID3D12Resource*>(texture.mHandle), resourceDesc);
@@ -744,7 +744,7 @@ void GraphicsDevice::Dispose(GPUAllocator* allocator, Texture& texture, BarrierS
 		static_cast<DirectXDevice*>(this)->ReleaseResourceView(srv);
 
 		// Release main attachment view
-		if (usage & TextureUsage_Attachment)
+		if (usage.Has(TextureUsage::Attachment))
 		{
 			if (Utils::IsDepthFormat(format))
 			{
@@ -1241,7 +1241,7 @@ ID3D12CommandSignature* DirectXDevice::CreateIndirectCommandSignature(D3D12_INDI
 ID3D12Resource* DirectXDevice::CreateTexture(GPUAllocator* allocator, const TextureDescriptor& descriptor, D3D12_BARRIER_LAYOUT initialLayout)
 {
 	D3D12_RESOURCE_FLAGS flags = D3D12_RESOURCE_FLAG_NONE;
-	if (descriptor.usage & TextureUsage_Attachment)
+	if (descriptor.usage.Has(TextureUsage::Attachment))
 	{
 		if (Utils::IsColorFormat(descriptor.format))
 		{
@@ -1253,7 +1253,7 @@ ID3D12Resource* DirectXDevice::CreateTexture(GPUAllocator* allocator, const Text
 		}
 	}
 
-	if (descriptor.usage & TextureUsage_Storage && Utils::IsColorFormat(descriptor.format))
+	if (descriptor.usage.Has(TextureUsage::Storage) && Utils::IsColorFormat(descriptor.format))
 	{
 		flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
 	}
@@ -1688,13 +1688,13 @@ ShaderResourceIndex DirectXDevice::CreateResourceView(const Texture& texture)
 	auto srvHandle = mCbvSrvUavHeap.Allocate();
 
 	// SRV
-	if (texture.GetDescriptor().usage & TextureUsage_Sampled)
+	if (texture.GetDescriptor().usage.Has(TextureUsage::Sampled))
 	{
 		static_cast<ID3D12Device10*>(mHandle)->CreateShaderResourceView(static_cast<ID3D12Resource*>(texture.GetHandle()), &srvDesc, srvHandle);
 	}
 
 	// UAV
-	if (texture.GetDescriptor().usage & TextureUsage_Storage && Utils::IsColorFormat(texture.GetDescriptor().format))
+	if (texture.GetDescriptor().usage.Has(TextureUsage::Storage) && Utils::IsColorFormat(texture.GetDescriptor().format))
 	{
 		auto uavHandle = srvHandle;
 		uavHandle.ptr += (UINT64)(mCbvSrvUavHeap.size * CBV_SRV_HEAP_SIZE);

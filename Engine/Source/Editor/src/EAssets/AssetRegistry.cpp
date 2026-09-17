@@ -73,6 +73,21 @@ const AssetItem* AssetRegistry::FindAsset(const Gleam::Guid& guid) const
 
 const AssetItem& AssetRegistry::GetAsset(const Gleam::Path& path, const Gleam::Guid& type) const
 {
+	const auto item = FindAsset(path, type);
+	if (item == nullptr)
+	{
+		auto relPath = path.IsRelative() ? path : Gleam::Filesystem::Relative(path, mAssetDirectory);
+		relPath.MakePreferred();
+
+		GLEAM_ERROR("Asset could not located for path: {0}", relPath.String());
+		static AssetItem invalidAsset;
+		return invalidAsset;
+	}
+	return *item;
+}
+
+const AssetItem* AssetRegistry::FindAsset(const Gleam::Path& path, const Gleam::Guid& type) const
+{
 	auto relPath = path.IsRelative() ? path : Gleam::Filesystem::Relative(path, mAssetDirectory);
 	relPath.MakePreferred();
 
@@ -83,12 +98,9 @@ const AssetItem& AssetRegistry::GetAsset(const Gleam::Path& path, const Gleam::G
 		{
 			if (item.type == type)
 			{
-				return item;
+				return &item;
 			}
 		}
 	}
-
-	GLEAM_ERROR("Asset could not located for path: {0}", relPath.String());
-	static AssetItem invalidAsset;
-	return invalidAsset;
+	return nullptr;
 }

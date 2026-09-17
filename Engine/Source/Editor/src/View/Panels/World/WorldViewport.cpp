@@ -12,6 +12,8 @@
 #include "Undo/UndoSystem.h"
 #include "Renderers/InfiniteGridRenderer.h"
 #include "Renderers/ViewModeRenderer.h"
+
+#include <Editor.Reflection.generated.h>
 #include "Renderers/SelectionOutlineRenderer.h"
 
 #include "Renderer/RenderSystem.h"

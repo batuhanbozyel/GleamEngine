@@ -3,7 +3,10 @@
 #include "Core/GUID.h"
 #include "IO/Path.h"
 
+#include <Reflection/Reflection.h>
+#ifndef __GLEAM_REFLECTION__
 #include <Runtime.Reflection.generated.h>
+#endif
 
 namespace GEditor {
 
@@ -50,6 +53,8 @@ public:
 	}
 
 	const AssetItem& GetAsset(const Gleam::Path& path, const Gleam::Guid& type) const;
+
+	const AssetItem* FindAsset(const Gleam::Path& path, const Gleam::Guid& type) const;
 
 private:
 

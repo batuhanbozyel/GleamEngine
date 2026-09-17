@@ -6,9 +6,22 @@ namespace GEditor {
 
 struct RawMesh;
 
+struct MeshData
+{
+	Gleam::TString name;
+	Gleam::BinaryBuffer buffer;
+	Gleam::BufferRange indices;
+	Gleam::BufferRange positions;
+	Gleam::BufferRange interleavedVertices;
+	Gleam::BufferRange meshlets;
+	Gleam::BufferRange meshletVertices;
+	Gleam::BufferRange meshletTriangleIndices;
+	Gleam::TArray<Gleam::SubmeshDescriptor> submeshes;
+};
+
 namespace MeshTools {
 
-Gleam::MeshDescriptor CombineMeshes(const Gleam::TArray<RawMesh>& meshes);
+MeshData CombineMeshes(const Gleam::TArray<RawMesh>& meshes);
 Gleam::TArray<Gleam::InterleavedMeshVertex> InterleaveMeshVertices(const RawMesh& mesh);
 Gleam::BoundingBox CalculateBounds(const Gleam::TArray<Gleam::Float3>& positions);
 

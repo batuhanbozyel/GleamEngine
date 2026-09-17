@@ -5,8 +5,6 @@ using namespace Gleam;
 
 Entity& Entity::GetParentEntity() const
 {
-	GLEAM_ASSERT(IsValid(), "Entity is invalid!");
-	GLEAM_ASSERT(HasComponent<Entity>(), "Entity does not have the component!");
 	if constexpr (Reflection::Traits::IsReflected<Entity>::value)
 	{
 		const auto& classDesc = Reflection::GetClass<Entity>();
@@ -20,8 +18,6 @@ Entity& Entity::GetParentEntity() const
 
 Entity& Entity::GetChildEntity(EntityHandle child) const
 {
-	GLEAM_ASSERT(IsValid(), "Entity is invalid!");
-	GLEAM_ASSERT(HasComponent<Entity>(), "Entity does not have the component!");
 	if constexpr (Reflection::Traits::IsReflected<Entity>::value)
 	{
 		const auto& classDesc = Reflection::GetClass<Entity>();

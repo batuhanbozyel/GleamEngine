@@ -13,25 +13,33 @@ class Mesh : public Asset
 	friend class RayTracingScene;
 public:
 
-    Mesh(const MeshDescriptor& descriptor);
+	Mesh(const AssetReference& reference, const AssetHeader& header, const MeshDescriptor& descriptor);
 
 	~Mesh();
 
-    const Buffer& GetBuffer() const;
+	void RequestLod(uint32_t lod);
 
-    const BufferRange& GetPositions() const;
+	uint32_t GetActiveLod() const;
 
-    const BufferRange& GetInterleavedVertices() const;
+	uint32_t GetLodCount() const;
 
-    const BufferRange& GetIndices() const;
+	bool IsLodResident(uint32_t lod) const;
 
-    const BufferRange& GetMeshlets() const;
+	const Buffer& GetBuffer() const;
 
-    const BufferRange& GetMeshletVertices() const;
+	const BufferRange& GetPositions() const;
 
-    const BufferRange& GetMeshletTriangleIndices() const;
+	const BufferRange& GetInterleavedVertices() const;
 
-    const TArray<SubmeshDescriptor>& GetSubmeshes() const;
+	const BufferRange& GetIndices() const;
+
+	const BufferRange& GetMeshlets() const;
+
+	const BufferRange& GetMeshletVertices() const;
+
+	const BufferRange& GetMeshletTriangleIndices() const;
+
+	const TArray<SubmeshDescriptor>& GetSubmeshes() const;
 
 	const SubmeshDescriptor& GetSubmesh(uint32_t index) const;
 
@@ -39,14 +47,9 @@ public:
 
 protected:
 
-    Buffer mBuffer;
-    BufferRange mPositions;
-    BufferRange mInterleavedVertices;
-    BufferRange mIndices;
-    BufferRange mMeshlets;
-    BufferRange mMeshletVertices;
-    BufferRange mMeshletTriangleIndices;
-    TArray<SubmeshDescriptor> mSubmeshes;
+	MeshDescriptor mDescriptor;
+	TArray<Buffer> mLods;
+	uint32_t mActiveLod = 0;
 	TArray<BottomLevelAccelerationStructure> mBLASes;
 };
 

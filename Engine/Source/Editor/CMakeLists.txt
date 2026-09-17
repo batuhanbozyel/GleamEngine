@@ -40,6 +40,13 @@ else()
 endif()
 list(APPEND SOURCE_FILES ${SHADER_FILES})
 
+# Editor reflection module
+file(GLOB_RECURSE HEADER_FILES
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/*.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/*.hpp
+)
+list(FILTER HEADER_FILES EXCLUDE REGEX ".*Reflection\\.generated\\.h$")
+
 add_executable(Editor WIN32 MACOSX_BUNDLE ${SOURCE_FILES})
 target_include_directories(Editor PRIVATE ${INCLUDE_DIRS})
 target_link_directories(Editor PRIVATE ${CMAKE_BINARY_DIR}/$<CONFIG>)
@@ -60,6 +67,33 @@ else()
 endif()
 
 add_dependencies(Editor Runtime MikkTSpace meshoptimizer)
+
+# CppReflection
+set(EDITOR_REFLECTION_COMPILER_ARGS ${GLEAM_REFLECTION_COMPILER_ARGS} "--extra-arg=-I${CMAKE_CURRENT_SOURCE_DIR}/src")
+foreach(INCLUDE_DIR ${INCLUDE_DIRS})
+    if (IS_ABSOLUTE ${INCLUDE_DIR})
+        list(APPEND EDITOR_REFLECTION_COMPILER_ARGS "--extra-arg=-I${INCLUDE_DIR}")
+    endif()
+endforeach()
+
+GLEAM_ADD_REFLECTION_MODULE(
+    NAME Editor
+    SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src
+    BINARY_DIR ${GLEAM_REFLECTION_BINARY_DIR}
+    HEADERS ${HEADER_FILES}
+    DEPENDS Runtime
+    COMPILER_ARGS ${EDITOR_REFLECTION_COMPILER_ARGS}
+)
+add_dependencies(EditorReflection RuntimeReflection)
+add_dependencies(Editor EditorReflection)
+
+# The application loads every module's types from one linked database
+GLEAM_LINK_REFLECTION_MODULES(
+    OUTPUT ${CMAKE_SOURCE_DIR}/Gleam.Reflection.db
+    BINARY_DIR ${GLEAM_REFLECTION_BINARY_DIR}
+    MODULES Runtime Editor
+)
+add_dependencies(Editor ReflectionLink)
 
 target_compile_definitions(
     Editor
@@ -94,5 +128,6 @@ add_dependencies(Editor EditorShaders)
 
 set_target_properties(
     EditorShaders
+    EditorReflection
     PROPERTIES FOLDER CMakeCustomRules
 )

@@ -5,6 +5,8 @@
 
 #include "Core/Globals.h"
 #include "Core/Application.h"
+#include "Container/EnumFlag.h"
+#include "Serialization/ReflectionUtils.h"
 
 #include <imgui.h>
 #include <imgui_internal.h>
@@ -46,7 +48,8 @@ static bool IsMultiEditableClass(const Gleam::Reflection::ClassDescription& clas
 	// TArray and TString own heap storage, mirroring them onto another instance needs a real copy
 	if (classDesc.IsTemplate())
 	{
-		return false;
+		const auto enumFlagName = QualifiedNameWithoutTemplateDeclaration(Gleam::Reflection::GetClass<Gleam::EnumFlag<Gleam::EnumFlagPlaceholder>>().ResolveQualifiedName());
+		return QualifiedNameWithoutTemplateDeclaration(classDesc.ResolveQualifiedName()) == enumFlagName;
 	}
 
 	for (const auto& baseClass : classDesc.ResolveBaseClasses())
@@ -195,6 +198,13 @@ const Gleam::HashMap<Gleam::TStringView, PropertyDrawer::DrawFunction>& Property
 			[](const Gleam::TStringView label, void* obj, const Gleam::Reflection::ClassDescription& classDesc, float columnWidth)
 		{
 			DrawTextControl(label, Gleam::Reflection::Get<Gleam::Guid>(obj).ToString(), columnWidth);
+		};
+
+		const auto enumFlagName = QualifiedNameWithoutTemplateDeclaration(Gleam::Reflection::GetClass<Gleam::EnumFlag<Gleam::EnumFlagPlaceholder>>().ResolveQualifiedName());
+		customDrawers[enumFlagName] =
+			[](const Gleam::TStringView label, void* obj, const Gleam::Reflection::ClassDescription& classDesc, float columnWidth)
+		{
+			DrawEnumFlagOptions(label, classDesc, obj, columnWidth);
 		};
 
 		const auto arrayName = QualifiedNameWithoutTemplateDeclaration(Gleam::Reflection::GetClass<Gleam::TArray<uint8_t>>().ResolveQualifiedName());
@@ -572,6 +582,15 @@ void PropertyDrawer::DrawTextControl(const Gleam::TStringView label, const Gleam
 	ImGui::PopID();
 }
 
+static Gleam::TStringView ResolveCaseName(const Gleam::Reflection::EnumCaseDescription& enumCase)
+{
+	if (enumCase.HasAttribute<Gleam::Reflection::Attribute::PrettyName>())
+	{
+		return enumCase.GetAttribute<Gleam::Reflection::Attribute::PrettyName>()->name;
+	}
+	return enumCase.ResolveName();
+}
+
 void PropertyDrawer::DrawEnumOptions(const Gleam::TStringView label, const Gleam::Reflection::EnumDescription& enumDesc, void* value, float columnWidth)
 {
 	ImGuiIO& io = ImGui::GetIO();
@@ -602,19 +621,9 @@ void PropertyDrawer::DrawEnumOptions(const Gleam::TStringView label, const Gleam
 		{
 			if (item.Value() == currentValue)
 			{
-				if (item.HasAttribute<Gleam::Reflection::Attribute::PrettyName>())
-				{
-					auto prettyName = item.GetAttribute<Gleam::Reflection::Attribute::PrettyName>();
-					auto nameLength = strlen(prettyName->name);
-					std::memcpy(previewBuffer, prettyName->name, nameLength);
-					previewBuffer[nameLength] = '\0';
-				}
-				else
-				{
-					auto itemLabel = item.ResolveName();
-					std::memcpy(previewBuffer, itemLabel.data(), itemLabel.size());
-					previewBuffer[itemLabel.size()] = '\0';
-				}
+				const auto itemLabel = ResolveCaseName(item);
+				std::memcpy(previewBuffer, itemLabel.data(), itemLabel.size());
+				previewBuffer[itemLabel.size()] = '\0';
 				break;
 			}
 		}
@@ -627,19 +636,9 @@ void PropertyDrawer::DrawEnumOptions(const Gleam::TStringView label, const Gleam
 			bool isSelected = *static_cast<int*>(value) == item.Value();
 
 			char itemBuffer[64];
-			if (item.HasAttribute<Gleam::Reflection::Attribute::PrettyName>())
-			{
-				auto prettyName = item.GetAttribute<Gleam::Reflection::Attribute::PrettyName>();
-				auto nameLength = strlen(prettyName->name);
-				std::memcpy(itemBuffer, prettyName->name, nameLength);
-				itemBuffer[nameLength] = '\0';
-			}
-			else
-			{
-				auto itemLabel = item.ResolveName();
-				std::memcpy(itemBuffer, itemLabel.data(), itemLabel.size());
-				itemBuffer[itemLabel.size()] = '\0';
-			}
+			const auto itemLabel = ResolveCaseName(item);
+			std::memcpy(itemBuffer, itemLabel.data(), itemLabel.size());
+			itemBuffer[itemLabel.size()] = '\0';
 
 			if (ImGui::Selectable(itemBuffer, isSelected))
 			{
@@ -663,6 +662,78 @@ void PropertyDrawer::DrawEnumOptions(const Gleam::TStringView label, const Gleam
 		ImGui::EndCombo();
 	}
 	
+	ImGui::PopItemWidth();
+	ImGui::SameLine();
+
+	ImGui::PopStyleVar();
+	ImGui::Columns(1);
+
+	ImGui::PopID();
+}
+
+void PropertyDrawer::DrawEnumFlagOptions(const Gleam::TStringView label,
+										 const Gleam::Reflection::ClassDescription& classDesc,
+										 void* value,
+										 float columnWidth)
+{
+	const auto enumDesc = Gleam::ReflectionUtils::ResolveFlagEnum(classDesc);
+	const auto size = classDesc.GetSize();
+	auto mask = Gleam::ReflectionUtils::ReadFlagMask(value, size);
+
+	char buffer[64];
+	std::memcpy(buffer, label.data(), label.size());
+	buffer[label.size()] = '\0';
+
+	ImGui::PushID(buffer);
+
+	ImGui::Columns(2);
+	ImGui::SetColumnWidth(0, columnWidth);
+	ImGui::Text("%s", buffer);
+	ImGui::NextColumn();
+
+	float lineHeight = GImGui->FontSize + GImGui->Style.FramePadding.y * 2.0f;
+	ImVec2 buttonSize = { lineHeight + 3.0f, lineHeight };
+
+	ImGui::PushItemWidth(ImGui::CalcItemWidth() + buttonSize.x);
+	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2{ 0, 0 });
+
+	Gleam::TString preview = "-";
+	if (IsMixedValue() == false)
+	{
+		preview = mask == 0 ? "None" : "";
+		Gleam::ReflectionUtils::ForEachSetCase(mask, *enumDesc, [&](const Gleam::Reflection::EnumCaseDescription& enumCase)
+		{
+			if (preview.empty() == false)
+			{
+				preview += " | ";
+			}
+			preview += ResolveCaseName(enumCase);
+		});
+	}
+
+	if (ImGui::BeginCombo("##", preview.c_str()))
+	{
+		for (const auto& item : enumDesc->Cases())
+		{
+			const auto caseMask = Gleam::ReflectionUtils::TruncateToSize(item.Value(), enumDesc->GetSize());
+			const bool isSelected = caseMask != 0 and (mask & caseMask) == caseMask;
+
+			char itemBuffer[64];
+			const auto itemLabel = ResolveCaseName(item);
+			std::memcpy(itemBuffer, itemLabel.data(), itemLabel.size());
+			itemBuffer[itemLabel.size()] = '\0';
+
+			if (ImGui::Selectable(itemBuffer, isSelected, ImGuiSelectableFlags_NoAutoClosePopups))
+			{
+				mask = isSelected ? mask & ~caseMask : mask | caseMask;
+				Gleam::ReflectionUtils::WriteFlagMask(value, size, mask);
+				MarkEditCommitted();
+			}
+			TrackEdit();
+		}
+		ImGui::EndCombo();
+	}
+
 	ImGui::PopItemWidth();
 	ImGui::SameLine();
 

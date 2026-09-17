@@ -14,7 +14,7 @@ public:
 
 	virtual void Bake(const Gleam::Path& directory, const AssetItem& item) const = 0;
 
-    virtual Gleam::TString Filename() const = 0;
+    virtual Gleam::TString Name() const = 0;
     
     virtual Gleam::Guid TypeGuid() const = 0;
 

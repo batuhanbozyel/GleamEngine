@@ -14,6 +14,7 @@
 #include "Container/String.h"
 #include "Container/Array.h"
 #include "Container/BinaryBuffer.h"
+#include "Container/EnumFlag.h"
 #include "Container/Hash.h"
 
 namespace Gleam {
@@ -27,18 +28,10 @@ GENUM(TextureDimension, "7A1CDA2E-8B61-4558-9255-B919E70E92F7", Serializable)
 
 GENUM(TextureUsage, "7EFFFEDD-F5B2-443B-9888-49C88D41779B", Serializable)
 {
-	GITEM(Sampled, "3D7FA6A5-D83A-4CAB-A5E7-43D38A768D70"),
-	GITEM(Storage, "6CAA9FB4-89FE-4D2F-9CE4-E3F0A2E9F6A2"),
-	GITEM(Attachment, "CA74DE24-9E22-4DB9-84AE-67E72F02D1E6")
+	GITEM(Sampled, "3D7FA6A5-D83A-4CAB-A5E7-43D38A768D70") = BIT(0),
+	GITEM(Storage, "6CAA9FB4-89FE-4D2F-9CE4-E3F0A2E9F6A2") = BIT(1),
+	GITEM(Attachment, "CA74DE24-9E22-4DB9-84AE-67E72F02D1E6") = BIT(2)
 };
-
-enum TextureUsageFlag
-{
-	TextureUsage_Sampled = BIT(static_cast<uint32_t>(TextureUsage::Sampled)),
-	TextureUsage_Storage = BIT(static_cast<uint32_t>(TextureUsage::Storage)),
-	TextureUsage_Attachment = BIT(static_cast<uint32_t>(TextureUsage::Attachment))
-};
-typedef uint32_t TextureUsageFlagBits;
 
 GSTRUCT(TextureDescriptor, "5B36D630-8A7E-47BE-A9F0-1702AB9F9C8C", Serializable)
 {
@@ -55,7 +48,7 @@ GSTRUCT(TextureDescriptor, "5B36D630-8A7E-47BE-A9F0-1702AB9F9C8C", Serializable)
 	TextureFormat format = TextureFormat::R8G8B8A8_UNorm;
 
 	GFIELD("E6D2C8B5-A793-4F61-B8E2-D7A9C5F4E3B1", Serializable)
-	TextureUsageFlagBits usage = TextureUsage_Sampled;
+	EnumFlag<TextureUsage> usage = TextureUsage::Sampled;
 
 	GFIELD("1F8E7D6C-B5A4-4F32-9E1D-C8B7A6F5E4D3", Serializable)
 	TextureDimension dimension = TextureDimension::Texture2D;
@@ -74,14 +67,17 @@ GSTRUCT(TextureDescriptor, "5B36D630-8A7E-47BE-A9F0-1702AB9F9C8C", Serializable)
 	}
 };
 
+GSTRUCT(TextureSubresourceDescriptor, "68681A89-F448-47D1-814B-192D5D02EC25", Serializable, Version(1))
+{
+	GFIELD("F40803E1-B08D-47FA-B671-8D80AB86F76F", Serializable)
+	uint32_t blobSlot = 0;
+};
+
 GSTRUCT(Texture2DDescriptor, "CC19ED9A-2B9F-4258-B0E5-1F0EB34373A1", Serializable)
 	: TextureDescriptor
 {
-	GFIELD("1B7D4E92-8A35-4C61-9F20-6C43B8A1E57D", Serializable)
-	BinaryBuffer pixels;
-
-	GFIELD("F1E2D3C4-B5A6-4789-B1C2-D3E4F5A6B7C8", Serializable)
-	TArray<BufferRange> subresources;
+	GFIELD("6249AAAA-68B3-4F80-9400-33ECB6455F98", Serializable)
+	TArray<TextureSubresourceDescriptor> subresources;
 };
 
 GSTRUCT(RenderTextureDescriptor, "7B6A5D4C-3E2F-4180-9D8C-7B6A5D4C3E2F", Serializable)
@@ -102,13 +98,13 @@ GSTRUCT(RenderTextureDescriptor, "7B6A5D4C-3E2F-4180-9D8C-7B6A5D4C3E2F", Seriali
 	RenderTextureDescriptor()
 		: TextureDescriptor()
 	{
-		usage |= TextureUsage_Attachment | TextureUsage_Storage;
+		usage |= TextureUsage::Attachment | TextureUsage::Storage;
 	}
 
 	RenderTextureDescriptor(const TextureDescriptor& descriptor)
 		: TextureDescriptor(descriptor)
 	{
-		usage |= TextureUsage_Attachment | TextureUsage_Storage;
+		usage |= TextureUsage::Attachment | TextureUsage::Storage;
 	}
 };
 

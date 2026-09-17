@@ -57,6 +57,12 @@ void rayTracedSunShadowRayGen()
     const float sunHalfAngle    = 0.5 * atmosphereUniforms.sunAngularDiameter * (PI / 180.0);
     const float cosSunHalfAngle = cos(sunHalfAngle);
     float3 shadowDir = UniformSampleCone(PCGRand2(seed), atmosphereUniforms.sunDirection, cosSunHalfAngle, shadowConePdf);
+    
+    if (dot(shadowDir, geometricNormal) <= 0.0f)
+    {
+        shadowMask.InterlockedAnd(tileIndex * sizeof(uint), ~bitMask);
+        return;
+    }
 
     RayDesc ray;
     ray.Origin    = OffsetRayAlongNormal(worldPos, geometricNormal);

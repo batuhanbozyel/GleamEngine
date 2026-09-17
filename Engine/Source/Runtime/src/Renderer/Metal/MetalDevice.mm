@@ -468,7 +468,7 @@ Texture GraphicsDevice::CreateTexture(GPUAllocator* allocator, const TextureDesc
     texture.mResourceView = static_cast<MetalDevice*>(this)->CreateResourceView(texture, viewDesc);
 
     texture.mSliceUnorderedAccessViews = static_cast<MetalDevice*>(this)->CreateUnorderedAccessViews(texture);
-    if (descriptor.usage & TextureUsage_Attachment)
+    if (descriptor.usage.Has(TextureUsage::Attachment))
     {
         texture.mView = static_cast<MetalDevice*>(this)->CreateRenderTargetView(texture);
         texture.mSliceViews = static_cast<MetalDevice*>(this)->CreateRenderTargetViews(texture);
@@ -554,7 +554,7 @@ RenderTargetView MetalDevice::CreateRenderTargetView(const Texture& texture)
 TArray<RenderTargetView> MetalDevice::CreateRenderTargetViews(const Texture& texture)
 {
     const auto& descriptor = texture.GetDescriptor();
-    if (not (descriptor.usage & TextureUsage_Storage) || not Utils::IsColorFormat(descriptor.format))
+    if (not descriptor.usage.Has(TextureUsage::Storage) || not Utils::IsColorFormat(descriptor.format))
     {
         return {};
     }
@@ -581,7 +581,7 @@ TArray<RenderTargetView> MetalDevice::CreateRenderTargetViews(const Texture& tex
 TArray<ShaderResourceIndex> MetalDevice::CreateUnorderedAccessViews(const Texture& texture)
 {
     const auto& descriptor = texture.GetDescriptor();
-    if (not (descriptor.usage & TextureUsage_Storage) || not Utils::IsColorFormat(descriptor.format))
+    if (not descriptor.usage.Has(TextureUsage::Storage) || not Utils::IsColorFormat(descriptor.format))
     {
         return {};
     }
@@ -1295,7 +1295,7 @@ void GraphicsDevice::Dispose(GPUAllocator* allocator, Texture& texture, BarrierS
         static_cast<MetalDevice*>(this)->ReleaseResourceView(view);
         
         // we dont need to release RTVs since they are identical with UAV
-        if (usage & TextureUsage_Attachment)
+        if (usage.Has(TextureUsage::Attachment))
         {
             // noop
         }

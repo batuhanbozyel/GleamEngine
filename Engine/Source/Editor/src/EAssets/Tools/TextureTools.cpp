@@ -25,16 +25,18 @@ Gleam::TArray<Gleam::BufferRange> TextureTools::CalculateSubresourceRanges(const
 	return subresources;
 }
 
-Gleam::BinaryBuffer TextureTools::GenerateMipmaps(const RawTexture& texture)
+TextureData TextureTools::GenerateMipmaps(const RawTexture& texture)
 {
 	auto mipLevels = Gleam::Texture::CalculateMipLevels(Gleam::Size((float)texture.width, (float)texture.height));
-	auto subresources = CalculateSubresourceRanges(texture, mipLevels);
 
-	const auto& lastSubresource = subresources.back();
-	Gleam::BinaryBuffer pixels(lastSubresource.offset + lastSubresource.size);
+	TextureData data;
+	data.subresources = CalculateSubresourceRanges(texture, mipLevels);
 
-	const auto& firstSubresource = subresources[0];
-	memcpy(pixels.data, texture.pixels, (size_t)firstSubresource.size);
+	const auto& lastSubresource = data.subresources.back();
+	data.pixels = Gleam::BinaryBuffer(lastSubresource.offset + lastSubresource.size);
+
+	const auto& firstSubresource = data.subresources[0];
+	memcpy(data.pixels.data, texture.pixels, (size_t)firstSubresource.size);
 
 	stbir_pixel_layout pixelLayout;
 	stbir_datatype dataType;
@@ -92,11 +94,11 @@ Gleam::BinaryBuffer TextureTools::GenerateMipmaps(const RawTexture& texture)
 		default:
 		{
 			GLEAM_ASSERT(false, "Unsupported texture format for mip generation");
-			return pixels;
+			return data;
 		}
 	}
 
-	for (uint32_t mip = 1; mip < subresources.size(); ++mip)
+	for (uint32_t mip = 1; mip < data.subresources.size(); ++mip)
 	{
 		uint32_t dstMipWidth = Gleam::Math::Max(texture.width >> mip, 1);
 		uint32_t dstMipHeight = Gleam::Math::Max(texture.height >> mip, 1);
@@ -104,11 +106,11 @@ Gleam::BinaryBuffer TextureTools::GenerateMipmaps(const RawTexture& texture)
 		uint32_t srcMipWidth = Gleam::Math::Max(texture.width >> (mip - 1), 1);
 		uint32_t srcMipHeight = Gleam::Math::Max(texture.height >> (mip - 1), 1);
 
-		stbir_resize(Gleam::OffsetPointer(pixels.data, subresources[mip - 1].offset),
+		stbir_resize(Gleam::OffsetPointer(data.pixels.data, data.subresources[mip - 1].offset),
 					 srcMipWidth,
 					 srcMipHeight,
 					 0,
-					 Gleam::OffsetPointer(pixels.data, subresources[mip].offset),
+					 Gleam::OffsetPointer(data.pixels.data, data.subresources[mip].offset),
 					 dstMipWidth,
 					 dstMipHeight,
 					 0,
@@ -117,5 +119,5 @@ Gleam::BinaryBuffer TextureTools::GenerateMipmaps(const RawTexture& texture)
 					 STBIR_EDGE_CLAMP,
 					 STBIR_FILTER_BOX);
 	}
-	return pixels;
+	return data;
 }

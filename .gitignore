@@ -28,3 +28,7 @@
 # Claude Code
 CLAUDE.md
 .claude/
+
+# Reflection
+*.Reflection.db
+*.Reflection.generated.h

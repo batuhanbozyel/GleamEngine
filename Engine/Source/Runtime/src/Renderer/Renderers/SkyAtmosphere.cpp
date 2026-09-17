@@ -24,7 +24,7 @@ void SkyAtmosphereRenderer::OnCreate(const RenderContext& context)
 		textureDesc.name = "SkyAtmosphereTransmittanceLUT";
 		textureDesc.dimension = TextureDimension::Texture2D;
 		textureDesc.format = TextureFormat::R16G16B16A16_SFloat;
-		textureDesc.usage = TextureUsage_Storage | TextureUsage_Sampled;
+		textureDesc.usage = TextureUsage::Storage | TextureUsage::Sampled;
 		textureDesc.size = { SKY_ATMOSPHERE_TRANSMITTANCE_TEXTURE_WIDTH, SKY_ATMOSPHERE_TRANSMITTANCE_TEXTURE_HEIGHT };
 		mTransmittanceLutTexture = context.device->CreateTexture(context.allocator, textureDesc);
 	}
@@ -39,7 +39,7 @@ void SkyAtmosphereRenderer::OnCreate(const RenderContext& context)
 		textureDesc.name = "SkyAtmosphereMultiScatterLUT";
 		textureDesc.dimension = TextureDimension::Texture2D;
 		textureDesc.format = TextureFormat::R16G16B16A16_SFloat;
-		textureDesc.usage = TextureUsage_Storage | TextureUsage_Sampled;
+		textureDesc.usage = TextureUsage::Storage | TextureUsage::Sampled;
 		textureDesc.size = { SKY_ATMOSPHERE_MULTISCATTERING_LUT_RES, SKY_ATMOSPHERE_MULTISCATTERING_LUT_RES };
 		mMultiScatterLutTexture = context.device->CreateTexture(context.allocator, textureDesc);
 	}
