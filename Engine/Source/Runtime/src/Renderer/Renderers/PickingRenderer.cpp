@@ -53,7 +53,7 @@ void PickingRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard&
 		return;
 	}
 
-	// Instance indices are rebuilt every RenderSceneProxy tick, so resolve them against this frame
+	// Instance indices are rebuilt every RenderSceneProxy update, so resolve them against this frame
 	pending->instanceToEntity.clear();
 	pending->instanceToEntity.reserve(globalMeshes.size());
 	for (const auto& meshInstance : globalMeshes)

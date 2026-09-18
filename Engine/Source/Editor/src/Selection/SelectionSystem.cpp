@@ -32,7 +32,7 @@ void SelectionSystem::Shutdown(Gleam::World* world)
 	mPickingSystem = nullptr;
 }
 
-void SelectionSystem::Tick(Gleam::World* world)
+void SelectionSystem::Update(const Gleam::World* world)
 {
 	mInstanceMask.clear();
 	if (mSelectedEntities.empty())

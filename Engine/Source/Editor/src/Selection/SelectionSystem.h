@@ -18,7 +18,7 @@ enum class SelectionMode
 	Toggle,
 };
 
-class SelectionSystem final : public Gleam::TickableWorldSubsystem
+class SelectionSystem final : public Gleam::WorldSubsystem
 {
 public:
 
@@ -26,7 +26,7 @@ public:
 
 	virtual void Shutdown(Gleam::World* world) override;
 
-	virtual void Tick(Gleam::World* world) override;
+	void Update(const Gleam::World* world);
 
 	Gleam::PickingRequestID RequestPick(const Gleam::PickingRequest& request, SelectionMode mode);
 

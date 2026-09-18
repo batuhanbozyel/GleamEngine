@@ -30,12 +30,12 @@ struct MeshInstance
 	EntityHandle entity = InvalidEntity;
 };
 
-class RenderSceneProxy : public TickableWorldSubsystem
+class RenderSceneProxy : public WorldSubsystem
 {
     using BatchFn = std::function<void(const MeshBatch&)>;
 public:
     
-    virtual void Tick(World* world) override;
+	void Update(const World* world);
 
 	virtual void Shutdown(World* world) override;
     

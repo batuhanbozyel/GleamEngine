@@ -229,17 +229,16 @@ private:
 	template<typename ... ComponentTypes, typename ... ExcludeComponents, typename = std::enable_if_t<sizeof...(ComponentTypes) + sizeof...(ExcludeComponents) != 0>>
 	auto CreateView(Exclude<ExcludeComponents...> = Exclude<ExcludeComponents...>{}) const
 	{
-		if constexpr (sizeof...(ExcludeComponents) == 0)
+		entt::basic_view<
+			entt::get_t<std::remove_pointer_t<decltype(FindStorage<ComponentTypes>())>...>,
+			entt::exclude_t<std::remove_pointer_t<decltype(FindStorage<ExcludeComponents>())>...>> view = {};
+
+		[&view](const auto ... storages)
 		{
-			auto includeTuple = std::make_tuple(std::ref(GetStorage<ComponentTypes>())...);
-			return entt::basic_view{ includeTuple };
-		}
-		else
-		{
-			auto includeTuple = std::make_tuple(std::ref(GetStorage<ComponentTypes>())...);
-			auto excludeTuple = std::make_tuple(std::ref(GetStorage<ExcludeComponents>())...);
-			return entt::basic_view{ includeTuple, excludeTuple };
-		}
+			((storages ? view.storage(*storages) : void()), ...);
+		}(FindStorage<ExcludeComponents>()..., FindStorage<ComponentTypes>()...);
+
+		return view;
 	}
 
 	template<typename T>
@@ -257,16 +256,16 @@ private:
 	}
 
 	template<typename T>
-	const auto& GetStorage() const
+	auto FindStorage() const
 	{
 		if constexpr (Reflection::Traits::IsReflected<T>::value)
 		{
 			const auto& classDesc = Reflection::GetClass<T>();
-			return *mRegistry.storage<T>(classDesc.TypeHash());
+			return mRegistry.storage<T>(classDesc.TypeHash());
 		}
 		else
 		{
-			return *mRegistry.storage<T>();
+			return mRegistry.storage<T>();
 		}
 	}
 

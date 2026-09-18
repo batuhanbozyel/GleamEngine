@@ -145,6 +145,8 @@ void RenderSystem::Shutdown(Engine* engine)
 void RenderSystem::PreRender(const World* world)
 {
 	auto sceneProxy = world->GetSubsystem<RenderSceneProxy>();
+	sceneProxy->Update(world);
+
 	const auto& globalInstances = sceneProxy->GetGlobalInstances();
 	if (not globalInstances.empty())
 	{

@@ -26,7 +26,7 @@
 
 using namespace Gleam;
 
-void RenderSceneProxy::Tick(World* world)
+void RenderSceneProxy::Update(const World* world)
 {
 	static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
 	static auto assetManager = Globals::GameInstance->GetSubsystem<AssetManager>();

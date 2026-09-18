@@ -48,6 +48,9 @@ void SelectionOutlineRenderer::OnDestroy(const Gleam::RenderContext& context)
 
 void SelectionOutlineRenderer::AddRenderPasses(Gleam::RenderGraph& graph, Gleam::RenderGraphBlackboard& blackboard)
 {
+	const auto& sceneData = blackboard.Get<Gleam::SceneRenderingData>();
+	mSelectionSystem->Update(sceneData.world);
+
 	const auto& instanceMask = mSelectionSystem->GetInstanceMask();
 	if (instanceMask.empty())
 	{
@@ -56,7 +59,6 @@ void SelectionOutlineRenderer::AddRenderPasses(Gleam::RenderGraph& graph, Gleam:
 
 	mCopyCommandBuffer->Commit(mInstanceMaskBuffer, instanceMask.data(), instanceMask.size() * sizeof(uint32_t), 0);
 
-	const auto& sceneData = blackboard.Get<Gleam::SceneRenderingData>();
 	const auto& depthPrepassData = blackboard.Get<Gleam::DepthPrepassData>();
 	const auto& targetSize = graph.GetDescriptor(sceneData.sceneTarget).size;
 
