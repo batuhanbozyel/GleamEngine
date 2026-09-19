@@ -51,6 +51,8 @@ public:
 	void SetRenderPath(RenderPath path);
 
 	RenderPath GetRenderPath() const;
+
+	uint32_t GetFrameCount() const;
     
     GraphicsDevice* GetDevice();
     
@@ -93,6 +95,8 @@ private:
 	SkyAtmosphereRenderData SetupSkyAtmosphereRenderData(RenderGraph& graph, const Entity& entity) const;
 
 	void InitializeBackend();
+
+	uint32_t mFrameCount = 0;
 
 	bool mRendererResized = false;
 

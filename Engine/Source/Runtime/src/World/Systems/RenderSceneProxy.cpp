@@ -26,6 +26,25 @@
 
 using namespace Gleam;
 
+Float4x4 RenderSceneProxy::UpdateTransform(EntityHandle entity, const Float4x4& transform, uint32_t frameIndex)
+{
+	const uint32_t index = entt::to_entity(entity);
+	if (index >= mTransformCache.size())
+	{
+		mTransformCache.resize(index + 1);
+	}
+
+	auto& entry = mTransformCache[index];
+	bool hasHistory = entry.entity == entity && entry.frame == frameIndex - 1;
+	Float4x4 previousTransform = hasHistory ? entry.transform : transform;
+
+	entry.transform = transform;
+	entry.entity = entity;
+	entry.frame = frameIndex;
+
+	return previousTransform;
+}
+
 void RenderSceneProxy::Update(const World* world)
 {
 	static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
@@ -87,6 +106,9 @@ void RenderSceneProxy::Update(const World* world)
 	{
 		const auto mesh = assetManager->Has<Mesh>(meshRenderer.mesh) ? assetManager->Get<Mesh>(meshRenderer.mesh): assetManager->Load<Mesh>(meshRenderer.mesh);
 		const auto& submeshes = mesh->GetSubmeshes();
+		
+		Float4x4 transform = entity.GetWorldTransform();
+		Float4x4 previousTransform = UpdateTransform(entity, transform, renderSystem->GetFrameCount());
 
 		for (uint32_t submeshIndex = 0; submeshIndex < submeshes.size(); ++submeshIndex)
 		{
@@ -113,8 +135,8 @@ void RenderSceneProxy::Update(const World* world)
 			instance.meshletVertexOffset = static_cast<uint32_t>(mesh->GetMeshletVertices().offset);
 			instance.meshletTriangleOffset = static_cast<uint32_t>(mesh->GetMeshletTriangleIndices().offset);
 			instance.materialID = materialInstance->GetID();
-			instance.transform = entity.GetWorldTransform();
-			instance.previousTransform = instance.transform; // TODO: store previous transform
+			instance.transform = transform;
+			instance.previousTransform = previousTransform;
 			instance.baseVertex = submesh.baseVertex;
 			instance.indexCount = submesh.indexCount;
 			instance.firstIndex = submesh.firstIndex;

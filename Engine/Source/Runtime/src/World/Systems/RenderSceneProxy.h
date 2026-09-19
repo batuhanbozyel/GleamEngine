@@ -63,10 +63,20 @@ public:
 
 private:
 
+	Float4x4 UpdateTransform(EntityHandle entity, const Float4x4& transform, uint32_t frameIndex);
+
+	struct EntityTransformCache
+	{
+		Float4x4 transform;
+		EntityHandle entity = InvalidEntity;
+		uint32_t frame = 0;
+	};
+
 	uint32_t mNumBatches = 0;
 	uint32_t mTotalInstances = 0;
 	Buffer mGlobalInstanceBuffer = {};
     HashMap<AssetReference, MeshBatch> mMeshBatches;
+	TArray<EntityTransformCache> mTransformCache;
 
 	static constexpr uint32_t MaxMeshInstances = MAX_MESH_INSTANCES;
 	static_assert(MaxMeshInstances <= VISIBILITY_INSTANCE_MASK, "MaxMeshInstances exceeds the visibility buffer instance ID bit budget.");

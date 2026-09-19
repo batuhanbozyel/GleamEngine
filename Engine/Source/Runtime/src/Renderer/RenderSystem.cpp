@@ -144,6 +144,8 @@ void RenderSystem::Shutdown(Engine* engine)
 
 void RenderSystem::PreRender(const World* world)
 {
+	++mFrameCount;
+
 	auto sceneProxy = world->GetSubsystem<RenderSceneProxy>();
 	sceneProxy->Update(world);
 
@@ -322,6 +324,11 @@ void RenderSystem::SetRenderPath(RenderPath path)
 RenderPath RenderSystem::GetRenderPath() const
 {
 	return mRenderPath;
+}
+
+uint32_t RenderSystem::GetFrameCount() const
+{
+	return mFrameCount;
 }
 
 GraphicsDevice* RenderSystem::GetDevice()
