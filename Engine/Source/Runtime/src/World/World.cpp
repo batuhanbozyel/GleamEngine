@@ -1,6 +1,7 @@
 #include "gpch.h"
 #include "World.h"
 #include "Systems/RenderSceneProxy.h"
+#include "Physics/PhysicsSystem.h"
 #include "Serialization/JSONInternal.h"
 #include "Serialization/JSONSerializer.h"
 #include "Serialization/EntitySerializer.h"
@@ -12,6 +13,7 @@ World::World(const TString& name)
 {
 	Timestep::Reset();
 	AddSubsystem<RenderSceneProxy>();
+	AddSystem<PhysicsSystem>();
 }
 
 World::~World()

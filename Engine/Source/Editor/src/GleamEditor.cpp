@@ -12,6 +12,7 @@
 #include "Undo/UndoSystem.h"
 #include "View/ViewStack.h"
 #include "World/World.h"
+#include "Physics/PhysicsSystem.h"
 
 #include "View/Panels/MenuBar/MenuBar.h"
 #include "View/Panels/World/WorldViewport.h"
@@ -33,6 +34,7 @@ public:
 
 		auto worldManager = GetSubsystem<Gleam::WorldManager>();
 		mEditWorld = worldManager->GetActiveWorld();
+		mEditWorld->GetSystem<Gleam::PhysicsSystem>()->Enabled = false;
 		mEditWorld->AddSubsystem<UndoSystem>();
 		mEditWorld->AddSubsystem<SelectionSystem>();
 
