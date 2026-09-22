@@ -43,3 +43,6 @@
 [submodule "Engine/ThirdParty/box3d"]
 	path = Engine/ThirdParty/box3d
 	url = https://github.com/erincatto/box3d
+[submodule "Engine/ThirdParty/v-hacd"]
+	path = Engine/ThirdParty/v-hacd
+	url = https://github.com/kmammou/v-hacd

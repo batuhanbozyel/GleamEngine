@@ -1,19 +1,19 @@
 #include "gpch.h"
 #include "PhysicsSystem.h"
-#include "Components/Rigidbody.h"
-#include "Components/Collider.h"
+#include "Components/RigidBody.h"
+#include "Collider.h"
 #include "World/EntityManager.h"
 
 using namespace Gleam;
 
-namespace {
+namespace PhysicsUtils {
 
-void* ToUserData(EntityHandle entity)
+static void* ToUserData(EntityHandle entity)
 {
 	return reinterpret_cast<void*>(static_cast<uintptr_t>(static_cast<uint32_t>(entity)) + 1);
 }
 
-EntityHandle FromUserData(void* userData)
+static EntityHandle FromUserData(void* userData)
 {
 	const auto value = reinterpret_cast<uintptr_t>(userData);
 	if (value == 0)
@@ -26,7 +26,28 @@ EntityHandle FromUserData(void* userData)
 	}
 }
 
-} // namespace
+static float ComputeVolume(const BoxCollider& collider, float scale)
+{
+	const Float3 size = collider.size * scale;
+	return Math::Abs(size.x * size.y * size.z);
+}
+
+static float ComputeVolume(const SphereCollider& collider, float scale)
+{
+	const float radius = collider.radius * scale;
+	return (4.0f / 3.0f) * Math::PI * radius * radius * radius;
+}
+
+static float ComputeVolume(const CapsuleCollider& collider, float scale)
+{
+	const float radius = collider.radius * scale;
+	const float segment = Math::Max(0.0f, collider.height - 2.0f * collider.radius) * scale;
+	const float cylinder = Math::PI * radius * radius * segment;
+	const float caps = (4.0f / 3.0f) * Math::PI * radius * radius * radius;
+	return cylinder + caps;
+}
+
+} // namespace PhysicsUtils
 
 void PhysicsSystem::OnCreate(EntityManager& entityManager)
 {
@@ -35,15 +56,15 @@ void PhysicsSystem::OnCreate(EntityManager& entityManager)
 
 void PhysicsSystem::OnDestroy(EntityManager& entityManager)
 {
-	mBodies.clear();
+	mRigidBodies.clear();
 	mPhysicsWorld.reset();
 }
 
 void PhysicsSystem::OnFixedUpdate(EntityManager& entityManager)
 {
-	SynchronizeBodies(entityManager);
-	mPhysicsWorld->Step(static_cast<float>(Timestep::fixedDeltaTime), subStepCount);
-	ApplyBodyMotions(entityManager);
+	SynchronizeRigidBodies(entityManager);
+	mPhysicsWorld->Step(static_cast<float>(Timestep::fixedDeltaTime));
+	ApplyRigidBodyMotions(entityManager);
 }
 
 void PhysicsSystem::SetGravity(const Float3& gravity)
@@ -55,12 +76,12 @@ void PhysicsSystem::SetGravity(const Float3& gravity)
 	}
 }
 
-PhysicsBodyHandle PhysicsSystem::GetBody(EntityHandle entity) const
+RigidBodyHandle PhysicsSystem::GetRigidBody(EntityHandle entity) const
 {
-	const auto it = mBodies.find(entity);
-	if (it == mBodies.end())
+	const auto it = mRigidBodies.find(entity);
+	if (it == mRigidBodies.end())
 	{
-		return PhysicsBodyHandle{};
+		return RigidBodyHandle{};
 	}
 	else
 	{
@@ -76,7 +97,7 @@ PhysicsRaycastResult PhysicsSystem::Raycast(const Float3& origin, const Float3& 
 	result.point = hit.point;
 	result.normal = hit.normal;
 	result.distance = hit.distance;
-	result.entity = FromUserData(hit.userData);
+	result.entity = PhysicsUtils::FromUserData(hit.userData);
 	result.hit = hit.hit;
 	return result;
 }
@@ -85,7 +106,7 @@ void PhysicsSystem::ForEachContactBegin(ContactFn&& fn) const
 {
 	mPhysicsWorld->ForEachContactBegin([&fn](const PhysicsContact& contact)
 	{
-		fn(FromUserData(contact.userDataA), FromUserData(contact.userDataB));
+		fn(PhysicsUtils::FromUserData(contact.userDataA), PhysicsUtils::FromUserData(contact.userDataB));
 	});
 }
 
@@ -93,128 +114,93 @@ void PhysicsSystem::ForEachContactEnd(ContactFn&& fn) const
 {
 	mPhysicsWorld->ForEachContactEnd([&fn](const PhysicsContact& contact)
 	{
-		fn(FromUserData(contact.userDataA), FromUserData(contact.userDataB));
+		fn(PhysicsUtils::FromUserData(contact.userDataA), PhysicsUtils::FromUserData(contact.userDataB));
 	});
 }
 
-PhysicsSystem::BodyProxy PhysicsSystem::CreateBodyProxy(EntityManager& entityManager, const Entity& entity, const Rigidbody& rigidbody)
+PhysicsSystem::RigidBodyProxy PhysicsSystem::CreateRigidBodyProxy(const Entity& entity, const RigidBody& rigidBody)
 {
 	const Transform& transform = entity.GetWorldTransform();
 	const float scale = transform.scale;
 
-	PhysicsBodyDescriptor descriptor;
-	descriptor.position = transform.position;
-	descriptor.rotation = transform.rotation;
-	descriptor.type = rigidbody.type;
-	descriptor.linearDamping = rigidbody.linearDamping;
-	descriptor.angularDamping = rigidbody.angularDamping;
-	descriptor.gravityScale = rigidbody.gravityScale;
-	descriptor.enableSleep = rigidbody.enableSleep;
-	descriptor.isBullet = rigidbody.isBullet;
-	descriptor.userData = ToUserData(entity);
+	void* userData = PhysicsUtils::ToUserData(entity);
 
-	BodyProxy proxy;
-	proxy.body = mPhysicsWorld->CreateBody(descriptor);
+	RigidBodyProxy proxy;
+	proxy.body = mPhysicsWorld->CreateRigidBody(rigidBody, transform.position, transform.rotation, userData);
 	proxy.transform = transform;
-	proxy.type = rigidbody.type;
+	proxy.type = rigidBody.type;
 	proxy.alive = true;
 
-	bool hasShape = false;
-	if (entityManager.HasComponent<BoxCollider>(entity))
+	float volume = 0.0f;
+	for (const auto& collider : rigidBody.colliders.boxes)
 	{
-		const auto& collider = entityManager.GetComponent<BoxCollider>(entity);
-
-		PhysicsShapeDescriptor shapeDescriptor;
-		shapeDescriptor.material = collider.material;
-		shapeDescriptor.isSensor = collider.isTrigger;
-		shapeDescriptor.userData = descriptor.userData;
-
-		PhysicsBoxShape box;
-		box.center = collider.center * scale;
-		box.halfExtents = collider.size * (0.5f * scale);
-
-		mPhysicsWorld->CreateBoxShape(proxy.body, shapeDescriptor, box);
-		hasShape = true;
+		volume += PhysicsUtils::ComputeVolume(collider, scale);
 	}
 
-	if (entityManager.HasComponent<SphereCollider>(entity))
+	for (const auto& collider : rigidBody.colliders.spheres)
 	{
-		const auto& collider = entityManager.GetComponent<SphereCollider>(entity);
-
-		PhysicsShapeDescriptor shapeDescriptor;
-		shapeDescriptor.material = collider.material;
-		shapeDescriptor.isSensor = collider.isTrigger;
-		shapeDescriptor.userData = descriptor.userData;
-
-		PhysicsSphereShape sphere;
-		sphere.center = collider.center * scale;
-		sphere.radius = collider.radius * scale;
-
-		mPhysicsWorld->CreateSphereShape(proxy.body, shapeDescriptor, sphere);
-		hasShape = true;
+		volume += PhysicsUtils::ComputeVolume(collider, scale);
 	}
 
-	if (entityManager.HasComponent<CapsuleCollider>(entity))
+	for (const auto& collider : rigidBody.colliders.capsules)
 	{
-		const auto& collider = entityManager.GetComponent<CapsuleCollider>(entity);
-
-		PhysicsShapeDescriptor shapeDescriptor;
-		shapeDescriptor.material = collider.material;
-		shapeDescriptor.isSensor = collider.isTrigger;
-		shapeDescriptor.userData = descriptor.userData;
-
-		PhysicsCapsuleShape capsule;
-		capsule.center = collider.center * scale;
-		capsule.radius = collider.radius * scale;
-		capsule.halfHeight = Math::Max(0.0f, collider.height * 0.5f - collider.radius) * scale;
-
-		mPhysicsWorld->CreateCapsuleShape(proxy.body, shapeDescriptor, capsule);
-		hasShape = true;
+		volume += PhysicsUtils::ComputeVolume(collider, scale);
 	}
 
-	if (not hasShape)
+	const float density = volume > 0.0f ? rigidBody.mass / volume : 0.0f;
+	for (const auto& collider : rigidBody.colliders.boxes)
 	{
-		GLEAM_CORE_WARN("PhysicsSystem: entity '{0}' has a Rigidbody but no collider.", entity.GetName());
+		mPhysicsWorld->CreateBoxCollider(proxy.body, collider, rigidBody.material, density, scale, userData);
+	}
+
+	for (const auto& collider : rigidBody.colliders.spheres)
+	{
+		mPhysicsWorld->CreateSphereCollider(proxy.body, collider, rigidBody.material, density, scale, userData);
+	}
+
+	for (const auto& collider : rigidBody.colliders.capsules)
+	{
+		mPhysicsWorld->CreateCapsuleCollider(proxy.body, collider, rigidBody.material, density, scale, userData);
 	}
 
 	return proxy;
 }
 
-void PhysicsSystem::SynchronizeBodies(EntityManager& entityManager)
+void PhysicsSystem::SynchronizeRigidBodies(EntityManager& entityManager)
 {
-	for (auto& [handle, proxy] : mBodies)
+	for (auto& [handle, proxy] : mRigidBodies)
 	{
 		proxy.alive = false;
 	}
 
-	entityManager.ForEach<Entity, Rigidbody>([&](EntityHandle handle, const Entity& entity, const Rigidbody& rigidbody)
+	entityManager.ForEach<Entity, RigidBody>([&](EntityHandle handle, const Entity& entity, const RigidBody& rigidBody)
 	{
-		auto it = mBodies.find(handle);
-		if (it == mBodies.end())
+		auto it = mRigidBodies.find(handle);
+		if (it == mRigidBodies.end())
 		{
-			mBodies.emplace(handle, CreateBodyProxy(entityManager, entity, rigidbody));
+			mRigidBodies.emplace(handle, CreateRigidBodyProxy(entity, rigidBody));
 		}
 		else
 		{
-			BodyProxy& proxy = it->second;
+			RigidBodyProxy& proxy = it->second;
 			const Transform& transform = entity.GetWorldTransform();
 
 			if (transform.scale != proxy.transform.scale)
 			{
-				mPhysicsWorld->DestroyBody(proxy.body);
-				proxy = CreateBodyProxy(entityManager, entity, rigidbody);
+				mPhysicsWorld->DestroyRigidBody(proxy.body);
+				proxy = CreateRigidBodyProxy(entity, rigidBody);
 			}
 			else
 			{
-				if (proxy.type != rigidbody.type)
+				if (proxy.type != rigidBody.type)
 				{
-					mPhysicsWorld->SetBodyType(proxy.body, rigidbody.type);
-					proxy.type = rigidbody.type;
+					mPhysicsWorld->SetRigidBodyType(proxy.body, rigidBody.type);
+					proxy.type = rigidBody.type;
 				}
 
 				if (transform.position != proxy.transform.position or transform.rotation != proxy.transform.rotation)
 				{
-					mPhysicsWorld->SetBodyTransform(proxy.body, transform.position, transform.rotation);
+					mPhysicsWorld->SetRigidBodyTransform(proxy.body, transform.position, transform.rotation);
 					proxy.transform = transform;
 				}
 			}
@@ -222,7 +208,7 @@ void PhysicsSystem::SynchronizeBodies(EntityManager& entityManager)
 		}
 	});
 
-	for (auto it = mBodies.begin(); it != mBodies.end();)
+	for (auto it = mRigidBodies.begin(); it != mRigidBodies.end();)
 	{
 		if (it->second.alive)
 		{
@@ -230,17 +216,17 @@ void PhysicsSystem::SynchronizeBodies(EntityManager& entityManager)
 		}
 		else
 		{
-			mPhysicsWorld->DestroyBody(it->second.body);
-			it = mBodies.erase(it);
+			mPhysicsWorld->DestroyRigidBody(it->second.body);
+			it = mRigidBodies.erase(it);
 		}
 	}
 }
 
-void PhysicsSystem::ApplyBodyMotions(EntityManager& entityManager)
+void PhysicsSystem::ApplyRigidBodyMotions(EntityManager& entityManager)
 {
-	mPhysicsWorld->ForEachBodyMotion([&](const PhysicsBodyMotion& motion)
+	mPhysicsWorld->ForEachRigidBodyMotion([&](const RigidBodyMotion& motion)
 	{
-		const EntityHandle handle = FromUserData(motion.userData);
+		const EntityHandle handle = PhysicsUtils::FromUserData(motion.userData);
 		if (not entityManager.IsValid(handle))
 		{
 			return;
@@ -263,8 +249,8 @@ void PhysicsSystem::ApplyBodyMotions(EntityManager& entityManager)
 			entity.SetLocalTransform(worldTransform);
 		}
 
-		auto it = mBodies.find(handle);
-		if (it != mBodies.end())
+		auto it = mRigidBodies.find(handle);
+		if (it != mRigidBodies.end())
 		{
 			it->second.transform = entity.GetWorldTransform();
 		}

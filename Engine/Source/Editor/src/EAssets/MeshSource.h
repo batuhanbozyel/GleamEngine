@@ -1,5 +1,6 @@
 #pragma once
 #include "AssetPackage.h"
+#include "Tools/MeshTools.h"
 #include "Math/Color.h"
 #include "Math/Quaternion.h"
 #include "Math/Float4x4.h"
@@ -76,6 +77,8 @@ public:
 
     struct ImportSettings
     {
+        bool generateConvexHulls = false;
+        ConvexDecompositionSettings convexDecomposition;
     };
     
 	/*

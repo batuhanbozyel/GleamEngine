@@ -5,11 +5,7 @@
 #include "Container/Hash.h"
 #include "Container/Pointer.h"
 
-#include <functional>
-
 namespace Gleam {
-
-struct Rigidbody;
 
 struct PhysicsRaycastResult
 {
@@ -48,7 +44,7 @@ public:
 		return mGravity;
 	}
 
-	PhysicsBodyHandle GetBody(EntityHandle entity) const;
+	RigidBodyHandle GetRigidBody(EntityHandle entity) const;
 
 	PhysicsRaycastResult Raycast(const Float3& origin, const Float3& direction, float distance) const;
 
@@ -56,27 +52,25 @@ public:
 
 	void ForEachContactEnd(ContactFn&& fn) const;
 
-	uint32_t subStepCount = 4;
-
 private:
 
-	struct BodyProxy
+	struct RigidBodyProxy
 	{
-		PhysicsBodyHandle body = {};
+		RigidBodyHandle body = {};
 		Transform transform = {};
-		PhysicsBodyType type = PhysicsBodyType::Dynamic;
+		RigidBodyType type = RigidBodyType::Dynamic;
 		bool alive = false;
 	};
 
-	void SynchronizeBodies(EntityManager& entityManager);
+	void SynchronizeRigidBodies(EntityManager& entityManager);
 
-	void ApplyBodyMotions(EntityManager& entityManager);
+	void ApplyRigidBodyMotions(EntityManager& entityManager);
 
-	BodyProxy CreateBodyProxy(EntityManager& entityManager, const Entity& entity, const Rigidbody& rigidbody);
+	RigidBodyProxy CreateRigidBodyProxy(const Entity& entity, const RigidBody& rigidBody);
 
 	Scope<PhysicsWorld> mPhysicsWorld;
 
-	HashMap<EntityHandle, BodyProxy, EnumClassHash> mBodies;
+	HashMap<EntityHandle, RigidBodyProxy, EnumClassHash> mRigidBodies;
 
 	Float3 mGravity = Float3{ 0.0f, -9.81f, 0.0f };
 

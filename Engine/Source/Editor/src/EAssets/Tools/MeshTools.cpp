@@ -1,6 +1,8 @@
 #include "MeshTools.h"
 #include "EAssets/MeshSource.h"
 
+#define ENABLE_VHACD_IMPLEMENTATION 1
+#include <VHACD.h>
 #include <mikktspace.h>
 #include <meshoptimizer.h>
 
@@ -373,4 +375,59 @@ void MeshTools::ApplyTransform(RawMesh& mesh, const Gleam::Float4x4& transform)
 			std::swap(mesh.indices[i + 1], mesh.indices[i + 2]);
 		}
 	}
+}
+
+Gleam::TArray<ConvexHullData> MeshTools::DecomposeConvex(const RawMesh& mesh, const ConvexDecompositionSettings& settings)
+{
+	// Box3D rejects hulls above B3_MAX_HULL_VERTICES, so never emit more than it can consume.
+	static constexpr uint32_t kMaxHullVertices = 128;
+
+	Gleam::TArray<ConvexHullData> hulls;
+	VHACD::IVHACD::Parameters parameters;
+	parameters.m_maxConvexHulls = settings.maxConvexHulls;
+	parameters.m_maxNumVerticesPerCH = Gleam::Math::Min(settings.maxVerticesPerHull, kMaxHullVertices);
+	parameters.m_resolution = settings.resolution;
+	parameters.m_minimumVolumePercentErrorAllowed = settings.minimumVolumePercentError;
+	parameters.m_shrinkWrap = settings.shrinkWrap;
+	parameters.m_asyncACD = false;
+
+	auto decomposer = VHACD::CreateVHACD();
+	if (decomposer->Compute(reinterpret_cast<const float*>(mesh.positions.data()),
+							static_cast<uint32_t>(mesh.positions.size()),
+							mesh.indices.data(),
+							static_cast<uint32_t>(mesh.indices.size() / 3),
+							parameters))
+	{
+		const uint32_t hullCount = decomposer->GetNConvexHulls();
+		hulls.reserve(hullCount);
+		for (uint32_t i = 0; i < hullCount; ++i)
+		{
+			VHACD::IVHACD::ConvexHull hull;
+			if (decomposer->GetConvexHull(i, hull) == false)
+			{
+				continue;
+			}
+
+			ConvexHullData& result = hulls.emplace_back();
+			result.positions.reserve(hull.m_points.size());
+			for (const auto& point : hull.m_points)
+			{
+				result.positions.emplace_back(static_cast<float>(point.mX),
+											  static_cast<float>(point.mY),
+											  static_cast<float>(point.mZ));
+			}
+
+			result.indices.reserve(hull.m_triangles.size() * 3);
+			for (const auto& triangle : hull.m_triangles)
+			{
+				result.indices.push_back(triangle.mI0);
+				result.indices.push_back(triangle.mI1);
+				result.indices.push_back(triangle.mI2);
+			}
+		}
+	}
+
+	decomposer->Clean();
+	decomposer->Release();
+	return hulls;
 }

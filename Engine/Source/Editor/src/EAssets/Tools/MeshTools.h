@@ -6,6 +6,12 @@ namespace GEditor {
 
 struct RawMesh;
 
+struct ConvexHullData
+{
+	Gleam::TArray<Gleam::Float3> positions;
+	Gleam::TArray<uint32_t> indices;
+};
+
 struct MeshData
 {
 	Gleam::TString name;
@@ -19,9 +25,19 @@ struct MeshData
 	Gleam::TArray<Gleam::SubmeshDescriptor> submeshes;
 };
 
+struct ConvexDecompositionSettings
+{
+	uint32_t maxConvexHulls = 64;
+	uint32_t maxVerticesPerHull = 64;
+	uint32_t resolution = 400000;
+	float minimumVolumePercentError = 1.0f;
+	bool shrinkWrap = true;
+};
+
 namespace MeshTools {
 
 MeshData CombineMeshes(const Gleam::TArray<RawMesh>& meshes);
+Gleam::TArray<ConvexHullData> DecomposeConvex(const RawMesh& mesh, const ConvexDecompositionSettings& settings);
 Gleam::TArray<Gleam::InterleavedMeshVertex> InterleaveMeshVertices(const RawMesh& mesh);
 Gleam::BoundingBox CalculateBounds(const Gleam::TArray<Gleam::Float3>& positions);
 

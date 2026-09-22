@@ -18,6 +18,7 @@ set(INCLUDE_DIRS
     ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/entt/src
     ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/cgltf
     ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/MikkTSpace
+    ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/v-hacd/include
     ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/stb
     ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/meshoptimizer/src
     ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui

@@ -1,5 +1,7 @@
 #pragma once
 #include "PhysicsTypes.h"
+#include "Components/RigidBody.h"
+#include "Collider.h"
 
 #include <functional>
 
@@ -7,7 +9,7 @@ namespace Gleam {
 
 class PhysicsWorld final
 {
-	using MotionFn = std::function<void(const PhysicsBodyMotion&)>;
+	using MotionFn = std::function<void(const RigidBodyMotion&)>;
 	using ContactFn = std::function<void(const PhysicsContact&)>;
 public:
 
@@ -25,65 +27,65 @@ public:
 
 	PhysicsWorld& operator=(const PhysicsWorld&) = delete;
 
-	void Step(float deltaTime, uint32_t subStepCount);
+	void Step(float deltaTime);
 
 	void SetGravity(const Float3& gravity);
 
 	Float3 GetGravity() const;
 
-	PhysicsBodyHandle CreateBody(const PhysicsBodyDescriptor& descriptor);
+	RigidBodyHandle CreateRigidBody(const RigidBody& rigidBody, const Float3& position, const Quaternion& rotation, void* userData = nullptr);
 
-	void DestroyBody(PhysicsBodyHandle body);
+	void DestroyRigidBody(RigidBodyHandle body);
 
-	bool IsValidBody(PhysicsBodyHandle body) const;
+	bool IsValidRigidBody(RigidBodyHandle body) const;
 
-	PhysicsShapeHandle CreateSphereShape(PhysicsBodyHandle body, const PhysicsShapeDescriptor& descriptor, const PhysicsSphereShape& sphere);
+	ColliderHandle CreateSphereCollider(RigidBodyHandle body, const SphereCollider& collider, const PhysicsMaterial& material, float density, float scale, void* userData = nullptr);
 
-	PhysicsShapeHandle CreateBoxShape(PhysicsBodyHandle body, const PhysicsShapeDescriptor& descriptor, const PhysicsBoxShape& box);
+	ColliderHandle CreateBoxCollider(RigidBodyHandle body, const BoxCollider& collider, const PhysicsMaterial& material, float density, float scale, void* userData = nullptr);
 
-	PhysicsShapeHandle CreateCapsuleShape(PhysicsBodyHandle body, const PhysicsShapeDescriptor& descriptor, const PhysicsCapsuleShape& capsule);
+	ColliderHandle CreateCapsuleCollider(RigidBodyHandle body, const CapsuleCollider& collider, const PhysicsMaterial& material, float density, float scale, void* userData = nullptr);
 
-	void DestroyShape(PhysicsShapeHandle shape);
+	void DestroyCollider(ColliderHandle collider);
 
-	void SetBodyType(PhysicsBodyHandle body, PhysicsBodyType type);
+	void SetRigidBodyType(RigidBodyHandle body, RigidBodyType type);
 
-	void SetBodyTransform(PhysicsBodyHandle body, const Float3& position, const Quaternion& rotation);
+	void SetRigidBodyTransform(RigidBodyHandle body, const Float3& position, const Quaternion& rotation);
 
-	Float3 GetBodyPosition(PhysicsBodyHandle body) const;
+	Float3 GetRigidBodyPosition(RigidBodyHandle body) const;
 
-	Quaternion GetBodyRotation(PhysicsBodyHandle body) const;
+	Quaternion GetRigidBodyRotation(RigidBodyHandle body) const;
 
-	void SetLinearVelocity(PhysicsBodyHandle body, const Float3& velocity);
+	void SetLinearVelocity(RigidBodyHandle body, const Float3& velocity);
 
-	Float3 GetLinearVelocity(PhysicsBodyHandle body) const;
+	Float3 GetLinearVelocity(RigidBodyHandle body) const;
 
-	void SetAngularVelocity(PhysicsBodyHandle body, const Float3& velocity);
+	void SetAngularVelocity(RigidBodyHandle body, const Float3& velocity);
 
-	Float3 GetAngularVelocity(PhysicsBodyHandle body) const;
+	Float3 GetAngularVelocity(RigidBodyHandle body) const;
 
-	void SetLinearDamping(PhysicsBodyHandle body, float damping);
+	void SetLinearDamping(RigidBodyHandle body, float damping);
 
-	void SetAngularDamping(PhysicsBodyHandle body, float damping);
+	void SetAngularDamping(RigidBodyHandle body, float damping);
 
-	void SetGravityScale(PhysicsBodyHandle body, float scale);
+	void SetGravityScale(RigidBodyHandle body, float scale);
 
-	void ApplyForce(PhysicsBodyHandle body, const Float3& force, bool wake = true);
+	void ApplyForce(RigidBodyHandle body, const Float3& force, bool wake = true);
 
-	void ApplyForceAtPoint(PhysicsBodyHandle body, const Float3& force, const Float3& point, bool wake = true);
+	void ApplyForceAtPoint(RigidBodyHandle body, const Float3& force, const Float3& point, bool wake = true);
 
-	void ApplyTorque(PhysicsBodyHandle body, const Float3& torque, bool wake = true);
+	void ApplyTorque(RigidBodyHandle body, const Float3& torque, bool wake = true);
 
-	void ApplyLinearImpulse(PhysicsBodyHandle body, const Float3& impulse, bool wake = true);
+	void ApplyLinearImpulse(RigidBodyHandle body, const Float3& impulse, bool wake = true);
 
-	void ApplyAngularImpulse(PhysicsBodyHandle body, const Float3& impulse, bool wake = true);
+	void ApplyAngularImpulse(RigidBodyHandle body, const Float3& impulse, bool wake = true);
 
-	void SetBodyAwake(PhysicsBodyHandle body, bool awake);
+	void SetRigidBodyAwake(RigidBodyHandle body, bool awake);
 
-	bool IsBodyAwake(PhysicsBodyHandle body) const;
+	bool IsRigidBodyAwake(RigidBodyHandle body) const;
 
 	PhysicsRaycastHit Raycast(const Float3& origin, const Float3& direction, float distance) const;
 
-	void ForEachBodyMotion(MotionFn&& fn) const;
+	void ForEachRigidBodyMotion(MotionFn&& fn) const;
 
 	void ForEachContactBegin(ContactFn&& fn) const;
 
