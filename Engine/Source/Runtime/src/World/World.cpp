@@ -37,6 +37,7 @@ void World::Update()
 	Timestep::Step();
 	for (auto subsystem : mTickableSubsystems)
 	{
+		mEntityManager.GetChangeTracker().Advance();
 		subsystem->Tick(this);
 	}
 
@@ -47,7 +48,8 @@ void World::Update()
 		{
 			if (system->Enabled)
 			{
-				system->OnPreFixedUpdate(mEntityManager);
+				mEntityManager.GetChangeTracker().Advance();
+			system->OnPreFixedUpdate(mEntityManager);
 			}
 		}
 
@@ -55,7 +57,8 @@ void World::Update()
 		{
 			if (system->Enabled)
 			{
-				system->OnFixedUpdate(mEntityManager);
+				mEntityManager.GetChangeTracker().Advance();
+			system->OnFixedUpdate(mEntityManager);
 			}
 		}
 
@@ -63,7 +66,8 @@ void World::Update()
 		{
 			if (system->Enabled)
 			{
-				system->OnPostFixedUpdate(mEntityManager);
+				mEntityManager.GetChangeTracker().Advance();
+			system->OnPostFixedUpdate(mEntityManager);
 			}
 		}
 	}
@@ -73,6 +77,7 @@ void World::Update()
 	{
 		if (system->Enabled)
 		{
+			mEntityManager.GetChangeTracker().Advance();
 			system->OnPreUpdate(mEntityManager);
 		}
 	}
@@ -81,6 +86,7 @@ void World::Update()
 	{
 		if (system->Enabled)
 		{
+			mEntityManager.GetChangeTracker().Advance();
 			system->OnUpdate(mEntityManager);
 		}
 	}
@@ -89,9 +95,12 @@ void World::Update()
 	{
 		if (system->Enabled)
 		{
+			mEntityManager.GetChangeTracker().Advance();
 			system->OnPostUpdate(mEntityManager);
 		}
 	}
+
+	mEntityManager.GetChangeTracker().EndFrame();
 }
 
 void World::Serialize(FileStream& stream)

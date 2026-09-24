@@ -249,6 +249,7 @@ void PropertyDrawer::BeginEditTracking()
 {
 	mEditStarted = false;
 	mEditCommitted = false;
+	mEditDirty = false;
 }
 
 bool PropertyDrawer::EditStarted()
@@ -261,15 +262,22 @@ bool PropertyDrawer::EditCommitted()
 	return mEditCommitted;
 }
 
+bool PropertyDrawer::EditDirty()
+{
+	return mEditDirty;
+}
+
 void PropertyDrawer::TrackEdit()
 {
 	mEditStarted |= ImGui::IsItemActivated();
 	mEditCommitted |= ImGui::IsItemDeactivatedAfterEdit();
+	mEditDirty |= ImGui::IsItemEdited();
 }
 
 void PropertyDrawer::MarkEditCommitted()
 {
 	mEditCommitted = true;
+	mEditDirty = true;
 }
 
 void PropertyDrawer::DrawScalarControl(const Gleam::TStringView label, const Gleam::Reflection::PrimitiveType type, size_t size, void* value, const void* defaultValue, float columnWidth)

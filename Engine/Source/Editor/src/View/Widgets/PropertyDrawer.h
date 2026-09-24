@@ -58,6 +58,8 @@ public:
 
 	static bool EditCommitted();
 
+	static bool EditDirty();
+
 private:
 
 	static void TrackEdit();
@@ -67,6 +69,8 @@ private:
 	static inline bool mEditStarted = false;
 
 	static inline bool mEditCommitted = false;
+
+	static inline bool mEditDirty = false;
 
 	using DrawFunction = std::function<void(const Gleam::TStringView label,
 											void* obj,

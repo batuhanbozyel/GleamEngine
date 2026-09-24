@@ -1,6 +1,7 @@
 #pragma once
 #include "Core/EngineDefines.h"
 #include "Core/GUID.h"
+#include "ChangeTracker.h"
 #include "Components/Transform.h"
 
 #include <entt/entity/entity.hpp>
@@ -90,6 +91,10 @@ public:
 	{
         GLEAM_ASSERT(IsValid(), "Entity is invalid!");
 		GLEAM_ASSERT(!HasComponent<T>(), "Entity already has the component!");
+		if constexpr (IsTrackedComponent<T>::value)
+		{
+			GetChangeTracker().MarkAdded<T>(mHandle);
+		}
 		if constexpr (Reflection::Traits::IsReflected<T>::value)
 		{
 			const auto& classDesc = Reflection::GetClass<T>();
@@ -105,7 +110,17 @@ public:
     void SetComponent(Args&&... args)
     {
         GLEAM_ASSERT(IsValid(), "Entity is invalid!");
-        GLEAM_ASSERT(!HasComponent<T>(), "Entity already has the component!");
+		if constexpr (IsTrackedComponent<T>::value)
+		{
+			if (HasComponent<T>())
+			{
+				GetChangeTracker().MarkChanged<T>(mHandle);
+			}
+			else
+			{
+				GetChangeTracker().MarkAdded<T>(mHandle);
+			}
+		}
 		if constexpr (Reflection::Traits::IsReflected<T>::value)
 		{
 			const auto& classDesc = Reflection::GetClass<T>();
@@ -122,6 +137,10 @@ public:
 	{
         GLEAM_ASSERT(IsValid(), "Entity is invalid!");
 		GLEAM_ASSERT(HasComponent<T>(), "Entity does not have the component!");
+		if constexpr (IsTrackedComponent<T>::value)
+		{
+			GetChangeTracker().MarkRemoved<T>(mHandle);
+		}
 		if constexpr (Reflection::Traits::IsReflected<T>::value)
 		{
 			const auto& classDesc = Reflection::GetClass<T>();
@@ -157,6 +176,10 @@ public:
 	{
         GLEAM_ASSERT(IsValid(), "Entity is invalid!");
 		GLEAM_ASSERT(HasComponent<T>(), "Entity does not have the component!");
+		if constexpr (IsTrackedComponent<T>::value)
+		{
+			GetChangeTracker().MarkChanged<T>(mHandle);
+		}
 		if constexpr (Reflection::Traits::IsReflected<T>::value)
 		{
 			const auto& classDesc = Reflection::GetClass<T>();
@@ -272,6 +295,11 @@ public:
 	}
 
 private:
+
+	ChangeTracker& GetChangeTracker() const
+	{
+		return mRegistry->ctx().get<ChangeTracker>();
+	}
 
 	void UpdateTransformHierarchy();
 

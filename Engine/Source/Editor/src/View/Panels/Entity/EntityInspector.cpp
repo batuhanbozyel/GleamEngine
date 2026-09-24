@@ -203,7 +203,15 @@ void EntityInspector::DrawComponents(const Gleam::TArray<Gleam::EntityHandle>& e
 
 	for (auto& shared : sharedComponents)
 	{
+		const bool dirtyBefore = PropertyDrawer::EditDirty();
 		PropertyDrawer::DrawClass(shared.classDesc->ResolveName(), shared.instances, *shared.classDesc);
+		if (not dirtyBefore and PropertyDrawer::EditDirty())
+		{
+			for (auto handle : entities)
+			{
+				entityManager.GetChangeTracker().MarkChanged(shared.classDesc->TypeHash(), handle);
+			}
+		}
 	}
 }
 

@@ -111,6 +111,10 @@ public:
 	T& AddComponent(EntityHandle entity, Args&&... args)
 	{
 		GLEAM_ASSERT(!HasComponent<T>(entity), "Entity already has the component!");
+		if constexpr (IsTrackedComponent<T>::value)
+		{
+			GetChangeTracker().MarkAdded<T>(entity);
+		}
 		if constexpr (Reflection::Traits::IsReflected<T>::value)
 		{
 			const auto& classDesc = Reflection::GetClass<T>();
@@ -125,7 +129,17 @@ public:
     template<typename T, typename ... Args>
     void SetComponent(EntityHandle entity, Args&&... args)
     {
-        GLEAM_ASSERT(!HasComponent<T>(entity), "Entity already has the component!");
+		if constexpr (IsTrackedComponent<T>::value)
+		{
+			if (HasComponent<T>(entity))
+			{
+				GetChangeTracker().MarkChanged<T>(entity);
+			}
+			else
+			{
+				GetChangeTracker().MarkAdded<T>(entity);
+			}
+		}
 		if constexpr (Reflection::Traits::IsReflected<T>::value)
 		{
 			const auto& classDesc = Reflection::GetClass<T>();
@@ -141,6 +155,10 @@ public:
 	void RemoveComponent(EntityHandle entity)
 	{
 		GLEAM_ASSERT(HasComponent<T>(entity), "Entity does not have the component!");
+		if constexpr (IsTrackedComponent<T>::value)
+		{
+			GetChangeTracker().MarkRemoved<T>(entity);
+		}
 		if constexpr (Reflection::Traits::IsReflected<T>::value)
 		{
 			const auto& classDesc = Reflection::GetClass<T>();
@@ -174,6 +192,10 @@ public:
 	T& GetComponent(EntityHandle entity)
 	{
 		GLEAM_ASSERT(HasComponent<T>(entity), "Entity does not have the component!");
+		if constexpr (IsTrackedComponent<T>::value)
+		{
+			GetChangeTracker().MarkChanged<T>(entity);
+		}
 		if constexpr (Reflection::Traits::IsReflected<T>::value)
 		{
 			const auto& classDesc = Reflection::GetClass<T>();
@@ -200,6 +222,48 @@ public:
 		}
     }
 	
+	template<typename T, typename Func>
+	void ForEachChanged(Tick since, Func&& fn) const
+	{
+		const auto& tracker = GetChangeTracker();
+		for (auto entity : CreateView<T>())
+		{
+			if (tracker.IsChanged<T>(entity, since))
+			{
+				fn(entity, GetComponent<T>(entity));
+			}
+		}
+	}
+
+	template<typename T, typename Func>
+	void ForEachAdded(Tick since, Func&& fn) const
+	{
+		const auto& tracker = GetChangeTracker();
+		for (auto entity : CreateView<T>())
+		{
+			if (tracker.IsAdded<T>(entity, since))
+			{
+				fn(entity, GetComponent<T>(entity));
+			}
+		}
+	}
+
+	template<typename T, typename Func>
+	void ForEachRemoved(Tick since, Func&& fn) const
+	{
+		GetChangeTracker().ForEachRemoved<T>(since, eastl::forward<Func>(fn));
+	}
+
+	ChangeTracker& GetChangeTracker()
+	{
+		return mRegistry.ctx().get<ChangeTracker>();
+	}
+
+	const ChangeTracker& GetChangeTracker() const
+	{
+		return mRegistry.ctx().get<const ChangeTracker>();
+	}
+
 	bool IsValid(EntityHandle entity) const;
 
 	uint32_t GetEntityCount() const;

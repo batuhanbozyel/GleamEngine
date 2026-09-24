@@ -72,7 +72,7 @@ static TargetPixel ToTargetPixel(const Gleam::Float2& screen, const Gleam::Float
 	};
 }
 
-static Gleam::Transform GetPivotTransform(Gleam::EntityManager& entityManager, const Gleam::TArray<Gleam::EntityHandle>& targets, Gleam::EntityHandle active)
+static Gleam::Transform GetPivotTransform(const Gleam::EntityManager& entityManager, const Gleam::TArray<Gleam::EntityHandle>& targets, Gleam::EntityHandle active)
 {
 	const auto reference = eastl::find(targets.begin(), targets.end(), active) != targets.end() ? active : targets.front();
 	auto pivot = entityManager.GetComponent<Gleam::Entity>(reference).GetWorldTransform();
@@ -432,7 +432,7 @@ Gleam::TArray<Gleam::EntityHandle> WorldViewport::GatherGizmoTargets(const Gleam
 
 void WorldViewport::DrawTransformGizmo(const Gleam::Float2& imageMin, const Gleam::Float2& imageSize)
 {
-	auto& entityManager = mEditWorld->GetEntityManager();
+	const auto& entityManager = mEditWorld->GetEntityManager();
 	auto gizmoTargets = GatherGizmoTargets(entityManager);
 	if (gizmoTargets.empty())
 	{
@@ -469,7 +469,7 @@ void WorldViewport::DrawTransformGizmo(const Gleam::Float2& imageMin, const Glea
 	const bool inputEnabled = ImGui::IsWindowHovered() && mCursorVisible;
 	if (mTransformGizmo.Manipulate(viewport, inputEnabled, pivot))
 	{
-		ApplyPivotDelta(entityManager, gizmoTargets, startPivot, pivot);
+		ApplyPivotDelta(mEditWorld->GetEntityManager(), gizmoTargets, startPivot, pivot);
 	}
 
 	if (wasDragging == false && mTransformGizmo.IsDragging())
