@@ -45,11 +45,6 @@ public:
 		return mTick;
 	}
 
-	Tick Advance()
-	{
-		return ++mTick;
-	}
-
 	void EndFrame()
 	{
 		const Tick horizon = mFrameTicks[mFrameIndex];
@@ -63,10 +58,16 @@ public:
 	{
 		if constexpr (IsTrackedComponent<T>::value)
 		{
-			auto& entry = GetOrCreateTicks(TypeHashOf<T>(), entity);
-			entry.added = mTick;
-			entry.changed = mTick;
+			MarkAdded(TypeHashOf<T>(), entity);
 		}
+	}
+
+	void MarkAdded(uint32_t typeHash, entt::entity entity)
+	{
+		++mTick;
+		auto& entry = GetOrCreateTicks(typeHash, entity);
+		entry.added = mTick;
+		entry.changed = mTick;
 	}
 
 	template<typename T>
@@ -80,6 +81,7 @@ public:
 
 	void MarkChanged(uint32_t typeHash, entt::entity entity)
 	{
+		++mTick;
 		GetOrCreateTicks(typeHash, entity).changed = mTick;
 	}
 
@@ -94,6 +96,7 @@ public:
 
 	void MarkRemoved(uint32_t typeHash, entt::entity entity)
 	{
+		++mTick;
 		mRemoved[typeHash].push_back(RemovedRecord{ .entity = entity, .tick = mTick });
 
 		auto it = mTicks.find(typeHash);

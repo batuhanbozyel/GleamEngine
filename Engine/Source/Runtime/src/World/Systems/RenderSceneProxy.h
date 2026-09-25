@@ -14,6 +14,7 @@ class Mesh;
 class Entity;
 class Material;
 class MaterialInstance;
+struct MeshRenderer;
 
 struct MeshBatch
 {
@@ -28,6 +29,22 @@ struct MeshInstance
 	Mesh* mesh = nullptr;
 	uint32_t submeshIndex = 0;
 	EntityHandle entity = InvalidEntity;
+};
+
+struct MeshInstanceRecord
+{
+	AssetReference material;
+	Mesh* mesh = nullptr;
+	MaterialInstance* materialInstance = nullptr;
+	uint32_t submeshIndex = 0;
+};
+
+struct MeshEntityRecord
+{
+	EntityHandle entity = InvalidEntity;
+	TArray<AssetReference> acquired;
+	TArray<MeshInstanceRecord> instances;
+	Float4x4 transform = Float4x4::identity;
 };
 
 class RenderSceneProxy : public WorldSubsystem
@@ -63,20 +80,19 @@ public:
 
 private:
 
-	Float4x4 UpdateTransform(EntityHandle entity, const Float4x4& transform, uint32_t frameIndex);
+	void BuildRecord(const EntityManager& entityManager, EntityHandle entity, const MeshRenderer& meshRenderer);
 
-	struct EntityTransformCache
-	{
-		Float4x4 transform;
-		EntityHandle entity = InvalidEntity;
-		uint32_t frame = 0;
-	};
+	void RemoveRecord(EntityHandle entity);
+
+	void ReleaseAcquired(TArray<AssetReference>& acquired);
 
 	uint32_t mNumBatches = 0;
 	uint32_t mTotalInstances = 0;
 	Buffer mGlobalInstanceBuffer = {};
     HashMap<AssetReference, MeshBatch> mMeshBatches;
-	TArray<EntityTransformCache> mTransformCache;
+	ChangeCursor mChangeCursor;
+	TArray<MeshEntityRecord> mRecords;
+	HashMap<uint32_t, uint32_t> mRecordLookup;
 
 	static constexpr uint32_t MaxMeshInstances = MAX_MESH_INSTANCES;
 	static_assert(MaxMeshInstances <= VISIBILITY_INSTANCE_MASK, "MaxMeshInstances exceeds the visibility buffer instance ID bit budget.");

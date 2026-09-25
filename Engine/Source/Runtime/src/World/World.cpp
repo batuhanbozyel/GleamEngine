@@ -37,7 +37,6 @@ void World::Update()
 	Timestep::Step();
 	for (auto subsystem : mTickableSubsystems)
 	{
-		mEntityManager.GetChangeTracker().Advance();
 		subsystem->Tick(this);
 	}
 
@@ -48,8 +47,7 @@ void World::Update()
 		{
 			if (system->Enabled)
 			{
-				mEntityManager.GetChangeTracker().Advance();
-			system->OnPreFixedUpdate(mEntityManager);
+				system->OnPreFixedUpdate(mEntityManager);
 			}
 		}
 
@@ -57,8 +55,7 @@ void World::Update()
 		{
 			if (system->Enabled)
 			{
-				mEntityManager.GetChangeTracker().Advance();
-			system->OnFixedUpdate(mEntityManager);
+				system->OnFixedUpdate(mEntityManager);
 			}
 		}
 
@@ -66,8 +63,7 @@ void World::Update()
 		{
 			if (system->Enabled)
 			{
-				mEntityManager.GetChangeTracker().Advance();
-			system->OnPostFixedUpdate(mEntityManager);
+				system->OnPostFixedUpdate(mEntityManager);
 			}
 		}
 	}
@@ -77,7 +73,6 @@ void World::Update()
 	{
 		if (system->Enabled)
 		{
-			mEntityManager.GetChangeTracker().Advance();
 			system->OnPreUpdate(mEntityManager);
 		}
 	}
@@ -86,7 +81,6 @@ void World::Update()
 	{
 		if (system->Enabled)
 		{
-			mEntityManager.GetChangeTracker().Advance();
 			system->OnUpdate(mEntityManager);
 		}
 	}
@@ -95,7 +89,6 @@ void World::Update()
 	{
 		if (system->Enabled)
 		{
-			mEntityManager.GetChangeTracker().Advance();
 			system->OnPostUpdate(mEntityManager);
 		}
 	}
