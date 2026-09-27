@@ -58,19 +58,21 @@ private:
 	{
 		RigidBodyHandle body = {};
 		Transform transform = {};
-		RigidBodyType type = RigidBodyType::Dynamic;
-		bool alive = false;
 	};
 
-	void SynchronizeRigidBodies(EntityManager& entityManager);
+	void SynchronizeRigidBodies(const EntityManager& entityManager);
 
 	void ApplyRigidBodyMotions(EntityManager& entityManager);
 
 	RigidBodyProxy CreateRigidBodyProxy(const Entity& entity, const RigidBody& rigidBody);
 
+	void ReplaceRigidBodyProxy(const Entity& entity, const RigidBody& rigidBody, RigidBodyProxy& proxy);
+
 	Scope<PhysicsWorld> mPhysicsWorld;
 
 	HashMap<EntityHandle, RigidBodyProxy, EnumClassHash> mRigidBodies;
+
+	ChangeCursor mChangeCursor;
 
 	Float3 mGravity = Float3{ 0.0f, -9.81f, 0.0f };
 

@@ -62,6 +62,26 @@ void PhysicsSystem::OnDestroy(EntityManager& entityManager)
 
 void PhysicsSystem::OnFixedUpdate(EntityManager& entityManager)
 {
+	const auto& tracker = entityManager.GetChangeTracker();
+	if (tracker.GetTick() != mChangeCursor.GetLastSeen())
+	{
+		const Tick since = mChangeCursor.Begin(tracker);
+		entityManager.ForEachChanged<RigidBody>(since, [&](EntityHandle handle, const RigidBody& rigidBody)
+		{
+			const auto& entity = entityManager.GetComponent<Entity>(handle);
+			auto it = mRigidBodies.find(handle);
+			if (it == mRigidBodies.end())
+			{
+				mRigidBodies.emplace(handle, CreateRigidBodyProxy(entity, rigidBody));
+			}
+			else
+			{
+				ReplaceRigidBodyProxy(entity, rigidBody, it->second);
+			}
+		});
+		mChangeCursor.Commit();
+	}
+
 	SynchronizeRigidBodies(entityManager);
 	mPhysicsWorld->Step(static_cast<float>(Timestep::fixedDeltaTime));
 	ApplyRigidBodyMotions(entityManager);
@@ -128,8 +148,6 @@ PhysicsSystem::RigidBodyProxy PhysicsSystem::CreateRigidBodyProxy(const Entity& 
 	RigidBodyProxy proxy;
 	proxy.body = mPhysicsWorld->CreateRigidBody(rigidBody, transform.position, transform.rotation, userData);
 	proxy.transform = transform;
-	proxy.type = rigidBody.type;
-	proxy.alive = true;
 
 	float volume = 0.0f;
 	for (const auto& collider : rigidBody.colliders.boxes)
@@ -166,58 +184,44 @@ PhysicsSystem::RigidBodyProxy PhysicsSystem::CreateRigidBodyProxy(const Entity& 
 	return proxy;
 }
 
-void PhysicsSystem::SynchronizeRigidBodies(EntityManager& entityManager)
+void PhysicsSystem::ReplaceRigidBodyProxy(const Entity& entity, const RigidBody& rigidBody, RigidBodyProxy& proxy)
 {
-	for (auto& [handle, proxy] : mRigidBodies)
-	{
-		proxy.alive = false;
-	}
+	const Float3 linearVelocity = mPhysicsWorld->GetLinearVelocity(proxy.body);
+	const Float3 angularVelocity = mPhysicsWorld->GetAngularVelocity(proxy.body);
 
-	entityManager.ForEach<Entity, RigidBody>([&](EntityHandle handle, const Entity& entity, const RigidBody& rigidBody)
+	mPhysicsWorld->DestroyRigidBody(proxy.body);
+	proxy = CreateRigidBodyProxy(entity, rigidBody);
+
+	mPhysicsWorld->SetLinearVelocity(proxy.body, linearVelocity);
+	mPhysicsWorld->SetAngularVelocity(proxy.body, angularVelocity);
+}
+
+void PhysicsSystem::SynchronizeRigidBodies(const EntityManager& entityManager)
+{
+	for (auto it = mRigidBodies.begin(); it != mRigidBodies.end();)
 	{
-		auto it = mRigidBodies.find(handle);
-		if (it == mRigidBodies.end())
+		const EntityHandle handle = it->first;
+		if (not entityManager.HasComponent<RigidBody>(handle))
 		{
-			mRigidBodies.emplace(handle, CreateRigidBodyProxy(entity, rigidBody));
+			mPhysicsWorld->DestroyRigidBody(it->second.body);
+			it = mRigidBodies.erase(it);
 		}
 		else
 		{
 			RigidBodyProxy& proxy = it->second;
+			const auto& entity = entityManager.GetComponent<Entity>(handle);
 			const Transform& transform = entity.GetWorldTransform();
 
 			if (transform.scale != proxy.transform.scale)
 			{
-				mPhysicsWorld->DestroyRigidBody(proxy.body);
-				proxy = CreateRigidBodyProxy(entity, rigidBody);
+				ReplaceRigidBodyProxy(entity, entityManager.GetComponent<RigidBody>(handle), proxy);
 			}
-			else
+			else if (transform.position != proxy.transform.position or transform.rotation != proxy.transform.rotation)
 			{
-				if (proxy.type != rigidBody.type)
-				{
-					mPhysicsWorld->SetRigidBodyType(proxy.body, rigidBody.type);
-					proxy.type = rigidBody.type;
-				}
-
-				if (transform.position != proxy.transform.position or transform.rotation != proxy.transform.rotation)
-				{
-					mPhysicsWorld->SetRigidBodyTransform(proxy.body, transform.position, transform.rotation);
-					proxy.transform = transform;
-				}
+				mPhysicsWorld->SetRigidBodyTransform(proxy.body, transform.position, transform.rotation);
+				proxy.transform = transform;
 			}
-			proxy.alive = true;
-		}
-	});
-
-	for (auto it = mRigidBodies.begin(); it != mRigidBodies.end();)
-	{
-		if (it->second.alive)
-		{
 			++it;
-		}
-		else
-		{
-			mPhysicsWorld->DestroyRigidBody(it->second.body);
-			it = mRigidBodies.erase(it);
 		}
 	}
 }
