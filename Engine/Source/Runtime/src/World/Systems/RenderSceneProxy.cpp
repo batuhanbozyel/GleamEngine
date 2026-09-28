@@ -26,6 +26,16 @@
 
 using namespace Gleam;
 
+void RenderSceneProxy::Initialize(World* world)
+{
+	mMeshRendererRemoved = world->GetEntityManager().OnComponentRemoved<MeshRenderer, &RenderSceneProxy::OnMeshRendererRemoved>(*this);
+}
+
+void RenderSceneProxy::OnMeshRendererRemoved(EntityHandle entity)
+{
+	RemoveRecord(entity);
+}
+
 void RenderSceneProxy::BuildRecord(const EntityManager& entityManager, EntityHandle entityHandle, const MeshRenderer& meshRenderer)
 {
 	static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
@@ -146,10 +156,6 @@ void RenderSceneProxy::Update(const World* world)
 
 	const auto& entityManager = world->GetEntityManager();
 	const Tick since = mChangeCursor.Begin(entityManager.GetChangeTracker());
-	entityManager.ForEachRemoved<MeshRenderer>(since, [this](EntityHandle entity)
-	{
-		RemoveRecord(entity);
-	});
 	entityManager.ForEachChanged<MeshRenderer>(since, [this, &entityManager](EntityHandle entity, const MeshRenderer& meshRenderer)
 	{
 		BuildRecord(entityManager, entity, meshRenderer);
@@ -229,6 +235,8 @@ void RenderSceneProxy::Update(const World* world)
 
 void RenderSceneProxy::Shutdown(World* world)
 {
+	mMeshRendererRemoved.Reset();
+
 	static auto assetManager = Globals::GameInstance->GetSubsystem<AssetManager>();
 	for (auto& record : mRecords)
 	{

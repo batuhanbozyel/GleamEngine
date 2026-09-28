@@ -40,15 +40,18 @@ void Entity::UpdateTransformHierarchy()
 		mGlobalTransform = mLocalTransform;
 	}
 
+	GetChangeTracker().MarkChanged<Transform>(mHandle);
 	UpdateChildTransforms();
 }
 
 void Entity::UpdateChildTransforms()
 {
+	auto& tracker = GetChangeTracker();
 	for (auto child : mChildren)
 	{
 		auto& childEntity = GetChildEntity(child);
 		childEntity.mGlobalTransform = mGlobalTransform * childEntity.mLocalTransform;
+		tracker.MarkChanged<Transform>(child);
 		childEntity.UpdateChildTransforms();
 	}
 }

@@ -137,10 +137,6 @@ public:
 	{
         GLEAM_ASSERT(IsValid(), "Entity is invalid!");
 		GLEAM_ASSERT(HasComponent<T>(), "Entity does not have the component!");
-		if constexpr (IsTrackedComponent<T>::value)
-		{
-			GetChangeTracker().MarkRemoved<T>(mHandle);
-		}
 		if constexpr (Reflection::Traits::IsReflected<T>::value)
 		{
 			const auto& classDesc = Reflection::GetClass<T>();

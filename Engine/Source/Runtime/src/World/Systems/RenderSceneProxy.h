@@ -52,6 +52,8 @@ class RenderSceneProxy : public WorldSubsystem
     using BatchFn = std::function<void(const MeshBatch&)>;
 public:
     
+	virtual void Initialize(World* world) override;
+
 	void Update(const World* world);
 
 	virtual void Shutdown(World* world) override;
@@ -84,6 +86,8 @@ private:
 
 	void RemoveRecord(EntityHandle entity);
 
+	void OnMeshRendererRemoved(EntityHandle entity);
+
 	void ReleaseAcquired(TArray<AssetReference>& acquired);
 
 	uint32_t mNumBatches = 0;
@@ -91,6 +95,7 @@ private:
 	Buffer mGlobalInstanceBuffer = {};
     HashMap<AssetReference, MeshBatch> mMeshBatches;
 	ChangeCursor mChangeCursor;
+	ComponentCallback mMeshRendererRemoved;
 	TArray<MeshEntityRecord> mRecords;
 	HashMap<uint32_t, uint32_t> mRecordLookup;
 

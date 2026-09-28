@@ -93,7 +93,6 @@ void World::Update()
 		}
 	}
 
-	mEntityManager.GetChangeTracker().EndFrame();
 }
 
 void World::Serialize(FileStream& stream)

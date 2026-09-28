@@ -52,10 +52,22 @@ static float ComputeVolume(const CapsuleCollider& collider, float scale)
 void PhysicsSystem::OnCreate(EntityManager& entityManager)
 {
 	mPhysicsWorld = CreateScope<PhysicsWorld>(mGravity);
+	mRigidBodyRemoved = entityManager.OnComponentRemoved<RigidBody, &PhysicsSystem::OnRigidBodyRemoved>(*this);
+}
+
+void PhysicsSystem::OnRigidBodyRemoved(EntityHandle entity)
+{
+	const auto it = mRigidBodies.find(entity);
+	if (it != mRigidBodies.end())
+	{
+		mPhysicsWorld->DestroyRigidBody(it->second.body);
+		mRigidBodies.erase(it);
+	}
 }
 
 void PhysicsSystem::OnDestroy(EntityManager& entityManager)
 {
+	mRigidBodyRemoved.Reset();
 	mRigidBodies.clear();
 	mPhysicsWorld.reset();
 }
@@ -72,11 +84,11 @@ void PhysicsSystem::OnFixedUpdate(EntityManager& entityManager)
 			auto it = mRigidBodies.find(handle);
 			if (it == mRigidBodies.end())
 			{
-				mRigidBodies.emplace(handle, CreateRigidBodyProxy(entity, rigidBody));
+				mRigidBodies.emplace(handle, CreateRigidBodyRecord(entity, rigidBody));
 			}
 			else
 			{
-				ReplaceRigidBodyProxy(entity, rigidBody, it->second);
+				ReplaceRigidBodyRecord(entity, rigidBody, it->second);
 			}
 		});
 		mChangeCursor.Commit();
@@ -138,92 +150,88 @@ void PhysicsSystem::ForEachContactEnd(ContactFn&& fn) const
 	});
 }
 
-PhysicsSystem::RigidBodyProxy PhysicsSystem::CreateRigidBodyProxy(const Entity& entity, const RigidBody& rigidBody)
+RigidBodyRecord PhysicsSystem::CreateRigidBodyRecord(const Entity& entity, const RigidBody& rigidBody)
 {
 	const Transform& transform = entity.GetWorldTransform();
-	const float scale = transform.scale;
-
 	void* userData = PhysicsUtils::ToUserData(entity);
 
-	RigidBodyProxy proxy;
-	proxy.body = mPhysicsWorld->CreateRigidBody(rigidBody, transform.position, transform.rotation, userData);
-	proxy.transform = transform;
+	RigidBodyRecord record;
+	record.body = mPhysicsWorld->CreateRigidBody(rigidBody, transform.position, transform.rotation, userData);
+	record.transform = transform;
 
 	float volume = 0.0f;
 	for (const auto& collider : rigidBody.colliders.boxes)
 	{
-		volume += PhysicsUtils::ComputeVolume(collider, scale);
+		volume += PhysicsUtils::ComputeVolume(collider, transform.scale);
 	}
 
 	for (const auto& collider : rigidBody.colliders.spheres)
 	{
-		volume += PhysicsUtils::ComputeVolume(collider, scale);
+		volume += PhysicsUtils::ComputeVolume(collider, transform.scale);
 	}
 
 	for (const auto& collider : rigidBody.colliders.capsules)
 	{
-		volume += PhysicsUtils::ComputeVolume(collider, scale);
+		volume += PhysicsUtils::ComputeVolume(collider, transform.scale);
 	}
 
 	const float density = volume > 0.0f ? rigidBody.mass / volume : 0.0f;
 	for (const auto& collider : rigidBody.colliders.boxes)
 	{
-		mPhysicsWorld->CreateBoxCollider(proxy.body, collider, rigidBody.material, density, scale, userData);
+		mPhysicsWorld->CreateBoxCollider(record.body, collider, rigidBody.material, density, transform.scale, userData);
 	}
 
 	for (const auto& collider : rigidBody.colliders.spheres)
 	{
-		mPhysicsWorld->CreateSphereCollider(proxy.body, collider, rigidBody.material, density, scale, userData);
+		mPhysicsWorld->CreateSphereCollider(record.body, collider, rigidBody.material, density, transform.scale, userData);
 	}
 
 	for (const auto& collider : rigidBody.colliders.capsules)
 	{
-		mPhysicsWorld->CreateCapsuleCollider(proxy.body, collider, rigidBody.material, density, scale, userData);
+		mPhysicsWorld->CreateCapsuleCollider(record.body, collider, rigidBody.material, density, transform.scale, userData);
 	}
 
-	return proxy;
+	return record;
 }
 
-void PhysicsSystem::ReplaceRigidBodyProxy(const Entity& entity, const RigidBody& rigidBody, RigidBodyProxy& proxy)
+void PhysicsSystem::ReplaceRigidBodyRecord(const Entity& entity, const RigidBody& rigidBody, RigidBodyRecord& record)
 {
-	const Float3 linearVelocity = mPhysicsWorld->GetLinearVelocity(proxy.body);
-	const Float3 angularVelocity = mPhysicsWorld->GetAngularVelocity(proxy.body);
+	const Float3 linearVelocity = mPhysicsWorld->GetLinearVelocity(record.body);
+	const Float3 angularVelocity = mPhysicsWorld->GetAngularVelocity(record.body);
 
-	mPhysicsWorld->DestroyRigidBody(proxy.body);
-	proxy = CreateRigidBodyProxy(entity, rigidBody);
+	mPhysicsWorld->DestroyRigidBody(record.body);
+	record = CreateRigidBodyRecord(entity, rigidBody);
 
-	mPhysicsWorld->SetLinearVelocity(proxy.body, linearVelocity);
-	mPhysicsWorld->SetAngularVelocity(proxy.body, angularVelocity);
+	mPhysicsWorld->SetLinearVelocity(record.body, linearVelocity);
+	mPhysicsWorld->SetAngularVelocity(record.body, angularVelocity);
 }
 
 void PhysicsSystem::SynchronizeRigidBodies(const EntityManager& entityManager)
 {
-	for (auto it = mRigidBodies.begin(); it != mRigidBodies.end();)
+	const auto& tracker = entityManager.GetChangeTracker();
+	const Tick since = mTransformCursor.Begin(tracker);
+	const auto transforms = tracker.GetTicks<Transform>();
+
+	for (auto& [handle, record] : mRigidBodies)
 	{
-		const EntityHandle handle = it->first;
-		if (not entityManager.HasComponent<RigidBody>(handle))
+		if (transforms.IsChanged(handle, since))
 		{
-			mPhysicsWorld->DestroyRigidBody(it->second.body);
-			it = mRigidBodies.erase(it);
-		}
-		else
-		{
-			RigidBodyProxy& proxy = it->second;
 			const auto& entity = entityManager.GetComponent<Entity>(handle);
 			const Transform& transform = entity.GetWorldTransform();
 
-			if (transform.scale != proxy.transform.scale)
+			if (transform.scale != record.transform.scale)
 			{
-				ReplaceRigidBodyProxy(entity, entityManager.GetComponent<RigidBody>(handle), proxy);
+				ReplaceRigidBodyRecord(entity, entityManager.GetComponent<RigidBody>(handle), record);
 			}
-			else if (transform.position != proxy.transform.position or transform.rotation != proxy.transform.rotation)
+			else if (transform.position != record.transform.position or transform.rotation != record.transform.rotation)
 			{
-				mPhysicsWorld->SetRigidBodyTransform(proxy.body, transform.position, transform.rotation);
-				proxy.transform = transform;
+				mPhysicsWorld->SetRigidBodyTransform(record.body, transform.position, transform.rotation);
+				record.transform = transform;
 			}
-			++it;
 		}
 	}
+
+	mTransformCursor.Commit();
 }
 
 void PhysicsSystem::ApplyRigidBodyMotions(EntityManager& entityManager)

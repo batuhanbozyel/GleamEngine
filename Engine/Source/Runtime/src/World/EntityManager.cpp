@@ -35,6 +35,7 @@ Entity& EntityManager::CreateEntity(const TString& name, const Guid& guid)
 
 	auto handle = mRegistry.create();
 	auto& entity = AddComponent<Entity>(handle, handle, &mRegistry, name, guid);
+	GetChangeTracker().MarkChanged<Transform>(handle);
 	mHandles.emplace_hint(mHandles.end(), guid, handle);
 	return entity;
 }
@@ -56,11 +57,6 @@ void EntityManager::DestroyHierarchy(EntityHandle entity)
 	const auto& entityComponent = GetComponent<Entity>(entity);
 	auto children = entityComponent.GetChildren();
 	auto guid = entityComponent.GetGuid();
-
-	Visit(entity, [&](void*, const Reflection::ClassDescription& classDesc)
-	{
-		GetChangeTracker().MarkRemoved(classDesc.TypeHash(), entity);
-	});
 	
 	for (auto child : children)
 	{

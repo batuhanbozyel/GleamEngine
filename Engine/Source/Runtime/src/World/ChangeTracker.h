@@ -5,6 +5,7 @@
 
 #include <entt/core/type_info.hpp>
 #include <entt/entity/entity.hpp>
+#include <entt/signal/sigh.hpp>
 
 #include <Reflection/Reflection.h>
 #ifndef __GLEAM_REFLECTION__
@@ -14,6 +15,7 @@
 namespace Gleam {
 
 class Entity;
+class EntityManager;
 
 using Tick = uint64_t;
 
@@ -23,6 +25,64 @@ struct IsTrackedComponent : std::true_type {};
 template<>
 struct IsTrackedComponent<Entity> : std::false_type {};
 
+struct ComponentCallback final
+{
+	friend class EntityManager;
+
+public:
+
+	ComponentCallback() = default;
+
+	ComponentCallback(const ComponentCallback&) = delete;
+
+	ComponentCallback& operator=(const ComponentCallback&) = delete;
+
+	ComponentCallback(ComponentCallback&& other) noexcept
+		: mConnection(other.mConnection)
+	{
+		other.mConnection = {};
+	}
+
+	ComponentCallback& operator=(ComponentCallback&& other) noexcept
+	{
+		if (this != &other)
+		{
+			Reset();
+			mConnection = other.mConnection;
+			other.mConnection = {};
+		}
+		return *this;
+	}
+
+	~ComponentCallback()
+	{
+		Reset();
+	}
+
+	void Reset()
+	{
+		if (mConnection)
+		{
+			mConnection.release();
+		}
+	}
+
+	bool IsConnected() const
+	{
+		return static_cast<bool>(mConnection);
+	}
+
+private:
+
+	explicit ComponentCallback(entt::connection connection)
+		: mConnection(connection)
+	{
+
+	}
+
+	entt::connection mConnection = {};
+};
+
 struct ComponentTicks
 {
 	entt::entity entity = entt::null;
@@ -30,10 +90,64 @@ struct ComponentTicks
 	Tick changed = 0;
 };
 
-struct RemovedRecord
+class ChangeTracker;
+
+struct ComponentTicksView final
 {
-	entt::entity entity = entt::null;
-	Tick tick = 0;
+	friend class ChangeTracker;
+
+public:
+
+	ComponentTicksView() = default;
+
+	bool IsAdded(entt::entity entity, Tick since) const
+	{
+		const auto* entry = Find(entity);
+		if (entry == nullptr)
+		{
+			return false;
+		}
+		else
+		{
+			return entry->added > since;
+		}
+	}
+
+	bool IsChanged(entt::entity entity, Tick since) const
+	{
+		const auto* entry = Find(entity);
+		if (entry == nullptr)
+		{
+			return false;
+		}
+		else
+		{
+			return entry->changed > since;
+		}
+	}
+
+private:
+
+	explicit ComponentTicksView(TArrayView<const ComponentTicks> ticks)
+		: mTicks(ticks)
+	{
+
+	}
+
+	const ComponentTicks* Find(entt::entity entity) const
+	{
+		const uint32_t index = entt::to_entity(entity);
+		if (index >= mTicks.size() or mTicks[index].entity != entity)
+		{
+			return nullptr;
+		}
+		else
+		{
+			return &mTicks[index];
+		}
+	}
+
+	TArrayView<const ComponentTicks> mTicks = {};
 };
 
 class ChangeTracker final
@@ -43,14 +157,6 @@ public:
 	Tick GetTick() const
 	{
 		return mTick;
-	}
-
-	void EndFrame()
-	{
-		const Tick horizon = mFrameTicks[mFrameIndex];
-		mFrameTicks[mFrameIndex] = mTick;
-		mFrameIndex ^= 1u;
-		CollectGarbage(horizon);
 	}
 
 	template<typename T>
@@ -86,27 +192,16 @@ public:
 	}
 
 	template<typename T>
-	void MarkRemoved(entt::entity entity)
+	ComponentTicksView GetTicks() const
 	{
-		if constexpr (IsTrackedComponent<T>::value)
+		const auto it = mTicks.find(TypeHashOf<T>());
+		if (it == mTicks.end())
 		{
-			MarkRemoved(TypeHashOf<T>(), entity);
+			return ComponentTicksView{};
 		}
-	}
-
-	void MarkRemoved(uint32_t typeHash, entt::entity entity)
-	{
-		++mTick;
-		mRemoved[typeHash].push_back(RemovedRecord{ .entity = entity, .tick = mTick });
-
-		auto it = mTicks.find(typeHash);
-		if (it != mTicks.end())
+		else
 		{
-			const uint32_t index = entt::to_entity(entity);
-			if (index < it->second.size() and it->second[index].entity == entity)
-			{
-				it->second[index] = ComponentTicks{};
-			}
+			return ComponentTicksView{ TArrayView<const ComponentTicks>{ it->second.data(), it->second.size() } };
 		}
 	}
 
@@ -135,22 +230,6 @@ public:
 		else
 		{
 			return entry->changed > since;
-		}
-	}
-
-	template<typename T, typename Func>
-	void ForEachRemoved(Tick since, Func&& fn) const
-	{
-		const auto it = mRemoved.find(TypeHashOf<T>());
-		if (it != mRemoved.end())
-		{
-			for (const auto& record : it->second)
-			{
-				if (record.tick > since)
-				{
-					fn(record.entity);
-				}
-			}
 		}
 	}
 
@@ -208,24 +287,8 @@ private:
 		}
 	}
 
-	void CollectGarbage(Tick horizon)
-	{
-		for (auto& [typeHash, queue] : mRemoved)
-		{
-			size_t keepFrom = 0;
-			while (keepFrom < queue.size() and queue[keepFrom].tick <= horizon)
-			{
-				++keepFrom;
-			}
-			queue.erase(queue.begin(), queue.begin() + keepFrom);
-		}
-	}
-
 	Tick mTick = 0;
-	Tick mFrameTicks[2] = { 0, 0 };
-	uint32_t mFrameIndex = 0;
 	HashMap<uint32_t, TArray<ComponentTicks>> mTicks;
-	HashMap<uint32_t, TArray<RemovedRecord>> mRemoved;
 };
 
 class ChangeCursor final

@@ -155,10 +155,6 @@ public:
 	void RemoveComponent(EntityHandle entity)
 	{
 		GLEAM_ASSERT(HasComponent<T>(entity), "Entity does not have the component!");
-		if constexpr (IsTrackedComponent<T>::value)
-		{
-			GetChangeTracker().MarkRemoved<T>(entity);
-		}
 		if constexpr (Reflection::Traits::IsReflected<T>::value)
 		{
 			const auto& classDesc = Reflection::GetClass<T>();
@@ -248,10 +244,10 @@ public:
 		}
 	}
 
-	template<typename T, typename Func>
-	void ForEachRemoved(Tick since, Func&& fn) const
+	template<typename T, auto Candidate, typename Instance>
+	ComponentCallback OnComponentRemoved(Instance&& instance)
 	{
-		GetChangeTracker().ForEachRemoved<T>(since, eastl::forward<Func>(fn));
+		return ComponentCallback{ GetStorage<T>().on_destroy().template connect<Candidate>(std::forward<Instance>(instance)) };
 	}
 
 	ChangeTracker& GetChangeTracker()
