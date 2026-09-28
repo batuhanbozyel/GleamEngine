@@ -38,6 +38,8 @@ public:
 
 	const StorageFile& GetAssetFile(const AssetReference& ref) const;
 
+	void CloseAssetFile(const AssetReference& ref) const;
+
 private:
 
 	struct AssetEntry

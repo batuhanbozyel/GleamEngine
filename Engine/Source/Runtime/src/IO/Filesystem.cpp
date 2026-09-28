@@ -1,6 +1,10 @@
 #include "gpch.h"
 #include "Filesystem.h"
 #include "File.h"
+#include "Log.h"
+
+#include <cerrno>
+#include <cstring>
 
 using namespace Gleam;
 
@@ -14,9 +18,21 @@ void Filesystem::ForEach(const Path& path, const DirectoryFn& fn, bool recursive
 	std::filesystem::path stlPath = std::wstring_view(path.Native().c_str(), path.Native().length());
 
 	std::error_code error;
-    for (const auto& node : std::filesystem::directory_iterator(stlPath, error))
+	auto directory = std::filesystem::directory_iterator(stlPath, error);
+	if (error)
+	{
+		GLEAM_CORE_ERROR("Filesystem failed to iterate directory: {0} ({1})", path.String(), error.message());
+		return;
+	}
+
+    for (const auto& node : directory)
     {
-		auto entry = DirectoryEntry(Path(node), node.is_directory(error));
+		std::error_code entryError;
+		auto entry = DirectoryEntry(Path(node), node.is_directory(entryError));
+		if (entryError)
+		{
+			GLEAM_CORE_ERROR("Filesystem::ForEach failed to query directory entry: {0} ({1})", entry.String(), entryError.message());
+		}
         if (recursive && entry.IsDirectory())
         {
             ForEach(entry, fn, recursive);
@@ -37,6 +53,11 @@ WriteAccessor<File> Filesystem::Create(const Path& path, FileType type)
     }
 	std::filesystem::path stlPath = std::wstring_view(path.Native().c_str(), path.Native().length());
     FileStream handle(stlPath, flags);
+    if (not handle.is_open())
+    {
+        const char* reason = std::strerror(errno);
+        GLEAM_CORE_ERROR("Filesystem failed to create file: {0} ({1})", path.String(), reason);
+    }
     handle.unsetf(std::ios::skipws);
     
     std::lock_guard<std::mutex> lock(mFileCreateMutex);
@@ -53,13 +74,18 @@ WriteAccessor<File> Filesystem::Create(const Path& path, FileType type)
 
 ReadAccessor<File> Filesystem::OpenRead(const Path& path, FileType type)
 {
-	auto flags = std::ios::out | std::ios::in;
+	auto flags = std::ios::in;
 	if (type == FileType::Binary)
 	{
 		flags |= std::ios::binary;
 	}
 	std::filesystem::path stlPath = std::wstring_view(path.Native().c_str(), path.Native().length());
 	FileStream handle(stlPath, flags);
+	if (not handle.is_open())
+	{
+		const char* reason = std::strerror(errno);
+		GLEAM_CORE_ERROR("Filesystem failed to open file for read: {0} ({1})", path.String(), reason);
+	}
 	handle.unsetf(std::ios::skipws);
     
     std::lock_guard<std::mutex> lock(mFileCreateMutex);
@@ -83,6 +109,11 @@ WriteAccessor<File> Filesystem::OpenWrite(const Path& path, FileType type)
     }
     std::filesystem::path stlPath = std::wstring_view(path.Native().c_str(), path.Native().length());
     FileStream handle(stlPath, flags);
+    if (not handle.is_open())
+    {
+        const char* reason = std::strerror(errno);
+        GLEAM_CORE_ERROR("Filesystem failed to open file for write: {0} ({1})", path.String(), reason);
+    }
     handle.unsetf(std::ios::skipws);
     
     std::lock_guard<std::mutex> lock(mFileCreateMutex);
@@ -100,7 +131,14 @@ WriteAccessor<File> Filesystem::OpenWrite(const Path& path, FileType type)
 bool Filesystem::Remove(const Path& path)
 {
 	std::filesystem::path stlPath = std::wstring_view(path.Native().c_str(), path.Native().length());
-    return std::filesystem::remove(stlPath);
+
+	std::error_code error;
+	if (not std::filesystem::remove(stlPath, error))
+	{
+		GLEAM_CORE_ERROR("Filesystem failed to remove file: {0} ({1})", path.String(), error.message());
+		return false;
+	}
+	return true;
 }
 
 FileAccessor& Filesystem::Accessor(const Path& path)

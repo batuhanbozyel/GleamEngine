@@ -29,6 +29,9 @@ struct CopyCommandBuffer::Impl
 	TArray<Buffer> stagingBuffers;
 	TArray<Buffer> bufferCopies;
 	TArray<Texture> textureCopies;
+
+	std::mutex pendingFileCloseMutex;
+	TArray<IDStorageFile*> pendingFileCloses;
 	
 	const void* CopyUploadData(const void* data, size_t size)
 	{
@@ -41,6 +44,17 @@ struct CopyCommandBuffer::Impl
 			return dst;
 		}
 		return nullptr;
+	}
+
+	void FlushPendingFileCloses()
+	{
+		std::lock_guard<std::mutex> lock(pendingFileCloseMutex);
+		for (auto file : pendingFileCloses)
+		{
+			file->Close();
+			file->Release();
+		}
+		pendingFileCloses.clear();
 	}
 };
 
@@ -205,6 +219,8 @@ void CopyCommandBuffer::WaitUntilCompleted() const
 	WaitForID3D12Fence(mHandle->fileFence, mHandle->fenceValue);
 	WaitForID3D12Fence(mHandle->memoryFence, mHandle->fenceValue);
 
+	mHandle->FlushPendingFileCloses();
+
 	mHandle->stagingBufferOffset = 0;
 	if (not mHandle->stagingBuffers.empty())
 	{
@@ -231,9 +247,8 @@ void CopyCommandBuffer::CloseFile(StorageFile& file) const
 		return;
 	}
 
-	auto handle = static_cast<IDStorageFile*>(file.GetHandle());
-	handle->Close();
-	handle->Release();
+	std::lock_guard<std::mutex> lock(mHandle->pendingFileCloseMutex);
+	mHandle->pendingFileCloses.push_back(static_cast<IDStorageFile*>(file.GetHandle()));
 	file = StorageFile();
 }
 

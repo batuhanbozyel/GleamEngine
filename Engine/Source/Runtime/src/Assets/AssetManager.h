@@ -85,6 +85,7 @@ public:
 			auto& asset = it->second;
 			if (--asset->mRefCount == 0)
 			{
+				mStorage->CloseAssetFile(ref);
 				mAssetCache.erase(it);
 			}
 		}

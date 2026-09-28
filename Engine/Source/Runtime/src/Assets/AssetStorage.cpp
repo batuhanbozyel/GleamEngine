@@ -40,6 +40,8 @@ bool AssetStorage::Contains(const AssetReference& ref) const
 AssetHeader AssetStorage::ReadAsset(const AssetReference& ref, const Reflection::ClassDescription& classDesc, void* metadata) const
 {
 	auto file = Filesystem::OpenRead(GetAssetFilePath(ref), FileType::Binary);
+	GLEAM_ASSERT(file->IsOpen(), "Failed to open asset file: {}", GetAssetFilePath(ref).String());
+
 	auto& stream = file->GetStream();
 
 	auto serializer = BinarySerializer();
@@ -126,4 +128,21 @@ const StorageFile& AssetStorage::GetAssetFile(const AssetReference& ref) const
 		entry.file = renderSystem->GetCopyCommandBuffer()->OpenFile(mDirectory / entry.path);
 	}
 	return entry.file;
+}
+
+void AssetStorage::CloseAssetFile(const AssetReference& ref) const
+{
+	std::lock_guard<std::mutex> lock(mMutex);
+
+	auto it = mEntries.find(ref);
+	if (it == mEntries.end())
+	{
+		return;
+	}
+
+	if (it->second.file.IsValid())
+	{
+		static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
+		renderSystem->GetCopyCommandBuffer()->CloseFile(it->second.file);
+	}
 }
