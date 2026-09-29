@@ -1,6 +1,7 @@
 #pragma once
 #include "Math/Color.h"
 #include "Math/Vector3.h"
+#include "Math/Quaternion.h"
 #include "Container/Array.h"
 #include "Container/Hash.h"
 #include "Container/String.h"
@@ -15,6 +16,8 @@ public:
 
 	using UIFunction = std::function<void()>;
 
+	static bool DrawSettingsButton(float size);
+
 	static void DrawScalarControl(const Gleam::TStringView label, const Gleam::Reflection::PrimitiveType type, size_t size, void* value, const void* defaultValue, float columnWidth = 100.0f);
 
 	template<typename T, std::enable_if_t<Gleam::Reflection::Traits::IsPrimitive<T>::value, bool> = true>
@@ -25,6 +28,9 @@ public:
 	}
 
 	static void DrawVec3Control(const Gleam::TStringView label, Gleam::Float3& values, float resetValue = 0.0f, float columnWidth = 100.0f);
+
+	// Quaternions are edited as euler angles, the triple is cached so it survives the round trip
+	static void DrawRotationControl(const Gleam::TStringView label, Gleam::Quaternion& rotation, float columnWidth = 100.0f);
 
 	static void DrawColorControl(const Gleam::TStringView label, Gleam::Color& color, float columnWidth = 100.0f);
 
@@ -61,6 +67,13 @@ public:
 
 	static bool EditDirty();
 
+	// Structural edits are queued so the caller can apply them inside an undo transaction
+	static void QueueEdit(UIFunction&& edit);
+
+	static bool HasPendingEdit();
+
+	static void ApplyPendingEdit();
+
 private:
 
 	static void TrackEdit();
@@ -72,6 +85,17 @@ private:
 	static inline bool mEditCommitted = false;
 
 	static inline bool mEditDirty = false;
+
+	static inline UIFunction mPendingEdit = nullptr;
+
+	struct RotationCache
+	{
+		Gleam::Quaternion rotation;
+		Gleam::Float3 euler;
+		int32_t frame = -1;
+	};
+
+	static inline Gleam::HashMap<uint32_t, RotationCache> mRotationCache;
 
 	using DrawFunction = std::function<void(const Gleam::TStringView label,
 											void* obj,

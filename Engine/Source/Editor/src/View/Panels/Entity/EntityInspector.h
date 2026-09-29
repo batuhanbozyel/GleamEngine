@@ -41,14 +41,6 @@ private:
 
 	UndoSystem* mUndoSystem = nullptr;
 
-	Gleam::Float3 mEntityEulerRotation = {};
-
-	// Rotation this panel last wrote, anything else means the entity was rotated elsewhere
-	Gleam::Quaternion mEntityRotation = Gleam::Quaternion::identity;
-
-	// Entity the euler cache was built from
-	Gleam::EntityHandle mCachedEntity = Gleam::InvalidEntity;
-
 };
 
 } // namespace GEditor

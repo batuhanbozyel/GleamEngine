@@ -6,6 +6,7 @@
 #include "Core/Globals.h"
 #include "Core/Application.h"
 #include "Container/EnumFlag.h"
+#include "Physics/Collider.h"
 #include "Serialization/ReflectionUtils.h"
 
 #include <imgui.h>
@@ -164,6 +165,87 @@ static bool IsMixedValue()
 	return (GImGui->CurrentItemFlags & ImGuiItemFlags_MixedValue) != 0;
 }
 
+// Deduced from the container, TArray is an alias template and would not deduce the element type
+template<typename Colliders>
+static void DrawColliders(const char* prefix, Colliders& colliders, float columnWidth)
+{
+	using ColliderType = typename Colliders::value_type;
+
+	for (uint32_t index = 0; index < colliders.size(); ++index)
+	{
+		char elementLabel[32];
+		snprintf(elementLabel, sizeof(elementLabel), "%s %u", prefix, index);
+
+		PropertyDrawer::DrawClass(elementLabel, &colliders[index], Gleam::Reflection::GetClass<ColliderType>(), columnWidth, [&colliders, index]()
+		{
+			const float lineHeight = ImGui::GetFontSize() + ImGui::GetStyle().FramePadding.y * 2.0f;
+			if (PropertyDrawer::DrawSettingsButton(lineHeight))
+			{
+				ImGui::OpenPopup("ColliderSettings");
+			}
+
+			if (ImGui::BeginPopup("ColliderSettings"))
+			{
+				if (ImGui::MenuItem("Remove Collider"))
+				{
+					PropertyDrawer::QueueEdit([&colliders, index]()
+					{
+						colliders.erase(colliders.begin() + index);
+					});
+				}
+				ImGui::EndPopup();
+			}
+		});
+	}
+}
+
+static void DrawColliderSet(const Gleam::TStringView label, Gleam::ColliderSet& colliders, float columnWidth)
+{
+	struct ColliderOption
+	{
+		const char* name;
+		void (*add)(Gleam::ColliderSet& colliders);
+	};
+
+	static const ColliderOption options[] =
+	{
+		{ "Box", [](Gleam::ColliderSet& set) { set.boxes.emplace_back(); } },
+		{ "Sphere", [](Gleam::ColliderSet& set) { set.spheres.emplace_back(); } },
+		{ "Capsule", [](Gleam::ColliderSet& set) { set.capsules.emplace_back(); } },
+		{ "Convex Mesh", [](Gleam::ColliderSet& set) { set.convexMeshes.emplace_back(); } },
+		{ "Triangle Mesh", [](Gleam::ColliderSet& set) { set.triangleMeshes.emplace_back(); } },
+	};
+
+	PropertyDrawer::DrawCustom(label, Gleam::Reflection::GetClass<Gleam::ColliderSet>().TypeHash(), [&colliders, columnWidth]()
+	{
+		DrawColliders("Box", colliders.boxes, columnWidth);
+		DrawColliders("Sphere", colliders.spheres, columnWidth);
+		DrawColliders("Capsule", colliders.capsules, columnWidth);
+		DrawColliders("Convex Mesh", colliders.convexMeshes, columnWidth);
+		DrawColliders("Triangle Mesh", colliders.triangleMeshes, columnWidth);
+
+		if (ImGui::Button("Add Collider", ImVec2(-1.0f, 0.0f)))
+		{
+			ImGui::OpenPopup("AddCollider");
+		}
+
+		if (ImGui::BeginPopup("AddCollider"))
+		{
+			for (const auto& option : options)
+			{
+				if (ImGui::MenuItem(option.name))
+				{
+					PropertyDrawer::QueueEdit([&colliders, add = option.add]()
+					{
+						add(colliders);
+					});
+				}
+			}
+			ImGui::EndPopup();
+		}
+	});
+}
+
 const Gleam::HashMap<Gleam::TStringView, PropertyDrawer::DrawFunction>& PropertyDrawer::GetCustomDrawers()
 {
 	static const auto drawers = []()
@@ -207,6 +289,18 @@ const Gleam::HashMap<Gleam::TStringView, PropertyDrawer::DrawFunction>& Property
 			DrawEnumFlagOptions(label, classDesc, obj, columnWidth);
 		};
 
+		customDrawers[Gleam::Reflection::GetClass<Gleam::Quaternion>().ResolveQualifiedName()] =
+			[](const Gleam::TStringView label, void* obj, const Gleam::Reflection::ClassDescription& classDesc, float columnWidth)
+		{
+			DrawRotationControl(label, Gleam::Reflection::Get<Gleam::Quaternion>(obj), columnWidth);
+		};
+
+		customDrawers[Gleam::Reflection::GetClass<Gleam::ColliderSet>().ResolveQualifiedName()] =
+			[](const Gleam::TStringView label, void* obj, const Gleam::Reflection::ClassDescription& classDesc, float columnWidth)
+		{
+			DrawColliderSet(label, Gleam::Reflection::Get<Gleam::ColliderSet>(obj), columnWidth);
+		};
+
 		const auto arrayName = QualifiedNameWithoutTemplateDeclaration(Gleam::Reflection::GetClass<Gleam::TArray<uint8_t>>().ResolveQualifiedName());
 		customDrawers[arrayName] =
 			[](const Gleam::TStringView label, void* obj, const Gleam::Reflection::ClassDescription& classDesc, float columnWidth)
@@ -225,18 +319,31 @@ const Gleam::HashMap<Gleam::TStringView, PropertyDrawer::DrawFunction>& Property
 	return drawers;
 }
 
+// Instantiations are keyed by their own name, the stripped name only matches template wide drawers
+template<typename DrawerMap>
+static auto FindCustomDrawer(const Gleam::Reflection::ClassDescription& classDesc, const DrawerMap& drawers)
+{
+	const auto resolved = classDesc.ResolveQualifiedName();
+	const Gleam::TStringView qualifiedName(resolved.data(), resolved.size());
+
+	auto it = drawers.find(qualifiedName);
+	if (it != drawers.end())
+	{
+		return it;
+	}
+	return drawers.find(QualifiedNameWithoutTemplateDeclaration(qualifiedName));
+}
+
 bool PropertyDrawer::HasCustomDrawer(const Gleam::Reflection::ClassDescription& classDesc)
 {
-	const auto qualifiedName = QualifiedNameWithoutTemplateDeclaration(classDesc.ResolveQualifiedName());
 	const auto& drawers = GetCustomDrawers();
-	return drawers.find(qualifiedName) != drawers.end();
+	return FindCustomDrawer(classDesc, drawers) != drawers.end();
 }
 
 bool PropertyDrawer::TryCustomDrawer(const Gleam::TStringView label, void* obj, const Gleam::Reflection::ClassDescription& classDesc, float columnWidth)
 {
-	const auto qualifiedName = QualifiedNameWithoutTemplateDeclaration(classDesc.ResolveQualifiedName());
 	const auto& drawers = GetCustomDrawers();
-	auto it = drawers.find(qualifiedName);
+	auto it = FindCustomDrawer(classDesc, drawers);
 	if (it != drawers.end())
 	{
 		it->second(label, obj, classDesc, columnWidth);
@@ -250,6 +357,63 @@ void PropertyDrawer::BeginEditTracking()
 	mEditStarted = false;
 	mEditCommitted = false;
 	mEditDirty = false;
+	mPendingEdit = nullptr;
+
+	// Controls that went off screen keep their euler cache for a frame, then it is dropped
+	const int32_t frame = ImGui::GetFrameCount();
+	for (auto it = mRotationCache.begin(); it != mRotationCache.end();)
+	{
+		if (it->second.frame < (frame - 1))
+		{
+			it = mRotationCache.erase(it);
+		}
+		else
+		{
+			++it;
+		}
+	}
+}
+
+void PropertyDrawer::QueueEdit(UIFunction&& edit)
+{
+	mPendingEdit = std::move(edit);
+
+	// Marks the owning component for the change tracker, the edit itself lands after the draw
+	mEditDirty = true;
+}
+
+bool PropertyDrawer::HasPendingEdit()
+{
+	return mPendingEdit != nullptr;
+}
+
+void PropertyDrawer::ApplyPendingEdit()
+{
+	const auto edit = std::move(mPendingEdit);
+	mPendingEdit = nullptr;
+
+	if (edit)
+	{
+		edit();
+	}
+}
+
+bool PropertyDrawer::DrawSettingsButton(float size)
+{
+	const ImVec2 cursor = ImGui::GetCursorScreenPos();
+	const bool pressed = ImGui::Button("##Settings", ImVec2(size, size));
+
+	const float radius = ImMax(1.0f, size * 0.065f);
+	const float spacing = size * 0.22f;
+	const ImVec2 center = ImVec2(cursor.x + size * 0.5f, cursor.y + size * 0.5f);
+	const ImU32 color = ImGui::GetColorU32(ImGuiCol_Text);
+
+	auto drawList = ImGui::GetWindowDrawList();
+	for (int32_t i = -1; i <= 1; ++i)
+	{
+		drawList->AddCircleFilled(ImVec2(center.x, center.y + spacing * i), radius, color);
+	}
+	return pressed;
 }
 
 bool PropertyDrawer::EditStarted()
@@ -503,6 +667,27 @@ void PropertyDrawer::DrawVec3Control(const Gleam::TStringView label, Gleam::Floa
     ImGui::Columns(1);
 
     ImGui::PopID();
+}
+
+void PropertyDrawer::DrawRotationControl(const Gleam::TStringView label, Gleam::Quaternion& rotation, float columnWidth)
+{
+	char buffer[64];
+	std::memcpy(buffer, label.data(), label.size());
+	buffer[label.size()] = '\0';
+
+	auto& cache = mRotationCache[ImGui::GetID(buffer)];
+
+	// Anything but this control moving the rotation has to pull the euler triple back in sync
+	if (cache.frame < 0 || cache.rotation != rotation)
+	{
+		cache.euler = Gleam::Math::Rad2Deg(Gleam::Math::EulerAngles(rotation));
+	}
+	cache.frame = ImGui::GetFrameCount();
+
+	DrawVec3Control(label, cache.euler, 0.0f, columnWidth);
+
+	rotation = Gleam::Quaternion(Gleam::Math::Deg2Rad(cache.euler));
+	cache.rotation = rotation;
 }
 
 void PropertyDrawer::DrawColorControl(const Gleam::TStringView label, Gleam::Color& color, float columnWidth)
@@ -876,6 +1061,7 @@ void PropertyDrawer::DrawClass(const Gleam::TStringView label, Gleam::TArrayView
 
 	ImGui::PushID(buffer);
 
+	float headerStart = ImGui::GetCursorPosX();
 	float outerWidth = ImGui::GetContentRegionAvail().x;
     bool open = ImGui::TreeNodeEx((void*)hash, treeNodeFlags, "%s", buffer);
     ImGui::PopStyleVar();
@@ -886,7 +1072,9 @@ void PropertyDrawer::DrawClass(const Gleam::TStringView label, Gleam::TArrayView
 	if (headerFunction)
 	{
 		const float lineHeight = ImGui::GetFontSize() + ImGui::GetStyle().FramePadding.y * 2.0f;
-		ImGui::SameLine(outerWidth - lineHeight * 0.5f);
+
+		// SameLine measures from the window edge, so a nested header has to add its indent back
+		ImGui::SameLine(headerStart + outerWidth - lineHeight);
 		headerFunction();
 	}
 

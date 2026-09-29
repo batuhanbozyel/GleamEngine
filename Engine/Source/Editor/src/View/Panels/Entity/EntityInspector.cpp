@@ -23,25 +23,6 @@
 
 using namespace GEditor;
 
-// The loaded fonts only cover Latin, so the kebab glyph is drawn instead of using U+22EE
-static bool DrawComponentSettingsButton(float size)
-{
-	const ImVec2 cursor = ImGui::GetCursorScreenPos();
-	const bool pressed = ImGui::Button("##ComponentSettings", ImVec2(size, size));
-
-	const float radius = ImMax(1.0f, size * 0.065f);
-	const float spacing = size * 0.22f;
-	const ImVec2 center = ImVec2(cursor.x + size * 0.5f, cursor.y + size * 0.5f);
-	const ImU32 color = ImGui::GetColorU32(ImGuiCol_Text);
-
-	auto drawList = ImGui::GetWindowDrawList();
-	for (int32_t i = -1; i <= 1; ++i)
-	{
-		drawList->AddCircleFilled(ImVec2(center.x, center.y + spacing * i), radius, color);
-	}
-	return pressed;
-}
-
 static bool IsAddableComponent(const Gleam::Reflection::ClassDescription& classDesc)
 {
 	if (classDesc.HasAttribute<Gleam::Reflection::Attribute::EntityComponent>() == false)
@@ -73,6 +54,13 @@ void EntityInspector::Render(Gleam::ImGuiRenderer* imgui)
 			if (selectedEntities.empty() == false)
 			{
 				DrawEntities(selectedEntities);
+
+				if (PropertyDrawer::HasPendingEdit())
+				{
+					mUndoSystem->BeginEntityTransaction(selectedEntities);
+					PropertyDrawer::ApplyPendingEdit();
+					mUndoSystem->EndTransaction();
+				}
 				
 				if (PropertyDrawer::EditStarted())
 				{
@@ -82,6 +70,13 @@ void EntityInspector::Render(Gleam::ImGuiRenderer* imgui)
 			else if (selectedSingleton != 0)
 			{
 				DrawSingleton(selectedSingleton);
+
+				if (PropertyDrawer::HasPendingEdit())
+				{
+					mUndoSystem->BeginSingletonTransaction(selectedSingleton);
+					PropertyDrawer::ApplyPendingEdit();
+					mUndoSystem->EndTransaction();
+				}
 
 				if (PropertyDrawer::EditStarted())
 				{
@@ -128,13 +123,6 @@ void EntityInspector::DrawTransform(const Gleam::TArray<Gleam::EntityHandle>& en
 	auto& activeEntity = entityManager.GetComponent<Gleam::Entity>(entities[0]);
 	auto localTransform = activeEntity.GetLocalTransform();
 
-	// Rotation is edited as euler angles, so the cache has to follow the transform gizmo
-	if (entities[0] != mCachedEntity || localTransform.rotation != mEntityRotation)
-	{
-		mEntityEulerRotation = Gleam::Math::Rad2Deg(Gleam::Math::EulerAngles(localTransform.rotation));
-		mCachedEntity = entities[0];
-	}
-
 	bool positionMixed = false;
 	bool rotationMixed = false;
 	bool scaleMixed = false;
@@ -147,7 +135,6 @@ void EntityInspector::DrawTransform(const Gleam::TArray<Gleam::EntityHandle>& en
 	}
 
 	const auto previousTransform = localTransform;
-	const auto previousEulerRotation = mEntityEulerRotation;
 
 	PropertyDrawer::DrawCustom("Local Transform", Gleam::Reflection::GetClass<Gleam::Transform>().TypeHash(), [&]()
 	{
@@ -156,21 +143,18 @@ void EntityInspector::DrawTransform(const Gleam::TArray<Gleam::EntityHandle>& en
 		ImGui::PopItemFlag();
 
 		ImGui::PushItemFlag(ImGuiItemFlags_MixedValue, rotationMixed);
-		PropertyDrawer::DrawVec3Control("Rotation", mEntityEulerRotation, 0.0f);
+		PropertyDrawer::DrawRotationControl("Rotation", localTransform.rotation);
 		ImGui::PopItemFlag();
 
 		ImGui::PushItemFlag(ImGuiItemFlags_MixedValue, scaleMixed);
 		PropertyDrawer::DrawScalarControl("Scale", localTransform.scale, 1.0f);
 		ImGui::PopItemFlag();
-
-		localTransform.rotation = Gleam::Quaternion(Gleam::Math::Deg2Rad(mEntityEulerRotation));
 	});
 
 	activeEntity.SetLocalTransform(localTransform);
-	mEntityRotation = localTransform.rotation;
 
 	const bool positionEdited = localTransform.position != previousTransform.position;
-	const bool rotationEdited = mEntityEulerRotation != previousEulerRotation;
+	const bool rotationEdited = localTransform.rotation != previousTransform.rotation;
 	const bool scaleEdited = localTransform.scale != previousTransform.scale;
 	if (positionEdited || rotationEdited || scaleEdited)
 	{
@@ -241,10 +225,10 @@ void EntityInspector::DrawComponents(const Gleam::TArray<Gleam::EntityHandle>& e
 	for (auto& shared : sharedComponents)
 	{
 		const bool dirtyBefore = PropertyDrawer::EditDirty();
-		PropertyDrawer::DrawClass(shared.classDesc->ResolveName(), shared.instances, *shared.classDesc, 0.0f, [&]()
+		PropertyDrawer::DrawClass(ReflectionUtils::ResolveDisplayName(*shared.classDesc), shared.instances, *shared.classDesc, 0.0f, [&]()
 		{
 			const float lineHeight = ImGui::GetFontSize() + ImGui::GetStyle().FramePadding.y * 2.0f;
-			if (DrawComponentSettingsButton(lineHeight))
+			if (PropertyDrawer::DrawSettingsButton(lineHeight))
 			{
 				ImGui::OpenPopup("ComponentSettings");
 			}
@@ -347,7 +331,7 @@ void EntityInspector::DrawSingleton(uint32_t typeHash)
 	{
 		if (classDesc.TypeHash() == typeHash)
 		{
-			PropertyDrawer::DrawClass(classDesc.ResolveName(), component, classDesc);
+			PropertyDrawer::DrawClass(ReflectionUtils::ResolveDisplayName(classDesc), component, classDesc);
 		}
 	});
 }
