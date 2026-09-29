@@ -31,6 +31,8 @@ private:
 
 	void DrawComponents(const Gleam::TArray<Gleam::EntityHandle>& entities);
 
+	void DrawAddComponent(const Gleam::TArray<Gleam::EntityHandle>& entities);
+
 	void DrawSingleton(uint32_t typeHash);
 
 	Gleam::World* mEditWorld = nullptr;

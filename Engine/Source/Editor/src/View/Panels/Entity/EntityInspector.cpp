@@ -9,6 +9,7 @@
 #include "View/Widgets/PropertyDrawer.h"
 #include "Selection/SelectionSystem.h"
 #include "Undo/UndoSystem.h"
+#include "Utils/ReflectionUtils.h"
 
 #include "World/World.h"
 #include "Renderer/Renderers/ImGuiRenderer.h"
@@ -16,7 +17,41 @@
 #include <imgui.h>
 #include <imgui_internal.h>
 
+#include <EASTL/sort.h>
+
+#include <cstring>
+
 using namespace GEditor;
+
+// The loaded fonts only cover Latin, so the kebab glyph is drawn instead of using U+22EE
+static bool DrawComponentSettingsButton(float size)
+{
+	const ImVec2 cursor = ImGui::GetCursorScreenPos();
+	const bool pressed = ImGui::Button("##ComponentSettings", ImVec2(size, size));
+
+	const float radius = ImMax(1.0f, size * 0.065f);
+	const float spacing = size * 0.22f;
+	const ImVec2 center = ImVec2(cursor.x + size * 0.5f, cursor.y + size * 0.5f);
+	const ImU32 color = ImGui::GetColorU32(ImGuiCol_Text);
+
+	auto drawList = ImGui::GetWindowDrawList();
+	for (int32_t i = -1; i <= 1; ++i)
+	{
+		drawList->AddCircleFilled(ImVec2(center.x, center.y + spacing * i), radius, color);
+	}
+	return pressed;
+}
+
+static bool IsAddableComponent(const Gleam::Reflection::ClassDescription& classDesc)
+{
+	if (classDesc.HasAttribute<Gleam::Reflection::Attribute::EntityComponent>() == false)
+	{
+		return false;
+	}
+
+	// The entity owns its transform, a standalone Transform component would shadow it
+	return classDesc.TypeHash() != Gleam::Reflection::GetClass<Gleam::Transform>().TypeHash();
+}
 
 void EntityInspector::OnCreate(Gleam::World* world)
 {
@@ -84,6 +119,7 @@ void EntityInspector::DrawEntities(const Gleam::TArray<Gleam::EntityHandle>& ent
 
 	DrawTransform(selectionOrder);
 	DrawComponents(selectionOrder);
+	DrawAddComponent(selectionOrder);
 }
 
 void EntityInspector::DrawTransform(const Gleam::TArray<Gleam::EntityHandle>& entities)
@@ -201,10 +237,28 @@ void EntityInspector::DrawComponents(const Gleam::TArray<Gleam::EntityHandle>& e
 		}
 	}
 
+	uint32_t pendingRemove = 0;
 	for (auto& shared : sharedComponents)
 	{
 		const bool dirtyBefore = PropertyDrawer::EditDirty();
-		PropertyDrawer::DrawClass(shared.classDesc->ResolveName(), shared.instances, *shared.classDesc);
+		PropertyDrawer::DrawClass(shared.classDesc->ResolveName(), shared.instances, *shared.classDesc, 0.0f, [&]()
+		{
+			const float lineHeight = ImGui::GetFontSize() + ImGui::GetStyle().FramePadding.y * 2.0f;
+			if (DrawComponentSettingsButton(lineHeight))
+			{
+				ImGui::OpenPopup("ComponentSettings");
+			}
+
+			if (ImGui::BeginPopup("ComponentSettings"))
+			{
+				if (ImGui::MenuItem("Remove Component"))
+				{
+					pendingRemove = shared.classDesc->TypeHash();
+				}
+				ImGui::EndPopup();
+			}
+		});
+
 		if (not dirtyBefore and PropertyDrawer::EditDirty())
 		{
 			for (auto handle : entities)
@@ -213,6 +267,78 @@ void EntityInspector::DrawComponents(const Gleam::TArray<Gleam::EntityHandle>& e
 			}
 		}
 	}
+
+	// The component pointers above stay valid while the list is being drawn
+	if (pendingRemove != 0)
+	{
+		mUndoSystem->RemoveComponent(pendingRemove, entities);
+	}
+}
+
+void EntityInspector::DrawAddComponent(const Gleam::TArray<Gleam::EntityHandle>& entities)
+{
+	auto& entityManager = mEditWorld->GetEntityManager();
+
+	ImGui::Separator();
+	if (ImGui::Button("Add Component", ImVec2(-1.0f, 0.0f)))
+	{
+		ImGui::OpenPopup("AddComponent");
+	}
+
+	if (ImGui::BeginPopup("AddComponent") == false)
+	{
+		return;
+	}
+
+	Gleam::TArray<const Gleam::Reflection::ClassDescription*> candidates;
+	for (const auto& classDesc : Gleam::Reflection::IDatabase::GetInstance()->GetClasses())
+	{
+		if (IsAddableComponent(classDesc))
+		{
+			candidates.push_back(&classDesc);
+		}
+	}
+
+	eastl::sort(candidates.begin(), candidates.end(), [](const auto lhs, const auto rhs)
+	{
+		return ReflectionUtils::ResolveDisplayName(*lhs) < ReflectionUtils::ResolveDisplayName(*rhs);
+	});
+
+	bool anyAvailable = false;
+	for (const auto* classDesc : candidates)
+	{
+		Gleam::TArray<Gleam::EntityHandle> missing;
+		for (auto handle : entities)
+		{
+			if (entityManager.FindComponent(handle, classDesc->TypeHash()) == nullptr)
+			{
+				missing.push_back(handle);
+			}
+		}
+
+		if (missing.empty())
+		{
+			continue;
+		}
+		anyAvailable = true;
+
+		const auto displayName = ReflectionUtils::ResolveDisplayName(*classDesc);
+		char buffer[64];
+		std::memcpy(buffer, displayName.data(), displayName.size());
+		buffer[displayName.size()] = '\0';
+
+		if (ImGui::MenuItem(buffer))
+		{
+			mUndoSystem->AddComponent(classDesc->TypeHash(), missing);
+			ImGui::CloseCurrentPopup();
+		}
+	}
+
+	if (anyAvailable == false)
+	{
+		ImGui::TextDisabled("No components available");
+	}
+	ImGui::EndPopup();
 }
 
 void EntityInspector::DrawSingleton(uint32_t typeHash)

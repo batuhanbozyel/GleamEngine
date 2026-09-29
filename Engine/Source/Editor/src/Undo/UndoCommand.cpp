@@ -42,6 +42,50 @@ void PropertyEditCommand::Apply(Gleam::World* world, bool undo)
 	}
 }
 
+void ComponentLifetimeCommand::RemoveComponents(Gleam::World* world)
+{
+	auto& entityManager = world->GetEntityManager();
+	const auto classDesc = Gleam::Reflection::GetClass(mTypeHash);
+
+	Gleam::JSONSerializer serializer;
+	for (auto& entry : mEntries)
+	{
+		auto handle = entityManager.GetEntity(Gleam::EntityReference{ .guid = entry.entity });
+		if (handle == Gleam::InvalidEntity)
+		{
+			continue;
+		}
+
+		if (auto component = entityManager.FindComponent(handle, mTypeHash))
+		{
+			entry.data = serializer.Serialize(component, *classDesc);
+		}
+		entityManager.RemoveComponent(handle, mTypeHash);
+	}
+}
+
+void ComponentLifetimeCommand::AddComponents(Gleam::World* world)
+{
+	auto& entityManager = world->GetEntityManager();
+	const auto classDesc = Gleam::Reflection::GetClass(mTypeHash);
+
+	Gleam::JSONSerializer serializer;
+	for (const auto& entry : mEntries)
+	{
+		auto handle = entityManager.GetEntity(Gleam::EntityReference{ .guid = entry.entity });
+		if (handle == Gleam::InvalidEntity)
+		{
+			continue;
+		}
+
+		auto component = entityManager.AddComponent(handle, mTypeHash);
+		if (component != nullptr && entry.data.empty() == false)
+		{
+			serializer.Deserialize(*classDesc, component, entry.data);
+		}
+	}
+}
+
 void EntityLifetimeCommand::RestoreEntities(Gleam::World* world)
 {
 	auto restored = mSnapshot.Restore(world->GetEntityManager());

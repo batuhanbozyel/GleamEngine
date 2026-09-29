@@ -857,12 +857,12 @@ void PropertyDrawer::DrawField(const Gleam::Reflection::FieldDescription& field,
 	}
 }
 
-void PropertyDrawer::DrawClass(const Gleam::TStringView label, void* component, const Gleam::Reflection::ClassDescription& classDesc, float columnWidth)
+void PropertyDrawer::DrawClass(const Gleam::TStringView label, void* component, const Gleam::Reflection::ClassDescription& classDesc, float columnWidth, const UIFunction& headerFunction)
 {
-	DrawClass(label, Gleam::TArrayView<void*>(&component, 1), classDesc, columnWidth);
+	DrawClass(label, Gleam::TArrayView<void*>(&component, 1), classDesc, columnWidth, headerFunction);
 }
 
-void PropertyDrawer::DrawClass(const Gleam::TStringView label, Gleam::TArrayView<void*> instances, const Gleam::Reflection::ClassDescription& classDesc, float columnWidth)
+void PropertyDrawer::DrawClass(const Gleam::TStringView label, Gleam::TArrayView<void*> instances, const Gleam::Reflection::ClassDescription& classDesc, float columnWidth, const UIFunction& headerFunction)
 {
     const ImGuiTreeNodeFlags treeNodeFlags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_AllowOverlap | ImGuiTreeNodeFlags_FramePadding;
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2{ 4, 4 });
@@ -880,9 +880,18 @@ void PropertyDrawer::DrawClass(const Gleam::TStringView label, Gleam::TArrayView
     bool open = ImGui::TreeNodeEx((void*)hash, treeNodeFlags, "%s", buffer);
     ImGui::PopStyleVar();
 
+	// Read before the header widget draws, it leaves the cursor on the header line
+	float innerWidth = ImGui::GetContentRegionAvail().x;
+
+	if (headerFunction)
+	{
+		const float lineHeight = ImGui::GetFontSize() + ImGui::GetStyle().FramePadding.y * 2.0f;
+		ImGui::SameLine(outerWidth - lineHeight * 0.5f);
+		headerFunction();
+	}
+
     if (open)
     {
-		float innerWidth = ImGui::GetContentRegionAvail().x;
 		// Subtract the tree node indent so nested value columns line up with the parent's.
 		float fieldsWidth = columnWidth > 0.0f ? columnWidth - (outerWidth - innerWidth) : innerWidth * 0.3f;
 		DrawClassFields(instances, classDesc, fieldsWidth);

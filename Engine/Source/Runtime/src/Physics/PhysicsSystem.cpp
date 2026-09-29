@@ -1,7 +1,7 @@
 #include "gpch.h"
 #include "PhysicsSystem.h"
-#include "Components/RigidBody.h"
 #include "Collider.h"
+#include "World/Components/RigidBody.h"
 #include "World/EntityManager.h"
 
 using namespace Gleam;

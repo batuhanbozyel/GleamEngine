@@ -9,6 +9,7 @@
 #include "WorldViewport.h"
 #include "Selection/SelectionSystem.h"
 #include "Undo/UndoSystem.h"
+#include "Utils/ReflectionUtils.h"
 
 #include "Core/Globals.h"
 #include "Core/Engine.h"
@@ -19,15 +20,6 @@
 #include <imgui.h>
 
 using namespace GEditor;
-
-static Gleam::TStringView ResolveDisplayName(const Gleam::Reflection::ClassDescription& desc)
-{
-	if (desc.HasAttribute<Gleam::Reflection::Attribute::PrettyName>())
-	{
-		return desc.GetAttribute<Gleam::Reflection::Attribute::PrettyName>()->name;
-	}
-	return desc.ResolveName();
-}
 
 void WorldOutliner::OnCreate(Gleam::World* world)
 {
@@ -215,7 +207,7 @@ void WorldOutliner::DrawSingletonComponents()
 	{
 		if (classDesc.Guid() != Gleam::Reflection::GetClass<Gleam::Entity>().Guid())
 		{
-			auto componentName = ResolveDisplayName(classDesc);
+			auto componentName = ReflectionUtils::ResolveDisplayName(classDesc);
 			uint32_t componentID = classDesc.TypeHash();
 
 			ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_Leaf |

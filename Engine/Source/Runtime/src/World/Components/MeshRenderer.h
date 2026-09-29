@@ -3,7 +3,7 @@
 
 namespace Gleam {
 
-GSTRUCT(MeshRenderer, "71B269C7-DCF6-4E00-A914-62CE71321893", EntityComponent, Serializable)
+GSTRUCT(MeshRenderer, "71B269C7-DCF6-4E00-A914-62CE71321893", EntityComponent, Serializable, PrettyName("Mesh Renderer"))
 {
 	GFIELD("74C44005-75FD-4E1E-8DD9-A63D54A6E486", Serializable, PrettyName("Mesh"))
 	AssetReference mesh;

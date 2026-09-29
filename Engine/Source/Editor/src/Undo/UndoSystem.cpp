@@ -4,18 +4,29 @@
 //
 
 #include "UndoSystem.h"
+#include "Utils/ReflectionUtils.h"
 #include "World/World.h"
 #include "Serialization/JSONSerializer.h"
 
 using namespace GEditor;
 
-static Gleam::TStringView ResolveDisplayName(const Gleam::Reflection::ClassDescription& classDesc)
+static Gleam::TArray<ComponentLifetimeCommand::Entry> CaptureComponentEntries(Gleam::EntityManager& entityManager, const Gleam::TArray<Gleam::EntityHandle>& entities)
 {
-	if (classDesc.HasAttribute<Gleam::Reflection::Attribute::PrettyName>())
+	Gleam::TArray<ComponentLifetimeCommand::Entry> entries;
+	entries.reserve(entities.size());
+	for (auto handle : entities)
 	{
-		return classDesc.GetAttribute<Gleam::Reflection::Attribute::PrettyName>()->name;
+		entries.push_back({ .entity = entityManager.GetComponent<Gleam::Entity>(handle).GetGuid() });
 	}
-	return classDesc.ResolveName();
+	return entries;
+}
+
+static Gleam::TString ComponentCommandName(const Gleam::TStringView prefix, uint32_t typeHash)
+{
+	Gleam::TString name(prefix.data(), prefix.size());
+	const auto componentName = ReflectionUtils::ResolveDisplayName(*Gleam::Reflection::GetClass(typeHash));
+	name.append(componentName.data(), componentName.size());
+	return name;
 }
 
 static bool IsSameTransform(const Gleam::Transform& lhs, const Gleam::Transform& rhs)
@@ -130,7 +141,7 @@ void UndoSystem::EndTransaction()
 	Gleam::TString name = "Transform";
 	if (components.empty() == false)
 	{
-		const auto componentName = ResolveDisplayName(*Gleam::Reflection::GetClass(components[0].typeHash));
+		const auto componentName = ReflectionUtils::ResolveDisplayName(*Gleam::Reflection::GetClass(components[0].typeHash));
 		name = "Edit ";
 		name.append(componentName.data(), componentName.size());
 	}
@@ -151,6 +162,26 @@ void UndoSystem::DestroyEntities(const Gleam::TArray<Gleam::EntityHandle>& entit
 
 	// The destroy itself goes through the command, so it takes the same path as a redo does
 	auto command = Gleam::CreateScope<DestroyEntityCommand>(eastl::move(snapshot));
+	command->Redo(mEditWorld);
+	Push(eastl::move(command));
+}
+
+void UndoSystem::AddComponent(uint32_t typeHash, const Gleam::TArray<Gleam::EntityHandle>& entities)
+{
+	auto entries = CaptureComponentEntries(mEditWorld->GetEntityManager(), entities);
+
+	// The add itself goes through the command, so it takes the same path as a redo does
+	auto command = Gleam::CreateScope<AddComponentCommand>(ComponentCommandName("Add ", typeHash), typeHash, eastl::move(entries));
+	command->Redo(mEditWorld);
+	Push(eastl::move(command));
+}
+
+void UndoSystem::RemoveComponent(uint32_t typeHash, const Gleam::TArray<Gleam::EntityHandle>& entities)
+{
+	auto entries = CaptureComponentEntries(mEditWorld->GetEntityManager(), entities);
+
+	// The removal itself goes through the command, so it takes the same path as a redo does
+	auto command = Gleam::CreateScope<RemoveComponentCommand>(ComponentCommandName("Remove ", typeHash), typeHash, eastl::move(entries));
 	command->Redo(mEditWorld);
 	Push(eastl::move(command));
 }

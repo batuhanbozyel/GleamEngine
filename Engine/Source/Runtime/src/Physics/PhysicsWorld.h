@@ -1,7 +1,7 @@
 #pragma once
 #include "PhysicsTypes.h"
-#include "Components/RigidBody.h"
 #include "Collider.h"
+#include "World/Components/RigidBody.h"
 
 #include <functional>
 

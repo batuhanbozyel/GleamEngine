@@ -13,6 +13,8 @@ class PropertyDrawer
 {
 public:
 
+	using UIFunction = std::function<void()>;
+
 	static void DrawScalarControl(const Gleam::TStringView label, const Gleam::Reflection::PrimitiveType type, size_t size, void* value, const void* defaultValue, float columnWidth = 100.0f);
 
 	template<typename T, std::enable_if_t<Gleam::Reflection::Traits::IsPrimitive<T>::value, bool> = true>
@@ -38,9 +40,9 @@ public:
 
 	static void DrawClassFields(Gleam::TArrayView<void*> instances, const Gleam::Reflection::ClassDescription& classDesc, float columnWidth = 100.0f);
 
-	static void DrawClass(const Gleam::TStringView label, void* component, const Gleam::Reflection::ClassDescription& classDesc, float columnWidth = 0.0f);
+	static void DrawClass(const Gleam::TStringView label, void* component, const Gleam::Reflection::ClassDescription& classDesc, float columnWidth = 0.0f, const UIFunction& headerFunction = nullptr);
 
-	static void DrawClass(const Gleam::TStringView label, Gleam::TArrayView<void*> instances, const Gleam::Reflection::ClassDescription& classDesc, float columnWidth = 0.0f);
+	static void DrawClass(const Gleam::TStringView label, Gleam::TArrayView<void*> instances, const Gleam::Reflection::ClassDescription& classDesc, float columnWidth = 0.0f, const UIFunction& headerFunction = nullptr);
 
 	static void DrawArrayElements(void* obj, const Gleam::Reflection::ArrayDescription& arrayDesc, float columnWidth = 100.0f);
 
@@ -48,7 +50,6 @@ public:
 
 	static void DrawAsset(const Gleam::TStringView label, Gleam::AssetReference& assetRef, float columnWidth = 100.0f);
 
-	using UIFunction = std::function<void()>;
 	static void DrawCustom(const Gleam::TStringView label, size_t hash, UIFunction&& uiFunction);
 
 	// Edit tracking, covering the controls drawn since the last BeginEditTracking call

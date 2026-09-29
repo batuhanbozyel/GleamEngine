@@ -4,14 +4,14 @@
 
 namespace Gleam {
 
-GENUM(RigidBodyType, "C15B6B8F-1D1D-41CB-98CD-FF6A7E203A68", Serializable)
+GENUM(RigidBodyType, "C15B6B8F-1D1D-41CB-98CD-FF6A7E203A68", Serializable, PrettyName("Rigid Body Type"))
 {
 	GITEM(Static, "39252783-54B8-41F9-A1C7-391CD527F973"),
 	GITEM(Kinematic, "E244169E-5BAD-4672-841A-DD085F921E09"),
 	GITEM(Dynamic, "9BAE2BB2-9EFB-440F-B330-D8E567E96B74")
 };
 
-GSTRUCT(PhysicsMaterial, "96C19B4F-6803-420D-A51F-50905F6DEB95", Serializable)
+GSTRUCT(PhysicsMaterial, "96C19B4F-6803-420D-A51F-50905F6DEB95", Serializable, PrettyName("Physics Material"))
 {
 	GFIELD("C33B0248-AA32-40B9-98EE-5E3858E17B51", Serializable, PrettyName("Friction"))
 	float friction = 0.6f;
@@ -23,7 +23,7 @@ GSTRUCT(PhysicsMaterial, "96C19B4F-6803-420D-A51F-50905F6DEB95", Serializable)
 	float rollingResistance = 0.0f;
 };
 
-GSTRUCT(RigidBody, "3E1F9344-7EE1-44D6-AE82-79A8A11B88A6", EntityComponent, Serializable)
+GSTRUCT(RigidBody, "3E1F9344-7EE1-44D6-AE82-79A8A11B88A6", EntityComponent, Serializable, PrettyName("Rigid Body"))
 {
 	GFIELD("D8E9809A-8E21-4D69-9FE2-8A8192A37D1F", Serializable, PrettyName("Body Type"))
 	RigidBodyType type = RigidBodyType::Dynamic;

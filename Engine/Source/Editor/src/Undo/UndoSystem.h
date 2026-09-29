@@ -36,6 +36,10 @@ public:
 
 	void DestroyEntities(const Gleam::TArray<Gleam::EntityHandle>& entities);
 
+	void AddComponent(uint32_t typeHash, const Gleam::TArray<Gleam::EntityHandle>& entities);
+
+	void RemoveComponent(uint32_t typeHash, const Gleam::TArray<Gleam::EntityHandle>& entities);
+
 	bool CanUndo() const
 	{
 		return mUndoStack.empty() == false;

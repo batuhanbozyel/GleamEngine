@@ -71,6 +71,10 @@ public:
 
 	void* FindSingleton(uint32_t typeHash);
 
+	void* AddComponent(EntityHandle entity, uint32_t typeHash);
+
+	void RemoveComponent(EntityHandle entity, uint32_t typeHash);
+
 	template<typename ... Types>
 	Entity& CreateEntity(const TString& name, const Guid& guid, Types&& ... components)
 	{
