@@ -909,16 +909,16 @@ void PropertyDrawer::DrawEnumFlagOptions(const Gleam::TStringView label,
 		for (const auto& item : enumDesc->Cases())
 		{
 			const auto caseMask = Gleam::ReflectionUtils::TruncateToSize(item.Value(), enumDesc->GetSize());
-			const bool isSelected = caseMask != 0 and (mask & caseMask) == caseMask;
 
 			char itemBuffer[64];
 			const auto itemLabel = ResolveCaseName(item);
 			std::memcpy(itemBuffer, itemLabel.data(), itemLabel.size());
 			itemBuffer[itemLabel.size()] = '\0';
 
-			if (ImGui::Selectable(itemBuffer, isSelected, ImGuiSelectableFlags_NoAutoClosePopups))
+			bool isSelected = caseMask != 0 and (mask & caseMask) == caseMask;
+			if (ImGui::Checkbox(itemBuffer, &isSelected))
 			{
-				mask = isSelected ? mask & ~caseMask : mask | caseMask;
+				mask = isSelected ? mask | caseMask : mask & ~caseMask;
 				Gleam::ReflectionUtils::WriteFlagMask(value, size, mask);
 				MarkEditCommitted();
 			}

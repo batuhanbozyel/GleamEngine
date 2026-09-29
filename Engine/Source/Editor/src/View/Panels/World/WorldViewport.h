@@ -7,6 +7,7 @@
 
 #pragma once
 #include "View/View.h"
+#include "Physics/PhysicsVisualizationSystem.h"
 #include "View/Widgets/TransformGizmo.h"
 #include "Math/Size.h"
 #include "World/Entity.h"
@@ -71,6 +72,8 @@ private:
 	SelectionOutlineRenderer* mSelectionOutlineRenderer = nullptr;
 
     EditorCameraController* mCameraController = nullptr;
+
+	PhysicsVisualizationSystem* mPhysicsVisualization = nullptr;
 
 	Gleam::EntityHandle mCamera = Gleam::InvalidEntity;
 

@@ -18,6 +18,7 @@
 
 #include "Renderer/RenderSystem.h"
 #include "Renderer/RenderPipeline.h"
+#include "Renderer/Renderers/DebugRenderer.h"
 #include "Renderer/Renderers/ImGuiRenderer.h"
 #include "Renderer/Renderers/PathTracer.h"
 #include "Renderer/Renderers/PostProcessStack.h"
@@ -120,6 +121,7 @@ void WorldViewport::OnCreate(Gleam::World* world)
 	mGridRenderer->OnCreate(renderSystem->GetRenderContext());
 
 	renderSystem->GetRenderPipeline(Gleam::RenderPath::Default)->AddRenderer<ViewModeRenderer>();
+	renderSystem->GetRenderPipeline(Gleam::RenderPath::Default)->AddRenderer<Gleam::DebugRenderer>();
 	renderSystem->GetRenderPipeline(Gleam::RenderPath::Default)->AddSharedRenderer(mGridRenderer);
 	renderSystem->GetRenderPipeline(Gleam::RenderPath::PathTracing)->AddSharedRenderer(mGridRenderer);
 
@@ -137,6 +139,7 @@ void WorldViewport::OnCreate(Gleam::World* world)
 	});
 
 	mCameraController = mEditWorld->AddSystem<EditorCameraController>(mCamera);
+	mPhysicsVisualization = mEditWorld->AddSystem<PhysicsVisualizationSystem>();
 	
 	auto windowSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::WindowSystem>();
 	Resize(mEditWorld->GetEntityManager(), windowSystem->GetResolution());
@@ -146,6 +149,7 @@ void WorldViewport::OnDestroy(Gleam::World* world)
 {
 	auto renderSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::RenderSystem>();
 	renderSystem->GetRenderPipeline(Gleam::RenderPath::Default)->RemoveRenderer<ViewModeRenderer>();
+	renderSystem->GetRenderPipeline(Gleam::RenderPath::Default)->RemoveRenderer<Gleam::DebugRenderer>();
 	renderSystem->GetRenderPipeline(Gleam::RenderPath::Default)->RemoveSharedRenderer(mGridRenderer);
 	renderSystem->GetRenderPipeline(Gleam::RenderPath::PathTracing)->RemoveSharedRenderer(mGridRenderer);
 	delete mGridRenderer;
@@ -273,6 +277,11 @@ void WorldViewport::DrawToolbar()
 				PropertyDrawer::DrawClassFields(&settings, Gleam::Reflection::GetClass<Gleam::PathTracerSettings>());
 				pathTracer->SetSettings(settings);
 			}
+
+			auto physicsSettings = mPhysicsVisualization->GetSettings();
+			PropertyDrawer::DrawClass("Physics", &physicsSettings, Gleam::Reflection::GetClass<Gleam::PhysicsVisualizationSettings>(), 80.0f);
+			mPhysicsVisualization->SetSettings(physicsSettings);
+
 			ImGui::EndPopup();
 		}
 	}

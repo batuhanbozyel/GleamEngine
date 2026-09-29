@@ -5,6 +5,7 @@
 
 #include "ProjectSettings.h"
 #include "View/Widgets/PropertyDrawer.h"
+#include "Utils/ReflectionUtils.h"
 
 #include "Core/Globals.h"
 #include "Core/Engine.h"
@@ -16,15 +17,6 @@
 #include <cstring>
 
 using namespace GEditor;
-
-static Gleam::TStringView ResolveConfigName(const Gleam::Reflection::ClassDescription& desc)
-{
-	if (desc.HasAttribute<Gleam::Reflection::Attribute::PrettyName>())
-	{
-		return desc.GetAttribute<Gleam::Reflection::Attribute::PrettyName>()->name;
-	}
-	return desc.ResolveName();
-}
 
 void ProjectSettings::Render(Gleam::ImGuiRenderer* imgui)
 {
@@ -62,7 +54,7 @@ void ProjectSettings::DrawCategoryList()
 			mSelectedConfig = typeHash;
 		}
 
-		auto name = ResolveConfigName(config.desc);
+		auto name = ReflectionUtils::ResolveDisplayName(config.desc);
 		char label[128];
 		std::memcpy(label, name.data(), name.size());
 		label[name.size()] = '\0';
@@ -81,7 +73,7 @@ void ProjectSettings::DrawSettingsContent()
 	{
 		if (mSelectedConfig == config.desc.TypeHash())
 		{
-			auto name = ResolveConfigName(config.desc);
+			auto name = ReflectionUtils::ResolveDisplayName(config.desc);
 			char title[128];
 			std::memcpy(title, name.data(), name.size());
 			title[name.size()] = '\0';
