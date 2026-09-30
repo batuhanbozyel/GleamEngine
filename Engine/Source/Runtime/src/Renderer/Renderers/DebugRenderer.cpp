@@ -19,14 +19,13 @@ void DebugRenderer::OnCreate(const RenderContext& context)
 	{
 		GraphicsPipelineStateDescriptor pipelineState;
 		pipelineState.topology = PrimitiveTopology::Lines;
-		pipelineState.depthState.compareFunction = CompareFunction::Always;
 		pipelineState.colorFormats = { TextureFormat::R16G16B16A16_SFloat };
+		pipelineState.depthFormat = TextureFormat::D32_SFloat;
 		pipelineState.vertexEntry = "debugVertexShader";
 		pipelineState.fragmentEntry = "debugFragmentShader";
 		mPrimitivePipeline = mDevice->CreateGraphicsPipeline(pipelineState);
 
 		pipelineState.depthState.writeEnabled = true;
-		pipelineState.depthFormat = TextureFormat::D32_SFloat;
 		pipelineState.depthState.compareFunction = CompareFunction::Less;
 		mPrimitiveDepthPipeline = mDevice->CreateGraphicsPipeline(pipelineState);
 	}
@@ -35,14 +34,13 @@ void DebugRenderer::OnCreate(const RenderContext& context)
 	{
 		GraphicsPipelineStateDescriptor pipelineState;
 		pipelineState.topology = PrimitiveTopology::Triangles;
-		pipelineState.depthState.compareFunction = CompareFunction::Always;
 		pipelineState.colorFormats = { TextureFormat::R16G16B16A16_SFloat };
+		pipelineState.depthFormat = TextureFormat::D32_SFloat;
 		pipelineState.vertexEntry = "debugMeshVertexShader";
 		pipelineState.fragmentEntry = "debugFragmentShader";
 		mMeshPipeline = mDevice->CreateGraphicsPipeline(pipelineState);
 
 		pipelineState.depthState.writeEnabled = true;
-		pipelineState.depthFormat = TextureFormat::D32_SFloat;
 		pipelineState.depthState.compareFunction = CompareFunction::Less;
 		mMeshDepthPipeline = mDevice->CreateGraphicsPipeline(pipelineState);
 	}
@@ -59,8 +57,10 @@ void DebugRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 	size_t bufferSize = vertexCount * sizeof(DebugVertex);
 
 	// nothing to render
-	if (vertexCount == 0 && mDebugMeshes.empty())
+	if (vertexCount == 0 and mDebugMeshes.empty() and mDepthDebugMeshes.empty())
+	{
 		return;
+	}
 
 	if (mVertexBuffer.GetDescriptor().size < bufferSize)
 	{
@@ -91,15 +91,15 @@ void DebugRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
         passData.colorTarget = builder.UseColorBuffer(worldData.colorTarget);
         passData.depthTarget = builder.UseDepthBuffer(worldData.depthTarget, DepthAccess::Write);
 	},
-	[this, &blackboard](const CommandBuffer* cmd, const DrawPassData& passData)
+	[this, &blackboard, depthLineBufferOffset](const CommandBuffer* cmd, const DrawPassData& passData)
 	{
         DebugShaderResources resources;
         resources.vertexBuffer = mVertexBuffer.GetResourceView();
-        resources.positionOffset = 0;
 		const auto& sceneData = blackboard.Get<SceneRenderingData>();
-        
-		if (!mDepthLines.empty())
+
+		if (not mDepthLines.empty())
 		{
+			resources.positionOffset = static_cast<uint32_t>(depthLineBufferOffset);
 			cmd->BindGraphicsPipeline(mPrimitiveDepthPipeline);
 			cmd->SetConstantBuffer(resources, 0);
 			cmd->SetConstantBuffer(sceneData.camera, 1);
@@ -111,8 +111,9 @@ void DebugRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
             RenderMeshes(cmd, sceneData.camera.uniforms, mDepthDebugMeshes, true);
         }
 
-		if (!mLines.empty())
+		if (not mLines.empty())
 		{
+			resources.positionOffset = 0;
 			cmd->BindGraphicsPipeline(mPrimitivePipeline);
 			cmd->SetConstantBuffer(resources, 0);
 			cmd->SetConstantBuffer(sceneData.camera, 1);
