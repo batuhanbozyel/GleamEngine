@@ -82,6 +82,7 @@
 
 #include "Renderer/Renderers/UIRenderer.h"
 #include "Renderer/Renderers/DebugRenderer.h"
+#include "Renderer/Renderers/LineRenderer.h"
 #include "Renderer/Renderers/WorldRenderer.h"
 #include "Renderer/Renderers/ImGuiRenderer.h"
 #include "Renderer/Renderers/PostProcessStack.h"

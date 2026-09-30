@@ -19,6 +19,7 @@
 #include "Renderer/RenderSystem.h"
 #include "Renderer/RenderPipeline.h"
 #include "Renderer/Renderers/DebugRenderer.h"
+#include "Renderer/Renderers/LineRenderer.h"
 #include "Renderer/Renderers/ImGuiRenderer.h"
 #include "Renderer/Renderers/PathTracer.h"
 #include "Renderer/Renderers/PostProcessStack.h"
@@ -121,9 +122,10 @@ void WorldViewport::OnCreate(Gleam::World* world)
 	mGridRenderer->OnCreate(renderSystem->GetRenderContext());
 
 	renderSystem->GetRenderPipeline(Gleam::RenderPath::Default)->AddRenderer<ViewModeRenderer>();
-	renderSystem->GetRenderPipeline(Gleam::RenderPath::Default)->AddRenderer<Gleam::DebugRenderer>();
 	renderSystem->GetRenderPipeline(Gleam::RenderPath::Default)->AddSharedRenderer(mGridRenderer);
 	renderSystem->GetRenderPipeline(Gleam::RenderPath::PathTracing)->AddSharedRenderer(mGridRenderer);
+	auto lineRenderer = renderSystem->GetRenderPipeline(Gleam::RenderPath::Default)->AddRenderer<Gleam::LineRenderer>();
+	renderSystem->GetRenderPipeline(Gleam::RenderPath::Default)->AddRenderer<Gleam::DebugRenderer>(lineRenderer);
 
 	mSelectionOutlineRenderer = new SelectionOutlineRenderer(mSelectionSystem);
 	mSelectionOutlineRenderer->OnCreate(renderSystem->GetRenderContext());
@@ -150,6 +152,7 @@ void WorldViewport::OnDestroy(Gleam::World* world)
 	auto renderSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::RenderSystem>();
 	renderSystem->GetRenderPipeline(Gleam::RenderPath::Default)->RemoveRenderer<ViewModeRenderer>();
 	renderSystem->GetRenderPipeline(Gleam::RenderPath::Default)->RemoveRenderer<Gleam::DebugRenderer>();
+	renderSystem->GetRenderPipeline(Gleam::RenderPath::Default)->RemoveRenderer<Gleam::LineRenderer>();
 	renderSystem->GetRenderPipeline(Gleam::RenderPath::Default)->RemoveSharedRenderer(mGridRenderer);
 	renderSystem->GetRenderPipeline(Gleam::RenderPath::PathTracing)->RemoveSharedRenderer(mGridRenderer);
 	delete mGridRenderer;
@@ -281,6 +284,11 @@ void WorldViewport::DrawToolbar()
 			auto physicsSettings = mPhysicsVisualization->GetSettings();
 			PropertyDrawer::DrawClass("Physics", &physicsSettings, Gleam::Reflection::GetClass<Gleam::PhysicsVisualizationSettings>(), 80.0f);
 			mPhysicsVisualization->SetSettings(physicsSettings);
+
+			auto debugRenderer = renderSystem->GetRenderPipeline(Gleam::RenderPath::Default)->GetRenderer<Gleam::DebugRenderer>();
+			auto debugSettings = debugRenderer->GetSettings();
+			PropertyDrawer::DrawClass("Debug Lines", &debugSettings, Gleam::Reflection::GetClass<Gleam::DebugRendererSettings>(), 80.0f);
+			debugRenderer->SetSettings(debugSettings);
 
 			ImGui::EndPopup();
 		}

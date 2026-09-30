@@ -1,5 +1,6 @@
 #include "gpch.h"
 #include "DebugRenderer.h"
+#include "LineRenderer.h"
 #include "WorldRenderer.h"
 
 #include "Core/Engine.h"
@@ -10,6 +11,11 @@
 #include "Renderer/GraphicsDevice.h"
 
 using namespace Gleam;
+
+DebugRenderer::DebugRenderer(LineRenderer* lineRenderer)
+	: mLineRenderer(lineRenderer)
+{
+}
 
 void DebugRenderer::OnCreate(const RenderContext& context)
 {
@@ -48,7 +54,10 @@ void DebugRenderer::OnCreate(const RenderContext& context)
 
 void DebugRenderer::OnDestroy(const RenderContext& context)
 {
-	context.device->Dispose(mAllocator, mVertexBuffer, BarrierStage::None);
+	if (mVertexBuffer.IsValid())
+	{
+		context.device->Dispose(mAllocator, mVertexBuffer, BarrierStage::None);
+	}
 }
 
 void DebugRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard)
@@ -105,7 +114,7 @@ void DebugRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 			cmd->SetConstantBuffer(sceneData.camera, 1);
 			cmd->Draw(static_cast<uint32_t>(mDepthLines.size()) * RenderUtils::PrimitiveTopologyVertexCount(PrimitiveTopology::Lines));
 		}
-		
+
 		if (!mDepthDebugMeshes.empty())
         {
             RenderMeshes(cmd, sceneData.camera.uniforms, mDepthDebugMeshes, true);
@@ -160,14 +169,24 @@ void DebugRenderer::RenderMeshes(const CommandBuffer* cmd, const CameraUniforms&
 
 void DebugRenderer::DrawLine(const Float3& start, const Float3& end, Color32 color, bool depthTest)
 {
+	if (mSettings.antialiasedLines)
+	{
+		mLineRenderer->DrawLine(start, end, color, mSettings.lineThickness, depthTest);
+		return;
+	}
+
     DebugLine line;
     line.start = {start, color};
     line.end = {end, color};
 
     if (depthTest)
+    {
         mDepthLines.emplace_back(std::move(line));
+    }
     else
+    {
         mLines.emplace_back(std::move(line));
+    }
 }
 
 void DebugRenderer::DrawTriangle(const Float3& v1, const Float3& v2, const Float3& v3, Color32 color, bool depthTest)

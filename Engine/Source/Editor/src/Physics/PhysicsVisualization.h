@@ -30,7 +30,7 @@ GSTRUCT(PhysicsVisualizationSettings, "649AEBDD-0979-460B-87AC-38E68E15D40E", Se
 										     | PhysicsVisualizationFlag::DynamicBodies;
 
 	GFIELD("A11B90BF-25A7-4946-99BD-8C32E2681F0A", Serializable, PrettyName("Depth Test"))
-	bool depthTest = true;
+	bool depthTest = false;
 };
 
 } // namespace Gleam

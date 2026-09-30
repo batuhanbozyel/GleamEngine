@@ -1,4 +1,6 @@
 #pragma once
+#include <Reflection/Macro.h>
+
 #include "Renderer/Renderer.h"
 #include "Renderer/Shaders/ShaderTypes.h"
 
@@ -9,6 +11,16 @@
 namespace Gleam {
 
 class Mesh;
+class LineRenderer;
+
+GSTRUCT(DebugRendererSettings, "E5250750-F7AC-41BF-8AC7-07EB720128A6", Serializable, PrettyName("Debug Lines"))
+{
+	GFIELD("BAB1CC87-512B-4610-AA49-BA649D30AB8D", Serializable, PrettyName("Antialiased"))
+	bool antialiasedLines = true;
+
+	GFIELD("8BEB12C7-99D1-4C5B-BD0C-2C78F5094D9F", Serializable, PrettyName("Thickness"))
+	float lineThickness = 2.0f;
+};
 
 struct DebugLine
 {
@@ -27,11 +39,15 @@ class DebugRenderer final : public IRenderer
 {
 public:
 
+	explicit DebugRenderer(LineRenderer* lineRenderer);
+
     virtual void OnCreate(const RenderContext& context) override;
 
 	virtual void OnDestroy(const RenderContext& context) override;
     
     virtual void AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard) override;
+
+	virtual RenderStage GetStage() const override { return RenderStage::Transparent; }
     
     void DrawLine(const Float3& start, const Float3& end, Color32 color, bool depthTest = true);
 
@@ -44,6 +60,16 @@ public:
     void DrawBoundingBox(const BoundingBox& boundingBox, const Float4x4& transform, Color32 color, bool depthTest = true);
 
 	void DrawMesh(const Mesh* mesh, const Float4x4& transform, Color32 color, bool depthTest = true);
+
+	const DebugRendererSettings& GetSettings() const
+	{
+		return mSettings;
+	}
+
+	void SetSettings(const DebugRendererSettings& settings)
+	{
+		mSettings = settings;
+	}
 
 private:
 
@@ -62,6 +88,10 @@ private:
 
 	GraphicsPipelineHandle mMeshPipeline;
 	GraphicsPipelineHandle mMeshDepthPipeline;
+
+	LineRenderer* mLineRenderer = nullptr;
+
+	DebugRendererSettings mSettings;
 
 	GraphicsDevice* mDevice = nullptr;
 	GPUAllocator* mAllocator = nullptr;
