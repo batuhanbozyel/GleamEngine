@@ -66,7 +66,7 @@ function(GLEAM_ADD_REFLECTION_MODULE)
 endfunction()
 
 function(GLEAM_LINK_REFLECTION_MODULES)
-    set(oneValueArgs OUTPUT BINARY_DIR)
+    set(oneValueArgs OUTPUT BINARY_DIR NATVIS)
     set(multiValueArgs MODULES)
     cmake_parse_arguments(REFL "" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
@@ -82,15 +82,22 @@ function(GLEAM_LINK_REFLECTION_MODULES)
         list(APPEND MODULE_TARGETS "${MODULE}Reflection")
     endforeach()
 
+    set(LINK_OUTPUTS ${REFL_OUTPUT})
+    set(LINK_ARGS "--link" "--output=${REFL_OUTPUT}")
+    if (REFL_NATVIS)
+        list(APPEND LINK_OUTPUTS ${REFL_NATVIS})
+        list(APPEND LINK_ARGS "--natvis=${REFL_NATVIS}")
+    endif()
+
     add_custom_command(
-        OUTPUT ${REFL_OUTPUT}
-        COMMAND ${REFLECTION_CLI} "--link" "--output=${REFL_OUTPUT}" ${MODULE_FILES}
+        OUTPUT ${LINK_OUTPUTS}
+        COMMAND ${REFLECTION_CLI} ${LINK_ARGS} ${MODULE_FILES}
         DEPENDS ${MODULE_FILES} ${REFLECTION_CLI}
         COMMENT "Linking reflection databases..."
         COMMAND_EXPAND_LISTS
         VERBATIM
     )
-    add_custom_target(ReflectionLink DEPENDS ${REFL_OUTPUT})
+    add_custom_target(ReflectionLink DEPENDS ${LINK_OUTPUTS})
     set_target_properties(ReflectionLink PROPERTIES FOLDER CMakeCustomRules)
     add_dependencies(ReflectionLink ${MODULE_TARGETS})
 endfunction()

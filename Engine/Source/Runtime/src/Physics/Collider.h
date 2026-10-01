@@ -1,5 +1,5 @@
 #pragma once
-#include <Reflection/Macro.h>
+#include "Core/Attributes.h"
 #include "Math/Vector3.h"
 #include "Math/Quaternion.h"
 #include "Container/Array.h"

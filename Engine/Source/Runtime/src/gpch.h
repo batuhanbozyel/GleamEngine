@@ -53,6 +53,7 @@
 #include "Core/PlatformTargetDefines.h"
 #include "Core/Macro.h"
 #include "Core/EngineDefines.h"
+#include "Core/Attributes.h"
 
 #include "Container/Pointer.h"
 #include "Container/String.h"

@@ -4,7 +4,7 @@
 //
 
 #pragma once
-#include <Reflection/Macro.h>
+#include "Core/Attributes.h"
 
 #include "Core/Macro.h"
 #include "Container/EnumFlag.h"

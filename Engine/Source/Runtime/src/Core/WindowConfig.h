@@ -1,5 +1,5 @@
 #pragma once
-#include <Reflection/Macro.h>
+#include "Core/Attributes.h"
 #include "Math/Size.h"
 
 #include <SDL3/SDL.h>

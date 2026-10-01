@@ -91,10 +91,14 @@ add_dependencies(Editor EditorReflection)
 # The application loads every module's types from one linked database
 GLEAM_LINK_REFLECTION_MODULES(
     OUTPUT ${CMAKE_SOURCE_DIR}/Gleam.Reflection.db
+    NATVIS ${GLEAM_REFLECTION_BINARY_DIR}/Gleam.Reflection.natvis
     BINARY_DIR ${GLEAM_REFLECTION_BINARY_DIR}
     MODULES Runtime Editor
 )
 add_dependencies(Editor ReflectionLink)
+if (MSVC)
+    target_sources(Editor PRIVATE ${GLEAM_REFLECTION_BINARY_DIR}/Gleam.Reflection.natvis)
+endif()
 
 target_compile_definitions(
     Editor

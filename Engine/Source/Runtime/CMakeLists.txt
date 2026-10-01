@@ -24,11 +24,11 @@ file(GLOB_RECURSE SOURCE_FILES
 
 # Setup link libraries
 if (WIN32)
-    set(LIB_LINKS SDL3::SDL3-static d3d12.lib dxgi.lib dxguid.lib dstorage.lib imgui.lib Ole32.lib WinPixEventRuntime.lib EASTL)
+    set(LIB_LINKS SDL3::SDL3-static d3d12.lib dxgi.lib dxguid.lib dstorage.lib imgui.lib Ole32.lib WinPixEventRuntime.lib EASTL GleamReflect)
     set_source_files_properties(${SHADER_FILES} PROPERTIES VS_TOOL_OVERRIDE "None")
 elseif (APPLE)
     find_library(METALIR_LIB libmetalirconverter.dylib)
-    set(LIB_LINKS SDL3::SDL3-static imgui ${METALIR_LIB} "-framework UniformTypeIdentifiers" EASTL)
+    set(LIB_LINKS SDL3::SDL3-static imgui ${METALIR_LIB} "-framework UniformTypeIdentifiers" EASTL GleamReflect)
 endif()
 
 # Set Runtime as static library

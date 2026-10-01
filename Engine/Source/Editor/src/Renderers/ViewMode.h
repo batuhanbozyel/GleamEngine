@@ -1,7 +1,7 @@
 #pragma once
 
 #if defined(__cplusplus)
-#include <Reflection/Macro.h>
+#include "Core/Attributes.h"
 #else
 #define GENUM(Name, GuidStr, ...) enum class Name
 #define GITEM(Name, GuidStr, ...) Name
