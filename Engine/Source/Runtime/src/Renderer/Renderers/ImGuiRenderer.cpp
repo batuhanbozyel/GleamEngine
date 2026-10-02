@@ -28,6 +28,7 @@ void ImGuiRenderer::OnCreate(const RenderContext& context)
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
     io.ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange;
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable | ImGuiConfigFlags_ViewportsEnable;
+    io.ConfigWindowsMoveFromTitleBarOnly = true;
 	ImGui_ImplSDL3_InitForOther(Globals::Engine->GetSubsystem<WindowSystem>()->GetSDLWindow());
 
 	unsigned char* pixels;
@@ -184,9 +185,17 @@ void ImGuiRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 				const ImDrawCmd* drawCmd = &drawList->CmdBuffer[cmd_i];
 				GLEAM_ASSERT(drawCmd->UserCallback == nullptr);
 
+				Float2 clipMin = { (drawCmd->ClipRect.x - drawData->DisplayPos.x) * drawData->FramebufferScale.x, (drawCmd->ClipRect.y - drawData->DisplayPos.y) * drawData->FramebufferScale.y };
+				Float2 clipMax = { (drawCmd->ClipRect.z - drawData->DisplayPos.x) * drawData->FramebufferScale.x, (drawCmd->ClipRect.w - drawData->DisplayPos.y) * drawData->FramebufferScale.y };
+				
+				clipMin.x = Math::Max(clipMin.x, 0.0f);
+				clipMin.y = Math::Max(clipMin.y, 0.0f);
+				clipMax.x = Math::Min(clipMax.x, renderPassDesc.size.width);
+				clipMax.y = Math::Min(clipMax.y, renderPassDesc.size.height);
+
 				Rect rect;
-				rect.offset = { (drawCmd->ClipRect.x - drawData->DisplayPos.x) * drawData->FramebufferScale.x, (drawCmd->ClipRect.y - drawData->DisplayPos.y) * drawData->FramebufferScale.y };
-				rect.size = { (drawCmd->ClipRect.z - drawCmd->ClipRect.x) * drawData->FramebufferScale.x, (drawCmd->ClipRect.w - drawCmd->ClipRect.y) * drawData->FramebufferScale.y };
+				rect.offset = clipMin;
+				rect.size = { clipMax.x - clipMin.x, clipMax.y - clipMin.y };
 				if (rect.size.width <= Math::Epsilon || rect.size.height <= Math::Epsilon)
 				{
 					continue;

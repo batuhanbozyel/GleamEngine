@@ -216,7 +216,7 @@ void WorldViewport::Render(Gleam::ImGuiRenderer* imgui)
 	{
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
 		ImGui::PushStyleColor(ImGuiCol_WindowBg, Gleam::Theme::ViewportBg);
-		const bool visible = ImGui::Begin("Viewport", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+		const bool visible = ImGui::Begin("Viewport", nullptr, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
 		ImGui::PopStyleColor();
 		ImGui::PopStyleVar();
 
