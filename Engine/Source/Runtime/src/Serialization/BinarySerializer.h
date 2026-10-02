@@ -1,5 +1,4 @@
 #pragma once
-#include "Core/Subsystem.h"
 #include "Core/GUID.h"
 
 #include "Container/BinaryBuffer.h"
@@ -23,13 +22,13 @@ struct BinaryHeader
 	uint32_t payloadSize = 0;
 };
 
-class BinarySerializer final : public EngineSubsystem
+class BinarySerializer final
 {
 public:
-	
-	virtual void Initialize(Engine* engine) override;
-	
-	virtual void Shutdown(Engine* engine) override;
+
+	static void Initialize();
+
+	static void Shutdown();
 
 	BinaryHeader ParseHeader(FileStream& stream);
     

@@ -62,6 +62,11 @@ void DebugRenderer::OnDestroy(const RenderContext& context)
 
 void DebugRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard)
 {
+	if (not blackboard.Get<SceneRenderingData>().world)
+	{
+		return;
+	}
+
 	size_t vertexCount = (mLines.size() + mDepthLines.size()) * 2;
 	size_t bufferSize = vertexCount * sizeof(DebugVertex);
 

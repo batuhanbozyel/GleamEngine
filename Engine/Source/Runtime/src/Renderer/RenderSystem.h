@@ -50,6 +50,8 @@ public:
 
 	void SetRenderPath(RenderPath path);
 
+	void SetCameraOverride(EntityHandle camera);
+
 	RenderPath GetRenderPath() const;
 
 	uint32_t GetFrameCount() const;
@@ -106,6 +108,7 @@ private:
 	EntityHandle mSkyAtmosphereEntity = InvalidEntity;
 	EntityHandle mActiveCamera = InvalidEntity;
 	EntityHandle mPrevCamera = InvalidEntity;
+	EntityHandle mCameraOverride = InvalidEntity;
 
 	float4x4 mPrevCameraView = {};
 	float4x4 mPrevCameraViewProjection = {};

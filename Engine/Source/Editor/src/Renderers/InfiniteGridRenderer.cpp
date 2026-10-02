@@ -30,6 +30,11 @@ void InfiniteGridRenderer::OnCreate(const Gleam::RenderContext& context)
 
 void InfiniteGridRenderer::AddRenderPasses(Gleam::RenderGraph& graph, Gleam::RenderGraphBlackboard& blackboard)
 {
+	if (not blackboard.Get<Gleam::SceneRenderingData>().world)
+	{
+		return;
+	}
+
     struct PassData
     {
         Gleam::TextureHandle colorTarget;

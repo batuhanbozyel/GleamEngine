@@ -75,6 +75,8 @@ public:
 
 	void RemoveComponent(EntityHandle entity, uint32_t typeHash);
 
+	bool IsEditorOnly(EntityHandle entity) const;
+
 	template<typename ... Types>
 	Entity& CreateEntity(const TString& name, const Guid& guid, Types&& ... components)
 	{

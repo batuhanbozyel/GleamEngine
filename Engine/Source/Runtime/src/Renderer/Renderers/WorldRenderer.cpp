@@ -47,6 +47,11 @@ void WorldRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 void WorldRenderer::AddVisibilityPass(RenderGraph& graph, RenderGraphBlackboard& blackboard)
 {
 	const auto& sceneData = blackboard.Get<SceneRenderingData>();
+	if (not sceneData.world)
+	{
+		return;
+	}
+
 	const auto& depthPrepassData = blackboard.Get<DepthPrepassData>();
 
 	struct VisibilityShadingPassData

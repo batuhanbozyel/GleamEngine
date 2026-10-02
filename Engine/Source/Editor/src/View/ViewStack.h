@@ -7,30 +7,33 @@
 
 #pragma once
 #include "View.h"
-#include "World/WorldSubsystem.h"
+#include "Core/Subsystem.h"
 #include "Container/PolyArray.h"
+#include "Container/String.h"
 
 namespace GEditor {
 
 template <typename T>
 concept ViewType = std::is_base_of<View, T>::value;
 
-class ViewStack : public Gleam::TickableWorldSubsystem
+class ViewStack : public Gleam::TickableGameInstanceSubsystem
 {
 public:
-    
-    virtual void Initialize(Gleam::World* world) override;
 
-	virtual void Shutdown(Gleam::World* world) override;
-    
-    virtual void Tick(Gleam::World* world) override;
+	ViewStack(const Gleam::TString& iniFilename);
+
+    virtual void Initialize(Gleam::Application* app) override;
+
+	virtual void Shutdown(Gleam::Application* app) override;
+
+    virtual void Tick(Gleam::Application* app) override;
 	
     template<ViewType T, class...Args>
     T* AddView(Args&&... args)
     {
         GLEAM_ASSERT(!HasView<T>(), "Editor already has the view!");
         T* view = mViews.emplace_back<T>(std::forward<Args>(args)...);
-		view->OnCreate(mWorld);
+		view->OnCreate(mApplication);
         return view;
     }
     
@@ -39,7 +42,7 @@ public:
     {
         GLEAM_ASSERT(HasView<T>(), "Editor does not have the view!");
         T* view = mViews.get<T>();
-		view->OnDestroy(mWorld);
+		view->OnDestroy(mApplication);
         mViews.erase<T>();
     }
     
@@ -70,11 +73,13 @@ private:
         return mViews.contains<T>();
     }
 
-	Gleam::World* mWorld;
+	Gleam::Application* mApplication = nullptr;
     
     Gleam::PolyArray<View> mViews;
 
 	Gleam::ImGuiRenderer* mImgui = nullptr;
+
+	Gleam::TString mIniPath;
     
 };
 

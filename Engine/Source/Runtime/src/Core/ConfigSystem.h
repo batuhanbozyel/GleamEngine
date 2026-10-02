@@ -16,8 +16,6 @@
 
 namespace Gleam {
 
-class JSONSerializer;
-
 template<typename T>
 concept ConfigType = Reflection::Traits::IsReflected<T>::value;
 
@@ -29,10 +27,12 @@ using ConfigMutatorFunc = std::function<void(T&)>;
 
 using ConfigCallbackHandle = uint64_t;
 
-class ConfigSystem final : public EngineSubsystem
+class ConfigSystem : public EngineSubsystem
 {
 public:
-	
+
+	ConfigSystem(const TString& filename);
+
 	virtual void Initialize(Engine* engine) override;
 	
 	virtual void Shutdown(Engine* engine) override;
@@ -47,7 +47,7 @@ public:
 	void Set(const T& value)
 	{
 		auto& block = GetBlock<T>();
-		memcpy(block.data, &value, sizeof(T));
+		Reflection::Get<T>(block.data) = value;
 		FlushToDisk();
 		block.Notify();
 	}
@@ -71,12 +71,16 @@ public:
 			block.Notify();
 			return Reflection::Get<T>(block.data);
 		}
-		auto& block = RegisterBlock(classDesc);
-		auto& value = Reflection::Get<T>(block.data);
-		value = T();
-		FlushToDisk();
-		block.Notify();
-		return value;
+
+		auto block = new ConfigBlock(classDesc, [](void* data) { static_cast<T*>(data)->~T(); });
+		new (block->data) T();
+		mBlocks[classDesc.TypeHash()] = block;
+		if (LoadPendingBlock(*block) == false)
+		{
+			FlushToDisk();
+		}
+		block->Notify();
+		return Reflection::Get<T>(block->data);
 	}
 
 	template<ConfigType T>
@@ -128,17 +132,19 @@ private:
 		
 		void* data = nullptr;
 		uint32_t typeHash = 0;
+		void (*destroy)(void*) = nullptr;
 		TArray<Subscriber> subscribers;
-		
-		ConfigBlock(const Reflection::ClassDescription& description)
+
+		ConfigBlock(const Reflection::ClassDescription& description, void (*destroyFn)(void*))
 			: typeHash(description.TypeHash())
+			, destroy(destroyFn)
 		{
 			data = ::operator new(description.GetSize());
-			memset(data, 0, description.GetSize());
 		}
-		
+
 		~ConfigBlock()
 		{
+			destroy(data);
 			::operator delete(data);
 		}
 		
@@ -151,7 +157,7 @@ private:
 		}
 	};
 	
-	ConfigBlock& RegisterBlock(const Reflection::ClassDescription& classDesc);
+	bool LoadPendingBlock(const ConfigBlock& block);
 
 	template<ConfigType T>
 	ConfigBlock& GetBlock() const
@@ -176,9 +182,10 @@ private:
 
 	Path ConfigFilePath() const;
 
-	JSONSerializer* mSerializer = nullptr;
 	HashMap<uint32_t, ConfigBlock*> mBlocks;
+	HashMap<uint32_t, TString> mPendingBlocks;
 	ConfigCallbackHandle mNextHandle = 1;
+	TString mFilename;
 };
 
 } // namespace Gleam

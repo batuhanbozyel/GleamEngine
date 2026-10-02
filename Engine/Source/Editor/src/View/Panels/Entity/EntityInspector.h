@@ -10,6 +10,10 @@
 #include "World/Entity.h"
 #include "Container/Hash.h"
 
+namespace Gleam {
+class World;
+} // namespace Gleam
+
 namespace GEditor {
 
 class SelectionSystem;
@@ -19,7 +23,7 @@ class EntityInspector final : public View
 {
 public:
 
-	virtual void OnCreate(Gleam::World* world) override;
+	EntityInspector(Gleam::World* world);
 
     virtual void Render(Gleam::ImGuiRenderer* imgui) override;
 

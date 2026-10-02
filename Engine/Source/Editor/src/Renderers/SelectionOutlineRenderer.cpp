@@ -49,6 +49,11 @@ void SelectionOutlineRenderer::OnDestroy(const Gleam::RenderContext& context)
 void SelectionOutlineRenderer::AddRenderPasses(Gleam::RenderGraph& graph, Gleam::RenderGraphBlackboard& blackboard)
 {
 	const auto& sceneData = blackboard.Get<Gleam::SceneRenderingData>();
+	if (not sceneData.world)
+	{
+		return;
+	}
+
 	mSelectionSystem->Update(sceneData.world);
 
 	const auto& instanceMask = mSelectionSystem->GetInstanceMask();

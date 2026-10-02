@@ -8,8 +8,6 @@
 #include "Input/InputSystem.h"
 #include "World/ScriptingSystem.h"
 #include "Renderer/RenderSystem.h"
-#include "Serialization/JSONSerializer.h"
-#include "Serialization/BinarySerializer.h"
 
 namespace Gleam {
 
@@ -21,11 +19,10 @@ void Engine::Initialize(const CommandLine& cli)
 	// setup directories
 	Globals::StartupDirectory = Filesystem::WorkingDirectory();
 	Globals::BuiltinAssetsDirectory = Globals::StartupDirectory / "Assets";
+	Globals::UserDataDirectory = Filesystem::AppDataDirectory() / "GleamEngine";
+	Filesystem::CreateDirectories(Globals::UserDataDirectory);
 
-	// init serialization
-	AddSubsystem<BinarySerializer>();
-	AddSubsystem<JSONSerializer>();
-	AddSubsystem<ConfigSystem>();
+	AddSubsystem<ConfigSystem>("Engine.config");
 
 	// init core subsystems
 	AddSubsystem<EventSystem>();

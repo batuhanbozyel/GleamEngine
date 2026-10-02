@@ -9,6 +9,10 @@
 #include "View/View.h"
 #include "World/Entity.h"
 
+namespace Gleam {
+class World;
+} // namespace Gleam
+
 namespace GEditor {
 
 class SelectionSystem;
@@ -19,7 +23,7 @@ class WorldOutliner final : public View
 {
 public:
 
-	virtual void OnCreate(Gleam::World* world) override;
+	WorldOutliner(Gleam::World* world);
 
     virtual void Render(Gleam::ImGuiRenderer* imgui) override;
 

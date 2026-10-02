@@ -83,6 +83,11 @@ void GBufferResolveRenderer::CreateGBufferTargets(const Size& size)
 void GBufferResolveRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard)
 {
 	const auto& sceneData = blackboard.Get<SceneRenderingData>();
+	if (not sceneData.world)
+	{
+		return;
+	}
+
 	const auto& depthPrepassData = blackboard.Get<DepthPrepassData>();
 	const auto& visibilityClassificationData = blackboard.Get<VisibilityClassificationData>();
 	const auto& sceneTargetDescriptor = graph.GetDescriptor(sceneData.sceneTarget);

@@ -21,8 +21,13 @@ void DepthPrepass::OnCreate(const RenderContext& context)
 
 void DepthPrepass::OnDestroy(const RenderContext& context)
 {
-	context.device->Dispose(context.allocator, mDepthBuffers[0], BarrierStage::None);
-	context.device->Dispose(context.allocator, mDepthBuffers[1], BarrierStage::None);
+	for (auto& depthBuffer : mDepthBuffers)
+	{
+		if (depthBuffer.IsValid())
+		{
+			context.device->Dispose(context.allocator, depthBuffer, BarrierStage::None);
+		}
+	}
 }
 
 void DepthPrepass::CreateDepthBuffers(const Size& size)
@@ -56,6 +61,11 @@ void DepthPrepass::CreateDepthBuffers(const Size& size)
 void DepthPrepass::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard)
 {
 	const auto& sceneData = blackboard.Get<SceneRenderingData>();
+	if (not sceneData.world)
+	{
+		return;
+	}
+
 	const auto& sceneTargetDescriptor = graph.GetDescriptor(sceneData.sceneTarget);
 
 	CreateDepthBuffers(sceneTargetDescriptor.size);

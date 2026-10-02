@@ -1,5 +1,4 @@
 #pragma once
-#include "Core/Subsystem.h"
 #include "Core/Macro.h"
 #include "Core/GUID.h"
 
@@ -26,13 +25,13 @@ struct JSONHeader
 	uint32_t version = 0;
 };
 
-class JSONSerializer final : public EngineSubsystem
+class JSONSerializer final
 {
 public:
-    
-    virtual void Initialize(Engine* engine) override;
-    
-    virtual void Shutdown(Engine* engine) override;
+
+	static void Initialize();
+
+	static void Shutdown();
 
 	JSONHeader ParseHeader(FileStream& stream);
 

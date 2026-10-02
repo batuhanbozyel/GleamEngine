@@ -18,6 +18,8 @@ GLEAM_TAG_ATTRIBUTE(EntityComponent);
 
 GLEAM_TAG_ATTRIBUTE(Serializable);
 
+GLEAM_TAG_ATTRIBUTE(EditorOnly);
+
 GLEAM_ATTRIBUTE(PrettyName)
 {
     char name[64] = {};

@@ -128,6 +128,19 @@ WriteAccessor<File> Filesystem::OpenWrite(const Path& path, FileType type)
     return WriteAccessor<File>(File(std::move(handle), path, it->second), it->second);
 }
 
+bool Filesystem::CreateDirectories(const Path& path)
+{
+	std::filesystem::path stlPath = std::wstring_view(path.Native().c_str(), path.Native().length());
+
+	std::error_code error;
+	if (not std::filesystem::create_directories(stlPath, error))
+	{
+		GLEAM_CORE_ERROR("Filesystem failed to create directory: {0} ({1})", path.String(), error.message());
+		return false;
+	}
+	return true;
+}
+
 bool Filesystem::Remove(const Path& path)
 {
 	std::filesystem::path stlPath = std::wstring_view(path.Native().c_str(), path.Native().length());
@@ -149,6 +162,24 @@ FileAccessor& Filesystem::Accessor(const Path& path)
 Path Filesystem::WorkingDirectory()
 {
 	return std::filesystem::current_path();
+}
+
+Path Filesystem::AppDataDirectory()
+{
+#if defined(PLATFORM_WINDOWS)
+	wchar_t* appData = nullptr;
+	size_t length = 0;
+	Path path;
+	if (_wdupenv_s(&appData, &length, L"APPDATA") == 0 and appData)
+	{
+		path = Path(appData);
+		free(appData);
+	}
+	return path;
+#elif defined(PLATFORM_MACOS)
+	const char* home = std::getenv("HOME");
+	return home ? Path(home) / "Library" / "Application Support" : Path();
+#endif
 }
 
 Path Filesystem::Relative(const Path& path, const Path& base)

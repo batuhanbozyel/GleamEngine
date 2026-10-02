@@ -27,6 +27,11 @@ void PickingRenderer::OnDestroy(const RenderContext& context)
 
 void PickingRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard)
 {
+	if (not blackboard.Get<SceneRenderingData>().world)
+	{
+		return;
+	}
+
 	auto frameIdx = mSwapchain->GetFrameIndex();
 	auto pending = mSystem->AcquirePendingPick(frameIdx);
 	if (pending == nullptr)

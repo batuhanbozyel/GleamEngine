@@ -144,6 +144,8 @@ public:
     
 	static WriteAccessor<File> Create(const Path& path, FileType type);
 
+	static bool CreateDirectories(const Path& path);
+
 	static ReadAccessor<File> OpenRead(const Path& path, FileType type);
 
 	static WriteAccessor<File> OpenWrite(const Path& path, FileType type);
@@ -151,6 +153,8 @@ public:
     static bool Remove(const Path& path);
 
 	static Path WorkingDirectory();
+
+	static Path AppDataDirectory();
 
 	static Path Relative(const Path& path, const Path& base);
 

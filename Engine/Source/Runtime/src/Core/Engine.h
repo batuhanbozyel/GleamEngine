@@ -37,8 +37,6 @@ public:
 		return mSubsystems.contains<T>();
     }
 
-private:
-
 	template<EngineSystemType T, class...Args>
 	T* AddSubsystem(Args&&... args)
 	{
@@ -56,6 +54,8 @@ private:
 		system->Shutdown(this);
 		mSubsystems.erase<T>();
 	}
+
+private:
 
 	PolyArray<EngineSubsystem> mSubsystems;
 };

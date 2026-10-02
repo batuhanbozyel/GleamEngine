@@ -14,6 +14,7 @@
 
 namespace Gleam {
 class EntityManager;
+class World;
 struct ImGuiPassData;
 } // namespace Gleam
 
@@ -30,9 +31,11 @@ class WorldViewport final : public View
 {
 public:
     
-	virtual void OnCreate(Gleam::World* world) override;
+	WorldViewport(Gleam::World* world);
 
-	virtual void OnDestroy(Gleam::World* world) override;
+	virtual void OnCreate(Gleam::Application* app) override;
+
+	virtual void OnDestroy(Gleam::Application* app) override;
     
     virtual void Update() override;
     

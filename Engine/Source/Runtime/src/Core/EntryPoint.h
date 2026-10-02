@@ -6,6 +6,8 @@
 #include "Application.h"
 #include "Engine.h"
 #include "Globals.h"
+#include "Serialization/JSONSerializer.h"
+#include "Serialization/BinarySerializer.h"
 
 #include <SDL3/SDL_main.h>
 #include <Reflection/Database.h>
@@ -42,6 +44,8 @@ int main(int argc, char* argv[])
 
 	Gleam::Reflection::Database reflection;
 	reflection.Initialize(Gleam::Filesystem::WorkingDirectory() / "Gleam.Reflection.db");
+	Gleam::JSONSerializer::Initialize();
+	Gleam::BinarySerializer::Initialize();
 
     Gleam::Engine engine;
     Gleam::Globals::Engine = &engine;
@@ -53,6 +57,8 @@ int main(int argc, char* argv[])
 
 	delete Gleam::Globals::GameInstance;
     engine.Shutdown();
+	Gleam::BinarySerializer::Shutdown();
+	Gleam::JSONSerializer::Shutdown();
 	reflection.Shutdown();
 	return EXIT_SUCCESS;
 }

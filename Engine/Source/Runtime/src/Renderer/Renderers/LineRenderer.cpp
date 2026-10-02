@@ -44,6 +44,11 @@ void LineRenderer::OnDestroy(const RenderContext& context)
 
 void LineRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard)
 {
+	if (not blackboard.Get<SceneRenderingData>().world)
+	{
+		return;
+	}
+
 	size_t lineCount = mLines.size() + mDepthLines.size();
 	if (lineCount == 0)
 	{

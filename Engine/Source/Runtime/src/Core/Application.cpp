@@ -5,6 +5,7 @@
 
 #include "EventSystem.h"
 #include "ConfigSystem.h"
+#include "WindowSystem.h"
 #include "Input/InputSystem.h"
 #include "Renderer/RenderSystem.h"
 
@@ -20,7 +21,8 @@ Application::Application(const Project& project)
 	Globals::GameInstance = this;
 	Globals::ProjectName = project.name;
 	Globals::ProjectDirectory = project.path;
-	Globals::ProjectContentDirectory = Globals::ProjectDirectory/"Assets";
+	Globals::ProjectContentDirectory = Globals::ProjectDirectory / "Assets";
+	Globals::Engine->GetSubsystem<WindowSystem>()->SetTitle(project.name);
 
 	// init game instance subsystems
 	if (project.worldConfig.worlds.empty() == false)
@@ -50,11 +52,19 @@ void Application::Run()
         eventSystem->Update();
         inputSystem->Update();
 
-		auto world = worldManager->GetActiveWorld();
-        world->Update();
+		for (auto subsystem : mTickableSubsystems)
+		{
+			subsystem->Tick(this);
+		}
 
+		World* world = nullptr;
+		if (worldManager)
+		{
+			world = worldManager->GetActiveWorld();
+			world->Update();
+		}
 		renderSystem->PreRender(world);
-        renderSystem->Render(world);
+		renderSystem->Render(world);
 	}
 }
 

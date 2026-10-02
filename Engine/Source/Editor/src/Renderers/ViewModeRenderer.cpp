@@ -32,6 +32,11 @@ void ViewModeRenderer::AddRenderPasses(Gleam::RenderGraph& graph, Gleam::RenderG
         return;
     }
 
+	if (not blackboard.Get<Gleam::SceneRenderingData>().world)
+	{
+		return;
+	}
+
 	Gleam::TextureHandle source;
 	switch (mMode)
 	{

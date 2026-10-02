@@ -9,6 +9,7 @@
 #include "EAssets/MeshSource.h"
 #include "EAssets/EAssetManager.h"
 #include "View/Widgets/AssetIcon.h"
+#include "View/Widgets/ThumbnailGrid.h"
 
 #include "Core/Globals.h"
 #include "Core/Engine.h"
@@ -30,7 +31,7 @@ ContentBrowser::ContentBrowser(EAssetManager* assetManager)
 
 }
 
-void ContentBrowser::OnCreate(Gleam::World* world)
+void ContentBrowser::OnCreate(Gleam::Application* app)
 {
 	mAssetDirectory = Gleam::Globals::ProjectContentDirectory;
 
@@ -44,7 +45,7 @@ void ContentBrowser::OnCreate(Gleam::World* world)
 	});
 }
 
-void ContentBrowser::OnDestroy(Gleam::World* world)
+void ContentBrowser::OnDestroy(Gleam::Application* app)
 {
 	if (mWatchHandle)
 	{
@@ -305,129 +306,24 @@ uint32_t ContentBrowser::DrawDirectoryNode(uint32_t index)
 
 void ContentBrowser::DrawAssetGrid()
 {
-	static float iconSize = 80.0f;
-	static float padding = 10.0f;
-
-	float cellSize = iconSize + padding;
-	float panelWidth = ImGui::GetContentRegionAvail().x;
-	uint32_t columnCount = Gleam::Math::Max((uint32_t)(panelWidth / cellSize), 1u);
-	uint32_t entryCount = static_cast<uint32_t>(mGridEntries.size());
-	uint32_t rowCount = (entryCount + columnCount - 1u) / columnCount;
-
-	float labelHeight = ImGui::GetTextLineHeight() * 2.0f;
-	float rowHeight = iconSize + labelHeight + ImGui::GetStyle().ItemSpacing.y * 2.0f;
-
-	ImGuiListClipper clipper;
-	clipper.Begin(static_cast<int>(rowCount), rowHeight);
-	while (clipper.Step())
+	Gleam::TArray<ThumbnailItem> items;
+	items.reserve(mGridEntries.size());
+	for (const auto& entry : mGridEntries)
 	{
-		for (int row = clipper.DisplayStart; row < clipper.DisplayEnd; ++row)
-		{
-			for (uint32_t column = 0u; column < columnCount; ++column)
-			{
-				uint32_t index = static_cast<uint32_t>(row) * columnCount + column;
-				if (index >= entryCount)
-				{
-					break;
-				}
-
-				if (column > 0u)
-				{
-					ImGui::SameLine();
-				}
-				DrawAssetItem(mGridEntries[index], index, iconSize);
-			}
-		}
-	}
-	clipper.End();
-
-	if (not mPendingDirectory.Empty())
-	{
-		SetCurrentDir(mPendingDirectory);
-		mPendingDirectory.Clear();
-	}
-}
-
-void ContentBrowser::DrawAssetItem(const GridEntry& entry, uint32_t index, float iconSize)
-{
-	ImVec4 assetColor = ImVec4(entry.color.r, entry.color.g, entry.color.b, entry.color.a);
-
-	ImGui::PushID(static_cast<int>(index));
-
-	ImGui::BeginGroup();
-
-	ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.2f, 0.2f, 1.0f));
-	ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.3f, 0.3f, 0.3f, 1.0f));
-	ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.4f, 0.4f, 0.4f, 1.0f));
-
-	if (entry.isDirectory)
-	{
-		ImVec4 hoverColor = ImVec4(assetColor.x * 1.1f, assetColor.y * 1.1f, assetColor.z * 1.1f, 1.0f);
-		ImVec4 activeColor = ImVec4(assetColor.x * 1.3f, assetColor.y * 1.3f, assetColor.z * 1.3f, 1.0f);
-
-		ImVec2 cursorPos = ImGui::GetCursorScreenPos();
-		ImGui::InvisibleButton("##folder", ImVec2(iconSize, iconSize));
-
-		ImVec4 currentColor = assetColor;
-		if (ImGui::IsItemActive())
-		{
-			currentColor = activeColor;
-		}
-		else if (ImGui::IsItemHovered())
-		{
-			currentColor = hoverColor;
-		}
-
-		ImGui::GetWindowDrawList()->AddRectFilled(
-			cursorPos,
-			ImVec2(cursorPos.x + iconSize, cursorPos.y + iconSize),
-			ImGui::ColorConvertFloat4ToU32(currentColor)
-		);
-	}
-	else
-	{
-		ImGui::Button(entry.iconText, ImVec2(iconSize, iconSize));
+		items.push_back({
+			.label = entry.label,
+			.iconText = entry.iconText,
+			.color = entry.color,
+			.filled = entry.isDirectory,
+			.payloadType = entry.payloadType,
+			.payload = &entry.asset,
+			.payloadSize = sizeof(AssetItem)
+		});
 	}
 
-	ImGui::PopStyleColor(3);
-
-	bool openDirectory = entry.isDirectory && ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left);
-
-	if (entry.payloadType && ImGui::BeginDragDropSource(ImGuiDragDropFlags_None))
+	const auto events = ThumbnailGrid::Draw(items);
+	if (events.doubleClicked >= 0 and mGridEntries[events.doubleClicked].isDirectory)
 	{
-		ImGui::SetDragDropPayload(entry.payloadType, &entry.asset, sizeof(AssetItem));
-		ImGui::Text("%s", entry.label.c_str());
-		ImGui::EndDragDropSource();
-	}
-
-	if (not entry.isDirectory)
-	{
-		ImVec2 separatorStart = ImGui::GetCursorScreenPos();
-		ImVec2 separatorEnd = ImVec2(separatorStart.x + iconSize, separatorStart.y);
-		ImGui::GetWindowDrawList()->AddLine(separatorStart, separatorEnd, ImGui::ColorConvertFloat4ToU32(assetColor), 3.0f);
-	}
-	ImGui::Spacing();
-
-	// Clip the label to a fixed two-line box so every cell is the same height,
-	// keeping the list clipper's row estimate exact
-	float labelHeight = ImGui::GetTextLineHeight() * 2.0f;
-	ImVec2 labelPos = ImGui::GetCursorScreenPos();
-
-	ImGui::PushClipRect(labelPos, ImVec2(labelPos.x + iconSize, labelPos.y + labelHeight), true);
-	ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + iconSize);
-	ImGui::TextWrapped("%s", entry.label.c_str());
-	ImGui::PopTextWrapPos();
-	ImGui::PopClipRect();
-
-	ImGui::SetCursorScreenPos(labelPos);
-	ImGui::Dummy(ImVec2(iconSize, labelHeight));
-
-	ImGui::EndGroup();
-
-	ImGui::PopID();
-
-	if (openDirectory)
-	{
-		mPendingDirectory = entry.path;
+		SetCurrentDir(mGridEntries[events.doubleClicked].path);
 	}
 }

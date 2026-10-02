@@ -18,20 +18,27 @@
 
 using namespace GEditor;
 
-void ViewStack::Initialize(Gleam::World* world)
+ViewStack::ViewStack(const Gleam::TString& iniFilename)
+	: mIniPath((Gleam::Globals::UserDataDirectory / iniFilename).String())
 {
-	mWorld = world;
+
+}
+
+void ViewStack::Initialize(Gleam::Application* app)
+{
+	mApplication = app;
 
 	static auto renderSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::RenderSystem>();
 	mImgui = new Gleam::ImGuiRenderer();
 	mImgui->OnCreate(renderSystem->GetRenderContext());
+	ImGui::GetIO().IniFilename = mIniPath.c_str();
 
 	renderSystem->GetRenderPipeline(Gleam::RenderPath::Default)->AddSharedRenderer(mImgui);
 	renderSystem->GetRenderPipeline(Gleam::RenderPath::PathTracing)->AddSharedRenderer(mImgui);
     SetDarkTheme();
 }
 
-void ViewStack::Shutdown(Gleam::World* world)
+void ViewStack::Shutdown(Gleam::Application* app)
 {
 	static auto renderSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::RenderSystem>();
 	renderSystem->GetRenderPipeline(Gleam::RenderPath::Default)->RemoveSharedRenderer(mImgui);
@@ -41,12 +48,12 @@ void ViewStack::Shutdown(Gleam::World* world)
 	
 	for (int i = (int)mViews.size() - 1; i >= 0; --i)
 	{
-		mViews[i]->OnDestroy(mWorld);
+		mViews[i]->OnDestroy(mApplication);
 	}
 	mViews.clear();
 }
 
-void ViewStack::Tick(Gleam::World* world)
+void ViewStack::Tick(Gleam::Application* app)
 {
 	static auto renderSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::RenderSystem>();
 	auto imgui = renderSystem->GetActiveRenderPipeline()->GetRenderer<Gleam::ImGuiRenderer>();

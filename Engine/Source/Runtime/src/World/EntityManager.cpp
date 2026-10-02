@@ -138,6 +138,16 @@ bool EntityManager::IsValid(EntityHandle entity) const
 	return mRegistry.valid(entity);
 }
 
+bool EntityManager::IsEditorOnly(EntityHandle entity) const
+{
+	bool editorOnly = false;
+	Visit(entity, [&](const void* component, const Reflection::ClassDescription& classDesc)
+	{
+		editorOnly = editorOnly or classDesc.HasAttribute<Reflection::Attribute::EditorOnly>();
+	});
+	return editorOnly;
+}
+
 uint32_t EntityManager::GetEntityCount() const
 {
 	return static_cast<uint32_t>(mRegistry.storage<EntityHandle>()->size());

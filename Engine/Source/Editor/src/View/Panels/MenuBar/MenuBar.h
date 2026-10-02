@@ -8,19 +8,27 @@
 #pragma once
 #include "View/View.h"
 
+namespace Gleam {
+class World;
+} // namespace Gleam
+
 namespace GEditor {
 
 class MenuBar final : public View
 {
 public:
 
-	virtual void OnCreate(Gleam::World* world) override;
+	MenuBar(Gleam::World* world);
+
+	virtual void OnCreate(Gleam::Application* app) override;
 
     virtual void Render(Gleam::ImGuiRenderer* imgui) override;
     
 private:
 
 	Gleam::World* mWorld = nullptr;
+
+	Gleam::Application* mApplication = nullptr;
 
 };
 

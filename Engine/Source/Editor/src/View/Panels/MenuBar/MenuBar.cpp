@@ -7,7 +7,6 @@
 
 #include "MenuBar.h"
 
-#include "Core/Globals.h"
 #include "Core/Engine.h"
 #include "Core/Application.h"
 #include "Core/PlatformTargetDefines.h"
@@ -48,9 +47,15 @@ Gleam::TString HistoryLabel(const char* action, const Gleam::TStringView name)
 
 } // namespace
 
-void MenuBar::OnCreate(Gleam::World* world)
+MenuBar::MenuBar(Gleam::World* world)
+	: mWorld(world)
 {
-	mWorld = world;
+
+}
+
+void MenuBar::OnCreate(Gleam::Application* app)
+{
+	mApplication = app;
 }
 
 void MenuBar::Render(Gleam::ImGuiRenderer* imgui)
@@ -76,7 +81,7 @@ void MenuBar::Render(Gleam::ImGuiRenderer* imgui)
 		{
 			if (ImGui::MenuItem("Save"))
 			{
-				auto worldManager = Gleam::Globals::GameInstance->GetSubsystem<Gleam::WorldManager>();
+				auto worldManager = mApplication->GetSubsystem<Gleam::WorldManager>();
 				worldManager->SaveActiveWorld();
 			}
 
@@ -106,7 +111,7 @@ void MenuBar::Render(Gleam::ImGuiRenderer* imgui)
 
 			if (ImGui::MenuItem("Project Settings"))
 			{
-				auto viewStack = mWorld->GetSubsystem<ViewStack>();
+				auto viewStack = mApplication->GetSubsystem<ViewStack>();
 				auto projectSettings = viewStack->GetView<ProjectSettings>();
 				projectSettings->Open();
 			}

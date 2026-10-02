@@ -97,7 +97,10 @@ void ImGuiRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 	graph.AddRenderPass<ImGuiPassData>("ImGuiPass", [&](RenderGraphBuilder& builder, ImGuiPassData& passData)
 	{
 		const auto& sceneData = blackboard.Get<Gleam::SceneRenderingData>();
-		passData.sceneTarget = builder.ReadTexture(sceneData.sceneTarget);
+		if (sceneData.sceneTarget.IsValid())
+		{
+			passData.sceneTarget = builder.ReadTexture(sceneData.sceneTarget);
+		}
 		passData.backbuffer = builder.WriteTexture(sceneData.backbuffer);
 	},
     [this](const CommandBuffer* cmd, const ImGuiPassData& passData)

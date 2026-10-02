@@ -8,10 +8,14 @@
 
 using namespace Gleam;
 
+ConfigSystem::ConfigSystem(const TString& filename)
+	: mFilename(filename)
+{
+
+}
+
 void ConfigSystem::Initialize(Engine* engine)
 {
-	mSerializer = engine->GetSubsystem<JSONSerializer>();
-	
 	auto path = ConfigFilePath();
 	if (Filesystem::Exists(path))
 	{
@@ -30,9 +34,10 @@ void ConfigSystem::Initialize(Engine* engine)
 				continue;
 			}
 
-			auto& block = RegisterBlock(*classDesc);
-			mSerializer->Deserialize(*classDesc, block.data, rapidjson::ConstNode(element));
-			block.Notify();
+			rapidjson::StringBuffer buffer;
+			rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+			element.Accept(writer);
+			mPendingBlocks[classDesc->TypeHash()] = TString(buffer.GetString(), buffer.GetSize());
 		}
 	}
 }
@@ -44,15 +49,17 @@ void ConfigSystem::Shutdown(Engine* engine)
 		delete block;
 	}
 	mBlocks.clear();
+	mPendingBlocks.clear();
 }
 
 Path ConfigSystem::ConfigFilePath() const
 {
-	return Globals::ProjectDirectory / "Engine.config";
+	return Globals::UserDataDirectory / mFilename;
 }
 
 void ConfigSystem::FlushToDisk() const
 {
+	JSONSerializer serializer;
 	rapidjson::Document document(rapidjson::kObjectType);
 	for (const auto& [typeHash, block] : mBlocks)
 	{
@@ -61,8 +68,19 @@ void ConfigSystem::FlushToDisk() const
 		
 		rapidjson::Value blockValue(rapidjson::kObjectType);
 		rapidjson::Node blockNode(blockValue, document.GetAllocator());
-		mSerializer->Serialize(block->data, *description, blockNode);
+		serializer.Serialize(block->data, *description, blockNode);
 		document.AddMember(rapidjson::StringRef(name.data(), name.size()), blockValue, document.GetAllocator());
+	}
+
+	for (const auto& [typeHash, data] : mPendingBlocks)
+	{
+		const auto description = Reflection::GetClass(typeHash);
+		const auto name = description->ResolveQualifiedName();
+
+		rapidjson::Document pendingDocument;
+		pendingDocument.Parse(data.c_str());
+		rapidjson::Value pendingValue(pendingDocument, document.GetAllocator());
+		document.AddMember(rapidjson::StringRef(name.data(), name.size()), pendingValue, document.GetAllocator());
 	}
 
 	auto file = Filesystem::Create(ConfigFilePath(), FileType::Text);
@@ -94,16 +112,18 @@ void ConfigSystem::MarkModified(uint32_t typeHash)
 	}
 }
 
-ConfigSystem::ConfigBlock& ConfigSystem::RegisterBlock(const Reflection::ClassDescription& classDesc)
+bool ConfigSystem::LoadPendingBlock(const ConfigBlock& block)
 {
-	if (HasBlock(classDesc))
+	auto it = mPendingBlocks.find(block.typeHash);
+	if (it == mPendingBlocks.end())
 	{
-		return *mBlocks.at(classDesc.TypeHash());
+		return false;
 	}
-	
-	auto block = new ConfigBlock(classDesc);
-	mBlocks[classDesc.TypeHash()] = block;
-	return *block;
+
+	JSONSerializer serializer;
+	serializer.Deserialize(*Reflection::GetClass(block.typeHash), block.data, it->second);
+	mPendingBlocks.erase(it);
+	return true;
 }
 
 ConfigSystem::ConfigBlock& ConfigSystem::GetBlock(const Reflection::ClassDescription& classDesc) const

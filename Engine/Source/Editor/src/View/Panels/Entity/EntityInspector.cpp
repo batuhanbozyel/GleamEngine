@@ -25,7 +25,7 @@ using namespace GEditor;
 
 static bool IsAddableComponent(const Gleam::Reflection::ClassDescription& classDesc)
 {
-	if (classDesc.HasAttribute<Gleam::Reflection::Attribute::EntityComponent>() == false)
+	if (classDesc.HasAttribute<Gleam::Reflection::Attribute::EntityComponent>() == false or classDesc.HasAttribute<Gleam::Reflection::Attribute::EditorOnly>())
 	{
 		return false;
 	}
@@ -34,9 +34,9 @@ static bool IsAddableComponent(const Gleam::Reflection::ClassDescription& classD
 	return classDesc.TypeHash() != Gleam::Reflection::GetClass<Gleam::Transform>().TypeHash();
 }
 
-void EntityInspector::OnCreate(Gleam::World* world)
+EntityInspector::EntityInspector(Gleam::World* world)
+	: mEditWorld(world)
 {
-	mEditWorld = world;
 	mSelectionSystem = world->GetSubsystem<SelectionSystem>();
 	mUndoSystem = world->GetSubsystem<UndoSystem>();
 }
@@ -191,7 +191,7 @@ void EntityInspector::DrawComponents(const Gleam::TArray<Gleam::EntityHandle>& e
 	auto& entityManager = mEditWorld->GetEntityManager();
 	entityManager.Visit(entities[0], [&](void* component, const Gleam::Reflection::ClassDescription& classDesc)
 	{
-		if (classDesc.HasAttribute<Gleam::Reflection::Attribute::EntityComponent>())
+		if (classDesc.HasAttribute<Gleam::Reflection::Attribute::EntityComponent>() and classDesc.HasAttribute<Gleam::Reflection::Attribute::EditorOnly>() == false)
 		{
 			sharedComponents.push_back({ .classDesc = &classDesc, .instances = { component } });
 		}

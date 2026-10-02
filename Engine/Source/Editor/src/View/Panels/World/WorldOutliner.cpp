@@ -21,9 +21,9 @@
 
 using namespace GEditor;
 
-void WorldOutliner::OnCreate(Gleam::World* world)
+WorldOutliner::WorldOutliner(Gleam::World* world)
+	: mEditWorld(world)
 {
-	mEditWorld = world;
 	mSelectionSystem = world->GetSubsystem<SelectionSystem>();
 	mUndoSystem = world->GetSubsystem<UndoSystem>();
 }
@@ -45,7 +45,7 @@ void WorldOutliner::Render(Gleam::ImGuiRenderer* imgui)
 					auto& entityManager = mEditWorld->GetEntityManager();
 					entityManager.ForEach<Gleam::Entity>([&](Gleam::Entity& entity)
 					{
-						if (entity.HasParent() == false)
+						if (entity.HasParent() == false and entityManager.IsEditorOnly(entity) == false)
 						{
 							DrawEntityNode(entity);
 						}

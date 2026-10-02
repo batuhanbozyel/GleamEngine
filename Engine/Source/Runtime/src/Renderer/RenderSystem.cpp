@@ -146,34 +146,45 @@ void RenderSystem::PreRender(const World* world)
 {
 	++mFrameCount;
 
-	auto sceneProxy = world->GetSubsystem<RenderSceneProxy>();
-	sceneProxy->Update(world);
-
-	const auto& globalInstances = sceneProxy->GetGlobalInstances();
-	if (not globalInstances.empty())
-	{
-		mCopyCommandBuffer->Commit(sceneProxy->GetGlobalInstanceBuffer(), globalInstances.data(), sizeof(MeshInstanceData) * globalInstances.size(), 0);
-	}
-
-	// update active camera
 	mPrevCamera = mActiveCamera;
 	mActiveCamera = InvalidEntity;
-	world->GetEntityManager().ForEach<Entity, Camera>([&](const Entity& entity, const Camera& component)
-	{
-		if (entity.IsActive())
-		{
-			mActiveCamera = entity;
-		}
-	});
-
 	mSkyAtmosphereEntity = InvalidEntity;
-	world->GetEntityManager().ForEach<Entity, SkyAtmosphere>([&](const Entity& entity, const SkyAtmosphere& component)
+	if (world)
 	{
-		if (entity.IsActive())
+		auto sceneProxy = world->GetSubsystem<RenderSceneProxy>();
+		sceneProxy->Update(world);
+
+		const auto& globalInstances = sceneProxy->GetGlobalInstances();
+		if (not globalInstances.empty())
 		{
-			mSkyAtmosphereEntity = entity;
+			mCopyCommandBuffer->Commit(sceneProxy->GetGlobalInstanceBuffer(), globalInstances.data(), sizeof(MeshInstanceData) * globalInstances.size(), 0);
 		}
-	});
+
+		// update active camera
+		const auto& entityManager = world->GetEntityManager();
+		if (entityManager.IsValid(mCameraOverride) and entityManager.HasComponent<Camera>(mCameraOverride))
+		{
+			mActiveCamera = mCameraOverride;
+		}
+		else
+		{
+			entityManager.ForEach<Entity, Camera>([&](const Entity& entity, const Camera& component)
+			{
+				if (entity.IsActive())
+				{
+					mActiveCamera = entity;
+				}
+			});
+		}
+
+		entityManager.ForEach<Entity, SkyAtmosphere>([&](const Entity& entity, const SkyAtmosphere& component)
+		{
+			if (entity.IsActive())
+			{
+				mSkyAtmosphereEntity = entity;
+			}
+		});
+	}
 
 	auto frameIdx = mSwapchain->GetFrameIndex();
 	const auto cmd = mCommandBuffers[frameIdx];
@@ -189,7 +200,7 @@ void RenderSystem::PreRender(const World* world)
 	mTransientAllocator->CollectGarbage(mSwapchain->GetFramesInFlight() + 1);
 	mPersistentAllocator->CollectGarbage(mSwapchain->GetFramesInFlight() + 1);
 
-	if (world->HasSubsystem<PickingSystem>())
+	if (world and world->HasSubsystem<PickingSystem>())
 	{
 		world->GetSubsystem<PickingSystem>()->ResolveReadback(frameIdx);
 	}
@@ -201,23 +212,7 @@ void RenderSystem::Render(const World* world)
 	@autoreleasepool
 #endif
 	{
-		if (mActiveCamera == InvalidEntity)
-		{
-			return; // skip rendering this frame
-		}
-
-		const auto& cameraComponent = world->GetEntityManager().GetComponent<Camera>(mActiveCamera);
-		const auto& cameraEntity = world->GetEntityManager().GetComponent<Entity>(mActiveCamera);
-
-		// TODO: Render scene per active camera
-		// Set sceneTarget to camera target
-		// Camera target default requires a special handle
-		// which maps to backbuffer for runtime and a temporary texture for editor scene view
-		// We may want to decide this on Editor side
-		RenderTextureDescriptor sceneTargetDesc{};
-		sceneTargetDesc.name = "Scene Target";
-		sceneTargetDesc.size = cameraComponent.GetViewport();
-		sceneTargetDesc.format = mSwapchain->GetFormat();
+		const bool hasScene = world and mActiveCamera != InvalidEntity;
 
 		RenderGraphContext renderGraphContext;
 		renderGraphContext.device = mDevice;
@@ -225,36 +220,54 @@ void RenderSystem::Render(const World* world)
 		renderGraphContext.allocator = mTransientAllocator;
 		RenderGraph graph(renderGraphContext);
 
-		auto sceneTarget = mDevice->CreateTexture(renderGraphContext.allocator, sceneTargetDesc);
 		const auto& backbuffer = mSwapchain->GetCurrentDrawable();
 
 		RenderGraphBlackboard blackboard;
 		auto& sceneData = blackboard.Add<SceneRenderingData>();
 		sceneData.backbuffer = graph.ImportTexture(backbuffer);
-		sceneData.sceneTarget = graph.ImportTexture(sceneTarget);
-		sceneData.sceneProxy = world->GetSubsystem<RenderSceneProxy>();
-		sceneData.world = world;
 
-		// Setup camera & sky atmosphere
-		Entity atmosphereEntity = mSkyAtmosphereEntity != InvalidEntity ? world->GetEntityManager().GetComponent<Entity>(mSkyAtmosphereEntity) : Entity();
-		sceneData.atmosphere = SetupSkyAtmosphereRenderData(graph, atmosphereEntity);
-		sceneData.camera = SetupCameraRenderData(graph, cameraEntity);
-		if (mPrevCamera != mActiveCamera)
+		Texture sceneTarget;
+		if (hasScene)
 		{
-			mPrevCameraView = sceneData.camera.uniforms.viewMatrix;
-			mPrevCameraViewProjection = sceneData.camera.uniforms.viewProjectionMatrix;
+			const auto& cameraComponent = world->GetEntityManager().GetComponent<Camera>(mActiveCamera);
+			const auto& cameraEntity = world->GetEntityManager().GetComponent<Entity>(mActiveCamera);
 
-			sceneData.camera.uniforms.prevViewMatrix = mPrevCameraView;
-			sceneData.camera.uniforms.prevViewProjectionMatrix = mPrevCameraViewProjection;
-		}
+			// TODO: Render scene per active camera
+			// Set sceneTarget to camera target
+			// Camera target default requires a special handle
+			// which maps to backbuffer for runtime and a temporary texture for editor scene view
+			// We may want to decide this on Editor side
+			RenderTextureDescriptor sceneTargetDesc{};
+			sceneTargetDesc.name = "Scene Target";
+			sceneTargetDesc.size = cameraComponent.GetViewport();
+			sceneTargetDesc.format = mSwapchain->GetFormat();
 
-		auto defaultPipeline = GetRenderPipeline(RenderPath::Default);
-		if (auto skyAtmosphereRenderer = defaultPipeline->GetRenderer<SkyAtmosphereRenderer>(); skyAtmosphereRenderer)
-		{
-			if (memcmp(&mAtmosphereParams, &sceneData.atmosphere.params, sizeof(SkyAtmosphereParameters)) != 0)
+			sceneTarget = mDevice->CreateTexture(renderGraphContext.allocator, sceneTargetDesc);
+			sceneData.sceneTarget = graph.ImportTexture(sceneTarget);
+			sceneData.sceneProxy = world->GetSubsystem<RenderSceneProxy>();
+			sceneData.world = world;
+
+			// Setup camera & sky atmosphere
+			Entity atmosphereEntity = mSkyAtmosphereEntity != InvalidEntity ? world->GetEntityManager().GetComponent<Entity>(mSkyAtmosphereEntity) : Entity();
+			sceneData.atmosphere = SetupSkyAtmosphereRenderData(graph, atmosphereEntity);
+			sceneData.camera = SetupCameraRenderData(graph, cameraEntity);
+			if (mPrevCamera != mActiveCamera)
 			{
-				mAtmosphereParams = sceneData.atmosphere.params;
-				skyAtmosphereRenderer->UpdateSkyAtmosphere(graph, blackboard);
+				mPrevCameraView = sceneData.camera.uniforms.viewMatrix;
+				mPrevCameraViewProjection = sceneData.camera.uniforms.viewProjectionMatrix;
+
+				sceneData.camera.uniforms.prevViewMatrix = mPrevCameraView;
+				sceneData.camera.uniforms.prevViewProjectionMatrix = mPrevCameraViewProjection;
+			}
+
+			auto defaultPipeline = GetRenderPipeline(RenderPath::Default);
+			if (auto skyAtmosphereRenderer = defaultPipeline->GetRenderer<SkyAtmosphereRenderer>(); skyAtmosphereRenderer)
+			{
+				if (memcmp(&mAtmosphereParams, &sceneData.atmosphere.params, sizeof(SkyAtmosphereParameters)) != 0)
+				{
+					mAtmosphereParams = sceneData.atmosphere.params;
+					skyAtmosphereRenderer->UpdateSkyAtmosphere(graph, blackboard);
+				}
 			}
 		}
 
@@ -276,17 +289,23 @@ void RenderSystem::Render(const World* world)
 		mCopyCommandBuffer->WaitUntilCompleted();
 		mCopyCommandBuffer->Barrier(cmd);
 
-		sceneData.accelerationStructure = mRayTracingScene->BuildAccelerationStructure(cmd, sceneData.sceneProxy);
+		if (hasScene)
+		{
+			sceneData.accelerationStructure = mRayTracingScene->BuildAccelerationStructure(cmd, sceneData.sceneProxy);
+		}
 
         graph.Execute(cmd, sceneData);
-		mDevice->Dispose(renderGraphContext.allocator, sceneTarget, BarrierStage::None);
 
-		mRayTracingScene->ReleaseAccelerationStructure();
+		if (hasScene)
+		{
+			mDevice->Dispose(renderGraphContext.allocator, sceneTarget, BarrierStage::None);
+			mRayTracingScene->ReleaseAccelerationStructure();
+
+			mPrevCameraView = sceneData.camera.uniforms.viewMatrix;
+			mPrevCameraViewProjection = sceneData.camera.uniforms.viewProjectionMatrix;
+		}
 
 		mSwapchain->Present(cmd);
-
-		mPrevCameraView = sceneData.camera.uniforms.viewMatrix;
-		mPrevCameraViewProjection = sceneData.camera.uniforms.viewProjectionMatrix;
     }
 }
 
@@ -319,6 +338,11 @@ void RenderSystem::ApplyGraphicsSettings(const GraphicsSettings& settings)
 void RenderSystem::SetRenderPath(RenderPath path)
 {
 	mRenderPath = path;
+}
+
+void RenderSystem::SetCameraOverride(EntityHandle camera)
+{
+	mCameraOverride = camera;
 }
 
 RenderPath RenderSystem::GetRenderPath() const

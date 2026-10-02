@@ -24,9 +24,9 @@ public:
 
 	ContentBrowser(EAssetManager* assetManager);
 
-	virtual void OnCreate(Gleam::World* world) override;
+	virtual void OnCreate(Gleam::Application* app) override;
 
-	virtual void OnDestroy(Gleam::World* world) override;
+	virtual void OnDestroy(Gleam::Application* app) override;
 
     virtual void Render(Gleam::ImGuiRenderer* imgui) override;
 
@@ -66,16 +66,11 @@ private:
 
 	void DrawAssetGrid();
 
-	void DrawAssetItem(const GridEntry& entry, uint32_t index, float iconSize);
-
 	EAssetManager* mAssetManager;
 
     Gleam::Path mCurrentDirectory;
 
 	Gleam::Path mAssetDirectory;
-
-	// Navigation requested from inside the grid loop, applied once the loop is done
-	Gleam::Path mPendingDirectory;
 
 	Gleam::TArray<GridEntry> mGridEntries;
 

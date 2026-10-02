@@ -56,5 +56,23 @@ TArray<Path> FileDialog::Open(const TWString& filterName, const TWString& filter
     return selectedFiles;
 }
 
+Path FileDialog::OpenFolder()
+{
+    NSOpenPanel* openPanel = [NSOpenPanel openPanel];
+    [openPanel setTitle:@"Choose Folder"];
+    [openPanel setCanChooseFiles:NO];
+    [openPanel setCanChooseDirectories:YES];
+    [openPanel setCanCreateDirectories:YES];
+    [openPanel setAllowsMultipleSelection:NO];
+
+    if ([openPanel runModal] == NSModalResponseOK)
+    {
+        NSData* pathData = [[[openPanel URL] path] dataUsingEncoding:NSUTF32LittleEndianStringEncoding];
+        TWString pathStr((wchar_t*)[pathData bytes], [pathData length] / sizeof(wchar_t));
+        return Path(pathStr);
+    }
+    return Path();
+}
+
 #endif
 
