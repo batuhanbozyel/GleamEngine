@@ -1,31 +1,40 @@
 #include "ThumbnailGrid.h"
+#include "EditorWidgets.h"
+#include "View/EditorFonts.h"
+#include "View/GleamTheme.h"
+#include "View/IconsLucide.h"
 
-#include <imgui.h>
+#include <imgui_internal.h>
+
+#include <cstring>
 
 using namespace GEditor;
 
-ThumbnailGridEvents ThumbnailGrid::Draw(Gleam::TArrayView<const ThumbnailItem> items, float iconSize, float padding)
+static constexpr ImVec2 kCellSize(84.0f, 96.0f);
+static constexpr float kColumnGap = 12.0f;
+static constexpr float kRowGap = 10.0f;
+static constexpr float kTileSize = 60.0f;
+
+ThumbnailGridEvents ThumbnailGrid::Draw(Gleam::TArrayView<const ThumbnailItem> items, const EditorFonts& fonts)
 {
 	ThumbnailGridEvents events;
 
-	float cellSize = iconSize + padding;
-	float panelWidth = ImGui::GetContentRegionAvail().x;
-	uint32_t columnCount = Gleam::Math::Max((uint32_t)(panelWidth / cellSize), 1u);
-	uint32_t itemCount = static_cast<uint32_t>(items.size());
-	uint32_t rowCount = (itemCount + columnCount - 1u) / columnCount;
+	const float panelWidth = ImGui::GetContentRegionAvail().x;
+	const uint32_t columnCount = Gleam::Math::Max(static_cast<uint32_t>((panelWidth + kColumnGap) / (kCellSize.x + kColumnGap)), 1u);
+	const uint32_t itemCount = static_cast<uint32_t>(items.size());
+	const uint32_t rowCount = (itemCount + columnCount - 1u) / columnCount;
 
-	float labelHeight = ImGui::GetTextLineHeight() * 2.0f;
-	float rowHeight = iconSize + labelHeight + ImGui::GetStyle().ItemSpacing.y * 2.0f;
+	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(kColumnGap, kRowGap));
 
 	ImGuiListClipper clipper;
-	clipper.Begin(static_cast<int>(rowCount), rowHeight);
+	clipper.Begin(static_cast<int>(rowCount), kCellSize.y + kRowGap);
 	while (clipper.Step())
 	{
 		for (int row = clipper.DisplayStart; row < clipper.DisplayEnd; ++row)
 		{
 			for (uint32_t column = 0u; column < columnCount; ++column)
 			{
-				uint32_t index = static_cast<uint32_t>(row) * columnCount + column;
+				const uint32_t index = static_cast<uint32_t>(row) * columnCount + column;
 				if (index >= itemCount)
 				{
 					break;
@@ -35,77 +44,32 @@ ThumbnailGridEvents ThumbnailGrid::Draw(Gleam::TArrayView<const ThumbnailItem> i
 				{
 					ImGui::SameLine();
 				}
-
-				const auto itemEvents = DrawItem(items[index], index, iconSize);
-				if (itemEvents.doubleClicked)
-				{
-					events.doubleClicked = static_cast<int32_t>(index);
-				}
-				if (itemEvents.contextMenu)
-				{
-					events.contextMenu = static_cast<int32_t>(index);
-				}
+				DrawItem(items[index], index, fonts, events);
 			}
 		}
 	}
 	clipper.End();
 
+	ImGui::PopStyleVar();
 	return events;
 }
 
-ThumbnailGrid::ItemEvents ThumbnailGrid::DrawItem(const ThumbnailItem& item, uint32_t index, float iconSize)
+void ThumbnailGrid::DrawItem(const ThumbnailItem& item, uint32_t index, const EditorFonts& fonts, ThumbnailGridEvents& events)
 {
-	ImVec4 itemColor = ImVec4(item.color.r, item.color.g, item.color.b, item.color.a);
-
 	ImGui::PushID(static_cast<int>(index));
 
-	if (item.dimmed)
+	const ImVec2 min = ImGui::GetCursorScreenPos();
+	const ImVec2 max(min.x + kCellSize.x, min.y + kCellSize.y);
+	ImGui::InvisibleButton("##Item", kCellSize);
+	const bool hovered = ImGui::IsItemHovered();
+
+	if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
 	{
-		ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.4f);
+		events.clicked = static_cast<int32_t>(index);
 	}
-	ImGui::BeginGroup();
-
-	ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.2f, 0.2f, 1.0f));
-	ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.3f, 0.3f, 0.3f, 1.0f));
-	ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.4f, 0.4f, 0.4f, 1.0f));
-
-	if (item.filled)
+	if (hovered and ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
 	{
-		ImVec4 hoverColor = ImVec4(itemColor.x * 1.1f, itemColor.y * 1.1f, itemColor.z * 1.1f, 1.0f);
-		ImVec4 activeColor = ImVec4(itemColor.x * 1.3f, itemColor.y * 1.3f, itemColor.z * 1.3f, 1.0f);
-
-		ImVec2 cursorPos = ImGui::GetCursorScreenPos();
-		ImGui::InvisibleButton("##filled", ImVec2(iconSize, iconSize));
-
-		ImVec4 currentColor = itemColor;
-		if (ImGui::IsItemActive())
-		{
-			currentColor = activeColor;
-		}
-		else if (ImGui::IsItemHovered())
-		{
-			currentColor = hoverColor;
-		}
-
-		ImGui::GetWindowDrawList()->AddRectFilled(
-			cursorPos,
-			ImVec2(cursorPos.x + iconSize, cursorPos.y + iconSize),
-			ImGui::ColorConvertFloat4ToU32(currentColor)
-		);
-	}
-	else
-	{
-		ImGui::Button(item.iconText, ImVec2(iconSize, iconSize));
-	}
-
-	ImGui::PopStyleColor(3);
-
-	ItemEvents events;
-	events.doubleClicked = ImGui::IsItemHovered() and ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left);
-	events.contextMenu = ImGui::IsItemClicked(ImGuiMouseButton_Right);
-	if (item.tooltip.empty() == false and ImGui::IsItemHovered())
-	{
-		ImGui::SetTooltip("%.*s", static_cast<int>(item.tooltip.size()), item.tooltip.data());
+		events.doubleClicked = static_cast<int32_t>(index);
 	}
 
 	if (item.payloadType and ImGui::BeginDragDropSource(ImGuiDragDropFlags_None))
@@ -115,35 +79,72 @@ ThumbnailGrid::ItemEvents ThumbnailGrid::DrawItem(const ThumbnailItem& item, uin
 		ImGui::EndDragDropSource();
 	}
 
-	if (not item.filled)
+	auto drawList = ImGui::GetWindowDrawList();
+	if (item.selected)
 	{
-		ImVec2 separatorStart = ImGui::GetCursorScreenPos();
-		ImVec2 separatorEnd = ImVec2(separatorStart.x + iconSize, separatorStart.y);
-		ImGui::GetWindowDrawList()->AddLine(separatorStart, separatorEnd, ImGui::ColorConvertFloat4ToU32(itemColor), 3.0f);
+		drawList->AddRectFilled(min, max, Widgets::ColorU32(Gleam::Theme::Selected), 6.0f);
+		drawList->AddRect(min, max, Widgets::ColorU32(Gleam::Theme::Accent), 6.0f);
 	}
-	ImGui::Spacing();
-
-	// Clip the label to a fixed two-line box so every cell is the same height,
-	// keeping the list clipper's row estimate exact
-	float labelHeight = ImGui::GetTextLineHeight() * 2.0f;
-	ImVec2 labelPos = ImGui::GetCursorScreenPos();
-
-	ImGui::PushClipRect(labelPos, ImVec2(labelPos.x + iconSize, labelPos.y + labelHeight), true);
-	ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + iconSize);
-	ImGui::TextWrapped("%.*s", static_cast<int>(item.label.size()), item.label.data());
-	ImGui::PopTextWrapPos();
-	ImGui::PopClipRect();
-
-	ImGui::SetCursorScreenPos(labelPos);
-	ImGui::Dummy(ImVec2(iconSize, labelHeight));
-
-	ImGui::EndGroup();
-	if (item.dimmed)
+	else if (hovered)
 	{
-		ImGui::PopStyleVar();
+		drawList->AddRectFilled(min, max, Widgets::ColorU32(Gleam::Theme::SectionHeader), 6.0f);
+	}
+
+	const ImVec2 tileMin(min.x + (kCellSize.x - kTileSize) * 0.5f, min.y + 5.0f);
+	const ImVec2 tileMax(tileMin.x + kTileSize, tileMin.y + kTileSize);
+	const ImVec2 tileCenter((tileMin.x + tileMax.x) * 0.5f, (tileMin.y + tileMax.y) * 0.5f);
+	drawList->AddRectFilled(tileMin, tileMax, Widgets::ColorU32(Gleam::Theme::Control), 4.0f);
+
+	if (item.isFolder)
+	{
+		ImGui::PushFont(fonts.iconLarge);
+		Widgets::DrawIcon(drawList, ICON_LC_FOLDER, tileCenter, Gleam::Theme::Accent);
+		ImGui::PopFont();
+	}
+	else
+	{
+		drawList->AddRectFilled(ImVec2(tileMin.x, tileMax.y - 3.0f), tileMax, Widgets::ColorU32(item.color), 4.0f, ImDrawFlags_RoundCornersBottom);
+		if (item.typeText)
+		{
+			ImGui::PushFont(fonts.micro);
+			const float lineHeight = ImGui::GetFontSize();
+			const ImVec2 textSize = ImGui::CalcTextSize(item.typeText);
+			float lineY = tileCenter.y - textSize.y * 0.5f;
+			for (const char* line = item.typeText; line != nullptr and *line != '\0';)
+			{
+				const char* lineEnd = std::strchr(line, '\n');
+				const char* end = lineEnd ? lineEnd : line + std::strlen(line);
+				const float lineWidth = ImGui::CalcTextSize(line, end).x;
+				drawList->AddText(ImVec2(IM_ROUND(tileCenter.x - lineWidth * 0.5f), IM_ROUND(lineY)), Widgets::ColorU32(Gleam::Theme::TextMuted), line, end);
+				lineY += lineHeight;
+				line = lineEnd ? lineEnd + 1 : nullptr;
+			}
+			ImGui::PopFont();
+		}
+	}
+
+	ImGui::PushFont(fonts.caption);
+	ImGui::PushStyleColor(ImGuiCol_Text, Gleam::Theme::TextBadge);
+	const char* labelBegin = item.label.data();
+	const char* labelEnd = labelBegin + item.label.size();
+	const ImVec2 labelSize = ImGui::CalcTextSize(labelBegin, labelEnd);
+	const ImVec2 labelMin(min.x + 4.0f, tileMax.y + 6.0f);
+	const ImVec2 labelMax(max.x - 4.0f, labelMin.y + ImGui::GetFontSize());
+	if (labelSize.x <= labelMax.x - labelMin.x)
+	{
+		drawList->AddText(ImVec2(min.x + (kCellSize.x - labelSize.x) * 0.5f, labelMin.y), ImGui::GetColorU32(ImGuiCol_Text), labelBegin, labelEnd);
+	}
+	else
+	{
+		ImGui::RenderTextEllipsis(drawList, labelMin, labelMax, labelMax.x, labelBegin, labelEnd, &labelSize);
+	}
+	ImGui::PopStyleColor();
+	ImGui::PopFont();
+
+	if (hovered and labelSize.x > labelMax.x - labelMin.x)
+	{
+		ImGui::SetTooltip("%.*s", static_cast<int>(item.label.size()), labelBegin);
 	}
 
 	ImGui::PopID();
-
-	return events;
 }

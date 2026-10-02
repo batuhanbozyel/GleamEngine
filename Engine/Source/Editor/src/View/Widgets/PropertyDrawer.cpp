@@ -1,5 +1,9 @@
 #include "PropertyDrawer.h"
 #include "AssetIcon.h"
+#include "EditorWidgets.h"
+#include "View/EditorFonts.h"
+#include "View/GleamTheme.h"
+#include "View/IconsLucide.h"
 
 #include "EAssets/EAssetManager.h"
 
@@ -11,9 +15,21 @@
 
 #include <imgui.h>
 #include <imgui_internal.h>
+
+#include <cctype>
+#include <cstdio>
 #include <Runtime.Reflection.generated.h>
 
 using namespace GEditor;
+
+static constexpr float kLabelColumnWidth = 96.0f;
+static constexpr float kFieldHeight = 26.0f;
+
+static void DrawFieldLabel(const char* label)
+{
+	ImGui::AlignTextToFramePadding();
+	ImGui::TextColored(Gleam::Theme::TextSecondary, "%s", label);
+}
 
 static Gleam::TStringView QualifiedNameWithoutTemplateDeclaration(const Gleam::TStringView name)
 {
@@ -398,22 +414,115 @@ void PropertyDrawer::ApplyPendingEdit()
 	}
 }
 
+void PropertyDrawer::SetFonts(const EditorFonts* fonts)
+{
+	mFonts = fonts;
+}
+
 bool PropertyDrawer::DrawSettingsButton(float size)
 {
-	const ImVec2 cursor = ImGui::GetCursorScreenPos();
-	const bool pressed = ImGui::Button("##Settings", ImVec2(size, size));
-
-	const float radius = ImMax(1.0f, size * 0.065f);
-	const float spacing = size * 0.22f;
-	const ImVec2 center = ImVec2(cursor.x + size * 0.5f, cursor.y + size * 0.5f);
-	const ImU32 color = ImGui::GetColorU32(ImGuiCol_Text);
+	const ImVec2 min = ImGui::GetCursorScreenPos();
+	const ImVec2 max(min.x + size, min.y + size);
+	const bool pressed = ImGui::InvisibleButton("##Settings", ImVec2(size, size));
+	const bool hovered = ImGui::IsItemHovered();
 
 	auto drawList = ImGui::GetWindowDrawList();
-	for (int32_t i = -1; i <= 1; ++i)
+	if (hovered)
 	{
-		drawList->AddCircleFilled(ImVec2(center.x, center.y + spacing * i), radius, color);
+		drawList->AddRectFilled(min, max, Widgets::ColorU32(Gleam::Theme::ControlHover), 4.0f);
 	}
+	Widgets::DrawIcon(drawList, ICON_LC_ELLIPSIS_VERTICAL, ImVec2((min.x + max.x) * 0.5f, (min.y + max.y) * 0.5f), hovered ? Gleam::Theme::Text : Gleam::Theme::TextMuted);
 	return pressed;
+}
+
+bool PropertyDrawer::DrawSectionHeader(const char* label, const UIFunction& headerFunction)
+{
+	constexpr float kHeight = 32.0f;
+	constexpr float kOptionsSize = 24.0f;
+
+	auto window = ImGui::GetCurrentWindow();
+	auto storage = ImGui::GetStateStorage();
+	const ImGuiID openID = ImGui::GetID("##SectionOpen");
+	bool open = storage->GetBool(openID, true);
+
+	const ImVec2 cursor = ImGui::GetCursorScreenPos();
+	const ImVec2 min(window->InnerRect.Min.x, cursor.y);
+	const ImVec2 max(window->InnerRect.Max.x, cursor.y + kHeight);
+
+	ImGui::SetCursorScreenPos(min);
+	ImGui::SetNextItemAllowOverlap();
+	if (ImGui::InvisibleButton("##SectionHeader", ImVec2(max.x - min.x, kHeight)))
+	{
+		open = not open;
+		storage->SetBool(openID, open);
+	}
+	const bool hovered = ImGui::IsItemHovered();
+
+	auto drawList = ImGui::GetWindowDrawList();
+	drawList->AddRectFilled(min, max, Widgets::ColorU32(hovered ? Gleam::Theme::Selected : Gleam::Theme::SectionHeader));
+	drawList->AddLine(min, ImVec2(max.x, min.y), Widgets::ColorU32(Gleam::Theme::Divider));
+	drawList->AddLine(ImVec2(min.x, max.y - 1.0f), ImVec2(max.x, max.y - 1.0f), Widgets::ColorU32(Gleam::Theme::Divider));
+
+	const float centerY = min.y + kHeight * 0.5f;
+	ImGui::PushFont(mFonts->microBold);
+	Widgets::DrawIcon(drawList, open ? ICON_LC_CHEVRON_DOWN : ICON_LC_CHEVRON_RIGHT, ImVec2(cursor.x + 5.0f, centerY), Gleam::Theme::Text);
+	ImGui::PopFont();
+
+	ImGui::PushFont(mFonts->semiBold);
+	drawList->AddText(ImVec2(cursor.x + 18.0f, centerY - ImGui::GetFontSize() * 0.5f), Widgets::ColorU32(Gleam::Theme::Text), label);
+	ImGui::PopFont();
+
+	if (headerFunction)
+	{
+		ImGui::SetCursorScreenPos(ImVec2(max.x - 8.0f - kOptionsSize, min.y + (kHeight - kOptionsSize) * 0.5f));
+		headerFunction();
+	}
+
+	ImGui::SetCursorScreenPos(min);
+	ImGui::Dummy(ImVec2(max.x - min.x, kHeight));
+	return open;
+}
+
+void PropertyDrawer::DrawAxisField(const char* axis, uint32_t color, float& value, float resetValue, const char* format, float width)
+{
+	constexpr float kTagWidth = 18.0f;
+
+	ImGui::PushID(axis);
+	const ImVec2 min = ImGui::GetCursorScreenPos();
+	const ImVec2 max(min.x + width, min.y + kFieldHeight);
+	auto drawList = ImGui::GetWindowDrawList();
+	drawList->AddRectFilled(min, max, Widgets::ColorU32(Gleam::Theme::Background), 4.0f);
+
+	if (ImGui::InvisibleButton("##Reset", ImVec2(kTagWidth, kFieldHeight)))
+	{
+		value = resetValue;
+		MarkEditCommitted();
+	}
+	TrackEdit();
+	ImGui::SetItemTooltip("Reset");
+
+	drawList->AddRectFilled(min, ImVec2(min.x + kTagWidth, max.y), color, 4.0f, ImDrawFlags_RoundCornersLeft);
+	ImGui::PushFont(mFonts->microBold);
+	Widgets::DrawIcon(drawList, axis, ImVec2(min.x + kTagWidth * 0.5f, min.y + kFieldHeight * 0.5f), Gleam::Theme::Background);
+	ImGui::PopFont();
+
+	ImGui::SameLine(0.0f, 0.0f);
+	ImGui::PushFont(mFonts->mono);
+	ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(6.0f, (kFieldHeight - ImGui::GetFontSize()) * 0.5f));
+	ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
+	ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 0.0f);
+	ImGui::PushStyleColor(ImGuiCol_FrameBg, Gleam::Theme::Hex(0x000000, 0.0f));
+	ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, Gleam::Theme::Control);
+	ImGui::PushStyleColor(ImGuiCol_FrameBgActive, Gleam::Theme::ControlHover);
+	ImGui::SetNextItemWidth(width - kTagWidth);
+	ImGui::DragFloat("##Value", &value, 0.05f, 0.0f, 0.0f, format);
+	TrackEdit();
+	ImGui::PopStyleColor(3);
+	ImGui::PopStyleVar(3);
+	ImGui::PopFont();
+
+	drawList->AddRect(min, max, Widgets::ColorU32(Gleam::Theme::Border), 4.0f);
+	ImGui::PopID();
 }
 
 bool PropertyDrawer::EditStarted()
@@ -448,9 +557,6 @@ void PropertyDrawer::DrawScalarControl(const Gleam::TStringView label, const Gle
 {
 	GLEAM_ASSERT(value, "Value can not be null.");
 
-	ImGuiIO& io = ImGui::GetIO();
-	auto boldFont = io.Fonts->Fonts[0];
-
 	char buffer[64];
 	std::memcpy(buffer, label.data(), label.size());
 	buffer[label.size()] = '\0';
@@ -459,44 +565,20 @@ void PropertyDrawer::DrawScalarControl(const Gleam::TStringView label, const Gle
 
 	ImGui::Columns(2);
 	ImGui::SetColumnWidth(0, columnWidth);
-	ImGui::Text("%s", buffer);
+	DrawFieldLabel(buffer);
 	ImGui::NextColumn();
 
-	ImGui::PushItemWidth(ImGui::CalcItemWidth());
+	ImGui::PushItemWidth(-FLT_MIN);
 	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2{ 0, 0 });
 
-	float lineHeight = GImGui->FontSize + GImGui->Style.FramePadding.y * 2.0f;
-	ImVec2 buttonSize = { lineHeight + 3.0f, lineHeight };
-
-	ImGui::PushStyleColor(ImGuiCol_Button, ImVec4{ 0.8f, 0.1f, 0.15f, 1.0f });
-	ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4{ 0.9f, 0.2f, 0.2f, 1.0f });
-	ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4{ 0.8f, 0.1f, 0.15f, 1.0f });
-	ImGui::PushFont(boldFont);
-
-	if (type != Gleam::Reflection::PrimitiveType::Bool)
-	{
-		if (ImGui::Button("X", buttonSize))
-		{
-			if (defaultValue)
-			{
-				memcpy(value, defaultValue, size);
-				MarkEditCommitted();
-			}
-		}
-		TrackEdit();
-	}
-
-	ImGui::PopFont();
-	ImGui::PopStyleColor(3);
-
-	if (type != Gleam::Reflection::PrimitiveType::Bool)
-	{
-		ImGui::SameLine();
-	}
 
 	// Checkbox draws its own dash for a mixed value, the drags need a format without a conversion
 	const char* mixedFormat = IsMixedValue() ? "-" : nullptr;
 
+	ImGui::PushFont(mFonts->mono);
+	ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(6.0f, (kFieldHeight - ImGui::GetFontSize()) * 0.5f));
+	ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
+	ImGui::PushStyleColor(ImGuiCol_Border, Gleam::Theme::Border);
 	switch (type)
 	{
 		case Gleam::Reflection::PrimitiveType::Bool:
@@ -566,7 +648,20 @@ void PropertyDrawer::DrawScalarControl(const Gleam::TStringView label, const Gle
 		default:
 			break;
 	}
+	ImGui::PopStyleColor();
+	ImGui::PopStyleVar(2);
+	ImGui::PopFont();
 	TrackEdit();
+
+	if (type != Gleam::Reflection::PrimitiveType::Bool and defaultValue and ImGui::BeginPopupContextItem("##Reset"))
+	{
+		if (ImGui::MenuItem("Reset"))
+		{
+			memcpy(value, defaultValue, size);
+			MarkEditCommitted();
+		}
+		ImGui::EndPopup();
+	}
 
 	ImGui::PopItemWidth();
 	ImGui::SameLine();
@@ -579,94 +674,31 @@ void PropertyDrawer::DrawScalarControl(const Gleam::TStringView label, const Gle
 
 void PropertyDrawer::DrawVec3Control(const Gleam::TStringView label, Gleam::Float3& values, float resetValue, float columnWidth)
 {
-    ImGuiIO& io = ImGui::GetIO();
-    auto boldFont = io.Fonts->Fonts[0];
+	constexpr float kFieldGap = 4.0f;
 
 	char buffer[64];
 	std::memcpy(buffer, label.data(), label.size());
 	buffer[label.size()] = '\0';
 
-    ImGui::PushID(buffer);
+	ImGui::PushID(buffer);
 
-    ImGui::Columns(2);
-    ImGui::SetColumnWidth(0, columnWidth);
-    ImGui::Text("%s", buffer);
-    ImGui::NextColumn();
-
-    ImGui::PushMultiItemsWidths(3, ImGui::CalcItemWidth());
-    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2{ 0, 0 });
+	ImGui::Columns(2);
+	ImGui::SetColumnWidth(0, columnWidth);
+	DrawFieldLabel(buffer);
+	ImGui::NextColumn();
 
 	const char* format = IsMixedValue() ? "-" : "%.2f";
+	const float fieldWidth = (ImGui::GetContentRegionAvail().x - kFieldGap * 2.0f) / 3.0f;
 
-    float lineHeight = GImGui->FontSize + GImGui->Style.FramePadding.y * 2.0f;
-    ImVec2 buttonSize = { lineHeight + 3.0f, lineHeight };
+	DrawAxisField("X", Widgets::ColorU32(Gleam::Theme::AxisX), values.x, resetValue, format, fieldWidth);
+	ImGui::SameLine(0.0f, kFieldGap);
+	DrawAxisField("Y", Widgets::ColorU32(Gleam::Theme::AxisY), values.y, resetValue, format, fieldWidth);
+	ImGui::SameLine(0.0f, kFieldGap);
+	DrawAxisField("Z", Widgets::ColorU32(Gleam::Theme::AxisZ), values.z, resetValue, format, fieldWidth);
 
-    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4{ 0.8f, 0.1f, 0.15f, 1.0f });
-    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4{ 0.9f, 0.2f, 0.2f, 1.0f });
-    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4{ 0.8f, 0.1f, 0.15f, 1.0f });
-    ImGui::PushFont(boldFont);
+	ImGui::Columns(1);
 
-	if (ImGui::Button("X", buttonSize))
-	{
-		values.x = resetValue;
-		MarkEditCommitted();
-	}
-	TrackEdit();
-
-    ImGui::PopFont();
-    ImGui::PopStyleColor(3);
-
-    ImGui::SameLine();
-    ImGui::DragFloat("##X", &values.x, 0.05f, 0.0f, 0.0f, format);
-	TrackEdit();
-    ImGui::PopItemWidth();
-    ImGui::SameLine();
-
-    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4{ 0.2f, 0.7f, 0.2f, 1.0f });
-    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4{ 0.3f, 0.8f, 0.3f, 1.0f });
-    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4{ 0.2f, 0.7f, 0.2f, 1.0f });
-    ImGui::PushFont(boldFont);
-
-    if (ImGui::Button("Y", buttonSize))
-    {
-		values.y = resetValue;
-		MarkEditCommitted();
-	}
-	TrackEdit();
-
-    ImGui::PopFont();
-    ImGui::PopStyleColor(3);
-
-    ImGui::SameLine();
-    ImGui::DragFloat("##Y", &values.y, 0.05f, 0.0f, 0.0f, format);
-	TrackEdit();
-    ImGui::PopItemWidth();
-    ImGui::SameLine();
-
-    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4{ 0.1f, 0.25f, 0.8f, 1.0f });
-    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4{ 0.2f, 0.35f, 0.9f, 1.0f });
-    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4{ 0.1f, 0.25f, 0.8f, 1.0f });
-    ImGui::PushFont(boldFont);
-
-	if (ImGui::Button("Z", buttonSize))
-	{
-		values.z = resetValue;
-		MarkEditCommitted();
-	}
-	TrackEdit();
-
-    ImGui::PopFont();
-    ImGui::PopStyleColor(3);
-
-    ImGui::SameLine();
-    ImGui::DragFloat("##Z", &values.z, 0.05f, 0.0f, 0.0f, format);
-	TrackEdit();
-    ImGui::PopItemWidth();
-
-    ImGui::PopStyleVar();
-    ImGui::Columns(1);
-
-    ImGui::PopID();
+	ImGui::PopID();
 }
 
 void PropertyDrawer::DrawRotationControl(const Gleam::TStringView label, Gleam::Quaternion& rotation, float columnWidth)
@@ -700,10 +732,10 @@ void PropertyDrawer::DrawColorControl(const Gleam::TStringView label, Gleam::Col
 
 	ImGui::Columns(2);
 	ImGui::SetColumnWidth(0, columnWidth);
-	ImGui::Text("%s", buffer);
+	DrawFieldLabel(buffer);
 	ImGui::NextColumn();
 
-	ImGui::PushItemWidth(ImGui::CalcItemWidth());
+	ImGui::PushItemWidth(-FLT_MIN);
 	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2{ 0, 0 });
 
 	ImGuiColorEditFlags flags = ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_AlphaBar | ImGuiColorEditFlags_AlphaPreview;
@@ -729,10 +761,10 @@ void PropertyDrawer::DrawStringControl(const Gleam::TStringView label, Gleam::TS
 
 	ImGui::Columns(2);
 	ImGui::SetColumnWidth(0, columnWidth);
-	ImGui::Text("%s", buffer);
+	DrawFieldLabel(buffer);
 	ImGui::NextColumn();
 
-	ImGui::PushItemWidth(ImGui::CalcItemWidth());
+	ImGui::PushItemWidth(-FLT_MIN);
 	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2{ 0, 0 });
 
 	char valueBuffer[256];
@@ -765,7 +797,7 @@ void PropertyDrawer::DrawTextControl(const Gleam::TStringView label, const Gleam
 
 	ImGui::Columns(2);
 	ImGui::SetColumnWidth(0, columnWidth);
-	ImGui::Text("%s", buffer);
+	DrawFieldLabel(buffer);
 	ImGui::NextColumn();
 
 	ImGui::Text("%.*s", static_cast<int>(value.size()), value.data());
@@ -786,9 +818,6 @@ static Gleam::TStringView ResolveCaseName(const Gleam::Reflection::EnumCaseDescr
 
 void PropertyDrawer::DrawEnumOptions(const Gleam::TStringView label, const Gleam::Reflection::EnumDescription& enumDesc, void* value, float columnWidth)
 {
-	ImGuiIO& io = ImGui::GetIO();
-	auto boldFont = io.Fonts->Fonts[0];
-
 	char buffer[64];
 	std::memcpy(buffer, label.data(), label.size());
 	buffer[label.size()] = '\0';
@@ -797,13 +826,10 @@ void PropertyDrawer::DrawEnumOptions(const Gleam::TStringView label, const Gleam
 
 	ImGui::Columns(2);
 	ImGui::SetColumnWidth(0, columnWidth);
-	ImGui::Text("%s", buffer);
+	DrawFieldLabel(buffer);
 	ImGui::NextColumn();
 
-	float lineHeight = GImGui->FontSize + GImGui->Style.FramePadding.y * 2.0f;
-	ImVec2 buttonSize = { lineHeight + 3.0f, lineHeight };
-
-	ImGui::PushItemWidth(ImGui::CalcItemWidth() + buttonSize.x);
+	ImGui::PushItemWidth(-FLT_MIN);
 	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2{ 0, 0 });
 
 	char previewBuffer[64] = "-";
@@ -881,13 +907,10 @@ void PropertyDrawer::DrawEnumFlagOptions(const Gleam::TStringView label,
 
 	ImGui::Columns(2);
 	ImGui::SetColumnWidth(0, columnWidth);
-	ImGui::Text("%s", buffer);
+	DrawFieldLabel(buffer);
 	ImGui::NextColumn();
 
-	float lineHeight = GImGui->FontSize + GImGui->Style.FramePadding.y * 2.0f;
-	ImVec2 buttonSize = { lineHeight + 3.0f, lineHeight };
-
-	ImGui::PushItemWidth(ImGui::CalcItemWidth() + buttonSize.x);
+	ImGui::PushItemWidth(-FLT_MIN);
 	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2{ 0, 0 });
 
 	Gleam::TString preview = "-";
@@ -1049,43 +1072,17 @@ void PropertyDrawer::DrawClass(const Gleam::TStringView label, void* component, 
 
 void PropertyDrawer::DrawClass(const Gleam::TStringView label, Gleam::TArrayView<void*> instances, const Gleam::Reflection::ClassDescription& classDesc, float columnWidth, const UIFunction& headerFunction)
 {
-    const ImGuiTreeNodeFlags treeNodeFlags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_AllowOverlap | ImGuiTreeNodeFlags_FramePadding;
-    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2{ 4, 4 });
-    ImGui::Separator();
-
-	size_t hash = classDesc.TypeHash();
-
 	char buffer[64];
 	std::memcpy(buffer, label.data(), label.size());
 	buffer[label.size()] = '\0';
 
 	ImGui::PushID(buffer);
-
-	float headerStart = ImGui::GetCursorPosX();
-	float outerWidth = ImGui::GetContentRegionAvail().x;
-    bool open = ImGui::TreeNodeEx((void*)hash, treeNodeFlags, "%s", buffer);
-    ImGui::PopStyleVar();
-
-	// Read before the header widget draws, it leaves the cursor on the header line
-	float innerWidth = ImGui::GetContentRegionAvail().x;
-
-	if (headerFunction)
+	if (DrawSectionHeader(buffer, headerFunction))
 	{
-		const float lineHeight = ImGui::GetFontSize() + ImGui::GetStyle().FramePadding.y * 2.0f;
-
-		// SameLine measures from the window edge, so a nested header has to add its indent back
-		ImGui::SameLine(headerStart + outerWidth - lineHeight);
-		headerFunction();
+		ImGui::Dummy(ImVec2(0.0f, 2.0f));
+		DrawClassFields(instances, classDesc, columnWidth > 0.0f ? columnWidth : kLabelColumnWidth);
+		ImGui::Dummy(ImVec2(0.0f, 4.0f));
 	}
-
-    if (open)
-    {
-		// Subtract the tree node indent so nested value columns line up with the parent's.
-		float fieldsWidth = columnWidth > 0.0f ? columnWidth - (outerWidth - innerWidth) : innerWidth * 0.3f;
-		DrawClassFields(instances, classDesc, fieldsWidth);
-        ImGui::TreePop();
-    }
-
 	ImGui::PopID();
 }
 
@@ -1094,6 +1091,21 @@ void PropertyDrawer::DrawArrayElements(void* obj, const Gleam::Reflection::Array
 	size_t elementSize = ArrayElementSize(arrayDesc);
 	if (elementSize == 0)
 	{
+		return;
+	}
+
+	static const auto assetReferenceHash = Gleam::Reflection::GetClass<Gleam::AssetReference>().TypeHash();
+	if (arrayDesc.ElementType() == Gleam::Reflection::MetaType::Class and arrayDesc.ElementHash() == assetReferenceHash)
+	{
+		ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, 0.0f));
+		uint32_t assetIndex = 0;
+		for (size_t offset = 0; offset < arrayDesc.GetSize(); offset += elementSize, ++assetIndex)
+		{
+			ImGui::PushID(static_cast<int>(assetIndex));
+			DrawAssetRow(assetIndex, *static_cast<Gleam::AssetReference*>(Gleam::OffsetPointer(obj, offset)));
+			ImGui::PopID();
+		}
+		ImGui::PopStyleVar();
 		return;
 	}
 
@@ -1145,36 +1157,50 @@ void PropertyDrawer::DrawArrayElements(void* obj, const Gleam::Reflection::Array
 
 void PropertyDrawer::DrawArray(const Gleam::TStringView label, void* obj, const Gleam::Reflection::ArrayDescription& arrayDesc, float columnWidth)
 {
-	const ImGuiTreeNodeFlags treeNodeFlags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_AllowOverlap | ImGuiTreeNodeFlags_FramePadding;
-	ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2{ 4, 4 });
-	ImGui::Separator();
-
 	char buffer[64];
 	std::memcpy(buffer, label.data(), label.size());
 	buffer[label.size()] = '\0';
 
 	ImGui::PushID(buffer);
 
+	char caption[64];
+	for (size_t i = 0; i <= label.size(); ++i)
+	{
+		caption[i] = static_cast<char>(std::toupper(static_cast<unsigned char>(buffer[i])));
+	}
+
 	size_t elementSize = ArrayElementSize(arrayDesc);
 	uint32_t elementCount = elementSize > 0 ? static_cast<uint32_t>(arrayDesc.GetSize() / elementSize) : 0u;
 
-	float outerWidth = ImGui::GetContentRegionAvail().x;
-	bool open = ImGui::TreeNodeEx(buffer, treeNodeFlags, "%s", buffer);
-	ImGui::PopStyleVar();
-
-	if (open)
-	{
-		float innerWidth = ImGui::GetContentRegionAvail().x;
-		float fieldsWidth = columnWidth > 0.0f ? columnWidth - (outerWidth - innerWidth) : innerWidth * 0.3f;
-		DrawArrayElements(obj, arrayDesc, fieldsWidth);
-		ImGui::TreePop();
-	}
+	Widgets::CaptionRow(*mFonts, caption, elementCount, 24.0f, 0.0f);
+	DrawArrayElements(obj, arrayDesc, columnWidth > 0.0f ? columnWidth : kLabelColumnWidth);
 
 	ImGui::PopID();
 }
 
+static const AssetItem* FindAssetItem(const Gleam::AssetReference& assetRef)
+{
+	if (assetRef.guid == Gleam::Guid::InvalidGuid())
+	{
+		return nullptr;
+	}
+
+	auto assetManager = Gleam::Globals::GameInstance->GetSubsystem<EAssetManager>();
+	return assetManager->FindAsset(assetRef.guid);
+}
+
+static void DrawAssetTile(ImDrawList* drawList, const ImVec2& min, float size, const ImVec4& color)
+{
+	const ImVec2 max(min.x + size, min.y + size);
+	drawList->AddRectFilled(min, max, Widgets::ColorU32(Gleam::Theme::Control), 3.0f);
+	drawList->AddRectFilled(ImVec2(min.x, max.y - 2.0f), max, Widgets::ColorU32(color), 3.0f, ImDrawFlags_RoundCornersBottom);
+}
+
 void PropertyDrawer::DrawAsset(const Gleam::TStringView label, Gleam::AssetReference& assetRef, float columnWidth)
 {
+	constexpr float kHeight = 34.0f;
+	constexpr float kTileSize = 24.0f;
+
 	char buffer[64];
 	std::memcpy(buffer, label.data(), label.size());
 	buffer[label.size()] = '\0';
@@ -1182,71 +1208,89 @@ void PropertyDrawer::DrawAsset(const Gleam::TStringView label, Gleam::AssetRefer
 	ImGui::PushID(buffer);
 
 	const bool mixed = IsMixedValue();
-
-	const AssetItem* item = nullptr;
-	if (assetRef.guid != Gleam::Guid::InvalidGuid())
-	{
-		auto assetManager = Gleam::Globals::GameInstance->GetSubsystem<EAssetManager>();
-		item = assetManager->FindAsset(assetRef.guid);
-	}
-
-	auto assetType = item ? item->type : Gleam::Guid(Gleam::Guid::InvalidGuid());
-	const auto icon = GetAssetIcon(assetType);
-
-	float lineHeight = GImGui->FontSize + GImGui->Style.FramePadding.y * 2.0f;
-	float iconSize = lineHeight * 3.0f;
-	float textOffset = (iconSize - ImGui::GetTextLineHeight()) * 0.5f;
+	const AssetItem* item = FindAssetItem(assetRef);
+	const auto icon = GetAssetIcon(item ? item->type : Gleam::Guid(Gleam::Guid::InvalidGuid()));
 
 	ImGui::Columns(2);
 	ImGui::SetColumnWidth(0, columnWidth);
-	ImGui::SetCursorPosY(ImGui::GetCursorPosY() + textOffset);
-	ImGui::Text("%s", buffer);
+	ImGui::SetCursorPosY(ImGui::GetCursorPosY() + (kHeight - ImGui::GetFontSize()) * 0.5f);
+	ImGui::TextColored(Gleam::Theme::TextSecondary, "%s", buffer);
 	ImGui::NextColumn();
 
-	ImVec2 iconPos = ImGui::GetCursorScreenPos();
-
-	ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.2f, 0.2f, 1.0f));
-	ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.3f, 0.3f, 0.3f, 1.0f));
-	ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.4f, 0.4f, 0.4f, 1.0f));
-	ImGui::Button(icon.text, ImVec2(iconSize, iconSize));
-	ImGui::PopStyleColor(3);
-
-	if (assetRef.guid != Gleam::Guid::InvalidGuid() && ImGui::IsItemHovered())
+	const ImVec2 min = ImGui::GetCursorScreenPos();
+	const float width = ImGui::GetContentRegionAvail().x;
+	const ImVec2 max(min.x + width, min.y + kHeight);
+	ImGui::InvisibleButton("##Asset", ImVec2(width, kHeight));
+	if (assetRef.guid != Gleam::Guid::InvalidGuid() and ImGui::IsItemHovered())
 	{
 		ImGui::SetTooltip("%s", assetRef.guid.ToString().c_str());
 	}
 
-	ImVec2 barStart = ImVec2(iconPos.x, iconPos.y + iconSize + 1.5f);
-	auto barColor = ImGui::ColorConvertFloat4ToU32(ImVec4(icon.color.r, icon.color.g, icon.color.b, icon.color.a));
-	ImGui::GetWindowDrawList()->AddLine(barStart, ImVec2(barStart.x + iconSize, barStart.y), barColor, 3.0f);
+	auto drawList = ImGui::GetWindowDrawList();
+	drawList->AddRectFilled(min, max, Widgets::ColorU32(Gleam::Theme::Background), 4.0f);
+	drawList->AddRect(min, max, Widgets::ColorU32(Gleam::Theme::Border), 4.0f);
+	DrawAssetTile(drawList, ImVec2(min.x + 5.0f, min.y + (kHeight - kTileSize) * 0.5f), kTileSize, icon.color);
 
-	ImGui::SameLine();
-	ImGui::SetCursorPosY(ImGui::GetCursorPosY() + textOffset);
-	ImGui::Text("%s", mixed ? "-" : (item ? item->name.c_str() : "None"));
+	const char* name = mixed ? "-" : (item ? item->name.c_str() : "None");
+	drawList->PushClipRect(min, ImVec2(max.x - 6.0f, max.y), true);
+	drawList->AddText(ImVec2(min.x + 5.0f + kTileSize + 8.0f, min.y + (kHeight - ImGui::GetFontSize()) * 0.5f), Widgets::ColorU32(item ? Gleam::Theme::Text : Gleam::Theme::TextDim), name);
+	drawList->PopClipRect();
 
 	ImGui::Columns(1);
 
 	ImGui::PopID();
 }
 
+void PropertyDrawer::DrawAssetRow(uint32_t index, Gleam::AssetReference& assetRef)
+{
+	constexpr float kRowHeight = 30.0f;
+	constexpr float kIndexWidth = 28.0f;
+	constexpr float kTileSize = 18.0f;
+
+	const AssetItem* item = FindAssetItem(assetRef);
+	const auto icon = GetAssetIcon(item ? item->type : Gleam::Guid(Gleam::Guid::InvalidGuid()));
+
+	const ImVec2 min = ImGui::GetCursorScreenPos();
+	const float width = ImGui::GetContentRegionAvail().x;
+	const ImVec2 max(min.x + width, min.y + kRowHeight);
+	ImGui::InvisibleButton("##AssetRow", ImVec2(width, kRowHeight));
+	if (assetRef.guid != Gleam::Guid::InvalidGuid() and ImGui::IsItemHovered())
+	{
+		ImGui::SetTooltip("%s", assetRef.guid.ToString().c_str());
+	}
+
+	auto drawList = ImGui::GetWindowDrawList();
+	const float centerY = min.y + kRowHeight * 0.5f;
+
+	char indexText[16];
+	std::snprintf(indexText, sizeof(indexText), "%u", index);
+	ImGui::PushFont(mFonts->mono);
+	const float indexWidth = ImGui::CalcTextSize(indexText).x;
+	drawList->AddText(ImVec2(min.x + kIndexWidth - indexWidth, centerY - ImGui::GetFontSize() * 0.5f), Widgets::ColorU32(Gleam::Theme::TextDim), indexText);
+	ImGui::PopFont();
+
+	const float tileX = min.x + kIndexWidth + 8.0f;
+	DrawAssetTile(drawList, ImVec2(tileX, centerY - kTileSize * 0.5f), kTileSize, icon.color);
+
+	const char* name = IsMixedValue() ? "-" : (item ? item->name.c_str() : "None");
+	drawList->PushClipRect(min, max, true);
+	drawList->AddText(ImVec2(tileX + kTileSize + 8.0f, centerY - ImGui::GetFontSize() * 0.5f), Widgets::ColorU32(item ? Gleam::Theme::Text : Gleam::Theme::TextDim), name);
+	drawList->PopClipRect();
+	drawList->AddLine(ImVec2(min.x, max.y - 1.0f), ImVec2(max.x, max.y - 1.0f), Widgets::ColorU32(Gleam::Theme::RowDivider));
+}
+
 void PropertyDrawer::DrawCustom(const Gleam::TStringView label, size_t hash, UIFunction&& uiFunction)
 {
-	const ImGuiTreeNodeFlags treeNodeFlags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_AllowOverlap | ImGuiTreeNodeFlags_FramePadding;
-	ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2{ 4, 4 });
-	ImGui::Separator();
-
 	char buffer[64];
 	std::memcpy(buffer, label.data(), label.size());
 	buffer[label.size()] = '\0';
 
-	bool open = ImGui::TreeNodeEx((void*)hash, treeNodeFlags, "%s", buffer);
-	ImGui::PopStyleVar();
-
-	if (open)
+	ImGui::PushID(static_cast<int>(hash));
+	if (DrawSectionHeader(buffer, nullptr))
 	{
-		auto panelWidth = ImGui::GetContentRegionAvail().x;
-		auto labelWidth = panelWidth * 0.3f;
+		ImGui::Dummy(ImVec2(0.0f, 2.0f));
 		uiFunction();
-		ImGui::TreePop();
+		ImGui::Dummy(ImVec2(0.0f, 4.0f));
 	}
+	ImGui::PopID();
 }

@@ -10,6 +10,11 @@
 #include "Selection/SelectionSystem.h"
 #include "Undo/UndoSystem.h"
 #include "Utils/ReflectionUtils.h"
+#include "View/ViewStack.h"
+#include "View/GleamTheme.h"
+#include "View/Widgets/EditorWidgets.h"
+
+#include "Core/Application.h"
 
 #include "World/World.h"
 #include "Renderer/Renderers/ImGuiRenderer.h"
@@ -19,6 +24,7 @@
 
 #include <EASTL/sort.h>
 
+#include <cstdio>
 #include <cstring>
 
 using namespace GEditor;
@@ -41,11 +47,22 @@ EntityInspector::EntityInspector(Gleam::World* world)
 	mUndoSystem = world->GetSubsystem<UndoSystem>();
 }
 
+void EntityInspector::OnCreate(Gleam::Application* app)
+{
+	mFonts = &app->GetSubsystem<ViewStack>()->GetFonts();
+}
+
 void EntityInspector::Render(Gleam::ImGuiRenderer* imgui)
 {
 	imgui->PushView([this](const Gleam::ImGuiPassData& passData)
 	{
-		if (ImGui::Begin("Entity Inspector"))
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(12.0f, 0.0f));
+		ImGui::PushStyleColor(ImGuiCol_WindowBg, Gleam::Theme::Panel);
+		const bool visible = ImGui::Begin("Entity Inspector");
+		ImGui::PopStyleColor();
+		ImGui::PopStyleVar();
+
+		if (visible)
 		{
 			PropertyDrawer::BeginEditTracking();
 
@@ -107,9 +124,24 @@ void EntityInspector::DrawEntities(const Gleam::TArray<Gleam::EntityHandle>& ent
 		}
 	}
 
+	const auto& entityManager = mEditWorld->GetEntityManager();
 	if (selectionOrder.size() > 1)
 	{
-		ImGui::TextDisabled("%u Entities Selected", static_cast<uint32_t>(selectionOrder.size()));
+		char name[32];
+		std::snprintf(name, sizeof(name), "%u entities", static_cast<uint32_t>(selectionOrder.size()));
+		DrawHeader(name, "Multiple selection", Gleam::Theme::TextDim);
+	}
+	else
+	{
+		const auto& entity = entityManager.GetComponent<Gleam::Entity>(activeEntity);
+		const auto kind = Widgets::GetEntityKind(entityManager, activeEntity);
+
+		Gleam::TString kindText = "Entity";
+		if (kind.name.empty() == false)
+		{
+			kindText.append(" \xC2\xB7 ").append(kind.name.data(), kind.name.size());
+		}
+		DrawHeader(entity.GetName().c_str(), kindText.c_str(), kind.color);
 	}
 
 	DrawTransform(selectionOrder);
@@ -139,15 +171,15 @@ void EntityInspector::DrawTransform(const Gleam::TArray<Gleam::EntityHandle>& en
 	PropertyDrawer::DrawCustom("Local Transform", Gleam::Reflection::GetClass<Gleam::Transform>().TypeHash(), [&]()
 	{
 		ImGui::PushItemFlag(ImGuiItemFlags_MixedValue, positionMixed);
-		PropertyDrawer::DrawVec3Control("Translation", localTransform.position, 0.0f);
+		PropertyDrawer::DrawVec3Control("Translation", localTransform.position, 0.0f, 72.0f);
 		ImGui::PopItemFlag();
 
 		ImGui::PushItemFlag(ImGuiItemFlags_MixedValue, rotationMixed);
-		PropertyDrawer::DrawRotationControl("Rotation", localTransform.rotation);
+		PropertyDrawer::DrawRotationControl("Rotation", localTransform.rotation, 72.0f);
 		ImGui::PopItemFlag();
 
 		ImGui::PushItemFlag(ImGuiItemFlags_MixedValue, scaleMixed);
-		PropertyDrawer::DrawScalarControl("Scale", localTransform.scale, 1.0f);
+		PropertyDrawer::DrawScalarControl("Scale", localTransform.scale, 1.0f, 72.0f);
 		ImGui::PopItemFlag();
 	});
 
@@ -227,8 +259,7 @@ void EntityInspector::DrawComponents(const Gleam::TArray<Gleam::EntityHandle>& e
 		const bool dirtyBefore = PropertyDrawer::EditDirty();
 		PropertyDrawer::DrawClass(ReflectionUtils::ResolveDisplayName(*shared.classDesc), shared.instances, *shared.classDesc, 0.0f, [&]()
 		{
-			const float lineHeight = ImGui::GetFontSize() + ImGui::GetStyle().FramePadding.y * 2.0f;
-			if (PropertyDrawer::DrawSettingsButton(lineHeight))
+			if (PropertyDrawer::DrawSettingsButton(24.0f))
 			{
 				ImGui::OpenPopup("ComponentSettings");
 			}
@@ -263,11 +294,27 @@ void EntityInspector::DrawAddComponent(const Gleam::TArray<Gleam::EntityHandle>&
 {
 	auto& entityManager = mEditWorld->GetEntityManager();
 
-	ImGui::Separator();
-	if (ImGui::Button("Add Component", ImVec2(-1.0f, 0.0f)))
+	constexpr float kButtonHeight = 32.0f;
+	ImGui::Dummy(ImVec2(0.0f, 4.0f));
+	const ImVec2 min = ImGui::GetCursorScreenPos();
+	const float width = ImGui::GetContentRegionAvail().x;
+	const ImVec2 max(min.x + width, min.y + kButtonHeight);
+	if (ImGui::InvisibleButton("##AddComponent", ImVec2(width, kButtonHeight)))
 	{
 		ImGui::OpenPopup("AddComponent");
 	}
+
+	auto drawList = ImGui::GetWindowDrawList();
+	if (ImGui::IsItemHovered())
+	{
+		drawList->AddRectFilled(min, max, Widgets::ColorU32(Gleam::Theme::SectionHeader), 6.0f);
+	}
+	Widgets::DrawDashedRect(drawList, min, max, Widgets::ColorU32(Gleam::Theme::BorderStrong));
+
+	constexpr const char* kAddLabel = "+ Add component";
+	const ImVec2 labelSize = ImGui::CalcTextSize(kAddLabel);
+	drawList->AddText(ImVec2(min.x + (width - labelSize.x) * 0.5f, min.y + (kButtonHeight - labelSize.y) * 0.5f), Widgets::ColorU32(Gleam::Theme::TextSecondary), kAddLabel);
+	ImGui::Dummy(ImVec2(0.0f, 8.0f));
 
 	if (ImGui::BeginPopup("AddComponent") == false)
 	{
@@ -325,13 +372,49 @@ void EntityInspector::DrawAddComponent(const Gleam::TArray<Gleam::EntityHandle>&
 	ImGui::EndPopup();
 }
 
+void EntityInspector::DrawHeader(const char* name, const char* kind, const ImVec4& color)
+{
+	constexpr float kPadding = 12.0f;
+	constexpr float kIconSize = 32.0f;
+	constexpr float kTextGap = 2.0f;
+
+	auto window = ImGui::GetCurrentWindow();
+	auto drawList = ImGui::GetWindowDrawList();
+	const ImVec2 cursor = ImGui::GetCursorScreenPos();
+	const float height = kPadding * 2.0f + kIconSize;
+
+	const ImVec2 iconMin(cursor.x, cursor.y + kPadding);
+	drawList->AddRectFilled(iconMin, ImVec2(iconMin.x + kIconSize, iconMin.y + kIconSize), Widgets::ColorU32(color), 6.0f);
+
+	const float textX = iconMin.x + kIconSize + 10.0f;
+	const float textY = iconMin.y + (kIconSize - mFonts->subheading->LegacySize - kTextGap - mFonts->mono->LegacySize) * 0.5f;
+	drawList->PushClipRect(ImVec2(textX, cursor.y), ImVec2(window->InnerRect.Max.x - kPadding, cursor.y + height), true);
+
+	ImGui::PushFont(mFonts->subheading);
+	drawList->AddText(ImVec2(textX, textY), Widgets::ColorU32(Gleam::Theme::Text), name);
+	ImGui::PopFont();
+
+	ImGui::PushFont(mFonts->mono);
+	drawList->AddText(ImVec2(textX, textY + mFonts->subheading->LegacySize + kTextGap), Widgets::ColorU32(Gleam::Theme::TextMuted), kind);
+	ImGui::PopFont();
+
+	drawList->PopClipRect();
+	ImGui::Dummy(ImVec2(0.0f, height));
+}
+
 void EntityInspector::DrawSingleton(uint32_t typeHash)
 {
-	mEditWorld->GetEntityManager().VisitSingletons([typeHash](void* component, const Gleam::Reflection::ClassDescription& classDesc)
+	mEditWorld->GetEntityManager().VisitSingletons([this, typeHash](void* component, const Gleam::Reflection::ClassDescription& classDesc)
 	{
 		if (classDesc.TypeHash() == typeHash)
 		{
-			PropertyDrawer::DrawClass(ReflectionUtils::ResolveDisplayName(classDesc), component, classDesc);
+			const auto displayName = ReflectionUtils::ResolveDisplayName(classDesc);
+			char name[64];
+			std::memcpy(name, displayName.data(), displayName.size());
+			name[displayName.size()] = '\0';
+
+			DrawHeader(name, "Singleton", Gleam::Theme::Purple);
+			PropertyDrawer::DrawClass(displayName, component, classDesc);
 		}
 	});
 }

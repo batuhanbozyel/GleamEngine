@@ -207,6 +207,15 @@ bool Filesystem::Exists(const Path& path)
 #endif
 }
 
+bool Filesystem::Equals(const Path& lhs, const Path& rhs)
+{
+	std::filesystem::path stlLhs = std::wstring_view(lhs.Native().c_str(), lhs.Native().length());
+	std::filesystem::path stlRhs = std::wstring_view(rhs.Native().c_str(), rhs.Native().length());
+
+	std::error_code error;
+	return std::filesystem::equivalent(stlLhs, stlRhs, error);
+}
+
 bool Filesystem::IsDirectory(const Path& path)
 {
 	if (path.Empty())

@@ -34,7 +34,13 @@ public:
 
 	ImTextureID GetImTextureIDForTexture(const Texture& texture) const;
 
-	void AddFontTexture(const Path& fontPath, const Path& defaultPath, float fontSize);
+	void ClearFonts();
+
+	ImFont* AddFont(const Path& fontPath, float fontSize, const ImWchar* excludeRanges = nullptr);
+
+	void MergeFont(const Path& fontPath, float fontSize, const ImWchar* glyphRanges);
+
+	void BuildFontTexture();
     
 private:
 

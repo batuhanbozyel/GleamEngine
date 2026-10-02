@@ -26,9 +26,14 @@
 #include "Renderer/Renderers/PathTracer.h"
 #include "Renderer/Renderers/PostProcessStack.h"
 #include "View/Widgets/PropertyDrawer.h"
+#include "View/Widgets/EditorWidgets.h"
+#include "View/ViewStack.h"
+#include "View/GleamTheme.h"
+#include "View/IconsLucide.h"
 
 #include "Core/Globals.h"
 #include "Core/Engine.h"
+#include "Core/Application.h"
 #include "Core/WindowSystem.h"
 
 #include "Input/InputSystem.h"
@@ -39,7 +44,15 @@
 
 #include <imgui.h>
 
+#include <cstdio>
+
 using namespace GEditor;
+
+#if defined(USE_DIRECTX_RENDERER)
+static constexpr const char* kBackendName = "D3D12";
+#elif defined(USE_METAL_RENDERER)
+static constexpr const char* kBackendName = "Metal";
+#endif
 
 static void SetEntityWorldTransform(Gleam::Entity& entity, const Gleam::Transform& world)
 {
@@ -121,6 +134,7 @@ WorldViewport::WorldViewport(Gleam::World* world)
 
 void WorldViewport::OnCreate(Gleam::Application* app)
 {
+	mFonts = &app->GetSubsystem<ViewStack>()->GetFonts();
 	mSelectionSystem = mEditWorld->GetSubsystem<SelectionSystem>();
 	mUndoSystem = mEditWorld->GetSubsystem<UndoSystem>();
 
@@ -201,126 +215,324 @@ void WorldViewport::Render(Gleam::ImGuiRenderer* imgui)
 	imgui->PushView([=, this](const Gleam::ImGuiPassData& passData)
 	{
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
-		ImGui::Begin("Viewport", nullptr, ImGuiWindowFlags_NoMove);
-
-		DrawToolbar();
-		DrawViewport(imgui, passData);
-		
-		ImGui::End();
+		ImGui::PushStyleColor(ImGuiCol_WindowBg, Gleam::Theme::ViewportBg);
+		const bool visible = ImGui::Begin("Viewport", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+		ImGui::PopStyleColor();
 		ImGui::PopStyleVar();
+
+		if (visible)
+		{
+			const ImVec2 cursor = ImGui::GetCursorScreenPos();
+			const ImVec2 available = ImGui::GetContentRegionAvail();
+			const Gleam::Float2 contentMin(cursor.x, cursor.y);
+			const Gleam::Float2 contentSize(available.x, available.y);
+
+			DrawViewport(imgui, passData);
+			DrawToolbar(contentMin, contentSize);
+			DrawStats(contentMin, contentSize, passData);
+		}
+		ImGui::End();
 	});
 }
 
-void WorldViewport::DrawToolbar()
+void WorldViewport::DrawToolbar(const Gleam::Float2& contentMin, const Gleam::Float2& contentSize)
 {
-	constexpr float kToolbarHeight = 26.0f;
-	ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.145f, 0.145f, 0.145f, 1.0f));
-	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
-	ImGui::BeginChild("##ViewportToolbar", ImVec2(ImGui::GetContentRegionAvail().x, kToolbarHeight),
-		ImGuiChildFlags_None, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+	constexpr float kBandHeight = 48.0f;
+	constexpr float kEdge = 10.0f;
+	constexpr float kButtonHeight = 30.0f;
+	constexpr float kSquareButton = 32.0f;
+	constexpr float kPopupGap = 4.0f;
+
+	auto drawList = ImGui::GetWindowDrawList();
+	const float buttonY = contentMin.y + (kBandHeight - kButtonHeight) * 0.5f;
+	const float centerY = buttonY + kButtonHeight * 0.5f;
+	bool hovered = false;
+
+	// Gizmo operation
+	ImGui::SetCursorScreenPos(ImVec2(contentMin.x + kEdge, buttonY));
+	const ImVec2 modesMin = ImGui::GetCursorScreenPos();
+	DrawGizmoModes();
+	hovered |= ImGui::IsMouseHoveringRect(modesMin, ImVec2(modesMin.x + 94.0f, modesMin.y + kButtonHeight));
+	float x = modesMin.x + 94.0f + 10.0f;
+
+	drawList->AddLine(ImVec2(x, centerY - 10.0f), ImVec2(x, centerY + 10.0f), Widgets::ColorU32(Gleam::Theme::Text, 0.18f));
+	x += 11.0f;
+
+	// Transform space
+	const bool localSpace = mTransformGizmo.GetSpace() == GizmoSpace::Local;
+	ImGui::SetCursorScreenPos(ImVec2(x, buttonY));
+	if (Widgets::OverlayButton("##Space", localSpace ? ICON_LC_AXIS_3D : ICON_LC_GLOBE, ImVec2(kSquareButton, kButtonHeight)))
 	{
-		auto drawOperationButton = [this](const char* label, GizmoOperation operation)
-		{
-			const bool selected = mTransformGizmo.GetOperation() == operation;
-			if (selected)
-			{
-				ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.26f, 0.45f, 0.72f, 1.0f));
-			}
-			if (ImGui::Button(label))
-			{
-				mTransformGizmo.SetOperation(operation);
-			}
-			if (selected)
-			{
-				ImGui::PopStyleColor();
-			}
-		};
-
-		ImGui::SetCursorPosX(4.0f);
-		ImGui::SetCursorPosY((kToolbarHeight - ImGui::GetFrameHeight()) * 0.5f);
-		drawOperationButton("Move", GizmoOperation::Translate);
-		ImGui::SameLine(0.0f, 2.0f);
-		drawOperationButton("Rotate", GizmoOperation::Rotate);
-		ImGui::SameLine(0.0f, 2.0f);
-		drawOperationButton("Scale", GizmoOperation::Scale);
-
-		ImGui::SameLine(0.0f, 8.0f);
-		const bool localSpace = mTransformGizmo.GetSpace() == GizmoSpace::Local;
-		if (ImGui::Button(localSpace ? "Local" : "World"))
-		{
-			mTransformGizmo.SetSpace(localSpace ? GizmoSpace::World : GizmoSpace::Local);
-		}
-
-		constexpr const char* kRenderSettingsLabel = "Render Settings";
-		constexpr float kPopupWidth = 240.0f;
-		float labelWidth = ImGui::CalcTextSize(kRenderSettingsLabel).x + ImGui::GetStyle().FramePadding.x * 2.0f;
-		float arrowWidth = ImGui::GetFrameHeight();
-		float buttonWidth = labelWidth + arrowWidth;
-		ImGui::SetCursorPosX(ImGui::GetContentRegionMax().x - buttonWidth - 4.0f);
-		ImGui::SetCursorPosY((kToolbarHeight - ImGui::GetFrameHeight()) * 0.5f);
-
-		if (ImGui::Button(kRenderSettingsLabel))
-		{
-			ImGui::OpenPopup("##RenderSettingsPopup");
-		}
-		ImGui::SameLine(0.0f, 0.0f);
-		if (ImGui::ArrowButton("##RenderSettingsArrow", ImGuiDir_Down))
-		{
-			ImGui::OpenPopup("##RenderSettingsPopup");
-		}
-
-		ImVec2 buttonMax = ImGui::GetItemRectMax();
-		ImGui::SetNextWindowPos(ImVec2(buttonMax.x - kPopupWidth, buttonMax.y), ImGuiCond_Always);
-		ImGui::SetNextWindowSize(ImVec2(kPopupWidth, 0.0f), ImGuiCond_Always);
-		if (ImGui::BeginPopup("##RenderSettingsPopup"))
-		{
-			auto renderSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::RenderSystem>();
-			auto activePath = renderSystem->GetRenderPath();
-			const auto& enumDesc = Gleam::Reflection::GetEnum<Gleam::RenderPath>();
-
-			auto prevPath = activePath;
-			PropertyDrawer::DrawEnumOptions("Render Path", enumDesc, &activePath, 80.0f);
-			if (activePath != prevPath)
-			{
-				renderSystem->SetRenderPath(activePath);
-			}
-
-			if (activePath == Gleam::RenderPath::Default)
-			{
-				auto viewModeRenderer = renderSystem->GetRenderPipeline(Gleam::RenderPath::Default)->GetRenderer<ViewModeRenderer>();
-				auto activeViewMode = viewModeRenderer->GetViewMode();
-				const auto& viewModeEnumDesc = Gleam::Reflection::GetEnum<Gleam::ViewMode>();
-				
-				auto prevViewMode = activeViewMode;
-				PropertyDrawer::DrawEnumOptions("View Mode", viewModeEnumDesc, &activeViewMode, 80.0f);
-				if (activeViewMode != prevViewMode)
-				{
-					viewModeRenderer->SetViewMode(activeViewMode);
-				}
-			}
-			else if (activePath == Gleam::RenderPath::PathTracing)
-			{
-				auto pathTracer = renderSystem->GetRenderPipeline(Gleam::RenderPath::PathTracing)->GetRenderer<Gleam::PathTracer>();
-				auto settings = pathTracer->GetSettings();
-				PropertyDrawer::DrawClassFields(&settings, Gleam::Reflection::GetClass<Gleam::PathTracerSettings>());
-				pathTracer->SetSettings(settings);
-			}
-
-			auto physicsSettings = mPhysicsVisualization->GetSettings();
-			PropertyDrawer::DrawClass("Physics", &physicsSettings, Gleam::Reflection::GetClass<Gleam::PhysicsVisualizationSettings>(), 80.0f);
-			mPhysicsVisualization->SetSettings(physicsSettings);
-
-			auto debugRenderer = renderSystem->GetRenderPipeline(Gleam::RenderPath::Default)->GetRenderer<Gleam::DebugRenderer>();
-			auto debugSettings = debugRenderer->GetSettings();
-			PropertyDrawer::DrawClass("Debug Lines", &debugSettings, Gleam::Reflection::GetClass<Gleam::DebugRendererSettings>(), 80.0f);
-			debugRenderer->SetSettings(debugSettings);
-
-			ImGui::EndPopup();
-		}
+		mTransformGizmo.SetSpace(localSpace ? GizmoSpace::World : GizmoSpace::Local);
 	}
-	ImGui::EndChild();
-	ImGui::PopStyleVar();
-	ImGui::PopStyleColor();
+	hovered |= ImGui::IsItemHovered();
+	ImGui::SetItemTooltip(localSpace ? "Transform space: Local" : "Transform space: World");
+	x += kSquareButton + 10.0f;
+
+	// Snap
+	{
+		const float step = mTransformGizmo.GetSnapStep();
+		char snapText[16] = {};
+		if (mTransformGizmo.GetOperation() == GizmoOperation::Rotate)
+		{
+			std::snprintf(snapText, sizeof(snapText), "%.0f\xC2\xB0", step);
+		}
+		else
+		{
+			std::snprintf(snapText, sizeof(snapText), "%.2f", step);
+		}
+
+		const float iconWidth = ImGui::CalcTextSize(ICON_LC_MAGNET).x;
+		ImGui::PushFont(mFonts->mono);
+		const ImVec2 textSize = ImGui::CalcTextSize(snapText);
+		ImGui::PopFont();
+
+		const ImVec2 min(x, buttonY);
+		const ImVec2 max(x + 8.0f + iconWidth + 6.0f + textSize.x + 8.0f, buttonY + kButtonHeight);
+		ImGui::SetCursorScreenPos(min);
+		if (ImGui::InvisibleButton("##Snap", ImVec2(max.x - min.x, kButtonHeight)))
+		{
+			mTransformGizmo.SetSnapping(mTransformGizmo.IsSnapping() == false);
+		}
+		const bool snapHovered = ImGui::IsItemHovered();
+		hovered |= snapHovered;
+		ImGui::SetItemTooltip("Snap (hold Ctrl to invert)");
+
+		drawList->AddRectFilled(min, max, snapHovered ? Widgets::ColorU32(Gleam::Theme::Control, 0.9f) : Widgets::ColorU32(Gleam::Theme::Background, 0.72f), 6.0f);
+		drawList->AddRect(min, max, Widgets::ColorU32(Gleam::Theme::BorderStrong), 6.0f);
+		Widgets::DrawIcon(drawList, ICON_LC_MAGNET, ImVec2(min.x + 8.0f + iconWidth * 0.5f, centerY), mTransformGizmo.IsSnapping() ? Gleam::Theme::Accent : Gleam::Theme::TextSecondary);
+
+		ImGui::PushFont(mFonts->mono);
+		drawList->AddText(ImVec2(min.x + 8.0f + iconWidth + 6.0f, centerY - ImGui::GetFontSize() * 0.5f), Widgets::ColorU32(Gleam::Theme::TextMuted), snapText);
+		ImGui::PopFont();
+	}
+
+	// Render settings
+	float right = contentMin.x + contentSize.x - kEdge;
+	{
+		const float slidersWidth = ImGui::CalcTextSize(ICON_LC_SLIDERS_HORIZONTAL).x;
+		ImGui::PushFont(mFonts->footnote);
+		const float chevronWidth = ImGui::CalcTextSize(ICON_LC_CHEVRON_DOWN).x;
+		ImGui::PopFont();
+
+		const float width = 8.0f + slidersWidth + 4.0f + chevronWidth + 8.0f;
+		const ImVec2 min(right - width, buttonY);
+		const ImVec2 max(right, buttonY + kButtonHeight);
+		ImGui::SetCursorScreenPos(min);
+		if (ImGui::InvisibleButton("##RenderSettings", ImVec2(width, kButtonHeight)))
+		{
+			ImGui::OpenPopup("##RenderSettingsPopup");
+		}
+		const bool settingsHovered = ImGui::IsItemHovered();
+		hovered |= settingsHovered;
+		ImGui::SetItemTooltip("Render settings");
+
+		drawList->AddRectFilled(min, max, settingsHovered ? Widgets::ColorU32(Gleam::Theme::ControlHover, 0.9f) : Widgets::ColorU32(Gleam::Theme::Control, 0.85f), 6.0f);
+		drawList->AddRect(min, max, Widgets::ColorU32(Gleam::Theme::BorderStrong), 6.0f);
+		Widgets::DrawIcon(drawList, ICON_LC_SLIDERS_HORIZONTAL, ImVec2(min.x + 8.0f + slidersWidth * 0.5f, centerY), Gleam::Theme::Text);
+		ImGui::PushFont(mFonts->footnote);
+		Widgets::DrawIcon(drawList, ICON_LC_CHEVRON_DOWN, ImVec2(max.x - 8.0f - chevronWidth * 0.5f, centerY), Gleam::Theme::Text);
+		ImGui::PopFont();
+
+		ImGui::SetNextWindowPos(ImVec2(max.x, max.y + kPopupGap), ImGuiCond_Always, ImVec2(1.0f, 0.0f));
+		ImGui::SetNextWindowSize(ImVec2(280.0f, 0.0f), ImGuiCond_Always);
+		DrawRenderSettingsPopup();
+		right = min.x - 8.0f;
+	}
+
+	// View mode
+	ImGui::SetCursorScreenPos(ImVec2(right - kSquareButton, buttonY));
+	if (Widgets::OverlayButton("##ViewMode", ICON_LC_SUN, ImVec2(kSquareButton, kButtonHeight)))
+	{
+		ImGui::OpenPopup("##ViewModePopup");
+	}
+	hovered |= ImGui::IsItemHovered();
+	ImGui::SetItemTooltip("View mode");
+
+	ImGui::SetNextWindowPos(ImVec2(right, buttonY + kButtonHeight + kPopupGap), ImGuiCond_Always, ImVec2(1.0f, 0.0f));
+	ImGui::SetNextWindowSize(ImVec2(260.0f, 0.0f), ImGuiCond_Always);
+	if (ImGui::BeginPopup("##ViewModePopup"))
+	{
+		auto renderSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::RenderSystem>();
+		if (renderSystem->GetRenderPath() == Gleam::RenderPath::Default)
+		{
+			auto viewModeRenderer = renderSystem->GetRenderPipeline(Gleam::RenderPath::Default)->GetRenderer<ViewModeRenderer>();
+			auto activeViewMode = viewModeRenderer->GetViewMode();
+			const auto previousViewMode = activeViewMode;
+			PropertyDrawer::DrawEnumOptions("View Mode", Gleam::Reflection::GetEnum<Gleam::ViewMode>(), &activeViewMode, 96.0f);
+			if (activeViewMode != previousViewMode)
+			{
+				viewModeRenderer->SetViewMode(activeViewMode);
+			}
+		}
+		else
+		{
+			ImGui::TextDisabled("View modes need the default render path");
+		}
+		ImGui::EndPopup();
+	}
+	right -= kSquareButton + 8.0f;
+
+	// Camera
+	ImGui::SetCursorScreenPos(ImVec2(right - kSquareButton, buttonY));
+	if (Widgets::OverlayButton("##Camera", ICON_LC_BOX, ImVec2(kSquareButton, kButtonHeight)))
+	{
+		ImGui::OpenPopup("##CameraPopup");
+	}
+	hovered |= ImGui::IsItemHovered();
+	ImGui::SetItemTooltip("Camera");
+
+	ImGui::SetNextWindowPos(ImVec2(right, buttonY + kButtonHeight + kPopupGap), ImGuiCond_Always, ImVec2(1.0f, 0.0f));
+	ImGui::SetNextWindowSize(ImVec2(260.0f, 0.0f), ImGuiCond_Always);
+	DrawCameraPopup();
+
+	mToolbarHovered = hovered;
+}
+
+void WorldViewport::DrawGizmoModes()
+{
+	constexpr float kPadding = 2.0f;
+	constexpr ImVec2 kButtonSize(30.0f, 26.0f);
+
+	struct Mode
+	{
+		const char* id;
+		const char* icon;
+		const char* tooltip;
+		GizmoOperation operation;
+	};
+	constexpr Mode kModes[] = {
+		{ "##Move", ICON_LC_MOVE, "Move (W)", GizmoOperation::Translate },
+		{ "##Rotate", ICON_LC_ROTATE_CW, "Rotate (E)", GizmoOperation::Rotate },
+		{ "##Scale", ICON_LC_SCALING, "Scale (R)", GizmoOperation::Scale }
+	};
+
+	auto drawList = ImGui::GetWindowDrawList();
+	const ImVec2 groupMin = ImGui::GetCursorScreenPos();
+	const ImVec2 groupMax(groupMin.x + kPadding * 2.0f + kButtonSize.x * 3.0f, groupMin.y + kPadding * 2.0f + kButtonSize.y);
+	drawList->AddRectFilled(groupMin, groupMax, Widgets::ColorU32(Gleam::Theme::Background, 0.72f), 6.0f);
+	drawList->AddRect(groupMin, groupMax, Widgets::ColorU32(Gleam::Theme::Border), 6.0f);
+
+	for (uint32_t i = 0; i < 3; ++i)
+	{
+		const auto& mode = kModes[i];
+		const ImVec2 min(groupMin.x + kPadding + kButtonSize.x * i, groupMin.y + kPadding);
+		const ImVec2 max(min.x + kButtonSize.x, min.y + kButtonSize.y);
+
+		ImGui::SetCursorScreenPos(min);
+		if (ImGui::InvisibleButton(mode.id, kButtonSize))
+		{
+			mTransformGizmo.SetOperation(mode.operation);
+		}
+		const bool hovered = ImGui::IsItemHovered();
+		ImGui::SetItemTooltip("%s", mode.tooltip);
+
+		const bool active = mTransformGizmo.GetOperation() == mode.operation;
+		if (active)
+		{
+			drawList->AddRectFilled(min, max, Widgets::ColorU32(Gleam::Theme::Accent), 4.0f);
+		}
+		const auto& iconColor = active ? Gleam::Theme::OnAccent : (hovered ? Gleam::Theme::Text : Gleam::Theme::TextSecondary);
+		Widgets::DrawIcon(drawList, mode.icon, ImVec2((min.x + max.x) * 0.5f, (min.y + max.y) * 0.5f), iconColor);
+	}
+}
+
+void WorldViewport::DrawCameraPopup()
+{
+	if (ImGui::BeginPopup("##CameraPopup") == false)
+	{
+		return;
+	}
+
+	auto& camera = mEditWorld->GetEntityManager().GetComponent<Gleam::Camera>(mCamera);
+	PropertyDrawer::DrawEnumOptions("Projection", Gleam::Reflection::GetEnum<Gleam::ProjectionType>(), &camera.projectionType, 96.0f);
+	if (camera.projectionType == Gleam::ProjectionType::Perspective)
+	{
+		PropertyDrawer::DrawScalarControl("Field of view", camera.fov, 60.0f, 96.0f);
+	}
+	else
+	{
+		PropertyDrawer::DrawScalarControl("Size", camera.orthographicSize, 5.0f, 96.0f);
+	}
+	PropertyDrawer::DrawScalarControl("Near plane", camera.nearPlane, 0.1f, 96.0f);
+	PropertyDrawer::DrawScalarControl("Far plane", camera.farPlane, 1000.0f, 96.0f);
+	ImGui::EndPopup();
+}
+
+void WorldViewport::DrawRenderSettingsPopup()
+{
+	if (ImGui::BeginPopup("##RenderSettingsPopup") == false)
+	{
+		return;
+	}
+
+	auto renderSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::RenderSystem>();
+	auto activePath = renderSystem->GetRenderPath();
+	const auto& enumDesc = Gleam::Reflection::GetEnum<Gleam::RenderPath>();
+
+	auto prevPath = activePath;
+	PropertyDrawer::DrawEnumOptions("Render Path", enumDesc, &activePath, 96.0f);
+	if (activePath != prevPath)
+	{
+		renderSystem->SetRenderPath(activePath);
+	}
+
+	if (activePath == Gleam::RenderPath::PathTracing)
+	{
+		auto pathTracer = renderSystem->GetRenderPipeline(Gleam::RenderPath::PathTracing)->GetRenderer<Gleam::PathTracer>();
+		auto settings = pathTracer->GetSettings();
+		PropertyDrawer::DrawClassFields(&settings, Gleam::Reflection::GetClass<Gleam::PathTracerSettings>(), 96.0f);
+		pathTracer->SetSettings(settings);
+	}
+
+	auto physicsSettings = mPhysicsVisualization->GetSettings();
+	PropertyDrawer::DrawClass("Physics", &physicsSettings, Gleam::Reflection::GetClass<Gleam::PhysicsVisualizationSettings>(), 96.0f);
+	mPhysicsVisualization->SetSettings(physicsSettings);
+
+	auto debugRenderer = renderSystem->GetRenderPipeline(Gleam::RenderPath::Default)->GetRenderer<Gleam::DebugRenderer>();
+	auto debugSettings = debugRenderer->GetSettings();
+	PropertyDrawer::DrawClass("Debug Lines", &debugSettings, Gleam::Reflection::GetClass<Gleam::DebugRendererSettings>(), 96.0f);
+	debugRenderer->SetSettings(debugSettings);
+
+	ImGui::EndPopup();
+}
+
+void WorldViewport::DrawStats(const Gleam::Float2& contentMin, const Gleam::Float2& contentSize, const Gleam::ImGuiPassData& passData)
+{
+	constexpr float kMargin = 12.0f;
+	constexpr ImVec2 kPadding(10.0f, 6.0f);
+	constexpr float kLineGap = 2.0f;
+
+	auto renderSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::RenderSystem>();
+	const char* pathName = renderSystem->GetRenderPath() == Gleam::RenderPath::PathTracing ? "Path tracing" : "Visibility buffer";
+
+	char pipelineText[64] = {};
+	std::snprintf(pipelineText, sizeof(pipelineText), "%s \xC2\xB7 %s", kBackendName, pathName);
+
+	char frameText[64] = {};
+	const float frameTime = ImGui::GetIO().DeltaTime * 1000.0f;
+	if (passData.sceneTarget.IsValid())
+	{
+		const auto& size = passData.sceneTarget.GetTexture().GetDescriptor().size;
+		std::snprintf(frameText, sizeof(frameText), "%.2f ms \xC2\xB7 %ux%u", frameTime, static_cast<uint32_t>(size.width), static_cast<uint32_t>(size.height));
+	}
+	else
+	{
+		std::snprintf(frameText, sizeof(frameText), "%.2f ms", frameTime);
+	}
+
+	ImGui::PushFont(mFonts->mono);
+	const float lineHeight = ImGui::GetFontSize();
+	const float textWidth = ImMax(ImGui::CalcTextSize(pipelineText).x, ImGui::CalcTextSize(frameText).x);
+	const ImVec2 max(contentMin.x + contentSize.x - kMargin, contentMin.y + contentSize.y - kMargin);
+	const ImVec2 min(max.x - textWidth - kPadding.x * 2.0f, max.y - lineHeight * 2.0f - kLineGap - kPadding.y * 2.0f);
+
+	auto drawList = ImGui::GetWindowDrawList();
+	drawList->AddRectFilled(min, max, Widgets::ColorU32(Gleam::Theme::Background, 0.85f), 4.0f);
+	drawList->AddRect(min, max, Widgets::ColorU32(Gleam::Theme::Border), 4.0f);
+	drawList->AddText(ImVec2(min.x + kPadding.x, min.y + kPadding.y), Widgets::ColorU32(Gleam::Theme::TextBadge), pipelineText);
+	drawList->AddText(ImVec2(min.x + kPadding.x, min.y + kPadding.y + lineHeight + kLineGap), Widgets::ColorU32(Gleam::Theme::TextMuted), frameText);
+	ImGui::PopFont();
 }
 
 void WorldViewport::DrawViewport(Gleam::ImGuiRenderer* imgui, const Gleam::ImGuiPassData& passData)
@@ -349,7 +561,7 @@ void WorldViewport::DrawViewport(Gleam::ImGuiRenderer* imgui, const Gleam::ImGui
 
 	ImVec2 imageMin = ImGui::GetItemRectMin();
 	ImVec2 imageSize = ImGui::GetItemRectSize();
-	bool viewportHovered = ImGui::IsItemHovered();
+	bool viewportHovered = ImGui::IsItemHovered() and mToolbarHovered == false;
 
 	const Gleam::Float2 rectMin(imageMin.x, imageMin.y);
 	const Gleam::Float2 rectSize(imageSize.x, imageSize.y);
@@ -518,7 +730,7 @@ void WorldViewport::DrawTransformGizmo(const Gleam::Float2& imageMin, const Glea
 	const auto startPivot = pivot;
 
 	const bool wasDragging = mTransformGizmo.IsDragging();
-	const bool inputEnabled = ImGui::IsWindowHovered() && mCursorVisible;
+	const bool inputEnabled = ImGui::IsWindowHovered() && mCursorVisible && mToolbarHovered == false;
 	if (mTransformGizmo.Manipulate(viewport, inputEnabled, pivot))
 	{
 		ApplyPivotDelta(mEditWorld->GetEntityManager(), gizmoTargets, startPivot, pivot);

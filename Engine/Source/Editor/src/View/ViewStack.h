@@ -7,9 +7,12 @@
 
 #pragma once
 #include "View.h"
+#include "EditorFonts.h"
 #include "Core/Subsystem.h"
 #include "Container/PolyArray.h"
 #include "Container/String.h"
+
+#include <imgui.h>
 
 namespace GEditor {
 
@@ -20,7 +23,7 @@ class ViewStack : public Gleam::TickableGameInstanceSubsystem
 {
 public:
 
-	ViewStack(const Gleam::TString& iniFilename);
+	ViewStack(const Gleam::TString& iniFilename, float fontScale = 1.0f);
 
     virtual void Initialize(Gleam::Application* app) override;
 
@@ -62,10 +65,21 @@ public:
 	{
 		return mViews;
 	}
+
+	const EditorFonts& GetFonts() const
+	{
+		return mFonts;
+	}
+
+	void SetFontScale(float fontScale)
+	{
+		mFontScale = fontScale;
+		mFontsDirty = true;
+	}
     
 private:
     
-    void SetDarkTheme() const;
+    void LoadFonts();
     
     template<ViewType T>
     bool HasView() const
@@ -78,6 +92,14 @@ private:
     Gleam::PolyArray<View> mViews;
 
 	Gleam::ImGuiRenderer* mImgui = nullptr;
+
+	EditorFonts mFonts;
+
+	float mFontScale = 1.0f;
+
+	bool mFontsDirty = false;
+
+	ImVector<ImWchar> mIconGlyphRanges;
 
 	Gleam::TString mIniPath;
     

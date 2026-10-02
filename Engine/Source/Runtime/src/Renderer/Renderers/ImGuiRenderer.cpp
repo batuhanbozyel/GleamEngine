@@ -114,8 +114,8 @@ void ImGuiRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
         
         ImGuiWindowFlags windowFlags = ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoDocking;
         ImGuiViewport* viewport = ImGui::GetMainViewport();
-        ImGui::SetNextWindowPos(viewport->Pos);
-        ImGui::SetNextWindowSize(viewport->Size);
+        ImGui::SetNextWindowPos(viewport->WorkPos);
+        ImGui::SetNextWindowSize(viewport->WorkSize);
         ImGui::SetNextWindowViewport(viewport->ID);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
@@ -220,7 +220,32 @@ void ImGuiRenderer::PushView(ImGuiView&& view)
 	mViews.emplace_back(std::move(view));
 }
 
-void ImGuiRenderer::AddFontTexture(const Path& fontPath, const Path& defaultPath, float fontSize)
+void ImGuiRenderer::ClearFonts()
+{
+	ImGui::GetIO().Fonts->Clear();
+}
+
+ImFont* ImGuiRenderer::AddFont(const Path& fontPath, float fontSize, const ImWchar* excludeRanges)
+{
+	float displayScale = Globals::Engine->GetSubsystem<WindowSystem>()->GetDisplayScale();
+	ImFontConfig fontConfig;
+	fontConfig.RasterizerDensity = displayScale;
+	fontConfig.GlyphExcludeRanges = excludeRanges;
+	return ImGui::GetIO().Fonts->AddFontFromFileTTF(fontPath.String().c_str(), fontSize, &fontConfig);
+}
+
+void ImGuiRenderer::MergeFont(const Path& fontPath, float fontSize, const ImWchar* glyphRanges)
+{
+	float displayScale = Globals::Engine->GetSubsystem<WindowSystem>()->GetDisplayScale();
+	ImFontConfig fontConfig;
+	fontConfig.MergeMode = true;
+	fontConfig.PixelSnapH = true;
+	fontConfig.GlyphMinAdvanceX = fontSize;
+	fontConfig.RasterizerDensity = displayScale;
+	ImGui::GetIO().Fonts->AddFontFromFileTTF(fontPath.String().c_str(), fontSize, &fontConfig, glyphRanges);
+}
+
+void ImGuiRenderer::BuildFontTexture()
 {
 	// TODO: error handling
 	if (mFontTexture)
@@ -228,17 +253,8 @@ void ImGuiRenderer::AddFontTexture(const Path& fontPath, const Path& defaultPath
 		delete mFontTexture;
 		mFontTexture = nullptr;
 	}
-	
+
 	ImGuiIO& io = ImGui::GetIO();
-	io.Fonts->Clear();
-
-	float displayScale = Globals::Engine->GetSubsystem<WindowSystem>()->GetDisplayScale();
-	ImFontConfig fontConfig;
-	fontConfig.RasterizerDensity = displayScale;
-
-	io.Fonts->AddFontFromFileTTF(fontPath.String().c_str(), fontSize, &fontConfig);
-	io.FontDefault = io.Fonts->AddFontFromFileTTF(defaultPath.String().c_str(), fontSize, &fontConfig);
-
 	unsigned char* pixels;
 	int width, height;
 	io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);

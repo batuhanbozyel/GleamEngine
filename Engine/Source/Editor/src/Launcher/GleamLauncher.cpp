@@ -11,6 +11,7 @@
 #include "World/Components/ReflectionProbe.h"
 
 #include "Core/Engine.h"
+#include "Core/WindowSystem.h"
 #include "Core/Globals.h"
 
 #include <Editor.Reflection.generated.h>
@@ -22,6 +23,7 @@ using namespace GEditor;
 GleamLauncher::GleamLauncher()
 	: Gleam::Application(Gleam::Project{ .name = "Gleam Launcher" })
 {
+	Gleam::Globals::Engine->GetSubsystem<Gleam::WindowSystem>()->SetTransientWindow(Gleam::Size(1280.0f, 800.0f), false);
 	auto editorConfig = Gleam::Globals::Engine->AddSubsystem<EditorConfigSystem>();
 	editorConfig->Register<Gleam::LauncherState>();
 	auto viewStack = AddSubsystem<ViewStack>("Launcher.ini");

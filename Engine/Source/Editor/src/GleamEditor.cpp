@@ -6,18 +6,24 @@
 #include "Launcher/GleamLauncher.h"
 #include "EAssets/EAssetManager.h"
 #include "Config/EditorConfigSystem.h"
+#include "Config/EditorPreferences.h"
 #include "Selection/SelectionSystem.h"
 #include "Undo/UndoSystem.h"
 #include "View/ViewStack.h"
+#include "View/Widgets/PropertyDrawer.h"
 #include "World/World.h"
 #include "Physics/PhysicsSystem.h"
 
 #include "View/Panels/MenuBar/MenuBar.h"
+#include "View/Panels/MenuBar/StatusBar.h"
 #include "View/Panels/World/WorldViewport.h"
 #include "View/Panels/World/WorldOutliner.h"
 #include "View/Panels/Entity/EntityInspector.h"
 #include "View/Panels/Project/ContentBrowser.h"
 #include "View/Panels/Project/ProjectSettings.h"
+#include "View/Panels/Project/Preferences.h"
+
+#include <Editor.Reflection.generated.h>
 
 namespace GEditor {
 
@@ -29,7 +35,8 @@ public:
         : Gleam::Application(project)
 	{
 		auto assetManager = AddSubsystem<EAssetManager>(Gleam::Globals::ProjectContentDirectory);
-		Gleam::Globals::Engine->AddSubsystem<EditorConfigSystem>();
+		auto editorConfig = Gleam::Globals::Engine->AddSubsystem<EditorConfigSystem>();
+		const auto& preferences = editorConfig->Register<Gleam::EditorPreferences>();
 
 		auto worldManager = GetSubsystem<Gleam::WorldManager>();
 		mEditWorld = worldManager->GetActiveWorld();
@@ -37,13 +44,16 @@ public:
 		mEditWorld->AddSubsystem<UndoSystem>();
 		mEditWorld->AddSubsystem<SelectionSystem>();
 
-		auto viewStack = AddSubsystem<ViewStack>("Editor.ini");
+		auto viewStack = AddSubsystem<ViewStack>("Editor.ini", Gleam::Math::Clamp(preferences.uiScale, 0.75f, 2.0f));
+		PropertyDrawer::SetFonts(&viewStack->GetFonts());
 		viewStack->AddView<MenuBar>(mEditWorld);
+		viewStack->AddView<StatusBar>();
 		viewStack->AddView<WorldViewport>(mEditWorld);
 		viewStack->AddView<WorldOutliner>(mEditWorld);
 		viewStack->AddView<EntityInspector>(mEditWorld);
 		viewStack->AddView<ContentBrowser>(assetManager);
 		viewStack->AddView<ProjectSettings>();
+		viewStack->AddView<Preferences>();
 	}
     
 	~GleamEditor()

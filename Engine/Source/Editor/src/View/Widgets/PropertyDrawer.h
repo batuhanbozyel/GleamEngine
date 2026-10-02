@@ -7,6 +7,7 @@
 #include "Container/String.h"
 #include "Reflection/Reflection.h"
 #include "Assets/AssetReference.h"
+#include "View/EditorFonts.h"
 
 namespace GEditor {
 
@@ -15,6 +16,8 @@ class PropertyDrawer
 public:
 
 	using UIFunction = std::function<void()>;
+
+	static void SetFonts(const EditorFonts* fonts);
 
 	static bool DrawSettingsButton(float size);
 
@@ -76,9 +79,17 @@ public:
 
 private:
 
+	static bool DrawSectionHeader(const char* label, const UIFunction& headerFunction);
+
+	static void DrawAxisField(const char* axis, uint32_t color, float& value, float resetValue, const char* format, float width);
+
+	static void DrawAssetRow(uint32_t index, Gleam::AssetReference& assetRef);
+
 	static void TrackEdit();
 
 	static void MarkEditCommitted();
+
+	static inline const EditorFonts* mFonts = nullptr;
 
 	static inline bool mEditStarted = false;
 

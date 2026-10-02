@@ -22,27 +22,30 @@ AssetIcon GEditor::GetAssetIcon(const Gleam::Guid& type)
 
 	if (type == meshType)
 	{
-		return AssetIcon{ .text = "Mesh", .color = Gleam::Color(0.2f, 0.5f, 0.95f, 1.0f) }; // Blue
+		return AssetIcon{ .text = "MESH", .color = Gleam::Theme::Info, .category = AssetCategory::Mesh };
 	}
-	if (type == textureType)
+	else if (type == textureType)
 	{
-		return AssetIcon{ .text = "Texture", .color = Gleam::Color(0.95f, 0.3f, 0.7f, 1.0f) }; // Pink/Magenta
+		return AssetIcon{ .text = "TEXTURE", .color = Gleam::Theme::Pink, .category = AssetCategory::Texture };
 	}
-	if (type == materialType)
+	else if (type == materialType)
 	{
-		return AssetIcon{ .text = "Material", .color = Gleam::Color(0.15f, 0.65f, 0.1f, 1.0f) }; // Green
+		return AssetIcon{ .text = "MATERIAL", .color = Gleam::Theme::Success, .category = AssetCategory::Material };
 	}
-	if (type == materialInstanceType)
+	else if (type == materialInstanceType)
 	{
-		return AssetIcon{ .text = "Material\nInstance", .color = Gleam::Color(0.5f, 0.95f, 0.4f, 1.0f) }; // Light Green
+		return AssetIcon{ .text = "MATERIAL\nINSTANCE", .color = Gleam::Theme::Teal, .category = AssetCategory::MaterialInstance };
 	}
-	if (type == prefabType)
+	else if (type == prefabType)
 	{
-		return AssetIcon{ .text = "Prefab", .color = Gleam::Color(0.9f, 0.55f, 0.2f, 1.0f) }; // Orange
+		return AssetIcon{ .text = "PREFAB", .color = Gleam::Theme::Warning, .category = AssetCategory::Prefab };
 	}
-	if (type == worldType)
+	else if (type == worldType)
 	{
-		return AssetIcon{ .text = "World", .color = Gleam::Color(0.7f, 0.3f, 0.85f, 1.0f) }; // Purple
+		return AssetIcon{ .text = "WORLD", .color = Gleam::Theme::Purple, .category = AssetCategory::World };
 	}
-	return AssetIcon();
+	else
+	{
+		return AssetIcon();
+	}
 }

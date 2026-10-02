@@ -26,6 +26,7 @@ class ViewModeRenderer;
 class SelectionSystem;
 class SelectionOutlineRenderer;
 class UndoSystem;
+struct EditorFonts;
 
 class WorldViewport final : public View
 {
@@ -48,7 +49,15 @@ public:
     
 private:
 
-	void DrawToolbar();
+	void DrawToolbar(const Gleam::Float2& contentMin, const Gleam::Float2& contentSize);
+
+	void DrawGizmoModes();
+
+	void DrawCameraPopup();
+
+	void DrawRenderSettingsPopup();
+
+	void DrawStats(const Gleam::Float2& contentMin, const Gleam::Float2& contentSize, const Gleam::ImGuiPassData& passData);
 
 	void DrawViewport(Gleam::ImGuiRenderer* imgui, const Gleam::ImGuiPassData& passData);
 
@@ -61,6 +70,10 @@ private:
 	void Resize(Gleam::EntityManager& entityManager, const Gleam::Size& size);
 
     bool mCursorVisible = true;
+
+	bool mToolbarHovered = false;
+
+	const EditorFonts* mFonts = nullptr;
 
 	bool mViewportSizeChanged = false;
 

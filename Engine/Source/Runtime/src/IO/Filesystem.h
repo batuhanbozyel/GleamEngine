@@ -161,6 +161,8 @@ public:
 	static bool Exists(const Path& path);
 
 	static bool IsDirectory(const Path& path);
+
+	static bool Equals(const Path& lhs, const Path& rhs);
     
 private:
 

@@ -6,6 +6,8 @@
 //
 
 #include "ViewStack.h"
+#include "GleamTheme.h"
+#include "IconsLucide.h"
 
 #include "Renderer/RenderSystem.h"
 #include "Renderer/RenderPipeline.h"
@@ -18,8 +20,9 @@
 
 using namespace GEditor;
 
-ViewStack::ViewStack(const Gleam::TString& iniFilename)
+ViewStack::ViewStack(const Gleam::TString& iniFilename, float fontScale)
 	: mIniPath((Gleam::Globals::UserDataDirectory / iniFilename).String())
+	, mFontScale(fontScale)
 {
 
 }
@@ -35,7 +38,8 @@ void ViewStack::Initialize(Gleam::Application* app)
 
 	renderSystem->GetRenderPipeline(Gleam::RenderPath::Default)->AddSharedRenderer(mImgui);
 	renderSystem->GetRenderPipeline(Gleam::RenderPath::PathTracing)->AddSharedRenderer(mImgui);
-    SetDarkTheme();
+	Gleam::Theme::Apply();
+	LoadFonts();
 }
 
 void ViewStack::Shutdown(Gleam::Application* app)
@@ -57,6 +61,13 @@ void ViewStack::Tick(Gleam::Application* app)
 {
 	static auto renderSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::RenderSystem>();
 	auto imgui = renderSystem->GetActiveRenderPipeline()->GetRenderer<Gleam::ImGuiRenderer>();
+
+	if (mFontsDirty)
+	{
+		mFontsDirty = false;
+		LoadFonts();
+	}
+
     for (auto view : mViews)
     {
         view->Update();
@@ -68,90 +79,67 @@ void ViewStack::Tick(Gleam::Application* app)
     }
 }
 
-void ViewStack::SetDarkTheme() const
+void ViewStack::LoadFonts()
 {
-    // TODO: Refactor this into a configuration
-    ImVec4* colors = ImGui::GetStyle().Colors;
-      colors[ImGuiCol_Text]                   = ImVec4(1.00f, 1.00f, 1.00f, 1.00f);
-      colors[ImGuiCol_TextDisabled]           = ImVec4(0.50f, 0.50f, 0.50f, 1.00f);
-      colors[ImGuiCol_WindowBg]               = ImVec4(0.10f, 0.10f, 0.10f, 1.00f);
-      colors[ImGuiCol_ChildBg]                = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
-      colors[ImGuiCol_PopupBg]                = ImVec4(0.19f, 0.19f, 0.19f, 0.92f);
-      colors[ImGuiCol_Border]                 = ImVec4(0.19f, 0.19f, 0.19f, 0.29f);
-      colors[ImGuiCol_BorderShadow]           = ImVec4(0.00f, 0.00f, 0.00f, 0.24f);
-      colors[ImGuiCol_FrameBg]                = ImVec4(0.05f, 0.05f, 0.05f, 0.54f);
-      colors[ImGuiCol_FrameBgHovered]         = ImVec4(0.19f, 0.19f, 0.19f, 0.54f);
-      colors[ImGuiCol_FrameBgActive]          = ImVec4(0.20f, 0.22f, 0.23f, 1.00f);
-      colors[ImGuiCol_TitleBg]                = ImVec4(0.00f, 0.00f, 0.00f, 1.00f);
-      colors[ImGuiCol_TitleBgActive]          = ImVec4(0.06f, 0.06f, 0.06f, 1.00f);
-      colors[ImGuiCol_TitleBgCollapsed]       = ImVec4(0.00f, 0.00f, 0.00f, 1.00f);
-      colors[ImGuiCol_MenuBarBg]              = ImVec4(0.14f, 0.14f, 0.14f, 1.00f);
-      colors[ImGuiCol_ScrollbarBg]            = ImVec4(0.05f, 0.05f, 0.05f, 0.54f);
-      colors[ImGuiCol_ScrollbarGrab]          = ImVec4(0.34f, 0.34f, 0.34f, 0.54f);
-      colors[ImGuiCol_ScrollbarGrabHovered]   = ImVec4(0.40f, 0.40f, 0.40f, 0.54f);
-      colors[ImGuiCol_ScrollbarGrabActive]    = ImVec4(0.56f, 0.56f, 0.56f, 0.54f);
-      colors[ImGuiCol_CheckMark]              = ImVec4(0.33f, 0.67f, 0.86f, 1.00f);
-      colors[ImGuiCol_SliderGrab]             = ImVec4(0.34f, 0.34f, 0.34f, 0.54f);
-      colors[ImGuiCol_SliderGrabActive]       = ImVec4(0.56f, 0.56f, 0.56f, 0.54f);
-      colors[ImGuiCol_Button]                 = ImVec4(0.05f, 0.05f, 0.05f, 0.54f);
-      colors[ImGuiCol_ButtonHovered]          = ImVec4(0.19f, 0.19f, 0.19f, 0.54f);
-      colors[ImGuiCol_ButtonActive]           = ImVec4(0.20f, 0.22f, 0.23f, 1.00f);
-      colors[ImGuiCol_Header]                 = ImVec4(0.00f, 0.00f, 0.00f, 0.52f);
-      colors[ImGuiCol_HeaderHovered]          = ImVec4(0.00f, 0.00f, 0.00f, 0.36f);
-      colors[ImGuiCol_HeaderActive]           = ImVec4(0.20f, 0.22f, 0.23f, 0.33f);
-      colors[ImGuiCol_Separator]              = ImVec4(0.28f, 0.28f, 0.28f, 0.29f);
-      colors[ImGuiCol_SeparatorHovered]       = ImVec4(0.44f, 0.44f, 0.44f, 0.29f);
-      colors[ImGuiCol_SeparatorActive]        = ImVec4(0.40f, 0.44f, 0.47f, 1.00f);
-      colors[ImGuiCol_ResizeGrip]             = ImVec4(0.28f, 0.28f, 0.28f, 0.29f);
-      colors[ImGuiCol_ResizeGripHovered]      = ImVec4(0.44f, 0.44f, 0.44f, 0.29f);
-      colors[ImGuiCol_ResizeGripActive]       = ImVec4(0.40f, 0.44f, 0.47f, 1.00f);
-      colors[ImGuiCol_Tab]                    = ImVec4(0.00f, 0.00f, 0.00f, 0.52f);
-      colors[ImGuiCol_TabHovered]             = ImVec4(0.14f, 0.14f, 0.14f, 1.00f);
-      colors[ImGuiCol_TabActive]              = ImVec4(0.20f, 0.20f, 0.20f, 0.36f);
-      colors[ImGuiCol_TabUnfocused]           = ImVec4(0.00f, 0.00f, 0.00f, 0.52f);
-      colors[ImGuiCol_TabUnfocusedActive]     = ImVec4(0.14f, 0.14f, 0.14f, 1.00f);
-      colors[ImGuiCol_DockingPreview]         = ImVec4(0.33f, 0.67f, 0.86f, 1.00f);
-      colors[ImGuiCol_DockingEmptyBg]         = ImVec4(1.00f, 0.00f, 0.00f, 1.00f);
-      colors[ImGuiCol_PlotLines]              = ImVec4(1.00f, 0.00f, 0.00f, 1.00f);
-      colors[ImGuiCol_PlotLinesHovered]       = ImVec4(1.00f, 0.00f, 0.00f, 1.00f);
-      colors[ImGuiCol_PlotHistogram]          = ImVec4(1.00f, 0.00f, 0.00f, 1.00f);
-      colors[ImGuiCol_PlotHistogramHovered]   = ImVec4(1.00f, 0.00f, 0.00f, 1.00f);
-      colors[ImGuiCol_TableHeaderBg]          = ImVec4(0.00f, 0.00f, 0.00f, 0.52f);
-      colors[ImGuiCol_TableBorderStrong]      = ImVec4(0.00f, 0.00f, 0.00f, 0.52f);
-      colors[ImGuiCol_TableBorderLight]       = ImVec4(0.28f, 0.28f, 0.28f, 0.29f);
-      colors[ImGuiCol_TableRowBg]             = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
-      colors[ImGuiCol_TableRowBgAlt]          = ImVec4(1.00f, 1.00f, 1.00f, 0.06f);
-      colors[ImGuiCol_TextSelectedBg]         = ImVec4(0.20f, 0.22f, 0.23f, 1.00f);
-      colors[ImGuiCol_DragDropTarget]         = ImVec4(0.33f, 0.67f, 0.86f, 1.00f);
-      colors[ImGuiCol_NavHighlight]           = ImVec4(1.00f, 0.00f, 0.00f, 1.00f);
-      colors[ImGuiCol_NavWindowingHighlight]  = ImVec4(1.00f, 0.00f, 0.00f, 0.70f);
-      colors[ImGuiCol_NavWindowingDimBg]      = ImVec4(1.00f, 0.00f, 0.00f, 0.20f);
-      colors[ImGuiCol_ModalWindowDimBg]       = ImVec4(1.00f, 0.00f, 0.00f, 0.35f);
+	static constexpr ImWchar kIconRanges[] = { ICON_MIN_LC, ICON_MAX_LC, 0 };
+	constexpr const char* kIconFont = "Resources/Fonts/Lucide/lucide.ttf";
+	constexpr const char* kRegularFont = "Resources/Fonts/IBMPlexSans/IBMPlexSans-Regular.ttf";
+	constexpr const char* kMediumFont = "Resources/Fonts/IBMPlexSans/IBMPlexSans-Medium.ttf";
+	constexpr const char* kSemiBoldFont = "Resources/Fonts/IBMPlexSans/IBMPlexSans-SemiBold.ttf";
+	constexpr const char* kMonoFont = "Resources/Fonts/JetBrainsMono/JetBrainsMono-Regular.ttf";
 
-      ImGuiStyle& style = ImGui::GetStyle();
-      style.WindowPadding                     = ImVec2(8.00f, 8.00f);
-      style.FramePadding                      = ImVec2(5.00f, 2.00f);
-      style.CellPadding                       = ImVec2(6.00f, 6.00f);
-      style.ItemSpacing                       = ImVec2(6.00f, 6.00f);
-      style.ItemInnerSpacing                  = ImVec2(6.00f, 6.00f);
-      style.TouchExtraPadding                 = ImVec2(0.00f, 0.00f);
-      style.IndentSpacing                     = 25;
-      style.ScrollbarSize                     = 15;
-      style.GrabMinSize                       = 10;
-      style.WindowBorderSize                  = 1;
-      style.ChildBorderSize                   = 1;
-      style.PopupBorderSize                   = 1;
-      style.FrameBorderSize                   = 1;
-      style.TabBorderSize                     = 1;
-      style.WindowRounding                    = 7;
-      style.ChildRounding                     = 4;
-      style.FrameRounding                     = 3;
-      style.PopupRounding                     = 4;
-      style.ScrollbarRounding                 = 9;
-      style.GrabRounding                      = 3;
-      style.LogSliderDeadzone                 = 4;
-      style.TabRounding                       = 4;
-    
-    float fontSize = 16.0f;
-	mImgui->AddFontTexture("Resources/Fonts/OpenSans-Bold.ttf", "Resources/Fonts/OpenSans-Regular.ttf", fontSize);	
+	constexpr float kFontSize = 16.0f;
+	auto scaled = [this](float offset)
+	{
+		return Gleam::Math::Round((kFontSize + offset) * mFontScale);
+	};
+	const float fontSize = scaled(0.0f);
+
+	if (mIconGlyphRanges.empty())
+	{
+		static constexpr const char* kIcons[] = {
+			ICON_LC_AXIS_3D, ICON_LC_BOX, ICON_LC_CHEVRON_DOWN, ICON_LC_CHEVRON_RIGHT, ICON_LC_ELLIPSIS_VERTICAL,
+			ICON_LC_EYE, ICON_LC_EYE_OFF, ICON_LC_FOLDER, ICON_LC_FOLDER_OPEN, ICON_LC_GLOBE,
+			ICON_LC_MAGNET, ICON_LC_MOVE, ICON_LC_PLUS, ICON_LC_ROTATE_CW, ICON_LC_SCALING,
+			ICON_LC_SEARCH, ICON_LC_SLIDERS_HORIZONTAL, ICON_LC_SPARKLE, ICON_LC_SUN, ICON_LC_UPLOAD
+		};
+
+		ImFontGlyphRangesBuilder builder;
+		for (const char* icon : kIcons)
+		{
+			builder.AddText(icon);
+		}
+		builder.BuildRanges(&mIconGlyphRanges);
+	}
+	const ImWchar* iconGlyphs = mIconGlyphRanges.Data;
+
+	mImgui->ClearFonts();
+	mFonts.regular = mImgui->AddFont(kRegularFont, fontSize, kIconRanges);
+	mImgui->MergeFont(kIconFont, fontSize, iconGlyphs);
+	mFonts.compact = mImgui->AddFont(kRegularFont, scaled(-1.0f), kIconRanges);
+	mFonts.medium = mImgui->AddFont(kMediumFont, fontSize, kIconRanges);
+	mImgui->MergeFont(kIconFont, fontSize, iconGlyphs);
+	mFonts.semiBold = mImgui->AddFont(kSemiBoldFont, fontSize, kIconRanges);
+	mImgui->MergeFont(kIconFont, fontSize, iconGlyphs);
+	mFonts.numeric = mImgui->AddFont(kMonoFont, fontSize);
+	mFonts.label = mImgui->AddFont(kMediumFont, scaled(1.0f), kIconRanges);
+	mFonts.brand = mImgui->AddFont(kSemiBoldFont, scaled(2.0f), kIconRanges);
+	mFonts.heading = mImgui->AddFont(kSemiBoldFont, scaled(5.0f), kIconRanges);
+	mImgui->MergeFont(kIconFont, scaled(5.0f), iconGlyphs);
+	mFonts.title = mImgui->AddFont(kSemiBoldFont, scaled(10.0f), kIconRanges);
+	mFonts.caption = mImgui->AddFont(kRegularFont, scaled(-3.0f), kIconRanges);
+	mFonts.micro = mImgui->AddFont(kRegularFont, scaled(-4.0f), kIconRanges);
+	mFonts.microBold = mImgui->AddFont(kSemiBoldFont, scaled(-4.0f), kIconRanges);
+	mImgui->MergeFont(kIconFont, scaled(-4.0f), iconGlyphs);
+	mFonts.footnote = mImgui->AddFont(kRegularFont, scaled(-2.0f), kIconRanges);
+	mImgui->MergeFont(kIconFont, scaled(-2.0f), iconGlyphs);
+	mFonts.subheading = mImgui->AddFont(kSemiBoldFont, scaled(1.0f), kIconRanges);
+	mFonts.mono = mImgui->AddFont(kMonoFont, scaled(-3.0f));
+	mFonts.detail = mImgui->AddFont(kMonoFont, scaled(-2.0f));
+	const float iconLargeSize = Gleam::Math::Round(32.0f * mFontScale);
+	mFonts.iconLarge = mImgui->AddFont(kRegularFont, iconLargeSize, kIconRanges);
+	mImgui->MergeFont(kIconFont, iconLargeSize, iconGlyphs);
+	ImGui::GetIO().FontDefault = mFonts.regular;
+	ImGui::GetStyle().FontSizeBase = fontSize;
+	mImgui->BuildFontTexture();
 }

@@ -7,16 +7,17 @@
 
 #pragma once
 #include "View/View.h"
+#include "View/Widgets/AssetIcon.h"
 #include "EAssets/AssetRegistry.h"
 
 #include "IO/FileWatcher.h"
-#include "Math/Color.h"
 
 #include <atomic>
 
 namespace GEditor {
 
 class EAssetManager;
+struct EditorFonts;
 
 class ContentBrowser final : public View
 {
@@ -37,8 +38,9 @@ private:
 		Gleam::Path path;
 		Gleam::TString label;
 		AssetItem asset;
-		Gleam::Color color;
-		const char* iconText = nullptr;
+		ImVec4 color = Gleam::Theme::TextDim;
+		const char* typeText = nullptr;
+		AssetCategory category = AssetCategory::Other;
 		const char* payloadType = nullptr;
 		bool isDirectory = false;
 	};
@@ -60,13 +62,23 @@ private:
 
 	void BuildDirectoryTree(const Gleam::Path& node);
 
+	void DrawToolbar();
+
+	void DrawBreadcrumb(float maxX);
+
+	float DrawFilterChips(float right, float top);
+
 	void DrawDirectoryTree();
 
-	uint32_t DrawDirectoryNode(uint32_t index);
+	uint32_t DrawDirectoryNode(uint32_t index, uint32_t depth);
 
 	void DrawAssetGrid();
 
+	bool IsVisible(const GridEntry& entry) const;
+
 	EAssetManager* mAssetManager;
+
+	const EditorFonts* mFonts = nullptr;
 
     Gleam::Path mCurrentDirectory;
 
@@ -75,6 +87,12 @@ private:
 	Gleam::TArray<GridEntry> mGridEntries;
 
 	Gleam::TArray<TreeEntry> mTreeEntries;
+
+	Gleam::Path mSelectedEntry;
+
+	uint32_t mCategoryFilter = 0u;
+
+	char mSearch[128] = "";
 
 	Gleam::FileWatcher::Handle* mWatchHandle = nullptr;
 

@@ -8,6 +8,7 @@
 #include "MenuBar.h"
 
 #include "Core/Engine.h"
+#include "Core/Globals.h"
 #include "Core/Application.h"
 #include "Core/PlatformTargetDefines.h"
 #include "Core/Events/Event.h"
@@ -19,7 +20,10 @@
 
 #include "Undo/UndoSystem.h"
 #include "View/ViewStack.h"
+#include "View/GleamTheme.h"
+#include "View/IconsLucide.h"
 #include "View/Panels/Project/ProjectSettings.h"
+#include "View/Panels/Project/Preferences.h"
 
 #include <imgui.h>
 
@@ -56,6 +60,7 @@ MenuBar::MenuBar(Gleam::World* world)
 void MenuBar::OnCreate(Gleam::Application* app)
 {
 	mApplication = app;
+	mFonts = &app->GetSubsystem<ViewStack>()->GetFonts();
 }
 
 void MenuBar::Render(Gleam::ImGuiRenderer* imgui)
@@ -76,7 +81,12 @@ void MenuBar::Render(Gleam::ImGuiRenderer* imgui)
 		}
 
 		if (!ImGui::BeginMenuBar()) { return; }
-		
+
+		ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 4.0f);
+		ImGui::TextColored(Gleam::Theme::Accent, ICON_LC_SPARKLE);
+		ImGui::SameLine(0.0f, 12.0f);
+		ImGui::PushStyleColor(ImGuiCol_Text, Gleam::Theme::TextSecondary);
+
 		if (ImGui::BeginMenu("File"))
 		{
 			if (ImGui::MenuItem("Save"))
@@ -116,8 +126,28 @@ void MenuBar::Render(Gleam::ImGuiRenderer* imgui)
 				projectSettings->Open();
 			}
 
+			if (ImGui::MenuItem("Preferences"))
+			{
+				auto viewStack = mApplication->GetSubsystem<ViewStack>();
+				viewStack->GetView<Preferences>()->Open();
+			}
+
 			ImGui::EndMenu();
 		}
+		ImGui::PopStyleColor();
+
+		ImGui::PushFont(mFonts->footnote);
+		constexpr const char* kTitleSuffix = " - GleamEngine";
+		const float titleWidth = ImGui::CalcTextSize(Gleam::Globals::ProjectName.c_str()).x + ImGui::CalcTextSize(kTitleSuffix).x;
+		const float titleX = (ImGui::GetWindowWidth() - titleWidth) * 0.5f;
+		if (titleX > ImGui::GetCursorPosX())
+		{
+			ImGui::SetCursorPosX(titleX);
+			ImGui::TextColored(Gleam::Theme::TextMuted, "%s", Gleam::Globals::ProjectName.c_str());
+			ImGui::SameLine(0.0f, 0.0f);
+			ImGui::TextColored(Gleam::Theme::TextDim, "%s", kTitleSuffix);
+		}
+		ImGui::PopFont();
 
 		ImGui::EndMenuBar();
 	});

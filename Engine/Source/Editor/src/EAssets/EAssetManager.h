@@ -31,6 +31,10 @@ public:
 
 private:
 
+	void CompileMaterials(const Gleam::Path& sourceDirectory, const Gleam::Path& outputDirectory);
+
+	void CompileMaterial(const Gleam::Path& source, const Gleam::Path& outputDirectory);
+
 	AssetRegistry mRegistry;
 
 	Gleam::Path mAssetDirectory;

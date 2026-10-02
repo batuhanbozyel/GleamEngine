@@ -13,6 +13,8 @@ public:
 
 	static Path ExecutablePath();
 
+	static void RevealInFileBrowser(const Path& path);
+
 };
 
 } // namespace Gleam

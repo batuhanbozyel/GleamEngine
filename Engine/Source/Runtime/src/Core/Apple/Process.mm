@@ -4,6 +4,7 @@
 #include "Core/Process.h"
 
 #include <spawn.h>
+#import <AppKit/AppKit.h>
 #include <mach-o/dyld.h>
 
 extern char** environ;
@@ -42,6 +43,12 @@ Path Process::ExecutablePath()
 
 	char resolved[PATH_MAX];
 	return Path(realpath(buffer.c_str(), resolved) ? resolved : buffer.c_str());
+}
+
+void Process::RevealInFileBrowser(const Path& path)
+{
+	NSString* pathString = [NSString stringWithUTF8String:path.String().c_str()];
+	[[NSWorkspace sharedWorkspace] activateFileViewerSelectingURLs:@[[NSURL fileURLWithPath:pathString]]];
 }
 
 #endif

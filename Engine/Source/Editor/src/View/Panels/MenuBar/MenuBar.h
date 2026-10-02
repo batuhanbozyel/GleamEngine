@@ -14,6 +14,8 @@ class World;
 
 namespace GEditor {
 
+struct EditorFonts;
+
 class MenuBar final : public View
 {
 public:
@@ -29,6 +31,8 @@ private:
 	Gleam::World* mWorld = nullptr;
 
 	Gleam::Application* mApplication = nullptr;
+
+	const EditorFonts* mFonts = nullptr;
 
 };
 
