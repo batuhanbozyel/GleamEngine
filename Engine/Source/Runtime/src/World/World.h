@@ -2,6 +2,9 @@
 #include "ComponentSystem.h"
 #include "WorldSubsystem.h"
 #include "EntityManager.h"
+#include "WorldDescriptor.h"
+
+#include "Assets/Asset.h"
 
 #include "Container/String.h"
 #include "Container/Array.h"
@@ -17,7 +20,7 @@ concept ComponentSystemType = std::is_base_of<ComponentSystem, T>::value;
 template <typename T>
 concept WorldSystemType = std::is_base_of<WorldSubsystem, T>::value;
 
-GCLASS(World, "F2C18BDA-C06B-466F-B2E4-1DE905786688", Serializable) final
+class World final : public Asset
 {
 public:
 
@@ -25,18 +28,19 @@ public:
 	{
 		return L".gworld";
 	}
-	
+
 	World(World&&) = default;
-    
-	World(const TString& name = "World");
+
+	World(const AssetReference& reference, const AssetHeader& header, const WorldDescriptor& descriptor);
 
 	~World();
-    
+
     void Update();
 
-	void Serialize(FileStream& stream);
-
-	void Deserialize(FileStream& stream);
+	const WorldDescriptor& GetDescriptor() const
+	{
+		return mDescriptor;
+	}
 
 	template<WorldSystemType T, class...Args>
 	T* AddSubsystem(Args&&... args)
@@ -120,16 +124,17 @@ public:
         return mEntityManager;
     }
 
-	GFIELD("DEAB687B-2A42-4E5F-9387-35B54889844A", Serializable)
-	TString name;
-    
 private:
-	
+
+	WorldDescriptor mDescriptor;
     EntityManager mEntityManager;
     PolyArray<ComponentSystem> mSystems;
 	PolyArray<WorldSubsystem> mSubsystems;
 	TArray<TickableWorldSubsystem*> mTickableSubsystems;
 
 };
+
+template<>
+struct IsLoadableAsset<World> : std::false_type {};
 
 } // namespace Gleam

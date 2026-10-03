@@ -24,6 +24,9 @@ namespace Gleam {
 template <typename T>
 concept AssetType = std::is_base_of<Asset, T>::value;
 
+template <typename T>
+concept LoadableAssetType = AssetType<T> and IsLoadableAsset<T>::value;
+
 class AssetManager final : public GameInstanceSubsystem
 {
 public:
@@ -32,13 +35,13 @@ public:
 
     virtual void Shutdown(Application* app) override;
 
-	template<AssetType T>
+	template<LoadableAssetType T>
 	bool Has(const AssetReference& ref) const
 	{
 		return mAssetCache.find(ref) != mAssetCache.end();
 	}
 
-	template<AssetType T>
+	template<LoadableAssetType T>
 	T* Get(const AssetReference& ref) const
 	{
 		if (auto it = mAssetCache.find(ref); it != mAssetCache.end())
@@ -49,7 +52,7 @@ public:
 		return nullptr;
 	}
 	
-	template<AssetType T>
+	template<LoadableAssetType T>
 	T* Load(const AssetReference& ref)
 	{
 		if (ref.guid == Guid::InvalidGuid())
@@ -99,7 +102,7 @@ public:
 		return descriptor;
 	}
 
-	template<AssetType T, typename Desc>
+	template<LoadableAssetType T, typename Desc>
 	static void RegisterMetaAsset()
 	{
 		entt::meta_factory<T>().template func<&CreateAsset<T, Desc>>("CreateAsset"_hs);
@@ -114,7 +117,7 @@ public:
 
 private:
 
-	template<AssetType T, typename Desc>
+	template<LoadableAssetType T, typename Desc>
 	static T* CreateAsset(const AssetReference& ref)
 	{
 		static auto instance = Globals::GameInstance->GetSubsystem<AssetManager>();

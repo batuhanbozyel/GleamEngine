@@ -5,7 +5,7 @@
 #include "Renderer/Material/MaterialDescriptor.h"
 
 #include "World/Prefab.h"
-#include "World/World.h"
+#include "World/WorldDescriptor.h"
 
 #include <Runtime.Reflection.generated.h>
 
@@ -18,7 +18,7 @@ AssetIcon GEditor::GetAssetIcon(const Gleam::Guid& type)
 	static const auto materialType = Gleam::Reflection::GetClass<Gleam::MaterialDescriptor>().Guid();
 	static const auto materialInstanceType = Gleam::Reflection::GetClass<Gleam::MaterialInstanceDescriptor>().Guid();
 	static const auto prefabType = Gleam::Reflection::GetClass<Gleam::Prefab>().Guid();
-	static const auto worldType = Gleam::Reflection::GetClass<Gleam::World>().Guid();
+	static const auto worldType = Gleam::Reflection::GetClass<Gleam::WorldDescriptor>().Guid();
 
 	if (type == meshType)
 	{

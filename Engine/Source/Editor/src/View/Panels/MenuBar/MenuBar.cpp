@@ -15,9 +15,9 @@
 #include "Core/Events/ApplicationEvent.h"
 
 #include "Renderer/Renderers/ImGuiRenderer.h"
-#include "World/WorldManager.h"
 #include "World/World.h"
 
+#include "EWorld/EWorldManager.h"
 #include "Undo/UndoSystem.h"
 #include "View/ViewStack.h"
 #include "View/GleamTheme.h"
@@ -91,8 +91,7 @@ void MenuBar::Render(Gleam::ImGuiRenderer* imgui)
 		{
 			if (ImGui::MenuItem("Save"))
 			{
-				auto worldManager = mApplication->GetSubsystem<Gleam::WorldManager>();
-				worldManager->SaveActiveWorld();
+				mApplication->GetSubsystem<EWorldManager>()->Save();
 			}
 
 			if (ImGui::MenuItem("Exit"))

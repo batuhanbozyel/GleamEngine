@@ -195,7 +195,7 @@ bool MeshSource::Import(const Gleam::Path& path, const ImportSettings& settings)
 			return false;
 		};
 
-		auto world = Gleam::CreateRef<Gleam::World>(filename);
+		auto world = Gleam::CreateRef<Gleam::World>(Gleam::AssetReference{}, Gleam::AssetHeader{ .name = filename }, Gleam::WorldDescriptor{});
 		auto ProcessNode = [&](auto self, const cgltf_node& node, const Gleam::TString& name,
 			const Gleam::Float4x4& parentTransform, bool hierarchyHasNonUniformScaling) -> Gleam::EntityHandle
 		{

@@ -5,6 +5,9 @@
 #include "Core/Application.h"
 #include "IO/FileWatcher.h"
 #include "Assets/AssetManager.h"
+#include "Serialization/JSONInternal.h"
+#include "Serialization/JSONSerializer.h"
+#include "Serialization/EntitySerializer.h"
 
 using namespace Gleam;
 
@@ -15,6 +18,7 @@ void WorldManager::Initialize(Application* app)
 
 void WorldManager::Shutdown(Application* app)
 {
+	mActiveWorld = nullptr;
 	mLoadedWorlds.clear();
 	mWorldsInBuild.clear();
 }
@@ -22,13 +26,12 @@ void WorldManager::Shutdown(Application* app)
 void WorldManager::Configure(const WorldConfig& config)
 {
 	mWorldsInBuild = config.worlds;
-	mActiveWorld = config.startingWorldIndex;
 }
 
 void WorldManager::OpenWorld(uint32_t buildIndex)
 {
 	LoadWorld(buildIndex);
-	mActiveWorld = buildIndex;
+	SetActiveWorld(mLoadedWorlds[mWorldsInBuild[buildIndex]].get());
 }
 
 void WorldManager::LoadWorld(uint32_t buildIndex)
@@ -37,35 +40,32 @@ void WorldManager::LoadWorld(uint32_t buildIndex)
 	const auto& worldPath = Globals::GameInstance->GetSubsystem<AssetManager>()->GetAssetPath(worldRef);
 
 	auto file = Filesystem::OpenRead(Globals::ProjectContentDirectory / worldPath, FileType::Text);
-	auto world = CreateScope<World>();
 
-	world->Deserialize(file->GetStream());
+	rapidjson::Document document(rapidjson::kObjectType);
+	rapidjson::IStreamWrapper ss(file->GetStream());
+	document.ParseStream(ss);
+
+	JSONSerializer jsonSerializer;
+	const auto header = jsonSerializer.Deserialize<AssetHeader>(rapidjson::ConstNode(document));
+	const auto descriptor = jsonSerializer.Deserialize<WorldDescriptor>(rapidjson::ConstNode(document["Metadata"]));
+
+	auto world = CreateScope<World>(worldRef, header, descriptor);
+
+	const auto entities = world->FindBlob<Entity>(0, AssetPlatform::Common, AssetBackend::Common);
+	const auto& blobs = document["Blobs"];
+
+	EntitySerializer serializer;
+	serializer.Deserialize(rapidjson::ConstNode(blobs[static_cast<rapidjson::SizeType>(entities->range.offset)]), world->GetEntityManager());
 	mLoadedWorlds.emplace(worldRef, std::move(world));
 }
 
-void WorldManager::SaveWorld(uint32_t buildIndex)
+void WorldManager::SetActiveWorld(World* world)
 {
-	const auto& worldRef = mWorldsInBuild[buildIndex];
-	const auto& worldPath = Globals::GameInstance->GetSubsystem<AssetManager>()->GetAssetPath(worldRef);
-
-	auto file = Filesystem::Create(Globals::ProjectContentDirectory / worldPath, FileType::Text);
-	auto world = mLoadedWorlds[worldRef].get();
-
-	world->Serialize(file->GetStream());
+	GLEAM_ASSERT(world, "Active world cannot be null!");
+	mActiveWorld = world;
 }
 
-void WorldManager::SaveActiveWorld()
+World* WorldManager::GetActiveWorld() const
 {
-	SaveWorld(mActiveWorld);
-}
-
-World* WorldManager::GetActiveWorld()
-{
-	const auto& worldRef = mWorldsInBuild[mActiveWorld];
-	auto it = mLoadedWorlds.find(worldRef);
-	if (it != mLoadedWorlds.end())
-	{
-		return it->second.get();
-	}
-	return nullptr;
+	return mActiveWorld;
 }

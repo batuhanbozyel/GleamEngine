@@ -2,6 +2,7 @@
 #include "LauncherState.h"
 #include "ProjectBrowser.h"
 #include "Config/EditorConfigSystem.h"
+#include "EWorld/EWorldManager.h"
 #include "View/ViewStack.h"
 
 #include "Serialization/JSONSerializer.h"
@@ -23,9 +24,12 @@ using namespace GEditor;
 GleamLauncher::GleamLauncher()
 	: Gleam::Application(Gleam::Project{ .name = "Gleam Launcher" })
 {
-	Gleam::Globals::Engine->GetSubsystem<Gleam::WindowSystem>()->SetTransientWindow(Gleam::Size(1280.0f, 800.0f), false);
+	auto windowSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::WindowSystem>();
+	windowSystem->SetTransientWindow(Gleam::Size(1280.0f, 800.0f), false);
+
 	auto editorConfig = Gleam::Globals::Engine->AddSubsystem<EditorConfigSystem>();
 	editorConfig->Register<Gleam::LauncherState>();
+
 	auto viewStack = AddSubsystem<ViewStack>("Launcher.ini");
 	viewStack->AddView<ProjectBrowser>();
 }
@@ -139,8 +143,10 @@ Gleam::Path GleamLauncher::CreateProject(const Gleam::TString& name, const Gleam
 	auto worldName = Gleam::TWString(worldRef.guid.ToString()) + Gleam::World::Extension();
 	auto worldFile = contentDirectory / worldName;
 	{
-		auto file = Gleam::Filesystem::Create(worldFile, Gleam::FileType::Text);
-		auto world = Gleam::World("Starter World");
+		auto world = Gleam::World(worldRef, Gleam::AssetHeader{
+			.typeGuid = Gleam::Reflection::GetClass<Gleam::WorldDescriptor>().Guid(),
+			.name = "Starter World"
+		}, Gleam::WorldDescriptor{});
 
 		auto& camera = world.GetEntityManager().CreateEntity("Main Camera", Gleam::Guid::NewGuid());
 		world.GetEntityManager().AddComponent<Gleam::Camera>(camera, Gleam::Size(1280.0f, 720.0f), Gleam::ProjectionType::Perspective);
@@ -151,7 +157,8 @@ Gleam::Path GleamLauncher::CreateProject(const Gleam::TString& name, const Gleam
 		// global probe
 		world.GetEntityManager().SetSingleton<Gleam::ReflectionProbe>();
 
-		world.Serialize(file->GetStream());
+		EWorldManager worldManager(&world);
+		worldManager.SaveAs(worldFile);
 	}
 	project.worldConfig.worlds.emplace_back(worldRef);
 

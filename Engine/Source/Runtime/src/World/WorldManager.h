@@ -21,15 +21,13 @@ public:
 
 	void LoadWorld(uint32_t buildIndex);
 
-	void SaveWorld(uint32_t buildIndex);
+	void SetActiveWorld(World* world);
 
-	void SaveActiveWorld();
-
-	World* GetActiveWorld();
+	World* GetActiveWorld() const;
 
 private:
 
-	uint32_t mActiveWorld = 0;
+	World* mActiveWorld = nullptr;
 
 	TArray<AssetReference> mWorldsInBuild;
 

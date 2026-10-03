@@ -183,7 +183,8 @@ void ContentBrowser::DrawBreadcrumb(float maxX)
 	if (mCurrentDirectory != mAssetDirectory)
 	{
 		Gleam::Path breadcrumbPath = mAssetDirectory;
-		for (const auto& directory : Gleam::Filesystem::Relative(mCurrentDirectory, mAssetDirectory).Split())
+		const Gleam::Path relativePath = Gleam::Filesystem::Relative(mCurrentDirectory, mAssetDirectory);
+		for (const auto& directory : relativePath.Split())
 		{
 			breadcrumbPath = breadcrumbPath / directory;
 			segments.push_back(breadcrumbPath);

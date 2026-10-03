@@ -5,6 +5,7 @@
 
 #include "Launcher/GleamLauncher.h"
 #include "EAssets/EAssetManager.h"
+#include "EWorld/EWorldManager.h"
 #include "Config/EditorConfigSystem.h"
 #include "Config/EditorPreferences.h"
 #include "Selection/SelectionSystem.h"
@@ -43,6 +44,7 @@ public:
 		mEditWorld->GetSystem<Gleam::PhysicsSystem>()->Enabled = false;
 		mEditWorld->AddSubsystem<UndoSystem>();
 		mEditWorld->AddSubsystem<SelectionSystem>();
+		AddSubsystem<EWorldManager>(mEditWorld);
 
 		auto viewStack = AddSubsystem<ViewStack>("Editor.ini", Gleam::Math::Clamp(preferences.uiScale, 0.75f, 2.0f));
 		PropertyDrawer::SetFonts(&viewStack->GetFonts());
@@ -61,6 +63,7 @@ public:
 		RemoveSubsystem<ViewStack>();
 		mEditWorld->RemoveSubsystem<SelectionSystem>();
 		mEditWorld->RemoveSubsystem<UndoSystem>();
+		RemoveSubsystem<EWorldManager>();
 		Gleam::Globals::Engine->RemoveSubsystem<EditorConfigSystem>();
 		RemoveSubsystem<EAssetManager>();
 	}

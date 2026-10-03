@@ -18,13 +18,13 @@ void PrefabBaker::Bake(const Gleam::Path& directory, const AssetItem& item) cons
 	auto file = Gleam::Filesystem::Create(directory / filename, Gleam::FileType::Text);
 
 	Gleam::Prefab prefab;
-	prefab.name = mWorld->name;
+	prefab.name = mWorld->GetName();
 	prefab.Serialize(mWorld->GetEntityManager(), file->GetStream());
 }
 
 Gleam::TString PrefabBaker::Name() const
 {
-	return mWorld->name;
+	return mWorld->GetName();
 }
 
 Gleam::Guid PrefabBaker::TypeGuid() const

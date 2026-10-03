@@ -71,15 +71,15 @@ void EAssetManager::Initialize(Gleam::Application* app)
 			auto file = Gleam::Filesystem::OpenRead(entry, Gleam::FileType::Text);
 			auto serializer = Gleam::JSONSerializer();
 
-			auto world = serializer.Deserialize<Gleam::World>(file->GetStream());
+			auto header = serializer.Deserialize<Gleam::AssetHeader>(file->GetStream());
 			auto guid = Gleam::Guid(entry.Stem());
 			auto asset = Gleam::AssetReference{ .guid = guid };
 			auto item = AssetItem{
 				.reference = asset,
-				.type = Gleam::Reflection::GetClass<Gleam::World>().Guid(),
-				.name = world.name
+				.type = header.typeGuid,
+				.name = header.name
 			};
-			auto path = entry.Parent() / world.name;
+			auto path = entry.Parent() / header.name;
 			mRegistry.RegisterAsset(path, item);
 		}
     }, true);

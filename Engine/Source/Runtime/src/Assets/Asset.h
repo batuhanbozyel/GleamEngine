@@ -15,6 +15,9 @@ namespace Gleam {
 
 class AssetManager;
 
+template<typename T>
+struct IsLoadableAsset : std::true_type {};
+
 class Asset
 {
 	friend class AssetManager;
