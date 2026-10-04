@@ -151,6 +151,28 @@ bool Widgets::OverlayButton(const char* id, const char* icon, const ImVec2& size
 	return DrawOverlayButton(id, icon, size, &iconColor, false);
 }
 
+bool Widgets::AccentButton(const char* label, const ImVec2& size)
+{
+	ImGui::PushStyleColor(ImGuiCol_Button, Gleam::Theme::Accent);
+	ImGui::PushStyleColor(ImGuiCol_ButtonHovered, Gleam::Theme::AccentHover);
+	ImGui::PushStyleColor(ImGuiCol_ButtonActive, Gleam::Theme::AccentActive);
+	ImGui::PushStyleColor(ImGuiCol_Border, Gleam::Theme::Accent);
+	ImGui::PushStyleColor(ImGuiCol_Text, Gleam::Theme::OnAccent);
+	const bool pressed = ImGui::Button(label, size);
+	ImGui::PopStyleColor(5);
+	return pressed;
+}
+
+bool Widgets::OutlineButton(const char* label, const ImVec2& size)
+{
+	ImGui::PushStyleColor(ImGuiCol_Button, Gleam::Theme::Hex(0x000000, 0.0f));
+	ImGui::PushStyleColor(ImGuiCol_Border, Gleam::Theme::BorderStrong);
+	ImGui::PushStyleColor(ImGuiCol_Text, Gleam::Theme::TextSecondary);
+	const bool pressed = ImGui::Button(label, size);
+	ImGui::PopStyleColor(3);
+	return pressed;
+}
+
 EntityKind Widgets::GetEntityKind(const Gleam::EntityManager& entityManager, Gleam::EntityHandle handle)
 {
 	static const auto entityHash = Gleam::Reflection::GetClass<Gleam::Entity>().TypeHash();

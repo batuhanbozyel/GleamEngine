@@ -34,6 +34,10 @@ bool OverlayButton(const char* id, const char* icon, const ImVec2& size, bool ac
 
 bool OverlayButton(const char* id, const char* icon, const ImVec2& size, const ImVec4& iconColor);
 
+bool AccentButton(const char* label, const ImVec2& size);
+
+bool OutlineButton(const char* label, const ImVec2& size);
+
 EntityKind GetEntityKind(const Gleam::EntityManager& entityManager, Gleam::EntityHandle handle);
 
 } // namespace Widgets

@@ -370,7 +370,7 @@ void WorldViewport::DrawToolbar(const Gleam::Float2& contentMin, const Gleam::Fl
 			auto viewModeRenderer = renderSystem->GetRenderPipeline(Gleam::RenderPath::Default)->GetRenderer<ViewModeRenderer>();
 			auto activeViewMode = viewModeRenderer->GetViewMode();
 			const auto previousViewMode = activeViewMode;
-			PropertyDrawer::DrawEnumOptions("View Mode", Gleam::Reflection::GetEnum<Gleam::ViewMode>(), &activeViewMode, 96.0f);
+			PropertyDrawer::DrawEnumOptions("View Mode", Gleam::Reflection::GetEnum<ViewMode>(), &activeViewMode, 96.0f);
 			if (activeViewMode != previousViewMode)
 			{
 				viewModeRenderer->SetViewMode(activeViewMode);

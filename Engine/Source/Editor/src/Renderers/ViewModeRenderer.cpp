@@ -27,7 +27,7 @@ void ViewModeRenderer::OnCreate(const Gleam::RenderContext& context)
 
 void ViewModeRenderer::AddRenderPasses(Gleam::RenderGraph& graph, Gleam::RenderGraphBlackboard& blackboard)
 {
-    if (mMode == Gleam::ViewMode::Lit)
+    if (mMode == ViewMode::Lit)
     {
         return;
     }
@@ -40,32 +40,32 @@ void ViewModeRenderer::AddRenderPasses(Gleam::RenderGraph& graph, Gleam::RenderG
 	Gleam::TextureHandle source;
 	switch (mMode)
 	{
-		case Gleam::ViewMode::ShadingNormal:
+		case ViewMode::ShadingNormal:
 		{
 			source = blackboard.Get<Gleam::GBufferData>().shadingNormalTarget;
 			break;
 		}
-		case Gleam::ViewMode::GeometryNormal:
+		case ViewMode::GeometryNormal:
 		{
 			source = blackboard.Get<Gleam::GBufferData>().geometryNormalTarget;
 			break;
 		}
-		case Gleam::ViewMode::Depth:
+		case ViewMode::Depth:
 		{
 			source = blackboard.Get<Gleam::DepthPrepassData>().depthTarget;
 			break;
 		}
-		case Gleam::ViewMode::MotionVectors:
+		case ViewMode::MotionVectors:
 		{
 			source = blackboard.Get<Gleam::GBufferData>().motionVectorTarget;
 			break;
 		}
-		case Gleam::ViewMode::Roughness:
+		case ViewMode::Roughness:
 		{
 			source = blackboard.Get<Gleam::GBufferData>().roughnessTarget;
 			break;
 		}
-		case Gleam::ViewMode::ShadowMask:
+		case ViewMode::ShadowMask:
 		{
 			if (blackboard.Has<Gleam::SunShadowData>())
 			{
@@ -73,14 +73,14 @@ void ViewModeRenderer::AddRenderPasses(Gleam::RenderGraph& graph, Gleam::RenderG
 			}
 			break;
 		}
-		case Gleam::ViewMode::AmbientOcclusion:
+		case ViewMode::AmbientOcclusion:
 		{
 			source = blackboard.Get<Gleam::AmbientOcclusionData>().aoTarget;
 			break;
 		}
-		case Gleam::ViewMode::VisibilityIDs:
-		case Gleam::ViewMode::MeshletVisualization:
-		case Gleam::ViewMode::BatchIDs:
+		case ViewMode::VisibilityIDs:
+		case ViewMode::MeshletVisualization:
+		case ViewMode::BatchIDs:
 		{
 			source = blackboard.Get<Gleam::DepthPrepassData>().visibilityBuffer;
 			break;
@@ -100,7 +100,7 @@ void ViewModeRenderer::AddRenderPasses(Gleam::RenderGraph& graph, Gleam::RenderG
 	{
 		Gleam::TextureHandle target;
 		Gleam::TextureHandle source;
-		Gleam::ViewMode mode;
+		ViewMode mode;
 	};
 
 	graph.AddRenderPass<PassData>("ViewModeRenderer::Visualize", [&](Gleam::RenderGraphBuilder& builder, PassData& passData)

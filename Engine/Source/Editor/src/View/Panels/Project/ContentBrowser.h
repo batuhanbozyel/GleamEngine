@@ -52,8 +52,6 @@ private:
 		uint32_t descendantCount = 0u;
 	};
 
-	bool ImportAsset(const Gleam::Path& path);
-
 	void SetCurrentDir(const Gleam::Path& directory);
 
 	void RefreshAssetGrid();

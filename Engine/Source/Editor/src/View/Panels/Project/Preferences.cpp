@@ -35,7 +35,7 @@ void Preferences::Render(Gleam::ImGuiRenderer* imgui)
 			if (ImGui::Begin("Preferences", &mIsOpen, ImGuiWindowFlags_NoDocking))
 			{
 				auto editorConfig = Gleam::Globals::Engine->GetSubsystem<EditorConfigSystem>();
-				auto preferences = editorConfig->Get<Gleam::EditorPreferences>();
+				auto preferences = editorConfig->Get<EditorPreferences>();
 
 				char preview[16];
 				std::snprintf(preview, sizeof(preview), "%.1f%%", preferences.uiScale * 100.0f);

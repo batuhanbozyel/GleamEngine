@@ -7,7 +7,7 @@
 #define GITEM(Name, GuidStr, ...) Name
 #endif
 
-namespace Gleam {
+namespace GEditor {
 
 GENUM(ViewMode, "984C1E2A-2798-4A6A-97A7-517BCE9E77D0", PrettyName("View Mode"))
 {
@@ -24,7 +24,7 @@ GENUM(ViewMode, "984C1E2A-2798-4A6A-97A7-517BCE9E77D0", PrettyName("View Mode"))
 	GITEM(BatchIDs, "808B9D44-FE18-439D-9730-25CEBFA3870D", PrettyName("Batch IDs"))
 };
 
-} // namespace Gleam
+} // namespace GEditor
 
 #if !defined(__cplusplus)
 #undef GENUM

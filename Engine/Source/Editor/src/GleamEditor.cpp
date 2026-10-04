@@ -23,6 +23,7 @@
 #include "View/Panels/Project/ContentBrowser.h"
 #include "View/Panels/Project/ProjectSettings.h"
 #include "View/Panels/Project/Preferences.h"
+#include "View/Panels/Project/AssetImportDialog.h"
 
 #include <Editor.Reflection.generated.h>
 
@@ -37,7 +38,7 @@ public:
 	{
 		auto assetManager = AddSubsystem<EAssetManager>(Gleam::Globals::ProjectContentDirectory);
 		auto editorConfig = Gleam::Globals::Engine->AddSubsystem<EditorConfigSystem>();
-		const auto& preferences = editorConfig->Register<Gleam::EditorPreferences>();
+		const auto& preferences = editorConfig->Register<EditorPreferences>();
 
 		auto worldManager = GetSubsystem<Gleam::WorldManager>();
 		mEditWorld = worldManager->GetActiveWorld();
@@ -56,6 +57,7 @@ public:
 		viewStack->AddView<ContentBrowser>(assetManager);
 		viewStack->AddView<ProjectSettings>();
 		viewStack->AddView<Preferences>();
+		viewStack->AddView<AssetImportDialog>(assetManager);
 	}
     
 	~GleamEditor()

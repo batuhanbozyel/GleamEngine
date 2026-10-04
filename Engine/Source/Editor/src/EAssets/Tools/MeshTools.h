@@ -1,6 +1,7 @@
 #pragma once
 #include "Renderer/MeshDescriptor.h"
 #include "Math/Float4x4.h"
+#include "Core/Attributes.h"
 
 namespace GEditor {
 
@@ -25,12 +26,21 @@ struct MeshData
 	Gleam::TArray<Gleam::SubmeshDescriptor> submeshes;
 };
 
-struct ConvexDecompositionSettings
+GSTRUCT(ConvexDecompositionSettings, "6DFB87AB-8AA9-4206-AE6A-6ACDBC47589A", Serializable, PrettyName("Convex Decomposition"))
 {
+	GFIELD("159D6C0D-FF03-4B7D-978B-DEAFB82EEEBA", Serializable, PrettyName("Max Convex Hulls"))
 	uint32_t maxConvexHulls = 64;
+
+	GFIELD("FD45F4F7-77A9-4D88-ACCD-D62618C6904A", Serializable, PrettyName("Max Vertices Per Hull"))
 	uint32_t maxVerticesPerHull = 64;
+
+	GFIELD("C3F7F1D6-AFDA-41FF-93F9-0C855F7663FD", Serializable, PrettyName("Resolution"))
 	uint32_t resolution = 400000;
+
+	GFIELD("50FBFE39-00F4-4835-9A42-C9CF9D2DBA38", Serializable, PrettyName("Min Volume Error %"))
 	float minimumVolumePercentError = 1.0f;
+
+	GFIELD("158AE83A-A8A2-4FF1-96CA-DC89BD446E51", Serializable, PrettyName("Shrink Wrap"))
 	bool shrinkWrap = true;
 };
 

@@ -5,6 +5,7 @@
 #include "View/ViewStack.h"
 #include "View/GleamTheme.h"
 #include "View/IconsLucide.h"
+#include "View/Widgets/EditorWidgets.h"
 
 #include "Core/Engine.h"
 #include "Core/Globals.h"
@@ -53,28 +54,6 @@ static constexpr ImVec4 kAvatarColors[] = {
 static ImU32 ColorU32(const ImVec4& color, float alpha = 1.0f)
 {
 	return ImGui::GetColorU32(ImVec4(color.x, color.y, color.z, color.w * alpha));
-}
-
-static bool AccentButton(const char* label, const ImVec2& size)
-{
-	ImGui::PushStyleColor(ImGuiCol_Button, Gleam::Theme::Accent);
-	ImGui::PushStyleColor(ImGuiCol_ButtonHovered, Gleam::Theme::AccentHover);
-	ImGui::PushStyleColor(ImGuiCol_ButtonActive, Gleam::Theme::AccentActive);
-	ImGui::PushStyleColor(ImGuiCol_Border, Gleam::Theme::Accent);
-	ImGui::PushStyleColor(ImGuiCol_Text, Gleam::Theme::OnAccent);
-	const bool pressed = ImGui::Button(label, size);
-	ImGui::PopStyleColor(5);
-	return pressed;
-}
-
-static bool OutlineButton(const char* label, const ImVec2& size)
-{
-	ImGui::PushStyleColor(ImGuiCol_Button, Gleam::Theme::Hex(0x000000, 0.0f));
-	ImGui::PushStyleColor(ImGuiCol_Border, Gleam::Theme::BorderStrong);
-	ImGui::PushStyleColor(ImGuiCol_Text, Gleam::Theme::TextSecondary);
-	const bool pressed = ImGui::Button(label, size);
-	ImGui::PopStyleColor(3);
-	return pressed;
 }
 
 static void DrawIcon(ImDrawList* drawList, const char* icon, const ImVec2& center, const ImVec4& color)
@@ -373,7 +352,7 @@ void ProjectBrowser::DrawProjectList()
 	ImGui::PopFont();
 	ImGui::SameLine(0.0f, 10.0f);
 	ImGui::PushFont(mFonts->semiBold);
-	if (AccentButton(kNewLabel, ImVec2(newWidth, kButtonHeight)))
+	if (Widgets::AccentButton(kNewLabel, ImVec2(newWidth, kButtonHeight)))
 	{
 		mOpenNewProjectDialog = true;
 	}
@@ -652,7 +631,7 @@ void ProjectBrowser::DrawDetails()
 
 		ImGui::PushFont(mFonts->semiBold);
 		ImGui::BeginDisabled(missing);
-		if (AccentButton("Open project", ImVec2(width, kPrimaryHeight)))
+		if (Widgets::AccentButton("Open project", ImVec2(width, kPrimaryHeight)))
 		{
 			OpenProject(projectFile);
 		}
@@ -669,7 +648,7 @@ void ProjectBrowser::DrawDetails()
 		}
 		ImGui::EndDisabled();
 		ImGui::SameLine(0.0f, kSpacing);
-		if (OutlineButton("Remove from list", ImVec2(halfWidth, kSecondaryHeight)))
+		if (Widgets::OutlineButton("Remove from list", ImVec2(halfWidth, kSecondaryHeight)))
 		{
 			GleamLauncher::RemoveRecentProject(projectFile);
 		}
@@ -737,7 +716,7 @@ void ProjectBrowser::DrawNewProjectDialog()
 
 		ImGui::PushFont(mFonts->semiBold);
 		ImGui::BeginDisabled(error.empty() == false);
-		if (AccentButton("Create", ImVec2(120.0f, 36.0f)))
+		if (Widgets::AccentButton("Create", ImVec2(120.0f, 36.0f)))
 		{
 			if (auto projectFile = GleamLauncher::CreateProject(name, mNewProjectLocation); projectFile.Empty() == false)
 			{
@@ -748,7 +727,7 @@ void ProjectBrowser::DrawNewProjectDialog()
 		ImGui::EndDisabled();
 
 		ImGui::SameLine();
-		if (OutlineButton("Cancel", ImVec2(120.0f, 36.0f)))
+		if (Widgets::OutlineButton("Cancel", ImVec2(120.0f, 36.0f)))
 		{
 			ImGui::CloseCurrentPopup();
 		}

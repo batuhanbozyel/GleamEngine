@@ -1,7 +1,7 @@
 #pragma once
 #include "Core/Attributes.h"
 
-namespace Gleam {
+namespace GEditor {
 
 GSTRUCT(EditorPreferences, "9AB864B8-7498-415D-B09F-3C4BD2DC23D5", Serializable, PrettyName("Editor Preferences"))
 {
@@ -9,4 +9,4 @@ GSTRUCT(EditorPreferences, "9AB864B8-7498-415D-B09F-3C4BD2DC23D5", Serializable,
 	float uiScale = 1.0f;
 };
 
-} // namespace Gleam
+} // namespace GEditor

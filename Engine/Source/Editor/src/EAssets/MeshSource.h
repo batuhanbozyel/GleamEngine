@@ -1,6 +1,7 @@
 #pragma once
 #include "AssetPackage.h"
 #include "Tools/MeshTools.h"
+#include "Core/Attributes.h"
 #include "Math/Color.h"
 #include "Math/Quaternion.h"
 #include "Math/Float4x4.h"
@@ -70,17 +71,22 @@ struct RawMesh
 	uint32_t material;
 };
 
+GSTRUCT(MeshImportSettings, "23C5B89C-5735-4CFA-BDD9-0E556AEB0241", Serializable, PrettyName("Mesh"))
+{
+	GFIELD("F610C1DA-00DA-48BC-94E2-57EC90C1767A", Serializable, PrettyName("Generate Convex Hulls"))
+	bool generateConvexHulls = false;
+
+	GFIELD("09AEAACD-EA18-4A20-B5E6-EDE51B005E00", Serializable, PrettyName("Convex Decomposition"))
+	ConvexDecompositionSettings convexDecomposition;
+};
+
 class MeshSource : public AssetPackage
 {
 public:
 	AssetPackageType(MeshSource);
 
-    struct ImportSettings
-    {
-        bool generateConvexHulls = false;
-        ConvexDecompositionSettings convexDecomposition;
-    };
-    
+	using ImportSettings = MeshImportSettings;
+
 	/*
 	* glTF file requirements:
 	*	- position, normal, uv attributes

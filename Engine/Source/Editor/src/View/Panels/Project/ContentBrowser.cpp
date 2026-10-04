@@ -6,11 +6,11 @@
 //
 
 #include "ContentBrowser.h"
-#include "EAssets/MeshSource.h"
 #include "EAssets/EAssetManager.h"
 #include "View/Widgets/AssetIcon.h"
 #include "View/Widgets/ThumbnailGrid.h"
 #include "View/Widgets/EditorWidgets.h"
+#include "View/Panels/Project/AssetImportDialog.h"
 #include "View/ViewStack.h"
 #include "View/EditorFonts.h"
 #include "View/IconsLucide.h"
@@ -152,10 +152,8 @@ void ContentBrowser::DrawToolbar()
 	if (ImGui::Button(kImportLabel, ImVec2(importWidth, kButtonHeight)))
 	{
 		auto files = Gleam::FileDialog::Open();
-		for (const auto& path : files)
-		{
-			ImportAsset(path);
-		}
+		auto importDialog = Gleam::Globals::GameInstance->GetSubsystem<ViewStack>()->GetView<AssetImportDialog>();
+		importDialog->Enqueue(files, mCurrentDirectory);
 	}
 	ImGui::PopStyleColor(4);
 	ImGui::PopStyleVar(2);
@@ -274,22 +272,6 @@ float ContentBrowser::DrawFilterChips(float right, float top)
 	}
 	ImGui::PopFont();
 	return startX;
-}
-
-bool ContentBrowser::ImportAsset(const Gleam::Path& path)
-{
-	if (path.Extension() == L".gltf")
-	{
-		auto assetRegistry = AssetRegistry(path.Parent());
-		auto meshSource = MeshSource(mAssetManager, &assetRegistry);
-		auto settings = MeshSource::ImportSettings();
-		if (meshSource.Import(path, settings))
-		{
-			mAssetManager->Import(mCurrentDirectory, meshSource);
-			return true;
-		}
-	}
-	return false;
 }
 
 void ContentBrowser::SetCurrentDir(const Gleam::Path& directory)
