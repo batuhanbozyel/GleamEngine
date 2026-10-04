@@ -9,6 +9,7 @@
 #include "WorldViewport.h"
 #include "Selection/SelectionSystem.h"
 #include "Undo/UndoSystem.h"
+#include "EWorld/EWorldManager.h"
 #include "Utils/ReflectionUtils.h"
 #include "View/ViewStack.h"
 #include "View/GleamTheme.h"
@@ -41,6 +42,7 @@ WorldOutliner::WorldOutliner(Gleam::World* world)
 void WorldOutliner::OnCreate(Gleam::Application* app)
 {
 	mFonts = &app->GetSubsystem<ViewStack>()->GetFonts();
+	mWorldManager = app->GetSubsystem<EWorldManager>();
 }
 
 void WorldOutliner::Render(Gleam::ImGuiRenderer* imgui)
@@ -55,6 +57,9 @@ void WorldOutliner::Render(Gleam::ImGuiRenderer* imgui)
 
 		if (visible)
 		{
+			const bool simulating = mWorldManager->IsSimulating();
+			ImGui::BeginDisabled(simulating);
+
 			auto& entityManager = mEditWorld->GetEntityManager();
 			ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, 0.0f));
 
@@ -126,7 +131,7 @@ void WorldOutliner::Render(Gleam::ImGuiRenderer* imgui)
 					mRangeAnchor = Gleam::InvalidEntity;
 				}
 
-				if (ImGui::IsWindowHovered() and ImGui::IsAnyItemHovered() == false and ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+				if (simulating == false and ImGui::IsWindowHovered() and ImGui::IsAnyItemHovered() == false and ImGui::IsMouseClicked(ImGuiMouseButton_Left))
 				{
 					mSelectionSystem->ClearSelection();
 					mRangeAnchor = Gleam::InvalidEntity;
@@ -144,6 +149,7 @@ void WorldOutliner::Render(Gleam::ImGuiRenderer* imgui)
 			ImGui::EndChild();
 
 			ImGui::PopStyleVar();
+			ImGui::EndDisabled();
 		}
 		ImGui::End();
 	});

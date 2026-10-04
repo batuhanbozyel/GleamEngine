@@ -19,6 +19,7 @@ namespace GEditor {
 
 class SelectionSystem;
 class UndoSystem;
+class EWorldManager;
 struct EditorFonts;
 enum class SelectionMode;
 
@@ -59,6 +60,8 @@ private:
 	SelectionSystem* mSelectionSystem = nullptr;
 
 	UndoSystem* mUndoSystem = nullptr;
+
+	EWorldManager* mWorldManager = nullptr;
 
 	const EditorFonts* mFonts = nullptr;
 

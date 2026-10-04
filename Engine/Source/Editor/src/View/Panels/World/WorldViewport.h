@@ -26,6 +26,7 @@ class ViewModeRenderer;
 class SelectionSystem;
 class SelectionOutlineRenderer;
 class UndoSystem;
+class EWorldManager;
 struct EditorFonts;
 
 class WorldViewport final : public View
@@ -52,6 +53,8 @@ private:
 	void DrawToolbar(const Gleam::Float2& contentMin, const Gleam::Float2& contentSize);
 
 	void DrawGizmoModes();
+
+	void DrawPlayControls(float centerX, float buttonY, float buttonHeight, bool& hovered);
 
 	void DrawCameraPopup();
 
@@ -96,6 +99,10 @@ private:
 	SelectionSystem* mSelectionSystem = nullptr;
 
 	UndoSystem* mUndoSystem = nullptr;
+
+	EWorldManager* mWorldManager = nullptr;
+
+	Gleam::World* mViewportWorld = nullptr;
 
 	TransformGizmo mTransformGizmo;
     

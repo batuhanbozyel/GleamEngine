@@ -10,6 +10,7 @@
 #include "EditorCamera.h"
 #include "Config/EditorConfigSystem.h"
 #include "EAssets/EAssetManager.h"
+#include "EWorld/EWorldManager.h"
 #include "Selection/SelectionSystem.h"
 #include "Undo/UndoSystem.h"
 #include "Renderers/InfiniteGridRenderer.h"
@@ -135,6 +136,7 @@ WorldViewport::WorldViewport(Gleam::World* world)
 void WorldViewport::OnCreate(Gleam::Application* app)
 {
 	mFonts = &app->GetSubsystem<ViewStack>()->GetFonts();
+	mWorldManager = app->GetSubsystem<EWorldManager>();
 	mSelectionSystem = mEditWorld->GetSubsystem<SelectionSystem>();
 	mUndoSystem = mEditWorld->GetSubsystem<UndoSystem>();
 
@@ -201,10 +203,17 @@ void WorldViewport::OnDestroy(Gleam::Application* app)
 
 void WorldViewport::Update()
 {
+	auto playWorld = mWorldManager->GetPlayWorld();
 	auto renderSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::RenderSystem>();
-	renderSystem->SetCameraOverride(mCamera);
+	renderSystem->SetCameraOverride(playWorld ? Gleam::InvalidEntity : mCamera);
 
-    if (mViewportSizeChanged)
+	if (playWorld and mCursorVisible == false)
+	{
+		Gleam::Globals::Engine->GetSubsystem<Gleam::InputSystem>()->ShowCursor();
+		mCursorVisible = true;
+	}
+
+    if (mViewportSizeChanged or mViewportWorld != playWorld)
     {
 		Resize(mEditWorld->GetEntityManager(), mViewportSize);
 	}
@@ -306,6 +315,8 @@ void WorldViewport::DrawToolbar(const Gleam::Float2& contentMin, const Gleam::Fl
 		drawList->AddText(ImVec2(min.x + 8.0f + iconWidth + 6.0f, centerY - ImGui::GetFontSize() * 0.5f), Widgets::ColorU32(Gleam::Theme::TextMuted), snapText);
 		ImGui::PopFont();
 	}
+
+	DrawPlayControls(contentMin.x + contentSize.x * 0.5f, buttonY, kButtonHeight, hovered);
 
 	// Render settings
 	float right = contentMin.x + contentSize.x - kEdge;
@@ -437,6 +448,82 @@ void WorldViewport::DrawGizmoModes()
 	}
 }
 
+void WorldViewport::DrawPlayControls(float centerX, float buttonY, float buttonHeight, bool& hovered)
+{
+	constexpr float kButtonWidth = 32.0f;
+	constexpr float kSpacing = 4.0f;
+
+	const auto playState = mWorldManager->GetPlayState();
+	const bool simulating = mWorldManager->IsSimulating();
+	const bool playing = playState == PlayState::Playing;
+
+	if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_P, ImGuiInputFlags_RouteGlobal))
+	{
+		if (simulating)
+		{
+			mWorldManager->RequestStop();
+		}
+		else
+		{
+			mWorldManager->RequestPlay();
+		}
+	}
+	if (simulating and ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiMod_Shift | ImGuiKey_P, ImGuiInputFlags_RouteGlobal))
+	{
+		if (playing)
+		{
+			mWorldManager->RequestPause();
+		}
+		else
+		{
+			mWorldManager->RequestPlay();
+		}
+	}
+	if (playState == PlayState::Paused and ImGui::Shortcut(ImGuiKey_F10, ImGuiInputFlags_RouteGlobal))
+	{
+		mWorldManager->RequestStep();
+	}
+
+	float x = centerX - (kButtonWidth * 3.0f + kSpacing * 2.0f) * 0.5f;
+
+	ImGui::SetCursorScreenPos(ImVec2(x, buttonY));
+	if (Widgets::OverlayButton("##PlayPause", playing ? ICON_LC_PAUSE : ICON_LC_PLAY, ImVec2(kButtonWidth, buttonHeight), playing ? Gleam::Theme::Warning : Gleam::Theme::Success))
+	{
+		if (playing)
+		{
+			mWorldManager->RequestPause();
+		}
+		else
+		{
+			mWorldManager->RequestPlay();
+		}
+	}
+	hovered |= ImGui::IsItemHovered();
+	ImGui::SetItemTooltip(playing ? "Pause (Ctrl+Shift+P)" : (simulating ? "Resume (Ctrl+Shift+P)" : "Play (Ctrl+P)"));
+	x += kButtonWidth + kSpacing;
+
+	ImGui::BeginDisabled(playState != PlayState::Paused);
+	ImGui::SetCursorScreenPos(ImVec2(x, buttonY));
+	if (Widgets::OverlayButton("##Step", ICON_LC_STEP_FORWARD, ImVec2(kButtonWidth, buttonHeight), Gleam::Theme::Info))
+	{
+		mWorldManager->RequestStep();
+	}
+	hovered |= ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled);
+	ImGui::SetItemTooltip("Step (F10)");
+	ImGui::EndDisabled();
+	x += kButtonWidth + kSpacing;
+
+	ImGui::BeginDisabled(simulating == false);
+	ImGui::SetCursorScreenPos(ImVec2(x, buttonY));
+	if (Widgets::OverlayButton("##Stop", ICON_LC_SQUARE, ImVec2(kButtonWidth, buttonHeight), Gleam::Theme::Error))
+	{
+		mWorldManager->RequestStop();
+	}
+	hovered |= ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled);
+	ImGui::SetItemTooltip("Stop (Ctrl+P)");
+	ImGui::EndDisabled();
+}
+
 void WorldViewport::DrawCameraPopup()
 {
 	if (ImGui::BeginPopup("##CameraPopup") == false)
@@ -565,6 +652,13 @@ void WorldViewport::DrawViewport(Gleam::ImGuiRenderer* imgui, const Gleam::ImGui
 
 	const Gleam::Float2 rectMin(imageMin.x, imageMin.y);
 	const Gleam::Float2 rectSize(imageSize.x, imageSize.y);
+
+	if (mWorldManager->IsSimulating())
+	{
+		const auto& borderColor = mWorldManager->GetPlayState() == PlayState::Paused ? Gleam::Theme::Warning : Gleam::Theme::Accent;
+		ImGui::GetWindowDrawList()->AddRect(imageMin, ImVec2(imageMin.x + imageSize.x, imageMin.y + imageSize.y), Widgets::ColorU32(borderColor), 0.0f, 0, 2.0f);
+		return;
+	}
 
 	DrawTransformGizmo(rectMin, rectSize);
 
@@ -755,4 +849,13 @@ void WorldViewport::Resize(Gleam::EntityManager& entityManager, const Gleam::Siz
 	float displayScale = windowSystem->GetDisplayScale();
 	auto& camera = entityManager.GetComponent<Gleam::Camera>(mCamera);
 	camera.SetViewport(mViewportSize * displayScale);
+
+	mViewportWorld = mWorldManager->GetPlayWorld();
+	if (mViewportWorld)
+	{
+		mViewportWorld->GetEntityManager().ForEach<Gleam::Camera>([&](Gleam::Camera& gameCamera)
+		{
+			gameCamera.SetViewport(mViewportSize * displayScale);
+		});
+	}
 }

@@ -20,6 +20,7 @@ namespace GEditor {
 
 class SelectionSystem;
 class UndoSystem;
+class EWorldManager;
 struct EditorFonts;
 
 class EntityInspector final : public View
@@ -51,6 +52,8 @@ private:
 	SelectionSystem* mSelectionSystem = nullptr;
 
 	UndoSystem* mUndoSystem = nullptr;
+
+	EWorldManager* mWorldManager = nullptr;
 
 	const EditorFonts* mFonts = nullptr;
 

@@ -126,7 +126,7 @@ void Widgets::CaptionRow(const EditorFonts& fonts, const char* label, uint32_t c
 	ImGui::Dummy(ImVec2(width, height));
 }
 
-bool Widgets::OverlayButton(const char* id, const char* icon, const ImVec2& size, bool active)
+static bool DrawOverlayButton(const char* id, const char* icon, const ImVec2& size, const ImVec4* iconColor, bool active)
 {
 	const ImVec2 min = ImGui::GetCursorScreenPos();
 	const ImVec2 max(min.x + size.x, min.y + size.y);
@@ -134,10 +134,21 @@ bool Widgets::OverlayButton(const char* id, const char* icon, const ImVec2& size
 	const bool hovered = ImGui::IsItemHovered();
 
 	auto drawList = ImGui::GetWindowDrawList();
-	drawList->AddRectFilled(min, max, hovered ? ColorU32(Gleam::Theme::Control, 0.9f) : ColorU32(Gleam::Theme::Background, 0.72f), 6.0f);
-	drawList->AddRect(min, max, ColorU32(Gleam::Theme::BorderStrong), 6.0f);
-	DrawIcon(drawList, icon, ImVec2((min.x + max.x) * 0.5f, (min.y + max.y) * 0.5f), active ? Gleam::Theme::Accent : (hovered ? Gleam::Theme::Text : Gleam::Theme::TextSecondary));
+	drawList->AddRectFilled(min, max, hovered ? Widgets::ColorU32(Gleam::Theme::Control, 0.9f) : Widgets::ColorU32(Gleam::Theme::Background, 0.72f), 6.0f);
+	drawList->AddRect(min, max, Widgets::ColorU32(Gleam::Theme::BorderStrong), 6.0f);
+	const auto& color = iconColor ? *iconColor : (active ? Gleam::Theme::Accent : (hovered ? Gleam::Theme::Text : Gleam::Theme::TextSecondary));
+	Widgets::DrawIcon(drawList, icon, ImVec2((min.x + max.x) * 0.5f, (min.y + max.y) * 0.5f), color);
 	return pressed;
+}
+
+bool Widgets::OverlayButton(const char* id, const char* icon, const ImVec2& size, bool active)
+{
+	return DrawOverlayButton(id, icon, size, nullptr, active);
+}
+
+bool Widgets::OverlayButton(const char* id, const char* icon, const ImVec2& size, const ImVec4& iconColor)
+{
+	return DrawOverlayButton(id, icon, size, &iconColor, false);
 }
 
 EntityKind Widgets::GetEntityKind(const Gleam::EntityManager& entityManager, Gleam::EntityHandle handle)

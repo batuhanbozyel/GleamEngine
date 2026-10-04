@@ -266,6 +266,42 @@ public:
 		return mRegistry.ctx().get<const ChangeTracker>();
 	}
 
+	void CopyFrom(const EntityManager& source);
+
+	template<typename T>
+	void CopyComponents(const EntityManager& source)
+	{
+		const auto from = source.FindStorage<T>();
+		if (from == nullptr)
+		{
+			return;
+		}
+
+		auto& to = GetStorage<T>();
+		for (auto element : from->each())
+		{
+			const auto entity = std::get<0>(element);
+			if (mRegistry.valid(entity) == false)
+			{
+				continue;
+			}
+
+			if constexpr (std::is_empty_v<T>)
+			{
+				to.emplace(entity);
+			}
+			else
+			{
+				to.emplace(entity, std::get<1>(element));
+			}
+
+			if constexpr (IsTrackedComponent<T>::value)
+			{
+				GetChangeTracker().MarkAdded<T>(entity);
+			}
+		}
+	}
+
 	bool IsValid(EntityHandle entity) const;
 
 	uint32_t GetEntityCount() const;

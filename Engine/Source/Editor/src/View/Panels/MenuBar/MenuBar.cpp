@@ -68,14 +68,16 @@ void MenuBar::Render(Gleam::ImGuiRenderer* imgui)
 	imgui->PushView([this](const Gleam::ImGuiPassData& passData)
 	{
 		auto undoSystem = mWorld->GetSubsystem<UndoSystem>();
+		auto worldManager = mApplication->GetSubsystem<EWorldManager>();
+		const bool simulating = worldManager->IsSimulating();
 
 		// Routed globally so the shortcut reaches any panel, while an active text field keeps its own
-		if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_Z, ImGuiInputFlags_RouteGlobal))
+		if (simulating == false and ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_Z, ImGuiInputFlags_RouteGlobal))
 		{
 			undoSystem->RequestUndo();
 		}
-		if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiMod_Shift | ImGuiKey_Z, ImGuiInputFlags_RouteGlobal)
-			|| ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_Y, ImGuiInputFlags_RouteGlobal))
+		if (simulating == false and (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiMod_Shift | ImGuiKey_Z, ImGuiInputFlags_RouteGlobal)
+			|| ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_Y, ImGuiInputFlags_RouteGlobal)))
 		{
 			undoSystem->RequestRedo();
 		}
@@ -89,9 +91,9 @@ void MenuBar::Render(Gleam::ImGuiRenderer* imgui)
 
 		if (ImGui::BeginMenu("File"))
 		{
-			if (ImGui::MenuItem("Save"))
+			if (ImGui::MenuItem("Save", nullptr, false, simulating == false))
 			{
-				mApplication->GetSubsystem<EWorldManager>()->Save();
+				worldManager->Save();
 			}
 
 			if (ImGui::MenuItem("Exit"))
@@ -105,13 +107,13 @@ void MenuBar::Render(Gleam::ImGuiRenderer* imgui)
 		if (ImGui::BeginMenu("Edit"))
 		{
 			auto undoLabel = HistoryLabel("Undo", undoSystem->GetUndoName());
-			if (ImGui::MenuItem(undoLabel.c_str(), kUndoShortcut, false, undoSystem->CanUndo()))
+			if (ImGui::MenuItem(undoLabel.c_str(), kUndoShortcut, false, simulating == false and undoSystem->CanUndo()))
 			{
 				undoSystem->RequestUndo();
 			}
 
 			auto redoLabel = HistoryLabel("Redo", undoSystem->GetRedoName());
-			if (ImGui::MenuItem(redoLabel.c_str(), kRedoShortcut, false, undoSystem->CanRedo()))
+			if (ImGui::MenuItem(redoLabel.c_str(), kRedoShortcut, false, simulating == false and undoSystem->CanRedo()))
 			{
 				undoSystem->RequestRedo();
 			}

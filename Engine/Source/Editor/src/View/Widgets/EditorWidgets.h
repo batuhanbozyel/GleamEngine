@@ -32,6 +32,8 @@ void CaptionRow(const EditorFonts& fonts, const char* label, uint32_t count, flo
 
 bool OverlayButton(const char* id, const char* icon, const ImVec2& size, bool active = false);
 
+bool OverlayButton(const char* id, const char* icon, const ImVec2& size, const ImVec4& iconColor);
+
 EntityKind GetEntityKind(const Gleam::EntityManager& entityManager, Gleam::EntityHandle handle);
 
 } // namespace Widgets

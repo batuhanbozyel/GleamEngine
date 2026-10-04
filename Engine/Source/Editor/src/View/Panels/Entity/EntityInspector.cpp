@@ -9,6 +9,7 @@
 #include "View/Widgets/PropertyDrawer.h"
 #include "Selection/SelectionSystem.h"
 #include "Undo/UndoSystem.h"
+#include "EWorld/EWorldManager.h"
 #include "Utils/ReflectionUtils.h"
 #include "View/ViewStack.h"
 #include "View/GleamTheme.h"
@@ -50,6 +51,7 @@ EntityInspector::EntityInspector(Gleam::World* world)
 void EntityInspector::OnCreate(Gleam::Application* app)
 {
 	mFonts = &app->GetSubsystem<ViewStack>()->GetFonts();
+	mWorldManager = app->GetSubsystem<EWorldManager>();
 }
 
 void EntityInspector::Render(Gleam::ImGuiRenderer* imgui)
@@ -64,6 +66,7 @@ void EntityInspector::Render(Gleam::ImGuiRenderer* imgui)
 
 		if (visible)
 		{
+			ImGui::BeginDisabled(mWorldManager->IsSimulating());
 			PropertyDrawer::BeginEditTracking();
 
 			const auto& selectedEntities = mSelectionSystem->GetSelectedEntities();
@@ -105,6 +108,7 @@ void EntityInspector::Render(Gleam::ImGuiRenderer* imgui)
 			{
 				mUndoSystem->EndTransaction();
 			}
+			ImGui::EndDisabled();
 		}
 		ImGui::End();
 	});
