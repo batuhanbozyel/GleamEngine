@@ -22,7 +22,16 @@ void Engine::Initialize(const CommandLine& cli)
 	Globals::UserDataDirectory = Filesystem::AppDataDirectory() / "GleamEngine";
 	Filesystem::CreateDirectories(Globals::UserDataDirectory);
 
-	AddSubsystem<ConfigSystem>("Engine.config");
+	const auto projectFile = Path(cli.GetParam<TString>("project", TString()));
+	if (projectFile.Empty() == false and Filesystem::Exists(projectFile))
+	{
+		AddSubsystem<ConfigSystem>(projectFile.Parent() / "ProjectSettings" / "Engine.config");
+	}
+	else
+	{
+		auto configSystem = AddSubsystem<ConfigSystem>(Globals::UserDataDirectory / "Launcher" / "Launcher.config");
+		configSystem->Register(WindowConfig{ .windowFlag = WindowFlag::FixedWindow, .size = Size(1280.0f, 800.0f) });
+	}
 
 	// init core subsystems
 	AddSubsystem<EventSystem>();

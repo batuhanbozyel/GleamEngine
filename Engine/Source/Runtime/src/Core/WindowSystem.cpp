@@ -30,13 +30,10 @@ void WindowSystem::Initialize(Engine* engine)
 
 	EventDispatcher<WindowResizeEvent>::Subscribe([this](const WindowResizeEvent& e)
 	{
-		if (mPersistWindowSize)
-		{
-			auto configSystem = mEngine->GetSubsystem<ConfigSystem>();
-			auto window = configSystem->Get<WindowConfig>();
-			window.size = Size(static_cast<float>(e.GetWidth()), static_cast<float>(e.GetHeight()));
-			configSystem->Set<WindowConfig>(window);
-		}
+		auto configSystem = mEngine->GetSubsystem<ConfigSystem>();
+		auto window = configSystem->Get<WindowConfig>();
+		window.size = Size(static_cast<float>(e.GetWidth()), static_cast<float>(e.GetHeight()));
+		configSystem->Set<WindowConfig>(window);
 	});
 }
 
@@ -149,15 +146,6 @@ void WindowSystem::ApplyConfig(const WindowConfig& config)
 			SDL_SetWindowSize(mWindow, targetWidth, targetHeight);
 		}
 	}
-}
-
-void WindowSystem::SetTransientWindow(const Size& size, bool resizable)
-{
-	mPersistWindowSize = false;
-	SDL_RestoreWindow(mWindow);
-	SDL_SetWindowResizable(mWindow, resizable);
-	SDL_SetWindowSize(mWindow, static_cast<int>(size.width), static_cast<int>(size.height));
-	SDL_SetWindowPosition(mWindow, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
 }
 
 void WindowSystem::SetTitle(const TString& title) const

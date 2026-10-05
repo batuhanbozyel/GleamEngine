@@ -1,7 +1,7 @@
 #include "ProjectBrowser.h"
 #include "GleamLauncher.h"
 #include "LauncherState.h"
-#include "Config/EditorConfigSystem.h"
+#include "Core/ConfigSystem.h"
 #include "View/ViewStack.h"
 #include "View/GleamTheme.h"
 #include "View/IconsLucide.h"
@@ -393,8 +393,8 @@ void ProjectBrowser::DrawProjectList()
 	ImGui::SetCursorScreenPos(ImVec2(searchMin.x, searchMin.y + kFieldHeight + 20.0f));
 
 	// Filter and sort the recent projects
-	auto editorConfig = Gleam::Globals::Engine->GetSubsystem<EditorConfigSystem>();
-	const auto& recentProjects = editorConfig->Get<Gleam::LauncherState>().recentProjects;
+	auto configSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::ConfigSystem>();
+	const auto& recentProjects = configSystem->Get<Gleam::LauncherState>().recentProjects;
 
 	Gleam::TArray<uint32_t> visibleProjects;
 	for (uint32_t i = 0; i < static_cast<uint32_t>(recentProjects.size()); ++i)
@@ -556,8 +556,8 @@ void ProjectBrowser::DrawDetails()
 	const ImVec2 windowPos = ImGui::GetWindowPos();
 	drawList->AddLine(windowPos, ImVec2(windowPos.x, windowPos.y + ImGui::GetWindowHeight()), ColorU32(Gleam::Theme::Divider));
 
-	auto editorConfig = Gleam::Globals::Engine->GetSubsystem<EditorConfigSystem>();
-	const auto& recentProjects = editorConfig->Get<Gleam::LauncherState>().recentProjects;
+	auto configSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::ConfigSystem>();
+	const auto& recentProjects = configSystem->Get<Gleam::LauncherState>().recentProjects;
 	const auto it = eastl::find_if(recentProjects.begin(), recentProjects.end(), [this](const Gleam::RecentProject& project)
 	{
 		return project.path == mSelectedProject;
@@ -665,8 +665,8 @@ void ProjectBrowser::DrawNewProjectDialog()
 		mOpenNewProjectDialog = false;
 		if (mNewProjectLocation.Empty())
 		{
-			auto editorConfig = Gleam::Globals::Engine->GetSubsystem<EditorConfigSystem>();
-			const auto& recentProjects = editorConfig->Get<Gleam::LauncherState>().recentProjects;
+			auto configSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::ConfigSystem>();
+			const auto& recentProjects = configSystem->Get<Gleam::LauncherState>().recentProjects;
 			if (recentProjects.empty() == false)
 			{
 				mNewProjectLocation = recentProjects.front().path.Parent().Parent();

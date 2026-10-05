@@ -24,8 +24,6 @@ public:
 
 	void SetTitle(const TString& title) const;
 
-	void SetTransientWindow(const Size& size, bool resizable);
-
 	DisplayMode GetPrimaryDisplayMode() const;
     
 	DisplayMode GetCurrentDisplayMode() const;
@@ -50,8 +48,6 @@ private:
 	void EventHandler(SDL_WindowEvent windowEvent);
 
 	Engine* mEngine;
-
-	bool mPersistWindowSize = true;
 
 	SDL_Window* mWindow;
 

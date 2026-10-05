@@ -24,28 +24,58 @@ using namespace GEditor;
 GleamLauncher::GleamLauncher()
 	: Gleam::Application(Gleam::Project{ .name = "Gleam Launcher" })
 {
-	auto windowSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::WindowSystem>();
-	windowSystem->SetTransientWindow(Gleam::Size(1280.0f, 800.0f), false);
+	auto configSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::ConfigSystem>();
+	configSystem->Register<Gleam::LauncherState>();
+	RemoveStaleProjects();
 
-	auto editorConfig = Gleam::Globals::Engine->AddSubsystem<EditorConfigSystem>();
-	editorConfig->Register<Gleam::LauncherState>();
-
-	auto viewStack = AddSubsystem<ViewStack>("Launcher.ini");
+	auto viewStack = AddSubsystem<ViewStack>(Gleam::Globals::UserDataDirectory / "Launcher" / "Launcher.ini");
 	viewStack->AddView<ProjectBrowser>();
 }
 
 GleamLauncher::~GleamLauncher()
 {
 	RemoveSubsystem<ViewStack>();
-	Gleam::Globals::Engine->RemoveSubsystem<EditorConfigSystem>();
+}
+
+void GleamLauncher::RemoveStaleProjects()
+{
+	auto configSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::ConfigSystem>();
+	configSystem->Modify<Gleam::LauncherState>([](Gleam::LauncherState& state)
+	{
+		auto& projects = state.recentProjects;
+		projects.erase(eastl::remove_if(projects.begin(), projects.end(), [](const Gleam::RecentProject& project)
+		{
+			return Gleam::Filesystem::Exists(project.path) == false;
+		}), projects.end());
+	});
+
+	Gleam::HashSet<Gleam::TWString> liveEntries = { L"Launcher" };
+	for (const auto& project : configSystem->Get<Gleam::LauncherState>().recentProjects)
+	{
+		liveEntries.insert(Gleam::TWString(EditorConfigSystem::UserDirectory(project.name, project.path.Parent()).Filename()));
+	}
+
+	Gleam::TArray<Gleam::Path> staleEntries;
+	Gleam::Filesystem::ForEach(Gleam::Globals::UserDataDirectory, [&](const Gleam::DirectoryEntry& entry)
+	{
+		if (liveEntries.find(Gleam::TWString(entry.Filename())) == liveEntries.end())
+		{
+			staleEntries.push_back(entry);
+		}
+	}, false);
+
+	for (const auto& entry : staleEntries)
+	{
+		Gleam::Filesystem::RemoveAll(entry);
+	}
 }
 
 void GleamLauncher::AddRecentProject(const Gleam::Path& projectFile, const Gleam::TString& name)
 {
 	const auto now = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 
-	auto editorConfig = Gleam::Globals::Engine->GetSubsystem<EditorConfigSystem>();
-	editorConfig->Modify<Gleam::LauncherState>([projectFile, name, now](Gleam::LauncherState& state)
+	auto configSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::ConfigSystem>();
+	configSystem->Modify<Gleam::LauncherState>([projectFile, name, now](Gleam::LauncherState& state)
 	{
 		auto& projects = state.recentProjects;
 		projects.erase(eastl::remove_if(projects.begin(), projects.end(), [&](const Gleam::RecentProject& project)
@@ -58,8 +88,8 @@ void GleamLauncher::AddRecentProject(const Gleam::Path& projectFile, const Gleam
 
 void GleamLauncher::RemoveRecentProject(const Gleam::Path& projectFile)
 {
-	auto editorConfig = Gleam::Globals::Engine->GetSubsystem<EditorConfigSystem>();
-	editorConfig->Modify<Gleam::LauncherState>([projectFile](Gleam::LauncherState& state)
+	auto configSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::ConfigSystem>();
+	configSystem->Modify<Gleam::LauncherState>([projectFile](Gleam::LauncherState& state)
 	{
 		auto& projects = state.recentProjects;
 		projects.erase(eastl::remove_if(projects.begin(), projects.end(), [&](const Gleam::RecentProject& project)

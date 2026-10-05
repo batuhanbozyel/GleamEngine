@@ -11,6 +11,7 @@
 #include "Core/Subsystem.h"
 #include "Container/PolyArray.h"
 #include "Container/String.h"
+#include "IO/Path.h"
 
 #include <imgui.h>
 
@@ -23,7 +24,7 @@ class ViewStack : public Gleam::TickableGameInstanceSubsystem
 {
 public:
 
-	ViewStack(const Gleam::TString& iniFilename, float fontScale = 1.0f);
+	ViewStack(const Gleam::Path& iniPath, float fontScale = 1.0f);
 
     virtual void Initialize(Gleam::Application* app) override;
 
@@ -69,6 +70,11 @@ public:
 	const EditorFonts& GetFonts() const
 	{
 		return mFonts;
+	}
+
+	Gleam::ImGuiRenderer* GetImGuiRenderer() const
+	{
+		return mImgui;
 	}
 
 	void SetFontScale(float fontScale)

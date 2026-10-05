@@ -11,9 +11,11 @@
 #include "Selection/SelectionSystem.h"
 #include "Undo/UndoSystem.h"
 #include "View/ViewStack.h"
+#include "View/EditorLayout.h"
 #include "View/Widgets/PropertyDrawer.h"
 #include "World/World.h"
 #include "Physics/PhysicsSystem.h"
+#include "Renderer/Renderers/ImGuiRenderer.h"
 
 #include "View/Panels/MenuBar/MenuBar.h"
 #include "View/Panels/MenuBar/StatusBar.h"
@@ -47,7 +49,13 @@ public:
 		mEditWorld->AddSubsystem<SelectionSystem>();
 		AddSubsystem<EWorldManager>(mEditWorld);
 
-		auto viewStack = AddSubsystem<ViewStack>("Editor.ini", Gleam::Math::Clamp(preferences.uiScale, 0.75f, 2.0f));
+		const auto iniPath = EditorConfigSystem::UserDirectory(Gleam::Globals::ProjectName, Gleam::Globals::ProjectDirectory) / "Editor.ini";
+		const bool hasLayout = Gleam::Filesystem::Exists(iniPath);
+		auto viewStack = AddSubsystem<ViewStack>(iniPath, Gleam::Math::Clamp(preferences.uiScale, 0.75f, 2.0f));
+		if (hasLayout == false)
+		{
+			viewStack->GetImGuiRenderer()->ApplyLayout(EditorLayout);
+		}
 		PropertyDrawer::SetFonts(&viewStack->GetFonts());
 		viewStack->AddView<MenuBar>(mEditWorld);
 		viewStack->AddView<StatusBar>();

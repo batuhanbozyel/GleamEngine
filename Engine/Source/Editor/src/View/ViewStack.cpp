@@ -20,8 +20,8 @@
 
 using namespace GEditor;
 
-ViewStack::ViewStack(const Gleam::TString& iniFilename, float fontScale)
-	: mIniPath((Gleam::Globals::UserDataDirectory / iniFilename).String())
+ViewStack::ViewStack(const Gleam::Path& iniPath, float fontScale)
+	: mIniPath(iniPath.String())
 	, mFontScale(fontScale)
 {
 

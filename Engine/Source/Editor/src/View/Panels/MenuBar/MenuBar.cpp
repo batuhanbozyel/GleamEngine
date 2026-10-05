@@ -20,6 +20,7 @@
 #include "EWorld/EWorldManager.h"
 #include "Undo/UndoSystem.h"
 #include "View/ViewStack.h"
+#include "View/EditorLayout.h"
 #include "View/GleamTheme.h"
 #include "View/IconsLucide.h"
 #include "View/Panels/Project/ProjectSettings.h"
@@ -65,7 +66,7 @@ void MenuBar::OnCreate(Gleam::Application* app)
 
 void MenuBar::Render(Gleam::ImGuiRenderer* imgui)
 {
-	imgui->PushView([this](const Gleam::ImGuiPassData& passData)
+	imgui->PushView([this, imgui](const Gleam::ImGuiPassData& passData)
 	{
 		auto undoSystem = mWorld->GetSubsystem<UndoSystem>();
 		auto worldManager = mApplication->GetSubsystem<EWorldManager>();
@@ -131,6 +132,16 @@ void MenuBar::Render(Gleam::ImGuiRenderer* imgui)
 			{
 				auto viewStack = mApplication->GetSubsystem<ViewStack>();
 				viewStack->GetView<Preferences>()->Open();
+			}
+
+			ImGui::EndMenu();
+		}
+
+		if (ImGui::BeginMenu("Window"))
+		{
+			if (ImGui::MenuItem("Reset Layout"))
+			{
+				imgui->ApplyLayout(EditorLayout);
 			}
 
 			ImGui::EndMenu();

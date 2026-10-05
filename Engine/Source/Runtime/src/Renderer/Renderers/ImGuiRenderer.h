@@ -18,6 +18,8 @@ struct ImGuiPassData
 
 using ImGuiView = std::function<void(const ImGuiPassData&)>;
 
+using ImGuiLayout = std::function<void(ImGuiID)>;
+
 class ImGuiRenderer : public IRenderer
 {
 public:
@@ -31,6 +33,8 @@ public:
 	virtual RenderStage GetStage() const override { return RenderStage::AfterRendering; }
 
 	void PushView(ImGuiView&& view);
+
+	void ApplyLayout(ImGuiLayout&& layout);
 
 	ImTextureID GetImTextureIDForTexture(const Texture& texture) const;
 
@@ -57,6 +61,8 @@ private:
 	Texture2D* mDefaultFontTexture = nullptr;
 
 	TArray<ImGuiView> mViews;
+
+	ImGuiLayout mPendingLayout;
     
 };
 

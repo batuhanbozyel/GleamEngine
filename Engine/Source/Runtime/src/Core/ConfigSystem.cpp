@@ -8,18 +8,18 @@
 
 using namespace Gleam;
 
-ConfigSystem::ConfigSystem(const TString& filename)
-	: mFilename(filename)
+ConfigSystem::ConfigSystem(const Path& filepath)
+	: mFilepath(filepath)
 {
 
 }
 
 void ConfigSystem::Initialize(Engine* engine)
 {
-	auto path = ConfigFilePath();
-	if (Filesystem::Exists(path))
+	Filesystem::CreateDirectories(mFilepath.Parent());
+	if (Filesystem::Exists(mFilepath))
 	{
-		auto file = Filesystem::OpenRead(path, FileType::Text);
+		auto file = Filesystem::OpenRead(mFilepath, FileType::Text);
 		rapidjson::IStreamWrapper ss(file->GetStream());
 		rapidjson::Document document(rapidjson::kObjectType);
 		document.ParseStream(ss);
@@ -52,11 +52,6 @@ void ConfigSystem::Shutdown(Engine* engine)
 	mPendingBlocks.clear();
 }
 
-Path ConfigSystem::ConfigFilePath() const
-{
-	return Globals::UserDataDirectory / mFilename;
-}
-
 void ConfigSystem::FlushToDisk() const
 {
 	JSONSerializer serializer;
@@ -83,7 +78,7 @@ void ConfigSystem::FlushToDisk() const
 		document.AddMember(rapidjson::StringRef(name.data(), name.size()), pendingValue, document.GetAllocator());
 	}
 
-	auto file = Filesystem::Create(ConfigFilePath(), FileType::Text);
+	auto file = Filesystem::Create(mFilepath,FileType::Text);
 	rapidjson::OStreamWrapper ss(file->GetStream());
 	rapidjson::PrettyWriter writer(ss);
 	writer.SetFormatOptions(rapidjson::PrettyFormatOptions::kFormatSingleLineArray);

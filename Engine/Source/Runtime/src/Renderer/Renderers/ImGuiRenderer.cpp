@@ -129,6 +129,13 @@ void ImGuiRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
         ImGui::PopStyleVar(2);
         
         ImGuiID dockspaceID = ImGui::GetID("EditorDockSpace");
+        const bool applyLayout = static_cast<bool>(mPendingLayout);
+        if (applyLayout)
+        {
+            ImGui::DockBuilderRemoveNode(dockspaceID);
+            std::invoke(mPendingLayout, dockspaceID);
+            mPendingLayout = nullptr;
+        }
         ImGui::DockSpace(dockspaceID, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_None);
         
         for (auto& view : mViews)
@@ -138,6 +145,10 @@ void ImGuiRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 		mViews.clear();
         
         ImGui::End();
+        if (applyLayout and io.IniFilename != nullptr)
+        {
+            ImGui::SaveIniSettingsToDisk(io.IniFilename);
+        }
         ImGui::Render();
 
 		void* bufferPtr = mBuffer.GetContents();
@@ -227,6 +238,11 @@ void ImGuiRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 void ImGuiRenderer::PushView(ImGuiView&& view)
 {
 	mViews.emplace_back(std::move(view));
+}
+
+void ImGuiRenderer::ApplyLayout(ImGuiLayout&& layout)
+{
+	mPendingLayout = std::move(layout);
 }
 
 void ImGuiRenderer::ClearFonts()

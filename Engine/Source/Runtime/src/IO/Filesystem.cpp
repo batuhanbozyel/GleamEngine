@@ -154,6 +154,20 @@ bool Filesystem::Remove(const Path& path)
 	return true;
 }
 
+bool Filesystem::RemoveAll(const Path& path)
+{
+	std::filesystem::path stlPath = std::wstring_view(path.Native().c_str(), path.Native().length());
+
+	std::error_code error;
+	std::filesystem::remove_all(stlPath, error);
+	if (error)
+	{
+		GLEAM_CORE_ERROR("Filesystem failed to remove path: {0} ({1})", path.String(), error.message());
+		return false;
+	}
+	return true;
+}
+
 FileAccessor& Filesystem::Accessor(const Path& path)
 {
 	return mFileAccessors[path];

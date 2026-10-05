@@ -21,6 +21,10 @@ public:
 
 	static void RemoveRecentProject(const Gleam::Path& projectFile);
 
+private:
+
+	static void RemoveStaleProjects();
+
 };
 
 } // namespace GEditor

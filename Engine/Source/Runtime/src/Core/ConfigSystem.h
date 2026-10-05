@@ -31,7 +31,7 @@ class ConfigSystem : public EngineSubsystem
 {
 public:
 
-	ConfigSystem(const TString& filename);
+	ConfigSystem(const Path& filepath);
 
 	virtual void Initialize(Engine* engine) override;
 	
@@ -62,7 +62,7 @@ public:
 	}
 	
 	template<ConfigType T>
-	const T& Register()
+	const T& Register(const T& defaults = T())
 	{
 		const auto& classDesc = Reflection::GetClass<T>();
 		if (HasBlock(classDesc))
@@ -73,7 +73,7 @@ public:
 		}
 
 		auto block = new ConfigBlock(classDesc, [](void* data) { static_cast<T*>(data)->~T(); });
-		new (block->data) T();
+		new (block->data) T(defaults);
 		mBlocks[classDesc.TypeHash()] = block;
 		if (LoadPendingBlock(*block) == false)
 		{
@@ -180,12 +180,10 @@ private:
 
 	void FlushToDisk() const;
 
-	Path ConfigFilePath() const;
-
 	HashMap<uint32_t, ConfigBlock*> mBlocks;
 	HashMap<uint32_t, TString> mPendingBlocks;
 	ConfigCallbackHandle mNextHandle = 1;
-	TString mFilename;
+	Path mFilepath;
 };
 
 } // namespace Gleam

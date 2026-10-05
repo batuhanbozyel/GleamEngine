@@ -152,6 +152,8 @@ public:
     
     static bool Remove(const Path& path);
 
+	static bool RemoveAll(const Path& path);
+
 	static Path WorkingDirectory();
 
 	static Path AppDataDirectory();
