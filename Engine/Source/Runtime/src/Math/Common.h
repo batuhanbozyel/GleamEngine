@@ -73,6 +73,12 @@ NO_DISCARD FORCE_INLINE constexpr T Exp(T x)
 }
 
 template<typename T>
+NO_DISCARD FORCE_INLINE constexpr T Pow(T base, T exponent)
+{
+    return std::pow(base, exponent);
+}
+
+template<typename T>
 NO_DISCARD FORCE_INLINE constexpr T Floor(T x)
 {
     return static_cast<T>(std::floor(x));

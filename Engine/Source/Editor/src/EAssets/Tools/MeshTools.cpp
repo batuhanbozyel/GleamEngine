@@ -59,9 +59,9 @@ static void setTSpaceBasic(const SMikkTSpaceContext* context, const float inTang
 
 } // namespace MikkT
 
-MeshData MeshTools::CombineMeshes(const Gleam::TArray<RawMesh>& meshes)
+MeshLodData MeshTools::CombineMeshes(const Gleam::TArray<RawMesh>& meshes)
 {
-    MeshData combined;
+    MeshLodData combined;
     combined.submeshes.resize(meshes.size());
 
 	uint64_t totalIndexCount = 0;
@@ -88,8 +88,6 @@ MeshData MeshTools::CombineMeshes(const Gleam::TArray<RawMesh>& meshes)
     Gleam::SubmeshDescriptor submesh;
     for (uint32_t i = 0; i < meshes.size(); ++i)
     {
-		combined.name = meshes[i].name;
-
         const auto& mesh = meshes[i];
 		submesh.materialIndex = mesh.material;
         submesh.bounds = CalculateBounds(mesh.positions);
@@ -108,6 +106,104 @@ MeshData MeshTools::CombineMeshes(const Gleam::TArray<RawMesh>& meshes)
 	return combined;
 }
 
+static RawMesh RemapMesh(const RawMesh& source, const Gleam::TArray<uint32_t>& indices, const Gleam::TArray<uint32_t>& remap, size_t vertexCount)
+{
+	const size_t sourceVertexCount = source.positions.size();
+
+	RawMesh destination;
+	destination.name = source.name;
+	destination.aabb = source.aabb;
+	destination.material = source.material;
+	destination.indices.resize(indices.size());
+	destination.positions.resize(vertexCount);
+	destination.normals.resize(vertexCount);
+	destination.tangents.resize(vertexCount);
+	destination.texCoords.resize(vertexCount);
+	destination.colors.resize(vertexCount);
+
+	meshopt_remapIndexBuffer(destination.indices.data(), indices.data(), indices.size(), remap.data());
+	meshopt_remapVertexBuffer(destination.positions.data(), source.positions.data(), sourceVertexCount, sizeof(Gleam::Float3), remap.data());
+	meshopt_remapVertexBuffer(destination.normals.data(), source.normals.data(), sourceVertexCount, sizeof(Gleam::Float3), remap.data());
+	meshopt_remapVertexBuffer(destination.tangents.data(), source.tangents.data(), sourceVertexCount, sizeof(Gleam::Float4), remap.data());
+	meshopt_remapVertexBuffer(destination.texCoords.data(), source.texCoords.data(), sourceVertexCount, sizeof(Gleam::Float2), remap.data());
+	meshopt_remapVertexBuffer(destination.colors.data(), source.colors.data(), sourceVertexCount, sizeof(Gleam::Float4), remap.data());
+	return destination;
+}
+
+RawMesh MeshTools::SimplifyMesh(const RawMesh& mesh, float ratio, bool lockBorder)
+{
+	static constexpr float kTexCoordWeight = 1.0f;
+	static constexpr float kColorWeigth = 1.0f;
+	static constexpr float kNormalWeight = 0.5f;
+	static constexpr float kTangentWeight = 0.5f;
+	static constexpr float kAttrWeights[] = { kColorWeigth,	kColorWeigth, kColorWeigth, kColorWeigth,
+											  kTangentWeight, kTangentWeight, kTangentWeight,  kTangentWeight,
+											  kNormalWeight, kNormalWeight, kNormalWeight,
+											  kTexCoordWeight, kTexCoordWeight };
+	static constexpr size_t kAttributeCount = eastl::size(kAttrWeights);
+
+	float targetError = 1.0f;
+	size_t targetIndexCount = static_cast<size_t>(mesh.indices.size() * ratio) / 3 * 3;
+
+	RawMesh simplified = {};
+	if (targetIndexCount > 128)
+	{
+		int simplifyOptions = lockBorder ? meshopt_SimplifyLockBorder : 0;
+
+		meshopt_Stream vertexStreams[] = {
+				meshopt_Stream{.data = mesh.positions.data(), .size = sizeof(Gleam::Float3), .stride = sizeof(Gleam::Float3)},
+				meshopt_Stream{.data = mesh.normals.data(), .size = sizeof(Gleam::Float3), .stride = sizeof(Gleam::Float3)},
+				meshopt_Stream{.data = mesh.tangents.data(),.size = sizeof(Gleam::Float4), .stride = sizeof(Gleam::Float4)},
+				meshopt_Stream{.data = mesh.colors.data(), .size = sizeof(Gleam::Float4), .stride = sizeof(Gleam::Float4)},
+				meshopt_Stream{.data = mesh.texCoords.data(), .size = sizeof(Gleam::Float2), .stride = sizeof(Gleam::Float2)},
+		};
+
+		Gleam::TArray<uint32_t> remap(mesh.positions.size());
+		const size_t weldedVertexCount = meshopt_generateVertexRemapMulti(remap.data(),
+			mesh.indices.data(),
+			mesh.indices.size(),
+			mesh.positions.size(),
+			vertexStreams,
+			eastl::size(vertexStreams));
+		const RawMesh welded = RemapMesh(mesh, mesh.indices, remap, weldedVertexCount);
+
+		Gleam::TArray<float> attributes(weldedVertexCount * kAttributeCount);
+		for (size_t i = 0; i < weldedVertexCount; ++i)
+		{
+			float* attribute = attributes.data() + i * kAttributeCount;
+			memcpy(attribute, &welded.colors[i], sizeof(Gleam::Float4));
+			memcpy(attribute + 4, &welded.tangents[i], sizeof(Gleam::Float4));
+			memcpy(attribute + 8, &welded.normals[i], sizeof(Gleam::Float3));
+			memcpy(attribute + 11, &welded.texCoords[i], sizeof(Gleam::Float2));
+		}
+
+		Gleam::TArray<uint32_t> indices(welded.indices.size());
+		indices.resize(meshopt_simplifyWithAttributes(indices.data(),
+													  welded.indices.data(),
+													  welded.indices.size(),
+													  (const float*)welded.positions.data(),
+													  weldedVertexCount,
+													  sizeof(Gleam::Float3),
+													  attributes.data(),
+													  kAttributeCount * sizeof(float),
+													  kAttrWeights,
+													  kAttributeCount,
+													  nullptr,
+													  targetIndexCount,
+													  targetError,
+													  simplifyOptions,
+													  nullptr));
+
+		if (not indices.empty())
+		{
+			remap.resize(weldedVertexCount);
+			const size_t simplifiedVertexCount = meshopt_optimizeVertexFetchRemap(remap.data(), indices.data(), indices.size(), weldedVertexCount);
+			simplified = RemapMesh(welded, indices, remap, simplifiedVertexCount);
+		}
+	}
+	return simplified;
+}
+
 Gleam::TArray<Gleam::InterleavedMeshVertex> MeshTools::InterleaveMeshVertices(const RawMesh& mesh)
 {
 	Gleam::TArray<Gleam::InterleavedMeshVertex> interleaved(mesh.normals.size());
@@ -123,7 +219,7 @@ Gleam::TArray<Gleam::InterleavedMeshVertex> MeshTools::InterleaveMeshVertices(co
 
 Gleam::BoundingBox MeshTools::CalculateBounds(const Gleam::TArray<Gleam::Float3>& positions)
 {
-    Gleam::BoundingBox bounds(Gleam::Math::Infinity, Gleam::Math::NegativeInfinity);
+    Gleam::BoundingBox bounds;
     for (const auto& position : positions)
     {
         bounds.min = Gleam::Math::Min(bounds.min, position);

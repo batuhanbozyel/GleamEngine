@@ -62,6 +62,7 @@ struct RawMaterial
 struct RawMesh
 {
     Gleam::TString name;
+	Gleam::BoundingBox aabb;
     Gleam::TArray<Gleam::Float3> positions;
     Gleam::TArray<Gleam::Float3> normals;
 	Gleam::TArray<Gleam::Float4> tangents;
@@ -73,6 +74,9 @@ struct RawMesh
 
 GSTRUCT(MeshImportSettings, "23C5B89C-5735-4CFA-BDD9-0E556AEB0241", Serializable, PrettyName("Mesh"))
 {
+	GFIELD("4854FDA0-E1F1-444F-95F4-AC748D0CDB7A", Serializable, PrettyName("Generate LODs"))
+	bool generateLods = true;
+
 	GFIELD("F610C1DA-00DA-48BC-94E2-57EC90C1767A", Serializable, PrettyName("Generate Convex Hulls"))
 	bool generateConvexHulls = false;
 

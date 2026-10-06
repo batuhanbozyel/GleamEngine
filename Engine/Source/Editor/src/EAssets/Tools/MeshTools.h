@@ -13,9 +13,8 @@ struct ConvexHullData
 	Gleam::TArray<uint32_t> indices;
 };
 
-struct MeshData
+struct MeshLodData
 {
-	Gleam::TString name;
 	Gleam::BinaryBuffer buffer;
 	Gleam::BufferRange indices;
 	Gleam::BufferRange positions;
@@ -24,6 +23,13 @@ struct MeshData
 	Gleam::BufferRange meshletVertices;
 	Gleam::BufferRange meshletTriangleIndices;
 	Gleam::TArray<Gleam::SubmeshDescriptor> submeshes;
+};
+
+struct MeshData
+{
+	Gleam::TString name;
+	Gleam::BoundingBox aabb;
+	Gleam::TArray<MeshLodData> lods;
 };
 
 GSTRUCT(ConvexDecompositionSettings, "6DFB87AB-8AA9-4206-AE6A-6ACDBC47589A", Serializable, PrettyName("Convex Decomposition"))
@@ -46,7 +52,8 @@ GSTRUCT(ConvexDecompositionSettings, "6DFB87AB-8AA9-4206-AE6A-6ACDBC47589A", Ser
 
 namespace MeshTools {
 
-MeshData CombineMeshes(const Gleam::TArray<RawMesh>& meshes);
+MeshLodData CombineMeshes(const Gleam::TArray<RawMesh>& meshes);
+RawMesh SimplifyMesh(const RawMesh& mesh, float ratio, bool lockBorder);
 Gleam::TArray<ConvexHullData> DecomposeConvex(const RawMesh& mesh, const ConvexDecompositionSettings& settings);
 Gleam::TArray<Gleam::InterleavedMeshVertex> InterleaveMeshVertices(const RawMesh& mesh);
 Gleam::BoundingBox CalculateBounds(const Gleam::TArray<Gleam::Float3>& positions);
