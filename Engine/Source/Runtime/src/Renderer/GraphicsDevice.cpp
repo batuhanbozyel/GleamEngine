@@ -175,5 +175,5 @@ const MeshPipeline& GraphicsDevice::GetMeshPipeline(MeshPipelineHandle handle) c
 
 void GraphicsDevice::Dispose(ResourceReleaseQueue::ObjectDeallocator&& deallocator)
 {
-	mReleaseQueue->AddResource(eastl::move(deallocator), static_cast<Swapchain*>(mSurface)->GetFrameIndex());
+	mReleaseQueue->AddResource(eastl::move(deallocator));
 }

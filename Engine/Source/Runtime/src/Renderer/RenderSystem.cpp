@@ -196,7 +196,7 @@ void RenderSystem::PreRender(const World* world)
 		mRendererResized = false;
 	}
 
-	mReleaseQueue->Flush(frameIdx);
+	mReleaseQueue->BeginFrame();
 	mTransientAllocator->CollectGarbage(mSwapchain->GetFramesInFlight() + 1);
 	mPersistentAllocator->CollectGarbage(mSwapchain->GetFramesInFlight() + 1);
 

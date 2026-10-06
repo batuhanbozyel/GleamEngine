@@ -53,10 +53,11 @@ GSTRUCT(ConvexDecompositionSettings, "6DFB87AB-8AA9-4206-AE6A-6ACDBC47589A", Ser
 namespace MeshTools {
 
 MeshLodData CombineMeshes(const Gleam::TArray<RawMesh>& meshes);
-RawMesh SimplifyMesh(const RawMesh& mesh, float ratio, bool lockBorder);
+MeshLodData SimplifyMesh(const MeshLodData& lod, float ratio);
+void BuildMeshlets(MeshLodData& lodData);
 Gleam::TArray<ConvexHullData> DecomposeConvex(const RawMesh& mesh, const ConvexDecompositionSettings& settings);
 Gleam::TArray<Gleam::InterleavedMeshVertex> InterleaveMeshVertices(const RawMesh& mesh);
-Gleam::BoundingBox CalculateBounds(const Gleam::TArray<Gleam::Float3>& positions);
+Gleam::BoundingBox CalculateBounds(Gleam::TArrayView<const Gleam::Float3> positions);
 
 void RemoveDegenerateFaces(RawMesh& mesh);
 void ComputeSmoothNormals(RawMesh& mesh);

@@ -14,15 +14,22 @@ public:
 
 	void Clear();
 
-	void Flush(uint32_t frameIndex);
+	void BeginFrame();
 
 	using ObjectDeallocator = std::function<void()>;
-	void AddResource(ObjectDeallocator&& deallocator, uint32_t frameIndex);
+	void AddResource(ObjectDeallocator&& deallocator);
 
 private:
 
-	using ReleaseQueue = TArray<ObjectDeallocator>;
-	TArray<ReleaseQueue> mReleaseQueue;
+	struct PendingRelease
+	{
+		uint64_t frame = 0;
+		ObjectDeallocator deallocator;
+	};
+
+	TArray<PendingRelease> mPendingReleases;
+	uint64_t mFrame = 0;
+	uint32_t mFramesInFlight = 0;
 
 };
 

@@ -4,7 +4,7 @@
 using namespace Gleam;
 
 ResourceReleaseQueue::ResourceReleaseQueue(uint32_t framesInFlight)
-	: mReleaseQueue(framesInFlight)
+	: mFramesInFlight(framesInFlight)
 {
 
 }
@@ -12,29 +12,31 @@ ResourceReleaseQueue::ResourceReleaseQueue(uint32_t framesInFlight)
 ResourceReleaseQueue::~ResourceReleaseQueue()
 {
 	Clear();
-	mReleaseQueue.clear();
 }
 
 void ResourceReleaseQueue::Clear()
 {
-	for (uint32_t i = 0; i < mReleaseQueue.size(); ++i)
+	for (auto& release : mPendingReleases)
 	{
-		Flush(i);
+		release.deallocator();
 	}
+	mPendingReleases.clear();
 }
 
-void ResourceReleaseQueue::Flush(uint32_t frameIndex)
+void ResourceReleaseQueue::BeginFrame()
 {
-	auto& releaseQueue = mReleaseQueue[frameIndex];
-	for (auto& deallocator : releaseQueue)
+	++mFrame;
+
+	auto it = mPendingReleases.begin();
+	while (it != mPendingReleases.end() and it->frame + mFramesInFlight <= mFrame)
 	{
-		deallocator();
+		it->deallocator();
+		++it;
 	}
-	releaseQueue.clear();
+	mPendingReleases.erase(mPendingReleases.begin(), it);
 }
 
-void ResourceReleaseQueue::AddResource(ObjectDeallocator&& deallocator, uint32_t frameIndex)
+void ResourceReleaseQueue::AddResource(ObjectDeallocator&& deallocator)
 {
-	GLEAM_ASSERT(frameIndex < mReleaseQueue.size(), "Frame index is out of bounds.");
-	mReleaseQueue[frameIndex].push_back(deallocator);
+	mPendingReleases.push_back(PendingRelease{ .frame = mFrame, .deallocator = eastl::move(deallocator) });
 }
