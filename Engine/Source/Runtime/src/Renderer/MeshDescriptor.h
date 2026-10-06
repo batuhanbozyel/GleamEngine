@@ -113,6 +113,9 @@ GSTRUCT(MeshDescriptor, "59E4007E-F7D4-4107-A05F-E1121067DCD3", Serializable)
 	GFIELD("B1A2C3D4-E5F6-47A8-B9C0-D1E2F3A4B5C6", Serializable)
 	TString name;
 
+	GFIELD("EDA14B4F-48FF-48DD-BBAA-D009D53F93E1", Serializable)
+	BoundingBox bounds;
+
 	GFIELD("B0D80579-01F6-43B9-8576-90ACE1B245D1", Serializable)
 	TArray<MeshLodDescriptor> lods;
 };

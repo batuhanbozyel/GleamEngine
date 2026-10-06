@@ -15,7 +15,8 @@ MeshBaker::MeshBaker(MeshData&& mesh)
 void MeshBaker::Bake(const Gleam::Path& directory, const AssetItem& item) const
 {
 	Gleam::MeshDescriptor descriptor;
-	descriptor.name = Name();
+	descriptor.name = mMesh.name;
+	descriptor.bounds = mMesh.aabb;
 	descriptor.lods.resize(mMesh.lods.size());
 
 	BinaryAssetWriter writer;
