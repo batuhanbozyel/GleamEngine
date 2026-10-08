@@ -3,6 +3,7 @@
 #include "Math/Size.h"
 #include "World/Entity.h"
 #include "Shaders/ShaderTypes.h"
+#include "MeshDrawList.h"
 
 namespace Gleam {
 

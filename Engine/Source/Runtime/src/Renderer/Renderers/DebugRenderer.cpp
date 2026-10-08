@@ -155,19 +155,19 @@ void DebugRenderer::RenderMeshes(const CommandBuffer* cmd, const CameraUniforms&
 	for (const auto& debugMesh : debugMeshes)
 	{
         DebugShaderResources resources;
-        resources.vertexBuffer = debugMesh.mesh->GetBuffer().GetResourceView();
-        resources.positionOffset = static_cast<uint32_t>(debugMesh.mesh->GetPositions().offset);
+        resources.vertexBuffer = debugMesh.mesh->GetBuffer(0).GetResourceView();
+        resources.positionOffset = static_cast<uint32_t>(debugMesh.mesh->GetPositions(0).offset);
         cmd->SetConstantBuffer(resources, 0);
 
-		const uint32_t baseIndex = static_cast<uint32_t>(debugMesh.mesh->GetIndices().offset / sizeof(uint32_t));
-		for (const auto& submesh : debugMesh.mesh->GetSubmeshes())
+		const uint32_t baseIndex = static_cast<uint32_t>(debugMesh.mesh->GetIndices(0).offset / sizeof(uint32_t));
+		for (const auto& submesh : debugMesh.mesh->GetSubmeshes(0))
 		{
 			DebugMeshUniforms uniforms;
 			uniforms.transform = debugMesh.transform;
 			uniforms.baseVertex = submesh.baseVertex;
 			uniforms.color = debugMesh.color;
 			cmd->SetPushConstant(uniforms);
-			cmd->DrawIndexed(debugMesh.mesh->GetBuffer(), IndexType::UINT32, submesh.indexCount, 1, baseIndex + submesh.firstIndex);
+			cmd->DrawIndexed(debugMesh.mesh->GetBuffer(0), IndexType::UINT32, submesh.indexCount, 1, baseIndex + submesh.firstIndex);
 		}
 	}
 }

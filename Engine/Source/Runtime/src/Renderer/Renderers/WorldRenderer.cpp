@@ -92,7 +92,7 @@ void WorldRenderer::AddVisibilityPass(RenderGraph& graph, RenderGraphBlackboard&
 		}
 
 		VisibilityShadingConstants constants = {};
-		constants.resolve.instanceBuffer = sceneData.sceneProxy->GetGlobalInstanceBuffer().GetResourceView();
+		constants.resolve.instanceBuffer = sceneData.sceneProxy->GetInstanceBuffer().GetResourceView();
 		constants.resolve.visibilityBuffer = passData.visibilityBuffer;
 		constants.resolve.pixelListBuffer = passData.pixelListBuffer;
 		constants.resolve.offsetsBuffer = passData.offsetsBuffer;
@@ -111,11 +111,6 @@ void WorldRenderer::AddVisibilityPass(RenderGraph& graph, RenderGraphBlackboard&
 
 		sceneData.sceneProxy->ForEach([this, cmd, &passData, &sceneData, &constants](const MeshBatch& batch)
 		{
-			if (batch.numInstances == 0)
-			{
-				return;
-			}
-
 			constants.resolve.batchIndex = batch.batchIndex;
 
 			cmd->BindComputePipeline(mVisibilityShadingPipelines[batch.material->GetPipelineHash()]);
@@ -139,16 +134,13 @@ void WorldRenderer::AddForwardPass(RenderGraph& graph, RenderGraphBlackboard& bl
 		const auto& sceneData = blackboard.Get<SceneRenderingData>();
 		sceneData.sceneProxy->ForEach([this, cmd, passData, sceneData](const MeshBatch& batch)
 		{
-			if (batch.numInstances == 0)
+			if (sceneData.drawList->batches[batch.batchIndex].count == 0)
 			{
 				return;
 			}
 
-			const auto globalInstances = sceneData.sceneProxy->GetGlobalInstances();
-			const auto globalMeshes = sceneData.sceneProxy->GetGlobalMeshes();
-
 			MeshShadingConstants constants = {};
-			constants.instanceBuffer = sceneData.sceneProxy->GetGlobalInstanceBuffer().GetResourceView();
+			constants.instanceBuffer = sceneData.sceneProxy->GetInstanceBuffer().GetResourceView();
 			constants.brdfTexture = passData.brdfLut;
 			constants.ggxEssTexture = passData.ggxEssLut;
 			constants.ggxEAvgTexture = passData.ggxEAvgLut;
@@ -163,13 +155,13 @@ void WorldRenderer::AddForwardPass(RenderGraph& graph, RenderGraphBlackboard& bl
 			cmd->SetConstantBuffer(sceneData.atmosphere.params, SKY_ATMOSPHERE_PARAMS_BINDING_SLOT);
 			cmd->SetConstantBuffer(sceneData.atmosphere.uniforms, SKY_ATMOSPHERE_COMMON_UNIFORMS_BINDING_SLOT);
 
-			for (uint32_t instanceID = 0; instanceID < batch.numInstances; ++instanceID)
+			sceneData.sceneProxy->ForEachDraw(batch, *sceneData.drawList, [cmd, &constants](uint32_t instanceID, const MeshEntityRecord& record, const MeshInstanceRecord& instance)
 			{
-				constants.instanceID = batch.instanceOffset + instanceID;
-				const auto& instance = globalInstances[constants.instanceID];
+				const auto& submesh = record.mesh->GetSubmesh(record.lod, instance.submeshIndex);
+				constants.instanceID = instanceID;
 				cmd->SetPushConstant(constants);
-				cmd->DispatchMesh(Math::DivideRoundingUp(instance.meshletCount, MESH_AMPLIFICATION_THREADS), 1, 1);
-			}
+				cmd->DispatchMesh(Math::DivideRoundingUp(submesh.meshletCount, MESH_AMPLIFICATION_THREADS), 1, 1);
+			});
 		});
 	});
 }

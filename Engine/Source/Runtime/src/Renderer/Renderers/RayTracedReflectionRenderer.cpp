@@ -379,7 +379,7 @@ void RayTracedReflectionRenderer::AddRenderPasses(RenderGraph& graph, RenderGrap
 		}
 
 		PathTracerConstants pathTraceConstants = {};
-		pathTraceConstants.instanceBuffer        = sceneData.sceneProxy->GetGlobalInstanceBuffer().GetResourceView();
+		pathTraceConstants.instanceBuffer        = sceneData.sceneProxy->GetInstanceBuffer().GetResourceView();
 		pathTraceConstants.accelerationStructure = sceneData.accelerationStructure;
 		pathTraceConstants.colorTarget           = passData.reflectionTarget;
 		pathTraceConstants.ggxEssTexture         = passData.ggxEssLut;

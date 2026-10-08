@@ -120,7 +120,7 @@ void PathTracer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blac
 		}
 
 		PathTracerConstants constants = {};
-		constants.instanceBuffer = sceneData.sceneProxy->GetGlobalInstanceBuffer().GetResourceView();
+		constants.instanceBuffer = sceneData.sceneProxy->GetInstanceBuffer().GetResourceView();
 		constants.accelerationStructure = sceneData.accelerationStructure;
 		constants.colorTarget = mRenderTarget.GetUnorderedAccessView();
 		constants.sceneTarget = passData.colorTarget;

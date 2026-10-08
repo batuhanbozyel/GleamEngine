@@ -25,9 +25,7 @@ AccelerationStructureView RayTracingScene::BuildAccelerationStructure(const Comm
 		mDevice->Dispose(mTLAS);
 	}
 
-	const auto globalInstances = sceneProxy->GetGlobalInstances();
-	const auto globalMeshes = sceneProxy->GetGlobalMeshes();
-	uint32_t instanceCount = (uint32_t)globalInstances.size();
+	uint32_t instanceCount = sceneProxy->GetInstanceCount();
     
     if (instanceCount == 0)
     {
@@ -52,20 +50,19 @@ AccelerationStructureView RayTracingScene::BuildAccelerationStructure(const Comm
     MTLIndirectAccelerationStructureInstanceDescriptor* instanceDescs = static_cast<MTLIndirectAccelerationStructureInstanceDescriptor*>(instanceDescBuffer.GetContents());
     sceneProxy->ForEach([&](const MeshBatch& batch)
     {
-        for (uint32_t i = 0; i < batch.numInstances; ++i)
+        sceneProxy->ForEachDraw(batch, [&](uint32_t instanceID, const MeshEntityRecord& record, const MeshInstanceRecord& instance)
         {
-            const auto& instance = globalMeshes[batch.instanceOffset + i];
-            const auto& submesh = instance.mesh->GetSubmesh(instance.submeshIndex);
-            if (not instance.mesh->GetBLAS(instance.submeshIndex).IsValid())
+            const auto& submesh = record.mesh->GetSubmesh(record.lod, instance.submeshIndex);
+            if (not record.mesh->GetBLAS(record.lod, instance.submeshIndex).IsValid())
             {
-                id<MTLBuffer> meshBuffer = instance.mesh->GetBuffer().GetHandle();
+                id<MTLBuffer> meshBuffer = record.mesh->GetBuffer(record.lod).GetHandle();
 
                 MTL4AccelerationStructureTriangleGeometryDescriptor* geomDesc = [MTL4AccelerationStructureTriangleGeometryDescriptor new];
-                geomDesc.vertexBuffer = MTL4BufferRange([meshBuffer gpuAddress] + instance.mesh->GetPositions().offset + submesh.baseVertex * sizeof(float3), submesh.vertexCount * sizeof(float3));
+                geomDesc.vertexBuffer = MTL4BufferRange([meshBuffer gpuAddress] + record.mesh->GetPositions(record.lod).offset + submesh.baseVertex * sizeof(float3), submesh.vertexCount * sizeof(float3));
                 geomDesc.vertexStride = sizeof(float3);
                 geomDesc.vertexFormat = MTLAttributeFormatFloat3;
                 geomDesc.triangleCount = submesh.indexCount / 3;
-                geomDesc.indexBuffer = MTL4BufferRange([meshBuffer gpuAddress] + instance.mesh->GetIndices().offset + submesh.firstIndex * sizeof(uint32_t), submesh.indexCount * sizeof(uint32_t));
+                geomDesc.indexBuffer = MTL4BufferRange([meshBuffer gpuAddress] + record.mesh->GetIndices(record.lod).offset + submesh.firstIndex * sizeof(uint32_t), submesh.indexCount * sizeof(uint32_t));
                 geomDesc.indexType = MTLIndexTypeUInt32;
                 geomDesc.opaque = YES;
 
@@ -73,7 +70,7 @@ AccelerationStructureView RayTracingScene::BuildAccelerationStructure(const Comm
                 blasDesc.geometryDescriptors = [NSArray arrayWithObject:geomDesc];
 
                 MTLAccelerationStructureSizes sizes = [device accelerationStructureSizesWithDescriptor:blasDesc];
-                BottomLevelAccelerationStructure blas = mDevice->CreateBLAS(BLASDescriptor{ .name = instance.mesh->GetName() + ": BLAS", .size = sizes.accelerationStructureSize });
+                BottomLevelAccelerationStructure blas = mDevice->CreateBLAS(BLASDescriptor{ .name = record.mesh->GetName() + ": BLAS", .size = sizes.accelerationStructureSize });
 
                 Buffer scratchBuffer = mDevice->CreateBuffer(mAllocator, BufferDescriptor{
                     .name = "BLAS Scratch Buffer",
@@ -91,12 +88,11 @@ AccelerationStructureView RayTracingScene::BuildAccelerationStructure(const Comm
                                 beforeEncoderStages:MTLStageAccelerationStructure
                                   visibilityOptions:MTL4VisibilityOptionNone];
 
-                instance.mesh->mBLASes[instance.submeshIndex] = blas;
+                record.mesh->mLods[record.lod].blases[instance.submeshIndex] = blas;
                 mDevice->Dispose(mAllocator, scratchBuffer, BarrierStage::BuildRayTracingAccelerationStructure);
             }
 
             const auto& materialDesc = batch.material->GetDescriptor();
-            const auto& instanceData = globalInstances[batch.instanceOffset + i];
             auto materialHash = batch.material->GetSurfaceShaderHash();
 
             MTLAccelerationStructureInstanceOptions options = MTLAccelerationStructureInstanceOptionNone;
@@ -120,31 +116,31 @@ AccelerationStructureView RayTracingScene::BuildAccelerationStructure(const Comm
 
             MTLIndirectAccelerationStructureInstanceDescriptor& desc = instanceDescs[currentInstance];
             desc.transformationMatrix.columns[0] = MTLPackedFloat3Make(
-                instanceData.transform[0][0],
-                instanceData.transform[0][1],
-                instanceData.transform[0][2]);
+                record.transform[0][0],
+                record.transform[0][1],
+                record.transform[0][2]);
             desc.transformationMatrix.columns[1] = MTLPackedFloat3Make(
-                instanceData.transform[1][0],
-                instanceData.transform[1][1],
-                instanceData.transform[1][2]);
+                record.transform[1][0],
+                record.transform[1][1],
+                record.transform[1][2]);
             desc.transformationMatrix.columns[2] = MTLPackedFloat3Make(
-                instanceData.transform[2][0],
-                instanceData.transform[2][1],
-                instanceData.transform[2][2]);
+                record.transform[2][0],
+                record.transform[2][1],
+                record.transform[2][2]);
             desc.transformationMatrix.columns[3] = MTLPackedFloat3Make(
-                instanceData.transform[3][0],
-                instanceData.transform[3][1],
-                instanceData.transform[3][2]);
+                record.transform[3][0],
+                record.transform[3][1],
+                record.transform[3][2]);
 
             desc.options = options;
-            desc.userID = batch.instanceOffset + i;
+            desc.userID = instanceID;
             desc.mask = 1;
             desc.intersectionFunctionTableOffset = mHitGroupRegistry.GetIndex(materialHash) * (uint32_t)RayType::COUNT;
-            desc.accelerationStructureID = [instance.mesh->GetBLAS(instance.submeshIndex).GetHandle() gpuResourceID];
+            desc.accelerationStructureID = [record.mesh->GetBLAS(record.lod, instance.submeshIndex).GetHandle() gpuResourceID];
 
             instanceContributions.push_back(desc.intersectionFunctionTableOffset);
             ++currentInstance;
-        }
+        });
     });
 
 	MTL4InstanceAccelerationStructureDescriptor* tlasDesc = [MTL4InstanceAccelerationStructureDescriptor new];

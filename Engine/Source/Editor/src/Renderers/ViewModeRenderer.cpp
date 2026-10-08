@@ -75,7 +75,10 @@ void ViewModeRenderer::AddRenderPasses(Gleam::RenderGraph& graph, Gleam::RenderG
 		}
 		case ViewMode::AmbientOcclusion:
 		{
-			source = blackboard.Get<Gleam::AmbientOcclusionData>().aoTarget;
+			if (blackboard.Has<Gleam::AmbientOcclusionData>())
+			{
+				source = blackboard.Get<Gleam::AmbientOcclusionData>().aoTarget;
+			}
 			break;
 		}
 		case ViewMode::VisibilityIDs:

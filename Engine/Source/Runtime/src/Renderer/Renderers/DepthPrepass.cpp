@@ -118,26 +118,23 @@ void DepthPrepass::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& bl
 	{
 		sceneData.sceneProxy->ForEach([this, cmd, passData, sceneData](const MeshBatch& batch)
 		{
-			if (batch.numInstances == 0)
+			if (sceneData.drawList->batches[batch.batchIndex].count == 0)
 			{
 				return;
 			}
-
-			const auto globalInstances = sceneData.sceneProxy->GetGlobalInstances();
-			const auto globalMeshes = sceneData.sceneProxy->GetGlobalMeshes();
 
 			cmd->BindMeshPipeline(mPipelines[batch.material->GetPipelineHash()]);
 			cmd->SetConstantBuffer(sceneData.camera.uniforms, CAMERA_UNIFORMS_BINDING_SLOT);
 
 			DepthPrepassConstants constants = {};
-			constants.instanceBuffer = sceneData.sceneProxy->GetGlobalInstanceBuffer().GetResourceView();
-			for (uint32_t instanceID = 0; instanceID < batch.numInstances; ++instanceID)
+			constants.instanceBuffer = sceneData.sceneProxy->GetInstanceBuffer().GetResourceView();
+			sceneData.sceneProxy->ForEachDraw(batch, *sceneData.drawList, [cmd, &constants](uint32_t instanceID, const MeshEntityRecord& record, const MeshInstanceRecord& instance)
 			{
-				constants.instanceID = batch.instanceOffset + instanceID;
-				const auto& instance = globalInstances[constants.instanceID];
+				const auto& submesh = record.mesh->GetSubmesh(record.lod, instance.submeshIndex);
+				constants.instanceID = instanceID;
 				cmd->SetPushConstant(constants);
-				cmd->DispatchMesh(Math::DivideRoundingUp(instance.meshletCount, MESH_AMPLIFICATION_THREADS), 1, 1);
-			}
+				cmd->DispatchMesh(Math::DivideRoundingUp(submesh.meshletCount, MESH_AMPLIFICATION_THREADS), 1, 1);
+			});
 		});
 	});
 

@@ -27,6 +27,7 @@ class RenderSurface;
 class RenderPipeline;
 class GraphicsDevice;
 class RenderSceneProxy;
+struct MeshDrawList;
 class ResourceReleaseQueue;
 
 struct RenderContext
@@ -55,6 +56,7 @@ struct SkyAtmosphereRenderData
 struct SceneRenderingData
 {
     const RenderSceneProxy* sceneProxy = nullptr;
+    const MeshDrawList* drawList = nullptr;
     const World* world = nullptr;
 	CameraRenderData camera = {};
 	SkyAtmosphereRenderData atmosphere = {};

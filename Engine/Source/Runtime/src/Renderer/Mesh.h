@@ -19,38 +19,42 @@ public:
 
 	void RequestLod(uint32_t lod);
 
-	uint32_t GetActiveLod() const;
-
 	uint32_t GetLodCount() const;
 
 	bool IsLodResident(uint32_t lod) const;
 
-	const Buffer& GetBuffer() const;
+	const BoundingBox& GetBounds() const;
 
-	const BufferRange& GetPositions() const;
+	const Buffer& GetBuffer(uint32_t lod) const;
 
-	const BufferRange& GetInterleavedVertices() const;
+	const BufferRange& GetPositions(uint32_t lod) const;
 
-	const BufferRange& GetIndices() const;
+	const BufferRange& GetInterleavedVertices(uint32_t lod) const;
 
-	const BufferRange& GetMeshlets() const;
+	const BufferRange& GetIndices(uint32_t lod) const;
 
-	const BufferRange& GetMeshletVertices() const;
+	const BufferRange& GetMeshlets(uint32_t lod) const;
 
-	const BufferRange& GetMeshletTriangleIndices() const;
+	const BufferRange& GetMeshletVertices(uint32_t lod) const;
 
-	const TArray<SubmeshDescriptor>& GetSubmeshes() const;
+	const BufferRange& GetMeshletTriangleIndices(uint32_t lod) const;
 
-	const SubmeshDescriptor& GetSubmesh(uint32_t index) const;
+	const TArray<SubmeshDescriptor>& GetSubmeshes(uint32_t lod) const;
 
-	const BottomLevelAccelerationStructure& GetBLAS(uint32_t submesh) const;
+	const SubmeshDescriptor& GetSubmesh(uint32_t lod, uint32_t index) const;
+
+	const BottomLevelAccelerationStructure& GetBLAS(uint32_t lod, uint32_t submesh) const;
 
 protected:
 
+	struct LodResources
+	{
+		Buffer buffer;
+		TArray<BottomLevelAccelerationStructure> blases;
+	};
+
 	MeshDescriptor mDescriptor;
-	TArray<Buffer> mLods;
-	uint32_t mActiveLod = 0;
-	TArray<BottomLevelAccelerationStructure> mBLASes;
+	TArray<LodResources> mLods;
 };
 
 } // namespace Gleam

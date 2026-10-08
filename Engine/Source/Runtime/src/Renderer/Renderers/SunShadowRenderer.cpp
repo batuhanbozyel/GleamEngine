@@ -292,7 +292,7 @@ void SunShadowRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboar
 		cmd->Barrier(clearBarrier);
 
 		PathTracerConstants pathTraceConstants = {};
-		pathTraceConstants.instanceBuffer        = sceneData.sceneProxy->GetGlobalInstanceBuffer().GetResourceView();
+		pathTraceConstants.instanceBuffer        = sceneData.sceneProxy->GetInstanceBuffer().GetResourceView();
 		pathTraceConstants.accelerationStructure = sceneData.accelerationStructure;
 		pathTraceConstants.colorTarget           = passData.shadowMask;
 		pathTraceConstants.frameIndex            = mFrameIndex;

@@ -18,8 +18,10 @@ Mesh::Mesh(const AssetReference& reference, const AssetHeader& header, const Mes
 	, mLods(descriptor.lods.size())
 {
 	GLEAM_ASSERT(mDescriptor.lods.size() > 0, "Mesh has no LODs: {0}", descriptor.name);
-	mBLASes.resize(mDescriptor.lods[0].submeshes.size());
-	RequestLod(0);
+	for (uint32_t lod = 0; lod < mLods.size(); ++lod)
+	{
+		mLods[lod].blases.resize(mDescriptor.lods[lod].submeshes.size());
+	}
 }
 
 Mesh::~Mesh()
@@ -29,17 +31,17 @@ Mesh::~Mesh()
 
 	for (auto& lod : mLods)
 	{
-		if (lod.IsValid())
+		if (lod.buffer.IsValid())
 		{
-			device->Dispose(renderSystem->GetAllocator(), lod, BarrierStage::None);
+			device->Dispose(renderSystem->GetAllocator(), lod.buffer, BarrierStage::None);
 		}
-	}
 
-	for (auto& blas : mBLASes)
-	{
-		if (blas.IsValid())
+		for (auto& blas : lod.blases)
 		{
-			device->Dispose(blas);
+			if (blas.IsValid())
+			{
+				device->Dispose(blas);
+			}
 		}
 	}
 }
@@ -47,13 +49,13 @@ Mesh::~Mesh()
 void Mesh::RequestLod(uint32_t lod)
 {
 	GLEAM_ASSERT(lod < mLods.size(), "Mesh LOD {0} is out of range for: {1}", lod, GetName());
-	
-	auto& lodData = mLods[lod];
+
+	auto& lodData = mLods[lod].buffer;
 	if (not lodData.IsValid())
 	{
 		static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
 		static auto assetManager = Globals::GameInstance->GetSubsystem<AssetManager>();
-		
+
 		auto storage = assetManager->GetStorage();
 		const auto& lodDesc = mDescriptor.lods[lod];
 		const auto blob = FindBlob<MeshLodDescriptor>(lodDesc.blobSlot, AssetPlatform::Common, AssetBackend::Common);
@@ -72,11 +74,6 @@ void Mesh::RequestLod(uint32_t lod)
 	}
 }
 
-uint32_t Mesh::GetActiveLod() const
-{
-	return mActiveLod;
-}
-
 uint32_t Mesh::GetLodCount() const
 {
 	return static_cast<uint32_t>(mLods.size());
@@ -88,55 +85,60 @@ bool Mesh::IsLodResident(uint32_t lod) const
 	{
 		return false;
 	}
-	return mLods[lod].IsValid();
+	return mLods[lod].buffer.IsValid();
 }
 
-const Buffer& Mesh::GetBuffer() const
+const BoundingBox& Mesh::GetBounds() const
 {
-	return mLods[mActiveLod];
+	return mDescriptor.bounds;
 }
 
-const BufferRange& Mesh::GetPositions() const
+const Buffer& Mesh::GetBuffer(uint32_t lod) const
 {
-	return mDescriptor.lods[mActiveLod].positions;
+	return mLods[lod].buffer;
 }
 
-const BufferRange& Mesh::GetInterleavedVertices() const
+const BufferRange& Mesh::GetPositions(uint32_t lod) const
 {
-	return mDescriptor.lods[mActiveLod].interleavedVertices;
+	return mDescriptor.lods[lod].positions;
 }
 
-const BufferRange& Mesh::GetIndices() const
+const BufferRange& Mesh::GetInterleavedVertices(uint32_t lod) const
 {
-	return mDescriptor.lods[mActiveLod].indices;
+	return mDescriptor.lods[lod].interleavedVertices;
 }
 
-const BufferRange& Mesh::GetMeshlets() const
+const BufferRange& Mesh::GetIndices(uint32_t lod) const
 {
-	return mDescriptor.lods[mActiveLod].meshlets;
+	return mDescriptor.lods[lod].indices;
 }
 
-const BufferRange& Mesh::GetMeshletVertices() const
+const BufferRange& Mesh::GetMeshlets(uint32_t lod) const
 {
-	return mDescriptor.lods[mActiveLod].meshletVertices;
+	return mDescriptor.lods[lod].meshlets;
 }
 
-const BufferRange& Mesh::GetMeshletTriangleIndices() const
+const BufferRange& Mesh::GetMeshletVertices(uint32_t lod) const
 {
-	return mDescriptor.lods[mActiveLod].meshletTriangleIndices;
+	return mDescriptor.lods[lod].meshletVertices;
 }
 
-const TArray<SubmeshDescriptor>& Mesh::GetSubmeshes() const
+const BufferRange& Mesh::GetMeshletTriangleIndices(uint32_t lod) const
 {
-	return mDescriptor.lods[mActiveLod].submeshes;
+	return mDescriptor.lods[lod].meshletTriangleIndices;
 }
 
-const SubmeshDescriptor& Mesh::GetSubmesh(uint32_t index) const
+const TArray<SubmeshDescriptor>& Mesh::GetSubmeshes(uint32_t lod) const
 {
-	return mDescriptor.lods[mActiveLod].submeshes[index];
+	return mDescriptor.lods[lod].submeshes;
 }
 
-const BottomLevelAccelerationStructure& Mesh::GetBLAS(uint32_t submesh) const
+const SubmeshDescriptor& Mesh::GetSubmesh(uint32_t lod, uint32_t index) const
 {
-	return mBLASes[submesh];
+	return mDescriptor.lods[lod].submeshes[index];
+}
+
+const BottomLevelAccelerationStructure& Mesh::GetBLAS(uint32_t lod, uint32_t submesh) const
+{
+	return mLods[lod].blases[submesh];
 }

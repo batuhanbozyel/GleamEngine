@@ -51,8 +51,8 @@ void PickingRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard&
 	rect.width = rect.x < targetWidth ? Math::Min(rect.width, targetWidth - rect.x) : 0;
 	rect.height = rect.y < targetHeight ? Math::Min(rect.height, targetHeight - rect.y) : 0;
 
-	const auto& globalMeshes = sceneData.sceneProxy->GetGlobalMeshes();
-	if (rect.width == 0 || rect.height == 0 || globalMeshes.empty())
+	const uint32_t instanceCount = sceneData.sceneProxy->GetInstanceCount();
+	if (rect.width == 0 || rect.height == 0 || instanceCount == 0)
 	{
 		mSystem->CompleteWithoutReadback(*pending);
 		return;
@@ -60,11 +60,14 @@ void PickingRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard&
 
 	// Instance indices are rebuilt every RenderSceneProxy update, so resolve them against this frame
 	pending->instanceToEntity.clear();
-	pending->instanceToEntity.reserve(globalMeshes.size());
-	for (const auto& meshInstance : globalMeshes)
+	pending->instanceToEntity.resize(instanceCount, InvalidEntity);
+	sceneData.sceneProxy->ForEach([&](const MeshBatch& batch)
 	{
-		pending->instanceToEntity.push_back(meshInstance.entity);
-	}
+		sceneData.sceneProxy->ForEachDraw(batch, [&](uint32_t instanceID, const MeshEntityRecord& record, const MeshInstanceRecord& instance)
+		{
+			pending->instanceToEntity[instanceID] = record.entity;
+		});
+	});
 	pending->encoded = true;
 
 	struct PickingPassData
