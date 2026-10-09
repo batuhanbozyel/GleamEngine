@@ -52,6 +52,18 @@ AssetHeader AssetStorage::ReadAsset(const AssetReference& ref, const Reflection:
 	return header;
 }
 
+BinaryBuffer AssetStorage::ReadBlob(const AssetReference& ref, const BufferRange& range) const
+{
+	auto file = Filesystem::OpenRead(GetAssetFilePath(ref), FileType::Binary);
+	GLEAM_ASSERT(file->IsOpen(), "Failed to open asset file: {}", GetAssetFilePath(ref).String());
+
+	BinaryBuffer buffer(range.size);
+	auto& stream = file->GetStream();
+	stream.seekg(range.offset);
+	stream.read(static_cast<char*>(buffer.data), range.size);
+	return buffer;
+}
+
 void AssetStorage::EmplaceAssetPath(const Path& path)
 {
 	Guid guid = TString(path.Stem());

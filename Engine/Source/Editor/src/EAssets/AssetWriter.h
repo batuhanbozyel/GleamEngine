@@ -32,6 +32,14 @@ public:
 	}
 
 	template<typename T>
+	uint32_t AddBlob(Gleam::BinaryBuffer&& data,
+					 Gleam::AssetPlatform platform,
+					 Gleam::EnumFlag<Gleam::AssetBackend> backend)
+	{
+		return AddBlob(Gleam::AssetUtils::BlobType<T>(), eastl::move(data), platform, backend);
+	}
+
+	template<typename T>
 	void AddBlobVariant(uint32_t slot,
 						const void* data,
 						uint64_t size,
@@ -41,9 +49,23 @@ public:
 		AddBlobVariant(Gleam::AssetUtils::BlobType<T>(), slot, data, size, platform, backend);
 	}
 
+	template<typename T>
+	void AddBlobVariant(uint32_t slot,
+						Gleam::BinaryBuffer&& data,
+						Gleam::AssetPlatform platform,
+						Gleam::EnumFlag<Gleam::AssetBackend> backend)
+	{
+		AddBlobVariant(Gleam::AssetUtils::BlobType<T>(), slot, eastl::move(data), platform, backend);
+	}
+
 	uint32_t AddBlob(const Gleam::AssetBlobType& type,
 					 const void* data,
 					 uint64_t size,
+					 Gleam::AssetPlatform platform,
+					 Gleam::EnumFlag<Gleam::AssetBackend> backend);
+
+	uint32_t AddBlob(const Gleam::AssetBlobType& type,
+					 Gleam::BinaryBuffer&& data,
 					 Gleam::AssetPlatform platform,
 					 Gleam::EnumFlag<Gleam::AssetBackend> backend);
 
@@ -51,6 +73,12 @@ public:
 						uint32_t slot,
 						const void* data,
 						uint64_t size,
+						Gleam::AssetPlatform platform,
+						Gleam::EnumFlag<Gleam::AssetBackend> backend);
+
+	void AddBlobVariant(const Gleam::AssetBlobType& type,
+						uint32_t slot,
+						Gleam::BinaryBuffer&& data,
 						Gleam::AssetPlatform platform,
 						Gleam::EnumFlag<Gleam::AssetBackend> backend);
 
@@ -66,8 +94,7 @@ private:
 
 	struct DataBlob
 	{
-		const void* data = nullptr;
-		uint64_t size = 0;
+		Gleam::BinaryBuffer data;
 		Gleam::AssetBlobType type;
 		uint32_t slot = 0;
 		Gleam::AssetPlatform platform = Gleam::AssetPlatform::Common;

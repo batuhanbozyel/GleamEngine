@@ -2,6 +2,7 @@
 #include "AssetPackage.h"
 #include "Tools/MeshTools.h"
 #include "Core/Attributes.h"
+#include "Container/EnumFlag.h"
 #include "Math/Color.h"
 #include "Math/Quaternion.h"
 #include "Math/Float4x4.h"
@@ -72,16 +73,31 @@ struct RawMesh
 	uint32_t material;
 };
 
+GENUM(MeshColliderType, "C0F303DD-F32E-4BD0-91B0-2D8C3972EE97", Serializable, PrettyName("Collider Type")) : uint32_t
+{
+	GITEM(ConvexHull, "B09BAE6B-8BA6-41B1-B7EE-74319F454E67", PrettyName("Convex Hull")) = BIT(0),
+	GITEM(TriangleMesh, "B7D58578-6574-4149-8F19-71671B2ECD4C", PrettyName("Triangle Mesh")) = BIT(1)
+};
+
+GSTRUCT(MeshPhysicsImportSettings, "7E40A63F-A2AD-4892-936C-8D9FD2DDFDB5", Serializable, PrettyName("Physics"))
+{
+	GFIELD("67BF0F77-BDEF-46C8-9DAC-BBC757F16F0D", Serializable, PrettyName("Colliders"))
+	Gleam::EnumFlag<MeshColliderType> colliders = Gleam::EnumFlag<MeshColliderType>(MeshColliderType::ConvexHull) | MeshColliderType::TriangleMesh;
+
+	GFIELD("20E25FE6-1E88-4A8D-98E7-570335777441", Serializable, PrettyName("Convex Decomposition"))
+	ConvexDecompositionSettings convexDecomposition;
+
+	GFIELD("EC464104-92DC-4C5A-9279-526F74FC984C", Serializable, PrettyName("Triangle Mesh Simplification"))
+	TriangleMeshSimplificationSettings triangleMeshSimplification;
+};
+
 GSTRUCT(MeshImportSettings, "23C5B89C-5735-4CFA-BDD9-0E556AEB0241", Serializable, PrettyName("Mesh"))
 {
 	GFIELD("4854FDA0-E1F1-444F-95F4-AC748D0CDB7A", Serializable, PrettyName("Generate LODs"))
 	bool generateLods = true;
 
-	GFIELD("F610C1DA-00DA-48BC-94E2-57EC90C1767A", Serializable, PrettyName("Generate Convex Hulls"))
-	bool generateConvexHulls = false;
-
-	GFIELD("09AEAACD-EA18-4A20-B5E6-EDE51B005E00", Serializable, PrettyName("Convex Decomposition"))
-	ConvexDecompositionSettings convexDecomposition;
+	GFIELD("94883C7C-3AF3-46BA-89A6-D590416F589D", Serializable, PrettyName("Physics"))
+	MeshPhysicsImportSettings physics;
 };
 
 class MeshSource : public AssetPackage

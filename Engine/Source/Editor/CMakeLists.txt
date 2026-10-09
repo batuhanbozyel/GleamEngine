@@ -50,6 +50,7 @@ list(FILTER HEADER_FILES EXCLUDE REGEX ".*Reflection\\.generated\\.h$")
 
 add_executable(Editor WIN32 MACOSX_BUNDLE ${SOURCE_FILES})
 target_include_directories(Editor PRIVATE ${INCLUDE_DIRS})
+target_include_directories(Editor PRIVATE $<TARGET_PROPERTY:box3d,INTERFACE_INCLUDE_DIRECTORIES>)
 target_link_directories(Editor PRIVATE ${CMAKE_BINARY_DIR}/$<CONFIG>)
 
 if (APPLE)

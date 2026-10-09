@@ -2,6 +2,7 @@
 #include "PhysicsTypes.h"
 #include "Collider.h"
 #include "World/Components/RigidBody.h"
+#include "Container/BinaryBuffer.h"
 
 #include <functional>
 
@@ -44,6 +45,10 @@ public:
 	ColliderHandle CreateBoxCollider(RigidBodyHandle body, const BoxCollider& collider, const PhysicsMaterial& material, float density, float scale, void* userData = nullptr);
 
 	ColliderHandle CreateCapsuleCollider(RigidBodyHandle body, const CapsuleCollider& collider, const PhysicsMaterial& material, float density, float scale, void* userData = nullptr);
+
+	ColliderHandle CreateConvexMeshCollider(RigidBodyHandle body, const ConvexMeshCollider& collider, const BinaryBuffer& hull, const PhysicsMaterial& material, float density, float scale, void* userData = nullptr);
+
+	ColliderHandle CreateTriangleMeshCollider(RigidBodyHandle body, const TriangleMeshCollider& collider, const BinaryBuffer& mesh, const PhysicsMaterial& material, float scale, void* userData = nullptr);
 
 	void DestroyCollider(ColliderHandle collider);
 
@@ -92,6 +97,8 @@ public:
 	void ForEachContactEnd(ContactFn&& fn) const;
 
 	bool IsValid() const;
+
+	static float GetConvexHullVolume(const BinaryBuffer& hull);
 
 private:
 

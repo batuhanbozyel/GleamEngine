@@ -14,6 +14,7 @@
 #include "Core/Globals.h"
 #include "Assets/AssetManager.h"
 #include "World/Components/MeshRenderer.h"
+#include "World/Components/RigidBody.h"
 #include "Renderer/Shaders/ShaderInterop.h"
 
 #define CGLTF_IMPLEMENTATION
@@ -238,6 +239,19 @@ bool MeshSource::Import(const Gleam::Path& path, const ImportSettings& settings)
 					materialRefs.push_back(materialItem.reference);
 				}
 				entity.AddComponent<Gleam::MeshRenderer>(meshItem.reference, materialRefs);
+
+				if (settings.physics.colliders.Has(MeshColliderType::ConvexHull))
+				{
+					auto& rigidBody = entity.AddComponent<Gleam::RigidBody>();
+					rigidBody.type = Gleam::RigidBodyType::Dynamic;
+					rigidBody.colliders.convexMeshes.push_back({ .mesh = meshItem.reference });
+				}
+				else if (settings.physics.colliders.Has(MeshColliderType::TriangleMesh))
+				{
+					auto& rigidBody = entity.AddComponent<Gleam::RigidBody>();
+					rigidBody.type = Gleam::RigidBodyType::Static;
+					rigidBody.colliders.triangleMeshes.push_back({ .mesh = meshItem.reference });
+				}
 			}
 
 			if (node.children_count > 0)
@@ -305,6 +319,16 @@ Gleam::RefCounted<MeshBaker> MeshSource::ImportMesh(const Gleam::TArray<RawMesh>
 
 	auto& lod0Data = meshData.lods.emplace_back(MeshTools::CombineMeshes(rawMeshes));
 	MeshTools::BuildMeshlets(lod0Data);
+
+	if (settings.physics.colliders.Has(MeshColliderType::ConvexHull))
+	{
+		meshData.convexHulls = MeshTools::DecomposeConvex(lod0Data, settings.physics.convexDecomposition);
+	}
+
+	if (settings.physics.colliders.Has(MeshColliderType::TriangleMesh))
+	{
+		meshData.triangleMeshes.push_back(MeshTools::SimplifyMeshSloppy(lod0Data, settings.physics.triangleMeshSimplification));
+	}
 
 	for (const auto& rawMesh : rawMeshes)
 	{

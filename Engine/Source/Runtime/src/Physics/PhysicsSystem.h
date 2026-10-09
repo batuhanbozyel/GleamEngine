@@ -2,6 +2,7 @@
 #include "PhysicsWorld.h"
 #include "World/ComponentSystem.h"
 #include "World/Entity.h"
+#include "Assets/AssetReference.h"
 #include "Container/Hash.h"
 #include "Container/Pointer.h"
 
@@ -10,8 +11,19 @@ namespace Gleam {
 struct RigidBodyRecord
 {
 	RigidBodyHandle body = {};
+	RigidBodyType type = RigidBodyType::Dynamic;
 	Transform transform = {};
+	TArray<AssetReference> convexMeshes;
+	TArray<AssetReference> triangleMeshes;
 };
+
+struct MeshColliderBlobs
+{
+	TArray<BinaryBuffer> blobs;
+	uint32_t refCount = 0;
+};
+
+using MeshColliderCache = HashMap<AssetReference, MeshColliderBlobs>;
 
 struct PhysicsRaycastResult
 {
@@ -58,21 +70,35 @@ public:
 
 	void ForEachContactEnd(ContactFn&& fn) const;
 
+	static TArray<BinaryBuffer> LoadConvexHulls(const AssetReference& mesh);
+
+	static TArray<BinaryBuffer> LoadTriangleMeshes(const AssetReference& mesh);
+
 private:
 
 	void SynchronizeRigidBodies(const EntityManager& entityManager);
 
 	void ApplyRigidBodyMotions(EntityManager& entityManager);
 
+	void ApplyRigidBodyTransform(EntityManager& entityManager, EntityHandle handle);
+
+	void RestoreDynamicDescendants(EntityManager& entityManager, const Entity& entity);
+
 	RigidBodyRecord CreateRigidBodyRecord(const Entity& entity, const RigidBody& rigidBody);
 
 	void ReplaceRigidBodyRecord(const Entity& entity, const RigidBody& rigidBody, RigidBodyRecord& record);
+
+	void DestroyRigidBodyRecord(const RigidBodyRecord& record);
 
 	void OnRigidBodyRemoved(EntityHandle entity);
 
 	Scope<PhysicsWorld> mPhysicsWorld;
 
 	HashMap<EntityHandle, RigidBodyRecord, EnumClassHash> mRigidBodies;
+
+	MeshColliderCache mConvexHulls;
+
+	MeshColliderCache mTriangleMeshes;
 
 	ChangeCursor mChangeCursor;
 

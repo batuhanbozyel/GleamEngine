@@ -108,6 +108,18 @@ GSTRUCT(MeshLodDescriptor, "CBA27D05-FEDE-4D7D-A717-117D6A601D64", Serializable,
 	TArray<SubmeshDescriptor> submeshes;
 };
 
+GSTRUCT(ConvexHullDescriptor, "C42CA746-9553-4529-AD4C-3A86E8C23053", Serializable, Version(1))
+{
+	GFIELD("3DD31727-00E6-449A-9F06-2B6AB0C6731D", Serializable)
+	uint32_t blobSlot = 0;
+};
+
+GSTRUCT(TriangleMeshDescriptor, "D4DE3178-DEED-4775-86A1-4EB557838D97", Serializable, Version(1))
+{
+	GFIELD("86A03AF8-2D32-4C16-B736-F8127C34027B", Serializable)
+	uint32_t blobSlot = 0;
+};
+
 GSTRUCT(MeshDescriptor, "59E4007E-F7D4-4107-A05F-E1121067DCD3", Serializable)
 {
 	GFIELD("B1A2C3D4-E5F6-47A8-B9C0-D1E2F3A4B5C6", Serializable)
@@ -118,6 +130,12 @@ GSTRUCT(MeshDescriptor, "59E4007E-F7D4-4107-A05F-E1121067DCD3", Serializable)
 
 	GFIELD("B0D80579-01F6-43B9-8576-90ACE1B245D1", Serializable)
 	TArray<MeshLodDescriptor> lods;
+
+	GFIELD("A467908A-6EE6-47BB-BF32-77BFA103675D", Serializable)
+	TArray<ConvexHullDescriptor> convexHulls;
+
+	GFIELD("1E7B186E-A7CE-4B8D-8FAA-F7D50A1D276B", Serializable)
+	TArray<TriangleMeshDescriptor> triangleMeshes;
 };
 
 } // namespace Gleam

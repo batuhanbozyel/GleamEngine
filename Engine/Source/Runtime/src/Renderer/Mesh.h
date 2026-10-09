@@ -45,6 +45,10 @@ public:
 
 	const BottomLevelAccelerationStructure& GetBLAS(uint32_t lod, uint32_t submesh) const;
 
+	const TArray<ConvexHullDescriptor>& GetConvexHulls() const;
+
+	const TArray<TriangleMeshDescriptor>& GetTriangleMeshes() const;
+
 protected:
 
 	struct LodResources

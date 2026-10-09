@@ -93,6 +93,33 @@ static Gleam::TArray<uint8_t> ComputeSharedVertexLocks(const MeshLodData& lod)
 	return locks;
 }
 
+static TriangleMeshData WeldPositions(const MeshLodData& lod)
+{
+	const auto sourceIndices = static_cast<const uint32_t*>(Gleam::OffsetPointer(lod.buffer.data, lod.indices.offset));
+	const auto sourcePositions = static_cast<const Gleam::Float3*>(Gleam::OffsetPointer(lod.buffer.data, lod.positions.offset));
+	const size_t vertexCount = lod.positions.size / sizeof(Gleam::Float3);
+
+	Gleam::TArray<uint32_t> indices;
+	indices.reserve(lod.indices.size / sizeof(uint32_t));
+	for (const auto& submesh : lod.submeshes)
+	{
+		for (uint32_t i = 0; i < submesh.indexCount; ++i)
+		{
+			indices.push_back(sourceIndices[submesh.firstIndex + i] + submesh.baseVertex);
+		}
+	}
+
+	Gleam::TArray<uint32_t> remap(vertexCount);
+	const size_t uniqueVertexCount = meshopt_generateVertexRemap(remap.data(), indices.data(), indices.size(), sourcePositions, vertexCount, sizeof(Gleam::Float3));
+
+	TriangleMeshData welded;
+	welded.indices.resize(indices.size());
+	welded.positions.resize(uniqueVertexCount);
+	meshopt_remapIndexBuffer(welded.indices.data(), indices.data(), indices.size(), remap.data());
+	meshopt_remapVertexBuffer(welded.positions.data(), sourcePositions, vertexCount, sizeof(Gleam::Float3), remap.data());
+	return welded;
+}
+
 MeshLodData MeshTools::CombineMeshes(const Gleam::TArray<RawMesh>& meshes)
 {
 	MeshLodData combined;
@@ -277,6 +304,44 @@ MeshLodData MeshTools::SimplifyMesh(const MeshLodData& lod, float ratio)
 		meshopt_remapVertexBuffer(outVertices + submesh.baseVertex, sourceVertices + source.baseVertex, source.vertexCount, sizeof(Gleam::InterleavedMeshVertex), submeshRemap);
 		submesh.bounds = CalculateBounds(Gleam::TArrayView<const Gleam::Float3>(outPositions + submesh.baseVertex, submesh.vertexCount));
 	}
+	return simplified;
+}
+
+TriangleMeshData MeshTools::SimplifyMeshSloppy(const MeshLodData& lod, const TriangleMeshSimplificationSettings& settings)
+{
+	static constexpr float kTargetError = 1.0f;
+
+	TriangleMeshData welded = WeldPositions(lod);
+
+	const size_t targetIndexCount = static_cast<size_t>(welded.indices.size() * settings.targetRatio) / 3 * 3;
+	if (targetIndexCount < welded.indices.size())
+	{
+		Gleam::TArray<uint32_t> indices(welded.indices.size());
+		const size_t indexCount = meshopt_simplifySloppy(indices.data(),
+														 welded.indices.data(),
+														 welded.indices.size(),
+														 (const float*)welded.positions.data(),
+														 welded.positions.size(),
+														 sizeof(Gleam::Float3),
+														 nullptr,
+														 targetIndexCount,
+														 kTargetError,
+														 nullptr);
+		if (indexCount > 0)
+		{
+			indices.resize(indexCount);
+			welded.indices = eastl::move(indices);
+		}
+	}
+
+	Gleam::TArray<uint32_t> remap(welded.positions.size());
+	const size_t vertexCount = meshopt_optimizeVertexFetchRemap(remap.data(), welded.indices.data(), welded.indices.size(), welded.positions.size());
+
+	TriangleMeshData simplified;
+	simplified.indices.resize(welded.indices.size());
+	simplified.positions.resize(vertexCount);
+	meshopt_remapIndexBuffer(simplified.indices.data(), welded.indices.data(), welded.indices.size(), remap.data());
+	meshopt_remapVertexBuffer(simplified.positions.data(), welded.positions.data(), welded.positions.size(), sizeof(Gleam::Float3), remap.data());
 	return simplified;
 }
 
@@ -642,10 +707,12 @@ void MeshTools::ApplyTransform(RawMesh& mesh, const Gleam::Float4x4& transform)
 	}
 }
 
-Gleam::TArray<ConvexHullData> MeshTools::DecomposeConvex(const RawMesh& mesh, const ConvexDecompositionSettings& settings)
+Gleam::TArray<ConvexHullData> MeshTools::DecomposeConvex(const MeshLodData& lod, const ConvexDecompositionSettings& settings)
 {
 	// Box3D rejects hulls above B3_MAX_HULL_VERTICES, so never emit more than it can consume.
 	static constexpr uint32_t kMaxHullVertices = 128;
+
+	const TriangleMeshData welded = WeldPositions(lod);
 
 	Gleam::TArray<ConvexHullData> hulls;
 	VHACD::IVHACD::Parameters parameters;
@@ -657,10 +724,10 @@ Gleam::TArray<ConvexHullData> MeshTools::DecomposeConvex(const RawMesh& mesh, co
 	parameters.m_asyncACD = false;
 
 	auto decomposer = VHACD::CreateVHACD();
-	if (decomposer->Compute(reinterpret_cast<const float*>(mesh.positions.data()),
-							static_cast<uint32_t>(mesh.positions.size()),
-							mesh.indices.data(),
-							static_cast<uint32_t>(mesh.indices.size() / 3),
+	if (decomposer->Compute(reinterpret_cast<const float*>(welded.positions.data()),
+							static_cast<uint32_t>(welded.positions.size()),
+							welded.indices.data(),
+							static_cast<uint32_t>(welded.indices.size() / 3),
 							parameters))
 	{
 		const uint32_t hullCount = decomposer->GetNConvexHulls();
@@ -680,14 +747,6 @@ Gleam::TArray<ConvexHullData> MeshTools::DecomposeConvex(const RawMesh& mesh, co
 				result.positions.emplace_back(static_cast<float>(point.mX),
 											  static_cast<float>(point.mY),
 											  static_cast<float>(point.mZ));
-			}
-
-			result.indices.reserve(hull.m_triangles.size() * 3);
-			for (const auto& triangle : hull.m_triangles)
-			{
-				result.indices.push_back(triangle.mI0);
-				result.indices.push_back(triangle.mI1);
-				result.indices.push_back(triangle.mI2);
 			}
 		}
 	}

@@ -28,6 +28,8 @@ public:
 
 	AssetHeader ReadAsset(const AssetReference& ref, const Reflection::ClassDescription& classDesc, void* metadata) const;
 
+	BinaryBuffer ReadBlob(const AssetReference& ref, const BufferRange& range) const;
+
 	void EmplaceAssetPath(const Path& path);
 
 	void RemoveAssetPath(const Path& path);

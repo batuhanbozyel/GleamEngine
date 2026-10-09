@@ -119,6 +119,32 @@ static void* GetShapeBodyUserData(b3ShapeId shape)
 	}
 }
 
+static const b3HullData* ToHullData(const BinaryBuffer& buffer)
+{
+	const auto hull = static_cast<const b3HullData*>(buffer.data);
+	if (buffer.size >= sizeof(b3HullData) and hull->version == B3_HULL_VERSION and static_cast<uint64_t>(hull->byteCount) == buffer.size)
+	{
+		return hull;
+	}
+	else
+	{
+		return nullptr;
+	}
+}
+
+static const b3MeshData* ToMeshData(const BinaryBuffer& buffer)
+{
+	const auto mesh = static_cast<const b3MeshData*>(buffer.data);
+	if (buffer.size >= sizeof(b3MeshData) and mesh->version == B3_MESH_VERSION and static_cast<uint64_t>(mesh->byteCount) == buffer.size)
+	{
+		return mesh;
+	}
+	else
+	{
+		return nullptr;
+	}
+}
+
 } // namespace PhysicsUtils
 
 PhysicsWorld::PhysicsWorld()
@@ -237,6 +263,37 @@ ColliderHandle PhysicsWorld::CreateCapsuleCollider(RigidBodyHandle body, const C
 	const Float3 axis = collider.rotation * Float3{ 0.0f, halfSegment, 0.0f };
 	const b3Capsule geometry = { PhysicsUtils::ToBox3D(center - axis), PhysicsUtils::ToBox3D(center + axis), collider.radius * scale };
 	return PhysicsUtils::FromBox3D(b3CreateCapsuleShape(PhysicsUtils::ToBox3D(body), &def, &geometry));
+}
+
+ColliderHandle PhysicsWorld::CreateConvexMeshCollider(RigidBodyHandle body, const ConvexMeshCollider& collider, const BinaryBuffer& hull, const PhysicsMaterial& material, float density, float scale, void* userData)
+{
+	const b3HullData* hullData = PhysicsUtils::ToHullData(hull);
+	if (hullData == nullptr)
+	{
+		GLEAM_CORE_ERROR("Convex hull data is incompatible with the physics backend, the mesh must be reimported.");
+		return ColliderHandle{};
+	}
+	else
+	{
+		const b3ShapeDef def = PhysicsUtils::MakeShapeDef(material, density, collider.isTrigger, userData);
+		const b3Transform transform = { PhysicsUtils::ToBox3D(collider.center * scale), PhysicsUtils::ToBox3D(collider.rotation) };
+		return PhysicsUtils::FromBox3D(b3CreateTransformedHullShape(PhysicsUtils::ToBox3D(body), &def, hullData, transform, b3Vec3{ scale, scale, scale }));
+	}
+}
+
+ColliderHandle PhysicsWorld::CreateTriangleMeshCollider(RigidBodyHandle body, const TriangleMeshCollider& collider, const BinaryBuffer& mesh, const PhysicsMaterial& material, float scale, void* userData)
+{
+	const b3MeshData* meshData = PhysicsUtils::ToMeshData(mesh);
+	if (meshData == nullptr)
+	{
+		GLEAM_CORE_ERROR("Triangle mesh data is incompatible with the physics backend, the mesh must be reimported.");
+		return ColliderHandle{};
+	}
+	else
+	{
+		const b3ShapeDef def = PhysicsUtils::MakeShapeDef(material, 0.0f, collider.isTrigger, userData);
+		return PhysicsUtils::FromBox3D(b3CreateMeshShape(PhysicsUtils::ToBox3D(body), &def, meshData, b3Vec3{ scale, scale, scale }));
+	}
 }
 
 void PhysicsWorld::DestroyCollider(ColliderHandle collider)
@@ -396,4 +453,10 @@ void PhysicsWorld::ForEachContactEnd(ContactFn&& fn) const
 		contact.userDataB = PhysicsUtils::GetShapeBodyUserData(event.shapeIdB);
 		fn(contact);
 	}
+}
+
+float PhysicsWorld::GetConvexHullVolume(const BinaryBuffer& hull)
+{
+	const b3HullData* hullData = PhysicsUtils::ToHullData(hull);
+	return hullData != nullptr ? hullData->volume : 0.0f;
 }

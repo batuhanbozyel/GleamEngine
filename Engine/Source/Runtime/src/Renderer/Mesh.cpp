@@ -142,3 +142,13 @@ const BottomLevelAccelerationStructure& Mesh::GetBLAS(uint32_t lod, uint32_t sub
 {
 	return mLods[lod].blases[submesh];
 }
+
+const TArray<ConvexHullDescriptor>& Mesh::GetConvexHulls() const
+{
+	return mDescriptor.convexHulls;
+}
+
+const TArray<TriangleMeshDescriptor>& Mesh::GetTriangleMeshes() const
+{
+	return mDescriptor.triangleMeshes;
+}

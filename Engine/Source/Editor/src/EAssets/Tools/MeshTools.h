@@ -10,6 +10,11 @@ struct RawMesh;
 struct ConvexHullData
 {
 	Gleam::TArray<Gleam::Float3> positions;
+};
+
+struct TriangleMeshData
+{
+	Gleam::TArray<Gleam::Float3> positions;
 	Gleam::TArray<uint32_t> indices;
 };
 
@@ -30,6 +35,8 @@ struct MeshData
 	Gleam::TString name;
 	Gleam::BoundingBox aabb;
 	Gleam::TArray<MeshLodData> lods;
+	Gleam::TArray<ConvexHullData> convexHulls;
+	Gleam::TArray<TriangleMeshData> triangleMeshes;
 };
 
 GSTRUCT(ConvexDecompositionSettings, "6DFB87AB-8AA9-4206-AE6A-6ACDBC47589A", Serializable, PrettyName("Convex Decomposition"))
@@ -50,12 +57,19 @@ GSTRUCT(ConvexDecompositionSettings, "6DFB87AB-8AA9-4206-AE6A-6ACDBC47589A", Ser
 	bool shrinkWrap = true;
 };
 
+GSTRUCT(TriangleMeshSimplificationSettings, "E2F3DCF2-76C7-4C7E-9D1F-14D5301976A4", Serializable, PrettyName("Triangle Mesh Simplification"))
+{
+	GFIELD("4BBFC7E2-A697-49B2-AA56-00E332EF38FB", Serializable, PrettyName("Target Ratio"))
+	float targetRatio = 0.25f;
+};
+
 namespace MeshTools {
 
 MeshLodData CombineMeshes(const Gleam::TArray<RawMesh>& meshes);
 MeshLodData SimplifyMesh(const MeshLodData& lod, float ratio);
+TriangleMeshData SimplifyMeshSloppy(const MeshLodData& lod, const TriangleMeshSimplificationSettings& settings);
 void BuildMeshlets(MeshLodData& lodData);
-Gleam::TArray<ConvexHullData> DecomposeConvex(const RawMesh& mesh, const ConvexDecompositionSettings& settings);
+Gleam::TArray<ConvexHullData> DecomposeConvex(const MeshLodData& lod, const ConvexDecompositionSettings& settings);
 Gleam::BoundingBox CalculateBounds(Gleam::TArrayView<const Gleam::Float3> positions);
 
 void RemoveDegenerateFaces(RawMesh& mesh);

@@ -27,6 +27,7 @@ GENUM(AssetBackend, "5DB6AC17-7C19-46F5-8FCB-73823F81A1D6", Serializable) : uint
 {
 	GITEM(DirectX, "5700379E-4363-4755-89AB-0B354F59D062") = BIT(0),
 	GITEM(Metal, "7F1C2BB5-41DF-4B90-BC85-8C74CBF23EB0") = BIT(1),
+	GITEM(Box3D, "6CC62A90-4B77-47F6-BFBA-780C3851FF3B") = BIT(8),
 	GITEM(Common, "DEAB3C73-4459-482C-A816-EF221CE82F97") = 0xFFFFFFFF
 };
 
@@ -118,6 +119,11 @@ NO_DISCARD constexpr AssetBackend RenderBackend()
 #else
 	return AssetBackend::DirectX;
 #endif
+}
+
+NO_DISCARD constexpr AssetBackend PhysicsBackend()
+{
+	return AssetBackend::Box3D;
 }
 
 } // namespace AssetUtils
