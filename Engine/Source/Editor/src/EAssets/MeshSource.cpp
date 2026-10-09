@@ -295,10 +295,13 @@ bool MeshSource::Import(const Gleam::Path& path, const ImportSettings& settings)
 
 Gleam::RefCounted<MeshBaker> MeshSource::ImportMesh(const Gleam::TArray<RawMesh>& rawMeshes, const Gleam::Path& path, const ImportSettings& settings)
 {
-	static constexpr uint32_t kMaxLODs = 4;
+	static constexpr uint32_t kMaxLods = 8;
+	static constexpr float kLodReductionRatio = 0.5f;
+	static constexpr float kMaxLodRetainedRatio = 0.85f;
 
 	MeshData meshData;
 	meshData.name = rawMeshes.back().name;
+	meshData.lods.reserve(kMaxLods);
 
 	auto& lod0Data = meshData.lods.emplace_back(MeshTools::CombineMeshes(rawMeshes));
 	MeshTools::BuildMeshlets(lod0Data);
@@ -310,75 +313,15 @@ Gleam::RefCounted<MeshBaker> MeshSource::ImportMesh(const Gleam::TArray<RawMesh>
 
 	if (settings.generateLods)
 	{
-		Gleam::Float3 meshExtent = meshData.aabb.Extent();
-		float scaleFactor = Gleam::Math::Pow((Gleam::Math::Sqrt(2.0f) / Gleam::Math::Length(meshExtent)), 0.1f);
-
-		for (uint32_t lod = 1; lod < kMaxLODs; ++lod)
+		float ratio = 1.0f;
+		for (uint32_t lod = 1; lod < kMaxLods; ++lod)
 		{
-			float progress = (float)lod / (float)kMaxLODs;
-			float ratio = Gleam::Math::Pow(2.0f, -10.0f * progress * scaleFactor);
+			ratio *= kLodReductionRatio;
+			MeshLodData lodData = MeshTools::SimplifyMesh(meshData.lods[0], ratio);
 
-			const auto& previousLod = meshData.lods[lod - 1];
-			MeshLodData simplifiedLod = MeshTools::SimplifyMesh(meshData.lods[0], ratio);
-
-			bool simplified = false;
-			uint32_t indexCount = 0;
-			uint32_t vertexCount = 0;
-			for (uint32_t i = 0; i < simplifiedLod.submeshes.size(); ++i)
-			{
-				if (simplifiedLod.submeshes[i].indexCount > 0)
-				{
-					const auto& submesh = simplifiedLod.submeshes[i];
-					indexCount += submesh.indexCount;
-					vertexCount += submesh.vertexCount;
-					simplified = true;
-				}
-				else
-				{
-					const auto& submesh = previousLod.submeshes[i];
-					indexCount += submesh.indexCount;
-					vertexCount += submesh.vertexCount;
-				}
-			}
-
-			if (not simplified)
+			if (lodData.indices.size > meshData.lods.back().indices.size * kMaxLodRetainedRatio)
 			{
 				break;
-			}
-
-			const uint64_t indexBufferSize = indexCount * sizeof(uint32_t);
-			const uint64_t positionBufferSize = vertexCount * sizeof(Gleam::Float3);
-			const uint64_t interleavedBufferSize = vertexCount * sizeof(Gleam::InterleavedMeshVertex);
-
-			MeshLodData lodData;
-			lodData.submeshes.resize(simplifiedLod.submeshes.size());
-			lodData.buffer = Gleam::BinaryBuffer(indexBufferSize + positionBufferSize + interleavedBufferSize);
-			lodData.indices = { 0, indexBufferSize };
-			lodData.positions = { indexBufferSize, positionBufferSize };
-			lodData.interleavedVertices = { indexBufferSize + positionBufferSize, interleavedBufferSize };
-
-			auto indices = static_cast<uint32_t*>(Gleam::OffsetPointer(lodData.buffer.data, lodData.indices.offset));
-			auto positions = static_cast<Gleam::Float3*>(Gleam::OffsetPointer(lodData.buffer.data, lodData.positions.offset));
-			auto vertices = static_cast<Gleam::InterleavedMeshVertex*>(Gleam::OffsetPointer(lodData.buffer.data, lodData.interleavedVertices.offset));
-
-			uint32_t firstIndex = 0;
-			uint32_t baseVertex = 0;
-			for (uint32_t i = 0; i < simplifiedLod.submeshes.size(); ++i)
-			{
-				const auto& source = simplifiedLod.submeshes[i].indexCount > 0 ? simplifiedLod : previousLod;
-				const auto& sourceSubmesh = source.submeshes[i];
-
-				auto& submesh = lodData.submeshes[i];
-				submesh = sourceSubmesh;
-				submesh.firstIndex = firstIndex;
-				submesh.baseVertex = baseVertex;
-
-				memcpy(indices + firstIndex, static_cast<const uint32_t*>(Gleam::OffsetPointer(source.buffer.data, source.indices.offset)) + sourceSubmesh.firstIndex, sourceSubmesh.indexCount * sizeof(uint32_t));
-				memcpy(positions + baseVertex, static_cast<const Gleam::Float3*>(Gleam::OffsetPointer(source.buffer.data, source.positions.offset)) + sourceSubmesh.baseVertex, sourceSubmesh.vertexCount * sizeof(Gleam::Float3));
-				memcpy(vertices + baseVertex, static_cast<const Gleam::InterleavedMeshVertex*>(Gleam::OffsetPointer(source.buffer.data, source.interleavedVertices.offset)) + sourceSubmesh.baseVertex, sourceSubmesh.vertexCount * sizeof(Gleam::InterleavedMeshVertex));
-
-				firstIndex += sourceSubmesh.indexCount;
-				baseVertex += sourceSubmesh.vertexCount;
 			}
 
 			MeshTools::BuildMeshlets(lodData);

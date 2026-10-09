@@ -43,7 +43,6 @@ using namespace Gleam;
 
 void RenderSystem::Initialize(Engine* engine)
 {
-	mEngine = engine;
 	InitializeBackend();
 
 	auto configSystem = engine->GetSubsystem<ConfigSystem>();

@@ -56,7 +56,6 @@ MeshLodData CombineMeshes(const Gleam::TArray<RawMesh>& meshes);
 MeshLodData SimplifyMesh(const MeshLodData& lod, float ratio);
 void BuildMeshlets(MeshLodData& lodData);
 Gleam::TArray<ConvexHullData> DecomposeConvex(const RawMesh& mesh, const ConvexDecompositionSettings& settings);
-Gleam::TArray<Gleam::InterleavedMeshVertex> InterleaveMeshVertices(const RawMesh& mesh);
 Gleam::BoundingBox CalculateBounds(Gleam::TArrayView<const Gleam::Float3> positions);
 
 void RemoveDegenerateFaces(RawMesh& mesh);
