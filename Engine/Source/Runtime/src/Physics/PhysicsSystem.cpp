@@ -210,48 +210,8 @@ RigidBodyRecord PhysicsSystem::CreateRigidBodyRecord(const Entity& entity, const
 	record.type = rigidBody.type;
 	record.transform = transform;
 
-	const bool supportsConvexMeshes = rigidBody.type != RigidBodyType::Static;
-	const bool supportsTriangleMeshes = rigidBody.type != RigidBodyType::Dynamic;
-	if (not supportsConvexMeshes and not rigidBody.colliders.convexMeshes.empty())
-	{
-		GLEAM_CORE_WARN("Convex mesh colliders require a kinematic or dynamic rigid body: {0}", entity.GetName());
-	}
-
-	if (not supportsTriangleMeshes and not rigidBody.colliders.triangleMeshes.empty())
-	{
-		GLEAM_CORE_WARN("Triangle mesh colliders require a static or kinematic rigid body: {0}", entity.GetName());
-	}
-
-	float volume = 0.0f;
-	for (const auto& collider : rigidBody.colliders.boxes)
-	{
-		volume += PhysicsUtils::ComputeVolume(collider, transform.scale);
-	}
-
-	for (const auto& collider : rigidBody.colliders.spheres)
-	{
-		volume += PhysicsUtils::ComputeVolume(collider, transform.scale);
-	}
-
-	for (const auto& collider : rigidBody.colliders.capsules)
-	{
-		volume += PhysicsUtils::ComputeVolume(collider, transform.scale);
-	}
-
-	if (supportsConvexMeshes)
-	{
-		for (const auto& collider : rigidBody.colliders.convexMeshes)
-		{
-			const auto& hulls = PhysicsUtils::AcquireColliders(mConvexHulls, collider.mesh, &PhysicsSystem::LoadConvexHulls);
-			record.convexMeshes.push_back(collider.mesh);
-			for (const auto& hull : hulls)
-			{
-				volume += PhysicsUtils::ComputeVolume(hull, transform.scale);
-			}
-		}
-	}
-
-	if (supportsTriangleMeshes)
+	float density = 0.0f;
+	if (rigidBody.type == RigidBodyType::Static)
 	{
 		for (const auto& collider : rigidBody.colliders.triangleMeshes)
 		{
@@ -259,8 +219,45 @@ RigidBodyRecord PhysicsSystem::CreateRigidBodyRecord(const Entity& entity, const
 			record.triangleMeshes.push_back(collider.mesh);
 		}
 	}
+	else if (rigidBody.type == RigidBodyType::Dynamic)
+	{
+		float volume = 0.0f;
+		for (const auto& collider : rigidBody.colliders.boxes)
+		{
+			volume += PhysicsUtils::ComputeVolume(collider, transform.scale);
+		}
 
-	const float density = volume > 0.0f ? rigidBody.mass / volume : 0.0f;
+		for (const auto& collider : rigidBody.colliders.spheres)
+		{
+			volume += PhysicsUtils::ComputeVolume(collider, transform.scale);
+		}
+
+		for (const auto& collider : rigidBody.colliders.capsules)
+		{
+			volume += PhysicsUtils::ComputeVolume(collider, transform.scale);
+		}
+
+		for (const auto& collider : rigidBody.colliders.convexMeshes)
+		{
+			const auto& hulls = PhysicsUtils::AcquireColliders(mConvexHulls, collider.mesh, &PhysicsSystem::LoadConvexHulls);
+			record.convexMeshes.push_back(collider.mesh);
+
+			for (const auto& hull : hulls)
+			{
+				volume += PhysicsUtils::ComputeVolume(hull, transform.scale);
+			}
+		}
+		density = volume > 0.0f ? rigidBody.mass / volume : 0.0f;
+	}
+	else
+	{
+		for (const auto& collider : rigidBody.colliders.convexMeshes)
+		{
+			PhysicsUtils::AcquireColliders(mConvexHulls, collider.mesh, &PhysicsSystem::LoadConvexHulls);
+			record.convexMeshes.push_back(collider.mesh);
+		}
+	}
+
 	for (const auto& collider : rigidBody.colliders.boxes)
 	{
 		mPhysicsWorld->CreateBoxCollider(record.body, collider, rigidBody.material, density, transform.scale, userData);
@@ -276,24 +273,23 @@ RigidBodyRecord PhysicsSystem::CreateRigidBodyRecord(const Entity& entity, const
 		mPhysicsWorld->CreateCapsuleCollider(record.body, collider, rigidBody.material, density, transform.scale, userData);
 	}
 
-	if (supportsConvexMeshes)
-	{
-		for (const auto& collider : rigidBody.colliders.convexMeshes)
-		{
-			for (const auto& hull : mConvexHulls.find(collider.mesh)->second.blobs)
-			{
-				mPhysicsWorld->CreateConvexMeshCollider(record.body, collider, hull, rigidBody.material, density, transform.scale, userData);
-			}
-		}
-	}
-
-	if (supportsTriangleMeshes)
+	if (rigidBody.type == RigidBodyType::Static)
 	{
 		for (const auto& collider : rigidBody.colliders.triangleMeshes)
 		{
 			for (const auto& mesh : mTriangleMeshes.find(collider.mesh)->second.blobs)
 			{
 				mPhysicsWorld->CreateTriangleMeshCollider(record.body, collider, mesh, rigidBody.material, transform.scale, userData);
+			}
+		}
+	}
+	else
+	{
+		for (const auto& collider : rigidBody.colliders.convexMeshes)
+		{
+			for (const auto& hull : mConvexHulls.find(collider.mesh)->second.blobs)
+			{
+				mPhysicsWorld->CreateConvexMeshCollider(record.body, collider, hull, rigidBody.material, density, transform.scale, userData);
 			}
 		}
 	}

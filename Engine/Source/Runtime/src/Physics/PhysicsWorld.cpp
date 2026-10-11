@@ -225,20 +225,6 @@ RigidBodyHandle PhysicsWorld::CreateRigidBody(const RigidBody& rigidBody, const 
 	return PhysicsUtils::FromBox3D(b3CreateBody(PhysicsUtils::ToWorldId(mWorldHandle), &def));
 }
 
-void PhysicsWorld::DestroyRigidBody(RigidBodyHandle body)
-{
-	const b3BodyId id = PhysicsUtils::ToBox3D(body);
-	if (b3Body_IsValid(id))
-	{
-		b3DestroyBody(id);
-	}
-}
-
-bool PhysicsWorld::IsValidRigidBody(RigidBodyHandle body) const
-{
-	return b3Body_IsValid(PhysicsUtils::ToBox3D(body));
-}
-
 ColliderHandle PhysicsWorld::CreateSphereCollider(RigidBodyHandle body, const SphereCollider& collider, const PhysicsMaterial& material, float density, float scale, void* userData)
 {
 	const b3ShapeDef def = PhysicsUtils::MakeShapeDef(material, density, collider.isTrigger, userData);
@@ -296,6 +282,15 @@ ColliderHandle PhysicsWorld::CreateTriangleMeshCollider(RigidBodyHandle body, co
 	}
 }
 
+void PhysicsWorld::DestroyRigidBody(RigidBodyHandle body)
+{
+	const b3BodyId id = PhysicsUtils::ToBox3D(body);
+	if (b3Body_IsValid(id))
+	{
+		b3DestroyBody(id);
+	}
+}
+
 void PhysicsWorld::DestroyCollider(ColliderHandle collider)
 {
 	const b3ShapeId id = PhysicsUtils::ToBox3D(collider);
@@ -303,11 +298,6 @@ void PhysicsWorld::DestroyCollider(ColliderHandle collider)
 	{
 		b3DestroyShape(id, true);
 	}
-}
-
-void PhysicsWorld::SetRigidBodyType(RigidBodyHandle body, RigidBodyType type)
-{
-	b3Body_SetType(PhysicsUtils::ToBox3D(body), PhysicsUtils::ToBox3D(type));
 }
 
 void PhysicsWorld::SetRigidBodyTransform(RigidBodyHandle body, const Float3& position, const Quaternion& rotation)

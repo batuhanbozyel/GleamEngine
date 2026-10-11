@@ -36,10 +36,6 @@ public:
 
 	RigidBodyHandle CreateRigidBody(const RigidBody& rigidBody, const Float3& position, const Quaternion& rotation, void* userData = nullptr);
 
-	void DestroyRigidBody(RigidBodyHandle body);
-
-	bool IsValidRigidBody(RigidBodyHandle body) const;
-
 	ColliderHandle CreateSphereCollider(RigidBodyHandle body, const SphereCollider& collider, const PhysicsMaterial& material, float density, float scale, void* userData = nullptr);
 
 	ColliderHandle CreateBoxCollider(RigidBodyHandle body, const BoxCollider& collider, const PhysicsMaterial& material, float density, float scale, void* userData = nullptr);
@@ -50,9 +46,9 @@ public:
 
 	ColliderHandle CreateTriangleMeshCollider(RigidBodyHandle body, const TriangleMeshCollider& collider, const BinaryBuffer& mesh, const PhysicsMaterial& material, float scale, void* userData = nullptr);
 
-	void DestroyCollider(ColliderHandle collider);
+	void DestroyRigidBody(RigidBodyHandle body);
 
-	void SetRigidBodyType(RigidBodyHandle body, RigidBodyType type);
+	void DestroyCollider(ColliderHandle collider);
 
 	void SetRigidBodyTransform(RigidBodyHandle body, const Float3& position, const Quaternion& rotation);
 
