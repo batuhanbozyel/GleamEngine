@@ -158,7 +158,7 @@ NO_DISCARD FORCE_INLINE constexpr T Smoothstep(T edge0, T edge1, T x)
 }
 
 template<typename T>
-NO_DISCARD FORCE_INLINE constexpr T Mix(T x, T y, T a)
+NO_DISCARD FORCE_INLINE constexpr T Lerp(T x, T y, T a)
 {
     return x * (T(1) - a) + y * a;
 }

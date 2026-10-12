@@ -10,9 +10,17 @@ namespace Gleam {
 
 struct RigidBodyRecord
 {
+	EntityHandle entity = InvalidEntity;
+
 	RigidBodyHandle body = {};
 	RigidBodyType type = RigidBodyType::Dynamic;
-	Transform transform = {};
+	RigidBodyPose previousPose = {};
+	RigidBodyPose currentPose = {};
+
+	float scale = 1.0f;
+	Tick lastWriteTick = 0;
+	bool isInterpolating = false;
+
 	TArray<AssetReference> convexMeshes;
 	TArray<AssetReference> triangleMeshes;
 };
@@ -25,23 +33,16 @@ struct MeshColliderBlobs
 
 using MeshColliderCache = HashMap<AssetReference, MeshColliderBlobs>;
 
-struct PhysicsRaycastResult
-{
-	Float3 point = Float3::zero;
-	Float3 normal = Float3::zero;
-	float distance = 0.0f;
-	EntityHandle entity = InvalidEntity;
-	bool hit = false;
-};
-
 class PhysicsSystem final : public ComponentSystem
 {
-	using ContactFn = std::function<void(EntityHandle, EntityHandle)>;
+	static constexpr uint32_t InvalidRecordIndex = ~0u;
 public:
 
 	virtual void OnCreate(EntityManager& entityManager) override;
 
 	virtual void OnFixedUpdate(EntityManager& entityManager) override;
+
+	virtual void OnUpdate(EntityManager& entityManager) override;
 
 	virtual void OnDestroy(EntityManager& entityManager) override;
 
@@ -64,45 +65,45 @@ public:
 
 	RigidBodyHandle GetRigidBody(EntityHandle entity) const;
 
-	PhysicsRaycastResult Raycast(const Float3& origin, const Float3& direction, float distance) const;
-
-	void ForEachContactBegin(ContactFn&& fn) const;
-
-	void ForEachContactEnd(ContactFn&& fn) const;
-
-	static TArray<BinaryBuffer> LoadConvexHulls(const AssetReference& mesh);
-
-	static TArray<BinaryBuffer> LoadTriangleMeshes(const AssetReference& mesh);
-
 private:
 
-	void SynchronizeRigidBodies(const EntityManager& entityManager);
+	void UpdateRigidBodyPoses();
 
-	void ApplyRigidBodyMotions(EntityManager& entityManager);
+	void ResetRigidBodyPose(RigidBodyRecord& record, const RigidBodyPose& pose);
 
-	void ApplyRigidBodyTransform(EntityManager& entityManager, EntityHandle handle);
+	void ApplyRigidBodyTransform(EntityManager& entityManager, RigidBodyRecord& record, float alpha);
 
-	void RestoreDynamicDescendants(EntityManager& entityManager, const Entity& entity);
+	void RestoreDynamicDescendants(EntityManager& entityManager, const Entity& entity, float alpha);
+
+	uint32_t FindRigidBodyIndex(EntityHandle entity) const;
 
 	RigidBodyRecord CreateRigidBodyRecord(const Entity& entity, const RigidBody& rigidBody);
 
-	void ReplaceRigidBodyRecord(const Entity& entity, const RigidBody& rigidBody, RigidBodyRecord& record);
+	void ReplaceRigidBodyRecord(const Entity& entity, const RigidBody& rigidBody, uint32_t index);
 
 	void DestroyRigidBodyRecord(const RigidBodyRecord& record);
 
 	void OnRigidBodyRemoved(EntityHandle entity);
 
+	const TArray<BinaryBuffer>& CreateConvexMeshes(const AssetReference& ref);
+
+	void DestroyConvexMesh(const AssetReference& ref);
+
+	const TArray<BinaryBuffer>& CreateTriangleMeshes(const AssetReference& ref);
+
+	void DestroyTriangleMesh(const AssetReference& ref);
+
 	Scope<PhysicsWorld> mPhysicsWorld;
 
-	HashMap<EntityHandle, RigidBodyRecord, EnumClassHash> mRigidBodies;
+	TArray<RigidBodyRecord> mRigidBodies;
+
+	TArray<uint32_t> mRigidBodyIndices;
 
 	MeshColliderCache mConvexHulls;
 
 	MeshColliderCache mTriangleMeshes;
 
 	ChangeCursor mChangeCursor;
-
-	ChangeCursor mTransformCursor;
 
 	ComponentCallback mRigidBodyRemoved;
 

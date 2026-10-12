@@ -8,10 +8,14 @@
 
 namespace Gleam {
 
+class PhysicsSystem;
+
 class PhysicsWorld final
 {
 	using MotionFn = std::function<void(const RigidBodyMotion&)>;
 	using ContactFn = std::function<void(const PhysicsContact&)>;
+
+	friend class PhysicsSystem;
 public:
 
 	PhysicsWorld();
@@ -34,23 +38,23 @@ public:
 
 	Float3 GetGravity() const;
 
-	RigidBodyHandle CreateRigidBody(const RigidBody& rigidBody, const Float3& position, const Quaternion& rotation, void* userData = nullptr);
+	RigidBodyHandle CreateRigidBody(EntityHandle entity, const RigidBody& rigidBody, const RigidBodyPose& pose);
 
-	ColliderHandle CreateSphereCollider(RigidBodyHandle body, const SphereCollider& collider, const PhysicsMaterial& material, float density, float scale, void* userData = nullptr);
+	ColliderHandle CreateSphereCollider(RigidBodyHandle body, const SphereCollider& collider, const PhysicsMaterial& material, float density, float scale);
 
-	ColliderHandle CreateBoxCollider(RigidBodyHandle body, const BoxCollider& collider, const PhysicsMaterial& material, float density, float scale, void* userData = nullptr);
+	ColliderHandle CreateBoxCollider(RigidBodyHandle body, const BoxCollider& collider, const PhysicsMaterial& material, float density, float scale);
 
-	ColliderHandle CreateCapsuleCollider(RigidBodyHandle body, const CapsuleCollider& collider, const PhysicsMaterial& material, float density, float scale, void* userData = nullptr);
+	ColliderHandle CreateCapsuleCollider(RigidBodyHandle body, const CapsuleCollider& collider, const PhysicsMaterial& material, float density, float scale);
 
-	ColliderHandle CreateConvexMeshCollider(RigidBodyHandle body, const ConvexMeshCollider& collider, const BinaryBuffer& hull, const PhysicsMaterial& material, float density, float scale, void* userData = nullptr);
+	ColliderHandle CreateConvexMeshCollider(RigidBodyHandle body, const ConvexMeshCollider& collider, const BinaryBuffer& hull, const PhysicsMaterial& material, float density, float scale);
 
-	ColliderHandle CreateTriangleMeshCollider(RigidBodyHandle body, const TriangleMeshCollider& collider, const BinaryBuffer& mesh, const PhysicsMaterial& material, float scale, void* userData = nullptr);
+	ColliderHandle CreateTriangleMeshCollider(RigidBodyHandle body, const TriangleMeshCollider& collider, const BinaryBuffer& mesh, const PhysicsMaterial& material, float scale);
 
 	void DestroyRigidBody(RigidBodyHandle body);
 
 	void DestroyCollider(ColliderHandle collider);
 
-	void SetRigidBodyTransform(RigidBodyHandle body, const Float3& position, const Quaternion& rotation);
+	void SetRigidBodyTransform(RigidBodyHandle body, const RigidBodyPose& pose);
 
 	Float3 GetRigidBodyPosition(RigidBodyHandle body) const;
 
@@ -94,7 +98,13 @@ public:
 
 	bool IsValid() const;
 
-	static float GetConvexHullVolume(const BinaryBuffer& hull);
+	float GetColliderVolume(const BoxCollider& collider, float scale) const;
+
+	float GetColliderVolume(const SphereCollider& collider, float scale) const;
+
+	float GetColliderVolume(const CapsuleCollider& collider, float scale) const;
+
+	float GetConvexHullVolume(const BinaryBuffer& hull, float scale) const;
 
 private:
 

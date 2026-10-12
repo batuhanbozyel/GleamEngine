@@ -93,7 +93,25 @@ static b3BodyType ToBox3D(RigidBodyType type)
 	}
 }
 
-static b3ShapeDef MakeShapeDef(const PhysicsMaterial& material, float density, bool isTrigger, void* userData)
+static void* ToUserData(EntityHandle entity)
+{
+	return reinterpret_cast<void*>(static_cast<uintptr_t>(entt::to_integral(entity)) + 1);
+}
+
+static EntityHandle ToEntity(void* userData)
+{
+	const auto value = reinterpret_cast<uintptr_t>(userData);
+	if (value == 0)
+	{
+		return InvalidEntity;
+	}
+	else
+	{
+		return static_cast<EntityHandle>(static_cast<uint32_t>(value - 1));
+	}
+}
+
+static b3ShapeDef MakeShapeDef(const PhysicsMaterial& material, float density, bool isTrigger)
 {
 	b3ShapeDef def = b3DefaultShapeDef();
 	def.density = density;
@@ -103,19 +121,18 @@ static b3ShapeDef MakeShapeDef(const PhysicsMaterial& material, float density, b
 	def.isSensor = isTrigger;
 	def.enableSensorEvents = isTrigger;
 	def.enableContactEvents = true;
-	def.userData = userData;
 	return def;
 }
 
-static void* GetShapeBodyUserData(b3ShapeId shape)
+static EntityHandle GetShapeEntity(b3ShapeId shape)
 {
 	if (b3Shape_IsValid(shape))
 	{
-		return b3Body_GetUserData(b3Shape_GetBody(shape));
+		return ToEntity(b3Body_GetUserData(b3Shape_GetBody(shape)));
 	}
 	else
 	{
-		return nullptr;
+		return InvalidEntity;
 	}
 }
 
@@ -210,40 +227,40 @@ Float3 PhysicsWorld::GetGravity() const
 	return PhysicsUtils::FromBox3D(b3World_GetGravity(PhysicsUtils::ToWorldId(mWorldHandle)));
 }
 
-RigidBodyHandle PhysicsWorld::CreateRigidBody(const RigidBody& rigidBody, const Float3& position, const Quaternion& rotation, void* userData)
+RigidBodyHandle PhysicsWorld::CreateRigidBody(EntityHandle entity, const RigidBody& rigidBody, const RigidBodyPose& pose)
 {
 	b3BodyDef def = b3DefaultBodyDef();
 	def.type = PhysicsUtils::ToBox3D(rigidBody.type);
-	def.position = PhysicsUtils::ToBox3D(position);
-	def.rotation = PhysicsUtils::ToBox3D(rotation);
+	def.position = PhysicsUtils::ToBox3D(pose.position);
+	def.rotation = PhysicsUtils::ToBox3D(pose.rotation);
 	def.linearDamping = rigidBody.linearDamping;
 	def.angularDamping = rigidBody.angularDamping;
 	def.gravityScale = rigidBody.gravityScale;
 	def.enableSleep = rigidBody.enableSleep;
 	def.isBullet = rigidBody.isBullet;
-	def.userData = userData;
+	def.userData = PhysicsUtils::ToUserData(entity);
 	return PhysicsUtils::FromBox3D(b3CreateBody(PhysicsUtils::ToWorldId(mWorldHandle), &def));
 }
 
-ColliderHandle PhysicsWorld::CreateSphereCollider(RigidBodyHandle body, const SphereCollider& collider, const PhysicsMaterial& material, float density, float scale, void* userData)
+ColliderHandle PhysicsWorld::CreateSphereCollider(RigidBodyHandle body, const SphereCollider& collider, const PhysicsMaterial& material, float density, float scale)
 {
-	const b3ShapeDef def = PhysicsUtils::MakeShapeDef(material, density, collider.isTrigger, userData);
+	const b3ShapeDef def = PhysicsUtils::MakeShapeDef(material, density, collider.isTrigger);
 	const b3Sphere geometry = { PhysicsUtils::ToBox3D(collider.center * scale), collider.radius * scale };
 	return PhysicsUtils::FromBox3D(b3CreateSphereShape(PhysicsUtils::ToBox3D(body), &def, &geometry));
 }
 
-ColliderHandle PhysicsWorld::CreateBoxCollider(RigidBodyHandle body, const BoxCollider& collider, const PhysicsMaterial& material, float density, float scale, void* userData)
+ColliderHandle PhysicsWorld::CreateBoxCollider(RigidBodyHandle body, const BoxCollider& collider, const PhysicsMaterial& material, float density, float scale)
 {
-	const b3ShapeDef def = PhysicsUtils::MakeShapeDef(material, density, collider.isTrigger, userData);
+	const b3ShapeDef def = PhysicsUtils::MakeShapeDef(material, density, collider.isTrigger);
 	const Float3 halfExtents = collider.size * (0.5f * scale);
 	const b3Transform transform = { PhysicsUtils::ToBox3D(collider.center * scale), PhysicsUtils::ToBox3D(collider.rotation) };
 	const b3BoxHull hull = b3MakeTransformedBoxHull(halfExtents.x, halfExtents.y, halfExtents.z, transform);
 	return PhysicsUtils::FromBox3D(b3CreateHullShape(PhysicsUtils::ToBox3D(body), &def, &hull.base));
 }
 
-ColliderHandle PhysicsWorld::CreateCapsuleCollider(RigidBodyHandle body, const CapsuleCollider& collider, const PhysicsMaterial& material, float density, float scale, void* userData)
+ColliderHandle PhysicsWorld::CreateCapsuleCollider(RigidBodyHandle body, const CapsuleCollider& collider, const PhysicsMaterial& material, float density, float scale)
 {
-	const b3ShapeDef def = PhysicsUtils::MakeShapeDef(material, density, collider.isTrigger, userData);
+	const b3ShapeDef def = PhysicsUtils::MakeShapeDef(material, density, collider.isTrigger);
 	const Float3 center = collider.center * scale;
 	const float halfSegment = Math::Max(0.0f, collider.height * 0.5f - collider.radius) * scale;
 	const Float3 axis = collider.rotation * Float3{ 0.0f, halfSegment, 0.0f };
@@ -251,7 +268,7 @@ ColliderHandle PhysicsWorld::CreateCapsuleCollider(RigidBodyHandle body, const C
 	return PhysicsUtils::FromBox3D(b3CreateCapsuleShape(PhysicsUtils::ToBox3D(body), &def, &geometry));
 }
 
-ColliderHandle PhysicsWorld::CreateConvexMeshCollider(RigidBodyHandle body, const ConvexMeshCollider& collider, const BinaryBuffer& hull, const PhysicsMaterial& material, float density, float scale, void* userData)
+ColliderHandle PhysicsWorld::CreateConvexMeshCollider(RigidBodyHandle body, const ConvexMeshCollider& collider, const BinaryBuffer& hull, const PhysicsMaterial& material, float density, float scale)
 {
 	const b3HullData* hullData = PhysicsUtils::ToHullData(hull);
 	if (hullData == nullptr)
@@ -261,13 +278,13 @@ ColliderHandle PhysicsWorld::CreateConvexMeshCollider(RigidBodyHandle body, cons
 	}
 	else
 	{
-		const b3ShapeDef def = PhysicsUtils::MakeShapeDef(material, density, collider.isTrigger, userData);
+		const b3ShapeDef def = PhysicsUtils::MakeShapeDef(material, density, collider.isTrigger);
 		const b3Transform transform = { PhysicsUtils::ToBox3D(collider.center * scale), PhysicsUtils::ToBox3D(collider.rotation) };
 		return PhysicsUtils::FromBox3D(b3CreateTransformedHullShape(PhysicsUtils::ToBox3D(body), &def, hullData, transform, b3Vec3{ scale, scale, scale }));
 	}
 }
 
-ColliderHandle PhysicsWorld::CreateTriangleMeshCollider(RigidBodyHandle body, const TriangleMeshCollider& collider, const BinaryBuffer& mesh, const PhysicsMaterial& material, float scale, void* userData)
+ColliderHandle PhysicsWorld::CreateTriangleMeshCollider(RigidBodyHandle body, const TriangleMeshCollider& collider, const BinaryBuffer& mesh, const PhysicsMaterial& material, float scale)
 {
 	const b3MeshData* meshData = PhysicsUtils::ToMeshData(mesh);
 	if (meshData == nullptr)
@@ -277,7 +294,7 @@ ColliderHandle PhysicsWorld::CreateTriangleMeshCollider(RigidBodyHandle body, co
 	}
 	else
 	{
-		const b3ShapeDef def = PhysicsUtils::MakeShapeDef(material, 0.0f, collider.isTrigger, userData);
+		const b3ShapeDef def = PhysicsUtils::MakeShapeDef(material, 0.0f, collider.isTrigger);
 		return PhysicsUtils::FromBox3D(b3CreateMeshShape(PhysicsUtils::ToBox3D(body), &def, meshData, b3Vec3{ scale, scale, scale }));
 	}
 }
@@ -300,9 +317,9 @@ void PhysicsWorld::DestroyCollider(ColliderHandle collider)
 	}
 }
 
-void PhysicsWorld::SetRigidBodyTransform(RigidBodyHandle body, const Float3& position, const Quaternion& rotation)
+void PhysicsWorld::SetRigidBodyTransform(RigidBodyHandle body, const RigidBodyPose& pose)
 {
-	b3Body_SetTransform(PhysicsUtils::ToBox3D(body), PhysicsUtils::ToBox3D(position), PhysicsUtils::ToBox3D(rotation));
+	b3Body_SetTransform(PhysicsUtils::ToBox3D(body), PhysicsUtils::ToBox3D(pose.position), PhysicsUtils::ToBox3D(pose.rotation));
 }
 
 Float3 PhysicsWorld::GetRigidBodyPosition(RigidBodyHandle body) const
@@ -392,10 +409,10 @@ PhysicsRaycastHit PhysicsWorld::Raycast(const Float3& origin, const Float3& dire
 	PhysicsRaycastHit hit;
 	if (result.hit)
 	{
+		hit.entity = PhysicsUtils::GetShapeEntity(result.shapeId);
 		hit.point = PhysicsUtils::FromBox3D(result.point);
 		hit.normal = PhysicsUtils::FromBox3D(result.normal);
 		hit.distance = result.fraction * distance;
-		hit.userData = PhysicsUtils::GetShapeBodyUserData(result.shapeId);
 		hit.hit = true;
 	}
 	return hit;
@@ -409,10 +426,8 @@ void PhysicsWorld::ForEachRigidBodyMotion(MotionFn&& fn) const
 		const b3BodyMoveEvent& event = events.moveEvents[i];
 
 		RigidBodyMotion motion;
-		motion.position = PhysicsUtils::FromBox3D(event.transform.p);
-		motion.rotation = PhysicsUtils::FromBox3D(event.transform.q);
-		motion.userData = event.userData;
-		motion.fellAsleep = event.fellAsleep;
+		motion.pose = { PhysicsUtils::FromBox3D(event.transform.p), PhysicsUtils::FromBox3D(event.transform.q) };
+		motion.entity = PhysicsUtils::ToEntity(event.userData);
 		fn(motion);
 	}
 }
@@ -425,8 +440,8 @@ void PhysicsWorld::ForEachContactBegin(ContactFn&& fn) const
 		const b3ContactBeginTouchEvent& event = events.beginEvents[i];
 
 		PhysicsContact contact;
-		contact.userDataA = PhysicsUtils::GetShapeBodyUserData(event.shapeIdA);
-		contact.userDataB = PhysicsUtils::GetShapeBodyUserData(event.shapeIdB);
+		contact.entityA = PhysicsUtils::GetShapeEntity(event.shapeIdA);
+		contact.entityB = PhysicsUtils::GetShapeEntity(event.shapeIdB);
 		fn(contact);
 	}
 }
@@ -439,14 +454,35 @@ void PhysicsWorld::ForEachContactEnd(ContactFn&& fn) const
 		const b3ContactEndTouchEvent& event = events.endEvents[i];
 
 		PhysicsContact contact;
-		contact.userDataA = PhysicsUtils::GetShapeBodyUserData(event.shapeIdA);
-		contact.userDataB = PhysicsUtils::GetShapeBodyUserData(event.shapeIdB);
+		contact.entityA = PhysicsUtils::GetShapeEntity(event.shapeIdA);
+		contact.entityB = PhysicsUtils::GetShapeEntity(event.shapeIdB);
 		fn(contact);
 	}
 }
 
-float PhysicsWorld::GetConvexHullVolume(const BinaryBuffer& hull)
+float PhysicsWorld::GetColliderVolume(const BoxCollider& collider, float scale) const
+{
+	const Float3 size = collider.size * scale;
+	return Math::Abs(size.x * size.y * size.z);
+}
+
+float PhysicsWorld::GetColliderVolume(const SphereCollider& collider, float scale) const
+{
+	const float radius = collider.radius * scale;
+	return (4.0f / 3.0f) * Math::PI * radius * radius * radius;
+}
+
+float PhysicsWorld::GetColliderVolume(const CapsuleCollider& collider, float scale) const
+{
+	const float radius = collider.radius * scale;
+	const float segment = Math::Max(0.0f, collider.height - 2.0f * collider.radius) * scale;
+	const float cylinder = Math::PI * radius * radius * segment;
+	const float caps = (4.0f / 3.0f) * Math::PI * radius * radius * radius;
+	return cylinder + caps;
+}
+
+float PhysicsWorld::GetConvexHullVolume(const BinaryBuffer& hull, float scale) const
 {
 	const b3HullData* hullData = PhysicsUtils::ToHullData(hull);
-	return hullData != nullptr ? hullData->volume : 0.0f;
+	return hullData != nullptr ? (hullData->volume * scale * scale * scale) : 0.0f;
 }

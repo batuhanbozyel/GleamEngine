@@ -8,95 +8,6 @@
 
 using namespace Gleam;
 
-namespace PhysicsUtils {
-
-static void* ToUserData(EntityHandle entity)
-{
-	return reinterpret_cast<void*>(static_cast<uintptr_t>(static_cast<uint32_t>(entity)) + 1);
-}
-
-static EntityHandle FromUserData(void* userData)
-{
-	const auto value = reinterpret_cast<uintptr_t>(userData);
-	if (value == 0)
-	{
-		return InvalidEntity;
-	}
-	else
-	{
-		return static_cast<EntityHandle>(static_cast<uint32_t>(value - 1));
-	}
-}
-
-static float ComputeVolume(const BoxCollider& collider, float scale)
-{
-	const Float3 size = collider.size * scale;
-	return Math::Abs(size.x * size.y * size.z);
-}
-
-static float ComputeVolume(const SphereCollider& collider, float scale)
-{
-	const float radius = collider.radius * scale;
-	return (4.0f / 3.0f) * Math::PI * radius * radius * radius;
-}
-
-static float ComputeVolume(const CapsuleCollider& collider, float scale)
-{
-	const float radius = collider.radius * scale;
-	const float segment = Math::Max(0.0f, collider.height - 2.0f * collider.radius) * scale;
-	const float cylinder = Math::PI * radius * radius * segment;
-	const float caps = (4.0f / 3.0f) * Math::PI * radius * radius * radius;
-	return cylinder + caps;
-}
-
-static float ComputeVolume(const BinaryBuffer& hull, float scale)
-{
-	return PhysicsWorld::GetConvexHullVolume(hull) * scale * scale * scale;
-}
-
-template<typename Descriptor>
-static TArray<BinaryBuffer> LoadColliderBlobs(const AssetReference& reference, const TArray<Descriptor>& (Mesh::*descriptors)() const)
-{
-	static auto assetManager = Globals::GameInstance->GetSubsystem<AssetManager>();
-
-	TArray<BinaryBuffer> blobs;
-	if (auto mesh = assetManager->Load<Mesh>(reference))
-	{
-		auto storage = assetManager->GetStorage();
-		for (const auto& descriptor : (mesh->*descriptors)())
-		{
-			if (const auto blob = mesh->FindBlob<Descriptor>(descriptor.blobSlot, AssetPlatform::Common, AssetUtils::PhysicsBackend()))
-			{
-				blobs.push_back(storage->ReadBlob(reference, mesh->GetBlobRange(*blob)));
-			}
-		}
-		assetManager->Release(reference);
-	}
-	return blobs;
-}
-
-static const TArray<BinaryBuffer>& AcquireColliders(MeshColliderCache& cache, const AssetReference& mesh, TArray<BinaryBuffer>(*load)(const AssetReference&))
-{
-	auto it = cache.find(mesh);
-	if (it == cache.end())
-	{
-		it = cache.emplace(mesh, MeshColliderBlobs{ .blobs = load(mesh) }).first;
-	}
-	++it->second.refCount;
-	return it->second.blobs;
-}
-
-static void ReleaseColliders(MeshColliderCache& cache, const AssetReference& mesh)
-{
-	auto it = cache.find(mesh);
-	if (it != cache.end() and --it->second.refCount == 0)
-	{
-		cache.erase(it);
-	}
-}
-
-} // namespace PhysicsUtils
-
 void PhysicsSystem::OnCreate(EntityManager& entityManager)
 {
 	mPhysicsWorld = CreateScope<PhysicsWorld>(mGravity);
@@ -105,11 +16,19 @@ void PhysicsSystem::OnCreate(EntityManager& entityManager)
 
 void PhysicsSystem::OnRigidBodyRemoved(EntityHandle entity)
 {
-	const auto it = mRigidBodies.find(entity);
-	if (it != mRigidBodies.end())
+	const uint32_t index = FindRigidBodyIndex(entity);
+	if (index != InvalidRecordIndex)
 	{
-		DestroyRigidBodyRecord(it->second);
-		mRigidBodies.erase(it);
+		DestroyRigidBodyRecord(mRigidBodies[index]);
+
+		const uint32_t last = static_cast<uint32_t>(mRigidBodies.size()) - 1;
+		if (index != last)
+		{
+			mRigidBodies[index] = eastl::move(mRigidBodies[last]);
+			mRigidBodyIndices[entt::to_entity(mRigidBodies[index].entity)] = index;
+		}
+		mRigidBodies.pop_back();
+		mRigidBodyIndices[entt::to_entity(entity)] = InvalidRecordIndex;
 	}
 }
 
@@ -117,6 +36,7 @@ void PhysicsSystem::OnDestroy(EntityManager& entityManager)
 {
 	mRigidBodyRemoved.Reset();
 	mRigidBodies.clear();
+	mRigidBodyIndices.clear();
 	mPhysicsWorld.reset();
 	mConvexHulls.clear();
 	mTriangleMeshes.clear();
@@ -131,22 +51,67 @@ void PhysicsSystem::OnFixedUpdate(EntityManager& entityManager)
 		entityManager.ForEachChanged<RigidBody>(since, [&](EntityHandle handle, const RigidBody& rigidBody)
 		{
 			const auto& entity = entityManager.GetComponent<Entity>(handle);
-			auto it = mRigidBodies.find(handle);
-			if (it == mRigidBodies.end())
+			uint32_t index = FindRigidBodyIndex(handle);
+			if (index != InvalidRecordIndex)
 			{
-				mRigidBodies.emplace(handle, CreateRigidBodyRecord(entity, rigidBody));
+				ReplaceRigidBodyRecord(entity, rigidBody, index);
 			}
 			else
 			{
-				ReplaceRigidBodyRecord(entity, rigidBody, it->second);
+				const uint32_t slot = entt::to_entity(handle);
+				if (slot >= mRigidBodyIndices.size())
+				{
+					mRigidBodyIndices.resize(slot + 1, InvalidRecordIndex);
+				}
+
+				index = static_cast<uint32_t>(mRigidBodies.size());
+				mRigidBodyIndices[slot] = index;
+				mRigidBodies.push_back(CreateRigidBodyRecord(entity, rigidBody));
 			}
+			mRigidBodies[index].lastWriteTick = tracker.GetTick();
 		});
 		mChangeCursor.Commit();
 	}
 
-	SynchronizeRigidBodies(entityManager);
+	const auto transforms = tracker.GetTicks<Transform>();
+	for (uint32_t index = 0; index < mRigidBodies.size(); ++index)
+	{
+		auto& record = mRigidBodies[index];
+		if (transforms.IsChanged(record.entity, record.lastWriteTick))
+		{
+			const auto& entity = eastl::as_const(entityManager).GetComponent<Entity>(record.entity);
+			const Transform& transform = entity.GetWorldTransform();
+
+			if (transform.scale != record.scale)
+			{
+				ReplaceRigidBodyRecord(entity, eastl::as_const(entityManager).GetComponent<RigidBody>(record.entity), index);
+			}
+			else
+			{
+				RigidBodyPose pose = transform;
+				mPhysicsWorld->SetRigidBodyTransform(record.body, pose);
+				ResetRigidBodyPose(record, pose);
+			}
+			record.lastWriteTick = tracker.GetTick();
+		}
+	}
+
 	mPhysicsWorld->Step(static_cast<float>(Timestep::fixedDeltaTime));
-	ApplyRigidBodyMotions(entityManager);
+	UpdateRigidBodyPoses();
+}
+
+void PhysicsSystem::OnUpdate(EntityManager& entityManager)
+{
+	const float alpha = static_cast<float>(Timestep::alpha);
+	const auto transforms = entityManager.GetChangeTracker().GetTicks<Transform>();
+	for (auto& record : mRigidBodies)
+	{
+		if (record.isInterpolating and not transforms.IsChanged(record.entity, record.lastWriteTick))
+		{
+			ApplyRigidBodyTransform(entityManager, record, alpha);
+			record.isInterpolating = record.previousPose != record.currentPose;
+		}
+	}
 }
 
 void PhysicsSystem::SetGravity(const Float3& gravity)
@@ -160,62 +125,53 @@ void PhysicsSystem::SetGravity(const Float3& gravity)
 
 RigidBodyHandle PhysicsSystem::GetRigidBody(EntityHandle entity) const
 {
-	const auto it = mRigidBodies.find(entity);
-	if (it == mRigidBodies.end())
+	const uint32_t index = FindRigidBodyIndex(entity);
+	if (index != InvalidRecordIndex)
 	{
-		return RigidBodyHandle{};
+		return mRigidBodies[index].body;
 	}
 	else
 	{
-		return it->second.body;
+		return RigidBodyHandle{};
 	}
 }
 
-PhysicsRaycastResult PhysicsSystem::Raycast(const Float3& origin, const Float3& direction, float distance) const
+uint32_t PhysicsSystem::FindRigidBodyIndex(EntityHandle entity) const
 {
-	const PhysicsRaycastHit hit = mPhysicsWorld->Raycast(origin, direction, distance);
-
-	PhysicsRaycastResult result;
-	result.point = hit.point;
-	result.normal = hit.normal;
-	result.distance = hit.distance;
-	result.entity = PhysicsUtils::FromUserData(hit.userData);
-	result.hit = hit.hit;
-	return result;
-}
-
-void PhysicsSystem::ForEachContactBegin(ContactFn&& fn) const
-{
-	mPhysicsWorld->ForEachContactBegin([&fn](const PhysicsContact& contact)
+	const uint32_t slot = entt::to_entity(entity);
+	const uint32_t index = slot < mRigidBodyIndices.size() ? mRigidBodyIndices[slot] : InvalidRecordIndex;
+	if (index != InvalidRecordIndex and mRigidBodies[index].entity == entity)
 	{
-		fn(PhysicsUtils::FromUserData(contact.userDataA), PhysicsUtils::FromUserData(contact.userDataB));
-	});
-}
-
-void PhysicsSystem::ForEachContactEnd(ContactFn&& fn) const
-{
-	mPhysicsWorld->ForEachContactEnd([&fn](const PhysicsContact& contact)
+		return index;
+	}
+	else
 	{
-		fn(PhysicsUtils::FromUserData(contact.userDataA), PhysicsUtils::FromUserData(contact.userDataB));
-	});
+		return InvalidRecordIndex;
+	}
 }
 
 RigidBodyRecord PhysicsSystem::CreateRigidBodyRecord(const Entity& entity, const RigidBody& rigidBody)
 {
 	const Transform& transform = entity.GetWorldTransform();
-	void* userData = PhysicsUtils::ToUserData(entity);
+	RigidBodyPose pose = transform;
 
 	RigidBodyRecord record;
-	record.body = mPhysicsWorld->CreateRigidBody(rigidBody, transform.position, transform.rotation, userData);
+	record.entity = entity;
+	record.body = mPhysicsWorld->CreateRigidBody(entity, rigidBody, pose);
 	record.type = rigidBody.type;
-	record.transform = transform;
+	record.scale = transform.scale;
+	ResetRigidBodyPose(record, pose);
 
 	float density = 0.0f;
 	if (rigidBody.type == RigidBodyType::Static)
 	{
 		for (const auto& collider : rigidBody.colliders.triangleMeshes)
 		{
-			PhysicsUtils::AcquireColliders(mTriangleMeshes, collider.mesh, &PhysicsSystem::LoadTriangleMeshes);
+			const auto& meshes = CreateTriangleMeshes(collider.mesh);
+			for (const auto& mesh : meshes)
+			{
+				mPhysicsWorld->CreateTriangleMeshCollider(record.body, collider, mesh, rigidBody.material, transform.scale);
+			}
 			record.triangleMeshes.push_back(collider.mesh);
 		}
 	}
@@ -224,27 +180,27 @@ RigidBodyRecord PhysicsSystem::CreateRigidBodyRecord(const Entity& entity, const
 		float volume = 0.0f;
 		for (const auto& collider : rigidBody.colliders.boxes)
 		{
-			volume += PhysicsUtils::ComputeVolume(collider, transform.scale);
+			volume += mPhysicsWorld->GetColliderVolume(collider, transform.scale);
 		}
 
 		for (const auto& collider : rigidBody.colliders.spheres)
 		{
-			volume += PhysicsUtils::ComputeVolume(collider, transform.scale);
+			volume += mPhysicsWorld->GetColliderVolume(collider, transform.scale);
 		}
 
 		for (const auto& collider : rigidBody.colliders.capsules)
 		{
-			volume += PhysicsUtils::ComputeVolume(collider, transform.scale);
+			volume += mPhysicsWorld->GetColliderVolume(collider, transform.scale);
 		}
 
 		for (const auto& collider : rigidBody.colliders.convexMeshes)
 		{
-			const auto& hulls = PhysicsUtils::AcquireColliders(mConvexHulls, collider.mesh, &PhysicsSystem::LoadConvexHulls);
+			const auto& hulls = CreateConvexMeshes(collider.mesh);
 			record.convexMeshes.push_back(collider.mesh);
 
 			for (const auto& hull : hulls)
 			{
-				volume += PhysicsUtils::ComputeVolume(hull, transform.scale);
+				volume += mPhysicsWorld->GetConvexHullVolume(hull, transform.scale);
 			}
 		}
 		density = volume > 0.0f ? rigidBody.mass / volume : 0.0f;
@@ -253,43 +209,33 @@ RigidBodyRecord PhysicsSystem::CreateRigidBodyRecord(const Entity& entity, const
 	{
 		for (const auto& collider : rigidBody.colliders.convexMeshes)
 		{
-			PhysicsUtils::AcquireColliders(mConvexHulls, collider.mesh, &PhysicsSystem::LoadConvexHulls);
+			CreateConvexMeshes(collider.mesh);
 			record.convexMeshes.push_back(collider.mesh);
 		}
 	}
 
 	for (const auto& collider : rigidBody.colliders.boxes)
 	{
-		mPhysicsWorld->CreateBoxCollider(record.body, collider, rigidBody.material, density, transform.scale, userData);
+		mPhysicsWorld->CreateBoxCollider(record.body, collider, rigidBody.material, density, transform.scale);
 	}
 
 	for (const auto& collider : rigidBody.colliders.spheres)
 	{
-		mPhysicsWorld->CreateSphereCollider(record.body, collider, rigidBody.material, density, transform.scale, userData);
+		mPhysicsWorld->CreateSphereCollider(record.body, collider, rigidBody.material, density, transform.scale);
 	}
 
 	for (const auto& collider : rigidBody.colliders.capsules)
 	{
-		mPhysicsWorld->CreateCapsuleCollider(record.body, collider, rigidBody.material, density, transform.scale, userData);
+		mPhysicsWorld->CreateCapsuleCollider(record.body, collider, rigidBody.material, density, transform.scale);
 	}
 
-	if (rigidBody.type == RigidBodyType::Static)
-	{
-		for (const auto& collider : rigidBody.colliders.triangleMeshes)
-		{
-			for (const auto& mesh : mTriangleMeshes.find(collider.mesh)->second.blobs)
-			{
-				mPhysicsWorld->CreateTriangleMeshCollider(record.body, collider, mesh, rigidBody.material, transform.scale, userData);
-			}
-		}
-	}
-	else
+	if (rigidBody.type != RigidBodyType::Static)
 	{
 		for (const auto& collider : rigidBody.colliders.convexMeshes)
 		{
 			for (const auto& hull : mConvexHulls.find(collider.mesh)->second.blobs)
 			{
-				mPhysicsWorld->CreateConvexMeshCollider(record.body, collider, hull, rigidBody.material, density, transform.scale, userData);
+				mPhysicsWorld->CreateConvexMeshCollider(record.body, collider, hull, rigidBody.material, density, transform.scale);
 			}
 		}
 	}
@@ -297,8 +243,9 @@ RigidBodyRecord PhysicsSystem::CreateRigidBodyRecord(const Entity& entity, const
 	return record;
 }
 
-void PhysicsSystem::ReplaceRigidBodyRecord(const Entity& entity, const RigidBody& rigidBody, RigidBodyRecord& record)
+void PhysicsSystem::ReplaceRigidBodyRecord(const Entity& entity, const RigidBody& rigidBody, uint32_t index)
 {
+	auto& record = mRigidBodies[index];
 	const Float3 linearVelocity = mPhysicsWorld->GetLinearVelocity(record.body);
 	const Float3 angularVelocity = mPhysicsWorld->GetAngularVelocity(record.body);
 
@@ -315,82 +262,119 @@ void PhysicsSystem::DestroyRigidBodyRecord(const RigidBodyRecord& record)
 	mPhysicsWorld->DestroyRigidBody(record.body);
 	for (const auto& mesh : record.convexMeshes)
 	{
-		PhysicsUtils::ReleaseColliders(mConvexHulls, mesh);
+		DestroyConvexMesh(mesh);
 	}
 
 	for (const auto& mesh : record.triangleMeshes)
 	{
-		PhysicsUtils::ReleaseColliders(mTriangleMeshes, mesh);
+		DestroyTriangleMesh(mesh);
 	}
 }
 
-TArray<BinaryBuffer> PhysicsSystem::LoadConvexHulls(const AssetReference& mesh)
+const TArray<BinaryBuffer>& PhysicsSystem::CreateConvexMeshes(const AssetReference& ref)
 {
-	return PhysicsUtils::LoadColliderBlobs<ConvexHullDescriptor>(mesh, &Mesh::GetConvexHulls);
-}
-
-TArray<BinaryBuffer> PhysicsSystem::LoadTriangleMeshes(const AssetReference& mesh)
-{
-	return PhysicsUtils::LoadColliderBlobs<TriangleMeshDescriptor>(mesh, &Mesh::GetTriangleMeshes);
-}
-
-void PhysicsSystem::SynchronizeRigidBodies(const EntityManager& entityManager)
-{
-	const auto& tracker = entityManager.GetChangeTracker();
-	const Tick since = mTransformCursor.Begin(tracker);
-	const auto transforms = tracker.GetTicks<Transform>();
-
-	for (auto& [handle, record] : mRigidBodies)
+	auto it = mConvexHulls.find(ref);
+	if (it == mConvexHulls.end())
 	{
-		if (transforms.IsChanged(handle, since))
-		{
-			const auto& entity = entityManager.GetComponent<Entity>(handle);
-			const Transform& transform = entity.GetWorldTransform();
+		static auto assetManager = Globals::GameInstance->GetSubsystem<AssetManager>();
 
-			if (transform.scale != record.transform.scale)
+		TArray<BinaryBuffer> blobs;
+		if (auto mesh = assetManager->Load<Mesh>(ref))
+		{
+			auto storage = assetManager->GetStorage();
+			for (const auto& descriptor : mesh->GetConvexHulls())
 			{
-				ReplaceRigidBodyRecord(entity, entityManager.GetComponent<RigidBody>(handle), record);
+				if (const auto blob = mesh->FindBlob<ConvexHullDescriptor>(descriptor.blobSlot, AssetPlatform::Common, AssetUtils::PhysicsBackend()))
+				{
+					blobs.push_back(storage->ReadBlob(ref, mesh->GetBlobRange(*blob)));
+				}
 			}
-			else if (transform.position != record.transform.position or transform.rotation != record.transform.rotation)
-			{
-				mPhysicsWorld->SetRigidBodyTransform(record.body, transform.position, transform.rotation);
-				record.transform = transform;
-			}
+			assetManager->Release(ref);
 		}
+		it = mConvexHulls.emplace_hint(mConvexHulls.end(), ref, MeshColliderBlobs{ .blobs = blobs });
 	}
-
-	mTransformCursor.Commit();
+	++it->second.refCount;
+	return it->second.blobs;
 }
 
-void PhysicsSystem::ApplyRigidBodyMotions(EntityManager& entityManager)
+void PhysicsSystem::DestroyConvexMesh(const AssetReference& ref)
 {
-	TArray<EntityHandle> movedEntities;
-	mPhysicsWorld->ForEachRigidBodyMotion([&](const RigidBodyMotion& motion)
+	auto it = mConvexHulls.find(ref);
+	if (it != mConvexHulls.end() and --it->second.refCount == 0)
 	{
-		const EntityHandle handle = PhysicsUtils::FromUserData(motion.userData);
-		auto it = mRigidBodies.find(handle);
-		if (entityManager.IsValid(handle) and it != mRigidBodies.end())
+		mConvexHulls.erase(it);
+	}
+}
+
+const TArray<BinaryBuffer>& PhysicsSystem::CreateTriangleMeshes(const AssetReference& ref)
+{
+	auto it = mTriangleMeshes.find(ref);
+	if (it == mTriangleMeshes.end())
+	{
+		static auto assetManager = Globals::GameInstance->GetSubsystem<AssetManager>();
+
+		TArray<BinaryBuffer> blobs;
+		if (auto mesh = assetManager->Load<Mesh>(ref))
 		{
-			it->second.transform.position = motion.position;
-			it->second.transform.rotation = motion.rotation;
-			movedEntities.push_back(handle);
+			auto storage = assetManager->GetStorage();
+			for (const auto& descriptor : mesh->GetTriangleMeshes())
+			{
+				if (const auto blob = mesh->FindBlob<TriangleMeshDescriptor>(descriptor.blobSlot, AssetPlatform::Common, AssetUtils::PhysicsBackend()))
+				{
+					blobs.push_back(storage->ReadBlob(ref, mesh->GetBlobRange(*blob)));
+				}
+			}
+			assetManager->Release(ref);
+		}
+		it = mTriangleMeshes.emplace_hint(mTriangleMeshes.end(), ref, MeshColliderBlobs{ .blobs = blobs });
+	}
+	++it->second.refCount;
+	return it->second.blobs;
+}
+
+void PhysicsSystem::DestroyTriangleMesh(const AssetReference& ref)
+{
+	auto it = mTriangleMeshes.find(ref);
+	if (it != mTriangleMeshes.end() and --it->second.refCount == 0)
+	{
+		mTriangleMeshes.erase(it);
+	}
+}
+
+void PhysicsSystem::UpdateRigidBodyPoses()
+{
+	for (auto& record : mRigidBodies)
+	{
+		record.previousPose = record.currentPose;
+	}
+
+	mPhysicsWorld->ForEachRigidBodyMotion([this](const RigidBodyMotion& motion)
+	{
+		const uint32_t index = FindRigidBodyIndex(motion.entity);
+		if (index != InvalidRecordIndex)
+		{
+			auto& record = mRigidBodies[index];
+			record.currentPose = motion.pose;
+			record.isInterpolating = true;
 		}
 	});
-
-	for (const auto handle : movedEntities)
-	{
-		ApplyRigidBodyTransform(entityManager, handle);
-	}
 }
 
-void PhysicsSystem::ApplyRigidBodyTransform(EntityManager& entityManager, EntityHandle handle)
+void PhysicsSystem::ResetRigidBodyPose(RigidBodyRecord& record, const RigidBodyPose& pose)
 {
-	auto& entity = entityManager.GetComponent<Entity>(handle);
-	auto& record = mRigidBodies.find(handle)->second;
+	record.currentPose = pose;
+	record.previousPose = record.currentPose;
+	record.isInterpolating = false;
+}
+
+void PhysicsSystem::ApplyRigidBodyTransform(EntityManager& entityManager, RigidBodyRecord& record, float alpha)
+{
+	auto& entity = entityManager.GetComponent<Entity>(record.entity);
+	const RigidBodyPose pose = Math::Lerp(record.previousPose, record.currentPose, alpha);
 	const Transform worldTransform
 	{
-		.position = record.transform.position,
-		.rotation = record.transform.rotation,
+		.position = pose.position,
+		.rotation = pose.rotation,
 		.scale = entity.GetWorldScale()
 	};
 
@@ -403,22 +387,22 @@ void PhysicsSystem::ApplyRigidBodyTransform(EntityManager& entityManager, Entity
 		entity.SetLocalTransform(worldTransform);
 	}
 
-	record.transform = entity.GetWorldTransform();
-	RestoreDynamicDescendants(entityManager, entity);
+	record.lastWriteTick = entityManager.GetChangeTracker().GetTick();
+	RestoreDynamicDescendants(entityManager, entity, alpha);
 }
 
-void PhysicsSystem::RestoreDynamicDescendants(EntityManager& entityManager, const Entity& entity)
+void PhysicsSystem::RestoreDynamicDescendants(EntityManager& entityManager, const Entity& entity, float alpha)
 {
 	for (const auto child : entity.GetChildren())
 	{
-		const auto it = mRigidBodies.find(child);
-		if (it != mRigidBodies.end() and it->second.type == RigidBodyType::Dynamic)
+		const uint32_t index = FindRigidBodyIndex(child);
+		if (index != InvalidRecordIndex and mRigidBodies[index].type == RigidBodyType::Dynamic)
 		{
-			ApplyRigidBodyTransform(entityManager, child);
+			ApplyRigidBodyTransform(entityManager, mRigidBodies[index], alpha);
 		}
 		else
 		{
-			RestoreDynamicDescendants(entityManager, entityManager.GetComponent<Entity>(child));
+			RestoreDynamicDescendants(entityManager, entityManager.GetComponent<Entity>(child), alpha);
 		}
 	}
 }

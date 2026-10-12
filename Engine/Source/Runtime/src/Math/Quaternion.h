@@ -224,7 +224,19 @@ NO_DISCARD FORCE_INLINE constexpr Quaternion Normalize(const Quaternion& q)
 		q.z * invLength
 	};
 }
-    
+
+NO_DISCARD FORCE_INLINE constexpr Quaternion Nlerp(const Quaternion& q1, const Quaternion& q2, float t)
+{
+	const float sign = Dot(q1, q2) < 0.0f ? -1.0f : 1.0f;
+	return Normalize(Quaternion
+	{
+		Lerp(q1.w, q2.w * sign, t),
+		Lerp(q1.x, q2.x * sign, t),
+		Lerp(q1.y, q2.y * sign, t),
+		Lerp(q1.z, q2.z * sign, t)
+	});
+}
+
 } // namespace Math
 
 } // namespace Gleam
