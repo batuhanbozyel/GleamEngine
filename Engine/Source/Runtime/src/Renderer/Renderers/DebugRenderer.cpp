@@ -40,6 +40,7 @@ void DebugRenderer::OnCreate(const RenderContext& context)
 	{
 		GraphicsPipelineStateDescriptor pipelineState;
 		pipelineState.topology = PrimitiveTopology::Triangles;
+		pipelineState.wireframe = true;
 		pipelineState.colorFormats = { TextureFormat::R16G16B16A16_SFloat };
 		pipelineState.depthFormat = TextureFormat::D32_SFloat;
 		pipelineState.vertexEntry = "debugMeshVertexShader";
@@ -155,20 +156,16 @@ void DebugRenderer::RenderMeshes(const CommandBuffer* cmd, const CameraUniforms&
 	for (const auto& debugMesh : debugMeshes)
 	{
         DebugShaderResources resources;
-        resources.vertexBuffer = debugMesh.mesh->GetBuffer(0).GetResourceView();
-        resources.positionOffset = static_cast<uint32_t>(debugMesh.mesh->GetPositions(0).offset);
+        resources.vertexBuffer = debugMesh.buffer.GetResourceView();
+        resources.positionOffset = debugMesh.positionOffset;
         cmd->SetConstantBuffer(resources, 0);
 
-		const uint32_t baseIndex = static_cast<uint32_t>(debugMesh.mesh->GetIndices(0).offset / sizeof(uint32_t));
-		for (const auto& submesh : debugMesh.mesh->GetSubmeshes(0))
-		{
-			DebugMeshUniforms uniforms;
-			uniforms.transform = debugMesh.transform;
-			uniforms.baseVertex = submesh.baseVertex;
-			uniforms.color = debugMesh.color;
-			cmd->SetPushConstant(uniforms);
-			cmd->DrawIndexed(debugMesh.mesh->GetBuffer(0), IndexType::UINT32, submesh.indexCount, 1, baseIndex + submesh.firstIndex);
-		}
+		DebugMeshUniforms uniforms;
+		uniforms.transform = debugMesh.transform;
+		uniforms.baseVertex = debugMesh.baseVertex;
+		uniforms.color = debugMesh.color;
+		cmd->SetPushConstant(uniforms);
+		cmd->DrawIndexed(debugMesh.buffer, IndexType::UINT32, debugMesh.indexCount, 1, debugMesh.firstIndex);
 	}
 }
 
@@ -271,15 +268,41 @@ void DebugRenderer::DrawBoundingBox(const BoundingBox& boundingBox, const Float4
     DrawLine(v3, v6, color, depthTest);
 }
 
-void DebugRenderer::DrawMesh(const Mesh* mesh, const Float4x4& transform, Color32 color, bool depthTest)
+void DebugRenderer::DrawMesh(const Mesh* mesh, const Float4x4& transform, Color32 color, uint32_t lod, bool depthTest)
 {
-	DebugMesh debugMesh;
-	debugMesh.mesh = mesh;
-	debugMesh.transform = transform;
-	debugMesh.color = color;
+	if (mesh->IsLodResident(lod))
+	{
+		const Buffer& buffer = mesh->GetBuffer(lod);
+		const uint32_t positionOffset = static_cast<uint32_t>(mesh->GetPositions(lod).offset);
+		const uint32_t baseIndex = static_cast<uint32_t>(mesh->GetIndices(lod).offset / sizeof(uint32_t));
 
-    if (depthTest)
-        mDepthDebugMeshes.push_back(debugMesh);
-    else
-        mDebugMeshes.push_back(debugMesh);
+		auto& debugMeshes = depthTest ? mDepthDebugMeshes : mDebugMeshes;
+		for (const auto& submesh : mesh->GetSubmeshes(lod))
+		{
+			debugMeshes.push_back(DebugMesh
+			{
+				.buffer = buffer,
+				.transform = transform,
+				.positionOffset = positionOffset,
+				.baseVertex = submesh.baseVertex,
+				.firstIndex = baseIndex + submesh.firstIndex,
+				.indexCount = submesh.indexCount,
+				.color = color
+			});
+		}
+	}
+}
+
+void DebugRenderer::DrawMesh(const Buffer& buffer, uint32_t positionOffset, uint32_t firstIndex, uint32_t indexCount, const Float4x4& transform, Color32 color, bool depthTest)
+{
+	auto& debugMeshes = depthTest ? mDepthDebugMeshes : mDebugMeshes;
+	debugMeshes.push_back(DebugMesh
+	{
+		.buffer = buffer,
+		.transform = transform,
+		.positionOffset = positionOffset,
+		.firstIndex = firstIndex,
+		.indexCount = indexCount,
+		.color = color
+	});
 }

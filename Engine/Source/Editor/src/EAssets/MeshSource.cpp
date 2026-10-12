@@ -240,17 +240,20 @@ bool MeshSource::Import(const Gleam::Path& path, const ImportSettings& settings)
 				}
 				entity.AddComponent<Gleam::MeshRenderer>(meshItem.reference, materialRefs);
 
-				if (settings.physics.colliders.Has(MeshColliderType::ConvexHull))
+				if (not settings.physics.colliders.Empty())
 				{
 					auto& rigidBody = entity.AddComponent<Gleam::RigidBody>();
-					rigidBody.type = Gleam::RigidBodyType::Dynamic;
-					rigidBody.colliders.convexMeshes.push_back({ .mesh = meshItem.reference });
-				}
-				else if (settings.physics.colliders.Has(MeshColliderType::TriangleMesh))
-				{
-					auto& rigidBody = entity.AddComponent<Gleam::RigidBody>();
-					rigidBody.type = Gleam::RigidBodyType::Static;
-					rigidBody.colliders.triangleMeshes.push_back({ .mesh = meshItem.reference });
+					if (settings.physics.colliders.Has(MeshColliderType::TriangleMesh))
+					{
+						rigidBody.type = Gleam::RigidBodyType::Static;
+						rigidBody.colliders.triangleMeshes.push_back({ .mesh = meshItem.reference });
+					}
+
+					if (settings.physics.colliders.Has(MeshColliderType::ConvexHull))
+					{
+						rigidBody.type = Gleam::RigidBodyType::Dynamic;
+						rigidBody.colliders.convexMeshes.push_back({ .mesh = meshItem.reference });
+					}
 				}
 			}
 

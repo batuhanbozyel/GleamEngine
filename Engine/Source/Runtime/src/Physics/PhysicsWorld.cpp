@@ -119,7 +119,7 @@ static b3ShapeDef MakeShapeDef(const PhysicsMaterial& material, float density, b
 	def.baseMaterial.restitution = material.restitution;
 	def.baseMaterial.rollingResistance = material.rollingResistance;
 	def.isSensor = isTrigger;
-	def.enableSensorEvents = isTrigger;
+	def.enableSensorEvents = true;
 	def.enableContactEvents = true;
 	return def;
 }
@@ -457,6 +457,34 @@ void PhysicsWorld::ForEachContactEnd(ContactFn&& fn) const
 		contact.entityA = PhysicsUtils::GetShapeEntity(event.shapeIdA);
 		contact.entityB = PhysicsUtils::GetShapeEntity(event.shapeIdB);
 		fn(contact);
+	}
+}
+
+void PhysicsWorld::ForEachTriggerBegin(TriggerFn&& fn) const
+{
+	const b3SensorEvents events = b3World_GetSensorEvents(PhysicsUtils::ToWorldId(mWorldHandle));
+	for (int i = 0; i < events.beginCount; ++i)
+	{
+		const b3SensorBeginTouchEvent& event = events.beginEvents[i];
+
+		PhysicsTrigger trigger;
+		trigger.trigger = PhysicsUtils::GetShapeEntity(event.sensorShapeId);
+		trigger.other = PhysicsUtils::GetShapeEntity(event.visitorShapeId);
+		fn(trigger);
+	}
+}
+
+void PhysicsWorld::ForEachTriggerEnd(TriggerFn&& fn) const
+{
+	const b3SensorEvents events = b3World_GetSensorEvents(PhysicsUtils::ToWorldId(mWorldHandle));
+	for (int i = 0; i < events.endCount; ++i)
+	{
+		const b3SensorEndTouchEvent& event = events.endEvents[i];
+
+		PhysicsTrigger trigger;
+		trigger.trigger = PhysicsUtils::GetShapeEntity(event.sensorShapeId);
+		trigger.other = PhysicsUtils::GetShapeEntity(event.visitorShapeId);
+		fn(trigger);
 	}
 }
 

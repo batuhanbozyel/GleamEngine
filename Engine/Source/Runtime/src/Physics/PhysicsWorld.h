@@ -8,14 +8,11 @@
 
 namespace Gleam {
 
-class PhysicsSystem;
-
 class PhysicsWorld final
 {
 	using MotionFn = std::function<void(const RigidBodyMotion&)>;
 	using ContactFn = std::function<void(const PhysicsContact&)>;
-
-	friend class PhysicsSystem;
+	using TriggerFn = std::function<void(const PhysicsTrigger&)>;
 public:
 
 	PhysicsWorld();
@@ -95,6 +92,10 @@ public:
 	void ForEachContactBegin(ContactFn&& fn) const;
 
 	void ForEachContactEnd(ContactFn&& fn) const;
+
+	void ForEachTriggerBegin(TriggerFn&& fn) const;
+
+	void ForEachTriggerEnd(TriggerFn&& fn) const;
 
 	bool IsValid() const;
 

@@ -12,7 +12,11 @@
 
 #include "Renderer/RenderSystem.h"
 #include "Renderer/RenderPipeline.h"
+#include "Renderer/GraphicsDevice.h"
+#include "Renderer/Mesh.h"
 #include "Renderer/Renderers/DebugRenderer.h"
+
+#include "Assets/AssetManager.h"
 
 #include "World/EntityManager.h"
 #include "World/Components/RigidBody.h"
@@ -110,6 +114,74 @@ static void DrawWireCapsule(Gleam::DebugRenderer* renderer,
 	}
 }
 
+template<typename Descriptor>
+static Gleam::TArray<Gleam::BinaryBuffer> ReadColliderBlobs(const Gleam::Mesh& mesh, const Gleam::TArray<Descriptor>& descriptors)
+{
+	static auto assetManager = Gleam::Globals::GameInstance->GetSubsystem<Gleam::AssetManager>();
+	auto storage = assetManager->GetStorage();
+
+	Gleam::TArray<Gleam::BinaryBuffer> blobs;
+	for (const auto& descriptor : descriptors)
+	{
+		if (const auto blob = mesh.FindBlob<Descriptor>(descriptor.blobSlot, Gleam::AssetPlatform::Common, Gleam::AssetUtils::PhysicsBackend()))
+		{
+			blobs.push_back(storage->ReadBlob(mesh.GetReference(), mesh.GetBlobRange(*blob)));
+		}
+	}
+	return blobs;
+}
+
+static ColliderWireMesh CreateWireMesh(const Gleam::TArray<TriangleMeshData>& parts)
+{
+	static auto renderSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::RenderSystem>();
+
+	size_t vertexCount = 0;
+	size_t indexCount = 0;
+	for (const auto& part : parts)
+	{
+		vertexCount += part.positions.size();
+		indexCount += part.indices.size();
+	}
+
+	ColliderWireMesh wireMesh;
+	if (indexCount > 0)
+	{
+		const size_t positionsSize = vertexCount * sizeof(Gleam::Float3);
+		const Gleam::BufferDescriptor descriptor{ .name = "ColliderWireMesh", .memoryType = Gleam::MemoryType::CPU, .size = positionsSize + indexCount * sizeof(uint32_t) };
+		wireMesh.buffer = renderSystem->GetDevice()->CreateBuffer(renderSystem->GetAllocator(), descriptor);
+		wireMesh.firstIndex = static_cast<uint32_t>(positionsSize / sizeof(uint32_t));
+		wireMesh.indexCount = static_cast<uint32_t>(indexCount);
+
+		auto positions = static_cast<Gleam::Float3*>(wireMesh.buffer.GetContents());
+		auto indices = static_cast<uint32_t*>(Gleam::OffsetPointer(wireMesh.buffer.GetContents(), positionsSize));
+
+		uint32_t baseVertex = 0;
+		for (const auto& part : parts)
+		{
+			std::memcpy(positions + baseVertex, part.positions.data(), part.positions.size() * sizeof(Gleam::Float3));
+			for (const uint32_t index : part.indices)
+			{
+				*indices++ = baseVertex + index;
+			}
+			baseVertex += static_cast<uint32_t>(part.positions.size());
+		}
+	}
+	return wireMesh;
+}
+
+static void DisposeWireMeshes(ColliderWireMeshCache& cache)
+{
+	static auto renderSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::RenderSystem>();
+	for (auto& [ref, wireMesh] : cache)
+	{
+		if (wireMesh.buffer.IsValid())
+		{
+			renderSystem->GetDevice()->Dispose(renderSystem->GetAllocator(), wireMesh.buffer, Gleam::BarrierStage::None);
+		}
+	}
+	cache.clear();
+}
+
 } // namespace PhysicsVisualizationUtils
 
 bool PhysicsVisualizationSystem::IsVisible(const Gleam::RigidBody& rigidBody) const
@@ -190,5 +262,77 @@ void PhysicsVisualizationSystem::OnUpdate(Gleam::EntityManager& entityManager)
 			const auto transform = bodyTransform * Gleam::Float4x4::TRS(collider.center, collider.rotation, 1.0f);
 			PhysicsVisualizationUtils::DrawWireCapsule(renderer, transform, collider.radius, halfSegment, PhysicsVisualizationUtils::ResolveColor(rigidBody, collider.isTrigger), depthTest);
 		}
+
+		if (rigidBody.type != Gleam::RigidBodyType::Static)
+		{
+			for (const auto& collider : rigidBody.colliders.convexMeshes)
+			{
+				const auto& wireMesh = GetConvexWireMesh(collider.mesh);
+				if (shouldDraw(collider.isTrigger) and wireMesh.indexCount > 0)
+				{
+					const auto transform = bodyTransform * Gleam::Float4x4::TRS(collider.center, collider.rotation, 1.0f);
+					renderer->DrawMesh(wireMesh.buffer, 0, wireMesh.firstIndex, wireMesh.indexCount, transform, PhysicsVisualizationUtils::ResolveColor(rigidBody, collider.isTrigger), depthTest);
+				}
+			}
+		}
+		else
+		{
+			for (const auto& collider : rigidBody.colliders.triangleMeshes)
+			{
+				const auto& wireMesh = GetTriangleWireMesh(collider.mesh);
+				if (shouldDraw(collider.isTrigger) and wireMesh.indexCount > 0)
+				{
+					renderer->DrawMesh(wireMesh.buffer, 0, wireMesh.firstIndex, wireMesh.indexCount, bodyTransform, PhysicsVisualizationUtils::ResolveColor(rigidBody, collider.isTrigger), depthTest);
+				}
+			}
+		}
 	});
+}
+
+void PhysicsVisualizationSystem::OnDestroy(Gleam::EntityManager& entityManager)
+{
+	PhysicsVisualizationUtils::DisposeWireMeshes(mConvexWireMeshes);
+	PhysicsVisualizationUtils::DisposeWireMeshes(mTriangleWireMeshes);
+}
+
+const ColliderWireMesh& PhysicsVisualizationSystem::GetConvexWireMesh(const Gleam::AssetReference& ref)
+{
+	auto it = mConvexWireMeshes.find(ref);
+	if (it == mConvexWireMeshes.end())
+	{
+		static auto assetManager = Gleam::Globals::GameInstance->GetSubsystem<Gleam::AssetManager>();
+
+		Gleam::TArray<TriangleMeshData> parts;
+		if (auto mesh = assetManager->Load<Gleam::Mesh>(ref))
+		{
+			for (const auto& blob : PhysicsVisualizationUtils::ReadColliderBlobs<Gleam::ConvexHullDescriptor>(*mesh, mesh->GetConvexHulls()))
+			{
+				parts.push_back(mCooker->DecodeConvexHull(blob));
+			}
+			assetManager->Release(ref);
+		}
+		it = mConvexWireMeshes.emplace_hint(mConvexWireMeshes.end(), ref, PhysicsVisualizationUtils::CreateWireMesh(parts));
+	}
+	return it->second;
+}
+
+const ColliderWireMesh& PhysicsVisualizationSystem::GetTriangleWireMesh(const Gleam::AssetReference& ref)
+{
+	auto it = mTriangleWireMeshes.find(ref);
+	if (it == mTriangleWireMeshes.end())
+	{
+		static auto assetManager = Gleam::Globals::GameInstance->GetSubsystem<Gleam::AssetManager>();
+
+		Gleam::TArray<TriangleMeshData> parts;
+		if (auto mesh = assetManager->Load<Gleam::Mesh>(ref))
+		{
+			for (const auto& blob : PhysicsVisualizationUtils::ReadColliderBlobs<Gleam::TriangleMeshDescriptor>(*mesh, mesh->GetTriangleMeshes()))
+			{
+				parts.push_back(mCooker->DecodeTriangleMesh(blob));
+			}
+			assetManager->Release(ref);
+		}
+		it = mTriangleWireMeshes.emplace_hint(mTriangleWireMeshes.end(), ref, PhysicsVisualizationUtils::CreateWireMesh(parts));
+	}
+	return it->second;
 }

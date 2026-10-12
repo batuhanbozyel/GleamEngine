@@ -86,6 +86,12 @@ struct PhysicsContact
 	EntityHandle entityB = InvalidEntity;
 };
 
+struct PhysicsTrigger
+{
+	EntityHandle trigger = InvalidEntity;
+	EntityHandle other = InvalidEntity;
+};
+
 namespace Math {
 
 NO_DISCARD FORCE_INLINE constexpr RigidBodyPose Lerp(const RigidBodyPose& p0, const RigidBodyPose& p1, float t)

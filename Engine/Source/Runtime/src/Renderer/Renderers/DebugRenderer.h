@@ -30,8 +30,12 @@ struct DebugLine
 
 struct DebugMesh
 {
-	const Mesh* mesh;
-	Float4x4 transform;
+	Buffer buffer;
+	Float4x4 transform = Float4x4::identity;
+	uint32_t positionOffset = 0;
+	uint32_t baseVertex = 0;
+	uint32_t firstIndex = 0;
+	uint32_t indexCount = 0;
 	Color32 color;
 };
 
@@ -59,7 +63,9 @@ public:
 
     void DrawBoundingBox(const BoundingBox& boundingBox, const Float4x4& transform, Color32 color, bool depthTest = true);
 
-	void DrawMesh(const Mesh* mesh, const Float4x4& transform, Color32 color, bool depthTest = true);
+	void DrawMesh(const Mesh* mesh, const Float4x4& transform, Color32 color, uint32_t lod = 0, bool depthTest = true);
+
+	void DrawMesh(const Buffer& buffer, uint32_t positionOffset, uint32_t firstIndex, uint32_t indexCount, const Float4x4& transform, Color32 color, bool depthTest = true);
 
 	const DebugRendererSettings& GetSettings() const
 	{

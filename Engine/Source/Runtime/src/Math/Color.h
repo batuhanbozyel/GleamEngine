@@ -158,7 +158,7 @@ GSTRUCT(Color32, "88FA9547-6F5F-45C4-8AE1-135B27AD29F7", Serializable)
 
 	}
     constexpr Color32(uint32_t color)
-        : r((color >> 24) & 0xFF), g((color >> 16) & 0xFF), b((color >> 8) & 0xFF), a(color & 0xFF)
+        : r(color & 0xFF), g((color >> 8) & 0xFF), b((color >> 16) & 0xFF), a((color >> 24) & 0xFF)
     {
         
     }
@@ -215,7 +215,7 @@ FORCE_INLINE constexpr Color32& Color32::operator=(const Color& color)
 
 NO_DISCARD FORCE_INLINE constexpr Color32::operator uint32_t() const
 {
-	return (static_cast<uint32_t>(r) << 24) | (static_cast<uint32_t>(g) << 16) | (static_cast<uint32_t>(b) << 8) | static_cast<uint32_t>(a);
+	return (static_cast<uint32_t>(a) << 24) | (static_cast<uint32_t>(b) << 16) | (static_cast<uint32_t>(g) << 8) | static_cast<uint32_t>(r);
 }
 
 FORCE_INLINE constexpr Color32& Color32::operator=(uint32_t color)
