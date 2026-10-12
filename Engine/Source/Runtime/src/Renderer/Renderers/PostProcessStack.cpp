@@ -27,6 +27,11 @@ void PostProcessStack::OnCreate(const RenderContext& context)
 
 void PostProcessStack::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard)
 {
+	if (not blackboard.Get<SceneRenderingData>().world)
+	{
+		return;
+	}
+
     struct PostProcessData
     {
         TextureHandle renderTarget;

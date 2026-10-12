@@ -11,6 +11,7 @@
 
 namespace Gleam {
 class EntityManager;
+struct EditorCamera;
 } // namespace Gleam
 
 namespace GEditor {
@@ -29,13 +30,10 @@ private:
     
 	void ProcessCameraMovement(Gleam::Entity& camera);
 
-	void ProcessCameraRotation(Gleam::Entity& camera);
+	void ProcessCameraRotation(Gleam::Entity& camera, Gleam::EditorCamera& editorCamera);
 
 	bool mCursorVisible = true;
     bool mViewportFocused = false;
-    
-    float mYaw = 0.0f;
-    float mPitch = 0.0f;
 
     Gleam::EntityHandle mCameraEntity;
     

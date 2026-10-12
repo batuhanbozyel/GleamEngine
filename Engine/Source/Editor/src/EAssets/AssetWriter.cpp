@@ -8,6 +8,8 @@
 #include "IO/Filesystem.h"
 
 #include "Serialization/BinarySerializer.h"
+#include "Serialization/JSONInternal.h"
+#include "Serialization/JSONSerializer.h"
 
 using namespace GEditor;
 
@@ -34,9 +36,9 @@ void BinaryAssetWriter::Write(const Gleam::Path& directory, const AssetItem& ite
 			blob.platform = mBlobs[i].platform;
 			blob.backend = mBlobs[i].backend;
 			blob.range.offset = blobOffset;
-			blob.range.size = mBlobs[i].size;
+			blob.range.size = mBlobs[i].data.size;
 
-			blobOffset += mBlobs[i].size;
+			blobOffset += mBlobs[i].data.size;
 		}
 	}
 
@@ -47,8 +49,8 @@ void BinaryAssetWriter::Write(const Gleam::Path& directory, const AssetItem& ite
 	header.bulkData.offset = header.metadata.offset + header.metadata.size;
 	for (const auto& blob : mBlobs)
 	{
-		stream.write(reinterpret_cast<const char*>(blob.data), blob.size);
-		header.bulkData.size += blob.size;
+		stream.write(reinterpret_cast<const char*>(blob.data.data), blob.data.size);
+		header.bulkData.size += blob.data.size;
 	}
 
 	stream.seekp(0);
@@ -61,8 +63,16 @@ uint32_t BinaryAssetWriter::AddBlob(const Gleam::AssetBlobType& type,
 									Gleam::AssetPlatform platform,
 									Gleam::EnumFlag<Gleam::AssetBackend> backend)
 {
+	return AddBlob(type, Gleam::BinaryBuffer(data, size), platform, backend);
+}
+
+uint32_t BinaryAssetWriter::AddBlob(const Gleam::AssetBlobType& type,
+									Gleam::BinaryBuffer&& data,
+									Gleam::AssetPlatform platform,
+									Gleam::EnumFlag<Gleam::AssetBackend> backend)
+{
 	uint32_t slot = mSlotCounts[type.guid]++;
-	AddBlobVariant(type, slot, data, size, platform, backend);
+	AddBlobVariant(type, slot, eastl::move(data), platform, backend);
 	return slot;
 }
 
@@ -73,9 +83,84 @@ void BinaryAssetWriter::AddBlobVariant(const Gleam::AssetBlobType& type,
 									   Gleam::AssetPlatform platform,
 									   Gleam::EnumFlag<Gleam::AssetBackend> backend)
 {
+	AddBlobVariant(type, slot, Gleam::BinaryBuffer(data, size), platform, backend);
+}
+
+void BinaryAssetWriter::AddBlobVariant(const Gleam::AssetBlobType& type,
+									   uint32_t slot,
+									   Gleam::BinaryBuffer&& data,
+									   Gleam::AssetPlatform platform,
+									   Gleam::EnumFlag<Gleam::AssetBackend> backend)
+{
 	mBlobs.emplace_back(DataBlob{
-		.data = data,
-		.size = size,
+		.data = eastl::move(data),
+		.type = type,
+		.slot = slot,
+		.platform = platform,
+		.backend = backend
+	});
+}
+
+void JSONAssetWriter::Write(const Gleam::Path& file, const Gleam::AssetHeader& assetHeader, const void* metadata, const Gleam::Reflection::ClassDescription& classDesc) const
+{
+	auto header = assetHeader;
+	header.dataTable.blobs.resize(mBlobs.size());
+	for (uint32_t i = 0; i < mBlobs.size(); ++i)
+	{
+		auto& blob = header.dataTable.blobs[i];
+		blob.type = mBlobs[i].type;
+		blob.slot = mBlobs[i].slot;
+		blob.platform = mBlobs[i].platform;
+		blob.backend = mBlobs[i].backend;
+		blob.range.offset = i;
+	}
+
+	rapidjson::Document document(rapidjson::kObjectType);
+	rapidjson::Node root(document, document.GetAllocator());
+
+	Gleam::JSONSerializer serializer;
+	serializer.Serialize(header, root);
+
+	rapidjson::Value metadataObject(rapidjson::kObjectType);
+	rapidjson::Node metadataNode(metadataObject, root.allocator);
+	serializer.Serialize(metadata, classDesc, metadataNode);
+	root.AddMember("Metadata", metadataObject);
+
+	rapidjson::Value blobs(rapidjson::kArrayType);
+	for (const auto& blob : mBlobs)
+	{
+		rapidjson::Value value(blob.data->object, root.allocator);
+		blobs.PushBack(value, root.allocator);
+	}
+	root.AddMember("Blobs", blobs);
+
+	auto stream = Gleam::Filesystem::Create(file, Gleam::FileType::Text);
+	rapidjson::OStreamWrapper ss(stream->GetStream());
+	rapidjson::PrettyWriter writer(ss);
+	writer.SetFormatOptions(rapidjson::PrettyFormatOptions::kFormatSingleLineArray);
+	writer.SetMaxDecimalPlaces(6);
+	writer.SetIndent('\t', 1);
+	root.object.Accept(writer);
+}
+
+uint32_t JSONAssetWriter::AddBlob(const Gleam::AssetBlobType& type,
+								  const rapidjson::Node& data,
+								  Gleam::AssetPlatform platform,
+								  Gleam::EnumFlag<Gleam::AssetBackend> backend)
+{
+	uint32_t slot = mSlotCounts[type.guid]++;
+	AddBlobVariant(type, slot, data, platform, backend);
+	return slot;
+}
+
+void JSONAssetWriter::AddBlobVariant(const Gleam::AssetBlobType& type,
+									 uint32_t slot,
+									 const rapidjson::Node& data,
+									 Gleam::AssetPlatform platform,
+									 Gleam::EnumFlag<Gleam::AssetBackend> backend)
+{
+	mBlobs.emplace_back(DataBlob{
+		.data = &data,
 		.type = type,
 		.slot = slot,
 		.platform = platform,

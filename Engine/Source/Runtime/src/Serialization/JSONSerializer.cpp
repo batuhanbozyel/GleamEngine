@@ -266,7 +266,7 @@ static void DeserializeEnumFlagValue(const rapidjson::Value& flags,
 	ReflectionUtils::WriteFlagMask(obj, classDesc.GetSize(), mask);
 }
 
-void JSONSerializer::Initialize(Engine* engine)
+void JSONSerializer::Initialize()
 {
 	REGISTER_VECTOR_TYPE_JSON_SERIALIZER(Float2, x, y);
 	REGISTER_VECTOR_TYPE_JSON_SERIALIZER(Float3, x, y, z);
@@ -330,9 +330,9 @@ void JSONSerializer::Initialize(Engine* engine)
 			rapidjson::Node& node)
 		{
 			const auto& path = Reflection::Get<Path>(obj);
-			const auto& pathStr = path.String();
+			const auto pathStr = path.String();
 			SerializeClassHeader(classDesc, node);
-			node.AddMember("Value", rapidjson::StringRef(pathStr.c_str(), pathStr.length()));
+			node.AddMember("Value", rapidjson::Value(pathStr.c_str(), static_cast<rapidjson::SizeType>(pathStr.length()), node.allocator));
 		};
 
 		mCustomArraySerializers[Reflection::GetClass<Path>().ResolveQualifiedName()] = [](const void* obj,
@@ -340,8 +340,8 @@ void JSONSerializer::Initialize(Engine* engine)
 			rapidjson::Node& node)
 		{
 			const auto& path = Reflection::Get<Path>(obj);
-			const auto& pathStr = path.String();
-			node.PushBack(rapidjson::Value(rapidjson::StringRef(pathStr.c_str(), pathStr.length())));
+			const auto pathStr = path.String();
+			node.PushBack(rapidjson::Value(pathStr.c_str(), static_cast<rapidjson::SizeType>(pathStr.length()), node.allocator));
 		};
 	}
 
@@ -542,6 +542,7 @@ void JSONSerializer::Initialize(Engine* engine)
 				auto templateParams = classDesc.ResolveTemplateParameters();
 				GLEAM_ASSERT(templateParams.size() == 1, "JSONSerializer: TArray must have exactly one template parameter for element type.");
 
+				// TODO: TArray elements are resized as raw bytes and never constructed or destroyed, so non-zero member defaults are lost for fields missing from the data, shrinking leaks heap-owning members, and element types that are not valid when zeroed are undefined behaviour. Needs per-type construct/destroy operations looked up by type hash.
 				auto& arr = Reflection::Get<TArray<uint8_t>>(obj);
 				const auto& element = templateParams[0];
 
@@ -590,6 +591,7 @@ void JSONSerializer::Initialize(Engine* engine)
 			auto templateParams = classDesc.ResolveTemplateParameters();
 			GLEAM_ASSERT(templateParams.size() == 1, "JSONSerializer: TArray must have exactly one template parameter for element type.");
 
+            // TODO: TArray elements are resized as raw bytes and never constructed or destroyed, so non-zero member defaults are lost for fields missing from the data, shrinking leaks heap-owning members, and element types that are not valid when zeroed are undefined behaviour. Needs per-type construct/destroy operations looked up by type hash.
             auto& arr = Reflection::Get<TArray<uint8_t>>(obj);
 			const auto& element = templateParams[0];
 
@@ -652,7 +654,7 @@ void JSONSerializer::Initialize(Engine* engine)
 	}
 }
 
-void JSONSerializer::Shutdown(Engine* engine)
+void JSONSerializer::Shutdown()
 {
     mCustomObjectSerializers.clear();
     mCustomArraySerializers.clear();

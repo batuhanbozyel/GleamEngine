@@ -8,8 +8,8 @@
 #pragma once
 
 namespace Gleam {
+class Application;
 class ImGuiRenderer;
-class World;
 } // namespace Gleam
 
 namespace GEditor {
@@ -20,9 +20,9 @@ public:
     
     virtual ~View() = default;
 
-	virtual void OnCreate(Gleam::World* world) {}
+	virtual void OnCreate(Gleam::Application* app) {}
 	
-	virtual void OnDestroy(Gleam::World* world) {}
+	virtual void OnDestroy(Gleam::Application* app) {}
     
     virtual void Update() {}
     

@@ -7,12 +7,14 @@
 
 #pragma once
 #include "View/View.h"
+#include "Physics/PhysicsVisualizationSystem.h"
 #include "View/Widgets/TransformGizmo.h"
 #include "Math/Size.h"
 #include "World/Entity.h"
 
 namespace Gleam {
 class EntityManager;
+class World;
 struct ImGuiPassData;
 } // namespace Gleam
 
@@ -24,14 +26,18 @@ class ViewModeRenderer;
 class SelectionSystem;
 class SelectionOutlineRenderer;
 class UndoSystem;
+class EWorldManager;
+struct EditorFonts;
 
 class WorldViewport final : public View
 {
 public:
     
-	virtual void OnCreate(Gleam::World* world) override;
+	WorldViewport(Gleam::World* world);
 
-	virtual void OnDestroy(Gleam::World* world) override;
+	virtual void OnCreate(Gleam::Application* app) override;
+
+	virtual void OnDestroy(Gleam::Application* app) override;
     
     virtual void Update() override;
     
@@ -44,7 +50,17 @@ public:
     
 private:
 
-	void DrawToolbar();
+	void DrawToolbar(const Gleam::Float2& contentMin, const Gleam::Float2& contentSize);
+
+	void DrawGizmoModes();
+
+	void DrawPlayControls(float centerX, float buttonY, float buttonHeight, bool& hovered);
+
+	void DrawCameraPopup();
+
+	void DrawRenderSettingsPopup();
+
+	void DrawStats(const Gleam::Float2& contentMin, const Gleam::Float2& contentSize, const Gleam::ImGuiPassData& passData);
 
 	void DrawViewport(Gleam::ImGuiRenderer* imgui, const Gleam::ImGuiPassData& passData);
 
@@ -57,6 +73,10 @@ private:
 	void Resize(Gleam::EntityManager& entityManager, const Gleam::Size& size);
 
     bool mCursorVisible = true;
+
+	bool mToolbarHovered = false;
+
+	const EditorFonts* mFonts = nullptr;
 
 	bool mViewportSizeChanged = false;
 
@@ -72,11 +92,17 @@ private:
 
     EditorCameraController* mCameraController = nullptr;
 
+	PhysicsVisualizationSystem* mPhysicsVisualization = nullptr;
+
 	Gleam::EntityHandle mCamera = Gleam::InvalidEntity;
 
 	SelectionSystem* mSelectionSystem = nullptr;
 
 	UndoSystem* mUndoSystem = nullptr;
+
+	EWorldManager* mWorldManager = nullptr;
+
+	Gleam::World* mViewportWorld = nullptr;
 
 	TransformGizmo mTransformGizmo;
     

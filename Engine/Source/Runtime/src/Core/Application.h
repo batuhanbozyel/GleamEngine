@@ -28,6 +28,10 @@ public:
 		GLEAM_ASSERT(!HasSubsystem<T>(), "Application already has the subsystem!");
 
 		T* system = mSubsystems.emplace_back<T>(std::forward<Args>(args)...);
+		if constexpr (std::is_base_of<TickableGameInstanceSubsystem, T>::value)
+		{
+			mTickableSubsystems.push_back(system);
+		}
         system->Initialize(this);
         return system;
 	}
@@ -38,6 +42,10 @@ public:
         GLEAM_ASSERT(HasSubsystem<T>(), "Application does not have the subsystem!");
 
         T* system = mSubsystems.get<T>();
+		if constexpr (std::is_base_of<TickableGameInstanceSubsystem, T>::value)
+		{
+			mTickableSubsystems.erase(std::remove(mTickableSubsystems.begin(), mTickableSubsystems.end(), system));
+		}
         system->Shutdown(this);
         mSubsystems.erase<T>();
 	}
@@ -61,6 +69,8 @@ private:
     Project mProject;
 
 	PolyArray<GameInstanceSubsystem> mSubsystems;
+
+	TArray<TickableGameInstanceSubsystem*> mTickableSubsystems;
 
 };
 

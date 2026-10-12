@@ -14,9 +14,9 @@ public:
 
     virtual Gleam::RenderStage GetStage() const override { return Gleam::RenderStage::PostProcess; }
 
-    void SetViewMode(Gleam::ViewMode mode) { mMode = mode; }
+    void SetViewMode(ViewMode mode) { mMode = mode; }
 
-    Gleam::ViewMode GetViewMode() const { return mMode; }
+    ViewMode GetViewMode() const { return mMode; }
 
 private:
 
@@ -24,7 +24,7 @@ private:
 
     Gleam::GraphicsPipelineHandle mPipeline;
 
-    Gleam::ViewMode mMode = Gleam::ViewMode::Lit;
+    ViewMode mMode = ViewMode::Lit;
 
 };
 

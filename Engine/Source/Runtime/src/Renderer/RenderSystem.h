@@ -3,6 +3,7 @@
 #include "Math/Size.h"
 #include "World/Entity.h"
 #include "Shaders/ShaderTypes.h"
+#include "MeshDrawList.h"
 
 namespace Gleam {
 
@@ -49,6 +50,8 @@ public:
 	void ApplyGraphicsSettings(const GraphicsSettings& settings);
 
 	void SetRenderPath(RenderPath path);
+
+	void SetCameraOverride(EntityHandle camera);
 
 	RenderPath GetRenderPath() const;
 
@@ -106,13 +109,12 @@ private:
 	EntityHandle mSkyAtmosphereEntity = InvalidEntity;
 	EntityHandle mActiveCamera = InvalidEntity;
 	EntityHandle mPrevCamera = InvalidEntity;
+	EntityHandle mCameraOverride = InvalidEntity;
 
 	float4x4 mPrevCameraView = {};
 	float4x4 mPrevCameraViewProjection = {};
 
-	Engine* mEngine;
 	RenderPath mRenderPath = RenderPath::Default;
-
 	TArray<RenderPipeline*, 2> mRenderPipelines = {};
 	TArray<IRenderer*> mSharedRenderers = {};
 

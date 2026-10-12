@@ -55,6 +55,18 @@ TextureData TextureTools::GenerateMipmaps(const RawTexture& texture)
 			dataType = STBIR_TYPE_UINT16;
 			break;
 		}
+		case Gleam::TextureFormat::R16G16_UNorm:
+		{
+			pixelLayout = STBIR_2CHANNEL;
+			dataType = STBIR_TYPE_UINT16;
+			break;
+		}
+		case Gleam::TextureFormat::R16G16B16A16_UNorm:
+		{
+			pixelLayout = STBIR_4CHANNEL;
+			dataType = STBIR_TYPE_UINT16;
+			break;
+		}
 		case Gleam::TextureFormat::R8G8_UNorm:
 		{
 			pixelLayout = STBIR_2CHANNEL;

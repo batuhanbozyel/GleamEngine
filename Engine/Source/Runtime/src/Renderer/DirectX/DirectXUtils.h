@@ -13,7 +13,7 @@
 namespace Gleam {
 
 #define DX_CHECK(x) {HRESULT result = (x);\
-					GLEAM_ASSERT(SUCCEEDED(result), HRESULTtoString(x));}
+					GLEAM_ASSERT(SUCCEEDED(result), HRESULTtoString(result));}
 
 #define GPU_VENDOR_ID_NVIDIA	0x10DE
 #define GPU_VENDOR_ID_AMD		0x1002

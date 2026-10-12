@@ -111,6 +111,22 @@ struct DebugShaderResources
 	float pad2;
 };
 
+struct LineData
+{
+	float3 start;
+	float thickness;
+	float3 end;
+	uint32_t color;
+};
+
+struct LineShaderResources
+{
+	ShaderResourceIndex lineBuffer;
+	uint32_t lineOffset;
+	float thicknessScale;
+	float pad0;
+};
+
 struct ImGuiResources
 {
 	float4x4 projMatrix;

@@ -22,7 +22,7 @@ MetalSwapchain::MetalSwapchain()
     GLEAM_ASSERT(mSurface, "Metal: Surface creation failed!");
     
     mHandle = (__bridge CAMetalLayer*)SDL_Metal_GetLayer(mSurface);
-    mHandle.name = [NSString stringWithCString:Globals::ProjectName.c_str() encoding:NSASCIIStringEncoding];
+    mHandle.name = @"GleamEngine";
     mHandle.framebufferOnly = NO;
     mHandle.opaque = YES;
 }

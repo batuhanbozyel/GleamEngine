@@ -42,6 +42,11 @@ void PathTracer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blac
 {
 	const auto& brdfData = blackboard.Get<BRDFData>();
 	const auto& sceneData = blackboard.Get<SceneRenderingData>();
+	if (not sceneData.world)
+	{
+		return;
+	}
+
 	const auto& depthPrepassData = blackboard.Get<DepthPrepassData>();
 	const auto& sceneTargetDescriptor = graph.GetDescriptor(sceneData.sceneTarget);
 
@@ -115,7 +120,7 @@ void PathTracer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blac
 		}
 
 		PathTracerConstants constants = {};
-		constants.instanceBuffer = sceneData.sceneProxy->GetGlobalInstanceBuffer().GetResourceView();
+		constants.instanceBuffer = sceneData.sceneProxy->GetInstanceBuffer().GetResourceView();
 		constants.accelerationStructure = sceneData.accelerationStructure;
 		constants.colorTarget = mRenderTarget.GetUnorderedAccessView();
 		constants.sceneTarget = passData.colorTarget;

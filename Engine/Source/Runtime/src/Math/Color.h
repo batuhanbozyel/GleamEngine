@@ -26,20 +26,20 @@ GSTRUCT(Color, "9C2ADB39-C783-4826-9FD4-DE1062A08094", Serializable)
 
 	NO_DISCARD FORCE_INLINE static constexpr Color HSVToRGB(float h, float s, float v)
 	{
-		return Color(Math::Mix(Float3(1.0f), Math::Clamp(Math::Abs(Math::Fract(Float3(h + 1.0f, h + 2.0f / 3.0f, h + 1.0f / 3.0f)) * 6.0f - 3.0f) - 1.0f, 0.0f, 1.0f), s) * v);
+		return Color(Math::Lerp(Float3(1.0f), Math::Clamp(Math::Abs(Math::Fract(Float3(h + 1.0f, h + 2.0f / 3.0f, h + 1.0f / 3.0f)) * 6.0f - 3.0f) - 1.0f, 0.0f, 1.0f), s) * v);
 	}
 
 	NO_DISCARD FORCE_INLINE static constexpr Color HSVToRGB(const Color& hsv)
 	{
-		return Color(Math::Mix(Float3(1.0f), Math::Clamp(Math::Abs(Math::Fract(Float3(hsv.x + 1.0f, hsv.x + 2.0f / 3.0f, hsv.x + 1.0f / 3.0f)) * 6.0f - 3.0f) - 1.0f, 0.0f, 1.0f), hsv.y) * hsv.z);
+		return Color(Math::Lerp(Float3(1.0f), Math::Clamp(Math::Abs(Math::Fract(Float3(hsv.x + 1.0f, hsv.x + 2.0f / 3.0f, hsv.x + 1.0f / 3.0f)) * 6.0f - 3.0f) - 1.0f, 0.0f, 1.0f), hsv.y) * hsv.z);
 	}
 
 	NO_DISCARD FORCE_INLINE static constexpr Color RGBToHSV(float r, float g, float b)
 	{
 		constexpr Float4 K = Float4(0.0f, -1.0f / 3.0f, 2.0f / 3.0f, -1.0f);
 
-		Float4 p = Math::Mix(Float4(b, g, K.w, K.z), Float4(g, b, K.x, K.y), Math::Step(b, g));
-		Float4 q = Math::Mix(Float4(p.x, p.y, p.w, r), Float4(r, p.y, p.z, p.x), Math::Step(p.x, r));
+		Float4 p = Math::Lerp(Float4(b, g, K.w, K.z), Float4(g, b, K.x, K.y), Math::Step(b, g));
+		Float4 q = Math::Lerp(Float4(p.x, p.y, p.w, r), Float4(r, p.y, p.z, p.x), Math::Step(p.x, r));
 		float d = q.x - Math::Min(q.w, q.y);
 
 		return Color(Math::Abs(q.z + (q.w - q.y) / (6.0f * d + Math::Epsilon)), d / (q.x + Math::Epsilon), q.x);
@@ -49,8 +49,8 @@ GSTRUCT(Color, "9C2ADB39-C783-4826-9FD4-DE1062A08094", Serializable)
 	{
 		constexpr Float4 K = Float4(0.0f, -1.0f / 3.0f, 2.0f / 3.0f, -1.0f);
 
-		Float4 p = Math::Mix(Float4(color.b, color.g, K.w, K.z), Float4(color.g, color.b, K.x, K.y), Math::Step(color.b, color.g));
-		Float4 q = Math::Mix(Float4(p.x, p.y, p.w, color.r), Float4(color.r, p.y, p.z, p.x), Math::Step(p.x, color.r));
+		Float4 p = Math::Lerp(Float4(color.b, color.g, K.w, K.z), Float4(color.g, color.b, K.x, K.y), Math::Step(color.b, color.g));
+		Float4 q = Math::Lerp(Float4(p.x, p.y, p.w, color.r), Float4(color.r, p.y, p.z, p.x), Math::Step(p.x, color.r));
 		float d = q.x - Math::Min(q.w, q.y);
 
 		return Color(Math::Abs(q.z + (q.w - q.y) / (6.0f * d + Math::Epsilon)), d / (q.x + Math::Epsilon), q.x);
@@ -158,7 +158,7 @@ GSTRUCT(Color32, "88FA9547-6F5F-45C4-8AE1-135B27AD29F7", Serializable)
 
 	}
     constexpr Color32(uint32_t color)
-        : r((color >> 24) & 0xFF), g((color >> 16) & 0xFF), b((color >> 8) & 0xFF), a(color & 0xFF)
+        : r(color & 0xFF), g((color >> 8) & 0xFF), b((color >> 16) & 0xFF), a((color >> 24) & 0xFF)
     {
         
     }
@@ -215,7 +215,7 @@ FORCE_INLINE constexpr Color32& Color32::operator=(const Color& color)
 
 NO_DISCARD FORCE_INLINE constexpr Color32::operator uint32_t() const
 {
-	return (static_cast<uint32_t>(r) << 24) | (static_cast<uint32_t>(g) << 16) | (static_cast<uint32_t>(b) << 8) | static_cast<uint32_t>(a);
+	return (static_cast<uint32_t>(a) << 24) | (static_cast<uint32_t>(b) << 16) | (static_cast<uint32_t>(g) << 8) | static_cast<uint32_t>(r);
 }
 
 FORCE_INLINE constexpr Color32& Color32::operator=(uint32_t color)
@@ -223,7 +223,7 @@ FORCE_INLINE constexpr Color32& Color32::operator=(uint32_t color)
     return *this = static_cast<Color32>(color);
 }
 
-NO_DISCARD FORCE_INLINE constexpr Color32 Mix(Color32 c0, Color32 c1, float a)
+NO_DISCARD FORCE_INLINE constexpr Color32 Lerp(Color32 c0, Color32 c1, float a)
 {
 	return Color32
 	{

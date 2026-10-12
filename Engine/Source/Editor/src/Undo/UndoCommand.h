@@ -149,4 +149,80 @@ public:
 
 };
 
+class ComponentLifetimeCommand : public UndoCommand
+{
+public:
+
+	struct Entry
+	{
+		Gleam::Guid entity = Gleam::Guid::InvalidGuid();
+		Gleam::TString data;
+	};
+
+	ComponentLifetimeCommand(const Gleam::TString& name, uint32_t typeHash, Gleam::TArray<Entry>&& entries)
+		: UndoCommand(name)
+		, mTypeHash(typeHash)
+		, mEntries(eastl::move(entries))
+	{
+
+	}
+
+protected:
+
+	void AddComponents(Gleam::World* world);
+
+	void RemoveComponents(Gleam::World* world);
+
+private:
+
+	uint32_t mTypeHash = 0;
+
+	Gleam::TArray<Entry> mEntries;
+
+};
+
+class AddComponentCommand final : public ComponentLifetimeCommand
+{
+public:
+
+	AddComponentCommand(const Gleam::TString& name, uint32_t typeHash, Gleam::TArray<Entry>&& entries)
+		: ComponentLifetimeCommand(name, typeHash, eastl::move(entries))
+	{
+
+	}
+
+	virtual void Undo(Gleam::World* world) override
+	{
+		RemoveComponents(world);
+	}
+
+	virtual void Redo(Gleam::World* world) override
+	{
+		AddComponents(world);
+	}
+
+};
+
+class RemoveComponentCommand final : public ComponentLifetimeCommand
+{
+public:
+
+	RemoveComponentCommand(const Gleam::TString& name, uint32_t typeHash, Gleam::TArray<Entry>&& entries)
+		: ComponentLifetimeCommand(name, typeHash, eastl::move(entries))
+	{
+
+	}
+
+	virtual void Undo(Gleam::World* world) override
+	{
+		AddComponents(world);
+	}
+
+	virtual void Redo(Gleam::World* world) override
+	{
+		RemoveComponents(world);
+	}
+
+};
+
 } // namespace GEditor

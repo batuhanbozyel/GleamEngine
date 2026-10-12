@@ -1,5 +1,5 @@
 #pragma once
-#include <Reflection/Macro.h>
+#include "Core/Attributes.h"
 
 #include <EASTL/functional.h>
 

@@ -80,6 +80,11 @@ void AmbientOcclusionRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBl
 	}
 
 	const auto& sceneData        = blackboard.Get<SceneRenderingData>();
+	if (not sceneData.world)
+	{
+		return;
+	}
+
 	const auto& depthPrepassData = blackboard.Get<DepthPrepassData>();
 	const auto& gBufferData      = blackboard.Get<GBufferData>();
 	const auto& sceneTargetDescriptor = graph.GetDescriptor(sceneData.sceneTarget);

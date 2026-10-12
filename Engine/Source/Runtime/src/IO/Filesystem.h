@@ -1,5 +1,5 @@
 #pragma once
-#include <Reflection/Macro.h>
+#include "Core/Attributes.h"
 #include "Container/Hash.h"
 #include "Path.h"
 
@@ -144,19 +144,27 @@ public:
     
 	static WriteAccessor<File> Create(const Path& path, FileType type);
 
+	static bool CreateDirectories(const Path& path);
+
 	static ReadAccessor<File> OpenRead(const Path& path, FileType type);
 
 	static WriteAccessor<File> OpenWrite(const Path& path, FileType type);
     
     static bool Remove(const Path& path);
 
+	static bool RemoveAll(const Path& path);
+
 	static Path WorkingDirectory();
+
+	static Path AppDataDirectory();
 
 	static Path Relative(const Path& path, const Path& base);
 
 	static bool Exists(const Path& path);
 
 	static bool IsDirectory(const Path& path);
+
+	static bool Equals(const Path& lhs, const Path& rhs);
     
 private:
 

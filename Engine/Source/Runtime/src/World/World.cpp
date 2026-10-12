@@ -1,17 +1,17 @@
 #include "gpch.h"
 #include "World.h"
 #include "Systems/RenderSceneProxy.h"
-#include "Serialization/JSONInternal.h"
-#include "Serialization/JSONSerializer.h"
-#include "Serialization/EntitySerializer.h"
+#include "Physics/PhysicsSystem.h"
 
 using namespace Gleam;
 
-World::World(const TString& name)
-	: name(name)
+World::World(const AssetReference& reference, const AssetHeader& header, const WorldDescriptor& descriptor)
+	: Asset(reference, header)
+	, mDescriptor(descriptor)
 {
 	Timestep::Reset();
 	AddSubsystem<RenderSceneProxy>();
+	AddSystem<PhysicsSystem>()->SetGravity(mDescriptor.gravity);
 }
 
 World::~World()
@@ -90,37 +90,5 @@ void World::Update()
 			system->OnPostUpdate(mEntityManager);
 		}
 	}
-}
 
-void World::Serialize(FileStream& stream)
-{
-	rapidjson::Document document(rapidjson::kObjectType);
-	rapidjson::Node root(document, document.GetAllocator());
-	
-	JSONSerializer jsonSerializer;
-	jsonSerializer.Serialize<World>(*this, root);
-
-	EntitySerializer serializer;
-	serializer.Serialize(mEntityManager, root);
-
-	rapidjson::OStreamWrapper ss(stream);
-	rapidjson::PrettyWriter writer(ss);
-	writer.SetFormatOptions(rapidjson::PrettyFormatOptions::kFormatSingleLineArray);
-	writer.SetMaxDecimalPlaces(6);
-	writer.SetIndent('\t', 1);
-	root.object.Accept(writer);
-}
-
-void World::Deserialize(FileStream& stream)
-{
-	rapidjson::Document root(rapidjson::kObjectType);
-	rapidjson::IStreamWrapper ss(stream);
-	root.ParseStream(ss);
-	
-	JSONSerializer jsonSerializer;
-	World world = jsonSerializer.Deserialize<World>(rapidjson::ConstNode(root));
-	name = world.name;
-
-	EntitySerializer serializer;
-	serializer.Deserialize(rapidjson::ConstNode(root), mEntityManager);
 }

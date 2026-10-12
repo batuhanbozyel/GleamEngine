@@ -24,16 +24,16 @@ file(GLOB_RECURSE SOURCE_FILES
 
 # Setup link libraries
 if (WIN32)
-    set(LIB_LINKS SDL3::SDL3-static d3d12.lib dxgi.lib dxguid.lib dstorage.lib imgui.lib Ole32.lib WinPixEventRuntime.lib EASTL)
+    set(LIB_LINKS SDL3::SDL3-static d3d12.lib dxgi.lib dxguid.lib dstorage.lib imgui.lib Ole32.lib WinPixEventRuntime.lib EASTL GleamReflect)
     set_source_files_properties(${SHADER_FILES} PROPERTIES VS_TOOL_OVERRIDE "None")
 elseif (APPLE)
     find_library(METALIR_LIB libmetalirconverter.dylib)
-    set(LIB_LINKS SDL3::SDL3-static imgui ${METALIR_LIB} "-framework UniformTypeIdentifiers" EASTL)
+    set(LIB_LINKS SDL3::SDL3-static imgui ${METALIR_LIB} "-framework UniformTypeIdentifiers" EASTL GleamReflect)
 endif()
 
 # Set Runtime as static library
 add_library(Runtime STATIC ${SOURCE_FILES} ${HEADER_FILES} ${SHADER_FILES})
-add_dependencies(Runtime SDL3-static imgui EASTL)
+add_dependencies(Runtime SDL3-static imgui EASTL box3d)
 
 # Include directories
 if (APPLE)
@@ -78,6 +78,8 @@ endif()
 target_include_directories(Runtime PUBLIC ${INCLUDE_DIRS})
 target_link_directories(Runtime PUBLIC ${CMAKE_BINARY_DIR}/$<CONFIG>)
 target_link_libraries(Runtime PUBLIC ${LIB_LINKS})
+target_include_directories(Runtime PRIVATE $<TARGET_PROPERTY:box3d,INTERFACE_INCLUDE_DIRECTORIES>)
+target_link_libraries(Runtime PRIVATE $<TARGET_FILE:box3d>)
 target_precompile_headers(Runtime PUBLIC "src/gpch.h")
 
 # Setup souce grouping and working directory 

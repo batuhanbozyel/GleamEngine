@@ -73,6 +73,19 @@ public:
 		mSpace = space;
 	}
 
+	bool IsSnapping() const
+	{
+		return mSnapping;
+	}
+
+	void SetSnapping(bool snapping)
+	{
+		mSnapping = snapping;
+	}
+
+	// Translation in world units, rotation in degrees, scale as a factor
+	float GetSnapStep() const;
+
 private:
 
 	enum class Handle
@@ -150,6 +163,8 @@ private:
 	float mScaleFactor = 1.0f;
 
 	float mGizmoSize = 1.0f;
+
+	bool mSnapping = false;
 
 };
 

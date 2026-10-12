@@ -1239,7 +1239,7 @@ void GraphicsDevice::Dispose(Heap& heap)
     mReleaseQueue->AddResource([this, resource = heap.GetHandle()]()
     {
         [static_cast<MetalDevice*>(this)->GetResidencySet() removeAllocation:resource];
-    }, static_cast<Swapchain*>(mSurface)->GetFrameIndex());
+    });
     heap.mHandle = nil;
 }
 
@@ -1257,7 +1257,7 @@ void GraphicsDevice::Dispose(GPUAllocator* allocator, Buffer& buffer, BarrierSta
 
             [static_cast<MetalDevice*>(this)->GetResidencySet() removeAllocation:resource];
             static_cast<MetalDevice*>(this)->ReleaseResourceView(view);
-        }, static_cast<Swapchain*>(mSurface)->GetFrameIndex());
+        });
     }
     else // if (buffer.GetDescriptor().memoryType == MemoryType::GPU)
     {
@@ -1270,7 +1270,7 @@ void GraphicsDevice::Dispose(GPUAllocator* allocator, Buffer& buffer, BarrierSta
         {
             [static_cast<MetalDevice*>(this)->GetResidencySet() removeAllocation:resource];
             static_cast<MetalDevice*>(this)->ReleaseResourceView(view);
-        }, static_cast<Swapchain*>(mSurface)->GetFrameIndex());
+        });
     }
     
     
@@ -1305,7 +1305,7 @@ void GraphicsDevice::Dispose(GPUAllocator* allocator, Texture& texture, BarrierS
         {
             static_cast<MetalDevice*>(this)->ReleaseResourceView(unorderedView);
         }
-    }, static_cast<Swapchain*>(mSurface)->GetFrameIndex());
+    });
     
     texture.mResourceView = InvalidResourceIndex;
     texture.mHandle = nil;
@@ -1319,7 +1319,7 @@ void GraphicsDevice::Dispose(BottomLevelAccelerationStructure& blas)
 	mReleaseQueue->AddResource([this, resource = blas.GetHandle()]()
 	{
 		[static_cast<MetalDevice*>(this)->GetResidencySet() removeAllocation:resource];
-	}, static_cast<Swapchain*>(mSurface)->GetFrameIndex());
+	});
 	blas.mHandle = nil;
 }
  
@@ -1331,7 +1331,7 @@ void GraphicsDevice::Dispose(TopLevelAccelerationStructure& tlas)
 	{
 		[static_cast<MetalDevice*>(this)->GetResidencySet() removeAllocation:resource];
 		static_cast<MetalDevice*>(this)->ReleaseResourceView(view);
-	}, static_cast<Swapchain*>(mSurface)->GetFrameIndex());
+	});
  
 	tlas.mResourceView = {};
 	tlas.mHandle = nil;
@@ -1375,7 +1375,7 @@ void GraphicsDevice::Dispose(RayTracingPipeline& pipeline)
 								sbt = pipeline.GetShaderBindingTable().GetHandle()]()
 	{
 		[static_cast<MetalDevice*>(this)->GetResidencySet() removeAllocation:sbt];
-	}, static_cast<Swapchain*>(mSurface)->GetFrameIndex());
+	});
 
     pipeline.mHandle = nil;
     pipeline.mShaderBindingTable = {};

@@ -1,5 +1,5 @@
 #pragma once
-#include <Reflection/Macro.h>
+#include "Core/Attributes.h"
 
 namespace Gleam {
 

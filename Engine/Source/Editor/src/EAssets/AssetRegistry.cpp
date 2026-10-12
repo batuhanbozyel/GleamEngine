@@ -50,7 +50,7 @@ const AssetItem& AssetRegistry::GetAsset(const Gleam::Guid& guid) const
 	const auto item = FindAsset(guid);
 	if (item == nullptr)
 	{
-		GLEAM_CORE_ERROR("Asset could not located for GUID: {0}", guid.ToString());
+		GLEAM_ERROR("Asset could not located for GUID: {0}", guid.ToString());
 		static AssetItem invalidAsset;
 		return invalidAsset;
 	}

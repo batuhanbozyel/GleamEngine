@@ -58,6 +58,11 @@ void SkyAtmosphereRenderer::OnDestroy(const RenderContext& context)
 void SkyAtmosphereRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard)
 {
 	const auto& sceneData = blackboard.Get<SceneRenderingData>();
+	if (not sceneData.world)
+	{
+		return;
+	}
+
 
 	// Render sky
 	struct SkyAtmospherePassData

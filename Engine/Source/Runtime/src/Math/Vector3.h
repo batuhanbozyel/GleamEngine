@@ -361,7 +361,7 @@ NO_DISCARD FORCE_INLINE constexpr Vector3<T> Max(const Vector3<T>& v0, const Vec
 }
 
 template<typename T>
-NO_DISCARD FORCE_INLINE constexpr Vector3<T> Mix(const Vector3<T>& v0, const Vector3<T>& v1, T a)
+NO_DISCARD FORCE_INLINE constexpr Vector3<T> Lerp(const Vector3<T>& v0, const Vector3<T>& v1, T a)
 {
     return v0 * (T(1) - a) + v1 * a;
 }

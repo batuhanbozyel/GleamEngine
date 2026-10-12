@@ -47,6 +47,9 @@ add_subdirectory(googletest)
 add_subdirectory(GleamReflect)
 add_subdirectory(SDL EXCLUDE_FROM_ALL)
 add_subdirectory(meshoptimizer)
+add_subdirectory(box3d)
+
+set_target_properties(box3d PROPERTIES MSVC_RUNTIME_LIBRARY "")
 
 set_target_properties (
     SDL3-static
@@ -63,5 +66,6 @@ set_target_properties (
     EnTT
     GleamReflect
     meshoptimizer
+    box3d
     PROPERTIES FOLDER Dependencies
 )

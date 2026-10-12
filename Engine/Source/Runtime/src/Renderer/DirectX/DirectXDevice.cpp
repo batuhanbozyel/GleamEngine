@@ -690,7 +690,7 @@ void GraphicsDevice::Dispose(Heap& heap)
 	mReleaseQueue->AddResource([resource]()
 	{
 		resource->Release();
-	}, static_cast<Swapchain*>(mSurface)->GetFrameIndex());
+	});
 	heap.mHandle = nullptr;
 }
 
@@ -706,7 +706,7 @@ void GraphicsDevice::Dispose(GPUAllocator* allocator, Buffer& buffer, BarrierSta
 
 			resource->Release();
 			static_cast<DirectXDevice*>(this)->ReleaseResourceView(view);
-		}, static_cast<Swapchain*>(mSurface)->GetFrameIndex());
+		});
 	}
 	else // if (buffer.GetDescriptor().memoryType == MemoryType::GPU)
 	{
@@ -718,7 +718,7 @@ void GraphicsDevice::Dispose(GPUAllocator* allocator, Buffer& buffer, BarrierSta
 		{
 			resource->Release();
 			static_cast<DirectXDevice*>(this)->ReleaseResourceView(view);
-		}, static_cast<Swapchain*>(mSurface)->GetFrameIndex());
+		});
 	}
 
 	buffer.mResourceView = InvalidResourceIndex;
@@ -778,7 +778,7 @@ void GraphicsDevice::Dispose(GPUAllocator* allocator, Texture& texture, BarrierS
 		{
 			static_cast<DirectXDevice*>(this)->ReleaseResourceView(unorderedView);
 		}
-	}, static_cast<Swapchain*>(mSurface)->GetFrameIndex());
+	});
 
 	texture.mResourceView = InvalidResourceIndex;
 	texture.mHandle = nullptr;
@@ -792,7 +792,7 @@ void GraphicsDevice::Dispose(BottomLevelAccelerationStructure& blas)
 	mReleaseQueue->AddResource([this, resource = static_cast<ID3D12Resource*>(blas.GetHandle())]()
 	{
 		resource->Release();
-	}, static_cast<Swapchain*>(mSurface)->GetFrameIndex());
+	});
 	blas.mHandle = nullptr;
 }
 
@@ -804,7 +804,7 @@ void GraphicsDevice::Dispose(TopLevelAccelerationStructure& tlas)
 	{
 		resource->Release();
 		static_cast<DirectXDevice*>(this)->ReleaseResourceView(srv);
-	}, static_cast<Swapchain*>(mSurface)->GetFrameIndex());
+	});
 
 	tlas.mResourceView = InvalidResourceIndex;
 	tlas.mHandle = nullptr;
@@ -822,7 +822,7 @@ void GraphicsDevice::Dispose(Shader& shader)
 	{
 		delete bytecode->pShaderBytecode;
 		delete bytecode;
-	}, static_cast<Swapchain*>(mSurface)->GetFrameIndex());
+	});
 	shader.mHandle = nullptr;
 }
 
@@ -834,7 +834,7 @@ void GraphicsDevice::Dispose(ComputePipeline& pipeline)
 	mReleaseQueue->AddResource([resource]()
 	{
 		resource->Release();
-	}, static_cast<Swapchain*>(mSurface)->GetFrameIndex());
+	});
 	pipeline.mHandle = nullptr;
 }
 
@@ -846,7 +846,7 @@ void GraphicsDevice::Dispose(GraphicsPipeline& pipeline)
 	mReleaseQueue->AddResource([resource]()
 	{
 		resource->Release();
-	}, static_cast<Swapchain*>(mSurface)->GetFrameIndex());
+	});
 	pipeline.mHandle = nullptr;
 }
 
@@ -860,7 +860,7 @@ void GraphicsDevice::Dispose(RayTracingPipeline& pipeline)
 	{
 		sbt->Release();
 		resource->Release();
-	}, static_cast<Swapchain*>(mSurface)->GetFrameIndex());
+	});
 	pipeline.mHandle = nullptr;
 	pipeline.mShaderBindingTable = {};
 }
@@ -873,7 +873,7 @@ void GraphicsDevice::Dispose(MeshPipeline& pipeline)
 	mReleaseQueue->AddResource([resource]()
 	{
 		resource->Release();
-	}, static_cast<Swapchain*>(mSurface)->GetFrameIndex());
+	});
 	pipeline.mHandle = nullptr;
 }
 

@@ -268,7 +268,7 @@ bool TransformGizmo::Manipulate(const GizmoViewport& viewport, bool inputEnabled
 	{
 		if (io.MouseDown[ImGuiMouseButton_Left])
 		{
-			modified = UpdateDrag(viewport, frame, mouse, io.KeyCtrl, transform);
+			modified = UpdateDrag(viewport, frame, mouse, mSnapping != io.KeyCtrl, transform);
 			frame.origin = transform.position;
 			WorldToScreen(viewport, frame.origin, frame.originScreen);
 		}
@@ -455,6 +455,16 @@ void TransformGizmo::BeginDrag(const GizmoViewport& viewport, const Frame& frame
 	else
 	{
 		mActiveHandle = Handle::None;
+	}
+}
+
+float TransformGizmo::GetSnapStep() const
+{
+	switch (mOperation)
+	{
+		case GizmoOperation::Rotate: return Gleam::Math::Rad2Deg(kRotateSnap);
+		case GizmoOperation::Scale: return kScaleSnap;
+		default: return kTranslateSnap;
 	}
 }
 

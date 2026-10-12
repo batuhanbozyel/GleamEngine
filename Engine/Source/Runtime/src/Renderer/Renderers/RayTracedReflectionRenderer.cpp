@@ -160,6 +160,11 @@ void RayTracedReflectionRenderer::AddRenderPasses(RenderGraph& graph, RenderGrap
 
 	const auto& brdfData            = blackboard.Get<BRDFData>();
 	const auto& sceneData           = blackboard.Get<SceneRenderingData>();
+	if (not sceneData.world)
+	{
+		return;
+	}
+
 	const auto& gBufferData         = blackboard.Get<GBufferData>();
 	const auto& depthPrepassData    = blackboard.Get<DepthPrepassData>();
 	const auto& reflectionProbeData = blackboard.Get<ReflectionProbePassData>();
@@ -374,7 +379,7 @@ void RayTracedReflectionRenderer::AddRenderPasses(RenderGraph& graph, RenderGrap
 		}
 
 		PathTracerConstants pathTraceConstants = {};
-		pathTraceConstants.instanceBuffer        = sceneData.sceneProxy->GetGlobalInstanceBuffer().GetResourceView();
+		pathTraceConstants.instanceBuffer        = sceneData.sceneProxy->GetInstanceBuffer().GetResourceView();
 		pathTraceConstants.accelerationStructure = sceneData.accelerationStructure;
 		pathTraceConstants.colorTarget           = passData.reflectionTarget;
 		pathTraceConstants.ggxEssTexture         = passData.ggxEssLut;

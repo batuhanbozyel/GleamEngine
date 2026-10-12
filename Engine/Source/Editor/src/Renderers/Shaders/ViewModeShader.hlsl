@@ -25,10 +25,10 @@ float4 viewModeFragmentShader(FScreenVertexOutput IN) : SV_TARGET
     float3 color = float3(0.0, 0.0, 0.0);
     int2 pixelCoord = IN.texCoord * camera.resolution;
 
-    switch ((Gleam::ViewMode)uniforms.mode)
+    switch ((GEditor::ViewMode)uniforms.mode)
     {
-        case Gleam::ViewMode::ShadingNormal:
-        case Gleam::ViewMode::GeometryNormal:
+        case GEditor::ViewMode::ShadingNormal:
+        case GEditor::ViewMode::GeometryNormal:
         {
             Texture2D<float2> normalTexture = ResourceDescriptorHeap[uniforms.sourceTexture];
             float2 encoded = normalTexture.Sample(Sampler_Point_Clamp, IN.texCoord);
@@ -36,7 +36,7 @@ float4 viewModeFragmentShader(FScreenVertexOutput IN) : SV_TARGET
             color = normal * 0.5 + 0.5;
             break;
         }
-        case Gleam::ViewMode::Depth:
+        case GEditor::ViewMode::Depth:
         {
             Texture2D<float> depthTexture = ResourceDescriptorHeap[uniforms.sourceTexture];
             float deviceDepth = depthTexture.Sample(Sampler_Point_Clamp, IN.texCoord);
@@ -47,7 +47,7 @@ float4 viewModeFragmentShader(FScreenVertexOutput IN) : SV_TARGET
             color = sqrt(gray).xxx; // spread the perspective distribution for readability
             break;
         }
-        case Gleam::ViewMode::MotionVectors:
+        case GEditor::ViewMode::MotionVectors:
         {
             Texture2D<float2> motionTexture = ResourceDescriptorHeap[uniforms.sourceTexture];
 
@@ -106,25 +106,25 @@ float4 viewModeFragmentShader(FScreenVertexOutput IN) : SV_TARGET
             color = lerp(bgColor, arrowColor, arrowMask);
             break;
         }
-        case Gleam::ViewMode::Roughness:
+        case GEditor::ViewMode::Roughness:
         {
             Texture2D<float> roughnessTexture = ResourceDescriptorHeap[uniforms.sourceTexture];
             color = roughnessTexture.Sample(Sampler_Point_Clamp, IN.texCoord).xxx;
             break;
         }
-        case Gleam::ViewMode::ShadowMask:
+        case GEditor::ViewMode::ShadowMask:
         {
             Texture2D<float> shadowTexture = ResourceDescriptorHeap[uniforms.sourceTexture];
             color = shadowTexture.Load(int3(pixelCoord, 0)).xxx;
             break;
         }
-        case Gleam::ViewMode::AmbientOcclusion:
+        case GEditor::ViewMode::AmbientOcclusion:
         {
             Texture2D<uint> aoTexture = ResourceDescriptorHeap[uniforms.sourceTexture];
             color = (aoTexture.Load(int3(pixelCoord, 0)) / 255.0f).xxx;
             break;
         }
-        case Gleam::ViewMode::MeshletVisualization:
+        case GEditor::ViewMode::MeshletVisualization:
         {
             Texture2D<PackedVisibilityID> visibilityBuffer = ResourceDescriptorHeap[uniforms.sourceTexture];
             PackedVisibilityID packedID = visibilityBuffer.Load(int3(pixelCoord, 0));
@@ -135,7 +135,7 @@ float4 viewModeFragmentShader(FScreenVertexOutput IN) : SV_TARGET
             }
             break;
         }
-        case Gleam::ViewMode::VisibilityIDs:
+        case GEditor::ViewMode::VisibilityIDs:
         {
             Texture2D<PackedVisibilityID> visibilityBuffer = ResourceDescriptorHeap[uniforms.sourceTexture];
             PackedVisibilityID packedID = visibilityBuffer.Load(int3(pixelCoord, 0));
@@ -145,7 +145,7 @@ float4 viewModeFragmentShader(FScreenVertexOutput IN) : SV_TARGET
             }
             break;
         }
-        case Gleam::ViewMode::BatchIDs:
+        case GEditor::ViewMode::BatchIDs:
         {
             Texture2D<PackedVisibilityID> visibilityBuffer = ResourceDescriptorHeap[uniforms.sourceTexture];
             PackedVisibilityID packedID = visibilityBuffer.Load(int3(pixelCoord, 0));

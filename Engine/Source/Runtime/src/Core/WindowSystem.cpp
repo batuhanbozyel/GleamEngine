@@ -148,6 +148,11 @@ void WindowSystem::ApplyConfig(const WindowConfig& config)
 	}
 }
 
+void WindowSystem::SetTitle(const TString& title) const
+{
+	SDL_SetWindowTitle(mWindow, title.c_str());
+}
+
 void WindowSystem::SetDisplayMode(uint32_t mode) const
 {
 	auto displays = SDL_GetFullscreenDisplayModes(SDL_GetDisplayForWindow(mWindow), nullptr);

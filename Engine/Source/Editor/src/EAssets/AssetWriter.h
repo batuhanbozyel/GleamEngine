@@ -10,6 +10,10 @@
 #include <Runtime.Reflection.generated.h>
 #endif
 
+namespace rapidjson {
+struct Node;
+} // namespace rapidjson
+
 namespace GEditor {
 
 struct AssetItem;
@@ -28,6 +32,14 @@ public:
 	}
 
 	template<typename T>
+	uint32_t AddBlob(Gleam::BinaryBuffer&& data,
+					 Gleam::AssetPlatform platform,
+					 Gleam::EnumFlag<Gleam::AssetBackend> backend)
+	{
+		return AddBlob(Gleam::AssetUtils::BlobType<T>(), eastl::move(data), platform, backend);
+	}
+
+	template<typename T>
 	void AddBlobVariant(uint32_t slot,
 						const void* data,
 						uint64_t size,
@@ -37,9 +49,23 @@ public:
 		AddBlobVariant(Gleam::AssetUtils::BlobType<T>(), slot, data, size, platform, backend);
 	}
 
+	template<typename T>
+	void AddBlobVariant(uint32_t slot,
+						Gleam::BinaryBuffer&& data,
+						Gleam::AssetPlatform platform,
+						Gleam::EnumFlag<Gleam::AssetBackend> backend)
+	{
+		AddBlobVariant(Gleam::AssetUtils::BlobType<T>(), slot, eastl::move(data), platform, backend);
+	}
+
 	uint32_t AddBlob(const Gleam::AssetBlobType& type,
 					 const void* data,
 					 uint64_t size,
+					 Gleam::AssetPlatform platform,
+					 Gleam::EnumFlag<Gleam::AssetBackend> backend);
+
+	uint32_t AddBlob(const Gleam::AssetBlobType& type,
+					 Gleam::BinaryBuffer&& data,
 					 Gleam::AssetPlatform platform,
 					 Gleam::EnumFlag<Gleam::AssetBackend> backend);
 
@@ -47,6 +73,12 @@ public:
 						uint32_t slot,
 						const void* data,
 						uint64_t size,
+						Gleam::AssetPlatform platform,
+						Gleam::EnumFlag<Gleam::AssetBackend> backend);
+
+	void AddBlobVariant(const Gleam::AssetBlobType& type,
+						uint32_t slot,
+						Gleam::BinaryBuffer&& data,
 						Gleam::AssetPlatform platform,
 						Gleam::EnumFlag<Gleam::AssetBackend> backend);
 
@@ -62,8 +94,63 @@ private:
 
 	struct DataBlob
 	{
-		const void* data = nullptr;
-		uint64_t size = 0;
+		Gleam::BinaryBuffer data;
+		Gleam::AssetBlobType type;
+		uint32_t slot = 0;
+		Gleam::AssetPlatform platform = Gleam::AssetPlatform::Common;
+		Gleam::EnumFlag<Gleam::AssetBackend> backend = Gleam::AssetBackend::Common;
+	};
+	Gleam::TArray<DataBlob> mBlobs;
+
+	Gleam::HashMap<Gleam::Guid, uint32_t> mSlotCounts;
+
+};
+
+class JSONAssetWriter
+{
+public:
+
+	template<typename T>
+	uint32_t AddBlob(const rapidjson::Node& data,
+					 Gleam::AssetPlatform platform,
+					 Gleam::EnumFlag<Gleam::AssetBackend> backend)
+	{
+		return AddBlob(Gleam::AssetUtils::BlobType<T>(), data, platform, backend);
+	}
+
+	template<typename T>
+	void AddBlobVariant(uint32_t slot,
+						const rapidjson::Node& data,
+						Gleam::AssetPlatform platform,
+						Gleam::EnumFlag<Gleam::AssetBackend> backend)
+	{
+		AddBlobVariant(Gleam::AssetUtils::BlobType<T>(), slot, data, platform, backend);
+	}
+
+	uint32_t AddBlob(const Gleam::AssetBlobType& type,
+					 const rapidjson::Node& data,
+					 Gleam::AssetPlatform platform,
+					 Gleam::EnumFlag<Gleam::AssetBackend> backend);
+
+	void AddBlobVariant(const Gleam::AssetBlobType& type,
+						uint32_t slot,
+						const rapidjson::Node& data,
+						Gleam::AssetPlatform platform,
+						Gleam::EnumFlag<Gleam::AssetBackend> backend);
+
+	template<typename T>
+	void Write(const Gleam::Path& file, const Gleam::AssetHeader& header, const T& metadata) const
+	{
+		Write(file, header, &metadata, Gleam::Reflection::GetClass<T>());
+	}
+
+	void Write(const Gleam::Path& file, const Gleam::AssetHeader& header, const void* metadata, const Gleam::Reflection::ClassDescription& classDesc) const;
+
+private:
+
+	struct DataBlob
+	{
+		const rapidjson::Node* data = nullptr;
 		Gleam::AssetBlobType type;
 		uint32_t slot = 0;
 		Gleam::AssetPlatform platform = Gleam::AssetPlatform::Common;

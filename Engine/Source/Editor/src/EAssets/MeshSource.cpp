@@ -14,6 +14,7 @@
 #include "Core/Globals.h"
 #include "Assets/AssetManager.h"
 #include "World/Components/MeshRenderer.h"
+#include "World/Components/RigidBody.h"
 #include "Renderer/Shaders/ShaderInterop.h"
 
 #define CGLTF_IMPLEMENTATION
@@ -152,6 +153,7 @@ bool MeshSource::Import(const Gleam::Path& path, const ImportSettings& settings)
 				{
 					MeshTools::ApplyTransform(rawMesh, transform);
 					rawMesh.name += "_Variant" + std::to_string(variants.size());
+					rawMesh.aabb = MeshTools::CalculateBounds(rawMesh.positions);
 				}
 
 				MeshVariant newVariant;
@@ -170,8 +172,14 @@ bool MeshSource::Import(const Gleam::Path& path, const ImportSettings& settings)
 				}
 			}
 
+			auto& meshes = rawMeshes.at(mesh);
+			for (auto& rawMesh : meshes)
+			{
+				rawMesh.aabb = MeshTools::CalculateBounds(rawMesh.positions);
+			}
+
 			MeshVariant newVariant;
-			newVariant.baker = ImportMesh(rawMeshes.at(mesh), path, settings);
+			newVariant.baker = ImportMesh(meshes, path, settings);
 			newVariant.transform = Gleam::Float4x4::identity;
 			variants.push_back(newVariant);
 			return newVariant.baker;
@@ -195,7 +203,7 @@ bool MeshSource::Import(const Gleam::Path& path, const ImportSettings& settings)
 			return false;
 		};
 
-		auto world = Gleam::CreateRef<Gleam::World>(filename);
+		auto world = Gleam::CreateRef<Gleam::World>(Gleam::AssetReference{}, Gleam::AssetHeader{ .name = filename }, Gleam::WorldDescriptor{});
 		auto ProcessNode = [&](auto self, const cgltf_node& node, const Gleam::TString& name,
 			const Gleam::Float4x4& parentTransform, bool hierarchyHasNonUniformScaling) -> Gleam::EntityHandle
 		{
@@ -231,6 +239,22 @@ bool MeshSource::Import(const Gleam::Path& path, const ImportSettings& settings)
 					materialRefs.push_back(materialItem.reference);
 				}
 				entity.AddComponent<Gleam::MeshRenderer>(meshItem.reference, materialRefs);
+
+				if (not settings.physics.colliders.Empty())
+				{
+					auto& rigidBody = entity.AddComponent<Gleam::RigidBody>();
+					if (settings.physics.colliders.Has(MeshColliderType::TriangleMesh))
+					{
+						rigidBody.type = Gleam::RigidBodyType::Static;
+						rigidBody.colliders.triangleMeshes.push_back({ .mesh = meshItem.reference });
+					}
+
+					if (settings.physics.colliders.Has(MeshColliderType::ConvexHull))
+					{
+						rigidBody.type = Gleam::RigidBodyType::Dynamic;
+						rigidBody.colliders.convexMeshes.push_back({ .mesh = meshItem.reference });
+					}
+				}
 			}
 
 			if (node.children_count > 0)
@@ -288,121 +312,58 @@ bool MeshSource::Import(const Gleam::Path& path, const ImportSettings& settings)
 
 Gleam::RefCounted<MeshBaker> MeshSource::ImportMesh(const Gleam::TArray<RawMesh>& rawMeshes, const Gleam::Path& path, const ImportSettings& settings)
 {
-	static constexpr uint32_t kMaxVerticesPerMeshlet = MAX_MESHLET_VERTICES;
-	static constexpr uint32_t kMaxTrianglesPerMeshlet = MAX_MESHLET_TRIANGLES;
-	static constexpr float kConeWeight = 0.25f;
-	
-	MeshData meshData = MeshTools::CombineMeshes(rawMeshes);
-	Gleam::TArray<Gleam::MeshletDescriptor> combinedMeshlets;
-	Gleam::TArray<uint32_t> combinedMeshletVertices;
-	Gleam::TArray<uint32_t> combinedMeshletTriangles;
+	static constexpr uint32_t kMaxLods = 8;
+	static constexpr float kLodReductionRatio = 0.5f;
+	static constexpr float kMaxLodRetainedRatio = 0.85f;
 
-	size_t totalIndexCount = 0;
-	for (const auto& submesh : meshData.submeshes)
+	MeshData meshData;
+	meshData.name = rawMeshes.back().name;
+	meshData.lods.reserve(kMaxLods);
+
+	auto& lod0Data = meshData.lods.emplace_back(MeshTools::CombineMeshes(rawMeshes));
+	MeshTools::BuildMeshlets(lod0Data);
+
+	if (settings.physics.colliders.Has(MeshColliderType::ConvexHull))
 	{
-		totalIndexCount += submesh.indexCount;
+		meshData.convexHulls = MeshTools::DecomposeConvex(lod0Data, settings.physics.convexDecomposition);
 	}
-	combinedMeshletTriangles.reserve(totalIndexCount / 3);
-	combinedMeshletVertices.reserve(totalIndexCount);
 
-	auto combinedIndices = static_cast<uint32_t*>(Gleam::OffsetPointer(meshData.buffer.data, meshData.indices.offset));
-	auto combinedPositions = static_cast<Gleam::Float3*>(Gleam::OffsetPointer(meshData.buffer.data, meshData.positions.offset));
-	for (auto& submesh : meshData.submeshes)
+	if (settings.physics.colliders.Has(MeshColliderType::TriangleMesh))
 	{
-		Gleam::TArrayView<uint32_t> indices(combinedIndices + submesh.firstIndex, submesh.indexCount);
-		Gleam::TArrayView<Gleam::Float3> positions(combinedPositions + submesh.baseVertex, submesh.vertexCount);
+		meshData.triangleMeshes.push_back(MeshTools::SimplifyMeshSloppy(lod0Data, settings.physics.triangleMeshSimplification));
+	}
 
-		meshopt_optimizeVertexCache(indices.data(), indices.data(), indices.size(), positions.size());
+	for (const auto& rawMesh : rawMeshes)
+	{
+		meshData.aabb += rawMesh.aabb;
+	}
 
-		size_t maxMeshlets = meshopt_buildMeshletsBound(indices.size(), kMaxVerticesPerMeshlet, kMaxTrianglesPerMeshlet);
-		Gleam::TArray<meshopt_Meshlet> meshlets(maxMeshlets);
-		Gleam::TArray<uint32_t> meshletVertices(indices.size());
-		Gleam::TArray<uint8_t> meshletTriangleIndices(indices.size());
-		size_t meshletCount = meshopt_buildMeshlets(meshlets.data(),
-													meshletVertices.data(),
-													meshletTriangleIndices.data(),
-													indices.data(),
-													indices.size(),
-													(float*)positions.data(),
-													positions.size(),
-													sizeof(Gleam::Float3),
-													kMaxVerticesPerMeshlet,
-													kMaxTrianglesPerMeshlet,
-													kConeWeight);
-
-		const auto& last = meshlets[meshletCount - 1];
-		meshletVertices.resize(last.vertex_offset + last.vertex_count);
-		meshletTriangleIndices.resize(last.triangle_offset + last.triangle_count * 3);
-
-		submesh.baseMeshlet = static_cast<uint32_t>(combinedMeshlets.size());
-		submesh.meshletCount = static_cast<uint32_t>(meshletCount);
-		combinedMeshlets.resize(combinedMeshlets.size() + meshletCount);
-		for (uint32_t i = 0; i < meshletCount; ++i)
+	if (settings.generateLods)
+	{
+		float ratio = 1.0f;
+		for (uint32_t lod = 1; lod < kMaxLods; ++lod)
 		{
-			const auto& meshlet = meshlets[i];
-			auto& meshletDesc = combinedMeshlets[submesh.baseMeshlet + i];
+			ratio *= kLodReductionRatio;
+			MeshLodData lodData = MeshTools::SimplifyMesh(meshData.lods[0], ratio);
 
-			auto meshletVerticesData = meshletVertices.data() + meshlet.vertex_offset;
-			auto meshletTriangleData = meshletTriangleIndices.data() + meshlet.triangle_offset;
-			
-			meshopt_optimizeMeshlet(meshletVerticesData,
-									meshletTriangleData,
-									meshlet.triangle_count,
-									meshlet.vertex_count);
-
-			meshletDesc.vertexOffset = static_cast<uint32_t>(combinedMeshletVertices.size() + meshlet.vertex_offset);
-			meshletDesc.triangleOffset = static_cast<uint32_t>(combinedMeshletTriangles.size());
-			meshletDesc.vertexCount = static_cast<uint32_t>(meshlet.vertex_count);
-			meshletDesc.triangleCount = static_cast<uint32_t>(meshlet.triangle_count);
-
-			for (uint32_t t = 0; t < meshlet.triangle_count; ++t)
+			if (lodData.indices.size > meshData.lods.back().indices.size * kMaxLodRetainedRatio)
 			{
-				uint32_t packedTriangle = static_cast<uint32_t>(meshletTriangleData[t * 3 + 0])
-										| (static_cast<uint32_t>(meshletTriangleData[t * 3 + 1]) << 8)
-										| (static_cast<uint32_t>(meshletTriangleData[t * 3 + 2]) << 16);
-				combinedMeshletTriangles.push_back(packedTriangle);
+				break;
 			}
 
-			meshopt_Bounds bounds = meshopt_computeMeshletBounds(meshletVerticesData,
-																 meshletTriangleData,
-																 meshlet.triangle_count,
-																 (float*)positions.data(),
-																 positions.size(),
-																 sizeof(Gleam::Float3));
-			meshletDesc.coneApex = Gleam::Float3(bounds.cone_apex[0], bounds.cone_apex[1], bounds.cone_apex[2]);
-			meshletDesc.coneAxis = Gleam::Float3(bounds.cone_axis[0], bounds.cone_axis[1], bounds.cone_axis[2]);
-			meshletDesc.coneCutoff = bounds.cone_cutoff;
-			meshletDesc.center = Gleam::Float3(bounds.center[0], bounds.center[1], bounds.center[2]);
-			meshletDesc.radius = bounds.radius;
+			MeshTools::BuildMeshlets(lodData);
+			meshData.lods.push_back(eastl::move(lodData));
 		}
-
-		combinedMeshletVertices.insert(combinedMeshletVertices.end(), meshletVertices.begin(), meshletVertices.end());
 	}
-
-	const uint64_t meshletBufferSize = combinedMeshlets.size() * sizeof(Gleam::MeshletDescriptor);
-	const uint64_t meshletVertexBufferSize = combinedMeshletVertices.size() * sizeof(uint32_t);
-	const uint64_t meshletTriangleBufferSize = combinedMeshletTriangles.size() * sizeof(uint32_t);
-
-	const uint64_t meshletBufferOffset = meshData.buffer.size;
-	meshData.buffer.Resize(meshletBufferOffset + meshletBufferSize + meshletVertexBufferSize + meshletTriangleBufferSize);
-
-	meshData.meshlets = { meshletBufferOffset, meshletBufferSize };
-	meshData.meshletVertices = { meshData.meshlets.offset + meshData.meshlets.size, meshletVertexBufferSize };
-	meshData.meshletTriangleIndices = { meshData.meshletVertices.offset + meshData.meshletVertices.size, meshletTriangleBufferSize };
-
-	memcpy(Gleam::OffsetPointer(meshData.buffer.data, meshData.meshlets.offset), combinedMeshlets.data(), meshletBufferSize);
-	memcpy(Gleam::OffsetPointer(meshData.buffer.data, meshData.meshletVertices.offset), combinedMeshletVertices.data(), meshletVertexBufferSize);
-	memcpy(Gleam::OffsetPointer(meshData.buffer.data, meshData.meshletTriangleIndices.offset), combinedMeshletTriangles.data(), meshletTriangleBufferSize);
-
-	return EmplaceBaker<MeshBaker>(std::move(meshData));
+	return EmplaceBaker<MeshBaker>(eastl::move(meshData));
 }
 
 Gleam::TArray<Gleam::RefCounted<MaterialInstanceBaker>> MeshSource::ImportMaterials(const Gleam::TArray<RawMaterial>& rawMaterials, const Gleam::Path& path, const ImportSettings& settings)
 {
 	auto directory = path.Parent();
-	auto opaqueLitMaterialAsset = AssetManager()->GetAsset<Gleam::MaterialDescriptor>("Materials/OpaqueLit").reference;
-	auto maskLitMaterialAsset = AssetManager()->GetAsset<Gleam::MaterialDescriptor>("Materials/MaskLit").reference;
-	auto transparentLitMaterialAsset = AssetManager()->GetAsset<Gleam::MaterialDescriptor>("Materials/TransparentLit").reference;
+	auto opaqueLitMaterialAsset = AssetManager()->GetAsset<Gleam::MaterialDescriptor>("Engine/Materials/OpaqueLit").reference;
+	auto maskLitMaterialAsset = AssetManager()->GetAsset<Gleam::MaterialDescriptor>("Engine/Materials/MaskLit").reference;
+	auto transparentLitMaterialAsset = AssetManager()->GetAsset<Gleam::MaterialDescriptor>("Engine/Materials/TransparentLit").reference;
 
 	auto assetManager = Gleam::Globals::GameInstance->GetSubsystem<Gleam::AssetManager>();
 	auto opaqueLitMaterial = assetManager->LoadDescriptor<Gleam::MaterialDescriptor>(opaqueLitMaterialAsset);

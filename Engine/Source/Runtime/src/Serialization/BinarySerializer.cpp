@@ -262,7 +262,7 @@ private:
 
 #pragma endregion NodeFraming
 
-void BinarySerializer::Initialize(Engine* engine)
+void BinarySerializer::Initialize()
 {
 	REGISTER_POD_TYPE_BINARY_SERIALIZER(Float2);
 	REGISTER_POD_TYPE_BINARY_SERIALIZER(Float3);
@@ -432,6 +432,7 @@ void BinarySerializer::Initialize(Engine* engine)
 			const auto& element = templateParams[0];
 			const auto elementSize = ResolveElementSize(element.GetType(), element.TypeHash());
 
+			// TODO: TArray elements are resized as raw bytes and never constructed or destroyed, so non-zero member defaults are lost for fields missing from the data, shrinking leaks heap-owning members, and element types that are not valid when zeroed are undefined behaviour. Needs per-type construct/destroy operations looked up by type hash.
 			auto& arr = Reflection::Get<TArray<uint8_t>>(obj);
 			arr.resize(elementCount * elementSize);
 
@@ -471,7 +472,7 @@ void BinarySerializer::Initialize(Engine* engine)
 	}
 }
 
-void BinarySerializer::Shutdown(Engine* engine)
+void BinarySerializer::Shutdown()
 {
 	mCustomSerializers.clear();
 	mCustomDeserializers.clear();

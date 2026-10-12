@@ -6,12 +6,18 @@
 //
 
 #include "ContentBrowser.h"
-#include "EAssets/MeshSource.h"
 #include "EAssets/EAssetManager.h"
 #include "View/Widgets/AssetIcon.h"
+#include "View/Widgets/ThumbnailGrid.h"
+#include "View/Widgets/EditorWidgets.h"
+#include "View/Panels/Project/AssetImportDialog.h"
+#include "View/ViewStack.h"
+#include "View/EditorFonts.h"
+#include "View/IconsLucide.h"
 
 #include "Core/Globals.h"
 #include "Core/Engine.h"
+#include "Core/Application.h"
 
 #include "Renderer/Renderers/ImGuiRenderer.h"
 
@@ -20,9 +26,34 @@
 
 #include "IO/FileDialog.h"
 
-#include <imgui.h>
+#include <imgui_internal.h>
 
 using namespace GEditor;
+
+static constexpr float kToolbarHeight = 44.0f;
+static constexpr float kTreeWidth = 180.0f;
+static constexpr float kTreeRowHeight = 26.0f;
+
+struct CategoryChip
+{
+	const char* label;
+	ImVec4 color;
+	AssetCategory category;
+};
+
+static constexpr CategoryChip kCategoryChips[] = {
+	{ "Prefab", Gleam::Theme::Warning, AssetCategory::Prefab },
+	{ "Mesh", Gleam::Theme::Info, AssetCategory::Mesh },
+	{ "Material", Gleam::Theme::Success, AssetCategory::Material },
+	{ "Material Instance", Gleam::Theme::Teal, AssetCategory::MaterialInstance },
+	{ "Texture", Gleam::Theme::Pink, AssetCategory::Texture },
+	{ "World", Gleam::Theme::Purple, AssetCategory::World }
+};
+
+static uint32_t CategoryBit(AssetCategory category)
+{
+	return 1u << static_cast<uint32_t>(category);
+}
 
 ContentBrowser::ContentBrowser(EAssetManager* assetManager)
 	: mAssetManager(assetManager)
@@ -30,8 +61,9 @@ ContentBrowser::ContentBrowser(EAssetManager* assetManager)
 
 }
 
-void ContentBrowser::OnCreate(Gleam::World* world)
+void ContentBrowser::OnCreate(Gleam::Application* app)
 {
+	mFonts = &app->GetSubsystem<ViewStack>()->GetFonts();
 	mAssetDirectory = Gleam::Globals::ProjectContentDirectory;
 
 	SetCurrentDir(mAssetDirectory);
@@ -44,7 +76,7 @@ void ContentBrowser::OnCreate(Gleam::World* world)
 	});
 }
 
-void ContentBrowser::OnDestroy(Gleam::World* world)
+void ContentBrowser::OnDestroy(Gleam::Application* app)
 {
 	if (mWatchHandle)
 	{
@@ -58,100 +90,188 @@ void ContentBrowser::Render(Gleam::ImGuiRenderer* imgui)
 {
 	imgui->PushView([this](const Gleam::ImGuiPassData& passData)
 	{
-		ImGui::Begin("Content Browser");
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+		ImGui::PushStyleColor(ImGuiCol_WindowBg, Gleam::Theme::Panel);
+		const bool visible = ImGui::Begin("Content Browser");
+		ImGui::PopStyleColor();
+		ImGui::PopStyleVar();
 
-		if (mRefreshRequested.exchange(false, std::memory_order_relaxed))
+		if (visible)
 		{
-			RefreshAssetGrid();
-			RefreshDirectoryTree();
-		}
-
-		if (ImGui::Button("Import"))
-		{
-			auto files = Gleam::FileDialog::Open();
-			for (const auto& path : files)
+			if (mRefreshRequested.exchange(false, std::memory_order_relaxed))
 			{
-				ImportAsset(path);
+				RefreshAssetGrid();
+				RefreshDirectoryTree();
 			}
+
+			ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, 0.0f));
+			DrawToolbar();
+
+			const ImVec2 bodyMin = ImGui::GetCursorScreenPos();
+			ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(6.0f, 8.0f));
+			ImGui::BeginChild("DirectoryTree", ImVec2(kTreeWidth, 0.0f), ImGuiChildFlags_AlwaysUseWindowPadding);
+			ImGui::PopStyleVar();
+			DrawDirectoryTree();
+			ImGui::EndChild();
+
+			const float dividerX = bodyMin.x + kTreeWidth;
+			ImGui::GetWindowDrawList()->AddLine(ImVec2(dividerX, bodyMin.y), ImVec2(dividerX, bodyMin.y + ImGui::GetItemRectSize().y), Widgets::ColorU32(Gleam::Theme::Divider));
+
+			ImGui::SameLine(0.0f, 1.0f);
+			ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(12.0f, 12.0f));
+			ImGui::BeginChild("AssetGrid", ImVec2(0.0f, 0.0f), ImGuiChildFlags_AlwaysUseWindowPadding);
+			ImGui::PopStyleVar();
+			DrawAssetGrid();
+			ImGui::EndChild();
+			ImGui::PopStyleVar();
 		}
-
-		ImGui::Separator();
-
-		static float leftPanelWidth = 250.0f;
-
-		ImGui::BeginChild("DirectoryTree", ImVec2(leftPanelWidth, 0), ImGuiChildFlags_Borders);
-		ImGui::Text("Directories");
-		ImGui::Separator();
-		DrawDirectoryTree();
-		ImGui::EndChild();
-
-		ImGui::SameLine();
-
-		ImGui::Button("##splitter", ImVec2(4.0f, -1));
-		if (ImGui::IsItemActive())
-		{
-			leftPanelWidth += ImGui::GetIO().MouseDelta.x;
-			leftPanelWidth = ImGui::GetIO().MousePos.x - ImGui::GetWindowPos().x;
-		}
-
-		if (ImGui::IsItemHovered())
-		{
-			ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeEW);
-		}
-
-		ImGui::SameLine();
-
-		ImGui::BeginChild("AssetGrid", ImVec2(0, 0), ImGuiChildFlags_Borders);
-
-		if (ImGui::Button(Gleam::TStringView(mAssetDirectory.Stem()).data()))
-		{
-			SetCurrentDir(mAssetDirectory);
-		}
-
-		if (mCurrentDirectory != mAssetDirectory)
-		{
-			uint32_t directoryID = 0;
-			Gleam::Path breadcrumbPath = mAssetDirectory;
-			auto relativePath = Gleam::Filesystem::Relative(mCurrentDirectory, mAssetDirectory);
-			for (const auto& directory : relativePath.Split())
-			{
-				ImGui::SameLine();
-				ImGui::Text("/");
-				ImGui::SameLine();
-
-				breadcrumbPath = breadcrumbPath / directory;
-
-				ImGui::PushID(directoryID);
-				if (ImGui::Button(Gleam::TStringView(directory).data()))
-				{
-					SetCurrentDir(breadcrumbPath);
-				}
-				ImGui::PopID();
-			}
-		}
-
-		ImGui::Separator();
-		DrawAssetGrid();
-		ImGui::EndChild();
-
 		ImGui::End();
 	});
 }
 
-bool ContentBrowser::ImportAsset(const Gleam::Path& path)
+void ContentBrowser::DrawToolbar()
 {
-	if (path.Extension() == L".gltf")
+	constexpr float kButtonHeight = 30.0f;
+	constexpr float kSearchWidth = 180.0f;
+
+	const ImVec2 min = ImGui::GetCursorScreenPos();
+	const float width = ImGui::GetContentRegionAvail().x;
+	const float buttonY = min.y + (kToolbarHeight - kButtonHeight) * 0.5f;
+
+	// Import
+	constexpr const char* kImportLabel = ICON_LC_UPLOAD "  Import";
+	ImGui::PushFont(mFonts->semiBold);
+	const float importWidth = ImGui::CalcTextSize(kImportLabel).x + 24.0f;
+	ImGui::SetCursorScreenPos(ImVec2(min.x + 10.0f, buttonY));
+	ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 6.0f);
+	ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
+	ImGui::PushStyleColor(ImGuiCol_Button, Gleam::Theme::Accent);
+	ImGui::PushStyleColor(ImGuiCol_ButtonHovered, Gleam::Theme::AccentHover);
+	ImGui::PushStyleColor(ImGuiCol_ButtonActive, Gleam::Theme::AccentActive);
+	ImGui::PushStyleColor(ImGuiCol_Text, Gleam::Theme::OnAccent);
+	if (ImGui::Button(kImportLabel, ImVec2(importWidth, kButtonHeight)))
 	{
-		auto assetRegistry = AssetRegistry(path.Parent());
-		auto meshSource = MeshSource(mAssetManager, &assetRegistry);
-		auto settings = MeshSource::ImportSettings();
-		if (meshSource.Import(path, settings))
+		auto files = Gleam::FileDialog::Open();
+		auto importDialog = Gleam::Globals::GameInstance->GetSubsystem<ViewStack>()->GetView<AssetImportDialog>();
+		importDialog->Enqueue(files, mCurrentDirectory);
+	}
+	ImGui::PopStyleColor(4);
+	ImGui::PopStyleVar(2);
+	ImGui::PopFont();
+
+	// Search and filters
+	const float searchX = min.x + width - 10.0f - kSearchWidth;
+	ImGui::SetCursorScreenPos(ImVec2(searchX, buttonY));
+	Widgets::SearchField("##AssetSearch", "Search assets", mSearch, sizeof(mSearch), kSearchWidth, kButtonHeight);
+	const float chipsX = DrawFilterChips(searchX - 10.0f, min.y);
+
+	// Breadcrumb
+	ImGui::SetCursorScreenPos(ImVec2(min.x + 10.0f + importWidth + 10.0f, min.y));
+	DrawBreadcrumb(chipsX - 10.0f);
+
+	ImGui::SetCursorScreenPos(min);
+	ImGui::Dummy(ImVec2(width, kToolbarHeight));
+	ImGui::GetWindowDrawList()->AddLine(ImVec2(min.x, min.y + kToolbarHeight - 1.0f), ImVec2(min.x + width, min.y + kToolbarHeight - 1.0f), Widgets::ColorU32(Gleam::Theme::Divider));
+}
+
+void ContentBrowser::DrawBreadcrumb(float maxX)
+{
+	Gleam::TArray<Gleam::Path> segments;
+	segments.push_back(mAssetDirectory);
+	if (mCurrentDirectory != mAssetDirectory)
+	{
+		Gleam::Path breadcrumbPath = mAssetDirectory;
+		const Gleam::Path relativePath = Gleam::Filesystem::Relative(mCurrentDirectory, mAssetDirectory);
+		for (const auto& directory : relativePath.Split())
 		{
-			mAssetManager->Import(mCurrentDirectory, meshSource);
-			return true;
+			breadcrumbPath = breadcrumbPath / directory;
+			segments.push_back(breadcrumbPath);
 		}
 	}
-	return false;
+
+	auto drawList = ImGui::GetWindowDrawList();
+	const ImVec2 origin = ImGui::GetCursorScreenPos();
+	const float textY = origin.y + (kToolbarHeight - ImGui::GetFontSize()) * 0.5f;
+	float x = origin.x;
+
+	drawList->PushClipRect(ImVec2(origin.x, origin.y), ImVec2(maxX, origin.y + kToolbarHeight), true);
+	for (uint32_t i = 0; i < segments.size(); ++i)
+	{
+		const bool last = i + 1 == segments.size();
+		const Gleam::TString label = segments[i].Filename();
+		const ImVec2 labelSize = ImGui::CalcTextSize(label.c_str());
+
+		ImGui::PushID(static_cast<int>(i));
+		ImGui::SetCursorScreenPos(ImVec2(x, textY));
+		if (ImGui::InvisibleButton("##Crumb", labelSize) and last == false)
+		{
+			SetCurrentDir(segments[i]);
+		}
+		const bool hovered = ImGui::IsItemHovered() and last == false;
+		ImGui::PopID();
+
+		drawList->AddText(ImVec2(x, textY), Widgets::ColorU32(last ? Gleam::Theme::Text : (hovered ? Gleam::Theme::TextSecondary : Gleam::Theme::TextMuted)), label.c_str());
+		x += labelSize.x + 6.0f;
+
+		if (last == false)
+		{
+			drawList->AddText(ImVec2(x, textY), Widgets::ColorU32(Gleam::Theme::TextDim), "/");
+			x += ImGui::CalcTextSize("/").x + 6.0f;
+		}
+	}
+	drawList->PopClipRect();
+}
+
+float ContentBrowser::DrawFilterChips(float right, float top)
+{
+	constexpr float kChipHeight = 24.0f;
+	constexpr float kChipGap = 6.0f;
+	constexpr float kDotSize = 8.0f;
+
+	ImGui::PushFont(mFonts->footnote);
+	float totalWidth = 0.0f;
+	for (const auto& chip : kCategoryChips)
+	{
+		totalWidth += 8.0f + kDotSize + 6.0f + ImGui::CalcTextSize(chip.label).x + 8.0f + kChipGap;
+	}
+	totalWidth -= kChipGap;
+
+	auto drawList = ImGui::GetWindowDrawList();
+	const float chipY = top + (kToolbarHeight - kChipHeight) * 0.5f;
+	const float startX = right - totalWidth;
+	float x = startX;
+
+	for (const auto& chip : kCategoryChips)
+	{
+		const float textWidth = ImGui::CalcTextSize(chip.label).x;
+		const ImVec2 min(x, chipY);
+		const ImVec2 max(x + 8.0f + kDotSize + 6.0f + textWidth + 8.0f, chipY + kChipHeight);
+		const uint32_t bit = CategoryBit(chip.category);
+		const bool active = (mCategoryFilter & bit) != 0u;
+
+		ImGui::SetCursorScreenPos(min);
+		if (ImGui::InvisibleButton(chip.label, ImVec2(max.x - min.x, kChipHeight)))
+		{
+			mCategoryFilter ^= bit;
+		}
+		const bool hovered = ImGui::IsItemHovered();
+
+		if (active)
+		{
+			drawList->AddRectFilled(min, max, Widgets::ColorU32(Gleam::Theme::Selected), kChipHeight * 0.5f);
+		}
+		else if (hovered)
+		{
+			drawList->AddRectFilled(min, max, Widgets::ColorU32(Gleam::Theme::SectionHeader), kChipHeight * 0.5f);
+		}
+		drawList->AddRect(min, max, Widgets::ColorU32(active ? chip.color : Gleam::Theme::Border), kChipHeight * 0.5f);
+		drawList->AddCircleFilled(ImVec2(min.x + 8.0f + kDotSize * 0.5f, min.y + kChipHeight * 0.5f), kDotSize * 0.5f, Widgets::ColorU32(chip.color));
+		drawList->AddText(ImVec2(min.x + 8.0f + kDotSize + 6.0f, min.y + (kChipHeight - ImGui::GetFontSize()) * 0.5f), Widgets::ColorU32(active ? Gleam::Theme::Text : Gleam::Theme::TextSecondary), chip.label);
+
+		x = max.x + kChipGap;
+	}
+	ImGui::PopFont();
+	return startX;
 }
 
 void ContentBrowser::SetCurrentDir(const Gleam::Path& directory)
@@ -168,12 +288,11 @@ void ContentBrowser::RefreshAssetGrid()
 		GridEntry entry;
 		entry.path = node;
 		entry.isDirectory = node.IsDirectory();
-		entry.color = Gleam::Color(0.5f, 0.5f, 0.5f, 1.0f);
 
 		if (entry.isDirectory)
 		{
 			entry.label = node.Filename();
-			entry.color = Gleam::Color(0.9f, 0.75f, 0.3f, 1.0f); // Yellow/Gold
+			entry.color = Gleam::Theme::Accent;
 		}
 		else if (node.Extension() == Gleam::Asset::Extension())
 		{
@@ -182,8 +301,9 @@ void ContentBrowser::RefreshAssetGrid()
 			entry.payloadType = "GLEAM_ASSET";
 
 			const auto icon = GetAssetIcon(entry.asset.type);
-			entry.iconText = icon.text;
+			entry.typeText = icon.text;
 			entry.color = icon.color;
+			entry.category = icon.category;
 		}
 		else if (node.Extension() == Gleam::Prefab::Extension())
 		{
@@ -192,8 +312,9 @@ void ContentBrowser::RefreshAssetGrid()
 			entry.payloadType = "GLEAM_PREFAB";
 
 			const auto icon = GetAssetIcon(entry.asset.type);
-			entry.iconText = icon.text;
+			entry.typeText = icon.text;
 			entry.color = icon.color;
+			entry.category = icon.category;
 		}
 		else if (node.Extension() == Gleam::World::Extension())
 		{
@@ -202,8 +323,9 @@ void ContentBrowser::RefreshAssetGrid()
 			entry.payloadType = "GLEAM_WORLD";
 
 			const auto icon = GetAssetIcon(entry.asset.type);
-			entry.iconText = icon.text;
+			entry.typeText = icon.text;
 			entry.color = icon.color;
+			entry.category = icon.category;
 		}
 		else
 		{
@@ -255,179 +377,141 @@ void ContentBrowser::BuildDirectoryTree(const Gleam::Path& node)
 
 void ContentBrowser::DrawDirectoryTree()
 {
+	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, 2.0f));
 	uint32_t index = 0u;
 	while (index < mTreeEntries.size())
 	{
-		index = DrawDirectoryNode(index);
+		index = DrawDirectoryNode(index, 0u);
 	}
+	ImGui::PopStyleVar();
 }
 
-uint32_t ContentBrowser::DrawDirectoryNode(uint32_t index)
+uint32_t ContentBrowser::DrawDirectoryNode(uint32_t index, uint32_t depth)
 {
+	constexpr float kChevronWidth = 12.0f;
+	constexpr float kIndentWidth = 16.0f;
+
 	const auto& entry = mTreeEntries[index];
-	uint32_t next = index + 1u + entry.descendantCount;
-
-	ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow |
-		ImGuiTreeNodeFlags_OpenOnDoubleClick |
-		ImGuiTreeNodeFlags_SpanAvailWidth;
-
-	if (entry.descendantCount == 0u)
-	{
-		flags |= ImGuiTreeNodeFlags_Leaf;
-	}
-
-	if (entry.path == mCurrentDirectory)
-	{
-		flags |= ImGuiTreeNodeFlags_Selected;
-	}
+	const uint32_t next = index + 1u + entry.descendantCount;
+	const bool hasChildren = entry.descendantCount > 0u;
+	const bool selected = entry.path == mCurrentDirectory;
 
 	ImGui::PushID(static_cast<int>(index));
-	bool opened = ImGui::TreeNodeEx(entry.label.c_str(), flags);
+	auto storage = ImGui::GetStateStorage();
+	const ImGuiID openID = ImGui::GetID("##Open");
+	bool open = storage->GetBool(openID, depth == 0u);
 
-	if (ImGui::IsItemClicked())
+	const ImVec2 rowMin = ImGui::GetCursorScreenPos();
+	const float width = ImGui::GetContentRegionAvail().x;
+	const ImVec2 rowMax(rowMin.x + width, rowMin.y + kTreeRowHeight);
+
+	ImGui::SetNextItemAllowOverlap();
+	if (ImGui::InvisibleButton("##Directory", ImVec2(width, kTreeRowHeight)))
 	{
 		SetCurrentDir(entry.path);
 	}
+	const bool hovered = ImGui::IsItemHovered();
+	if (hovered and hasChildren and ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
+	{
+		open = not open;
+		storage->SetBool(openID, open);
+	}
 
-	if (opened)
+	auto drawList = ImGui::GetWindowDrawList();
+	if (selected)
+	{
+		drawList->AddRectFilled(rowMin, rowMax, Widgets::ColorU32(Gleam::Theme::Selected), 4.0f);
+	}
+	else if (hovered)
+	{
+		drawList->AddRectFilled(rowMin, rowMax, Widgets::ColorU32(Gleam::Theme::SectionHeader), 4.0f);
+	}
+
+	const float x = rowMin.x + 6.0f + depth * kIndentWidth;
+	if (hasChildren)
+	{
+		ImGui::SetCursorScreenPos(ImVec2(x, rowMin.y));
+		if (ImGui::InvisibleButton("##Toggle", ImVec2(kChevronWidth, kTreeRowHeight)))
+		{
+			open = not open;
+			storage->SetBool(openID, open);
+		}
+		ImGui::PushFont(mFonts->microBold);
+		Widgets::DrawIcon(drawList, open ? ICON_LC_CHEVRON_DOWN : ICON_LC_CHEVRON_RIGHT, ImVec2(x + kChevronWidth * 0.5f, rowMin.y + kTreeRowHeight * 0.5f), Gleam::Theme::TextSecondary);
+		ImGui::PopFont();
+	}
+
+	drawList->AddText(ImVec2(x + kChevronWidth + 4.0f, rowMin.y + (kTreeRowHeight - ImGui::GetFontSize()) * 0.5f), Widgets::ColorU32(selected ? Gleam::Theme::Text : Gleam::Theme::TextSecondary), entry.label.c_str());
+	ImGui::SetCursorScreenPos(rowMin);
+	ImGui::Dummy(ImVec2(width, kTreeRowHeight));
+
+	if (open)
 	{
 		uint32_t child = index + 1u;
 		while (child < next)
 		{
-			child = DrawDirectoryNode(child);
+			child = DrawDirectoryNode(child, depth + 1u);
 		}
-		ImGui::TreePop();
 	}
 	ImGui::PopID();
 
 	return next;
 }
 
-void ContentBrowser::DrawAssetGrid()
+bool ContentBrowser::IsVisible(const GridEntry& entry) const
 {
-	static float iconSize = 80.0f;
-	static float padding = 10.0f;
-
-	float cellSize = iconSize + padding;
-	float panelWidth = ImGui::GetContentRegionAvail().x;
-	uint32_t columnCount = Gleam::Math::Max((uint32_t)(panelWidth / cellSize), 1u);
-	uint32_t entryCount = static_cast<uint32_t>(mGridEntries.size());
-	uint32_t rowCount = (entryCount + columnCount - 1u) / columnCount;
-
-	float labelHeight = ImGui::GetTextLineHeight() * 2.0f;
-	float rowHeight = iconSize + labelHeight + ImGui::GetStyle().ItemSpacing.y * 2.0f;
-
-	ImGuiListClipper clipper;
-	clipper.Begin(static_cast<int>(rowCount), rowHeight);
-	while (clipper.Step())
+	if (mSearch[0] != '\0' and ImStristr(entry.label.c_str(), nullptr, mSearch, nullptr) == nullptr)
 	{
-		for (int row = clipper.DisplayStart; row < clipper.DisplayEnd; ++row)
-		{
-			for (uint32_t column = 0u; column < columnCount; ++column)
-			{
-				uint32_t index = static_cast<uint32_t>(row) * columnCount + column;
-				if (index >= entryCount)
-				{
-					break;
-				}
-
-				if (column > 0u)
-				{
-					ImGui::SameLine();
-				}
-				DrawAssetItem(mGridEntries[index], index, iconSize);
-			}
-		}
+		return false;
 	}
-	clipper.End();
-
-	if (not mPendingDirectory.Empty())
+	else if (mCategoryFilter != 0u)
 	{
-		SetCurrentDir(mPendingDirectory);
-		mPendingDirectory.Clear();
-	}
-}
-
-void ContentBrowser::DrawAssetItem(const GridEntry& entry, uint32_t index, float iconSize)
-{
-	ImVec4 assetColor = ImVec4(entry.color.r, entry.color.g, entry.color.b, entry.color.a);
-
-	ImGui::PushID(static_cast<int>(index));
-
-	ImGui::BeginGroup();
-
-	ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.2f, 0.2f, 1.0f));
-	ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.3f, 0.3f, 0.3f, 1.0f));
-	ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.4f, 0.4f, 0.4f, 1.0f));
-
-	if (entry.isDirectory)
-	{
-		ImVec4 hoverColor = ImVec4(assetColor.x * 1.1f, assetColor.y * 1.1f, assetColor.z * 1.1f, 1.0f);
-		ImVec4 activeColor = ImVec4(assetColor.x * 1.3f, assetColor.y * 1.3f, assetColor.z * 1.3f, 1.0f);
-
-		ImVec2 cursorPos = ImGui::GetCursorScreenPos();
-		ImGui::InvisibleButton("##folder", ImVec2(iconSize, iconSize));
-
-		ImVec4 currentColor = assetColor;
-		if (ImGui::IsItemActive())
-		{
-			currentColor = activeColor;
-		}
-		else if (ImGui::IsItemHovered())
-		{
-			currentColor = hoverColor;
-		}
-
-		ImGui::GetWindowDrawList()->AddRectFilled(
-			cursorPos,
-			ImVec2(cursorPos.x + iconSize, cursorPos.y + iconSize),
-			ImGui::ColorConvertFloat4ToU32(currentColor)
-		);
+		return entry.isDirectory == false and (mCategoryFilter & CategoryBit(entry.category)) != 0u;
 	}
 	else
 	{
-		ImGui::Button(entry.iconText, ImVec2(iconSize, iconSize));
+		return true;
+	}
+}
+
+void ContentBrowser::DrawAssetGrid()
+{
+	Gleam::TArray<uint32_t> visibleEntries;
+	Gleam::TArray<ThumbnailItem> items;
+	visibleEntries.reserve(mGridEntries.size());
+	items.reserve(mGridEntries.size());
+	for (uint32_t i = 0; i < mGridEntries.size(); ++i)
+	{
+		const auto& entry = mGridEntries[i];
+		if (IsVisible(entry) == false)
+		{
+			continue;
+		}
+
+		visibleEntries.push_back(i);
+		items.push_back({
+			.label = entry.label,
+			.typeText = entry.typeText,
+			.color = entry.color,
+			.isFolder = entry.isDirectory,
+			.selected = entry.path == mSelectedEntry,
+			.payloadType = entry.payloadType,
+			.payload = &entry.asset,
+			.payloadSize = sizeof(AssetItem)
+		});
 	}
 
-	ImGui::PopStyleColor(3);
-
-	bool openDirectory = entry.isDirectory && ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left);
-
-	if (entry.payloadType && ImGui::BeginDragDropSource(ImGuiDragDropFlags_None))
+	const auto events = ThumbnailGrid::Draw(items, *mFonts);
+	if (events.clicked >= 0)
 	{
-		ImGui::SetDragDropPayload(entry.payloadType, &entry.asset, sizeof(AssetItem));
-		ImGui::Text("%s", entry.label.c_str());
-		ImGui::EndDragDropSource();
+		mSelectedEntry = mGridEntries[visibleEntries[events.clicked]].path;
 	}
-
-	if (not entry.isDirectory)
+	if (events.doubleClicked >= 0)
 	{
-		ImVec2 separatorStart = ImGui::GetCursorScreenPos();
-		ImVec2 separatorEnd = ImVec2(separatorStart.x + iconSize, separatorStart.y);
-		ImGui::GetWindowDrawList()->AddLine(separatorStart, separatorEnd, ImGui::ColorConvertFloat4ToU32(assetColor), 3.0f);
-	}
-	ImGui::Spacing();
-
-	// Clip the label to a fixed two-line box so every cell is the same height,
-	// keeping the list clipper's row estimate exact
-	float labelHeight = ImGui::GetTextLineHeight() * 2.0f;
-	ImVec2 labelPos = ImGui::GetCursorScreenPos();
-
-	ImGui::PushClipRect(labelPos, ImVec2(labelPos.x + iconSize, labelPos.y + labelHeight), true);
-	ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + iconSize);
-	ImGui::TextWrapped("%s", entry.label.c_str());
-	ImGui::PopTextWrapPos();
-	ImGui::PopClipRect();
-
-	ImGui::SetCursorScreenPos(labelPos);
-	ImGui::Dummy(ImVec2(iconSize, labelHeight));
-
-	ImGui::EndGroup();
-
-	ImGui::PopID();
-
-	if (openDirectory)
-	{
-		mPendingDirectory = entry.path;
+		const auto& entry = mGridEntries[visibleEntries[events.doubleClicked]];
+		if (entry.isDirectory)
+		{
+			SetCurrentDir(entry.path);
+		}
 	}
 }

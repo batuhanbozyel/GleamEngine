@@ -28,6 +28,7 @@ void ImGuiRenderer::OnCreate(const RenderContext& context)
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
     io.ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange;
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable | ImGuiConfigFlags_ViewportsEnable;
+    io.ConfigWindowsMoveFromTitleBarOnly = true;
 	ImGui_ImplSDL3_InitForOther(Globals::Engine->GetSubsystem<WindowSystem>()->GetSDLWindow());
 
 	unsigned char* pixels;
@@ -97,7 +98,10 @@ void ImGuiRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 	graph.AddRenderPass<ImGuiPassData>("ImGuiPass", [&](RenderGraphBuilder& builder, ImGuiPassData& passData)
 	{
 		const auto& sceneData = blackboard.Get<Gleam::SceneRenderingData>();
-		passData.sceneTarget = builder.ReadTexture(sceneData.sceneTarget);
+		if (sceneData.sceneTarget.IsValid())
+		{
+			passData.sceneTarget = builder.ReadTexture(sceneData.sceneTarget);
+		}
 		passData.backbuffer = builder.WriteTexture(sceneData.backbuffer);
 	},
     [this](const CommandBuffer* cmd, const ImGuiPassData& passData)
@@ -111,8 +115,8 @@ void ImGuiRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
         
         ImGuiWindowFlags windowFlags = ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoDocking;
         ImGuiViewport* viewport = ImGui::GetMainViewport();
-        ImGui::SetNextWindowPos(viewport->Pos);
-        ImGui::SetNextWindowSize(viewport->Size);
+        ImGui::SetNextWindowPos(viewport->WorkPos);
+        ImGui::SetNextWindowSize(viewport->WorkSize);
         ImGui::SetNextWindowViewport(viewport->ID);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
@@ -125,6 +129,13 @@ void ImGuiRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
         ImGui::PopStyleVar(2);
         
         ImGuiID dockspaceID = ImGui::GetID("EditorDockSpace");
+        const bool applyLayout = static_cast<bool>(mPendingLayout);
+        if (applyLayout)
+        {
+            ImGui::DockBuilderRemoveNode(dockspaceID);
+            std::invoke(mPendingLayout, dockspaceID);
+            mPendingLayout = nullptr;
+        }
         ImGui::DockSpace(dockspaceID, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_None);
         
         for (auto& view : mViews)
@@ -134,6 +145,10 @@ void ImGuiRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 		mViews.clear();
         
         ImGui::End();
+        if (applyLayout and io.IniFilename != nullptr)
+        {
+            ImGui::SaveIniSettingsToDisk(io.IniFilename);
+        }
         ImGui::Render();
 
 		void* bufferPtr = mBuffer.GetContents();
@@ -181,9 +196,17 @@ void ImGuiRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
 				const ImDrawCmd* drawCmd = &drawList->CmdBuffer[cmd_i];
 				GLEAM_ASSERT(drawCmd->UserCallback == nullptr);
 
+				Float2 clipMin = { (drawCmd->ClipRect.x - drawData->DisplayPos.x) * drawData->FramebufferScale.x, (drawCmd->ClipRect.y - drawData->DisplayPos.y) * drawData->FramebufferScale.y };
+				Float2 clipMax = { (drawCmd->ClipRect.z - drawData->DisplayPos.x) * drawData->FramebufferScale.x, (drawCmd->ClipRect.w - drawData->DisplayPos.y) * drawData->FramebufferScale.y };
+				
+				clipMin.x = Math::Max(clipMin.x, 0.0f);
+				clipMin.y = Math::Max(clipMin.y, 0.0f);
+				clipMax.x = Math::Min(clipMax.x, renderPassDesc.size.width);
+				clipMax.y = Math::Min(clipMax.y, renderPassDesc.size.height);
+
 				Rect rect;
-				rect.offset = { (drawCmd->ClipRect.x - drawData->DisplayPos.x) * drawData->FramebufferScale.x, (drawCmd->ClipRect.y - drawData->DisplayPos.y) * drawData->FramebufferScale.y };
-				rect.size = { (drawCmd->ClipRect.z - drawCmd->ClipRect.x) * drawData->FramebufferScale.x, (drawCmd->ClipRect.w - drawCmd->ClipRect.y) * drawData->FramebufferScale.y };
+				rect.offset = clipMin;
+				rect.size = { clipMax.x - clipMin.x, clipMax.y - clipMin.y };
 				if (rect.size.width <= Math::Epsilon || rect.size.height <= Math::Epsilon)
 				{
 					continue;
@@ -217,7 +240,37 @@ void ImGuiRenderer::PushView(ImGuiView&& view)
 	mViews.emplace_back(std::move(view));
 }
 
-void ImGuiRenderer::AddFontTexture(const Path& fontPath, const Path& defaultPath, float fontSize)
+void ImGuiRenderer::ApplyLayout(ImGuiLayout&& layout)
+{
+	mPendingLayout = std::move(layout);
+}
+
+void ImGuiRenderer::ClearFonts()
+{
+	ImGui::GetIO().Fonts->Clear();
+}
+
+ImFont* ImGuiRenderer::AddFont(const Path& fontPath, float fontSize, const ImWchar* excludeRanges)
+{
+	float displayScale = Globals::Engine->GetSubsystem<WindowSystem>()->GetDisplayScale();
+	ImFontConfig fontConfig;
+	fontConfig.RasterizerDensity = displayScale;
+	fontConfig.GlyphExcludeRanges = excludeRanges;
+	return ImGui::GetIO().Fonts->AddFontFromFileTTF(fontPath.String().c_str(), fontSize, &fontConfig);
+}
+
+void ImGuiRenderer::MergeFont(const Path& fontPath, float fontSize, const ImWchar* glyphRanges)
+{
+	float displayScale = Globals::Engine->GetSubsystem<WindowSystem>()->GetDisplayScale();
+	ImFontConfig fontConfig;
+	fontConfig.MergeMode = true;
+	fontConfig.PixelSnapH = true;
+	fontConfig.GlyphMinAdvanceX = fontSize;
+	fontConfig.RasterizerDensity = displayScale;
+	ImGui::GetIO().Fonts->AddFontFromFileTTF(fontPath.String().c_str(), fontSize, &fontConfig, glyphRanges);
+}
+
+void ImGuiRenderer::BuildFontTexture()
 {
 	// TODO: error handling
 	if (mFontTexture)
@@ -225,17 +278,8 @@ void ImGuiRenderer::AddFontTexture(const Path& fontPath, const Path& defaultPath
 		delete mFontTexture;
 		mFontTexture = nullptr;
 	}
-	
+
 	ImGuiIO& io = ImGui::GetIO();
-	io.Fonts->Clear();
-
-	float displayScale = Globals::Engine->GetSubsystem<WindowSystem>()->GetDisplayScale();
-	ImFontConfig fontConfig;
-	fontConfig.RasterizerDensity = displayScale;
-
-	io.Fonts->AddFontFromFileTTF(fontPath.String().c_str(), fontSize, &fontConfig);
-	io.FontDefault = io.Fonts->AddFontFromFileTTF(defaultPath.String().c_str(), fontSize, &fontConfig);
-
 	unsigned char* pixels;
 	int width, height;
 	io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);

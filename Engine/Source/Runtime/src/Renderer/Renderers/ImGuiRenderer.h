@@ -18,6 +18,8 @@ struct ImGuiPassData
 
 using ImGuiView = std::function<void(const ImGuiPassData&)>;
 
+using ImGuiLayout = std::function<void(ImGuiID)>;
+
 class ImGuiRenderer : public IRenderer
 {
 public:
@@ -32,9 +34,17 @@ public:
 
 	void PushView(ImGuiView&& view);
 
+	void ApplyLayout(ImGuiLayout&& layout);
+
 	ImTextureID GetImTextureIDForTexture(const Texture& texture) const;
 
-	void AddFontTexture(const Path& fontPath, const Path& defaultPath, float fontSize);
+	void ClearFonts();
+
+	ImFont* AddFont(const Path& fontPath, float fontSize, const ImWchar* excludeRanges = nullptr);
+
+	void MergeFont(const Path& fontPath, float fontSize, const ImWchar* glyphRanges);
+
+	void BuildFontTexture();
     
 private:
 
@@ -51,6 +61,8 @@ private:
 	Texture2D* mDefaultFontTexture = nullptr;
 
 	TArray<ImGuiView> mViews;
+
+	ImGuiLayout mPendingLayout;
     
 };
 

@@ -71,52 +71,71 @@ void EAssetManager::Initialize(Gleam::Application* app)
 			auto file = Gleam::Filesystem::OpenRead(entry, Gleam::FileType::Text);
 			auto serializer = Gleam::JSONSerializer();
 
-			auto world = serializer.Deserialize<Gleam::World>(file->GetStream());
+			auto header = serializer.Deserialize<Gleam::AssetHeader>(file->GetStream());
 			auto guid = Gleam::Guid(entry.Stem());
 			auto asset = Gleam::AssetReference{ .guid = guid };
 			auto item = AssetItem{
 				.reference = asset,
-				.type = Gleam::Reflection::GetClass<Gleam::World>().Guid(),
-				.name = world.name
+				.type = header.typeGuid,
+				.name = header.name
 			};
-			auto path = entry.Parent() / world.name;
+			auto path = entry.Parent() / header.name;
 			mRegistry.RegisterAsset(path, item);
 		}
     }, true);
     
-    Gleam::Filesystem::ForEach(mAssetDirectory, [this](const auto& entry)
-    {
-        if (entry.Extension() == L".mat")
-        {
-            auto path = entry.Parent()/entry.Stem();
-			const auto& item = mRegistry.GetAsset<Gleam::MaterialDescriptor>(path);
-            if (item.reference.guid == Gleam::Guid::InvalidGuid())
-            {
-				auto assetRegistry = AssetRegistry(entry.Parent());
-                auto materialSource = MaterialSource(this, &assetRegistry);
-                auto settings = MaterialSource::ImportSettings();
-                materialSource.Import(entry, settings);
-                Import(mAssetDirectory / "Materials", materialSource);
-            }
-			else
-			{
-				// TODO: reimport only if material/shader source changed since last compile
-				auto assetRegistry = AssetRegistry(entry.Parent());
-				assetRegistry.RegisterAsset(entry.Stem(), item);
+	Gleam::Filesystem::ForEach(mAssetDirectory, [&](const auto& entry)
+	{
+		if (entry.Extension() == L".mat")
+		{
+			CompileMaterial(entry, mAssetDirectory / "Materials");
+		}
+	}, true);
 
-				auto materialSource = MaterialSource(this, &assetRegistry);
-				auto settings = MaterialSource::ImportSettings();
-				materialSource.Import(entry, settings);
-				Import(mAssetDirectory / "Materials", materialSource);
+	Gleam::Filesystem::ForEach(Gleam::Globals::BuiltinAssetsDirectory, [&](const auto& entry)
+	{
+		if (entry.Extension() == L".mat")
+		{
+			CompileMaterial(entry, mAssetDirectory / "Engine" / "Materials");
+		}
+	}, true);
+}
 
-				auto assetManager = Gleam::Globals::GameInstance->GetSubsystem<Gleam::AssetManager>();
-				auto material = assetManager->LoadDescriptor<Gleam::MaterialDescriptor>(item.reference);
+void EAssetManager::CompileMaterials(const Gleam::Path& sourceDirectory, const Gleam::Path& outputDirectory)
+{
+	Gleam::Filesystem::ForEach(sourceDirectory, [&](const auto& entry)
+	{
+		if (entry.Extension() == L".mat")
+		{
+			CompileMaterial(entry, outputDirectory);
+		}
+	}, false);
+}
 
-				auto renderSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::RenderSystem>();
-				renderSystem->RecompileShader(material.surfaceShader);
-			}
-        }
-    }, true);
+void EAssetManager::CompileMaterial(const Gleam::Path& source, const Gleam::Path& outputDirectory)
+{
+	Gleam::Filesystem::CreateDirectories(outputDirectory);
+
+	const auto& item = mRegistry.GetAsset<Gleam::MaterialDescriptor>(outputDirectory / source.Stem());
+	auto assetRegistry = AssetRegistry(source.Parent());
+	if (item.reference.guid != Gleam::Guid::InvalidGuid())
+	{
+		assetRegistry.RegisterAsset(source.Stem(), item);
+	}
+
+	auto materialSource = MaterialSource(this, &assetRegistry);
+	auto settings = MaterialSource::ImportSettings();
+	materialSource.Import(source, settings);
+	Import(outputDirectory, materialSource);
+
+	if (item.reference.guid != Gleam::Guid::InvalidGuid())
+	{
+		auto assetManager = Gleam::Globals::GameInstance->GetSubsystem<Gleam::AssetManager>();
+		auto material = assetManager->LoadDescriptor<Gleam::MaterialDescriptor>(item.reference);
+
+		auto renderSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::RenderSystem>();
+		renderSystem->RecompileShader(material.surfaceShader);
+	}
 }
 
 void EAssetManager::Shutdown(Gleam::Application* app)

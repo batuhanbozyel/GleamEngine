@@ -37,6 +37,11 @@ void VisibilityClassificationRenderer::OnDestroy(const RenderContext& context)
 void VisibilityClassificationRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard)
 {
 	const auto& sceneData = blackboard.Get<SceneRenderingData>();
+	if (not sceneData.world)
+	{
+		return;
+	}
+
 	const auto& depthPrepassData = blackboard.Get<DepthPrepassData>();
 	const auto& sceneTargetDescriptor = graph.GetDescriptor(sceneData.sceneTarget);
 

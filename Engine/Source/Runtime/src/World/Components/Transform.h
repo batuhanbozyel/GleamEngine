@@ -31,4 +31,20 @@ GSTRUCT(Transform, "D534ACED-5A81-4183-BD5F-A7F61A8F47E7", EntityComponent, Seri
 	}
 };
 
+namespace Math {
+
+NO_DISCARD FORCE_INLINE Transform Inverse(const Transform& transform)
+{
+	const float invScale = 1.0f / transform.scale;
+	const Quaternion invRotation = Math::Conjugate(transform.rotation);
+	return Transform
+	{
+		.position = invRotation * (-transform.position * invScale),
+		.rotation = invRotation,
+		.scale = invScale
+	};
+}
+
+} // namespace Math
+
 } // namespace Gleam

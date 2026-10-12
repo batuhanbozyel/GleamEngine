@@ -11,6 +11,7 @@
 #include "Renderer/GraphicsDevice.h"
 #include "Renderer/CopyCommandBuffer.h"
 #include "Renderer/Renderers/DepthPrepass.h"
+#include "World/World.h"
 
 using namespace GEditor;
 
@@ -49,6 +50,11 @@ void SelectionOutlineRenderer::OnDestroy(const Gleam::RenderContext& context)
 void SelectionOutlineRenderer::AddRenderPasses(Gleam::RenderGraph& graph, Gleam::RenderGraphBlackboard& blackboard)
 {
 	const auto& sceneData = blackboard.Get<Gleam::SceneRenderingData>();
+	if (not sceneData.world or sceneData.world->HasSubsystem<SelectionSystem>() == false)
+	{
+		return;
+	}
+
 	mSelectionSystem->Update(sceneData.world);
 
 	const auto& instanceMask = mSelectionSystem->GetInstanceMask();

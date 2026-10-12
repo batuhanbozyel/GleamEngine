@@ -43,6 +43,19 @@ protected:
 
 };
 
+class TickableGameInstanceSubsystem : public GameInstanceSubsystem
+{
+	friend class Application;
+public:
+
+	virtual ~TickableGameInstanceSubsystem() = default;
+
+protected:
+
+	virtual void Tick(Application* app) {}
+
+};
+
 template <typename T>
 concept EngineSystemType = std::is_base_of<EngineSubsystem, T>::value;
 

@@ -18,6 +18,7 @@ set(INCLUDE_DIRS
     ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/entt/src
     ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/cgltf
     ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/MikkTSpace
+    ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/v-hacd/include
     ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/stb
     ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/meshoptimizer/src
     ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/imgui
@@ -49,6 +50,7 @@ list(FILTER HEADER_FILES EXCLUDE REGEX ".*Reflection\\.generated\\.h$")
 
 add_executable(Editor WIN32 MACOSX_BUNDLE ${SOURCE_FILES})
 target_include_directories(Editor PRIVATE ${INCLUDE_DIRS})
+target_include_directories(Editor PRIVATE $<TARGET_PROPERTY:box3d,INTERFACE_INCLUDE_DIRECTORIES>)
 target_link_directories(Editor PRIVATE ${CMAKE_BINARY_DIR}/$<CONFIG>)
 
 if (APPLE)
@@ -90,10 +92,14 @@ add_dependencies(Editor EditorReflection)
 # The application loads every module's types from one linked database
 GLEAM_LINK_REFLECTION_MODULES(
     OUTPUT ${CMAKE_SOURCE_DIR}/Gleam.Reflection.db
+    NATVIS ${GLEAM_REFLECTION_BINARY_DIR}/Gleam.Reflection.natvis
     BINARY_DIR ${GLEAM_REFLECTION_BINARY_DIR}
     MODULES Runtime Editor
 )
 add_dependencies(Editor ReflectionLink)
+if (MSVC)
+    target_sources(Editor PRIVATE ${GLEAM_REFLECTION_BINARY_DIR}/Gleam.Reflection.natvis)
+endif()
 
 target_compile_definitions(
     Editor

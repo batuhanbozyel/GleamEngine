@@ -70,7 +70,10 @@ void EntitySerializer::Serialize(const EntityManager& entityManager, rapidjson::
 
 	entityManager.ForEach([&](EntityHandle handle)
 	{
-		SerializeEntity(entityManager, handle, entitiesNode);
+		if (entityManager.IsEditorOnly(handle) == false)
+		{
+			SerializeEntity(entityManager, handle, entitiesNode);
+		}
 	});
 	root.AddMember("Entities", entitiesObject);
 
@@ -78,7 +81,7 @@ void EntitySerializer::Serialize(const EntityManager& entityManager, rapidjson::
 	rapidjson::Node singletonComponentsNode(singletonComponents, root.allocator);
 	entityManager.VisitSingletons([&](const void* component, const Gleam::Reflection::ClassDescription& classDesc)
 	{
-		if (classDesc.HasAttribute<Reflection::Attribute::EntityComponent>())
+		if (classDesc.HasAttribute<Reflection::Attribute::EntityComponent>() and classDesc.HasAttribute<Reflection::Attribute::EditorOnly>() == false)
 		{
 			rapidjson::Value componentObject(rapidjson::kObjectType);
 			rapidjson::Node componentNode(componentObject, root.allocator);

@@ -7,16 +7,17 @@
 
 #pragma once
 #include "View/View.h"
+#include "View/Widgets/AssetIcon.h"
 #include "EAssets/AssetRegistry.h"
 
 #include "IO/FileWatcher.h"
-#include "Math/Color.h"
 
 #include <atomic>
 
 namespace GEditor {
 
 class EAssetManager;
+struct EditorFonts;
 
 class ContentBrowser final : public View
 {
@@ -24,9 +25,9 @@ public:
 
 	ContentBrowser(EAssetManager* assetManager);
 
-	virtual void OnCreate(Gleam::World* world) override;
+	virtual void OnCreate(Gleam::Application* app) override;
 
-	virtual void OnDestroy(Gleam::World* world) override;
+	virtual void OnDestroy(Gleam::Application* app) override;
 
     virtual void Render(Gleam::ImGuiRenderer* imgui) override;
 
@@ -37,8 +38,9 @@ private:
 		Gleam::Path path;
 		Gleam::TString label;
 		AssetItem asset;
-		Gleam::Color color;
-		const char* iconText = nullptr;
+		ImVec4 color = Gleam::Theme::TextDim;
+		const char* typeText = nullptr;
+		AssetCategory category = AssetCategory::Other;
 		const char* payloadType = nullptr;
 		bool isDirectory = false;
 	};
@@ -50,8 +52,6 @@ private:
 		uint32_t descendantCount = 0u;
 	};
 
-	bool ImportAsset(const Gleam::Path& path);
-
 	void SetCurrentDir(const Gleam::Path& directory);
 
 	void RefreshAssetGrid();
@@ -60,26 +60,37 @@ private:
 
 	void BuildDirectoryTree(const Gleam::Path& node);
 
+	void DrawToolbar();
+
+	void DrawBreadcrumb(float maxX);
+
+	float DrawFilterChips(float right, float top);
+
 	void DrawDirectoryTree();
 
-	uint32_t DrawDirectoryNode(uint32_t index);
+	uint32_t DrawDirectoryNode(uint32_t index, uint32_t depth);
 
 	void DrawAssetGrid();
 
-	void DrawAssetItem(const GridEntry& entry, uint32_t index, float iconSize);
+	bool IsVisible(const GridEntry& entry) const;
 
 	EAssetManager* mAssetManager;
+
+	const EditorFonts* mFonts = nullptr;
 
     Gleam::Path mCurrentDirectory;
 
 	Gleam::Path mAssetDirectory;
 
-	// Navigation requested from inside the grid loop, applied once the loop is done
-	Gleam::Path mPendingDirectory;
-
 	Gleam::TArray<GridEntry> mGridEntries;
 
 	Gleam::TArray<TreeEntry> mTreeEntries;
+
+	Gleam::Path mSelectedEntry;
+
+	uint32_t mCategoryFilter = 0u;
+
+	char mSearch[128] = "";
 
 	Gleam::FileWatcher::Handle* mWatchHandle = nullptr;
 

@@ -6,6 +6,9 @@
 //
 
 #include "EditorCameraController.h"
+#include "EditorCamera.h"
+
+#include <Editor.Reflection.generated.h>
 
 #include "Core/Globals.h"
 #include "Core/Engine.h"
@@ -30,21 +33,22 @@ void EditorCameraController::OnCreate(Gleam::EntityManager& entityManager)
 void EditorCameraController::OnUpdate(Gleam::EntityManager& entityManager)
 {
 	auto& cameraEntity = entityManager.GetComponent<Gleam::Entity>(mCameraEntity);
-	ProcessCameraRotation(cameraEntity);
+	auto& editorCamera = entityManager.GetComponent<Gleam::EditorCamera>(mCameraEntity);
+	ProcessCameraRotation(cameraEntity, editorCamera);
 	ProcessCameraMovement(cameraEntity);
 }
 
-void EditorCameraController::ProcessCameraRotation(Gleam::Entity& camera)
+void EditorCameraController::ProcessCameraRotation(Gleam::Entity& camera, Gleam::EditorCamera& editorCamera)
 {
     auto inputSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::InputSystem>();
 	if (!inputSystem->CursorVisible())
     {
         constexpr float mouseSensitivity = 0.1f;
         const auto& axis = inputSystem->GetAxis();
-        mYaw += axis.x * mouseSensitivity;
-        mPitch += axis.y * mouseSensitivity;
-        mPitch = Gleam::Math::Clamp(mPitch, -80.0f, 80.0f);
-		camera.SetRotation(Gleam::Quaternion(Gleam::Math::Deg2Rad(Gleam::Float3{ mPitch, mYaw, 0.0f })));
+        editorCamera.yaw += axis.x * mouseSensitivity;
+        editorCamera.pitch += axis.y * mouseSensitivity;
+        editorCamera.pitch = Gleam::Math::Clamp(editorCamera.pitch, -80.0f, 80.0f);
+		camera.SetRotation(Gleam::Quaternion(Gleam::Math::Deg2Rad(Gleam::Float3{ editorCamera.pitch, editorCamera.yaw, 0.0f })));
     }
 }
 

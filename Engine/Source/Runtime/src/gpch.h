@@ -53,6 +53,7 @@
 #include "Core/PlatformTargetDefines.h"
 #include "Core/Macro.h"
 #include "Core/EngineDefines.h"
+#include "Core/Attributes.h"
 
 #include "Container/Pointer.h"
 #include "Container/String.h"
@@ -101,6 +102,7 @@
 #include "World/Components/ReflectionProbe.h"
 #include "World/Components/SkyAtmosphere.h"
 #include "World/Components/MeshRenderer.h"
+#include "World/Components/RigidBody.h"
 #include "World/Components/Transform.h"
 #include "World/Components/Camera.h"
 #include "World/Entity.h"

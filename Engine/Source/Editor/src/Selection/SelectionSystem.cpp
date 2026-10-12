@@ -40,19 +40,22 @@ void SelectionSystem::Update(const Gleam::World* world)
 		return;
 	}
 
-	const auto& globalMeshes = world->GetSubsystem<Gleam::RenderSceneProxy>()->GetGlobalMeshes();
-	const auto instanceCount = static_cast<uint32_t>(globalMeshes.size());
+	const auto sceneProxy = world->GetSubsystem<Gleam::RenderSceneProxy>();
+	const auto instanceCount = sceneProxy->GetInstanceCount();
 	mInstanceMask.resize(Gleam::Math::DivideRoundingUp(instanceCount, 32u), 0u);
 
 	bool hasSelectedInstance = false;
-	for (uint32_t instanceID = 0; instanceID < instanceCount; ++instanceID)
+	sceneProxy->ForEach([&](const Gleam::MeshBatch& batch)
 	{
-		if (IsSelected(globalMeshes[instanceID].entity))
+		sceneProxy->ForEachDraw(batch, [&](uint32_t instanceID, const Gleam::MeshEntityRecord& record, const Gleam::MeshInstanceRecord& instance)
 		{
-			mInstanceMask[instanceID >> 5u] |= 1u << (instanceID & 31u);
-			hasSelectedInstance = true;
-		}
-	}
+			if (IsSelected(record.entity))
+			{
+				mInstanceMask[instanceID >> 5u] |= 1u << (instanceID & 31u);
+				hasSelectedInstance = true;
+			}
+		});
+	});
 
 	if (hasSelectedInstance == false)
 	{

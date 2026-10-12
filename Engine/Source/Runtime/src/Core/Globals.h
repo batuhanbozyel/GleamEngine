@@ -22,6 +22,8 @@ struct Globals final
 
 	static inline Path ProjectDirectory;
 
+	static inline Path UserDataDirectory;
+
 	static inline Path BuiltinAssetsDirectory;
 
 	static inline Path ProjectContentDirectory;

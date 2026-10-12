@@ -9,6 +9,7 @@ void ScriptingSystem::Initialize(Engine* engine)
 	RegisterMetaComponent<MeshRenderer>();
 	RegisterMetaComponent<SkyAtmosphere>();
 	RegisterMetaComponent<ReflectionProbe>();
+	RegisterMetaComponent<RigidBody>();
 }
 
 void ScriptingSystem::Shutdown(Engine* engine)

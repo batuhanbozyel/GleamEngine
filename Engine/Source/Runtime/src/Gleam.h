@@ -62,6 +62,7 @@
 #include "World/Components/ReflectionProbe.h"
 #include "World/Components/SkyAtmosphere.h"
 #include "World/Components/MeshRenderer.h"
+#include "World/Components/RigidBody.h"
 #include "World/Components/Transform.h"
 #include "World/Components/Camera.h"
 
@@ -81,6 +82,7 @@
 
 #include "Renderer/Renderers/UIRenderer.h"
 #include "Renderer/Renderers/DebugRenderer.h"
+#include "Renderer/Renderers/LineRenderer.h"
 #include "Renderer/Renderers/WorldRenderer.h"
 #include "Renderer/Renderers/ImGuiRenderer.h"
 #include "Renderer/Renderers/PostProcessStack.h"

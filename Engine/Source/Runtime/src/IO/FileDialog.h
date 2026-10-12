@@ -10,6 +10,8 @@ class FileDialog final
 public:
 
 	static TArray<Path> Open(const TWString& filterName = L"All Files", const TWString& filterExtensions = L"*.*");
+
+	static Path OpenFolder();
 };
 
 } // namespace Gleam

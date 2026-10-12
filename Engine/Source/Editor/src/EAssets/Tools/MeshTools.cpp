@@ -1,6 +1,9 @@
 #include "MeshTools.h"
 #include "EAssets/MeshSource.h"
+#include "Renderer/Shaders/ShaderInterop.h"
 
+#define ENABLE_VHACD_IMPLEMENTATION 1
+#include <VHACD.h>
 #include <mikktspace.h>
 #include <meshoptimizer.h>
 
@@ -57,17 +60,102 @@ static void setTSpaceBasic(const SMikkTSpaceContext* context, const float inTang
 
 } // namespace MikkT
 
-MeshData MeshTools::CombineMeshes(const Gleam::TArray<RawMesh>& meshes)
+static Gleam::TArray<uint8_t> ComputeSharedVertexLocks(const MeshLodData& lod)
 {
-    MeshData combined;
-    combined.submeshes.resize(meshes.size());
+	const auto positions = static_cast<const Gleam::Float3*>(Gleam::OffsetPointer(lod.buffer.data, lod.positions.offset));
+	const size_t vertexCount = lod.positions.size / sizeof(Gleam::Float3);
 
+	Gleam::TArray<uint32_t> owners(vertexCount);
+	for (uint32_t i = 0; i < lod.submeshes.size(); ++i)
+	{
+		const auto& submesh = lod.submeshes[i];
+		eastl::fill(owners.begin() + submesh.baseVertex, owners.begin() + submesh.baseVertex + submesh.vertexCount, i);
+	}
+
+	Gleam::TArray<uint32_t> positionRemap(vertexCount);
+	meshopt_generatePositionRemap(positionRemap.data(), (const float*)positions, vertexCount, sizeof(Gleam::Float3));
+
+	Gleam::TArray<uint8_t> locks(vertexCount, 0);
+	for (uint32_t v = 0; v < vertexCount; ++v)
+	{
+		const uint32_t canonical = positionRemap[v];
+		if (owners[canonical] != owners[v])
+		{
+			locks[v] = meshopt_SimplifyVertex_Lock;
+			locks[canonical] = meshopt_SimplifyVertex_Lock;
+		}
+	}
+
+	for (uint32_t v = 0; v < vertexCount; ++v)
+	{
+		locks[v] |= locks[positionRemap[v]];
+	}
+	return locks;
+}
+
+static TriangleMeshData WeldPositions(const MeshLodData& lod)
+{
+	const auto sourceIndices = static_cast<const uint32_t*>(Gleam::OffsetPointer(lod.buffer.data, lod.indices.offset));
+	const auto sourcePositions = static_cast<const Gleam::Float3*>(Gleam::OffsetPointer(lod.buffer.data, lod.positions.offset));
+	const size_t vertexCount = lod.positions.size / sizeof(Gleam::Float3);
+
+	Gleam::TArray<uint32_t> indices;
+	indices.reserve(lod.indices.size / sizeof(uint32_t));
+	for (const auto& submesh : lod.submeshes)
+	{
+		for (uint32_t i = 0; i < submesh.indexCount; ++i)
+		{
+			indices.push_back(sourceIndices[submesh.firstIndex + i] + submesh.baseVertex);
+		}
+	}
+
+	Gleam::TArray<uint32_t> remap(vertexCount);
+	const size_t uniqueVertexCount = meshopt_generateVertexRemap(remap.data(), indices.data(), indices.size(), sourcePositions, vertexCount, sizeof(Gleam::Float3));
+
+	TriangleMeshData welded;
+	welded.indices.resize(indices.size());
+	welded.positions.resize(uniqueVertexCount);
+	meshopt_remapIndexBuffer(welded.indices.data(), indices.data(), indices.size(), remap.data());
+	meshopt_remapVertexBuffer(welded.positions.data(), sourcePositions, vertexCount, sizeof(Gleam::Float3), remap.data());
+	return welded;
+}
+
+MeshLodData MeshTools::CombineMeshes(const Gleam::TArray<RawMesh>& meshes)
+{
+	MeshLodData combined;
+	combined.submeshes.resize(meshes.size());
+
+	Gleam::TArray<uint32_t> remap;
 	uint64_t totalIndexCount = 0;
 	uint64_t totalVertexCount = 0;
-	for (const auto& mesh : meshes)
+	for (uint32_t i = 0; i < meshes.size(); ++i)
 	{
-		totalIndexCount += mesh.indices.size();
-		totalVertexCount += mesh.positions.size();
+		const auto& mesh = meshes[i];
+		const meshopt_Stream vertexStreams[] = {
+				meshopt_Stream{.data = mesh.positions.data(), .size = sizeof(Gleam::Float3), .stride = sizeof(Gleam::Float3)},
+				meshopt_Stream{.data = mesh.normals.data(), .size = sizeof(Gleam::Float3), .stride = sizeof(Gleam::Float3)},
+				meshopt_Stream{.data = mesh.tangents.data(), .size = sizeof(Gleam::Float4), .stride = sizeof(Gleam::Float4)},
+				meshopt_Stream{.data = mesh.texCoords.data(), .size = sizeof(Gleam::Float2), .stride = sizeof(Gleam::Float2)},
+				meshopt_Stream{.data = mesh.colors.data(), .size = sizeof(Gleam::Float4), .stride = sizeof(Gleam::Float4)},
+		};
+
+		const size_t rawBaseVertex = remap.size();
+		remap.resize(rawBaseVertex + mesh.positions.size());
+
+		auto& submesh = combined.submeshes[i];
+		submesh.materialIndex = mesh.material;
+		submesh.firstIndex = static_cast<uint32_t>(totalIndexCount);
+		submesh.baseVertex = static_cast<uint32_t>(totalVertexCount);
+		submesh.indexCount = static_cast<uint32_t>(mesh.indices.size());
+		submesh.vertexCount = static_cast<uint32_t>(meshopt_generateVertexRemapMulti(remap.data() + rawBaseVertex,
+																					 mesh.indices.data(),
+																					 mesh.indices.size(),
+																					 mesh.positions.size(),
+																					 vertexStreams,
+																					 eastl::size(vertexStreams)));
+
+		totalIndexCount += submesh.indexCount;
+		totalVertexCount += submesh.vertexCount;
 	}
 
 	const uint64_t indexBufferSize = totalIndexCount * sizeof(uint32_t);
@@ -83,45 +171,289 @@ MeshData MeshTools::CombineMeshes(const Gleam::TArray<RawMesh>& meshes)
 	auto positions = static_cast<Gleam::Float3*>(Gleam::OffsetPointer(combined.buffer.data, combined.positions.offset));
 	auto interleavedVertices = static_cast<Gleam::InterleavedMeshVertex*>(Gleam::OffsetPointer(combined.buffer.data, combined.interleavedVertices.offset));
 
-    Gleam::SubmeshDescriptor submesh;
-    for (uint32_t i = 0; i < meshes.size(); ++i)
-    {
-		combined.name = meshes[i].name;
+	uint32_t rawBaseVertex = 0;
+	for (uint32_t i = 0; i < meshes.size(); ++i)
+	{
+		const auto& mesh = meshes[i];
+		auto& submesh = combined.submeshes[i];
+		const uint32_t* meshRemap = remap.data() + rawBaseVertex;
+		auto outIndices = indices + submesh.firstIndex;
+		auto outPositions = positions + submesh.baseVertex;
+		auto outVertices = interleavedVertices + submesh.baseVertex;
 
-        const auto& mesh = meshes[i];
-		submesh.materialIndex = mesh.material;
-        submesh.bounds = CalculateBounds(mesh.positions);
-        submesh.indexCount = static_cast<uint32_t>(mesh.indices.size());
-		submesh.vertexCount = static_cast<uint32_t>(mesh.positions.size());
-        combined.submeshes[i] = submesh;
+		meshopt_remapIndexBuffer(outIndices, mesh.indices.data(), mesh.indices.size(), meshRemap);
+		meshopt_remapVertexBuffer(outPositions, mesh.positions.data(), mesh.positions.size(), sizeof(Gleam::Float3), meshRemap);
+		for (uint32_t v = 0; v < mesh.positions.size(); ++v)
+		{
+			if (meshRemap[v] != ~0u)
+			{
+				auto& vertex = outVertices[meshRemap[v]];
+				vertex.normal = mesh.normals[v];
+				vertex.tangent = mesh.tangents[v];
+				vertex.texCoord = mesh.texCoords[v];
+				vertex.color = mesh.colors[v];
+			}
+		}
 
-        auto interleaved = InterleaveMeshVertices(mesh);
-        memcpy(indices + submesh.firstIndex, mesh.indices.data(), mesh.indices.size() * sizeof(uint32_t));
-        memcpy(positions + submesh.baseVertex, mesh.positions.data(), mesh.positions.size() * sizeof(Gleam::Float3));
-        memcpy(interleavedVertices + submesh.baseVertex, interleaved.data(), interleaved.size() * sizeof(Gleam::InterleavedMeshVertex));
-
-        submesh.baseVertex += static_cast<uint32_t>(mesh.positions.size());
-        submesh.firstIndex += static_cast<uint32_t>(mesh.indices.size());
-    }
+		meshopt_optimizeVertexCache(outIndices, outIndices, submesh.indexCount, submesh.vertexCount);
+		submesh.bounds = CalculateBounds(Gleam::TArrayView<const Gleam::Float3>(outPositions, submesh.vertexCount));
+		rawBaseVertex += static_cast<uint32_t>(mesh.positions.size());
+	}
 	return combined;
 }
 
-Gleam::TArray<Gleam::InterleavedMeshVertex> MeshTools::InterleaveMeshVertices(const RawMesh& mesh)
+MeshLodData MeshTools::SimplifyMesh(const MeshLodData& lod, float ratio)
 {
-	Gleam::TArray<Gleam::InterleavedMeshVertex> interleaved(mesh.normals.size());
-	for (uint32_t i = 0; i < mesh.normals.size(); ++i)
+	static constexpr size_t kMinIndexCount = 192;
+	static constexpr float kTargetError = 1.0f;
+	static constexpr float kNormalWeight = 0.5f;
+	static constexpr float kTangentWeight = 0.5f;
+	static constexpr float kTexCoordWeight = 1.0f;
+	static constexpr float kColorWeight = 1.0f;
+	static constexpr float kAttrWeights[] = { kNormalWeight, kNormalWeight, kNormalWeight,
+											  kTangentWeight, kTangentWeight, kTangentWeight, kTangentWeight,
+											  kTexCoordWeight, kTexCoordWeight,
+											  kColorWeight, kColorWeight, kColorWeight, kColorWeight };
+	static constexpr size_t kAttributeCount = eastl::size(kAttrWeights);
+	static_assert(sizeof(Gleam::InterleavedMeshVertex) == kAttributeCount * sizeof(float), "Attribute weights must match InterleavedMeshVertex layout");
+
+	const auto sourceIndices = static_cast<const uint32_t*>(Gleam::OffsetPointer(lod.buffer.data, lod.indices.offset));
+	const auto sourcePositions = static_cast<const Gleam::Float3*>(Gleam::OffsetPointer(lod.buffer.data, lod.positions.offset));
+	const auto sourceVertices = static_cast<const Gleam::InterleavedMeshVertex*>(Gleam::OffsetPointer(lod.buffer.data, lod.interleavedVertices.offset));
+
+	const auto vertexLocks = ComputeSharedVertexLocks(lod);
+	Gleam::TArray<uint32_t> indices(lod.indices.size / sizeof(uint32_t));
+	Gleam::TArray<uint32_t> remap(lod.positions.size / sizeof(Gleam::Float3));
+
+	MeshLodData simplified;
+	simplified.submeshes.resize(lod.submeshes.size());
+
+	uint32_t firstIndex = 0;
+	uint32_t baseVertex = 0;
+	for (uint32_t i = 0; i < lod.submeshes.size(); ++i)
 	{
-		interleaved[i].normal = mesh.normals[i];
-		interleaved[i].tangent = mesh.tangents[i];
-		interleaved[i].texCoord = mesh.texCoords[i];
-		interleaved[i].color = mesh.colors[i];
+		const auto& source = lod.submeshes[i];
+		const auto inPositions = sourcePositions + source.baseVertex;
+		const auto inVertices = sourceVertices + source.baseVertex;
+		auto outIndices = indices.data() + source.firstIndex;
+		auto outRemap = remap.data() + source.baseVertex;
+
+		const uint32_t* inIndices = sourceIndices + source.firstIndex;
+		size_t indexCount = source.indexCount;
+
+		const size_t targetIndexCount = Gleam::Math::Max(static_cast<size_t>(source.indexCount * ratio) / 3 * 3, kMinIndexCount);
+		if (targetIndexCount < source.indexCount)
+		{
+			const size_t simplifiedIndexCount = meshopt_simplifyWithAttributes(outIndices,
+																			   inIndices,
+																			   source.indexCount,
+																			   (const float*)inPositions,
+																			   source.vertexCount,
+																			   sizeof(Gleam::Float3),
+																			   (const float*)inVertices,
+																			   sizeof(Gleam::InterleavedMeshVertex),
+																			   kAttrWeights,
+																			   kAttributeCount,
+																			   vertexLocks.data() + source.baseVertex,
+																			   targetIndexCount,
+																			   kTargetError,
+																			   meshopt_SimplifyPermissive,
+																			   nullptr);
+			if (simplifiedIndexCount > 0)
+			{
+				inIndices = outIndices;
+				indexCount = simplifiedIndexCount;
+			}
+		}
+
+		const size_t vertexCount = meshopt_optimizeVertexFetchRemap(outRemap, inIndices, indexCount, source.vertexCount);
+		meshopt_remapIndexBuffer(outIndices, inIndices, indexCount, outRemap);
+
+		auto& submesh = simplified.submeshes[i];
+		submesh.materialIndex = source.materialIndex;
+		submesh.firstIndex = firstIndex;
+		submesh.baseVertex = baseVertex;
+		submesh.indexCount = static_cast<uint32_t>(indexCount);
+		submesh.vertexCount = static_cast<uint32_t>(vertexCount);
+
+		firstIndex += submesh.indexCount;
+		baseVertex += submesh.vertexCount;
 	}
-	return interleaved;
+
+	const uint64_t indexBufferSize = firstIndex * sizeof(uint32_t);
+	const uint64_t positionBufferSize = baseVertex * sizeof(Gleam::Float3);
+	const uint64_t interleavedBufferSize = baseVertex * sizeof(Gleam::InterleavedMeshVertex);
+
+	simplified.buffer = Gleam::BinaryBuffer(indexBufferSize + positionBufferSize + interleavedBufferSize);
+	simplified.indices = { 0, indexBufferSize };
+	simplified.positions = { indexBufferSize, positionBufferSize };
+	simplified.interleavedVertices = { indexBufferSize + positionBufferSize, interleavedBufferSize };
+
+	auto outIndices = static_cast<uint32_t*>(Gleam::OffsetPointer(simplified.buffer.data, simplified.indices.offset));
+	auto outPositions = static_cast<Gleam::Float3*>(Gleam::OffsetPointer(simplified.buffer.data, simplified.positions.offset));
+	auto outVertices = static_cast<Gleam::InterleavedMeshVertex*>(Gleam::OffsetPointer(simplified.buffer.data, simplified.interleavedVertices.offset));
+
+	for (uint32_t i = 0; i < lod.submeshes.size(); ++i)
+	{
+		const auto& source = lod.submeshes[i];
+		auto& submesh = simplified.submeshes[i];
+		const auto submeshRemap = remap.data() + source.baseVertex;
+
+		meshopt_optimizeVertexCache(outIndices + submesh.firstIndex, indices.data() + source.firstIndex, submesh.indexCount, submesh.vertexCount);
+		meshopt_remapVertexBuffer(outPositions + submesh.baseVertex, sourcePositions + source.baseVertex, source.vertexCount, sizeof(Gleam::Float3), submeshRemap);
+		meshopt_remapVertexBuffer(outVertices + submesh.baseVertex, sourceVertices + source.baseVertex, source.vertexCount, sizeof(Gleam::InterleavedMeshVertex), submeshRemap);
+		submesh.bounds = CalculateBounds(Gleam::TArrayView<const Gleam::Float3>(outPositions + submesh.baseVertex, submesh.vertexCount));
+	}
+	return simplified;
 }
 
-Gleam::BoundingBox MeshTools::CalculateBounds(const Gleam::TArray<Gleam::Float3>& positions)
+TriangleMeshData MeshTools::SimplifyMeshSloppy(const MeshLodData& lod, const TriangleMeshSimplificationSettings& settings)
 {
-    Gleam::BoundingBox bounds(Gleam::Math::Infinity, Gleam::Math::NegativeInfinity);
+	static constexpr float kTargetError = 1.0f;
+
+	TriangleMeshData welded = WeldPositions(lod);
+
+	const size_t targetIndexCount = static_cast<size_t>(welded.indices.size() * settings.targetRatio) / 3 * 3;
+	if (targetIndexCount < welded.indices.size())
+	{
+		Gleam::TArray<uint32_t> indices(welded.indices.size());
+		const size_t indexCount = meshopt_simplifySloppy(indices.data(),
+														 welded.indices.data(),
+														 welded.indices.size(),
+														 (const float*)welded.positions.data(),
+														 welded.positions.size(),
+														 sizeof(Gleam::Float3),
+														 nullptr,
+														 targetIndexCount,
+														 kTargetError,
+														 nullptr);
+		if (indexCount > 0)
+		{
+			indices.resize(indexCount);
+			welded.indices = eastl::move(indices);
+		}
+	}
+
+	Gleam::TArray<uint32_t> remap(welded.positions.size());
+	const size_t vertexCount = meshopt_optimizeVertexFetchRemap(remap.data(), welded.indices.data(), welded.indices.size(), welded.positions.size());
+
+	TriangleMeshData simplified;
+	simplified.indices.resize(welded.indices.size());
+	simplified.positions.resize(vertexCount);
+	meshopt_remapIndexBuffer(simplified.indices.data(), welded.indices.data(), welded.indices.size(), remap.data());
+	meshopt_remapVertexBuffer(simplified.positions.data(), welded.positions.data(), welded.positions.size(), sizeof(Gleam::Float3), remap.data());
+	return simplified;
+}
+
+void MeshTools::BuildMeshlets(MeshLodData& lodData)
+{
+	static constexpr uint32_t kMaxVerticesPerMeshlet = MAX_MESHLET_VERTICES;
+	static constexpr uint32_t kMaxTrianglesPerMeshlet = MAX_MESHLET_TRIANGLES;
+	static constexpr float kConeWeight = 0.25f;
+
+	Gleam::TArray<Gleam::MeshletDescriptor> combinedMeshlets;
+	Gleam::TArray<uint32_t> combinedMeshletVertices;
+	Gleam::TArray<uint32_t> combinedMeshletTriangles;
+
+	size_t totalIndexCount = 0;
+	for (const auto& submesh : lodData.submeshes)
+	{
+		totalIndexCount += submesh.indexCount;
+	}
+	combinedMeshletTriangles.reserve(totalIndexCount / 3);
+	combinedMeshletVertices.reserve(totalIndexCount);
+
+	auto combinedIndices = static_cast<uint32_t*>(Gleam::OffsetPointer(lodData.buffer.data, lodData.indices.offset));
+	auto combinedPositions = static_cast<Gleam::Float3*>(Gleam::OffsetPointer(lodData.buffer.data, lodData.positions.offset));
+	for (auto& submesh : lodData.submeshes)
+	{
+		Gleam::TArrayView<uint32_t> indices(combinedIndices + submesh.firstIndex, submesh.indexCount);
+		Gleam::TArrayView<Gleam::Float3> positions(combinedPositions + submesh.baseVertex, submesh.vertexCount);
+
+		size_t maxMeshlets = meshopt_buildMeshletsBound(indices.size(), kMaxVerticesPerMeshlet, kMaxTrianglesPerMeshlet);
+		Gleam::TArray<meshopt_Meshlet> meshlets(maxMeshlets);
+		Gleam::TArray<uint32_t> meshletVertices(indices.size());
+		Gleam::TArray<uint8_t> meshletTriangleIndices(indices.size());
+		size_t meshletCount = meshopt_buildMeshlets(meshlets.data(),
+													meshletVertices.data(),
+													meshletTriangleIndices.data(),
+													indices.data(),
+													indices.size(),
+													(float*)positions.data(),
+													positions.size(),
+													sizeof(Gleam::Float3),
+													kMaxVerticesPerMeshlet,
+													kMaxTrianglesPerMeshlet,
+													kConeWeight);
+
+		const auto& last = meshlets[meshletCount - 1];
+		meshletVertices.resize(last.vertex_offset + last.vertex_count);
+		meshletTriangleIndices.resize(last.triangle_offset + last.triangle_count * 3);
+
+		submesh.baseMeshlet = static_cast<uint32_t>(combinedMeshlets.size());
+		submesh.meshletCount = static_cast<uint32_t>(meshletCount);
+		combinedMeshlets.resize(combinedMeshlets.size() + meshletCount);
+		for (uint32_t i = 0; i < meshletCount; ++i)
+		{
+			const auto& meshlet = meshlets[i];
+			auto& meshletDesc = combinedMeshlets[submesh.baseMeshlet + i];
+
+			auto meshletVerticesData = meshletVertices.data() + meshlet.vertex_offset;
+			auto meshletTriangleData = meshletTriangleIndices.data() + meshlet.triangle_offset;
+			
+			meshopt_optimizeMeshlet(meshletVerticesData,
+									meshletTriangleData,
+									meshlet.triangle_count,
+									meshlet.vertex_count);
+
+			meshletDesc.vertexOffset = static_cast<uint32_t>(combinedMeshletVertices.size() + meshlet.vertex_offset);
+			meshletDesc.triangleOffset = static_cast<uint32_t>(combinedMeshletTriangles.size());
+			meshletDesc.vertexCount = static_cast<uint32_t>(meshlet.vertex_count);
+			meshletDesc.triangleCount = static_cast<uint32_t>(meshlet.triangle_count);
+
+			for (uint32_t t = 0; t < meshlet.triangle_count; ++t)
+			{
+				uint32_t packedTriangle = static_cast<uint32_t>(meshletTriangleData[t * 3 + 0])
+										| (static_cast<uint32_t>(meshletTriangleData[t * 3 + 1]) << 8)
+										| (static_cast<uint32_t>(meshletTriangleData[t * 3 + 2]) << 16);
+				combinedMeshletTriangles.push_back(packedTriangle);
+			}
+
+			meshopt_Bounds bounds = meshopt_computeMeshletBounds(meshletVerticesData,
+																 meshletTriangleData,
+																 meshlet.triangle_count,
+																 (float*)positions.data(),
+																 positions.size(),
+																 sizeof(Gleam::Float3));
+			meshletDesc.coneApex = Gleam::Float3(bounds.cone_apex[0], bounds.cone_apex[1], bounds.cone_apex[2]);
+			meshletDesc.coneAxis = Gleam::Float3(bounds.cone_axis[0], bounds.cone_axis[1], bounds.cone_axis[2]);
+			meshletDesc.coneCutoff = bounds.cone_cutoff;
+			meshletDesc.center = Gleam::Float3(bounds.center[0], bounds.center[1], bounds.center[2]);
+			meshletDesc.radius = bounds.radius;
+		}
+
+		combinedMeshletVertices.insert(combinedMeshletVertices.end(), meshletVertices.begin(), meshletVertices.end());
+	}
+
+	const uint64_t meshletBufferSize = combinedMeshlets.size() * sizeof(Gleam::MeshletDescriptor);
+	const uint64_t meshletVertexBufferSize = combinedMeshletVertices.size() * sizeof(uint32_t);
+	const uint64_t meshletTriangleBufferSize = combinedMeshletTriangles.size() * sizeof(uint32_t);
+
+	const uint64_t meshletBufferOffset = lodData.buffer.size;
+	lodData.buffer.Resize(meshletBufferOffset + meshletBufferSize + meshletVertexBufferSize + meshletTriangleBufferSize);
+
+	lodData.meshlets = { meshletBufferOffset, meshletBufferSize };
+	lodData.meshletVertices = { lodData.meshlets.offset + lodData.meshlets.size, meshletVertexBufferSize };
+	lodData.meshletTriangleIndices = { lodData.meshletVertices.offset + lodData.meshletVertices.size, meshletTriangleBufferSize };
+
+	memcpy(Gleam::OffsetPointer(lodData.buffer.data, lodData.meshlets.offset), combinedMeshlets.data(), meshletBufferSize);
+	memcpy(Gleam::OffsetPointer(lodData.buffer.data, lodData.meshletVertices.offset), combinedMeshletVertices.data(), meshletVertexBufferSize);
+	memcpy(Gleam::OffsetPointer(lodData.buffer.data, lodData.meshletTriangleIndices.offset), combinedMeshletTriangles.data(), meshletTriangleBufferSize);
+}
+
+Gleam::BoundingBox MeshTools::CalculateBounds(Gleam::TArrayView<const Gleam::Float3> positions)
+{
+    Gleam::BoundingBox bounds;
     for (const auto& position : positions)
     {
         bounds.min = Gleam::Math::Min(bounds.min, position);
@@ -373,4 +705,53 @@ void MeshTools::ApplyTransform(RawMesh& mesh, const Gleam::Float4x4& transform)
 			std::swap(mesh.indices[i + 1], mesh.indices[i + 2]);
 		}
 	}
+}
+
+Gleam::TArray<ConvexHullData> MeshTools::DecomposeConvex(const MeshLodData& lod, const ConvexDecompositionSettings& settings)
+{
+	// Box3D rejects hulls above B3_MAX_HULL_VERTICES, so never emit more than it can consume.
+	static constexpr uint32_t kMaxHullVertices = 128;
+
+	const TriangleMeshData welded = WeldPositions(lod);
+
+	Gleam::TArray<ConvexHullData> hulls;
+	VHACD::IVHACD::Parameters parameters;
+	parameters.m_maxConvexHulls = settings.maxConvexHulls;
+	parameters.m_maxNumVerticesPerCH = Gleam::Math::Min(settings.maxVerticesPerHull, kMaxHullVertices);
+	parameters.m_resolution = settings.resolution;
+	parameters.m_minimumVolumePercentErrorAllowed = settings.minimumVolumePercentError;
+	parameters.m_shrinkWrap = settings.shrinkWrap;
+	parameters.m_asyncACD = false;
+
+	auto decomposer = VHACD::CreateVHACD();
+	if (decomposer->Compute(reinterpret_cast<const float*>(welded.positions.data()),
+							static_cast<uint32_t>(welded.positions.size()),
+							welded.indices.data(),
+							static_cast<uint32_t>(welded.indices.size() / 3),
+							parameters))
+	{
+		const uint32_t hullCount = decomposer->GetNConvexHulls();
+		hulls.reserve(hullCount);
+		for (uint32_t i = 0; i < hullCount; ++i)
+		{
+			VHACD::IVHACD::ConvexHull hull;
+			if (decomposer->GetConvexHull(i, hull) == false)
+			{
+				continue;
+			}
+
+			ConvexHullData& result = hulls.emplace_back();
+			result.positions.reserve(hull.m_points.size());
+			for (const auto& point : hull.m_points)
+			{
+				result.positions.emplace_back(static_cast<float>(point.mX),
+											  static_cast<float>(point.mY),
+											  static_cast<float>(point.mZ));
+			}
+		}
+	}
+
+	decomposer->Clean();
+	decomposer->Release();
+	return hulls;
 }

@@ -40,10 +40,17 @@ public:
 
 		if (mParams.end() != it)
 		{
-			TStringStream ss(it->second);
-			T val = {};
-			ss >> val;
-			return val;
+			if constexpr (std::is_same_v<std::decay_t<T>, TString>)
+			{
+				return it->second;
+			}
+			else
+			{
+				TStringStream ss(it->second);
+				T val = {};
+				ss >> val;
+				return val;
+			}
 		}
 		return defaultValue;
 	}
@@ -61,10 +68,17 @@ public:
 
 			if (mParams.end() != it)
 			{
-				TStringStream ss(it->second);
-				T val = {};
-				ss >> val;
-				return val;
+				if constexpr (std::is_same_v<std::decay_t<T>, TString>)
+				{
+					return it->second;
+				}
+				else
+				{
+					TStringStream ss(it->second);
+					T val = {};
+					ss >> val;
+					return val;
+				}
 			}
 		}
 		return defaultValue;

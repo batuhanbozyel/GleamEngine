@@ -73,6 +73,12 @@ NO_DISCARD FORCE_INLINE constexpr T Exp(T x)
 }
 
 template<typename T>
+NO_DISCARD FORCE_INLINE constexpr T Pow(T base, T exponent)
+{
+    return std::pow(base, exponent);
+}
+
+template<typename T>
 NO_DISCARD FORCE_INLINE constexpr T Floor(T x)
 {
     return static_cast<T>(std::floor(x));
@@ -152,7 +158,7 @@ NO_DISCARD FORCE_INLINE constexpr T Smoothstep(T edge0, T edge1, T x)
 }
 
 template<typename T>
-NO_DISCARD FORCE_INLINE constexpr T Mix(T x, T y, T a)
+NO_DISCARD FORCE_INLINE constexpr T Lerp(T x, T y, T a)
 {
     return x * (T(1) - a) + y * a;
 }

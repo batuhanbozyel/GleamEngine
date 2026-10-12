@@ -10,18 +10,23 @@ using namespace GEditor;
 
 bool TextureSource::Import(const Gleam::Path& path, const ImportSettings& settings)
 {
+	const auto filename = path.String();
+
 	RawTexture texture;
-	stbi_info(path.String().c_str(), &texture.width, &texture.height, &texture.channels);
+	stbi_info(filename.c_str(), &texture.width, &texture.height, &texture.channels);
 	
 	if (texture.channels == 3)
 	{
 		texture.channels = 4;
 	}
+
+	// There is no 16-bit sRGB format, so 16-bit sRGB color textures fall back to the 8-bit path
+	const bool srgb = texture.channels == 4 and settings.colorSpace == TextureColorSpace::sRGB;
 	
-	if (settings.hdr)
+	if (stbi_is_hdr(filename.c_str()))
 	{
 		// TODO: convert to half precision
-		texture.pixels = stbi_loadf(path.String().c_str(), &texture.width, &texture.height, nullptr, texture.channels);
+		texture.pixels = stbi_loadf(filename.c_str(), &texture.width, &texture.height, nullptr, texture.channels);
 		switch (texture.channels)
 		{
 			case 1:
@@ -38,9 +43,28 @@ bool TextureSource::Import(const Gleam::Path& path, const ImportSettings& settin
 				break;
 		}		
 	}
+	else if (stbi_is_16_bit(filename.c_str()) and srgb == false)
+	{
+		texture.pixels = stbi_load_16(filename.c_str(), &texture.width, &texture.height, nullptr, texture.channels);
+		switch (texture.channels)
+		{
+			case 1:
+				texture.format = Gleam::TextureFormat::R16_UNorm;
+				break;
+			case 2:
+				texture.format = Gleam::TextureFormat::R16G16_UNorm;
+				break;
+			case 4:
+				texture.format = Gleam::TextureFormat::R16G16B16A16_UNorm;
+				break;
+			default:
+				texture.format = Gleam::TextureFormat::None;
+				break;
+		}
+	}
 	else
 	{
-		texture.pixels = stbi_load(path.String().c_str(), &texture.width, &texture.height, nullptr, texture.channels);
+		texture.pixels = stbi_load(filename.c_str(), &texture.width, &texture.height, nullptr, texture.channels);
 		switch (texture.channels)
 		{
 			case 1:
@@ -50,7 +74,7 @@ bool TextureSource::Import(const Gleam::Path& path, const ImportSettings& settin
 				texture.format = Gleam::TextureFormat::R8G8_UNorm;
 				break;
 			case 4:
-				texture.format = settings.colorSpace == TextureColorSpace::sRGB ? Gleam::TextureFormat::R8G8B8A8_SRGB : Gleam::TextureFormat::R8G8B8A8_UNorm;
+				texture.format = srgb ? Gleam::TextureFormat::R8G8B8A8_SRGB : Gleam::TextureFormat::R8G8B8A8_UNorm;
 				break;
 			default:
 				texture.format = Gleam::TextureFormat::None;

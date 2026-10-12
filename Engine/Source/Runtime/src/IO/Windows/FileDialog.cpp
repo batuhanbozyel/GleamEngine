@@ -78,5 +78,52 @@ TArray<Path> FileDialog::Open(const TWString& filterName, const TWString& filter
     return selectedFiles;
 }
 
+Path FileDialog::OpenFolder()
+{
+	Path selectedFolder;
+
+	if (!SUCCEEDED(CoInitializeEx(NULL, COINIT_APARTMENTTHREADED))) return {};
+
+	IFileOpenDialog* pFileOpenDialog;
+	if (!SUCCEEDED(CoCreateInstance(
+		CLSID_FileOpenDialog,
+		NULL,
+		CLSCTX_ALL,
+		IID_IFileOpenDialog,
+		reinterpret_cast<void**>(&pFileOpenDialog)
+	))){ return {};}
+
+	FILEOPENDIALOGOPTIONS options;
+	if (!SUCCEEDED(pFileOpenDialog->GetOptions(&options))) return {};
+	if (!SUCCEEDED(pFileOpenDialog->SetOptions(options | FOS_FORCEFILESYSTEM | FOS_PICKFOLDERS))) return {};
+
+	IShellItem* pInitialDirItem = NULL;
+	const auto& workingDirectory = Filesystem::WorkingDirectory();
+	if (SUCCEEDED(SHCreateItemFromParsingName(workingDirectory.Native().c_str(), NULL, IID_PPV_ARGS(&pInitialDirItem))))
+	{
+		pFileOpenDialog->SetDefaultFolder(pInitialDirItem);
+		pInitialDirItem->Release();
+	}
+
+	if (!SUCCEEDED(pFileOpenDialog->Show(NULL))) return {};
+
+	IShellItem* pItem = NULL;
+	if (SUCCEEDED(pFileOpenDialog->GetResult(&pItem)))
+	{
+		PWSTR pszFolderPath;
+		if (SUCCEEDED(pItem->GetDisplayName(SIGDN_FILESYSPATH, &pszFolderPath)))
+		{
+			selectedFolder = Path(pszFolderPath);
+			CoTaskMemFree(pszFolderPath);
+		}
+		pItem->Release();
+	}
+
+	pFileOpenDialog->Release();
+	CoUninitialize();
+
+	return selectedFolder;
+}
+
 #endif
 

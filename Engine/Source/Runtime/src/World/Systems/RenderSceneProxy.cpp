@@ -14,7 +14,9 @@
 #include "Renderer/GraphicsDevice.h"
 #include "Renderer/RenderPipeline.h"
 #include "Renderer/RayTracingScene.h"
+#include "Renderer/CommandBuffer.h"
 #include "Renderer/CopyCommandBuffer.h"
+#include "Renderer/Allocator/GPUAllocator.h"
 
 #include "Renderer/Material/Material.h"
 #include "Renderer/Material/MaterialInstance.h"
@@ -26,117 +28,290 @@
 
 using namespace Gleam;
 
-Float4x4 RenderSceneProxy::UpdateTransform(EntityHandle entity, const Float4x4& transform, uint32_t frameIndex)
+static void ComputeWorldBounds(const Mesh& mesh, const Transform& transform, Float3& center, float& radius)
 {
-	const uint32_t index = entt::to_entity(entity);
-	if (index >= mTransformCache.size())
+	const auto& bounds = mesh.GetBounds();
+	if (bounds.IsValid())
 	{
-		mTransformCache.resize(index + 1);
+		center = transform.position + transform.rotation * ((bounds.min + bounds.max) * 0.5f * transform.scale);
+		radius = Math::Length(bounds.Extent()) * 0.5f * transform.scale;
 	}
-
-	auto& entry = mTransformCache[index];
-	bool hasHistory = entry.entity == entity && entry.frame == frameIndex - 1;
-	Float4x4 previousTransform = hasHistory ? entry.transform : transform;
-
-	entry.transform = transform;
-	entry.entity = entity;
-	entry.frame = frameIndex;
-
-	return previousTransform;
+	else
+	{
+		center = transform.position;
+		radius = Math::Infinity;
+	}
 }
 
-void RenderSceneProxy::Update(const World* world)
+static float ComputeScreenCoverage(const Float3& center, float radius, const Camera& camera, const Float3& cameraPosition)
+{
+	float coverage = 1.0f;
+	if (camera.projectionType == ProjectionType::Perspective)
+	{
+		const float distance = Math::Length(center - cameraPosition);
+		if (distance > radius)
+		{
+			coverage = radius / (distance * Math::Tan(Math::Deg2Rad(camera.fov) * 0.5f));
+		}
+	}
+	else
+	{
+		coverage = 2.0f * radius / camera.GetViewport().height;
+	}
+	return coverage;
+}
+
+static bool IsSphereInFrustum(const Frustum& frustum, const Float3& center, float radius)
+{
+	for (const auto& plane : frustum.planes)
+	{
+		if (Math::Dot(plane.normal, center) + plane.distance < -radius)
+		{
+			return false;
+		}
+	}
+	return true;
+}
+
+static uint32_t SelectMeshLod(Mesh* mesh, float screenCoverage)
+{
+	static constexpr float kLodScreenCoverage = 0.5f;
+
+	const float maxLod = static_cast<float>(mesh->GetLodCount() - 1);
+	const uint32_t lod = static_cast<uint32_t>(Math::Clamp(Math::Ceil(Math::Log2(kLodScreenCoverage / screenCoverage)), 0.0f, maxLod));
+
+	mesh->RequestLod(lod);
+	return lod;
+}
+
+void RenderSceneProxy::Initialize(World* world)
+{
+	mMeshRendererRemoved = world->GetEntityManager().OnComponentRemoved<MeshRenderer, &RenderSceneProxy::OnMeshRendererRemoved>(*this);
+}
+
+void RenderSceneProxy::OnMeshRendererRemoved(EntityHandle entity)
+{
+	RemoveRecord(entity);
+}
+
+void RenderSceneProxy::BuildRecord(const EntityManager& entityManager, EntityHandle entityHandle, const MeshRenderer& meshRenderer)
 {
 	static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
 	static auto assetManager = Globals::GameInstance->GetSubsystem<AssetManager>();
 
-	if (not mGlobalInstanceBuffer.IsValid())
+	uint32_t index = 0;
+	uint32_t key = entt::to_integral(entityHandle);
+
+	auto it = mRecordLookup.find(key);
+	if (it == mRecordLookup.end())
 	{
-		BufferDescriptor bufferDesc;
-		bufferDesc.name = "GlobalMeshInstanceBuffer";
-		bufferDesc.size = sizeof(MeshInstanceData) * MaxMeshInstances;
-		mGlobalInstanceBuffer = renderSystem->GetDevice()->CreateBuffer(renderSystem->GetAllocator(), bufferDesc);
+		index = static_cast<uint32_t>(mRecords.size());
+		mRecordLookup.emplace_hint(mRecordLookup.end(), key, index);
+
+		const auto& entity = entityManager.GetComponent<Entity>(entityHandle);
+		mRecords.push_back(MeshEntityRecord{ .entity = entityHandle, .transform = entity.GetWorldTransform() });
+	}
+	else
+	{
+		index = it->second;
 	}
 
-	for (auto& [_, batch] : mMeshBatches)
+	auto& record = mRecords[index];
+	RemoveDraws(index);
+	record.instances.clear();
+
+	TArray<AssetReference> previous = eastl::move(record.acquired);
+	record.acquired.clear();
+
+	const auto mesh = assetManager->Load<Mesh>(meshRenderer.mesh);
+	record.mesh = mesh;
+	record.lod = 0;
+	if (mesh == nullptr)
 	{
-		batch.numInstances = 0;
+		ReleaseAcquired(previous);
+		return;
 	}
+	record.acquired.push_back(meshRenderer.mesh);
 
-	// Setup batches
-	world->GetEntityManager().ForEach<Entity, MeshRenderer>([&](const Entity& entity, const MeshRenderer& meshRenderer)
+	const auto& submeshes = mesh->GetSubmeshes(0);
+	for (uint32_t submeshIndex = 0; submeshIndex < submeshes.size(); ++submeshIndex)
 	{
-		const auto mesh = assetManager->Has<Mesh>(meshRenderer.mesh) ? assetManager->Get<Mesh>(meshRenderer.mesh): assetManager->Load<Mesh>(meshRenderer.mesh);
-		const auto& submeshes = mesh->GetSubmeshes();
-
-		for (const auto& submesh : submeshes)
-		{
-			const auto materialInstance = assetManager->Has<MaterialInstance>(meshRenderer.materials[submesh.materialIndex]) ?
-				assetManager->Get<MaterialInstance>(meshRenderer.materials[submesh.materialIndex]) :
-				assetManager->Load<MaterialInstance>(meshRenderer.materials[submesh.materialIndex]);
-			const auto& material = materialInstance->GetBaseMaterial();
-
-			auto& batch = mMeshBatches[material];
-			if (batch.material == nullptr)
-			{
-				batch.material = assetManager->Get<Material>(material);
-				renderSystem->RegisterShadingPipelines(batch.material);
-			}
-			++batch.numInstances;
-		}
-	});
-
-	mNumBatches = 0;
-	mTotalInstances = 0;
-	for (auto& [_, batch] : mMeshBatches)
-	{
-		if (batch.numInstances == 0)
+		const auto& submesh = submeshes[submeshIndex];
+		if (submesh.materialIndex >= meshRenderer.materials.size())
 		{
 			continue;
 		}
-		batch.batchIndex = mNumBatches++;
-		batch.instanceOffset = mTotalInstances;
-		mTotalInstances += batch.numInstances;
-		batch.numInstances = 0; // reset to use as write counter in pass 2
+
+		const auto& materialInstanceRef = meshRenderer.materials[submesh.materialIndex];
+		const auto materialInstance = assetManager->Load<MaterialInstance>(materialInstanceRef);
+		if (materialInstance == nullptr)
+		{
+			continue;
+		}
+		record.acquired.push_back(materialInstanceRef);
+
+		const auto& materialRef = materialInstance->GetBaseMaterial();
+		uint32_t batchSlot = 0;
+		auto batchIt = mBatchLookup.find(materialRef);
+		if (batchIt != mBatchLookup.end())
+		{
+			batchSlot = batchIt->second;
+		}
+		else
+		{
+			const auto material = assetManager->Load<Material>(materialRef);
+			if (material == nullptr)
+			{
+				continue;
+			}
+
+			batchSlot = static_cast<uint32_t>(mBatches.size());
+			mBatches.push_back(MeshBatch{ .material = material });
+			mBatchLookup.emplace(materialRef, batchSlot);
+			renderSystem->RegisterShadingPipelines(material);
+		}
+
+		record.instances.push_back(MeshInstanceRecord{ .material = materialInstance, .submeshIndex = submeshIndex, .batch = batchSlot });
 	}
+
+	AddDraws(index);
+	ReleaseAcquired(previous);
+}
+
+void RenderSceneProxy::AddDraws(uint32_t recordIndex)
+{
+	auto& record = mRecords[recordIndex];
+	for (uint32_t i = 0; i < record.instances.size(); ++i)
+	{
+		auto& instance = record.instances[i];
+		auto& draws = mBatches[instance.batch].draws;
+		instance.draw = static_cast<uint32_t>(draws.size());
+		draws.push_back(MeshDraw{ .record = recordIndex, .instance = i });
+	}
+}
+
+void RenderSceneProxy::RemoveDraws(uint32_t recordIndex)
+{
+	for (const auto& instance : mRecords[recordIndex].instances)
+	{
+		auto& draws = mBatches[instance.batch].draws;
+		const MeshDraw moved = draws.back();
+		draws[instance.draw] = moved;
+		mRecords[moved.record].instances[moved.instance].draw = instance.draw;
+		draws.pop_back();
+	}
+}
+
+void RenderSceneProxy::ReleaseAcquired(TArray<AssetReference>& acquired)
+{
+	static auto assetManager = Globals::GameInstance->GetSubsystem<AssetManager>();
+	for (const auto& ref : acquired)
+	{
+		assetManager->Release(ref);
+	}
+	acquired.clear();
+}
+
+void RenderSceneProxy::RemoveRecord(EntityHandle entity)
+{
+	uint32_t key = entt::to_integral(entity);
+
+	auto it = mRecordLookup.find(key);
+	if (it != mRecordLookup.end())
+	{
+		uint32_t index = it->second;
+		RemoveDraws(index);
+		ReleaseAcquired(mRecords[index].acquired);
+
+		uint32_t last = static_cast<uint32_t>(mRecords.size()) - 1;
+		if (index != last)
+		{
+			mRecords[index] = eastl::move(mRecords[last]);
+			for (const auto& instance : mRecords[index].instances)
+			{
+				mBatches[instance.batch].draws[instance.draw].record = index;
+			}
+			mRecordLookup[entt::to_integral(mRecords[index].entity)] = index;
+		}
+		mRecords.pop_back();
+		mRecordLookup.erase(key);
+	}
+}
+
+void RenderSceneProxy::Update(const World* world, EntityHandle camera)
+{
+	const auto& entityManager = world->GetEntityManager();
+	const Tick since = mChangeCursor.Begin(entityManager.GetChangeTracker());
+	entityManager.ForEachChanged<MeshRenderer>(since, [this, &entityManager](EntityHandle entity, const MeshRenderer& meshRenderer)
+	{
+		BuildRecord(entityManager, entity, meshRenderer);
+	});
+	mChangeCursor.Commit();
+
+	const auto& cameraComponent = entityManager.GetComponent<Camera>(camera);
+	Float3 cameraPosition = entityManager.GetComponent<Entity>(camera).GetWorldPosition();
+
+	for (auto& record : mRecords)
+	{
+		const auto& entity = entityManager.GetComponent<Entity>(record.entity);
+		const auto& worldTransform = entity.GetWorldTransform();
+
+		record.prevTransform = record.transform;
+		record.transform = worldTransform;
+
+		if (record.mesh)
+		{
+			ComputeWorldBounds(*record.mesh, worldTransform, record.worldCenter, record.worldRadius);
+
+			float coverage = ComputeScreenCoverage(record.worldCenter, record.worldRadius, cameraComponent, cameraPosition);
+			record.lod = SelectMeshLod(record.mesh, coverage);
+		}
+	}
+
+	mNumBatches = 0;
+	mTotalInstances = 0;
+	for (auto& batch : mBatches)
+	{
+		if (not batch.draws.empty())
+		{
+			batch.batchIndex = mNumBatches++;
+			batch.instanceOffset = mTotalInstances;
+			mTotalInstances += static_cast<uint32_t>(batch.draws.size());
+		}
+	}
+
 	GLEAM_ASSERT(mTotalInstances <= MaxMeshInstances, "Instance count exceeds the maximum allowed.");
 	GLEAM_ASSERT(mNumBatches <= VISIBILITY_MAX_BATCHES, "Batch count exceeds the visibility buffer batch index bit budget.");
+}
 
-	world->GetEntityManager().ForEach<Entity, MeshRenderer>([&](const Entity& entity, const MeshRenderer& meshRenderer)
+void RenderSceneProxy::BuildInstanceBuffer(const CommandBuffer* cmd, GPUAllocator* allocator)
+{
+	static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
+	auto device = renderSystem->GetDevice();
+
+	size_t instanceBufferSize = sizeof(MeshInstanceData) * Math::Max(mTotalInstances, 1u);
+	auto instanceStagingBuffer = device->CreateBuffer(allocator, BufferDescriptor{ .name = "MeshInstanceStagingBuffer", .memoryType = MemoryType::CPU, .size = instanceBufferSize });
+	mInstanceBuffer = device->CreateBuffer(allocator, BufferDescriptor{ .name = "MeshInstanceBuffer", .memoryType = MemoryType::GPU, .size = instanceBufferSize });
+
+	auto instances = static_cast<MeshInstanceData*>(instanceStagingBuffer.GetContents());
+	for (const auto& batch : mBatches)
 	{
-		const auto mesh = assetManager->Has<Mesh>(meshRenderer.mesh) ? assetManager->Get<Mesh>(meshRenderer.mesh): assetManager->Load<Mesh>(meshRenderer.mesh);
-		const auto& submeshes = mesh->GetSubmeshes();
-		
-		Float4x4 transform = entity.GetWorldTransform();
-		Float4x4 previousTransform = UpdateTransform(entity, transform, renderSystem->GetFrameCount());
-
-		for (uint32_t submeshIndex = 0; submeshIndex < submeshes.size(); ++submeshIndex)
+		ForEachDraw(batch, [&](uint32_t instanceID, const MeshEntityRecord& record, const MeshInstanceRecord& instanceRecord)
 		{
-			const auto& submesh = submeshes[submeshIndex];
-			const auto materialInstance = assetManager->Has<MaterialInstance>(meshRenderer.materials[submesh.materialIndex]) ?
-				assetManager->Get<MaterialInstance>(meshRenderer.materials[submesh.materialIndex]) :
-				assetManager->Load<MaterialInstance>(meshRenderer.materials[submesh.materialIndex]);
-			const auto& material = materialInstance->GetBaseMaterial();
+			const auto& submesh = record.mesh->GetSubmesh(record.lod, instanceRecord.submeshIndex);
 
-			auto& batch = mMeshBatches[material];
-			uint32_t globalIndex = batch.instanceOffset + batch.numInstances++;
-
-			mGlobalMeshes[globalIndex].mesh = mesh;
-			mGlobalMeshes[globalIndex].submeshIndex = submeshIndex;
-			mGlobalMeshes[globalIndex].entity = entity;
-
-			auto& instance = mGlobalInstances[globalIndex];
-			instance.meshBuffer = mesh->GetBuffer().GetResourceView();
+			MeshInstanceData& instance = instances[instanceID];
+			instance.meshBuffer = record.mesh->GetBuffer(record.lod).GetResourceView();
 			instance.materialBuffer = batch.material->GetBuffer().GetResourceView();
-			instance.positionsOffset = static_cast<uint32_t>(mesh->GetPositions().offset);
-			instance.interleavedOffset = static_cast<uint32_t>(mesh->GetInterleavedVertices().offset);
-			instance.indexOffset = static_cast<uint32_t>(mesh->GetIndices().offset);
-			instance.meshletsOffset = static_cast<uint32_t>(mesh->GetMeshlets().offset);
-			instance.meshletVertexOffset = static_cast<uint32_t>(mesh->GetMeshletVertices().offset);
-			instance.meshletTriangleOffset = static_cast<uint32_t>(mesh->GetMeshletTriangleIndices().offset);
-			instance.materialID = materialInstance->GetID();
-			instance.transform = transform;
-			instance.previousTransform = previousTransform;
+			instance.positionsOffset = static_cast<uint32_t>(record.mesh->GetPositions(record.lod).offset);
+			instance.interleavedOffset = static_cast<uint32_t>(record.mesh->GetInterleavedVertices(record.lod).offset);
+			instance.indexOffset = static_cast<uint32_t>(record.mesh->GetIndices(record.lod).offset);
+			instance.meshletsOffset = static_cast<uint32_t>(record.mesh->GetMeshlets(record.lod).offset);
+			instance.meshletVertexOffset = static_cast<uint32_t>(record.mesh->GetMeshletVertices(record.lod).offset);
+			instance.meshletTriangleOffset = static_cast<uint32_t>(record.mesh->GetMeshletTriangleIndices(record.lod).offset);
+			instance.materialID = instanceRecord.material->GetID();
+			instance.transform = record.transform;
+			instance.previousTransform = record.prevTransform;
 			instance.baseVertex = submesh.baseVertex;
 			instance.indexCount = submesh.indexCount;
 			instance.firstIndex = submesh.firstIndex;
@@ -144,36 +319,91 @@ void RenderSceneProxy::Update(const World* world)
 			instance.meshletCount = submesh.meshletCount;
 			instance.cullMode = static_cast<uint32_t>(batch.material->GetDescriptor().cullingMode);
 			instance.batchIndex = batch.batchIndex;
+		});
+	}
+
+	const auto& allocation = allocator->GetAllocation(mInstanceBuffer.GetHandle());
+	BarrierGroup copyBarrier;
+	copyBarrier.bufferBarriers.push_back({
+		.resource = mInstanceBuffer.GetHandle(),
+		.srcStage = allocation.aliasStage,
+		.dstStage = BarrierStage::Copy,
+		.srcAccess = BarrierAccess::None,
+		.dstAccess = BarrierAccess::CopyDest
+		});
+	cmd->Barrier(copyBarrier);
+
+	cmd->CopyBuffer(instanceStagingBuffer, mInstanceBuffer);
+
+	BarrierGroup readBarrier;
+	readBarrier.bufferBarriers.push_back({
+		.resource = mInstanceBuffer.GetHandle(),
+		.srcStage = BarrierStage::Copy,
+		.dstStage = BarrierStage::AllShading,
+		.srcAccess = BarrierAccess::CopyDest,
+		.dstAccess = BarrierAccess::ShaderResource
+		});
+	cmd->Barrier(readBarrier);
+
+	device->Dispose(allocator, instanceStagingBuffer, BarrierStage::None);
+}
+
+void RenderSceneProxy::ReleaseInstanceBuffer(GPUAllocator* allocator)
+{
+	static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
+	renderSystem->GetDevice()->Dispose(allocator, mInstanceBuffer, BarrierStage::AllShading);
+}
+
+void RenderSceneProxy::Cull(const Frustum& frustum, MeshDrawList& drawList) const
+{
+	drawList.draws.clear();
+	drawList.batches.resize(mNumBatches);
+	for (const auto& batch : mBatches)
+	{
+		if (not batch.draws.empty())
+		{
+			auto& range = drawList.batches[batch.batchIndex];
+			range.first = static_cast<uint32_t>(drawList.draws.size());
+			for (uint32_t d = 0; d < batch.draws.size(); ++d)
+			{
+				const auto& record = mRecords[batch.draws[d].record];
+				if (IsSphereInFrustum(frustum, record.worldCenter, record.worldRadius))
+				{
+					drawList.draws.push_back(d);
+				}
+			}
+			range.count = static_cast<uint32_t>(drawList.draws.size()) - range.first;
 		}
-	});
+	}
 }
 
 void RenderSceneProxy::Shutdown(World* world)
 {
-	world->GetEntityManager().ForEach<Entity, MeshRenderer>([&](const Entity& entity, const MeshRenderer& meshRenderer)
-	{
-		static auto assetManager = Globals::GameInstance->GetSubsystem<AssetManager>();
-		assetManager->Release(meshRenderer.mesh);
+	mMeshRendererRemoved.Reset();
 
-		for (const auto& material : meshRenderer.materials)
-		{
-			assetManager->Release(material);
-		}
-	});
-
-	static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
-	auto device = renderSystem->GetDevice();
-	if (mGlobalInstanceBuffer.IsValid())
+	static auto assetManager = Globals::GameInstance->GetSubsystem<AssetManager>();
+	for (auto& record : mRecords)
 	{
-		device->Dispose(renderSystem->GetAllocator(), mGlobalInstanceBuffer, BarrierStage::None);
+		ReleaseAcquired(record.acquired);
 	}
-	mMeshBatches.clear();
+	mRecords.clear();
+	mRecordLookup.clear();
+
+	for (const auto& [materialRef, _] : mBatchLookup)
+	{
+		assetManager->Release(materialRef);
+	}
+	mBatches.clear();
+	mBatchLookup.clear();
 }
 
 void RenderSceneProxy::ForEach(BatchFn&& fn) const
 {
-    for (const auto& [_, batch] : mMeshBatches)
+    for (const auto& batch : mBatches)
     {
-        fn(batch);
+        if (not batch.draws.empty())
+        {
+            fn(batch);
+        }
     }
 }

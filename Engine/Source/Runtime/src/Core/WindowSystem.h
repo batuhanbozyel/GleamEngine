@@ -22,6 +22,8 @@ public:
 
 	void SetDisplayMode(uint32_t mode) const;
 
+	void SetTitle(const TString& title) const;
+
 	DisplayMode GetPrimaryDisplayMode() const;
     
 	DisplayMode GetCurrentDisplayMode() const;

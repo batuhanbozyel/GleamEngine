@@ -1,24 +1,33 @@
 // EntryPoint
 #include "Core/EntryPoint.h"
-#include "Serialization/JSONSerializer.h"
 
 #include "World/WorldManager.h"
-#include "World/Components/Camera.h"
-#include "World/Components/SkyAtmosphere.h"
-#include "World/Components/ReflectionProbe.h"
 
+#include "Launcher/GleamLauncher.h"
 #include "EAssets/EAssetManager.h"
+#include "EWorld/EWorldManager.h"
+#include "Config/EditorConfigSystem.h"
+#include "Config/EditorPreferences.h"
 #include "Selection/SelectionSystem.h"
 #include "Undo/UndoSystem.h"
 #include "View/ViewStack.h"
+#include "View/EditorLayout.h"
+#include "View/Widgets/PropertyDrawer.h"
 #include "World/World.h"
+#include "Physics/PhysicsSystem.h"
+#include "Renderer/Renderers/ImGuiRenderer.h"
 
 #include "View/Panels/MenuBar/MenuBar.h"
+#include "View/Panels/MenuBar/StatusBar.h"
 #include "View/Panels/World/WorldViewport.h"
 #include "View/Panels/World/WorldOutliner.h"
 #include "View/Panels/Entity/EntityInspector.h"
 #include "View/Panels/Project/ContentBrowser.h"
 #include "View/Panels/Project/ProjectSettings.h"
+#include "View/Panels/Project/Preferences.h"
+#include "View/Panels/Project/AssetImportDialog.h"
+
+#include <Editor.Reflection.generated.h>
 
 namespace GEditor {
 
@@ -30,26 +39,42 @@ public:
         : Gleam::Application(project)
 	{
 		auto assetManager = AddSubsystem<EAssetManager>(Gleam::Globals::ProjectContentDirectory);
+		auto editorConfig = Gleam::Globals::Engine->AddSubsystem<EditorConfigSystem>();
+		const auto& preferences = editorConfig->Register<EditorPreferences>();
 
 		auto worldManager = GetSubsystem<Gleam::WorldManager>();
 		mEditWorld = worldManager->GetActiveWorld();
+		mEditWorld->GetSystem<Gleam::PhysicsSystem>()->Enabled = false;
 		mEditWorld->AddSubsystem<UndoSystem>();
 		mEditWorld->AddSubsystem<SelectionSystem>();
+		AddSubsystem<EWorldManager>(mEditWorld);
 
-		auto viewStack = mEditWorld->AddSubsystem<ViewStack>();
-		viewStack->AddView<MenuBar>();
-		viewStack->AddView<WorldViewport>();
-		viewStack->AddView<WorldOutliner>();
-		viewStack->AddView<EntityInspector>();
+		const auto iniPath = EditorConfigSystem::UserDirectory(Gleam::Globals::ProjectName, Gleam::Globals::ProjectDirectory) / "Editor.ini";
+		const bool hasLayout = Gleam::Filesystem::Exists(iniPath);
+		auto viewStack = AddSubsystem<ViewStack>(iniPath, Gleam::Math::Clamp(preferences.uiScale, 0.75f, 2.0f));
+		if (hasLayout == false)
+		{
+			viewStack->GetImGuiRenderer()->ApplyLayout(EditorLayout);
+		}
+		PropertyDrawer::SetFonts(&viewStack->GetFonts());
+		viewStack->AddView<MenuBar>(mEditWorld);
+		viewStack->AddView<StatusBar>();
+		viewStack->AddView<WorldViewport>(mEditWorld);
+		viewStack->AddView<WorldOutliner>(mEditWorld);
+		viewStack->AddView<EntityInspector>(mEditWorld);
 		viewStack->AddView<ContentBrowser>(assetManager);
 		viewStack->AddView<ProjectSettings>();
+		viewStack->AddView<Preferences>();
+		viewStack->AddView<AssetImportDialog>(assetManager);
 	}
     
 	~GleamEditor()
 	{
-		mEditWorld->RemoveSubsystem<ViewStack>();
+		RemoveSubsystem<ViewStack>();
 		mEditWorld->RemoveSubsystem<SelectionSystem>();
 		mEditWorld->RemoveSubsystem<UndoSystem>();
+		RemoveSubsystem<EWorldManager>();
+		Gleam::Globals::Engine->RemoveSubsystem<EditorConfigSystem>();
 		RemoveSubsystem<EAssetManager>();
 	}
 
@@ -59,86 +84,28 @@ private:
     
 };
 
-class GleamLauncher : public Gleam::Application
-{
-public:
-
-	GleamLauncher()
-		: Gleam::Application(Gleam::Project())
-	{
-	}
-
-	Gleam::Project CreateProject(const Gleam::TString& name, const Gleam::Path& path = Gleam::Globals::StartupDirectory)
-	{
-		Gleam::Project project;
-		project.name = name;
-		project.path = path;
-		project.version = Gleam::Version(1, 0, 0);
-
-		auto worldRef = Gleam::AssetReference{ .guid = Gleam::Guid::NewGuid() };
-		auto worldName = Gleam::TWString(worldRef.guid.ToString()) + Gleam::World::Extension();
-		auto worldFile = project.path / "Assets" / worldName;
-		{
-			auto file = Gleam::Filesystem::Create(worldFile, Gleam::FileType::Text);
-			auto world = Gleam::World("Starter World");
-
-			auto& camera = world.GetEntityManager().CreateEntity("Editor Camera", Gleam::Guid::NewGuid());
-			world.GetEntityManager().AddComponent<Gleam::Camera>(camera, Gleam::Size(1280.0f, 720.0f), Gleam::ProjectionType::Perspective);
-
-			auto& atmosphere = world.GetEntityManager().CreateEntity("Atmosphere", Gleam::Guid::NewGuid());
-			world.GetEntityManager().AddComponent<Gleam::SkyAtmosphere>(atmosphere);
-
-			// global probe
-			world.GetEntityManager().SetSingleton<Gleam::ReflectionProbe>();
-
-			world.Serialize(file->GetStream());
-		}
-		project.worldConfig.worlds.emplace_back(worldRef);
-
-		{
-			auto filename = name;
-			filename.erase(eastl::remove_if(filename.begin(), filename.end(), [](char c) { return std::isspace(c); }), filename.end());
-			filename.append(".gproj");
-
-			auto projectFile = path / filename;
-			auto file = Gleam::Filesystem::Create(projectFile, Gleam::FileType::Text);
-			auto serializer = Gleam::JSONSerializer();
-			serializer.Serialize(project, file->GetStream());
-		}
-		return project;
-	}
-
-	Gleam::Project OpenProject(const Gleam::Path& path)
-	{
-		Gleam::Project project;
-		project.path = path;
-		if (Gleam::Filesystem::Exists(path))
-		{
-			auto file = Gleam::Filesystem::OpenRead(path, Gleam::FileType::Text);
-			auto serializer = Gleam::JSONSerializer();
-			project = serializer.Deserialize<Gleam::Project>(file->GetStream());
-		}
-		return project;
-	}
-};
-
 } // namespace GEditor
+
+static Gleam::Path GetProjectFile(const Gleam::CommandLine& cli)
+{
+	auto projectFile = Gleam::Path(cli.GetParam<Gleam::TString>("project", Gleam::TString()));
+	if (not projectFile.Empty() and not Gleam::Filesystem::Exists(projectFile))
+	{
+		GLEAM_CORE_ERROR("Project file does not exist: {0}", projectFile.String());
+		projectFile = Gleam::Path();
+	}
+	return projectFile;
+}
 
 Gleam::Application* Gleam::CreateApplicationInstance(const Gleam::CommandLine& cli)
 {
-    Gleam::Project project;
+	auto projectFile = GetProjectFile(cli);
+	if (projectFile.Empty())
 	{
-		GEditor::GleamLauncher launcer;
-		auto projectFile = Globals::StartupDirectory / "GleamEditor.gproj";
-
-		if (Gleam::Filesystem::Exists(projectFile))
-		{
-			project = launcer.OpenProject(projectFile);
-		}
-		else
-		{
-			project = launcer.CreateProject("Gleam Editor", Globals::StartupDirectory);
-		}
+		return new GEditor::GleamLauncher();
 	}
-    return new GEditor::GleamEditor(project);
+	else
+	{
+		return new GEditor::GleamEditor(GEditor::GleamLauncher::OpenProject(projectFile));
+	}
 }

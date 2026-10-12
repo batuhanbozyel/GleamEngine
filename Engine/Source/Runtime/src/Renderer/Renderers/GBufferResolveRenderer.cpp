@@ -83,6 +83,11 @@ void GBufferResolveRenderer::CreateGBufferTargets(const Size& size)
 void GBufferResolveRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard)
 {
 	const auto& sceneData = blackboard.Get<SceneRenderingData>();
+	if (not sceneData.world)
+	{
+		return;
+	}
+
 	const auto& depthPrepassData = blackboard.Get<DepthPrepassData>();
 	const auto& visibilityClassificationData = blackboard.Get<VisibilityClassificationData>();
 	const auto& sceneTargetDescriptor = graph.GetDescriptor(sceneData.sceneTarget);
@@ -140,7 +145,7 @@ void GBufferResolveRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlac
 	[this, &sceneData](const CommandBuffer* cmd, const GBufferResolvePassData& passData)
 	{
 		GBufferResolveConstants constants = {};
-		constants.resolve.instanceBuffer = sceneData.sceneProxy->GetGlobalInstanceBuffer().GetResourceView();
+		constants.resolve.instanceBuffer = sceneData.sceneProxy->GetInstanceBuffer().GetResourceView();
 		constants.resolve.visibilityBuffer = passData.visibilityBuffer;
 		constants.resolve.pixelListBuffer = passData.pixelListBuffer;
 		constants.resolve.offsetsBuffer = passData.offsetsBuffer;
@@ -154,11 +159,6 @@ void GBufferResolveRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlac
 
 		sceneData.sceneProxy->ForEach([this, cmd, &passData, &sceneData, &constants](const MeshBatch& batch)
 		{
-			if (batch.numInstances == 0)
-			{
-				return;
-			}
-
 			constants.resolve.batchIndex = batch.batchIndex;
 
 			cmd->BindComputePipeline(mResolvePipelines[batch.material->GetPipelineHash()]);

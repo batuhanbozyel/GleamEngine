@@ -1,5 +1,6 @@
 #include "gpch.h"
 #include "DebugRenderer.h"
+#include "LineRenderer.h"
 #include "WorldRenderer.h"
 
 #include "Core/Engine.h"
@@ -11,6 +12,11 @@
 
 using namespace Gleam;
 
+DebugRenderer::DebugRenderer(LineRenderer* lineRenderer)
+	: mLineRenderer(lineRenderer)
+{
+}
+
 void DebugRenderer::OnCreate(const RenderContext& context)
 {
 	mDevice = context.device;
@@ -19,14 +25,13 @@ void DebugRenderer::OnCreate(const RenderContext& context)
 	{
 		GraphicsPipelineStateDescriptor pipelineState;
 		pipelineState.topology = PrimitiveTopology::Lines;
-		pipelineState.depthState.compareFunction = CompareFunction::Always;
 		pipelineState.colorFormats = { TextureFormat::R16G16B16A16_SFloat };
+		pipelineState.depthFormat = TextureFormat::D32_SFloat;
 		pipelineState.vertexEntry = "debugVertexShader";
 		pipelineState.fragmentEntry = "debugFragmentShader";
 		mPrimitivePipeline = mDevice->CreateGraphicsPipeline(pipelineState);
 
 		pipelineState.depthState.writeEnabled = true;
-		pipelineState.depthFormat = TextureFormat::D32_SFloat;
 		pipelineState.depthState.compareFunction = CompareFunction::Less;
 		mPrimitiveDepthPipeline = mDevice->CreateGraphicsPipeline(pipelineState);
 	}
@@ -35,14 +40,14 @@ void DebugRenderer::OnCreate(const RenderContext& context)
 	{
 		GraphicsPipelineStateDescriptor pipelineState;
 		pipelineState.topology = PrimitiveTopology::Triangles;
-		pipelineState.depthState.compareFunction = CompareFunction::Always;
+		pipelineState.wireframe = true;
 		pipelineState.colorFormats = { TextureFormat::R16G16B16A16_SFloat };
+		pipelineState.depthFormat = TextureFormat::D32_SFloat;
 		pipelineState.vertexEntry = "debugMeshVertexShader";
 		pipelineState.fragmentEntry = "debugFragmentShader";
 		mMeshPipeline = mDevice->CreateGraphicsPipeline(pipelineState);
 
 		pipelineState.depthState.writeEnabled = true;
-		pipelineState.depthFormat = TextureFormat::D32_SFloat;
 		pipelineState.depthState.compareFunction = CompareFunction::Less;
 		mMeshDepthPipeline = mDevice->CreateGraphicsPipeline(pipelineState);
 	}
@@ -50,17 +55,27 @@ void DebugRenderer::OnCreate(const RenderContext& context)
 
 void DebugRenderer::OnDestroy(const RenderContext& context)
 {
-	context.device->Dispose(mAllocator, mVertexBuffer, BarrierStage::None);
+	if (mVertexBuffer.IsValid())
+	{
+		context.device->Dispose(mAllocator, mVertexBuffer, BarrierStage::None);
+	}
 }
 
 void DebugRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard)
 {
+	if (not blackboard.Get<SceneRenderingData>().world)
+	{
+		return;
+	}
+
 	size_t vertexCount = (mLines.size() + mDepthLines.size()) * 2;
 	size_t bufferSize = vertexCount * sizeof(DebugVertex);
 
 	// nothing to render
-	if (vertexCount == 0 && mDebugMeshes.empty())
+	if (vertexCount == 0 and mDebugMeshes.empty() and mDepthDebugMeshes.empty())
+	{
 		return;
+	}
 
 	if (mVertexBuffer.GetDescriptor().size < bufferSize)
 	{
@@ -91,28 +106,29 @@ void DebugRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& b
         passData.colorTarget = builder.UseColorBuffer(worldData.colorTarget);
         passData.depthTarget = builder.UseDepthBuffer(worldData.depthTarget, DepthAccess::Write);
 	},
-	[this, &blackboard](const CommandBuffer* cmd, const DrawPassData& passData)
+	[this, &blackboard, depthLineBufferOffset](const CommandBuffer* cmd, const DrawPassData& passData)
 	{
         DebugShaderResources resources;
         resources.vertexBuffer = mVertexBuffer.GetResourceView();
-        resources.positionOffset = 0;
 		const auto& sceneData = blackboard.Get<SceneRenderingData>();
-        
-		if (!mDepthLines.empty())
+
+		if (not mDepthLines.empty())
 		{
+			resources.positionOffset = static_cast<uint32_t>(depthLineBufferOffset);
 			cmd->BindGraphicsPipeline(mPrimitiveDepthPipeline);
 			cmd->SetConstantBuffer(resources, 0);
 			cmd->SetConstantBuffer(sceneData.camera, 1);
 			cmd->Draw(static_cast<uint32_t>(mDepthLines.size()) * RenderUtils::PrimitiveTopologyVertexCount(PrimitiveTopology::Lines));
 		}
-		
+
 		if (!mDepthDebugMeshes.empty())
         {
             RenderMeshes(cmd, sceneData.camera.uniforms, mDepthDebugMeshes, true);
         }
 
-		if (!mLines.empty())
+		if (not mLines.empty())
 		{
+			resources.positionOffset = 0;
 			cmd->BindGraphicsPipeline(mPrimitivePipeline);
 			cmd->SetConstantBuffer(resources, 0);
 			cmd->SetConstantBuffer(sceneData.camera, 1);
@@ -140,33 +156,39 @@ void DebugRenderer::RenderMeshes(const CommandBuffer* cmd, const CameraUniforms&
 	for (const auto& debugMesh : debugMeshes)
 	{
         DebugShaderResources resources;
-        resources.vertexBuffer = debugMesh.mesh->GetBuffer().GetResourceView();
-        resources.positionOffset = static_cast<uint32_t>(debugMesh.mesh->GetPositions().offset);
+        resources.vertexBuffer = debugMesh.buffer.GetResourceView();
+        resources.positionOffset = debugMesh.positionOffset;
         cmd->SetConstantBuffer(resources, 0);
 
-		const uint32_t baseIndex = static_cast<uint32_t>(debugMesh.mesh->GetIndices().offset / sizeof(uint32_t));
-		for (const auto& submesh : debugMesh.mesh->GetSubmeshes())
-		{
-			DebugMeshUniforms uniforms;
-			uniforms.transform = debugMesh.transform;
-			uniforms.baseVertex = submesh.baseVertex;
-			uniforms.color = debugMesh.color;
-			cmd->SetPushConstant(uniforms);
-			cmd->DrawIndexed(debugMesh.mesh->GetBuffer(), IndexType::UINT32, submesh.indexCount, 1, baseIndex + submesh.firstIndex);
-		}
+		DebugMeshUniforms uniforms;
+		uniforms.transform = debugMesh.transform;
+		uniforms.baseVertex = debugMesh.baseVertex;
+		uniforms.color = debugMesh.color;
+		cmd->SetPushConstant(uniforms);
+		cmd->DrawIndexed(debugMesh.buffer, IndexType::UINT32, debugMesh.indexCount, 1, debugMesh.firstIndex);
 	}
 }
 
 void DebugRenderer::DrawLine(const Float3& start, const Float3& end, Color32 color, bool depthTest)
 {
+	if (mSettings.antialiasedLines)
+	{
+		mLineRenderer->DrawLine(start, end, color, mSettings.lineThickness, depthTest);
+		return;
+	}
+
     DebugLine line;
     line.start = {start, color};
     line.end = {end, color};
 
     if (depthTest)
+    {
         mDepthLines.emplace_back(std::move(line));
+    }
     else
+    {
         mLines.emplace_back(std::move(line));
+    }
 }
 
 void DebugRenderer::DrawTriangle(const Float3& v1, const Float3& v2, const Float3& v3, Color32 color, bool depthTest)
@@ -246,15 +268,41 @@ void DebugRenderer::DrawBoundingBox(const BoundingBox& boundingBox, const Float4
     DrawLine(v3, v6, color, depthTest);
 }
 
-void DebugRenderer::DrawMesh(const Mesh* mesh, const Float4x4& transform, Color32 color, bool depthTest)
+void DebugRenderer::DrawMesh(const Mesh* mesh, const Float4x4& transform, Color32 color, uint32_t lod, bool depthTest)
 {
-	DebugMesh debugMesh;
-	debugMesh.mesh = mesh;
-	debugMesh.transform = transform;
-	debugMesh.color = color;
+	if (mesh->IsLodResident(lod))
+	{
+		const Buffer& buffer = mesh->GetBuffer(lod);
+		const uint32_t positionOffset = static_cast<uint32_t>(mesh->GetPositions(lod).offset);
+		const uint32_t baseIndex = static_cast<uint32_t>(mesh->GetIndices(lod).offset / sizeof(uint32_t));
 
-    if (depthTest)
-        mDepthDebugMeshes.push_back(debugMesh);
-    else
-        mDebugMeshes.push_back(debugMesh);
+		auto& debugMeshes = depthTest ? mDepthDebugMeshes : mDebugMeshes;
+		for (const auto& submesh : mesh->GetSubmeshes(lod))
+		{
+			debugMeshes.push_back(DebugMesh
+			{
+				.buffer = buffer,
+				.transform = transform,
+				.positionOffset = positionOffset,
+				.baseVertex = submesh.baseVertex,
+				.firstIndex = baseIndex + submesh.firstIndex,
+				.indexCount = submesh.indexCount,
+				.color = color
+			});
+		}
+	}
+}
+
+void DebugRenderer::DrawMesh(const Buffer& buffer, uint32_t positionOffset, uint32_t firstIndex, uint32_t indexCount, const Float4x4& transform, Color32 color, bool depthTest)
+{
+	auto& debugMeshes = depthTest ? mDepthDebugMeshes : mDebugMeshes;
+	debugMeshes.push_back(DebugMesh
+	{
+		.buffer = buffer,
+		.transform = transform,
+		.positionOffset = positionOffset,
+		.firstIndex = firstIndex,
+		.indexCount = indexCount,
+		.color = color
+	});
 }

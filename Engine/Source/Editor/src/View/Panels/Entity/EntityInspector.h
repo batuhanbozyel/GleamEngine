@@ -10,26 +10,40 @@
 #include "World/Entity.h"
 #include "Container/Hash.h"
 
+#include <imgui.h>
+
+namespace Gleam {
+class World;
+} // namespace Gleam
+
 namespace GEditor {
 
 class SelectionSystem;
 class UndoSystem;
+class EWorldManager;
+struct EditorFonts;
 
 class EntityInspector final : public View
 {
 public:
 
-	virtual void OnCreate(Gleam::World* world) override;
+	EntityInspector(Gleam::World* world);
+
+	virtual void OnCreate(Gleam::Application* app) override;
 
     virtual void Render(Gleam::ImGuiRenderer* imgui) override;
 
 private:
+
+	void DrawHeader(const char* name, const char* kind, const ImVec4& color);
 
 	void DrawEntities(const Gleam::TArray<Gleam::EntityHandle>& entities);
 
 	void DrawTransform(const Gleam::TArray<Gleam::EntityHandle>& entities);
 
 	void DrawComponents(const Gleam::TArray<Gleam::EntityHandle>& entities);
+
+	void DrawAddComponent(const Gleam::TArray<Gleam::EntityHandle>& entities);
 
 	void DrawSingleton(uint32_t typeHash);
 
@@ -39,13 +53,9 @@ private:
 
 	UndoSystem* mUndoSystem = nullptr;
 
-	Gleam::Float3 mEntityEulerRotation = {};
+	EWorldManager* mWorldManager = nullptr;
 
-	// Rotation this panel last wrote, anything else means the entity was rotated elsewhere
-	Gleam::Quaternion mEntityRotation = Gleam::Quaternion::identity;
-
-	// Entity the euler cache was built from
-	Gleam::EntityHandle mCachedEntity = Gleam::InvalidEntity;
+	const EditorFonts* mFonts = nullptr;
 
 };
 

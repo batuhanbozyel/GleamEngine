@@ -1,7 +1,7 @@
 #pragma once
 #include "Pointer.h"
 
-#include <Reflection/Macro.h>
+#include "Core/Attributes.h"
 #include <cstdlib>
 #include <cstring>
 #include <cstdint>

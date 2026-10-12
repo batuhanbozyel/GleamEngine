@@ -7,30 +7,37 @@
 
 #pragma once
 #include "View.h"
-#include "World/WorldSubsystem.h"
+#include "EditorFonts.h"
+#include "Core/Subsystem.h"
 #include "Container/PolyArray.h"
+#include "Container/String.h"
+#include "IO/Path.h"
+
+#include <imgui.h>
 
 namespace GEditor {
 
 template <typename T>
 concept ViewType = std::is_base_of<View, T>::value;
 
-class ViewStack : public Gleam::TickableWorldSubsystem
+class ViewStack : public Gleam::TickableGameInstanceSubsystem
 {
 public:
-    
-    virtual void Initialize(Gleam::World* world) override;
 
-	virtual void Shutdown(Gleam::World* world) override;
-    
-    virtual void Tick(Gleam::World* world) override;
+	ViewStack(const Gleam::Path& iniPath, float fontScale = 1.0f);
+
+    virtual void Initialize(Gleam::Application* app) override;
+
+	virtual void Shutdown(Gleam::Application* app) override;
+
+    virtual void Tick(Gleam::Application* app) override;
 	
     template<ViewType T, class...Args>
     T* AddView(Args&&... args)
     {
         GLEAM_ASSERT(!HasView<T>(), "Editor already has the view!");
         T* view = mViews.emplace_back<T>(std::forward<Args>(args)...);
-		view->OnCreate(mWorld);
+		view->OnCreate(mApplication);
         return view;
     }
     
@@ -39,7 +46,7 @@ public:
     {
         GLEAM_ASSERT(HasView<T>(), "Editor does not have the view!");
         T* view = mViews.get<T>();
-		view->OnDestroy(mWorld);
+		view->OnDestroy(mApplication);
         mViews.erase<T>();
     }
     
@@ -59,10 +66,26 @@ public:
 	{
 		return mViews;
 	}
+
+	const EditorFonts& GetFonts() const
+	{
+		return mFonts;
+	}
+
+	Gleam::ImGuiRenderer* GetImGuiRenderer() const
+	{
+		return mImgui;
+	}
+
+	void SetFontScale(float fontScale)
+	{
+		mFontScale = fontScale;
+		mFontsDirty = true;
+	}
     
 private:
     
-    void SetDarkTheme() const;
+    void LoadFonts();
     
     template<ViewType T>
     bool HasView() const
@@ -70,11 +93,21 @@ private:
         return mViews.contains<T>();
     }
 
-	Gleam::World* mWorld;
+	Gleam::Application* mApplication = nullptr;
     
     Gleam::PolyArray<View> mViews;
 
 	Gleam::ImGuiRenderer* mImgui = nullptr;
+
+	EditorFonts mFonts;
+
+	float mFontScale = 1.0f;
+
+	bool mFontsDirty = false;
+
+	ImVector<ImWchar> mIconGlyphRanges;
+
+	Gleam::TString mIniPath;
     
 };
 
