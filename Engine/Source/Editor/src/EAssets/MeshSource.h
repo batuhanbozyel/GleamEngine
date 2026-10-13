@@ -82,7 +82,7 @@ GENUM(MeshColliderType, "C0F303DD-F32E-4BD0-91B0-2D8C3972EE97", Serializable, Pr
 GSTRUCT(MeshPhysicsImportSettings, "7E40A63F-A2AD-4892-936C-8D9FD2DDFDB5", Serializable, PrettyName("Physics"))
 {
 	GFIELD("67BF0F77-BDEF-46C8-9DAC-BBC757F16F0D", Serializable, PrettyName("Colliders"))
-	Gleam::EnumFlag<MeshColliderType> colliders = Gleam::EnumFlag<MeshColliderType>(MeshColliderType::ConvexHull) | MeshColliderType::TriangleMesh;
+	Gleam::EnumFlag<MeshColliderType> colliders;
 
 	GFIELD("20E25FE6-1E88-4A8D-98E7-570335777441", Serializable, PrettyName("Convex Decomposition"))
 	ConvexDecompositionSettings convexDecomposition;

@@ -15,6 +15,7 @@
 #include "Undo/UndoSystem.h"
 #include "Renderers/InfiniteGridRenderer.h"
 #include "Renderers/ViewModeRenderer.h"
+#include "Renderers/RendererVisualizationSystem.h"
 
 #include <Editor.Reflection.generated.h>
 #include "Renderers/SelectionOutlineRenderer.h"
@@ -39,9 +40,13 @@
 
 #include "Input/InputSystem.h"
 
+#include "Assets/AssetManager.h"
+#include "Renderer/Mesh.h"
 #include "World/World.h"
 #include "World/Components/Camera.h"
+#include "World/Components/MeshRenderer.h"
 #include "World/Systems/PickingSystem.h"
+#include "World/Systems/RenderSceneProxy.h"
 
 #include <imgui.h>
 
@@ -107,6 +112,39 @@ static Gleam::Transform GetPivotTransform(const Gleam::EntityManager& entityMana
 	return pivot;
 }
 
+static bool IsFixedResolution(ViewportAspect aspect)
+{
+	return aspect == ViewportAspect::HD
+		or aspect == ViewportAspect::FullHD
+		or aspect == ViewportAspect::QHD
+		or aspect == ViewportAspect::UHD
+		or aspect == ViewportAspect::Custom;
+}
+
+static Gleam::Size GetAspectSize(const ViewportAspectConfig& config)
+{
+	switch (config.aspect)
+	{
+		case ViewportAspect::Ratio16x9: return Gleam::Size(16.0f, 9.0f);
+		case ViewportAspect::Ratio16x10: return Gleam::Size(16.0f, 10.0f);
+		case ViewportAspect::Ratio21x9: return Gleam::Size(21.0f, 9.0f);
+		case ViewportAspect::Ratio4x3: return Gleam::Size(4.0f, 3.0f);
+		case ViewportAspect::Ratio1x1: return Gleam::Size(1.0f, 1.0f);
+		case ViewportAspect::HD: return Gleam::Size(1280.0f, 720.0f);
+		case ViewportAspect::FullHD: return Gleam::Size(1920.0f, 1080.0f);
+		case ViewportAspect::QHD: return Gleam::Size(2560.0f, 1440.0f);
+		case ViewportAspect::UHD: return Gleam::Size(3840.0f, 2160.0f);
+		// The custom fields are user input and can be typed down to zero
+		case ViewportAspect::Custom: return Gleam::Size(Gleam::Math::Max(config.customResolution.width, 1.0f), Gleam::Math::Max(config.customResolution.height, 1.0f));
+		default: return Gleam::Size::zero;
+	}
+}
+
+static Gleam::Size FitSize(const Gleam::Size& size, const Gleam::Size& bounds)
+{
+	return size * Gleam::Math::Min(bounds.width / size.width, bounds.height / size.height);
+}
+
 static void ApplyPivotDelta(Gleam::EntityManager& entityManager, const Gleam::TArray<Gleam::EntityHandle>& targets, const Gleam::Transform& from, const Gleam::Transform& to)
 {
 	const auto invFromRotation = Gleam::Math::Inverse(from.rotation);
@@ -125,6 +163,48 @@ static void ApplyPivotDelta(Gleam::EntityManager& entityManager, const Gleam::TA
 
 		SetEntityWorldTransform(entity, world);
 	}
+}
+
+struct FrameSphere
+{
+	Gleam::Float3 center = Gleam::Float3::zero;
+	float radius = 0.0f;
+};
+
+static void GatherEntitySpheres(const Gleam::EntityManager& entityManager, Gleam::EntityHandle handle, Gleam::TArray<FrameSphere>& spheres)
+{
+	static auto assetManager = Gleam::Globals::GameInstance->GetSubsystem<Gleam::AssetManager>();
+
+	const auto& entity = entityManager.GetComponent<Gleam::Entity>(handle);
+	const auto& transform = entity.GetWorldTransform();
+	auto center = transform.position;
+	float radius = 0.0f;
+
+	if (entityManager.HasComponent<Gleam::MeshRenderer>(handle))
+	{
+		const auto& meshRenderer = entityManager.GetComponent<Gleam::MeshRenderer>(handle);
+		if (auto mesh = assetManager->Load<Gleam::Mesh>(meshRenderer.mesh))
+		{
+			const auto& meshBounds = mesh->GetBounds();
+			if (meshBounds.IsValid())
+			{
+				center = transform.position + transform.rotation * ((meshBounds.min + meshBounds.max) * 0.5f * transform.scale);
+				radius = Gleam::Math::Length(meshBounds.Extent()) * 0.5f * transform.scale;
+			}
+			assetManager->Release(meshRenderer.mesh);
+		}
+	}
+	spheres.push_back({ .center = center, .radius = radius });
+
+	for (auto child : entity.GetChildren())
+	{
+		GatherEntitySpheres(entityManager, child, spheres);
+	}
+}
+
+static float GetKeyAxis(ImGuiKey positive, ImGuiKey negative)
+{
+	return (ImGui::IsKeyDown(positive) ? 1.0f : 0.0f) - (ImGui::IsKeyDown(negative) ? 1.0f : 0.0f);
 }
 
 WorldViewport::WorldViewport(Gleam::World* world)
@@ -158,6 +238,7 @@ void WorldViewport::OnCreate(Gleam::Application* app)
 	auto windowSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::WindowSystem>();
 	auto editorConfig = Gleam::Globals::Engine->GetSubsystem<EditorConfigSystem>();
 	const auto& cameraState = editorConfig->Register<Gleam::EditorCameraState>();
+	mAspectConfig = editorConfig->Register<ViewportAspectConfig>();
 
 	auto& entityManager = mEditWorld->GetEntityManager();
 	auto& camera = entityManager.CreateEntity("Editor Camera", Gleam::Guid::NewGuid());
@@ -167,10 +248,13 @@ void WorldViewport::OnCreate(Gleam::Application* app)
 	auto& editorCamera = entityManager.AddComponent<Gleam::EditorCamera>(camera);
 	editorCamera.yaw = cameraState.yaw;
 	editorCamera.pitch = cameraState.pitch;
+	editorCamera.distance = cameraState.distance;
+	editorCamera.speed = cameraState.speed;
 	mCamera = camera;
 
-	mCameraController = mEditWorld->AddSystem<EditorCameraController>(mCamera);
+	mCameraController = new EditorCameraController(mCamera);
 	mPhysicsVisualization = mEditWorld->AddSystem<PhysicsVisualizationSystem>();
+	mRendererVisualization = mEditWorld->AddSystem<RendererVisualizationSystem>(mSelectionSystem, mEditWorld->GetSubsystem<Gleam::RenderSceneProxy>());
 	Resize(entityManager, windowSystem->GetResolution());
 }
 
@@ -183,8 +267,11 @@ void WorldViewport::OnDestroy(Gleam::Application* app)
 	editorConfig->Set(Gleam::EditorCameraState{
 		.position = camera.GetLocalPosition(),
 		.yaw = editorCamera.yaw,
-		.pitch = editorCamera.pitch
+		.pitch = editorCamera.pitch,
+		.distance = editorCamera.distance,
+		.speed = editorCamera.speed
 	});
+	delete mCameraController;
 
 	auto renderSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::RenderSystem>();
 	renderSystem->SetCameraOverride(Gleam::InvalidEntity);
@@ -207,10 +294,9 @@ void WorldViewport::Update()
 	auto renderSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::RenderSystem>();
 	renderSystem->SetCameraOverride(playWorld ? Gleam::InvalidEntity : mCamera);
 
-	if (playWorld and mCursorVisible == false)
+	if (playWorld and mCameraController->GetNavigation() != CameraNavigation::None)
 	{
-		Gleam::Globals::Engine->GetSubsystem<Gleam::InputSystem>()->ShowCursor();
-		mCursorVisible = true;
+		EndCameraNavigation();
 	}
 
     if (mViewportSizeChanged or mViewportWorld != playWorld)
@@ -396,6 +482,20 @@ void WorldViewport::DrawToolbar(const Gleam::Float2& contentMin, const Gleam::Fl
 	ImGui::SetNextWindowPos(ImVec2(right, buttonY + kButtonHeight + kPopupGap), ImGuiCond_Always, ImVec2(1.0f, 0.0f));
 	ImGui::SetNextWindowSize(ImVec2(260.0f, 0.0f), ImGuiCond_Always);
 	DrawCameraPopup();
+	right -= kSquareButton + 8.0f;
+
+	// Aspect
+	ImGui::SetCursorScreenPos(ImVec2(right - kSquareButton, buttonY));
+	if (Widgets::OverlayButton("##Aspect", ICON_LC_RATIO, ImVec2(kSquareButton, kButtonHeight)))
+	{
+		ImGui::OpenPopup("##AspectPopup");
+	}
+	hovered |= ImGui::IsItemHovered();
+	ImGui::SetItemTooltip("Aspect ratio");
+
+	ImGui::SetNextWindowPos(ImVec2(right, buttonY + kButtonHeight + kPopupGap), ImGuiCond_Always, ImVec2(1.0f, 0.0f));
+	ImGui::SetNextWindowSize(ImVec2(260.0f, 0.0f), ImGuiCond_Always);
+	DrawAspectPopup();
 
 	mToolbarHovered = hovered;
 }
@@ -546,6 +646,25 @@ void WorldViewport::DrawCameraPopup()
 	ImGui::EndPopup();
 }
 
+void WorldViewport::DrawAspectPopup()
+{
+	if (ImGui::BeginPopup("##AspectPopup") == false)
+	{
+		return;
+	}
+
+	const auto previous = mAspectConfig;
+	PropertyDrawer::DrawClassFields(&mAspectConfig, Gleam::Reflection::GetClass<ViewportAspectConfig>(), 96.0f);
+	if (mAspectConfig.aspect != previous.aspect
+		or mAspectConfig.customResolution != previous.customResolution
+		or mAspectConfig.applyInEditMode != previous.applyInEditMode)
+	{
+		Gleam::Globals::Engine->GetSubsystem<EditorConfigSystem>()->Set(mAspectConfig);
+		mViewportSizeChanged = true;
+	}
+	ImGui::EndPopup();
+}
+
 void WorldViewport::DrawRenderSettingsPopup()
 {
 	if (ImGui::BeginPopup("##RenderSettingsPopup") == false)
@@ -575,6 +694,10 @@ void WorldViewport::DrawRenderSettingsPopup()
 	auto physicsSettings = mPhysicsVisualization->GetSettings();
 	PropertyDrawer::DrawClass("Physics", &physicsSettings, Gleam::Reflection::GetClass<Gleam::PhysicsVisualizationSettings>(), 96.0f);
 	mPhysicsVisualization->SetSettings(physicsSettings);
+
+	auto rendererSettings = mRendererVisualization->GetSettings();
+	PropertyDrawer::DrawClass("Renderer", &rendererSettings, Gleam::Reflection::GetClass<Gleam::RendererVisualizationSettings>(), 96.0f);
+	mRendererVisualization->SetSettings(rendererSettings);
 
 	auto debugRenderer = renderSystem->GetRenderPipeline(Gleam::RenderPath::Default)->GetRenderer<Gleam::DebugRenderer>();
 	auto debugSettings = debugRenderer->GetSettings();
@@ -624,7 +747,6 @@ void WorldViewport::DrawStats(const Gleam::Float2& contentMin, const Gleam::Floa
 
 void WorldViewport::DrawViewport(Gleam::ImGuiRenderer* imgui, const Gleam::ImGuiPassData& passData)
 {
-	float displayScale = Gleam::Globals::Engine->GetSubsystem<Gleam::WindowSystem>()->GetDisplayScale();
 	ImVec2 viewportSize = ImGui::GetContentRegionAvail();
 	if (mViewportSize != Gleam::Size(viewportSize.x, viewportSize.y))
 	{
@@ -644,7 +766,10 @@ void WorldViewport::DrawViewport(Gleam::ImGuiRenderer* imgui, const Gleam::ImGui
 	}
 
 	const auto& sceneRTsize = passData.sceneTarget.GetTexture().GetDescriptor().size;
-	ImGui::Image(imgui->GetImTextureIDForTexture(passData.sceneTarget), ImVec2(sceneRTsize.width / displayScale, sceneRTsize.height / displayScale), ImVec2(0.0f, 0.0f), ImVec2(1.0f, 1.0f));
+	const auto fittedSize = FitSize(sceneRTsize, Gleam::Size(viewportSize.x, viewportSize.y));
+	const ImVec2 imageCursor = ImGui::GetCursorPos();
+	ImGui::SetCursorPos(ImVec2(imageCursor.x + (viewportSize.x - fittedSize.width) * 0.5f, imageCursor.y + (viewportSize.y - fittedSize.height) * 0.5f));
+	ImGui::Image(imgui->GetImTextureIDForTexture(passData.sceneTarget), ImVec2(fittedSize.width, fittedSize.height), ImVec2(0.0f, 0.0f), ImVec2(1.0f, 1.0f));
 
 	ImVec2 imageMin = ImGui::GetItemRectMin();
 	ImVec2 imageSize = ImGui::GetItemRectSize();
@@ -662,20 +787,11 @@ void WorldViewport::DrawViewport(Gleam::ImGuiRenderer* imgui, const Gleam::ImGui
 
 	DrawTransformGizmo(rectMin, rectSize);
 
-	bool isFocused = ImGui::IsWindowFocused();
-	mCameraController->Enabled = isFocused && mTransformGizmo.IsDragging() == false;
-
+	const bool isFocused = ImGui::IsWindowFocused();
+	UpdateCameraNavigation(rectSize, viewportHovered, isFocused);
 	UpdateSelectionMarquee(rectMin, rectSize, sceneRTsize, viewportHovered);
 
-	auto ctx = ImGui::GetCurrentContext();
-	if (isFocused && ctx->IO.MouseClicked[ImGuiMouseButton_Right])
-	{
-		auto inputSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::InputSystem>();
-		mCursorVisible ? inputSystem->HideCursor() : inputSystem->ShowCursor();
-		mCursorVisible = !mCursorVisible;
-	}
-	
-	if (isFocused && mCursorVisible)
+	if (isFocused and mCameraController->GetNavigation() == CameraNavigation::None)
 	{
 		if (ImGui::IsKeyPressed(ImGuiKey_W, false))
 		{
@@ -712,7 +828,7 @@ void WorldViewport::UpdateSelectionMarquee(const Gleam::Float2& imageMin, const 
 	if (mMarqueeDragging == false)
 	{
 		const bool gizmoBusy = mTransformGizmo.IsHovered() || mTransformGizmo.IsDragging();
-		if (viewportHovered && mCursorVisible && gizmoBusy == false && io.MouseClicked[ImGuiMouseButton_Left])
+		if (viewportHovered and mCameraController->GetNavigation() == CameraNavigation::None and gizmoBusy == false and io.MouseClicked[ImGuiMouseButton_Left])
 		{
 			mMarqueeDragging = true;
 			mMarqueeMoved = false;
@@ -755,6 +871,111 @@ void WorldViewport::UpdateSelectionMarquee(const Gleam::Float2& imageMin, const 
 
 	mMarqueeDragging = false;
 	mMarqueeMoved = false;
+}
+
+void WorldViewport::UpdateCameraNavigation(const Gleam::Float2& imageSize, bool viewportHovered, bool viewportFocused)
+{
+	const auto& io = ImGui::GetIO();
+	auto inputSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::InputSystem>();
+	auto navigation = mCameraController->GetNavigation();
+
+	if (navigation == CameraNavigation::None)
+	{
+		if (viewportHovered and mTransformGizmo.IsDragging() == false and mMarqueeDragging == false)
+		{
+			if (io.MouseClicked[ImGuiMouseButton_Right])
+			{
+				navigation = io.KeyAlt ? CameraNavigation::Dolly : CameraNavigation::Fly;
+				mNavigationButton = ImGuiMouseButton_Right;
+			}
+			else if (io.MouseClicked[ImGuiMouseButton_Middle])
+			{
+				navigation = CameraNavigation::Pan;
+				mNavigationButton = ImGuiMouseButton_Middle;
+			}
+			else if (io.MouseClicked[ImGuiMouseButton_Left] and io.KeyAlt)
+			{
+				// Alt+Cmd+LMB pans for trackpads and mice without a middle button
+				navigation = io.KeyCtrl or io.KeySuper ? CameraNavigation::Pan : CameraNavigation::Orbit;
+				mNavigationButton = ImGuiMouseButton_Left;
+			}
+		}
+
+		if (navigation != CameraNavigation::None)
+		{
+			ImGui::SetWindowFocus();
+			mCameraController->BeginNavigation(navigation);
+			if (navigation == CameraNavigation::Fly)
+			{
+				inputSystem->HideCursor();
+			}
+		}
+	}
+	else if (io.MouseDown[mNavigationButton] == false)
+	{
+		EndCameraNavigation();
+		navigation = CameraNavigation::None;
+	}
+
+	EditorCameraInput input;
+	if (navigation != CameraNavigation::None)
+	{
+		input.mouseDelta = inputSystem->GetAxis();
+	}
+	if (viewportHovered or navigation != CameraNavigation::None)
+	{
+		input.scroll = io.MouseWheel;
+	}
+
+	if (navigation == CameraNavigation::Fly)
+	{
+		input.move.x = GetKeyAxis(ImGuiKey_D, ImGuiKey_A);
+		input.move.y = GetKeyAxis(ImGuiKey_E, ImGuiKey_Q);
+		input.move.z = GetKeyAxis(ImGuiKey_W, ImGuiKey_S);
+		input.boost = io.KeyShift;
+	}
+	else if (viewportFocused and io.WantTextInput == false and ImGui::IsKeyPressed(ImGuiKey_F, false))
+	{
+		FrameSelection();
+	}
+
+	mCameraController->Update(mEditWorld->GetEntityManager(), input, imageSize.y);
+}
+
+void WorldViewport::EndCameraNavigation()
+{
+	if (mCameraController->GetNavigation() == CameraNavigation::Fly)
+	{
+		Gleam::Globals::Engine->GetSubsystem<Gleam::InputSystem>()->ShowCursor();
+	}
+	mCameraController->EndNavigation();
+}
+
+void WorldViewport::FrameSelection()
+{
+	const auto& entityManager = mEditWorld->GetEntityManager();
+	Gleam::TArray<FrameSphere> spheres;
+	for (auto handle : GatherGizmoTargets(entityManager))
+	{
+		GatherEntitySpheres(entityManager, handle, spheres);
+	}
+
+	if (spheres.empty() == false)
+	{
+		Gleam::BoundingBox bounds;
+		for (const auto& sphere : spheres)
+		{
+			bounds.Encapsulate(Gleam::BoundingBox(sphere.center - sphere.radius, sphere.center + sphere.radius));
+		}
+
+		const auto center = (bounds.min + bounds.max) * 0.5f;
+		float radius = 0.0f;
+		for (const auto& sphere : spheres)
+		{
+			radius = Gleam::Math::Max(radius, Gleam::Math::Length(sphere.center - center) + sphere.radius);
+		}
+		mCameraController->Frame(entityManager, center, radius);
+	}
 }
 
 Gleam::TArray<Gleam::EntityHandle> WorldViewport::GatherGizmoTargets(const Gleam::EntityManager& entityManager) const
@@ -824,7 +1045,8 @@ void WorldViewport::DrawTransformGizmo(const Gleam::Float2& imageMin, const Glea
 	const auto startPivot = pivot;
 
 	const bool wasDragging = mTransformGizmo.IsDragging();
-	const bool inputEnabled = ImGui::IsWindowHovered() && mCursorVisible && mToolbarHovered == false;
+	const bool navigating = mCameraController->GetNavigation() != CameraNavigation::None or ImGui::GetIO().KeyAlt;
+	const bool inputEnabled = ImGui::IsWindowHovered() and navigating == false and mToolbarHovered == false;
 	if (mTransformGizmo.Manipulate(viewport, inputEnabled, pivot))
 	{
 		ApplyPivotDelta(mEditWorld->GetEntityManager(), gizmoTargets, startPivot, pivot);
@@ -844,18 +1066,36 @@ void WorldViewport::Resize(Gleam::EntityManager& entityManager, const Gleam::Siz
 {
 	mViewportSize = size;
 	mViewportSizeChanged = false;
+	mViewportWorld = mWorldManager->GetPlayWorld();
 
 	auto windowSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::WindowSystem>();
-	float displayScale = windowSystem->GetDisplayScale();
+	const auto resolution = GetRenderResolution(mViewportSize * windowSystem->GetDisplayScale());
 	auto& camera = entityManager.GetComponent<Gleam::Camera>(mCamera);
-	camera.SetViewport(mViewportSize * displayScale);
+	camera.SetViewport(resolution);
 
-	mViewportWorld = mWorldManager->GetPlayWorld();
 	if (mViewportWorld)
 	{
 		mViewportWorld->GetEntityManager().ForEach<Gleam::Camera>([&](Gleam::Camera& gameCamera)
 		{
-			gameCamera.SetViewport(mViewportSize * displayScale);
+			gameCamera.SetViewport(resolution);
 		});
 	}
+}
+
+Gleam::Size WorldViewport::GetRenderResolution(const Gleam::Size& panelResolution) const
+{
+	const auto aspectSize = GetAspectSize(mAspectConfig);
+	const bool applyAspect = mViewportWorld != nullptr or mAspectConfig.applyInEditMode;
+	if (applyAspect == false or aspectSize == Gleam::Size::zero)
+	{
+		return panelResolution;
+	}
+
+	if (IsFixedResolution(mAspectConfig.aspect))
+	{
+		return aspectSize;
+	}
+
+	const auto fitted = FitSize(aspectSize, panelResolution);
+	return Gleam::Size(Gleam::Math::Floor(fitted.width), Gleam::Math::Floor(fitted.height));
 }

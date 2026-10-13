@@ -1,5 +1,5 @@
 //
-//  WorldViewportController.h
+//  EditorCameraController.h
 //  Editor
 //
 //  Created by Batuhan Bozyel on 26.03.2023.
@@ -7,36 +7,63 @@
 
 #pragma once
 #include "World/Entity.h"
-#include "World/ComponentSystem.h"
+#include "Math/Vector2.h"
 
 namespace Gleam {
 class EntityManager;
-struct EditorCamera;
 } // namespace Gleam
 
 namespace GEditor {
 
-class EditorCameraController : public Gleam::ComponentSystem
+enum class CameraNavigation
+{
+	None,
+	Fly,
+	Orbit,
+	Pan,
+	Dolly
+};
+
+struct EditorCameraInput
+{
+	Gleam::Float2 mouseDelta = Gleam::Float2::zero;
+	// x: camera right, y: world up, z: camera forward
+	Gleam::Float3 move = Gleam::Float3::zero;
+	float scroll = 0.0f;
+	bool boost = false;
+};
+
+class EditorCameraController
 {
 public:
 
 	EditorCameraController(Gleam::EntityHandle cameraEntity);
-    
-    virtual void OnCreate(Gleam::EntityManager& entityManager) override;
 
-	virtual void OnUpdate(Gleam::EntityManager& entityManager) override;
-    
+	void BeginNavigation(CameraNavigation navigation);
+
+	void EndNavigation();
+
+	void Update(Gleam::EntityManager& entityManager, const EditorCameraInput& input, float viewportHeight);
+
+	void Frame(const Gleam::EntityManager& entityManager, const Gleam::Float3& center, float radius);
+
+	CameraNavigation GetNavigation() const
+	{
+		return mNavigation;
+	}
+
 private:
-    
-	void ProcessCameraMovement(Gleam::Entity& camera);
 
-	void ProcessCameraRotation(Gleam::Entity& camera, Gleam::EditorCamera& editorCamera);
+	CameraNavigation mNavigation = CameraNavigation::None;
 
-	bool mCursorVisible = true;
-    bool mViewportFocused = false;
+	bool mFraming = false;
 
-    Gleam::EntityHandle mCameraEntity;
-    
+	Gleam::Float3 mFramePivot = Gleam::Float3::zero;
+
+	float mFrameDistance = 0.0f;
+
+	Gleam::EntityHandle mCameraEntity;
+
 };
 
 } // namespace GEditor

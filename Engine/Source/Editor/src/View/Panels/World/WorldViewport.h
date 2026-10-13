@@ -9,6 +9,7 @@
 #include "View/View.h"
 #include "Physics/PhysicsVisualizationSystem.h"
 #include "View/Widgets/TransformGizmo.h"
+#include "ViewportAspect.h"
 #include "Math/Size.h"
 #include "World/Entity.h"
 
@@ -22,6 +23,7 @@ namespace GEditor {
 
 class InfiniteGridRenderer;
 class EditorCameraController;
+class RendererVisualizationSystem;
 class ViewModeRenderer;
 class SelectionSystem;
 class SelectionOutlineRenderer;
@@ -58,6 +60,8 @@ private:
 
 	void DrawCameraPopup();
 
+	void DrawAspectPopup();
+
 	void DrawRenderSettingsPopup();
 
 	void DrawStats(const Gleam::Float2& contentMin, const Gleam::Float2& contentSize, const Gleam::ImGuiPassData& passData);
@@ -68,11 +72,20 @@ private:
 
 	void UpdateSelectionMarquee(const Gleam::Float2& imageMin, const Gleam::Float2& imageSize, const Gleam::Size& targetSize, bool viewportHovered);
 
+	void UpdateCameraNavigation(const Gleam::Float2& imageSize, bool viewportHovered, bool viewportFocused);
+
+	void EndCameraNavigation();
+
+	void FrameSelection();
+
 	Gleam::TArray<Gleam::EntityHandle> GatherGizmoTargets(const Gleam::EntityManager& entityManager) const;
 
 	void Resize(Gleam::EntityManager& entityManager, const Gleam::Size& size);
 
-    bool mCursorVisible = true;
+	Gleam::Size GetRenderResolution(const Gleam::Size& panelResolution) const;
+
+	// ImGuiMouseButton that started the current camera navigation
+	int mNavigationButton = 0;
 
 	bool mToolbarHovered = false;
 
@@ -94,6 +107,8 @@ private:
 
 	PhysicsVisualizationSystem* mPhysicsVisualization = nullptr;
 
+	RendererVisualizationSystem* mRendererVisualization = nullptr;
+
 	Gleam::EntityHandle mCamera = Gleam::InvalidEntity;
 
 	SelectionSystem* mSelectionSystem = nullptr;
@@ -105,6 +120,8 @@ private:
 	Gleam::World* mViewportWorld = nullptr;
 
 	TransformGizmo mTransformGizmo;
+
+	ViewportAspectConfig mAspectConfig;
     
     Gleam::Size mViewportSize = Gleam::Size::zero;
     
