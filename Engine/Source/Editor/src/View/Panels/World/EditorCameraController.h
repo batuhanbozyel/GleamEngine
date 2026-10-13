@@ -7,7 +7,6 @@
 
 #pragma once
 #include "World/Entity.h"
-#include "Math/BoundingBox.h"
 #include "Math/Vector2.h"
 
 namespace Gleam {
@@ -46,7 +45,7 @@ public:
 
 	void Update(Gleam::EntityManager& entityManager, const EditorCameraInput& input, float viewportHeight);
 
-	void Frame(const Gleam::EntityManager& entityManager, const Gleam::BoundingBox& bounds);
+	void Frame(const Gleam::EntityManager& entityManager, const Gleam::Float3& center, float radius);
 
 	CameraNavigation GetNavigation() const
 	{

@@ -90,7 +90,10 @@ void EditorCameraController::Update(Gleam::EntityManager& entityManager, const E
 	{
 		case CameraNavigation::None:
 		{
-			mFraming = false;
+			if (input.scroll != 0.0f)
+			{
+				mFraming = false;
+			}
 			position += rotation * Gleam::Float3::forward * Dolly(editorCamera, input.scroll);
 			break;
 		}
@@ -143,11 +146,12 @@ void EditorCameraController::Update(Gleam::EntityManager& entityManager, const E
 	entity.SetRotation(rotation);
 }
 
-void EditorCameraController::Frame(const Gleam::EntityManager& entityManager, const Gleam::BoundingBox& bounds)
+void EditorCameraController::Frame(const Gleam::EntityManager& entityManager, const Gleam::Float3& center, float radius)
 {
 	const auto& camera = entityManager.GetComponent<Gleam::Camera>(mCameraEntity);
-	const float radius = Gleam::Math::Max(Gleam::Math::Length(bounds.Extent()) * 0.5f, kMinFrameRadius);
-	mFramePivot = (bounds.min + bounds.max) * 0.5f;
-	mFrameDistance = radius / Gleam::Math::Sin(Gleam::Math::Deg2Rad(camera.fov) * 0.5f);
+	const float halfFovY = Gleam::Math::Deg2Rad(camera.fov) * 0.5f;
+	const float halfFovX = Gleam::Math::Atan(Gleam::Math::Tan(halfFovY) * camera.aspectRatio);
+	mFramePivot = center;
+	mFrameDistance = Gleam::Math::Max(radius, kMinFrameRadius) / Gleam::Math::Sin(Gleam::Math::Min(halfFovX, halfFovY));
 	mFraming = true;
 }

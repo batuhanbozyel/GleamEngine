@@ -130,7 +130,13 @@ static void ApplyPivotDelta(Gleam::EntityManager& entityManager, const Gleam::TA
 	}
 }
 
-static void EncapsulateEntityBounds(const Gleam::EntityManager& entityManager, Gleam::EntityHandle handle, Gleam::BoundingBox& bounds)
+struct FrameSphere
+{
+	Gleam::Float3 center = Gleam::Float3::zero;
+	float radius = 0.0f;
+};
+
+static void GatherEntitySpheres(const Gleam::EntityManager& entityManager, Gleam::EntityHandle handle, Gleam::TArray<FrameSphere>& spheres)
 {
 	static auto assetManager = Gleam::Globals::GameInstance->GetSubsystem<Gleam::AssetManager>();
 
@@ -153,11 +159,11 @@ static void EncapsulateEntityBounds(const Gleam::EntityManager& entityManager, G
 			assetManager->Release(meshRenderer.mesh);
 		}
 	}
-	bounds.Encapsulate(Gleam::BoundingBox(center - radius, center + radius));
+	spheres.push_back({ .center = center, .radius = radius });
 
 	for (auto child : entity.GetChildren())
 	{
-		EncapsulateEntityBounds(entityManager, child, bounds);
+		GatherEntitySpheres(entityManager, child, spheres);
 	}
 }
 
@@ -872,15 +878,27 @@ void WorldViewport::EndCameraNavigation()
 void WorldViewport::FrameSelection()
 {
 	const auto& entityManager = mEditWorld->GetEntityManager();
-	Gleam::BoundingBox bounds;
+	Gleam::TArray<FrameSphere> spheres;
 	for (auto handle : GatherGizmoTargets(entityManager))
 	{
-		EncapsulateEntityBounds(entityManager, handle, bounds);
+		GatherEntitySpheres(entityManager, handle, spheres);
 	}
 
-	if (bounds.IsValid())
+	if (spheres.empty() == false)
 	{
-		mCameraController->Frame(entityManager, bounds);
+		Gleam::BoundingBox bounds;
+		for (const auto& sphere : spheres)
+		{
+			bounds.Encapsulate(Gleam::BoundingBox(sphere.center - sphere.radius, sphere.center + sphere.radius));
+		}
+
+		const auto center = (bounds.min + bounds.max) * 0.5f;
+		float radius = 0.0f;
+		for (const auto& sphere : spheres)
+		{
+			radius = Gleam::Math::Max(radius, Gleam::Math::Length(sphere.center - center) + sphere.radius);
+		}
+		mCameraController->Frame(entityManager, center, radius);
 	}
 }
 
