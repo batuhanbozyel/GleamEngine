@@ -323,6 +323,8 @@ void RenderSceneProxy::BuildInstanceBuffer(const CommandBuffer* cmd, GPUAllocato
 	}
 
 	const auto& allocation = allocator->GetAllocation(mInstanceBuffer.GetHandle());
+	cmd->BeginComputePass("MeshInstanceUpload");
+
 	BarrierGroup copyBarrier;
 	copyBarrier.bufferBarriers.push_back({
 		.resource = mInstanceBuffer.GetHandle(),
@@ -344,6 +346,7 @@ void RenderSceneProxy::BuildInstanceBuffer(const CommandBuffer* cmd, GPUAllocato
 		.dstAccess = BarrierAccess::ShaderResource
 		});
 	cmd->Barrier(readBarrier);
+	cmd->EndComputePass();
 
 	device->Dispose(allocator, instanceStagingBuffer, BarrierStage::None);
 }
