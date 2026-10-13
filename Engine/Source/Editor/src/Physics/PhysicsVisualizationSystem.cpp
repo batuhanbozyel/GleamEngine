@@ -54,8 +54,7 @@ static void DrawArc(Gleam::DebugRenderer* renderer,
 					float radius,
 					float startAngle,
 					float endAngle,
-					Gleam::Color32 color,
-					bool depthTest)
+					Gleam::Color32 color)
 {
 	const float step = (endAngle - startAngle) / kCircleSegments;
 
@@ -66,24 +65,23 @@ static void DrawArc(Gleam::DebugRenderer* renderer,
 		const Gleam::Float3 local = axisU * (Gleam::Math::Cos(angle) * radius) + axisV * (Gleam::Math::Sin(angle) * radius);
 		const Gleam::Float3 current = transform * local;
 
-		renderer->DrawLine(previous, current, color, depthTest);
+		renderer->DrawLine(previous, current, color, false);
 		previous = current;
 	}
 }
 
-static void DrawWireSphere(Gleam::DebugRenderer* renderer, const Gleam::Float4x4& transform, float radius, Gleam::Color32 color, bool depthTest)
+static void DrawWireSphere(Gleam::DebugRenderer* renderer, const Gleam::Float4x4& transform, float radius, Gleam::Color32 color)
 {
-	DrawArc(renderer, transform, Gleam::Float3::right, Gleam::Float3::up, radius, 0.0f, Gleam::Math::TWO_PI, color, depthTest);
-	DrawArc(renderer, transform, Gleam::Float3::right, Gleam::Float3::forward, radius, 0.0f, Gleam::Math::TWO_PI, color, depthTest);
-	DrawArc(renderer, transform, Gleam::Float3::up, Gleam::Float3::forward, radius, 0.0f, Gleam::Math::TWO_PI, color, depthTest);
+	DrawArc(renderer, transform, Gleam::Float3::right, Gleam::Float3::up, radius, 0.0f, Gleam::Math::TWO_PI, color);
+	DrawArc(renderer, transform, Gleam::Float3::right, Gleam::Float3::forward, radius, 0.0f, Gleam::Math::TWO_PI, color);
+	DrawArc(renderer, transform, Gleam::Float3::up, Gleam::Float3::forward, radius, 0.0f, Gleam::Math::TWO_PI, color);
 }
 
 static void DrawWireCapsule(Gleam::DebugRenderer* renderer,
 							const Gleam::Float4x4& transform,
 							float radius,
 							float halfSegment,
-							Gleam::Color32 color,
-							bool depthTest)
+							Gleam::Color32 color)
 {
 	const Gleam::Float3 top{ 0.0f, halfSegment, 0.0f };
 	const Gleam::Float3 bottom{ 0.0f, -halfSegment, 0.0f };
@@ -91,14 +89,14 @@ static void DrawWireCapsule(Gleam::DebugRenderer* renderer,
 	const auto topTransform = transform * Gleam::Float4x4::Translate(top);
 	const auto bottomTransform = transform * Gleam::Float4x4::Translate(bottom);
 
-	DrawArc(renderer, topTransform, Gleam::Float3::right, Gleam::Float3::forward, radius, 0.0f, Gleam::Math::TWO_PI, color, depthTest);
-	DrawArc(renderer, bottomTransform, Gleam::Float3::right, Gleam::Float3::forward, radius, 0.0f, Gleam::Math::TWO_PI, color, depthTest);
+	DrawArc(renderer, topTransform, Gleam::Float3::right, Gleam::Float3::forward, radius, 0.0f, Gleam::Math::TWO_PI, color);
+	DrawArc(renderer, bottomTransform, Gleam::Float3::right, Gleam::Float3::forward, radius, 0.0f, Gleam::Math::TWO_PI, color);
 
-	DrawArc(renderer, topTransform, Gleam::Float3::right, Gleam::Float3::up, radius, 0.0f, Gleam::Math::PI, color, depthTest);
-	DrawArc(renderer, topTransform, Gleam::Float3::forward, Gleam::Float3::up, radius, 0.0f, Gleam::Math::PI, color, depthTest);
+	DrawArc(renderer, topTransform, Gleam::Float3::right, Gleam::Float3::up, radius, 0.0f, Gleam::Math::PI, color);
+	DrawArc(renderer, topTransform, Gleam::Float3::forward, Gleam::Float3::up, radius, 0.0f, Gleam::Math::PI, color);
 
-	DrawArc(renderer, bottomTransform, Gleam::Float3::right, Gleam::Float3::up, radius, Gleam::Math::PI, Gleam::Math::TWO_PI, color, depthTest);
-	DrawArc(renderer, bottomTransform, Gleam::Float3::forward, Gleam::Float3::up, radius, Gleam::Math::PI, Gleam::Math::TWO_PI, color, depthTest);
+	DrawArc(renderer, bottomTransform, Gleam::Float3::right, Gleam::Float3::up, radius, Gleam::Math::PI, Gleam::Math::TWO_PI, color);
+	DrawArc(renderer, bottomTransform, Gleam::Float3::forward, Gleam::Float3::up, radius, Gleam::Math::PI, Gleam::Math::TWO_PI, color);
 
 	const Gleam::Float3 offsets[] =
 	{
@@ -110,7 +108,7 @@ static void DrawWireCapsule(Gleam::DebugRenderer* renderer,
 
 	for (const auto& offset : offsets)
 	{
-		renderer->DrawLine(transform * (top + offset), transform * (bottom + offset), color, depthTest);
+		renderer->DrawLine(transform * (top + offset), transform * (bottom + offset), color, false);
 	}
 }
 
@@ -211,7 +209,6 @@ void PhysicsVisualizationSystem::OnUpdate(Gleam::EntityManager& entityManager)
 	}
 
 	auto renderer = pipeline->GetRenderer<Gleam::DebugRenderer>();
-	const bool depthTest = mSettings.depthTest;
 
 	entityManager.ForEach<Gleam::Entity, Gleam::RigidBody>([&](const Gleam::Entity& entity, const Gleam::RigidBody& rigidBody)
 	{
@@ -236,7 +233,7 @@ void PhysicsVisualizationSystem::OnUpdate(Gleam::EntityManager& entityManager)
 
 			const auto transform = bodyTransform * Gleam::Float4x4::TRS(collider.center, collider.rotation, 1.0f);
 			const auto halfSize = collider.size * 0.5f;
-			renderer->DrawBoundingBox(Gleam::BoundingBox(-halfSize, halfSize), transform, PhysicsVisualizationUtils::ResolveColor(rigidBody, collider.isTrigger), depthTest);
+			renderer->DrawBoundingBox(Gleam::BoundingBox(-halfSize, halfSize), transform, PhysicsVisualizationUtils::ResolveColor(rigidBody, collider.isTrigger), false);
 		}
 
 		for (const auto& collider : rigidBody.colliders.spheres)
@@ -247,7 +244,7 @@ void PhysicsVisualizationSystem::OnUpdate(Gleam::EntityManager& entityManager)
 			}
 
 			const auto transform = bodyTransform * Gleam::Float4x4::Translate(collider.center);
-			PhysicsVisualizationUtils::DrawWireSphere(renderer, transform, collider.radius, PhysicsVisualizationUtils::ResolveColor(rigidBody, collider.isTrigger), depthTest);
+			PhysicsVisualizationUtils::DrawWireSphere(renderer, transform, collider.radius, PhysicsVisualizationUtils::ResolveColor(rigidBody, collider.isTrigger));
 		}
 
 		for (const auto& collider : rigidBody.colliders.capsules)
@@ -260,7 +257,7 @@ void PhysicsVisualizationSystem::OnUpdate(Gleam::EntityManager& entityManager)
 			// Matches the segment the physics world builds, so the gizmo lines up with the simulated shape
 			const float halfSegment = Gleam::Math::Max(0.0f, collider.height * 0.5f - collider.radius);
 			const auto transform = bodyTransform * Gleam::Float4x4::TRS(collider.center, collider.rotation, 1.0f);
-			PhysicsVisualizationUtils::DrawWireCapsule(renderer, transform, collider.radius, halfSegment, PhysicsVisualizationUtils::ResolveColor(rigidBody, collider.isTrigger), depthTest);
+			PhysicsVisualizationUtils::DrawWireCapsule(renderer, transform, collider.radius, halfSegment, PhysicsVisualizationUtils::ResolveColor(rigidBody, collider.isTrigger));
 		}
 
 		if (rigidBody.type != Gleam::RigidBodyType::Static)
@@ -271,7 +268,7 @@ void PhysicsVisualizationSystem::OnUpdate(Gleam::EntityManager& entityManager)
 				if (shouldDraw(collider.isTrigger) and wireMesh.indexCount > 0)
 				{
 					const auto transform = bodyTransform * Gleam::Float4x4::TRS(collider.center, collider.rotation, 1.0f);
-					renderer->DrawMesh(wireMesh.buffer, 0, wireMesh.firstIndex, wireMesh.indexCount, transform, PhysicsVisualizationUtils::ResolveColor(rigidBody, collider.isTrigger), depthTest);
+					renderer->DrawMesh(wireMesh.buffer, 0, wireMesh.firstIndex, wireMesh.indexCount, transform, PhysicsVisualizationUtils::ResolveColor(rigidBody, collider.isTrigger), false);
 				}
 			}
 		}
@@ -282,7 +279,7 @@ void PhysicsVisualizationSystem::OnUpdate(Gleam::EntityManager& entityManager)
 				const auto& wireMesh = GetTriangleWireMesh(collider.mesh);
 				if (shouldDraw(collider.isTrigger) and wireMesh.indexCount > 0)
 				{
-					renderer->DrawMesh(wireMesh.buffer, 0, wireMesh.firstIndex, wireMesh.indexCount, bodyTransform, PhysicsVisualizationUtils::ResolveColor(rigidBody, collider.isTrigger), depthTest);
+					renderer->DrawMesh(wireMesh.buffer, 0, wireMesh.firstIndex, wireMesh.indexCount, bodyTransform, PhysicsVisualizationUtils::ResolveColor(rigidBody, collider.isTrigger), false);
 				}
 			}
 		}

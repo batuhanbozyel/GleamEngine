@@ -28,14 +28,14 @@ public:
     template<typename ... ComponentTypes, typename ... ExcludeComponents, typename Func, typename = std::enable_if_t<sizeof...(ComponentTypes) + sizeof...(ExcludeComponents) != 0>>
     void ForEach(Func&& fn, Exclude<ExcludeComponents...> = Exclude<ExcludeComponents...>{})
     {
-		auto view = CreateView<ComponentTypes..., ExcludeComponents...>();
+		auto view = CreateView<ComponentTypes...>(Exclude<ExcludeComponents...>{});
 		view.each(fn);
     }
     
     template<typename ... ComponentTypes, typename ... ExcludeComponents, typename Func, typename = std::enable_if_t<sizeof...(ComponentTypes) + sizeof...(ExcludeComponents) != 0>>
     void ForEach(Func&& fn, Exclude<ExcludeComponents...> = Exclude<ExcludeComponents...>{}) const
     {
-		auto view = CreateView<ComponentTypes..., ExcludeComponents...>();
+		auto view = CreateView<ComponentTypes...>(Exclude<ExcludeComponents...>{});
 		view.each(fn);
     }
     

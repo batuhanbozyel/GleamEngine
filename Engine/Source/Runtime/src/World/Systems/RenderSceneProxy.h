@@ -121,6 +121,11 @@ public:
 		return mNumBatches;
 	}
 
+	const TArray<MeshEntityRecord>& GetRecords() const
+	{
+		return mRecords;
+	}
+
 private:
 
 	void BuildRecord(const EntityManager& entityManager, EntityHandle entity, const MeshRenderer& meshRenderer);

@@ -394,7 +394,7 @@ GraphicsPipeline GraphicsDevice::CompileGraphicsPipeline(const GraphicsPipelineS
 	rasterizerState.DepthBias = D3D12_DEFAULT_DEPTH_BIAS;
 	rasterizerState.DepthBiasClamp = D3D12_DEFAULT_DEPTH_BIAS_CLAMP;
 	rasterizerState.SlopeScaledDepthBias = D3D12_DEFAULT_SLOPE_SCALED_DEPTH_BIAS;
-	rasterizerState.DepthClipEnable = FALSE;
+	rasterizerState.DepthClipEnable = TRUE;
 	rasterizerState.MultisampleEnable = FALSE;
 	rasterizerState.AntialiasedLineEnable = FALSE;
 	rasterizerState.ForcedSampleCount = 0;
@@ -612,7 +612,7 @@ MeshPipeline GraphicsDevice::CompileMeshPipeline(const MeshPipelineStateDescript
 	rasterizerState.DepthBias = D3D12_DEFAULT_DEPTH_BIAS;
 	rasterizerState.DepthBiasClamp = D3D12_DEFAULT_DEPTH_BIAS_CLAMP;
 	rasterizerState.SlopeScaledDepthBias = D3D12_DEFAULT_SLOPE_SCALED_DEPTH_BIAS;
-	rasterizerState.DepthClipEnable = FALSE;
+	rasterizerState.DepthClipEnable = TRUE;
 	rasterizerState.MultisampleEnable = FALSE;
 	rasterizerState.AntialiasedLineEnable = FALSE;
 	rasterizerState.ForcedSampleCount = 0;
