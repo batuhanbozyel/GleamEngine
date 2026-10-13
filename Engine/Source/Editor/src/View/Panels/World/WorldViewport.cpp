@@ -39,8 +39,11 @@
 
 #include "Input/InputSystem.h"
 
+#include "Assets/AssetManager.h"
+#include "Renderer/Mesh.h"
 #include "World/World.h"
 #include "World/Components/Camera.h"
+#include "World/Components/MeshRenderer.h"
 #include "World/Systems/PickingSystem.h"
 
 #include <imgui.h>
@@ -127,6 +130,42 @@ static void ApplyPivotDelta(Gleam::EntityManager& entityManager, const Gleam::TA
 	}
 }
 
+static void EncapsulateEntityBounds(const Gleam::EntityManager& entityManager, Gleam::EntityHandle handle, Gleam::BoundingBox& bounds)
+{
+	static auto assetManager = Gleam::Globals::GameInstance->GetSubsystem<Gleam::AssetManager>();
+
+	const auto& entity = entityManager.GetComponent<Gleam::Entity>(handle);
+	const auto& transform = entity.GetWorldTransform();
+	auto center = transform.position;
+	float radius = 0.0f;
+
+	if (entityManager.HasComponent<Gleam::MeshRenderer>(handle))
+	{
+		const auto& meshRenderer = entityManager.GetComponent<Gleam::MeshRenderer>(handle);
+		if (auto mesh = assetManager->Load<Gleam::Mesh>(meshRenderer.mesh))
+		{
+			const auto& meshBounds = mesh->GetBounds();
+			if (meshBounds.IsValid())
+			{
+				center = transform.position + transform.rotation * ((meshBounds.min + meshBounds.max) * 0.5f * transform.scale);
+				radius = Gleam::Math::Length(meshBounds.Extent()) * 0.5f * transform.scale;
+			}
+			assetManager->Release(meshRenderer.mesh);
+		}
+	}
+	bounds.Encapsulate(Gleam::BoundingBox(center - radius, center + radius));
+
+	for (auto child : entity.GetChildren())
+	{
+		EncapsulateEntityBounds(entityManager, child, bounds);
+	}
+}
+
+static float GetKeyAxis(ImGuiKey positive, ImGuiKey negative)
+{
+	return (ImGui::IsKeyDown(positive) ? 1.0f : 0.0f) - (ImGui::IsKeyDown(negative) ? 1.0f : 0.0f);
+}
+
 WorldViewport::WorldViewport(Gleam::World* world)
 	: mEditWorld(world)
 {
@@ -167,9 +206,11 @@ void WorldViewport::OnCreate(Gleam::Application* app)
 	auto& editorCamera = entityManager.AddComponent<Gleam::EditorCamera>(camera);
 	editorCamera.yaw = cameraState.yaw;
 	editorCamera.pitch = cameraState.pitch;
+	editorCamera.distance = cameraState.distance;
+	editorCamera.speed = cameraState.speed;
 	mCamera = camera;
 
-	mCameraController = mEditWorld->AddSystem<EditorCameraController>(mCamera);
+	mCameraController = new EditorCameraController(mCamera);
 	mPhysicsVisualization = mEditWorld->AddSystem<PhysicsVisualizationSystem>();
 	Resize(entityManager, windowSystem->GetResolution());
 }
@@ -183,8 +224,11 @@ void WorldViewport::OnDestroy(Gleam::Application* app)
 	editorConfig->Set(Gleam::EditorCameraState{
 		.position = camera.GetLocalPosition(),
 		.yaw = editorCamera.yaw,
-		.pitch = editorCamera.pitch
+		.pitch = editorCamera.pitch,
+		.distance = editorCamera.distance,
+		.speed = editorCamera.speed
 	});
+	delete mCameraController;
 
 	auto renderSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::RenderSystem>();
 	renderSystem->SetCameraOverride(Gleam::InvalidEntity);
@@ -207,10 +251,9 @@ void WorldViewport::Update()
 	auto renderSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::RenderSystem>();
 	renderSystem->SetCameraOverride(playWorld ? Gleam::InvalidEntity : mCamera);
 
-	if (playWorld and mCursorVisible == false)
+	if (playWorld and mCameraController->GetNavigation() != CameraNavigation::None)
 	{
-		Gleam::Globals::Engine->GetSubsystem<Gleam::InputSystem>()->ShowCursor();
-		mCursorVisible = true;
+		EndCameraNavigation();
 	}
 
     if (mViewportSizeChanged or mViewportWorld != playWorld)
@@ -662,20 +705,11 @@ void WorldViewport::DrawViewport(Gleam::ImGuiRenderer* imgui, const Gleam::ImGui
 
 	DrawTransformGizmo(rectMin, rectSize);
 
-	bool isFocused = ImGui::IsWindowFocused();
-	mCameraController->Enabled = isFocused && mTransformGizmo.IsDragging() == false;
-
+	const bool isFocused = ImGui::IsWindowFocused();
+	UpdateCameraNavigation(rectSize, viewportHovered, isFocused);
 	UpdateSelectionMarquee(rectMin, rectSize, sceneRTsize, viewportHovered);
 
-	auto ctx = ImGui::GetCurrentContext();
-	if (isFocused && ctx->IO.MouseClicked[ImGuiMouseButton_Right])
-	{
-		auto inputSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::InputSystem>();
-		mCursorVisible ? inputSystem->HideCursor() : inputSystem->ShowCursor();
-		mCursorVisible = !mCursorVisible;
-	}
-	
-	if (isFocused && mCursorVisible)
+	if (isFocused and mCameraController->GetNavigation() == CameraNavigation::None)
 	{
 		if (ImGui::IsKeyPressed(ImGuiKey_W, false))
 		{
@@ -712,7 +746,7 @@ void WorldViewport::UpdateSelectionMarquee(const Gleam::Float2& imageMin, const 
 	if (mMarqueeDragging == false)
 	{
 		const bool gizmoBusy = mTransformGizmo.IsHovered() || mTransformGizmo.IsDragging();
-		if (viewportHovered && mCursorVisible && gizmoBusy == false && io.MouseClicked[ImGuiMouseButton_Left])
+		if (viewportHovered and mCameraController->GetNavigation() == CameraNavigation::None and gizmoBusy == false and io.MouseClicked[ImGuiMouseButton_Left])
 		{
 			mMarqueeDragging = true;
 			mMarqueeMoved = false;
@@ -755,6 +789,99 @@ void WorldViewport::UpdateSelectionMarquee(const Gleam::Float2& imageMin, const 
 
 	mMarqueeDragging = false;
 	mMarqueeMoved = false;
+}
+
+void WorldViewport::UpdateCameraNavigation(const Gleam::Float2& imageSize, bool viewportHovered, bool viewportFocused)
+{
+	const auto& io = ImGui::GetIO();
+	auto inputSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::InputSystem>();
+	auto navigation = mCameraController->GetNavigation();
+
+	if (navigation == CameraNavigation::None)
+	{
+		if (viewportHovered and mTransformGizmo.IsDragging() == false and mMarqueeDragging == false)
+		{
+			if (io.MouseClicked[ImGuiMouseButton_Right])
+			{
+				navigation = io.KeyAlt ? CameraNavigation::Dolly : CameraNavigation::Fly;
+				mNavigationButton = ImGuiMouseButton_Right;
+			}
+			else if (io.MouseClicked[ImGuiMouseButton_Middle])
+			{
+				navigation = CameraNavigation::Pan;
+				mNavigationButton = ImGuiMouseButton_Middle;
+			}
+			else if (io.MouseClicked[ImGuiMouseButton_Left] and io.KeyAlt)
+			{
+				// Alt+Cmd+LMB pans for trackpads and mice without a middle button
+				navigation = io.KeyCtrl or io.KeySuper ? CameraNavigation::Pan : CameraNavigation::Orbit;
+				mNavigationButton = ImGuiMouseButton_Left;
+			}
+		}
+
+		if (navigation != CameraNavigation::None)
+		{
+			ImGui::SetWindowFocus();
+			mCameraController->BeginNavigation(navigation);
+			if (navigation == CameraNavigation::Fly)
+			{
+				inputSystem->HideCursor();
+			}
+		}
+	}
+	else if (io.MouseDown[mNavigationButton] == false)
+	{
+		EndCameraNavigation();
+		navigation = CameraNavigation::None;
+	}
+
+	EditorCameraInput input;
+	if (navigation != CameraNavigation::None)
+	{
+		input.mouseDelta = inputSystem->GetAxis();
+	}
+	if (viewportHovered or navigation != CameraNavigation::None)
+	{
+		input.scroll = io.MouseWheel;
+	}
+
+	if (navigation == CameraNavigation::Fly)
+	{
+		input.move.x = GetKeyAxis(ImGuiKey_D, ImGuiKey_A);
+		input.move.y = GetKeyAxis(ImGuiKey_E, ImGuiKey_Q);
+		input.move.z = GetKeyAxis(ImGuiKey_W, ImGuiKey_S);
+		input.boost = io.KeyShift;
+	}
+	else if (viewportFocused and io.WantTextInput == false and ImGui::IsKeyPressed(ImGuiKey_F, false))
+	{
+		FrameSelection();
+	}
+
+	mCameraController->Update(mEditWorld->GetEntityManager(), input, imageSize.y);
+}
+
+void WorldViewport::EndCameraNavigation()
+{
+	if (mCameraController->GetNavigation() == CameraNavigation::Fly)
+	{
+		Gleam::Globals::Engine->GetSubsystem<Gleam::InputSystem>()->ShowCursor();
+	}
+	mCameraController->EndNavigation();
+}
+
+void WorldViewport::FrameSelection()
+{
+	const auto& entityManager = mEditWorld->GetEntityManager();
+	Gleam::BoundingBox bounds;
+	for (auto handle : GatherGizmoTargets(entityManager))
+	{
+		EncapsulateEntityBounds(entityManager, handle, bounds);
+	}
+
+	if (bounds.IsValid())
+	{
+		mCameraController->Frame(entityManager, bounds);
+	}
 }
 
 Gleam::TArray<Gleam::EntityHandle> WorldViewport::GatherGizmoTargets(const Gleam::EntityManager& entityManager) const
@@ -824,7 +951,8 @@ void WorldViewport::DrawTransformGizmo(const Gleam::Float2& imageMin, const Glea
 	const auto startPivot = pivot;
 
 	const bool wasDragging = mTransformGizmo.IsDragging();
-	const bool inputEnabled = ImGui::IsWindowHovered() && mCursorVisible && mToolbarHovered == false;
+	const bool navigating = mCameraController->GetNavigation() != CameraNavigation::None or ImGui::GetIO().KeyAlt;
+	const bool inputEnabled = ImGui::IsWindowHovered() and navigating == false and mToolbarHovered == false;
 	if (mTransformGizmo.Manipulate(viewport, inputEnabled, pivot))
 	{
 		ApplyPivotDelta(mEditWorld->GetEntityManager(), gizmoTargets, startPivot, pivot);

@@ -68,11 +68,18 @@ private:
 
 	void UpdateSelectionMarquee(const Gleam::Float2& imageMin, const Gleam::Float2& imageSize, const Gleam::Size& targetSize, bool viewportHovered);
 
+	void UpdateCameraNavigation(const Gleam::Float2& imageSize, bool viewportHovered, bool viewportFocused);
+
+	void EndCameraNavigation();
+
+	void FrameSelection();
+
 	Gleam::TArray<Gleam::EntityHandle> GatherGizmoTargets(const Gleam::EntityManager& entityManager) const;
 
 	void Resize(Gleam::EntityManager& entityManager, const Gleam::Size& size);
 
-    bool mCursorVisible = true;
+	// ImGuiMouseButton that started the current camera navigation
+	int mNavigationButton = 0;
 
 	bool mToolbarHovered = false;
 
