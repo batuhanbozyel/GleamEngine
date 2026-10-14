@@ -132,10 +132,17 @@ void WorldOutliner::Render(Gleam::ImGuiRenderer* imgui)
 					mPendingRename = Gleam::InvalidEntity;
 				}
 
+				const auto& panelActions = mEditorInput->GetPanelActions();
 				const auto activeEntity = mSelectionSystem->GetActiveEntity();
-				if (simulating == false and focused and activeEntity != Gleam::InvalidEntity and mEditorInput->GetPanelActions().rename->WasPerformedThisFrame())
+				if (simulating == false and focused and activeEntity != Gleam::InvalidEntity and panelActions.rename->WasPerformedThisFrame())
 				{
 					BeginRename(activeEntity);
+				}
+
+				const auto& selectedEntities = mSelectionSystem->GetSelectedEntities();
+				if (simulating == false and focused and selectedEntities.empty() == false and panelActions.remove->WasPerformedThisFrame())
+				{
+					mPendingDestroy = selectedEntities.front();
 				}
 
 				if (mPendingToggleActive != Gleam::InvalidEntity)
@@ -310,7 +317,7 @@ void WorldOutliner::DrawEntityNode(const Gleam::Entity& entity, uint32_t depth)
 		{
 			BeginRename(handle);
 		}
-		if (ImGui::MenuItem("Destroy Entity"))
+		if (ImGui::MenuItem("Destroy Entity", EditorInputSystem::GetShortcutLabel(mEditorInput->GetPanelActions().remove).c_str()))
 		{
 			mPendingDestroy = handle;
 		}
