@@ -48,16 +48,16 @@ GSTRUCT(MaterialInstanceDescriptor, "910243E7-F9B5-4722-8C77-CB7A81DF4775", Seri
 	GFIELD("EAC82FB3-1DAD-4D87-8E42-13BFBF3D4A2F", Serializable)
 	TArray<MaterialProperty> properties;
 
-	MaterialPropertyValue& operator[](const TString& name)
+	MaterialPropertyValue& operator[](const TString& propertyName)
 	{
 		for (auto& property : properties)
 		{
-			if (property.name == name)
+			if (property.name == propertyName)
 			{
 				return property.value;
 			}
 		}
-		GLEAM_ASSERT(false, "Material instance does not have the property {0}", name);
+		GLEAM_ASSERT(false, "Material instance does not have the property {0}", propertyName);
 		static MaterialPropertyValue value;
 		return value;
 	}

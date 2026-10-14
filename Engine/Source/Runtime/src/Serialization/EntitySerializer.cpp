@@ -144,10 +144,10 @@ TArray<EntityHandle> EntitySerializer::DeserializeEntities(const rapidjson::Cons
 		entities.emplace_back(entity);
 	}
 
-	for (auto& [parentGuid, entities] : entityParentRelation)
+	for (auto& [parentGuid, children] : entityParentRelation)
 	{
 		auto parent = entityManager.GetEntity(EntityReference{ .guid = parentGuid });
-		for (auto& entity : entities)
+		for (auto& entity : children)
 		{
 			entity->SetParent(parent);
 		}

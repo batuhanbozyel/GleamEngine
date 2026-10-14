@@ -68,7 +68,7 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, 
 		depthAttachment.DepthBeginningAccess.Type = AttachmentLoadActionToDX_TYPE(renderPassDesc.depthAttachment.loadAction);
 		depthAttachment.DepthBeginningAccess.Clear.ClearValue.Format = TextureFormatToDXGI_FORMAT(format);
 		depthAttachment.DepthBeginningAccess.Clear.ClearValue.DepthStencil.Depth = renderPassDesc.depthAttachment.clearDepth;
-		depthAttachment.DepthBeginningAccess.Clear.ClearValue.DepthStencil.Stencil = renderPassDesc.depthAttachment.clearStencil;
+		depthAttachment.DepthBeginningAccess.Clear.ClearValue.DepthStencil.Stencil = static_cast<UINT8>(renderPassDesc.depthAttachment.clearStencil);
 		depthAttachment.DepthEndingAccess.Type = AttachmentStoreActionToDX_TYPE(renderPassDesc.depthAttachment.storeAction);
 
 		if (Utils::IsDepthStencilFormat(format))
@@ -76,7 +76,7 @@ void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& renderPassDesc, 
 			depthAttachment.StencilBeginningAccess.Type = depthAttachment.DepthBeginningAccess.Type;
 			depthAttachment.StencilBeginningAccess.Clear.ClearValue.Format = depthAttachment.DepthBeginningAccess.Clear.ClearValue.Format;
 			depthAttachment.StencilBeginningAccess.Clear.ClearValue.DepthStencil.Depth = renderPassDesc.depthAttachment.clearDepth;
-			depthAttachment.StencilBeginningAccess.Clear.ClearValue.DepthStencil.Stencil = renderPassDesc.depthAttachment.clearStencil;
+			depthAttachment.StencilBeginningAccess.Clear.ClearValue.DepthStencil.Stencil = static_cast<UINT8>(renderPassDesc.depthAttachment.clearStencil);
 			depthAttachment.StencilEndingAccess.Type = depthAttachment.DepthEndingAccess.Type;
 		}
 		else
@@ -374,7 +374,6 @@ void CommandBuffer::ClearBuffer(const Buffer& buffer, uint8_t value) const
 
 void CommandBuffer::Blit(const Texture& source, const Texture& destination) const
 {
-    auto swapchainTarget = destination.IsValid() == false;
 	auto srcTexture = static_cast<ID3D12Resource*>(source.GetHandle());
 	auto dstTexture = static_cast<ID3D12Resource*>(destination.GetHandle());
 

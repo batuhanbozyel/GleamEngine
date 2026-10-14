@@ -122,12 +122,7 @@ bool MaterialSource::Import(const Gleam::Path& path, const ImportSettings& setti
 
 		// Compile material shader
 		{
-			auto generatedPath = shaderPath;
-			generatedPath.Concat(".gen.hlsl");
-			{
-				auto generatedFile = Gleam::Filesystem::Create(generatedPath, Gleam::FileType::Text);
-				generatedFile->Write(generatedShader.str());
-			}
+			Gleam::TString generatedSource = generatedShader.str();
 
 			if (document.HasMember("Lighting"))
 			{
@@ -143,9 +138,10 @@ bool MaterialSource::Import(const Gleam::Path& path, const ImportSettings& setti
 			}
 
 			// Depth prepass
-			if (CompileShaderVariant(generatedPath, descriptor.surfaceShader, {
+			if (CompileShaderVariant(shaderPath, generatedSource, descriptor.surfaceShader, {
 					.name = "DepthPrepass",
 					.entryPoint = "main",
+					.stage = GShaderCompiler::ShaderStage::Pixel,
 					.defines = {},
 					.includes = { "DepthPrepass.hlsli" }
 				}) == false)
@@ -154,9 +150,10 @@ bool MaterialSource::Import(const Gleam::Path& path, const ImportSettings& setti
 			}
 
 			// Raster shading
-			if (CompileShaderVariant(generatedPath, descriptor.surfaceShader, {
+			if (CompileShaderVariant(shaderPath, generatedSource, descriptor.surfaceShader, {
 					.name = "Shading",
 					.entryPoint = "main",
+					.stage = GShaderCompiler::ShaderStage::Pixel,
 					.defines = {},
 					.includes = { "MeshShading.hlsli" }
 				}) == false)
@@ -165,9 +162,10 @@ bool MaterialSource::Import(const Gleam::Path& path, const ImportSettings& setti
 			}
 
 			// Closest hit
-			if (CompileShaderVariant(generatedPath, descriptor.surfaceShader, {
+			if (CompileShaderVariant(shaderPath, generatedSource, descriptor.surfaceShader, {
 					.name = "ClosestHit",
 					.entryPoint = "ClosestHit",
+					.stage = GShaderCompiler::ShaderStage::ClosestHit,
 					.defines = {},
 					.includes = { "PathTraceShading.hlsli" }
 				}) == false)
@@ -176,9 +174,10 @@ bool MaterialSource::Import(const Gleam::Path& path, const ImportSettings& setti
 			}
 
 			// Any hit
-			if (CompileShaderVariant(generatedPath, descriptor.surfaceShader, {
+			if (CompileShaderVariant(shaderPath, generatedSource, descriptor.surfaceShader, {
 					.name = "AnyHit",
 					.entryPoint = "AnyHit",
+					.stage = GShaderCompiler::ShaderStage::AnyHit,
 					.defines = {},
 					.includes = { "PathTraceShading.hlsli" }
 				}) == false)
@@ -187,9 +186,10 @@ bool MaterialSource::Import(const Gleam::Path& path, const ImportSettings& setti
 			}
 
 			// Shadow any hit
-			if (CompileShaderVariant(generatedPath, descriptor.surfaceShader, {
+			if (CompileShaderVariant(shaderPath, generatedSource, descriptor.surfaceShader, {
 					.name = "ShadowAnyHit",
 					.entryPoint = "ShadowAnyHit",
+					.stage = GShaderCompiler::ShaderStage::AnyHit,
 					.defines = {},
 					.includes = { "PathTraceShading.hlsli" }
 				}) == false)
@@ -198,9 +198,10 @@ bool MaterialSource::Import(const Gleam::Path& path, const ImportSettings& setti
 			}
 
 			// Reflection closest hit
-			if (CompileShaderVariant(generatedPath, descriptor.surfaceShader, {
+			if (CompileShaderVariant(shaderPath, generatedSource, descriptor.surfaceShader, {
 					.name = "ReflectionClosestHit",
 					.entryPoint = "ClosestHit",
+					.stage = GShaderCompiler::ShaderStage::ClosestHit,
 					.defines = {},
 					.includes = { "Reflection/RayTracedReflectionShading.hlsli" }
 				}) == false)
@@ -209,9 +210,10 @@ bool MaterialSource::Import(const Gleam::Path& path, const ImportSettings& setti
 			}
 
 			// Reflection any hit
-			if (CompileShaderVariant(generatedPath, descriptor.surfaceShader, {
+			if (CompileShaderVariant(shaderPath, generatedSource, descriptor.surfaceShader, {
 					.name = "ReflectionAnyHit",
 					.entryPoint = "AnyHit",
+					.stage = GShaderCompiler::ShaderStage::AnyHit,
 					.defines = {},
 					.includes = { "Reflection/RayTracedReflectionShading.hlsli" }
 				}) == false)
@@ -220,9 +222,10 @@ bool MaterialSource::Import(const Gleam::Path& path, const ImportSettings& setti
 			}
 
 			// Visibility shading
-			if (CompileShaderVariant(generatedPath, descriptor.surfaceShader, {
+			if (CompileShaderVariant(shaderPath, generatedSource, descriptor.surfaceShader, {
 					.name = "VisibilityShading",
 					.entryPoint = "main",
+					.stage = GShaderCompiler::ShaderStage::Compute,
 					.defines = {},
 					.includes = { "VisibilityShading.hlsli" }
 				}) == false)
@@ -231,17 +234,16 @@ bool MaterialSource::Import(const Gleam::Path& path, const ImportSettings& setti
 			}
 
 			// GBuffer resolve
-			if (CompileShaderVariant(generatedPath, descriptor.surfaceShader, {
+			if (CompileShaderVariant(shaderPath, generatedSource, descriptor.surfaceShader, {
 					.name = "GBufferResolve",
 					.entryPoint = "main",
+					.stage = GShaderCompiler::ShaderStage::Compute,
 					.defines = {},
 					.includes = { "GBufferResolve.hlsli" }
 				}) == false)
 			{
 				return false;
 			}
-
-			Gleam::Filesystem::Remove(generatedPath);
 		}
 	}
     
@@ -266,39 +268,52 @@ bool MaterialSource::Import(const Gleam::Path& path, const ImportSettings& setti
     return true;
 }
 
-bool MaterialSource::CompileShaderVariant(const Gleam::Path& path, const Gleam::TString& surfaceShader, const MaterialShaderVariant& variant)
+bool MaterialSource::CompileShaderVariant(const Gleam::Path& shaderPath, const Gleam::TString& source, const Gleam::TString& surfaceShader, const MaterialShaderVariant& variant)
 {
-	Gleam::Path dxilShader = Gleam::Globals::BuiltinAssetsDirectory / "Shaders" / (surfaceShader + variant.name);
+	Gleam::TString exportName = surfaceShader;
+	exportName.append(variant.name.data(), variant.name.size());
+
+	Gleam::Path dxilShader = Gleam::Globals::BuiltinAssetsDirectory / "Shaders" / exportName;
 	dxilShader.Concat(".dxil");
 	if (Gleam::Filesystem::Exists(dxilShader))
 	{
 		Gleam::Filesystem::Remove(dxilShader);
 	}
 
-	Gleam::TStringStream cmd;
-	cmd << PYTHON_INTERPRETER << " ";
-	cmd << Gleam::Globals::StartupDirectory / "Tools/CompileShaders.py";
-	cmd << " -f " << path;
-
-	for (auto define : variant.defines)
-	{
-		cmd << " -D " << define;
-	}
-
+	Gleam::TStringStream variantSource;
 	for (auto include : variant.includes)
 	{
-		cmd << " -i " << include;
+		variantSource << "#include \"" << include << "\"\n";
 	}
+	variantSource << source;
 
-	cmd << " --entry " << variant.entryPoint << "=" << surfaceShader << variant.name;
+	auto generatedPath = shaderPath;
+	generatedPath.Concat(".gen.hlsl");
+
+	GShaderCompiler::CompileDesc desc{
+		.source = variantSource.str(),
+		.sourcePath = generatedPath,
+		.entryPoint = { .stage = variant.stage, .name = std::string(variant.entryPoint.data(), variant.entryPoint.size()) },
+		.exportName = std::string(exportName.c_str(), exportName.size()),
+		.includeDirectories = { shaderPath.Parent(), Gleam::Globals::StartupDirectory / "Engine/Source/Runtime/src/Renderer/Shaders" }
+	};
+	for (auto define : variant.defines)
+	{
+		desc.defines.emplace_back(define.data(), define.size());
+	}
 #ifdef GDEBUG
-	cmd << " --debug";
+	desc.debug = true;
 #endif
 
-	if (ExecuteCommand(cmd.str()) != 0)
+	const auto result = GShaderCompiler::Compile(desc);
+	if (result.succeeded)
 	{
-		Gleam::Filesystem::Remove(path);
-		return false;
+		auto file = Gleam::Filesystem::Create(dxilShader, Gleam::FileType::Binary);
+		file->GetStream().write(reinterpret_cast<const char*>(result.binary.data()), static_cast<std::streamsize>(result.binary.size()));
 	}
-	return true;
+	else
+	{
+		GLEAM_ERROR("Material shader {0} could not be compiled:\n{1}", exportName, result.errors);
+	}
+	return result.succeeded;
 }

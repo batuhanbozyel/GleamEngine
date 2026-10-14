@@ -149,7 +149,7 @@ void EntityManager::CopyFrom(const EntityManager& source)
 
 	for (auto handle : handles)
 	{
-		const auto created = mRegistry.create(handle);
+		[[maybe_unused]] const auto created = mRegistry.create(handle);
 		GLEAM_ASSERT(created == handle, "Copied entity handle does not match the source!");
 	}
 

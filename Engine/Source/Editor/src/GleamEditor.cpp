@@ -26,6 +26,7 @@
 #include "View/Panels/Project/ProjectSettings.h"
 #include "View/Panels/Project/Preferences.h"
 #include "View/Panels/Project/AssetImportDialog.h"
+#include "View/Panels/Console/Console.h"
 
 #include <Editor.Reflection.generated.h>
 
@@ -63,6 +64,7 @@ public:
 		viewStack->AddView<WorldOutliner>(mEditWorld);
 		viewStack->AddView<EntityInspector>(mEditWorld);
 		viewStack->AddView<ContentBrowser>(assetManager);
+		viewStack->AddView<Console>();
 		viewStack->AddView<ProjectSettings>();
 		viewStack->AddView<Preferences>();
 		viewStack->AddView<AssetImportDialog>(assetManager);

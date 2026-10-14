@@ -27,7 +27,7 @@ Application::Application(const Project& project)
 	// init game instance subsystems
 	if (project.worldConfig.worlds.empty() == false)
 	{
-		auto assetManager = AddSubsystem<AssetManager>();
+		AddSubsystem<AssetManager>();
 		auto worldManager = AddSubsystem<WorldManager>();
 		worldManager->Configure(project.worldConfig);
 		worldManager->OpenWorld(project.worldConfig.startingWorldIndex);

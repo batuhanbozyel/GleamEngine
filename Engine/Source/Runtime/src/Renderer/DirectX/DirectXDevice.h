@@ -25,7 +25,7 @@ struct DirectXDescriptorHeap
 
 	D3D12_CPU_DESCRIPTOR_HANDLE Allocate();
 
-	void Release(D3D12_CPU_DESCRIPTOR_HANDLE handle);
+	void Release(D3D12_CPU_DESCRIPTOR_HANDLE view);
 
 	ShaderResourceIndex GetResourceIndex(D3D12_CPU_DESCRIPTOR_HANDLE view);
 };

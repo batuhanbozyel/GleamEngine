@@ -418,7 +418,6 @@ void RenderGraph::SetupPassBarriers(RenderGraphPassNode* pass, const CommandBuff
 		BarrierAccess dstAccess = BarrierAccess::UnorderedAccess;
 		BarrierLayout newLayout = BarrierLayout::UnorderedAccess;
 
-		const auto& textureDesc = resource.node->texture.GetDescriptor();
 		if (pass->type == RenderGraphPassType::Raster)
 		{
 			if (pass->depthAttachment.node == resource.node)

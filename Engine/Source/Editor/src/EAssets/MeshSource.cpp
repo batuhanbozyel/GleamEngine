@@ -286,7 +286,7 @@ bool MeshSource::Import(const Gleam::Path& path, const ImportSettings& settings)
 			const auto root = *rootNodes.begin();
 			auto entityName = GetNodeName(*root, filename);
 			bool hierarchyContainsNonUniformScaling = HierarchyContainsNonUniformScaling(HierarchyContainsNonUniformScaling, *root);
-			auto entity = ProcessNode(ProcessNode, *root, entityName, Gleam::Float4x4::identity, hierarchyContainsNonUniformScaling);
+			ProcessNode(ProcessNode, *root, entityName, Gleam::Float4x4::identity, hierarchyContainsNonUniformScaling);
 		}
 		else
 		{

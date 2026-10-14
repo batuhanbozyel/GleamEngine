@@ -21,6 +21,9 @@ set_target_properties (googletest PROPERTIES FOLDER Dependencies)
 set(INCLUDE_DIRS_UNIT_TEST
     src
     ${CMAKE_SOURCE_DIR}/Engine/Source/Runtime/src
+)
+
+set(THIRDPARTY_INCLUDE_DIRS_UNIT_TEST
     ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/entt/src
     ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/SDL/include
     ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/fmt/include
@@ -34,8 +37,10 @@ file(GLOB_RECURSE SOURCE_FILES
 )
 
 add_executable(UnitTest ${SOURCE_FILES})
+set_target_properties(UnitTest PROPERTIES XCODE_GENERATE_SCHEME YES)
 add_dependencies(UnitTest googletest)
 target_include_directories(UnitTest PRIVATE ${INCLUDE_DIRS_UNIT_TEST})
+target_include_directories(UnitTest SYSTEM PRIVATE ${THIRDPARTY_INCLUDE_DIRS_UNIT_TEST})
 target_link_directories(UnitTest PRIVATE ${CMAKE_SOURCE_DIR}/bin/$<CONFIG>)
 if (WIN32)
     target_link_libraries(UnitTest PRIVATE googletest.lib)
@@ -45,3 +50,4 @@ endif()
 
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${SOURCE_FILES})
 SET_WORKING_DIRECTORY(UnitTest ${CMAKE_SOURCE_DIR})
+GLEAM_SET_WARNINGS(UnitTest)

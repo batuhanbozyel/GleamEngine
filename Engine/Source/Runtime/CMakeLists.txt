@@ -1,6 +1,8 @@
 include (${CMAKE_SOURCE_DIR}/CMake/CMakeUtils.cmake)
 
-find_package(Python COMPONENTS Interpreter REQUIRED)
+if (APPLE)
+    find_package(Python COMPONENTS Interpreter REQUIRED)
+endif()
 find_package(Vulkan REQUIRED)
 
 # Third-party libraries
@@ -37,9 +39,8 @@ add_dependencies(Runtime SDL3-static imgui EASTL box3d)
 
 # Include directories
 if (APPLE)
-    set(INCLUDE_DIRS
+    set(THIRDPARTY_INCLUDE_DIRS
         /usr/local/include
-        ${CMAKE_CURRENT_SOURCE_DIR}/src
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/SDL/include
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/fmt/include
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/stb
@@ -53,10 +54,9 @@ if (APPLE)
         ${Vulkan_INCLUDE_DIRS}
     )
     set_source_files_properties(${SOURCE_FILES} ${HEADER_FILES} PROPERTIES COMPILE_FLAGS "-x objective-c++")
-    set_target_properties(Runtime PROPERTIES MACOSX_BUNDLE YES XCODE_ATTRIBUTE_CLANG_ENABLE_OBJC_ARC YES)
+    set_target_properties(Runtime PROPERTIES MACOSX_BUNDLE YES XCODE_ATTRIBUTE_CLANG_ENABLE_OBJC_ARC YES XCODE_GENERATE_SCHEME YES)
 else()
-    set(INCLUDE_DIRS
-        ${CMAKE_CURRENT_SOURCE_DIR}/src
+    set(THIRDPARTY_INCLUDE_DIRS
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/SDL/include
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/fmt/include
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/stb
@@ -73,18 +73,21 @@ else()
         ${Vulkan_INCLUDE_DIRS}
     )
 endif()
+set(INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/src ${THIRDPARTY_INCLUDE_DIRS})
 
 # Configure Runtime target
-target_include_directories(Runtime PUBLIC ${INCLUDE_DIRS})
+target_include_directories(Runtime PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
+target_include_directories(Runtime SYSTEM PUBLIC ${THIRDPARTY_INCLUDE_DIRS})
 target_link_directories(Runtime PUBLIC ${CMAKE_BINARY_DIR}/$<CONFIG>)
 target_link_libraries(Runtime PUBLIC ${LIB_LINKS})
-target_include_directories(Runtime PRIVATE $<TARGET_PROPERTY:box3d,INTERFACE_INCLUDE_DIRECTORIES>)
+target_include_directories(Runtime SYSTEM PRIVATE $<TARGET_PROPERTY:box3d,INTERFACE_INCLUDE_DIRECTORIES>)
 target_link_libraries(Runtime PRIVATE $<TARGET_FILE:box3d>)
 target_precompile_headers(Runtime PUBLIC "src/gpch.h")
 
 # Setup souce grouping and working directory 
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${SOURCE_FILES} ${HEADER_FILES} ${SHADER_FILES})
 SET_WORKING_DIRECTORY(Runtime ${CMAKE_SOURCE_DIR})
+GLEAM_SET_WARNINGS(Runtime)
 
 # 
 target_compile_definitions(
@@ -98,7 +101,7 @@ target_compile_definitions(
     "USE_PIX"
 
     PUBLIC
-    $<$<CONFIG:Debug>:GDEBUG>
+    $<$<CONFIG:Debug,Development>:GDEBUG>
     $<$<CONFIG:Release>:GRELEASE>
 )
 
@@ -148,9 +151,9 @@ list(APPEND REFLECTION_COMPILER_ARGS "--extra-arg=-DWIN32_LEAN_AND_MEAN")
 list(APPEND REFLECTION_COMPILER_ARGS "--extra-arg=-DNOMINMAX")
 
 list(APPEND REFLECTION_COMPILER_ARGS 
-    "$<$<CONFIG:Debug>:--extra-arg=-DGDEBUG>"
-    "$<$<CONFIG:Debug>:--extra-arg=-O0>"
-    "$<$<CONFIG:Debug>:--extra-arg=-g>"
+    "$<$<CONFIG:Debug,Development>:--extra-arg=-DGDEBUG>"
+    "$<$<CONFIG:Debug,Development>:--extra-arg=-O0>"
+    "$<$<CONFIG:Debug,Development>:--extra-arg=-g>"
     "$<$<CONFIG:Release>:--extra-arg=-O3>"
     "$<$<CONFIG:Release>:--extra-arg=-DGRELEASE>"
     "$<$<CONFIG:RelWithDebInfo>:--extra-arg=-O3>"
@@ -180,11 +183,14 @@ set(HLSL_FILE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/src/Renderer/Shaders)
 set(SHADER_STAMP_FILE "${CMAKE_BINARY_DIR}/runtime_shader_compile.stamp")
 add_custom_command(
     OUTPUT ${SHADER_STAMP_FILE}
-    COMMAND Python::Interpreter ${CMAKE_SOURCE_DIR}/Tools/CompileShaders.py
-        "-d" ${HLSL_FILE_PATH} 
-        $<$<CONFIG:Debug>:--debug>
+    COMMAND ShaderCompilerCLI
+        -d ${HLSL_FILE_PATH}
+        --exclude ${HLSL_FILE_PATH}/DirectX ${HLSL_FILE_PATH}/Metal
+        -I ${HLSL_FILE_PATH}
+        -o ${CMAKE_SOURCE_DIR}/Assets/Shaders
+        $<$<CONFIG:Debug,Development>:--debug>
     COMMAND ${CMAKE_COMMAND} -E touch ${SHADER_STAMP_FILE}
-    DEPENDS ${HEADER_FILES} ${SHADER_FILES}
+    DEPENDS ${HEADER_FILES} ${SHADER_FILES} ShaderCompilerCLI
     COMMENT "Compiling runtime shaders..."
     VERBATIM
     COMMAND_EXPAND_LISTS
@@ -201,7 +207,7 @@ if (APPLE)
             OUTPUT ${NATIVE_SHADER_STAMP_FILE}
             COMMAND Python::Interpreter ${CMAKE_SOURCE_DIR}/Tools/CompileMetalShaders.py
                 "-f" ${METAL_NATIVE_SHADER_FILES}
-                $<$<CONFIG:Debug>:--debug>
+                $<$<CONFIG:Debug,Development>:--debug>
             COMMAND ${CMAKE_COMMAND} -E touch ${NATIVE_SHADER_STAMP_FILE}
             DEPENDS ${METAL_NATIVE_SHADER_FILES}
             COMMENT "Compiling native Metal shaders..."
@@ -217,11 +223,13 @@ elseif (WIN32)
         set(NATIVE_SHADER_STAMP_FILE "${CMAKE_BINARY_DIR}/runtime_native_shader_compile.stamp")
         add_custom_command(
             OUTPUT ${NATIVE_SHADER_STAMP_FILE}
-            COMMAND Python::Interpreter ${CMAKE_SOURCE_DIR}/Tools/CompileShaders.py
-                "-f" ${DIRECTX_NATIVE_SHADER_FILES}
-                $<$<CONFIG:Debug>:--debug>
+            COMMAND ShaderCompilerCLI
+                -f ${DIRECTX_NATIVE_SHADER_FILES}
+                -I ${HLSL_FILE_PATH}
+                -o ${CMAKE_SOURCE_DIR}/Assets/Shaders/Native
+                $<$<CONFIG:Debug,Development>:--debug>
             COMMAND ${CMAKE_COMMAND} -E touch ${NATIVE_SHADER_STAMP_FILE}
-            DEPENDS ${HEADER_FILES} ${DIRECTX_NATIVE_SHADER_FILES}
+            DEPENDS ${HEADER_FILES} ${DIRECTX_NATIVE_SHADER_FILES} ShaderCompilerCLI
             COMMENT "Compiling native DirectX shaders..."
             VERBATIM
             COMMAND_EXPAND_LISTS
