@@ -18,6 +18,7 @@ inline void EditorLayout(ImGuiID dockspaceID)
 	ImGui::DockBuilderDockWindow("Entity Inspector", right);
 	ImGui::DockBuilderDockWindow("Project Settings", right);
 	ImGui::DockBuilderDockWindow("Content Browser", bottom);
+	ImGui::DockBuilderDockWindow("Console", bottom);
 	ImGui::DockBuilderDockWindow("Viewport", center);
 	ImGui::DockBuilderFinish(dockspaceID);
 }

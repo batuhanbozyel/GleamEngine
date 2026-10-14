@@ -9,7 +9,10 @@
 
 #include <fstream>
 #include <chrono>
+#include <ctime>
+#include <functional>
 #include <mutex>
+#include <string_view>
 
 namespace Gleam {
 
@@ -26,6 +29,14 @@ public:
         Warn,
         Error
     };
+
+	struct Entry
+	{
+		Level level;
+		std::time_t time;
+		TStringView source;
+		TStringView message;
+	};
 
 	Logger(const TString& name);
     ~Logger();
@@ -46,9 +57,11 @@ public:
 		char formattedCurrentTime[32];
 		std::strftime(formattedCurrentTime, 32, "%X", std::localtime(&currentTime));
 
+		const auto message = fmt::format(fmt::runtime(frmt), std::forward<Args>(args)...);
+
 		std::ostringstream ss;
 		ss << '[' << formattedCurrentTime << "] ";
-		ss << LogLevelToString(lvl) << mName << fmt::format(fmt::runtime(frmt), std::forward<Args>(args)...) << '\n';
+		ss << LogLevelToString(lvl) << mName << ": " << message << '\n';
 
 		const auto& msg = ss.str();
 		{
@@ -56,8 +69,11 @@ public:
 			*mFileStream << msg;
 			std::flush(*mFileStream);
 			OutputToDebugger(msg.c_str());
+			RecordHistory(lvl, currentTime, message);
 		}
 	}
+
+	static void ReadHistory(uint64_t& cursor, const std::function<void(const Entry&)>& visitor);
 
 	static void SetLevel(Level lvl)
 	{
@@ -80,8 +96,13 @@ public:
 
 private:
 
+	class History;
+
+	void RecordHistory(Level lvl, std::time_t time, std::string_view message) const;
+
     TString mName;
-    
+
+    static History mHistory;
     static inline Scope<std::ofstream> mFileStream = nullptr;
     static inline uint32_t mInstanceCount = 0;
 	static inline std::mutex mLogMutex;
