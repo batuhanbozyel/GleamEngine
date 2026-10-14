@@ -1,6 +1,8 @@
 include (${CMAKE_SOURCE_DIR}/CMake/CMakeUtils.cmake)
 
-find_package(Python COMPONENTS Interpreter REQUIRED)
+if (APPLE)
+    find_package(Python COMPONENTS Interpreter REQUIRED)
+endif()
 find_package(Vulkan REQUIRED)
 
 # Third-party libraries
@@ -181,11 +183,14 @@ set(HLSL_FILE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/src/Renderer/Shaders)
 set(SHADER_STAMP_FILE "${CMAKE_BINARY_DIR}/runtime_shader_compile.stamp")
 add_custom_command(
     OUTPUT ${SHADER_STAMP_FILE}
-    COMMAND Python::Interpreter ${CMAKE_SOURCE_DIR}/Tools/CompileShaders.py
-        "-d" ${HLSL_FILE_PATH} 
+    COMMAND ShaderCompilerCLI
+        -d ${HLSL_FILE_PATH}
+        --exclude ${HLSL_FILE_PATH}/DirectX ${HLSL_FILE_PATH}/Metal
+        -I ${HLSL_FILE_PATH}
+        -o ${CMAKE_SOURCE_DIR}/Assets/Shaders
         $<$<CONFIG:Debug,Development>:--debug>
     COMMAND ${CMAKE_COMMAND} -E touch ${SHADER_STAMP_FILE}
-    DEPENDS ${HEADER_FILES} ${SHADER_FILES}
+    DEPENDS ${HEADER_FILES} ${SHADER_FILES} ShaderCompilerCLI
     COMMENT "Compiling runtime shaders..."
     VERBATIM
     COMMAND_EXPAND_LISTS
@@ -218,11 +223,13 @@ elseif (WIN32)
         set(NATIVE_SHADER_STAMP_FILE "${CMAKE_BINARY_DIR}/runtime_native_shader_compile.stamp")
         add_custom_command(
             OUTPUT ${NATIVE_SHADER_STAMP_FILE}
-            COMMAND Python::Interpreter ${CMAKE_SOURCE_DIR}/Tools/CompileShaders.py
-                "-f" ${DIRECTX_NATIVE_SHADER_FILES}
+            COMMAND ShaderCompilerCLI
+                -f ${DIRECTX_NATIVE_SHADER_FILES}
+                -I ${HLSL_FILE_PATH}
+                -o ${CMAKE_SOURCE_DIR}/Assets/Shaders/Native
                 $<$<CONFIG:Debug,Development>:--debug>
             COMMAND ${CMAKE_COMMAND} -E touch ${NATIVE_SHADER_STAMP_FILE}
-            DEPENDS ${HEADER_FILES} ${DIRECTX_NATIVE_SHADER_FILES}
+            DEPENDS ${HEADER_FILES} ${DIRECTX_NATIVE_SHADER_FILES} ShaderCompilerCLI
             COMMENT "Compiling native DirectX shaders..."
             VERBATIM
             COMMAND_EXPAND_LISTS

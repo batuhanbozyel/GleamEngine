@@ -55,6 +55,7 @@ project(GleamEngine)
     set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIGURATION>)
 
     #subfolders
+    add_subdirectory(Engine/Source/ShaderCompiler)
     add_subdirectory(Engine/Source/Runtime)
     add_subdirectory(Engine/Source/Editor)
     add_subdirectory(Engine/Source/UnitTest)

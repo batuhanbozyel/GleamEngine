@@ -1,12 +1,15 @@
 #pragma once
 #include "AssetPackage.h"
 
+#include <ShaderCompiler.h>
+
 namespace GEditor {
 
 struct MaterialShaderVariant
 {
 	Gleam::TStringView name;
 	Gleam::TStringView entryPoint;
+	GShaderCompiler::ShaderStage stage;
 	Gleam::TArray<Gleam::TStringView> defines;
 	Gleam::TArray<Gleam::TStringView> includes;
 };
@@ -25,7 +28,7 @@ public:
 
 private:
 
-	bool CompileShaderVariant(const Gleam::Path& path, const Gleam::TString& surfaceShader, const MaterialShaderVariant& variant);
+	bool CompileShaderVariant(const Gleam::Path& shaderPath, const Gleam::TString& source, const Gleam::TString& surfaceShader, const MaterialShaderVariant& variant);
 };
 
 } // namespace GEditor

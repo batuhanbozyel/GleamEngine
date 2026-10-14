@@ -1,10 +1,9 @@
 include (${CMAKE_SOURCE_DIR}/CMake/CMakeUtils.cmake)
 
-find_package(Python COMPONENTS Interpreter REQUIRED)
-
 set(ENGINE_INCLUDE_DIRS
     src
     ${CMAKE_SOURCE_DIR}/Engine/Source/Runtime/src
+    ${CMAKE_SOURCE_DIR}/Engine/Source/ShaderCompiler/src
 )
 
 set(THIRDPARTY_INCLUDE_DIRS
@@ -64,9 +63,9 @@ GLEAM_SET_WARNINGS(Editor)
 # Link Runtime
 get_target_property(GLEAM_RUNTIME_LIBS Runtime LINK_LIBRARIES)
 if (WIN32)
-    target_link_libraries(Editor PRIVATE Runtime.lib MikkTSpace.lib meshoptimizer ${GLEAM_RUNTIME_LIBS})
+    target_link_libraries(Editor PRIVATE Runtime.lib MikkTSpace.lib meshoptimizer ShaderCompiler ${GLEAM_RUNTIME_LIBS})
 else()
-    target_link_libraries(Editor PRIVATE Runtime.a MikkTSpace.a meshoptimizer ${GLEAM_RUNTIME_LIBS})
+    target_link_libraries(Editor PRIVATE Runtime.a MikkTSpace.a meshoptimizer ShaderCompiler ${GLEAM_RUNTIME_LIBS})
 endif()
 
 add_dependencies(Editor Runtime MikkTSpace meshoptimizer)
@@ -106,7 +105,6 @@ target_compile_definitions(
     Editor
 
     PRIVATE
-    PYTHON_INTERPRETER=\"${Python_EXECUTABLE}\"
     "_CRT_SECURE_NO_WARNINGS"
     "WIN32_LEAN_AND_MEAN"
     "NOMINMAX"
@@ -121,11 +119,13 @@ set(HLSL_FILE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/src/Renderers/Shaders)
 set(SHADER_STAMP_FILE "${CMAKE_BINARY_DIR}/editor_shader_compile.stamp")
 add_custom_command(
     OUTPUT ${SHADER_STAMP_FILE}
-    COMMAND Python::Interpreter ${CMAKE_SOURCE_DIR}/Tools/CompileShaders.py
-        "-d" ${HLSL_FILE_PATH} 
+    COMMAND ShaderCompilerCLI
+        -d ${HLSL_FILE_PATH}
+        -I ${CMAKE_SOURCE_DIR}/Engine/Source/Runtime/src/Renderer/Shaders
+        -o ${CMAKE_SOURCE_DIR}/Assets/Shaders
         $<$<CONFIG:Debug,Development>:--debug>
     COMMAND ${CMAKE_COMMAND} -E touch ${SHADER_STAMP_FILE}
-    DEPENDS ${HEADER_FILES} ${SHADER_FILES}
+    DEPENDS ${HEADER_FILES} ${SHADER_FILES} ShaderCompilerCLI
     COMMENT "Compiling editor shaders..."
     VERBATIM
     COMMAND_EXPAND_LISTS
