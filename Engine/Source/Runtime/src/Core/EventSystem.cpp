@@ -17,33 +17,16 @@ int SDLCALL EventSystem::SDL_EventHandler(void* data, SDL_Event* e)
     }
     
     static auto inputSystem = Globals::Engine->GetSubsystem<InputSystem>();
+	if (inputSystem->ProcessEvent(*e))
+	{
+		return 0;
+	}
+
 	switch (e->type)
 	{
 		case SDL_EVENT_QUIT:
 		{
 			EventDispatcher<AppCloseEvent>::Publish(AppCloseEvent());
-			break;
-		}
-		case SDL_EVENT_KEY_DOWN:
-		case SDL_EVENT_KEY_UP:
-		{
-			inputSystem->KeyboardEventHandler(e->key);
-			break;
-		}
-		case SDL_EVENT_MOUSE_MOTION:
-		{
-            inputSystem->MouseMoveEventHandler(e->motion);
-			break;
-		}
-		case SDL_EVENT_MOUSE_WHEEL:
-		{
-            inputSystem->MouseScrollEventHandler(e->wheel);
-			break;
-		}
-		case SDL_EVENT_MOUSE_BUTTON_DOWN:
-		case SDL_EVENT_MOUSE_BUTTON_UP:
-		{
-            inputSystem->MouseButtonEventHandler(e->button);
 			break;
 		}
 		// emit warning log messages
@@ -65,16 +48,11 @@ void EventSystem::Update()
 	SDL_Event event;
 	while (SDL_PollEvent(&event))
 	{
-		bool emitted = false;
 		if (mEventHandler)
 		{
-			emitted = std::invoke(mEventHandler, &event);
+			std::invoke(mEventHandler, &event);
 		}
-
-		if (emitted == false)
-		{
-			SDL_EventHandler(nullptr, &event);
-		}
+		SDL_EventHandler(nullptr, &event);
 	}
 }
 

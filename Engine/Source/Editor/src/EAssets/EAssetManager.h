@@ -4,6 +4,8 @@
 
 #include "IO/Path.h"
 #include "Core/Subsystem.h"
+#include "Input/InputActionDescriptor.h"
+#include "Container/Pointer.h"
 
 namespace GEditor {
 
@@ -22,6 +24,18 @@ public:
 	const AssetItem& GetAsset(const Gleam::Guid& guid) const;
 
 	const AssetItem* FindAsset(const Gleam::Guid& guid) const;
+
+	const AssetItem& CreateInputActionAsset(const Gleam::Path& directory);
+
+	const AssetItem* SaveInputActionAsset(const Gleam::Path& directory, const AssetItem& item, const Gleam::InputActionAssetDescriptor& descriptor);
+
+	Gleam::Optional<Gleam::InputActionAssetDescriptor> LoadInputActionAsset(const Gleam::Path& file) const;
+
+	bool IsValidInputActionAssetName(const Gleam::Path& directory, const AssetItem& item, Gleam::TStringView name) const;
+
+	const AssetItem* RenameInputActionAsset(const Gleam::Path& file, const AssetItem& item, Gleam::TStringView name);
+
+	bool RemoveInputActionAsset(const Gleam::Path& file, const AssetItem& item);
 
 	template<typename T>
 	const AssetItem& GetAsset(const Gleam::Path& path) const

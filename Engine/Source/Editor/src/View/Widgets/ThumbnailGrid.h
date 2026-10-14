@@ -24,6 +24,7 @@ struct ThumbnailGridEvents
 {
 	int32_t clicked = -1;
 	int32_t doubleClicked = -1;
+	int32_t contextClicked = -1;
 };
 
 class ThumbnailGrid

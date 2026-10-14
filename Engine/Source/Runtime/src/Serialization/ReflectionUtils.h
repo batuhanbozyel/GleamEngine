@@ -1,5 +1,7 @@
 #pragma once
 #include "IO/Log.h"
+#include "Core/Attributes.h"
+#include "Container/String.h"
 
 #include <Reflection/Reflection.h>
 
@@ -7,6 +9,15 @@
 #include <cstdint>
 
 namespace Gleam::ReflectionUtils {
+
+inline TStringView ResolveDisplayName(const Reflection::EnumCaseDescription& enumCase)
+{
+	if (enumCase.HasAttribute<Reflection::Attribute::PrettyName>())
+	{
+		return enumCase.GetAttribute<Reflection::Attribute::PrettyName>()->name;
+	}
+	return enumCase.ResolveName();
+}
 
 inline const Reflection::EnumCaseDescription* FindCase(const Reflection::EnumDescription& enumDesc, int64_t value)
 {

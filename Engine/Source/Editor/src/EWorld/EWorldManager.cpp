@@ -9,6 +9,8 @@
 
 #include "Core/Globals.h"
 #include "Core/Application.h"
+#include "Core/Engine.h"
+#include "Input/InputSystem.h"
 #include "Assets/AssetManager.h"
 #include "Physics/PhysicsSystem.h"
 #include "World/World.h"
@@ -145,6 +147,7 @@ void EWorldManager::EndPlay(Gleam::Application* app)
 {
 	app->GetSubsystem<Gleam::WorldManager>()->SetActiveWorld(mEditWorld);
 	mPlayWorld.reset();
+	Gleam::Globals::Engine->GetSubsystem<Gleam::InputSystem>()->DestroyPlayers();
 	mPlayState = PlayState::Edit;
 }
 

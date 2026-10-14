@@ -45,6 +45,36 @@ const AssetItem& AssetRegistry::RegisterAsset(const Gleam::Path& path, const Ass
 	return registered;
 }
 
+void AssetRegistry::UnregisterAsset(const Gleam::Guid& guid)
+{
+	auto it = mAssetsByGuid.find(guid);
+	if (it == mAssetsByGuid.end())
+	{
+		return;
+	}
+
+	const auto location = it->second;
+	mAssetsByGuid.erase(it);
+
+	auto pathIt = mAssets.find(location.path);
+	if (pathIt == mAssets.end())
+	{
+		return;
+	}
+
+	auto& items = pathIt->second;
+	items.erase(items.begin() + location.index);
+	for (uint32_t i = location.index; i < items.size(); ++i)
+	{
+		mAssetsByGuid[items[i].reference.guid].index = i;
+	}
+
+	if (items.empty())
+	{
+		mAssets.erase(pathIt);
+	}
+}
+
 const AssetItem& AssetRegistry::GetAsset(const Gleam::Guid& guid) const
 {
 	const auto item = FindAsset(guid);

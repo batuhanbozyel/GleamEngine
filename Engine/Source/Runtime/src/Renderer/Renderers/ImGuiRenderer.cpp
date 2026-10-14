@@ -61,25 +61,7 @@ void ImGuiRenderer::OnCreate(const RenderContext& context)
 
     Globals::Engine->GetSubsystem<EventSystem>()->SetEventHandler([](const SDL_Event* e)
     {
-		ImGuiIO& io = ImGui::GetIO();
 		ImGui_ImplSDL3_ProcessEvent(e);
-
-		switch (e->type)
-		{
-			case SDL_EVENT_KEY_DOWN:
-			case SDL_EVENT_KEY_UP:
-			case SDL_EVENT_TEXT_INPUT:
-			case SDL_EVENT_TEXT_EDITING:
-			case SDL_EVENT_MOUSE_MOTION:
-			case SDL_EVENT_MOUSE_BUTTON_DOWN:
-			case SDL_EVENT_MOUSE_BUTTON_UP:
-			case SDL_EVENT_MOUSE_WHEEL:
-			{
-				return io.WantCaptureMouse || io.WantCaptureKeyboard || io.WantTextInput;
-			}
-		}
-
-		return false;
     });
 }
 

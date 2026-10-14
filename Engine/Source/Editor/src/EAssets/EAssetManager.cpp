@@ -1,6 +1,7 @@
 #include "EAssetManager.h"
 #include "AssetBaker.h"
 #include "MaterialSource.h"
+#include "Bakers/InputActionsBaker.h"
 
 #include "Core/Globals.h"
 #include "Core/Engine.h"
@@ -166,4 +167,108 @@ const AssetItem& EAssetManager::GetAsset(const Gleam::Guid& guid) const
 const AssetItem* EAssetManager::FindAsset(const Gleam::Guid& guid) const
 {
 	return mRegistry.FindAsset(guid);
+}
+
+const AssetItem& EAssetManager::CreateInputActionAsset(const Gleam::Path& directory)
+{
+	static const auto type = Gleam::Reflection::GetClass<Gleam::InputActionAssetDescriptor>().Guid();
+	const auto baseName = Gleam::TString(static_cast<const char*>("New Input Actions"));
+
+	auto name = baseName;
+	for (uint32_t suffix = 1; mRegistry.FindAsset(directory / name, type) != nullptr; ++suffix)
+	{
+		name = baseName;
+		name.append(" ");
+		name.append(std::to_string(suffix).c_str());
+	}
+
+	Gleam::InputActionMapDescriptor map;
+	map.id = Gleam::Guid::NewGuid();
+	map.name = Gleam::TString(static_cast<const char*>("Player"));
+
+	Gleam::InputActionAssetDescriptor descriptor;
+	descriptor.name = name;
+	descriptor.maps.push_back(map);
+
+	const auto item = AssetItem{
+		.reference = Gleam::AssetReference{ .guid = Gleam::Guid::NewGuid() },
+		.type = type,
+		.name = name
+	};
+	SaveInputActionAsset(directory, item, descriptor);
+	return mRegistry.GetAsset(item.reference.guid);
+}
+
+const AssetItem* EAssetManager::SaveInputActionAsset(const Gleam::Path& directory, const AssetItem& item, const Gleam::InputActionAssetDescriptor& descriptor)
+{
+	auto saved = item;
+	if (descriptor.name != item.name)
+	{
+		if (IsValidInputActionAssetName(directory, item, descriptor.name) == false)
+		{
+			return nullptr;
+		}
+		mRegistry.UnregisterAsset(item.reference.guid);
+		saved.name = descriptor.name;
+	}
+
+	auto registry = AssetRegistry(directory);
+	registry.RegisterAsset(descriptor.name, saved);
+
+	auto package = AssetPackage(this, &registry);
+	package.EmplaceBaker<InputActionsBaker>(descriptor);
+	Import(directory, package);
+	return mRegistry.FindAsset(item.reference.guid);
+}
+
+Gleam::Optional<Gleam::InputActionAssetDescriptor> EAssetManager::LoadInputActionAsset(const Gleam::Path& file) const
+{
+	auto stream = Gleam::Filesystem::OpenRead(file, Gleam::FileType::Binary);
+	if (stream->IsOpen() == false)
+	{
+		GLEAM_ERROR("Input actions asset could not be opened: {0}", file.String());
+		return Gleam::Null;
+	}
+
+	auto serializer = Gleam::BinarySerializer();
+	const auto header = serializer.Deserialize<Gleam::AssetHeader>(stream->GetStream());
+	stream->GetStream().seekg(header.metadata.offset);
+
+	Gleam::InputActionAssetDescriptor descriptor;
+	serializer.Deserialize(stream->GetStream(), Gleam::Reflection::GetClass<Gleam::InputActionAssetDescriptor>(), &descriptor);
+	return descriptor;
+}
+
+bool EAssetManager::IsValidInputActionAssetName(const Gleam::Path& directory, const AssetItem& item, Gleam::TStringView name) const
+{
+	if (name.empty() or name.find_first_of("/\\") != Gleam::TStringView::npos)
+	{
+		return false;
+	}
+
+	const auto existing = mRegistry.FindAsset(directory / name, item.type);
+	return existing == nullptr or existing->reference == item.reference;
+}
+
+const AssetItem* EAssetManager::RenameInputActionAsset(const Gleam::Path& file, const AssetItem& item, Gleam::TStringView name)
+{
+	auto descriptor = LoadInputActionAsset(file);
+	if (descriptor.has_value() == false)
+	{
+		return nullptr;
+	}
+
+	descriptor->name = Gleam::TString(std::string_view(name.data(), name.size()));
+	return SaveInputActionAsset(file.Parent(), item, *descriptor);
+}
+
+bool EAssetManager::RemoveInputActionAsset(const Gleam::Path& file, const AssetItem& item)
+{
+	if (Gleam::Filesystem::Remove(file) == false)
+	{
+		return false;
+	}
+
+	mRegistry.UnregisterAsset(item.reference.guid);
+	return true;
 }

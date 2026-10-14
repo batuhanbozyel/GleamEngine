@@ -41,6 +41,8 @@ public:
 
 	static void DrawTextControl(const Gleam::TStringView label, const Gleam::TStringView value, float columnWidth = 100.0f);
 
+	static void DrawFieldLabel(const char* label);
+
 	static void DrawEnumOptions(const Gleam::TStringView label, const Gleam::Reflection::EnumDescription& enumDesc, void* value, float columnWidth = 100.0f);
 
 	static void DrawEnumFlagOptions(const Gleam::TStringView label, const Gleam::Reflection::ClassDescription& classDesc, void* value, float columnWidth = 100.0f);

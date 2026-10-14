@@ -25,7 +25,7 @@ using namespace GEditor;
 static constexpr float kLabelColumnWidth = 96.0f;
 static constexpr float kFieldHeight = 26.0f;
 
-static void DrawFieldLabel(const char* label)
+void PropertyDrawer::DrawFieldLabel(const char* label)
 {
 	ImGui::AlignTextToFramePadding();
 	ImGui::TextColored(Gleam::Theme::TextSecondary, "%s", label);
@@ -807,15 +807,6 @@ void PropertyDrawer::DrawTextControl(const Gleam::TStringView label, const Gleam
 	ImGui::PopID();
 }
 
-static Gleam::TStringView ResolveCaseName(const Gleam::Reflection::EnumCaseDescription& enumCase)
-{
-	if (enumCase.HasAttribute<Gleam::Reflection::Attribute::PrettyName>())
-	{
-		return enumCase.GetAttribute<Gleam::Reflection::Attribute::PrettyName>()->name;
-	}
-	return enumCase.ResolveName();
-}
-
 void PropertyDrawer::DrawEnumOptions(const Gleam::TStringView label, const Gleam::Reflection::EnumDescription& enumDesc, void* value, float columnWidth)
 {
 	char buffer[64];
@@ -840,7 +831,7 @@ void PropertyDrawer::DrawEnumOptions(const Gleam::TStringView label, const Gleam
 		{
 			if (item.Value() == currentValue)
 			{
-				const auto itemLabel = ResolveCaseName(item);
+				const auto itemLabel = Gleam::ReflectionUtils::ResolveDisplayName(item);
 				std::memcpy(previewBuffer, itemLabel.data(), itemLabel.size());
 				previewBuffer[itemLabel.size()] = '\0';
 				break;
@@ -855,7 +846,7 @@ void PropertyDrawer::DrawEnumOptions(const Gleam::TStringView label, const Gleam
 			bool isSelected = *static_cast<int*>(value) == item.Value();
 
 			char itemBuffer[64];
-			const auto itemLabel = ResolveCaseName(item);
+			const auto itemLabel = Gleam::ReflectionUtils::ResolveDisplayName(item);
 			std::memcpy(itemBuffer, itemLabel.data(), itemLabel.size());
 			itemBuffer[itemLabel.size()] = '\0';
 
@@ -923,7 +914,7 @@ void PropertyDrawer::DrawEnumFlagOptions(const Gleam::TStringView label,
 			{
 				preview += " | ";
 			}
-			preview += ResolveCaseName(enumCase);
+			preview += Gleam::ReflectionUtils::ResolveDisplayName(enumCase);
 		});
 	}
 
@@ -934,7 +925,7 @@ void PropertyDrawer::DrawEnumFlagOptions(const Gleam::TStringView label,
 			const auto caseMask = Gleam::ReflectionUtils::TruncateToSize(item.Value(), enumDesc->GetSize());
 
 			char itemBuffer[64];
-			const auto itemLabel = ResolveCaseName(item);
+			const auto itemLabel = Gleam::ReflectionUtils::ResolveDisplayName(item);
 			std::memcpy(itemBuffer, itemLabel.data(), itemLabel.size());
 			itemBuffer[itemLabel.size()] = '\0';
 

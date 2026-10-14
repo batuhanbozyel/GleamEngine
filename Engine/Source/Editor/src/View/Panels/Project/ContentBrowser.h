@@ -17,6 +17,7 @@
 namespace GEditor {
 
 class EAssetManager;
+class EditorInputSystem;
 struct EditorFonts;
 
 class ContentBrowser final : public View
@@ -74,7 +75,21 @@ private:
 
 	bool IsVisible(const GridEntry& entry) const;
 
+	const GridEntry* FindSelectedEntry() const;
+
+	void RequestRename(const GridEntry& entry);
+
+	void RequestDelete(const GridEntry& entry);
+
+	void DrawAssetContextMenu();
+
+	void DrawRenameDialog();
+
+	void DrawDeleteDialog();
+
 	EAssetManager* mAssetManager;
+
+	EditorInputSystem* mEditorInput = nullptr;
 
 	const EditorFonts* mFonts = nullptr;
 
@@ -91,6 +106,16 @@ private:
 	uint32_t mCategoryFilter = 0u;
 
 	char mSearch[128] = "";
+
+	ImVec2 mItemSpacing = ImVec2(0.0f, 0.0f);
+
+	GridEntry mContextEntry;
+
+	char mRenameBuffer[128] = "";
+
+	bool mRenameRequested = false;
+
+	bool mDeleteRequested = false;
 
 	Gleam::FileWatcher::Handle* mWatchHandle = nullptr;
 
