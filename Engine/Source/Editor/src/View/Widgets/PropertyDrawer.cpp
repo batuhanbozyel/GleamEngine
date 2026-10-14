@@ -16,6 +16,7 @@
 #include <imgui.h>
 #include <imgui_internal.h>
 
+#include <algorithm>
 #include <cctype>
 #include <cstdio>
 #include <Runtime.Reflection.generated.h>
@@ -1010,6 +1011,9 @@ void PropertyDrawer::DrawField(const Gleam::Reflection::FieldDescription& field,
 		ImGui::BeginDisabled(editable == false);
 	}
 
+	const auto parentAssetTypes = mAssetTypes;
+	mAssetTypes = field.GetAttribute<Gleam::Reflection::Attribute::AssetType>();
+
 	switch (field.GetType())
 	{
 		case Gleam::Reflection::MetaType::Class:
@@ -1040,6 +1044,8 @@ void PropertyDrawer::DrawField(const Gleam::Reflection::FieldDescription& field,
 		default:
 			break;
 	}
+
+	mAssetTypes = parentAssetTypes;
 
 	if (multiEdit)
 	{
@@ -1211,7 +1217,11 @@ void PropertyDrawer::DrawAsset(const Gleam::TStringView label, Gleam::AssetRefer
 	const ImVec2 min = ImGui::GetCursorScreenPos();
 	const float width = ImGui::GetContentRegionAvail().x;
 	const ImVec2 max(min.x + width, min.y + kHeight);
-	ImGui::InvisibleButton("##Asset", ImVec2(width, kHeight));
+	if (ImGui::InvisibleButton("##Asset", ImVec2(width, kHeight)))
+	{
+		mAssetSearch[0] = '\0';
+		ImGui::OpenPopup("##AssetPicker");
+	}
 	if (assetRef.guid != Gleam::Guid::InvalidGuid() and ImGui::IsItemHovered())
 	{
 		ImGui::SetTooltip("%s", assetRef.guid.ToString().c_str());
@@ -1226,6 +1236,8 @@ void PropertyDrawer::DrawAsset(const Gleam::TStringView label, Gleam::AssetRefer
 	drawList->PushClipRect(min, ImVec2(max.x - 6.0f, max.y), true);
 	drawList->AddText(ImVec2(min.x + 5.0f + kTileSize + 8.0f, min.y + (kHeight - ImGui::GetFontSize()) * 0.5f), Widgets::ColorU32(item ? Gleam::Theme::Text : Gleam::Theme::TextDim), name);
 	drawList->PopClipRect();
+
+	DrawAssetPicker(assetRef, min.x, max.y + 2.0f, width);
 
 	ImGui::Columns(1);
 
@@ -1244,7 +1256,11 @@ void PropertyDrawer::DrawAssetRow(uint32_t index, Gleam::AssetReference& assetRe
 	const ImVec2 min = ImGui::GetCursorScreenPos();
 	const float width = ImGui::GetContentRegionAvail().x;
 	const ImVec2 max(min.x + width, min.y + kRowHeight);
-	ImGui::InvisibleButton("##AssetRow", ImVec2(width, kRowHeight));
+	if (ImGui::InvisibleButton("##AssetRow", ImVec2(width, kRowHeight)))
+	{
+		mAssetSearch[0] = '\0';
+		ImGui::OpenPopup("##AssetPicker");
+	}
 	if (assetRef.guid != Gleam::Guid::InvalidGuid() and ImGui::IsItemHovered())
 	{
 		ImGui::SetTooltip("%s", assetRef.guid.ToString().c_str());
@@ -1268,6 +1284,94 @@ void PropertyDrawer::DrawAssetRow(uint32_t index, Gleam::AssetReference& assetRe
 	drawList->AddText(ImVec2(tileX + kTileSize + 8.0f, centerY - ImGui::GetFontSize() * 0.5f), Widgets::ColorU32(item ? Gleam::Theme::Text : Gleam::Theme::TextDim), name);
 	drawList->PopClipRect();
 	drawList->AddLine(ImVec2(min.x, max.y - 1.0f), ImVec2(max.x, max.y - 1.0f), Widgets::ColorU32(Gleam::Theme::RowDivider));
+
+	DrawAssetPicker(assetRef, min.x, max.y + 2.0f, width);
+}
+
+bool PropertyDrawer::AcceptsAssetType(const Gleam::Guid& type)
+{
+	if (mAssetTypes == nullptr or mAssetTypes->count == 0)
+	{
+		return true;
+	}
+
+	for (uint32_t i = 0; i < mAssetTypes->count; ++i)
+	{
+		const auto classDesc = Gleam::Reflection::GetClass(mAssetTypes->types[i]);
+		if (classDesc and classDesc->Guid() == type)
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+void PropertyDrawer::DrawAssetPicker(Gleam::AssetReference& assetRef, float x, float y, float width)
+{
+	constexpr float kPickerMinWidth = 260.0f;
+	constexpr float kPickerHeight = 320.0f;
+	constexpr float kRowHeight = 28.0f;
+	constexpr float kTileSize = 16.0f;
+
+	ImGui::SetNextWindowPos(ImVec2(x, y));
+	ImGui::SetNextWindowSize(ImVec2(Gleam::Math::Max(width, kPickerMinWidth), kPickerHeight));
+	if (ImGui::BeginPopup("##AssetPicker") == false)
+	{
+		return;
+	}
+
+	if (ImGui::IsWindowAppearing())
+	{
+		ImGui::SetKeyboardFocusHere();
+	}
+	Widgets::SearchField("##AssetPickerSearch", "Search assets", mAssetSearch, sizeof(mAssetSearch), ImGui::GetContentRegionAvail().x);
+
+	Gleam::TArray<const AssetItem*> candidates;
+	auto assetManager = Gleam::Globals::GameInstance->GetSubsystem<EAssetManager>();
+	assetManager->ForEachAsset([&candidates](const AssetItem& item)
+	{
+		if (AcceptsAssetType(item.type) and (mAssetSearch[0] == '\0' or ImStristr(item.name.c_str(), nullptr, mAssetSearch, nullptr) != nullptr))
+		{
+			candidates.push_back(&item);
+		}
+	});
+	std::sort(candidates.begin(), candidates.end(), [](const AssetItem* lhs, const AssetItem* rhs)
+	{
+		return lhs->name < rhs->name;
+	});
+
+	const auto drawCandidate = [&assetRef](const Gleam::AssetReference& reference, const char* name, const ImVec4& color, bool dimmed)
+	{
+		const ImVec2 rowMin = ImGui::GetCursorScreenPos();
+		const bool picked = ImGui::Selectable("##Candidate", assetRef == reference, ImGuiSelectableFlags_None, ImVec2(0.0f, kRowHeight));
+		TrackEdit();
+
+		auto drawList = ImGui::GetWindowDrawList();
+		DrawAssetTile(drawList, ImVec2(rowMin.x + 4.0f, rowMin.y + (kRowHeight - kTileSize) * 0.5f), kTileSize, color);
+		drawList->AddText(ImVec2(rowMin.x + 4.0f + kTileSize + 8.0f, rowMin.y + (kRowHeight - ImGui::GetFontSize()) * 0.5f), Widgets::ColorU32(dimmed ? Gleam::Theme::TextDim : Gleam::Theme::Text), name);
+
+		if (picked)
+		{
+			assetRef = reference;
+			MarkEditCommitted();
+			ImGui::CloseCurrentPopup();
+		}
+	};
+
+	ImGui::BeginChild("##AssetPickerList");
+	ImGui::PushID("None");
+	drawCandidate(Gleam::AssetReference(), "None", Gleam::Theme::TextDim, true);
+	ImGui::PopID();
+	for (uint32_t i = 0; i < candidates.size(); ++i)
+	{
+		const auto icon = GetAssetIcon(candidates[i]->type);
+		ImGui::PushID(static_cast<int>(i));
+		drawCandidate(candidates[i]->reference, candidates[i]->name.c_str(), icon.color, false);
+		ImGui::PopID();
+	}
+	ImGui::EndChild();
+
+	ImGui::EndPopup();
 }
 
 void PropertyDrawer::DrawCustom(const Gleam::TStringView label, size_t hash, UIFunction&& uiFunction)

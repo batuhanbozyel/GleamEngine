@@ -58,6 +58,18 @@ public:
 
 	const AssetItem* FindAsset(const Gleam::Path& path, const Gleam::Guid& type) const;
 
+	template<typename Function>
+	void ForEachAsset(Function&& function) const
+	{
+		for (const auto& [path, items] : mAssets)
+		{
+			for (const auto& item : items)
+			{
+				function(item);
+			}
+		}
+	}
+
 private:
 
 	struct AssetLocation

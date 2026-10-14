@@ -47,6 +47,8 @@ private:
 
 	void DrawSingleton(uint32_t typeHash);
 
+	void SyncMaterialSlots(const Gleam::TArray<Gleam::EntityHandle>& entities);
+
 	Gleam::World* mEditWorld = nullptr;
 
 	SelectionSystem* mSelectionSystem = nullptr;

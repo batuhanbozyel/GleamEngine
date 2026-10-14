@@ -87,6 +87,10 @@ private:
 
 	static void DrawAssetRow(uint32_t index, Gleam::AssetReference& assetRef);
 
+	static void DrawAssetPicker(Gleam::AssetReference& assetRef, float x, float y, float width);
+
+	static bool AcceptsAssetType(const Gleam::Guid& type);
+
 	static void TrackEdit();
 
 	static void MarkEditCommitted();
@@ -100,6 +104,10 @@ private:
 	static inline bool mEditDirty = false;
 
 	static inline UIFunction mPendingEdit = nullptr;
+
+	static inline const Gleam::Reflection::Attribute::AssetType* mAssetTypes = nullptr;
+
+	static inline char mAssetSearch[128] = "";
 
 	struct RotationCache
 	{

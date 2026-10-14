@@ -7,6 +7,8 @@
 
 namespace Gleam {
 
+struct MeshDescriptor;
+
 GSTRUCT(BoxCollider, "9C4A0E56-1B18-4E3F-B1F6-04D4707990D5", Serializable)
 {
 	GFIELD("654E98B7-C201-49C5-BC0F-51FDED825BC9", Serializable, PrettyName("Center"))
@@ -54,7 +56,7 @@ GSTRUCT(CapsuleCollider, "221FEA00-DCED-47E1-8779-BD73D4596EA5", Serializable)
 
 GSTRUCT(ConvexMeshCollider, "B35ED357-460B-4D7A-BAAC-E6E9CE263E4E", Serializable)
 {
-	GFIELD("1FECB525-7A03-4946-94C3-18E10E17FF92", Serializable, PrettyName("Mesh"))
+	GFIELD("1FECB525-7A03-4946-94C3-18E10E17FF92", Serializable, PrettyName("Mesh"), AssetType(TypeOf<MeshDescriptor>))
 	AssetReference mesh;
 
 	GFIELD("DBD647AE-E0A3-4860-A265-668571B25CE1", Serializable, PrettyName("Center"))
@@ -69,7 +71,7 @@ GSTRUCT(ConvexMeshCollider, "B35ED357-460B-4D7A-BAAC-E6E9CE263E4E", Serializable
 
 GSTRUCT(TriangleMeshCollider, "D4D01218-F598-451E-A981-227075C7696A", Serializable)
 {
-	GFIELD("DB562E22-BEC1-4077-99A0-83E4EDC209DA", Serializable, PrettyName("Mesh"))
+	GFIELD("DB562E22-BEC1-4077-99A0-83E4EDC209DA", Serializable, PrettyName("Mesh"), AssetType(TypeOf<MeshDescriptor>))
 	AssetReference mesh;
 
 	GFIELD("BA4506BB-A9E3-4789-8C88-0D1D05766397", Serializable, PrettyName("Is Trigger"))

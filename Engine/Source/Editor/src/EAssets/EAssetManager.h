@@ -25,6 +25,12 @@ public:
 
 	const AssetItem* FindAsset(const Gleam::Guid& guid) const;
 
+	template<typename Function>
+	void ForEachAsset(Function&& function) const
+	{
+		mRegistry.ForEachAsset(eastl::forward<Function>(function));
+	}
+
 	const AssetItem& CreateInputActionAsset(const Gleam::Path& directory);
 
 	const AssetItem* SaveInputActionAsset(const Gleam::Path& directory, const AssetItem& item, const Gleam::InputActionAssetDescriptor& descriptor);
