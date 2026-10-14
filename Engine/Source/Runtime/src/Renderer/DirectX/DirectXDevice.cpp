@@ -444,7 +444,7 @@ GraphicsPipeline GraphicsDevice::CompileGraphicsPipeline(const GraphicsPipelineS
 		blendState.RenderTarget[i].DestBlendAlpha = BlendModeToD3D12_BLEND(pipelineDesc.blendState.destinationAlphaBlendMode);
 		blendState.RenderTarget[i].BlendOp = BlendOpToD3D12_BLEND_OP(pipelineDesc.blendState.colorBlendOperation);
 		blendState.RenderTarget[i].BlendOpAlpha = BlendOpToD3D12_BLEND_OP(pipelineDesc.blendState.alphaBlendOperation);
-		blendState.RenderTarget[i].RenderTargetWriteMask = ColorWriteMaskToD3D12_COLOR_WRITE_ENABLE(pipelineDesc.blendState.writeMask);
+		blendState.RenderTarget[i].RenderTargetWriteMask = static_cast<UINT8>(ColorWriteMaskToD3D12_COLOR_WRITE_ENABLE(pipelineDesc.blendState.writeMask));
 	}
 	DX_CHECK(static_cast<ID3D12Device10*>(mHandle)->CreateGraphicsPipelineState(&psoDesc, __uuidof(ID3D12PipelineState*), &pipeline.mHandle));
 
@@ -662,7 +662,7 @@ MeshPipeline GraphicsDevice::CompileMeshPipeline(const MeshPipelineStateDescript
 		blendState.RenderTarget[i].DestBlendAlpha = BlendModeToD3D12_BLEND(pipelineDesc.blendState.destinationAlphaBlendMode);
 		blendState.RenderTarget[i].BlendOp = BlendOpToD3D12_BLEND_OP(pipelineDesc.blendState.colorBlendOperation);
 		blendState.RenderTarget[i].BlendOpAlpha = BlendOpToD3D12_BLEND_OP(pipelineDesc.blendState.alphaBlendOperation);
-		blendState.RenderTarget[i].RenderTargetWriteMask = ColorWriteMaskToD3D12_COLOR_WRITE_ENABLE(pipelineDesc.blendState.writeMask);
+		blendState.RenderTarget[i].RenderTargetWriteMask = static_cast<UINT8>(ColorWriteMaskToD3D12_COLOR_WRITE_ENABLE(pipelineDesc.blendState.writeMask));
 	}
 
 	CD3DX12_PIPELINE_MESH_STATE_STREAM psoStream(psoDesc);
@@ -976,7 +976,7 @@ DirectXDevice::DirectXDevice(RenderSurface* surface, ResourceReleaseQueue* relea
 
 	if (error)
 	{
-		char* error_msg = (char*)error->GetBufferPointer();
+		[[maybe_unused]] char* error_msg = (char*)error->GetBufferPointer();
 		GLEAM_ASSERT(false, "DirectX: Root signature error: {0}\n", error_msg);
 	}
 
@@ -1801,9 +1801,9 @@ D3D12_CPU_DESCRIPTOR_HANDLE DirectXDescriptorHeap::Allocate()
 	return view;
 }
 
-void DirectXDescriptorHeap::Release(D3D12_CPU_DESCRIPTOR_HANDLE handle)
+void DirectXDescriptorHeap::Release(D3D12_CPU_DESCRIPTOR_HANDLE view)
 {
-	heap.Release(GetResourceIndex(handle));
+	heap.Release(GetResourceIndex(view));
 }
 
 ShaderResourceIndex DirectXDescriptorHeap::GetResourceIndex(D3D12_CPU_DESCRIPTOR_HANDLE view)

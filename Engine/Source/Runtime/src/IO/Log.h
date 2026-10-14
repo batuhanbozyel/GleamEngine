@@ -134,7 +134,7 @@ private:
 
 #define GLEAM_AFFIRM(...) GLEAM_EXPAND(GLEAM_ASSERT_GET_MACRO(__VA_ARGS__)(__VA_ARGS__))
 
-static int ExecuteCommand(const Gleam::TString& cmd)
+inline int ExecuteCommand(const Gleam::TString& cmd)
 {
 	int exitCode = system((cmd + " > command.err 2>&1").c_str());
 	auto file = Gleam::Filesystem::OpenRead("command.err", Gleam::FileType::Text);

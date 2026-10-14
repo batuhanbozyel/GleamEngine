@@ -1,6 +1,10 @@
 include (${CMAKE_SOURCE_DIR}/CMake/CMakeUtils.cmake)
 include (${CMAKE_SOURCE_DIR}/CMake/PreseedClangCache.cmake)
 
+# Build dependencies optimized in Development configuration
+set(CMAKE_C_FLAGS_DEVELOPMENT ${CMAKE_C_FLAGS_RELWITHDEBINFO})
+set(CMAKE_CXX_FLAGS_DEVELOPMENT ${CMAKE_CXX_FLAGS_RELWITHDEBINFO})
+
 # Set defaults preventing destination file conflicts
 set(SDL_CMAKE_DEBUG_POSTFIX "" CACHE STRING "Name suffix for debug builds" FORCE)
 set(SDL_EXTRA_LIBS "" CACHE STRING "SDL library dependencies" FORCE PARENT_SCOPE)
@@ -39,6 +43,10 @@ target_include_directories(imgui PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/DirectXAgilitySDK/build/native/include
 )
 
+# Add MikkTSpace as static library
+add_library(MikkTSpace STATIC ${CMAKE_CURRENT_SOURCE_DIR}/MikkTSpace/mikktspace.c)
+target_include_directories(MikkTSpace PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/MikkTSpace)
+
 add_subdirectory(fmt)
 add_subdirectory(entt)
 add_subdirectory(EASTL)
@@ -67,5 +75,6 @@ set_target_properties (
     GleamReflect
     meshoptimizer
     box3d
+    MikkTSpace
     PROPERTIES FOLDER Dependencies
 )

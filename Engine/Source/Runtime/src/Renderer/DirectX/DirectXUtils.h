@@ -12,14 +12,14 @@
 
 namespace Gleam {
 
-#define DX_CHECK(x) {HRESULT result = (x);\
+#define DX_CHECK(x) {[[maybe_unused]] HRESULT result = (x);\
 					GLEAM_ASSERT(SUCCEEDED(result), HRESULTtoString(result));}
 
 #define GPU_VENDOR_ID_NVIDIA	0x10DE
 #define GPU_VENDOR_ID_AMD		0x1002
 #define GPU_VENDOR_ID_INTEL		0x8086
 
-static uint32_t GPUVendorIDFromName(const TStringView vendor)
+inline uint32_t GPUVendorIDFromName(const TStringView vendor)
 {
 	const TString name = StringUtils::ToLower(TString(vendor));
 	if (name == "nvidia")
@@ -102,7 +102,7 @@ static constexpr const char* ID3D12CommandListTypeToString(D3D12_COMMAND_LIST_TY
 	}
 }
 
-static void WaitForID3D12Fence(ID3D12Fence* fence, uint64_t value)
+inline void WaitForID3D12Fence(ID3D12Fence* fence, uint64_t value)
 {
 	if (fence->GetCompletedValue() >= value)
 	{
@@ -114,7 +114,7 @@ static void WaitForID3D12Fence(ID3D12Fence* fence, uint64_t value)
 
 	if (fenceEvent != 0)
 	{
-		DWORD result = ::WaitForSingleObject(fenceEvent, INFINITE);
+		[[maybe_unused]] DWORD result = ::WaitForSingleObject(fenceEvent, INFINITE);
 		::CloseHandle(fenceEvent);
 		GLEAM_ASSERT(result == WAIT_OBJECT_0);
 	}

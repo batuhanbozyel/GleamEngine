@@ -562,8 +562,8 @@ void JSONSerializer::Initialize()
 					}
 					case Reflection::MetaType::Class:
 					{
-						const auto classDesc = Reflection::GetClass(element.TypeHash());
-						arr.resize(elements.Size() * classDesc->GetSize());
+						const auto elementClassDesc = Reflection::GetClass(element.TypeHash());
+						arr.resize(elements.Size() * elementClassDesc->GetSize());
 						break;
 					}
 					case Reflection::MetaType::Array:
@@ -611,8 +611,8 @@ void JSONSerializer::Initialize()
 				}
 				case Reflection::MetaType::Class:
 				{
-					const auto classDesc = Reflection::GetClass(element.TypeHash());
-					arr.resize(node.object.Size() * classDesc->GetSize());
+					const auto elementClassDesc = Reflection::GetClass(element.TypeHash());
+					arr.resize(node.object.Size() * elementClassDesc->GetSize());
 					break;
 				}
 				case Reflection::MetaType::Array:

@@ -1,17 +1,25 @@
 cmake_minimum_required(VERSION 3.13)
 
-set(CMAKE_CONFIGURATION_TYPES Debug Release RelWithDebInfo CACHE TYPE INTERNAL FORCE)
+set(CMAKE_CONFIGURATION_TYPES Debug Development Release RelWithDebInfo CACHE TYPE INTERNAL FORCE)
 
 option(ENABLE_ASAN "Enable Address Sanitizer" OFF)
 
 project(GleamEngine)
 
+    if (MSVC)
+        set(CMAKE_C_FLAGS_DEVELOPMENT "/MD /Zi /Ob0 /Od /RTC1")
+        set(CMAKE_CXX_FLAGS_DEVELOPMENT "/MD /Zi /Ob0 /Od /RTC1")
+        set(CMAKE_EXE_LINKER_FLAGS_DEVELOPMENT "/debug /INCREMENTAL")
+        set(CMAKE_SHARED_LINKER_FLAGS_DEVELOPMENT "/debug /INCREMENTAL")
+    else()
+        set(CMAKE_C_FLAGS_DEVELOPMENT "-O0 -g")
+        set(CMAKE_CXX_FLAGS_DEVELOPMENT "-O0 -g")
+    endif()
+
     if (WIN32)
         set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT Editor)
     elseif (APPLE)
         set(CMAKE_OSX_ARCHITECTURES "arm64")
-        set(CMAKE_XCODE_GENERATE_SCHEME true)
-        set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY XCODE_SCHEME_EXECUTABLE Editor)
     endif()
 
     #preventing in source build
@@ -26,18 +34,12 @@ project(GleamEngine)
 
     #check the compiler
     MESSAGE(STATUS "compiler id ${CMAKE_CXX_COMPILER_ID} ${MSVC}")
-    # using Clang
-    if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
-        set(COMMON_CXX_FLAGS "${COMMON_CXX_FLAGS} -g3 -O0 -Wall -pedantic -Wextra -m64 -mavx2 -mfma -ffast-math")
-    # using GCC
-    elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
-        set(COMMON_CXX_FLAGS "${COMMON_CXX_FLAGS} -Wall -pedantic -Wextra -m64 -mavx2 -mfma -ffast-math")
-    # using Intel C++
-    elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
-    # using Visual Studio C++
-    elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
-        set(COMMON_CXX_FLAGS "${COMMON_CXX_FLAGS}  /std:c++20 /W4 /arch:AVX2 /fp:fast /MP /DNOMINMAX")
-        add_compile_options(/wd4251 /wd4275 /wd4099 /wd4204)
+    if (MSVC)
+        string(REPLACE "/W3" "" CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
+        string(REPLACE "/W3" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+        add_compile_options(/MP /arch:AVX2 /wd4100 /wd4201 /wd4251 /wd4275 /wd4099 /wd4204)
+    elseif (NOT APPLE)
+        add_compile_options(-mavx2 -mfma)
     endif()
 
     add_compile_definitions(EA_DEBUG=0 EASTL_DEBUG=0 EASTL_NAME_ENABLED=0)

@@ -64,9 +64,9 @@ DirectXSwapchain::~DirectXSwapchain()
 	}
 	mTextures.clear();
 
-	for (auto& ctx : mContext)
+	for (auto& frameContext : mContext)
 	{
-		ctx.fence->Release();
+		frameContext.fence->Release();
 	}
 	mContext.clear();
 
@@ -119,9 +119,9 @@ void DirectXSwapchain::Configure(DirectXDevice* device, const RendererConfig& co
 		auto& ctx = mContext[mCurrentFrameIndex];
 		WaitForID3D12Fence(ctx.fence, ctx.fenceValue);
 		
-		for (auto& ctx : mContext)
+		for (auto& frameContext : mContext)
 		{
-			ctx.fence->Release();
+			frameContext.fence->Release();
 		}
 		mContext.clear();
 
@@ -163,7 +163,6 @@ void DirectXSwapchain::Resize(GraphicsDevice* device, const Size& size)
 	}
 	else
 	{
-		SDL_Window* window = Globals::Engine->GetSubsystem<WindowSystem>()->GetSDLWindow();
 		HWND hwnd = (HWND)SDL_GetPointerProperty(SDL_GetWindowProperties(window), SDL_PROP_WINDOW_WIN32_HWND_POINTER, NULL);
 
 		IDXGISwapChain1* swapchain1 = nullptr;

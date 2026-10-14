@@ -14,12 +14,12 @@ const AssetItem& AssetRegistry::RegisterAsset(const Gleam::Path& path, const Gle
 	if (item.reference.guid == Gleam::Guid::InvalidGuid())
 	{
 		auto asset = Gleam::AssetReference{ .guid = Gleam::Guid::NewGuid() };
-		auto item = AssetItem{
+		auto newItem = AssetItem{
 			.reference = asset,
 			.type = type,
 			.name = path.Stem()
 		};
-		return RegisterAsset(path, item);
+		return RegisterAsset(path, newItem);
 	}
 	return item;
 }

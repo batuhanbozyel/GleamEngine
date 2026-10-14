@@ -427,7 +427,7 @@ static constexpr uint32_t Hash(const TString& str)
 	return Hash(str.c_str());
 }
 
-static TString ToLower(const TString& str)
+inline TString ToLower(const TString& str)
 {
     TString newStr = str;
 	eastl::transform(newStr.begin(), newStr.end(), newStr.begin(),
@@ -435,7 +435,7 @@ static TString ToLower(const TString& str)
     return newStr;
 }
 
-static TString ToUpper(const TString& str)
+inline TString ToUpper(const TString& str)
 {
     TString newStr = str;
 	eastl::transform(newStr.begin(), newStr.end(), newStr.begin(),
@@ -443,7 +443,7 @@ static TString ToUpper(const TString& str)
     return newStr;
 }
 
-static TWString Convert(const TString& as)
+inline TWString Convert(const TString& as)
 {
 	if (as.empty()) return TWString();
 
@@ -452,7 +452,7 @@ static TWString Convert(const TString& as)
 	return str;
 }
 
-static TWString Convert(const TStringView& as)
+inline TWString Convert(const TStringView& as)
 {
 	if (as.empty()) return TWString();
 
@@ -461,7 +461,7 @@ static TWString Convert(const TStringView& as)
 	return str;
 }
 
-static TString Convert(const TWString& as)
+inline TString Convert(const TWString& as)
 {
     if (as.empty()) return TString();
 
@@ -470,7 +470,7 @@ static TString Convert(const TWString& as)
 	return str;
 }
 
-static TString Convert(const TWStringView& as)
+inline TString Convert(const TWStringView& as)
 {
 	if (as.empty()) return TString();
 

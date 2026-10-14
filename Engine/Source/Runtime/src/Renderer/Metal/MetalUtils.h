@@ -13,7 +13,7 @@
 
 namespace Gleam {
 
-static void WaitForMTLSharedEvent(id<MTLSharedEvent> sharedEvent, uint64_t value)
+inline void WaitForMTLSharedEvent(id<MTLSharedEvent> sharedEvent, uint64_t value)
 {
 	if ([sharedEvent signaledValue] >= value)
 	{

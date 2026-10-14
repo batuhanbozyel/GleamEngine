@@ -2,14 +2,12 @@ include (${CMAKE_SOURCE_DIR}/CMake/CMakeUtils.cmake)
 
 find_package(Python COMPONENTS Interpreter REQUIRED)
 
-# Add MikkTSpace as static library
-add_library(MikkTSpace STATIC ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/MikkTSpace/mikktspace.c)
-set_target_properties(MikkTSpace PROPERTIES FOLDER Dependencies)
-target_include_directories(MikkTSpace PRIVATE ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/MikkTSpace)
-
-set(INCLUDE_DIRS
+set(ENGINE_INCLUDE_DIRS
     src
     ${CMAKE_SOURCE_DIR}/Engine/Source/Runtime/src
+)
+
+set(THIRDPARTY_INCLUDE_DIRS
     ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/EASTL/include
     ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/GleamReflect/include
     ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/SDL/include
@@ -25,6 +23,7 @@ set(INCLUDE_DIRS
     ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/ImGuizmo
     ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/DirectXAgilitySDK/build/native/include
 )
+set(INCLUDE_DIRS ${ENGINE_INCLUDE_DIRS} ${THIRDPARTY_INCLUDE_DIRS})
 
 file(GLOB_RECURSE SOURCE_FILES 
     ${CMAKE_CURRENT_SOURCE_DIR}/src/*.c*
@@ -49,16 +48,18 @@ file(GLOB_RECURSE HEADER_FILES
 list(FILTER HEADER_FILES EXCLUDE REGEX ".*Reflection\\.generated\\.h$")
 
 add_executable(Editor WIN32 MACOSX_BUNDLE ${SOURCE_FILES})
-target_include_directories(Editor PRIVATE ${INCLUDE_DIRS})
-target_include_directories(Editor PRIVATE $<TARGET_PROPERTY:box3d,INTERFACE_INCLUDE_DIRECTORIES>)
+target_include_directories(Editor PRIVATE ${ENGINE_INCLUDE_DIRS})
+target_include_directories(Editor SYSTEM PRIVATE ${THIRDPARTY_INCLUDE_DIRS})
+target_include_directories(Editor SYSTEM PRIVATE $<TARGET_PROPERTY:box3d,INTERFACE_INCLUDE_DIRECTORIES>)
 target_link_directories(Editor PRIVATE ${CMAKE_BINARY_DIR}/$<CONFIG>)
 
 if (APPLE)
-    set_target_properties(Editor PROPERTIES MACOSX_BUNDLE YES XCODE_ATTRIBUTE_CLANG_ENABLE_OBJC_ARC YES)
+    set_target_properties(Editor PROPERTIES MACOSX_BUNDLE YES XCODE_ATTRIBUTE_CLANG_ENABLE_OBJC_ARC YES XCODE_GENERATE_SCHEME YES)
 endif()
 
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${SOURCE_FILES})
 SET_WORKING_DIRECTORY(Editor ${CMAKE_SOURCE_DIR})
+GLEAM_SET_WARNINGS(Editor)
 
 # Link Runtime
 get_target_property(GLEAM_RUNTIME_LIBS Runtime LINK_LIBRARIES)
@@ -111,7 +112,7 @@ target_compile_definitions(
     "NOMINMAX"
     
     PUBLIC
-    $<$<CONFIG:Debug>:GDEBUG>
+    $<$<CONFIG:Debug,Development>:GDEBUG>
     $<$<CONFIG:Release>:GRELEASE>
 )
 
@@ -122,7 +123,7 @@ add_custom_command(
     OUTPUT ${SHADER_STAMP_FILE}
     COMMAND Python::Interpreter ${CMAKE_SOURCE_DIR}/Tools/CompileShaders.py
         "-d" ${HLSL_FILE_PATH} 
-        $<$<CONFIG:Debug>:--debug>
+        $<$<CONFIG:Debug,Development>:--debug>
     COMMAND ${CMAKE_COMMAND} -E touch ${SHADER_STAMP_FILE}
     DEPENDS ${HEADER_FILES} ${SHADER_FILES}
     COMMENT "Compiling editor shaders..."
