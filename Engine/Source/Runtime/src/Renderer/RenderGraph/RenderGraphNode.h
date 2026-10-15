@@ -189,11 +189,12 @@ struct RenderGraphTextureNode final : public RenderGraphResourceNode
 	}
 
 	RenderGraphTextureNode(uint32_t uniqueId, const RenderTextureDescriptor& descriptor, bool transient)
-		: RenderGraphResourceNode(uniqueId, transient), texture(descriptor),
+		: RenderGraphResourceNode(uniqueId, transient),
 		clearColor(descriptor.clearColor),
 		clearStencil(descriptor.clearStencil),
 		clearDepth(descriptor.clearDepth),
-		clearBuffer(descriptor.clearBuffer)
+		clearBuffer(descriptor.clearBuffer),
+		texture(descriptor)
 	{
 
 	}

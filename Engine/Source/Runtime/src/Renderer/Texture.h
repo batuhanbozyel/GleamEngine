@@ -18,17 +18,17 @@ public:
 	Texture& operator=(const Texture& other) = default;
 
 	Texture(const TextureDescriptor& descriptor)
-		: mDescriptor(descriptor)
-		, mMipMapLevels(descriptor.useMipMap ? CalculateMipLevels(descriptor.size) : 1)
+		: mMipMapLevels(descriptor.useMipMap ? CalculateMipLevels(descriptor.size) : 1)
+		, mDescriptor(descriptor)
 	{
 		
 	}
 
 	Texture(const TextureDescriptor& descriptor, NativeGraphicsHandle handle, RenderTargetView rtv)
 		: ShaderResource(handle)
+		, mMipMapLevels(descriptor.useMipMap ? CalculateMipLevels(descriptor.size) : 1)
 		, mView(rtv)
 		, mDescriptor(descriptor)
-		, mMipMapLevels(descriptor.useMipMap ? CalculateMipLevels(descriptor.size) : 1)
 	{
 		
 	}

@@ -34,7 +34,7 @@ public:
     Shader& operator=(const Shader& other) = default;
     
     Shader(const TString& entryPoint, ShaderStage stage)
-        : mEntryPoint(entryPoint), mStage(stage)
+        : mStage(stage), mEntryPoint(entryPoint)
     {
         
     }

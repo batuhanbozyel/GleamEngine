@@ -89,7 +89,7 @@ void ReflectionProbeRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBla
 	{
 		passData.probe = builder.WriteTexture(captureData.probe);
 	},
-	[this, &sceneData, globalProbe](const CommandBuffer* cmd, const MipmapGenerationData& passData)
+	[this, globalProbe](const CommandBuffer* cmd, const MipmapGenerationData& passData)
 	{
 		const auto& probeTexture = passData.probe.GetTexture();
 
@@ -142,7 +142,7 @@ void ReflectionProbeRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBla
 		passData.targetTexture = builder.WriteTexture(passData.targetTexture);
 		passData.probe = builder.ReadTexture(mipmapData.probe);
 	},
-	[this, &sceneData, globalProbe](const CommandBuffer* cmd, const DiffuseConvolutionData& passData)
+	[this, globalProbe](const CommandBuffer* cmd, const DiffuseConvolutionData& passData)
 	{
 		const auto& targetTexture = passData.targetTexture.GetTexture();
 		uint32_t resolution = Math::DivideRoundingUp((uint32_t)globalProbe.resolution, 16u);
@@ -182,7 +182,7 @@ void ReflectionProbeRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBla
 		passData.targetTexture = builder.WriteTexture(passData.targetTexture);
 		passData.probe = builder.ReadTexture(mipmapData.probe);
 	},
-	[this, &sceneData, globalProbe](const CommandBuffer* cmd, const SpecularConvolutionData& passData)
+	[this, globalProbe](const CommandBuffer* cmd, const SpecularConvolutionData& passData)
 	{
 		const auto& targetTexture = passData.targetTexture.GetTexture();
 		uint32_t maxMipLevel = Math::Min(targetTexture.GetMipMapLevels(), (uint32_t)SPECULAR_RADIANCE_MAX_MIP_COUNT);

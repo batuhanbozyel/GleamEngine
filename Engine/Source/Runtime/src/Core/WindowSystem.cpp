@@ -265,6 +265,10 @@ void WindowSystem::EventHandler(SDL_WindowEvent windowEvent)
 			EventDispatcher<WindowCloseEvent>::Publish(WindowCloseEvent(SDL_GetWindowFromID(windowEvent.windowID)));
 			break;
 		}
+		default:
+		{
+			break;
+		}
 	}
 }
 

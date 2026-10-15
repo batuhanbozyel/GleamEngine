@@ -10,8 +10,8 @@
 using namespace Gleam;
 
 GPUAllocator::GPUAllocator(GraphicsDevice* device, const GPUAllocatorDescriptor& descriptor)
-	: mDevice(device)
-	, mName(descriptor.name)
+	: mName(descriptor.name)
+	, mDevice(device)
 {
 	mBlockSizes[(uint32_t)MemoryType::CPU] = descriptor.cpuBlockSize;
 	mBlockSizes[(uint32_t)MemoryType::GPU] = descriptor.gpuBlockSize;

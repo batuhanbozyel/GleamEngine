@@ -16,8 +16,8 @@ class AssetPackage
 public:
 	
 	AssetPackage(EAssetManager* assetManager, AssetRegistry* registry)
-		: mAssetManager(assetManager)
-		, mRegistry(registry)
+		: mRegistry(registry)
+		, mAssetManager(assetManager)
 	{
 
 	}

@@ -51,11 +51,11 @@ static size_t ComputeMaterialInstanceSize(const TArray<MaterialProperty>& proper
 
 Material::Material(const AssetReference& reference, const AssetHeader& header, const MaterialDescriptor& descriptor)
     : IMaterial(reference, header, descriptor.properties)
-	, mDescriptor(descriptor)
+	, mInstanceSize(ComputeMaterialInstanceSize(descriptor.properties))
 	, mPipelineStateHash((uint32_t)eastl::hash<MaterialDescriptor>()(descriptor))
 	, mSurfaceShaderHash((uint32_t)eastl::hash<TString>()(descriptor.surfaceShader))
+	, mDescriptor(descriptor)
 	, mInstanceDescriptorHeap(MaxMaterialInstances)
-	, mInstanceSize(ComputeMaterialInstanceSize(descriptor.properties))
 {
     static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
 	auto device = renderSystem->GetDevice();

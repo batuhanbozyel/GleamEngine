@@ -21,8 +21,8 @@
 using namespace GEditor;
 
 ViewStack::ViewStack(const Gleam::Path& iniPath, float fontScale)
-	: mIniPath(iniPath.String())
-	, mFontScale(fontScale)
+	: mFontScale(fontScale)
+	, mIniPath(iniPath.String())
 {
 
 }
