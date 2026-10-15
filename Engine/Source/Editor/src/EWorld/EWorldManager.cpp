@@ -24,7 +24,7 @@ using namespace GEditor;
 EWorldManager::EWorldManager(Gleam::World* world)
 	: mEditWorld(world)
 {
-
+	Gleam::Globals::Engine->GetSubsystem<Gleam::InputSystem>()->SetWorldInputEnabled(false);
 }
 
 EWorldManager::~EWorldManager() = default;
@@ -140,14 +140,17 @@ void EWorldManager::BeginPlay(Gleam::Application* app)
 	}
 
 	app->GetSubsystem<Gleam::WorldManager>()->SetActiveWorld(mPlayWorld.get());
+	Gleam::Globals::Engine->GetSubsystem<Gleam::InputSystem>()->SetWorldInputEnabled(true);
 	mPlayState = PlayState::Playing;
 }
 
 void EWorldManager::EndPlay(Gleam::Application* app)
 {
+	auto inputSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::InputSystem>();
+	inputSystem->SetWorldInputEnabled(false);
+	inputSystem->DestroyPlayers();
 	app->GetSubsystem<Gleam::WorldManager>()->SetActiveWorld(mEditWorld);
 	mPlayWorld.reset();
-	Gleam::Globals::Engine->GetSubsystem<Gleam::InputSystem>()->DestroyPlayers();
 	mPlayState = PlayState::Edit;
 }
 

@@ -1,6 +1,6 @@
 #pragma once
 #include "Event.h"
-#include "Input/PlayerInput.h"
+#include "Input/InputUser.h"
 
 namespace Gleam {
 
@@ -52,21 +52,21 @@ class PlayerEvent : public Event
 {
 public:
 
-	PlayerInput* GetPlayer() const { return mPlayer; }
+	InputUser* GetPlayer() const { return mPlayer; }
 
 protected:
 
-	PlayerEvent(PlayerInput* player)
+	PlayerEvent(InputUser* player)
 		: mPlayer(player) {}
 
-	PlayerInput* mPlayer;
+	InputUser* mPlayer;
 };
 
 class PlayerJoinedEvent : public PlayerEvent
 {
 public:
 
-	PlayerJoinedEvent(PlayerInput* player)
+	PlayerJoinedEvent(InputUser* player)
 		: PlayerEvent(player) {}
 
 	virtual TString ToString() const override
@@ -81,7 +81,7 @@ class PlayerLeftEvent : public PlayerEvent
 {
 public:
 
-	PlayerLeftEvent(PlayerInput* player)
+	PlayerLeftEvent(InputUser* player)
 		: PlayerEvent(player) {}
 
 	virtual TString ToString() const override

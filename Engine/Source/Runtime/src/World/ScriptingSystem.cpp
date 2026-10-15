@@ -10,6 +10,8 @@ void ScriptingSystem::Initialize(Engine* engine)
 	RegisterMetaComponent<SkyAtmosphere>();
 	RegisterMetaComponent<ReflectionProbe>();
 	RegisterMetaComponent<RigidBody>();
+	RegisterMetaComponent<PlayerInput>();
+	RegisterMetaComponent<PlayerInputManager>();
 }
 
 void ScriptingSystem::Shutdown(Engine* engine)

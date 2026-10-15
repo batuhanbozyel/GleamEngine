@@ -75,6 +75,8 @@ private:
 
 	Gleam::Path mFile;
 
+	Gleam::TString mName;
+
 	char mNameBuffer[128] = "";
 
 	bool mEditingName = false;

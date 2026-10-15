@@ -551,7 +551,14 @@ void ContentBrowser::DrawAssetGrid()
 		{
 			if (ImGui::MenuItem("Input Actions"))
 			{
-				const auto& asset = mAssetManager->CreateInputActionAsset(mCurrentDirectory);
+				Gleam::InputActionMapDescriptor map;
+				map.id = Gleam::Guid::NewGuid();
+				map.name = "Player";
+
+				Gleam::InputActionAssetDescriptor descriptor;
+				descriptor.maps.push_back(map);
+
+				const auto& asset = mAssetManager->CreateAsset(mCurrentDirectory, "New Input Actions", descriptor);
 				auto fileName = asset.reference.guid.ToString();
 				fileName.append(".asset");
 				mSelectedEntry = mCurrentDirectory / fileName;
@@ -663,7 +670,7 @@ void ContentBrowser::DrawRenameDialog()
 
 		ImGui::SetNextItemWidth(280.0f);
 		const bool submitted = ImGui::InputText("##Name", mRenameBuffer, sizeof(mRenameBuffer), ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_AutoSelectAll);
-		const bool valid = mAssetManager->IsValidInputActionAssetName(mContextEntry.path.Parent(), mContextEntry.asset, mRenameBuffer);
+		const bool valid = mAssetManager->IsValidAssetName(mContextEntry.path.Parent(), mContextEntry.asset, mRenameBuffer);
 		if (valid == false)
 		{
 			ImGui::TextColored(Gleam::Theme::Error, "Name is empty, contains a path separator or is already taken");
@@ -679,10 +686,10 @@ void ContentBrowser::DrawRenameDialog()
 		{
 			if (mContextEntry.asset.name != Gleam::TStringView(mRenameBuffer))
 			{
-				if (auto renamed = mAssetManager->RenameInputActionAsset(mContextEntry.path, mContextEntry.asset, mRenameBuffer))
+				if (mAssetManager->RenameAsset(mContextEntry.path, mContextEntry.asset, mRenameBuffer))
 				{
 					auto viewStack = Gleam::Globals::GameInstance->GetSubsystem<ViewStack>();
-					viewStack->GetView<InputActionsEditor>()->OnAssetRenamed(*renamed);
+					viewStack->GetView<InputActionsEditor>()->OnAssetRenamed(mContextEntry.asset);
 					RefreshAssetGrid();
 				}
 			}
@@ -708,7 +715,7 @@ void ContentBrowser::DrawDeleteDialog()
 
 		if (confirmed)
 		{
-			if (mAssetManager->RemoveInputActionAsset(mContextEntry.path, mContextEntry.asset))
+			if (mAssetManager->RemoveAsset(mContextEntry.path, mContextEntry.asset))
 			{
 				auto viewStack = Gleam::Globals::GameInstance->GetSubsystem<ViewStack>();
 				viewStack->GetView<InputActionsEditor>()->OnAssetRemoved(mContextEntry.asset.reference.guid);

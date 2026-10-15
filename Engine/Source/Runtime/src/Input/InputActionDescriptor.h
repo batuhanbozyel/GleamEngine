@@ -141,15 +141,15 @@ GSTRUCT(InputActionMapDescriptor, "3BBE3711-B6B3-489D-83F4-AEF36968212E", Serial
 	GFIELD("E0237A01-8B39-42F8-A003-B6218C640FC4", Serializable)
 	TString name;
 
+	GFIELD("55EBA1E9-041E-4339-8E6C-78D14690B02B", Serializable)
+	int32_t priority = 0;
+
 	GFIELD("7A745B0A-4C9A-4384-9DE0-574ADA47BC9D", Serializable)
 	TArray<InputActionDescriptor> actions;
 };
 
 GSTRUCT(InputActionAssetDescriptor, "4CAD0553-93E9-499A-97A5-4113451B9272", Serializable)
 {
-	GFIELD("B85E15AB-FAF8-4BFD-856D-4F6D2E6AF7B6", Serializable)
-	TString name;
-
 	GFIELD("657A6F2C-5545-4D29-807D-D9889B220587", Serializable)
 	TArray<InputActionMapDescriptor> maps;
 };

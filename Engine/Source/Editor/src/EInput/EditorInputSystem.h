@@ -1,12 +1,7 @@
 #pragma once
 #include "Core/Subsystem.h"
 #include "Container/String.h"
-
-namespace Gleam {
-class PlayerInput;
-class InputAction;
-class InputActionMap;
-} // namespace Gleam
+#include "Input/PlayerInput.h"
 
 namespace GEditor {
 
@@ -81,7 +76,9 @@ public:
 
 private:
 
-	Gleam::PlayerInput* mUser = nullptr;
+	Gleam::InputUser* mUser = nullptr;
+
+	Gleam::PlayerInput mInput;
 
 	Gleam::InputActionMap* mGlobalMap = nullptr;
 

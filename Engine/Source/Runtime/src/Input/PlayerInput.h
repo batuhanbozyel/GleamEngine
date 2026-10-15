@@ -1,93 +1,64 @@
 #pragma once
 #include "InputActionMap.h"
 
+#include "Assets/AssetReference.h"
+
 namespace Gleam {
 
-class InputActionAsset;
+class InputUser;
 
-using InputRebindCallback = std::function<void(bool completed)>;
+GENUM(PlayerJoinBehavior, "BD64C7CC-6F84-4133-B834-6474A32C2017", Serializable, PrettyName("Join Behavior"))
+{
+	GITEM(Manual, "2665CCDE-81D7-44C0-97B9-3145030B2B26"),
+	GITEM(JoinOnButtonPress, "5C7555AC-025B-4139-A62A-0D64A143E45E", PrettyName("Join On Button Press"))
+};
 
-class PlayerInput
+GSTRUCT(PlayerInputManager, "65E4057E-DA6E-4C1F-8FD6-FB72A475B11E", EntityComponent, Serializable, PrettyName("Player Input Manager"))
+{
+	GFIELD("B89B8E67-3EC5-4ABE-81DB-964815F09074", Serializable, PrettyName("Join Behavior"))
+	PlayerJoinBehavior joinBehavior = PlayerJoinBehavior::Manual;
+
+	GFIELD("0F2D092A-0B71-4E67-845E-5523F69D0CA1", Serializable, PrettyName("Max Players"))
+	uint32_t maxPlayers = 4;
+};
+
+GSTRUCT(PlayerInput, "1875574F-F821-42DE-9315-7ECAA057FDE1", EntityComponent, Serializable, PrettyName("Player Input"))
 {
 	friend class InputSystem;
-public:
 
-	static constexpr uint32_t InvalidPlayerIndex = ~0u;
+	GFIELD("A55ADE84-0F50-4E38-826B-C2D2509046D5", Serializable, PrettyName("Actions"), AssetType(TypeOf<InputActionAssetDescriptor>))
+	AssetReference actions;
 
-	PlayerInput(uint32_t playerIndex);
+	GFIELD("12AF9959-1D0C-4C8E-BA2A-57B988B8A9BC", Serializable, PrettyName("Player Index"))
+	uint32_t playerIndex = 0;
 
-	uint32_t GetPlayerIndex() const;
+	PlayerInput() = default;
 
-	bool IsEnabled() const;
+	PlayerInput(const PlayerInput& other);
 
-	void SetEnabled(bool enabled);
+	PlayerInput(PlayerInput&& other) = default;
 
-	void PairDevice(InputDevice* device);
+	PlayerInput& operator=(const PlayerInput& other);
 
-	void UnpairDevice(InputDevice* device);
+	PlayerInput& operator=(PlayerInput&& other) = default;
 
-	void UnpairAllDevices();
+	void Build(const InputActionAssetDescriptor& descriptor);
 
-	bool IsPaired(const InputDevice* device) const;
-
-	const TArray<InputDevice*>& GetPairedDevices() const;
-
-	InputActionMap* AddActionMap(const InputActionMapDescriptor& descriptor, int32_t priority);
-
-	InputActionMap* AddActionMap(const InputActionAsset* asset, TStringView mapName, int32_t priority);
-
-	void RemoveActionMap(InputActionMap* map);
+	InputUser* GetUser() const;
 
 	InputActionMap* FindActionMap(TStringView name) const;
 
 	InputAction* FindAction(TStringView path) const;
 
-	const TArray<Scope<InputActionMap>>& GetActionMaps() const;
-
-	void ApplyBindingOverride(InputAction* action, uint32_t binding, uint32_t part, const InputControl& control);
-
-	void ClearBindingOverrides();
-
-	TString SaveBindingOverrides() const;
-
-	void LoadBindingOverrides(const TString& data);
-
-	void StartInteractiveRebind(InputAction* action, uint32_t binding, uint32_t part, InputRebindCallback&& callback);
-
-	void CancelInteractiveRebind();
-
-	bool IsRebinding() const;
+	const TArray<RefCounted<InputActionMap>>& GetActionMaps() const;
 
 private:
 
-	struct RebindOperation
-	{
-		InputAction* action = nullptr;
-		uint32_t binding = 0;
-		uint32_t part = 0;
-		InputRebindCallback callback;
-		bool armed = false;
-	};
+	TArray<RefCounted<InputActionMap>> mMaps;
 
-	void UpdateRebind();
+	AssetReference mBuiltActions;
 
-	void FinishRebind(bool completed);
-
-	void ApplyStoredOverrides(InputActionMap* map);
-
-	uint32_t mPlayerIndex;
-
-	bool mEnabled = true;
-
-	bool mPairNewDevices = false;
-
-	TArray<InputDevice*> mDevices;
-
-	TArray<Scope<InputActionMap>> mMaps;
-
-	InputBindingOverrides mOverrides;
-
-	Optional<RebindOperation> mRebind;
+	InputUser* mUser = nullptr;
 
 };
 

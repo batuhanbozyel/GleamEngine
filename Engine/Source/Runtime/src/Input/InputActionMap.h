@@ -6,11 +6,13 @@
 
 namespace Gleam {
 
-class PlayerInput;
+class InputUser;
 
 class InputConsumption
 {
 public:
+
+	void BeginMap(const Guid& map);
 
 	bool IsConsumed(const InputDevice* device, uint32_t code) const;
 
@@ -18,25 +20,26 @@ public:
 
 private:
 
-	HashSet<uint64_t> mControls;
+	HashMap<uint64_t, Guid> mControls;
+
+	HashSet<uint64_t> mMapControls;
+
+	Guid mMap;
 
 };
 
 class InputActionMap
 {
-	friend class PlayerInput;
 	friend class InputSystem;
 public:
 
-	InputActionMap(PlayerInput* player, const InputActionMapDescriptor& descriptor, int32_t priority);
+	InputActionMap(const InputActionMapDescriptor& descriptor);
 
 	const Guid& GetId() const;
 
 	const TString& GetName() const;
 
 	int32_t GetPriority() const;
-
-	PlayerInput* GetPlayer() const;
 
 	bool IsEnabled() const;
 
@@ -66,23 +69,25 @@ private:
 
 	bool IsActive() const;
 
+	void SetUserActive(bool active);
+
 	void RefreshActivation();
 
 	void BuildBindingOrder();
 
 	void ResolveBindings();
 
-	void Update(InputConsumption& consumption, double time);
+	void SyncBindingOverrides(const InputUser& user);
 
-	InputBindingState EvaluateBinding(const InputBindingDescriptor& binding, InputValueType valueType, InputConsumption& consumption) const;
+	void Update(const InputUser& user, InputConsumption& consumption, double time);
 
-	ControlSample SampleControl(const InputControl& control, const InputConsumption& consumption) const;
+	InputBindingState EvaluateBinding(const InputBindingDescriptor& binding, InputValueType valueType, const TArray<InputDevice*>& devices, InputConsumption& consumption) const;
 
-	void ConsumeControl(const InputControl& control, InputConsumption& consumption) const;
+	ControlSample SampleControl(const InputControl& control, const TArray<InputDevice*>& devices, const InputConsumption& consumption) const;
 
-	bool ModifiersHeld(EnumFlag<ModifierKeys> modifiers) const;
+	void ConsumeControl(const InputControl& control, const TArray<InputDevice*>& devices, InputConsumption& consumption) const;
 
-	PlayerInput* mPlayer;
+	bool ModifiersHeld(EnumFlag<ModifierKeys> modifiers, const TArray<InputDevice*>& devices) const;
 
 	Guid mId;
 
@@ -92,7 +97,11 @@ private:
 
 	bool mEnabled = true;
 
+	bool mUserActive = false;
+
 	bool mActive = false;
+
+	uint32_t mOverridesVersion = 0;
 
 	TArray<Scope<InputAction>> mActions;
 

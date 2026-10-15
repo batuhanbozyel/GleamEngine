@@ -50,7 +50,7 @@ void Application::Run()
 	{
 		EventDispatcher<AppTickEvent>::Publish(AppTickEvent());
         eventSystem->Update();
-        inputSystem->Update();
+        inputSystem->Update(worldManager ? worldManager->GetActiveWorld() : nullptr);
 
 		for (auto subsystem : mTickableSubsystems)
 		{

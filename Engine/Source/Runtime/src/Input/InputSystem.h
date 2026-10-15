@@ -3,18 +3,14 @@
 #include "Container/Pointer.h"
 #include "Devices/Keyboard.h"
 #include "Devices/Mouse.h"
+#include "InputUser.h"
 #include "PlayerInput.h"
-#include "InputActionAsset.h"
 
 union SDL_Event;
 
 namespace Gleam {
 
-enum class PlayerJoinBehavior
-{
-	Manual,
-	JoinOnButtonPress
-};
+class World;
 
 class InputSystem final : public EngineSubsystem
 {
@@ -34,35 +30,37 @@ public:
 
 	TArrayView<InputDevice* const> GetDevices() const;
 
-	PlayerInput* CreatePlayer();
+	InputUser* CreateUser();
 
-	PlayerInput* CreateUser();
-
-	void DestroyPlayer(PlayerInput* player);
+	void DestroyUser(InputUser* user);
 
 	void DestroyPlayers();
 
-	PlayerInput* GetPlayer(uint32_t index) const;
+	InputUser* GetPlayer(uint32_t index) const;
 
-	const TArray<PlayerInput*>& GetPlayers() const;
+	const TArray<InputUser*>& GetPlayers() const;
 
-	PlayerJoinBehavior GetJoinBehavior() const;
+	void AddPlayerInput(PlayerInput* input, InputUser* user);
 
-	void SetJoinBehavior(PlayerJoinBehavior behavior);
+	void RemovePlayerInput(PlayerInput* input);
+
+	bool IsWorldInputEnabled() const;
+
+	void SetWorldInputEnabled(bool enabled);
 
 	static double GetTime();
 
 	static bool FindActuatedControl(TArrayView<InputDevice* const> devices, InputControl& control);
 
-	void ShowCursor() const;
+	void ShowCursor();
 
-	void HideCursor() const;
+	void HideCursor();
 
 	bool CursorVisible() const;
 
 private:
 
-	void Update();
+	void Update(World* world);
 
 	bool ProcessEvent(const SDL_Event& e);
 
@@ -74,9 +72,15 @@ private:
 
 	bool IsPairedToPlayer(const InputDevice* device) const;
 
-	void ProcessJoins();
+	InputUser* CreatePlayer(uint32_t index);
 
-	void UpdateActionMaps(double time);
+	void ReleaseUser(InputUser* user);
+
+	void ProcessJoins(uint32_t maxPlayers);
+
+	InputUser* SyncPlayerInput(PlayerInput& input, PlayerJoinBehavior joinBehavior);
+
+	void UpdateActionMaps(const TArray<PlayerInput*>& inputs, double time);
 
 	uint32_t FindFreePlayerIndex() const;
 
@@ -84,11 +88,17 @@ private:
 
 	TArray<InputDevice*> mDeviceViews;
 
-	TArray<Scope<PlayerInput>> mUsers;
+	TArray<Scope<InputUser>> mUsers;
 
-	TArray<PlayerInput*> mPlayers;
+	TArray<InputUser*> mPlayers;
 
-	PlayerJoinBehavior mJoinBehavior = PlayerJoinBehavior::Manual;
+	TArray<PlayerInput*> mPlayerInputs;
+
+	TArray<InputUser*> mPendingDestroys;
+
+	bool mUpdating = false;
+
+	bool mWorldInputEnabled = true;
 
 	bool mKeymapChanged = false;
 
@@ -98,9 +108,7 @@ private:
 
 	Mouse* mMouse = nullptr;
 
-	mutable bool mCursorHidden = false;
-
-	mutable Float2 mCursorHidePosition = Float2::zero;
+	Float2 mCursorHidePosition = Float2::zero;
 
 };
 

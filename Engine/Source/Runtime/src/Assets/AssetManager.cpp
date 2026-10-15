@@ -14,8 +14,6 @@
 #include "Renderer/Material/Material.h"
 #include "Renderer/Material/MaterialInstance.h"
 
-#include "Input/InputActionAsset.h"
-
 using namespace Gleam;
 
 void AssetManager::Initialize(Application* app)
@@ -24,7 +22,6 @@ void AssetManager::Initialize(Application* app)
 	RegisterMetaAsset<Material, MaterialDescriptor>();
 	RegisterMetaAsset<Texture2D, Texture2DDescriptor>();
 	RegisterMetaAsset<MaterialInstance, MaterialInstanceDescriptor>();
-	RegisterMetaAsset<InputActionAsset, InputActionAssetDescriptor>();
 
 	mStorage = CreateScope<AssetStorage>(Globals::ProjectContentDirectory);
 

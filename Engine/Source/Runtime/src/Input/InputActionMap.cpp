@@ -1,6 +1,6 @@
 #include "gpch.h"
 #include "InputActionMap.h"
-#include "PlayerInput.h"
+#include "InputUser.h"
 #include "InputSystem.h"
 
 #include <EASTL/sort.h>
@@ -39,18 +39,28 @@ static bool IsModifierHeld(const Keyboard* keyboard, ModifierKeys modifier)
 	}
 }
 
+void InputConsumption::BeginMap(const Guid& map)
+{
+	mMap = map;
+	mMapControls.clear();
+}
+
 bool InputConsumption::IsConsumed(const InputDevice* device, uint32_t code) const
 {
-	return mControls.find(ConsumptionKey(device, code)) != mControls.end();
+	const auto key = ConsumptionKey(device, code);
+	const auto it = mControls.find(key);
+	return mMapControls.find(key) != mMapControls.end() or (it != mControls.end() and it->second != mMap);
 }
 
 void InputConsumption::Consume(const InputDevice* device, uint32_t code)
 {
-	mControls.insert(ConsumptionKey(device, code));
+	const auto key = ConsumptionKey(device, code);
+	mMapControls.insert(key);
+	mControls.insert(eastl::make_pair(key, mMap));
 }
 
-InputActionMap::InputActionMap(PlayerInput* player, const InputActionMapDescriptor& descriptor, int32_t priority)
-	: mPlayer(player), mId(descriptor.id), mName(descriptor.name), mPriority(priority)
+InputActionMap::InputActionMap(const InputActionMapDescriptor& descriptor)
+	: mId(descriptor.id), mName(descriptor.name), mPriority(descriptor.priority)
 {
 	mActions.reserve(descriptor.actions.size());
 	for (const auto& action : descriptor.actions)
@@ -73,11 +83,6 @@ const TString& InputActionMap::GetName() const
 int32_t InputActionMap::GetPriority() const
 {
 	return mPriority;
-}
-
-PlayerInput* InputActionMap::GetPlayer() const
-{
-	return mPlayer;
 }
 
 bool InputActionMap::IsEnabled() const
@@ -113,9 +118,15 @@ bool InputActionMap::IsActive() const
 	return mActive;
 }
 
+void InputActionMap::SetUserActive(bool active)
+{
+	mUserActive = active;
+	RefreshActivation();
+}
+
 void InputActionMap::RefreshActivation()
 {
-	const bool active = mEnabled and mPlayer->IsEnabled();
+	const bool active = mEnabled and mUserActive;
 	if (active == mActive)
 	{
 		return;
@@ -166,8 +177,39 @@ void InputActionMap::ResolveBindings()
 	}
 }
 
-void InputActionMap::Update(InputConsumption& consumption, double time)
+void InputActionMap::SyncBindingOverrides(const InputUser& user)
 {
+	if (mOverridesVersion != user.GetBindingOverridesVersion())
+	{
+		mOverridesVersion = user.GetBindingOverridesVersion();
+		for (auto& action : mActions)
+		{
+			action->ResetBindings();
+		}
+
+		for (const auto& entry : user.GetBindingOverrides().overrides)
+		{
+			if (entry.map != mId)
+			{
+				continue;
+			}
+
+			for (auto& action : mActions)
+			{
+				if (action->GetId() == entry.action)
+				{
+					action->ApplyOverride(entry.binding, entry.part, entry.control);
+				}
+			}
+		}
+	}
+}
+
+void InputActionMap::Update(const InputUser& user, InputConsumption& consumption, double time)
+{
+	const auto& devices = user.GetPairedDevices();
+	consumption.BeginMap(mId);
+
 	for (auto& action : mActions)
 	{
 		action->BeginFrame();
@@ -181,7 +223,7 @@ void InputActionMap::Update(InputConsumption& consumption, double time)
 			continue;
 		}
 
-		auto state = EvaluateBinding(action.mResolvedBindings[entry.binding], action.GetValueType(), consumption);
+		auto state = EvaluateBinding(action.mResolvedBindings[entry.binding], action.GetValueType(), devices, consumption);
 		state.binding = entry.binding;
 		action.Accumulate(state);
 	}
@@ -192,11 +234,11 @@ void InputActionMap::Update(InputConsumption& consumption, double time)
 	}
 }
 
-InputBindingState InputActionMap::EvaluateBinding(const InputBindingDescriptor& binding, InputValueType valueType, InputConsumption& consumption) const
+InputBindingState InputActionMap::EvaluateBinding(const InputBindingDescriptor& binding, InputValueType valueType, const TArray<InputDevice*>& devices, InputConsumption& consumption) const
 {
 	InputBindingState state;
 	const uint32_t partCount = InputBindingDescriptor::GetPartCount(binding.type);
-	if (partCount == 0 or binding.controls.size() < partCount or ModifiersHeld(binding.modifiers) == false)
+	if (partCount == 0 or binding.controls.size() < partCount or ModifiersHeld(binding.modifiers, devices) == false)
 	{
 		return state;
 	}
@@ -204,7 +246,7 @@ InputBindingState InputActionMap::EvaluateBinding(const InputBindingDescriptor& 
 	TFixedArray<ControlSample, 6> samples;
 	for (uint32_t i = 0; i < partCount; ++i)
 	{
-		samples.push_back(SampleControl(binding.controls[i], consumption));
+		samples.push_back(SampleControl(binding.controls[i], devices, consumption));
 	}
 
 	switch (binding.type)
@@ -256,17 +298,17 @@ InputBindingState InputActionMap::EvaluateBinding(const InputBindingDescriptor& 
 		{
 			if (samples[i].magnitude > 0.0f or samples[i].pressed)
 			{
-				ConsumeControl(binding.controls[i], consumption);
+				ConsumeControl(binding.controls[i], devices, consumption);
 			}
 		}
 	}
 	return state;
 }
 
-InputActionMap::ControlSample InputActionMap::SampleControl(const InputControl& control, const InputConsumption& consumption) const
+InputActionMap::ControlSample InputActionMap::SampleControl(const InputControl& control, const TArray<InputDevice*>& devices, const InputConsumption& consumption) const
 {
 	ControlSample sample;
-	for (const auto device : mPlayer->GetPairedDevices())
+	for (const auto device : devices)
 	{
 		if (device->GetType() != control.device or device->IsConnected() == false or consumption.IsConsumed(device, control.code))
 		{
@@ -289,9 +331,9 @@ InputActionMap::ControlSample InputActionMap::SampleControl(const InputControl& 
 	return sample;
 }
 
-void InputActionMap::ConsumeControl(const InputControl& control, InputConsumption& consumption) const
+void InputActionMap::ConsumeControl(const InputControl& control, const TArray<InputDevice*>& devices, InputConsumption& consumption) const
 {
-	for (const auto device : mPlayer->GetPairedDevices())
+	for (const auto device : devices)
 	{
 		if (device->GetType() == control.device)
 		{
@@ -300,14 +342,14 @@ void InputActionMap::ConsumeControl(const InputControl& control, InputConsumptio
 	}
 }
 
-bool InputActionMap::ModifiersHeld(EnumFlag<ModifierKeys> modifiers) const
+bool InputActionMap::ModifiersHeld(EnumFlag<ModifierKeys> modifiers, const TArray<InputDevice*>& devices) const
 {
 	if (modifiers.Empty())
 	{
 		return true;
 	}
 
-	for (const auto device : mPlayer->GetPairedDevices())
+	for (const auto device : devices)
 	{
 		if (device->GetType() != InputDeviceType::Keyboard)
 		{

@@ -51,11 +51,12 @@ static Gleam::InputActionDescriptor MakeAction(const char* name, Gleam::InputVal
 	return action;
 }
 
-static Gleam::InputActionMapDescriptor MakeMap(const char* name, std::initializer_list<Gleam::InputActionDescriptor> actions)
+static Gleam::InputActionMapDescriptor MakeMap(const char* name, int32_t priority, std::initializer_list<Gleam::InputActionDescriptor> actions)
 {
 	Gleam::InputActionMapDescriptor map;
 	map.id = Gleam::Guid::NewGuid();
 	map.name = Gleam::TString(name);
+	map.priority = priority;
 	for (const auto& action : actions)
 	{
 		map.actions.push_back(action);
@@ -75,15 +76,17 @@ void EditorInputSystem::Initialize(Gleam::Application* app)
 	mUser->PairDevice(inputSystem->GetKeyboard());
 	mUser->PairDevice(inputSystem->GetMouse());
 
-	const auto global = MakeMap("Editor.Global", {
+	Gleam::InputActionAssetDescriptor actions;
+
+	actions.maps.push_back(MakeMap("Editor.Global", GlobalPriority, {
 		MakeAction("Undo", InputValueType::Bool, { KeyBinding(Key::Z, ModifierKeys::Shortcut) }),
 		MakeAction("Redo", InputValueType::Bool, { KeyBinding(Key::Z, ModifierKeys::Shortcut | ModifierKeys::Shift), KeyBinding(Key::Y, ModifierKeys::Shortcut) }),
 		MakeAction("Play", InputValueType::Bool, { KeyBinding(Key::P, ModifierKeys::Shortcut) }),
 		MakeAction("Pause", InputValueType::Bool, { KeyBinding(Key::P, ModifierKeys::Shortcut | ModifierKeys::Shift) }),
 		MakeAction("Step", InputValueType::Bool, { KeyBinding(Key::F10) })
-	});
+	}));
 
-	const auto viewport = MakeMap("Editor.Viewport", {
+	actions.maps.push_back(MakeMap("Editor.Viewport", ViewportPriority, {
 		MakeAction("Translate", InputValueType::Bool, { KeyBinding(Key::W) }),
 		MakeAction("Rotate", InputValueType::Bool, { KeyBinding(Key::E) }),
 		MakeAction("Scale", InputValueType::Bool, { KeyBinding(Key::R) }),
@@ -94,14 +97,14 @@ void EditorInputSystem::Initialize(Gleam::Application* app)
 		MakeAction("Dolly", InputValueType::Bool, { MouseBinding(MouseControl::Right, ModifierKeys::Alt) }),
 		MakeAction("Look", InputValueType::Float2, { MouseBinding(MouseControl::Delta) }),
 		MakeAction("Zoom", InputValueType::Float, { MouseBinding(MouseControl::ScrollY) })
-	});
+	}));
 
-	const auto fly = MakeMap("Editor.Fly", {
+	actions.maps.push_back(MakeMap("Editor.Fly", FlyPriority, {
 		MakeAction("Move", InputValueType::Float3, { AxisBinding({ Key::E, Key::Q, Key::A, Key::D, Key::W, Key::S }) }),
 		MakeAction("Boost", InputValueType::Bool, { KeyBinding(Key::LeftShift), KeyBinding(Key::RightShift) })
-	});
+	}));
 
-	const auto panel = MakeMap("Editor.Panel", {
+	actions.maps.push_back(MakeMap("Editor.Panel", PanelPriority, {
 #if defined(PLATFORM_MACOS)
 		MakeAction("Rename", InputValueType::Bool, { KeyBinding(Key::Enter), KeyBinding(Key::F2) }),
 		MakeAction("Delete", InputValueType::Bool, { KeyBinding(Key::Backspace, ModifierKeys::Super), KeyBinding(Key::Delete) })
@@ -109,13 +112,16 @@ void EditorInputSystem::Initialize(Gleam::Application* app)
 		MakeAction("Rename", InputValueType::Bool, { KeyBinding(Key::F2) }),
 		MakeAction("Delete", InputValueType::Bool, { KeyBinding(Key::Delete) })
 #endif
-	});
+	}));
 
-	mGlobalMap = mUser->AddActionMap(global, GlobalPriority);
-	mViewportMap = mUser->AddActionMap(viewport, ViewportPriority);
-	mFlyMap = mUser->AddActionMap(fly, FlyPriority);
+	mInput.Build(actions);
+	inputSystem->AddPlayerInput(&mInput, mUser);
+
+	mGlobalMap = mInput.FindActionMap("Editor.Global");
+	mViewportMap = mInput.FindActionMap("Editor.Viewport");
+	mFlyMap = mInput.FindActionMap("Editor.Fly");
 	mFlyMap->SetEnabled(false);
-	mPanelMap = mUser->AddActionMap(panel, PanelPriority);
+	mPanelMap = mInput.FindActionMap("Editor.Panel");
 	mPanelMap->SetEnabled(false);
 
 	mGlobalActions = EditorGlobalActions{
@@ -153,7 +159,8 @@ void EditorInputSystem::Initialize(Gleam::Application* app)
 void EditorInputSystem::Shutdown(Gleam::Application* app)
 {
 	auto inputSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::InputSystem>();
-	inputSystem->DestroyPlayer(mUser);
+	inputSystem->RemovePlayerInput(&mInput);
+	inputSystem->DestroyUser(mUser);
 	mUser = nullptr;
 }
 

@@ -69,14 +69,12 @@ void InputActionsEditor::OnCreate(Gleam::Application* app)
 
 void InputActionsEditor::Open(const AssetItem& asset, const Gleam::Path& file)
 {
-	auto descriptor = mAssetManager->LoadInputActionAsset(file);
-	if (descriptor.has_value() == false)
+	if (mAssetManager->LoadAsset<Gleam::InputActionAssetDescriptor>(file, mDescriptor) == false)
 	{
 		return;
 	}
 
-	mDescriptor = eastl::move(*descriptor);
-	mDescriptor.name = asset.name;
+	mName = asset.name;
 	mAsset = asset;
 	mFile = file;
 	mEditingName = false;
@@ -90,7 +88,7 @@ void InputActionsEditor::OnAssetRenamed(const AssetItem& asset)
 	if (mIsOpen and mAsset.reference == asset.reference)
 	{
 		mAsset = asset;
-		mDescriptor.name = asset.name;
+		mName = asset.name;
 	}
 }
 
@@ -156,9 +154,11 @@ void InputActionsEditor::Render(Gleam::ImGuiRenderer* imgui)
 
 void InputActionsEditor::Save()
 {
-	if (auto saved = mAssetManager->SaveInputActionAsset(mFile.Parent(), mAsset, mDescriptor))
+	auto item = mAsset;
+	item.name = mName;
+	if (mAssetManager->SaveAsset(mFile.Parent(), mDescriptor, item))
 	{
-		mAsset = *saved;
+		mAsset = item;
 		mDirty = false;
 	}
 }
@@ -167,8 +167,8 @@ void InputActionsEditor::DrawToolbar()
 {
 	if (mEditingName == false)
 	{
-		const auto length = Gleam::Math::Min(mDescriptor.name.size(), sizeof(mNameBuffer) - 1);
-		std::memcpy(mNameBuffer, mDescriptor.name.c_str(), length);
+		const auto length = Gleam::Math::Min(mName.size(), sizeof(mNameBuffer) - 1);
+		std::memcpy(mNameBuffer, mName.c_str(), length);
 		mNameBuffer[length] = '\0';
 	}
 
@@ -178,13 +178,13 @@ void InputActionsEditor::DrawToolbar()
 	ImGui::InputText("##AssetName", mNameBuffer, sizeof(mNameBuffer), ImGuiInputTextFlags_AutoSelectAll);
 	ImGui::PopFont();
 	mEditingName = ImGui::IsItemActive();
-	if (ImGui::IsItemDeactivatedAfterEdit() and mDescriptor.name != Gleam::TStringView(mNameBuffer))
+	if (ImGui::IsItemDeactivatedAfterEdit() and mName != Gleam::TStringView(mNameBuffer))
 	{
-		mDescriptor.name = Gleam::TString(static_cast<const char*>(mNameBuffer));
+		mName = Gleam::TString(static_cast<const char*>(mNameBuffer));
 		mDirty = true;
 	}
 
-	const bool validName = mAssetManager->IsValidInputActionAssetName(mFile.Parent(), mAsset, mEditingName ? Gleam::TStringView(mNameBuffer) : Gleam::TStringView(mDescriptor.name));
+	const bool validName = mAssetManager->IsValidAssetName(mFile.Parent(), mAsset, mEditingName ? Gleam::TStringView(mNameBuffer) : Gleam::TStringView(mName));
 	if (validName == false)
 	{
 		ImGui::SameLine();
@@ -320,6 +320,7 @@ void InputActionsEditor::DrawProperties()
 	{
 		ImGui::SeparatorText("Action Map");
 		PropertyDrawer::DrawStringControl("Name", map->name, kColumnWidth);
+		PropertyDrawer::DrawScalarControl("Priority", map->priority, 0, kColumnWidth);
 	}
 	else
 	{

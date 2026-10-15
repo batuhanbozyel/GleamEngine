@@ -4,6 +4,8 @@
 #include "Core/Globals.h"
 #include "Core/WindowSystem.h"
 #include "Core/Events/InputEvent.h"
+#include "Assets/AssetManager.h"
+#include "World/World.h"
 #include <SDL3/SDL.h>
 #include <EASTL/sort.h>
 
@@ -33,6 +35,8 @@ void InputSystem::Shutdown(Engine* engine)
 			gamepad->Disconnect();
 		}
 	}
+	mPlayerInputs.clear();
+	mPendingDestroys.clear();
 	mPlayers.clear();
 	mUsers.clear();
 	mGamepads.clear();
@@ -42,69 +46,162 @@ void InputSystem::Shutdown(Engine* engine)
 	mMouse = nullptr;
 }
 
-void InputSystem::Update()
+void InputSystem::Update(World* world)
 {
 	for (auto& device : mDevices)
 	{
 		device->Commit();
 	}
 
+	TArray<PlayerInput*> inputs = mPlayerInputs;
+	if (world and mWorldInputEnabled)
+	{
+		auto& entityManager = world->GetEntityManager();
+
+		const PlayerInputManager* manager = nullptr;
+		entityManager.ForEach<PlayerInputManager>([&manager](const PlayerInputManager& component)
+		{
+			if (manager == nullptr)
+			{
+				manager = &component;
+			}
+		});
+
+		const auto joinBehavior = manager ? manager->joinBehavior : PlayerJoinBehavior::Manual;
+		if (joinBehavior == PlayerJoinBehavior::JoinOnButtonPress)
+		{
+			ProcessJoins(manager->maxPlayers);
+		}
+
+		TArray<InputUser*> joined;
+		entityManager.ForEach<PlayerInput>([&](PlayerInput& input)
+		{
+			if (auto player = SyncPlayerInput(input, joinBehavior))
+			{
+				joined.push_back(player);
+			}
+		});
+
+		for (auto player : joined)
+		{
+			EventDispatcher<PlayerJoinedEvent>::Publish(PlayerJoinedEvent(player));
+		}
+
+		entityManager.ForEach<PlayerInput>([&inputs](PlayerInput& input)
+		{
+			inputs.push_back(&input);
+		});
+	}
+
 	if (mKeymapChanged)
 	{
 		mKeymapChanged = false;
-		for (auto& user : mUsers)
+		for (auto input : inputs)
 		{
-			for (auto& map : user->mMaps)
+			for (auto& map : input->mMaps)
 			{
 				map->ResolveBindings();
 			}
 		}
 	}
 
-	if (mJoinBehavior == PlayerJoinBehavior::JoinOnButtonPress)
-	{
-		ProcessJoins();
-	}
-
+	mUpdating = true;
+	UpdateActionMaps(inputs, GetTime());
 	for (auto& user : mUsers)
 	{
 		user->UpdateRebind();
 	}
+	mUpdating = false;
 
-	UpdateActionMaps(GetTime());
+	for (auto user : mPendingDestroys)
+	{
+		ReleaseUser(user);
+	}
+	mPendingDestroys.clear();
 }
 
-void InputSystem::UpdateActionMaps(double time)
+InputUser* InputSystem::SyncPlayerInput(PlayerInput& input, PlayerJoinBehavior joinBehavior)
 {
-	TArray<InputActionMap*> maps;
-	for (auto& user : mUsers)
+	if (input.actions != input.mBuiltActions)
 	{
-		for (auto& map : user->mMaps)
+		input.mBuiltActions = input.actions;
+		if (input.actions.guid == Guid::InvalidGuid())
 		{
-			if (map->IsActive())
-			{
-				maps.push_back(map.get());
-			}
+			input.Build(InputActionAssetDescriptor());
+		}
+		else
+		{
+			const auto assetManager = Globals::GameInstance->GetSubsystem<AssetManager>();
+			input.Build(assetManager->LoadDescriptor<InputActionAssetDescriptor>(input.actions));
 		}
 	}
 
-	eastl::stable_sort(maps.begin(), maps.end(), [](const InputActionMap* lhs, const InputActionMap* rhs)
+	InputUser* joined = nullptr;
+	input.mUser = GetPlayer(input.playerIndex);
+	if (input.mUser == nullptr and joinBehavior == PlayerJoinBehavior::Manual)
 	{
-		return lhs->GetPriority() > rhs->GetPriority();
+		const bool firstPlayer = mPlayers.empty();
+		input.mUser = CreatePlayer(input.playerIndex);
+		if (firstPlayer)
+		{
+			for (auto device : mDeviceViews)
+			{
+				input.mUser->PairDevice(device);
+			}
+			input.mUser->mPairNewDevices = true;
+		}
+		else
+		{
+			GLEAM_CORE_WARN("Player {0} has no paired devices. Add a PlayerInputManager to join additional players.", input.playerIndex);
+		}
+		joined = input.mUser;
+	}
+	return joined;
+}
+
+void InputSystem::UpdateActionMaps(const TArray<PlayerInput*>& inputs, double time)
+{
+	struct MapEntry
+	{
+		WeakPtr<InputActionMap> map;
+		InputUser* user = nullptr;
+		int32_t priority = 0;
+	};
+
+	TArray<MapEntry> maps;
+	for (auto input : inputs)
+	{
+		for (const auto& map : input->mMaps)
+		{
+			maps.push_back(MapEntry{ .map = map, .user = input->mUser, .priority = map->GetPriority() });
+		}
+	}
+
+	eastl::stable_sort(maps.begin(), maps.end(), [](const MapEntry& lhs, const MapEntry& rhs)
+	{
+		return lhs.priority > rhs.priority;
 	});
 
 	InputConsumption consumption;
-	for (auto map : maps)
+	for (const auto& entry : maps)
 	{
-		map->Update(consumption, time);
+		if (const auto map = entry.map.lock())
+		{
+			map->SetUserActive(entry.user != nullptr and entry.user->IsEnabled() and entry.user->IsRebinding() == false);
+			if (map->IsActive())
+			{
+				map->SyncBindingOverrides(*entry.user);
+				map->Update(*entry.user, consumption, time);
+			}
+		}
 	}
 }
 
-void InputSystem::ProcessJoins()
+void InputSystem::ProcessJoins(uint32_t maxPlayers)
 {
 	for (auto device : mDeviceViews)
 	{
-		if (device->IsConnected() == false or IsPairedToPlayer(device))
+		if (mPlayers.size() >= maxPlayers or device->IsConnected() == false or IsPairedToPlayer(device))
 		{
 			continue;
 		}
@@ -116,7 +213,7 @@ void InputSystem::ProcessJoins()
 			continue;
 		}
 
-		auto player = CreatePlayer();
+		auto player = CreatePlayer(FindFreePlayerIndex());
 		if (device->GetType() == InputDeviceType::Gamepad)
 		{
 			player->PairDevice(device);
@@ -126,6 +223,7 @@ void InputSystem::ProcessJoins()
 			player->PairDevice(mKeyboard);
 			player->PairDevice(mMouse);
 		}
+		EventDispatcher<PlayerJoinedEvent>::Publish(PlayerJoinedEvent(player));
 	}
 }
 
@@ -173,38 +271,48 @@ TArrayView<InputDevice* const> InputSystem::GetDevices() const
 	return TArrayView<InputDevice* const>(mDeviceViews.data(), mDeviceViews.size());
 }
 
-PlayerInput* InputSystem::CreatePlayer()
+InputUser* InputSystem::CreatePlayer(uint32_t index)
 {
-	auto player = mUsers.emplace_back(CreateScope<PlayerInput>(FindFreePlayerIndex())).get();
+	auto player = mUsers.emplace_back(CreateScope<InputUser>(index)).get();
 	mPlayers.push_back(player);
-	eastl::stable_sort(mPlayers.begin(), mPlayers.end(), [](const PlayerInput* lhs, const PlayerInput* rhs)
+	eastl::stable_sort(mPlayers.begin(), mPlayers.end(), [](const InputUser* lhs, const InputUser* rhs)
 	{
 		return lhs->GetPlayerIndex() < rhs->GetPlayerIndex();
 	});
-
-	if (mJoinBehavior == PlayerJoinBehavior::Manual and mPlayers.size() == 1)
-	{
-		for (auto device : mDeviceViews)
-		{
-			player->PairDevice(device);
-		}
-		player->mPairNewDevices = true;
-	}
-
-	EventDispatcher<PlayerJoinedEvent>::Publish(PlayerJoinedEvent(player));
 	return player;
 }
 
-PlayerInput* InputSystem::CreateUser()
+InputUser* InputSystem::CreateUser()
 {
-	return mUsers.emplace_back(CreateScope<PlayerInput>(PlayerInput::InvalidPlayerIndex)).get();
+	return mUsers.emplace_back(CreateScope<InputUser>(InputUser::InvalidPlayerIndex)).get();
 }
 
-void InputSystem::DestroyPlayer(PlayerInput* player)
+void InputSystem::DestroyUser(InputUser* user)
 {
-	auto it = eastl::find_if(mUsers.begin(), mUsers.end(), [player](const Scope<PlayerInput>& user)
+	if (mUpdating)
 	{
-		return user.get() == player;
+		mPendingDestroys.push_back(user);
+	}
+	else
+	{
+		ReleaseUser(user);
+	}
+}
+
+void InputSystem::DestroyPlayers()
+{
+	const auto players = mPlayers;
+	for (auto player : players)
+	{
+		DestroyUser(player);
+	}
+}
+
+void InputSystem::ReleaseUser(InputUser* user)
+{
+	auto it = eastl::find_if(mUsers.begin(), mUsers.end(), [user](const Scope<InputUser>& candidate)
+	{
+		return candidate.get() == user;
 	});
 
 	if (it == mUsers.end())
@@ -212,26 +320,51 @@ void InputSystem::DestroyPlayer(PlayerInput* player)
 		return;
 	}
 
-	if (player->GetPlayerIndex() != PlayerInput::InvalidPlayerIndex)
+	if (user->GetPlayerIndex() != InputUser::InvalidPlayerIndex)
 	{
-		EventDispatcher<PlayerLeftEvent>::Publish(PlayerLeftEvent(player));
-		mPlayers.erase(eastl::find(mPlayers.begin(), mPlayers.end(), player));
+		EventDispatcher<PlayerLeftEvent>::Publish(PlayerLeftEvent(user));
+		mPlayers.erase(eastl::find(mPlayers.begin(), mPlayers.end(), user));
 	}
 
-	player->CancelInteractiveRebind();
-	player->SetEnabled(false);
+	for (auto input : mPlayerInputs)
+	{
+		if (input->mUser == user)
+		{
+			input->mUser = nullptr;
+		}
+	}
+
+	user->CancelInteractiveRebind();
 	mUsers.erase(it);
 }
 
-void InputSystem::DestroyPlayers()
+void InputSystem::AddPlayerInput(PlayerInput* input, InputUser* user)
 {
-	while (mPlayers.empty() == false)
+	input->mUser = user;
+	mPlayerInputs.push_back(input);
+}
+
+void InputSystem::RemovePlayerInput(PlayerInput* input)
+{
+	auto it = eastl::find(mPlayerInputs.begin(), mPlayerInputs.end(), input);
+	if (it != mPlayerInputs.end())
 	{
-		DestroyPlayer(mPlayers.back());
+		input->mUser = nullptr;
+		mPlayerInputs.erase(it);
 	}
 }
 
-PlayerInput* InputSystem::GetPlayer(uint32_t index) const
+bool InputSystem::IsWorldInputEnabled() const
+{
+	return mWorldInputEnabled;
+}
+
+void InputSystem::SetWorldInputEnabled(bool enabled)
+{
+	mWorldInputEnabled = enabled;
+}
+
+InputUser* InputSystem::GetPlayer(uint32_t index) const
 {
 	for (auto player : mPlayers)
 	{
@@ -243,19 +376,9 @@ PlayerInput* InputSystem::GetPlayer(uint32_t index) const
 	return nullptr;
 }
 
-const TArray<PlayerInput*>& InputSystem::GetPlayers() const
+const TArray<InputUser*>& InputSystem::GetPlayers() const
 {
 	return mPlayers;
-}
-
-PlayerJoinBehavior InputSystem::GetJoinBehavior() const
-{
-	return mJoinBehavior;
-}
-
-void InputSystem::SetJoinBehavior(PlayerJoinBehavior behavior)
-{
-	mJoinBehavior = behavior;
 }
 
 bool InputSystem::IsPairedToPlayer(const InputDevice* device) const
@@ -295,22 +418,20 @@ const TArray<Gamepad*>& InputSystem::GetGamepads() const
 	return mGamepads;
 }
 
-void InputSystem::ShowCursor() const
+void InputSystem::ShowCursor()
 {
 	static auto windowSystem = Globals::Engine->GetSubsystem<WindowSystem>();
 	SDL_WarpMouseInWindow(windowSystem->GetSDLWindow(), mCursorHidePosition.x, mCursorHidePosition.y);
 	SDL_SetWindowRelativeMouseMode(windowSystem->GetSDLWindow(), false);
-    SDL_ShowCursor();
-	mCursorHidden = false;
+	SDL_ShowCursor();
 }
 
-void InputSystem::HideCursor() const
+void InputSystem::HideCursor()
 {
 	static auto windowSystem = Globals::Engine->GetSubsystem<WindowSystem>();
-    SDL_HideCursor();
-	SDL_SetWindowRelativeMouseMode(windowSystem->GetSDLWindow(), true);
 	SDL_GetMouseState(&mCursorHidePosition.x, &mCursorHidePosition.y);
-	mCursorHidden = true;
+	SDL_HideCursor();
+	SDL_SetWindowRelativeMouseMode(windowSystem->GetSDLWindow(), true);
 }
 
 bool InputSystem::CursorVisible() const

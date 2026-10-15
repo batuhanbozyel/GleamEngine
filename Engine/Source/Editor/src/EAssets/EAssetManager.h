@@ -4,7 +4,6 @@
 
 #include "IO/Path.h"
 #include "Core/Subsystem.h"
-#include "Input/InputActionDescriptor.h"
 #include "Container/Pointer.h"
 
 namespace GEditor {
@@ -31,17 +30,35 @@ public:
 		mRegistry.ForEachAsset(eastl::forward<Function>(function));
 	}
 
-	const AssetItem& CreateInputActionAsset(const Gleam::Path& directory);
+	template<typename T>
+	const AssetItem& CreateAsset(const Gleam::Path& directory, Gleam::TStringView name, const T& descriptor)
+	{
+		return CreateAsset(directory, name, &descriptor, Gleam::Reflection::GetClass<T>());
+	}
 
-	const AssetItem* SaveInputActionAsset(const Gleam::Path& directory, const AssetItem& item, const Gleam::InputActionAssetDescriptor& descriptor);
+	const AssetItem& CreateAsset(const Gleam::Path& directory, Gleam::TStringView name, const void* descriptor, const Gleam::Reflection::ClassDescription& classDesc);
 
-	Gleam::Optional<Gleam::InputActionAssetDescriptor> LoadInputActionAsset(const Gleam::Path& file) const;
+	template<typename T>
+	bool SaveAsset(const Gleam::Path& directory, const T& descriptor, AssetItem& item)
+	{
+		return SaveAsset(directory, &descriptor, Gleam::Reflection::GetClass<T>(), item);
+	}
 
-	bool IsValidInputActionAssetName(const Gleam::Path& directory, const AssetItem& item, Gleam::TStringView name) const;
+	bool SaveAsset(const Gleam::Path& directory, const void* descriptor, const Gleam::Reflection::ClassDescription& classDesc, AssetItem& item);
 
-	const AssetItem* RenameInputActionAsset(const Gleam::Path& file, const AssetItem& item, Gleam::TStringView name);
+	template<typename T>
+	bool LoadAsset(const Gleam::Path& file, T& descriptor) const
+	{
+		return LoadAsset(file, &descriptor, Gleam::Reflection::GetClass<T>());
+	}
 
-	bool RemoveInputActionAsset(const Gleam::Path& file, const AssetItem& item);
+	bool LoadAsset(const Gleam::Path& file, void* descriptor, const Gleam::Reflection::ClassDescription& classDesc) const;
+
+	bool IsValidAssetName(const Gleam::Path& directory, const AssetItem& item, Gleam::TStringView name) const;
+
+	bool RenameAsset(const Gleam::Path& file, AssetItem& item, Gleam::TStringView name);
+
+	bool RemoveAsset(const Gleam::Path& file, const AssetItem& item);
 
 	template<typename T>
 	const AssetItem& GetAsset(const Gleam::Path& path) const

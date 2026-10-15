@@ -42,7 +42,6 @@ struct InputBindingState
 class InputAction
 {
 	friend class InputActionMap;
-	friend class PlayerInput;
 public:
 
 	InputAction(InputActionMap* map, const InputActionDescriptor& descriptor);
