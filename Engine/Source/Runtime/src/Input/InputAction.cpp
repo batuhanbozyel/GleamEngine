@@ -71,7 +71,9 @@ float InputAction::ComputeMagnitude(const Float3& value, InputValueType valueTyp
 }
 
 InputAction::InputAction(InputActionMap* map, const InputActionDescriptor& descriptor)
-	: mMap(map), mDescriptor(descriptor), mBindings(descriptor.bindings)
+	: mMap(map)
+	, mDescriptor(descriptor)
+	, mBindings(descriptor.bindings)
 {
 	ResolveBindings();
 }

@@ -52,6 +52,8 @@ private:
 
 	void DrawSingletonComponents();
 
+	void DrawAddSingletonMenu();
+
 	void HandleSelectionInput(Gleam::EntityHandle handle);
 
 	void SelectRange(Gleam::EntityHandle anchor, Gleam::EntityHandle target, SelectionMode mode);
@@ -89,6 +91,8 @@ private:
 	Gleam::EntityHandle mRenamingEntity = Gleam::InvalidEntity;
 
 	Gleam::EntityHandle mPendingRename = Gleam::InvalidEntity;
+
+	uint32_t mPendingSingletonRemove = 0;
 
 	char mRenameBuffer[128] = "";
 

@@ -1,25 +1,9 @@
 #include "gpch.h"
-#include "PlayerInput.h"
+#include "InputActionSet.h"
 
 using namespace Gleam;
 
-PlayerInput::PlayerInput(const PlayerInput& other)
-	: actions(other.actions), playerIndex(other.playerIndex)
-{
-
-}
-
-PlayerInput& PlayerInput::operator=(const PlayerInput& other)
-{
-	actions = other.actions;
-	playerIndex = other.playerIndex;
-	mMaps.clear();
-	mBuiltActions = AssetReference();
-	mUser = nullptr;
-	return *this;
-}
-
-void PlayerInput::Build(const InputActionAssetDescriptor& descriptor)
+void InputActionSet::Build(const InputActionAssetDescriptor& descriptor)
 {
 	mMaps.clear();
 	mMaps.reserve(descriptor.maps.size());
@@ -29,12 +13,27 @@ void PlayerInput::Build(const InputActionAssetDescriptor& descriptor)
 	}
 }
 
-InputUser* PlayerInput::GetUser() const
+InputUser* InputActionSet::GetUser() const
 {
 	return mUser;
 }
 
-InputActionMap* PlayerInput::FindActionMap(TStringView name) const
+void InputActionSet::SetUser(InputUser* user)
+{
+	mUser = user;
+}
+
+uint32_t InputActionSet::GetPlayerIndex() const
+{
+	return mPlayerIndex;
+}
+
+void InputActionSet::SetPlayerIndex(uint32_t index)
+{
+	mPlayerIndex = index;
+}
+
+InputActionMap* InputActionSet::FindActionMap(TStringView name) const
 {
 	for (const auto& map : mMaps)
 	{
@@ -46,7 +45,7 @@ InputActionMap* PlayerInput::FindActionMap(TStringView name) const
 	return nullptr;
 }
 
-InputAction* PlayerInput::FindAction(TStringView path) const
+InputAction* InputActionSet::FindAction(TStringView path) const
 {
 	const auto separator = path.find('/');
 	if (separator != TStringView::npos)
@@ -65,7 +64,7 @@ InputAction* PlayerInput::FindAction(TStringView path) const
 	return nullptr;
 }
 
-const TArray<RefCounted<InputActionMap>>& PlayerInput::GetActionMaps() const
+const TArray<RefCounted<InputActionMap>>& InputActionSet::GetActionMaps() const
 {
 	return mMaps;
 }

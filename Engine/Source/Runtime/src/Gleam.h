@@ -73,6 +73,7 @@
 #include "Renderer/Material/Material.h"
 
 #include "Input/InputSystem.h"
+#include "Input/PlayerInputSystem.h"
 
 #include "World/WorldManager.h"
 #include "Assets/AssetManager.h"

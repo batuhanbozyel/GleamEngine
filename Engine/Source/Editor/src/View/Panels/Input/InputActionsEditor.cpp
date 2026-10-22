@@ -399,7 +399,8 @@ bool InputActionsEditor::DrawBinding(Gleam::InputBindingDescriptor& binding, uin
 
 		for (uint32_t part = 0; part < partCount; ++part)
 		{
-			DrawControl(Gleam::InputBindingDescriptor::GetPartName(binding.type, part), binding.controls[part], index, part);
+			const auto label = Gleam::InputBindingDescriptor::GetPartName(binding.type, part);
+			DrawControl(label.data(), binding.controls[part], index, part);
 		}
 
 		PropertyDrawer::DrawEnumFlagOptions("Modifiers", Gleam::Reflection::GetClass<Gleam::EnumFlag<Gleam::ModifierKeys>>(), &binding.modifiers, kColumnWidth);

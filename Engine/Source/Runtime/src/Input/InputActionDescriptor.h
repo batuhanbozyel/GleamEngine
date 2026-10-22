@@ -109,7 +109,13 @@ GSTRUCT(InputBindingDescriptor, "F2CB4777-5EB9-47F8-93B3-42A69351A40C", Serializ
 
 	static uint32_t GetPartCount(InputBindingType type);
 
-	static const char* GetPartName(InputBindingType type, uint32_t part);
+	static const TStringView GetPartName(InputBindingType type, uint32_t part);
+
+	static InputBindingDescriptor MakeKeyBinding(Key key, EnumFlag<ModifierKeys> modifiers = {});
+
+	static InputBindingDescriptor MakeMouseBinding(MouseControl control, EnumFlag<ModifierKeys> modifiers = {});
+
+	static InputBindingDescriptor MakeAxisBinding(InputBindingType type, std::initializer_list<Key> keys);
 };
 
 GSTRUCT(InputActionDescriptor, "40E35849-CB40-4E3C-87CE-4048B3FF66B7", Serializable)
@@ -131,6 +137,8 @@ GSTRUCT(InputActionDescriptor, "40E35849-CB40-4E3C-87CE-4048B3FF66B7", Serializa
 
 	GFIELD("7E67BB54-315D-4EC4-8E74-ECEA161C2CD1", Serializable)
 	TArray<InputInteraction> interactions;
+
+	static InputActionDescriptor Make(const TStringView name, InputValueType valueType, std::initializer_list<InputBindingDescriptor> bindings);
 };
 
 GSTRUCT(InputActionMapDescriptor, "3BBE3711-B6B3-489D-83F4-AEF36968212E", Serializable)
@@ -146,12 +154,16 @@ GSTRUCT(InputActionMapDescriptor, "3BBE3711-B6B3-489D-83F4-AEF36968212E", Serial
 
 	GFIELD("7A745B0A-4C9A-4384-9DE0-574ADA47BC9D", Serializable)
 	TArray<InputActionDescriptor> actions;
+
+	static InputActionMapDescriptor Make(const TStringView name, int32_t priority, std::initializer_list<InputActionDescriptor> actions);
 };
 
 GSTRUCT(InputActionAssetDescriptor, "4CAD0553-93E9-499A-97A5-4113451B9272", Serializable)
 {
 	GFIELD("657A6F2C-5545-4D29-807D-D9889B220587", Serializable)
 	TArray<InputActionMapDescriptor> maps;
+
+	static InputActionAssetDescriptor Make(std::initializer_list<InputActionMapDescriptor> maps);
 };
 
 GSTRUCT(InputBindingOverride, "9DB685A2-FFD6-47BA-B39B-07415EFF4BF2", Serializable)

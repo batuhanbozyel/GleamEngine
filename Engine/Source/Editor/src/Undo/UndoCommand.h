@@ -225,4 +225,73 @@ public:
 
 };
 
+class SingletonLifetimeCommand : public UndoCommand
+{
+public:
+
+	SingletonLifetimeCommand(const Gleam::TString& name, uint32_t typeHash)
+		: UndoCommand(name)
+		, mTypeHash(typeHash)
+	{
+
+	}
+
+protected:
+
+	void AddSingleton(Gleam::World* world);
+
+	void RemoveSingleton(Gleam::World* world);
+
+private:
+
+	uint32_t mTypeHash = 0;
+
+	Gleam::TString mData;
+
+};
+
+class AddSingletonCommand final : public SingletonLifetimeCommand
+{
+public:
+
+	AddSingletonCommand(const Gleam::TString& name, uint32_t typeHash)
+		: SingletonLifetimeCommand(name, typeHash)
+	{
+
+	}
+
+	virtual void Undo(Gleam::World* world) override
+	{
+		RemoveSingleton(world);
+	}
+
+	virtual void Redo(Gleam::World* world) override
+	{
+		AddSingleton(world);
+	}
+
+};
+
+class RemoveSingletonCommand final : public SingletonLifetimeCommand
+{
+public:
+
+	RemoveSingletonCommand(const Gleam::TString& name, uint32_t typeHash)
+		: SingletonLifetimeCommand(name, typeHash)
+	{
+
+	}
+
+	virtual void Undo(Gleam::World* world) override
+	{
+		AddSingleton(world);
+	}
+
+	virtual void Redo(Gleam::World* world) override
+	{
+		RemoveSingleton(world);
+	}
+
+};
+
 } // namespace GEditor

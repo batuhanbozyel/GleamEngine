@@ -8,120 +8,72 @@
 
 using namespace GEditor;
 
-static Gleam::InputBindingDescriptor KeyBinding(Gleam::Key key, Gleam::EnumFlag<Gleam::ModifierKeys> modifiers = {})
-{
-	Gleam::InputBindingDescriptor binding;
-	binding.type = Gleam::InputBindingType::Control;
-	binding.controls.push_back(Gleam::InputControl::Make(key));
-	binding.modifiers = modifiers;
-	binding.layoutMapped = true;
-	return binding;
-}
-
-static Gleam::InputBindingDescriptor MouseBinding(Gleam::MouseControl control, Gleam::EnumFlag<Gleam::ModifierKeys> modifiers = {})
-{
-	Gleam::InputBindingDescriptor binding;
-	binding.type = Gleam::InputBindingType::Control;
-	binding.controls.push_back(Gleam::InputControl::Make(control));
-	binding.modifiers = modifiers;
-	return binding;
-}
-
-static Gleam::InputBindingDescriptor AxisBinding(std::initializer_list<Gleam::Key> keys)
-{
-	Gleam::InputBindingDescriptor binding;
-	binding.type = Gleam::InputBindingType::Axis3D;
-	for (const auto key : keys)
-	{
-		binding.controls.push_back(Gleam::InputControl::Make(key));
-	}
-	return binding;
-}
-
-static Gleam::InputActionDescriptor MakeAction(const char* name, Gleam::InputValueType valueType, std::initializer_list<Gleam::InputBindingDescriptor> bindings)
-{
-	Gleam::InputActionDescriptor action;
-	action.id = Gleam::Guid::NewGuid();
-	action.name = Gleam::TString(name);
-	action.valueType = valueType;
-	for (const auto& binding : bindings)
-	{
-		action.bindings.push_back(binding);
-	}
-	return action;
-}
-
-static Gleam::InputActionMapDescriptor MakeMap(const char* name, int32_t priority, std::initializer_list<Gleam::InputActionDescriptor> actions)
-{
-	Gleam::InputActionMapDescriptor map;
-	map.id = Gleam::Guid::NewGuid();
-	map.name = Gleam::TString(name);
-	map.priority = priority;
-	for (const auto& action : actions)
-	{
-		map.actions.push_back(action);
-	}
-	return map;
-}
-
 void EditorInputSystem::Initialize(Gleam::Application* app)
 {
 	using Gleam::Key;
 	using Gleam::MouseControl;
 	using Gleam::ModifierKeys;
 	using Gleam::InputValueType;
+	using Gleam::InputBindingType;
+	using Gleam::InputActionDescriptor;
+	using Gleam::InputBindingDescriptor;
+	using Gleam::InputActionMapDescriptor;
+	using Gleam::InputActionAssetDescriptor;
 
 	auto inputSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::InputSystem>();
 	mUser = inputSystem->CreateUser();
 	mUser->PairDevice(inputSystem->GetKeyboard());
 	mUser->PairDevice(inputSystem->GetMouse());
 
-	Gleam::InputActionAssetDescriptor actions;
-
-	actions.maps.push_back(MakeMap("Editor.Global", GlobalPriority, {
-		MakeAction("Undo", InputValueType::Bool, { KeyBinding(Key::Z, ModifierKeys::Shortcut) }),
-		MakeAction("Redo", InputValueType::Bool, { KeyBinding(Key::Z, ModifierKeys::Shortcut | ModifierKeys::Shift), KeyBinding(Key::Y, ModifierKeys::Shortcut) }),
-		MakeAction("Play", InputValueType::Bool, { KeyBinding(Key::P, ModifierKeys::Shortcut) }),
-		MakeAction("Pause", InputValueType::Bool, { KeyBinding(Key::P, ModifierKeys::Shortcut | ModifierKeys::Shift) }),
-		MakeAction("Step", InputValueType::Bool, { KeyBinding(Key::F10) })
-	}));
-
-	actions.maps.push_back(MakeMap("Editor.Viewport", ViewportPriority, {
-		MakeAction("Translate", InputValueType::Bool, { KeyBinding(Key::W) }),
-		MakeAction("Rotate", InputValueType::Bool, { KeyBinding(Key::E) }),
-		MakeAction("Scale", InputValueType::Bool, { KeyBinding(Key::R) }),
-		MakeAction("Frame", InputValueType::Bool, { KeyBinding(Key::F) }),
-		MakeAction("Fly", InputValueType::Bool, { MouseBinding(MouseControl::Right) }),
-		MakeAction("Pan", InputValueType::Bool, { MouseBinding(MouseControl::Middle), MouseBinding(MouseControl::Left, ModifierKeys::Alt | ModifierKeys::Shortcut) }),
-		MakeAction("Orbit", InputValueType::Bool, { MouseBinding(MouseControl::Left, ModifierKeys::Alt) }),
-		MakeAction("Dolly", InputValueType::Bool, { MouseBinding(MouseControl::Right, ModifierKeys::Alt) }),
-		MakeAction("Look", InputValueType::Float2, { MouseBinding(MouseControl::Delta) }),
-		MakeAction("Zoom", InputValueType::Float, { MouseBinding(MouseControl::ScrollY) })
-	}));
-
-	actions.maps.push_back(MakeMap("Editor.Fly", FlyPriority, {
-		MakeAction("Move", InputValueType::Float3, { AxisBinding({ Key::E, Key::Q, Key::A, Key::D, Key::W, Key::S }) }),
-		MakeAction("Boost", InputValueType::Bool, { KeyBinding(Key::LeftShift), KeyBinding(Key::RightShift) })
-	}));
-
-	actions.maps.push_back(MakeMap("Editor.Panel", PanelPriority, {
+	InputActionAssetDescriptor actions = InputActionAssetDescriptor::Make({
+		InputActionMapDescriptor::Make("Editor.Global", GlobalPriority,
+		{
+			InputActionDescriptor::Make("Undo", InputValueType::Bool, { InputBindingDescriptor::MakeKeyBinding(Key::Z, ModifierKeys::Shortcut) }),
+			InputActionDescriptor::Make("Redo", InputValueType::Bool, { InputBindingDescriptor::MakeKeyBinding(Key::Z, ModifierKeys::Shortcut | ModifierKeys::Shift), InputBindingDescriptor::MakeKeyBinding(Key::Y, ModifierKeys::Shortcut) }),
+			InputActionDescriptor::Make("Play", InputValueType::Bool, { InputBindingDescriptor::MakeKeyBinding(Key::P, ModifierKeys::Shortcut) }),
+			InputActionDescriptor::Make("Pause", InputValueType::Bool, { InputBindingDescriptor::MakeKeyBinding(Key::P, ModifierKeys::Shortcut | ModifierKeys::Shift) }),
+			InputActionDescriptor::Make("Step", InputValueType::Bool, { InputBindingDescriptor::MakeKeyBinding(Key::F10) })
+		}),
+		InputActionMapDescriptor::Make("Editor.Viewport", ViewportPriority,
+		{
+			InputActionDescriptor::Make("Translate", InputValueType::Bool, { InputBindingDescriptor::MakeKeyBinding(Key::W) }),
+			InputActionDescriptor::Make("Rotate", InputValueType::Bool, { InputBindingDescriptor::MakeKeyBinding(Key::E) }),
+			InputActionDescriptor::Make("Scale", InputValueType::Bool, { InputBindingDescriptor::MakeKeyBinding(Key::R) }),
+			InputActionDescriptor::Make("Frame", InputValueType::Bool, { InputBindingDescriptor::MakeKeyBinding(Key::F) }),
+			InputActionDescriptor::Make("Fly", InputValueType::Bool, { InputBindingDescriptor::MakeMouseBinding(MouseControl::Right) }),
+			InputActionDescriptor::Make("Pan", InputValueType::Bool, { InputBindingDescriptor::MakeMouseBinding(MouseControl::Middle), InputBindingDescriptor::MakeMouseBinding(MouseControl::Left, ModifierKeys::Alt | ModifierKeys::Shortcut) }),
+			InputActionDescriptor::Make("Orbit", InputValueType::Bool, { InputBindingDescriptor::MakeMouseBinding(MouseControl::Left, ModifierKeys::Alt) }),
+			InputActionDescriptor::Make("Dolly", InputValueType::Bool, { InputBindingDescriptor::MakeMouseBinding(MouseControl::Right, ModifierKeys::Alt) }),
+			InputActionDescriptor::Make("Look", InputValueType::Float2, { InputBindingDescriptor::MakeMouseBinding(MouseControl::Delta) }),
+			InputActionDescriptor::Make("Zoom", InputValueType::Float, { InputBindingDescriptor::MakeMouseBinding(MouseControl::ScrollY) })
+		}),
+		InputActionMapDescriptor::Make("Editor.Fly", FlyPriority,
+		{
+			InputActionDescriptor::Make("Move", InputValueType::Float3, { InputBindingDescriptor::MakeAxisBinding(InputBindingType::Axis3D, { Key::E, Key::Q, Key::A, Key::D, Key::W, Key::S }) }),
+			InputActionDescriptor::Make("Boost", InputValueType::Bool, { InputBindingDescriptor::MakeKeyBinding(Key::LeftShift), InputBindingDescriptor::MakeKeyBinding(Key::RightShift) })
+		}),
+		InputActionMapDescriptor::Make("Editor.Panel", PanelPriority,
+		{
 #if defined(PLATFORM_MACOS)
-		MakeAction("Rename", InputValueType::Bool, { KeyBinding(Key::Enter), KeyBinding(Key::F2) }),
-		MakeAction("Delete", InputValueType::Bool, { KeyBinding(Key::Backspace, ModifierKeys::Super), KeyBinding(Key::Delete) })
+			InputActionDescriptor::Make("Rename", InputValueType::Bool, { InputBindingDescriptor::MakeKeyBinding(Key::Enter), InputBindingDescriptor::MakeKeyBinding(Key::F2) }),
+			InputActionDescriptor::Make("Delete", InputValueType::Bool, { InputBindingDescriptor::MakeKeyBinding(Key::Backspace, ModifierKeys::Super), InputBindingDescriptor::MakeKeyBinding(Key::Delete) })
 #else
-		MakeAction("Rename", InputValueType::Bool, { KeyBinding(Key::F2) }),
-		MakeAction("Delete", InputValueType::Bool, { KeyBinding(Key::Delete) })
+			InputActionDescriptor::Make("Rename", InputValueType::Bool, { InputBindingDescriptor::MakeKeyBinding(Key::F2) }),
+			InputActionDescriptor::Make("Delete", InputValueType::Bool, { InputBindingDescriptor::MakeKeyBinding(Key::Delete) })
 #endif
-	}));
+		})
+	});
+	mActionSet.Build(actions);
+	mActionSet.SetUser(mUser);
+	inputSystem->AddActionSet(&mActionSet);
 
-	mInput.Build(actions);
-	inputSystem->AddPlayerInput(&mInput, mUser);
+	mGlobalMap = mActionSet.FindActionMap("Editor.Global");
+	mViewportMap = mActionSet.FindActionMap("Editor.Viewport");
 
-	mGlobalMap = mInput.FindActionMap("Editor.Global");
-	mViewportMap = mInput.FindActionMap("Editor.Viewport");
-	mFlyMap = mInput.FindActionMap("Editor.Fly");
+	mFlyMap = mActionSet.FindActionMap("Editor.Fly");
 	mFlyMap->SetEnabled(false);
-	mPanelMap = mInput.FindActionMap("Editor.Panel");
+
+	mPanelMap = mActionSet.FindActionMap("Editor.Panel");
 	mPanelMap->SetEnabled(false);
 
 	mGlobalActions = EditorGlobalActions{
@@ -159,7 +111,7 @@ void EditorInputSystem::Initialize(Gleam::Application* app)
 void EditorInputSystem::Shutdown(Gleam::Application* app)
 {
 	auto inputSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::InputSystem>();
-	inputSystem->RemovePlayerInput(&mInput);
+	inputSystem->RemoveActionSet(&mActionSet);
 	inputSystem->DestroyUser(mUser);
 	mUser = nullptr;
 }

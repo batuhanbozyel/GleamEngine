@@ -4,7 +4,9 @@
 using namespace Gleam;
 
 InputDevice::InputDevice(InputDeviceType type, uint32_t id, const char* name)
-	: mName(name), mType(type), mId(id)
+	: mName(name)
+	, mType(type)
+	, mId(id)
 {
 
 }

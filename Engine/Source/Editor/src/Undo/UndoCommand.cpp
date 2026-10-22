@@ -86,6 +86,33 @@ void ComponentLifetimeCommand::AddComponents(Gleam::World* world)
 	}
 }
 
+void SingletonLifetimeCommand::AddSingleton(Gleam::World* world)
+{
+	auto component = world->GetEntityManager().AddSingleton(mTypeHash);
+	if (component != nullptr and mData.empty() == false)
+	{
+		Gleam::JSONSerializer serializer;
+		serializer.Deserialize(*Gleam::Reflection::GetClass(mTypeHash), component, mData);
+	}
+}
+
+void SingletonLifetimeCommand::RemoveSingleton(Gleam::World* world)
+{
+	auto& entityManager = world->GetEntityManager();
+	if (auto component = entityManager.FindSingleton(mTypeHash))
+	{
+		Gleam::JSONSerializer serializer;
+		mData = serializer.Serialize(component, *Gleam::Reflection::GetClass(mTypeHash));
+		entityManager.RemoveSingleton(mTypeHash);
+	}
+
+	auto selectionSystem = world->GetSubsystem<SelectionSystem>();
+	if (selectionSystem->GetSelectedSingleton() == mTypeHash)
+	{
+		selectionSystem->ClearSelection();
+	}
+}
+
 void EntityLifetimeCommand::RestoreEntities(Gleam::World* world)
 {
 	auto restored = mSnapshot.Restore(world->GetEntityManager());

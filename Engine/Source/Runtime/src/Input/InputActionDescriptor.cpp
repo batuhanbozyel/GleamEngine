@@ -9,6 +9,36 @@
 
 using namespace Gleam;
 
+InputBindingDescriptor InputBindingDescriptor::MakeKeyBinding(Key key, EnumFlag<ModifierKeys> modifiers)
+{
+	InputBindingDescriptor binding;
+	binding.type = InputBindingType::Control;
+	binding.controls.push_back(InputControl::Make(key));
+	binding.modifiers = modifiers;
+	binding.layoutMapped = true;
+	return binding;
+}
+
+InputBindingDescriptor InputBindingDescriptor::MakeMouseBinding(MouseControl control, EnumFlag<ModifierKeys> modifiers)
+{
+	InputBindingDescriptor binding;
+	binding.type = InputBindingType::Control;
+	binding.controls.push_back(InputControl::Make(control));
+	binding.modifiers = modifiers;
+	return binding;
+}
+
+InputBindingDescriptor InputBindingDescriptor::MakeAxisBinding(InputBindingType type, std::initializer_list<Key> keys)
+{
+	InputBindingDescriptor binding;
+	binding.type = type;
+	for (const auto key : keys)
+	{
+		binding.controls.push_back(InputControl::Make(key));
+	}
+	return binding;
+}
+
 uint32_t InputBindingDescriptor::GetPartCount(InputBindingType type)
 {
 	switch (type)
@@ -21,7 +51,7 @@ uint32_t InputBindingDescriptor::GetPartCount(InputBindingType type)
 	}
 }
 
-const char* InputBindingDescriptor::GetPartName(InputBindingType type, uint32_t part)
+const TStringView InputBindingDescriptor::GetPartName(InputBindingType type, uint32_t part)
 {
 	static constexpr const char* kAxis1DParts[] = { "Negative", "Positive" };
 	static constexpr const char* kAxisParts[] = { "Up", "Down", "Left", "Right", "Forward", "Backward" };
@@ -59,4 +89,31 @@ TString InputBindingDescriptor::GetDisplayName() const
 		text.append(name.data(), name.size());
 	}
 	return text;
+}
+
+InputActionDescriptor InputActionDescriptor::Make(const TStringView name, InputValueType valueType, std::initializer_list<InputBindingDescriptor> bindings)
+{
+	InputActionDescriptor action;
+	action.id = Guid::NewGuid();
+	action.name = name;
+	action.valueType = valueType;
+	action.bindings = bindings;
+	return action;
+}
+
+InputActionMapDescriptor InputActionMapDescriptor::Make(const TStringView name, int32_t priority, std::initializer_list<InputActionDescriptor> actions)
+{
+	InputActionMapDescriptor map;
+	map.id = Guid::NewGuid();
+	map.name = name;
+	map.priority = priority;
+	map.actions = actions;
+	return map;
+}
+
+InputActionAssetDescriptor InputActionAssetDescriptor::Make(std::initializer_list<InputActionMapDescriptor> maps)
+{
+	InputActionAssetDescriptor actions;
+	actions.maps = maps;
+	return actions;
 }

@@ -69,6 +69,17 @@ GLEAM_TAG_ATTRIBUTE(Serializable);
 
 GLEAM_TAG_ATTRIBUTE(EditorOnly);
 
+GLEAM_ATTRIBUTE(Singleton)
+{
+    bool required = false;
+
+    explicit constexpr Singleton(bool required = false)
+        : required(required)
+    {
+
+    }
+};
+
 GLEAM_ATTRIBUTE(PrettyName)
 {
     char name[64] = {};

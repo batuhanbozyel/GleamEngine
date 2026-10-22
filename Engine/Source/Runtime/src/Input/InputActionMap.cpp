@@ -60,7 +60,9 @@ void InputConsumption::Consume(const InputDevice* device, uint32_t code)
 }
 
 InputActionMap::InputActionMap(const InputActionMapDescriptor& descriptor)
-	: mId(descriptor.id), mName(descriptor.name), mPriority(descriptor.priority)
+	: mId(descriptor.id)
+	, mName(descriptor.name)
+	, mPriority(descriptor.priority)
 {
 	mActions.reserve(descriptor.actions.size());
 	for (const auto& action : descriptor.actions)

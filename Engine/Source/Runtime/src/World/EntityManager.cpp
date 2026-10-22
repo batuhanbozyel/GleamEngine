@@ -114,6 +114,25 @@ void* EntityManager::FindSingleton(uint32_t typeHash)
 	return FindComponent(mSingletonEntity, typeHash);
 }
 
+void* EntityManager::AddSingleton(uint32_t typeHash)
+{
+	auto func = entt::resolve(typeHash).func("SetSingleton"_hs);
+	GLEAM_ASSERT(func, "Component type is not registered with the scripting system: {}",
+		Reflection::GetClass(typeHash) ? Reflection::GetClass(typeHash)->ResolveName() : std::string_view("unknown"));
+
+	auto component = func.invoke({}, Ref<EntityManager>(*this));
+	return const_cast<void*>(component.base().data());
+}
+
+void EntityManager::RemoveSingleton(uint32_t typeHash)
+{
+	auto func = entt::resolve(typeHash).func("RemoveSingleton"_hs);
+	GLEAM_ASSERT(func, "Component type is not registered with the scripting system: {}",
+		Reflection::GetClass(typeHash) ? Reflection::GetClass(typeHash)->ResolveName() : std::string_view("unknown"));
+
+	func.invoke({}, Ref<EntityManager>(*this));
+}
+
 void* EntityManager::AddComponent(EntityHandle entity, uint32_t typeHash)
 {
 	auto func = entt::resolve(typeHash).func("AddComponent"_hs);

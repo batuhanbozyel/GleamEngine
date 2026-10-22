@@ -13,7 +13,8 @@ static uint32_t NextOverridesVersion()
 }
 
 InputUser::InputUser(uint32_t playerIndex)
-	: mPlayerIndex(playerIndex), mOverridesVersion(NextOverridesVersion())
+	: mPlayerIndex(playerIndex)
+	, mOverridesVersion(NextOverridesVersion())
 {
 
 }

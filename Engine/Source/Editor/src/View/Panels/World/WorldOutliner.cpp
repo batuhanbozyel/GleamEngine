@@ -27,6 +27,8 @@
 
 #include <imgui_internal.h>
 
+#include <EASTL/sort.h>
+
 #include <cstring>
 
 using namespace GEditor;
@@ -201,7 +203,28 @@ void WorldOutliner::Render(Gleam::ImGuiRenderer* imgui)
 			Widgets::CaptionRow(*mFonts, "SINGLETONS", singletonCount, kSingletonHeaderHeight, 14.0f);
 
 			ImGui::BeginChild("SingletonList", ImVec2(0.0f, 0.0f), ImGuiChildFlags_None);
-			DrawSingletonComponents();
+			{
+				DrawSingletonComponents();
+
+				if (mPendingSingletonRemove != 0)
+				{
+					mUndoSystem->RemoveSingleton(mPendingSingletonRemove);
+					mPendingSingletonRemove = 0;
+				}
+
+				if (simulating == false and ImGui::IsWindowHovered() and ImGui::IsAnyItemHovered() == false and ImGui::IsMouseReleased(ImGuiMouseButton_Right))
+				{
+					ImGui::OpenPopup("SingletonContext");
+				}
+
+				ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, mItemSpacing);
+				if (ImGui::BeginPopup("SingletonContext"))
+				{
+					DrawAddSingletonMenu();
+					ImGui::EndPopup();
+				}
+				ImGui::PopStyleVar();
+			}
 			ImGui::EndChild();
 
 			ImGui::PopStyleVar();
@@ -496,6 +519,63 @@ void WorldOutliner::DrawSingletonComponents()
 		{
 			mSelectionSystem->SelectSingleton(componentID);
 		}
+
+		const auto singleton = classDesc.GetAttribute<Gleam::Reflection::Attribute::Singleton>();
+		if (singleton and singleton->required == false)
+		{
+			ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, mItemSpacing);
+			if (ImGui::BeginPopupContextItem("##SingletonContext"))
+			{
+				if (ImGui::MenuItem("Remove Singleton"))
+				{
+					mPendingSingletonRemove = componentID;
+				}
+				ImGui::EndPopup();
+			}
+			ImGui::PopStyleVar();
+		}
 		ImGui::PopID();
 	});
+}
+
+void WorldOutliner::DrawAddSingletonMenu()
+{
+	if (ImGui::BeginMenu("Add Singleton") == false)
+	{
+		return;
+	}
+
+	auto& entityManager = mEditWorld->GetEntityManager();
+	Gleam::TArray<const Gleam::Reflection::ClassDescription*> candidates;
+	for (const auto& classDesc : Gleam::Reflection::IDatabase::GetInstance()->GetClasses())
+	{
+		if (classDesc.HasAttribute<Gleam::Reflection::Attribute::Singleton>() and classDesc.HasAttribute<Gleam::Reflection::Attribute::EditorOnly>() == false and entityManager.FindSingleton(classDesc.TypeHash()) == nullptr)
+		{
+			candidates.push_back(&classDesc);
+		}
+	}
+
+	eastl::sort(candidates.begin(), candidates.end(), [](const auto lhs, const auto rhs)
+	{
+		return ReflectionUtils::ResolveDisplayName(*lhs) < ReflectionUtils::ResolveDisplayName(*rhs);
+	});
+
+	for (const auto* classDesc : candidates)
+	{
+		const auto displayName = ReflectionUtils::ResolveDisplayName(*classDesc);
+		char buffer[64];
+		std::memcpy(buffer, displayName.data(), displayName.size());
+		buffer[displayName.size()] = '\0';
+
+		if (ImGui::MenuItem(buffer))
+		{
+			mUndoSystem->AddSingleton(classDesc->TypeHash());
+		}
+	}
+
+	if (candidates.empty())
+	{
+		ImGui::TextDisabled("No singletons available");
+	}
+	ImGui::EndMenu();
 }

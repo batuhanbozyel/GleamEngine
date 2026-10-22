@@ -1,16 +1,14 @@
 #pragma once
 #include "Core/Subsystem.h"
-#include "Container/Pointer.h"
 #include "Devices/Keyboard.h"
 #include "Devices/Mouse.h"
 #include "InputUser.h"
+#include "InputActionSet.h"
 #include "PlayerInput.h"
 
 union SDL_Event;
 
 namespace Gleam {
-
-class World;
 
 class InputSystem final : public EngineSubsystem
 {
@@ -40,9 +38,11 @@ public:
 
 	const TArray<InputUser*>& GetPlayers() const;
 
-	void AddPlayerInput(PlayerInput* input, InputUser* user);
+	void SetPlayerInputManager(const PlayerInputManager& manager);
 
-	void RemovePlayerInput(PlayerInput* input);
+	void AddActionSet(InputActionSet* actionSet);
+
+	void RemoveActionSet(InputActionSet* actionSet);
 
 	bool IsWorldInputEnabled() const;
 
@@ -60,7 +60,7 @@ public:
 
 private:
 
-	void Update(World* world);
+	void Update();
 
 	bool ProcessEvent(const SDL_Event& e);
 
@@ -78,21 +78,25 @@ private:
 
 	void ProcessJoins(uint32_t maxPlayers);
 
-	InputUser* SyncPlayerInput(PlayerInput& input, PlayerJoinBehavior joinBehavior);
+	InputUser* JoinPlayer(uint32_t index);
 
-	void UpdateActionMaps(const TArray<PlayerInput*>& inputs, double time);
+	void SyncPlayers();
+
+	bool IsUserActive(const InputUser* user) const;
+
+	void UpdateActionMaps(double time);
 
 	uint32_t FindFreePlayerIndex() const;
 
-	TArray<Scope<InputDevice>> mDevices;
+	TArray<InputDevice*> mDevices;
 
-	TArray<InputDevice*> mDeviceViews;
-
-	TArray<Scope<InputUser>> mUsers;
+	TArray<InputUser*> mUsers;
 
 	TArray<InputUser*> mPlayers;
 
-	TArray<PlayerInput*> mPlayerInputs;
+	TArray<InputActionSet*> mActionSets;
+
+	PlayerInputManager mPlayerInputManager;
 
 	TArray<InputUser*> mPendingDestroys;
 
