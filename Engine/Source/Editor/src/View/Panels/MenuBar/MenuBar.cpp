@@ -26,7 +26,6 @@
 #include "View/Panels/Project/ProjectSettings.h"
 #include "View/Panels/Project/Preferences.h"
 #include "EInput/EditorInputSystem.h"
-#include "Input/InputAction.h"
 
 #include <imgui.h>
 
@@ -74,12 +73,13 @@ void MenuBar::Render(Gleam::ImGuiRenderer* imgui)
 		auto worldManager = mApplication->GetSubsystem<EWorldManager>();
 		const bool simulating = worldManager->IsSimulating();
 
-		const auto& actions = mApplication->GetSubsystem<EditorInputSystem>()->GetGlobalActions();
-		if (simulating == false and actions.undo->WasPerformedThisFrame())
+		auto editorInput = mApplication->GetSubsystem<EditorInputSystem>();
+		const auto& actions = editorInput->GetGlobalActions();
+		if (simulating == false and editorInput->GetAction(actions.undo).performedThisFrame)
 		{
 			undoSystem->RequestUndo();
 		}
-		if (simulating == false and actions.redo->WasPerformedThisFrame())
+		if (simulating == false and editorInput->GetAction(actions.redo).performedThisFrame)
 		{
 			undoSystem->RequestRedo();
 		}

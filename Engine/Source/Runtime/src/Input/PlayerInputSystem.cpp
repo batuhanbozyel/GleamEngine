@@ -1,6 +1,5 @@
 #include "gpch.h"
 #include "PlayerInputSystem.h"
-#include "PlayerInput.h"
 #include "InputSystem.h"
 #include "Core/Engine.h"
 #include "Core/Globals.h"
@@ -12,6 +11,7 @@ using namespace Gleam;
 void PlayerInputSystem::OnCreate(EntityManager& entityManager)
 {
 	mInputSystem = Globals::Engine->GetSubsystem<InputSystem>();
+	mAssetManager = Globals::GameInstance->GetSubsystem<AssetManager>();
 	mPlayerInputRemoved = entityManager.OnComponentRemoved<PlayerInput, &PlayerInputSystem::OnPlayerInputRemoved>(*this);
 }
 
@@ -20,7 +20,7 @@ void PlayerInputSystem::OnPlayerInputRemoved(EntityHandle entity)
 	const uint32_t index = FindRecordIndex(entity);
 	if (index != InvalidRecordIndex)
 	{
-		mInputSystem->RemoveActionSet(mRecords[index].actionSet.get());
+		ReleaseActions(mRecords[index]);
 
 		const uint32_t last = static_cast<uint32_t>(mRecords.size()) - 1;
 		if (index != last)
@@ -36,9 +36,9 @@ void PlayerInputSystem::OnPlayerInputRemoved(EntityHandle entity)
 void PlayerInputSystem::OnDestroy(EntityManager& entityManager)
 {
 	mPlayerInputRemoved.Reset();
-	for (const auto& record : mRecords)
+	for (auto& record : mRecords)
 	{
-		mInputSystem->RemoveActionSet(record.actionSet.get());
+		ReleaseActions(record);
 	}
 	mRecords.clear();
 	mRecordIndices.clear();
@@ -47,19 +47,41 @@ void PlayerInputSystem::OnDestroy(EntityManager& entityManager)
 void PlayerInputSystem::OnPreUpdate(EntityManager& entityManager)
 {
 	SyncRecords(entityManager);
-	mInputSystem->SetPlayerInputManager(entityManager.GetSingleton<PlayerInputManager>());
+
+	if (mInputSystem->IsWorldInputEnabled())
+	{
+		SyncPlayers(entityManager.GetSingleton<PlayerInputManager>());
+	}
+
+	for (auto& record : mRecords)
+	{
+		if (record.states.asset)
+		{
+			const auto user = mInputSystem->IsWorldInputEnabled() ? mInputSystem->GetPlayer(record.playerIndex) : nullptr;
+			mInputSystem->UpdateActions(record.states, user);
+		}
+	}
 }
 
-InputActionSet* PlayerInputSystem::GetActionSet(EntityHandle entity) const
+const InputActionStates* PlayerInputSystem::GetActionStates(EntityHandle entity) const
 {
 	const uint32_t index = FindRecordIndex(entity);
-	if (index != InvalidRecordIndex)
+	if (index != InvalidRecordIndex and mRecords[index].states.asset)
 	{
-		return mRecords[index].actionSet.get();
+		return &mRecords[index].states;
 	}
 	else
 	{
 		return nullptr;
+	}
+}
+
+void PlayerInputSystem::SetActionMapEnabled(EntityHandle entity, InputActionMapHandle map, bool enabled)
+{
+	const uint32_t index = FindRecordIndex(entity);
+	if (index != InvalidRecordIndex and mRecords[index].states.asset)
+	{
+		mRecords[index].states.SetActionMapEnabled(map, enabled);
 	}
 }
 
@@ -82,40 +104,62 @@ void PlayerInputSystem::SyncRecords(EntityManager& entityManager)
 
 				index = static_cast<uint32_t>(mRecords.size());
 				mRecordIndices[slot] = index;
-				mRecords.push_back(PlayerInputRecord{ .entity = handle, .actionSet = CreateScope<InputActionSet>() });
-				mInputSystem->AddActionSet(mRecords[index].actionSet.get());
+				mRecords.push_back(PlayerInputRecord{ .entity = handle });
 			}
 
 			auto& record = mRecords[index];
 			if (record.actions != input.actions)
 			{
+				ReleaseActions(record);
 				record.actions = input.actions;
-				if (input.actions.guid == Guid::InvalidGuid())
+				if (auto asset = mAssetManager->Load<InputActionAsset>(record.actions))
 				{
-					record.actionSet->Build(InputActionAssetDescriptor());
-				}
-				else
-				{
-					const auto assetManager = Globals::GameInstance->GetSubsystem<AssetManager>();
-					record.actionSet->Build(assetManager->LoadDescriptor<InputActionAssetDescriptor>(input.actions));
+					record.states = InputActionStates(asset);
 				}
 			}
-			record.actionSet->SetPlayerIndex(input.playerIndex);
+			record.playerIndex = input.playerIndex;
 		});
 		mChangeCursor.Commit();
 	}
+}
+
+void PlayerInputSystem::SyncPlayers(const PlayerInputManager& manager)
+{
+	if (manager.joinBehavior == PlayerJoinBehavior::JoinOnButtonPress)
+	{
+		mInputSystem->ProcessJoins(manager.maxPlayers);
+	}
+	else
+	{
+		TArray<InputUser*> joined;
+		for (const auto& record : mRecords)
+		{
+			if (record.playerIndex != InputUser::InvalidPlayerIndex and mInputSystem->GetPlayer(record.playerIndex) == nullptr)
+			{
+				joined.push_back(mInputSystem->JoinPlayer(record.playerIndex));
+			}
+		}
+
+		for (auto player : joined)
+		{
+			EventDispatcher<PlayerJoinedEvent>::Publish(PlayerJoinedEvent(player));
+		}
+	}
+}
+
+void PlayerInputSystem::ReleaseActions(PlayerInputRecord& record)
+{
+	record.states = InputActionStates();
+	mAssetManager->Release(record.actions);
 }
 
 uint32_t PlayerInputSystem::FindRecordIndex(EntityHandle entity) const
 {
 	const uint32_t slot = entt::to_entity(entity);
 	const uint32_t index = slot < mRecordIndices.size() ? mRecordIndices[slot] : InvalidRecordIndex;
-	if (index != InvalidRecordIndex and mRecords[index].entity == entity)
-	{
-		return index;
-	}
-	else
+	if (index == InvalidRecordIndex or mRecords[index].entity != entity)
 	{
 		return InvalidRecordIndex;
 	}
+	return index;
 }

@@ -295,7 +295,7 @@ void WorldViewport::Update()
 	{
 		EndCameraNavigation();
 	}
-	mEditorInput->GetViewportMap()->SetEnabled(playWorld == nullptr and ImGui::GetIO().WantTextInput == false);
+	mEditorInput->SetActionMapEnabled(mEditorInput->GetViewportMap(), playWorld == nullptr and ImGui::GetIO().WantTextInput == false);
 
     if (mViewportSizeChanged or mViewportWorld != playWorld)
     {
@@ -556,7 +556,7 @@ void WorldViewport::DrawPlayControls(float centerX, float buttonY, float buttonH
 	const bool playing = playState == PlayState::Playing;
 
 	const auto& actions = mEditorInput->GetGlobalActions();
-	if (actions.play->WasPerformedThisFrame())
+	if (mEditorInput->GetAction(actions.play).performedThisFrame)
 	{
 		if (simulating)
 		{
@@ -567,7 +567,7 @@ void WorldViewport::DrawPlayControls(float centerX, float buttonY, float buttonH
 			mWorldManager->RequestPlay();
 		}
 	}
-	if (simulating and actions.pause->WasPerformedThisFrame())
+	if (simulating and mEditorInput->GetAction(actions.pause).performedThisFrame)
 	{
 		if (playing)
 		{
@@ -578,7 +578,7 @@ void WorldViewport::DrawPlayControls(float centerX, float buttonY, float buttonH
 			mWorldManager->RequestPlay();
 		}
 	}
-	if (playState == PlayState::Paused and actions.step->WasPerformedThisFrame())
+	if (playState == PlayState::Paused and mEditorInput->GetAction(actions.step).performedThisFrame)
 	{
 		mWorldManager->RequestStep();
 	}
@@ -799,15 +799,15 @@ void WorldViewport::DrawViewport(Gleam::ImGuiRenderer* imgui, const Gleam::ImGui
 	if (isFocused and mCameraController->GetNavigation() == CameraNavigation::None)
 	{
 		const auto& actions = mEditorInput->GetViewportActions();
-		if (actions.translate->WasPerformedThisFrame())
+		if (mEditorInput->GetAction(actions.translate).performedThisFrame)
 		{
 			mTransformGizmo.SetOperation(GizmoOperation::Translate);
 		}
-		if (actions.rotate->WasPerformedThisFrame())
+		if (mEditorInput->GetAction(actions.rotate).performedThisFrame)
 		{
 			mTransformGizmo.SetOperation(GizmoOperation::Rotate);
 		}
-		if (actions.scale->WasPerformedThisFrame())
+		if (mEditorInput->GetAction(actions.scale).performedThisFrame)
 		{
 			mTransformGizmo.SetOperation(GizmoOperation::Scale);
 		}
@@ -890,23 +890,23 @@ void WorldViewport::UpdateCameraNavigation(const Gleam::Float2& imageSize, bool 
 	{
 		if (viewportHovered and mTransformGizmo.IsDragging() == false and mMarqueeDragging == false)
 		{
-			if (actions.dolly->WasPressedThisFrame())
+			if (mEditorInput->GetAction(actions.dolly).pressedThisFrame)
 			{
 				navigation = CameraNavigation::Dolly;
 				mNavigationButton = Gleam::MouseControl::Right;
 			}
-			else if (actions.fly->WasPressedThisFrame())
+			else if (mEditorInput->GetAction(actions.fly).pressedThisFrame)
 			{
 				navigation = CameraNavigation::Fly;
 				mNavigationButton = Gleam::MouseControl::Right;
 			}
-			else if (actions.pan->WasPressedThisFrame())
+			else if (mEditorInput->GetAction(actions.pan).pressedThisFrame)
 			{
 				// Alt+Cmd+LMB pans for trackpads and mice without a middle button
 				navigation = CameraNavigation::Pan;
 				mNavigationButton = mouse->WasPressedThisFrame(Gleam::MouseControl::Middle) ? Gleam::MouseControl::Middle : Gleam::MouseControl::Left;
 			}
-			else if (actions.orbit->WasPressedThisFrame())
+			else if (mEditorInput->GetAction(actions.orbit).pressedThisFrame)
 			{
 				navigation = CameraNavigation::Orbit;
 				mNavigationButton = Gleam::MouseControl::Left;
@@ -919,7 +919,7 @@ void WorldViewport::UpdateCameraNavigation(const Gleam::Float2& imageSize, bool 
 			mCameraController->BeginNavigation(navigation);
 			if (navigation == CameraNavigation::Fly)
 			{
-				mEditorInput->GetFlyMap()->SetEnabled(true);
+				mEditorInput->SetActionMapEnabled(mEditorInput->GetFlyMap(), true);
 				inputSystem->HideCursor();
 			}
 		}
@@ -933,20 +933,20 @@ void WorldViewport::UpdateCameraNavigation(const Gleam::Float2& imageSize, bool 
 	EditorCameraInput input;
 	if (navigation != CameraNavigation::None)
 	{
-		input.mouseDelta = actions.look->ReadValue<Gleam::Float2>();
+		input.mouseDelta = mEditorInput->GetAction(actions.look).ReadValue<Gleam::Float2>();
 	}
 	if (viewportHovered or navigation != CameraNavigation::None)
 	{
-		input.scroll = actions.zoom->ReadValue<float>();
+		input.scroll = mEditorInput->GetAction(actions.zoom).ReadValue<float>();
 	}
 
 	if (navigation == CameraNavigation::Fly)
 	{
 		const auto& flyActions = mEditorInput->GetFlyActions();
-		input.move = flyActions.move->ReadValue<Gleam::Float3>();
-		input.boost = flyActions.boost->IsPressed();
+		input.move = mEditorInput->GetAction(flyActions.move).ReadValue<Gleam::Float3>();
+		input.boost = mEditorInput->GetAction(flyActions.boost).pressed;
 	}
-	else if (viewportFocused and actions.frame->WasPerformedThisFrame())
+	else if (viewportFocused and mEditorInput->GetAction(actions.frame).performedThisFrame)
 	{
 		FrameSelection();
 	}
@@ -958,7 +958,7 @@ void WorldViewport::EndCameraNavigation()
 {
 	if (mCameraController->GetNavigation() == CameraNavigation::Fly)
 	{
-		mEditorInput->GetFlyMap()->SetEnabled(false);
+		mEditorInput->SetActionMapEnabled(mEditorInput->GetFlyMap(), false);
 		Gleam::Globals::Engine->GetSubsystem<Gleam::InputSystem>()->ShowCursor();
 	}
 	mCameraController->EndNavigation();

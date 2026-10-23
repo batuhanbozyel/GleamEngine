@@ -110,6 +110,7 @@
 #include "Renderer/Renderer.h"
 
 #include "Input/InputSystem.h"
+#include "Input/PlayerInput.h"
 
 #ifdef PLATFORM_WINDOWS
 #include <windows.h>

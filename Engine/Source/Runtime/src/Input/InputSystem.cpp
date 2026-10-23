@@ -11,6 +11,42 @@ using namespace Gleam;
 
 static constexpr float kActuationThreshold = 0.5f;
 
+static uint64_t ConsumptionKey(const InputDevice* device, uint32_t code)
+{
+	return (static_cast<uint64_t>(device->GetId()) << 32) | code;
+}
+
+static uint32_t ResolveLayoutKey(uint32_t code)
+{
+	if (code >= SDL_SCANCODE_A and code <= SDL_SCANCODE_Z)
+	{
+		const auto key = static_cast<SDL_Keycode>(SDLK_A + (code - SDL_SCANCODE_A));
+		const auto scancode = SDL_GetScancodeFromKey(key, nullptr);
+		if (scancode != SDL_SCANCODE_UNKNOWN)
+		{
+			return static_cast<uint32_t>(scancode);
+		}
+	}
+	return code;
+}
+
+static bool IsModifierHeld(const Keyboard* keyboard, ModifierKeys modifier)
+{
+	switch (modifier)
+	{
+		case ModifierKeys::Shift: return keyboard->IsPressed(Key::LeftShift) or keyboard->IsPressed(Key::RightShift);
+		case ModifierKeys::Control: return keyboard->IsPressed(Key::LeftControl) or keyboard->IsPressed(Key::RightControl);
+		case ModifierKeys::Alt: return keyboard->IsPressed(Key::LeftAlt) or keyboard->IsPressed(Key::RightAlt);
+		case ModifierKeys::Super: return keyboard->IsPressed(Key::LeftSuper) or keyboard->IsPressed(Key::RightSuper);
+#if defined(PLATFORM_MACOS)
+		case ModifierKeys::Shortcut: return IsModifierHeld(keyboard, ModifierKeys::Super);
+#else
+		case ModifierKeys::Shortcut: return IsModifierHeld(keyboard, ModifierKeys::Control);
+#endif
+		default: return false;
+	}
+}
+
 void InputSystem::Initialize(Engine* engine)
 {
 	mKeyboard = new Keyboard(static_cast<uint32_t>(mDevices.size()));
@@ -30,7 +66,6 @@ void InputSystem::Shutdown(Engine* engine)
 		}
 		mGamepads.clear();
 	}
-	mActionSets.clear();
 	mPendingDestroys.clear();
 	mPlayers.clear();
 
@@ -52,38 +87,7 @@ void InputSystem::Shutdown(Engine* engine)
 
 void InputSystem::Update()
 {
-	for (auto device : mDevices)
-	{
-		device->Commit();
-	}
-
-	if (mWorldInputEnabled)
-	{
-		SyncPlayers();
-	}
-
-	for (auto actionSet : mActionSets)
-	{
-		if (actionSet->mPlayerIndex != InputUser::InvalidPlayerIndex)
-		{
-			actionSet->mUser = GetPlayer(actionSet->mPlayerIndex);
-		}
-	}
-
-	if (mKeymapChanged)
-	{
-		mKeymapChanged = false;
-		for (auto actionSet : mActionSets)
-		{
-			for (const auto& map : actionSet->GetActionMaps())
-			{
-				map->ResolveBindings();
-			}
-		}
-	}
-
 	mUpdating = true;
-	UpdateActionMaps(GetTime());
 	for (auto user : mUsers)
 	{
 		user->UpdateRebind();
@@ -95,29 +99,33 @@ void InputSystem::Update()
 		ReleaseUser(user);
 	}
 	mPendingDestroys.clear();
+
+	for (auto device : mDevices)
+	{
+		device->Commit();
+	}
+	mConsumedControls.clear();
 }
 
-void InputSystem::SyncPlayers()
+void InputSystem::UpdateActions(InputActionStates& states, const InputUser* user)
 {
-	if (mPlayerInputManager.joinBehavior == PlayerJoinBehavior::JoinOnButtonPress)
+	const bool userActive = user and user->IsEnabled() and user->IsRebinding() == false;
+	states.SetUserActive(userActive);
+
+	if (userActive)
 	{
-		ProcessJoins(mPlayerInputManager.maxPlayers);
-	}
-	else
-	{
-		TArray<InputUser*> joined;
-		for (auto actionSet : mActionSets)
+		if (states.overridesVersion != user->GetBindingOverridesVersion() or states.keymapVersion != mKeymapVersion)
 		{
-			const uint32_t index = actionSet->mPlayerIndex;
-			if (index != InputUser::InvalidPlayerIndex and GetPlayer(index) == nullptr)
-			{
-				joined.push_back(JoinPlayer(index));
-			}
+			ResolveBindings(states, *user);
 		}
 
-		for (auto player : joined)
+		const double time = GetTime();
+		for (const auto map : states.asset->GetActionMapOrder())
 		{
-			EventDispatcher<PlayerJoinedEvent>::Publish(PlayerJoinedEvent(player));
+			if (states.maps[map.value].active)
+			{
+				EvaluateActionMap(states, map, *user, time);
+			}
 		}
 	}
 }
@@ -139,56 +147,6 @@ InputUser* InputSystem::JoinPlayer(uint32_t index)
 		GLEAM_CORE_WARN("Player {0} has no paired devices. Use JoinOnButtonPress on the PlayerInputManager to join additional players.", index);
 	}
 	return player;
-}
-
-bool InputSystem::IsUserActive(const InputUser* user) const
-{
-	if (user == nullptr or user->IsEnabled() == false or user->IsRebinding())
-	{
-		return false;
-	}
-	else
-	{
-		return mWorldInputEnabled or user->GetPlayerIndex() == InputUser::InvalidPlayerIndex;
-	}
-}
-
-void InputSystem::UpdateActionMaps(double time)
-{
-	struct MapEntry
-	{
-		WeakPtr<InputActionMap> map;
-		InputUser* user = nullptr;
-		int32_t priority = 0;
-	};
-
-	TArray<MapEntry> maps;
-	for (auto actionSet : mActionSets)
-	{
-		for (const auto& map : actionSet->GetActionMaps())
-		{
-			maps.push_back(MapEntry{ .map = map, .user = actionSet->GetUser(), .priority = map->GetPriority() });
-		}
-	}
-
-	eastl::stable_sort(maps.begin(), maps.end(), [](const MapEntry& lhs, const MapEntry& rhs)
-	{
-		return lhs.priority > rhs.priority;
-	});
-
-	InputConsumption consumption;
-	for (const auto& entry : maps)
-	{
-		if (const auto map = entry.map.lock())
-		{
-			map->SetUserActive(IsUserActive(entry.user));
-			if (map->IsActive())
-			{
-				map->SyncBindingOverrides(*entry.user);
-				map->Update(*entry.user, consumption, time);
-			}
-		}
-	}
 }
 
 void InputSystem::ProcessJoins(uint32_t maxPlayers)
@@ -219,6 +177,203 @@ void InputSystem::ProcessJoins(uint32_t maxPlayers)
 		}
 		EventDispatcher<PlayerJoinedEvent>::Publish(PlayerJoinedEvent(player));
 	}
+}
+
+void InputSystem::ResolveBindings(InputActionStates& states, const InputUser& user) const
+{
+	const auto& asset = *states.asset;
+	states.bindings = asset.GetBindings();
+	for (const auto& entry : user.GetBindingOverrides().overrides)
+	{
+		const auto action = asset.FindAction(entry.map, entry.action);
+		if (action.IsValid() and entry.binding < asset.GetActionLayout(action).bindingCount)
+		{
+			auto& controls = states.bindings[asset.GetActionLayout(action).firstBinding + entry.binding].controls;
+			if (entry.part >= controls.size())
+			{
+				controls.resize(entry.part + 1);
+			}
+			controls[entry.part] = entry.control;
+		}
+	}
+
+	for (auto& binding : states.bindings)
+	{
+		if (binding.layoutMapped)
+		{
+			for (auto& control : binding.controls)
+			{
+				if (control.device == InputDeviceType::Keyboard)
+				{
+					control.code = ResolveLayoutKey(control.code);
+				}
+			}
+		}
+	}
+
+	states.overridesVersion = user.GetBindingOverridesVersion();
+	states.keymapVersion = mKeymapVersion;
+}
+
+void InputSystem::EvaluateActionMap(InputActionStates& states, InputActionMapHandle map, const InputUser& user, double time)
+{
+	const auto& asset = *states.asset;
+	const auto& layout = asset.GetActionMapLayout(map);
+	const auto& devices = user.GetPairedDevices();
+
+	for (uint32_t i = layout.firstAction; i < layout.firstAction + layout.actionCount; ++i)
+	{
+		states.actions[i].frameState = InputBindingState();
+	}
+
+	for (const auto& entry : layout.bindingOrder)
+	{
+		auto state = EvaluateBinding(states.bindings[entry.binding], asset.GetAction(entry.action), devices);
+		state.binding = entry.binding - asset.GetActionLayout(entry.action).firstBinding;
+		states.actions[entry.action.value].Accumulate(state);
+	}
+
+	for (uint32_t i = layout.firstAction; i < layout.firstAction + layout.actionCount; ++i)
+	{
+		states.ProcessAction(InputActionHandle{ i }, time);
+	}
+}
+
+InputBindingState InputSystem::EvaluateBinding(const InputBindingDescriptor& binding, const InputActionDescriptor& action, const TArray<InputDevice*>& devices)
+{
+	InputBindingState state;
+	const uint32_t partCount = InputBindingDescriptor::GetPartCount(binding.type);
+	if (partCount == 0 or binding.controls.size() < partCount or ModifiersHeld(binding.modifiers, devices) == false)
+	{
+		return state;
+	}
+
+	TFixedArray<ControlSample, 6> samples;
+	for (uint32_t i = 0; i < partCount; ++i)
+	{
+		samples.push_back(SampleControl(binding.controls[i], devices));
+	}
+
+	switch (binding.type)
+	{
+		case InputBindingType::Control:
+		{
+			state.value = samples[0].value;
+			break;
+		}
+		case InputBindingType::Axis1D:
+		{
+			state.value = Float3(samples[1].magnitude - samples[0].magnitude, 0.0f, 0.0f);
+			break;
+		}
+		case InputBindingType::Axis2D:
+		{
+			state.value = Float3(samples[3].magnitude - samples[2].magnitude, samples[0].magnitude - samples[1].magnitude, 0.0f);
+			break;
+		}
+		case InputBindingType::Axis3D:
+		{
+			state.value = Float3(samples[3].magnitude - samples[2].magnitude, samples[0].magnitude - samples[1].magnitude, samples[4].magnitude - samples[5].magnitude);
+			break;
+		}
+		default: break;
+	}
+
+	float strongest = 0.0f;
+	for (const auto& sample : samples)
+	{
+		state.pressed |= sample.pressed;
+		state.released |= sample.released;
+		if (sample.device and (state.device == nullptr or sample.magnitude > strongest))
+		{
+			state.device = sample.device;
+			strongest = sample.magnitude;
+		}
+	}
+
+	for (const auto& processor : binding.processors)
+	{
+		state.value = processor.Apply(state.value, action);
+	}
+	state.magnitude = action.ComputeMagnitude(state.value);
+
+	if (state.magnitude > 0.0f or state.pressed)
+	{
+		for (uint32_t i = 0; i < partCount; ++i)
+		{
+			if (samples[i].magnitude > 0.0f or samples[i].pressed)
+			{
+				ConsumeControl(binding.controls[i], devices);
+			}
+		}
+	}
+	return state;
+}
+
+InputSystem::ControlSample InputSystem::SampleControl(const InputControl& control, const TArray<InputDevice*>& devices) const
+{
+	ControlSample sample;
+	for (const auto device : devices)
+	{
+		if (device->GetType() != control.device or device->IsConnected() == false or mConsumedControls.find(ConsumptionKey(device, control.code)) != mConsumedControls.end())
+		{
+			continue;
+		}
+
+		const auto value = device->ReadControl(control.code);
+		const float magnitude = Math::Length(value);
+		const bool pressed = device->WasControlPressedThisFrame(control.code);
+		const bool released = device->WasControlReleasedThisFrame(control.code);
+		if (magnitude > sample.magnitude or (sample.device == nullptr and (pressed or released)))
+		{
+			sample.value = value;
+			sample.magnitude = magnitude;
+			sample.device = device;
+		}
+		sample.pressed |= pressed;
+		sample.released |= released;
+	}
+	return sample;
+}
+
+void InputSystem::ConsumeControl(const InputControl& control, const TArray<InputDevice*>& devices)
+{
+	for (const auto device : devices)
+	{
+		if (device->GetType() == control.device)
+		{
+			mConsumedControls.insert(ConsumptionKey(device, control.code));
+		}
+	}
+}
+
+bool InputSystem::ModifiersHeld(EnumFlag<ModifierKeys> modifiers, const TArray<InputDevice*>& devices) const
+{
+	if (modifiers.Empty())
+	{
+		return true;
+	}
+
+	for (const auto device : devices)
+	{
+		if (device->GetType() != InputDeviceType::Keyboard)
+		{
+			continue;
+		}
+
+		const auto keyboard = static_cast<const Keyboard*>(device);
+		bool held = true;
+		for (auto mask = modifiers.Value(); mask != 0 and held; mask &= mask - 1)
+		{
+			held = IsModifierHeld(keyboard, static_cast<ModifierKeys>(mask & (~mask + 1)));
+		}
+
+		if (held)
+		{
+			return true;
+		}
+	}
+	return false;
 }
 
 double InputSystem::GetTime()
@@ -319,36 +474,9 @@ void InputSystem::ReleaseUser(InputUser* user)
 		mPlayers.erase(eastl::find(mPlayers.begin(), mPlayers.end(), user));
 	}
 
-	for (auto actionSet : mActionSets)
-	{
-		if (actionSet->mUser == user)
-		{
-			actionSet->mUser = nullptr;
-		}
-	}
-
 	user->CancelInteractiveRebind();
 	mUsers.erase(it);
 	delete user;
-}
-
-void InputSystem::SetPlayerInputManager(const PlayerInputManager& manager)
-{
-	mPlayerInputManager = manager;
-}
-
-void InputSystem::AddActionSet(InputActionSet* actionSet)
-{
-	mActionSets.push_back(actionSet);
-}
-
-void InputSystem::RemoveActionSet(InputActionSet* actionSet)
-{
-	auto it = eastl::find(mActionSets.begin(), mActionSets.end(), actionSet);
-	if (it != mActionSets.end())
-	{
-		mActionSets.erase(it);
-	}
 }
 
 bool InputSystem::IsWorldInputEnabled() const
@@ -464,7 +592,7 @@ bool InputSystem::ProcessEvent(const SDL_Event& e)
 		}
 		case SDL_EVENT_KEYMAP_CHANGED:
 		{
-			mKeymapChanged = true;
+			++mKeymapVersion;
 			break;
 		}
 		case SDL_EVENT_GAMEPAD_ADDED:

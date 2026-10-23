@@ -63,75 +63,88 @@ void EditorInputSystem::Initialize(Gleam::Application* app)
 #endif
 		})
 	});
-	mActionSet.Build(actions);
-	mActionSet.SetUser(mUser);
-	inputSystem->AddActionSet(&mActionSet);
+	mActions = Gleam::CreateScope<Gleam::InputActionAsset>(actions);
+	mStates = Gleam::InputActionStates(mActions.get());
 
-	mGlobalMap = mActionSet.FindActionMap("Editor.Global");
-	mViewportMap = mActionSet.FindActionMap("Editor.Viewport");
+	mGlobalMap = mActions->FindActionMap("Editor.Global");
+	mViewportMap = mActions->FindActionMap("Editor.Viewport");
 
-	mFlyMap = mActionSet.FindActionMap("Editor.Fly");
-	mFlyMap->SetEnabled(false);
+	mFlyMap = mActions->FindActionMap("Editor.Fly");
+	mStates.SetActionMapEnabled(mFlyMap, false);
 
-	mPanelMap = mActionSet.FindActionMap("Editor.Panel");
-	mPanelMap->SetEnabled(false);
+	mPanelMap = mActions->FindActionMap("Editor.Panel");
+	mStates.SetActionMapEnabled(mPanelMap, false);
 
 	mGlobalActions = EditorGlobalActions{
-		.undo = mGlobalMap->FindAction("Undo"),
-		.redo = mGlobalMap->FindAction("Redo"),
-		.play = mGlobalMap->FindAction("Play"),
-		.pause = mGlobalMap->FindAction("Pause"),
-		.step = mGlobalMap->FindAction("Step")
+		.undo = mActions->FindAction("Editor.Global/Undo"),
+		.redo = mActions->FindAction("Editor.Global/Redo"),
+		.play = mActions->FindAction("Editor.Global/Play"),
+		.pause = mActions->FindAction("Editor.Global/Pause"),
+		.step = mActions->FindAction("Editor.Global/Step")
 	};
 
 	mViewportActions = EditorViewportActions{
-		.translate = mViewportMap->FindAction("Translate"),
-		.rotate = mViewportMap->FindAction("Rotate"),
-		.scale = mViewportMap->FindAction("Scale"),
-		.frame = mViewportMap->FindAction("Frame"),
-		.fly = mViewportMap->FindAction("Fly"),
-		.pan = mViewportMap->FindAction("Pan"),
-		.orbit = mViewportMap->FindAction("Orbit"),
-		.dolly = mViewportMap->FindAction("Dolly"),
-		.look = mViewportMap->FindAction("Look"),
-		.zoom = mViewportMap->FindAction("Zoom")
+		.translate = mActions->FindAction("Editor.Viewport/Translate"),
+		.rotate = mActions->FindAction("Editor.Viewport/Rotate"),
+		.scale = mActions->FindAction("Editor.Viewport/Scale"),
+		.frame = mActions->FindAction("Editor.Viewport/Frame"),
+		.fly = mActions->FindAction("Editor.Viewport/Fly"),
+		.pan = mActions->FindAction("Editor.Viewport/Pan"),
+		.orbit = mActions->FindAction("Editor.Viewport/Orbit"),
+		.dolly = mActions->FindAction("Editor.Viewport/Dolly"),
+		.look = mActions->FindAction("Editor.Viewport/Look"),
+		.zoom = mActions->FindAction("Editor.Viewport/Zoom")
 	};
 
 	mFlyActions = EditorFlyActions{
-		.move = mFlyMap->FindAction("Move"),
-		.boost = mFlyMap->FindAction("Boost")
+		.move = mActions->FindAction("Editor.Fly/Move"),
+		.boost = mActions->FindAction("Editor.Fly/Boost")
 	};
 
 	mPanelActions = EditorPanelActions{
-		.rename = mPanelMap->FindAction("Rename"),
-		.remove = mPanelMap->FindAction("Delete")
+		.rename = mActions->FindAction("Editor.Panel/Rename"),
+		.remove = mActions->FindAction("Editor.Panel/Delete")
 	};
 }
 
 void EditorInputSystem::Shutdown(Gleam::Application* app)
 {
 	auto inputSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::InputSystem>();
-	inputSystem->RemoveActionSet(&mActionSet);
 	inputSystem->DestroyUser(mUser);
 	mUser = nullptr;
+	mStates = Gleam::InputActionStates();
+	mActions.reset();
 }
 
 void EditorInputSystem::Tick(Gleam::Application* app)
 {
 	const bool typing = ImGui::GetCurrentContext() and ImGui::GetIO().WantTextInput;
-	mGlobalMap->SetEnabled(typing == false);
-	mPanelMap->SetEnabled(mPanelActionsRequested and typing == false);
+	mStates.SetActionMapEnabled(mGlobalMap, typing == false);
+	mStates.SetActionMapEnabled(mPanelMap, mPanelActionsRequested and typing == false);
 	mPanelActionsRequested = false;
+
+	auto inputSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::InputSystem>();
+	inputSystem->UpdateActions(mStates, mUser);
 }
 
-Gleam::InputActionMap* EditorInputSystem::GetViewportMap() const
+Gleam::InputActionMapHandle EditorInputSystem::GetViewportMap() const
 {
 	return mViewportMap;
 }
 
-Gleam::InputActionMap* EditorInputSystem::GetFlyMap() const
+Gleam::InputActionMapHandle EditorInputSystem::GetFlyMap() const
 {
 	return mFlyMap;
+}
+
+void EditorInputSystem::SetActionMapEnabled(Gleam::InputActionMapHandle map, bool enabled)
+{
+	mStates.SetActionMapEnabled(map, enabled);
+}
+
+const Gleam::InputActionState& EditorInputSystem::GetAction(Gleam::InputActionHandle action) const
+{
+	return mStates.GetAction(action);
 }
 
 const EditorGlobalActions& EditorInputSystem::GetGlobalActions() const
@@ -159,8 +172,8 @@ void EditorInputSystem::RequestPanelActions()
 	mPanelActionsRequested = true;
 }
 
-Gleam::TString EditorInputSystem::GetShortcutLabel(const Gleam::InputAction* action)
+Gleam::TString EditorInputSystem::GetShortcutLabel(Gleam::InputActionHandle action) const
 {
-	const auto& bindings = action->GetBindings();
+	const auto& bindings = mActions->GetAction(action).bindings;
 	return bindings.empty() ? Gleam::TString() : bindings.front().GetDisplayName();
 }

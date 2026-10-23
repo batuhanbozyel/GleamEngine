@@ -13,7 +13,7 @@
 #include "View/Panels/Project/AssetImportDialog.h"
 #include "View/Panels/Input/InputActionsEditor.h"
 #include "EInput/EditorInputSystem.h"
-#include "Input/InputActionMap.h"
+#include "Input/InputActionDescriptor.h"
 #include "View/ViewStack.h"
 #include "View/EditorFonts.h"
 #include "View/IconsLucide.h"
@@ -576,11 +576,11 @@ void ContentBrowser::DrawAssetGrid()
 	const auto selected = FindSelectedEntry();
 	if (selected and ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows))
 	{
-		if (actions.rename->WasPerformedThisFrame())
+		if (mEditorInput->GetAction(actions.rename).performedThisFrame)
 		{
 			RequestRename(*selected);
 		}
-		else if (actions.remove->WasPerformedThisFrame())
+		else if (mEditorInput->GetAction(actions.remove).performedThisFrame)
 		{
 			RequestDelete(*selected);
 		}
@@ -636,11 +636,11 @@ void ContentBrowser::DrawAssetContextMenu()
 		const auto& actions = mEditorInput->GetPanelActions();
 		const bool editable = mContextEntry.category == AssetCategory::InputActions;
 
-		if (ImGui::MenuItem("Rename", EditorInputSystem::GetShortcutLabel(actions.rename).c_str(), false, editable))
+		if (ImGui::MenuItem("Rename", mEditorInput->GetShortcutLabel(actions.rename).c_str(), false, editable))
 		{
 			RequestRename(mContextEntry);
 		}
-		if (ImGui::MenuItem("Delete", EditorInputSystem::GetShortcutLabel(actions.remove).c_str(), false, editable))
+		if (ImGui::MenuItem("Delete", mEditorInput->GetShortcutLabel(actions.remove).c_str(), false, editable))
 		{
 			RequestDelete(mContextEntry);
 		}

@@ -11,7 +11,6 @@
 #include "Undo/UndoSystem.h"
 #include "EWorld/EWorldManager.h"
 #include "EInput/EditorInputSystem.h"
-#include "Input/InputAction.h"
 #include "Utils/ReflectionUtils.h"
 #include "View/ViewStack.h"
 #include "View/GleamTheme.h"
@@ -136,13 +135,13 @@ void WorldOutliner::Render(Gleam::ImGuiRenderer* imgui)
 
 				const auto& panelActions = mEditorInput->GetPanelActions();
 				const auto activeEntity = mSelectionSystem->GetActiveEntity();
-				if (simulating == false and focused and activeEntity != Gleam::InvalidEntity and panelActions.rename->WasPerformedThisFrame())
+				if (simulating == false and focused and activeEntity != Gleam::InvalidEntity and mEditorInput->GetAction(panelActions.rename).performedThisFrame)
 				{
 					BeginRename(activeEntity);
 				}
 
 				const auto& selectedEntities = mSelectionSystem->GetSelectedEntities();
-				if (simulating == false and focused and selectedEntities.empty() == false and panelActions.remove->WasPerformedThisFrame())
+				if (simulating == false and focused and selectedEntities.empty() == false and mEditorInput->GetAction(panelActions.remove).performedThisFrame)
 				{
 					mPendingDestroy = selectedEntities.front();
 				}
@@ -336,11 +335,11 @@ void WorldOutliner::DrawEntityNode(const Gleam::Entity& entity, uint32_t depth)
 	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, mItemSpacing);
 	if (ImGui::BeginPopupContextItem("##EntityContext"))
 	{
-		if (ImGui::MenuItem("Rename", EditorInputSystem::GetShortcutLabel(mEditorInput->GetPanelActions().rename).c_str()))
+		if (ImGui::MenuItem("Rename", mEditorInput->GetShortcutLabel(mEditorInput->GetPanelActions().rename).c_str()))
 		{
 			BeginRename(handle);
 		}
-		if (ImGui::MenuItem("Destroy Entity", EditorInputSystem::GetShortcutLabel(mEditorInput->GetPanelActions().remove).c_str()))
+		if (ImGui::MenuItem("Destroy Entity", mEditorInput->GetShortcutLabel(mEditorInput->GetPanelActions().remove).c_str()))
 		{
 			mPendingDestroy = handle;
 		}

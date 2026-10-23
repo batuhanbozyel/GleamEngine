@@ -1,19 +1,21 @@
 #pragma once
-#include "InputActionSet.h"
+#include "InputActionState.h"
+#include "InputUser.h"
 #include "World/ComponentSystem.h"
 #include "World/Entity.h"
-#include "Assets/AssetReference.h"
-#include "Container/Pointer.h"
 
 namespace Gleam {
 
 class InputSystem;
+class AssetManager;
+struct PlayerInputManager;
 
 struct PlayerInputRecord
 {
 	EntityHandle entity = InvalidEntity;
 	AssetReference actions;
-	Scope<InputActionSet> actionSet;
+	uint32_t playerIndex = InputUser::InvalidPlayerIndex;
+	InputActionStates states;
 };
 
 class PlayerInputSystem final : public ComponentSystem
@@ -27,17 +29,25 @@ public:
 
 	virtual void OnDestroy(EntityManager& entityManager) override;
 
-	InputActionSet* GetActionSet(EntityHandle entity) const;
+	const InputActionStates* GetActionStates(EntityHandle entity) const;
+
+	void SetActionMapEnabled(EntityHandle entity, InputActionMapHandle map, bool enabled);
 
 private:
 
 	void SyncRecords(EntityManager& entityManager);
+
+	void SyncPlayers(const PlayerInputManager& manager);
+
+	void ReleaseActions(PlayerInputRecord& record);
 
 	uint32_t FindRecordIndex(EntityHandle entity) const;
 
 	void OnPlayerInputRemoved(EntityHandle entity);
 
 	InputSystem* mInputSystem = nullptr;
+
+	AssetManager* mAssetManager = nullptr;
 
 	TArray<PlayerInputRecord> mRecords;
 

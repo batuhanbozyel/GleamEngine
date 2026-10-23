@@ -55,7 +55,9 @@ GENUM(InputInteractionType, "7D061C73-0158-4B4B-A669-70302D8F4D2B", Serializable
 	GITEM(MultiTap, "03FA2ED6-DABF-4814-BC6B-A07792AABDB9")
 };
 
-GSTRUCT(InputProcessor, "3AEFE2EB-5F9E-4E1D-B1A7-1AD91D34E4EF", Serializable)
+struct InputActionDescriptor;
+
+GSTRUCT(InputProcessor,"3AEFE2EB-5F9E-4E1D-B1A7-1AD91D34E4EF", Serializable)
 {
 	GFIELD("0AA3414C-8837-4F8B-81F0-DF950531ECE8", Serializable)
 	InputProcessorType type = InputProcessorType::DeadZone;
@@ -68,6 +70,8 @@ GSTRUCT(InputProcessor, "3AEFE2EB-5F9E-4E1D-B1A7-1AD91D34E4EF", Serializable)
 
 	GFIELD("EA38FB59-5DB4-4510-A608-C8AF11A2743F", Serializable)
 	Float3 factor = Float3::one;
+
+	Float3 Apply(const Float3& value, const InputActionDescriptor& action) const;
 };
 
 GSTRUCT(InputInteraction, "D2F1CF61-9693-4725-BF48-6DDDE726B6BE", Serializable)
@@ -137,6 +141,8 @@ GSTRUCT(InputActionDescriptor, "40E35849-CB40-4E3C-87CE-4048B3FF66B7", Serializa
 
 	GFIELD("7E67BB54-315D-4EC4-8E74-ECEA161C2CD1", Serializable)
 	TArray<InputInteraction> interactions;
+
+	float ComputeMagnitude(const Float3& value) const;
 
 	static InputActionDescriptor Make(const TStringView name, InputValueType valueType, std::initializer_list<InputBindingDescriptor> bindings);
 };

@@ -1,5 +1,7 @@
 #pragma once
-#include "InputAction.h"
+#include "InputActionAsset.h"
+
+#include <functional>
 
 namespace Gleam {
 
@@ -30,7 +32,7 @@ public:
 
 	const TArray<InputDevice*>& GetPairedDevices() const;
 
-	void ApplyBindingOverride(const InputAction* action, uint32_t binding, uint32_t part, const InputControl& control);
+	void ApplyBindingOverride(const InputActionAsset& asset, InputActionHandle action, uint32_t binding, uint32_t part, const InputControl& control);
 
 	void ClearBindingOverrides();
 
@@ -42,7 +44,7 @@ public:
 
 	void LoadBindingOverrides(const TString& data);
 
-	void StartInteractiveRebind(const InputAction* action, uint32_t binding, uint32_t part, InputRebindCallback&& callback);
+	void StartInteractiveRebind(const InputActionAsset& asset, InputActionHandle action, uint32_t binding, uint32_t part, InputRebindCallback&& callback);
 
 	void CancelInteractiveRebind();
 

@@ -1,43 +1,48 @@
 #pragma once
 #include "Core/Subsystem.h"
 #include "Container/String.h"
-#include "Input/InputActionSet.h"
+#include "Container/Pointer.h"
+#include "Input/InputActionState.h"
+
+namespace Gleam {
+class InputUser;
+} // namespace Gleam
 
 namespace GEditor {
 
 struct EditorGlobalActions
 {
-	Gleam::InputAction* undo = nullptr;
-	Gleam::InputAction* redo = nullptr;
-	Gleam::InputAction* play = nullptr;
-	Gleam::InputAction* pause = nullptr;
-	Gleam::InputAction* step = nullptr;
+	Gleam::InputActionHandle undo;
+	Gleam::InputActionHandle redo;
+	Gleam::InputActionHandle play;
+	Gleam::InputActionHandle pause;
+	Gleam::InputActionHandle step;
 };
 
 struct EditorViewportActions
 {
-	Gleam::InputAction* translate = nullptr;
-	Gleam::InputAction* rotate = nullptr;
-	Gleam::InputAction* scale = nullptr;
-	Gleam::InputAction* frame = nullptr;
-	Gleam::InputAction* fly = nullptr;
-	Gleam::InputAction* pan = nullptr;
-	Gleam::InputAction* orbit = nullptr;
-	Gleam::InputAction* dolly = nullptr;
-	Gleam::InputAction* look = nullptr;
-	Gleam::InputAction* zoom = nullptr;
+	Gleam::InputActionHandle translate;
+	Gleam::InputActionHandle rotate;
+	Gleam::InputActionHandle scale;
+	Gleam::InputActionHandle frame;
+	Gleam::InputActionHandle fly;
+	Gleam::InputActionHandle pan;
+	Gleam::InputActionHandle orbit;
+	Gleam::InputActionHandle dolly;
+	Gleam::InputActionHandle look;
+	Gleam::InputActionHandle zoom;
 };
 
 struct EditorFlyActions
 {
-	Gleam::InputAction* move = nullptr;
-	Gleam::InputAction* boost = nullptr;
+	Gleam::InputActionHandle move;
+	Gleam::InputActionHandle boost;
 };
 
 struct EditorPanelActions
 {
-	Gleam::InputAction* rename = nullptr;
-	Gleam::InputAction* remove = nullptr;
+	Gleam::InputActionHandle rename;
+	Gleam::InputActionHandle remove;
 };
 
 class EditorInputSystem final : public Gleam::TickableGameInstanceSubsystem
@@ -58,9 +63,13 @@ public:
 
 	virtual void Tick(Gleam::Application* app) override;
 
-	Gleam::InputActionMap* GetViewportMap() const;
+	Gleam::InputActionMapHandle GetViewportMap() const;
 
-	Gleam::InputActionMap* GetFlyMap() const;
+	Gleam::InputActionMapHandle GetFlyMap() const;
+
+	void SetActionMapEnabled(Gleam::InputActionMapHandle map, bool enabled);
+
+	const Gleam::InputActionState& GetAction(Gleam::InputActionHandle action) const;
 
 	const EditorGlobalActions& GetGlobalActions() const;
 
@@ -72,21 +81,23 @@ public:
 
 	void RequestPanelActions();
 
-	static Gleam::TString GetShortcutLabel(const Gleam::InputAction* action);
+	Gleam::TString GetShortcutLabel(Gleam::InputActionHandle action) const;
 
 private:
 
 	Gleam::InputUser* mUser = nullptr;
 
-	Gleam::InputActionSet mActionSet;
+	Gleam::Scope<Gleam::InputActionAsset> mActions;
 
-	Gleam::InputActionMap* mGlobalMap = nullptr;
+	Gleam::InputActionStates mStates;
 
-	Gleam::InputActionMap* mViewportMap = nullptr;
+	Gleam::InputActionMapHandle mGlobalMap;
 
-	Gleam::InputActionMap* mFlyMap = nullptr;
+	Gleam::InputActionMapHandle mViewportMap;
 
-	Gleam::InputActionMap* mPanelMap = nullptr;
+	Gleam::InputActionMapHandle mFlyMap;
+
+	Gleam::InputActionMapHandle mPanelMap;
 
 	EditorGlobalActions mGlobalActions;
 

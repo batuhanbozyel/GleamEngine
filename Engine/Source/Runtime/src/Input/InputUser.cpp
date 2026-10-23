@@ -67,11 +67,11 @@ const TArray<InputDevice*>& InputUser::GetPairedDevices() const
 	return mDevices;
 }
 
-void InputUser::ApplyBindingOverride(const InputAction* action, uint32_t binding, uint32_t part, const InputControl& control)
+void InputUser::ApplyBindingOverride(const InputActionAsset& asset, InputActionHandle action, uint32_t binding, uint32_t part, const InputControl& control)
 {
 	SetBindingOverride(InputBindingOverride{
-		.map = action->GetMap()->GetId(),
-		.action = action->GetId(),
+		.map = asset.GetActionMap(asset.GetActionLayout(action).map).id,
+		.action = asset.GetAction(action).id,
 		.binding = binding,
 		.part = part,
 		.control = control
@@ -109,7 +109,7 @@ void InputUser::LoadBindingOverrides(const TString& data)
 	mOverridesVersion = NextOverridesVersion();
 }
 
-void InputUser::StartInteractiveRebind(const InputAction* action, uint32_t binding, uint32_t part, InputRebindCallback&& callback)
+void InputUser::StartInteractiveRebind(const InputActionAsset& asset, InputActionHandle action, uint32_t binding, uint32_t part, InputRebindCallback&& callback)
 {
 	if (mRebind)
 	{
@@ -117,8 +117,8 @@ void InputUser::StartInteractiveRebind(const InputAction* action, uint32_t bindi
 	}
 
 	mRebind = RebindOperation{
-		.map = action->GetMap()->GetId(),
-		.action = action->GetId(),
+		.map = asset.GetActionMap(asset.GetActionLayout(action).map).id,
+		.action = asset.GetAction(action).id,
 		.binding = binding,
 		.part = part,
 		.callback = eastl::move(callback)

@@ -91,6 +91,55 @@ TString InputBindingDescriptor::GetDisplayName() const
 	return text;
 }
 
+Float3 InputProcessor::Apply(const Float3& value, const InputActionDescriptor& action) const
+{
+	switch (type)
+	{
+		case InputProcessorType::DeadZone:
+		{
+			const float magnitude = action.ComputeMagnitude(value);
+			if (magnitude < min or magnitude <= 0.0f)
+			{
+				return Float3::zero;
+			}
+			const float range = Math::Max(max - min, 1e-5f);
+			const float scaled = Math::Saturate((magnitude - min) / range);
+			return value * (scaled / magnitude);
+		}
+		case InputProcessorType::Scale:
+		{
+			return value * factor;
+		}
+		case InputProcessorType::Invert:
+		{
+			return -value;
+		}
+		case InputProcessorType::Normalize:
+		{
+			const float magnitude = action.ComputeMagnitude(value);
+			return magnitude > 0.0f ? value * (1.0f / magnitude) : value;
+		}
+		case InputProcessorType::Clamp:
+		{
+			return Float3(Math::Clamp(value.x, min, max),
+						  Math::Clamp(value.y, min, max),
+						  Math::Clamp(value.z, min, max));
+		}
+		default: return value;
+	}
+}
+
+float InputActionDescriptor::ComputeMagnitude(const Float3& value) const
+{
+	switch (valueType)
+	{
+		case InputValueType::Bool:
+		case InputValueType::Float: return Math::Abs(value.x);
+		case InputValueType::Float2: return Math::Sqrt(value.x * value.x + value.y * value.y);
+		default: return Math::Length(value);
+	}
+}
+
 InputActionDescriptor InputActionDescriptor::Make(const TStringView name, InputValueType valueType, std::initializer_list<InputBindingDescriptor> bindings)
 {
 	InputActionDescriptor action;

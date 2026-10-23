@@ -3,8 +3,9 @@
 #include "Devices/Keyboard.h"
 #include "Devices/Mouse.h"
 #include "InputUser.h"
-#include "InputActionSet.h"
-#include "PlayerInput.h"
+#include "InputActionState.h"
+
+#include "Container/Hash.h"
 
 union SDL_Event;
 
@@ -38,11 +39,11 @@ public:
 
 	const TArray<InputUser*>& GetPlayers() const;
 
-	void SetPlayerInputManager(const PlayerInputManager& manager);
+	InputUser* JoinPlayer(uint32_t index);
 
-	void AddActionSet(InputActionSet* actionSet);
+	void ProcessJoins(uint32_t maxPlayers);
 
-	void RemoveActionSet(InputActionSet* actionSet);
+	void UpdateActions(InputActionStates& states, const InputUser* user);
 
 	bool IsWorldInputEnabled() const;
 
@@ -60,6 +61,15 @@ public:
 
 private:
 
+	struct ControlSample
+	{
+		Float3 value = Float3::zero;
+		float magnitude = 0.0f;
+		bool pressed = false;
+		bool released = false;
+		const InputDevice* device = nullptr;
+	};
+
 	void Update();
 
 	bool ProcessEvent(const SDL_Event& e);
@@ -76,17 +86,19 @@ private:
 
 	void ReleaseUser(InputUser* user);
 
-	void ProcessJoins(uint32_t maxPlayers);
-
-	InputUser* JoinPlayer(uint32_t index);
-
-	void SyncPlayers();
-
-	bool IsUserActive(const InputUser* user) const;
-
-	void UpdateActionMaps(double time);
-
 	uint32_t FindFreePlayerIndex() const;
+
+	void ResolveBindings(InputActionStates& states, const InputUser& user) const;
+
+	void EvaluateActionMap(InputActionStates& states, InputActionMapHandle map, const InputUser& user, double time);
+
+	InputBindingState EvaluateBinding(const InputBindingDescriptor& binding, const InputActionDescriptor& action, const TArray<InputDevice*>& devices);
+
+	ControlSample SampleControl(const InputControl& control, const TArray<InputDevice*>& devices) const;
+
+	void ConsumeControl(const InputControl& control, const TArray<InputDevice*>& devices);
+
+	bool ModifiersHeld(EnumFlag<ModifierKeys> modifiers, const TArray<InputDevice*>& devices) const;
 
 	TArray<InputDevice*> mDevices;
 
@@ -94,17 +106,15 @@ private:
 
 	TArray<InputUser*> mPlayers;
 
-	TArray<InputActionSet*> mActionSets;
-
-	PlayerInputManager mPlayerInputManager;
-
 	TArray<InputUser*> mPendingDestroys;
+
+	HashSet<uint64_t> mConsumedControls;
+
+	uint32_t mKeymapVersion = 0;
 
 	bool mUpdating = false;
 
 	bool mWorldInputEnabled = true;
-
-	bool mKeymapChanged = false;
 
 	TArray<Gamepad*> mGamepads;
 
