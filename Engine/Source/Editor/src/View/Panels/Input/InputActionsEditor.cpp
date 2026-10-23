@@ -28,6 +28,7 @@ static constexpr float kColumnWidth = 110.0f;
 static constexpr float kListWidth = 200.0f;
 static constexpr float kDeviceComboWidth = 100.0f;
 static constexpr float kListenButtonWidth = 80.0f;
+static constexpr ImVec2 kPanelPadding = ImVec2(8.0f, 8.0f);
 
 template<typename Container>
 static Gleam::TString MakeUniqueName(const Container& items, const char* base)
@@ -124,22 +125,24 @@ void InputActionsEditor::Render(Gleam::ImGuiRenderer* imgui)
 				ImGui::TableSetupColumn("Actions", ImGuiTableColumnFlags_WidthFixed, kListWidth);
 				ImGui::TableSetupColumn("Properties", ImGuiTableColumnFlags_WidthStretch);
 				ImGui::TableNextRow();
+				ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, kPanelPadding);
 
 				ImGui::TableSetColumnIndex(0);
-				ImGui::BeginChild("##Maps");
+				ImGui::BeginChild("##Maps", ImVec2(0.0f, 0.0f), ImGuiChildFlags_AlwaysUseWindowPadding);
 				DrawMaps();
 				ImGui::EndChild();
 
 				ImGui::TableSetColumnIndex(1);
-				ImGui::BeginChild("##Actions");
+				ImGui::BeginChild("##Actions", ImVec2(0.0f, 0.0f), ImGuiChildFlags_AlwaysUseWindowPadding);
 				DrawActions();
 				ImGui::EndChild();
 
 				ImGui::TableSetColumnIndex(2);
-				ImGui::BeginChild("##Properties");
+				ImGui::BeginChild("##Properties", ImVec2(0.0f, 0.0f), ImGuiChildFlags_AlwaysUseWindowPadding);
 				DrawProperties();
 				ImGui::EndChild();
 
+				ImGui::PopStyleVar();
 				ImGui::EndTable();
 			}
 		}
@@ -217,7 +220,7 @@ bool InputActionsEditor::DrawListHeader(const char* label)
 	const float buttonSize = ImGui::GetFrameHeight();
 	ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - buttonSize);
 	ImGui::PushID(label);
-	const bool clicked = ImGui::Button(ICON_LC_PLUS, ImVec2(buttonSize, buttonSize));
+	const bool clicked = Widgets::IconButton("##Add", ICON_LC_PLUS, ImVec2(buttonSize, buttonSize));
 	ImGui::PopID();
 	ImGui::Separator();
 	return clicked;
@@ -380,7 +383,7 @@ bool InputActionsEditor::DrawBinding(Gleam::InputBindingDescriptor& binding, uin
 
 	const float buttonSize = ImGui::GetFrameHeight();
 	ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - buttonSize);
-	const bool keep = ImGui::Button(ICON_LC_TRASH_2, ImVec2(buttonSize, buttonSize)) == false;
+	const bool keep = Widgets::IconButton("##Remove", ICON_LC_TRASH_2, ImVec2(buttonSize, buttonSize)) == false;
 
 	if (open)
 	{
