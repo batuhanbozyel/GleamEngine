@@ -173,6 +173,22 @@ bool Widgets::OutlineButton(const char* label, const ImVec2& size)
 	return pressed;
 }
 
+bool Widgets::IconButton(const char* id, const char* icon, const ImVec2& size)
+{
+	const bool pressed = ImGui::Button(id, size);
+
+	// Center on the glyph's ink bounds: the button's text layout left-aligns labels wider than the padded area
+	// and Lucide glyphs don't sit centered in the text font's line box.
+	unsigned int codepoint = 0;
+	ImTextCharFromUtf8(&codepoint, icon, nullptr);
+	const auto glyph = ImGui::GetFontBaked()->FindGlyph(static_cast<ImWchar>(codepoint));
+	const ImVec2 min = ImGui::GetItemRectMin();
+	const ImVec2 max = ImGui::GetItemRectMax();
+	const ImVec2 pos(IM_ROUND((min.x + max.x - glyph->X0 - glyph->X1) * 0.5f), IM_ROUND((min.y + max.y - glyph->Y0 - glyph->Y1) * 0.5f));
+	ImGui::GetWindowDrawList()->AddText(pos, ImGui::GetColorU32(ImGuiCol_Text), icon);
+	return pressed;
+}
+
 EntityKind Widgets::GetEntityKind(const Gleam::EntityManager& entityManager, Gleam::EntityHandle handle)
 {
 	static const auto entityHash = Gleam::Reflection::GetClass<Gleam::Entity>().TypeHash();

@@ -3,12 +3,15 @@
 
 namespace Gleam {
 
+struct MeshDescriptor;
+struct MaterialInstanceDescriptor;
+
 GSTRUCT(MeshRenderer, "71B269C7-DCF6-4E00-A914-62CE71321893", EntityComponent, Serializable, PrettyName("Mesh Renderer"))
 {
-	GFIELD("74C44005-75FD-4E1E-8DD9-A63D54A6E486", Serializable, PrettyName("Mesh"))
+	GFIELD("74C44005-75FD-4E1E-8DD9-A63D54A6E486", Serializable, PrettyName("Mesh"), AssetType(TypeOf<MeshDescriptor>))
 	AssetReference mesh;
 
-	GFIELD("7ABC9B5E-CA6B-4E72-B14D-4546C4472C15", Serializable, PrettyName("Materials"))
+	GFIELD("7ABC9B5E-CA6B-4E72-B14D-4546C4472C15", Serializable, PrettyName("Materials"), AssetType(TypeOf<MaterialInstanceDescriptor>))
 	TArray<AssetReference> materials;
 };
 

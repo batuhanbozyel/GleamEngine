@@ -42,7 +42,7 @@ GSTRUCT(MaterialInstanceDescriptor, "910243E7-F9B5-4722-8C77-CB7A81DF4775", Seri
 	GFIELD("D5E17A55-48B9-40D3-8C61-1C3F92D6A9D7", Serializable)
 	TString name;
 
-	GFIELD("7A9D51B4-E1C0-4CC8-9A33-F3B6EB97A2E3", Serializable)
+	GFIELD("7A9D51B4-E1C0-4CC8-9A33-F3B6EB97A2E3", Serializable, AssetType(TypeOf<MaterialDescriptor>))
 	AssetReference material;
 
 	GFIELD("EAC82FB3-1DAD-4D87-8E42-13BFBF3D4A2F", Serializable)

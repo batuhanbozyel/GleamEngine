@@ -9,6 +9,7 @@
 #include "World/World.h"
 #include "World/Components/Camera.h"
 #include "World/Components/SkyAtmosphere.h"
+#include "Input/PlayerInput.h"
 #include "World/Components/ReflectionProbe.h"
 
 #include "Core/Engine.h"
@@ -186,6 +187,7 @@ Gleam::Path GleamLauncher::CreateProject(const Gleam::TString& name, const Gleam
 
 		// global probe
 		world.GetEntityManager().SetSingleton<Gleam::ReflectionProbe>();
+		world.GetEntityManager().SetSingleton<Gleam::PlayerInputManager>();
 
 		EWorldManager worldManager(&world);
 		worldManager.SaveAs(worldFile);

@@ -35,7 +35,7 @@ file(GLOB_RECURSE SHADER_FILES ${CMAKE_CURRENT_SOURCE_DIR}/src/*.hlsl*)
 if (WIN32)
     set_source_files_properties(${SHADER_FILES} PROPERTIES VS_TOOL_OVERRIDE "None")
 else()
-    set_source_files_properties(${SOURCE_FILES} ${HEADER_FILES} PROPERTIES COMPILE_FLAGS "-x objective-c++")
+    set_source_files_properties(${SOURCE_FILES} PROPERTIES XCODE_EXPLICIT_FILE_TYPE "sourcecode.cpp.objcpp")
 endif()
 list(APPEND SOURCE_FILES ${SHADER_FILES})
 

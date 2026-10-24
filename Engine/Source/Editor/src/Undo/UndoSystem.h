@@ -40,6 +40,10 @@ public:
 
 	void RemoveComponent(uint32_t typeHash, const Gleam::TArray<Gleam::EntityHandle>& entities);
 
+	void AddSingleton(uint32_t typeHash);
+
+	void RemoveSingleton(uint32_t typeHash);
+
 	bool CanUndo() const
 	{
 		return mUndoStack.empty() == false;

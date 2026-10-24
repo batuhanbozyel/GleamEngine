@@ -12,6 +12,8 @@ target_compile_definitions(ShaderCompiler PRIVATE "NOMINMAX")
 GLEAM_SET_WARNINGS(ShaderCompiler)
 
 if (APPLE)
+    # Clang's native __declspec(uuid)/__uuidof need -fms-extensions, which -pedantic rejects
+    target_compile_definitions(ShaderCompiler PRIVATE __EMULATE_UUID)
     target_link_libraries(ShaderCompiler PUBLIC ${DXC_DIRECTORY}/lib/libdxcompiler.dylib)
 else()
     DEPLOY_FILE(${DXC_DIRECTORY}/bin/dxcompiler.dll)

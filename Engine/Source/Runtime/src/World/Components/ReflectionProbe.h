@@ -12,7 +12,7 @@ GENUM(ReflectionProbeResolution, "07F67161-8957-48BB-94DA-882D9861F06B", Seriali
 	GITEM(ReflectionProbeResolution2048, "0ACE9D0F-20AF-4F95-8DF2-FFC4944E202C", PrettyName("2048")) = 2048
 };
 
-GSTRUCT(ReflectionProbe, "96838A36-D51D-4A58-93E6-F76D7624BCA2", EntityComponent, Serializable, PrettyName("Reflection Probe"))
+GSTRUCT(ReflectionProbe, "96838A36-D51D-4A58-93E6-F76D7624BCA2", EntityComponent, Singleton(true), Serializable, PrettyName("Reflection Probe"))
 {
 	GFIELD("6D690D24-FA95-4297-A748-858132BEC99A", Serializable, PrettyName("Resolution"))
 	ReflectionProbeResolution resolution = ReflectionProbeResolution::ReflectionProbeResolution256;

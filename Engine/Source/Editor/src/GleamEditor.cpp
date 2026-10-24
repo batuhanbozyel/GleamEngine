@@ -6,6 +6,7 @@
 #include "Launcher/GleamLauncher.h"
 #include "EAssets/EAssetManager.h"
 #include "EWorld/EWorldManager.h"
+#include "EInput/EditorInputSystem.h"
 #include "Config/EditorConfigSystem.h"
 #include "Config/EditorPreferences.h"
 #include "Selection/SelectionSystem.h"
@@ -15,6 +16,7 @@
 #include "View/Widgets/PropertyDrawer.h"
 #include "World/World.h"
 #include "Physics/PhysicsSystem.h"
+#include "Input/PlayerInputSystem.h"
 #include "Renderer/Renderers/ImGuiRenderer.h"
 
 #include "View/Panels/MenuBar/MenuBar.h"
@@ -27,6 +29,7 @@
 #include "View/Panels/Project/Preferences.h"
 #include "View/Panels/Project/AssetImportDialog.h"
 #include "View/Panels/Console/Console.h"
+#include "View/Panels/Input/InputActionsEditor.h"
 
 #include <Editor.Reflection.generated.h>
 
@@ -46,9 +49,11 @@ public:
 		auto worldManager = GetSubsystem<Gleam::WorldManager>();
 		mEditWorld = worldManager->GetActiveWorld();
 		mEditWorld->GetSystem<Gleam::PhysicsSystem>()->Enabled = false;
+		mEditWorld->GetSystem<Gleam::PlayerInputSystem>()->Enabled = false;
 		mEditWorld->AddSubsystem<UndoSystem>();
 		mEditWorld->AddSubsystem<SelectionSystem>();
 		AddSubsystem<EWorldManager>(mEditWorld);
+		AddSubsystem<EditorInputSystem>();
 
 		const auto iniPath = EditorConfigSystem::UserDirectory(Gleam::Globals::ProjectName, Gleam::Globals::ProjectDirectory) / "Editor.ini";
 		const bool hasLayout = Gleam::Filesystem::Exists(iniPath);
@@ -68,11 +73,13 @@ public:
 		viewStack->AddView<ProjectSettings>();
 		viewStack->AddView<Preferences>();
 		viewStack->AddView<AssetImportDialog>(assetManager);
+		viewStack->AddView<InputActionsEditor>(assetManager);
 	}
     
 	~GleamEditor()
 	{
 		RemoveSubsystem<ViewStack>();
+		RemoveSubsystem<EditorInputSystem>();
 		mEditWorld->RemoveSubsystem<SelectionSystem>();
 		mEditWorld->RemoveSubsystem<UndoSystem>();
 		RemoveSubsystem<EWorldManager>();

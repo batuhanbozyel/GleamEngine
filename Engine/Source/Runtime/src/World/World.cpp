@@ -2,6 +2,7 @@
 #include "World.h"
 #include "Systems/RenderSceneProxy.h"
 #include "Physics/PhysicsSystem.h"
+#include "Input/PlayerInputSystem.h"
 
 using namespace Gleam;
 
@@ -12,6 +13,7 @@ World::World(const AssetReference& reference, const AssetHeader& header, const W
 	Timestep::Reset();
 	AddSubsystem<RenderSceneProxy>();
 	AddSystem<PhysicsSystem>()->SetGravity(mDescriptor.gravity);
+	AddSystem<PlayerInputSystem>();
 }
 
 World::~World()

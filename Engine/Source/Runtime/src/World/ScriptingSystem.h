@@ -29,6 +29,7 @@ public:
 				.template func<&RemoveComponent<T>>("RemoveComponent"_hs)
 				.template func<&HasComponent<T>>("HasComponent"_hs)
 				.template func<&SetSingleton<T>, entt::as_ref_t>("SetSingleton"_hs)
+				.template func<&RemoveSingleton<T>>("RemoveSingleton"_hs)
 				.template func<&CopyStorage<T>>("CopyStorage"_hs);
 		}
 	}
@@ -57,6 +58,12 @@ private:
 	static T& SetSingleton(Ref<EntityManager> entityManager)
 	{
 		return entityManager.get().SetSingleton<T>();
+	}
+
+	template<typename T>
+	static void RemoveSingleton(Ref<EntityManager> entityManager)
+	{
+		entityManager.get().RemoveSingleton<T>();
 	}
 
 	template<typename T>

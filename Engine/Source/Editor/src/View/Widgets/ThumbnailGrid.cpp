@@ -71,6 +71,10 @@ void ThumbnailGrid::DrawItem(const ThumbnailItem& item, uint32_t index, const Ed
 	{
 		events.doubleClicked = static_cast<int32_t>(index);
 	}
+	if (hovered and ImGui::IsMouseReleased(ImGuiMouseButton_Right))
+	{
+		events.contextClicked = static_cast<int32_t>(index);
+	}
 
 	if (item.payloadType and ImGui::BeginDragDropSource(ImGuiDragDropFlags_None))
 	{

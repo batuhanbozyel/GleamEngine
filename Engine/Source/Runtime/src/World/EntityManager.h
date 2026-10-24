@@ -71,6 +71,10 @@ public:
 
 	void* FindSingleton(uint32_t typeHash);
 
+	void* AddSingleton(uint32_t typeHash);
+
+	void RemoveSingleton(uint32_t typeHash);
+
 	void* AddComponent(EntityHandle entity, uint32_t typeHash);
 
 	void RemoveComponent(EntityHandle entity, uint32_t typeHash);
@@ -102,6 +106,12 @@ public:
     {
 		return GetComponent<T>(mSingletonEntity);
     }
+
+	template<typename T>
+	void RemoveSingleton()
+	{
+		RemoveComponent<T>(mSingletonEntity);
+	}
 
 	void VisitSingletons(VisitFn&& fn)
 	{

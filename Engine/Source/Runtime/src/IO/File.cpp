@@ -6,8 +6,8 @@ using namespace Gleam;
 File::File(FileStream&& handle, const Path& path, FileAccessor& accessor)
 	: mName(path.Filename().String())
     , mFullPath(path)
-	, mHandle(std::move(handle))
     , mAccessor(accessor)
+	, mHandle(std::move(handle))
 {
 	
 }

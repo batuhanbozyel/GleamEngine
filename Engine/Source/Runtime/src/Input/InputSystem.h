@@ -1,66 +1,120 @@
 #pragma once
 #include "Core/Subsystem.h"
-#include "KeyCode.h"
-#include "MouseButton.h"
-#include "JoystickButton.h"
-#include "Math/Vector2.h"
+#include "Devices/Keyboard.h"
+#include "Devices/Mouse.h"
+#include "InputUser.h"
+#include "InputActionState.h"
 
-struct SDL_Mouse;
-struct SDL_Keyboard;
-struct SDL_KeyboardEvent;
-struct SDL_MouseMotionEvent;
-struct SDL_MouseWheelEvent;
-struct SDL_MouseButtonEvent;
+#include "Container/Hash.h"
+
+union SDL_Event;
 
 namespace Gleam {
-
-class EventSystem;
 
 class InputSystem final : public EngineSubsystem
 {
 	friend class Application;
-    friend class EventSystem;
+	friend class EventSystem;
 public:
-    
-    void ShowCursor() const;
-    
-    void HideCursor() const;
-    
-    bool CursorVisible() const;
-    
-    bool GetButtonDown(const KeyCode keycode) const;
-    
-    bool GetButtonDown(const MouseButton button) const;
-    
-    const Float2& GetMousePosition() const;
-    
-    const Float2& GetAxis() const;
+
+	virtual void Initialize(Engine* engine) override;
+
+	virtual void Shutdown(Engine* engine) override;
+
+	Keyboard* GetKeyboard() const;
+
+	Mouse* GetMouse() const;
+
+	const TArray<Gamepad*>& GetGamepads() const;
+
+	TArrayView<InputDevice* const> GetDevices() const;
+
+	InputUser* CreateUser();
+
+	void DestroyUser(InputUser* user);
+
+	void DestroyPlayers();
+
+	InputUser* GetPlayer(uint32_t index) const;
+
+	const TArray<InputUser*>& GetPlayers() const;
+
+	InputUser* JoinPlayer(uint32_t index);
+
+	void ProcessJoins(uint32_t maxPlayers);
+
+	void UpdateActions(InputActionStates& states, const InputUser* user);
+
+	bool PrepareActions(InputActionStates& states, const InputUser* user);
+
+	void UpdateActionMap(InputActionStates& states, InputActionMapHandle map, const InputUser& user, double time);
+
+	double GetTime();
+
+	void ShowCursor();
+
+	void HideCursor();
+
+	bool CursorVisible() const;
 
 private:
-    
-    void Update();
-    
-    void KeyboardEventHandler(SDL_KeyboardEvent keyboardEvent) const;
 
-    void MouseMoveEventHandler(SDL_MouseMotionEvent motionEvent) const;
+	struct ControlSample
+	{
+		Float3 value = Float3::zero;
+		float magnitude = 0.0f;
+		InputEdges edges;
+		const InputDevice* device = nullptr;
+	};
 
-    void MouseScrollEventHandler(SDL_MouseWheelEvent wheelEvent) const;
+	void Update();
 
-    void MouseButtonEventHandler(SDL_MouseButtonEvent buttonEvent) const;
+	bool ProcessEvent(const SDL_Event& e);
 
-    Float2 mMousePosition = Float2::zero;
-    
-    Float2 mAxis = Float2::zero;
-    
-    uint32_t mMouseState = 0;
+	void ConnectGamepad(SDL_JoystickID joystickId);
 
-	const bool* mKeyboardState = nullptr;
+	void DisconnectGamepad(SDL_JoystickID joystickId);
 
-	mutable bool mCursorHidden = false;
+	Gamepad* FindGamepad(SDL_JoystickID joystickId) const;
 
-	mutable Float2 mCursorHidePosition = Float2::zero;
-    
+	bool IsPairedToPlayer(const InputDevice* device) const;
+
+	InputUser* CreatePlayer(uint32_t index);
+
+	void ReleaseUser(InputUser* user);
+
+	uint32_t FindFreePlayerIndex() const;
+
+	void ResolveBindings(InputActionStates& states, const InputUser& user) const;
+
+	InputBindingState EvaluateBinding(const InputBindingDescriptor& binding, const InputActionDescriptor& action, const Guid& map, const TArray<InputDevice*>& devices);
+
+	ControlSample SampleControl(const InputControl& control, const Guid& map, const TArray<InputDevice*>& devices) const;
+
+	void ConsumeControl(const InputControl& control, const Guid& map, const TArray<InputDevice*>& devices);
+
+	TArray<InputDevice*> mDevices;
+
+	TArray<InputUser*> mUsers;
+
+	TArray<InputUser*> mPlayers;
+
+	TArray<InputUser*> mPendingDestroys;
+
+	HashMap<uint64_t, Guid> mConsumedControls;
+
+	HashSet<uint64_t> mMapConsumedControls;
+
+	bool mUpdating = false;
+
+	TArray<Gamepad*> mGamepads;
+
+	Keyboard* mKeyboard = nullptr;
+
+	Mouse* mMouse = nullptr;
+
+	Float2 mCursorHidePosition = Float2::zero;
+
 };
-
 
 } // namespace Gleam

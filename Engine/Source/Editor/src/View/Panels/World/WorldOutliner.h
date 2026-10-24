@@ -20,6 +20,7 @@ namespace GEditor {
 class SelectionSystem;
 class UndoSystem;
 class EWorldManager;
+class EditorInputSystem;
 struct EditorFonts;
 enum class SelectionMode;
 
@@ -39,6 +40,8 @@ private:
 	{
 		bool clicked = false;
 		bool rightClicked = false;
+		bool doubleClicked = false;
+		float textX = 0.0f;
 	};
 
 	RowState DrawRow(const char* label, const char* icon, const ImVec4& iconColor, bool selected, bool dimmed, float indent);
@@ -49,11 +52,19 @@ private:
 
 	void DrawSingletonComponents();
 
+	void DrawAddSingletonMenu();
+
 	void HandleSelectionInput(Gleam::EntityHandle handle);
 
 	void SelectRange(Gleam::EntityHandle anchor, Gleam::EntityHandle target, SelectionMode mode);
 
 	void ToggleActive(Gleam::EntityHandle handle);
+
+	void BeginRename(Gleam::EntityHandle handle);
+
+	void DrawRenameField(Gleam::EntityHandle handle, float x, float y, float right);
+
+	void RenameEntity(Gleam::EntityHandle handle, Gleam::TStringView name);
 
 	Gleam::World* mEditWorld = nullptr;
 
@@ -62,6 +73,8 @@ private:
 	UndoSystem* mUndoSystem = nullptr;
 
 	EWorldManager* mWorldManager = nullptr;
+
+	EditorInputSystem* mEditorInput = nullptr;
 
 	const EditorFonts* mFonts = nullptr;
 
@@ -75,9 +88,23 @@ private:
 
 	Gleam::EntityHandle mPendingToggleActive = Gleam::InvalidEntity;
 
+	Gleam::EntityHandle mRenamingEntity = Gleam::InvalidEntity;
+
+	Gleam::EntityHandle mPendingRename = Gleam::InvalidEntity;
+
+	uint32_t mPendingSingletonRemove = 0;
+
+	char mRenameBuffer[128] = "";
+
+	bool mFocusRename = false;
+
+	bool mRenameFieldDrawn = false;
+
 	bool mPendingRangeAdditive = false;
 
 	char mSearch[128] = "";
+
+	ImVec2 mItemSpacing = ImVec2(0.0f, 0.0f);
 
 };
 

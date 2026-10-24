@@ -12,6 +12,7 @@
 #include "ViewportAspect.h"
 #include "Math/Size.h"
 #include "World/Entity.h"
+#include "Input/Devices/Mouse.h"
 
 namespace Gleam {
 class EntityManager;
@@ -29,6 +30,7 @@ class SelectionSystem;
 class SelectionOutlineRenderer;
 class UndoSystem;
 class EWorldManager;
+class EditorInputSystem;
 struct EditorFonts;
 
 class WorldViewport final : public View
@@ -84,8 +86,7 @@ private:
 
 	Gleam::Size GetRenderResolution(const Gleam::Size& panelResolution) const;
 
-	// ImGuiMouseButton that started the current camera navigation
-	int mNavigationButton = 0;
+	Gleam::MouseControl mNavigationButton = Gleam::MouseControl::Left;
 
 	bool mToolbarHovered = false;
 
@@ -116,6 +117,8 @@ private:
 	UndoSystem* mUndoSystem = nullptr;
 
 	EWorldManager* mWorldManager = nullptr;
+
+	EditorInputSystem* mEditorInput = nullptr;
 
 	Gleam::World* mViewportWorld = nullptr;
 

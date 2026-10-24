@@ -34,6 +34,8 @@ bool OverlayButton(const char* id, const char* icon, const ImVec2& size, bool ac
 
 bool OverlayButton(const char* id, const char* icon, const ImVec2& size, const ImVec4& iconColor);
 
+bool IconButton(const char* id, const char* icon, const ImVec2& size);
+
 bool AccentButton(const char* label, const ImVec2& size);
 
 bool OutlineButton(const char* label, const ImVec2& size);

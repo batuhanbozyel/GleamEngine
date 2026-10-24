@@ -25,6 +25,7 @@
 #include "View/IconsLucide.h"
 #include "View/Panels/Project/ProjectSettings.h"
 #include "View/Panels/Project/Preferences.h"
+#include "EInput/EditorInputSystem.h"
 
 #include <imgui.h>
 
@@ -72,13 +73,13 @@ void MenuBar::Render(Gleam::ImGuiRenderer* imgui)
 		auto worldManager = mApplication->GetSubsystem<EWorldManager>();
 		const bool simulating = worldManager->IsSimulating();
 
-		// Routed globally so the shortcut reaches any panel, while an active text field keeps its own
-		if (simulating == false and ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_Z, ImGuiInputFlags_RouteGlobal))
+		auto editorInput = mApplication->GetSubsystem<EditorInputSystem>();
+		const auto& actions = editorInput->GetGlobalActions();
+		if (simulating == false and editorInput->GetAction(actions.undo).performedThisFrame)
 		{
 			undoSystem->RequestUndo();
 		}
-		if (simulating == false and (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiMod_Shift | ImGuiKey_Z, ImGuiInputFlags_RouteGlobal)
-			|| ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_Y, ImGuiInputFlags_RouteGlobal)))
+		if (simulating == false and editorInput->GetAction(actions.redo).performedThisFrame)
 		{
 			undoSystem->RequestRedo();
 		}

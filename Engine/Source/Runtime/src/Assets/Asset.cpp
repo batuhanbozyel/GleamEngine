@@ -42,6 +42,11 @@ BufferRange Asset::GetBlobRange(const AssetBlobDescriptor& blob) const
 	return BufferRange{ .offset = mHeader.bulkData.offset + blob.range.offset, .size = blob.range.size };
 }
 
+uint32_t Asset::GetVersion() const
+{
+	return mVersion;
+}
+
 void Asset::BuildBlobTable()
 {
 	const auto& blobs = mHeader.dataTable.blobs;

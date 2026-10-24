@@ -11,6 +11,9 @@
 #include "View/Widgets/ThumbnailGrid.h"
 #include "View/Widgets/EditorWidgets.h"
 #include "View/Panels/Project/AssetImportDialog.h"
+#include "View/Panels/Input/InputActionsEditor.h"
+#include "EInput/EditorInputSystem.h"
+#include "Input/InputActionDescriptor.h"
 #include "View/ViewStack.h"
 #include "View/EditorFonts.h"
 #include "View/IconsLucide.h"
@@ -27,6 +30,8 @@
 #include "IO/FileDialog.h"
 
 #include <imgui_internal.h>
+
+#include <cstring>
 
 using namespace GEditor;
 
@@ -47,7 +52,8 @@ static constexpr CategoryChip kCategoryChips[] = {
 	{ "Material", Gleam::Theme::Success, AssetCategory::Material },
 	{ "Material Instance", Gleam::Theme::Teal, AssetCategory::MaterialInstance },
 	{ "Texture", Gleam::Theme::Pink, AssetCategory::Texture },
-	{ "World", Gleam::Theme::Purple, AssetCategory::World }
+	{ "World", Gleam::Theme::Purple, AssetCategory::World },
+	{ "Input Actions", Gleam::Theme::Accent, AssetCategory::InputActions }
 };
 
 static uint32_t CategoryBit(AssetCategory category)
@@ -64,6 +70,7 @@ ContentBrowser::ContentBrowser(EAssetManager* assetManager)
 void ContentBrowser::OnCreate(Gleam::Application* app)
 {
 	mFonts = &app->GetSubsystem<ViewStack>()->GetFonts();
+	mEditorInput = app->GetSubsystem<EditorInputSystem>();
 	mAssetDirectory = Gleam::Globals::ProjectContentDirectory;
 
 	SetCurrentDir(mAssetDirectory);
@@ -96,6 +103,12 @@ void ContentBrowser::Render(Gleam::ImGuiRenderer* imgui)
 		ImGui::PopStyleColor();
 		ImGui::PopStyleVar();
 
+		const bool focused = visible and ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
+		if (focused)
+		{
+			mEditorInput->RequestPanelActions();
+		}
+
 		if (visible)
 		{
 			if (mRefreshRequested.exchange(false, std::memory_order_relaxed))
@@ -104,6 +117,7 @@ void ContentBrowser::Render(Gleam::ImGuiRenderer* imgui)
 				RefreshDirectoryTree();
 			}
 
+			mItemSpacing = ImGui::GetStyle().ItemSpacing;
 			ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, 0.0f));
 			DrawToolbar();
 
@@ -506,6 +520,12 @@ void ContentBrowser::DrawAssetGrid()
 	{
 		mSelectedEntry = mGridEntries[visibleEntries[events.clicked]].path;
 	}
+	if (events.contextClicked >= 0)
+	{
+		mContextEntry = mGridEntries[visibleEntries[events.contextClicked]];
+		mSelectedEntry = mContextEntry.path;
+		ImGui::OpenPopup("AssetItemContext");
+	}
 	if (events.doubleClicked >= 0)
 	{
 		const auto& entry = mGridEntries[visibleEntries[events.doubleClicked]];
@@ -513,5 +533,204 @@ void ContentBrowser::DrawAssetGrid()
 		{
 			SetCurrentDir(entry.path);
 		}
+		else if (entry.category == AssetCategory::InputActions)
+		{
+			auto viewStack = Gleam::Globals::GameInstance->GetSubsystem<ViewStack>();
+			viewStack->GetView<InputActionsEditor>()->Open(entry.asset, entry.path);
+		}
+	}
+
+	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, mItemSpacing);
+	if (events.contextClicked < 0 and ImGui::IsWindowHovered() and ImGui::IsMouseReleased(ImGuiMouseButton_Right))
+	{
+		ImGui::OpenPopup("AssetGridContext");
+	}
+	if (ImGui::BeginPopup("AssetGridContext"))
+	{
+		if (ImGui::BeginMenu("Create"))
+		{
+			if (ImGui::MenuItem("Input Actions"))
+			{
+				Gleam::InputActionMapDescriptor map;
+				map.id = Gleam::Guid::NewGuid();
+				map.name = "Player";
+
+				Gleam::InputActionAssetDescriptor descriptor;
+				descriptor.maps.push_back(map);
+
+				const auto& asset = mAssetManager->CreateAsset(mCurrentDirectory, "New Input Actions", descriptor);
+				auto fileName = asset.reference.guid.ToString();
+				fileName.append(".asset");
+				mSelectedEntry = mCurrentDirectory / fileName;
+				RefreshAssetGrid();
+
+				auto viewStack = Gleam::Globals::GameInstance->GetSubsystem<ViewStack>();
+				viewStack->GetView<InputActionsEditor>()->Open(asset, mSelectedEntry);
+			}
+			ImGui::EndMenu();
+		}
+		ImGui::EndPopup();
+	}
+
+	const auto& actions = mEditorInput->GetPanelActions();
+	const auto selected = FindSelectedEntry();
+	if (selected and ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows))
+	{
+		if (mEditorInput->GetAction(actions.rename).performedThisFrame)
+		{
+			RequestRename(*selected);
+		}
+		else if (mEditorInput->GetAction(actions.remove).performedThisFrame)
+		{
+			RequestDelete(*selected);
+		}
+	}
+
+	DrawAssetContextMenu();
+	DrawRenameDialog();
+	DrawDeleteDialog();
+	ImGui::PopStyleVar();
+}
+
+const ContentBrowser::GridEntry* ContentBrowser::FindSelectedEntry() const
+{
+	for (const auto& entry : mGridEntries)
+	{
+		if (entry.path == mSelectedEntry)
+		{
+			return &entry;
+		}
+	}
+	return nullptr;
+}
+
+void ContentBrowser::RequestRename(const GridEntry& entry)
+{
+	if (entry.category != AssetCategory::InputActions)
+	{
+		return;
+	}
+
+	mContextEntry = entry;
+	const auto length = Gleam::Math::Min(mContextEntry.asset.name.size(), sizeof(mRenameBuffer) - 1);
+	std::memcpy(mRenameBuffer, mContextEntry.asset.name.c_str(), length);
+	mRenameBuffer[length] = '\0';
+	mRenameRequested = true;
+}
+
+void ContentBrowser::RequestDelete(const GridEntry& entry)
+{
+	if (entry.category != AssetCategory::InputActions)
+	{
+		return;
+	}
+
+	mContextEntry = entry;
+	mDeleteRequested = true;
+}
+
+void ContentBrowser::DrawAssetContextMenu()
+{
+	if (ImGui::BeginPopup("AssetItemContext"))
+	{
+		const auto& actions = mEditorInput->GetPanelActions();
+		const bool editable = mContextEntry.category == AssetCategory::InputActions;
+
+		if (ImGui::MenuItem("Rename", mEditorInput->GetShortcutLabel(actions.rename).c_str(), false, editable))
+		{
+			RequestRename(mContextEntry);
+		}
+		if (ImGui::MenuItem("Delete", mEditorInput->GetShortcutLabel(actions.remove).c_str(), false, editable))
+		{
+			RequestDelete(mContextEntry);
+		}
+		ImGui::EndPopup();
+	}
+
+	if (mRenameRequested)
+	{
+		ImGui::OpenPopup("Rename Asset");
+		mRenameRequested = false;
+	}
+	if (mDeleteRequested)
+	{
+		ImGui::OpenPopup("Delete Asset");
+		mDeleteRequested = false;
+	}
+}
+
+void ContentBrowser::DrawRenameDialog()
+{
+	if (ImGui::BeginPopupModal("Rename Asset", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+	{
+		if (ImGui::IsWindowAppearing())
+		{
+			ImGui::SetKeyboardFocusHere();
+		}
+
+		ImGui::SetNextItemWidth(280.0f);
+		const bool submitted = ImGui::InputText("##Name", mRenameBuffer, sizeof(mRenameBuffer), ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_AutoSelectAll);
+		const bool valid = mAssetManager->IsValidAssetName(mContextEntry.path.Parent(), mContextEntry.asset, mRenameBuffer);
+		if (valid == false)
+		{
+			ImGui::TextColored(Gleam::Theme::Error, "Name is empty, contains a path separator or is already taken");
+		}
+
+		ImGui::BeginDisabled(valid == false);
+		const bool confirmed = ImGui::Button("Rename", ImVec2(120.0f, 0.0f)) or (submitted and valid);
+		ImGui::EndDisabled();
+		ImGui::SameLine();
+		const bool canceled = ImGui::Button("Cancel", ImVec2(120.0f, 0.0f)) or ImGui::IsKeyPressed(ImGuiKey_Escape, false);
+
+		if (confirmed)
+		{
+			if (mContextEntry.asset.name != Gleam::TStringView(mRenameBuffer))
+			{
+				if (mAssetManager->RenameAsset(mContextEntry.path, mContextEntry.asset, mRenameBuffer))
+				{
+					auto viewStack = Gleam::Globals::GameInstance->GetSubsystem<ViewStack>();
+					viewStack->GetView<InputActionsEditor>()->OnAssetRenamed(mContextEntry.asset);
+					RefreshAssetGrid();
+				}
+			}
+			ImGui::CloseCurrentPopup();
+		}
+		else if (canceled)
+		{
+			ImGui::CloseCurrentPopup();
+		}
+		ImGui::EndPopup();
+	}
+}
+
+void ContentBrowser::DrawDeleteDialog()
+{
+	if (ImGui::BeginPopupModal("Delete Asset", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+	{
+		ImGui::Text("Delete \"%s\"? This cannot be undone.", mContextEntry.asset.name.c_str());
+
+		const bool confirmed = Widgets::AccentButton("Delete", ImVec2(120.0f, 0.0f));
+		ImGui::SameLine();
+		const bool canceled = ImGui::Button("Cancel", ImVec2(120.0f, 0.0f)) or ImGui::IsKeyPressed(ImGuiKey_Escape, false);
+
+		if (confirmed)
+		{
+			if (mAssetManager->RemoveAsset(mContextEntry.path, mContextEntry.asset))
+			{
+				auto viewStack = Gleam::Globals::GameInstance->GetSubsystem<ViewStack>();
+				viewStack->GetView<InputActionsEditor>()->OnAssetRemoved(mContextEntry.asset.reference.guid);
+				if (mSelectedEntry == mContextEntry.path)
+				{
+					mSelectedEntry = Gleam::Path();
+				}
+				RefreshAssetGrid();
+			}
+			ImGui::CloseCurrentPopup();
+		}
+		else if (canceled)
+		{
+			ImGui::CloseCurrentPopup();
+		}
+		ImGui::EndPopup();
 	}
 }

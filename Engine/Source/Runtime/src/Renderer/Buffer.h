@@ -46,9 +46,9 @@ public:
 
 	Buffer(const BufferDescriptor& descriptor, NativeGraphicsHandle handle, ShaderResourceIndex view, void* contents, size_t alignment)
 		: ShaderResource(handle, view)
-		, mDescriptor(descriptor)
 		, mAlignment(alignment)
 		, mContents(contents)
+		, mDescriptor(descriptor)
 	{
 		
 	}

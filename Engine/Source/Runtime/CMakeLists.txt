@@ -53,7 +53,7 @@ if (APPLE)
         ${CMAKE_SOURCE_DIR}/Engine/ThirdParty/VulkanMemoryAllocator/include
         ${Vulkan_INCLUDE_DIRS}
     )
-    set_source_files_properties(${SOURCE_FILES} ${HEADER_FILES} PROPERTIES COMPILE_FLAGS "-x objective-c++")
+    set_source_files_properties(${SOURCE_FILES} PROPERTIES XCODE_EXPLICIT_FILE_TYPE "sourcecode.cpp.objcpp")
     set_target_properties(Runtime PROPERTIES MACOSX_BUNDLE YES XCODE_ATTRIBUTE_CLANG_ENABLE_OBJC_ARC YES XCODE_GENERATE_SCHEME YES)
 else()
     set(THIRDPARTY_INCLUDE_DIRS

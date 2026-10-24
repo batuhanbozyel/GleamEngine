@@ -10,6 +10,7 @@
 #include "Selection/SelectionSystem.h"
 #include "Undo/UndoSystem.h"
 #include "EWorld/EWorldManager.h"
+#include "EInput/EditorInputSystem.h"
 #include "Utils/ReflectionUtils.h"
 #include "View/ViewStack.h"
 #include "View/GleamTheme.h"
@@ -24,6 +25,10 @@
 #include "World/World.h"
 
 #include <imgui_internal.h>
+
+#include <EASTL/sort.h>
+
+#include <cstring>
 
 using namespace GEditor;
 
@@ -43,6 +48,7 @@ void WorldOutliner::OnCreate(Gleam::Application* app)
 {
 	mFonts = &app->GetSubsystem<ViewStack>()->GetFonts();
 	mWorldManager = app->GetSubsystem<EWorldManager>();
+	mEditorInput = app->GetSubsystem<EditorInputSystem>();
 }
 
 void WorldOutliner::Render(Gleam::ImGuiRenderer* imgui)
@@ -55,12 +61,19 @@ void WorldOutliner::Render(Gleam::ImGuiRenderer* imgui)
 		ImGui::PopStyleColor();
 		ImGui::PopStyleVar();
 
+		const bool focused = visible and ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
+		if (focused)
+		{
+			mEditorInput->RequestPanelActions();
+		}
+
 		if (visible)
 		{
 			const bool simulating = mWorldManager->IsSimulating();
 			ImGui::BeginDisabled(simulating);
 
 			auto& entityManager = mEditWorld->GetEntityManager();
+			mItemSpacing = ImGui::GetStyle().ItemSpacing;
 			ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, 0.0f));
 
 			const float width = ImGui::GetContentRegionAvail().x;
@@ -94,6 +107,7 @@ void WorldOutliner::Render(Gleam::ImGuiRenderer* imgui)
 			ImGui::BeginChild("EntityList", ImVec2(0.0f, ImGui::GetContentRegionAvail().y - singletonsHeight), ImGuiChildFlags_None);
 			{
 				mVisibleEntities.clear();
+				mRenameFieldDrawn = false;
 				entityManager.ForEach<Gleam::Entity>([&](Gleam::Entity& entity)
 				{
 					if (entity.HasParent() == false and entityManager.IsEditorOnly(entity) == false and MatchesSearch(entity))
@@ -106,6 +120,30 @@ void WorldOutliner::Render(Gleam::ImGuiRenderer* imgui)
 				{
 					SelectRange(mRangeAnchor, mPendingRangeSelect, mPendingRangeAdditive ? SelectionMode::Add : SelectionMode::Replace);
 					mPendingRangeSelect = Gleam::InvalidEntity;
+				}
+
+				if (mRenamingEntity != Gleam::InvalidEntity and mRenameFieldDrawn == false)
+				{
+					mRenamingEntity = Gleam::InvalidEntity;
+				}
+
+				if (mPendingRename != Gleam::InvalidEntity)
+				{
+					RenameEntity(mPendingRename, mRenameBuffer);
+					mPendingRename = Gleam::InvalidEntity;
+				}
+
+				const auto& panelActions = mEditorInput->GetPanelActions();
+				const auto activeEntity = mSelectionSystem->GetActiveEntity();
+				if (simulating == false and focused and activeEntity != Gleam::InvalidEntity and mEditorInput->GetAction(panelActions.rename).performedThisFrame)
+				{
+					BeginRename(activeEntity);
+				}
+
+				const auto& selectedEntities = mSelectionSystem->GetSelectedEntities();
+				if (simulating == false and focused and selectedEntities.empty() == false and mEditorInput->GetAction(panelActions.remove).performedThisFrame)
+				{
+					mPendingDestroy = selectedEntities.front();
 				}
 
 				if (mPendingToggleActive != Gleam::InvalidEntity)
@@ -136,6 +174,25 @@ void WorldOutliner::Render(Gleam::ImGuiRenderer* imgui)
 					mSelectionSystem->ClearSelection();
 					mRangeAnchor = Gleam::InvalidEntity;
 				}
+
+				if (simulating == false and ImGui::IsWindowHovered() and ImGui::IsAnyItemHovered() == false and ImGui::IsMouseReleased(ImGuiMouseButton_Right))
+				{
+					ImGui::OpenPopup("OutlinerContext");
+				}
+
+				ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, mItemSpacing);
+				if (ImGui::BeginPopup("OutlinerContext"))
+				{
+					if (ImGui::MenuItem("Add Entity"))
+					{
+						auto& entity = entityManager.CreateEntity("New Entity", Gleam::Guid::NewGuid());
+						mUndoSystem->RecordEntityCreation(entity);
+						mSelectionSystem->SelectEntity(entity);
+						mRangeAnchor = entity;
+					}
+					ImGui::EndPopup();
+				}
+				ImGui::PopStyleVar();
 			}
 			ImGui::EndChild();
 
@@ -145,7 +202,28 @@ void WorldOutliner::Render(Gleam::ImGuiRenderer* imgui)
 			Widgets::CaptionRow(*mFonts, "SINGLETONS", singletonCount, kSingletonHeaderHeight, 14.0f);
 
 			ImGui::BeginChild("SingletonList", ImVec2(0.0f, 0.0f), ImGuiChildFlags_None);
-			DrawSingletonComponents();
+			{
+				DrawSingletonComponents();
+
+				if (mPendingSingletonRemove != 0)
+				{
+					mUndoSystem->RemoveSingleton(mPendingSingletonRemove);
+					mPendingSingletonRemove = 0;
+				}
+
+				if (simulating == false and ImGui::IsWindowHovered() and ImGui::IsAnyItemHovered() == false and ImGui::IsMouseReleased(ImGuiMouseButton_Right))
+				{
+					ImGui::OpenPopup("SingletonContext");
+				}
+
+				ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, mItemSpacing);
+				if (ImGui::BeginPopup("SingletonContext"))
+				{
+					DrawAddSingletonMenu();
+					ImGui::EndPopup();
+				}
+				ImGui::PopStyleVar();
+			}
 			ImGui::EndChild();
 
 			ImGui::PopStyleVar();
@@ -172,6 +250,7 @@ WorldOutliner::RowState WorldOutliner::DrawRow(const char* label, const char* ic
 	state.clicked = ImGui::IsItemClicked(ImGuiMouseButton_Left);
 	state.rightClicked = ImGui::IsItemClicked(ImGuiMouseButton_Right);
 	const bool hovered = ImGui::IsItemHovered();
+	state.doubleClicked = hovered and ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left);
 
 	auto drawList = ImGui::GetWindowDrawList();
 	if (selected)
@@ -196,6 +275,7 @@ WorldOutliner::RowState WorldOutliner::DrawRow(const char* label, const char* ic
 	}
 
 	const float textX = iconMin.x + kIconSize + 10.0f;
+	state.textX = textX;
 	drawList->PushClipRect(ImVec2(textX, rowMin.y), ImVec2(rowMax.x - 30.0f, rowMax.y), true);
 	drawList->AddText(ImVec2(textX, rowMin.y + (kRowHeight - ImGui::GetFontSize()) * 0.5f), Widgets::ColorU32(selected ? Gleam::Theme::Text : Gleam::Theme::TextSecondary, alpha), label);
 	drawList->PopClipRect();
@@ -239,22 +319,33 @@ void WorldOutliner::DrawEntityNode(const Gleam::Entity& entity, uint32_t depth)
 	const float indent = depthIndent + (hasChildren ? kChevronWidth : 0.0f);
 	const auto kind = Widgets::GetEntityKind(entityManager, handle);
 
+	const bool renaming = mRenamingEntity == handle;
 	const ImVec2 lineStart = ImGui::GetCursorScreenPos();
-	const auto row = DrawRow(entity.GetName().c_str(), ICON_LC_BOX, kind.color, mSelectionSystem->IsSelected(handle), entity.IsActive() == false, indent);
+	const auto row = DrawRow(renaming ? "" : entity.GetName().c_str(), ICON_LC_BOX, kind.color, mSelectionSystem->IsSelected(handle), entity.IsActive() == false, indent);
 
 	if (row.clicked)
 	{
 		HandleSelectionInput(handle);
 	}
+	if (row.doubleClicked)
+	{
+		BeginRename(handle);
+	}
 
+	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, mItemSpacing);
 	if (ImGui::BeginPopupContextItem("##EntityContext"))
 	{
-		if (ImGui::MenuItem("Destroy Entity"))
+		if (ImGui::MenuItem("Rename", mEditorInput->GetShortcutLabel(mEditorInput->GetPanelActions().rename).c_str()))
+		{
+			BeginRename(handle);
+		}
+		if (ImGui::MenuItem("Destroy Entity", mEditorInput->GetShortcutLabel(mEditorInput->GetPanelActions().remove).c_str()))
 		{
 			mPendingDestroy = handle;
 		}
 		ImGui::EndPopup();
 	}
+	ImGui::PopStyleVar();
 
 	const float rowRight = lineStart.x + ImGui::GetContentRegionAvail().x - kRowMargin;
 	auto drawList = ImGui::GetWindowDrawList();
@@ -280,6 +371,11 @@ void WorldOutliner::DrawEntityNode(const Gleam::Entity& entity, uint32_t depth)
 	}
 	const bool eyeHovered = ImGui::IsItemHovered();
 	Widgets::DrawIcon(drawList, entity.IsActive() ? ICON_LC_EYE : ICON_LC_EYE_OFF, ImVec2(eyeMin.x + kEyeSize * 0.5f, eyeMin.y + kEyeSize * 0.5f), eyeHovered ? Gleam::Theme::TextSecondary : Gleam::Theme::TextDim);
+
+	if (renaming)
+	{
+		DrawRenameField(handle, row.textX, lineStart.y, eyeMin.x - 4.0f);
+	}
 
 	ImGui::SetCursorScreenPos(lineStart);
 	ImGui::Dummy(ImVec2(ImGui::GetContentRegionAvail().x, kRowHeight));
@@ -309,6 +405,51 @@ void WorldOutliner::ToggleActive(Gleam::EntityHandle handle)
 	auto& entity = mEditWorld->GetEntityManager().GetComponent<Gleam::Entity>(handle);
 	mUndoSystem->BeginEntityTransaction({ handle });
 	entity.SetActive(not entity.IsActive());
+	mUndoSystem->EndTransaction();
+}
+
+void WorldOutliner::BeginRename(Gleam::EntityHandle handle)
+{
+	const auto& name = mEditWorld->GetEntityManager().GetComponent<Gleam::Entity>(handle).GetName();
+	const auto length = Gleam::Math::Min(name.size(), sizeof(mRenameBuffer) - 1);
+	std::memcpy(mRenameBuffer, name.c_str(), length);
+	mRenameBuffer[length] = '\0';
+	mRenamingEntity = handle;
+	mFocusRename = true;
+}
+
+void WorldOutliner::DrawRenameField(Gleam::EntityHandle handle, float x, float y, float right)
+{
+	mRenameFieldDrawn = true;
+	ImGui::SetCursorScreenPos(ImVec2(x, y + (kRowHeight - ImGui::GetFrameHeight()) * 0.5f));
+	ImGui::SetNextItemWidth(Gleam::Math::Max(right - x, 40.0f));
+	if (mFocusRename)
+	{
+		ImGui::SetKeyboardFocusHere();
+		mFocusRename = false;
+	}
+
+	ImGui::InputText("##Rename", mRenameBuffer, sizeof(mRenameBuffer), ImGuiInputTextFlags_AutoSelectAll);
+	if (ImGui::IsItemDeactivatedAfterEdit())
+	{
+		mPendingRename = handle;
+	}
+	if (ImGui::IsItemDeactivated())
+	{
+		mRenamingEntity = Gleam::InvalidEntity;
+	}
+}
+
+void WorldOutliner::RenameEntity(Gleam::EntityHandle handle, Gleam::TStringView name)
+{
+	auto& entity = mEditWorld->GetEntityManager().GetComponent<Gleam::Entity>(handle);
+	if (name.empty() or entity.GetName() == name)
+	{
+		return;
+	}
+
+	mUndoSystem->BeginEntityTransaction({ handle });
+	entity.SetName(Gleam::TString(std::string_view(name.data(), name.size())));
 	mUndoSystem->EndTransaction();
 }
 
@@ -377,6 +518,63 @@ void WorldOutliner::DrawSingletonComponents()
 		{
 			mSelectionSystem->SelectSingleton(componentID);
 		}
+
+		const auto singleton = classDesc.GetAttribute<Gleam::Reflection::Attribute::Singleton>();
+		if (singleton and singleton->required == false)
+		{
+			ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, mItemSpacing);
+			if (ImGui::BeginPopupContextItem("##SingletonContext"))
+			{
+				if (ImGui::MenuItem("Remove Singleton"))
+				{
+					mPendingSingletonRemove = componentID;
+				}
+				ImGui::EndPopup();
+			}
+			ImGui::PopStyleVar();
+		}
 		ImGui::PopID();
 	});
+}
+
+void WorldOutliner::DrawAddSingletonMenu()
+{
+	if (ImGui::BeginMenu("Add Singleton") == false)
+	{
+		return;
+	}
+
+	auto& entityManager = mEditWorld->GetEntityManager();
+	Gleam::TArray<const Gleam::Reflection::ClassDescription*> candidates;
+	for (const auto& classDesc : Gleam::Reflection::IDatabase::GetInstance()->GetClasses())
+	{
+		if (classDesc.HasAttribute<Gleam::Reflection::Attribute::Singleton>() and classDesc.HasAttribute<Gleam::Reflection::Attribute::EditorOnly>() == false and entityManager.FindSingleton(classDesc.TypeHash()) == nullptr)
+		{
+			candidates.push_back(&classDesc);
+		}
+	}
+
+	eastl::sort(candidates.begin(), candidates.end(), [](const auto lhs, const auto rhs)
+	{
+		return ReflectionUtils::ResolveDisplayName(*lhs) < ReflectionUtils::ResolveDisplayName(*rhs);
+	});
+
+	for (const auto* classDesc : candidates)
+	{
+		const auto displayName = ReflectionUtils::ResolveDisplayName(*classDesc);
+		char buffer[64];
+		std::memcpy(buffer, displayName.data(), displayName.size());
+		buffer[displayName.size()] = '\0';
+
+		if (ImGui::MenuItem(buffer))
+		{
+			mUndoSystem->AddSingleton(classDesc->TypeHash());
+		}
+	}
+
+	if (candidates.empty())
+	{
+		ImGui::TextDisabled("No singletons available");
+	}
+	ImGui::EndMenu();
 }

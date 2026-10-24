@@ -18,6 +18,9 @@
 #include "Core/Application.h"
 
 #include "World/World.h"
+#include "World/Components/MeshRenderer.h"
+#include "Assets/AssetManager.h"
+#include "Renderer/MeshDescriptor.h"
 #include "Renderer/Renderers/ImGuiRenderer.h"
 
 #include <imgui.h>
@@ -106,12 +109,47 @@ void EntityInspector::Render(Gleam::ImGuiRenderer* imgui)
 
 			if (PropertyDrawer::EditCommitted())
 			{
+				SyncMaterialSlots(selectedEntities);
 				mUndoSystem->EndTransaction();
 			}
 			ImGui::EndDisabled();
 		}
 		ImGui::End();
 	});
+}
+
+void EntityInspector::SyncMaterialSlots(const Gleam::TArray<Gleam::EntityHandle>& entities)
+{
+	auto& entityManager = mEditWorld->GetEntityManager();
+	auto assetManager = Gleam::Globals::GameInstance->GetSubsystem<Gleam::AssetManager>();
+	for (auto handle : entities)
+	{
+		if (entityManager.HasComponent<Gleam::MeshRenderer>(handle) == false)
+		{
+			continue;
+		}
+
+		auto& meshRenderer = entityManager.GetComponent<Gleam::MeshRenderer>(handle);
+		if (meshRenderer.mesh.guid == Gleam::Guid::InvalidGuid() or assetManager->GetStorage()->Contains(meshRenderer.mesh) == false)
+		{
+			continue;
+		}
+
+		const auto mesh = assetManager->LoadDescriptor<Gleam::MeshDescriptor>(meshRenderer.mesh);
+		uint32_t slotCount = 0;
+		if (mesh.lods.empty() == false)
+		{
+			for (const auto& submesh : mesh.lods.front().submeshes)
+			{
+				slotCount = Gleam::Math::Max(slotCount, submesh.materialIndex + 1);
+			}
+		}
+
+		if (meshRenderer.materials.size() != slotCount)
+		{
+			meshRenderer.materials.resize(slotCount);
+		}
+	}
 }
 
 void EntityInspector::DrawEntities(const Gleam::TArray<Gleam::EntityHandle>& entities)

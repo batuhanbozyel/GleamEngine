@@ -31,10 +31,10 @@ public:
     Entity() = default;
     
     Entity(EntityHandle handle, entt::registry* registry, const TString& name, const Guid& guid)
-		: mHandle(handle)
-		, mRegistry(registry)
-		, mName(name)
+		: mName(name)
 		, mGuid(guid)
+		, mHandle(handle)
+		, mRegistry(registry)
 	{
 
 	}

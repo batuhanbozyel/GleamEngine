@@ -7,6 +7,8 @@
 #include "World/Prefab.h"
 #include "World/WorldDescriptor.h"
 
+#include "Input/InputActionDescriptor.h"
+
 #include <Runtime.Reflection.generated.h>
 
 using namespace GEditor;
@@ -19,6 +21,7 @@ AssetIcon GEditor::GetAssetIcon(const Gleam::Guid& type)
 	static const auto materialInstanceType = Gleam::Reflection::GetClass<Gleam::MaterialInstanceDescriptor>().Guid();
 	static const auto prefabType = Gleam::Reflection::GetClass<Gleam::Prefab>().Guid();
 	static const auto worldType = Gleam::Reflection::GetClass<Gleam::WorldDescriptor>().Guid();
+	static const auto inputActionsType = Gleam::Reflection::GetClass<Gleam::InputActionAssetDescriptor>().Guid();
 
 	if (type == meshType)
 	{
@@ -43,6 +46,10 @@ AssetIcon GEditor::GetAssetIcon(const Gleam::Guid& type)
 	else if (type == worldType)
 	{
 		return AssetIcon{ .text = "WORLD", .color = Gleam::Theme::Purple, .category = AssetCategory::World };
+	}
+	else if (type == inputActionsType)
+	{
+		return AssetIcon{ .text = "INPUT\nACTIONS", .color = Gleam::Theme::Accent, .category = AssetCategory::InputActions };
 	}
 	else
 	{

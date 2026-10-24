@@ -37,8 +37,7 @@
 #include "Core/Events/ApplicationEvent.h"
 #include "Core/Events/RendererEvent.h"
 #include "Core/Events/WindowEvent.h"
-#include "Core/Events/MouseEvent.h"
-#include "Core/Events/KeyEvent.h"
+#include "Core/Events/InputEvent.h"
 #include "Core/WindowSystem.h"
 #include "Core/EventSystem.h"
 #include "Core/Application.h"
@@ -74,6 +73,7 @@
 #include "Renderer/Material/Material.h"
 
 #include "Input/InputSystem.h"
+#include "Input/PlayerInputSystem.h"
 
 #include "World/WorldManager.h"
 #include "Assets/AssetManager.h"

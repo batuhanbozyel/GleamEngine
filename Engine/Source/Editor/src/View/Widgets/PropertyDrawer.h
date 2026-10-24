@@ -41,6 +41,8 @@ public:
 
 	static void DrawTextControl(const Gleam::TStringView label, const Gleam::TStringView value, float columnWidth = 100.0f);
 
+	static void DrawFieldLabel(const char* label);
+
 	static void DrawEnumOptions(const Gleam::TStringView label, const Gleam::Reflection::EnumDescription& enumDesc, void* value, float columnWidth = 100.0f);
 
 	static void DrawEnumFlagOptions(const Gleam::TStringView label, const Gleam::Reflection::ClassDescription& classDesc, void* value, float columnWidth = 100.0f);
@@ -85,6 +87,10 @@ private:
 
 	static void DrawAssetRow(uint32_t index, Gleam::AssetReference& assetRef);
 
+	static void DrawAssetPicker(Gleam::AssetReference& assetRef, float x, float y, float width);
+
+	static bool AcceptsAssetType(const Gleam::Guid& type);
+
 	static void TrackEdit();
 
 	static void MarkEditCommitted();
@@ -98,6 +104,10 @@ private:
 	static inline bool mEditDirty = false;
 
 	static inline UIFunction mPendingEdit = nullptr;
+
+	static inline const Gleam::Reflection::Attribute::AssetType* mAssetTypes = nullptr;
+
+	static inline char mAssetSearch[128] = "";
 
 	struct RotationCache
 	{

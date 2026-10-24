@@ -14,6 +14,10 @@
 #include "Renderer/Material/Material.h"
 #include "Renderer/Material/MaterialInstance.h"
 
+#include "Input/InputActionAsset.h"
+
+#include <EASTL/algorithm.h>
+
 using namespace Gleam;
 
 void AssetManager::Initialize(Application* app)
@@ -22,6 +26,7 @@ void AssetManager::Initialize(Application* app)
 	RegisterMetaAsset<Material, MaterialDescriptor>();
 	RegisterMetaAsset<Texture2D, Texture2DDescriptor>();
 	RegisterMetaAsset<MaterialInstance, MaterialInstanceDescriptor>();
+	RegisterMetaAsset<InputActionAsset, InputActionAssetDescriptor>();
 
 	mStorage = CreateScope<AssetStorage>(Globals::ProjectContentDirectory);
 
@@ -70,6 +75,50 @@ void AssetManager::Shutdown(Application* app)
 	// We need proper deallocation logic for such dependency
 	mAssetCache.clear();
 	mStorage.reset();
+}
+
+void AssetManager::Tick(Application* app)
+{
+	for (const auto& ref : mPendingReloads)
+	{
+		auto it = mAssetCache.find(ref);
+		if (it == mAssetCache.end())
+		{
+			continue;
+		}
+
+		auto asset = it->second.asset.get();
+		const uint32_t refCount = asset->mRefCount;
+		const uint32_t version = asset->mVersion;
+
+		asset->~Asset();
+		entt::resolve(it->second.type).func("ConstructAsset"_hs).invoke({}, asset, ref);
+
+		asset->mRefCount = refCount;
+		asset->mVersion = version + 1;
+	}
+	mPendingReloads.clear();
+
+	// Walks by index because erasing an asset releases its dependencies, which appends to the list mid-loop.
+	for (size_t i = 0; i < mPendingEvictions.size(); ++i)
+	{
+		const auto ref = mPendingEvictions[i];
+		auto it = mAssetCache.find(ref);
+		if (it != mAssetCache.end() and it->second.asset->mRefCount == 0)
+		{
+			mStorage->CloseAssetFile(ref);
+			mAssetCache.erase(it);
+		}
+	}
+	mPendingEvictions.clear();
+}
+
+void AssetManager::Reload(const AssetReference& ref)
+{
+	if (eastl::find(mPendingReloads.begin(), mPendingReloads.end(), ref) == mPendingReloads.end())
+	{
+		mPendingReloads.push_back(ref);
+	}
 }
 
 const Path& AssetManager::GetAssetPath(const AssetReference& ref) const

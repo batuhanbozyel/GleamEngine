@@ -26,7 +26,7 @@ bool Process::Launch(const Path& executable, const TArray<TString>& arguments, c
 
 	posix_spawn_file_actions_t actions;
 	posix_spawn_file_actions_init(&actions);
-	posix_spawn_file_actions_addchdir_np(&actions, workingDirectoryStr.c_str());
+	posix_spawn_file_actions_addchdir(&actions, workingDirectoryStr.c_str());
 
 	pid_t pid = 0;
 	int result = posix_spawn(&pid, executableStr.c_str(), &actions, nullptr, argv.data(), environ);

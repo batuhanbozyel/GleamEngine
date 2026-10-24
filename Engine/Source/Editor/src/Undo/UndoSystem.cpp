@@ -186,6 +186,22 @@ void UndoSystem::RemoveComponent(uint32_t typeHash, const Gleam::TArray<Gleam::E
 	Push(eastl::move(command));
 }
 
+void UndoSystem::AddSingleton(uint32_t typeHash)
+{
+	// The add itself goes through the command, so it takes the same path as a redo does
+	auto command = Gleam::CreateScope<AddSingletonCommand>(ComponentCommandName("Add ", typeHash), typeHash);
+	command->Redo(mEditWorld);
+	Push(eastl::move(command));
+}
+
+void UndoSystem::RemoveSingleton(uint32_t typeHash)
+{
+	// The removal itself goes through the command, so it takes the same path as a redo does
+	auto command = Gleam::CreateScope<RemoveSingletonCommand>(ComponentCommandName("Remove ", typeHash), typeHash);
+	command->Redo(mEditWorld);
+	Push(eastl::move(command));
+}
+
 Gleam::TStringView UndoSystem::GetUndoName() const
 {
 	if (mUndoStack.empty())
