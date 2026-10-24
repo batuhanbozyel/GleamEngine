@@ -177,3 +177,8 @@ Gleam::TString EditorInputSystem::GetShortcutLabel(Gleam::InputActionHandle acti
 	const auto& bindings = mActions->GetAction(action).bindings;
 	return bindings.empty() ? Gleam::TString() : bindings.front().GetDisplayName();
 }
+
+Gleam::InputUser* EditorInputSystem::GetUser() const
+{
+	return mUser;
+}

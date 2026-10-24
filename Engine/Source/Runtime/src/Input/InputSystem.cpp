@@ -11,6 +11,11 @@
 
 using namespace Gleam;
 
+static double ToSeconds(uint64_t nanoseconds)
+{
+	return static_cast<double>(nanoseconds) * 1e-9;
+}
+
 static uint64_t ConsumptionKey(const InputDevice* device, uint32_t code)
 {
 	return (static_cast<uint64_t>(device->GetId()) << 32) | code;
@@ -264,8 +269,7 @@ InputBindingState InputSystem::EvaluateBinding(const InputBindingDescriptor& bin
 	float strongest = 0.0f;
 	for (const auto& sample : samples)
 	{
-		state.pressed |= sample.pressed;
-		state.released |= sample.released;
+		state.edges.Merge(sample.edges);
 		if (sample.device and (state.device == nullptr or sample.magnitude > strongest))
 		{
 			state.device = sample.device;
@@ -279,11 +283,11 @@ InputBindingState InputSystem::EvaluateBinding(const InputBindingDescriptor& bin
 	}
 	state.magnitude = action.ComputeMagnitude(state.value);
 
-	if (state.magnitude > 0.0f or state.pressed)
+	if (state.magnitude > 0.0f or state.edges.pressed)
 	{
 		for (uint32_t i = 0; i < partCount; ++i)
 		{
-			if (samples[i].magnitude > 0.0f or samples[i].pressed)
+			if (samples[i].magnitude > 0.0f or samples[i].edges.pressed)
 			{
 				ConsumeControl(binding.controls[i], map, devices);
 			}
@@ -315,16 +319,19 @@ InputSystem::ControlSample InputSystem::SampleControl(const InputControl& contro
 
 		const auto value = device->ReadControl(control.code);
 		const float magnitude = Math::Length(value);
-		const bool pressed = device->WasControlPressedThisFrame(control.code);
-		const bool released = device->WasControlReleasedThisFrame(control.code);
-		if (magnitude > sample.magnitude or (sample.device == nullptr and (pressed or released)))
+		const InputEdges edges{
+			.pressed = device->WasControlPressedThisFrame(control.code),
+			.released = device->WasControlReleasedThisFrame(control.code),
+			.pressTime = ToSeconds(device->GetControlPressTime(control.code)),
+			.releaseTime = ToSeconds(device->GetControlReleaseTime(control.code))
+		};
+		if (magnitude > sample.magnitude or (sample.device == nullptr and (edges.pressed or edges.released)))
 		{
 			sample.value = value;
 			sample.magnitude = magnitude;
 			sample.device = device;
 		}
-		sample.pressed |= pressed;
-		sample.released |= released;
+		sample.edges.Merge(edges);
 	}
 	return sample;
 }
@@ -343,7 +350,7 @@ void InputSystem::ConsumeControl(const InputControl& control, const Guid& map, c
 
 double InputSystem::GetTime()
 {
-	return static_cast<double>(SDL_GetTicksNS()) * 1e-9;
+	return ToSeconds(SDL_GetTicksNS());
 }
 
 TArrayView<InputDevice* const> InputSystem::GetDevices() const
@@ -408,16 +415,6 @@ void InputSystem::ReleaseUser(InputUser* user)
 	user->CancelInteractiveRebind();
 	mUsers.erase(it);
 	delete user;
-}
-
-bool InputSystem::IsWorldInputEnabled() const
-{
-	return mWorldInputEnabled;
-}
-
-void InputSystem::SetWorldInputEnabled(bool enabled)
-{
-	mWorldInputEnabled = enabled;
 }
 
 InputUser* InputSystem::GetPlayer(uint32_t index) const

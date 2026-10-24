@@ -2,6 +2,7 @@
 #include "Gamepad.h"
 
 #include <SDL3/SDL_events.h>
+#include <SDL3/SDL_timer.h>
 
 using namespace Gleam;
 
@@ -121,6 +122,16 @@ bool Gamepad::WasControlReleasedThisFrame(uint32_t code) const
 	return code < ButtonCount and mButtons.WasReleasedThisFrame(code);
 }
 
+uint64_t Gamepad::GetControlPressTime(uint32_t code) const
+{
+	return code < ButtonCount ? mButtons.GetPressTime(code) : 0;
+}
+
+uint64_t Gamepad::GetControlReleaseTime(uint32_t code) const
+{
+	return code < ButtonCount ? mButtons.GetReleaseTime(code) : 0;
+}
+
 void Gamepad::Commit()
 {
 	mButtons.Commit();
@@ -137,7 +148,7 @@ void Gamepad::Connect(SDL_Gamepad* handle)
 
 void Gamepad::Disconnect()
 {
-	mButtons.ReleaseAll();
+	mButtons.ReleaseAll(SDL_GetTicksNS());
 	mPendingAxes.fill(0.0f);
 	SDL_CloseGamepad(mHandle);
 	mHandle = nullptr;
@@ -165,11 +176,11 @@ void Gamepad::ProcessButtonEvent(const SDL_GamepadButtonEvent& buttonEvent)
 
 	if (buttonEvent.down)
 	{
-		mButtons.Press(index);
+		mButtons.Press(index, buttonEvent.timestamp);
 	}
 	else
 	{
-		mButtons.Release(index);
+		mButtons.Release(index, buttonEvent.timestamp);
 	}
 }
 
@@ -191,12 +202,12 @@ void Gamepad::ProcessAxisEvent(const SDL_GamepadAxisEvent& axisEvent)
 		}
 		case SDL_GAMEPAD_AXIS_LEFT_TRIGGER:
 		{
-			UpdateTriggerButton(GamepadControl::LeftTrigger, value);
+			UpdateTriggerButton(GamepadControl::LeftTrigger, value, axisEvent.timestamp);
 			break;
 		}
 		case SDL_GAMEPAD_AXIS_RIGHT_TRIGGER:
 		{
-			UpdateTriggerButton(GamepadControl::RightTrigger, value);
+			UpdateTriggerButton(GamepadControl::RightTrigger, value, axisEvent.timestamp);
 			break;
 		}
 		default: break;
@@ -204,15 +215,15 @@ void Gamepad::ProcessAxisEvent(const SDL_GamepadAxisEvent& axisEvent)
 	mPendingAxes[axisEvent.axis] = value;
 }
 
-void Gamepad::UpdateTriggerButton(GamepadControl trigger, float value)
+void Gamepad::UpdateTriggerButton(GamepadControl trigger, float value, uint64_t timestamp)
 {
 	const auto index = static_cast<uint32_t>(trigger);
 	if (value >= TriggerPressPoint)
 	{
-		mButtons.Press(index);
+		mButtons.Press(index, timestamp);
 	}
 	else
 	{
-		mButtons.Release(index);
+		mButtons.Release(index, timestamp);
 	}
 }

@@ -5,6 +5,20 @@ using namespace Gleam;
 
 static const InputInteraction kDefaultInteraction{};
 
+void InputEdges::Merge(const InputEdges& other)
+{
+	if (other.pressed and (pressed == false or other.pressTime < pressTime))
+	{
+		pressTime = other.pressTime;
+	}
+	if (other.released and (released == false or other.releaseTime > releaseTime))
+	{
+		releaseTime = other.releaseTime;
+	}
+	pressed = pressed or other.pressed;
+	released = released or other.released;
+}
+
 InputActionStates::InputActionStates(const InputActionAsset* source)
 	: asset(source)
 	, maps(source->GetActionMapCount())
@@ -60,7 +74,7 @@ void InputActionStates::ProcessAction(InputActionHandle handle, double time)
 	{
 		action.activeDevice = action.frameState.device;
 	}
-	if (action.frameState.magnitude > 0.0f or action.frameState.pressed)
+	if (action.frameState.magnitude > 0.0f or action.frameState.edges.pressed)
 	{
 		action.interactionBinding = action.frameState.binding;
 	}
@@ -70,19 +84,20 @@ void InputActionStates::ProcessAction(InputActionHandle handle, double time)
 	if (action.syncHeldState)
 	{
 		action.syncHeldState = false;
-		if (action.frameState.pressed == false)
+		if (action.frameState.edges.pressed == false)
 		{
 			action.pressed = pressed;
 		}
 	}
-	const bool tapped = action.frameState.pressed and pressed == false and action.pressed == false;
+	const bool tapped = action.frameState.edges.pressed and pressed == false and action.pressed == false;
 	action.pressedThisFrame = (pressed and action.pressed == false) or tapped;
 	action.releasedThisFrame = (pressed == false and action.pressed) or tapped;
 	action.pressed = pressed;
 
 	if (descriptor.valueType == InputValueType::Bool or HasInteractions(handle))
 	{
-		action.ProcessButton(interaction, time);
+		const auto& edges = action.frameState.edges;
+		action.ProcessButton(interaction, time, edges.pressed ? edges.pressTime : time, edges.released ? edges.releaseTime : time);
 	}
 	else
 	{
@@ -167,14 +182,13 @@ void InputActionState::Disable()
 
 void InputActionState::Accumulate(const InputBindingState& state)
 {
-	const bool anyPressed = frameState.pressed or state.pressed;
-	const bool anyReleased = frameState.released or state.released;
+	auto edges = frameState.edges;
+	edges.Merge(state.edges);
 	if (state.magnitude > frameState.magnitude or (frameState.device == nullptr and state.device != nullptr))
 	{
 		frameState = state;
 	}
-	frameState.pressed = anyPressed;
-	frameState.released = anyReleased;
+	frameState.edges = edges;
 }
 
 void InputActionState::ProcessValue()
@@ -197,11 +211,11 @@ void InputActionState::ProcessValue()
 	}
 }
 
-void InputActionState::ProcessButton(const InputInteraction& interaction, double time)
+void InputActionState::ProcessButton(const InputInteraction& interaction, double time, double pressTime, double releaseTime)
 {
 	if (pressedThisFrame)
 	{
-		OnPress(interaction, time);
+		OnPress(interaction, pressTime);
 	}
 
 	if (pressed)
@@ -215,7 +229,7 @@ void InputActionState::ProcessButton(const InputInteraction& interaction, double
 
 	if (releasedThisFrame)
 	{
-		OnRelease(interaction, time);
+		OnRelease(interaction, releaseTime);
 	}
 }
 

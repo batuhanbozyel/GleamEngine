@@ -51,6 +51,10 @@ public:
 
 	virtual bool WasControlReleasedThisFrame(uint32_t code) const override;
 
+	virtual uint64_t GetControlPressTime(uint32_t code) const override;
+
+	virtual uint64_t GetControlReleaseTime(uint32_t code) const override;
+
 private:
 
 	virtual void Commit() override;

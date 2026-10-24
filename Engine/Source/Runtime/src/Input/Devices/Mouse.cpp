@@ -69,6 +69,16 @@ bool Mouse::WasControlReleasedThisFrame(uint32_t code) const
 	return code < ButtonCount and mButtons.WasReleasedThisFrame(code);
 }
 
+uint64_t Mouse::GetControlPressTime(uint32_t code) const
+{
+	return code < ButtonCount ? mButtons.GetPressTime(code) : 0;
+}
+
+uint64_t Mouse::GetControlReleaseTime(uint32_t code) const
+{
+	return code < ButtonCount ? mButtons.GetReleaseTime(code) : 0;
+}
+
 void Mouse::Commit()
 {
 	mButtons.Commit();
@@ -101,11 +111,11 @@ void Mouse::ProcessButtonEvent(const SDL_MouseButtonEvent& buttonEvent)
 	const auto index = static_cast<uint32_t>(button);
 	if (buttonEvent.down)
 	{
-		mButtons.Press(index);
+		mButtons.Press(index, buttonEvent.timestamp);
 	}
 	else
 	{
-		mButtons.Release(index);
+		mButtons.Release(index, buttonEvent.timestamp);
 	}
 }
 

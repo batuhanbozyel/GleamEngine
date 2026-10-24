@@ -49,10 +49,6 @@ public:
 
 	void UpdateActionMap(InputActionStates& states, InputActionMapHandle map, const InputUser& user, double time);
 
-	bool IsWorldInputEnabled() const;
-
-	void SetWorldInputEnabled(bool enabled);
-
 	double GetTime();
 
 	void ShowCursor();
@@ -67,8 +63,7 @@ private:
 	{
 		Float3 value = Float3::zero;
 		float magnitude = 0.0f;
-		bool pressed = false;
-		bool released = false;
+		InputEdges edges;
 		const InputDevice* device = nullptr;
 	};
 
@@ -113,8 +108,6 @@ private:
 	uint32_t mKeymapVersion = 0;
 
 	bool mUpdating = false;
-
-	bool mWorldInputEnabled = true;
 
 	TArray<Gamepad*> mGamepads;
 

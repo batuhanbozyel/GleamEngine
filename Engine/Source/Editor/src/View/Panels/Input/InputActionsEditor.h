@@ -3,9 +3,14 @@
 #include "EAssets/AssetRegistry.h"
 #include "Input/InputActionDescriptor.h"
 
+namespace Gleam {
+class InputUser;
+} // namespace Gleam
+
 namespace GEditor {
 
 class EAssetManager;
+class EditorInputSystem;
 struct EditorFonts;
 
 class InputActionsEditor final : public View
@@ -57,6 +62,8 @@ private:
 
 	void UpdateListening();
 
+	void StartListening(int32_t binding, uint32_t part);
+
 	void StopListening();
 
 	Gleam::InputActionMapDescriptor* GetSelectedMap();
@@ -68,6 +75,8 @@ private:
 	void SelectAction(int32_t index);
 
 	EAssetManager* mAssetManager;
+
+	EditorInputSystem* mEditorInput = nullptr;
 
 	const EditorFonts* mFonts = nullptr;
 
@@ -88,6 +97,8 @@ private:
 	int32_t mSelectedAction = -1;
 
 	ListenTarget mListening;
+
+	Gleam::TArray<Gleam::InputUser*> mMutedUsers;
 
 	bool mIsOpen = false;
 

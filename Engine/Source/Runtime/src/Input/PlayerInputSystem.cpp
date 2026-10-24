@@ -50,11 +50,7 @@ void PlayerInputSystem::OnPreUpdate(EntityManager& entityManager)
 {
 	SyncRecords(entityManager);
 
-	const bool worldInput = mInputSystem->IsWorldInputEnabled();
-	if (worldInput)
-	{
-		SyncPlayers(entityManager);
-	}
+	SyncPlayers(entityManager);
 
 	mMapEntries.clear();
 	for (auto& record : mRecords)
@@ -69,7 +65,7 @@ void PlayerInputSystem::OnPreUpdate(EntityManager& entityManager)
 			record.states = InputActionStates(record.states.asset);
 		}
 
-		const auto user = worldInput ? mInputSystem->GetPlayer(record.playerIndex) : nullptr;
+		const auto user = mInputSystem->GetPlayer(record.playerIndex);
 		if (mInputSystem->PrepareActions(record.states, user))
 		{
 			for (const auto map : record.states.asset->GetActionMapOrder())

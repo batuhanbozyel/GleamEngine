@@ -83,6 +83,8 @@ public:
 
 	Gleam::TString GetShortcutLabel(Gleam::InputActionHandle action) const;
 
+	Gleam::InputUser* GetUser() const;
+
 private:
 
 	Gleam::InputUser* mUser = nullptr;

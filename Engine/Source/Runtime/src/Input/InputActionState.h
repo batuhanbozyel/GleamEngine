@@ -14,12 +14,21 @@ enum class InputActionPhase
 	Canceled
 };
 
+struct InputEdges
+{
+	bool pressed = false;
+	bool released = false;
+	double pressTime = 0.0;
+	double releaseTime = 0.0;
+
+	void Merge(const InputEdges& other);
+};
+
 struct InputBindingState
 {
 	Float3 value = Float3::zero;
 	float magnitude = 0.0f;
-	bool pressed = false;
-	bool released = false;
+	InputEdges edges;
 	const InputDevice* device = nullptr;
 	uint32_t binding = 0;
 };
@@ -53,7 +62,7 @@ struct InputActionState
 
 	void ProcessValue();
 
-	void ProcessButton(const InputInteraction& interaction, double time);
+	void ProcessButton(const InputInteraction& interaction, double time, double pressTime, double releaseTime);
 
 private:
 

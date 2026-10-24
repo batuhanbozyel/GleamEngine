@@ -69,6 +69,10 @@ public:
 
 	virtual bool WasControlReleasedThisFrame(uint32_t code) const override;
 
+	virtual uint64_t GetControlPressTime(uint32_t code) const override;
+
+	virtual uint64_t GetControlReleaseTime(uint32_t code) const override;
+
 private:
 
 	virtual void Commit() override;
@@ -85,7 +89,7 @@ private:
 
 	void ProcessAxisEvent(const SDL_GamepadAxisEvent& axisEvent);
 
-	void UpdateTriggerButton(GamepadControl trigger, float value);
+	void UpdateTriggerButton(GamepadControl trigger, float value, uint64_t timestamp);
 
 	InputButtonStates<ButtonCount> mButtons;
 

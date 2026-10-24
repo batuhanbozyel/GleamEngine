@@ -45,6 +45,16 @@ bool Keyboard::WasControlReleasedThisFrame(uint32_t code) const
 	return code < KeyCount and mKeys.WasReleasedThisFrame(code);
 }
 
+uint64_t Keyboard::GetControlPressTime(uint32_t code) const
+{
+	return code < KeyCount ? mKeys.GetPressTime(code) : 0;
+}
+
+uint64_t Keyboard::GetControlReleaseTime(uint32_t code) const
+{
+	return code < KeyCount ? mKeys.GetReleaseTime(code) : 0;
+}
+
 void Keyboard::Commit()
 {
 	mKeys.Commit();
@@ -60,10 +70,10 @@ void Keyboard::ProcessEvent(const SDL_KeyboardEvent& keyboardEvent)
 
 	if (keyboardEvent.down)
 	{
-		mKeys.Press(scancode);
+		mKeys.Press(scancode, keyboardEvent.timestamp);
 	}
 	else
 	{
-		mKeys.Release(scancode);
+		mKeys.Release(scancode, keyboardEvent.timestamp);
 	}
 }

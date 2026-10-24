@@ -1,5 +1,6 @@
 #include "InputActionsEditor.h"
 #include "EAssets/EAssetManager.h"
+#include "EInput/EditorInputSystem.h"
 #include "View/ViewStack.h"
 #include "View/EditorFonts.h"
 #include "View/GleamTheme.h"
@@ -68,6 +69,7 @@ InputActionsEditor::InputActionsEditor(EAssetManager* assetManager)
 void InputActionsEditor::OnCreate(Gleam::Application* app)
 {
 	mFonts = &app->GetSubsystem<ViewStack>()->GetFonts();
+	mEditorInput = app->GetSubsystem<EditorInputSystem>();
 }
 
 void InputActionsEditor::Open(const AssetItem& asset, const Gleam::Path& file)
@@ -494,7 +496,7 @@ void InputActionsEditor::DrawControl(const char* label, Gleam::InputControl& con
 		}
 		else
 		{
-			mListening = ListenTarget{ .binding = static_cast<int32_t>(binding), .part = part, .armed = false };
+			StartListening(static_cast<int32_t>(binding), part);
 		}
 	}
 
@@ -627,8 +629,39 @@ void InputActionsEditor::UpdateListening()
 	}
 }
 
+void InputActionsEditor::StartListening(int32_t binding, uint32_t part)
+{
+	StopListening();
+	mListening = ListenTarget{ .binding = binding, .part = part, .armed = false };
+
+	// Muted from the next frame on, so the captured key doesn't also fire editor shortcuts or gameplay actions.
+	auto mute = [this](Gleam::InputUser* user)
+	{
+		if (user->IsEnabled())
+		{
+			user->SetEnabled(false);
+			mMutedUsers.push_back(user);
+		}
+	};
+	mute(mEditorInput->GetUser());
+	for (auto player : Gleam::Globals::Engine->GetSubsystem<Gleam::InputSystem>()->GetPlayers())
+	{
+		mute(player);
+	}
+}
+
 void InputActionsEditor::StopListening()
 {
+	// Players are destroyed when play stops, which can happen while listening.
+	const auto& players = Gleam::Globals::Engine->GetSubsystem<Gleam::InputSystem>()->GetPlayers();
+	for (auto user : mMutedUsers)
+	{
+		if (user == mEditorInput->GetUser() or eastl::find(players.begin(), players.end(), user) != players.end())
+		{
+			user->SetEnabled(true);
+		}
+	}
+	mMutedUsers.clear();
 	mListening = ListenTarget();
 }
 
