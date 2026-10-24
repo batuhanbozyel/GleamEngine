@@ -10,6 +10,7 @@ InputActionStates::InputActionStates(const InputActionAsset* source)
 	, maps(source->GetActionMapCount())
 	, actions(source->GetActionCount())
 	, bindings(source->GetBindings())
+	, assetVersion(source->GetVersion())
 {
 
 }

@@ -11,6 +11,7 @@
 #include "Core/Engine.h"
 #include "Core/Application.h"
 
+#include "Assets/AssetManager.h"
 #include "Input/InputSystem.h"
 #include "Input/InputUtils.h"
 #include "Serialization/ReflectionUtils.h"
@@ -164,6 +165,7 @@ void InputActionsEditor::Save()
 	{
 		mAsset = item;
 		mDirty = false;
+		Gleam::Globals::GameInstance->GetSubsystem<Gleam::AssetManager>()->Reload(mAsset.reference);
 	}
 }
 

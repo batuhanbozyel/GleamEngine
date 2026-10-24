@@ -132,7 +132,9 @@ if (states)
 
 Handles are indices into the asset. Look them up once and reuse them for every entity that uses the same asset. Always check `IsValid()` on handles found by name.
 
-State is built in the first `OnPreUpdate` after the component appears, so it is readable from `OnUpdate` in the same frame. It is rebuilt whenever `actions` points to a different asset, which resets every map's enable flag and every action's phase. Changing only `playerIndex` keeps the state and switches it to the new player on the same update. The `InputActionStates` pointer stays valid until the component is removed or its `actions` change.
+State is built in the first `OnPreUpdate` after the component appears, so it is readable from `OnUpdate` in the same frame. It is rebuilt whenever `actions` points to a different asset, which resets every map's enable flag and every action's phase. Changing only `playerIndex` keeps the state and switches it to the new player on the same update. Don't keep the `InputActionStates` pointer across frames: adding or removing any `PlayerInput` can move it. Call `GetActionStates` each update instead.
+
+Saving the asset in the Input Actions panel reloads it in place on the next frame, including during play. Every `PlayerInput` using it rebuilds its state on that update, with the same effect as reassigning the asset: map enable flags and action phases reset, binding overrides are kept. Handles cached from the asset may point at different actions afterwards; code that caches them should compare `asset->GetVersion()` and look them up again.
 
 ### Several entities
 
@@ -330,7 +332,7 @@ Author game input as an **Input Actions** asset in the editor. Build descriptors
 
 Maps and actions carry a `Guid`. Binding overrides and consumption are keyed by these GUIDs, so renaming a map or action in the asset keeps players' saved rebinds.
 
-Edits saved while an asset is loaded do not reach the cached `InputActionAsset` yet. Until asset hot reload exists, reassign the asset or restart the editor to pick them up.
+Saving reloads the loaded asset in place on the next frame (see [PlayerInput Component](#playerinput-component)).
 
 ### In code
 

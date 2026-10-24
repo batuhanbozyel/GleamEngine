@@ -64,6 +64,11 @@ void PlayerInputSystem::OnPreUpdate(EntityManager& entityManager)
 			continue;
 		}
 
+		if (record.states.assetVersion != record.states.asset->GetVersion())
+		{
+			record.states = InputActionStates(record.states.asset);
+		}
+
 		const auto user = worldInput ? mInputSystem->GetPlayer(record.playerIndex) : nullptr;
 		if (mInputSystem->PrepareActions(record.states, user))
 		{

@@ -45,6 +45,8 @@ public:
 
 	BufferRange GetBlobRange(const AssetBlobDescriptor& blob) const;
 
+	uint32_t GetVersion() const;
+
     static constexpr TWStringView Extension()
     {
         return L".asset";
@@ -65,6 +67,8 @@ private:
 	HashMap<Guid, TArray<AssetBlobVariants>> mBlobTable;
 
 	uint32_t mRefCount = 0;
+
+	uint32_t mVersion = 0;
 };
 
 } // Gleam

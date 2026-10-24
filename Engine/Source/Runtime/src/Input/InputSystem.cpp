@@ -205,29 +205,12 @@ void InputSystem::UpdateActionMap(InputActionStates& states, InputActionMapHandl
 		states.actions[i].frameState = InputBindingState();
 	}
 
-	// Copies of a map don't consume from each other, so bindings with more modifiers hide their controls from the
-	// rest of the same map here instead: Ctrl+Shift+Z must not also trigger Ctrl+Z.
+	// Copies of a map don't consume from each other, so controls consumed earlier in this map are hidden from the
+	// rest of it here instead: Ctrl+Shift+Z must not also trigger Ctrl+Z.
 	mMapConsumedControls.clear();
 	for (const auto& entry : layout.bindingOrder)
 	{
-		const auto& binding = states.bindings[entry.binding];
-		const bool hidden = eastl::any_of(binding.controls.begin(), binding.controls.end(), [this](const InputControl& control)
-		{
-			return mMapConsumedControls.find(ControlKey(control)) != mMapConsumedControls.end();
-		});
-		if (hidden)
-		{
-			continue;
-		}
-
-		auto state = EvaluateBinding(binding, asset.GetAction(entry.action), mapId, devices);
-		if (state.magnitude > 0.0f or state.pressed)
-		{
-			for (const auto& control : binding.controls)
-			{
-				mMapConsumedControls.insert(ControlKey(control));
-			}
-		}
+		auto state = EvaluateBinding(states.bindings[entry.binding], asset.GetAction(entry.action), mapId, devices);
 		state.binding = entry.binding - asset.GetActionLayout(entry.action).firstBinding;
 		states.actions[entry.action.value].Accumulate(state);
 	}
@@ -312,6 +295,11 @@ InputBindingState InputSystem::EvaluateBinding(const InputBindingDescriptor& bin
 InputSystem::ControlSample InputSystem::SampleControl(const InputControl& control, const Guid& map, const TArray<InputDevice*>& devices) const
 {
 	ControlSample sample;
+	if (mMapConsumedControls.find(ControlKey(control)) != mMapConsumedControls.end())
+	{
+		return sample;
+	}
+
 	for (const auto device : devices)
 	{
 		if (device->GetType() != control.device or device->IsConnected() == false)
@@ -343,6 +331,7 @@ InputSystem::ControlSample InputSystem::SampleControl(const InputControl& contro
 
 void InputSystem::ConsumeControl(const InputControl& control, const Guid& map, const TArray<InputDevice*>& devices)
 {
+	mMapConsumedControls.insert(ControlKey(control));
 	for (const auto device : devices)
 	{
 		if (device->GetType() == control.device)
