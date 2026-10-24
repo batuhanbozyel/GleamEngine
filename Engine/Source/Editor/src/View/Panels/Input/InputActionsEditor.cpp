@@ -12,6 +12,7 @@
 #include "Core/Application.h"
 
 #include "Input/InputSystem.h"
+#include "Input/InputUtils.h"
 #include "Serialization/ReflectionUtils.h"
 #include "Renderer/Renderers/ImGuiRenderer.h"
 
@@ -19,7 +20,7 @@
 
 #include <imgui.h>
 
-#include <algorithm>
+#include <EASTL/algorithm.h>
 #include <cstring>
 
 using namespace GEditor;
@@ -34,7 +35,7 @@ template<typename Container>
 static Gleam::TString MakeUniqueName(const Container& items, const char* base)
 {
 	auto name = Gleam::TString(base);
-	for (uint32_t suffix = 1; std::any_of(items.begin(), items.end(), [&name](const auto& item) { return item.name == name; }); ++suffix)
+	for (uint32_t suffix = 1; eastl::any_of(items.begin(), items.end(), [&name](const auto& item) { return item.name == name; }); ++suffix)
 	{
 		name = Gleam::TString(base);
 		name.append(" ");
@@ -612,7 +613,7 @@ void InputActionsEditor::UpdateListening()
 
 	auto inputSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::InputSystem>();
 	Gleam::InputControl control;
-	if (Gleam::InputSystem::FindActuatedControl(inputSystem->GetDevices(), control))
+	if (Gleam::InputUtils::FindActuatedControl(inputSystem->GetDevices(), control))
 	{
 		auto& controls = action->bindings[mListening.binding].controls;
 		if (control != Gleam::InputControl::Make(Gleam::Key::Escape) and mListening.part < controls.size())

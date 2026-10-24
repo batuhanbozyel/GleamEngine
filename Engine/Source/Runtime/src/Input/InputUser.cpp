@@ -1,6 +1,7 @@
 #include "gpch.h"
 #include "InputUser.h"
 #include "InputSystem.h"
+#include "InputUtils.h"
 
 #include "Serialization/JSONSerializer.h"
 
@@ -169,7 +170,7 @@ void InputUser::UpdateRebind()
 	}
 
 	InputControl control;
-	if (InputSystem::FindActuatedControl(TArrayView<InputDevice* const>(mDevices.data(), mDevices.size()), control))
+	if (InputUtils::FindActuatedControl(TArrayView<InputDevice* const>(mDevices.data(), mDevices.size()), control))
 	{
 		if (control == InputControl::Make(Key::Escape))
 		{

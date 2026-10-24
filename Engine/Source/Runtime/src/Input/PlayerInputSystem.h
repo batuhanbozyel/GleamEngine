@@ -35,9 +35,17 @@ public:
 
 private:
 
-	void SyncRecords(EntityManager& entityManager);
+	struct MapEntry
+	{
+		InputActionStates* states = nullptr;
+		InputActionMapHandle map;
+		const InputUser* user = nullptr;
+		int32_t priority = 0;
+	};
 
-	void SyncPlayers(const PlayerInputManager& manager);
+	void SyncRecords(const EntityManager& entityManager);
+
+	void SyncPlayers(const EntityManager& entityManager);
 
 	void ReleaseActions(PlayerInputRecord& record);
 
@@ -52,6 +60,8 @@ private:
 	TArray<PlayerInputRecord> mRecords;
 
 	TArray<uint32_t> mRecordIndices;
+
+	TArray<MapEntry> mMapEntries;
 
 	ChangeCursor mChangeCursor;
 

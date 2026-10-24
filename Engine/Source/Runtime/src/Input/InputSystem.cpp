@@ -1,50 +1,24 @@
 #include "gpch.h"
 #include "InputSystem.h"
+#include "InputUtils.h"
 #include "Core/Engine.h"
 #include "Core/Globals.h"
 #include "Core/WindowSystem.h"
 #include "Core/Events/InputEvent.h"
 #include <SDL3/SDL.h>
 #include <EASTL/sort.h>
+#include <EASTL/algorithm.h>
 
 using namespace Gleam;
-
-static constexpr float kActuationThreshold = 0.5f;
 
 static uint64_t ConsumptionKey(const InputDevice* device, uint32_t code)
 {
 	return (static_cast<uint64_t>(device->GetId()) << 32) | code;
 }
 
-static uint32_t ResolveLayoutKey(uint32_t code)
+static uint64_t ControlKey(const InputControl& control)
 {
-	if (code >= SDL_SCANCODE_A and code <= SDL_SCANCODE_Z)
-	{
-		const auto key = static_cast<SDL_Keycode>(SDLK_A + (code - SDL_SCANCODE_A));
-		const auto scancode = SDL_GetScancodeFromKey(key, nullptr);
-		if (scancode != SDL_SCANCODE_UNKNOWN)
-		{
-			return static_cast<uint32_t>(scancode);
-		}
-	}
-	return code;
-}
-
-static bool IsModifierHeld(const Keyboard* keyboard, ModifierKeys modifier)
-{
-	switch (modifier)
-	{
-		case ModifierKeys::Shift: return keyboard->IsPressed(Key::LeftShift) or keyboard->IsPressed(Key::RightShift);
-		case ModifierKeys::Control: return keyboard->IsPressed(Key::LeftControl) or keyboard->IsPressed(Key::RightControl);
-		case ModifierKeys::Alt: return keyboard->IsPressed(Key::LeftAlt) or keyboard->IsPressed(Key::RightAlt);
-		case ModifierKeys::Super: return keyboard->IsPressed(Key::LeftSuper) or keyboard->IsPressed(Key::RightSuper);
-#if defined(PLATFORM_MACOS)
-		case ModifierKeys::Shortcut: return IsModifierHeld(keyboard, ModifierKeys::Super);
-#else
-		case ModifierKeys::Shortcut: return IsModifierHeld(keyboard, ModifierKeys::Control);
-#endif
-		default: return false;
-	}
+	return (static_cast<uint64_t>(control.device) << 32) | control.code;
 }
 
 void InputSystem::Initialize(Engine* engine)
@@ -109,25 +83,29 @@ void InputSystem::Update()
 
 void InputSystem::UpdateActions(InputActionStates& states, const InputUser* user)
 {
-	const bool userActive = user and user->IsEnabled() and user->IsRebinding() == false;
-	states.SetUserActive(userActive);
-
-	if (userActive)
+	if (PrepareActions(states, user))
 	{
-		if (states.overridesVersion != user->GetBindingOverridesVersion() or states.keymapVersion != mKeymapVersion)
-		{
-			ResolveBindings(states, *user);
-		}
-
 		const double time = GetTime();
 		for (const auto map : states.asset->GetActionMapOrder())
 		{
 			if (states.maps[map.value].active)
 			{
-				EvaluateActionMap(states, map, *user, time);
+				UpdateActionMap(states, map, *user, time);
 			}
 		}
 	}
+}
+
+bool InputSystem::PrepareActions(InputActionStates& states, const InputUser* user)
+{
+	const bool userActive = user and user->IsEnabled() and user->IsRebinding() == false;
+	states.SetUserActive(userActive);
+
+	if (userActive and (states.overridesVersion != user->GetBindingOverridesVersion() or states.keymapVersion != mKeymapVersion))
+	{
+		ResolveBindings(states, *user);
+	}
+	return userActive;
 }
 
 InputUser* InputSystem::JoinPlayer(uint32_t index)
@@ -160,7 +138,7 @@ void InputSystem::ProcessJoins(uint32_t maxPlayers)
 
 		InputDevice* const candidates[] = { device };
 		InputControl control;
-		if (FindActuatedControl(TArrayView<InputDevice* const>(candidates, 1), control) == false)
+		if (InputUtils::FindActuatedControl(TArrayView<InputDevice* const>(candidates, 1), control) == false)
 		{
 			continue;
 		}
@@ -205,7 +183,7 @@ void InputSystem::ResolveBindings(InputActionStates& states, const InputUser& us
 			{
 				if (control.device == InputDeviceType::Keyboard)
 				{
-					control.code = ResolveLayoutKey(control.code);
+					control.code = InputUtils::ResolveLayoutKey(control.code);
 				}
 			}
 		}
@@ -215,10 +193,11 @@ void InputSystem::ResolveBindings(InputActionStates& states, const InputUser& us
 	states.keymapVersion = mKeymapVersion;
 }
 
-void InputSystem::EvaluateActionMap(InputActionStates& states, InputActionMapHandle map, const InputUser& user, double time)
+void InputSystem::UpdateActionMap(InputActionStates& states, InputActionMapHandle map, const InputUser& user, double time)
 {
 	const auto& asset = *states.asset;
 	const auto& layout = asset.GetActionMapLayout(map);
+	const auto& mapId = asset.GetActionMap(map).id;
 	const auto& devices = user.GetPairedDevices();
 
 	for (uint32_t i = layout.firstAction; i < layout.firstAction + layout.actionCount; ++i)
@@ -226,9 +205,29 @@ void InputSystem::EvaluateActionMap(InputActionStates& states, InputActionMapHan
 		states.actions[i].frameState = InputBindingState();
 	}
 
+	// Copies of a map don't consume from each other, so bindings with more modifiers hide their controls from the
+	// rest of the same map here instead: Ctrl+Shift+Z must not also trigger Ctrl+Z.
+	mMapConsumedControls.clear();
 	for (const auto& entry : layout.bindingOrder)
 	{
-		auto state = EvaluateBinding(states.bindings[entry.binding], asset.GetAction(entry.action), devices);
+		const auto& binding = states.bindings[entry.binding];
+		const bool hidden = eastl::any_of(binding.controls.begin(), binding.controls.end(), [this](const InputControl& control)
+		{
+			return mMapConsumedControls.find(ControlKey(control)) != mMapConsumedControls.end();
+		});
+		if (hidden)
+		{
+			continue;
+		}
+
+		auto state = EvaluateBinding(binding, asset.GetAction(entry.action), mapId, devices);
+		if (state.magnitude > 0.0f or state.pressed)
+		{
+			for (const auto& control : binding.controls)
+			{
+				mMapConsumedControls.insert(ControlKey(control));
+			}
+		}
 		state.binding = entry.binding - asset.GetActionLayout(entry.action).firstBinding;
 		states.actions[entry.action.value].Accumulate(state);
 	}
@@ -239,11 +238,11 @@ void InputSystem::EvaluateActionMap(InputActionStates& states, InputActionMapHan
 	}
 }
 
-InputBindingState InputSystem::EvaluateBinding(const InputBindingDescriptor& binding, const InputActionDescriptor& action, const TArray<InputDevice*>& devices)
+InputBindingState InputSystem::EvaluateBinding(const InputBindingDescriptor& binding, const InputActionDescriptor& action, const Guid& map, const TArray<InputDevice*>& devices)
 {
 	InputBindingState state;
 	const uint32_t partCount = InputBindingDescriptor::GetPartCount(binding.type);
-	if (partCount == 0 or binding.controls.size() < partCount or ModifiersHeld(binding.modifiers, devices) == false)
+	if (partCount == 0 or binding.controls.size() < partCount or InputUtils::ModifiersHeld(binding.modifiers, TArrayView<InputDevice* const>(devices.data(), devices.size())) == false)
 	{
 		return state;
 	}
@@ -251,7 +250,7 @@ InputBindingState InputSystem::EvaluateBinding(const InputBindingDescriptor& bin
 	TFixedArray<ControlSample, 6> samples;
 	for (uint32_t i = 0; i < partCount; ++i)
 	{
-		samples.push_back(SampleControl(binding.controls[i], devices));
+		samples.push_back(SampleControl(binding.controls[i], map, devices));
 	}
 
 	switch (binding.type)
@@ -303,19 +302,25 @@ InputBindingState InputSystem::EvaluateBinding(const InputBindingDescriptor& bin
 		{
 			if (samples[i].magnitude > 0.0f or samples[i].pressed)
 			{
-				ConsumeControl(binding.controls[i], devices);
+				ConsumeControl(binding.controls[i], map, devices);
 			}
 		}
 	}
 	return state;
 }
 
-InputSystem::ControlSample InputSystem::SampleControl(const InputControl& control, const TArray<InputDevice*>& devices) const
+InputSystem::ControlSample InputSystem::SampleControl(const InputControl& control, const Guid& map, const TArray<InputDevice*>& devices) const
 {
 	ControlSample sample;
 	for (const auto device : devices)
 	{
-		if (device->GetType() != control.device or device->IsConnected() == false or mConsumedControls.find(ConsumptionKey(device, control.code)) != mConsumedControls.end())
+		if (device->GetType() != control.device or device->IsConnected() == false)
+		{
+			continue;
+		}
+
+		const auto consumed = mConsumedControls.find(ConsumptionKey(device, control.code));
+		if (consumed != mConsumedControls.end() and consumed->second != map)
 		{
 			continue;
 		}
@@ -336,83 +341,20 @@ InputSystem::ControlSample InputSystem::SampleControl(const InputControl& contro
 	return sample;
 }
 
-void InputSystem::ConsumeControl(const InputControl& control, const TArray<InputDevice*>& devices)
+void InputSystem::ConsumeControl(const InputControl& control, const Guid& map, const TArray<InputDevice*>& devices)
 {
 	for (const auto device : devices)
 	{
 		if (device->GetType() == control.device)
 		{
-			mConsumedControls.insert(ConsumptionKey(device, control.code));
+			mConsumedControls.emplace(ConsumptionKey(device, control.code), map);
 		}
 	}
-}
-
-bool InputSystem::ModifiersHeld(EnumFlag<ModifierKeys> modifiers, const TArray<InputDevice*>& devices) const
-{
-	if (modifiers.Empty())
-	{
-		return true;
-	}
-
-	for (const auto device : devices)
-	{
-		if (device->GetType() != InputDeviceType::Keyboard)
-		{
-			continue;
-		}
-
-		const auto keyboard = static_cast<const Keyboard*>(device);
-		bool held = true;
-		for (auto mask = modifiers.Value(); mask != 0 and held; mask &= mask - 1)
-		{
-			held = IsModifierHeld(keyboard, static_cast<ModifierKeys>(mask & (~mask + 1)));
-		}
-
-		if (held)
-		{
-			return true;
-		}
-	}
-	return false;
 }
 
 double InputSystem::GetTime()
 {
 	return static_cast<double>(SDL_GetTicksNS()) * 1e-9;
-}
-
-bool InputSystem::FindActuatedControl(TArrayView<InputDevice* const> devices, InputControl& control)
-{
-	for (const auto device : devices)
-	{
-		if (device->IsConnected() == false)
-		{
-			continue;
-		}
-
-		for (const auto code : InputControl::GetCodes(device->GetType()))
-		{
-			const auto candidate = InputControl{ .device = device->GetType(), .code = code };
-			if (candidate.IsButton())
-			{
-				if (device->WasControlPressedThisFrame(code))
-				{
-					control = candidate;
-					return true;
-				}
-			}
-			else if (candidate.device == InputDeviceType::Gamepad)
-			{
-				const auto stick = static_cast<GamepadControl>(code);
-				if ((stick == GamepadControl::LeftStick or stick == GamepadControl::RightStick) and Math::Length(device->ReadControl(code)) >= kActuationThreshold)
-				{
-					control = candidate;
-					return true;
-				}
-			}
-		}
-	}
-	return false;
 }
 
 TArrayView<InputDevice* const> InputSystem::GetDevices() const

@@ -6,6 +6,8 @@
 #include "Assets/AssetManager.h"
 #include "World/EntityManager.h"
 
+#include <EASTL/sort.h>
+
 using namespace Gleam;
 
 void PlayerInputSystem::OnCreate(EntityManager& entityManager)
@@ -48,18 +50,42 @@ void PlayerInputSystem::OnPreUpdate(EntityManager& entityManager)
 {
 	SyncRecords(entityManager);
 
-	if (mInputSystem->IsWorldInputEnabled())
+	const bool worldInput = mInputSystem->IsWorldInputEnabled();
+	if (worldInput)
 	{
-		SyncPlayers(entityManager.GetSingleton<PlayerInputManager>());
+		SyncPlayers(entityManager);
 	}
 
+	mMapEntries.clear();
 	for (auto& record : mRecords)
 	{
-		if (record.states.asset)
+		if (record.states.asset == nullptr)
 		{
-			const auto user = mInputSystem->IsWorldInputEnabled() ? mInputSystem->GetPlayer(record.playerIndex) : nullptr;
-			mInputSystem->UpdateActions(record.states, user);
+			continue;
 		}
+
+		const auto user = worldInput ? mInputSystem->GetPlayer(record.playerIndex) : nullptr;
+		if (mInputSystem->PrepareActions(record.states, user))
+		{
+			for (const auto map : record.states.asset->GetActionMapOrder())
+			{
+				if (record.states.maps[map.value].active)
+				{
+					mMapEntries.push_back(MapEntry{ .states = &record.states, .map = map, .user = user, .priority = record.states.asset->GetActionMap(map).priority });
+				}
+			}
+		}
+	}
+
+	eastl::stable_sort(mMapEntries.begin(), mMapEntries.end(), [](const MapEntry& lhs, const MapEntry& rhs)
+	{
+		return lhs.priority > rhs.priority;
+	});
+
+	const double time = mInputSystem->GetTime();
+	for (const auto& entry : mMapEntries)
+	{
+		mInputSystem->UpdateActionMap(*entry.states, entry.map, *entry.user, time);
 	}
 }
 
@@ -85,7 +111,7 @@ void PlayerInputSystem::SetActionMapEnabled(EntityHandle entity, InputActionMapH
 	}
 }
 
-void PlayerInputSystem::SyncRecords(EntityManager& entityManager)
+void PlayerInputSystem::SyncRecords(const EntityManager& entityManager)
 {
 	const auto& tracker = entityManager.GetChangeTracker();
 	if (tracker.GetTick() != mChangeCursor.GetLastSeen())
@@ -123,8 +149,9 @@ void PlayerInputSystem::SyncRecords(EntityManager& entityManager)
 	}
 }
 
-void PlayerInputSystem::SyncPlayers(const PlayerInputManager& manager)
+void PlayerInputSystem::SyncPlayers(const EntityManager& entityManager)
 {
+	const auto& manager = entityManager.GetSingleton<PlayerInputManager>();
 	if (manager.joinBehavior == PlayerJoinBehavior::JoinOnButtonPress)
 	{
 		mInputSystem->ProcessJoins(manager.maxPlayers);

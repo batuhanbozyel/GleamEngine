@@ -68,7 +68,7 @@ TArrayView<const uint32_t> InputControl::GetCodes(InputDeviceType device)
 bool InputControl::IsValid() const
 {
 	const auto codes = GetCodes(device);
-	return std::find(codes.begin(), codes.end(), code) != codes.end();
+	return eastl::find(codes.begin(), codes.end(), code) != codes.end();
 }
 
 bool InputControl::IsButton() const

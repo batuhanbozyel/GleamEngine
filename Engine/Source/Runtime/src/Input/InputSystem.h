@@ -45,13 +45,15 @@ public:
 
 	void UpdateActions(InputActionStates& states, const InputUser* user);
 
+	bool PrepareActions(InputActionStates& states, const InputUser* user);
+
+	void UpdateActionMap(InputActionStates& states, InputActionMapHandle map, const InputUser& user, double time);
+
 	bool IsWorldInputEnabled() const;
 
 	void SetWorldInputEnabled(bool enabled);
 
-	static double GetTime();
-
-	static bool FindActuatedControl(TArrayView<InputDevice* const> devices, InputControl& control);
+	double GetTime();
 
 	void ShowCursor();
 
@@ -90,15 +92,11 @@ private:
 
 	void ResolveBindings(InputActionStates& states, const InputUser& user) const;
 
-	void EvaluateActionMap(InputActionStates& states, InputActionMapHandle map, const InputUser& user, double time);
+	InputBindingState EvaluateBinding(const InputBindingDescriptor& binding, const InputActionDescriptor& action, const Guid& map, const TArray<InputDevice*>& devices);
 
-	InputBindingState EvaluateBinding(const InputBindingDescriptor& binding, const InputActionDescriptor& action, const TArray<InputDevice*>& devices);
+	ControlSample SampleControl(const InputControl& control, const Guid& map, const TArray<InputDevice*>& devices) const;
 
-	ControlSample SampleControl(const InputControl& control, const TArray<InputDevice*>& devices) const;
-
-	void ConsumeControl(const InputControl& control, const TArray<InputDevice*>& devices);
-
-	bool ModifiersHeld(EnumFlag<ModifierKeys> modifiers, const TArray<InputDevice*>& devices) const;
+	void ConsumeControl(const InputControl& control, const Guid& map, const TArray<InputDevice*>& devices);
 
 	TArray<InputDevice*> mDevices;
 
@@ -108,7 +106,9 @@ private:
 
 	TArray<InputUser*> mPendingDestroys;
 
-	HashSet<uint64_t> mConsumedControls;
+	HashMap<uint64_t, Guid> mConsumedControls;
+
+	HashSet<uint64_t> mMapConsumedControls;
 
 	uint32_t mKeymapVersion = 0;
 

@@ -20,33 +20,36 @@ Gameplay and editor code read input through **actions**, not raw keys. An action
 
 | Type | Role |
 | --- | --- |
-| `InputSystem` | Engine subsystem: owns devices and users, receives SDL events, updates every action map each frame |
+| `InputSystem` | Engine subsystem: owns devices and users, receives SDL events, evaluates action maps against paired devices |
 | `InputDevice` | `Keyboard`, `Mouse`, `Gamepad`: raw per-frame control state |
 | `InputUser` | A player or a non-player user: player index, paired devices, binding overrides, rebinding |
-| `PlayerInput` | Entity component: an Input Actions asset and a player index; owns the action maps built from the asset |
-| `PlayerInputManager` | Entity component: join behavior and player limit for the world |
-| `InputActionMap` | A named group of actions with a priority; enabled or disabled as a group |
-| `InputAction` | One logical input (Jump, Move, Undo): value, phase, callbacks |
-| `InputBindingDescriptor` | Which controls drive an action, plus modifiers, processors and interactions |
-| `InputActionAssetDescriptor` | Maps and actions authored in the editor's Input Actions panel |
+| `PlayerInput` | Entity component: an Input Actions asset and a player index. Plain data; holds no runtime state |
+| `PlayerInputManager` | Required world singleton: join behavior and player limit |
+| `PlayerInputSystem` | World `ComponentSystem`: builds action state for every `PlayerInput`, joins players, updates every map in priority order |
+| `InputActionAsset` | Immutable, shared layout of an `InputActionAssetDescriptor`: maps, actions, flattened bindings, lookups by name or GUID |
+| `InputActionStates` | Per-`PlayerInput` runtime state: map enable flags, action phases and values, bindings with overrides applied |
+| `InputActionMapHandle` / `InputActionHandle` | Indices into an asset. The same handle is valid for every `InputActionStates` built from that asset |
+
+The asset is shared and read-only, while each `PlayerInput` gets its own `InputActionStates`. Gameplay code looks up handles on the asset once and reads state through the handles.
 
 ## Frame Flow
 
 1. `EventSystem` forwards SDL events to `InputSystem::ProcessEvent`, which writes each device's *pending* state. Keyboard, mouse and gamepad events are reported as handled.
-2. `Application` calls `InputSystem::Update(world)` with the active world, right after `EventSystem::Update()` and before the world updates.
-3. Every device commits: pending state becomes current. Press and release counts are kept, so a press and release inside one frame still registers as a tap.
-4. If world input is enabled:
-   1. The first `PlayerInputManager` in the world decides the join behavior. In `JoinOnButtonPress` mode, unpaired devices that were pressed create new players.
-   2. Every `PlayerInput` component builds its maps if its asset changed, and resolves its player from `playerIndex`. In `Manual` mode a missing player is created.
-   3. `PlayerJoinedEvent` fires for players created in the previous step.
-5. If the OS keyboard layout changed, layout-mapped bindings are re-resolved.
-6. Every map, from registered `PlayerInput`s (the editor's) and from the world's components, is sorted by priority (highest first). Active maps are updated in that order against one shared consumption set.
-7. Pending interactive rebinds advance.
-8. Users destroyed during steps 6 and 7 are released.
+2. `Application` calls `InputSystem::Update()` right after `EventSystem::Update()`:
+   1. Pending interactive rebinds advance.
+   2. Users destroyed from a rebind callback are released.
+   3. Every device commits: pending state becomes current. Press and release counts are kept, so a press and release inside one frame still registers as a tap.
+   4. The consumption set is cleared.
+3. Tickable game instance subsystems run. The editor's `EditorInputSystem` evaluates its own maps here (see [Maps outside a world](#maps-outside-a-world)).
+4. `World::Update()` runs fixed steps first, then `OnPreUpdate` for every system. In its `OnPreUpdate`, `PlayerInputSystem`:
+   1. Builds `InputActionStates` for every `PlayerInput` that was added or whose `actions` changed, and drops state for removed components.
+   2. If world input is enabled, joins players from the `PlayerInputManager` settings and publishes `PlayerJoinedEvent`.
+   3. Prepares each `PlayerInput`: decides whether its player is active and re-resolves bindings if that player's overrides or the OS keyboard layout changed.
+   4. Collects every active map from **all** `PlayerInput`s, sorts them by priority (highest first) and updates them in that order against one shared consumption set.
 
-Action state and callbacks are therefore settled before any `ComponentSystem` or world subsystem runs, and stay stable for the rest of the frame.
+Read actions from `OnUpdate` or `OnPostUpdate`, where the values are settled for the frame. Fixed steps run before `OnPreUpdate`, so `OnFixedUpdate` sees the previous frame's action state.
 
-In the editor, world input is off in edit mode and on during play (`InputSystem::SetWorldInputEnabled`), so `PlayerInput` components in the edit world never build maps or consume keys.
+In the editor, world input is off in edit mode and on during play (`InputSystem::SetWorldInputEnabled`). Edit-world `PlayerInput`s still build their state, but every map stays inactive and consumes nothing.
 
 ## Devices
 
@@ -70,6 +73,8 @@ for (auto gamepad : input->GetGamepads())
 }
 ```
 
+Polling a device ignores consumption, so a debug key read this way also reaches any action bound to it.
+
 | Device | Buttons | Analog controls |
 | --- | --- | --- |
 | `Keyboard` | every `Key` (physical scancodes) | none |
@@ -79,6 +84,8 @@ for (auto gamepad : input->GetGamepads())
 Every device answers the same generic queries: `ReadControl(code)` returns a `Float3`, and `WasControlPressedThisFrame` / `WasControlReleasedThisFrame` report edges. Buttons read 0 or 1.
 
 `InputControl` names one control as `{ device type, code }`. Build it with `InputControl::Make(Key::Space)`, `InputControl::Make(MouseControl::Delta)` or `InputControl::Make(GamepadControl::South)`. `GetName()` returns its display name.
+
+`InputUtils::FindActuatedControl(devices, control)` returns the first button pressed this frame (or a stick pushed past 0.5) on the given devices. Rebinding, joining and the editor's binding Listen button are built on it.
 
 ### Events
 
@@ -105,30 +112,36 @@ Add **Player Input** to an entity in the inspector and assign an Input Actions a
 | `actions` | The Input Actions asset. Every map in it is built for this component. |
 | `playerIndex` | Which player's devices and binding overrides the maps read from. |
 
-At runtime, look maps and actions up on the component:
+The component is plain data. Its runtime state lives in `PlayerInputSystem`, keyed by entity:
 
 ```cpp
-entityManager.ForEach<PlayerInput>([](const PlayerInput& input)
+auto playerInput = world->GetSystem<PlayerInputSystem>();
+
+const InputActionStates* states = playerInput->GetActionStates(entity);   // nullptr until built, or if the asset failed to load
+if (states)
 {
-	InputAction* jump = input.FindAction("Gameplay/Jump");   // "Map/Action"
-	InputAction* any = input.FindAction("Jump");             // first match across all maps
-	InputActionMap* menu = input.FindActionMap("Menu");
-	InputUser* player = input.GetUser();                    // nullptr until the player exists
-});
+	const InputActionAsset& asset = *states->asset;
+	InputActionHandle jump = asset.FindAction("Gameplay/Jump");   // "Map/Action"
+	InputActionHandle any = asset.FindAction("Jump");             // first match across all maps
+	InputActionMapHandle menu = asset.FindActionMap("Menu");
+
+	const InputActionState& state = states->GetAction(jump);
+	playerInput->SetActionMapEnabled(entity, menu, false);
+}
 ```
 
-Maps are built on the first input update after the component appears, and rebuilt whenever `actions` points to a different asset. Map and action pointers stay valid until then, even when other entities are added or removed, so they can be cached and callbacks can be registered on them. A rebuild drops the old maps and their callbacks.
+Handles are indices into the asset. Look them up once and reuse them for every entity that uses the same asset. Always check `IsValid()` on handles found by name.
 
-Copying the component (for example into the play world) copies only `actions` and `playerIndex`; the copy builds its own maps.
+State is built in the first `OnPreUpdate` after the component appears, so it is readable from `OnUpdate` in the same frame. It is rebuilt whenever `actions` points to a different asset, which resets every map's enable flag and every action's phase. Changing only `playerIndex` keeps the state and switches it to the new player on the same update. The `InputActionStates` pointer stays valid until the component is removed or its `actions` change.
 
 ### Several entities
 
-Each `PlayerInput` builds its own copies of the asset's maps.
+Each `PlayerInput` gets its own `InputActionStates` for the asset's maps.
 
 | Setup | Result |
 | --- | --- |
-| Two entities, same player, same asset (a character and its camera rig) | Both read identical values. Copies of the same map do not hide input from each other. |
-| Same player, different assets or maps (a UI entity and a character) | Maps stack on that player; priority and consumption decide who sees a key. |
+| Two entities, same player, same asset (a character and its camera rig) | Both read identical values. Copies of the same map (same map GUID) do not hide input from each other. |
+| Same player, different assets or maps (a UI entity and a character) | Maps stack on that player; priority and consumption decide who sees a key, regardless of which entity was created first. |
 | Different players | Separate devices and separate binding overrides: local co-op. |
 
 ## Players and Users
@@ -137,14 +150,14 @@ An `InputUser` reads only from its **paired devices** and stores binding overrid
 
 | Created by | Player index | In `GetPlayers()` | Join/leave events | Typical use |
 | --- | --- | --- | --- | --- |
-| `PlayerInput` components and joins | 0, 1, ... | yes | yes | Gameplay players |
-| `CreateUser()` | `InputUser::InvalidPlayerIndex` | no | no | Editor, debug or UI input that is not a player |
+| `PlayerInputSystem` joins | 0, 1, ... | yes | yes | Gameplay players |
+| `InputSystem::CreateUser()` | `InputUser::InvalidPlayerIndex` | no | no | Editor, debug or UI input that is not a player |
 
-`DestroyUser(user)` removes one; `DestroyPlayers()` removes all players and keeps users. Called from an action or rebind callback, both take effect at the end of the input update. The editor destroys all players when play mode ends, before the play world is torn down.
+Get a player with `InputSystem::GetPlayer(index)`; it returns `nullptr` until that player has joined. `DestroyUser(user)` removes one, and `DestroyPlayers()` removes all players and keeps users. Called from a rebind callback, both take effect at the end of `InputSystem::Update()`. The editor destroys all players when play mode ends, before the play world is torn down.
 
 ### Joining
 
-Add a **Player Input Manager** component to any entity to choose the mode. Without one, the world behaves as `Manual`.
+Every world has a **Player Input Manager** singleton. The launcher adds it to new worlds, and `PlayerInputSystem` requires it.
 
 | Field | Meaning |
 | --- | --- |
@@ -152,7 +165,9 @@ Add a **Player Input Manager** component to any entity to choose the mode. Witho
 | `maxPlayers` | `JoinOnButtonPress` stops creating players at this count |
 
 - **`Manual`**: a player is created when a `PlayerInput` references a `playerIndex` that does not exist yet. The **first** player is paired with every existing device and automatically pairs gamepads that connect later. Later players start with no devices and log a warning; pair them yourself or use `JoinOnButtonPress`.
-- **`JoinOnButtonPress`**: a button press (or a stick pushed past 0.5) on an unpaired device creates a player with the lowest free index. A gamepad joins on its own; a keyboard or mouse press pairs both the keyboard and the mouse with the new player. Listen to `PlayerJoinedEvent` and create an entity whose `PlayerInput::playerIndex` is the new player's index.
+- **`JoinOnButtonPress`**: a button press (or a stick pushed past 0.5) on a device not paired with any player creates a player with the lowest free index. A gamepad joins on its own; a keyboard or mouse press pairs both the keyboard and the mouse with the new player. Listen to `PlayerJoinedEvent` and create an entity whose `PlayerInput::playerIndex` is the new player's index.
+
+Joining only happens while world input is enabled.
 
 ### Pairing
 
@@ -164,105 +179,102 @@ player->IsPaired(device);
 player->GetPairedDevices();
 ```
 
-A device may be paired with several players; each reads it independently. `player->SetEnabled(false)` deactivates every map that reads from that player on the next update, canceling and resetting their actions. The editor uses this to mute players while the game viewport is unfocused.
+A device may be paired with several players; each reads it independently. `player->SetEnabled(false)` deactivates every map that reads from that player on the next update, which resets their actions. The editor uses this to mute players while the game viewport is unfocused.
 
 ### Maps outside a world
 
-Code that is not part of a world (the editor) owns a `PlayerInput` directly, builds it from a descriptor and registers it with a user:
+Code that is not part of a world (the editor) owns the asset and state itself, creates a user, and updates the state every frame from a tickable game instance subsystem:
 
 ```cpp
+// Initialize
 mUser = input->CreateUser();
 mUser->PairDevice(input->GetKeyboard());
 mUser->PairDevice(input->GetMouse());
 
-mInput.Build(descriptor);              // InputActionAssetDescriptor
-input->AddPlayerInput(&mInput, mUser);
+mActions = CreateScope<InputActionAsset>(descriptor);   // InputActionAssetDescriptor
+mStates = InputActionStates(mActions.get());
 
-// on shutdown
-input->RemovePlayerInput(&mInput);
+// Tick
+input->UpdateActions(mStates, mUser);
+
+// Shutdown
 input->DestroyUser(mUser);
+mStates = InputActionStates();
+mActions.reset();
 ```
 
-Registered `PlayerInput`s update whether or not world input is enabled, and share consumption with the world's maps.
+`UpdateActions` updates that one state's maps in priority order. It shares the frame's consumption set with the world's maps, and because game instance subsystems tick before the world, these maps see input before any `PlayerInput`, whatever their priority. They update whether or not world input is enabled.
+
+To merge several states into one priority order yourself, do what `PlayerInputSystem` does: call `InputSystem::PrepareActions(states, user)` for each (it returns whether the user is active), collect the active maps, sort them by priority, and call `UpdateActionMap(states, map, *user, input->GetTime())` for each.
 
 ## Action Maps
 
-Higher-priority maps see input first. A control they use is hidden from every lower-priority map for that frame. A map's priority is set in the asset.
+Higher-priority maps see input first. A control they use is hidden from every lower-priority map with a different GUID for the rest of that frame. A map's priority is set in the asset.
 
 ```cpp
-InputActionMap* menu = input.FindActionMap("Menu");
-menu->SetEnabled(false);
-menu->IsEnabled();
-menu->GetPriority();
-menu->FindAction("Back");
+const InputActionAsset& asset = *states->asset;
+InputActionMapHandle menu = asset.FindActionMap("Menu");
+
+playerInput->SetActionMapEnabled(entity, menu, false);
+states->maps[menu.value].enabled;            // requested state
+states->maps[menu.value].active;             // enabled and the player is active
+asset.GetActionMap(menu).priority;
 ```
 
-Every map in the asset starts enabled. A map is active only when it is enabled **and** its player exists and is enabled. Disabling a map cancels any started or performed action and zeroes its state. Re-enabling syncs the held state, so a key that is already down does not fire a fresh press.
+Every map starts enabled. A map is active only when it is enabled **and** its player exists, is enabled and is not rebinding. Disabling a map moves its actions to `Disabled` and zeroes their state. Re-enabling syncs the held state, so a key that is already down does not fire a fresh press.
 
 ### Priority and consumption
 
-Each frame, every active map is sorted by priority, highest first, and updated in that order. When a binding actuates (non-zero value, or pressed this frame), the controls it used are **consumed** for that device. Lower-priority maps then read those controls as idle.
+Each frame, every active map from every `PlayerInput` is sorted by priority, highest first, and updated in that order. When a binding actuates (non-zero value, or pressed this frame), the controls it used are **consumed** on that device for that map. Maps with a different GUID then read those controls as idle.
 
-- Use this to layer input: a pause menu at priority 100 takes Escape before gameplay at 0 sees it.
-- Consumption is shared across all players and users. A high-priority editor map bound to `W` blocks a game map bound to `W` on the same keyboard.
+- Use this to layer input: a pause menu at priority 100 takes Escape before gameplay at 0 sees it, even if the menu entity was spawned after the player.
+- Consumption is shared across all players and users. An editor map bound to `W` blocks a game map bound to `W` on the same keyboard.
 - Copies of the **same** map (same map GUID, on different entities) do not consume from each other, so they all see the same input.
-- Maps with equal priority keep their order: registered `PlayerInput`s first, then world components.
+- Maps with equal priority keep a stable order: maps of the same asset in asset order, then `PlayerInput`s in the order their state was built.
 
 ### Modifier ordering
 
-Within one map, bindings with **more modifiers are evaluated first**. `Ctrl+Shift+Z` therefore consumes `Z` before `Ctrl+Z` is checked, so Redo does not also trigger Undo. A binding whose modifiers are not all held is skipped and consumes nothing.
+Within one map, bindings with **more modifiers are evaluated first**, and a binding that actuates hides its controls from the remaining bindings of that map. `Ctrl+Shift+Z` therefore takes `Z` before `Ctrl+Z` is checked, so Redo does not also trigger Undo. A binding whose modifiers are not all held is skipped and hides nothing.
 
 ## Actions
 
-An action has a value type (`Bool`, `Float`, `Float2`, `Float3`) and is read either by polling or through phase callbacks.
-
-### Polling
+An action has a value type (`Bool`, `Float`, `Float2`, `Float3`) and is read by polling its `InputActionState`. There are no callbacks: systems check the frame flags in `OnUpdate`.
 
 ```cpp
-InputAction* jump = input.FindAction("Gameplay/Jump");
-InputAction* move = input.FindAction("Gameplay/Move");
+const InputActionState& jump = states->GetAction(jumpHandle);
+const InputActionState& move = states->GetAction(moveHandle);
 
-if (jump->WasPerformedThisFrame()) { ... }   // honors interactions (Hold, Tap, ...)
-if (jump->WasPressedThisFrame()) { ... }     // raw press edge, ignores interactions
-bool held = jump->IsPressed();
-Float2 direction = move->ReadValue<Float2>();          // bool, float, Float2, Float3
-const InputDevice* device = move->GetActiveDevice();   // last device that drove it
+if (jump.performedThisFrame) { ... }   // honors interactions (Hold, Tap, ...)
+if (jump.pressedThisFrame) { ... }     // raw press edge, ignores interactions
+if (jump.releasedThisFrame) { ... }
+bool held = jump.pressed;
+Float2 direction = move.ReadValue<Float2>();      // bool, float, Float2, Float3
+const InputDevice* device = move.activeDevice;    // last device that drove it
+InputActionPhase phase = jump.phase;
 ```
 
-`ReadValue<bool>()` is `IsPressed()`. `ReadValue<float>()` returns `x`; `ReadValue<Float2>()` returns `x, y`.
-
-### Callbacks
-
-```cpp
-InputCallbackHandle handle = jump->OnPerformed([](const InputActionContext& context)
-{
-	// context.action, context.phase, context.device, context.time (seconds)
-});
-jump->OnStarted([](const InputActionContext& context) { ... });
-jump->OnCanceled([](const InputActionContext& context) { ... });
-jump->RemoveCallback(handle);
-```
-
-Callbacks fire inside `InputSystem::Update()`, before the world updates. Adding or removing callbacks, creating or destroying entities (including ones with a `PlayerInput`) and destroying players are all safe from inside a callback. Maps of a `PlayerInput` destroyed mid-update are skipped for the rest of that update.
+`ReadValue<bool>()` is `pressed`. `ReadValue<float>()` returns `x`; `ReadValue<Float2>()` returns `x, y`. `value` and `magnitude` are the processed value and its magnitude.
 
 ### Phases
 
-`Disabled` → `Waiting` → `Started` → `Performed` → `Canceled`, then back to `Waiting` on the next frame. `GetPhase()` returns the current phase.
+`Disabled` → `Waiting` → `Started` → `Performed` → `Canceled`, then back to `Waiting` on the next frame.
 
 - **Value actions** (non-`Bool` with no interaction): Started + Performed when the value becomes non-zero, Performed again on every value change, Canceled when it returns to zero. Use these for sticks, mouse delta and WASD movement.
 - **Button actions** (`Bool`, or any action with an interaction): driven by the active interaction below. A press means magnitude ≥ the interaction's `pressPoint` (default 0.5).
+
+`Release`, `Tap` and `MultiTap` return to `Waiting` in the same frame they perform, so check `performedThisFrame` rather than `phase == Performed`.
 
 ### Interactions
 
 | Interaction | Started | Performed | Canceled | Settings |
 | --- | --- | --- | --- | --- |
 | `Press` (default) | on press | on press | on release | `pressPoint` |
-| `Release` | on press | on release | when disabled while held | `pressPoint` |
+| `Release` | on press | on release | never; disabling resets it | `pressPoint` |
 | `Hold` | on press | once held for `duration` | on release | `duration` (s), `pressPoint` |
 | `Tap` | on press | released within `duration` | held past `duration` | `duration` (s), `pressPoint` |
 | `MultiTap` | on first press | after `tapCount` taps, each within `duration` | a tap or a gap exceeds `duration` | `tapCount`, `duration` (s), `pressPoint` |
 
-Only the **first** interaction in a list is used. A binding's interaction overrides the action's, so one action can use `Press` on a gamepad and `Hold` on the keyboard.
+Only the **first** interaction in a list is used. A binding's interaction overrides the action's, so one action can use `Press` on a gamepad and `Hold` on the keyboard. Durations are measured in real time (`InputSystem::GetTime()`), independent of `Timestep::timeScale`.
 
 ## Bindings
 
@@ -281,7 +293,7 @@ Composite parts use each control's magnitude, so a trigger or a stick axis can b
 
 ### Modifiers
 
-`modifiers` is an `EnumFlag<ModifierKeys>`. Every flag that is set must be held on a paired keyboard.
+`modifiers` is an `EnumFlag<ModifierKeys>`. Every flag that is set must be held on a paired keyboard. A binding without modifiers does not require them to be released, so `S` still fires while Ctrl is held unless a `Ctrl+S` binding in the same or a higher map takes it first.
 
 | Flag | Keys |
 | --- | --- |
@@ -290,7 +302,7 @@ Composite parts use each control's magnitude, so a trigger or a stick axis can b
 
 ### Layout mapping
 
-Keyboard controls are **physical scancodes** by default: `Key::W` is the key in the W position of a US layout, which suits movement. Set `layoutMapped = true` to bind by the **letter** instead (A–Z only), which suits mnemonic shortcuts such as `Ctrl+Z`. Layout-mapped bindings are re-resolved automatically when the OS layout changes.
+Keyboard controls are **physical scancodes** by default: `Key::W` is the key in the W position of a US layout, which suits movement. Set `layoutMapped = true` to bind by the **letter** instead (A–Z only), which suits mnemonic shortcuts such as `Ctrl+Z`. Layout-mapped bindings are re-resolved automatically when the OS layout changes. `InputBindingDescriptor::MakeKeyBinding` sets it.
 
 ### Processors
 
@@ -313,14 +325,16 @@ Author game input as an **Input Actions** asset in the editor. Build descriptors
 ### As an asset
 
 1. In the Content Browser, create an Input Actions asset from the context menu.
-2. Edit it in the **Input Actions** panel: maps (name, priority) → actions → bindings, with value type, modifiers, processors and interactions per entry.
+2. Edit it in the **Input Actions** panel: maps (name, priority) → actions → bindings, with value type, modifiers, processors and interactions per entry. **Listen** captures the next button press on any device; Escape cancels.
 3. Assign it to the `actions` field of a **Player Input** component.
 
-Maps and actions carry a `Guid`. Binding overrides are keyed by these GUIDs, so renaming a map or action in the asset keeps players' saved rebinds.
+Maps and actions carry a `Guid`. Binding overrides and consumption are keyed by these GUIDs, so renaming a map or action in the asset keeps players' saved rebinds.
+
+Edits saved while an asset is loaded do not reach the cached `InputActionAsset` yet. Until asset hot reload exists, reassign the asset or restart the editor to pick them up.
 
 ### In code
 
-The descriptors are plain reflected structs: `InputActionAssetDescriptor` → `InputActionMapDescriptor` → `InputActionDescriptor` → `InputBindingDescriptor`. Build a `PlayerInput` from one with `PlayerInput::Build` and register it as shown in [Maps outside a world](#maps-outside-a-world).
+The descriptors are plain reflected structs: `InputActionAssetDescriptor` → `InputActionMapDescriptor` → `InputActionDescriptor` → `InputBindingDescriptor`. Construct an `InputActionAsset` from one and drive it as shown in [Maps outside a world](#maps-outside-a-world).
 
 ```cpp
 InputBindingDescriptor jumpKey;
@@ -360,22 +374,23 @@ gameplay.actions = { jump, move };
 InputActionAssetDescriptor actions;
 actions.maps.push_back(gameplay);
 
-mInput.Build(actions);
+mActions = CreateScope<InputActionAsset>(actions);
+mStates = InputActionStates(mActions.get());
 ```
 
-Use fixed GUIDs for maps that support rebinding. `Guid::NewGuid()` changes every run, so overrides saved against it will not load again.
+The `Make` helpers (`InputActionAssetDescriptor::Make`, `InputActionMapDescriptor::Make`, `InputActionDescriptor::Make`, `InputBindingDescriptor::MakeKeyBinding` / `MakeMouseBinding` / `MakeAxisBinding`) shorten this, but they assign `Guid::NewGuid()`. That changes every run, so overrides saved against those maps will not load again. Use fixed GUIDs for maps that support rebinding.
 
 ## Rebinding
 
-Rebinds are stored per player (`InputUser`) as overrides that replace one control of one binding; the authored descriptor is never modified. An override is addressed by `(map, action, binding index, part index)`. `part` is 0 for a `Control` binding, or the composite part index (for `Axis2D`: 0 Up, 1 Down, 2 Left, 3 Right).
+Rebinds are stored per player (`InputUser`) as overrides that replace one control of one binding; the asset is never modified. An override is addressed by `(map, action, binding index, part index)`. `part` is 0 for a `Control` binding, or the composite part index (for `Axis2D`: 0 Up, 1 Down, 2 Left, 3 Right).
 
-Overrides apply to every map with a matching GUID that reads from that player, on every entity, starting with the next input update.
+Overrides apply to every `PlayerInput` that reads from that player and whose asset has a map and action with matching GUIDs, starting with the next update.
 
 ### Interactive rebind
 
 ```cpp
-InputUser* player = input.GetUser();
-player->StartInteractiveRebind(jump, 0, 0, [](bool completed)
+InputUser* player = input->GetPlayer(playerInput.playerIndex);
+player->StartInteractiveRebind(*states->asset, jumpHandle, 0, 0, [](bool completed)
 {
 	// completed == false: canceled by Escape, CancelInteractiveRebind or a new rebind
 });
@@ -387,19 +402,27 @@ player->CancelInteractiveRebind();
 - It then takes the first button pressed, or a stick pushed past 0.5, on the player's **paired** devices.
 - **Escape cancels** the rebind, so Escape cannot be assigned this way; use `ApplyBindingOverride` for that.
 - While the rebind runs, every map reading from that player is inactive, so the pressed key (or Escape) does not also trigger gameplay or menu actions.
-- The rebind remembers the action by GUID, so it survives the map being rebuilt.
+- The rebind remembers the action by GUID, so it survives the state being rebuilt.
 
 ### Direct overrides and persistence
 
 ```cpp
-player->ApplyBindingOverride(jump, 0, 0, InputControl::Make(Key::F));
+player->ApplyBindingOverride(*states->asset, jumpHandle, 0, 0, InputControl::Make(Key::F));
 
 TString json = player->SaveBindingOverrides();
 player->LoadBindingOverrides(json);     // replaces all current overrides
 player->ClearBindingOverrides();        // back to the authored bindings
 ```
 
-Overrides are kept even when no map uses them yet; they apply automatically when a map with a matching GUID is built for that player. `InputAction::GetBindings()` returns the bindings with overrides applied, and `InputBindingDescriptor::GetDisplayName()` formats one for UI (for example `Ctrl+Z`).
+Overrides are kept even when no map uses them yet; they apply automatically when state is built for a matching asset on that player. `InputActionStates::bindings` holds every binding with overrides applied, indexed through the action's layout. `GetDisplayName()` formats one for UI (for example `Ctrl+Z`):
+
+```cpp
+const InputActionLayout& layout = states->asset->GetActionLayout(jumpHandle);
+for (uint32_t i = 0; i < layout.bindingCount; ++i)
+{
+	TString label = states->bindings[layout.firstBinding + i].GetDisplayName();
+}
+```
 
 ## Cursor
 
@@ -409,69 +432,101 @@ Overrides are kept even when no map uses them yet; they apply automatically when
 
 ### Single-player controller
 
-Put **Player Input** (with the game's Input Actions asset) and `CharacterMotor` on the player entity. No manager is needed: player 0 is created and paired with every device.
+Put **Player Input** (with the game's Input Actions asset) and `CharacterMotor` on the player entity. With `joinBehavior = Manual`, player 0 is created and paired with every device.
 
 ```cpp
 class PlayerControllerSystem final : public ComponentSystem
 {
+public:
+
+	PlayerControllerSystem(PlayerInputSystem* playerInput)
+		: mPlayerInput(playerInput)
+	{
+
+	}
+
 protected:
 
 	virtual void OnUpdate(EntityManager& entityManager) override
 	{
 		const float dt = static_cast<float>(Timestep::deltaTime);
-		entityManager.ForEach<Entity, PlayerInput, CharacterMotor>([dt](Entity& entity, const PlayerInput& input, CharacterMotor& motor)
+		entityManager.ForEach<Entity, PlayerInput, CharacterMotor>([this, dt](EntityHandle handle, Entity& entity, const PlayerInput& input, CharacterMotor& motor)
 		{
-			const auto move = input.FindAction("Gameplay/Move");
-			const auto look = input.FindAction("Gameplay/Look");
-			const auto jump = input.FindAction("Gameplay/Jump");
-			if (move and look and jump)
+			const auto states = mPlayerInput->GetActionStates(handle);
+			if (states == nullptr)
 			{
-				const Float2 direction = move->ReadValue<Float2>();
-				entity.Rotate(0.0f, look->ReadValue<Float2>().x * motor.lookSpeed * dt, 0.0f);   // radians
+				return;
+			}
+
+			const auto& asset = *states->asset;
+			const auto move = asset.FindAction("Gameplay/Move");
+			const auto look = asset.FindAction("Gameplay/Look");
+			const auto jump = asset.FindAction("Gameplay/Jump");
+			if (move.IsValid() and look.IsValid() and jump.IsValid())
+			{
+				const Float2 direction = states->GetAction(move).ReadValue<Float2>();
+				entity.Rotate(0.0f, states->GetAction(look).ReadValue<Float2>().x * motor.lookSpeed * dt, 0.0f);   // radians
 				entity.Translate((entity.ForwardVector() * direction.y + entity.RightVector() * direction.x) * motor.speed * dt);
-				if (jump->WasPerformedThisFrame())
+				if (states->GetAction(jump).performedThisFrame)
 				{
 					motor.Jump();
 				}
 			}
 		});
 	}
+
+private:
+
+	PlayerInputSystem* mPlayerInput;
+
 };
+
+world->AddSystem<PlayerControllerSystem>(world->GetSystem<PlayerInputSystem>());
 ```
+
+`FindAction` by name is a linear search. A real system would cache the handles per asset.
 
 ### Pause menu layered over gameplay
 
-Give the asset a `Gameplay` map at priority 0 and a `Menu` map at priority 100. Every map starts enabled, so the system sets both from the menu state every frame; `SetEnabled` does nothing when the state is unchanged.
+Give the asset a `Gameplay` map at priority 0 and a `Menu` map at priority 100. Every map starts enabled, so the system sets both from the menu state every frame; `SetActionMapEnabled` does nothing when the state is unchanged.
 
 ```cpp
-entityManager.ForEach<PlayerInput, PauseMenu>([](const PlayerInput& input, PauseMenu& pause)
+entityManager.ForEach<PlayerInput, PauseMenu>([this](EntityHandle handle, const PlayerInput& input, PauseMenu& pause)
 {
-	const auto gameplay = input.FindActionMap("Gameplay");
-	const auto menu = input.FindActionMap("Menu");
-	if (gameplay and menu)
+	const auto states = mPlayerInput->GetActionStates(handle);
+	if (states == nullptr)
 	{
-		if (gameplay->FindAction("Pause")->WasPerformedThisFrame())
+		return;
+	}
+
+	const auto& asset = *states->asset;
+	const auto gameplay = asset.FindActionMap("Gameplay");
+	const auto menu = asset.FindActionMap("Menu");
+	if (gameplay.IsValid() and menu.IsValid())
+	{
+		auto input = Globals::Engine->GetSubsystem<InputSystem>();
+		if (states->GetAction(asset.FindAction("Gameplay/Pause")).performedThisFrame)
 		{
 			pause.open = true;
-			Globals::Engine->GetSubsystem<InputSystem>()->ShowCursor();
+			input->ShowCursor();
 		}
-		else if (pause.open and menu->FindAction("Back")->WasPerformedThisFrame())
+		else if (pause.open and states->GetAction(asset.FindAction("Menu/Back")).performedThisFrame)
 		{
 			pause.open = false;
-			Globals::Engine->GetSubsystem<InputSystem>()->HideCursor();
+			input->HideCursor();
 		}
 
-		gameplay->SetEnabled(pause.open == false);
-		menu->SetEnabled(pause.open);
+		mPlayerInput->SetActionMapEnabled(handle, gameplay, pause.open == false);
+		mPlayerInput->SetActionMapEnabled(handle, menu, pause.open);
 	}
 });
 ```
 
-While the menu is open it sees Escape and the confirm buttons first, so they never reach gameplay.
+While the menu is open it sees Escape and the confirm buttons first, so they never reach gameplay. The menu could also live on a separate UI entity with its own asset; priority still decides who sees the key first.
 
 ### Local co-op
 
-Add a **Player Input Manager** with `joinBehavior = JoinOnButtonPress` to the world, and create a player entity for each join:
+Set the world's **Player Input Manager** to `joinBehavior = JoinOnButtonPress`, and create a player entity for each join:
 
 ```cpp
 EventDispatcher<PlayerJoinedEvent>::Subscribe([](PlayerJoinedEvent e)
@@ -492,15 +547,15 @@ EventDispatcher<InputDeviceDisconnectedEvent>::Subscribe([](InputDeviceDisconnec
 });
 ```
 
-The new entity's maps are built on the next input update. Each player only reads its own gamepad (or the keyboard and mouse), so the same asset works for every player, and the controller system above needs no changes.
+The event fires inside `PlayerInputSystem::OnPreUpdate`; the new entity's state is built on the next update. Each player only reads its own gamepad (or the keyboard and mouse), so the same asset works for every player, and the controller system above needs no changes.
 
 ### Settings screen with rebinding
 
 ```cpp
-void ControlsScreen::DrawBinding(const PlayerInput& input, InputAction* action, uint32_t binding, uint32_t part)
+void ControlsScreen::DrawBinding(const InputActionStates& states, InputUser* player, InputActionHandle action, uint32_t binding, uint32_t part)
 {
-	InputUser* player = input.GetUser();
-	const TString label = action->GetBindings()[binding].GetDisplayName();
+	const auto& layout = states.asset->GetActionLayout(action);
+	const TString label = states.bindings[layout.firstBinding + binding].GetDisplayName();
 
 	if (player->IsRebinding())
 	{
@@ -508,7 +563,7 @@ void ControlsScreen::DrawBinding(const PlayerInput& input, InputAction* action, 
 	}
 	else if (DrawButton(label))
 	{
-		player->StartInteractiveRebind(action, binding, part, [player](bool completed)
+		player->StartInteractiveRebind(*states.asset, action, binding, part, [player](bool completed)
 		{
 			if (completed)
 			{
@@ -518,21 +573,21 @@ void ControlsScreen::DrawBinding(const PlayerInput& input, InputAction* action, 
 	}
 }
 
-void ControlsScreen::OnOpen(const PlayerInput& input)
+void ControlsScreen::OnOpen(InputUser* player)
 {
-	input.GetUser()->LoadBindingOverrides(LoadSettings("bindings"));
+	player->LoadBindingOverrides(LoadSettings("bindings"));
 }
 ```
 
 ### Reference implementation
 
-`Engine/Source/Editor/src/EInput/EditorInputSystem.cpp` is the in-tree example of input outside a world. It creates one **user** (not a player) paired with the keyboard and mouse, builds a `PlayerInput` from four maps defined in code, and registers it with `AddPlayerInput`:
+`Engine/Source/Editor/src/EInput/EditorInputSystem.cpp` is the in-tree example of input outside a world. It creates one **user** (not a player) paired with the keyboard and mouse, builds an `InputActionAsset` from four maps defined in code, and calls `UpdateActions` from its `Tick`:
 
 | Map | Priority | Contents | Enabled |
 | --- | --- | --- | --- |
 | `Editor.Global` | 100 | Undo/Redo/Play/Pause with `Shortcut` modifiers, Step | unless typing |
-| `Editor.Panel` | 70 | Rename, Delete (platform-specific keys) | while a panel is focused |
+| `Editor.Panel` | 70 | Rename, Delete (platform-specific keys) | while a panel requests it |
 | `Editor.Fly` | 60 | Move as an `Axis3D` binding on E/Q/A/D/W/S, Boost on either Shift | while flying |
-| `Editor.Viewport` | 50 | gizmo keys, Fly/Pan/Orbit/Dolly mouse buttons with Alt variants, Look (`Float2` delta), Zoom (`ScrollY`) | in edit mode |
+| `Editor.Viewport` | 50 | gizmo keys, Fly/Pan/Orbit/Dolly mouse buttons with Alt variants, Look (`Float2` delta), Zoom (`ScrollY`) | in edit mode, unless typing |
 
-`WorldViewport.cpp` reads them with `ReadValue<>` and `WasPressedThisFrame()`.
+`WorldViewport.cpp` reads them through `EditorInputSystem::GetAction(handle)`.
