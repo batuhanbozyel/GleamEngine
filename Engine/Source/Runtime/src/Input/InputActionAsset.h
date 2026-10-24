@@ -60,6 +60,8 @@ class InputActionAsset final : public Asset
 {
 public:
 
+	static constexpr uint32_t InvalidBinding = ~0u;
+
 	InputActionAsset(const AssetReference& reference, const AssetHeader& header, const InputActionAssetDescriptor& descriptor);
 
 	InputActionAsset(const InputActionAssetDescriptor& descriptor);
@@ -83,6 +85,8 @@ public:
 	const InputActionMapLayout& GetActionMapLayout(InputActionMapHandle map) const;
 
 	const InputActionLayout& GetActionLayout(InputActionHandle action) const;
+
+	uint32_t FindBinding(InputActionHandle action, const Guid& binding) const;
 
 	const TArray<InputActionMapHandle>& GetActionMapOrder() const;
 

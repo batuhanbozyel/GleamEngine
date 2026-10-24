@@ -369,6 +369,7 @@ void InputActionsEditor::DrawActionProperties(Gleam::InputActionDescriptor& acti
 	if (ImGui::Button(ICON_LC_PLUS "  Add Binding"))
 	{
 		Gleam::InputBindingDescriptor binding;
+		binding.id = Gleam::Guid::NewGuid();
 		binding.controls.push_back(Gleam::InputControl{});
 		action.bindings.push_back(binding);
 		mDirty = true;
@@ -412,8 +413,6 @@ bool InputActionsEditor::DrawBinding(Gleam::InputBindingDescriptor& binding, uin
 		}
 
 		PropertyDrawer::DrawEnumFlagOptions("Modifiers", Gleam::Reflection::GetClass<Gleam::EnumFlag<Gleam::ModifierKeys>>(), &binding.modifiers, kColumnWidth);
-
-		PropertyDrawer::DrawScalarControl("Match Layout", binding.layoutMapped, false, kColumnWidth);
 
 		if (ImGui::TreeNode("Processors"))
 		{

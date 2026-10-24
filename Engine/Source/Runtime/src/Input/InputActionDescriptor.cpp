@@ -12,16 +12,17 @@ using namespace Gleam;
 InputBindingDescriptor InputBindingDescriptor::MakeKeyBinding(Key key, EnumFlag<ModifierKeys> modifiers)
 {
 	InputBindingDescriptor binding;
+	binding.id = Guid::NewGuid();
 	binding.type = InputBindingType::Control;
 	binding.controls.push_back(InputControl::Make(key));
 	binding.modifiers = modifiers;
-	binding.layoutMapped = true;
 	return binding;
 }
 
 InputBindingDescriptor InputBindingDescriptor::MakeMouseBinding(MouseControl control, EnumFlag<ModifierKeys> modifiers)
 {
 	InputBindingDescriptor binding;
+	binding.id = Guid::NewGuid();
 	binding.type = InputBindingType::Control;
 	binding.controls.push_back(InputControl::Make(control));
 	binding.modifiers = modifiers;
@@ -31,6 +32,7 @@ InputBindingDescriptor InputBindingDescriptor::MakeMouseBinding(MouseControl con
 InputBindingDescriptor InputBindingDescriptor::MakeAxisBinding(InputBindingType type, std::initializer_list<Key> keys)
 {
 	InputBindingDescriptor binding;
+	binding.id = Guid::NewGuid();
 	binding.type = type;
 	for (const auto key : keys)
 	{

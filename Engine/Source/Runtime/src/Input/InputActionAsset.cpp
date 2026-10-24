@@ -166,6 +166,19 @@ const InputActionLayout& InputActionAsset::GetActionLayout(InputActionHandle act
 	return mActionLayouts[action.value];
 }
 
+uint32_t InputActionAsset::FindBinding(InputActionHandle action, const Guid& binding) const
+{
+	const auto& bindings = GetAction(action).bindings;
+	for (uint32_t i = 0; i < bindings.size(); ++i)
+	{
+		if (bindings[i].id == binding)
+		{
+			return i;
+		}
+	}
+	return InvalidBinding;
+}
+
 const TArray<InputActionMapHandle>& InputActionAsset::GetActionMapOrder() const
 {
 	return mMapOrder;

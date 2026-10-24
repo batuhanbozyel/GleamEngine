@@ -87,6 +87,8 @@ public:
 
 private:
 
+	void ApplyLetterShortcuts();
+
 	Gleam::InputUser* mUser = nullptr;
 
 	Gleam::Scope<Gleam::InputActionAsset> mActions;

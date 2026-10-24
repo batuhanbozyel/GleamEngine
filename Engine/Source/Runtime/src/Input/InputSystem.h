@@ -105,8 +105,6 @@ private:
 
 	HashSet<uint64_t> mMapConsumedControls;
 
-	uint32_t mKeymapVersion = 0;
-
 	bool mUpdating = false;
 
 	TArray<Gamepad*> mGamepads;

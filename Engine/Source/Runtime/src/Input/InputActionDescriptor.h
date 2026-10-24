@@ -91,6 +91,9 @@ GSTRUCT(InputInteraction, "D2F1CF61-9693-4725-BF48-6DDDE726B6BE", Serializable)
 
 GSTRUCT(InputBindingDescriptor, "F2CB4777-5EB9-47F8-93B3-42A69351A40C", Serializable)
 {
+	GFIELD("5F31D758-C01E-42D8-8F78-96425C88CB4C", Serializable)
+	Guid id;
+
 	GFIELD("94F4D731-469C-4A24-8162-A1DC7E784E4A", Serializable)
 	InputBindingType type = InputBindingType::Control;
 
@@ -99,9 +102,6 @@ GSTRUCT(InputBindingDescriptor, "F2CB4777-5EB9-47F8-93B3-42A69351A40C", Serializ
 
 	GFIELD("C4065558-4003-45EF-9941-DEDE57025BDC", Serializable)
 	EnumFlag<ModifierKeys> modifiers;
-
-	GFIELD("ACA877DD-4E61-41DB-863D-964207B32DA3", Serializable)
-	bool layoutMapped = false;
 
 	GFIELD("583E1399-4AF5-4DCB-97FB-B37425DC8618", Serializable)
 	TArray<InputProcessor> processors;
@@ -180,8 +180,8 @@ GSTRUCT(InputBindingOverride, "9DB685A2-FFD6-47BA-B39B-07415EFF4BF2", Serializab
 	GFIELD("1D6B8272-CE71-48D4-B01E-E31B68A55D03", Serializable)
 	Guid action;
 
-	GFIELD("25A2AA75-60A5-4A03-AFF0-D2B5823F56DB", Serializable)
-	uint32_t binding = 0;
+	GFIELD("AD2B000D-7163-44A7-81B3-078AD97F8705", Serializable)
+	Guid binding;
 
 	GFIELD("C696DAF4-373F-45A7-857F-604C3E1A0656", Serializable)
 	uint32_t part = 0;

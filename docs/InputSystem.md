@@ -207,9 +207,9 @@ Every modifier set on a binding must be held. A binding without modifiers doesn'
 | `Shift` / `Control` / `Alt` / `Super` | left or right variant |
 | `Shortcut` | Cmd on macOS, Ctrl elsewhere |
 
-### Layout mapping
+### Keyboard layouts
 
-Keyboard bindings are **physical keys** by default: `W` is the key in the W position of a US layout, which suits movement. Set `layoutMapped` on the binding to bind by the **letter** instead (A–Z only), which suits mnemonic keys such as `I` for inventory. Layout-mapped bindings follow OS layout changes automatically.
+Keyboard bindings are physical keys: `W` is the key in the W position of a US layout, so WASD keeps its shape on AZERTY. Display names (`InputControl::GetName`, `GetDisplayName`) show how that key is labelled on the player's current layout, so the same bindings read "Z / Q / S / D" on AZERTY. Handle `KeymapChangedEvent` to refresh prompts when the player switches layouts.
 
 ### Processors
 
@@ -227,7 +227,7 @@ Magnitude is `|x|` for `Bool`/`Float`, the length of `(x, y)` for `Float2`, and 
 
 ## Rebinding
 
-Rebinds are stored per player as overrides that replace one control of one binding; the asset is never modified. An override is addressed by `(action, binding index, part index)`. `part` is 0 for a `Control` binding, or the composite part (for `Axis2D`: 0 Up, 1 Down, 2 Left, 3 Right).
+Rebinds are stored per player as overrides; the asset is never modified. An override replaces one control of one binding: pass the action, the binding's index on that action and the part index. `part` is 0 for a `Control` binding, or the composite part (for `Axis2D`: 0 Up, 1 Down, 2 Left, 3 Right). An override always names a physical key. Overrides are stored by binding GUID, so reordering or inserting bindings in the asset keeps saved rebinds.
 
 Overrides apply to every `PlayerInput` of that player whose asset contains the action, from the next update. Maps and actions are matched by GUID, so renaming them in the asset keeps players' saved rebinds.
 
@@ -308,6 +308,7 @@ EventDispatcher<InputDeviceDisconnectedEvent>::Subscribe([](InputDeviceDisconnec
 | --- | --- |
 | `InputDeviceConnectedEvent` / `InputDeviceDisconnectedEvent` | `GetDevice()` |
 | `PlayerJoinedEvent` / `PlayerLeftEvent` | `GetPlayer()` |
+| `KeymapChangedEvent` | none; the OS keyboard layout changed |
 
 ## Cursor
 

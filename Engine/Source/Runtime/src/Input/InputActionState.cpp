@@ -89,14 +89,15 @@ void InputActionStates::ProcessAction(InputActionHandle handle, double time)
 			action.pressed = pressed;
 		}
 	}
-	const bool tapped = action.frameState.edges.pressed and pressed == false and action.pressed == false;
-	action.pressedThisFrame = (pressed and action.pressed == false) or tapped;
-	action.releasedThisFrame = (pressed == false and action.pressed) or tapped;
+	const auto& edges = action.frameState.edges;
+	const bool tapped = edges.pressed and pressed == false and action.pressed == false;
+	const bool repressed = edges.pressed and edges.released and pressed and action.pressed and edges.pressTime > edges.releaseTime;
+	action.pressedThisFrame = (pressed and action.pressed == false) or tapped or repressed;
+	action.releasedThisFrame = (pressed == false and action.pressed) or tapped or repressed;
 	action.pressed = pressed;
 
 	if (descriptor.valueType == InputValueType::Bool or HasInteractions(handle))
 	{
-		const auto& edges = action.frameState.edges;
 		action.ProcessButton(interaction, time, edges.pressed ? edges.pressTime : time, edges.released ? edges.releaseTime : time);
 	}
 	else
@@ -213,6 +214,13 @@ void InputActionState::ProcessValue()
 
 void InputActionState::ProcessButton(const InputInteraction& interaction, double time, double pressTime, double releaseTime)
 {
+	// A held button released and pressed again within one frame releases first.
+	const bool releaseFirst = releasedThisFrame and pressed;
+	if (releaseFirst)
+	{
+		OnRelease(interaction, releaseTime);
+	}
+
 	if (pressedThisFrame)
 	{
 		OnPress(interaction, pressTime);
@@ -227,7 +235,7 @@ void InputActionState::ProcessButton(const InputInteraction& interaction, double
 		OnIdle(interaction, time);
 	}
 
-	if (releasedThisFrame)
+	if (releasedThisFrame and releaseFirst == false)
 	{
 		OnRelease(interaction, releaseTime);
 	}

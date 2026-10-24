@@ -48,6 +48,16 @@ public:
 	}
 };
 
+class KeymapChangedEvent : public Event
+{
+public:
+
+	virtual TString ToString() const override
+	{
+		return "KeymapChangedEvent";
+	}
+};
+
 class PlayerEvent : public Event
 {
 public:

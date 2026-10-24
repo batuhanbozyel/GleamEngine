@@ -119,7 +119,6 @@ struct InputActionStates
 	TArray<InputActionState> actions;
 	TArray<InputBindingDescriptor> bindings;
 	uint32_t overridesVersion = 0;
-	uint32_t keymapVersion = ~0u;
 	uint32_t assetVersion = 0;
 
 	InputActionStates() = default;

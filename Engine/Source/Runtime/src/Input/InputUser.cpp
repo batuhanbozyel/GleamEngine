@@ -73,7 +73,7 @@ void InputUser::ApplyBindingOverride(const InputActionAsset& asset, InputActionH
 	SetBindingOverride(InputBindingOverride{
 		.map = asset.GetActionMap(asset.GetActionLayout(action).map).id,
 		.action = asset.GetAction(action).id,
-		.binding = binding,
+		.binding = asset.GetAction(action).bindings[binding].id,
 		.part = part,
 		.control = control
 	});
@@ -120,7 +120,7 @@ void InputUser::StartInteractiveRebind(const InputActionAsset& asset, InputActio
 	mRebind = RebindOperation{
 		.map = asset.GetActionMap(asset.GetActionLayout(action).map).id,
 		.action = asset.GetAction(action).id,
-		.binding = binding,
+		.binding = asset.GetAction(action).bindings[binding].id,
 		.part = part,
 		.callback = eastl::move(callback)
 	};

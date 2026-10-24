@@ -1,6 +1,5 @@
 #include "gpch.h"
 #include "InputUtils.h"
-#include <SDL3/SDL.h>
 
 using namespace Gleam;
 
@@ -84,18 +83,4 @@ bool InputUtils::ModifiersHeld(EnumFlag<ModifierKeys> modifiers, TArrayView<Inpu
 		}
 	}
 	return false;
-}
-
-uint32_t InputUtils::ResolveLayoutKey(uint32_t code)
-{
-	if (code >= SDL_SCANCODE_A and code <= SDL_SCANCODE_Z)
-	{
-		const auto key = static_cast<SDL_Keycode>(SDLK_A + (code - SDL_SCANCODE_A));
-		const auto scancode = SDL_GetScancodeFromKey(key, nullptr);
-		if (scancode != SDL_SCANCODE_UNKNOWN)
-		{
-			return static_cast<uint32_t>(scancode);
-		}
-	}
-	return code;
 }

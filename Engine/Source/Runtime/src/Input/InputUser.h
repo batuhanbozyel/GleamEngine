@@ -56,7 +56,7 @@ private:
 	{
 		Guid map;
 		Guid action;
-		uint32_t binding = 0;
+		Guid binding;
 		uint32_t part = 0;
 		InputRebindCallback callback;
 		bool armed = false;

@@ -10,6 +10,4 @@ bool IsModifierHeld(const Keyboard* keyboard, ModifierKeys modifier);
 
 bool ModifiersHeld(EnumFlag<ModifierKeys> modifiers, TArrayView<InputDevice* const> devices);
 
-uint32_t ResolveLayoutKey(uint32_t code);
-
 } // namespace Gleam::InputUtils

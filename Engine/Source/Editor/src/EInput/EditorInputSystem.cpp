@@ -2,9 +2,11 @@
 
 #include "Core/Globals.h"
 #include "Core/Engine.h"
+#include "Core/Events/InputEvent.h"
 #include "Input/InputSystem.h"
 
 #include <imgui.h>
+#include <SDL3/SDL_keyboard.h>
 
 using namespace GEditor;
 
@@ -105,6 +107,12 @@ void EditorInputSystem::Initialize(Gleam::Application* app)
 		.rename = mActions->FindAction("Editor.Panel/Rename"),
 		.remove = mActions->FindAction("Editor.Panel/Delete")
 	};
+
+	ApplyLetterShortcuts();
+	Gleam::EventDispatcher<Gleam::KeymapChangedEvent>::Subscribe([this](Gleam::KeymapChangedEvent)
+	{
+		ApplyLetterShortcuts();
+	});
 }
 
 void EditorInputSystem::Shutdown(Gleam::Application* app)
@@ -174,11 +182,35 @@ void EditorInputSystem::RequestPanelActions()
 
 Gleam::TString EditorInputSystem::GetShortcutLabel(Gleam::InputActionHandle action) const
 {
-	const auto& bindings = mActions->GetAction(action).bindings;
-	return bindings.empty() ? Gleam::TString() : bindings.front().GetDisplayName();
+	const auto& layout = mActions->GetActionLayout(action);
+	return layout.bindingCount == 0 ? Gleam::TString() : mStates.bindings[layout.firstBinding].GetDisplayName();
 }
 
 Gleam::InputUser* EditorInputSystem::GetUser() const
 {
 	return mUser;
+}
+
+void EditorInputSystem::ApplyLetterShortcuts()
+{
+	// Single-key shortcuts are remembered by letter, so they follow the current layout; composites (fly movement) keep their shape.
+	for (uint32_t i = 0; i < mActions->GetActionCount(); ++i)
+	{
+		const auto action = Gleam::InputActionHandle{ i };
+		const auto& bindings = mActions->GetAction(action).bindings;
+		for (uint32_t binding = 0; binding < bindings.size(); ++binding)
+		{
+			const auto& control = bindings[binding].controls.front();
+			if (bindings[binding].type != Gleam::InputBindingType::Control or control.device != Gleam::InputDeviceType::Keyboard or control.code < SDL_SCANCODE_A or control.code > SDL_SCANCODE_Z)
+			{
+				continue;
+			}
+
+			const auto scancode = SDL_GetScancodeFromKey(static_cast<SDL_Keycode>(SDLK_A + (control.code - SDL_SCANCODE_A)), nullptr);
+			if (scancode != SDL_SCANCODE_UNKNOWN)
+			{
+				mUser->ApplyBindingOverride(*mActions, action, binding, 0, Gleam::InputControl{ .device = Gleam::InputDeviceType::Keyboard, .code = static_cast<uint32_t>(scancode) });
+			}
+		}
+	}
 }

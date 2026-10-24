@@ -106,7 +106,7 @@ bool InputSystem::PrepareActions(InputActionStates& states, const InputUser* use
 	const bool userActive = user and user->IsEnabled() and user->IsRebinding() == false;
 	states.SetUserActive(userActive);
 
-	if (userActive and (states.overridesVersion != user->GetBindingOverridesVersion() or states.keymapVersion != mKeymapVersion))
+	if (userActive and states.overridesVersion != user->GetBindingOverridesVersion())
 	{
 		ResolveBindings(states, *user);
 	}
@@ -169,9 +169,10 @@ void InputSystem::ResolveBindings(InputActionStates& states, const InputUser& us
 	for (const auto& entry : user.GetBindingOverrides().overrides)
 	{
 		const auto action = asset.FindAction(entry.map, entry.action);
-		if (action.IsValid() and entry.binding < asset.GetActionLayout(action).bindingCount)
+		const uint32_t binding = action.IsValid() ? asset.FindBinding(action, entry.binding) : InputActionAsset::InvalidBinding;
+		if (binding != InputActionAsset::InvalidBinding)
 		{
-			auto& controls = states.bindings[asset.GetActionLayout(action).firstBinding + entry.binding].controls;
+			auto& controls = states.bindings[asset.GetActionLayout(action).firstBinding + binding].controls;
 			if (entry.part >= controls.size())
 			{
 				controls.resize(entry.part + 1);
@@ -180,22 +181,7 @@ void InputSystem::ResolveBindings(InputActionStates& states, const InputUser& us
 		}
 	}
 
-	for (auto& binding : states.bindings)
-	{
-		if (binding.layoutMapped)
-		{
-			for (auto& control : binding.controls)
-			{
-				if (control.device == InputDeviceType::Keyboard)
-				{
-					control.code = InputUtils::ResolveLayoutKey(control.code);
-				}
-			}
-		}
-	}
-
 	states.overridesVersion = user.GetBindingOverridesVersion();
-	states.keymapVersion = mKeymapVersion;
 }
 
 void InputSystem::UpdateActionMap(InputActionStates& states, InputActionMapHandle map, const InputUser& user, double time)
@@ -520,7 +506,7 @@ bool InputSystem::ProcessEvent(const SDL_Event& e)
 		}
 		case SDL_EVENT_KEYMAP_CHANGED:
 		{
-			++mKeymapVersion;
+			EventDispatcher<KeymapChangedEvent>::Publish(KeymapChangedEvent());
 			break;
 		}
 		case SDL_EVENT_GAMEPAD_ADDED:

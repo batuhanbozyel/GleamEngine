@@ -93,7 +93,8 @@ TStringView InputControl::GetName() const
 	{
 		case InputDeviceType::Keyboard:
 		{
-			const char* name = SDL_GetScancodeName(static_cast<SDL_Scancode>(code));
+			const auto key = SDL_GetKeyFromScancode(static_cast<SDL_Scancode>(code), SDL_KMOD_NONE, false);
+			const char* name = SDL_GetKeyName(key);
 			return name[0] != 0 ? TStringView(name) : TStringView("Unknown");
 		}
 		case InputDeviceType::Mouse: return GetCaseName(Reflection::GetEnum<MouseControl>(), code);
