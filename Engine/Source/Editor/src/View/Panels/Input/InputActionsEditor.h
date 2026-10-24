@@ -66,6 +66,8 @@ private:
 
 	void StopListening();
 
+	bool HasInvalidNames() const;
+
 	Gleam::InputActionMapDescriptor* GetSelectedMap();
 
 	Gleam::InputActionDescriptor* GetSelectedAction();

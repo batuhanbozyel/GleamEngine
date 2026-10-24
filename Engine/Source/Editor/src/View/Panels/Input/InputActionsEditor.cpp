@@ -12,7 +12,6 @@
 #include "Core/Engine.h"
 #include "Core/Application.h"
 
-#include "Assets/AssetManager.h"
 #include "Input/InputSystem.h"
 #include "Input/InputUtils.h"
 #include "Serialization/ReflectionUtils.h"
@@ -45,6 +44,28 @@ static Gleam::TString MakeUniqueName(const Container& items, const char* base)
 	}
 	return name;
 }
+
+// Gameplay finds maps and actions by "Map/Action", so names must be non-empty, free of '/' and unique in their scope.
+template<typename Container>
+static bool IsValidName(const Container& items, uint32_t index)
+{
+	const auto& name = items[index].name;
+	if (name.empty() or name.find('/') != Gleam::TString::npos)
+	{
+		return false;
+	}
+
+	for (uint32_t i = 0; i < items.size(); ++i)
+	{
+		if (i != index and items[i].name == name)
+		{
+			return false;
+		}
+	}
+	return true;
+}
+
+static constexpr const char* kInvalidNameMessage = "Name is empty, contains '/' or is already taken";
 
 template<size_t N>
 static const char* ToCString(Gleam::TStringView text, char (&buffer)[N])
@@ -167,7 +188,6 @@ void InputActionsEditor::Save()
 	{
 		mAsset = item;
 		mDirty = false;
-		Gleam::Globals::GameInstance->GetSubsystem<Gleam::AssetManager>()->Reload(mAsset.reference);
 	}
 }
 
@@ -208,7 +228,7 @@ void InputActionsEditor::DrawToolbar()
 
 	constexpr float kSaveWidth = 90.0f;
 	ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - kSaveWidth);
-	ImGui::BeginDisabled(mDirty == false or validName == false);
+	ImGui::BeginDisabled(mDirty == false or validName == false or HasInvalidNames());
 	if (Widgets::AccentButton(ICON_LC_SAVE "  Save", ImVec2(kSaveWidth, ImGui::GetFrameHeight())))
 	{
 		Save();
@@ -328,6 +348,10 @@ void InputActionsEditor::DrawProperties()
 	{
 		ImGui::SeparatorText("Action Map");
 		PropertyDrawer::DrawStringControl("Name", map->name, kColumnWidth);
+		if (IsValidName(mDescriptor.maps, static_cast<uint32_t>(mSelectedMap)) == false)
+		{
+			ImGui::TextColored(Gleam::Theme::Error, "%s", kInvalidNameMessage);
+		}
 		PropertyDrawer::DrawScalarControl("Priority", map->priority, 0, kColumnWidth);
 	}
 	else
@@ -345,6 +369,10 @@ void InputActionsEditor::DrawActionProperties(Gleam::InputActionDescriptor& acti
 {
 	ImGui::SeparatorText("Action");
 	PropertyDrawer::DrawStringControl("Name", action.name, kColumnWidth);
+	if (IsValidName(GetSelectedMap()->actions, static_cast<uint32_t>(mSelectedAction)) == false)
+	{
+		ImGui::TextColored(Gleam::Theme::Error, "%s", kInvalidNameMessage);
+	}
 	PropertyDrawer::DrawEnumOptions("Value Type", Gleam::Reflection::GetEnum<Gleam::InputValueType>(), &action.valueType, kColumnWidth);
 
 	ImGui::SeparatorText("Bindings");
@@ -511,7 +539,15 @@ void InputActionsEditor::DrawProcessors(Gleam::TArray<Gleam::InputProcessor>& pr
 	{
 		auto& processor = processors[i];
 		ImGui::PushID(static_cast<int>(i));
+		const auto previousType = processor.type;
 		PropertyDrawer::DrawEnumOptions("Processor", Gleam::Reflection::GetEnum<Gleam::InputProcessorType>(), &processor.type, kColumnWidth);
+		if (processor.type != previousType)
+		{
+			const bool clamp = processor.type == Gleam::InputProcessorType::Clamp;
+			processor.min = clamp ? -1.0f : kDefaults.min;
+			processor.max = clamp ? 1.0f : kDefaults.max;
+			processor.factor = kDefaults.factor;
+		}
 		switch (processor.type)
 		{
 			case Gleam::InputProcessorType::DeadZone:
@@ -618,6 +654,11 @@ void InputActionsEditor::UpdateListening()
 	Gleam::InputControl control;
 	if (Gleam::InputUtils::FindActuatedControl(inputSystem->GetDevices(), control))
 	{
+		if (control.device == Gleam::InputDeviceType::Mouse and ImGui::IsAnyItemHovered())
+		{
+			return;
+		}
+
 		auto& controls = action->bindings[mListening.binding].controls;
 		if (control != Gleam::InputControl::Make(Gleam::Key::Escape) and mListening.part < controls.size())
 		{
@@ -662,6 +703,27 @@ void InputActionsEditor::StopListening()
 	}
 	mMutedUsers.clear();
 	mListening = ListenTarget();
+}
+
+bool InputActionsEditor::HasInvalidNames() const
+{
+	for (uint32_t i = 0; i < mDescriptor.maps.size(); ++i)
+	{
+		if (IsValidName(mDescriptor.maps, i) == false)
+		{
+			return true;
+		}
+
+		const auto& actions = mDescriptor.maps[i].actions;
+		for (uint32_t j = 0; j < actions.size(); ++j)
+		{
+			if (IsValidName(actions, j) == false)
+			{
+				return true;
+			}
+		}
+	}
+	return false;
 }
 
 Gleam::InputActionMapDescriptor* InputActionsEditor::GetSelectedMap()

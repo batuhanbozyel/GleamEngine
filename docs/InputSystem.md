@@ -75,7 +75,6 @@ if (states)
 - Call `GetActionStates` every update. Adding or removing any `PlayerInput` can move the state, so don't keep the pointer across frames.
 - Handles found by name may be invalid; check `IsValid()`. `FindAction` is a linear search, so cache handles per asset.
 - Assigning a different asset rebuilds the state: map enable flags and action phases reset. Changing only `playerIndex` keeps the state and switches players on the same update.
-- An asset can be reloaded in place while the game runs. Every `PlayerInput` using it rebuilds its state as if the asset had been reassigned, and cached handles may then point at different actions. If you cache handles, store `asset->GetVersion()` with them and look them up again when it changes.
 
 ### Several entities
 
