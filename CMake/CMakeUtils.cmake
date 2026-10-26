@@ -47,6 +47,7 @@ function(GLEAM_ADD_REFLECTION_MODULE)
 
     set(REFLECTION_DATABASE "${REFL_BINARY_DIR}/${REFL_NAME}.Reflection.db")
     set(REFLECTION_HEADER "${REFL_SOURCE_DIR}/${REFL_NAME}.Reflection.generated.h")
+    set(REFLECTION_TYPES "${REFL_SOURCE_DIR}/${REFL_NAME}.Reflection.types.inl")
 
     set(DEPENDENCY_ARGS "")
     set(DEPENDENCY_FILES "")
@@ -56,7 +57,7 @@ function(GLEAM_ADD_REFLECTION_MODULE)
     endforeach()
 
     add_custom_command(
-        OUTPUT ${REFLECTION_DATABASE} ${REFLECTION_HEADER}
+        OUTPUT ${REFLECTION_DATABASE} ${REFLECTION_HEADER} ${REFLECTION_TYPES}
         COMMAND ${REFLECTION_CLI}
             "--module=${REFL_NAME}"
             "--header-dir=${REFL_SOURCE_DIR}"
@@ -69,7 +70,7 @@ function(GLEAM_ADD_REFLECTION_MODULE)
         COMMAND_EXPAND_LISTS
         VERBATIM
     )
-    add_custom_target(${REFL_NAME}Reflection DEPENDS ${REFLECTION_DATABASE} ${REFLECTION_HEADER})
+    add_custom_target(${REFL_NAME}Reflection DEPENDS ${REFLECTION_DATABASE} ${REFLECTION_HEADER} ${REFLECTION_TYPES})
     set_target_properties(${REFL_NAME}Reflection PROPERTIES FOLDER CMakeCustomRules)
 endfunction()
 

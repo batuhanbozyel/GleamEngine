@@ -32,3 +32,4 @@ CLAUDE.md
 # Reflection
 *.Reflection.db
 *.Reflection.generated.h
+*.Reflection.types.inl

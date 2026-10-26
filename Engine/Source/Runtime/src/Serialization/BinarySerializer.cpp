@@ -3,6 +3,7 @@
 #include "ReflectionUtils.h"
 #include "Container/BinaryBuffer.h"
 #include "Container/EnumFlag.h"
+#include "Core/TypeLifecycle.h"
 #include "Renderer/Material/MaterialProperty.h"
 
 using namespace Gleam;
@@ -261,6 +262,8 @@ private:
 
 void BinarySerializer::Initialize()
 {
+	sInstance = this;
+
 	REGISTER_POD_TYPE_BINARY_SERIALIZER(Float2);
 	REGISTER_POD_TYPE_BINARY_SERIALIZER(Float3);
 	REGISTER_POD_TYPE_BINARY_SERIALIZER(Float4);
@@ -426,15 +429,12 @@ void BinarySerializer::Initialize()
 			uint32_t elementCount = 0;
 			stream.read(reinterpret_cast<char*>(&elementCount), sizeof(uint32_t));
 
+			const auto vector = TypeLifecycleRegistry::GetInstance()->FindVector(classDesc.TypeHash());
+			vector->Reset(obj, elementCount);
+
 			const auto& element = templateParams[0];
-			const auto elementSize = ResolveElementSize(element.GetType(), element.TypeHash());
-
-			// TODO: TArray elements are resized as raw bytes and never constructed or destroyed, so non-zero member defaults are lost for fields missing from the data, shrinking leaks heap-owning members, and element types that are not valid when zeroed are undefined behaviour. Needs per-type construct/destroy operations looked up by type hash.
-			auto& arr = Reflection::Get<TArray<uint8_t>>(obj);
-			arr.resize(elementCount * elementSize);
-
-			auto arrDesc = Reflection::ArrayDescription(element.GetType(), element.TypeHash(), arr.size());
-			DeserializeArrayValues(stream, elementCount, arrDesc, arr.data());
+			auto arrDesc = Reflection::ArrayDescription(element.GetType(), element.TypeHash(), elementCount * vector->GetElementSize());
+			DeserializeArrayValues(stream, elementCount, arrDesc, vector->Data(obj));
 
 			stream.seekg(payloadEnd);
 		};
@@ -473,6 +473,7 @@ void BinarySerializer::Shutdown()
 {
 	mCustomSerializers.clear();
 	mCustomDeserializers.clear();
+	sInstance = nullptr;
 }
 
 BinaryHeader BinarySerializer::ParseHeader(FileStream& stream)
@@ -534,8 +535,9 @@ bool BinarySerializer::TryCustomSerializer(const void* obj,
 										   const Reflection::ClassDescription& classDesc,
 										   FileStream& stream)
 {
-	auto it = mCustomSerializers.find(CustomSerializerKey(classDesc));
-	if (it != mCustomSerializers.end())
+	const auto& serializers = sInstance->mCustomSerializers;
+	auto it = serializers.find(CustomSerializerKey(classDesc));
+	if (it != serializers.end())
 	{
 		it->second(obj, classDesc, stream);
 		return true;
@@ -547,8 +549,9 @@ bool BinarySerializer::TryCustomDeserializer(FileStream& stream,
 											 const Reflection::ClassDescription& classDesc,
 											 void* obj)
 {
-	auto it = mCustomDeserializers.find(CustomSerializerKey(classDesc));
-	if (it != mCustomDeserializers.end())
+	const auto& serializers = sInstance->mCustomDeserializers;
+	auto it = serializers.find(CustomSerializerKey(classDesc));
+	if (it != serializers.end())
 	{
 		it->second(stream, classDesc, obj);
 		return true;

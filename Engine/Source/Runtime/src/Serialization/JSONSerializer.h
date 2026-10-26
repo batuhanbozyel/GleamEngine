@@ -29,9 +29,9 @@ class JSONSerializer final
 {
 public:
 
-	static void Initialize();
+	void Initialize();
 
-	static void Shutdown();
+	void Shutdown();
 
 	JSONHeader ParseHeader(FileStream& stream);
 
@@ -113,14 +113,15 @@ private:
 												   const Reflection::ClassDescription& classDesc,
 												   void* obj)>;
 
-    static inline HashMap<uint32_t, ObjectSerializerFn> mCustomObjectSerializers;
+    HashMap<uint32_t, ObjectSerializerFn> mCustomObjectSerializers;
     
-    static inline HashMap<uint32_t, ArraySerializerFn> mCustomArraySerializers;
+    HashMap<uint32_t, ArraySerializerFn> mCustomArraySerializers;
 
-	static inline HashMap<uint32_t, ObjectDeserializerFn> mCustomObjectDeserializers;
+	HashMap<uint32_t, ObjectDeserializerFn> mCustomObjectDeserializers;
     
-    static inline HashMap<uint32_t, ArrayDeserializerFn> mCustomArrayDeserializers;
-    
+    HashMap<uint32_t, ArrayDeserializerFn> mCustomArrayDeserializers;
+
+	static inline JSONSerializer* sInstance = nullptr;
 };
 
 } // namespace Gleam

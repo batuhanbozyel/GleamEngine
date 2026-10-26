@@ -26,9 +26,9 @@ class BinarySerializer final
 {
 public:
 
-	static void Initialize();
+	void Initialize();
 
-	static void Shutdown();
+	void Shutdown();
 
 	BinaryHeader ParseHeader(FileStream& stream);
     
@@ -66,10 +66,11 @@ private:
 											  const Reflection::ClassDescription& classDesc,
 											  void* obj)>;
 	
-	static inline HashMap<uint32_t, SerializerFn> mCustomSerializers;
+	HashMap<uint32_t, SerializerFn> mCustomSerializers;
 
-	static inline HashMap<uint32_t, DeserializerFn> mCustomDeserializers;
+	HashMap<uint32_t, DeserializerFn> mCustomDeserializers;
 
+	static inline BinarySerializer* sInstance = nullptr;
 };
 
 } // namespace Gleam

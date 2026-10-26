@@ -42,6 +42,12 @@ static Gleam::TStringView QualifiedNameWithoutTemplateDeclaration(const Gleam::T
 	return name.substr(0, pos);
 }
 
+static uint32_t TemplateNameHash(const Gleam::Reflection::ClassDescription& classDesc)
+{
+	const auto name = QualifiedNameWithoutTemplateDeclaration(classDesc.ResolveQualifiedName());
+	return Gleam::Reflection::Utils::HashString(name.data(), name.size());
+}
+
 static size_t ArrayElementSize(const Gleam::Reflection::ArrayDescription& arrayDesc)
 {
 	switch (arrayDesc.ElementType())
@@ -263,63 +269,61 @@ static void DrawColliderSet(const Gleam::TStringView label, Gleam::ColliderSet& 
 	});
 }
 
-const Gleam::HashMap<Gleam::TStringView, PropertyDrawer::DrawFunction>& PropertyDrawer::GetCustomDrawers()
+const Gleam::HashMap<uint32_t, PropertyDrawer::DrawFunction>& PropertyDrawer::GetCustomDrawers()
 {
 	static const auto drawers = []()
 	{
-		Gleam::HashMap<Gleam::TStringView, DrawFunction> customDrawers;
+		Gleam::HashMap<uint32_t, DrawFunction> customDrawers;
 
-		customDrawers[Gleam::Reflection::GetClass<Gleam::Color>().ResolveQualifiedName()] =
+		customDrawers[Gleam::Reflection::TypeHash<Gleam::Color>()] =
 			[](const Gleam::TStringView label, void* obj, const Gleam::Reflection::ClassDescription& classDesc, float columnWidth)
 		{
 			DrawColorControl(label, Gleam::Reflection::Get<Gleam::Color>(obj), columnWidth);
 		};
 
-		customDrawers[Gleam::Reflection::GetClass<Gleam::Float3>().ResolveQualifiedName()] =
+		customDrawers[Gleam::Reflection::TypeHash<Gleam::Float3>()] =
 			[](const Gleam::TStringView label, void* obj, const Gleam::Reflection::ClassDescription& classDesc, float columnWidth)
 		{
 			DrawVec3Control(label, Gleam::Reflection::Get<Gleam::Float3>(obj), 0.0f, columnWidth);
 		};
 
-		customDrawers[Gleam::Reflection::GetClass<Gleam::AssetReference>().ResolveQualifiedName()] =
+		customDrawers[Gleam::Reflection::TypeHash<Gleam::AssetReference>()] =
 			[](const Gleam::TStringView label, void* obj, const Gleam::Reflection::ClassDescription& classDesc, float columnWidth)
 		{
 			DrawAsset(label, Gleam::Reflection::Get<Gleam::AssetReference>(obj), columnWidth);
 		};
 
-		customDrawers[Gleam::Reflection::GetClass<Gleam::TString>().ResolveQualifiedName()] =
+		customDrawers[Gleam::Reflection::TypeHash<Gleam::TString>()] =
 			[](const Gleam::TStringView label, void* obj, const Gleam::Reflection::ClassDescription& classDesc, float columnWidth)
 		{
 			DrawStringControl(label, Gleam::Reflection::Get<Gleam::TString>(obj), columnWidth);
 		};
 
-		customDrawers[Gleam::Reflection::GetClass<Gleam::Guid>().ResolveQualifiedName()] =
+		customDrawers[Gleam::Reflection::TypeHash<Gleam::Guid>()] =
 			[](const Gleam::TStringView label, void* obj, const Gleam::Reflection::ClassDescription& classDesc, float columnWidth)
 		{
 			DrawTextControl(label, Gleam::Reflection::Get<Gleam::Guid>(obj).ToString(), columnWidth);
 		};
 
-		const auto enumFlagName = QualifiedNameWithoutTemplateDeclaration(Gleam::Reflection::GetClass<Gleam::EnumFlag<Gleam::EnumFlagPlaceholder>>().ResolveQualifiedName());
-		customDrawers[enumFlagName] =
+		customDrawers[TemplateNameHash(Gleam::Reflection::GetClass<Gleam::EnumFlag<Gleam::EnumFlagPlaceholder>>())] =
 			[](const Gleam::TStringView label, void* obj, const Gleam::Reflection::ClassDescription& classDesc, float columnWidth)
 		{
 			DrawEnumFlagOptions(label, classDesc, obj, columnWidth);
 		};
 
-		customDrawers[Gleam::Reflection::GetClass<Gleam::Quaternion>().ResolveQualifiedName()] =
+		customDrawers[Gleam::Reflection::TypeHash<Gleam::Quaternion>()] =
 			[](const Gleam::TStringView label, void* obj, const Gleam::Reflection::ClassDescription& classDesc, float columnWidth)
 		{
 			DrawRotationControl(label, Gleam::Reflection::Get<Gleam::Quaternion>(obj), columnWidth);
 		};
 
-		customDrawers[Gleam::Reflection::GetClass<Gleam::ColliderSet>().ResolveQualifiedName()] =
+		customDrawers[Gleam::Reflection::TypeHash<Gleam::ColliderSet>()] =
 			[](const Gleam::TStringView label, void* obj, const Gleam::Reflection::ClassDescription& classDesc, float columnWidth)
 		{
 			DrawColliderSet(label, Gleam::Reflection::Get<Gleam::ColliderSet>(obj), columnWidth);
 		};
 
-		const auto arrayName = QualifiedNameWithoutTemplateDeclaration(Gleam::Reflection::GetClass<Gleam::TArray<uint8_t>>().ResolveQualifiedName());
-		customDrawers[arrayName] =
+		customDrawers[TemplateNameHash(Gleam::Reflection::GetClass<Gleam::TArray<uint8_t>>())] =
 			[](const Gleam::TStringView label, void* obj, const Gleam::Reflection::ClassDescription& classDesc, float columnWidth)
 		{
 			auto templateParams = classDesc.ResolveTemplateParameters();
@@ -336,19 +340,16 @@ const Gleam::HashMap<Gleam::TStringView, PropertyDrawer::DrawFunction>& Property
 	return drawers;
 }
 
-// Instantiations are keyed by their own name, the stripped name only matches template wide drawers
+// Instantiations are keyed by their own type hash, the template name hash only matches template wide drawers
 template<typename DrawerMap>
 static auto FindCustomDrawer(const Gleam::Reflection::ClassDescription& classDesc, const DrawerMap& drawers)
 {
-	const auto resolved = classDesc.ResolveQualifiedName();
-	const Gleam::TStringView qualifiedName(resolved.data(), resolved.size());
-
-	auto it = drawers.find(qualifiedName);
+	auto it = drawers.find(classDesc.TypeHash());
 	if (it != drawers.end())
 	{
 		return it;
 	}
-	return drawers.find(QualifiedNameWithoutTemplateDeclaration(qualifiedName));
+	return drawers.find(TemplateNameHash(classDesc));
 }
 
 bool PropertyDrawer::HasCustomDrawer(const Gleam::Reflection::ClassDescription& classDesc)

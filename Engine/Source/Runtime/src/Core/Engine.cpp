@@ -8,11 +8,16 @@
 #include "Input/InputSystem.h"
 #include "World/ScriptingSystem.h"
 #include "Renderer/RenderSystem.h"
+#include "Core/TypeLifecycle.h"
+
+#include <Runtime.Reflection.types.inl>
 
 namespace Gleam {
 
 void Engine::Initialize(const CommandLine& cli)
 {
+	GLEAM_FOR_EACH_RUNTIME_REFLECTED_CLASS(REGISTER_TYPE_LIFECYCLE)
+	
 	int logLevel = cli("-log-level", static_cast<int>(Logger::Level::Info));
 	Logger::SetLevel(static_cast<Logger::Level>(logLevel));
 	

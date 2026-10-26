@@ -123,7 +123,7 @@ private:
 											const Gleam::Reflection::ClassDescription& classDesc,
 											float columnWidth)>;
 
-	static const Gleam::HashMap<Gleam::TStringView, DrawFunction>& GetCustomDrawers();
+	static const Gleam::HashMap<uint32_t, DrawFunction>& GetCustomDrawers();
 
 	static bool HasCustomDrawer(const Gleam::Reflection::ClassDescription& classDesc);
 

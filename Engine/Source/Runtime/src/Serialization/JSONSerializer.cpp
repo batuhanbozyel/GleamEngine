@@ -4,6 +4,7 @@
 #include "ReflectionUtils.h"
 
 #include "Container/BinaryBuffer.h"
+#include "Core/TypeLifecycle.h"
 #include "Container/EnumFlag.h"
 #include "Renderer/Material/MaterialProperty.h"
 
@@ -232,6 +233,19 @@ static void DeserializeArrayElements(const rapidjson::ConstNode& array, const Re
 
 #pragma endregion DeserializeForwardDecl
 
+static void DeserializeVectorElements(const rapidjson::ConstNode& elements, size_t count, const Reflection::ClassDescription& classDesc, void* obj)
+{
+	auto templateParams = classDesc.ResolveTemplateParameters();
+	GLEAM_ASSERT(templateParams.size() == 1, "JSONSerializer: TArray must have exactly one template parameter for element type.");
+
+	const auto vector = TypeLifecycleRegistry::GetInstance()->FindVector(classDesc.TypeHash());
+	vector->Reset(obj, count);
+
+	const auto& element = templateParams[0];
+	auto arrDesc = Reflection::ArrayDescription(element.GetType(), element.TypeHash(), count * vector->GetElementSize());
+	DeserializeArrayElements(elements, arrDesc, vector->Data(obj));
+}
+
 static void SerializeEnumFlagValue(const void* obj,
                                    const Reflection::ClassDescription& classDesc,
                                    rapidjson::Node& outFlags)
@@ -265,6 +279,8 @@ static void DeserializeEnumFlagValue(const rapidjson::Value& flags,
 
 void JSONSerializer::Initialize()
 {
+	sInstance = this;
+
 	REGISTER_VECTOR_TYPE_JSON_SERIALIZER(Float2, x, y);
 	REGISTER_VECTOR_TYPE_JSON_SERIALIZER(Float3, x, y, z);
 	REGISTER_VECTOR_TYPE_JSON_SERIALIZER(Float4, x, y, z, w);
@@ -535,97 +551,15 @@ void JSONSerializer::Initialize()
 			if (node.object.HasMember("Elements"))
 			{
 				const auto& elements = node.object["Elements"].GetArray();
-
-				auto templateParams = classDesc.ResolveTemplateParameters();
-				GLEAM_ASSERT(templateParams.size() == 1, "JSONSerializer: TArray must have exactly one template parameter for element type.");
-
-				// TODO: TArray elements are resized as raw bytes and never constructed or destroyed, so non-zero member defaults are lost for fields missing from the data, shrinking leaks heap-owning members, and element types that are not valid when zeroed are undefined behaviour. Needs per-type construct/destroy operations looked up by type hash.
-				auto& arr = Reflection::Get<TArray<uint8_t>>(obj);
-				const auto& element = templateParams[0];
-
-				switch (element.GetType())
-				{
-					case Reflection::MetaType::Primitive:
-					{
-						auto primitiveDesc = Reflection::GetPrimitive(element.TypeHash());
-						arr.resize(elements.Size() * primitiveDesc.GetSize());
-						break;
-					}
-					case Reflection::MetaType::Enum:
-					{
-						const auto enumDesc = Reflection::GetEnum(element.TypeHash());
-						arr.resize(elements.Size() * enumDesc->GetSize());
-						break;
-					}
-					case Reflection::MetaType::Class:
-					{
-						const auto elementClassDesc = Reflection::GetClass(element.TypeHash());
-						arr.resize(elements.Size() * elementClassDesc->GetSize());
-						break;
-					}
-					case Reflection::MetaType::Array:
-					{
-						const auto innerDesc = Reflection::GetArray(element.TypeHash());
-						arr.resize(elements.Size() * innerDesc->GetSize());
-						break;
-					}
-					default:
-					{
-						GLEAM_ASSERT(false, "JSONSerializer: Unknown object kind");
-						return;
-					}
-				}
-				rapidjson::ConstNode elementsNode(elements);
-				auto arrDesc = Reflection::ArrayDescription(element.GetType(), element.TypeHash(), arr.size());
-				DeserializeArrayElements(elementsNode, arrDesc, arr.data());
+				DeserializeVectorElements(rapidjson::ConstNode(elements), elements.Size(), classDesc, obj);
 			}
 		};
-        
+
         mCustomArrayDeserializers[key] = [](const rapidjson::ConstNode& node,
             const Reflection::ClassDescription& classDesc,
             void* obj)
         {
-			auto templateParams = classDesc.ResolveTemplateParameters();
-			GLEAM_ASSERT(templateParams.size() == 1, "JSONSerializer: TArray must have exactly one template parameter for element type.");
-
-            // TODO: TArray elements are resized as raw bytes and never constructed or destroyed, so non-zero member defaults are lost for fields missing from the data, shrinking leaks heap-owning members, and element types that are not valid when zeroed are undefined behaviour. Needs per-type construct/destroy operations looked up by type hash.
-            auto& arr = Reflection::Get<TArray<uint8_t>>(obj);
-			const auto& element = templateParams[0];
-
-			switch (element.GetType())
-			{
-				case Reflection::MetaType::Primitive:
-				{
-					auto primitiveDesc = Reflection::GetPrimitive(element.TypeHash());
-					arr.resize(node.object.Size() * primitiveDesc.GetSize());
-					break;
-				}
-				case Reflection::MetaType::Enum:
-				{
-					const auto enumDesc = Reflection::GetEnum(element.TypeHash());
-					arr.resize(node.object.Size() * enumDesc->GetSize());
-					break;
-				}
-				case Reflection::MetaType::Class:
-				{
-					const auto elementClassDesc = Reflection::GetClass(element.TypeHash());
-					arr.resize(node.object.Size() * elementClassDesc->GetSize());
-					break;
-				}
-				case Reflection::MetaType::Array:
-				{
-					const auto innerDesc = Reflection::GetArray(element.TypeHash());
-					arr.resize(node.object.Size() * innerDesc->GetSize());
-					break;
-				}
-				default:
-				{
-					GLEAM_ASSERT(false, "JSONSerializer: Unknown object kind");
-					return;
-				}
-			}
-			auto arrDesc = Reflection::ArrayDescription(element.GetType(), element.TypeHash(), arr.size());
-            DeserializeArrayElements(node, arrDesc, arr.data());
+			DeserializeVectorElements(node, node.object.Size(), classDesc, obj);
         };
 	}
 
@@ -657,6 +591,7 @@ void JSONSerializer::Shutdown()
     mCustomArraySerializers.clear();
 	mCustomObjectDeserializers.clear();
 	mCustomArrayDeserializers.clear();
+	sInstance = nullptr;
 }
 
 JSONHeader JSONSerializer::ParseHeader(FileStream& stream)
@@ -743,8 +678,9 @@ bool JSONSerializer::TryCustomObjectSerializer(const void* obj,
 											   const Reflection::ClassDescription& classDesc,
 											   rapidjson::Node& node)
 {
-	auto it = mCustomObjectSerializers.find(CustomSerializerKey(classDesc));
-	if (it != mCustomObjectSerializers.end())
+	const auto& serializers = sInstance->mCustomObjectSerializers;
+	auto it = serializers.find(CustomSerializerKey(classDesc));
+	if (it != serializers.end())
 	{
 		it->second(obj, classDesc, node);
 		return true;
@@ -756,8 +692,9 @@ bool JSONSerializer::TryCustomArraySerializer(const void* obj,
 											  const Reflection::ClassDescription& classDesc,
 											  rapidjson::Node& node)
 {
-	auto it = mCustomArraySerializers.find(CustomSerializerKey(classDesc));
-	if (it != mCustomArraySerializers.end())
+	const auto& serializers = sInstance->mCustomArraySerializers;
+	auto it = serializers.find(CustomSerializerKey(classDesc));
+	if (it != serializers.end())
 	{
 		it->second(obj, classDesc, node);
 		return true;
@@ -769,8 +706,9 @@ bool JSONSerializer::TryCustomObjectDeserializer(const rapidjson::ConstNode& nod
 												 const Reflection::ClassDescription& classDesc,
 												 void* obj)
 {
-	auto it = mCustomObjectDeserializers.find(CustomSerializerKey(classDesc));
-	if (it != mCustomObjectDeserializers.end())
+	const auto& serializers = sInstance->mCustomObjectDeserializers;
+	auto it = serializers.find(CustomSerializerKey(classDesc));
+	if (it != serializers.end())
 	{
 		it->second(node, classDesc, obj);
 		return true;
@@ -782,8 +720,9 @@ bool JSONSerializer::TryCustomArrayDeserializer(const rapidjson::ConstNode& node
                                                 const Reflection::ClassDescription& classDesc,
                                                 void* obj)
 {
-	auto it = mCustomArrayDeserializers.find(CustomSerializerKey(classDesc));
-    if (it != mCustomArrayDeserializers.end())
+	const auto& serializers = sInstance->mCustomArrayDeserializers;
+    auto it = serializers.find(CustomSerializerKey(classDesc));
+    if (it != serializers.end())
     {
         it->second(node, classDesc, obj);
         return true;

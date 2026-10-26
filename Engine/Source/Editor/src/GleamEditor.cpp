@@ -32,6 +32,7 @@
 #include "View/Panels/Input/InputActionsEditor.h"
 
 #include <Editor.Reflection.generated.h>
+#include <Editor.Reflection.types.inl>
 
 namespace GEditor {
 
@@ -107,7 +108,9 @@ static Gleam::Path GetProjectFile(const Gleam::CommandLine& cli)
 }
 
 Gleam::Application* Gleam::CreateApplicationInstance(const Gleam::CommandLine& cli)
-{
+{	
+	GLEAM_FOR_EACH_EDITOR_REFLECTED_CLASS(REGISTER_TYPE_LIFECYCLE)
+
 	auto projectFile = GetProjectFile(cli);
 	if (projectFile.Empty())
 	{
