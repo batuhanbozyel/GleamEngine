@@ -2,6 +2,7 @@
 #include "Core/EngineDefines.h"
 #include "Core/GUID.h"
 #include "ChangeTracker.h"
+#include "ComponentStorage.h"
 #include "Components/Transform.h"
 
 #include <entt/entity/entity.hpp>
@@ -95,14 +96,7 @@ public:
 		{
 			GetChangeTracker().MarkAdded<T>(mHandle);
 		}
-		if constexpr (Reflection::Traits::IsReflected<T>::value)
-		{
-			return mRegistry->storage<T>(Reflection::TypeHash<T>()).emplace(mHandle, std::forward<Args>(args)...);
-		}
-		else
-		{
-			return mRegistry->emplace<T>(mHandle, std::forward<Args>(args)...);
-		}
+		return AssureComponentStorage(*mRegistry, ComponentTypeHash<T>()).template Emplace<T>(mHandle, std::forward<Args>(args)...);
 	}
     
     template<typename T, typename ... Args>
@@ -120,14 +114,7 @@ public:
 				GetChangeTracker().MarkAdded<T>(mHandle);
 			}
 		}
-		if constexpr (Reflection::Traits::IsReflected<T>::value)
-		{
-			return mRegistry->storage<T>(Reflection::TypeHash<T>()).emplace_or_replace(mHandle, std::forward<Args>(args)...);
-		}
-		else
-		{
-			return mRegistry->emplace_or_replace<T>(mHandle, std::forward<Args>(args)...);
-		}
+		AssureComponentStorage(*mRegistry, ComponentTypeHash<T>()).template EmplaceOrReplace<T>(mHandle, std::forward<Args>(args)...);
     }
 
 	template<typename T>
@@ -135,32 +122,18 @@ public:
 	{
         GLEAM_ASSERT(IsValid(), "Entity is invalid!");
 		GLEAM_ASSERT(HasComponent<T>(), "Entity does not have the component!");
-		if constexpr (Reflection::Traits::IsReflected<T>::value)
-		{
-			mRegistry->storage<T>(Reflection::TypeHash<T>()).remove(mHandle);
-		}
-		else
-		{
-			mRegistry->remove<T>(mHandle);
-		}
+		FindComponentStorage(*mRegistry, ComponentTypeHash<T>())->remove(mHandle);
 	}
 
 	template<typename T>
 	bool HasComponent() const
 	{
         GLEAM_ASSERT(IsValid(), "Entity is invalid!");
-		if constexpr (Reflection::Traits::IsReflected<T>::value)
+		if (const auto storage = FindComponentStorage(*mRegistry, ComponentTypeHash<T>()))
 		{
-			if (const auto storage = ((const entt::registry*)mRegistry)->storage<T>(Reflection::TypeHash<T>()))
-			{
-				return storage->contains(mHandle);
-			}
-			return false;
+			return storage->contains(mHandle);
 		}
-		else
-		{
-			return mRegistry->all_of<T>(mHandle);
-		}
+		return false;
 	}
 
 	template<typename T>
@@ -172,14 +145,7 @@ public:
 		{
 			GetChangeTracker().MarkChanged<T>(mHandle);
 		}
-		if constexpr (Reflection::Traits::IsReflected<T>::value)
-		{
-			return mRegistry->storage<T>(Reflection::TypeHash<T>()).get(mHandle);
-		}
-		else
-		{
-			return mRegistry->get<T>(mHandle);
-		}
+		return FindComponentStorage(*mRegistry, ComponentTypeHash<T>())->template Get<T>(mHandle);
 	}
     
     template<typename T>
@@ -187,14 +153,7 @@ public:
     {
         GLEAM_ASSERT(IsValid(), "Entity is invalid!");
         GLEAM_ASSERT(HasComponent<T>(), "Entity does not have the component!");
-		if constexpr (Reflection::Traits::IsReflected<T>::value)
-		{
-			return mRegistry->storage<T>(Reflection::TypeHash<T>()).get(mHandle);
-		}
-		else
-		{
-			return mRegistry->get<T>(mHandle);
-		}
+		return FindComponentStorage(*mRegistry, ComponentTypeHash<T>())->template Get<T>(mHandle);
     }
 
 	Entity& GetParentEntity() const;

@@ -132,13 +132,10 @@ TArray<EntityHandle> EntitySerializer::DeserializeEntities(const rapidjson::Cons
 				continue;
 			}
 
-			auto meta = entt::resolve(classDesc->TypeHash());
-			auto func = meta.func("AddComponent"_hs);
-			auto component = func.invoke({}, Ref<Entity>(entity));
-			GLEAM_ASSERT(component, "Entity component could not deserialize");
+			auto component = entityManager.AddComponent(entity, classDesc->TypeHash());
 
 			JSONSerializer serializer;
-			serializer.Deserialize(*classDesc, const_cast<void*>(component.base().data()), rapidjson::ConstNode(componentObject));
+			serializer.Deserialize(*classDesc, component, rapidjson::ConstNode(componentObject));
 		}
 
 		entities.emplace_back(entity);
@@ -168,13 +165,10 @@ TArray<EntityHandle> EntitySerializer::Deserialize(const rapidjson::ConstNode& r
 			continue;
 		}
 
-		auto meta = entt::resolve(classDesc->TypeHash());
-		auto func = meta.func("SetSingleton"_hs);
-		auto component = func.invoke({}, Ref<EntityManager>(entityManager));
-		GLEAM_ASSERT(component, "Singleton component could not deserialize");
+		auto component = entityManager.AddSingleton(classDesc->TypeHash());
 
 		JSONSerializer serializer;
-		serializer.Deserialize(*classDesc, const_cast<void*>(component.base().data()), rapidjson::ConstNode(singletonObject));
+		serializer.Deserialize(*classDesc, component, rapidjson::ConstNode(singletonObject));
 	}
 
 	return entities;

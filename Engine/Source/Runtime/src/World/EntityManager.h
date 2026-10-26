@@ -3,7 +3,11 @@
 #include "Prefab.h"
 #include "EntityReference.h"
 
+#include <EASTL/algorithm.h>
+#include <EASTL/array.h>
+
 #include <functional>
+#include <utility>
 
 namespace Gleam {
 
@@ -28,15 +32,13 @@ public:
     template<typename ... ComponentTypes, typename ... ExcludeComponents, typename Func, typename = std::enable_if_t<sizeof...(ComponentTypes) + sizeof...(ExcludeComponents) != 0>>
     void ForEach(Func&& fn, Exclude<ExcludeComponents...> = Exclude<ExcludeComponents...>{})
     {
-		auto view = CreateView<ComponentTypes...>(Exclude<ExcludeComponents...>{});
-		view.each(fn);
+		Each<ComponentTypes...>(mRegistry, fn, Exclude<ExcludeComponents...>{});
     }
     
     template<typename ... ComponentTypes, typename ... ExcludeComponents, typename Func, typename = std::enable_if_t<sizeof...(ComponentTypes) + sizeof...(ExcludeComponents) != 0>>
     void ForEach(Func&& fn, Exclude<ExcludeComponents...> = Exclude<ExcludeComponents...>{}) const
     {
-		auto view = CreateView<ComponentTypes...>(Exclude<ExcludeComponents...>{});
-		view.each(fn);
+		Each<ComponentTypes...>(mRegistry, fn, Exclude<ExcludeComponents...>{});
     }
     
     template<typename Func>
@@ -131,14 +133,7 @@ public:
 		{
 			GetChangeTracker().MarkAdded<T>(entity);
 		}
-		if constexpr (Reflection::Traits::IsReflected<T>::value)
-		{
-			return mRegistry.storage<T>(Reflection::TypeHash<T>()).emplace(entity, std::forward<Args>(args)...);
-		}
-		else
-		{
-			return mRegistry.emplace<T>(entity, std::forward<Args>(args)...);
-		}
+		return AssureComponentStorage(mRegistry, ComponentTypeHash<T>()).template Emplace<T>(entity, std::forward<Args>(args)...);
 	}
     
     template<typename T, typename ... Args>
@@ -155,45 +150,24 @@ public:
 				GetChangeTracker().MarkAdded<T>(entity);
 			}
 		}
-		if constexpr (Reflection::Traits::IsReflected<T>::value)
-		{
-			return mRegistry.storage<T>(Reflection::TypeHash<T>()).emplace_or_replace(entity, std::forward<Args>(args)...);
-		}
-		else
-		{
-			return mRegistry.emplace_or_replace<T>(entity, std::forward<Args>(args)...);
-		}
+		AssureComponentStorage(mRegistry, ComponentTypeHash<T>()).template EmplaceOrReplace<T>(entity, std::forward<Args>(args)...);
     }
 
 	template<typename T>
 	void RemoveComponent(EntityHandle entity)
 	{
 		GLEAM_ASSERT(HasComponent<T>(entity), "Entity does not have the component!");
-		if constexpr (Reflection::Traits::IsReflected<T>::value)
-		{
-			mRegistry.storage<T>(Reflection::TypeHash<T>()).remove(entity);
-		}
-		else
-		{
-			mRegistry.remove<T>(entity);
-		}
+		FindComponentStorage(mRegistry, ComponentTypeHash<T>())->remove(entity);
 	}
 
 	template<typename T>
 	bool HasComponent(EntityHandle entity) const
 	{
-		if constexpr (Reflection::Traits::IsReflected<T>::value)
+		if (const auto storage = FindComponentStorage(mRegistry, ComponentTypeHash<T>()))
 		{
-			if (const auto storage = mRegistry.storage<T>(Reflection::TypeHash<T>()))
-			{
-				return storage->contains(entity);
-			}
-			return false;
+			return storage->contains(entity);
 		}
-		else
-		{
-			return mRegistry.all_of<T>(entity);
-		}
+		return false;
 	}
 
 	template<typename T>
@@ -204,39 +178,31 @@ public:
 		{
 			GetChangeTracker().MarkChanged<T>(entity);
 		}
-		if constexpr (Reflection::Traits::IsReflected<T>::value)
-		{
-			return mRegistry.storage<T>(Reflection::TypeHash<T>()).get(entity);
-		}
-		else
-		{
-			return mRegistry.get<T>(entity);
-		}
+		return FindComponentStorage(mRegistry, ComponentTypeHash<T>())->template Get<T>(entity);
 	}
     
     template<typename T>
     const T& GetComponent(EntityHandle entity) const
     {
         GLEAM_ASSERT(HasComponent<T>(entity), "Entity does not have the component!");
-		if constexpr (Reflection::Traits::IsReflected<T>::value)
-		{
-			return mRegistry.storage<T>(Reflection::TypeHash<T>())->get(entity);
-		}
-		else
-		{
-			return mRegistry.get<T>(entity);
-		}
+		return FindComponentStorage(mRegistry, ComponentTypeHash<T>())->template Get<T>(entity);
     }
 	
 	template<typename T, typename Func>
 	void ForEachChanged(Tick since, Func&& fn) const
 	{
+		const auto storage = FindComponentStorage(mRegistry, ComponentTypeHash<T>());
+		if (storage == nullptr)
+		{
+			return;
+		}
+
 		const auto& tracker = GetChangeTracker();
-		for (auto entity : CreateView<T>())
+		for (const auto entity : *storage)
 		{
 			if (tracker.IsChanged<T>(entity, since))
 			{
-				fn(entity, GetComponent<T>(entity));
+				fn(entity, storage->template Get<T>(entity));
 			}
 		}
 	}
@@ -244,12 +210,18 @@ public:
 	template<typename T, typename Func>
 	void ForEachAdded(Tick since, Func&& fn) const
 	{
+		const auto storage = FindComponentStorage(mRegistry, ComponentTypeHash<T>());
+		if (storage == nullptr)
+		{
+			return;
+		}
+
 		const auto& tracker = GetChangeTracker();
-		for (auto entity : CreateView<T>())
+		for (const auto entity : *storage)
 		{
 			if (tracker.IsAdded<T>(entity, since))
 			{
-				fn(entity, GetComponent<T>(entity));
+				fn(entity, storage->template Get<T>(entity));
 			}
 		}
 	}
@@ -257,7 +229,7 @@ public:
 	template<typename T, auto Candidate, typename Instance>
 	ComponentCallback OnComponentRemoved(Instance&& instance)
 	{
-		return ComponentCallback{ GetStorage<T>().on_destroy().template connect<Candidate>(std::forward<Instance>(instance)) };
+		return ComponentCallback{ AssureComponentStorage(mRegistry, ComponentTypeHash<T>()).OnRemoved().template connect<Candidate>(std::forward<Instance>(instance)) };
 	}
 
 	ChangeTracker& GetChangeTracker()
@@ -272,40 +244,6 @@ public:
 
 	void CopyFrom(const EntityManager& source);
 
-	template<typename T>
-	void CopyComponents(const EntityManager& source)
-	{
-		const auto from = source.FindStorage<T>();
-		if (from == nullptr)
-		{
-			return;
-		}
-
-		auto& to = GetStorage<T>();
-		for (auto element : from->each())
-		{
-			const auto entity = std::get<0>(element);
-			if (mRegistry.valid(entity) == false)
-			{
-				continue;
-			}
-
-			if constexpr (std::is_empty_v<T>)
-			{
-				to.emplace(entity);
-			}
-			else
-			{
-				to.emplace(entity, std::get<1>(element));
-			}
-
-			if constexpr (IsTrackedComponent<T>::value)
-			{
-				GetChangeTracker().MarkAdded<T>(entity);
-			}
-		}
-	}
-
 	bool IsValid(EntityHandle entity) const;
 
 	uint32_t GetEntityCount() const;
@@ -316,60 +254,47 @@ private:
 	
 	void DestroyHierarchy(EntityHandle entity);
 
-	template<typename ... ComponentTypes, typename ... ExcludeComponents, typename = std::enable_if_t<sizeof...(ComponentTypes) + sizeof...(ExcludeComponents) != 0>>
-	auto CreateView(Exclude<ExcludeComponents...> = Exclude<ExcludeComponents...>{})
+	template<typename ... ComponentTypes, typename Registry, typename Func, typename ... ExcludeComponents>
+	static void Each(Registry& registry, Func& fn, Exclude<ExcludeComponents...>)
 	{
-		if constexpr (sizeof...(ExcludeComponents) == 0)
-		{
-			auto includeTuple = std::make_tuple(std::ref(GetStorage<ComponentTypes>())...);
-			return entt::basic_view{ includeTuple };
-		}
-		else
-		{
-			auto includeTuple = std::make_tuple(std::ref(GetStorage<ComponentTypes>())...);
-			auto excludeTuple = std::make_tuple(std::ref(GetStorage<ExcludeComponents>())...);
-			return entt::basic_view{ includeTuple, excludeTuple };
-		}
-	}
+		using StoragePtr = decltype(FindComponentStorage(registry, 0u));
 
-	template<typename ... ComponentTypes, typename ... ExcludeComponents, typename = std::enable_if_t<sizeof...(ComponentTypes) + sizeof...(ExcludeComponents) != 0>>
-	auto CreateView(Exclude<ExcludeComponents...> = Exclude<ExcludeComponents...>{}) const
-	{
-		entt::basic_view<
-			entt::get_t<std::remove_pointer_t<decltype(FindStorage<ComponentTypes>())>...>,
-			entt::exclude_t<std::remove_pointer_t<decltype(FindStorage<ExcludeComponents>())>...>> view = {};
-
-		[&view](const auto ... storages)
+		const eastl::array<StoragePtr, sizeof...(ComponentTypes)> includes = { FindComponentStorage(registry, ComponentTypeHash<ComponentTypes>())... };
+		if (eastl::any_of(includes.begin(), includes.end(), [](StoragePtr storage) { return storage == nullptr; }))
 		{
-			((storages ? view.storage(*storages) : void()), ...);
-		}(FindStorage<ExcludeComponents>()..., FindStorage<ComponentTypes>()...);
-
-		return view;
-	}
-
-	template<typename T>
-	auto& GetStorage()
-	{
-		if constexpr (Reflection::Traits::IsReflected<T>::value)
-		{
-			return mRegistry.storage<T>(Reflection::TypeHash<T>());
+			return;
 		}
-		else
-		{
-			return mRegistry.storage<T>();
-		}
-	}
 
-	template<typename T>
-	auto FindStorage() const
-	{
-		if constexpr (Reflection::Traits::IsReflected<T>::value)
+		const eastl::array<StoragePtr, sizeof...(ExcludeComponents)> excludes = { FindComponentStorage(registry, ComponentTypeHash<ExcludeComponents>())... };
+
+		auto leading = includes[0];
+		for (const auto storage : includes)
 		{
-			return mRegistry.storage<T>(Reflection::TypeHash<T>());
+			if (storage->size() < leading->size())
+			{
+				leading = storage;
+			}
 		}
-		else
+
+		// Sparse set iteration runs back to front, so removing the current entity's components inside fn is safe
+		for (const auto entity : *leading)
 		{
-			return mRegistry.storage<T>();
+			const bool included = eastl::all_of(includes.begin(), includes.end(), [entity](StoragePtr storage) { return storage->contains(entity); });
+			const bool excluded = eastl::any_of(excludes.begin(), excludes.end(), [entity](StoragePtr storage) { return storage != nullptr and storage->contains(entity); });
+			if (included and excluded == false)
+			{
+				[&]<size_t ... I>(std::index_sequence<I...>)
+				{
+					if constexpr (std::is_invocable_v<Func&, EntityHandle, decltype(includes[I]->template Get<ComponentTypes>(entity))...>)
+					{
+						fn(entity, includes[I]->template Get<ComponentTypes>(entity)...);
+					}
+					else
+					{
+						fn(includes[I]->template Get<ComponentTypes>(entity)...);
+					}
+				}(std::index_sequence_for<ComponentTypes...>{});
+			}
 		}
 	}
 

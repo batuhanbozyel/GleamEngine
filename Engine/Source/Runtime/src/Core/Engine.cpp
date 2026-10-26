@@ -6,7 +6,6 @@
 #include "ConfigSystem.h"
 #include "IO/FileWatcher.h"
 #include "Input/InputSystem.h"
-#include "World/ScriptingSystem.h"
 #include "Renderer/RenderSystem.h"
 #include "Core/TypeLifecycle.h"
 
@@ -44,7 +43,6 @@ void Engine::Initialize(const CommandLine& cli)
 	AddSubsystem<FileWatcher>();
 	AddSubsystem<WindowSystem>();
 	AddSubsystem<RenderSystem>();
-	AddSubsystem<ScriptingSystem>();
 }
 
 void Engine::Shutdown()

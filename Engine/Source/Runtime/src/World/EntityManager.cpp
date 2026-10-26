@@ -116,40 +116,25 @@ void* EntityManager::FindSingleton(uint32_t typeHash)
 
 void* EntityManager::AddSingleton(uint32_t typeHash)
 {
-	auto func = entt::resolve(typeHash).func("SetSingleton"_hs);
-	GLEAM_ASSERT(func, "Component type is not registered with the scripting system: {}",
-		Reflection::GetClass(typeHash) ? Reflection::GetClass(typeHash)->ResolveName() : std::string_view("unknown"));
-
-	auto component = func.invoke({}, Ref<EntityManager>(*this));
-	return const_cast<void*>(component.base().data());
+	return AddComponent(mSingletonEntity, typeHash);
 }
 
 void EntityManager::RemoveSingleton(uint32_t typeHash)
 {
-	auto func = entt::resolve(typeHash).func("RemoveSingleton"_hs);
-	GLEAM_ASSERT(func, "Component type is not registered with the scripting system: {}",
-		Reflection::GetClass(typeHash) ? Reflection::GetClass(typeHash)->ResolveName() : std::string_view("unknown"));
-
-	func.invoke({}, Ref<EntityManager>(*this));
+	RemoveComponent(mSingletonEntity, typeHash);
 }
 
 void* EntityManager::AddComponent(EntityHandle entity, uint32_t typeHash)
 {
-	auto func = entt::resolve(typeHash).func("AddComponent"_hs);
-	GLEAM_ASSERT(func, "Component type is not registered with the scripting system: {}",
-		Reflection::GetClass(typeHash) ? Reflection::GetClass(typeHash)->ResolveName() : std::string_view("unknown"));
-
-	auto component = func.invoke({}, Ref<Entity>(GetComponent<Entity>(entity)));
-	return const_cast<void*>(component.base().data());
+	GetChangeTracker().MarkAdded(typeHash, entity);
+	auto& storage = AssureComponentStorage(mRegistry, typeHash);
+	storage.push(entity);
+	return storage.value(entity);
 }
 
 void EntityManager::RemoveComponent(EntityHandle entity, uint32_t typeHash)
 {
-	auto func = entt::resolve(typeHash).func("RemoveComponent"_hs);
-	GLEAM_ASSERT(func, "Component type is not registered with the scripting system: {}",
-		Reflection::GetClass(typeHash) ? Reflection::GetClass(typeHash)->ResolveName() : std::string_view("unknown"));
-
-	func.invoke({}, Ref<Entity>(GetComponent<Entity>(entity)));
+	FindComponentStorage(mRegistry, typeHash)->remove(entity);
 }
 
 void EntityManager::CopyFrom(const EntityManager& source)
@@ -172,12 +157,12 @@ void EntityManager::CopyFrom(const EntityManager& source)
 		GLEAM_ASSERT(created == handle, "Copied entity handle does not match the source!");
 	}
 
-	const auto sourceEntities = source.FindStorage<Entity>();
-	auto& entities = GetStorage<Entity>();
+	const auto sourceEntities = FindComponentStorage(source.mRegistry, ComponentTypeHash<Entity>());
+	auto& entities = AssureComponentStorage(mRegistry, ComponentTypeHash<Entity>());
 	auto& tracker = GetChangeTracker();
 	for (auto handle : handles)
 	{
-		auto& entity = entities.emplace(handle, sourceEntities->get(handle));
+		auto& entity = entities.Emplace<Entity>(handle, sourceEntities->Get<Entity>(handle));
 		entity.mRegistry = &mRegistry;
 
 		if (entity.mParent != InvalidEntity and mRegistry.valid(entity.mParent) == false)
@@ -210,9 +195,15 @@ void EntityManager::CopyFrom(const EntityManager& source)
 			continue;
 		}
 
-		auto copyStorage = entt::resolve(id).func("CopyStorage"_hs);
-		GLEAM_ASSERT(copyStorage, "Component storage is not registered for copying: {}", classDesc ? classDesc->ResolveName() : std::string_view("unknown"));
-		copyStorage.invoke({}, Ref<EntityManager>(*this), Ref<const EntityManager>(source));
+		auto& destination = AssureComponentStorage(mRegistry, id);
+		for (const auto entity : storage)
+		{
+			if (mRegistry.valid(entity))
+			{
+				destination.push(entity, storage.value(entity));
+				tracker.MarkAdded(id, entity);
+			}
+		}
 	}
 }
 

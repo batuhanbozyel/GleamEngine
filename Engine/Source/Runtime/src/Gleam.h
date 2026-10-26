@@ -77,7 +77,6 @@
 
 #include "World/WorldManager.h"
 #include "Assets/AssetManager.h"
-#include "World/ScriptingSystem.h"
 #include "World/Systems/RenderSceneProxy.h"
 
 #include "Renderer/Renderers/UIRenderer.h"

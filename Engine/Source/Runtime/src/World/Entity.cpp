@@ -5,28 +5,12 @@ using namespace Gleam;
 
 Entity& Entity::GetParentEntity() const
 {
-	if constexpr (Reflection::Traits::IsReflected<Entity>::value)
-	{
-		const auto& classDesc = Reflection::GetClass<Entity>();
-		return mRegistry->storage<Entity>(classDesc.TypeHash()).get(mParent);
-	}
-	else
-	{
-		return mRegistry->get<Entity>(mParent);
-	}
+	return FindComponentStorage(*mRegistry, ComponentTypeHash<Entity>())->Get<Entity>(mParent);
 }
 
 Entity& Entity::GetChildEntity(EntityHandle child) const
 {
-	if constexpr (Reflection::Traits::IsReflected<Entity>::value)
-	{
-		const auto& classDesc = Reflection::GetClass<Entity>();
-		return mRegistry->storage<Entity>(classDesc.TypeHash()).get(child);
-	}
-	else
-	{
-		return mRegistry->get<Entity>(child);
-	}
+	return FindComponentStorage(*mRegistry, ComponentTypeHash<Entity>())->Get<Entity>(child);
 }
 
 void Entity::UpdateTransformHierarchy()
