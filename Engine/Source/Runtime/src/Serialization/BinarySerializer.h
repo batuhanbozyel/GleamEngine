@@ -66,9 +66,9 @@ private:
 											  const Reflection::ClassDescription& classDesc,
 											  void* obj)>;
 	
-	static inline HashMap<TStringView, SerializerFn> mCustomSerializers;
+	static inline HashMap<uint32_t, SerializerFn> mCustomSerializers;
 
-	static inline HashMap<TStringView, DeserializerFn> mCustomDeserializers;
+	static inline HashMap<uint32_t, DeserializerFn> mCustomDeserializers;
 
 };
 
@@ -77,15 +77,15 @@ private:
 #define REGISTER_POD_TYPE_BINARY_SERIALIZER(T)\
 if constexpr (Reflection::Traits::IsReflected<T>())\
 {\
-	const auto qualifiedName = QualifiedNameWithoutTemplateDeclaration(Reflection::GetClass<T>().ResolveQualifiedName());\
-	mCustomSerializers[qualifiedName] = [](const void* obj,\
+	const auto key = CustomSerializerKey(Reflection::GetClass<T>());\
+	mCustomSerializers[key] = [](const void* obj,\
 		const Reflection::ClassDescription& classDesc,\
 		FileStream& stream)\
 	{\
 		const auto& pod = Reflection::Get<T>(obj);\
 		stream.write(reinterpret_cast<const char*>(&pod), sizeof(T));\
 	};\
-	mCustomDeserializers[qualifiedName] = [](FileStream& stream,\
+	mCustomDeserializers[key] = [](FileStream& stream,\
 		const Reflection::ClassDescription& classDesc,\
 		void* obj)\
 	{\

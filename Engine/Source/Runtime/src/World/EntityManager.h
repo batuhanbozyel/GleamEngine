@@ -133,8 +133,7 @@ public:
 		}
 		if constexpr (Reflection::Traits::IsReflected<T>::value)
 		{
-			const auto& classDesc = Reflection::GetClass<T>();
-			return mRegistry.storage<T>(classDesc.TypeHash()).emplace(entity, std::forward<Args>(args)...);
+			return mRegistry.storage<T>(Reflection::TypeHash<T>()).emplace(entity, std::forward<Args>(args)...);
 		}
 		else
 		{
@@ -158,8 +157,7 @@ public:
 		}
 		if constexpr (Reflection::Traits::IsReflected<T>::value)
 		{
-			const auto& classDesc = Reflection::GetClass<T>();
-			return mRegistry.storage<T>(classDesc.TypeHash()).emplace_or_replace(entity, std::forward<Args>(args)...);
+			return mRegistry.storage<T>(Reflection::TypeHash<T>()).emplace_or_replace(entity, std::forward<Args>(args)...);
 		}
 		else
 		{
@@ -173,8 +171,7 @@ public:
 		GLEAM_ASSERT(HasComponent<T>(entity), "Entity does not have the component!");
 		if constexpr (Reflection::Traits::IsReflected<T>::value)
 		{
-			const auto& classDesc = Reflection::GetClass<T>();
-			mRegistry.storage<T>(classDesc.TypeHash()).remove(entity);
+			mRegistry.storage<T>(Reflection::TypeHash<T>()).remove(entity);
 		}
 		else
 		{
@@ -187,8 +184,7 @@ public:
 	{
 		if constexpr (Reflection::Traits::IsReflected<T>::value)
 		{
-			const auto& classDesc = Reflection::GetClass<T>();
-			if (const auto storage = mRegistry.storage<T>(classDesc.TypeHash()))
+			if (const auto storage = mRegistry.storage<T>(Reflection::TypeHash<T>()))
 			{
 				return storage->contains(entity);
 			}
@@ -210,8 +206,7 @@ public:
 		}
 		if constexpr (Reflection::Traits::IsReflected<T>::value)
 		{
-			const auto& classDesc = Reflection::GetClass<T>();
-			return mRegistry.storage<T>(classDesc.TypeHash()).get(entity);
+			return mRegistry.storage<T>(Reflection::TypeHash<T>()).get(entity);
 		}
 		else
 		{
@@ -225,8 +220,7 @@ public:
         GLEAM_ASSERT(HasComponent<T>(entity), "Entity does not have the component!");
 		if constexpr (Reflection::Traits::IsReflected<T>::value)
 		{
-			const auto& classDesc = Reflection::GetClass<T>();
-			return mRegistry.storage<T>(classDesc.TypeHash())->get(entity);
+			return mRegistry.storage<T>(Reflection::TypeHash<T>())->get(entity);
 		}
 		else
 		{
@@ -358,8 +352,7 @@ private:
 	{
 		if constexpr (Reflection::Traits::IsReflected<T>::value)
 		{
-			const auto& classDesc = Reflection::GetClass<T>();
-			return mRegistry.storage<T>(classDesc.TypeHash());
+			return mRegistry.storage<T>(Reflection::TypeHash<T>());
 		}
 		else
 		{
@@ -372,8 +365,7 @@ private:
 	{
 		if constexpr (Reflection::Traits::IsReflected<T>::value)
 		{
-			const auto& classDesc = Reflection::GetClass<T>();
-			return mRegistry.storage<T>(classDesc.TypeHash());
+			return mRegistry.storage<T>(Reflection::TypeHash<T>());
 		}
 		else
 		{

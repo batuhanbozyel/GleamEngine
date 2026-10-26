@@ -9,14 +9,11 @@
 
 using namespace Gleam;
 
-static TStringView QualifiedNameWithoutTemplateDeclaration(const TStringView name)
+static uint32_t CustomSerializerKey(const Reflection::ClassDescription& classDesc)
 {
-	auto pos = name.find_first_of('<');
-	if (pos == TStringView::npos)
-	{
-		return name;
-	}
-	return name.substr(0, pos);
+	const auto qualifiedName = classDesc.ResolveQualifiedName();
+	const auto name = qualifiedName.substr(0, qualifiedName.find_first_of('<'));
+	return Reflection::Utils::HashString(name.data(), name.size());
 }
 
 static Reflection::MetaType ParseMetaType(const TStringView kind)
@@ -285,7 +282,7 @@ void JSONSerializer::Initialize()
 	// Custom serializers
 	if constexpr (Reflection::Traits::IsReflected<Guid>())
 	{
-		mCustomObjectSerializers[Reflection::GetClass<Guid>().ResolveQualifiedName()] = [](const void* obj,
+		mCustomObjectSerializers[CustomSerializerKey(Reflection::GetClass<Guid>())] = [](const void* obj,
 			const Reflection::ClassDescription& classDesc,
 			rapidjson::Node& node)
 		{
@@ -294,7 +291,7 @@ void JSONSerializer::Initialize()
 			node.AddMember("Value", guid.ToString());
 		};
 
-		mCustomArraySerializers[Reflection::GetClass<Guid>().ResolveQualifiedName()] = [](const void* obj,
+		mCustomArraySerializers[CustomSerializerKey(Reflection::GetClass<Guid>())] = [](const void* obj,
 			const Reflection::ClassDescription& classDesc,
 			rapidjson::Node& node)
 		{
@@ -305,7 +302,7 @@ void JSONSerializer::Initialize()
 
 	if constexpr (Reflection::Traits::IsReflected<TString>())
 	{
-		mCustomObjectSerializers[Reflection::GetClass<TString>().ResolveQualifiedName()] = [](const void* obj,
+		mCustomObjectSerializers[CustomSerializerKey(Reflection::GetClass<TString>())] = [](const void* obj,
 			const Reflection::ClassDescription& classDesc,
 			rapidjson::Node& node)
 		{
@@ -314,7 +311,7 @@ void JSONSerializer::Initialize()
 			node.AddMember("Value", rapidjson::StringRef(str.c_str(), str.length()));
 		};
 
-		mCustomArraySerializers[Reflection::GetClass<TString>().ResolveQualifiedName()] = [](const void* obj,
+		mCustomArraySerializers[CustomSerializerKey(Reflection::GetClass<TString>())] = [](const void* obj,
 			const Reflection::ClassDescription& classDesc,
 			rapidjson::Node& node)
 		{
@@ -325,7 +322,7 @@ void JSONSerializer::Initialize()
 
 	if constexpr (Reflection::Traits::IsReflected<Path>())
 	{
-		mCustomObjectSerializers[Reflection::GetClass<Path>().ResolveQualifiedName()] = [](const void* obj,
+		mCustomObjectSerializers[CustomSerializerKey(Reflection::GetClass<Path>())] = [](const void* obj,
 			const Reflection::ClassDescription& classDesc,
 			rapidjson::Node& node)
 		{
@@ -335,7 +332,7 @@ void JSONSerializer::Initialize()
 			node.AddMember("Value", rapidjson::Value(pathStr.c_str(), static_cast<rapidjson::SizeType>(pathStr.length()), node.allocator));
 		};
 
-		mCustomArraySerializers[Reflection::GetClass<Path>().ResolveQualifiedName()] = [](const void* obj,
+		mCustomArraySerializers[CustomSerializerKey(Reflection::GetClass<Path>())] = [](const void* obj,
 			const Reflection::ClassDescription& classDesc,
 			rapidjson::Node& node)
 		{
@@ -347,7 +344,7 @@ void JSONSerializer::Initialize()
 
 	if constexpr (Reflection::Traits::IsReflected<BinaryBuffer>())
 	{
-		mCustomObjectSerializers[Reflection::GetClass<BinaryBuffer>().ResolveQualifiedName()] = [](const void* obj,
+		mCustomObjectSerializers[CustomSerializerKey(Reflection::GetClass<BinaryBuffer>())] = [](const void* obj,
 			const Reflection::ClassDescription& classDesc,
 			rapidjson::Node& node)
 		{
@@ -358,7 +355,7 @@ void JSONSerializer::Initialize()
 			SerializeArrayObject(buffer.data, arrDesc, node);
 		};
 
-		mCustomArraySerializers[Reflection::GetClass<BinaryBuffer>().ResolveQualifiedName()] = [](const void* obj,
+		mCustomArraySerializers[CustomSerializerKey(Reflection::GetClass<BinaryBuffer>())] = [](const void* obj,
 			const Reflection::ClassDescription& classDesc,
 			rapidjson::Node& node)
 		{
@@ -375,8 +372,8 @@ void JSONSerializer::Initialize()
 
 	if constexpr (Reflection::Traits::IsReflected<eastl::vector<uint8_t>>())
 	{
-		const auto qualifiedName = QualifiedNameWithoutTemplateDeclaration(Reflection::GetClass<eastl::vector<uint8_t>>().ResolveQualifiedName());
-		mCustomObjectSerializers[qualifiedName] = [](const void* obj,
+		const auto key = CustomSerializerKey(Reflection::GetClass<eastl::vector<uint8_t>>());
+		mCustomObjectSerializers[key] = [](const void* obj,
 			const Reflection::ClassDescription& classDesc,
 			rapidjson::Node& node)
 		{
@@ -389,7 +386,7 @@ void JSONSerializer::Initialize()
             SerializeArrayObject(arr.data(), arrDesc, node);
 		};
 
-		mCustomArraySerializers[qualifiedName] = [](const void* obj,
+		mCustomArraySerializers[key] = [](const void* obj,
 			const Reflection::ClassDescription& classDesc,
 			rapidjson::Node& node)
 		{
@@ -408,8 +405,8 @@ void JSONSerializer::Initialize()
 
 	if constexpr (Reflection::Traits::IsReflected<EnumFlag<EnumFlagPlaceholder>>())
 	{
-		const auto qualifiedName = QualifiedNameWithoutTemplateDeclaration(Reflection::GetClass<EnumFlag<EnumFlagPlaceholder>>().ResolveQualifiedName());
-		mCustomObjectSerializers[qualifiedName] = [](const void* obj,
+		const auto key = CustomSerializerKey(Reflection::GetClass<EnumFlag<EnumFlagPlaceholder>>());
+		mCustomObjectSerializers[key] = [](const void* obj,
 			const Reflection::ClassDescription& classDesc,
 			rapidjson::Node& node)
 		{
@@ -421,7 +418,7 @@ void JSONSerializer::Initialize()
 			node.AddMember("Value", flags);
 		};
 
-		mCustomArraySerializers[qualifiedName] = [](const void* obj,
+		mCustomArraySerializers[key] = [](const void* obj,
 			const Reflection::ClassDescription& classDesc,
 			rapidjson::Node& node)
 		{
@@ -435,7 +432,7 @@ void JSONSerializer::Initialize()
 	// Custom deserializers
 	if constexpr (Reflection::Traits::IsReflected<Guid>())
 	{
-		mCustomObjectDeserializers[Reflection::GetClass<Guid>().ResolveQualifiedName()] = [](const rapidjson::ConstNode& node,
+		mCustomObjectDeserializers[CustomSerializerKey(Reflection::GetClass<Guid>())] = [](const rapidjson::ConstNode& node,
 			const Reflection::ClassDescription& classDesc,
 			void* obj)
 		{
@@ -445,7 +442,7 @@ void JSONSerializer::Initialize()
 			}
 		};
 
-		mCustomArrayDeserializers[Reflection::GetClass<Guid>().ResolveQualifiedName()] = [](const rapidjson::ConstNode& node,
+		mCustomArrayDeserializers[CustomSerializerKey(Reflection::GetClass<Guid>())] = [](const rapidjson::ConstNode& node,
 			const Reflection::ClassDescription& classDesc,
 			void* obj)
 		{
@@ -455,7 +452,7 @@ void JSONSerializer::Initialize()
 
 	if constexpr (Reflection::Traits::IsReflected<TString>())
 	{
-		mCustomObjectDeserializers[Reflection::GetClass<TString>().ResolveQualifiedName()] = [](const rapidjson::ConstNode& node,
+		mCustomObjectDeserializers[CustomSerializerKey(Reflection::GetClass<TString>())] = [](const rapidjson::ConstNode& node,
 			const Reflection::ClassDescription& classDesc,
 			void* obj)
 		{
@@ -465,7 +462,7 @@ void JSONSerializer::Initialize()
 			}
 		};
 
-		mCustomArrayDeserializers[Reflection::GetClass<TString>().ResolveQualifiedName()] = [](const rapidjson::ConstNode& node,
+		mCustomArrayDeserializers[CustomSerializerKey(Reflection::GetClass<TString>())] = [](const rapidjson::ConstNode& node,
 			const Reflection::ClassDescription& classDesc,
 			void* obj)
 		{
@@ -475,7 +472,7 @@ void JSONSerializer::Initialize()
 
 	if constexpr (Reflection::Traits::IsReflected<Path>())
 	{
-		mCustomObjectDeserializers[Reflection::GetClass<Path>().ResolveQualifiedName()] = [](const rapidjson::ConstNode& node,
+		mCustomObjectDeserializers[CustomSerializerKey(Reflection::GetClass<Path>())] = [](const rapidjson::ConstNode& node,
 			const Reflection::ClassDescription& classDesc,
 			void* obj)
 		{
@@ -485,7 +482,7 @@ void JSONSerializer::Initialize()
 			}
 		};
 
-		mCustomArrayDeserializers[Reflection::GetClass<Path>().ResolveQualifiedName()] = [](const rapidjson::ConstNode& node,
+		mCustomArrayDeserializers[CustomSerializerKey(Reflection::GetClass<Path>())] = [](const rapidjson::ConstNode& node,
 			const Reflection::ClassDescription& classDesc,
 			void* obj)
 		{
@@ -495,7 +492,7 @@ void JSONSerializer::Initialize()
 
 	if constexpr (Reflection::Traits::IsReflected<BinaryBuffer>())
 	{
-		mCustomObjectDeserializers[Reflection::GetClass<BinaryBuffer>().ResolveQualifiedName()] = [](const rapidjson::ConstNode& node,
+		mCustomObjectDeserializers[CustomSerializerKey(Reflection::GetClass<BinaryBuffer>())] = [](const rapidjson::ConstNode& node,
 			const Reflection::ClassDescription& classDesc,
 			void* obj)
 		{
@@ -514,7 +511,7 @@ void JSONSerializer::Initialize()
 			}
 		};
 
-		mCustomArrayDeserializers[Reflection::GetClass<BinaryBuffer>().ResolveQualifiedName()] = [](const rapidjson::ConstNode& node,
+		mCustomArrayDeserializers[CustomSerializerKey(Reflection::GetClass<BinaryBuffer>())] = [](const rapidjson::ConstNode& node,
 			const Reflection::ClassDescription& classDesc,
 			void* obj)
 		{
@@ -530,8 +527,8 @@ void JSONSerializer::Initialize()
 
 	if constexpr (Reflection::Traits::IsReflected<eastl::vector<uint8_t>>())
 	{
-		const auto qualifiedName = QualifiedNameWithoutTemplateDeclaration(Reflection::GetClass<eastl::vector<uint8_t>>().ResolveQualifiedName());
-		mCustomObjectDeserializers[qualifiedName] = [](const rapidjson::ConstNode& node,
+		const auto key = CustomSerializerKey(Reflection::GetClass<eastl::vector<uint8_t>>());
+		mCustomObjectDeserializers[key] = [](const rapidjson::ConstNode& node,
 			const Reflection::ClassDescription& classDesc,
 			void* obj)
 		{
@@ -584,7 +581,7 @@ void JSONSerializer::Initialize()
 			}
 		};
         
-        mCustomArrayDeserializers[qualifiedName] = [](const rapidjson::ConstNode& node,
+        mCustomArrayDeserializers[key] = [](const rapidjson::ConstNode& node,
             const Reflection::ClassDescription& classDesc,
             void* obj)
         {
@@ -634,8 +631,8 @@ void JSONSerializer::Initialize()
 
 	if constexpr (Reflection::Traits::IsReflected<EnumFlag<EnumFlagPlaceholder>>())
 	{
-		const auto qualifiedName = QualifiedNameWithoutTemplateDeclaration(Reflection::GetClass<EnumFlag<EnumFlagPlaceholder>>().ResolveQualifiedName());
-		mCustomObjectDeserializers[qualifiedName] = [](const rapidjson::ConstNode& node,
+		const auto key = CustomSerializerKey(Reflection::GetClass<EnumFlag<EnumFlagPlaceholder>>());
+		mCustomObjectDeserializers[key] = [](const rapidjson::ConstNode& node,
 			const Reflection::ClassDescription& classDesc,
 			void* obj)
 		{
@@ -645,7 +642,7 @@ void JSONSerializer::Initialize()
 			}
 		};
 
-		mCustomArrayDeserializers[qualifiedName] = [](const rapidjson::ConstNode& node,
+		mCustomArrayDeserializers[key] = [](const rapidjson::ConstNode& node,
 			const Reflection::ClassDescription& classDesc,
 			void* obj)
 		{
@@ -746,8 +743,7 @@ bool JSONSerializer::TryCustomObjectSerializer(const void* obj,
 											   const Reflection::ClassDescription& classDesc,
 											   rapidjson::Node& node)
 {
-	const auto qualifiedName = QualifiedNameWithoutTemplateDeclaration(classDesc.ResolveQualifiedName());
-	auto it = mCustomObjectSerializers.find(qualifiedName);
+	auto it = mCustomObjectSerializers.find(CustomSerializerKey(classDesc));
 	if (it != mCustomObjectSerializers.end())
 	{
 		it->second(obj, classDesc, node);
@@ -760,8 +756,7 @@ bool JSONSerializer::TryCustomArraySerializer(const void* obj,
 											  const Reflection::ClassDescription& classDesc,
 											  rapidjson::Node& node)
 {
-	const auto qualifiedName = QualifiedNameWithoutTemplateDeclaration(classDesc.ResolveQualifiedName());
-	auto it = mCustomArraySerializers.find(qualifiedName);
+	auto it = mCustomArraySerializers.find(CustomSerializerKey(classDesc));
 	if (it != mCustomArraySerializers.end())
 	{
 		it->second(obj, classDesc, node);
@@ -774,8 +769,7 @@ bool JSONSerializer::TryCustomObjectDeserializer(const rapidjson::ConstNode& nod
 												 const Reflection::ClassDescription& classDesc,
 												 void* obj)
 {
-	const auto qualifiedName = QualifiedNameWithoutTemplateDeclaration(classDesc.ResolveQualifiedName());
-	auto it = mCustomObjectDeserializers.find(qualifiedName);
+	auto it = mCustomObjectDeserializers.find(CustomSerializerKey(classDesc));
 	if (it != mCustomObjectDeserializers.end())
 	{
 		it->second(node, classDesc, obj);
@@ -788,8 +782,7 @@ bool JSONSerializer::TryCustomArrayDeserializer(const rapidjson::ConstNode& node
                                                 const Reflection::ClassDescription& classDesc,
                                                 void* obj)
 {
-	const auto qualifiedName = QualifiedNameWithoutTemplateDeclaration(classDesc.ResolveQualifiedName());
-    auto it = mCustomArrayDeserializers.find(qualifiedName);
+	auto it = mCustomArrayDeserializers.find(CustomSerializerKey(classDesc));
     if (it != mCustomArrayDeserializers.end())
     {
         it->second(node, classDesc, obj);

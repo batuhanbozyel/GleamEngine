@@ -10,14 +10,11 @@ using namespace Gleam;
 static constexpr uint32_t BinaryFormatMagic = 0x4E494247u;
 static constexpr uint32_t BinaryFormatVersion = 1;
 
-static TStringView QualifiedNameWithoutTemplateDeclaration(const TStringView name)
+static uint32_t CustomSerializerKey(const Reflection::ClassDescription& classDesc)
 {
-	auto pos = name.find_first_of('<');
-	if (pos == TStringView::npos)
-	{
-		return name;
-	}
-	return name.substr(0, pos);
+	const auto qualifiedName = classDesc.ResolveQualifiedName();
+	const auto name = qualifiedName.substr(0, qualifiedName.find_first_of('<'));
+	return Reflection::Utils::HashString(name.data(), name.size());
 }
 
 static size_t ResolveElementSize(Reflection::MetaType type, uint32_t typeHash)
@@ -282,7 +279,7 @@ void BinarySerializer::Initialize()
 	// Custom serializers
 	if constexpr (Reflection::Traits::IsReflected<TString>())
 	{
-		mCustomSerializers[Reflection::GetClass<TString>().ResolveQualifiedName()] = [](const void* obj,
+		mCustomSerializers[CustomSerializerKey(Reflection::GetClass<TString>())] = [](const void* obj,
 			const Reflection::ClassDescription& classDesc,
 			FileStream& stream)
 		{
@@ -296,7 +293,7 @@ void BinarySerializer::Initialize()
 
 	if constexpr (Reflection::Traits::IsReflected<Path>())
 	{
-		mCustomSerializers[Reflection::GetClass<Path>().ResolveQualifiedName()] = [](const void* obj,
+		mCustomSerializers[CustomSerializerKey(Reflection::GetClass<Path>())] = [](const void* obj,
 			const Reflection::ClassDescription& classDesc,
 			FileStream& stream)
 		{
@@ -311,7 +308,7 @@ void BinarySerializer::Initialize()
 
 	if constexpr (Reflection::Traits::IsReflected<BinaryBuffer>())
 	{
-		mCustomSerializers[Reflection::GetClass<BinaryBuffer>().ResolveQualifiedName()] = [](const void* obj,
+		mCustomSerializers[CustomSerializerKey(Reflection::GetClass<BinaryBuffer>())] = [](const void* obj,
 			const Reflection::ClassDescription& classDesc,
 			FileStream& stream)
 		{
@@ -325,8 +322,8 @@ void BinarySerializer::Initialize()
 
 	if constexpr (Reflection::Traits::IsReflected<eastl::vector<uint8_t>>())
 	{
-		const auto qualifiedName = QualifiedNameWithoutTemplateDeclaration(Reflection::GetClass<eastl::vector<uint8_t>>().ResolveQualifiedName());
-		mCustomSerializers[qualifiedName] = [](const void* obj,
+		const auto key = CustomSerializerKey(Reflection::GetClass<eastl::vector<uint8_t>>());
+		mCustomSerializers[key] = [](const void* obj,
 											   const Reflection::ClassDescription& classDesc,
 											   FileStream& stream)
 		{
@@ -342,8 +339,8 @@ void BinarySerializer::Initialize()
 
 	if constexpr (Reflection::Traits::IsReflected<EnumFlag<EnumFlagPlaceholder>>())
 	{
-		const auto qualifiedName = QualifiedNameWithoutTemplateDeclaration(Reflection::GetClass<EnumFlag<EnumFlagPlaceholder>>().ResolveQualifiedName());
-		mCustomSerializers[qualifiedName] = [](const void* obj,
+		const auto key = CustomSerializerKey(Reflection::GetClass<EnumFlag<EnumFlagPlaceholder>>());
+		mCustomSerializers[key] = [](const void* obj,
 											   const Reflection::ClassDescription& classDesc,
 											   FileStream& stream)
 		{
@@ -367,7 +364,7 @@ void BinarySerializer::Initialize()
 	// Custom deserializers
 	if constexpr (Reflection::Traits::IsReflected<TString>())
 	{
-		mCustomDeserializers[Reflection::GetClass<TString>().ResolveQualifiedName()] = [](FileStream& stream,
+		mCustomDeserializers[CustomSerializerKey(Reflection::GetClass<TString>())] = [](FileStream& stream,
 			const Reflection::ClassDescription& classDesc,
 			void* obj)
 		{
@@ -382,7 +379,7 @@ void BinarySerializer::Initialize()
 
 	if constexpr (Reflection::Traits::IsReflected<Path>())
 	{
-		mCustomDeserializers[Reflection::GetClass<Path>().ResolveQualifiedName()] = [](FileStream& stream,
+		mCustomDeserializers[CustomSerializerKey(Reflection::GetClass<Path>())] = [](FileStream& stream,
 			const Reflection::ClassDescription& classDesc,
 			void* obj)
 		{
@@ -398,7 +395,7 @@ void BinarySerializer::Initialize()
 
 	if constexpr (Reflection::Traits::IsReflected<BinaryBuffer>())
 	{
-		mCustomDeserializers[Reflection::GetClass<BinaryBuffer>().ResolveQualifiedName()] = [](FileStream& stream,
+		mCustomDeserializers[CustomSerializerKey(Reflection::GetClass<BinaryBuffer>())] = [](FileStream& stream,
 			const Reflection::ClassDescription& classDesc,
 			void* obj)
 		{
@@ -413,8 +410,8 @@ void BinarySerializer::Initialize()
 
 	if constexpr (Reflection::Traits::IsReflected<eastl::vector<uint8_t>>())
 	{
-		const auto qualifiedName = QualifiedNameWithoutTemplateDeclaration(Reflection::GetClass<eastl::vector<uint8_t>>().ResolveQualifiedName());
-		mCustomDeserializers[qualifiedName] = [](FileStream& stream,
+		const auto key = CustomSerializerKey(Reflection::GetClass<eastl::vector<uint8_t>>());
+		mCustomDeserializers[key] = [](FileStream& stream,
 												 const Reflection::ClassDescription& classDesc,
 												 void* obj)
 		{
@@ -445,8 +442,8 @@ void BinarySerializer::Initialize()
 
 	if constexpr (Reflection::Traits::IsReflected<EnumFlag<EnumFlagPlaceholder>>())
 	{
-		const auto qualifiedName = QualifiedNameWithoutTemplateDeclaration(Reflection::GetClass<EnumFlag<EnumFlagPlaceholder>>().ResolveQualifiedName());
-		mCustomDeserializers[qualifiedName] = [](FileStream& stream,
+		const auto key = CustomSerializerKey(Reflection::GetClass<EnumFlag<EnumFlagPlaceholder>>());
+		mCustomDeserializers[key] = [](FileStream& stream,
 												 const Reflection::ClassDescription& classDesc,
 												 void* obj)
 		{
@@ -537,8 +534,7 @@ bool BinarySerializer::TryCustomSerializer(const void* obj,
 										   const Reflection::ClassDescription& classDesc,
 										   FileStream& stream)
 {
-	const auto qualifiedName = QualifiedNameWithoutTemplateDeclaration(classDesc.ResolveQualifiedName());
-	auto it = mCustomSerializers.find(qualifiedName);
+	auto it = mCustomSerializers.find(CustomSerializerKey(classDesc));
 	if (it != mCustomSerializers.end())
 	{
 		it->second(obj, classDesc, stream);
@@ -551,8 +547,7 @@ bool BinarySerializer::TryCustomDeserializer(FileStream& stream,
 											 const Reflection::ClassDescription& classDesc,
 											 void* obj)
 {
-	const auto qualifiedName = QualifiedNameWithoutTemplateDeclaration(classDesc.ResolveQualifiedName());
-	auto it = mCustomDeserializers.find(qualifiedName);
+	auto it = mCustomDeserializers.find(CustomSerializerKey(classDesc));
 	if (it != mCustomDeserializers.end())
 	{
 		it->second(stream, classDesc, obj);

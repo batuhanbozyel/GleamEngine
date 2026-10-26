@@ -97,8 +97,7 @@ public:
 		}
 		if constexpr (Reflection::Traits::IsReflected<T>::value)
 		{
-			const auto& classDesc = Reflection::GetClass<T>();
-			return mRegistry->storage<T>(classDesc.TypeHash()).emplace(mHandle, std::forward<Args>(args)...);
+			return mRegistry->storage<T>(Reflection::TypeHash<T>()).emplace(mHandle, std::forward<Args>(args)...);
 		}
 		else
 		{
@@ -123,8 +122,7 @@ public:
 		}
 		if constexpr (Reflection::Traits::IsReflected<T>::value)
 		{
-			const auto& classDesc = Reflection::GetClass<T>();
-			return mRegistry->storage<T>(classDesc.TypeHash()).emplace_or_replace(mHandle, std::forward<Args>(args)...);
+			return mRegistry->storage<T>(Reflection::TypeHash<T>()).emplace_or_replace(mHandle, std::forward<Args>(args)...);
 		}
 		else
 		{
@@ -139,8 +137,7 @@ public:
 		GLEAM_ASSERT(HasComponent<T>(), "Entity does not have the component!");
 		if constexpr (Reflection::Traits::IsReflected<T>::value)
 		{
-			const auto& classDesc = Reflection::GetClass<T>();
-			mRegistry->storage<T>(classDesc.TypeHash()).remove(mHandle);
+			mRegistry->storage<T>(Reflection::TypeHash<T>()).remove(mHandle);
 		}
 		else
 		{
@@ -154,8 +151,7 @@ public:
         GLEAM_ASSERT(IsValid(), "Entity is invalid!");
 		if constexpr (Reflection::Traits::IsReflected<T>::value)
 		{
-			const auto& classDesc = Reflection::GetClass<T>();
-			if (const auto storage = ((const entt::registry*)mRegistry)->storage<T>(classDesc.TypeHash()))
+			if (const auto storage = ((const entt::registry*)mRegistry)->storage<T>(Reflection::TypeHash<T>()))
 			{
 				return storage->contains(mHandle);
 			}
@@ -178,8 +174,7 @@ public:
 		}
 		if constexpr (Reflection::Traits::IsReflected<T>::value)
 		{
-			const auto& classDesc = Reflection::GetClass<T>();
-			return mRegistry->storage<T>(classDesc.TypeHash()).get(mHandle);
+			return mRegistry->storage<T>(Reflection::TypeHash<T>()).get(mHandle);
 		}
 		else
 		{
@@ -194,8 +189,7 @@ public:
         GLEAM_ASSERT(HasComponent<T>(), "Entity does not have the component!");
 		if constexpr (Reflection::Traits::IsReflected<T>::value)
 		{
-			const auto& classDesc = Reflection::GetClass<T>();
-			return mRegistry->storage<T>(classDesc.TypeHash()).get(mHandle);
+			return mRegistry->storage<T>(Reflection::TypeHash<T>()).get(mHandle);
 		}
 		else
 		{

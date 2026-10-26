@@ -240,7 +240,7 @@ private:
 	{
 		if constexpr (Reflection::Traits::IsReflected<T>::value)
 		{
-			return Reflection::GetClass<T>().TypeHash();
+			return Reflection::TypeHash<T>();
 		}
 		else
 		{

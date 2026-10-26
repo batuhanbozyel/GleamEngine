@@ -113,13 +113,13 @@ private:
 												   const Reflection::ClassDescription& classDesc,
 												   void* obj)>;
 
-    static inline HashMap<TStringView, ObjectSerializerFn> mCustomObjectSerializers;
+    static inline HashMap<uint32_t, ObjectSerializerFn> mCustomObjectSerializers;
     
-    static inline HashMap<TStringView, ArraySerializerFn> mCustomArraySerializers;
+    static inline HashMap<uint32_t, ArraySerializerFn> mCustomArraySerializers;
 
-	static inline HashMap<TStringView, ObjectDeserializerFn> mCustomObjectDeserializers;
+	static inline HashMap<uint32_t, ObjectDeserializerFn> mCustomObjectDeserializers;
     
-    static inline HashMap<TStringView, ArrayDeserializerFn> mCustomArrayDeserializers;
+    static inline HashMap<uint32_t, ArrayDeserializerFn> mCustomArrayDeserializers;
     
 };
 
@@ -128,8 +128,8 @@ private:
 #define REGISTER_VECTOR_TYPE_JSON_SERIALIZER(Type, ...) \
 if constexpr (Reflection::Traits::IsReflected<Type>()) \
 { \
-    const auto qualifiedName = QualifiedNameWithoutTemplateDeclaration(Reflection::GetClass<Type>().ResolveQualifiedName()); \
-    mCustomObjectSerializers[qualifiedName] = [](const void* obj, \
+    const auto key = CustomSerializerKey(Reflection::GetClass<Type>()); \
+    mCustomObjectSerializers[key] = [](const void* obj, \
         const Reflection::ClassDescription& classDesc, \
         rapidjson::Node& node) \
     { \
@@ -139,7 +139,7 @@ if constexpr (Reflection::Traits::IsReflected<Type>()) \
         SerializeClassHeader(classDesc, node); \
         node.AddMember("Value", value); \
     }; \
-    mCustomArraySerializers[qualifiedName] = [](const void* obj, \
+    mCustomArraySerializers[key] = [](const void* obj, \
         const Reflection::ClassDescription& classDesc, \
         rapidjson::Node& node) \
     { \
@@ -148,7 +148,7 @@ if constexpr (Reflection::Traits::IsReflected<Type>()) \
         GLEAM_FOREACH(SERIALIZE_MEMBER, __VA_ARGS__) \
         node.PushBack(rapidjson::Value(value, node.allocator)); \
     }; \
-    mCustomObjectDeserializers[qualifiedName] = [](const rapidjson::ConstNode& node, \
+    mCustomObjectDeserializers[key] = [](const rapidjson::ConstNode& node, \
         const Reflection::ClassDescription& classDesc, \
         void* obj) \
     { \
@@ -159,7 +159,7 @@ if constexpr (Reflection::Traits::IsReflected<Type>()) \
             GLEAM_FOREACH(DESERIALIZE_MEMBER, __VA_ARGS__) \
         } \
     }; \
-    mCustomArrayDeserializers[qualifiedName] = [](const rapidjson::ConstNode& node, \
+    mCustomArrayDeserializers[key] = [](const rapidjson::ConstNode& node, \
         const Reflection::ClassDescription& classDesc, \
         void* obj) \
     { \
@@ -183,8 +183,8 @@ if constexpr (Reflection::Traits::IsReflected<Type>()) \
 #define REGISTER_MATRIX_TYPE_JSON_SERIALIZER(Type, Size) \
 if constexpr (Reflection::Traits::IsReflected<Type>()) \
 { \
-    const auto qualifiedName = Reflection::GetClass<Type>().ResolveQualifiedName(); \
-    mCustomObjectSerializers[qualifiedName] = [](const void* obj, \
+    const auto key = CustomSerializerKey(Reflection::GetClass<Type>()); \
+    mCustomObjectSerializers[key] = [](const void* obj, \
         const Reflection::ClassDescription& classDesc, \
         rapidjson::Node& node) \
     { \
@@ -197,7 +197,7 @@ if constexpr (Reflection::Traits::IsReflected<Type>()) \
         SerializeClassHeader(classDesc, node); \
         node.AddMember("Value", value); \
     }; \
-    mCustomArraySerializers[qualifiedName] = [](const void* obj, \
+    mCustomArraySerializers[key] = [](const void* obj, \
         const Reflection::ClassDescription& classDesc, \
         rapidjson::Node& node) \
     { \
@@ -209,7 +209,7 @@ if constexpr (Reflection::Traits::IsReflected<Type>()) \
         } \
         node.PushBack(rapidjson::Value(value, node.allocator)); \
     }; \
-    mCustomObjectDeserializers[qualifiedName] = [](const rapidjson::ConstNode& node, \
+    mCustomObjectDeserializers[key] = [](const rapidjson::ConstNode& node, \
         const Reflection::ClassDescription& classDesc, \
         void* obj) \
     { \
@@ -226,7 +226,7 @@ if constexpr (Reflection::Traits::IsReflected<Type>()) \
             } \
         } \
     }; \
-    mCustomArrayDeserializers[qualifiedName] = [](const rapidjson::ConstNode& node, \
+    mCustomArrayDeserializers[key] = [](const rapidjson::ConstNode& node, \
         const Reflection::ClassDescription& classDesc, \
         void* obj) \
     { \

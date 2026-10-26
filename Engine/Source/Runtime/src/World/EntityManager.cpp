@@ -196,7 +196,7 @@ void EntityManager::CopyFrom(const EntityManager& source)
 	}
 
 	const auto entityStorageId = entt::type_hash<EntityHandle>::value();
-	const auto entityClassId = Reflection::GetClass<Entity>().TypeHash();
+	const auto entityClassId = Reflection::TypeHash<Entity>();
 	for (const auto& [id, storage] : source.mRegistry.storage())
 	{
 		if (id == entityStorageId or id == entityClassId)
