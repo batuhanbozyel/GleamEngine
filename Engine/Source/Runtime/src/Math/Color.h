@@ -137,6 +137,17 @@ GSTRUCT(Color, "9C2ADB39-C783-4826-9FD4-DE1062A08094", Serializable)
 
 };
 
+inline constexpr Color Color::clear(0.0f, 0.0f, 0.0f, 0.0f);
+inline constexpr Color Color::black(0.0f, 0.0f, 0.0f, 1.0f);
+inline constexpr Color Color::white(1.0f, 1.0f, 1.0f, 1.0f);
+inline constexpr Color Color::gray(0.5f, 0.5f, 0.5f, 1.0f);
+inline constexpr Color Color::red(1.0f, 0.0f, 0.0f, 1.0f);
+inline constexpr Color Color::green(0.0f, 1.0f, 0.0f, 1.0f);
+inline constexpr Color Color::blue(0.0f, 0.0f, 1.0f, 1.0f);
+inline constexpr Color Color::cyan(0.0f, 1.0f, 1.0f, 1.0f);
+inline constexpr Color Color::magenta(1.0f, 0.0f, 1.0f, 1.0f);
+inline constexpr Color Color::yellow(1.0f, 0.92f, 0.016f, 1.0f);
+
 GSTRUCT(Color32, "88FA9547-6F5F-45C4-8AE1-135B27AD29F7", Serializable)
 {
 	GFIELD("5E2C315C-7202-4D4D-91D3-3B3B862C74F9", Serializable)

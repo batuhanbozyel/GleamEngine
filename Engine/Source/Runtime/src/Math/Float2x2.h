@@ -81,4 +81,16 @@ GSTRUCT(Float2x2, "8C079A6F-245E-4692-837D-0B54D6810B81", Serializable)
 
 };
 
+inline constexpr Float2x2 Float2x2::zero
+(
+    0.0f, 0.0f,
+    0.0f, 0.0f
+);
+
+inline constexpr Float2x2 Float2x2::identity
+(
+    1.0f, 0.0f,
+    0.0f, 1.0f
+);
+
 } // namespace Gleam

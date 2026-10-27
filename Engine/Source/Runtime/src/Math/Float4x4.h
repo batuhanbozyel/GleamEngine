@@ -285,6 +285,22 @@ GSTRUCT(Float4x4, "770BABFC-E66A-4CE5-8453-A505EB3016BE", Serializable)
     }
 };
 
+inline constexpr Float4x4 Float4x4::zero
+(
+    0.0f, 0.0f, 0.0f, 0.0f,
+    0.0f, 0.0f, 0.0f, 0.0f,
+    0.0f, 0.0f, 0.0f, 0.0f,
+    0.0f, 0.0f, 0.0f, 0.0f
+);
+
+inline constexpr Float4x4 Float4x4::identity
+(
+    1.0f, 0.0f, 0.0f, 0.0f,
+    0.0f, 1.0f, 0.0f, 0.0f,
+    0.0f, 0.0f, 1.0f, 0.0f,
+    0.0f, 0.0f, 0.0f, 1.0f
+);
+
 namespace Math {
 
 NO_DISCARD FORCE_INLINE constexpr Float4x4 Transpose(const Float4x4& m)

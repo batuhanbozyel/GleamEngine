@@ -168,6 +168,8 @@ GSTRUCT(Quaternion, "69ACEBFE-7CFD-4876-9D4D-DF428E49A626", Serializable)
     }
 };
 
+inline constexpr Quaternion Quaternion::identity(1.0f, 0.0f, 0.0f, 0.0f);
+
 NO_DISCARD FORCE_INLINE constexpr Float3 operator*(const Quaternion& quat, const Float3& vec)
 {
 	Float3 quatVec{ quat.x, quat.y, quat.z };

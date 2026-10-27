@@ -151,5 +151,8 @@ GSTRUCT(Size, "6FAF00C4-631C-4F00-832B-6554DCFB3078", Serializable, PrettyName("
     }
     
 };
+
+inline constexpr Size Size::zero(0.0f, 0.0f);
+inline constexpr Size Size::one(1.0f, 1.0f);
     
 } // namespace Gleam
