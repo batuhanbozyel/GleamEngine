@@ -41,10 +41,11 @@ void ComposedLifecycle::Initialize(size_t alignment, const Gleam::TArray<Member>
 	mTrivial = mNonTrivialMembers.empty();
 }
 
-ComposedLifecycle::~ComposedLifecycle()
+void ComposedLifecycle::ReleasePrototype()
 {
 	Destruct(mPrototype);
 	::operator delete(mPrototype, std::align_val_t{ mAlignment });
+	mPrototype = nullptr;
 }
 
 void ComposedLifecycle::Construct(void* obj) const

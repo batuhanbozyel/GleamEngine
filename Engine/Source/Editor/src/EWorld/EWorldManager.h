@@ -37,6 +37,8 @@ public:
 
 	void SaveAs(const Gleam::Path& file);
 
+	void RequestSave();
+
 	void RequestPlay();
 
 	void RequestPause();
@@ -73,7 +75,8 @@ private:
 		Play,
 		Pause,
 		Step,
-		Stop
+		Stop,
+		Save
 	};
 
 	void BeginPlay(Gleam::Application* app);

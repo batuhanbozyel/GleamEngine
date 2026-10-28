@@ -6,6 +6,7 @@
 #include <spawn.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <cerrno>
 
 extern char** environ;
 
@@ -38,14 +39,28 @@ ProcessResult Gleam::RunProcess(const TStringView commandLine)
 		if (spawnResult == 0)
 		{
 			char buffer[4096];
-			ssize_t bytesRead = 0;
-			while ((bytesRead = read(pipeFds[0], buffer, sizeof(buffer))) > 0)
+			while (true)
 			{
-				result.output.append(buffer, static_cast<size_t>(bytesRead));
+				const auto bytesRead = read(pipeFds[0], buffer, sizeof(buffer));
+				if (bytesRead > 0)
+				{
+					result.output.append(buffer, static_cast<size_t>(bytesRead));
+				}
+				else if (bytesRead == 0 or errno != EINTR)
+				{
+					break;
+				}
 			}
 
 			int status = 0;
-			if (waitpid(pid, &status, 0) == pid and WIFEXITED(status))
+			pid_t waited = 0;
+			do
+			{
+				waited = waitpid(pid, &status, 0);
+			}
+			while (waited == -1 and errno == EINTR);
+
+			if (waited == pid and WIFEXITED(status))
 			{
 				result.exitCode = WEXITSTATUS(status);
 			}

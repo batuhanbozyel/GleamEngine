@@ -13,6 +13,7 @@ namespace Gleam {
 class File;
 enum class FileType;
 using FileStream = std::fstream;
+using FileTime = std::filesystem::file_time_type;
 
 enum class FileStatus
 {
@@ -159,6 +160,8 @@ public:
 	static Path AppDataDirectory();
 
 	static Path Relative(const Path& path, const Path& base);
+
+	static FileTime LastWriteTime(const Path& path);
 
 	static bool Exists(const Path& path);
 

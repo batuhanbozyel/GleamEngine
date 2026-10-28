@@ -6,6 +6,7 @@
 #include "EWorldManager.h"
 #include "EAssets/AssetWriter.h"
 #include "Physics/PhysicsVisualizationSystem.h"
+#include "Scripting/ScriptReflection.h"
 
 #include "Core/Globals.h"
 #include "Core/Application.h"
@@ -82,6 +83,16 @@ void EWorldManager::Tick(Gleam::Application* app)
 			}
 			break;
 		}
+		case Request::Save:
+		{
+			// A failed script reflection build leaves the world unsaved
+			Gleam::EntityManager* entityManagers[] = { &mEditWorld->GetEntityManager() };
+			if (mPlayState == PlayState::Edit and Gleam::Globals::Engine->GetSubsystem<ScriptReflection>()->Refresh(entityManagers))
+			{
+				Save();
+			}
+			break;
+		}
 		default:
 		{
 			break;
@@ -106,6 +117,11 @@ void EWorldManager::SaveAs(const Gleam::Path& file)
 	JSONAssetWriter writer;
 	writer.AddBlob<Gleam::Entity>(entitiesNode, Gleam::AssetPlatform::Common, Gleam::AssetBackend::Common);
 	writer.Write(file, mEditWorld->GetHeader(), mEditWorld->GetDescriptor());
+}
+
+void EWorldManager::RequestSave()
+{
+	mRequest = Request::Save;
 }
 
 void EWorldManager::RequestPlay()

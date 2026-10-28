@@ -81,6 +81,8 @@ public:
 
 	void RemoveComponent(EntityHandle entity, uint32_t typeHash);
 
+	void ResetComponentStorage(uint32_t typeHash);
+
 	bool IsEditorOnly(EntityHandle entity) const;
 
 	template<typename ... Types>

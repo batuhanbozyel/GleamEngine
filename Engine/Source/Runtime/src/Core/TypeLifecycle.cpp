@@ -19,6 +19,14 @@ void TypeLifecycleRegistry::Shutdown()
 	sInstance = nullptr;
 }
 
+void TypeLifecycleRegistry::Unregister(uint32_t typeHash)
+{
+	auto it = mLifecycles.find(typeHash);
+	delete it->second;
+	mLifecycles.erase(it);
+	mVectors.erase(typeHash);
+}
+
 const TypeLifecycle* TypeLifecycleRegistry::Find(uint32_t typeHash) const
 {
 	auto it = mLifecycles.find(typeHash);

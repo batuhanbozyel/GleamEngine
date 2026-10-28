@@ -79,21 +79,14 @@ function(GLEAM_ADD_REFLECTION_MODULE)
 endfunction()
 
 function(GLEAM_LINK_REFLECTION_MODULES)
-    set(oneValueArgs OUTPUT BINARY_DIR NATVIS)
-    set(multiValueArgs MODULES)
+    set(oneValueArgs NAME OUTPUT NATVIS)
+    set(multiValueArgs DATABASES DEPENDS)
     cmake_parse_arguments(REFL "" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
     set(REFLECTION_CLI "${GLEAM_ENGINE_DIR}/Tools/CppReflection")
     if (WIN32)
         set(REFLECTION_CLI "${REFLECTION_CLI}.exe")
     endif()
-
-    set(MODULE_FILES "")
-    set(MODULE_TARGETS "")
-    foreach(MODULE ${REFL_MODULES})
-        list(APPEND MODULE_FILES "${REFL_BINARY_DIR}/${MODULE}.Reflection.db")
-        list(APPEND MODULE_TARGETS "${MODULE}Reflection")
-    endforeach()
 
     set(LINK_OUTPUTS ${REFL_OUTPUT})
     set(LINK_ARGS "--link" "--output=${REFL_OUTPUT}")
@@ -104,13 +97,13 @@ function(GLEAM_LINK_REFLECTION_MODULES)
 
     add_custom_command(
         OUTPUT ${LINK_OUTPUTS}
-        COMMAND ${REFLECTION_CLI} ${LINK_ARGS} ${MODULE_FILES}
-        DEPENDS ${MODULE_FILES} ${REFLECTION_CLI}
+        COMMAND ${REFLECTION_CLI} ${LINK_ARGS} ${REFL_DATABASES}
+        DEPENDS ${REFL_DATABASES} ${REFLECTION_CLI}
         COMMENT "Linking reflection databases..."
         COMMAND_EXPAND_LISTS
         VERBATIM
     )
-    add_custom_target(ReflectionLink DEPENDS ${LINK_OUTPUTS})
-    set_target_properties(ReflectionLink PROPERTIES FOLDER CMakeCustomRules)
-    add_dependencies(ReflectionLink ${MODULE_TARGETS})
+    add_custom_target(${REFL_NAME} DEPENDS ${LINK_OUTPUTS})
+    set_target_properties(${REFL_NAME} PROPERTIES FOLDER CMakeCustomRules)
+    add_dependencies(${REFL_NAME} ${REFL_DEPENDS})
 endfunction()

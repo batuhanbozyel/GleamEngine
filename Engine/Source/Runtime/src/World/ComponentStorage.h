@@ -16,7 +16,6 @@ namespace Gleam {
 
 class TypeLifecycle;
 
-// Every pool is created through this tag, so all component storages in a registry share one implementation
 struct ComponentStorageTag {};
 
 class ComponentStorage final : public entt::sparse_set
@@ -34,6 +33,8 @@ public:
 	~ComponentStorage() override;
 
 	void Initialize(const TypeLifecycle& lifecycle);
+
+	void Reset();
 
 	bool IsInitialized() const
 	{

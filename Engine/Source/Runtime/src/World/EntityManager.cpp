@@ -137,6 +137,14 @@ void EntityManager::RemoveComponent(EntityHandle entity, uint32_t typeHash)
 	FindComponentStorage(mRegistry, typeHash)->remove(entity);
 }
 
+void EntityManager::ResetComponentStorage(uint32_t typeHash)
+{
+	if (const auto storage = FindComponentStorage(mRegistry, typeHash); storage and storage->IsInitialized())
+	{
+		storage->Reset();
+	}
+}
+
 void EntityManager::CopyFrom(const EntityManager& source)
 {
 	GLEAM_ASSERT(mHandles.empty(), "Entities can only be copied into an empty entity manager!");
@@ -184,7 +192,7 @@ void EntityManager::CopyFrom(const EntityManager& source)
 	const auto entityClassId = Reflection::TypeHash<Entity>();
 	for (const auto& [id, storage] : source.mRegistry.storage())
 	{
-		if (id == entityStorageId or id == entityClassId)
+		if (id == entityStorageId or id == entityClassId or storage.empty())
 		{
 			continue;
 		}

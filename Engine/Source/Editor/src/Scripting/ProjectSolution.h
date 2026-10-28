@@ -1,5 +1,5 @@
 //
-//  ScriptProject.h
+//  ProjectSolution.h
 //  Editor
 //
 
@@ -11,19 +11,19 @@
 
 namespace GEditor {
 
-struct ScriptBuildResult
+struct SolutionBuildResult
 {
 	bool success = false;
 	Gleam::TString output;
 };
 
-class ScriptProject final
+class ProjectSolution final
 {
 public:
 
-	explicit ScriptProject(const Gleam::Project& project);
+	explicit ProjectSolution(const Gleam::Project& project);
 
-	~ScriptProject();
+	~ProjectSolution();
 
 	// Letters and digits kept, anything else becomes '_', a leading digit gets a '_' prefix
 	static Gleam::TString MakeIdentifier(const Gleam::TString& projectName);
@@ -31,16 +31,18 @@ public:
 	static void CreateFiles(const Gleam::Project& project);
 
 	// Writes the build CMakeLists and configures the solution
-	ScriptBuildResult Generate() const;
+	SolutionBuildResult Generate() const;
 
-	ScriptBuildResult BuildReflection();
+	SolutionBuildResult BuildReflection();
+
+	Gleam::Path GetReflectionDatabase() const;
 
 	void OpenSolution() const;
 
 private:
 
 	// Configures again first when script files were added, removed or renamed since the last configure
-	ScriptBuildResult Build(const Gleam::TString& target);
+	SolutionBuildResult Build(const Gleam::TString& target);
 
 	Gleam::TString mIdentifier;
 

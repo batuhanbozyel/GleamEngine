@@ -11,7 +11,7 @@
 #include "Config/EditorPreferences.h"
 #include "Selection/SelectionSystem.h"
 #include "Undo/UndoSystem.h"
-#include "Scripting/ScriptLifecycles.h"
+#include "Scripting/ScriptReflection.h"
 #include "View/ViewStack.h"
 #include "View/EditorLayout.h"
 #include "View/Widgets/PropertyDrawer.h"
@@ -111,15 +111,19 @@ static Gleam::Path GetProjectFile(const Gleam::CommandLine& cli)
 Gleam::Application* Gleam::CreateApplicationInstance(const Gleam::CommandLine& cli)
 {	
 	GLEAM_FOR_EACH_EDITOR_REFLECTED_CLASS(REGISTER_TYPE_LIFECYCLE)
-	GEditor::ScriptLifecycles::RegisterAll();
 
 	auto projectFile = GetProjectFile(cli);
 	if (projectFile.Empty())
 	{
 		return new GEditor::GleamLauncher();
 	}
-	else
+
+	auto project = Gleam::Project::Load(projectFile);
+	auto scriptReflection = Gleam::Globals::Engine->AddSubsystem<GEditor::ScriptReflection>(project);
+	if (scriptReflection->Refresh({}) == false)
 	{
-		return new GEditor::GleamEditor(Gleam::Project::Load(projectFile));
+		Gleam::Globals::Engine->RemoveSubsystem<GEditor::ScriptReflection>();
+		return new GEditor::GleamLauncher();
 	}
+	return new GEditor::GleamEditor(project);
 }

@@ -4,7 +4,7 @@
 #include "Config/EditorConfigSystem.h"
 #include "EWorld/EWorldManager.h"
 #include "View/ViewStack.h"
-#include "Scripting/ScriptProject.h"
+#include "Scripting/ProjectSolution.h"
 
 #include "Serialization/JSONSerializer.h"
 #include "World/World.h"
@@ -193,6 +193,6 @@ Gleam::Path GleamLauncher::CreateProject(const Gleam::TString& name, const Gleam
 		serializer.Serialize(project, file->GetStream());
 	}
 
-	ScriptProject::CreateFiles(project);
+	ProjectSolution::CreateFiles(project);
 	return projectFile;
 }

@@ -18,6 +18,8 @@
 #include "World/World.h"
 
 #include "EWorld/EWorldManager.h"
+#include "Scripting/ScriptReflection.h"
+#include "Scripting/ProjectSolution.h"
 #include "Undo/UndoSystem.h"
 #include "View/ViewStack.h"
 #include "View/EditorLayout.h"
@@ -95,7 +97,12 @@ void MenuBar::Render(Gleam::ImGuiRenderer* imgui)
 		{
 			if (ImGui::MenuItem("Save", nullptr, false, simulating == false))
 			{
-				worldManager->Save();
+				worldManager->RequestSave();
+			}
+
+			if (ImGui::MenuItem("Open Project Solution"))
+			{
+				Gleam::Globals::Engine->GetSubsystem<ScriptReflection>()->GetSolution().OpenSolution();
 			}
 
 			if (ImGui::MenuItem("Exit"))

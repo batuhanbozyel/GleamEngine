@@ -203,6 +203,12 @@ Path Filesystem::Relative(const Path& path, const Path& base)
 	return Path(std::filesystem::relative(stlPath, stlBase));
 }
 
+FileTime Filesystem::LastWriteTime(const Path& path)
+{
+	std::filesystem::path stlPath = std::wstring_view(path.Native().c_str(), path.Native().length());
+	return std::filesystem::last_write_time(stlPath);
+}
+
 bool Filesystem::Exists(const Path& path)
 {
 	if (path.Empty())

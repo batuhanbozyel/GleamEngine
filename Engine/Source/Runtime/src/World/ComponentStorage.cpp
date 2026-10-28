@@ -26,6 +26,13 @@ void ComponentStorage::Initialize(const TypeLifecycle& lifecycle)
 	mAlignment = lifecycle.GetAlignment();
 }
 
+void ComponentStorage::Reset()
+{
+	clear();
+	ReleasePages(0);
+	mLifecycle = nullptr;
+}
+
 void* ComponentStorage::AssureAtLeast(size_t pos)
 {
 	const auto page = pos / PAGE_SIZE;

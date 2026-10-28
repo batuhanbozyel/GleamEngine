@@ -10,6 +10,7 @@
 #include "Container/String.h"
 #include "Serialization/ReflectionUtils.h"
 
+#include <Runtime.Reflection.generated.h>
 #include <EASTL/algorithm.h>
 #include <cstring>
 
@@ -24,6 +25,13 @@ static auto TemplateName(const Gleam::Reflection::ClassDescription& classDesc)
 class ScriptLifecycleBuilder
 {
 public:
+
+	ScriptLifecycleBuilder(Gleam::TArray<uint32_t>& types, Gleam::TArray<ComposedLifecycle*>& composed)
+		: mTypes(types)
+		, mComposed(composed)
+	{
+
+	}
 
 	const Gleam::TypeLifecycle& Resolve(Gleam::Reflection::MetaType type, uint32_t typeHash)
 	{
@@ -40,7 +48,7 @@ public:
 				const auto size = Gleam::Reflection::GetPrimitive(typeHash).GetSize();
 				auto lifecycle = new ComposedLifecycle(size);
 				lifecycle->Initialize(size, {});
-				registry->Register(typeHash, lifecycle);
+				Register(typeHash, lifecycle);
 				break;
 			}
 			case Gleam::Reflection::MetaType::Enum:
@@ -52,7 +60,7 @@ public:
 				{
 					Gleam::ReflectionUtils::WriteEnumValue(lifecycle->GetPrototype(), *enumDesc, cases[0].Value());
 				}
-				registry->Register(typeHash, lifecycle);
+				Register(typeHash, lifecycle);
 				break;
 			}
 			case Gleam::Reflection::MetaType::Class:
@@ -73,16 +81,15 @@ private:
 
 	void BuildClass(const Gleam::Reflection::ClassDescription& classDesc)
 	{
-		auto registry = Gleam::TypeLifecycleRegistry::GetInstance();
 		if (TemplateName(classDesc) == TemplateName(Gleam::Reflection::GetClass<Gleam::TArray<uint8_t>>()))
 		{
 			const auto& element = classDesc.ResolveTemplateParameters()[0];
-			registry->Register(classDesc.TypeHash(), new RawVectorLifecycle(Resolve(element.GetType(), element.TypeHash())));
+			Register(classDesc.TypeHash(), new RawVectorLifecycle(Resolve(element.GetType(), element.TypeHash())));
 		}
 		else
 		{
 			auto lifecycle = new ComposedLifecycle(classDesc.GetSize());
-			registry->Register(classDesc.TypeHash(), lifecycle);
+			Register(classDesc.TypeHash(), lifecycle);
 
 			Gleam::TArray<ComposedLifecycle::Member> members;
 			size_t alignment = 1;
@@ -140,13 +147,46 @@ private:
 			}
 		}
 	}
+
+	void Register(uint32_t typeHash, ComposedLifecycle* lifecycle)
+	{
+		Gleam::TypeLifecycleRegistry::GetInstance()->Register(typeHash, lifecycle);
+		mTypes.push_back(typeHash);
+		mComposed.push_back(lifecycle);
+	}
+
+	void Register(uint32_t typeHash, RawVectorLifecycle* lifecycle)
+	{
+		Gleam::TypeLifecycleRegistry::GetInstance()->Register(typeHash, static_cast<Gleam::VectorLifecycle*>(lifecycle));
+		mTypes.push_back(typeHash);
+	}
+
+	Gleam::TArray<uint32_t>& mTypes;
+
+	Gleam::TArray<ComposedLifecycle*>& mComposed;
 };
 
 void ScriptLifecycles::RegisterAll()
 {
-	ScriptLifecycleBuilder builder;
+	ScriptLifecycleBuilder builder(mTypes, mComposed);
 	for (const auto& classDesc : Gleam::Reflection::IDatabase::GetInstance()->GetClasses())
 	{
 		builder.Resolve(Gleam::Reflection::MetaType::Class, classDesc.TypeHash());
 	}
+}
+
+void ScriptLifecycles::UnregisterAll()
+{
+	for (auto lifecycle : mComposed)
+	{
+		lifecycle->ReleasePrototype();
+	}
+
+	auto registry = Gleam::TypeLifecycleRegistry::GetInstance();
+	for (const auto typeHash : mTypes)
+	{
+		registry->Unregister(typeHash);
+	}
+	mTypes.clear();
+	mComposed.clear();
 }

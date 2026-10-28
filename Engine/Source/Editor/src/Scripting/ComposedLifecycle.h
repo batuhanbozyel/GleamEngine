@@ -21,10 +21,11 @@ public:
 
 	explicit ComposedLifecycle(size_t size);
 
-	~ComposedLifecycle() override;
-
 	// Separate from construction so a type can be registered before its members resolve, TArray<Self> refers back to it
 	void Initialize(size_t alignment, const Gleam::TArray<Member>& members);
+
+	// Destroys the prototype through the member lifecycles, so it runs before any of them is unregistered
+	void ReleasePrototype();
 
 	void* GetPrototype() const
 	{

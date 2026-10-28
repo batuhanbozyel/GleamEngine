@@ -1,9 +1,9 @@
 //
-//  ScriptProject.cpp
+//  ProjectSolution.cpp
 //  Editor
 //
 
-#include "ScriptProject.h"
+#include "ProjectSolution.h"
 
 #include "Core/Engine.h"
 #include "Core/Globals.h"
@@ -43,7 +43,7 @@ static void WriteText(const Gleam::Path& path, const Gleam::TString& text)
 	Gleam::Filesystem::Create(path, Gleam::FileType::Text)->Write(text);
 }
 
-ScriptProject::ScriptProject(const Gleam::Project& project)
+ProjectSolution::ProjectSolution(const Gleam::Project& project)
 	: mIdentifier(MakeIdentifier(project.name))
 	, mProjectDirectory(project.path)
 	, mIntermediateDirectory(project.path / "Intermediate")
@@ -58,12 +58,12 @@ ScriptProject::ScriptProject(const Gleam::Project& project)
 	});
 }
 
-ScriptProject::~ScriptProject()
+ProjectSolution::~ProjectSolution()
 {
 	Gleam::Globals::Engine->GetSubsystem<Gleam::FileWatcher>()->RemoveWatch(mScriptsWatch);
 }
 
-Gleam::TString ScriptProject::MakeIdentifier(const Gleam::TString& projectName)
+Gleam::TString ProjectSolution::MakeIdentifier(const Gleam::TString& projectName)
 {
 	Gleam::TString identifier;
 	for (const auto c : projectName)
@@ -77,7 +77,7 @@ Gleam::TString ScriptProject::MakeIdentifier(const Gleam::TString& projectName)
 	return identifier;
 }
 
-void ScriptProject::CreateFiles(const Gleam::Project& project)
+void ProjectSolution::CreateFiles(const Gleam::Project& project)
 {
 	const auto identifier = MakeIdentifier(project.name);
 	auto macro = identifier;
@@ -96,7 +96,7 @@ void ScriptProject::CreateFiles(const Gleam::Project& project)
 	WriteText(project.path / ".gitignore", "Intermediate/\n");
 }
 
-ScriptBuildResult ScriptProject::Generate() const
+SolutionBuildResult ProjectSolution::Generate() const
 {
 	Gleam::Filesystem::CreateDirectories(mIntermediateDirectory);
 	WriteText(mIntermediateDirectory / "CMakeLists.txt", InstantiateTemplate(TemplatesDirectory() / "CMakeLists.txt.in",
@@ -117,12 +117,17 @@ ScriptBuildResult ScriptProject::Generate() const
 	return { .success = result.exitCode == 0, .output = result.output };
 }
 
-ScriptBuildResult ScriptProject::BuildReflection()
+SolutionBuildResult ProjectSolution::BuildReflection()
 {
-	return Build(mIdentifier + "Reflection");
+	return Build(mIdentifier + "EditorReflection");
 }
 
-ScriptBuildResult ScriptProject::Build(const Gleam::TString& target)
+Gleam::Path ProjectSolution::GetReflectionDatabase() const
+{
+	return mIntermediateDirectory / "Gleam.Reflection.db";
+}
+
+SolutionBuildResult ProjectSolution::Build(const Gleam::TString& target)
 {
 	if (mFileListChanged)
 	{
@@ -139,7 +144,7 @@ ScriptBuildResult ScriptProject::Build(const Gleam::TString& target)
 	return { .success = result.exitCode == 0, .output = result.output };
 }
 
-void ScriptProject::OpenSolution() const
+void ProjectSolution::OpenSolution() const
 {
 #if defined(PLATFORM_MACOS)
 	Gleam::Process::OpenWithDefaultApplication(mBuildDirectory / (mIdentifier + ".xcodeproj"));

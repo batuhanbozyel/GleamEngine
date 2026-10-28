@@ -212,6 +212,8 @@ public:
 		mVectors[typeHash] = lifecycle;
 	}
 
+	void Unregister(uint32_t typeHash);
+
 	const TypeLifecycle* Find(uint32_t typeHash) const;
 
 	const VectorLifecycle* FindVector(uint32_t typeHash) const;
