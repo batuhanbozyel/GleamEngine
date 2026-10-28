@@ -4,6 +4,7 @@
 #include "World/WorldManager.h"
 
 #include "Launcher/GleamLauncher.h"
+#include "Core/Process.h"
 #include "EAssets/EAssetManager.h"
 #include "EWorld/EWorldManager.h"
 #include "EInput/EditorInputSystem.h"
@@ -108,9 +109,19 @@ static Gleam::Path GetProjectFile(const Gleam::CommandLine& cli)
 	return projectFile;
 }
 
+static Gleam::TString ReadLog(const Gleam::Path& path)
+{
+	return Gleam::Filesystem::OpenRead(path, Gleam::FileType::Text)->Read();
+}
+
 Gleam::Application* Gleam::CreateApplicationInstance(const Gleam::CommandLine& cli)
 {	
 	GLEAM_FOR_EACH_EDITOR_REFLECTED_CLASS(REGISTER_TYPE_LIFECYCLE)
+
+	if (const auto crashLog = Gleam::Path(cli.GetParam<Gleam::TString>("crash-log", Gleam::TString())); crashLog.Empty() == false)
+	{
+		return new GEditor::GleamLauncher({ .title = "Editor crashed", .log = ReadLog(crashLog) });
+	}
 
 	auto projectFile = GetProjectFile(cli);
 	if (projectFile.Empty())
@@ -123,7 +134,12 @@ Gleam::Application* Gleam::CreateApplicationInstance(const Gleam::CommandLine& c
 	if (scriptReflection->Refresh({}) == false)
 	{
 		Gleam::Globals::Engine->RemoveSubsystem<GEditor::ScriptReflection>();
-		return new GEditor::GleamLauncher();
+		return new GEditor::GleamLauncher({ .title = "Reflection generation failed", .log = ReadLog(Gleam::Logger::FILE_NAME) });
 	}
+
+	// The launcher removes unknown entries of the user data directory, its own folder is kept
+	const auto crashLog = Gleam::Globals::UserDataDirectory / "Launcher" / "Crash.log";
+	Gleam::Filesystem::CreateDirectories(crashLog.Parent());
+	Gleam::Process::RelaunchOnCrash(crashLog, { "-crash-log=" + crashLog.String() });
 	return new GEditor::GleamEditor(project);
 }

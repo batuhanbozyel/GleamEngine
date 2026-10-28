@@ -175,7 +175,7 @@ Logger::Logger(const TString& name)
     static std::once_flag flag;
     std::call_once(flag, []()
     {
-        mFileStream = CreateScope<std::ofstream>("Gleam.log", std::ofstream::out);
+        mFileStream = CreateScope<std::ofstream>(FILE_NAME, std::ofstream::out);
     });
     mInstanceCount++;
 }

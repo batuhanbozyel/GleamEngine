@@ -1,4 +1,5 @@
 #pragma once
+#include "LaunchFailureDialog.h"
 #include "Core/Application.h"
 
 namespace GEditor {
@@ -7,7 +8,7 @@ class GleamLauncher final : public Gleam::Application
 {
 public:
 
-	GleamLauncher();
+	explicit GleamLauncher(const LaunchFailure& failure = LaunchFailure());
 
 	~GleamLauncher();
 

@@ -23,7 +23,7 @@
 
 using namespace GEditor;
 
-GleamLauncher::GleamLauncher()
+GleamLauncher::GleamLauncher(const LaunchFailure& failure)
 	: Gleam::Application(Gleam::Project{ .name = "Gleam Launcher" })
 {
 	auto configSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::ConfigSystem>();
@@ -32,6 +32,10 @@ GleamLauncher::GleamLauncher()
 
 	auto viewStack = AddSubsystem<ViewStack>(Gleam::Globals::UserDataDirectory / "Launcher" / "Launcher.ini");
 	viewStack->AddView<ProjectBrowser>();
+	if (failure.title.empty() == false)
+	{
+		viewStack->AddView<LaunchFailureDialog>(failure);
+	}
 }
 
 GleamLauncher::~GleamLauncher()

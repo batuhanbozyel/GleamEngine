@@ -17,6 +17,9 @@ public:
 
 	static void OpenWithDefaultApplication(const Path& path);
 
+	// After a fatal crash the log is copied to crashLog and this executable is started again with the arguments
+	static void RelaunchOnCrash(const Path& crashLog, const TArray<TString>& arguments);
+
 };
 
 } // namespace Gleam

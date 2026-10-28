@@ -39,7 +39,7 @@ bool ScriptReflection::Refresh(Gleam::TArrayView<Gleam::EntityManager* const> en
 	const auto result = mSolution->BuildReflection();
 	if (result.success == false)
 	{
-		GLEAM_CORE_ERROR("Script reflection failed:\n{0}", result.output);
+		GLEAM_CORE_ERROR("Reflection generation failed:\n{0}", result.output);
 		return false;
 	}
 

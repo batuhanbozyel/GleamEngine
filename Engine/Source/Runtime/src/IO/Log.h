@@ -38,6 +38,8 @@ public:
 		TStringView message;
 	};
 
+	static constexpr const char* FILE_NAME = "Gleam.log";
+
 	Logger(const TString& name);
     ~Logger();
     

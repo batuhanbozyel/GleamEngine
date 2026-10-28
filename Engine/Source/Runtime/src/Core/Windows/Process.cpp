@@ -8,7 +8,90 @@
 #include <objbase.h>
 #include <oleauto.h>
 
+#include <csignal>
+#include <cstdlib>
+
 using namespace Gleam;
+
+// Exception filters take no context, so everything the relaunch needs is prepared up front
+class CrashRelaunch final
+{
+public:
+
+	static void Install(const Path& crashLog, const TArray<TString>& arguments)
+	{
+		mExecutable = Process::ExecutablePath().Native();
+		mLogFile = (Filesystem::WorkingDirectory() / Logger::FILE_NAME).Native();
+		mCrashLogFile = crashLog.Native();
+
+		mCommandLine = L"\"" + mExecutable + L"\"";
+		for (const auto& argument : arguments)
+		{
+			mCommandLine += L" \"";
+			mCommandLine.append_convert(argument);
+			mCommandLine += L"\"";
+		}
+
+		SetUnhandledExceptionFilter(HandleException);
+		_set_abort_behavior(0, _WRITE_ABORT_MSG | _CALL_REPORTFAULT);
+		std::signal(SIGABRT, HandleAbort);
+	}
+
+private:
+
+	static LONG WINAPI HandleException(EXCEPTION_POINTERS* exception)
+	{
+		Relaunch("unhandled exception");
+		return EXCEPTION_EXECUTE_HANDLER;
+	}
+
+	static void HandleAbort(int signal)
+	{
+		Relaunch("abort");
+		TerminateProcess(GetCurrentProcess(), 3);
+	}
+
+	static void Relaunch(const char* reason)
+	{
+		// The log stays open for writing, so it is copied with a shared read instead of moved
+		const auto source = CreateFileW(mLogFile.c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr, OPEN_EXISTING, 0, nullptr);
+		const auto target = CreateFileW(mCrashLogFile.c_str(), GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, 0, nullptr);
+		if (target != INVALID_HANDLE_VALUE)
+		{
+			DWORD bytesWritten = 0;
+			if (source != INVALID_HANDLE_VALUE)
+			{
+				char buffer[4096];
+				DWORD bytesRead = 0;
+				while (ReadFile(source, buffer, sizeof(buffer), &bytesRead, nullptr) and bytesRead > 0)
+				{
+					WriteFile(target, buffer, bytesRead, &bytesWritten, nullptr);
+				}
+				CloseHandle(source);
+			}
+
+			constexpr char prefix[] = "[fatal] GLEAM: Crashed with ";
+			WriteFile(target, prefix, sizeof(prefix) - 1, &bytesWritten, nullptr);
+			WriteFile(target, reason, static_cast<DWORD>(strlen(reason)), &bytesWritten, nullptr);
+			WriteFile(target, "\n", 1, &bytesWritten, nullptr);
+			CloseHandle(target);
+		}
+
+		STARTUPINFOW startupInfo = {};
+		startupInfo.cb = sizeof(STARTUPINFOW);
+		PROCESS_INFORMATION processInfo = {};
+		if (CreateProcessW(mExecutable.c_str(), mCommandLine.data(), nullptr, nullptr, FALSE, 0, nullptr, nullptr, &startupInfo, &processInfo))
+		{
+			CloseHandle(processInfo.hThread);
+			CloseHandle(processInfo.hProcess);
+		}
+	}
+
+	static inline TWString mExecutable;
+	static inline TWString mLogFile;
+	static inline TWString mCrashLogFile;
+	static inline TWString mCommandLine;
+};
 
 static HRESULT InvokeMember(IDispatch* object, const wchar_t* name, WORD flags, VARIANT* arguments, UINT argumentCount, VARIANT* result)
 {
@@ -240,6 +323,11 @@ void Process::RevealInFileBrowser(const Path& path)
 void Process::OpenWithDefaultApplication(const Path& path)
 {
 	ShellExecuteW(nullptr, L"open", path.Native().c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+}
+
+void Process::RelaunchOnCrash(const Path& crashLog, const TArray<TString>& arguments)
+{
+	CrashRelaunch::Install(crashLog, arguments);
 }
 
 #endif
