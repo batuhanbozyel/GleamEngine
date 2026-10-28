@@ -18,6 +18,8 @@ GSTRUCT(Project, "13DAA9F7-712B-4D48-AB57-4F134F596D41", Serializable)
 	WorldConfig worldConfig;
 
 	Path path = Filesystem::WorkingDirectory();
+
+	static Project Load(const Path& path);
 };
 
 } // namespace Gleam

@@ -26,11 +26,13 @@ file(GLOB_RECURSE SOURCE_FILES
 
 # Setup link libraries
 if (WIN32)
-    set(LIB_LINKS SDL3::SDL3-static d3d12.lib dxgi.lib dxguid.lib dstorage.lib imgui.lib Ole32.lib WinPixEventRuntime.lib EASTL GleamReflect)
+    set(RUNTIME_SYSTEM_LIBS d3d12.lib dxgi.lib dxguid.lib dstorage.lib Ole32.lib WinPixEventRuntime.lib)
+    set(LIB_LINKS SDL3::SDL3-static imgui.lib EASTL GleamReflect ${RUNTIME_SYSTEM_LIBS})
     set_source_files_properties(${SHADER_FILES} PROPERTIES VS_TOOL_OVERRIDE "None")
 elseif (APPLE)
     find_library(METALIR_LIB libmetalirconverter.dylib)
-    set(LIB_LINKS SDL3::SDL3-static imgui ${METALIR_LIB} "-framework UniformTypeIdentifiers" EASTL GleamReflect)
+    set(RUNTIME_SYSTEM_LIBS ${METALIR_LIB} "-framework UniformTypeIdentifiers")
+    set(LIB_LINKS SDL3::SDL3-static imgui EASTL GleamReflect ${RUNTIME_SYSTEM_LIBS})
 endif()
 
 # Set Runtime as static library
@@ -250,3 +252,7 @@ if (TARGET RuntimeNativeShaders)
         PROPERTIES FOLDER CMakeCustomRules
     )
 endif()
+
+# Projects build their scripts against this engine build through Gleam.cmake
+configure_file(${CMAKE_SOURCE_DIR}/CMake/Templates/Gleam.cmake.in ${CMAKE_BINARY_DIR}/Gleam.cmake @ONLY)
+file(GENERATE OUTPUT ${CMAKE_BINARY_DIR}/GleamTargets-$<CONFIG>.cmake INPUT ${CMAKE_SOURCE_DIR}/CMake/Templates/GleamTargets.cmake.in)

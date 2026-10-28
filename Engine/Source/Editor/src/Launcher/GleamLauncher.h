@@ -11,8 +11,6 @@ public:
 
 	~GleamLauncher();
 
-	static Gleam::Project OpenProject(const Gleam::Path& path);
-
 	static Gleam::TString ValidateNewProject(const Gleam::TString& name, const Gleam::Path& location);
 
 	static Gleam::Path CreateProject(const Gleam::TString& name, const Gleam::Path& location);

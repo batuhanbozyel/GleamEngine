@@ -237,4 +237,9 @@ void Process::RevealInFileBrowser(const Path& path)
 	ShellExecuteW(nullptr, L"open", L"explorer.exe", parameters.c_str(), nullptr, SW_SHOWNORMAL);
 }
 
+void Process::OpenWithDefaultApplication(const Path& path)
+{
+	ShellExecuteW(nullptr, L"open", path.Native().c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+}
+
 #endif

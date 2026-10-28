@@ -120,6 +120,6 @@ Gleam::Application* Gleam::CreateApplicationInstance(const Gleam::CommandLine& c
 	}
 	else
 	{
-		return new GEditor::GleamEditor(GEditor::GleamLauncher::OpenProject(projectFile));
+		return new GEditor::GleamEditor(Gleam::Project::Load(projectFile));
 	}
 }

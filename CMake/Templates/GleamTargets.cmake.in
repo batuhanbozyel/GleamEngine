@@ -1,0 +1,8 @@
+set(_GLEAM_CONFIG "$<UPPER_CASE:$<CONFIG>>")
+foreach(_GLEAM_TARGET Runtime EASTL imgui box3d)
+    set_property(TARGET Gleam::${_GLEAM_TARGET} APPEND PROPERTY IMPORTED_CONFIGURATIONS ${_GLEAM_CONFIG})
+endforeach()
+set_target_properties(Gleam::Runtime PROPERTIES IMPORTED_LOCATION_${_GLEAM_CONFIG} "$<TARGET_FILE:Runtime>")
+set_target_properties(Gleam::EASTL PROPERTIES IMPORTED_LOCATION_${_GLEAM_CONFIG} "$<TARGET_FILE:EASTL>")
+set_target_properties(Gleam::imgui PROPERTIES IMPORTED_LOCATION_${_GLEAM_CONFIG} "$<TARGET_FILE:imgui>")
+set_target_properties(Gleam::box3d PROPERTIES IMPORTED_LOCATION_${_GLEAM_CONFIG} "$<TARGET_FILE:box3d>")

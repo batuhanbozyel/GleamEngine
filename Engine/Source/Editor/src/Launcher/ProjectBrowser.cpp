@@ -738,7 +738,7 @@ void ProjectBrowser::DrawNewProjectDialog()
 
 void ProjectBrowser::OpenProject(const Gleam::Path& projectFile)
 {
-	auto project = GleamLauncher::OpenProject(projectFile);
+	auto project = Gleam::Project::Load(projectFile);
 	auto arguments = Gleam::TArray<Gleam::TString>{ "-project=" + projectFile.String() };
 	GleamLauncher::AddRecentProject(projectFile, project.name);
 

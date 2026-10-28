@@ -4,6 +4,7 @@
 #include "Config/EditorConfigSystem.h"
 #include "EWorld/EWorldManager.h"
 #include "View/ViewStack.h"
+#include "Scripting/ScriptProject.h"
 
 #include "Serialization/JSONSerializer.h"
 #include "World/World.h"
@@ -100,19 +101,6 @@ void GleamLauncher::RemoveRecentProject(const Gleam::Path& projectFile)
 	});
 }
 
-Gleam::Project GleamLauncher::OpenProject(const Gleam::Path& path)
-{
-	Gleam::Project project;
-	if (Gleam::Filesystem::Exists(path))
-	{
-		auto file = Gleam::Filesystem::OpenRead(path, Gleam::FileType::Text);
-		auto serializer = Gleam::JSONSerializer();
-		project = serializer.Deserialize<Gleam::Project>(file->GetStream());
-	}
-	project.path = path.Parent();
-	return project;
-}
-
 Gleam::TString GleamLauncher::ValidateNewProject(const Gleam::TString& name, const Gleam::Path& location)
 {
 	if (name.empty())
@@ -204,5 +192,7 @@ Gleam::Path GleamLauncher::CreateProject(const Gleam::TString& name, const Gleam
 		auto serializer = Gleam::JSONSerializer();
 		serializer.Serialize(project, file->GetStream());
 	}
+
+	ScriptProject::CreateFiles(project);
 	return projectFile;
 }

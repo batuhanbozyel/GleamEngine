@@ -1,0 +1,68 @@
+set(GLEAM_ENGINE_DIR "@CMAKE_SOURCE_DIR@")
+set(GLEAM_ENGINE_BUILD_DIR "@CMAKE_BINARY_DIR@")
+set(GLEAM_ENGINE_REFLECTION_DIR "@GLEAM_REFLECTION_BINARY_DIR@")
+set(GLEAM_REFLECTION_COMPILER_ARGS "@GLEAM_REFLECTION_COMPILER_ARGS@")
+set(ENABLE_ASAN @ENABLE_ASAN@)
+
+include(${GLEAM_ENGINE_DIR}/CMake/GleamSettings.cmake)
+include(${GLEAM_ENGINE_DIR}/CMake/CMakeUtils.cmake)
+
+find_package(SDL3 CONFIG REQUIRED COMPONENTS SDL3-static PATHS "${GLEAM_ENGINE_BUILD_DIR}/ThirdParty/SDL" NO_DEFAULT_PATH)
+
+foreach(_GLEAM_TARGET Runtime EASTL imgui box3d)
+    add_library(Gleam::${_GLEAM_TARGET} STATIC IMPORTED)
+endforeach()
+
+file(GLOB _GLEAM_TARGET_FILES "${CMAKE_CURRENT_LIST_DIR}/GleamTargets-*.cmake")
+foreach(_GLEAM_TARGET_FILE ${_GLEAM_TARGET_FILES})
+    include(${_GLEAM_TARGET_FILE})
+endforeach()
+
+set_target_properties(Gleam::Runtime PROPERTIES
+    INTERFACE_INCLUDE_DIRECTORIES "@INCLUDE_DIRS@"
+    INTERFACE_COMPILE_DEFINITIONS "$<$<CONFIG:Debug,Development>:GDEBUG>;$<$<CONFIG:Release>:GRELEASE>"
+    INTERFACE_LINK_LIBRARIES "Gleam::EASTL;Gleam::imgui;Gleam::box3d;SDL3::SDL3-static;@RUNTIME_SYSTEM_LIBS@"
+)
+
+function(GLEAM_ADD_SCRIPTS NAME SCRIPTS_DIR)
+    set(GENERATED_DIR ${CMAKE_BINARY_DIR}/Generated)
+    set(REFLECTION_DIR ${CMAKE_BINARY_DIR}/Reflection)
+    file(MAKE_DIRECTORY ${GENERATED_DIR} ${REFLECTION_DIR})
+
+    file(GLOB_RECURSE HEADER_FILES CONFIGURE_DEPENDS ${SCRIPTS_DIR}/*.h ${SCRIPTS_DIR}/*.hpp)
+    file(GLOB_RECURSE SOURCE_FILES CONFIGURE_DEPENDS ${SCRIPTS_DIR}/*.cpp)
+
+    add_executable(${NAME} WIN32 ${SOURCE_FILES} ${HEADER_FILES})
+    target_include_directories(${NAME} PRIVATE ${SCRIPTS_DIR} ${GENERATED_DIR})
+    target_link_libraries(${NAME} PRIVATE Gleam::Runtime)
+    target_compile_definitions(${NAME} PRIVATE _CRT_SECURE_NO_WARNINGS WIN32_LEAN_AND_MEAN NOMINMAX)
+
+    # Script code never includes its own generated reflection header
+    set(GENERATED_HEADER ${GENERATED_DIR}/${NAME}.Reflection.generated.h)
+    if (MSVC)
+        target_compile_options(${NAME} PRIVATE "/FI${GENERATED_HEADER}")
+    else()
+        target_compile_options(${NAME} PRIVATE -include ${GENERATED_HEADER})
+    endif()
+
+    if (APPLE)
+        set_source_files_properties(${SOURCE_FILES} PROPERTIES XCODE_EXPLICIT_FILE_TYPE "sourcecode.cpp.objcpp")
+        set_target_properties(${NAME} PROPERTIES XCODE_ATTRIBUTE_CLANG_ENABLE_OBJC_ARC YES XCODE_GENERATE_SCHEME YES)
+    endif()
+
+    source_group(TREE ${SCRIPTS_DIR} FILES ${SOURCE_FILES} ${HEADER_FILES})
+    GLEAM_SET_WARNINGS(${NAME})
+    SET_WORKING_DIRECTORY(${NAME} ${GLEAM_ENGINE_DIR})
+    set_property(DIRECTORY ${CMAKE_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT ${NAME})
+
+    GLEAM_ADD_REFLECTION_MODULE(
+        NAME ${NAME}
+        SOURCE_DIR ${GENERATED_DIR}
+        BINARY_DIR ${REFLECTION_DIR}
+        DEPENDENCY_DIR ${GLEAM_ENGINE_REFLECTION_DIR}
+        HEADERS ${HEADER_FILES}
+        DEPENDS Runtime
+        COMPILER_ARGS ${GLEAM_REFLECTION_COMPILER_ARGS} "--extra-arg=-I${SCRIPTS_DIR}"
+    )
+    add_dependencies(${NAME} ${NAME}Reflection)
+endfunction()

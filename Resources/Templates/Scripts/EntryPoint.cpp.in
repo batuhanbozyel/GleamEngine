@@ -1,0 +1,21 @@
+#include "Core/EntryPoint.h"
+
+#include <@PROJECT_IDENTIFIER@.Reflection.types.inl>
+
+class @PROJECT_IDENTIFIER@ final : public Gleam::Application
+{
+public:
+
+	@PROJECT_IDENTIFIER@(const Gleam::Project& project)
+		: Gleam::Application(project)
+	{
+
+	}
+};
+
+Gleam::Application* Gleam::CreateApplicationInstance(const Gleam::CommandLine& cli)
+{
+	GLEAM_FOR_EACH_@PROJECT_MACRO@_REFLECTED_CLASS(REGISTER_TYPE_LIFECYCLE)
+
+	return new @PROJECT_IDENTIFIER@(Gleam::Project::Load(cli.GetParam<Gleam::TString>("project", Gleam::TString())));
+}

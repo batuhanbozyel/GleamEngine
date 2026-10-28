@@ -51,4 +51,10 @@ void Process::RevealInFileBrowser(const Path& path)
 	[[NSWorkspace sharedWorkspace] activateFileViewerSelectingURLs:@[[NSURL fileURLWithPath:pathString]]];
 }
 
+void Process::OpenWithDefaultApplication(const Path& path)
+{
+	NSString* pathString = [NSString stringWithUTF8String:path.String().c_str()];
+	[[NSWorkspace sharedWorkspace] openURL:[NSURL fileURLWithPath:pathString]];
+}
+
 #endif

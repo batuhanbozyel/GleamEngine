@@ -1,0 +1,5 @@
+cmake_minimum_required(VERSION 3.21)
+include("@ENGINE_DIR@/CMake/GleamConfigurations.cmake")
+project(@PROJECT_IDENTIFIER@ C CXX)
+include("@ENGINE_BUILD_DIR@/Gleam.cmake")
+GLEAM_ADD_SCRIPTS(@PROJECT_IDENTIFIER@ "@PROJECT_DIR@/Scripts")

@@ -15,6 +15,8 @@ public:
 
 	static void RevealInFileBrowser(const Path& path);
 
+	static void OpenWithDefaultApplication(const Path& path);
+
 };
 
 } // namespace Gleam

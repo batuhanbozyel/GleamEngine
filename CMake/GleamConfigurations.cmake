@@ -1,0 +1,1 @@
+set(CMAKE_CONFIGURATION_TYPES Debug Development Release RelWithDebInfo CACHE TYPE INTERNAL FORCE)
