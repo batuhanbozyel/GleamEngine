@@ -671,10 +671,11 @@ void SerializeClassFields(const void* obj,
 	auto baseCount = static_cast<uint32_t>(baseClasses.size());
 	stream.write(reinterpret_cast<const char*>(&baseCount), sizeof(uint32_t));
 
-	for (const auto& baseClass : baseClasses)
+	for (const auto& base : baseClasses)
 	{
+		const auto& baseClass = base.ResolveClass();
 		SerializeMemberGuid(baseClass.Guid(), stream);
-		SerializeClass(obj, baseClass, stream);
+		SerializeClass(OffsetPointer(obj, base.GetOffset()), baseClass, stream);
 	}
 
 	for (const auto& field : classDesc.ResolveFields())
@@ -888,7 +889,7 @@ static void DeserializeClassMembers(FileStream& stream,
 {
 	for (const auto& base : classDesc.ResolveBaseClasses())
 	{
-		DeserializeClassMembers(stream, dictionary, base, obj);
+		DeserializeClassMembers(stream, dictionary, base.ResolveClass(), OffsetPointer(obj, base.GetOffset()));
 	}
 
 	for (const auto& fieldDesc : classDesc.ResolveFields())

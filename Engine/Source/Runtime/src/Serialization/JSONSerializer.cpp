@@ -938,11 +938,12 @@ void SerializeClassObjectFields(const void* obj,
                                 const Reflection::ClassDescription& classDesc,
                                 rapidjson::Node& outFields)
 {
-    for (const auto& baseClass : classDesc.ResolveBaseClasses())
+    for (const auto& base : classDesc.ResolveBaseClasses())
     {
+        const auto& baseClass = base.ResolveClass();
         auto baseFields = rapidjson::Value(rapidjson::kArrayType);
         auto baseFieldsNode = rapidjson::Node(baseFields, outFields.allocator);
-        SerializeClassObjectFields(obj, baseClass, baseFieldsNode);
+        SerializeClassObjectFields(OffsetPointer(obj, base.GetOffset()), baseClass, baseFieldsNode);
         if (baseFields.Size() > 0)
         {
             auto baseObject = rapidjson::Value(rapidjson::kObjectType);
@@ -1184,7 +1185,7 @@ static void DeserializeClassFields(const MemberDictionary& dictionary,
 {
 	for (const auto& base : classDesc.ResolveBaseClasses())
 	{
-		DeserializeClassFields(dictionary, base, obj);
+		DeserializeClassFields(dictionary, base.ResolveClass(), OffsetPointer(obj, base.GetOffset()));
 	}
 
 	for (const auto& fieldDesc : classDesc.ResolveFields())

@@ -76,9 +76,9 @@ static bool IsMultiEditableClass(const Gleam::Reflection::ClassDescription& clas
 		return QualifiedNameWithoutTemplateDeclaration(classDesc.ResolveQualifiedName()) == enumFlagName;
 	}
 
-	for (const auto& baseClass : classDesc.ResolveBaseClasses())
+	for (const auto& base : classDesc.ResolveBaseClasses())
 	{
-		if (IsMultiEditableClass(baseClass) == false)
+		if (IsMultiEditableClass(base.ResolveClass()) == false)
 		{
 			return false;
 		}
@@ -120,9 +120,9 @@ static bool HasReflectedFields(const Gleam::Reflection::ClassDescription& classD
 		return true;
 	}
 
-	for (const auto& baseClass : classDesc.ResolveBaseClasses())
+	for (const auto& base : classDesc.ResolveBaseClasses())
 	{
-		if (HasReflectedFields(baseClass))
+		if (HasReflectedFields(base.ResolveClass()))
 		{
 			return true;
 		}
@@ -134,9 +134,9 @@ static bool AreValuesEqual(Gleam::Reflection::MetaType type, uint32_t typeHash, 
 
 static bool AreClassValuesEqual(const Gleam::Reflection::ClassDescription& classDesc, const void* lhs, const void* rhs)
 {
-	for (const auto& baseClass : classDesc.ResolveBaseClasses())
+	for (const auto& base : classDesc.ResolveBaseClasses())
 	{
-		if (AreClassValuesEqual(baseClass, lhs, rhs) == false)
+		if (AreClassValuesEqual(base.ResolveClass(), Gleam::OffsetPointer(lhs, base.GetOffset()), Gleam::OffsetPointer(rhs, base.GetOffset())) == false)
 		{
 			return false;
 		}
@@ -959,9 +959,14 @@ void PropertyDrawer::DrawClassFields(void* obj, const Gleam::Reflection::ClassDe
 
 void PropertyDrawer::DrawClassFields(Gleam::TArrayView<void*> instances, const Gleam::Reflection::ClassDescription& classDesc, float columnWidth)
 {
-	for (const auto& baseClass : classDesc.ResolveBaseClasses())
+	for (const auto& base : classDesc.ResolveBaseClasses())
 	{
-		DrawClassFields(instances, baseClass, columnWidth);
+		Gleam::TArray<void*> baseInstances(instances.size());
+		for (size_t i = 0; i < instances.size(); ++i)
+		{
+			baseInstances[i] = Gleam::OffsetPointer(instances[i], base.GetOffset());
+		}
+		DrawClassFields(baseInstances, base.ResolveClass(), columnWidth);
 	}
 
 	Gleam::TArray<uint8_t> scratch;

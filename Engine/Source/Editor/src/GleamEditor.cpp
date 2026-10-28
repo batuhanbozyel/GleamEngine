@@ -11,6 +11,7 @@
 #include "Config/EditorPreferences.h"
 #include "Selection/SelectionSystem.h"
 #include "Undo/UndoSystem.h"
+#include "Scripting/ScriptLifecycles.h"
 #include "View/ViewStack.h"
 #include "View/EditorLayout.h"
 #include "View/Widgets/PropertyDrawer.h"
@@ -110,6 +111,7 @@ static Gleam::Path GetProjectFile(const Gleam::CommandLine& cli)
 Gleam::Application* Gleam::CreateApplicationInstance(const Gleam::CommandLine& cli)
 {	
 	GLEAM_FOR_EACH_EDITOR_REFLECTED_CLASS(REGISTER_TYPE_LIFECYCLE)
+	GEditor::ScriptLifecycles::RegisterAll();
 
 	auto projectFile = GetProjectFile(cli);
 	if (projectFile.Empty())

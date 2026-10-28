@@ -201,6 +201,17 @@ public:
 		}
 	}
 
+	void Register(uint32_t typeHash, TypeLifecycle* lifecycle)
+	{
+		mLifecycles[typeHash] = lifecycle;
+	}
+
+	void Register(uint32_t typeHash, VectorLifecycle* lifecycle)
+	{
+		mLifecycles[typeHash] = lifecycle;
+		mVectors[typeHash] = lifecycle;
+	}
+
 	const TypeLifecycle* Find(uint32_t typeHash) const;
 
 	const VectorLifecycle* FindVector(uint32_t typeHash) const;
