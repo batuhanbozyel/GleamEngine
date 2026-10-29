@@ -69,11 +69,7 @@ struct FileWatcher::Handle
                 GLEAM_CORE_INFO("FileWatcher file modified: {}", path.String());
                 watcher->handler(path, FileWatchEvent::Modified);
             }
-            // default
-            else
-            {
-                GLEAM_ASSERT(false, "Apple: Unknown FSEvent type.");
-            }
+            // Metadata-only changes (xattrs, permissions, Finder info) e.g. when Xcode opens a file
         }
     }
 };

@@ -133,7 +133,8 @@ bool Filesystem::CreateDirectories(const Path& path)
 	std::filesystem::path stlPath = std::wstring_view(path.Native().c_str(), path.Native().length());
 
 	std::error_code error;
-	if (not std::filesystem::create_directories(stlPath, error))
+	std::filesystem::create_directories(stlPath, error);
+	if (error)
 	{
 		GLEAM_CORE_ERROR("Filesystem failed to create directory: {0} ({1})", path.String(), error.message());
 		return false;

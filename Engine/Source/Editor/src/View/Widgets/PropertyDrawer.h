@@ -7,6 +7,7 @@
 #include "Container/String.h"
 #include "Reflection/Reflection.h"
 #include "Assets/AssetReference.h"
+#include "World/EntityReference.h"
 #include "View/EditorFonts.h"
 
 namespace GEditor {
@@ -61,6 +62,8 @@ public:
 
 	static void DrawAsset(const Gleam::TStringView label, Gleam::AssetReference& assetRef, float columnWidth = 100.0f);
 
+	static void DrawEntity(const Gleam::TStringView label, Gleam::EntityReference& entityRef, float columnWidth = 100.0f);
+
 	static void DrawCustom(const Gleam::TStringView label, size_t hash, UIFunction&& uiFunction);
 
 	// Edit tracking, covering the controls drawn since the last BeginEditTracking call
@@ -89,6 +92,8 @@ private:
 
 	static void DrawAssetPicker(Gleam::AssetReference& assetRef, float x, float y, float width);
 
+	static void DrawEntityPicker(Gleam::EntityReference& entityRef, float x, float y, float width);
+
 	static bool AcceptsAssetType(const Gleam::Guid& type);
 
 	static void TrackEdit();
@@ -108,6 +113,8 @@ private:
 	static inline const Gleam::Reflection::Attribute::AssetType* mAssetTypes = nullptr;
 
 	static inline char mAssetSearch[128] = "";
+
+	static inline char mEntitySearch[128] = "";
 
 	struct RotationCache
 	{

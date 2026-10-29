@@ -6,6 +6,8 @@
 #include "View/IconsLucide.h"
 
 #include "EAssets/EAssetManager.h"
+#include "EWorld/EWorldManager.h"
+#include "World/World.h"
 
 #include "Core/Globals.h"
 #include "Core/Application.h"
@@ -19,6 +21,7 @@
 #include <algorithm>
 #include <cctype>
 #include <cstdio>
+#include <EASTL/sort.h>
 #include <Runtime.Reflection.generated.h>
 
 using namespace GEditor;
@@ -291,6 +294,12 @@ const Gleam::HashMap<uint32_t, PropertyDrawer::DrawFunction>& PropertyDrawer::Ge
 			[](const Gleam::TStringView label, void* obj, const Gleam::Reflection::ClassDescription& classDesc, float columnWidth)
 		{
 			DrawAsset(label, Gleam::Reflection::Get<Gleam::AssetReference>(obj), columnWidth);
+		};
+
+		customDrawers[Gleam::Reflection::TypeHash<Gleam::EntityReference>()] =
+			[](const Gleam::TStringView label, void* obj, const Gleam::Reflection::ClassDescription& classDesc, float columnWidth)
+		{
+			DrawEntity(label, Gleam::Reflection::Get<Gleam::EntityReference>(obj), columnWidth);
 		};
 
 		customDrawers[Gleam::Reflection::TypeHash<Gleam::TString>()] =
@@ -1373,6 +1382,133 @@ void PropertyDrawer::DrawAssetPicker(Gleam::AssetReference& assetRef, float x, f
 		const auto icon = GetAssetIcon(candidates[i]->type);
 		ImGui::PushID(static_cast<int>(i));
 		drawCandidate(candidates[i]->reference, candidates[i]->name.c_str(), icon.color, false);
+		ImGui::PopID();
+	}
+	ImGui::EndChild();
+
+	ImGui::EndPopup();
+}
+
+static const Gleam::EntityManager& GetEditEntityManager()
+{
+	return Gleam::Globals::GameInstance->GetSubsystem<EWorldManager>()->GetEditWorld()->GetEntityManager();
+}
+
+void PropertyDrawer::DrawEntity(const Gleam::TStringView label, Gleam::EntityReference& entityRef, float columnWidth)
+{
+	constexpr float kHeight = 34.0f;
+	constexpr float kTileSize = 24.0f;
+
+	char buffer[64];
+	std::memcpy(buffer, label.data(), label.size());
+	buffer[label.size()] = '\0';
+
+	ImGui::PushID(buffer);
+
+	const auto& entityManager = GetEditEntityManager();
+	const auto handle = entityManager.GetEntity(entityRef);
+	const bool found = handle != Gleam::InvalidEntity;
+	const auto color = found ? Widgets::GetEntityKind(entityManager, handle).color : Gleam::Theme::TextDim;
+
+	ImGui::Columns(2);
+	ImGui::SetColumnWidth(0, columnWidth);
+	ImGui::SetCursorPosY(ImGui::GetCursorPosY() + (kHeight - ImGui::GetFontSize()) * 0.5f);
+	ImGui::TextColored(Gleam::Theme::TextSecondary, "%s", buffer);
+	ImGui::NextColumn();
+
+	const ImVec2 min = ImGui::GetCursorScreenPos();
+	const float width = ImGui::GetContentRegionAvail().x;
+	const ImVec2 max(min.x + width, min.y + kHeight);
+	if (ImGui::InvisibleButton("##Entity", ImVec2(width, kHeight)))
+	{
+		mEntitySearch[0] = '\0';
+		ImGui::OpenPopup("##EntityPicker");
+	}
+	if (entityRef and ImGui::IsItemHovered())
+	{
+		ImGui::SetTooltip("%s", entityRef.guid.ToString().c_str());
+	}
+
+	auto drawList = ImGui::GetWindowDrawList();
+	drawList->AddRectFilled(min, max, Widgets::ColorU32(Gleam::Theme::Background), 4.0f);
+	drawList->AddRect(min, max, Widgets::ColorU32(Gleam::Theme::Border), 4.0f);
+	DrawAssetTile(drawList, ImVec2(min.x + 5.0f, min.y + (kHeight - kTileSize) * 0.5f), kTileSize, color);
+
+	// A reference to a deleted entity keeps its guid until it is reassigned
+	const char* name = IsMixedValue() ? "-" : (found ? entityManager.GetComponent<Gleam::Entity>(handle).GetName().c_str() : (entityRef ? "Missing" : "None"));
+	drawList->PushClipRect(min, ImVec2(max.x - 6.0f, max.y), true);
+	drawList->AddText(ImVec2(min.x + 5.0f + kTileSize + 8.0f, min.y + (kHeight - ImGui::GetFontSize()) * 0.5f), Widgets::ColorU32(found ? Gleam::Theme::Text : Gleam::Theme::TextDim), name);
+	drawList->PopClipRect();
+
+	DrawEntityPicker(entityRef, min.x, max.y + 2.0f, width);
+
+	ImGui::Columns(1);
+
+	ImGui::PopID();
+}
+
+void PropertyDrawer::DrawEntityPicker(Gleam::EntityReference& entityRef, float x, float y, float width)
+{
+	constexpr float kPickerMinWidth = 260.0f;
+	constexpr float kPickerHeight = 320.0f;
+	constexpr float kRowHeight = 28.0f;
+	constexpr float kTileSize = 16.0f;
+
+	ImGui::SetNextWindowPos(ImVec2(x, y));
+	ImGui::SetNextWindowSize(ImVec2(Gleam::Math::Max(width, kPickerMinWidth), kPickerHeight));
+	if (ImGui::BeginPopup("##EntityPicker") == false)
+	{
+		return;
+	}
+
+	if (ImGui::IsWindowAppearing())
+	{
+		ImGui::SetKeyboardFocusHere();
+	}
+	Widgets::SearchField("##EntityPickerSearch", "Search entities", mEntitySearch, sizeof(mEntitySearch), ImGui::GetContentRegionAvail().x);
+
+	const auto& entityManager = GetEditEntityManager();
+	Gleam::TArray<const Gleam::Entity*> candidates;
+	entityManager.ForEach([&](Gleam::EntityHandle handle)
+	{
+		const auto& entity = entityManager.GetComponent<Gleam::Entity>(handle);
+		if (entityManager.IsEditorOnly(handle) == false and (mEntitySearch[0] == '\0' or ImStristr(entity.GetName().c_str(), nullptr, mEntitySearch, nullptr) != nullptr))
+		{
+			candidates.push_back(&entity);
+		}
+	});
+	eastl::sort(candidates.begin(), candidates.end(), [](const Gleam::Entity* lhs, const Gleam::Entity* rhs)
+	{
+		return lhs->GetName() < rhs->GetName();
+	});
+
+	const auto drawCandidate = [&entityRef](const Gleam::EntityReference& reference, const char* name, const ImVec4& color, bool dimmed)
+	{
+		const ImVec2 rowMin = ImGui::GetCursorScreenPos();
+		const bool picked = ImGui::Selectable("##Candidate", entityRef.guid == reference.guid, ImGuiSelectableFlags_None, ImVec2(0.0f, kRowHeight));
+		TrackEdit();
+
+		auto drawList = ImGui::GetWindowDrawList();
+		DrawAssetTile(drawList, ImVec2(rowMin.x + 4.0f, rowMin.y + (kRowHeight - kTileSize) * 0.5f), kTileSize, color);
+		drawList->AddText(ImVec2(rowMin.x + 4.0f + kTileSize + 8.0f, rowMin.y + (kRowHeight - ImGui::GetFontSize()) * 0.5f), Widgets::ColorU32(dimmed ? Gleam::Theme::TextDim : Gleam::Theme::Text), name);
+
+		if (picked)
+		{
+			entityRef = reference;
+			MarkEditCommitted();
+			ImGui::CloseCurrentPopup();
+		}
+	};
+
+	ImGui::BeginChild("##EntityPickerList");
+	ImGui::PushID("None");
+	drawCandidate(Gleam::EntityReference(), "None", Gleam::Theme::TextDim, true);
+	ImGui::PopID();
+	for (uint32_t i = 0; i < candidates.size(); ++i)
+	{
+		const auto kind = Widgets::GetEntityKind(entityManager, candidates[i]->GetHandle());
+		ImGui::PushID(static_cast<int>(i));
+		drawCandidate(Gleam::EntityReference{ .guid = candidates[i]->GetGuid() }, candidates[i]->GetName().c_str(), kind.color, false);
 		ImGui::PopID();
 	}
 	ImGui::EndChild();
