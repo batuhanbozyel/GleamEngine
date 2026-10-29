@@ -19,6 +19,8 @@ GSTRUCT(Project, "13DAA9F7-712B-4D48-AB57-4F134F596D41", Serializable)
 
 	Path path = Filesystem::WorkingDirectory();
 
+	Path file;
+
 	static Project Load(const Path& path);
 };
 

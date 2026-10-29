@@ -2,9 +2,14 @@
 #include "Filesystem.h"
 #include "File.h"
 #include "Log.h"
+#include "Core/Process.h"
 
 #include <cerrno>
 #include <cstring>
+
+#if defined(PLATFORM_MACOS)
+#include <CoreFoundation/CoreFoundation.h>
+#endif
 
 using namespace Gleam;
 
@@ -194,6 +199,19 @@ Path Filesystem::AppDataDirectory()
 #elif defined(PLATFORM_MACOS)
 	const char* home = std::getenv("HOME");
 	return home ? Path(home) / "Library" / "Application Support" : Path();
+#endif
+}
+
+Path Filesystem::ApplicationResourcesDirectory()
+{
+#if defined(PLATFORM_WINDOWS)
+	return Process::ExecutablePath().Parent();
+#elif defined(PLATFORM_MACOS)
+	CFURLRef url = CFBundleCopyResourcesDirectoryURL(CFBundleGetMainBundle());
+	char buffer[PATH_MAX];
+	const bool resolved = CFURLGetFileSystemRepresentation(url, true, reinterpret_cast<UInt8*>(buffer), sizeof(buffer));
+	CFRelease(url);
+	return resolved ? Path(buffer) : Path();
 #endif
 }
 

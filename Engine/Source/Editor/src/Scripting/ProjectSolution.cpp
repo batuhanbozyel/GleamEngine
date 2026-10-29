@@ -46,6 +46,7 @@ static void WriteText(const Gleam::Path& path, const Gleam::TString& text)
 ProjectSolution::ProjectSolution(const Gleam::Project& project)
 	: mIdentifier(MakeIdentifier(project.name))
 	, mProjectDirectory(project.path)
+	, mProjectFile(project.file)
 	, mIntermediateDirectory(project.path / "Intermediate")
 	, mBuildDirectory(project.path / "Intermediate" / "Build")
 {
@@ -104,7 +105,8 @@ SolutionBuildResult ProjectSolution::Generate() const
 		{ "@ENGINE_DIR@", Gleam::Globals::StartupDirectory.String() },
 		{ "@ENGINE_BUILD_DIR@", GLEAM_ENGINE_BUILD_DIR },
 		{ "@PROJECT_IDENTIFIER@", mIdentifier },
-		{ "@PROJECT_DIR@", mProjectDirectory.String() }
+		{ "@PROJECT_DIR@", mProjectDirectory.String() },
+		{ "@PROJECT_FILE@", mProjectFile.String() }
 	}));
 
 	auto command = Quote(GLEAM_CMAKE_COMMAND) + " -S " + Quote(mIntermediateDirectory.String()) + " -B " + Quote(mBuildDirectory.String()) + " -G " + Quote(GLEAM_CMAKE_GENERATOR);

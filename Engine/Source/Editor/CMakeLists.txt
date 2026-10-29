@@ -89,10 +89,15 @@ GLEAM_ADD_REFLECTION_MODULE(
 add_dependencies(EditorReflection RuntimeReflection)
 add_dependencies(Editor EditorReflection)
 
-# The application loads every module's types from one linked database
+# The application loads every module's types from one linked database next to its executable
+if (APPLE)
+    set(EDITOR_EXECUTABLE_DIR ${CMAKE_BINARY_DIR}/$<CONFIG>/Editor.app/Contents/Resources)
+else()
+    set(EDITOR_EXECUTABLE_DIR ${CMAKE_BINARY_DIR}/$<CONFIG>)
+endif()
 GLEAM_LINK_REFLECTION_MODULES(
     NAME ReflectionLink
-    OUTPUT ${CMAKE_SOURCE_DIR}/Gleam.Reflection.db
+    OUTPUT ${EDITOR_EXECUTABLE_DIR}/Gleam.Reflection.db
     NATVIS ${GLEAM_REFLECTION_BINARY_DIR}/Gleam.Reflection.natvis
     DATABASES ${GLEAM_REFLECTION_BINARY_DIR}/Runtime.Reflection.db ${GLEAM_REFLECTION_BINARY_DIR}/Editor.Reflection.db
     DEPENDS RuntimeReflection EditorReflection

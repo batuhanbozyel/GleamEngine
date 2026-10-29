@@ -15,5 +15,6 @@ Project Project::Load(const Path& path)
 		project = serializer.Deserialize<Project>(file->GetStream());
 	}
 	project.path = path.Parent();
+	project.file = path;
 	return project;
 }

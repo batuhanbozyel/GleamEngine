@@ -44,7 +44,7 @@ int main(int argc, char* argv[])
 	Gleam::Globals::CLI = &cli;
 
 	Gleam::Reflection::Database reflection;
-	reflection.Initialize(Gleam::Filesystem::WorkingDirectory() / "Gleam.Reflection.db");
+	reflection.Initialize(Gleam::Filesystem::ApplicationResourcesDirectory() / "Gleam.Reflection.db");
 
 	Gleam::TypeLifecycleRegistry lifecycles;
 	lifecycles.Initialize();

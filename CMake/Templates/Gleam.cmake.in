@@ -24,7 +24,7 @@ set_target_properties(Gleam::Runtime PROPERTIES
     INTERFACE_LINK_LIBRARIES "Gleam::EASTL;Gleam::imgui;Gleam::box3d;SDL3::SDL3-static;@RUNTIME_SYSTEM_LIBS@"
 )
 
-function(GLEAM_ADD_SCRIPTS NAME SCRIPTS_DIR)
+function(GLEAM_ADD_SCRIPTS NAME SCRIPTS_DIR PROJECT_FILE)
     set(GENERATED_DIR ${CMAKE_BINARY_DIR}/Generated)
     set(REFLECTION_DIR ${CMAKE_BINARY_DIR}/Reflection)
     file(MAKE_DIRECTORY ${GENERATED_DIR} ${REFLECTION_DIR})
@@ -55,6 +55,13 @@ function(GLEAM_ADD_SCRIPTS NAME SCRIPTS_DIR)
     SET_WORKING_DIRECTORY(${NAME} ${GLEAM_ENGINE_DIR})
     set_property(DIRECTORY ${CMAKE_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT ${NAME})
 
+    # Running from the IDE opens the project the way the editor does on Play
+    if (MSVC)
+        set_target_properties(${NAME} PROPERTIES VS_DEBUGGER_COMMAND_ARGUMENTS "\"-project=${PROJECT_FILE}\"")
+    else()
+        set_target_properties(${NAME} PROPERTIES XCODE_SCHEME_ARGUMENTS "\"-project=${PROJECT_FILE}\"")
+    endif()
+
     GLEAM_ADD_REFLECTION_MODULE(
         NAME ${NAME}
         SOURCE_DIR ${GENERATED_DIR}
@@ -74,7 +81,7 @@ function(GLEAM_ADD_SCRIPTS NAME SCRIPTS_DIR)
     )
     GLEAM_LINK_REFLECTION_MODULES(
         NAME ${NAME}GameReflection
-        OUTPUT ${REFLECTION_DIR}/Gleam.Reflection.db
+        OUTPUT ${CMAKE_BINARY_DIR}/$<CONFIG>/Gleam.Reflection.db
         NATVIS ${REFLECTION_DIR}/Gleam.Reflection.natvis
         DATABASES ${GLEAM_ENGINE_REFLECTION_DIR}/Runtime.Reflection.db ${REFLECTION_DIR}/${NAME}.Reflection.db
         DEPENDS ${NAME}Reflection

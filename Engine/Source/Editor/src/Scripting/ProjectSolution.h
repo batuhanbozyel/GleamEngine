@@ -48,6 +48,8 @@ private:
 
 	Gleam::Path mProjectDirectory;
 
+	Gleam::Path mProjectFile;
+
 	Gleam::Path mIntermediateDirectory;
 
 	Gleam::Path mBuildDirectory;

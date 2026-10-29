@@ -159,6 +159,9 @@ public:
 
 	static Path AppDataDirectory();
 
+	// Data shipped with the application, the Resources folder of a macOS bundle, otherwise the executable's folder
+	static Path ApplicationResourcesDirectory();
+
 	static Path Relative(const Path& path, const Path& base);
 
 	static FileTime LastWriteTime(const Path& path);

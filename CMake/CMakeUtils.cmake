@@ -95,8 +95,10 @@ function(GLEAM_LINK_REFLECTION_MODULES)
         list(APPEND LINK_ARGS "--natvis=${REFL_NATVIS}")
     endif()
 
+    get_filename_component(OUTPUT_DIR ${REFL_OUTPUT} DIRECTORY)
     add_custom_command(
         OUTPUT ${LINK_OUTPUTS}
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${OUTPUT_DIR}
         COMMAND ${REFLECTION_CLI} ${LINK_ARGS} ${REFL_DATABASES}
         DEPENDS ${REFL_DATABASES} ${REFLECTION_CLI}
         COMMENT "Linking reflection databases..."
