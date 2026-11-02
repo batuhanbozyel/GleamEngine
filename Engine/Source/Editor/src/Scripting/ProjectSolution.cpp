@@ -25,6 +25,11 @@ static Gleam::TString Quote(const Gleam::TString& value)
 	return "\"" + value + "\"";
 }
 
+static Gleam::TString CMakePath(Gleam::Path path)
+{
+	return path.MakePreferred().String();
+}
+
 static Gleam::TString InstantiateTemplate(const Gleam::Path& path, const Gleam::TArray<eastl::pair<Gleam::TString, Gleam::TString>>& tokens)
 {
 	auto text = Gleam::Filesystem::OpenRead(path, Gleam::FileType::Text)->Read();
@@ -102,11 +107,11 @@ SolutionBuildResult ProjectSolution::Generate() const
 	Gleam::Filesystem::CreateDirectories(mIntermediateDirectory);
 	WriteText(mIntermediateDirectory / "CMakeLists.txt", InstantiateTemplate(TemplatesDirectory() / "CMakeLists.txt.in",
 	{
-		{ "@ENGINE_DIR@", Gleam::Globals::StartupDirectory.String() },
+		{ "@ENGINE_DIR@", CMakePath(Gleam::Globals::StartupDirectory) },
 		{ "@ENGINE_BUILD_DIR@", GLEAM_ENGINE_BUILD_DIR },
 		{ "@PROJECT_IDENTIFIER@", mIdentifier },
-		{ "@PROJECT_DIR@", mProjectDirectory.String() },
-		{ "@PROJECT_FILE@", mProjectFile.String() }
+		{ "@PROJECT_DIR@", CMakePath(mProjectDirectory) },
+		{ "@PROJECT_FILE@", CMakePath(mProjectFile) }
 	}));
 
 	auto command = Quote(GLEAM_CMAKE_COMMAND) + " -S " + Quote(mIntermediateDirectory.String()) + " -B " + Quote(mBuildDirectory.String()) + " -G " + Quote(GLEAM_CMAKE_GENERATOR);
@@ -151,6 +156,6 @@ void ProjectSolution::OpenSolution() const
 #if defined(PLATFORM_MACOS)
 	Gleam::Process::OpenWithDefaultApplication(mBuildDirectory / (mIdentifier + ".xcodeproj"));
 #elif defined(PLATFORM_WINDOWS)
-	Gleam::Process::OpenWithDefaultApplication(mBuildDirectory / (mIdentifier + ".sln"));
+	Gleam::Process::OpenWithDefaultApplication(mBuildDirectory / (mIdentifier + ".slnx"));
 #endif
 }

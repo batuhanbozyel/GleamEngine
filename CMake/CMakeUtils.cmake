@@ -35,6 +35,17 @@ function(DEPLOY_FILE_TO SRC DST)
     endforeach()
 endfunction()
 
+function(GLEAM_DEPLOY_RUNTIME_DEPENDENCIES)
+    DEPLOY_FILE(${GLEAM_ENGINE_DIR}/Engine/ThirdParty/DirectStorage/native/lib/x64/dstorage.lib)
+    DEPLOY_FILE(${GLEAM_ENGINE_DIR}/Engine/ThirdParty/DirectStorage/native/bin/x64/dstorage.dll)
+    DEPLOY_FILE(${GLEAM_ENGINE_DIR}/Engine/ThirdParty/DirectStorage/native/bin/x64/dstoragecore.dll)
+    DEPLOY_FILE(${GLEAM_ENGINE_DIR}/Engine/ThirdParty/WinPixEventRuntime/bin/x64/WinPixEventRuntime.dll)
+    DEPLOY_FILE(${GLEAM_ENGINE_DIR}/Engine/ThirdParty/WinPixEventRuntime/bin/x64/WinPixEventRuntime.lib)
+
+    DEPLOY_FILE_TO(${GLEAM_ENGINE_DIR}/Engine/ThirdParty/DirectXAgilitySDK/build/native/bin/x64/D3D12Core.dll D3D12)
+    DEPLOY_FILE_TO(${GLEAM_ENGINE_DIR}/Engine/ThirdParty/DirectXAgilitySDK/build/native/bin/x64/d3d12SDKLayers.dll D3D12)
+endfunction()
+
 function(GLEAM_ADD_REFLECTION_MODULE)
     set(oneValueArgs NAME SOURCE_DIR BINARY_DIR DEPENDENCY_DIR)
     set(multiValueArgs HEADERS DEPENDS COMPILER_ARGS)

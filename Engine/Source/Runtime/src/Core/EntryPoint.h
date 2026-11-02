@@ -61,9 +61,11 @@ int main(int argc, char* argv[])
 
 	// TODO: parse command line, check if project is provided, then launch Game, otherwise launch custom application instance
 	Gleam::Globals::GameInstance = Gleam::CreateApplicationInstance(cli);
-	Gleam::Globals::GameInstance->Run();
-
-	delete Gleam::Globals::GameInstance;
+	if (Gleam::Globals::GameInstance)
+	{
+		Gleam::Globals::GameInstance->Run();
+		delete Gleam::Globals::GameInstance;
+	}
 	
     engine.Shutdown();
 	binary.Shutdown();

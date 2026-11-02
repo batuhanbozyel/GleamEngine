@@ -22,6 +22,7 @@ set_target_properties(Gleam::Runtime PROPERTIES
     INTERFACE_INCLUDE_DIRECTORIES "@INCLUDE_DIRS@"
     INTERFACE_COMPILE_DEFINITIONS "$<$<CONFIG:Debug,Development>:GDEBUG>;$<$<CONFIG:Release>:GRELEASE>"
     INTERFACE_LINK_LIBRARIES "Gleam::EASTL;Gleam::imgui;Gleam::box3d;SDL3::SDL3-static;@RUNTIME_SYSTEM_LIBS@"
+    INTERFACE_LINK_DIRECTORIES "${CMAKE_BINARY_DIR}/$<CONFIG>"
 )
 
 function(GLEAM_ADD_SCRIPTS NAME SCRIPTS_DIR PROJECT_FILE)
@@ -36,6 +37,7 @@ function(GLEAM_ADD_SCRIPTS NAME SCRIPTS_DIR PROJECT_FILE)
     target_include_directories(${NAME} PRIVATE ${SCRIPTS_DIR} ${GENERATED_DIR})
     target_link_libraries(${NAME} PRIVATE Gleam::Runtime)
     target_compile_definitions(${NAME} PRIVATE _CRT_SECURE_NO_WARNINGS WIN32_LEAN_AND_MEAN NOMINMAX)
+    GLEAM_DEPLOY_RUNTIME_DEPENDENCIES()
 
     # Script code never includes its own generated reflection header
     set(GENERATED_HEADER ${GENERATED_DIR}/${NAME}.Reflection.generated.h)

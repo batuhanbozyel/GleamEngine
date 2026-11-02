@@ -107,14 +107,7 @@ target_compile_definitions(
     $<$<CONFIG:Release>:GRELEASE>
 )
 
-DEPLOY_FILE(${CMAKE_SOURCE_DIR}/Engine/ThirdParty/DirectStorage/native/lib/x64/dstorage.lib)
-DEPLOY_FILE(${CMAKE_SOURCE_DIR}/Engine/ThirdParty/DirectStorage/native/bin/x64/dstorage.dll)
-DEPLOY_FILE(${CMAKE_SOURCE_DIR}/Engine/ThirdParty/DirectStorage/native/bin/x64/dstoragecore.dll)
-DEPLOY_FILE(${CMAKE_SOURCE_DIR}/Engine/ThirdParty/WinPixEventRuntime/bin/x64/WinPixEventRuntime.dll)
-DEPLOY_FILE(${CMAKE_SOURCE_DIR}/Engine/ThirdParty/WinPixEventRuntime/bin/x64/WinPixEventRuntime.lib)
-
-DEPLOY_FILE_TO(${CMAKE_SOURCE_DIR}/Engine/ThirdParty/DirectXAgilitySDK/build/native/bin/x64/D3D12Core.dll D3D12)
-DEPLOY_FILE_TO(${CMAKE_SOURCE_DIR}/Engine/ThirdParty/DirectXAgilitySDK/build/native/bin/x64/d3d12SDKLayers.dll D3D12)
+GLEAM_DEPLOY_RUNTIME_DEPENDENCIES()
 
 # CppReflection
 set(REFLECTION_COMPILER_ARGS "--extra-arg=-working-directory=${CMAKE_SOURCE_DIR}")

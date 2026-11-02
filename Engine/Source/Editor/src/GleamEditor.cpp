@@ -123,6 +123,11 @@ Gleam::Application* Gleam::CreateApplicationInstance(const Gleam::CommandLine& c
 		return new GEditor::GleamLauncher({ .title = "Editor crashed", .log = ReadLog(crashLog) });
 	}
 
+	if (const auto reflectionLog = Gleam::Path(cli.GetParam<Gleam::TString>("reflection-log", Gleam::TString())); reflectionLog.Empty() == false)
+	{
+		return new GEditor::GleamLauncher({ .title = "Reflection generation failed", .log = ReadLog(reflectionLog) });
+	}
+
 	auto projectFile = GetProjectFile(cli);
 	if (projectFile.Empty())
 	{
@@ -134,7 +139,11 @@ Gleam::Application* Gleam::CreateApplicationInstance(const Gleam::CommandLine& c
 	if (scriptReflection->Refresh({}) == false)
 	{
 		Gleam::Globals::Engine->RemoveSubsystem<GEditor::ScriptReflection>();
-		return new GEditor::GleamLauncher({ .title = "Reflection generation failed", .log = ReadLog(Gleam::Logger::FILE_NAME) });
+		const auto reflectionLog = Gleam::Globals::UserDataDirectory / "Launcher" / "Reflection.log";
+		Gleam::Filesystem::CreateDirectories(reflectionLog.Parent());
+		Gleam::Filesystem::Create(reflectionLog, Gleam::FileType::Text)->Write(ReadLog(Gleam::Logger::FILE_NAME));
+		Gleam::Process::Launch(Gleam::Process::ExecutablePath(), { "-reflection-log=" + reflectionLog.String() }, Gleam::Filesystem::WorkingDirectory());
+		return nullptr;
 	}
 
 	// The launcher removes unknown entries of the user data directory, its own folder is kept
