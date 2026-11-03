@@ -18,7 +18,7 @@ struct GBufferData
 	TextureHandle previousRoughnessTarget = TextureHandle();
 };
 
-class GBufferResolveRenderer : public IRenderer
+GCLASS(GBufferResolveRenderer, "6BABE54F-AF07-415A-A8AD-4F3A31E44B90", Renderer(RenderStage::Prepass), PrettyName("G-Buffer Resolve")) : public IRenderer
 {
 public:
 
@@ -29,8 +29,6 @@ public:
 	virtual void AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard) override;
 
 	virtual void RegisterShadingPipeline(const Material* material) override;
-
-	virtual RenderStage GetStage() const override { return RenderStage::Prepass; }
 
 private:
 

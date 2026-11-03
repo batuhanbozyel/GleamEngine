@@ -22,8 +22,7 @@ void PickingSystem::Initialize(World* world)
 
 	mRenderer = new PickingRenderer(this);
 	mRenderer->OnCreate(renderSystem->GetRenderContext());
-	renderSystem->GetRenderPipeline(RenderPath::Default)->AddSharedRenderer(mRenderer);
-	renderSystem->GetRenderPipeline(RenderPath::PathTracing)->AddSharedRenderer(mRenderer);
+	renderSystem->AddRenderer(mRenderer, RenderStage::Prepass);
 
 	// Reconfiguring the swapchain recreates the per frame command buffers, so anything already in
 	// flight loses its completion guarantee. The ring itself is rebuilt in ResolveReadback, where the
@@ -46,8 +45,7 @@ void PickingSystem::Shutdown(World* world)
 	configSystem->Unsubscribe<RendererConfig>(mConfigHandle);
 
 	auto context = renderSystem->GetRenderContext();
-	renderSystem->GetRenderPipeline(RenderPath::Default)->RemoveSharedRenderer(mRenderer);
-	renderSystem->GetRenderPipeline(RenderPath::PathTracing)->RemoveSharedRenderer(mRenderer);
+	renderSystem->RemoveRenderer(mRenderer);
 	mRenderer->OnDestroy(context);
 	delete mRenderer;
 	mRenderer = nullptr;

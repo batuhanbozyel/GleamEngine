@@ -77,6 +77,8 @@ private:
 
 	const GridEntry* FindSelectedEntry() const;
 
+	bool IsEditable(const GridEntry& entry) const;
+
 	void RequestRename(const GridEntry& entry);
 
 	void RequestDelete(const GridEntry& entry);

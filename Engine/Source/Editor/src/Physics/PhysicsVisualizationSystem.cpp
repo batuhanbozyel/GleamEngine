@@ -202,13 +202,11 @@ void PhysicsVisualizationSystem::OnUpdate(Gleam::EntityManager& entityManager)
 	}
 
 	static auto renderSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::RenderSystem>();
-	auto pipeline = renderSystem->GetRenderPipeline(Gleam::RenderPath::Default);
-	if (pipeline == nullptr || pipeline->HasRenderer<Gleam::DebugRenderer>() == false)
+	auto renderer = renderSystem->GetRenderer<Gleam::DebugRenderer>();
+	if (renderer == nullptr)
 	{
 		return;
 	}
-
-	auto renderer = pipeline->GetRenderer<Gleam::DebugRenderer>();
 
 	entityManager.ForEach<Gleam::Entity, Gleam::RigidBody>([&](const Gleam::Entity& entity, const Gleam::RigidBody& rigidBody)
 	{

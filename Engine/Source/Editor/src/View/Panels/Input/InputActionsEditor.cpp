@@ -100,10 +100,9 @@ void InputActionsEditor::Open(const AssetItem& asset, const Gleam::Path& file)
 		return;
 	}
 
-	mName = asset.name;
+	mToolbar.Reset(asset.name);
 	mAsset = asset;
 	mFile = file;
-	mEditingName = false;
 	mDirty = false;
 	mIsOpen = true;
 	SelectMap(mDescriptor.maps.empty() ? -1 : 0);
@@ -114,7 +113,7 @@ void InputActionsEditor::OnAssetRenamed(const AssetItem& asset)
 	if (mIsOpen and mAsset.reference == asset.reference)
 	{
 		mAsset = asset;
-		mName = asset.name;
+		mToolbar.Reset(asset.name);
 	}
 }
 
@@ -142,7 +141,10 @@ void InputActionsEditor::Render(Gleam::ImGuiRenderer* imgui)
 		ImGui::SetNextWindowSize(ImVec2(960.0f, 560.0f), ImGuiCond_FirstUseEver);
 		if (ImGui::Begin("Input Actions###InputActionsEditor", &mIsOpen))
 		{
-			DrawToolbar();
+			if (mToolbar.Draw(*mFonts, *mAssetManager, mFile.Parent(), mAsset, mDirty, HasInvalidNames() == false))
+			{
+				Save();
+			}
 
 			if (ImGui::BeginTable("##InputActionsLayout", 3, ImGuiTableFlags_Resizable | ImGuiTableFlags_BordersInnerV))
 			{
@@ -183,58 +185,12 @@ void InputActionsEditor::Render(Gleam::ImGuiRenderer* imgui)
 void InputActionsEditor::Save()
 {
 	auto item = mAsset;
-	item.name = mName;
+	item.name = mToolbar.GetName();
 	if (mAssetManager->SaveAsset(mFile.Parent(), mDescriptor, item))
 	{
 		mAsset = item;
 		mDirty = false;
 	}
-}
-
-void InputActionsEditor::DrawToolbar()
-{
-	if (mEditingName == false)
-	{
-		const auto length = Gleam::Math::Min(mName.size(), sizeof(mNameBuffer) - 1);
-		std::memcpy(mNameBuffer, mName.c_str(), length);
-		mNameBuffer[length] = '\0';
-	}
-
-	constexpr float kNameWidth = 280.0f;
-	ImGui::PushFont(mFonts->semiBold);
-	ImGui::SetNextItemWidth(kNameWidth);
-	ImGui::InputText("##AssetName", mNameBuffer, sizeof(mNameBuffer), ImGuiInputTextFlags_AutoSelectAll);
-	ImGui::PopFont();
-	mEditingName = ImGui::IsItemActive();
-	if (ImGui::IsItemDeactivatedAfterEdit() and mName != Gleam::TStringView(mNameBuffer))
-	{
-		mName = Gleam::TString(static_cast<const char*>(mNameBuffer));
-		mDirty = true;
-	}
-
-	const bool validName = mAssetManager->IsValidAssetName(mFile.Parent(), mAsset, mEditingName ? Gleam::TStringView(mNameBuffer) : Gleam::TStringView(mName));
-	if (validName == false)
-	{
-		ImGui::SameLine();
-		ImGui::AlignTextToFramePadding();
-		ImGui::TextColored(Gleam::Theme::Error, "Name is empty, contains a path separator or is already taken");
-	}
-
-	if (mDirty)
-	{
-		ImGui::SameLine();
-		ImGui::TextColored(Gleam::Theme::TextDim, "(modified)");
-	}
-
-	constexpr float kSaveWidth = 90.0f;
-	ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - kSaveWidth);
-	ImGui::BeginDisabled(mDirty == false or validName == false or HasInvalidNames());
-	if (Widgets::AccentButton(ICON_LC_SAVE "  Save", ImVec2(kSaveWidth, ImGui::GetFrameHeight())))
-	{
-		Save();
-	}
-	ImGui::EndDisabled();
-	ImGui::Separator();
 }
 
 bool InputActionsEditor::DrawListHeader(const char* label)

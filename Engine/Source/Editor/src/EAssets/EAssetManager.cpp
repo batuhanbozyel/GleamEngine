@@ -6,6 +6,7 @@
 #include "Core/Globals.h"
 #include "Core/Engine.h"
 #include "Core/Application.h"
+#include "Core/ConfigSystem.h"
 
 #include "Serialization/BinarySerializer.h"
 #include "Serialization/JSONSerializer.h"
@@ -14,6 +15,16 @@
 #include "Renderer/MeshDescriptor.h"
 #include "Renderer/TextureDescriptor.h"
 #include "Renderer/Material/MaterialDescriptor.h"
+#include "Renderer/GraphicsSettings.h"
+#include "Renderer/Renderers/PathTracer.h"
+#include "Renderer/Renderers/BRDFRenderer.h"
+#include "Renderer/Renderers/DepthPrepass.h"
+#include "Renderer/Renderers/SkyAtmosphere.h"
+#include "Renderer/Renderers/WorldRenderer.h"
+#include "Renderer/Renderers/PostProcessStack.h"
+#include "Renderer/Renderers/ReflectionProbeRenderer.h"
+#include "Renderer/Renderers/VisibilityClassification.h"
+#include "Renderer/Renderers/GBufferResolveRenderer.h"
 
 #include "Assets/Asset.h"
 #include "Assets/AssetManager.h"
@@ -100,6 +111,82 @@ void EAssetManager::Initialize(Gleam::Application* app)
 			CompileMaterial(entry, mAssetDirectory / "Engine" / "Materials");
 		}
 	}, true);
+
+	CreateBuiltinRenderPipelines();
+}
+
+void EAssetManager::CreateBuiltinRenderPipelines()
+{
+	const auto directory = mAssetDirectory / "Engine" / "RenderPipelines";
+	Gleam::Filesystem::CreateDirectories(directory);
+
+	const auto defaultPipeline = WriteBuiltinRenderPipeline(directory, "Default", Gleam::RenderPipelineDescriptor{
+		.renderers = {
+			Gleam::Reflection::GetClass<Gleam::BRDFRenderer>().Guid(),
+			Gleam::Reflection::GetClass<Gleam::ReflectionProbeRenderer>().Guid(),
+			Gleam::Reflection::GetClass<Gleam::DepthPrepass>().Guid(),
+			Gleam::Reflection::GetClass<Gleam::VisibilityClassificationRenderer>().Guid(),
+			Gleam::Reflection::GetClass<Gleam::GBufferResolveRenderer>().Guid(),
+			Gleam::Reflection::GetClass<Gleam::AmbientOcclusionRenderer>().Guid(),
+			Gleam::Reflection::GetClass<Gleam::SunShadowRenderer>().Guid(),
+			Gleam::Reflection::GetClass<Gleam::RayTracedReflectionRenderer>().Guid(),
+			Gleam::Reflection::GetClass<Gleam::WorldRenderer>().Guid(),
+			Gleam::Reflection::GetClass<Gleam::SkyAtmosphereRenderer>().Guid(),
+			Gleam::Reflection::GetClass<Gleam::PostProcessStack>().Guid()
+		}
+	});
+	WriteBuiltinRenderPipeline(directory, "Path Tracing", Gleam::RenderPipelineDescriptor{
+		.renderers = {
+			Gleam::Reflection::GetClass<Gleam::BRDFRenderer>().Guid(),
+			Gleam::Reflection::GetClass<Gleam::DepthPrepass>().Guid(),
+			Gleam::Reflection::GetClass<Gleam::PathTracer>().Guid(),
+			Gleam::Reflection::GetClass<Gleam::PostProcessStack>().Guid()
+		}
+	});
+
+	auto configSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::ConfigSystem>();
+	if (configSystem->Get<Gleam::GraphicsSettings>().renderPipeline.guid == Gleam::Guid::InvalidGuid())
+	{
+		configSystem->Modify<Gleam::GraphicsSettings>([&defaultPipeline](Gleam::GraphicsSettings& settings)
+		{
+			settings.renderPipeline = defaultPipeline;
+		});
+	}
+}
+
+Gleam::AssetReference EAssetManager::WriteBuiltinRenderPipeline(const Gleam::Path& directory, Gleam::TStringView name, const Gleam::RenderPipelineDescriptor& descriptor)
+{
+	const auto typeGuid = Gleam::Reflection::GetClass<Gleam::RenderPipelineDescriptor>().Guid();
+	if (const auto existing = mRegistry.FindAsset(directory / name, typeGuid))
+	{
+		auto item = *existing;
+		SaveAsset(directory, descriptor, item);
+		return item.reference;
+	}
+
+	const auto& item = CreateAsset(directory, name, descriptor);
+
+	// The first frame loads the default pipeline, possibly before the runtime file watcher reports the new file
+	auto assetManager = Gleam::Globals::GameInstance->GetSubsystem<Gleam::AssetManager>();
+	assetManager->GetStorage()->EmplaceAssetPath(directory / (Gleam::TWString(item.reference.guid.ToString()) + Gleam::Asset::Extension()));
+	return item.reference;
+}
+
+bool EAssetManager::IsBuiltinAsset(const Gleam::Path& file) const
+{
+	const auto builtinDirectory = mAssetDirectory / "Engine";
+	for (auto directory = file.Parent(); directory.Empty() == false; directory = directory.Parent())
+	{
+		if (Gleam::Filesystem::Equals(directory, builtinDirectory))
+		{
+			return true;
+		}
+		if (Gleam::Filesystem::Equals(directory, mAssetDirectory))
+		{
+			return false;
+		}
+	}
+	return false;
 }
 
 void EAssetManager::CompileMaterials(const Gleam::Path& sourceDirectory, const Gleam::Path& outputDirectory)

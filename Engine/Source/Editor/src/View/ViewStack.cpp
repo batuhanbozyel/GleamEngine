@@ -36,8 +36,7 @@ void ViewStack::Initialize(Gleam::Application* app)
 	mImgui->OnCreate(renderSystem->GetRenderContext());
 	ImGui::GetIO().IniFilename = mIniPath.c_str();
 
-	renderSystem->GetRenderPipeline(Gleam::RenderPath::Default)->AddSharedRenderer(mImgui);
-	renderSystem->GetRenderPipeline(Gleam::RenderPath::PathTracing)->AddSharedRenderer(mImgui);
+	renderSystem->AddRenderer(mImgui, Gleam::RenderStage::AfterRendering);
 	Gleam::Theme::Apply();
 	LoadFonts();
 }
@@ -45,8 +44,7 @@ void ViewStack::Initialize(Gleam::Application* app)
 void ViewStack::Shutdown(Gleam::Application* app)
 {
 	static auto renderSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::RenderSystem>();
-	renderSystem->GetRenderPipeline(Gleam::RenderPath::Default)->RemoveSharedRenderer(mImgui);
-	renderSystem->GetRenderPipeline(Gleam::RenderPath::PathTracing)->RemoveSharedRenderer(mImgui);
+	renderSystem->RemoveRenderer(mImgui);
 	mImgui->OnDestroy(renderSystem->GetRenderContext());
 	delete mImgui;
 	
@@ -59,9 +57,6 @@ void ViewStack::Shutdown(Gleam::Application* app)
 
 void ViewStack::Tick(Gleam::Application* app)
 {
-	static auto renderSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::RenderSystem>();
-	auto imgui = renderSystem->GetActiveRenderPipeline()->GetRenderer<Gleam::ImGuiRenderer>();
-
 	if (mFontsDirty)
 	{
 		mFontsDirty = false;
@@ -75,7 +70,7 @@ void ViewStack::Tick(Gleam::Application* app)
 
 	for (auto view : mViews)
     {
-        view->Render(imgui);
+        view->Render(mImgui);
     }
 }
 
@@ -99,7 +94,7 @@ void ViewStack::LoadFonts()
 	{
 		static constexpr const char* kIcons[] = {
 			ICON_LC_AXIS_3D, ICON_LC_BOX, ICON_LC_CHEVRON_DOWN, ICON_LC_CHEVRON_RIGHT, ICON_LC_CIRCLE_X, ICON_LC_ELLIPSIS_VERTICAL,
-			ICON_LC_EYE, ICON_LC_EYE_OFF, ICON_LC_FOLDER, ICON_LC_FOLDER_OPEN, ICON_LC_GLOBE, ICON_LC_INFO,
+			ICON_LC_ELLIPSIS, ICON_LC_EYE, ICON_LC_EYE_OFF, ICON_LC_FOLDER, ICON_LC_FOLDER_OPEN, ICON_LC_GLOBE, ICON_LC_GRIP_VERTICAL, ICON_LC_INFO, ICON_LC_LINK,
 			ICON_LC_MAGNET, ICON_LC_MOVE, ICON_LC_PAUSE, ICON_LC_PLAY, ICON_LC_PLUS, ICON_LC_RATIO, ICON_LC_ROTATE_CW, ICON_LC_SAVE, ICON_LC_SCALING,
 			ICON_LC_SEARCH, ICON_LC_SLIDERS_HORIZONTAL, ICON_LC_SPARKLE, ICON_LC_SQUARE, ICON_LC_STEP_FORWARD, ICON_LC_SUN, ICON_LC_TRASH_2, ICON_LC_TRIANGLE_ALERT, ICON_LC_UPLOAD
 		};

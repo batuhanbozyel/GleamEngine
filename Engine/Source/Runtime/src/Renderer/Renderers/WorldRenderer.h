@@ -28,7 +28,7 @@ struct WorldRenderingData
 	TextureHandle reflectionTexture = TextureHandle();
 };
 
-class WorldRenderer : public IRenderer
+GCLASS(WorldRenderer, "65B724A8-52A6-4FE8-A033-67A5FDE3A974", Renderer(RenderStage::Opaque), PrettyName("World")) : public IRenderer
 {
 public:
     

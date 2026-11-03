@@ -51,8 +51,6 @@ public:
     
     virtual void AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard) override;
 
-	virtual RenderStage GetStage() const override { return RenderStage::Transparent; }
-    
     void DrawLine(const Float3& start, const Float3& end, Color32 color, bool depthTest = true);
 
     void DrawTriangle(const Float3& v1, const Float3& v2, const Float3& v3, Color32 color, bool depthTest = true);

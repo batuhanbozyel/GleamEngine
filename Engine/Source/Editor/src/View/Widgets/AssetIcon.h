@@ -13,7 +13,8 @@ enum class AssetCategory
 	MaterialInstance,
 	Texture,
 	World,
-	InputActions
+	InputActions,
+	RenderPipeline
 };
 
 struct AssetIcon

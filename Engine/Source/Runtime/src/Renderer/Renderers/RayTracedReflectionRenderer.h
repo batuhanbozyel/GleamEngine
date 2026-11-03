@@ -37,7 +37,7 @@ struct RayTracedReflectionData
 	TextureHandle reflectionTarget = TextureHandle();
 };
 
-class RayTracedReflectionRenderer : public IRenderer
+GCLASS(RayTracedReflectionRenderer, "F2ADDFF5-ECB9-46B5-AFCB-D367F64CA6A9", Renderer(RenderStage::Shadows), PrettyName("Ray Traced Reflections")) : public IRenderer
 {
 public:
 
@@ -50,8 +50,6 @@ public:
 	virtual void AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard) override;
 
 	virtual void RegisterShadingPipeline(const Material* material) override;
-
-	virtual RenderStage GetStage() const override { return RenderStage::Shadows; }
 
 	const RayTracedReflectionSettings& GetSettings() const { return mSettings; }
 

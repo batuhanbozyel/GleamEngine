@@ -12,8 +12,6 @@ public:
 
     virtual void AddRenderPasses(Gleam::RenderGraph& graph, Gleam::RenderGraphBlackboard& blackboard) override;
 
-    virtual Gleam::RenderStage GetStage() const override { return Gleam::RenderStage::PostProcess; }
-
     void SetViewMode(ViewMode mode) { mMode = mode; }
 
     ViewMode GetViewMode() const { return mMode; }

@@ -91,6 +91,19 @@ public:
 	}
 
 	void Reload(const AssetReference& ref);
+
+	template<LoadableAssetType T, typename Fn>
+	void ForEachLoaded(Fn&& fn) const
+	{
+		const auto type = entt::type_hash<T>().value();
+		for (const auto& [_, entry] : mAssetCache)
+		{
+			if (entry.type == type)
+			{
+				fn(static_cast<const T*>(entry.asset.get()));
+			}
+		}
+	}
 	
 	template<typename T>
 	T LoadDescriptor(const AssetReference& ref) const

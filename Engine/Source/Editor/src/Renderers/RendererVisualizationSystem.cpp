@@ -74,7 +74,7 @@ RendererVisualizationSystem::RendererVisualizationSystem(const SelectionSystem* 
 void RendererVisualizationSystem::OnUpdate(Gleam::EntityManager& entityManager)
 {
 	static auto renderSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::RenderSystem>();
-	auto renderer = renderSystem->GetRenderPipeline(Gleam::RenderPath::Default)->GetRenderer<Gleam::DebugRenderer>();
+	auto renderer = renderSystem->GetRenderer<Gleam::DebugRenderer>();
 
 	const bool drawAllFrustums = mSettings.flags.Has(Gleam::RendererVisualizationFlag::CameraFrustums);
 	entityManager.ForEach<Gleam::Entity, Gleam::Camera>([&](Gleam::EntityHandle handle, const Gleam::Entity& entity, const Gleam::Camera& camera)

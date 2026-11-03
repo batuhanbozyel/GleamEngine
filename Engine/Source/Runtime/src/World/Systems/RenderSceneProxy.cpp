@@ -87,6 +87,7 @@ static uint32_t SelectMeshLod(Mesh* mesh, float screenCoverage)
 void RenderSceneProxy::Initialize(World* world)
 {
 	mMeshRendererRemoved = world->GetEntityManager().OnComponentRemoved<MeshRenderer, &RenderSceneProxy::OnMeshRendererRemoved>(*this);
+	mCameraRemoved = world->GetEntityManager().OnComponentRemoved<Camera, &RenderSceneProxy::OnCameraRemoved>(*this);
 }
 
 void RenderSceneProxy::OnMeshRendererRemoved(EntityHandle entity)
@@ -240,12 +241,31 @@ void RenderSceneProxy::RemoveRecord(EntityHandle entity)
 
 void RenderSceneProxy::Update(const World* world, EntityHandle camera)
 {
+	static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
+
 	const auto& entityManager = world->GetEntityManager();
 	const Tick since = mChangeCursor.Begin(entityManager.GetChangeTracker());
 	entityManager.ForEachChanged<MeshRenderer>(since, [this, &entityManager](EntityHandle entity, const MeshRenderer& meshRenderer)
 	{
 		BuildRecord(entityManager, entity, meshRenderer);
 	});
+
+	// Cameras without their own pipeline follow the project default, so a new default re-resolves every camera
+	if (mDefaultPipeline != renderSystem->GetDefaultRenderPipeline())
+	{
+		mDefaultPipeline = renderSystem->GetDefaultRenderPipeline();
+		entityManager.ForEach<Entity, Camera>([this](EntityHandle entity, const Entity&, const Camera& component)
+		{
+			AcquireCameraPipeline(entity, component);
+		});
+	}
+	else
+	{
+		entityManager.ForEachChanged<Camera>(since, [this](EntityHandle entity, const Camera& component)
+		{
+			AcquireCameraPipeline(entity, component);
+		});
+	}
 	mChangeCursor.Commit();
 
 	const auto& cameraComponent = entityManager.GetComponent<Camera>(camera);
@@ -398,6 +418,46 @@ void RenderSceneProxy::Shutdown(World* world)
 	}
 	mBatches.clear();
 	mBatchLookup.clear();
+
+	mCameraRemoved.Reset();
+	for (const auto& [_, record] : mCameraRecords)
+	{
+		assetManager->Release(record.pipelineReference);
+	}
+	mCameraRecords.clear();
+}
+
+void RenderSceneProxy::AcquireCameraPipeline(EntityHandle entity, const Camera& camera)
+{
+	static auto assetManager = Globals::GameInstance->GetSubsystem<AssetManager>();
+
+	const auto& reference = camera.renderPipeline.guid != Guid::InvalidGuid() ? camera.renderPipeline : mDefaultPipeline;
+	auto& record = mCameraRecords[entt::to_integral(entity)];
+	if (record.pipelineReference == reference)
+	{
+		return;
+	}
+
+	assetManager->Release(record.pipelineReference);
+	record.pipelineReference = reference;
+	record.pipeline = assetManager->Load<RenderPipeline>(reference);
+}
+
+void RenderSceneProxy::OnCameraRemoved(EntityHandle entity)
+{
+	static auto assetManager = Globals::GameInstance->GetSubsystem<AssetManager>();
+
+	if (auto it = mCameraRecords.find(entt::to_integral(entity)); it != mCameraRecords.end())
+	{
+		assetManager->Release(it->second.pipelineReference);
+		mCameraRecords.erase(it);
+	}
+}
+
+RenderPipeline* RenderSceneProxy::GetRenderPipeline(EntityHandle camera) const
+{
+	auto it = mCameraRecords.find(entt::to_integral(camera));
+	return it != mCameraRecords.end() ? it->second.pipeline : nullptr;
 }
 
 void RenderSceneProxy::ForEach(BatchFn&& fn) const

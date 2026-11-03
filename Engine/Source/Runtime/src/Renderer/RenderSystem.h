@@ -4,6 +4,8 @@
 #include "World/Entity.h"
 #include "Shaders/ShaderTypes.h"
 #include "MeshDrawList.h"
+#include "RenderPipeline.h"
+#include "Assets/AssetReference.h"
 
 namespace Gleam {
 
@@ -16,7 +18,6 @@ class GPUAllocator;
 class CommandBuffer;
 class RenderSurface;
 class GraphicsDevice;
-class RenderPipeline;
 class RayTracingScene;
 class CopyCommandBuffer;
 class ResourceReleaseQueue;
@@ -27,11 +28,7 @@ struct GraphicsSettings;
 struct CameraRenderData;
 struct SkyAtmosphereRenderData;
 
-GENUM(RenderPath, "83FD8433-7D91-42AF-A237-CCF726E306E5", Serializable, PrettyName("Render Path"))
-{
-	GITEM(Default, "E77464D0-418E-48E9-87AA-2C7355C7C599", PrettyName("Default")),
-	GITEM(PathTracing, "AF1EDBC0-9EA0-4C5B-9BDB-8258B6CCE31E", PrettyName("Path Tracing"))
-};
+class TypeLifecycle;
 
 class RenderSystem final : public EngineSubsystem
 {
@@ -49,11 +46,7 @@ public:
 
 	void ApplyGraphicsSettings(const GraphicsSettings& settings);
 
-	void SetRenderPath(RenderPath path);
-
 	void SetCameraOverride(EntityHandle camera);
-
-	RenderPath GetRenderPath() const;
 
 	uint32_t GetFrameCount() const;
     
@@ -73,13 +66,33 @@ public:
 
 	const RayTracingScene* GetRayTracingScene() const;
 	
-	RenderPipeline* GetRenderPipeline(RenderPath renderPath);
-	
-	const RenderPipeline* GetRenderPipeline(RenderPath renderPath) const;
+	void AddRenderer(IRenderer* renderer, RenderStage stage);
 
-	RenderPipeline* GetActiveRenderPipeline();
+	void RemoveRenderer(IRenderer* renderer);
 
-	const RenderPipeline* GetActiveRenderPipeline() const;
+	template<RendererType T>
+	T* GetRenderer() const
+	{
+		return mRenderers.Find<T>();
+	}
+
+	IRenderer* AcquireRenderer(const Reflection::ClassDescription& classDesc);
+
+	void ReleaseRenderer(IRenderer* renderer);
+
+	template<RendererType T>
+	T* GetSharedRenderer()
+	{
+		return static_cast<T*>(AcquireRenderer(Reflection::GetClass<T>()));
+	}
+
+	void RegisterPipeline(RenderPipeline* pipeline);
+
+	void UnregisterPipeline(RenderPipeline* pipeline);
+
+	const AssetReference& GetDefaultRenderPipeline() const;
+
+	EntityHandle GetActiveCamera() const;
 
 	GPUAllocator* GetAllocator();
 
@@ -95,7 +108,11 @@ private:
 
 	CameraRenderData SetupCameraRenderData(RenderGraph& graph, const Entity& entity) const;
 
-	SkyAtmosphereRenderData SetupSkyAtmosphereRenderData(RenderGraph& graph, const Entity& entity) const;
+	SkyAtmosphereRenderData SetupSkyAtmosphereRenderData(RenderGraph& graph, const Entity& entity);
+
+	void ApplyGraphicsSettings(RenderPipeline* pipeline, const GraphicsSettings& settings) const;
+
+	void DestroyRenderer(IRenderer* renderer);
 
 	void InitializeBackend();
 
@@ -114,9 +131,17 @@ private:
 	float4x4 mPrevCameraView = {};
 	float4x4 mPrevCameraViewProjection = {};
 
-	RenderPath mRenderPath = RenderPath::Default;
-	TArray<RenderPipeline*, 2> mRenderPipelines = {};
-	TArray<IRenderer*> mSharedRenderers = {};
+	struct RendererAllocation
+	{
+		void* memory = nullptr;
+		const TypeLifecycle* lifecycle = nullptr;
+	};
+
+	RendererList mRenderers;
+	HashMap<IRenderer*, RendererAllocation> mRendererAllocations;
+	HashMap<uint32_t, IRenderer*> mSharedRenderers;
+	TArray<RenderPipeline*> mPipelines;
+	AssetReference mDefaultRenderPipeline;
 
 	RayTracingScene* mRayTracingScene = nullptr;
 

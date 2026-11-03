@@ -32,7 +32,8 @@ void ViewModeRenderer::AddRenderPasses(Gleam::RenderGraph& graph, Gleam::RenderG
         return;
     }
 
-	if (not blackboard.Get<Gleam::SceneRenderingData>().world)
+	// The modes read the G-buffer, which pipelines such as path tracing do not produce
+	if (not blackboard.Get<Gleam::SceneRenderingData>().world or blackboard.Has<Gleam::GBufferData>() == false)
 	{
 		return;
 	}

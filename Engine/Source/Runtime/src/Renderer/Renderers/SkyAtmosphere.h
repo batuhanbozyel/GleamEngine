@@ -5,7 +5,7 @@ namespace Gleam {
 
 struct Atmosphere;
 
-class SkyAtmosphereRenderer : public IRenderer
+GCLASS(SkyAtmosphereRenderer, "29526612-1350-4802-A2B9-C3B0C0DF4BB2", Renderer(RenderStage::Sky, true), PrettyName("Sky Atmosphere")) : public IRenderer
 {
 public:
 
@@ -14,8 +14,6 @@ public:
 	virtual void OnDestroy(const RenderContext& context) override;
 
 	virtual void AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard) override;
-
-	virtual RenderStage GetStage() const override { return RenderStage::Sky; }
 
 	void UpdateSkyAtmosphere(RenderGraph& graph, RenderGraphBlackboard& blackboard);
 

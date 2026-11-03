@@ -26,8 +26,6 @@ public:
 
 	virtual void AddRenderPasses(Gleam::RenderGraph& graph, Gleam::RenderGraphBlackboard& blackboard) override;
 
-	virtual Gleam::RenderStage GetStage() const override { return Gleam::RenderStage::PostProcess; }
-
 	void SetOutlineColor(const Gleam::Color& color) { mOutlineColor = color; }
 
 	const Gleam::Color& GetOutlineColor() const { return mOutlineColor; }

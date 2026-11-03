@@ -1,6 +1,7 @@
 #pragma once
 #include "View/View.h"
 #include "EAssets/AssetRegistry.h"
+#include "View/Widgets/AssetEditorToolbar.h"
 #include "Input/InputActionDescriptor.h"
 
 namespace Gleam {
@@ -39,8 +40,6 @@ private:
 	};
 
 	void Save();
-
-	void DrawToolbar();
 
 	void DrawMaps();
 
@@ -86,11 +85,7 @@ private:
 
 	Gleam::Path mFile;
 
-	Gleam::TString mName;
-
-	char mNameBuffer[128] = "";
-
-	bool mEditingName = false;
+	AssetEditorToolbar mToolbar;
 
 	Gleam::InputActionAssetDescriptor mDescriptor;
 

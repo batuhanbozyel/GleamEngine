@@ -2,6 +2,8 @@
 #include "Renderers/SunShadowRenderer.h"
 #include "Renderers/AmbientOcclusionRenderer.h"
 #include "Renderers/RayTracedReflectionRenderer.h"
+#include "RenderPipelineDescriptor.h"
+#include "Assets/AssetReference.h"
 
 namespace Gleam {
 
@@ -15,6 +17,9 @@ GSTRUCT(GraphicsSettings, "C7716B17-CC75-49FF-8893-6CC0C2B45426", Serializable, 
 
 	GFIELD("E72F3CCB-C384-4CA8-A38F-43D21B577056", Serializable, PrettyName("Ray Traced Reflections"))
 	RayTracedReflectionSettings rayTracedReflections = {};
+
+	GFIELD("3751383F-B996-45B0-8B48-08C2ABA6C6EC", Serializable, PrettyName("Render Pipeline"), AssetType(TypeOf<RenderPipelineDescriptor>))
+	AssetReference renderPipeline;
 };
 
 } // namespace Gleam

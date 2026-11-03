@@ -52,6 +52,7 @@ namespace Gleam::Theme
     constexpr ImVec4 Purple       = Hex(0xA08BE5);
     constexpr ImVec4 Pink         = Hex(0xD98AC4);
     constexpr ImVec4 Teal         = Hex(0x5CC8B8);
+    constexpr ImVec4 Lime         = Hex(0xC4D96A);
 
     // Viewport / gizmos
     constexpr ImVec4 SelectionOutline = Accent;

@@ -1,6 +1,8 @@
 #pragma once
 #include "Core/Attributes.h"
 #include "Math/Size.h"
+#include "Assets/AssetReference.h"
+#include "Renderer/RenderPipelineDescriptor.h"
 
 namespace Gleam {
 
@@ -51,6 +53,9 @@ GSTRUCT(Camera, "B37BA095-FFAB-49FD-ACA9-392835498015", EntityComponent, Seriali
 	// Post-process settings
 	GFIELD("881B9D1F-AB00-4B96-A0FB-31480CDCE38E", Serializable, PrettyName("Color Grading"))
 	ColorGradingSettings colorGrading = {};
+
+	GFIELD("B6A7FA99-185C-4A19-A67B-266E275098A9", Serializable, PrettyName("Render Pipeline"), AssetType(TypeOf<RenderPipelineDescriptor>))
+	AssetReference renderPipeline;
     
 	Camera() = default;
 

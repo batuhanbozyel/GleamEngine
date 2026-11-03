@@ -17,6 +17,9 @@
 namespace Gleam {
 class EntityManager;
 class World;
+class LineRenderer;
+class DebugRenderer;
+class RenderPipeline;
 struct ImGuiPassData;
 } // namespace Gleam
 
@@ -70,6 +73,8 @@ private:
 
 	void DrawViewport(Gleam::ImGuiRenderer* imgui, const Gleam::ImGuiPassData& passData);
 
+	const Gleam::RenderPipeline* GetViewedRenderPipeline() const;
+
 	void DrawTransformGizmo(const Gleam::Float2& imageMin, const Gleam::Float2& imageSize);
 
 	void UpdateSelectionMarquee(const Gleam::Float2& imageMin, const Gleam::Float2& imageSize, const Gleam::Size& targetSize, bool viewportHovered);
@@ -101,6 +106,12 @@ private:
 	Gleam::Float2 mMarqueeStart = Gleam::Float2::zero;
     
 	InfiniteGridRenderer* mGridRenderer = nullptr;
+
+	ViewModeRenderer* mViewModeRenderer = nullptr;
+
+	Gleam::LineRenderer* mLineRenderer = nullptr;
+
+	Gleam::DebugRenderer* mDebugRenderer = nullptr;
 
 	SelectionOutlineRenderer* mSelectionOutlineRenderer = nullptr;
 

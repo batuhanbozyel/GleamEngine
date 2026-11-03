@@ -12,8 +12,13 @@
 #include "View/Widgets/EditorWidgets.h"
 #include "View/Panels/Project/AssetImportDialog.h"
 #include "View/Panels/Input/InputActionsEditor.h"
+#include "View/Panels/Rendering/RenderPipelineEditor.h"
 #include "EInput/EditorInputSystem.h"
 #include "Input/InputActionDescriptor.h"
+#include "Renderer/GraphicsSettings.h"
+#include "Renderer/RenderPipelineDescriptor.h"
+#include "Assets/AssetManager.h"
+#include "Core/ConfigSystem.h"
 #include "View/ViewStack.h"
 #include "View/EditorFonts.h"
 #include "View/IconsLucide.h"
@@ -53,7 +58,8 @@ static constexpr CategoryChip kCategoryChips[] = {
 	{ "Material Instance", Gleam::Theme::Teal, AssetCategory::MaterialInstance },
 	{ "Texture", Gleam::Theme::Pink, AssetCategory::Texture },
 	{ "World", Gleam::Theme::Purple, AssetCategory::World },
-	{ "Input Actions", Gleam::Theme::Accent, AssetCategory::InputActions }
+	{ "Input Actions", Gleam::Theme::Accent, AssetCategory::InputActions },
+	{ "Render Pipeline", Gleam::Theme::Lime, AssetCategory::RenderPipeline }
 };
 
 static uint32_t CategoryBit(AssetCategory category)
@@ -538,6 +544,11 @@ void ContentBrowser::DrawAssetGrid()
 			auto viewStack = Gleam::Globals::GameInstance->GetSubsystem<ViewStack>();
 			viewStack->GetView<InputActionsEditor>()->Open(entry.asset, entry.path);
 		}
+		else if (entry.category == AssetCategory::RenderPipeline)
+		{
+			auto viewStack = Gleam::Globals::GameInstance->GetSubsystem<ViewStack>();
+			viewStack->GetView<RenderPipelineEditor>()->Open(entry.asset, entry.path);
+		}
 	}
 
 	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, mItemSpacing);
@@ -547,7 +558,7 @@ void ContentBrowser::DrawAssetGrid()
 	}
 	if (ImGui::BeginPopup("AssetGridContext"))
 	{
-		if (ImGui::BeginMenu("Create"))
+		if (ImGui::BeginMenu("Create", mAssetManager->IsBuiltinAsset(mCurrentDirectory / "_") == false))
 		{
 			if (ImGui::MenuItem("Input Actions"))
 			{
@@ -566,6 +577,20 @@ void ContentBrowser::DrawAssetGrid()
 
 				auto viewStack = Gleam::Globals::GameInstance->GetSubsystem<ViewStack>();
 				viewStack->GetView<InputActionsEditor>()->Open(asset, mSelectedEntry);
+			}
+			if (ImGui::MenuItem("Render Pipeline"))
+			{
+				const auto& graphics = Gleam::Globals::Engine->GetSubsystem<Gleam::ConfigSystem>()->Get<Gleam::GraphicsSettings>();
+				const auto descriptor = Gleam::Globals::GameInstance->GetSubsystem<Gleam::AssetManager>()->LoadDescriptor<Gleam::RenderPipelineDescriptor>(graphics.renderPipeline);
+
+				const auto& asset = mAssetManager->CreateAsset(mCurrentDirectory, "New Render Pipeline", descriptor);
+				auto fileName = asset.reference.guid.ToString();
+				fileName.append(".asset");
+				mSelectedEntry = mCurrentDirectory / fileName;
+				RefreshAssetGrid();
+
+				auto viewStack = Gleam::Globals::GameInstance->GetSubsystem<ViewStack>();
+				viewStack->GetView<RenderPipelineEditor>()->Open(asset, mSelectedEntry);
 			}
 			ImGui::EndMenu();
 		}
@@ -604,9 +629,14 @@ const ContentBrowser::GridEntry* ContentBrowser::FindSelectedEntry() const
 	return nullptr;
 }
 
+bool ContentBrowser::IsEditable(const GridEntry& entry) const
+{
+	return (entry.category == AssetCategory::InputActions or entry.category == AssetCategory::RenderPipeline) and mAssetManager->IsBuiltinAsset(entry.path) == false;
+}
+
 void ContentBrowser::RequestRename(const GridEntry& entry)
 {
-	if (entry.category != AssetCategory::InputActions)
+	if (IsEditable(entry) == false)
 	{
 		return;
 	}
@@ -620,7 +650,7 @@ void ContentBrowser::RequestRename(const GridEntry& entry)
 
 void ContentBrowser::RequestDelete(const GridEntry& entry)
 {
-	if (entry.category != AssetCategory::InputActions)
+	if (IsEditable(entry) == false)
 	{
 		return;
 	}
@@ -634,7 +664,7 @@ void ContentBrowser::DrawAssetContextMenu()
 	if (ImGui::BeginPopup("AssetItemContext"))
 	{
 		const auto& actions = mEditorInput->GetPanelActions();
-		const bool editable = mContextEntry.category == AssetCategory::InputActions;
+		const bool editable = IsEditable(mContextEntry);
 
 		if (ImGui::MenuItem("Rename", mEditorInput->GetShortcutLabel(actions.rename).c_str(), false, editable))
 		{
@@ -690,6 +720,7 @@ void ContentBrowser::DrawRenameDialog()
 				{
 					auto viewStack = Gleam::Globals::GameInstance->GetSubsystem<ViewStack>();
 					viewStack->GetView<InputActionsEditor>()->OnAssetRenamed(mContextEntry.asset);
+					viewStack->GetView<RenderPipelineEditor>()->OnAssetRenamed(mContextEntry.asset);
 					RefreshAssetGrid();
 				}
 			}
@@ -719,6 +750,7 @@ void ContentBrowser::DrawDeleteDialog()
 			{
 				auto viewStack = Gleam::Globals::GameInstance->GetSubsystem<ViewStack>();
 				viewStack->GetView<InputActionsEditor>()->OnAssetRemoved(mContextEntry.asset.reference.guid);
+				viewStack->GetView<RenderPipelineEditor>()->OnAssetRemoved(mContextEntry.asset.reference.guid);
 				if (mSelectedEntry == mContextEntry.path)
 				{
 					mSelectedEntry = Gleam::Path();

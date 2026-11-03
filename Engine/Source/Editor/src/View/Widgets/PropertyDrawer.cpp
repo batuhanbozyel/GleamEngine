@@ -1208,10 +1208,16 @@ static void DrawAssetTile(ImDrawList* drawList, const ImVec2& min, float size, c
 	drawList->AddRectFilled(ImVec2(min.x, max.y - 2.0f), max, Widgets::ColorU32(color), 3.0f, ImDrawFlags_RoundCornersBottom);
 }
 
-void PropertyDrawer::DrawAsset(const Gleam::TStringView label, Gleam::AssetReference& assetRef, float columnWidth)
+void PropertyDrawer::DrawAsset(const Gleam::TStringView label, Gleam::AssetReference& assetRef, float columnWidth, const Gleam::Reflection::Attribute::AssetType* assetTypes)
 {
 	constexpr float kHeight = 34.0f;
 	constexpr float kTileSize = 24.0f;
+
+	const auto fieldAssetTypes = mAssetTypes;
+	if (assetTypes)
+	{
+		mAssetTypes = assetTypes;
+	}
 
 	char buffer[64];
 	std::memcpy(buffer, label.data(), label.size());
@@ -1257,6 +1263,7 @@ void PropertyDrawer::DrawAsset(const Gleam::TStringView label, Gleam::AssetRefer
 	ImGui::Columns(1);
 
 	ImGui::PopID();
+	mAssetTypes = fieldAssetTypes;
 }
 
 void PropertyDrawer::DrawAssetRow(uint32_t index, Gleam::AssetReference& assetRef)

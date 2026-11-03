@@ -21,8 +21,6 @@ public:
 
 	virtual void AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard) override;
 
-	virtual RenderStage GetStage() const override { return RenderStage::Prepass; }
-
 private:
 
 	Swapchain* mSwapchain = nullptr;

@@ -22,6 +22,7 @@
 
 #include "Renderer/RenderSystem.h"
 #include "Renderer/RenderPipeline.h"
+#include "World/Systems/RenderSceneProxy.h"
 #include "Renderer/Renderers/DebugRenderer.h"
 #include "Renderer/Renderers/LineRenderer.h"
 #include "Renderer/Renderers/ImGuiRenderer.h"
@@ -218,19 +219,23 @@ void WorldViewport::OnCreate(Gleam::Application* app)
 	mUndoSystem = mEditWorld->GetSubsystem<UndoSystem>();
 
 	auto renderSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::RenderSystem>();
+	const auto context = renderSystem->GetRenderContext();
 	mGridRenderer = new InfiniteGridRenderer();
-	mGridRenderer->OnCreate(renderSystem->GetRenderContext());
-
-	renderSystem->GetRenderPipeline(Gleam::RenderPath::Default)->AddRenderer<ViewModeRenderer>();
-	renderSystem->GetRenderPipeline(Gleam::RenderPath::Default)->AddSharedRenderer(mGridRenderer);
-	renderSystem->GetRenderPipeline(Gleam::RenderPath::PathTracing)->AddSharedRenderer(mGridRenderer);
-	auto lineRenderer = renderSystem->GetRenderPipeline(Gleam::RenderPath::Default)->AddRenderer<Gleam::LineRenderer>();
-	renderSystem->GetRenderPipeline(Gleam::RenderPath::Default)->AddRenderer<Gleam::DebugRenderer>(lineRenderer);
-
+	mGridRenderer->OnCreate(context);
+	mViewModeRenderer = new ViewModeRenderer();
+	mViewModeRenderer->OnCreate(context);
+	mLineRenderer = new Gleam::LineRenderer();
+	mLineRenderer->OnCreate(context);
+	mDebugRenderer = new Gleam::DebugRenderer(mLineRenderer);
+	mDebugRenderer->OnCreate(context);
 	mSelectionOutlineRenderer = new SelectionOutlineRenderer(mSelectionSystem);
-	mSelectionOutlineRenderer->OnCreate(renderSystem->GetRenderContext());
-	renderSystem->GetRenderPipeline(Gleam::RenderPath::Default)->AddSharedRenderer(mSelectionOutlineRenderer);
-	renderSystem->GetRenderPipeline(Gleam::RenderPath::PathTracing)->AddSharedRenderer(mSelectionOutlineRenderer);
+	mSelectionOutlineRenderer->OnCreate(context);
+
+	renderSystem->AddRenderer(mViewModeRenderer, Gleam::RenderStage::PostProcess);
+	renderSystem->AddRenderer(mGridRenderer, Gleam::RenderStage::Transparent);
+	renderSystem->AddRenderer(mLineRenderer, Gleam::RenderStage::Transparent);
+	renderSystem->AddRenderer(mDebugRenderer, Gleam::RenderStage::Transparent);
+	renderSystem->AddRenderer(mSelectionOutlineRenderer, Gleam::RenderStage::PostProcess);
 
 	auto windowSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::WindowSystem>();
 	auto editorConfig = Gleam::Globals::Engine->GetSubsystem<EditorConfigSystem>();
@@ -272,17 +277,28 @@ void WorldViewport::OnDestroy(Gleam::Application* app)
 
 	auto renderSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::RenderSystem>();
 	renderSystem->SetCameraOverride(Gleam::InvalidEntity);
-	renderSystem->GetRenderPipeline(Gleam::RenderPath::Default)->RemoveRenderer<ViewModeRenderer>();
-	renderSystem->GetRenderPipeline(Gleam::RenderPath::Default)->RemoveRenderer<Gleam::DebugRenderer>();
-	renderSystem->GetRenderPipeline(Gleam::RenderPath::Default)->RemoveRenderer<Gleam::LineRenderer>();
-	renderSystem->GetRenderPipeline(Gleam::RenderPath::Default)->RemoveSharedRenderer(mGridRenderer);
-	renderSystem->GetRenderPipeline(Gleam::RenderPath::PathTracing)->RemoveSharedRenderer(mGridRenderer);
-	delete mGridRenderer;
+	const auto context = renderSystem->GetRenderContext();
+	renderSystem->RemoveRenderer(mViewModeRenderer);
+	renderSystem->RemoveRenderer(mGridRenderer);
+	renderSystem->RemoveRenderer(mLineRenderer);
+	renderSystem->RemoveRenderer(mDebugRenderer);
+	renderSystem->RemoveRenderer(mSelectionOutlineRenderer);
 
-	renderSystem->GetRenderPipeline(Gleam::RenderPath::Default)->RemoveSharedRenderer(mSelectionOutlineRenderer);
-	renderSystem->GetRenderPipeline(Gleam::RenderPath::PathTracing)->RemoveSharedRenderer(mSelectionOutlineRenderer);
-	mSelectionOutlineRenderer->OnDestroy(renderSystem->GetRenderContext());
+	delete mViewModeRenderer;
+	delete mGridRenderer;
+	mDebugRenderer->OnDestroy(context);
+	delete mDebugRenderer;
+	mLineRenderer->OnDestroy(context);
+	delete mLineRenderer;
+	mSelectionOutlineRenderer->OnDestroy(context);
 	delete mSelectionOutlineRenderer;
+}
+
+const Gleam::RenderPipeline* WorldViewport::GetViewedRenderPipeline() const
+{
+	auto renderSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::RenderSystem>();
+	auto world = mWorldManager->GetPlayWorld() ? mWorldManager->GetPlayWorld() : mEditWorld;
+	return world->GetSubsystem<Gleam::RenderSceneProxy>()->GetRenderPipeline(renderSystem->GetActiveCamera());
 }
 
 void WorldViewport::Update()
@@ -448,21 +464,12 @@ void WorldViewport::DrawToolbar(const Gleam::Float2& contentMin, const Gleam::Fl
 	ImGui::SetNextWindowSize(ImVec2(260.0f, 0.0f), ImGuiCond_Always);
 	if (ImGui::BeginPopup("##ViewModePopup"))
 	{
-		auto renderSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::RenderSystem>();
-		if (renderSystem->GetRenderPath() == Gleam::RenderPath::Default)
+		auto activeViewMode = mViewModeRenderer->GetViewMode();
+		const auto previousViewMode = activeViewMode;
+		PropertyDrawer::DrawEnumOptions("View Mode", Gleam::Reflection::GetEnum<ViewMode>(), &activeViewMode, 96.0f);
+		if (activeViewMode != previousViewMode)
 		{
-			auto viewModeRenderer = renderSystem->GetRenderPipeline(Gleam::RenderPath::Default)->GetRenderer<ViewModeRenderer>();
-			auto activeViewMode = viewModeRenderer->GetViewMode();
-			const auto previousViewMode = activeViewMode;
-			PropertyDrawer::DrawEnumOptions("View Mode", Gleam::Reflection::GetEnum<ViewMode>(), &activeViewMode, 96.0f);
-			if (activeViewMode != previousViewMode)
-			{
-				viewModeRenderer->SetViewMode(activeViewMode);
-			}
-		}
-		else
-		{
-			ImGui::TextDisabled("View modes need the default render path");
+			mViewModeRenderer->SetViewMode(activeViewMode);
 		}
 		ImGui::EndPopup();
 	}
@@ -671,20 +678,13 @@ void WorldViewport::DrawRenderSettingsPopup()
 		return;
 	}
 
-	auto renderSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::RenderSystem>();
-	auto activePath = renderSystem->GetRenderPath();
-	const auto& enumDesc = Gleam::Reflection::GetEnum<Gleam::RenderPath>();
+	static constexpr Gleam::Reflection::Attribute::AssetType kPipelineTypes(Gleam::TypeOf<Gleam::RenderPipelineDescriptor>);
+	auto& camera = mEditWorld->GetEntityManager().GetComponent<Gleam::Camera>(mCamera);
+	PropertyDrawer::DrawAsset("Render Pipeline", camera.renderPipeline, 96.0f, &kPipelineTypes);
 
-	auto prevPath = activePath;
-	PropertyDrawer::DrawEnumOptions("Render Path", enumDesc, &activePath, 96.0f);
-	if (activePath != prevPath)
+	const auto pipeline = GetViewedRenderPipeline();
+	if (auto pathTracer = pipeline ? pipeline->GetRenderer<Gleam::PathTracer>() : nullptr)
 	{
-		renderSystem->SetRenderPath(activePath);
-	}
-
-	if (activePath == Gleam::RenderPath::PathTracing)
-	{
-		auto pathTracer = renderSystem->GetRenderPipeline(Gleam::RenderPath::PathTracing)->GetRenderer<Gleam::PathTracer>();
 		auto settings = pathTracer->GetSettings();
 		PropertyDrawer::DrawClassFields(&settings, Gleam::Reflection::GetClass<Gleam::PathTracerSettings>(), 96.0f);
 		pathTracer->SetSettings(settings);
@@ -698,10 +698,9 @@ void WorldViewport::DrawRenderSettingsPopup()
 	PropertyDrawer::DrawClass("Renderer", &rendererSettings, Gleam::Reflection::GetClass<Gleam::RendererVisualizationSettings>(), 96.0f);
 	mRendererVisualization->SetSettings(rendererSettings);
 
-	auto debugRenderer = renderSystem->GetRenderPipeline(Gleam::RenderPath::Default)->GetRenderer<Gleam::DebugRenderer>();
-	auto debugSettings = debugRenderer->GetSettings();
+	auto debugSettings = mDebugRenderer->GetSettings();
 	PropertyDrawer::DrawClass("Debug Lines", &debugSettings, Gleam::Reflection::GetClass<Gleam::DebugRendererSettings>(), 96.0f);
-	debugRenderer->SetSettings(debugSettings);
+	mDebugRenderer->SetSettings(debugSettings);
 
 	ImGui::EndPopup();
 }
@@ -712,8 +711,8 @@ void WorldViewport::DrawStats(const Gleam::Float2& contentMin, const Gleam::Floa
 	constexpr ImVec2 kPadding(10.0f, 6.0f);
 	constexpr float kLineGap = 2.0f;
 
-	auto renderSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::RenderSystem>();
-	const char* pathName = renderSystem->GetRenderPath() == Gleam::RenderPath::PathTracing ? "Path tracing" : "Visibility buffer";
+	const auto pipeline = GetViewedRenderPipeline();
+	const char* pathName = pipeline ? pipeline->GetName().c_str() : "None";
 
 	char pipelineText[64] = {};
 	std::snprintf(pipelineText, sizeof(pipelineText), "%s \xC2\xB7 %s", kBackendName, pathName);

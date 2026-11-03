@@ -12,7 +12,7 @@ struct BRDFData
 	TextureHandle ggxEAvgLut = TextureHandle();
 };
 
-class BRDFRenderer : public IRenderer
+GCLASS(BRDFRenderer, "92D2C170-BBC3-4D0A-B70C-223CBDB20092", Renderer(RenderStage::BeforeRendering, true), PrettyName("BRDF")) : public IRenderer
 {
 public:
     
@@ -21,8 +21,6 @@ public:
 	virtual void OnDestroy(const RenderContext& context) override;
     
     virtual void AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard) override;
-
-	virtual RenderStage GetStage() const override { return RenderStage::BeforeRendering; }
 
 private:
 

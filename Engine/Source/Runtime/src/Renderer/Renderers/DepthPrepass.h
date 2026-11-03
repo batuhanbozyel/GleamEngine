@@ -12,7 +12,7 @@ struct DepthPrepassData
 	TextureHandle previousDepth;
 };
 
-class DepthPrepass : public IRenderer
+GCLASS(DepthPrepass, "6E301423-A496-4A1B-9042-5AA4FB6BE061", Renderer(RenderStage::Prepass), PrettyName("Depth Prepass")) : public IRenderer
 {
 public:
     
@@ -23,8 +23,6 @@ public:
     virtual void AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard) override;
 
 	virtual void RegisterShadingPipeline(const Material* material) override;
-
-	virtual RenderStage GetStage() const override { return RenderStage::Prepass; }
 
 private:
 

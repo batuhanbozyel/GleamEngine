@@ -9,6 +9,8 @@
 
 #include "Input/InputActionDescriptor.h"
 
+#include "Renderer/RenderPipelineDescriptor.h"
+
 #include <Runtime.Reflection.generated.h>
 
 using namespace GEditor;
@@ -22,6 +24,7 @@ AssetIcon GEditor::GetAssetIcon(const Gleam::Guid& type)
 	static const auto prefabType = Gleam::Reflection::GetClass<Gleam::Prefab>().Guid();
 	static const auto worldType = Gleam::Reflection::GetClass<Gleam::WorldDescriptor>().Guid();
 	static const auto inputActionsType = Gleam::Reflection::GetClass<Gleam::InputActionAssetDescriptor>().Guid();
+	static const auto renderPipelineType = Gleam::Reflection::GetClass<Gleam::RenderPipelineDescriptor>().Guid();
 
 	if (type == meshType)
 	{
@@ -50,6 +53,10 @@ AssetIcon GEditor::GetAssetIcon(const Gleam::Guid& type)
 	else if (type == inputActionsType)
 	{
 		return AssetIcon{ .text = "INPUT\nACTIONS", .color = Gleam::Theme::Accent, .category = AssetCategory::InputActions };
+	}
+	else if (type == renderPipelineType)
+	{
+		return AssetIcon{ .text = "RENDER\nPIPELINE", .color = Gleam::Theme::Lime, .category = AssetCategory::RenderPipeline };
 	}
 	else
 	{

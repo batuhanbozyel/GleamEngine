@@ -15,6 +15,7 @@ class Mesh;
 class Entity;
 class Material;
 class MaterialInstance;
+class RenderPipeline;
 class CommandBuffer;
 class GPUAllocator;
 struct MeshRenderer;
@@ -126,6 +127,8 @@ public:
 		return mRecords;
 	}
 
+	RenderPipeline* GetRenderPipeline(EntityHandle camera) const;
+
 private:
 
 	void BuildRecord(const EntityManager& entityManager, EntityHandle entity, const MeshRenderer& meshRenderer);
@@ -137,6 +140,10 @@ private:
 	void ReleaseAcquired(TArray<AssetReference>& acquired);
 
 	void AddDraws(uint32_t recordIndex);
+
+	void AcquireCameraPipeline(EntityHandle entity, const Camera& camera);
+
+	void OnCameraRemoved(EntityHandle entity);
 
 	void RemoveDraws(uint32_t recordIndex);
 
@@ -152,6 +159,16 @@ private:
 
 	TArray<MeshEntityRecord> mRecords;
 	HashMap<uint32_t, uint32_t> mRecordLookup;
+
+	struct CameraRecord
+	{
+		AssetReference pipelineReference;
+		RenderPipeline* pipeline = nullptr;
+	};
+
+	HashMap<uint32_t, CameraRecord> mCameraRecords;
+	ComponentCallback mCameraRemoved;
+	AssetReference mDefaultPipeline;
 
 };
 

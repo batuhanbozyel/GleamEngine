@@ -13,7 +13,7 @@ struct VisibilityClassificationData
 	BufferHandle dispatchArgsBuffer = BufferHandle();
 };
 
-class VisibilityClassificationRenderer : public IRenderer
+GCLASS(VisibilityClassificationRenderer, "D3B96D03-4CD7-4AB3-A350-3DADDF377A08", Renderer(RenderStage::Prepass), PrettyName("Visibility Classification")) : public IRenderer
 {
 public:
 
@@ -22,8 +22,6 @@ public:
 	virtual void OnDestroy(const RenderContext& context) override;
 
 	virtual void AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard) override;
-
-	virtual RenderStage GetStage() const override { return RenderStage::Prepass; }
 
 private:
 

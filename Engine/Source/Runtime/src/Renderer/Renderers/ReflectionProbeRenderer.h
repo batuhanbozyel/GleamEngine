@@ -9,7 +9,7 @@ struct ReflectionProbePassData
 	TextureHandle diffuseReflection = TextureHandle();
 };
 
-class ReflectionProbeRenderer : public IRenderer
+GCLASS(ReflectionProbeRenderer, "80BFDA6C-4337-4B03-AD30-42D7950A16D9", Renderer(RenderStage::BeforeRendering), PrettyName("Reflection Probes")) : public IRenderer
 {
 public:
 
@@ -18,8 +18,6 @@ public:
 	virtual void OnDestroy(const RenderContext& context) override;
 
 	virtual void AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard) override;
-
-	virtual RenderStage GetStage() const override { return RenderStage::BeforeRendering; }
 
 private:
 

@@ -36,15 +36,13 @@ struct AmbientOcclusionData
 	TextureHandle aoTarget = TextureHandle();
 };
 
-class AmbientOcclusionRenderer : public IRenderer
+GCLASS(AmbientOcclusionRenderer, "D1EC4742-8699-46AA-8CBB-DF9FDBC12726", Renderer(RenderStage::Shadows), PrettyName("Ambient Occlusion")) : public IRenderer
 {
 public:
 
 	virtual void OnCreate(const RenderContext& context) override;
 
 	virtual void AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard) override;
-
-	virtual RenderStage GetStage() const override { return RenderStage::Shadows; }
 
 	const AmbientOcclusionSettings& GetSettings() const { return mSettings; }
 

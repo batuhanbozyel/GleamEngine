@@ -15,7 +15,7 @@ GSTRUCT(PathTracerSettings, "A3F7C2D1-8B4E-4F90-BC15-2E6D94A17F83", Serializable
 	uint32_t maxRayRecursionDepth = 8;
 };
 
-class PathTracer : public IRenderer
+GCLASS(PathTracer, "5039B50A-228B-4A56-833A-B4DF0EF28C1D", Renderer(RenderStage::Opaque), PrettyName("Path Tracer")) : public IRenderer
 {
 public:
 

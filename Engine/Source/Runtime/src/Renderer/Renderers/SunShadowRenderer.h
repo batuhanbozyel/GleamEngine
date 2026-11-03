@@ -24,7 +24,7 @@ struct SunShadowData
 	TextureHandle shadowMask;
 };
 
-class SunShadowRenderer : public IRenderer
+GCLASS(SunShadowRenderer, "0B9A9ABD-70E4-4AFF-B603-745BAC2E675E", Renderer(RenderStage::Shadows), PrettyName("Sun Shadows")) : public IRenderer
 {
 public:
 
@@ -37,8 +37,6 @@ public:
 	virtual void AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard) override;
 
 	virtual void RegisterShadingPipeline(const Material* material) override;
-
-	virtual RenderStage GetStage() const override { return RenderStage::Shadows; }
 
 	const ShadowSettings& GetSettings() const { return mSettings; }
 

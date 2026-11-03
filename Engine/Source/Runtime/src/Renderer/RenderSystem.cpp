@@ -32,6 +32,8 @@
 #include "Core/Engine.h"
 #include "Core/Globals.h"
 #include "Core/ConfigSystem.h"
+#include "Core/TypeLifecycle.h"
+#include "Container/Pointer.h"
 #include "Core/Events/RendererEvent.h"
 #include "GraphicsSettings.h"
 
@@ -55,40 +57,6 @@ void RenderSystem::Initialize(Engine* engine)
 
 	GLEAM_ASSERT(mDevice->GetFeatures().meshShaders, "Mesh shaders is not supported");
 
-	RenderContext context = GetRenderContext();
-	{
-		auto brdfRenderer = new BRDFRenderer();
-		brdfRenderer->OnCreate(context);
-		mSharedRenderers.push_back(brdfRenderer);
-
-		auto depthPrepass = new DepthPrepass();
-		depthPrepass->OnCreate(context);
-		mSharedRenderers.push_back(depthPrepass);
-
-		auto postProcessStack = new PostProcessStack();
-		postProcessStack->OnCreate(context);
-		mSharedRenderers.push_back(postProcessStack);
-
-		mRenderPipelines[(uint32_t)RenderPath::Default] = new RenderPipeline(context);
-		mRenderPipelines[(uint32_t)RenderPath::Default]->AddSharedRenderer(brdfRenderer);
-		mRenderPipelines[(uint32_t)RenderPath::Default]->AddRenderer<ReflectionProbeRenderer>();
-		mRenderPipelines[(uint32_t)RenderPath::Default]->AddSharedRenderer(depthPrepass);
-		mRenderPipelines[(uint32_t)RenderPath::Default]->AddRenderer<VisibilityClassificationRenderer>();
-		mRenderPipelines[(uint32_t)RenderPath::Default]->AddRenderer<GBufferResolveRenderer>();
-		mRenderPipelines[(uint32_t)RenderPath::Default]->AddRenderer<AmbientOcclusionRenderer>();
-		mRenderPipelines[(uint32_t)RenderPath::Default]->AddRenderer<SunShadowRenderer>();
-		mRenderPipelines[(uint32_t)RenderPath::Default]->AddRenderer<RayTracedReflectionRenderer>();
-		mRenderPipelines[(uint32_t)RenderPath::Default]->AddRenderer<WorldRenderer>();
-		mRenderPipelines[(uint32_t)RenderPath::Default]->AddRenderer<SkyAtmosphereRenderer>();
-		mRenderPipelines[(uint32_t)RenderPath::Default]->AddSharedRenderer(postProcessStack);
-		
-		mRenderPipelines[(uint32_t)RenderPath::PathTracing] = new RenderPipeline(context);
-		mRenderPipelines[(uint32_t)RenderPath::PathTracing]->AddSharedRenderer(brdfRenderer);
-		mRenderPipelines[(uint32_t)RenderPath::PathTracing]->AddSharedRenderer(depthPrepass);
-		mRenderPipelines[(uint32_t)RenderPath::PathTracing]->AddRenderer<PathTracer>();
-		mRenderPipelines[(uint32_t)RenderPath::PathTracing]->AddSharedRenderer(postProcessStack);
-	}
-
 	const auto& graphicsSettings = configSystem->Register<GraphicsSettings>();
 	configSystem->Subscribe<GraphicsSettings>([this](const GraphicsSettings& settings)
 	{
@@ -106,7 +74,6 @@ void RenderSystem::Initialize(Engine* engine)
 			EventDispatcher<RendererResizeEvent>::Publish(RendererResizeEvent(size));
 		}
 	});
-	mRenderPath = RenderPath::Default;
 }
 
 void RenderSystem::Shutdown(Engine* engine)
@@ -120,17 +87,11 @@ void RenderSystem::Shutdown(Engine* engine)
 	}
 	mCommandBuffers.clear();
 
-	auto context = GetRenderContext();
-	for (auto renderer : mSharedRenderers)
+	for (const auto& [_, renderer] : mSharedRenderers)
 	{
-		renderer->OnDestroy(context);
-		delete renderer;
+		DestroyRenderer(renderer);
 	}
-
-	for (auto pipeline : mRenderPipelines)
-	{
-		delete pipeline;
-	}
+	mSharedRenderers.clear();
 	mReleaseQueue->Clear();
 
 	delete mTransientAllocator;
@@ -206,7 +167,8 @@ void RenderSystem::Render(const World* world)
 	@autoreleasepool
 #endif
 	{
-		const bool hasScene = world and mActiveCamera != InvalidEntity;
+		const RenderPipeline* pipeline = world and mActiveCamera != InvalidEntity ? world->GetSubsystem<RenderSceneProxy>()->GetRenderPipeline(mActiveCamera) : nullptr;
+		const bool hasScene = pipeline != nullptr;
 
 		RenderGraphContext renderGraphContext;
 		renderGraphContext.device = mDevice;
@@ -261,22 +223,19 @@ void RenderSystem::Render(const World* world)
 				sceneData.camera.uniforms.prevViewProjectionMatrix = mPrevCameraViewProjection;
 			}
 
-			auto defaultPipeline = GetRenderPipeline(RenderPath::Default);
-			if (auto skyAtmosphereRenderer = defaultPipeline->GetRenderer<SkyAtmosphereRenderer>(); skyAtmosphereRenderer)
+			if (memcmp(&mAtmosphereParams, &sceneData.atmosphere.params, sizeof(SkyAtmosphereParameters)) != 0)
 			{
-				if (memcmp(&mAtmosphereParams, &sceneData.atmosphere.params, sizeof(SkyAtmosphereParameters)) != 0)
-				{
-					mAtmosphereParams = sceneData.atmosphere.params;
-					skyAtmosphereRenderer->UpdateSkyAtmosphere(graph, blackboard);
-				}
+				mAtmosphereParams = sceneData.atmosphere.params;
+				GetSharedRenderer<SkyAtmosphereRenderer>()->UpdateSkyAtmosphere(graph, blackboard);
 			}
 		}
 
-		auto pipeline = GetActiveRenderPipeline();
-        for (auto renderer : *pipeline)
-        {
-            renderer->AddRenderPasses(graph, blackboard);
-        }
+		auto renderers = hasScene ? pipeline->GetRenderers() : RendererList();
+		renderers.Insert(mRenderers);
+		for (const auto& entry : renderers)
+		{
+			entry.renderer->AddRenderPasses(graph, blackboard);
+		}
         graph.Compile();
 
 		auto frameIdx = mSwapchain->GetFrameIndex();
@@ -326,31 +285,124 @@ void RenderSystem::Configure(const RendererConfig& config)
 
 void RenderSystem::ApplyGraphicsSettings(const GraphicsSettings& settings)
 {
-	auto defaultPipeline = GetRenderPipeline(RenderPath::Default);
-
-	auto sunShadowRenderer = defaultPipeline->GetRenderer<SunShadowRenderer>();
-	sunShadowRenderer->SetSettings(settings.shadows);
-
-	auto ambientOcclusionRenderer = defaultPipeline->GetRenderer<AmbientOcclusionRenderer>();
-	ambientOcclusionRenderer->SetSettings(settings.ambientOcclusion);
-
-	auto rayTracedReflectionRenderer = defaultPipeline->GetRenderer<RayTracedReflectionRenderer>();
-	rayTracedReflectionRenderer->SetSettings(settings.rayTracedReflections);
+	mDefaultRenderPipeline = settings.renderPipeline;
+	for (auto pipeline : mPipelines)
+	{
+		ApplyGraphicsSettings(pipeline, settings);
+	}
 }
 
-void RenderSystem::SetRenderPath(RenderPath path)
+// User pipelines may leave any of these renderers out
+void RenderSystem::ApplyGraphicsSettings(RenderPipeline* pipeline, const GraphicsSettings& settings) const
 {
-	mRenderPath = path;
+	if (auto renderer = pipeline->GetRenderer<SunShadowRenderer>())
+	{
+		renderer->SetSettings(settings.shadows);
+	}
+	if (auto renderer = pipeline->GetRenderer<AmbientOcclusionRenderer>())
+	{
+		renderer->SetSettings(settings.ambientOcclusion);
+	}
+	if (auto renderer = pipeline->GetRenderer<RayTracedReflectionRenderer>())
+	{
+		renderer->SetSettings(settings.rayTracedReflections);
+	}
+}
+
+void RenderSystem::AddRenderer(IRenderer* renderer, RenderStage stage)
+{
+	mRenderers.Insert(renderer, stage);
+}
+
+void RenderSystem::RemoveRenderer(IRenderer* renderer)
+{
+	mRenderers.Remove(renderer);
+}
+
+static size_t RendererBaseOffset(const Reflection::ClassDescription& classDesc)
+{
+	for (const auto& base : classDesc.ResolveBaseClasses())
+	{
+		if (base.TypeHash() == Reflection::TypeHash<IRenderer>())
+		{
+			return base.GetOffset();
+		}
+	}
+	GLEAM_ASSERT(false, "{0} does not derive from IRenderer", classDesc.ResolveName());
+	return 0;
+}
+
+IRenderer* RenderSystem::AcquireRenderer(const Reflection::ClassDescription& classDesc)
+{
+	const bool shared = classDesc.GetAttribute<Reflection::Attribute::Renderer>()->shared;
+	if (shared)
+	{
+		if (auto it = mSharedRenderers.find(classDesc.TypeHash()); it != mSharedRenderers.end())
+		{
+			return it->second;
+		}
+	}
+
+	RendererAllocation allocation;
+	allocation.lifecycle = TypeLifecycleRegistry::GetInstance()->Find(classDesc.TypeHash());
+	allocation.memory = ::operator new(allocation.lifecycle->GetSize(), std::align_val_t(allocation.lifecycle->GetAlignment()));
+	allocation.lifecycle->Construct(allocation.memory);
+
+	auto renderer = static_cast<IRenderer*>(OffsetPointer(allocation.memory, RendererBaseOffset(classDesc)));
+	renderer->OnCreate(GetRenderContext());
+	mRendererAllocations.emplace(renderer, allocation);
+	if (shared)
+	{
+		mSharedRenderers.emplace(classDesc.TypeHash(), renderer);
+	}
+	return renderer;
+}
+
+void RenderSystem::ReleaseRenderer(IRenderer* renderer)
+{
+	const bool shared = eastl::any_of(mSharedRenderers.begin(), mSharedRenderers.end(), [renderer](const auto& pair)
+	{
+		return pair.second == renderer;
+	});
+	if (shared == false)
+	{
+		DestroyRenderer(renderer);
+	}
+}
+
+void RenderSystem::DestroyRenderer(IRenderer* renderer)
+{
+	const auto it = mRendererAllocations.find(renderer);
+	renderer->OnDestroy(GetRenderContext());
+	it->second.lifecycle->Destruct(it->second.memory);
+	::operator delete(it->second.memory, std::align_val_t(it->second.lifecycle->GetAlignment()));
+	mRendererAllocations.erase(it);
+}
+
+void RenderSystem::RegisterPipeline(RenderPipeline* pipeline)
+{
+	mPipelines.push_back(pipeline);
+	ApplyGraphicsSettings(pipeline, Globals::Engine->GetSubsystem<ConfigSystem>()->Get<GraphicsSettings>());
+}
+
+void RenderSystem::UnregisterPipeline(RenderPipeline* pipeline)
+{
+	mPipelines.erase(eastl::find(mPipelines.begin(), mPipelines.end(), pipeline));
+}
+
+const AssetReference& RenderSystem::GetDefaultRenderPipeline() const
+{
+	return mDefaultRenderPipeline;
+}
+
+EntityHandle RenderSystem::GetActiveCamera() const
+{
+	return mActiveCamera;
 }
 
 void RenderSystem::SetCameraOverride(EntityHandle camera)
 {
 	mCameraOverride = camera;
-}
-
-RenderPath RenderSystem::GetRenderPath() const
-{
-	return mRenderPath;
 }
 
 uint32_t RenderSystem::GetFrameCount() const
@@ -396,26 +448,6 @@ RayTracingScene* RenderSystem::GetRayTracingScene()
 const RayTracingScene* RenderSystem::GetRayTracingScene() const
 {
 	return mRayTracingScene;
-}
-
-RenderPipeline* RenderSystem::GetRenderPipeline(RenderPath renderPath)
-{
-	return mRenderPipelines[(uint32_t)renderPath];
-}
-
-const RenderPipeline* RenderSystem::GetRenderPipeline(RenderPath renderPath) const
-{
-	return mRenderPipelines[(uint32_t)renderPath];
-}
-
-RenderPipeline* RenderSystem::GetActiveRenderPipeline()
-{
-	return mRenderPipelines[(uint32_t)mRenderPath];
-}
-
-const RenderPipeline* RenderSystem::GetActiveRenderPipeline() const
-{
-	return mRenderPipelines[(uint32_t)mRenderPath];
 }
 
 GPUAllocator* RenderSystem::GetAllocator()
@@ -527,12 +559,13 @@ void RenderSystem::RecompileShader(const TString& entryPoint)
 void RenderSystem::RegisterShadingPipelines(const Material* material)
 {
 	mRayTracingScene->RegisterShadingPipeline(material);
-	for (auto pipeline : mRenderPipelines)
+	for (auto pipeline : mPipelines)
 	{
-		for (auto renderer : *pipeline)
-		{
-			renderer->RegisterShadingPipeline(material);
-		}
+		pipeline->RegisterShadingPipeline(material);
+	}
+	for (const auto& entry : mRenderers)
+	{
+		entry.renderer->RegisterShadingPipeline(material);
 	}
 }
 
@@ -575,7 +608,7 @@ CameraRenderData RenderSystem::SetupCameraRenderData(RenderGraph& graph, const E
 	return camera;
 }
 
-SkyAtmosphereRenderData RenderSystem::SetupSkyAtmosphereRenderData(RenderGraph& graph, const Entity& entity) const
+SkyAtmosphereRenderData RenderSystem::SetupSkyAtmosphereRenderData(RenderGraph& graph, const Entity& entity)
 {
 	SkyAtmosphereRenderData skyAtmosphere = {};
 	skyAtmosphere.entity = entity;
@@ -589,14 +622,10 @@ SkyAtmosphereRenderData RenderSystem::SetupSkyAtmosphereRenderData(RenderGraph& 
 		skyAtmosphere.uniforms.sunAngularDiameter = atmosphereComponent.sun.angularDiameter;
 		skyAtmosphere.uniforms.sunDirection = entity.UpVector();
 
-		auto pipeline = GetRenderPipeline(RenderPath::Default);
-		auto skyAtmosphereRenderer = pipeline->GetRenderer<SkyAtmosphereRenderer>();
-		if (skyAtmosphereRenderer)
-		{
-			skyAtmosphere.transmittanceLut = graph.ImportTexture(skyAtmosphereRenderer->GetTransmittanceLutTexture());
-			skyAtmosphere.multiScatterLut = graph.ImportTexture(skyAtmosphereRenderer->GetMultiScatterLutTexture());
-			skyAtmosphere.params = skyAtmosphereRenderer->GetSkyAtmosphereParameters(atmosphereComponent.atmosphere);
-		}
+		auto skyAtmosphereRenderer = GetSharedRenderer<SkyAtmosphereRenderer>();
+		skyAtmosphere.transmittanceLut = graph.ImportTexture(skyAtmosphereRenderer->GetTransmittanceLutTexture());
+		skyAtmosphere.multiScatterLut = graph.ImportTexture(skyAtmosphereRenderer->GetMultiScatterLutTexture());
+		skyAtmosphere.params = skyAtmosphereRenderer->GetSkyAtmosphereParameters(atmosphereComponent.atmosphere);
 	}
 	skyAtmosphere.uniforms.transmittanceLutTexture = skyAtmosphere.transmittanceLut;
 	skyAtmosphere.uniforms.multiScatterLutTexture = skyAtmosphere.multiScatterLut;

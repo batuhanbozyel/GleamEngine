@@ -5,6 +5,7 @@
 #include "IO/Path.h"
 #include "Core/Subsystem.h"
 #include "Container/Pointer.h"
+#include "Renderer/RenderPipelineDescriptor.h"
 
 namespace GEditor {
 
@@ -60,6 +61,8 @@ public:
 
 	bool RemoveAsset(const Gleam::Path& file, const AssetItem& item);
 
+	bool IsBuiltinAsset(const Gleam::Path& file) const;
+
 	template<typename T>
 	const AssetItem& GetAsset(const Gleam::Path& path) const
 	{
@@ -71,6 +74,10 @@ private:
 	void CompileMaterials(const Gleam::Path& sourceDirectory, const Gleam::Path& outputDirectory);
 
 	void CompileMaterial(const Gleam::Path& source, const Gleam::Path& outputDirectory);
+
+	void CreateBuiltinRenderPipelines();
+
+	Gleam::AssetReference WriteBuiltinRenderPipeline(const Gleam::Path& directory, Gleam::TStringView name, const Gleam::RenderPipelineDescriptor& descriptor);
 
 	AssetRegistry mRegistry;
 
