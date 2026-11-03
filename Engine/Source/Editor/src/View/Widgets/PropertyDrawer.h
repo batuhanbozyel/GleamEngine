@@ -50,6 +50,8 @@ public:
 
 	static void DrawClassFields(void* obj, const Gleam::Reflection::ClassDescription& classDesc, float columnWidth = 100.0f);
 
+	static void DrawField(void* obj, const Gleam::Reflection::FieldDescription& field, float columnWidth = 100.0f);
+
 	static void DrawClassFields(Gleam::TArrayView<void*> instances, const Gleam::Reflection::ClassDescription& classDesc, float columnWidth = 100.0f);
 
 	static void DrawClass(const Gleam::TStringView label, void* component, const Gleam::Reflection::ClassDescription& classDesc, float columnWidth = 0.0f, const UIFunction& headerFunction = nullptr);
@@ -60,7 +62,7 @@ public:
 
 	static void DrawArray(const Gleam::TStringView label, void* obj, const Gleam::Reflection::ArrayDescription& arrayDesc, float columnWidth = 0.0f);
 
-	static void DrawAsset(const Gleam::TStringView label, Gleam::AssetReference& assetRef, float columnWidth = 100.0f, const Gleam::Reflection::Attribute::AssetType* assetTypes = nullptr);
+	static void DrawAsset(const Gleam::TStringView label, Gleam::AssetReference& assetRef, float columnWidth = 100.0f);
 
 	static void DrawEntity(const Gleam::TStringView label, Gleam::EntityReference& entityRef, float columnWidth = 100.0f);
 

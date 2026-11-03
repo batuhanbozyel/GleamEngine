@@ -39,6 +39,8 @@
 #include "Core/Application.h"
 #include "Core/WindowSystem.h"
 
+#include <EASTL/algorithm.h>
+
 #include "Input/InputSystem.h"
 #include "EInput/EditorInputSystem.h"
 
@@ -678,9 +680,12 @@ void WorldViewport::DrawRenderSettingsPopup()
 		return;
 	}
 
-	static constexpr Gleam::Reflection::Attribute::AssetType kPipelineTypes(Gleam::TypeOf<Gleam::RenderPipelineDescriptor>);
-	auto& camera = mEditWorld->GetEntityManager().GetComponent<Gleam::Camera>(mCamera);
-	PropertyDrawer::DrawAsset("Render Pipeline", camera.renderPipeline, 96.0f, &kPipelineTypes);
+	const auto cameraFields = Gleam::Reflection::GetClass<Gleam::Camera>().ResolveFields();
+	const auto pipelineField = eastl::find_if(cameraFields.begin(), cameraFields.end(), [](const Gleam::Reflection::FieldDescription& field)
+	{
+		return field.ResolveName() == "renderPipeline";
+	});
+	PropertyDrawer::DrawField(&mEditWorld->GetEntityManager().GetComponent<Gleam::Camera>(mCamera), *pipelineField, 96.0f);
 
 	const auto pipeline = GetViewedRenderPipeline();
 	if (auto pathTracer = pipeline ? pipeline->GetRenderer<Gleam::PathTracer>() : nullptr)
