@@ -22,6 +22,7 @@
 
 #include "Renderer/RenderSystem.h"
 #include "Renderer/RenderPipeline.h"
+#include "Renderer/SceneView.h"
 #include "World/Systems/RenderSceneProxy.h"
 #include "Renderer/Renderers/DebugRenderer.h"
 #include "Renderer/Renderers/LineRenderer.h"
@@ -300,7 +301,8 @@ const Gleam::RenderPipeline* WorldViewport::GetViewedRenderPipeline() const
 {
 	auto renderSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::RenderSystem>();
 	auto world = mWorldManager->GetPlayWorld() ? mWorldManager->GetPlayWorld() : mEditWorld;
-	return world->GetSubsystem<Gleam::RenderSceneProxy>()->GetRenderPipeline(renderSystem->GetActiveCamera());
+	auto view = renderSystem->GetSceneView(world, renderSystem->GetActiveCamera());
+	return view ? view->pipeline : nullptr;
 }
 
 void WorldViewport::Update()

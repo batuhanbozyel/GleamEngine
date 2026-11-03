@@ -62,11 +62,12 @@ void BRDFRenderer::OnDestroy(const RenderContext& context)
 
 void BRDFRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard)
 {
-	auto brdfLut = graph.ImportTexture(mBRDFLutTexture);
-	auto ggxEssLut = graph.ImportTexture(mGGXEssLutTexture);
-	auto ggxEAvgLut = graph.ImportTexture(mGGXEAvgLutTexture);
-
 	static bool mBakeLuts = true;
+	const ImportResourceParams lutParams{ .initialLayout = mBakeLuts ? BarrierLayout::Undefined : BarrierLayout::ShaderResource, .finalLayout = BarrierLayout::ShaderResource };
+	auto brdfLut = graph.ImportTexture(mBRDFLutTexture, lutParams);
+	auto ggxEssLut = graph.ImportTexture(mGGXEssLutTexture, lutParams);
+	auto ggxEAvgLut = graph.ImportTexture(mGGXEAvgLutTexture, lutParams);
+
 	if (mBakeLuts)
 	{
 		struct BRDFLutData

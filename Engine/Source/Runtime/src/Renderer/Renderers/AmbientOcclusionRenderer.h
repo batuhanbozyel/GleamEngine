@@ -36,6 +36,17 @@ struct AmbientOcclusionData
 	TextureHandle aoTarget = TextureHandle();
 };
 
+struct AmbientOcclusionHistory
+{
+	uint32_t frameIndex = 0;
+	uint32_t version = 0;
+
+	void Release(GraphicsDevice* device, GPUAllocator* allocator)
+	{
+
+	}
+};
+
 GCLASS(AmbientOcclusionRenderer, "D1EC4742-8699-46AA-8CBB-DF9FDBC12726", Renderer(RenderStage::Shadows), PrettyName("Ambient Occlusion")) : public IRenderer
 {
 public:
@@ -54,7 +65,7 @@ private:
 
 	AmbientOcclusionSettings mSettings;
 	GraphicsDevice* mDevice = nullptr;
-	uint32_t mFrameIndex = 0;
+	uint32_t mHistoryVersion = 0;
 
 	ComputePipelineHandle mDepthPrefilterPipeline;
 	ComputePipelineHandle mDenoisePipeline;

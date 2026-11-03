@@ -37,6 +37,23 @@ struct RayTracedReflectionData
 	TextureHandle reflectionTarget = TextureHandle();
 };
 
+struct RayTracedReflectionHistory
+{
+	Texture radiance[2];
+	Texture variance[2];
+	Texture sampleCount[2];
+	Texture averageRadiance;
+	uint32_t frameIndex = 0;
+	uint32_t version = 0;
+	bool firstFrame = true;
+
+	void ReleasePersistentTextures(GraphicsDevice* device, GPUAllocator* allocator);
+
+	void ReleaseDenoiserTextures(GraphicsDevice* device, GPUAllocator* allocator);
+
+	void Release(GraphicsDevice* device, GPUAllocator* allocator);
+};
+
 GCLASS(RayTracedReflectionRenderer, "F2ADDFF5-ECB9-46B5-AFCB-D367F64CA6A9", Renderer(RenderStage::Shadows), PrettyName("Ray Traced Reflections")) : public IRenderer
 {
 public:
@@ -44,8 +61,6 @@ public:
 	RayTracedReflectionRenderer();
 
 	virtual void OnCreate(const RenderContext& context) override;
-
-	virtual void OnDestroy(const RenderContext& context) override;
 
 	virtual void AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard) override;
 
@@ -59,35 +74,21 @@ private:
 
 	RayTracedReflectionSettings mSettings;
 
-	void CreatePersistentTextures(const Size& size);
-	
-	void CreateDenoiserTextures(const Size& size);
+	void CreatePersistentTextures(RayTracedReflectionHistory& history, GPUAllocator* allocator, const Size& size) const;
 
-	void ReleasePersistentTextures();
-	
-	void ReleaseDenoiserTextures();
+	void CreateDenoiserTextures(RayTracedReflectionHistory& history, GPUAllocator* allocator, const Size& size) const;
 
-	uint32_t mFrameIndex = 0;
 	bool mPipelineDirty = true;
-	bool mFirstFrame = true;
+	uint32_t mHistoryVersion = 0;
 	HitGroupTable mHitGroupTable;
 
 	GraphicsDevice* mDevice = nullptr;
-	GPUAllocator*   mAllocator = nullptr;
 	RayTracingPipelineHandle mRayTracedReflectionPipeline;
 	ComputePipelineHandle    mClassificationPipeline;
 	ComputePipelineHandle    mPrepareDispatchArgsPipeline;
 	ComputePipelineHandle    mReprojectPipeline;
 	ComputePipelineHandle    mPrefilterPipeline;
 	ComputePipelineHandle    mResolveTemporalPipeline;
-
-	Texture mRadiance[2];
-	Texture mVariance[2];
-	Texture mSampleCount[2];
-	Texture mAverageRadiance;
-
-	Size mRenderSize;
-	Size mDenoiserSize;
 };
 
   } // namespace Gleam

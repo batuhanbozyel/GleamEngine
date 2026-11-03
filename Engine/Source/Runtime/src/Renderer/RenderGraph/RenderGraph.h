@@ -9,12 +9,14 @@ class CommandBuffer;
 class GraphicsDevice;
 
 struct RenderContext;
-struct SceneRenderingData;
 
 struct ImportResourceParams
 {
 	Color clearColor = Color::clear;
+	BarrierLayout initialLayout = BarrierLayout::Undefined;
+	BarrierLayout finalLayout = BarrierLayout::Undefined;
 	bool clearOnFirstUse = false;
+	bool releaseAfterLastUse = false;
 };
 
 struct RenderGraphContext
@@ -37,7 +39,7 @@ public:
     
     void Compile();
 
-	void Execute(const CommandBuffer* cmd, SceneRenderingData& sceneData);
+	void Execute(const CommandBuffer* cmd);
 	
 	template<typename PassData>
 	PassData& AddRenderPass(const TStringView name, SetupFunc<PassData>&& setup, RenderFunc<PassData>&& execute)
@@ -55,8 +57,10 @@ public:
 		return AddPassNode<PassData>(node, std::forward<decltype(setup)>(setup));
 	}
     
-    TextureHandle ImportTexture(const Texture& backbuffer, const ImportResourceParams& params = ImportResourceParams());
-    
+    TextureHandle ImportTexture(const Texture& texture, const ImportResourceParams& params = ImportResourceParams());
+
+	TextureHandle ImportBackbuffer();
+
     const TextureDescriptor& GetDescriptor(TextureHandle handle) const;
 
 	GPUAllocator* GetAllocator() const;
@@ -73,7 +77,7 @@ private:
 		return passData;
 	}
 
-	void AllocatePassResources(RenderGraphPassNode* pass, const CommandBuffer* cmd, SceneRenderingData& sceneData);
+	void AllocatePassResources(RenderGraphPassNode* pass, const CommandBuffer* cmd);
 	void FreePassResources(RenderGraphPassNode* pass, const CommandBuffer* cmd);
 	void SetupPassBarriers(RenderGraphPassNode* pass, const CommandBuffer* cmd);
 	void ExecutePass(RenderGraphPassNode* pass, const CommandBuffer* cmd);
@@ -83,6 +87,10 @@ private:
     RenderGraphResourceRegistry mRegistry;
 
 	TArray<RenderGraphPassNode*> mPassNodes;
+
+	TArray<TextureHandle> mImportedTextures;
+
+	TextureHandle mBackbuffer;
 
 };
 

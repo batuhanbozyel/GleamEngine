@@ -5,6 +5,7 @@
 #include "Core/Globals.h"
 
 #include "Renderer/Mesh.h"
+#include "Renderer/SceneView.h"
 #include "Renderer/CommandBuffer.h"
 #include "Renderer/GraphicsDevice.h"
 #include "Renderer/Material/Material.h"
@@ -13,49 +14,17 @@
 
 using namespace Gleam;
 
+void DepthPrepassHistory::Release(GraphicsDevice* device, GPUAllocator* allocator)
+{
+	if (depth.IsValid())
+	{
+		device->Dispose(allocator, depth, BarrierStage::None);
+	}
+}
+
 void DepthPrepass::OnCreate(const RenderContext& context)
 {
 	mDevice = context.device;
-	mAllocator = context.allocator;
-}
-
-void DepthPrepass::OnDestroy(const RenderContext& context)
-{
-	for (auto& depthBuffer : mDepthBuffers)
-	{
-		if (depthBuffer.IsValid())
-		{
-			context.device->Dispose(context.allocator, depthBuffer, BarrierStage::None);
-		}
-	}
-}
-
-void DepthPrepass::CreateDepthBuffers(const Size& size)
-{
-	if (mDepthBufferSize == size)
-	{
-		return;
-	}
-
-	for (auto& depthBuffer : mDepthBuffers)
-	{
-		if (depthBuffer.IsValid())
-		{
-			mDevice->Dispose(mAllocator, depthBuffer, BarrierStage::None);
-		}
-	}
-
-	RenderTextureDescriptor depthDesc;
-	depthDesc.dimension = TextureDimension::Texture2D;
-	depthDesc.format    = TextureFormat::D32_SFloat;
-	depthDesc.size      = size;
-	depthDesc.name      = "SceneDepthRT 0";
-	mDepthBuffers[0] = mDevice->CreateTexture(mAllocator, depthDesc);
-	depthDesc.name      = "SceneDepthRT 1";
-	mDepthBuffers[1] = mDevice->CreateTexture(mAllocator, depthDesc);
-
-	mDepthBufferSize = size;
-	mFirstFrame = true;
 }
 
 void DepthPrepass::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard)
@@ -68,21 +37,30 @@ void DepthPrepass::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& bl
 
 	const auto& sceneTargetDescriptor = graph.GetDescriptor(sceneData.sceneTarget);
 
-	CreateDepthBuffers(sceneTargetDescriptor.size);
+	RenderTextureDescriptor depthDesc;
+	depthDesc.dimension = TextureDimension::Texture2D;
+	depthDesc.format = TextureFormat::D32_SFloat;
+	depthDesc.size = sceneTargetDescriptor.size;
+	depthDesc.clearBuffer = true;
+	depthDesc.name = "SceneDepth";
 
-	const uint32_t prevIndex = mFrameIndex & 1u;
-	const uint32_t currIndex = prevIndex ^ 1u;
+	auto& history = sceneData.view->GetHistory<DepthPrepassHistory>();
+	Texture previous = history.depth;
+	history.depth = mDevice->CreateTexture(graph.GetAllocator(), depthDesc);
 
-	ImportResourceParams currentParams;
-	currentParams.clearOnFirstUse = true;
+	TextureHandle currentDepth = graph.ImportTexture(history.depth, { .finalLayout = BarrierLayout::ShaderResource, .clearOnFirstUse = true });
+	TextureHandle previousDepth;
+	const bool hasHistory = previous.IsValid() and previous.GetDescriptor().size == depthDesc.size;
+	if (hasHistory)
+	{
+		previousDepth = graph.ImportTexture(previous, { .initialLayout = BarrierLayout::ShaderResource, .releaseAfterLastUse = true });
+	}
+	else if (previous.IsValid())
+	{
+		mDevice->Dispose(graph.GetAllocator(), previous, BarrierStage::None);
+	}
 
-	ImportResourceParams previousParams;
-	previousParams.clearOnFirstUse = mFirstFrame;
-
-	TextureHandle currentDepth  = graph.ImportTexture(mDepthBuffers[currIndex], currentParams);
-	TextureHandle previousDepth = graph.ImportTexture(mDepthBuffers[prevIndex], previousParams);
-
-	if (mFirstFrame)
+	if (not hasHistory)
 	{
 		struct ClearDepthHistoryPassData
 		{
@@ -91,7 +69,7 @@ void DepthPrepass::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& bl
 		graph.AddRenderPass<ClearDepthHistoryPassData>("DepthPrepass::ClearDepthHistory",
 		[&](RenderGraphBuilder& builder, ClearDepthHistoryPassData& passData)
 		{
-			previousDepth = builder.UseDepthBuffer(previousDepth, DepthAccess::Write);
+			previousDepth = builder.UseDepthBuffer(builder.CreateTexture(depthDesc), DepthAccess::Write);
 		},
 		[](const CommandBuffer* cmd, const ClearDepthHistoryPassData& passData)
 		{
@@ -137,9 +115,6 @@ void DepthPrepass::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& bl
 			});
 		});
 	});
-
-	mFrameIndex++;
-	mFirstFrame = false;
 }
 
 void DepthPrepass::RegisterShadingPipeline(const Material* material)

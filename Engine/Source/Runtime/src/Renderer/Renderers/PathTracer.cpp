@@ -5,6 +5,7 @@
 #include "DepthPrepass.h"
 #include "WorldRenderer.h"
 #include "Renderer/RenderSystem.h"
+#include "Renderer/SceneView.h"
 #include "Renderer/CommandBuffer.h"
 #include "Renderer/GraphicsDevice.h"
 #include "Renderer/RayTracingScene.h"
@@ -24,18 +25,17 @@ PathTracer::PathTracer()
 	mHitGroupTable = HitGroupTable(rayTracingScene);
 }
 
+void PathTracerHistory::Release(GraphicsDevice* device, GPUAllocator* allocator)
+{
+	if (accumulation.IsValid())
+	{
+		device->Dispose(allocator, accumulation, BarrierStage::None);
+	}
+}
+
 void PathTracer::OnCreate(const RenderContext& context)
 {
 	mDevice = context.device;
-	mAllocator = context.allocator;
-}
-
-void PathTracer::OnDestroy(const RenderContext& context)
-{
-	if (mRenderTarget.IsValid())
-	{
-		mDevice->Dispose(mAllocator, mRenderTarget, BarrierStage::None);
-	}
 }
 
 void PathTracer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard)
@@ -50,29 +50,17 @@ void PathTracer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blac
 	const auto& depthPrepassData = blackboard.Get<DepthPrepassData>();
 	const auto& sceneTargetDescriptor = graph.GetDescriptor(sceneData.sceneTarget);
 
-	if (mRenderTarget.GetDescriptor().size != sceneTargetDescriptor.size)
+	auto& history = sceneData.view->GetHistory<PathTracerHistory>();
+	if (history.accumulation.GetDescriptor().size != sceneTargetDescriptor.size)
 	{
-		mFrameIndex = 0;
-		if (mRenderTarget.IsValid())
-		{
-			mDevice->Dispose(mAllocator, mRenderTarget, BarrierStage::None);
-		}
+		history.frameIndex = 0;
+		history.Release(mDevice, graph.GetAllocator());
 
 		RenderTextureDescriptor textureDesc;
 		textureDesc.size = sceneTargetDescriptor.size;
 		textureDesc.name = "SceneColorRT";
 		textureDesc.format = TextureFormat::R32G32B32A32_SFloat;
-		mRenderTarget = mDevice->CreateTexture(mAllocator, textureDesc);
-	}
-
-	if (memcmp(&mState.cameraView, &sceneData.camera.uniforms.viewMatrix, sizeof(float4x4)) != 0 ||
-		memcmp(&mState.atmosphereParams, &sceneData.atmosphere.params, sizeof(SkyAtmosphereParameters)) != 0 ||
-		memcmp(&mState.atmosphereUniforms, &sceneData.atmosphere.uniforms, sizeof(SkyAtmosphereUniforms)) != 0)
-	{
-		mState.cameraView = sceneData.camera.uniforms.viewMatrix;
-		mState.atmosphereUniforms = sceneData.atmosphere.uniforms;
-		mState.atmosphereParams = sceneData.atmosphere.params;
-		mFrameIndex = 0;
+		history.accumulation = mDevice->CreateTexture(graph.GetAllocator(), textureDesc);
 	}
 
 	if (mPipelineDirty)
@@ -95,9 +83,24 @@ void PathTracer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blac
 			}
 			mPathTracingPipeline = handle;
 		}
-		mFrameIndex = 0;
+		++mHistoryVersion;
 		mPipelineDirty = false;
 	}
+
+	if (history.version != mHistoryVersion or
+		memcmp(&history.cameraView, &sceneData.camera.uniforms.viewMatrix, sizeof(float4x4)) != 0 or
+		memcmp(&history.atmosphereParams, &sceneData.atmosphere.params, sizeof(SkyAtmosphereParameters)) != 0 or
+		memcmp(&history.atmosphereUniforms, &sceneData.atmosphere.uniforms, sizeof(SkyAtmosphereUniforms)) != 0)
+	{
+		history.cameraView = sceneData.camera.uniforms.viewMatrix;
+		history.atmosphereUniforms = sceneData.atmosphere.uniforms;
+		history.atmosphereParams = sceneData.atmosphere.params;
+		history.frameIndex = 0;
+		history.version = mHistoryVersion;
+	}
+
+	const uint32_t frameIndex = history.frameIndex++;
+	const Texture accumulation = history.accumulation;
 
 	graph.AddComputePass<WorldRenderingData>("PathTracing::Render", [&](RenderGraphBuilder& builder, WorldRenderingData& passData)
 	{
@@ -112,7 +115,7 @@ void PathTracer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blac
 		passData.depthTarget = depthPrepassData.depthTarget;
 		blackboard.Add(passData);
 	},
-	[this, &sceneData](const CommandBuffer* cmd, const WorldRenderingData& passData)
+	[this, &sceneData, frameIndex, accumulation](const CommandBuffer* cmd, const WorldRenderingData& passData)
 	{
 		if (not mPathTracingPipeline.IsValid())
 		{
@@ -122,9 +125,9 @@ void PathTracer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blac
 		PathTracerConstants constants = {};
 		constants.instanceBuffer = sceneData.sceneProxy->GetInstanceBuffer().GetResourceView();
 		constants.accelerationStructure = sceneData.accelerationStructure;
-		constants.colorTarget = mRenderTarget.GetUnorderedAccessView();
+		constants.colorTarget = accumulation.GetUnorderedAccessView();
 		constants.sceneTarget = passData.colorTarget;
-		constants.frameIndex = mFrameIndex++;
+		constants.frameIndex = frameIndex;
 		constants.ggxEssTexture = passData.ggxEssLut;
 		constants.ggxEAvgTexture = passData.ggxEAvgLut;
 		constants.maxRayRecursionDepth = mSettings.maxRayRecursionDepth;
@@ -148,7 +151,7 @@ void PathTracer::SetSettings(const PathTracerSettings& settings)
 
 	if (mSettings.samplesPerPixel != settings.samplesPerPixel)
 	{
-		mFrameIndex = 0;
+		++mHistoryVersion;
 	}
 	mSettings = settings;
 }

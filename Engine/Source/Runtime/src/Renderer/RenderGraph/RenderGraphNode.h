@@ -173,7 +173,10 @@ struct RenderGraphTextureNode final : public RenderGraphResourceNode
 	uint32_t clearStencil = 0u;
 	float clearDepth = 1.0f;
 	bool clearBuffer = false;
+	bool releaseAfterLastUse = false;
 	Texture texture = Texture();
+	BarrierLayout initialLayout = BarrierLayout::Undefined;
+	BarrierLayout finalLayout = BarrierLayout::Undefined;
 
 	struct BarrierState
 	{

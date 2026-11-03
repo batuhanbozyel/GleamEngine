@@ -4,6 +4,7 @@
 #include "GBufferResolveRenderer.h"
 
 #include "Renderer/Mesh.h"
+#include "Renderer/SceneView.h"
 #include "Renderer/CommandBuffer.h"
 #include "Renderer/GraphicsDevice.h"
 #include "Renderer/RayTracingScene.h"
@@ -25,10 +26,22 @@ SunShadowRenderer::SunShadowRenderer()
 	mHitGroupTable = HitGroupTable(rayTracingScene);
 }
 
+void SunShadowHistory::Release(GraphicsDevice* device, GPUAllocator* allocator)
+{
+	if (moments.IsValid())
+	{
+		device->Dispose(allocator, moments, BarrierStage::None);
+	}
+
+	if (shadow.IsValid())
+	{
+		device->Dispose(allocator, shadow, BarrierStage::None);
+	}
+}
+
 void SunShadowRenderer::OnCreate(const RenderContext& context)
 {
 	mDevice    = context.device;
-	mAllocator = context.allocator;
 
 	ComputePipelineStateDescriptor classificationDesc;
 	classificationDesc.entryPoint = "rayTracedSunShadowClassification";
@@ -52,67 +65,23 @@ void SunShadowRenderer::OnCreate(const RenderContext& context)
 
 }
 
-void SunShadowRenderer::OnDestroy(const RenderContext& context)
-{
-	ReleaseDenoiserTextures();
-}
-
-void SunShadowRenderer::ReleaseDenoiserTextures()
-{
-	for (auto& moments : mMoments)
-	{
-		if (moments.IsValid())
-		{
-			mDevice->Dispose(mAllocator, moments, BarrierStage::None);
-		}
-	}
-
-	if (mShadowHistory.IsValid())
-	{
-		mDevice->Dispose(mAllocator, mShadowHistory, BarrierStage::None);
-	}
-
-	mDenoiserSize = Size::zero;
-}
-
-void SunShadowRenderer::CreateDenoiserTextures(const Size& size)
-{
-	if (mDenoiserSize == size)
-	{
-		return;
-	}
-	ReleaseDenoiserTextures();
-
-	RenderTextureDescriptor momentsDesc;
-	momentsDesc.dimension = TextureDimension::Texture2D;
-	momentsDesc.format    = TextureFormat::R11G11B10_SFloat;
-	momentsDesc.size      = size;
-	momentsDesc.name      = "SunShadowRenderer::ShadowDenoiser::Moments 0";
-	mMoments[0] = mDevice->CreateTexture(mAllocator, momentsDesc);
-	momentsDesc.name      = "SunShadowRenderer::ShadowDenoiser::Moments 1";
-	mMoments[1] = mDevice->CreateTexture(mAllocator, momentsDesc);
-
-	RenderTextureDescriptor historyDesc;
-	historyDesc.dimension = TextureDimension::Texture2D;
-	historyDesc.format    = TextureFormat::R16G16_SFloat;
-	historyDesc.size      = size;
-	historyDesc.name      = "SunShadowRenderer::ShadowDenoiser::ShadowHistory";
-	mShadowHistory = mDevice->CreateTexture(mAllocator, historyDesc);
-
-	mDenoiserSize = size;
-	mFirstFrame = true;
-}
-
 void SunShadowRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard)
 {
-	if (mSettings.enable == false || mDevice->GetFeatures().raytracing == false)
+	const auto& sceneData             = blackboard.Get<SceneRenderingData>();
+	if (not sceneData.world)
 	{
-		ReleaseDenoiserTextures();
 		return;
 	}
 
-	const auto& sceneData             = blackboard.Get<SceneRenderingData>();
-	if (not sceneData.world)
+	auto& history = sceneData.view->GetHistory<SunShadowHistory>();
+	const bool enabled = mSettings.enable and mDevice->GetFeatures().raytracing;
+	if (not enabled or history.version != mHistoryVersion)
+	{
+		history.Release(mDevice, graph.GetAllocator());
+		history.version = mHistoryVersion;
+	}
+
+	if (not enabled)
 	{
 		return;
 	}
@@ -152,11 +121,7 @@ void SunShadowRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboar
 			mRayTracedShadowPipeline = handle;
 		}
 		mPipelineDirty = false;
-		mFirstFrame = true;
-	}
-	if (mSettings.denoise)
-	{
-		CreateDenoiserTextures(sceneTargetDescriptor.size);
+		++mHistoryVersion;
 	}
 
 	// ----------------------------------------------------------------
@@ -271,7 +236,7 @@ void SunShadowRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboar
 		passData.depth         = builder.ReadTexture(depthPrepassData.depthTarget);
 		passData.normalTexture = builder.ReadTexture(gBufferData.geometryNormalTarget);
 	},
-	[this, &sceneData](const CommandBuffer* cmd, const RayTracingPassData& passData)
+	[this, &sceneData, frameIndex = history.frameIndex](const CommandBuffer* cmd, const RayTracingPassData& passData)
 	{
 		if (not mRayTracedShadowPipeline.IsValid())
 		{
@@ -295,7 +260,7 @@ void SunShadowRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboar
 		pathTraceConstants.instanceBuffer        = sceneData.sceneProxy->GetInstanceBuffer().GetResourceView();
 		pathTraceConstants.accelerationStructure = sceneData.accelerationStructure;
 		pathTraceConstants.colorTarget           = passData.shadowMask;
-		pathTraceConstants.frameIndex            = mFrameIndex;
+		pathTraceConstants.frameIndex            = frameIndex;
 		pathTraceConstants.sceneTarget           = InvalidResourceIndex;
 		pathTraceConstants.ggxEssTexture         = InvalidResourceIndex;
 		pathTraceConstants.ggxEAvgTexture        = InvalidResourceIndex;
@@ -323,18 +288,49 @@ void SunShadowRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboar
 		// ----------------------------------------------------------------
 		// Import persistent denoiser textures + first frame history clear
 		// ----------------------------------------------------------------
-		const uint32_t prevIndex = mFrameIndex & 1u;
-		const uint32_t currIndex = prevIndex ^ 1u;
+		RenderTextureDescriptor momentsDesc;
+		momentsDesc.dimension   = TextureDimension::Texture2D;
+		momentsDesc.format      = TextureFormat::R11G11B10_SFloat;
+		momentsDesc.size        = sceneTargetDescriptor.size;
+		momentsDesc.clearBuffer = true;
+		momentsDesc.name        = "SunShadowRenderer::ShadowDenoiser::Moments";
 
-		ImportResourceParams importParams;
-		importParams.clearOnFirstUse = mFirstFrame;
+		RenderTextureDescriptor shadowDesc = momentsDesc;
+		shadowDesc.format = TextureFormat::R16G16_SFloat;
+		shadowDesc.name   = "SunShadowRenderer::ShadowDenoiser::ShadowHistory";
 
-		TextureHandle previousMoments     = graph.ImportTexture(mMoments[prevIndex], importParams);
-		TextureHandle currentMoments      = graph.ImportTexture(mMoments[currIndex], importParams);
-		TextureHandle historyShadow       = graph.ImportTexture(mShadowHistory, importParams);
+		Texture previousMomentsTexture = history.moments;
+		history.moments = mDevice->CreateTexture(graph.GetAllocator(), momentsDesc);
 
-		if (mFirstFrame)
+		const bool hasHistory = previousMomentsTexture.IsValid() and previousMomentsTexture.GetDescriptor().size == momentsDesc.size;
+		if (not hasHistory)
 		{
+			if (history.shadow.IsValid())
+			{
+				mDevice->Dispose(graph.GetAllocator(), history.shadow, BarrierStage::None);
+			}
+			history.shadow = mDevice->CreateTexture(graph.GetAllocator(), shadowDesc);
+		}
+
+		TextureHandle currentMoments = graph.ImportTexture(history.moments, { .finalLayout = BarrierLayout::ShaderResource });
+		TextureHandle historyShadow  = graph.ImportTexture(history.shadow, {
+			.initialLayout = hasHistory ? BarrierLayout::ShaderResource : BarrierLayout::Undefined,
+			.finalLayout = BarrierLayout::ShaderResource,
+			.clearOnFirstUse = not hasHistory
+		});
+
+		TextureHandle previousMoments;
+		if (hasHistory)
+		{
+			previousMoments = graph.ImportTexture(previousMomentsTexture, { .initialLayout = BarrierLayout::ShaderResource, .releaseAfterLastUse = true });
+		}
+		else
+		{
+			if (previousMomentsTexture.IsValid())
+			{
+				mDevice->Dispose(graph.GetAllocator(), previousMomentsTexture, BarrierStage::None);
+			}
+
 			struct ClearHistoryPassData
 			{
 			};
@@ -342,9 +338,8 @@ void SunShadowRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboar
 			graph.AddRenderPass<ClearHistoryPassData>("SunShadowRenderer::ClearHistory",
 			[&](RenderGraphBuilder& builder, ClearHistoryPassData& passData)
 			{
-				previousMoments     = builder.UseColorBuffer(previousMoments);
-				currentMoments      = builder.UseColorBuffer(currentMoments);
-				historyShadow       = builder.UseColorBuffer(historyShadow);
+				previousMoments = builder.UseColorBuffer(builder.CreateTexture(momentsDesc));
+				historyShadow   = builder.UseColorBuffer(historyShadow);
 			},
 			[](const CommandBuffer* cmd, const ClearHistoryPassData& passData)
 			{
@@ -387,7 +382,7 @@ void SunShadowRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboar
 			passData.currentMoments			= builder.WriteTexture(currentMoments);
 			passData.historyShadow			= builder.ReadTexture(historyShadow);
 			passData.reprojectionResults	= builder.WriteTexture(builder.CreateTexture(reprojectionDesc));
-			passData.isFirstFrame			= mFirstFrame ? 1 : 0;
+			passData.isFirstFrame			= hasHistory ? 0 : 1;
 
 			BufferDescriptor tileMetaDesc;
 			tileMetaDesc.name = "TileMetadata";
@@ -537,6 +532,8 @@ void SunShadowRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboar
 	}
 	else
 	{
+		history.Release(mDevice, graph.GetAllocator());
+
 		// ----------------------------------------------------------------
 		// Pass 3 — Resolve raw shadow mask
 		// ----------------------------------------------------------------
@@ -576,8 +573,7 @@ void SunShadowRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboar
 	output.shadowMask = shadowMask;
 	blackboard.Add(output);
 
-	mFrameIndex++;
-	mFirstFrame = false;
+	history.frameIndex++;
 }
 
 void SunShadowRenderer::SetSettings(const ShadowSettings& settings)
@@ -586,7 +582,7 @@ void SunShadowRenderer::SetSettings(const ShadowSettings& settings)
 	{
 		if (mSettings.denoise != settings.denoise)
 		{
-			ReleaseDenoiserTextures();
+			++mHistoryVersion;
 		}
 
 		mSettings = settings;

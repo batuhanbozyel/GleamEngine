@@ -17,6 +17,7 @@ class RenderGraph;
 class GPUAllocator;
 class CommandBuffer;
 class RenderSurface;
+class SceneView;
 class GraphicsDevice;
 class RayTracingScene;
 class CopyCommandBuffer;
@@ -98,6 +99,14 @@ public:
 
 	const GPUAllocator* GetAllocator() const;
 
+	SceneView* AcquireSceneView(const World* world, EntityHandle camera);
+
+	void ReleaseSceneView(const World* world, EntityHandle camera);
+
+	void ReleaseSceneViews(const World* world);
+
+	SceneView* GetSceneView(const World* world, EntityHandle camera);
+
 	void RecompileShader(const TString& entryPoint);
 
 	RenderContext GetRenderContext() const;
@@ -106,13 +115,15 @@ public:
     
 private:
 
-	CameraRenderData SetupCameraRenderData(RenderGraph& graph, const Entity& entity) const;
+	CameraRenderData SetupCameraRenderData(RenderGraph& graph, const Entity& entity, const SceneView& view) const;
 
 	SkyAtmosphereRenderData SetupSkyAtmosphereRenderData(RenderGraph& graph, const Entity& entity);
 
 	void ApplyGraphicsSettings(RenderPipeline* pipeline, const GraphicsSettings& settings) const;
 
 	void DestroyRenderer(IRenderer* renderer);
+
+	void DestroySceneView(SceneView* view);
 
 	void InitializeBackend();
 
@@ -123,13 +134,10 @@ private:
 	Size mSwapchainSize = {};
 
 	SkyAtmosphereParameters mAtmosphereParams = {};
+	BarrierLayout mSkyAtmosphereLutLayout = BarrierLayout::Undefined;
 	EntityHandle mSkyAtmosphereEntity = InvalidEntity;
 	EntityHandle mActiveCamera = InvalidEntity;
-	EntityHandle mPrevCamera = InvalidEntity;
 	EntityHandle mCameraOverride = InvalidEntity;
-
-	float4x4 mPrevCameraView = {};
-	float4x4 mPrevCameraViewProjection = {};
 
 	struct RendererAllocation
 	{
@@ -142,6 +150,7 @@ private:
 	HashMap<uint32_t, IRenderer*> mSharedRenderers;
 	TArray<RenderPipeline*> mPipelines;
 	AssetReference mDefaultRenderPipeline;
+	TArray<SceneView*> mSceneViews;
 
 	RayTracingScene* mRayTracingScene = nullptr;
 

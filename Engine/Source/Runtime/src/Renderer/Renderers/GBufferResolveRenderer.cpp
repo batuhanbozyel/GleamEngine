@@ -7,6 +7,7 @@
 #include "Core/Globals.h"
 
 #include "Renderer/RenderSystem.h"
+#include "Renderer/SceneView.h"
 #include "Renderer/CommandBuffer.h"
 #include "Renderer/GraphicsDevice.h"
 #include "Renderer/Material/Material.h"
@@ -15,69 +16,62 @@
 
 using namespace Gleam;
 
-void GBufferResolveRenderer::OnCreate(const RenderContext& context)
-{
-	mDevice = context.device;
-	mAllocator = context.allocator;
-}
-
-void GBufferResolveRenderer::OnDestroy(const RenderContext& context)
-{
-	ReleaseGBufferTargets();
-}
-
-void GBufferResolveRenderer::ReleaseGBufferTargets()
+void GBufferResolveHistory::Release(GraphicsDevice* device, GPUAllocator* allocator)
 {
 	for (uint32_t i = 0; i < 2; ++i)
 	{
-		if (mGeometryNormalTargets[i].IsValid())
+		if (geometryNormal[i].IsValid())
 		{
-			mDevice->Dispose(mAllocator, mGeometryNormalTargets[i], BarrierStage::None);
+			device->Dispose(allocator, geometryNormal[i], BarrierStage::None);
 		}
 
-		if (mShadingNormalTargets[i].IsValid())
+		if (shadingNormal[i].IsValid())
 		{
-			mDevice->Dispose(mAllocator, mShadingNormalTargets[i], BarrierStage::None);
+			device->Dispose(allocator, shadingNormal[i], BarrierStage::None);
 		}
 
-		if (mRoughnessTargets[i].IsValid())
+		if (roughness[i].IsValid())
 		{
-			mDevice->Dispose(mAllocator, mRoughnessTargets[i], BarrierStage::None);
+			device->Dispose(allocator, roughness[i], BarrierStage::None);
 		}
 	}
-	mGBufferSize = Size::zero;
 }
 
-void GBufferResolveRenderer::CreateGBufferTargets(const Size& size)
+void GBufferResolveRenderer::OnCreate(const RenderContext& context)
 {
-	if (mGBufferSize == size)
+	mDevice = context.device;
+}
+
+void GBufferResolveRenderer::CreateGBufferTargets(GBufferResolveHistory& history, GPUAllocator* allocator, const Size& size) const
+{
+	if (not history.geometryNormal[0].IsValid() or history.geometryNormal[0].GetDescriptor().size != size)
 	{
-		return;
+		history.Release(mDevice, allocator);
+
+		RenderTextureDescriptor textureDesc;
+		textureDesc.dimension = TextureDimension::Texture2D;
+		textureDesc.size = size;
+
+		textureDesc.format = TextureFormat::R16G16_SNorm;
+		textureDesc.name = "GBufferGeometryNormal 0";
+		history.geometryNormal[0] = mDevice->CreateTexture(allocator, textureDesc);
+		textureDesc.name = "GBufferGeometryNormal 1";
+		history.geometryNormal[1] = mDevice->CreateTexture(allocator, textureDesc);
+
+		textureDesc.name = "GBufferShadingNormal 0";
+		history.shadingNormal[0] = mDevice->CreateTexture(allocator, textureDesc);
+		textureDesc.name = "GBufferShadingNormal 1";
+		history.shadingNormal[1] = mDevice->CreateTexture(allocator, textureDesc);
+
+		textureDesc.format = TextureFormat::R8_UNorm;
+		textureDesc.name = "GBufferRoughness 0";
+		history.roughness[0] = mDevice->CreateTexture(allocator, textureDesc);
+		textureDesc.name = "GBufferRoughness 1";
+		history.roughness[1] = mDevice->CreateTexture(allocator, textureDesc);
+
+		history.frameIndex = 0;
+		history.firstFrame = true;
 	}
-	ReleaseGBufferTargets();
-
-	RenderTextureDescriptor textureDesc;
-	textureDesc.dimension = TextureDimension::Texture2D;
-	textureDesc.size = size;
-
-	textureDesc.format = TextureFormat::R16G16_SNorm;
-	textureDesc.name = "GBufferGeometryNormal 0";
-	mGeometryNormalTargets[0] = mDevice->CreateTexture(mAllocator, textureDesc);
-	textureDesc.name = "GBufferGeometryNormal 1";
-	mGeometryNormalTargets[1] = mDevice->CreateTexture(mAllocator, textureDesc);
-
-	textureDesc.name = "GBufferShadingNormal 0";
-	mShadingNormalTargets[0] = mDevice->CreateTexture(mAllocator, textureDesc);
-	textureDesc.name = "GBufferShadingNormal 1";
-	mShadingNormalTargets[1] = mDevice->CreateTexture(mAllocator, textureDesc);
-
-	textureDesc.format = TextureFormat::R8_UNorm;
-	textureDesc.name = "GBufferRoughness 0";
-	mRoughnessTargets[0] = mDevice->CreateTexture(mAllocator, textureDesc);
-	textureDesc.name = "GBufferRoughness 1";
-	mRoughnessTargets[1] = mDevice->CreateTexture(mAllocator, textureDesc);
-
-	mGBufferSize = size;
 }
 
 void GBufferResolveRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard)
@@ -92,17 +86,19 @@ void GBufferResolveRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlac
 	const auto& visibilityClassificationData = blackboard.Get<VisibilityClassificationData>();
 	const auto& sceneTargetDescriptor = graph.GetDescriptor(sceneData.sceneTarget);
 
-	CreateGBufferTargets(sceneTargetDescriptor.size);
+	auto& history = sceneData.view->GetHistory<GBufferResolveHistory>();
+	CreateGBufferTargets(history, graph.GetAllocator(), sceneTargetDescriptor.size);
 
-	const uint32_t prevIndex = mFrameIndex & 1u;
+	const uint32_t prevIndex = history.frameIndex & 1u;
 	const uint32_t currIndex = prevIndex ^ 1u;
 
-	TextureHandle geometryNormal = graph.ImportTexture(mGeometryNormalTargets[currIndex]);
-	TextureHandle shadingNormal = graph.ImportTexture(mShadingNormalTargets[currIndex]);
-	TextureHandle roughness = graph.ImportTexture(mRoughnessTargets[currIndex]);
-	TextureHandle previousGeometryNormal = graph.ImportTexture(mGeometryNormalTargets[prevIndex]);
-	TextureHandle previousShadingNormal = graph.ImportTexture(mShadingNormalTargets[prevIndex]);
-	TextureHandle previousRoughness = graph.ImportTexture(mRoughnessTargets[prevIndex]);
+	const ImportResourceParams importParams{ .initialLayout = history.firstFrame ? BarrierLayout::Undefined : BarrierLayout::ShaderResource, .finalLayout = BarrierLayout::ShaderResource };
+	TextureHandle geometryNormal = graph.ImportTexture(history.geometryNormal[currIndex], importParams);
+	TextureHandle shadingNormal = graph.ImportTexture(history.shadingNormal[currIndex], importParams);
+	TextureHandle roughness = graph.ImportTexture(history.roughness[currIndex], importParams);
+	TextureHandle previousGeometryNormal = graph.ImportTexture(history.geometryNormal[prevIndex], importParams);
+	TextureHandle previousShadingNormal = graph.ImportTexture(history.shadingNormal[prevIndex], importParams);
+	TextureHandle previousRoughness = graph.ImportTexture(history.roughness[prevIndex], importParams);
 
 	struct GBufferResolvePassData
 	{
@@ -174,7 +170,8 @@ void GBufferResolveRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlac
 	gbufferData.previousRoughnessTarget = previousRoughness;
 	blackboard.Add(gbufferData);
 
-	mFrameIndex++;
+	history.frameIndex++;
+	history.firstFrame = false;
 }
 
 void GBufferResolveRenderer::RegisterShadingPipeline(const Material* material)

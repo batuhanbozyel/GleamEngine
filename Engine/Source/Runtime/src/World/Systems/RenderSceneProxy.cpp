@@ -13,6 +13,7 @@
 #include "Renderer/RenderSystem.h"
 #include "Renderer/GraphicsDevice.h"
 #include "Renderer/RenderPipeline.h"
+#include "Renderer/SceneView.h"
 #include "Renderer/RayTracingScene.h"
 #include "Renderer/CommandBuffer.h"
 #include "Renderer/CopyCommandBuffer.h"
@@ -86,6 +87,7 @@ static uint32_t SelectMeshLod(Mesh* mesh, float screenCoverage)
 
 void RenderSceneProxy::Initialize(World* world)
 {
+	mWorld = world;
 	mMeshRendererRemoved = world->GetEntityManager().OnComponentRemoved<MeshRenderer, &RenderSceneProxy::OnMeshRendererRemoved>(*this);
 	mCameraRemoved = world->GetEntityManager().OnComponentRemoved<Camera, &RenderSceneProxy::OnCameraRemoved>(*this);
 }
@@ -256,14 +258,14 @@ void RenderSceneProxy::Update(const World* world, EntityHandle camera)
 		mDefaultPipeline = renderSystem->GetDefaultRenderPipeline();
 		entityManager.ForEach<Entity, Camera>([this](EntityHandle entity, const Entity&, const Camera& component)
 		{
-			AcquireCameraPipeline(entity, component);
+			AcquireSceneView(entity, component);
 		});
 	}
 	else
 	{
 		entityManager.ForEachChanged<Camera>(since, [this](EntityHandle entity, const Camera& component)
 		{
-			AcquireCameraPipeline(entity, component);
+			AcquireSceneView(entity, component);
 		});
 	}
 	mChangeCursor.Commit();
@@ -420,44 +422,29 @@ void RenderSceneProxy::Shutdown(World* world)
 	mBatchLookup.clear();
 
 	mCameraRemoved.Reset();
-	for (const auto& [_, record] : mCameraRecords)
-	{
-		assetManager->Release(record.pipelineReference);
-	}
-	mCameraRecords.clear();
+	static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
+	renderSystem->ReleaseSceneViews(world);
 }
 
-void RenderSceneProxy::AcquireCameraPipeline(EntityHandle entity, const Camera& camera)
+void RenderSceneProxy::AcquireSceneView(EntityHandle entity, const Camera& camera)
 {
 	static auto assetManager = Globals::GameInstance->GetSubsystem<AssetManager>();
+	static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
 
 	const auto& reference = camera.renderPipeline.guid != Guid::InvalidGuid() ? camera.renderPipeline : mDefaultPipeline;
-	auto& record = mCameraRecords[entt::to_integral(entity)];
-	if (record.pipelineReference == reference)
+	auto view = renderSystem->AcquireSceneView(mWorld, entity);
+	if (view->pipelineReference != reference)
 	{
-		return;
+		assetManager->Release(view->pipelineReference);
+		view->pipelineReference = reference;
+		view->pipeline = assetManager->Load<RenderPipeline>(reference);
 	}
-
-	assetManager->Release(record.pipelineReference);
-	record.pipelineReference = reference;
-	record.pipeline = assetManager->Load<RenderPipeline>(reference);
 }
 
 void RenderSceneProxy::OnCameraRemoved(EntityHandle entity)
 {
-	static auto assetManager = Globals::GameInstance->GetSubsystem<AssetManager>();
-
-	if (auto it = mCameraRecords.find(entt::to_integral(entity)); it != mCameraRecords.end())
-	{
-		assetManager->Release(it->second.pipelineReference);
-		mCameraRecords.erase(it);
-	}
-}
-
-RenderPipeline* RenderSceneProxy::GetRenderPipeline(EntityHandle camera) const
-{
-	auto it = mCameraRecords.find(entt::to_integral(camera));
-	return it != mCameraRecords.end() ? it->second.pipeline : nullptr;
+	static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
+	renderSystem->ReleaseSceneView(mWorld, entity);
 }
 
 void RenderSceneProxy::ForEach(BatchFn&& fn) const

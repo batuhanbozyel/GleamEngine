@@ -15,6 +15,18 @@ GSTRUCT(PathTracerSettings, "A3F7C2D1-8B4E-4F90-BC15-2E6D94A17F83", Serializable
 	uint32_t maxRayRecursionDepth = 8;
 };
 
+struct PathTracerHistory
+{
+	Texture accumulation;
+	float4x4 cameraView = {};
+	SkyAtmosphereUniforms atmosphereUniforms = {};
+	SkyAtmosphereParameters atmosphereParams = {};
+	uint32_t frameIndex = 0;
+	uint32_t version = 0;
+
+	void Release(GraphicsDevice* device, GPUAllocator* allocator);
+};
+
 GCLASS(PathTracer, "5039B50A-228B-4A56-833A-B4DF0EF28C1D", Renderer(RenderStage::Opaque), PrettyName("Path Tracer")) : public IRenderer
 {
 public:
@@ -22,8 +34,6 @@ public:
 	PathTracer();
 
 	virtual void OnCreate(const RenderContext& context) override;
-
-	virtual void OnDestroy(const RenderContext& context) override;
 
 	virtual void AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard) override;
 
@@ -35,22 +45,13 @@ public:
 
 private:
 
-	struct State
-	{
-		float4x4 cameraView = {};
-		SkyAtmosphereUniforms atmosphereUniforms = {};
-		SkyAtmosphereParameters atmosphereParams = {};
-	} mState;
-
 	bool mPipelineDirty = true;
+	uint32_t mHistoryVersion = 0;
 	HitGroupTable mHitGroupTable;
 
 	PathTracerSettings mSettings;
 
-	Texture mRenderTarget;
-	uint32_t mFrameIndex = 0;
 	GraphicsDevice* mDevice = nullptr;
-	GPUAllocator* mAllocator = nullptr;
 	RayTracingPipelineHandle mPathTracingPipeline;
 
 };

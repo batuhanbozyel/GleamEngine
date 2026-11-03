@@ -3,6 +3,7 @@
 #include "DepthPrepass.h"
 #include "GBufferResolveRenderer.h"
 
+#include "Renderer/SceneView.h"
 #include "Renderer/CommandBuffer.h"
 #include "Renderer/GraphicsDevice.h"
 #include "Renderer/Shaders/AmbientOcclusion/XeGTAO.h"
@@ -92,7 +93,14 @@ void AmbientOcclusionRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBl
 	const uint32_t width  = (uint32_t)sceneTargetDescriptor.size.width;
 	const uint32_t height = (uint32_t)sceneTargetDescriptor.size.height;
 	
-	const GTAOConstants gtaoConstants = SetupGTAOConstants(sceneData.camera.uniforms, mFrameIndex);
+	auto& history = sceneData.view->GetHistory<AmbientOcclusionHistory>();
+	if (history.version != mHistoryVersion)
+	{
+		history.frameIndex = 0;
+		history.version = mHistoryVersion;
+	}
+
+	const GTAOConstants gtaoConstants = SetupGTAOConstants(sceneData.camera.uniforms, history.frameIndex);
 	
 	// ----------------------------------------------------------------
 	// Pass 0 — Depth prefilter: raw NDC depth -> 5-level viewspace depth MIP chain
@@ -241,8 +249,8 @@ void AmbientOcclusionRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBl
 	AmbientOcclusionData output;
 	output.aoTarget = finalAOTerm;
 	blackboard.Add(output);
-	
-	mFrameIndex++;
+
+	history.frameIndex++;
 }
 
 GTAOConstants AmbientOcclusionRenderer::SetupGTAOConstants(const CameraUniforms& camera, uint32_t frameIndex) const
@@ -282,6 +290,6 @@ void AmbientOcclusionRenderer::SetSettings(const AmbientOcclusionSettings& setti
 	if (memcmp(&mSettings, &settings, sizeof(AmbientOcclusionSettings)) != 0)
 	{
 		mSettings = settings;
-		mFrameIndex = 0;
+		++mHistoryVersion;
 	}
 }

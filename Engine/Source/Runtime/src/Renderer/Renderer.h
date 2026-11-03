@@ -22,6 +22,7 @@ namespace Gleam {
 
 class World;
 class Material;
+class SceneView;
 class RenderSystem;
 class RenderSurface;
 class RenderPipeline;
@@ -58,6 +59,7 @@ struct SceneRenderingData
     const RenderSceneProxy* sceneProxy = nullptr;
     const MeshDrawList* drawList = nullptr;
     const World* world = nullptr;
+	SceneView* view = nullptr;
 	CameraRenderData camera = {};
 	SkyAtmosphereRenderData atmosphere = {};
     TextureHandle backbuffer = TextureHandle();

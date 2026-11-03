@@ -11,16 +11,25 @@ static AttachmentLoadAction GetLoadActionForRenderTexture(const RenderGraphTextu
 {
     bool isFirstUse = node->creator == pass ||
                       (not node->transient && (node->producers.empty() || node->producers.front() == pass));
+	AttachmentLoadAction loadAction = AttachmentLoadAction::Load;
     if (isFirstUse)
     {
-        return node->clearBuffer ? AttachmentLoadAction::Clear : AttachmentLoadAction::DontCare;
+		if (node->clearBuffer)
+		{
+			loadAction = AttachmentLoadAction::Clear;
+		}
+		else if (node->transient or node->initialLayout == BarrierLayout::Undefined)
+		{
+			loadAction = AttachmentLoadAction::DontCare;
+		}
     }
-    return AttachmentLoadAction::Load;
+	return loadAction;
 }
 
 static AttachmentStoreAction GetStoreActionForRenderTexture(const RenderGraphTextureNode* node, RenderGraphPassNode* pass)
 {
-    return (node->lastReference == pass && !pass->hasSideEffect) ? AttachmentStoreAction::DontCare : AttachmentStoreAction::Store;
+	const bool discardable = node->transient or node->releaseAfterLastUse;
+	return (node->lastReference == pass and not pass->hasSideEffect and discardable) ? AttachmentStoreAction::DontCare : AttachmentStoreAction::Store;
 }
 
 RenderGraph::RenderGraph(const RenderGraphContext& context)
@@ -186,18 +195,55 @@ void RenderGraph::Compile()
 	}
 }
 
-void RenderGraph::Execute(const CommandBuffer* cmd, SceneRenderingData& sceneData)
+void RenderGraph::Execute(const CommandBuffer* cmd)
 {
     for (auto pass : mPassNodes)
     {
-		AllocatePassResources(pass, cmd, sceneData);
+		AllocatePassResources(pass, cmd);
 		SetupPassBarriers(pass, cmd);
 		ExecutePass(pass, cmd);
 		FreePassResources(pass, cmd);
     }
+
+	BarrierGroup barrier;
+	for (const auto& handle : mImportedTextures)
+	{
+		auto node = handle.node;
+		if (node->lastReference == nullptr)
+		{
+			if (node->releaseAfterLastUse)
+			{
+				barrier.textureBarriers.push_back({
+					.resource = node->texture.GetHandle(),
+					.srcStage = node->barrierState.stage,
+					.dstStage = BarrierStage::None,
+					.srcAccess = node->barrierState.access,
+					.dstAccess = BarrierAccess::None,
+					.oldLayout = node->barrierState.layout,
+					.newLayout = BarrierLayout::Undefined
+				});
+				mContext.device->Dispose(mContext.allocator, node->texture, node->barrierState.stage);
+			}
+			else if (node->finalLayout != BarrierLayout::Undefined and node->barrierState.layout != node->finalLayout)
+			{
+				barrier.textureBarriers.push_back({
+					.resource = node->texture.GetHandle(),
+					.srcStage = node->barrierState.stage,
+					.dstStage = BarrierStage::None,
+					.srcAccess = node->barrierState.access,
+					.dstAccess = BarrierAccess::None,
+					.oldLayout = node->barrierState.layout,
+					.newLayout = node->finalLayout,
+					.discard = node->barrierState.layout == BarrierLayout::Undefined
+				});
+				node->barrierState = { .stage = BarrierStage::None, .access = BarrierAccess::None, .layout = node->finalLayout };
+			}
+		}
+	}
+	cmd->Barrier(barrier);
 }
 
-void RenderGraph::AllocatePassResources(RenderGraphPassNode* pass, const CommandBuffer* cmd, SceneRenderingData& sceneData)
+void RenderGraph::AllocatePassResources(RenderGraphPassNode* pass, const CommandBuffer* cmd)
 {
 	// Allocate buffers
 	for (uint32_t i = 0; i < pass->bufferCreates.size(); i++)
@@ -246,10 +292,9 @@ void RenderGraph::AllocatePassResources(RenderGraphPassNode* pass, const Command
 	for (uint32_t i = 0; i < pass->textureWrites.size(); i++)
 	{
 		auto& resource = pass->textureWrites[i];
-		if (resource == sceneData.backbuffer)
+		if (resource == mBackbuffer)
 		{
-			sceneData.backbuffer.node->texture = static_cast<Swapchain*>(mContext.surface)->AcquireNextDrawable();
-			resource.node->texture = sceneData.backbuffer.node->texture;
+			resource.node->texture = static_cast<Swapchain*>(mContext.surface)->AcquireNextDrawable();
 			resource.node->barrierState = {};
 		}
 	}
@@ -275,18 +320,35 @@ void RenderGraph::FreePassResources(RenderGraphPassNode* pass, const CommandBuff
 
 	for (auto& resource : pass->textureReads)
 	{
-		if (resource.node->lastReference == pass && resource.node->transient)
+		if (resource.node->lastReference == pass)
 		{
-			barrier.textureBarriers.push_back({
-				.resource = resource.node->texture.GetHandle(),
-				.srcStage = resource.node->barrierState.stage,
-				.dstStage = BarrierStage::None,
-				.srcAccess = resource.node->barrierState.access,
-				.dstAccess = BarrierAccess::None,
-				.oldLayout = resource.node->barrierState.layout,
-				.newLayout = BarrierLayout::Undefined
-			});
-			mContext.device->Dispose(mContext.allocator, resource.node->texture, resource.node->barrierState.stage);
+			if (resource.node->transient or resource.node->releaseAfterLastUse)
+			{
+				barrier.textureBarriers.push_back({
+					.resource = resource.node->texture.GetHandle(),
+					.srcStage = resource.node->barrierState.stage,
+					.dstStage = BarrierStage::None,
+					.srcAccess = resource.node->barrierState.access,
+					.dstAccess = BarrierAccess::None,
+					.oldLayout = resource.node->barrierState.layout,
+					.newLayout = BarrierLayout::Undefined
+				});
+				mContext.device->Dispose(mContext.allocator, resource.node->texture, resource.node->barrierState.stage);
+			}
+			else if (resource.node->finalLayout != BarrierLayout::Undefined and resource.node->barrierState.layout != resource.node->finalLayout)
+			{
+				barrier.textureBarriers.push_back({
+					.resource = resource.node->texture.GetHandle(),
+					.srcStage = resource.node->barrierState.stage,
+					.dstStage = BarrierStage::None,
+					.srcAccess = resource.node->barrierState.access,
+					.dstAccess = BarrierAccess::None,
+					.oldLayout = resource.node->barrierState.layout,
+					.newLayout = resource.node->finalLayout,
+					.discard = resource.node->barrierState.layout == BarrierLayout::Undefined
+				});
+				resource.node->barrierState = { .stage = BarrierStage::None, .access = BarrierAccess::None, .layout = resource.node->finalLayout };
+			}
 		}
 	}
 
@@ -307,18 +369,35 @@ void RenderGraph::FreePassResources(RenderGraphPassNode* pass, const CommandBuff
 
 	for (auto& resource : pass->textureWrites)
 	{
-		if (resource.node->lastReference == pass && resource.node->transient)
+		if (resource.node->lastReference == pass)
 		{
-			barrier.textureBarriers.push_back({
-				.resource = resource.node->texture.GetHandle(),
-				.srcStage = resource.node->barrierState.stage,
-				.dstStage = BarrierStage::None,
-				.srcAccess = resource.node->barrierState.access,
-				.dstAccess = BarrierAccess::None,
-				.oldLayout = resource.node->barrierState.layout,
-				.newLayout = BarrierLayout::Undefined
-			});
-			mContext.device->Dispose(mContext.allocator, resource.node->texture, resource.node->barrierState.stage);
+			if (resource.node->transient or resource.node->releaseAfterLastUse)
+			{
+				barrier.textureBarriers.push_back({
+					.resource = resource.node->texture.GetHandle(),
+					.srcStage = resource.node->barrierState.stage,
+					.dstStage = BarrierStage::None,
+					.srcAccess = resource.node->barrierState.access,
+					.dstAccess = BarrierAccess::None,
+					.oldLayout = resource.node->barrierState.layout,
+					.newLayout = BarrierLayout::Undefined
+				});
+				mContext.device->Dispose(mContext.allocator, resource.node->texture, resource.node->barrierState.stage);
+			}
+			else if (resource.node->finalLayout != BarrierLayout::Undefined and resource.node->barrierState.layout != resource.node->finalLayout)
+			{
+				barrier.textureBarriers.push_back({
+					.resource = resource.node->texture.GetHandle(),
+					.srcStage = resource.node->barrierState.stage,
+					.dstStage = BarrierStage::None,
+					.srcAccess = resource.node->barrierState.access,
+					.dstAccess = BarrierAccess::None,
+					.oldLayout = resource.node->barrierState.layout,
+					.newLayout = resource.node->finalLayout,
+					.discard = resource.node->barrierState.layout == BarrierLayout::Undefined
+				});
+				resource.node->barrierState = { .stage = BarrierStage::None, .access = BarrierAccess::None, .layout = resource.node->finalLayout };
+			}
 		}
 	}
 	cmd->Barrier(barrier);
@@ -446,7 +525,7 @@ void RenderGraph::SetupPassBarriers(RenderGraphPassNode* pass, const CommandBuff
 		textureBarrier.dstAccess = dstAccess;
 		textureBarrier.oldLayout = resource.node->barrierState.layout;
 		textureBarrier.newLayout = newLayout;
-		textureBarrier.discard = resource.node->creator == pass;
+		textureBarrier.discard = resource.node->barrierState.layout == BarrierLayout::Undefined;
 		barrier.textureBarriers.push_back(textureBarrier);
 
 		resource.node->barrierState.stage = textureBarrier.dstStage;
@@ -512,15 +591,26 @@ void RenderGraph::ExecutePass(RenderGraphPassNode* pass, const CommandBuffer* cm
 	}
 }
 
-TextureHandle RenderGraph::ImportTexture(const Texture& backbuffer, const ImportResourceParams& params)
+TextureHandle RenderGraph::ImportTexture(const Texture& texture, const ImportResourceParams& params)
 {
-	RenderTextureDescriptor descriptor(backbuffer.GetDescriptor());
+	RenderTextureDescriptor descriptor(texture.GetDescriptor());
 	descriptor.clearBuffer = params.clearOnFirstUse;
 	descriptor.clearColor = params.clearColor;
 
 	auto handle = mRegistry.CreateTexture(descriptor, false);
-    handle.node->texture = backbuffer;
-    return handle;
+	handle.node->texture = texture;
+	handle.node->initialLayout = params.initialLayout;
+	handle.node->finalLayout = params.finalLayout;
+	handle.node->releaseAfterLastUse = params.releaseAfterLastUse;
+	handle.node->barrierState.layout = params.initialLayout;
+	mImportedTextures.push_back(handle);
+	return handle;
+}
+
+TextureHandle RenderGraph::ImportBackbuffer()
+{
+	mBackbuffer = ImportTexture(static_cast<Swapchain*>(mContext.surface)->GetCurrentDrawable());
+	return mBackbuffer;
 }
 
 const TextureDescriptor& RenderGraph::GetDescriptor(TextureHandle handle) const

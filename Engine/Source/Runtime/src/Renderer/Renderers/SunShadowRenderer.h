@@ -24,6 +24,16 @@ struct SunShadowData
 	TextureHandle shadowMask;
 };
 
+struct SunShadowHistory
+{
+	Texture moments;
+	Texture shadow;
+	uint32_t frameIndex = 0;
+	uint32_t version = 0;
+
+	void Release(GraphicsDevice* device, GPUAllocator* allocator);
+};
+
 GCLASS(SunShadowRenderer, "0B9A9ABD-70E4-4AFF-B603-745BAC2E675E", Renderer(RenderStage::Shadows), PrettyName("Sun Shadows")) : public IRenderer
 {
 public:
@@ -31,8 +41,6 @@ public:
 	SunShadowRenderer();
 
 	virtual void OnCreate(const RenderContext& context) override;
-
-	virtual void OnDestroy(const RenderContext& context) override;
 
 	virtual void AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard) override;
 
@@ -46,28 +54,17 @@ private:
 
 	ShadowSettings mSettings;
 
-	void CreateDenoiserTextures(const Size& size);
-
-	void ReleaseDenoiserTextures();
-
-	uint32_t mFrameIndex = 0;
 	bool mPipelineDirty = true;
-	bool mFirstFrame = true;
+	uint32_t mHistoryVersion = 0;
 	HitGroupTable mHitGroupTable;
 
 	GraphicsDevice* mDevice = nullptr;
-	GPUAllocator*   mAllocator = nullptr;
 	RayTracingPipelineHandle mRayTracedShadowPipeline;
 	ComputePipelineHandle    mClassificationPipeline;
 	ComputePipelineHandle    mPrepareDispatchArgsPipeline;
 	ComputePipelineHandle    mTileClassificationPipeline;
 	ComputePipelineHandle    mFilterPipeline;
 	ComputePipelineHandle    mResolvePipeline;
-
-	Texture mMoments[2];
-	Texture mShadowHistory;
-
-	Size mDenoiserSize;
 
 };
 

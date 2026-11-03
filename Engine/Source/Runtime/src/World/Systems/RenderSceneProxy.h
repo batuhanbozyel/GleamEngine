@@ -127,8 +127,6 @@ public:
 		return mRecords;
 	}
 
-	RenderPipeline* GetRenderPipeline(EntityHandle camera) const;
-
 private:
 
 	void BuildRecord(const EntityManager& entityManager, EntityHandle entity, const MeshRenderer& meshRenderer);
@@ -141,7 +139,7 @@ private:
 
 	void AddDraws(uint32_t recordIndex);
 
-	void AcquireCameraPipeline(EntityHandle entity, const Camera& camera);
+	void AcquireSceneView(EntityHandle entity, const Camera& camera);
 
 	void OnCameraRemoved(EntityHandle entity);
 
@@ -160,13 +158,7 @@ private:
 	TArray<MeshEntityRecord> mRecords;
 	HashMap<uint32_t, uint32_t> mRecordLookup;
 
-	struct CameraRecord
-	{
-		AssetReference pipelineReference;
-		RenderPipeline* pipeline = nullptr;
-	};
-
-	HashMap<uint32_t, CameraRecord> mCameraRecords;
+	const World* mWorld = nullptr;
 	ComponentCallback mCameraRemoved;
 	AssetReference mDefaultPipeline;
 

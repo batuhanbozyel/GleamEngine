@@ -13,6 +13,7 @@
 #include "RayTracingScene.h"
 #include "CopyCommandBuffer.h"
 #include "RenderPipeline.h"
+#include "SceneView.h"
 #include "RenderGraph/RenderGraph.h"
 #include "RenderGraph/RenderGraphBlackboard.h"
 
@@ -31,7 +32,9 @@
 
 #include "Core/Engine.h"
 #include "Core/Globals.h"
+#include "Core/Application.h"
 #include "Core/ConfigSystem.h"
+#include "Assets/AssetManager.h"
 #include "Core/TypeLifecycle.h"
 #include "Container/Pointer.h"
 #include "Core/Events/RendererEvent.h"
@@ -78,6 +81,7 @@ void RenderSystem::Initialize(Engine* engine)
 
 void RenderSystem::Shutdown(Engine* engine)
 {
+	GLEAM_ASSERT(mSceneViews.empty(), "Scene views must be released before render system shutdown");
 	delete mRayTracingScene;
 	delete mCopyCommandBuffer;
 
@@ -106,7 +110,6 @@ void RenderSystem::PreRender(const World* world)
 {
 	++mFrameCount;
 
-	mPrevCamera = mActiveCamera;
 	mActiveCamera = InvalidEntity;
 	mSkyAtmosphereEntity = InvalidEntity;
 
@@ -167,7 +170,8 @@ void RenderSystem::Render(const World* world)
 	@autoreleasepool
 #endif
 	{
-		const RenderPipeline* pipeline = world and mActiveCamera != InvalidEntity ? world->GetSubsystem<RenderSceneProxy>()->GetRenderPipeline(mActiveCamera) : nullptr;
+		SceneView* view = world and mActiveCamera != InvalidEntity ? GetSceneView(world, mActiveCamera) : nullptr;
+		const RenderPipeline* pipeline = view ? view->pipeline : nullptr;
 		const bool hasScene = pipeline != nullptr;
 
 		RenderGraphContext renderGraphContext;
@@ -176,11 +180,9 @@ void RenderSystem::Render(const World* world)
 		renderGraphContext.allocator = mTransientAllocator;
 		RenderGraph graph(renderGraphContext);
 
-		const auto& backbuffer = mSwapchain->GetCurrentDrawable();
-
 		RenderGraphBlackboard blackboard;
 		auto& sceneData = blackboard.Add<SceneRenderingData>();
-		sceneData.backbuffer = graph.ImportTexture(backbuffer);
+		sceneData.backbuffer = graph.ImportBackbuffer();
 
 		Texture sceneTarget;
 		MeshDrawList cameraDrawList;
@@ -205,22 +207,20 @@ void RenderSystem::Render(const World* world)
 			sceneData.sceneTarget = graph.ImportTexture(sceneTarget);
 			sceneData.sceneProxy = sceneProxy;
 			sceneData.world = world;
+			sceneData.view = view;
 
 			// Setup camera & sky atmosphere
 			Entity atmosphereEntity = mSkyAtmosphereEntity != InvalidEntity ? world->GetEntityManager().GetComponent<Entity>(mSkyAtmosphereEntity) : Entity();
 			sceneData.atmosphere = SetupSkyAtmosphereRenderData(graph, atmosphereEntity);
-			sceneData.camera = SetupCameraRenderData(graph, cameraEntity);
+			sceneData.camera = SetupCameraRenderData(graph, cameraEntity, *view);
 
 			sceneProxy->Cull(sceneData.camera.uniforms.frustum, cameraDrawList);
 			sceneData.drawList = &cameraDrawList;
 
-			if (mPrevCamera != mActiveCamera)
+			if (not view->historyValid)
 			{
-				mPrevCameraView = sceneData.camera.uniforms.viewMatrix;
-				mPrevCameraViewProjection = sceneData.camera.uniforms.viewProjectionMatrix;
-
-				sceneData.camera.uniforms.prevViewMatrix = mPrevCameraView;
-				sceneData.camera.uniforms.prevViewProjectionMatrix = mPrevCameraViewProjection;
+				sceneData.camera.uniforms.prevViewMatrix = sceneData.camera.uniforms.viewMatrix;
+				sceneData.camera.uniforms.prevViewProjectionMatrix = sceneData.camera.uniforms.viewProjectionMatrix;
 			}
 
 			if (memcmp(&mAtmosphereParams, &sceneData.atmosphere.params, sizeof(SkyAtmosphereParameters)) != 0)
@@ -255,7 +255,7 @@ void RenderSystem::Render(const World* world)
 			sceneData.accelerationStructure = mRayTracingScene->BuildAccelerationStructure(cmd, sceneData.sceneProxy);
 		}
 
-        graph.Execute(cmd, sceneData);
+        graph.Execute(cmd);
 
 		if (hasScene)
 		{
@@ -263,8 +263,17 @@ void RenderSystem::Render(const World* world)
 			sceneProxy->ReleaseInstanceBuffer(mTransientAllocator);
 			mRayTracingScene->ReleaseAccelerationStructure();
 
-			mPrevCameraView = sceneData.camera.uniforms.viewMatrix;
-			mPrevCameraViewProjection = sceneData.camera.uniforms.viewProjectionMatrix;
+			view->prevViewMatrix = sceneData.camera.uniforms.viewMatrix;
+			view->prevViewProjectionMatrix = sceneData.camera.uniforms.viewProjectionMatrix;
+			view->historyValid = true;
+		}
+
+		for (auto sceneView : mSceneViews)
+		{
+			if (sceneView != view or not hasScene)
+			{
+				sceneView->ReleaseHistory(mDevice, mTransientAllocator);
+			}
 		}
 
 		mSwapchain->Present(cmd);
@@ -455,6 +464,64 @@ GPUAllocator* RenderSystem::GetAllocator()
 	return mPersistentAllocator;
 }
 
+SceneView* RenderSystem::AcquireSceneView(const World* world, EntityHandle camera)
+{
+	auto view = GetSceneView(world, camera);
+	if (view == nullptr)
+	{
+		view = new SceneView(world, camera);
+		mSceneViews.push_back(view);
+	}
+	return view;
+}
+
+void RenderSystem::ReleaseSceneView(const World* world, EntityHandle camera)
+{
+	auto it = eastl::find_if(mSceneViews.begin(), mSceneViews.end(), [world, camera](const SceneView* view)
+	{
+		return view->world == world and view->camera == camera;
+	});
+	if (it != mSceneViews.end())
+	{
+		DestroySceneView(*it);
+		*it = mSceneViews.back();
+		mSceneViews.pop_back();
+	}
+}
+
+void RenderSystem::ReleaseSceneViews(const World* world)
+{
+	for (uint32_t i = 0; i < mSceneViews.size();)
+	{
+		if (mSceneViews[i]->world == world)
+		{
+			DestroySceneView(mSceneViews[i]);
+			mSceneViews[i] = mSceneViews.back();
+			mSceneViews.pop_back();
+		}
+		else
+		{
+			++i;
+		}
+	}
+}
+
+SceneView* RenderSystem::GetSceneView(const World* world, EntityHandle camera)
+{
+	auto it = eastl::find_if(mSceneViews.begin(), mSceneViews.end(), [world, camera](const SceneView* view)
+	{
+		return view->world == world and view->camera == camera;
+	});
+	return it != mSceneViews.end() ? *it : nullptr;
+}
+
+void RenderSystem::DestroySceneView(SceneView* view)
+{
+	Globals::GameInstance->GetSubsystem<AssetManager>()->Release(view->pipelineReference);
+	view->ReleaseHistory(mDevice, mTransientAllocator);
+	delete view;
+}
+
 const GPUAllocator* RenderSystem::GetAllocator() const
 {
 	return mPersistentAllocator;
@@ -569,7 +636,7 @@ void RenderSystem::RegisterShadingPipelines(const Material* material)
 	}
 }
 
-CameraRenderData RenderSystem::SetupCameraRenderData(RenderGraph& graph, const Entity& entity) const
+CameraRenderData RenderSystem::SetupCameraRenderData(RenderGraph& graph, const Entity& entity, const SceneView& view) const
 {
 	CameraRenderData camera = {};
 	camera.entity = entity;
@@ -586,8 +653,8 @@ CameraRenderData RenderSystem::SetupCameraRenderData(RenderGraph& graph, const E
 		camera.uniforms.projectionMatrix = Float4x4::Ortho(camera.uniforms.resolution.x, camera.uniforms.resolution.y, cameraComponent.nearPlane, cameraComponent.farPlane);
 	}
 	camera.uniforms.viewProjectionMatrix = camera.uniforms.projectionMatrix * camera.uniforms.viewMatrix;
-	camera.uniforms.prevViewMatrix = mPrevCameraView;
-	camera.uniforms.prevViewProjectionMatrix = mPrevCameraViewProjection;
+	camera.uniforms.prevViewMatrix = view.prevViewMatrix;
+	camera.uniforms.prevViewProjectionMatrix = view.prevViewProjectionMatrix;
 	camera.uniforms.invViewMatrix = Math::Inverse(camera.uniforms.viewMatrix);
 	camera.uniforms.invProjectionMatrix = Math::Inverse(camera.uniforms.projectionMatrix);
 	camera.uniforms.invViewProjectionMatrix = Math::Inverse(camera.uniforms.viewProjectionMatrix);
@@ -623,8 +690,10 @@ SkyAtmosphereRenderData RenderSystem::SetupSkyAtmosphereRenderData(RenderGraph& 
 		skyAtmosphere.uniforms.sunDirection = entity.UpVector();
 
 		auto skyAtmosphereRenderer = GetSharedRenderer<SkyAtmosphereRenderer>();
-		skyAtmosphere.transmittanceLut = graph.ImportTexture(skyAtmosphereRenderer->GetTransmittanceLutTexture());
-		skyAtmosphere.multiScatterLut = graph.ImportTexture(skyAtmosphereRenderer->GetMultiScatterLutTexture());
+		const ImportResourceParams lutParams{ .initialLayout = mSkyAtmosphereLutLayout, .finalLayout = BarrierLayout::ShaderResource };
+		skyAtmosphere.transmittanceLut = graph.ImportTexture(skyAtmosphereRenderer->GetTransmittanceLutTexture(), lutParams);
+		skyAtmosphere.multiScatterLut = graph.ImportTexture(skyAtmosphereRenderer->GetMultiScatterLutTexture(), lutParams);
+		mSkyAtmosphereLutLayout = BarrierLayout::ShaderResource;
 		skyAtmosphere.params = skyAtmosphereRenderer->GetSkyAtmosphereParameters(atmosphereComponent.atmosphere);
 	}
 	skyAtmosphere.uniforms.transmittanceLutTexture = skyAtmosphere.transmittanceLut;
