@@ -146,11 +146,12 @@ void EditorCameraController::Update(Gleam::EntityManager& entityManager, const E
 	entity.SetRotation(rotation);
 }
 
-void EditorCameraController::Frame(const Gleam::EntityManager& entityManager, const Gleam::Float3& center, float radius)
+void EditorCameraController::Frame(const Gleam::EntityManager& entityManager, const Gleam::Float3& center, float radius, float aspectRatio)
 {
-	const auto& camera = entityManager.GetComponent<Gleam::Camera>(mCameraEntity);
-	const float halfFovY = Gleam::Math::Deg2Rad(camera.fov) * 0.5f;
-	const float halfFovX = Gleam::Math::Atan(Gleam::Math::Tan(halfFovY) * camera.aspectRatio);
+	// Read back from the projection so both field of view axes are handled
+	const auto projection = entityManager.GetComponent<Gleam::Camera>(mCameraEntity).GetProjectionMatrix(aspectRatio);
+	const float halfFovX = Gleam::Math::Atan(1.0f / projection.m[0]);
+	const float halfFovY = Gleam::Math::Atan(1.0f / projection.m[5]);
 	mFramePivot = center;
 	mFrameDistance = Gleam::Math::Max(radius, kMinFrameRadius) / Gleam::Math::Sin(Gleam::Math::Min(halfFovX, halfFovY));
 	mFraming = true;

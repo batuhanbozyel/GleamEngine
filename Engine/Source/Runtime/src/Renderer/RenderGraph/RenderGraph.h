@@ -59,7 +59,7 @@ public:
     
     TextureHandle ImportTexture(const Texture& texture, const ImportResourceParams& params = ImportResourceParams());
 
-	TextureHandle ImportBackbuffer();
+	TextureHandle ImportBackbuffer(const ImportResourceParams& params = {});
 
     const TextureDescriptor& GetDescriptor(TextureHandle handle) const;
 

@@ -106,3 +106,8 @@ NO_DISCARD TextureHandle RenderGraphBuilder::ReadTexture(const TextureHandle& re
     mPassNode.textureReads.emplace_back(clone);
     return clone;
 }
+
+void RenderGraphBuilder::SetViewport(const Rect& viewport)
+{
+	mPassNode.viewport = viewport;
+}

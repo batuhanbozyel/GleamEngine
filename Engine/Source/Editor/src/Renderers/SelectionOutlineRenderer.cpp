@@ -114,6 +114,8 @@ void SelectionOutlineRenderer::AddRenderPasses(Gleam::RenderGraph& graph, Gleam:
 	{
 		passData.renderTarget = builder.UseColorBuffer(sceneData.backbuffer);
 		passData.selectionMask = builder.ReadTexture(maskData.selectionMask);
+		
+		builder.SetViewport(sceneData.viewport);
 	},
 	[this, outlinePipeline](const Gleam::CommandBuffer* cmd, const OutlinePassData& passData)
 	{

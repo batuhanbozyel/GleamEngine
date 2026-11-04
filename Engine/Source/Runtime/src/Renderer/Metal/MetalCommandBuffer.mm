@@ -221,11 +221,13 @@ void CommandBuffer::BindMeshPipeline(const MeshPipeline& pipeline) const
     mHandle->topLevelArgumentBuffer.samplerDescriptorHeap = [mHandle->device->GetSamplerHeap() gpuAddress];
 }
 
-void CommandBuffer::SetViewport(const Size& size) const
+void CommandBuffer::SetViewport(const Rect& rect) const
 {
     MTLViewport viewport{};
-    viewport.width = size.width;
-    viewport.height = size.height;
+    viewport.originX = rect.offset.x;
+    viewport.originY = rect.offset.y;
+    viewport.width = rect.size.width;
+    viewport.height = rect.size.height;
     viewport.zfar = 1.0f;
     [mHandle->renderCommandEncoder setViewport:viewport];
 }

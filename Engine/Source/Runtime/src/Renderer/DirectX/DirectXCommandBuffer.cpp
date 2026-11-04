@@ -148,12 +148,14 @@ void CommandBuffer::BindMeshPipeline(const MeshPipeline& pipeline) const
 	mHandle->pipeline = pipeline.GetHash();
 }
 
-void CommandBuffer::SetViewport(const Size& size) const
+void CommandBuffer::SetViewport(const Rect& rect) const
 {
 	D3D12_VIEWPORT viewport{};
 	viewport.MaxDepth = 1.0f;
-	viewport.Width = size.width;
-	viewport.Height = size.height;
+	viewport.TopLeftX = rect.offset.x;
+	viewport.TopLeftY = rect.offset.y;
+	viewport.Width = rect.size.width;
+	viewport.Height = rect.size.height;
 	mHandle->commandList->RSSetViewports(1, &viewport);
 }
 

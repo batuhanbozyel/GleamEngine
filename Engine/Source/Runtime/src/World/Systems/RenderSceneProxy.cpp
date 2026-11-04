@@ -10,6 +10,7 @@
 #include "World/EntityManager.h"
 
 #include "Renderer/Mesh.h"
+#include "Renderer/SceneView.h"
 #include "Renderer/RenderSystem.h"
 #include "Renderer/GraphicsDevice.h"
 #include "Renderer/RayTracingScene.h"
@@ -42,7 +43,8 @@ static void ComputeWorldBounds(const Mesh& mesh, const Transform& transform, Flo
 	}
 }
 
-static float ComputeScreenCoverage(const Float3& center, float radius, const Camera& camera, const Float3& cameraPosition)
+// Fraction of the view height the sphere covers; projection.m[5] is 1 / tan(fovY / 2) or 2 / orthographic height
+static float ComputeScreenCoverage(const Float3& center, float radius, const Camera& camera, const Float4x4& projection, const Float3& cameraPosition)
 {
 	float coverage = 1.0f;
 	if (camera.projectionType == ProjectionType::Perspective)
@@ -50,12 +52,12 @@ static float ComputeScreenCoverage(const Float3& center, float radius, const Cam
 		const float distance = Math::Length(center - cameraPosition);
 		if (distance > radius)
 		{
-			coverage = radius / (distance * Math::Tan(Math::Deg2Rad(camera.fov) * 0.5f));
+			coverage = radius * projection.m[5] / distance;
 		}
 	}
 	else
 	{
-		coverage = 2.0f * radius / camera.GetViewport().height;
+		coverage = radius * projection.m[5];
 	}
 	return coverage;
 }
@@ -259,6 +261,11 @@ void RenderSceneProxy::Update(const World* world, EntityHandle camera)
 	const auto& cameraComponent = entityManager.GetComponent<Camera>(camera);
 	Float3 cameraPosition = entityManager.GetComponent<Entity>(camera).GetWorldPosition();
 
+	// An empty viewport rect still needs a valid projection to pick LODs with
+	const auto resolution = renderSystem->GetSceneView(mWorld, camera)->GetResolution();
+	const float aspectRatio = resolution.width >= 1.0f and resolution.height >= 1.0f ? resolution.width / resolution.height : 1.0f;
+	const auto projection = cameraComponent.GetProjectionMatrix(aspectRatio);
+
 	for (auto& record : mRecords)
 	{
 		const auto& entity = entityManager.GetComponent<Entity>(record.entity);
@@ -271,7 +278,7 @@ void RenderSceneProxy::Update(const World* world, EntityHandle camera)
 		{
 			ComputeWorldBounds(*record.mesh, worldTransform, record.worldCenter, record.worldRadius);
 
-			float coverage = ComputeScreenCoverage(record.worldCenter, record.worldRadius, cameraComponent, cameraPosition);
+			float coverage = ComputeScreenCoverage(record.worldCenter, record.worldRadius, cameraComponent, projection, cameraPosition);
 			record.lod = SelectMeshLod(record.mesh, coverage);
 		}
 	}

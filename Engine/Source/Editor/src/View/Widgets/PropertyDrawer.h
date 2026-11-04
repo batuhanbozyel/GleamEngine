@@ -1,5 +1,5 @@
 #pragma once
-#include "Math/Size.h"
+#include "Math/Rect.h"
 #include "Math/Color.h"
 #include "Math/Vector3.h"
 #include "Math/Quaternion.h"
@@ -35,6 +35,8 @@ public:
 	static void DrawVec3Control(const Gleam::TStringView label, Gleam::Float3& values, float resetValue = 0.0f, float columnWidth = 100.0f);
 
 	static void DrawSizeControl(const Gleam::TStringView label, Gleam::Size& size, float columnWidth = 100.0f);
+
+	static void DrawRectControl(const Gleam::TStringView label, Gleam::Rect& rect, float columnWidth = 100.0f);
 
 	// Quaternions are edited as euler angles, the triple is cached so it survives the round trip
 	static void DrawRotationControl(const Gleam::TStringView label, Gleam::Quaternion& rotation, float columnWidth = 100.0f);

@@ -296,6 +296,12 @@ const Gleam::HashMap<uint32_t, PropertyDrawer::DrawFunction>& PropertyDrawer::Ge
 			DrawSizeControl(label, Gleam::Reflection::Get<Gleam::Size>(obj), columnWidth);
 		};
 
+		customDrawers[Gleam::Reflection::TypeHash<Gleam::Rect>()] =
+			[](const Gleam::TStringView label, void* obj, const Gleam::Reflection::ClassDescription& classDesc, float columnWidth)
+		{
+			DrawRectControl(label, Gleam::Reflection::Get<Gleam::Rect>(obj), columnWidth);
+		};
+
 		customDrawers[Gleam::Reflection::TypeHash<Gleam::AssetReference>()] =
 			[](const Gleam::TStringView label, void* obj, const Gleam::Reflection::ClassDescription& classDesc, float columnWidth)
 		{
@@ -739,6 +745,38 @@ void PropertyDrawer::DrawSizeControl(const Gleam::TStringView label, Gleam::Size
 	DrawAxisField("W", Widgets::ColorU32(Gleam::Theme::TextDim), size.width, 0.0f, format, fieldWidth);
 	ImGui::SameLine(0.0f, kFieldGap);
 	DrawAxisField("H", Widgets::ColorU32(Gleam::Theme::TextDim), size.height, 0.0f, format, fieldWidth);
+
+	ImGui::Columns(1);
+
+	ImGui::PopID();
+}
+
+void PropertyDrawer::DrawRectControl(const Gleam::TStringView label, Gleam::Rect& rect, float columnWidth)
+{
+	constexpr float kFieldGap = 4.0f;
+
+	char buffer[64];
+	std::memcpy(buffer, label.data(), label.size());
+	buffer[label.size()] = '\0';
+
+	ImGui::PushID(buffer);
+
+	ImGui::Columns(2);
+	ImGui::SetColumnWidth(0, columnWidth);
+	DrawFieldLabel(buffer);
+	ImGui::NextColumn();
+
+	const char* format = IsMixedValue() ? "-" : "%.2f";
+	const float fieldWidth = (ImGui::GetContentRegionAvail().x - kFieldGap * 3.0f) * 0.25f;
+	const auto tagColor = Widgets::ColorU32(Gleam::Theme::TextDim);
+
+	DrawAxisField("X", tagColor, rect.offset.x, 0.0f, format, fieldWidth);
+	ImGui::SameLine(0.0f, kFieldGap);
+	DrawAxisField("Y", tagColor, rect.offset.y, 0.0f, format, fieldWidth);
+	ImGui::SameLine(0.0f, kFieldGap);
+	DrawAxisField("W", tagColor, rect.size.width, 1.0f, format, fieldWidth);
+	ImGui::SameLine(0.0f, kFieldGap);
+	DrawAxisField("H", tagColor, rect.size.height, 1.0f, format, fieldWidth);
 
 	ImGui::Columns(1);
 

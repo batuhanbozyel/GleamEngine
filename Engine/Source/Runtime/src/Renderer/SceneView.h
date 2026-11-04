@@ -1,4 +1,5 @@
 #pragma once
+#include "Math/Rect.h"
 #include "Container/Hash.h"
 #include "World/Entity.h"
 #include "Assets/AssetReference.h"
@@ -14,6 +15,7 @@ class World;
 class GPUAllocator;
 class GraphicsDevice;
 class RenderPipeline;
+class RenderSurface;
 class RenderTexture;
 
 template<typename T>
@@ -34,12 +36,18 @@ class SceneView final
 
 public:
 
-	SceneView(const World* world, EntityHandle camera)
+	SceneView(const World* world, EntityHandle camera, const RenderSurface* surface)
 		: world(world)
 		, camera(camera)
+		, mSurface(surface)
 	{
 
 	}
+
+	// The view's region of its output in pixels, from the camera's viewport rect
+	Rect GetRect() const;
+
+	Size GetResolution() const;
 
 	template<SceneViewHistoryType T>
 	T& GetHistory()
@@ -95,6 +103,9 @@ public:
 	bool historyValid = false;
 
 private:
+
+	// Output of views without a target texture
+	const RenderSurface* mSurface = nullptr;
 
 	HashMap<uint32_t, HistoryEntry> mHistories;
 

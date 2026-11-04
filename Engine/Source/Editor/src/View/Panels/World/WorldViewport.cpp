@@ -252,7 +252,7 @@ void WorldViewport::OnCreate(Gleam::Application* app)
 	targetDesc.size = windowSystem->GetResolution();
 	targetDesc.format = renderSystem->GetSurface()->GetFormat();
 	mCameraTarget = assetManager->Register(new Gleam::RenderTexture(Gleam::AssetReference{ .guid = Gleam::Guid::NewGuid() }, Gleam::AssetHeader{ .name = "Editor Camera Target" }, targetDesc));
-	auto& cameraComponent = entityManager.AddComponent<Gleam::Camera>(camera, windowSystem->GetResolution(), Gleam::ProjectionType::Perspective);
+	auto& cameraComponent = entityManager.AddComponent<Gleam::Camera>(camera);
 	cameraComponent.targetTexture = mCameraTarget->GetReference();
 	auto& editorCamera = entityManager.AddComponent<Gleam::EditorCamera>(camera);
 	editorCamera.yaw = cameraState.yaw;
@@ -271,8 +271,8 @@ void WorldViewport::OnCreate(Gleam::Application* app)
 
 	mCameraController = new EditorCameraController(mCamera);
 	mPhysicsVisualization = mEditWorld->AddSystem<PhysicsVisualizationSystem>(mDebugRenderer);
-	mRendererVisualization = mEditWorld->AddSystem<RendererVisualizationSystem>(mSelectionSystem, mEditWorld->GetSubsystem<Gleam::RenderSceneProxy>(), mDebugRenderer);
-	Resize(entityManager, windowSystem->GetResolution());
+	mRendererVisualization = mEditWorld->AddSystem<RendererVisualizationSystem>(mEditWorld, mSelectionSystem, mEditWorld->GetSubsystem<Gleam::RenderSceneProxy>(), mDebugRenderer);
+	Resize(windowSystem->GetResolution());
 }
 
 void WorldViewport::OnDestroy(Gleam::Application* app)
@@ -328,7 +328,7 @@ void WorldViewport::Update()
 
     if (mViewportSizeChanged or mViewportWorld != playWorld)
     {
-		Resize(mEditWorld->GetEntityManager(), mViewportSize);
+		Resize(mViewportSize);
 	}
 }
 
@@ -996,7 +996,7 @@ void WorldViewport::FrameSelection()
 		{
 			radius = Gleam::Math::Max(radius, Gleam::Math::Length(sphere.center - center) + sphere.radius);
 		}
-		mCameraController->Frame(entityManager, center, radius);
+		mCameraController->Frame(entityManager, center, radius, GetCameraAspectRatio());
 	}
 }
 
@@ -1044,16 +1044,7 @@ void WorldViewport::DrawTransformGizmo(const Gleam::Float2& imageMin, const Glea
 	const auto& cameraComponent = entityManager.GetComponent<Gleam::Camera>(mCamera);
 
 	Gleam::Float4x4 view = Gleam::Float4x4::LookTo(cameraEntity.GetWorldPosition(), cameraEntity.ForwardVector(), cameraEntity.UpVector());
-	Gleam::Float4x4 projection;
-	if (cameraComponent.projectionType == Gleam::ProjectionType::Perspective)
-	{
-		projection = Gleam::Float4x4::Perspective(Gleam::Math::Deg2Rad(cameraComponent.fov), cameraComponent.aspectRatio, cameraComponent.nearPlane, cameraComponent.farPlane);
-	}
-	else
-	{
-		const auto resolution = cameraComponent.GetViewport();
-		projection = Gleam::Float4x4::Ortho(resolution.width, resolution.height, cameraComponent.nearPlane, cameraComponent.farPlane);
-	}
+	const Gleam::Float4x4 projection = cameraComponent.GetProjectionMatrix(GetCameraAspectRatio());
 
 	GizmoViewport viewport;
 	viewport.viewProjection = projection * view;
@@ -1084,7 +1075,7 @@ void WorldViewport::DrawTransformGizmo(const Gleam::Float2& imageMin, const Glea
 	}
 }
 
-void WorldViewport::Resize(Gleam::EntityManager& entityManager, const Gleam::Size& size)
+void WorldViewport::Resize(const Gleam::Size& size)
 {
 	mViewportSize = size;
 	mViewportSizeChanged = false;
@@ -1092,17 +1083,14 @@ void WorldViewport::Resize(Gleam::EntityManager& entityManager, const Gleam::Siz
 
 	auto windowSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::WindowSystem>();
 	const auto resolution = GetRenderResolution(mViewportSize * windowSystem->GetDisplayScale());
-	auto& camera = entityManager.GetComponent<Gleam::Camera>(mCamera);
-	camera.SetViewport(resolution);
 	mCameraTarget->Resize(resolution);
+}
 
-	if (mViewportWorld)
-	{
-		mViewportWorld->GetEntityManager().ForEach<Gleam::Camera>([&](Gleam::Camera& gameCamera)
-		{
-			gameCamera.SetViewport(resolution);
-		});
-	}
+float WorldViewport::GetCameraAspectRatio() const
+{
+	auto renderSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::RenderSystem>();
+	const auto resolution = renderSystem->GetSceneView(mEditWorld, mCamera)->GetResolution();
+	return resolution.width / resolution.height;
 }
 
 Gleam::Size WorldViewport::GetRenderResolution(const Gleam::Size& panelResolution) const

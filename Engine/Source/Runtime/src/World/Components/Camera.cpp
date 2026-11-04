@@ -3,32 +3,20 @@
 
 namespace Gleam {
 
-Camera::Camera(float width, float height, ProjectionType type)
-	: Camera({width, height}, type)
+Float4x4 Camera::GetProjectionMatrix(float aspectRatio) const
 {
+	if (projectionType == ProjectionType::Perspective)
+	{
+		float verticalFov = Math::Deg2Rad(fov);
+		if (fovAxis == FieldOfViewAxis::Horizontal)
+		{
+			verticalFov = 2.0f * Math::Atan(Math::Tan(verticalFov * 0.5f) / aspectRatio);
+		}
+		return Float4x4::Perspective(verticalFov, aspectRatio, nearPlane, farPlane);
+	}
 
-}
-
-Camera::Camera(const Size& size, ProjectionType type)
-	: projectionType(type)
-{
-	SetViewport(size);
-}
-
-void Camera::SetViewport(const Size& size)
-{
-	SetViewport(size.width, size.height);
-}
-
-void Camera::SetViewport(float width, float height)
-{
-	aspectRatio = width / height;
-	orthographicSize = height;
-}
-
-Size Camera::GetViewport() const
-{
-	return Size{ Math::Round(orthographicSize * aspectRatio), Math::Round(orthographicSize) };
+	const float height = fovAxis == FieldOfViewAxis::Vertical ? 2.0f * orthographicSize : 2.0f * orthographicSize / aspectRatio;
+	return Float4x4::Ortho(height * aspectRatio, height, nearPlane, farPlane);
 }
 
 } // namespace Gleam

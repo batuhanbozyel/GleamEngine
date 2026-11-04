@@ -15,6 +15,7 @@
 #include "Math/Float4x4.h"
 
 #include "Renderer/Mesh.h"
+#include "Renderer/SceneView.h"
 #include "Renderer/RenderSystem.h"
 #include "Renderer/RenderPipeline.h"
 #include "Renderer/Renderers/DebugRenderer.h"
@@ -29,19 +30,8 @@ static constexpr Gleam::Color32 kFrustumColor = Gleam::Color32(200, 200, 200, 25
 static constexpr Gleam::Color32 kSelectedFrustumColor = Gleam::Color32(255, 200, 80, 255);
 static constexpr Gleam::Color32 kMeshBoundsColor = Gleam::Color32(120, 200, 255, 255);
 
-static void DrawFrustum(Gleam::DebugRenderer* renderer, const Gleam::Entity& entity, const Gleam::Camera& camera, Gleam::Color32 color)
+static void DrawFrustum(Gleam::DebugRenderer* renderer, const Gleam::Entity& entity, const Gleam::Float4x4& projection, Gleam::Color32 color)
 {
-	// Same matrices as RenderSystem::SetupCameraRenderData, so the lines match what the camera renders
-	Gleam::Float4x4 projection;
-	if (camera.projectionType == Gleam::ProjectionType::Perspective)
-	{
-		projection = Gleam::Float4x4::Perspective(Gleam::Math::Deg2Rad(camera.fov), camera.aspectRatio, camera.nearPlane, camera.farPlane);
-	}
-	else
-	{
-		const auto resolution = camera.GetViewport();
-		projection = Gleam::Float4x4::Ortho(resolution.width, resolution.height, camera.nearPlane, camera.farPlane);
-	}
 	const auto view = Gleam::Float4x4::LookTo(entity.GetWorldPosition(), entity.ForwardVector(), entity.UpVector());
 	const auto invViewProjection = Gleam::Math::Inverse(projection * view);
 
@@ -64,8 +54,9 @@ static void DrawFrustum(Gleam::DebugRenderer* renderer, const Gleam::Entity& ent
 	}
 }
 
-RendererVisualizationSystem::RendererVisualizationSystem(const SelectionSystem* selectionSystem, const Gleam::RenderSceneProxy* sceneProxy, Gleam::DebugRenderer* renderer)
-	: mSelectionSystem(selectionSystem)
+RendererVisualizationSystem::RendererVisualizationSystem(const Gleam::World* world, const SelectionSystem* selectionSystem, const Gleam::RenderSceneProxy* sceneProxy, Gleam::DebugRenderer* renderer)
+	: mWorld(world)
+	, mSelectionSystem(selectionSystem)
 	, mSceneProxy(sceneProxy)
 	, mRenderer(renderer)
 {
@@ -75,14 +66,22 @@ RendererVisualizationSystem::RendererVisualizationSystem(const SelectionSystem* 
 void RendererVisualizationSystem::OnUpdate(Gleam::EntityManager& entityManager)
 {
 	auto renderer = mRenderer;
+	auto renderSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::RenderSystem>();
 
 	const bool drawAllFrustums = mSettings.flags.Has(Gleam::RendererVisualizationFlag::CameraFrustums);
 	entityManager.ForEach<Gleam::Entity, Gleam::Camera>([&](Gleam::EntityHandle handle, const Gleam::Entity& entity, const Gleam::Camera& camera)
 	{
 		const bool selected = mSelectionSystem->IsSelected(handle);
-		if (entity.IsActive() and (selected or drawAllFrustums))
+		const auto view = renderSystem->GetSceneView(mWorld, handle);
+		if (view == nullptr or entity.IsActive() == false or (selected or drawAllFrustums) == false)
 		{
-			DrawFrustum(renderer, entity, camera, selected ? kSelectedFrustumColor : kFrustumColor);
+			return;
+		}
+
+		const auto resolution = view->GetResolution();
+		if (resolution.width >= 1.0f and resolution.height >= 1.0f)
+		{
+			DrawFrustum(renderer, entity, camera.GetProjectionMatrix(resolution.width / resolution.height), selected ? kSelectedFrustumColor : kFrustumColor);
 		}
 	}, Gleam::Exclude<Gleam::EditorCamera>{});
 

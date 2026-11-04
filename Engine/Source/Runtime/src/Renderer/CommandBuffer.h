@@ -56,7 +56,7 @@ public:
 
 	void BindMeshPipeline(const MeshPipeline& pipeline) const;
 
-    void SetViewport(const Size& size) const;
+    void SetViewport(const Rect& rect) const;
 
 	void SetScissorRect(const Rect& rect) const;
     

@@ -107,6 +107,9 @@ private:
 
 	SkyAtmosphereRenderData SetupSkyAtmosphereRenderData(const Entity& entity);
 
+	// Render order: target views, then swapchain views, each by ascending camera priority
+	TArray<SceneView*> GatherViews(const World* world);
+
 	void AddSceneTargetPass(RenderGraph& graph, SceneRenderingData& sceneData, const Size& resolution) const;
 
 	void AddTargetTransitionPass(RenderGraph& graph, const TextureHandle& target) const;
@@ -128,8 +131,7 @@ private:
 	Size mSwapchainSize = {};
 
 	EntityHandle mSkyAtmosphereEntity = InvalidEntity;
-	SceneView* mMainView = nullptr;
-	TArray<SceneView*> mTargetViews;
+
 
 	struct RendererAllocation
 	{

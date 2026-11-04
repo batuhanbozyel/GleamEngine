@@ -113,6 +113,8 @@ void ViewModeRenderer::AddRenderPasses(Gleam::RenderGraph& graph, Gleam::RenderG
 		passData.target = builder.UseColorBuffer(sceneData.backbuffer);
 		passData.source = builder.ReadTexture(source);
 		passData.mode = mMode;
+		
+		builder.SetViewport(sceneData.viewport);
 	},
 		[pipeline, &blackboard](const Gleam::CommandBuffer* cmd, const PassData& passData)
 	{

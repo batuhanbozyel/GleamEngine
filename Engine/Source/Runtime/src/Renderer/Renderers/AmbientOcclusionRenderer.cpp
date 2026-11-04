@@ -80,7 +80,7 @@ void AmbientOcclusionRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBl
 		return;
 	}
 
-	const auto& sceneData        = blackboard.Get<SceneRenderingData>();
+	const auto& sceneData = blackboard.Get<SceneRenderingData>();
 	if (not sceneData.world)
 	{
 		return;

@@ -87,7 +87,9 @@ private:
 
 	Gleam::TArray<Gleam::EntityHandle> GatherGizmoTargets(const Gleam::EntityManager& entityManager) const;
 
-	void Resize(Gleam::EntityManager& entityManager, const Gleam::Size& size);
+	void Resize(const Gleam::Size& size);
+
+	float GetCameraAspectRatio() const;
 
 	Gleam::Size GetRenderResolution(const Gleam::Size& panelResolution) const;
 

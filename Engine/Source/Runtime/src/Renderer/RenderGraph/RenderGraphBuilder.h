@@ -41,6 +41,8 @@ public:
     
     NO_DISCARD BufferHandle ReadBuffer(const BufferHandle& resource);
 
+    void SetViewport(const Rect& viewport);
+
 private:
 	
 	RenderGraphPassNode& mPassNode;

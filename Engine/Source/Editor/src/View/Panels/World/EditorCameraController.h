@@ -45,7 +45,7 @@ public:
 
 	void Update(Gleam::EntityManager& entityManager, const EditorCameraInput& input, float viewportHeight);
 
-	void Frame(const Gleam::EntityManager& entityManager, const Gleam::Float3& center, float radius);
+	void Frame(const Gleam::EntityManager& entityManager, const Gleam::Float3& center, float radius, float aspectRatio);
 
 	CameraNavigation GetNavigation() const
 	{

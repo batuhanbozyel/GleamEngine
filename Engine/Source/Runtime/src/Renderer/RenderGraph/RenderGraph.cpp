@@ -576,9 +576,10 @@ void RenderGraph::ExecutePass(RenderGraphPassNode* pass, const CommandBuffer* cm
 				renderPassDesc.size = descriptor.size;
 			}
 
+			const Rect viewport = pass->viewport.size == Size::zero ? Rect(renderPassDesc.size) : pass->viewport;
 			cmd->BeginRenderPass(renderPassDesc, pass->name);
-			cmd->SetViewport(renderPassDesc.size);
-			cmd->SetScissorRect(renderPassDesc.size);
+			cmd->SetViewport(viewport);
+			cmd->SetScissorRect(viewport);
 			std::invoke(pass->callback, cmd);
 			cmd->EndRenderPass();
 		}
@@ -607,9 +608,9 @@ TextureHandle RenderGraph::ImportTexture(const Texture& texture, const ImportRes
 	return handle;
 }
 
-TextureHandle RenderGraph::ImportBackbuffer()
+TextureHandle RenderGraph::ImportBackbuffer(const ImportResourceParams& params)
 {
-	mBackbuffer = ImportTexture(static_cast<Swapchain*>(mContext.surface)->GetCurrentDrawable());
+	mBackbuffer = ImportTexture(static_cast<Swapchain*>(mContext.surface)->GetCurrentDrawable(), params);
 	return mBackbuffer;
 }
 

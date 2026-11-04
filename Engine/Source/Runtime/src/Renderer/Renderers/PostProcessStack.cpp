@@ -43,6 +43,8 @@ void PostProcessStack::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard
         const auto& sceneData = blackboard.Get<SceneRenderingData>();
         passData.renderTarget = builder.UseColorBuffer(sceneData.backbuffer);
         passData.sceneColor = builder.ReadTexture(sceneData.sceneTarget);
+		
+		builder.SetViewport(sceneData.viewport);
     },
     [pipeline](const CommandBuffer* cmd, const PostProcessData& passData)
     {

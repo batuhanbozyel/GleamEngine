@@ -7,6 +7,7 @@
 
 #pragma once
 #include "RenderGraphResource.h"
+#include "Math/Rect.h"
 #include "Renderer/Buffer.h"
 #include "Renderer/Texture.h"
 #include "Renderer/Barrier.h"
@@ -77,6 +78,7 @@ struct RenderGraphPassNode : public RenderGraphNode
     TArray<TextureHandle> colorAttachments;
     TextureHandle depthAttachment;
 	DepthAccess depthAccess = DepthAccess::Write;
+	Rect viewport = Rect(Size::zero);
     
     HashSet<RenderGraphPassNode*> dependents;
     

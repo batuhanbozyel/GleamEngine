@@ -114,8 +114,6 @@ void RenderSystem::PreRender(const World* world)
 {
 	++mFrameCount;
 
-	mMainView = nullptr;
-	mTargetViews.clear();
 	mSkyAtmosphereEntity = InvalidEntity;
 
 	if (world)
@@ -128,45 +126,6 @@ void RenderSystem::PreRender(const World* world)
 				mSkyAtmosphereEntity = entity;
 			}
 		});
-
-		const auto cameraSystem = world->GetSystem<CameraSystem>();
-		const EntityHandle mainCamera = cameraSystem->Enabled ? cameraSystem->GetMainCamera(entityManager) : InvalidEntity;
-
-		TArray<EntityHandle> targetCameras;
-		entityManager.ForEach<Entity, Camera>([&](const Entity& entity, const Camera& component)
-		{
-			if (entity.IsActive() and component.targetTexture.guid != Guid::InvalidGuid())
-			{
-				targetCameras.push_back(entity);
-			}
-		});
-		eastl::stable_sort(targetCameras.begin(), targetCameras.end(), [&entityManager](EntityHandle lhs, EntityHandle rhs)
-		{
-			return entityManager.GetComponent<Camera>(lhs).priority < entityManager.GetComponent<Camera>(rhs).priority;
-		});
-
-		// LOD follows the Main view, or the highest-priority target view when there is none
-		const EntityHandle lodCamera = mainCamera != InvalidEntity ? mainCamera : (targetCameras.empty() ? InvalidEntity : targetCameras.back());
-		if (lodCamera != InvalidEntity)
-		{
-			world->GetSubsystem<RenderSceneProxy>()->Update(world, lodCamera);
-
-			// Views are looked up after Update, so a camera added this frame already has one
-			for (auto camera : targetCameras)
-			{
-				auto view = GetSceneView(world, camera);
-				if (view->pipeline and view->target)
-				{
-					mTargetViews.push_back(view);
-				}
-			}
-
-			if (mainCamera != InvalidEntity)
-			{
-				auto view = GetSceneView(world, mainCamera);
-				mMainView = view->pipeline ? view : nullptr;
-			}
-		}
 	}
 
 	auto frameIdx = mSwapchain->GetFrameIndex();
@@ -203,13 +162,9 @@ void RenderSystem::Render(const World* world)
 
 		RenderGraphBlackboard frameBlackboard;
 		auto& frameData = frameBlackboard.Add<SceneRenderingData>();
-		frameData.backbuffer = graph.ImportBackbuffer();
+		frameData.backbuffer = graph.ImportBackbuffer({ .clearColor = Color::black, .clearOnFirstUse = true });
 
-		TArray<SceneView*> views = mTargetViews;
-		if (mMainView)
-		{
-			views.push_back(mMainView);
-		}
+		const auto views = GatherViews(world);
 
 		struct ViewRenderData
 		{
@@ -252,8 +207,11 @@ void RenderSystem::Render(const World* world)
 				entry.renderer->AddRenderPasses(graph, frameBlackboard);
 			}
 
-			for (auto view : views)
+			// Views sharing a RenderTexture share one import, so only the first of them clears it
+			TArray<eastl::pair<const RenderTexture*, TextureHandle>> targets;
+			for (uint32_t viewIndex = 0; viewIndex < views.size(); ++viewIndex)
 			{
+				const auto view = views[viewIndex];
 				auto& data = viewData.emplace_back();
 				data.blackboard = frameBlackboard;
 
@@ -261,12 +219,21 @@ void RenderSystem::Render(const World* world)
 				sceneData.view = view;
 				if (view->target)
 				{
-					// Tonemapping overwrites every pixel, so the previous contents are never loaded
-					const auto& targetDesc = view->target->GetDescriptor();
-					sceneData.backbuffer = graph.ImportTexture(view->target->GetTexture(), { .clearColor = targetDesc.clearColor, .finalLayout = BarrierLayout::ShaderResource, .clearOnFirstUse = targetDesc.clearBuffer });
+					auto target = eastl::find_if(targets.begin(), targets.end(), [view](const auto& entry)
+					{
+						return entry.first == view->target;
+					});
+					if (target == targets.end())
+					{
+						const auto& targetDesc = view->target->GetDescriptor();
+						targets.emplace_back(view->target, graph.ImportTexture(view->target->GetTexture(), { .clearColor = targetDesc.clearColor, .finalLayout = BarrierLayout::ShaderResource, .clearOnFirstUse = targetDesc.clearBuffer }));
+						target = targets.end() - 1;
+					}
+					sceneData.backbuffer = target->second;
 				}
 
-				const Size resolution = graph.GetDescriptor(sceneData.backbuffer).size;
+				sceneData.viewport = view->GetRect();
+				const Size resolution = sceneData.viewport.size;
 				AddSceneTargetPass(graph, sceneData, resolution);
 
 				const auto& cameraEntity = entityManager.GetComponent<Entity>(view->camera);
@@ -295,7 +262,12 @@ void RenderSystem::Render(const World* world)
 					entry.renderer->AddRenderPasses(graph, data.blackboard);
 				}
 
-				if (view->target)
+				// Later views may sample this target, so it is transitioned once its last writer is done
+				const bool lastWriter = view->target and eastl::none_of(views.begin() + viewIndex + 1, views.end(), [view](const SceneView* other)
+				{
+					return other->target == view->target;
+				});
+				if (lastWriter)
 				{
 					AddTargetTransitionPass(graph, sceneData.backbuffer);
 				}
@@ -416,6 +388,80 @@ bool RenderSystem::IsSharedRenderer(const IRenderer* renderer) const
 	{
 		return pair.second == renderer;
 	});
+}
+
+TArray<SceneView*> RenderSystem::GatherViews(const World* world)
+{
+	TArray<SceneView*> views;
+	if (world == nullptr)
+	{
+		return views;
+	}
+
+	const auto& entityManager = world->GetEntityManager();
+	const auto cameraSystem = world->GetSystem<CameraSystem>();
+	const EntityHandle mainCamera = cameraSystem->Enabled ? cameraSystem->GetMainCamera(entityManager) : InvalidEntity;
+
+	// Swapchain cameras only render while CameraSystem runs, so the edit world never draws to the screen
+	TArray<EntityHandle> targetCameras;
+	TArray<EntityHandle> swapchainCameras;
+	entityManager.ForEach<Entity, Camera>([&](const Entity& entity, const Camera& component)
+	{
+		if (entity.IsActive() == false)
+		{
+			return;
+		}
+
+		if (component.targetTexture.guid != Guid::InvalidGuid())
+		{
+			targetCameras.push_back(entity);
+		}
+		else if (cameraSystem->Enabled)
+		{
+			swapchainCameras.push_back(entity);
+		}
+	});
+
+	const auto byPriority = [&entityManager](EntityHandle lhs, EntityHandle rhs)
+	{
+		return entityManager.GetComponent<Camera>(lhs).priority < entityManager.GetComponent<Camera>(rhs).priority;
+	};
+	eastl::stable_sort(targetCameras.begin(), targetCameras.end(), byPriority);
+	eastl::stable_sort(swapchainCameras.begin(), swapchainCameras.end(), byPriority);
+
+	// LOD follows the Main view, or the highest-priority target view when there is none
+	const EntityHandle lodCamera = mainCamera != InvalidEntity ? mainCamera : (targetCameras.empty() ? InvalidEntity : targetCameras.back());
+	if (lodCamera == InvalidEntity)
+	{
+		return views;
+	}
+	world->GetSubsystem<RenderSceneProxy>()->Update(world, lodCamera);
+
+	for (auto camera : targetCameras)
+	{
+		auto view = GetSceneView(world, camera);
+		if (view->target and view->pipeline)
+		{
+			auto resolution = view->GetResolution();
+			if (resolution.width >= 1.0f and resolution.height >= 1.0f)
+			{
+				views.push_back(view);
+			}
+		}
+	}
+	for (auto camera : swapchainCameras)
+	{
+		auto view = GetSceneView(world, camera);
+		if (view->pipeline)
+		{
+			auto resolution = view->GetResolution();
+			if (resolution.width >= 1.0f and resolution.height >= 1.0f)
+			{
+				views.push_back(view);
+			}
+		}
+	}
+	return views;
 }
 
 void RenderSystem::AddSceneTargetPass(RenderGraph& graph, SceneRenderingData& sceneData, const Size& resolution) const
@@ -580,7 +626,7 @@ SceneView* RenderSystem::AcquireSceneView(const World* world, EntityHandle camer
 	auto view = GetSceneView(world, camera);
 	if (view == nullptr)
 	{
-		view = new SceneView(world, camera);
+		view = new SceneView(world, camera, mSwapchain);
 		mSceneViews.push_back(view);
 	}
 
@@ -769,17 +815,9 @@ CameraRenderData RenderSystem::SetupCameraRenderData(const Entity& entity, const
 	camera.entity = entity;
 
 	const auto& cameraComponent = entity.GetComponent<Camera>();
-	const float aspectRatio = resolution.width / resolution.height;
 	camera.uniforms.resolution = resolution;
 	camera.uniforms.viewMatrix = Float4x4::LookTo(entity.GetWorldPosition(), entity.ForwardVector(), entity.UpVector());
-	if (cameraComponent.projectionType == ProjectionType::Perspective)
-	{
-		camera.uniforms.projectionMatrix = Float4x4::Perspective(Math::Deg2Rad(cameraComponent.fov), aspectRatio, cameraComponent.nearPlane, cameraComponent.farPlane);
-	}
-	else
-	{
-		camera.uniforms.projectionMatrix = Float4x4::Ortho(cameraComponent.orthographicSize * aspectRatio, cameraComponent.orthographicSize, cameraComponent.nearPlane, cameraComponent.farPlane);
-	}
+	camera.uniforms.projectionMatrix = cameraComponent.GetProjectionMatrix(resolution.width / resolution.height);
 	camera.uniforms.viewProjectionMatrix = camera.uniforms.projectionMatrix * camera.uniforms.viewMatrix;
 	camera.uniforms.prevViewMatrix = view.prevViewMatrix;
 	camera.uniforms.prevViewProjectionMatrix = view.prevViewProjectionMatrix;

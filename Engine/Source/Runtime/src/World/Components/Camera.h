@@ -1,6 +1,7 @@
 #pragma once
 #include "Core/Attributes.h"
-#include "Math/Size.h"
+#include "Math/Rect.h"
+#include "Math/Float4x4.h"
 #include "Assets/AssetReference.h"
 #include "Renderer/RenderPipelineDescriptor.h"
 #include "Renderer/TextureDescriptor.h"
@@ -28,19 +29,27 @@ GENUM(ProjectionType, "8A1A6FA3-4FD8-4FEB-9A60-0944996B5ABF", Serializable)
 	GITEM(Perspective, "A55A66DB-9000-41ED-866D-6019900F4D2D")
 };
 
+GENUM(FieldOfViewAxis, "B078776C-EFC9-487E-8269-861B48ADC324", Serializable)
+{
+	GITEM(Vertical, "82876102-369D-4FAF-844D-8E36AED1BF9C"),
+	GITEM(Horizontal, "1B07DB73-EF44-46E0-B859-B165346B782F")
+};
+
 GSTRUCT(Camera, "B37BA095-FFAB-49FD-ACA9-392835498015", EntityComponent, Serializable)
 {
-	// Perspective projection properties
 	GFIELD("A8FCFE99-7831-4104-AE5A-C344419D7A4D", Serializable, PrettyName("Field of View"))
 	float fov = 60.0f;
 
-	// Orthographic projection properties
+	GFIELD("F25458F5-84F5-48D3-8E79-2531699A4765", Serializable, PrettyName("Field of View Axis"))
+	FieldOfViewAxis fovAxis = FieldOfViewAxis::Vertical;
+
+	// Half of the view extent along fovAxis, in world units
 	GFIELD("1B6761D8-C039-44B0-9D78-A26DDA915D8B", Serializable, PrettyName("Orthographic Size"))
 	float orthographicSize = 5.0f;
 
-	// Common properties
-	GFIELD("FB484D81-6A77-4D1B-BBE3-63C7491D844B", Serializable, PrettyName("Aspect Ratio"))
-	float aspectRatio = 1.0f;
+	// Normalized to the output texture, offset from the top-left corner
+	GFIELD("CEB4B7B9-CBE2-4C11-AE43-268DEF3EFD42", Serializable, PrettyName("Viewport Rect"))
+	Rect viewportRect;
 
 	GFIELD("B2F2D34A-5485-4847-B27D-6BF0E3F54120", Serializable, PrettyName("Near Plane"))
 	float nearPlane = 0.1f;
@@ -51,7 +60,6 @@ GSTRUCT(Camera, "B37BA095-FFAB-49FD-ACA9-392835498015", EntityComponent, Seriali
 	GFIELD("A3E08528-FB45-43C8-8D62-04584374D9C2", Serializable, PrettyName("Projection Type"))
 	ProjectionType projectionType = ProjectionType::Perspective;
 
-	// Post-process settings
 	GFIELD("881B9D1F-AB00-4B96-A0FB-31480CDCE38E", Serializable, PrettyName("Color Grading"))
 	ColorGradingSettings colorGrading = {};
 
@@ -63,18 +71,8 @@ GSTRUCT(Camera, "B37BA095-FFAB-49FD-ACA9-392835498015", EntityComponent, Seriali
 
 	GFIELD("924C1CFA-9216-4E65-BA5D-0F3EDF5A6C67", Serializable, PrettyName("Priority"))
 	int32_t priority = 0;
-    
-	Camera() = default;
 
-    Camera(const Size& size, ProjectionType type);
-
-    Camera(float width, float height, ProjectionType type);
-    
-    void SetViewport(const Size& size);
-
-    void SetViewport(float width, float height);
-
-	Size GetViewport() const;
+	Float4x4 GetProjectionMatrix(float aspectRatio) const;
 };
 
 } // namespace Gleam

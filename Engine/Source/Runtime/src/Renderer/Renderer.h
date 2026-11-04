@@ -6,6 +6,7 @@
 //
 
 #pragma once
+#include "Math/Rect.h"
 #include "Buffer.h"
 #include "Shader.h"
 #include "Texture.h"
@@ -63,6 +64,7 @@ struct SceneRenderingData
 	CameraRenderData camera = {};
 	SkyAtmosphereRenderData atmosphere = {};
     TextureHandle backbuffer = TextureHandle();
+	Rect viewport = Rect();
 	TextureHandle sceneTarget = TextureHandle();
 	AccelerationStructureView accelerationStructure = AccelerationStructureView();
 };
