@@ -1,6 +1,6 @@
 #include "gpch.h"
 #include "LineRenderer.h"
-#include "WorldRenderer.h"
+#include "DepthPrepass.h"
 
 #include "Core/Globals.h"
 #include "Core/Engine.h"
@@ -81,9 +81,10 @@ void LineRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& bl
 
 	graph.AddRenderPass<DrawPassData>("LineRenderer::DrawPass", [&](RenderGraphBuilder& builder, DrawPassData& passData)
 	{
-		const auto& worldData = blackboard.Get<WorldRenderingData>();
-		passData.colorTarget = builder.UseColorBuffer(worldData.colorTarget);
-		passData.depthTarget = builder.UseDepthBuffer(worldData.depthTarget, DepthAccess::Read);
+		const auto& sceneData = blackboard.Get<SceneRenderingData>();
+		const auto& depthPrepassData = blackboard.Get<DepthPrepassData>();
+		passData.colorTarget = builder.UseColorBuffer(sceneData.sceneTarget);
+		passData.depthTarget = builder.UseDepthBuffer(depthPrepassData.depthTarget, DepthAccess::Read);
 	},
 	[this, &blackboard, depthLineBufferOffset](const CommandBuffer* cmd, const DrawPassData& passData)
 	{

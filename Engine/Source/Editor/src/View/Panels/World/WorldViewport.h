@@ -20,7 +20,7 @@ class World;
 class LineRenderer;
 class DebugRenderer;
 class RenderPipeline;
-struct ImGuiPassData;
+class RenderTexture;
 } // namespace Gleam
 
 namespace GEditor {
@@ -69,9 +69,9 @@ private:
 
 	void DrawRenderSettingsPopup();
 
-	void DrawStats(const Gleam::Float2& contentMin, const Gleam::Float2& contentSize, const Gleam::ImGuiPassData& passData);
+	void DrawStats(const Gleam::Float2& contentMin, const Gleam::Float2& contentSize);
 
-	void DrawViewport(Gleam::ImGuiRenderer* imgui, const Gleam::ImGuiPassData& passData);
+	void DrawViewport(Gleam::ImGuiRenderer* imgui);
 
 	const Gleam::RenderPipeline* GetViewedRenderPipeline() const;
 
@@ -122,6 +122,8 @@ private:
 	RendererVisualizationSystem* mRendererVisualization = nullptr;
 
 	Gleam::EntityHandle mCamera = Gleam::InvalidEntity;
+
+	Gleam::RenderTexture* mCameraTarget = nullptr;
 
 	SelectionSystem* mSelectionSystem = nullptr;
 

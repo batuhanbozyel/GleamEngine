@@ -7,7 +7,6 @@
 
 #include "Renderer/RenderSystem.h"
 #include "Renderer/CommandBuffer.h"
-#include "Renderer/RenderSurface.h"
 #include "Renderer/GraphicsDevice.h"
 #include "Renderer/CopyCommandBuffer.h"
 #include "Renderer/Renderers/DepthPrepass.h"
@@ -23,8 +22,8 @@ void SelectionOutlineRenderer::OnCreate(const Gleam::RenderContext& context)
 	maskDesc.entryPoint = "selectionMaskShader";
 	mMaskPipeline = context.device->CreateComputePipeline(maskDesc);
 
-	Gleam::GraphicsPipelineStateDescriptor outlineDesc;
-	outlineDesc.colorFormats = { context.surface->GetFormat() };
+	mDevice = context.device;
+	auto& outlineDesc = mOutlinePipelineState;
 	outlineDesc.vertexEntry = "fullscreenTriangleVertexShader";
 	outlineDesc.fragmentEntry = "selectionOutlineFragmentShader";
 	outlineDesc.blendState.enabled = true;
@@ -34,7 +33,6 @@ void SelectionOutlineRenderer::OnCreate(const Gleam::RenderContext& context)
 	outlineDesc.blendState.sourceAlphaBlendMode = Gleam::BlendMode::One;
 	outlineDesc.blendState.destinationColorBlendMode = Gleam::BlendMode::OneMinusSrcAlpha;
 	outlineDesc.blendState.destinationAlphaBlendMode = Gleam::BlendMode::OneMinusSrcAlpha;
-	mOutlinePipeline = context.device->CreateGraphicsPipeline(outlineDesc);
 
 	Gleam::BufferDescriptor bufferDesc;
 	bufferDesc.name = "SelectionInstanceMask";
@@ -102,6 +100,10 @@ void SelectionOutlineRenderer::AddRenderPasses(Gleam::RenderGraph& graph, Gleam:
 					  Gleam::Math::DivideRoundingUp(targetHeight, SELECTION_MASK_GROUP_SIZE_Y), 1u);
 	});
 
+	auto outlinePipelineState = mOutlinePipelineState;
+	outlinePipelineState.colorFormats = { graph.GetDescriptor(sceneData.backbuffer).format };
+	const auto outlinePipeline = mDevice->CreateGraphicsPipeline(outlinePipelineState);
+
 	struct OutlinePassData
 	{
 		Gleam::TextureHandle renderTarget;
@@ -110,17 +112,17 @@ void SelectionOutlineRenderer::AddRenderPasses(Gleam::RenderGraph& graph, Gleam:
 
 	graph.AddRenderPass<OutlinePassData>("SelectionOutline::Composite", [&](Gleam::RenderGraphBuilder& builder, OutlinePassData& passData)
 	{
-		passData.renderTarget = builder.UseColorBuffer(sceneData.sceneTarget);
+		passData.renderTarget = builder.UseColorBuffer(sceneData.backbuffer);
 		passData.selectionMask = builder.ReadTexture(maskData.selectionMask);
 	},
-	[this](const Gleam::CommandBuffer* cmd, const OutlinePassData& passData)
+	[this, outlinePipeline](const Gleam::CommandBuffer* cmd, const OutlinePassData& passData)
 	{
 		SelectionOutlineUniforms uniforms = {};
 		uniforms.selectionMask = passData.selectionMask;
 		uniforms.outlineWidth = mOutlineWidth;
 		uniforms.outlineColor = mOutlineColor;
 
-		cmd->BindGraphicsPipeline(mOutlinePipeline);
+		cmd->BindGraphicsPipeline(outlinePipeline);
 		cmd->SetPushConstant(uniforms);
 		cmd->Draw(3);
 	});

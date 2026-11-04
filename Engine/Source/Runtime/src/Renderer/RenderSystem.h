@@ -47,8 +47,6 @@ public:
 
 	void ApplyGraphicsSettings(const GraphicsSettings& settings);
 
-	void SetCameraOverride(EntityHandle camera);
-
 	uint32_t GetFrameCount() const;
     
     GraphicsDevice* GetDevice();
@@ -67,15 +65,9 @@ public:
 
 	const RayTracingScene* GetRayTracingScene() const;
 	
-	void AddRenderer(IRenderer* renderer, RenderStage stage);
+	void AddFrameRenderer(IRenderer* renderer, RenderStage stage);
 
-	void RemoveRenderer(IRenderer* renderer);
-
-	template<RendererType T>
-	T* GetRenderer() const
-	{
-		return mRenderers.Find<T>();
-	}
+	void RemoveFrameRenderer(IRenderer* renderer);
 
 	IRenderer* AcquireRenderer(const Reflection::ClassDescription& classDesc);
 
@@ -90,10 +82,6 @@ public:
 	void RegisterPipeline(RenderPipeline* pipeline);
 
 	void UnregisterPipeline(RenderPipeline* pipeline);
-
-	const AssetReference& GetDefaultRenderPipeline() const;
-
-	EntityHandle GetActiveCamera() const;
 
 	GPUAllocator* GetAllocator();
 
@@ -115,9 +103,15 @@ public:
     
 private:
 
-	CameraRenderData SetupCameraRenderData(RenderGraph& graph, const Entity& entity, const SceneView& view) const;
+	CameraRenderData SetupCameraRenderData(const Entity& entity, const SceneView& view, const Size& resolution) const;
 
-	SkyAtmosphereRenderData SetupSkyAtmosphereRenderData(RenderGraph& graph, const Entity& entity);
+	SkyAtmosphereRenderData SetupSkyAtmosphereRenderData(const Entity& entity);
+
+	void AddSceneTargetPass(RenderGraph& graph, SceneRenderingData& sceneData, const Size& resolution) const;
+
+	void AddTargetTransitionPass(RenderGraph& graph, const TextureHandle& target) const;
+
+	bool IsSharedRenderer(const IRenderer* renderer) const;
 
 	void ApplyGraphicsSettings(RenderPipeline* pipeline, const GraphicsSettings& settings) const;
 
@@ -133,11 +127,9 @@ private:
 
 	Size mSwapchainSize = {};
 
-	SkyAtmosphereParameters mAtmosphereParams = {};
-	BarrierLayout mSkyAtmosphereLutLayout = BarrierLayout::Undefined;
 	EntityHandle mSkyAtmosphereEntity = InvalidEntity;
-	EntityHandle mActiveCamera = InvalidEntity;
-	EntityHandle mCameraOverride = InvalidEntity;
+	SceneView* mMainView = nullptr;
+	TArray<SceneView*> mTargetViews;
 
 	struct RendererAllocation
 	{
@@ -145,7 +137,7 @@ private:
 		const TypeLifecycle* lifecycle = nullptr;
 	};
 
-	RendererList mRenderers;
+	RendererList mFrameRenderers;
 	HashMap<IRenderer*, RendererAllocation> mRendererAllocations;
 	HashMap<uint32_t, IRenderer*> mSharedRenderers;
 	TArray<RenderPipeline*> mPipelines;

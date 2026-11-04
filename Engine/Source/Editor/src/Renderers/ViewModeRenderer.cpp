@@ -2,7 +2,6 @@
 #include "ShaderTypes.h"
 
 #include "Renderer/CommandBuffer.h"
-#include "Renderer/RenderSurface.h"
 #include "Renderer/GraphicsDevice.h"
 #include "Renderer/Material/Material.h"
 #include "Renderer/Renderers/DepthPrepass.h"
@@ -18,11 +17,8 @@ void ViewModeRenderer::OnCreate(const Gleam::RenderContext& context)
 {
     mDevice = context.device;
 
-    Gleam::GraphicsPipelineStateDescriptor pipelineState;
-    pipelineState.colorFormats = { context.surface->GetFormat() };
-    pipelineState.vertexEntry = "fullscreenTriangleVertexShader";
-    pipelineState.fragmentEntry = "viewModeFragmentShader";
-    mPipeline = context.device->CreateGraphicsPipeline(pipelineState);
+    mPipelineState.vertexEntry = "fullscreenTriangleVertexShader";
+    mPipelineState.fragmentEntry = "viewModeFragmentShader";
 }
 
 void ViewModeRenderer::AddRenderPasses(Gleam::RenderGraph& graph, Gleam::RenderGraphBlackboard& blackboard)
@@ -100,6 +96,10 @@ void ViewModeRenderer::AddRenderPasses(Gleam::RenderGraph& graph, Gleam::RenderG
 		return;
 	}
 
+	auto pipelineState = mPipelineState;
+	pipelineState.colorFormats = { graph.GetDescriptor(blackboard.Get<Gleam::SceneRenderingData>().backbuffer).format };
+	const auto pipeline = mDevice->CreateGraphicsPipeline(pipelineState);
+
 	struct PassData
 	{
 		Gleam::TextureHandle target;
@@ -110,11 +110,11 @@ void ViewModeRenderer::AddRenderPasses(Gleam::RenderGraph& graph, Gleam::RenderG
 	graph.AddRenderPass<PassData>("ViewModeRenderer::Visualize", [&](Gleam::RenderGraphBuilder& builder, PassData& passData)
 	{
 		const auto& sceneData = blackboard.Get<Gleam::SceneRenderingData>();
-		passData.target = builder.UseColorBuffer(sceneData.sceneTarget);
+		passData.target = builder.UseColorBuffer(sceneData.backbuffer);
 		passData.source = builder.ReadTexture(source);
 		passData.mode = mMode;
 	},
-		[this, &blackboard](const Gleam::CommandBuffer* cmd, const PassData& passData)
+		[pipeline, &blackboard](const Gleam::CommandBuffer* cmd, const PassData& passData)
 	{
 		const auto& sceneData = blackboard.Get<Gleam::SceneRenderingData>();
 
@@ -122,7 +122,7 @@ void ViewModeRenderer::AddRenderPasses(Gleam::RenderGraph& graph, Gleam::RenderG
 		uniforms.sourceTexture = passData.source;
 		uniforms.mode = static_cast<uint32_t>(passData.mode);
 
-		cmd->BindGraphicsPipeline(mPipeline);
+		cmd->BindGraphicsPipeline(pipeline);
 		cmd->SetConstantBuffer(sceneData.camera.uniforms, CAMERA_UNIFORMS_BINDING_SLOT);
 		cmd->SetPushConstant(uniforms);
 		cmd->Draw(3);

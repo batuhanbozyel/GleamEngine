@@ -14,8 +14,11 @@
 #include "CopyCommandBuffer.h"
 #include "RenderPipeline.h"
 #include "SceneView.h"
+#include "RenderTexture.h"
 #include "RenderGraph/RenderGraph.h"
 #include "RenderGraph/RenderGraphBlackboard.h"
+
+#include <EASTL/sort.h>
 
 #include "Renderers/PathTracer.h"
 #include "Renderers/BRDFRenderer.h"
@@ -41,6 +44,7 @@
 #include "GraphicsSettings.h"
 
 #include "World/World.h"
+#include "World/Systems/CameraSystem.h"
 #include "World/Systems/PickingSystem.h"
 #include "World/Systems/RenderSceneProxy.h"
 
@@ -110,28 +114,13 @@ void RenderSystem::PreRender(const World* world)
 {
 	++mFrameCount;
 
-	mActiveCamera = InvalidEntity;
+	mMainView = nullptr;
+	mTargetViews.clear();
 	mSkyAtmosphereEntity = InvalidEntity;
 
 	if (world)
 	{
-		// update active camera
 		const auto& entityManager = world->GetEntityManager();
-		if (entityManager.IsValid(mCameraOverride) and entityManager.HasComponent<Camera>(mCameraOverride))
-		{
-			mActiveCamera = mCameraOverride;
-		}
-		else
-		{
-			entityManager.ForEach<Entity, Camera>([&](const Entity& entity, const Camera& component)
-			{
-				if (entity.IsActive())
-				{
-					mActiveCamera = entity;
-				}
-			});
-		}
-
 		entityManager.ForEach<Entity, SkyAtmosphere>([&](const Entity& entity, const SkyAtmosphere& component)
 		{
 			if (entity.IsActive())
@@ -140,8 +129,44 @@ void RenderSystem::PreRender(const World* world)
 			}
 		});
 
-		auto sceneProxy = world->GetSubsystem<RenderSceneProxy>();
-		sceneProxy->Update(world, mActiveCamera);
+		const auto cameraSystem = world->GetSystem<CameraSystem>();
+		const EntityHandle mainCamera = cameraSystem->Enabled ? cameraSystem->GetMainCamera(entityManager) : InvalidEntity;
+
+		TArray<EntityHandle> targetCameras;
+		entityManager.ForEach<Entity, Camera>([&](const Entity& entity, const Camera& component)
+		{
+			if (entity.IsActive() and component.targetTexture.guid != Guid::InvalidGuid())
+			{
+				targetCameras.push_back(entity);
+			}
+		});
+		eastl::stable_sort(targetCameras.begin(), targetCameras.end(), [&entityManager](EntityHandle lhs, EntityHandle rhs)
+		{
+			return entityManager.GetComponent<Camera>(lhs).priority < entityManager.GetComponent<Camera>(rhs).priority;
+		});
+
+		// LOD follows the Main view, or the highest-priority target view when there is none
+		const EntityHandle lodCamera = mainCamera != InvalidEntity ? mainCamera : (targetCameras.empty() ? InvalidEntity : targetCameras.back());
+		if (lodCamera != InvalidEntity)
+		{
+			world->GetSubsystem<RenderSceneProxy>()->Update(world, lodCamera);
+
+			// Views are looked up after Update, so a camera added this frame already has one
+			for (auto camera : targetCameras)
+			{
+				auto view = GetSceneView(world, camera);
+				if (view->pipeline and view->target)
+				{
+					mTargetViews.push_back(view);
+				}
+			}
+
+			if (mainCamera != InvalidEntity)
+			{
+				auto view = GetSceneView(world, mainCamera);
+				mMainView = view->pipeline ? view : nullptr;
+			}
+		}
 	}
 
 	auto frameIdx = mSwapchain->GetFrameIndex();
@@ -170,71 +195,116 @@ void RenderSystem::Render(const World* world)
 	@autoreleasepool
 #endif
 	{
-		SceneView* view = world and mActiveCamera != InvalidEntity ? GetSceneView(world, mActiveCamera) : nullptr;
-		const RenderPipeline* pipeline = view ? view->pipeline : nullptr;
-		const bool hasScene = pipeline != nullptr;
-
 		RenderGraphContext renderGraphContext;
 		renderGraphContext.device = mDevice;
 		renderGraphContext.surface = mSwapchain;
 		renderGraphContext.allocator = mTransientAllocator;
 		RenderGraph graph(renderGraphContext);
 
-		RenderGraphBlackboard blackboard;
-		auto& sceneData = blackboard.Add<SceneRenderingData>();
-		sceneData.backbuffer = graph.ImportBackbuffer();
+		RenderGraphBlackboard frameBlackboard;
+		auto& frameData = frameBlackboard.Add<SceneRenderingData>();
+		frameData.backbuffer = graph.ImportBackbuffer();
 
-		Texture sceneTarget;
-		MeshDrawList cameraDrawList;
-		RenderSceneProxy* sceneProxy = nullptr;
-		if (hasScene)
+		TArray<SceneView*> views = mTargetViews;
+		if (mMainView)
 		{
-			const auto& cameraComponent = world->GetEntityManager().GetComponent<Camera>(mActiveCamera);
-			const auto& cameraEntity = world->GetEntityManager().GetComponent<Entity>(mActiveCamera);
+			views.push_back(mMainView);
+		}
+
+		struct ViewRenderData
+		{
+			RenderGraphBlackboard blackboard;
+			MeshDrawList drawList;
+		};
+		// Pass lambdas keep references into these until Execute, so the storage must not reallocate
+		TArray<ViewRenderData> viewData;
+		viewData.reserve(views.size());
+
+		RenderSceneProxy* sceneProxy = nullptr;
+		if (not views.empty())
+		{
+			const auto& entityManager = world->GetEntityManager();
 			sceneProxy = world->GetSubsystem<RenderSceneProxy>();
+			frameData.sceneProxy = sceneProxy;
+			frameData.world = world;
 
-			// TODO: Render scene per active camera
-			// Set sceneTarget to camera target
-			// Camera target default requires a special handle
-			// which maps to backbuffer for runtime and a temporary texture for editor scene view
-			// We may want to decide this on Editor side
-			RenderTextureDescriptor sceneTargetDesc{};
-			sceneTargetDesc.name = "Scene Target";
-			sceneTargetDesc.size = cameraComponent.GetViewport();
-			sceneTargetDesc.format = mSwapchain->GetFormat();
+			Entity atmosphereEntity = mSkyAtmosphereEntity != InvalidEntity ? entityManager.GetComponent<Entity>(mSkyAtmosphereEntity) : Entity();
+			frameData.atmosphere = SetupSkyAtmosphereRenderData(atmosphereEntity);
+			GetSharedRenderer<SkyAtmosphereLutRenderer>()->AddRenderPasses(graph, frameBlackboard);
 
-			sceneTarget = mDevice->CreateTexture(renderGraphContext.allocator, sceneTargetDesc);
-			sceneData.sceneTarget = graph.ImportTexture(sceneTarget);
-			sceneData.sceneProxy = sceneProxy;
-			sceneData.world = world;
-			sceneData.view = view;
-
-			// Setup camera & sky atmosphere
-			Entity atmosphereEntity = mSkyAtmosphereEntity != InvalidEntity ? world->GetEntityManager().GetComponent<Entity>(mSkyAtmosphereEntity) : Entity();
-			sceneData.atmosphere = SetupSkyAtmosphereRenderData(graph, atmosphereEntity);
-			sceneData.camera = SetupCameraRenderData(graph, cameraEntity, *view);
-
-			sceneProxy->Cull(sceneData.camera.uniforms.frustum, cameraDrawList);
-			sceneData.drawList = &cameraDrawList;
-
-			if (not view->historyValid)
+			RendererList sharedRenderers;
+			for (auto view : views)
 			{
-				sceneData.camera.uniforms.prevViewMatrix = sceneData.camera.uniforms.viewMatrix;
-				sceneData.camera.uniforms.prevViewProjectionMatrix = sceneData.camera.uniforms.viewProjectionMatrix;
+				for (const auto& entry : view->pipeline->GetRenderers())
+				{
+					const bool added = eastl::any_of(sharedRenderers.begin(), sharedRenderers.end(), [&entry](const auto& shared)
+					{
+						return shared.renderer == entry.renderer;
+					});
+					if (added == false and IsSharedRenderer(entry.renderer))
+					{
+						sharedRenderers.Insert(entry.renderer, entry.stage);
+					}
+				}
+			}
+			for (const auto& entry : sharedRenderers)
+			{
+				entry.renderer->AddRenderPasses(graph, frameBlackboard);
 			}
 
-			if (memcmp(&mAtmosphereParams, &sceneData.atmosphere.params, sizeof(SkyAtmosphereParameters)) != 0)
+			for (auto view : views)
 			{
-				mAtmosphereParams = sceneData.atmosphere.params;
-				GetSharedRenderer<SkyAtmosphereRenderer>()->UpdateSkyAtmosphere(graph, blackboard);
+				auto& data = viewData.emplace_back();
+				data.blackboard = frameBlackboard;
+
+				auto& sceneData = data.blackboard.Get<SceneRenderingData>();
+				sceneData.view = view;
+				if (view->target)
+				{
+					// Tonemapping overwrites every pixel, so the previous contents are never loaded
+					const auto& targetDesc = view->target->GetDescriptor();
+					sceneData.backbuffer = graph.ImportTexture(view->target->GetTexture(), { .clearColor = targetDesc.clearColor, .finalLayout = BarrierLayout::ShaderResource, .clearOnFirstUse = targetDesc.clearBuffer });
+				}
+
+				const Size resolution = graph.GetDescriptor(sceneData.backbuffer).size;
+				AddSceneTargetPass(graph, sceneData, resolution);
+
+				const auto& cameraEntity = entityManager.GetComponent<Entity>(view->camera);
+				sceneData.camera = SetupCameraRenderData(cameraEntity, *view, resolution);
+				if (not view->historyValid)
+				{
+					sceneData.camera.uniforms.prevViewMatrix = sceneData.camera.uniforms.viewMatrix;
+					sceneData.camera.uniforms.prevViewProjectionMatrix = sceneData.camera.uniforms.viewProjectionMatrix;
+				}
+
+				sceneProxy->Cull(sceneData.camera.uniforms.frustum, data.drawList);
+				sceneData.drawList = &data.drawList;
+
+				// Pipeline renderers go in first, so attached renderers of the same stage run after them
+				RendererList renderers;
+				for (const auto& entry : view->pipeline->GetRenderers())
+				{
+					if (not IsSharedRenderer(entry.renderer))
+					{
+						renderers.Insert(entry.renderer, entry.stage);
+					}
+				}
+				renderers.Insert(view->GetRenderers());
+				for (const auto& entry : renderers)
+				{
+					entry.renderer->AddRenderPasses(graph, data.blackboard);
+				}
+
+				if (view->target)
+				{
+					AddTargetTransitionPass(graph, sceneData.backbuffer);
+				}
 			}
 		}
 
-		auto renderers = hasScene ? pipeline->GetRenderers() : RendererList();
-		renderers.Insert(mRenderers);
-		for (const auto& entry : renderers)
+		for (const auto& entry : mFrameRenderers)
 		{
-			entry.renderer->AddRenderPasses(graph, blackboard);
+			entry.renderer->AddRenderPasses(graph, frameBlackboard);
 		}
         graph.Compile();
 
@@ -249,28 +319,35 @@ void RenderSystem::Render(const World* world)
 		mCopyCommandBuffer->WaitUntilCompleted();
 		mCopyCommandBuffer->Barrier(cmd);
 
-		if (hasScene)
+		if (sceneProxy)
 		{
 			sceneProxy->BuildInstanceBuffer(cmd, mTransientAllocator);
-			sceneData.accelerationStructure = mRayTracingScene->BuildAccelerationStructure(cmd, sceneData.sceneProxy);
+			const auto accelerationStructure = mRayTracingScene->BuildAccelerationStructure(cmd, sceneProxy);
+			for (auto& data : viewData)
+			{
+				data.blackboard.Get<SceneRenderingData>().accelerationStructure = accelerationStructure;
+			}
 		}
 
         graph.Execute(cmd);
 
-		if (hasScene)
+		if (sceneProxy)
 		{
-			mDevice->Dispose(renderGraphContext.allocator, sceneTarget, BarrierStage::None);
 			sceneProxy->ReleaseInstanceBuffer(mTransientAllocator);
 			mRayTracingScene->ReleaseAccelerationStructure();
+		}
 
-			view->prevViewMatrix = sceneData.camera.uniforms.viewMatrix;
-			view->prevViewProjectionMatrix = sceneData.camera.uniforms.viewProjectionMatrix;
-			view->historyValid = true;
+		for (auto& data : viewData)
+		{
+			const auto& sceneData = data.blackboard.Get<SceneRenderingData>();
+			sceneData.view->prevViewMatrix = sceneData.camera.uniforms.viewMatrix;
+			sceneData.view->prevViewProjectionMatrix = sceneData.camera.uniforms.viewProjectionMatrix;
+			sceneData.view->historyValid = true;
 		}
 
 		for (auto sceneView : mSceneViews)
 		{
-			if (sceneView != view or not hasScene)
+			if (eastl::find(views.begin(), views.end(), sceneView) == views.end())
 			{
 				sceneView->ReleaseHistory(mDevice, mTransientAllocator);
 			}
@@ -299,6 +376,11 @@ void RenderSystem::ApplyGraphicsSettings(const GraphicsSettings& settings)
 	{
 		ApplyGraphicsSettings(pipeline, settings);
 	}
+
+	for (auto view : mSceneViews)
+	{
+		AcquireSceneView(view->world, view->camera);
+	}
 }
 
 // User pipelines may leave any of these renderers out
@@ -318,14 +400,62 @@ void RenderSystem::ApplyGraphicsSettings(RenderPipeline* pipeline, const Graphic
 	}
 }
 
-void RenderSystem::AddRenderer(IRenderer* renderer, RenderStage stage)
+void RenderSystem::AddFrameRenderer(IRenderer* renderer, RenderStage stage)
 {
-	mRenderers.Insert(renderer, stage);
+	mFrameRenderers.Insert(renderer, stage);
 }
 
-void RenderSystem::RemoveRenderer(IRenderer* renderer)
+void RenderSystem::RemoveFrameRenderer(IRenderer* renderer)
 {
-	mRenderers.Remove(renderer);
+	mFrameRenderers.Remove(renderer);
+}
+
+bool RenderSystem::IsSharedRenderer(const IRenderer* renderer) const
+{
+	return eastl::any_of(mSharedRenderers.begin(), mSharedRenderers.end(), [renderer](const auto& pair)
+	{
+		return pair.second == renderer;
+	});
+}
+
+void RenderSystem::AddSceneTargetPass(RenderGraph& graph, SceneRenderingData& sceneData, const Size& resolution) const
+{
+	struct SceneTargetPassData
+	{
+		TextureHandle sceneTarget;
+	};
+
+	// The graph only allocates a transient inside a pass that writes it, so the target is created and cleared here
+	graph.AddRenderPass<SceneTargetPassData>("RenderSystem::SceneTarget", [&](RenderGraphBuilder& builder, SceneTargetPassData& passData)
+	{
+		RenderTextureDescriptor descriptor;
+		descriptor.name = "SceneTarget";
+		descriptor.size = resolution;
+		descriptor.format = TextureFormat::R16G16B16A16_SFloat;
+		descriptor.clearBuffer = true;
+		passData.sceneTarget = builder.UseColorBuffer(builder.CreateTexture(descriptor));
+		sceneData.sceneTarget = passData.sceneTarget;
+	},
+	[](const CommandBuffer* cmd, const SceneTargetPassData& passData)
+	{
+	});
+}
+
+// Bindless readers (ImGui, materials of later views) don't declare graph reads, so the target leaves its view as a shader resource
+void RenderSystem::AddTargetTransitionPass(RenderGraph& graph, const TextureHandle& target) const
+{
+	struct TargetTransitionPassData
+	{
+		TextureHandle target;
+	};
+
+	graph.AddRenderPass<TargetTransitionPassData>("RenderSystem::TargetTransition", [&](RenderGraphBuilder& builder, TargetTransitionPassData& passData)
+	{
+		passData.target = builder.ReadTexture(target);
+	},
+	[](const CommandBuffer* cmd, const TargetTransitionPassData& passData)
+	{
+	});
 }
 
 static size_t RendererBaseOffset(const Reflection::ClassDescription& classDesc)
@@ -369,11 +499,7 @@ IRenderer* RenderSystem::AcquireRenderer(const Reflection::ClassDescription& cla
 
 void RenderSystem::ReleaseRenderer(IRenderer* renderer)
 {
-	const bool shared = eastl::any_of(mSharedRenderers.begin(), mSharedRenderers.end(), [renderer](const auto& pair)
-	{
-		return pair.second == renderer;
-	});
-	if (shared == false)
+	if (IsSharedRenderer(renderer) == false)
 	{
 		DestroyRenderer(renderer);
 	}
@@ -397,21 +523,6 @@ void RenderSystem::RegisterPipeline(RenderPipeline* pipeline)
 void RenderSystem::UnregisterPipeline(RenderPipeline* pipeline)
 {
 	mPipelines.erase(eastl::find(mPipelines.begin(), mPipelines.end(), pipeline));
-}
-
-const AssetReference& RenderSystem::GetDefaultRenderPipeline() const
-{
-	return mDefaultRenderPipeline;
-}
-
-EntityHandle RenderSystem::GetActiveCamera() const
-{
-	return mActiveCamera;
-}
-
-void RenderSystem::SetCameraOverride(EntityHandle camera)
-{
-	mCameraOverride = camera;
 }
 
 uint32_t RenderSystem::GetFrameCount() const
@@ -472,6 +583,24 @@ SceneView* RenderSystem::AcquireSceneView(const World* world, EntityHandle camer
 		view = new SceneView(world, camera);
 		mSceneViews.push_back(view);
 	}
+
+	const auto& cameraComponent = world->GetEntityManager().GetComponent<Camera>(camera);
+	const auto& reference = cameraComponent.renderPipeline.guid != Guid::InvalidGuid() ? cameraComponent.renderPipeline : mDefaultRenderPipeline;
+	if (view->pipelineReference != reference)
+	{
+		auto assetManager = Globals::GameInstance->GetSubsystem<AssetManager>();
+		assetManager->Release(view->pipelineReference);
+		view->pipelineReference = reference;
+		view->pipeline = assetManager->Load<RenderPipeline>(reference);
+	}
+
+	if (view->targetReference != cameraComponent.targetTexture)
+	{
+		auto assetManager = Globals::GameInstance->GetSubsystem<AssetManager>();
+		assetManager->Release(view->targetReference);
+		view->targetReference = cameraComponent.targetTexture;
+		view->target = assetManager->Load<RenderTexture>(cameraComponent.targetTexture);
+	}
 	return view;
 }
 
@@ -517,7 +646,9 @@ SceneView* RenderSystem::GetSceneView(const World* world, EntityHandle camera)
 
 void RenderSystem::DestroySceneView(SceneView* view)
 {
-	Globals::GameInstance->GetSubsystem<AssetManager>()->Release(view->pipelineReference);
+	auto assetManager = Globals::GameInstance->GetSubsystem<AssetManager>();
+	assetManager->Release(view->pipelineReference);
+	assetManager->Release(view->targetReference);
 	view->ReleaseHistory(mDevice, mTransientAllocator);
 	delete view;
 }
@@ -630,27 +761,24 @@ void RenderSystem::RegisterShadingPipelines(const Material* material)
 	{
 		pipeline->RegisterShadingPipeline(material);
 	}
-	for (const auto& entry : mRenderers)
-	{
-		entry.renderer->RegisterShadingPipeline(material);
-	}
 }
 
-CameraRenderData RenderSystem::SetupCameraRenderData(RenderGraph& graph, const Entity& entity, const SceneView& view) const
+CameraRenderData RenderSystem::SetupCameraRenderData(const Entity& entity, const SceneView& view, const Size& resolution) const
 {
 	CameraRenderData camera = {};
 	camera.entity = entity;
 
 	const auto& cameraComponent = entity.GetComponent<Camera>();
-	camera.uniforms.resolution = cameraComponent.GetViewport();
+	const float aspectRatio = resolution.width / resolution.height;
+	camera.uniforms.resolution = resolution;
 	camera.uniforms.viewMatrix = Float4x4::LookTo(entity.GetWorldPosition(), entity.ForwardVector(), entity.UpVector());
 	if (cameraComponent.projectionType == ProjectionType::Perspective)
 	{
-		camera.uniforms.projectionMatrix = Float4x4::Perspective(Math::Deg2Rad(cameraComponent.fov), cameraComponent.aspectRatio, cameraComponent.nearPlane, cameraComponent.farPlane);
+		camera.uniforms.projectionMatrix = Float4x4::Perspective(Math::Deg2Rad(cameraComponent.fov), aspectRatio, cameraComponent.nearPlane, cameraComponent.farPlane);
 	}
 	else
 	{
-		camera.uniforms.projectionMatrix = Float4x4::Ortho(camera.uniforms.resolution.x, camera.uniforms.resolution.y, cameraComponent.nearPlane, cameraComponent.farPlane);
+		camera.uniforms.projectionMatrix = Float4x4::Ortho(cameraComponent.orthographicSize * aspectRatio, cameraComponent.orthographicSize, cameraComponent.nearPlane, cameraComponent.farPlane);
 	}
 	camera.uniforms.viewProjectionMatrix = camera.uniforms.projectionMatrix * camera.uniforms.viewMatrix;
 	camera.uniforms.prevViewMatrix = view.prevViewMatrix;
@@ -675,7 +803,7 @@ CameraRenderData RenderSystem::SetupCameraRenderData(RenderGraph& graph, const E
 	return camera;
 }
 
-SkyAtmosphereRenderData RenderSystem::SetupSkyAtmosphereRenderData(RenderGraph& graph, const Entity& entity)
+SkyAtmosphereRenderData RenderSystem::SetupSkyAtmosphereRenderData(const Entity& entity)
 {
 	SkyAtmosphereRenderData skyAtmosphere = {};
 	skyAtmosphere.entity = entity;
@@ -688,16 +816,8 @@ SkyAtmosphereRenderData RenderSystem::SetupSkyAtmosphereRenderData(RenderGraph& 
 		skyAtmosphere.uniforms.sunIlluminance = Float3(atmosphereComponent.sun.color.r, atmosphereComponent.sun.color.g, atmosphereComponent.sun.color.b) * atmosphereComponent.sun.intensity;
 		skyAtmosphere.uniforms.sunAngularDiameter = atmosphereComponent.sun.angularDiameter;
 		skyAtmosphere.uniforms.sunDirection = entity.UpVector();
-
-		auto skyAtmosphereRenderer = GetSharedRenderer<SkyAtmosphereRenderer>();
-		const ImportResourceParams lutParams{ .initialLayout = mSkyAtmosphereLutLayout, .finalLayout = BarrierLayout::ShaderResource };
-		skyAtmosphere.transmittanceLut = graph.ImportTexture(skyAtmosphereRenderer->GetTransmittanceLutTexture(), lutParams);
-		skyAtmosphere.multiScatterLut = graph.ImportTexture(skyAtmosphereRenderer->GetMultiScatterLutTexture(), lutParams);
-		mSkyAtmosphereLutLayout = BarrierLayout::ShaderResource;
-		skyAtmosphere.params = skyAtmosphereRenderer->GetSkyAtmosphereParameters(atmosphereComponent.atmosphere);
+		skyAtmosphere.params = GetSharedRenderer<SkyAtmosphereLutRenderer>()->GetSkyAtmosphereParameters(atmosphereComponent.atmosphere);
 	}
-	skyAtmosphere.uniforms.transmittanceLutTexture = skyAtmosphere.transmittanceLut;
-	skyAtmosphere.uniforms.multiScatterLutTexture = skyAtmosphere.multiScatterLut;
 	return skyAtmosphere;
 }
 

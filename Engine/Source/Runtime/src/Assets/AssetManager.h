@@ -74,6 +74,16 @@ public:
 		return static_cast<T*>(it->second.asset.get());
 	}
 
+	// Takes ownership of an asset created at runtime. The caller holds one reference and releases it like a loaded asset.
+	template<LoadableAssetType T>
+	T* Register(T* asset)
+	{
+		GLEAM_ASSERT(mAssetCache.find(asset->GetReference()) == mAssetCache.end(), "Asset is already registered for GUID: {0}", asset->GetReference().guid.ToString());
+		asset->mRefCount = 1;
+		mAssetCache.emplace(asset->GetReference(), AssetEntry{ .asset = Scope<Asset>(asset), .type = entt::type_hash<T>().value() });
+		return asset;
+	}
+
 	void Release(const AssetReference& ref)
 	{
 		if (ref.guid == Guid::InvalidGuid())

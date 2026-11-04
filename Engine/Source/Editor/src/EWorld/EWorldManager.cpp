@@ -149,7 +149,8 @@ void EWorldManager::BeginPlay(Gleam::Application* app)
 	mPlayWorld = Gleam::CreateScope<Gleam::World>(Gleam::AssetReference{}, mEditWorld->GetHeader(), mEditWorld->GetDescriptor());
 	mPlayWorld->GetEntityManager().CopyFrom(mEditWorld->GetEntityManager());
 
-	auto visualization = mPlayWorld->AddSystem<PhysicsVisualizationSystem>();
+	// No view renders the play world's debug lines until Play runs out of process, and they would pile up in the renderer's queue
+	auto visualization = mPlayWorld->AddSystem<PhysicsVisualizationSystem>(nullptr);
 	if (mEditWorld->HasSystem<PhysicsVisualizationSystem>())
 	{
 		visualization->SetSettings(mEditWorld->GetSystem<PhysicsVisualizationSystem>()->GetSettings());

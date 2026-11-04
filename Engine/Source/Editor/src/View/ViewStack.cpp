@@ -36,7 +36,7 @@ void ViewStack::Initialize(Gleam::Application* app)
 	mImgui->OnCreate(renderSystem->GetRenderContext());
 	ImGui::GetIO().IniFilename = mIniPath.c_str();
 
-	renderSystem->AddRenderer(mImgui, Gleam::RenderStage::AfterRendering);
+	renderSystem->AddFrameRenderer(mImgui, Gleam::RenderStage::AfterRendering);
 	Gleam::Theme::Apply();
 	LoadFonts();
 }
@@ -44,7 +44,7 @@ void ViewStack::Initialize(Gleam::Application* app)
 void ViewStack::Shutdown(Gleam::Application* app)
 {
 	static auto renderSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::RenderSystem>();
-	renderSystem->RemoveRenderer(mImgui);
+	renderSystem->RemoveFrameRenderer(mImgui);
 	mImgui->OnDestroy(renderSystem->GetRenderContext());
 	delete mImgui;
 	

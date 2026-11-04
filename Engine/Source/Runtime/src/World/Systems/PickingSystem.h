@@ -50,6 +50,9 @@ public:
 
 	void RemoveCallback(PickingCallbackHandle handle);
 
+	// Picks resolve against this camera's view
+	void SetCamera(EntityHandle camera);
+
 private:
 
 	struct PendingPick
@@ -90,6 +93,8 @@ private:
 
 	Buffer mReadbackBuffer = {};
 	PickingRenderer* mRenderer = nullptr;
+	const World* mWorld = nullptr;
+	EntityHandle mCamera = InvalidEntity;
 	ConfigCallbackHandle mConfigHandle = 0;
 
 	TArray<PendingPick> mPendingPicks;

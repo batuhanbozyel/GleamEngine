@@ -10,6 +10,7 @@
 #include "Renderer/RendererConfig.h"
 #include "Renderer/GraphicsDevice.h"
 #include "Renderer/RenderPipeline.h"
+#include "Renderer/SceneView.h"
 #include "Renderer/Renderers/PickingRenderer.h"
 
 using namespace Gleam;
@@ -20,9 +21,9 @@ void PickingSystem::Initialize(World* world)
 
 	CreateReadbackBuffer(GetFramesInFlight());
 
+	mWorld = world;
 	mRenderer = new PickingRenderer(this);
 	mRenderer->OnCreate(renderSystem->GetRenderContext());
-	renderSystem->AddRenderer(mRenderer, RenderStage::Prepass);
 
 	// Reconfiguring the swapchain recreates the per frame command buffers, so anything already in
 	// flight loses its completion guarantee. The ring itself is rebuilt in ResolveReadback, where the
@@ -45,7 +46,10 @@ void PickingSystem::Shutdown(World* world)
 	configSystem->Unsubscribe<RendererConfig>(mConfigHandle);
 
 	auto context = renderSystem->GetRenderContext();
-	renderSystem->RemoveRenderer(mRenderer);
+	if (mCamera != InvalidEntity)
+	{
+		renderSystem->GetSceneView(mWorld, mCamera)->RemoveRenderer(mRenderer);
+	}
 	mRenderer->OnDestroy(context);
 	delete mRenderer;
 	mRenderer = nullptr;
@@ -54,6 +58,17 @@ void PickingSystem::Shutdown(World* world)
 	{
 		renderSystem->GetDevice()->Dispose(renderSystem->GetAllocator(), mReadbackBuffer, BarrierStage::None);
 	}
+}
+
+void PickingSystem::SetCamera(EntityHandle camera)
+{
+	static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
+	if (mCamera != InvalidEntity)
+	{
+		renderSystem->GetSceneView(mWorld, mCamera)->RemoveRenderer(mRenderer);
+	}
+	mCamera = camera;
+	renderSystem->AcquireSceneView(mWorld, mCamera)->AddRenderer(mRenderer, RenderStage::Prepass);
 }
 
 PickingRequestID PickingSystem::RequestPick(const PickingRequest& request)

@@ -42,7 +42,10 @@ private:
 
 	Gleam::ComputePipelineHandle mMaskPipeline;
 
-	Gleam::GraphicsPipelineHandle mOutlinePipeline;
+	Gleam::GraphicsDevice* mDevice = nullptr;
+
+	// Color format is filled in per view, from the view output
+	Gleam::GraphicsPipelineStateDescriptor mOutlinePipelineState;
 
 	Gleam::Buffer mInstanceMaskBuffer = {};
 

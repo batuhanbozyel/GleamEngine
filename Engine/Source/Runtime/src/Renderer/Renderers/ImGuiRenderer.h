@@ -12,7 +12,6 @@ class Swapchain;
 
 struct ImGuiPassData
 {
-	TextureHandle sceneTarget;
 	TextureHandle backbuffer;
 };
 

@@ -73,8 +73,32 @@ void SunShadowRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboar
 		return;
 	}
 
-	auto& history = sceneData.view->GetHistory<SunShadowHistory>();
 	const bool enabled = mSettings.enable and mDevice->GetFeatures().raytracing;
+	if (enabled and mPipelineDirty)
+	{
+		RayTracingPipelineStateDescriptor pipelineState;
+		pipelineState.rayGenerationEntry = "rayTracedSunShadowRayGen";
+		pipelineState.missEntries        = { "rayTracedSunShadowMiss" };
+		pipelineState.maxRecursionDepth  = 1;
+		pipelineState.maxPayloadSize     = sizeof(ShadowPayload);
+		pipelineState.maxAttributeSize   = sizeof(float2);
+		pipelineState.hitGroups          = mHitGroupTable.GetDescriptors();
+
+		auto handle = mDevice->CreateRayTracingPipeline(pipelineState);
+		if (handle.IsValid())
+		{
+			if (mRayTracedShadowPipeline.IsValid())
+			{
+				RayTracingPipeline pipeline = mRayTracedShadowPipeline;
+				mDevice->Dispose(pipeline);
+			}
+			mRayTracedShadowPipeline = handle;
+		}
+		mPipelineDirty = false;
+		++mHistoryVersion;
+	}
+
+	auto& history = sceneData.view->GetHistory<SunShadowHistory>();
 	if (not enabled or history.version != mHistoryVersion)
 	{
 		history.Release(mDevice, graph.GetAllocator());
@@ -99,30 +123,6 @@ void SunShadowRenderer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboar
 
 	const uint32_t numDenoiserTilesX = Math::DivideRoundingUp(width, 8u);
 	const uint32_t numDenoiserTilesY = Math::DivideRoundingUp(height, 8u);
-
-	if (mPipelineDirty)
-	{
-		RayTracingPipelineStateDescriptor pipelineState;
-		pipelineState.rayGenerationEntry = "rayTracedSunShadowRayGen";
-		pipelineState.missEntries        = { "rayTracedSunShadowMiss" };
-		pipelineState.maxRecursionDepth  = 1;
-		pipelineState.maxPayloadSize     = sizeof(ShadowPayload);
-		pipelineState.maxAttributeSize   = sizeof(float2);
-		pipelineState.hitGroups          = mHitGroupTable.GetDescriptors();
-
-		auto handle = mDevice->CreateRayTracingPipeline(pipelineState);
-		if (handle.IsValid())
-		{
-			if (mRayTracedShadowPipeline.IsValid())
-			{
-				RayTracingPipeline pipeline = mRayTracedShadowPipeline;
-				mDevice->Dispose(pipeline);
-			}
-			mRayTracedShadowPipeline = handle;
-		}
-		mPipelineDirty = false;
-		++mHistoryVersion;
-	}
 
 	// ----------------------------------------------------------------
 	// Pass 0 — Ray classification

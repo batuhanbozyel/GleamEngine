@@ -170,14 +170,7 @@ void WorldRenderer::MakeWorldRenderingData(const RenderGraph& graph, RenderGraph
 {
 	const auto& sceneData = blackboard.Get<SceneRenderingData>();
 	const auto& depthPrepassData = blackboard.Get<DepthPrepassData>();
-	const auto& sceneTargetDescriptor = graph.GetDescriptor(sceneData.sceneTarget);
-
-	RenderTextureDescriptor textureDesc;
-	textureDesc.name = "SceneColorRT";
-	textureDesc.size = sceneTargetDescriptor.size;
-	textureDesc.format = TextureFormat::R16G16B16A16_SFloat;
-	textureDesc.clearBuffer = true;
-	passData.colorTarget = builder.UseColorBuffer(builder.CreateTexture(textureDesc));
+	passData.colorTarget = builder.UseColorBuffer(sceneData.sceneTarget);
 	passData.depthTarget = builder.UseDepthBuffer(depthPrepassData.depthTarget, DepthAccess::Read);
 
 	const auto& brdfData = blackboard.Get<BRDFData>();
@@ -210,7 +203,6 @@ void WorldRenderer::MakeWorldRenderingData(const RenderGraph& graph, RenderGraph
 		const auto& reflectionData = blackboard.Get<RayTracedReflectionData>();
 		passData.reflectionTexture = builder.ReadTexture(reflectionData.reflectionTarget);
 	}
-	blackboard.Add(passData);
 }
 
 void WorldRenderer::RegisterShadingPipeline(const Material* material)

@@ -20,7 +20,10 @@ public:
 
 private:
     
-	GraphicsPipelineHandle mPipeline;
+	GraphicsDevice* mDevice = nullptr;
+
+	// Color format is filled in per view, from the view output
+	GraphicsPipelineStateDescriptor mPipelineState;
     
 };
 

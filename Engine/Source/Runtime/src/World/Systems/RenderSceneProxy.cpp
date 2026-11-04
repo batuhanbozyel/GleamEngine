@@ -12,8 +12,6 @@
 #include "Renderer/Mesh.h"
 #include "Renderer/RenderSystem.h"
 #include "Renderer/GraphicsDevice.h"
-#include "Renderer/RenderPipeline.h"
-#include "Renderer/SceneView.h"
 #include "Renderer/RayTracingScene.h"
 #include "Renderer/CommandBuffer.h"
 #include "Renderer/CopyCommandBuffer.h"
@@ -252,22 +250,10 @@ void RenderSceneProxy::Update(const World* world, EntityHandle camera)
 		BuildRecord(entityManager, entity, meshRenderer);
 	});
 
-	// Cameras without their own pipeline follow the project default, so a new default re-resolves every camera
-	if (mDefaultPipeline != renderSystem->GetDefaultRenderPipeline())
+	entityManager.ForEachChanged<Camera>(since, [this](EntityHandle entity, const Camera& component)
 	{
-		mDefaultPipeline = renderSystem->GetDefaultRenderPipeline();
-		entityManager.ForEach<Entity, Camera>([this](EntityHandle entity, const Entity&, const Camera& component)
-		{
-			AcquireSceneView(entity, component);
-		});
-	}
-	else
-	{
-		entityManager.ForEachChanged<Camera>(since, [this](EntityHandle entity, const Camera& component)
-		{
-			AcquireSceneView(entity, component);
-		});
-	}
+		renderSystem->AcquireSceneView(mWorld, entity);
+	});
 	mChangeCursor.Commit();
 
 	const auto& cameraComponent = entityManager.GetComponent<Camera>(camera);
@@ -424,21 +410,6 @@ void RenderSceneProxy::Shutdown(World* world)
 	mCameraRemoved.Reset();
 	static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
 	renderSystem->ReleaseSceneViews(world);
-}
-
-void RenderSceneProxy::AcquireSceneView(EntityHandle entity, const Camera& camera)
-{
-	static auto assetManager = Globals::GameInstance->GetSubsystem<AssetManager>();
-	static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
-
-	const auto& reference = camera.renderPipeline.guid != Guid::InvalidGuid() ? camera.renderPipeline : mDefaultPipeline;
-	auto view = renderSystem->AcquireSceneView(mWorld, entity);
-	if (view->pipelineReference != reference)
-	{
-		assetManager->Release(view->pipelineReference);
-		view->pipelineReference = reference;
-		view->pipeline = assetManager->Load<RenderPipeline>(reference);
-	}
 }
 
 void RenderSceneProxy::OnCameraRemoved(EntityHandle entity)

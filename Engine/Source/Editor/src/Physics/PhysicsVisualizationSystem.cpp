@@ -192,6 +192,12 @@ bool PhysicsVisualizationSystem::IsVisible(const Gleam::RigidBody& rigidBody) co
 	}
 }
 
+PhysicsVisualizationSystem::PhysicsVisualizationSystem(Gleam::DebugRenderer* renderer)
+	: mRenderer(renderer)
+{
+
+}
+
 void PhysicsVisualizationSystem::OnUpdate(Gleam::EntityManager& entityManager)
 {
 	const bool drawColliders = mSettings.flags.Has(Gleam::PhysicsVisualizationFlag::Colliders);
@@ -201,12 +207,11 @@ void PhysicsVisualizationSystem::OnUpdate(Gleam::EntityManager& entityManager)
 		return;
 	}
 
-	static auto renderSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::RenderSystem>();
-	auto renderer = renderSystem->GetRenderer<Gleam::DebugRenderer>();
-	if (renderer == nullptr)
+	if (mRenderer == nullptr)
 	{
 		return;
 	}
+	auto renderer = mRenderer;
 
 	entityManager.ForEach<Gleam::Entity, Gleam::RigidBody>([&](const Gleam::Entity& entity, const Gleam::RigidBody& rigidBody)
 	{

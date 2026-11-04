@@ -19,6 +19,7 @@
 #include "World/World.h"
 #include "Physics/PhysicsSystem.h"
 #include "Input/PlayerInputSystem.h"
+#include "World/Systems/CameraSystem.h"
 #include "Renderer/Renderers/ImGuiRenderer.h"
 
 #include "View/Panels/MenuBar/MenuBar.h"
@@ -54,6 +55,7 @@ public:
 		mEditWorld = worldManager->GetActiveWorld();
 		mEditWorld->GetSystem<Gleam::PhysicsSystem>()->Enabled = false;
 		mEditWorld->GetSystem<Gleam::PlayerInputSystem>()->Enabled = false;
+		mEditWorld->GetSystem<Gleam::CameraSystem>()->Enabled = false;
 		mEditWorld->AddSubsystem<UndoSystem>();
 		mEditWorld->AddSubsystem<SelectionSystem>();
 		AddSubsystem<EWorldManager>(mEditWorld);

@@ -23,6 +23,10 @@
 #include "Renderer/RenderSystem.h"
 #include "Renderer/RenderPipeline.h"
 #include "Renderer/SceneView.h"
+#include "Renderer/RenderTexture.h"
+#include "Renderer/RenderSurface.h"
+#include "Assets/AssetManager.h"
+#include "World/Systems/PickingSystem.h"
 #include "World/Systems/RenderSceneProxy.h"
 #include "Renderer/Renderers/DebugRenderer.h"
 #include "Renderer/Renderers/LineRenderer.h"
@@ -234,12 +238,6 @@ void WorldViewport::OnCreate(Gleam::Application* app)
 	mSelectionOutlineRenderer = new SelectionOutlineRenderer(mSelectionSystem);
 	mSelectionOutlineRenderer->OnCreate(context);
 
-	renderSystem->AddRenderer(mViewModeRenderer, Gleam::RenderStage::PostProcess);
-	renderSystem->AddRenderer(mGridRenderer, Gleam::RenderStage::Transparent);
-	renderSystem->AddRenderer(mLineRenderer, Gleam::RenderStage::Transparent);
-	renderSystem->AddRenderer(mDebugRenderer, Gleam::RenderStage::Transparent);
-	renderSystem->AddRenderer(mSelectionOutlineRenderer, Gleam::RenderStage::PostProcess);
-
 	auto windowSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::WindowSystem>();
 	auto editorConfig = Gleam::Globals::Engine->GetSubsystem<EditorConfigSystem>();
 	const auto& cameraState = editorConfig->Register<Gleam::EditorCameraState>();
@@ -249,7 +247,13 @@ void WorldViewport::OnCreate(Gleam::Application* app)
 	auto& camera = entityManager.CreateEntity("Editor Camera", Gleam::Guid::NewGuid());
 	camera.SetTranslation(cameraState.position);
 	camera.SetRotation(Gleam::Quaternion(Gleam::Math::Deg2Rad(Gleam::Float3{ cameraState.pitch, cameraState.yaw, 0.0f })));
-	entityManager.AddComponent<Gleam::Camera>(camera, windowSystem->GetResolution(), Gleam::ProjectionType::Perspective);
+	auto assetManager = Gleam::Globals::GameInstance->GetSubsystem<Gleam::AssetManager>();
+	Gleam::RenderTextureDescriptor targetDesc;
+	targetDesc.size = windowSystem->GetResolution();
+	targetDesc.format = renderSystem->GetSurface()->GetFormat();
+	mCameraTarget = assetManager->Register(new Gleam::RenderTexture(Gleam::AssetReference{ .guid = Gleam::Guid::NewGuid() }, Gleam::AssetHeader{ .name = "Editor Camera Target" }, targetDesc));
+	auto& cameraComponent = entityManager.AddComponent<Gleam::Camera>(camera, windowSystem->GetResolution(), Gleam::ProjectionType::Perspective);
+	cameraComponent.targetTexture = mCameraTarget->GetReference();
 	auto& editorCamera = entityManager.AddComponent<Gleam::EditorCamera>(camera);
 	editorCamera.yaw = cameraState.yaw;
 	editorCamera.pitch = cameraState.pitch;
@@ -257,9 +261,17 @@ void WorldViewport::OnCreate(Gleam::Application* app)
 	editorCamera.speed = cameraState.speed;
 	mCamera = camera;
 
+	auto view = renderSystem->AcquireSceneView(mEditWorld, mCamera);
+	view->AddRenderer(mViewModeRenderer, Gleam::RenderStage::PostProcess);
+	view->AddRenderer(mGridRenderer, Gleam::RenderStage::Transparent);
+	view->AddRenderer(mLineRenderer, Gleam::RenderStage::Transparent);
+	view->AddRenderer(mDebugRenderer, Gleam::RenderStage::Transparent);
+	view->AddRenderer(mSelectionOutlineRenderer, Gleam::RenderStage::PostProcess);
+	mEditWorld->GetSubsystem<Gleam::PickingSystem>()->SetCamera(mCamera);
+
 	mCameraController = new EditorCameraController(mCamera);
-	mPhysicsVisualization = mEditWorld->AddSystem<PhysicsVisualizationSystem>();
-	mRendererVisualization = mEditWorld->AddSystem<RendererVisualizationSystem>(mSelectionSystem, mEditWorld->GetSubsystem<Gleam::RenderSceneProxy>());
+	mPhysicsVisualization = mEditWorld->AddSystem<PhysicsVisualizationSystem>(mDebugRenderer);
+	mRendererVisualization = mEditWorld->AddSystem<RendererVisualizationSystem>(mSelectionSystem, mEditWorld->GetSubsystem<Gleam::RenderSceneProxy>(), mDebugRenderer);
 	Resize(entityManager, windowSystem->GetResolution());
 }
 
@@ -279,13 +291,14 @@ void WorldViewport::OnDestroy(Gleam::Application* app)
 	delete mCameraController;
 
 	auto renderSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::RenderSystem>();
-	renderSystem->SetCameraOverride(Gleam::InvalidEntity);
 	const auto context = renderSystem->GetRenderContext();
-	renderSystem->RemoveRenderer(mViewModeRenderer);
-	renderSystem->RemoveRenderer(mGridRenderer);
-	renderSystem->RemoveRenderer(mLineRenderer);
-	renderSystem->RemoveRenderer(mDebugRenderer);
-	renderSystem->RemoveRenderer(mSelectionOutlineRenderer);
+	auto view = renderSystem->GetSceneView(mEditWorld, mCamera);
+	view->RemoveRenderer(mViewModeRenderer);
+	view->RemoveRenderer(mGridRenderer);
+	view->RemoveRenderer(mLineRenderer);
+	view->RemoveRenderer(mDebugRenderer);
+	view->RemoveRenderer(mSelectionOutlineRenderer);
+	Gleam::Globals::GameInstance->GetSubsystem<Gleam::AssetManager>()->Release(mCameraTarget->GetReference());
 
 	delete mViewModeRenderer;
 	delete mGridRenderer;
@@ -300,16 +313,12 @@ void WorldViewport::OnDestroy(Gleam::Application* app)
 const Gleam::RenderPipeline* WorldViewport::GetViewedRenderPipeline() const
 {
 	auto renderSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::RenderSystem>();
-	auto world = mWorldManager->GetPlayWorld() ? mWorldManager->GetPlayWorld() : mEditWorld;
-	auto view = renderSystem->GetSceneView(world, renderSystem->GetActiveCamera());
-	return view ? view->pipeline : nullptr;
+	return renderSystem->GetSceneView(mEditWorld, mCamera)->pipeline;
 }
 
 void WorldViewport::Update()
 {
 	auto playWorld = mWorldManager->GetPlayWorld();
-	auto renderSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::RenderSystem>();
-	renderSystem->SetCameraOverride(playWorld ? Gleam::InvalidEntity : mCamera);
 
 	if (playWorld and mCameraController->GetNavigation() != CameraNavigation::None)
 	{
@@ -340,9 +349,9 @@ void WorldViewport::Render(Gleam::ImGuiRenderer* imgui)
 			const Gleam::Float2 contentMin(cursor.x, cursor.y);
 			const Gleam::Float2 contentSize(available.x, available.y);
 
-			DrawViewport(imgui, passData);
+			DrawViewport(imgui);
 			DrawToolbar(contentMin, contentSize);
-			DrawStats(contentMin, contentSize, passData);
+			DrawStats(contentMin, contentSize);
 		}
 		ImGui::End();
 	});
@@ -712,7 +721,7 @@ void WorldViewport::DrawRenderSettingsPopup()
 	ImGui::EndPopup();
 }
 
-void WorldViewport::DrawStats(const Gleam::Float2& contentMin, const Gleam::Float2& contentSize, const Gleam::ImGuiPassData& passData)
+void WorldViewport::DrawStats(const Gleam::Float2& contentMin, const Gleam::Float2& contentSize)
 {
 	constexpr float kMargin = 12.0f;
 	constexpr ImVec2 kPadding(10.0f, 6.0f);
@@ -726,15 +735,8 @@ void WorldViewport::DrawStats(const Gleam::Float2& contentMin, const Gleam::Floa
 
 	char frameText[64] = {};
 	const float frameTime = ImGui::GetIO().DeltaTime * 1000.0f;
-	if (passData.sceneTarget.IsValid())
-	{
-		const auto& size = passData.sceneTarget.GetTexture().GetDescriptor().size;
-		std::snprintf(frameText, sizeof(frameText), "%.2f ms \xC2\xB7 %ux%u", frameTime, static_cast<uint32_t>(size.width), static_cast<uint32_t>(size.height));
-	}
-	else
-	{
-		std::snprintf(frameText, sizeof(frameText), "%.2f ms", frameTime);
-	}
+	const auto& size = mCameraTarget->GetTexture().GetDescriptor().size;
+	std::snprintf(frameText, sizeof(frameText), "%.2f ms \xC2\xB7 %ux%u", frameTime, static_cast<uint32_t>(size.width), static_cast<uint32_t>(size.height));
 
 	ImGui::PushFont(mFonts->mono);
 	const float lineHeight = ImGui::GetFontSize();
@@ -750,7 +752,7 @@ void WorldViewport::DrawStats(const Gleam::Float2& contentMin, const Gleam::Floa
 	ImGui::PopFont();
 }
 
-void WorldViewport::DrawViewport(Gleam::ImGuiRenderer* imgui, const Gleam::ImGuiPassData& passData)
+void WorldViewport::DrawViewport(Gleam::ImGuiRenderer* imgui)
 {
 	ImVec2 viewportSize = ImGui::GetContentRegionAvail();
 	if (mViewportSize != Gleam::Size(viewportSize.x, viewportSize.y))
@@ -760,21 +762,22 @@ void WorldViewport::DrawViewport(Gleam::ImGuiRenderer* imgui, const Gleam::ImGui
 		mViewportSizeChanged = true;
 	}
 
-	if (passData.sceneTarget.IsValid() == false)
+	// Without a pipeline the editor camera never renders, so its target is never written
+	if (GetViewedRenderPipeline() == nullptr)
 	{
-		constexpr const char* kNoCameraText = "No active camera";
-		const ImVec2 textSize = ImGui::CalcTextSize(kNoCameraText);
+		constexpr const char* kNoPipelineText = "No render pipeline";
+		const ImVec2 textSize = ImGui::CalcTextSize(kNoPipelineText);
 		const ImVec2 cursor = ImGui::GetCursorPos();
 		ImGui::SetCursorPos(ImVec2(cursor.x + (viewportSize.x - textSize.x) * 0.5f, cursor.y + (viewportSize.y - textSize.y) * 0.5f));
-		ImGui::TextDisabled("%s", kNoCameraText);
+		ImGui::TextDisabled("%s", kNoPipelineText);
 		return;
 	}
 
-	const auto& sceneRTsize = passData.sceneTarget.GetTexture().GetDescriptor().size;
+	const auto& sceneRTsize = mCameraTarget->GetTexture().GetDescriptor().size;
 	const auto fittedSize = FitSize(sceneRTsize, Gleam::Size(viewportSize.x, viewportSize.y));
 	const ImVec2 imageCursor = ImGui::GetCursorPos();
 	ImGui::SetCursorPos(ImVec2(imageCursor.x + (viewportSize.x - fittedSize.width) * 0.5f, imageCursor.y + (viewportSize.y - fittedSize.height) * 0.5f));
-	ImGui::Image(imgui->GetImTextureIDForTexture(passData.sceneTarget), ImVec2(fittedSize.width, fittedSize.height), ImVec2(0.0f, 0.0f), ImVec2(1.0f, 1.0f));
+	ImGui::Image(imgui->GetImTextureIDForTexture(mCameraTarget->GetTexture()), ImVec2(fittedSize.width, fittedSize.height), ImVec2(0.0f, 0.0f), ImVec2(1.0f, 1.0f));
 
 	ImVec2 imageMin = ImGui::GetItemRectMin();
 	ImVec2 imageSize = ImGui::GetItemRectSize();
@@ -1091,6 +1094,7 @@ void WorldViewport::Resize(Gleam::EntityManager& entityManager, const Gleam::Siz
 	const auto resolution = GetRenderResolution(mViewportSize * windowSystem->GetDisplayScale());
 	auto& camera = entityManager.GetComponent<Gleam::Camera>(mCamera);
 	camera.SetViewport(resolution);
+	mCameraTarget->Resize(resolution);
 
 	if (mViewportWorld)
 	{

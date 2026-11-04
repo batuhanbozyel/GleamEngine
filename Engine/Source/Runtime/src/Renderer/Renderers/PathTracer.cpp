@@ -47,7 +47,6 @@ void PathTracer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blac
 		return;
 	}
 
-	const auto& depthPrepassData = blackboard.Get<DepthPrepassData>();
 	const auto& sceneTargetDescriptor = graph.GetDescriptor(sceneData.sceneTarget);
 
 	auto& history = sceneData.view->GetHistory<PathTracerHistory>();
@@ -102,20 +101,20 @@ void PathTracer::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blac
 	const uint32_t frameIndex = history.frameIndex++;
 	const Texture accumulation = history.accumulation;
 
-	graph.AddComputePass<WorldRenderingData>("PathTracing::Render", [&](RenderGraphBuilder& builder, WorldRenderingData& passData)
+	struct PathTracingPassData
 	{
-		RenderTextureDescriptor textureDesc;
-		textureDesc.name = "SceneColorRT";
-		textureDesc.size = sceneTargetDescriptor.size;
-		textureDesc.format = TextureFormat::R16G16B16A16_SFloat;
-		textureDesc.clearBuffer = true;
-		passData.colorTarget = builder.UseColorBuffer(builder.CreateTexture(textureDesc));
+		TextureHandle colorTarget;
+		TextureHandle ggxEssLut;
+		TextureHandle ggxEAvgLut;
+	};
+
+	graph.AddComputePass<PathTracingPassData>("PathTracing::Render", [&](RenderGraphBuilder& builder, PathTracingPassData& passData)
+	{
+		passData.colorTarget = builder.UseColorBuffer(sceneData.sceneTarget);
 		passData.ggxEssLut = builder.ReadTexture(brdfData.ggxEssLut);
 		passData.ggxEAvgLut = builder.ReadTexture(brdfData.ggxEAvgLut);
-		passData.depthTarget = depthPrepassData.depthTarget;
-		blackboard.Add(passData);
 	},
-	[this, &sceneData, frameIndex, accumulation](const CommandBuffer* cmd, const WorldRenderingData& passData)
+	[this, &sceneData, frameIndex, accumulation](const CommandBuffer* cmd, const PathTracingPassData& passData)
 	{
 		if (not mPathTracingPipeline.IsValid())
 		{

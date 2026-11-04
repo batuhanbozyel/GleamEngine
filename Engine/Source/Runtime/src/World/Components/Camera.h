@@ -3,6 +3,7 @@
 #include "Math/Size.h"
 #include "Assets/AssetReference.h"
 #include "Renderer/RenderPipelineDescriptor.h"
+#include "Renderer/TextureDescriptor.h"
 
 namespace Gleam {
 
@@ -56,6 +57,12 @@ GSTRUCT(Camera, "B37BA095-FFAB-49FD-ACA9-392835498015", EntityComponent, Seriali
 
 	GFIELD("B6A7FA99-185C-4A19-A67B-266E275098A9", Serializable, PrettyName("Render Pipeline"), AssetType(TypeOf<RenderPipelineDescriptor>))
 	AssetReference renderPipeline;
+
+	GFIELD("899C9F4C-6499-4A55-9234-836A9B6A0E99", Serializable, PrettyName("Target Texture"), AssetType(TypeOf<RenderTextureDescriptor>))
+	AssetReference targetTexture;
+
+	GFIELD("924C1CFA-9216-4E65-BA5D-0F3EDF5A6C67", Serializable, PrettyName("Priority"))
+	int32_t priority = 0;
     
 	Camera() = default;
 

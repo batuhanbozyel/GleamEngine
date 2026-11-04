@@ -9,20 +9,16 @@
 #include "PostProcessStack.h"
 
 #include "Renderer/CommandBuffer.h"
-#include "Renderer/RenderSurface.h"
 #include "Renderer/GraphicsDevice.h"
 
-#include "WorldRenderer.h"
 
 using namespace Gleam;
 
 void PostProcessStack::OnCreate(const RenderContext& context)
 {
-	GraphicsPipelineStateDescriptor pipelineState;
-	pipelineState.colorFormats = { context.surface->GetFormat() };
-	pipelineState.vertexEntry = "fullscreenTriangleVertexShader";
-	pipelineState.fragmentEntry = "tonemappingFragmentShader";
-	mPipeline = context.device->CreateGraphicsPipeline(pipelineState);
+	mDevice = context.device;
+	mPipelineState.vertexEntry = "fullscreenTriangleVertexShader";
+	mPipelineState.fragmentEntry = "tonemappingFragmentShader";
 }
 
 void PostProcessStack::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard& blackboard)
@@ -31,6 +27,10 @@ void PostProcessStack::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard
 	{
 		return;
 	}
+
+	auto pipelineState = mPipelineState;
+	pipelineState.colorFormats = { graph.GetDescriptor(blackboard.Get<SceneRenderingData>().backbuffer).format };
+	const auto pipeline = mDevice->CreateGraphicsPipeline(pipelineState);
 
     struct PostProcessData
     {
@@ -41,16 +41,15 @@ void PostProcessStack::AddRenderPasses(RenderGraph& graph, RenderGraphBlackboard
     graph.AddRenderPass<PostProcessData>("PostProcessStack::Tonemapping", [&](RenderGraphBuilder& builder, PostProcessData& passData)
     {
         const auto& sceneData = blackboard.Get<SceneRenderingData>();
-        const auto& worldData = blackboard.Get<WorldRenderingData>();
-        passData.renderTarget = builder.UseColorBuffer(sceneData.sceneTarget);
-        passData.sceneColor = builder.ReadTexture(worldData.colorTarget);
+        passData.renderTarget = builder.UseColorBuffer(sceneData.backbuffer);
+        passData.sceneColor = builder.ReadTexture(sceneData.sceneTarget);
     },
-    [this](const CommandBuffer* cmd, const PostProcessData& passData)
+    [pipeline](const CommandBuffer* cmd, const PostProcessData& passData)
     {
         TonemapUniforms uniforms;
         uniforms.sceneColor = passData.sceneColor;
         
-        cmd->BindGraphicsPipeline(mPipeline);
+        cmd->BindGraphicsPipeline(pipeline);
         cmd->SetPushConstant(uniforms);
         cmd->Draw(3);
     });

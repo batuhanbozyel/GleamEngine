@@ -9,6 +9,7 @@
 #include "World/ComponentSystem.h"
 
 namespace Gleam {
+class DebugRenderer;
 class RenderSceneProxy;
 } // namespace Gleam
 
@@ -20,7 +21,7 @@ class RendererVisualizationSystem final : public Gleam::ComponentSystem
 {
 public:
 
-	RendererVisualizationSystem(const SelectionSystem* selectionSystem, const Gleam::RenderSceneProxy* sceneProxy);
+	RendererVisualizationSystem(const SelectionSystem* selectionSystem, const Gleam::RenderSceneProxy* sceneProxy, Gleam::DebugRenderer* renderer);
 
 	virtual void OnUpdate(Gleam::EntityManager& entityManager) override;
 
@@ -41,6 +42,8 @@ private:
 	const SelectionSystem* mSelectionSystem = nullptr;
 
 	const Gleam::RenderSceneProxy* mSceneProxy = nullptr;
+
+	Gleam::DebugRenderer* mRenderer = nullptr;
 
 };
 

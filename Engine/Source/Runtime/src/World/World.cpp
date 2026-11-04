@@ -1,5 +1,6 @@
 #include "gpch.h"
 #include "World.h"
+#include "Systems/CameraSystem.h"
 #include "Systems/RenderSceneProxy.h"
 #include "Physics/PhysicsSystem.h"
 #include "Input/PlayerInputSystem.h"
@@ -14,6 +15,7 @@ World::World(const AssetReference& reference, const AssetHeader& header, const W
 	AddSubsystem<RenderSceneProxy>();
 	AddSystem<PhysicsSystem>()->SetGravity(mDescriptor.gravity);
 	AddSystem<PlayerInputSystem>();
+	AddSystem<CameraSystem>();
 }
 
 World::~World()

@@ -139,8 +139,6 @@ private:
 
 	void AddDraws(uint32_t recordIndex);
 
-	void AcquireSceneView(EntityHandle entity, const Camera& camera);
-
 	void OnCameraRemoved(EntityHandle entity);
 
 	void RemoveDraws(uint32_t recordIndex);
@@ -160,7 +158,6 @@ private:
 
 	const World* mWorld = nullptr;
 	ComponentCallback mCameraRemoved;
-	AssetReference mDefaultPipeline;
 
 };
 

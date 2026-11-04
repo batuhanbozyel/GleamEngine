@@ -3,7 +3,7 @@
 
 #include "Renderer/CommandBuffer.h"
 #include "Renderer/GraphicsDevice.h"
-#include "Renderer/Renderers/WorldRenderer.h"
+#include "Renderer/Renderers/DepthPrepass.h"
 
 using namespace GEditor;
 
@@ -43,9 +43,10 @@ void InfiniteGridRenderer::AddRenderPasses(Gleam::RenderGraph& graph, Gleam::Ren
 
     graph.AddRenderPass<PassData>("InfiniteGridPass", [&](Gleam::RenderGraphBuilder& builder, PassData& passData)
     {
-        auto& worldData = blackboard.Get<Gleam::WorldRenderingData>();
-        passData.colorTarget = builder.UseColorBuffer(worldData.colorTarget);
-        passData.depthTarget = builder.UseDepthBuffer(worldData.depthTarget, Gleam::DepthAccess::Read);
+        const auto& sceneData = blackboard.Get<Gleam::SceneRenderingData>();
+        const auto& depthPrepassData = blackboard.Get<Gleam::DepthPrepassData>();
+        passData.colorTarget = builder.UseColorBuffer(sceneData.sceneTarget);
+        passData.depthTarget = builder.UseDepthBuffer(depthPrepassData.depthTarget, Gleam::DepthAccess::Read);
     },
     [this, &blackboard](const Gleam::CommandBuffer* cmd, const PassData& passData)
     {

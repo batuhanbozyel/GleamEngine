@@ -20,7 +20,8 @@ private:
 
     Gleam::GraphicsDevice* mDevice = nullptr;
 
-    Gleam::GraphicsPipelineHandle mPipeline;
+    // Color format is filled in per view, from the view output
+    Gleam::GraphicsPipelineStateDescriptor mPipelineState;
 
     ViewMode mMode = ViewMode::Lit;
 

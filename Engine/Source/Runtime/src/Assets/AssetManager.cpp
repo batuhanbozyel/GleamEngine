@@ -12,6 +12,7 @@
 #include "Renderer/Mesh.h"
 #include "Renderer/Texture2D.h"
 #include "Renderer/RenderPipeline.h"
+#include "Renderer/RenderTexture.h"
 #include "Renderer/Material/Material.h"
 #include "Renderer/Material/MaterialInstance.h"
 
@@ -29,6 +30,7 @@ void AssetManager::Initialize(Application* app)
 	RegisterMetaAsset<MaterialInstance, MaterialInstanceDescriptor>();
 	RegisterMetaAsset<InputActionAsset, InputActionAssetDescriptor>();
 	RegisterMetaAsset<RenderPipeline, RenderPipelineDescriptor>();
+	RegisterMetaAsset<RenderTexture, RenderTextureDescriptor>();
 
 	mStorage = CreateScope<AssetStorage>(Globals::ProjectContentDirectory);
 

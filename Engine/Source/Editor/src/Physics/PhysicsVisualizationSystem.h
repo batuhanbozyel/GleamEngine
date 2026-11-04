@@ -14,6 +14,7 @@
 
 namespace Gleam {
 struct RigidBody;
+class DebugRenderer;
 } // namespace Gleam
 
 namespace GEditor {
@@ -30,6 +31,8 @@ using ColliderWireMeshCache = Gleam::HashMap<Gleam::AssetReference, ColliderWire
 class PhysicsVisualizationSystem final : public Gleam::ComponentSystem
 {
 public:
+
+	explicit PhysicsVisualizationSystem(Gleam::DebugRenderer* renderer);
 
 	virtual void OnUpdate(Gleam::EntityManager& entityManager) override;
 
@@ -54,6 +57,8 @@ private:
 	const ColliderWireMesh& GetTriangleWireMesh(const Gleam::AssetReference& ref);
 
 	Gleam::PhysicsVisualizationSettings mSettings;
+
+	Gleam::DebugRenderer* mRenderer = nullptr;
 
 	Gleam::Scope<PhysicsCooker> mCooker = PhysicsCooker::Create();
 

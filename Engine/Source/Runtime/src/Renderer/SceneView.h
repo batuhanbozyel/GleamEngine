@@ -2,6 +2,7 @@
 #include "Container/Hash.h"
 #include "World/Entity.h"
 #include "Assets/AssetReference.h"
+#include "Renderer/RendererList.h"
 #include "Renderer/Shaders/ShaderTypes.h"
 
 #include <entt/core/type_info.hpp>
@@ -13,6 +14,7 @@ class World;
 class GPUAllocator;
 class GraphicsDevice;
 class RenderPipeline;
+class RenderTexture;
 
 template<typename T>
 concept SceneViewHistoryType = requires(T history, GraphicsDevice* device, GPUAllocator* allocator)
@@ -57,6 +59,21 @@ public:
 		return eastl::any_cast<T&>(it->second.data);
 	}
 
+	void AddRenderer(IRenderer* renderer, RenderStage stage)
+	{
+		mRenderers.Insert(renderer, stage);
+	}
+
+	void RemoveRenderer(IRenderer* renderer)
+	{
+		mRenderers.Remove(renderer);
+	}
+
+	const RendererList& GetRenderers() const
+	{
+		return mRenderers;
+	}
+
 	void ReleaseHistory(GraphicsDevice* device, GPUAllocator* allocator)
 	{
 		for (auto& [_, entry] : mHistories)
@@ -71,6 +88,8 @@ public:
 	EntityHandle camera = InvalidEntity;
 	AssetReference pipelineReference;
 	RenderPipeline* pipeline = nullptr;
+	AssetReference targetReference;
+	RenderTexture* target = nullptr;
 	float4x4 prevViewMatrix = {};
 	float4x4 prevViewProjectionMatrix = {};
 	bool historyValid = false;
@@ -78,6 +97,8 @@ public:
 private:
 
 	HashMap<uint32_t, HistoryEntry> mHistories;
+
+	RendererList mRenderers;
 
 };
 
