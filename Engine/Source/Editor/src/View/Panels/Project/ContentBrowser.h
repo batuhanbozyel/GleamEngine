@@ -65,7 +65,7 @@ private:
 
 	void DrawBreadcrumb(float maxX);
 
-	float DrawFilterChips(float right, float top);
+	float DrawTypeFilter(float right, float top);
 
 	void DrawDirectoryTree();
 

@@ -35,6 +35,8 @@
 
 #include "IO/FileDialog.h"
 
+#include <cstdio>
+
 #include <imgui_internal.h>
 
 #include <cstring>
@@ -45,14 +47,14 @@ static constexpr float kToolbarHeight = 44.0f;
 static constexpr float kTreeWidth = 180.0f;
 static constexpr float kTreeRowHeight = 26.0f;
 
-struct CategoryChip
+struct CategoryFilter
 {
 	const char* label;
 	ImVec4 color;
 	AssetCategory category;
 };
 
-static constexpr CategoryChip kCategoryChips[] = {
+static constexpr CategoryFilter kCategoryFilters[] = {
 	{ "Prefab", Gleam::Theme::Warning, AssetCategory::Prefab },
 	{ "Mesh", Gleam::Theme::Info, AssetCategory::Mesh },
 	{ "Material", Gleam::Theme::Success, AssetCategory::Material },
@@ -185,11 +187,11 @@ void ContentBrowser::DrawToolbar()
 	const float searchX = min.x + width - 10.0f - kSearchWidth;
 	ImGui::SetCursorScreenPos(ImVec2(searchX, buttonY));
 	Widgets::SearchField("##AssetSearch", "Search assets", mSearch, sizeof(mSearch), kSearchWidth, kButtonHeight);
-	const float chipsX = DrawFilterChips(searchX - 10.0f, min.y);
+	const float filterX = DrawTypeFilter(searchX - 8.0f, min.y);
 
 	// Breadcrumb
 	ImGui::SetCursorScreenPos(ImVec2(min.x + 10.0f + importWidth + 10.0f, min.y));
-	DrawBreadcrumb(chipsX - 10.0f);
+	DrawBreadcrumb(filterX - 10.0f);
 
 	ImGui::SetCursorScreenPos(min);
 	ImGui::Dummy(ImVec2(width, kToolbarHeight));
@@ -244,56 +246,123 @@ void ContentBrowser::DrawBreadcrumb(float maxX)
 	drawList->PopClipRect();
 }
 
-float ContentBrowser::DrawFilterChips(float right, float top)
+float ContentBrowser::DrawTypeFilter(float right, float top)
 {
-	constexpr float kChipHeight = 24.0f;
-	constexpr float kChipGap = 6.0f;
+	constexpr float kButtonHeight = 30.0f;
+	constexpr float kPaddingX = 10.0f;
+	constexpr float kRowHeight = 28.0f;
+	constexpr float kPopupWidth = 220.0f;
+	constexpr float kMaxListHeight = 320.0f;
+	constexpr float kCheckSize = 14.0f;
 	constexpr float kDotSize = 8.0f;
 
-	ImGui::PushFont(mFonts->footnote);
-	float totalWidth = 0.0f;
-	for (const auto& chip : kCategoryChips)
+	uint32_t activeCount = 0u;
+	const CategoryFilter* firstActive = nullptr;
+	for (const auto& filter : kCategoryFilters)
 	{
-		totalWidth += 8.0f + kDotSize + 6.0f + ImGui::CalcTextSize(chip.label).x + 8.0f + kChipGap;
+		if ((mCategoryFilter & CategoryBit(filter.category)) != 0u)
+		{
+			firstActive = firstActive ? firstActive : &filter;
+			++activeCount;
+		}
 	}
-	totalWidth -= kChipGap;
+
+	char label[32];
+	if (activeCount == 0u)
+	{
+		std::snprintf(label, sizeof(label), "All types");
+	}
+	else if (activeCount == 1u)
+	{
+		std::snprintf(label, sizeof(label), "%s", firstActive->label);
+	}
+	else
+	{
+		std::snprintf(label, sizeof(label), "%u types", activeCount);
+	}
+
+	const float iconWidth = ImGui::CalcTextSize(ICON_LC_LIST_FILTER).x;
+	const float chevronWidth = ImGui::CalcTextSize(ICON_LC_CHEVRON_DOWN).x;
+	const float labelWidth = ImGui::CalcTextSize(label).x;
+	const float width = kPaddingX + iconWidth + 6.0f + labelWidth + 8.0f + chevronWidth + kPaddingX;
+
+	const ImVec2 min(right - width, top + (kToolbarHeight - kButtonHeight) * 0.5f);
+	const ImVec2 max(right, min.y + kButtonHeight);
+	ImGui::SetCursorScreenPos(min);
+	if (ImGui::InvisibleButton("##TypeFilter", ImVec2(width, kButtonHeight)))
+	{
+		ImGui::OpenPopup("##TypeFilterPopup");
+	}
+	const bool hovered = ImGui::IsItemHovered();
+	const bool open = ImGui::IsPopupOpen("##TypeFilterPopup");
+	const bool filtering = activeCount > 0u;
 
 	auto drawList = ImGui::GetWindowDrawList();
-	const float chipY = top + (kToolbarHeight - kChipHeight) * 0.5f;
-	const float startX = right - totalWidth;
-	float x = startX;
+	const float centerY = min.y + kButtonHeight * 0.5f;
+	drawList->AddRectFilled(min, max, Widgets::ColorU32(hovered or open ? Gleam::Theme::ControlHover : Gleam::Theme::Background), 6.0f);
+	drawList->AddRect(min, max, Widgets::ColorU32(filtering ? Gleam::Theme::Accent : Gleam::Theme::Border), 6.0f);
+	Widgets::DrawIcon(drawList, ICON_LC_LIST_FILTER, ImVec2(min.x + kPaddingX + iconWidth * 0.5f, centerY), filtering ? Gleam::Theme::Accent : Gleam::Theme::TextDim);
+	drawList->AddText(ImVec2(min.x + kPaddingX + iconWidth + 6.0f, IM_ROUND(centerY - ImGui::GetFontSize() * 0.5f)), Widgets::ColorU32(filtering ? Gleam::Theme::Text : Gleam::Theme::TextSecondary), label);
+	Widgets::DrawIcon(drawList, ICON_LC_CHEVRON_DOWN, ImVec2(max.x - kPaddingX - chevronWidth * 0.5f, centerY), Gleam::Theme::TextDim);
 
-	for (const auto& chip : kCategoryChips)
+	ImGui::SetNextWindowPos(ImVec2(max.x, max.y + 4.0f), ImGuiCond_Always, ImVec2(1.0f, 0.0f));
+	ImGui::SetNextWindowSize(ImVec2(kPopupWidth, 0.0f));
+	if (ImGui::BeginPopup("##TypeFilterPopup"))
 	{
-		const float textWidth = ImGui::CalcTextSize(chip.label).x;
-		const ImVec2 min(x, chipY);
-		const ImVec2 max(x + 8.0f + kDotSize + 6.0f + textWidth + 8.0f, chipY + kChipHeight);
-		const uint32_t bit = CategoryBit(chip.category);
-		const bool active = (mCategoryFilter & bit) != 0u;
-
-		ImGui::SetCursorScreenPos(min);
-		if (ImGui::InvisibleButton(chip.label, ImVec2(max.x - min.x, kChipHeight)))
+		ImGui::PushFont(mFonts->microBold);
+		ImGui::AlignTextToFramePadding();
+		ImGui::TextColored(Gleam::Theme::TextDim, "ASSET TYPES");
+		ImGui::PopFont();
+		if (filtering)
 		{
-			mCategoryFilter ^= bit;
+			constexpr const char* kClearLabel = "Clear";
+			ImGui::SameLine(ImGui::GetContentRegionMax().x - ImGui::CalcTextSize(kClearLabel).x);
+			const ImVec2 clearPos = ImGui::GetCursorScreenPos();
+			if (ImGui::InvisibleButton("##Clear", ImGui::CalcTextSize(kClearLabel)))
+			{
+				mCategoryFilter = 0u;
+			}
+			ImGui::GetWindowDrawList()->AddText(clearPos, Widgets::ColorU32(ImGui::IsItemHovered() ? Gleam::Theme::Text : Gleam::Theme::Info), kClearLabel);
 		}
-		const bool hovered = ImGui::IsItemHovered();
+		ImGui::Separator();
 
-		if (active)
+		const float rowSpacing = ImGui::GetStyle().ItemSpacing.y;
+		const float contentHeight = IM_ARRAYSIZE(kCategoryFilters) * (kRowHeight + rowSpacing) - rowSpacing;
+		// The browser usually docks at the bottom, so the list also stops at the bottom of the window
+		const auto viewport = ImGui::GetWindowViewport();
+		const float spaceBelow = viewport->WorkPos.y + viewport->WorkSize.y - ImGui::GetCursorScreenPos().y - ImGui::GetStyle().WindowPadding.y * 2.0f;
+		const float listHeight = Gleam::Math::Max(Gleam::Math::Min(contentHeight, Gleam::Math::Min(kMaxListHeight, spaceBelow)), kRowHeight);
+		ImGui::BeginChild("##TypeList", ImVec2(0.0f, listHeight));
+		for (const auto& filter : kCategoryFilters)
 		{
-			drawList->AddRectFilled(min, max, Widgets::ColorU32(Gleam::Theme::Selected), kChipHeight * 0.5f);
-		}
-		else if (hovered)
-		{
-			drawList->AddRectFilled(min, max, Widgets::ColorU32(Gleam::Theme::SectionHeader), kChipHeight * 0.5f);
-		}
-		drawList->AddRect(min, max, Widgets::ColorU32(active ? chip.color : Gleam::Theme::Border), kChipHeight * 0.5f);
-		drawList->AddCircleFilled(ImVec2(min.x + 8.0f + kDotSize * 0.5f, min.y + kChipHeight * 0.5f), kDotSize * 0.5f, Widgets::ColorU32(chip.color));
-		drawList->AddText(ImVec2(min.x + 8.0f + kDotSize + 6.0f, min.y + (kChipHeight - ImGui::GetFontSize()) * 0.5f), Widgets::ColorU32(active ? Gleam::Theme::Text : Gleam::Theme::TextSecondary), chip.label);
+			const uint32_t bit = CategoryBit(filter.category);
+			const bool active = (mCategoryFilter & bit) != 0u;
 
-		x = max.x + kChipGap;
+			const ImVec2 rowMin = ImGui::GetCursorScreenPos();
+			ImGui::PushID(filter.label);
+			if (ImGui::Selectable("##Row", false, ImGuiSelectableFlags_NoAutoClosePopups, ImVec2(0.0f, kRowHeight)))
+			{
+				mCategoryFilter ^= bit;
+			}
+			ImGui::PopID();
+
+			auto popupDrawList = ImGui::GetWindowDrawList();
+			const float rowCenterY = rowMin.y + kRowHeight * 0.5f;
+			const ImVec2 checkMin(rowMin.x + 2.0f, rowCenterY - kCheckSize * 0.5f);
+			const ImVec2 checkMax(checkMin.x + kCheckSize, checkMin.y + kCheckSize);
+			popupDrawList->AddRectFilled(checkMin, checkMax, Widgets::ColorU32(active ? Gleam::Theme::Accent : Gleam::Theme::Background), 3.0f);
+			popupDrawList->AddRect(checkMin, checkMax, Widgets::ColorU32(active ? Gleam::Theme::Accent : Gleam::Theme::Border), 3.0f);
+			if (active)
+			{
+				Widgets::DrawIcon(popupDrawList, ICON_LC_CHECK, ImVec2(checkMin.x + kCheckSize * 0.5f, rowCenterY), Gleam::Theme::OnAccent);
+			}
+			popupDrawList->AddCircleFilled(ImVec2(checkMax.x + 10.0f + kDotSize * 0.5f, rowCenterY), kDotSize * 0.5f, Widgets::ColorU32(filter.color));
+			popupDrawList->AddText(ImVec2(checkMax.x + 10.0f + kDotSize + 8.0f, IM_ROUND(rowCenterY - ImGui::GetFontSize() * 0.5f)), Widgets::ColorU32(active ? Gleam::Theme::Text : Gleam::Theme::TextSecondary), filter.label);
+		}
+		ImGui::EndChild();
+		ImGui::EndPopup();
 	}
-	ImGui::PopFont();
-	return startX;
+	return min.x;
 }
 
 void ContentBrowser::SetCurrentDir(const Gleam::Path& directory)
