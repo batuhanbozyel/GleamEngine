@@ -14,7 +14,8 @@ enum class AssetCategory
 	Texture,
 	World,
 	InputActions,
-	RenderPipeline
+	RenderPipeline,
+	RenderTexture
 };
 
 struct AssetIcon

@@ -69,6 +69,8 @@ GLEAM_TAG_ATTRIBUTE(Serializable);
 
 GLEAM_TAG_ATTRIBUTE(EditorOnly);
 
+GLEAM_TAG_ATTRIBUTE(HideInInspector);
+
 GLEAM_ATTRIBUTE(Singleton)
 {
     bool required = false;

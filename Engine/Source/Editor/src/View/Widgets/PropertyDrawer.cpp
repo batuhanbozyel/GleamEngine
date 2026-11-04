@@ -290,6 +290,12 @@ const Gleam::HashMap<uint32_t, PropertyDrawer::DrawFunction>& PropertyDrawer::Ge
 			DrawVec3Control(label, Gleam::Reflection::Get<Gleam::Float3>(obj), 0.0f, columnWidth);
 		};
 
+		customDrawers[Gleam::Reflection::TypeHash<Gleam::Size>()] =
+			[](const Gleam::TStringView label, void* obj, const Gleam::Reflection::ClassDescription& classDesc, float columnWidth)
+		{
+			DrawSizeControl(label, Gleam::Reflection::Get<Gleam::Size>(obj), columnWidth);
+		};
+
 		customDrawers[Gleam::Reflection::TypeHash<Gleam::AssetReference>()] =
 			[](const Gleam::TStringView label, void* obj, const Gleam::Reflection::ClassDescription& classDesc, float columnWidth)
 		{
@@ -712,6 +718,33 @@ void PropertyDrawer::DrawVec3Control(const Gleam::TStringView label, Gleam::Floa
 	ImGui::PopID();
 }
 
+void PropertyDrawer::DrawSizeControl(const Gleam::TStringView label, Gleam::Size& size, float columnWidth)
+{
+	constexpr float kFieldGap = 4.0f;
+
+	char buffer[64];
+	std::memcpy(buffer, label.data(), label.size());
+	buffer[label.size()] = '\0';
+
+	ImGui::PushID(buffer);
+
+	ImGui::Columns(2);
+	ImGui::SetColumnWidth(0, columnWidth);
+	DrawFieldLabel(buffer);
+	ImGui::NextColumn();
+
+	const char* format = IsMixedValue() ? "-" : "%.0f";
+	const float fieldWidth = (ImGui::GetContentRegionAvail().x - kFieldGap) * 0.5f;
+
+	DrawAxisField("W", Widgets::ColorU32(Gleam::Theme::TextDim), size.width, 0.0f, format, fieldWidth);
+	ImGui::SameLine(0.0f, kFieldGap);
+	DrawAxisField("H", Widgets::ColorU32(Gleam::Theme::TextDim), size.height, 0.0f, format, fieldWidth);
+
+	ImGui::Columns(1);
+
+	ImGui::PopID();
+}
+
 void PropertyDrawer::DrawRotationControl(const Gleam::TStringView label, Gleam::Quaternion& rotation, float columnWidth)
 {
 	char buffer[64];
@@ -981,7 +1014,10 @@ void PropertyDrawer::DrawClassFields(Gleam::TArrayView<void*> instances, const G
 	Gleam::TArray<uint8_t> scratch;
 	for (const auto& field : classDesc.ResolveFields())
 	{
-		DrawField(field, instances, columnWidth, scratch);
+		if (field.HasAttribute<Gleam::Reflection::Attribute::HideInInspector>() == false)
+		{
+			DrawField(field, instances, columnWidth, scratch);
+		}
 	}
 }
 

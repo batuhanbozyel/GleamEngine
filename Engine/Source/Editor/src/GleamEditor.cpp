@@ -34,6 +34,7 @@
 #include "View/Panels/Console/Console.h"
 #include "View/Panels/Input/InputActionsEditor.h"
 #include "View/Panels/Rendering/RenderPipelineEditor.h"
+#include "View/Panels/Rendering/RenderTextureEditor.h"
 
 #include <Editor.Reflection.generated.h>
 #include <Editor.Reflection.types.inl>
@@ -81,6 +82,7 @@ public:
 		viewStack->AddView<AssetImportDialog>(assetManager);
 		viewStack->AddView<InputActionsEditor>(assetManager);
 		viewStack->AddView<RenderPipelineEditor>(assetManager);
+		viewStack->AddView<RenderTextureEditor>(assetManager);
 	}
     
 	~GleamEditor()

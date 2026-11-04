@@ -35,25 +35,25 @@ GENUM(TextureUsage, "7EFFFEDD-F5B2-443B-9888-49C88D41779B", Serializable)
 
 GSTRUCT(TextureDescriptor, "5B36D630-8A7E-47BE-A9F0-1702AB9F9C8C", Serializable)
 {
-	GFIELD("A45F7E8C-D2B9-4D63-9BA3-1E7C24C5BF7A", Serializable)
+	GFIELD("A45F7E8C-D2B9-4D63-9BA3-1E7C24C5BF7A", Serializable, HideInInspector)
 	TString name;
 
-	GFIELD("C3F6A7D1-9E23-48B7-A452-6D1F2E8C9A5B", Serializable)
+	GFIELD("C3F6A7D1-9E23-48B7-A452-6D1F2E8C9A5B", Serializable, PrettyName("Size"))
 	Size size = Size::zero;
 
-	GFIELD("7ED6B38E-FD0C-4507-BFFF-7A81149F92E4", Serializable)
+	GFIELD("7ED6B38E-FD0C-4507-BFFF-7A81149F92E4", Serializable, PrettyName("Depth"))
 	uint32_t depth = 1;
 
-	GFIELD("8B9D2F4C-E75A-4C63-8D91-F2B7A9E3D1C6", Serializable)
+	GFIELD("8B9D2F4C-E75A-4C63-8D91-F2B7A9E3D1C6", Serializable, PrettyName("Format"))
 	TextureFormat format = TextureFormat::R8G8B8A8_UNorm;
 
-	GFIELD("E6D2C8B5-A793-4F61-B8E2-D7A9C5F4E3B1", Serializable)
+	GFIELD("E6D2C8B5-A793-4F61-B8E2-D7A9C5F4E3B1", Serializable, HideInInspector)
 	EnumFlag<TextureUsage> usage = TextureUsage::Sampled;
 
-	GFIELD("1F8E7D6C-B5A4-4F32-9E1D-C8B7A6F5E4D3", Serializable)
+	GFIELD("1F8E7D6C-B5A4-4F32-9E1D-C8B7A6F5E4D3", Serializable, PrettyName("Dimension"))
 	TextureDimension dimension = TextureDimension::Texture2D;
 
-	GFIELD("3C7B6A5D-E9F8-4A21-B7C6-D5E4F3A2C1B9", Serializable)
+	GFIELD("3C7B6A5D-E9F8-4A21-B7C6-D5E4F3A2C1B9", Serializable, PrettyName("Mip Maps"))
 	bool useMipMap = false;
 
 	bool operator==(const TextureDescriptor& other) const
@@ -76,23 +76,23 @@ GSTRUCT(TextureSubresourceDescriptor, "68681A89-F448-47D1-814B-192D5D02EC25", Se
 GSTRUCT(Texture2DDescriptor, "CC19ED9A-2B9F-4258-B0E5-1F0EB34373A1", Serializable)
 	: TextureDescriptor
 {
-	GFIELD("6249AAAA-68B3-4F80-9400-33ECB6455F98", Serializable)
+	GFIELD("6249AAAA-68B3-4F80-9400-33ECB6455F98", Serializable, HideInInspector)
 	TArray<TextureSubresourceDescriptor> subresources;
 };
 
 GSTRUCT(RenderTextureDescriptor, "7B6A5D4C-3E2F-4180-9D8C-7B6A5D4C3E2F", Serializable)
 	: TextureDescriptor
 {
-	GFIELD("8C7B6A5D-4E3F-4291-AE8D-8C7B6A5D4E3F", Serializable)
+	GFIELD("8C7B6A5D-4E3F-4291-AE8D-8C7B6A5D4E3F", Serializable, PrettyName("Clear Color"))
 	Color clearColor = Color::clear;
 
-	GFIELD("9D8C7B6A-5E4F-43A2-BF9E-9D8C7B6A5E4F", Serializable)
+	GFIELD("9D8C7B6A-5E4F-43A2-BF9E-9D8C7B6A5E4F", Serializable, PrettyName("Clear Stencil"))
 	uint32_t clearStencil = 0u;
 
-	GFIELD("AE9D8C7B-6F5E-44B3-C0AF-AE9D8C7B6F5E", Serializable)
+	GFIELD("AE9D8C7B-6F5E-44B3-C0AF-AE9D8C7B6F5E", Serializable, PrettyName("Clear Depth"))
 	float clearDepth = 1.0f;
 
-	GFIELD("BFA0E9D8-7C6F-45C4-D1B0-BFA0E9D87C6F", Serializable)
+	GFIELD("BFA0E9D8-7C6F-45C4-D1B0-BFA0E9D87C6F", Serializable, PrettyName("Clear Buffer"))
 	bool clearBuffer = false;
 
 	RenderTextureDescriptor()

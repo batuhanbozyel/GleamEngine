@@ -12,6 +12,10 @@ RenderTexture::RenderTexture(const AssetReference& reference, const AssetHeader&
 	: Asset(reference, header)
 	, mDescriptor(descriptor)
 {
+	if (mDescriptor.name.empty())
+	{
+		mDescriptor.name = header.name;
+	}
 	CreateTexture();
 }
 
@@ -37,10 +41,5 @@ void RenderTexture::Resize(const Size& size)
 void RenderTexture::CreateTexture()
 {
 	static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
-
-	// A camera renders into it and materials sample it, regardless of the serialized usage
-	TextureDescriptor descriptor = mDescriptor;
-	descriptor.name = GetName();
-	descriptor.usage = TextureUsage::Sampled | TextureUsage::Attachment;
-	mTexture = renderSystem->GetDevice()->CreateTexture(renderSystem->GetAllocator(), descriptor);
+	mTexture = renderSystem->GetDevice()->CreateTexture(renderSystem->GetAllocator(), mDescriptor);
 }
