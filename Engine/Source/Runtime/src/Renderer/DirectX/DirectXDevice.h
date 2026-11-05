@@ -36,7 +36,7 @@ class DirectXDevice final : public GraphicsDevice
 
 public:
 
-	DirectXDevice(RenderSurface* surface, ResourceReleaseQueue* releaseQueue);
+	DirectXDevice(Swapchain* surface, ResourceReleaseQueue* releaseQueue);
 
     ~DirectXDevice();
 

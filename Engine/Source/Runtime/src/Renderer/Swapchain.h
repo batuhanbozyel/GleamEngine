@@ -4,11 +4,15 @@
 
 namespace Gleam {
 
+class CommandBuffer;
+
 class Swapchain : public RenderSurface
 {
 public:
 
 	virtual ~Swapchain() = default;
+
+	virtual void Present(const CommandBuffer* cmd) = 0;
 
 	virtual const Texture& AcquireNextDrawable() = 0;
 

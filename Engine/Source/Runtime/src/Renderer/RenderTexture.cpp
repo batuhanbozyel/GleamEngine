@@ -10,13 +10,14 @@ using namespace Gleam;
 
 RenderTexture::RenderTexture(const AssetReference& reference, const AssetHeader& header, const RenderTextureDescriptor& descriptor)
 	: Asset(reference, header)
-	, mDescriptor(descriptor)
+	, mClearColor(descriptor.clearColor)
+	, mClearBuffer(descriptor.clearBuffer)
 {
-	if (mDescriptor.name.empty())
-	{
-		mDescriptor.name = header.name;
-	}
-	CreateTexture();
+	static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
+
+	TextureDescriptor textureDescriptor = descriptor;
+	textureDescriptor.name = "RenderTexture: " + (descriptor.name.empty() ? header.name : descriptor.name);
+	mTexture = renderSystem->GetDevice()->CreateTexture(renderSystem->GetAllocator(), textureDescriptor);
 }
 
 RenderTexture::~RenderTexture()
@@ -25,21 +26,17 @@ RenderTexture::~RenderTexture()
 	renderSystem->GetDevice()->Dispose(renderSystem->GetAllocator(), mTexture, BarrierStage::None);
 }
 
-void RenderTexture::Resize(const Size& size)
+void RenderTexture::Resize(GraphicsDevice* device, const Size& size)
 {
-	if (mDescriptor.size == size)
+	if (mTexture.GetDescriptor().size == size)
 	{
 		return;
 	}
 
 	static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
-	renderSystem->GetDevice()->Dispose(renderSystem->GetAllocator(), mTexture, BarrierStage::None);
-	mDescriptor.size = size;
-	CreateTexture();
-}
+	device->Dispose(renderSystem->GetAllocator(), mTexture, BarrierStage::None);
 
-void RenderTexture::CreateTexture()
-{
-	static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
-	mTexture = renderSystem->GetDevice()->CreateTexture(renderSystem->GetAllocator(), mDescriptor);
+	TextureDescriptor descriptor = mTexture.GetDescriptor();
+	descriptor.size = size;
+	mTexture = device->CreateTexture(renderSystem->GetAllocator(), descriptor);
 }

@@ -4,7 +4,7 @@
 namespace Gleam {
 
 class GPUAllocator;
-class RenderSurface;
+class Swapchain;
 class CommandBuffer;
 class GraphicsDevice;
 
@@ -23,7 +23,7 @@ struct RenderGraphContext
 {
 	GPUAllocator* allocator = nullptr;
 	GraphicsDevice* device = nullptr;
-	RenderSurface* surface = nullptr;
+	Swapchain* surface = nullptr;
 };
 
 class RenderGraph final

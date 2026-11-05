@@ -19,7 +19,7 @@ static_assert(sizeof(ImDrawIdx) == sizeof(uint16_t), "ImGui index type does not 
 void ImGuiRenderer::OnCreate(const RenderContext& context)
 {
 	mReleaseQueue = context.releaseQueue;
-	mSurface = static_cast<Swapchain*>(context.surface);
+	mSurface = context.surface;
     
 	IMGUI_CHECKVERSION();
     ImGui::CreateContext();

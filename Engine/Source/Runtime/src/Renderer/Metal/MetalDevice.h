@@ -67,7 +67,7 @@ class MetalDevice final : public GraphicsDevice
 	friend class GraphicsDevice;
 public:
     
-    MetalDevice(RenderSurface* surface, ResourceReleaseQueue* releaseQueue);
+    MetalDevice(Swapchain* surface, ResourceReleaseQueue* releaseQueue);
     
     ~MetalDevice();
     

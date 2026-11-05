@@ -1,11 +1,6 @@
 #pragma once
 #include "Core/Subsystem.h"
-#include "Math/Size.h"
-#include "World/Entity.h"
-#include "Shaders/ShaderTypes.h"
-#include "MeshDrawList.h"
 #include "RenderPipeline.h"
-#include "Assets/AssetReference.h"
 
 namespace Gleam {
 
@@ -16,7 +11,6 @@ class IRenderer;
 class RenderGraph;
 class GPUAllocator;
 class CommandBuffer;
-class RenderSurface;
 class SceneView;
 class GraphicsDevice;
 class RayTracingScene;
@@ -53,9 +47,9 @@ public:
     
     const GraphicsDevice* GetDevice() const;
 
-	RenderSurface* GetSurface();
+	Swapchain* GetSurface();
 
-	const RenderSurface* GetSurface() const;
+	const Swapchain* GetSurface() const;
 
 	CopyCommandBuffer* GetCopyCommandBuffer();
 
@@ -99,6 +93,8 @@ public:
 
 	RenderContext GetRenderContext() const;
 
+	AssetReference GetDefaultRenderPipeline() const;
+
 	void RegisterShadingPipelines(const Material* material);
     
 private:
@@ -107,8 +103,7 @@ private:
 
 	SkyAtmosphereRenderData SetupSkyAtmosphereRenderData(const Entity& entity);
 
-	// Render order: target views, then swapchain views, each by ascending camera priority
-	TArray<SceneView*> GatherViews(const World* world);
+	TArray<SceneView*> GatherViews(const World* world, const RenderSceneProxy* sceneProxy);
 
 	void AddSceneTargetPass(RenderGraph& graph, SceneRenderingData& sceneData, const Size& resolution) const;
 
@@ -131,7 +126,6 @@ private:
 	Size mSwapchainSize = {};
 
 	EntityHandle mSkyAtmosphereEntity = InvalidEntity;
-
 
 	struct RendererAllocation
 	{

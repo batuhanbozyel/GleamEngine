@@ -25,7 +25,7 @@ class World;
 class Material;
 class SceneView;
 class RenderSystem;
-class RenderSurface;
+class Swapchain;
 class RenderPipeline;
 class GraphicsDevice;
 class RenderSceneProxy;
@@ -37,7 +37,7 @@ struct RenderContext
 	ResourceReleaseQueue* releaseQueue = nullptr;
 	GPUAllocator* allocator = nullptr;
 	GraphicsDevice* device = nullptr;
-	RenderSurface* surface = nullptr;
+	Swapchain* surface = nullptr;
 };
 
 struct CameraRenderData

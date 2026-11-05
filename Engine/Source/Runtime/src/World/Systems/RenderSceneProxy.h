@@ -18,6 +18,7 @@ class MaterialInstance;
 class RenderPipeline;
 class CommandBuffer;
 class GPUAllocator;
+class SceneView;
 struct MeshRenderer;
 struct Camera;
 struct Transform;
@@ -61,6 +62,16 @@ struct MeshEntityRecord
 	uint32_t lod = 0;
 };
 
+struct SceneViewList
+{
+	TArray<SceneView*> targetViews;
+	TArray<SceneView*> swapchainViews;
+
+	void Insert(SceneView* view);
+
+	void Remove(SceneView* view);
+};
+
 class RenderSceneProxy : public WorldSubsystem
 {
     using BatchFn = std::function<void(const MeshBatch&)>;
@@ -71,7 +82,7 @@ public:
     
 	virtual void Initialize(World* world) override;
 
-	void Update(const World* world, EntityHandle camera);
+	void Update(const World* world);
 
 	void BuildInstanceBuffer(const CommandBuffer* cmd, GPUAllocator* allocator);
 
@@ -127,6 +138,16 @@ public:
 		return mRecords;
 	}
 
+	const SceneViewList& GetViews() const
+	{
+		return mViews;
+	}
+
+	EntityHandle GetMainCamera() const
+	{
+		return mMainCamera;
+	}
+
 private:
 
 	void BuildRecord(const EntityManager& entityManager, EntityHandle entity, const MeshRenderer& meshRenderer);
@@ -158,6 +179,8 @@ private:
 
 	const World* mWorld = nullptr;
 	ComponentCallback mCameraRemoved;
+	SceneViewList mViews;
+	EntityHandle mMainCamera = InvalidEntity;
 
 };
 

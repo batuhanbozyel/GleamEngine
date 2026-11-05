@@ -8,6 +8,7 @@
 
 #include "World/World.h"
 #include "World/EntityManager.h"
+#include "World/Systems/CameraSystem.h"
 
 #include "Renderer/Mesh.h"
 #include "Renderer/SceneView.h"
@@ -83,6 +84,22 @@ static uint32_t SelectMeshLod(Mesh* mesh, float screenCoverage)
 
 	mesh->RequestLod(lod);
 	return lod;
+}
+
+void SceneViewList::Insert(SceneView* view)
+{
+	auto& views = view->GetRenderTexture() ? targetViews : swapchainViews;
+	const auto it = eastl::upper_bound(views.begin(), views.end(), view, [](const SceneView* lhs, const SceneView* rhs)
+	{
+		return lhs->GetPriority() < rhs->GetPriority();
+	});
+	views.insert(it, view);
+}
+
+void SceneViewList::Remove(SceneView* view)
+{
+	targetViews.erase_first(view);
+	swapchainViews.erase_first(view);
 }
 
 void RenderSceneProxy::Initialize(World* world)
@@ -241,7 +258,7 @@ void RenderSceneProxy::RemoveRecord(EntityHandle entity)
 	}
 }
 
-void RenderSceneProxy::Update(const World* world, EntityHandle camera)
+void RenderSceneProxy::Update(const World* world)
 {
 	static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
 
@@ -254,16 +271,46 @@ void RenderSceneProxy::Update(const World* world, EntityHandle camera)
 
 	entityManager.ForEachChanged<Camera>(since, [this](EntityHandle entity, const Camera& component)
 	{
-		renderSystem->AcquireSceneView(mWorld, entity);
+		auto view = renderSystem->AcquireSceneView(mWorld, entity);
+		mViews.Remove(view);
+		mViews.Insert(view);
 	});
 	mChangeCursor.Commit();
 
-	const auto& cameraComponent = entityManager.GetComponent<Camera>(camera);
-	Float3 cameraPosition = entityManager.GetComponent<Entity>(camera).GetWorldPosition();
+	mMainCamera = InvalidEntity;
+	const auto cameraSystem = world->GetSystem<CameraSystem>();
+	if (cameraSystem->Enabled)
+	{
+		mMainCamera = cameraSystem->GetMainCamera(entityManager);
+	}
+	else
+	{
+		// When the CameraSystem is disabled, the highest-priority camera is treated as the main camera
+		const auto it = eastl::find_if(mViews.targetViews.rbegin(), mViews.targetViews.rend(), [&entityManager](const SceneView* view)
+		{
+			return entityManager.GetComponent<Entity>(view->GetCameraEntity()).IsActive();
+		});
+		if (it != mViews.targetViews.rend())
+		{
+			mMainCamera = (*it)->GetCameraEntity();
+		}
+	}
 
-	// An empty viewport rect still needs a valid projection to pick LODs with
-	const auto resolution = renderSystem->GetSceneView(mWorld, camera)->GetResolution();
-	const float aspectRatio = resolution.width >= 1.0f and resolution.height >= 1.0f ? resolution.width / resolution.height : 1.0f;
+	if (mMainCamera == InvalidEntity)
+	{
+		return;
+	}
+
+	const auto& cameraComponent = entityManager.GetComponent<Camera>(mMainCamera);
+	Float3 cameraPosition = entityManager.GetComponent<Entity>(mMainCamera).GetWorldPosition();
+
+	const auto resolution = renderSystem->GetSceneView(mWorld, mMainCamera)->GetResolution();
+	if (resolution.width < 1.0f or resolution.height < 1.0f)
+	{
+		return;
+	}
+
+	const float aspectRatio = resolution.width / resolution.height;
 	const auto projection = cameraComponent.GetProjectionMatrix(aspectRatio);
 
 	for (auto& record : mRecords)
@@ -415,6 +462,8 @@ void RenderSceneProxy::Shutdown(World* world)
 	mBatchLookup.clear();
 
 	mCameraRemoved.Reset();
+	mViews = {};
+	mMainCamera = InvalidEntity;
 	static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
 	renderSystem->ReleaseSceneViews(world);
 }
@@ -422,6 +471,10 @@ void RenderSceneProxy::Shutdown(World* world)
 void RenderSceneProxy::OnCameraRemoved(EntityHandle entity)
 {
 	static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
+	if (auto view = renderSystem->GetSceneView(mWorld, entity))
+	{
+		mViews.Remove(view);
+	}
 	renderSystem->ReleaseSceneView(mWorld, entity);
 }
 

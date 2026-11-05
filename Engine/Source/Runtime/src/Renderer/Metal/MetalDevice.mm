@@ -1314,7 +1314,7 @@ void GraphicsDevice::Dispose(MeshPipeline& pipeline)
     pipeline.mHandle = nil;
 }
 
-MetalDevice::MetalDevice(RenderSurface* surface, ResourceReleaseQueue* releaseQueue)
+MetalDevice::MetalDevice(Swapchain* surface, ResourceReleaseQueue* releaseQueue)
     : GraphicsDevice(surface, releaseQueue)
 {
     // init MTLDevice

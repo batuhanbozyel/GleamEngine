@@ -877,7 +877,7 @@ void GraphicsDevice::Dispose(MeshPipeline& pipeline)
 	pipeline.mHandle = nullptr;
 }
 
-DirectXDevice::DirectXDevice(RenderSurface* surface, ResourceReleaseQueue* releaseQueue)
+DirectXDevice::DirectXDevice(Swapchain* surface, ResourceReleaseQueue* releaseQueue)
 	: GraphicsDevice(surface, releaseQueue)
 {
 	auto swapchain = static_cast<DirectXSwapchain*>(mSurface);

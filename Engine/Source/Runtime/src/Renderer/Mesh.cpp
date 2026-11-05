@@ -65,7 +65,7 @@ void Mesh::RequestLod(uint32_t lod)
 		}
 
 		BufferDescriptor bufferDesc;
-		bufferDesc.name = "Mesh: " + mDescriptor.name;
+		bufferDesc.name = "Mesh: " + (mDescriptor.name.empty() ? GetHeader().name : mDescriptor.name);
 		bufferDesc.size = blob->range.size;
 		lodData = renderSystem->GetDevice()->CreateBuffer(renderSystem->GetAllocator(), bufferDesc);
 

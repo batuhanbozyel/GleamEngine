@@ -36,15 +36,10 @@ class SceneView final
 
 public:
 
-	SceneView(const World* world, EntityHandle camera, const RenderSurface* surface)
-		: world(world)
-		, camera(camera)
-		, mSurface(surface)
-	{
+	SceneView(const RenderSurface* surface, const World* world, EntityHandle camera);
 
-	}
+	~SceneView();
 
-	// The view's region of its output in pixels, from the camera's viewport rect
 	Rect GetRect() const;
 
 	Size GetResolution() const;
@@ -82,30 +77,49 @@ public:
 		return mRenderers;
 	}
 
-	void ReleaseHistory(GraphicsDevice* device, GPUAllocator* allocator)
+	int32_t GetPriority() const
 	{
-		for (auto& [_, entry] : mHistories)
-		{
-			entry.release(entry.data, device, allocator);
-		}
-		mHistories.clear();
-		historyValid = false;
+		return mPriority;
 	}
 
-	const World* world = nullptr;
-	EntityHandle camera = InvalidEntity;
-	AssetReference pipelineReference;
-	RenderPipeline* pipeline = nullptr;
-	AssetReference targetReference;
-	RenderTexture* target = nullptr;
+	const World* GetWorld() const
+	{
+		return mWorld;
+	}
+
+	const RenderPipeline* GetRenderPipeline() const
+	{
+		return mRenderPipeline;
+	}
+
+	const RenderTexture* GetRenderTexture() const
+	{
+		return mRenderTexture;
+	}
+
+	EntityHandle GetCameraEntity() const
+	{
+		return mCamera;
+	}
+
+	void ReleaseHistory(GraphicsDevice* device, GPUAllocator* allocator);
+
+	bool ShouldRender() const;
+	
 	float4x4 prevViewMatrix = {};
 	float4x4 prevViewProjectionMatrix = {};
 	bool historyValid = false;
 
 private:
 
-	// Output of views without a target texture
+	const World* mWorld = nullptr;
 	const RenderSurface* mSurface = nullptr;
+
+	RenderPipeline* mRenderPipeline = nullptr;
+	RenderTexture* mRenderTexture = nullptr;
+
+	int32_t mPriority = 0;
+	EntityHandle mCamera = InvalidEntity;
 
 	HashMap<uint32_t, HistoryEntry> mHistories;
 

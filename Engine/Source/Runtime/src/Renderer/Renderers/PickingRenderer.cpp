@@ -13,7 +13,7 @@ using namespace Gleam;
 
 void PickingRenderer::OnCreate(const RenderContext& context)
 {
-	mSwapchain = static_cast<Swapchain*>(context.surface);
+	mSwapchain = context.surface;
 	
 	ComputePipelineStateDescriptor pipelineDesc;
 	pipelineDesc.entryPoint = "visibilityPickingShader";

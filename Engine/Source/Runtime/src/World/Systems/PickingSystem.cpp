@@ -191,7 +191,7 @@ void PickingSystem::Resolve(uint32_t frameIndex)
 uint32_t PickingSystem::GetFramesInFlight() const
 {
 	static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
-	return static_cast<const Swapchain*>(renderSystem->GetSurface())->GetFramesInFlight();
+	return renderSystem->GetSurface()->GetFramesInFlight();
 }
 
 PickingSystem::PendingPick* PickingSystem::AcquirePendingPick(uint32_t slot)

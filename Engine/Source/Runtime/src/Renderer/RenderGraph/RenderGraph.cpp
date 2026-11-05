@@ -294,7 +294,7 @@ void RenderGraph::AllocatePassResources(RenderGraphPassNode* pass, const Command
 		auto& resource = pass->textureWrites[i];
 		if (resource == mBackbuffer)
 		{
-			resource.node->texture = static_cast<Swapchain*>(mContext.surface)->AcquireNextDrawable();
+			resource.node->texture = mContext.surface->AcquireNextDrawable();
 			resource.node->barrierState = {};
 		}
 	}
@@ -610,7 +610,7 @@ TextureHandle RenderGraph::ImportTexture(const Texture& texture, const ImportRes
 
 TextureHandle RenderGraph::ImportBackbuffer(const ImportResourceParams& params)
 {
-	mBackbuffer = ImportTexture(static_cast<Swapchain*>(mContext.surface)->GetCurrentDrawable(), params);
+	mBackbuffer = ImportTexture(mContext.surface->GetCurrentDrawable(), params);
 	return mBackbuffer;
 }
 

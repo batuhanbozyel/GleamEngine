@@ -24,7 +24,7 @@
 #include "Renderer/RenderPipeline.h"
 #include "Renderer/SceneView.h"
 #include "Renderer/RenderTexture.h"
-#include "Renderer/RenderSurface.h"
+#include "Renderer/Swapchain.h"
 #include "Assets/AssetManager.h"
 #include "World/Systems/PickingSystem.h"
 #include "World/Systems/RenderSceneProxy.h"
@@ -313,7 +313,7 @@ void WorldViewport::OnDestroy(Gleam::Application* app)
 const Gleam::RenderPipeline* WorldViewport::GetViewedRenderPipeline() const
 {
 	auto renderSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::RenderSystem>();
-	return renderSystem->GetSceneView(mEditWorld, mCamera)->pipeline;
+	return renderSystem->GetSceneView(mEditWorld, mCamera)->GetRenderPipeline();
 }
 
 void WorldViewport::Update()
@@ -699,7 +699,7 @@ void WorldViewport::DrawRenderSettingsPopup()
 	PropertyDrawer::DrawField(&mEditWorld->GetEntityManager().GetComponent<Gleam::Camera>(mCamera), *pipelineField, 96.0f);
 
 	const auto pipeline = GetViewedRenderPipeline();
-	if (auto pathTracer = pipeline ? pipeline->GetRenderer<Gleam::PathTracer>() : nullptr)
+	if (auto pathTracer = pipeline->GetRenderer<Gleam::PathTracer>())
 	{
 		auto settings = pathTracer->GetSettings();
 		PropertyDrawer::DrawClassFields(&settings, Gleam::Reflection::GetClass<Gleam::PathTracerSettings>(), 96.0f);
@@ -728,7 +728,7 @@ void WorldViewport::DrawStats(const Gleam::Float2& contentMin, const Gleam::Floa
 	constexpr float kLineGap = 2.0f;
 
 	const auto pipeline = GetViewedRenderPipeline();
-	const char* pathName = pipeline ? pipeline->GetName().c_str() : "None";
+	const char* pathName = pipeline->GetName().c_str();
 
 	char pipelineText[64] = {};
 	std::snprintf(pipelineText, sizeof(pipelineText), "%s \xC2\xB7 %s", kBackendName, pathName);
@@ -760,17 +760,6 @@ void WorldViewport::DrawViewport(Gleam::ImGuiRenderer* imgui)
 		mViewportSize.width = viewportSize.x;
 		mViewportSize.height = viewportSize.y;
 		mViewportSizeChanged = true;
-	}
-
-	// Without a pipeline the editor camera never renders, so its target is never written
-	if (GetViewedRenderPipeline() == nullptr)
-	{
-		constexpr const char* kNoPipelineText = "No render pipeline";
-		const ImVec2 textSize = ImGui::CalcTextSize(kNoPipelineText);
-		const ImVec2 cursor = ImGui::GetCursorPos();
-		ImGui::SetCursorPos(ImVec2(cursor.x + (viewportSize.x - textSize.x) * 0.5f, cursor.y + (viewportSize.y - textSize.y) * 0.5f));
-		ImGui::TextDisabled("%s", kNoPipelineText);
-		return;
 	}
 
 	const auto& sceneRTsize = mCameraTarget->GetTexture().GetDescriptor().size;
@@ -1082,8 +1071,9 @@ void WorldViewport::Resize(const Gleam::Size& size)
 	mViewportWorld = mWorldManager->GetPlayWorld();
 
 	auto windowSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::WindowSystem>();
+	static auto renderSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::RenderSystem>();
 	const auto resolution = GetRenderResolution(mViewportSize * windowSystem->GetDisplayScale());
-	mCameraTarget->Resize(resolution);
+	mCameraTarget->Resize(renderSystem->GetDevice(), resolution);
 }
 
 float WorldViewport::GetCameraAspectRatio() const

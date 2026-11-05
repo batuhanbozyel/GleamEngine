@@ -25,7 +25,9 @@ Texture2D::Texture2D(const AssetReference& reference, const AssetHeader& header,
 	static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
 	static auto assetManager = Globals::GameInstance->GetSubsystem<AssetManager>();
 
-	mTexture = renderSystem->GetDevice()->CreateTexture(renderSystem->GetAllocator(), descriptor);
+	TextureDescriptor textureDescriptor = descriptor;
+	textureDescriptor.name = "Texture2D: " + (descriptor.name.empty() ? header.name : descriptor.name);
+	mTexture = renderSystem->GetDevice()->CreateTexture(renderSystem->GetAllocator(), textureDescriptor);
 
 	auto storage = assetManager->GetStorage();
 	auto cmd = renderSystem->GetCopyCommandBuffer();

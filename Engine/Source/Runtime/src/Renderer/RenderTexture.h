@@ -1,11 +1,12 @@
 #pragma once
 #include "Texture.h"
 #include "TextureDescriptor.h"
+#include "RenderSurface.h"
 #include "Assets/Asset.h"
 
 namespace Gleam {
 
-class RenderTexture final : public Asset
+class RenderTexture final : public Asset, public RenderSurface
 {
 public:
 
@@ -13,11 +14,16 @@ public:
 
 	~RenderTexture();
 
-	void Resize(const Size& size);
+	virtual void Resize(GraphicsDevice* device, const Size& size) override;
 
-	const RenderTextureDescriptor& GetDescriptor() const
+	virtual TextureFormat GetFormat() const override
 	{
-		return mDescriptor;
+		return mTexture.GetDescriptor().format;
+	}
+
+	virtual const Size& GetSize() const override
+	{
+		return mTexture.GetDescriptor().size;
 	}
 
 	const Texture& GetTexture() const
@@ -25,13 +31,22 @@ public:
 		return mTexture;
 	}
 
+	const Color& GetClearColor() const
+	{
+		return mClearColor;
+	}
+
+	bool ShouldClear() const
+	{
+		return mClearBuffer;
+	}
+
 private:
 
-	void CreateTexture();
-
-	RenderTextureDescriptor mDescriptor;
-
 	Texture mTexture;
+
+	Color mClearColor = Color::clear;
+	bool mClearBuffer = false;
 
 };
 

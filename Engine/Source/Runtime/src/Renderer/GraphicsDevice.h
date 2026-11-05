@@ -8,6 +8,7 @@
 
 namespace Gleam {
 
+class Swapchain;
 class RenderSystem;
 struct Version;
 
@@ -25,7 +26,7 @@ public:
 
     GLEAM_NONCOPYABLE(GraphicsDevice);
 
-    GraphicsDevice(RenderSurface* surface, ResourceReleaseQueue* releaseQueue);
+    GraphicsDevice(Swapchain* surface, ResourceReleaseQueue* releaseQueue);
 
     virtual ~GraphicsDevice() = default;
 
@@ -105,7 +106,7 @@ protected:
 
 	HashMap<MeshPipelineHandle, MeshPipeline> mMeshPipelineCache;
 
-	RenderSurface* mSurface = nullptr;
+	Swapchain* mSurface = nullptr;
 
 	ResourceReleaseQueue* mReleaseQueue = nullptr;
 

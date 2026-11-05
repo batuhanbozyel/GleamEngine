@@ -18,8 +18,6 @@
 #include "RenderGraph/RenderGraph.h"
 #include "RenderGraph/RenderGraphBlackboard.h"
 
-#include <EASTL/sort.h>
-
 #include "Renderers/PathTracer.h"
 #include "Renderers/BRDFRenderer.h"
 #include "Renderers/DepthPrepass.h"
@@ -164,7 +162,18 @@ void RenderSystem::Render(const World* world)
 		auto& frameData = frameBlackboard.Add<SceneRenderingData>();
 		frameData.backbuffer = graph.ImportBackbuffer({ .clearColor = Color::black, .clearOnFirstUse = true });
 
-		const auto views = GatherViews(world);
+		RenderSceneProxy* sceneProxy = nullptr;
+		TArray<SceneView*> views;
+		if (world)
+		{
+			sceneProxy = world->GetSubsystem<RenderSceneProxy>();
+			sceneProxy->Update(world);
+
+			views = GatherViews(world, sceneProxy);
+
+			frameData.sceneProxy = sceneProxy;
+			frameData.world = world;
+		}
 
 		struct ViewRenderData
 		{
@@ -175,14 +184,9 @@ void RenderSystem::Render(const World* world)
 		TArray<ViewRenderData> viewData;
 		viewData.reserve(views.size());
 
-		RenderSceneProxy* sceneProxy = nullptr;
-		if (not views.empty())
+		if (world and not views.empty())
 		{
 			const auto& entityManager = world->GetEntityManager();
-			sceneProxy = world->GetSubsystem<RenderSceneProxy>();
-			frameData.sceneProxy = sceneProxy;
-			frameData.world = world;
-
 			Entity atmosphereEntity = mSkyAtmosphereEntity != InvalidEntity ? entityManager.GetComponent<Entity>(mSkyAtmosphereEntity) : Entity();
 			frameData.atmosphere = SetupSkyAtmosphereRenderData(atmosphereEntity);
 			GetSharedRenderer<SkyAtmosphereLutRenderer>()->AddRenderPasses(graph, frameBlackboard);
@@ -190,7 +194,7 @@ void RenderSystem::Render(const World* world)
 			RendererList sharedRenderers;
 			for (auto view : views)
 			{
-				for (const auto& entry : view->pipeline->GetRenderers())
+				for (const auto& entry : view->GetRenderPipeline()->GetRenderers())
 				{
 					const bool added = eastl::any_of(sharedRenderers.begin(), sharedRenderers.end(), [&entry](const auto& shared)
 					{
@@ -217,16 +221,16 @@ void RenderSystem::Render(const World* world)
 
 				auto& sceneData = data.blackboard.Get<SceneRenderingData>();
 				sceneData.view = view;
-				if (view->target)
+				if (view->GetRenderTexture())
 				{
 					auto target = eastl::find_if(targets.begin(), targets.end(), [view](const auto& entry)
 					{
-						return entry.first == view->target;
+						return entry.first == view->GetRenderTexture();
 					});
 					if (target == targets.end())
 					{
-						const auto& targetDesc = view->target->GetDescriptor();
-						targets.emplace_back(view->target, graph.ImportTexture(view->target->GetTexture(), { .clearColor = targetDesc.clearColor, .finalLayout = BarrierLayout::ShaderResource, .clearOnFirstUse = targetDesc.clearBuffer }));
+						const auto renderTexture = view->GetRenderTexture();
+						targets.emplace_back(renderTexture, graph.ImportTexture(renderTexture->GetTexture(), { .clearColor = renderTexture->GetClearColor(), .finalLayout = BarrierLayout::ShaderResource, .clearOnFirstUse = renderTexture->ShouldClear() }));
 						target = targets.end() - 1;
 					}
 					sceneData.backbuffer = target->second;
@@ -236,7 +240,7 @@ void RenderSystem::Render(const World* world)
 				const Size resolution = sceneData.viewport.size;
 				AddSceneTargetPass(graph, sceneData, resolution);
 
-				const auto& cameraEntity = entityManager.GetComponent<Entity>(view->camera);
+				const auto& cameraEntity = entityManager.GetComponent<Entity>(view->GetCameraEntity());
 				sceneData.camera = SetupCameraRenderData(cameraEntity, *view, resolution);
 				if (not view->historyValid)
 				{
@@ -249,7 +253,7 @@ void RenderSystem::Render(const World* world)
 
 				// Pipeline renderers go in first, so attached renderers of the same stage run after them
 				RendererList renderers;
-				for (const auto& entry : view->pipeline->GetRenderers())
+				for (const auto& entry : view->GetRenderPipeline()->GetRenderers())
 				{
 					if (not IsSharedRenderer(entry.renderer))
 					{
@@ -263,9 +267,9 @@ void RenderSystem::Render(const World* world)
 				}
 
 				// Later views may sample this target, so it is transitioned once its last writer is done
-				const bool lastWriter = view->target and eastl::none_of(views.begin() + viewIndex + 1, views.end(), [view](const SceneView* other)
+				const bool lastWriter = view->GetRenderTexture() and eastl::none_of(views.begin() + viewIndex + 1, views.end(), [view](const SceneView* other)
 				{
-					return other->target == view->target;
+					return other->GetRenderTexture() == view->GetRenderTexture();
 				});
 				if (lastWriter)
 				{
@@ -351,7 +355,7 @@ void RenderSystem::ApplyGraphicsSettings(const GraphicsSettings& settings)
 
 	for (auto view : mSceneViews)
 	{
-		AcquireSceneView(view->world, view->camera);
+		AcquireSceneView(view->GetWorld(), view->GetCameraEntity());
 	}
 }
 
@@ -390,72 +394,29 @@ bool RenderSystem::IsSharedRenderer(const IRenderer* renderer) const
 	});
 }
 
-TArray<SceneView*> RenderSystem::GatherViews(const World* world)
+TArray<SceneView*> RenderSystem::GatherViews(const World* world, const RenderSceneProxy* sceneProxy)
 {
 	TArray<SceneView*> views;
-	if (world == nullptr)
+	if (sceneProxy->GetMainCamera() == InvalidEntity)
 	{
 		return views;
 	}
 
-	const auto& entityManager = world->GetEntityManager();
-	const auto cameraSystem = world->GetSystem<CameraSystem>();
-	const EntityHandle mainCamera = cameraSystem->Enabled ? cameraSystem->GetMainCamera(entityManager) : InvalidEntity;
-
-	// Swapchain cameras only render while CameraSystem runs, so the edit world never draws to the screen
-	TArray<EntityHandle> targetCameras;
-	TArray<EntityHandle> swapchainCameras;
-	entityManager.ForEach<Entity, Camera>([&](const Entity& entity, const Camera& component)
+	const auto& sceneViews = sceneProxy->GetViews();
+	for (auto view : sceneViews.targetViews)
 	{
-		if (entity.IsActive() == false)
+		if (view->GetRenderTexture() and view->ShouldRender())
 		{
-			return;
-		}
-
-		if (component.targetTexture.guid != Guid::InvalidGuid())
-		{
-			targetCameras.push_back(entity);
-		}
-		else if (cameraSystem->Enabled)
-		{
-			swapchainCameras.push_back(entity);
-		}
-	});
-
-	const auto byPriority = [&entityManager](EntityHandle lhs, EntityHandle rhs)
-	{
-		return entityManager.GetComponent<Camera>(lhs).priority < entityManager.GetComponent<Camera>(rhs).priority;
-	};
-	eastl::stable_sort(targetCameras.begin(), targetCameras.end(), byPriority);
-	eastl::stable_sort(swapchainCameras.begin(), swapchainCameras.end(), byPriority);
-
-	// LOD follows the Main view, or the highest-priority target view when there is none
-	const EntityHandle lodCamera = mainCamera != InvalidEntity ? mainCamera : (targetCameras.empty() ? InvalidEntity : targetCameras.back());
-	if (lodCamera == InvalidEntity)
-	{
-		return views;
-	}
-	world->GetSubsystem<RenderSceneProxy>()->Update(world, lodCamera);
-
-	for (auto camera : targetCameras)
-	{
-		auto view = GetSceneView(world, camera);
-		if (view->target and view->pipeline)
-		{
-			auto resolution = view->GetResolution();
-			if (resolution.width >= 1.0f and resolution.height >= 1.0f)
-			{
-				views.push_back(view);
-			}
+			views.push_back(view);
 		}
 	}
-	for (auto camera : swapchainCameras)
+
+	// Swapchain cameras only render while CameraSystem runs
+	if (world->GetSystem<CameraSystem>()->Enabled)
 	{
-		auto view = GetSceneView(world, camera);
-		if (view->pipeline)
+		for (auto view : sceneViews.swapchainViews)
 		{
-			auto resolution = view->GetResolution();
-			if (resolution.width >= 1.0f and resolution.height >= 1.0f)
+			if (view->ShouldRender())
 			{
 				views.push_back(view);
 			}
@@ -586,12 +547,12 @@ const GraphicsDevice* RenderSystem::GetDevice() const
     return mDevice;
 }
 
-RenderSurface* RenderSystem::GetSurface()
+Swapchain* RenderSystem::GetSurface()
 {
 	return mSwapchain;
 }
 
-const RenderSurface* RenderSystem::GetSurface() const
+const Swapchain* RenderSystem::GetSurface() const
 {
 	return mSwapchain;
 }
@@ -626,26 +587,19 @@ SceneView* RenderSystem::AcquireSceneView(const World* world, EntityHandle camer
 	auto view = GetSceneView(world, camera);
 	if (view == nullptr)
 	{
-		view = new SceneView(world, camera, mSwapchain);
+		view = new SceneView(mSwapchain, world, camera);
 		mSceneViews.push_back(view);
 	}
-
-	const auto& cameraComponent = world->GetEntityManager().GetComponent<Camera>(camera);
-	const auto& reference = cameraComponent.renderPipeline.guid != Guid::InvalidGuid() ? cameraComponent.renderPipeline : mDefaultRenderPipeline;
-	if (view->pipelineReference != reference)
+	else
 	{
-		auto assetManager = Globals::GameInstance->GetSubsystem<AssetManager>();
-		assetManager->Release(view->pipelineReference);
-		view->pipelineReference = reference;
-		view->pipeline = assetManager->Load<RenderPipeline>(reference);
-	}
-
-	if (view->targetReference != cameraComponent.targetTexture)
-	{
-		auto assetManager = Globals::GameInstance->GetSubsystem<AssetManager>();
-		assetManager->Release(view->targetReference);
-		view->targetReference = cameraComponent.targetTexture;
-		view->target = assetManager->Load<RenderTexture>(cameraComponent.targetTexture);
+		RendererList renderers = view->GetRenderers();
+		view->ReleaseHistory(mDevice, mTransientAllocator);
+		view->~SceneView();
+		new (view) SceneView(mSwapchain, world, camera);
+		for (const auto& entry : renderers)
+		{
+			view->AddRenderer(entry.renderer, entry.stage);
+		}
 	}
 	return view;
 }
@@ -654,7 +608,7 @@ void RenderSystem::ReleaseSceneView(const World* world, EntityHandle camera)
 {
 	auto it = eastl::find_if(mSceneViews.begin(), mSceneViews.end(), [world, camera](const SceneView* view)
 	{
-		return view->world == world and view->camera == camera;
+		return view->GetWorld() == world and view->GetCameraEntity() == camera;
 	});
 	if (it != mSceneViews.end())
 	{
@@ -668,7 +622,7 @@ void RenderSystem::ReleaseSceneViews(const World* world)
 {
 	for (uint32_t i = 0; i < mSceneViews.size();)
 	{
-		if (mSceneViews[i]->world == world)
+		if (mSceneViews[i]->GetWorld() == world)
 		{
 			DestroySceneView(mSceneViews[i]);
 			mSceneViews[i] = mSceneViews.back();
@@ -685,16 +639,13 @@ SceneView* RenderSystem::GetSceneView(const World* world, EntityHandle camera)
 {
 	auto it = eastl::find_if(mSceneViews.begin(), mSceneViews.end(), [world, camera](const SceneView* view)
 	{
-		return view->world == world and view->camera == camera;
+		return view->GetWorld() == world and view->GetCameraEntity() == camera;
 	});
 	return it != mSceneViews.end() ? *it : nullptr;
 }
 
 void RenderSystem::DestroySceneView(SceneView* view)
 {
-	auto assetManager = Globals::GameInstance->GetSubsystem<AssetManager>();
-	assetManager->Release(view->pipelineReference);
-	assetManager->Release(view->targetReference);
 	view->ReleaseHistory(mDevice, mTransientAllocator);
 	delete view;
 }
@@ -867,4 +818,9 @@ RenderContext RenderSystem::GetRenderContext() const
 	context.releaseQueue = mReleaseQueue;
 	context.allocator = mPersistentAllocator;
 	return context;
+}
+
+AssetReference RenderSystem::GetDefaultRenderPipeline() const
+{
+	return mDefaultRenderPipeline;
 }
