@@ -57,6 +57,7 @@ ProjectSolution::ProjectSolution(const Gleam::Project& project)
 {
 	mScriptsWatch = Gleam::Globals::Engine->GetSubsystem<Gleam::FileWatcher>()->AddWatch(project.path / "Scripts", [this](const Gleam::Path& path, Gleam::FileWatchEvent event)
 	{
+		mGameOutOfDate = true;
 		if (event != Gleam::FileWatchEvent::Modified)
 		{
 			mFileListChanged = true;
@@ -127,6 +128,30 @@ SolutionBuildResult ProjectSolution::Generate() const
 SolutionBuildResult ProjectSolution::BuildReflection()
 {
 	return Build(mIdentifier + "EditorReflection");
+}
+
+SolutionBuildResult ProjectSolution::BuildGame()
+{
+	SolutionBuildResult result{ .success = true };
+	if (mGameOutOfDate or Gleam::Filesystem::Exists(GetGameExecutable()) == false)
+	{
+		mGameOutOfDate = false;
+		result = Build(mIdentifier);
+		if (result.success == false)
+		{
+			mGameOutOfDate = true;
+		}
+	}
+	return result;
+}
+
+Gleam::Path ProjectSolution::GetGameExecutable() const
+{
+#if defined(PLATFORM_WINDOWS)
+	return mBuildDirectory / GLEAM_BUILD_CONFIG / (mIdentifier + ".exe");
+#else
+	return mBuildDirectory / GLEAM_BUILD_CONFIG / mIdentifier;
+#endif
 }
 
 Gleam::Path ProjectSolution::GetReflectionDatabase() const

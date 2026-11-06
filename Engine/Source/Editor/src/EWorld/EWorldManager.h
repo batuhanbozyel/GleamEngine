@@ -10,6 +10,8 @@
 
 namespace Gleam {
 class World;
+class ChildProcess;
+class IPCChannel;
 } // namespace Gleam
 
 namespace GEditor {
@@ -62,11 +64,6 @@ public:
 		return mEditWorld;
 	}
 
-	Gleam::World* GetPlayWorld() const
-	{
-		return mPlayWorld.get();
-	}
-
 private:
 
 	enum class Request
@@ -83,11 +80,15 @@ private:
 
 	void EndPlay(Gleam::Application* app);
 
-	void SetPhysicsEnabled(bool enabled);
+	void ReleasePlaySession();
 
 	Gleam::World* mEditWorld = nullptr;
 
-	Gleam::Scope<Gleam::World> mPlayWorld;
+	Gleam::ChildProcess* mGame = nullptr;
+
+	Gleam::IPCChannel* mLink = nullptr;
+
+	Gleam::Path mSnapshot;
 
 	PlayState mPlayState = PlayState::Edit;
 

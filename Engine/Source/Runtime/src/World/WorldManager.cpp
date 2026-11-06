@@ -34,12 +34,23 @@ void WorldManager::OpenWorld(uint32_t buildIndex)
 	SetActiveWorld(mLoadedWorlds[mWorldsInBuild[buildIndex]].get());
 }
 
+void WorldManager::OpenWorld(const Path& file)
+{
+	const AssetReference worldRef{ .guid = Guid(TString(file.Stem())) };
+	LoadWorld(worldRef, file);
+	SetActiveWorld(mLoadedWorlds[worldRef].get());
+}
+
 void WorldManager::LoadWorld(uint32_t buildIndex)
 {
 	const auto& worldRef = mWorldsInBuild[buildIndex];
 	const auto& worldPath = Globals::GameInstance->GetSubsystem<AssetManager>()->GetAssetPath(worldRef);
+	LoadWorld(worldRef, Globals::ProjectContentDirectory / worldPath);
+}
 
-	auto file = Filesystem::OpenRead(Globals::ProjectContentDirectory / worldPath, FileType::Text);
+void WorldManager::LoadWorld(const AssetReference& worldRef, const Path& worldFile)
+{
+	auto file = Filesystem::OpenRead(worldFile, FileType::Text);
 
 	rapidjson::Document document(rapidjson::kObjectType);
 	rapidjson::IStreamWrapper ss(file->GetStream());

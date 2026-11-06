@@ -6,6 +6,8 @@
 #include "EventSystem.h"
 #include "ConfigSystem.h"
 #include "WindowSystem.h"
+#include "CommandLine.h"
+#include "ProcessLink.h"
 #include "Input/InputSystem.h"
 #include "Renderer/RenderSystem.h"
 
@@ -30,9 +32,23 @@ Application::Application(const Project& project)
 		AddSubsystem<AssetManager>();
 		auto worldManager = AddSubsystem<WorldManager>();
 		worldManager->Configure(project.worldConfig);
-		worldManager->OpenWorld(project.worldConfig.startingWorldIndex);
+
+		const auto worldFile = Path(Globals::CLI->GetParam<TString>("world", TString()));
+		if (worldFile.Empty())
+		{
+			worldManager->OpenWorld(project.worldConfig.startingWorldIndex);
+		}
+		else
+		{
+			worldManager->OpenWorld(worldFile);
+		}
 	}
-	
+
+	if (Globals::CLI->HasParam("link-process"))
+	{
+		AddSubsystem<ProcessLink>(Globals::CLI->GetParam<uint32_t>("link-process", 0u));
+	}
+
 	EventDispatcher<AppCloseEvent>::Subscribe([this](AppCloseEvent e)
 	{
 		mRunning = false;

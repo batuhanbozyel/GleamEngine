@@ -35,6 +35,10 @@ public:
 
 	SolutionBuildResult BuildReflection();
 
+	SolutionBuildResult BuildGame();
+
+	Gleam::Path GetGameExecutable() const;
+
 	Gleam::Path GetReflectionDatabase() const;
 
 	void OpenSolution() const;
@@ -57,6 +61,8 @@ private:
 	Gleam::FileWatcher::Handle* mScriptsWatch = nullptr;
 
 	bool mFileListChanged = true;
+
+	bool mGameOutOfDate = true;
 };
 
 } // namespace GEditor

@@ -1,6 +1,7 @@
 #include "gpch.h"
 #include "Log.h"
 #include "Core/Globals.h"
+#include "Core/CommandLine.h"
 
 #if defined(PLATFORM_WINDOWS)
 #include <Windows.h>
@@ -175,7 +176,8 @@ Logger::Logger(const TString& name)
     static std::once_flag flag;
     std::call_once(flag, []()
     {
-        mFileStream = CreateScope<std::ofstream>(FILE_NAME, std::ofstream::out);
+        const auto file = Globals::CLI ? Globals::CLI->GetParam<TString>("log-file", TString(FILE_NAME)) : TString(FILE_NAME);
+        mFileStream = CreateScope<std::ofstream>(file.c_str(), std::ofstream::out);
     });
     mInstanceCount++;
 }

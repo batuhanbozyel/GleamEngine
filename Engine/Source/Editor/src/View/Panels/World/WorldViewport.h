@@ -135,7 +135,7 @@ private:
 
 	EditorInputSystem* mEditorInput = nullptr;
 
-	Gleam::World* mViewportWorld = nullptr;
+	bool mViewportSimulating = false;
 
 	TransformGizmo mTransformGizmo;
 

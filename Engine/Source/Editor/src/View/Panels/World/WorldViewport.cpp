@@ -318,15 +318,15 @@ const Gleam::RenderPipeline* WorldViewport::GetViewedRenderPipeline() const
 
 void WorldViewport::Update()
 {
-	auto playWorld = mWorldManager->GetPlayWorld();
+	const bool simulating = mWorldManager->IsSimulating();
 
-	if (playWorld and mCameraController->GetNavigation() != CameraNavigation::None)
+	if (simulating and mCameraController->GetNavigation() != CameraNavigation::None)
 	{
 		EndCameraNavigation();
 	}
-	mEditorInput->SetActionMapEnabled(mEditorInput->GetViewportMap(), playWorld == nullptr and ImGui::GetIO().WantTextInput == false);
+	mEditorInput->SetActionMapEnabled(mEditorInput->GetViewportMap(), simulating == false and ImGui::GetIO().WantTextInput == false);
 
-    if (mViewportSizeChanged or mViewportWorld != playWorld)
+    if (mViewportSizeChanged or mViewportSimulating != simulating)
     {
 		Resize(mViewportSize);
 	}
@@ -778,12 +778,6 @@ void WorldViewport::DrawViewport(Gleam::ImGuiRenderer* imgui)
 	const bool isFocused = ImGui::IsWindowFocused();
 	if (mWorldManager->IsSimulating())
 	{
-		auto inputSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::InputSystem>();
-		for (auto player : inputSystem->GetPlayers())
-		{
-			player->SetEnabled(isFocused);
-		}
-
 		const auto& borderColor = mWorldManager->GetPlayState() == PlayState::Paused ? Gleam::Theme::Warning : Gleam::Theme::Accent;
 		ImGui::GetWindowDrawList()->AddRect(imageMin, ImVec2(imageMin.x + imageSize.x, imageMin.y + imageSize.y), Widgets::ColorU32(borderColor), 0.0f, 0, 2.0f);
 		return;
@@ -1068,7 +1062,7 @@ void WorldViewport::Resize(const Gleam::Size& size)
 {
 	mViewportSize = size;
 	mViewportSizeChanged = false;
-	mViewportWorld = mWorldManager->GetPlayWorld();
+	mViewportSimulating = mWorldManager->IsSimulating();
 
 	auto windowSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::WindowSystem>();
 	static auto renderSystem = Gleam::Globals::Engine->GetSubsystem<Gleam::RenderSystem>();
@@ -1086,7 +1080,7 @@ float WorldViewport::GetCameraAspectRatio() const
 Gleam::Size WorldViewport::GetRenderResolution(const Gleam::Size& panelResolution) const
 {
 	const auto aspectSize = GetAspectSize(mAspectConfig);
-	const bool applyAspect = mViewportWorld != nullptr or mAspectConfig.applyInEditMode;
+	const bool applyAspect = mViewportSimulating or mAspectConfig.applyInEditMode;
 	if (applyAspect == false or aspectSize == Gleam::Size::zero)
 	{
 		return panelResolution;

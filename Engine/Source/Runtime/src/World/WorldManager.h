@@ -19,6 +19,8 @@ public:
 
 	void OpenWorld(uint32_t buildIndex);
 
+	void OpenWorld(const Path& file);
+
 	void LoadWorld(uint32_t buildIndex);
 
 	void SetActiveWorld(World* world);
@@ -26,6 +28,8 @@ public:
 	World* GetActiveWorld() const;
 
 private:
+
+	void LoadWorld(const AssetReference& worldRef, const Path& worldFile);
 
 	World* mActiveWorld = nullptr;
 

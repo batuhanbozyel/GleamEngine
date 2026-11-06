@@ -9,6 +9,7 @@
 #include <fcntl.h>
 #include <signal.h>
 #include <unistd.h>
+#include <sys/wait.h>
 
 extern char** environ;
 
@@ -99,7 +100,46 @@ private:
 	static inline TArray<char*> mArgv;
 };
 
-bool Process::Launch(const Path& executable, const TArray<TString>& arguments, const Path& workingDirectory)
+ChildProcess::~ChildProcess() = default;
+
+bool ChildProcess::IsRunning()
+{
+	return WaitForExit(0) == false;
+}
+
+bool ChildProcess::WaitForExit(uint32_t milliseconds)
+{
+	for (uint32_t elapsed = 0; mExited == false; elapsed += 10)
+	{
+		int status = 0;
+		const auto result = waitpid(static_cast<pid_t>(mId), &status, WNOHANG);
+		if (result == static_cast<pid_t>(mId) or result == -1)
+		{
+			mExitCode = (result != -1 and WIFEXITED(status)) ? WEXITSTATUS(status) : -1;
+			mExited = true;
+		}
+		else if (elapsed >= milliseconds)
+		{
+			break;
+		}
+		else
+		{
+			usleep(10000);
+		}
+	}
+	return mExited;
+}
+
+void ChildProcess::Terminate()
+{
+	if (WaitForExit(0) == false)
+	{
+		kill(static_cast<pid_t>(mId), SIGKILL);
+		WaitForExit(UINT32_MAX);
+	}
+}
+
+ChildProcess* Process::Launch(const Path& executable, const TArray<TString>& arguments, const Path& workingDirectory)
 {
 	const auto executableStr = executable.String();
 	const auto workingDirectoryStr = workingDirectory.String();
@@ -119,7 +159,7 @@ bool Process::Launch(const Path& executable, const TArray<TString>& arguments, c
 	pid_t pid = 0;
 	int result = posix_spawn(&pid, executableStr.c_str(), &actions, nullptr, argv.data(), environ);
 	posix_spawn_file_actions_destroy(&actions);
-	return result == 0;
+	return result == 0 ? new ChildProcess(-1, static_cast<uint32_t>(pid)) : nullptr;
 }
 
 Path Process::ExecutablePath()
@@ -131,6 +171,11 @@ Path Process::ExecutablePath()
 
 	char resolved[PATH_MAX];
 	return Path(realpath(buffer.c_str(), resolved) ? resolved : buffer.c_str());
+}
+
+uint32_t Process::CurrentId()
+{
+	return static_cast<uint32_t>(getpid());
 }
 
 void Process::RevealInFileBrowser(const Path& path)

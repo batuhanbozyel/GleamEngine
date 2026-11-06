@@ -5,22 +5,25 @@
 
 #include "EWorldManager.h"
 #include "EAssets/AssetWriter.h"
-#include "Physics/PhysicsVisualizationSystem.h"
+#include "Scripting/ProjectSolution.h"
 #include "Scripting/ScriptReflection.h"
 
 #include "Core/Globals.h"
 #include "Core/Application.h"
 #include "Core/Engine.h"
-#include "Input/InputSystem.h"
+#include "Core/Process.h"
+#include "Core/ProcessLink.h"
+#include "Core/CommandLine.h"
+#include "Networking/IPCChannel.h"
 #include "Assets/AssetManager.h"
-#include "Physics/PhysicsSystem.h"
 #include "World/World.h"
-#include "World/WorldManager.h"
 
 #include "Serialization/JSONInternal.h"
 #include "Serialization/EntitySerializer.h"
 
 using namespace GEditor;
+
+static constexpr uint32_t kQuitTimeout = 2000;
 
 EWorldManager::EWorldManager(Gleam::World* world)
 	: mEditWorld(world)
@@ -32,7 +35,7 @@ EWorldManager::~EWorldManager() = default;
 
 void EWorldManager::Shutdown(Gleam::Application* app)
 {
-	if (mPlayWorld)
+	if (mGame)
 	{
 		EndPlay(app);
 	}
@@ -40,6 +43,15 @@ void EWorldManager::Shutdown(Gleam::Application* app)
 
 void EWorldManager::Tick(Gleam::Application* app)
 {
+	if (mGame and mGame->IsRunning() == false)
+	{
+		if (mGame->GetExitCode() != 0)
+		{
+			GLEAM_WARN("Game exited with code {0}", mGame->GetExitCode());
+		}
+		ReleasePlaySession();
+	}
+
 	const auto request = mRequest;
 	mRequest = Request::None;
 
@@ -51,18 +63,16 @@ void EWorldManager::Tick(Gleam::Application* app)
 			{
 				BeginPlay(app);
 			}
-			else if (mPlayState == PlayState::Paused)
+			else if (mPlayState == PlayState::Paused and mLink->Send(static_cast<uint32_t>(Gleam::ProcessLinkMessage::Resume)))
 			{
-				SetPhysicsEnabled(true);
 				mPlayState = PlayState::Playing;
 			}
 			break;
 		}
 		case Request::Pause:
 		{
-			if (mPlayState == PlayState::Playing)
+			if (mPlayState == PlayState::Playing and mLink->Send(static_cast<uint32_t>(Gleam::ProcessLinkMessage::Pause)))
 			{
-				SetPhysicsEnabled(false);
 				mPlayState = PlayState::Paused;
 			}
 			break;
@@ -71,7 +81,7 @@ void EWorldManager::Tick(Gleam::Application* app)
 		{
 			if (mPlayState == PlayState::Paused)
 			{
-				mPlayWorld->GetSystem<Gleam::PhysicsSystem>()->OnFixedUpdate(mPlayWorld->GetEntityManager());
+				mLink->Send(static_cast<uint32_t>(Gleam::ProcessLinkMessage::Step));
 			}
 			break;
 		}
@@ -146,29 +156,70 @@ void EWorldManager::RequestStop()
 
 void EWorldManager::BeginPlay(Gleam::Application* app)
 {
-	mPlayWorld = Gleam::CreateScope<Gleam::World>(Gleam::AssetReference{}, mEditWorld->GetHeader(), mEditWorld->GetDescriptor());
-	mPlayWorld->GetEntityManager().CopyFrom(mEditWorld->GetEntityManager());
-
-	// No view renders the play world's debug lines until Play runs out of process, and they would pile up in the renderer's queue
-	auto visualization = mPlayWorld->AddSystem<PhysicsVisualizationSystem>(nullptr);
-	if (mEditWorld->HasSystem<PhysicsVisualizationSystem>())
+	auto& solution = Gleam::Globals::Engine->GetSubsystem<ScriptReflection>()->GetSolution();
+	const auto build = solution.BuildGame();
+	const auto processId = Gleam::Process::CurrentId();
+	if (build.success)
 	{
-		visualization->SetSettings(mEditWorld->GetSystem<PhysicsVisualizationSystem>()->GetSettings());
+		mLink = Gleam::IPCChannel::Listen(Gleam::ProcessLink::ChannelName(processId));
 	}
 
-	app->GetSubsystem<Gleam::WorldManager>()->SetActiveWorld(mPlayWorld.get());
-	mPlayState = PlayState::Playing;
+	if (mLink)
+	{
+		const auto sessionDirectory = Gleam::Globals::ProjectDirectory / "Intermediate" / "PlaySession";
+		Gleam::Filesystem::CreateDirectories(sessionDirectory);
+
+		Gleam::TString snapshotName = mEditWorld->GetReference().guid.ToString();
+		snapshotName.append_convert(Gleam::World::Extension().data(), Gleam::World::Extension().size());
+		mSnapshot = sessionDirectory / snapshotName;
+		SaveAs(mSnapshot);
+
+		mGame = Gleam::Process::Launch(solution.GetGameExecutable(),
+		{
+			"-project=" + Gleam::Globals::CLI->GetParam<Gleam::TString>("project", Gleam::TString()),
+			"-link-process=" + Gleam::TString(std::to_string(processId)),
+			"-world=" + mSnapshot.String(),
+			"-log-file=" + (sessionDirectory / "Game.log").String()
+		}, Gleam::Globals::StartupDirectory);
+	}
+
+	if (mGame)
+	{
+		mPlayState = PlayState::Playing;
+	}
+	else
+	{
+		if (build.success == false)
+		{
+			GLEAM_ERROR("Play is cancelled, the game build failed:\n{0}", build.output);
+		}
+		else
+		{
+			GLEAM_ERROR("Play is cancelled, the game could not be launched: {0}", solution.GetGameExecutable().String());
+		}
+		ReleasePlaySession();
+	}
 }
 
 void EWorldManager::EndPlay(Gleam::Application* app)
 {
-	Gleam::Globals::Engine->GetSubsystem<Gleam::InputSystem>()->DestroyPlayers();
-	app->GetSubsystem<Gleam::WorldManager>()->SetActiveWorld(mEditWorld);
-	mPlayWorld.reset();
-	mPlayState = PlayState::Edit;
+	if (mLink->Send(static_cast<uint32_t>(Gleam::ProcessLinkMessage::Quit)) == false or mGame->WaitForExit(kQuitTimeout) == false)
+	{
+		mGame->Terminate();
+	}
+	ReleasePlaySession();
 }
 
-void EWorldManager::SetPhysicsEnabled(bool enabled)
+void EWorldManager::ReleasePlaySession()
 {
-	mPlayWorld->GetSystem<Gleam::PhysicsSystem>()->Enabled = enabled;
+	delete mGame;
+	mGame = nullptr;
+	delete mLink;
+	mLink = nullptr;
+	if (mSnapshot.Empty() == false)
+	{
+		Gleam::Filesystem::Remove(mSnapshot);
+		mSnapshot = Gleam::Path();
+	}
+	mPlayState = PlayState::Edit;
 }

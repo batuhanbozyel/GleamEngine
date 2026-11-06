@@ -270,7 +270,38 @@ static bool AttachDebugger(DWORD processId)
 	return attached;
 }
 
-bool Process::Launch(const Path& executable, const TArray<TString>& arguments, const Path& workingDirectory)
+ChildProcess::~ChildProcess()
+{
+	CloseHandle(reinterpret_cast<HANDLE>(mHandle));
+}
+
+bool ChildProcess::IsRunning()
+{
+	return WaitForExit(0) == false;
+}
+
+bool ChildProcess::WaitForExit(uint32_t milliseconds)
+{
+	if (mExited == false and WaitForSingleObject(reinterpret_cast<HANDLE>(mHandle), milliseconds) == WAIT_OBJECT_0)
+	{
+		DWORD exitCode = 0;
+		GetExitCodeProcess(reinterpret_cast<HANDLE>(mHandle), &exitCode);
+		mExitCode = static_cast<int>(exitCode);
+		mExited = true;
+	}
+	return mExited;
+}
+
+void ChildProcess::Terminate()
+{
+	if (WaitForExit(0) == false)
+	{
+		TerminateProcess(reinterpret_cast<HANDLE>(mHandle), 1);
+		WaitForExit(INFINITE);
+	}
+}
+
+ChildProcess* Process::Launch(const Path& executable, const TArray<TString>& arguments, const Path& workingDirectory)
 {
 	TWString commandLine = L"\"" + executable.Native() + L"\"";
 	for (const auto& argument : arguments)
@@ -285,7 +316,7 @@ bool Process::Launch(const Path& executable, const TArray<TString>& arguments, c
 	PROCESS_INFORMATION processInfo = {};
 	if (CreateProcessW(executable.Native().c_str(), commandLine.data(), nullptr, nullptr, FALSE, 0, nullptr, workingDirectory.Native().c_str(), &startupInfo, &processInfo) == FALSE)
 	{
-		return false;
+		return nullptr;
 	}
 
 	if (IsDebuggerPresent() and AttachDebugger(processInfo.dwProcessId) == false)
@@ -294,8 +325,7 @@ bool Process::Launch(const Path& executable, const TArray<TString>& arguments, c
 	}
 
 	CloseHandle(processInfo.hThread);
-	CloseHandle(processInfo.hProcess);
-	return true;
+	return new ChildProcess(reinterpret_cast<intptr_t>(processInfo.hProcess), processInfo.dwProcessId);
 }
 
 Path Process::ExecutablePath()
@@ -309,6 +339,11 @@ Path Process::ExecutablePath()
 	}
 	buffer.resize(length);
 	return Path(buffer);
+}
+
+uint32_t Process::CurrentId()
+{
+	return GetCurrentProcessId();
 }
 
 void Process::RevealInFileBrowser(const Path& path)

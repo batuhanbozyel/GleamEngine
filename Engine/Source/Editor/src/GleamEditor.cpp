@@ -148,7 +148,7 @@ Gleam::Application* Gleam::CreateApplicationInstance(const Gleam::CommandLine& c
 		const auto reflectionLog = Gleam::Globals::UserDataDirectory / "Launcher" / "Reflection.log";
 		Gleam::Filesystem::CreateDirectories(reflectionLog.Parent());
 		Gleam::Filesystem::Create(reflectionLog, Gleam::FileType::Text)->Write(ReadLog(Gleam::Logger::FILE_NAME));
-		Gleam::Process::Launch(Gleam::Process::ExecutablePath(), { "-reflection-log=" + reflectionLog.String() }, Gleam::Filesystem::WorkingDirectory());
+		delete Gleam::Process::Launch(Gleam::Process::ExecutablePath(), { "-reflection-log=" + reflectionLog.String() }, Gleam::Filesystem::WorkingDirectory());
 		return nullptr;
 	}
 

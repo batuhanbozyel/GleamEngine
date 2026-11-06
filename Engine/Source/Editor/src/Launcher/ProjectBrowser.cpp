@@ -742,8 +742,9 @@ void ProjectBrowser::OpenProject(const Gleam::Path& projectFile)
 	auto arguments = Gleam::TArray<Gleam::TString>{ "-project=" + projectFile.String() };
 	GleamLauncher::AddRecentProject(projectFile, project.name);
 
-	if (Gleam::Process::Launch(Gleam::Process::ExecutablePath(), arguments, Gleam::Filesystem::WorkingDirectory()))
+	if (auto editor = Gleam::Process::Launch(Gleam::Process::ExecutablePath(), arguments, Gleam::Filesystem::WorkingDirectory()))
 	{
+		delete editor;
 		Gleam::EventDispatcher<Gleam::AppCloseEvent>::Publish(Gleam::AppCloseEvent());
 	}
 	else
