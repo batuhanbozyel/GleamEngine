@@ -144,6 +144,8 @@ private:
 		entt::id_type type = 0;
 	};
 
+	void FlushPendingEvictions();
+
 	template<LoadableAssetType T, typename Desc>
 	static Asset* ConstructAsset(Asset* memory, const AssetReference& ref)
 	{

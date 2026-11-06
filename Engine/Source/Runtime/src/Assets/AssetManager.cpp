@@ -74,9 +74,10 @@ void AssetManager::Initialize(Application* app)
 
 void AssetManager::Shutdown(Application* app)
 {
-	// TODO: Fix me!!!
-	// There are assets depending other assets such as MaterialInstance -> Material
-	// We need proper deallocation logic for such dependency
+	FlushPendingEvictions();
+	GLEAM_ASSERT(mAssetCache.empty(), "{0} assets are still referenced on shutdown", mAssetCache.size());
+
+	mPendingReloads.clear();
 	mAssetCache.clear();
 	mStorage.reset();
 }
@@ -103,6 +104,11 @@ void AssetManager::Tick(Application* app)
 	}
 	mPendingReloads.clear();
 
+	FlushPendingEvictions();
+}
+
+void AssetManager::FlushPendingEvictions()
+{
 	// Walks by index because erasing an asset releases its dependencies, which appends to the list mid-loop.
 	for (size_t i = 0; i < mPendingEvictions.size(); ++i)
 	{

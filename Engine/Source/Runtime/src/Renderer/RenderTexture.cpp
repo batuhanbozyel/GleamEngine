@@ -16,7 +16,7 @@ RenderTexture::RenderTexture(const AssetReference& reference, const AssetHeader&
 	static auto renderSystem = Globals::Engine->GetSubsystem<RenderSystem>();
 
 	TextureDescriptor textureDescriptor = descriptor;
-	textureDescriptor.name = "RenderTexture: " + (descriptor.name.empty() ? header.name : descriptor.name);
+	textureDescriptor.name = fmt::format("RenderTexture: {}", descriptor.name.empty() ? header.name : descriptor.name);
 	mTexture = renderSystem->GetDevice()->CreateTexture(renderSystem->GetAllocator(), textureDescriptor);
 }
 
